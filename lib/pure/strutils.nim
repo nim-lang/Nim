@@ -1282,17 +1282,18 @@ proc abbrev*(s: string, possibilities: openArray[string]): int =
 
 # ---------------------------------------------------------------------------
 
-proc join*(a: openArray[string], sep: string = ""): string {.
+proc join*(a: openArray[string], sep: string = "", nilSubstitute: string = nil): string {.
   noSideEffect, rtl, extern: "nsuJoinSep".} =
-  ## Concatenates all strings in `a` separating them with `sep`.
+  ## Concatenates all strings in `a` separating them with `sep`. `nil` strings
+  ## are replaced with `nilSubstitute`.
   if len(a) > 0:
     var L = sep.len * (a.len-1)
-    for i in 0..high(a): inc(L, a[i].len)
+    for i in 0..high(a): inc(L, if a[i].isNil: nilSubstitute.len else: a[i].len)
     result = newStringOfCap(L)
     add(result, a[0])
     for i in 1..high(a):
       add(result, sep)
-      add(result, a[i])
+      add(result, if a[i].isNil: nilSubstitute else: a[i])
   else:
     result = ""
 
