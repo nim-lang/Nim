@@ -16,3 +16,8 @@ var running = true
 while running:
   running = running(p)
 doAssert(waitForExit(p) == QuitFailure)
+
+# make sure that first call to running() after process exit returns false
+p = startProcess(filename, dir)
+os.sleep(500)
+doAssert(not running(p))

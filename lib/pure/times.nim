@@ -436,6 +436,11 @@ when not defined(JS):
     TimeInfoPtr = ptr StructTM
     Clock {.importc: "clock_t".} = distinct int
 
+  when not defined(windows):
+    # This is not ANSI C, but common enough
+    proc timegm(t: StructTM): Time {.
+      importc: "timegm", header: "<time.h>", tags: [].}
+
   proc localtime(timer: ptr Time): TimeInfoPtr {.
     importc: "localtime", header: "<time.h>", tags: [].}
   proc gmtime(timer: ptr Time): TimeInfoPtr {.
@@ -515,12 +520,19 @@ when not defined(JS):
     # the conversion is not expensive
 
   proc toTime(timeInfo: TimeInfo): Time =
-    var cTimeInfo = timeInfo # for C++ we have to make a copy,
+    var cTimeInfo = timeInfo # for C++ we have to make a copy
     # because the header of mktime is broken in my version of libc
-    result = mktime(timeInfoToTM(cTimeInfo))
-    # mktime is defined to interpret the input as local time. As timeInfoToTM
-    # does ignore the timezone, we need to adjust this here.
-    result = Time(TimeImpl(result) - getTimezone() + timeInfo.timezone)
+
+    when defined(windows):
+      # On Windows `mktime` is broken enough to make this work.
+      result = mktime(timeInfoToTM(cTimeInfo))
+      # mktime is defined to interpret the input as local time. As timeInfoToTM
+      # does ignore the timezone, we need to adjust this here.
+      result = Time(TimeImpl(result) - getTimezone() + timeInfo.timezone)
+    else:
+      result = timegm(timeInfoToTM(cTimeInfo))
+      # As timeInfoToTM does ignore the timezone, we need to adjust this here.
+      result = Time(TimeImpl(result) + timeInfo.timezone)
 
   proc timeInfoToTime(timeInfo: TimeInfo): Time = toTime(timeInfo)
 
@@ -603,7 +615,7 @@ elif defined(JS):
     result.weekday = weekDays[t.getUTCDay()]
     result.yearday = 0
 
-  proc timeInfoToTime*(timeInfo: TimeInfo): Time = toTime(timeInfo)
+  proc timeInfoToTime(timeInfo: TimeInfo): Time = toTime(timeInfo)
 
   proc toTime*(timeInfo: TimeInfo): Time =
     result = internGetTime()

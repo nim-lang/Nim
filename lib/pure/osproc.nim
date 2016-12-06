@@ -965,10 +965,16 @@ elif not defined(useNimRtl):
     var ret : int
     var status : cint = 1
     ret = waitpid(p.id, status, WNOHANG)
-    if WIFEXITED(status):
-      p.exitStatus = status
-    if ret == 0: return true # Can't establish status. Assume running.
-    result = ret == int(p.id)
+    if ret == int(p.id):
+      if WIFEXITED(status):
+        p.exitStatus = status
+        return false
+      else:
+        return true
+    elif ret == 0:
+      return true # Can't establish status. Assume running.
+    else:
+      return false
 
   proc terminate(p: Process) =
     if kill(p.id, SIGTERM) != 0'i32:
