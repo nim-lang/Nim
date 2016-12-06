@@ -122,6 +122,7 @@ type
   ConsiderFlag* = enum
     CoProc
     CoType
+    CoNoGeneric
 
 proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
   if t == nil:
@@ -144,7 +145,6 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     return
   else:
     discard
-
   c &= char(t.kind)
   case t.kind
   of tyBool, tyChar, tyInt..tyUInt64:
@@ -153,10 +153,10 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     if t.sym != nil and {sfImportc, sfExportc} * t.sym.flags != {}:
       c.hashSym(t.sym)
   of tyObject, tyEnum:
-    if t.typeInst != nil:
+    if t.typeInst != nil and CoNoGeneric notin flags:
       assert t.typeInst.kind == tyGenericInst
       for i in countup(1, sonsLen(t.typeInst) - 2):
-        c.hashType t.typeInst.sons[i], flags
+        c.hashType t.typeInst.sons[i], flags+{CoNoGeneric}
     # Every cyclic type in Nim need to be constructed via some 't.sym', so this
     # is actually safe without an infinite recursion check:
     if t.sym != nil:
