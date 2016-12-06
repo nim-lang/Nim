@@ -45,9 +45,12 @@ proc idOrSig(m: BModule; s: PSym): Rope =
     # Nim changes:
     let sig = hashProc(s)
     result = rope($sig)
+    let m = findPendingModule(m, s)
     let counter = m.sigConflicts.getOrDefault(sig)
+    #if sigs == "_jckmNePK3i2MFnWwZlp6Lg" and s.name.s == "contains":
+    #  echo "counter ", counter, " ", s.id
     if counter != 0:
-      result.add "_" & rope counter
+      result.add "_" & rope(counter+1)
     m.sigConflicts.inc(sig)
   else:
     result = "_" & rope s.id
