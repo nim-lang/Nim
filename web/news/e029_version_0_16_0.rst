@@ -39,7 +39,8 @@ Library Additions
   ``deques`` provides a superset of ``queues`` API with clear naming.
   ``queues`` module is now deprecated and will be removed in the future.
 
-- Added ``hideCursor`` and ``showCursor`` to the ``terminal``
+- Added ``hideCursor``, ``showCursor``, ``terminalWidth``,
+  ``terminalWidthIoctl`` and ``terminalSize`` to the ``terminal``
   `(doc) <http://nim-lang.org/docs/terminal.html>`_ module.
 
 

@@ -91,13 +91,24 @@ proc rawTag*(n: XmlNode): string {.inline.} =
   shallowCopy(result, n.fTag)
 
 proc innerText*(n: XmlNode): string =
-  ## gets the inner text of `n`. `n` has to be an ``xnElement`` node. Only
-  ## ``xnText`` and ``xnEntity`` nodes are considered part of `n`'s inner text,
-  ## other child nodes are silently ignored.
+  ## gets the inner text of `n`:
+  ##
+  ## - If `n` is `xnText` or `xnEntity`, returns its content.
+  ## - If `n` is `xnElement`, runs recursively on each child node and
+  ##   concatenates the results.
+  ## - Otherwise returns an empty string.
+  proc worker(res: var string, n: XmlNode) =
+    case n.k
+    of xnText, xnEntity:
+      res.add(n.fText)
+    of xnElement:
+      for sub in n.s:
+        worker(res, sub)
+    else:
+      discard
+
   result = ""
-  assert n.k == xnElement
-  for i in 0 .. n.s.len-1:
-    if n.s[i].k in {xnText, xnEntity}: result.add(n.s[i].fText)
+  worker(result, n)
 
 proc tag*(n: XmlNode): string {.inline.} =
   ## gets the tag name of `n`. `n` has to be an ``xnElement`` node.
