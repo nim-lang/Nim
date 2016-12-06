@@ -1245,7 +1245,13 @@ proc shouldRecompile(code: Rope, cfile: string): bool =
   result = true
   if optForceFullMake notin gGlobalOptions:
     var objFile = toObjFile(cfile)
-    if writeRopeIfNotEqual(code, cfile): return
+
+    if not equalsFile(code, cfile):
+      if isDefined("nimdiff"):
+        copyFile(cfile, cfile & ".backup")
+        echo "diff ", cfile, ".backup ", cfile
+      writeRope(code, cfile)
+      return
     if existsFile(objFile) and os.fileNewer(objFile, cfile): result = false
   else:
     writeRope(code, cfile)
