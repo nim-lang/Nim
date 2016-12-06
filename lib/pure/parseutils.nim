@@ -150,7 +150,7 @@ proc skipUntil*(s: string, until: char, start = 0): int {.inline.} =
 
 proc skipUntil*(s: string, until: string, start = 0): int {.inline.} =
   ## Skips all characters until the string `until` is found
-  ## or the end is reached.
+  ## or the end is reached. `until` is not skipped.
   ## Returns number of characters skipped.
   var i = start
   while i < s.len:
