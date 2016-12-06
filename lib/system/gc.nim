@@ -153,13 +153,19 @@ template setColor(c, col) =
 
 proc writeCell(msg: cstring, c: PCell) =
   var kind = -1
-  if c.typ != nil: kind = ord(c.typ.kind)
+  var typName: cstring = "nil"
+  if c.typ != nil:
+    kind = ord(c.typ.kind)
+    when defined(nimTypeNames):
+      if not c.typ.name.isNil:
+        typName = c.typ.name
+
   when leakDetector:
-    c_fprintf(stdout, "[GC] %s: %p %d rc=%ld from %s(%ld)\n",
-              msg, c, kind, c.refcount shr rcShift, c.filename, c.line)
+    c_fprintf(stdout, "[GC] %s: %p %d %s rc=%ld from %s(%ld)\n",
+              msg, c, kind, typName, c.refcount shr rcShift, c.filename, c.line)
   else:
-    c_fprintf(stdout, "[GC] %s: %p %d rc=%ld; color=%ld\n",
-              msg, c, kind, c.refcount shr rcShift, c.color)
+    c_fprintf(stdout, "[GC] %s: %p %d %s rc=%ld; color=%ld\n",
+              msg, c, kind, typName, c.refcount shr rcShift, c.color)
 
 template gcTrace(cell, state: expr): stmt {.immediate.} =
   when traceGC: traceCell(cell, state)
