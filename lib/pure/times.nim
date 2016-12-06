@@ -168,14 +168,24 @@ type
 {.deprecated: [TMonth: Month, TWeekDay: WeekDay, TTime: Time,
     TTimeInterval: TimeInterval, TTimeInfo: TimeInfo].}
 
+const
+  secondsInMin = 60
+  secondsInHour = 60*60
+  secondsInDay = 60*60*24
+  minutesInHour = 60
+  epochStartYear = 1970
+
 proc getTime*(): Time {.tags: [TimeEffect], benign.}
   ## gets the current calendar time as a UNIX epoch value (number of seconds
   ## elapsed since 1970) with integer precission. Use epochTime for higher
   ## resolution.
-proc getLocalTime*(t: Time): TimeInfo {.tags: [TimeEffect], raises: [], benign.}
+
+proc getLocalTime*(t: Time): TimeInfo
+    {.tags: [TimeEffect], raises: [ValueError], benign.}
   ## converts the calendar time `t` to broken-time representation,
   ## expressed relative to the user's specified time zone.
-proc getGMTime*(t: Time): TimeInfo {.tags: [TimeEffect], raises: [], benign.}
+proc getGMTime*(t: Time): TimeInfo
+    {.tags: [TimeEffect], raises: [ValueError], benign.}
   ## converts the calendar time `t` to broken-down time representation,
   ## expressed in Coordinated Universal Time (UTC).
 
@@ -503,14 +513,24 @@ when not defined(JS):
   proc getLocalTime(t: Time): TimeInfo =
     var a = t
     let lt = localtime(addr(a))
-    assert(not lt.isNil)
+    when defined(windows):
+      if isNil(lt):
+        raise newException(ValueError,
+                           "Cannot convert pre-1970 timestamp to TimeInfo")
+    else: assert(not lt.isNil)
     result = tmToTimeInfo(lt[], true)
     # copying is needed anyway to provide reentrancity; thus
     # the conversion is not expensive
 
   proc getGMTime(t: Time): TimeInfo =
     var a = t
-    result = tmToTimeInfo(gmtime(addr(a))[], false)
+    let gmt = gmtime(addr(a))
+    when defined(windows):
+      if isNil(gmt):
+        raise newException(ValueError,
+                           "Cannot convert pre-1970 timestamp to TimeInfo")
+    else: assert(not gmt.isNil)
+    result = tmToTimeInfo(gmt[], false)
     # copying is needed anyway to provide reentrancity; thus
     # the conversion is not expensive
 
@@ -526,9 +546,70 @@ when not defined(JS):
     var cTimeInfo = timeInfo # for C++ we have to make a copy,
     # because the header of mktime is broken in my version of libc
     result = mktime(timeInfoToTM(cTimeInfo))
+    when defined(windows):
+      var secondOffset: TimeImpl = 0
+      if result == Time(-1) and cTimeInfo.year <= 1970:
+        # raise the year to 1971 because Windows' mktime returns -1 for times
+        # before 1970. Store the number of seconds we raised in secondOffset so
+        # we can readjust later on. We raise to 1971 because a date in 1970 may
+        # become a date in 1969 when applying timezone offset.
+        #
+        # This code assumes that we use the Gregorian calendar from 15.10.1582
+        # onwards. The day before 15.10.1582 is the 04.10.1582 in Julian
+        # calendar. There is a leap year on every year number divisible by 4 in
+        # both calendars, but in Gregorian calendar, years divisible by 100 are
+        # not leap years onless they are also divisible by 400.
+
+        # first, check if we are in front, behind or at a leap day.
+        var leapAdjust: TimeImpl = 0
+        if cTimeInfo.month > mFeb:
+          leapAdjust = 1
+        elif cTimeInfo.month == mFeb and cTimeInfo.monthday == 29:
+          # since the target year (1971) does not have a leap day, we need to
+          # move one day backwards.
+          cTimeInfo.monthday = 28
+          secondOffset -= secondsInDay
+
+        # for every Gregorian calendar year divisible by 100 but not divisible
+        # by 400, substract one day. This is the error we will make when adding
+        # one leap day every four years later. To only hit Gregorian years, we
+        # take a maximum of all matching years between 1582 and 2000.
+        let yearsBefore2000 = 2000 - cTimeInfo.year - leapAdjust
+        const gregorianYearsBefore2000 = 2000 - 1582
+        secondOffset -= secondsInDay *
+            min(((yearsBefore2000 div 100) - (yearsBefore2000 div 400)),
+                ((gregorianYearsBefore2000 div 100) -
+                 (gregorianYearsBefore2000 div 400)))
+
+        # substract 10 days missing in 1582 if we are at or before the last
+        # Julian day
+        if cTimeInfo.year < 1582 or (cTimeInfo.year == 1582 and
+            (cTimeInfo.month < mOct or
+             (cTimeInfo.month == mOct and cTimeInfo.monthday <= 4))):
+          secondOffset -= secondsInDay * 10
+
+        # now, add seconds for every completed four years
+        let yearsBefore1971 = 1971 - cTimeInfo.year
+        secondOffset +=
+            secondsInDay * (3 * 365 + 366) * (yearsBefore1971 div 4)
+
+        # finally, add the remaining years
+        secondOffset += secondsInDay * 365 * (yearsBefore1971 mod 4)
+        if (yearsBefore1971 mod 4) - leapAdjust == 3:
+          # 1968 is the first leap year we reach when going backwards
+          secondOffset += secondsInDay
+
+        # ... and recalculate
+        cTimeInfo.year = 1971
+        result = mktime(timeInfoToTM(cTimeInfo))
+
     # mktime is defined to interpret the input as local time. As timeInfoToTM
     # does ignore the timezone, we need to adjust this here.
-    result = Time(TimeImpl(result) - getTimezone() + timeInfo.timezone)
+    when defined(windows):
+      result = Time(TimeImpl(result) - getTimezone() + timeInfo.timezone -
+          secondOffset)
+    else:
+      result = Time(TimeImpl(result) - getTimezone() + timeInfo.timezone)
 
   const
     epochDiff = 116444736000000000'i64
@@ -726,13 +807,6 @@ proc `-`*(t: Time, ti: TimeInterval): Time =
   ## ``echo getTime() - 1.day``
   result = toTime(getLocalTime(t) - ti)
 
-const
-  secondsInMin = 60
-  secondsInHour = 60*60
-  secondsInDay = 60*60*24
-  minutesInHour = 60
-  epochStartYear = 1970
-
 proc formatToken(info: TimeInfo, token: string, buf: var string) =
   ## Helper of the format proc to parse individual tokens.
   ##
@@ -929,10 +1003,11 @@ proc `$`*(timeInfo: TimeInfo): string {.tags: [], raises: [], benign.} =
     result = format(timeInfo, "yyyy-MM-dd'T'HH:mm:sszzz") # todo: optimize this
   except ValueError: assert false # cannot happen because format string is valid
 
-proc `$`*(time: Time): string {.tags: [TimeEffect], raises: [], benign.} =
+proc `$`*(time: Time): string
+    {.tags: [TimeEffect], raises: [ValueError], benign.} =
   ## converts a `Time` value to a string representation. It will use the local
   ## time zone and use the format ``yyyy-MM-dd'T'HH-mm-sszzz``.
-  $getLocalTime(time)
+  result = $getLocalTime(time)
 
 {.pop.}
 
