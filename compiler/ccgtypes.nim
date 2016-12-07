@@ -38,7 +38,7 @@ when false:
     result = gDebugInfo.register(p.name.s, m.name.s)
 
 proc idOrSig(m: BModule; s: PSym): Rope =
-  if s.kind in routineKinds and s.typ != nil and sfExported in s.flags and
+  if s.kind in routineKinds and s.typ != nil and
      s.typ.callConv != ccInline:
     # signatures for exported routines are reliable enough to
     # produce a unique name and this means produced C++ is more stable wrt
