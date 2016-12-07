@@ -160,7 +160,10 @@ proc peekLast*[T](deq: Deque[T]): T {.inline.} =
   emptyCheck(deq)
   result = deq.data[(deq.tail - 1) and deq.mask]
 
-proc default[T](t: typedesc[T]): T {.inline.} = discard
+template default[T](t: typedesc[T]): T =
+  var v: T
+  v
+
 proc popFirst*[T](deq: var Deque[T]): T {.inline, discardable.} =
   ## Remove and returns the first element of the `deq`.
   emptyCheck(deq)

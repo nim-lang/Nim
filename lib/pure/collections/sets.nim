@@ -261,7 +261,9 @@ template doWhile(a, b) =
     b
     if not a: break
 
-proc default[T](t: typedesc[T]): T {.inline.} = discard
+template default[T](t: typedesc[T]): T =
+  var v: T
+  v
 
 proc excl*[A](s: var HashSet[A], key: A) =
   ## Excludes `key` from the set `s`.
