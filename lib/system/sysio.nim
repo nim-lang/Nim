@@ -336,8 +336,8 @@ proc open(f: var File, filehandle: FileHandle, mode: FileMode): bool =
   f = c_fdopen(filehandle, FormatOpen[mode])
   result = f != nil
 
-proc setFilePos(f: File, pos: int64) =
-  if c_fseek(f, clong(pos), 0) != 0:
+proc setFilePos(f: File, pos: int64, relativeTo: FileSeekPos = fspSet) =
+  if c_fseek(f, clong(pos), cint(relativeTo)) != 0:
     raiseEIO("cannot set file position")
 
 proc getFilePos(f: File): int64 =
