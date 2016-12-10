@@ -211,7 +211,8 @@ proc possibleAliases(w: var W; result: var seq[ptr TSym]) =
   while todo < result.len:
     let x = result[todo]
     inc todo
-    for a in mitems(w.assignments):
+    for i in 0..<len(w.assignments):
+      let a = addr(w.assignments[i])
       #if a.srcHasSym(x):
       #  # y = f(..., x, ...)
       #  for i in 0 ..< a.destNoTc: addNoDup a.dest[i]
@@ -238,7 +239,8 @@ proc markWriteOrEscape(w: var W) =
   ## A write then looks like ``p[] = x``.
   ## An escape looks like ``p[] = q`` or more generally
   ## like ``p[] = f(q)`` where ``f`` can forward ``q``.
-  for a in mitems(w.assignments):
+  for i in 0..<len(w.assignments):
+    let a = addr(w.assignments[i])
     if a.destInfo != {}:
       possibleAliases(w, a.dest)
 
