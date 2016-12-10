@@ -1089,6 +1089,10 @@ proc genTypeInfo(m: BModule, t: PType): Rope =
     discard cgsym(m, "TNimNode")
     addf(m.s[cfsVars], "extern TNimType $1; /* $2 */$n",
          [result, rope(typeToString(t))])
+    #return "(&".rope & result & ")".rope
+    #result = "NTI$1" % [rope($sig)]
+    # also store in local type section:
+    m.typeInfoMarker[sig] = result
     return "(&".rope & result & ")".rope
 
   result = "NTI$1" % [rope($sig)]
