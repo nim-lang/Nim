@@ -49,6 +49,9 @@ const
   HexDigits* = {'0'..'9', 'A'..'F', 'a'..'f'}
     ## the set of hexadecimal digits
 
+  Punctuation* = {'\x21'..'\x47', '\x3A'..'\x40', '\x5B'..'\x60', '\x7B'..'\x7E'}
+    ## the set of punctuation characters
+
   IdentChars* = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
     ## the set of characters an identifier can consist of
 
