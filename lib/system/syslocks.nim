@@ -76,17 +76,53 @@ when defined(Windows):
     discard waitForSingleObject(cond, -1'i32)
 
 else:
-  type
-    SysLock {.importc: "pthread_mutex_t", pure, final,
-               header: """#include <sys/types.h>
-                          #include <pthread.h>""".} = object
-    SysLockAttr {.importc: "pthread_mutexattr_t", pure, final
-               header: """#include <sys/types.h>
-                          #include <pthread.h>""".} = object
-    SysCond {.importc: "pthread_cond_t", pure, final,
-               header: """#include <sys/types.h>
-                          #include <pthread.h>""".} = object
-    SysLockType = distinct cint
+  when defined(linux) and defined(amd64):
+    type
+      SysLock {.importc: "pthread_mutex_t", pure, final,
+                 header: """#include <sys/types.h>
+                            #include <pthread.h>""".} = object
+        lock {.importc: "__data.__lock".}: cint
+        count {.importc: "__data.__count".}: cuint
+        owner {.importc: "__data.__owner".}: cint
+        nusers {.importc: "__data.__nusers".}: cuint
+        kind {.importc: "__data.__kind".}: cint
+        spins {.importc: "__data.__spins".}: cint
+        # glibc 2.18+:
+        # spins {.importc: "__data.__spins".}: cshort
+        # elision {.importc: "__data.__elision".}: cshort
+        list_next {.importc: "__data.__list.__next".}: pointer
+        list_prev {.importc: "__data.__list.__prev".}: pointer
+
+      SysLockAttr {.importc: "pthread_mutexattr_t",
+                 header: """#include <sys/types.h>
+                            #include <pthread.h>""".} = object
+        size: array[4, char]  # alignas(long)!
+
+      SysCond {.importc: "pthread_cond_t", pure, final,
+                 header: """#include <sys/types.h>
+                            #include <pthread.h>""".} = object
+        lock {.importc: "__data.__lock".}: cint
+        futex {.importc: "__data.__futex".}: cuint
+        total_seq {.importc: "__data.__total_seq".}: culonglong
+        wakeup_seq {.importc: "__data.__wakeup_seq".}: culonglong
+        woken_seq {.importc: "__data.__woken_seq".}: culonglong
+        mutex {.importc: "__data.__mutex".}: pointer
+        nwaiters {.importc: "__data.__nwaiters".}: cuint
+        broadcast_seq {.importc: "__data.__broadcast_seq".}: cuint
+
+      SysLockType = distinct cint
+  else:
+    type
+      SysLock {.importc: "pthread_mutex_t", pure, final,
+                 header: """#include <sys/types.h>
+                            #include <pthread.h>""".} = object
+      SysLockAttr {.importc: "pthread_mutexattr_t", pure, final
+                 header: """#include <sys/types.h>
+                            #include <pthread.h>""".} = object
+      SysCond {.importc: "pthread_cond_t", pure, final,
+                 header: """#include <sys/types.h>
+                            #include <pthread.h>""".} = object
+      SysLockType = distinct cint
 
   proc initSysLock(L: var SysLock, attr: ptr SysLockAttr = nil) {.
     importc: "pthread_mutex_init", header: "<pthread.h>", noSideEffect.}
