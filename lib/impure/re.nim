@@ -110,6 +110,21 @@ proc matchOrFind(s: string, pattern: Regex, matches: var openArray[string],
     else: matches[i-1] = nil
   return rawMatches[1] - rawMatches[0]
 
+proc matchOrFind(buf: cstring, pattern: Regex, matches: var openArray[string],
+                 start, bufSize, flags: cint): cint =
+  var
+    rtarray = initRtArray[cint]((matches.len+1)*3)
+    rawMatches = rtarray.getRawData
+    res = pcre.exec(pattern.h, pattern.e, buf, bufSize, start, flags,
+      cast[ptr cint](rawMatches), (matches.len+1).cint*3)
+  if res < 0'i32: return res
+  for i in 1..int(res)-1:
+    var a = rawMatches[i * 2]
+    var b = rawMatches[i * 2 + 1]
+    if a >= 0'i32: matches[i-1] = cast[string](buf).substr(int(a), int(b)-1)
+    else: matches[i-1] = nil
+  return rawMatches[1] - rawMatches[0]
+
 proc findBounds*(s: string, pattern: Regex, matches: var openArray[string],
                  start = 0): tuple[first, last: int] =
   ## returns the starting position and end position of `pattern` in `s`
@@ -126,6 +141,25 @@ proc findBounds*(s: string, pattern: Regex, matches: var openArray[string],
     var a = rawMatches[i * 2]
     var b = rawMatches[i * 2 + 1]
     if a >= 0'i32: matches[i-1] = substr(s, int(a), int(b)-1)
+    else: matches[i-1] = nil
+  return (rawMatches[0].int, rawMatches[1].int - 1)
+
+proc findBounds*(buf: cstring, pattern: Regex, matches: var openArray[string],
+                 start = 0, bufSize: int): tuple[first, last: int] =
+  ## returns the starting position and end position of `pattern` in `s`
+  ## and the captured
+  ## substrings in the array `matches`. If it does not match, nothing
+  ## is written into `matches` and ``(-1,0)`` is returned.
+  var
+    rtarray = initRtArray[cint]((matches.len+1)*3)
+    rawMatches = rtarray.getRawData
+    res = pcre.exec(pattern.h, pattern.e, buf, bufSize.cint, start.cint, 0'i32,
+      cast[ptr cint](rawMatches), (matches.len+1).cint*3)
+  if res < 0'i32: return (-1, 0)
+  for i in 1..int(res)-1:
+    var a = rawMatches[i * 2]
+    var b = rawMatches[i * 2 + 1]
+    if a >= 0'i32: matches[i-1] = cast[string](buf).substr(int(a), int(b)-1)
     else: matches[i-1] = nil
   return (rawMatches[0].int, rawMatches[1].int - 1)
 
@@ -161,11 +195,33 @@ proc findBounds*(s: string, pattern: Regex,
   if res < 0'i32: return (int(res), 0)
   return (int(rawMatches[0]), int(rawMatches[1]-1))
 
+proc findBounds*(buf: cstring, pattern: Regex,
+                 start = 0, bufSize: int): tuple[first, last: int] =
+  ## returns the starting position and end position of ``pattern`` in ``cs``,
+  ## where cs has length csSize (not necessarily '\0' terminated).
+  ## If it does not match, ``(-1,0)`` is returned.
+  var
+    rtarray = initRtArray[cint](3)
+    rawMatches = rtarray.getRawData
+    res = pcre.exec(pattern.h, nil, buf, bufSize.cint, start.cint, 0'i32,
+      cast[ptr cint](rawMatches), 3)
+  if res < 0'i32: return (int(res), 0)
+  return (int(rawMatches[0]), int(rawMatches[1]-1))
+
 proc matchOrFind(s: string, pattern: Regex, start, flags: cint): cint =
   var
     rtarray = initRtArray[cint](3)
     rawMatches = rtarray.getRawData
   result = pcre.exec(pattern.h, pattern.e, s, len(s).cint, start, flags,
+                    cast[ptr cint](rawMatches), 3)
+  if result >= 0'i32:
+    result = rawMatches[1] - rawMatches[0]
+
+proc matchOrFind(buf: cstring, pattern: Regex, start, bufSize: int, flags: cint): cint =
+  var
+    rtarray = initRtArray[cint](3)
+    rawMatches = rtarray.getRawData
+  result = pcre.exec(pattern.h, pattern.e, buf, bufSize.cint, start.cint, flags,
                     cast[ptr cint](rawMatches), 3)
   if result >= 0'i32:
     result = rawMatches[1] - rawMatches[0]
@@ -177,11 +233,24 @@ proc matchLen*(s: string, pattern: Regex, matches: var openArray[string],
   ## of zero can happen.
   return matchOrFind(s, pattern, matches, start.cint, pcre.ANCHORED)
 
+proc matchLen*(buf: cstring, pattern: Regex, matches: var openArray[string],
+              start = 0, bufSize: int): int =
+  ## the same as ``match``, but it returns the length of the match,
+  ## if there is no match, -1 is returned. Note that a match length
+  ## of zero can happen.
+  return matchOrFind(buf, pattern, matches, start.cint, bufSize.cint, pcre.ANCHORED)
+
 proc matchLen*(s: string, pattern: Regex, start = 0): int =
   ## the same as ``match``, but it returns the length of the match,
   ## if there is no match, -1 is returned. Note that a match length
   ## of zero can happen.
   return matchOrFind(s, pattern, start.cint, pcre.ANCHORED)
+
+proc matchLen*(buf: cstring, pattern: Regex, start = 0, bufSize: int): int =
+  ## the same as ``match``, but it returns the length of the match,
+  ## if there is no match, -1 is returned. Note that a match length
+  ## of zero can happen.
+  return matchOrFind(buf, pattern, start.cint, bufSize, pcre.ANCHORED)
 
 proc match*(s: string, pattern: Regex, start = 0): bool =
   ## returns ``true`` if ``s[start..]`` matches the ``pattern``.
@@ -194,6 +263,14 @@ proc match*(s: string, pattern: Regex, matches: var openArray[string],
   ## match, nothing is written into ``matches`` and ``false`` is
   ## returned.
   result = matchLen(s, pattern, matches, start) != -1
+
+proc match*(buf: cstring, pattern: Regex, matches: var openArray[string],
+           start = 0, bufSize: int): bool =
+  ## returns ``true`` if ``s[start..]`` matches the ``pattern`` and
+  ## the captured substrings in the array ``matches``. If it does not
+  ## match, nothing is written into ``matches`` and ``false`` is
+  ## returned.
+  result = matchLen(buf, pattern, matches, start, bufSize) != -1
 
 proc find*(s: string, pattern: Regex, matches: var openArray[string],
            start = 0): int =
@@ -224,6 +301,17 @@ proc find*(s: string, pattern: Regex, start = 0): int =
   if res < 0'i32: return res
   return rawMatches[0]
 
+proc find*(buf: cstring, pattern: Regex, start = 0, bufSize: int): int =
+  ## returns the starting position of ``pattern`` in ``buf`` (not necessarily '\0' terminated).
+  ## If it does not match, -1 is returned.
+  var
+    rtarray = initRtArray[cint](3)
+    rawMatches = rtarray.getRawData
+    res = pcre.exec(pattern.h, pattern.e, buf, bufSize.cint, start.cint, 0'i32,
+      cast[ptr cint](rawMatches), 3)
+  if res < 0'i32: return res
+  return rawMatches[0]
+
 iterator findAll*(s: string, pattern: Regex, start = 0): string =
   ## Yields all matching *substrings* of `s` that match `pattern`.
   ##
@@ -243,6 +331,27 @@ iterator findAll*(s: string, pattern: Regex, start = 0): string =
     yield substr(s, int(a), int(b)-1)
     i = b
 
+iterator findAll*(buf: var cstring, pattern: Regex, start = 0, bufSize: int): string =
+  ## Yields all matching *substrings* of `s` that match `pattern`.
+  ##
+  ## Note that since this is an iterator you should not modify the string you
+  ## are iterating over: bad things could happen.
+  var
+    i = int32(start)
+    rtarray = initRtArray[cint](3)
+    rawMatches = rtarray.getRawData
+  while true:
+    let res = pcre.exec(pattern.h, pattern.e, buf, bufSize.cint, i, 0'i32,
+      cast[ptr cint](rawMatches), 3)
+    if res < 0'i32: break
+    let a = rawMatches[0]
+    let b = rawMatches[1]
+    if a == b and a == i: break
+    var str = newString(b-a)
+    copyMem(str[0].addr, cast[pointer](buf[a].addr), b-a)
+    yield str
+    i = b
+
 proc findAll*(s: string, pattern: Regex, start = 0): seq[string] =
   ## returns all matching *substrings* of `s` that match `pattern`.
   ## If it does not match, @[] is returned.
@@ -251,7 +360,7 @@ proc findAll*(s: string, pattern: Regex, start = 0): seq[string] =
 when not defined(nimhygiene):
   {.pragma: inject.}
 
-template `=~` *(s: string, pattern: Regex): expr =
+template `=~` *(s: string, pattern: Regex): untyped =
   ## This calls ``match`` with an implicit declared ``matches`` array that
   ## can be used in the scope of the ``=~`` call:
   ##
@@ -446,70 +555,82 @@ const ## common regular expressions
     ## describes an URL
 
 when isMainModule:
-  assert match("(a b c)", re"\( .* \)")
-  assert match("WHiLe", re("while", {reIgnoreCase}))
+  doAssert match("(a b c)", re"\( .* \)")
+  doAssert match("WHiLe", re("while", {reIgnoreCase}))
 
-  assert "0158787".match(re"\d+")
-  assert "ABC 0232".match(re"\w+\s+\d+")
-  assert "ABC".match(re"\d+ | \w+")
+  doAssert "0158787".match(re"\d+")
+  doAssert "ABC 0232".match(re"\w+\s+\d+")
+  doAssert "ABC".match(re"\d+ | \w+")
 
-  assert matchLen("key", re(reIdentifier)) == 3
+  doAssert matchLen("key", re(reIdentifier)) == 3
 
   var pattern = re"[a-z0-9]+\s*=\s*[a-z0-9]+"
-  assert matchLen("key1=  cal9", pattern) == 11
+  doAssert matchLen("key1=  cal9", pattern) == 11
 
-  assert find("_____abc_______", re"abc") == 5
+  doAssert find("_____abc_______", re"abc") == 5
 
   var matches: array[6, string]
   if match("abcdefg", re"c(d)ef(g)", matches, 2):
-    assert matches[0] == "d"
-    assert matches[1] == "g"
+    doAssert matches[0] == "d"
+    doAssert matches[1] == "g"
   else:
-    assert false
+    doAssert false
 
   if "abc" =~ re"(a)bcxyz|(\w+)":
-    assert matches[1] == "abc"
+    doAssert matches[1] == "abc"
   else:
-    assert false
+    doAssert false
 
   if "abc" =~ re"(cba)?.*":
-    assert matches[0] == nil
-  else: assert false
+    doAssert matches[0] == nil
+  else: doAssert false
 
   if "abc" =~ re"().*":
-    assert matches[0] == ""
-  else: assert false
+    doAssert matches[0] == ""
+  else: doAssert false
 
-  assert "var1=key; var2=key2".endsWith(re"\w+=\w+")
-  assert("var1=key; var2=key2".replacef(re"(\w+)=(\w+)", "$1<-$2$2") ==
+  doAssert "var1=key; var2=key2".endsWith(re"\w+=\w+")
+  doAssert("var1=key; var2=key2".replacef(re"(\w+)=(\w+)", "$1<-$2$2") ==
          "var1<-keykey; var2<-key2key2")
-  assert("var1=key; var2=key2".replace(re"(\w+)=(\w+)", "$1<-$2$2") ==
+  doAssert("var1=key; var2=key2".replace(re"(\w+)=(\w+)", "$1<-$2$2") ==
          "$1<-$2$2; $1<-$2$2")
 
   var accum: seq[string] = @[]
   for word in split("00232this02939is39an22example111", re"\d+"):
     accum.add(word)
-  assert(accum == @["", "this", "is", "an", "example", ""])
+  doAssert(accum == @["", "this", "is", "an", "example", ""])
 
   accum = @[]
   for word in split("AAA :   : BBB", re"\s*:\s*"):
     accum.add(word)
-  assert(accum == @["AAA", "", "BBB"])
+  doAssert(accum == @["AAA", "", "BBB"])
 
   for x in findAll("abcdef", re"^{.}", 3):
-    assert x == "d"
+    doAssert x == "d"
   accum = @[]
   for x in findAll("abcdef", re".", 3):
     accum.add(x)
-  assert(accum == @["d", "e", "f"])
+  doAssert(accum == @["d", "e", "f"])
 
-  assert("XYZ".find(re"^\d*") == 0)
-  assert("XYZ".match(re"^\d*") == true)
+  doAssert("XYZ".find(re"^\d*") == 0)
+  doAssert("XYZ".match(re"^\d*") == true)
 
   block:
     var matches: array[16, string]
     if match("abcdefghijklmnop", re"(a)(b)(c)(d)(e)(f)(g)(h)(i)(j)(k)(l)(m)(n)(o)(p)", matches):
       for i in 0..matches.high:
-        assert matches[i] == $chr(i + 'a'.ord)
+        doAssert matches[i] == $chr(i + 'a'.ord)
     else:
-      assert false
+      doAssert false
+
+  block:   # Buffer based RE
+    var cs: cstring = "_____abc_______"
+    doAssert(cs.find(re"abc", bufSize=15) == 5)
+    doAssert(cs.matchLen(re"_*abc", bufSize=15) == 8)
+    doAssert(cs.matchLen(re"abc", start=5, bufSize=15) == 3)
+    doAssert(cs.matchLen(re"abc", start=5, bufSize=7) == -1)
+    doAssert(cs.matchLen(re"abc_*", start=5, bufSize=10) == 5)
+    var accum: seq[string] = @[]
+    for x in cs.findAll(re"[a-z]", start=3, bufSize=15):
+      accum.add($x)
+    doAssert(accum == @["a","b","c"])
