@@ -759,8 +759,10 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       if st.kind == tyGenericBody: st = st.lastSon
       internalAssert st.kind in {tyPtr, tyRef}
       internalAssert st.lastSon.sym == nil
+      incl st.flags, tfRefsAnonObj
       st.lastSon.sym = newSym(skType, getIdent(s.name.s & ":ObjectType"),
                               getCurrOwner(), s.info)
+
 
 proc checkForMetaFields(n: PNode) =
   template checkMeta(t) =

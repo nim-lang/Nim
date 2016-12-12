@@ -444,7 +444,7 @@ type
     nfPreventCg # this node should be ignored by the codegen
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 28)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 30)
     tfVarargs,        # procedure has C styled varargs
     tfNoSideEffect,   # procedure type does not allow side effects
     tfFinal,          # is the object final?
@@ -488,6 +488,7 @@ type
     tfBorrowDot       # distinct type borrows '.'
     tfTriggersCompileTime # uses the NimNode type which make the proc
                           # implicitly '.compiletime'
+    tfRefsAnonObj     # used for 'ref object' and 'ptr object'
 
   TTypeFlags* = set[TTypeFlag]
 
