@@ -43,7 +43,7 @@ Raises
 """
 # test os path creation, iteration, and deletion
 
-import os
+import os, strutils
 
 let files = @["these.txt", "are.x", "testing.r", "files.q"]
 let dirs = @["some", "created", "test", "dirs"]
@@ -65,18 +65,21 @@ for file in files:
 
 echo "All:"
 
+template norm(x): untyped =
+  (when defined(windows): x.replace('\\', '/') else: x)
+
 for path in walkPattern(dname/"*"):
-  echo path
+  echo path.norm
 
 echo "Files:"
 
 for path in walkFiles(dname/"*"):
-  echo path
+  echo path.norm
 
 echo "Dirs:"
 
 for path in walkDirs(dname/"*"):
-  echo path
+  echo path.norm
 
 # Test removal of files dirs
 for dir in dirs:
