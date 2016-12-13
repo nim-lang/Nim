@@ -954,7 +954,7 @@ proc inc*[A](t: var CountTable[A], key: A, val = 1) =
     inc(t.counter)
 
 proc smallest*[A](t: CountTable[A]): tuple[key: A, val: int] =
-  ## returns the largest (key,val)-pair. Efficiency: O(n)
+  ## returns the (key,val)-pair with the smallest `val`. Efficiency: O(n)
   assert t.len > 0
   var minIdx = 0
   for h in 1..high(t.data):
@@ -1080,7 +1080,7 @@ proc inc*[A](t: CountTableRef[A], key: A, val = 1) =
   t[].inc(key, val)
 
 proc smallest*[A](t: CountTableRef[A]): (A, int) =
-  ## returns the largest (key,val)-pair. Efficiency: O(n)
+  ## returns the (key,val)-pair with the smallest `val`. Efficiency: O(n)
   t[].smallest
 
 proc largest*[A](t: CountTableRef[A]): (A, int) =
