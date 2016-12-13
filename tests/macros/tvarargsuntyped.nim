@@ -9,7 +9,8 @@ discard """
 import macros
 
 proc internalBar(top, left, width, height: cint, s: string, x, y: int, r,g,b: int) =
-  echo locals()
+  echo "(left: ", left, ", r: ", r, ", x: ", x, ", height: ", height, ", s: ", s,
+    ", width: ", width, ", y: ", y, ", top: ", top, ", g: ", g, ", b: ", b, ")"
 
 # we need these dummy constructors due to the wrong implementation
 # of 'varargs[untyped]' in the compiler:
