@@ -73,6 +73,10 @@ proc atomicTypeX(name: string; m: TMagic; t: PType; info: TLineInfo): PNode =
   result = newSymNode(sym)
   result.typ = t
 
+proc atomicTypeX(s: PSym; info: TLineInfo): PNode =
+  result = newSymNode(s)
+  result.info = info
+
 proc mapTypeToAstX(t: PType; info: TLineInfo;
                    inst=false; allowRecursionX=false): PNode
 
@@ -103,6 +107,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
                    inst=false; allowRecursionX=false): PNode =
   var allowRecursion = allowRecursionX
   template atomicType(name, m): untyped = atomicTypeX(name, m, t, info)
+  template atomicType(s): untyped = atomicTypeX(s, info)
   template mapTypeToAst(t,info): untyped = mapTypeToAstX(t, info, inst)
   template mapTypeToAstR(t,info): untyped = mapTypeToAstX(t, info, inst, true)
   template mapTypeToAst(t,i,info): untyped =
@@ -125,7 +130,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
       if allowRecursion:  # getTypeImpl behavior: turn off recursion
         allowRecursion = false
       else:  # getTypeInst behavior: return symbol
-        return atomicType(t.sym.name.s, t.sym.magic)
+        return atomicType(t.sym)
 
   case t.kind
   of tyNone: result = atomicType("none", mNone)
@@ -180,9 +185,9 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
       if allowRecursion or t.sym == nil:
         result = mapTypeToBracket("distinct", mDistinct, t, info)
       else:
-        result = atomicType(t.sym.name.s, t.sym.magic)
+        result = atomicType(t.sym)
   of tyGenericParam, tyForward:
-    result = atomicType(t.sym.name.s, t.sym.magic)
+    result = atomicType(t.sym)
   of tyObject:
     if inst:
       result = newNodeX(nkObjectTy)
@@ -206,7 +211,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
           result.add mapTypeToAst(t.sons[0], info)
         result.add copyTree(t.n)
       else:
-        result = atomicType(t.sym.name.s, t.sym.magic)
+        result = atomicType(t.sym)
   of tyEnum:
     result = newNodeIT(nkEnumTy, if t.n.isNil: info else: t.n.info, t)
     result.add copyTree(t.n)
