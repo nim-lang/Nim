@@ -32,9 +32,10 @@ proc runRodFiles(r: var TResults, cat: Category, options: string) =
   # test basic recompilation scheme:
   test "hallo"
   test "hallo"
-  # test incremental type information:
-  test "hallo2"
-  delNimCache()
+  when false:
+    # test incremental type information:
+    test "hallo2"
+    delNimCache()
 
   # test type converters:
   test "aconv"
@@ -382,7 +383,7 @@ proc `&.?`(a, b: string): string =
 proc `&?.`(a, b: string): string =
   # candidate for the stdlib?
   result = if a.endswith(b): a else: a & b
-  
+
 proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
   let test = "tests" & DirSep &.? cat.string / test
 
