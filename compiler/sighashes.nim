@@ -263,6 +263,8 @@ proc hashProc*(s: PSym): SigHash =
   c &= p.name.s
   c &= "."
   c &= m.name.s
+  if sfDispatcher in s.flags:
+    c &= ".dispatcher"
   # so that createThread[void]() (aka generic specialization) gets a unique
   # hash, we also hash the line information. This is pretty bad, but the best
   # solution for now:
