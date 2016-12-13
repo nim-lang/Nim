@@ -38,22 +38,31 @@ when false:
     result = gDebugInfo.register(p.name.s, m.name.s)
 
 proc idOrSig(m: BModule; s: PSym): Rope =
-  if s.kind in routineKinds and s.typ != nil and
-     s.typ.callConv != ccInline:
+  if s.kind in routineKinds and s.typ != nil:
     # signatures for exported routines are reliable enough to
     # produce a unique name and this means produced C++ is more stable wrt
     # Nim changes:
     let sig = hashProc(s)
     result = rope($sig)
-    let m = findPendingModule(m, s)
+    #let m = if s.typ.callConv != ccInline: findPendingModule(m, s) else: m
     let counter = m.sigConflicts.getOrDefault(sig)
     #if sigs == "_jckmNePK3i2MFnWwZlp6Lg" and s.name.s == "contains":
     #  echo "counter ", counter, " ", s.id
     if counter != 0:
       result.add "_" & rope(counter+1)
+    # this minor hack is necessary to make tests/collections/thashes compile.
+    # The inlined hash function's original module is ambiguous so we end up
+    # generating duplicate names otherwise:
+    if s.typ.callConv == ccInline:
+      result.add rope(m.module.name.s)
     m.sigConflicts.inc(sig)
   else:
-    result = "_" & rope s.id
+    let sig = hashNonProc(s)
+    result = rope($sig)
+    let counter = m.sigConflicts.getOrDefault(sig)
+    if counter != 0:
+      result.add "_" & rope(counter+1)
+    m.sigConflicts.inc(sig)
 
 proc mangleName(m: BModule; s: PSym): Rope =
   result = s.loc.r
@@ -107,6 +116,8 @@ proc mangleName(m: BModule; s: PSym): Rope =
       add(result, m.idOrSig(s))
       #add(result, ~"_")
       #add(result, rope(hashOwner(s).BiggestInt))
+    #if s.typ != nil and s.typ.callConv == ccInline:
+    #  result.add "/* " & rope(m.module.name.s) & " */"
     s.loc.r = result
 
 proc typeName(typ: PType): Rope =

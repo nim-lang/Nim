@@ -175,6 +175,8 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
           c.hashType s.typ, flags
     else:
       c &= t.id
+    if t.len > 0 and t.sons[0] != nil:
+      hashType c, t.sons[0], flags
   of tyRef, tyPtr, tyGenericBody, tyVar:
     c.hashType t.lastSon, flags
     if tfVarIsPtr in t.flags: c &= ".varisptr"
@@ -265,6 +267,17 @@ proc hashProc*(s: PSym): SigHash =
   # hash, we also hash the line information. This is pretty bad, but the best
   # solution for now:
   #c &= s.info.line
+  md5Final c, result.Md5Digest
+
+proc hashNonProc*(s: PSym): SigHash =
+  var c: MD5Context
+  md5Init c
+  hashSym(c, s)
+  var it = s
+  while it != nil:
+    c &= it.name.s
+    c &= "."
+    it = it.owner
   md5Final c, result.Md5Digest
 
 proc hashOwner*(s: PSym): SigHash =

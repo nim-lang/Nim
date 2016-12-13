@@ -723,29 +723,49 @@ proc genProcPrototype(m: BModule, sym: PSym) =
     add(m.s[cfsProcHeaders], rfmt(nil, "$1;$n", header))
 
 proc genProcNoForward(m: BModule, prc: PSym) =
-  fillProcLoc(m, prc)
-  useHeader(m, prc)
   if lfImportCompilerProc in prc.loc.flags:
+    fillProcLoc(m, prc)
+    useHeader(m, prc)
     # dependency to a compilerproc:
     discard cgsym(m, prc.name.s)
     return
-  genProcPrototype(m, prc)
-  if lfNoDecl in prc.loc.flags: discard
+  if lfNoDecl in prc.loc.flags:
+    fillProcLoc(m, prc)
+    useHeader(m, prc)
+    genProcPrototype(m, prc)
   elif prc.typ.callConv == ccInline:
     # We add inline procs to the calling module to enable C based inlining.
     # This also means that a check with ``q.declaredThings`` is wrong, we need
     # a check for ``m.declaredThings``.
-    if not containsOrIncl(m.declaredThings, prc.id): genProcAux(m, prc)
+    if not containsOrIncl(m.declaredThings, prc.id):
+      #if prc.loc.k == locNone:
+      fillProcLoc(m, prc)
+      #elif {sfExportc, sfImportc} * prc.flags == {}:
+      #  # reset name to restore consistency in case of hashing collisions:
+      #  echo "resetting ", prc.id, " by ", m.module.name.s
+      #  prc.loc.r = nil
+      #  prc.loc.r = mangleName(m, prc)
+      useHeader(m, prc)
+      genProcPrototype(m, prc)
+      genProcAux(m, prc)
   elif lfDynamicLib in prc.loc.flags:
     var q = findPendingModule(m, prc)
+    fillProcLoc(q, prc)
+    useHeader(m, prc)
+    genProcPrototype(m, prc)
     if q != nil and not containsOrIncl(q.declaredThings, prc.id):
       symInDynamicLib(q, prc)
     else:
       symInDynamicLibPartial(m, prc)
   elif sfImportc notin prc.flags:
     var q = findPendingModule(m, prc)
+    fillProcLoc(q, prc)
+    useHeader(m, prc)
+    genProcPrototype(m, prc)
     if q != nil and not containsOrIncl(q.declaredThings, prc.id):
       genProcAux(q, prc)
+  else:
+    fillProcLoc(m, prc)
 
 proc requestConstImpl(p: BProc, sym: PSym) =
   var m = p.module
@@ -772,8 +792,9 @@ proc isActivated(prc: PSym): bool = prc.typ != nil
 
 proc genProc(m: BModule, prc: PSym) =
   if sfBorrow in prc.flags or not isActivated(prc): return
-  fillProcLoc(m, prc)
-  if sfForward in prc.flags: addForwardedProc(m, prc)
+  if sfForward in prc.flags:
+    addForwardedProc(m, prc)
+    fillProcLoc(m, prc)
   else:
     genProcNoForward(m, prc)
     if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc} and
