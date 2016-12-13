@@ -114,10 +114,6 @@ proc mangleName(m: BModule; s: PSym): Rope =
       result.add "0"
     else:
       add(result, m.idOrSig(s))
-      #add(result, ~"_")
-      #add(result, rope(hashOwner(s).BiggestInt))
-    #if s.typ != nil and s.typ.callConv == ccInline:
-    #  result.add "/* " & rope(m.module.name.s) & " */"
     s.loc.r = result
 
 proc typeName(typ: PType): Rope =
@@ -340,8 +336,6 @@ proc getTypeForward(m: BModule, typ: PType; sig: SigHash): Rope =
     result = getTypeName(m, typ, sig)
     m.forwTypeCache[sig] = result
     if not isImportedType(concrete):
-      addf(m.s[cfsForwardTypes], "/* getTypeForward: $1 $2 $3 */", [rope typeToString typ,
-          rope typ.id, rope($typ.kind)])
       addf(m.s[cfsForwardTypes], getForwardStructFormat(m),
           [structOrUnion(typ), result])
     doAssert m.forwTypeCache[sig] == result
@@ -766,8 +760,6 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
         result = getTypeName(m, origTyp, sig)
         m.forwTypeCache[sig] = result
         if not isImportedType(t):
-          addf(m.s[cfsForwardTypes], "/* tyObject: $1 $2 $3 */", [rope typeToString origTyp,
-            rope t.id, rope m.module.id])
           addf(m.s[cfsForwardTypes], getForwardStructFormat(m),
              [structOrUnion(t), result])
         assert m.forwTypeCache[sig] == result
@@ -882,8 +874,7 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType; name, base: Rope) =
     addf(m.s[cfsTypeInit3], "$1.name = $2;$n",
         [name, makeCstring typeToString(origType, preferName)])
   discard cgsym(m, "TNimType")
-  addf(m.s[cfsVars], "TNimType $1; /* $2 */$n",
-       [name, rope(typeToString(typ))])
+  addf(m.s[cfsVars], "TNimType $1;$n", [name])
 
 proc genTypeInfoAux(m: BModule, typ, origType: PType, name: Rope) =
   var base: Rope
@@ -1098,8 +1089,7 @@ proc genTypeInfo(m: BModule, t: PType): Rope =
   if result != nil:
     discard cgsym(m, "TNimType")
     discard cgsym(m, "TNimNode")
-    addf(m.s[cfsVars], "extern TNimType $1; /* $2 */$n",
-         [result, rope(typeToString(t))])
+    addf(m.s[cfsVars], "extern TNimType $1;$n", [result])
     #return "(&".rope & result & ")".rope
     #result = "NTI$1" % [rope($sig)]
     # also store in local type section:
@@ -1116,8 +1106,7 @@ proc genTypeInfo(m: BModule, t: PType): Rope =
     # reference the type info as extern here
     discard cgsym(m, "TNimType")
     discard cgsym(m, "TNimNode")
-    addf(m.s[cfsVars], "extern TNimType $1; /* $2 */$n",
-         [result, rope(typeToString(t))])
+    addf(m.s[cfsVars], "extern TNimType $1;$n", [result])
     return "(&".rope & result & ")".rope
 
   m.g.typeInfoMarker[sig] = result
