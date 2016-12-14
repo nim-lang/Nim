@@ -1104,7 +1104,8 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     ty = n.sons[0].typ
     return nil
   ty = skipTypes(ty, {tyGenericInst, tyVar, tyPtr, tyRef})
-  while tfBorrowDot in ty.flags: ty = ty.skipTypes({tyDistinct})
+  while {tfBorrowAll, tfBorrowDot} * ty.flags != {}:
+    ty = ty.skipTypes({tyDistinct})
   var check: PNode = nil
   if ty.kind == tyObject:
     while true:

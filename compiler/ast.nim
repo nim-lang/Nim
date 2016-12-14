@@ -485,6 +485,7 @@ type
                       # before this is determined, we'll consider them to be a
                       # wildcard type.
     tfHasAsgn         # type has overloaded assignment operator
+    tfBorrowAll       # distinct type borrows all procs
     tfBorrowDot       # distinct type borrows '.'
     tfTriggersCompileTime # uses the NimNode type which make the proc
                           # implicitly '.compiletime'

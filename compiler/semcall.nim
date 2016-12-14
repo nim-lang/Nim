@@ -377,12 +377,34 @@ proc tryDeref(n: PNode): PNode =
   result.typ = n.typ.skipTypes(abstractInst).sons[0]
   result.addSon(n)
 
+proc canBorrowAll(n: PNode): bool {.inline.} =
+  result = n.len >= 2 and (let t = n[1].typ;
+    t != nil and (let st = t.skipTypes({tyGenericInst});
+    st.kind == tyDistinct and tfBorrowAll in st.flags))
+
+proc tryUnwrapDistinct(n: PNode): PNode =
+  result = newNodeI(nkHiddenStdConv, n.info)
+  result.typ = n.typ.skipTypes({tyGenericInst}).sons[0]
+  result.addSon(emptyNode)
+  result.addSon(n)
+
 proc semOverloadedCall(c: PContext, n, nOrig: PNode,
                        filter: TSymKinds): PNode =
   var errors: CandidateErrors
 
   var r = resolveOverloads(c, n, nOrig, filter, errors)
   if r.state == csMatch: result = semResolvedCall(c, n, r)
+  elif canBorrowAll(n):
+    # try to unwrap distinct on the first argument and then try overloading
+    # resolution again:
+    let prevArg = n.sons[1]
+    n.sons[1] = n.sons[1].tryUnwrapDistinct
+    var r = resolveOverloads(c, n, nOrig, filter, errors)
+    if r.state == csMatch: result = semResolvedCall(c, n, r)
+    else:
+      # restore distinct for a better error message:
+      n.sons[1] = prevArg
+      notFoundError(c, n, errors)
   elif experimentalMode(c) and canDeref(n):
     # try to deref the first argument and then try overloading resolution again:
     n.sons[1] = n.sons[1].tryDeref
