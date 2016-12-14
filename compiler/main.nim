@@ -66,7 +66,9 @@ proc commandCompileToC(graph: ModuleGraph; cache: IdentCache) =
   compileProject(graph, cache)
   cgenWriteModules(graph.backend)
   if gCmd != cmdRun:
-    extccomp.callCCompiler(changeFileExt(gProjectFull, ""))
+    let proj = changeFileExt(gProjectFull, "")
+    extccomp.callCCompiler(proj)
+    extccomp.writeJsonBuildInstructions(proj)
 
 proc commandCompileToJS(graph: ModuleGraph; cache: IdentCache) =
   #incl(gGlobalOptions, optSafeCode)
