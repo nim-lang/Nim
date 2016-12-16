@@ -808,6 +808,11 @@ proc split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.noSideEff
   ##
   ## Substrings are separated by the string `sep`. This is a wrapper around the
   ## `split iterator <#split.i,string,string>`_.
+  ##
+  ## If `sep` is an empty string, `ValueError` is raised.
+  if sep.len == 0:
+    raise newException(ValueError, "invalid separator: empty string not allowed")
+  
   accumulateResult(split(s, sep, maxsplit))
 
 proc rsplit*(s: string, seps: set[char] = Whitespace,
