@@ -191,21 +191,25 @@ proc freshLineInfo(p: BProc; info: TLineInfo): bool =
     result = true
 
 proc genLineDir(p: BProc, t: PNode) =
-  var line = t.info.safeLineNm
+  var tt = t
+  while tt.kind in {nkStmtListExpr}+nkCallKinds:
+    tt = tt.lastSon
+  let line = tt.info.safeLineNm
+
   if optEmbedOrigSrc in gGlobalOptions:
-    add(p.s(cpsStmts), ~"//" & t.info.sourceLine & rnl)
-  genCLineDir(p.s(cpsStmts), t.info.toFullPath, line)
+    add(p.s(cpsStmts), ~"//" & tt.info.sourceLine & rnl)
+  genCLineDir(p.s(cpsStmts), tt.info.toFullPath, line)
   if ({optStackTrace, optEndb} * p.options == {optStackTrace, optEndb}) and
       (p.prc == nil or sfPure notin p.prc.flags):
-    if freshLineInfo(p, t.info):
+    if freshLineInfo(p, tt.info):
       linefmt(p, cpsStmts, "#endb($1, $2);$n",
-              line.rope, makeCString(toFilename(t.info)))
+              line.rope, makeCString(toFilename(tt.info)))
   elif ({optLineTrace, optStackTrace} * p.options ==
       {optLineTrace, optStackTrace}) and
-      (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex >= 0:
-    if freshLineInfo(p, t.info):
+      (p.prc == nil or sfPure notin p.prc.flags) and tt.info.fileIndex >= 0:
+    if freshLineInfo(p, tt.info):
       linefmt(p, cpsStmts, "nimln($1, $2);$n",
-              line.rope, t.info.quotedFilename)
+              line.rope, tt.info.quotedFilename)
 
 proc postStmtActions(p: BProc) {.inline.} =
   add(p.s(cpsStmts), p.module.injectStmt)
