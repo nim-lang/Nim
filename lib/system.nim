@@ -2595,6 +2595,14 @@ else:
     if x < 0: -x else: x
 {.pop.}
 
+type
+  FileSeekPos* = enum ## Position relative to which seek should happen
+                      # The values are ordered so that they match with stdio
+                      # SEEK_SET, SEEK_CUR and SEEK_END respectively.
+    fspSet            ## Seek to absolute value
+    fspCur            ## Seek relative to current position
+    fspEnd            ## Seek relative to end
+
 when not defined(JS): #and not defined(nimscript):
   {.push stack_trace: off, profiler:off.}
 
@@ -2858,7 +2866,7 @@ when not defined(JS): #and not defined(nimscript):
       ## file `f`. Returns the number of actual written bytes, which may be less
       ## than `len` in case of an error.
 
-    proc setFilePos*(f: File, pos: int64) {.benign.}
+    proc setFilePos*(f: File, pos: int64, relativeTo: FileSeekPos = fspSet) {.benign.}
       ## sets the position of the file pointer that is used for read/write
       ## operations. The file's first byte has the index zero.
 
