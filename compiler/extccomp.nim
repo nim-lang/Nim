@@ -659,8 +659,14 @@ proc compileCFile(list: TLinkedList, script: var Rope, cmds: var TStringSeq,
 
 proc getLinkCmd(projectfile, objfiles: string): string =
   if optGenStaticLib in gGlobalOptions:
-    let name = splitFile(gProjectName).name
-    result = CC[cCompiler].buildLib % ["libfile", (libNameTmpl() % name),
+    var libname: string
+    if options.outFile.len > 0:
+      libname = options.outFile.expandTilde
+      if not libname.isAbsolute():
+        libname = getCurrentDir() / libname
+    else:
+      libname = (libNameTmpl() % splitFile(gProjectName).name)
+    result = CC[cCompiler].buildLib % ["libfile", libname,
                                        "objfiles", objfiles]
   else:
     var linkerExe = getConfigVar(cCompiler, ".linkerexe")

@@ -127,7 +127,7 @@ proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
       discard
 
 proc isCastable(dst, src: PType): bool =
-  ## Checks whether the source type can be casted to the destination type.
+  ## Checks whether the source type can be cast to the destination type.
   ## Casting is very unrestrictive; casts are allowed as long as
   ## castDest.size >= src.size, and typeAllowed(dst, skParam)
   #const
@@ -223,7 +223,7 @@ proc semCast(c: PContext, n: PNode): PNode =
   addSon(result, copyTree(n.sons[0]))
   addSon(result, semExprWithType(c, n.sons[1]))
   if not isCastable(result.typ, result.sons[1].typ):
-    localError(result.info, errExprCannotBeCastedToX,
+    localError(result.info, errExprCannotBeCastToX,
                typeToString(result.typ))
 
 proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =

@@ -18,10 +18,12 @@
 ## Supported features: files, sockets, pipes, timers, processes, signals
 ## and user events.
 ##
-## Fully supported OS: MacOSX, FreeBSD, OpenBSD, NetBSD, Linux.
+## Fully supported OS: MacOSX, FreeBSD, OpenBSD, NetBSD, Linux (except
+## for Android).
 ##
 ## Partially supported OS: Windows (only sockets and user events),
 ## Solaris (files, sockets, handles and user events).
+## Android (files, sockets, handles and user events).
 ##
 ## TODO: ``/dev/poll``, ``event ports`` and filesystem events.
 
@@ -29,9 +31,11 @@ import os
 
 const hasThreadSupport = compileOption("threads") and defined(threadsafe)
 
-const supportedPlatform = defined(macosx) or defined(freebsd) or
-                          defined(netbsd) or defined(openbsd) or
-                          defined(linux)
+const ioselSupportedPlatform* = defined(macosx) or defined(freebsd) or
+                                defined(netbsd) or defined(openbsd) or
+                                (defined(linux) and not defined(android))
+  ## This constant is used to determine whether the destination platform is
+  ## fully supported by ``ioselectors`` module.
 
 const bsdPlatform = defined(macosx) or defined(freebsd) or
                     defined(netbsd) or defined(openbsd)
@@ -244,7 +248,7 @@ else:
       skey.key.fd = pkeyfd
       skey.key.data = pdata
 
-  when supportedPlatform:
+  when ioselSupportedPlatform:
     template blockSignals(newmask: var Sigset, oldmask: var Sigset) =
       when hasThreadSupport:
         if posix.pthread_sigmask(SIG_BLOCK, newmask, oldmask) == -1:

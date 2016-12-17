@@ -760,8 +760,10 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       internalAssert st.kind in {tyPtr, tyRef}
       internalAssert st.lastSon.sym == nil
       incl st.flags, tfRefsAnonObj
-      st.lastSon.sym = newSym(skType, getIdent(s.name.s & ":ObjectType"),
+      let obj = newSym(skType, getIdent(s.name.s & ":ObjectType"),
                               getCurrOwner(), s.info)
+      obj.typ = st.lastSon
+      st.lastSon.sym = obj
 
 
 proc checkForMetaFields(n: PNode) =

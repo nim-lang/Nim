@@ -460,8 +460,22 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
     result = newNode(nkAsmStmt, n.info)
 
 proc pragmaEmit(c: PContext, n: PNode) =
-  discard getStrLitNode(c, n)
-  n.sons[1] = semAsmOrEmit(c, n, '`')
+  if n.kind != nkExprColonExpr:
+    localError(n.info, errStringLiteralExpected)
+  else:
+    let n1 = n[1]
+    if n1.kind == nkBracket:
+      var b = newNodeI(nkBracket, n1.info, n1.len)
+      for i in 0..<n1.len:
+        b.sons[i] = c.semExpr(c, n1[i])
+      n.sons[1] = b
+    else:
+      n.sons[1] = c.semConstExpr(c, n1)
+      case n.sons[1].kind
+      of nkStrLit, nkRStrLit, nkTripleStrLit:
+        n.sons[1] = semAsmOrEmit(c, n, '`')
+      else:
+        localError(n.info, errStringLiteralExpected)
 
 proc noVal(n: PNode) =
   if n.kind == nkExprColonExpr: invalidPragma(n)

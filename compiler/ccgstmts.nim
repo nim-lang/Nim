@@ -973,7 +973,11 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
           r = mangleName(p.module, sym)
           sym.loc.r = r       # but be consequent!
         res.add($r)
-    else: internalError(t.sons[i].info, "genAsmOrEmitStmt()")
+    else:
+      var a: TLoc
+      initLocExpr(p, t.sons[i], a)
+      res.add($a.rdLoc)
+      #internalError(t.sons[i].info, "genAsmOrEmitStmt()")
 
   if isAsmStmt and hasGnuAsm in CC[cCompiler].props:
     for x in splitLines(res):

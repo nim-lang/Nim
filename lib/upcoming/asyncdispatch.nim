@@ -1092,11 +1092,6 @@ else:
   import ioselectors
   from posix import EINTR, EAGAIN, EINPROGRESS, EWOULDBLOCK, MSG_PEEK,
                     MSG_NOSIGNAL
-
-  const supportedPlatform = defined(linux) or defined(freebsd) or
-                            defined(netbsd) or defined(openbsd) or
-                            defined(macosx)
-
   type
     AsyncFD* = distinct cint
     Callback = proc (fd: AsyncFD): bool {.closure,gcsafe.}
@@ -1191,7 +1186,7 @@ else:
     var keys: array[64, ReadyKey[AsyncData]]
 
     let p = getGlobalDispatcher()
-    when supportedPlatform:
+    when ioselSupportedPlatform:
       let customSet = {Event.Timer, Event.Signal, Event.Process,
                        Event.Vnode, Event.User}
 
@@ -1225,7 +1220,7 @@ else:
               else:
                 break
 
-        when supportedPlatform:
+        when ioselSupportedPlatform:
           if (customSet * events) != {}:
             for node in keys[i].data.readCBs[].nodes():
               let cb = node.value
@@ -1234,6 +1229,15 @@ else:
               if cb(fd.AsyncFD):
                 keys[i].data.readCBs[].remove(node)
                 p.selector.unregister(fd)
+        else:
+          if Event.User in events or events == {Event.Error}:
+            for node in keys[i].data.readCBs[].nodes():
+              let cb = node.value
+              custom = true
+              if cb != nil:
+                if cb(fd.AsyncFD):
+                  keys[i].data.readCBs[].remove(node)
+                  p.selector.unregister(fd)
 
         # because state `data` can be modified in callback we need to update
         # descriptor events with currently registered callbacks.
@@ -1496,7 +1500,7 @@ else:
     addRead(socket, cb)
     return retFuture
 
-  when supportedPlatform:
+  when ioselSupportedPlatform:
 
     proc addTimer*(timeout: int, oneshot: bool, cb: Callback) =
       ## Start watching for timeout expiration, and then call the
