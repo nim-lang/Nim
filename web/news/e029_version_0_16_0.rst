@@ -55,6 +55,28 @@ Compiler Additions
 Language Additions
 ------------------
 
+- The ``emit`` pragma now takes a list of Nim expressions instead
+  of a single string literal. This list can easily contain non-strings
+  like template parameters. This means ``emit`` works out of the
+  box with templates and no new quoting rules needed to be introduced.
+  The old way with backtick quoting is still supported but will be
+  deprecated.
+
+.. code-block:: nim
+  type Vector* {.importcpp: "std::vector", header: "<vector>".}[T] = object
+
+  template `[]=`*[T](v: var Vector[T], key: int, val: T) =
+    {.emit: [v, "[", key, "] = ", val, ";"].}
+
+  proc setLen*[T](v: var Vector[T]; size: int) {.importcpp: "resize", nodecl.}
+  proc `[]`*[T](v: var Vector[T], key: int): T {.importcpp: "(#[#])", nodecl.}
+
+  proc main =
+    var v: Vector[float]
+    v.setLen 1
+    v[0] = 6.0
+    echo v[0]
+
 
 Bugfixes
 --------
