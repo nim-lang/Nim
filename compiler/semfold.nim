@@ -768,7 +768,7 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
   of nkCast:
     var a = getConstExpr(m, n.sons[1])
     if a == nil: return
-    if n.typ.kind in NilableTypes:
+    if n.typ != nil and n.typ.kind in NilableTypes:
       # we allow compile-time 'cast' for pointer types:
       result = a
       result.typ = n.typ
