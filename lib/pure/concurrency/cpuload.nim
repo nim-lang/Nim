@@ -45,12 +45,12 @@ proc advice*(s: var ThreadPoolState): ThreadPoolAdvice =
         procKernelDiff = procKernel - s.prevProcKernel
         procUserDiff = procUser - s.prevProcUser
 
-        sysTotal = int(sysKernelDiff + sysUserDiff)
-        procTotal = int(procKernelDiff + procUserDiff)
+        sysTotal = sysKernelDiff + sysUserDiff
+        procTotal = procKernelDiff + procUserDiff
       # total CPU usage < 85% --> create a new worker thread.
       # Measurements show that 100% and often even 90% is not reached even
       # if all my cores are busy.
-      if sysTotal == 0 or procTotal / sysTotal < 0.85:
+      if sysTotal == 0 or procTotal.float / sysTotal.float < 0.85:
         result = doCreateThread
     s.prevSysKernel = sysKernel
     s.prevSysUser = sysUser
