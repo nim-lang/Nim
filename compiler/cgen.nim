@@ -194,6 +194,8 @@ proc genLineDir(p: BProc, t: PNode) =
   var tt = t
   #while tt.kind in {nkStmtListExpr}+nkCallKinds:
   #  tt = tt.lastSon
+  if tt.kind in nkCallKinds and tt.len > 1:
+    tt = tt.sons[1]
   let line = tt.info.safeLineNm
 
   if optEmbedOrigSrc in gGlobalOptions:
