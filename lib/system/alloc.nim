@@ -100,7 +100,8 @@ type
     freeChunksList: PBigChunk # XXX make this a datastructure with O(1) access
     chunkStarts: IntSet
     root, deleted, last, freeAvlNodes: PAvlNode
-    locked: bool # if locked, we cannot free pages.
+    locked, blockChunkSizeIncrease: bool # if locked, we cannot free pages.
+    nextChunkSize: int
 {.deprecated: [TLLChunk: LLChunk, TAvlNode: AvlNode, TMemRegion: MemRegion].}
 
 # shared:
@@ -275,9 +276,25 @@ proc pageAddr(p: pointer): PChunk {.inline.} =
   #sysAssert(Contains(allocator.chunkStarts, pageIndex(result)))
 
 proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
+  if not a.blockChunkSizeIncrease:
+    a.nextChunkSize =
+      if a.currMem < 64 * 1024: PageSize*4
+      else: a.nextChunkSize*2
+  var size = size
+
+  if size > a.nextChunkSize:
+    result = cast[PBigChunk](osAllocPages(size))
+  else:
+    result = cast[PBigChunk](osTryAllocPages(a.nextChunkSize))
+    if result == nil:
+      result = cast[PBigChunk](osAllocPages(size))
+      a.blockChunkSizeIncrease = true
+    else:
+      size = a.nextChunkSize
+
   incCurrMem(a, size)
   inc(a.freeMem, size)
-  result = cast[PBigChunk](osAllocPages(size))
+
   sysAssert((cast[ByteAddress](result) and PageMask) == 0, "requestOsChunks 1")
   #zeroMem(result, size)
   result.next = nil
@@ -432,6 +449,9 @@ proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
       splitChunk(a, result, size)
     else:
       result = requestOsChunks(a, size)
+      # if we over allocated split the chunk:
+      if result.size > size:
+        splitChunk(a, result, size)
   result.prevSize = 0 # XXX why is this needed?
   result.used = true
   incl(a, a.chunkStarts, pageIndex(result))
