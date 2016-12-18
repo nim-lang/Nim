@@ -108,7 +108,7 @@ proc wrapInComesFrom*(info: TLineInfo; res: PNode): PNode =
   when true:
     result = res
     result.info = info
-    if result.kind in {nkStmtList, nkStmtListExpr}:
+    if result.kind in {nkStmtList, nkStmtListExpr} and result.len > 0:
       result.lastSon.info = info
     when false:
       # this hack is required to
