@@ -57,10 +57,11 @@ proc symToSuggest(s: PSym, isLocal: bool, section: string, li: TLineInfo;
     result.qualifiedPath = @[]
     if not isLocal and s.kind != skModule:
       let ow = s.owner
-      if ow.kind != skModule and ow.owner != nil:
+      if ow != nil and ow.kind != skModule and ow.owner != nil:
         let ow2 = ow.owner
         result.qualifiedPath.add(ow2.origModuleName)
-      result.qualifiedPath.add(ow.origModuleName)
+      if ow != nil:
+        result.qualifiedPath.add(ow.origModuleName)
     result.qualifiedPath.add(s.name.s)
 
     if s.typ != nil:

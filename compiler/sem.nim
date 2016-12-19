@@ -369,6 +369,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   result = evalMacroCall(c.module, c.cache, n, nOrig, sym)
   if efNoSemCheck notin flags:
     result = semAfterMacroCall(c, result, sym, flags)
+  result = wrapInComesFrom(nOrig.info, result)
   popInfoContext()
 
 proc forceBool(c: PContext, n: PNode): PNode =

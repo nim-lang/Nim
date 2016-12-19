@@ -104,6 +104,25 @@ proc evalTemplateArgs(n: PNode, s: PSym; fromHlo: bool): PNode =
 var evalTemplateCounter* = 0
   # to prevent endless recursion in templates instantiation
 
+proc wrapInComesFrom*(info: TLineInfo; res: PNode): PNode =
+  when true:
+    result = res
+    result.info = info
+    if result.kind in {nkStmtList, nkStmtListExpr} and result.len > 0:
+      result.lastSon.info = info
+    when false:
+      # this hack is required to
+      var x = result
+      while x.kind == nkStmtListExpr: x = x.lastSon
+      if x.kind in nkCallKinds:
+        for i in 1..<x.len:
+          if x[i].kind in nkCallKinds:
+            x.sons[i].info = info
+  else:
+    result = newNodeI(nkPar, info)
+    result.add res
+    result.flags.incl nfNone
+
 proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym; fromHlo=false): PNode =
   inc(evalTemplateCounter)
   if evalTemplateCounter > 100:
@@ -132,5 +151,5 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym; fromHlo=false): PNode =
     #if ctx.instLines: result.info = n.info
     for i in countup(0, safeLen(body) - 1):
       evalTemplateAux(body.sons[i], args, ctx, result)
-
+  result = wrapInComesFrom(n.info, result)
   dec(evalTemplateCounter)
