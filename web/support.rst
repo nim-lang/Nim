@@ -32,9 +32,9 @@ Commercial support includes:
 All interested parties should email ``support@nim-lang.org``.
 The bid for contracting work is a commercial offer provided by:
 
-| **METATEXX GmbH**
-| Spicher Str. 30
-| 53859 Niederkassel
+
+| **Andreas Rumpf**
+| St.-Quentin-Ring 47
+| 67663 Kaiserslautern
 | GERMANY
-| EU VAT-IN: DE287088604
-| http://metatexx.de/index.php?index=12
+| EU VAT-IN: DE297783450

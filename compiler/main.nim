@@ -15,7 +15,8 @@ import
   wordrecg, sem, semdata, idents, passes, docgen, extccomp,
   cgen, jsgen, json, nversion,
   platform, nimconf, importer, passaux, depends, vm, vmdef, types, idgen,
-  docgen2, service, parser, modules, ccgutils, sigmatch, ropes, lists
+  docgen2, service, parser, modules, ccgutils, sigmatch, ropes, lists,
+  modulegraphs
 
 from magicsys import systemModule, resetSysTypes
 
@@ -30,80 +31,46 @@ proc semanticPasses =
   registerPass verbosePass
   registerPass semPass
 
-proc commandGenDepend =
+proc commandGenDepend(graph: ModuleGraph; cache: IdentCache) =
   semanticPasses()
   registerPass(gendependPass)
   registerPass(cleanupPass)
-  compileProject()
+  compileProject(graph, cache)
   generateDot(gProjectFull)
   execExternalProgram("dot -Tpng -o" & changeFileExt(gProjectFull, "png") &
       ' ' & changeFileExt(gProjectFull, "dot"))
 
-proc commandCheck =
+proc commandCheck(graph: ModuleGraph; cache: IdentCache) =
   msgs.gErrorMax = high(int)  # do not stop after first error
   defineSymbol("nimcheck")
   semanticPasses()            # use an empty backend for semantic checking only
   rodPass()
-  compileProject()
+  compileProject(graph, cache)
 
-proc commandDoc2(json: bool) =
+proc commandDoc2(graph: ModuleGraph; cache: IdentCache; json: bool) =
   msgs.gErrorMax = high(int)  # do not stop after first error
   semanticPasses()
   if json: registerPass(docgen2JsonPass)
   else: registerPass(docgen2Pass)
   #registerPass(cleanupPass())
-  compileProject()
+  compileProject(graph, cache)
   finishDoc2Pass(gProjectName)
 
-proc commandCompileToC =
+proc commandCompileToC(graph: ModuleGraph; cache: IdentCache) =
   extccomp.initVars()
   semanticPasses()
   registerPass(cgenPass)
   rodPass()
   #registerPass(cleanupPass())
 
-  compileProject()
+  compileProject(graph, cache)
   cgenWriteModules()
   if gCmd != cmdRun:
-    extccomp.callCCompiler(changeFileExt(gProjectFull, ""))
+    let proj = changeFileExt(gProjectFull, "")
+    extccomp.callCCompiler(proj)
+    extccomp.writeJsonBuildInstructions(proj)
 
-  if isServing:
-    # caas will keep track only of the compilation commands
-    lastCaasCmd = curCaasCmd
-    resetCgenModules()
-    for i in 0 .. <gMemCacheData.len:
-      gMemCacheData[i].hashStatus = hashCached
-      gMemCacheData[i].needsRecompile = Maybe
-
-      # XXX: clean these global vars
-      # ccgstmts.gBreakpoints
-      # ccgthreadvars.nimtv
-      # ccgthreadvars.nimtVDeps
-      # ccgthreadvars.nimtvDeclared
-      # cgendata
-      # cgmeth?
-      # condsyms?
-      # depends?
-      # lexer.gLinesCompiled
-      # msgs - error counts
-      # magicsys, when system.nim changes
-      # rodread.rodcompilerProcs
-      # rodread.gTypeTable
-      # rodread.gMods
-
-      # !! ropes.cache
-      # semthreads.computed?
-      #
-      # suggest.usageSym
-      #
-      # XXX: can we run out of IDs?
-      # XXX: detect config reloading (implement as error/require restart)
-      # XXX: options are appended (they will accumulate over time)
-    resetCompilationLists()
-    ccgutils.resetCaches()
-    GC_fullCollect()
-
-proc commandCompileToJS =
+proc commandCompileToJS(graph: ModuleGraph; cache: IdentCache) =
   #incl(gGlobalOptions, optSafeCode)
   setTarget(osJS, cpuJS)
   #initDefines()
@@ -113,9 +80,9 @@ proc commandCompileToJS =
   if gCmd == cmdCompileToPHP: defineSymbol("nimphp")
   semanticPasses()
   registerPass(JSgenPass)
-  compileProject()
+  compileProject(graph, cache)
 
-proc interactivePasses =
+proc interactivePasses(graph: ModuleGraph; cache: IdentCache) =
   #incl(gGlobalOptions, optSafeCode)
   #setTarget(osNimrodVM, cpuNimrodVM)
   initDefines()
@@ -125,30 +92,30 @@ proc interactivePasses =
   registerPass(semPass)
   registerPass(evalPass)
 
-proc commandInteractive =
+proc commandInteractive(graph: ModuleGraph; cache: IdentCache) =
   msgs.gErrorMax = high(int)  # do not stop after first error
-  interactivePasses()
-  compileSystemModule()
+  interactivePasses(graph, cache)
+  compileSystemModule(graph, cache)
   if commandArgs.len > 0:
-    discard compileModule(fileInfoIdx(gProjectFull), {})
+    discard graph.compileModule(fileInfoIdx(gProjectFull), cache, {})
   else:
-    var m = makeStdinModule()
+    var m = graph.makeStdinModule()
     incl(m.flags, sfMainModule)
-    processModule(m, llStreamOpenStdIn(), nil)
+    processModule(graph, m, llStreamOpenStdIn(), nil, cache)
 
 const evalPasses = [verbosePass, semPass, evalPass]
 
-proc evalNim(nodes: PNode, module: PSym) =
-  carryPasses(nodes, module, evalPasses)
+proc evalNim(graph: ModuleGraph; nodes: PNode, module: PSym; cache: IdentCache) =
+  carryPasses(graph, nodes, module, cache, evalPasses)
 
-proc commandEval(exp: string) =
+proc commandEval(graph: ModuleGraph; cache: IdentCache; exp: string) =
   if systemModule == nil:
-    interactivePasses()
-    compileSystemModule()
-  var echoExp = "echo \"eval\\t\", " & "repr(" & exp & ")"
-  evalNim(echoExp.parseString, makeStdinModule())
+    interactivePasses(graph, cache)
+    compileSystemModule(graph, cache)
+  let echoExp = "echo \"eval\\t\", " & "repr(" & exp & ")"
+  evalNim(graph, echoExp.parseString(cache), makeStdinModule(graph), cache)
 
-proc commandScan =
+proc commandScan(cache: IdentCache) =
   var f = addFileExt(mainCommandArg(), NimExt)
   var stream = llStreamOpen(f, fmRead)
   if stream != nil:
@@ -156,7 +123,7 @@ proc commandScan =
       L: TLexer
       tok: TToken
     initToken(tok)
-    openLexer(L, f, stream)
+    openLexer(L, f, stream, cache)
     while true:
       rawGetTok(L, tok)
       printTok(tok)
@@ -165,77 +132,11 @@ proc commandScan =
   else:
     rawMessage(errCannotOpenFile, f)
 
-proc commandSuggest =
-  if isServing:
-    # XXX: hacky work-around ahead
-    # Currently, it's possible to issue a idetools command, before
-    # issuing the first compile command. This will leave the compiler
-    # cache in a state where "no recompilation is necessary", but the
-    # cgen pass was never executed at all.
-    commandCompileToC()
-    let gDirtyBufferIdx = gTrackPos.fileIndex
-    discard compileModule(gDirtyBufferIdx, {sfDirty})
-    resetModule(gDirtyBufferIdx)
-  else:
-    msgs.gErrorMax = high(int)  # do not stop after first error
-    semanticPasses()
-    rodPass()
-    # XXX: this handles the case when the dirty buffer is the main file,
-    # but doesn't handle the case when it's imported module
-    #var projFile = if gProjectMainIdx == gDirtyOriginalIdx: gDirtyBufferIdx
-    #               else: gProjectMainIdx
-    compileProject() #(projFile)
-
-proc resetMemory =
-  resetCompilationLists()
-  ccgutils.resetCaches()
-  resetAllModules()
-  resetRopeCache()
-  resetSysTypes()
-  gOwners = @[]
-  for i in low(buckets)..high(buckets):
-    buckets[i] = nil
-  idAnon = nil
-
-  # XXX: clean these global vars
-  # ccgstmts.gBreakpoints
-  # ccgthreadvars.nimtv
-  # ccgthreadvars.nimtVDeps
-  # ccgthreadvars.nimtvDeclared
-  # cgendata
-  # cgmeth?
-  # condsyms?
-  # depends?
-  # lexer.gLinesCompiled
-  # msgs - error counts
-  # magicsys, when system.nim changes
-  # rodread.rodcompilerProcs
-  # rodread.gTypeTable
-  # rodread.gMods
-
-  # !! ropes.cache
-  #
-  # suggest.usageSym
-  #
-  # XXX: can we run out of IDs?
-  # XXX: detect config reloading (implement as error/require restart)
-  # XXX: options are appended (they will accumulate over time)
-  # vis = visimpl
-  when compileOption("gc", "v2"):
-    gcDebugging = true
-    echo "COLLECT 1"
-    GC_fullCollect()
-    echo "COLLECT 2"
-    GC_fullCollect()
-    echo "COLLECT 3"
-    GC_fullCollect()
-    echo GC_getStatistics()
-
 const
   SimulateCaasMemReset = false
   PrintRopeCacheStats = false
 
-proc mainCommand* =
+proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
   when SimulateCaasMemReset:
     gGlobalOptions.incl(optCaasEnabled)
 
@@ -251,66 +152,66 @@ proc mainCommand* =
   of "c", "cc", "compile", "compiletoc":
     # compile means compileToC currently
     gCmd = cmdCompileToC
-    commandCompileToC()
+    commandCompileToC(graph, cache)
   of "cpp", "compiletocpp":
     gCmd = cmdCompileToCpp
     defineSymbol("cpp")
-    commandCompileToC()
+    commandCompileToC(graph, cache)
   of "objc", "compiletooc":
     gCmd = cmdCompileToOC
     defineSymbol("objc")
-    commandCompileToC()
+    commandCompileToC(graph, cache)
   of "run":
     gCmd = cmdRun
     when hasTinyCBackend:
       extccomp.setCC("tcc")
-      commandCompileToC()
+      commandCompileToC(graph, cache)
     else:
       rawMessage(errInvalidCommandX, command)
   of "js", "compiletojs":
     gCmd = cmdCompileToJS
-    commandCompileToJS()
+    commandCompileToJS(graph, cache)
   of "php":
     gCmd = cmdCompileToPHP
-    commandCompileToJS()
+    commandCompileToJS(graph, cache)
   of "doc":
     wantMainModule()
     gCmd = cmdDoc
-    loadConfigs(DocConfig)
+    loadConfigs(DocConfig, cache)
     commandDoc()
   of "doc2":
     gCmd = cmdDoc
-    loadConfigs(DocConfig)
+    loadConfigs(DocConfig, cache)
     defineSymbol("nimdoc")
-    commandDoc2(false)
+    commandDoc2(graph, cache, false)
   of "rst2html":
     gCmd = cmdRst2html
-    loadConfigs(DocConfig)
+    loadConfigs(DocConfig, cache)
     commandRst2Html()
   of "rst2tex":
     gCmd = cmdRst2tex
-    loadConfigs(DocTexConfig)
+    loadConfigs(DocTexConfig, cache)
     commandRst2TeX()
   of "jsondoc":
     wantMainModule()
     gCmd = cmdDoc
-    loadConfigs(DocConfig)
+    loadConfigs(DocConfig, cache)
     wantMainModule()
     defineSymbol("nimdoc")
     commandJson()
   of "jsondoc2":
     gCmd = cmdDoc
-    loadConfigs(DocConfig)
+    loadConfigs(DocConfig, cache)
     wantMainModule()
     defineSymbol("nimdoc")
-    commandDoc2(true)
+    commandDoc2(graph, cache, true)
   of "buildindex":
     gCmd = cmdDoc
-    loadConfigs(DocConfig)
+    loadConfigs(DocConfig, cache)
     commandBuildIndex()
   of "gendepend":
     gCmd = cmdGenDepend
-    commandGenDepend()
+    commandGenDepend(graph, cache)
   of "dump":
     gCmd = cmdDump
     if getConfigVar("dump.format") == "json":
@@ -339,35 +240,21 @@ proc mainCommand* =
       for it in iterSearchPath(searchPaths): msgWriteln(it)
   of "check":
     gCmd = cmdCheck
-    commandCheck()
+    commandCheck(graph, cache)
   of "parse":
     gCmd = cmdParse
     wantMainModule()
-    discard parseFile(gProjectMainIdx)
+    discard parseFile(gProjectMainIdx, cache)
   of "scan":
     gCmd = cmdScan
     wantMainModule()
-    commandScan()
-    msgWriteln("Beware: Indentation tokens depend on the parser\'s state!")
+    commandScan(cache)
+    msgWriteln("Beware: Indentation tokens depend on the parser's state!")
   of "secret":
     gCmd = cmdInteractive
-    commandInteractive()
+    commandInteractive(graph, cache)
   of "e":
-    # XXX: temporary command for easier testing
-    commandEval(mainCommandArg())
-  of "reset":
-    resetMemory()
-  of "idetools":
-    gCmd = cmdIdeTools
-    if gEvalExpr != "":
-      commandEval(gEvalExpr)
-    else:
-      commandSuggest()
-  of "serve":
-    isServing = true
-    gGlobalOptions.incl(optCaasEnabled)
-    msgs.gErrorMax = high(int)  # do not stop after first error
-    serve(mainCommand)
+    commandEval(graph, cache, mainCommandArg())
   of "nop", "help":
     # prevent the "success" message:
     gCmd = cmdDump
@@ -394,3 +281,5 @@ proc mainCommand* =
     resetMemory()
 
   resetAttributes()
+
+proc mainCommand*() = mainCommand(newModuleGraph(), newIdentCache())

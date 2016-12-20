@@ -69,10 +69,10 @@ when defined(windows):
     if askBool("Would like to add Nim-" & NimVersion &
                " to your start menu? (y/n) "):
       createDir(dest)
-      createShortcut(getCurrentDir() / "start.bat", dest / "Nim",
+      createShortcut(getCurrentDir() / "tools" / "start.bat", dest / "Nim",
                      getCurrentDir() / r"icons\nim.ico")
       if fileExists("doc/overview.html"):
-        createShortcut(getCurrentDir() / "doc" / "overview.html",
+        createShortcut(getCurrentDir() / "doc" / "html" / "overview.html",
                        dest / "Overview")
       if dirExists(r"dist\aporia-0.4.0"):
         createShortcut(getCurrentDir() / r"dist\aporia-0.4.0\bin\aporia.exe",
@@ -114,8 +114,10 @@ proc main() =
     var mingWchoices: seq[string] = @[]
     var incompat: seq[string] = @[]
     for x in p.split(';'):
-      let y = expandFilename(if x[0] == '"' and x[^1] == '"':
-                  substr(x, 1, x.len-2) else: x)
+      if x.len == 0: continue
+      let y = try: expandFilename(if x[0] == '"' and x[^1] == '"':
+                                    substr(x, 1, x.len-2) else: x)
+              except: ""
       if y == desiredPath: alreadyInPath = true
       if y.toLowerAscii.contains("mingw"):
         if dirExists(y):

@@ -39,16 +39,22 @@ template rawGetKnownHCImpl() {.dirty.} =
     h = nextTry(h, maxHash(t))
   result = -1 - h                   # < 0 => MISSING; insert idx = -1 - result
 
-template rawGetImpl() {.dirty.} =
+template genHashImpl(key, hc: typed) =
   hc = hash(key)
   if hc == 0:       # This almost never taken branch should be very predictable.
     hc = 314159265  # Value doesn't matter; Any non-zero favorite is fine.
+
+template genHash(key: typed): Hash =
+  var res: Hash
+  genHashImpl(key, res)
+  res
+
+template rawGetImpl() {.dirty.} =
+  genHashImpl(key, hc)
   rawGetKnownHCImpl()
 
 template rawGetDeepImpl() {.dirty.} =   # Search algo for unconditional add
-  hc = hash(key)
-  if hc == 0:
-    hc = 314159265
+  genHashImpl(key, hc)
   var h: Hash = hc and maxHash(t)
   while isFilled(t.data[h].hcode):
     h = nextTry(h, maxHash(t))
@@ -110,16 +116,15 @@ template hasKeyOrPutImpl(enlarge) {.dirty.} =
     maybeRehashPutImpl(enlarge)
   else: result = true
 
-proc default[T](t: typedesc[T]): T {.inline.} = discard
+template default[T](t: typedesc[T]): T =
+  var v: T
+  v
 
 template delImpl() {.dirty.} =
   var hc: Hash
   var i = rawGet(t, key, hc)
   let msk = maxHash(t)
   if i >= 0:
-    t.data[i].hcode = 0
-    t.data[i].key = default(type(t.data[i].key))
-    t.data[i].val = default(type(t.data[i].val))
     dec(t.counter)
     block outer:
       while true:         # KnuthV3 Algo6.4R adapted for i=i+1 instead of i=i-1

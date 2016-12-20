@@ -78,7 +78,7 @@ type
     nnkBreakState
 
   NimNodeKinds* = set[NimNodeKind]
-  NimTypeKind* = enum
+  NimTypeKind* = enum  # some types are no longer used, see ast.nim
     ntyNone, ntyBool, ntyChar, ntyEmpty,
     ntyArrayConstr, ntyNil, ntyExpr, ntyStmt,
     ntyTypeDesc, ntyGenericInvocation, ntyGenericBody, ntyGenericInst,
@@ -90,9 +90,9 @@ type
     ntyInt8, ntyInt16, ntyInt32, ntyInt64,
     ntyFloat, ntyFloat32, ntyFloat64, ntyFloat128,
     ntyUInt, ntyUInt8, ntyUInt16, ntyUInt32, ntyUInt64,
-    ntyBigNum,
-    ntyConst, ntyMutable, ntyVarargs,
-    ntyIter,
+    ntyUnused0, ntyUnused1, ntyUnused2,
+    ntyVarargs,
+    ntyUnused,
     ntyError,
     ntyBuiltinTypeClass, ntyConcept, ntyConceptInst, ntyComposite,
     ntyAnd, ntyOr, ntyNot
@@ -235,7 +235,7 @@ proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect.} =
   ## const.
   discard
 
-proc error*(msg: string) {.magic: "NError", benign.}
+proc error*(msg: string, n: NimNode = nil) {.magic: "NError", benign.}
   ## writes an error message at compile time
 
 proc warning*(msg: string) {.magic: "NWarning", benign.}
@@ -377,19 +377,19 @@ proc expectKind*(n: NimNode, k: NimNodeKind) {.compileTime.} =
   ## checks that `n` is of kind `k`. If this is not the case,
   ## compilation aborts with an error message. This is useful for writing
   ## macros that check the AST that is passed to them.
-  if n.kind != k: error("Expected a node of kind " & $k & ", got " & $n.kind)
+  if n.kind != k: error("Expected a node of kind " & $k & ", got " & $n.kind, n)
 
 proc expectMinLen*(n: NimNode, min: int) {.compileTime.} =
   ## checks that `n` has at least `min` children. If this is not the case,
   ## compilation aborts with an error message. This is useful for writing
   ## macros that check its number of arguments.
-  if n.len < min: error("macro expects a node with " & $min & " children")
+  if n.len < min: error("macro expects a node with " & $min & " children", n)
 
 proc expectLen*(n: NimNode, len: int) {.compileTime.} =
   ## checks that `n` has exactly `len` children. If this is not the case,
   ## compilation aborts with an error message. This is useful for writing
   ## macros that check its number of arguments.
-  if n.len != len: error("macro expects a node with " & $len & " children")
+  if n.len != len: error("macro expects a node with " & $len & " children", n)
 
 proc newTree*(kind: NimNodeKind,
               children: varargs[NimNode]): NimNode {.compileTime.} =
@@ -889,6 +889,30 @@ proc addIdentIfAbsent*(dest: NimNode, ident: string) {.compiletime.} =
 proc boolVal*(n: NimNode): bool {.compileTime, noSideEffect.} =
   if n.kind == nnkIntLit: n.intVal != 0
   else: n == bindSym"true" # hacky solution for now
+
+macro expandMacros*(body: typed): untyped =
+  ## Expands one level of macro - useful for debugging.
+  ## Can be used to inspect what happens when a macro call is expanded,
+  ## without altering its result.
+  ##
+  ## For instance,
+  ##
+  ## .. code-block:: nim
+  ##   import future, macros
+  ##
+  ##   let
+  ##     x = 10
+  ##     y = 20
+  ##   expandMacros:
+  ##     dump(x + y)
+  ##
+  ## will actually dump `x + y`, but at the same time will print at
+  ## compile time the expansion of the ``dump`` macro, which in this
+  ## case is ``debugEcho ["x + y", " = ", x + y]``.
+  template inner(x: untyped): untyped = x
+
+  result = getAst(inner(body))
+  echo result.toStrLit
 
 when not defined(booting):
   template emit*(e: static[string]): untyped {.deprecated.} =

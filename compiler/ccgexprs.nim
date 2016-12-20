@@ -355,6 +355,14 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   else: internalError("genAssignment: " & $ty.kind)
 
+  if optMemTracker in p.options and dest.s in {OnHeap, OnUnknown}:
+    #writeStackTrace()
+    #echo p.currLineInfo, " requesting"
+    linefmt(p, cpsStmts, "#memTrackerWrite((void*)$1, $2, $3, $4);$n",
+            addrLoc(dest), rope getSize(dest.t),
+            makeCString(p.currLineInfo.toFullPath),
+            rope p.currLineInfo.safeLineNm)
+
 proc genDeepCopy(p: BProc; dest, src: TLoc) =
   var ty = skipTypes(dest.t, abstractVarRange)
   case ty.kind
@@ -592,9 +600,9 @@ proc genEqProc(p: BProc, e: PNode, d: var TLoc) =
 proc genIsNil(p: BProc, e: PNode, d: var TLoc) =
   let t = skipTypes(e.sons[1].typ, abstractRange)
   if t.kind == tyProc and t.callConv == ccClosure:
-    unaryExpr(p, e, d, "$1.ClPrc == 0")
+    unaryExpr(p, e, d, "($1.ClPrc == 0)")
   else:
-    unaryExpr(p, e, d, "$1 == 0")
+    unaryExpr(p, e, d, "($1 == 0)")
 
 proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   const
@@ -1136,8 +1144,8 @@ proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
     result = false
 
 proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
-  if handleConstExpr(p, e, d): return
   #echo rendertree e, " ", e.isDeepConstExpr
+  if handleConstExpr(p, e, d): return
   var tmp: TLoc
   var t = e.typ.skipTypes(abstractInst)
   getTemp(p, t, tmp)
@@ -1946,6 +1954,7 @@ proc exprComplexConst(p: BProc, n: PNode, d: var TLoc) =
       d.s = OnStatic
 
 proc expr(p: BProc, n: PNode, d: var TLoc) =
+  p.currLineInfo = n.info
   case n.kind
   of nkSym:
     var sym = n.sym
@@ -2143,6 +2152,11 @@ proc genNamedConstExpr(p: BProc, n: PNode): Rope =
 proc genConstSimpleList(p: BProc, n: PNode): Rope =
   var length = sonsLen(n)
   result = rope("{")
+  let t = n.typ.skipTypes(abstractInst)
+  if n.kind == nkObjConstr and not isObjLackingTypeField(t) and
+      not p.module.compileToCpp:
+    addf(result, "{$1}", [genTypeInfo(p.module, t)])
+    if n.len > 1: add(result, ",")
   for i in countup(ord(n.kind == nkObjConstr), length - 2):
     addf(result, "$1,$n", [genNamedConstExpr(p, n.sons[i])])
   if length > ord(n.kind == nkObjConstr):

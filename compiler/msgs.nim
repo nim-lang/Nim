@@ -35,7 +35,7 @@ type
     errNoneSpeedOrSizeExpectedButXFound, errGuiConsoleOrLibExpectedButXFound,
     errUnknownOS, errUnknownCPU, errGenOutExpectedButXFound,
     errArgsNeedRunOption, errInvalidMultipleAsgn, errColonOrEqualsExpected,
-    errExprExpected, errUndeclaredIdentifier, errUndeclaredField,
+    errExprExpected, errUndeclaredField,
     errUndeclaredRoutine, errUseQualifier,
     errTypeExpected,
     errSystemNeeds, errExecutionOfProgramFailed, errNotOverloadable,
@@ -48,7 +48,7 @@ type
     errIndexOutOfBounds, errIndexTypesDoNotMatch, errBracketsInvalidForType,
     errValueOutOfSetBounds, errFieldInitTwice, errFieldNotInit,
     errExprXCannotBeCalled, errExprHasNoType, errExprXHasNoType,
-    errCastNotInSafeMode, errExprCannotBeCastedToX, errCommaOrParRiExpected,
+    errCastNotInSafeMode, errExprCannotBeCastToX, errCommaOrParRiExpected,
     errCurlyLeOrParLeExpected, errSectionExpected, errRangeExpected,
     errMagicOnlyInSystem, errPowerOfTwoExpected,
     errStringMayNotBeEmpty, errCallConvExpected, errProcOnlyOneCallConv,
@@ -197,7 +197,6 @@ const
     errInvalidMultipleAsgn: "multiple assignment is not allowed",
     errColonOrEqualsExpected: "\':\' or \'=\' expected, but found \'$1\'",
     errExprExpected: "expression expected, but found \'$1\'",
-    errUndeclaredIdentifier: "undeclared identifier: \'$1\'",
     errUndeclaredField: "undeclared field: \'$1\'",
     errUndeclaredRoutine: "attempting to call undeclared routine: \'$1\'",
     errUseQualifier: "ambiguous identifier: \'$1\' -- use a qualifier",
@@ -230,7 +229,7 @@ const
     errExprHasNoType: "expression has no type",
     errExprXHasNoType: "expression \'$1\' has no type (or is ambiguous)",
     errCastNotInSafeMode: "\'cast\' not allowed in safe mode",
-    errExprCannotBeCastedToX: "expression cannot be casted to $1",
+    errExprCannotBeCastToX: "expression cannot be cast to $1",
     errCommaOrParRiExpected: "',' or ')' expected",
     errCurlyLeOrParLeExpected: "\'{\' or \'(\' expected",
     errSectionExpected: "section (\'type\', \'proc\', etc.) expected",
@@ -676,9 +675,8 @@ proc getInfoContext*(index: int): TLineInfo =
   if i >=% L: result = unknownLineInfo()
   else: result = msgContext[i]
 
-proc toFilename*(fileIdx: int32): string =
-  if fileIdx < 0: result = "???"
-  else: result = fileInfos[fileIdx].projPath
+template toFilename*(fileIdx: int32): string =
+  (if fileIdx < 0: "???" else: fileInfos[fileIdx].projPath)
 
 proc toFullPath*(fileIdx: int32): string =
   if fileIdx < 0: result = "???"

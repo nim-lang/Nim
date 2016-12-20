@@ -172,7 +172,9 @@ proc sumGeneric(t: PType): int =
       inc result
     of tyGenericInvocation, tyTuple, tyProc:
       result += ord(t.kind == tyGenericInvocation)
-      for i in 0 .. <t.len: result += t.sons[i].sumGeneric
+      for i in 0 .. <t.len:
+        if t.sons[i] != nil:
+          result += t.sons[i].sumGeneric
       break
     of tyGenericParam, tyExpr, tyStatic, tyStmt: break
     of tyBool, tyChar, tyEnum, tyObject, tyPointer,
@@ -549,8 +551,6 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
 
   of tyNil:
     result = f.allowsNil
-  of tyIter:
-    if tfIterator in f.flags: result = typeRel(c, f.base, a.base)
   else: discard
 
 proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
@@ -1223,13 +1223,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       else:
         result = isNone
 
-  of tyIter:
-    if a.kind == tyIter or
-      (a.kind == tyProc and tfIterator in a.flags):
-      result = typeRel(c, f.base, a.base)
-    else:
-      result = isNone
-
   of tyStmt:
     if aOrig != nil and tfOldSchoolExprStmt notin f.flags:
       put(c, f, aOrig)
@@ -1587,8 +1580,9 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
   elif a.typ.isNil:
     # XXX This is unsound! 'formal' can differ from overloaded routine to
     # overloaded routine!
-    let flags = if formal.kind == tyIter: {efDetermineType, efWantIterator}
-                else: {efDetermineType, efAllowStmt}
+    let flags = {efDetermineType, efAllowStmt}
+                #if formal.kind == tyIter: {efDetermineType, efWantIterator}
+                #else: {efDetermineType, efAllowStmt}
                 #elif formal.kind == tyStmt: {efDetermineType, efWantStmt}
                 #else: {efDetermineType}
     result = c.semOperand(c, a, flags)

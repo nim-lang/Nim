@@ -33,7 +33,8 @@ is more cumbersome then.
 To complete the installation you should also build Nim's tools like
 ``nimsuggest``, ``nimble`` or ``nimgrep`` via::
 
-  nim e install_tools.nims
+  nim c koch
+  koch tools
 
 Note that these tools should also end up in your ``PATH`` so adding
 ``$your_install_dir/bin/nim`` to your ``PATH`` is preferred over the symlink
@@ -83,4 +84,5 @@ Nimble is Nim's package manager. For the source based installations where you
 added Nim's ``bin`` directory to your ``$PATH`` the easiest way of installing
 Nimble is via::
 
-  nim e install_nimble.nims
+  nim c koch
+  koch nimble

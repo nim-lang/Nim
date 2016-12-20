@@ -54,8 +54,6 @@ proc isKeyword*(i: PIdent): bool =
       (i.id <= ord(tokKeywordHigh) - ord(tkSymbol)):
     result = true
 
-proc isKeyword*(s: string): bool = isKeyword(getIdent(s))
-
 proc renderDefinitionName*(s: PSym, noQuotes = false): string =
   ## Returns the definition name of the symbol.
   ##
@@ -289,8 +287,7 @@ proc lsub(n: PNode): int
 proc litAux(n: PNode, x: BiggestInt, size: int): string =
   proc skip(t: PType): PType =
     result = t
-    while result.kind in {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
-                          tyConst, tyMutable}:
+    while result.kind in {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal}:
       result = lastSon(result)
   if n.typ != nil and n.typ.skip.kind in {tyBool, tyEnum}:
     let enumfields = n.typ.skip.n

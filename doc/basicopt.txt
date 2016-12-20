@@ -5,7 +5,7 @@
 Command:
   //compile, c                compile project with default code generator (C)
   //doc                       generate the documentation for inputfile
-  //doc2                      generate the documentation for the whole project
+  //doc2                      generate the documentation for inputfile
 
 Arguments:
   arguments are passed to the program being run (if --run option is selected)

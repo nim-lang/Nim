@@ -1272,12 +1272,14 @@ const
 
   seqShallowFlag = low(int)
 
+{.push profiler: off.}
 when defined(nimKnowsNimvm):
   let nimvm* {.magic: "Nimvm".}: bool = false
     ## may be used only in "when" expression.
     ## It is true in Nim VM context and false otherwise
 else:
   const nimvm*: bool = false
+{.pop.}
 
 proc compileOption*(option: string): bool {.
   magic: "CompileOption", noSideEffect.}
@@ -1827,7 +1829,7 @@ const
   NimMinor*: int = 15
     ## is the minor number of Nim's version.
 
-  NimPatch*: int = 2
+  NimPatch*: int = 3
     ## is the patch number of Nim's version.
 
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
@@ -2176,25 +2178,34 @@ proc `&` *[T](x: T, y: seq[T]): seq[T] {.noSideEffect.} =
   for i in 0..y.len-1:
     result[i+1] = y[i]
 
-when not defined(nimscript):
-  when not defined(JS) or defined(nimphp):
-    proc seqToPtr[T](x: seq[T]): pointer {.inline, nosideeffect.} =
-      result = cast[pointer](x)
+proc `==` *[T](x, y: seq[T]): bool {.noSideEffect.} =
+  ## Generic equals operator for sequences: relies on a equals operator for
+  ## the element type `T`.
+  when nimvm:
+    if x.isNil and y.isNil:
+      return true
   else:
-    proc seqToPtr[T](x: seq[T]): pointer {.asmNoStackFrame, nosideeffect.} =
-      asm """return `x`"""
+    when not defined(JS) or defined(nimphp):
+      proc seqToPtr[T](x: seq[T]): pointer {.inline, nosideeffect.} =
+        result = cast[pointer](x)
+    else:
+      proc seqToPtr[T](x: seq[T]): pointer {.asmNoStackFrame, nosideeffect.} =
+        asm """return `x`"""
 
-  proc `==` *[T](x, y: seq[T]): bool {.noSideEffect.} =
-    ## Generic equals operator for sequences: relies on a equals operator for
-    ## the element type `T`.
     if seqToPtr(x) == seqToPtr(y):
-      result = true
-    elif seqToPtr(x) == nil or seqToPtr(y) == nil:
-      result = false
-    elif x.len == y.len:
-      for i in 0..x.len-1:
-        if x[i] != y[i]: return false
-      result = true
+      return true
+
+  if x.isNil or y.isNil:
+    return false
+
+  if x.len != y.len:
+    return false
+
+  for i in 0..x.len-1:
+    if x[i] != y[i]:
+      return false
+
+  return true
 
 proc find*[T, S](a: T, item: S): int {.inline.}=
   ## Returns the first index of `item` in `a` or -1 if not found. This requires
@@ -2325,7 +2336,11 @@ proc collectionToString[T: set | seq](x: T, b, e: string): string =
   var firstElement = true
   for value in items(x):
     if not firstElement: result.add(", ")
-    result.add($value)
+    when compiles(value.isNil):
+      if value.isNil: result.add "nil"
+      else: result.add($value)
+    else:
+      result.add($value)
     firstElement = false
   result.add(e)
 
@@ -2531,6 +2546,7 @@ when hostOS == "standalone":
   include "$projectpath/panicoverride"
 
 when not declared(sysFatal):
+  {.push profiler: off.}
   when hostOS == "standalone":
     proc sysFatal(exceptn: typedesc, message: string) {.inline.} =
       panic(message)
@@ -2550,6 +2566,7 @@ when not declared(sysFatal):
       new(e)
       e.msg = message & arg
       raise e
+  {.pop.}
 
 proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo", benign.}
   ## get type information for `x`. Ordinary code should not use this, but
@@ -2578,6 +2595,14 @@ else:
     if x < 0: -x else: x
 {.pop.}
 
+type
+  FileSeekPos* = enum ## Position relative to which seek should happen
+                      # The values are ordered so that they match with stdio
+                      # SEEK_SET, SEEK_CUR and SEEK_END respectively.
+    fspSet            ## Seek to absolute value
+    fspCur            ## Seek relative to current position
+    fspEnd            ## Seek relative to end
+
 when not defined(JS): #and not defined(nimscript):
   {.push stack_trace: off, profiler:off.}
 
@@ -2603,8 +2628,10 @@ when not defined(JS): #and not defined(nimscript):
       when declared(setStackBottom):
         setStackBottom(locals)
 
+    {.push profiler: off.}
     var
       strDesc = TNimType(size: sizeof(string), kind: tyString, flags: {ntfAcyclic})
+    {.pop.}
 
 
   # ----------------- IO Part ------------------------------------------------
@@ -2616,6 +2643,8 @@ when not defined(JS): #and not defined(nimscript):
     FileMode* = enum           ## The file mode when opening a file.
       fmRead,                   ## Open the file for read access only.
       fmWrite,                  ## Open the file for write access only.
+                                ## If the file does not exist, it will be
+                                ## created.
       fmReadWrite,              ## Open the file for read and write access.
                                 ## If the file does not exist, it will be
                                 ## created.
@@ -2632,10 +2661,15 @@ when not defined(JS): #and not defined(nimscript):
 
   include "system/ansi_c"
 
-  when not defined(nimscript):
-    proc cmp(x, y: string): int =
+  proc cmp(x, y: string): int =
+    when nimvm:
+      if x < y: result = -1
+      elif x > y: result = 1
+      else: result = 0
+    else:
       result = int(c_strcmp(x, y))
 
+  when not defined(nimscript):
     proc zeroMem(p: pointer, size: Natural) =
       c_memset(p, 0, size)
     proc copyMem(dest, source: pointer, size: Natural) =
@@ -2644,12 +2678,6 @@ when not defined(JS): #and not defined(nimscript):
       c_memmove(dest, source, size)
     proc equalMem(a, b: pointer, size: Natural): bool =
       c_memcmp(a, b, size) == 0
-
-  else:
-    proc cmp(x, y: string): int =
-      if x < y: result = -1
-      elif x > y: result = 1
-      else: result = 0
 
   when defined(nimscript):
     proc readFile*(filename: string): string {.tags: [ReadIOEffect], benign.}
@@ -2838,7 +2866,7 @@ when not defined(JS): #and not defined(nimscript):
       ## file `f`. Returns the number of actual written bytes, which may be less
       ## than `len` in case of an error.
 
-    proc setFilePos*(f: File, pos: int64) {.benign.}
+    proc setFilePos*(f: File, pos: int64, relativeTo: FileSeekPos = fspSet) {.benign.}
       ## sets the position of the file pointer that is used for read/write
       ## operations. The file's first byte has the index zero.
 
@@ -2936,6 +2964,8 @@ when not defined(JS): #and not defined(nimscript):
         ## lead to the ``raise`` statement. This only works for debug builds.
 
     {.push stack_trace: off, profiler:off.}
+    when defined(memtracker):
+      include "system/memtracker"
     when hostOS == "standalone":
       include "system/embedded"
     else:
@@ -2978,7 +3008,9 @@ when not defined(JS): #and not defined(nimscript):
       else:
         result = n.sons[n.len]
 
+    {.push profiler:off.}
     when hasAlloc: include "system/mmdisp"
+    {.pop.}
     {.push stack_trace: off, profiler:off.}
     when hasAlloc: include "system/sysstr"
     {.pop.}

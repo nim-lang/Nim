@@ -127,7 +127,7 @@ proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
       discard
 
 proc isCastable(dst, src: PType): bool =
-  ## Checks whether the source type can be casted to the destination type.
+  ## Checks whether the source type can be cast to the destination type.
   ## Casting is very unrestrictive; casts are allowed as long as
   ## castDest.size >= src.size, and typeAllowed(dst, skParam)
   #const
@@ -223,7 +223,7 @@ proc semCast(c: PContext, n: PNode): PNode =
   addSon(result, copyTree(n.sons[0]))
   addSon(result, semExprWithType(c, n.sons[1]))
   if not isCastable(result.typ, result.sons[1].typ):
-    localError(result.info, errExprCannotBeCastedToX,
+    localError(result.info, errExprCannotBeCastToX,
                typeToString(result.typ))
 
 proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
@@ -607,12 +607,12 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
       call.add(a)
     #echo "NOW evaluating at compile time: ", call.renderTree
     if sfCompileTime in callee.flags:
-      result = evalStaticExpr(c.module, call, c.p.owner)
+      result = evalStaticExpr(c.module, c.cache, call, c.p.owner)
       if result.isNil:
         localError(n.info, errCannotInterpretNodeX, renderTree(call))
       else: result = fixupTypeAfterEval(c, result, n)
     else:
-      result = evalConstExpr(c.module, call)
+      result = evalConstExpr(c.module, c.cache, call)
       if result.isNil: result = n
       else: result = fixupTypeAfterEval(c, result, n)
     #if result != n:
@@ -620,7 +620,7 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
 
 proc semStaticExpr(c: PContext, n: PNode): PNode =
   let a = semExpr(c, n.sons[0])
-  result = evalStaticExpr(c.module, a, c.p.owner)
+  result = evalStaticExpr(c.module, c.cache, a, c.p.owner)
   if result.isNil:
     localError(n.info, errCannotInterpretNodeX, renderTree(n))
     result = emptyNode
@@ -861,7 +861,7 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
           s = newNodeIT(nkCurly, n.info, setType)
           for j in countup(0, sonsLen(it) - 2): addSon(s, copyTree(it.sons[j]))
           var inExpr = newNodeIT(nkCall, n.info, getSysType(tyBool))
-          addSon(inExpr, newSymNode(ast.opContains, n.info))
+          addSon(inExpr, newSymNode(opContains, n.info))
           addSon(inExpr, s)
           addSon(inExpr, copyTree(r.sons[0]))
           addSon(check, inExpr)
@@ -874,11 +874,11 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
             check = newNodeI(nkCheckedFieldExpr, n.info)
             addSon(check, ast.emptyNode) # make space for access node
           var inExpr = newNodeIT(nkCall, n.info, getSysType(tyBool))
-          addSon(inExpr, newSymNode(ast.opContains, n.info))
+          addSon(inExpr, newSymNode(opContains, n.info))
           addSon(inExpr, s)
           addSon(inExpr, copyTree(r.sons[0]))
           var notExpr = newNodeIT(nkCall, n.info, getSysType(tyBool))
-          addSon(notExpr, newSymNode(ast.opNot, n.info))
+          addSon(notExpr, newSymNode(opNot, n.info))
           addSon(notExpr, inExpr)
           addSon(check, notExpr)
           return
@@ -1274,7 +1274,8 @@ proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
   # this is ugly. XXX Semantic checking should use the ``nfSem`` flag for
   # nodes?
   let aOrig = nOrig[0]
-  result = newNode(nkCall, n.info, sons = @[setterId, a[0], semExpr(c, n[1])])
+  result = newNode(nkCall, n.info, sons = @[setterId, a[0],
+                                            semExprWithType(c, n[1])])
   result.flags.incl nfDotSetter
   let orig = newNode(nkCall, n.info, sons = @[setterId, aOrig[0], nOrig[1]])
   result = semOverloadedCallAnalyseEffects(c, result, orig, {})
@@ -1551,7 +1552,7 @@ proc expectMacroOrTemplateCall(c: PContext, n: PNode): PSym =
   if isCallExpr(n):
     var expandedSym = qualifiedLookUp(c, n[0], {checkUndeclared})
     if expandedSym == nil:
-      localError(n.info, errUndeclaredIdentifier, n[0].renderTree)
+      errorUndeclaredIdentifier(c, n.info, n[0].renderTree)
       return errorSym(c, n[0])
 
     if expandedSym.kind notin {skMacro, skTemplate}:
@@ -1574,9 +1575,9 @@ proc getMagicSym(magic: TMagic): PSym =
   result = newSym(skProc, getIdent($magic), systemModule, gCodegenLineInfo)
   result.magic = magic
 
-proc newAnonSym(kind: TSymKind, info: TLineInfo,
+proc newAnonSym(c: PContext; kind: TSymKind, info: TLineInfo,
                 owner = getCurrOwner()): PSym =
-  result = newSym(kind, idAnon, owner, info)
+  result = newSym(kind, c.cache.idAnon, owner, info)
   result.flags = {sfGenSym}
 
 proc semExpandToAst(c: PContext, n: PNode): PNode =
@@ -1648,7 +1649,7 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
 
   processQuotations(doBlk.sons[bodyPos], op, quotes, ids)
 
-  doBlk.sons[namePos] = newAnonSym(skTemplate, n.info).newSymNode
+  doBlk.sons[namePos] = newAnonSym(c, skTemplate, n.info).newSymNode
   if ids.len > 0:
     doBlk.sons[paramsPos] = newNodeI(nkFormalParams, n.info)
     doBlk[paramsPos].add getSysSym("stmt").newSymNode # return type

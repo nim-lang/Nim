@@ -66,3 +66,12 @@ block:
 
   doAssert execTime * 100 < taskCount * sleepDuration
   doAssert results == expected
+
+block:
+  let
+    noIntFuturesFut = all(newSeq[Future[int]]())
+    noVoidFuturesFut = all(newSeq[Future[void]]())
+
+  doAssert noIntFuturesFut.finished and not noIntFuturesFut.failed
+  doAssert noVoidFuturesFut.finished and not noVoidFuturesFut.failed
+  doAssert noIntFuturesFut.read() == @[]

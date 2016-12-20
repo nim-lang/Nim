@@ -221,14 +221,15 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       body.add newAsgnStmt(x, call)
   of tyVarargs, tyOpenArray:
     localError(c.info, errGenerated, "cannot copy openArray")
-  of tyFromExpr, tyIter, tyProxy, tyBuiltInTypeClass, tyUserTypeClass,
+  of tyFromExpr, tyProxy, tyBuiltInTypeClass, tyUserTypeClass,
      tyUserTypeClassInst, tyCompositeTypeClass, tyAnd, tyOr, tyNot, tyAnything,
-     tyMutable, tyGenericParam, tyGenericBody, tyNil, tyExpr, tyStmt,
-     tyTypeDesc, tyGenericInvocation, tyBigNum, tyConst, tyForward:
+     tyGenericParam, tyGenericBody, tyNil, tyExpr, tyStmt,
+     tyTypeDesc, tyGenericInvocation, tyForward:
     internalError(c.info, "assignment requested for type: " & typeToString(t))
   of tyOrdinal, tyRange,
      tyGenericInst, tyFieldAccessor, tyStatic, tyVar:
     liftBodyAux(c, lastSon(t), body, x, y)
+  of tyUnused, tyUnused0, tyUnused1, tyUnused2: internalError("liftBodyAux")
 
 proc newProcType(info: TLineInfo; owner: PSym): PType =
   result = newType(tyProc, owner)

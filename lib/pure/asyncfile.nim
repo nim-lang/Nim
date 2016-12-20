@@ -118,8 +118,8 @@ proc readBuffer*(f: AsyncFile, buf: pointer, size: int): Future[int] =
   ## Read ``size`` bytes from the specified file asynchronously starting at
   ## the current position of the file pointer.
   ##
-  ## If the file pointer is past the end of the file then an empty string is
-  ## returned.
+  ## If the file pointer is past the end of the file then zero is returned
+  ## and no bytes are read into ``buf``
   var retFuture = newFuture[int]("asyncfile.readBuffer")
 
   when defined(windows) or defined(nimdoc):
@@ -149,7 +149,11 @@ proc readBuffer*(f: AsyncFile, buf: pointer, size: int): Future[int] =
       let err = osLastError()
       if err.int32 != ERROR_IO_PENDING:
         GC_unref(ol)
-        retFuture.fail(newException(OSError, osErrorMsg(err)))
+        if err.int32 == ERROR_HANDLE_EOF:
+          # This happens in Windows Server 2003
+          retFuture.complete(0)
+        else:
+          retFuture.fail(newException(OSError, osErrorMsg(err)))
     else:
       # Request completed immediately.
       var bytesRead: DWord
@@ -233,7 +237,12 @@ proc read*(f: AsyncFile, size: int): Future[string] =
           dealloc buffer
           buffer = nil
         GC_unref(ol)
-        retFuture.fail(newException(OSError, osErrorMsg(err)))
+
+        if err.int32 == ERROR_HANDLE_EOF:
+          # This happens in Windows Server 2003
+          retFuture.complete("")
+        else:
+          retFuture.fail(newException(OSError, osErrorMsg(err)))
     else:
       # Request completed immediately.
       var bytesRead: DWord

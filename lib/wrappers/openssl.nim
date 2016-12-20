@@ -37,6 +37,8 @@ else:
       DLLUtilName = "libcrypto.so" & versions
   from posix import SocketHandle
 
+import dynlib
+
 type
   SslStruct {.final, pure.} = object
   SslPtr* = ptr SslStruct
@@ -185,15 +187,73 @@ const
   BIO_C_DO_STATE_MACHINE = 101
   BIO_C_GET_SSL = 110
 
-proc SSL_library_init*(): cInt{.cdecl, dynlib: DLLSSLName, importc, discardable.}
-proc SSL_load_error_strings*(){.cdecl, dynlib: DLLSSLName, importc.}
-proc ERR_load_BIO_strings*(){.cdecl, dynlib: DLLUtilName, importc.}
-
-proc SSLv23_client_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
-proc SSLv23_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
-proc SSLv2_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
-proc SSLv3_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
 proc TLSv1_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
+
+when compileOption("dynlibOverride", "ssl"):
+  proc SSL_library_init*(): cint {.cdecl, dynlib: DLLSSLName, importc, discardable.}
+  proc SSL_load_error_strings*() {.cdecl, dynlib: DLLSSLName, importc.}
+  proc SSLv23_client_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
+
+  proc SSLv23_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
+  proc SSLv2_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
+  proc SSLv3_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
+
+  template OpenSSL_add_all_algorithms*() = discard
+else:
+  # Here we're trying to stay compatible with openssl 1.0.* and 1.1.*. Some
+  # symbols are loaded dynamically and we don't use them if not found.
+  proc thisModule(): LibHandle {.inline.} =
+    var thisMod {.global.}: LibHandle
+    if thisMod.isNil: thisMod = loadLib()
+    result = thisMod
+
+  proc sslModule(): LibHandle {.inline.} =
+    var sslMod {.global.}: LibHandle
+    if sslMod.isNil: sslMod = loadLibPattern(DLLSSLName)
+    result = sslMod
+
+  proc sslSym(name: string): pointer =
+    var dl = thisModule()
+    if not dl.isNil:
+      result = symAddr(dl, name)
+    if result.isNil:
+      dl = sslModule()
+      if not dl.isNil:
+        result = symAddr(dl, name)
+
+  proc SSL_library_init*(): cint {.discardable.} =
+    let theProc = cast[proc(): cint {.cdecl.}](sslSym("SSL_library_init"))
+    if not theProc.isNil: result = theProc()
+
+  proc SSL_load_error_strings*() =
+    let theProc = cast[proc() {.cdecl.}](sslSym("SSL_load_error_strings"))
+    if not theProc.isNil: theProc()
+
+  proc SSLv23_client_method*(): PSSL_METHOD =
+    let theProc = cast[proc(): PSSL_METHOD {.cdecl, gcsafe.}](sslSym("SSLv23_client_method"))
+    if not theProc.isNil: result = theProc()
+    else: result = TLSv1_method()
+
+  proc SSLv23_method*(): PSSL_METHOD =
+    let theProc = cast[proc(): PSSL_METHOD {.cdecl, gcsafe.}](sslSym("SSLv23_method"))
+    if not theProc.isNil: result = theProc()
+    else: result = TLSv1_method()
+
+  proc SSLv2_method*(): PSSL_METHOD =
+    let theProc = cast[proc(): PSSL_METHOD {.cdecl, gcsafe.}](sslSym("SSLv2_method"))
+    if not theProc.isNil: result = theProc()
+    else: result = TLSv1_method()
+
+  proc SSLv3_method*(): PSSL_METHOD =
+    let theProc = cast[proc(): PSSL_METHOD {.cdecl, gcsafe.}](sslSym("SSLv3_method"))
+    if not theProc.isNil: result = theProc()
+    else: result = TLSv1_method()
+
+  proc OpenSSL_add_all_algorithms*() =
+    let theProc = cast[proc() {.cdecl.}](sslSym("OPENSSL_add_all_algorithms_conf"))
+    if not theProc.isNil: theProc()
+
+proc ERR_load_BIO_strings*(){.cdecl, dynlib: DLLUtilName, importc.}
 
 proc SSL_new*(context: SslCtx): SslPtr{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_free*(ssl: SslPtr){.cdecl, dynlib: DLLSSLName, importc.}
@@ -233,6 +293,8 @@ proc SSL_get_error*(s: SslPtr, ret_code: cInt): cInt{.cdecl, dynlib: DLLSSLName,
 proc SSL_accept*(ssl: SslPtr): cInt{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_pending*(ssl: SslPtr): cInt{.cdecl, dynlib: DLLSSLName, importc.}
 
+proc BIO_new_mem_buf*(data: pointer, len: cint): BIO{.cdecl,
+    dynlib: DLLSSLName, importc.}
 proc BIO_new_ssl_connect*(ctx: SslCtx): BIO{.cdecl,
     dynlib: DLLSSLName, importc.}
 proc BIO_ctrl*(bio: BIO, cmd: cint, larg: int, arg: cstring): int{.cdecl,
@@ -261,11 +323,9 @@ proc ERR_error_string*(e: cInt, buf: cstring): cstring{.cdecl,
 proc ERR_get_error*(): cInt{.cdecl, dynlib: DLLUtilName, importc.}
 proc ERR_peek_last_error*(): cInt{.cdecl, dynlib: DLLUtilName, importc.}
 
-proc OpenSSL_add_all_algorithms*(){.cdecl, dynlib: DLLUtilName, importc: "OPENSSL_add_all_algorithms_conf".}
-
 proc OPENSSL_config*(configName: cstring){.cdecl, dynlib: DLLSSLName, importc.}
 
-when not useWinVersion and not defined(macosx):
+when not useWinVersion and not defined(macosx) and not defined(android):
   proc CRYPTO_set_mem_functions(a,b,c: pointer){.cdecl,
     dynlib: DLLUtilName, importc.}
 
@@ -279,7 +339,7 @@ when not useWinVersion and not defined(macosx):
     if p != nil: dealloc(p)
 
 proc CRYPTO_malloc_init*() =
-  when not useWinVersion and not defined(macosx):
+  when not useWinVersion and not defined(macosx) and not defined(android):
     CRYPTO_set_mem_functions(allocWrapper, reallocWrapper, deallocWrapper)
 
 proc SSL_CTX_ctrl*(ctx: SslCtx, cmd: cInt, larg: int, parg: pointer): int{.

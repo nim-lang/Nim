@@ -9,6 +9,7 @@
 
 ## This module contains procs for `serialization`:idx: and `deseralization`:idx:
 ## of arbitrary Nim data structures. The serialization format uses `JSON`:idx:.
+## Warning: The serialization format could change in future!
 ##
 ## **Restriction**: For objects their type is **not** serialized. This means
 ## essentially that it does not work if the object has some other runtime
@@ -29,6 +30,12 @@
 ##   a = b
 ##   echo($$a[]) # produces "{}", not "{f: 0}"
 ##
+##   # unmarshal
+##   let c = to[B]("""{"f": 2}""")
+##
+##   # marshal
+##   let s = $$c
+
 ## **Note**: The ``to`` and ``$$`` operations are available at compile-time!
 
 import streams, typeinfo, json, intsets, tables, unicode

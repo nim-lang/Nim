@@ -18,6 +18,8 @@ import
   evaltempl, patterns, parampatterns, sempass2, nimfix.pretty, semmacrosanity,
   semparallel, lowerings, pluginsupport, plugins.active
 
+from modulegraphs import ModuleGraph
+
 when defined(nimfix):
   import nimfix.prettybase
 
@@ -272,7 +274,7 @@ proc tryConstExpr(c: PContext, n: PNode): PNode =
   msgs.gErrorMax = high(int)
 
   try:
-    result = evalConstExpr(c.module, e)
+    result = evalConstExpr(c.module, c.cache, e)
     if result == nil or result.kind == nkEmpty:
       result = nil
     else:
@@ -293,7 +295,7 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
   result = getConstExpr(c.module, e)
   if result == nil:
     #if e.kind == nkEmpty: globalError(n.info, errConstExprExpected)
-    result = evalConstExpr(c.module, e)
+    result = evalConstExpr(c.module, c.cache, e)
     if result == nil or result.kind == nkEmpty:
       if e.info != n.info:
         pushInfoContext(n.info)
@@ -364,9 +366,10 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
 
   #if c.evalContext == nil:
   #  c.evalContext = c.createEvalContext(emStatic)
-  result = evalMacroCall(c.module, n, nOrig, sym)
+  result = evalMacroCall(c.module, c.cache, n, nOrig, sym)
   if efNoSemCheck notin flags:
     result = semAfterMacroCall(c, result, sym, flags)
+  result = wrapInComesFrom(nOrig.info, result)
   popInfoContext()
 
 proc forceBool(c: PContext, n: PNode): PNode =
@@ -398,8 +401,8 @@ proc addCodeForGenerics(c: PContext, n: PNode) =
         addSon(n, prc.ast)
   c.lastGenericIdx = c.generics.len
 
-proc myOpen(module: PSym): PPassContext =
-  var c = newContext(module)
+proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
+  var c = newContext(graph, module, cache)
   if c.p != nil: internalError(module.info, "sem.myOpen")
   c.semConstExpr = semConstExpr
   c.semExpr = semExpr
@@ -428,8 +431,8 @@ proc myOpen(module: PSym): PPassContext =
     gNotes = ForeignPackageNotes
   result = c
 
-proc myOpenCached(module: PSym, rd: PRodReader): PPassContext =
-  result = myOpen(module)
+proc myOpenCached(graph: ModuleGraph; module: PSym; rd: PRodReader): PPassContext =
+  result = myOpen(graph, module, rd.cache)
   for m in items(rd.methods): methodDef(m, true)
 
 proc isImportSystemStmt(n: PNode): bool =

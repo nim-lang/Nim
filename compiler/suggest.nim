@@ -57,10 +57,11 @@ proc symToSuggest(s: PSym, isLocal: bool, section: string, li: TLineInfo;
     result.qualifiedPath = @[]
     if not isLocal and s.kind != skModule:
       let ow = s.owner
-      if ow.kind != skModule and ow.owner != nil:
+      if ow != nil and ow.kind != skModule and ow.owner != nil:
         let ow2 = ow.owner
         result.qualifiedPath.add(ow2.origModuleName)
-      result.qualifiedPath.add(ow.origModuleName)
+      if ow != nil:
+        result.qualifiedPath.add(ow.origModuleName)
     result.qualifiedPath.add(s.name.s)
 
     if s.typ != nil:
@@ -233,7 +234,7 @@ proc suggestFieldAccess(c: PContext, n: PNode, outputs: var int) =
         # error: no known module name:
         typ = nil
       else:
-        let m = gImportModule(c.module, fullpath.fileInfoIdx)
+        let m = gImportModule(c.graph, c.module, fullpath.fileInfoIdx, c.cache)
         if m == nil: typ = nil
         else:
           for it in items(n.sym.tab):

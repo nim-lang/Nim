@@ -24,6 +24,8 @@ import
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
 
+from modulegraphs import ModuleGraph
+
 when hasFFI:
   import evalffi
 
@@ -76,12 +78,13 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
     msgWriteln(s)
 
 proc stackTrace(c: PCtx, tos: PStackFrame, pc: int,
-                msg: TMsgKind, arg = "") =
+                msg: TMsgKind, arg = "", n: PNode = nil) =
   msgWriteln("stack trace: (most recent call last)")
   stackTraceAux(c, tos, pc)
   # XXX test if we want 'globalError' for every mode
-  if c.mode == emRepl: globalError(c.debug[pc], msg, arg)
-  else: localError(c.debug[pc], msg, arg)
+  let lineInfo = if n == nil: c.debug[pc] else: n.info
+  if c.mode == emRepl: globalError(lineInfo, msg, arg)
+  else: localError(lineInfo, msg, arg)
 
 proc bailOut(c: PCtx; tos: PStackFrame) =
   stackTrace(c, tos, c.exceptionInstr, errUnhandledExceptionX,
@@ -1242,9 +1245,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
 
       createStr regs[ra]
       regs[ra].node.strVal = opGorge(regs[rb].node.strVal,
-                                     regs[rc].node.strVal, regs[rd].node.strVal)
+                                     regs[rc].node.strVal, regs[rd].node.strVal,
+                                     c.debug[pc])
     of opcNError:
-      stackTrace(c, tos, pc, errUser, regs[ra].node.strVal)
+      decodeB(rkNode)
+      let a = regs[ra].node
+      let b = regs[rb].node
+      stackTrace(c, tos, pc, errUser, a.strVal, if b.kind == nkNilLit: nil else: b)
     of opcNWarning:
       message(c.debug[pc], warnUser, regs[ra].node.strVal)
     of opcNHint:
@@ -1253,7 +1260,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkNode)
       # c.debug[pc].line.int - countLines(regs[rb].strVal) ?
       var error: string
-      let ast = parseString(regs[rb].node.strVal, c.debug[pc].toFullPath,
+      let ast = parseString(regs[rb].node.strVal, c.cache, c.debug[pc].toFullPath,
                             c.debug[pc].line.int,
                             proc (info: TLineInfo; msg: TMsgKind; arg: string) =
                               if error.isNil and msg <= msgs.errMax:
@@ -1267,7 +1274,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcParseStmtToAst:
       decodeB(rkNode)
       var error: string
-      let ast = parseString(regs[rb].node.strVal, c.debug[pc].toFullPath,
+      let ast = parseString(regs[rb].node.strVal, c.cache, c.debug[pc].toFullPath,
                             c.debug[pc].line.int,
                             proc (info: TLineInfo; msg: TMsgKind; arg: string) =
                               if error.isNil and msg <= msgs.errMax:
@@ -1504,20 +1511,20 @@ include vmops
 var
   globalCtx*: PCtx
 
-proc setupGlobalCtx(module: PSym) =
+proc setupGlobalCtx(module: PSym; cache: IdentCache) =
   if globalCtx.isNil:
-    globalCtx = newCtx(module)
+    globalCtx = newCtx(module, cache)
     registerAdditionalOps(globalCtx)
   else:
     refresh(globalCtx, module)
 
-proc myOpen(module: PSym): PPassContext =
+proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
   #var c = newEvalContext(module, emRepl)
   #c.features = {allowCast, allowFFI, allowInfiniteLoops}
   #pushStackFrame(c, newStackFrame())
 
   # XXX produce a new 'globals' environment here:
-  setupGlobalCtx(module)
+  setupGlobalCtx(module, cache)
   result = globalCtx
   when hasFFI:
     globalCtx.features = {allowFFI, allowCast}
@@ -1535,9 +1542,10 @@ proc myProcess(c: PPassContext, n: PNode): PNode =
 
 const evalPass* = makePass(myOpen, nil, myProcess, myProcess)
 
-proc evalConstExprAux(module, prc: PSym, n: PNode, mode: TEvalMode): PNode =
+proc evalConstExprAux(module: PSym; cache: IdentCache; prc: PSym, n: PNode,
+                      mode: TEvalMode): PNode =
   let n = transformExpr(module, n)
-  setupGlobalCtx(module)
+  setupGlobalCtx(module, cache)
   var c = globalCtx
   let oldMode = c.mode
   defer: c.mode = oldMode
@@ -1552,17 +1560,17 @@ proc evalConstExprAux(module, prc: PSym, n: PNode, mode: TEvalMode): PNode =
   result = rawExecute(c, start, tos).regToNode
   if result.info.line < 0: result.info = n.info
 
-proc evalConstExpr*(module: PSym, e: PNode): PNode =
-  result = evalConstExprAux(module, nil, e, emConst)
+proc evalConstExpr*(module: PSym; cache: IdentCache, e: PNode): PNode =
+  result = evalConstExprAux(module, cache, nil, e, emConst)
 
-proc evalStaticExpr*(module: PSym, e: PNode, prc: PSym): PNode =
-  result = evalConstExprAux(module, prc, e, emStaticExpr)
+proc evalStaticExpr*(module: PSym; cache: IdentCache, e: PNode, prc: PSym): PNode =
+  result = evalConstExprAux(module, cache, prc, e, emStaticExpr)
 
-proc evalStaticStmt*(module: PSym, e: PNode, prc: PSym) =
-  discard evalConstExprAux(module, prc, e, emStaticStmt)
+proc evalStaticStmt*(module: PSym; cache: IdentCache, e: PNode, prc: PSym) =
+  discard evalConstExprAux(module, cache, prc, e, emStaticStmt)
 
-proc setupCompileTimeVar*(module: PSym, n: PNode) =
-  discard evalConstExprAux(module, nil, n, emStaticStmt)
+proc setupCompileTimeVar*(module: PSym; cache: IdentCache, n: PNode) =
+  discard evalConstExprAux(module, cache, nil, n, emStaticStmt)
 
 proc setupMacroParam(x: PNode, typ: PType): TFullReg =
   case typ.kind
@@ -1581,7 +1589,8 @@ proc setupMacroParam(x: PNode, typ: PType): TFullReg =
 
 var evalMacroCounter: int
 
-proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
+proc evalMacroCall*(module: PSym; cache: IdentCache, n, nOrig: PNode,
+                    sym: PSym): PNode =
   # XXX globalError() is ugly here, but I don't know a better solution for now
   inc(evalMacroCounter)
   if evalMacroCounter > 100:
@@ -1594,7 +1603,7 @@ proc evalMacroCall*(module: PSym, n, nOrig: PNode, sym: PSym): PNode =
         n.renderTree,
         $ <n.safeLen, $ <sym.typ.len])
 
-  setupGlobalCtx(module)
+  setupGlobalCtx(module, cache)
   var c = globalCtx
 
   c.callsite = nOrig

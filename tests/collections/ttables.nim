@@ -95,9 +95,24 @@ block orderedTableTest1:
   for key, val in mpairs(t): val = 99
   for val in mvalues(t): assert val == 99
 
+block orderedTableTest2:
+  var
+    s = initOrderedTable[string, int]()
+    t = initOrderedTable[string, int]()
+  assert s == t
+  for key, val in items(data): t[key] = val
+  assert s != t
+  for key, val in items(sorteddata): s[key] = val
+  assert s != t
+  t.clear()
+  assert s != t
+  for key, val in items(sorteddata): t[key] = val
+  assert s == t
+
 block countTableTest1:
   var s = data.toTable
   var t = initCountTable[string]()
+
   for k in s.keys: t.inc(k)
   for k in t.keys: assert t[k] == 1
   t.inc("90", 3)
@@ -114,6 +129,24 @@ block countTableTest1:
     of 2: assert k == "34" and v == 2
     else: break
     inc i
+
+block countTableTest2:
+  var
+    s = initCountTable[int]()
+    t = initCountTable[int]()
+  assert s == t
+  s.inc(1)
+  assert s != t
+  t.inc(2)
+  assert s != t
+  t.inc(1)
+  assert s != t
+  s.inc(2)
+  assert s == t
+  s.inc(1)
+  assert s != t
+  t.inc(1)
+  assert s == t
 
 block mpairsTableTest1:
   var t = initTable[string, int]()
@@ -133,6 +166,29 @@ block mpairsTableTest1:
 
 block SyntaxTest:
   var x = toTable[int, string]({:})
+
+block zeroHashKeysTest:
+  proc doZeroHashValueTest[T, K, V](t: T, nullHashKey: K, value: V) =
+    let initialLen = t.len
+    var testTable = t
+    testTable[nullHashKey] = value
+    assert testTable[nullHashKey] == value
+    assert testTable.len == initialLen + 1
+    testTable.del(nullHashKey)
+    assert testTable.len == initialLen
+
+  # with empty table
+  doZeroHashValueTest(toTable[int,int]({:}), 0, 42)
+  doZeroHashValueTest(toTable[string,int]({:}), "", 23)
+  doZeroHashValueTest(toOrderedTable[int,int]({:}), 0, 42)
+  doZeroHashValueTest(toOrderedTable[string,int]({:}), "", 23)
+
+  # with non-empty table
+  doZeroHashValueTest(toTable[int,int]({1:2}), 0, 42)
+  doZeroHashValueTest(toTable[string,string]({"foo": "bar"}), "", "zero")
+  doZeroHashValueTest(toOrderedTable[int,int]({3:4}), 0, 42)
+  doZeroHashValueTest(toOrderedTable[string,string]({"egg": "sausage"}),
+      "", "spam")
 
 # Until #4448 is fixed, these tests will fail
 when false:

@@ -9,77 +9,97 @@ import
 # $ date --date='@2147483647'
 # Tue 19 Jan 03:14:07 GMT 2038
 
-var t = getGMTime(fromSeconds(2147483647))
-doAssert t.format("ddd dd MMM hh:mm:ss ZZZ yyyy") == "Tue 19 Jan 03:14:07 UTC 2038"
-doAssert t.format("ddd ddMMMhh:mm:ssZZZyyyy") == "Tue 19Jan03:14:07UTC2038"
+proc checkFormat(t: TimeInfo, format, expected: string) =
+  let actual = t.format(format)
+  if actual != expected:
+    echo "Formatting failure!"
+    echo "expected: ", expected
+    echo "actual  : ", actual
+    doAssert false
 
-doAssert t.format("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
-  " ss t tt y yy yyy yyyy yyyyy z zz zzz ZZZ") ==
-  "19 19 Tue Tuesday 3 03 3 03 14 14 1 01 Jan January 7 07 A AM 8 38 038 2038 02038 0 00 00:00 UTC"
+let t = getGMTime(fromSeconds(2147483647))
+t.checkFormat("ddd dd MMM hh:mm:ss yyyy", "Tue 19 Jan 03:14:07 2038")
+t.checkFormat("ddd ddMMMhh:mm:ssyyyy", "Tue 19Jan03:14:072038")
+t.checkFormat("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
+  " ss t tt y yy yyy yyyy yyyyy z zz zzz",
+  "19 19 Tue Tuesday 3 03 3 03 14 14 1 01 Jan January 7 07 A AM 8 38 038 2038 02038 +0 +00 +00:00")
 
-doAssert t.format("yyyyMMddhhmmss") == "20380119031407"
+t.checkFormat("yyyyMMddhhmmss", "20380119031407")
 
-var t2 = getGMTime(fromSeconds(160070789)) # Mon 27 Jan 16:06:29 GMT 1975
-doAssert t2.format("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
-  " ss t tt y yy yyy yyyy yyyyy z zz zzz ZZZ") ==
-  "27 27 Mon Monday 4 04 16 16 6 06 1 01 Jan January 29 29 P PM 5 75 975 1975 01975 0 00 00:00 UTC"
+let t2 = getGMTime(fromSeconds(160070789)) # Mon 27 Jan 16:06:29 GMT 1975
+t2.checkFormat("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
+  " ss t tt y yy yyy yyyy yyyyy z zz zzz",
+  "27 27 Mon Monday 4 04 16 16 6 06 1 01 Jan January 29 29 P PM 5 75 975 1975 01975 +0 +00 +00:00")
 
 when not defined(JS):
   when sizeof(Time) == 8:
     var t3 = getGMTime(fromSeconds(889067643645)) # Fri  7 Jun 19:20:45 BST 30143
-    doAssert t3.format("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
-      " ss t tt y yy yyy yyyy yyyyy z zz zzz ZZZ") ==
-      "7 07 Fri Friday 6 06 18 18 20 20 6 06 Jun June 45 45 P PM 3 43 143 0143 30143 0 00 00:00 UTC"
-    doAssert t3.format(":,[]()-/") == ":,[]()-/"
+    t3.checkFormat("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
+      " ss t tt y yy yyy yyyy yyyyy z zz zzz",
+      "7 07 Fri Friday 6 06 18 18 20 20 6 06 Jun June 45 45 P PM 3 43 143 0143 30143 +0 +00 +00:00")
+    t3.checkFormat(":,[]()-/", ":,[]()-/")
 
 var t4 = getGMTime(fromSeconds(876124714)) # Mon  6 Oct 08:58:34 BST 1997
-doAssert t4.format("M MM MMM MMMM") == "10 10 Oct October"
+t4.checkFormat("M MM MMM MMMM", "10 10 Oct October")
 
 # Interval tests
-doAssert((t4 - initInterval(years = 2)).format("yyyy") == "1995")
-doAssert((t4 - initInterval(years = 7, minutes = 34, seconds = 24)).format("yyyy mm ss") == "1990 24 10")
+(t4 - initInterval(years = 2)).checkFormat("yyyy", "1995")
+(t4 - initInterval(years = 7, minutes = 34, seconds = 24)).checkFormat("yyyy mm ss", "1990 24 10")
 
 proc parseTest(s, f, sExpected: string, ydExpected: int) =
-  let parsed = s.parse(f)
-  doAssert($parsed == sExpected)
+  let
+    parsed = s.parse(f)
+    parsedStr = $getGMTime(toTime(parsed))
+  if parsedStr != sExpected:
+    echo "Parsing failure!"
+    echo "expected: ", sExpected
+    echo "actual  : ", parsedStr
+    doAssert false
   doAssert(parsed.yearday == ydExpected)
 proc parseTestTimeOnly(s, f, sExpected: string) =
   doAssert(sExpected in $s.parse(f))
 
-parseTest("Tuesday at 09:04am on Dec 15, 2015",
-    "dddd at hh:mmtt on MMM d, yyyy", "Tue Dec 15 09:04:00 2015", 348)
+# because setting a specific timezone for testing is platform-specific, we use
+# explicit timezone offsets in all tests.
+
+parseTest("Tuesday at 09:04am on Dec 15, 2015 +0",
+    "dddd at hh:mmtt on MMM d, yyyy z", "2015-12-15T09:04:00+00:00", 348)
 # ANSIC       = "Mon Jan _2 15:04:05 2006"
-parseTest("Thu Jan 12 15:04:05 2006", "ddd MMM dd HH:mm:ss yyyy",
-    "Thu Jan 12 15:04:05 2006", 11)
+parseTest("Thu Jan 12 15:04:05 2006 +0", "ddd MMM dd HH:mm:ss yyyy z",
+    "2006-01-12T15:04:05+00:00", 11)
 # UnixDate    = "Mon Jan _2 15:04:05 MST 2006"
-parseTest("Thu Jan 12 15:04:05 MST 2006", "ddd MMM dd HH:mm:ss ZZZ yyyy",
-    "Thu Jan 12 15:04:05 2006", 11)
+parseTest("Thu Jan 12 15:04:05 2006 +0", "ddd MMM dd HH:mm:ss yyyy z",
+    "2006-01-12T15:04:05+00:00", 11)
 # RubyDate    = "Mon Jan 02 15:04:05 -0700 2006"
-parseTest("Mon Feb 29 15:04:05 -07:00 2016", "ddd MMM dd HH:mm:ss zzz yyyy",
-    "Mon Feb 29 15:04:05 2016", 59) # leap day
+parseTest("Mon Feb 29 15:04:05 -07:00 2016 +0", "ddd MMM dd HH:mm:ss zzz yyyy z",
+    "2016-02-29T15:04:05+00:00", 59) # leap day
 # RFC822      = "02 Jan 06 15:04 MST"
-parseTest("12 Jan 16 15:04 MST", "dd MMM yy HH:mm ZZZ",
-    "Tue Jan 12 15:04:00 2016", 11)
+parseTest("12 Jan 16 15:04 +0", "dd MMM yy HH:mm z",
+    "2016-01-12T15:04:00+00:00", 11)
 # RFC822Z     = "02 Jan 06 15:04 -0700" # RFC822 with numeric zone
 parseTest("01 Mar 16 15:04 -07:00", "dd MMM yy HH:mm zzz",
-    "Tue Mar  1 15:04:00 2016", 60) # day after february in leap year
+    "2016-03-01T22:04:00+00:00", 60) # day after february in leap year
 # RFC850      = "Monday, 02-Jan-06 15:04:05 MST"
-parseTest("Monday, 12-Jan-06 15:04:05 MST", "dddd, dd-MMM-yy HH:mm:ss ZZZ",
-    "Thu Jan 12 15:04:05 2006", 11)
+parseTest("Monday, 12-Jan-06 15:04:05 +0", "dddd, dd-MMM-yy HH:mm:ss z",
+    "2006-01-12T15:04:05+00:00", 11)
 # RFC1123     = "Mon, 02 Jan 2006 15:04:05 MST"
-parseTest("Sun, 01 Mar 2015 15:04:05 MST", "ddd, dd MMM yyyy HH:mm:ss ZZZ",
-    "Sun Mar  1 15:04:05 2015", 59) # day after february in non-leap year
+parseTest("Sun, 01 Mar 2015 15:04:05 +0", "ddd, dd MMM yyyy HH:mm:ss z",
+    "2015-03-01T15:04:05+00:00", 59) # day after february in non-leap year
 # RFC1123Z    = "Mon, 02 Jan 2006 15:04:05 -0700" # RFC1123 with numeric zone
 parseTest("Thu, 12 Jan 2006 15:04:05 -07:00", "ddd, dd MMM yyyy HH:mm:ss zzz",
-    "Thu Jan 12 15:04:05 2006", 11)
+    "2006-01-12T22:04:05+00:00", 11)
 # RFC3339     = "2006-01-02T15:04:05Z07:00"
 parseTest("2006-01-12T15:04:05Z-07:00", "yyyy-MM-ddTHH:mm:ssZzzz",
-    "Thu Jan 12 15:04:05 2006", 11)
+    "2006-01-12T22:04:05+00:00", 11)
 parseTest("2006-01-12T15:04:05Z-07:00", "yyyy-MM-dd'T'HH:mm:ss'Z'zzz",
-    "Thu Jan 12 15:04:05 2006", 11)
+    "2006-01-12T22:04:05+00:00", 11)
 # RFC3339Nano = "2006-01-02T15:04:05.999999999Z07:00"
 parseTest("2006-01-12T15:04:05.999999999Z-07:00",
-    "yyyy-MM-ddTHH:mm:ss.999999999Zzzz", "Thu Jan 12 15:04:05 2006", 11)
+    "yyyy-MM-ddTHH:mm:ss.999999999Zzzz", "2006-01-12T22:04:05+00:00", 11)
+for tzFormat in ["z", "zz", "zzz"]:
+  # formatting timezone as 'Z' for UTC
+  parseTest("2001-01-12T22:04:05Z", "yyyy-MM-dd'T'HH:mm:ss" & tzFormat,
+      "2001-01-12T22:04:05+00:00", 11)
 # Kitchen     = "3:04PM"
 parseTestTimeOnly("3:04PM", "h:mmtt", "15:04:00")
 #when not defined(testing):
@@ -101,21 +121,20 @@ doAssert getDayOfWeekJulian(21, 9, 1970) == dMon
 doAssert getDayOfWeekJulian(1, 1, 2000) == dSat
 doAssert getDayOfWeekJulian(1, 1, 2021) == dFri
 
-# toSeconds tests with GM and Local timezones
-#var t4 = getGMTime(fromSeconds(876124714)) # Mon  6 Oct 08:58:34 BST 1997
-var t4L = getLocalTime(fromSeconds(876124714))
-doAssert toSeconds(timeInfoToTime(t4L)) == 876124714    # fromSeconds is effectively "localTime"
-doAssert toSeconds(timeInfoToTime(t4L)) + t4L.timezone.float == toSeconds(timeInfoToTime(t4))
+# toSeconds tests with GM timezone
+let t4L = getGMTime(fromSeconds(876124714))
+doAssert toSeconds(toTime(t4L)) == 876124714
+doAssert toSeconds(toTime(t4L)) + t4L.timezone.float == toSeconds(toTime(t4))
 
 # adding intervals
 var
-  a1L = toSeconds(timeInfoToTime(t4L + initInterval(hours = 1))) + t4L.timezone.float
-  a1G = toSeconds(timeInfoToTime(t4)) + 60.0 * 60.0
+  a1L = toSeconds(toTime(t4L + initInterval(hours = 1))) + t4L.timezone.float
+  a1G = toSeconds(toTime(t4)) + 60.0 * 60.0
 doAssert a1L == a1G
 
 # subtracting intervals
-a1L = toSeconds(timeInfoToTime(t4L - initInterval(hours = 1))) + t4L.timezone.float
-a1G = toSeconds(timeInfoToTime(t4)) - (60.0 * 60.0)
+a1L = toSeconds(toTime(t4L - initInterval(hours = 1))) + t4L.timezone.float
+a1G = toSeconds(toTime(t4)) - (60.0 * 60.0)
 doAssert a1L == a1G
 
 # add/subtract TimeIntervals and Time/TimeInfo
@@ -164,3 +183,47 @@ let dstT1 = parse("2016-01-01 00:00:00", "yyyy-MM-dd HH:mm:ss")
 let dstT2 = parse("2016-06-01 00:00:00", "yyyy-MM-dd HH:mm:ss")
 doAssert dstT1 == getLocalTime(toTime(dstT1))
 doAssert dstT2 == getLocalTime(toTime(dstT2))
+
+# Comparison between Time objects should be detected by compiler
+# as 'noSideEffect'.
+proc cmpTimeNoSideEffect(t1: Time, t2: Time): bool {.noSideEffect.} =
+  result = t1 == t2
+doAssert cmpTimeNoSideEffect(0.fromSeconds, 0.fromSeconds)
+# Additionally `==` generic for seq[T] has explicit 'noSideEffect' pragma
+# so we can check above condition by comparing seq[Time] sequences
+let seqA: seq[Time] = @[]
+let seqB: seq[Time] = @[]
+doAssert seqA == seqB
+
+for tz in [
+    (0, "+0", "+00", "+00:00"), # UTC
+    (-3600, "+1", "+01", "+01:00"), # CET
+    (-39600, "+11", "+11", "+11:00"), # two digits
+    (-1800, "+0", "+00", "+00:30"), # half an hour
+    (7200, "-2", "-02", "-02:00"), # positive
+    (38700, "-10", "-10", "-10:45")]: # positive with three quaters hour
+  let ti = TimeInfo(monthday: 1, timezone: tz[0])
+  doAssert ti.format("z") == tz[1]
+  doAssert ti.format("zz") == tz[2]
+  doAssert ti.format("zzz") == tz[3]
+
+block dstTest:
+  let nonDst = TimeInfo(year: 2015, month: mJan, monthday: 01, yearday: 0,
+      weekday: dThu, hour: 00, minute: 00, second: 00, isDST: false, timezone: 0)
+  var dst = nonDst
+  dst.isDst = true
+  # note that both isDST == true and isDST == false are valid here because
+  # DST is in effect on January 1st in some southern parts of Australia.
+
+  doAssert nonDst.toTime() - dst.toTime() == 3600
+  doAssert nonDst.format("z") == "+0"
+  doAssert dst.format("z") == "+1"
+
+  # parsing will set isDST in relation to the local time. We take a date in
+  # January and one in July to maximize the probability to hit one date with DST
+  # and one without on the local machine. However, this is not guaranteed.
+  let
+    parsedJan = parse("2016-01-05 04:00:00+01:00", "yyyy-MM-dd HH:mm:sszzz")
+    parsedJul = parse("2016-07-01 04:00:00+01:00", "yyyy-MM-dd HH:mm:sszzz")
+  doAssert toTime(parsedJan) == fromSeconds(1451962800)
+  doAssert toTime(parsedJul) == fromSeconds(1467342000)

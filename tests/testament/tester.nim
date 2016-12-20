@@ -445,7 +445,7 @@ proc main() =
     let (dir, file) = splitPath(p.key.string)
     let (_, subdir) = splitPath(dir)
     var cat = Category(subdir)
-    processCategory(r, cat, p.cmdLineRest.string, file)
+    processSingleTest(r, cat, p.cmdLineRest.string, file)
   of "html":
     var commit = 0
     discard parseInt(p.cmdLineRest.string, commit)

@@ -96,10 +96,6 @@ const
                               #define SQLITE_TRANSIENT   ((void(*)(void *))-1)
   SQLITE_DETERMINISTIC* = 0x800
 
-const
-  SQLITE_STATIC* = nil
-  SQLITE_TRANSIENT* = cast[pointer](- 1)
-
 type
   Sqlite3 {.pure, final.} = object
   PSqlite3* = ptr Sqlite3
@@ -114,7 +110,7 @@ type
 
   Callback* = proc (para1: pointer, para2: int32, para3,
                      para4: cstringArray): int32{.cdecl.}
-  Tbind_destructor_func* = proc (para1: pointer){.cdecl.}
+  Tbind_destructor_func* = proc (para1: pointer){.cdecl, locks: 0, tags: [].}
   Create_function_step_func* = proc (para1: Pcontext, para2: int32,
                                       para3: PValueArg){.cdecl.}
   Create_function_func_func* = proc (para1: Pcontext, para2: int32,
@@ -131,6 +127,10 @@ type
     Tcreate_function_final_func: Create_function_final_func,
     Tresult_func: Result_func, Tcreate_collation_func: Create_collation_func,
     Tcollation_needed_func: Collation_needed_func].}
+
+const
+  SQLITE_STATIC* = nil
+  SQLITE_TRANSIENT* = cast[Tbind_destructor_func](-1)
 
 proc close*(para1: PSqlite3): int32{.cdecl, dynlib: Lib, importc: "sqlite3_close".}
 proc exec*(para1: PSqlite3, sql: cstring, para3: Callback, para4: pointer,
@@ -234,7 +234,8 @@ proc bind_parameter_name*(para1: Pstmt, para2: int32): cstring{.cdecl,
     dynlib: Lib, importc: "sqlite3_bind_parameter_name".}
 proc bind_parameter_index*(para1: Pstmt, zName: cstring): int32{.cdecl,
     dynlib: Lib, importc: "sqlite3_bind_parameter_index".}
-  #function sqlite3_clear_bindings(_para1:Psqlite3_stmt):longint;cdecl; external Sqlite3Lib name 'sqlite3_clear_bindings';
+proc clear_bindings*(para1: Pstmt): int32 {.cdecl,
+    dynlib: Lib, importc: "sqlite3_clear_bindings".}
 proc column_count*(pStmt: Pstmt): int32{.cdecl, dynlib: Lib,
     importc: "sqlite3_column_count".}
 proc column_name*(para1: Pstmt, para2: int32): cstring{.cdecl, dynlib: Lib,

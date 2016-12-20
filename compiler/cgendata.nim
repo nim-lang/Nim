@@ -27,8 +27,8 @@ type
     cfsFieldInfo,             # section for field information
     cfsTypeInfo,              # section for type information
     cfsProcHeaders,           # section for C procs prototypes
-    cfsData,                  # section for C constant data
     cfsVars,                  # section for C variable declarations
+    cfsData,                  # section for C constant data
     cfsProcs,                 # section for C procs that are not inline
     cfsInitProc,              # section for the C init proc
     cfsTypeInit1,             # section 1 for declarations of type information
@@ -68,6 +68,7 @@ type
     beforeRetNeeded*: bool    # true iff 'BeforeRet' label for proc is needed
     threadVarAccessed*: bool  # true if the proc already accessed some threadvar
     lastLineInfo*: TLineInfo  # to avoid generating excessive 'nimln' statements
+    currLineInfo*: TLineInfo  # AST codegen will make this superfluous
     nestedTryStmts*: seq[PNode]   # in how many nested try statements we are
                                   # (the vars must be volatile then)
     inExceptBlock*: int       # are we currently inside an except block?

@@ -16,6 +16,9 @@ import
   condsyms, rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases,
   lowerings, semparallel
 
+from modulegraphs import ModuleGraph
+from dynlib import libCandidates
+
 import strutils except `%` # collides with ropes.`%`
 
 when options.hasTinyCBackend:
@@ -188,21 +191,27 @@ proc freshLineInfo(p: BProc; info: TLineInfo): bool =
     result = true
 
 proc genLineDir(p: BProc, t: PNode) =
-  var line = t.info.safeLineNm
+  var tt = t
+  #while tt.kind in {nkStmtListExpr}+nkCallKinds:
+  #  tt = tt.lastSon
+  if tt.kind in nkCallKinds and tt.len > 1:
+    tt = tt.sons[1]
+  let line = tt.info.safeLineNm
+
   if optEmbedOrigSrc in gGlobalOptions:
-    add(p.s(cpsStmts), ~"//" & t.info.sourceLine & rnl)
-  genCLineDir(p.s(cpsStmts), t.info.toFullPath, line)
+    add(p.s(cpsStmts), ~"//" & tt.info.sourceLine & rnl)
+  genCLineDir(p.s(cpsStmts), tt.info.toFullPath, line)
   if ({optStackTrace, optEndb} * p.options == {optStackTrace, optEndb}) and
       (p.prc == nil or sfPure notin p.prc.flags):
-    if freshLineInfo(p, t.info):
+    if freshLineInfo(p, tt.info):
       linefmt(p, cpsStmts, "#endb($1, $2);$n",
-              line.rope, makeCString(toFilename(t.info)))
+              line.rope, makeCString(toFilename(tt.info)))
   elif ({optLineTrace, optStackTrace} * p.options ==
       {optLineTrace, optStackTrace}) and
-      (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex >= 0:
-    if freshLineInfo(p, t.info):
+      (p.prc == nil or sfPure notin p.prc.flags) and tt.info.fileIndex >= 0:
+    if freshLineInfo(p, tt.info):
       linefmt(p, cpsStmts, "nimln($1, $2);$n",
-              line.rope, t.info.quotedFilename)
+              line.rope, tt.info.quotedFilename)
 
 proc postStmtActions(p: BProc) {.inline.} =
   add(p.s(cpsStmts), p.module.injectStmt)
@@ -870,7 +879,7 @@ proc genMainProc(m: BModule) =
     NimMainInner = "N_CDECL(void, NimMainInner)(void) {$N" &
         "$1" &
       "}$N$N"
-      
+
     NimMainProc =
       "N_CDECL(void, NimMain)(void) {$N" &
         "\tvoid (*volatile inner)();$N" &
@@ -972,7 +981,13 @@ proc getSomeInitName(m: PSym, suffix: string): Rope =
   result.add m.name.s
   result.add suffix
 
-proc getInitName(m: PSym): Rope = getSomeInitName(m, "Init000")
+proc getInitName(m: PSym): Rope =
+  if sfMainModule in m.flags:
+    # generate constant name for main module, for "easy" debugging.
+    result = rope"NimMainModule"
+  else:
+    result = getSomeInitName(m, "Init000")
+
 proc getDatInitName(m: PSym): Rope = getSomeInitName(m, "DatInit000")
 
 proc registerModuleToMain(m: PSym) =
@@ -1168,7 +1183,7 @@ proc newModule(module: PSym): BModule =
     if (sfDeadCodeElim in module.flags):
       internalError("added pending module twice: " & module.filename)
 
-proc myOpen(module: PSym): PPassContext =
+proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
   result = newModule(module)
   if optGenIndex in gGlobalOptions and generatedHeader == nil:
     let f = if headerFile.len > 0: headerFile else: gProjectFull
@@ -1203,7 +1218,7 @@ proc getCFile(m: BModule): string =
       else: ".c"
   result = changeFileExt(completeCFilePath(m.cfilename.withPackageName), ext)
 
-proc myOpenCached(module: PSym, rd: PRodReader): PPassContext =
+proc myOpenCached(graph: ModuleGraph; module: PSym, rd: PRodReader): PPassContext =
   assert optSymbolFiles in gGlobalOptions
   var m = newModule(module)
   readMergeInfo(getCFile(m), m)

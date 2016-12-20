@@ -841,15 +841,19 @@ elif not defined(useNimRtl):
       if data.workingDir.len > 0:
         setCurrentDir($data.workingDir)
       var pid: Pid
+      var err: OSErrorCode
 
       if data.optionPoUsePath:
         res = posix_spawnp(pid, data.sysCommand, fops, attr, data.sysArgs, data.sysEnv)
+        if res != 0'i32: err = osLastError()
       else:
         res = posix_spawn(pid, data.sysCommand, fops, attr, data.sysArgs, data.sysEnv)
+        if res != 0'i32: err = osLastError()
 
       discard posix_spawn_file_actions_destroy(fops)
       discard posix_spawnattr_destroy(attr)
-      chck res
+      if res != 0'i32: raiseOSError(err)
+
       return pid
   else:
     proc startProcessAuxFork(data: StartProcessData): Pid =
@@ -961,10 +965,16 @@ elif not defined(useNimRtl):
     var ret : int
     var status : cint = 1
     ret = waitpid(p.id, status, WNOHANG)
-    if WIFEXITED(status):
-      p.exitStatus = status
-    if ret == 0: return true # Can't establish status. Assume running.
-    result = ret == int(p.id)
+    if ret == int(p.id):
+      if WIFEXITED(status):
+        p.exitStatus = status
+        return false
+      else:
+        return true
+    elif ret == 0:
+      return true # Can't establish status. Assume running.
+    else:
+      return false
 
   proc terminate(p: Process) =
     if kill(p.id, SIGTERM) != 0'i32:

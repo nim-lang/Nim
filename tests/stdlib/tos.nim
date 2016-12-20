@@ -36,6 +36,9 @@ false
 false
 false
 false
+true
+true
+Raises
 '''
 """
 # test os path creation, iteration, and deletion
@@ -86,3 +89,22 @@ for file in files:
 
 removeDir(dname)
 echo dirExists(dname)
+
+# createDir should create recursive directories
+createDir(dirs[0] / dirs[1])
+echo dirExists(dirs[0] / dirs[1]) # true
+removeDir(dirs[0])
+
+# createDir should properly handle trailing separator
+createDir(dname / "")
+echo dirExists(dname) # true
+removeDir(dname)
+
+# createDir should raise IOError if the path exists
+# and is not a directory
+open(dname, fmWrite).close
+try:
+  createDir(dname)
+except IOError:
+  echo "Raises"
+removeFile(dname)

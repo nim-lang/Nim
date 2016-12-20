@@ -12,9 +12,9 @@ Zips
 We now encourage you to install via the provided zipfiles:
 
 * | 32 bit: `nim-0.15.2_x32.zip <download/nim-0.15.2_x32.zip>`_
-  | SHA-256
+  | SHA-256  0f1bfb74751f55e090140a361c08e9f39f1dd03f1f0c070c061f2d5049ab9f96
 * | 64 bit: `nim-0.15.2_x64.zip <download/nim-0.15.2_x64.zip>`_
-  | SHA-256
+  | SHA-256  ceea42de6ebcd41032ee51f04526dc4cf2cbb0958ca6ad2321cf21944e05f553
 
 Unzip these where you want and optionally run ``finish.exe`` to
 detect your MingW environment.
@@ -28,9 +28,9 @@ so will unlikely to be provided further in the future. These
 installers have everything you need to use Nim, including a C compiler.
 
 * | 32 bit: `nim-0.15.2_x32.exe <download/nim-0.15.2_x32.exe>`_
-  | SHA-256
+  | SHA-256  8d648295dbd59cb315c98926a1da9f1f68773a1a2ef3d9d4c91c59387167efa3
 * | 64 bit: `nim-0.15.2_x64.exe <download/nim-0.15.2_x64.exe>`_
-  | SHA-256
+  | SHA-256  8c7efc6571921c2d2e5e995f801d4229ea1de19fbdabdcba1628307bd4612392
 
 These installers also include Aporia, Nimble and other useful Nim tools to get
 you started with Nim development!
@@ -49,7 +49,7 @@ like systems.
 Firstly, download this archive:
 
 * | `nim-0.15.2.tar.xz (4.5MB) <download/nim-0.15.2.tar.xz>`_
-  | SHA-256
+  | SHA-256  905df2316262aa2cbacae067acf45fc05c2a71c8c6fde1f2a70c927ebafcfe8a
 
 Extract the archive. Then copy the extracted files into your chosen installation
 directory, ideally somewhere in your home directory.
@@ -61,7 +61,7 @@ Now open a terminal and follow these instructions:
 ``cd ~/programs/nim``.
 * run ``sh build.sh``.
 * Add ``$your_install_dir/bin`` to your PATH.
-* To build associated tools like ``nimble`` and ``nimsuggest`` run ``nim e install_tools.nims``.
+* To build associated tools like ``nimble`` and ``nimsuggest`` run ``nim c koch && koch tools``.
 
 After restarting your terminal, you should be able to run ``nim -v``
 which should show you the version of Nim you just installed.

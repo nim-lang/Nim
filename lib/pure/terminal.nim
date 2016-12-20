@@ -13,6 +13,8 @@
 ## Windows API.
 ## Changing the style is permanent even after program termination! Use the
 ## code ``system.addQuitProc(resetAttributes)`` to restore the defaults.
+## Similarly, if you hide the cursor, make sure to unhide it with
+## ``showCursor`` before quitting.
 
 import macros
 
@@ -29,6 +31,8 @@ when defined(windows):
     BACKGROUND_GREEN = 32
     BACKGROUND_RED = 64
     BACKGROUND_INTENSITY = 128
+    FOREGROUND_RGB = FOREGROUND_RED or FOREGROUND_GREEN or FOREGROUND_BLUE
+    BACKGROUND_RGB = BACKGROUND_RED or BACKGROUND_GREEN or BACKGROUND_BLUE
 
   type
     SHORT = int16
@@ -49,6 +53,10 @@ when defined(windows):
       srWindow: SMALL_RECT
       dwMaximumWindowSize: COORD
 
+    CONSOLE_CURSOR_INFO = object
+      dwSize: DWORD
+      bVisible: WINBOOL
+
   proc duplicateHandle(hSourceProcessHandle: HANDLE, hSourceHandle: HANDLE,
                        hTargetProcessHandle: HANDLE, lpTargetHandle: ptr HANDLE,
                        dwDesiredAccess: DWORD, bInheritHandle: WINBOOL,
@@ -60,11 +68,26 @@ when defined(windows):
     lpConsoleScreenBufferInfo: ptr CONSOLE_SCREEN_BUFFER_INFO): WINBOOL{.stdcall,
     dynlib: "kernel32", importc: "GetConsoleScreenBufferInfo".}
 
+  proc getConsoleCursorInfo(hConsoleOutput: HANDLE,
+      lpConsoleCursorInfo: ptr CONSOLE_CURSOR_INFO): WINBOOL{.
+      stdcall, dynlib: "kernel32", importc: "GetConsoleCursorInfo".}
+
+  proc setConsoleCursorInfo(hConsoleOutput: HANDLE,
+      lpConsoleCursorInfo: ptr CONSOLE_CURSOR_INFO): WINBOOL{.
+      stdcall, dynlib: "kernel32", importc: "SetConsoleCursorInfo".}
+
   proc terminalWidthIoctl*(handles: openArray[Handle]): int =
     var csbi: CONSOLE_SCREEN_BUFFER_INFO
     for h in handles:
       if getConsoleScreenBufferInfo(h, addr csbi) != 0:
         return int(csbi.srWindow.Right - csbi.srWindow.Left + 1)
+    return 0
+
+  proc terminalHeightIoctl*(handles: openArray[Handle]): int =
+    var csbi: CONSOLE_SCREEN_BUFFER_INFO
+    for h in handles:
+      if getConsoleScreenBufferInfo(h, addr csbi) != 0:
+        return int(csbi.srWindow.Bottom - csbi.srWindow.Top + 1)
     return 0
 
   proc terminalWidth*(): int =
@@ -74,6 +97,14 @@ when defined(windows):
                              getStdHandle(STD_ERROR_HANDLE) ] )
     if w > 0: return w
     return 80
+
+  proc terminalHeight*(): int =
+    var h: int = 0
+    h = terminalHeightIoctl([ getStdHandle(STD_INPUT_HANDLE),
+                              getStdHandle(STD_OUTPUT_HANDLE),
+                              getStdHandle(STD_ERROR_HANDLE) ] )
+    if h > 0: return h
+    return 0
 
   proc setConsoleCursorPosition(hConsoleOutput: HANDLE,
                                 dwCursorPosition: COORD): WINBOOL{.
@@ -161,7 +192,17 @@ else:
         return int(win.ws_col)
     return 0
 
+  proc terminalHeightIoctl*(fds: openArray[int]): int =
+    ## Returns terminal height from first fd that supports the ioctl.
+
+    var win: IOctl_WinSize
+    for fd in fds:
+      if ioctl(cint(fd), TIOCGWINSZ, addr win) != -1:
+        return int(win.ws_row)
+    return 0
+
   var L_ctermid{.importc, header: "<stdio.h>".}: cint
+
   proc terminalWidth*(): int =
     ## Returns some reasonable terminal width from either standard file
     ## descriptors, controlling terminal, environment variables or tradition.
@@ -178,6 +219,53 @@ else:
     if len(s) > 0 and parseInt(string(s), w) > 0 and w > 0:
       return w
     return 80                               #Finally default to venerable value
+
+  proc terminalHeight*(): int =
+    ## Returns some reasonable terminal height from either standard file
+    ## descriptors, controlling terminal, environment variables or tradition.
+    ## Zero is returned if the height could not be determined.
+
+    var h = terminalHeightIoctl([0, 1, 2])  # Try standard file descriptors
+    if h > 0: return h
+    var cterm = newString(L_ctermid)        # Try controlling tty
+    var fd = open(ctermid(cstring(cterm)), O_RDONLY)
+    if fd != -1:
+      h = terminalHeightIoctl([ int(fd) ])
+    discard close(fd)
+    if h > 0: return h
+    var s = getEnv("LINES")                 # Try standard env var
+    if len(s) > 0 and parseInt(string(s), h) > 0 and h > 0:
+      return h
+    return 0                                # Could not determine height
+
+proc terminalSize*(): tuple[w, h: int] =
+  ## Returns the terminal width and height as a tuple. Internally calls
+  ## `terminalWidth` and `terminalHeight`, so the same assumptions apply.
+  result = (terminalWidth(), terminalHeight())
+
+when defined(windows):
+  proc setCursorVisibility(f: File, visible: bool) =
+    var ccsi: CONSOLE_CURSOR_INFO
+    let h = conHandle(f)
+    if getConsoleCursorInfo(h, addr(ccsi)) == 0:
+      raiseOSError(osLastError())
+    ccsi.bVisible = if visible: 1 else: 0
+    if setConsoleCursorInfo(h, addr(ccsi)) == 0:
+      raiseOSError(osLastError())
+
+proc hideCursor*(f: File) =
+  ## Hides the cursor.
+  when defined(windows):
+    setCursorVisibility(f, false)
+  else:
+    f.write("\e[?25l")
+
+proc showCursor*(f: File) =
+  ## Shows the cursor.
+  when defined(windows):
+    setCursorVisibility(f, true)
+  else:
+    f.write("\e[?25h")
 
 proc setCursorPos*(f: File, x, y: int) =
   ## Sets the terminal's cursor to the (x,y) position.
@@ -369,12 +457,13 @@ proc setStyle*(f: File, style: set[Style]) =
   ## Sets the terminal style.
   when defined(windows):
     let h = conHandle(f)
+    var old = getAttributes(h) and (FOREGROUND_RGB or BACKGROUND_RGB)
     var a = 0'i16
     if styleBright in style: a = a or int16(FOREGROUND_INTENSITY)
     if styleBlink in style: a = a or int16(BACKGROUND_INTENSITY)
     if styleReverse in style: a = a or 0x4000'i16 # COMMON_LVB_REVERSE_VIDEO
     if styleUnderscore in style: a = a or 0x8000'i16 # COMMON_LVB_UNDERSCORE
-    discard setConsoleTextAttribute(h, a)
+    discard setConsoleTextAttribute(h, old or a)
   else:
     for s in items(style):
       f.write("\e[" & $ord(s) & 'm')
@@ -423,7 +512,7 @@ proc setForegroundColor*(f: File, fg: ForegroundColor, bright=false) =
   ## Sets the terminal's foreground color.
   when defined(windows):
     let h = conHandle(f)
-    var old = getAttributes(h) and not 0x0007
+    var old = getAttributes(h) and not FOREGROUND_RGB
     if bright:
       old = old or FOREGROUND_INTENSITY
     const lookup: array[ForegroundColor, int] = [
@@ -445,7 +534,7 @@ proc setBackgroundColor*(f: File, bg: BackgroundColor, bright=false) =
   ## Sets the terminal's background color.
   when defined(windows):
     let h = conHandle(f)
-    var old = getAttributes(h) and not 0x0070
+    var old = getAttributes(h) and not BACKGROUND_RGB
     if bright:
       old = old or BACKGROUND_INTENSITY
     const lookup: array[BackgroundColor, int] = [
@@ -558,6 +647,8 @@ proc getch*(): char =
     discard fd.tcsetattr(TCSADRAIN, addr oldMode)
 
 # Wrappers assuming output to stdout:
+template hideCursor*() = hideCursor(stdout)
+template showCursor*() = showCursor(stdout)
 template setCursorPos*(x, y: int) = setCursorPos(stdout, x, y)
 template setCursorXPos*(x: int)   = setCursorXPos(stdout, x)
 when defined(windows):

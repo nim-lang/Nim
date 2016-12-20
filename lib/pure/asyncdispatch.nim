@@ -11,7 +11,7 @@ include "system/inclrtl"
 
 import os, oids, tables, strutils, times, heapqueue
 
-import nativesockets, net, queues
+import nativesockets, net, deques
 
 export Port, SocketFlag
 
@@ -164,7 +164,7 @@ include includes/asyncfutures
 type
   PDispatcherBase = ref object of RootRef
     timers: HeapQueue[tuple[finishAt: float, fut: Future[void]]]
-    callbacks: Queue[proc ()]
+    callbacks: Deque[proc ()]
 
 proc processTimers(p: PDispatcherBase) {.inline.} =
   while p.timers.len > 0 and epochTime() >= p.timers[0].finishAt:
@@ -172,7 +172,7 @@ proc processTimers(p: PDispatcherBase) {.inline.} =
 
 proc processPendingCallbacks(p: PDispatcherBase) =
   while p.callbacks.len > 0:
-    var cb = p.callbacks.dequeue()
+    var cb = p.callbacks.popFirst()
     cb()
 
 proc adjustedTimeout(p: PDispatcherBase, timeout: int): int {.inline.} =
@@ -230,7 +230,7 @@ when defined(windows) or defined(nimdoc):
     result.ioPort = createIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)
     result.handles = initSet[AsyncFD]()
     result.timers.newHeapQueue()
-    result.callbacks = initQueue[proc ()](64)
+    result.callbacks = initDeque[proc ()](64)
 
   var gDisp{.threadvar.}: PDispatcher ## Global dispatcher
   proc getGlobalDispatcher*(): PDispatcher =
@@ -893,9 +893,11 @@ when defined(windows) or defined(nimdoc):
               deallocShared(cast[pointer](pcd))
               raiseOSError(osLastError())
             else:
-              # we ref pcd.ovl one more time, because it will be unrefed in
-              # poll()
+              # we incref `pcd.ovl` and `protect` callback one more time,
+              # because it will be unrefed and disposed in `poll()` after
+              # callback finishes.
               GC_ref(pcd.ovl)
+              pcd.ovl.data.cell = system.protect(rawEnv(pcd.ovl.data.cb))
     )
     # We need to protect our callback environment value, so GC will not free it
     # accidentally.
@@ -956,17 +958,8 @@ when defined(windows) or defined(nimdoc):
   initAll()
 else:
   import selectors
-  when defined(windows):
-    import winlean
-    const
-      EINTR = WSAEINPROGRESS
-      EINPROGRESS = WSAEINPROGRESS
-      EWOULDBLOCK = WSAEWOULDBLOCK
-      EAGAIN = EINPROGRESS
-      MSG_NOSIGNAL = 0
-  else:
-    from posix import EINTR, EAGAIN, EINPROGRESS, EWOULDBLOCK, MSG_PEEK,
-                      MSG_NOSIGNAL
+  from posix import EINTR, EAGAIN, EINPROGRESS, EWOULDBLOCK, MSG_PEEK,
+                    MSG_NOSIGNAL
 
   type
     AsyncFD* = distinct cint
@@ -987,7 +980,7 @@ else:
     new result
     result.selector = newSelector()
     result.timers.newHeapQueue()
-    result.callbacks = initQueue[proc ()](64)
+    result.callbacks = initDeque[proc ()](64)
 
   var gDisp{.threadvar.}: PDispatcher ## Global dispatcher
   proc getGlobalDispatcher*(): PDispatcher =
@@ -1043,6 +1036,26 @@ else:
     p.selector[fd.SocketHandle].data.PData.writeCBs.add(cb)
     update(fd, p.selector[fd.SocketHandle].events + {EvWrite})
 
+  template processCallbacks(callbacks: expr) =
+    # Callback may add items to ``callbacks`` which causes issues if
+    # we are iterating over it at the same time. We therefore
+    # make a copy to iterate over.
+    let currentCBs = callbacks
+    callbacks = @[]
+    # Using another sequence because callbacks themselves can add
+    # other callbacks.
+    var newCBs: seq[Callback] = @[]
+    for cb in currentCBs:
+      if newCBs.len > 0:
+        # A callback has already returned with EAGAIN, don't call any
+        # others until next `poll`.
+        newCBs.add(cb)
+      else:
+        if not cb(data.fd):
+          # Callback wants to be called again.
+          newCBs.add(cb)
+    callbacks = newCBs & callbacks
+
   proc poll*(timeout = 500) =
     let p = getGlobalDispatcher()
 
@@ -1056,23 +1069,10 @@ else:
         # `recv(...)` routines.
 
         if EvRead in info.events or info.events == {EvError}:
-          # Callback may add items to ``data.readCBs`` which causes issues if
-          # we are iterating over ``data.readCBs`` at the same time. We therefore
-          # make a copy to iterate over.
-          let currentCBs = data.readCBs
-          data.readCBs = @[]
-          for cb in currentCBs:
-            if not cb(data.fd):
-              # Callback wants to be called again.
-              data.readCBs.add(cb)
+          processCallbacks(data.readCBs)
 
         if EvWrite in info.events or info.events == {EvError}:
-          let currentCBs = data.writeCBs
-          data.writeCBs = @[]
-          for cb in currentCBs:
-            if not cb(data.fd):
-              # Callback wants to be called again.
-              data.writeCBs.add(cb)
+          processCallbacks(data.writeCBs)
 
         if info.key in p.selector:
           var newEvents: set[Event]
@@ -1410,7 +1410,7 @@ proc recvLine*(socket: AsyncFD): Future[string] {.async, deprecated.} =
 proc callSoon*(cbproc: proc ()) =
   ## Schedule `cbproc` to be called as soon as possible.
   ## The callback is called when control returns to the event loop.
-  getGlobalDispatcher().callbacks.enqueue(cbproc)
+  getGlobalDispatcher().callbacks.addLast(cbproc)
 
 proc runForever*() =
   ## Begins a never ending global dispatcher poll loop.

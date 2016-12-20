@@ -13,8 +13,10 @@
 
 import
   ast, strutils, strtabs, options, msgs, os, ropes, idents,
-  wordrecg, syntaxes, renderer, lexer, rstast, rst, rstgen, times, highlite,
-  importer, sempass2, json, xmltree, cgi, typesrenderer, astalgo
+  wordrecg, syntaxes, renderer, lexer, packages/docutils/rstast,
+  packages/docutils/rst, packages/docutils/rstgen, times,
+  packages/docutils/highlite, importer, sempass2, json, xmltree, cgi,
+  typesrenderer, astalgo
 
 type
   TSections = array[TSymKind, Rope]
@@ -514,7 +516,7 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonNode =
     result["code"] = %r.buf
 
 proc checkForFalse(n: PNode): bool =
-  result = n.kind == nkIdent and identEq(n.ident, "false")
+  result = n.kind == nkIdent and cmpIgnoreStyle(n.ident.s, "false") == 0
 
 proc traceDeps(d: PDoc, n: PNode) =
   const k = skModule
@@ -691,7 +693,7 @@ proc writeOutputJson*(d: PDoc, filename, outExt: string,
       discard "fixme: error report"
 
 proc commandDoc*() =
-  var ast = parseFile(gProjectMainIdx)
+  var ast = parseFile(gProjectMainIdx, newIdentCache())
   if ast == nil: return
   var d = newDocumentor(gProjectFull, options.gConfigVars)
   d.hasToc = true
@@ -721,7 +723,7 @@ proc commandRst2TeX*() =
   commandRstAux(gProjectFull, TexExt)
 
 proc commandJson*() =
-  var ast = parseFile(gProjectMainIdx)
+  var ast = parseFile(gProjectMainIdx, newIdentCache())
   if ast == nil: return
   var d = newDocumentor(gProjectFull, options.gConfigVars)
   d.hasToc = true

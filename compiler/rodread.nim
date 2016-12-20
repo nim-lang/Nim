@@ -142,6 +142,7 @@ type
     methods*: TSymSeq
     origFile: string
     inViewMode: bool
+    cache*: IdentCache
 
   PRodReader* = ref TRodReader
 
@@ -219,7 +220,7 @@ proc decodeNodeLazyBody(r: PRodReader, fInfo: TLineInfo,
       if r.s[r.pos] == '!':
         inc(r.pos)
         var fl = decodeStr(r.s, r.pos)
-        result.ident = getIdent(fl)
+        result.ident = r.cache.getIdent(fl)
       else:
         internalError(result.info, "decodeNode: nkIdent")
     of nkSym:
@@ -401,7 +402,7 @@ proc decodeSym(r: PRodReader, info: TLineInfo): PSym =
     internalError(info, "decodeSym: no id")
   if r.s[r.pos] == '&':
     inc(r.pos)
-    ident = getIdent(decodeStr(r.s, r.pos))
+    ident = r.cache.getIdent(decodeStr(r.s, r.pos))
   else:
     internalError(info, "decodeSym: no ident")
   #echo "decoding: {", ident.s
@@ -519,7 +520,7 @@ proc newStub(r: PRodReader, name: string, id: int): PSym =
   new(result)
   result.kind = skStub
   result.id = id
-  result.name = getIdent(name)
+  result.name = r.cache.getIdent(name)
   result.position = r.readerIndex
   setId(id)                   #MessageOut(result.name.s);
   if debugIds: registerID(result)
@@ -632,7 +633,7 @@ proc processRodFile(r: PRodReader, hash: SecureHash) =
       while r.s[r.pos] > '\x0A':
         w = decodeStr(r.s, r.pos)
         inc(d)
-        if not condsyms.isDefined(getIdent(w)):
+        if not condsyms.isDefined(r.cache.getIdent(w)):
           r.reason = rrDefines #MessageOut('not defined, but should: ' + w);
         if r.s[r.pos] == ' ': inc(r.pos)
       if d != countDefinedSymbols(): r.reason = rrDefines
@@ -707,8 +708,9 @@ proc startsWith(buf: cstring, token: string, pos = 0): bool =
   result = s == token.len
 
 proc newRodReader(modfilename: string, hash: SecureHash,
-                  readerIndex: int): PRodReader =
+                  readerIndex: int; cache: IdentCache): PRodReader =
   new(result)
+  result.cache = cache
   try:
     result.memfile = memfiles.open(modfilename)
   except OSError:
@@ -866,7 +868,7 @@ proc getHash*(fileIdx: int32): SecureHash =
 template growCache*(cache, pos) =
   if cache.len <= pos: cache.setLen(pos+1)
 
-proc checkDep(fileIdx: int32): TReasonForRecompile =
+proc checkDep(fileIdx: int32; cache: IdentCache): TReasonForRecompile =
   assert fileIdx != InvalidFileIDX
   growCache gMods, fileIdx
   if gMods[fileIdx].reason != rrEmpty:
@@ -877,7 +879,7 @@ proc checkDep(fileIdx: int32): TReasonForRecompile =
   gMods[fileIdx].reason = rrNone  # we need to set it here to avoid cycles
   result = rrNone
   var rodfile = toGeneratedFile(filename.withPackageName, RodExt)
-  var r = newRodReader(rodfile, hash, fileIdx)
+  var r = newRodReader(rodfile, hash, fileIdx, cache)
   if r == nil:
     result = (if existsFile(rodfile): rrRodInvalid else: rrRodDoesNotExist)
   else:
@@ -888,10 +890,10 @@ proc checkDep(fileIdx: int32): TReasonForRecompile =
       # NOTE: we need to process the entire module graph so that no ID will
       # be used twice! However, compilation speed does not suffer much from
       # this, since results are cached.
-      var res = checkDep(systemFileIdx)
+      var res = checkDep(systemFileIdx, cache)
       if res != rrNone: result = rrModDeps
       for i in countup(0, high(r.modDeps)):
-        res = checkDep(r.modDeps[i])
+        res = checkDep(r.modDeps[i], cache)
         if res != rrNone:
           result = rrModDeps
           # we cannot break here, because of side-effects of `checkDep`
@@ -904,14 +906,14 @@ proc checkDep(fileIdx: int32): TReasonForRecompile =
   gMods[fileIdx].rd = r
   gMods[fileIdx].reason = result  # now we know better
 
-proc handleSymbolFile*(module: PSym): PRodReader =
+proc handleSymbolFile*(module: PSym; cache: IdentCache): PRodReader =
   let fileIdx = module.fileIdx
   if optSymbolFiles notin gGlobalOptions:
     module.id = getID()
     return nil
   idgen.loadMaxIds(options.gProjectPath / options.gProjectName)
 
-  discard checkDep(fileIdx)
+  discard checkDep(fileIdx, cache)
   if gMods[fileIdx].reason == rrEmpty: internalError("handleSymbolFile")
   result = gMods[fileIdx].rd
   if result != nil:
@@ -1078,7 +1080,7 @@ proc writeType(f: File; t: PType) =
   f.write("]\n")
 
 proc viewFile(rodfile: string) =
-  var r = newRodReader(rodfile, secureHash(""), 0)
+  var r = newRodReader(rodfile, secureHash(""), 0, newIdentCache())
   if r == nil:
     rawMessage(errGenerated, "cannot open file (or maybe wrong version):" &
        rodfile)

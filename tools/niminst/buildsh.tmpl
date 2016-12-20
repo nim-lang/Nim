@@ -53,7 +53,7 @@ uos=`echo $uos | tr "[:upper:]" "[:lower:]"`
 case $uos in
   *linux* )
     myos="linux"
-    LINK_FLAGS="$LINK_FLAGS -ldl -lm"
+    LINK_FLAGS="$LINK_FLAGS -ldl -lm -lrt"
     ;;
   *dragonfly* )
     myos="freebsd"

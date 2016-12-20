@@ -7,18 +7,66 @@
 #    distribution, for details about the copyright.
 #
 
-proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) {.benign.}
-proc genericDeepCopyAux(dest, src: pointer, n: ptr TNimNode) {.benign.} =
+type
+  PtrTable = ptr object
+    counter, max: int
+    data: array[0..0xff_ffff, (pointer, pointer)]
+
+template hashPtr(key: pointer): int = cast[int](key) shr 8
+template allocPtrTable: untyped =
+  cast[PtrTable](alloc0(sizeof(int)*2 + sizeof(pointer)*2*cap))
+
+proc rehash(t: PtrTable): PtrTable =
+  let cap = (t.max+1) * 2
+  result = allocPtrTable()
+  result.counter = t.counter
+  result.max = cap-1
+  for i in 0..t.max:
+    let k = t.data[i][0]
+    if k != nil:
+      var h = hashPtr(k)
+      while result.data[h and result.max][0] != nil: inc h
+      result.data[h and result.max] = t.data[i]
+  dealloc t
+
+proc initPtrTable(): PtrTable =
+  const cap = 32
+  result = allocPtrTable()
+  result.counter = 0
+  result.max = cap-1
+
+template deinit(t: PtrTable) = dealloc(t)
+
+proc get(t: PtrTable; key: pointer): pointer =
+  var h = hashPtr(key)
+  while true:
+    let k = t.data[h and t.max][0]
+    if k == nil: break
+    if k == key:
+      return t.data[h and t.max][1]
+    inc h
+
+proc put(t: var PtrTable; key, val: pointer) =
+  if (t.max+1) * 2 < t.counter * 3: t = rehash(t)
+  var h = hashPtr(key)
+  while t.data[h and t.max][0] != nil: inc h
+  t.data[h and t.max] = (key, val)
+  inc t.counter
+
+proc genericDeepCopyAux(dest, src: pointer, mt: PNimType;
+                        tab: var PtrTable) {.benign.}
+proc genericDeepCopyAux(dest, src: pointer, n: ptr TNimNode;
+                        tab: var PtrTable) {.benign.} =
   var
     d = cast[ByteAddress](dest)
     s = cast[ByteAddress](src)
   case n.kind
   of nkSlot:
     genericDeepCopyAux(cast[pointer](d +% n.offset),
-                       cast[pointer](s +% n.offset), n.typ)
+                       cast[pointer](s +% n.offset), n.typ, tab)
   of nkList:
     for i in 0..n.len-1:
-      genericDeepCopyAux(dest, src, n.sons[i])
+      genericDeepCopyAux(dest, src, n.sons[i], tab)
   of nkCase:
     var dd = selectBranch(dest, n)
     var m = selectBranch(src, n)
@@ -29,10 +77,10 @@ proc genericDeepCopyAux(dest, src: pointer, n: ptr TNimNode) {.benign.} =
     copyMem(cast[pointer](d +% n.offset), cast[pointer](s +% n.offset),
             n.typ.size)
     if m != nil:
-      genericDeepCopyAux(dest, src, m)
+      genericDeepCopyAux(dest, src, m, tab)
   of nkNone: sysAssert(false, "genericDeepCopyAux")
 
-proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) =
+proc genericDeepCopyAux(dest, src: pointer, mt: PNimType; tab: var PtrTable) =
   var
     d = cast[ByteAddress](dest)
     s = cast[ByteAddress](src)
@@ -60,22 +108,22 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) =
         cast[pointer](dst +% i*% mt.base.size +% GenericSeqSize),
         cast[pointer](cast[ByteAddress](s2) +% i *% mt.base.size +%
                      GenericSeqSize),
-        mt.base)
+        mt.base, tab)
   of tyObject:
     # we need to copy m_type field for tyObject, as it could be empty for
     # sequence reallocations:
     if mt.base != nil:
-      genericDeepCopyAux(dest, src, mt.base)
+      genericDeepCopyAux(dest, src, mt.base, tab)
     else:
       var pint = cast[ptr PNimType](dest)
       pint[] = cast[ptr PNimType](src)[]
-    genericDeepCopyAux(dest, src, mt.node)
+    genericDeepCopyAux(dest, src, mt.node, tab)
   of tyTuple:
-    genericDeepCopyAux(dest, src, mt.node)
+    genericDeepCopyAux(dest, src, mt.node, tab)
   of tyArray, tyArrayConstr:
     for i in 0..(mt.size div mt.base.size)-1:
       genericDeepCopyAux(cast[pointer](d +% i*% mt.base.size),
-                         cast[pointer](s +% i*% mt.base.size), mt.base)
+                         cast[pointer](s +% i*% mt.base.size), mt.base, tab)
   of tyRef:
     let s2 = cast[PPointer](src)[]
     if s2 == nil:
@@ -84,30 +132,29 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) =
       let z = mt.base.deepcopy(s2)
       unsureAsgnRef(cast[PPointer](dest), z)
     else:
-      # we modify the header of the cell temporarily; instead of the type
-      # field we store a forwarding pointer. XXX This is bad when the cloning
-      # fails due to OOM etc.
-      when declared(usrToCell):
-        # unfortunately we only have cycle detection for our native GCs.
-        let x = usrToCell(s2)
-        let forw = cast[int](x.typ)
-        if (forw and 1) == 1:
-          # we stored a forwarding pointer, so let's use that:
-          let z = cast[pointer](forw and not 1)
-          unsureAsgnRef(cast[PPointer](dest), z)
-        else:
+      let z = tab.get(s2)
+      if z == nil:
+        when declared(usrToCell):
+          let x = usrToCell(s2)
           let realType = x.typ
           let z = newObj(realType, realType.base.size)
           unsureAsgnRef(cast[PPointer](dest), z)
-          x.typ = cast[PNimType](cast[int](z) or 1)
-          genericDeepCopyAux(z, s2, realType.base)
-          x.typ = realType
+          tab.put(s2, z)
+          genericDeepCopyAux(z, s2, realType.base, tab)
+        else:
+          when false:
+            # addition check disabled
+            let x = usrToCell(s2)
+            let realType = x.typ
+            sysAssert realType == mt, " types do differ"
+          # this version should work for any possible GC:
+          let size = if mt.base.kind == tyObject: cast[ptr PNimType](s2)[].size else: mt.base.size
+          let z = newObj(mt, size)
+          unsureAsgnRef(cast[PPointer](dest), z)
+          tab.put(s2, z)
+          genericDeepCopyAux(z, s2, mt.base, tab)
       else:
-        let size = if mt.base.kind == tyObject: cast[ptr PNimType](s2)[].size
-                   else: mt.base.size
-        let z = newObj(mt, size)
         unsureAsgnRef(cast[PPointer](dest), z)
-        genericDeepCopyAux(z, s2, mt.base)
   of tyPtr:
     # no cycle check here, but also not really required
     let s2 = cast[PPointer](src)[]
@@ -120,7 +167,9 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType) =
 
 proc genericDeepCopy(dest, src: pointer, mt: PNimType) {.compilerProc.} =
   GC_disable()
-  genericDeepCopyAux(dest, src, mt)
+  var tab = initPtrTable()
+  genericDeepCopyAux(dest, src, mt, tab)
+  deinit tab
   GC_enable()
 
 proc genericSeqDeepCopy(dest, src: pointer, mt: PNimType) {.compilerProc.} =

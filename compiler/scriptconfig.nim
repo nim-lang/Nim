@@ -11,9 +11,9 @@
 ## language.
 
 import
-  ast, modules, passes, passaux, condsyms,
+  ast, modules, idents, passes, passaux, condsyms,
   options, nimconf, lists, sem, semdata, llstream, vm, vmdef, commands, msgs,
-  os, times, osproc, wordrecg, strtabs
+  os, times, osproc, wordrecg, strtabs, modulegraphs
 
 # we support 'cmpIgnoreStyle' natively for efficiency:
 from strutils import cmpIgnoreStyle, contains
@@ -25,9 +25,9 @@ proc listDirs(a: VmArgs, filter: set[PathComponent]) =
     if kind in filter: result.add path
   setResult(a, result)
 
-proc setupVM*(module: PSym; scriptName: string): PEvalContext =
+proc setupVM*(module: PSym; cache: IdentCache; scriptName: string): PEvalContext =
   # For Nimble we need to export 'setupVM'.
-  result = newCtx(module)
+  result = newCtx(module, cache)
   result.mode = emRepl
   registerAdditionalOps(result)
 
@@ -134,9 +134,11 @@ proc setupVM*(module: PSym; scriptName: string): PEvalContext =
   cbconf selfExe:
     setResult(a, os.getAppFilename())
 
-proc runNimScript*(scriptName: string; freshDefines=true) =
+proc runNimScript*(cache: IdentCache; scriptName: string;
+                   freshDefines=true) =
   passes.gIncludeFile = includeModule
   passes.gImportModule = importModule
+  let graph = newModuleGraph()
   if freshDefines: initDefines()
 
   defineSymbol("nimscript")
@@ -146,15 +148,15 @@ proc runNimScript*(scriptName: string; freshDefines=true) =
 
   appendStr(searchPaths, options.libpath)
 
-  var m = makeModule(scriptName)
+  var m = graph.makeModule(scriptName)
   incl(m.flags, sfMainModule)
-  vm.globalCtx = setupVM(m, scriptName)
+  vm.globalCtx = setupVM(m, cache, scriptName)
 
-  compileSystemModule()
-  discard processModule(m, llStreamOpen(scriptName, fmRead), nil)
+  graph.compileSystemModule(cache)
+  discard graph.processModule(m, llStreamOpen(scriptName, fmRead), nil, cache)
 
   # ensure we load 'system.nim' again for the real non-config stuff!
-  resetAllModulesHard()
+  resetSystemArtifacts()
   vm.globalCtx = nil
   # do not remove the defined symbols
   #initDefines()

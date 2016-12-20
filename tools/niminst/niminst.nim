@@ -313,7 +313,7 @@ proc parseIniFile(c: var ConfigData) =
       of cfgSectionStart:
         section = normalize(k.section)
       of cfgKeyValuePair:
-        var v = `%`(k.value, c.vars, {useEnvironment})
+        var v = `%`(k.value, c.vars, {useEnvironment, useEmpty})
         c.vars[k.key] = v
 
         case section

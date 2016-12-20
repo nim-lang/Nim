@@ -87,7 +87,12 @@ proc re*(s: string, flags = {reExtended, reStudy}): Regex =
   result.h = rawCompile(s, cast[cint](flags - {reStudy}))
   if reStudy in flags:
     var msg: cstring
-    result.e = pcre.study(result.h, 0, addr msg)
+    var options: cint = 0
+    var hasJit: cint
+    if pcre.config(pcre.CONFIG_JIT, addr hasJit) == 0:
+      if hasJit == 1'i32:
+        options = pcre.STUDY_JIT_COMPILE
+    result.e = pcre.study(result.h, options, addr msg)
     if not isNil(msg): raiseInvalidRegex($msg)
 
 proc matchOrFind(s: string, pattern: Regex, matches: var openArray[string],
@@ -214,7 +219,7 @@ proc find*(s: string, pattern: Regex, start = 0): int =
   var
     rtarray = initRtArray[cint](3)
     rawMatches = rtarray.getRawData
-    res = pcre.exec(pattern.h, nil, s, len(s).cint, start.cint, 0'i32,
+    res = pcre.exec(pattern.h, pattern.e, s, len(s).cint, start.cint, 0'i32,
       cast[ptr cint](rawMatches), 3)
   if res < 0'i32: return res
   return rawMatches[0]
