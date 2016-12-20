@@ -13,7 +13,8 @@ import strutils, os, parseopt
 import compiler/options, compiler/commands, compiler/modules, compiler/sem,
   compiler/passes, compiler/passaux, compiler/nimfix/pretty,
   compiler/msgs, compiler/nimconf,
-  compiler/extccomp, compiler/condsyms, compiler/lists
+  compiler/extccomp, compiler/condsyms, compiler/lists,
+  compiler/modulegraphs, compiler/idents
 
 const Usage = """
 Nimfix - Tool to patch Nim code
@@ -43,7 +44,7 @@ proc mainCommand =
     # current path is always looked first for modules
     prependStr(searchPaths, gProjectPath)
 
-  compileProject()
+  compileProject(newModuleGraph(), newIdentCache())
   pretty.overwriteFiles()
 
 proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
