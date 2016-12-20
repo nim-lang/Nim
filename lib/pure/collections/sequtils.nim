@@ -350,7 +350,7 @@ proc insert*[T](dest: var seq[T], src: openArray[T], pos=0) =
     dest[i].shallowCopy(dest[j])
     dec(i)
     dec(j)
-  # Insert items from `dest` into `dest` at `pos`
+  # Insert items from `src` into `dest` at `pos`
   inc(j)
   for item in src:
     dest[j] = item
