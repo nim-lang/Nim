@@ -732,12 +732,10 @@ proc genProcNoForward(m: BModule, prc: PSym) =
     # dependency to a compilerproc:
     discard cgsym(m, prc.name.s)
     return
-  if sfImportc in prc.flags:
+  if lfNoDecl in prc.loc.flags:
     fillProcLoc(m, prc)
-    if lfHeader in prc.loc.flags:
-      useHeader(m, prc)
-    elif lfNoDecl notin prc.loc.flags:
-      genProcPrototype(m, prc)
+    useHeader(m, prc)
+    genProcPrototype(m, prc)
   elif prc.typ.callConv == ccInline:
     # We add inline procs to the calling module to enable C based inlining.
     # This also means that a check with ``q.declaredThings`` is wrong, we need
@@ -762,13 +760,17 @@ proc genProcNoForward(m: BModule, prc: PSym) =
       symInDynamicLib(q, prc)
     else:
       symInDynamicLibPartial(m, prc)
-  else:
+  elif sfImportc notin prc.flags:
     var q = findPendingModule(m, prc)
     fillProcLoc(q, prc)
     useHeader(m, prc)
     genProcPrototype(m, prc)
     if q != nil and not containsOrIncl(q.declaredThings, prc.id):
       genProcAux(q, prc)
+  else:
+    fillProcLoc(m, prc)
+    useHeader(m, prc)
+    if sfInfixCall notin prc.flags: genProcPrototype(m, prc)
 
 proc requestConstImpl(p: BProc, sym: PSym) =
   var m = p.module
