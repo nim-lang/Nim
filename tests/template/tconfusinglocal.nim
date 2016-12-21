@@ -1,4 +1,8 @@
 
+# bug #5135
+proc fail*[E](e: E): void =
+  raise newException(Exception, e)
+
 # bug #4875
 type Bar = object
     mFoo: int

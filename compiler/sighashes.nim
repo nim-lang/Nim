@@ -281,6 +281,11 @@ proc hashNonProc*(s: PSym): SigHash =
     c &= it.name.s
     c &= "."
     it = it.owner
+  # for bug #5135 we also take the position into account, but only
+  # for parameters, because who knows what else position dependency
+  # might cause:
+  if s.kind == skParam:
+    c &= s.position
   md5Final c, result.Md5Digest
 
 proc hashOwner*(s: PSym): SigHash =
