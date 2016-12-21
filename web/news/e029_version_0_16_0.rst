@@ -77,6 +77,17 @@ Language Additions
     v[0] = 6.0
     echo v[0]
 
+- The ``import`` statement now supports importing multiple modules from
+  the same directory:
+
+.. code-block:: nim
+  import compiler / [ast, parser, lexer]
+
+Is a shortcut for:
+
+.. code-block:: nim
+  import compiler / ast, compiler / parser, compiler / lexer
+
 
 Bugfixes
 --------

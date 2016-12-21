@@ -10,11 +10,11 @@
 ## Nimfix is a tool that helps to convert old-style Nimrod code to Nim code.
 
 import strutils, os, parseopt
-import compiler/options, compiler/commands, compiler/modules, compiler/sem,
-  compiler/passes, compiler/passaux, compiler/nimfix/pretty,
-  compiler/msgs, compiler/nimconf,
-  compiler/extccomp, compiler/condsyms, compiler/lists,
-  compiler/modulegraphs, compiler/idents
+import compiler/[options, commands, modules, sem,
+  passes, passaux, nimfix/pretty,
+  msgs, nimconf,
+  extccomp, condsyms, lists,
+  modulegraphs, idents]
 
 const Usage = """
 Nimfix - Tool to patch Nim code
