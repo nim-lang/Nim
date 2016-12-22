@@ -97,11 +97,20 @@ proc checkConversionBetweenObjects(castDest, src: PType; pointers: int): TConvSt
 const
   IntegralTypes = {tyBool, tyEnum, tyChar, tyInt..tyUInt64}
 
+proc notIntegralTypeOrRange(t: PType): bool =
+  result = t.kind notin IntegralTypes+{tyRange}
+
+proc notFutureIntegralTypeOrRange(t: PType): bool =
+  if t.sons.len >= 2 and typeToString(t.sons[0]) == "Future":
+    result = notIntegralTypeOrRange(t.sons[1])
+  else:
+    result = true
+
 proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
   result = convOK
   if sameType(castDest, src) and castDest.sym == src.sym:
     # don't annoy conversions that may be needed on another processor:
-    if castDest.kind notin IntegralTypes+{tyRange}:
+    if notIntegralTypeOrRange(castDest) and notFutureIntegralTypeOrRange(castDest):
       result = convNotNeedeed
     return
   var d = skipTypes(castDest, abstractVar)
