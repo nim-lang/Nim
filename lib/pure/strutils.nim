@@ -808,6 +808,8 @@ proc split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.noSideEff
   ##
   ## Substrings are separated by the string `sep`. This is a wrapper around the
   ## `split iterator <#split.i,string,string>`_.
+  doAssert(sep.len > 0)
+  
   accumulateResult(split(s, sep, maxsplit))
 
 proc rsplit*(s: string, seps: set[char] = Whitespace,
