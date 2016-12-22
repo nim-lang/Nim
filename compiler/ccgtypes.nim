@@ -127,15 +127,16 @@ const
                           tyDistinct, tyRange, tyStatic, tyAlias}
 
 proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
-  var typ = typ
+  var t = typ
   while true:
-    if typ.sym != nil and {sfImportc, sfExportc} * typ.sym.flags != {}:
-      return typ.sym.loc.r
+    if t.sym != nil and {sfImportc, sfExportc} * t.sym.flags != {}:
+      return t.sym.loc.r
 
-    if typ.kind in irrelevantForBackend:
-      typ = typ.lastSon
+    if t.kind in irrelevantForBackend:
+      t = t.lastSon
     else:
       break
+  let typ = if typ.kind == tyAlias: typ.lastSon else: typ
   if typ.loc.r == nil:
     typ.loc.r = typ.typeName & $sig
   else:
