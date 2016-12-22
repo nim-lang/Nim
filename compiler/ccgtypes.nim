@@ -207,7 +207,9 @@ proc isImportedType(t: PType): bool =
   result = t.sym != nil and sfImportc in t.sym.flags
 
 proc isImportedCppType(t: PType): bool =
-  result = t.sym != nil and sfInfixCall in t.sym.flags
+  let x = t.skipTypes(irrelevantForBackend)
+  result = (t.sym != nil and sfInfixCall in t.sym.flags) or
+           (x.sym != nil and sfInfixCall in x.sym.flags)
 
 proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope
 proc needsComplexAssignment(typ: PType): bool =
