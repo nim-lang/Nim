@@ -122,18 +122,27 @@ proc typeName(typ: PType): Rope =
            else:
              ~"TY"
 
+const
+  irrelevantForBackend = {tyGenericBody, tyGenericInst, tyGenericInvocation,
+                          tyDistinct, tyRange, tyStatic, tyAlias}
+
 proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
-  let typ = if typ.kind == tyAlias: typ.lastSon else: typ
-  if typ.sym != nil and {sfImportc, sfExportc} * typ.sym.flags != {}:
-    result = typ.sym.loc.r
-  else:
-    if typ.loc.r == nil:
-      typ.loc.r = typ.typeName & $sig
+  var typ = typ
+  while true:
+    if typ.sym != nil and {sfImportc, sfExportc} * typ.sym.flags != {}:
+      return typ.sym.loc.r
+
+    if typ.kind in irrelevantForBackend:
+      typ = typ.lastSon
     else:
-      when defined(debugSigHashes):
-        # check consistency:
-        assert($typ.loc.r == $(typ.typeName & $sig))
-    result = typ.loc.r
+      break
+  if typ.loc.r == nil:
+    typ.loc.r = typ.typeName & $sig
+  else:
+    when defined(debugSigHashes):
+      # check consistency:
+      assert($typ.loc.r == $(typ.typeName & $sig))
+  result = typ.loc.r
   if result == nil: internalError("getTypeName: " & $typ.kind)
 
 proc mapSetType(typ: PType): TCTypeKind =
@@ -573,10 +582,6 @@ proc resolveStarsInCppType(typ: PType, idx, stars: int): PType =
     if result != nil and result.len > 0:
       result = if result.kind == tyGenericInst: result.sons[1]
                else: result.elemType
-
-const
-  irrelevantForBackend = {tyGenericBody, tyGenericInst, tyGenericInvocation,
-                          tyDistinct, tyRange, tyStatic, tyAlias}
 
 proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
   # returns only the type's name
