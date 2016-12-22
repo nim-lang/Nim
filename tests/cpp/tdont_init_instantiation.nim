@@ -1,6 +1,7 @@
 discard """
   cmd: "nim cpp $file"
   output: ''''''
+  disabled: true
 """
 
 # bug #5140
@@ -25,4 +26,4 @@ proc mkC[X]: C[X] {.importcpp: "C<'*0>()", constructor, nodecl.}
 proc foo(): C[int] =
   result = mkC[int]()
 
-discard foo()
+let gl = foo()
