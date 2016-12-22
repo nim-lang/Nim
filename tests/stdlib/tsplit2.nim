@@ -12,7 +12,7 @@ for w in split("|abc|xy|z", {'|'}):
 try:
   discard "hello".split("")
   echo "false"
-except ValueError:
+except AssertionError:
   echo "true"
 
 #OUT true
