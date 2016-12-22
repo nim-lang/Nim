@@ -1655,8 +1655,8 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
   doBlk.sons[namePos] = newAnonSym(c, skTemplate, n.info).newSymNode
   if ids.len > 0:
     doBlk.sons[paramsPos] = newNodeI(nkFormalParams, n.info)
-    doBlk[paramsPos].add getSysSym("stmt").newSymNode # return type
-    ids.add getSysSym("expr").newSymNode # params type
+    doBlk[paramsPos].add getSysSym("typed").newSymNode # return type
+    ids.add getSysSym("untyped").newSymNode # params type
     ids.add emptyNode # no default value
     doBlk[paramsPos].add newNode(nkIdentDefs, n.info, ids)
 
