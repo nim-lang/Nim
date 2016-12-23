@@ -116,15 +116,17 @@ proc mangleName(m: BModule; s: PSym): Rope =
       add(result, m.idOrSig(s))
     s.loc.r = result
 
-proc typeName(typ: PType): Rope =
-  result = if typ.sym != nil and typ.kind in {tyObject, tyEnum}:
-             typ.sym.name.s.mangle.rope
-           else:
-             ~"TY"
 
 const
   irrelevantForBackend = {tyGenericBody, tyGenericInst, tyGenericInvocation,
                           tyDistinct, tyRange, tyStatic, tyAlias}
+
+proc typeName(typ: PType): Rope =
+  let typ = typ.skipTypes(irrelevantForBackend)
+  result = if typ.sym != nil and typ.kind in {tyObject, tyEnum}:
+             typ.sym.name.s.mangle.rope
+           else:
+             ~"TY"
 
 proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
   var t = typ
