@@ -587,7 +587,7 @@ proc cmdChangeTriggersRecompilation(old, new: TCommands): bool =
                cmdInteractive}:
       return false
   of cmdNone, cmdDoc, cmdInterpret, cmdPretty, cmdGenDepend, cmdDump,
-      cmdCheck, cmdParse, cmdScan, cmdIdeTools, cmdDef,
+      cmdCheck, cmdParse, cmdScan, cmdIdeTools, cmdDef, cmdDepList,
       cmdRst2html, cmdRst2tex, cmdInteractive, cmdRun:
     discard
   # else: trigger recompilation:
