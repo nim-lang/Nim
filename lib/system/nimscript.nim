@@ -293,26 +293,28 @@ template task*(name: untyped; description: string; body: untyped): untyped =
     setCommand "nop"
     `name Task`()
 
-var
-  packageName* = ""    ## Nimble support: Set this to the package name. It
-                       ## is usually not required to do that, nims' filename is
-                       ## the default.
-  version*: string     ## Nimble support: The package's version.
-  author*: string      ## Nimble support: The package's author.
-  description*: string ## Nimble support: The package's description.
-  license*: string     ## Nimble support: The package's license.
-  srcDir*: string      ## Nimble support: The package's source directory.
-  binDir*: string      ## Nimble support: The package's binary directory.
-  backend*: string     ## Nimble support: The package's backend.
+when not defined(nimble):
+  # nimble has its own implementation for these things.
+  var
+    packageName* = ""    ## Nimble support: Set this to the package name. It
+                         ## is usually not required to do that, nims' filename is
+                         ## the default.
+    version*: string     ## Nimble support: The package's version.
+    author*: string      ## Nimble support: The package's author.
+    description*: string ## Nimble support: The package's description.
+    license*: string     ## Nimble support: The package's license.
+    srcDir*: string      ## Nimble support: The package's source directory.
+    binDir*: string      ## Nimble support: The package's binary directory.
+    backend*: string     ## Nimble support: The package's backend.
 
-  skipDirs*, skipFiles*, skipExt*, installDirs*, installFiles*,
-    installExt*, bin*: seq[string] = @[] ## Nimble metadata.
-  requiresData*: seq[string] = @[] ## Exposes the list of requirements for read
-                                   ## and write accesses.
+    skipDirs*, skipFiles*, skipExt*, installDirs*, installFiles*,
+      installExt*, bin*: seq[string] = @[] ## Nimble metadata.
+    requiresData*: seq[string] = @[] ## Exposes the list of requirements for read
+                                     ## and write accesses.
 
-proc requires*(deps: varargs[string]) =
-  ## Nimble support: Call this to set the list of requirements of your Nimble
-  ## package.
-  for d in deps: requiresData.add(d)
+  proc requires*(deps: varargs[string]) =
+    ## Nimble support: Call this to set the list of requirements of your Nimble
+    ## package.
+    for d in deps: requiresData.add(d)
 
 {.pop.}
