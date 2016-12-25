@@ -180,7 +180,7 @@ proc sumGeneric(t: PType): int =
     of tyAlias: t = t.lastSon
     of tyBool, tyChar, tyEnum, tyObject, tyPointer,
         tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128,
-        tyUInt..tyUInt64:
+        tyUInt..tyUInt64, tyCompositeTypeClass:
       return isvar
     else:
       return 0

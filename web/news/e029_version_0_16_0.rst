@@ -51,6 +51,10 @@ Tool Additions
 Compiler Additions
 ------------------
 
+- The C/C++ code generator has been rewritten to use stable
+  name mangling rules. This means that compile times for
+  edit-compile-run cycles are much reduced.
+
 
 Language Additions
 ------------------
