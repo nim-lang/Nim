@@ -54,8 +54,8 @@ Possible Commands:
   tests [options]          run the testsuite
   temp options             creates a temporary compiler for testing
   winrelease               creates a release (for coredevs only)
-  nimble                   builds the Nimble tool
-  tools                    builds Nim related tools
+  nimble [--latest]        builds the Nimble tool
+  tools [--latest]         builds Nim related tools
   pushcsource              push generated C sources to its repo! Only for devs!
 Boot options:
   -d:release               produce a release version of the compiler
@@ -159,16 +159,23 @@ proc csource(args: string) =
            "--main:compiler/nim.nim compiler/installer.ini $1") %
        [args, VersionAsString, compileNimInst])
 
+proc latestTaggedCommit(dir: string) =
+  let tags = execProcess("git --git-dir " & dir & "/.git tag -l v*").splitLines
+  var i = 1
+  while tags[^i].len == 0: inc i
+  let tag = tags[^i]
+  doAssert tag.len > 0
+  exec("git --git-dir " & dir & "/.git checkout -f " & tag)
+
 proc bundleNimbleSrc() =
   ## bunldeNimbleSrc() bundles a specific Nimble commit with the tarball. We
   ## always bundle the latest official release.
   if dirExists("dist/nimble/.git"):
+    exec("git --git-dir dist/nimble/.git checkout -f master")
     exec("git --git-dir dist/nimble/.git pull")
   else:
     exec("git clone https://github.com/nim-lang/nimble.git dist/nimble")
-  let tags = execProcess("git --git-dir dist/nimble/.git tag -l v*").splitLines
-  let tag = tags[^1]
-  exec("git --git-dir dist/nimble/.git checkout " & tag)
+  latestTaggedCommit("dist/nimble")
 
 proc bundleNimbleExe() =
   bundleNimbleSrc()
@@ -177,12 +184,14 @@ proc bundleNimbleExe() =
   nimexec("c dist/nimble/src/nimble.nim")
   copyExe("dist/nimble/src/nimble".exe, "bin/nimble".exe)
 
-proc buildNimble() =
-  ## buildNimble() builds Nimble for the building via "github". As such, we
-  ## choose the most recent commit of Nimble too.
+proc buildNimble(latest: bool) =
   var installDir = "dist/nimble"
   if dirExists("dist/nimble/.git"):
-    exec("git --git-dir dist/nimble/.git pull")
+    if latest:
+      exec("git --git-dir dist/nimble/.git checkout -f master")
+      exec("git --git-dir dist/nimble/.git pull")
+    else:
+      bundleNimbleSrc()
   else:
     # if dist/nimble exist, but is not a git repo, don't mess with it:
     if dirExists(installDir):
@@ -191,6 +200,8 @@ proc buildNimble() =
         inc id
       installDir = "dist/nimble" & $id
     exec("git clone https://github.com/nim-lang/nimble.git " & installDir)
+    if not latest:
+      latestTaggedCommit(installDir)
   nimexec("c " & installDir / "src/nimble.nim")
   copyExe(installDir / "src/nimble".exe, "bin/nimble".exe)
 
@@ -227,7 +238,7 @@ proc buildTool(toolname, args: string) =
   nimexec("cc $# $#" % [args, toolname])
   copyFile(dest="bin"/ splitFile(toolname).name.exe, source=toolname.exe)
 
-proc buildTools() =
+proc buildTools(latest: bool) =
   let nimsugExe = "bin/nimsuggest".exe
   nimexec "c --noNimblePath -p:compiler -d:release -o:" & nimsugExe &
       " tools/nimsuggest/nimsuggest.nim"
@@ -239,7 +250,7 @@ proc buildTools() =
     nimexec "c --noNimblePath -p:compiler -o:" & nimbleExe &
         " dist/nimble/src/nimble.nim"
   else:
-    buildNimble()
+    buildNimble(latest)
 
 proc nsis(args: string) =
   bundleNimbleExe()
@@ -477,8 +488,8 @@ of cmdArgument:
   of "test", "tests": tests(op.cmdLineRest)
   of "temp": temp(op.cmdLineRest)
   of "winrelease": winRelease()
-  of "nimble": buildNimble()
-  of "tools": buildTools()
+  of "nimble": buildNimble(op.cmdLineRest == "--latest")
+  of "tools": buildTools(op.cmdLineRest == "--latest")
   of "pushcsource", "pushcsources": pushCsources()
   else: showHelp()
 of cmdEnd: showHelp()
