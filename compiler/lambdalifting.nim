@@ -240,16 +240,22 @@ proc liftIterSym*(n: PNode; owner: PSym): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
 
   let hp = getHiddenParam(iter)
-  let env = newSym(skLet, iter.name, owner, n.info)
-  env.typ = hp.typ
-  env.flags = hp.flags
-  var v = newNodeI(nkVarSection, n.info)
-  addVar(v, newSymNode(env))
-  result.add(v)
+  var env: PNode
+  if owner.isIterator:
+    let it = getHiddenParam(owner)
+    addUniqueField(it.typ.sons[0], hp)
+    env = indirectAccess(newSymNode(it), hp, hp.info)
+  else:
+    let e = newSym(skLet, iter.name, owner, n.info)
+    e.typ = hp.typ
+    e.flags = hp.flags
+    env = newSymNode(e)
+    var v = newNodeI(nkVarSection, n.info)
+    addVar(v, env)
+    result.add(v)
   # add 'new' statement:
-  let envAsNode = env.newSymNode
-  result.add newCall(getSysSym"internalNew", envAsNode)
-  result.add makeClosure(iter, envAsNode, n.info)
+  result.add newCall(getSysSym"internalNew", env)
+  result.add makeClosure(iter, env, n.info)
 
 proc freshVarForClosureIter*(s, owner: PSym): PNode =
   let envParam = getHiddenParam(owner)
