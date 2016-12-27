@@ -34,7 +34,7 @@ proc semanticPasses =
 proc commandGenDepend(graph: ModuleGraph; cache: IdentCache) =
   semanticPasses()
   registerPass(gendependPass)
-  registerPass(cleanupPass)
+  #registerPass(cleanupPass)
   compileProject(graph, cache)
   generateDot(gProjectFull)
   execExternalProgram("dot -Tpng -o" & changeFileExt(gProjectFull, "png") &
