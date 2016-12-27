@@ -126,6 +126,8 @@ case $ucpu in
     mycpu="mips" ;;
   *arm*|*armv6l* )
     mycpu="arm" ;;
+  *aarch64* )
+    mycpu="arm64" ;;
   *)
     echo 2>&1 "Error: unknown processor: $ucpu"
     exit 1
