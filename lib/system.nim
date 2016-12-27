@@ -551,8 +551,6 @@ type
     ##
     ## See the full `exception hierarchy`_.
 
-  TResult* {.deprecated.} = enum Failure, Success
-
 {.deprecated: [TObject: RootObj, PObject: RootRef, TEffect: RootEffect,
   FTime: TimeEffect, FIO: IOEffect, FReadIO: ReadIOEffect,
   FWriteIO: WriteIOEffect, FExecIO: ExecIOEffect,
