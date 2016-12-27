@@ -276,10 +276,11 @@ proc pageAddr(p: pointer): PChunk {.inline.} =
   #sysAssert(Contains(allocator.chunkStarts, pageIndex(result)))
 
 proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
-  if not a.blockChunkSizeIncrease:
-    a.nextChunkSize =
-      if a.currMem < 64 * 1024: PageSize*4
-      else: a.nextChunkSize*2
+  when not defined(emscripten):
+    if not a.blockChunkSizeIncrease:
+      a.nextChunkSize =
+        if a.currMem < 64 * 1024: PageSize*4
+        else: a.nextChunkSize*2
   var size = size
 
   if size > a.nextChunkSize:
