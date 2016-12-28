@@ -70,7 +70,7 @@ when defined(posix) and not defined(JS):
 elif defined(windows):
   import winlean
 
-  when defined(vcc):
+  when defined(vcc) or defined(bcc):
     # newest version of Visual C++ defines time_t to be of 64 bits
     type TimeImpl {.importc: "time_t", header: "<time.h>".} = int64
     # visual c's c runtime exposes these under a different name
