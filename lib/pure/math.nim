@@ -213,7 +213,7 @@ when not defined(JS):
     ## .. code-block:: nim
     ##  echo ceil(-2.1) ## -2.0
 
-  when defined(windows) and defined(vcc):
+  when defined(windows) and (defined(vcc) or defined(bcc)):
     # MSVC 2010 don't have trunc/truncf
     # this implementation was inspired by Go-lang Math.Trunc
     proc truncImpl(f: float64): float64 =
