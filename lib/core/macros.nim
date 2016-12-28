@@ -80,7 +80,7 @@ type
   NimNodeKinds* = set[NimNodeKind]
   NimTypeKind* = enum  # some types are no longer used, see ast.nim
     ntyNone, ntyBool, ntyChar, ntyEmpty,
-    ntyArrayConstr, ntyNil, ntyExpr, ntyStmt,
+    ntyAlias, ntyNil, ntyExpr, ntyStmt,
     ntyTypeDesc, ntyGenericInvocation, ntyGenericBody, ntyGenericInst,
     ntyGenericParam, ntyDistinct, ntyEnum, ntyOrdinal,
     ntyArray, ntyObject, ntyTuple, ntySet,
