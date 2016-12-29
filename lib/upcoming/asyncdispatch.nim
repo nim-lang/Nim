@@ -231,8 +231,14 @@ when defined(windows) or defined(nimdoc):
         "Operation performed on a socket which has not been registered with" &
         " the dispatcher yet.")
 
+  proc hasPendingOperations*(): bool =
+    ## Returns `true` if the global dispatcher has pending operations.
+    let p = getGlobalDispatcher()
+    p.handles.len != 0 or p.timers.len != 0 or p.callbacks.len != 0
+
   proc poll*(timeout = 500) =
-    ## Waits for completion events and processes them.
+    ## Waits for completion events and processes them. Raises ``ValueError``
+    ## if there are no pending operations.
     let p = getGlobalDispatcher()
     if p.handles.len == 0 and p.timers.len == 0 and p.callbacks.len == 0:
       raise newException(ValueError,
@@ -1181,6 +1187,10 @@ else:
     do:
       raise newException(ValueError, "File descriptor not registered.")
     p.selector.updateHandle(fd.SocketHandle, newEvents)
+
+  proc hasPendingOperations*(): bool =
+    let p = getGlobalDispatcher()
+    not p.selector.isEmpty() or p.timers.len != 0 or p.callbacks.len != 0
 
   proc poll*(timeout = 500) =
     var keys: array[64, ReadyKey[AsyncData]]
