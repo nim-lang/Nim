@@ -15,8 +15,7 @@
 ##
 ## **Note:** The 're' proc defaults to the **extended regular expression
 ## syntax** which lets you use whitespace freely to make your regexes readable.
-## However, this means to match whitespace ``\s`` or something similar has
-## to be used.
+## However, this means matching whitespace requires ``\s`` or something similar.
 ##
 ## This module is implemented by providing a wrapper around the
 ## `PRCE (Perl-Compatible Regular Expressions) <http://www.pcre.org>`_
@@ -80,8 +79,10 @@ proc finalizeRegEx(x: Regex) =
     pcre.free_substring(cast[cstring](x.e))
 
 proc re*(s: string, flags = {reExtended, reStudy}): Regex =
-  ## Constructor of regular expressions. Note that Nim's
-  ## extended raw string literals support this syntax ``re"[abc]"`` as
+  ## Constructor of regular expressions.
+  ##
+  ## Note that Nim's
+  ## extended raw string literals support the syntax ``re"[abc]"`` as
   ## a short form for ``re(r"[abc]")``.
   new(result, finalizeRegEx)
   result.h = rawCompile(s, cast[cint](flags - {reStudy}))
@@ -95,20 +96,13 @@ proc re*(s: string, flags = {reExtended, reStudy}): Regex =
     result.e = pcre.study(result.h, options, addr msg)
     if not isNil(msg): raiseInvalidRegex($msg)
 
-proc matchOrFind(s: string, pattern: Regex, matches: var openArray[string],
-                 start, flags: cint): cint =
-  var
-    rtarray = initRtArray[cint]((matches.len+1)*3)
-    rawMatches = rtarray.getRawData
-    res = pcre.exec(pattern.h, pattern.e, s, len(s).cint, start, flags,
-      cast[ptr cint](rawMatches), (matches.len+1).cint*3)
-  if res < 0'i32: return res
-  for i in 1..int(res)-1:
-    var a = rawMatches[i * 2]
-    var b = rawMatches[i * 2 + 1]
-    if a >= 0'i32: matches[i-1] = substr(s, int(a), int(b)-1)
-    else: matches[i-1] = nil
-  return rawMatches[1] - rawMatches[0]
+proc bufSubstr(b: cstring, sPos, ePos: int): string {.inline.} =
+  ## Return a Nim string built from a slice of a cstring buffer.
+  ## Don't assume cstring is '\0' terminated
+  let sz = ePos - sPos
+  result = newString(sz+1)
+  copyMem(addr(result[0]), unsafeaddr(b[sPos]), sz)
+  result.setLen(sz)
 
 proc matchOrFind(buf: cstring, pattern: Regex, matches: var openArray[string],
                  start, bufSize, flags: cint): cint =
@@ -121,35 +115,22 @@ proc matchOrFind(buf: cstring, pattern: Regex, matches: var openArray[string],
   for i in 1..int(res)-1:
     var a = rawMatches[i * 2]
     var b = rawMatches[i * 2 + 1]
-    if a >= 0'i32: matches[i-1] = cast[string](buf).substr(int(a), int(b)-1)
+    if a >= 0'i32:
+      matches[i-1] = bufSubstr(buf, int(a), int(b))
     else: matches[i-1] = nil
   return rawMatches[1] - rawMatches[0]
 
-proc findBounds*(s: string, pattern: Regex, matches: var openArray[string],
-                 start = 0): tuple[first, last: int] =
-  ## returns the starting position and end position of `pattern` in `s`
-  ## and the captured
-  ## substrings in the array `matches`. If it does not match, nothing
-  ## is written into `matches` and ``(-1,0)`` is returned.
-  var
-    rtarray = initRtArray[cint]((matches.len+1)*3)
-    rawMatches = rtarray.getRawData
-    res = pcre.exec(pattern.h, pattern.e, s, len(s).cint, start.cint, 0'i32,
-      cast[ptr cint](rawMatches), (matches.len+1).cint*3)
-  if res < 0'i32: return (-1, 0)
-  for i in 1..int(res)-1:
-    var a = rawMatches[i * 2]
-    var b = rawMatches[i * 2 + 1]
-    if a >= 0'i32: matches[i-1] = substr(s, int(a), int(b)-1)
-    else: matches[i-1] = nil
-  return (rawMatches[0].int, rawMatches[1].int - 1)
+proc matchOrFind(s: string, pattern: Regex, matches: var openArray[string],
+                 start, flags: cint): cint {.inline.} =
+  result = matchOrFind(cstring(s), pattern, matches, start, s.len.cint, flags)
 
 proc findBounds*(buf: cstring, pattern: Regex, matches: var openArray[string],
                  start = 0, bufSize: int): tuple[first, last: int] =
-  ## returns the starting position and end position of `pattern` in `s`
+  ## returns the starting position and end position of ``pattern`` in ``buf``
+  ## (where ``buf`` has length ``bufSize`` and is not necessarily ``'\0'`` terminated),
   ## and the captured
-  ## substrings in the array `matches`. If it does not match, nothing
-  ## is written into `matches` and ``(-1,0)`` is returned.
+  ## substrings in the array ``matches``. If it does not match, nothing
+  ## is written into ``matches`` and ``(-1,0)`` is returned.
   var
     rtarray = initRtArray[cint]((matches.len+1)*3)
     rawMatches = rtarray.getRawData
@@ -159,21 +140,30 @@ proc findBounds*(buf: cstring, pattern: Regex, matches: var openArray[string],
   for i in 1..int(res)-1:
     var a = rawMatches[i * 2]
     var b = rawMatches[i * 2 + 1]
-    if a >= 0'i32: matches[i-1] = cast[string](buf).substr(int(a), int(b)-1)
+    if a >= 0'i32: matches[i-1] = bufSubstr(buf, int(a), int(b))
     else: matches[i-1] = nil
   return (rawMatches[0].int, rawMatches[1].int - 1)
 
-proc findBounds*(s: string, pattern: Regex,
-                 matches: var openArray[tuple[first, last: int]],
-                 start = 0): tuple[first, last: int] =
+proc findBounds*(s: string, pattern: Regex, matches: var openArray[string],
+                 start = 0): tuple[first, last: int] {.inline.} =
   ## returns the starting position and end position of ``pattern`` in ``s``
-  ## and the captured substrings in the array `matches`.
-  ## If it does not match, nothing is written into `matches` and
+  ## and the captured substrings in the array ``matches``.
+  ## If it does not match, nothing
+  ## is written into ``matches`` and ``(-1,0)`` is returned.
+  result = findBounds(cstring(s), pattern, matches, start, s.len)
+
+proc findBounds*(buf: cstring, pattern: Regex,
+                 matches: var openArray[tuple[first, last: int]],
+                 start = 0, bufSize = 0): tuple[first, last: int] =
+  ## returns the starting position and end position of ``pattern`` in ``buf``
+  ## (where ``buf`` has length ``bufSize`` and is not necessarily ``'\0'`` terminated),
+  ## and the captured substrings in the array ``matches``.
+  ## If it does not match, nothing is written into ``matches`` and
   ## ``(-1,0)`` is returned.
   var
     rtarray = initRtArray[cint]((matches.len+1)*3)
     rawMatches = rtarray.getRawData
-    res = pcre.exec(pattern.h, pattern.e, s, len(s).cint, start.cint, 0'i32,
+    res = pcre.exec(pattern.h, pattern.e, buf, bufSize.cint, start.cint, 0'i32,
       cast[ptr cint](rawMatches), (matches.len+1).cint*3)
   if res < 0'i32: return (-1, 0)
   for i in 1..int(res)-1:
@@ -184,22 +174,20 @@ proc findBounds*(s: string, pattern: Regex,
   return (rawMatches[0].int, rawMatches[1].int - 1)
 
 proc findBounds*(s: string, pattern: Regex,
-                 start = 0): tuple[first, last: int] =
-  ## returns the starting position and end position of ``pattern`` in ``s``.
-  ## If it does not match, ``(-1,0)`` is returned.
-  var
-    rtarray = initRtArray[cint](3)
-    rawMatches = rtarray.getRawData
-    res = pcre.exec(pattern.h, nil, s, len(s).cint, start.cint, 0'i32,
-      cast[ptr cint](rawMatches), 3)
-  if res < 0'i32: return (int(res), 0)
-  return (int(rawMatches[0]), int(rawMatches[1]-1))
+                 matches: var openArray[tuple[first, last: int]],
+                 start = 0): tuple[first, last: int] {.inline.} =
+  ## returns the starting position and end position of ``pattern`` in ``s``
+  ## and the captured substrings in the array ``matches``.
+  ## If it does not match, nothing is written into ``matches`` and
+  ## ``(-1,0)`` is returned.
+  result = findBounds(cstring(s), pattern, matches, start, s.len)
 
 proc findBounds*(buf: cstring, pattern: Regex,
                  start = 0, bufSize: int): tuple[first, last: int] =
-  ## returns the starting position and end position of ``pattern`` in ``cs``,
-  ## where cs has length csSize (not necessarily '\0' terminated).
+  ## returns the ``first`` and ``last`` position of ``pattern`` in ``buf``,
+  ## where ``buf`` has length ``bufSize`` (not necessarily ``'\0'`` terminated).
   ## If it does not match, ``(-1,0)`` is returned.
+
   var
     rtarray = initRtArray[cint](3)
     rawMatches = rtarray.getRawData
@@ -208,14 +196,18 @@ proc findBounds*(buf: cstring, pattern: Regex,
   if res < 0'i32: return (int(res), 0)
   return (int(rawMatches[0]), int(rawMatches[1]-1))
 
-proc matchOrFind(s: string, pattern: Regex, start, flags: cint): cint =
-  var
-    rtarray = initRtArray[cint](3)
-    rawMatches = rtarray.getRawData
-  result = pcre.exec(pattern.h, pattern.e, s, len(s).cint, start, flags,
-                    cast[ptr cint](rawMatches), 3)
-  if result >= 0'i32:
-    result = rawMatches[1] - rawMatches[0]
+proc findBounds*(s: string, pattern: Regex,
+                 start = 0): tuple[first, last: int] {.inline.} =
+  ## returns the ``first`` and ``last`` position of ``pattern`` in ``s``.
+  ## If it does not match, ``(-1,0)`` is returned.
+  ##
+  ## Note: there is a speed improvement if the matches do not need to be captured.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##   assert findBounds("01234abc89", re"abc") == (5,7)
+  result = findBounds(cstring(s), pattern, start, s.len)
 
 proc matchOrFind(buf: cstring, pattern: Regex, start, bufSize: int, flags: cint): cint =
   var
@@ -226,35 +218,45 @@ proc matchOrFind(buf: cstring, pattern: Regex, start, bufSize: int, flags: cint)
   if result >= 0'i32:
     result = rawMatches[1] - rawMatches[0]
 
+#proc matchOrFind(s: string, pattern: Regex, start, flags: cint): cint {.inline.} =
+#  result = matchOrFind(cstring(s), pattern, start, s.len, flags)
+
 proc matchLen*(s: string, pattern: Regex, matches: var openArray[string],
-              start = 0): int =
+              start = 0): int {.inline.} =
   ## the same as ``match``, but it returns the length of the match,
-  ## if there is no match, -1 is returned. Note that a match length
+  ## if there is no match, ``-1`` is returned. Note that a match length
   ## of zero can happen.
-  return matchOrFind(s, pattern, matches, start.cint, pcre.ANCHORED)
+  result = matchOrFind(cstring(s), pattern, matches, start.cint, s.len.cint, pcre.ANCHORED)
 
 proc matchLen*(buf: cstring, pattern: Regex, matches: var openArray[string],
-              start = 0, bufSize: int): int =
+              start = 0, bufSize: int): int {.inline.} =
   ## the same as ``match``, but it returns the length of the match,
-  ## if there is no match, -1 is returned. Note that a match length
+  ## if there is no match, ``-1`` is returned. Note that a match length
   ## of zero can happen.
   return matchOrFind(buf, pattern, matches, start.cint, bufSize.cint, pcre.ANCHORED)
 
-proc matchLen*(s: string, pattern: Regex, start = 0): int =
+proc matchLen*(s: string, pattern: Regex, start = 0): int {.inline.} =
   ## the same as ``match``, but it returns the length of the match,
-  ## if there is no match, -1 is returned. Note that a match length
+  ## if there is no match, ``-1`` is returned. Note that a match length
   ## of zero can happen.
-  return matchOrFind(s, pattern, start.cint, pcre.ANCHORED)
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##   echo matchLen("abcdefg", re"cde", 2)  # =>  3
+  ##   echo matchLen("abcdefg", re"abcde")   # =>  5
+  ##   echo matchLen("abcdefg", re"cde")     # => -1
+  result = matchOrFind(cstring(s), pattern, start.cint, s.len.cint, pcre.ANCHORED)
 
-proc matchLen*(buf: cstring, pattern: Regex, start = 0, bufSize: int): int =
+proc matchLen*(buf: cstring, pattern: Regex, start = 0, bufSize: int): int {.inline.} =
   ## the same as ``match``, but it returns the length of the match,
-  ## if there is no match, -1 is returned. Note that a match length
+  ## if there is no match, ``-1`` is returned. Note that a match length
   ## of zero can happen.
-  return matchOrFind(buf, pattern, start.cint, bufSize, pcre.ANCHORED)
+  result = matchOrFind(buf, pattern, start.cint, bufSize, pcre.ANCHORED)
 
-proc match*(s: string, pattern: Regex, start = 0): bool =
+proc match*(s: string, pattern: Regex, start = 0): bool {.inline.} =
   ## returns ``true`` if ``s[start..]`` matches the ``pattern``.
-  result = matchLen(s, pattern, start) != -1
+  result = matchLen(cstring(s), pattern, start, s.len) != -1
 
 proc match*(s: string, pattern: Regex, matches: var openArray[string],
            start = 0): bool =
@@ -262,48 +264,55 @@ proc match*(s: string, pattern: Regex, matches: var openArray[string],
   ## the captured substrings in the array ``matches``. If it does not
   ## match, nothing is written into ``matches`` and ``false`` is
   ## returned.
-  result = matchLen(s, pattern, matches, start) != -1
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##   var matches: array[2, string]
+  ##   if match("abcdefg", re"c(d)ef(g)", matches, 2):
+  ##     for s in matches:
+  ##       echo s       # => d g
+  result = matchLen(cstring(s), pattern, matches, start, s.len) != -1
 
 proc match*(buf: cstring, pattern: Regex, matches: var openArray[string],
            start = 0, bufSize: int): bool =
-  ## returns ``true`` if ``s[start..]`` matches the ``pattern`` and
+  ## returns ``true`` if ``buf[start..<bufSize]`` matches the ``pattern`` and
   ## the captured substrings in the array ``matches``. If it does not
   ## match, nothing is written into ``matches`` and ``false`` is
   ## returned.
+  ## ``buf`` has length ``bufSize`` (not necessarily ``'\0'`` terminated).
   result = matchLen(buf, pattern, matches, start, bufSize) != -1
 
-proc find*(s: string, pattern: Regex, matches: var openArray[string],
-           start = 0): int =
-  ## returns the starting position of ``pattern`` in ``s`` and the captured
+proc find*(buf: cstring, pattern: Regex, matches: var openArray[string],
+           start = 0, bufSize = 0): int =
+  ## returns the starting position of ``pattern`` in ``buf`` and the captured
   ## substrings in the array ``matches``. If it does not match, nothing
-  ## is written into ``matches`` and -1 is returned.
+  ## is written into ``matches`` and ``-1`` is returned.
+  ## ``buf`` has length ``bufSize`` (not necessarily ``'\0'`` terminated).
   var
     rtarray = initRtArray[cint]((matches.len+1)*3)
     rawMatches = rtarray.getRawData
-    res = pcre.exec(pattern.h, pattern.e, s, len(s).cint, start.cint, 0'i32,
+    res = pcre.exec(pattern.h, pattern.e, buf, bufSize.cint, start.cint, 0'i32,
       cast[ptr cint](rawMatches), (matches.len+1).cint*3)
   if res < 0'i32: return res
   for i in 1..int(res)-1:
     var a = rawMatches[i * 2]
     var b = rawMatches[i * 2 + 1]
-    if a >= 0'i32: matches[i-1] = substr(s, int(a), int(b)-1)
+    if a >= 0'i32: matches[i-1] = cast[string](buf).substr(int(a), int(b)-1)
     else: matches[i-1] = nil
   return rawMatches[0]
 
-proc find*(s: string, pattern: Regex, start = 0): int =
-  ## returns the starting position of ``pattern`` in ``s``. If it does not
-  ## match, -1 is returned.
-  var
-    rtarray = initRtArray[cint](3)
-    rawMatches = rtarray.getRawData
-    res = pcre.exec(pattern.h, pattern.e, s, len(s).cint, start.cint, 0'i32,
-      cast[ptr cint](rawMatches), 3)
-  if res < 0'i32: return res
-  return rawMatches[0]
+proc find*(s: string, pattern: Regex, matches: var openArray[string],
+           start = 0): int {.inline.} =
+  ## returns the starting position of ``pattern`` in ``s`` and the captured
+  ## substrings in the array ``matches``. If it does not match, nothing
+  ## is written into ``matches`` and ``-1`` is returned.
+  result = find(cstring(s), pattern, matches, start, s.len)
 
 proc find*(buf: cstring, pattern: Regex, start = 0, bufSize: int): int =
-  ## returns the starting position of ``pattern`` in ``buf`` (not necessarily '\0' terminated).
-  ## If it does not match, -1 is returned.
+  ## returns the starting position of ``pattern`` in ``buf``,
+  ## where ``buf`` has length ``bufSize`` (not necessarily ``'\0'`` terminated).
+  ## If it does not match, ``-1`` is returned.
   var
     rtarray = initRtArray[cint](3)
     rawMatches = rtarray.getRawData
@@ -311,6 +320,18 @@ proc find*(buf: cstring, pattern: Regex, start = 0, bufSize: int): int =
       cast[ptr cint](rawMatches), 3)
   if res < 0'i32: return res
   return rawMatches[0]
+
+proc find*(s: string, pattern: Regex, start = 0): int =
+  ## returns the starting position of ``pattern`` in ``s``. If it does not
+  ## match, ``-1`` is returned.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##  echo find("abcdefg", re"cde")  # => 2
+  ##  echo find("abcdefg", re"abc")  # => 0
+  ##  echo find("abcdefg", re"zz")  # => -1
+  result = find(cstring(s), pattern, start, s.len)
 
 iterator findAll*(s: string, pattern: Regex, start = 0): string =
   ## Yields all matching *substrings* of `s` that match `pattern`.
@@ -332,7 +353,7 @@ iterator findAll*(s: string, pattern: Regex, start = 0): string =
     i = b
 
 iterator findAll*(buf: var cstring, pattern: Regex, start = 0, bufSize: int): string =
-  ## Yields all matching *substrings* of `s` that match `pattern`.
+  ## Yields all matching `substrings` of ``s`` that match ``pattern``.
   ##
   ## Note that since this is an iterator you should not modify the string you
   ## are iterating over: bad things could happen.
@@ -353,7 +374,7 @@ iterator findAll*(buf: var cstring, pattern: Regex, start = 0, bufSize: int): st
     i = b
 
 proc findAll*(s: string, pattern: Regex, start = 0): seq[string] =
-  ## returns all matching *substrings* of `s` that match `pattern`.
+  ## returns all matching `substrings` of ``s`` that match ``pattern``.
   ## If it does not match, @[] is returned.
   accumulateResult(findAll(s, pattern, start))
 
@@ -404,8 +425,10 @@ proc endsWith*(s: string, suffix: Regex): bool =
     if matchLen(s, suffix, i) == s.len - i: return true
 
 proc replace*(s: string, sub: Regex, by = ""): string =
-  ## Replaces `sub` in `s` by the string `by`. Captures cannot be
-  ## accessed in `by`. Examples:
+  ## Replaces ``sub`` in ``s`` by the string ``by``. Captures cannot be
+  ## accessed in ``by``.
+  ##
+  ## Example:
   ##
   ## .. code-block:: nim
   ##   "var1=key; var2=key2".replace(re"(\w+)=(\w+)")
@@ -426,8 +449,10 @@ proc replace*(s: string, sub: Regex, by = ""): string =
   add(result, substr(s, prev))
 
 proc replacef*(s: string, sub: Regex, by: string): string =
-  ## Replaces `sub` in `s` by the string `by`. Captures can be accessed in `by`
-  ## with the notation ``$i`` and ``$#`` (see strutils.`%`). Examples:
+  ## Replaces ``sub`` in ``s`` by the string ``by``. Captures can be accessed in ``by``
+  ## with the notation ``$i`` and ``$#`` (see strutils.\`%\`).
+  ##
+  ## Example:
   ##
   ## .. code-block:: nim
   ##   "var1=key; var2=key2".replacef(re"(\w+)=(\w+)", "$1<-$2$2")
@@ -452,7 +477,7 @@ proc replacef*(s: string, sub: Regex, by: string): string =
 
 proc parallelReplace*(s: string, subs: openArray[
                       tuple[pattern: Regex, repl: string]]): string =
-  ## Returns a modified copy of `s` with the substitutions in `subs`
+  ## Returns a modified copy of ``s`` with the substitutions in ``subs``
   ## applied in parallel.
   result = ""
   var i = 0
@@ -472,17 +497,19 @@ proc parallelReplace*(s: string, subs: openArray[
 
 proc transformFile*(infile, outfile: string,
                     subs: openArray[tuple[pattern: Regex, repl: string]]) =
-  ## reads in the file `infile`, performs a parallel replacement (calls
-  ## `parallelReplace`) and writes back to `outfile`. Raises ``IOError`` if an
+  ## reads in the file ``infile``, performs a parallel replacement (calls
+  ## ``parallelReplace``) and writes back to ``outfile``. Raises ``IOError`` if an
   ## error occurs. This is supposed to be used for quick scripting.
   var x = readFile(infile).string
   writeFile(outfile, x.parallelReplace(subs))
 
 iterator split*(s: string, sep: Regex): string =
-  ## Splits the string `s` into substrings.
+  ## Splits the string ``s`` into substrings.
   ##
-  ## Substrings are separated by the regular expression `sep`.
-  ## Examples:
+  ## Substrings are separated by the regular expression ``sep``
+  ## (and the portion matched by ``sep`` is not returned).
+  ##
+  ## Example:
   ##
   ## .. code-block:: nim
   ##   for word in split("00232this02939is39an22example111", re"\d+"):
@@ -514,11 +541,13 @@ iterator split*(s: string, sep: Regex): string =
       yield substr(s, first, last-1)
 
 proc split*(s: string, sep: Regex): seq[string] =
-  ## Splits the string `s` into substrings.
+  ## Splits the string ``s`` into a seq of substrings.
+  ##
+  ## The portion matched by ``sep`` is not returned.
   accumulateResult(split(s, sep))
 
 proc escapeRe*(s: string): string =
-  ## escapes `s` so that it is matched verbatim when used as a regular
+  ## escapes ``s`` so that it is matched verbatim when used as a regular
   ## expression.
   result = ""
   for c in items(s):
@@ -568,6 +597,7 @@ when isMainModule:
   doAssert matchLen("key1=  cal9", pattern) == 11
 
   doAssert find("_____abc_______", re"abc") == 5
+  doAssert findBounds("_____abc_______", re"abc") == (5,7)
 
   var matches: array[6, string]
   if match("abcdefg", re"c(d)ef(g)", matches, 2):
@@ -634,3 +664,4 @@ when isMainModule:
     for x in cs.findAll(re"[a-z]", start=3, bufSize=15):
       accum.add($x)
     doAssert(accum == @["a","b","c"])
+
