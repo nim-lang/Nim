@@ -82,6 +82,13 @@ else:
     result = 0
     for x in 0..3:
       result = (result shl 8) or u.MD5Digest[x].int
+type
+  ConsiderFlag* = enum
+    CoProc
+    CoType
+    CoOwnerSig
+
+proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag])
 
 proc hashSym(c: var MD5Context, s: PSym) =
   if sfAnon in s.flags or s.kind == skGenericParam:
@@ -89,6 +96,19 @@ proc hashSym(c: var MD5Context, s: PSym) =
   else:
     var it = s
     while it != nil:
+      c &= it.name.s
+      c &= "."
+      it = it.owner
+
+proc hashTypeSym(c: var MD5Context, s: PSym) =
+  if sfAnon in s.flags or s.kind == skGenericParam:
+    c &= ":anon"
+  else:
+    var it = s
+    while it != nil:
+      if sfFromGeneric in it.flags and it.kind in routineKinds and
+          it.typ != nil:
+        hashType c, it.typ, {CoProc}
       c &= it.name.s
       c &= "."
       it = it.owner
@@ -117,11 +137,6 @@ proc hashTree(c: var MD5Context, n: PNode) =
     c &= n.strVal
   else:
     for i in 0.. <n.len: hashTree(c, n.sons[i])
-
-type
-  ConsiderFlag* = enum
-    CoProc
-    CoType
 
 proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
   if t == nil:
@@ -163,7 +178,10 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
       #  writeStackTrace()
       #  echo "yes ", t.sym.name.s
       #  #quit 1
-      c.hashSym(t.sym)
+      if CoOwnerSig in flags:
+        c.hashTypeSym(t.sym)
+      else:
+        c.hashSym(t.sym)
       if sfAnon in t.sym.flags:
         # generated object names can be identical, so we need to
         # disambiguate furthermore by hashing the field types and names:
@@ -246,7 +264,7 @@ when defined(debugSigHashes):
 proc hashType*(t: PType; flags: set[ConsiderFlag] = {CoType}): SigHash =
   var c: MD5Context
   md5Init c
-  hashType c, t, flags
+  hashType c, t, flags+{CoOwnerSig}
   md5Final c, result.Md5Digest
   when defined(debugSigHashes):
     db.exec(sql"INSERT OR IGNORE INTO sighashes(type, hash) VALUES (?, ?)",
