@@ -868,11 +868,11 @@ when defined(nimnomagic64):
 else:
   proc `mod` *(x, y: int64): int64 {.magic: "ModI64", noSideEffect.}
 
-proc `shr` *(x, y: int): int {.magic: "ShrI", noSideEffect.}
-proc `shr` *(x, y: int8): int8 {.magic: "ShrI", noSideEffect.}
-proc `shr` *(x, y: int16): int16 {.magic: "ShrI", noSideEffect.}
-proc `shr` *(x, y: int32): int32 {.magic: "ShrI", noSideEffect.}
-proc `shr` *(x, y: int64): int64 {.magic: "ShrI", noSideEffect.}
+proc `shr` *(x: int, y: SomeInteger): int {.magic: "ShrI", noSideEffect.}
+proc `shr` *(x: int8, y: SomeInteger): int8 {.magic: "ShrI", noSideEffect.}
+proc `shr` *(x: int16, y: SomeInteger): int16 {.magic: "ShrI", noSideEffect.}
+proc `shr` *(x: int32, y: SomeInteger): int32 {.magic: "ShrI", noSideEffect.}
+proc `shr` *(x: int64, y: SomeInteger): int64 {.magic: "ShrI", noSideEffect.}
   ## computes the `shift right` operation of `x` and `y`, filling
   ## vacant bit positions with zeros.
   ##
@@ -881,11 +881,11 @@ proc `shr` *(x, y: int64): int64 {.magic: "ShrI", noSideEffect.}
   ##   0b1000_0000'i8 shr 8 == 0b0000_0000'i8
   ##   0b0000_0001'i8 shr 1 == 0b0000_0000'i8
 
-proc `shl` *(x, y: int): int {.magic: "ShlI", noSideEffect.}
-proc `shl` *(x, y: int8): int8 {.magic: "ShlI", noSideEffect.}
-proc `shl` *(x, y: int16): int16 {.magic: "ShlI", noSideEffect.}
-proc `shl` *(x, y: int32): int32 {.magic: "ShlI", noSideEffect.}
-proc `shl` *(x, y: int64): int64 {.magic: "ShlI", noSideEffect.}
+proc `shl` *(x: int, y: SomeInteger): int {.magic: "ShlI", noSideEffect.}
+proc `shl` *(x: int8, y: SomeInteger): int8 {.magic: "ShlI", noSideEffect.}
+proc `shl` *(x: int16, y: SomeInteger): int16 {.magic: "ShlI", noSideEffect.}
+proc `shl` *(x: int32, y: SomeInteger): int32 {.magic: "ShlI", noSideEffect.}
+proc `shl` *(x: int64, y: SomeInteger): int64 {.magic: "ShlI", noSideEffect.}
   ## computes the `shift left` operation of `x` and `y`.
   ##
   ## .. code-block:: Nim
@@ -991,10 +991,10 @@ proc `<%` *(x, y: int64): bool {.magic: "LtU64", noSideEffect.}
 proc `not`*[T: SomeUnsignedInt](x: T): T {.magic: "BitnotI", noSideEffect.}
   ## computes the `bitwise complement` of the integer `x`.
 
-proc `shr`*[T: SomeUnsignedInt](x, y: T): T {.magic: "ShrI", noSideEffect.}
+proc `shr`*[T: SomeUnsignedInt](x: T, y: SomeInteger): T {.magic: "ShrI", noSideEffect.}
   ## computes the `shift right` operation of `x` and `y`.
 
-proc `shl`*[T: SomeUnsignedInt](x, y: T): T {.magic: "ShlI", noSideEffect.}
+proc `shl`*[T: SomeUnsignedInt](x: T, y: SomeInteger): T {.magic: "ShlI", noSideEffect.}
   ## computes the `shift left` operation of `x` and `y`.
 
 proc `and`*[T: SomeUnsignedInt](x, y: T): T {.magic: "BitandI", noSideEffect.}
