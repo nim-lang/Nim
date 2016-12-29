@@ -83,7 +83,7 @@ type
     cmdCompileToJS,
     cmdCompileToPHP,
     cmdCompileToLLVM, cmdInterpret, cmdPretty, cmdDoc,
-    cmdGenDepend, cmdDump,
+    cmdGenDepend, cmdDump, cmdDepList,
     cmdCheck,                 # semantic checking for whole project
     cmdParse,                 # parse a single file (for debugging)
     cmdScan,                  # scan a single file (for debugging)

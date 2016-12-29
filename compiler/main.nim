@@ -34,11 +34,16 @@ proc semanticPasses =
 proc commandGenDepend(graph: ModuleGraph; cache: IdentCache) =
   semanticPasses()
   registerPass(gendependPass)
-  registerPass(cleanupPass)
   compileProject(graph, cache)
   generateDot(gProjectFull)
   execExternalProgram("dot -Tpng -o" & changeFileExt(gProjectFull, "png") &
       ' ' & changeFileExt(gProjectFull, "dot"))
+
+proc commandDepList(graph: ModuleGraph; cache: IdentCache) =
+  semanticPasses()
+  registerPass(deplistPass)
+  compileProject(graph, cache)
+  generateDepList(gProjectFull)
 
 proc commandCheck(graph: ModuleGraph; cache: IdentCache) =
   msgs.gErrorMax = high(int)  # do not stop after first error
@@ -212,6 +217,9 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
   of "gendepend":
     gCmd = cmdGenDepend
     commandGenDepend(graph, cache)
+  of "deplist":
+    gCmd = cmdDepList
+    commandDepList(graph, cache)
   of "dump":
     gCmd = cmdDump
     if getConfigVar("dump.format") == "json":
