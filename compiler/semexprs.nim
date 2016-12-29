@@ -903,7 +903,7 @@ proc makeDeref(n: PNode): PNode =
 
 const
   tyTypeParamsHolders = {tyGenericInst, tyCompositeTypeClass}
-  tyDotOpTransparent = {tyVar, tyPtr, tyRef}
+  tyDotOpTransparent = {tyVar, tyPtr, tyRef, tyAlias}
 
 proc readTypeParameter(c: PContext, typ: PType,
                        paramName: PIdent, info: TLineInfo): PNode =
