@@ -27,7 +27,7 @@ const
     wGensym, wInject, wRaises, wTags, wLocks, wDelegator, wGcSafe,
     wOverride, wConstructor, wExportNims}
   converterPragmas* = procPragmas
-  methodPragmas* = procPragmas+{wBase}
+  methodPragmas* = procPragmas+{wBase}-{wImportCpp}
   templatePragmas* = {wImmediate, wDeprecated, wError, wGensym, wInject, wDirty,
     wDelegator, wExportNims}
   macroPragmas* = {FirstCallConv..LastCallConv, wImmediate, wImportc, wExportc,

@@ -56,8 +56,8 @@ const
       "Copyright (c) 2006-" & CompileDate.substr(0, 3) & " by Andreas Rumpf\n"
 
 const
-  Usage = slurp"doc/basicopt.txt".replace("//", "")
-  AdvancedUsage = slurp"doc/advopt.txt".replace("//", "")
+  Usage = slurp"../doc/basicopt.txt".replace("//", "")
+  AdvancedUsage = slurp"../doc/advopt.txt".replace("//", "")
 
 proc getCommandLineDesc(): string =
   result = (HelpMessage % [VersionAsString, platform.OS[platform.hostOS].name,

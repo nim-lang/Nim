@@ -85,13 +85,32 @@ when defined(windows):
         let arch = execProcess(gccExe, ["-dumpmachine"], nil, {poStdErrToStdOut,
                                                                poUsePath})
         when hostCPU == "i386":
-          result = arch.startsWith("i686-")
+          result = arch.contains("i686-")
         elif hostCPU == "amd64":
-          result = arch.startsWith("x86_64-")
+          result = arch.contains("x86_64-")
         else:
           {.error: "Unknown CPU for Windows.".}
       except OSError, IOError:
         result = false
+
+  proc defaultMingwLocations(): seq[string] =
+    proc probeDir(dir: string; result: var seq[string]) =
+      for k, x in walkDir(dir, relative=true):
+        if k in {pcDir, pcLinkToDir}:
+          if x.contains("mingw") or x.contains("posix"):
+            let dest = dir / x
+            probeDir(dest, result)
+            result.add(dest)
+
+    result = @["dist/mingw", "../mingw", r"C:\mingw"]
+    let pfx86 = getEnv("programfiles(x86)")
+    let pf = getEnv("programfiles")
+    when hostCPU == "i386":
+      probeDir(pfx86, result)
+      probeDir(pf, result)
+    else:
+      probeDir(pf, result)
+      probeDir(pfx86, result)
 
   proc tryDirs(incompat: var seq[string]; dirs: varargs[string]): string =
     let bits = $(sizeof(pointer)*8)
@@ -132,7 +151,7 @@ proc main() =
         addToPathEnv(desiredPath)
     if mingWchoices.len == 0:
       # No mingw in path, so try a few locations:
-      let alternative = tryDirs(incompat, "dist/mingw", "../mingw", r"C:\mingw")
+      let alternative = tryDirs(incompat, defaultMingwLocations())
       if alternative.len == 0:
         if incompat.len > 0:
           echo "The following *incompatible* MingW installations exist"

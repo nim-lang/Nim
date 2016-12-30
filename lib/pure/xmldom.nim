@@ -890,7 +890,7 @@ proc tagName*(el: PElement): string =
   return el.fTagName
 
 # Procedures
-proc getAttribute*(el: PElement, name: string): string =
+proc getAttribute*(el: PNode, name: string): string =
   ## Retrieves an attribute value by ``name``
   if isNil(el.attributes):
     return nil
@@ -900,7 +900,7 @@ proc getAttribute*(el: PElement, name: string): string =
   else:
     return nil
 
-proc getAttributeNS*(el: PElement, namespaceURI: string, localName: string): string =
+proc getAttributeNS*(el: PNode, namespaceURI: string, localName: string): string =
   ## Retrieves an attribute value by ``localName`` and ``namespaceURI``
   if isNil(el.attributes):
     return nil
