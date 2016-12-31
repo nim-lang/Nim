@@ -12,7 +12,7 @@
 import ast, md5
 from hashes import Hash
 from astalgo import debug
-from types import typeToString
+from types import typeToString, preferDesc
 from strutils import startsWith, contains
 
 when false:
@@ -185,12 +185,15 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
       if sfAnon in t.sym.flags:
         # generated object names can be identical, so we need to
         # disambiguate furthermore by hashing the field types and names:
+        # mild hack to prevent endless recursions (makes nimforum compile again):
+        excl t.sym.flags, sfAnon
         let n = t.n
         for i in 0 ..< n.len:
           assert n[i].kind == nkSym
           let s = n[i].sym
           c.hashSym s
           c.hashType s.typ, flags
+        incl t.sym.flags, sfAnon
     else:
       c &= t.id
     if t.len > 0 and t.sons[0] != nil:
