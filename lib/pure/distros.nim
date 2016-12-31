@@ -8,13 +8,21 @@
 #
 
 ## This module implements the basics for Linux distribution ("distro")
-## detection and the OS's native package manager. Its primary purpose is in
-## producing output for Nimble packages like::
+## detection and the OS's native package manager. Its primary purpose is to
+## produce output for Nimble packages like::
 ##
 ##  To complete the installation, run:
 ##
 ##  sudo apt-get libblas-dev
 ##  sudo apt-get libvoodoo
+##
+## The above output could be the result of a code snippet like:
+##
+## .. code-block:: nim
+##
+##   if detectOs(Ubuntu):
+##     foreignDep "lbiblas-dev"
+##     foreignDep "libvoodoo"
 ##
 
 from strutils import contains, toLowerAscii
@@ -23,8 +31,7 @@ when not defined(nimscript):
   from osproc import execProcess
 
 type
-  Distribution* {.pure.} = enum ## an enum so that the poor programmer
-                                ## cannot introduce typos
+  Distribution* {.pure.} = enum ## the list of known distributions
     Windows ## some version of Windows
     Posix   ## some Posix system
     MacOSX  ## some version of OSX
@@ -161,12 +168,17 @@ proc detectOsImpl(d: Distribution): bool =
     result = toLowerAscii($d) in toLowerAscii(uname())
 
 template detectOs*(d: untyped): bool =
+  ## Distro/OS detection. For convenience the
+  ## required ``Distribution.`` qualifier is added to the
+  ## enum value.
   detectOsImpl(Distribution.d)
 
 when not defined(nimble):
   var foreignDeps: seq[string] = @[]
 
 proc foreignCmd*(cmd: string; requiresSudo=false) =
+  ## Registers a foreign command to the intern list of commands
+  ## that can be queried later.
   let c = (if requiresSudo: "sudo " else: "") & cmd
   when defined(nimble):
     nimscriptapi.foreignDeps.add(c)
@@ -174,7 +186,7 @@ proc foreignCmd*(cmd: string; requiresSudo=false) =
     foreignDeps.add(c)
 
 proc foreignDepInstallCmd*(foreignPackageName: string): (string, bool) =
-  ## returns the distro's native command line to install 'foreignPackageName'
+  ## Returns the distro's native command line to install 'foreignPackageName'
   ## and whether it requires root/admin rights.
   let p = foreignPackageName
   when defined(windows):
@@ -211,16 +223,17 @@ proc foreignDepInstallCmd*(foreignPackageName: string): (string, bool) =
     result = ("brew install " & p, true)
 
 proc foreignDep*(foreignPackageName: string) =
+  ## Registers 'foreignPackageName' to the internal list of foreign deps.
+  ## It is your job to ensure the package name
   let (installCmd, sudo) = foreignDepInstallCmd(foreignPackageName)
   foreignCmd installCmd, sudo
 
 proc echoForeignDeps*() =
   ## Writes the list of registered foreign deps to stdout.
-  echo "To finish the installation, run:"
   for d in foreignDeps:
     echo d
 
-when isMainModule:
+when false:
   foreignDep("libblas-dev")
   foreignDep "libfoo"
   echoForeignDeps()
