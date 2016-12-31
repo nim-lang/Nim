@@ -2676,10 +2676,13 @@ proc utimes*(path: cstring, times: ptr array[2, Timeval]): int {.
 proc handle_signal(sig: cint, handler: proc (a: cint) {.noconv.}) {.importc: "signal", header: "<signal.h>".}
 
 template onSignal*(signals: varargs[cint], body: untyped) =
-  ## Setup code to be executed when Unix signals are received. Example:
-  ## from posix import SIGINT, SIGTERM
-  ## onSignal(SIGINT, SIGTERM):
-  ##   echo "bye"
+  ## Setup code to be executed when Unix signals are received.
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##   from posix import SIGINT, SIGTERM
+  ##   onSignal(SIGINT, SIGTERM):
+  ##     echo "bye"
 
   for s in signals:
     handle_signal(s,
