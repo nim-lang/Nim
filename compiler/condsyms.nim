@@ -100,3 +100,4 @@ proc initDefines*() =
   defineSymbol("nimArrIdx")
   defineSymbol("nimImmediateDeprecated")
   defineSymbol("nimNewShiftOps")
+  defineSymbol("nimDistros")
