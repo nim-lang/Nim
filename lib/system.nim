@@ -2725,12 +2725,9 @@ when not defined(JS): #and not defined(nimscript):
     when defined(windows):
       # work-around C's sucking abstraction:
       # BUGFIX: stdin and stdout should be binary files!
-      when defined(bcc):
-        proc c_setmode(handle, mode: cint) {.importc: "setmode",
-                                            header: "<io.h>".}
-      else:
-        proc c_setmode(handle, mode: cint) {.importc: "_setmode",
-                                            header: "<io.h>".}
+      proc c_setmode(handle, mode: cint) {.
+        importc: when defined(bcc): "setmode" else: "_setmode",
+        header: "<io.h>".}
       var
         O_BINARY {.importc: "O_BINARY", nodecl.}: cint
 

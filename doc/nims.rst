@@ -19,6 +19,7 @@ following modules are available:
 * `strutils <strutils.html>`_
 * `ospaths <ospaths.html>`_
 * `math <math.html>`_
+* `distros <distros.html>`_
 
 The `system <system.html>`_ module in NimScript mode additionally supports
 these operations: `nimscript <nimscript.html>`_.
@@ -70,6 +71,10 @@ done:
   task tests, "test regular expressions":
     exec "nim c -r tests"
     setCommand "nop"
+
+
+Look at the module `distros <distros.html>`_ for some support of the
+OS's native package managers.
 
 
 Nimble integration

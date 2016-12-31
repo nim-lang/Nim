@@ -261,8 +261,9 @@ proc gen(c: PCtx; n: PNode; flags: TGenFlags = {}) =
 proc genx(c: PCtx; n: PNode; flags: TGenFlags = {}): TRegister =
   var tmp: TDest = -1
   gen(c, n, tmp, flags)
-  internalAssert tmp >= 0
-  result = TRegister(tmp)
+  #internalAssert tmp >= 0 # 'nim check' does not like this internalAssert.
+  if tmp >= 0:
+    result = TRegister(tmp)
 
 proc clearDest(c: PCtx; n: PNode; dest: var TDest) {.inline.} =
   # stmt is different from 'void' in meta programming contexts.

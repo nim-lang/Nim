@@ -43,6 +43,10 @@ Library Additions
   ``terminalWidthIoctl`` and ``terminalSize`` to the ``terminal``
   `(doc) <http://nim-lang.org/docs/terminal.html>`_ module.
 
+- Added new module ``distros``
+  `(doc) <http://nim-lang.org/docs/distros.html>`_  that can be used in Nimble
+  packages to aid in supporting the OS's native package managers.
+
 
 Tool Additions
 --------------

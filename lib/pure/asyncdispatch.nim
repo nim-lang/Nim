@@ -254,8 +254,14 @@ when defined(windows) or defined(nimdoc):
         "Operation performed on a socket which has not been registered with" &
         " the dispatcher yet.")
 
+  proc hasPendingOperations*(): bool =
+    ## Returns `true` if the global dispatcher has pending operations.
+    let p = getGlobalDispatcher()
+    p.handles.len != 0 or p.timers.len != 0 or p.callbacks.len != 0
+
   proc poll*(timeout = 500) =
-    ## Waits for completion events and processes them.
+    ## Waits for completion events and processes them. Raises ``ValueError``
+    ## if there are no pending operations.
     let p = getGlobalDispatcher()
     if p.handles.len == 0 and p.timers.len == 0 and p.callbacks.len == 0:
       raise newException(ValueError,
@@ -1056,8 +1062,15 @@ else:
           newCBs.add(cb)
     callbacks = newCBs & callbacks
 
+  proc hasPendingOperations*(): bool =
+    let p = getGlobalDispatcher()
+    p.selector.len != 0 or p.timers.len != 0 or p.callbacks.len != 0
+
   proc poll*(timeout = 500) =
     let p = getGlobalDispatcher()
+    if p.selector.len == 0 and p.timers.len == 0 and p.callbacks.len == 0:
+      raise newException(ValueError,
+        "No handles or timers registered in dispatcher.")
 
     if p.selector.len > 0:
       for info in p.selector.select(p.adjustedTimeout(timeout)):
