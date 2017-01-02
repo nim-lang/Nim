@@ -120,10 +120,6 @@ proc matchOrFind(buf: cstring, pattern: Regex, matches: var openArray[string],
     else: matches[i-1] = nil
   return rawMatches[1] - rawMatches[0]
 
-proc matchOrFind(s: string, pattern: Regex, matches: var openArray[string],
-                 start, flags: cint): cint {.inline.} =
-  result = matchOrFind(cstring(s), pattern, matches, start, s.len.cint, flags)
-
 proc findBounds*(buf: cstring, pattern: Regex, matches: var openArray[string],
                  start = 0, bufSize: int): tuple[first, last: int] =
   ## returns the starting position and end position of ``pattern`` in ``buf``
