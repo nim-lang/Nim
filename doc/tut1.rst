@@ -125,6 +125,15 @@ Documentation comments are tokens; they are only allowed at certain places in
 the input file as they belong to the syntax tree! This feature enables simpler
 documentation generators.
 
+Multiline comments are started with ``#[`` and terminated with ``]#``
+
+.. code-block:: nim
+  #[
+  You can have any Nim code text commented
+  out inside this with no indentation restrictions.
+        yes("May I ask a pointless question?")
+  ]#
+
 You can also use the `discard statement`_ together with *long string
 literals* to create block comments:
 
