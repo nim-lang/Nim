@@ -76,7 +76,7 @@ proc exe(f: string): string =
     result = result.replace('/','\\')
 
 template withDir(dir, body) =
-  let old = getCurrentDir(dir)
+  let old = getCurrentDir()
   try:
     setCurrentDir(dir)
     body
@@ -172,8 +172,9 @@ proc bundleNimbleSrc() =
   ## always bundle the latest official release.
   if not dirExists("dist/nimble/.git"):
     exec("git clone https://github.com/nim-lang/nimble.git dist/nimble")
-  exec("git --git-dir dist/nimble/.git checkout -f stable")
-  exec("git --git-dir dist/nimble/.git pull")
+  withDir("dist/nimble"):
+    exec("git checkout -f stable")
+    exec("git pull")
 
 proc bundleNimbleExe() =
   bundleNimbleSrc()
@@ -192,11 +193,12 @@ proc buildNimble(latest: bool) =
         inc id
       installDir = "dist/nimble" & $id
     exec("git clone https://github.com/nim-lang/nimble.git " & installDir)
-  if latest:
-    exec("git --git-dir " & installDir & "/.git checkout -f master")
-  else:
-    exec("git --git-dir " & installDir & ".git checkout -f stable")
-  exec("git --git-dir " & installDir & "/.git pull")
+  withDir(installDir):
+    if latest:
+      exec("git checkout -f master")
+    else:
+      exec("git checkout -f stable")
+    exec("git pull")
   nimexec("c --noNimblePath -p:compiler " & installDir / "src/nimble.nim")
   copyExe(installDir / "src/nimble".exe, "bin/nimble".exe)
 
