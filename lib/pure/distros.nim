@@ -222,6 +222,8 @@ proc foreignDepInstallCmd*(foreignPackageName: string): (string, bool) =
       result = ("rpm -ivh " & p, true)
     elif detectOs(ArchLinux):
       result = ("pacman -S " & p, true)
+    else:
+      result = ("<your package manager here> install " & p, true)
   else:
     result = ("brew install " & p, true)
 
