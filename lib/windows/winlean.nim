@@ -790,7 +790,7 @@ const
  IOC_WS2* = 0x08000000
  IOC_INOUT* = IOC_IN or IOC_OUT
 
-template WSAIORW*(x,y): expr = (IOC_INOUT or x or y)
+template WSAIORW*(x,y): untyped = (IOC_INOUT or x or y)
 
 const
   SIO_GET_EXTENSION_FUNCTION_POINTER* = WSAIORW(IOC_WS2,6).DWORD
