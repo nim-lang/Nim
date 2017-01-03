@@ -131,14 +131,16 @@ const
   LacksDevPackages* = {Distribution.Gentoo, Distribution.Slackware,
     Distribution.ArchLinux}
 
-var unameRes: string ## we cache the result of the 'uname -a' execution for
-                     ## faster platform detections.
+var unameRes, releaseRes: string ## we cache the result of the 'uname -a'
+                                 ## execution for faster platform detections.
 
-template uname(): untyped =
-  const cmd = "uname -a"
-  if unameRes.len == 0:
-    unameRes = (when defined(nimscript): gorge(cmd) else: execProcess(cmd))
-  unameRes
+template unameRelease(cmd, cache): untyped =
+  if cache.len == 0:
+    cache = (when defined(nimscript): gorge(cmd) else: execProcess(cmd))
+  cache
+
+template uname(): untyped = unameRelease("uname -a", unameRes)
+template release(): untyped = unameRelease("lsb_release -a", releaseRes)
 
 proc detectOsImpl(d: Distribution): bool =
   case d
@@ -148,7 +150,7 @@ proc detectOsImpl(d: Distribution): bool =
   of Distribution.MacOSX: result = defined(macosx)
   of Distribution.Linux: result = defined(linux)
   of Distribution.Ubuntu, Distribution.Gentoo, Distribution.FreeBSD,
-     Distribution.OpenBSD, Distribution.Fedora:
+     Distribution.OpenBSD:
     result = ("-" & $d & " ") in uname()
   of Distribution.RedHat:
     result = "Red Hat" in uname()
@@ -165,7 +167,8 @@ proc detectOsImpl(d: Distribution): bool =
     let uname = toLowerAscii(uname())
     result = ("sun" in uname) or ("solaris" in uname)
   else:
-    result = toLowerAscii($d) in toLowerAscii(uname())
+    let dd = toLowerAscii($d)
+    result = dd in toLowerAscii(uname()) or dd in toLowerAscii(release())
 
 template detectOs*(d: untyped): bool =
   ## Distro/OS detection. For convenience the
