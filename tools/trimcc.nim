@@ -10,7 +10,7 @@ fenv.h fmtmsg.h fnmatch.h ftw.h errno.h glob.h gtmath.h if.h in.h ipc.h
 langinfo.h locale.h math.h mman.h netdb.h nl_types.h poll.h pthread.h pwd.h
 sched.h select.h semaphore.h signal.h socket.h spawn.h stat.h statvfs.h stdio.h
 stdlib.h string.h strings.h tcp.h time.h types.h ucontext.h uio.h utsname.h
-unistd.h wait.h varargs.h windows.h zlib.h
+unistd.h wait.h varargs.h windows.h zlib.h libgdi32.a libcomdlg32.a
 """.split
 
 proc includes(headerpath, headerfile: string, whitelist: StringTableRef) =
