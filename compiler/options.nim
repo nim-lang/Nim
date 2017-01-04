@@ -254,6 +254,12 @@ proc removeTrailingDirSep*(path: string): string =
   else:
     result = path
 
+proc disableNimblePath*() =
+  gNoNimblePath = true
+  lazyPaths.head = nil
+  lazyPaths.tail = nil
+  lazyPaths.counter = 0
+
 include packagehandling
 
 proc getNimcacheDir*: string =
