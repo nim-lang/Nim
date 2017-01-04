@@ -184,6 +184,10 @@ proc bundleNimbleExe() =
   copyExe("dist/nimble/src/nimble".exe, "bin/nimble".exe)
 
 proc buildNimble(latest: bool) =
+  # old installations created nim/nimblepkg/*.nim files. We remove these
+  # here so that it cannot cause problems (nimble bug #306):
+  if dirExists("bin/nimblepkg"):
+    removeDir("bin/nimblepkg")
   var installDir = "dist/nimble"
   if not dirExists("dist/nimble/.git"):
     # if dist/nimble exist, but is not a git repo, don't mess with it:
