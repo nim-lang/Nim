@@ -23,7 +23,7 @@ when defined(i386) and defined(windows) and defined(vcc):
 import
   os, strutils, parseopt, osproc, streams
 
-const VersionAsString = system.NimVersion #"0.10.2"
+const VersionAsString = system.NimVersion
 
 const
   HelpText = """
@@ -54,8 +54,8 @@ Possible Commands:
   tests [options]          run the testsuite
   temp options             creates a temporary compiler for testing
   winrelease               creates a release (for coredevs only)
-  nimble [--latest]        builds the Nimble tool
-  tools [--latest]         builds Nim related tools
+  nimble                   builds the Nimble tool
+  tools                    builds Nim related tools
   pushcsource              push generated C sources to its repo! Only for devs!
 Boot options:
   -d:release               produce a release version of the compiler
@@ -74,6 +74,14 @@ proc exe(f: string): string =
   result = addFileExt(f, ExeExt)
   when defined(windows):
     result = result.replace('/','\\')
+
+template withDir(dir, body) =
+  let old = getCurrentDir()
+  try:
+    setCurrentDir(dir)
+    body
+  finally:
+    setCurrentdir(old)
 
 proc findNim(): string =
   var nim = "nim".exe
@@ -159,23 +167,14 @@ proc csource(args: string) =
            "--main:compiler/nim.nim compiler/installer.ini $1") %
        [args, VersionAsString, compileNimInst])
 
-proc latestTaggedCommit(dir: string) =
-  let tags = execProcess("git --git-dir " & dir & "/.git tag -l v*").splitLines
-  var i = 1
-  while tags[^i].len == 0: inc i
-  let tag = tags[^i]
-  doAssert tag.len > 0
-  exec("git --git-dir " & dir & "/.git checkout -f " & tag)
-
 proc bundleNimbleSrc() =
   ## bunldeNimbleSrc() bundles a specific Nimble commit with the tarball. We
   ## always bundle the latest official release.
-  if dirExists("dist/nimble/.git"):
-    exec("git --git-dir dist/nimble/.git checkout -f master")
-    exec("git --git-dir dist/nimble/.git pull")
-  else:
+  if not dirExists("dist/nimble/.git"):
     exec("git clone https://github.com/nim-lang/nimble.git dist/nimble")
-  latestTaggedCommit("dist/nimble")
+  withDir("dist/nimble"):
+    exec("git checkout -f stable")
+    exec("git pull")
 
 proc bundleNimbleExe() =
   bundleNimbleSrc()
@@ -186,13 +185,7 @@ proc bundleNimbleExe() =
 
 proc buildNimble(latest: bool) =
   var installDir = "dist/nimble"
-  if dirExists("dist/nimble/.git"):
-    if latest:
-      exec("git --git-dir dist/nimble/.git checkout -f master")
-      exec("git --git-dir dist/nimble/.git pull")
-    else:
-      bundleNimbleSrc()
-  else:
+  if not dirExists("dist/nimble/.git"):
     # if dist/nimble exist, but is not a git repo, don't mess with it:
     if dirExists(installDir):
       var id = 0
@@ -200,9 +193,13 @@ proc buildNimble(latest: bool) =
         inc id
       installDir = "dist/nimble" & $id
     exec("git clone https://github.com/nim-lang/nimble.git " & installDir)
-    if not latest:
-      latestTaggedCommit(installDir)
-  nimexec("c " & installDir / "src/nimble.nim")
+  withDir(installDir):
+    if latest:
+      exec("git checkout -f master")
+    else:
+      exec("git checkout -f stable")
+    exec("git pull")
+  nimexec("c --noNimblePath -p:compiler " & installDir / "src/nimble.nim")
   copyExe(installDir / "src/nimble".exe, "bin/nimble".exe)
 
 proc bundleNimsuggest(buildExe: bool) =
@@ -245,12 +242,7 @@ proc buildTools(latest: bool) =
 
   let nimgrepExe = "bin/nimgrep".exe
   nimexec "c -o:" & nimgrepExe & " tools/nimgrep.nim"
-  if dirExists"dist/nimble":
-    let nimbleExe = "bin/nimble".exe
-    nimexec "c --noNimblePath -p:compiler -o:" & nimbleExe &
-        " dist/nimble/src/nimble.nim"
-  else:
-    buildNimble(latest)
+  buildNimble(latest)
 
 proc nsis(args: string) =
   bundleNimbleExe()
@@ -488,8 +480,8 @@ of cmdArgument:
   of "test", "tests": tests(op.cmdLineRest)
   of "temp": temp(op.cmdLineRest)
   of "winrelease": winRelease()
-  of "nimble": buildNimble(op.cmdLineRest == "--latest")
-  of "tools": buildTools(op.cmdLineRest == "--latest")
+  of "nimble": buildNimble(existsDir(".git"))
+  of "tools": buildTools(existsDir(".git"))
   of "pushcsource", "pushcsources": pushCsources()
   else: showHelp()
 of cmdEnd: showHelp()
