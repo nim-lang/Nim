@@ -77,8 +77,9 @@ Collections and algorithms
 * `lists <lists.html>`_
   Nim linked list support. Contains singly and doubly linked lists and
   circular lists ("rings").
-* `queues <queues.html>`_
-  Implementation of a queue. The underlying implementation uses a ``seq``.
+* `deques <deques.html>`_
+  Implementation of a double-ended queue.
+  The underlying implementation uses a ``seq``.
 * `intsets <intsets.html>`_
   Efficient implementation of a set of ints as a sparse bit set.
 * `critbits <critbits.html>`_

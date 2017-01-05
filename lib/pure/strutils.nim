@@ -808,6 +808,8 @@ proc split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.noSideEff
   ##
   ## Substrings are separated by the string `sep`. This is a wrapper around the
   ## `split iterator <#split.i,string,string>`_.
+  doAssert(sep.len > 0)
+  
   accumulateResult(split(s, sep, maxsplit))
 
 proc rsplit*(s: string, seps: set[char] = Whitespace,
@@ -1309,10 +1311,12 @@ proc join*[T: not string](a: openArray[T], sep: string = ""): string {.
 type
   SkipTable = array[char, int]
 
+{.push profiler: off.}
 proc preprocessSub(sub: string, a: var SkipTable) =
   var m = len(sub)
   for i in 0..0xff: a[chr(i)] = m+1
   for i in 0..m-1: a[sub[i]] = m-i
+{.pop.}
 
 proc findAux(s, sub: string, start: int, a: SkipTable): int =
   # Fast "quick search" algorithm:

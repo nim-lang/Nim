@@ -56,8 +56,8 @@ const
       "Copyright (c) 2006-" & CompileDate.substr(0, 3) & " by Andreas Rumpf\n"
 
 const
-  Usage = slurp"doc/basicopt.txt".replace("//", "")
-  AdvancedUsage = slurp"doc/advopt.txt".replace("//", "")
+  Usage = slurp"../doc/basicopt.txt".replace("//", "")
+  AdvancedUsage = slurp"../doc/advopt.txt".replace("//", "")
 
 proc getCommandLineDesc(): string =
   result = (HelpMessage % [VersionAsString, platform.OS[platform.hostOS].name,
@@ -226,6 +226,8 @@ proc testCompileOptionArg*(switch, arg: string, info: TLineInfo): bool =
     of "staticlib": result = contains(gGlobalOptions, optGenStaticLib) and
                       not contains(gGlobalOptions, optGenGuiApp)
     else: localError(info, errGuiConsoleOrLibExpectedButXFound, arg)
+  of "dynliboverride":
+    result = isDynlibOverride(arg)
   else: invalidCmdLineOption(passCmd1, switch, info)
 
 proc testCompileOption*(switch: string, info: TLineInfo): bool =
@@ -242,6 +244,7 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
   of "linetrace": result = contains(gOptions, optLineTrace)
   of "debugger": result = contains(gOptions, optEndb)
   of "profiler": result = contains(gOptions, optProfiler)
+  of "memtracker": result = contains(gOptions, optMemTracker)
   of "checks", "x": result = gOptions * ChecksOptions == ChecksOptions
   of "floatchecks":
     result = gOptions * {optNaNCheck, optInfCheck} == {optNaNCheck, optInfCheck}
@@ -446,6 +449,10 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     processOnOffSwitch({optProfiler}, arg, pass, info)
     if optProfiler in gOptions: defineSymbol("profiler")
     else: undefSymbol("profiler")
+  of "memtracker":
+    processOnOffSwitch({optMemTracker}, arg, pass, info)
+    if optMemTracker in gOptions: defineSymbol("memtracker")
+    else: undefSymbol("memtracker")
   of "checks", "x": processOnOffSwitch(ChecksOptions, arg, pass, info)
   of "floatchecks":
     processOnOffSwitch({optNaNCheck, optInfCheck}, arg, pass, info)

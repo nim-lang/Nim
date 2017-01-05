@@ -538,7 +538,8 @@ proc getArrayConstr(m: PSym, n: PNode): PNode =
 
 proc foldArrayAccess(m: PSym, n: PNode): PNode =
   var x = getConstExpr(m, n.sons[0])
-  if x == nil or x.typ.skipTypes({tyGenericInst}).kind == tyTypeDesc: return
+  if x == nil or x.typ.skipTypes({tyGenericInst, tyAlias}).kind == tyTypeDesc:
+    return
 
   var y = getConstExpr(m, n.sons[1])
   if y == nil: return
@@ -768,7 +769,7 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
   of nkCast:
     var a = getConstExpr(m, n.sons[1])
     if a == nil: return
-    if n.typ.kind in NilableTypes:
+    if n.typ != nil and n.typ.kind in NilableTypes:
       # we allow compile-time 'cast' for pointer types:
       result = a
       result.typ = n.typ

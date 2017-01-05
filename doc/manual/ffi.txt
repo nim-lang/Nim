@@ -226,4 +226,8 @@ conjunction with the ``exportc`` pragma:
   proc exportme(): int {.cdecl, exportc, dynlib.}
 
 This is only useful if the program is compiled as a dynamic library via the
-``--app:lib`` command line option.
+``--app:lib`` command line option. This pragma only has an effect for the code 
+generation on the Windows target, so when this pragma is forgotten and the dynamic 
+library is only tested on Mac and/or Linux, there won't be an error. On Windows
+this pragma adds ``__declspec(dllexport)`` to the function declaration.
+

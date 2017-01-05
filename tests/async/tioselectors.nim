@@ -12,11 +12,10 @@ template processTest(t, x: untyped) =
   if not x: echo(t & " FAILED\r\n")
 
 when not defined(windows):
-  import os, posix, osproc, nativesockets, times
+  import os, posix, nativesockets, times
 
-  const supportedPlatform = defined(macosx) or defined(freebsd) or
-                            defined(netbsd) or defined(openbsd) or
-                            defined(linux)
+  when ioselSupportedPlatform:
+    import osproc
 
   proc socket_notification_test(): bool =
     proc create_test_socket(): SocketHandle =
@@ -143,7 +142,7 @@ when not defined(windows):
     selector.close()
     result = true
 
-  when supportedPlatform:
+  when ioselSupportedPlatform:
     proc timer_notification_test(): bool =
       var selector = newSelector[int]()
       var timer = selector.registerTimer(100, false, 0)
@@ -462,7 +461,7 @@ when not defined(windows):
   when hasThreadSupport:
     processTest("Multithreaded user event notification test...",
                 mt_event_test())
-  when supportedPlatform:
+  when ioselSupportedPlatform:
     processTest("Timer notification test...", timer_notification_test())
     processTest("Process notification test...", process_notification_test())
     processTest("Signal notification test...", signal_notification_test())

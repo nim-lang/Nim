@@ -12,7 +12,7 @@
 
 import
   ast, astalgo, ropes, options, strutils, nimlexbase, msgs, cgendata, rodutils,
-  intsets, platform, llstream
+  intsets, platform, llstream, tables, sighashes
 
 # Careful! Section marks need to contain a tabulator so that they cannot
 # be part of C string literals.
@@ -27,8 +27,8 @@ const
     cfsFieldInfo: "NIM_merge_FIELD_INFO",
     cfsTypeInfo: "NIM_merge_TYPE_INFO",
     cfsProcHeaders: "NIM_merge_PROC_HEADERS",
-    cfsData: "NIM_merge_DATA",
     cfsVars: "NIM_merge_VARS",
+    cfsData: "NIM_merge_DATA",
     cfsProcs: "NIM_merge_PROCS",
     cfsInitProc: "NIM_merge_INIT_PROC",
     cfsTypeInit1: "NIM_merge_TYPE_INIT1",
@@ -69,7 +69,7 @@ proc genSectionEnd*(ps: TCProcSection): Rope =
   if compilationCachePresent:
     result = rope(NimMergeEndMark & tnl)
 
-proc writeTypeCache(a: TIdTable, s: var string) =
+proc writeTypeCache(a: TypeCache, s: var string) =
   var i = 0
   for id, value in pairs(a):
     if i == 10:
@@ -77,9 +77,9 @@ proc writeTypeCache(a: TIdTable, s: var string) =
       s.add(tnl)
     else:
       s.add(' ')
-    encodeVInt(id, s)
+    encodeStr($id, s)
     s.add(':')
-    encodeStr($Rope(value), s)
+    encodeStr($value, s)
     inc i
   s.add('}')
 
@@ -103,8 +103,9 @@ proc genMergeInfo*(m: BModule): Rope =
   writeTypeCache(m.typeCache, s)
   s.add("declared:{")
   writeIntSet(m.declaredThings, s)
-  s.add("typeInfo:{")
-  writeIntSet(m.typeInfoMarker, s)
+  when false:
+    s.add("typeInfo:{")
+    writeIntSet(m.typeInfoMarker, s)
   s.add("labels:")
   encodeVInt(m.labels, s)
   s.add(" flags:")
@@ -185,19 +186,18 @@ proc newFakeType(id: int): PType =
   new(result)
   result.id = id
 
-proc readTypeCache(L: var TBaseLexer, result: var TIdTable) =
+proc readTypeCache(L: var TBaseLexer, result: var TypeCache) =
   if ^L.bufpos != '{': internalError("ccgmerge: '{' expected")
   inc L.bufpos
   while ^L.bufpos != '}':
     skipWhite(L)
-    var key = decodeVInt(L.buf, L.bufpos)
+    var key = decodeStr(L.buf, L.bufpos)
     if ^L.bufpos != ':': internalError("ccgmerge: ':' expected")
     inc L.bufpos
     var value = decodeStr(L.buf, L.bufpos)
-    # XXX little hack: we create a "fake" type object with the correct Id
-    # better would be to adapt the data structure to not even store the
-    # object as key, but only the Id
-    idTablePut(result, newFakeType(key), value.rope)
+    # XXX implement me
+    when false:
+      idTablePut(result, newFakeType(key), value.rope)
   inc L.bufpos
 
 proc readIntSet(L: var TBaseLexer, result: var IntSet) =
@@ -220,7 +220,8 @@ proc processMergeInfo(L: var TBaseLexer, m: BModule) =
     case k
     of "typeCache": readTypeCache(L, m.typeCache)
     of "declared":  readIntSet(L, m.declaredThings)
-    of "typeInfo":  readIntSet(L, m.typeInfoMarker)
+    of "typeInfo":
+      when false: readIntSet(L, m.typeInfoMarker)
     of "labels":    m.labels = decodeVInt(L.buf, L.bufpos)
     of "flags":
       m.flags = cast[set[CodegenFlag]](decodeVInt(L.buf, L.bufpos) != 0)

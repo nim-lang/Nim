@@ -293,6 +293,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
 
   let bbody = lastSon body
   var newbody = replaceTypeVarsT(cl, bbody)
+  let bodyIsNew = newbody != bbody
   cl.skipTypedesc = oldSkipTypedesc
   newbody.flags = newbody.flags + (t.flags + body.flags - tfInstClearedFlags)
   result.flags = result.flags + newbody.flags - tfInstClearedFlags
@@ -310,6 +311,13 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     # generics *when the type is constructed*:
     newbody.deepCopy = cl.c.instTypeBoundOp(cl.c, dc, result, cl.info,
                                             attachedDeepCopy, 1)
+  if bodyIsNew and newbody.typeInst == nil:
+    #doassert newbody.typeInst == nil
+    newbody.typeInst = result
+    if tfRefsAnonObj in newbody.flags:
+      assert newbody.kind in {tyRef, tyPtr}
+      assert newbody.lastSon.typeInst == nil
+      newbody.lastSon.typeInst = result
   let asgn = newbody.assignment
   if asgn != nil and sfFromGeneric notin asgn.flags:
     # '=' needs to be instantiated for generics when the type is constructed:
@@ -459,7 +467,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
           var r = replaceTypeVarsT(cl, result.sons[i])
           if result.kind == tyObject:
             # carefully coded to not skip the precious tyGenericInst:
-            let r2 = r.skipTypes({tyGenericInst})
+            let r2 = r.skipTypes({tyGenericInst, tyAlias})
             if r2.kind in {tyPtr, tyRef}:
               r = skipTypes(r2, {tyPtr, tyRef})
           result.sons[i] = r

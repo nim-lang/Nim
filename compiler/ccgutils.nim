@@ -85,87 +85,77 @@ proc slowSearch(key: PType; k: TTypeKind): PType =
 
 proc getUniqueType*(key: PType): PType =
   # this is a hotspot in the compiler!
-  if key == nil: return
-  var k = key.kind
-  case k
-  of tyBool, tyChar, tyInt..tyUInt64:
-    # no canonicalization for integral types, so that e.g. ``pid_t`` is
-    # produced instead of ``NI``.
-    result = key
-  of  tyEmpty, tyNil, tyExpr, tyStmt, tyPointer, tyString,
-      tyCString, tyNone, tyVoid:
-    result = gCanonicalTypes[k]
-    if result == nil:
-      gCanonicalTypes[k] = key
+  result = key
+  when false:
+    if key == nil: return
+    var k = key.kind
+    case k
+    of tyBool, tyChar, tyInt..tyUInt64:
+      # no canonicalization for integral types, so that e.g. ``pid_t`` is
+      # produced instead of ``NI``.
       result = key
-  of tyTypeDesc, tyTypeClasses, tyGenericParam, tyFromExpr, tyFieldAccessor:
-    if key.sym != nil:
-      internalError(key.sym.info, "metatype not eliminated")
-    else:
-      internalError("metatype not eliminated")
-  of tyDistinct:
-    if key.deepCopy != nil: result = key
-    else: result = getUniqueType(lastSon(key))
-  of tyGenericInst, tyOrdinal, tyStatic:
-    result = getUniqueType(lastSon(key))
-    #let obj = lastSon(key)
-    #if obj.sym != nil and obj.sym.name.s == "TOption":
-    #  echo "for ", typeToString(key), " I returned "
-    #  debug result
-  of tyPtr, tyRef, tyVar:
-    let elemType = lastSon(key)
-    if elemType.kind in {tyBool, tyChar, tyInt..tyUInt64}:
-      # no canonicalization for integral types, so that e.g. ``ptr pid_t`` is
-      # produced instead of ``ptr NI``.
-      result = key
-    else:
+    of  tyEmpty, tyNil, tyExpr, tyStmt, tyPointer, tyString,
+        tyCString, tyNone, tyVoid:
+      result = gCanonicalTypes[k]
+      if result == nil:
+        gCanonicalTypes[k] = key
+        result = key
+    of tyTypeDesc, tyTypeClasses, tyGenericParam, tyFromExpr, tyFieldAccessor:
+      if key.sym != nil:
+        internalError(key.sym.info, "metatype not eliminated")
+      else:
+        internalError("metatype not eliminated")
+    of tyDistinct:
+      if key.deepCopy != nil: result = key
+      else: result = getUniqueType(lastSon(key))
+    of tyGenericInst, tyOrdinal, tyStatic, tyAlias:
+      result = getUniqueType(lastSon(key))
+      #let obj = lastSon(key)
+      #if obj.sym != nil and obj.sym.name.s == "TOption":
+      #  echo "for ", typeToString(key), " I returned "
+      #  debug result
+    of tyPtr, tyRef, tyVar:
+      let elemType = lastSon(key)
+      if elemType.kind in {tyBool, tyChar, tyInt..tyUInt64}:
+        # no canonicalization for integral types, so that e.g. ``ptr pid_t`` is
+        # produced instead of ``ptr NI``.
+        result = key
+      else:
+        result = slowSearch(key, k)
+    of tyGenericInvocation, tyGenericBody,
+       tyOpenArray, tyArray, tySet, tyRange, tyTuple,
+       tySequence, tyForward, tyVarargs, tyProxy:
+      # we have to do a slow linear search because types may need
+      # to be compared by their structure:
       result = slowSearch(key, k)
-  of tyArrayConstr, tyGenericInvocation, tyGenericBody,
-     tyOpenArray, tyArray, tySet, tyRange, tyTuple,
-     tySequence, tyForward, tyVarargs, tyProxy:
-    # we have to do a slow linear search because types may need
-    # to be compared by their structure:
-    result = slowSearch(key, k)
-  of tyObject:
-    if tfFromGeneric notin key.flags:
-      # fast case; lookup per id suffices:
+    of tyObject:
+      if tfFromGeneric notin key.flags:
+        # fast case; lookup per id suffices:
+        result = PType(idTableGet(gTypeTable[k], key))
+        if result == nil:
+          idTablePut(gTypeTable[k], key, key)
+          result = key
+      else:
+        # ugly slow case: need to compare by structure
+        if idTableHasObjectAsKey(gTypeTable[k], key): return key
+        for h in countup(0, high(gTypeTable[k].data)):
+          var t = PType(gTypeTable[k].data[h].key)
+          if t != nil and sameBackendType(t, key):
+            return t
+        idTablePut(gTypeTable[k], key, key)
+        result = key
+    of tyEnum:
       result = PType(idTableGet(gTypeTable[k], key))
       if result == nil:
         idTablePut(gTypeTable[k], key, key)
         result = key
-    else:
-      # ugly slow case: need to compare by structure
-      if idTableHasObjectAsKey(gTypeTable[k], key): return key
-      for h in countup(0, high(gTypeTable[k].data)):
-        var t = PType(gTypeTable[k].data[h].key)
-        if t != nil and sameBackendType(t, key):
-          return t
-      idTablePut(gTypeTable[k], key, key)
-      result = key
-  of tyEnum:
-    result = PType(idTableGet(gTypeTable[k], key))
-    if result == nil:
-      idTablePut(gTypeTable[k], key, key)
-      result = key
-  of tyProc:
-    if key.callConv != ccClosure:
-      result = key
-    else:
-      # ugh, we need the canon here:
-      result = slowSearch(key, k)
-  of tyUnused, tyUnused0, tyUnused1, tyUnused2: internalError("getUniqueType")
-
-proc tableGetType*(tab: TIdTable, key: PType): RootRef =
-  # returns nil if we need to declare this type
-  result = idTableGet(tab, key)
-  if (result == nil) and (tab.counter > 0):
-    # we have to do a slow linear search because types may need
-    # to be compared by their structure:
-    for h in countup(0, high(tab.data)):
-      var t = PType(tab.data[h].key)
-      if t != nil:
-        if sameType(t, key):
-          return tab.data[h].val
+    of tyProc:
+      if key.callConv != ccClosure:
+        result = key
+      else:
+        # ugh, we need the canon here:
+        result = slowSearch(key, k)
+    of tyUnused, tyUnused0, tyUnused1, tyUnused2: internalError("getUniqueType")
 
 proc makeSingleLineCString*(s: string): string =
   result = "\""

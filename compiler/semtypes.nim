@@ -95,7 +95,7 @@ proc semSet(c: PContext, n: PNode, prev: PType): PType =
   if sonsLen(n) == 2:
     var base = semTypeNode(c, n.sons[1], nil)
     addSonSkipIntLit(result, base)
-    if base.kind == tyGenericInst: base = lastSon(base)
+    if base.kind in {tyGenericInst, tyAlias}: base = lastSon(base)
     if base.kind != tyGenericParam:
       if not isOrdinalType(base):
         localError(n.info, errOrdinalTypeExpected)
@@ -145,7 +145,8 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
         isNilable = true
       else:
         let region = semTypeNode(c, ni, nil)
-        if region.skipTypes({tyGenericInst}).kind notin {tyError, tyObject}:
+        if region.skipTypes({tyGenericInst, tyAlias}).kind notin {
+              tyError, tyObject}:
           message n[i].info, errGenerated, "region needs to be an object type"
         addSonSkipIntLit(result, region)
     addSonSkipIntLit(result, base)
@@ -266,7 +267,7 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
     # 3 = length(array indx base)
     let indx = semArrayIndex(c, n[1])
     var indxB = indx
-    if indxB.kind == tyGenericInst: indxB = lastSon(indxB)
+    if indxB.kind in {tyGenericInst, tyAlias}: indxB = lastSon(indxB)
     if indxB.kind notin {tyGenericParam, tyStatic, tyFromExpr}:
       if not isOrdinalType(indxB):
         localError(n.sons[1].info, errOrdinalTypeExpected)
@@ -647,7 +648,7 @@ proc skipGenericInvocation(t: PType): PType {.inline.} =
   result = t
   if result.kind == tyGenericInvocation:
     result = result.sons[0]
-  while result.kind in {tyGenericInst, tyGenericBody, tyRef, tyPtr}:
+  while result.kind in {tyGenericInst, tyGenericBody, tyRef, tyPtr, tyAlias}:
     result = lastSon(result)
 
 proc addInheritedFields(c: PContext, check: var IntSet, pos: var int,
@@ -950,7 +951,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       if isType: localError(a.info, "':' expected")
       if kind in {skTemplate, skMacro}:
         typ = newTypeS(tyExpr, c)
-    elif skipTypes(typ, {tyGenericInst}).kind == tyVoid:
+    elif skipTypes(typ, {tyGenericInst, tyAlias}).kind == tyVoid:
       continue
     for j in countup(0, length-3):
       var arg = newSymG(skParam, a.sons[j], c)
@@ -982,7 +983,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
   if r != nil:
     # turn explicit 'void' return type into 'nil' because the rest of the
     # compiler only checks for 'nil':
-    if skipTypes(r, {tyGenericInst}).kind != tyVoid:
+    if skipTypes(r, {tyGenericInst, tyAlias}).kind != tyVoid:
       # 'auto' as a return type does not imply a generic:
       if r.kind == tyAnything:
         # 'p(): auto' and 'p(): expr' are equivalent, but the rest of the
@@ -1151,6 +1152,13 @@ proc semProcTypeWithScope(c: PContext, n: PNode,
     when useEffectSystem: setEffectsForProcType(result, n.sons[1])
   closeScope(c)
 
+proc maybeAliasType(c: PContext; typeExpr, prev: PType): PType =
+  if typeExpr.kind in {tyObject, tyEnum, tyDistinct} and prev != nil:
+    result = newTypeS(tyAlias, c)
+    result.rawAddSon typeExpr
+    result.sym = prev.sym
+    assignType(prev, result)
+
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   result = nil
   if gCmd == cmdIdeTools: suggestExpr(c, n)
@@ -1180,7 +1188,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       result = semRangeAux(c, n, prev)
     elif n[0].kind == nkNilLit and n.len == 2:
       result = semTypeNode(c, n.sons[1], prev)
-      if result.skipTypes({tyGenericInst}).kind in NilableTypes+GenericTypes:
+      if result.skipTypes({tyGenericInst, tyAlias}).kind in NilableTypes+GenericTypes:
         if tfNotNil in result.flags:
           result = freshType(result, prev)
           result.flags.excl(tfNotNil)
@@ -1208,7 +1216,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         case n.len
         of 3:
           result = semTypeNode(c, n.sons[1], prev)
-          if result.skipTypes({tyGenericInst}).kind in NilableTypes+GenericTypes and
+          if result.skipTypes({tyGenericInst, tyAlias}).kind in NilableTypes+GenericTypes and
               n.sons[2].kind == nkNilLit:
             result = freshType(result, prev)
             result.flags.incl(tfNotNil)
@@ -1266,15 +1274,18 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     of mTuple: result = semTuple(c, n, prev)
     else: result = semGeneric(c, n, s, prev)
   of nkDotExpr:
-    var typeExpr = semExpr(c, n)
+    let typeExpr = semExpr(c, n)
     if typeExpr.typ.kind != tyTypeDesc:
       localError(n.info, errTypeExpected)
       result = errorType(c)
     else:
       result = typeExpr.typ.base
       if result.isMetaType:
-        var preprocessed = semGenericStmt(c, n)
+        let preprocessed = semGenericStmt(c, n)
         result = makeTypeFromExpr(c, preprocessed.copyTree)
+      else:
+        let alias = maybeAliasType(c, result, prev)
+        if alias != nil: result = alias
   of nkIdent, nkAccQuoted:
     var s = semTypeIdent(c, n)
     if s.typ == nil:
@@ -1286,16 +1297,23 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     elif prev == nil:
       result = s.typ
     else:
-      assignType(prev, s.typ)
-      # bugfix: keep the fresh id for aliases to integral types:
-      if s.typ.kind notin {tyBool, tyChar, tyInt..tyInt64, tyFloat..tyFloat128,
-                           tyUInt..tyUInt64}:
-        prev.id = s.typ.id
-      result = prev
+      let alias = maybeAliasType(c, s.typ, prev)
+      if alias != nil:
+        result = alias
+      else:
+        assignType(prev, s.typ)
+        # bugfix: keep the fresh id for aliases to integral types:
+        if s.typ.kind notin {tyBool, tyChar, tyInt..tyInt64, tyFloat..tyFloat128,
+                             tyUInt..tyUInt64}:
+          prev.id = s.typ.id
+        result = prev
   of nkSym:
     if n.sym.kind == skType and n.sym.typ != nil:
       var t = n.sym.typ
-      if prev == nil:
+      let alias = maybeAliasType(c, t, prev)
+      if alias != nil:
+        result = alias
+      elif prev == nil:
         result = t
       else:
         assignType(prev, t)

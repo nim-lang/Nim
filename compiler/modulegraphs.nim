@@ -36,6 +36,9 @@ type
     invalidTransitiveClosure: bool
     inclToMod*: Table[int32, int32] # mapping of include file to the
                                     # first module that included it
+    importStack*: seq[int32]  # The current import stack. Used for detecting recursive
+                              # module dependencies.
+    backend*: RootRef # minor hack so that a backend can extend this easily
 
 {.this: g.}
 
@@ -44,12 +47,14 @@ proc newModuleGraph*(): ModuleGraph =
   initStrTable(result.packageSyms)
   result.deps = initIntSet()
   result.modules = @[]
+  result.importStack = @[]
   result.inclToMod = initTable[int32, int32]()
 
 proc resetAllModules*(g: ModuleGraph) =
   initStrTable(packageSyms)
   deps = initIntSet()
   modules = @[]
+  importStack = @[]
   inclToMod = initTable[int32, int32]()
 
 proc getModule*(g: ModuleGraph; fileIdx: int32): PSym =

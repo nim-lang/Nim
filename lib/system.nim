@@ -551,8 +551,6 @@ type
     ##
     ## See the full `exception hierarchy`_.
 
-  TResult* {.deprecated.} = enum Failure, Success
-
 {.deprecated: [TObject: RootObj, PObject: RootRef, TEffect: RootEffect,
   FTime: TimeEffect, FIO: IOEffect, FReadIO: ReadIOEffect,
   FWriteIO: WriteIOEffect, FExecIO: ExecIOEffect,
@@ -870,29 +868,43 @@ when defined(nimnomagic64):
 else:
   proc `mod` *(x, y: int64): int64 {.magic: "ModI64", noSideEffect.}
 
-proc `shr` *(x, y: int): int {.magic: "ShrI", noSideEffect.}
-proc `shr` *(x, y: int8): int8 {.magic: "ShrI", noSideEffect.}
-proc `shr` *(x, y: int16): int16 {.magic: "ShrI", noSideEffect.}
-proc `shr` *(x, y: int32): int32 {.magic: "ShrI", noSideEffect.}
-proc `shr` *(x, y: int64): int64 {.magic: "ShrI", noSideEffect.}
-  ## computes the `shift right` operation of `x` and `y`, filling
-  ## vacant bit positions with zeros.
-  ##
-  ## .. code-block:: Nim
-  ##   0b0001_0000'i8 shr 2 == 0b0000_0100'i8
-  ##   0b1000_0000'i8 shr 8 == 0b0000_0000'i8
-  ##   0b0000_0001'i8 shr 1 == 0b0000_0000'i8
+when defined(nimNewShiftOps):
+  proc `shr` *(x: int, y: SomeInteger): int {.magic: "ShrI", noSideEffect.}
+  proc `shr` *(x: int8, y: SomeInteger): int8 {.magic: "ShrI", noSideEffect.}
+  proc `shr` *(x: int16, y: SomeInteger): int16 {.magic: "ShrI", noSideEffect.}
+  proc `shr` *(x: int32, y: SomeInteger): int32 {.magic: "ShrI", noSideEffect.}
+  proc `shr` *(x: int64, y: SomeInteger): int64 {.magic: "ShrI", noSideEffect.}
+    ## computes the `shift right` operation of `x` and `y`, filling
+    ## vacant bit positions with zeros.
+    ##
+    ## .. code-block:: Nim
+    ##   0b0001_0000'i8 shr 2 == 0b0000_0100'i8
+    ##   0b1000_0000'i8 shr 8 == 0b0000_0000'i8
+    ##   0b0000_0001'i8 shr 1 == 0b0000_0000'i8
 
-proc `shl` *(x, y: int): int {.magic: "ShlI", noSideEffect.}
-proc `shl` *(x, y: int8): int8 {.magic: "ShlI", noSideEffect.}
-proc `shl` *(x, y: int16): int16 {.magic: "ShlI", noSideEffect.}
-proc `shl` *(x, y: int32): int32 {.magic: "ShlI", noSideEffect.}
-proc `shl` *(x, y: int64): int64 {.magic: "ShlI", noSideEffect.}
-  ## computes the `shift left` operation of `x` and `y`.
-  ##
-  ## .. code-block:: Nim
-  ##  1'i32 shl 4 == 0x0000_0010
-  ##  1'i64 shl 4 == 0x0000_0000_0000_0010
+
+  proc `shl` *(x: int, y: SomeInteger): int {.magic: "ShlI", noSideEffect.}
+  proc `shl` *(x: int8, y: SomeInteger): int8 {.magic: "ShlI", noSideEffect.}
+  proc `shl` *(x: int16, y: SomeInteger): int16 {.magic: "ShlI", noSideEffect.}
+  proc `shl` *(x: int32, y: SomeInteger): int32 {.magic: "ShlI", noSideEffect.}
+  proc `shl` *(x: int64, y: SomeInteger): int64 {.magic: "ShlI", noSideEffect.}
+    ## computes the `shift left` operation of `x` and `y`.
+    ##
+    ## .. code-block:: Nim
+    ##  1'i32 shl 4 == 0x0000_0010
+    ##  1'i64 shl 4 == 0x0000_0000_0000_0010
+else:
+  proc `shr` *(x, y: int): int {.magic: "ShrI", noSideEffect.}
+  proc `shr` *(x, y: int8): int8 {.magic: "ShrI", noSideEffect.}
+  proc `shr` *(x, y: int16): int16 {.magic: "ShrI", noSideEffect.}
+  proc `shr` *(x, y: int32): int32 {.magic: "ShrI", noSideEffect.}
+  proc `shr` *(x, y: int64): int64 {.magic: "ShrI", noSideEffect.}
+
+  proc `shl` *(x, y: int): int {.magic: "ShlI", noSideEffect.}
+  proc `shl` *(x, y: int8): int8 {.magic: "ShlI", noSideEffect.}
+  proc `shl` *(x, y: int16): int16 {.magic: "ShlI", noSideEffect.}
+  proc `shl` *(x, y: int32): int32 {.magic: "ShlI", noSideEffect.}
+  proc `shl` *(x, y: int64): int64 {.magic: "ShlI", noSideEffect.}
 
 proc `and` *(x, y: int): int {.magic: "BitandI", noSideEffect.}
 proc `and` *(x, y: int8): int8 {.magic: "BitandI", noSideEffect.}
@@ -993,11 +1005,18 @@ proc `<%` *(x, y: int64): bool {.magic: "LtU64", noSideEffect.}
 proc `not`*[T: SomeUnsignedInt](x: T): T {.magic: "BitnotI", noSideEffect.}
   ## computes the `bitwise complement` of the integer `x`.
 
-proc `shr`*[T: SomeUnsignedInt](x, y: T): T {.magic: "ShrI", noSideEffect.}
-  ## computes the `shift right` operation of `x` and `y`.
+when defined(nimNewShiftOps):
+  proc `shr`*[T: SomeUnsignedInt](x: T, y: SomeInteger): T {.magic: "ShrI", noSideEffect.}
+    ## computes the `shift right` operation of `x` and `y`.
 
-proc `shl`*[T: SomeUnsignedInt](x, y: T): T {.magic: "ShlI", noSideEffect.}
-  ## computes the `shift left` operation of `x` and `y`.
+  proc `shl`*[T: SomeUnsignedInt](x: T, y: SomeInteger): T {.magic: "ShlI", noSideEffect.}
+    ## computes the `shift left` operation of `x` and `y`.
+else:
+  proc `shr`*[T: SomeUnsignedInt](x, y: T): T {.magic: "ShrI", noSideEffect.}
+    ## computes the `shift right` operation of `x` and `y`.
+
+  proc `shl`*[T: SomeUnsignedInt](x, y: T): T {.magic: "ShlI", noSideEffect.}
+    ## computes the `shift left` operation of `x` and `y`.
 
 proc `and`*[T: SomeUnsignedInt](x, y: T): T {.magic: "BitandI", noSideEffect.}
   ## computes the `bitwise and` of numbers `x` and `y`.
@@ -1272,12 +1291,14 @@ const
 
   seqShallowFlag = low(int)
 
+{.push profiler: off.}
 when defined(nimKnowsNimvm):
   let nimvm* {.magic: "Nimvm".}: bool = false
     ## may be used only in "when" expression.
     ## It is true in Nim VM context and false otherwise
 else:
   const nimvm*: bool = false
+{.pop.}
 
 proc compileOption*(option: string): bool {.
   magic: "CompileOption", noSideEffect.}
@@ -2544,6 +2565,7 @@ when hostOS == "standalone":
   include "$projectpath/panicoverride"
 
 when not declared(sysFatal):
+  {.push profiler: off.}
   when hostOS == "standalone":
     proc sysFatal(exceptn: typedesc, message: string) {.inline.} =
       panic(message)
@@ -2563,6 +2585,7 @@ when not declared(sysFatal):
       new(e)
       e.msg = message & arg
       raise e
+  {.pop.}
 
 proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo", benign.}
   ## get type information for `x`. Ordinary code should not use this, but
@@ -2591,6 +2614,14 @@ else:
     if x < 0: -x else: x
 {.pop.}
 
+type
+  FileSeekPos* = enum ## Position relative to which seek should happen
+                      # The values are ordered so that they match with stdio
+                      # SEEK_SET, SEEK_CUR and SEEK_END respectively.
+    fspSet            ## Seek to absolute value
+    fspCur            ## Seek relative to current position
+    fspEnd            ## Seek relative to end
+
 when not defined(JS): #and not defined(nimscript):
   {.push stack_trace: off, profiler:off.}
 
@@ -2616,8 +2647,10 @@ when not defined(JS): #and not defined(nimscript):
       when declared(setStackBottom):
         setStackBottom(locals)
 
+    {.push profiler: off.}
     var
       strDesc = TNimType(size: sizeof(string), kind: tyString, flags: {ntfAcyclic})
+    {.pop.}
 
 
   # ----------------- IO Part ------------------------------------------------
@@ -2692,8 +2725,9 @@ when not defined(JS): #and not defined(nimscript):
     when defined(windows):
       # work-around C's sucking abstraction:
       # BUGFIX: stdin and stdout should be binary files!
-      proc c_setmode(handle, mode: cint) {.importc: "_setmode",
-                                           header: "<io.h>".}
+      proc c_setmode(handle, mode: cint) {.
+        importc: when defined(bcc): "setmode" else: "_setmode",
+        header: "<io.h>".}
       var
         O_BINARY {.importc: "O_BINARY", nodecl.}: cint
 
@@ -2852,7 +2886,7 @@ when not defined(JS): #and not defined(nimscript):
       ## file `f`. Returns the number of actual written bytes, which may be less
       ## than `len` in case of an error.
 
-    proc setFilePos*(f: File, pos: int64) {.benign.}
+    proc setFilePos*(f: File, pos: int64, relativeTo: FileSeekPos = fspSet) {.benign.}
       ## sets the position of the file pointer that is used for read/write
       ## operations. The file's first byte has the index zero.
 
@@ -2950,6 +2984,8 @@ when not defined(JS): #and not defined(nimscript):
         ## lead to the ``raise`` statement. This only works for debug builds.
 
     {.push stack_trace: off, profiler:off.}
+    when defined(memtracker):
+      include "system/memtracker"
     when hostOS == "standalone":
       include "system/embedded"
     else:
@@ -2992,7 +3028,9 @@ when not defined(JS): #and not defined(nimscript):
       else:
         result = n.sons[n.len]
 
+    {.push profiler:off.}
     when hasAlloc: include "system/mmdisp"
+    {.pop.}
     {.push stack_trace: off, profiler:off.}
     when hasAlloc: include "system/sysstr"
     {.pop.}

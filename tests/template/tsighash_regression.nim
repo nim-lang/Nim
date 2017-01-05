@@ -1,0 +1,5 @@
+
+import tconfusinglocal
+
+
+fail "foo"

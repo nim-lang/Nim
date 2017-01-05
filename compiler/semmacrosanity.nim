@@ -61,7 +61,7 @@ proc annotateType*(n: PNode, t: PType) =
     else:
       globalError(n.info, "() must have a tuple type")
   of nkBracket:
-    if x.kind in {tyArrayConstr, tyArray, tySequence, tyOpenArray}:
+    if x.kind in {tyArray, tySequence, tyOpenArray}:
       n.typ = t
       for m in n: annotateType(m, x.elemType)
     else:

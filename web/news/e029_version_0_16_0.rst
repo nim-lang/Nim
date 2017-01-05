@@ -35,6 +35,18 @@ Library Additions
 
 - Added new parameter to ``error`` proc of ``macro`` module to provide better
   error message
+- Added new ``deques`` module intended to replace ``queues``.
+  ``deques`` provides a superset of ``queues`` API with clear naming.
+  ``queues`` module is now deprecated and will be removed in the future.
+
+- Added ``hideCursor``, ``showCursor``, ``terminalWidth``,
+  ``terminalWidthIoctl`` and ``terminalSize`` to the ``terminal``
+  `(doc) <http://nim-lang.org/docs/terminal.html>`_ module.
+
+- Added new module ``distros``
+  `(doc) <http://nim-lang.org/docs/distros.html>`_  that can be used in Nimble
+  packages to aid in supporting the OS's native package managers.
+
 
 Tool Additions
 --------------
@@ -43,9 +55,46 @@ Tool Additions
 Compiler Additions
 ------------------
 
+- The C/C++ code generator has been rewritten to use stable
+  name mangling rules. This means that compile times for
+  edit-compile-run cycles are much reduced.
+
 
 Language Additions
 ------------------
+
+- The ``emit`` pragma now takes a list of Nim expressions instead
+  of a single string literal. This list can easily contain non-strings
+  like template parameters. This means ``emit`` works out of the
+  box with templates and no new quoting rules needed to be introduced.
+  The old way with backtick quoting is still supported but will be
+  deprecated.
+
+.. code-block:: nim
+  type Vector* {.importcpp: "std::vector", header: "<vector>".}[T] = object
+
+  template `[]=`*[T](v: var Vector[T], key: int, val: T) =
+    {.emit: [v, "[", key, "] = ", val, ";"].}
+
+  proc setLen*[T](v: var Vector[T]; size: int) {.importcpp: "resize", nodecl.}
+  proc `[]`*[T](v: var Vector[T], key: int): T {.importcpp: "(#[#])", nodecl.}
+
+  proc main =
+    var v: Vector[float]
+    v.setLen 1
+    v[0] = 6.0
+    echo v[0]
+
+- The ``import`` statement now supports importing multiple modules from
+  the same directory:
+
+.. code-block:: nim
+  import compiler / [ast, parser, lexer]
+
+Is a shortcut for:
+
+.. code-block:: nim
+  import compiler / ast, compiler / parser, compiler / lexer
 
 
 Bugfixes

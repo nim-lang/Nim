@@ -14,7 +14,7 @@ import ospaths
 # import parseopt
 import parseutils
 # import pegs
-import queues
+import deques
 import sequtils
 import strutils
 import subexes

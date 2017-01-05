@@ -339,6 +339,8 @@ when not defined(noSignalHandler):
           action("unknown signal\n")
 
     # print stack trace and quit
+    when defined(memtracker):
+      logPendingOps()
     when hasSomeStackTrace:
       GC_disable()
       var buf = newStringOfCap(2000)

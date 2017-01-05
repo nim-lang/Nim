@@ -216,8 +216,8 @@ when defined(nimfix):
   # when we cannot find the identifier, retry with a changed identifer:
   proc altSpelling(x: PIdent): PIdent =
     case x.s[0]
-    of 'A'..'Z': result = getIdent(toLower(x.s[0]) & x.s.substr(1))
-    of 'a'..'z': result = getIdent(toLower(x.s[0]) & x.s.substr(1))
+    of 'A'..'Z': result = getIdent(toLowerAscii(x.s[0]) & x.s.substr(1))
+    of 'a'..'z': result = getIdent(toLowerAscii(x.s[0]) & x.s.substr(1))
     else: result = x
 
   template fixSpelling(n: PNode; ident: PIdent; op: untyped) =
@@ -242,6 +242,15 @@ proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
     inc i
   localError(info, errGenerated, err)
 
+proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string) =
+  var err = "undeclared identifier: '" & name & "'"
+  if c.recursiveDep.len > 0:
+    err.add "\nThis might be caused by a recursive module dependency: "
+    err.add c.recursiveDep
+    # prevent excessive errors for 'nim check'
+    c.recursiveDep = nil
+  localError(info, errGenerated, err)
+
 proc lookUp*(c: PContext, n: PNode): PSym =
   # Looks up a symbol. Generates an error in case of nil.
   case n.kind
@@ -249,7 +258,7 @@ proc lookUp*(c: PContext, n: PNode): PSym =
     result = searchInScopes(c, n.ident).skipAlias(n)
     if result == nil:
       fixSpelling(n, n.ident, searchInScopes)
-      localError(n.info, errUndeclaredIdentifier, n.ident.s)
+      errorUndeclaredIdentifier(c, n.info, n.ident.s)
       result = errorSym(c, n)
   of nkSym:
     result = n.sym
@@ -258,7 +267,7 @@ proc lookUp*(c: PContext, n: PNode): PSym =
     result = searchInScopes(c, ident).skipAlias(n)
     if result == nil:
       fixSpelling(n, ident, searchInScopes)
-      localError(n.info, errUndeclaredIdentifier, ident.s)
+      errorUndeclaredIdentifier(c, n.info, ident.s)
       result = errorSym(c, n)
   else:
     internalError(n.info, "lookUp")
@@ -282,7 +291,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
       result = searchInScopes(c, ident, allExceptModule).skipAlias(n)
     if result == nil and checkUndeclared in flags:
       fixSpelling(n, ident, searchInScopes)
-      localError(n.info, errUndeclaredIdentifier, ident.s)
+      errorUndeclaredIdentifier(c, n.info, ident.s)
       result = errorSym(c, n)
     elif checkAmbiguity in flags and result != nil and
         contains(c.ambiguousSymbols, result.id):
@@ -307,7 +316,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
           result = strTableGet(m.tab, ident).skipAlias(n)
         if result == nil and checkUndeclared in flags:
           fixSpelling(n.sons[1], ident, searchInScopes)
-          localError(n.sons[1].info, errUndeclaredIdentifier, ident.s)
+          errorUndeclaredIdentifier(c, n.sons[1].info, ident.s)
           result = errorSym(c, n.sons[1])
       elif n.sons[1].kind == nkSym:
         result = n.sons[1].sym

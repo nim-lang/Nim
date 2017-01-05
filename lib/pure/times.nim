@@ -70,7 +70,7 @@ when defined(posix) and not defined(JS):
 elif defined(windows):
   import winlean
 
-  when defined(vcc):
+  when defined(vcc) or defined(bcc):
     # newest version of Visual C++ defines time_t to be of 64 bits
     type TimeImpl {.importc: "time_t", header: "<time.h>".} = int64
     # visual c's c runtime exposes these under a different name
@@ -436,6 +436,11 @@ when not defined(JS):
     TimeInfoPtr = ptr StructTM
     Clock {.importc: "clock_t".} = distinct int
 
+  when not defined(windows):
+    # This is not ANSI C, but common enough
+    proc timegm(t: StructTM): Time {.
+      importc: "timegm", header: "<time.h>", tags: [].}
+
   proc localtime(timer: ptr Time): TimeInfoPtr {.
     importc: "localtime", header: "<time.h>", tags: [].}
   proc gmtime(timer: ptr Time): TimeInfoPtr {.
@@ -514,21 +519,22 @@ when not defined(JS):
     # copying is needed anyway to provide reentrancity; thus
     # the conversion is not expensive
 
-  proc timeInfoToTime(timeInfo: TimeInfo): Time =
-    var cTimeInfo = timeInfo # for C++ we have to make a copy,
-    # because the header of mktime is broken in my version of libc
-    result = mktime(timeInfoToTM(cTimeInfo))
-    # mktime is defined to interpret the input as local time. As timeInfoToTM
-    # does ignore the timezone, we need to adjust this here.
-    result = Time(TimeImpl(result) - getTimezone() + timeInfo.timezone)
-
   proc toTime(timeInfo: TimeInfo): Time =
-    var cTimeInfo = timeInfo # for C++ we have to make a copy,
+    var cTimeInfo = timeInfo # for C++ we have to make a copy
     # because the header of mktime is broken in my version of libc
-    result = mktime(timeInfoToTM(cTimeInfo))
-    # mktime is defined to interpret the input as local time. As timeInfoToTM
-    # does ignore the timezone, we need to adjust this here.
-    result = Time(TimeImpl(result) - getTimezone() + timeInfo.timezone)
+
+    when defined(windows):
+      # On Windows `mktime` is broken enough to make this work.
+      result = mktime(timeInfoToTM(cTimeInfo))
+      # mktime is defined to interpret the input as local time. As timeInfoToTM
+      # does ignore the timezone, we need to adjust this here.
+      result = Time(TimeImpl(result) - getTimezone() + timeInfo.timezone)
+    else:
+      result = timegm(timeInfoToTM(cTimeInfo))
+      # As timeInfoToTM does ignore the timezone, we need to adjust this here.
+      result = Time(TimeImpl(result) + timeInfo.timezone)
+
+  proc timeInfoToTime(timeInfo: TimeInfo): Time = toTime(timeInfo)
 
   const
     epochDiff = 116444736000000000'i64
@@ -609,7 +615,7 @@ elif defined(JS):
     result.weekday = weekDays[t.getUTCDay()]
     result.yearday = 0
 
-  proc timeInfoToTime*(timeInfo: TimeInfo): Time = toTime(timeInfo)
+  proc timeInfoToTime(timeInfo: TimeInfo): Time = toTime(timeInfo)
 
   proc toTime*(timeInfo: TimeInfo): Time =
     result = internGetTime()

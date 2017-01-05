@@ -34,7 +34,7 @@ proc semanticPasses =
 proc commandGenDepend(graph: ModuleGraph; cache: IdentCache) =
   semanticPasses()
   registerPass(gendependPass)
-  registerPass(cleanupPass)
+  #registerPass(cleanupPass)
   compileProject(graph, cache)
   generateDot(gProjectFull)
   execExternalProgram("dot -Tpng -o" & changeFileExt(gProjectFull, "png") &
@@ -64,9 +64,11 @@ proc commandCompileToC(graph: ModuleGraph; cache: IdentCache) =
   #registerPass(cleanupPass())
 
   compileProject(graph, cache)
-  cgenWriteModules()
+  cgenWriteModules(graph.backend)
   if gCmd != cmdRun:
-    extccomp.callCCompiler(changeFileExt(gProjectFull, ""))
+    let proj = changeFileExt(gProjectFull, "")
+    extccomp.callCCompiler(proj)
+    extccomp.writeJsonBuildInstructions(proj)
 
 proc commandCompileToJS(graph: ModuleGraph; cache: IdentCache) =
   #incl(gGlobalOptions, optSafeCode)

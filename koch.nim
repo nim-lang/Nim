@@ -23,7 +23,7 @@ when defined(i386) and defined(windows) and defined(vcc):
 import
   os, strutils, parseopt, osproc, streams
 
-const VersionAsString = system.NimVersion #"0.10.2"
+const VersionAsString = system.NimVersion
 
 const
   HelpText = """
@@ -74,6 +74,14 @@ proc exe(f: string): string =
   result = addFileExt(f, ExeExt)
   when defined(windows):
     result = result.replace('/','\\')
+
+template withDir(dir, body) =
+  let old = getCurrentDir()
+  try:
+    setCurrentDir(dir)
+    body
+  finally:
+    setCurrentdir(old)
 
 proc findNim(): string =
   var nim = "nim".exe
@@ -162,13 +170,11 @@ proc csource(args: string) =
 proc bundleNimbleSrc() =
   ## bunldeNimbleSrc() bundles a specific Nimble commit with the tarball. We
   ## always bundle the latest official release.
-  if dirExists("dist/nimble/.git"):
-    exec("git --git-dir dist/nimble/.git pull")
-  else:
+  if not dirExists("dist/nimble/.git"):
     exec("git clone https://github.com/nim-lang/nimble.git dist/nimble")
-  let tags = execProcess("git --git-dir dist/nimble/.git tag -l v*").splitLines
-  let tag = tags[^1]
-  exec("git --git-dir dist/nimble/.git checkout " & tag)
+  withDir("dist/nimble"):
+    exec("git checkout -f stable")
+    exec("git pull")
 
 proc bundleNimbleExe() =
   bundleNimbleSrc()
@@ -177,13 +183,13 @@ proc bundleNimbleExe() =
   nimexec("c dist/nimble/src/nimble.nim")
   copyExe("dist/nimble/src/nimble".exe, "bin/nimble".exe)
 
-proc buildNimble() =
-  ## buildNimble() builds Nimble for the building via "github". As such, we
-  ## choose the most recent commit of Nimble too.
+proc buildNimble(latest: bool) =
+  # old installations created nim/nimblepkg/*.nim files. We remove these
+  # here so that it cannot cause problems (nimble bug #306):
+  if dirExists("bin/nimblepkg"):
+    removeDir("bin/nimblepkg")
   var installDir = "dist/nimble"
-  if dirExists("dist/nimble/.git"):
-    exec("git --git-dir dist/nimble/.git pull")
-  else:
+  if not dirExists("dist/nimble/.git"):
     # if dist/nimble exist, but is not a git repo, don't mess with it:
     if dirExists(installDir):
       var id = 0
@@ -191,7 +197,13 @@ proc buildNimble() =
         inc id
       installDir = "dist/nimble" & $id
     exec("git clone https://github.com/nim-lang/nimble.git " & installDir)
-  nimexec("c " & installDir / "src/nimble.nim")
+  withDir(installDir):
+    if latest:
+      exec("git checkout -f master")
+    else:
+      exec("git checkout -f stable")
+    exec("git pull")
+  nimexec("c --noNimblePath -p:compiler " & installDir / "src/nimble.nim")
   copyExe(installDir / "src/nimble".exe, "bin/nimble".exe)
 
 proc bundleNimsuggest(buildExe: bool) =
@@ -227,19 +239,14 @@ proc buildTool(toolname, args: string) =
   nimexec("cc $# $#" % [args, toolname])
   copyFile(dest="bin"/ splitFile(toolname).name.exe, source=toolname.exe)
 
-proc buildTools() =
+proc buildTools(latest: bool) =
   let nimsugExe = "bin/nimsuggest".exe
   nimexec "c --noNimblePath -p:compiler -d:release -o:" & nimsugExe &
       " tools/nimsuggest/nimsuggest.nim"
 
   let nimgrepExe = "bin/nimgrep".exe
   nimexec "c -o:" & nimgrepExe & " tools/nimgrep.nim"
-  if dirExists"dist/nimble":
-    let nimbleExe = "bin/nimble".exe
-    nimexec "c --noNimblePath -p:compiler -o:" & nimbleExe &
-        " dist/nimble/src/nimble.nim"
-  else:
-    buildNimble()
+  buildNimble(latest)
 
 proc nsis(args: string) =
   bundleNimbleExe()
@@ -391,13 +398,28 @@ proc tests(args: string) =
     quit("tests failed", QuitFailure)
 
 proc temp(args: string) =
+  proc splitArgs(a: string): (string, string) =
+    # every --options before the command (indicated by starting
+    # with not a dash) is part of the bootArgs, the rest is part
+    # of the programArgs:
+    let args = os.parseCmdLine a
+    result = ("", "")
+    var i = 0
+    while i < args.len and args[i][0] == '-':
+      result[0].add " " & quoteShell(args[i])
+      inc i
+    while i < args.len:
+      result[1].add " " & quoteShell(args[i])
+      inc i
+
   var output = "compiler" / "nim".exe
   var finalDest = "bin" / "nim_temp".exe
   # 125 is the magic number to tell git bisect to skip the current
   # commit.
-  exec("nim c compiler" / "nim", 125)
+  let (bootArgs, programArgs) = splitArgs(args)
+  exec("nim c " & bootArgs & " compiler" / "nim", 125)
   copyExe(output, finalDest)
-  if args.len > 0: exec(finalDest & " " & args)
+  if programArgs.len > 0: exec(finalDest & " " & programArgs)
 
 proc copyDir(src, dest: string) =
   for kind, path in walkDir(src, relative=true):
@@ -462,8 +484,8 @@ of cmdArgument:
   of "test", "tests": tests(op.cmdLineRest)
   of "temp": temp(op.cmdLineRest)
   of "winrelease": winRelease()
-  of "nimble": buildNimble()
-  of "tools": buildTools()
+  of "nimble": buildNimble(existsDir(".git"))
+  of "tools": buildTools(existsDir(".git"))
   of "pushcsource", "pushcsources": pushCsources()
   else: showHelp()
 of cmdEnd: showHelp()

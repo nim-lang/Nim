@@ -27,7 +27,7 @@ const
     wGensym, wInject, wRaises, wTags, wLocks, wDelegator, wGcSafe,
     wOverride, wConstructor, wExportNims}
   converterPragmas* = procPragmas
-  methodPragmas* = procPragmas+{wBase}
+  methodPragmas* = procPragmas+{wBase}-{wImportCpp}
   templatePragmas* = {wImmediate, wDeprecated, wError, wGensym, wInject, wDirty,
     wDelegator, wExportNims}
   macroPragmas* = {FirstCallConv..LastCallConv, wImmediate, wImportc, wExportc,
@@ -323,7 +323,8 @@ proc processOption(c: PContext, n: PNode): bool =
     of wStacktrace: onOff(c, n, {optStackTrace})
     of wLinetrace: onOff(c, n, {optLineTrace})
     of wDebugger: onOff(c, n, {optEndb})
-    of wProfiler: onOff(c, n, {optProfiler})
+    of wProfiler: onOff(c, n, {optProfiler, optMemTracker})
+    of wMemTracker: onOff(c, n, {optMemTracker})
     of wByRef: onOff(c, n, {optByRef})
     of wDynlib: processDynLib(c, n, nil)
     of wOptimization:
@@ -459,8 +460,22 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
     result = newNode(nkAsmStmt, n.info)
 
 proc pragmaEmit(c: PContext, n: PNode) =
-  discard getStrLitNode(c, n)
-  n.sons[1] = semAsmOrEmit(c, n, '`')
+  if n.kind != nkExprColonExpr:
+    localError(n.info, errStringLiteralExpected)
+  else:
+    let n1 = n[1]
+    if n1.kind == nkBracket:
+      var b = newNodeI(nkBracket, n1.info, n1.len)
+      for i in 0..<n1.len:
+        b.sons[i] = c.semExpr(c, n1[i])
+      n.sons[1] = b
+    else:
+      n.sons[1] = c.semConstExpr(c, n1)
+      case n.sons[1].kind
+      of nkStrLit, nkRStrLit, nkTripleStrLit:
+        n.sons[1] = semAsmOrEmit(c, n, '`')
+      else:
+        localError(n.info, errStringLiteralExpected)
 
 proc noVal(n: PNode) =
   if n.kind == nkExprColonExpr: invalidPragma(n)
@@ -489,6 +504,7 @@ proc pragmaLine(c: PContext, n: PNode) =
       elif y.kind != nkIntLit:
         localError(n.info, errIntLiteralExpected)
       else:
+        # XXX this produces weird paths which are not properly resolved:
         n.info.fileIndex = msgs.fileInfoIdx(x.strVal)
         n.info.line = int16(y.intVal)
     else:
@@ -555,7 +571,10 @@ proc typeBorrow(sym: PSym, n: PNode) =
   incl(sym.typ.flags, tfBorrowDot)
 
 proc markCompilerProc(s: PSym) =
-  makeExternExport(s, "$1", s.info)
+  # minor hack ahead: FlowVar is the only generic .compilerProc type which
+  # should not have an external name set:
+  if s.kind != skType or s.name.s != "FlowVar":
+    makeExternExport(s, "$1", s.info)
   incl(s.flags, sfCompilerProc)
   incl(s.flags, sfUsed)
   registerCompilerProc(s)

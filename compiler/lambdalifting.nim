@@ -139,10 +139,10 @@ proc createStateField(iter: PSym): PSym =
   result = newSym(skField, getIdent(":state"), iter, iter.info)
   result.typ = createStateType(iter)
 
-proc createEnvObj(owner: PSym): PType =
+proc createEnvObj(owner: PSym; info: TLineInfo): PType =
   # YYY meh, just add the state field for every closure for now, it's too
   # hard to figure out if it comes from a closure iterator:
-  result = createObj(owner, owner.info)
+  result = createObj(owner, info)
   rawAddField(result, createStateField(owner))
 
 proc getIterResult(iter: PSym): PSym =
@@ -240,16 +240,22 @@ proc liftIterSym*(n: PNode; owner: PSym): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
 
   let hp = getHiddenParam(iter)
-  let env = newSym(skLet, iter.name, owner, n.info)
-  env.typ = hp.typ
-  env.flags = hp.flags
-  var v = newNodeI(nkVarSection, n.info)
-  addVar(v, newSymNode(env))
-  result.add(v)
+  var env: PNode
+  if owner.isIterator:
+    let it = getHiddenParam(owner)
+    addUniqueField(it.typ.sons[0], hp)
+    env = indirectAccess(newSymNode(it), hp, hp.info)
+  else:
+    let e = newSym(skLet, iter.name, owner, n.info)
+    e.typ = hp.typ
+    e.flags = hp.flags
+    env = newSymNode(e)
+    var v = newNodeI(nkVarSection, n.info)
+    addVar(v, env)
+    result.add(v)
   # add 'new' statement:
-  let envAsNode = env.newSymNode
-  result.add newCall(getSysSym"internalNew", envAsNode)
-  result.add makeClosure(iter, envAsNode, n.info)
+  result.add newCall(getSysSym"internalNew", env)
+  result.add makeClosure(iter, env, n.info)
 
 proc freshVarForClosureIter*(s, owner: PSym): PNode =
   let envParam = getHiddenParam(owner)
@@ -296,18 +302,19 @@ This is why need to store the 'ownerToType' table and use it
 during .closure'fication.
 """
 
-proc getEnvTypeForOwner(c: var DetectionPass; owner: PSym): PType =
+proc getEnvTypeForOwner(c: var DetectionPass; owner: PSym;
+                        info: TLineInfo): PType =
   result = c.ownerToType.getOrDefault(owner.id)
   if result.isNil:
     result = newType(tyRef, owner)
-    let obj = createEnvObj(owner)
+    let obj = createEnvObj(owner, info)
     rawAddSon(result, obj)
     c.ownerToType[owner.id] = result
 
-proc createUpField(c: var DetectionPass; dest, dep: PSym) =
-  let refObj = c.getEnvTypeForOwner(dest) # getHiddenParam(dest).typ
+proc createUpField(c: var DetectionPass; dest, dep: PSym; info: TLineInfo) =
+  let refObj = c.getEnvTypeForOwner(dest, info) # getHiddenParam(dest).typ
   let obj = refObj.lastSon
-  let fieldType = c.getEnvTypeForOwner(dep) #getHiddenParam(dep).typ
+  let fieldType = c.getEnvTypeForOwner(dep, info) #getHiddenParam(dep).typ
   if refObj == fieldType:
     localError(dep.info, "internal error: invalid up reference computed")
 
@@ -347,10 +354,10 @@ Consider:
 
 """
 
-proc addClosureParam(c: var DetectionPass; fn: PSym) =
+proc addClosureParam(c: var DetectionPass; fn: PSym; info: TLineInfo) =
   var cp = getEnvParam(fn)
   let owner = if fn.kind == skIterator: fn else: fn.skipGenericOwner
-  let t = c.getEnvTypeForOwner(owner)
+  let t = c.getEnvTypeForOwner(owner, info)
   if cp == nil:
     cp = newSym(skParam, getIdent(paramName), fn, fn.info)
     incl(cp.flags, sfFromGeneric)
@@ -367,7 +374,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
     if s.kind in {skProc, skMethod, skConverter, skIterator} and s.typ != nil and s.typ.callConv == ccClosure:
       # this handles the case that the inner proc was declared as
       # .closure but does not actually capture anything:
-      addClosureParam(c, s)
+      addClosureParam(c, s, n.info)
       c.somethingToDo = true
 
     let innerProc = isInnerProc(s)
@@ -379,7 +386,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
     if ow == owner:
       if owner.isIterator:
         c.somethingToDo = true
-        addClosureParam(c, owner)
+        addClosureParam(c, owner, n.info)
         if interestingIterVar(s):
           if not c.capturedVars.containsOrIncl(s.id):
             let obj = getHiddenParam(owner).typ.lastSon
@@ -403,11 +410,11 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
       # mark 'owner' as taking a closure:
       c.somethingToDo = true
       markAsClosure(owner, n)
-      addClosureParam(c, owner)
+      addClosureParam(c, owner, n.info)
       #echo "capturing ", n.info
       # variable 's' is actually captured:
       if interestingVar(s) and not c.capturedVars.containsOrIncl(s.id):
-        let obj = c.getEnvTypeForOwner(ow).lastSon
+        let obj = c.getEnvTypeForOwner(ow, n.info).lastSon
         #getHiddenParam(owner).typ.lastSon
         addField(obj, s)
       # create required upFields:
@@ -428,8 +435,8 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
           let up = w.skipGenericOwner
           #echo "up for ", w.name.s, " up ", up.name.s
           markAsClosure(w, n)
-          addClosureParam(c, w) # , ow
-          createUpField(c, w, up)
+          addClosureParam(c, w, n.info) # , ow
+          createUpField(c, w, up, n.info)
           w = up
   of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit,
      nkTemplateDef, nkTypeSection:
@@ -793,7 +800,7 @@ proc liftLambdas*(fn: PSym, body: PNode; tooEarly: var bool): PNode =
     var d = initDetectionPass(fn)
     detectCapturedVars(body, fn, d)
     if not d.somethingToDo and fn.isIterator:
-      addClosureParam(d, fn)
+      addClosureParam(d, fn, body.info)
       d.somethingToDo = true
     if d.somethingToDo:
       var c = initLiftingPass(fn)

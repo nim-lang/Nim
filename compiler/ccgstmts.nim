@@ -48,7 +48,7 @@ proc genVarTuple(p: BProc, n: PNode) =
     return
   genLineDir(p, n)
   initLocExpr(p, n.sons[L-1], tup)
-  var t = tup.t.getUniqueType
+  var t = tup.t.skipTypes(abstractInst)
   for i in countup(0, L-3):
     var v = n.sons[i].sym
     if sfCompileTime in v.flags: continue
@@ -206,8 +206,8 @@ proc genSingleVar(p: BProc, a: PNode) =
     genObjectInit(p.module.preInitProc, cpsInit, v.typ, v.loc, true)
     # Alternative construction using default constructor (which may zeromem):
     # if sfImportc notin v.flags: constructLoc(p.module.preInitProc, v.loc)
-    if sfExportc in v.flags and generatedHeader != nil:
-      genVarPrototypeAux(generatedHeader, v)
+    if sfExportc in v.flags and p.module.g.generatedHeader != nil:
+      genVarPrototypeAux(p.module.g.generatedHeader, v)
     registerGcRoot(p, v)
   else:
     let value = a.sons[2]
@@ -970,10 +970,14 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
         if r == nil:
           # if no name has already been given,
           # it doesn't matter much:
-          r = mangleName(sym)
+          r = mangleName(p.module, sym)
           sym.loc.r = r       # but be consequent!
         res.add($r)
-    else: internalError(t.sons[i].info, "genAsmOrEmitStmt()")
+    else:
+      var a: TLoc
+      initLocExpr(p, t.sons[i], a)
+      res.add($a.rdLoc)
+      #internalError(t.sons[i].info, "genAsmOrEmitStmt()")
 
   if isAsmStmt and hasGnuAsm in CC[cCompiler].props:
     for x in splitLines(res):
@@ -1024,10 +1028,6 @@ proc genEmit(p: BProc, t: PNode) =
     genLineDir(p, t)
     line(p, cpsStmts, s)
 
-var
-  breakPointId: int = 0
-  gBreakpoints: Rope # later the breakpoints are inserted into the main proc
-
 proc genBreakPoint(p: BProc, t: PNode) =
   var name: string
   if optEndb in p.options:
@@ -1035,10 +1035,10 @@ proc genBreakPoint(p: BProc, t: PNode) =
       assert(t.sons[1].kind in {nkStrLit..nkTripleStrLit})
       name = normalize(t.sons[1].strVal)
     else:
-      inc(breakPointId)
-      name = "bp" & $breakPointId
+      inc(p.module.g.breakPointId)
+      name = "bp" & $p.module.g.breakPointId
     genLineDir(p, t)          # BUGFIX
-    appcg(p.module, gBreakpoints,
+    appcg(p.module, p.module.g.breakpoints,
          "#dbgRegisterBreakpoint($1, (NCSTRING)$2, (NCSTRING)$3);$n", [
         rope(toLinenumber(t.info)), makeCString(toFilename(t.info)),
         makeCString(name)])

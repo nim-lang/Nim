@@ -11,7 +11,7 @@ include "system/inclrtl"
 
 import os, oids, tables, strutils, times, heapqueue
 
-import nativesockets, net, queues
+import nativesockets, net, deques
 
 export Port, SocketFlag
 
@@ -164,7 +164,7 @@ include includes/asyncfutures
 type
   PDispatcherBase = ref object of RootRef
     timers: HeapQueue[tuple[finishAt: float, fut: Future[void]]]
-    callbacks: Queue[proc ()]
+    callbacks: Deque[proc ()]
 
 proc processTimers(p: PDispatcherBase) {.inline.} =
   while p.timers.len > 0 and epochTime() >= p.timers[0].finishAt:
@@ -172,7 +172,7 @@ proc processTimers(p: PDispatcherBase) {.inline.} =
 
 proc processPendingCallbacks(p: PDispatcherBase) =
   while p.callbacks.len > 0:
-    var cb = p.callbacks.dequeue()
+    var cb = p.callbacks.popFirst()
     cb()
 
 proc adjustedTimeout(p: PDispatcherBase, timeout: int): int {.inline.} =
@@ -230,7 +230,7 @@ when defined(windows) or defined(nimdoc):
     result.ioPort = createIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)
     result.handles = initSet[AsyncFD]()
     result.timers.newHeapQueue()
-    result.callbacks = initQueue[proc ()](64)
+    result.callbacks = initDeque[proc ()](64)
 
   var gDisp{.threadvar.}: PDispatcher ## Global dispatcher
   proc getGlobalDispatcher*(): PDispatcher =
@@ -254,8 +254,14 @@ when defined(windows) or defined(nimdoc):
         "Operation performed on a socket which has not been registered with" &
         " the dispatcher yet.")
 
+  proc hasPendingOperations*(): bool =
+    ## Returns `true` if the global dispatcher has pending operations.
+    let p = getGlobalDispatcher()
+    p.handles.len != 0 or p.timers.len != 0 or p.callbacks.len != 0
+
   proc poll*(timeout = 500) =
-    ## Waits for completion events and processes them.
+    ## Waits for completion events and processes them. Raises ``ValueError``
+    ## if there are no pending operations.
     let p = getGlobalDispatcher()
     if p.handles.len == 0 and p.timers.len == 0 and p.callbacks.len == 0:
       raise newException(ValueError,
@@ -893,9 +899,11 @@ when defined(windows) or defined(nimdoc):
               deallocShared(cast[pointer](pcd))
               raiseOSError(osLastError())
             else:
-              # we ref pcd.ovl one more time, because it will be unrefed in
-              # poll()
+              # we incref `pcd.ovl` and `protect` callback one more time,
+              # because it will be unrefed and disposed in `poll()` after
+              # callback finishes.
               GC_ref(pcd.ovl)
+              pcd.ovl.data.cell = system.protect(rawEnv(pcd.ovl.data.cb))
     )
     # We need to protect our callback environment value, so GC will not free it
     # accidentally.
@@ -956,17 +964,8 @@ when defined(windows) or defined(nimdoc):
   initAll()
 else:
   import selectors
-  when defined(windows):
-    import winlean
-    const
-      EINTR = WSAEINPROGRESS
-      EINPROGRESS = WSAEINPROGRESS
-      EWOULDBLOCK = WSAEWOULDBLOCK
-      EAGAIN = EINPROGRESS
-      MSG_NOSIGNAL = 0
-  else:
-    from posix import EINTR, EAGAIN, EINPROGRESS, EWOULDBLOCK, MSG_PEEK,
-                      MSG_NOSIGNAL
+  from posix import EINTR, EAGAIN, EINPROGRESS, EWOULDBLOCK, MSG_PEEK,
+                    MSG_NOSIGNAL
 
   type
     AsyncFD* = distinct cint
@@ -987,7 +986,7 @@ else:
     new result
     result.selector = newSelector()
     result.timers.newHeapQueue()
-    result.callbacks = initQueue[proc ()](64)
+    result.callbacks = initDeque[proc ()](64)
 
   var gDisp{.threadvar.}: PDispatcher ## Global dispatcher
   proc getGlobalDispatcher*(): PDispatcher =
@@ -1063,8 +1062,15 @@ else:
           newCBs.add(cb)
     callbacks = newCBs & callbacks
 
+  proc hasPendingOperations*(): bool =
+    let p = getGlobalDispatcher()
+    p.selector.len != 0 or p.timers.len != 0 or p.callbacks.len != 0
+
   proc poll*(timeout = 500) =
     let p = getGlobalDispatcher()
+    if p.selector.len == 0 and p.timers.len == 0 and p.callbacks.len == 0:
+      raise newException(ValueError,
+        "No handles or timers registered in dispatcher.")
 
     if p.selector.len > 0:
       for info in p.selector.select(p.adjustedTimeout(timeout)):
@@ -1417,7 +1423,7 @@ proc recvLine*(socket: AsyncFD): Future[string] {.async, deprecated.} =
 proc callSoon*(cbproc: proc ()) =
   ## Schedule `cbproc` to be called as soon as possible.
   ## The callback is called when control returns to the event loop.
-  getGlobalDispatcher().callbacks.enqueue(cbproc)
+  getGlobalDispatcher().callbacks.addLast(cbproc)
 
 proc runForever*() =
   ## Begins a never ending global dispatcher poll loop.
