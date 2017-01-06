@@ -588,7 +588,7 @@ when declared(getEnv) or defined(nimscript):
       else:
         var x = expandTilde(candidate) / exe
       for ext in extensions:
-        let x = addFileExt(x, ext)
+        var x = addFileExt(x, ext)
         if existsFile(x):
           when not defined(windows) and declared(os):
             while followSymlinks: # doubles as if here
