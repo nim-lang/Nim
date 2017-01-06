@@ -163,8 +163,8 @@ include includes/asyncfutures
 
 type
   PDispatcherBase = ref object of RootRef
-    timers: HeapQueue[tuple[finishAt: float, fut: Future[void]]]
-    callbacks: Deque[proc ()]
+    timers*: HeapQueue[tuple[finishAt: float, fut: Future[void]]]
+    callbacks*: Deque[proc ()]
 
 proc processTimers(p: PDispatcherBase) {.inline.} =
   #Process just part if timers at a step
