@@ -401,6 +401,18 @@ template handleJmpBack() {.dirty.} =
       globalError(c.debug[pc], errTooManyIterations)
   dec(c.loopIterations)
 
+template execGorgeEx(c: PCtx, regs: seq[TFullReg], pc: var int,
+    tos: PStackFrame): tuple[output: string, resultCode: int] =
+  inc(pc)
+  let
+    rd = c.code[pc].regA
+    gorgeRes = opGorgeEx(regs[rb].node.strVal, regs[rc].node.strVal,
+                         regs[rd].node.strVal, c.debug[pc])
+  if gorgeRes.resultCode == -1:
+    stackTrace(c, tos, pc, errExecutionOfProgramFailed,
+            regs[rb].node.strVal)
+  gorgeRes
+
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
   var tos = tos
@@ -1240,13 +1252,29 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                                      c.module)
     of opcGorge:
       decodeBC(rkNode)
-      inc pc
-      let rd = c.code[pc].regA
-
-      createStr regs[ra]
-      regs[ra].node.strVal = opGorge(regs[rb].node.strVal,
-                                     regs[rc].node.strVal, regs[rd].node.strVal,
-                                     c.debug[pc])
+      let gorgeRes = execGorgeEx(c, regs, pc, tos)
+      if gorgeRes.resultCode != 0:
+        let re = c.code[pc].regB
+        if regs[re].intVal == 1:
+          stackTrace(c, tos, pc, errExecutionOfProgramFailed,
+                     regs[rb].node.strVal & " returned " & $gorgeRes.resultCode)
+        else:
+          createStr regs[ra]
+          regs[ra].node.strVal = ""
+      else:
+        createStr regs[ra]
+        regs[ra].node.strVal = gorgeRes.output
+    of opcGorgeEx:
+      decodeBC(rkNode)
+      let gorgeRes = execGorgeEx(c, regs, pc, tos)
+      regs[ra].node = newNode(nkPar)
+      var
+        retOutput = newNode(nkStrLit)
+        retCode = newNode(nkIntLit)
+      retOutput.strVal = gorgeRes.output
+      retCode.intVal = gorgeRes.resultCode
+      regs[ra].node.add(retOutput)
+      regs[ra].node.add(retCode)
     of opcNError:
       decodeB(rkNode)
       let a = regs[ra].node

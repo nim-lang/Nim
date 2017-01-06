@@ -92,6 +92,7 @@ type
 
     opcSlurp,
     opcGorge,
+    opcGorgeEx,
     opcParseExprToAst,
     opcParseStmtToAst,
     opcQueryErrorFlag,
