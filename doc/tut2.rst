@@ -609,10 +609,10 @@ The parameters' types can be ordinary types or the meta types ``untyped``,
 type resolution is not performed before the expression is passed to the template.
 
 If the template has no explicit return type,
-``untyped`` is used for consistency with procs and methods.
+``void`` is used for consistency with procs and methods.
 
-If there is a ``typed`` parameter it should be the last in the template
-declaration. The reason is that statements can be passed to a template
+If there is a ``typed`` parameter, it should be the last in the template
+declaration.  This allows statements to be passed to a template
 via a special ``:`` syntax:
 
 .. code-block:: nim
