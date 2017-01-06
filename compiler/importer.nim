@@ -49,12 +49,13 @@ proc getModuleName*(n: PNode): string =
     localError(n.info, errGenerated, "invalid module name: '$1'" % n.renderTree)
     result = ""
 
-proc checkModuleName*(n: PNode): int32 =
+proc checkModuleName*(n: PNode; doLocalError=true): int32 =
   # This returns the full canonical path for a given module import
   let modulename = n.getModuleName
   let fullPath = findModule(modulename, n.info.toFullPath)
   if fullPath.len == 0:
-    localError(n.info, errCannotOpenFile, modulename)
+    if doLocalError:
+      localError(n.info, errCannotOpenFile, modulename)
     result = InvalidFileIDX
   else:
     result = fullPath.fileInfoIdx
