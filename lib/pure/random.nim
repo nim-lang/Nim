@@ -11,6 +11,7 @@
 ## * More information: http://xoroshiro.di.unimi.it/
 ## * C implementation: http://xoroshiro.di.unimi.it/xoroshiro128plus.c
 ##
+## WARNING: user space PRNGs are not recommended for cryptographic use!
 
 include "system/inclrtl"
 {.push debugger:off.}
