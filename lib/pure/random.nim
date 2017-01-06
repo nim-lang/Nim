@@ -11,6 +11,7 @@
 ## * More information: http://xoroshiro.di.unimi.it/
 ## * C implementation: http://xoroshiro.di.unimi.it/xoroshiro128plus.c
 ##
+## Do not use this module for cryptographic use!
 
 include "system/inclrtl"
 {.push debugger:off.}
