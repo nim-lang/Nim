@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2015 Dominik Picheta
+#        (c) Copyright 2017 Dominik Picheta
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -9,6 +9,44 @@
 
 ## This module implements a high-level asynchronous sockets API based on the
 ## asynchronous dispatcher defined in the ``asyncdispatch`` module.
+##
+## Asynchronous IO in Nim
+## ----------------------
+##
+## Async IO in Nim consists of multiple layers (from highest to lowest):
+##
+## * ``asyncnet`` module
+##
+## * Async await
+##
+## * ``asyncdispatch`` module (event loop)
+##
+## * ``selectors`` module
+##
+## Each builds on top of the layers below it. The selectors module is an
+## abstraction for the various system ``select()`` mechanisms such as epoll or
+## kqueue. If you wish you can use it directly, and some people have done so
+## `successfully <http://goran.krampe.se/2014/10/25/nim-socketserver/>`_.
+## But you must be aware that on Windows it only supports
+## ``select()``.
+##
+## The async dispatcher implements the proactor pattern and also has an
+## implementation of IOCP. It implements the proactor pattern for other
+## OS' via the selectors module. Futures are also implemented here, and
+## indeed all the procedures return a future.
+##
+## The final layer is the async await transformation. This allows you to
+## write asynchronous code in a synchronous style and works similar to
+## C#'s await. The transformation works by converting any async procedures
+## into an iterator.
+##
+## This is all single threaded, fully non-blocking and does give you a
+## lot of control. In theory you should be able to work with any of these
+## layers interchangeably (as long as you only care about non-Windows
+## platforms).
+##
+## For most applications using ``asyncnet`` is the way to go as it builds
+## over all the layers, providing some extra features such as buffering.
 ##
 ## SSL
 ## ----
