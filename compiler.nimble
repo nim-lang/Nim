@@ -1,11 +1,10 @@
-[Package]
+
 name = "compiler"
-version = "0.15.3"
+version = system.NimVersion
 author = "Andreas Rumpf"
 description = "Compiler package providing the compiler sources as a library."
 license = "MIT"
 
-InstallDirs = "compiler"
+installDirs = @["compiler"]
 
-[Deps]
-Requires: "nim >= 0.14.0"
+requires "nim >= 0.14.0"
