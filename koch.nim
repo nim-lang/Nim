@@ -139,7 +139,7 @@ proc testUnixInstall() =
       # check the docs build:
       execCleanPath("./koch web", destDir / "bin")
       # check nimble builds:
-      execCleanPath("./bin/nim e install_tools.nims")
+      execCleanPath("./koch tools")
       # check the tests work:
       execCleanPath("./koch tests", destDir / "bin")
     else:
