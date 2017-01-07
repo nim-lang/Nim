@@ -3,7 +3,7 @@ Version 0.16.0 released
 
 .. container:: metadata
 
-  Posted by The Nim Team on dd/mm/yyyy
+  Posted by The Nim Team on 08/01/2017
 
 We're happy to announce that the latest release of Nim, version 0.16.0, is now
 available!
