@@ -611,14 +611,12 @@ type resolution is not performed before the expression is passed to the template
 If the template has no explicit return type,
 ``void`` is used for consistency with procs and methods.
 
-If there is a ``typed`` parameter, it should be the last in the template
-declaration.  This allows statements to be passed to a template
-via a special ``:`` syntax:
+To pass a block of statements to a template, use 'untyped' for the last parameter:
 
 .. code-block:: nim
 
   template withFile(f: untyped, filename: string, mode: FileMode,
-                    body: typed): typed {.immediate.} =
+                    body: untyped): typed {.immediate.} =
     let fn = filename
     var f: File
     if open(f, fn, mode):
@@ -638,6 +636,12 @@ parameter. The ``withFile`` template contains boilerplate code and helps to
 avoid a common bug: to forget to close the file. Note how the
 ``let fn = filename`` statement ensures that ``filename`` is evaluated only
 once.
+
+Note: ``txt`` is a parameter to the withFile template that doesn't require 
+explicit definition prior to being passed to withFile().
+``txt`` is defined within withFile(), but needs to be a parameter so it can 
+be used in the block of statements that follow withFile()
+  
 
 Macros
 ======
