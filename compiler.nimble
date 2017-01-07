@@ -1,5 +1,4 @@
 
-name = "compiler"
 version = system.NimVersion
 author = "Andreas Rumpf"
 description = "Compiler package providing the compiler sources as a library."
