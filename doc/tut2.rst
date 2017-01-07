@@ -637,12 +637,6 @@ avoid a common bug: to forget to close the file. Note how the
 ``let fn = filename`` statement ensures that ``filename`` is evaluated only
 once.
 
-Note: ``txt`` is a parameter to the withFile template that doesn't require 
-explicit definition prior to being passed to withFile().
-``txt`` is defined within withFile(), but needs to be a parameter so it can 
-be used in the block of statements that follow withFile()
-  
-
 Macros
 ======
 
