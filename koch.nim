@@ -1,7 +1,7 @@
 #
 #
 #         Maintenance program for Nim
-#        (c) Copyright 2016 Andreas Rumpf
+#        (c) Copyright 2017 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -30,7 +30,7 @@ const
 +-----------------------------------------------------------------+
 |         Maintenance program for Nim                             |
 |             Version $1|
-|             (c) 2016 Andreas Rumpf                              |
+|             (c) 2017 Andreas Rumpf                              |
 +-----------------------------------------------------------------+
 Build time: $2, $3
 
