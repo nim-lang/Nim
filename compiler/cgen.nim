@@ -16,10 +16,23 @@ import
   condsyms, rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases,
   lowerings, semparallel, tables
 
-from modulegraphs import ModuleGraph
-from dynlib import libCandidates
-
 import strutils except `%` # collides with ropes.`%`
+
+from modulegraphs import ModuleGraph
+import dynlib
+
+when not declared(dynlib.libCandidates):
+  proc libCandidates(s: string, dest: var seq[string]) =
+    ## given a library name pattern `s` write possible library names to `dest`.
+    var le = strutils.find(s, '(')
+    var ri = strutils.find(s, ')', le+1)
+    if le >= 0 and ri > le:
+      var prefix = substr(s, 0, le - 1)
+      var suffix = substr(s, ri + 1)
+      for middle in split(substr(s, le + 1, ri - 1), '|'):
+        libCandidates(prefix & middle & suffix, dest)
+    else:
+      add(dest, s)
 
 when options.hasTinyCBackend:
   import tccgen
