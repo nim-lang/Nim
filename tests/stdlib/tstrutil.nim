@@ -64,7 +64,22 @@ proc testDelete =
   delete(s, 0, 0)
   assert s == "1236789ABCDEFG"
 
+proc testFind =
+  assert "0123456789ABCDEFGH".find('A') == 10
+  assert "0123456789ABCDEFGH".find('A', 5) == 10
+  assert "0123456789ABCDEFGH".find('A', 5, 10) == 10
+  assert "0123456789ABCDEFGH".find('A', 5, 9) == -1
+  assert "0123456789ABCDEFGH".find("A") == 10
+  assert "0123456789ABCDEFGH".find("A", 5) == 10
+  assert "0123456789ABCDEFGH".find("A", 5, 10) == 10
+  assert "0123456789ABCDEFGH".find("A", 5, 9) == -1
+  assert "0123456789ABCDEFGH".find({'A'..'C'}) == 10
+  assert "0123456789ABCDEFGH".find({'A'..'C'}, 5) == 10
+  assert "0123456789ABCDEFGH".find({'A'..'C'}, 5, 10) == 10
+  assert "0123456789ABCDEFGH".find({'A'..'C'}, 5, 9) == -1
+
 testDelete()
+testFind()
 
 assert(insertSep($1000_000) == "1_000_000")
 assert(insertSep($232) == "232")

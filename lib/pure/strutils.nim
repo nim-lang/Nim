@@ -809,7 +809,7 @@ proc split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.noSideEff
   ## Substrings are separated by the string `sep`. This is a wrapper around the
   ## `split iterator <#split.i,string,string>`_.
   doAssert(sep.len > 0)
-  
+
   accumulateResult(split(s, sep, maxsplit))
 
 proc rsplit*(s: string, seps: set[char] = Whitespace,
@@ -1318,11 +1318,11 @@ proc preprocessSub(sub: string, a: var SkipTable) =
   for i in 0..m-1: a[sub[i]] = m-i
 {.pop.}
 
-proc findAux(s, sub: string, start: int, a: SkipTable): int =
+proc findAux(s, sub: string, start, last: int, a: SkipTable): int =
   # Fast "quick search" algorithm:
   var
     m = len(sub)
-    n = len(s)
+    n = last + 1
   # search:
   var j = start
   while j <= n - m:
@@ -1333,30 +1333,36 @@ proc findAux(s, sub: string, start: int, a: SkipTable): int =
     inc(j, a[s[j+m]])
   return -1
 
-proc find*(s, sub: string, start: Natural = 0): int {.noSideEffect,
+proc find*(s, sub: string, start: Natural = 0, last: Natural = 0): int {.noSideEffect,
   rtl, extern: "nsuFindStr".} =
-  ## Searches for `sub` in `s` starting at position `start`.
+  ## Searches for `sub` in `s` inside range `start`..`last`.
+  ## If `last` is unspecified, it defaults to `s.high`.
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
   var a {.noinit.}: SkipTable
+  let last = if last==0: s.high else: last
   preprocessSub(sub, a)
-  result = findAux(s, sub, start, a)
+  result = findAux(s, sub, start, last, a)
 
-proc find*(s: string, sub: char, start: Natural = 0): int {.noSideEffect,
+proc find*(s: string, sub: char, start: Natural = 0, last: Natural = 0): int {.noSideEffect,
   rtl, extern: "nsuFindChar".} =
-  ## Searches for `sub` in `s` starting at position `start`.
+  ## Searches for `sub` in `s` inside range `start`..`last`.
+  ## If `last` is unspecified, it defaults to `s.high`.
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
-  for i in start..len(s)-1:
+  let last = if last==0: s.high else: last
+  for i in start..last:
     if sub == s[i]: return i
   return -1
 
-proc find*(s: string, chars: set[char], start: Natural = 0): int {.noSideEffect,
+proc find*(s: string, chars: set[char], start: Natural = 0, last: Natural = 0): int {.noSideEffect,
   rtl, extern: "nsuFindCharSet".} =
-  ## Searches for `chars` in `s` starting at position `start`.
+  ## Searches for `chars` in `s` inside range `start`..`last`.
+  ## If `last` is unspecified, it defaults to `s.high`.
   ##
   ## If `s` contains none of the characters in `chars`, -1 is returned.
-  for i in start..s.len-1:
+  let last = if last==0: s.high else: last
+  for i in start..last:
     if s[i] in chars: return i
   return -1
 
@@ -1472,9 +1478,10 @@ proc replace*(s, sub: string, by = ""): string {.noSideEffect,
   var a {.noinit.}: SkipTable
   result = ""
   preprocessSub(sub, a)
+  let last = s.high
   var i = 0
   while true:
-    var j = findAux(s, sub, i, a)
+    var j = findAux(s, sub, i, last, a)
     if j < 0: break
     add result, substr(s, i, j - 1)
     add result, by
@@ -1506,8 +1513,9 @@ proc replaceWord*(s, sub: string, by = ""): string {.noSideEffect,
   result = ""
   preprocessSub(sub, a)
   var i = 0
+  let last = s.high
   while true:
-    var j = findAux(s, sub, i, a)
+    var j = findAux(s, sub, i, last, a)
     if j < 0: break
     # word boundary?
     if (j == 0 or s[j-1] notin wordChars) and
