@@ -616,7 +616,7 @@ To pass a block of statements to a template, use 'untyped' for the last paramete
 .. code-block:: nim
 
   template withFile(f: untyped, filename: string, mode: FileMode,
-                    body: untyped): typed {.immediate.} =
+                    body: untyped): typed =
     let fn = filename
     var f: File
     if open(f, fn, mode):
