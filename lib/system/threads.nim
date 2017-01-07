@@ -463,10 +463,11 @@ else:
     ## pins a thread to a `CPU`:idx:. In other words sets a
     ## thread's `affinity`:idx:. If you don't know what this means, you
     ## shouldn't use this proc.
-    var s {.noinit.}: CpuSet
-    cpusetZero(s)
-    cpusetIncl(cpu.cint, s)
-    setAffinity(t.sys, sizeof(s), s)
+    when not defined(macosx):
+      var s {.noinit.}: CpuSet
+      cpusetZero(s)
+      cpusetIncl(cpu.cint, s)
+      setAffinity(t.sys, sizeof(s), s)
 
 proc createThread*(t: var Thread[void], tp: proc () {.thread, nimcall.}) =
   createThread[void](t, tp)
