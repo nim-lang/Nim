@@ -14,8 +14,6 @@ import os, times
 import macros
 import arch
 import lists
-when defined(linux):
-  from posix import select, TimeVal
 
 const defaultStackSize = 512 * 1024
 
@@ -70,18 +68,10 @@ proc run*() =
   var node = coroutines.head
   var minDelay: float = 0
   var frame: PFrame
-  when defined(linux):
-    var timeval = TimeVal(tv_sec: 0, tv_usec: 0)
   while node != nil:
     var coro = node.value
     current = coro
-    let minDelay_ms = int(minDelay * 1000)
-    when defined(linux):
-      timeval.tvsec =  int32(minDelay_ms div 1000)
-      timeval.tvusec = (minDelay_ms mod 1000) * 1000
-      discard select(0.cint, nil, nil, nil, timeval.addr)
-    else:
-      os.sleep(minDelay_ms)
+    os.sleep(int(minDelay * 1000))
 
     var remaining = coro.sleepTime - (epochTime() - coro.lastRun);
     if remaining <= 0:
