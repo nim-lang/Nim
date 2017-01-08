@@ -117,10 +117,11 @@ else:
     schedh = "#define _GNU_SOURCE\n#include <sched.h>"
     pthreadh = "#define _GNU_SOURCE\n#include <pthread.h>"
 
-  when defined(linux):
-    type Time = clong
-  else:
-    type Time = int
+  when not declared(Time):
+    when defined(linux):
+      type Time = clong
+    else:
+      type Time = int
 
   type
     SysThread* {.importc: "pthread_t", header: "<sys/types.h>",
