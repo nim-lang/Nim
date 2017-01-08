@@ -19,10 +19,12 @@ include "system/inclrtl"
 # XXX Expose RandomGenState
 when defined(JS):
   type ui = uint32
+
+  const randMax = 4_294_967_295u32
 else:
   type ui = uint64
 
-const randMax = 18_446_744_073_709_551_615u64
+  const randMax = 18_446_744_073_709_551_615u64
 
 type
   RandomGenState = object
@@ -76,7 +78,7 @@ proc random*(max: int): int {.benign.} =
   ## number, i.e. a tickcount.
   while true:
     let x = next(state)
-    if x < randMax - (randMax mod uint64(max)):
+    if x < randMax - (randMax mod ui(max)):
       return int(x mod uint64(max))
 
 proc random*(max: float): float {.benign.} =
