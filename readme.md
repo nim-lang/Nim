@@ -55,7 +55,7 @@ documented in [doc/koch.rst](doc/koch.rst).
 
 ## Nimble
 [Nimble](https://github.com/nim-lang/nimble) is Nim's package manager. For the
-source based installations where you added Nim's ``bin`` directory to your PATH
+source based installations, where you added Nim's ``bin`` directory to your PATH,
 the easiest way of installing Nimble is via:
 
 ```
