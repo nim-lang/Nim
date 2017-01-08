@@ -1391,6 +1391,15 @@ proc rfind*(s: string, sub: char, start: int = -1): int {.noSideEffect,
     if sub == s[i]: return i
   return -1
 
+proc rfind*(s: string, chars: set[char], start: int = -1): int {.noSideEffect.} =
+  ## Searches for `chars` in `s` in reverse starting at position `start`.
+  ##
+  ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
+  let realStart = if start == -1: s.len-1 else: start
+  for i in countdown(realStart, 0):
+    if s[i] in chars: return i
+  return -1
+
 proc center*(s: string, width: int, fillChar: char = ' '): string {.
   noSideEffect, rtl, extern: "nsuCenterString".} =
   ## Return the contents of `s` centered in a string `width` long using
