@@ -1333,6 +1333,13 @@ proc findAux(s, sub: string, start, last: int, a: SkipTable): int =
     inc(j, a[s[j+m]])
   return -1
 
+when not (defined(js) or defined(nimdoc) or defined(nimscript)):
+  proc c_memchr(cstr: pointer, c: char, n: csize): pointer {.
+                importc: "memchr", header: "<string.h>" .}
+  const hasCStringBuiltin = true
+else:
+  const hasCStringBuiltin = false
+
 proc find*(s, sub: string, start: Natural = 0, last: Natural = 0): int {.noSideEffect,
   rtl, extern: "nsuFindStr".} =
   ## Searches for `sub` in `s` inside range `start`..`last`.
@@ -1351,8 +1358,18 @@ proc find*(s: string, sub: char, start: Natural = 0, last: Natural = 0): int {.n
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
   let last = if last==0: s.high else: last
-  for i in start..last:
-    if sub == s[i]: return i
+  when nimvm:
+    for i in start..last:
+      if sub == s[i]: return i
+  else:
+    when hasCStringBuiltin:
+      let found = c_memchr(s[start].unsafeAddr, sub, last-start+1)
+      if not found.isNil:
+        return cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
+    else:
+      for i in start..last:
+        if sub == s[i]: return i
+
   return -1
 
 proc find*(s: string, chars: set[char], start: Natural = 0, last: Natural = 0): int {.noSideEffect,
