@@ -409,6 +409,14 @@ when not declared(getEnv) or defined(nimscript):
     if extPos < 0: result = filename & normExt(ext)
     else: result = filename
 
+  proc removeFileExt*(filename: string): string {.
+    noSideEffect, rtl, extern: "nos$1".} =
+    ## Removes the file extension of `filename` including the
+    ## leading '.'.
+    var extPos = searchExtPos(filename)
+    if extPos < 0: result = filename
+    else: result = filename.substr(0, extPos - 1)
+    
   proc cmpPaths*(pathA, pathB: string): int {.
     noSideEffect, rtl, extern: "nos$1".} =
     ## Compares two paths.
