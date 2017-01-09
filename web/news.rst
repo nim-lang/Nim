@@ -2,6 +2,9 @@
 News
 ====
 
+`2017-01-08 Nim Version 0.16.0 released <news/e029_version_0_16_0.html>`_
+===================================
+
 `2016-11-20 Nim in Action is going into production! <news/e030_nim_in_action_in_production.html>`_
 ===================================
 

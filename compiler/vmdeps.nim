@@ -9,24 +9,24 @@
 
 import ast, types, msgs, os, osproc, streams, options, idents, securehash
 
-proc readOutput(p: Process): string =
-  result = ""
+proc readOutput(p: Process): (string, int) =
+  result[0] = ""
   var output = p.outputStream
   while not output.atEnd:
-    result.add(output.readLine)
-    result.add("\n")
-  if result.len > 0:
-    result.setLen(result.len - "\n".len)
-  discard p.waitForExit
+    result[0].add(output.readLine)
+    result[0].add("\n")
+  if result[0].len > 0:
+    result[0].setLen(result[0].len - "\n".len)
+  result[1] = p.waitForExit
 
-proc opGorge*(cmd, input, cache: string, info: TLineInfo): string =
+proc opGorge*(cmd, input, cache: string, info: TLineInfo): (string, int) =
   let workingDir = parentDir(info.toFullPath)
   if cache.len > 0:# and optForceFullMake notin gGlobalOptions:
     let h = secureHash(cmd & "\t" & input & "\t" & cache)
     let filename = options.toGeneratedFile("gorge_" & $h, "txt")
     var f: File
     if open(f, filename):
-      result = f.readAll
+      result = (f.readAll, 0)
       f.close
       return
     var readSuccessful = false
@@ -38,9 +38,9 @@ proc opGorge*(cmd, input, cache: string, info: TLineInfo): string =
         p.inputStream.close()
       result = p.readOutput
       readSuccessful = true
-      writeFile(filename, result)
+      writeFile(filename, result[0])
     except IOError, OSError:
-      if not readSuccessful: result = ""
+      if not readSuccessful: result = ("", -1)
   else:
     try:
       var p = startProcess(cmd, workingDir,
@@ -50,7 +50,7 @@ proc opGorge*(cmd, input, cache: string, info: TLineInfo): string =
         p.inputStream.close()
       result = p.readOutput
     except IOError, OSError:
-      result = ""
+      result = ("", -1)
 
 proc opSlurp*(file: string, info: TLineInfo, module: PSym): string =
   try:

@@ -54,7 +54,8 @@ proc handleCmdLine(cache: IdentCache) =
       except OSError:
         gProjectFull = gProjectName
       let p = splitFile(gProjectFull)
-      gProjectPath = canonicalizePath p.dir
+      let dir = if p.dir.len > 0: p.dir else: getCurrentDir()
+      gProjectPath = canonicalizePath dir
       gProjectName = p.name
     else:
       gProjectPath = canonicalizePath getCurrentDir()

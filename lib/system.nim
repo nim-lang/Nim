@@ -1845,10 +1845,10 @@ const
   NimMajor*: int = 0
     ## is the major number of Nim's version.
 
-  NimMinor*: int = 15
+  NimMinor*: int = 16
     ## is the minor number of Nim's version.
 
-  NimPatch*: int = 3
+  NimPatch*: int = 0
     ## is the patch number of Nim's version.
 
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
@@ -3367,6 +3367,11 @@ proc staticExec*(command: string, input = "", cache = ""): string {.
   ##
   ## .. code-block:: nim
   ##     const stateMachine = staticExec("dfaoptimizer", "input", "0.8.0")
+
+proc gorgeEx*(command: string, input = "", cache = ""): tuple[output: string,
+                                                              exitCode: int] =
+  ## Same as `gorge` but also returns the precious exit code.
+  discard
 
 proc `+=`*[T: SomeOrdinal|uint|uint64](x: var T, y: T) {.
   magic: "Inc", noSideEffect.}

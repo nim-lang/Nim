@@ -31,11 +31,19 @@ proc semanticPasses =
   registerPass verbosePass
   registerPass semPass
 
+proc writeDepsFile(g: ModuleGraph; project: string) =
+  let f = open(changeFileExt(project, "deps"), fmWrite)
+  for m in g.modules:
+    if m != nil:
+      f.writeLine(toFullPath(m.position.int32))
+  f.close()
+
 proc commandGenDepend(graph: ModuleGraph; cache: IdentCache) =
   semanticPasses()
   registerPass(gendependPass)
   #registerPass(cleanupPass)
   compileProject(graph, cache)
+  writeDepsFile(graph, gProjectFull)
   generateDot(gProjectFull)
   execExternalProgram("dot -Tpng -o" & changeFileExt(gProjectFull, "png") &
       ' ' & changeFileExt(gProjectFull, "dot"))

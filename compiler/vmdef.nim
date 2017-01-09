@@ -181,6 +181,7 @@ type
     ra*, rb*, rc*: Natural
     slots*: pointer
     currentException*: PNode
+    currentLineInfo*: TLineInfo
   VmCallback* = proc (args: VmArgs) {.closure.}
 
   PCtx* = ref TCtx

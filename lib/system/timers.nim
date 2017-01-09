@@ -78,10 +78,11 @@ elif defined(posixRealtime):
 
 else:
   # fallback Posix implementation:
-  when defined(linux):
-    type Time = clong
-  else:
-    type Time = int
+  when not declared(Time):
+    when defined(linux):
+      type Time = clong
+    else:
+      type Time = int
 
   type
     Timeval {.importc: "struct timeval", header: "<sys/select.h>",

@@ -486,7 +486,7 @@ proc deduplicateFiles(c: var ConfigData) =
       if c.explicitPlatforms and not c.platforms[osA][cpuA]: continue
       for dup in mitems(c.cfiles[osA][cpuA]):
         let key = $secureHashFile(build / dup)
-        let val = build / buildDir(osA, cpuA) / extractFilename(dup)
+        let val = buildDir(osA, cpuA) / extractFilename(dup)
         let orig = tab.getOrDefault(key)
         if orig.len > 0:
           # file is identical, so delete duplicate:

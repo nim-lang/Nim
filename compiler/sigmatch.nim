@@ -1358,9 +1358,10 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
       return argSemantized
 
     if argType.kind == tyStatic:
-      if m.callee.kind == tyGenericBody and tfGenericTypeParam notin argType.flags:
-        result = newNodeIT(nkType, argOrig.info, makeTypeFromExpr(c, arg))
-        return
+      if m.callee.kind == tyGenericBody and
+         argType.len == 0 and
+         tfGenericTypeParam notin argType.flags:
+        return newNodeIT(nkType, argOrig.info, makeTypeFromExpr(c, arg))
     else:
       var evaluated = c.semTryConstExpr(c, arg)
       if evaluated != nil:

@@ -331,8 +331,10 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
     e = skipConv(e)
     if e.kind == nkPar:
       for i in countup(0, sonsLen(e) - 1):
+        var v = e.sons[i]
+        if v.kind == nkExprColonExpr: v = v.sons[1]
         add(result, newAsgnStmt(c, c.transCon.forStmt.sons[i],
-                                transform(c, e.sons[i])))
+                                transform(c, v)))
     else:
       unpackTuple(c, e, result)
   else:

@@ -429,13 +429,14 @@ when defined(Windows) and not defined(useNimRtl):
       raiseOSError(osLastError())
 
   proc createAllPipeHandles(si: var STARTUPINFO;
-                            stdin, stdout, stderr: var Handle) =
+                            stdin, stdout, stderr: var Handle;
+                            hash: int) =
     var sa: SECURITY_ATTRIBUTES
     sa.nLength = sizeof(SECURITY_ATTRIBUTES).cint
     sa.lpSecurityDescriptor = nil
     sa.bInheritHandle = 1
-    let pipeOutName = newWideCString(r"\\.\pipe\stdout")
-    let pipeInName = newWideCString(r"\\.\pipe\stdin")
+    let pipeOutName = newWideCString(r"\\.\pipe\stdout" & $hash)
+    let pipeInName = newWideCString(r"\\.\pipe\stdin" & $hash)
     let pipeOut = createNamedPipe(pipeOutName,
       dwOpenMode=PIPE_ACCESS_INBOUND or FILE_FLAG_WRITE_THROUGH,
       dwPipeMode=PIPE_NOWAIT,
@@ -512,7 +513,7 @@ when defined(Windows) and not defined(useNimRtl):
         else:
           createPipeHandles(he, si.hStdError)
       else:
-        createAllPipeHandles(si, hi, ho, he)
+        createAllPipeHandles(si, hi, ho, he, cast[int](result))
       result.inHandle = FileHandle(hi)
       result.outHandle = FileHandle(ho)
       result.errHandle = FileHandle(he)

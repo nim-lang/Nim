@@ -389,7 +389,8 @@ Multi-methods
 =============
 
 Procedures always use static dispatch. Multi-methods use dynamic
-dispatch.
+dispatch. For dynamic dispatch to work on an object it should be a reference
+type as well.
 
 .. code-block:: nim
   type
