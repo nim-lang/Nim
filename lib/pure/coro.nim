@@ -73,13 +73,7 @@ proc run*() =
     current = coro
     os.sleep(minDelay)
 
-    let remaining_float = # remaining time with fractional part
-      (coro.sleepTime - (epochTime() - coro.lastRun)) * 1000
-    # The integer overflow check
-    assert(remaining_float <= float(int.high),
-           "The suspend time is too long!")
-    # remaining - time in milliseconds without fractional part
-    var remaining = remaining_float.int
+    var remaining = int((coro.sleepTime - (epochTime() - coro.lastRun)) * 1000)
     if remaining <= 0:
       remaining = 0
       let res = setjmp(mainCtx)
