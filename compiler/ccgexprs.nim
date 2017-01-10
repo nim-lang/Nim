@@ -610,7 +610,7 @@ proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       "($3)((NU$2) ~($1))",   # BitnotI
       "$1",                   # UnaryPlusF64
       "-($1)",                # UnaryMinusF64
-      "($1 > 0? ($1) : -($1))", # AbsF64; BUGFIX: fabs() makes problems
+      "($1 < 0? -($1) : ($1))", # AbsF64; BUGFIX: fabs() makes problems
                                 # for Tiny C, so we don't use it
       "(($3)(NU)(NU8)($1))",  # mZe8ToI
       "(($3)(NU64)(NU8)($1))", # mZe8ToI64
