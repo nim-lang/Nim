@@ -85,6 +85,7 @@ proc respond*(req: Request, code: HttpCode, content: string,
   ## Examples
   ## --------
   ## .. code-block::nim
+  ##    import json
   ##    proc handler(req: Request) {.async.} =
   ##      if req.url.path == "/hello-world":
   ##        let msg = %* {"message": "Hello World"}
