@@ -363,19 +363,28 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
             rope p.currLineInfo.safeLineNm)
 
 proc genDeepCopy(p: BProc; dest, src: TLoc) =
+  template addrLocOrTemp(a: TLoc): Rope =
+    if a.k == locExpr:
+      var tmp: TLoc
+      getTemp(p, a.t, tmp)
+      genAssignment(p, tmp, a, {})
+      addrLoc(tmp)
+    else:
+      addrLoc(a)
+
   var ty = skipTypes(dest.t, abstractVarRange)
   case ty.kind
   of tyPtr, tyRef, tyProc, tyTuple, tyObject, tyArray:
     # XXX optimize this
     linefmt(p, cpsStmts, "#genericDeepCopy((void*)$1, (void*)$2, $3);$n",
-            addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t))
+            addrLoc(dest), addrLocOrTemp(src), genTypeInfo(p.module, dest.t))
   of tySequence, tyString:
     linefmt(p, cpsStmts, "#genericSeqDeepCopy($1, $2, $3);$n",
             addrLoc(dest), rdLoc(src), genTypeInfo(p.module, dest.t))
   of tyOpenArray, tyVarargs:
     linefmt(p, cpsStmts,
          "#genericDeepCopyOpenArray((void*)$1, (void*)$2, $1Len0, $3);$n",
-         addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t))
+         addrLoc(dest), addrLocOrTemp(src), genTypeInfo(p.module, dest.t))
   of tySet:
     if mapType(ty) == ctArray:
       useStringh(p.module)
