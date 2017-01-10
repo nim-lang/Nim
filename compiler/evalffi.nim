@@ -45,7 +45,7 @@ var myerrno {.importc: "errno", header: "<errno.h>".}: cint ## error variable
 
 proc importcSymbol*(sym: PSym): PNode =
   let name = ropeToStr(sym.loc.r)
-  
+
   # the AST does not support untyped pointers directly, so we use an nkIntLit
   # that contains the address instead:
   result = newNodeIT(nkPtrLit, sym.info, sym.typ)
@@ -67,7 +67,7 @@ proc importcSymbol*(sym: PSym): PNode =
         let dllhandle = gDllCache.getDll(libcDll, sym.info)
         theAddr = dllhandle.symAddr(name)
     elif not lib.isNil:
-      let dllhandle = gDllCache.getDll(if lib.kind == libHeader: libcDll 
+      let dllhandle = gDllCache.getDll(if lib.kind == libHeader: libcDll
                                        else: lib.path.strVal, sym.info)
       theAddr = dllhandle.symAddr(name)
     if theAddr.isNil: globalError(sym.info, "cannot import: " & sym.name.s)
@@ -75,7 +75,7 @@ proc importcSymbol*(sym: PSym): PNode =
 
 proc mapType(t: ast.PType): ptr libffi.TType =
   if t == nil: return addr libffi.type_void
-  
+
   case t.kind
   of tyBool, tyEnum, tyChar, tyInt..tyInt64, tyUInt..tyUInt64, tySet:
     case t.getSize
@@ -87,9 +87,9 @@ proc mapType(t: ast.PType): ptr libffi.TType =
   of tyFloat, tyFloat64: result = addr libffi.type_double
   of tyFloat32: result = addr libffi.type_float
   of tyVar, tyPointer, tyPtr, tyRef, tyCString, tySequence, tyString, tyExpr,
-     tyStmt, tyTypeDesc, tyProc, tyArray, tyArrayConstr, tyStatic, tyNil:
+     tyStmt, tyTypeDesc, tyProc, tyArray, tyStatic, tyNil:
     result = addr libffi.type_pointer
-  of tyDistinct:
+  of tyDistinct, tyAlias:
     result = mapType(t.sons[0])
   else:
     result = nil
@@ -117,9 +117,9 @@ proc packSize(v: PNode, typ: PType): int =
       result = sizeof(pointer)
     else:
       result = sizeof(pointer) + packSize(v.sons[0], typ.lastSon)
-  of tyDistinct, tyGenericInst:
+  of tyDistinct, tyGenericInst, tyAlias:
     result = packSize(v, typ.sons[0])
-  of tyArray, tyArrayConstr:
+  of tyArray:
     # consider: ptr array[0..1000_000, int] which is common for interfacing;
     # we use the real length here instead
     if v.kind in {nkNilLit, nkPtrLit}:
@@ -136,7 +136,7 @@ proc getField(n: PNode; position: int): PSym =
   of nkRecList:
     for i in countup(0, sonsLen(n) - 1):
       result = getField(n.sons[i], position)
-      if result != nil: return 
+      if result != nil: return
   of nkRecCase:
     result = getField(n.sons[0], position)
     if result != nil: return
@@ -198,7 +198,7 @@ proc pack(v: PNode, typ: PType, res: pointer) =
   of tyFloat: awr(float, v.floatVal)
   of tyFloat32: awr(float32, v.floatVal)
   of tyFloat64: awr(float64, v.floatVal)
-  
+
   of tyPointer, tyProc,  tyCString, tyString:
     if v.kind == nkNilLit:
       # nothing to do since the memory is 0 initialized anyway
@@ -223,7 +223,7 @@ proc pack(v: PNode, typ: PType, res: pointer) =
       pack(v.sons[0], typ.lastSon, res +! sizeof(pointer))
       dec packRecCheck
       awr(pointer, res +! sizeof(pointer))
-  of tyArray, tyArrayConstr:
+  of tyArray:
     let baseSize = typ.sons[1].getSize
     for i in 0 .. <v.len:
       pack(v.sons[i], typ.sons[1], res +! i * baseSize)
@@ -231,7 +231,7 @@ proc pack(v: PNode, typ: PType, res: pointer) =
     packObject(v, typ, res)
   of tyNil:
     discard
-  of tyDistinct, tyGenericInst:
+  of tyDistinct, tyGenericInst, tyAlias:
     pack(v, typ.sons[0], res)
   else:
     globalError(v.info, "cannot map value to FFI " & typeToString(v.typ))
@@ -256,7 +256,7 @@ proc unpackObjectAdd(x: pointer, n, result: PNode) =
 proc unpackObject(x: pointer, typ: PType, n: PNode): PNode =
   # compute the field's offsets:
   discard typ.getSize
-  
+
   # iterate over any actual field of 'n' ... if n is nil we need to create
   # the nkPar node:
   if n.isNil:
@@ -329,7 +329,7 @@ proc unpack(x: pointer, typ: PType, n: PNode): PNode =
   template awi(kind, v: expr) {.immediate, dirty.} = aw(kind, v, intVal)
   template awf(kind, v: expr) {.immediate, dirty.} = aw(kind, v, floatVal)
   template aws(kind, v: expr) {.immediate, dirty.} = aw(kind, v, strVal)
-  
+
   case typ.kind
   of tyBool: awi(nkIntLit, rd(bool, x).ord)
   of tyChar: awi(nkCharLit, rd(char, x).ord)
@@ -378,7 +378,7 @@ proc unpack(x: pointer, typ: PType, n: PNode): PNode =
       globalError(n.info, "cannot map value from FFI " & typeToString(typ))
   of tyObject, tyTuple:
     result = unpackObject(x, typ, n)
-  of tyArray, tyArrayConstr:
+  of tyArray:
     result = unpackArray(x, typ, n)
   of tyCString, tyString:
     let p = rd(cstring, x)
@@ -388,15 +388,15 @@ proc unpack(x: pointer, typ: PType, n: PNode): PNode =
       aws(nkStrLit, $p)
   of tyNil:
     setNil()
-  of tyDistinct, tyGenericInst:
-    result = unpack(x, typ.sons[0], n)
+  of tyDistinct, tyGenericInst, tyAlias:
+    result = unpack(x, typ.lastSon, n)
   else:
     # XXX what to do with 'array' here?
     globalError(n.info, "cannot map value from FFI " & typeToString(typ))
 
 proc fficast*(x: PNode, destTyp: PType): PNode =
-  if x.kind == nkPtrLit and x.typ.kind in {tyPtr, tyRef, tyVar, tyPointer, 
-                                           tyProc, tyCString, tyString, 
+  if x.kind == nkPtrLit and x.typ.kind in {tyPtr, tyRef, tyVar, tyPointer,
+                                           tyProc, tyCString, tyString,
                                            tySequence}:
     result = newNodeIT(x.kind, x.info, destTyp)
     result.intVal = x.intVal
@@ -416,7 +416,7 @@ proc fficast*(x: PNode, destTyp: PType): PNode =
 
 proc callForeignFunction*(call: PNode): PNode =
   internalAssert call.sons[0].kind == nkPtrLit
-  
+
   var cif: TCif
   var sig: TParamList
   # use the arguments' types for varargs support:
@@ -424,12 +424,12 @@ proc callForeignFunction*(call: PNode): PNode =
     sig[i-1] = mapType(call.sons[i].typ)
     if sig[i-1].isNil:
       globalError(call.info, "cannot map FFI type")
-  
+
   let typ = call.sons[0].typ
   if prep_cif(cif, mapCallConv(typ.callConv, call.info), cuint(call.len-1),
               mapType(typ.sons[0]), sig) != OK:
     globalError(call.info, "error in FFI call")
-  
+
   var args: TArgList
   let fn = cast[pointer](call.sons[0].intVal)
   for i in 1 .. call.len-1:
@@ -440,8 +440,8 @@ proc callForeignFunction*(call: PNode): PNode =
                else: alloc(typ.sons[0].getSize.int)
 
   libffi.call(cif, fn, retVal, args)
-  
-  if retVal.isNil: 
+
+  if retVal.isNil:
     result = emptyNode
   else:
     result = unpack(retVal, typ.sons[0], nil)
@@ -456,7 +456,7 @@ proc callForeignFunction*(fn: PNode, fntyp: PType,
                           args: var TNodeSeq, start, len: int,
                           info: TLineInfo): PNode =
   internalAssert fn.kind == nkPtrLit
-  
+
   var cif: TCif
   var sig: TParamList
   for i in 0..len-1:
@@ -467,11 +467,11 @@ proc callForeignFunction*(fn: PNode, fntyp: PType,
       args[i+start].typ = aTyp
     sig[i] = mapType(aTyp)
     if sig[i].isNil: globalError(info, "cannot map FFI type")
-  
+
   if prep_cif(cif, mapCallConv(fntyp.callConv, info), cuint(len),
               mapType(fntyp.sons[0]), sig) != OK:
     globalError(info, "error in FFI call")
-  
+
   var cargs: TArgList
   let fn = cast[pointer](fn.intVal)
   for i in 0 .. len-1:
@@ -482,8 +482,8 @@ proc callForeignFunction*(fn: PNode, fntyp: PType,
                else: alloc(fntyp.sons[0].getSize.int)
 
   libffi.call(cif, fn, retVal, cargs)
-  
-  if retVal.isNil: 
+
+  if retVal.isNil:
     result = emptyNode
   else:
     result = unpack(retVal, fntyp.sons[0], nil)

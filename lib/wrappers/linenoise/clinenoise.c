@@ -116,7 +116,9 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
-#include "clinenoise.h"
+#ifndef __LINENOISE_H
+#  include "clinenoise.h"
+#endif
 
 #define LINENOISE_DEFAULT_HISTORY_MAX_LEN 100
 #define LINENOISE_MAX_LINE 4096

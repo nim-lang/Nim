@@ -1,5 +1,5 @@
 discard """
-  errormsg: "type mismatch: got (string) but expected 'int32 or int64'"
+  errormsg: "cannot instantiate: 'newImage[string]'"
   line: 16
 """
 

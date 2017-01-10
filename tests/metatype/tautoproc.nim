@@ -1,5 +1,5 @@
 discard """
-  output: "empty"
+  output: "void"
 """
 
 # bug #898

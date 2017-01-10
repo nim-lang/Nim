@@ -62,10 +62,7 @@ proc withInExpr(p: TTmplParser): bool {.inline.} =
   result = p.par > 0 or p.bracket > 0 or p.curly > 0
 
 proc parseLine(p: var TTmplParser) =
-  var
-    d, j, curly: int
-    keyw: string
-  j = 0
+  var j = 0
   while p.x[j] == ' ': inc(j)
   if p.x[0] == p.nimDirective and p.x[1] == '?':
     newLine(p)
@@ -73,16 +70,16 @@ proc parseLine(p: var TTmplParser) =
     newLine(p)
     inc(j)
     while p.x[j] == ' ': inc(j)
-    d = j
-    keyw = ""
+    let d = j
+    var keyw = ""
     while p.x[j] in PatternChars:
       add(keyw, p.x[j])
       inc(j)
 
     scanPar(p, j)
     p.pendingExprLine = withInExpr(p) or llstream.endsWithOpr(p.x)
-    case whichKeyword(keyw)
-    of wEnd:
+    case keyw
+    of "end":
       if p.indent >= 2:
         dec(p.indent, 2)
       else:
@@ -90,15 +87,15 @@ proc parseLine(p: var TTmplParser) =
         localError(p.info, errXNotAllowedHere, "end")
       llStreamWrite(p.outp, spaces(p.indent))
       llStreamWrite(p.outp, "#end")
-    of wIf, wWhen, wTry, wWhile, wFor, wBlock, wCase, wProc, wIterator,
-       wConverter, wMacro, wTemplate, wMethod:
+    of "if", "when", "try", "while", "for", "block", "case", "proc", "iterator",
+       "converter", "macro", "template", "method":
       llStreamWrite(p.outp, spaces(p.indent))
       llStreamWrite(p.outp, substr(p.x, d))
       inc(p.indent, 2)
-    of wElif, wOf, wElse, wExcept, wFinally:
+    of "elif", "of", "else", "except", "finally":
       llStreamWrite(p.outp, spaces(p.indent - 2))
       llStreamWrite(p.outp, substr(p.x, d))
-    of wLet, wVar, wConst, wType:
+    of "wLet", "wVar", "wConst", "wType":
       llStreamWrite(p.outp, spaces(p.indent))
       llStreamWrite(p.outp, substr(p.x, d))
       if not p.x.contains({':', '='}):
@@ -158,7 +155,7 @@ proc parseLine(p: var TTmplParser) =
             llStreamWrite(p.outp, p.toStr)
             llStreamWrite(p.outp, '(')
             inc(j)
-            curly = 0
+            var curly = 0
             while true:
               case p.x[j]
               of '\0':

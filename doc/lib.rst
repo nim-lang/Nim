@@ -77,8 +77,9 @@ Collections and algorithms
 * `lists <lists.html>`_
   Nim linked list support. Contains singly and doubly linked lists and
   circular lists ("rings").
-* `queues <queues.html>`_
-  Implementation of a queue. The underlying implementation uses a ``seq``.
+* `deques <deques.html>`_
+  Implementation of a double-ended queue.
+  The underlying implementation uses a ``seq``.
 * `intsets <intsets.html>`_
   Efficient implementation of a set of ints as a sparse bit set.
 * `critbits <critbits.html>`_
@@ -96,6 +97,10 @@ String handling
   This module contains common string handling operations like changing
   case of a string, splitting a string into substrings, searching for
   substrings, replacing substrings.
+
+* `strmisc <strmisc.html>`_
+  This module contains uncommon string handling operations that do not
+  fit with the commonly used operations in strutils.
 
 * `parseutils <parseutils.html>`_
   This module contains helpers for parsing tokens, numbers, identifiers, etc.
@@ -578,4 +583,4 @@ Nim programming language.
   nimblepkglist.js or have javascript disabled in your browser.</b></div>
 
   <script type="text/javascript" src="nimblepkglist.js"></script>
-  <script type="text/javascript" src="http://irclogs.nim-lang.org/packages?callback=gotPackageList"></script>
+  <script type="text/javascript" src="http://irclogs.nim-lang.org/packages?callback=gotPackageList" async></script>

@@ -12,7 +12,7 @@
 # id. This module is essential for the compiler's performance.
 
 import
-  hashes, strutils, etcpriv
+  hashes, strutils, etcpriv, wordrecg
 
 type
   TIdObj* = object of RootObj
@@ -25,12 +25,20 @@ type
     next*: PIdent             # for hash-table chaining
     h*: Hash                 # hash value of s
 
-var firstCharIsCS*: bool = true
-var buckets*: array[0..4096 * 2 - 1, PIdent]
+  IdentCache* = ref object
+    buckets: array[0..4096 * 2 - 1, PIdent]
+    wordCounter: int
+    idAnon*, idDelegator*, emptyIdent*: PIdent
+
+var
+  legacy: IdentCache
+
+proc resetIdentCache*() =
+  for i in low(legacy.buckets)..high(legacy.buckets):
+    legacy.buckets[i] = nil
 
 proc cmpIgnoreStyle(a, b: cstring, blen: int): int =
-  if firstCharIsCS:
-    if a[0] != b[0]: return 1
+  if a[0] != b[0]: return 1
   var i = 0
   var j = 0
   result = 1
@@ -65,9 +73,9 @@ proc cmpExact(a, b: cstring, blen: int): int =
   if result == 0:
     if a[i] != '\0': result = 1
 
-var wordCounter = 1
+{.this: self.}
 
-proc getIdent*(identifier: cstring, length: int, h: Hash): PIdent =
+proc getIdent*(self: IdentCache; identifier: cstring, length: int, h: Hash): PIdent =
   var idx = h and high(buckets)
   result = buckets[idx]
   var last: PIdent = nil
@@ -97,16 +105,33 @@ proc getIdent*(identifier: cstring, length: int, h: Hash): PIdent =
   else:
     result.id = id
 
-proc getIdent*(identifier: string): PIdent =
+proc getIdent*(self: IdentCache; identifier: string): PIdent =
   result = getIdent(cstring(identifier), len(identifier),
                     hashIgnoreStyle(identifier))
 
-proc getIdent*(identifier: string, h: Hash): PIdent =
+proc getIdent*(self: IdentCache; identifier: string, h: Hash): PIdent =
   result = getIdent(cstring(identifier), len(identifier), h)
 
-proc identEq*(id: PIdent, name: string): bool =
-  result = id.id == getIdent(name).id
+proc newIdentCache*(): IdentCache =
+  if legacy.isNil:
+    result = IdentCache()
+    result.idAnon = result.getIdent":anonymous"
+    result.wordCounter = 1
+    result.idDelegator = result.getIdent":delegator"
+    result.emptyIdent = result.getIdent("")
+    # initialize the keywords:
+    for s in countup(succ(low(specialWords)), high(specialWords)):
+      result.getIdent(specialWords[s], hashIgnoreStyle(specialWords[s])).id = ord(s)
+    legacy = result
+  else:
+    result = legacy
 
-var idAnon* = getIdent":anonymous"
-let idDelegator* = getIdent":delegator"
+proc whichKeyword*(id: PIdent): TSpecialWord =
+  if id.id < 0: result = wInvalid
+  else: result = TSpecialWord(id.id)
 
+proc getIdent*(identifier: string): PIdent =
+  ## for backwards compatibility.
+  if legacy.isNil:
+    discard newIdentCache()
+  legacy.getIdent identifier

@@ -33,6 +33,9 @@ when withRealTime and not declared(getTicks):
 when defined(memProfiler):
   proc nimProfile(requestedSize: int) {.benign.}
 
+when hasThreadSupport:
+  include sharedlist
+
 type
   ObjectSpaceIter = object
     state: range[-1..0]
@@ -96,7 +99,7 @@ type
     stat: GcStat
     additionalRoots: CellSeq # dummy roots for GC_ref/unref
     spaceIter: ObjectSpaceIter
-    dumpHeapFile: File # File that is used for GC_dumpHeap
+    pDumpHeapFile: pointer # File that is used for GC_dumpHeap
     when hasThreadSupport:
       toDispose: SharedList[pointer]
 
@@ -189,7 +192,7 @@ proc writeCell(file: File; msg: cstring, c: PCell) =
               msg, id, kind, c.refcount shr rcShift, col)
 
 proc writeCell(msg: cstring, c: PCell) =
-  c_stdout.writeCell(msg, c)
+  stdout.writeCell(msg, c)
 
 proc myastToStr[T](x: T): string {.magic: "AstToStr", noSideEffect.}
 
@@ -263,7 +266,7 @@ proc nimGCunref(p: pointer) {.compilerProc.} =
 template markGrey(x: PCell) =
   if x.color != 1-gch.black and gch.phase == Phase.Marking:
     if not isAllocatedPtr(gch.region, x):
-      c_fprintf(c_stdout, "[GC] markGrey proc: %p\n", x)
+      c_fprintf(stdout, "[GC] markGrey proc: %p\n", x)
       #GC_dumpHeap()
       sysAssert(false, "wtf")
     x.setColor(rcGrey)
@@ -612,6 +615,9 @@ template checkTime {.dirty.} =
 
 # ---------------- dump heap ----------------
 
+template dumpHeapFile(gch: var GcHeap): File =
+  cast[File](gch.pDumpHeapFile)
+
 proc debugGraph(s: PCell) =
   c_fprintf(gch.dumpHeapFile, "child %p\n", s)
 
@@ -625,7 +631,7 @@ proc GC_dumpHeap*(file: File) =
   ## Dumps the GCed heap's content to a file. Can be useful for
   ## debugging. Produces an undocumented text file format that
   ## can be translated into "dot" syntax via the "heapdump2dot" tool.
-  gch.dumpHeapFile = file
+  gch.pDumpHeapFile = file
   var spaceIter: ObjectSpaceIter
   var d = gch.decStack.d
   for i in 0 .. < gch.decStack.len:
@@ -643,7 +649,7 @@ proc GC_dumpHeap*(file: File) =
       writeCell(file, "cell ", c)
       forAllChildren(c, waDebug)
       c_fprintf(file, "end\n")
-  gch.dumpHeapFile = nil
+  gch.pDumpHeapFile = nil
 
 proc GC_dumpHeap() =
   var f: File
@@ -679,7 +685,7 @@ proc sweep(gch: var GcHeap): bool =
   takeStartTime(100)
   #echo "loop start"
   let white = 1-gch.black
-  #cfprintf(cstdout, "black is %d\n", black)
+  #c_fprintf(stdout, "black is %d\n", black)
   while true:
     let x = allObjectsAsProc(gch.region, addr gch.spaceIter)
     if gch.spaceIter.state < 0: break
@@ -719,7 +725,7 @@ proc markIncremental(gch: var GcHeap): bool =
   while L[] > 0:
     var c = gch.greyStack.d[0]
     if not isAllocatedPtr(gch.region, c):
-      c_fprintf(c_stdout, "[GC] not allocated anymore: %p\n", c)
+      c_fprintf(stdout, "[GC] not allocated anymore: %p\n", c)
       #GC_dumpHeap()
       sysAssert(false, "wtf")
 
@@ -764,7 +770,7 @@ proc doOperation(p: pointer, op: WalkOp) =
   case op
   of waZctDecRef:
     #if not isAllocatedPtr(gch.region, c):
-    #  c_fprintf(c_stdout, "[GC] decref bug: %p", c)
+    #  c_fprintf(stdout, "[GC] decref bug: %p", c)
     gcAssert(isAllocatedPtr(gch.region, c), "decRef: waZctDecRef")
     gcAssert(c.refcount >=% rcIncrement, "doOperation 2")
     #c.refcount = c.refcount -% rcIncrement
@@ -783,14 +789,14 @@ proc doOperation(p: pointer, op: WalkOp) =
     else:
       #gcAssert(isAllocatedPtr(gch.region, c), "doOperation: waMarkGlobal")
       if not isAllocatedPtr(gch.region, c):
-        c_fprintf(c_stdout, "[GC] not allocated anymore: MarkGlobal %p\n", c)
+        c_fprintf(stdout, "[GC] not allocated anymore: MarkGlobal %p\n", c)
         #GC_dumpHeap()
         sysAssert(false, "wtf")
       handleRoot()
     discard allocInv(gch.region)
   of waMarkGrey:
     if not isAllocatedPtr(gch.region, c):
-      c_fprintf(c_stdout, "[GC] not allocated anymore: MarkGrey %p\n", c)
+      c_fprintf(stdout, "[GC] not allocated anymore: MarkGrey %p\n", c)
       #GC_dumpHeap()
       sysAssert(false, "wtf")
     if c.color == 1-gch.black:
@@ -816,7 +822,7 @@ proc collectCycles(gch: var GcHeap): bool =
     gch.phase = Phase.Marking
     markGlobals(gch)
 
-    cfprintf(stdout, "collectCycles: introduced bug E %ld\n", gch.phase)
+    c_fprintf(stdout, "collectCycles: introduced bug E %ld\n", gch.phase)
     discard allocInv(gch.region)
   of Phase.Marking:
     # since locals do not have a write barrier, we need
@@ -930,7 +936,7 @@ proc collectCTBody(gch: var GcHeap) =
     gch.stat.maxPause = max(gch.stat.maxPause, duration)
     when defined(reportMissedDeadlines):
       if gch.maxPause > 0 and duration > gch.maxPause:
-        c_fprintf(c_stdout, "[GC] missed deadline: %ld\n", duration)
+        c_fprintf(stdout, "[GC] missed deadline: %ld\n", duration)
 
 when defined(nimCoroutines):
   proc currentStackSizes(): int =

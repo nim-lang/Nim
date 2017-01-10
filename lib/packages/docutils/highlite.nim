@@ -242,14 +242,17 @@ proc nimNextToken(g: var GeneralTokenizer) =
       inc(pos)
       case g.buf[pos]
       of 'b', 'B':
+        g.kind = gtBinNumber
         inc(pos)
         while g.buf[pos] in binChars: inc(pos)
         pos = nimNumberPostfix(g, pos)
       of 'x', 'X':
+        g.kind = gtHexNumber
         inc(pos)
         while g.buf[pos] in hexChars: inc(pos)
         pos = nimNumberPostfix(g, pos)
       of 'o', 'O':
+        g.kind = gtOctNumber
         inc(pos)
         while g.buf[pos] in octChars: inc(pos)
         pos = nimNumberPostfix(g, pos)
@@ -700,8 +703,8 @@ proc yamlNextToken(g: var GeneralTokenizer) =
       g.state = gtLongStringLit
   elif g.state == gtLongStringLit:
     # beware, this is the only token where we actually have to parse
-    # indentation. 
-    
+    # indentation.
+
     g.kind = gtLongStringLit
     # first, we have to find the parent indentation of the block scalar, so that
     # we know when to stop
@@ -738,20 +741,20 @@ proc yamlNextToken(g: var GeneralTokenizer) =
     # because lookbehind was at newline char when calculating indentation, we're
     # off by one. fix that. top level's parent will have indentation of -1.
     let parentIndentation = indentation - 1
-    
+
     # find first content
     while g.buf[pos] in {' ', '\x0A', '\x0D'}:
       if g.buf[pos] == ' ': inc(indentation)
       else: indentation = 0
       inc(pos)
     var minIndentation = indentation
-    
+
     # for stupid edge cases, we must check whether an explicit indentation depth
     # is given at the header.
     while g.buf[headerStart] in {'>', '|', '+', '-'}: inc(headerStart)
     if g.buf[headerStart] in {'0'..'9'}:
       minIndentation = min(minIndentation, ord(g.buf[headerStart]) - ord('0'))
-    
+
     # process content lines
     while indentation > parentIndentation and g.buf[pos] != '\0':
       if (indentation < minIndentation and g.buf[pos] == '#') or
@@ -766,7 +769,7 @@ proc yamlNextToken(g: var GeneralTokenizer) =
         if g.buf[pos] == ' ': inc(indentation)
         else: indentation = 0
         inc(pos)
-    
+
     g.state = gtOther
   elif g.state == gtOther:
     # gtOther means 'inside YAML document'

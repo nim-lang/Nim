@@ -12,7 +12,7 @@
 
 # We do this here before the 'import' statement so 'defined' does not get
 # confused with 'TGCMode.gcGenerational' etc.
-template bootSwitch(name, expr, userString: expr): expr =
+template bootSwitch(name, expr, userString) =
   # Helper to build boot constants, for debugging you can 'echo' the else part.
   const name = if expr: " " & userString else: ""
 
@@ -56,8 +56,8 @@ const
       "Copyright (c) 2006-" & CompileDate.substr(0, 3) & " by Andreas Rumpf\n"
 
 const
-  Usage = slurp"doc/basicopt.txt".replace("//", "")
-  AdvancedUsage = slurp"doc/advopt.txt".replace("//", "")
+  Usage = slurp"../doc/basicopt.txt".replace("//", "")
+  AdvancedUsage = slurp"../doc/advopt.txt".replace("//", "")
 
 proc getCommandLineDesc(): string =
   result = (HelpMessage % [VersionAsString, platform.OS[platform.hostOS].name,
@@ -124,17 +124,17 @@ proc splitSwitch(switch: string, cmd, arg: var string, pass: TCmdLinePass,
 
 proc processOnOffSwitch(op: TOptions, arg: string, pass: TCmdLinePass,
                         info: TLineInfo) =
-  case whichKeyword(arg)
-  of wOn: gOptions = gOptions + op
-  of wOff: gOptions = gOptions - op
+  case arg.normalize
+  of "on": gOptions = gOptions + op
+  of "off": gOptions = gOptions - op
   else: localError(info, errOnOrOffExpectedButXFound, arg)
 
 proc processOnOffSwitchOrList(op: TOptions, arg: string, pass: TCmdLinePass,
                               info: TLineInfo): bool =
   result = false
-  case whichKeyword(arg)
-  of wOn: gOptions = gOptions + op
-  of wOff: gOptions = gOptions - op
+  case arg.normalize
+  of "on": gOptions = gOptions + op
+  of "off": gOptions = gOptions - op
   else:
     if arg == "list":
       result = true
@@ -143,9 +143,9 @@ proc processOnOffSwitchOrList(op: TOptions, arg: string, pass: TCmdLinePass,
 
 proc processOnOffSwitchG(op: TGlobalOptions, arg: string, pass: TCmdLinePass,
                          info: TLineInfo) =
-  case whichKeyword(arg)
-  of wOn: gGlobalOptions = gGlobalOptions + op
-  of wOff: gGlobalOptions = gGlobalOptions - op
+  case arg.normalize
+  of "on": gGlobalOptions = gGlobalOptions + op
+  of "off": gGlobalOptions = gGlobalOptions - op
   else: localError(info, errOnOrOffExpectedButXFound, arg)
 
 proc expectArg(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
@@ -158,7 +158,7 @@ var
   enableNotes: TNoteKinds
   disableNotes: TNoteKinds
 
-proc processSpecificNote(arg: string, state: TSpecialWord, pass: TCmdLinePass,
+proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
                          info: TLineInfo; orig: string) =
   var id = ""  # arg = "X]:on|off"
   var i = 0
@@ -178,13 +178,16 @@ proc processSpecificNote(arg: string, state: TSpecialWord, pass: TCmdLinePass,
     var x = findStr(msgs.WarningsToStr, id)
     if x >= 0: n = TNoteKind(x + ord(warnMin))
     else: localError(info, "unknown warning: " & id)
-  case whichKeyword(substr(arg, i))
-  of wOn:
+  case substr(arg, i).normalize
+  of "on":
     incl(gNotes, n)
+    incl(gMainPackageNotes, n)
     incl(enableNotes, n)
-  of wOff:
+  of "off":
     excl(gNotes, n)
+    excl(gMainPackageNotes, n)
     incl(disableNotes, n)
+    excl(ForeignPackageNotes, n)
   else: localError(info, errOnOrOffExpectedButXFound, arg)
 
 proc processCompile(filename: string) =
@@ -214,6 +217,17 @@ proc testCompileOptionArg*(switch, arg: string, info: TLineInfo): bool =
     of "none": result = gOptions * {optOptimizeSpeed, optOptimizeSize} == {}
     else: localError(info, errNoneSpeedOrSizeExpectedButXFound, arg)
   of "verbosity": result = $gVerbosity == arg
+  of "app":
+    case arg.normalize
+    of "gui":       result = contains(gGlobalOptions, optGenGuiApp)
+    of "console":   result = not contains(gGlobalOptions, optGenGuiApp)
+    of "lib":       result = contains(gGlobalOptions, optGenDynLib) and
+                      not contains(gGlobalOptions, optGenGuiApp)
+    of "staticlib": result = contains(gGlobalOptions, optGenStaticLib) and
+                      not contains(gGlobalOptions, optGenGuiApp)
+    else: localError(info, errGuiConsoleOrLibExpectedButXFound, arg)
+  of "dynliboverride":
+    result = isDynlibOverride(arg)
   else: invalidCmdLineOption(passCmd1, switch, info)
 
 proc testCompileOption*(switch: string, info: TLineInfo): bool =
@@ -230,6 +244,7 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
   of "linetrace": result = contains(gOptions, optLineTrace)
   of "debugger": result = contains(gOptions, optEndb)
   of "profiler": result = contains(gOptions, optProfiler)
+  of "memtracker": result = contains(gOptions, optMemTracker)
   of "checks", "x": result = gOptions * ChecksOptions == ChecksOptions
   of "floatchecks":
     result = gOptions * {optNaNCheck, optInfCheck} == {optNaNCheck, optInfCheck}
@@ -252,6 +267,7 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
   of "implicitstatic": result = contains(gOptions, optImplicitStatic)
   of "patterns": result = contains(gOptions, optPatterns)
   of "experimental": result = gExperimentalMode
+  of "excessivestacktrace": result = contains(gGlobalOptions, optExcessiveStackTrace)
   else: invalidCmdLineOption(passCmd1, switch, info)
 
 proc processPath(path: string, info: TLineInfo,
@@ -315,10 +331,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
       nimblePath(path, info)
   of "nonimblepath", "nobabelpath":
     expectNoArg(switch, arg, pass, info)
-    options.gNoNimblePath = true
-    options.lazyPaths.head = nil
-    options.lazyPaths.tail = nil
-    options.lazyPaths.counter = 0
+    disableNimblePath()
   of "excludepath":
     expectArg(switch, arg, pass, info)
     let path = processPath(arg, info)
@@ -341,7 +354,11 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     discard "allow for backwards compatibility, but don't do anything"
   of "define", "d":
     expectArg(switch, arg, pass, info)
-    defineSymbol(arg)
+    if {':', '='} in arg:
+      splitSwitch(arg, key, val, pass, info)
+      defineSymbol(key, val)
+    else:
+      defineSymbol(arg)
   of "undef", "u":
     expectArg(switch, arg, pass, info)
     undefSymbol(arg)
@@ -409,6 +426,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     if processOnOffSwitchOrList({optHints}, arg, pass, info): listHints()
   of "threadanalysis": processOnOffSwitchG({optThreadAnalysis}, arg, pass, info)
   of "stacktrace": processOnOffSwitch({optStackTrace}, arg, pass, info)
+  of "excessivestacktrace": processOnOffSwitchG({optExcessiveStackTrace}, arg, pass, info)
   of "linetrace": processOnOffSwitch({optLineTrace}, arg, pass, info)
   of "debugger":
     case arg.normalize
@@ -428,6 +446,10 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     processOnOffSwitch({optProfiler}, arg, pass, info)
     if optProfiler in gOptions: defineSymbol("profiler")
     else: undefSymbol("profiler")
+  of "memtracker":
+    processOnOffSwitch({optMemTracker}, arg, pass, info)
+    if optMemTracker in gOptions: defineSymbol("memtracker")
+    else: undefSymbol("memtracker")
   of "checks", "x": processOnOffSwitch(ChecksOptions, arg, pass, info)
   of "floatchecks":
     processOnOffSwitch({optNaNCheck, optInfCheck}, arg, pass, info)
@@ -542,6 +564,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     gNotes = NotesVerbosity[gVerbosity]
     incl(gNotes, enableNotes)
     excl(gNotes, disableNotes)
+    gMainPackageNotes = gNotes
   of "parallelbuild":
     expectArg(switch, arg, pass, info)
     gNumberOfProcessors = parseInt(arg)
@@ -612,12 +635,8 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   of "dynliboverride":
     dynlibOverride(switch, arg, pass, info)
   of "cs":
+    # only supported for compatibility. Does nothing.
     expectArg(switch, arg, pass, info)
-    case arg
-    of "partial": idents.firstCharIsCS = true
-    of "none": idents.firstCharIsCS = false
-    else: localError(info, errGenerated,
-      "'partial' or 'none' expected, but found " & arg)
   of "experimental":
     expectNoArg(switch, arg, pass, info)
     gExperimentalMode = true

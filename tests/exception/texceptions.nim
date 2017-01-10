@@ -9,7 +9,7 @@ FINALLY
 RECOVER
 
 BEFORE
-EXCEPT
+EXCEPT: IOError: hi
 FINALLY
 '''
 """
@@ -52,10 +52,10 @@ echo ""
 proc return_in_except =
   try:
     echo "BEFORE"
-    raise newException(IOError, "")
+    raise newException(IOError, "hi")
 
   except:
-    echo "EXCEPT"
+    echo "EXCEPT: ", getCurrentException().name, ": ", getCurrentExceptionMsg()
     return
 
   finally:

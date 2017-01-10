@@ -126,6 +126,7 @@ General FAQ
   --------------------------
 
   - Nim IDE: https://github.com/nim-lang/Aporia
+  - Visual Studio Code: https://marketplace.visualstudio.com/items?itemName=kosz78.nim
   - Emacs: https://github.com/nim-lang/nim-mode
   - Vim: https://github.com/zah/nimrod.vim/
   - Scite: Included
@@ -136,7 +137,7 @@ General FAQ
   - LiClipse: http://www.liclipse.com/ (Eclipse based plugin)
   - Howl: Included
   - Notepad++: Available via `plugin <https://github.com/jangko/nppnim/releases>`_
-  
+
 
 .. container:: standout
 

@@ -99,8 +99,11 @@ proc debugScopes*(c: PContext; limit=0) {.deprecated.} =
 
 proc searchInScopes*(c: PContext, s: PIdent, filter: TSymKinds): PSym =
   for scope in walkScopes(c.currentScope):
-    result = strTableGet(scope.symbols, s)
-    if result != nil and result.kind in filter: return
+    var ti: TIdentIter
+    var candidate = initIdentIter(ti, scope.symbols, s)
+    while candidate != nil:
+      if candidate.kind in filter: return candidate
+      candidate = nextIdentIter(ti, scope.symbols)
   result = nil
 
 proc errorSym*(c: PContext, n: PNode): PSym =
@@ -153,13 +156,18 @@ proc ensureNoMissingOrUnusedSymbols(scope: PScope) =
       if s.kind notin {skForVar, skParam, skMethod, skUnknown, skGenericParam}:
         # XXX: implicit type params are currently skTypes
         # maybe they can be made skGenericParam as well.
-        if s.typ != nil and tfImplicitTypeParam notin s.typ.flags:
+        if s.typ != nil and tfImplicitTypeParam notin s.typ.flags and
+           s.typ.kind != tyGenericParam:
           message(s.info, hintXDeclaredButNotUsed, getSymRepr(s))
     s = nextIter(it, scope.symbols)
 
 proc wrongRedefinition*(info: TLineInfo, s: string) =
   if gCmd != cmdInteractive:
     localError(info, errAttemptToRedefine, s)
+
+proc addDecl*(c: PContext, sym: PSym, info: TLineInfo) =
+  if not c.currentScope.addUniqueSym(sym):
+    wrongRedefinition(info, sym.name.s)
 
 proc addDecl*(c: PContext, sym: PSym) =
   if not c.currentScope.addUniqueSym(sym):
@@ -208,18 +216,18 @@ when defined(nimfix):
   # when we cannot find the identifier, retry with a changed identifer:
   proc altSpelling(x: PIdent): PIdent =
     case x.s[0]
-    of 'A'..'Z': result = getIdent(toLower(x.s[0]) & x.s.substr(1))
-    of 'a'..'z': result = getIdent(toLower(x.s[0]) & x.s.substr(1))
+    of 'A'..'Z': result = getIdent(toLowerAscii(x.s[0]) & x.s.substr(1))
+    of 'a'..'z': result = getIdent(toLowerAscii(x.s[0]) & x.s.substr(1))
     else: result = x
 
-  template fixSpelling(n: PNode; ident: PIdent; op: expr) =
+  template fixSpelling(n: PNode; ident: PIdent; op: untyped) =
     let alt = ident.altSpelling
     result = op(c, alt).skipAlias(n)
     if result != nil:
       prettybase.replaceDeprecated(n.info, ident, alt)
       return result
 else:
-  template fixSpelling(n: PNode; ident: PIdent; op: expr) = discard
+  template fixSpelling(n: PNode; ident: PIdent; op: untyped) = discard
 
 proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
   var err = "Error: ambiguous identifier: '" & s.name.s & "'"
@@ -234,6 +242,15 @@ proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
     inc i
   localError(info, errGenerated, err)
 
+proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string) =
+  var err = "undeclared identifier: '" & name & "'"
+  if c.recursiveDep.len > 0:
+    err.add "\nThis might be caused by a recursive module dependency: "
+    err.add c.recursiveDep
+    # prevent excessive errors for 'nim check'
+    c.recursiveDep = nil
+  localError(info, errGenerated, err)
+
 proc lookUp*(c: PContext, n: PNode): PSym =
   # Looks up a symbol. Generates an error in case of nil.
   case n.kind
@@ -241,7 +258,7 @@ proc lookUp*(c: PContext, n: PNode): PSym =
     result = searchInScopes(c, n.ident).skipAlias(n)
     if result == nil:
       fixSpelling(n, n.ident, searchInScopes)
-      localError(n.info, errUndeclaredIdentifier, n.ident.s)
+      errorUndeclaredIdentifier(c, n.info, n.ident.s)
       result = errorSym(c, n)
   of nkSym:
     result = n.sym
@@ -250,7 +267,7 @@ proc lookUp*(c: PContext, n: PNode): PSym =
     result = searchInScopes(c, ident).skipAlias(n)
     if result == nil:
       fixSpelling(n, ident, searchInScopes)
-      localError(n.info, errUndeclaredIdentifier, ident.s)
+      errorUndeclaredIdentifier(c, n.info, ident.s)
       result = errorSym(c, n)
   else:
     internalError(n.info, "lookUp")
@@ -261,16 +278,20 @@ proc lookUp*(c: PContext, n: PNode): PSym =
 
 type
   TLookupFlag* = enum
-    checkAmbiguity, checkUndeclared
+    checkAmbiguity, checkUndeclared, checkModule
 
-proc qualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym =
+proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
+  const allExceptModule = {low(TSymKind)..high(TSymKind)}-{skModule,skPackage}
   case n.kind
   of nkIdent, nkAccQuoted:
     var ident = considerQuotedIdent(n)
-    result = searchInScopes(c, ident).skipAlias(n)
+    if checkModule in flags:
+      result = searchInScopes(c, ident).skipAlias(n)
+    else:
+      result = searchInScopes(c, ident, allExceptModule).skipAlias(n)
     if result == nil and checkUndeclared in flags:
       fixSpelling(n, ident, searchInScopes)
-      localError(n.info, errUndeclaredIdentifier, ident.s)
+      errorUndeclaredIdentifier(c, n.info, ident.s)
       result = errorSym(c, n)
     elif checkAmbiguity in flags and result != nil and
         contains(c.ambiguousSymbols, result.id):
@@ -281,7 +302,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym =
       errorUseQualifier(c, n.info, n.sym)
   of nkDotExpr:
     result = nil
-    var m = qualifiedLookUp(c, n.sons[0], flags*{checkUndeclared})
+    var m = qualifiedLookUp(c, n.sons[0], (flags*{checkUndeclared})+{checkModule})
     if m != nil and m.kind == skModule:
       var ident: PIdent = nil
       if n.sons[1].kind == nkIdent:
@@ -295,7 +316,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags = {checkUndeclared}): PSym =
           result = strTableGet(m.tab, ident).skipAlias(n)
         if result == nil and checkUndeclared in flags:
           fixSpelling(n.sons[1], ident, searchInScopes)
-          localError(n.sons[1].info, errUndeclaredIdentifier, ident.s)
+          errorUndeclaredIdentifier(c, n.sons[1].info, ident.s)
           result = errorSym(c, n.sons[1])
       elif n.sons[1].kind == nkSym:
         result = n.sons[1].sym
@@ -326,7 +347,7 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
     o.mode = oimDone
   of nkDotExpr:
     o.mode = oimOtherModule
-    o.m = qualifiedLookUp(c, n.sons[0])
+    o.m = qualifiedLookUp(c, n.sons[0], {checkUndeclared, checkModule})
     if o.m != nil and o.m.kind == skModule:
       var ident: PIdent = nil
       if n.sons[1].kind == nkIdent:

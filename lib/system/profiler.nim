@@ -19,9 +19,13 @@ const
   MaxTraceLen = 20 # tracking the last 20 calls is enough
 
 type
-  StackTrace* = array [0..MaxTraceLen-1, cstring]
+  StackTrace* = object
+    lines*: array[0..MaxTraceLen-1, cstring]
+    files*: array[0..MaxTraceLen-1, cstring]
   ProfilerHook* = proc (st: StackTrace) {.nimcall.}
 {.deprecated: [TStackTrace: StackTrace, TProfilerHook: ProfilerHook].}
+
+proc `[]`*(st: StackTrace, i: int): cstring = st.lines[i]
 
 proc captureStackTrace(f: PFrame, st: var StackTrace) =
   const
@@ -30,9 +34,10 @@ proc captureStackTrace(f: PFrame, st: var StackTrace) =
     it = f
     i = 0
     total = 0
-  while it != nil and i <= high(st)-(firstCalls-1):
+  while it != nil and i <= high(st.lines)-(firstCalls-1):
     # the (-1) is for the "..." entry
-    st[i] = it.procname
+    st.lines[i] = it.procname
+    st.files[i] = it.filename
     inc(i)
     inc(total)
     it = it.prev
@@ -43,10 +48,12 @@ proc captureStackTrace(f: PFrame, st: var StackTrace) =
   for j in 1..total-i-(firstCalls-1):
     if b != nil: b = b.prev
   if total != i:
-    st[i] = "..."
+    st.lines[i] = "..."
+    st.files[i] = "..."
     inc(i)
-  while b != nil and i <= high(st):
-    st[i] = b.procname
+  while b != nil and i <= high(st.lines):
+    st.lines[i] = b.procname
+    st.files[i] = b.filename
     inc(i)
     b = b.prev
 

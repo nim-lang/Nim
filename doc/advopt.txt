@@ -3,9 +3,11 @@ Advanced commands:
   //compileToCpp, cpp       compile project to C++ code
   //compileToOC, objc       compile project to Objective C code
   //js                      compile project to Javascript
+  //e                       run a Nimscript file
   //rst2html                convert a reStructuredText file to HTML
   //rst2tex                 convert a reStructuredText file to TeX
   //jsondoc                 extract the documentation to a json file
+  //jsondoc2                extract documentation to a json file (uses doc2)
   //buildIndex              build an index for the whole documentation
   //run                     run the project (with Tiny C backend; buggy!)
   //genDepend               generate a DOT file containing the
@@ -59,6 +61,9 @@ Advanced options:
   --taintMode:on|off        turn taint mode on|off
   --implicitStatic:on|off   turn implicit compile time evaluation on|off
   --patterns:on|off         turn pattern matching on|off
+  --memTracker:on|off       turn memory tracker on|off
+  --excessiveStackTrace:on|off
+                            stack traces use full file paths
   --skipCfg                 do not read the general configuration file
   --skipUserCfg             do not read the user's configuration file
   --skipParentCfg           do not read the parent dirs' configuration files

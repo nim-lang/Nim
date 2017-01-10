@@ -8,4 +8,7 @@ discard """
 import jester
 import asyncdispatch, asyncnet
 
+# bug #5081
+#import nre
+
 echo "hello"

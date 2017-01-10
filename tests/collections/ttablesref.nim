@@ -141,6 +141,31 @@ block anonZipTest:
   let values = @[1, 2, 3]
   doAssert "{a: 1, b: 2, c: 3}" == $ toTable zip(keys, values)
 
+block clearTableTest:
+  var t = newTable[string, float]()
+  t["test"] = 1.2345
+  t["111"] = 1.000043
+  t["123"] = 1.23
+  assert t.len() != 0
+  t.clear()
+  assert t.len() == 0
+
+block clearOrderedTableTest:
+  var t = newOrderedTable[string, int](2)
+  for key, val in items(data): t[key] = val
+  assert t.len() != 0
+  t.clear()
+  assert t.len() == 0
+
+block clearCountTableTest:
+  var t = newCountTable[string]()
+  t.inc("90", 3)
+  t.inc("12", 2)
+  t.inc("34", 1)
+  assert t.len() != 0
+  t.clear()
+  assert t.len() == 0
+
 orderedTableSortTest()
 echo "true"
 

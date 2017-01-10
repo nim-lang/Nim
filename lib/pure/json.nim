@@ -20,9 +20,12 @@
 ##  let
 ##    small_json = """{"test": 1.3, "key2": true}"""
 ##    jobj = parseJson(small_json)
-##  assert (jobj.kind == JObject)
+##  assert (jobj.kind == JObject)\
+##  jobj["test"] = newJFloat(0.7)  # create or update
 ##  echo($jobj["test"].fnum)
 ##  echo($jobj["key2"].bval)
+##  echo jobj{"missing key"}.getFNum(0.1)  # read a float value using a default
+##  jobj{"a", "b", "c"} = newJFloat(3.3)  # created nested keys
 ##
 ## Results in:
 ##
@@ -125,7 +128,7 @@ type
   TJsonParser: JsonParser, TTokKind: TokKind].}
 
 const
-  errorMessages: array [JsonError, string] = [
+  errorMessages: array[JsonError, string] = [
     "no error",
     "invalid token",
     "string expected",
@@ -138,7 +141,7 @@ const
     "EOF expected",
     "expression expected"
   ]
-  tokToStr: array [TokKind, string] = [
+  tokToStr: array[TokKind, string] = [
     "invalid token",
     "EOF",
     "string literal",
@@ -579,7 +582,7 @@ type
     of JNull:
       nil
     of JObject:
-      fields*: Table[string, JsonNode]
+      fields*: OrderedTable[string, JsonNode]
     of JArray:
       elems*: seq[JsonNode]
 
@@ -629,7 +632,7 @@ proc newJObject*(): JsonNode =
   ## Creates a new `JObject JsonNode`
   new(result)
   result.kind = JObject
-  result.fields = initTable[string, JsonNode](4)
+  result.fields = initOrderedTable[string, JsonNode](4)
 
 proc newJArray*(): JsonNode =
   ## Creates a new `JArray JsonNode`
@@ -669,8 +672,8 @@ proc getBVal*(n: JsonNode, default: bool = false): bool =
   else: return n.bval
 
 proc getFields*(n: JsonNode,
-    default = initTable[string, JsonNode](4)):
-        Table[string, JsonNode] =
+    default = initOrderedTable[string, JsonNode](4)):
+        OrderedTable[string, JsonNode] =
   ## Retrieves the key, value pairs of a `JObject JsonNode`.
   ##
   ## Returns ``default`` if ``n`` is not a ``JObject``, or if ``n`` is nil.
@@ -711,6 +714,7 @@ proc `%`*(b: bool): JsonNode =
 
 proc `%`*(keyVals: openArray[tuple[key: string, val: JsonNode]]): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
+  if keyvals.len == 0: return newJArray()
   result = newJObject()
   for key, val in items(keyVals): result.fields[key] = val
 
@@ -758,12 +762,12 @@ proc toJson(x: NimNode): NimNode {.compiletime.} =
 
   result = prefix(result, "%")
 
-macro `%*`*(x: expr): expr =
+macro `%*`*(x: untyped): untyped =
   ## Convert an expression to a JsonNode directly, without having to specify
   ## `%` for every element.
   result = toJson(x)
 
-proc `==`* (a,b: JsonNode): bool =
+proc `==`* (a, b: JsonNode): bool =
   ## Check two nodes for equality
   if a.isNil:
     if b.isNil: return true
@@ -771,23 +775,29 @@ proc `==`* (a,b: JsonNode): bool =
   elif b.isNil or a.kind != b.kind:
     return false
   else:
-    return case a.kind
+    case a.kind
     of JString:
-      a.str == b.str
+      result = a.str == b.str
     of JInt:
-      a.num == b.num
+      result = a.num == b.num
     of JFloat:
-      a.fnum == b.fnum
+      result = a.fnum == b.fnum
     of JBool:
-      a.bval == b.bval
+      result = a.bval == b.bval
     of JNull:
-      true
+      result = true
     of JArray:
-      a.elems == b.elems
+      result = a.elems == b.elems
     of JObject:
-      a.fields == b.fields
+     # we cannot use OrderedTable's equality here as
+     # the order does not matter for equality here.
+     if a.fields.len != b.fields.len: return false
+     for key, val in a.fields:
+       if not b.fields.hasKey(key): return false
+       if b.fields[key] != val: return false
+     result = true
 
-proc hash*(n: Table[string, JsonNode]): Hash {.noSideEffect.}
+proc hash*(n: OrderedTable[string, JsonNode]): Hash {.noSideEffect.}
 
 proc hash*(n: JsonNode): Hash =
   ## Compute the hash for a JSON node
@@ -805,9 +815,9 @@ proc hash*(n: JsonNode): Hash =
   of JString:
     result = hash(n.str)
   of JNull:
-    result = hash(0)
+    result = Hash(0)
 
-proc hash*(n: Table[string, JsonNode]): Hash =
+proc hash*(n: OrderedTable[string, JsonNode]): Hash =
   for key, val in n:
     result = result xor (hash(key) !& hash(val))
   result = !$result
@@ -846,6 +856,16 @@ proc hasKey*(node: JsonNode, key: string): bool =
   ## Checks if `key` exists in `node`.
   assert(node.kind == JObject)
   result = node.fields.hasKey(key)
+
+proc contains*(node: JsonNode, key: string): bool =
+  ## Checks if `key` exists in `node`.
+  assert(node.kind == JObject)
+  node.fields.hasKey(key)
+
+proc contains*(node: JsonNode, val: JsonNode): bool =
+  ## Checks if `val` exists in array `node`.
+  assert(node.kind == JArray)
+  find(node.elems, val) >= 0
 
 proc existsKey*(node: JsonNode, key: string): bool {.deprecated.} = node.hasKey(key)
   ## Deprecated for `hasKey`
@@ -934,9 +954,11 @@ proc newIndent(curr, indent: int, ml: bool): int =
 proc nl(s: var string, ml: bool) =
   if ml: s.add("\n")
 
-proc escapeJson*(s: string): string =
+proc escapeJson*(s: string; result: var string) =
   ## Converts a string `s` to its JSON representation.
-  result = newStringOfCap(s.len + s.len shr 3)
+  ## Appends to ``result``.
+  const
+    HexChars = "0123456789ABCDEF"
   result.add("\"")
   for x in runes(s):
     var r = int(x)
@@ -947,9 +969,18 @@ proc escapeJson*(s: string): string =
       of '\\': result.add("\\\\")
       else: result.add(c)
     else:
-      result.add("\\u")
-      result.add(toHex(r, 4))
+      # toHex inlined for more speed (saves stupid string allocations):
+      result.add("\\u0000")
+      let start = result.len - 4
+      for j in countdown(3, 0):
+        result[j+start] = HexChars[r and 0xF]
+        r = r shr 4
   result.add("\"")
+
+proc escapeJson*(s: string): string =
+  ## Converts a string `s` to its JSON representation.
+  result = newStringOfCap(s.len + s.len shr 3)
+  escapeJson(s, result)
 
 proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
               lstArr = false, currIndent = 0) =
@@ -968,7 +999,7 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
         inc i
         # Need to indent more than {
         result.indent(newIndent(currIndent, indent, ml))
-        result.add(escapeJson(key))
+        escapeJson(key, result)
         result.add(": ")
         toPretty(result, val, indent, ml, false,
                  newIndent(currIndent, indent, ml))
@@ -979,16 +1010,19 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
       result.add("{}")
   of JString:
     if lstArr: result.indent(currIndent)
-    result.add(escapeJson(node.str))
+    escapeJson(node.str, result)
   of JInt:
     if lstArr: result.indent(currIndent)
-    result.add($node.num)
+    when defined(js): result.add($node.num)
+    else: result.add(node.num)
   of JFloat:
     if lstArr: result.indent(currIndent)
-    result.add($node.fnum)
+    # Fixme: implement new system.add ops for the JS target
+    when defined(js): result.add($node.fnum)
+    else: result.add(node.fnum)
   of JBool:
     if lstArr: result.indent(currIndent)
-    result.add($node.bval)
+    result.add(if node.bval: "true" else: "false")
   of JArray:
     if lstArr: result.indent(currIndent)
     if len(node.elems) != 0:
@@ -1037,16 +1071,18 @@ proc toUgly*(result: var string, node: JsonNode) =
     for key, value in pairs(node.fields):
       if comma: result.add ","
       else:     comma = true
-      result.add key.escapeJson()
+      key.escapeJson(result)
       result.add ":"
       result.toUgly value
     result.add "}"
   of JString:
-    result.add node.str.escapeJson()
+    node.str.escapeJson(result)
   of JInt:
-    result.add($node.num)
+    when defined(js): result.add($node.num)
+    else: result.add(node.num)
   of JFloat:
-    result.add($node.fnum)
+    when defined(js): result.add($node.fnum)
+    else: result.add(node.fnum)
   of JBool:
     result.add(if node.bval: "true" else: "false")
   of JNull:
@@ -1115,7 +1151,7 @@ proc parseJson(p: var JsonParser): JsonNode =
     discard getTok(p)
     while p.tok != tkCurlyRi:
       if p.tok != tkString:
-        raiseParseErr(p, "string literal as key expected")
+        raiseParseErr(p, "string literal as key")
       var key = p.a
       discard getTok(p)
       eat(p, tkColon)
@@ -1183,19 +1219,19 @@ else:
   proc len(x: JSObject): int =
     assert x.getVarType == JArray
     asm """
-      return `x`.length;
+      `result` = `x`.length;
     """
 
   proc `[]`(x: JSObject, y: string): JSObject =
     assert x.getVarType == JObject
     asm """
-      return `x`[`y`];
+      `result` = `x`[`y`];
     """
 
   proc `[]`(x: JSObject, y: int): JSObject =
     assert x.getVarType == JArray
     asm """
-      return `x`[`y`];
+      `result` = `x`[`y`];
     """
 
   proc convertObject(x: JSObject): JsonNode =
@@ -1373,5 +1409,7 @@ when isMainModule:
 
     var parsed2 = parseFile("tests/testdata/jsontest2.json")
     doAssert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
+
+  doAssert escapeJson("\10FoobarÄ") == "\"\\u000AFoobar\\u00C4\""
 
   echo("Tests succeeded!")

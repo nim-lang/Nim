@@ -9,6 +9,12 @@
 
 ## This module implements a high performance asynchronous HTTP server.
 ##
+## This HTTP server has not been designed to be used in production, but
+## for testing applications locally. Because of this, when deploying your
+## application you should use a reverse proxy (for example nginx) instead of
+## allowing users to connect directly to this server.
+##
+##
 ## Examples
 ## --------
 ##
@@ -38,7 +44,7 @@ export httpcore except parseHeader
 type
   Request* = object
     client*: AsyncSocket # TODO: Separate this into a Response object?
-    reqMethod*: string
+    reqMethod*: HttpMethod
     headers*: HttpHeaders
     protocol*: tuple[orig: string, major, minor: int]
     url*: Uri
@@ -75,6 +81,17 @@ proc respond*(req: Request, code: HttpCode, content: string,
   ## content.
   ##
   ## This procedure will **not** close the client socket.
+  ##
+  ## Examples
+  ## --------
+  ## .. code-block::nim
+  ##    proc handler(req: Request) {.async.} =
+  ##      if req.url.path == "/hello-world":
+  ##        let msg = %* {"message": "Hello World"}
+  ##        let headers = newHttpHeaders([("Content-Type","application/json")])
+  ##        await req.respond(Http200, $msg, headers)
+  ##      else:
+  ##        await req.respond(Http404, "Not Found")
   var msg = "HTTP/1.1 " & $code & "\c\L"
 
   if headers != nil:
@@ -116,18 +133,32 @@ proc processClient(client: AsyncSocket, address: string,
     assert client != nil
     request.client = client
 
-    # First line - GET /path HTTP/1.1
-    lineFut.mget().setLen(0)
-    lineFut.clean()
-    await client.recvLineInto(lineFut) # TODO: Timeouts.
-    if lineFut.mget == "":
-      client.close()
-      return
+    # We should skip at least one empty line before the request
+    # https://tools.ietf.org/html/rfc7230#section-3.5
+    for i in 0..1:
+      lineFut.mget().setLen(0)
+      lineFut.clean()
+      await client.recvLineInto(lineFut) # TODO: Timeouts.
 
+      if lineFut.mget == "":
+        client.close()
+        return
+
+      if lineFut.mget != "\c\L":
+        break
+
+    # First line - GET /path HTTP/1.1
     var i = 0
     for linePart in lineFut.mget.split(' '):
       case i
-      of 0: request.reqMethod.shallowCopy(linePart.normalize)
+      of 0:
+        try:
+          # TODO: this is likely slow.
+          request.reqMethod = parseEnum[HttpMethod]("http" & linePart)
+        except ValueError:
+          asyncCheck request.respond(Http400, "Invalid request method. Got: " &
+                                     linePart)
+          continue
       of 1: parseUri(linePart, request.url)
       of 2:
         try:
@@ -159,7 +190,7 @@ proc processClient(client: AsyncSocket, address: string,
         request.client.close()
         return
 
-    if request.reqMethod == "post":
+    if request.reqMethod == HttpPost:
       # Check for Expect header
       if request.headers.hasKey("Expect"):
         if "100-continue" in request.headers["Expect"]:
@@ -178,17 +209,12 @@ proc processClient(client: AsyncSocket, address: string,
       else:
         request.body = await client.recv(contentLength)
         assert request.body.len == contentLength
-    elif request.reqMethod == "post":
+    elif request.reqMethod == HttpPost:
       await request.respond(Http400, "Bad Request. No Content-Length.")
       continue
 
-    case request.reqMethod
-    of "get", "post", "head", "put", "delete", "trace", "options",
-       "connect", "patch":
-      await callback(request)
-    else:
-      await request.respond(Http400, "Invalid request method. Got: " &
-        request.reqMethod)
+    # Call the user's callback.
+    await callback(request)
 
     if "upgrade" in request.headers.getOrDefault("connection"):
       return

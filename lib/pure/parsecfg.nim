@@ -131,7 +131,7 @@ type
 # implementation
 
 const
-  SymChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\x80'..'\xFF', '.', '/', '\\'}
+  SymChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\x80'..'\xFF', '.', '/', '\\', '-'}
 
 proc rawGetTok(c: var CfgParser, tok: var Token) {.gcsafe.}
 
@@ -512,10 +512,16 @@ proc writeConfig*(dict: Config, filename: string) =
             kv = key
           if value != "": ## If the key is not empty
             if not allCharsInSet(value, SymChars):
-              kv.add(segmentChar)
-              kv.add("\"")
-              kv.add(replace(value))
-              kv.add("\"")
+              if find(value, '"') == -1:
+                kv.add(segmentChar)
+                kv.add("\"")
+                kv.add(replace(value))
+                kv.add("\"")
+              else:
+                kv.add(segmentChar)
+                kv.add("\"\"\"")
+                kv.add(replace(value))
+                kv.add("\"\"\"")
             else:
               kv.add(segmentChar)
               kv.add(value)

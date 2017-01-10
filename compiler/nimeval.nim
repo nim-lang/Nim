@@ -8,10 +8,9 @@
 #
 
 ## exposes the Nim VM to clients.
-
 import
   ast, modules, passes, passaux, condsyms,
-  options, nimconf, lists, sem, semdata, llstream, vm
+  options, nimconf, lists, sem, semdata, llstream, vm, modulegraphs, idents
 
 proc execute*(program: string) =
   passes.gIncludeFile = includeModule
@@ -27,7 +26,9 @@ proc execute*(program: string) =
   registerPass(evalPass)
 
   appendStr(searchPaths, options.libpath)
-  compileSystemModule()
-  var m = makeStdinModule()
+  var graph = newModuleGraph()
+  var cache = newIdentCache()
+  var m = makeStdinModule(graph)
   incl(m.flags, sfMainModule)
-  processModule(m, llStreamOpen(program), nil)
+  compileSystemModule(graph,cache)
+  processModule(graph,m, llStreamOpen(program), nil, cache)

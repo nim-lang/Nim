@@ -1,7 +1,7 @@
 
 import json, tables, sequtils
 
-proc run(json_params: Table) =
+proc run(json_params: OrderedTable) =
   let json_elems = json_params["files"].elems
   # These fail compilation.
   var files = map(json_elems, proc (x: JsonNode): string = x.str)

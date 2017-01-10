@@ -76,7 +76,7 @@ to a variable (that was passed to the ``scanf`` macro) while ``$[]`` merely
 optional tokens.
 
 
-In this example, we define a helper proc ``skipSep`` that skips some separators
+In this example, we define a helper proc ``someSep`` that skips some separators
 which we then use in our scanf pattern to help us in the matching process:
 
 .. code-block:: nim
@@ -86,14 +86,14 @@ which we then use in our scanf pattern to help us in the matching process:
     result = 0
     while input[start+result] in seps: inc result
 
-  if scanf(input, "$w${someSep}$w", key, value):
+  if scanf(input, "$w$[someSep]$w", key, value):
     ...
 
 It also possible to pass arguments to a user definable matcher:
 
 .. code-block:: nim
 
-  proc ndigits(input: string; start: int; intVal: var int; n: int): int =
+  proc ndigits(input: string; intVal: var int; start: int; n: int): int =
     # matches exactly ``n`` digits. Matchers need to return 0 if nothing
     # matched or otherwise the number of processed chars.
     var x = 0
@@ -258,7 +258,8 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
       conds.add resLen
   result.add conditionsToIfChain(conds, idx, res, 0)
   if fullMatch:
-    result.add newCall(bindSym">=", idx, newCall(bindSym"len", input))
+    result.add newCall(bindSym"and", res,
+      newCall(bindSym">=", idx, newCall(bindSym"len", input)))
   else:
     result.add res
 

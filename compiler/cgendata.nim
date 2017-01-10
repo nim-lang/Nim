@@ -10,12 +10,13 @@
 ## This module contains the data structures for the C code generation phase.
 
 import
-  ast, astalgo, ropes, passes, options, intsets, lists, platform
+  ast, astalgo, ropes, passes, options, intsets, lists, platform, sighashes,
+  tables
 
 from msgs import TLineInfo
 
 type
-  TLabel* = Rope             # for the C generator a label is just a rope
+  TLabel* = Rope              # for the C generator a label is just a rope
   TCFileSection* = enum       # the sections a generated C file consists of
     cfsMergeInfo,             # section containing merge information
     cfsHeaders,               # section for C include file headers
@@ -27,8 +28,8 @@ type
     cfsFieldInfo,             # section for field information
     cfsTypeInfo,              # section for type information
     cfsProcHeaders,           # section for C procs prototypes
-    cfsData,                  # section for C constant data
     cfsVars,                  # section for C variable declarations
+    cfsData,                  # section for C constant data
     cfsProcs,                 # section for C procs that are not inline
     cfsInitProc,              # section for the C init proc
     cfsTypeInit1,             # section 1 for declarations of type information
@@ -68,6 +69,7 @@ type
     beforeRetNeeded*: bool    # true iff 'BeforeRet' label for proc is needed
     threadVarAccessed*: bool  # true if the proc already accessed some threadvar
     lastLineInfo*: TLineInfo  # to avoid generating excessive 'nimln' statements
+    currLineInfo*: TLineInfo  # AST codegen will make this superfluous
     nestedTryStmts*: seq[PNode]   # in how many nested try statements we are
                                   # (the vars must be volatile then)
     inExceptBlock*: int       # are we currently inside an except block?
@@ -89,9 +91,10 @@ type
                               # requires 'T x = T()' to become 'T x; x = T()'
                               # (yes, C++ is weird like that)
     gcFrameId*: Natural       # for the GC stack marking
-    gcFrameType*: Rope       # the struct {} we put the GC markers into
+    gcFrameType*: Rope        # the struct {} we put the GC markers into
 
   TTypeSeq* = seq[PType]
+  TypeCache* = Table[SigHash, Rope]
 
   Codegenflag* = enum
     preventStackTrace,  # true if stack traces need to be prevented
@@ -101,19 +104,32 @@ type
     isHeaderFile,       # C source file is the header file
     includesStringh,    # C source file already includes ``<string.h>``
     objHasKidsValid     # whether we can rely on tfObjHasKids
+
+
+  BModuleList* = ref object of RootObj
+    mainModProcs*, mainModInit*, otherModsInit*, mainDatInit*: Rope
+    mapping*: Rope             # the generated mapping file (if requested)
+    modules*: seq[BModule]     # list of all compiled modules
+    forwardedProcsCounter*: int
+    generatedHeader*: BModule
+    breakPointId*: int
+    breakpoints*: Rope # later the breakpoints are inserted into the main proc
+    typeInfoMarker*: TypeCache
+
   TCGen = object of TPassContext # represents a C source file
-    module*: PSym
-    filename*: string
     s*: TCFileSections        # sections of the C file
     flags*: set[Codegenflag]
+    module*: PSym
+    filename*: string
     cfilename*: string        # filename of the module (including path,
                               # without extension)
-    typeCache*: TIdTable      # cache the generated types
-    forwTypeCache*: TIdTable  # cache for forward declarations of types
-    declaredThings*: IntSet  # things we have declared in this .c file
-    declaredProtos*: IntSet  # prototypes we have declared in this .c file
+    tmpBase*: Rope            # base for temp identifier generation
+    typeCache*: TypeCache     # cache the generated types
+    forwTypeCache*: TypeCache # cache for forward declarations of types
+    declaredThings*: IntSet   # things we have declared in this .c file
+    declaredProtos*: IntSet   # prototypes we have declared in this .c file
     headerFiles*: TLinkedList # needed headers to include
-    typeInfoMarker*: IntSet  # needed for generating type information
+    typeInfoMarker*: TypeCache # needed for generating type information
     initProc*: BProc          # code for init procedure
     postInitProc*: BProc      # code to be executed after the init proc
     preInitProc*: BProc       # code executed before the init proc
@@ -126,13 +142,8 @@ type
     extensionLoaders*: array['0'..'9', Rope] # special procs for the
                                               # OpenGL wrapper
     injectStmt*: Rope
-
-var
-  mainModProcs*, mainModInit*, otherModsInit*, mainDatInit*: Rope
-    # varuious parts of the main module
-  gMapping*: Rope             # the generated mapping file (if requested)
-  gModules*: seq[BModule] = @[] # list of all compiled modules
-  gForwardedProcsCounter*: int = 0
+    sigConflicts*: CountTable[SigHash]
+    g*: BModuleList
 
 proc s*(p: BProc, s: TCProcSection): var Rope {.inline.} =
   # section in the current block
@@ -141,10 +152,6 @@ proc s*(p: BProc, s: TCProcSection): var Rope {.inline.} =
 proc procSec*(p: BProc, s: TCProcSection): var Rope {.inline.} =
   # top level proc sections
   result = p.blocks[0].sections[s]
-
-proc bmod*(module: PSym): BModule =
-  # obtains the BModule for a given module PSym
-  result = gModules[module.position]
 
 proc newProc*(prc: PSym, module: BModule): BProc =
   new(result)
@@ -156,10 +163,12 @@ proc newProc*(prc: PSym, module: BModule): BProc =
   result.nestedTryStmts = @[]
   result.finallySafePoints = @[]
 
-iterator cgenModules*: BModule =
-  for i in 0..high(gModules):
+proc newModuleList*(): BModuleList =
+  BModuleList(modules: @[], typeInfoMarker: initTable[SigHash, Rope]())
+
+iterator cgenModules*(g: BModuleList): BModule =
+  for i in 0..high(g.modules):
     # ultimately, we are iterating over the file ids here.
     # some "files" won't have an associated cgen module (like stdin)
     # and we must skip over them.
-    if gModules[i] != nil: yield gModules[i]
-
+    if g.modules[i] != nil: yield g.modules[i]

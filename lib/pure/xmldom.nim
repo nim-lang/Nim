@@ -51,6 +51,9 @@ const
   # Illegal characters
   illegalChars = {'>', '<', '&', '"'}
 
+  # standard xml: attribute names
+  # see https://www.w3.org/XML/1998/namespace
+  stdattrnames = ["lang", "space", "base", "id"]
 
 type
   Feature = tuple[name: string, version: string]
@@ -229,12 +232,15 @@ proc createAttributeNS*(doc: PDocument, namespaceURI: string, qualifiedName: str
     raise newException(EInvalidCharacterErr, "Invalid character")
   # Exceptions
   if qualifiedName.contains(':'):
+    let qfnamespaces = qualifiedName.toLower().split(':')
     if isNil(namespaceURI):
       raise newException(ENamespaceErr, "When qualifiedName contains a prefix namespaceURI cannot be nil")
-    elif qualifiedName.split(':')[0].toLower() == "xml" and namespaceURI != "http://www.w3.org/XML/1998/namespace":
+    elif qfnamespaces[0] == "xml" and 
+        namespaceURI != "http://www.w3.org/XML/1998/namespace" and
+        qfnamespaces[1] notin stdattrnames:
       raise newException(ENamespaceErr,
         "When the namespace prefix is \"xml\" namespaceURI has to be \"http://www.w3.org/XML/1998/namespace\"")
-    elif qualifiedName.split(':')[1].toLower() == "xmlns" and namespaceURI != "http://www.w3.org/2000/xmlns/":
+    elif qfnamespaces[1] == "xmlns" and namespaceURI != "http://www.w3.org/2000/xmlns/":
       raise newException(ENamespaceErr,
         "When the namespace prefix is \"xmlns\" namespaceURI has to be \"http://www.w3.org/2000/xmlns/\"")
 
@@ -305,9 +311,12 @@ proc createElement*(doc: PDocument, tagName: string): PElement =
 proc createElementNS*(doc: PDocument, namespaceURI: string, qualifiedName: string): PElement =
   ## Creates an element of the given qualified name and namespace URI.
   if qualifiedName.contains(':'):
+    let qfnamespaces = qualifiedName.toLower().split(':')
     if isNil(namespaceURI):
       raise newException(ENamespaceErr, "When qualifiedName contains a prefix namespaceURI cannot be nil")
-    elif qualifiedName.split(':')[0].toLower() == "xml" and namespaceURI != "http://www.w3.org/XML/1998/namespace":
+    elif qfnamespaces[0] == "xml" and 
+        namespaceURI != "http://www.w3.org/XML/1998/namespace" and
+        qfnamespaces[1] notin stdattrnames:
       raise newException(ENamespaceErr,
         "When the namespace prefix is \"xml\" namespaceURI has to be \"http://www.w3.org/XML/1998/namespace\"")
 
@@ -881,7 +890,7 @@ proc tagName*(el: PElement): string =
   return el.fTagName
 
 # Procedures
-proc getAttribute*(el: PElement, name: string): string =
+proc getAttribute*(el: PNode, name: string): string =
   ## Retrieves an attribute value by ``name``
   if isNil(el.attributes):
     return nil
@@ -891,7 +900,7 @@ proc getAttribute*(el: PElement, name: string): string =
   else:
     return nil
 
-proc getAttributeNS*(el: PElement, namespaceURI: string, localName: string): string =
+proc getAttributeNS*(el: PNode, namespaceURI: string, localName: string): string =
   ## Retrieves an attribute value by ``localName`` and ``namespaceURI``
   if isNil(el.attributes):
     return nil

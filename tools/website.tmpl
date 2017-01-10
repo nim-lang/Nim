@@ -60,17 +60,7 @@
 #  if currentTab == "index":
         <div id="slideshow">
           <!-- slides -->
-          <div id="slide0" class="active niaslide">
-            <a href="sponsors.html">
-              <img src="${rootDir}assets/bountysource/meet_sponsors.png" alt="Meet our BountySource sponsors!"/>
-            </a>
-          </div>
-          <div id="slide1" class="niaslide">
-            <a href="news.html#Z2016-01-27-nim-in-action-is-now-available">
-              <img src="${rootDir}assets/niminaction/banner.jpg" alt="New in Manning Early Access Program: Nim in Action!"/>
-            </a>
-          </div>
-          <div id="slide2" class="codeslide2">
+          <div id="slide0" class="active codeslide2">
             <div>
               <h2>Nim is simple..</h2>
 <pre>
@@ -104,7 +94,7 @@ p.greet() <span class="cmt"># or greet(p)</span>
 </pre>
              </div>
           </div>
-          <div id="slide3" class="codeslide3">
+          <div id="slide1" class="codeslide3">
             <div>
               <h2>C FFI is easy in Nim..</h2>
 <pre>
@@ -135,6 +125,16 @@ runForever()
 </pre>
               <p><span class="desc"><b>View in browser at:</b><br>&nbsp;&nbsp;&nbsp;&nbsp;localhost:5000</span></p>
             </div>
+          </div>
+          <div id="slide2" class="niaslide">
+            <a href="news/e030_nim_in_action_in_production.html">
+              <img src="${rootDir}assets/niminaction/banner2.png" alt="A printed copy of Nim in Action should be available in March 2017!"/>
+            </a>
+          </div>
+          <div id="slide3" class="niaslide">
+            <a href="sponsors.html">
+              <img src="${rootDir}assets/bountysource/meet_sponsors.png" alt="Meet our BountySource sponsors!"/>
+            </a>
           </div>
         </div>
         <div id="slideshow-nav">
@@ -180,8 +180,8 @@ runForever()
 				<div id="foot-links">
 					<div>
 						<h4>Documentation</h4>
-						<a href="documentation.html">Stable Documentation</a>
-						<a href="learn.html">Learning Resources</a>
+						<a href="${rootDir}documentation.html">Stable Documentation</a>
+						<a href="${rootDir}learn.html">Learning Resources</a>
 					<!--	<a href="">Development Documentation</a> -->
 						<a href="https://github.com/nim-lang/nim">Issues &amp; Requests</a>
 					</div>
@@ -218,13 +218,9 @@ runForever()
 </html>
 #end proc
 #
+#
 #proc generateSponsors(sponsors: seq[Sponsor]): string =
 #result = ""
-<h1 id="our-current-sponsors">Our Current Sponsors</h1>
-<p>This page lists the companies and individuals that are, very kindly, contributing a
-monthly amount to help sustain Nim's development. For more details take a
-look at the <a href="https://salt.bountysource.com/teams/nim">Bountysource campaign</a>.</p>
-<dl>
 #for sponsor in sponsors:
   <dt class="level-${sponsor.level}">
     #if sponsor.url.len > 0:
@@ -247,6 +243,24 @@ look at the <a href="https://salt.bountysource.com/teams/nim">Bountysource campa
     Donated $$${sponsor.allTime} in total since ${sponsor.since}
   </dd>
 #end for
+#end proc
+#proc generateSponsorsPage(activeSponsors, inactiveSponsors: seq[Sponsor]): string =
+#result = ""
+<h1 id="our-current-sponsors">Our Current Sponsors</h1>
+<p>This section lists the companies and individuals that are, very kindly, contributing a
+monthly amount to help sustain Nim's development. For more details take a
+look at the <a href="https://salt.bountysource.com/teams/nim">Bountysource campaign</a>.</p>
+<p class="lastUpdate">Last updated: ${getTime().getGMTime().format("dd/MM/yyyy")}</p>
+<dl>
+${generateSponsors(activeSponsors)}
+</dl>
+#
+<h1 id="our-past-sponsors">Our Past Sponsors</h1>
+<p>This section lists the companies and individuals that have contributed
+money in the past to help sustain Nim's development. For more details take a
+look at the <a href="https://salt.bountysource.com/teams/nim">Bountysource campaign</a>.</p>
+<dl>
+${generateSponsors(inactiveSponsors)}
 </dl>
 #
 #end proc

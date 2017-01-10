@@ -41,3 +41,11 @@ proc bar(s: var seq[int], a: int) =
   foo(s)
 s.bar(5)
 doAssert(s == @[123, 1])
+
+import tables
+block: # Test get addr of byvar return value
+  var t = initTable[string, int]()
+  t["hi"] = 5
+  let a = addr t["hi"]
+  a[] = 10
+  doAssert(t["hi"] == 10)

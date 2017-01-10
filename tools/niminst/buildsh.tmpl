@@ -53,7 +53,7 @@ uos=`echo $uos | tr "[:upper:]" "[:lower:]"`
 case $uos in
   *linux* )
     myos="linux"
-    LINK_FLAGS="$LINK_FLAGS -ldl -lm"
+    LINK_FLAGS="$LINK_FLAGS -ldl -lm -lrt"
     ;;
   *dragonfly* )
     myos="freebsd"
@@ -92,6 +92,10 @@ case $uos in
     ;;
   *haiku* )
     myos="haiku"
+    LINK_FLAGS="$LINK_FLAGS -lroot -lnetwork"
+    ;;
+  *mingw* )
+    myos="windows"
     ;;
   *)
     echo 2>&1 "Error: unknown operating system: $uos"
@@ -105,7 +109,11 @@ case $ucpu in
   *amd*64* | *x86-64* | *x86_64* )
     mycpu="amd64" ;;
   *sparc*|*sun* )
-    mycpu="sparc" ;;
+    mycpu="sparc"
+    if [ "$(isainfo -b)" = "64" ]; then
+      mycpu="sparc64"
+    fi
+    ;;
   *ppc64* )
     if [ "$myos" = "linux" ] ; then
       COMP_FLAGS="$COMP_FLAGS -m64"
@@ -118,6 +126,8 @@ case $ucpu in
     mycpu="mips" ;;
   *arm*|*armv6l* )
     mycpu="arm" ;;
+  *aarch64* )
+    mycpu="arm64" ;;
   *)
     echo 2>&1 "Error: unknown processor: $ucpu"
     exit 1
@@ -139,7 +149,7 @@ case $myos in
     $CC $COMP_FLAGS -Ic_code -c ?{f} -o ?{changeFileExt(f, "o")}
 #        add(linkCmd, " \\\n" & changeFileExt(f, "o"))
 #      end for
-    $LINKER -o ?{"$binDir/" & toLower(c.name)} ?linkCmd $LINK_FLAGS
+    $LINKER -o ?{"$binDir/" & toLowerAscii(c.name)} ?linkCmd $LINK_FLAGS
     ;;
 #    end for
   *)

@@ -30,6 +30,16 @@ There are also ``install.sh`` and ``deinstall.sh`` scripts for distributing
 the files over the UNIX hierarchy. However, updating your Nim installation
 is more cumbersome then.
 
+To complete the installation you should also build Nim's tools like
+``nimsuggest``, ``nimble`` or ``nimgrep`` via::
+
+  nim c koch
+  koch tools
+
+Note that these tools should also end up in your ``PATH`` so adding
+``$your_install_dir/bin/nim`` to your ``PATH`` is preferred over the symlink
+solution.
+
 
 Installation on the Macintosh
 -----------------------------
@@ -44,10 +54,8 @@ or clang.
 Installation on Windows
 -----------------------
 
-Install Nim by downloading and running the ``nim_$version.exe`` file.
-As default, the ``GCC`` compiler is used that is bundled with this installer.
-You can change the configuration file ``config/nim.cfg`` to use
-another C compiler or change the path to GCC.
+Install Nim by downloading and unzipping the ``nim_$version.zip`` file.
+Run ``finish.exe`` to detect and setup your MingW environment.
 
 Currently, the following C compilers are supported under Windows:
 
@@ -76,4 +84,5 @@ Nimble is Nim's package manager. For the source based installations where you
 added Nim's ``bin`` directory to your ``$PATH`` the easiest way of installing
 Nimble is via::
 
-  nim e install_nimble.nims
+  nim c koch
+  koch nimble

@@ -65,3 +65,12 @@ type
 
 # have a proc taking TFlags as param and returning object having TFlags field
 proc foo(flags: TFlags): TObj = nil
+
+
+# bug #5137
+type
+  MyInt {.importc: "int".} = object
+  MyIntDistinct = distinct MyInt
+
+proc bug5137(d: MyIntDistinct) =
+  discard d.MyInt

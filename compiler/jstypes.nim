@@ -76,7 +76,7 @@ proc genObjectInfo(p: PProc, typ: PType, name: Rope) =
   addf(p.g.typeInfo, "$1.node = NNI$2;$n", [name, rope(typ.id)])
   if (typ.kind == tyObject) and (typ.sons[0] != nil):
     addf(p.g.typeInfo, "$1.base = $2;$n",
-         [name, genTypeInfo(p, typ.sons[0])])
+         [name, genTypeInfo(p, typ.sons[0].skipTypes(skipPtrs))])
 
 proc genTupleFields(p: PProc, typ: PType): Rope =
   var s: Rope = nil
@@ -118,7 +118,7 @@ proc genEnumInfo(p: PProc, typ: PType, name: Rope) =
          [name, genTypeInfo(p, typ.sons[0])])
 
 proc genEnumInfoPHP(p: PProc; t: PType): Rope =
-  let t = t.skipTypes({tyGenericInst, tyDistinct})
+  let t = t.skipTypes({tyGenericInst, tyDistinct, tyAlias})
   result = "$$NTI$1" % [rope(t.id)]
   p.declareGlobal(t.id, result)
   if containsOrIncl(p.g.typeInfoGenerated, t.id): return
@@ -137,7 +137,7 @@ proc genEnumInfoPHP(p: PProc; t: PType): Rope =
 proc genTypeInfo(p: PProc, typ: PType): Rope =
   if p.target == targetPHP:
     return makeJSString(typeToString(typ, preferModuleInfo))
-  let t = typ.skipTypes({tyGenericInst, tyDistinct})
+  let t = typ.skipTypes({tyGenericInst, tyDistinct, tyAlias})
   result = "NTI$1" % [rope(t.id)]
   if containsOrIncl(p.g.typeInfoGenerated, t.id): return
   case t.kind
@@ -155,7 +155,7 @@ proc genTypeInfo(p: PProc, typ: PType): Rope =
     prepend(p.g.typeInfo, s)
     addf(p.g.typeInfo, "$1.base = $2;$n",
          [result, genTypeInfo(p, t.lastSon)])
-  of tyArrayConstr, tyArray:
+  of tyArray:
     var s =
       "var $1 = {size: 0,kind: $2,base: null,node: null,finalizer: null};$n" %
               [result, rope(ord(t.kind))]
@@ -165,4 +165,7 @@ proc genTypeInfo(p: PProc, typ: PType): Rope =
   of tyEnum: genEnumInfo(p, t, result)
   of tyObject: genObjectInfo(p, t, result)
   of tyTuple: genTupleInfo(p, t, result)
+  of tyStatic:
+    if t.n != nil: result = genTypeInfo(p, lastSon t)
+    else: internalError("genTypeInfo(" & $t.kind & ')')
   else: internalError("genTypeInfo(" & $t.kind & ')')

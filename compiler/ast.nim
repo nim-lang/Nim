@@ -271,13 +271,14 @@ type
   TSymFlags* = set[TSymFlag]
 
 const
-  sfFakeConst* = sfDeadCodeElim  # const cannot be put into a data section
   sfDispatcher* = sfDeadCodeElim # copied method symbol is the dispatcher
   sfNoInit* = sfMainModule       # don't generate code to init the variable
 
   sfImmediate* = sfDeadCodeElim
     # macro or template is immediately expanded
     # without considering any possible overloads
+  sfAllUntyped* = sfVolatile # macro or template is immediately expanded \
+    # in a generic context
 
   sfDirty* = sfPure
     # template is not hygienic (old styled template)
@@ -316,8 +317,12 @@ type
   TTypeKind* = enum  # order is important!
                      # Don't forget to change hti.nim if you make a change here
                      # XXX put this into an include file to avoid this issue!
+                     # several types are no longer used (guess which), but a
+                     # spot in the sequence is kept for backwards compatibility
+                     # (apparently something with bootstrapping)
+                     # if you need to add a type, they can apparently be reused
     tyNone, tyBool, tyChar,
-    tyEmpty, tyArrayConstr, tyNil, tyExpr, tyStmt, tyTypeDesc,
+    tyEmpty, tyAlias, tyNil, tyExpr, tyStmt, tyTypeDesc,
     tyGenericInvocation, # ``T[a, b]`` for types to invoke
     tyGenericBody,       # ``T[a, b, body]`` last parameter is the body
     tyGenericInst,       # ``T[a, b, realInstance]`` instantiated generic type
@@ -344,9 +349,9 @@ type
     tyInt, tyInt8, tyInt16, tyInt32, tyInt64, # signed integers
     tyFloat, tyFloat32, tyFloat64, tyFloat128,
     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64,
-    tyBigNum,
-    tyConst, tyMutable, tyVarargs,
-    tyIter, # unused
+    tyUnused0, tyUnused1, tyUnused2,
+    tyVarargs,
+    tyUnused,
     tyProxy # used as errornous type (for idetools)
 
     tyBuiltInTypeClass #\
@@ -395,6 +400,9 @@ type
       # sons[1]: field type
       # .n: nkDotExpr storing the field name
 
+    tyVoid #\
+      # now different from tyEmpty, hurray!
+
 static:
   # remind us when TTypeKind stops to fit in a single 64-bit word
   assert TTypeKind.high.ord <= 63
@@ -433,10 +441,10 @@ type
     nfExplicitCall # x.y() was used instead of x.y
     nfExprCall  # this is an attempt to call a regular expression
     nfIsRef     # this node is a 'ref' node; used for the VM
-    nfIsCursor  # this node is attached a cursor; used for idetools
+    nfPreventCg # this node should be ignored by the codegen
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 28)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 30)
     tfVarargs,        # procedure has C styled varargs
     tfNoSideEffect,   # procedure type does not allow side effects
     tfFinal,          # is the object final?
@@ -480,6 +488,7 @@ type
     tfBorrowDot       # distinct type borrows '.'
     tfTriggersCompileTime # uses the NimNode type which make the proc
                           # implicitly '.compiletime'
+    tfRefsAnonObj     # used for 'ref object' and 'ptr object'
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -528,8 +537,6 @@ const
   tfOldSchoolExprStmt* = tfVarargs # for now used to distinguish \
     # 'varargs[expr]' from 'varargs[untyped]'. Eventually 'expr' will be
     # deprecated and this mess can be cleaned up.
-  tfVoid* = tfVarargs # for historical reasons we conflated 'void' with
-                      # 'empty' ('@[]' has the type 'seq[empty]').
   tfReturnsNew* = tfInheritable
   skError* = skUnknown
 
@@ -544,7 +551,7 @@ type
     mEcho, mShallowCopy, mSlurp, mStaticExec,
     mParseExprToAst, mParseStmtToAst, mExpandToAst, mQuoteAst,
     mUnaryLt, mInc, mDec, mOrd,
-    mNew, mNewFinalize, mNewSeq,
+    mNew, mNewFinalize, mNewSeq, mNewSeqOfCap,
     mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq,
     mXLenStr, mXLenSeq,
     mIncl, mExcl, mCard, mChr,
@@ -590,6 +597,7 @@ type
     mNewString, mNewStringOfCap, mParseBiggestFloat,
     mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
+    mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
     mOrdinal,
     mInt, mInt8, mInt16, mInt32, mInt64,
     mUInt, mUInt8, mUInt16, mUInt32, mUInt64,
@@ -609,7 +617,7 @@ type
     mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl,
     mNHint, mNWarning, mNError,
     mInstantiationInfo, mGetTypeInfo, mNGenSym,
-    mNimvm
+    mNimvm, mIntDefine, mStrDefine
 
 # things that we can evaluate safely at compile time, even if not asked for it:
 const
@@ -722,10 +730,7 @@ type
     s*: TStorageLoc
     flags*: TLocFlags         # location's flags
     t*: PType                 # type of location
-    r*: Rope                 # rope value of location (code generators)
-    heapRoot*: Rope          # keeps track of the enclosing heap object that
-                              # owns this location (required by GC algorithms
-                              # employing heap snapshots or sliding views)
+    r*: Rope                  # rope value of location (code generators)
 
   # ---------------- end of backend information ------------------------------
 
@@ -743,10 +748,6 @@ type
   TInstantiation* = object
     sym*: PSym
     concreteTypes*: seq[PType]
-    usedBy*: seq[int32]       # list of modules using the generic
-                              # needed in caas mode for purging the cache
-                              # XXX: it's possible to switch to a
-                              # simple ref count here
     compilesId*: CompilesId
 
   PInstantiation* = ref TInstantiation
@@ -764,12 +765,11 @@ type
     case kind*: TSymKind
     of skType, skGenericParam:
       typeInstCache*: seq[PType]
-      typScope*: PScope
     of routineKinds:
       procInstCache*: seq[PInstantiation]
       gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
       #scope*: PScope          # the scope where the proc was defined
-    of skModule:
+    of skModule, skPackage:
       # modules keep track of the generic symbols they use from other modules.
       # this is because in incremental compilation, when a module is about to
       # be replaced with a newer version, we must decrement the usage count
@@ -848,19 +848,19 @@ type
                               # see instantiateDestructor in semdestruct.nim
     deepCopy*: PSym           # overriden 'deepCopy' operation
     assignment*: PSym         # overriden '=' operator
+    methods*: seq[(int,PSym)] # attached methods
     size*: BiggestInt         # the size of the type in bytes
                               # -1 means that the size is unkwown
     align*: int16             # the type's alignment requirements
     lockLevel*: TLockLevel    # lock level as required for deadlock checking
     loc*: TLoc
+    typeInst*: PType          # for generic instantiations the tyGenericInst that led to this
+                              # type.
 
   TPair* = object
     key*, val*: RootRef
 
   TPairSeq* = seq[TPair]
-  TTable* = object   # the same as table[PObject] of PObject
-    counter*: int
-    data*: TPairSeq
 
   TIdPair* = object
     key*: PIdObj
@@ -910,7 +910,7 @@ const
   GenericTypes*: TTypeKinds = {tyGenericInvocation, tyGenericBody,
     tyGenericParam}
 
-  StructuralEquivTypes*: TTypeKinds = {tyArrayConstr, tyNil, tyTuple, tyArray,
+  StructuralEquivTypes*: TTypeKinds = {tyNil, tyTuple, tyArray,
     tySet, tyRange, tyPtr, tyRef, tyVar, tySequence, tyProc, tyOpenArray,
     tyVarargs}
 
@@ -923,7 +923,7 @@ const
     tyUInt..tyUInt64}
   IntegralTypes* = {tyBool, tyChar, tyEnum, tyInt..tyInt64,
     tyFloat..tyFloat128, tyUInt..tyUInt64}
-  ConstantDataTypes*: TTypeKinds = {tyArrayConstr, tyArray, tySet,
+  ConstantDataTypes*: TTypeKinds = {tyArray, tySet,
                                     tyTuple, tySequence}
   NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr, tySequence,
     tyProc, tyString, tyError}
@@ -932,7 +932,7 @@ const
     skMacro, skTemplate, skConverter, skEnumField, skLet, skStub, skAlias}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
                                       nfDotSetter, nfDotField,
-                                      nfIsRef, nfIsCursor, nfLL}
+                                      nfIsRef, nfPreventCg, nfLL}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2
@@ -963,7 +963,6 @@ const
 var ggDebug* {.deprecated.}: bool ## convenience switch for trying out things
 var
   gMainPackageId*: int
-  gMainPackageNotes*: TNoteKinds
 
 proc isCallExpr*(n: PNode): bool =
   result = n.kind in nkCallKinds
@@ -987,12 +986,12 @@ proc add*(father, son: PNode) =
 proc `[]`*(n: PNode, i: int): PNode {.inline.} =
   result = n.sons[i]
 
-template `-|`*(b, s: expr): expr =
+template `-|`*(b, s: untyped): untyped =
   (if b >= 0: b else: s.len + b)
 
 # son access operators with support for negative indices
-template `{}`*(n: PNode, i: int): expr = n[i -| n]
-template `{}=`*(n: PNode, i: int, s: PNode): stmt =
+template `{}`*(n: PNode, i: int): untyped = n[i -| n]
+template `{}=`*(n: PNode, i: int, s: PNode) =
   n.sons[i -| n] = s
 
 when defined(useNodeIds):
@@ -1054,8 +1053,6 @@ proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
 var emptyNode* = newNode(nkEmpty)
 # There is a single empty node that is shared! Do not overwrite it!
 
-var anyGlobal* = newSym(skVar, getIdent("*"), nil, unknownLineInfo())
-
 proc isMetaType*(t: PType): bool =
   return t.kind in tyMetaTypes or
          (t.kind == tyStatic and t.n == nil) or
@@ -1103,12 +1100,6 @@ proc copyIdTable*(dest: var TIdTable, src: TIdTable) =
   dest.counter = src.counter
   if isNil(src.data): return
   newSeq(dest.data, len(src.data))
-  for i in countup(0, high(src.data)): dest.data[i] = src.data[i]
-
-proc copyTable*(dest: var TTable, src: TTable) =
-  dest.counter = src.counter
-  if isNil(src.data): return
-  setLen(dest.data, len(src.data))
   for i in countup(0, high(src.data)): dest.data[i] = src.data[i]
 
 proc copyObjectSet*(dest: var TObjectSet, src: TObjectSet) =
@@ -1221,10 +1212,10 @@ proc newType*(kind: TTypeKind, owner: PSym): PType =
   result.lockLevel = UnspecifiedLockLevel
   when debugIds:
     registerId(result)
-  #if result.id == 92231:
-  #  echo "KNID ", kind
-  #  writeStackTrace()
-  #  messageOut(typeKindToStr[kind] & ' has id: ' & toString(result.id))
+  when false:
+    if result.id == 205734:
+      echo "KNID ", kind
+      writeStackTrace()
 
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(a.k): a.k = b.k
@@ -1324,10 +1315,6 @@ proc initStrTable*(x: var TStrTable) =
 proc newStrTable*: TStrTable =
   initStrTable(result)
 
-proc initTable(x: var TTable) =
-  x.counter = 0
-  newSeq(x.data, StartSize)
-
 proc initIdTable*(x: var TIdTable) =
   x.counter = 0
   newSeq(x.data, StartSize)
@@ -1386,8 +1373,8 @@ proc propagateToOwner*(owner, elem: PType) =
     owner.flags.incl tfHasMeta
 
   if tfHasAsgn in elem.flags:
-    let o2 = elem.skipTypes({tyGenericInst})
-    if o2.kind in {tyTuple, tyObject, tyArray, tyArrayConstr,
+    let o2 = elem.skipTypes({tyGenericInst, tyAlias})
+    if o2.kind in {tyTuple, tyObject, tyArray,
                    tySequence, tySet, tyDistinct}:
       o2.flags.incl tfHasAsgn
       owner.flags.incl tfHasAsgn
@@ -1397,7 +1384,7 @@ proc propagateToOwner*(owner, elem: PType) =
 
   if owner.kind notin {tyProc, tyGenericInst, tyGenericBody,
                        tyGenericInvocation, tyPtr}:
-    let elemB = elem.skipTypes({tyGenericInst})
+    let elemB = elem.skipTypes({tyGenericInst, tyAlias})
     if elemB.isGCedMem or tfHasGCedMem in elemB.flags:
       # for simplicity, we propagate this flag even to generics. We then
       # ensure this doesn't bite us in sempass2.
@@ -1426,6 +1413,7 @@ proc copyNode*(src: PNode): PNode =
   result.info = src.info
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
+  result.comment = src.comment
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
@@ -1444,6 +1432,7 @@ proc shallowCopy*(src: PNode): PNode =
   result.info = src.info
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
+  result.comment = src.comment
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
@@ -1463,6 +1452,7 @@ proc copyTree*(src: PNode): PNode =
   result.info = src.info
   result.typ = src.typ
   result.flags = src.flags * PersistentNodeFlags
+  result.comment = src.comment
   when defined(useNodeIds):
     if result.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
@@ -1508,19 +1498,9 @@ proc hasSubnodeWith*(n: PNode, kind: TNodeKind): bool =
         return true
     result = false
 
-proc replaceSons(n: PNode, oldKind, newKind: TNodeKind) =
-  for i in countup(0, sonsLen(n) - 1):
-    if n.sons[i].kind == oldKind: n.sons[i].kind = newKind
-
-proc sonsNotNil(n: PNode): bool =
-  for i in countup(0, sonsLen(n) - 1):
-    if n.sons[i] == nil:
-      return false
-  result = true
-
 proc getInt*(a: PNode): BiggestInt =
   case a.kind
-  of nkIntLit..nkUInt64Lit: result = a.intVal
+  of nkCharLit..nkUInt64Lit: result = a.intVal
   else:
     internalError(a.info, "getInt")
     result = 0
@@ -1587,7 +1567,7 @@ proc isAtom*(n: PNode): bool {.inline.} =
 
 proc isEmptyType*(t: PType): bool {.inline.} =
   ## 'void' and 'stmt' types are often equivalent to 'nil' these days:
-  result = t == nil or t.kind in {tyEmpty, tyStmt}
+  result = t == nil or t.kind in {tyVoid, tyStmt}
 
 proc makeStmtList*(n: PNode): PNode =
   if n.kind == nkStmtList:
@@ -1603,14 +1583,6 @@ proc skipStmtList*(n: PNode): PNode =
     result = n.lastSon
   else:
     result = n
-
-proc createMagic*(name: string, m: TMagic): PSym =
-  result = newSym(skProc, getIdent(name), nil, unknownLineInfo())
-  result.magic = m
-
-let
-  opNot* = createMagic("not", mNot)
-  opContains* = createMagic("contains", mInSet)
 
 when false:
   proc containsNil*(n: PNode): bool =

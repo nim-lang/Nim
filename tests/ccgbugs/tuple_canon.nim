@@ -1,3 +1,10 @@
+
+
+# bug #4626
+var foo: (int, array[1, int]) # Tuple must be of length > 1
+let bar = (1, [1])
+foo = bar                     # No error if assigned directly
+
 # bug #2250
 
 import

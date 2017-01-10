@@ -90,8 +90,8 @@ when defineSsl:
 
     SslContext* = ref object
       context*: SslCtx
-      extraInternalIndex: int
       referencedData: HashSet[int]
+      extraInternal: SslContextExtraInternal
 
     SslAcceptResult* = enum
       AcceptNoClient = 0, AcceptNoHandshake, AcceptSuccess
@@ -103,12 +103,20 @@ when defineSsl:
 
     SslServerGetPskFunc* = proc(identity: string): string
 
+    SslContextExtraInternal = ref object of RootRef
+      serverGetPskFunc: SslServerGetPskFunc
+      clientGetPskFunc: SslClientGetPskFunc
+
   {.deprecated: [ESSL: SSLError, TSSLCVerifyMode: SSLCVerifyMode,
     TSSLProtVersion: SSLProtVersion, PSSLContext: SSLContext,
     TSSLAcceptResult: SSLAcceptResult].}
+else:
+  type
+    SslContext* = void # TODO: Workaround #4797.
 
 const
   BufferSize*: int = 4000 ## size of a buffered socket's buffer
+  MaxLineLength* = 1_000_000
 
 type
   SocketImpl* = object ## socket type
@@ -169,7 +177,7 @@ type
 
 
 proc socketError*(socket: Socket, err: int = -1, async = false,
-                  lastError = (-1).OSErrorCode): void
+                  lastError = (-1).OSErrorCode): void {.gcsafe.}
 
 proc isDisconnectionError*(flags: set[SocketFlag],
     lastError: OSErrorCode): bool =
@@ -205,6 +213,10 @@ proc newSocket*(fd: SocketHandle, domain: Domain = AF_INET,
   if buffered:
     result.currPos = 0
 
+  # Set SO_NOSIGPIPE on OS X.
+  when defined(macosx) and not defined(nimdoc):
+    setSockOptInt(fd, SOL_SOCKET, SO_NOSIGPIPE, 1)
+
 proc newSocket*(domain, sockType, protocol: cint, buffered = true): Socket =
   ## Creates a new socket.
   ##
@@ -232,11 +244,6 @@ when defineSsl:
   ErrLoadBioStrings()
   OpenSSL_add_all_algorithms()
 
-  type
-    SslContextExtraInternal = ref object of RootRef
-      serverGetPskFunc: SslServerGetPskFunc
-      clientGetPskFunc: SslClientGetPskFunc
-
   proc raiseSSLError*(s = "") =
     ## Raises a new SSL error.
     if s != "":
@@ -248,12 +255,6 @@ when defineSsl:
       raiseOSError(osLastError())
     var errStr = ErrErrorString(err, nil)
     raise newException(SSLError, $errStr)
-
-  proc getExtraDataIndex*(ctx: SSLContext): int =
-    ## Retrieves unique index for storing extra data in SSLContext.
-    result = SSL_CTX_get_ex_new_index(0, nil, nil, nil, nil).int
-    if result < 0:
-      raiseSSLError()
 
   proc getExtraData*(ctx: SSLContext, index: int): RootRef =
     ## Retrieves arbitrary data stored inside SSLContext.
@@ -339,17 +340,11 @@ when defineSsl:
     discard newCTX.SSLCTXSetMode(SSL_MODE_AUTO_RETRY)
     newCTX.loadCertificates(certFile, keyFile)
 
-    result = SSLContext(context: newCTX, extraInternalIndex: 0,
-        referencedData: initSet[int]())
-    result.extraInternalIndex = getExtraDataIndex(result)
-    # The PSK callback functions assume the internal index is 0.
-    assert result.extraInternalIndex == 0
-
-    let extraInternal = new(SslContextExtraInternal)
-    result.setExtraData(result.extraInternalIndex, extraInternal)
+    result = SSLContext(context: newCTX, referencedData: initSet[int](),
+      extraInternal: new(SslContextExtraInternal))
 
   proc getExtraInternal(ctx: SSLContext): SslContextExtraInternal =
-    return SslContextExtraInternal(ctx.getExtraData(ctx.extraInternalIndex))
+    return ctx.extraInternal
 
   proc destroyContext*(ctx: SSLContext) =
     ## Free memory referenced by SSLContext.
@@ -373,7 +368,7 @@ when defineSsl:
 
   proc pskClientCallback(ssl: SslPtr; hint: cstring; identity: cstring; max_identity_len: cuint; psk: ptr cuchar;
     max_psk_len: cuint): cuint {.cdecl.} =
-    let ctx = SSLContext(context: ssl.SSL_get_SSL_CTX, extraInternalIndex: 0)
+    let ctx = SSLContext(context: ssl.SSL_get_SSL_CTX)
     let hintString = if hint == nil: nil else: $hint
     let (identityString, pskString) = (ctx.clientGetPskFunc)(hintString)
     if psk.len.cuint > max_psk_len:
@@ -399,7 +394,7 @@ when defineSsl:
     return ctx.getExtraInternal().serverGetPskFunc
 
   proc pskServerCallback(ssl: SslCtx; identity: cstring; psk: ptr cuchar; max_psk_len: cint): cuint {.cdecl.} =
-    let ctx = SSLContext(context: ssl.SSL_get_SSL_CTX, extraInternalIndex: 0)
+    let ctx = SSLContext(context: ssl.SSL_get_SSL_CTX)
     let pskString = (ctx.serverGetPskFunc)($identity)
     if psk.len.cint > max_psk_len:
       return 0
@@ -962,6 +957,22 @@ proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
     socket.socketError(result, lastError = lastError)
   data.setLen(result)
 
+proc recv*(socket: Socket, size: int, timeout = -1,
+           flags = {SocketFlag.SafeDisconn}): string {.inline.} =
+  ## Higher-level version of ``recv`` which returns a string.
+  ##
+  ## When ``""`` is returned the socket's connection has been closed.
+  ##
+  ## This function will throw an EOS exception when an error occurs.
+  ##
+  ## A timeout may be specified in milliseconds, if enough data is not received
+  ## within the time specified an ETimeout exception will be raised.
+  ##
+  ##
+  ## **Warning**: Only the ``SafeDisconn`` flag is currently supported.
+  result = newString(size)
+  discard recv(socket, result, size, timeout, flags)
+
 proc peekChar(socket: Socket, c: var char): int {.tags: [ReadIOEffect].} =
   if socket.isBuffered:
     result = 1
@@ -983,7 +994,7 @@ proc peekChar(socket: Socket, c: var char): int {.tags: [ReadIOEffect].} =
     result = recv(socket.fd, addr(c), 1, MSG_PEEK)
 
 proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
-               flags = {SocketFlag.SafeDisconn}) {.
+               flags = {SocketFlag.SafeDisconn}, maxLength = MaxLineLength) {.
   tags: [ReadIOEffect, TimeEffect].} =
   ## Reads a line of data from ``socket``.
   ##
@@ -998,13 +1009,17 @@ proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
   ## A timeout can be specified in milliseconds, if data is not received within
   ## the specified time an ETimeout exception will be raised.
   ##
+  ## The ``maxLength`` parameter determines the maximum amount of characters
+  ## that can be read before a ``ValueError`` is raised. This prevents Denial
+  ## of Service (DOS) attacks.
+  ##
   ## **Warning**: Only the ``SafeDisconn`` flag is currently supported.
 
-  template addNLIfEmpty(): stmt =
+  template addNLIfEmpty() =
     if line.len == 0:
       line.string.add("\c\L")
 
-  template raiseSockError(): stmt {.dirty, immediate.} =
+  template raiseSockError() {.dirty.} =
     let lastError = getSocketError(socket)
     if flags.isDisconnectionError(lastError): setLen(line.string, 0); return
     socket.socketError(n, lastError = lastError)
@@ -1030,6 +1045,36 @@ proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
       addNLIfEmpty()
       return
     add(line.string, c)
+
+    # Verify that this isn't a DOS attack: #3847.
+    if line.string.len > maxLength:
+      let msg = "recvLine received more than the specified `maxLength` " &
+                "allowed."
+      raise newException(ValueError, msg)
+
+proc recvLine*(socket: Socket, timeout = -1,
+               flags = {SocketFlag.SafeDisconn},
+               maxLength = MaxLineLength): TaintedString =
+  ## Reads a line of data from ``socket``.
+  ##
+  ## If a full line is read ``\r\L`` is not
+  ## added to the result, however if solely ``\r\L`` is read then the result
+  ## will be set to it.
+  ##
+  ## If the socket is disconnected, the result will be set to ``""``.
+  ##
+  ## An EOS exception will be raised in the case of a socket error.
+  ##
+  ## A timeout can be specified in milliseconds, if data is not received within
+  ## the specified time an ETimeout exception will be raised.
+  ##
+  ## The ``maxLength`` parameter determines the maximum amount of characters
+  ## that can be read before a ``ValueError`` is raised. This prevents Denial
+  ## of Service (DOS) attacks.
+  ##
+  ## **Warning**: Only the ``SafeDisconn`` flag is currently supported.
+  result = ""
+  readLine(socket, result, timeout, flags, maxLength)
 
 proc recvFrom*(socket: Socket, data: var string, length: int,
                address: var string, port: var Port, flags = 0'i32): int {.
@@ -1192,7 +1237,7 @@ proc IPv6_loopback*(): IpAddress =
     address_v6: [0'u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])
 
 proc `==`*(lhs, rhs: IpAddress): bool =
-  ## Compares two IpAddresses for Equality. Returns two if the addresses are equal
+  ## Compares two IpAddresses for Equality. Returns true if the addresses are equal
   if lhs.family != rhs.family: return false
   if lhs.family == IpAddressFamily.IPv4:
     for i in low(lhs.address_v4) .. high(lhs.address_v4):

@@ -11,7 +11,7 @@
 
 import
   times, commands, options, msgs, nimconf,
-  extccomp, strutils, os, platform, parseopt
+  extccomp, strutils, os, platform, parseopt, idents
 
 when useCaas:
   import net
@@ -45,11 +45,11 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
     if optRun notin gGlobalOptions and arguments != "" and options.command.normalize != "run":
       rawMessage(errArgsNeedRunOption, [])
 
-proc serve*(action: proc (){.nimcall.}) =
+proc serve*(cache: IdentCache; action: proc (cache: IdentCache){.nimcall.}) =
   template execute(cmd) =
     curCaasCmd = cmd
     processCmdLine(passCmd2, cmd)
-    action()
+    action(cache)
     gErrorCounter = 0
 
   let typ = getConfigVar("server.type")

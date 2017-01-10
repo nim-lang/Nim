@@ -98,13 +98,13 @@ block:
     x += 10
   echo sl
 
-import queues
+import deques
 
 block:
-  var q = initQueue[int]()
-  q.add(1)
-  q.add(2)
-  q.add(3)
+  var q = initDeque[int]()
+  q.addLast(1)
+  q.addLast(2)
+  q.addLast(3)
   for x in q.mitems:
     x += 10
   echo q

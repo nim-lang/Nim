@@ -66,7 +66,7 @@ proc beautifyName(s: string, k: TSymKind): string =
              ]:
       result.add s[i]
     else:
-      result.add toUpper(s[i])
+      result.add toUpperAscii(s[i])
   of skConst, skEnumField:
     # for 'const' we keep how it's spelt; either upper case or lower case:
     result.add s[0]
@@ -74,7 +74,7 @@ proc beautifyName(s: string, k: TSymKind): string =
     # as a special rule, don't transform 'L' to 'l'
     if s.len == 1 and s[0] == 'L': result.add 'L'
     elif '_' in s: result.add(s[i])
-    else: result.add toLower(s[0])
+    else: result.add toLowerAscii(s[0])
   inc i
   while i < s.len:
     if s[i] == '_':
@@ -85,9 +85,9 @@ proc beautifyName(s: string, k: TSymKind): string =
         result.add s[i]
       else:
         inc i
-        result.add toUpper(s[i])
+        result.add toUpperAscii(s[i])
     elif allUpper:
-      result.add toLower(s[i])
+      result.add toLowerAscii(s[i])
     else:
       result.add s[i]
     inc i

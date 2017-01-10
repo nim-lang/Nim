@@ -68,7 +68,7 @@ when defined(emscripten):
     mmapDescr.realSize = realSize
     mmapDescr.realPointer = realPointer
 
-    c_fprintf(c_stdout, "[Alloc] size %d %d realSize:%d realPos:%d\n", block_size, cast[int](result), realSize, cast[int](realPointer))
+    #c_fprintf(stdout, "[Alloc] size %d %d realSize:%d realPos:%d\n", block_size, cast[int](result), realSize, cast[int](realPointer))
 
   proc osTryAllocPages(size: int): pointer = osAllocPages(size)
 
@@ -81,20 +81,27 @@ elif defined(posix):
   const
     PROT_READ  = 1             # page can be read
     PROT_WRITE = 2             # page can be written
-    MAP_PRIVATE = 2'i32        # Changes are private
 
   when defined(macosx) or defined(bsd):
     const MAP_ANONYMOUS = 0x1000
+    const MAP_PRIVATE = 0x02        # Changes are private
   elif defined(solaris):
     const MAP_ANONYMOUS = 0x100
+    const MAP_PRIVATE = 0x02        # Changes are private
+  elif defined(linux) and defined(amd64):
+    # actually, any architecture using asm-generic, but being conservative here,
+    # some arches like mips and alpha use different values
+    const MAP_ANONYMOUS = 0x20
+    const MAP_PRIVATE = 0x02        # Changes are private
   else:
     var
       MAP_ANONYMOUS {.importc: "MAP_ANONYMOUS", header: "<sys/mman.h>".}: cint
+      MAP_PRIVATE {.importc: "MAP_PRIVATE", header: "<sys/mman.h>".}: cint
 
-  proc mmap(adr: pointer, len: int, prot, flags, fildes: cint,
+  proc mmap(adr: pointer, len: csize, prot, flags, fildes: cint,
             off: int): pointer {.header: "<sys/mman.h>".}
 
-  proc munmap(adr: pointer, len: int): cint {.header: "<sys/mman.h>".}
+  proc munmap(adr: pointer, len: csize): cint {.header: "<sys/mman.h>".}
 
   proc osAllocPages(size: int): pointer {.inline.} =
     result = mmap(nil, size, PROT_READ or PROT_WRITE,
@@ -148,8 +155,9 @@ elif defined(windows):
     #VirtualFree(p, size, MEM_DECOMMIT)
 
 elif hostOS == "standalone":
+  const StandaloneHeapSize {.intdefine.}: int = 1024 * PageSize
   var
-    theHeap: array[1024*PageSize, float64] # 'float64' for alignment
+    theHeap: array[StandaloneHeapSize, float64] # 'float64' for alignment
     bumpPointer = cast[int](addr theHeap)
 
   proc osAllocPages(size: int): pointer {.inline.} =

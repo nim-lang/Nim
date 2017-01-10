@@ -135,7 +135,7 @@ The ``|`` operator
 The ``|`` operator if used as infix operator creates an ordered choice:
 
 .. code-block:: nim
-  template t{0|1}(): expr = 3
+  template t{0|1}(): untyped = 3
   let a = 1
   # outputs 3:
   echo a
@@ -144,7 +144,7 @@ The matching is performed after the compiler performed some optimizations like
 constant folding, so the following does not work:
 
 .. code-block:: nim
-  template t{0|1}(): expr = 3
+  template t{0|1}(): untyped = 3
   # outputs 1:
   echo 1
 
@@ -161,7 +161,7 @@ A pattern expression can be bound to a pattern parameter via the ``expr{param}``
 notation:
 
 .. code-block:: nim
-  template t{(0|1|2){x}}(x: expr): expr = x+1
+  template t{(0|1|2){x}}(x: untyped): untyped = x+1
   let a = 1
   # outputs 2:
   echo a
@@ -173,7 +173,7 @@ The ``~`` operator
 The ``~`` operator is the **not** operator in patterns:
 
 .. code-block:: nim
-  template t{x = (~x){y} and (~x){z}}(x, y, z: bool): stmt =
+  template t{x = (~x){y} and (~x){z}}(x, y, z: bool) =
     x = y
     if x: x = z
 
@@ -200,7 +200,7 @@ to ``&(a, b, c)``:
     for i in 1..len(s)-1: result.add s[i]
     inc calls
 
-  template optConc{ `&&` * a }(a: string): expr = &&a
+  template optConc{ `&&` * a }(a: string): untyped = &&a
 
   let space = " "
   echo "my" && (space & "awe" && "some " ) && "concat"
@@ -239,7 +239,7 @@ all the arguments, but also the matched operators in reverse polish notation:
   proc mat21(): Matrix =
     result.dummy = 21
 
-  macro optM{ (`+`|`-`|`*`) ** a }(a: Matrix): expr =
+  macro optM{ (`+`|`-`|`*`) ** a }(a: Matrix): untyped =
     echo treeRepr(a)
     result = newCall(bindSym"mat21")
 
@@ -273,7 +273,7 @@ parameter is of the type ``varargs`` it is treated specially and it can match
   template optWrite{
     write(f, x)
     ((write|writeLine){w})(f, y)
-  }(x, y: varargs[expr], f: File, w: expr) =
+  }(x, y: varargs[untyped], f: File, w: untyped) =
     w(f, x, y)
 
 
@@ -288,8 +288,8 @@ implemented with term rewriting:
   proc p(x, y: int; cond: bool): int =
     result = if cond: x + y else: x - y
 
-  template optP1{p(x, y, true)}(x, y: expr): expr = x + y
-  template optP2{p(x, y, false)}(x, y: expr): expr = x - y
+  template optP1{p(x, y, true)}(x, y: untyped): untyped = x + y
+  template optP2{p(x, y, false)}(x, y: untyped): untyped = x - y
 
 
 Example: Hoisting

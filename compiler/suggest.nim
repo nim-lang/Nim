@@ -57,10 +57,11 @@ proc symToSuggest(s: PSym, isLocal: bool, section: string, li: TLineInfo;
     result.qualifiedPath = @[]
     if not isLocal and s.kind != skModule:
       let ow = s.owner
-      if ow.kind != skModule and ow.owner != nil:
+      if ow != nil and ow.kind != skModule and ow.owner != nil:
         let ow2 = ow.owner
         result.qualifiedPath.add(ow2.origModuleName)
-      result.qualifiedPath.add(ow.origModuleName)
+      if ow != nil:
+        result.qualifiedPath.add(ow.origModuleName)
     result.qualifiedPath.add(s.name.s)
 
     if s.typ != nil:
@@ -138,7 +139,7 @@ proc suggestField(c: PContext, s: PSym, outputs: var int) =
     suggestResult(symToSuggest(s, isLocal=true, $ideSug, 100))
     inc outputs
 
-template wholeSymTab(cond, section: expr) {.immediate.} =
+template wholeSymTab(cond, section: untyped) =
   var isLocal = true
   for scope in walkScopes(c.currentScope):
     if scope == c.topLevelScope: isLocal = false
@@ -201,7 +202,7 @@ proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} =
     let m = s.getModule()
     if m != nil and sfSystemModule in m.flags:
       if s.kind == skType: return
-      var exp = s.typ.sons[1].skipTypes({tyGenericInst, tyVar})
+      var exp = s.typ.sons[1].skipTypes({tyGenericInst, tyVar, tyAlias})
       if exp.kind == tyVarargs: exp = elemType(exp)
       if exp.kind in {tyExpr, tyStmt, tyGenericParam, tyAnything}: return
     result = sigmatch.argtypeMatches(c, s.typ.sons[1], firstArg)
@@ -233,7 +234,7 @@ proc suggestFieldAccess(c: PContext, n: PNode, outputs: var int) =
         # error: no known module name:
         typ = nil
       else:
-        let m = gImportModule(c.module, fullpath.fileInfoIdx)
+        let m = gImportModule(c.graph, c.module, fullpath.fileInfoIdx, c.cache)
         if m == nil: typ = nil
         else:
           for it in items(n.sym.tab):
@@ -267,13 +268,13 @@ proc suggestFieldAccess(c: PContext, n: PNode, outputs: var int) =
       t = t.sons[0]
     suggestOperations(c, n, typ, outputs)
   else:
-    typ = skipTypes(typ, {tyGenericInst, tyVar, tyPtr, tyRef})
+    typ = skipTypes(typ, {tyGenericInst, tyVar, tyPtr, tyRef, tyAlias})
     if typ.kind == tyObject:
       var t = typ
       while true:
         suggestObject(c, t.n, outputs)
         if t.sons[0] == nil: break
-        t = skipTypes(t.sons[0], {tyGenericInst})
+        t = skipTypes(t.sons[0], skipPtrs)
       suggestOperations(c, n, typ, outputs)
     elif typ.kind == tyTuple and typ.n != nil:
       suggestSymList(c, typ.n, outputs)
@@ -393,6 +394,8 @@ proc suggestSym*(info: TLineInfo; s: PSym; isDecl=true) {.inline.} =
 
 proc markUsed(info: TLineInfo; s: PSym) =
   incl(s.flags, sfUsed)
+  if s.kind == skEnumField and s.owner != nil:
+    incl(s.owner.flags, sfUsed)
   if {sfDeprecated, sfError} * s.flags != {}:
     if sfDeprecated in s.flags: message(info, warnDeprecated, s.name.s)
     if sfError in s.flags: localError(info, errWrongSymbolX, s.name.s)
@@ -411,17 +414,16 @@ proc safeSemExpr*(c: PContext, n: PNode): PNode =
     result = ast.emptyNode
 
 proc suggestExpr*(c: PContext, node: PNode) =
-  if nfIsCursor notin node.flags:
-    if gTrackPos.line < 0: return
-    var cp = inCheckpoint(node.info)
-    if cp == cpNone: return
+  if gTrackPos.line < 0: return
+  var cp = inCheckpoint(node.info)
+  if cp == cpNone: return
   var outputs = 0
   # This keeps semExpr() from coming here recursively:
   if c.compilesContextId > 0: return
   inc(c.compilesContextId)
 
   if gIdeCmd == ideSug:
-    var n = if nfIsCursor in node.flags: node else: findClosestDot(node)
+    var n = findClosestDot(node)
     if n == nil: n = node
     if n.kind == nkDotExpr:
       var obj = safeSemExpr(c, n.sons[0])
@@ -434,7 +436,7 @@ proc suggestExpr*(c: PContext, node: PNode) =
       suggestEverything(c, n, outputs)
 
   elif gIdeCmd == ideCon:
-    var n = if nfIsCursor in node.flags: node else: findClosestCall(node)
+    var n = findClosestCall(node)
     if n == nil: n = node
     if n.kind in nkCallKinds:
       var a = copyNode(n)

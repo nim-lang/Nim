@@ -326,8 +326,13 @@ proc getHostByAddr*(ip: string): Hostent {.tags: [ReadIOEffect].} =
                                   cint(AF_INET))
     if s == nil: raiseOSError(osLastError())
   else:
-    var s = posix.gethostbyaddr(addr(myaddr), sizeof(myaddr).Socklen,
-                                cint(posix.AF_INET))
+    var s =
+      when defined(android4):
+        posix.gethostbyaddr(cast[cstring](addr(myaddr)), sizeof(myaddr).cint,
+                            cint(posix.AF_INET))
+      else:
+        posix.gethostbyaddr(addr(myaddr), sizeof(myaddr).Socklen,
+                            cint(posix.AF_INET))
     if s == nil:
       raiseOSError(osLastError(), $hstrerror(h_errno))
 

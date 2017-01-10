@@ -10,10 +10,11 @@
 ## Nimfix is a tool that helps to convert old-style Nimrod code to Nim code.
 
 import strutils, os, parseopt
-import compiler/options, compiler/commands, compiler/modules, compiler/sem,
-  compiler/passes, compiler/passaux, compiler/nimfix/pretty,
-  compiler/msgs, compiler/nimconf,
-  compiler/extccomp, compiler/condsyms, compiler/lists
+import compiler/[options, commands, modules, sem,
+  passes, passaux, nimfix/pretty,
+  msgs, nimconf,
+  extccomp, condsyms, lists,
+  modulegraphs, idents]
 
 const Usage = """
 Nimfix - Tool to patch Nim code
@@ -43,7 +44,7 @@ proc mainCommand =
     # current path is always looked first for modules
     prependStr(searchPaths, gProjectPath)
 
-  compileProject()
+  compileProject(newModuleGraph(), newIdentCache())
   pretty.overwriteFiles()
 
 proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
@@ -73,7 +74,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
         of "auto": gStyleCheck = StyleCheck.Auto
         else: localError(gCmdLineInfo, errOnOrOffExpected)
       of "wholeproject": gOnlyMainfile = false
-      of "besteffort": msgs.gErrorMax = high(int) # dont stop after first error
+      of "besteffort": msgs.gErrorMax = high(int) # don't stop after first error
       else:
         processSwitch(pass, p)
     of cmdArgument:

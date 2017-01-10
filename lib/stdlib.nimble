@@ -1,6 +1,5 @@
-[Package]
-name          = "stdlib"
-version       = "0.14.2"
+
+version       = system.NimVersion
 author        = "Dominik Picheta"
 description   = "Nim's standard library."
 license       = "MIT"

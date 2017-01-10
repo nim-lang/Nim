@@ -91,13 +91,24 @@ proc rawTag*(n: XmlNode): string {.inline.} =
   shallowCopy(result, n.fTag)
 
 proc innerText*(n: XmlNode): string =
-  ## gets the inner text of `n`. `n` has to be an ``xnElement`` node. Only
-  ## ``xnText`` and ``xnEntity`` nodes are considered part of `n`'s inner text,
-  ## other child nodes are silently ignored.
+  ## gets the inner text of `n`:
+  ##
+  ## - If `n` is `xnText` or `xnEntity`, returns its content.
+  ## - If `n` is `xnElement`, runs recursively on each child node and
+  ##   concatenates the results.
+  ## - Otherwise returns an empty string.
+  proc worker(res: var string, n: XmlNode) =
+    case n.k
+    of xnText, xnEntity:
+      res.add(n.fText)
+    of xnElement:
+      for sub in n.s:
+        worker(res, sub)
+    else:
+      discard
+
   result = ""
-  assert n.k == xnElement
-  for i in 0 .. n.s.len-1:
-    if n.s[i].k in {xnText, xnEntity}: result.add(n.s[i].fText)
+  worker(result, n)
 
 proc tag*(n: XmlNode): string {.inline.} =
   ## gets the tag name of `n`. `n` has to be an ``xnElement`` node.
@@ -226,6 +237,18 @@ proc noWhitespace(n: XmlNode): bool =
 
 proc add*(result: var string, n: XmlNode, indent = 0, indWidth = 2) =
   ## adds the textual representation of `n` to `result`.
+
+  proc addEscapedAttr(result: var string, s: string) =
+    # `addEscaped` alternative with less escaped characters.
+    # Only to be used for escaping attribute values enclosed in double quotes!
+    for c in items(s):
+      case c
+      of '<': result.add("&lt;")
+      of '>': result.add("&gt;")
+      of '&': result.add("&amp;")
+      of '"': result.add("&quot;")
+      else: result.add(c)
+
   if n == nil: return
   case n.k
   of xnElement:
@@ -236,7 +259,7 @@ proc add*(result: var string, n: XmlNode, indent = 0, indWidth = 2) =
         result.add(' ')
         result.add(key)
         result.add("=\"")
-        result.addEscaped(val)
+        result.addEscapedAttr(val)
         result.add('"')
     if n.len > 0:
       result.add('>')
@@ -381,6 +404,5 @@ proc findAll*(n: XmlNode, tag: string): seq[XmlNode] =
   findAll(n, tag, result)
 
 when isMainModule:
-  let link = "http://nim-lang.org"
-  assert """<a href="""" & escape(link) & """">Nim rules.</a>""" ==
+  assert """<a href="http://nim-lang.org">Nim rules.</a>""" ==
     $(<>a(href="http://nim-lang.org", newText("Nim rules.")))

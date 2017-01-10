@@ -30,7 +30,7 @@ proc getArg(n: PNode, name: string, pos: int): PNode =
   for i in countup(1, sonsLen(n) - 1):
     if n.sons[i].kind == nkExprEqExpr:
       if n.sons[i].sons[0].kind != nkIdent: invalidPragma(n)
-      if identEq(n.sons[i].sons[0].ident, name):
+      if cmpIgnoreStyle(n.sons[i].sons[0].ident.s, name) == 0:
         return n.sons[i].sons[1]
     elif i == pos:
       return n.sons[i]
@@ -50,8 +50,8 @@ proc strArg(n: PNode, name: string, pos: int, default: string): string =
 proc boolArg(n: PNode, name: string, pos: int, default: bool): bool =
   var x = getArg(n, name, pos)
   if x == nil: result = default
-  elif (x.kind == nkIdent) and identEq(x.ident, "true"): result = true
-  elif (x.kind == nkIdent) and identEq(x.ident, "false"): result = false
+  elif x.kind == nkIdent and cmpIgnoreStyle(x.ident.s, "true") == 0: result = true
+  elif x.kind == nkIdent and cmpIgnoreStyle(x.ident.s, "false") == 0: result = false
   else: invalidPragma(n)
 
 proc filterStrip(stdin: PLLStream, filename: string, call: PNode): PLLStream =
@@ -62,7 +62,7 @@ proc filterStrip(stdin: PLLStream, filename: string, call: PNode): PLLStream =
   var line = newStringOfCap(80)
   while llStreamReadLine(stdin, line):
     var stripped = strip(line, leading, trailing)
-    if (len(pattern) == 0) or startsWith(stripped, pattern):
+    if len(pattern) == 0 or startsWith(stripped, pattern):
       llStreamWriteln(result, stripped)
     else:
       llStreamWriteln(result, line)

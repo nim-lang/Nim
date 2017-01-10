@@ -125,8 +125,8 @@ changed in the future.
 Coding Conventions
 ------------------
 
-- The 'return' statement should only be used when it's control-flow properties
-  are required. Use a procedures implicit 'result' variable instead. This
+- The 'return' statement should only be used when its control-flow properties
+  are required. Use a procedure's implicit 'result' variable instead. This
   improves readability.
 
 - Prefer to return `[]` and `""` instead of `nil`, or throw an exception if
@@ -150,7 +150,7 @@ Conventions for multi-line statements and expressions
 
 - Any tuple type declarations that are longer than one line should use the
   regular object type layout instead. This enhances the readability of the
-  tuple declaration by splitting its members information across multiple lines.
+  tuple declaration by splitting its members' information across multiple lines.
 
   .. code-block:: nim
     type

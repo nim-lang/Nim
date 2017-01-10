@@ -9,6 +9,7 @@
 
 ## This module contains procs for `serialization`:idx: and `deseralization`:idx:
 ## of arbitrary Nim data structures. The serialization format uses `JSON`:idx:.
+## Warning: The serialization format could change in future!
 ##
 ## **Restriction**: For objects their type is **not** serialized. This means
 ## essentially that it does not work if the object has some other runtime
@@ -29,9 +30,15 @@
 ##   a = b
 ##   echo($$a[]) # produces "{}", not "{f: 0}"
 ##
+##   # unmarshal
+##   let c = to[B]("""{"f": 2}""")
+##
+##   # marshal
+##   let s = $$c
+
 ## **Note**: The ``to`` and ``$$`` operations are available at compile-time!
 
-import streams, typeinfo, json, intsets, tables
+import streams, typeinfo, json, intsets, tables, unicode
 
 proc ptrToInt(x: pointer): int {.inline.} =
   result = cast[int](x) # don't skip alignment
@@ -92,7 +99,15 @@ proc storeAny(s: Stream, a: Any, stored: var IntSet) =
   of akString:
     var x = getString(a)
     if isNil(x): s.write("null")
-    else: s.write(escapeJson(x))
+    elif x.validateUtf8() == -1: s.write(escapeJson(x))
+    else:
+      s.write("[")
+      var i = 0
+      for c in x:
+        if i > 0: s.write(", ")
+        s.write($ord(c))
+        inc(i)
+      s.write("]")
   of akInt..akInt64, akUInt..akUInt64: s.write($getBiggestInt(a))
   of akFloat..akFloat128: s.write($getBiggestFloat(a))
 
@@ -207,6 +222,18 @@ proc loadAny(p: var JsonParser, a: Any, t: var Table[BiggestInt, pointer]) =
     of jsonString:
       setString(a, p.str)
       next(p)
+    of jsonArrayStart:
+      next(p)
+      var str = ""
+      while p.kind == jsonInt:
+        let code = p.getInt()
+        if code < 0 or code > 255:
+          raiseParseErr(p, "invalid charcode: " & $code)
+        str.add(chr(code))
+        next(p)
+      if p.kind == jsonArrayEnd: next(p)
+      else: raiseParseErr(p, "an array of charcodes expected for string")
+      setString(a, str)
     else: raiseParseErr(p, "string expected")
   of akInt..akInt64, akUInt..akUInt64:
     if p.kind == jsonInt:

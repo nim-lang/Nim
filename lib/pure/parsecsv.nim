@@ -25,6 +25,28 @@
 ##       echo "##", val, "##"
 ##   close(x)
 ##
+## For CSV files with a header row, the header can be read and then used as a
+## reference for item access with `rowEntry <#rowEntry.CsvParser.string>`_:
+##
+## .. code-block:: nim
+##   import parsecsv
+##   import os
+##   # Prepare a file
+##   var csv_content = """One,Two,Three,Four
+##   1,2,3,4
+##   10,20,30,40
+##   100,200,300,400
+##   """
+##   writeFile("temp.csv", content)
+##
+##   var p: CsvParser
+##   p.open("temp.csv")
+##   p.readHeaderRow()
+##   while p.readRow():
+##     echo "new row: "
+##     for col in items(p.headers):
+##       echo "##", col, ":", p.rowEntry(col), "##"
+##   p.close()
 
 import
   lexbase, streams
@@ -37,6 +59,9 @@ type
     sep, quote, esc: char
     skipWhite: bool
     currRow: int
+    headers*: seq[string] ## The columns that are defined in the csv file
+                          ## (read using `readHeaderRow <#readHeaderRow.CsvParser>`_).
+                          ## Used with `rowEntry <#rowEntry.CsvParser.string>`_).
 
   CsvError* = object of IOError ## exception that is raised if
                                 ## a parsing error occurs
@@ -177,6 +202,22 @@ proc close*(my: var CsvParser) {.inline.} =
   ## closes the parser `my` and its associated input stream.
   lexbase.close(my)
 
+proc readHeaderRow*(my: var CsvParser) =
+  ## Reads the first row and creates a look-up table for column numbers
+  ## See also `rowEntry <#rowEntry.CsvParser.string>`_.
+  var present = my.readRow()
+  if present:
+    my.headers = my.row
+
+proc rowEntry*(my: var CsvParser, entry: string): string =
+  ## Reads a specified `entry` from the current row.
+  ##
+  ## Assumes that `readHeaderRow <#readHeaderRow.CsvParser>`_ has already been
+  ## called.
+  var index = my.headers.find(entry)
+  if index >= 0:
+    result = my.row[index]
+
 when not defined(testing) and isMainModule:
   import os
   var s = newFileStream(paramStr(1), fmRead)
@@ -188,4 +229,36 @@ when not defined(testing) and isMainModule:
     for val in items(x.row):
       echo "##", val, "##"
   close(x)
+
+when isMainModule:
+  import os
+  import strutils
+  block: # Tests for reading the header row
+    var content = "One,Two,Three,Four\n1,2,3,4\n10,20,30,40,\n100,200,300,400\n"
+    writeFile("temp.csv", content)
+
+    var p: CsvParser
+    p.open("temp.csv")
+    p.readHeaderRow()
+    while p.readRow():
+      var zeros = repeat('0', p.currRow-2)
+      doAssert p.rowEntry("One") == "1" & zeros
+      doAssert p.rowEntry("Two") == "2" & zeros
+      doAssert p.rowEntry("Three") == "3" & zeros
+      doAssert p.rowEntry("Four") == "4" & zeros
+    p.close()
+
+    when not defined(testing):
+      var parser: CsvParser
+      parser.open("temp.csv")
+      parser.readHeaderRow()
+      while parser.readRow():
+        echo "new row: "
+        for col in items(parser.headers):
+          echo "##", col, ":", parser.rowEntry(col), "##"
+      parser.close()
+      removeFile("temp.csv")
+
+    # Tidy up
+    removeFile("temp.csv")
 

@@ -12,6 +12,8 @@
 import
   os, options, ast, astalgo, msgs, ropes, idents, passes, importer
 
+from modulegraphs import ModuleGraph
+
 proc generateDot*(project: string)
 
 type
@@ -22,7 +24,7 @@ type
 var gDotGraph: Rope # the generated DOT file; we need a global variable
 
 proc addDependencyAux(importing, imported: string) =
-  addf(gDotGraph, "$1 -> $2;$n", [rope(importing), rope(imported)])
+  addf(gDotGraph, "$1 -> \"$2\";$n", [rope(importing), rope(imported)])
   # s1 -> s2_4[label="[0-9]"];
 
 proc addDotDependency(c: PPassContext, n: PNode): PNode =
@@ -46,7 +48,7 @@ proc generateDot(project: string) =
       rope(changeFileExt(extractFilename(project), "")), gDotGraph],
             changeFileExt(project, "dot"))
 
-proc myOpen(module: PSym): PPassContext =
+proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
   var g: PGen
   new(g)
   g.module = module

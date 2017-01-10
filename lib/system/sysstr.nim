@@ -30,7 +30,7 @@ proc eqStrings(a, b: NimString): bool {.inline, compilerProc.} =
   if a == b: return true
   if a == nil or b == nil: return false
   return a.len == b.len and
-    c_memcmp(a.data, b.data, a.len) == 0'i32
+    equalMem(addr(a.data), addr(b.data), a.len)
 
 when declared(allocAtomic):
   template allocStr(size: expr): expr =
@@ -71,7 +71,7 @@ proc copyStrLast(s: NimString, start, last: int): NimString {.compilerProc.} =
   if len > 0:
     result = rawNewStringNoInit(len)
     result.len = len
-    c_memcpy(result.data, addr(s.data[start]), len)
+    copyMem(addr(result.data), addr(s.data[start]), len)
     result.data[len] = '\0'
   else:
     result = rawNewString(len)
@@ -82,10 +82,11 @@ proc copyStr(s: NimString, start: int): NimString {.compilerProc.} =
 proc toNimStr(str: cstring, len: int): NimString {.compilerProc.} =
   result = rawNewStringNoInit(len)
   result.len = len
-  c_memcpy(result.data, str, len + 1)
+  copyMem(addr(result.data), str, len + 1)
 
 proc cstrToNimstr(str: cstring): NimString {.compilerRtl.} =
-  result = toNimStr(str, c_strlen(str))
+  if str == nil: NimString(nil)
+  else: toNimStr(str, str.len)
 
 proc copyString(src: NimString): NimString {.compilerRtl.} =
   if src != nil:
@@ -94,7 +95,7 @@ proc copyString(src: NimString): NimString {.compilerRtl.} =
     else:
       result = rawNewStringNoInit(src.len)
       result.len = src.len
-      c_memcpy(result.data, src.data, src.len + 1)
+      copyMem(addr(result.data), addr(src.data), src.len + 1)
 
 proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
   if src != nil:
@@ -107,8 +108,13 @@ proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
     else:
       result = rawNewStringNoInit(src.len)
     result.len = src.len
-    c_memcpy(result.data, src.data, src.len + 1)
+    copyMem(addr(result.data), addr(src.data), src.len + 1)
 
+proc copyDeepString(src: NimString): NimString {.inline.} =
+  if src != nil:
+    result = rawNewStringNoInit(src.len)
+    result.len = src.len
+    copyMem(addr(result.data), addr(src.data), src.len + 1)
 
 proc hashString(s: string): int {.compilerproc.} =
   # the compiler needs exactly the same hash function!
@@ -177,7 +183,7 @@ proc resizeString(dest: NimString, addlen: int): NimString {.compilerRtl.} =
     # DO NOT UPDATE LEN YET: dest.len = newLen
 
 proc appendString(dest, src: NimString) {.compilerproc, inline.} =
-  c_memcpy(addr(dest.data[dest.len]), src.data, src.len + 1)
+  copyMem(addr(dest.data[dest.len]), addr(src.data), src.len + 1)
   inc(dest.len, src.len)
 
 proc appendChar(dest: NimString, c: char) {.compilerproc, inline.} =
@@ -257,27 +263,32 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
   result.len = newLen
 
 # --------------- other string routines ----------------------------------
-proc nimIntToStr(x: int): string {.compilerRtl.} =
-  result = newString(sizeof(x)*4)
+proc add*(result: var string; x: int64) =
+  let base = result.len
+  setLen(result, base + sizeof(x)*4)
   var i = 0
   var y = x
   while true:
     var d = y div 10
-    result[i] = chr(abs(int(y - d*10)) + ord('0'))
+    result[base+i] = chr(abs(int(y - d*10)) + ord('0'))
     inc(i)
     y = d
     if y == 0: break
   if x < 0:
-    result[i] = '-'
+    result[base+i] = '-'
     inc(i)
-  setLen(result, i)
+  setLen(result, base+i)
   # mirror the string:
   for j in 0..i div 2 - 1:
-    swap(result[j], result[i-j-1])
+    swap(result[base+j], result[base+i-j-1])
 
-proc nimFloatToStr(f: float): string {.compilerproc.} =
+proc nimIntToStr(x: int): string {.compilerRtl.} =
+  result = newStringOfCap(sizeof(x)*4)
+  result.add x
+
+proc add*(result: var string; x: float) =
   var buf: array[0..64, char]
-  var n: int = c_sprintf(buf, "%.16g", f)
+  var n: int = c_sprintf(buf, "%.16g", x)
   var hasDot = false
   for i in 0..n-1:
     if buf[i] == ',':
@@ -291,18 +302,22 @@ proc nimFloatToStr(f: float): string {.compilerproc.} =
     buf[n+2] = '\0'
   # On Windows nice numbers like '1.#INF', '-1.#INF' or '1.#NAN' are produced.
   # We want to get rid of these here:
-  if buf[n-1] == 'N':
-    result = "nan"
+  if buf[n-1] in {'n', 'N'}:
+    result.add "nan"
   elif buf[n-1] == 'F':
     if buf[0] == '-':
-      result = "-inf"
+      result.add "-inf"
     else:
-      result = "inf"
+      result.add "inf"
   else:
-    result = $buf
+    result.add buf
 
-proc strtod(buf: cstring, endptr: ptr cstring): float64 {.importc,
-  header: "<stdlib.h>", noSideEffect.}
+proc nimFloatToStr(f: float): string {.compilerproc.} =
+  result = newStringOfCap(8)
+  result.add f
+
+proc c_strtod(buf: cstring, endptr: ptr cstring): float64 {.
+  importc: "strtod", header: "<stdlib.h>", noSideEffect.}
 
 const
   IdentChars = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
@@ -460,25 +475,11 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   t[ti-2] = ('0'.ord + abs_exponent mod 10).char; abs_exponent = abs_exponent div 10
   t[ti-3] = ('0'.ord + abs_exponent mod 10).char
 
-  number = strtod(t, nil)
+  number = c_strtod(t, nil)
 
 proc nimInt64ToStr(x: int64): string {.compilerRtl.} =
-  result = newString(sizeof(x)*4)
-  var i = 0
-  var y = x
-  while true:
-    var d = y div 10
-    result[i] = chr(abs(int(y - d*10)) + ord('0'))
-    inc(i)
-    y = d
-    if y == 0: break
-  if x < 0:
-    result[i] = '-'
-    inc(i)
-  setLen(result, i)
-  # mirror the string:
-  for j in 0..i div 2 - 1:
-    swap(result[j], result[i-j-1])
+  result = newStringOfCap(sizeof(x)*4)
+  result.add x
 
 proc nimBoolToStr(x: bool): string {.compilerRtl.} =
   return if x: "true" else: "false"

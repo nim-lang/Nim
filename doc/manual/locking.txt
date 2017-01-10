@@ -48,7 +48,7 @@ semantics and should not be used directly! It should only be used in templates
 that also implement some form of locking at runtime:
 
 .. code-block:: nim
-  template lock(a: TLock; body: stmt) =
+  template lock(a: TLock; body: untyped) =
     pthread_mutex_lock(a)
     {.locks: [a].}:
       try:
@@ -64,7 +64,7 @@ model low level lockfree mechanisms:
   var dummyLock {.compileTime.}: int
   var atomicCounter {.guard: dummyLock.}: int
 
-  template atomicRead(x): expr =
+  template atomicRead(x): untyped =
     {.locks: [dummyLock].}:
       memoryReadBarrier()
       x
@@ -167,7 +167,7 @@ the runtime check is required to ensure a global ordering for two locks ``a``
 and ``b`` of the same lock level:
 
 .. code-block:: nim
-  template multilock(a, b: ptr TLock; body: stmt) =
+  template multilock(a, b: ptr TLock; body: untyped) =
     if cast[ByteAddress](a) < cast[ByteAddress](b):
       pthread_mutex_lock(a)
       pthread_mutex_lock(b)

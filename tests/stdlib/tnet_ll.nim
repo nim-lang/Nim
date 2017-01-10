@@ -1,5 +1,8 @@
 discard """
   action: run
+  output: '''
+[Suite] inet_ntop tests
+'''
 """
 
 when defined(windows):

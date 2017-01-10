@@ -3,7 +3,7 @@ msg: '''StmtList
   VarSection
     IdentDefs
       Ident !"x"
-      nil
+      Empty
       Call
         DotExpr
           Ident !"foo"

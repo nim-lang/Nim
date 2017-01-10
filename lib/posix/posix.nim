@@ -110,7 +110,7 @@ type
                     ## (not POSIX)
       when defined(linux) or defined(bsd):
         d_off*: Off  ## Not an offset. Value that ``telldir()`` would return.
-    d_name*: array [0..255, char] ## Name of entry.
+    d_name*: array[0..255, char] ## Name of entry.
 
   Tflock* {.importc: "struct flock", final, pure,
             header: "<fcntl.h>".} = object ## flock type
@@ -242,7 +242,7 @@ type
                    ## network to which this node is attached, if any.
       release*,    ## Current release level of this implementation.
       version*,    ## Current version level of this release.
-      machine*: array [0..255, char] ## Name of the hardware type on which the
+      machine*: array[0..255, char] ## Name of the hardware type on which the
                                      ## system is running.
 
   Sem* {.importc: "sem_t", header: "<semaphore.h>", final, pure.} = object
@@ -463,12 +463,12 @@ type
   SockAddr* {.importc: "struct sockaddr", header: "<sys/socket.h>",
               pure, final.} = object ## struct sockaddr
     sa_family*: TSa_Family         ## Address family.
-    sa_data*: array [0..255, char] ## Socket address (variable-length data).
+    sa_data*: array[0..255, char] ## Socket address (variable-length data).
 
   Sockaddr_un* {.importc: "struct sockaddr_un", header: "<sys/un.h>",
               pure, final.} = object ## struct sockaddr_un
     sun_family*: TSa_Family         ## Address family.
-    sun_path*: array [0..Sockaddr_un_path_length-1, char] ## Socket path
+    sun_path*: array[0..Sockaddr_un_path_length-1, char] ## Socket path
 
   Sockaddr_storage* {.importc: "struct sockaddr_storage",
                        header: "<sys/socket.h>",
@@ -526,7 +526,7 @@ type
 
   In6Addr* {.importc: "struct in6_addr", pure, final,
               header: "<netinet/in.h>".} = object ## struct in6_addr
-    s6_addr*: array [0..15, char]
+    s6_addr*: array[0..15, char]
 
   Sockaddr_in6* {.importc: "struct sockaddr_in6", pure, final,
                    header: "<netinet/in.h>".} = object ## struct sockaddr_in6
@@ -1694,6 +1694,8 @@ var
 
   INADDR_ANY* {.importc, header: "<netinet/in.h>".}: InAddrScalar
     ## IPv4 local host address.
+  INADDR_LOOPBACK* {.importc, header: "<netinet/in.h>".}: InAddrScalar
+    ## IPv4 loopback address.
   INADDR_BROADCAST* {.importc, header: "<netinet/in.h>".}: InAddrScalar
     ## IPv4 broadcast address.
 
@@ -2616,8 +2618,12 @@ proc gai_strerror*(a1: cint): cstring {.importc:"(char *)$1", header: "<netdb.h>
 proc getaddrinfo*(a1, a2: cstring, a3: ptr AddrInfo,
                   a4: var ptr AddrInfo): cint {.importc, header: "<netdb.h>".}
 
-proc gethostbyaddr*(a1: pointer, a2: Socklen, a3: cint): ptr Hostent {.
-                    importc, header: "<netdb.h>".}
+when not defined(android4):
+  proc gethostbyaddr*(a1: pointer, a2: Socklen, a3: cint): ptr Hostent {.
+                      importc, header: "<netdb.h>".}
+else:
+  proc gethostbyaddr*(a1: cstring, a2: cint, a3: cint): ptr Hostent {.
+                      importc, header: "<netdb.h>".}
 proc gethostbyname*(a1: cstring): ptr Hostent {.importc, header: "<netdb.h>".}
 proc gethostent*(): ptr Hostent {.importc, header: "<netdb.h>".}
 
@@ -2649,7 +2655,13 @@ proc poll*(a1: ptr TPollfd, a2: Tnfds, a3: int): cint {.
 proc realpath*(name, resolved: cstring): cstring {.
   importc: "realpath", header: "<stdlib.h>".}
 
-proc utimes*(path: cstring, times: ptr array [2, Timeval]): int {.
+proc mkstemp*(tmpl: cstring): cint {.importc, header: "<stdlib.h>".}
+  ## Create a temporary file.
+  ##
+  ## **Warning**: The `tmpl` argument is written to by `mkstemp` and thus
+  ## can't be a string literal. If in doubt copy the string before passing it.
+
+proc utimes*(path: cstring, times: ptr array[2, Timeval]): int {.
   importc: "utimes", header: "<sys/time.h>".}
   ## Sets file access and modification times.
   ##
@@ -2663,7 +2675,7 @@ proc utimes*(path: cstring, times: ptr array [2, Timeval]): int {.
 
 proc handle_signal(sig: cint, handler: proc (a: cint) {.noconv.}) {.importc: "signal", header: "<signal.h>".}
 
-template onSignal*(signals: varargs[cint], body: untyped): stmt =
+template onSignal*(signals: varargs[cint], body: untyped) =
   ## Setup code to be executed when Unix signals are received. Example:
   ## from posix import SIGINT, SIGTERM
   ## onSignal(SIGINT, SIGTERM):

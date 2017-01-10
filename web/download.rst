@@ -3,20 +3,34 @@ Download the compiler
 
 You can download the latest version of the Nim compiler here.
 
-**Note:** The Nim compiler requires a C compiler to compile software. On
-Windows we recommend that you use
-`Mingw-w64 <http://mingw-w64.sourceforge.net/>`_. GCC is recommended on Linux
-and Clang on Mac.
+Windows
+-------
 
+Zips
+%%%%
 
-Binaries
---------
+We now encourage you to install via the provided zipfiles:
 
-Unfortunately, right now we only provide binaries for Windows. You can download
-an installer for both 32 bit and 64 bit versions of Windows below.
+* | 32 bit: `nim-0.16.0_x32.zip <download/nim-0.16.0_x32.zip>`_
+  | SHA-256
+* | 64 bit: `nim-0.16.0_x64.zip <download/nim-0.16.0_x64.zip>`_
+  | SHA-256
 
-* 32 bit: `nim-0.14.2_x32.exe <download/nim-0.14.2_x32.exe>`_
-* 64 bit: `nim-0.14.2_x64.exe <download/nim-0.14.2_x64.exe>`_
+Unzip these where you want and optionally run ``finish.exe`` to
+detect your MingW environment.
+
+Exes
+%%%%
+
+You can download an installer for both 32 bit and 64 bit versions of
+Windows below. Note that these installers have some known issues and
+so will unlikely to be provided further in the future. These
+installers have everything you need to use Nim, including a C compiler.
+
+* | 32 bit: `nim-0.16.0_x32.exe <download/nim-0.16.0_x32.exe>`_
+  | SHA-256
+* | 64 bit: `nim-0.16.0_x64.exe <download/nim-0.16.0_x64.exe>`_
+  | SHA-256
 
 These installers also include Aporia, Nimble and other useful Nim tools to get
 you started with Nim development!
@@ -24,13 +38,18 @@ you started with Nim development!
 Installation based on generated C code
 --------------------------------------
 
-This installation method is the preferred way for Linux, Mac OS X, and other Unix
-like systems. Binary packages may be provided later.
+**Note:** The Nim compiler requires a C compiler to compile software. On
+Windows we recommend that you use
+`Mingw-w64 <http://mingw-w64.sourceforge.net/>`_. GCC is recommended on Linux
+and Clang on Mac. The Windows installers above already includes a C compiler.
 
+This installation method is the preferred way for Linux, Mac OS X, and other Unix
+like systems.
 
 Firstly, download this archive:
 
-* `nim-0.14.2.tar.xz (3.1MB) <download/nim-0.14.2.tar.xz>`_
+* | `nim-0.16.0.tar.xz (4.5MB) <download/nim-0.16.0.tar.xz>`_
+  | SHA-256
 
 Extract the archive. Then copy the extracted files into your chosen installation
 directory, ideally somewhere in your home directory.
@@ -42,6 +61,7 @@ Now open a terminal and follow these instructions:
 ``cd ~/programs/nim``.
 * run ``sh build.sh``.
 * Add ``$your_install_dir/bin`` to your PATH.
+* To build associated tools like ``nimble`` and ``nimsuggest`` run ``nim c koch && koch tools``.
 
 After restarting your terminal, you should be able to run ``nim -v``
 which should show you the version of Nim you just installed.
@@ -67,9 +87,9 @@ directory where you would like the download to take place.
 The following commands can be used to download the current development branch
 and then to build it::
 
-  git clone git://github.com/nim-lang/Nim.git
+  git clone https://github.com/nim-lang/Nim.git
   cd Nim
-  git clone --depth 1 git://github.com/nim-lang/csources
+  git clone --depth 1 https://github.com/nim-lang/csources
   cd csources && sh build.sh
   cd ..
   bin/nim c koch
@@ -77,3 +97,19 @@ and then to build it::
 
 You should then add the ``./bin`` (make sure to expand this into an
 absolute path) directory to your ``PATH``.
+
+
+Docker Hub
+----------
+
+The `official Docker images <https://hub.docker.com/r/nimlang/nim/>`_
+are published on Docker Hub and include the compiler and Nimble. There are images
+for standalone scripts as well as Nimble packages.
+
+Get the latest stable image::
+
+  docker pull nimlang/nim
+
+The latest development version::
+
+  docker pull nimlang/nim:devel

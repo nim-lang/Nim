@@ -1841,8 +1841,8 @@ when isMainModule:
       result.add ", "
 
     result.add case n:
-      of 2: c[0].toLower & ": '" & c[1] & "'"
-      of 1: c[0].toLower & ": ''"
+      of 2: toLowerAscii(c[0]) & ": '" & c[1] & "'"
+      of 1: toLowerAscii(c[0]) & ": ''"
       else: ""
 
   assert("Var1=key1;var2=Key2;   VAR3".

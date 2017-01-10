@@ -5,6 +5,8 @@ discard """
 """
 import asyncdispatch
 
+# Note: This is a test case for a bug.
+
 proc accept(): Future[int] {.async.} =
   await sleepAsync(100)
   result = 4

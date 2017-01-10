@@ -132,7 +132,7 @@ proc hashType(c: var MD5Context, t: PType) =
       c.hashType t.sons[i]
   of tyFromExpr, tyFieldAccessor:
     c.hashTree(t.n)
-  of tyArrayConstr:
+  of tyArray:
     c.hashTree(t.sons[0].n)
     c.hashType(t.sons[1])
   of tyTuple:
@@ -383,18 +383,28 @@ proc createDb() =
       interfHash varchar(256) not null,
       fullHash varchar(256) not null,
 
-      created timestamp not null default (DATETIME('now')),
+      created timestamp not null default (DATETIME('now'))
     );""")
 
   db.exec(sql"""
+    create table if not exists Backend(
+      id integer primary key,
+      strongdeps varchar(max) not null,
+      weakdeps varchar(max) not null,
+      header varchar(max) not null,
+      code varchar(max) not null
+    )
+
     create table if not exists Symbol(
       id integer primary key,
       module integer not null,
+      backend integer not null,
       name varchar(max) not null,
       data varchar(max) not null,
       created timestamp not null default (DATETIME('now')),
 
-      foreign key (module) references module(id)
+      foreign key (module) references Module(id),
+      foreign key (backend) references Backend(id)
     );""")
 
   db.exec(sql"""
@@ -408,8 +418,4 @@ proc createDb() =
       foreign key (module) references module(id)
     );""")
 
-
-  #db.exec(sql"""
-  #  --create unique index if not exists TsstNameIx on TestResult(name);
-  #  """, [])
 

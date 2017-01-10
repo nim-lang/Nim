@@ -19,20 +19,14 @@ proc renderPlainSymbolName*(n: PNode): string =
   ## for the HTML hyperlinks.
   result = ""
   case n.kind
-  of nkPostfix:
-    for i in 0 .. <n.len:
-      result = renderPlainSymbolName(n[<n.len])
-      if result.len > 0:
-        return
+  of nkPostfix, nkAccQuoted:
+    result = renderPlainSymbolName(n[<n.len])
   of nkIdent:
-    if n.ident.s != "*":
-      result = n.ident.s
+    result = n.ident.s
   of nkSym:
     result = n.sym.renderDefinitionName(noQuotes = true)
   of nkPragmaExpr:
     result = renderPlainSymbolName(n[0])
-  of nkAccQuoted:
-    result = renderPlainSymbolName(n[<n.len])
   else:
     internalError(n.info, "renderPlainSymbolName() with " & $n.kind)
   assert(not result.isNil)
@@ -43,14 +37,20 @@ proc renderType(n: PNode): string =
   of nkIdent: result = n.ident.s
   of nkSym: result = typeToString(n.sym.typ)
   of nkVarTy:
-    assert len(n) == 1
-    result = renderType(n[0])
+    if n.len == 1:
+      result = renderType(n[0])
+    else:
+      result = "var"
   of nkRefTy:
-    assert len(n) == 1
-    result = "ref." & renderType(n[0])
+    if n.len == 1:
+      result = "ref." & renderType(n[0])
+    else:
+      result = "ref"
   of nkPtrTy:
-    assert len(n) == 1
-    result = "ptr." & renderType(n[0])
+    if n.len == 1:
+      result = "ptr." & renderType(n[0])
+    else:
+      result = "ptr"
   of nkProcTy:
     assert len(n) > 1
     let params = n[0]

@@ -1184,6 +1184,7 @@ Nim type                     Corresponding AST
 ``proc``                     ``nnkProcTy``
 ``iterator``                 ``nnkIteratorTy``
 ``object``                   ``nnkObjectTy``
+-------------                ---------------------------------------------
 
 Take special care when declaring types as ``proc``. The behavior is similar
 to ``Procedure declaration``, below, but does not treat ``nnkGenericParams``.

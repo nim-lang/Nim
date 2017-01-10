@@ -4,27 +4,27 @@ discard """
 # Test multi methods
 
 type
-  TThing = object {.inheritable.}
-  TUnit[T] = object of TThing
+  Thing = object {.inheritable.}
+  Unit[T] = object of Thing
     x: T
-  TParticle = object of TThing
+  Particle = object of Thing
     a, b: int
 
-method collide(a, b: TThing) {.base, inline.} =
+method collide(a, b: Thing) {.base, inline.} =
   quit "to override!"
 
-method collide[T](a: TThing, b: TUnit[T]) {.inline.} =
+method collide[T](a: Thing, b: Unit[T]) {.inline.} =
   write stdout, "collide: thing, unit | "
 
-method collide[T](a: TUnit[T], b: TThing) {.inline.} =
+method collide[T](a: Unit[T], b: Thing) {.inline.} =
   write stdout, "collide: unit, thing | "
 
-proc test(a, b: TThing) {.inline.} =
+proc test(a, b: Thing) {.inline.} =
   collide(a, b)
 
 var
-  a: TThing
-  b, c: TUnit[string]
-collide(b, TThing(c))
+  a: Thing
+  b, c: Unit[string]
+collide(b, Thing(c))
 test(b, c)
 collide(a, b)

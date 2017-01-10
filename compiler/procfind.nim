@@ -71,7 +71,7 @@ proc searchForProcNew(c: PContext, scope: PScope, fn: PSym): PSym =
 
   result = initIdentIter(it, scope.symbols, fn.name)
   while result != nil:
-    if result.kind in skProcKinds and sameType(result.typ, fn.typ, flags):
+    if result.kind == fn.kind and sameType(result.typ, fn.typ, flags):
       case equalParams(result.typ.n, fn.typ.n)
       of paramsEqual:
         if (sfExported notin result.flags) and (sfExported in fn.flags):

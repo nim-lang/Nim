@@ -15,30 +15,6 @@ type
   Sha1Digest = array[0 .. Sha1DigestSize-1, uint8]
   SecureHash* = distinct Sha1Digest
 
-proc sha1(src: string) : Sha1Digest
-
-proc secureHash*(str: string): SecureHash = SecureHash(sha1(str))
-proc secureHashFile*(filename: string): SecureHash = secureHash(readFile(filename))
-proc `$`*(self: SecureHash): string =
-  result = ""
-  for v in Sha1Digest(self):
-    result.add(toHex(int(v), 2))
-
-proc parseSecureHash*(hash: string): SecureHash =
-  for i in 0.. <Sha1DigestSize:
-    Sha1Digest(result)[i] = uint8(parseHexInt(hash[i*2] & hash[i*2 + 1]))
-
-proc `==`*(a, b: SecureHash): bool =
-  # Not a constant-time comparison, but that's acceptable in this context
-  Sha1Digest(a) == Sha1Digest(b)
-
-
-when isMainModule:
-  let hash1 = secureHash("a93tgj0p34jagp9[agjp98ajrhp9aej]")
-  doAssert hash1 == hash1
-  doAssert parseSecureHash($hash1) == hash1
-
-
 # Copyright (c) 2011, Micael Hildenborg
 # All rights reserved.
 #
@@ -67,13 +43,13 @@ when isMainModule:
 # Ported to Nim by Erik O'Leary
 
 type
-  Sha1State = array[0 .. 5-1, uint32]
+  Sha1State* = array[0 .. 5-1, uint32]
   Sha1Buffer = array[0 .. 80-1, uint32]
 
 template clearBuffer(w: Sha1Buffer, len = 16) =
   zeroMem(addr(w), len * sizeof(uint32))
 
-proc init(result: var Sha1State) =
+proc init*(result: var Sha1State) =
   result[0] = 0x67452301'u32
   result[1] = 0xefcdab89'u32
   result[2] = 0x98badcfe'u32
@@ -90,10 +66,10 @@ proc innerHash(state: var Sha1State, w: var Sha1Buffer) =
 
   var round = 0
 
-  template rot(value, bits: uint32): uint32 {.immediate.} =
+  template rot(value, bits: uint32): uint32 =
     (value shl bits) or (value shr (32 - bits))
 
-  template sha1(fun, val: uint32): stmt =
+  template sha1(fun, val: uint32) =
     let t = rot(a, 5) + fun + e + val + w[round]
     e = d
     d = c
@@ -101,12 +77,12 @@ proc innerHash(state: var Sha1State, w: var Sha1Buffer) =
     b = a
     a = t
 
-  template process(body: stmt): stmt =
+  template process(body: untyped) =
     w[round] = rot(w[round - 3] xor w[round - 8] xor w[round - 14] xor w[round - 16], 1)
     body
     inc(round)
 
-  template wrap(dest, value: expr): stmt {.immediate.} =
+  template wrap(dest, value: untyped) =
     let v = dest + value
     dest = v
 
@@ -136,7 +112,7 @@ proc innerHash(state: var Sha1State, w: var Sha1Buffer) =
   wrap state[3], d
   wrap state[4], e
 
-template computeInternal(src: expr): stmt {.immediate.} =
+proc sha1(src: cstring; len: int): Sha1Digest =
   #Initialize state
   var state: Sha1State
   init(state)
@@ -145,10 +121,10 @@ template computeInternal(src: expr): stmt {.immediate.} =
   var w: Sha1Buffer
 
   #Loop through all complete 64byte blocks.
-  let byteLen         = src.len
+  let byteLen = len
   let endOfFullBlocks = byteLen - 64
   var endCurrentBlock = 0
-  var currentBlock    = 0
+  var currentBlock = 0
 
   while currentBlock <= endOfFullBlocks:
     endCurrentBlock = currentBlock + 64
@@ -193,6 +169,27 @@ template computeInternal(src: expr): stmt {.immediate.} =
   for i in 0 .. Sha1DigestSize-1:
     result[i] = uint8((int(state[i shr 2]) shr ((3-(i and 3)) * 8)) and 255)
 
-proc sha1(src: string) : Sha1Digest =
+proc sha1(src: string): Sha1Digest =
   ## Calculate SHA1 from input string
-  computeInternal(src)
+  sha1(src, src.len)
+
+proc secureHash*(str: string): SecureHash = SecureHash(sha1(str))
+proc secureHashFile*(filename: string): SecureHash = secureHash(readFile(filename))
+proc `$`*(self: SecureHash): string =
+  result = ""
+  for v in Sha1Digest(self):
+    result.add(toHex(int(v), 2))
+
+proc parseSecureHash*(hash: string): SecureHash =
+  for i in 0.. <Sha1DigestSize:
+    Sha1Digest(result)[i] = uint8(parseHexInt(hash[i*2] & hash[i*2 + 1]))
+
+proc `==`*(a, b: SecureHash): bool =
+  # Not a constant-time comparison, but that's acceptable in this context
+  Sha1Digest(a) == Sha1Digest(b)
+
+
+when isMainModule:
+  let hash1 = secureHash("a93tgj0p34jagp9[agjp98ajrhp9aej]")
+  doAssert hash1 == hash1
+  doAssert parseSecureHash($hash1) == hash1

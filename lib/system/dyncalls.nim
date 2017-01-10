@@ -26,6 +26,8 @@ proc nimLoadLibraryError(path: string) =
   stderr.rawWrite("could not load: ")
   stderr.rawWrite(path)
   stderr.rawWrite("\n")
+  when not(defined(nimDebugDlOpen)):
+    stderr.rawWrite("compile with -d:nimDebugDlOpen for more information\n")
   quit(1)
 
 proc procAddrError(name: cstring) {.noinline.} =
@@ -52,11 +54,14 @@ when defined(posix):
   #
 
   # c stuff:
-  var
-    RTLD_NOW {.importc: "RTLD_NOW", header: "<dlfcn.h>".}: int
+  when defined(linux) or defined(macosx):
+    const RTLD_NOW = cint(2)
+  else:
+    var
+      RTLD_NOW {.importc: "RTLD_NOW", header: "<dlfcn.h>".}: cint
 
   proc dlclose(lib: LibHandle) {.importc, header: "<dlfcn.h>".}
-  proc dlopen(path: cstring, mode: int): LibHandle {.
+  proc dlopen(path: cstring, mode: cint): LibHandle {.
       importc, header: "<dlfcn.h>".}
   proc dlsym(lib: LibHandle, name: cstring): ProcAddr {.
       importc, header: "<dlfcn.h>".}
@@ -71,7 +76,8 @@ when defined(posix):
     when defined(nimDebugDlOpen):
       let error = dlerror()
       if error != nil:
-        c_fprintf(c_stderr, "%s\n", error)
+        stderr.write(error)
+        stderr.rawWrite("\n")
 
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     result = dlsym(lib, name)

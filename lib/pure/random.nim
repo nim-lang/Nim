@@ -1,17 +1,17 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2016 Andreas Rumpf
+#        (c) Copyright 2017 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
 
-##[Nim's standard random number generator. Based on
-
-| `http://xoroshiro.di.unimi.it/`_
-| `http://xoroshiro.di.unimi.it/xoroshiro128plus.c`_
-]##
+## Nim's standard random number generator. Based on the ``xoroshiro128+`` (xor/rotate/shift/rotate) library.
+## * More information: http://xoroshiro.di.unimi.it/
+## * C implementation: http://xoroshiro.di.unimi.it/xoroshiro128plus.c
+##
+## Do not use this module for cryptographic use!
 
 include "system/inclrtl"
 {.push debugger:off.}
@@ -19,8 +19,12 @@ include "system/inclrtl"
 # XXX Expose RandomGenState
 when defined(JS):
   type ui = uint32
+
+  const randMax = 4_294_967_295u32
 else:
   type ui = uint64
+
+  const randMax = 18_446_744_073_709_551_615u64
 
 type
   RandomGenState = object
@@ -72,7 +76,10 @@ proc random*(max: int): int {.benign.} =
   ## random number is always the same, unless `randomize` is called
   ## which initializes the random number generator with a "random"
   ## number, i.e. a tickcount.
-  result = int(next(state) mod uint64(max))
+  while true:
+    let x = next(state)
+    if x < randMax - (randMax mod ui(max)):
+      return int(x mod uint64(max))
 
 proc random*(max: float): float {.benign.} =
   ## Returns a random number in the range 0..<max. The sequence of
@@ -99,6 +106,11 @@ proc randomize*(seed: int) {.benign.} =
   state.a0 = ui(seed shr 16)
   state.a1 = ui(seed and 0xffff)
 
+proc shuffle*[T](x: var seq[T]) =
+  for i in countdown(x.high, 0):
+    let j = random(i + 1)
+    swap(x[i], x[j])
+
 when not defined(nimscript):
   import times
 
@@ -123,7 +135,7 @@ when isMainModule:
       inc occur[x]
     for i, oc in occur:
       if oc < 69:
-        doAssert false, "too few occurances of " & $i
+        doAssert false, "too few occurrences of " & $i
       elif oc > 130:
-        doAssert false, "too many occurances of " & $i
+        doAssert false, "too many occurrences of " & $i
   main()

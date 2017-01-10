@@ -557,7 +557,7 @@ To *invoke* a template, call it like a procedure.
 Example:
 
 .. code-block:: nim
-  template `!=` (a, b: expr): expr =
+  template `!=` (a, b: untyped): untyped =
     # this definition exists in the System module
     not (a == b)
 
@@ -603,19 +603,20 @@ Turning the ``log`` proc into a template solves this problem:
     x = 4
   log("x has the value: " & $x)
 
-The parameters' types can be ordinary types or the meta types ``expr``
-(stands for *expression*), ``stmt`` (stands for *statement*) or ``typedesc``
-(stands for *type description*). If the template has no explicit return type,
-``stmt`` is used for consistency with procs and methods.
+The parameters' types can be ordinary types or the meta types ``untyped``,
+``typed``, or ``typedesc``.
+``typedesc`` stands for *type description*, and ``untyped`` means symbol lookups and
+type resolution is not performed before the expression is passed to the template.
 
-If there is a ``stmt`` parameter it should be the last in the template
-declaration. The reason is that statements can be passed to a template
-via a special ``:`` syntax:
+If the template has no explicit return type,
+``void`` is used for consistency with procs and methods.
+
+To pass a block of statements to a template, use 'untyped' for the last parameter:
 
 .. code-block:: nim
 
-  template withFile(f: expr, filename: string, mode: FileMode,
-                    body: stmt): stmt {.immediate.} =
+  template withFile(f: untyped, filename: string, mode: FileMode,
+                    body: untyped): typed =
     let fn = filename
     var f: File
     if open(f, fn, mode):
@@ -635,7 +636,6 @@ parameter. The ``withFile`` template contains boilerplate code and helps to
 avoid a common bug: to forget to close the file. Note how the
 ``let fn = filename`` statement ensures that ``filename`` is evaluated only
 once.
-
 
 Macros
 ======
@@ -672,19 +672,20 @@ variable number of arguments:
   # ``macros`` module:
   import macros
 
-  macro debug(n: varargs[expr]): stmt =
+  macro debug(n: varargs[untyped]): typed =
     # `n` is a Nim AST that contains a list of expressions;
-    # this macro returns a list of statements:
+    # this macro returns a list of statements (n is passed for proper line
+    # information):
     result = newNimNode(nnkStmtList, n)
     # iterate over any argument that is passed to this macro:
-    for i in 0..n.len-1:
+    for x in n:
       # add a call to the statement list that writes the expression;
       # `toStrLit` converts an AST to its string representation:
-      result.add(newCall("write", newIdentNode("stdout"), toStrLit(n[i])))
+      result.add(newCall("write", newIdentNode("stdout"), toStrLit(x)))
       # add a call to the statement list that writes ": "
       result.add(newCall("write", newIdentNode("stdout"), newStrLitNode(": ")))
       # add a call to the statement list that writes the expressions value:
-      result.add(newCall("writeLine", newIdentNode("stdout"), n[i]))
+      result.add(newCall("writeLine", newIdentNode("stdout"), x))
 
   var
     a: array[0..10, int]
@@ -722,7 +723,7 @@ regular expressions:
 
 .. code-block:: nim
 
-  macro case_token(n: stmt): stmt =
+  macro case_token(n: typed): typed =
     # creates a lexical analyzer from regular expressions
     # ... (implementation is an exercise for the reader :-)
     discard
@@ -814,7 +815,7 @@ modified source code implementing the macro:
 
   import macros, strutils
 
-  macro readCfgAndBuildSource(cfgFilename: string): stmt =
+  macro readCfgAndBuildSource(cfgFilename: string): typed =
     let
       inputString = slurp(cfgFilename.strVal)
     var
@@ -940,7 +941,7 @@ macro:
 
   import macros, strutils
 
-  macro readCfgAndBuildAST(cfgFilename: string): stmt =
+  macro readCfgAndBuildAST(cfgFilename: string): typed =
     let
       inputString = slurp(cfgFilename.strVal)
 
@@ -991,6 +992,63 @@ example you add ``echo treeRepr(result)`` you should get the same output as
 using the ``dumpTree`` macro, but of course you can call that at any point of
 the macro where you might be having troubles.
 
+Example Templates and Macros
+============================
+
+Lifting Procs
++++++++++++++
+
+.. code-block:: nim
+  import math
+
+  template liftScalarProc(fname) =
+    ## Lift a proc taking one scalar parameter and returning a
+    ## scalar value (eg ``proc sssss[T](x: T): float``),
+    ## to provide templated procs that can handle a single
+    ## parameter of seq[T] or nested seq[seq[]] or the same type
+    ##
+    ## .. code-block:: Nim
+    ##  liftScalarProc(abs)
+    ##  # now abs(@[@[1,-2], @[-2,-3]]) == @[@[1,2], @[2,3]]
+    proc fname[T](x: openarray[T]): auto =
+      var temp: T
+      type outType = type(fname(temp))
+      result = newSeq[outType](x.len)
+      for i in 0..<x.len:
+        result[i] = fname(x[i])
+
+  liftScalarProc(sqrt)   # make sqrt() work for sequences
+  echo sqrt(@[4.0, 16.0, 25.0, 36.0])   # => @[2.0, 4.0, 5.0, 6.0]
+
+Identifier Mangling
++++++++++++++++++++
+
+.. code-block:: nim
+  proc echoHW() =
+    echo "Hello world"
+  proc echoHW0() =
+    echo "Hello world 0"
+  proc echoHW1() =
+    echo "Hello world 1"
+
+  template joinSymbols(a, b: untyped): untyped =
+    `a b`()
+
+  joinSymbols(echo, HW)
+
+  macro str2Call(s1, s2): typed =
+    result = newNimNode(nnkStmtList)
+    for i in 0..1:
+      # combines s1, s2 and an integer into an proc identifier
+      # that is called in a statement list
+      result.add(newCall(!($s1 & $s2 & $i)))
+
+  str2Call("echo", "HW")
+
+  # Output:
+  #   Hello world
+  #   Hello world 0
+  #   Hello world 1
 
 Compilation to JavaScript
 =========================
