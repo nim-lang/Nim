@@ -233,6 +233,14 @@ when not defined(useNimRtl):
         add result, " --> "
         reprAux(result, p, typ.base, cl)
 
+  proc getInt(p: pointer, size: int): int =
+    case size
+    of 1: return int(cast[ptr uint8](p)[])
+    of 2: return int(cast[ptr uint16](p)[])
+    of 4: return int(cast[ptr uint32](p)[])
+    of 8: return int(cast[ptr uint64](p)[])
+    else: discard
+
   proc reprAux(result: var string, p: pointer, typ: PNimType,
                cl: var ReprClosure) =
     if cl.recdepth == 0:
@@ -266,7 +274,7 @@ when not defined(useNimRtl):
     of tyFloat: add result, $(cast[ptr float](p)[])
     of tyFloat32: add result, $(cast[ptr float32](p)[])
     of tyFloat64: add result, $(cast[ptr float64](p)[])
-    of tyEnum: add result, reprEnum(cast[ptr int](p)[], typ)
+    of tyEnum: add result, reprEnum(getInt(p, typ.size), typ)
     of tyBool: add result, reprBool(cast[ptr bool](p)[])
     of tyChar: add result, reprChar(cast[ptr char](p)[])
     of tyString: reprStrAux(result, cast[ptr string](p)[])
