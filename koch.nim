@@ -480,6 +480,7 @@ of cmdArgument:
   of "temp": temp(op.cmdLineRest)
   of "winrelease": winRelease()
   of "nimble": buildNimble(existsDir(".git"))
+  of "nimsuggest": bundleNimsuggest(buildExe=true)
   of "tools": buildTools(existsDir(".git"))
   of "pushcsource", "pushcsources": pushCsources()
   else: showHelp()
