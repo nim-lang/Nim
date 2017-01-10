@@ -1359,7 +1359,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, argType: PType,
 
     if argType.kind == tyStatic:
       if m.callee.kind == tyGenericBody and
-         argType.len == 0 and
+         argType.n == nil and
          tfGenericTypeParam notin argType.flags:
         return newNodeIT(nkType, argOrig.info, makeTypeFromExpr(c, arg))
     else:
