@@ -773,9 +773,12 @@ from json import escapeJson
 proc writeJsonBuildInstructions*(projectfile: string) =
   template lit(x: untyped) = f.write x
   template str(x: untyped) =
-    buf.setLen 0
-    escapeJson(x, buf)
-    f.write buf
+    when compiles(escapeJson(x, buf)):
+      buf.setLen 0
+      escapeJson(x, buf)
+      f.write buf
+    else:
+      f.write escapeJson(x)
 
   proc cfiles(f: File; buf: var string; list: TLinkedList, isExternal: bool) =
     var it = PStrEntry(list.head)

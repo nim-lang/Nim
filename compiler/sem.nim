@@ -440,11 +440,11 @@ proc isImportSystemStmt(n: PNode): bool =
   case n.kind
   of nkImportStmt:
     for x in n:
-      let f = checkModuleName(x)
+      let f = checkModuleName(x, false)
       if f == magicsys.systemModule.info.fileIndex:
         return true
   of nkImportExceptStmt, nkFromStmt:
-    let f = checkModuleName(n[0])
+    let f = checkModuleName(n[0], false)
     if f == magicsys.systemModule.info.fileIndex:
       return true
   else: discard

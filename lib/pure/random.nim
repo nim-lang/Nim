@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2016 Andreas Rumpf
+#        (c) Copyright 2017 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -11,6 +11,7 @@
 ## * More information: http://xoroshiro.di.unimi.it/
 ## * C implementation: http://xoroshiro.di.unimi.it/xoroshiro128plus.c
 ##
+## Do not use this module for cryptographic use!
 
 include "system/inclrtl"
 {.push debugger:off.}
@@ -18,8 +19,12 @@ include "system/inclrtl"
 # XXX Expose RandomGenState
 when defined(JS):
   type ui = uint32
+
+  const randMax = 4_294_967_295u32
 else:
   type ui = uint64
+
+  const randMax = 18_446_744_073_709_551_615u64
 
 type
   RandomGenState = object
@@ -71,7 +76,10 @@ proc random*(max: int): int {.benign.} =
   ## random number is always the same, unless `randomize` is called
   ## which initializes the random number generator with a "random"
   ## number, i.e. a tickcount.
-  result = int(next(state) mod uint64(max))
+  while true:
+    let x = next(state)
+    if x < randMax - (randMax mod ui(max)):
+      return int(x mod uint64(max))
 
 proc random*(max: float): float {.benign.} =
   ## Returns a random number in the range 0..<max. The sequence of
@@ -97,6 +105,12 @@ proc randomize*(seed: int) {.benign.} =
   ## Initializes the random number generator with a specific seed.
   state.a0 = ui(seed shr 16)
   state.a1 = ui(seed and 0xffff)
+
+proc shuffle*[T](x: var openArray[T]) =
+  ## Will randomly swap the positions of elements in a sequence.
+  for i in countdown(x.high, 1):
+    let j = random(i + 1)
+    swap(x[i], x[j])
 
 when not defined(nimscript):
   import times
@@ -125,4 +139,9 @@ when isMainModule:
         doAssert false, "too few occurrences of " & $i
       elif oc > 130:
         doAssert false, "too many occurrences of " & $i
+
+    var a = [0, 1]
+    shuffle(a)
+    doAssert a[0] == 1
+    doAssert a[1] == 0
   main()

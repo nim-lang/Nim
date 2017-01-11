@@ -1,7 +1,7 @@
 #
 #
 #         Maintenance program for Nim
-#        (c) Copyright 2016 Andreas Rumpf
+#        (c) Copyright 2017 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -30,7 +30,7 @@ const
 +-----------------------------------------------------------------+
 |         Maintenance program for Nim                             |
 |             Version $1|
-|             (c) 2016 Andreas Rumpf                              |
+|             (c) 2017 Andreas Rumpf                              |
 +-----------------------------------------------------------------+
 Build time: $2, $3
 
@@ -139,7 +139,7 @@ proc testUnixInstall() =
       # check the docs build:
       execCleanPath("./koch web", destDir / "bin")
       # check nimble builds:
-      execCleanPath("./bin/nim e install_tools.nims")
+      execCleanPath("./koch tools")
       # check the tests work:
       execCleanPath("./koch tests", destDir / "bin")
     else:
@@ -184,21 +184,29 @@ proc bundleNimbleExe() =
   copyExe("dist/nimble/src/nimble".exe, "bin/nimble".exe)
 
 proc buildNimble(latest: bool) =
+  # old installations created nim/nimblepkg/*.nim files. We remove these
+  # here so that it cannot cause problems (nimble bug #306):
+  if dirExists("bin/nimblepkg"):
+    removeDir("bin/nimblepkg")
+  # if koch is used for a tar.xz, build the dist/nimble we shipped
+  # with the tarball:
   var installDir = "dist/nimble"
-  if not dirExists("dist/nimble/.git"):
-    # if dist/nimble exist, but is not a git repo, don't mess with it:
-    if dirExists(installDir):
-      var id = 0
-      while dirExists("dist/nimble" & $id):
-        inc id
-      installDir = "dist/nimble" & $id
-    exec("git clone https://github.com/nim-lang/nimble.git " & installDir)
-  withDir(installDir):
-    if latest:
-      exec("git checkout -f master")
-    else:
-      exec("git checkout -f stable")
-    exec("git pull")
+  if not latest and dirExists(installDir) and not dirExists("dist/nimble/.git"):
+    discard "don't do the git dance"
+  else:
+    if not dirExists("dist/nimble/.git"):
+      if dirExists(installDir):
+        var id = 0
+        while dirExists("dist/nimble" & $id):
+          inc id
+        installDir = "dist/nimble" & $id
+      exec("git clone https://github.com/nim-lang/nimble.git " & installDir)
+    withDir(installDir):
+      if latest:
+        exec("git checkout -f master")
+      else:
+        exec("git checkout -f stable")
+      exec("git pull")
   nimexec("c --noNimblePath -p:compiler " & installDir / "src/nimble.nim")
   copyExe(installDir / "src/nimble".exe, "bin/nimble".exe)
 
@@ -417,15 +425,6 @@ proc temp(args: string) =
   copyExe(output, finalDest)
   if programArgs.len > 0: exec(finalDest & " " & programArgs)
 
-proc copyDir(src, dest: string) =
-  for kind, path in walkDir(src, relative=true):
-    case kind
-    of pcDir: copyDir(dest / path, src / path)
-    of pcFile:
-      createDir(dest)
-      copyFile(src / path, dest / path)
-    else: discard
-
 proc pushCsources() =
   if not dirExists("../csources/.git"):
     quit "[Error] no csources git repository found"
@@ -481,6 +480,7 @@ of cmdArgument:
   of "temp": temp(op.cmdLineRest)
   of "winrelease": winRelease()
   of "nimble": buildNimble(existsDir(".git"))
+  of "nimsuggest": bundleNimsuggest(buildExe=true)
   of "tools": buildTools(existsDir(".git"))
   of "pushcsource", "pushcsources": pushCsources()
   else: showHelp()

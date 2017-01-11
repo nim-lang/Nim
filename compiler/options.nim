@@ -200,7 +200,7 @@ proc getOutFile*(filename, ext: string): string =
 proc getPrefixDir*(): string =
   ## Gets the prefix dir, usually the parent directory where the binary resides.
   ##
-  ## This is overrided by some tools (namely nimsuggest) via the ``gPrefixDir``
+  ## This is overridden by some tools (namely nimsuggest) via the ``gPrefixDir``
   ## global.
   if gPrefixDir != "": result = gPrefixDir
   else:
@@ -253,6 +253,12 @@ proc removeTrailingDirSep*(path: string): string =
     result = substr(path, 0, len(path) - 2)
   else:
     result = path
+
+proc disableNimblePath*() =
+  gNoNimblePath = true
+  lazyPaths.head = nil
+  lazyPaths.tail = nil
+  lazyPaths.counter = 0
 
 include packagehandling
 

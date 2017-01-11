@@ -59,6 +59,11 @@ proc staticWalkDirImpl(path: string, relative: bool): PNode =
     result.add newTree(nkPar, newIntNode(nkIntLit, k.ord),
                               newStrNode(nkStrLit, f))
 
+proc gorgeExWrapper(a: VmArgs) {.nimcall.} =
+  let (s, e) = opGorge(getString(a, 0), getString(a, 1), getString(a, 2),
+                       a.currentLineInfo)
+  setResult a, newTree(nkPar, newStrNode(nkStrLit, s), newIntNode(nkIntLit, e))
+
 proc registerAdditionalOps*(c: PCtx) =
   wrap1f_math(sqrt)
   wrap1f_math(ln)
@@ -92,3 +97,4 @@ proc registerAdditionalOps*(c: PCtx) =
   systemop getCurrentExceptionMsg
   registerCallback c, "stdlib.*.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
     setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
+  systemop gorgeEx

@@ -94,7 +94,7 @@ proc complete*(future: Future[void]) =
 
 proc complete*[T](future: FutureVar[T]) =
   ## Completes a ``FutureVar``.
-  template fut: expr = Future[T](future)
+  template fut: untyped = Future[T](future)
   checkFinished(fut)
   assert(fut.error == nil)
   fut.finished = true
@@ -105,7 +105,7 @@ proc complete*[T](future: FutureVar[T], val: T) =
   ## Completes a ``FutureVar`` with value ``val``.
   ##
   ## Any previously stored value will be overwritten.
-  template fut: expr = Future[T](future)
+  template fut: untyped = Future[T](future)
   checkFinished(fut)
   assert(fut.error == nil)
   fut.finished = true
@@ -199,7 +199,10 @@ proc finished*[T](future: Future[T] | FutureVar[T]): bool =
   ## Determines whether ``future`` has completed.
   ##
   ## ``True`` may indicate an error or a value. Use ``failed`` to distinguish.
-  (Future[T](future)).finished
+  when future is FutureVar[T]:
+    result = (Future[T](future)).finished
+  else:
+    result = future.finished
 
 proc failed*(future: FutureBase): bool =
   ## Determines whether ``future`` completed with an error.

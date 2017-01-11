@@ -879,7 +879,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         # it's a callback:
         c.callbacks[-prc.offset-2].value(
           VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[pointer](regs),
-                 currentException: c.currentExceptionB))
+                 currentException: c.currentExceptionB,
+                 currentLineInfo: c.debug[pc]))
       elif sfImportc in prc.flags:
         if allowFFI notin c.features:
           globalError(c.debug[pc], errGenerated, "VM not allowed to do FFI")
@@ -1246,7 +1247,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       createStr regs[ra]
       regs[ra].node.strVal = opGorge(regs[rb].node.strVal,
                                      regs[rc].node.strVal, regs[rd].node.strVal,
-                                     c.debug[pc])
+                                     c.debug[pc])[0]
     of opcNError:
       decodeB(rkNode)
       let a = regs[ra].node

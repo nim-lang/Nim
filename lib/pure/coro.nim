@@ -66,14 +66,14 @@ proc run*() =
   ## Starts main event loop which exits when all coroutines exit. Calling this proc
   ## starts execution of first coroutine.
   var node = coroutines.head
-  var minDelay: float = 0
+  var minDelay: int = 0 # in milliseconds
   var frame: PFrame
   while node != nil:
     var coro = node.value
     current = coro
-    os.sleep(int(minDelay * 1000))
+    os.sleep(minDelay)
 
-    var remaining = coro.sleepTime - (epochTime() - coro.lastRun);
+    var remaining = int((coro.sleepTime - (epochTime() - coro.lastRun)) * 1000)
     if remaining <= 0:
       remaining = 0
       let res = setjmp(mainCtx)

@@ -125,6 +125,19 @@ Documentation comments are tokens; they are only allowed at certain places in
 the input file as they belong to the syntax tree! This feature enables simpler
 documentation generators.
 
+Multiline comments are started with ``#[`` and terminated with ``]#``.  Multiline
+comments can also be nested.
+
+.. code-block:: nim
+  #[
+  You can have any Nim code text commented
+  out inside this with no indentation restrictions.
+        yes("May I ask a pointless question?")
+    #[
+       Note: these can be nested!!
+    ]#
+  ]#
+
 You can also use the `discard statement`_ together with *long string
 literals* to create block comments:
 
@@ -380,6 +393,28 @@ Since counting up occurs so often in programs, Nim also has a `..
   for i in 1..10:
     ...
 
+Zero-indexed counting have two shortcuts ``..<`` and ``..^`` to simplify counting to one less then the higher index:
+
+.. code-block:: nim
+  for i in 0..<10:
+    ...  # 0..9
+
+or
+
+.. code-block:: nim
+  var s = "some string"
+  for i in 0..<s.len:
+    ...
+
+Other useful iterators for collections (like arrays and sequences) are
+* ``items`` and ``mitems``, which provides immutable and mutable elements respectively, and 
+* ``pairs`` and ``mpairs`` which provides the element and an index number (immutable and mutable respectively)
+
+.. code-block:: nim
+  for indx, itm in ["a","b"].pairs:
+    echo itm, " at index ", indx
+  # => a at index 0
+  # => b at index 1
 
 Scopes and the block statement
 ------------------------------
@@ -1516,8 +1551,14 @@ Example:
 A subtle issue with procedural types is that the calling convention of the
 procedure influences the type compatibility: procedural types are only compatible
 if they have the same calling convention. The different calling conventions are
-listed in the `manual <manual.html>`_.
+listed in the `manual <manual.html#types-procedural-type>`_.
 
+Distinct type
+-------------
+A Distinct type allows for the creation of new type that "does not imply a subtype relationship  between it and its base type".
+You must EXPLICITLY define all behaviour for the distinct type.
+To help with this, both the distinct type and its base type can cast from one type to the other.
+Examples are provided in the `manual <manual.html#types-distinct-type>`_.
 
 Modules
 =======

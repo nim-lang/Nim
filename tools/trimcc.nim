@@ -1,6 +1,6 @@
 # Trim C compiler installation to a minimum
 
-import strutils, os, pegs, strtabs, math, threadpool, times
+import strutils, os, pegs, strtabs, math, times
 
 const
   Essential = """gcc.exe g++.exe gdb.exe ld.exe as.exe c++.exe cpp.exe cc1.exe
@@ -20,7 +20,7 @@ proc includes(headerpath, headerfile: string, whitelist: StringTableRef) =
                      comment <- '/*' @ '*/' / '//' .*
                      ws <- (comment / \s+)* """:
       let m = matches[0].extractFilename
-      if whitelist[m] != "processed":
+      if whitelist.getOrDefault(m) != "processed":
         whitelist[m] = "found"
 
 proc processIncludes(dir: string, whitelist: StringTableRef) =
@@ -29,10 +29,10 @@ proc processIncludes(dir: string, whitelist: StringTableRef) =
     of pcFile:
       let name = extractFilename(path)
       if ('.' notin name and "include" in path) or ("c++" in path):
-        let n = whitelist[name]
+        let n = whitelist.getOrDefault(name)
         if n != "processed": whitelist[name] = "found"
       if name.endswith(".h"):
-        let n = whitelist[name]
+        let n = whitelist.getOrDefault(name)
         if n == "found": includes(path, name, whitelist)
     of pcDir: processIncludes(path, whitelist)
     else: discard
@@ -72,8 +72,8 @@ proc newName(f: string): string =
 proc ccStillWorks(): bool =
   const
     c1 = r"nim c --verbosity:0 --force_build koch"
-    c2 = r"nim c --verbosity:0 --force_build --threads:on --out:tempOne.exe trimcc"
-    c3 = r"nim c --verbosity:0 --force_build --threads:on --out:tempTwo.exe fakeDeps"
+    c2 = r"nim c --verbosity:0 --force_build --threads:on --out:tempOne.exe tools/trimcc"
+    c3 = r"nim c --verbosity:0 --force_build --threads:on --out:tempTwo.exe tools/fakeDeps"
     c4 = r".\koch.exe"
     c5 = r".\tempOne.exe"
     c6 = r".\tempTwo.exe"
