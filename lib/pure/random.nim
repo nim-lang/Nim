@@ -106,9 +106,9 @@ proc randomize*(seed: int) {.benign.} =
   state.a0 = ui(seed shr 16)
   state.a1 = ui(seed and 0xffff)
 
-proc shuffle*[T](x: var seq[T]) =
+proc shuffle*[T](x: var openArray[T]) =
   ## Will randomly swap the positions of elements in a sequence.
-  for i in countdown(x.high, 0):
+  for i in countdown(x.high, 1):
     let j = random(i + 1)
     swap(x[i], x[j])
 
@@ -139,4 +139,9 @@ when isMainModule:
         doAssert false, "too few occurrences of " & $i
       elif oc > 130:
         doAssert false, "too many occurrences of " & $i
+
+    var a = [0, 1]
+    shuffle(a)
+    doAssert a[0] == 1
+    doAssert a[1] == 0
   main()
