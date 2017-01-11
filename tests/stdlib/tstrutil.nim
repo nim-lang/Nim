@@ -64,7 +64,34 @@ proc testDelete =
   delete(s, 0, 0)
   assert s == "1236789ABCDEFG"
 
+proc testFind =
+  assert "0123456789ABCDEFGH".find('A') == 10
+  assert "0123456789ABCDEFGH".find('A', 5) == 10
+  assert "0123456789ABCDEFGH".find('A', 5, 10) == 10
+  assert "0123456789ABCDEFGH".find('A', 5, 9) == -1
+  assert "0123456789ABCDEFGH".find("A") == 10
+  assert "0123456789ABCDEFGH".find("A", 5) == 10
+  assert "0123456789ABCDEFGH".find("A", 5, 10) == 10
+  assert "0123456789ABCDEFGH".find("A", 5, 9) == -1
+  assert "0123456789ABCDEFGH".find({'A'..'C'}) == 10
+  assert "0123456789ABCDEFGH".find({'A'..'C'}, 5) == 10
+  assert "0123456789ABCDEFGH".find({'A'..'C'}, 5, 10) == 10
+  assert "0123456789ABCDEFGH".find({'A'..'C'}, 5, 9) == -1
+
+proc testRFind =
+  assert "0123456789ABCDEFGAH".rfind('A') == 17
+  assert "0123456789ABCDEFGAH".rfind('A', 13) == 10
+  assert "0123456789ABCDEFGAH".rfind('H', 13) == -1
+  assert "0123456789ABCDEFGAH".rfind("A") == 17
+  assert "0123456789ABCDEFGAH".rfind("A", 13) == 10
+  assert "0123456789ABCDEFGAH".rfind("H", 13) == -1
+  assert "0123456789ABCDEFGAH".rfind({'A'..'C'}) == 17
+  assert "0123456789ABCDEFGAH".rfind({'A'..'C'}, 13) == 12
+  assert "0123456789ABCDEFGAH".rfind({'G'..'H'}, 13) == -1
+
 testDelete()
+testFind()
+testRFind()
 
 assert(insertSep($1000_000) == "1_000_000")
 assert(insertSep($232) == "232")
