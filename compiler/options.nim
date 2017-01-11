@@ -200,7 +200,7 @@ proc getOutFile*(filename, ext: string): string =
 proc getPrefixDir*(): string =
   ## Gets the prefix dir, usually the parent directory where the binary resides.
   ##
-  ## This is overrided by some tools (namely nimsuggest) via the ``gPrefixDir``
+  ## This is overridden by some tools (namely nimsuggest) via the ``gPrefixDir``
   ## global.
   if gPrefixDir != "": result = gPrefixDir
   else:
