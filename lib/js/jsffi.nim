@@ -122,8 +122,11 @@ proc setImpl[K, V](obj: JsRoot, field: K, val: V)
 proc getAsImpl[K, V](obj: JsRoot, field: K): V
   {. importcpp: "#[#]" .}
 
-proc callFieldAsImpl[K, V](obj: JsRoot, field: K, args: varargs[JsObject]): V
-  {. importcpp: "#[#](...#)" .}
+proc callFieldAsImpl[K, V](obj: JsRoot, field: K, args: varargs[JsObject]): V =
+  when V isnot void:
+    {. emit: [result, "=", obj, "[", field, "].apply(", obj, ", ", args, ");"] .}
+  else:
+    {. emit: [obj, "[", field, "].apply(", obj, ", ", args, ");"] .}
 
 proc `[]`*(obj: JsObject, field: cstring): JsObject =
   ## Return the value of a property of name `field` from a JsObject `obj`.
