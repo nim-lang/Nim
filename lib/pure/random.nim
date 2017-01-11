@@ -107,6 +107,7 @@ proc randomize*(seed: int) {.benign.} =
   state.a1 = ui(seed and 0xffff)
 
 proc shuffle*[T](x: var seq[T]) =
+  ## Will randomly swap the positions of elements in a sequence.
   for i in countdown(x.high, 0):
     let j = random(i + 1)
     swap(x[i], x[j])
