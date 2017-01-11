@@ -438,7 +438,7 @@ type
 
   SockAddr* {.importc: "SOCKADDR", header: "winsock2.h".} = object
     sa_family*: int16 # unsigned
-    sa_data: array[0..13, char]
+    sa_data*: array[0..13, char]
 
   PSockAddr = ptr SockAddr
 
