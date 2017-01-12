@@ -37,9 +37,6 @@ when not defined(windows):
     var client_socket = create_test_socket()
     var server_socket = create_test_socket()
 
-    registerHandle(selector, server_socket, {Event.Read}, 0)
-    registerHandle(selector, client_socket, {Event.Write}, 0)
-
     var option : int32 = 1
     if setsockopt(server_socket, cint(SOL_SOCKET), cint(SO_REUSEADDR),
                   addr(option), sizeof(option).SockLen) < 0:
@@ -50,16 +47,19 @@ when not defined(windows):
                 aiList.ai_addrlen.Socklen) < 0'i32:
       dealloc(aiList)
       raiseOSError(osLastError())
-    discard server_socket.listen()
+    if server_socket.listen() == -1:
+      raiseOSError(osLastError())
     dealloc(aiList)
 
     aiList = getAddrInfo("127.0.0.1", Port(13337))
     discard posix.connect(client_socket, aiList.ai_addr,
                           aiList.ai_addrlen.Socklen)
+
+    registerHandle(selector, server_socket, {Event.Read}, 0)
+    registerHandle(selector, client_socket, {Event.Write}, 0)
+
     dealloc(aiList)
     discard selector.select(100)
-    var rc1 = selector.select(100)
-    assert(len(rc1) == 2)
 
     var sockAddress: SockAddr
     var addrLen = sizeof(sockAddress).Socklen
@@ -193,8 +193,7 @@ when not defined(windows):
       var s1 = selector.registerSignal(SIGUSR1, 1)
       var s2 = selector.registerSignal(SIGUSR2, 2)
       var s3 = selector.registerSignal(SIGTERM, 3)
-      discard repr(selector.select(0))
-
+      discard selector.select(0)
       discard posix.kill(pid, SIGUSR1)
       discard posix.kill(pid, SIGUSR2)
       discard posix.kill(pid, SIGTERM)
