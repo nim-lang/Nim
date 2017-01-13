@@ -275,12 +275,21 @@ proc pageAddr(p: pointer): PChunk {.inline.} =
   result = cast[PChunk](cast[ByteAddress](p) and not PageMask)
   #sysAssert(Contains(allocator.chunkStarts, pageIndex(result)))
 
+proc writeFreeList(a: MemRegion) =
+  var it = a.freeChunksList
+  c_fprintf(stdout, "freeChunksList: %p\n", it)
+  while it != nil:
+    c_fprintf(stdout, "it: %p, next: %p, prev: %p, size: %ld\n",
+              it, it.next, it.prev, it.size)
+    it = it.next
+
 proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
   when not defined(emscripten):
     if not a.blockChunkSizeIncrease:
-      a.nextChunkSize =
-        if a.currMem < 64 * 1024: PageSize*4
-        else: a.nextChunkSize*2
+      if a.currMem < 64 * 1024:
+        a.nextChunkSize = PageSize*4
+      else:
+        a.nextChunkSize = min(roundup(a.currMem shr 2, PageSize), a.nextChunkSize * 2)
   var size = size
 
   if size > a.nextChunkSize:
@@ -342,14 +351,6 @@ proc contains[T](list, x: T): bool =
   var it = list
   while it != nil:
     if it == x: return true
-    it = it.next
-
-proc writeFreeList(a: MemRegion) =
-  var it = a.freeChunksList
-  c_fprintf(stdout, "freeChunksList: %p\n", it)
-  while it != nil:
-    c_fprintf(stdout, "it: %p, next: %p, prev: %p\n",
-              it, it.next, it.prev)
     it = it.next
 
 proc listAdd[T](head: var T, c: T) {.inline.} =
@@ -756,6 +757,7 @@ template instantiateForRegion(allocator: expr) =
 
   proc getTotalMem(): int = return allocator.currMem
   proc getOccupiedMem(): int = return getTotalMem() - getFreeMem()
+  proc getMaxMem*(): int = return getMaxMem(allocator)
 
   # -------------------- shared heap region ----------------------------------
   when hasThreadSupport:
