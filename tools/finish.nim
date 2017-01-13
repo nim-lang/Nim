@@ -156,6 +156,7 @@ proc main() =
         if incompat.len > 0:
           echo "The following *incompatible* MingW installations exist"
           for x in incompat: echo x
+          echo "*incompatible* means Nim and GCC disagree on the size of a pointer."
         echo "No compatible MingW candidates found " &
              "in the standard locations [Error]"
       else:
