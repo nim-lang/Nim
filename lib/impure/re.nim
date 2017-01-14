@@ -64,8 +64,8 @@ proc raiseInvalidRegex(msg: string) {.noinline, noreturn.} =
 
 proc rawCompile(pattern: string, flags: cint): ptr Pcre =
   var
-    msg: cstring
-    offset: cint
+    msg: cstring = ""
+    offset: cint = 0
   result = pcre.compile(pattern, flags, addr(msg), addr(offset), nil)
   if result == nil:
     raiseInvalidRegex($msg & "\n" & pattern & "\n" & spaces(offset) & "^\n")
@@ -87,9 +87,9 @@ proc re*(s: string, flags = {reExtended, reStudy}): Regex =
   new(result, finalizeRegEx)
   result.h = rawCompile(s, cast[cint](flags - {reStudy}))
   if reStudy in flags:
-    var msg: cstring
+    var msg: cstring = ""
     var options: cint = 0
-    var hasJit: cint
+    var hasJit: cint = 0
     if pcre.config(pcre.CONFIG_JIT, addr hasJit) == 0:
       if hasJit == 1'i32:
         options = pcre.STUDY_JIT_COMPILE
@@ -294,7 +294,7 @@ proc find*(buf: cstring, pattern: Regex, matches: var openArray[string],
   for i in 1..int(res)-1:
     var a = rawMatches[i * 2]
     var b = rawMatches[i * 2 + 1]
-    if a >= 0'i32: matches[i-1] = cast[string](buf).substr(int(a), int(b)-1)
+    if a >= 0'i32: matches[i-1] = bufSubstr(buf, int(a), int(b)-1)
     else: matches[i-1] = nil
   return rawMatches[0]
 
@@ -348,7 +348,7 @@ iterator findAll*(s: string, pattern: Regex, start = 0): string =
     yield substr(s, int(a), int(b)-1)
     i = b
 
-iterator findAll*(buf: var cstring, pattern: Regex, start = 0, bufSize: int): string =
+iterator findAll*(buf: cstring, pattern: Regex, start = 0, bufSize: int): string =
   ## Yields all matching `substrings` of ``s`` that match ``pattern``.
   ##
   ## Note that since this is an iterator you should not modify the string you
@@ -365,7 +365,7 @@ iterator findAll*(buf: var cstring, pattern: Regex, start = 0, bufSize: int): st
     let b = rawMatches[1]
     if a == b and a == i: break
     var str = newString(b-a)
-    copyMem(str[0].addr, cast[pointer](buf[a].addr), b-a)
+    copyMem(str[0].addr, unsafeAddr(buf[a]), b-a)
     yield str
     i = b
 
@@ -587,7 +587,9 @@ when isMainModule:
   doAssert "ABC 0232".match(re"\w+\s+\d+")
   doAssert "ABC".match(re"\d+ | \w+")
 
+  {.push warnings:off.}
   doAssert matchLen("key", re(reIdentifier)) == 3
+  {.pop.}
 
   var pattern = re"[a-z0-9]+\s*=\s*[a-z0-9]+"
   doAssert matchLen("key1=  cal9", pattern) == 11
