@@ -167,6 +167,15 @@ proc writeCell(msg: cstring, c: PCell) =
     c_fprintf(stdout, "[GC] %s: %p %d %s rc=%ld; color=%ld\n",
               msg, c, kind, typName, c.refcount shr rcShift, c.color)
 
+
+when defined(nimTypeNames):
+  proc dumpNumberOfInstances* =
+    var it = nimTypeRoot
+    while it != nil:
+      if it.instances > 0:
+        c_fprintf(stdout, "[Heap] %s: #%ld; bytes: %ld\n", it.name, it.instances, it.sizes)
+      it = it.nextType
+
 template gcTrace(cell, state: expr): stmt {.immediate.} =
   when traceGC: traceCell(cell, state)
 
@@ -190,15 +199,25 @@ else:
 proc prepareDealloc(cell: PCell) =
   when useMarkForDebug:
     gcAssert(cell notin gch.marked, "Cell still alive!")
-  if cell.typ.finalizer != nil:
+  let t = cell.typ
+  if t.finalizer != nil:
     # the finalizer could invoke something that
     # allocates memory; this could trigger a garbage
     # collection. Since we are already collecting we
     # prevend recursive entering here by a lock.
     # XXX: we should set the cell's children to nil!
     inc(gch.recGcLock)
-    (cast[Finalizer](cell.typ.finalizer))(cellToUsr(cell))
+    (cast[Finalizer](t.finalizer))(cellToUsr(cell))
     dec(gch.recGcLock)
+  when defined(nimTypeNames):
+    if t.kind in {tyString, tySequence}:
+      let len = cast[PGenericSeq](cellToUsr(cell)).len
+      let base = if t.kind == tyString: 1 else: t.base.size
+      let size = addInt(mulInt(len, base), GenericSeqSize)
+      dec t.sizes, size+sizeof(Cell)
+    else:
+      dec t.sizes, t.size+sizeof(Cell)
+    dec t.instances
 
 template beforeDealloc(gch: var GcHeap; c: PCell; msg: typed) =
   when false:
@@ -462,6 +481,9 @@ template setFrameInfo(c: PCell) =
 
 proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   # generates a new object and sets its reference counter to 0
+  when defined(nimTypeNames):
+    inc typ.instances
+    inc typ.sizes, size+sizeof(Cell)
   sysAssert(allocInv(gch.region), "rawNewObj begin")
   acquire(gch)
   gcAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
@@ -509,6 +531,9 @@ proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
 
 proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   # generates a new object and sets its reference counter to 1
+  when defined(nimTypeNames):
+    inc typ.instances
+    inc typ.sizes, size+sizeof(Cell)
   sysAssert(allocInv(gch.region), "newObjRC1 begin")
   acquire(gch)
   gcAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
