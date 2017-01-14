@@ -237,7 +237,7 @@ else:
     when T is string:
       msg.add(message)
     elif T is OSErrorCode:
-      msg.add(osErrorMsg(message))
+      msg.add(osErrorMsg(message) & " (code: " & $int(message) & ")")
     else:
       msg.add("Internal Error\n")
     var err = newException(IOSelectorsException, msg)

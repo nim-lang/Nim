@@ -50,6 +50,7 @@ when hasThreadSupport:
       fds: ptr SharedArray[SelectorKey[T]]
       count: int
       changesLock: Lock
+      sock: cint
     Selector*[T] = ptr SelectorImpl[T]
 else:
   type
@@ -59,6 +60,7 @@ else:
       changes: seq[KEvent]
       fds: seq[SelectorKey[T]]
       count: int
+      sock: cint
     Selector*[T] = ref SelectorImpl[T]
 
 type
@@ -70,11 +72,17 @@ type
   # SelectEvent is declared as `ptr` to be placed in `shared memory`,
   # so you can share one SelectEvent handle between threads.
 
+proc getUnique[T](s: Selector[T]): int {.inline.} =
+  # we create duplicated handles to get unique indexes for our `fds` array.
+  result = posix.fcntl(s.sock, F_DUPFD, s.sock)
+  if result == -1:
+    raiseIOSelectorsError(osLastError())
+
 proc newSelector*[T](): Selector[T] =
   var maxFD = 0.cint
   var size = csize(sizeof(cint))
   var namearr = [1.cint, MAX_DESCRIPTORS_ID.cint]
-  # Obtain maximum number of file descriptors for process
+  # Obtain maximum number of opened file descriptors for process
   if sysctl(addr(namearr[0]), 2, cast[pointer](addr maxFD), addr size,
             nil, 0) != 0:
     raiseIOSelectorsError(osLastError())
@@ -85,17 +93,22 @@ proc newSelector*[T](): Selector[T] =
 
   when hasThreadSupport:
     result = cast[Selector[T]](allocShared0(sizeof(SelectorImpl[T])))
-    result.kqFD = kqFD
-    result.maxFD = maxFD.int
     result.fds = allocSharedArray[SelectorKey[T]](maxFD)
-    result.changes = newSeqOfCap[KEvent](MAX_KQUEUE_EVENTS)
     initLock(result.changesLock)
   else:
     result = Selector[T]()
-    result.kqFD = kqFD
-    result.maxFD = maxFD.int
     result.fds = newSeq[SelectorKey[T]](maxFD)
-    result.changes = newSeqOfCap[KEvent](MAX_KQUEUE_EVENTS)
+
+  result.kqFD = kqFD
+  result.maxFD = maxFD.int
+  result.changes = newSeqOfCap[KEvent](MAX_KQUEUE_EVENTS)
+  # we allocating empty socket to duplicate it handle in future, to get unique
+  # indexes for `fds` array. This is needed to properly identify 
+  # {Event.Timer, Event.Signal, Event.Process} events.
+  result.sock = posix.socket(posix.AF_INET, posix.SOCK_STREAM,
+                             posix.IPPROTO_TCP).cint
+  if result.sock == -1:
+    raiseIOSelectorsError(osLastError())
 
 proc close*[T](s: Selector[T]) =
   if posix.close(s.kqFD) != 0:
@@ -219,11 +232,7 @@ proc updateHandle*[T](s: Selector[T], fd: SocketHandle,
 
 proc registerTimer*[T](s: Selector[T], timeout: int, oneshot: bool,
                        data: T): int {.discardable.} =
-  var fdi = posix.socket(posix.AF_INET, posix.SOCK_STREAM,
-                         posix.IPPROTO_TCP).int
-  if fdi == -1:
-    raiseIOSelectorsError(osLastError())
-
+  let fdi = getUnique(s)
   s.checkFd(fdi)
   doAssert(s.fds[fdi].ident == 0)
 
@@ -245,11 +254,7 @@ proc registerTimer*[T](s: Selector[T], timeout: int, oneshot: bool,
 
 proc registerSignal*[T](s: Selector[T], signal: int,
                         data: T): int {.discardable.} =
-  var fdi = posix.socket(posix.AF_INET, posix.SOCK_STREAM,
-                         posix.IPPROTO_TCP).int
-  if fdi == -1:
-    raiseIOSelectorsError(osLastError())
-
+  let fdi = getUnique(s)
   s.checkFd(fdi)
   doAssert(s.fds[fdi].ident == 0)
 
@@ -273,11 +278,7 @@ proc registerSignal*[T](s: Selector[T], signal: int,
 
 proc registerProcess*[T](s: Selector[T], pid: int,
                          data: T): int {.discardable.} =
-  var fdi = posix.socket(posix.AF_INET, posix.SOCK_STREAM,
-                         posix.IPPROTO_TCP).int
-  if fdi == -1:
-    raiseIOSelectorsError(osLastError())
-
+  let fdi = getUnique(s)
   s.checkFd(fdi)
   doAssert(s.fds[fdi].ident == 0)
 
@@ -511,6 +512,7 @@ proc selectInto*[T](s: Selector[T], timeout: int,
         rkey.fd = cast[int](kevent.udata)
         rkey.events.incl(Event.Signal)
       of EVFILT_PROC:
+        rkey.fd = cast[int](kevent.udata)
         pkey = addr(s.fds[cast[int](kevent.udata)])
         # we will not clear key, until it will be unregistered, so
         # application can obtain data, but we will decrease counter,
