@@ -183,11 +183,10 @@ proc findBounds*(buf: cstring, pattern: Regex,
   ## returns the ``first`` and ``last`` position of ``pattern`` in ``buf``,
   ## where ``buf`` has length ``bufSize`` (not necessarily ``'\0'`` terminated).
   ## If it does not match, ``(-1,0)`` is returned.
-
   var
     rtarray = initRtArray[cint](3)
     rawMatches = rtarray.getRawData
-    res = pcre.exec(pattern.h, nil, buf, bufSize.cint, start.cint, 0'i32,
+    res = pcre.exec(pattern.h, pattern.e, buf, bufSize.cint, start.cint, 0'i32,
       cast[ptr cint](rawMatches), 3)
   if res < 0'i32: return (int(res), 0)
   return (int(rawMatches[0]), int(rawMatches[1]-1))
@@ -213,9 +212,6 @@ proc matchOrFind(buf: cstring, pattern: Regex, start, bufSize: int, flags: cint)
                     cast[ptr cint](rawMatches), 3)
   if result >= 0'i32:
     result = rawMatches[1] - rawMatches[0]
-
-#proc matchOrFind(s: string, pattern: Regex, start, flags: cint): cint {.inline.} =
-#  result = matchOrFind(cstring(s), pattern, start, s.len, flags)
 
 proc matchLen*(s: string, pattern: Regex, matches: var openArray[string],
               start = 0): int {.inline.} =
@@ -255,7 +251,7 @@ proc match*(s: string, pattern: Regex, start = 0): bool {.inline.} =
   result = matchLen(cstring(s), pattern, start, s.len) != -1
 
 proc match*(s: string, pattern: Regex, matches: var openArray[string],
-           start = 0): bool =
+           start = 0): bool {.inline.} =
   ## returns ``true`` if ``s[start..]`` matches the ``pattern`` and
   ## the captured substrings in the array ``matches``. If it does not
   ## match, nothing is written into ``matches`` and ``false`` is
@@ -271,7 +267,7 @@ proc match*(s: string, pattern: Regex, matches: var openArray[string],
   result = matchLen(cstring(s), pattern, matches, start, s.len) != -1
 
 proc match*(buf: cstring, pattern: Regex, matches: var openArray[string],
-           start = 0, bufSize: int): bool =
+           start = 0, bufSize: int): bool {.inline.} =
   ## returns ``true`` if ``buf[start..<bufSize]`` matches the ``pattern`` and
   ## the captured substrings in the array ``matches``. If it does not
   ## match, nothing is written into ``matches`` and ``false`` is
@@ -317,7 +313,7 @@ proc find*(buf: cstring, pattern: Regex, start = 0, bufSize: int): int =
   if res < 0'i32: return res
   return rawMatches[0]
 
-proc find*(s: string, pattern: Regex, start = 0): int =
+proc find*(s: string, pattern: Regex, start = 0): int {.inline.} =
   ## returns the starting position of ``pattern`` in ``s``. If it does not
   ## match, ``-1`` is returned.
   ##
@@ -369,7 +365,7 @@ iterator findAll*(buf: cstring, pattern: Regex, start = 0, bufSize: int): string
     yield str
     i = b
 
-proc findAll*(s: string, pattern: Regex, start = 0): seq[string] =
+proc findAll*(s: string, pattern: Regex, start = 0): seq[string] {.inline.} =
   ## returns all matching `substrings` of ``s`` that match ``pattern``.
   ## If it does not match, @[] is returned.
   accumulateResult(findAll(s, pattern, start))
@@ -402,20 +398,20 @@ template `=~` *(s: string, pattern: Regex): untyped =
 
 # ------------------------- more string handling ------------------------------
 
-proc contains*(s: string, pattern: Regex, start = 0): bool =
+proc contains*(s: string, pattern: Regex, start = 0): bool {.inline.} =
   ## same as ``find(s, pattern, start) >= 0``
   return find(s, pattern, start) >= 0
 
 proc contains*(s: string, pattern: Regex, matches: var openArray[string],
-              start = 0): bool =
+              start = 0): bool {.inline.} =
   ## same as ``find(s, pattern, matches, start) >= 0``
   return find(s, pattern, matches, start) >= 0
 
-proc startsWith*(s: string, prefix: Regex): bool =
+proc startsWith*(s: string, prefix: Regex): bool {.inline.} =
   ## returns true if `s` starts with the pattern `prefix`
   result = matchLen(s, prefix) >= 0
 
-proc endsWith*(s: string, suffix: Regex): bool =
+proc endsWith*(s: string, suffix: Regex): bool {.inline.} =
   ## returns true if `s` ends with the pattern `prefix`
   for i in 0 .. s.len-1:
     if matchLen(s, suffix, i) == s.len - i: return true
@@ -536,7 +532,7 @@ iterator split*(s: string, sep: Regex): string =
     if first <= last:
       yield substr(s, first, last-1)
 
-proc split*(s: string, sep: Regex): seq[string] =
+proc split*(s: string, sep: Regex): seq[string] {.inline.} =
   ## Splits the string ``s`` into a seq of substrings.
   ##
   ## The portion matched by ``sep`` is not returned.
