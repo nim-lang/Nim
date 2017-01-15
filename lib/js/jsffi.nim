@@ -289,11 +289,11 @@ iterator keys*[K,V](assoc: JSAssoc[K,V]): K =
 
 # Literal generation
 
-macro lit*(xs: varargs[untyped]): auto =
+macro lit*(typ: typedesc, xs: untyped = []): auto =
   ## Takes a ``typedesc`` as its first argument, and a series of expressions of
-  ## type ``key = value`` as its further arguments, and returns a value of the
-  ## specified type with each field ``key`` set to ``value``, as specified in
-  ## the arguments of ``lit``.
+  ## type ``key = value`` in brackets `[]` or in a `do`-statement as its second
+  ## argument, and returns a value of the specified type with each field ``key``
+  ## set to ``value``, as specified in the arguments of ``lit``.
   ##
   ## Example:
   ##
@@ -307,20 +307,35 @@ macro lit*(xs: varargs[untyped]): auto =
   ##      h, i, j, k, l: cstring
   ##      # And even more fields ...
   ##
-  ##  let obj = ExtremelyHugeType.lit(a = 1, k = "foo".cstring, d = 42)
+  ##  let obj = ExtremelyHugeType.lit([a = 1, k = "foo".cstring, d = 42])
+  ##
+  ##  # alternatively:
+  ##  let obj = ExtremelyHugeType.lit do:
+  ##    a = 1
+  ##    k = "foo".cstring
+  ##    d = 42
   ##
   ##  # This generates roughly the same JavaScript as:
   ##  {. emit: "var obj = {a: 1, k: "foo", d: 42};" .}
   ##
-  assert(xs.len >= 1)
-  let typ = xs[0]
+  var
+    newXs: NimNode
+    expectedKind: NimNodeKind
+  case xs.kind
+  of nnkBracket:
+    newXs = xs
+    expectedKind = nnkExprEqExpr
+  of nnkDo:
+    newXs = xs[6]
+    expectedKind = nnkAsgn
+  else:
+    error("Invalid argument `" & $xs.toStrLit & "`.")
   let a = !"a"
   var body = quote do:
     var `a` {.noinit.}: `typ`
     {.emit: "`a` = {};".}
-  for idx in 1..xs.len-1:
-    let x = xs[idx]
-    if x.kind == nnkExprEqExpr:
+  for x in newXs.children:
+    if x.kind == expectedKind:
       let
         k = x[0]
         kString = quote do:
