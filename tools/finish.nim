@@ -1,7 +1,12 @@
 
 # -------------- post unzip steps ---------------------------------------------
 
-import strutils, os, osproc
+import strutils, os, osproc, browsers
+
+const arch = $(sizeof(int)*8)
+
+proc downloadMingw() =
+  openDefaultBrowser("http://nim-lang.org/download/mingw$1.zip" % arch)
 
 when defined(windows):
   import registry
@@ -159,6 +164,25 @@ proc main() =
           echo "*incompatible* means Nim and GCC disagree on the size of a pointer."
         echo "No compatible MingW candidates found " &
              "in the standard locations [Error]"
+        if askBool("Do you want to download MingW from Nim's website? (y/n) "):
+          let dest = getCurrentDir() / "dist"
+          downloadMingw()
+          echo "After download, unzip it in: ", dest
+          echo "so that ", dest / "mingw" & arch, " exists."
+          if askBool("Download and unzip successful? (y/n) "):
+            incompat.setLen 0
+            let alternative = tryDirs(incompat, defaultMingwLocations())
+            if alternative.len == 0:
+              if incompat.len > 0:
+                echo "The following *incompatible* MingW installations exist"
+                for x in incompat: echo x
+                echo "*incompatible* means Nim and GCC disagree on the size of a pointer."
+              echo "Still no compatible MingW candidates found " &
+                   "in the standard locations [Error]"
+            else:
+              echo "Patching Nim's config to use:"
+              echo alternative
+              patchConfig(alternative)
       else:
         if askBool("Found a MingW directory that is not in your PATH.\n" &
                    alternative &
