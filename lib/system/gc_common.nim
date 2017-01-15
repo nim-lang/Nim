@@ -26,6 +26,7 @@ when defined(nimTypeNames):
       it = it.nextType
 
 template decTypeSize(cell, t) =
+  # XXX this needs to use atomics for multithreaded apps!
   when defined(nimTypeNames):
     if t.kind in {tyString, tySequence}:
       let len = cast[PGenericSeq](cellToUsr(cell)).len
