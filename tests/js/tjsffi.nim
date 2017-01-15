@@ -15,50 +15,6 @@ true
 true
 true
 true
-true
-TypeSection
-  TypeDef
-    Sym "SomeType"
-    Empty
-    ObjectTy
-      Empty
-      Empty
-      RecList
-        IdentDefs
-          PragmaExpr
-            Ident !"a"
-            Pragma
-              Ident !"exportc"
-          Sym "int"
-          Empty
-        IdentDefs
-          PragmaExpr
-            Ident !"b"
-            Pragma
-              Ident !"exportc"
-          Sym "string"
-          Empty
-        IdentDefs
-          PragmaExpr
-            Ident !"c"
-            Pragma
-              Ident !"exportc"
-          Sym "int"
-          Empty
-        IdentDefs
-          PragmaExpr
-            Ident !"d"
-            Pragma
-              Ident !"exportc"
-          Sym "int"
-          Empty
-        IdentDefs
-          PragmaExpr
-            Ident !"e"
-            Pragma
-              Ident !"exportc"
-          Sym "int"
-          Empty
 true'''
 """
 
@@ -311,22 +267,4 @@ block:
     {. emit: "var importMe = 42;" .}
     magicVar(importMe, int)
     importMe == 42
-  echo test()
-
-# Test pragmaTypeSection
-block:
-  macro typedRepr(x: typed): string =
-    treeRepr(x)
-  proc test(): bool =
-    const repr = typedRepr do:
-      pragmaTypeSection exportc:
-        type
-          SomeType = object
-            a: int
-            b: string
-            c, d, e: int
-    echo repr
-    var working = true
-    working = working and compiles(SomeType(a: 1, b: ""))
-    working
   echo test()

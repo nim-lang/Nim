@@ -32,40 +32,9 @@
 ##      console.log("Hello JavaScript!")
 ##    )
 ##
-## JsFFI also provides macros to facilitate fully statically typed interaction
-## with Javascript. To this end, one often has to write types, where every field
-## is marked with ``exportc`` to avoid mangling. For types like React attributes
-## with a lot of fields, this can quickly turn very cumbersome. JsFFI provides
-## the facilities to manage those cases:
-##
-## .. code-block:: nim
-##
-##  import jsFFI
-##
-##  # Here, we have a type with a lot of fields, which should all be marked with
-##  # exportc:
-##  pragmaTypeSection exportc:
-##    type
-##      Attrs = ref object of
-##        onClick, onChange: proc(e: Event)
-##        # ...
-##        accept, acceptCharset, accessKey, action, alt, capture, cellPadding,
-##          cellSpacing, challange, charSet, cite, classID, className, content,
-##          # ...
-##          wrap: cstring
-##        # Even more fields
-##
-##  # Now, creating an instance of ``Attrs`` using its constructor would leave a
-##  # lot of those fields set to ``nil``, or other default values, making it
-##  # very large, and possibly invalid. Using ``lit`` from JsFFI, this can be
-##  # avoided:
-##  let someAttrs = Attrs.lit(className = "someclass")
-##
-##  # This emits roughly the following JavaScript:
-##  # var someAttrs = {className: "someclass"};
 
 when not defined(js) and not defined(nimdoc) and not defined(nimsuggest):
-  {. fatal: "Module jsFFI is desined to be used with the JavaScript backend." .}
+  {.fatal: "Module jsFFI is designed to be used with the JavaScript backend.".}
 
 import macros
 
@@ -420,75 +389,3 @@ macro bindMethod*(procedure: typed): auto =
       newTree(nnkStmtList, thisQuote[0], call)
   )
   result = body
-
-# Annotate all fields inside a type section with a pragma:
-
-macro pragmaTypeSection*(prag, x: untyped): untyped =
-  ## Takes a pragma identifier ``prag`` and a typesection ``x``, and returns
-  ## the typesection with all fields annotated by the chosen pragma.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##  # We have a type with a ton of fields, and all of those fields may not be
-  ##  # mangled, and thus have to be annotated with ``{. exportc .}``.
-  ##
-  ##  pragmaTypeSection exportc:
-  ##    type
-  ##      ExtremelyHugeType = ref object
-  ##        a, b, c, d, e, f, g: int
-  ##        h, i, j, k, l: cstring
-  ##        # And even more fields ...
-  ##
-  assert x[0].kind == nnkTypeSection, "x has to be a type section."
-  result = newNimNode(nnkTypeSection)
-  for child in x[0].children:
-    var
-      name = child[0]
-      rawBody = child[2]
-      body = rawBody
-      objectPragma: NimNode
-      intermediate: NimNode
-      recList = newNimNode(nnkRecList)
-      # We first construct the object-type
-      # and bind it to a temporary, from which we then construct
-      # the real deal.
-      internal = newIdentNode(!("internal" & lineInfo(child)))
-    # Yank the object body from the `PtrTy` or `RefTy` node, if necessary
-    if rawBody.kind in { nnkPtrTy, nnkRefTy }:
-      body = rawBody[0]
-      if body[0].kind == nnkPragma:
-        objectPragma = body[0]
-      else:
-        objectPragma = newNimNode(nnkEmpty)
-      intermediate = newTree(nnkObjectTy, newNimNode(nnkEmpty), body[1])
-    else:
-      intermediate = newNimNode(nnkObjectTy).add(body[0]).add(body[1])
-    # for every record in the object definition body, if it already has pragmas,
-    # add the chosen pragma, else create a `PragmaExpr` and attach the chosen
-    # pragma there.
-    for rec in body[2]:
-      for elem in 0..rec.len-3:
-        var generalizedIdent: NimNode
-        if rec[elem].kind == nnkPragmaExpr:
-          rec[elem][1].add(prag)
-          generalizedIdent = rec[elem]
-        else:
-          generalizedIdent = newTree(nnkPragmaExpr, rec[elem],
-            newTree(nnkPragma, prag))
-        recList.add(newTree(nnkIdentDefs, generalizedIdent, rec[^2], rec[^1]))
-    intermediate.add(recList)
-    # If we want to have a pragma on the whole ref/ptr object
-    # (not on the fields), we have to lift that to the
-    # ref/ptr, which is what we do here:
-    var generalizedName = if objectPragma.kind != nnkEmpty:
-        newTree(nnkPragmaExpr, name, objectPragma)
-      else:
-        name
-    if rawBody.kind in { nnkPtrTy, nnkRefTy }:
-      result.add(newTree(nnkTypeDef, internal, child[1], intermediate))
-      result.add(newTree(nnkTypeDef, generalizedName,
-        newEmptyNode(), newTree(rawBody.kind, internal)))
-    else:
-      result.add(newTree(nnkTypeDef, generalizedName, child[1], intermediate))
