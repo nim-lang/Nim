@@ -918,7 +918,10 @@ proc genFieldAddr(p: PProc, n: PNode, r: var TCompRes) =
   else:
     if b.sons[1].kind != nkSym: internalError(b.sons[1].info, "genFieldAddr")
     var f = b.sons[1].sym
-    if f.loc.r == nil: f.loc.r = mangleName(f, p.target)
+    if f.loc.r == nil and p.target == targetJS:
+      f.loc.r = rope(f.name.s)
+    elif f.loc.r == nil:
+      f.loc.r = mangleName(f, p.target)
     r.res = makeJSString($f.loc.r)
   internalAssert a.typ != etyBaseIndex
   r.address = a.res
@@ -934,10 +937,11 @@ proc genFieldAccess(p: PProc, n: PNode, r: var TCompRes) =
   else:
     if n.sons[1].kind != nkSym: internalError(n.sons[1].info, "genFieldAccess")
     var f = n.sons[1].sym
-    if f.loc.r == nil: f.loc.r = mangleName(f, p.target)
     if p.target == targetJS:
+      if f.loc.r == nil: f.loc.r = rope(f.name.s)
       r.res = "$1.$2" % [r.res, f.loc.r]
     else:
+      if f.loc.r == nil: f.loc.r = mangleName(f, p.target)
       if {sfImportc, sfExportc} * f.flags != {}:
         r.res = "$1->$2" % [r.res, f.loc.r]
       else:
