@@ -135,7 +135,7 @@ proc newModule(graph: ModuleGraph; fileIdx: int32): PSym =
   result.info = newLineInfo(fileIdx, 1, 1)
   let
     pck = getPackageName(filename)
-    pck2 = if pck.len > 0: pck else: "unknown-package"
+    pck2 = if pck.len > 0: pck else: "unknown"
     pack = getIdent(pck2)
   var packSym = graph.packageSyms.strTableGet(pack)
   if packSym == nil:
