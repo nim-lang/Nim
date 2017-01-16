@@ -305,8 +305,7 @@ template newDequeWith*(len: int, init: untyped): untyped =
     result.addLast(init)
   result
 
-proc map*[T, S](deq: Deque[T], op: proc (x: T): S {.closure.}): Deque[S]
-               {.inline.} =
+proc map*[T, S](deq: Deque[T], op: proc (x: T): S {.closure.}): Deque[S] =
   ## Returns a new ``Deque[S]`` with the results of ``op`` applied
   ## to every item in ``deq[T]``.
   ##
@@ -316,9 +315,7 @@ proc map*[T, S](deq: Deque[T], op: proc (x: T): S {.closure.}): Deque[S]
   for x in deq.items:
     result.addLast(op(x))
 
-proc apply*[T](deq: var Deque[T],
-               op: proc (x: var T) {.closure.}
-               ) {.inline.} =
+proc apply*[T](deq: var Deque[T], op: proc (x: var T) {.closure.}) =
   ## Applies ``op`` to every item in ``deq`` by modifying ``deq`` directly.
   ##
   ## Note that this requires your input and output types to
@@ -326,9 +323,7 @@ proc apply*[T](deq: var Deque[T],
   ## The parameter function takes a ``T`` type parameter.
   for v in deq.mitems: op(v)
 
-proc apply*[T](deq: var Deque[T],
-               op: proc (x: T): T {.closure.}
-               ) {.inline.} =
+proc apply*[T](deq: var Deque[T], op: proc (x: T): T {.closure.}) =
   ## Applies ``op`` to every item in ``deq`` by modifying ``deq`` directly.
   ##
   ## Note that this requires your input and output types to

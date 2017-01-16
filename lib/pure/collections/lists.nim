@@ -749,7 +749,8 @@ proc toDoublyLinkedRing*[T](s: openArray[T]): DoublyLinkedRing[T] =
   result = initDoublyLinkedRing[T]()
   toListImpl(s, result)
 
-proc map*[T, S](lst: SinglyLinkedList[T], op: proc (x: T): S {.closure.}): SinglyLinkedList[S] {.inline.} =
+proc map*[T, S](lst: SinglyLinkedList[T],
+               op: proc (x: T): S {.closure.}): SinglyLinkedList[S] =
   ## Returns a new SinglyLinkedList with the results of ``op`` applied to every item in
   ## ``lst``.
   ##
@@ -759,7 +760,8 @@ proc map*[T, S](lst: SinglyLinkedList[T], op: proc (x: T): S {.closure.}): Singl
   for x in lst.items:
     result.append(op(x))
 
-proc map*[T, S](lst: DoublyLinkedList[T], op: proc (x: T): S {.closure.}): DoublyLinkedList[S] {.inline.} =
+proc map*[T, S](lst: DoublyLinkedList[T],
+               op: proc (x: T): S {.closure.}): DoublyLinkedList[S] =
   ## Returns a new DoublyLinkedList with the results of ``op`` applied to every item in
   ## ``lst``.
   ##
@@ -769,7 +771,8 @@ proc map*[T, S](lst: DoublyLinkedList[T], op: proc (x: T): S {.closure.}): Doubl
   for x in lst.items:
     result.append(op(x))
 
-proc map*[T, S](lst: SinglyLinkedRing[T], op: proc (x: T): S {.closure.}): SinglyLinkedRing[S] {.inline.} =
+proc map*[T, S](lst: SinglyLinkedRing[T],
+               op: proc (x: T): S {.closure.}): SinglyLinkedRing[S] =
   ## Returns a new SinglyLinkedRing with the results of ``op`` applied to every item in
   ## ``lst``.
   ##
@@ -779,7 +782,8 @@ proc map*[T, S](lst: SinglyLinkedRing[T], op: proc (x: T): S {.closure.}): Singl
   for x in lst.items:
     result.append(op(x))
 
-proc map*[T, S](lst: DoublyLinkedRing[T], op: proc (x: T): S {.closure.}): DoublyLinkedRing[S] {.inline.} =
+proc map*[T, S](lst: DoublyLinkedRing[T],
+               op: proc (x: T): S {.closure.}): DoublyLinkedRing[S] =
   ## Returns a new DoublyLinkedRing with the results of ``op`` applied to every item in
   ## ``lst``.
   ##
@@ -789,8 +793,7 @@ proc map*[T, S](lst: DoublyLinkedRing[T], op: proc (x: T): S {.closure.}): Doubl
   for x in lst.items():
     result.append(op(x))
 
-proc apply*[T](lst: var SinglyLinkedList[T], op: proc (x: var T) {.closure.})
-                                                              {.inline.} =
+proc apply*[T](lst: var SinglyLinkedList[T], op: proc (x: var T) {.closure.}) =
   ## Applies ``op`` to every item in ``lst`` by modifying ``lst`` directly.
   ##
   ## Note that this requires your input and output types to
@@ -798,8 +801,7 @@ proc apply*[T](lst: var SinglyLinkedList[T], op: proc (x: var T) {.closure.})
   ## The parameter function takes a ``var T`` type parameter.
   for v in lst.mitems: op(v)
 
-proc apply*[T](lst: var DoublyLinkedList[T], op: proc (x: var T) {.closure.})
-                                                              {.inline.} =
+proc apply*[T](lst: var DoublyLinkedList[T], op: proc (x: var T) {.closure.}) =
   ## Applies ``op`` to every item in ``lst`` by modifying ``lst`` directly.
   ##
   ## Note that this requires your input and output types to
@@ -807,8 +809,7 @@ proc apply*[T](lst: var DoublyLinkedList[T], op: proc (x: var T) {.closure.})
   ## The parameter function takes a ``var T`` type parameter.
   for v in lst.mitems: op(v)
 
-proc apply*[T](lst: var SinglyLinkedRing[T], op: proc (x: var T) {.closure.})
-                                                              {.inline.} =
+proc apply*[T](lst: var SinglyLinkedRing[T], op: proc (x: var T) {.closure.}) =
   ## Applies ``op`` to every item in ``lst`` by modifying ``lst`` directly.
   ##
   ## Note that this requires your input and output types to
@@ -816,8 +817,7 @@ proc apply*[T](lst: var SinglyLinkedRing[T], op: proc (x: var T) {.closure.})
   ## The parameter function takes a ``var T`` type parameter.
   for v in lst.mitems: op(v)
 
-proc apply*[T](lst: var DoublyLinkedRing[T], op: proc (x: var T) {.closure.})
-                                                              {.inline.} =
+proc apply*[T](lst: var DoublyLinkedRing[T], op: proc (x: var T) {.closure.}) =
   ## Applies ``op`` to every item in ``lst`` by modifying ``lst`` directly.
   ##
   ## Note that this requires your input and output types to
@@ -825,8 +825,7 @@ proc apply*[T](lst: var DoublyLinkedRing[T], op: proc (x: var T) {.closure.})
   ## The parameter function takes a ``var T`` type parameter.
   for v in lst.mitems: op(v)
 
-proc apply*[T](lst: var SinglyLinkedList[T], op: proc (x: T): T {.closure.})
-                                                              {.inline.} =
+proc apply*[T](lst: var SinglyLinkedList[T], op: proc (x: T): T {.closure.}) =
   ## Applies ``op`` to every item in ``lst`` by modifying ``lst`` directly.
   ##
   ## Note that this requires your input and output types to
@@ -834,8 +833,7 @@ proc apply*[T](lst: var SinglyLinkedList[T], op: proc (x: T): T {.closure.})
   ## The parameter function takes a ``T`` type parameter.
   for v in lst.mitems: v = op(v)
 
-proc apply*[T](lst: var DoublyLinkedList[T], op: proc (x: T): T {.closure.})
-                                                              {.inline.} =
+proc apply*[T](lst: var DoublyLinkedList[T], op: proc (x: T): T {.closure.}) =
   ## Applies ``op`` to every item in ``lst`` by modifying ``lst`` directly.
   ##
   ## Note that this requires your input and output types to
@@ -843,8 +841,7 @@ proc apply*[T](lst: var DoublyLinkedList[T], op: proc (x: T): T {.closure.})
   ## The parameter function takes a ``T`` type parameter.
   for v in lst.mitems: v = op(v)
 
-proc apply*[T](lst: var SinglyLinkedRing[T], op: proc (x: T): T {.closure.})
-                                                              {.inline.} =
+proc apply*[T](lst: var SinglyLinkedRing[T], op: proc (x: T): T {.closure.}) =
   ## Applies ``op`` to every item in ``lst`` by modifying ``lst`` directly.
   ##
   ## Note that this requires your input and output types to
@@ -852,8 +849,7 @@ proc apply*[T](lst: var SinglyLinkedRing[T], op: proc (x: T): T {.closure.})
   ## The parameter function takes a ``T`` type parameter.
   for v in lst.mitems: v = op(v)
 
-proc apply*[T](lst: var DoublyLinkedRing[T], op: proc (x: T): T {.closure.})
-                                                              {.inline.} =
+proc apply*[T](lst: var DoublyLinkedRing[T], op: proc (x: T): T {.closure.}) =
   ## Applies ``op`` to every item in ``lst`` by modifying ``lst`` directly.
   ##
   ## Note that this requires your input and output types to
