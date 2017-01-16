@@ -187,24 +187,16 @@ else:
     x <% rcIncrement
   template `++`(x: expr): stmt = inc(x, rcIncrement)
 
-proc prepareDealloc(cell: PCell) =
-  when useMarkForDebug:
-    gcAssert(cell notin gch.marked, "Cell still alive!")
-  if cell.typ.finalizer != nil:
-    # the finalizer could invoke something that
-    # allocates memory; this could trigger a garbage
-    # collection. Since we are already collecting we
-    # prevend recursive entering here by a lock.
-    # XXX: we should set the cell's children to nil!
-    inc(gch.recGcLock)
-    (cast[Finalizer](cell.typ.finalizer))(cellToUsr(cell))
-    dec(gch.recGcLock)
+proc incRef(c: PCell) {.inline.} =
+  gcAssert(isAllocatedPtr(gch.region, c), "incRef: interiorPtr")
+  c.refcount = c.refcount +% rcIncrement
+  # and not colorMask
+  #writeCell("incRef", c)
 
-template beforeDealloc(gch: var GcHeap; c: PCell; msg: typed) =
-  when false:
-    for i in 0..gch.decStack.len-1:
-      if gch.decStack.d[i] == c:
-        sysAssert(false, msg)
+proc nimGCref(p: pointer) {.compilerProc.} =
+  # we keep it from being collected by pretending it's not even allocated:
+  add(gch.additionalRoots, usrToCell(p))
+  incRef(usrToCell(p))
 
 proc rtlAddCycleRoot(c: PCell) {.rtl, inl.} =
   # we MUST access gch as a global here, because this crosses DLL boundaries!
@@ -227,17 +219,6 @@ proc decRef(c: PCell) {.inline.} =
   if --c.refcount:
     rtlAddZCT(c)
 
-proc incRef(c: PCell) {.inline.} =
-  gcAssert(isAllocatedPtr(gch.region, c), "incRef: interiorPtr")
-  c.refcount = c.refcount +% rcIncrement
-  # and not colorMask
-  #writeCell("incRef", c)
-
-proc nimGCref(p: pointer) {.compilerProc.} =
-  # we keep it from being collected by pretending it's not even allocated:
-  add(gch.additionalRoots, usrToCell(p))
-  incRef(usrToCell(p))
-
 proc nimGCunref(p: pointer) {.compilerProc.} =
   let cell = usrToCell(p)
   var L = gch.additionalRoots.len-1
@@ -250,6 +231,29 @@ proc nimGCunref(p: pointer) {.compilerProc.} =
       break
     dec(i)
   decRef(usrToCell(p))
+
+include gc_common
+
+proc prepareDealloc(cell: PCell) =
+  when useMarkForDebug:
+    gcAssert(cell notin gch.marked, "Cell still alive!")
+  let t = cell.typ
+  if t.finalizer != nil:
+    # the finalizer could invoke something that
+    # allocates memory; this could trigger a garbage
+    # collection. Since we are already collecting we
+    # prevend recursive entering here by a lock.
+    # XXX: we should set the cell's children to nil!
+    inc(gch.recGcLock)
+    (cast[Finalizer](t.finalizer))(cellToUsr(cell))
+    dec(gch.recGcLock)
+  decTypeSize(cell, t)
+
+template beforeDealloc(gch: var GcHeap; c: PCell; msg: typed) =
+  when false:
+    for i in 0..gch.decStack.len-1:
+      if gch.decStack.d[i] == c:
+        sysAssert(false, msg)
 
 proc GC_addCycleRoot*[T](p: ref T) {.inline.} =
   ## adds 'p' to the cycle candidate set for the cycle collector. It is
@@ -462,6 +466,7 @@ template setFrameInfo(c: PCell) =
 
 proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   # generates a new object and sets its reference counter to 0
+  incTypeSize typ, size
   sysAssert(allocInv(gch.region), "rawNewObj begin")
   acquire(gch)
   gcAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
@@ -509,6 +514,7 @@ proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
 
 proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   # generates a new object and sets its reference counter to 1
+  incTypeSize typ, size
   sysAssert(allocInv(gch.region), "newObjRC1 begin")
   acquire(gch)
   gcAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
@@ -553,6 +559,7 @@ proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
   var res = cast[PCell](rawAlloc(gch.region, newsize + sizeof(Cell)))
   var elemSize = 1
   if ol.typ.kind != tyString: elemSize = ol.typ.base.size
+  incTypeSize ol.typ, newsize
 
   var oldsize = cast[PGenericSeq](old).len*elemSize + GenericSeqSize
   copyMem(res, ol, oldsize + sizeof(Cell))
@@ -739,8 +746,6 @@ proc gcMark(gch: var GcHeap, p: pointer) {.inline.} =
         cell.refcount = cell.refcount +% rcIncrement
         add(gch.decStack, cell)
   sysAssert(allocInv(gch.region), "gcMark end")
-
-include gc_common
 
 proc markStackAndRegisters(gch: var GcHeap) {.noinline, cdecl.} =
   forEachStackSlot(gch, gcMark)

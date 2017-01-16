@@ -88,6 +88,12 @@ type
     deepcopy: proc (p: pointer): pointer {.nimcall, benign.}
     when defined(nimTypeNames):
       name: cstring
+      nextType: ptr TNimType
+      instances: int # count the number of instances
+      sizes: int # sizes of all instances in bytes
   PNimType = ptr TNimType
+
+when defined(nimTypeNames):
+  var nimTypeRoot {.codegenType.}: PNimType
 
 # node.len may be the ``first`` element of a set

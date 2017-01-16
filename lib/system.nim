@@ -2666,10 +2666,10 @@ when not defined(JS): #and not defined(nimscript):
                                 ## created.
       fmReadWrite,              ## Open the file for read and write access.
                                 ## If the file does not exist, it will be
-                                ## created.
+                                ## created. Existing files will be cleared!
       fmReadWriteExisting,      ## Open the file for read and write access.
                                 ## If the file does not exist, it will not be
-                                ## created.
+                                ## created. The existing file will not be cleared.
       fmAppend                  ## Open the file for writing only; append data
                                 ## at the end.
 
