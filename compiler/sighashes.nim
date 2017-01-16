@@ -224,7 +224,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
         c &= ','
     else:
       for i in countup(0, sonsLen(t) - 1): c.hashType t.sons[i], flags
-  of tyRange:
+  of tyRange, tyStatic:
     #if CoType notin flags:
     c.hashTree(t.n)
     c.hashType(t.sons[0], flags)
