@@ -556,6 +556,8 @@ proc select*(readfds: var seq[SocketHandle], timeout = 500): int {.deprecated.} 
   ##
   ## ``timeout`` is specified in milliseconds and ``-1`` can be specified for
   ## an unlimited time.
+  ## **Warning:** This is deprecated since version 0.16.2.
+  ## Use the selectRead procedure instead.
   var tv {.noInit.}: Timeval = timeValFromMilliseconds(timeout)
 
   var rd: TFdSet
