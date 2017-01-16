@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Implementation of singly and doubly linked lists.
+## Implementation of singly and doubly linked lists and rings.
 ##
 ## Because it makes no sense to do so, the ``next`` and ``prev``
 ## pointers are not hidden from you and can
@@ -15,22 +15,139 @@
 ##
 ## * ``DoublyLinkedList`` and ``DoublyLinkedRing`` are ``O(1)`` to `remove` elements
 ## * ``SinglyLinkedList`` and ``SingleLinkedRing`` are ``O(n)`` to `remove` elements `(with lower memory usage)`
+##
+## Initializing a list/ring
+## ====================
+##
+## .. code-block:: Nim
+##   import lists, random
+##   var
+##     emptyIntDlr = initDoublyLinkedRing[int]()
+##     emptyStrSll = initSinglyLinkedList[string]()
+##     sll = @[1, 2, 3, 4].toSinglyLinkedList()
+##     dll = @[1, 2, 3, 4].toDoublyLinkedList()
+##     slr = @[1, 2, 3, 4].toSinglyLinkedRing()
+##     dlr = @[1, 2, 3, 4].toDoublyLinkedRing()
+##     randDll = newDoublyLinkedListWith(10, random(100))  # dll of 10 random numbers
+##   echo randDll
+##
+## Converting a list/ring
+## ======================
+##
+## .. code-block:: nim
+##   import lists
+##   var
+##     sll = @[1, 2, 3, 4].toSinglyLinkedList()
+##     sqSll = sll.toSeq
+##     dll = @[1, 2, 3, 4].toDoublyLinkedList()
+##     sqDll = dll.toSeq
+##     slr = @[1, 2, 3, 4].toSinglyLinkedRing()
+##     sqSlr = slr.toSeq
+##     dlr = @[1, 2, 3, 4].toDoublyLinkedRing()
+##     sqDlr = dlr.toSeq
+##
+## Transforming a list/ring
+## ========================
+##
+## .. code-block:: nim
+##   import lists
+##   var
+##     sll1 = @[1, 2, 3, 4].toSinglyLinkedList()
+##     sll2 = map(sll1, proc(x: int): string = $x)  # MAP
+##     dll1 = @[1, 2, 3, 4].toDoublyLinkedList()
+##     dll2 = map(dll1, proc(x: int): string = $x)  # MAP
+##     slr1 = @[1, 2, 3, 4].toSinglyLinkedRing()
+##     slr2 = map(slr1, proc(x: int): string = $x)  # MAP
+##     dlr1 = @[1, 2, 3, 4].toDoublyLinkedRing()
+##     dlr2 = map(dlr1, proc(x: int): string = $x)  # MAP
+##
+##   assert sll2 == @["1", "2", "3", "4"].toSinglyLinkedList()
+##   assert dll2 == @["1", "2", "3", "4"].toDoublyLinkedList()
+##   assert slr2 == @["1", "2", "3", "4"].toSinglyLinkedRing()
+##   assert dlr2 == @["1", "2", "3", "4"].toDoublyLinkedRing()
+##
+##   var sll = @["1", "2", "3", "4"].toSinglyLinkedList()
+##   apply(sll, proc(x: var string) = x &= "42")  # APPLY #1
+##   echo sll   # --> ["142", "242", "342", "442"]
+##
+##   var dll = @["1", "2", "3", "4"].toSinglyLinkedList()
+##   apply(dll, proc(x: var string) = x &= "42")  # APPLY #1
+##   echo dll   # --> ["142", "242", "342", "442"]
+##
+##   var slr = @["1", "2", "3", "4"].toSinglyLinkedList()
+##   apply(slr, proc(x: var string) = x &= "42")  # APPLY #1
+##   echo slr   # --> ["142", "242", "342", "442"]
+##
+##   var dlr = @["1", "2", "3", "4"].toSinglyLinkedList()
+##   apply(dlr, proc(x: var string) = x &= "42")  # APPLY #1
+##   echo dlr   # --> ["142", "242", "342", "442"]
+##
+##   sll = @["1", "2", "3", "4"].toSinglyLinkedList()
+##   apply(sll, proc(x: var string) = x &= "42")  # APPLY #2
+##   echo sll   # --> ["142", "242", "342", "442"]
+##
+##   dll = @["1", "2", "3", "4"].toSinglyLinkedList()
+##   apply(dll, proc(x: var string) = x &= "42")  # APPLY #2
+##   echo dll   # --> ["142", "242", "342", "442"]
+##
+##   slr = @["1", "2", "3", "4"].toSinglyLinkedList()
+##   apply(slr, proc(x: var string) = x &= "42")  # APPLY #2
+##   echo slr   # --> ["142", "242", "342", "442"]
+##
+##   dlr = @["1", "2", "3", "4"].toSinglyLinkedList()
+##   apply(dlr, proc(x: var string) = x &= "42")  # APPLY #2
+##   echo dlr   # --> ["142", "242", "342", "442"]
+##
+## **Using future module**
+##
+## .. code-block:: nim
+##   import lists, future
+##   var
+##     sll1 = @[1, 2, 3, 4].toSinglyLinkedList()
+##     sll2 = map(sll1, (x) => $x)  # MAP
+##     dll1 = @[1, 2, 3, 4].toDoublyLinkedList()
+##     dll2 = map(dll1, (x) => $x)  # MAP
+##     slr1 = @[1, 2, 3, 4].toSinglyLinkedRing()
+##     slr2 = map(slr1, (x) => $x)  # MAP
+##     dlr1 = @[1, 2, 3, 4].toDoublyLinkedRing()
+##     dlr2 = map(dlr1, (x) => $x)  # MAP
+##
+##   assert sll2 == @["1", "2", "3", "4"].toSinglyLinkedList()
+##   assert dll2 == @["1", "2", "3", "4"].toDoublyLinkedList()
+##   assert slr2 == @["1", "2", "3", "4"].toSinglyLinkedRing()
+##   assert dlr2 == @["1", "2", "3", "4"].toDoublyLinkedRing()
+##
+##   var sll = @["1", "2", "3", "4"].toSinglyLinkedList()
+##   apply(sll, (x) => $x & "42")  # APPLY #2
+##   echo sll   # --> ["142", "242", "342", "442"]
+##
+##   var dll = @["1", "2", "3", "4"].toSinglyLinkedList()
+##   apply(dll, (x) => $x & "42")  # APPLY #2
+##   echo dll   # --> ["142", "242", "342", "442"]
+##
+##   var slr = @["1", "2", "3", "4"].toSinglyLinkedList()
+##   apply(slr, (x) => $x & "42")  # APPLY #2
+##   echo slr   # --> ["142", "242", "342", "442"]
+##
+##   var dlr = @["1", "2", "3", "4"].toSinglyLinkedList()
+##   apply(dlr, (x) => $x & "42")  # APPLY #2
+##   echo dlr   # --> ["142", "242", "342", "442"]
 
 when not defined(nimhygiene):
   {.pragma: dirty.}
 
 type
-  DoublyLinkedNodeObj*[T] = object ## a ``node`` of a doubly linked list
-                                   ## consists of
-    next*, prev*: ref DoublyLinkedNodeObj[T]
-    value*: T
-  DoublyLinkedNode*[T] = ref DoublyLinkedNodeObj[T]
-
   SinglyLinkedNodeObj*[T] = object ## a ``node`` of a singly linked list
                                    ## consists of
     next*: ref SinglyLinkedNodeObj[T]
     value*: T
   SinglyLinkedNode*[T] = ref SinglyLinkedNodeObj[T]
+
+  DoublyLinkedNodeObj*[T] = object ## a ``node`` of a doubly linked list
+                                   ## consists of
+    next*, prev*: ref DoublyLinkedNodeObj[T]
+    value*: T
+  DoublyLinkedNode*[T] = ref DoublyLinkedNodeObj[T]
 
   SinglyLinkedList*[T] = object ## a singly linked list
     head*, tail*: SinglyLinkedNode[T]
@@ -56,33 +173,33 @@ type
 proc initSinglyLinkedList*[T](): SinglyLinkedList[T] =
   ## Creates a new singly linked list that is empty.
   ##
-  ##  For initialisation with multiple values, use
-  ##  `toSinglyLinkedList() <#toSinglyLinkedList>`_
-  ##  or `newSinglyLinkedListWith() <#newSinglyLinkedListWith>`_
+  ## For initialisation with multiple values, use
+  ## `toSinglyLinkedList() <#toSinglyLinkedList>`_
+  ## or `newSinglyLinkedListWith() <#newSinglyLinkedListWith>`_
   discard
 
 proc initDoublyLinkedList*[T](): DoublyLinkedList[T] =
   ## creates a new doubly linked list that is empty.
   ##
-  ##  For initialisation with multiple values, use
-  ##  `toDoublyLinkedList() <#toDoublyLinkedList>`_
-  ##  or `newDoublyLinkedListWith() <#newDoublyLinkedListWith>`_
+  ## For initialisation with multiple values, use
+  ## `toDoublyLinkedList() <#toDoublyLinkedList>`_
+  ## or `newDoublyLinkedListWith() <#newDoublyLinkedListWith>`_
   discard
 
 proc initSinglyLinkedRing*[T](): SinglyLinkedRing[T] =
   ## creates a new singly linked ring that is empty.
   ##
-  ##  For initialisation with multiple values, use
-  ##  `toSinglyLinkedRing() <#toSinglyLinkedRing>`_
-  ##  or `newSinglyLinkedRingWith() <#newSinglyLinkedRingWith>`_
+  ## For initialisation with multiple values, use
+  ## `toSinglyLinkedRing() <#toSinglyLinkedRing>`_
+  ## or `newSinglyLinkedRingWith() <#newSinglyLinkedRingWith>`_
   discard
 
 proc initDoublyLinkedRing*[T](): DoublyLinkedRing[T] =
   ## creates a new doubly linked ring that is empty.
   ##
-  ##  For initialisation with multiple values, use
-  ##  `toDoublyLinkedRing() <#toDoublyLinkedRing>`_
-  ##  or `newDoublyLinkedRingWith() <#newDoublyLinkedRingWith>`_
+  ## For initialisation with multiple values, use
+  ## `toDoublyLinkedRing() <#toDoublyLinkedRing>`_
+  ## or `newDoublyLinkedRingWith() <#newDoublyLinkedRingWith>`_
   discard
 
 proc newDoublyLinkedNode*[T](value: T): DoublyLinkedNode[T] =
@@ -298,13 +415,6 @@ proc contains*[T](L: SinglyLinkedList[T] | DoublyLinkedList[T] |
   ## Returns ``false`` if the value does not exist, ``true`` otherwise.
   result = find(L, value) != nil
 
-#proc contains*[T](L: SinglyLinkedRing[T] | DoublyLinkedRing[T],
-#                 value: T): bool {.inline.} =
-#  ## Searches in the ring ``L`` for ``value``.
-#  ##
-#  ## Returns ``false`` if ``value`` does not exist, ``true`` otherwise.
-#  result = find(L, value) != nil
-
 #--
 #-- SLL; prepend/append/remove/removeAll
 #--
@@ -321,7 +431,7 @@ proc prepend*[T](L: var SinglyLinkedList[T], value: T) {.inline.} =
 
 proc append*[T](L: var SinglyLinkedList[T],
                  n: SinglyLinkedNode[T]) {.inline.} =
-  ## Appends a node `n` to ``L``. Efficiency: `O(1)`.
+  ## Appends a node `n` to ``L``. Efficiency: ``O(1)``.
   n.next = nil
   if L.tail != nil:
     assert(L.tail.next == nil)
@@ -330,11 +440,11 @@ proc append*[T](L: var SinglyLinkedList[T],
   if L.head == nil: L.head = n
 
 proc append*[T](L: var SinglyLinkedList[T], value: T) {.inline.} =
-  ## Prepends a node with a ``value`` to ``L``. Efficiency: `O(1)`.
+  ## Prepends a node with a ``value`` to ``L``. Efficiency: ``O(1)``.
   append(L, newSinglyLinkedNode(value))
 
 proc remove*[T](L: var SinglyLinkedList[T], n: SinglyLinkedNode[T]) =
-  ## Removes ``n`` from ``L``. Efficiency: `O(n)`.
+  ## Removes ``n`` from ``L``. Efficiency: ``O(n)``.
   if L.head == n:
     L.head = n.next
   else:
@@ -346,7 +456,7 @@ proc remove*[T](L: var SinglyLinkedList[T], n: SinglyLinkedNode[T]) =
       p = p.next
 
 proc remove*[T](L: var SinglyLinkedList[T], value: T) =
-  ## Removes the first node from ``L`` with a matching ``value``. Efficiency: `O(n)`.
+  ## Removes the first node from ``L`` with a matching ``value``. Efficiency: ``O(n)``.
   if L.head.value == value:
     L.head = L.head.next
   else:
@@ -358,7 +468,7 @@ proc remove*[T](L: var SinglyLinkedList[T], value: T) =
       p = p.next
 
 proc removeAll*[T](L: var SinglyLinkedList[T], value: T) =
-  ## Removes all nodes  from ``L`` with a matching ``value``. Efficiency: `O(n)`.
+  ## Removes all nodes  from ``L`` with a matching ``value``. Efficiency: ``O(n)``.
   if L.head.value == value:
     L.head = L.head.next
     L.removeAll(value)
@@ -410,11 +520,11 @@ proc remove*[T](L: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
   if n.prev != nil: n.prev.next = n.next
 
 proc remove*[T](L: var DoublyLinkedList[T], value: T) =
-  ## Removes the first node  from ``L`` with a matching ``value``. Efficiency: `O(n)`.
+  ## Removes the first node  from ``L`` with a matching ``value``. Efficiency: ``O(n)``.
   L.remove(L.find(value))
 
 proc removeAll*[T](L: var DoublyLinkedList[T], value: T) =
-  ## Removes all nodes  from ``L`` with a matching ``value``. Efficiency: `O(n)`.
+  ## Removes all nodes  from ``L`` with a matching ``value``. Efficiency: ``O(n)``.
   for n in L.nodes:
     if n.value == value: L.remove(n)
 
@@ -454,7 +564,7 @@ proc prepend*[T](L: var SinglyLinkedRing[T], value: T) =
   prepend(L, newSinglyLinkedNode(value))
 
 proc remove*[T](L: var SinglyLinkedRing[T], n: SinglyLinkedNode[T]) =
-  ## Removes node ``n`` from ``L``. Efficiency: `O(n)`.
+  ## Removes node ``n`` from ``L``. Efficiency: ``O(n)``.
   if L.head == n:
     L.head = n.next
     if L.tail == n: L.tail = L.head
@@ -467,7 +577,7 @@ proc remove*[T](L: var SinglyLinkedRing[T], n: SinglyLinkedNode[T]) =
         return
 
 proc remove*[T](L: var SinglyLinkedRing[T], value: T) =
-  ## Removes the first node from ``L`` with a matching ``value``. Efficiency: `O(n)`.
+  ## Removes the first node from ``L`` with a matching ``value``. Efficiency: ``O(n)``.
   if L.head.value == value:
     if L.tail == L.head: L.tail = L.head.next
     L.head = L.head.next
@@ -480,7 +590,7 @@ proc remove*[T](L: var SinglyLinkedRing[T], value: T) =
         return
 
 proc removeAll*[T](L: var SinglyLinkedRing[T], value: T) =
-  ## Removes all nodes from ``L`` with a matching ``value``. Efficiency: `O(n)`.
+  ## Removes all nodes from ``L`` with a matching ``value``. Efficiency: ``O(n)``.
   if L.head.value == value:
     if L.tail == L.head: L.tail = L.head.next
     L.head = L.head.next
@@ -531,7 +641,7 @@ proc prepend*[T](L: var DoublyLinkedRing[T], value: T) =
   prepend(L, newDoublyLinkedNode(value))
 
 proc remove*[T](L: var DoublyLinkedRing[T], n: DoublyLinkedNode[T]) =
-  ## Removes a node ``n`` from ``L``. Efficiency: `O(1)`.
+  ## Removes a node ``n`` from ``L``. Efficiency: ``O(1)``.
   n.next.prev = n.prev
   n.prev.next = n.next
   if n == L.head:
@@ -543,7 +653,7 @@ proc remove*[T](L: var DoublyLinkedRing[T], n: DoublyLinkedNode[T]) =
       L.head = L.head.next
 
 proc remove*[T](L: var DoublyLinkedRing[T], value: T) =
-  ## Removes the first node  from ``L`` with a matching ``value``. Efficiency: `O(1)`.
+  ## Removes the first node  from ``L`` with a matching ``value``. Efficiency: ``O(1)``.
   L.remove(L.find(value))
 
 proc removeAll*[T](L: var DoublyLinkedRing[T], value: T) =
@@ -562,7 +672,7 @@ proc removeAll*[T](L: var DoublyLinkedRing[T], value: T) =
     if n == L.head: break
 
 proc `==`*[T](a, b: SinglyLinkedList[T]): bool {.inline.} =
-  ## Return ``true`` if the elements and their order match.  Efficiency: `O(n)`
+  ## Return ``true`` if the elements and their order match.  Efficiency: ``O(n)``
   var
     p: SinglyLinkedNode[T] = b.head
     i = 0
@@ -574,7 +684,7 @@ proc `==`*[T](a, b: SinglyLinkedList[T]): bool {.inline.} =
   if p == nil: result = true
 
 proc `==`*[T](a, b: SinglyLinkedRing[T]): bool {.inline.} =
-  ## Return ``true`` if the elements and their order match.  Efficiency: `O(n)`
+  ## Return ``true`` if the elements and their order match.  Efficiency: ``O(n)``
   var
     p: SinglyLinkedNode[T] = b.head
     i = 0
@@ -586,7 +696,7 @@ proc `==`*[T](a, b: SinglyLinkedRing[T]): bool {.inline.} =
   if p == b.tail.next: result = true
 
 proc `==`*[T](a, b: DoublyLinkedList[T]): bool {.inline.} =
-  ## Return ``true`` if the elements and their order match.  Efficiency: `O(n)`
+  ## Return ``true`` if the elements and their order match.  Efficiency: ``O(n)``
   var
     p: DoublyLinkedNode[T] = b.head
     i = 0
@@ -598,7 +708,7 @@ proc `==`*[T](a, b: DoublyLinkedList[T]): bool {.inline.} =
   if p == nil: result = true
 
 proc `==`*[T](a, b: DoublyLinkedRing[T]): bool {.inline.} =
-  ## Return ``true`` if the elements and their order match.  Efficiency: `O(n)`
+  ## Return ``true`` if the elements and their order match.  Efficiency: ``O(n)``
   var
     p: DoublyLinkedNode[T] = b.head
     i = 0
@@ -611,7 +721,7 @@ proc `==`*[T](a, b: DoublyLinkedRing[T]): bool {.inline.} =
 
 proc toSeq*[T](L: SinglyLinkedList[T] | DoublyLinkedList[T] |
               SinglyLinkedRing[T] | DoublyLinkedRing[T] ): seq[T] =
-  ## Return a sequence containing a copy of the elements of ``L``.  Efficiency: `O(n)`.
+  ## Return a sequence containing a copy of the elements of ``L``.  Efficiency: ``O(n)``.
   result = @[]
   for v in L.items:
     result.add(v)
@@ -621,33 +731,21 @@ template toListImpl(s, res: untyped) =
 
 proc toSinglyLinkedList*[T](s: seq[T]): SinglyLinkedList[T] =
   ## Return a SinglyLinkedList containing a copy of the elements from ``s``
-  ##
-  ## .. code-block:: nim
-  ##   var sll = @[1, 2, 3, 4].toSinglyLinkedList()
   result = initSinglyLinkedList[T]()
   toListImpl(s, result)
 
 proc toDoublyLinkedList*[T](s: openArray[T]): DoublyLinkedList[T] =
   ## Return a DoublyLinkedList containing a copy of the elements from ``s``
-  ##
-  ## .. code-block:: nim
-  ##   var dll = @[1, 2, 3, 4].toDoublyLinkedList()
   result = initDoublyLinkedList[T]()
   toListImpl(s, result)
 
 proc toSinglyLinkedRing*[T](s: openArray[T]): SinglyLinkedRing[T] =
   ## Return a SinglyLinkedRing containing a copy of the elements from ``s``
-  ##
-  ## .. code-block:: nim
-  ##   var slr = @[1, 2, 3, 4].toSinglyLinkedRing()
   result = initSinglyLinkedRing[T]()
   toListImpl(s, result)
 
 proc toDoublyLinkedRing*[T](s: openArray[T]): DoublyLinkedRing[T] =
   ## Return a DoublyLinkedRing containing a copy of the elements from ``s``
-  ##
-  ## .. code-block:: nim
-  ##   var dlr = @[1, 2, 3, 4].toDoublyLinkedRing()
   result = initDoublyLinkedRing[T]()
   toListImpl(s, result)
 
@@ -657,14 +755,6 @@ proc map*[T, S](lst: SinglyLinkedList[T], op: proc (x: T): S {.closure.}): Singl
   ##
   ## Since the input is not modified, you can use this version of ``map`` to
   ## transform the type of the elements in the input sequence.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   let
-  ##     sll1 = @[1, 2, 3, 4].toSinglyLinkedList()
-  ##     sll2 = map(sll1, proc(x: int): string = $x)
-  ##   assert sll2 == @["1", "2", "3", "4"].toSinglyLinkedList()
   result = initSinglyLinkedList[S]()
   for x in lst.items:
     result.append(op(x))
@@ -675,14 +765,6 @@ proc map*[T, S](lst: DoublyLinkedList[T], op: proc (x: T): S {.closure.}): Doubl
   ##
   ## Since the input is not modified, you can use this version of ``map`` to
   ## transform the type of the elements in the input sequence.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   let
-  ##     dll1 = @[1, 2, 3, 4].toDoublyLinkedList()
-  ##     dll2 = map(dll1, proc(x: int): string = $x)
-  ##   assert dll2 == @["1", "2", "3", "4"].toDoublyLinkedList()
   result = initDoublyLinkedList[S]()
   for x in lst.items:
     result.append(op(x))
@@ -693,14 +775,6 @@ proc map*[T, S](lst: SinglyLinkedRing[T], op: proc (x: T): S {.closure.}): Singl
   ##
   ## Since the input is not modified, you can use this version of ``map`` to
   ## transform the type of the elements in the input sequence.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   let
-  ##     slr1 = @[1, 2, 3, 4].toSinglyLinkedRing()
-  ##     slr2 = map(slr1, proc(x: int): string = $x)
-  ##   assert slr2 == @["1", "2", "3", "4"].toSinglyLinkedRing()
   result = initSinglyLinkedRing[S]()
   for x in lst.items:
     result.append(op(x))
@@ -711,14 +785,6 @@ proc map*[T, S](lst: DoublyLinkedRing[T], op: proc (x: T): S {.closure.}): Doubl
   ##
   ## Since the input is not modified, you can use this version of ``map`` to
   ## transform the type of the elements in the input sequence.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   let
-  ##     dlr1 = @[1, 2, 3, 4].toDoublyLinkedRing()
-  ##     dlr2 = map(dlr1, proc(x: int): string = $x)
-  ##   assert dlr2 == @["1", "2", "3", "4"].toDoublyLinkedRing()
   result = initDoublyLinkedRing[S]()
   for x in lst.items():
     result.append(op(x))
@@ -730,14 +796,6 @@ proc apply*[T](lst: var SinglyLinkedList[T], op: proc (x: var T) {.closure.})
   ## Note that this requires your input and output types to
   ## be the same, since they are modified in-place.
   ## The parameter function takes a ``var T`` type parameter.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   var sll = @["1", "2", "3", "4"].toSinglyLinkedList()
-  ##   apply(sll, proc(x: var string) = x &= "42")
-  ##   # sll --> ["142", "242", "342", "442"]
-  ##
   for v in lst.mitems: op(v)
 
 proc apply*[T](lst: var DoublyLinkedList[T], op: proc (x: var T) {.closure.})
@@ -747,14 +805,6 @@ proc apply*[T](lst: var DoublyLinkedList[T], op: proc (x: var T) {.closure.})
   ## Note that this requires your input and output types to
   ## be the same, since they are modified in-place.
   ## The parameter function takes a ``var T`` type parameter.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   var dll = @["1", "2", "3", "4"].toSinglyLinkedList()
-  ##   apply(dll, proc(x: var string) = x &= "42")
-  ##   # dll --> ["142", "242", "342", "442"]
-  ##
   for v in lst.mitems: op(v)
 
 proc apply*[T](lst: var SinglyLinkedRing[T], op: proc (x: var T) {.closure.})
@@ -764,14 +814,6 @@ proc apply*[T](lst: var SinglyLinkedRing[T], op: proc (x: var T) {.closure.})
   ## Note that this requires your input and output types to
   ## be the same, since they are modified in-place.
   ## The parameter function takes a ``var T`` type parameter.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   var slr = @["1", "2", "3", "4"].toSinglyLinkedList()
-  ##   apply(slr, proc(x: var string) = x &= "42")
-  ##   # slr --> ["142", "242", "342", "442"]
-  ##
   for v in lst.mitems: op(v)
 
 proc apply*[T](lst: var DoublyLinkedRing[T], op: proc (x: var T) {.closure.})
@@ -781,14 +823,6 @@ proc apply*[T](lst: var DoublyLinkedRing[T], op: proc (x: var T) {.closure.})
   ## Note that this requires your input and output types to
   ## be the same, since they are modified in-place.
   ## The parameter function takes a ``var T`` type parameter.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   var dlr = @["1", "2", "3", "4"].toSinglyLinkedList()
-  ##   apply(dlr, proc(x: var string) = x &= "42")
-  ##   # dlr --> ["142", "242", "342", "442"]
-  ##
   for v in lst.mitems: op(v)
 
 proc apply*[T](lst: var SinglyLinkedList[T], op: proc (x: T): T {.closure.})
@@ -798,14 +832,6 @@ proc apply*[T](lst: var SinglyLinkedList[T], op: proc (x: T): T {.closure.})
   ## Note that this requires your input and output types to
   ## be the same, since they are modified in-place.
   ## The parameter function takes a ``T`` type parameter.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   var sll = @["1", "2", "3", "4"].toSinglyLinkedList()
-  ##   apply(sll, proc(x: var string) = x &= "42")
-  ##   # sll --> ["142", "242", "342", "442"]
-  ##
   for v in lst.mitems: v = op(v)
 
 proc apply*[T](lst: var DoublyLinkedList[T], op: proc (x: T): T {.closure.})
@@ -815,14 +841,6 @@ proc apply*[T](lst: var DoublyLinkedList[T], op: proc (x: T): T {.closure.})
   ## Note that this requires your input and output types to
   ## be the same, since they are modified in-place.
   ## The parameter function takes a ``T`` type parameter.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   var dll = @["1", "2", "3", "4"].toSinglyLinkedList()
-  ##   apply(dll, proc(x: var string) = x &= "42")
-  ##   # dll --> ["142", "242", "342", "442"]
-  ##
   for v in lst.mitems: v = op(v)
 
 proc apply*[T](lst: var SinglyLinkedRing[T], op: proc (x: T): T {.closure.})
@@ -832,14 +850,6 @@ proc apply*[T](lst: var SinglyLinkedRing[T], op: proc (x: T): T {.closure.})
   ## Note that this requires your input and output types to
   ## be the same, since they are modified in-place.
   ## The parameter function takes a ``T`` type parameter.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   var slr = @["1", "2", "3", "4"].toSinglyLinkedList()
-  ##   apply(slr, proc(x: var string) = x &= "42")
-  ##   # slr --> ["142", "242", "342", "442"]
-  ##
   for v in lst.mitems: v = op(v)
 
 proc apply*[T](lst: var DoublyLinkedRing[T], op: proc (x: T): T {.closure.})
@@ -849,30 +859,10 @@ proc apply*[T](lst: var DoublyLinkedRing[T], op: proc (x: T): T {.closure.})
   ## Note that this requires your input and output types to
   ## be the same, since they are modified in-place.
   ## The parameter function takes a ``T`` type parameter.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   var dlr = @["1", "2", "3", "4"].toSinglyLinkedList()
-  ##   apply(dlr, proc(x: var string) = x &= "42")
-  ##   # dlr --> ["142", "242", "342", "442"]
-  ##
   for v in lst.mitems: v = op(v)
 
 template newSinglyLinkedListWith*(len: int, init: untyped): untyped =
   ## Creates a new SinglyLinkedList, calling ``init`` to initialize each value.
-  ##
-  ## Example:
-  ##
-  ## .. code-block::
-  ##   var sllSeq = newSinglyLinkedListWith(20, newSeq[bool](10))
-  ##   for s in sllSeq.mitems:
-  ##     for i in 0..<s.len:
-  ##       s[i] = true
-  ##
-  ##   import random
-  ##   var sllRand = newSinglyLinkedListWith(20, random(10))
-  ##   echo sllRand
   var result = initSinglyLinkedList[type(init)]()
   for i in 0 .. <len:
     result.append(init)
@@ -880,18 +870,6 @@ template newSinglyLinkedListWith*(len: int, init: untyped): untyped =
 
 template newDoublyLinkedListWith*(len: int, init: untyped): untyped =
   ## Creates a new DoublyLinkedList, calling ``init`` to initialize each value.
-  ##
-  ## Example:
-  ##
-  ## .. code-block::
-  ##   var dllSeq = newDoublyLinkedListWith(20, newSeq[bool](10))
-  ##   for s in dllSeq.mitems:
-  ##     for i in 0..<s.len:
-  ##       s[i] = true
-  ##
-  ##   import random
-  ##   var dllRand = newDoublyLinkedListWith(20, random(10))
-  ##   echo dllRand
   var result = initDoublyLinkedList[type(init)]()
   for i in 0 .. <len:
     result.append(init)
@@ -899,18 +877,6 @@ template newDoublyLinkedListWith*(len: int, init: untyped): untyped =
 
 template newSinglyLinkedRingWith*(len: int, init: untyped): untyped =
   ## Creates a new SinglyLinkedRing, calling ``init`` to initialize each value.
-  ##
-  ## Example:
-  ##
-  ## .. code-block::
-  ##   var slrSeq = newSinglyLinkedRingWith(20, newSeq[bool](10))
-  ##   for s in slrSeq.mitems:
-  ##     for i in 0..<s.len:
-  ##       s[i] = ture
-  ##
-  ##   import random
-  ##   var slrRand = newSinglyLinkedRingWith(20, random(10))
-  ##   echo slrRand
   var result = initSinglyLinkedRing[type(init)]()
   for i in 0 .. <len:
     result.append(init)
@@ -918,18 +884,6 @@ template newSinglyLinkedRingWith*(len: int, init: untyped): untyped =
 
 template newDoublyLinkedRingWith*(len: int, init: untyped): untyped =
   ## Creates a new DoublyLinkedRing, calling ``init`` to initialize each value.
-  ##
-  ## Example:
-  ##
-  ## .. code-block::
-  ##   var dlrSeq = newDoublyLinkedRingWith(20, newSeq[bool](10))
-  ##   for s in dlrSeq.mitems:
-  ##     for i in 0..<s.len:
-  ##       s[i] = true
-  ##
-  ##   import random
-  ##   var dlrRand = newDoublyLinkedRingWith(20, random(10))
-  ##   echo dlrRand
   var result = initDoublyLinkedRing[type(init)]()
   for i in 0 .. <len:
     result.append(init)

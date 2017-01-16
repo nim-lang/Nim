@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Implementation of a `deque`:idx: (double-ended queue).
+## Implementation of a `deque`:idx: (``double-ended queue``).
 ## The underlying implementation uses a ``seq``.
 ##
 ## None of the procs that get an individual value from the deque can be used
@@ -20,11 +20,6 @@
 ## access, unless your program logic guarantees it indirectly.
 ##
 ## .. code-block:: Nim
-##   import random
-##   var
-##     aDeq = @[1,2,3,4,5].toDeque
-##     randDeq = newDequeWith(10, random(100))  # deque of 10 random numbers
-##
 ##   proc foo(a, b: Positive) =  # assume random positive values for `a` and `b`
 ##     var deq = initDeque[int]()  # initializes the object
 ##     for i in 1 ..< a: deq.addLast i  # populates the deque
@@ -42,6 +37,77 @@
 ##
 ## Note: For inter thread communication use
 ## a `Channel <channels.html>`_ instead.
+##
+## Initializing a Deque
+## ====================
+##
+## .. code-block:: Nim
+##   import deques, random
+##   var
+##     aDeq = @[1,2,3,4,5].toDeque
+##     randDeq = newDequeWith(10, random(100))  # deque of 10 random numbers
+##     emptyDeq = initDeque(100) # capacity is powerOfTwo = 128
+##
+## Converting a Deque
+## ==================
+##
+## .. code-block:: nim
+##   import deques
+##   var
+##     deq = @[1,2,3,4,5].toDeque
+##     sq = deq.toSeq
+##
+## Iterating a Deque
+## ====================
+##
+## .. code-block:: Nim
+##   import deques
+##   var deq = @[1,2,3,4,5].toDeque
+##
+##   for v in deq.items:  # ITEMS (immutable)
+##     echo v
+##
+##   for v in deq.mitems: # MITEMS (can modify)
+##     v += 2
+##   echo deq  # -> [3,4,5,6,7]
+##
+##   for i, v in deq.pairs: # PAIRS
+##     echo "Index: ", i, " value: ", v
+##
+##   for i, v in deq.mpairs: # MPAIRS
+##     if i == 2:
+##       v += 2
+##   echo deq  # -> [3,4,7,6,7]
+##
+##
+## Transforming a Deque
+## ====================
+##
+## .. code-block:: nim
+##   import deques
+##   var
+##     deq1 = @[1, 2, 3, 4].toDeque()
+##     deq2 = deq1.map(proc(x: int): string = $x) # MAP
+##   assert deq2 == @["1", "2", "3", "4"].toDeque()
+##
+##   deq2.apply(proc(x: var string) = x &= "42") # APPLY #1
+##   # deq2 --> ["142", "242", "342", "442"]
+##
+##   deq2 = @["1", "2", "3", "4"].toDeque
+##   deq2.apply(proc(x: string): string = x & "42") # APPLY #2
+##   # deq2 --> ["142", "242", "342", "442"]
+##
+## **Using the future module**
+##
+## .. code-block:: nim
+##   import deques, future
+##   var
+##     deq1 = @[1, 2, 3, 4].toDeque()
+##     deq2 = deq1.map((x) => $x) # MAP
+##   assert deq2 == @["1", "2", "3", "4"].toDeque()
+##
+##   deq2.apply((x) => x & "42") # APPLY #2
+##   # deq2 --> ["142", "242", "342", "442"]
 
 import math
 
@@ -101,13 +167,6 @@ proc `[]=`* [T] (deq: var Deque[T], i: Natural, val : T) {.inline.} =
 
 iterator items*[T](deq: Deque[T]): T =
   ## Yield every element of ``deq`` (immutable).
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   var deq = @[1,2,3,4,5].toDeque
-  ##   for v in deq.items:
-  ##     echo v
   var i = deq.head
   for c in 0 ..< deq.count:
     yield deq.data[i]
@@ -115,14 +174,6 @@ iterator items*[T](deq: Deque[T]): T =
 
 iterator mitems*[T](deq: var Deque[T]): var T =
   ## Yield every element of ``deq`` (can be modified).
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   var deq = @[1,2,3,4,5].toDeque
-  ##   for v in deq.mitems:
-  ##     v += 2
-  ##   # deq -> [3,4,5,6,7]
   var i = deq.head
   for c in 0 ..< deq.count:
     yield deq.data[i]
@@ -136,27 +187,11 @@ template pairImpl() {.dirty.} =
 
 iterator pairs*[T](deq: Deque[T]): tuple[key: int, val: T] =
   ## Yield every ``(position, value)`` of ``deq`` (immutable).
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   var deq = @[1,2,3,4,5].toDeque
-  ##   for i, v in deq.paris:
-  ##     echo "Index: ", i, " value: ", v
   pairImpl()
 
 iterator mpairs*[T](deq: var Deque[T]): tuple[key: int, val: var T] =
   ## Yield every ``(position, value)`` of ``deq``, where value
   ## can be modified.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   var deq = @[1,2,3,4,5].toDeque
-  ##   for i, v in deq.mpairs:
-  ##     if i == 2:
-  ##       v += 2
-  ##   # deq -> [1,2,5,4,5]
   pairImpl()
 
 proc contains*[T](deq: Deque[T], item: T): bool {.inline.} =
@@ -170,12 +205,6 @@ proc contains*[T](deq: Deque[T], item: T): bool {.inline.} =
   for e in deq:
     if e == item: return true
   return false
-
-iterator findAll*[T](deq: Deque[T], item: T): int =
-  ## Iterate over ``deq``, yielding the index of
-  ## each element that matches ``item``.
-  for i, v in pairs(deq):
-    if v == item: yield(i)
 
 proc expandIfNeeded[T](deq: var Deque[T]) =
   var cap = deq.mask + 1
@@ -251,29 +280,16 @@ proc `==`*[T](a, b: Deque[T]): bool {.inline.} =
   result = true
 
 
-proc toSeq*[T](deq: Deque[T]): seq[T] {.inline.} =
-  ## Return a the elements of ``deq`` as a sequence.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   var
-  ##     deq = @[1,2,3,4,5].toDeque
-  ##     sq = deq.toSeq
+proc toSeq*[T](deq: Deque[T]): seq[T] =
+  ## Return the elements of ``deq`` as a sequence.
   result = newSeq[T](deq.count)
   var i = deq.head
   for c in 0 ..< deq.count:
     result[c] = deq.data[i]
     i = (i + 1) and deq.mask
 
-proc toDeque*[T](s: seq[T]): Deque[T] {.inline.} =
-  ## Return the elements of sequence ``s`` as a ``Dequeu``.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   var
-  ##     deq = @[1,2,3,4,5].toDeque
+proc toDeque*[T](s: seq[T]): Deque[T] =
+  ## Return the elements of sequence ``s`` as a ``Deque``.
   let slen = s.len
   result = initDeque[T](slen)
   result.data.setLen(nextPowerOfTwo(slen))
@@ -284,13 +300,6 @@ proc toDeque*[T](s: seq[T]): Deque[T] {.inline.} =
 
 template newDequeWith*(len: int, init: untyped): untyped =
   ## Creates a new ``Deque``, calling ``init`` to initialize each value.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   import random
-  ##   var deq = newDequeWith(20, random(10))
-  ##   echo deq
   var result = initDeque[type(init)]()
   for i in 0 .. <len:
     result.addLast(init)
@@ -303,14 +312,6 @@ proc map*[T, S](deq: Deque[T], op: proc (x: T): S {.closure.}): Deque[S]
   ##
   ## Since the input is not modified, you can use this version of ``map`` to
   ## transform the type of the elements in the input sequence.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   let
-  ##     deq1 = @[1, 2, 3, 4].toDeque()
-  ##     deq2 = deq1.map(proc(x: int): string = $x)
-  ##   assert deq2 == @["1", "2", "3", "4"].toDeque()
   result = initDeque[S]()
   for x in deq.items:
     result.addLast(op(x))
@@ -323,14 +324,6 @@ proc apply*[T](deq: var Deque[T],
   ## Note that this requires your input and output types to
   ## be the same, since they are modified in-place.
   ## The parameter function takes a ``T`` type parameter.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   var deq = @["1", "2", "3", "4"].toDeque
-  ##   deq.apply(proc(x: var string) = x &= "42")
-  ##   # deq --> ["142", "242", "342", "442"]
-  ##
   for v in deq.mitems: op(v)
 
 proc apply*[T](deq: var Deque[T],
@@ -341,14 +334,6 @@ proc apply*[T](deq: var Deque[T],
   ## Note that this requires your input and output types to
   ## be the same, since they are modified in-place.
   ## The parameter function takes a ``T`` type parameter.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   var deq = @["1", "2", "3", "4"].toDeque
-  ##   deq.apply(proc(x: string): string = x & "42")
-  ##   # deq --> ["142", "242", "342", "442"]
-  ##
   for v in deq.mitems: v = op(v)
 
 when isMainModule:
@@ -487,8 +472,3 @@ when isMainModule:
   doAssert(d2 == @[2,2,2,2,2].toDeque)
   doAssert(deq == @[8,7,6,5,2,3].toDeque)
   doAssert(deq != @[8,0,6,5,2,3].toDeque)
-
-  var res: seq[int] = @[]
-  for v in (@[12,13,11,12,11].toDeque).findAll(11):
-    res.add(v)
-  doAssert(res == @[2,4])
