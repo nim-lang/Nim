@@ -936,7 +936,7 @@ proc genFieldAccess(p: PProc, n: PNode, r: var TCompRes) =
     var f = n.sons[1].sym
     if f.loc.r == nil: f.loc.r = rope(f.name.s)
     if p.target == targetJS:
-      r.res = "$1.$2" % [r.res, f.loc.r]
+      r.res = "$1['$2']" % [r.res, f.loc.r]
     else:
       if {sfImportc, sfExportc} * f.flags != {}:
         r.res = "$1->$2" % [r.res, f.loc.r]
@@ -1351,10 +1351,9 @@ proc createRecordVarAux(p: PProc, rec: PNode, excludedFieldIDs: IntSet, output: 
     if rec.sym.id notin excludedFieldIDs:
       if output.len > 0: output.add(", ")
       if p.target == targetJS:
-        output.add(mangleName(rec.sym, p.target))
-        output.add(": ")
+        output.addf("'$#': ", [rope(rec.sym.name.s)])
       else:
-        output.addf("'$#' => ", [mangleName(rec.sym, p.target)])
+        output.addf("'$#' => ", [rope(rec.sym.name.s)])
       output.add(createVar(p, rec.sym.typ, false))
   else: internalError(rec.info, "createRecordVarAux")
 
@@ -1859,9 +1858,9 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
     internalAssert it.kind == nkExprColonExpr
     gen(p, it.sons[1], a)
     var f = it.sons[0].sym
-    if f.loc.r == nil: f.loc.r = mangleName(f, p.target)
+    if f.loc.r == nil: f.loc.r = rope(f.name.s)
     fieldIDs.incl(f.id)
-    addf(initList, "$#: $#" | "'$#' => $#" , [f.loc.r, a.res])
+    addf(initList, "'$#': $#" | "'$#' => $#" , [f.loc.r, a.res])
   let t = skipTypes(n.typ, abstractInst + skipPtrs)
   createObjInitList(p, t, fieldIDs, initList)
   r.res = ("{$1}" | "array($#)") % [initList]

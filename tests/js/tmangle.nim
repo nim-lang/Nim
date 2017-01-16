@@ -2,6 +2,7 @@ discard """
   output: '''true
 true
 true
+true
 true'''
 """
 
@@ -39,6 +40,28 @@ block:
     var obj = T(a: 11, b: "foo")
     result = obj.a.addr[] == 11
     result = result and obj.b.addr[] == "foo".cstring
+  echo test()
+
+# Test reserved words:
+block:
+  type T = ref object
+    `if`: int
+    `for`: int
+    `==`: cstring
+    `&&`: cstring
+  proc test(): bool =
+    var
+      obj1 = T(`if`: 11, `for`: 22, `==`: "foo", `&&`: "bar")
+      obj2: T
+    new obj2 # Test behaviour for createRecordVarAux.
+    result = obj1.`if` == 11
+    result = result and obj1.addr[].`for` == 22
+    result = result and obj1.`==` == "foo".cstring
+    result = result and obj1.`&&`.addr[] == "bar".cstring
+    result = result and obj2.`if` == 0
+    result = result and obj2.`for` == 0
+    result = result and obj2.`==`.isNil()
+    result = result and obj2.`&&`.isNil()
   echo test()
 
 # Test importc / exportc fields:
