@@ -1,5 +1,4 @@
 discard """
-  cmd: "nim c -r -f $file"
   output: '''
 OK
 OK
