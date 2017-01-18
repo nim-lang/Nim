@@ -1173,6 +1173,7 @@ proc genDeref(p: PProc, n: PNode, r: var TCompRes) =
   else:
     var a: TCompRes
     gen(p, n.sons[0], a)
+    r.kind = resExpr
     if a.typ == etyBaseIndex:
       r.res = "$1[$2]" % [a.address, a.res]
     elif n.sons[0].kind == nkCall:
