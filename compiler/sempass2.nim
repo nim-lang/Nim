@@ -59,7 +59,7 @@ type
     init: seq[int] # list of initialized variables
     guards: TModel # nested guards
     locked: seq[PNode] # locked locations
-    gcUnsafe, isRecursive, isToplevel, hasSideEffect: bool
+    gcUnsafe, isRecursive, isToplevel, hasSideEffect, inEnforcedGcSafe: bool
     maxLockLevel, currLockLevel: TLockLevel
   PEffects = var TEffects
 
@@ -180,17 +180,19 @@ proc warnAboutGcUnsafe(n: PNode) =
   message(n.info, warnGcUnsafe, renderTree(n))
 
 proc markGcUnsafe(a: PEffects; reason: PSym) =
-  a.gcUnsafe = true
-  if a.owner.kind in routineKinds: a.owner.gcUnsafetyReason = reason
+  if not a.inEnforcedGcSafe:
+    a.gcUnsafe = true
+    if a.owner.kind in routineKinds: a.owner.gcUnsafetyReason = reason
 
 proc markGcUnsafe(a: PEffects; reason: PNode) =
-  a.gcUnsafe = true
-  if a.owner.kind in routineKinds:
-    if reason.kind == nkSym:
-      a.owner.gcUnsafetyReason = reason.sym
-    else:
-      a.owner.gcUnsafetyReason = newSym(skUnknown, getIdent("<unknown>"),
-                                        a.owner, reason.info)
+  if not a.inEnforcedGcSafe:
+    a.gcUnsafe = true
+    if a.owner.kind in routineKinds:
+      if reason.kind == nkSym:
+        a.owner.gcUnsafetyReason = reason.sym
+      else:
+        a.owner.gcUnsafetyReason = newSym(skUnknown, getIdent("<unknown>"),
+                                          a.owner, reason.info)
 
 when true:
   template markSideEffect(a: PEffects; reason: typed) =
@@ -803,10 +805,16 @@ proc track(tracked: PEffects, n: PNode) =
     let pragmaList = n.sons[0]
     let oldLocked = tracked.locked.len
     let oldLockLevel = tracked.currLockLevel
+    var enforcedGcSafety = false
     for i in 0 .. <pragmaList.len:
-      if whichPragma(pragmaList.sons[i]) == wLocks:
+      let pragma = whichPragma(pragmaList.sons[i])
+      if pragma == wLocks:
         lockLocations(tracked, pragmaList.sons[i])
+      elif pragma == wGcSafe:
+        enforcedGcSafety = true
+    if enforcedGcSafety: tracked.inEnforcedGcSafe = true
     track(tracked, n.lastSon)
+    if enforcedGcSafety: tracked.inEnforcedGcSafe = false
     setLen(tracked.locked, oldLocked)
     tracked.currLockLevel = oldLockLevel
   of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,

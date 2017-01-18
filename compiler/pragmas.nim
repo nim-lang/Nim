@@ -38,7 +38,7 @@ const
     wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow, wExtern,
     wImportCpp, wImportObjC, wError, wDiscardable, wGensym, wInject, wRaises,
     wTags, wLocks, wGcSafe, wExportNims}
-  exprPragmas* = {wLine, wLocks, wNoRewrite}
+  exprPragmas* = {wLine, wLocks, wNoRewrite, wGcSafe}
   stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangechecks,
     wBoundchecks, wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints,
     wLinedir, wStacktrace, wLinetrace, wOptimization, wHint, wWarning, wError,
@@ -775,9 +775,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           if sym.typ.callConv == ccClosure: sym.typ.callConv = ccDefault
       of wGcSafe:
         noVal(it)
-        if sym.kind != skType: incl(sym.flags, sfThread)
-        if sym.typ != nil: incl(sym.typ.flags, tfGcSafe)
-        else: invalidPragma(it)
+        if sym != nil:
+          if sym.kind != skType: incl(sym.flags, sfThread)
+          if sym.typ != nil: incl(sym.typ.flags, tfGcSafe)
+          else: invalidPragma(it)
+        else:
+          discard "no checking if used as a code block"
       of wPacked:
         noVal(it)
         if sym.typ == nil: invalidPragma(it)
