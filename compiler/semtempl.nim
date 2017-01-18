@@ -263,7 +263,7 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
       n.sons[namePos] = ident
   else:
     n.sons[namePos] = semRoutineInTemplName(c, n.sons[namePos])
-  # onem scape for parameters
+  # open scope for parameters
   openScope(c)
   for i in patternPos..miscPos:
     n.sons[i] = semTemplBody(c, n.sons[i])
