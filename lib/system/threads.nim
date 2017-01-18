@@ -307,6 +307,35 @@ type
                                        ## a pointer as a thread ID.
 {.deprecated: [TThread: Thread, TThreadId: ThreadId].}
 
+var
+  threadCreationHandlers: array[60, proc () {.nimcall, gcsafe.}]
+  countThreadCreationHandlers: int
+
+proc onThreadCreation*(handler: proc () {.nimcall, gcsafe.}) =
+  ## Registers a global handler that is called at thread creation.
+  ## This can be used to initialize thread local variables properly.
+  ## Note that the handler has to be .gcafe and so the typical usage
+  ## looks like:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##  var
+  ##    someGlobal: string = "some string here"
+  ##    perThread {.threadvar.}: string
+  ##
+  ##  proc setPerThread() =
+  ##    {.gcsafe.}:
+  ##      deepCopy(perThread, someGlobal)
+  ##
+  ## **Note**: The registration is currently not threadsafe! Better
+  ## call ``onThreadCreation`` before any thread started its work!
+  threadCreationHandlers[countThreadCreationHandlers] = handler
+  inc countThreadCreationHandlers
+
+template beforeThreadRuns() =
+  for i in 0..countThreadCreationHandlers-1:
+    threadCreationHandlers[i]()
+
 when not defined(boehmgc) and not hasSharedHeap and not defined(gogc) and not defined(gcstack):
   proc deallocOsPages()
 
@@ -321,6 +350,7 @@ when defined(boehmgc):
 
   proc threadProcWrapDispatch[TArg](sb: pointer, thrd: pointer) {.noconv.} =
     boehmGC_register_my_thread(sb)
+    beforeThreadRuns()
     let thrd = cast[ptr Thread[TArg]](thrd)
     when TArg is void:
       thrd.dataFn()
@@ -329,6 +359,7 @@ when defined(boehmgc):
     boehmGC_unregister_my_thread()
 else:
   proc threadProcWrapDispatch[TArg](thrd: ptr Thread[TArg]) =
+    beforeThreadRuns()
     when TArg is void:
       thrd.dataFn()
     else:
