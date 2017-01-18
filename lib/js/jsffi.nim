@@ -38,6 +38,13 @@ when not defined(js) and not defined(nimdoc) and not defined(nimsuggest):
 
 import macros
 
+const
+  setImpl = "#[#] = #"
+  setImplJsString = "#[toJSStr(#)] = #"
+  getImpl = "#[#]"
+  getImplJsString = "#[toJSStr(#)]"
+  callImpl = "#[#].apply(#, #)"
+
 type
   JsRoot* = ref object of RootObj
     ## Root type of both JsObject and JsAssoc
@@ -63,9 +70,9 @@ template magicVar*(name, typ: untyped): untyped =
   var `name` {. importc, nodecl, inject .}: `typ`
 
 # New
-proc newJsObject*: JsObject = {. emit: [result, " = {};"] .}
+proc newJsObject*: JsObject {. importcpp: "{@}" .}
   ## Creates a new empty JsObject
-proc newJsAssoc*[K, V]: JsAssoc[K, V] = {. emit: [result, " = {};"] .}
+proc newJsAssoc*[K, V]: JsAssoc[K, V] = {. importcpp: "{@}" .}
   ## Creates a new empty JsAssoc with key type `K` and value type `V`.
 
 # Checks
@@ -82,51 +89,36 @@ proc to*(x: JsObject, T: typedesc): T {. importcpp: "(#)" .}
 proc toJs*[T](val: T): JsObject {. importcpp: "(#)" .}
   ## Converts a value of any type to type JsObject
 
-# Field accessors for JsObject and JsAssoc types
-proc compareImpl(x, y: JsRoot): bool {. importcpp: "(# == #)" .}
+proc callFieldImpl(obj, field, obj1: JsObject,
+  args: varargs[JsObject]): JsObject {. importcpp: callImpl, discardable .}
 
-proc setImpl[K, V](obj: JsRoot, field: K, val: V)
-  {.importcpp: "#[#] = #" .}
-
-proc getAsImpl[K, V](obj: JsRoot, field: K): V
-  {. importcpp: "#[#]" .}
-
-proc callFieldAsImpl[K, V](obj: JsRoot, field: K, args: varargs[JsObject]): V =
-  when V isnot void:
-    {. emit: [result, "=", obj, "[", field, "].apply(", obj, ", ", args, ");"] .}
-  else:
-    {. emit: [obj, "[", field, "].apply(", obj, ", ", args, ");"] .}
-
-proc `[]`*(obj: JsObject, field: cstring): JsObject =
+proc `[]`*(obj: JsObject, field: cstring): JsObject {. importcpp: getImpl .}
   ## Return the value of a property of name `field` from a JsObject `obj`.
-  getAsImpl[cstring, JsObject](obj, field)
 
-proc `[]=`*[T](obj: JsObject, field: cstring, val: T) =
+proc `[]=`*[T](obj: JsObject, field: cstring, val: T) {. importcpp: setImpl .}
   ## Set the value of a property of name `field` in a JsObject `obj` to `v`.
-  setImpl[cstring, JsObject](obj, field, val.toJs)
 
-proc `[]`*[K, V](obj: JsAssoc[K, V], field: K): V =
+proc `[]`*[K, V](obj: JsAssoc[K, V], field: K): V {. importcpp: getImpl .}
   ## Return the value of a property of name `field` from a JsAssoc `obj`.
-  when K is string:
-    getAsImpl[cstring, V](obj, field)
-  else:
-    getAsImpl[K, V](obj, field)
 
-proc `[]=`*[K, V](obj: JsAssoc[K, V], field: K, val: V) =
+proc `[]`*[V](obj: JsAssoc[string, V], field: string): V
+  {. importcpp: getImplJsString .}
+  ## Return the value of a property of name `field` from a JsAssoc `obj`.
+
+proc `[]=`*[K, V](obj: JsAssoc[K, V], field: K, val: V) {. importcpp: setImpl .}
   ## Set the value of a property of name `field` in a JsAssoc `obj` to `v`.
-  when K is string:
-    setImpl[cstring, V](obj, field, val)
-  else:
-    setImpl[K, V](obj, field, val)
 
-proc `==`*(x, y: JsRoot): bool =
+proc `[]=`*[V](obj: JsAssoc[string, V], field: string, val: V)
+  {. importcpp: setImplJsString .}
+  ## Set the value of a property of name `field` in a JsAssoc `obj` to `v`.
+
+proc `==`*(x, y: JsRoot): bool {. importcpp: "(# === #)" .}
   ## Compare two JsObjects or JsAssocs. Be careful though, as this is comparison
   ## like in JavaScript, so if your JsObjects are in fact JavaScript Objects,
   ## and not strings or numbers, this is a *comparison of references*.
-  compareImpl(x, y)
 
 {. experimental .}
-proc `.`*(obj: JsObject, field: cstring): JsObject =
+proc `.`*(obj: JsObject, field: cstring): JsObject {. importcpp: getImpl .}
   ## Experimental dot accessor (get) for type JsObject.
   ## Returns the value of a property of name `field` from a JsObject `x`.
   ##
@@ -137,15 +129,13 @@ proc `.`*(obj: JsObject, field: cstring): JsObject =
   ##  let obj = newJsObject()
   ##  obj.a = 20
   ##  console.log(obj.a) # puts 20 onto the console.
-  getAsImpl[cstring, JsObject](obj, field)
 
-proc `.=`*[T](obj: JsObject, field: cstring, value: T) =
+proc `.=`*[T](obj: JsObject, field: cstring, value: T) {. importcpp: setImpl .}
   ## Experimental dot accessor (set) for type JsObject.
   ## Sets the value of a property of name `field` in a JsObject `x` to `value`.
-  obj.setImpl(field, value)
 
-proc `.()`*(obj: JsObject, field: cstring,
-    args: varargs[JsObject, toJs]): JsObject {. discardable .} =
+template `.()`*(obj: JsObject, field: cstring,
+    args: varargs[JsObject, toJs]): JsObject =
   ## Experimental "method call" operator for type JsObject.
   ## Takes the name of a method of the JavaScript object (`field`) and calls
   ## it with `args` as arguments, returning a JsObject (which may be discarded,
@@ -162,25 +152,26 @@ proc `.()`*(obj: JsObject, field: cstring,
   ##  console.log(res) # This prints undefined, as console.log always returns
   ##                   # undefined. Thus one has to be careful, when using
   ##                   # JsObject calls.
-  callFieldAsImpl[cstring, JsObject](obj, field, args)
+  callFieldImpl(obj, field.cstring.toJs, obj, args)
 
-proc `.`*[V](obj: JsAssoc[string, V], field: cstring): V =
+proc `.`*[V](obj: JsAssoc[string, V], field: cstring): V
+  {. importcpp: getImpl .}
   ## Experimental dot accessor (get) for type JsAssoc.
   ## Returns the value of a property of name `field` from a JsObject `x`.
-  getAsImpl[cstring, V](obj, field)
 
-proc `.=`*[V](obj: JsAssoc[string, V], field: cstring, value: V) =
+proc `.=`*[V](obj: JsAssoc[string, V], field: cstring, value: V)
+  {. importcpp: setImpl .}
   ## Experimental dot accessor (set) for type JsAssoc.
   ## Sets the value of a property of name `field` in a JsObject `x` to `value`.
-  obj.setImpl(field, value)
 
-macro `.()`*[V: proc](obj: JsAssoc[string, V], field: cstring, args: varargs[untyped]): auto =
+macro `.()`*[K: string | cstring, V: proc](obj: JsAssoc[K, V], field: cstring,
+  args: varargs[untyped]): auto =
   ## Experimental "method call" operator for type JsAssoc.
   ## Takes the name of a method of the JavaScript object (`field`) and calls
   ## it with `args` as arguments. Here, everything is typechecked, so you do not
   ## have to worry about `undefined` return values.
   result = quote do:
-    let temp = getAsImpl[cstring, `obj`.V](`obj`, `field`)
+    let temp = `obj`[`field`]
     temp()
   for elem in args:
     result[1].add elem
