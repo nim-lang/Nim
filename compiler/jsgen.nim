@@ -179,9 +179,24 @@ proc mapType(p: PProc; typ: PType): TJSTypeKind =
   else: result = mapType(typ)
 
 proc mangleName(s: PSym; target: TTarget): Rope =
+  proc validJsName(name: string): bool =
+    result = true
+    const reservedWords = ["break", "case", "catch", "class", "const", "continue",
+      "debugger", "default", "delete", "do", "else", "export", "extends",
+      "finally", "for", "function", "if", "import", "in", "instanceof", "new",
+      "return", "super", "switch", "this", "throw", "try", "typeof", "var",
+      "void", "while", "with", "yield", "enum", "implements", "interface",
+      "let", "package", "private", "protected", "public", "static", "await",
+      "abstract", "boolean", "byte", "char", "double", "final", "float", "goto",
+      "int", "long", "native", "short", "synchronized", "throws", "transient",
+      "volatile", "null", "true", "false"]
+    if name in reservedWords: return false
+    for chr in name:
+      if chr notin {'A'..'Z','a'..'z','_'}:
+        return false
   result = s.loc.r
   if result == nil:
-    if s.kind == skField:
+    if s.kind == skField and s.name.s.validJsName:
       result = rope(s.name.s)
     elif target == targetJS or s.kind == skTemp:
       result = rope(mangle(s.name.s))
@@ -938,7 +953,7 @@ proc genFieldAccess(p: PProc, n: PNode, r: var TCompRes) =
     var f = n.sons[1].sym
     if f.loc.r == nil: f.loc.r = mangleName(f, p.target)
     if p.target == targetJS:
-      r.res = "$1['$2']" % [r.res, f.loc.r]
+      r.res = "$1.$2" % [r.res, f.loc.r]
     else:
       if {sfImportc, sfExportc} * f.flags != {}:
         r.res = "$1->$2" % [r.res, f.loc.r]
