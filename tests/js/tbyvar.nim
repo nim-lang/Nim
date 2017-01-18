@@ -49,3 +49,13 @@ block: # Test get addr of byvar return value
   let a = addr t["hi"]
   a[] = 10
   doAssert(t["hi"] == 10)
+
+block: # Test var arg inside case expression. #5244
+  proc foo(a: var string) =
+    a = case a
+    of "a": "error"
+    of "b": "error"
+    else: a
+  var a = "ok"
+  foo(a)
+  doAssert(a == "ok")
