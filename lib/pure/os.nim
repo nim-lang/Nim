@@ -849,12 +849,12 @@ template walkCommon(pattern: string, filter) =
     res = findFirstFile(pattern, f)
     if res != -1:
       defer: findClose(res)
+      let dotPos = searchExtPos(pattern)
       while true:
         if not skipFindData(f) and filter(f):
           # Windows bug/gotcha: 't*.nim' matches 'tfoo.nims' -.- so we check
           # that the file extensions have the same length ...
           let ff = getFilename(f)
-          let dotPos = searchExtPos(pattern)
           let idx = ff.len - pattern.len + dotPos
           if dotPos < 0 or idx >= ff.len or ff[idx] == '.' or
               pattern[dotPos+1] == '*':

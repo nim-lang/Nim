@@ -330,14 +330,16 @@ when not declared(getEnv) or defined(nimscript):
     if ext == "" or ext[0] == ExtSep: result = ext # no copy needed here
     else: result = ExtSep & ext
 
-  proc searchExtPos(s: string): int =
+  proc searchExtPos*(path: string): int =
+    ## Returns index of the '.' char in `path` if it signifies the beginning
+    ## of extension. Returns -1 otherwise.
     # BUGFIX: do not search until 0! .DS_Store is no file extension!
     result = -1
-    for i in countdown(len(s)-1, 1):
-      if s[i] == ExtSep:
+    for i in countdown(len(path)-1, 1):
+      if path[i] == ExtSep:
         result = i
         break
-      elif s[i] in {DirSep, AltSep}:
+      elif path[i] in {DirSep, AltSep}:
         break # do not skip over path
 
   proc splitFile*(path: string): tuple[dir, name, ext: string] {.
