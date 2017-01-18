@@ -204,7 +204,9 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
       # We need to ensure that both 'a' produce the same gensym'ed symbol.
       # So we need only check the *current* scope.
       let s = localSearchInScope(c.c, considerQuotedIdent ident)
-      if s != nil and s.owner == c.owner and sfGenSym in s.flags:
+      if s != nil and s.owner == c.owner and sfGenSym in s.flags and
+         # fix #5225
+         not (s.kind == skParam and k in {skVar, skLet}):
         styleCheckUse(n.info, s)
         replaceIdentBySym(n, newSymNode(s, n.info))
       else:
