@@ -204,9 +204,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
       # We need to ensure that both 'a' produce the same gensym'ed symbol.
       # So we need only check the *current* scope.
       let s = localSearchInScope(c.c, considerQuotedIdent ident)
-      if s != nil and s.owner == c.owner and sfGenSym in s.flags and
-         # fix #5225
-         not (s.kind == skParam and k in {skVar, skLet}):
+      if s != nil and s.owner == c.owner and sfGenSym in s.flags:
         styleCheckUse(n.info, s)
         replaceIdentBySym(n, newSymNode(s, n.info))
       else:
@@ -265,9 +263,16 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
       n.sons[namePos] = ident
   else:
     n.sons[namePos] = semRoutineInTemplName(c, n.sons[namePos])
+  # onem scape for parameters
   openScope(c)
-  for i in patternPos..bodyPos:
+  for i in patternPos..miscPos:
     n.sons[i] = semTemplBody(c, n.sons[i])
+  # open scope for locals
+  openScope(c)
+  n.sons[bodyPos] = semTemplBody(c, n.sons[bodyPos])
+  # close scope for locals
+  closeScope(c)
+  # close scope for parameters
   closeScope(c)
 
 proc semTemplSomeDecl(c: var TemplCtx, n: PNode, symKind: TSymKind; start=0) =
