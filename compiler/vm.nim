@@ -926,6 +926,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         macroCall.add(newSymNode(prc))
         for i in 1 .. rc-1: macroCall.add(regs[rb+i].regToNode)
         let a = evalTemplate(macroCall, prc, genSymOwner)
+        a.flags.incl(nfIsRef)
         ensureKind(rkNode)
         regs[ra].node = a
     of opcTJmp:
