@@ -133,11 +133,12 @@ proc newModule(graph: ModuleGraph; fileIdx: int32): PSym =
     rawMessage(errInvalidModuleName, result.name.s)
 
   result.info = newLineInfo(fileIdx, 1, 1)
-  let pack = getIdent(getPackageName(filename))
+  let
+    pck = getPackageName(filename)
+    pck2 = if pck.len > 0: pck else: "unknown"
+    pack = getIdent(pck2)
   var packSym = graph.packageSyms.strTableGet(pack)
   if packSym == nil:
-    let pck = getPackageName(filename)
-    let pck2 = if pck.len > 0: pck else: "unknown"
     packSym = newSym(skPackage, getIdent(pck2), nil, result.info)
     initStrTable(packSym.tab)
     graph.packageSyms.strTableAdd(packSym)
