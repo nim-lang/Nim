@@ -14,7 +14,6 @@ true
 true
 true
 true
-true
 true'''
 """
 
@@ -109,7 +108,7 @@ block:
 block:
   proc test(): bool =
     {. emit: "var comparison = {a: 22, b: 'test'};" .}
-    magicVar(comparison, JsObject)
+    var comparison {. importc, nodecl .}: JsObject
     let obj = newJsObject()
     obj.a = 22
     obj.b = "test".cstring
@@ -120,7 +119,7 @@ block:
 block:
   proc test(): bool =
     {. emit: "var comparison = {a: 22, b: 'test'};" .}
-    magicVar(comparison, JsObject)
+    var comparison {. importc, nodecl .}: JsObject
     let obj = JsObject.lit([a = 22, b = "test".cstring])
     obj.a == comparison.a and obj.b == comparison.b
   echo test()
@@ -213,7 +212,7 @@ block:
 block:
   proc test(): bool =
     {. emit: "var comparison = {a: 22, b: 55};" .}
-    magicVar(comparison, JsAssoc[string, int])
+    var comparison {. importcpp, nodecl .}: JsAssoc[string, int]
     let obj = newJsAssoc[string, int]()
     obj.a = 22
     obj.b = 55
@@ -224,7 +223,7 @@ block:
 block:
   proc test(): bool =
     {. emit: "var comparison = {a: 22, b: 55};" .}
-    magicVar(comparison, JsAssoc[string, int])
+    var comparison {. importcpp, nodecl .}: JsAssoc[string, int]
     let obj = JsAssoc[string, int].lit([a = 22, b = 55])
     var working = true
     working = working and
@@ -244,7 +243,7 @@ block:
     b: cstring
   proc test(): bool =
     {. emit: "var comparison = {a: 1};" .}
-    magicVar(comparison, TestObject)
+    var comparison {. importc, nodecl .}: TestObject
     let obj = TestObject.lit([a = 1])
     obj == comparison
   echo test()
@@ -259,12 +258,4 @@ block:
   proc test(): bool =
     let obj = TestObject(a: 9, onWhatever: bindMethod(handleWhatever))
     obj.onWhatever(1) == 10
-  echo test()
-
-# Test magicVar
-block:
-  proc test(): bool =
-    {. emit: "var importMe = 42;" .}
-    magicVar(importMe, int)
-    importMe == 42
   echo test()

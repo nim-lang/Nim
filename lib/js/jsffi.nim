@@ -19,8 +19,8 @@
 ##  # whole library:
 ##
 ##  # import the document object and the console
-##  magicVar(document, JsObject)
-##  magicVar(console, JsObject)
+##  var document {. importc, nodecl .}: JsObject
+##  var console {. importc, nodecl .}: JsObject
 ##  # import the "$" function
 ##  proc jq(selector: JsObject): JsObject {. importcpp: "$(#)" .}
 ##
@@ -40,9 +40,7 @@ import macros
 
 const
   setImpl = "#[#] = #"
-  setImplJsString = "#[toJSStr(#)] = #"
   getImpl = "#[#]"
-  getImplJsString = "#[toJSStr(#)]"
   callImpl = "#[#].apply(#, #)"
 
 type
@@ -52,31 +50,17 @@ type
     ## Dynamically typed wrapper around a JavaScript object.
   JsAssoc*[K, V] = ref object of JsRoot
     ## Statically typed wrapper around a JavaScript object.
-
-# Import variables:
-template magicVar*(name, typ: untyped): untyped =
-  ## Imports a variable declared in JavaScript code. This is useful for
-  ## importing globals or things like `self` or `this` from JavaScript.
-  ## It takes the name of the variable and its type.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##  # We want to import the console object as an JsObject
-  ##  magicVar(console, JsObject)
-  ##  console.log("Hello JavaScript!")
-  ##
-  var `name` {. importc, nodecl, inject .}: `typ`
+  NotString = concept c
+    c isnot string
 
 # New
 proc newJsObject*: JsObject {. importcpp: "{@}" .}
   ## Creates a new empty JsObject
-proc newJsAssoc*[K, V]: JsAssoc[K, V] = {. importcpp: "{@}" .}
+proc newJsAssoc*[K, V]: JsAssoc[K, V] {. importcpp: "{@}" .}
   ## Creates a new empty JsAssoc with key type `K` and value type `V`.
 
 # Checks
-proc hasOwnProperty*(x: JsObject, prop: string): bool
+proc hasOwnProperty*(x: JsObject, prop: cstring): bool
   {. importcpp: "#.hasOwnProperty(#)" .}
   ## Checks, whether `x` has a property of name `prop`.
 
@@ -98,18 +82,20 @@ proc `[]`*(obj: JsObject, field: cstring): JsObject {. importcpp: getImpl .}
 proc `[]=`*[T](obj: JsObject, field: cstring, val: T) {. importcpp: setImpl .}
   ## Set the value of a property of name `field` in a JsObject `obj` to `v`.
 
-proc `[]`*[K, V](obj: JsAssoc[K, V], field: K): V {. importcpp: getImpl .}
+proc `[]`*[K: NotString, V](obj: JsAssoc[K, V], field: K): V
+  {. importcpp: getImpl .}
   ## Return the value of a property of name `field` from a JsAssoc `obj`.
 
-proc `[]`*[V](obj: JsAssoc[string, V], field: string): V
-  {. importcpp: getImplJsString .}
+proc `[]`*[V](obj: JsAssoc[string, V], field: cstring): V
+  {. importcpp: getImpl .}
   ## Return the value of a property of name `field` from a JsAssoc `obj`.
 
-proc `[]=`*[K, V](obj: JsAssoc[K, V], field: K, val: V) {. importcpp: setImpl .}
+proc `[]=`*[K: NotString, V](obj: JsAssoc[K, V], field: K, val: V)
+  {. importcpp: setImpl .}
   ## Set the value of a property of name `field` in a JsAssoc `obj` to `v`.
 
-proc `[]=`*[V](obj: JsAssoc[string, V], field: string, val: V)
-  {. importcpp: setImplJsString .}
+proc `[]=`*[V](obj: JsAssoc[string, V], field: cstring, val: V)
+  {. importcpp: setImpl .}
   ## Set the value of a property of name `field` in a JsAssoc `obj` to `v`.
 
 proc `==`*(x, y: JsRoot): bool {. importcpp: "(# === #)" .}
@@ -147,7 +133,7 @@ template `.()`*(obj: JsObject, field: cstring,
   ## .. code-block:: nim
   ##
   ##  # Let's get back to the console example:
-  ##  magicVar(console, JsObject)
+  ##  var console {. importc, nodecl .}: JsObject
   ##  let res = console.log("I return undefined!")
   ##  console.log(res) # This prints undefined, as console.log always returns
   ##                   # undefined. Thus one has to be careful, when using
@@ -171,7 +157,7 @@ macro `.()`*[K: string | cstring, V: proc](obj: JsAssoc[K, V], field: cstring,
   ## it with `args` as arguments. Here, everything is typechecked, so you do not
   ## have to worry about `undefined` return values.
   result = quote do:
-    let temp = `obj`[`field`]
+    let temp = `obj`[`field`.cstring]
     temp()
   for elem in args:
     result[1].add elem
