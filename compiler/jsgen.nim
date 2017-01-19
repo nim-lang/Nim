@@ -190,16 +190,11 @@ proc mangleName(s: PSym; target: TTarget): Rope =
       "public", "return", "short", "static", "super", "switch", "synchronized",
       "this", "throw", "throws", "transient", "true", "try", "typeof", "var",
       "void", "volatile", "while", "with", "yield"]
-    var highIdx = 62
-    var lowIdx = 0
-    while lowIdx < highIdx:
-      var middle = (lowIdx + highIdx) div 2
-      if reservedWords[middle] < name:
-        lowIdx = middle + 1
-      elif reservedWords[middle] > name:
-        highIdx = middle
-      else:
-        return false
+    case name
+    of reservedWords:
+      return false
+    else:
+      discard
     if name[0] in {'0'..'9'}: return false
     for chr in name:
       if chr notin {'A'..'Z','a'..'z','_','$','0'..'9'}:
