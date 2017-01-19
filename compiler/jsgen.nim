@@ -190,14 +190,14 @@ proc mangleName(s: PSym; target: TTarget): Rope =
       "public", "return", "short", "static", "super", "switch", "synchronized",
       "this", "throw", "throws", "transient", "true", "try", "typeof", "var",
       "void", "volatile", "while", "with", "yield"]
-    const reservedLen = 62
-    var position = 0
-    while position < reservedLen:
-      var middle = (position + reservedLen) div 2
+    var highIdx = 62
+    var lowIdx = 0
+    while lowIdx < highIdx:
+      var middle = (lowIdx + highIdx) div 2
       if reservedWords[middle] < name:
-        position = middle + 1
+        lowIdx = middle + 1
       elif reservedWords[middle] > name:
-        position = middle
+        highIdx = middle
       else:
         return false
     if name[0] in {'0'..'9'}: return false
