@@ -2374,6 +2374,10 @@ proc pthread_sigmask*(a1: cint, a2, a3: var Sigset): cint {.
 proc `raise`*(a1: cint): cint {.importc, header: "<signal.h>".}
 proc sigaction*(a1: cint, a2, a3: var Sigaction): cint {.
   importc, header: "<signal.h>".}
+
+proc sigaction*(a1: cint, a2: var Sigaction; a3: pointer = nil): cint {.
+  importc, header: "<signal.h>".}
+
 proc sigaddset*(a1: var Sigset, a2: cint): cint {.importc, header: "<signal.h>".}
 proc sigaltstack*(a1, a2: var Stack): cint {.importc, header: "<signal.h>".}
 proc sigdelset*(a1: var Sigset, a2: cint): cint {.importc, header: "<signal.h>".}
