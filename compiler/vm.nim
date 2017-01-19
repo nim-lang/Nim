@@ -401,6 +401,12 @@ template handleJmpBack() {.dirty.} =
       globalError(c.debug[pc], errTooManyIterations)
   dec(c.loopIterations)
 
+
+proc recSetFlagIsRef(arg: PNode): void =
+  arg.flags.incl(nfIsRef)
+  for child in arg:
+    child.recSetFlagIsRef
+  
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
   var tos = tos
@@ -926,7 +932,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         macroCall.add(newSymNode(prc))
         for i in 1 .. rc-1: macroCall.add(regs[rb+i].regToNode)
         let a = evalTemplate(macroCall, prc, genSymOwner)
-        a.flags.incl(nfIsRef)
+        a.recSetFlagIsRef
         ensureKind(rkNode)
         regs[ra].node = a
     of opcTJmp:
