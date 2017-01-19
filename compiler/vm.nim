@@ -821,7 +821,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcAddSeqElem:
       decodeB(rkNode)
       if regs[ra].node.kind == nkBracket:
-        regs[ra].node.add(copyTree(regs[rb].regToNode))
+        regs[ra].node.add(copyValue(regs[rb].regToNode))
       else:
         stackTrace(c, tos, pc, errNilAccess)
     of opcGetImpl:
