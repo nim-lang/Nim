@@ -181,18 +181,28 @@ proc mapType(p: PProc; typ: PType): TJSTypeKind =
 proc mangleName(s: PSym; target: TTarget): Rope =
   proc validJsName(name: string): bool =
     result = true
-    const reservedWords = ["break", "case", "catch", "class", "const", "continue",
-      "debugger", "default", "delete", "do", "else", "export", "extends",
-      "finally", "for", "function", "if", "import", "in", "instanceof", "new",
-      "return", "super", "switch", "this", "throw", "try", "typeof", "var",
-      "void", "while", "with", "yield", "enum", "implements", "interface",
-      "let", "package", "private", "protected", "public", "static", "await",
-      "abstract", "boolean", "byte", "char", "double", "final", "float", "goto",
-      "int", "long", "native", "short", "synchronized", "throws", "transient",
-      "volatile", "null", "true", "false"]
-    if name in reservedWords: return false
+    const reservedWords = ["abstract", "await", "boolean", "break", "byte",
+      "case", "catch", "char", "class", "const", "continue", "debugger",
+      "default", "delete", "do", "double", "else", "enum", "export", "extends",
+      "false", "final", "finally", "float", "for", "function", "goto", "if",
+      "implements", "import", "in", "instanceof", "int", "interface", "let",
+      "long", "native", "new", "null", "package", "private", "protected",
+      "public", "return", "short", "static", "super", "switch", "synchronized",
+      "this", "throw", "throws", "transient", "true", "try", "typeof", "var",
+      "void", "volatile", "while", "with", "yield"]
+    const reservedLen = 62
+    var position = 0
+    while position < reservedLen:
+      var middle = (position + reservedLen) div 2
+      if reservedWords[middle] < name:
+        position = middle + 1
+      elif reservedWords[middle] > name:
+        position = middle
+      else:
+        return false
+    if name[0] in {'0'..'9'}: return false
     for chr in name:
-      if chr notin {'A'..'Z','a'..'z','_'}:
+      if chr notin {'A'..'Z','a'..'z','_','$','0'..'9'}:
         return false
   result = s.loc.r
   if result == nil:
