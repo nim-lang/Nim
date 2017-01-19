@@ -41,9 +41,13 @@ block:
     obj.a = 11
     obj.b = "test"
     obj.c = "test".cstring
+    obj.`$!&` = 42
+    obj.`while` = 99
     working = working and obj.a.to(int) == 11
     working = working and obj.b.to(string) == "test"
     working = working and obj.c.to(cstring) == "test".cstring
+    working = working and obj.`$!&`.to(int) == 42
+    working = working and obj.`while`.to(int) == 99
     working
   echo test()
 
@@ -145,9 +149,11 @@ block:
     let obj = newJsAssoc[string, int]()
     var working = true
     obj.a = 11
+    obj.`$!&` = 42
     working = working and not compiles(obj.b = "test")
     working = working and not compiles(obj.c = "test".cstring)
     working = working and obj.a == 11
+    working = working and obj.`$!&` == 42
     working
   echo test()
 

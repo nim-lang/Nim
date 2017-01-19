@@ -36,12 +36,37 @@
 when not defined(js) and not defined(nimdoc) and not defined(nimsuggest):
   {.fatal: "Module jsFFI is designed to be used with the JavaScript backend.".}
 
-import macros
+import macros, tables
 
 const
   setImpl = "#[#] = #"
   getImpl = "#[#]"
-  callImpl = "#[#].apply(#, #)"
+
+var
+  mangledNames {. compileTime .} = initTable[string, string]()
+  nameCounter {. compileTime .} = 0
+
+proc validJsName(name: string): bool =
+  result = true
+  const reservedWords = ["break", "case", "catch", "class", "const", "continue",
+    "debugger", "default", "delete", "do", "else", "export", "extends",
+    "finally", "for", "function", "if", "import", "in", "instanceof", "new",
+    "return", "super", "switch", "this", "throw", "try", "typeof", "var",
+    "void", "while", "with", "yield", "enum", "implements", "interface",
+    "let", "package", "private", "protected", "public", "static", "await",
+    "abstract", "boolean", "byte", "char", "double", "final", "float", "goto",
+    "int", "long", "native", "short", "synchronized", "throws", "transient",
+    "volatile", "null", "true", "false"]
+  case name
+  of reservedWords: return false
+  else: discard
+  for chr in name:
+    if chr notin {'A'..'Z','a'..'z','_'}:
+      return false
+
+template mangleJsName(name: cstring): cstring =
+  inc nameCounter
+  "mangledName" & $nameCounter
 
 type
   JsRoot* = ref object of RootObj
@@ -73,9 +98,6 @@ proc to*(x: JsObject, T: typedesc): T {. importcpp: "(#)" .}
 proc toJs*[T](val: T): JsObject {. importcpp: "(#)" .}
   ## Converts a value of any type to type JsObject
 
-proc callFieldImpl(obj, field, obj1: JsObject,
-  args: varargs[JsObject]): JsObject {. importcpp: callImpl, discardable .}
-
 proc `[]`*(obj: JsObject, field: cstring): JsObject {. importcpp: getImpl .}
   ## Return the value of a property of name `field` from a JsObject `obj`.
 
@@ -104,7 +126,7 @@ proc `==`*(x, y: JsRoot): bool {. importcpp: "(# === #)" .}
   ## and not strings or numbers, this is a *comparison of references*.
 
 {. experimental .}
-proc `.`*(obj: JsObject, field: cstring): JsObject {. importcpp: getImpl .}
+macro `.`*(obj: JsObject, field: static[cstring]): JsObject =
   ## Experimental dot accessor (get) for type JsObject.
   ## Returns the value of a property of name `field` from a JsObject `x`.
   ##
@@ -115,12 +137,40 @@ proc `.`*(obj: JsObject, field: cstring): JsObject {. importcpp: getImpl .}
   ##  let obj = newJsObject()
   ##  obj.a = 20
   ##  console.log(obj.a) # puts 20 onto the console.
+  if validJsName($field):
+    let importString = "#." & $field
+    result = quote do:
+      proc helper(o: JsObject): JsObject
+        {. importcpp: `importString`, gensym .}
+      helper(`obj`)
+  else:
+    if not mangledNames.hasKey($field):
+      mangledNames[$field] = $mangleJsName(field)
+    let importString = "#." & mangledNames[$field]
+    result = quote do:
+      proc helper(o: JsObject): JsObject
+        {. importcpp: `importString`, gensym .}
+      helper(`obj`)
 
-proc `.=`*[T](obj: JsObject, field: cstring, value: T) {. importcpp: setImpl .}
+macro `.=`*(obj: JsObject, field: static[cstring], value: untyped): untyped =
   ## Experimental dot accessor (set) for type JsObject.
   ## Sets the value of a property of name `field` in a JsObject `x` to `value`.
+  if validJsName($field):
+    let importString = "#." & $field & " = #"
+    result = quote do:
+      proc helper(o: JsObject, v: auto)
+        {. importcpp: `importString`, gensym .}
+      helper(`obj`, `value`)
+  else:
+    if not mangledNames.hasKey($field):
+      mangledNames[$field] = $mangleJsName(field)
+    let importString = "#." & mangledNames[$field] & " = #"
+    result = quote do:
+      proc helper(o: JsObject, v: auto)
+        {. importcpp: `importString`, gensym .}
+      helper(`obj`, `value`)
 
-template `.()`*(obj: JsObject, field: cstring,
+macro `.()`*(obj: JsObject, field: static[cstring],
     args: varargs[JsObject, toJs]): JsObject =
   ## Experimental "method call" operator for type JsObject.
   ## Takes the name of a method of the JavaScript object (`field`) and calls
@@ -138,26 +188,68 @@ template `.()`*(obj: JsObject, field: cstring,
   ##  console.log(res) # This prints undefined, as console.log always returns
   ##                   # undefined. Thus one has to be careful, when using
   ##                   # JsObject calls.
-  callFieldImpl(obj, field.cstring.toJs, obj, args)
+  if validJsName($field):
+    let importString = "#." & $field & ".apply(#, #)"
+    result = quote do:
+      proc helper(o, o1: JsObject, a: varargs[JsObject, toJs]): JsObject
+        {. importcpp: `importString`, gensym .}
+      helper(`obj`, `obj`, `args`)
+  else:
+    if not mangledNames.hasKey($field):
+      mangledNames[$field] = $mangleJsName(field)
+    let importString = "#." & mangledNames[$field] & ".apply(#, #)"
+    result = quote do:
+      proc helper(o, o1: JsObject, a: varargs[JsObject, toJs]): JsObject
+        {. importcpp: `importString`, gensym .}
+      helper(`obj`, `obj`, `args`)
 
-proc `.`*[V](obj: JsAssoc[string, V], field: cstring): V
-  {. importcpp: getImpl .}
+macro `.`*[K: string | cstring, V](obj: JsAssoc[K, V],
+  field: static[cstring]): V =
   ## Experimental dot accessor (get) for type JsAssoc.
   ## Returns the value of a property of name `field` from a JsObject `x`.
+  if validJsName($field):
+    let importString = "#." & $field
+    result = quote do:
+      proc helper(o: type(`obj`)): `obj`.V
+        {. importcpp: `importString`, gensym .}
+      helper(`obj`)
+  else:
+    if not mangledNames.hasKey($field):
+      mangledNames[$field] = $mangleJsName(field)
+    let importString = "#." & mangledNames[$field]
+    result = quote do:
+      proc helper(o: type(`obj`)): `obj`.V
+        {. importcpp: `importString`, gensym .}
+      helper(`obj`)
 
-proc `.=`*[V](obj: JsAssoc[string, V], field: cstring, value: V)
-  {. importcpp: setImpl .}
+macro `.=`*[K: string | cstring, V](obj: JsAssoc[K, V],
+  field: static[cstring], value: V): untyped =
   ## Experimental dot accessor (set) for type JsAssoc.
   ## Sets the value of a property of name `field` in a JsObject `x` to `value`.
+  if validJsName($field):
+    let importString = "#." & $field & " = #"
+    result = quote do:
+      proc helper(o: type(`obj`), v: `obj`.V)
+        {. importcpp: `importString`, gensym .}
+      helper(`obj`, `value`)
+  else:
+    if not mangledNames.hasKey($field):
+      mangledNames[$field] = $mangleJsName(field)
+    let importString = "#." & mangledNames[$field] & " = #"
+    result = quote do:
+      proc helper(o: type(`obj`), v: `obj`.V)
+        {. importcpp: `importString`, gensym .}
+      helper(`obj`, `value`)
 
-macro `.()`*[K: string | cstring, V: proc](obj: JsAssoc[K, V], field: cstring,
-  args: varargs[untyped]): auto =
+macro `.()`*[K: string | cstring, V: proc](obj: JsAssoc[K, V],
+  field: static[cstring], args: varargs[untyped]): auto =
   ## Experimental "method call" operator for type JsAssoc.
   ## Takes the name of a method of the JavaScript object (`field`) and calls
   ## it with `args` as arguments. Here, everything is typechecked, so you do not
   ## have to worry about `undefined` return values.
+  let dotOp = bindSym"."
   result = quote do:
-    let temp = `obj`[`field`.cstring]
+    let temp = `dotOp`(`obj`, `field`)
     temp()
   for elem in args:
     result[1].add elem
