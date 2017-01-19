@@ -1557,10 +1557,10 @@ proc hasPattern*(s: PSym): bool {.inline.} =
   result = isRoutine(s) and s.ast.sons[patternPos].kind != nkEmpty
 
 iterator items*(n: PNode): PNode =
-  for i in 0.. <n.safeLen: yield n.sons[i]
+  for i in 0.. <n.len: yield n.sons[i]
 
 iterator pairs*(n: PNode): tuple[i: int, n: PNode] =
-  for i in 0.. <n.safeLen: yield (i, n.sons[i])
+  for i in 0.. <n.len: yield (i, n.sons[i])
 
 proc isAtom*(n: PNode): bool {.inline.} =
   result = n.kind >= nkNone and n.kind <= nkNilLit
