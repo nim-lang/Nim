@@ -220,7 +220,7 @@ proc getIntervalType*(m: TMagic, n: PNode): PType =
   of mModU:
     let a = n.sons[1]
     let b = n.sons[2]
-    if a.kind in ordIntLit:
+    if b.kind in ordIntLit:
       if b.intVal >= 0:
         result = makeRange(a.typ, 0, b.intVal-1)
       else:
