@@ -10,7 +10,7 @@ static:
   # an assignment of stmtList into an array
   var nodeArray: array[1, NimNode]
   # an assignment of stmtList into a seq
-  var nodeSeq = newSeq[NimNode](1)
+  var nodeSeq = newSeq[NimNode](2)
 
 
 proc checkNode(arg: NimNode; name: string): void {. compileTime .} =
@@ -21,12 +21,17 @@ proc checkNode(arg: NimNode; name: string): void {. compileTime .} =
   node = arg
   nodeArray = [arg]
   nodeSeq[0] = arg
+  var seqAppend = newSeq[NimNode](0)
+  seqAppend.add([arg]) # at the time of this writing this works
+  seqAppend.add(arg)   # bit this creates a copy
   arg.add newCall(ident"echo", newLit("Hello World"))
 
-  assertEq arg.lispRepr     , """StmtList(DiscardStmt(Empty()), Call(Ident(!"echo"), StrLit(Hello World)))"""
+  assertEq arg.lispRepr          , """StmtList(DiscardStmt(Empty()), Call(Ident(!"echo"), StrLit(Hello World)))"""
   assertEq node.lispRepr         , """StmtList(DiscardStmt(Empty()), Call(Ident(!"echo"), StrLit(Hello World)))"""
   assertEq nodeArray[0].lispRepr , """StmtList(DiscardStmt(Empty()), Call(Ident(!"echo"), StrLit(Hello World)))"""
   assertEq nodeSeq[0].lispRepr   , """StmtList(DiscardStmt(Empty()), Call(Ident(!"echo"), StrLit(Hello World)))"""
+  assertEq seqAppend[0].lispRepr , """StmtList(DiscardStmt(Empty()), Call(Ident(!"echo"), StrLit(Hello World)))"""
+  assertEq seqAppend[1].lispRepr , """StmtList(DiscardStmt(Empty()), Call(Ident(!"echo"), StrLit(Hello World)))"""
 
   echo "OK"
 
