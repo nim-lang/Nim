@@ -323,9 +323,8 @@ iterator keys*[K,V](assoc: JSAssoc[K,V]): K =
 
 macro `{}`*(typ: typedesc, xs: varargs[untyped]): auto =
   ## Takes a ``typedesc`` as its first argument, and a series of expressions of
-  ## type ``key = value`` in brackets `[]` or in a `do`-statement as its second
-  ## argument, and returns a value of the specified type with each field ``key``
-  ## set to ``value``, as specified in the arguments of ``lit``.
+  ## type ``key: value``, and returns a value of the specified type with each
+  ## field ``key`` set to ``value``, as specified in the arguments of ``{}``.
   ##
   ## Example:
   ##
@@ -339,13 +338,7 @@ macro `{}`*(typ: typedesc, xs: varargs[untyped]): auto =
   ##      h, i, j, k, l: cstring
   ##      # And even more fields ...
   ##
-  ##  let obj = ExtremelyHugeType.lit([a = 1, k = "foo".cstring, d = 42])
-  ##
-  ##  # alternatively:
-  ##  let obj = ExtremelyHugeType.lit do:
-  ##    a = 1
-  ##    k = "foo".cstring
-  ##    d = 42
+  ##  let obj = ExtremelyHugeType{ a: 1, k: "foo".cstring, d: 42 }
   ##
   ##  # This generates roughly the same JavaScript as:
   ##  {. emit: "var obj = {a: 1, k: "foo", d: 42};" .}
@@ -370,7 +363,7 @@ macro `{}`*(typ: typedesc, xs: varargs[untyped]): auto =
           `a`[`kString`] = `v`
       )
     else:
-      error("Expression `" & $x.toStrLit & "` not allowed in `lit` macro")
+      error("Expression `" & $x.toStrLit & "` not allowed in `{}` macro")
 
   body.add(quote do:
     return `a`
@@ -402,7 +395,7 @@ macro bindMethod*(procedure: typed): auto =
   ## We can achieve this using the ``bindMethod`` macro:
   ##
   ## .. code-block:: nim
-  ##  let obj = JsObject.lit(a = 10)
+  ##  let obj = JsObject{ a: 10 }
   ##  proc someMethodImpl(that: JsObject): int =
   ##    that.a.to(int) + 42
   ##  obj.someMethod = bindMethod someMethodImpl
