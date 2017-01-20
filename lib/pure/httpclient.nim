@@ -540,6 +540,8 @@ proc getNewLocation(lastURL: string, headers: HttpHeaders): string =
   if r.hostname == "" and r.path != "":
     var parsed = parseUri(lastURL)
     parsed.path = r.path
+    parsed.query = r.query
+    parsed.anchor = r.anchor
     result = $parsed
 
 proc get*(url: string, extraHeaders = "", maxRedirects = 5,
