@@ -2375,7 +2375,7 @@ proc `raise`*(a1: cint): cint {.importc, header: "<signal.h>".}
 proc sigaction*(a1: cint, a2, a3: var Sigaction): cint {.
   importc, header: "<signal.h>".}
 
-proc sigaction*(a1: cint, a2: var Sigaction; a3: pointer = nil): cint {.
+proc sigaction*(a1: cint, a2: var Sigaction; a3: ptr Sigaction = nil): cint {.
   importc, header: "<signal.h>".}
 
 proc sigaddset*(a1: var Sigset, a2: cint): cint {.importc, header: "<signal.h>".}
