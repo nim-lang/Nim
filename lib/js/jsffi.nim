@@ -188,58 +188,53 @@ macro `.()`*(obj: JsObject, field: static[cstring],
   ##  console.log(res) # This prints undefined, as console.log always returns
   ##                   # undefined. Thus one has to be careful, when using
   ##                   # JsObject calls.
+  var importString: string
   if validJsName($field):
-    let importString = "#." & $field & ".apply(#, #)"
-    result = quote do:
-      proc helper(o, o1: JsObject, a: varargs[JsObject, toJs]): JsObject
-        {. importcpp: `importString`, gensym .}
-      helper(`obj`, `obj`, `args`)
+    importString = "#." & $field & "(@)"
   else:
     if not mangledNames.hasKey($field):
       mangledNames[$field] = $mangleJsName(field)
-    let importString = "#." & mangledNames[$field] & ".apply(#, #)"
-    result = quote do:
-      proc helper(o, o1: JsObject, a: varargs[JsObject, toJs]): JsObject
-        {. importcpp: `importString`, gensym .}
-      helper(`obj`, `obj`, `args`)
+    importString = "#." & mangledNames[$field] & "(@)"
+  result = quote do:
+    proc helper(o: JsObject): JsObject
+      {. importcpp: `importString`, gensym .}
+    helper(`obj`)
+  for idx in 0 ..< args.len:
+    let paramName = newIdentNode(!("param" & $idx))
+    result[0][3].add newIdentDefs(paramName, newIdentNode(!"JsObject"))
+    result[1].add args[idx].copyNimTree
 
 macro `.`*[K: string | cstring, V](obj: JsAssoc[K, V],
   field: static[cstring]): V =
   ## Experimental dot accessor (get) for type JsAssoc.
   ## Returns the value of a property of name `field` from a JsObject `x`.
+  var importString: string
   if validJsName($field):
-    let importString = "#." & $field
-    result = quote do:
-      proc helper(o: type(`obj`)): `obj`.V
-        {. importcpp: `importString`, gensym .}
-      helper(`obj`)
+    importString = "#." & $field
   else:
     if not mangledNames.hasKey($field):
       mangledNames[$field] = $mangleJsName(field)
-    let importString = "#." & mangledNames[$field]
-    result = quote do:
-      proc helper(o: type(`obj`)): `obj`.V
-        {. importcpp: `importString`, gensym .}
-      helper(`obj`)
+    importString = "#." & mangledNames[$field]
+  result = quote do:
+    proc helper(o: type(`obj`)): `obj`.V
+      {. importcpp: `importString`, gensym .}
+    helper(`obj`)
 
 macro `.=`*[K: string | cstring, V](obj: JsAssoc[K, V],
   field: static[cstring], value: V): untyped =
   ## Experimental dot accessor (set) for type JsAssoc.
   ## Sets the value of a property of name `field` in a JsObject `x` to `value`.
+  var importString: string
   if validJsName($field):
-    let importString = "#." & $field & " = #"
-    result = quote do:
-      proc helper(o: type(`obj`), v: `obj`.V)
-        {. importcpp: `importString`, gensym .}
-      helper(`obj`, `value`)
+    importString = "#." & $field & " = #"
   else:
     if not mangledNames.hasKey($field):
       mangledNames[$field] = $mangleJsName(field)
-    let importString = "#." & mangledNames[$field] & " = #"
-    result = quote do:
-      proc helper(o: type(`obj`), v: `obj`.V)
-        {. importcpp: `importString`, gensym .}
-      helper(`obj`, `value`)
+    importString = "#." & mangledNames[$field] & " = #"
+  result = quote do:
+    proc helper(o: type(`obj`), v: `obj`.V)
+      {. importcpp: `importString`, gensym .}
+    helper(`obj`, `value`)
 
 macro `.()`*[K: string | cstring, V: proc](obj: JsAssoc[K, V],
   field: static[cstring], args: varargs[untyped]): auto =
@@ -249,10 +244,9 @@ macro `.()`*[K: string | cstring, V: proc](obj: JsAssoc[K, V],
   ## have to worry about `undefined` return values.
   let dotOp = bindSym"."
   result = quote do:
-    let temp = `dotOp`(`obj`, `field`)
-    temp()
+    (`dotOp`(`obj`, `field`))()
   for elem in args:
-    result[1].add elem
+    result[0].add elem
 
 # Iterators:
 
