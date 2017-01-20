@@ -3,6 +3,8 @@ discard """
 true
 true
 true
+true
+true
 true'''
 """
 
@@ -62,6 +64,27 @@ block:
     result = result and obj2.`for` == 0
     result = result and obj2.`==`.isNil()
     result = result and obj2.`&&`.isNil()
+  echo test()
+
+# Test codegen for fields with uppercase letters:
+block:
+  type MyObj = object
+    mField: int
+  proc test(): bool =
+    var a: MyObj
+    var b = a
+    result = b.mField == 0
+  echo test()
+
+# Test tuples
+block:
+  type T = tuple
+    a: int
+    b: int
+  proc test(): bool =
+    var a: T = (a: 1, b: 1)
+    result = a.a == 1
+    result = result and a.b == 1
   echo test()
 
 # Test importc / exportc fields:

@@ -179,9 +179,31 @@ proc mapType(p: PProc; typ: PType): TJSTypeKind =
   else: result = mapType(typ)
 
 proc mangleName(s: PSym; target: TTarget): Rope =
+  proc validJsName(name: string): bool =
+    result = true
+    const reservedWords = ["abstract", "await", "boolean", "break", "byte",
+      "case", "catch", "char", "class", "const", "continue", "debugger",
+      "default", "delete", "do", "double", "else", "enum", "export", "extends",
+      "false", "final", "finally", "float", "for", "function", "goto", "if",
+      "implements", "import", "in", "instanceof", "int", "interface", "let",
+      "long", "native", "new", "null", "package", "private", "protected",
+      "public", "return", "short", "static", "super", "switch", "synchronized",
+      "this", "throw", "throws", "transient", "true", "try", "typeof", "var",
+      "void", "volatile", "while", "with", "yield"]
+    case name
+    of reservedWords:
+      return false
+    else:
+      discard
+    if name[0] in {'0'..'9'}: return false
+    for chr in name:
+      if chr notin {'A'..'Z','a'..'z','_','$','0'..'9'}:
+        return false
   result = s.loc.r
   if result == nil:
-    if target == targetJS or s.kind == skTemp:
+    if s.kind == skField and s.name.s.validJsName:
+      result = rope(s.name.s)
+    elif target == targetJS or s.kind == skTemp:
       result = rope(mangle(s.name.s))
     else:
       var x = newStringOfCap(s.name.s.len)
@@ -918,7 +940,7 @@ proc genFieldAddr(p: PProc, n: PNode, r: var TCompRes) =
   else:
     if b.sons[1].kind != nkSym: internalError(b.sons[1].info, "genFieldAddr")
     var f = b.sons[1].sym
-    if f.loc.r == nil: f.loc.r = rope(f.name.s)
+    if f.loc.r == nil: f.loc.r = mangleName(f, p.target)
     r.res = makeJSString($f.loc.r)
   internalAssert a.typ != etyBaseIndex
   r.address = a.res
@@ -934,9 +956,9 @@ proc genFieldAccess(p: PProc, n: PNode, r: var TCompRes) =
   else:
     if n.sons[1].kind != nkSym: internalError(n.sons[1].info, "genFieldAccess")
     var f = n.sons[1].sym
-    if f.loc.r == nil: f.loc.r = rope(f.name.s)
+    if f.loc.r == nil: f.loc.r = mangleName(f, p.target)
     if p.target == targetJS:
-      r.res = "$1['$2']" % [r.res, f.loc.r]
+      r.res = "$1.$2" % [r.res, f.loc.r]
     else:
       if {sfImportc, sfExportc} * f.flags != {}:
         r.res = "$1->$2" % [r.res, f.loc.r]
@@ -1352,9 +1374,9 @@ proc createRecordVarAux(p: PProc, rec: PNode, excludedFieldIDs: IntSet, output: 
     if rec.sym.id notin excludedFieldIDs:
       if output.len > 0: output.add(", ")
       if p.target == targetJS:
-        output.addf("'$#': ", [rope(rec.sym.name.s)])
+        output.addf("'$#': ", [mangleName(rec.sym, p.target)])
       else:
-        output.addf("'$#' => ", [rope(rec.sym.name.s)])
+        output.addf("'$#' => ", [mangleName(rec.sym, p.target)])
       output.add(createVar(p, rec.sym.typ, false))
   else: internalError(rec.info, "createRecordVarAux")
 
@@ -1859,7 +1881,7 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
     internalAssert it.kind == nkExprColonExpr
     gen(p, it.sons[1], a)
     var f = it.sons[0].sym
-    if f.loc.r == nil: f.loc.r = rope(f.name.s)
+    if f.loc.r == nil: f.loc.r = mangleName(f, p.target)
     fieldIDs.incl(f.id)
     addf(initList, "'$#': $#" | "'$#' => $#" , [f.loc.r, a.res])
   let t = skipTypes(n.typ, abstractInst + skipPtrs)
