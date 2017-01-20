@@ -124,7 +124,7 @@ block:
   proc test(): bool =
     {. emit: "var comparison = {a: 22, b: 'test'};" .}
     var comparison {. importc, nodecl .}: JsObject
-    let obj = JsObject.lit([a = 22, b = "test".cstring])
+    let obj = JsObject{ a: 22, b: "test".cstring }
     obj.a == comparison.a and obj.b == comparison.b
   echo test()
 
@@ -230,14 +230,14 @@ block:
   proc test(): bool =
     {. emit: "var comparison = {a: 22, b: 55};" .}
     var comparison {. importcpp, nodecl .}: JsAssoc[string, int]
-    let obj = JsAssoc[string, int].lit([a = 22, b = 55])
+    let obj = JsAssoc[string, int]{ a: 22, b: 55 }
     var working = true
     working = working and
-      compiles(JsAssoc[int, int].lit([1 = 22, 2 = 55]))
+      compiles(JsAssoc[int, int]{ 1: 22, 2: 55 })
     working = working and
       comparison.a == obj.a and comparison.b == obj.b
     working = working and
-      not compiles(JsAssoc[string, int].lit([a = "test"]))
+      not compiles(JsAssoc[string, int]{ a: "test" })
     working
   echo test()
 
@@ -250,7 +250,7 @@ block:
   proc test(): bool =
     {. emit: "var comparison = {a: 1};" .}
     var comparison {. importc, nodecl .}: TestObject
-    let obj = TestObject.lit([a = 1])
+    let obj = TestObject{ a: 1 }
     obj == comparison
   echo test()
 

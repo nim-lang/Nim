@@ -321,7 +321,7 @@ iterator keys*[K,V](assoc: JSAssoc[K,V]): K =
 
 # Literal generation
 
-macro lit*(typ: typedesc, xs: untyped = []): auto =
+macro `{}`*(typ: typedesc, xs: varargs[untyped]): auto =
   ## Takes a ``typedesc`` as its first argument, and a series of expressions of
   ## type ``key = value`` in brackets `[]` or in a `do`-statement as its second
   ## argument, and returns a value of the specified type with each field ``key``
@@ -350,24 +350,12 @@ macro lit*(typ: typedesc, xs: untyped = []): auto =
   ##  # This generates roughly the same JavaScript as:
   ##  {. emit: "var obj = {a: 1, k: "foo", d: 42};" .}
   ##
-  var
-    newXs: NimNode
-    expectedKind: NimNodeKind
-  case xs.kind
-  of nnkBracket:
-    newXs = xs
-    expectedKind = nnkExprEqExpr
-  of nnkDo:
-    newXs = xs[6]
-    expectedKind = nnkAsgn
-  else:
-    error("Invalid argument `" & $xs.toStrLit & "`.")
   let a = !"a"
   var body = quote do:
     var `a` {.noinit.}: `typ`
     {.emit: "`a` = {};".}
-  for x in newXs.children:
-    if x.kind == expectedKind:
+  for x in xs.children:
+    if x.kind == nnkExprColonExpr:
       let
         k = x[0]
         kString = quote do:
