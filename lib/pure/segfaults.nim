@@ -10,6 +10,8 @@
 ## This modules registers a signal handler that turns access violations /
 ## segfaults into a ``NilAccessError`` exception. To be able to catch
 ## a NilAccessError all you have to do is to import this module.
+##
+## Tested on these OSes: Linux, Windows, OSX
 
 type
   NilAccessError* = object of SystemError ## \
@@ -18,17 +20,49 @@ type
 # do allocate memory upfront:
 var se: ref NilAccessError
 new(se)
+se.name = "NilAccessError"
 se.msg = ""
 
 when defined(windows):
   include "$lib/system/ansi_c"
 
+  import winlean
+
+  const
+    EXCEPTION_ACCESS_VIOLATION = DWORD(0xc0000005)
+    EXCEPTION_CONTINUE_SEARCH = Long(0)
+
+  type
+    PEXCEPTION_RECORD = ptr object
+      exceptionCode: DWORD # other fields left out
+
+    PEXCEPTION_POINTERS = ptr object
+      exceptionRecord: PEXCEPTION_RECORD
+      contextRecord: pointer
+
+    VectoredHandler = proc (p: PEXCEPTION_POINTERS): LONG {.stdcall.}
+  proc addVectoredExceptionHandler(firstHandler: ULONG,
+                                   handler: VectoredHandler): pointer {.
+    importc: "AddVectoredExceptionHandler", stdcall, dynlib: "kernel32.dll"}
+
   {.push stackTrace: off.}
-  proc segfaultHandler(sig: cint) {.noconv.} =
-    {.gcsafe.}:
-      raise se
+  proc segfaultHandler(p: PEXCEPTION_POINTERS): LONG {.stdcall.} =
+    if p.exceptionRecord.exceptionCode == EXCEPTION_ACCESS_VIOLATION:
+      {.gcsafe.}:
+        raise se
+    else:
+      result = EXCEPTION_CONTINUE_SEARCH
   {.pop.}
-  c_signal(SIGSEGV, segfaultHandler)
+
+  discard addVectoredExceptionHandler(0, segfaultHandler)
+
+  when false:
+    {.push stackTrace: off.}
+    proc segfaultHandler(sig: cint) {.noconv.} =
+      {.gcsafe.}:
+        rawRaise se
+    {.pop.}
+    c_signal(SIGSEGV, segfaultHandler)
 
 else:
   import posix

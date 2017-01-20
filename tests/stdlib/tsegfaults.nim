@@ -18,6 +18,10 @@ proc main =
   try:
     var x: ptr int
     echo x[]
+    try:
+      raise newException(ValueError, "not a crash")
+    except ValueError:
+      discard
   except NilAccessError:
     echo "caught a crash!"
 
