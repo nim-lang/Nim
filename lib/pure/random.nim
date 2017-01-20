@@ -105,6 +105,7 @@ proc randomize*(seed: int) {.benign.} =
   ## Initializes the random number generator with a specific seed.
   state.a0 = ui(seed shr 16)
   state.a1 = ui(seed and 0xffff)
+  discard next(state)
 
 proc shuffle*[T](x: var openArray[T]) =
   ## Will randomly swap the positions of elements in a sequence.
