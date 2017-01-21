@@ -465,5 +465,7 @@ when isMainModule:
     doAssert "file:/dir/file".parseUri().isAbsolute() == true
     doAssert "file://localhost/dir/file".parseUri().isAbsolute() == true
     doAssert "https://example.org/URI/resource.txt".parseUri().isAbsolute() == true
-    doAssert "urn:ISSN:1535–3613".parseUri().isAbsolute() == true
+    doAssert "urn:ISSN:1535-3613".parseUri().isAbsolute() == true
+    doAssert "//domain.com/img/logo.png".parseUri().isAbsolute() == false
+
   
