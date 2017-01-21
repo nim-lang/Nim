@@ -402,7 +402,7 @@ macro bindMethod*(procedure: typed): auto =
   ##
   ##  # Alternatively:
   ##  obj.someMethod = bindMethod
-  ##    proc(that; JsObject): int = that.a.to(int) + 42
+  ##    proc(that: JsObject): int = that.a.to(int) + 42
   if not (procedure.kind == nnkSym or procedure.kind == nnkLambda):
     error("Argument has to be a proc or a symbol corresponding to a proc.")
   var
