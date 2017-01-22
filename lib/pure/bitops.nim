@@ -184,6 +184,10 @@ proc countSetBits*(x: SomeInteger): cint {.inline, nosideeffect.} =
       when sizeof(x) <= 4: result = countSetBits_nim(x.uint32)
       else:                result = countSetBits_nim(x.uint64)
 
+proc popcount*(x: SomeInteger): cint {.inline, nosideeffect.} =
+  ## Alias for for countSetBits (Hamming weight.)
+  result = countSetBits(x)
+
 proc parityBits*(x: SomeInteger): cint {.inline, nosideeffect.} =
   ## Calculate the bit parity in integer. If number of 1-bit
   ## is odd parity is 1, otherwise 0.    when nimvm:
