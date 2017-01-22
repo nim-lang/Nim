@@ -7,11 +7,13 @@ Other curated resources can be found at [Awesome Nim](https://github.com/VPashko
 
 ## Overview
 
-Nim is a modern programming language designed to develop:
+Nim is a modern general purpose programming language excelling in Async IO and C++ interop. These features make nim very suitable for:
 
-  - High resource games
+  - High performance games
+  - Servers/Micro services
   - Embeddable applications
   - Reusable libraries
+
 
 ## Features
 **Compiler**
@@ -19,7 +21,7 @@ Nim is a modern programming language designed to develop:
   - [Configurable GC](http://nim-lang.org/docs/gc.html) - see also [Gsoc Idea](https://github.com/nim-lang/Nim/wiki/GSoC-2016-Ideas#make-nim-a-viable-research-platform-for-garbage-collection-algorithms)
   - [Compile time Dead lock/race detection](http://nim-lang.org/blog/concurrency.html)
   - [Efficent](https://github.com/kostya/benchmarks)
-  - [Fast Compiler]
+  - [Fast Compiler] - Checked for regressions.
   - [Small Binary](https://hookrace.net/blog/nim-binary-size/)
   - [Write Tracking](http://nim-lang.org/blog/writetracking.html) - immutability
 
@@ -33,6 +35,7 @@ Nim is a modern programming language designed to develop:
 
 **Tooling**
   - [C2nim compiler](https://github.com/nim-lang/c2nim)
+  - [Editor Support](https://github.com/nim-lang/Nim/wiki/editor-support)
   - [Suggest](https://github.com/nim-lang/nimsuggest)
 
 
