@@ -27,8 +27,13 @@ proc download(pkg: string; c: Controls) {.async.} =
   # XXX make this async somehow:
   writeFile(z, contents)
   c.bar.value = 100
-  if os.execShellCmd("7zG x " & z) != 0:
-    c.lab.text = "Unpacking failed: " & z
+  let olddir = getCurrentDir()
+  try:
+    setCurrentDir(olddir  / "dist")
+    if os.execShellCmd("bin\\7zG.exe x " & pkg & ".zip") != 0:
+      c.lab.text = "Unpacking failed: " & z
+  finally:
+    setCurrentdir(olddir)
 
   when false:
     var a: ZipArchive
