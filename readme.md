@@ -1,6 +1,17 @@
 # <img src="https://raw.githubusercontent.com/nim-lang/assets/master/Art/logo-crown.png" width="36"> Nim [![Build Status](https://travis-ci.org/nim-lang/Nim.svg?branch=devel)](https://travis-ci.org/nim-lang/Nim)
 Efficient like C, expressive like Python and flexible like Lisp.
 
+```python
+proc binarySearch[T](a: openArray[T], key: T): int =
+  var b = len(a)
+  while result < b:
+    var mid = (result + b) div 2
+    if a[mid] < key: result = mid + 1
+    else: b = mid
+  if result >= len(a) or a[result] != key: result = -1
+```
+
+
 For more indepth information check [Nim's website](http://nim-lang.org).
 Other curated resources can be found at [Awesome Nim](https://github.com/VPashkov/awesome-nim)
 
