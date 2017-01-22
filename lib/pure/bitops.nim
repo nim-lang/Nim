@@ -25,16 +25,16 @@ const useVCC_builtins = defined(vcc) and useBuiltins
 
 # #### Pure Nim version ####
 
-proc firstSetBit_nim(x: uint32): cint {.inline, nosideeffect.} =
+proc firstSetBit_nim(x: uint32): int {.inline, nosideeffect.} =
   ## Returns the 1-based index of the least significant set bit of x, or if x is zero, returns zero.
   # https://graphics.stanford.edu/%7Eseander/bithacks.html#ZerosOnRightMultLookup
   const lookup: array[32, uint8] = [0'u8, 1, 28, 2, 29, 14, 24, 3, 30, 22, 20, 15,
     25, 17, 4, 8, 31, 27, 13, 23, 21, 19, 16, 7, 26, 12, 18, 6, 11, 5, 10, 9]
   var v = x.uint32
   var k = not v + 1 # get two's complement # cast[uint32](-cast[int32](v))
-  result = 1.cint + lookup[uint32((v and k) * 0x077CB531'u32) shr 27].cint
+  result = 1 + lookup[uint32((v and k) * 0x077CB531'u32) shr 27].int
 
-proc firstSetBit_nim(x: uint64): cint {.inline, nosideeffect.} =
+proc firstSetBit_nim(x: uint64): int {.inline, nosideeffect.} =
   ## Returns the 1-based index of the least significant set bit of x, or if x is zero, returns zero.
   # https://graphics.stanford.edu/%7Eseander/bithacks.html#ZerosOnRightMultLookup
   var v = uint64(x)
@@ -76,26 +76,26 @@ proc fastlog2_nim(x: uint64): int {.inline, nosideeffect.} =
   result = lookup[(v * 0x03F6EAF2CD271461'u64) shr 58].int
 
 
-proc countSetBits_nim(n: uint32): cint {.inline, noSideEffect.} =
+proc countSetBits_nim(n: uint32): int {.inline, noSideEffect.} =
   ## Counts the set bits in integer. (also called Hamming weight.)
   # generic formula is from: https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
 
   var v = uint32(n)
   v = v - ((v shr 1) and 0x55555555)
   v = (v and 0x33333333) + ((v shr 2) and 0x33333333)
-  result = (((v + (v shr 4) and 0xF0F0F0F) * 0x1010101) shr 24).cint
+  result = (((v + (v shr 4) and 0xF0F0F0F) * 0x1010101) shr 24).int
 
-proc countSetBits_nim(n: uint64): cint {.inline, noSideEffect.} =
+proc countSetBits_nim(n: uint64): int {.inline, noSideEffect.} =
   ## Counts the set bits in integer. (also called Hamming weight.)
   # generic formula is from: https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
   var v = uint64(n)
   v = v - ((v shr 1'u64) and 0x5555555555555555'u64)
   v = (v and 0x3333333333333333'u64) + ((v shr 2'u64) and 0x3333333333333333'u64)
   v = (v + (v shr 4'u64) and 0x0F0F0F0F0F0F0F0F'u64)
-  result = ((v * 0x0101010101010101'u64) shr 56'u64).cint
+  result = ((v * 0x0101010101010101'u64) shr 56'u64).int
 
 
-template parity_impl[T](value: T): cint =
+template parity_impl[T](value: T): int =
   # formula id from: https://graphics.stanford.edu/%7Eseander/bithacks.html#ParityParallel
   var v = value
   when sizeof(T) == 8:
@@ -106,7 +106,7 @@ template parity_impl[T](value: T): cint =
     v = v xor (v shr 8)
   v = v xor (v shr 4)
   v = v and 0xf
-  ((0x6996'u shr v) and 1).cint
+  ((0x6996'u shr v) and 1).int
 
 
 when useGCC_builtins:
@@ -144,10 +144,10 @@ elif useVCC_builtins:
   proc bitScanForward(index: ptr culong, mask: culong): cuchar {.importc: "_bitScanForward", header: "<intrin.h>", nosideeffect.}
   proc bitScanForward64(index: ptr culong, mask: uint64): cuchar {.importc: "_bitScanForward64", header: "<intrin.h>", nosideeffect.}
 
-  template vcc_scan_impl(fnc: untyped; v: untyped): cint =
+  template vcc_scan_impl(fnc: untyped; v: untyped): int =
     var index: culong
     discard fnc(index.addr, v)
-    index.cint
+    index.int
 
 elif useICC_builtins:
 
@@ -161,34 +161,34 @@ elif useICC_builtins:
   proc BitScanReverse(p: ptr uint32, b: uint32): cuchar {.importc: "_BitScanReverse", header: "<immintrin.h>", nosideeffect.}
   proc BitScanReverse64(p: ptr uint32, b: uint64): cuchar {.importc: "_BitScanReverse64", header: "<immintrin.h>", nosideeffect.}
 
-  template icc_scan_impl(fnc: untyped; v: untyped): cint =
+  template icc_scan_impl(fnc: untyped; v: untyped): int =
     var index: uint32
     discard fnc(index.addr, v)
-    index.cint
+    index.int
 
 {.push rangeChecks: off}
-proc countSetBits*(x: SomeInteger): cint {.inline, nosideeffect.} =
+proc countSetBits*(x: SomeInteger): int {.inline, nosideeffect.} =
   ## Counts the set bits in integer. (also called Hamming weight.)
   when nimvm:
     when sizeof(x) <= 4: result = countSetBits_nim(x.uint32)
     else:                result = countSetBits_nim(x.uint64)
   else:
     when useGCC_builtins:
-      when sizeof(x) <= 4: result = builtin_popcount(x.cuint)
-      else:                result = builtin_popcountll(x.culonglong)
+      when sizeof(x) <= 4: result = builtin_popcount(x.cuint).int
+      else:                result = builtin_popcountll(x.culonglong).int
     elif useVCC_builtins:
-      when sizeof(x) <= 2: result = builtin_popcnt16(x.uint16).cint
-      elif sizeof(x) <= 4: result = builtin_popcnt32(x.uint32).cint
-      else:                result = builtin_popcnt64(x.uint64).cint
+      when sizeof(x) <= 2: result = builtin_popcnt16(x.uint16).int
+      elif sizeof(x) <= 4: result = builtin_popcnt32(x.uint32).int
+      else:                result = builtin_popcnt64(x.uint64).int
     else:
       when sizeof(x) <= 4: result = countSetBits_nim(x.uint32)
       else:                result = countSetBits_nim(x.uint64)
 
-proc popcount*(x: SomeInteger): cint {.inline, nosideeffect.} =
+proc popcount*(x: SomeInteger): int {.inline, nosideeffect.} =
   ## Alias for for countSetBits (Hamming weight.)
   result = countSetBits(x)
 
-proc parityBits*(x: SomeInteger): cint {.inline, nosideeffect.} =
+proc parityBits*(x: SomeInteger): int {.inline, nosideeffect.} =
   ## Calculate the bit parity in integer. If number of 1-bit
   ## is odd parity is 1, otherwise 0.    when nimvm:
   when nimvm:
@@ -196,21 +196,21 @@ proc parityBits*(x: SomeInteger): cint {.inline, nosideeffect.} =
     else:                result = parity_impl(x.uint64)
   else:
     when useGCC_builtins:
-      when sizeof(x) <= 4: result = builtin_parity(x.uint32)
-      else:                result = builtin_parityll(x.uint64)
+      when sizeof(x) <= 4: result = builtin_parity(x.uint32).int
+      else:                result = builtin_parityll(x.uint64).int
     else:
       when sizeof(x) <= 4: result = parity_impl(x.uint32)
       else:                result = parity_impl(x.uint64)
 
-proc firstSetBit*(x: SomeInteger): cint {.inline, nosideeffect.} =
+proc firstSetBit*(x: SomeInteger): int {.inline, nosideeffect.} =
   ## Returns the 1-based index of the least significant set bit of x, or if x is zero, returns zero.
   when nimvm:
     when sizeof(x) <= 4: result = firstSetBit_nim(x.uint32)
     else:                result = firstSetBit_nim(x.uint64)
   else:
     when useGCC_builtins:
-      when sizeof(x) <= 4: result = builtin_ffs(x.cint)
-      else:                result = builtin_ffsll(x.clonglong)
+      when sizeof(x) <= 4: result = builtin_ffs(x.cint).int
+      else:                result = builtin_ffsll(x.clonglong).int
     elif useVCC_builtins:
       when sizeof(x) <= 4:
         result = 1.cint + vcc_scan_impl(bitScanForward, x.culong)
@@ -236,42 +236,41 @@ proc fastLog2*(x: SomeInteger): int {.inline, nosideeffect.} =
       else:                result = 63 - builtin_clzll(x.uint64).int
     elif useVCC_builtins:
       when sizeof(x) <= 4:
-        result = 31 - vcc_scan_impl(bitScanReverse, x.culong).int
+        result = 31 - vcc_scan_impl(bitScanReverse, x.culong)
       else:
-        result = 63 - vcc_scan_impl(bitScanReverse64, x.uint64).int
+        result = 63 - vcc_scan_impl(bitScanReverse64, x.uint64)
     elif useICC_builtins:
       when sizeof(x) <= 4:
-        result = 31 - icc_scan_impl(bitScanReverse, x.uint32).int
+        result = 31 - icc_scan_impl(bitScanReverse, x.uint32)
       else:
-        result = 63 - icc_scan_impl(bitScanReverse64, x.uint64).int
+        result = 63 - icc_scan_impl(bitScanReverse64, x.uint64)
     else:
       when sizeof(x) <= 4: result = fastlog2_nim(x.uint32)
       else:                result = fastlog2_nim(x.uint64)
 
-proc countLeadingZeroBits*(x: SomeInteger): cint {.inline, nosideeffect.} =
+proc countLeadingZeroBits*(x: SomeInteger): int {.inline, nosideeffect.} =
   ## Returns the number of leading zero bits in integer.
   when nimvm:
-      when sizeof(x) <= 4: result = sizeof(x)*8 - 1 - fastlog2_nim(x.uint32).cint
-      else:                result = sizeof(x)*8 - 1 - fastlog2_nim(x.uint64).cint
+      when sizeof(x) <= 4: result = sizeof(x)*8 - 1 - fastlog2_nim(x.uint32)
+      else:                result = sizeof(x)*8 - 1 - fastlog2_nim(x.uint64)
   else:
     when useGCC_builtins:
-      when sizeof(x) <= 4: result = builtin_clz(x.uint32) - (32 - sizeof(x)*8)
-      else:                result = builtin_clzll(x.uint64)
+      when sizeof(x) <= 4: result = builtin_clz(x.uint32).int - (32 - sizeof(x)*8)
+      else:                result = builtin_clzll(x.uint64).int
     else:
-      when sizeof(x) <= 4: result = sizeof(x)*8 - 1 - fastlog2_nim(x.uint32).cint
-      else:                result = sizeof(x)*8 - 1 - fastlog2_nim(x.uint64).cint
+      when sizeof(x) <= 4: result = sizeof(x)*8 - 1 - fastlog2_nim(x.uint32)
+      else:                result = sizeof(x)*8 - 1 - fastlog2_nim(x.uint64)
 
-proc countTrailingZeroBits*(x: SomeInteger): cint {.inline, nosideeffect.} =
+proc countTrailingZeroBits*(x: SomeInteger): int {.inline, nosideeffect.} =
   ## Returns the number of trailing zeros in integer.
   when nimvm:
     result = firstSetBit(x) - 1
   else:
     when useGCC_builtins:
-      when sizeof(x) <= 4: result = builtin_ctz(x.uint32)
-      else:                result = builtin_ctzll(x.uint64)
+      when sizeof(x) <= 4: result = builtin_ctz(x.uint32).int
+      else:                result = builtin_ctzll(x.uint64).int
     else:
       result = firstSetBit(x) - 1
-
 
 
 
@@ -315,4 +314,5 @@ proc rotateRightBits*(value: uint64;
             amount: range[1..63]): uint64 {.inline, noSideEffect.} =
   ## Right-rotate bits in a 64-bits value.
   result = (value shr amount) or (value shl (64 - amount))
+
 {.pop.}
