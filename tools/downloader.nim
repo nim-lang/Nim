@@ -1,8 +1,7 @@
-
-# Test & show the new high level wrapper
+# Helper that is run after Nim's installation.
 
 import
-  "../ui", asyncdispatch, httpclient, zip/zipfiles, os
+  ui, asyncdispatch, httpclient, os, finish, registry, strutils
 
 type
   Actions = object
@@ -28,6 +27,9 @@ proc download(pkg: string; c: Controls) {.async.} =
   # XXX make this async somehow:
   writeFile(z, contents)
   c.bar.value = 100
+  if os.execShellCmd("7zG x " & z) != 0:
+    c.lab.text = "Unpacking failed: " & z
+
   when false:
     var a: ZipArchive
     if open(a, z, fmRead):
@@ -41,13 +43,28 @@ proc apply(a: Actions; c: Controls) {.async.} =
     await download("mingw" & arch, c)
   if a.aporia:
     await download("aporia-0.4.0", c)
-    if a.startMenu:
-      discard "add start menu entry"
+
+  if a.addToPath:
+    let desiredPath = expandFilename(getCurrentDir() / "bin")
+    let p = getUnicodeValue(r"Environment", "Path",
+      HKEY_CURRENT_USER)
+    var alreadyInPath = false
+    for x in p.split(';'):
+      if x.len == 0: continue
+      let y = try: expandFilename(if x[0] == '"' and x[^1] == '"':
+                                    substr(x, 1, x.len-2) else: x)
+              except: ""
+      if y == desiredPath: alreadyInPath = true
+    if not alreadyInPath:
+      addToPathEnv(desiredPath)
+
+  if a.startMenu:
+    createStartMenuEntry()
 
   c.apply.text = "Quit"
 
 proc main() =
-  var mainwin = newWindow("Nim installer", 640, 480, true)
+  var mainwin = newWindow("Nim installer", 640, 280, true)
   mainwin.margined = true
   mainwin.onClosing = (proc (): bool = return true)
 

@@ -53,7 +53,7 @@ when defined(windows):
     except IOError:
       echo "Could not access 'config/nim.cfg' [Error]"
 
-  proc addToPathEnv(e: string) =
+  proc addToPathEnv*(e: string) =
     let p = getUnicodeValue(r"Environment", "Path", HKEY_CURRENT_USER)
     let x = if e.contains(Whitespace): "\"" & e & "\"" else: e
     setUnicodeValue(r"Environment", "Path", p & ";" & x, HKEY_CURRENT_USER)
@@ -65,13 +65,13 @@ when defined(windows):
       cmd.add " \"" & icon & "\" 0"
     discard execShellCmd(cmd)
 
-  proc createStartMenuEntry() =
+  proc createStartMenuEntry*(override = false) =
     let appdata = getEnv("APPDATA")
     if appdata.len == 0: return
     let dest = appdata & r"\Microsoft\Windows\Start Menu\Programs\Nim-" &
                NimVersion
     if dirExists(dest): return
-    if askBool("Would like to add Nim-" & NimVersion &
+    if override or askBool("Would like to add Nim-" & NimVersion &
                " to your start menu? (y/n) "):
       createDir(dest)
       createShortcut(getCurrentDir() / "tools" / "start.bat", dest / "Nim",
