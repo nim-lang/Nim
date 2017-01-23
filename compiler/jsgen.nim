@@ -1374,7 +1374,7 @@ proc createRecordVarAux(p: PProc, rec: PNode, excludedFieldIDs: IntSet, output: 
     if rec.sym.id notin excludedFieldIDs:
       if output.len > 0: output.add(", ")
       if p.target == targetJS:
-        output.addf("'$#': ", [mangleName(rec.sym, p.target)])
+        output.addf("$#: ", [mangleName(rec.sym, p.target)])
       else:
         output.addf("'$#' => ", [mangleName(rec.sym, p.target)])
       output.add(createVar(p, rec.sym.typ, false))
@@ -1883,7 +1883,7 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
     var f = it.sons[0].sym
     if f.loc.r == nil: f.loc.r = mangleName(f, p.target)
     fieldIDs.incl(f.id)
-    addf(initList, "'$#': $#" | "'$#' => $#" , [f.loc.r, a.res])
+    addf(initList, "$#: $#" | "'$#' => $#" , [f.loc.r, a.res])
   let t = skipTypes(n.typ, abstractInst + skipPtrs)
   createObjInitList(p, t, fieldIDs, initList)
   r.res = ("{$1}" | "array($#)") % [initList]
