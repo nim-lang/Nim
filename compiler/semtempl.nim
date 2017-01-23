@@ -445,7 +445,9 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   of nkPostfix:
     result.sons[1] = semTemplBody(c, n.sons[1])
   of nkPragma:
-    result = onlyReplaceParams(c, n)
+    for x in n:
+      if x.kind == nkExprColonExpr:
+        x.sons[1] = semTemplBody(c, x.sons[1])
   of nkBracketExpr:
     result = newNodeI(nkCall, n.info)
     result.add newIdentNode(getIdent("[]"), n.info)
