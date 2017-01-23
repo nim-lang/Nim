@@ -244,7 +244,10 @@ proc pushSafePoint(f: PStackFrame; pc: int) =
   if f.safePoints.isNil: f.safePoints = @[]
   f.safePoints.add(pc)
 
-proc popSafePoint(f: PStackFrame) = discard f.safePoints.pop()
+proc popSafePoint(f: PStackFrame) =
+  # XXX this needs a proper fix!
+  if f.safePoints.len > 0:
+    discard f.safePoints.pop()
 
 proc cleanUpOnException(c: PCtx; tos: PStackFrame):
                                               tuple[pc: int, f: PStackFrame] =
@@ -405,7 +408,7 @@ proc recSetFlagIsRef(arg: PNode) =
   arg.flags.incl(nfIsRef)
   for i in 0 ..< arg.safeLen:
     arg.sons[i].recSetFlagIsRef
-  
+
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
   var tos = tos

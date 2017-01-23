@@ -314,7 +314,9 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   if bodyIsNew and newbody.typeInst == nil:
     #doassert newbody.typeInst == nil
     newbody.typeInst = result
-    if tfRefsAnonObj in newbody.flags:
+    if tfRefsAnonObj in newbody.flags and newbody.kind != tyGenericInst:
+      # can come here for tyGenericInst too, see tests/metatype/ttypeor.nim
+      # need to look into this issue later
       assert newbody.kind in {tyRef, tyPtr}
       assert newbody.lastSon.typeInst == nil
       newbody.lastSon.typeInst = result
