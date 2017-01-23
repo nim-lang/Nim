@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim c -d:ssl $file"
+  cmd: "nim c --threads:on -d:ssl $file"
 """
 
 import strutils

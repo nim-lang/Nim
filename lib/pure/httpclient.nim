@@ -50,13 +50,13 @@
 ##
 ##   echo client.postContent("http://validator.w3.org/check", multipart=data)
 ##
-## You can also make post requests with custom headers. 
+## You can also make post requests with custom headers.
 ## This example sets ``Content-Type`` to ``application/json``
 ## and uses a json object for the body
 ##
 ## .. code-block:: Nim
 ##   import httpclient, json
-##   
+##
 ##   let client = newHttpClient()
 ##   client.headers = newHttpHeaders({ "Content-Type": "application/json" })
 ##   let body = %*{
@@ -303,9 +303,12 @@ proc parseResponse(s: Socket, getBody: bool, timeout: int): Response =
 
 when not defined(ssl):
   type SSLContext = ref object
-  let defaultSSLContext: SSLContext = nil
-else:
-  let defaultSSLContext = newContext(verifyMode = CVerifyNone)
+var defaultSSLContext {.threadvar.}: SSLContext
+when defined(ssl):
+  defaultSSLContext = newContext(verifyMode = CVerifyNone)
+  when compileOption("threads"):
+    onThreadCreation do ():
+      defaultSSLContext = newContext(verifyMode = CVerifyNone)
 
 proc newProxy*(url: string, auth = ""): Proxy =
   ## Constructs a new ``TProxy`` object.
