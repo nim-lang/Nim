@@ -116,12 +116,12 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string): PEvalContext
   cbconf getCommand:
     setResult(a, options.command)
   cbconf switch:
-    processSwitch(a.getString 0, a.getString 1, passPP, unknownLineInfo())
+    processSwitch(a.getString 0, a.getString 1, passPP, module.info)
   cbconf hintImpl:
-    processSpecificNote(a.getString 0, wHint, passPP, unknownLineInfo(),
+    processSpecificNote(a.getString 0, wHint, passPP, module.info,
       a.getString 1)
   cbconf warningImpl:
-    processSpecificNote(a.getString 0, wWarning, passPP, unknownLineInfo(),
+    processSpecificNote(a.getString 0, wWarning, passPP, module.info,
       a.getString 1)
   cbconf patchFile:
     let key = a.getString(0) & "_" & a.getString(1)

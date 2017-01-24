@@ -973,6 +973,8 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
           r = mangleName(p.module, sym)
           sym.loc.r = r       # but be consequent!
         res.add($r)
+    of nkTypeOfExpr:
+      res.add($getTypeDesc(p.module, t.sons[i].typ))
     else:
       var a: TLoc
       initLocExpr(p, t.sons[i], a)

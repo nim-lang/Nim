@@ -21,7 +21,7 @@ This tutorial assumes that you are familiar with basic programming concepts
 like variables, types or statements but is kept very basic. The `manual
 <manual.html>`_ contains many more examples of the advanced language features.
 All code examples in this tutorial, as well as the ones found in the rest of
-Nim's documentation, follow the `Nim style guide <nep1.html>`.
+Nim's documentation, follow the `Nim style guide <nep1.html>`_.
 
 
 The first program

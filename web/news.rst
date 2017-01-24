@@ -2,6 +2,9 @@
 News
 ====
 
+`2017-01-08 Nim Version 0.16.2 released <news/e031_version_0_16_2.html>`_
+===================================
+
 `2017-01-08 Nim Version 0.16.0 released <news/e029_version_0_16_0.html>`_
 ===================================
 

@@ -327,6 +327,8 @@ proc onThreadCreation*(handler: proc () {.nimcall, gcsafe.}) =
   ##    {.gcsafe.}:
   ##      deepCopy(perThread, someGlobal)
   ##
+  ##  onThreadCreation(setPerThread)
+  ##
   ## **Note**: The registration is currently not threadsafe! Better
   ## call ``onThreadCreation`` before any thread started its work!
   threadCreationHandlers[countThreadCreationHandlers] = handler
@@ -335,6 +337,13 @@ proc onThreadCreation*(handler: proc () {.nimcall, gcsafe.}) =
 template beforeThreadRuns() =
   for i in 0..countThreadCreationHandlers-1:
     threadCreationHandlers[i]()
+
+proc runOnThreadCreationHandlers*() =
+  ## This runs every registered ``onThreadCreation`` handler and is usually
+  ## used to initialize thread local storage for the main thread. Since the
+  ## main thread is **not** created via ``createThread`` it doesn't run the
+  ## handlers automatically.
+  beforeThreadRuns()
 
 when not defined(boehmgc) and not hasSharedHeap and not defined(gogc) and not defined(gcstack):
   proc deallocOsPages()

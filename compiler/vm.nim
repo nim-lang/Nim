@@ -244,7 +244,10 @@ proc pushSafePoint(f: PStackFrame; pc: int) =
   if f.safePoints.isNil: f.safePoints = @[]
   f.safePoints.add(pc)
 
-proc popSafePoint(f: PStackFrame) = discard f.safePoints.pop()
+proc popSafePoint(f: PStackFrame) =
+  # XXX this needs a proper fix!
+  if f.safePoints.len > 0:
+    discard f.safePoints.pop()
 
 proc cleanUpOnException(c: PCtx; tos: PStackFrame):
                                               tuple[pc: int, f: PStackFrame] =
@@ -400,6 +403,11 @@ template handleJmpBack() {.dirty.} =
       stackTraceAux(c, tos, pc)
       globalError(c.debug[pc], errTooManyIterations)
   dec(c.loopIterations)
+
+proc recSetFlagIsRef(arg: PNode) =
+  arg.flags.incl(nfIsRef)
+  for i in 0 ..< arg.safeLen:
+    arg.sons[i].recSetFlagIsRef
 
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
@@ -816,7 +824,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcAddSeqElem:
       decodeB(rkNode)
       if regs[ra].node.kind == nkBracket:
-        regs[ra].node.add(copyTree(regs[rb].regToNode))
+        regs[ra].node.add(copyValue(regs[rb].regToNode))
       else:
         stackTrace(c, tos, pc, errNilAccess)
     of opcGetImpl:
@@ -926,6 +934,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         macroCall.add(newSymNode(prc))
         for i in 1 .. rc-1: macroCall.add(regs[rb+i].regToNode)
         let a = evalTemplate(macroCall, prc, genSymOwner)
+        a.recSetFlagIsRef
         ensureKind(rkNode)
         regs[ra].node = a
     of opcTJmp:
