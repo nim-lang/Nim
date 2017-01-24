@@ -311,6 +311,9 @@ var
   threadCreationHandlers: array[60, proc () {.nimcall, gcsafe.}]
   countThreadCreationHandlers: int
 
+  threadDestructionHandlers: array[60, proc () {.nimcall, gcsafe.}]
+  countThreadDestructionHandlers: int
+
 proc onThreadCreation*(handler: proc () {.nimcall, gcsafe.}) =
   ## Registers a global handler that is called at thread creation.
   ## This can be used to initialize thread local variables properly.
@@ -334,9 +337,21 @@ proc onThreadCreation*(handler: proc () {.nimcall, gcsafe.}) =
   threadCreationHandlers[countThreadCreationHandlers] = handler
   inc countThreadCreationHandlers
 
+proc onThreadDestruction*(handler: proc () {.nimcall, gcsafe.}) =
+  ## Registers a global handler that is called at thread destruction.
+  ## Threads are destructed when the ``.thread`` proc returns
+  ## normally or raises an exception. Note that unhandled exceptions
+  ## in a thread nevertheless cause the whole process to die.
+  threadDestructionHandlers[countThreadDestructionHandlers] = handler
+  inc countThreadDestructionHandlers
+
 template beforeThreadRuns() =
   for i in 0..countThreadCreationHandlers-1:
     threadCreationHandlers[i]()
+
+template afterThreadRuns() =
+  for i in 0..countThreadDestructionHandlers-1:
+    threadDestructionHandlers[i]()
 
 proc runOnThreadCreationHandlers*() =
   ## This runs every registered ``onThreadCreation`` handler and is usually
@@ -360,21 +375,27 @@ when defined(boehmgc):
   proc threadProcWrapDispatch[TArg](sb: pointer, thrd: pointer) {.noconv.} =
     boehmGC_register_my_thread(sb)
     beforeThreadRuns()
-    let thrd = cast[ptr Thread[TArg]](thrd)
-    when TArg is void:
-      thrd.dataFn()
-    else:
-      thrd.dataFn(thrd.data)
+    try:
+      let thrd = cast[ptr Thread[TArg]](thrd)
+      when TArg is void:
+        thrd.dataFn()
+      else:
+        thrd.dataFn(thrd.data)
+    finally:
+      afterThreadRuns()
     boehmGC_unregister_my_thread()
 else:
   proc threadProcWrapDispatch[TArg](thrd: ptr Thread[TArg]) =
     beforeThreadRuns()
-    when TArg is void:
-      thrd.dataFn()
-    else:
-      var x: TArg
-      deepCopy(x, thrd.data)
-      thrd.dataFn(x)
+    try:
+      when TArg is void:
+        thrd.dataFn()
+      else:
+        var x: TArg
+        deepCopy(x, thrd.data)
+        thrd.dataFn(x)
+    finally:
+      afterThreadRuns()
 
 proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) =
   when defined(boehmgc):
