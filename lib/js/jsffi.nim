@@ -60,8 +60,9 @@ proc validJsName(name: string): bool =
   case name
   of reservedWords: return false
   else: discard
+  if name[0] notin {'A'..'Z','a'..'z','_','$'}: return false
   for chr in name:
-    if chr notin {'A'..'Z','a'..'z','_'}:
+    if chr notin {'A'..'Z','a'..'z','_','$','0'..'9'}:
       return false
 
 template mangleJsName(name: cstring): cstring =
