@@ -50,10 +50,12 @@ template fastRuneAt(s: cstring, i: int, result: expr, doInc = true) =
     result = ord(s[i])
     when doInc: inc(i)
   elif ord(s[i]) shr 5 == 0b110:
+    if i + 1 > s.len - 1: raise newException(ValueError, "incomplete 2-byte unicode rune")
     #assert(ord(s[i+1]) shr 6 == 0b10)
     result = (ord(s[i]) and (ones(5))) shl 6 or (ord(s[i+1]) and ones(6))
     when doInc: inc(i, 2)
   elif ord(s[i]) shr 4 == 0b1110:
+    if i + 2 > s.len - 1: raise newException(ValueError, "incomplete 3-byte unicode rune")
     #assert(ord(s[i+1]) shr 6 == 0b10)
     #assert(ord(s[i+2]) shr 6 == 0b10)
     result = (ord(s[i]) and ones(4)) shl 12 or
@@ -61,6 +63,7 @@ template fastRuneAt(s: cstring, i: int, result: expr, doInc = true) =
              (ord(s[i+2]) and ones(6))
     when doInc: inc(i, 3)
   elif ord(s[i]) shr 3 == 0b11110:
+    if i + 3 > s.len - 1: raise newException(ValueError, "incomplete 4-byte unicode rune")
     #assert(ord(s[i+1]) shr 6 == 0b10)
     #assert(ord(s[i+2]) shr 6 == 0b10)
     #assert(ord(s[i+3]) shr 6 == 0b10)
