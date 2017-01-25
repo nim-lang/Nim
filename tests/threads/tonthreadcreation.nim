@@ -1,5 +1,6 @@
 discard """
-  output: '''some string here'''
+  output: '''some string here
+dying some string here'''
 """
 
 var
@@ -10,11 +11,15 @@ proc setPerThread() =
   {.gcsafe.}:
     deepCopy(perThread, someGlobal)
 
+proc threadDied() {.gcsafe} =
+  echo "dying ", perThread
+
 proc foo() {.thread.} =
   echo perThread
 
 proc main =
   onThreadCreation setPerThread
+  onThreadDestruction threadDied
   var t: Thread[void]
   createThread[void](t, foo)
   t.joinThread()

@@ -1200,7 +1200,7 @@ proc genDeref(p: PProc, n: PNode, r: var TCompRes) =
       r.res = "$1[$2]" % [a.address, a.res]
     elif n.sons[0].kind == nkCall:
       let tmp = p.getTemp
-      r.res = "($1 = $2, $1[0][$1[1]])" % [tmp, a.res]
+      r.res = "($1 = $2, $1[0])[$1[1]]" % [tmp, a.res]
     else:
       internalError(n.info, "genDeref")
 

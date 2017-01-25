@@ -3362,7 +3362,7 @@ proc staticExec*(command: string, input = "", cache = ""): string {.
   ## If ``cache`` is not empty, the results of ``staticExec`` are cached within
   ## the ``nimcache`` directory. Use ``--forceBuild`` to get rid of this caching
   ## behaviour then. ``command & input & cache`` (the concatenated string) is
-  ## used to determine wether the entry in the cache is still valid. You can
+  ## used to determine whether the entry in the cache is still valid. You can
   ## use versioning information for ``cache``:
   ##
   ## .. code-block:: nim
