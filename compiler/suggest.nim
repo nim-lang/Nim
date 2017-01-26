@@ -268,6 +268,7 @@ proc suggestFieldAccess(c: PContext, n: PNode, outputs: var int) =
       t = t.sons[0]
     suggestOperations(c, n, typ, outputs)
   else:
+    let orig = skipTypes(typ, {tyGenericInst, tyAlias})
     typ = skipTypes(typ, {tyGenericInst, tyVar, tyPtr, tyRef, tyAlias})
     if typ.kind == tyObject:
       var t = typ
@@ -275,11 +276,10 @@ proc suggestFieldAccess(c: PContext, n: PNode, outputs: var int) =
         suggestObject(c, t.n, outputs)
         if t.sons[0] == nil: break
         t = skipTypes(t.sons[0], skipPtrs)
-      suggestOperations(c, n, typ, outputs)
     elif typ.kind == tyTuple and typ.n != nil:
       suggestSymList(c, typ.n, outputs)
-      suggestOperations(c, n, typ, outputs)
-    else:
+    suggestOperations(c, n, orig, outputs)
+    if typ != orig:
       suggestOperations(c, n, typ, outputs)
 
 type
@@ -331,6 +331,8 @@ when defined(nimsuggest):
     info.fileIndex + info.line.int64 shl 32 + info.col.int64 shl 48
 
   proc addNoDup(s: PSym; info: TLineInfo) =
+    # ensure nothing gets too slow:
+    if s.allUsages.len > 500: return
     let infoAsInt = info.infoToInt
     for infoB in s.allUsages:
       if infoB.infoToInt == infoAsInt: return
