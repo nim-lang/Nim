@@ -701,7 +701,7 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
   # We need to put them in the current sigmatch's binding table in order for them
   # to be resolvable while matching the rest of the parameters
   for p in typeParams:
-    put(m.bindings, p[1], p[0].typ)
+    put(m, p[1], p[0].typ)
 
   if ff.kind == tyUserTypeClassInst:
     result = generateTypeInstance(c, m.bindings, Concept.sym.info, ff)
@@ -831,7 +831,7 @@ proc inferStaticsInRange(c: var TCandidate,
     var rhs = r
     var inferred = inferStaticParam(exp, rhs)
     if inferred != nil:
-      put(c.bindings, inferred, inferred)
+      put(c, inferred, inferred)
       return isGeneric
     else:
       failureToInferStaticParam exp
@@ -1612,8 +1612,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
 
     if a.kind == tyStatic:
       if m.callee.kind == tyGenericBody and
-         argType.n == nil and
-         tfGenericTypeParam notin argType.flags:
+         a.n == nil and
+         tfGenericTypeParam notin a.flags:
         return newNodeIT(nkType, argOrig.info, makeTypeFromExpr(c, arg))
     else:
       var evaluated = c.semTryConstExpr(c, arg)

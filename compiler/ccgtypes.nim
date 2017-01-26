@@ -790,7 +790,8 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
       of 1, 2, 4, 8: addf(m.s[cfsTypes], "typedef NU$2 $1;$n", [result, rope(s*8)])
       else: addf(m.s[cfsTypes], "typedef NU8 $1[$2];$n",
              [result, rope(getSize(t))])
-  of tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias:
+  of tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias,
+     tyUserTypeClass, tyUserTypeClassInst, tyInferred:
     result = getTypeDescAux(m, lastSon(t), check)
   else:
     internalError("getTypeDescAux(" & $t.kind & ')')

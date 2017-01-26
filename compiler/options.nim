@@ -72,8 +72,8 @@ type                          # please make sure we have under 32 options
   TGlobalOptions* = set[TGlobalOption]
 
 const
-  harmlessOptions* = {optForceFullMake, optNoLinking, optReportConceptFailures,
-    optRun, optUseColors, optStdout}
+  harmlessOptions* = {optForceFullMake, optNoLinking, optRun,
+                      optUseColors, optStdout}
 
 type
   TCommands* = enum           # Nim's commands
