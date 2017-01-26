@@ -89,7 +89,7 @@ proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
   result = $e & " (invalid data!)"
 
 type
-  PByteArray = ptr array[0.. 0xffff, int8]
+  PByteArray = ptr array[0xffff, int8]
 
 proc addSetElem(result: var string, elem: int, typ: PNimType) {.benign.} =
   case typ.kind
