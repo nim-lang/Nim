@@ -102,6 +102,7 @@ proc newSelector*[T](): Selector[T] =
   else:
     result = Selector[T]()
     result.fds = newSeq[SelectorKey[T]](maxFD)
+    result.changes = newSeqOfCap[KEvent](MAX_KQUEUE_EVENTS)
 
   result.kqFD = kqFD
   result.maxFD = maxFD.int
