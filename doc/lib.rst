@@ -415,6 +415,9 @@ Modules for JS backend
 * `dom <dom.html>`_
   Declaration of the Document Object Model for the JS backend.
 
+* `jsffi <jsffi.html>`_
+  Types and macros for easier interaction with JavaScript.
+
 
 Deprecated modules
 ------------------
