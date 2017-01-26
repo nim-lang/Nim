@@ -34,18 +34,18 @@ proc name*(t: typedesc): string {.magic: "TypeTrait".}
 proc arity*(t: typedesc): int {.magic: "TypeTrait".}
   ## Returns the arity of the given type
 
-proc GenericHead*(t: typedesc): typedesc {.magic: "TypeTrait".}
+proc genericHead*(t: typedesc): typedesc {.magic: "TypeTrait".}
   ## Accepts an instantiated generic type and returns its
   ## uninstantiated form.
   ##
   ## For example:
-  ##   seq[int].GenericHead will be just seq
-  ##   seq[int].GenericHead[float] will be seq[float]
+  ##   seq[int].genericHead will be just seq
+  ##   seq[int].genericHead[float] will be seq[float]
   ##
   ## A compile-time error will be produced if the supplied type
   ## is not generic
 
-proc StripGenericParams*(t: typedesc): typedesc {.magic: "TypeTrait".}
-  ## This trait is similar to `GenericHead`, but instead of producing
+proc stripGenericParams*(t: typedesc): typedesc {.magic: "TypeTrait".}
+  ## This trait is similar to `genericHead`, but instead of producing
   ## error for non-generic types, it will just return them unmodified
 

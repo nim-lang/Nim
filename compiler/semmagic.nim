@@ -91,7 +91,7 @@ proc toNode(t: PType, i: TLineInfo): PNode =
 
 const 
   # these are types that use the bracket syntax for instantiation
-  # they can be subjected to the type traits `GenericHead` and 
+  # they can be subjected to the type traits `genericHead` and 
   # `Uninstantiated`
   tyUserDefinedGenerics* = {tyGenericInst, tyGenericInvocation,
                             tyUserTypeClassInst}
@@ -120,15 +120,15 @@ proc evalTypeTrait(trait: PNode, operand: PType, context: PSym): PNode =
     result = newIntNode(nkIntLit, typ.len - ord(typ.kind==tyProc))
     result.typ = newType(tyInt, context)
     result.info = trait.info
-  of "GenericHead":
+  of "genericHead":
     var res = uninstantiate(typ)
     if res == typ and res.kind notin tyMagicGenerics:
       localError(trait.info,
-        "GenericHead expects a generic type. The given type was " &
+        "genericHead expects a generic type. The given type was " &
         typeToString(typ))
       return newType(tyError, context).toNode(trait.info)
     result = res.base.toNode(trait.info)
-  of "StripGenericParams":
+  of "stripGenericParams":
     result = uninstantiate(typ).toNode(trait.info)
   else:
     internalAssert false

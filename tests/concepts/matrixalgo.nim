@@ -9,7 +9,7 @@ type
     m[int, int] is T
     mvar[int, int] = T
 
-    type TransposedType = StripGenericParams(M)[C, R, T]
+    type TransposedType = stripGenericParams(M)[C, R, T]
 
   AnySquareMatrix*[N: static[int], T] = AnyMatrix[N, N, T]
 
