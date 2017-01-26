@@ -35,10 +35,11 @@ proc sameMethodDispatcher(a, b: PSym): bool =
 proc determineType(c: PContext, s: PSym)
 
 proc initCandidateSymbols(c: PContext, headSymbol: PNode,
-                       initialBinding: PNode,
-                       filter: TSymKinds,
-                       best, alt: var TCandidate,
-                       o: var TOverloadIter): seq[tuple[s: PSym, scope: int]] =
+                          initialBinding: PNode,
+                          filter: TSymKinds,
+                          best, alt: var TCandidate,
+                          o: var TOverloadIter,
+                          diagnostics: bool): seq[tuple[s: PSym, scope: int]] =
   result = @[]
   var symx = initOverloadIter(o, c, headSymbol)
   while symx != nil:
@@ -46,8 +47,10 @@ proc initCandidateSymbols(c: PContext, headSymbol: PNode,
       result.add((symx, o.lastOverloadScope))
     symx = nextOverloadIter(o, c, headSymbol)
   if result.len > 0:
-    initCandidate(c, best, result[0].s, initialBinding, result[0].scope)
-    initCandidate(c, alt, result[0].s, initialBinding, result[0].scope)
+    initCandidate(c, best, result[0].s, initialBinding,
+                  result[0].scope, diagnostics)
+    initCandidate(c, alt, result[0].s, initialBinding,
+                  result[0].scope, diagnostics)
     best.state = csNoMatch
 
 proc pickBestCandidate(c: PContext, headSymbol: PNode,
@@ -56,55 +59,62 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
                        filter: TSymKinds,
                        best, alt: var TCandidate,
                        errors: var CandidateErrors,
-                       diagnostics = false) =
+                       diagnosticsFlag = false) =
   var o: TOverloadIter
-  # thanks to the lazy semchecking for operands, we need to iterate over the
-  # symbol table *before* any call to 'initCandidate' which might invoke
-  # semExpr which might modify the symbol table in cases like
-  # 'init(a, 1, (var b = new(Type2); b))'.
-  var symx = initOverloadIter(o, c, headSymbol)
-  let symScope = o.lastOverloadScope
-
-  var syms: seq[tuple[a: PSym, b: int]] = @[]
-  while symx != nil:
-    if symx.kind in filter:
-      syms.add((symx, o.lastOverloadScope))
-    symx = nextOverloadIter(o, c, headSymbol)
-  if syms.len == 0: return
+  var sym = initOverloadIter(o, c, headSymbol)
+  var scope = o.lastOverloadScope
+  # Thanks to the lazy semchecking for operands, we need to check whether
+  # 'initCandidate' modifies the symbol table (via semExpr).
+  # This can occur in cases like 'init(a, 1, (var b = new(Type2); b))'
+  let counterInitial = c.currentScope.symbols.counter
+  var syms: seq[tuple[s: PSym, scope: int]]
+  var nextSymIndex = 0
+  while sym != nil:
+    if sym.kind in filter:
+      # Initialise 'best' and 'alt' with the first available symbol
+      initCandidate(c, best, sym, initialBinding, scope, diagnosticsFlag)
+      initCandidate(c, alt, sym, initialBinding, scope, diagnosticsFlag)
+      best.state = csNoMatch
+      break
+    else:
+      sym = nextOverloadIter(o, c, headSymbol)
+      scope = o.lastOverloadScope
   var z: TCandidate
-  initCandidate(c, best, syms[0][0], initialBinding,
-                symScope, diagnostics = diagnostics)
-  initCandidate(c, alt, syms[0][0], initialBinding,
-                symScope, diagnostics = diagnostics)
-  best.state = csNoMatch
-
-  for i in 0 .. <syms.len:
-    let sym = syms[i][0]
+  while sym != nil:
+    if sym.kind notin filter:
+      sym = nextOverloadIter(o, c, headSymbol)
+      scope = o.lastOverloadScope
+      continue
     determineType(c, sym)
-    initCandidate(c, z, sym, initialBinding,
-                  syms[i][1], diagnostics = diagnostics)
-    #if sym.name.s == "*" and (n.info ?? "temp5.nim") and n.info.line == 140:
-    #  gDebug = true
-    matches(c, n, orig, z)
-    if z.state == csMatch:
-      # little hack so that iterators are preferred over everything else:
-      if sym.kind == skIterator: inc(z.exactMatches, 200)
-      case best.state
-      of csEmpty, csNoMatch: best = z
-      of csMatch:
-        var cmp = cmpCandidates(best, z)
-        if cmp < 0: best = z   # x is better than the best so far
-        elif cmp == 0: alt = z # x is as good as the best so far
-        else: discard
-      #if sym.name.s == "cmp" and (n.info ?? "rstgen.nim") and n.info.line == 516:
-      #  echo "Matches ", n.info, " ", typeToString(sym.typ)
-      #  debug sym
-      #  writeMatches(z)
-      #  for i in 1 .. <len(z.call):
-      #    z.call[i].typ.debug
-      #  quit 1
-    elif errors != nil or z.diagnostics != nil:
-      errors.safeAdd((sym, int z.mutabilityProblem, z.diagnostics))
+    initCandidate(c, z, sym, initialBinding, scope, diagnosticsFlag)
+    if c.currentScope.symbols.counter == counterInitial or syms != nil:
+      matches(c, n, orig, z)
+      if z.state == csMatch:
+        # little hack so that iterators are preferred over everything else:
+        if sym.kind == skIterator: inc(z.exactMatches, 200)
+        case best.state
+        of csEmpty, csNoMatch: best = z
+        of csMatch:
+          var cmp = cmpCandidates(best, z)
+          if cmp < 0: best = z   # x is better than the best so far
+          elif cmp == 0: alt = z # x is as good as the best so far
+      elif errors != nil or z.diagnostics != nil:
+        errors.safeAdd((sym, int z.mutabilityProblem, z.diagnostics))
+    else:
+      # Symbol table has been modified. Restart and pre-calculate all syms
+      # before any further candidate init and compare. SLOW, but rare case.
+      syms = initCandidateSymbols(c, headSymbol, initialBinding, filter,
+                                  best, alt, o, diagnosticsFlag)
+    if syms == nil:
+      sym = nextOverloadIter(o, c, headSymbol)
+      scope = o.lastOverloadScope
+    elif nextSymIndex < syms.len:
+      # rare case: retrieve the next pre-calculated symbol
+      sym = syms[nextSymIndex].s
+      scope = syms[nextSymIndex].scope
+      nextSymIndex += 1
+    else:
+      break
 
 proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
                             (TPreferedDesc, string) =
@@ -210,6 +220,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       if result.state != csMatch:
         n.sons.delete(1)
         orig.sons.delete(1)
+        excl n.flags, nfExprCall
       else: return
 
     if nfDotField in n.flags:
@@ -358,7 +369,7 @@ proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
 
 proc canDeref(n: PNode): bool {.inline.} =
   result = n.len >= 2 and (let t = n[1].typ;
-    t != nil and t.skipTypes({tyGenericInst}).kind in {tyPtr, tyRef})
+    t != nil and t.skipTypes({tyGenericInst, tyAlias}).kind in {tyPtr, tyRef})
 
 proc tryDeref(n: PNode): PNode =
   result = newNodeI(nkHiddenDeref, n.info)
@@ -414,12 +425,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
     let formal = s.ast.sons[genericParamsPos].sons[i-1].typ
     let arg = n[i].typ
     let tm = typeRel(m, formal, arg, true)
-    if tm in {isNone, isConvertible}:
-      if formal.sonsLen > 0 and formal.sons[0].kind != tyNone:
-        typeMismatch(n, formal.sons[0], arg)
-      else:
-        typeMismatch(n, formal, arg)
-      break
+    if tm in {isNone, isConvertible}: return nil
   var newInst = generateInstance(c, s, m.bindings, n.info)
   newInst.typ.flags.excl tfUnresolved
   markUsed(n.info, s, c.graph.usageSym)
@@ -441,6 +447,7 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
          "; got " & $(n.len-1) & " type(s) but expected " & $expected)
       return n
     result = explicitGenericSym(c, n, s)
+    if result == nil: result = explicitGenericInstError(n)
   elif a.kind in {nkClosedSymChoice, nkOpenSymChoice}:
     # choose the generic proc with the proper number of type parameters.
     # XXX I think this could be improved by reusing sigmatch.paramTypesMatch.
@@ -453,10 +460,12 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
         # it suffices that the candidate has the proper number of generic
         # type parameters:
         if safeLen(candidate.ast.sons[genericParamsPos]) == n.len-1:
-          result.add(explicitGenericSym(c, n, candidate))
+          let x = explicitGenericSym(c, n, candidate)
+          if x != nil: result.add(x)
     # get rid of nkClosedSymChoice if not ambiguous:
     if result.len == 1 and a.kind == nkClosedSymChoice:
       result = result[0]
+    elif result.len == 0: result = explicitGenericInstError(n)
     # candidateCount != 1: return explicitGenericInstError(n)
   else:
     result = explicitGenericInstError(n)
@@ -471,7 +480,7 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
   call.add(newIdentNode(fn.name, fn.info))
   for i in 1.. <fn.typ.n.len:
     let param = fn.typ.n.sons[i]
-    let t = skipTypes(param.typ, abstractVar-{tyTypeDesc})
+    let t = skipTypes(param.typ, abstractVar-{tyTypeDesc, tyDistinct})
     if t.kind == tyDistinct or param.typ.kind == tyDistinct: hasDistinct = true
     var x: PType
     if param.typ.kind == tyVar:
@@ -484,3 +493,8 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
     var resolved = semOverloadedCall(c, call, call, {fn.kind}, {})
     if resolved != nil:
       result = resolved.sons[0].sym
+      if not compareTypes(result.typ.sons[0], fn.typ.sons[0], dcEqIgnoreDistinct):
+        result = nil
+      elif result.magic in {mArrPut, mArrGet}:
+        # cannot borrow these magics for now
+        result = nil
