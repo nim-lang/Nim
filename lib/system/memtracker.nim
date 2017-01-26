@@ -73,7 +73,8 @@ proc memTrackerWrite(address: pointer; size: int; file: cstring; line: int) {.co
   addEntry LogEntry(op: "write", address: address,
       size: size, file: file, line: line)
 
-proc memTrackerOp*(op: cstring; address: pointer; size: int) =
+proc memTrackerOp*(op: cstring; address: pointer; size: int) {.tags: [],
+         locks: 0, gcsafe.} =
   addEntry LogEntry(op: op, address: address, size: size,
       file: "", line: 0)
 
