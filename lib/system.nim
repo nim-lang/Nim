@@ -2554,13 +2554,14 @@ else:
   proc debugEcho*(x: varargs[expr, `$`]) {.magic: "Echo", noSideEffect,
                                              tags: [], raises: [].}
 
-template newException*(exceptn: typedesc, message: string): expr =
+template newException*(exceptn: typedesc, message: string; parentException: ref Exception = nil): expr =
   ## creates an exception object of type ``exceptn`` and sets its ``msg`` field
   ## to `message`. Returns the new exception object.
   var
     e: ref exceptn
   new(e)
   e.msg = message
+  e.parent = parentException
   e
 
 when hostOS == "standalone":
