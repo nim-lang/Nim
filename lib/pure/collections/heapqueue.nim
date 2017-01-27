@@ -58,7 +58,7 @@ proc siftup[T](heap: var HeapQueue[T], p: int) =
   # to its final resting place (by sifting its parents down).
   heap[pos] = newitem
   siftdown(heap, startpos, pos)
-    
+
 proc push*[T](heap: var HeapQueue[T], item: T) =
   ## Push item onto heap, maintaining the heap invariant.
   (seq[T](heap)).add(item)
@@ -73,6 +73,12 @@ proc pop*[T](heap: var HeapQueue[T]): T =
     siftup(heap, 0)
   else:
     result = lastelt
+
+proc del*[T](heap: var HeapQueue[T], index: int) =
+  ## Removes element at `index`, maintaining the heap invariant.
+  swap(seq[T](heap)[^1], seq[T](heap)[index])
+  seq[T](heap).setLen(heap.len - 1)
+  heap.siftup(index)
 
 proc replace*[T](heap: var HeapQueue[T], item: T): T =
   ## Pop and return the current smallest value, and add the new item.
@@ -95,13 +101,31 @@ proc pushpop*[T](heap: var HeapQueue[T], item: T): T =
   return item
 
 when isMainModule:
-  # Simple sanity test
-  var heap = newHeapQueue[int]()
-  let data = [1, 3, 5, 7, 9, 2, 4, 6, 8, 0]
-  for item in data:
-    push(heap, item)
-  doAssert(heap[0] == 0)
-  var sort = newSeq[int]()
-  while heap.len > 0:
-    sort.add(pop(heap))
-  doAssert(sort == @[0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+  block: # Simple sanity test
+    var heap = newHeapQueue[int]()
+    let data = [1, 3, 5, 7, 9, 2, 4, 6, 8, 0]
+    for item in data:
+      push(heap, item)
+    doAssert(heap[0] == 0)
+    var sort = newSeq[int]()
+    while heap.len > 0:
+      sort.add(pop(heap))
+    doAssert(sort == @[0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+
+  block: # Test del
+    var heap = newHeapQueue[int]()
+    let data = [1, 3, 5, 7, 9, 2, 4, 6, 8, 0]
+    for item in data: push(heap, item)
+
+    heap.del(0)
+    doAssert(heap[0] == 1)
+
+    heap.del(seq[int](heap).find(7))
+    heap.del(seq[int](heap).find(5))
+    heap.del(seq[int](heap).find(6))
+    heap.del(seq[int](heap).find(2))
+
+    var sort = newSeq[int]()
+    while heap.len > 0:
+      sort.add(pop(heap))
+    doAssert(sort == @[1, 3, 4, 8, 9])
