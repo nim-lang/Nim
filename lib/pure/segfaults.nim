@@ -24,7 +24,7 @@ se.name = "NilAccessError"
 se.msg = ""
 
 when defined(windows):
-  include "$lib/system/ansi_c"
+  include "../system/ansi_c"
 
   import winlean
 
