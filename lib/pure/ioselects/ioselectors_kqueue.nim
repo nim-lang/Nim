@@ -116,12 +116,13 @@ proc newSelector*[T](): Selector[T] =
     raiseIOSelectorsError(osLastError())
 
 proc close*[T](s: Selector[T]) =
-  if posix.close(s.kqFD) != 0:
-    raiseIOSelectorsError(osLastError())
+  let res = posix.close(s.kqFD)
   when hasThreadSupport:
     deinitLock(s.changesLock)
     deallocSharedArray(s.fds)
     deallocShared(cast[pointer](s))
+  if res != 0:
+    raiseIOSelectorsError(osLastError())
 
 template clearKey[T](key: ptr SelectorKey[T]) =
   var empty: T
@@ -131,7 +132,7 @@ template clearKey[T](key: ptr SelectorKey[T]) =
 
 proc newSelectEvent*(): SelectEvent =
   var fds: array[2, cint]
-  if posix.pipe(fds) == -1:
+  if posix.pipe(fds) != 0:
     raiseIOSelectorsError(osLastError())
   setNonBlocking(fds[0])
   setNonBlocking(fds[1])
@@ -145,11 +146,11 @@ proc setEvent*(ev: SelectEvent) =
     raiseIOSelectorsError(osLastError())
 
 proc close*(ev: SelectEvent) =
-  if posix.close(cint(ev.rfd)) == -1:
-    raiseIOSelectorsError(osLastError())
-  if posix.close(cint(ev.wfd)) == -1:
-    raiseIOSelectorsError(osLastError())
+  let res1 = posix.close(rfd)
+  let res2 = posix.close(wfd)
   deallocShared(cast[pointer](ev))
+  if res1 != 0 or res2 != 0:
+    raiseIOSelectorsError(osLastError())
 
 template checkFd(s, f) =
   if f >= s.maxFD:
@@ -386,7 +387,7 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
         when not declared(CACHE_EVENTS):
           flushKQueue(s)
         dec(s.count)
-      if posix.close(cint(pkey.ident)) == -1:
+      if posix.close(cint(pkey.ident)) != 0:
         raiseIOSelectorsError(osLastError())
     elif Event.Signal in pkey.events:
       var nmask, omask: Sigset
@@ -400,7 +401,7 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
       when not declared(CACHE_EVENTS):
         flushKQueue(s)
       dec(s.count)
-      if posix.close(cint(pkey.ident)) == -1:
+      if posix.close(cint(pkey.ident)) != 0:
         raiseIOSelectorsError(osLastError())
     elif Event.Process in pkey.events:
       if Event.Finished notin pkey.events:
@@ -408,7 +409,7 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
         when not declared(CACHE_EVENTS):
           flushKQueue(s)
         dec(s.count)
-      if posix.close(cint(pkey.ident)) == -1:
+      if posix.close(cint(pkey.ident)) != 0:
         raiseIOSelectorsError(osLastError())
     elif Event.Vnode in pkey.events:
       modifyKQueue(s, uint(fdi), EVFILT_VNODE, EV_DELETE, 0, 0, nil)
