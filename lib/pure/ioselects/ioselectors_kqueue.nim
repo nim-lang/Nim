@@ -146,8 +146,8 @@ proc setEvent*(ev: SelectEvent) =
     raiseIOSelectorsError(osLastError())
 
 proc close*(ev: SelectEvent) =
-  let res1 = posix.close(rfd)
-  let res2 = posix.close(wfd)
+  let res1 = posix.close(ev.rfd)
+  let res2 = posix.close(ev.wfd)
   deallocShared(cast[pointer](ev))
   if res1 != 0 or res2 != 0:
     raiseIOSelectorsError(osLastError())
