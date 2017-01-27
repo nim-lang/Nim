@@ -131,11 +131,12 @@ proc newSelector*[T](): Selector[T] =
     result.fds = newSeq[SelectorKey[T]](maxFD)
 
 proc close*[T](s: Selector[T]) =
-  if posix.close(s.epollFD) != 0:
-    raiseIOSelectorsError(osLastError())
+  let res = posix.close(s.epollFD)
   when hasThreadSupport:
     deallocSharedArray(s.fds)
     deallocShared(cast[pointer](s))
+  if res != 0:
+    raiseIOSelectorsError(osLastError())
 
 template clearKey[T](key: ptr SelectorKey[T]) =
   var empty: T
@@ -157,9 +158,10 @@ proc setEvent*(ev: SelectEvent) =
     raiseIOSelectorsError(osLastError())
 
 proc close*(ev: SelectEvent) =
-  if posix.close(ev.efd) == -1:
-    raiseIOSelectorsError(osLastError())
+  let res = posix.close(ev.efd)
   deallocShared(cast[pointer](ev))
+  if res != 0:
+    raiseIOSelectorsError(osLastError())
 
 template checkFd(s, f) =
   if f >= s.maxFD:
@@ -176,7 +178,7 @@ proc registerHandle*[T](s: Selector[T], fd: SocketHandle,
     epv.data.u64 = fdi.uint
     if Event.Read in events: epv.events = epv.events or EPOLLIN
     if Event.Write in events: epv.events = epv.events or EPOLLOUT
-    if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint, addr epv) == -1:
+    if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint, addr epv) != 0:
       raiseIOSelectorsError(osLastError())
     inc(s.count)
 
@@ -196,15 +198,15 @@ proc updateHandle*[T](s: Selector[T], fd: SocketHandle, events: set[Event]) =
     if Event.Write in events: epv.events = epv.events or EPOLLOUT
 
     if pkey.events == {}:
-      if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint, addr epv) == -1:
+      if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint, addr epv) != 0:
         raiseIOSelectorsError(osLastError())
       inc(s.count)
     else:
       if events != {}:
-        if epoll_ctl(s.epollFD, EPOLL_CTL_MOD, fdi.cint, addr epv) == -1:
+        if epoll_ctl(s.epollFD, EPOLL_CTL_MOD, fdi.cint, addr epv) != 0:
           raiseIOSelectorsError(osLastError())
       else:
-        if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) == -1:
+        if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) != 0:
           raiseIOSelectorsError(osLastError())
         dec(s.count)
     pkey.events = events
@@ -219,20 +221,20 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
     when not defined(android):
       if pkey.events * {Event.Read, Event.Write} != {}:
         var epv = epoll_event()
-        if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) == -1:
+        if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) != 0:
           raiseIOSelectorsError(osLastError())
         dec(s.count)
       elif Event.Timer in pkey.events:
         if Event.Finished notin pkey.events:
           var epv = epoll_event()
-          if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) == -1:
+          if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) != 0:
             raiseIOSelectorsError(osLastError())
           dec(s.count)
-        if posix.close(cint(fdi)) == -1:
+        if posix.close(cint(fdi)) != 0:
           raiseIOSelectorsError(osLastError())
       elif Event.Signal in pkey.events:
         var epv = epoll_event()
-        if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) == -1:
+        if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) != 0:
           raiseIOSelectorsError(osLastError())
         var nmask, omask: Sigset
         discard sigemptyset(nmask)
@@ -240,12 +242,12 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
         discard sigaddset(nmask, cint(s.fds[fdi].param))
         unblockSignals(nmask, omask)
         dec(s.count)
-        if posix.close(cint(fdi)) == -1:
+        if posix.close(cint(fdi)) != 0:
           raiseIOSelectorsError(osLastError())
       elif Event.Process in pkey.events:
         if Event.Finished notin pkey.events:
           var epv = epoll_event()
-          if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) == -1:
+          if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) != 0:
             raiseIOSelectorsError(osLastError())
           var nmask, omask: Sigset
           discard sigemptyset(nmask)
@@ -253,21 +255,21 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
           discard sigaddset(nmask, SIGCHLD)
           unblockSignals(nmask, omask)
           dec(s.count)
-        if posix.close(cint(fdi)) == -1:
+        if posix.close(cint(fdi)) != 0:
           raiseIOSelectorsError(osLastError())
     else:
       if pkey.events * {Event.Read, Event.Write} != {}:
         var epv = epoll_event()
-        if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) == -1:
+        if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) != 0:
           raiseIOSelectorsError(osLastError())
         dec(s.count)
       elif Event.Timer in pkey.events:
         if Event.Finished notin pkey.events:
           var epv = epoll_event()
-          if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) == -1:
+          if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) != 0:
             raiseIOSelectorsError(osLastError())
           dec(s.count)
-        if posix.close(cint(fdi)) == -1:
+        if posix.close(cint(fdi)) != 0:
           raiseIOSelectorsError(osLastError())
   clearKey(pkey)
 
@@ -278,7 +280,7 @@ proc unregister*[T](s: Selector[T], ev: SelectEvent) =
   doAssert(pkey.ident != 0)
   doAssert(Event.User in pkey.events)
   var epv = epoll_event()
-  if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) == -1:
+  if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) != 0:
     raiseIOSelectorsError(osLastError())
   dec(s.count)
   clearKey(pkey)
@@ -312,9 +314,9 @@ proc registerTimer*[T](s: Selector[T], timeout: int, oneshot: bool,
     new_ts.it_value.tv_sec = new_ts.it_interval.tv_sec
     new_ts.it_value.tv_nsec = new_ts.it_interval.tv_nsec
 
-  if timerfd_settime(fdi.cint, cint(0), new_ts, old_ts) == -1:
+  if timerfd_settime(fdi.cint, cint(0), new_ts, old_ts) != 0:
     raiseIOSelectorsError(osLastError())
-  if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint, addr epv) == -1:
+  if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint, addr epv) != 0:
     raiseIOSelectorsError(osLastError())
   s.setKey(fdi, events, 0, data)
   inc(s.count)
@@ -342,7 +344,7 @@ when not defined(android):
 
     var epv = epoll_event(events: EPOLLIN or EPOLLRDHUP)
     epv.data.u64 = fdi.uint
-    if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint, addr epv) == -1:
+    if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint, addr epv) != 0:
       raiseIOSelectorsError(osLastError())
     s.setKey(fdi, {Event.Signal}, signal, data)
     inc(s.count)
@@ -370,7 +372,7 @@ when not defined(android):
     var epv = epoll_event(events: EPOLLIN or EPOLLRDHUP)
     epv.data.u64 = fdi.uint
     epv.events = EPOLLIN or EPOLLRDHUP
-    if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint, addr epv) == -1:
+    if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint, addr epv) != 0:
       raiseIOSelectorsError(osLastError())
     s.setKey(fdi, {Event.Process, Event.Oneshot}, pid, data)
     inc(s.count)
@@ -382,7 +384,7 @@ proc registerEvent*[T](s: Selector[T], ev: SelectEvent, data: T) =
   s.setKey(fdi, {Event.User}, 0, data)
   var epv = epoll_event(events: EPOLLIN or EPOLLRDHUP)
   epv.data.u64 = ev.efd.uint
-  if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, ev.efd, addr epv) == -1:
+  if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, ev.efd, addr epv) != 0:
     raiseIOSelectorsError(osLastError())
   inc(s.count)
 
@@ -480,7 +482,7 @@ proc selectInto*[T](s: Selector[T], timeout: int,
 
       if Event.Oneshot in pkey.events:
         var epv = epoll_event()
-        if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, cint(fdi), addr epv) == -1:
+        if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, cint(fdi), addr epv) != 0:
           raiseIOSelectorsError(osLastError())
         # we will not clear key until it will be unregistered, so
         # application can obtain data, but we will decrease counter,

@@ -199,7 +199,7 @@ proc unregister*[T](s: Selector[T], ev: SelectEvent) =
 
 proc newSelectEvent*(): SelectEvent =
   var fds: array[2, cint]
-  if posix.pipe(fds) == -1:
+  if posix.pipe(fds) != 0:
     raiseIOSelectorsError(osLastError())
   setNonBlocking(fds[0])
   setNonBlocking(fds[1])
@@ -213,11 +213,11 @@ proc setEvent*(ev: SelectEvent) =
     raiseIOSelectorsError(osLastError())
 
 proc close*(ev: SelectEvent) =
-  if posix.close(cint(ev.rfd)) == -1:
-    raiseIOSelectorsError(osLastError())
-  if posix.close(cint(ev.wfd)) == -1:
-    raiseIOSelectorsError(osLastError())
+  let res1 = posix.close(ev.rfd)
+  let res2 = posix.close(ev.wfd)
   deallocShared(cast[pointer](ev))
+  if res1 != 0 or res2 != 0:
+    raiseIOSelectorsError(osLastError())
 
 proc selectInto*[T](s: Selector[T], timeout: int,
                     results: var openarray[ReadyKey]): int =
