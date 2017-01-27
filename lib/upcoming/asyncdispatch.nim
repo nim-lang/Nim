@@ -209,6 +209,17 @@ when defined(windows) or defined(nimdoc):
     result.timers.newHeapQueue()
     result.callbacks = initDeque[proc ()](64)
 
+  proc close*(dispatcher: PDispatcher) =
+    ## Closes the Dispatcher, freeing the resources associated with it.
+    ##
+    ## Raises ``ValueError`` if the dispatcher contains registered handles,
+    ## because it indicates lack of appropriate cleanup in the application.
+    if closeHandle(dispatcher.ioPort) == 0:
+      raiseOSError(osLastError())
+    if dispatcher.handles.len != 0:
+      raise newException(ValueError,
+        "All handles must be unregistered prior to closing the dispatcher.")
+
   var gDisp{.threadvar.}: PDispatcher ## Global dispatcher
   proc getGlobalDispatcher*(): PDispatcher =
     ## Retrieves the global thread-local dispatcher.
@@ -1142,6 +1153,17 @@ else:
     result.timers.newHeapQueue()
     result.callbacks = initDeque[proc ()](InitDelayedCallbackListSize)
 
+  proc close*(dispatcher: PDispatcher) =
+    ## Closes the Dispatcher, freeing the resources associated with it.
+    ##
+    ## Raises ``ValueError`` if the dispatcher contains registered handles,
+    ## because it indicates lack of appropriate cleanup in the application.
+    let isEmpty = dispatcher.selector.isEmpty
+    dispatcher.selector.close()
+    if not isEmpty:
+      raise newException(ValueError,
+        "All handles must be unregistered prior to closing the dispatcher.")
+
   var gDisp{.threadvar.}: PDispatcher ## Global dispatcher
   proc getGlobalDispatcher*(): PDispatcher =
     if gDisp.isNil: gDisp = newDispatcher()
@@ -1610,6 +1632,10 @@ else:
     var data = newAsyncData()
     data.readList.add(cb)
     p.selector.registerEvent(SelectEvent(ev), data)
+
+when compileOption("threads"):
+  onThreadDestruction() do ():
+    if not gDisp.isNil: gDisp.close()
 
 proc sleepAsync*(ms: int): Future[void] =
   ## Suspends the execution of the current async procedure for the next
