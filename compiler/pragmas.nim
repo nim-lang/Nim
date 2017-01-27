@@ -402,29 +402,41 @@ proc relativeFile(c: PContext; n: PNode; ext=""): string =
       if result.len == 0: result = s
 
 proc processCompile(c: PContext, n: PNode) =
-  var s = expectStrLit(c, n)
-  var found = parentDir(n.info.toFullPath) / s
-  if '*' in found:
+
+  proc getStrLit(c: PContext, n: PNode; i: int): string =
+    n.sons[i] = c.semConstExpr(c, n.sons[i])
+    case n.sons[i].kind
+    of nkStrLit, nkRStrLit, nkTripleStrLit:
+      shallowCopy(result, n.sons[i].strVal)
+    else:
+      localError(n.info, errStringLiteralExpected)
+      result = ""
+
+  let it = if n.kind == nkExprColonExpr: n.sons[1] else: n
+  if it.kind == nkPar and it.len == 2:
+    let s = getStrLit(c, it, 0)
+    let dest = getStrLit(c, it, 1)
+    var found = parentDir(n.info.toFullPath) / s
     for f in os.walkFiles(found):
-      let trunc = f.changeFileExt("")
-      extccomp.addExternalFileToCompile(f)
-      extccomp.addFileToLink(completeCFilePath(trunc, false))
+      let nameOnly = extractFilename(f)
+      extccomp.addExternalFileToCompile(Cfile(cname: f,
+          obj: dest % nameOnly, flags: {CfileFlag.External}))
   else:
+    let s = expectStrLit(c, n)
+    var found = parentDir(n.info.toFullPath) / s
     if not fileExists(found):
       if isAbsolute(s): found = s
       else:
         found = findFile(s)
         if found.len == 0: found = s
-    let trunc = found.changeFileExt("")
     extccomp.addExternalFileToCompile(found)
-    extccomp.addFileToLink(completeCFilePath(trunc, false))
 
 proc processCommonLink(c: PContext, n: PNode, feature: TLinkFeature) =
   let found = relativeFile(c, n, CC[cCompiler].objExt)
   case feature
-  of linkNormal: extccomp.addFileToLink(found)
+  of linkNormal: extccomp.addExternalFileToLink(found)
   of linkSys:
-    extccomp.addFileToLink(libpath / completeCFilePath(found, false))
+    extccomp.addExternalFileToLink(libpath / completeCFilePath(found, false))
   else: internalError(n.info, "processCommonLink")
 
 proc pragmaBreakpoint(c: PContext, n: PNode) =
