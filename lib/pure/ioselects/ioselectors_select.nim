@@ -122,17 +122,17 @@ when defined(windows):
                 sizeof(saddr).SockLen) < 0'i32:
       raiseIOSelectorsError(osLastError())
 
-    if winlean.listen(ssock, 1) == -1:
+    if winlean.listen(ssock, 1) != 0:
       raiseIOSelectorsError(osLastError())
 
     var namelen = sizeof(saddr).SockLen
     if getsockname(ssock, cast[ptr SockAddr](addr(saddr)),
-                   addr(namelen)) == -1'i32:
+                   addr(namelen)) != 0'i32:
       raiseIOSelectorsError(osLastError())
 
     saddr.sin_addr.s_addr = 0x0100007F
     if winlean.connect(wsock, cast[ptr SockAddr](addr(saddr)),
-                       sizeof(saddr).SockLen) == -1:
+                       sizeof(saddr).SockLen) != 0:
       raiseIOSelectorsError(osLastError())
     namelen = sizeof(saddr).SockLen
     rsock = winlean.accept(ssock, cast[ptr SockAddr](addr(saddr)),
@@ -140,14 +140,14 @@ when defined(windows):
     if rsock == SocketHandle(-1):
       raiseIOSelectorsError(osLastError())
 
-    if winlean.closesocket(ssock) == -1:
+    if winlean.closesocket(ssock) != 0:
       raiseIOSelectorsError(osLastError())
 
     var mode = clong(1)
-    if ioctlsocket(rsock, FIONBIO, addr(mode)) == -1:
+    if ioctlsocket(rsock, FIONBIO, addr(mode)) != 0:
       raiseIOSelectorsError(osLastError())
     mode = clong(1)
-    if ioctlsocket(wsock, FIONBIO, addr(mode)) == -1:
+    if ioctlsocket(wsock, FIONBIO, addr(mode)) != 0:
       raiseIOSelectorsError(osLastError())
 
     result = cast[SelectEvent](allocShared0(sizeof(SelectEventImpl)))
@@ -161,14 +161,16 @@ when defined(windows):
       raiseIOSelectorsError(osLastError())
 
   proc close*(ev: SelectEvent) =
-    discard winlean.closesocket(ev.rsock)
-    discard winlean.closesocket(ev.wsock)
+    let res1 = winlean.closesocket(ev.rsock)
+    let res2 = winlean.closesocket(ev.wsock)
     deallocShared(cast[pointer](ev))
+    if res1 != 0 or res2 != 0:
+      raiseIOSelectorsError(osLastError())
 
 else:
   proc newSelectEvent*(): SelectEvent =
     var fds: array[2, cint]
-    if posix.pipe(fds) == -1:
+    if posix.pipe(fds) != 0:
       raiseIOSelectorsError(osLastError())
     setNonBlocking(fds[0])
     setNonBlocking(fds[1])
@@ -182,11 +184,11 @@ else:
       raiseIOSelectorsError(osLastError())
 
   proc close*(ev: SelectEvent) =
-    if posix.close(cint(ev.rsock)) == -1:
-      raiseIOSelectorsError(osLastError())
-    if posix.close(cint(ev.wsock)) == -1:
-      raiseIOSelectorsError(osLastError())
+    let res1 = posix.close(cint(ev.rsock))
+    let res2 = posix.close(cint(ev.wsock))
     deallocShared(cast[pointer](ev))
+    if res1 != 0 or res2 != 0:
+      raiseIOSelectorsError(osLastError())
 
 proc setSelectKey[T](s: Selector[T], fd: SocketHandle, events: set[Event],
                      data: T) =

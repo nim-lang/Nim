@@ -871,7 +871,9 @@ when defined(windows) or defined(nimdoc):
         if unregisterWait(pcd.waitFd) == 0:
           let err = osLastError()
           if err.int32 != ERROR_IO_PENDING:
-            raiseOSError(osLastError())
+            deallocShared(cast[pointer](pcd))
+            discard wsaCloseEvent(hEvent)
+            raiseOSError(err)
         if cb(fd):
           # callback returned `true`, so we free all allocated resources
           deallocShared(cast[pointer](pcd))
@@ -895,9 +897,10 @@ when defined(windows) or defined(nimdoc):
                                     cast[WAITORTIMERCALLBACK](waitableCallback),
                                        cast[pointer](pcd), INFINITE, flags):
               # pcd.ovl will be unrefed in poll()
+              let err = osLastError()
               discard wsaCloseEvent(hEvent)
               deallocShared(cast[pointer](pcd))
-              raiseOSError(osLastError())
+              raiseOSError(err)
             else:
               # we incref `pcd.ovl` and `protect` callback one more time,
               # because it will be unrefed and disposed in `poll()` after
@@ -912,19 +915,21 @@ when defined(windows) or defined(nimdoc):
     # This is main part of `hacky way` is using WSAEventSelect, so `hEvent`
     # will be signaled when appropriate `mask` events will be triggered.
     if wsaEventSelect(fd.SocketHandle, hEvent, mask) != 0:
+      let err = osLastError()
       GC_unref(ol)
       deallocShared(cast[pointer](pcd))
       discard wsaCloseEvent(hEvent)
-      raiseOSError(osLastError())
+      raiseOSError(err)
 
     pcd.ovl = ol
     if not registerWaitForSingleObject(addr(pcd.waitFd), hEvent,
                                     cast[WAITORTIMERCALLBACK](waitableCallback),
                                        cast[pointer](pcd), INFINITE, flags):
+      let err = osLastError()
       GC_unref(ol)
       deallocShared(cast[pointer](pcd))
       discard wsaCloseEvent(hEvent)
-      raiseOSError(osLastError())
+      raiseOSError(err)
     p.handles.incl(fd)
 
   proc addRead*(fd: AsyncFD, cb: Callback) =

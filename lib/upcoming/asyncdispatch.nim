@@ -856,7 +856,9 @@ when defined(windows) or defined(nimdoc):
         if unregisterWait(pcd.waitFd) == 0:
           let err = osLastError()
           if err.int32 != ERROR_IO_PENDING:
-            raiseOSError(osLastError())
+            deallocShared(cast[pointer](pcd))
+            discard wsaCloseEvent(hEvent)
+            raiseOSError(err)
         if cb(fd):
           # callback returned `true`, so we free all allocated resources
           deallocShared(cast[pointer](pcd))
@@ -880,9 +882,10 @@ when defined(windows) or defined(nimdoc):
                                     cast[WAITORTIMERCALLBACK](waitableCallback),
                                        cast[pointer](pcd), INFINITE, flags):
               # pcd.ovl will be unrefed in poll()
-              discard wsaCloseEvent(hEvent)
+              let err = osLastError()
               deallocShared(cast[pointer](pcd))
-              raiseOSError(osLastError())
+              discard wsaCloseEvent(hEvent)
+              raiseOSError(err)
             else:
               # we incref `pcd.ovl` and `protect` callback one more time,
               # because it will be unrefed and disposed in `poll()` after
@@ -897,19 +900,21 @@ when defined(windows) or defined(nimdoc):
     # This is main part of `hacky way` is using WSAEventSelect, so `hEvent`
     # will be signaled when appropriate `mask` events will be triggered.
     if wsaEventSelect(fd.SocketHandle, hEvent, mask) != 0:
+      let err = osLastError()
       GC_unref(ol)
       deallocShared(cast[pointer](pcd))
       discard wsaCloseEvent(hEvent)
-      raiseOSError(osLastError())
+      raiseOSError(err)
 
     pcd.ovl = ol
     if not registerWaitForSingleObject(addr(pcd.waitFd), hEvent,
                                     cast[WAITORTIMERCALLBACK](waitableCallback),
                                        cast[pointer](pcd), INFINITE, flags):
+      let err = osLastError()
       GC_unref(ol)
       deallocShared(cast[pointer](pcd))
       discard wsaCloseEvent(hEvent)
-      raiseOSError(osLastError())
+      raiseOSError(err)
     p.handles.incl(fd)
 
   proc addRead*(fd: AsyncFD, cb: Callback) =
@@ -963,11 +968,24 @@ when defined(windows) or defined(nimdoc):
     if not registerWaitForSingleObject(addr(pcd.waitFd), hEvent,
                                     cast[WAITORTIMERCALLBACK](waitableCallback),
                                     cast[pointer](pcd), timeout.Dword, flags):
+      let err = osLastError()
       GC_unref(ol)
       deallocShared(cast[pointer](pcd))
       discard closeHandle(hEvent)
-      raiseOSError(osLastError())
+      raiseOSError(err)
     p.handles.incl(handleFD)
+
+  template closeWaitable(handle: untyped) =
+    let waitFd = pcd.waitFd
+    deallocShared(cast[pointer](pcd))
+    p.handles.excl(fd)
+    if unregisterWait(waitFd) == 0:
+        let err = osLastError()
+        if err.int32 != ERROR_IO_PENDING:
+          discard closeHandle(handle)
+          raiseOSError(err)
+    if closeHandle(handle) == 0:
+      raiseOSError(osLastError())
 
   proc addTimer*(timeout: int, oneshot: bool, cb: Callback) =
     ## Registers callback ``cb`` to be called when timer expired.
@@ -989,13 +1007,7 @@ when defined(windows) or defined(nimdoc):
     proc timercb(fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
       let res = cb(fd)
       if res or oneshot:
-        if unregisterWait(pcd.waitFd) == 0:
-          let err = osLastError()
-          if err.int32 != ERROR_IO_PENDING:
-            raiseOSError(osLastError())
-        discard closeHandle(hEvent)
-        deallocShared(cast[pointer](pcd))
-        p.handles.excl(fd)
+        closeWaitable(hEvent)
       else:
         # if callback returned `false`, then it wants to be called again, so
         # we need to ref and protect `pcd.ovl` again, because it will be
@@ -1018,13 +1030,7 @@ when defined(windows) or defined(nimdoc):
     var flags = WT_EXECUTEINWAITTHREAD.Dword
 
     proc proccb(fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
-      if unregisterWait(pcd.waitFd) == 0:
-        let err = osLastError()
-        if err.int32 != ERROR_IO_PENDING:
-          raiseOSError(osLastError())
-      discard closeHandle(hProcess)
-      deallocShared(cast[pointer](pcd))
-      p.handles.excl(fd)
+      closeWaitable(hProcess)
       discard cb(fd)
 
     registerWaitableHandle(p, hProcess, flags, pcd, INFINITE, proccb)
@@ -1052,20 +1058,21 @@ when defined(windows) or defined(nimdoc):
     ## Unregisters event ``ev``.
     if ev.hWaiter != 0:
       let p = getGlobalDispatcher()
+      p.handles.excl(AsyncFD(ev.hEvent))
       if unregisterWait(ev.hWaiter) == 0:
         let err = osLastError()
         if err.int32 != ERROR_IO_PENDING:
-          raiseOSError(osLastError())
-      p.handles.excl(AsyncFD(ev.hEvent))
+          raiseOSError(err)
       ev.hWaiter = 0
     else:
       raise newException(ValueError, "Event is not registered!")
 
   proc close*(ev: AsyncEvent) =
     ## Closes event ``ev``.
-    if closeHandle(ev.hEvent) == 0:
-      raiseOSError(osLastError())
+    let res = closeHandle(ev.hEvent)
     deallocShared(cast[pointer](ev))
+    if res == 0:
+      raiseOSError(osLastError())
 
   proc addEvent*(ev: AsyncEvent, cb: Callback) =
     ## Registers callback ``cb`` to be called when ``ev`` will be signaled
@@ -1082,8 +1089,8 @@ when defined(windows) or defined(nimdoc):
       if cb(fd):
         # we need this check to avoid exception, if `unregister(event)` was
         # called in callback.
-        if ev.hWaiter != 0: unregister(ev)
         deallocShared(cast[pointer](pcd))
+        if ev.hWaiter != 0: unregister(ev)
       else:
         # if callback returned `false`, then it wants to be called again, so
         # we need to ref and protect `pcd.ovl` again, because it will be
