@@ -56,8 +56,14 @@ proc add(a: var MemRegion, t: var PAvlNode, key, upperBound: int) {.benign.} =
     t = allocAvlNode(a, key, upperBound)
   else:
     if key <% t.key:
+      when defined(avlcorruption):
+        if t.link[0] == nil:
+          cprintf("bug here %p\n", t)
       add(a, t.link[0], key, upperBound)
     elif key >% t.key:
+      when defined(avlcorruption):
+        if t.link[1] == nil:
+          cprintf("bug here B %p\n", t)
       add(a, t.link[1], key, upperBound)
     else:
       sysAssert false, "key already exists"

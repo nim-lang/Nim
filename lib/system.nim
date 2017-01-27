@@ -1630,20 +1630,22 @@ when not defined(nimscript) and not defined(JS):
     ## Exactly ``size`` bytes will be overwritten. Like any procedure
     ## dealing with raw memory this is *unsafe*.
 
-  proc copyMem*(dest, source: pointer, size: Natural) {.inline, benign.}
+  proc copyMem*(dest, source: pointer, size: Natural) {.inline, benign,
+    tags: [], locks: 0.}
     ## copies the contents from the memory at ``source`` to the memory
     ## at ``dest``. Exactly ``size`` bytes will be copied. The memory
     ## regions may not overlap. Like any procedure dealing with raw
     ## memory this is *unsafe*.
 
-  proc moveMem*(dest, source: pointer, size: Natural) {.inline, benign.}
+  proc moveMem*(dest, source: pointer, size: Natural) {.inline, benign,
+    tags: [], locks: 0.}
     ## copies the contents from the memory at ``source`` to the memory
     ## at ``dest``. Exactly ``size`` bytes will be copied. The memory
     ## regions may overlap, ``moveMem`` handles this case appropriately
     ## and is thus somewhat more safe than ``copyMem``. Like any procedure
     ## dealing with raw memory this is still *unsafe*, though.
 
-  proc equalMem*(a, b: pointer, size: Natural): bool {.inline, noSideEffect.}
+  proc equalMem*(a, b: pointer, size: Natural): bool {.inline, noSideEffect, tags: [], locks: 0.}
     ## compares the memory blocks ``a`` and ``b``. ``size`` bytes will
     ## be compared. If the blocks are equal, true is returned, false
     ## otherwise. Like any procedure dealing with raw memory this is
@@ -2552,13 +2554,14 @@ else:
   proc debugEcho*(x: varargs[expr, `$`]) {.magic: "Echo", noSideEffect,
                                              tags: [], raises: [].}
 
-template newException*(exceptn: typedesc, message: string): expr =
+template newException*(exceptn: typedesc, message: string; parentException: ref Exception = nil): expr =
   ## creates an exception object of type ``exceptn`` and sets its ``msg`` field
   ## to `message`. Returns the new exception object.
   var
     e: ref exceptn
   new(e)
   e.msg = message
+  e.parent = parentException
   e
 
 when hostOS == "standalone":
@@ -2687,16 +2690,6 @@ when not defined(JS): #and not defined(nimscript):
       else: result = 0
     else:
       result = int(c_strcmp(x, y))
-
-  when not defined(nimscript):
-    proc zeroMem(p: pointer, size: Natural) =
-      c_memset(p, 0, size)
-    proc copyMem(dest, source: pointer, size: Natural) =
-      c_memcpy(dest, source, size)
-    proc moveMem(dest, source: pointer, size: Natural) =
-      c_memmove(dest, source, size)
-    proc equalMem(a, b: pointer, size: Natural): bool =
-      c_memcmp(a, b, size) == 0
 
   when defined(nimscript):
     proc readFile*(filename: string): string {.tags: [ReadIOEffect], benign.}
@@ -2986,6 +2979,23 @@ when not defined(JS): #and not defined(nimscript):
     {.push stack_trace: off, profiler:off.}
     when defined(memtracker):
       include "system/memtracker"
+
+    when not defined(nimscript):
+      proc zeroMem(p: pointer, size: Natural) =
+        c_memset(p, 0, size)
+        when declared(memTrackerOp):
+          memTrackerOp("zeroMem", p, size)
+      proc copyMem(dest, source: pointer, size: Natural) =
+        c_memcpy(dest, source, size)
+        when declared(memTrackerOp):
+          memTrackerOp("copyMem", dest, size)
+      proc moveMem(dest, source: pointer, size: Natural) =
+        c_memmove(dest, source, size)
+        when declared(memTrackerOp):
+          memTrackerOp("moveMem", dest, size)
+      proc equalMem(a, b: pointer, size: Natural): bool =
+        c_memcmp(a, b, size) == 0
+
     when hostOS == "standalone":
       include "system/embedded"
     else:

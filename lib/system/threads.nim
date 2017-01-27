@@ -350,7 +350,7 @@ template beforeThreadRuns() =
     threadCreationHandlers[i]()
 
 template afterThreadRuns() =
-  for i in 0..countThreadDestructionHandlers-1:
+  for i in countdown(countThreadDestructionHandlers-1, 0):
     threadDestructionHandlers[i]()
 
 proc runOnThreadCreationHandlers*() =

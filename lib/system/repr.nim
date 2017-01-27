@@ -38,12 +38,12 @@ proc `$`(x: uint64): string =
     for t in 0 .. < half: swap(buf[t], buf[i-t-1])
     result = $buf
 
-proc reprStrAux(result: var string, s: string) =
+proc reprStrAux(result: var string, s: cstring; len: int) =
   if cast[pointer](s) == nil:
     add result, "nil"
     return
   add result, reprPointer(cast[pointer](s)) & "\""
-  for i in 0.. <s.len:
+  for i in 0.. <len:
     let c = s[i]
     case c
     of '"': add result, "\\\""
@@ -57,7 +57,7 @@ proc reprStrAux(result: var string, s: string) =
 
 proc reprStr(s: string): string {.compilerRtl.} =
   result = ""
-  reprStrAux(result, s)
+  reprStrAux(result, s, s.len)
 
 proc reprBool(x: bool): string {.compilerRtl.} =
   if x: result = "true"
@@ -277,11 +277,13 @@ when not defined(useNimRtl):
     of tyEnum: add result, reprEnum(getInt(p, typ.size), typ)
     of tyBool: add result, reprBool(cast[ptr bool](p)[])
     of tyChar: add result, reprChar(cast[ptr char](p)[])
-    of tyString: reprStrAux(result, cast[ptr string](p)[])
+    of tyString:
+      let sp = cast[ptr string](p)
+      reprStrAux(result, if sp[].isNil: nil else: sp[].cstring, sp[].len)
     of tyCString:
       let cs = cast[ptr cstring](p)[]
       if cs.isNil: add result, "nil"
-      else: reprStrAux(result, $cs)
+      else: reprStrAux(result, cs, cs.len)
     of tyRange: reprAux(result, p, typ.base, cl)
     of tyProc, tyPointer:
       if cast[PPointer](p)[] == nil: add result, "nil"

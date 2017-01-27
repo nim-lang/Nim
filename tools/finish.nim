@@ -90,9 +90,9 @@ when defined(windows):
         let arch = execProcess(gccExe, ["-dumpmachine"], nil, {poStdErrToStdOut,
                                                                poUsePath})
         when hostCPU == "i386":
-          result = arch.contains("i686-")
+          result = arch.contains("i686-") and not arch.contains("w64")
         elif hostCPU == "amd64":
-          result = arch.contains("x86_64-")
+          result = arch.contains("x86_64-") or arch.contains("i686-w64-mingw32")
         else:
           {.error: "Unknown CPU for Windows.".}
       except OSError, IOError:

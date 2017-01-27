@@ -140,6 +140,8 @@ proc llAlloc(a: var MemRegion, size: int): pointer =
     sysAssert roundup(size+sizeof(LLChunk), PageSize) == PageSize, "roundup 6"
     var old = a.llmem # can be nil and is correct with nil
     a.llmem = cast[PLLChunk](osAllocPages(PageSize))
+    when defined(avlcorruption):
+      trackLocation(a.llmem, PageSize)
     incCurrMem(a, PageSize)
     a.llmem.size = PageSize - sizeof(LLChunk)
     a.llmem.acc = sizeof(LLChunk)
@@ -155,11 +157,15 @@ proc allocAvlNode(a: var MemRegion, key, upperBound: int): PAvlNode =
     a.freeAvlNodes = a.freeAvlNodes.link[0]
   else:
     result = cast[PAvlNode](llAlloc(a, sizeof(AvlNode)))
+    when defined(avlcorruption):
+      cprintf("tracking location: %p\n", result)
   result.key = key
   result.upperBound = upperBound
   result.link[0] = bottom
   result.link[1] = bottom
   result.level = 1
+  when defined(avlcorruption):
+    track("allocAvlNode", result, sizeof(AvlNode))
   sysAssert(bottom == addr(bottomData), "bottom data")
   sysAssert(bottom.link[0] == bottom, "bottom link[0]")
   sysAssert(bottom.link[1] == bottom, "bottom link[1]")
@@ -666,7 +672,7 @@ proc ptrSize(p: pointer): int =
   if not isSmallChunk(c):
     dec result, bigChunkOverhead()
 
-proc alloc(allocator: var MemRegion, size: Natural): pointer =
+proc alloc(allocator: var MemRegion, size: Natural): pointer {.gcsafe.} =
   result = rawAlloc(allocator, size+sizeof(FreeCell))
   cast[ptr FreeCell](result).zeroField = 1 # mark it as used
   sysAssert(not isAllocatedPtr(allocator, result), "alloc")
