@@ -277,7 +277,9 @@ when not defined(useNimRtl):
     of tyEnum: add result, reprEnum(getInt(p, typ.size), typ)
     of tyBool: add result, reprBool(cast[ptr bool](p)[])
     of tyChar: add result, reprChar(cast[ptr char](p)[])
-    of tyString: reprStrAux(result, cast[ptr string](p)[], cast[ptr string](p)[].len)
+    of tyString:
+      let sp = cast[ptr string](p)
+      reprStrAux(result, if sp[].isNil: nil else: sp[].cstring, sp[].len)
     of tyCString:
       let cs = cast[ptr cstring](p)[]
       if cs.isNil: add result, "nil"
