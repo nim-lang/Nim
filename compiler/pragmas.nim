@@ -402,10 +402,22 @@ proc relativeFile(c: PContext; n: PNode; ext=""): string =
       if result.len == 0: result = s
 
 proc processCompile(c: PContext, n: PNode) =
-  let found = relativeFile(c, n)
-  let trunc = found.changeFileExt("")
-  extccomp.addExternalFileToCompile(found)
-  extccomp.addFileToLink(completeCFilePath(trunc, false))
+  var s = expectStrLit(c, n)
+  var found = parentDir(n.info.toFullPath) / s
+  if '*' in found:
+    for f in os.walkFiles(found):
+      let trunc = f.changeFileExt("")
+      extccomp.addExternalFileToCompile(f)
+      extccomp.addFileToLink(completeCFilePath(trunc, false))
+  else:
+    if not fileExists(found):
+      if isAbsolute(s): found = s
+      else:
+        found = findFile(s)
+        if found.len == 0: found = s
+    let trunc = found.changeFileExt("")
+    extccomp.addExternalFileToCompile(found)
+    extccomp.addFileToLink(completeCFilePath(trunc, false))
 
 proc processCommonLink(c: PContext, n: PNode, feature: TLinkFeature) =
   let found = relativeFile(c, n, CC[cCompiler].objExt)
