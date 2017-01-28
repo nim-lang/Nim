@@ -658,16 +658,16 @@ proc externalFileChanged(cfile: Cfile): bool =
       f.writeLine($currentHash)
       close(f)
 
+proc addExternalFileToCompile*(c: var Cfile) =
+  if optForceFullMake notin gGlobalOptions and not externalFileChanged(c):
+    c.flags.incl CfileFlag.Cached
+  toCompile.add(c)
+
 proc addExternalFileToCompile*(filename: string) =
-  let c = Cfile(cname: filename,
+  var c = Cfile(cname: filename,
     obj: toObjFile(completeCFilePath(changeFileExt(filename, ""), false)),
     flags: {CfileFlag.External})
-  if optForceFullMake in gGlobalOptions or externalFileChanged(c):
-    toCompile.add(c)
-
-proc addExternalFileToCompile*(c: Cfile) =
-  if optForceFullMake in gGlobalOptions or externalFileChanged(c):
-    toCompile.add(c)
+  addExternalFileToCompile(c)
 
 proc compileCFile(list: CFileList, script: var Rope, cmds: var TStringSeq,
                   prettyCmds: var TStringSeq) =
@@ -782,7 +782,7 @@ proc callCCompiler*(projectfile: string) =
       it = PStrEntry(it.next)
     for x in toCompile:
       add(objfiles, ' ')
-      add(objfiles, quoteShell(x.obj))
+      add(objfiles, x.obj)
 
     linkCmd = getLinkCmd(projectfile, objfiles)
     if optCompileOnly notin gGlobalOptions:
