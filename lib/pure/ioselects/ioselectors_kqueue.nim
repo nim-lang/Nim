@@ -93,6 +93,16 @@ proc newSelector*[T](): Selector[T] =
   if kqFD < 0:
     raiseIOSelectorsError(osLastError())
 
+  # we allocating empty socket to duplicate it handle in future, to get unique
+  # indexes for `fds` array. This is needed to properly identify
+  # {Event.Timer, Event.Signal, Event.Process} events.
+  let usock = posix.socket(posix.AF_INET, posix.SOCK_STREAM,
+                             posix.IPPROTO_TCP).cint
+  if usock == -1:
+    let err = osLastError()
+    discard posix.close(kqFD)
+    raiseIOSelectorsError(err)
+
   when hasThreadSupport:
     result = cast[Selector[T]](allocShared0(sizeof(SelectorImpl[T])))
     result.fds = allocSharedArray[SelectorKey[T]](maxFD)
@@ -104,16 +114,9 @@ proc newSelector*[T](): Selector[T] =
     result.fds = newSeq[SelectorKey[T]](maxFD)
     result.changes = newSeqOfCap[KEvent](MAX_KQUEUE_EVENTS)
 
+  result.sock = usock
   result.kqFD = kqFD
   result.maxFD = maxFD.int
-
-  # we allocating empty socket to duplicate it handle in future, to get unique
-  # indexes for `fds` array. This is needed to properly identify
-  # {Event.Timer, Event.Signal, Event.Process} events.
-  result.sock = posix.socket(posix.AF_INET, posix.SOCK_STREAM,
-                             posix.IPPROTO_TCP).cint
-  if result.sock == -1:
-    raiseIOSelectorsError(osLastError())
 
 proc close*[T](s: Selector[T]) =
   let res = posix.close(s.kqFD)
