@@ -193,9 +193,7 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
 proc processCompile(filename: string) =
   var found = findFile(filename)
   if found == "": found = filename
-  var trunc = changeFileExt(found, "")
   extccomp.addExternalFileToCompile(found)
-  extccomp.addFileToLink(completeCFilePath(trunc, false))
 
 proc testCompileOptionArg*(switch, arg: string, info: TLineInfo): bool =
   case switch.normalize
@@ -370,7 +368,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     if pass in {passCmd2, passPP}: processCompile(arg)
   of "link":
     expectArg(switch, arg, pass, info)
-    if pass in {passCmd2, passPP}: addFileToLink(arg)
+    if pass in {passCmd2, passPP}: addExternalFileToLink(arg)
   of "debuginfo":
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optCDebug)
