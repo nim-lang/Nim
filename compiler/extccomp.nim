@@ -782,7 +782,7 @@ proc callCCompiler*(projectfile: string) =
       it = PStrEntry(it.next)
     for x in toCompile:
       add(objfiles, ' ')
-      add(objfiles, x.obj)
+      add(objfiles, quoteShell(x.obj))
 
     linkCmd = getLinkCmd(projectfile, objfiles)
     if optCompileOnly notin gGlobalOptions:
