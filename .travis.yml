@@ -2,6 +2,8 @@ sudo: false
 language: c
 os:
   - linux
+dist: trusty
+
 addons:
   apt:
     packages:
