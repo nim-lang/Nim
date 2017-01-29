@@ -142,5 +142,5 @@ allowing you to create commercial applications.
 
 Read copying.txt for more details.
 
-Copyright (c) 2006-2016 Andreas Rumpf.
+Copyright (c) 2006-2017 Andreas Rumpf.
 All rights reserved.
