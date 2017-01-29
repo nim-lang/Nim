@@ -88,9 +88,10 @@ when defined(windows):
     if fileExists(gccExe):
       try:
         let arch = execProcess(gccExe, ["-dumpmachine"], nil, {poStdErrToStdOut,
-                                                               poUsePath})
+                                                               poUsePath}).strip
         when hostCPU == "i386":
-          result = arch.contains("i686-") and not arch.contains("w64")
+          result = (arch.contains("i686-") and not arch.contains("w64")) or
+                    arch == "mingw32"
         elif hostCPU == "amd64":
           result = arch.contains("x86_64-") or arch.contains("i686-w64-mingw32")
         else:
