@@ -1504,7 +1504,7 @@ proc genVarStmt(p: PProc, n: PNode) =
         assert(a.kind == nkIdentDefs)
         assert(a.sons[0].kind == nkSym)
         var v = a.sons[0].sym
-        if lfNoDecl notin v.loc.flags:
+        if lfNoDecl notin v.loc.flags and sfImportc notin v.flags:
           genLineDir(p, a)
           genVarInit(p, v, a.sons[2])
 
