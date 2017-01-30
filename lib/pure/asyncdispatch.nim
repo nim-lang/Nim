@@ -438,7 +438,7 @@ when defined(windows) or defined(nimdoc):
           success = false
       it = it.ai_next
 
-    dealloc(aiList)
+    freeAddrInfo(aiList)
     if not success:
       retFuture.fail(newException(OSError, osErrorMsg(lastError)))
     return retFuture
@@ -750,7 +750,7 @@ when defined(windows) or defined(nimdoc):
     var lpOutputBuf = newString(lpOutputLen)
     var dwBytesReceived: Dword
     let dwReceiveDataLength = 0.Dword # We don't want any data to be read.
-    let dwLocalAddressLength = Dword(sizeof (Sockaddr_in) + 16)
+    let dwLocalAddressLength = Dword(sizeof(Sockaddr_in) + 16)
     let dwRemoteAddressLength = Dword(sizeof(Sockaddr_in) + 16)
 
     template completeAccept() {.dirty.} =
@@ -1047,7 +1047,7 @@ else:
     p.selector[fd.SocketHandle].data.PData.writeCBs.add(cb)
     update(fd, p.selector[fd.SocketHandle].events + {EvWrite})
 
-  template processCallbacks(callbacks: expr) =
+  template processCallbacks(callbacks: untyped) =
     # Callback may add items to ``callbacks`` which causes issues if
     # we are iterating over it at the same time. We therefore
     # make a copy to iterate over.
@@ -1147,7 +1147,7 @@ else:
           success = false
       it = it.ai_next
 
-    dealloc(aiList)
+    freeAddrInfo(aiList)
     if not success:
       retFuture.fail(newException(OSError, osErrorMsg(lastError)))
     return retFuture

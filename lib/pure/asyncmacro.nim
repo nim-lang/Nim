@@ -96,7 +96,7 @@ proc generateExceptionCheck(futSym,
     result.add elseNode
 
 template useVar(result: var NimNode, futureVarNode: NimNode, valueReceiver,
-                rootReceiver: expr, fromNode: NimNode) =
+                rootReceiver: untyped, fromNode: NimNode) =
   ## Params:
   ##    futureVarNode: The NimNode which is a symbol identifying the Future[T]
   ##                   variable to yield.
@@ -114,7 +114,7 @@ template useVar(result: var NimNode, futureVarNode: NimNode, valueReceiver,
 
 template createVar(result: var NimNode, futSymName: string,
                    asyncProc: NimNode,
-                   valueReceiver, rootReceiver: expr,
+                   valueReceiver, rootReceiver: untyped,
                    fromNode: NimNode) =
   result = newNimNode(nnkStmtList, fromNode)
   var futSym = genSym(nskVar, "future")
@@ -207,7 +207,7 @@ proc processBody(node, retFutureSym: NimNode,
   of nnkTryStmt:
     # try: await x; except: ...
     result = newNimNode(nnkStmtList, node)
-    template wrapInTry(n, tryBody: expr) =
+    template wrapInTry(n, tryBody: untyped) =
       var temp = n
       n[0] = tryBody
       tryBody = temp

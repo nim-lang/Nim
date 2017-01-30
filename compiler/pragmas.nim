@@ -419,8 +419,10 @@ proc processCompile(c: PContext, n: PNode) =
     var found = parentDir(n.info.toFullPath) / s
     for f in os.walkFiles(found):
       let nameOnly = extractFilename(f)
-      extccomp.addExternalFileToCompile(Cfile(cname: f,
-          obj: dest % nameOnly, flags: {CfileFlag.External}))
+      var cf = Cfile(cname: f,
+          obj: completeCFilePath(dest % nameOnly),
+          flags: {CfileFlag.External})
+      extccomp.addExternalFileToCompile(cf)
   else:
     let s = expectStrLit(c, n)
     var found = parentDir(n.info.toFullPath) / s

@@ -204,12 +204,12 @@ proc newSocket*(fd: SocketHandle, domain: Domain = AF_INET,
     protocol: Protocol = IPPROTO_TCP, buffered = true): Socket =
   ## Creates a new socket as specified by the params.
   assert fd != osInvalidSocket
-  new(result)
-  result.fd = fd
-  result.isBuffered = buffered
-  result.domain = domain
-  result.sockType = sockType
-  result.protocol = protocol
+  result = Socket(
+    fd: fd,
+    isBuffered: buffered,
+    domain: domain,
+    sockType: sockType,
+    protocol: protocol)
   if buffered:
     result.currPos = 0
 
@@ -425,7 +425,7 @@ when defineSsl:
     ## **Disclaimer**: This code is not well tested, may be very unsafe and
     ## prone to security vulnerabilities.
 
-    assert (not socket.isSSL)
+    assert(not socket.isSSL)
     socket.isSSL = true
     socket.sslContext = ctx
     socket.sslHandle = SSLNew(socket.sslContext.context)
@@ -549,9 +549,9 @@ proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
   else:
     var aiList = getAddrInfo(address, port, socket.domain)
     if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.SockLen) < 0'i32:
-      dealloc(aiList)
+      freeAddrInfo(aiList)
       raiseOSError(osLastError())
-    dealloc(aiList)
+    freeAddrInfo(aiList)
 
 proc acceptAddr*(server: Socket, client: var Socket, address: var string,
                  flags = {SocketFlag.SafeDisconn}) {.
@@ -1182,7 +1182,7 @@ proc sendTo*(socket: Socket, address: string, port: Port, data: pointer,
       break
     it = it.ai_next
 
-  dealloc(aiList)
+  freeAddrInfo(aiList)
 
 proc sendTo*(socket: Socket, address: string, port: Port,
              data: string): int {.tags: [WriteIOEffect].} =
@@ -1503,7 +1503,7 @@ proc connect*(socket: Socket, address: string,
     else: lastError = osLastError()
     it = it.ai_next
 
-  dealloc(aiList)
+  freeAddrInfo(aiList)
   if not success: raiseOSError(lastError)
 
   when defineSsl:
@@ -1551,7 +1551,7 @@ proc connectAsync(socket: Socket, name: string, port = Port(0),
 
     it = it.ai_next
 
-  dealloc(aiList)
+  freeAddrInfo(aiList)
   if not success: raiseOSError(lastError)
 
 proc connect*(socket: Socket, address: string, port = Port(0),

@@ -31,7 +31,8 @@ else:
 
 export SocketHandle, Sockaddr_in, Addrinfo, INADDR_ANY, SockAddr, SockLen,
   Sockaddr_in6,
-  inet_ntoa, recv, `==`, connect, send, accept, recvfrom, sendto
+  inet_ntoa, recv, `==`, connect, send, accept, recvfrom, sendto,
+  freeAddrInfo
 
 export
   SO_ERROR,
@@ -197,7 +198,7 @@ proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
                   protocol: Protocol = IPPROTO_TCP): ptr AddrInfo =
   ##
   ##
-  ## **Warning**: The resulting ``ptr TAddrInfo`` must be freed using ``dealloc``!
+  ## **Warning**: The resulting ``ptr AddrInfo`` must be freed using ``freeAddrInfo``!
   var hints: AddrInfo
   result = nil
   hints.ai_family = toInt(domain)
@@ -216,7 +217,8 @@ proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
     else:
       raiseOSError(osLastError(), $gai_strerror(gaiResult))
 
-proc dealloc*(ai: ptr AddrInfo) =
+proc dealloc*(ai: ptr AddrInfo) {.deprecated.} =
+  ## Deprecated since 0.16.2. Use ``freeAddrInfo`` instead.
   freeaddrinfo(ai)
 
 proc ntohl*(x: uint32): uint32 =
@@ -229,7 +231,7 @@ proc ntohl*(x: uint32): uint32 =
                  (x shl 8'u32 and 0xff0000'u32) or
                  (x shl 24'u32)
 
-template ntohl*(x: int32): expr {.deprecated.} =
+template ntohl*(x: int32): untyped {.deprecated.} =
   ## Converts 32-bit integers from network to host byte order.
   ## On machines where the host byte order is the same as network byte order,
   ## this is a no-op; otherwise, it performs a 4-byte swap operation.
@@ -245,7 +247,7 @@ proc ntohs*(x: uint16): uint16 =
   when cpuEndian == bigEndian: result = x
   else: result = (x shr 8'u16) or (x shl 8'u16)
 
-template ntohs*(x: int16): expr {.deprecated.} =
+template ntohs*(x: int16): untyped {.deprecated.} =
   ## Converts 16-bit integers from network to host byte order. On
   ## machines where the host byte order is the same as network byte order,
   ## this is a no-op; otherwise, it performs a 2-byte swap operation.
@@ -254,7 +256,7 @@ template ntohs*(x: int16): expr {.deprecated.} =
   ## this template.
   cast[int16](ntohs(cast[uint16](x)))
 
-template htonl*(x: int32): expr {.deprecated.} =
+template htonl*(x: int32): untyped {.deprecated.} =
   ## Converts 32-bit integers from host to network byte order. On machines
   ## where the host byte order is the same as network byte order, this is
   ## a no-op; otherwise, it performs a 4-byte swap operation.
@@ -263,13 +265,13 @@ template htonl*(x: int32): expr {.deprecated.} =
   ## version of this template.
   nativesockets.ntohl(x)
 
-template htonl*(x: uint32): expr =
+template htonl*(x: uint32): untyped =
   ## Converts 32-bit unsigned integers from host to network byte order. On
   ## machines where the host byte order is the same as network byte order,
   ## this is a no-op; otherwise, it performs a 4-byte swap operation.
   nativesockets.ntohl(x)
 
-template htons*(x: int16): expr {.deprecated.} =
+template htons*(x: int16): untyped {.deprecated.} =
   ## Converts 16-bit integers from host to network byte order.
   ## On machines where the host byte order is the same as network byte
   ## order, this is a no-op; otherwise, it performs a 2-byte swap operation.
@@ -278,7 +280,7 @@ template htons*(x: int16): expr {.deprecated.} =
   ## this template.
   nativesockets.ntohs(x)
 
-template htons*(x: uint16): expr =
+template htons*(x: uint16): untyped =
   ## Converts 16-bit unsigned integers from host to network byte order.
   ## On machines where the host byte order is the same as network byte
   ## order, this is a no-op; otherwise, it performs a 2-byte swap operation.
@@ -570,7 +572,7 @@ proc select*(readfds: var seq[SocketHandle], timeout = 500): int {.deprecated.} 
     result = int(select(cint(m+1), addr(rd), nil, nil, nil))
 
   pruneSocketSet(readfds, (rd))
-  
+
 proc selectRead*(readfds: var seq[SocketHandle], timeout = 500): int =
   ## When a socket in ``readfds`` is ready to be read from then a non-zero
   ## value will be returned specifying the count of the sockets which can be
