@@ -753,26 +753,6 @@ when defined(windows) or defined(nimdoc):
     let dwLocalAddressLength = Dword(sizeof(Sockaddr_in) + 16)
     let dwRemoteAddressLength = Dword(sizeof(Sockaddr_in) + 16)
 
-    template completeAccept() {.dirty.} =
-      var listenSock = socket
-      let setoptRet = setsockopt(clientSock, SOL_SOCKET,
-          SO_UPDATE_ACCEPT_CONTEXT, addr listenSock,
-          sizeof(listenSock).SockLen)
-      if setoptRet != 0: raiseOSError(osLastError())
-
-      var localSockaddr, remoteSockaddr: ptr SockAddr
-      var localLen, remoteLen: int32
-      getAcceptExSockaddrs(addr lpOutputBuf[0], dwReceiveDataLength,
-                           dwLocalAddressLength, dwRemoteAddressLength,
-                           addr localSockaddr, addr localLen,
-                           addr remoteSockaddr, addr remoteLen)
-      register(clientSock.AsyncFD)
-      # TODO: IPv6. Check ``sa_family``. http://stackoverflow.com/a/9212542/492186
-      retFuture.complete(
-        (address: $inet_ntoa(cast[ptr Sockaddr_in](remoteSockAddr).sin_addr),
-         client: clientSock.AsyncFD)
-      )
-
     template failAccept(errcode) =
       if flags.isDisconnectionError(errcode):
         var newAcceptFut = acceptAddr(socket, flags)
@@ -784,6 +764,29 @@ when defined(windows) or defined(nimdoc):
               retFuture.complete(newAcceptFut.read)
       else:
         retFuture.fail(newException(OSError, osErrorMsg(errcode)))
+
+    template completeAccept() {.dirty.} =
+      var listenSock = socket
+      let setoptRet = setsockopt(clientSock, SOL_SOCKET,
+          SO_UPDATE_ACCEPT_CONTEXT, addr listenSock,
+          sizeof(listenSock).SockLen)
+      if setoptRet != 0:
+        let errcode = osLastError()
+        checkCloseError clientSock.closeSocket()
+        failAccept(errcode)
+      else:
+        var localSockaddr, remoteSockaddr: ptr SockAddr
+        var localLen, remoteLen: int32
+        getAcceptExSockaddrs(addr lpOutputBuf[0], dwReceiveDataLength,
+                             dwLocalAddressLength, dwRemoteAddressLength,
+                             addr localSockaddr, addr localLen,
+                             addr remoteSockaddr, addr remoteLen)
+        register(clientSock.AsyncFD)
+        # TODO: IPv6. Check ``sa_family``. http://stackoverflow.com/a/9212542/492186
+        retFuture.complete(
+          (address: $inet_ntoa(cast[ptr Sockaddr_in](remoteSockAddr).sin_addr),
+          client: clientSock.AsyncFD)
+        )
 
     var ol = PCustomOverlapped()
     GC_ref(ol)
