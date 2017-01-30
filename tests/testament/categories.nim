@@ -201,6 +201,7 @@ proc threadTests(r: var TResults, cat: Category, options: string) =
   #test "tthreadanalysis3"
   test "tthreadheapviolation1"
   test "tonthreadcreation"
+  test "tracy_allocator"
 
 # ------------------------- IO tests ------------------------------------------
 

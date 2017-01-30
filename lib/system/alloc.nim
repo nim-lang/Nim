@@ -103,7 +103,7 @@ type
     root, deleted, last, freeAvlNodes: PAvlNode
     locked, blockChunkSizeIncrease: bool # if locked, we cannot free pages.
     nextChunkSize: int
-{.deprecated: [TLLChunk: LLChunk, TAvlNode: AvlNode, TMemRegion: MemRegion].}
+{.deprecated: [TMemRegion: MemRegion].}
 
 # shared:
 var
@@ -312,6 +312,8 @@ proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
   incCurrMem(a, size)
   inc(a.freeMem, size)
   result.heapLink = a.heapLink
+  when defined(debugHeapLinks):
+    cprintf("owner: %p; result: %p; next pointer %p\n", addr(a), result, result.heapLink)
   result.origSize = size
   a.heapLink = result
 
@@ -713,6 +715,8 @@ proc deallocOsPages(a: var MemRegion) =
   # we free every 'ordinarily' allocated page by iterating over the page bits:
   var it = a.heapLink
   while it != nil:
+    when defined(debugHeapLinks):
+      cprintf("owner %p; dealloc A: %p\n", addr(a), it)
     let next = it.heapLink
     sysAssert it.origSize >= PageSize, "origSize too small"
     # note:
