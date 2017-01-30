@@ -1064,8 +1064,6 @@ when defined(windows) or defined(nimdoc):
         if err.int32 != ERROR_IO_PENDING:
           raiseOSError(err)
       ev.hWaiter = 0
-    else:
-      raise newException(ValueError, "Event is not registered!")
 
   proc close*(ev: AsyncEvent) =
     ## Closes event ``ev``.

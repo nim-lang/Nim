@@ -116,12 +116,13 @@ proc newSelector*[T](): Selector[T] =
     raiseIOSelectorsError(osLastError())
 
 proc close*[T](s: Selector[T]) =
-  let res = posix.close(s.kqFD)
+  let res1 = posix.close(s.kqFD)
+  let res2 = posix.close(s.sock)
   when hasThreadSupport:
     deinitLock(s.changesLock)
     deallocSharedArray(s.fds)
     deallocShared(cast[pointer](s))
-  if res != 0:
+  if res1 != 0 or res2 != 0:
     raiseIOSelectorsError(osLastError())
 
 template clearKey[T](key: ptr SelectorKey[T]) =
