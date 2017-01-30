@@ -378,7 +378,7 @@ when defined(windows) or defined(nimdoc):
           success = false
       it = it.ai_next
 
-    dealloc(aiList)
+    freeAddrInfo(aiList)
     if not success:
       retFuture.fail(newException(OSError, osErrorMsg(lastError)))
     return retFuture
@@ -1348,7 +1348,7 @@ else:
           success = false
       it = it.ai_next
 
-    dealloc(aiList)
+    freeAddrInfo(aiList)
     if not success:
       retFuture.fail(newException(OSError, osErrorMsg(lastError)))
     return retFuture
