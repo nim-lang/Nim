@@ -195,7 +195,7 @@ else:
     importc: "pthread_setaffinity_np", header: pthreadh.}
 
   when defined(linux):
-    proc syscall(arg: int): int {.varargs, importc: "syscall", header: "<sys/syscall.h>".}
+    proc syscall(arg: int): int {.varargs, importc: "syscall", header: "<unistd.h>".}
     var SYS_gettid {.importc, header: "<sys/syscall.h>".}: int
 
     #type Pid {.importc: "pid_t", header: "<sys/types.h>".} = distinct int
