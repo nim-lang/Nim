@@ -1584,6 +1584,13 @@ proc skipStmtList*(n: PNode): PNode =
   else:
     result = n
 
+proc toRef*(typ: PType): PType =
+  result = typ
+  if typ.kind == tyObject:
+    # Convert to a `ref T`.
+    result = newType(tyRef, typ.owner)
+    rawAddSon(result, typ)
+
 when false:
   proc containsNil*(n: PNode): bool =
     # only for debugging
