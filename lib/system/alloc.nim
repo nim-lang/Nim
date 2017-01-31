@@ -62,6 +62,8 @@ type
     freeList: ptr FreeCell
     free: int            # how many bytes remain
     acc: int             # accumulator for small object allocation
+    when defined(cpu32):
+      align: int
     data: AlignType      # start of usable memory
 
   BigChunk = object of BaseChunk # not necessarily > PageSize!
