@@ -205,11 +205,13 @@ else:
       ## get the ID of the currently running thread.
       result = int(syscall(SYS_gettid))
   elif defined(macosx) or defined(bsd):
-    proc pthread_main_np(): cint {.importc, header: "pthread.h".}
+    proc pthread_threadid_np(y: pointer; x: var uint64): cint {.importc, header: "pthread.h".}
 
     proc getThreadId*(): int =
       ## get the ID of the currently running thread.
-      result = int(pthread_main_np())
+      var x: uint64
+      result = pthread_threadid_np(nil, x)
+      result = int(x)
   elif defined(solaris):
     # just a guess really:
     type thread_t {.importc: "thread_t", header: "<thread.h>".} = distinct int
