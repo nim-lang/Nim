@@ -55,6 +55,7 @@ type
     prevSize: int        # size of previous chunk; for coalescing
     size: int            # if < PageSize it is a small chunk
     origSize: int        # 0th bit == 1 if 'used'
+    heapLink: PBigChunk      # linked list of all chunks for bulk 'deallocPages'
 
   SmallChunk = object of BaseChunk
     next, prev: PSmallChunk  # chunks of the same size
@@ -65,7 +66,6 @@ type
 
   BigChunk = object of BaseChunk # not necessarily > PageSize!
     next, prev: PBigChunk    # chunks of the same (or bigger) size
-    heapLink: PBigChunk      # linked list of all chunks for bulk 'deallocPages'
     data: AlignType      # start of usable memory
 
 template smallChunkOverhead(): untyped = sizeof(SmallChunk)-sizeof(AlignType)
