@@ -103,19 +103,12 @@ type
     root, deleted, last, freeAvlNodes: PAvlNode
     locked, blockChunkSizeIncrease: bool # if locked, we cannot free pages.
     nextChunkSize: int
+    bottomData: AvlNode
+
 {.deprecated: [TMemRegion: MemRegion].}
 
-# shared:
-var
-  bottomData {.threadvar.}: AvlNode
-  bottom {.threadvar.}: PAvlNode
-
 {.push stack_trace: off.}
-proc initAllocator() =
-  when not defined(useNimRtl):
-    bottom = addr(bottomData)
-    bottom.link[0] = bottom
-    bottom.link[1] = bottom
+proc initAllocator() = discard "nothing to do anymore"
 {.pop.}
 
 proc incCurrMem(a: var MemRegion, bytes: int) {.inline.} =
@@ -152,6 +145,12 @@ proc llAlloc(a: var MemRegion, size: int): pointer =
   inc(a.llmem.acc, size)
   zeroMem(result, size)
 
+proc getBottom(a: var MemRegion): PAvlNode =
+  result = addr(a.bottomData)
+  if result.link[0] == nil:
+    result.link[0] = result
+    result.link[1] = result
+
 proc allocAvlNode(a: var MemRegion, key, upperBound: int): PAvlNode =
   if a.freeAvlNodes != nil:
     result = a.freeAvlNodes
@@ -162,12 +161,13 @@ proc allocAvlNode(a: var MemRegion, key, upperBound: int): PAvlNode =
       cprintf("tracking location: %p\n", result)
   result.key = key
   result.upperBound = upperBound
+  let bottom = getBottom(a)
   result.link[0] = bottom
   result.link[1] = bottom
   result.level = 1
-  when defined(avlcorruption):
-    track("allocAvlNode", result, sizeof(AvlNode))
-  sysAssert(bottom == addr(bottomData), "bottom data")
+  #when defined(avlcorruption):
+  #  track("allocAvlNode", result, sizeof(AvlNode))
+  sysAssert(bottom == addr(a.bottomData), "bottom data")
   sysAssert(bottom.link[0] == bottom, "bottom link[0]")
   sysAssert(bottom.link[1] == bottom, "bottom link[1]")
 
@@ -565,7 +565,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
     sysAssert c.size == size, "rawAlloc 12"
     result = addr(c.data)
     sysAssert((cast[ByteAddress](result) and (MemAlign-1)) == 0, "rawAlloc 13")
-    if a.root == nil: a.root = bottom
+    if a.root == nil: a.root = getBottom(a)
     add(a, a.root, cast[ByteAddress](result), cast[ByteAddress](result)+%size)
   sysAssert(isAccessible(a, result), "rawAlloc 14")
   sysAssert(allocInv(a), "rawAlloc: end")
@@ -613,7 +613,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
     when overwriteFree: c_memset(p, -1'i32, c.size -% bigChunkOverhead())
     # free big chunk
     var c = cast[PBigChunk](c)
-    a.deleted = bottom
+    a.deleted = getBottom(a)
     del(a, a.root, cast[int](addr(c.data)))
     freeBigChunk(a, c)
   sysAssert(allocInv(a), "rawDealloc: end")
