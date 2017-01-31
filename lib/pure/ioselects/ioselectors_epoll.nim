@@ -165,7 +165,7 @@ proc close*(ev: SelectEvent) =
 
 template checkFd(s, f) =
   if f >= s.maxFD:
-    raiseIOSelectorsError("Maximum file descriptors exceeded")
+    raiseIOSelectorsError("Maximum number of descriptors is exhausted!")
 
 proc registerHandle*[T](s: Selector[T], fd: SocketHandle,
                         events: set[Event], data: T) =
@@ -188,7 +188,8 @@ proc updateHandle*[T](s: Selector[T], fd: SocketHandle, events: set[Event]) =
   let fdi = int(fd)
   s.checkFd(fdi)
   var pkey = addr(s.fds[fdi])
-  doAssert(pkey.ident != 0)
+  doAssert(pkey.ident != 0,
+           "Descriptor [" & $fdi & "] is not registered in the queue!")
   doAssert(pkey.events * maskEvents == {})
   if pkey.events != events:
     var epv = epoll_event(events: EPOLLRDHUP)
@@ -215,8 +216,8 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
   let fdi = int(fd)
   s.checkFd(fdi)
   var pkey = addr(s.fds[fdi])
-  doAssert(pkey.ident != 0)
-
+  doAssert(pkey.ident != 0,
+           "Descriptor [" & $fdi & "] is not registered in the queue!")
   if pkey.events != {}:
     when not defined(android):
       if pkey.events * {Event.Read, Event.Write} != {}:
@@ -277,7 +278,7 @@ proc unregister*[T](s: Selector[T], ev: SelectEvent) =
   let fdi = int(ev.efd)
   s.checkFd(fdi)
   var pkey = addr(s.fds[fdi])
-  doAssert(pkey.ident != 0)
+  doAssert(pkey.ident != 0, "Event is not registered in the queue!")
   doAssert(Event.User in pkey.events)
   var epv = epoll_event()
   if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) != 0:
@@ -380,7 +381,7 @@ when not defined(android):
 
 proc registerEvent*[T](s: Selector[T], ev: SelectEvent, data: T) =
   let fdi = int(ev.efd)
-  doAssert(s.fds[fdi].ident == 0)
+  doAssert(s.fds[fdi].ident == 0, "Event is already registered in the queue!")
   s.setKey(fdi, {Event.User}, 0, data)
   var epv = epoll_event(events: EPOLLIN or EPOLLRDHUP)
   epv.data.u64 = ev.efd.uint

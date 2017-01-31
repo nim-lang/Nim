@@ -115,9 +115,8 @@ template pollUpdate[T](s: Selector[T], sock: cint, events: set[Event]) =
         s.pollfds[i].events = pollev
         break
       inc(i)
-
-    if i == s.pollcnt:
-      raiseIOSelectorsError("Descriptor is not registered in queue")
+    doAssert(i < s.pollcnt,
+             "Descriptor [" & $sock & "] is not registered in the queue!")
 
 template pollRemove[T](s: Selector[T], sock: cint) =
   withPollLock(s):
@@ -140,7 +139,7 @@ template pollRemove[T](s: Selector[T], sock: cint) =
 
 template checkFd(s, f) =
   if f >= s.maxFD:
-    raiseIOSelectorsError("Descriptor is not registered in queue")
+    raiseIOSelectorsError("Maximum number of descriptors is exhausted!")
 
 proc registerHandle*[T](s: Selector[T], fd: SocketHandle,
                         events: set[Event], data: T) =
@@ -157,7 +156,8 @@ proc updateHandle*[T](s: Selector[T], fd: SocketHandle,
   let fdi = int(fd)
   s.checkFd(fdi)
   var pkey = addr(s.fds[fdi])
-  doAssert(pkey.ident != 0)
+  doAssert(pkey.ident != 0,
+           "Descriptor [" & $fdi & "] is not registered in the queue!")
   doAssert(pkey.events * maskEvents == {})
 
   if pkey.events != events:
@@ -172,7 +172,7 @@ proc updateHandle*[T](s: Selector[T], fd: SocketHandle,
 
 proc registerEvent*[T](s: Selector[T], ev: SelectEvent, data: T) =
   var fdi = int(ev.rfd)
-  doAssert(s.fds[fdi].ident == 0)
+  doAssert(s.fds[fdi].ident == 0, "Event is already registered in the queue!")
   var events = {Event.User}
   setKey(s, fdi, events, 0, data)
   events.incl(Event.Read)
@@ -182,7 +182,8 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
   let fdi = int(fd)
   s.checkFd(fdi)
   var pkey = addr(s.fds[fdi])
-  doAssert(pkey.ident != 0)
+  doAssert(pkey.ident != 0,
+           "Descriptor [" & $fdi & "] is not registered in the queue!")
   pkey.ident = 0
   pkey.events = {}
   s.pollRemove(fdi.cint)
@@ -191,7 +192,7 @@ proc unregister*[T](s: Selector[T], ev: SelectEvent) =
   let fdi = int(ev.rfd)
   s.checkFd(fdi)
   var pkey = addr(s.fds[fdi])
-  doAssert(pkey.ident != 0)
+  doAssert(pkey.ident != 0, "Event is not registered in the queue!")
   doAssert(Event.User in pkey.events)
   pkey.ident = 0
   pkey.events = {}
