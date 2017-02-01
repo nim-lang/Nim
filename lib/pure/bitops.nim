@@ -155,6 +155,10 @@ elif useICC_builtins:
 
   # Intel compiler intrinsics: http://fulla.fnal.gov/intel/compiler_c/main_cls/intref_cls/common/intref_allia_misc.htm
   # see also: https://software.intel.com/en-us/node/523362
+  # Count the number of bits set to 1 in an integer a, and return that count in dst.
+  proc builtin_popcnt32(a: cint): cint {.importc: "_popcnt" header: "<immintrin.h>", nosideeffect.}
+  proc builtin_popcnt64(a: uint64): cint {.importc: "_popcnt64" header: "<immintrin.h>", nosideeffect.}
+
   # Returns the number of trailing 0-bits in x, starting at the least significant bit position. If x is 0, the result is undefined.
   proc bitScanForward(p: ptr uint32, b: uint32): cuchar {.importc: "_BitScanForward", header: "<immintrin.h>", nosideeffect.}
   proc bitScanForward64(p: ptr uint32, b: uint64): cuchar {.importc: "_BitScanForward64", header: "<immintrin.h>", nosideeffect.}
@@ -171,6 +175,8 @@ elif useICC_builtins:
 {.push rangeChecks: off}
 proc countSetBits*(x: SomeInteger): int {.inline, nosideeffect.} =
   ## Counts the set bits in integer. (also called Hamming weight.)
+  # TODO: figure out if ICC support _popcnt32/_popcnt64 on platform without POPCNT.
+  # like GCC and MSVC
   when nimvm:
     when sizeof(x) <= 4: result = countSetBits_nim(x.uint32)
     else:                result = countSetBits_nim(x.uint64)
@@ -182,7 +188,13 @@ proc countSetBits*(x: SomeInteger): int {.inline, nosideeffect.} =
       when sizeof(x) <= 2: result = builtin_popcnt16(x.uint16).int
       elif sizeof(x) <= 4: result = builtin_popcnt32(x.uint32).int
       elif arch64:         result = builtin_popcnt64(x.uint64).int
-      else:                result = countSetBits_nim(x.uint64)
+      else:                result = builtin_popcnt32((x.uint64 and 0xFFFFFFFF'u64).uint32 ).int +
+                                    builtin_popcnt32((x.uint64 shr 32'u64).uint32 ).int
+    elif useICC_builtins:
+      when sizeof(x) <= 4: result = builtin_popcnt32(x.uint32).int
+      elif arch64:         result = builtin_popcnt64(x.uint64).int
+      else:                result = builtin_popcnt32((x.uint64 and 0xFFFFFFFF'u64).cint ).int +
+                                    builtin_popcnt32((x.uint64 shr 32'u64).cint ).int
     else:
       when sizeof(x) <= 4: result = countSetBits_nim(x.uint32)
       else:                result = countSetBits_nim(x.uint64)
