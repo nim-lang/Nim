@@ -291,8 +291,16 @@ proc semTry(c: PContext, n: PNode): PNode =
           symbolNode = a.sons[j].sons[2]
 
         # Resolve the type ident into a PType.
-        var typ = semTypeNode(c, typeNode, nil)
-        if not symbolNode.isNil:
+        var typ = semTypeNode(c, typeNode, nil).toObject()
+        if typ.kind != tyObject:
+          localError(a.sons[j].info, errExprCannotBeRaised)
+
+        let newTypeNode = newNodeI(nkType, typeNode.info)
+        newTypeNode.typ = typ
+        if symbolNode.isNil:
+          a.sons[j] = newTypeNode
+        else:
+          a.sons[j].sons[1] = newTypeNode
           # Add the exception ident to the symbol table.
           let symbol = newSymG(skLet, symbolNode, c)
           symbol.typ = typ.toRef()
@@ -301,18 +309,6 @@ proc semTry(c: PContext, n: PNode): PNode =
           let symNode = newNodeI(nkSym, typeNode.info)
           symNode.sym = symbol
           a.sons[j].sons[2] = symNode
-
-        if typ.kind == tyRef: typ = typ.sons[0]
-        if typ.kind != tyObject:
-          localError(a.sons[j].info, errExprCannotBeRaised)
-
-        let newTypeNode = newNodeI(nkType, typeNode.info)
-        if symbolNode.isNil:
-          a.sons[j] = newTypeNode
-          a.sons[j].typ = typ
-        else:
-          a.sons[j].sons[1] = newTypeNode
-          a.sons[j].sons[1].typ = typ
 
         if containsOrIncl(check, typ.id):
           localError(a.sons[j].info, errExceptionAlreadyHandled)
