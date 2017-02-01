@@ -514,6 +514,10 @@ type
     ## You can use ``of`` operator to check if conversion will succeed.
     ##
     ## See the full `exception hierarchy`_.
+  UnimplementedError* = object of Exception ## \
+    ## Can be used in base methods or to mark unimplemented branches.
+    ##
+    ## See the full `exception hierarchy`_.
   FloatingPointError* = object of Exception ## \
     ## Base class for floating point exceptions.
     ##

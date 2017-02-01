@@ -295,7 +295,7 @@ Procedures always use static dispatch. For dynamic dispatch replace the
   # watch out: 'eval' relies on dynamic binding
   method eval(e: PExpr): int =
     # override this base method
-    quit "to override!"
+    newException(UnimplementedError, "Called unimplemented method")
 
   method eval(e: PLiteral): int = e.x
   method eval(e: PPlusExpr): int = eval(e.a) + eval(e.b)
