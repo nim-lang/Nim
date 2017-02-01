@@ -25,7 +25,8 @@ proc listDirs(a: VmArgs, filter: set[PathComponent]) =
     if kind in filter: result.add path
   setResult(a, result)
 
-proc setupVM*(module: PSym; cache: IdentCache; scriptName: string): PEvalContext =
+proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
+              config: ConfigRef = nil): PEvalContext =
   # For Nimble we need to export 'setupVM'.
   result = newCtx(module, cache)
   result.mode = emRepl
@@ -133,12 +134,15 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string): PEvalContext
     gModuleOverrides[key] = val
   cbconf selfExe:
     setResult(a, os.getAppFilename())
+  cbconf cppDefine:
+    if config != nil:
+      options.cppDefine(config, a.getString(0))
 
 proc runNimScript*(cache: IdentCache; scriptName: string;
-                   freshDefines=true) =
+                   freshDefines=true; config: ConfigRef=nil) =
   passes.gIncludeFile = includeModule
   passes.gImportModule = importModule
-  let graph = newModuleGraph()
+  let graph = newModuleGraph(config)
   if freshDefines: initDefines()
 
   defineSymbol("nimscript")
@@ -150,7 +154,7 @@ proc runNimScript*(cache: IdentCache; scriptName: string;
 
   var m = graph.makeModule(scriptName)
   incl(m.flags, sfMainModule)
-  vm.globalCtx = setupVM(m, cache, scriptName)
+  vm.globalCtx = setupVM(m, cache, scriptName, config)
 
   graph.compileSystemModule(cache)
   discard graph.processModule(m, llStreamOpen(scriptName, fmRead), nil, cache)

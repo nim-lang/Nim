@@ -1221,7 +1221,7 @@ proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
   injectG()
   result = newModule(g, module)
   if optGenIndex in gGlobalOptions and g.generatedHeader == nil:
-    let f = if headerFile.len > 0: headerFile else: gProjectFull
+    let f = if graph.config.headerFile.len > 0: graph.config.headerFile else: gProjectFull
     g.generatedHeader = rawNewModule(g, module,
       changeFileExt(completeCFilePath(f), hExt))
     incl g.generatedHeader.flags, isHeaderFile
@@ -1373,11 +1373,12 @@ proc myClose(b: PPassContext, n: PNode): PNode =
     for i in 0..sonsLen(disp)-1: genProcAux(m, disp.sons[i].sym)
     genMainProc(m)
 
-proc cgenWriteModules*(backend: RootRef) =
+proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
   let g = BModuleList(backend)
   # we need to process the transitive closure because recursive module
   # deps are allowed (and the system module is processed in the wrong
   # order anyway)
+  g.config = config
   if g.generatedHeader != nil: finishModule(g.generatedHeader)
   while g.forwardedProcsCounter > 0:
     for m in cgenModules(g):

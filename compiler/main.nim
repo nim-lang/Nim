@@ -72,7 +72,7 @@ proc commandCompileToC(graph: ModuleGraph; cache: IdentCache) =
   #registerPass(cleanupPass())
 
   compileProject(graph, cache)
-  cgenWriteModules(graph.backend)
+  cgenWriteModules(graph.backend, graph.config)
   if gCmd != cmdRun:
     let proj = changeFileExt(gProjectFull, "")
     extccomp.callCCompiler(proj)
@@ -294,4 +294,4 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
 
   resetAttributes()
 
-proc mainCommand*() = mainCommand(newModuleGraph(), newIdentCache())
+proc mainCommand*() = mainCommand(newModuleGraph(newConfigRef()), newIdentCache())

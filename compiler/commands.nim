@@ -47,7 +47,8 @@ type
     passPP                    # preprocessor called processCommand()
 
 proc processCommand*(switch: string, pass: TCmdLinePass)
-proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo)
+proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
+                    config: ConfigRef = nil)
 
 # implementation
 
@@ -312,7 +313,8 @@ proc dynlibOverride(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     expectArg(switch, arg, pass, info)
     options.inclDynlibOverride(arg)
 
-proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
+proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
+                   config: ConfigRef = nil) =
   var
     theOS: TSystemOS
     cpu: TSystemCPU
@@ -523,7 +525,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     expectArg(switch, arg, pass, info)
     if pass in {passCmd2, passPP}: cLinkedLibs.add arg.processPath(info)
   of "header":
-    headerFile = arg
+    if config != nil: config.headerFile = arg
     incl(gGlobalOptions, optGenIndex)
   of "index":
     processOnOffSwitchG({optGenIndex}, arg, pass, info)
@@ -646,6 +648,10 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optNoCppExceptions)
     defineSymbol("noCppExceptions")
+  of "cppdefine":
+    expectArg(switch, arg, pass, info)
+    if config != nil:
+      config.cppDefine(arg)
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(switch, arg)
     else: invalidCmdLineOption(pass, switch, info)

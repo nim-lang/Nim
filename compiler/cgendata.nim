@@ -115,6 +115,7 @@ type
     breakPointId*: int
     breakpoints*: Rope # later the breakpoints are inserted into the main proc
     typeInfoMarker*: TypeCache
+    config*: ConfigRef
 
   TCGen = object of TPassContext # represents a C source file
     s*: TCFileSections        # sections of the C file
