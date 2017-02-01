@@ -119,12 +119,13 @@ proc newSelector*[T](): Selector[T] =
   result.maxFD = maxFD.int
 
 proc close*[T](s: Selector[T]) =
-  let res = posix.close(s.kqFD)
+  let res1 = posix.close(s.kqFD)
+  let res2 = posix.close(s.sock)
   when hasThreadSupport:
     deinitLock(s.changesLock)
     deallocSharedArray(s.fds)
     deallocShared(cast[pointer](s))
-  if res != 0:
+  if res1 != 0 or res2 != 0:
     raiseIOSelectorsError(osLastError())
 
 template clearKey[T](key: ptr SelectorKey[T]) =
@@ -157,7 +158,7 @@ proc close*(ev: SelectEvent) =
 
 template checkFd(s, f) =
   if f >= s.maxFD:
-    raiseIOSelectorsError("Maximum file descriptors exceeded!")
+    raiseIOSelectorsError("Maximum number of descriptors is exhausted!")
 
 when hasThreadSupport:
   template withChangeLock[T](s: Selector[T], body: untyped) =
@@ -241,7 +242,8 @@ proc updateHandle*[T](s: Selector[T], fd: SocketHandle,
   let fdi = int(fd)
   s.checkFd(fdi)
   var pkey = addr(s.fds[fdi])
-  doAssert(pkey.ident != 0)
+  doAssert(pkey.ident != 0,
+           "Descriptor [" & $fdi & "] is not registered in the queue!")
   doAssert(pkey.events * maskEvents == {})
 
   if pkey.events != events:
@@ -329,7 +331,7 @@ proc registerProcess*[T](s: Selector[T], pid: int,
 
 proc registerEvent*[T](s: Selector[T], ev: SelectEvent, data: T) =
   let fdi = ev.rfd.int
-  doAssert(s.fds[fdi].ident == 0)
+  doAssert(s.fds[fdi].ident == 0, "Event is already registered in the queue!")
   setKey(s, fdi, {Event.User}, 0, data)
 
   modifyKQueue(s, fdi.uint, EVFILT_READ, EV_ADD, 0, 0, nil)
@@ -372,7 +374,8 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
   let fdi = int(fd)
   s.checkFd(fdi)
   var pkey = addr(s.fds[fdi])
-  doAssert(pkey.ident != 0)
+  doAssert(pkey.ident != 0,
+           "Descriptor [" & $fdi & "] is not registered in the queue!")
 
   if pkey.events != {}:
     if pkey.events * {Event.Read, Event.Write} != {}:
@@ -431,9 +434,8 @@ proc unregister*[T](s: Selector[T], ev: SelectEvent) =
   let fdi = int(ev.rfd)
   s.checkFd(fdi)
   var pkey = addr(s.fds[fdi])
-  doAssert(pkey.ident != 0)
+  doAssert(pkey.ident != 0, "Event is not registered in the queue!")
   doAssert(Event.User in pkey.events)
-
   modifyKQueue(s, uint(fdi), EVFILT_READ, EV_DELETE, 0, 0, nil)
   when not declared(CACHE_EVENTS):
     flushKQueue(s)
@@ -564,8 +566,7 @@ proc selectInto*[T](s: Selector[T], timeout: int,
         pkey.events.incl(Event.Finished)
         rkey.events.incl(Event.Process)
       else:
-        pkey = addr(s.fds[cast[int](kevent.udata)])
-        raiseIOSelectorsError("Unsupported kqueue filter in queue!")
+        doAssert(true, "Unsupported kqueue filter in the queue!")
 
       if (kevent.flags and EV_EOF) != 0:
         rkey.events.incl(Event.Error)
