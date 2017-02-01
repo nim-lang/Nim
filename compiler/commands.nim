@@ -509,10 +509,10 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     else: localError(info, errGuiConsoleOrLibExpectedButXFound, arg)
   of "passc", "t":
     expectArg(switch, arg, pass, info)
-    if pass in {passCmd2, passPP}: extccomp.addCompileOption(arg)
+    if pass in {passCmd2, passPP}: extccomp.addCompileOptionCmd(arg)
   of "passl", "l":
     expectArg(switch, arg, pass, info)
-    if pass in {passCmd2, passPP}: extccomp.addLinkOption(arg)
+    if pass in {passCmd2, passPP}: extccomp.addLinkOptionCmd(arg)
   of "cincludes":
     expectArg(switch, arg, pass, info)
     if pass in {passCmd2, passPP}: cIncludes.add arg.processPath(info)
