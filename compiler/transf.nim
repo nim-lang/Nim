@@ -21,7 +21,7 @@
 import
   intsets, strutils, lists, options, ast, astalgo, trees, treetab, msgs, os,
   idents, renderer, types, passes, semfold, magicsys, cgmeth, rodread,
-  lambdalifting, sempass2, lowerings
+  lambdalifting, sempass2, lowerings, lookups
 
 # implementation
 
@@ -703,7 +703,7 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
 
 proc transformExceptBranch(c: PTransf, n: PNode): PTransNode =
   result = transformSons(c, n)
-  if n[0].kind == nkInfix:
+  if n[0].kind == nkInfix and considerQuotedIdent(n[0][0]).s == "as":
     let excTypeNode = n[0][1]
     let actions = newTransNode(nkStmtList, n[1].info, 2)
     # Generating `let exc = (excType)(getCurrentException())`

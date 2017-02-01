@@ -1598,7 +1598,7 @@ proc toObject*(typ: PType): PType =
   ## Otherwise ``typ`` is simply returned as-is.
   result = typ
   if result.kind == tyRef:
-    result = result.sons[0]
+    result = result.lastSon
 
 when false:
   proc containsNil*(n: PNode): bool =
