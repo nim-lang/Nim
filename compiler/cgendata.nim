@@ -56,7 +56,7 @@ type
   BProc* = ref TCProc
   TBlock*{.final.} = object
     id*: int                  # the ID of the label; positive means that it
-    label*: Rope             # generated text for the label
+    label*: Rope              # generated text for the label
                               # nil if label is not used
     sections*: TCProcSections # the code beloging
     isLoop*: bool             # whether block is a loop
