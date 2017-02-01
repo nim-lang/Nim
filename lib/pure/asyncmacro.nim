@@ -284,9 +284,9 @@ proc getFutureVarIdents(params: NimNode): seq[NimNode] {.compileTime.} =
 proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   ## This macro transforms a single procedure into a closure iterator.
   ## The ``async`` macro supports a stmtList holding multiple async procedures.
-  if prc.kind notin {nnkProcDef, nnkLambda}:
+  if prc.kind notin {nnkProcDef, nnkLambda, nnkMethodDef}:
       error("Cannot transform this node kind into an async proc." &
-            " Proc definition or lambda node expected.")
+            " proc/method definition or lambda node expected.")
 
   hint("Processing " & prc[0].getName & " as an async proc.")
 
