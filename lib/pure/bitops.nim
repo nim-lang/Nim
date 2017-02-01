@@ -23,6 +23,8 @@ const useGCC_builtins = (defined(gcc) or defined(llvm_gcc) or defined(clang)) an
 const useICC_builtins = defined(icc) and useBuiltins
 const useVCC_builtins = defined(vcc) and useBuiltins
 
+const arch64 = sizeof(int) == 8
+
 # #### Pure Nim version ####
 
 proc firstSetBit_nim(x: uint32): int {.inline, nosideeffect.} =
@@ -179,7 +181,8 @@ proc countSetBits*(x: SomeInteger): int {.inline, nosideeffect.} =
     elif useVCC_builtins:
       when sizeof(x) <= 2: result = builtin_popcnt16(x.uint16).int
       elif sizeof(x) <= 4: result = builtin_popcnt32(x.uint32).int
-      else:                result = builtin_popcnt64(x.uint64).int
+      elif arch64:         result = builtin_popcnt64(x.uint64).int
+      else:                result = countSetBits_nim(x.uint64)
     else:
       when sizeof(x) <= 4: result = countSetBits_nim(x.uint32)
       else:                result = countSetBits_nim(x.uint64)
@@ -191,6 +194,8 @@ proc popcount*(x: SomeInteger): int {.inline, nosideeffect.} =
 proc parityBits*(x: SomeInteger): int {.inline, nosideeffect.} =
   ## Calculate the bit parity in integer. If number of 1-bit
   ## is odd parity is 1, otherwise 0.    when nimvm:
+  # Can be used a base if creating ASM version.
+  # https://stackoverflow.com/questions/21617970/how-to-check-if-value-has-even-parity-of-bits-or-odd
   when nimvm:
     when sizeof(x) <= 4: result = parity_impl(x.uint32)
     else:                result = parity_impl(x.uint64)
@@ -213,14 +218,18 @@ proc firstSetBit*(x: SomeInteger): int {.inline, nosideeffect.} =
       else:                result = builtin_ffsll(x.clonglong).int
     elif useVCC_builtins:
       when sizeof(x) <= 4:
-        result = 1.cint + vcc_scan_impl(bitScanForward, x.culong)
+        result = 1 + vcc_scan_impl(bitScanForward, x.culong)
+      elif arch64:
+        result = 1 + vcc_scan_impl(bitScanForward64, x.uint64)
       else:
-        result = 1.cint + vcc_scan_impl(bitScanForward64, x.uint64)
+        result = firstSetBit_nim(x.uint64)
     elif useICC_builtins:
       when sizeof(x) <= 4:
-        result = 1.cint + icc_scan_impl(bitScanForward, x.uint32)
+        result = 1 + icc_scan_impl(bitScanForward, x.uint32)
+      elif arch64:
+        result = 1 + icc_scan_impl(bitScanForward64, x.uint64)
       else:
-        result = 1.cint + icc_scan_impl(bitScanForward64, x.uint64)
+        result = firstSetBit_nim(x.uint64)
     else:
       when sizeof(x) <= 4: result = firstSetBit_nim(x.uint32)
       else:                result = firstSetBit_nim(x.uint64)
@@ -237,13 +246,17 @@ proc fastLog2*(x: SomeInteger): int {.inline, nosideeffect.} =
     elif useVCC_builtins:
       when sizeof(x) <= 4:
         result = 31 - vcc_scan_impl(bitScanReverse, x.culong)
-      else:
+      elif arch64:
         result = 63 - vcc_scan_impl(bitScanReverse64, x.uint64)
+      else:
+        result = fastlog2_nim(x.uint64)
     elif useICC_builtins:
       when sizeof(x) <= 4:
         result = 31 - icc_scan_impl(bitScanReverse, x.uint32)
-      else:
+      elif arch64:
         result = 63 - icc_scan_impl(bitScanReverse64, x.uint64)
+      else:
+        result = fastlog2_nim(x.uint64)
     else:
       when sizeof(x) <= 4: result = fastlog2_nim(x.uint32)
       else:                result = fastlog2_nim(x.uint64)
