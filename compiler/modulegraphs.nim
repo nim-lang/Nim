@@ -50,7 +50,10 @@ proc newModuleGraph*(config: ConfigRef = nil): ModuleGraph =
   result.modules = @[]
   result.importStack = @[]
   result.inclToMod = initTable[int32, int32]()
-  result.config = config
+  if config.isNil:
+    result.config = newConfigRef()
+  else:
+    result.config = config
 
 proc resetAllModules*(g: ModuleGraph) =
   initStrTable(packageSyms)
