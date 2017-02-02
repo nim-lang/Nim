@@ -1,10 +1,10 @@
 discard """
   output: '''Hello'''
 """
+proc test[T]() =
+  try:
+    raise newException(T, "Hello")
+  except T as foobar:
+    echo(foobar.msg)
 
-try:
-  raise newException(Exception, "Hello")
-except Exception as foobar:
-  echo(foobar.msg)
-
-
+test[Exception]()

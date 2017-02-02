@@ -434,3 +434,6 @@ proc pickSym*(c: PContext, n: PNode; kind: TSymKind;
     if a.kind == kind and flags <= a.flags:
       return a
     a = nextOverloadIter(o, c, n)
+
+proc isExceptAs*(n: PNode): bool =
+  return n.kind == nkInfix and considerQuotedIdent(n[0]).s == "as"
