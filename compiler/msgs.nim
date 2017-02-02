@@ -651,7 +651,7 @@ proc suggestQuit*() =
 # Borland and Freepascal use
 const
   PosFormat    = "$1($2, $3) "
-  KindFormat   = " [$1]"
+  KindFormat   = "[$1] "
   KindColor    = fgCyan
   ErrorTitle   = "Error: "
   ErrorColor   = fgRed
@@ -892,8 +892,8 @@ proc rawMessage*(msg: TMsgKind, args: openArray[string]) =
   let s = `%`(msgKindToString(msg), args)
   if not ignoreMsgBecauseOfIdeTools(msg):
     if kind != nil:
-      styledMsgWriteln(color, title, resetStyle, s,
-                       KindColor, `%`(KindFormat, kind))
+      styledMsgWriteln(color, title, KindColor, 
+        `%`(KindFormat, kind), resetStyle, s)
     else:
       styledMsgWriteln(color, title, resetStyle, s)
   handleError(msg, doAbort, s)
@@ -957,8 +957,8 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
   let s = getMessageStr(msg, arg)
   if not ignoreMsg and not ignoreMsgBecauseOfIdeTools(msg):
     if kind != nil:
-      styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s,
-                       KindColor, `%`(KindFormat, kind))
+      styledMsgWriteln(styleBright, x, resetStyle, color, title,
+        KindColor, `%`(KindFormat, kind), resetStyle, s)
     else:
       styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s)
     if msg in errMin..errMax and hintSource in gNotes:
