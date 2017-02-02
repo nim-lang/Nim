@@ -16,8 +16,14 @@ We now encourage you to install via the provided zipfiles:
 * | 64 bit: `nim-0.16.0_x64.zip <download/nim-0.16.0_x64.zip>`_
   | SHA-256  e667cdad1ae8e9429147aea5031fa8a80c4ccef6d274cec0e9480252d9c3168c
 
-Unzip these where you want and optionally run ``finish.exe`` to
-detect your MingW environment.
+Unzip these where you want and **optionally** run ``finish.exe`` to
+detect your MingW environment. (Though that's not reliable yet.)
+
+You can find the required DLLs here, if you lack them for some reason:
+
+* | 32 and 64 bit: `DLLs.zip <download/dlls.zip>`_
+  | SHA-256  198112d3d6dc74d7964ba452158d44bfa57adef4dc47be8c39903f2a24e4a555
+
 
 Exes
 %%%%

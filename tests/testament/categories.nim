@@ -284,9 +284,9 @@ proc compileExample(r: var TResults, pattern, options: string, cat: Category) =
     testNoSpec r, makeTest(test, options, cat)
 
 proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
-  var disabledSet = disabledFiles.toSet()
   for test in os.walkFiles(pattern):
-    if test notin disabledSet:
+    let name = extractFilename(test)
+    if name notin disabledFiles:
       let contents = readFile(test).string
       if contents.contains("when isMainModule"):
         testSpec r, makeTest(test, options, cat, actionRunNoSpec)
