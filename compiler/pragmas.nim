@@ -763,6 +763,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         processDynLib(c, it, sym)
       of wCompilerproc:
         noVal(it)           # compilerproc may not get a string!
+        cppDefine(c.graph.config, sym.name.s)
         if sfFromGeneric notin sym.flags: markCompilerProc(sym)
       of wProcVar:
         noVal(it)

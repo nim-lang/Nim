@@ -1139,13 +1139,11 @@ proc genTypeInfo(m: BModule, t: PType): Rope =
     discard cgsym(m, "TNimType")
     discard cgsym(m, "TNimNode")
     addf(m.s[cfsVars], "extern TNimType $1;$n", [result])
-    #return "(&".rope & result & ")".rope
-    #result = "NTI$1" % [rope($sig)]
     # also store in local type section:
     m.typeInfoMarker[sig] = result
     return "(&".rope & result & ")".rope
 
-  result = "NTI$1" % [rope($sig)]
+  result = "NTI$1_" % [rope($sig)]
   m.typeInfoMarker[sig] = result
 
   let owner = t.skipTypes(typedescPtrs).owner.getModule

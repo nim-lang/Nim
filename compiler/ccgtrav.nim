@@ -145,7 +145,7 @@ proc genTraverseProcForGlobal(m: BModule, s: PSym): Rope =
 
   if sfThread in s.flags and emulatedThreadVars():
     accessThreadLocalVar(p, s)
-    sLoc = "NimTV->" & sLoc
+    sLoc = "NimTV_->" & sLoc
 
   c.visitorFrmt = "#nimGCvisit((void*)$1, 0);$n"
   c.p = p
