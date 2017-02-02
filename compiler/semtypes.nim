@@ -659,7 +659,8 @@ proc addInheritedFields(c: PContext, check: var IntSet, pos: var int,
   addInheritedFieldsAux(c, check, pos, obj.n)
 
 proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
-  if n.sonsLen == 0: return newConstraint(c, tyObject)
+  if n.sonsLen == 0:
+    return newConstraint(c, tyObject)
   var check = initIntSet()
   var pos = 0
   var base, realBase: PType = nil
@@ -1159,8 +1160,16 @@ proc maybeAliasType(c: PContext; typeExpr, prev: PType): PType =
     result.sym = prev.sym
     assignType(prev, result)
 
+proc fixupTypeOf(c: PContext, prev: PType, typExpr: PNode) =
+  if prev != nil:
+    let result = newTypeS(tyAlias, c)
+    result.rawAddSon typExpr.typ
+    result.sym = prev.sym
+    assignType(prev, result)
+
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   result = nil
+
   if gCmd == cmdIdeTools: suggestExpr(c, n)
   case n.kind
   of nkEmpty: discard
@@ -1168,6 +1177,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     # for ``type(countup(1,3))``, see ``tests/ttoseq``.
     checkSonsLen(n, 1)
     let typExpr = semExprWithType(c, n.sons[0], {efInTypeof})
+    fixupTypeOf(c, prev, typExpr)
     result = typExpr.typ
   of nkPar:
     if sonsLen(n) == 1: result = semTypeNode(c, n.sons[0], prev)
@@ -1234,6 +1244,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       elif op.id == ord(wType):
         checkSonsLen(n, 2)
         let typExpr = semExprWithType(c, n.sons[1], {efInTypeof})
+        fixupTypeOf(c, prev, typExpr)
         result = typExpr.typ
       else:
         result = semTypeExpr(c, n, prev)

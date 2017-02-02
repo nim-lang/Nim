@@ -116,6 +116,13 @@ proc mangleName(m: BModule; s: PSym): Rope =
       add(result, m.idOrSig(s))
     s.loc.r = result
 
+template mangleParamName(m: BModule; s: PSym): Rope = mangleName(m, s)
+
+when false:
+  proc mangleName(p: BProc; s: PSym): Rope =
+    assert s.kind in skLocalVars
+    if sfGlobal in s.flags: return mangleName(p.module, s)
+    if isKeyword(s.name): discard
 
 const
   irrelevantForBackend = {tyGenericBody, tyGenericInst, tyGenericInvocation,
@@ -393,7 +400,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     var param = t.n.sons[i].sym
     if isCompileTimeOnly(param.typ): continue
     if params != nil: add(params, ~", ")
-    fillLoc(param.loc, locParam, param.typ, mangleName(m, param),
+    fillLoc(param.loc, locParam, param.typ, mangleParamName(m, param),
             param.paramStorageLoc)
     if ccgIntroducedPtr(param):
       add(params, getTypeDescWeak(m, param.typ, check))

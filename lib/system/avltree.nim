@@ -81,7 +81,7 @@ proc del(a: var MemRegion, t: var PAvlNode, x: int) {.benign.} =
   if t == a.last and not isBottom(a.deleted) and x == a.deleted.key:
     a.deleted.key = t.key
     a.deleted.upperBound = t.upperBound
-    a.deleted = bottom
+    a.deleted = getBottom(a)
     t = t.link[1]
     deallocAvlNode(a, a.last)
   elif t.link[0].level < t.level-1 or

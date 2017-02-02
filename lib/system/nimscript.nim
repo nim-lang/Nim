@@ -293,6 +293,11 @@ template task*(name: untyped; description: string; body: untyped): untyped =
     setCommand "nop"
     `name Task`()
 
+proc cppDefine*(define: string) =
+  ## tell Nim that ``define`` is a C preprocessor ``#define`` and so always
+  ## needs to be mangled.
+  builtin
+
 when not defined(nimble):
   # nimble has its own implementation for these things.
   var

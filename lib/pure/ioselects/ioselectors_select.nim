@@ -202,8 +202,8 @@ proc setSelectKey[T](s: Selector[T], fd: SocketHandle, events: set[Event],
       pkey.data = data
       break
     inc(i)
-  if i == FD_SETSIZE:
-    raiseIOSelectorsError("Maximum numbers of fds exceeded")
+  if i >= FD_SETSIZE:
+    raiseIOSelectorsError("Maximum number of descriptors is exhausted!")
 
 proc getKey[T](s: Selector[T], fd: SocketHandle): ptr SelectorKey[T] =
   var i = 0
@@ -213,8 +213,8 @@ proc getKey[T](s: Selector[T], fd: SocketHandle): ptr SelectorKey[T] =
       result = addr(s.fds[i])
       break
     inc(i)
-  if i == FD_SETSIZE:
-    raiseIOSelectorsError("Descriptor not registered in queue")
+  doAssert(i < FD_SETSIZE,
+           "Descriptor [" & $int(fd) & "] is not registered in the queue!")
 
 proc delKey[T](s: Selector[T], fd: SocketHandle) =
   var empty: T
@@ -226,8 +226,8 @@ proc delKey[T](s: Selector[T], fd: SocketHandle) =
       s.fds[i].data = empty
       break
     inc(i)
-  if i == FD_SETSIZE:
-    raiseIOSelectorsError("Descriptor not registered in queue")
+  doAssert(i < FD_SETSIZE,
+           "Descriptor [" & $int(fd) & "] is not registered in the queue!")
 
 proc registerHandle*[T](s: Selector[T], fd: SocketHandle,
                         events: set[Event], data: T) =
@@ -294,6 +294,7 @@ proc unregister*[T](s: Selector[T], fd: SocketHandle) =
 proc unregister*[T](s: Selector[T], ev: SelectEvent) =
   let fd = ev.rsock
   s.withSelectLock():
+    var pkey = s.getKey(fd)
     IOFD_CLR(fd, addr s.rSet)
     dec(s.count)
     s.delKey(fd)

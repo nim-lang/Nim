@@ -53,7 +53,7 @@ when defined(windows):
   type
     SysThread* = Handle
     WinThreadProc = proc (x: pointer): int32 {.stdcall.}
-  {.deprecated: [TSysThread: SysThread, TWinThreadProc: WinThreadProc].}
+  {.deprecated: [TSysThread: SysThread].}
 
   proc createThread(lpThreadAttributes: pointer, dwStackSize: int32,
                      lpStartAddress: WinThreadProc,
@@ -76,6 +76,9 @@ when defined(windows):
 
   proc terminateThread(hThread: SysThread, dwExitCode: int32): int32 {.
     stdcall, dynlib: "kernel32", importc: "TerminateThread".}
+
+  proc getCurrentThreadId(): int32 {.
+    stdcall, dynlib: "kernel32", importc: "GetCurrentThreadId".}
 
   type
     ThreadVarSlot = distinct int32
@@ -107,6 +110,10 @@ when defined(windows):
 
   proc setThreadAffinityMask(hThread: SysThread, dwThreadAffinityMask: uint) {.
     importc: "SetThreadAffinityMask", stdcall, header: "<windows.h>".}
+
+  proc getThreadId*(): int =
+    ## get the ID of the currently running thread.
+    result = int(getCurrentThreadId())
 
 else:
   when not defined(macosx):
@@ -186,6 +193,34 @@ else:
 
   proc setAffinity(thread: SysThread; setsize: csize; s: var CpuSet) {.
     importc: "pthread_setaffinity_np", header: pthreadh.}
+
+  when defined(linux):
+    proc syscall(arg: int): int {.varargs, importc: "syscall", header: "<unistd.h>".}
+    var SYS_gettid {.importc, header: "<sys/syscall.h>".}: int
+
+    #type Pid {.importc: "pid_t", header: "<sys/types.h>".} = distinct int
+    #proc gettid(): Pid {.importc, header: "<sys/types.h>".}
+
+    proc getThreadId*(): int =
+      ## get the ID of the currently running thread.
+      result = int(syscall(SYS_gettid))
+  elif defined(macosx) or defined(bsd):
+    proc pthread_threadid_np(y: pointer; x: var uint64): cint {.importc, header: "pthread.h".}
+
+    proc getThreadId*(): int =
+      ## get the ID of the currently running thread.
+      var x: uint64
+      result = pthread_threadid_np(nil, x)
+      result = int(x)
+  elif defined(solaris):
+    # just a guess really:
+    type thread_t {.importc: "thread_t", header: "<thread.h>".} = distinct int
+    proc thr_self(): thread_t {.importc, header: "<thread.h>".}
+
+    proc getThreadId*(): int =
+      ## get the ID of the currently running thread.
+      result = int(thr_self())
+
 
 const
   emulatedThreadVars = compileOption("tlsEmulation")

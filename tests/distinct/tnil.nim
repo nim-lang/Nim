@@ -7,6 +7,7 @@ nil
 nil
 
 '''
+  disabled: "windows"
 """
 
 type

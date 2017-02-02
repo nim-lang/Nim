@@ -418,7 +418,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
       options.gProjectName = unixToNativePath(p.key)
       # if processArgument(pass, p, argsCount): break
 
-proc handleCmdLine(cache: IdentCache) =
+proc handleCmdLine(cache: IdentCache; config: ConfigRef) =
   if paramCount() == 0:
     stdout.writeline(Usage)
   else:
@@ -444,23 +444,23 @@ proc handleCmdLine(cache: IdentCache) =
     gPrefixDir = binaryPath.splitPath().head.parentDir()
     #msgs.writelnHook = proc (line: string) = logStr(line)
 
-    loadConfigs(DefaultConfig, cache) # load all config files
+    loadConfigs(DefaultConfig, cache, config) # load all config files
     # now process command line arguments again, because some options in the
     # command line can overwite the config file's settings
     options.command = "nimsuggest"
     let scriptFile = gProjectFull.changeFileExt("nims")
     if fileExists(scriptFile):
-      runNimScript(cache, scriptFile, freshDefines=false)
+      runNimScript(cache, scriptFile, freshDefines=false, config)
       # 'nim foo.nims' means to just run the NimScript file and do nothing more:
       if scriptFile == gProjectFull: return
     elif fileExists(gProjectPath / "config.nims"):
       # directory wide NimScript file
-      runNimScript(cache, gProjectPath / "config.nims", freshDefines=false)
+      runNimScript(cache, gProjectPath / "config.nims", freshDefines=false, config)
 
     extccomp.initVars()
     processCmdLine(passCmd2, "")
 
-    let graph = newModuleGraph()
+    let graph = newModuleGraph(config)
     graph.suggestMode = true
     mainCommand(graph, cache)
 
@@ -472,4 +472,4 @@ when false:
 
 condsyms.initDefines()
 defineSymbol "nimsuggest"
-handleCmdline(newIdentCache())
+handleCmdline(newIdentCache(), newConfigRef())

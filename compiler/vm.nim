@@ -1615,6 +1615,7 @@ proc evalMacroCall*(module: PSym; cache: IdentCache, n, nOrig: PNode,
 
   setupGlobalCtx(module, cache)
   var c = globalCtx
+  c.comesFromHeuristic.line = -1
 
   c.callsite = nOrig
   let start = genProc(c, sym)
