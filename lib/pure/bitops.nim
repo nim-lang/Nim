@@ -143,8 +143,8 @@ elif useVCC_builtins:
   proc bitScanReverse64(index: ptr culong, mask: uint64): cuchar {.importc: "_BitScanReverse64", header: "<intrin.h>", nosideeffect.}
 
   # Search the mask data from least significant bit (LSB) to the most significant bit (MSB) for a set bit (1).
-  proc bitScanForward(index: ptr culong, mask: culong): cuchar {.importc: "_bitScanForward", header: "<intrin.h>", nosideeffect.}
-  proc bitScanForward64(index: ptr culong, mask: uint64): cuchar {.importc: "_bitScanForward64", header: "<intrin.h>", nosideeffect.}
+  proc bitScanForward(index: ptr culong, mask: culong): cuchar {.importc: "_BitScanForward", header: "<intrin.h>", nosideeffect.}
+  proc bitScanForward64(index: ptr culong, mask: uint64): cuchar {.importc: "_BitScanForward64", header: "<intrin.h>", nosideeffect.}
 
   template vcc_scan_impl(fnc: untyped; v: untyped): int =
     var index: culong
@@ -164,8 +164,8 @@ elif useICC_builtins:
   proc bitScanForward64(p: ptr uint32, b: uint64): cuchar {.importc: "_BitScanForward64", header: "<immintrin.h>", nosideeffect.}
 
   # Returns the number of leading 0-bits in x, starting at the most significant bit position. If x is 0, the result is undefined.
-  proc BitScanReverse(p: ptr uint32, b: uint32): cuchar {.importc: "_BitScanReverse", header: "<immintrin.h>", nosideeffect.}
-  proc BitScanReverse64(p: ptr uint32, b: uint64): cuchar {.importc: "_BitScanReverse64", header: "<immintrin.h>", nosideeffect.}
+  proc bitScanReverse(p: ptr uint32, b: uint32): cuchar {.importc: "_BitScanReverse", header: "<immintrin.h>", nosideeffect.}
+  proc bitScanReverse64(p: ptr uint32, b: uint64): cuchar {.importc: "_BitScanReverse64", header: "<immintrin.h>", nosideeffect.}
 
   template icc_scan_impl(fnc: untyped; v: untyped): int =
     var index: uint32
@@ -191,7 +191,7 @@ proc countSetBits*(x: SomeInteger): int {.inline, nosideeffect.} =
       else:                result = builtin_popcnt32((x.uint64 and 0xFFFFFFFF'u64).uint32 ).int +
                                     builtin_popcnt32((x.uint64 shr 32'u64).uint32 ).int
     elif useICC_builtins:
-      when sizeof(x) <= 4: result = builtin_popcnt32(x.uint32).int
+      when sizeof(x) <= 4: result = builtin_popcnt32(x.cint).int
       elif arch64:         result = builtin_popcnt64(x.uint64).int
       else:                result = builtin_popcnt32((x.uint64 and 0xFFFFFFFF'u64).cint ).int +
                                     builtin_popcnt32((x.uint64 shr 32'u64).cint ).int
@@ -257,16 +257,16 @@ proc fastLog2*(x: SomeInteger): int {.inline, nosideeffect.} =
       else:                result = 63 - builtin_clzll(x.uint64).int
     elif useVCC_builtins:
       when sizeof(x) <= 4:
-        result = 31 - vcc_scan_impl(bitScanReverse, x.culong)
+        result = vcc_scan_impl(bitScanReverse, x.culong)
       elif arch64:
-        result = 63 - vcc_scan_impl(bitScanReverse64, x.uint64)
+        result = vcc_scan_impl(bitScanReverse64, x.uint64)
       else:
         result = fastlog2_nim(x.uint64)
     elif useICC_builtins:
       when sizeof(x) <= 4:
-        result = 31 - icc_scan_impl(bitScanReverse, x.uint32)
+        result = icc_scan_impl(bitScanReverse, x.uint32)
       elif arch64:
-        result = 63 - icc_scan_impl(bitScanReverse64, x.uint64)
+        result = icc_scan_impl(bitScanReverse64, x.uint64)
       else:
         result = fastlog2_nim(x.uint64)
     else:
