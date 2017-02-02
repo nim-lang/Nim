@@ -116,13 +116,42 @@ proc mangleName(m: BModule; s: PSym): Rope =
       add(result, m.idOrSig(s))
     s.loc.r = result
 
-template mangleParamName(m: BModule; s: PSym): Rope = mangleName(m, s)
+proc mangleParamName(m: BModule; s: PSym): Rope =
+  ## we cannot use 'sigConflicts' here since we have a BModule, not a BProc.
+  ## Fortunately C's scoping rules are sane enough so that that doesn't
+  ## cause any trouble.
+  result = s.loc.r
+  if result == nil:
+    result = s.name.s.mangle.rope
+    if isKeyword(s.name) or m.g.config.cppDefines.contains(s.name.s):
+      result.add "0"
+    s.loc.r = result
 
-when false:
-  proc mangleName(p: BProc; s: PSym): Rope =
-    assert s.kind in skLocalVars
-    if sfGlobal in s.flags: return mangleName(p.module, s)
-    if isKeyword(s.name): discard
+proc mangleLocalName(p: BProc; s: PSym): Rope =
+  assert s.kind in skLocalVars+{skTemp}
+  assert sfGlobal notin s.flags
+  result = s.loc.r
+  if result == nil:
+    var key = s.name.s.mangle
+    shallow(key)
+    let counter = p.sigConflicts.getOrDefault(key)
+    result = key.rope
+    if s.kind == skTemp:
+      # speed up conflict search for temps (these are quite common):
+      if counter != 0: result.add "_" & rope(counter+1)
+    elif counter != 0 or isKeyword(s.name) or p.module.g.config.cppDefines.contains(s.name.s):
+      result.add "_" & rope(counter+1)
+    p.sigConflicts.inc(key)
+    s.loc.r = result
+
+proc scopeMangledParam(p: BProc; param: PSym) =
+  ## parameter generation only takes BModule, not a BProc, so we have to
+  ## remember these parameter names are already in scope to be able to
+  ## generate unique identifiers reliably (consider that ``var a = a`` is
+  ## even an idiom in Nim).
+  var key = param.name.s.mangle
+  shallow(key)
+  p.sigConflicts.inc(key)
 
 const
   irrelevantForBackend = {tyGenericBody, tyGenericInst, tyGenericInvocation,

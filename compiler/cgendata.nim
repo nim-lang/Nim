@@ -76,7 +76,7 @@ type
                               # leaving such scopes by raise or by return must
                               # execute any applicable finally blocks
     finallySafePoints*: seq[Rope]  # For correctly cleaning up exceptions when
-                                    # using return in finally statements
+                                   # using return in finally statements
     labels*: Natural          # for generating unique labels in the C proc
     blocks*: seq[TBlock]      # nested blocks
     breakIdx*: int            # the block that will be exited
@@ -92,6 +92,7 @@ type
                               # (yes, C++ is weird like that)
     gcFrameId*: Natural       # for the GC stack marking
     gcFrameType*: Rope        # the struct {} we put the GC markers into
+    sigConflicts*: CountTable[string]
 
   TTypeSeq* = seq[PType]
   TypeCache* = Table[SigHash, Rope]
@@ -163,9 +164,10 @@ proc newProc*(prc: PSym, module: BModule): BProc =
   newSeq(result.blocks, 1)
   result.nestedTryStmts = @[]
   result.finallySafePoints = @[]
+  result.sigConflicts = initCountTable[string]()
 
-proc newModuleList*(): BModuleList =
-  BModuleList(modules: @[], typeInfoMarker: initTable[SigHash, Rope]())
+proc newModuleList*(config: ConfigRef): BModuleList =
+  BModuleList(modules: @[], typeInfoMarker: initTable[SigHash, Rope](), config: config)
 
 iterator cgenModules*(g: BModuleList): BModule =
   for i in 0..high(g.modules):

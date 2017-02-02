@@ -665,9 +665,14 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
       of wExportc:
         makeExternExport(sym, getOptionalStr(c, it, "$1"), it.info)
         incl(sym.flags, sfUsed) # avoid wrong hints
-      of wImportc: makeExternImport(sym, getOptionalStr(c, it, "$1"), it.info)
+      of wImportc:
+        let name = getOptionalStr(c, it, "$1")
+        cppDefine(c.graph.config, name)
+        makeExternImport(sym, name, it.info)
       of wImportCompilerProc:
-        processImportCompilerProc(sym, getOptionalStr(c, it, "$1"), it.info)
+        let name = getOptionalStr(c, it, "$1")
+        cppDefine(c.graph.config, name)
+        processImportCompilerProc(sym, name, it.info)
       of wExtern: setExternName(sym, expectStrLit(c, it), it.info)
       of wImmediate:
         if sym.kind in {skTemplate, skMacro}:

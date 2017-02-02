@@ -14,7 +14,7 @@ import
   nversion, nimsets, msgs, securehash, bitsets, idents, lists, types,
   ccgutils, os, ropes, math, passes, rodread, wordrecg, treetab, cgmeth,
   condsyms, rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases,
-  lowerings, semparallel, tables
+  lowerings, semparallel, tables, sets
 
 import strutils except `%` # collides with ropes.`%`
 
@@ -369,7 +369,7 @@ proc localDebugInfo(p: BProc, s: PSym) =
 
 proc localVarDecl(p: BProc; s: PSym): Rope =
   if s.loc.k == locNone:
-    fillLoc(s.loc, locLocalVar, s.typ, mangleName(p.module, s), OnStack)
+    fillLoc(s.loc, locLocalVar, s.typ, mangleLocalName(p, s), OnStack)
     if s.kind == skLet: incl(s.loc.flags, lfNoDeepCopy)
   result = getTypeDesc(p.module, s.typ)
   if s.constraint.isNil:
@@ -434,6 +434,7 @@ proc assignGlobalVar(p: BProc, s: PSym) =
 
 proc assignParam(p: BProc, s: PSym) =
   assert(s.loc.r != nil)
+  scopeMangledParam(p, s)
   localDebugInfo(p, s)
 
 proc fillProcLoc(m: BModule; sym: PSym) =
@@ -1212,13 +1213,13 @@ proc newModule(g: BModuleList; module: PSym): BModule =
     if (sfDeadCodeElim in module.flags):
       internalError("added pending module twice: " & module.filename)
 
-template injectG() {.dirty.} =
+template injectG(config) {.dirty.} =
   if graph.backend == nil:
-    graph.backend = newModuleList()
+    graph.backend = newModuleList(config)
   let g = BModuleList(graph.backend)
 
 proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
-  injectG()
+  injectG(graph.config)
   result = newModule(g, module)
   if optGenIndex in gGlobalOptions and g.generatedHeader == nil:
     let f = if graph.config.headerFile.len > 0: graph.config.headerFile else: gProjectFull
@@ -1258,7 +1259,7 @@ proc getCFile(m: BModule): string =
   result = changeFileExt(completeCFilePath(m.cfilename.withPackageName), ext)
 
 proc myOpenCached(graph: ModuleGraph; module: PSym, rd: PRodReader): PPassContext =
-  injectG()
+  injectG(graph.config)
   assert optSymbolFiles in gGlobalOptions
   var m = newModule(g, module)
   readMergeInfo(getCFile(m), m)
