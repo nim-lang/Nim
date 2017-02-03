@@ -2001,7 +2001,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       if sfThread in sym.flags:
         accessThreadLocalVar(p, sym)
         if emulatedThreadVars():
-          putIntoDest(p, d, sym.loc.t, "NimTV->" & sym.loc.r)
+          putIntoDest(p, d, sym.loc.t, "NimTV_->" & sym.loc.r)
         else:
           putLocIntoDest(p, d, sym.loc)
       else:

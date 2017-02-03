@@ -69,6 +69,6 @@ build_script:
 test_script:
   - tests\testament\tester --pedantic all
   - koch csource
-  - koch xz
+  - koch zip
 
 deploy: off
