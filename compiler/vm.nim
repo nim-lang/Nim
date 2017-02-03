@@ -559,7 +559,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         if regs[rb].node.kind == nkRefTy:
           regs[ra].node = regs[rb].node.sons[0]
         else:
-          stackTrace(c, tos, pc, errGenerated, "limited VM support for pointers")
+          ensureKind(rkNode)
+          regs[ra].node = regs[rb].node
       else:
         stackTrace(c, tos, pc, errNilAccess)
     of opcWrDeref:
