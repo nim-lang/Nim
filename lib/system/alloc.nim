@@ -295,10 +295,11 @@ proc writeFreeList(a: MemRegion) =
 proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
   when not defined(emscripten):
     if not a.blockChunkSizeIncrease:
-      if a.currMem < 64 * 1024:
+      let usedMem = a.currMem # - a.freeMem
+      if usedMem < 64 * 1024:
         a.nextChunkSize = PageSize*4
       else:
-        a.nextChunkSize = min(roundup(a.currMem shr 2, PageSize), a.nextChunkSize * 2)
+        a.nextChunkSize = min(roundup(usedMem shr 2, PageSize), a.nextChunkSize * 2)
   var size = size
 
   if size > a.nextChunkSize:
@@ -708,7 +709,7 @@ proc realloc(allocator: var MemRegion, p: pointer, newsize: Natural): pointer =
   if newsize > 0:
     result = alloc0(allocator, newsize)
     if p != nil:
-      copyMem(result, p, ptrSize(p))
+      copyMem(result, p, min(ptrSize(p), newsize))
       dealloc(allocator, p)
   elif p != nil:
     dealloc(allocator, p)
