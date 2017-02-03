@@ -816,20 +816,6 @@ when defined(windows) or defined(nimdoc):
 
     return retFuture
 
-  proc newAsyncNativeSocket*(domain, sockType, protocol: cint): AsyncFD =
-    ## Creates a new socket and registers it with the dispatcher implicitly.
-    result = newNativeSocket(domain, sockType, protocol).AsyncFD
-    result.SocketHandle.setBlocking(false)
-    register(result)
-
-  proc newAsyncNativeSocket*(domain: Domain = nativesockets.AF_INET,
-                             sockType: SockType = SOCK_STREAM,
-                             protocol: Protocol = IPPROTO_TCP): AsyncFD =
-    ## Creates a new socket and registers it with the dispatcher implicitly.
-    result = newNativeSocket(domain, sockType, protocol).AsyncFD
-    result.SocketHandle.setBlocking(false)
-    register(result)
-
   proc closeSocket*(socket: AsyncFD) =
     ## Closes a socket and ensures that it is unregistered.
     socket.SocketHandle.close()
@@ -1007,23 +993,6 @@ else:
     let p = getGlobalDispatcher()
     var data = PData(fd: fd, readCBs: @[], writeCBs: @[])
     p.selector.register(fd.SocketHandle, {}, data.RootRef)
-
-  proc newAsyncNativeSocket*(domain: cint, sockType: cint,
-                             protocol: cint): AsyncFD =
-    result = newNativeSocket(domain, sockType, protocol).AsyncFD
-    result.SocketHandle.setBlocking(false)
-    when defined(macosx):
-      result.SocketHandle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)
-    register(result)
-
-  proc newAsyncNativeSocket*(domain: Domain = AF_INET,
-                             sockType: SockType = SOCK_STREAM,
-                             protocol: Protocol = IPPROTO_TCP): AsyncFD =
-    result = newNativeSocket(domain, sockType, protocol).AsyncFD
-    result.SocketHandle.setBlocking(false)
-    when defined(macosx):
-      result.SocketHandle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)
-    register(result)
 
   proc closeSocket*(sock: AsyncFD) =
     let disp = getGlobalDispatcher()
@@ -1317,6 +1286,29 @@ else:
         retFuture.complete((getAddrString(cast[ptr SockAddr](addr sockAddress)), client.AsyncFD))
     addRead(socket, cb)
     return retFuture
+
+template makeAsyncNativeSocket(domain, sockType, protocol): AsyncFD =
+  let handle = newNativeSocket(domain, sockType, protocol)
+  if handle == osInvalidSocket:
+    raiseOSError(osLastError())
+
+  handle.setBlocking(false)
+  when defined(macosx):
+    handle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)
+
+  let result = handle.AsyncFD
+  register(result)
+  result
+
+proc newAsyncNativeSocket*(domain, sockType, protocol: cint): AsyncFD =
+  ## Creates a new socket and registers it with the dispatcher implicitly.
+  result = makeAsyncNativeSocket(domain, sockType, protocol)
+
+proc newAsyncNativeSocket*(domain: Domain = nativesockets.AF_INET,
+                           sockType: SockType = SOCK_STREAM,
+                           protocol: Protocol = IPPROTO_TCP): AsyncFD =
+  ## Creates a new socket and registers it with the dispatcher implicitly.
+  result = makeAsyncNativeSocket(domain, sockType, protocol)
 
 proc sleepAsync*(ms: int): Future[void] =
   ## Suspends the execution of the current async procedure for the next
