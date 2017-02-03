@@ -41,6 +41,20 @@ var
 
 template origModuleName(m: PSym): string = m.name.s
 
+proc findDocComment(n: PNode): PNode =
+  if n == nil: return nil
+  if not isNil(n.comment): return n
+  for i in countup(0, safeLen(n)-1):
+    result = findDocComment(n.sons[i])
+    if result != nil: return
+
+proc extractDocComment(s: PSym): string =
+  let n = findDocComment(s.ast)
+  if not n.isNil:
+    result = n.comment.replace("\n##", "\n").strip
+  else:
+    result = ""
+
 proc symToSuggest(s: PSym, isLocal: bool, section: string, li: TLineInfo;
                   quality: range[0..100]): Suggest =
   result.section = parseIdeCmd(section)
