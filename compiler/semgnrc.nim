@@ -338,17 +338,15 @@ proc semGenericStmt(c: PContext, n: PNode,
       var a = n.sons[i]
       checkMinSonsLen(a, 1)
       var L = sonsLen(a)
+      openScope(c)
       for j in countup(0, L-2):
-        debug(a.sons[j])
-        if a.sons[j].isExceptAs():
-          openScope(c)
+        if a.sons[j].isInfixAs():
           addTempDecl(c, getIdentNode(a.sons[j][2]), skLet)
-          a.sons[j] = semGenericStmt(c, a.sons[j][1], flags+{withinTypeDesc}, ctx)
-          closeScope(c)
+          a.sons[j].sons[1] = semGenericStmt(c, a.sons[j][1], flags+{withinTypeDesc}, ctx)
         else:
           a.sons[j] = semGenericStmt(c, a.sons[j], flags+{withinTypeDesc}, ctx)
-      debug(a)
       a.sons[L-1] = semGenericStmtScope(c, a.sons[L-1], flags, ctx)
+      closeScope(c)
 
   of nkVarSection, nkLetSection:
     for i in countup(0, sonsLen(n) - 1):

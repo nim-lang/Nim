@@ -435,5 +435,5 @@ proc pickSym*(c: PContext, n: PNode; kind: TSymKind;
       return a
     a = nextOverloadIter(o, c, n)
 
-proc isExceptAs*(n: PNode): bool =
+proc isInfixAs*(n: PNode): bool =
   return n.kind == nkInfix and considerQuotedIdent(n[0]).s == "as"

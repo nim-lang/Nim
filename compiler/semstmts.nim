@@ -286,7 +286,7 @@ proc semTry(c: PContext, n: PNode): PNode =
         var typeNode = a.sons[j] # e.g. `Exception`
         var symbolNode: PNode = nil # e.g. `foobar`
         # Handle the case where the `Exception as foobar` syntax is used.
-        if typeNode.isExceptAs():
+        if typeNode.isInfixAs():
           typeNode = a.sons[j].sons[1]
           symbolNode = a.sons[j].sons[2]
 
