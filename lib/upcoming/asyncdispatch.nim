@@ -1233,9 +1233,14 @@ else:
           newList.add(cb)
 
     withData(p.selector, ident, adata) do:
+      # descriptor still present in queue.
       adata.rwlist = newList & adata.rwlist
       rLength = len(adata.readList)
       wLength = len(adata.writeList)
+    do:
+      # descriptor was unregistered in callback via `unregister()`.
+      rLength = -1
+      wLength = -1
 
   template processCustomCallbacks(ident: untyped) =
     # Process pending custom event callbacks. Custom events are
@@ -1254,11 +1259,16 @@ else:
     var cb = curList[0]
     if not cb(fd.AsyncFD):
       newList.add(cb)
-    else:
-      p.selector.unregister(fd)
 
     withData(p.selector, ident, adata) do:
+      # descriptor still present in queue.
       adata.readList = newList & adata.readList
+      if len(adata.readList) == 0:
+        # if no callbacks registered with descriptor, unregister it.
+        p.selector.unregister(fd)
+    do:
+      # descriptor was unregistered in callback via `unregister()`.
+      discard
 
   proc poll*(timeout = 500) =
     var keys: array[64, ReadyKey]
@@ -1302,15 +1312,10 @@ else:
         # because state `data` can be modified in callback we need to update
         # descriptor events with currently registered callbacks.
         if not custom:
-          var update = false
           var newEvents: set[Event] = {}
-          if rLength > 0:
-            update = true
-            incl(newEvents, Event.Read)
-          if wLength > 0:
-            update = true
-            incl(newEvents, Event.Write)
-          if update:
+          if rLength != -1 and wLength != -1:
+            if rLength > 0: incl(newEvents, Event.Read)
+            if wLength > 0: incl(newEvents, Event.Write)
             p.selector.updateHandle(SocketHandle(fd), newEvents)
         inc(i)
 
