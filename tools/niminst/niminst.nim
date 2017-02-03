@@ -669,7 +669,15 @@ proc xzDist(c: var ConfigData; windowsZip=false) =
     try:
       if windowsZip:
         if execShellCmd("7z a -tzip $1.zip $1" % proj) != 0:
-          echo("External program failed")
+          echo("External program failed (zip)")
+        when false:
+          writeFile("config.txt", """;!@Install@!UTF-8!
+Title="Nim v$1"
+BeginPrompt="Do you want to configure Nim v$1?"
+RunProgram="tools\downloader.exe"
+;!@InstallEnd@!""" % NimVersion)
+          if execShellCmd("7z a -sfx7zS2.sfx -t7z $1.exe $1" % proj) != 0:
+            echo("External program failed (7z)")
       else:
         if execShellCmd("XZ_OPT=-9 gtar Jcf $1.tar.xz $1 --exclude=.DS_Store" %
                         proj) != 0:

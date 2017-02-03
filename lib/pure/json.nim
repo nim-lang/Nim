@@ -1175,18 +1175,22 @@ when not defined(js):
   proc parseJson*(s: Stream, filename: string): JsonNode =
     ## Parses from a stream `s` into a `JsonNode`. `filename` is only needed
     ## for nice error messages.
+    ## If `s` contains extra data, it will raising `JsonParsingError`.
     var p: JsonParser
     p.open(s, filename)
     defer: p.close()
     discard getTok(p) # read first token
     result = p.parseJson()
+    eat(p, tkEof) # check there are no exstra data
 
   proc parseJson*(buffer: string): JsonNode =
     ## Parses JSON from `buffer`.
+    ## If `buffer` contains extra data, it will raising `JsonParsingError`.
     result = parseJson(newStringStream(buffer), "input")
 
   proc parseFile*(filename: string): JsonNode =
     ## Parses `file` into a `JsonNode`.
+    ## If `file` contains extra data, it will raising `JsonParsingError`.
     var stream = newFileStream(filename, fmRead)
     if stream == nil:
       raise newException(IOError, "cannot read from file: " & filename)
@@ -1411,5 +1415,19 @@ when isMainModule:
     doAssert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
 
   doAssert escapeJson("\10FoobarÄ") == "\"\\u000AFoobar\\u00C4\""
+
+  # Test with extra data
+  when not defined(js):
+    try:
+      discard parseJson("123 456")
+      doAssert(false)
+    except JsonParsingError:
+      doAssert getCurrentExceptionMsg().contains(errorMessages[errEofExpected])
+
+    try:
+      discard parseFile("tests/testdata/jsonwithextradata.json")
+      doAssert(false)
+    except JsonParsingError:
+      doAssert getCurrentExceptionMsg().contains(errorMessages[errEofExpected])
 
   echo("Tests succeeded!")

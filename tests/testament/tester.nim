@@ -108,12 +108,6 @@ proc callCompiler(cmdTemplate, filename, options: string,
   elif suc =~ pegSuccess:
     result.err = reSuccess
 
-  if result.err == reNimcCrash and
-     ("Your platform is not supported" in result.msg or
-      "cannot open 'sdl'" in result.msg or
-      "cannot open 'opengl'" in result.msg):
-    result.err = reIgnored
-
 proc callCCompiler(cmdTemplate, filename, options: string,
                   target: TTarget): TSpec =
   let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
@@ -393,9 +387,14 @@ proc makeTest(test, options: string, cat: Category, action = actionCompile,
   result = TTest(cat: cat, name: test, options: options,
                  target: target, action: action, startTime: epochTime())
 
-const
-  # array of modules disabled from compilation test of stdlib.
-  disabledFiles = ["-"]
+when defined(windows):
+  const
+    # array of modules disabled from compilation test of stdlib.
+    disabledFiles = ["coro.nim", "fsmonitor.nim"]
+else:
+  const
+    # array of modules disabled from compilation test of stdlib.
+    disabledFiles = ["-"]
 
 include categories
 
@@ -460,7 +459,7 @@ proc main() =
   backend.close()
   if optPedantic:
     var failed = r.total - r.passed - r.skipped
-    if failed > 0 : quit(QuitFailure)
+    if failed > 0: quit(QuitFailure)
 
 if paramCount() == 0:
   quit Usage

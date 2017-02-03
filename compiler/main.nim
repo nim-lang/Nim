@@ -72,7 +72,7 @@ proc commandCompileToC(graph: ModuleGraph; cache: IdentCache) =
   #registerPass(cleanupPass())
 
   compileProject(graph, cache)
-  cgenWriteModules(graph.backend)
+  cgenWriteModules(graph.backend, graph.config)
   if gCmd != cmdRun:
     let proj = changeFileExt(gProjectFull, "")
     extccomp.callCCompiler(proj)
@@ -271,9 +271,13 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
 
   if msgs.gErrorCounter == 0 and
      gCmd notin {cmdInterpret, cmdRun, cmdDump}:
+    when declared(system.getMaxMem):
+      let usedMem = formatSize(getMaxMem()) & " peekmem"
+    else:
+      let usedMem = formatSize(getTotalMem())
     rawMessage(hintSuccessX, [$gLinesCompiled,
                formatFloat(epochTime() - gLastCmdTime, ffDecimal, 3),
-               formatSize(getTotalMem()),
+               usedMem,
                if condSyms.isDefined("release"): "Release Build"
                else: "Debug Build"])
 
@@ -290,4 +294,4 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
 
   resetAttributes()
 
-proc mainCommand*() = mainCommand(newModuleGraph(), newIdentCache())
+proc mainCommand*() = mainCommand(newModuleGraph(newConfigRef()), newIdentCache())

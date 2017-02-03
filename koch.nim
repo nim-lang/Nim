@@ -425,15 +425,6 @@ proc temp(args: string) =
   copyExe(output, finalDest)
   if programArgs.len > 0: exec(finalDest & " " & programArgs)
 
-proc copyDir(src, dest: string) =
-  for kind, path in walkDir(src, relative=true):
-    case kind
-    of pcDir: copyDir(dest / path, src / path)
-    of pcFile:
-      createDir(dest)
-      copyFile(src / path, dest / path)
-    else: discard
-
 proc pushCsources() =
   if not dirExists("../csources/.git"):
     quit "[Error] no csources git repository found"
@@ -489,6 +480,7 @@ of cmdArgument:
   of "temp": temp(op.cmdLineRest)
   of "winrelease": winRelease()
   of "nimble": buildNimble(existsDir(".git"))
+  of "nimsuggest": bundleNimsuggest(buildExe=true)
   of "tools": buildTools(existsDir(".git"))
   of "pushcsource", "pushcsources": pushCsources()
   else: showHelp()

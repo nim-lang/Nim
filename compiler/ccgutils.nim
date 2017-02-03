@@ -168,24 +168,42 @@ proc mangle*(name: string): string =
   ## so they are represented as `HEX____`. If the name starts with a number,
   ## `N` is prepended
   result = newStringOfCap(name.len)
-  case name[0]
-  of Letters:
-    result.add(name[0])
-  of Digits:
-    result.add("N" & name[0])
-  else:
-    result = "HEX" & toHex(ord(name[0]), 2)
-  for i in 1..(name.len-1):
+  var start = 0
+  if name[0] in Digits:
+    result.add("X" & name[0])
+    start = 1
+  var requiresUnderscore = false
+  template special(x) =
+    result.add x
+    requiresUnderscore = true
+  for i in start..(name.len-1):
     let c = name[i]
     case c
-    of 'A'..'Z':
-      add(result, c.toLowerAscii)
-    of '_':
-      discard
-    of 'a'..'z', '0'..'9':
+    of 'a'..'z', '0'..'9', 'A'..'Z', '_':
       add(result, c)
+    of '$': special "dollar"
+    of '%': special "percent"
+    of '&': special "amp"
+    of '^': special "roof"
+    of '!': special "emark"
+    of '?': special "qmark"
+    of '*': special "star"
+    of '+': special "plus"
+    of '-': special "minus"
+    of '/': special "slash"
+    of '=': special "eq"
+    of '<': special "lt"
+    of '>': special "gt"
+    of '~': special "tilde"
+    of ':': special "colon"
+    of '.': special "dot"
+    of '@': special "at"
+    of '|': special "bar"
     else:
-      add(result, "HEX" & toHex(ord(c), 2))
+      add(result, "X" & toHex(ord(c), 2))
+      requiresUnderscore = true
+  if requiresUnderscore:
+    result.add "_"
 
 proc makeLLVMString*(s: string): Rope =
   const MaxLineLength = 64

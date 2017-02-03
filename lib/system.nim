@@ -1630,20 +1630,22 @@ when not defined(nimscript) and not defined(JS):
     ## Exactly ``size`` bytes will be overwritten. Like any procedure
     ## dealing with raw memory this is *unsafe*.
 
-  proc copyMem*(dest, source: pointer, size: Natural) {.inline, benign.}
+  proc copyMem*(dest, source: pointer, size: Natural) {.inline, benign,
+    tags: [], locks: 0.}
     ## copies the contents from the memory at ``source`` to the memory
     ## at ``dest``. Exactly ``size`` bytes will be copied. The memory
     ## regions may not overlap. Like any procedure dealing with raw
     ## memory this is *unsafe*.
 
-  proc moveMem*(dest, source: pointer, size: Natural) {.inline, benign.}
+  proc moveMem*(dest, source: pointer, size: Natural) {.inline, benign,
+    tags: [], locks: 0.}
     ## copies the contents from the memory at ``source`` to the memory
     ## at ``dest``. Exactly ``size`` bytes will be copied. The memory
     ## regions may overlap, ``moveMem`` handles this case appropriately
     ## and is thus somewhat more safe than ``copyMem``. Like any procedure
     ## dealing with raw memory this is still *unsafe*, though.
 
-  proc equalMem*(a, b: pointer, size: Natural): bool {.inline, noSideEffect.}
+  proc equalMem*(a, b: pointer, size: Natural): bool {.inline, noSideEffect, tags: [], locks: 0.}
     ## compares the memory blocks ``a`` and ``b``. ``size`` bytes will
     ## be compared. If the blocks are equal, true is returned, false
     ## otherwise. Like any procedure dealing with raw memory this is
@@ -1848,7 +1850,7 @@ const
   NimMinor*: int = 16
     ## is the minor number of Nim's version.
 
-  NimPatch*: int = 0
+  NimPatch*: int = 1
     ## is the patch number of Nim's version.
 
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
@@ -2552,13 +2554,14 @@ else:
   proc debugEcho*(x: varargs[expr, `$`]) {.magic: "Echo", noSideEffect,
                                              tags: [], raises: [].}
 
-template newException*(exceptn: typedesc, message: string): expr =
+template newException*(exceptn: typedesc, message: string; parentException: ref Exception = nil): expr =
   ## creates an exception object of type ``exceptn`` and sets its ``msg`` field
   ## to `message`. Returns the new exception object.
   var
     e: ref exceptn
   new(e)
   e.msg = message
+  e.parent = parentException
   e
 
 when hostOS == "standalone":
@@ -2666,10 +2669,10 @@ when not defined(JS): #and not defined(nimscript):
                                 ## created.
       fmReadWrite,              ## Open the file for read and write access.
                                 ## If the file does not exist, it will be
-                                ## created.
+                                ## created. Existing files will be cleared!
       fmReadWriteExisting,      ## Open the file for read and write access.
                                 ## If the file does not exist, it will not be
-                                ## created.
+                                ## created. The existing file will not be cleared.
       fmAppend                  ## Open the file for writing only; append data
                                 ## at the end.
 
@@ -2687,16 +2690,6 @@ when not defined(JS): #and not defined(nimscript):
       else: result = 0
     else:
       result = int(c_strcmp(x, y))
-
-  when not defined(nimscript):
-    proc zeroMem(p: pointer, size: Natural) =
-      c_memset(p, 0, size)
-    proc copyMem(dest, source: pointer, size: Natural) =
-      c_memcpy(dest, source, size)
-    proc moveMem(dest, source: pointer, size: Natural) =
-      c_memmove(dest, source, size)
-    proc equalMem(a, b: pointer, size: Natural): bool =
-      c_memcmp(a, b, size) == 0
 
   when defined(nimscript):
     proc readFile*(filename: string): string {.tags: [ReadIOEffect], benign.}
@@ -2986,6 +2979,23 @@ when not defined(JS): #and not defined(nimscript):
     {.push stack_trace: off, profiler:off.}
     when defined(memtracker):
       include "system/memtracker"
+
+    when not defined(nimscript):
+      proc zeroMem(p: pointer, size: Natural) =
+        c_memset(p, 0, size)
+        when declared(memTrackerOp):
+          memTrackerOp("zeroMem", p, size)
+      proc copyMem(dest, source: pointer, size: Natural) =
+        c_memcpy(dest, source, size)
+        when declared(memTrackerOp):
+          memTrackerOp("copyMem", dest, size)
+      proc moveMem(dest, source: pointer, size: Natural) =
+        c_memmove(dest, source, size)
+        when declared(memTrackerOp):
+          memTrackerOp("moveMem", dest, size)
+      proc equalMem(a, b: pointer, size: Natural): bool =
+        c_memcmp(a, b, size) == 0
+
     when hostOS == "standalone":
       include "system/embedded"
     else:
@@ -3242,19 +3252,18 @@ proc `/`*(x, y: int): float {.inline, noSideEffect.} =
 
 template spliceImpl(s, a, L, b: untyped): untyped =
   # make room for additional elements or cut:
-  var slen = s.len
-  var shift = b.len - L
-  var newLen = slen + shift
+  var shift = b.len - max(0,L)  # ignore negative slice size
+  var newLen = s.len + shift
   if shift > 0:
     # enlarge:
     setLen(s, newLen)
-    for i in countdown(newLen-1, a+shift+1): shallowCopy(s[i], s[i-shift])
+    for i in countdown(newLen-1, a+b.len): shallowCopy(s[i], s[i-shift])
   else:
-    for i in countup(a+b.len, s.len-1+shift): shallowCopy(s[i], s[i-shift])
+    for i in countup(a+b.len, newLen-1): shallowCopy(s[i], s[i-shift])
     # cut down:
     setLen(s, newLen)
   # fill the hole:
-  for i in 0 .. <b.len: s[i+a] = b[i]
+  for i in 0 .. <b.len: s[a+i] = b[i]
 
 when hasAlloc or defined(nimscript):
   proc `[]`*(s: string, x: Slice[int]): string {.inline.} =
@@ -3362,7 +3371,7 @@ proc staticExec*(command: string, input = "", cache = ""): string {.
   ## If ``cache`` is not empty, the results of ``staticExec`` are cached within
   ## the ``nimcache`` directory. Use ``--forceBuild`` to get rid of this caching
   ## behaviour then. ``command & input & cache`` (the concatenated string) is
-  ## used to determine wether the entry in the cache is still valid. You can
+  ## used to determine whether the entry in the cache is still valid. You can
   ## use versioning information for ``cache``:
   ##
   ## .. code-block:: nim

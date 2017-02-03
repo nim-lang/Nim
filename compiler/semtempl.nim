@@ -263,9 +263,16 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
       n.sons[namePos] = ident
   else:
     n.sons[namePos] = semRoutineInTemplName(c, n.sons[namePos])
+  # open scope for parameters
   openScope(c)
-  for i in patternPos..bodyPos:
+  for i in patternPos..miscPos:
     n.sons[i] = semTemplBody(c, n.sons[i])
+  # open scope for locals
+  openScope(c)
+  n.sons[bodyPos] = semTemplBody(c, n.sons[bodyPos])
+  # close scope for locals
+  closeScope(c)
+  # close scope for parameters
   closeScope(c)
 
 proc semTemplSomeDecl(c: var TemplCtx, n: PNode, symKind: TSymKind; start=0) =
@@ -438,7 +445,9 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   of nkPostfix:
     result.sons[1] = semTemplBody(c, n.sons[1])
   of nkPragma:
-    result = onlyReplaceParams(c, n)
+    for x in n:
+      if x.kind == nkExprColonExpr:
+        x.sons[1] = semTemplBody(c, x.sons[1])
   of nkBracketExpr:
     result = newNodeI(nkCall, n.info)
     result.add newIdentNode(getIdent("[]"), n.info)

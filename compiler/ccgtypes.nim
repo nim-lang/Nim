@@ -116,6 +116,42 @@ proc mangleName(m: BModule; s: PSym): Rope =
       add(result, m.idOrSig(s))
     s.loc.r = result
 
+proc mangleParamName(m: BModule; s: PSym): Rope =
+  ## we cannot use 'sigConflicts' here since we have a BModule, not a BProc.
+  ## Fortunately C's scoping rules are sane enough so that that doesn't
+  ## cause any trouble.
+  result = s.loc.r
+  if result == nil:
+    result = s.name.s.mangle.rope
+    if isKeyword(s.name) or m.g.config.cppDefines.contains(s.name.s):
+      result.add "0"
+    s.loc.r = result
+
+proc mangleLocalName(p: BProc; s: PSym): Rope =
+  assert s.kind in skLocalVars+{skTemp}
+  assert sfGlobal notin s.flags
+  result = s.loc.r
+  if result == nil:
+    var key = s.name.s.mangle
+    shallow(key)
+    let counter = p.sigConflicts.getOrDefault(key)
+    result = key.rope
+    if s.kind == skTemp:
+      # speed up conflict search for temps (these are quite common):
+      if counter != 0: result.add "_" & rope(counter+1)
+    elif counter != 0 or isKeyword(s.name) or p.module.g.config.cppDefines.contains(s.name.s):
+      result.add "_" & rope(counter+1)
+    p.sigConflicts.inc(key)
+    s.loc.r = result
+
+proc scopeMangledParam(p: BProc; param: PSym) =
+  ## parameter generation only takes BModule, not a BProc, so we have to
+  ## remember these parameter names are already in scope to be able to
+  ## generate unique identifiers reliably (consider that ``var a = a`` is
+  ## even an idiom in Nim).
+  var key = param.name.s.mangle
+  shallow(key)
+  p.sigConflicts.inc(key)
 
 const
   irrelevantForBackend = {tyGenericBody, tyGenericInst, tyGenericInvocation,
@@ -393,7 +429,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     var param = t.n.sons[i].sym
     if isCompileTimeOnly(param.typ): continue
     if params != nil: add(params, ~", ")
-    fillLoc(param.loc, locParam, param.typ, mangleName(m, param),
+    fillLoc(param.loc, locParam, param.typ, mangleParamName(m, param),
             param.paramStorageLoc)
     if ccgIntroducedPtr(param):
       add(params, getTypeDescWeak(m, param.typ, check))
@@ -880,10 +916,13 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType; name, base: Rope) =
   #else MessageOut("can contain a cycle: " & typeToString(typ))
   if flags != 0:
     addf(m.s[cfsTypeInit3], "$1.flags = $2;$n", [name, rope(flags)])
+  discard cgsym(m, "TNimType")
   if isDefined("nimTypeNames"):
     addf(m.s[cfsTypeInit3], "$1.name = $2;$n",
         [name, makeCstring typeToString(origType, preferName)])
-  discard cgsym(m, "TNimType")
+    discard cgsym(m, "nimTypeRoot")
+    addf(m.s[cfsTypeInit3], "$1.nextType = nimTypeRoot; nimTypeRoot=&$1;$n",
+         [name])
   addf(m.s[cfsVars], "TNimType $1;$n", [name])
 
 proc genTypeInfoAux(m: BModule, typ, origType: PType, name: Rope) =
@@ -1100,13 +1139,11 @@ proc genTypeInfo(m: BModule, t: PType): Rope =
     discard cgsym(m, "TNimType")
     discard cgsym(m, "TNimNode")
     addf(m.s[cfsVars], "extern TNimType $1;$n", [result])
-    #return "(&".rope & result & ")".rope
-    #result = "NTI$1" % [rope($sig)]
     # also store in local type section:
     m.typeInfoMarker[sig] = result
     return "(&".rope & result & ")".rope
 
-  result = "NTI$1" % [rope($sig)]
+  result = "NTI$1_" % [rope($sig)]
   m.typeInfoMarker[sig] = result
 
   let owner = t.skipTypes(typedescPtrs).owner.getModule

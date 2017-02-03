@@ -363,19 +363,28 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
             rope p.currLineInfo.safeLineNm)
 
 proc genDeepCopy(p: BProc; dest, src: TLoc) =
+  template addrLocOrTemp(a: TLoc): Rope =
+    if a.k == locExpr:
+      var tmp: TLoc
+      getTemp(p, a.t, tmp)
+      genAssignment(p, tmp, a, {})
+      addrLoc(tmp)
+    else:
+      addrLoc(a)
+
   var ty = skipTypes(dest.t, abstractVarRange)
   case ty.kind
   of tyPtr, tyRef, tyProc, tyTuple, tyObject, tyArray:
     # XXX optimize this
     linefmt(p, cpsStmts, "#genericDeepCopy((void*)$1, (void*)$2, $3);$n",
-            addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t))
+            addrLoc(dest), addrLocOrTemp(src), genTypeInfo(p.module, dest.t))
   of tySequence, tyString:
     linefmt(p, cpsStmts, "#genericSeqDeepCopy($1, $2, $3);$n",
             addrLoc(dest), rdLoc(src), genTypeInfo(p.module, dest.t))
   of tyOpenArray, tyVarargs:
     linefmt(p, cpsStmts,
          "#genericDeepCopyOpenArray((void*)$1, (void*)$2, $1Len0, $3);$n",
-         addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t))
+         addrLoc(dest), addrLocOrTemp(src), genTypeInfo(p.module, dest.t))
   of tySet:
     if mapType(ty) == ctArray:
       useStringh(p.module)
@@ -610,7 +619,7 @@ proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       "($3)((NU$2) ~($1))",   # BitnotI
       "$1",                   # UnaryPlusF64
       "-($1)",                # UnaryMinusF64
-      "($1 > 0? ($1) : -($1))", # AbsF64; BUGFIX: fabs() makes problems
+      "($1 < 0? -($1) : ($1))", # AbsF64; BUGFIX: fabs() makes problems
                                 # for Tiny C, so we don't use it
       "(($3)(NU)(NU8)($1))",  # mZe8ToI
       "(($3)(NU64)(NU8)($1))", # mZe8ToI64
@@ -1992,7 +2001,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       if sfThread in sym.flags:
         accessThreadLocalVar(p, sym)
         if emulatedThreadVars():
-          putIntoDest(p, d, sym.loc.t, "NimTV->" & sym.loc.r)
+          putIntoDest(p, d, sym.loc.t, "NimTV_->" & sym.loc.r)
         else:
           putLocIntoDest(p, d, sym.loc)
       else:

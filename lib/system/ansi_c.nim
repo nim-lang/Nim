@@ -63,7 +63,7 @@ else:
 when defined(macosx):
   const SIGBUS = cint(10)
 else:
-  template SIGBUS: expr = SIGSEGV
+  template SIGBUS: untyped = SIGSEGV
 
 when defined(nimSigSetjmp) and not defined(nimStdSetjmp):
   proc c_longjmp(jmpb: C_JmpBuf, retval: cint) {.

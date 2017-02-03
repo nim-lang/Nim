@@ -50,13 +50,13 @@
 ##
 ##   echo client.postContent("http://validator.w3.org/check", multipart=data)
 ##
-## You can also make post requests with custom headers. 
+## You can also make post requests with custom headers.
 ## This example sets ``Content-Type`` to ``application/json``
 ## and uses a json object for the body
 ##
 ## .. code-block:: Nim
 ##   import httpclient, json
-##   
+##
 ##   let client = newHttpClient()
 ##   client.headers = newHttpHeaders({ "Content-Type": "application/json" })
 ##   let body = %*{
@@ -303,9 +303,12 @@ proc parseResponse(s: Socket, getBody: bool, timeout: int): Response =
 
 when not defined(ssl):
   type SSLContext = ref object
-  let defaultSSLContext: SSLContext = nil
-else:
-  let defaultSSLContext = newContext(verifyMode = CVerifyNone)
+var defaultSSLContext {.threadvar.}: SSLContext
+when defined(ssl):
+  defaultSSLContext = newContext(verifyMode = CVerifyNone)
+  when compileOption("threads"):
+    onThreadCreation do ():
+      defaultSSLContext = newContext(verifyMode = CVerifyNone)
 
 proc newProxy*(url: string, auth = ""): Proxy =
   ## Constructs a new ``TProxy`` object.
@@ -540,6 +543,8 @@ proc getNewLocation(lastURL: string, headers: HttpHeaders): string =
   if r.hostname == "" and r.path != "":
     var parsed = parseUri(lastURL)
     parsed.path = r.path
+    parsed.query = r.query
+    parsed.anchor = r.anchor
     result = $parsed
 
 proc get*(url: string, extraHeaders = "", maxRedirects = 5,
@@ -1000,15 +1005,10 @@ proc override(fallback, override: HttpHeaders): HttpHeaders =
   for k, vs in override.table:
     result[k] = vs
 
-proc request*(client: HttpClient | AsyncHttpClient, url: string,
+proc requestAux(client: HttpClient | AsyncHttpClient, url: string,
               httpMethod: string, body = "",
               headers: HttpHeaders = nil): Future[Response] {.multisync.} =
-  ## Connects to the hostname specified by the URL and performs a request
-  ## using the custom method string specified by ``httpMethod``.
-  ##
-  ## Connection will kept alive. Further requests on the same ``client`` to
-  ## the same hostname will not require a new connection to be made. The
-  ## connection can be closed by using the ``close`` procedure.
+  # Helper that actually makes the request. Does not handle redirects.
   let connectionUrl =
     if client.proxy.isNil: parseUri(url) else: client.proxy.url
   let requestUrl = parseUri(url)
@@ -1021,7 +1021,7 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
       var connectUrl = requestUrl
       connectUrl.scheme = "http"
       connectUrl.port = "443"
-      let proxyResp = await request(client, $connectUrl, $HttpConnect)
+      let proxyResp = await requestAux(client, $connectUrl, $HttpConnect)
 
       if not proxyResp.status.startsWith("200"):
         raise newException(HttpRequestError,
@@ -1053,6 +1053,29 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
   # Restore the clients proxy in case it was overwritten.
   client.proxy = savedProxy
 
+
+proc request*(client: HttpClient | AsyncHttpClient, url: string,
+              httpMethod: string, body = "",
+              headers: HttpHeaders = nil): Future[Response] {.multisync.} =
+  ## Connects to the hostname specified by the URL and performs a request
+  ## using the custom method string specified by ``httpMethod``.
+  ##
+  ## Connection will kept alive. Further requests on the same ``client`` to
+  ## the same hostname will not require a new connection to be made. The
+  ## connection can be closed by using the ``close`` procedure.
+  ##
+  ## This procedure will follow redirects up to a maximum number of redirects
+  ## specified in ``client.maxRedirects``.
+  result = await client.requestAux(url, httpMethod, body, headers)
+
+  var lastURL = url
+  for i in 1..client.maxRedirects:
+    if result.status.redirection():
+      let redirectTo = getNewLocation(lastURL, result.headers)
+      result = await client.request(redirectTo, httpMethod, body, headers)
+      lastURL = redirectTo
+
+
 proc request*(client: HttpClient | AsyncHttpClient, url: string,
               httpMethod = HttpGET, body = "",
               headers: HttpHeaders = nil): Future[Response] {.multisync.} =
@@ -1075,14 +1098,6 @@ proc get*(client: HttpClient | AsyncHttpClient,
   ## This procedure will follow redirects up to a maximum number of redirects
   ## specified in ``client.maxRedirects``.
   result = await client.request(url, HttpGET)
-
-  # Handle redirects.
-  var lastURL = url
-  for i in 1..client.maxRedirects:
-    if result.status.redirection():
-      let redirectTo = getNewLocation(lastURL, result.headers)
-      result = await client.request(redirectTo, HttpGET)
-      lastURL = redirectTo
 
 proc getContent*(client: HttpClient | AsyncHttpClient,
                  url: string): Future[string] {.multisync.} =
@@ -1119,7 +1134,7 @@ proc post*(client: HttpClient | AsyncHttpClient, url: string, body = "",
     headers["Content-Type"] = mpHeader.split(": ")[1]
   headers["Content-Length"] = $len(xb)
 
-  result = await client.request(url, HttpPOST, xb,
+  result = await client.requestAux(url, $HttpPOST, xb,
                                 headers = headers)
   # Handle redirects.
   var lastURL = url
@@ -1127,7 +1142,7 @@ proc post*(client: HttpClient | AsyncHttpClient, url: string, body = "",
     if result.status.redirection():
       let redirectTo = getNewLocation(lastURL, result.headers)
       var meth = if result.status != "307": HttpGet else: HttpPost
-      result = await client.request(redirectTo, meth, xb,
+      result = await client.requestAux(redirectTo, $meth, xb,
                                     headers = headers)
       lastURL = redirectTo
 

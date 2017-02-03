@@ -102,7 +102,7 @@ proc assignLabel(b: var TBlock): Rope {.inline.} =
 proc blockBody(b: var TBlock): Rope =
   result = b.sections[cpsLocals]
   if b.frameLen > 0:
-    result.addf("FR.len+=$1;$n", [b.frameLen.rope])
+    result.addf("FR_.len+=$1;$n", [b.frameLen.rope])
   result.add(b.sections[cpsInit])
   result.add(b.sections[cpsStmts])
 
@@ -123,7 +123,7 @@ proc endBlock(p: BProc) =
       ~"}$n"
   let frameLen = p.blocks[topBlock].frameLen
   if frameLen > 0:
-    blockEnd.addf("FR.len-=$1;$n", [frameLen.rope])
+    blockEnd.addf("FR_.len-=$1;$n", [frameLen.rope])
   endBlock(p, blockEnd)
 
 proc genSimpleBlock(p: BProc, stmts: PNode) {.inline.} =
@@ -156,7 +156,7 @@ proc genGotoState(p: BProc, n: PNode) =
   initLocExpr(p, n.sons[0], a)
   lineF(p, cpsStmts, "switch ($1) {$n", [rdLoc(a)])
   p.beforeRetNeeded = true
-  lineF(p, cpsStmts, "case -1: goto BeforeRet;$n", [])
+  lineF(p, cpsStmts, "case -1: goto BeforeRet_;$n", [])
   for i in 0 .. lastOrd(n.sons[0].typ):
     lineF(p, cpsStmts, "case $1: goto STATE$1;$n", [rope(i)])
   lineF(p, cpsStmts, "}$n", [])
@@ -373,7 +373,7 @@ proc genReturnStmt(p: BProc, t: PNode) =
     # consume it before we return.
     var safePoint = p.finallySafePoints[p.finallySafePoints.len-1]
     linefmt(p, cpsStmts, "if ($1.status != 0) #popCurrentException();$n", safePoint)
-  lineF(p, cpsStmts, "goto BeforeRet;$n", [])
+  lineF(p, cpsStmts, "goto BeforeRet_;$n", [])
 
 proc genGotoForCase(p: BProc; caseStmt: PNode) =
   for i in 1 .. <caseStmt.len:
@@ -411,11 +411,11 @@ proc genComputedGoto(p: BProc; n: PNode) =
     localError(n.info, "no case statement found for computed goto"); return
   var id = p.labels+1
   inc p.labels, arraySize+1
-  let tmp = "TMP$1" % [id.rope]
+  let tmp = "TMP$1_" % [id.rope]
   var gotoArray = "static void* $#[$#] = {" % [tmp, arraySize.rope]
   for i in 1..arraySize-1:
-    gotoArray.addf("&&TMP$#, ", [(id+i).rope])
-  gotoArray.addf("&&TMP$#};$n", [(id+arraySize).rope])
+    gotoArray.addf("&&TMP$#_, ", [(id+i).rope])
+  gotoArray.addf("&&TMP$#_};$n", [(id+arraySize).rope])
   line(p, cpsLocals, gotoArray)
 
   let topBlock = p.blocks.len-1
@@ -445,7 +445,7 @@ proc genComputedGoto(p: BProc; n: PNode) =
         localError(it.info, "range notation not available for computed goto")
         return
       let val = getOrdValue(it.sons[j])
-      lineF(p, cpsStmts, "TMP$#:$n", [intLiteral(val+id+1)])
+      lineF(p, cpsStmts, "TMP$#_:$n", [intLiteral(val+id+1)])
     genStmts(p, it.lastSon)
     #for j in casePos+1 .. <n.len: genStmts(p, n.sons[j]) # tailB
     #for j in 0 .. casePos-1: genStmts(p, n.sons[j])  # tailA
@@ -600,7 +600,7 @@ proc genCaseSecondPass(p: BProc, t: PNode, d: var TLoc,
   for i in 1..until:
     # bug #4230: avoid false sharing between branches:
     if d.k == locTemp and isEmptyType(t.typ): d.k = locNone
-    lineF(p, cpsStmts, "LA$1: ;$n", [rope(labId + i)])
+    lineF(p, cpsStmts, "LA$1_: ;$n", [rope(labId + i)])
     if t.sons[i].kind == nkOfBranch:
       var length = sonsLen(t.sons[i])
       exprBlock(p, t.sons[i].sons[length - 1], d)
@@ -618,15 +618,15 @@ proc genIfForCaseUntil(p: BProc, t: PNode, d: var TLoc,
     inc(p.labels)
     if t.sons[i].kind == nkOfBranch: # else statement
       genCaseGenericBranch(p, t.sons[i], a, rangeFormat, eqFormat,
-                           "LA" & rope(p.labels))
+                           "LA" & rope(p.labels) & "_")
     else:
-      lineF(p, cpsStmts, "goto LA$1;$n", [rope(p.labels)])
+      lineF(p, cpsStmts, "goto LA$1_;$n", [rope(p.labels)])
   if until < t.len-1:
     inc(p.labels)
     var gotoTarget = p.labels
-    lineF(p, cpsStmts, "goto LA$1;$n", [rope(gotoTarget)])
+    lineF(p, cpsStmts, "goto LA$1_;$n", [rope(gotoTarget)])
     result = genCaseSecondPass(p, t, d, labId, until)
-    lineF(p, cpsStmts, "LA$1: ;$n", [rope(gotoTarget)])
+    lineF(p, cpsStmts, "LA$1_: ;$n", [rope(gotoTarget)])
   else:
     result = genCaseSecondPass(p, t, d, labId, until)
 
@@ -664,7 +664,7 @@ proc genStringCase(p: BProc, t: PNode, d: var TLoc) =
     for i in countup(1, sonsLen(t) - 1):
       inc(p.labels)
       if t.sons[i].kind == nkOfBranch:
-        genCaseStringBranch(p, t.sons[i], a, "LA" & rope(p.labels),
+        genCaseStringBranch(p, t.sons[i], a, "LA" & rope(p.labels) & "_",
                             branches)
       else:
         # else statement: nothing to do yet
@@ -678,7 +678,7 @@ proc genStringCase(p: BProc, t: PNode, d: var TLoc) =
              [intLiteral(j), branches[j]])
     lineF(p, cpsStmts, "}$n", []) # else statement:
     if t.sons[sonsLen(t)-1].kind != nkOfBranch:
-      lineF(p, cpsStmts, "goto LA$1;$n", [rope(p.labels)])
+      lineF(p, cpsStmts, "goto LA$1_;$n", [rope(p.labels)])
     # third pass: generate statements
     var lend = genCaseSecondPass(p, t, d, labId, sonsLen(t)-1)
     fixLabel(p, lend)
@@ -802,7 +802,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   let length = sonsLen(t)
   endBlock(p, ropecg(p.module, "} catch (NimException& $1) {$n", [exc]))
   if optStackTrace in p.options:
-    linefmt(p, cpsStmts, "#setFrame((TFrame*)&FR);$n")
+    linefmt(p, cpsStmts, "#setFrame((TFrame*)&FR_);$n")
   inc p.inExceptBlock
   var i = 1
   var catchAllPresent = false
@@ -910,7 +910,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
   startBlock(p, "else {$n")
   linefmt(p, cpsStmts, "#popSafePoint();$n")
   if optStackTrace in p.options:
-    linefmt(p, cpsStmts, "#setFrame((TFrame*)&FR);$n")
+    linefmt(p, cpsStmts, "#setFrame((TFrame*)&FR_);$n")
   inc p.inExceptBlock
   var i = 1
   while (i < length) and (t.sons[i].kind == nkExceptBranch):
@@ -973,6 +973,8 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
           r = mangleName(p.module, sym)
           sym.loc.r = r       # but be consequent!
         res.add($r)
+    of nkTypeOfExpr:
+      res.add($getTypeDesc(p.module, t.sons[i].typ))
     else:
       var a: TLoc
       initLocExpr(p, t.sons[i], a)

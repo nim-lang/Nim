@@ -49,6 +49,21 @@ To disable the GC-safety checking the ``--threadAnalysis:off`` command line
 switch can be used. This is a temporary workaround to ease the porting effort
 from old code to the new threading model.
 
+To override the compiler's gcsafety analysis a ``{.gcsafe.}`` pragma block can
+be used:
+
+.. code-block:: nim
+
+  var
+    someGlobal: string = "some string here"
+    perThread {.threadvar.}: string
+
+  proc setPerThread() =
+    {.gcsafe.}:
+      deepCopy(perThread, someGlobal)
+
+  onThreadCreation(setPerThread)
+
 
 Future directions:
 

@@ -212,6 +212,12 @@ proc quitOrDebug() {.inline.} =
   else:
     endbStep() # call the debugger
 
+when false:
+  proc rawRaise*(e: ref Exception) =
+    ## undocumented. Do not use.
+    pushCurrentException(e)
+    c_longjmp(excHandler.context, 1)
+
 proc raiseExceptionAux(e: ref Exception) =
   if localRaiseHook != nil:
     if not localRaiseHook(e): return
@@ -371,5 +377,4 @@ when not defined(noSignalHandler):
 proc setControlCHook(hook: proc () {.noconv.} not nil) =
   # ugly cast, but should work on all architectures:
   type SignalHandler = proc (sign: cint) {.noconv, benign.}
-  {.deprecated: [TSignalHandler: SignalHandler].}
   c_signal(SIGINT, cast[SignalHandler](hook))

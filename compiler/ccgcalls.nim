@@ -30,7 +30,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
       if d.k in {locTemp, locNone} or not leftAppearsOnRightSide(le, ri):
         # Great, we can use 'd':
         if d.k == locNone: getTemp(p, typ.sons[0], d, needsInit=true)
-        elif d.k notin {locExpr, locTemp} and not hasNoInit(ri):
+        elif d.k notin {locTemp} and not hasNoInit(ri):
           # reset before pass as 'result' var:
           resetLoc(p, d)
         add(pl, addrLoc(d))
@@ -226,7 +226,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
         # Great, we can use 'd':
         if d.k == locNone:
           getTemp(p, typ.sons[0], d, needsInit=true)
-        elif d.k notin {locExpr, locTemp} and not hasNoInit(ri):
+        elif d.k notin {locTemp} and not hasNoInit(ri):
           # reset before pass as 'result' var:
           resetLoc(p, d)
         add(pl, addrLoc(d))

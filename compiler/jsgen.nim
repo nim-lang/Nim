@@ -179,9 +179,31 @@ proc mapType(p: PProc; typ: PType): TJSTypeKind =
   else: result = mapType(typ)
 
 proc mangleName(s: PSym; target: TTarget): Rope =
+  proc validJsName(name: string): bool =
+    result = true
+    const reservedWords = ["abstract", "await", "boolean", "break", "byte",
+      "case", "catch", "char", "class", "const", "continue", "debugger",
+      "default", "delete", "do", "double", "else", "enum", "export", "extends",
+      "false", "final", "finally", "float", "for", "function", "goto", "if",
+      "implements", "import", "in", "instanceof", "int", "interface", "let",
+      "long", "native", "new", "null", "package", "private", "protected",
+      "public", "return", "short", "static", "super", "switch", "synchronized",
+      "this", "throw", "throws", "transient", "true", "try", "typeof", "var",
+      "void", "volatile", "while", "with", "yield"]
+    case name
+    of reservedWords:
+      return false
+    else:
+      discard
+    if name[0] in {'0'..'9'}: return false
+    for chr in name:
+      if chr notin {'A'..'Z','a'..'z','_','$','0'..'9'}:
+        return false
   result = s.loc.r
   if result == nil:
-    if target == targetJS or s.kind == skTemp:
+    if s.kind == skField and s.name.s.validJsName:
+      result = rope(s.name.s)
+    elif target == targetJS or s.kind == skTemp:
       result = rope(mangle(s.name.s))
     else:
       var x = newStringOfCap(s.name.s.len)
@@ -1173,11 +1195,12 @@ proc genDeref(p: PProc, n: PNode, r: var TCompRes) =
   else:
     var a: TCompRes
     gen(p, n.sons[0], a)
+    r.kind = resExpr
     if a.typ == etyBaseIndex:
       r.res = "$1[$2]" % [a.address, a.res]
     elif n.sons[0].kind == nkCall:
       let tmp = p.getTemp
-      r.res = "($1 = $2, $1[0][$1[1]])" % [tmp, a.res]
+      r.res = "($1 = $2, $1[0])[$1[1]]" % [tmp, a.res]
     else:
       internalError(n.info, "genDeref")
 
@@ -1351,8 +1374,7 @@ proc createRecordVarAux(p: PProc, rec: PNode, excludedFieldIDs: IntSet, output: 
     if rec.sym.id notin excludedFieldIDs:
       if output.len > 0: output.add(", ")
       if p.target == targetJS:
-        output.add(mangleName(rec.sym, p.target))
-        output.add(": ")
+        output.addf("$#: ", [mangleName(rec.sym, p.target)])
       else:
         output.addf("'$#' => ", [mangleName(rec.sym, p.target)])
       output.add(createVar(p, rec.sym.typ, false))
@@ -1364,7 +1386,8 @@ proc createObjInitList(p: PProc, typ: PType, excludedFieldIDs: IntSet, output: v
     if output.len > 0: output.add(", ")
     addf(output, "m_type: $1" | "'m_type' => $#", [genTypeInfo(p, t)])
   while t != nil:
-    createRecordVarAux(p, t.skipTypes(skipPtrs).n, excludedFieldIDs, output)
+    t = t.skipTypes(skipPtrs)
+    createRecordVarAux(p, t.n, excludedFieldIDs, output)
     t = t.sons[0]
 
 proc arrayTypeForElemType(typ: PType): string =
@@ -1505,7 +1528,7 @@ proc genVarStmt(p: PProc, n: PNode) =
         assert(a.kind == nkIdentDefs)
         assert(a.sons[0].kind == nkSym)
         var v = a.sons[0].sym
-        if lfNoDecl notin v.loc.flags:
+        if lfNoDecl notin v.loc.flags and sfImportc notin v.flags:
           genLineDir(p, a)
           genVarInit(p, v, a.sons[2])
 

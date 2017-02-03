@@ -438,7 +438,7 @@ when defined(windows) or defined(nimdoc):
           success = false
       it = it.ai_next
 
-    dealloc(aiList)
+    freeAddrInfo(aiList)
     if not success:
       retFuture.fail(newException(OSError, osErrorMsg(lastError)))
     return retFuture
@@ -750,7 +750,7 @@ when defined(windows) or defined(nimdoc):
     var lpOutputBuf = newString(lpOutputLen)
     var dwBytesReceived: Dword
     let dwReceiveDataLength = 0.Dword # We don't want any data to be read.
-    let dwLocalAddressLength = Dword(sizeof (Sockaddr_in) + 16)
+    let dwLocalAddressLength = Dword(sizeof(Sockaddr_in) + 16)
     let dwRemoteAddressLength = Dword(sizeof(Sockaddr_in) + 16)
 
     template completeAccept() {.dirty.} =
@@ -871,7 +871,9 @@ when defined(windows) or defined(nimdoc):
         if unregisterWait(pcd.waitFd) == 0:
           let err = osLastError()
           if err.int32 != ERROR_IO_PENDING:
-            raiseOSError(osLastError())
+            deallocShared(cast[pointer](pcd))
+            discard wsaCloseEvent(hEvent)
+            raiseOSError(err)
         if cb(fd):
           # callback returned `true`, so we free all allocated resources
           deallocShared(cast[pointer](pcd))
@@ -895,9 +897,10 @@ when defined(windows) or defined(nimdoc):
                                     cast[WAITORTIMERCALLBACK](waitableCallback),
                                        cast[pointer](pcd), INFINITE, flags):
               # pcd.ovl will be unrefed in poll()
+              let err = osLastError()
               discard wsaCloseEvent(hEvent)
               deallocShared(cast[pointer](pcd))
-              raiseOSError(osLastError())
+              raiseOSError(err)
             else:
               # we incref `pcd.ovl` and `protect` callback one more time,
               # because it will be unrefed and disposed in `poll()` after
@@ -912,19 +915,21 @@ when defined(windows) or defined(nimdoc):
     # This is main part of `hacky way` is using WSAEventSelect, so `hEvent`
     # will be signaled when appropriate `mask` events will be triggered.
     if wsaEventSelect(fd.SocketHandle, hEvent, mask) != 0:
+      let err = osLastError()
       GC_unref(ol)
       deallocShared(cast[pointer](pcd))
       discard wsaCloseEvent(hEvent)
-      raiseOSError(osLastError())
+      raiseOSError(err)
 
     pcd.ovl = ol
     if not registerWaitForSingleObject(addr(pcd.waitFd), hEvent,
                                     cast[WAITORTIMERCALLBACK](waitableCallback),
                                        cast[pointer](pcd), INFINITE, flags):
+      let err = osLastError()
       GC_unref(ol)
       deallocShared(cast[pointer](pcd))
       discard wsaCloseEvent(hEvent)
-      raiseOSError(osLastError())
+      raiseOSError(err)
     p.handles.incl(fd)
 
   proc addRead*(fd: AsyncFD, cb: Callback) =
@@ -1042,7 +1047,7 @@ else:
     p.selector[fd.SocketHandle].data.PData.writeCBs.add(cb)
     update(fd, p.selector[fd.SocketHandle].events + {EvWrite})
 
-  template processCallbacks(callbacks: expr) =
+  template processCallbacks(callbacks: untyped) =
     # Callback may add items to ``callbacks`` which causes issues if
     # we are iterating over it at the same time. We therefore
     # make a copy to iterate over.
@@ -1142,7 +1147,7 @@ else:
           success = false
       it = it.ai_next
 
-    dealloc(aiList)
+    freeAddrInfo(aiList)
     if not success:
       retFuture.fail(newException(OSError, osErrorMsg(lastError)))
     return retFuture

@@ -1,9 +1,5 @@
 discard """
-  cmd: "nim c -r -f $file"
   output: '''
-OK
-OK
-OK
 OK
 '''
 """
@@ -32,10 +28,38 @@ when defined(upcoming):
     var fut = waitEvent(event)
     asyncCheck(delayedSet(event, 500))
     waitFor(fut or sleepAsync(1000))
-    if fut.finished:
-      echo "OK"
-    else:
+    if not fut.finished:
       echo "eventTest: Timeout expired before event received!"
+
+  proc eventTest5304() =
+    # Event should not be signaled if it was uregistered,
+    # even in case, when poll() was not called yet.
+    # Issue #5304.
+    var unregistered = false
+    let e = newAsyncEvent()
+    addEvent(e) do (fd: AsyncFD) -> bool:
+      assert(not unregistered)
+    e.setEvent()
+    e.unregister()
+    unregistered = true
+    poll()
+
+  proc eventTest5298() =
+    # Event must raise `AssertionError` if event was unregistered twice.
+    # Issue #5298.
+    let e = newAsyncEvent()
+    var eventReceived = false
+    addEvent(e) do (fd: AsyncFD) -> bool:
+      eventReceived = true
+      return true
+    e.setEvent()
+    while not eventReceived:
+      poll()
+    try:
+      e.unregister()
+    except AssertionError:
+      discard
+    e.close()
 
   when ioselSupportedPlatform or defined(windows):
 
@@ -57,7 +81,6 @@ when defined(upcoming):
 
     proc timerTest() =
       waitFor(waitTimer(200))
-      echo "OK"
 
     proc processTest() =
       when defined(windows):
@@ -71,7 +94,7 @@ when defined(upcoming):
       var fut = waitProcess(process)
       waitFor(fut or waitTimer(2000))
       if fut.finished and process.peekExitCode() == 0:
-        echo "OK"
+        discard
       else:
         echo "processTest: Timeout expired before process exited!"
 
@@ -93,23 +116,28 @@ when defined(upcoming):
       var fut = waitSignal(posix.SIGINT)
       asyncCheck(delayedSignal(posix.SIGINT, 500))
       waitFor(fut or waitTimer(1000))
-      if fut.finished:
-        echo "OK"
-      else:
+      if not fut.finished:
         echo "signalTest: Timeout expired before signal received!"
 
   when ioselSupportedPlatform:
     timerTest()
     eventTest()
+    eventTest5304()
+    eventTest5298()
     processTest()
     signalTest()
+    echo "OK"
   elif defined(windows):
     timerTest()
     eventTest()
+    eventTest5304()
+    eventTest5298()
     processTest()
     echo "OK"
   else:
     eventTest()
-    echo "OK\nOK\nOK"
+    eventTest5304()
+    eventTest5298()
+    echo "OK"
 else:
-  echo "OK\nOK\nOK\nOK"
+  echo "OK"

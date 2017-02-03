@@ -40,8 +40,7 @@ when not declared(getEnv) or defined(nimscript):
       TOSErrorCode: OSErrorCode
   ].}
   const
-    doslike = defined(windows) or defined(OS2) or defined(DOS)
-      # DOS-like filesystem
+    doslikeFileSystem* = defined(windows) or defined(OS2) or defined(DOS)
 
   when defined(Nimdoc): # only for proper documentation:
     const
@@ -120,7 +119,7 @@ when not declared(getEnv) or defined(nimscript):
     #  waterproof. In case of equal names the first volume found will do.
     #  Two colons "::" are the relative path to the parent. Three is to the
     #  grandparent etc.
-  elif doslike:
+  elif doslikeFileSystem:
     const
       CurDir* = '.'
       ParDir* = ".."
@@ -331,14 +330,16 @@ when not declared(getEnv) or defined(nimscript):
     if ext == "" or ext[0] == ExtSep: result = ext # no copy needed here
     else: result = ExtSep & ext
 
-  proc searchExtPos(s: string): int =
+  proc searchExtPos*(path: string): int =
+    ## Returns index of the '.' char in `path` if it signifies the beginning
+    ## of extension. Returns -1 otherwise.
     # BUGFIX: do not search until 0! .DS_Store is no file extension!
     result = -1
-    for i in countdown(len(s)-1, 1):
-      if s[i] == ExtSep:
+    for i in countdown(len(path)-1, 1):
+      if path[i] == ExtSep:
         result = i
         break
-      elif s[i] in {DirSep, AltSep}:
+      elif path[i] in {DirSep, AltSep}:
         break # do not skip over path
 
   proc splitFile*(path: string): tuple[dir, name, ext: string] {.
@@ -432,7 +433,7 @@ when not declared(getEnv) or defined(nimscript):
     ## Checks whether a given `path` is absolute.
     ##
     ## On Windows, network paths are considered absolute too.
-    when doslike:
+    when doslikeFileSystem:
       var len = len(path)
       result = (len > 0 and path[0] in {'/', '\\'}) or
                (len > 1 and path[0] in {'a'..'z', 'A'..'Z'} and path[1] == ':')
@@ -461,7 +462,7 @@ when not declared(getEnv) or defined(nimscript):
       var start: int
       if path[0] == '/':
         # an absolute path
-        when doslike:
+        when doslikeFileSystem:
           if drive != "":
             result = drive & ":" & DirSep
           else:

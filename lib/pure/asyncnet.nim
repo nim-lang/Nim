@@ -603,9 +603,9 @@ proc bindAddr*(socket: AsyncSocket, port = Port(0), address = "") {.
 
   var aiList = getAddrInfo(realaddr, port, socket.domain)
   if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.Socklen) < 0'i32:
-    dealloc(aiList)
+    freeAddrInfo(aiList)
     raiseOSError(osLastError())
-  dealloc(aiList)
+  freeAddrInfo(aiList)
 
 proc close*(socket: AsyncSocket) =
   ## Closes the socket.

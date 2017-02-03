@@ -17,6 +17,31 @@ proc protect*(x: pointer): ForeignCell =
   result.data = x
   result.owner = addr(gch)
 
+when defined(nimTypeNames):
+  proc dumpNumberOfInstances* =
+    var it = nimTypeRoot
+    while it != nil:
+      if it.instances > 0:
+        c_fprintf(stdout, "[Heap] %s: #%ld; bytes: %ld\n", it.name, it.instances, it.sizes)
+      it = it.nextType
+
+template decTypeSize(cell, t) =
+  # XXX this needs to use atomics for multithreaded apps!
+  when defined(nimTypeNames):
+    if t.kind in {tyString, tySequence}:
+      let len = cast[PGenericSeq](cellToUsr(cell)).len
+      let base = if t.kind == tyString: 1 else: t.base.size
+      let size = addInt(mulInt(len, base), GenericSeqSize)
+      dec t.sizes, size+sizeof(Cell)
+    else:
+      dec t.sizes, t.size+sizeof(Cell)
+    dec t.instances
+
+template incTypeSize(typ, size) =
+  when defined(nimTypeNames):
+    inc typ.instances
+    inc typ.sizes, size+sizeof(Cell)
+
 proc dispose*(x: ForeignCell) =
   when hasThreadSupport:
     # if we own it we can free it directly:

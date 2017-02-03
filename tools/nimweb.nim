@@ -322,11 +322,12 @@ proc buildPdfDoc(c: var TConfigData, destPath: string) =
   if os.execShellCmd("pdflatex -version") != 0:
     echo "pdflatex not found; no PDF documentation generated"
   else:
+    const pdflatexcmd = "pdflatex -interaction=nonstopmode "
     for d in items(c.pdf):
       exec(findNim() & " rst2tex $# $#" % [c.nimArgs, d])
       # call LaTeX twice to get cross references right:
-      exec("pdflatex " & changeFileExt(d, "tex"))
-      exec("pdflatex " & changeFileExt(d, "tex"))
+      exec(pdflatexcmd & changeFileExt(d, "tex"))
+      exec(pdflatexcmd & changeFileExt(d, "tex"))
       # delete all the crappy temporary files:
       let pdf = splitFile(d).name & ".pdf"
       let dest = destPath / pdf

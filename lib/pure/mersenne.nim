@@ -36,8 +36,8 @@ proc getNum*(m: var MersenneTwister): uint32 =
   m.index = (m.index + 1) mod m.mt.len
 
   result = result xor (result shr 11'u32)
-  result = result xor ((7'u32 shl result) and 0x9d2c5680'u32)
-  result = result xor ((15'u32 shl result) and 0xefc60000'u32)
+  result = result xor ((result shl 7'u32) and 0x9d2c5680'u32)
+  result = result xor ((result shl 15'u32) and 0xefc60000'u32)
   result = result xor (result shr 18'u32)
 
 # Test

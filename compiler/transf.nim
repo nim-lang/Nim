@@ -133,13 +133,17 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
     # simply exchange the symbol:
     b = s.getBody
     if b.kind != nkSym: internalError(n.info, "wrong AST for borrowed symbol")
-    b = newSymNode(b.sym)
-    b.info = n.info
+    b = newSymNode(b.sym, n.info)
   else:
     b = n
   while tc != nil:
     result = idNodeTableGet(tc.mapping, b.sym)
-    if result != nil: return
+    if result != nil:
+      # this slightly convoluted way ensures the line info stays correct:
+      if result.kind == nkSym:
+        result = copyNode(result)
+        result.info = n.info
+      return
     tc = tc.next
   result = b
 
@@ -679,7 +683,7 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
           inc(j)
       add(result, a.PTransNode)
     if len(result) == 2: result = result[1]
-  elif magic == mNBindSym:
+  elif magic in {mNBindSym, mTypeOf}:
     # for bindSym(myconst) we MUST NOT perform constant folding:
     result = n.PTransNode
   elif magic == mProcCall:
@@ -820,7 +824,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
   of nkConstSection:
     # do not replace ``const c = 3`` with ``const 3 = 3``
     return transformConstSection(c, n)
-  of nkTypeSection:
+  of nkTypeSection, nkTypeOfExpr:
     # no need to transform type sections:
     return PTransNode(n)
   of nkVarSection, nkLetSection:
@@ -851,6 +855,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     result = transformSons(c, n)
   when false:
     if oldDeferAnchor != nil: c.deferAnchor = oldDeferAnchor
+
   var cnst = getConstExpr(c.module, PNode(result))
   # we inline constants if they are not complex constants:
   if cnst != nil and not dontInlineConstant(n, cnst):

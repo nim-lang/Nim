@@ -38,7 +38,7 @@ const
     wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow, wExtern,
     wImportCpp, wImportObjC, wError, wDiscardable, wGensym, wInject, wRaises,
     wTags, wLocks, wGcSafe, wExportNims}
-  exprPragmas* = {wLine, wLocks, wNoRewrite}
+  exprPragmas* = {wLine, wLocks, wNoRewrite, wGcSafe}
   stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangechecks,
     wBoundchecks, wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints,
     wLinedir, wStacktrace, wLinetrace, wOptimization, wHint, wWarning, wError,
@@ -402,17 +402,43 @@ proc relativeFile(c: PContext; n: PNode; ext=""): string =
       if result.len == 0: result = s
 
 proc processCompile(c: PContext, n: PNode) =
-  let found = relativeFile(c, n)
-  let trunc = found.changeFileExt("")
-  extccomp.addExternalFileToCompile(found)
-  extccomp.addFileToLink(completeCFilePath(trunc, false))
+
+  proc getStrLit(c: PContext, n: PNode; i: int): string =
+    n.sons[i] = c.semConstExpr(c, n.sons[i])
+    case n.sons[i].kind
+    of nkStrLit, nkRStrLit, nkTripleStrLit:
+      shallowCopy(result, n.sons[i].strVal)
+    else:
+      localError(n.info, errStringLiteralExpected)
+      result = ""
+
+  let it = if n.kind == nkExprColonExpr: n.sons[1] else: n
+  if it.kind == nkPar and it.len == 2:
+    let s = getStrLit(c, it, 0)
+    let dest = getStrLit(c, it, 1)
+    var found = parentDir(n.info.toFullPath) / s
+    for f in os.walkFiles(found):
+      let nameOnly = extractFilename(f)
+      var cf = Cfile(cname: f,
+          obj: completeCFilePath(dest % nameOnly),
+          flags: {CfileFlag.External})
+      extccomp.addExternalFileToCompile(cf)
+  else:
+    let s = expectStrLit(c, n)
+    var found = parentDir(n.info.toFullPath) / s
+    if not fileExists(found):
+      if isAbsolute(s): found = s
+      else:
+        found = findFile(s)
+        if found.len == 0: found = s
+    extccomp.addExternalFileToCompile(found)
 
 proc processCommonLink(c: PContext, n: PNode, feature: TLinkFeature) =
   let found = relativeFile(c, n, CC[cCompiler].objExt)
   case feature
-  of linkNormal: extccomp.addFileToLink(found)
+  of linkNormal: extccomp.addExternalFileToLink(found)
   of linkSys:
-    extccomp.addFileToLink(libpath / completeCFilePath(found, false))
+    extccomp.addExternalFileToLink(libpath / completeCFilePath(found, false))
   else: internalError(n.info, "processCommonLink")
 
 proc pragmaBreakpoint(c: PContext, n: PNode) =
@@ -639,9 +665,14 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
       of wExportc:
         makeExternExport(sym, getOptionalStr(c, it, "$1"), it.info)
         incl(sym.flags, sfUsed) # avoid wrong hints
-      of wImportc: makeExternImport(sym, getOptionalStr(c, it, "$1"), it.info)
+      of wImportc:
+        let name = getOptionalStr(c, it, "$1")
+        cppDefine(c.graph.config, name)
+        makeExternImport(sym, name, it.info)
       of wImportCompilerProc:
-        processImportCompilerProc(sym, getOptionalStr(c, it, "$1"), it.info)
+        let name = getOptionalStr(c, it, "$1")
+        cppDefine(c.graph.config, name)
+        processImportCompilerProc(sym, name, it.info)
       of wExtern: setExternName(sym, expectStrLit(c, it), it.info)
       of wImmediate:
         if sym.kind in {skTemplate, skMacro}:
@@ -732,6 +763,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         processDynLib(c, it, sym)
       of wCompilerproc:
         noVal(it)           # compilerproc may not get a string!
+        cppDefine(c.graph.config, sym.name.s)
         if sfFromGeneric notin sym.flags: markCompilerProc(sym)
       of wProcVar:
         noVal(it)
@@ -775,9 +807,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
           if sym.typ.callConv == ccClosure: sym.typ.callConv = ccDefault
       of wGcSafe:
         noVal(it)
-        if sym.kind != skType: incl(sym.flags, sfThread)
-        if sym.typ != nil: incl(sym.typ.flags, tfGcSafe)
-        else: invalidPragma(it)
+        if sym != nil:
+          if sym.kind != skType: incl(sym.flags, sfThread)
+          if sym.typ != nil: incl(sym.typ.flags, tfGcSafe)
+          else: invalidPragma(it)
+        else:
+          discard "no checking if used as a code block"
       of wPacked:
         noVal(it)
         if sym.typ == nil: invalidPragma(it)

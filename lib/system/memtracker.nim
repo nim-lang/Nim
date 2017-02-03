@@ -28,29 +28,58 @@ type
   TrackLog* = object
     count*: int
     disabled: bool
-    data*: array[4000, LogEntry]
-  TrackLogger* = proc (log: TrackLog) {.nimcall, tags: [], locks: 0.}
+    data*: array[400, LogEntry]
+  TrackLogger* = proc (log: TrackLog) {.nimcall, tags: [], locks: 0, gcsafe.}
 
 var
   gLog*: TrackLog
   gLogger*: TrackLogger = proc (log: TrackLog) = discard
+  ilocs: array[4000, (int, int)]
+  ilocn: int
+
+proc trackLocation*(p: pointer; size: int) =
+  let x = (cast[int](p), size)
+  for i in 0..ilocn-1:
+    # already known?
+    if ilocs[i] == x: return
+  ilocs[ilocn] = x
+  inc ilocn
 
 proc setTrackLogger*(logger: TrackLogger) =
   gLogger = logger
 
 proc addEntry(entry: LogEntry) =
   if not gLog.disabled:
-    if gLog.count > high(gLog.data):
-      gLogger(gLog)
-      gLog.count = 0
-    gLog.data[gLog.count] = entry
-    inc gLog.count
+    var interesting = false
+    for i in 0..ilocn-1:
+      let p = ilocs[i]
+      #  X..Y and C..D overlap iff (X <= D and C <= Y)
+      let x = p[0]
+      let y = p[0]+p[1]-1
+      let c = cast[int](entry.address)
+      let d = c + entry.size-1
+      if x <= d and c <= y:
+        interesting = true
+        break
+    if interesting:
+      gLog.disabled = true
+      cprintf("interesting %s:%ld %s\n", entry.file, entry.line, entry.op)
+      let x = cast[proc() {.nimcall, tags: [], gcsafe, locks: 0.}](writeStackTrace)
+      x()
+      quit 1
+      if gLog.count > high(gLog.data):
+        gLogger(gLog)
+        gLog.count = 0
+      gLog.data[gLog.count] = entry
+      inc gLog.count
+      gLog.disabled = false
 
 proc memTrackerWrite(address: pointer; size: int; file: cstring; line: int) {.compilerProc.} =
   addEntry LogEntry(op: "write", address: address,
       size: size, file: file, line: line)
 
-proc memTrackerOp*(op: cstring; address: pointer; size: int) =
+proc memTrackerOp*(op: cstring; address: pointer; size: int) {.tags: [],
+         locks: 0, gcsafe.} =
   addEntry LogEntry(op: op, address: address, size: size,
       file: "", line: 0)
 

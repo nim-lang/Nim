@@ -102,6 +102,17 @@ type
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideMod,
     ideHighlight, ideOutline
 
+  ConfigRef* = ref object ## eventually all global configuration should be moved here
+    cppDefines*: HashSet[string]
+    headerFile*: string
+
+proc newConfigRef*(): ConfigRef =
+  result = ConfigRef(cppDefines: initSet[string](),
+    headerFile: "")
+
+proc cppDefine*(c: ConfigRef; define: string) =
+  c.cppDefines.incl define
+
 var
   gIdeCmd*: IdeCmd
 
@@ -122,7 +133,7 @@ var
   outFile*: string = ""
   docSeeSrcUrl*: string = ""  # if empty, no seeSrc will be generated. \
   # The string uses the formatting variables `path` and `line`.
-  headerFile*: string = ""
+  #headerFile*: string = ""
   gVerbosity* = 1             # how verbose the compiler is
   gNumberOfProcessors*: int   # number of processors
   gWholeProject*: bool        # for 'doc2': output any dependency
@@ -200,7 +211,7 @@ proc getOutFile*(filename, ext: string): string =
 proc getPrefixDir*(): string =
   ## Gets the prefix dir, usually the parent directory where the binary resides.
   ##
-  ## This is overrided by some tools (namely nimsuggest) via the ``gPrefixDir``
+  ## This is overridden by some tools (namely nimsuggest) via the ``gPrefixDir``
   ## global.
   if gPrefixDir != "": result = gPrefixDir
   else:

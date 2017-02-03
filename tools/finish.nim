@@ -1,7 +1,12 @@
 
 # -------------- post unzip steps ---------------------------------------------
 
-import strutils, os, osproc
+import strutils, os, osproc, browsers
+
+const arch = $(sizeof(int)*8)
+
+proc downloadMingw() =
+  openDefaultBrowser("http://nim-lang.org/download/mingw$1.zip" % arch)
 
 when defined(windows):
   import registry
@@ -48,7 +53,7 @@ when defined(windows):
     except IOError:
       echo "Could not access 'config/nim.cfg' [Error]"
 
-  proc addToPathEnv(e: string) =
+  proc addToPathEnv*(e: string) =
     let p = getUnicodeValue(r"Environment", "Path", HKEY_CURRENT_USER)
     let x = if e.contains(Whitespace): "\"" & e & "\"" else: e
     setUnicodeValue(r"Environment", "Path", p & ";" & x, HKEY_CURRENT_USER)
@@ -60,13 +65,13 @@ when defined(windows):
       cmd.add " \"" & icon & "\" 0"
     discard execShellCmd(cmd)
 
-  proc createStartMenuEntry() =
+  proc createStartMenuEntry*(override = false) =
     let appdata = getEnv("APPDATA")
     if appdata.len == 0: return
     let dest = appdata & r"\Microsoft\Windows\Start Menu\Programs\Nim-" &
                NimVersion
     if dirExists(dest): return
-    if askBool("Would like to add Nim-" & NimVersion &
+    if override or askBool("Would like to add Nim-" & NimVersion &
                " to your start menu? (y/n) "):
       createDir(dest)
       createShortcut(getCurrentDir() / "tools" / "start.bat", dest / "Nim",
@@ -83,11 +88,12 @@ when defined(windows):
     if fileExists(gccExe):
       try:
         let arch = execProcess(gccExe, ["-dumpmachine"], nil, {poStdErrToStdOut,
-                                                               poUsePath})
+                                                               poUsePath}).strip
         when hostCPU == "i386":
-          result = arch.contains("i686-")
+          result = (arch.contains("i686-") and not arch.contains("w64")) or
+                    arch == "mingw32"
         elif hostCPU == "amd64":
-          result = arch.contains("x86_64-")
+          result = arch.contains("x86_64-") or arch.contains("i686-w64-mingw32")
         else:
           {.error: "Unknown CPU for Windows.".}
       except OSError, IOError:
@@ -156,8 +162,28 @@ proc main() =
         if incompat.len > 0:
           echo "The following *incompatible* MingW installations exist"
           for x in incompat: echo x
+          echo "*incompatible* means Nim and GCC disagree on the size of a pointer."
         echo "No compatible MingW candidates found " &
              "in the standard locations [Error]"
+        if askBool("Do you want to download MingW from Nim's website? (y/n) "):
+          let dest = getCurrentDir() / "dist"
+          downloadMingw()
+          echo "After download, unzip it in: ", dest
+          echo "so that ", dest / "mingw" & arch, " exists."
+          if askBool("Download and unzip successful? (y/n) "):
+            incompat.setLen 0
+            let alternative = tryDirs(incompat, defaultMingwLocations())
+            if alternative.len == 0:
+              if incompat.len > 0:
+                echo "The following *incompatible* MingW installations exist"
+                for x in incompat: echo x
+                echo "*incompatible* means Nim and GCC disagree on the size of a pointer."
+              echo "Still no compatible MingW candidates found " &
+                   "in the standard locations [Error]"
+            else:
+              echo "Patching Nim's config to use:"
+              echo alternative
+              patchConfig(alternative)
       else:
         if askBool("Found a MingW directory that is not in your PATH.\n" &
                    alternative &

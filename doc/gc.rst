@@ -127,3 +127,20 @@ In addition to ``GC_ref`` and ``GC_unref`` you can avoid the GC by manually
 allocating memory with procs like ``alloc``, ``allocShared``, or
 ``allocCStringArray``. The GC won't try to free them, you need to call their
 respective *dealloc* pairs when you are done with them or they will leak.
+
+
+Heap dump
+=========
+
+The heap dump feature is still in its infancy, but it already proved
+useful for us, so it might be useful for you. To get a heap dump, compile
+with ``-d:nimTypeNames`` and call ``dumpNumberOfInstances`` at a strategic place in your program.
+This produces a list of used types in your program and for every type
+the total amount of object instances for this type as well as the total
+amount of bytes these instances take up. This list is currently unsorted!
+You need to use external shell script hacking to sort it.
+
+The numbers count the number of objects in all GC heaps, they refer to
+all running threads, not only to the current thread. (The current thread
+would be the thread that calls ``dumpNumberOfInstances``.) This might
+change in later versions.
