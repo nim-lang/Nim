@@ -459,7 +459,9 @@ proc main() =
   backend.close()
   if optPedantic:
     var failed = r.total - r.passed - r.skipped
-    if failed > 0: quit(QuitFailure)
+    if failed > 0:
+      echo "FAILURE! total: ", r.total, " passed: ", r.passed, " skipped: ", r.skipped
+      quit(QuitFailure)
 
 if paramCount() == 0:
   quit Usage
