@@ -11,7 +11,7 @@
 
 import
   ast, astalgo, ropes, passes, options, intsets, lists, platform, sighashes,
-  tables
+  tables, ndi
 
 from msgs import TLineInfo
 
@@ -146,6 +146,7 @@ type
     injectStmt*: Rope
     sigConflicts*: CountTable[SigHash]
     g*: BModuleList
+    ndi*: NdiFile
 
 proc s*(p: BProc, s: TCProcSection): var Rope {.inline.} =
   # section in the current block

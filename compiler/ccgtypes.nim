@@ -22,12 +22,10 @@ proc isKeyword(w: PIdent): bool =
      ord(wInline): return true
   else: return false
 
-proc mangleField(name: PIdent): string =
+proc mangleField(m: BModule; name: PIdent): string =
   result = mangle(name.s)
-  if isKeyword(name):
-    result[0] = result[0].toUpperAscii
-    # Mangling makes everything lowercase,
-    # but some identifiers are C keywords
+  if isKeyword(name) or m.g.config.cppDefines.contains(result):
+    result.add "_0"
 
 when false:
   proc hashOwner(s: PSym): SigHash =
@@ -67,54 +65,10 @@ proc idOrSig(m: BModule; s: PSym): Rope =
 proc mangleName(m: BModule; s: PSym): Rope =
   result = s.loc.r
   if result == nil:
-    let keepOrigName = s.kind in skLocalVars - {skForVar} and
-      {sfFromGeneric, sfGlobal, sfShadowed, sfGenSym} * s.flags == {} and
-      not isKeyword(s.name)
-    # Even with all these inefficient checks, the bootstrap
-    # time is actually improved. This is probably because so many
-    # rope concatenations are now eliminated.
-    #
-    # sfFromGeneric is needed in order to avoid multiple
-    # definitions of certain variables generated in transf with
-    # names such as:
-    # `r`, `res`
-    # I need to study where these come from.
-    #
-    # about sfShadowed:
-    # consider the following Nim code:
-    #   var x = 10
-    #   block:
-    #     var x = something(x)
-    # The generated C code will be:
-    #   NI x;
-    #   x = 10;
-    #   {
-    #     NI x;
-    #     x = something(x); // Oops, x is already shadowed here
-    #   }
-    # Right now, we work-around by not keeping the original name
-    # of the shadowed variable, but we can do better - we can
-    # create an alternative reference to it in the outer scope and
-    # use that in the inner scope.
-    #
-    # about isCKeyword:
-    # Nim variable names can be C keywords.
-    # We need to avoid such names in the generated code.
-    #
-    # about sfGlobal:
-    # This seems to be harder - a top level extern variable from
-    # another modules can have the same name as a local one.
-    # Maybe we should just implement sfShadowed for them too.
-    #
-    # about skForVar:
-    # These are not properly scoped now - we need to add blocks
-    # around for loops in transf
     result = s.name.s.mangle.rope
-    if keepOrigName:
-      result.add "0"
-    else:
-      add(result, m.idOrSig(s))
+    add(result, m.idOrSig(s))
     s.loc.r = result
+    writeMangledName(m.ndi, s)
 
 proc mangleParamName(m: BModule; s: PSym): Rope =
   ## we cannot use 'sigConflicts' here since we have a BModule, not a BProc.
@@ -122,10 +76,12 @@ proc mangleParamName(m: BModule; s: PSym): Rope =
   ## cause any trouble.
   result = s.loc.r
   if result == nil:
-    result = s.name.s.mangle.rope
-    if isKeyword(s.name) or m.g.config.cppDefines.contains(s.name.s):
-      result.add "0"
+    var res = s.name.s.mangle
+    if isKeyword(s.name) or m.g.config.cppDefines.contains(res):
+      res.add "_0"
+    result = res.rope
     s.loc.r = result
+    writeMangledName(m.ndi, s)
 
 proc mangleLocalName(p: BProc; s: PSym): Rope =
   assert s.kind in skLocalVars+{skTemp}
@@ -139,10 +95,11 @@ proc mangleLocalName(p: BProc; s: PSym): Rope =
     if s.kind == skTemp:
       # speed up conflict search for temps (these are quite common):
       if counter != 0: result.add "_" & rope(counter+1)
-    elif counter != 0 or isKeyword(s.name) or p.module.g.config.cppDefines.contains(s.name.s):
+    elif counter != 0 or isKeyword(s.name) or p.module.g.config.cppDefines.contains(key):
       result.add "_" & rope(counter+1)
     p.sigConflicts.inc(key)
     s.loc.r = result
+    if s.kind != skTemp: writeMangledName(p.module.ndi, s)
 
 proc scopeMangledParam(p: BProc; param: PSym) =
   ## parameter generation only takes BModule, not a BProc, so we have to
@@ -472,12 +429,12 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
   else: add(params, ")")
   params = "(" & params
 
-proc mangleRecFieldName(field: PSym, rectype: PType): Rope =
+proc mangleRecFieldName(m: BModule; field: PSym, rectype: PType): Rope =
   if (rectype.sym != nil) and
       ({sfImportc, sfExportc} * rectype.sym.flags != {}):
     result = field.loc.r
   else:
-    result = rope(mangleField(field.name))
+    result = rope(mangleField(m, field.name))
   if result == nil: internalError(field.info, "mangleRecFieldName")
 
 proc genRecordFieldsAux(m: BModule, n: PNode,
@@ -516,7 +473,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
     let field = n.sym
     if field.typ.kind == tyVoid: return
     #assert(field.ast == nil)
-    let sname = mangleRecFieldName(field, rectype)
+    let sname = mangleRecFieldName(m, field, rectype)
     let ae = if accessExpr != nil: "$1.$2" % [accessExpr, sname]
              else: sname
     fillLoc(field.loc, locField, field.typ, ae, OnUnknown)

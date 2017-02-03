@@ -164,9 +164,6 @@ proc makeSingleLineCString*(s: string): string =
   result.add('\"')
 
 proc mangle*(name: string): string =
-  ## Lowercases the given name and manges any non-alphanumeric characters
-  ## so they are represented as `HEX____`. If the name starts with a number,
-  ## `N` is prepended
   result = newStringOfCap(name.len)
   var start = 0
   if name[0] in Digits:
@@ -179,8 +176,15 @@ proc mangle*(name: string): string =
   for i in start..(name.len-1):
     let c = name[i]
     case c
-    of 'a'..'z', '0'..'9', 'A'..'Z', '_':
+    of 'a'..'z', '0'..'9', 'A'..'Z':
       add(result, c)
+    of '_':
+      # we generate names like 'foo_9' for scope disambiguations and so
+      # disallow this here:
+      if i < name.len-1 and name[i] in Digits:
+        discard
+      else:
+        add(result, c)
     of '$': special "dollar"
     of '%': special "percent"
     of '&': special "amp"

@@ -14,7 +14,7 @@ import
   nversion, nimsets, msgs, securehash, bitsets, idents, lists, types,
   ccgutils, os, ropes, math, passes, rodread, wordrecg, treetab, cgmeth,
   condsyms, rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases,
-  lowerings, semparallel, tables, sets
+  lowerings, semparallel, tables, sets, ndi
 
 import strutils except `%` # collides with ropes.`%`
 
@@ -1152,6 +1152,9 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: string): BModule =
     incl result.flags, preventStackTrace
     excl(result.preInitProc.options, optStackTrace)
     excl(result.postInitProc.options, optStackTrace)
+  let ndiName = if optCDebug in gGlobalOptions: changeFileExt(completeCFilePath(filename), "ndi")
+                else: ""
+  open(result.ndi, ndiName)
 
 proc nullify[T](arr: var T) =
   for i in low(arr)..high(arr):
@@ -1343,6 +1346,7 @@ proc writeModule(m: BModule, pending: bool) =
     var cf = Cfile(cname: cfile, obj: completeCFilePath(toObjFile(cfile)), flags: {})
     if not existsFile(cf.obj): cf.flags = {CfileFlag.Cached}
     addFileToCompile(cf)
+  close(m.ndi)
 
 proc updateCachedModule(m: BModule) =
   let cfile = getCFile(m)
