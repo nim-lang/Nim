@@ -195,15 +195,15 @@ else:
     importc: "pthread_setaffinity_np", header: pthreadh.}
 
   when defined(linux):
-    proc syscall(arg: int): int {.varargs, importc: "syscall", header: "<unistd.h>".}
-    var SYS_gettid {.importc, header: "<sys/syscall.h>".}: int
+    proc syscall(arg: clong): clong {.varargs, importc: "syscall", header: "<unistd.h>".}
+    var NR_gettid {.importc: "__NR_gettid", header: "<sys/syscall.h>".}: int
 
     #type Pid {.importc: "pid_t", header: "<sys/types.h>".} = distinct int
     #proc gettid(): Pid {.importc, header: "<sys/types.h>".}
 
     proc getThreadId*(): int =
       ## get the ID of the currently running thread.
-      result = int(syscall(SYS_gettid))
+      result = int(syscall(NR_gettid))
   elif defined(macosx) or defined(bsd):
     proc pthread_threadid_np(y: pointer; x: var uint64): cint {.importc, header: "pthread.h".}
 
