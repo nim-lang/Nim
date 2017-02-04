@@ -61,6 +61,17 @@ when defined(upcoming):
       discard
     e.close()
 
+  proc eventTest5331() =
+    # Event must not raise any exceptions while was unregistered inside of
+    # own callback.
+    # Issue #5331.
+    let e = newAsyncEvent()
+    addEvent(e) do (fd: AsyncFD) -> bool:
+      e.unregister()
+      e.close()
+    e.setEvent()
+    poll()
+
   when ioselSupportedPlatform or defined(windows):
 
     import osproc
@@ -124,6 +135,7 @@ when defined(upcoming):
     eventTest()
     eventTest5304()
     eventTest5298()
+    eventTest5331()
     processTest()
     signalTest()
     echo "OK"
@@ -132,12 +144,14 @@ when defined(upcoming):
     eventTest()
     eventTest5304()
     eventTest5298()
+    eventTest5331()
     processTest()
     echo "OK"
   else:
     eventTest()
     eventTest5304()
     eventTest5298()
+    eventTest5331()
     echo "OK"
 else:
   echo "OK"
