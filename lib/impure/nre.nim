@@ -23,6 +23,15 @@ export options
 ##
 ## A regular expression library for Nim using PCRE to do the hard work.
 ##
+## **Note**: If you love ``sequtils.toSeq`` we have bad news for you. This
+## library doesn't work with it due to documented compiler limitations. As
+## a workaround, use this:
+##
+## .. code-block:: nim
+##
+##    import nre except toSeq
+##
+##
 ## Licencing
 ## ---------
 ##
