@@ -1510,7 +1510,7 @@ proc genVarSection(c: PCtx; n: PNode) =
     #assert(a.sons[0].kind == nkSym) can happen for transformed vars
     if a.kind == nkVarTuple:
       for i in 0 .. a.len-3:
-        setSlot(c, a[i].sym)
+        if not a[i].sym.isGlobal: setSlot(c, a[i].sym)
         checkCanEval(c, a[i])
       c.gen(lowerTupleUnpacking(a, c.getOwner))
     elif a.sons[0].kind == nkSym:
