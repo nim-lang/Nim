@@ -1383,7 +1383,9 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
 proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
   var a, b: TLoc
   assert(d.k == locNone)
-  initLocExpr(p, e.sons[1], a)
+  var x = e.sons[1]
+  if x.kind in {nkAddr, nkHiddenAddr}: x = x[0]
+  initLocExpr(p, x, a)
   initLocExpr(p, e.sons[2], b)
   let t = skipTypes(e.sons[1].typ, {tyVar})
   let setLenPattern = if not p.module.compileToCpp:
