@@ -127,6 +127,7 @@ proc `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
   return headers.table[key.toLowerAscii].HttpHeaderValues
 
 converter toString*(values: HttpHeaderValues): string =
+  if seq[string](values).len == 0: return ""
   return seq[string](values)[0]
 
 proc `[]`*(headers: HttpHeaders, key: string, i: int): string =
