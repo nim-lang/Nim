@@ -110,10 +110,9 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
     let arg = a.getString 1
     if arg.len > 0:
       gProjectName = arg
-      let path = (block:
+      let path =
         if gProjectName.isAbsolute: gProjectName
-        else: (gProjectPath / gProjectName)
-      )
+        else: gProjectPath / gProjectName
       try:
         gProjectFull = canonicalizePath(path)
       except OSError:
