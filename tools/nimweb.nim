@@ -9,7 +9,7 @@
 
 import
   os, strutils, times, parseopt, parsecfg, streams, strtabs, tables,
-  re, htmlgen, macros, md5, osproc, parsecsv, algorithm
+  re, htmlgen, macros, md5, osproc, parsecsv, algorithm, terminal
 
 from xmltree import escape
 
@@ -263,8 +263,15 @@ proc findNim(): string =
 
 proc exec(cmd: string) =
   echo(cmd)
-  let (_, exitCode) = osproc.execCmdEx(cmd)
-  if exitCode != 0: quit("external program failed")
+  let (outp, exitCode) = osproc.execCmdEx(cmd)
+  if exitCode != 0: 
+    let
+      hlineWidth = if isatty(stdout): terminalWidth() else: 80
+      hline = '='.repeat(hlineWidth)
+    echo hline
+    echo outp
+    echo hline
+    quit("external program failed")
 
 proc sexec(cmds: openarray[string]) =
   ## Serial queue wrapper around exec.
