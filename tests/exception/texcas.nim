@@ -1,6 +1,6 @@
 discard """
   output: '''Hello
-  Hello
+Hello
   '''
 """
 proc test[T]() =
