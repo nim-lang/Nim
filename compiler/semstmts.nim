@@ -274,7 +274,7 @@ proc semTry(c: PContext, n: PNode): PNode =
     var a = n.sons[i]
     checkMinSonsLen(a, 1)
     var length = sonsLen(a)
-
+    openScope(c)
     if a.kind == nkExceptBranch:
       # so that ``except [a, b, c]`` is supported:
       if length == 2 and a.sons[0].kind == nkBracket:
@@ -319,6 +319,7 @@ proc semTry(c: PContext, n: PNode): PNode =
     a.sons[length-1] = semExprBranchScope(c, a.sons[length-1])
     if a.kind != nkFinally: typ = commonType(typ, a.sons[length-1].typ)
     else: dec last
+    closeScope(c)
 
   dec c.p.inTryStmt
   if isEmptyType(typ) or typ.kind == tyNil:

@@ -8,7 +8,6 @@ proc test[T]() =
     raise newException(T, "Hello")
   except T as foobar:
     echo(foobar.msg)
-  echo(declared(foobar))
   doAssert(not declared(foobar))
 
 template testTemplate() =
