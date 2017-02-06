@@ -263,8 +263,8 @@ proc findNim(): string =
 
 proc exec(cmd: string) =
   echo(cmd)
-  let (_, exitCode) = osproc.execCmdEx(cmd)
-  if exitCode != 0: quit("external program failed")
+  let (outp, exitCode) = osproc.execCmdEx(cmd)
+  if exitCode != 0: quit outp
 
 proc sexec(cmds: openarray[string]) =
   ## Serial queue wrapper around exec.
