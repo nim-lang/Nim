@@ -391,9 +391,15 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       var a = n.sons[i]
       checkMinSonsLen(a, 1)
       var L = sonsLen(a)
+      openScope(c)
       for j in countup(0, L-2):
-        a.sons[j] = semTemplBody(c, a.sons[j])
+        if a.sons[j].isInfixAs():
+          addLocalDecl(c, a.sons[j].sons[2], skLet)
+          a.sons[j].sons[1] = semTemplBody(c, a.sons[j][1])
+        else:
+          a.sons[j] = semTemplBody(c, a.sons[j])
       a.sons[L-1] = semTemplBodyScope(c, a.sons[L-1])
+      closeScope(c)
   of nkVarSection: semTemplSomeDecl(c, n, skVar)
   of nkLetSection: semTemplSomeDecl(c, n, skLet)
   of nkFormalParams:
