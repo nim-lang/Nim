@@ -10,15 +10,16 @@ proc test[T]() =
     echo(foobar.msg)
   doAssert(not declared(foobar))
 
-template testTemplate() =
+template testTemplate(excType: typedesc) =
   try:
-    raise newException(Exception, "Hello")
-  except Exception as foobar:
+    raise newException(excType, "Hello")
+  except excType as foobar:
     echo(foobar.msg)
   doAssert(not declared(foobar))
 
 proc test2() =
-  testTemplate()
+  testTemplate(Exception)
   doAssert(not declared(foobar))
 
 test[Exception]()
+test2()
