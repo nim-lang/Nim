@@ -101,6 +101,11 @@ type
 {.deprecated: [TSocketHandle: SocketHandle].}
 
 type
+  Timespec* {.importc: "struct timespec",
+               header: "<time.h>", final, pure.} = object ## struct timespec
+    tv_sec*: Time  ## Seconds.
+    tv_nsec*: int  ## Nanoseconds.
+
   Dirent* {.importc: "struct dirent",
              header: "<dirent.h>", final, pure.} = object ## dirent_t struct
     d_ino*: Ino  ## File serial number.
@@ -270,9 +275,9 @@ type
                            ## For a typed memory object, the length in bytes.
                            ## For other file types, the use of this field is
                            ## unspecified.
-    st_atime*: Time        ## Time of last access.
-    st_mtime*: Time        ## Time of last data modification.
-    st_ctime*: Time        ## Time of last status change.
+    st_atim*: Timespec     ## Time of last access.
+    st_mtim*: Timespec     ## Time of last data modification.
+    st_ctim*: Timespec     ## Time of last status change.
     st_blksize*: Blksize   ## A file system-specific preferred I/O block size
                            ## for this object. In some file system types, this
                            ## may vary from file to file.
@@ -311,10 +316,6 @@ type
     tm_wday*: cint  ## Day of week [0,6] (Sunday =0).
     tm_yday*: cint  ## Day of year [0,365].
     tm_isdst*: cint ## Daylight Savings flag.
-  Timespec* {.importc: "struct timespec",
-               header: "<time.h>", final, pure.} = object ## struct timespec
-    tv_sec*: Time  ## Seconds.
-    tv_nsec*: int  ## Nanoseconds.
   Itimerspec* {.importc: "struct itimerspec", header: "<time.h>",
                  final, pure.} = object ## struct itimerspec
     it_interval*: Timespec  ## Timer period.
@@ -1608,6 +1609,16 @@ var
     ## Terminates a record (if supported by the protocol).
   MSG_OOB* {.importc, header: "<sys/socket.h>".}: cint
     ## Out-of-band data.
+
+proc st_atime*(s: Stat): Time {.inline.} =
+  ## Second-granularity time of last access
+  result = s.st_atim.tv_sec
+proc st_mtime*(s: Stat): Time {.inline.} =
+  ## Second-granularity time of last data modification.
+  result = s.st_mtim.tv_sec
+proc st_ctime*(s: Stat): Time {.inline.} =
+  ## Second-granularity time of last status change.
+  result = s.st_ctim.tv_sec
 
 proc WIFCONTINUED*(s:cint) : bool {.importc, header: "<sys/wait.h>".}
   ## True if child has been continued.
