@@ -21,7 +21,7 @@
 import
   intsets, strutils, lists, options, ast, astalgo, trees, treetab, msgs, os,
   idents, renderer, types, passes, semfold, magicsys, cgmeth, rodread,
-  lambdalifting, sempass2, lowerings
+  lambdalifting, sempass2, lowerings, lookups
 
 # implementation
 
@@ -701,6 +701,36 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
     else:
       result = s.PTransNode
 
+proc transformExceptBranch(c: PTransf, n: PNode): PTransNode =
+  result = transformSons(c, n)
+  if n[0].isInfixAs():
+    let excTypeNode = n[0][1]
+    let actions = newTransNode(nkStmtList, n[1].info, 2)
+    # Generating `let exc = (excType)(getCurrentException())`
+    # -> getCurrentException()
+    let excCall = PTransNode(callCodegenProc("getCurrentException", ast.emptyNode))
+    # -> (excType)
+    let convNode = newTransNode(nkHiddenSubConv, n[1].info, 2)
+    convNode[0] = PTransNode(ast.emptyNode)
+    convNode[1] = excCall
+    PNode(convNode).typ = excTypeNode.typ.toRef()
+    # -> let exc = ...
+    let identDefs = newTransNode(nkIdentDefs, n[1].info, 3)
+    identDefs[0] = PTransNode(n[0][2])
+    identDefs[1] = PTransNode(ast.emptyNode)
+    identDefs[2] = convNode
+
+    let letSection = newTransNode(nkLetSection, n[1].info, 1)
+    letSection[0] = identDefs
+    # Place the let statement and body of the 'except' branch into new stmtList.
+    actions[0] = letSection
+    actions[1] = transformSons(c, n[1])
+    # Overwrite 'except' branch body with our stmtList.
+    result[1] = actions
+
+    # Replace the `Exception as foobar` with just `Exception`.
+    result[0] = result[0][1]
+
 proc dontInlineConstant(orig, cnst: PNode): bool {.inline.} =
   # symbols that expand to a complex constant (array, etc.) should not be
   # inlined, unless it's the empty array:
@@ -851,6 +881,8 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     if a.kind == nkSym:
       n.sons[1] = transformSymAux(c, a)
     return PTransNode(n)
+  of nkExceptBranch:
+    result = transformExceptBranch(c, n)
   else:
     result = transformSons(c, n)
   when false:

@@ -25,6 +25,23 @@ Compiler Additions
 Language Additions
 ------------------
 
+- The ``try`` statement's ``except`` branches now support the binding of a
+caught exception to a variable:
+
+.. code-block:: nim
+  try:
+    raise newException(Exception, "Hello World")
+  except Exception as exc:
+    echo(exc.msg)
+
+This replaces the ``getCurrentException`` and ``getCurrentExceptionMsg()``
+procedures, although these procedures will remain in the stdlib for the
+foreseeable future. This new language feature is actually implemented using
+these procedures.
+
+In the near future we will be converting all exception types to refs to
+remove the need for the ``newException`` template.
+
 Bugfixes
 --------
 
@@ -89,3 +106,4 @@ via a commit, for a full list see
   (`#5090 <https://github.com/nim-lang/Nim/issues/5090>`_)
 - Fixed "await inside array/dict literal produces invalid code"
   (`#5314 <https://github.com/nim-lang/Nim/issues/5314>`_)
+
