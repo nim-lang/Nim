@@ -12,7 +12,7 @@
 
 
 import
-  ui, asyncdispatch, httpclient, os, finish, registry, strutils
+  ui, asyncdispatch, httpclient, os, finish, registry, strutils, osproc
 
 type
   Actions = object
@@ -25,6 +25,10 @@ type
 const arch = $(sizeof(int)*8)
 
 proc download(pkg: string; c: Controls) {.async.} =
+  let z = r"..\dist" / pkg & ".7z"
+  if fileExists(z):
+    c.lab.text = z & " already exists"
+    return
   c.bar.value = 0
   var client = newAsyncHttpClient()
   proc onProgressChanged(total, progress, speed: BiggestInt) {.async.} =
@@ -34,17 +38,13 @@ proc download(pkg: string; c: Controls) {.async.} =
   client.onProgressChanged = onProgressChanged
   # XXX give a destination filename instead
   let contents = await client.getContent("https://nim-lang.org/download/" & pkg & ".7z")
-  let z = r"..\dist" / pkg & ".7z"
   # XXX make this async somehow:
   writeFile(z, contents)
   c.bar.value = 100
-  let olddir = getCurrentDir()
-  try:
-    setCurrentDir(olddir  / "dist")
-    if os.execShellCmd("7zG.exe x " & pkg & ".7z") != 0:
-      c.lab.text = "Unpacking failed: " & z
-  finally:
-    setCurrentdir(olddir)
+  let p = osproc.startProcess("7zG.exe", getCurrentDir() / r"..\dist",
+                              ["x", pkg & ".7z"])
+  if p.waitForExit != 0:
+    c.lab.text = "Unpacking failed: " & z
 
 proc apply(a: Actions; c: Controls) {.async.} =
   if a.mingw:
