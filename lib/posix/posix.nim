@@ -275,9 +275,14 @@ type
                            ## For a typed memory object, the length in bytes.
                            ## For other file types, the use of this field is
                            ## unspecified.
-    st_atim*: Timespec     ## Time of last access.
-    st_mtim*: Timespec     ## Time of last data modification.
-    st_ctim*: Timespec     ## Time of last status change.
+    when defined(macosx):
+      st_atime*: Time      ## Time of last access.
+      st_mtime*: Time      ## Time of last data modification.
+      st_ctime*: Time      ## Time of last status change.
+    else:
+      st_atim*: Timespec   ## Time of last access.
+      st_mtim*: Timespec   ## Time of last data modification.
+      st_ctim*: Timespec   ## Time of last status change.
     st_blksize*: Blksize   ## A file system-specific preferred I/O block size
                            ## for this object. In some file system types, this
                            ## may vary from file to file.
@@ -1610,15 +1615,16 @@ var
   MSG_OOB* {.importc, header: "<sys/socket.h>".}: cint
     ## Out-of-band data.
 
-proc st_atime*(s: Stat): Time {.inline.} =
-  ## Second-granularity time of last access
-  result = s.st_atim.tv_sec
-proc st_mtime*(s: Stat): Time {.inline.} =
-  ## Second-granularity time of last data modification.
-  result = s.st_mtim.tv_sec
-proc st_ctime*(s: Stat): Time {.inline.} =
-  ## Second-granularity time of last status change.
-  result = s.st_ctim.tv_sec
+when not defined(macosx):
+  proc st_atime*(s: Stat): Time {.inline.} =
+    ## Second-granularity time of last access
+    result = s.st_atim.tv_sec
+  proc st_mtime*(s: Stat): Time {.inline.} =
+    ## Second-granularity time of last data modification.
+    result = s.st_mtim.tv_sec
+  proc st_ctime*(s: Stat): Time {.inline.} =
+    ## Second-granularity time of last status change.
+    result = s.st_ctim.tv_sec
 
 proc WIFCONTINUED*(s:cint) : bool {.importc, header: "<sys/wait.h>".}
   ## True if child has been continued.
