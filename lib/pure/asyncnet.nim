@@ -253,6 +253,11 @@ proc connect*(socket: AsyncSocket, address: string, port: Port) {.async.} =
   await connect(socket.fd.AsyncFD, address, port, socket.domain)
   if socket.isSsl:
     when defineSsl:
+      if not isIpAddress(address):
+        # Set the SNI address for this connection. This call can fail if
+        # we're not using TLSv1+.
+        discard SSL_set_tlsext_host_name(socket.sslHandle, address)
+
       let flags = {SocketFlag.SafeDisconn}
       sslSetConnectState(socket.sslHandle)
       sslLoop(socket, flags, sslDoHandshake(socket.sslHandle))
