@@ -127,8 +127,7 @@ proc `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
   return headers.table[key.toLowerAscii].HttpHeaderValues
 
 converter toString*(values: HttpHeaderValues): string =
-  if seq[string](values).len == 0: return ""
-  return seq[string](values)[0]
+  return seq[string](values).join(";")
 
 proc `[]`*(headers: HttpHeaders, key: string, i: int): string =
   ## Returns the ``i``'th value associated with the given key. If there are
@@ -207,8 +206,8 @@ proc parseHeader*(line: string): tuple[key: string, value: seq[string]] =
   inc(i) # skip :
   if i < len(line):
     i += parseList(line, result.value, i)
-  else:
-    result.value = @[]
+  if result.value.len == 0:
+    result.value = @[""]
 
 proc `==`*(protocol: tuple[orig: string, major, minor: int],
            ver: HttpVersion): bool =
