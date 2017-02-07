@@ -12,7 +12,7 @@ import
 
 type
   TMsgKind* = enum
-    errUnknown, errIllFormedAstX, errInternal, errCannotOpenFile, errGenerated,
+    errUnknown, errInternal, errIllFormedAstX, errCannotOpenFile, errGenerated,
     errXCompilerDoesNotSupportCpp, errStringLiteralExpected,
     errIntLiteralExpected, errInvalidCharacterConstant,
     errClosingTripleQuoteExpected, errClosingQuoteExpected,
@@ -135,8 +135,8 @@ type
 const
   MsgKindToStr*: array[TMsgKind, string] = [
     errUnknown: "unknown error",
-    errIllFormedAstX: "illformed AST: $1",
     errInternal: "internal error: $1",
+    errIllFormedAstX: "illformed AST: $1",
     errCannotOpenFile: "cannot open \'$1\'",
     errGenerated: "$1",
     errXCompilerDoesNotSupportCpp: "\'$1\' compiler does not support C++",
