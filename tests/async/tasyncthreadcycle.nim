@@ -1,5 +1,7 @@
 discard """
   cmd: "nim c --threads:on $file"
+  output: ""
+  exitcode: 0
 """
 
 import asyncdispatch
