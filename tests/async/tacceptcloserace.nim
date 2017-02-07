@@ -1,9 +1,16 @@
+discard """
+  exitcode: 0
+  output: ""
+"""
+
 import asyncdispatch, net, os, nativesockets
 
 # bug: https://github.com/nim-lang/Nim/issues/5279
 
 proc setupServerSocket(hostname: string, port: Port): AsyncFD =
   let fd = newNativeSocket()
+  if fd == osInvalidSocket:
+    raiseOSError(osLastError())
   setSockOptInt(fd, SOL_SOCKET, SO_REUSEADDR, 1)
   var aiList = getAddrInfo(hostname, port)
   if bindAddr(fd, aiList.ai_addr, aiList.ai_addrlen.Socklen) < 0'i32:
