@@ -772,7 +772,7 @@ when defined(windows) or defined(nimdoc):
           sizeof(listenSock).SockLen)
       if setoptRet != 0:
         let errcode = osLastError()
-        checkCloseError clientSock.closeSocket()
+        discard clientSock.closeSocket()
         failAccept(errcode)
       else:
         var localSockaddr, remoteSockaddr: ptr SockAddr

@@ -620,28 +620,3 @@ proc selectWrite*(writefds: var seq[SocketHandle],
 when defined(Windows):
   var wsa: WSAData
   if wsaStartup(0x0101'i16, addr wsa) != 0: raiseOSError(osLastError())
-
-proc checkCloseError*(ret: cint) =
-  ## Asserts that the return value of close() or closeSocket() syscall
-  ## does not indicate a programming error (such as invalid descriptor).
-  ## This must only be used when an error has already occurred and
-  ## you are performing a cleanup.
-  ## Otherwise, error handling must be performed as usual.
-  ##
-  ## This procedure must be called right after performing the syscall. Example:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##  let ret = someSysCall()
-  ##  if ret != 0:
-  ##    let errcode = osLastError()
-  ##    checkCloseError sock.closeSocket()
-  ##    raise newException(OSError, osErrorMsg(errcode))
-
-  if ret != 0:
-    let errcode = osLastError()
-    when useWinVersion:
-      doAssert(errcode.int32 notin {WSANOTINITIALISED, WSAENOTSOCK,
-                                    WSAEINPROGRESS, WSAEINTR, WSAEWOULDBLOCK})
-    else:
-      doAssert(errcode.int32 notin {EBADF})
