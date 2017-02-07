@@ -223,8 +223,8 @@ proc bundleWinTools() =
   copyExe("tools/finish".exe, "finish".exe)
   removeFile("tools/finish".exe)
   nimexec("c -o:bin/vccexe.exe tools/vccenv/vccexe")
-  nimexec("c --cc:vcc --app:gui -o:downloader.exe --noNimblePath " &
-          "--path:..\ui tools\downloader.nim")
+  nimexec(r"c --cc:vcc --app:gui -o:downloader.exe --noNimblePath " &
+          r"--path:..\ui tools\downloader.nim")
 
 proc zip(args: string) =
   bundleNimbleSrc()
