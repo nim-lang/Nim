@@ -223,6 +223,8 @@ proc bundleWinTools() =
   copyExe("tools/finish".exe, "finish".exe)
   removeFile("tools/finish".exe)
   nimexec("c -o:bin/vccexe.exe tools/vccenv/vccexe")
+  nimexec("c --cc:vcc --app:gui -o:downloader.exe --noNimblePath " &
+          "--path:..\ui tools\downloader.nim")
 
 proc zip(args: string) =
   bundleNimbleSrc()
@@ -418,8 +420,11 @@ proc winReleaseArch(arch: string) =
     exec "koch_temp nsis -d:release"
     exec "koch_temp zip -d:release"
 
-    moveFile r"build\nim_$#.exe" % VersionAsString,
-             r"web\upload\download\nim-$#_x$#.exe" % [VersionAsString, arch]
+    when false:
+      # we now disable the NSIS installer as it cannot download from https
+      # and is broken in so many different ways it's not funny anymore:
+      moveFile r"build\nim_$#.exe" % VersionAsString,
+               r"web\upload\download\nim-$#_x$#.exe" % [VersionAsString, arch]
     moveFile r"build\nim-$#.zip" % VersionAsString,
              r"web\upload\download\nim-$#_x$#.zip" % [VersionAsString, arch]
 
