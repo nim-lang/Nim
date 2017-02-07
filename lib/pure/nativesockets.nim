@@ -22,11 +22,12 @@ const useWinVersion = defined(Windows) or defined(nimdoc)
 when useWinVersion:
   import winlean
   export WSAEWOULDBLOCK, WSAECONNRESET, WSAECONNABORTED, WSAENETRESET,
+         WSANOTINITIALISED, WSAENOTSOCK, WSAEINPROGRESS, WSAEINTR,
          WSAEDISCON, ERROR_NETNAME_DELETED
 else:
   import posix
   export fcntl, F_GETFL, O_NONBLOCK, F_SETFL, EAGAIN, EWOULDBLOCK, MSG_NOSIGNAL,
-    EINTR, EINPROGRESS, ECONNRESET, EPIPE, ENETRESET
+    EINTR, EINPROGRESS, ECONNRESET, EPIPE, ENETRESET, EBADF
   export Sockaddr_storage, Sockaddr_un, Sockaddr_un_path_length
 
 export SocketHandle, Sockaddr_in, Addrinfo, INADDR_ANY, SockAddr, SockLen,

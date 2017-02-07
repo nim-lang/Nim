@@ -70,6 +70,8 @@ Web options:
                            build the official docs, use UA-48159761-1
 """
 
+const gaCode = " --googleAnalytics:UA-48159761-1"
+
 proc exe(f: string): string =
   result = addFileExt(f, ExeExt)
   when defined(windows):
@@ -221,6 +223,8 @@ proc bundleWinTools() =
   copyExe("tools/finish".exe, "finish".exe)
   removeFile("tools/finish".exe)
   nimexec("c -o:bin/vccexe.exe tools/vccenv/vccexe")
+  nimexec(r"c --cc:vcc --app:gui -o:bin\downloader.exe -d:ssl --noNimblePath " &
+          r"--path:..\ui tools\downloader.nim")
 
 proc zip(args: string) =
   bundleNimbleSrc()
@@ -319,7 +323,8 @@ proc boot(args: string) =
   var finalDest = "bin" / "nim".exe
   # default to use the 'c' command:
   let bootOptions = if args.len == 0 or args.startsWith("-"): "c" else: ""
-  let smartNimcache = if "release" in args: "nimcache/release" else: "nimcache/debug"
+  let smartNimcache = (if "release" in args: "nimcache/r_" else: "nimcache/d_") &
+                      hostOs & "_" & hostCpu
 
   copyExe(findStartNim(), 0.thVersion)
   for i in 0..2:
@@ -380,8 +385,64 @@ proc clean(args: string) =
 
 # -------------- builds a release ---------------------------------------------
 
+proc patchConfig(lookFor, replaceBy: string) =
+  const
+    cfgFile = "config/nim.cfg"
+  try:
+    let cfg = readFile(cfgFile)
+    let newCfg = cfg.replace(lookFor, replaceBy)
+    if newCfg == cfg:
+      echo "Could not patch 'config/nim.cfg' [Error]"
+      echo "Reason: patch substring not found:"
+      echo lookFor
+    else:
+      writeFile(cfgFile, newCfg)
+  except IOError:
+    quit "Could not access 'config/nim.cfg' [Error]"
+
+proc winReleaseArch(arch: string) =
+  doAssert arch in ["32", "64"]
+  let cpu = if arch == "32": "i386" else: "amd64"
+
+  template withMingw(path, body) =
+    const orig = """#gcc.path = r"$nim\dist\mingw\bin""""
+    let replacePattern = """gcc.path = r"..\mingw$1\bin" # winrelease""" % arch
+    patchConfig(orig, replacePattern)
+    try:
+      body
+    finally:
+      patchConfig(replacePattern, orig)
+
+  withMingw r"..\mingw" & arch & r"\bin":
+    # Rebuilding koch is necessary because it uses its pointer size to
+    # determine which mingw link to put in the NSIS installer.
+    nimexec "c --out:koch_temp --cpu:$# koch" % cpu
+    exec "koch_temp boot -d:release --cpu:$#" % cpu
+    exec "koch_temp nsis -d:release"
+    exec "koch_temp zip -d:release"
+
+    when false:
+      # we now disable the NSIS installer as it cannot download from https
+      # and is broken in so many different ways it's not funny anymore:
+      moveFile r"build\nim_$#.exe" % VersionAsString,
+               r"web\upload\download\nim-$#_x$#.exe" % [VersionAsString, arch]
+    moveFile r"build\nim-$#.zip" % VersionAsString,
+             r"web\upload\download\nim-$#_x$#.zip" % [VersionAsString, arch]
+
 proc winRelease() =
-  exec(r"call ci\nsis_build.bat " & VersionAsString)
+  # Build -docs file:
+  when true:
+    web(gaCode)
+    withDir "web/upload/" & VersionAsString:
+      exec "7z a -tzip docs-$#.zip *.html" % VersionAsString
+    moveFile "web/upload/$1/docs-$1.zip" % VersionAsString,
+             "web/upload/download/docs-$1.zip" % VersionAsString
+  when true:
+    csource("-d:release")
+  when true:
+    winReleaseArch "32"
+  when true:
+    winReleaseArch "64"
 
 # -------------- tests --------------------------------------------------------
 
@@ -463,10 +524,10 @@ of cmdArgument:
   of "web": web(op.cmdLineRest)
   of "doc", "docs": web("--onlyDocs " & op.cmdLineRest)
   of "json2": web("--json2 " & op.cmdLineRest)
-  of "website": website(op.cmdLineRest & " --googleAnalytics:UA-48159761-1")
+  of "website": website(op.cmdLineRest & gaCode)
   of "web0":
     # undocumented command for Araq-the-merciful:
-    web(op.cmdLineRest & " --googleAnalytics:UA-48159761-1")
+    web(op.cmdLineRest & gaCode)
   of "pdf": pdf()
   of "csource", "csources": csource(op.cmdLineRest)
   of "zip": zip(op.cmdLineRest)

@@ -112,6 +112,7 @@ type
     toBind, toMixin, toInject: IntSet
     owner: PSym
     cursorInBody: bool # only for nimsuggest
+    scopeN: int
     bracketExpr: PNode
 
 template withBracketExpr(ctx, x, body: untyped) =
@@ -141,8 +142,13 @@ proc isTemplParam(c: TemplCtx, n: PNode): bool {.inline.} =
 
 proc semTemplBody(c: var TemplCtx, n: PNode): PNode
 
-proc openScope(c: var TemplCtx) = openScope(c.c)
-proc closeScope(c: var TemplCtx) = closeScope(c.c)
+proc openScope(c: var TemplCtx) =
+  openScope(c.c)
+  inc c.scopeN
+
+proc closeScope(c: var TemplCtx) =
+  dec c.scopeN
+  closeScope(c.c)
 
 proc semTemplBodyScope(c: var TemplCtx, n: PNode): PNode =
   openScope(c)
@@ -166,6 +172,7 @@ proc newGenSym(kind: TSymKind, n: PNode, c: var TemplCtx): PSym =
   result = newSym(kind, considerQuotedIdent(n), c.owner, n.info)
   incl(result.flags, sfGenSym)
   incl(result.flags, sfShadowed)
+  if c.scopeN == 0: incl(result.flags, sfFromGeneric)
 
 proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
   # locals default to 'gensym':

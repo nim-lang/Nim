@@ -559,7 +559,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         if regs[rb].node.kind == nkRefTy:
           regs[ra].node = regs[rb].node.sons[0]
         else:
-          stackTrace(c, tos, pc, errGenerated, "limited VM support for pointers")
+          ensureKind(rkNode)
+          regs[ra].node = regs[rb].node
       else:
         stackTrace(c, tos, pc, errNilAccess)
     of opcWrDeref:
@@ -932,7 +933,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                             c.module
         var macroCall = newNodeI(nkCall, c.debug[pc])
         macroCall.add(newSymNode(prc))
-        for i in 1 .. rc-1: macroCall.add(regs[rb+i].regToNode)
+        for i in 1 .. rc-1:
+          let node = regs[rb+i].regToNode
+          node.info = c.debug[pc]
+          macroCall.add(node)
         let a = evalTemplate(macroCall, prc, genSymOwner)
         a.recSetFlagIsRef
         ensureKind(rkNode)

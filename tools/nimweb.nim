@@ -263,8 +263,8 @@ proc findNim(): string =
 
 proc exec(cmd: string) =
   echo(cmd)
-  let (_, exitCode) = osproc.execCmdEx(cmd)
-  if exitCode != 0: quit("external program failed")
+  let (outp, exitCode) = osproc.execCmdEx(cmd)
+  if exitCode != 0: quit outp
 
 proc sexec(cmds: openarray[string]) =
   ## Serial queue wrapper around exec.
@@ -272,10 +272,13 @@ proc sexec(cmds: openarray[string]) =
 
 proc mexec(cmds: openarray[string], processors: int) =
   ## Multiprocessor version of exec
-  if processors < 2:
+  doAssert processors > 0, "nimweb needs at least one processor"
+  if processors == 1:
     sexec(cmds)
     return
-  if execProcesses(cmds, {poStdErrToStdOut, poParentStreams, poEchoCmd}) != 0:
+  let r = execProcesses(cmds, {poStdErrToStdOut, poParentStreams, poEchoCmd},
+    n = processors)
+  if r != 0:
     echo "external program failed, retrying serial work queue for logs!"
     sexec(cmds)
 

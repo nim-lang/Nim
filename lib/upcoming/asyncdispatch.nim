@@ -738,26 +738,6 @@ when defined(windows) or defined(nimdoc):
     let dwLocalAddressLength = Dword(sizeof(Sockaddr_in) + 16)
     let dwRemoteAddressLength = Dword(sizeof(Sockaddr_in) + 16)
 
-    template completeAccept() {.dirty.} =
-      var listenSock = socket
-      let setoptRet = setsockopt(clientSock, SOL_SOCKET,
-          SO_UPDATE_ACCEPT_CONTEXT, addr listenSock,
-          sizeof(listenSock).SockLen)
-      if setoptRet != 0: raiseOSError(osLastError())
-
-      var localSockaddr, remoteSockaddr: ptr SockAddr
-      var localLen, remoteLen: int32
-      getAcceptExSockaddrs(addr lpOutputBuf[0], dwReceiveDataLength,
-                           dwLocalAddressLength, dwRemoteAddressLength,
-                           addr localSockaddr, addr localLen,
-                           addr remoteSockaddr, addr remoteLen)
-      register(clientSock.AsyncFD)
-      # TODO: IPv6. Check ``sa_family``. http://stackoverflow.com/a/9212542/492186
-      retFuture.complete(
-        (address: $inet_ntoa(cast[ptr Sockaddr_in](remoteSockAddr).sin_addr),
-         client: clientSock.AsyncFD)
-      )
-
     template failAccept(errcode) =
       if flags.isDisconnectionError(errcode):
         var newAcceptFut = acceptAddr(socket, flags)
@@ -769,6 +749,29 @@ when defined(windows) or defined(nimdoc):
               retFuture.complete(newAcceptFut.read)
       else:
         retFuture.fail(newException(OSError, osErrorMsg(errcode)))
+
+    template completeAccept() {.dirty.} =
+      var listenSock = socket
+      let setoptRet = setsockopt(clientSock, SOL_SOCKET,
+          SO_UPDATE_ACCEPT_CONTEXT, addr listenSock,
+          sizeof(listenSock).SockLen)
+      if setoptRet != 0:
+        let errcode = osLastError()
+        discard clientSock.closeSocket()
+        failAccept(errcode)
+      else:
+        var localSockaddr, remoteSockaddr: ptr SockAddr
+        var localLen, remoteLen: int32
+        getAcceptExSockaddrs(addr lpOutputBuf[0], dwReceiveDataLength,
+                             dwLocalAddressLength, dwRemoteAddressLength,
+                             addr localSockaddr, addr localLen,
+                             addr remoteSockaddr, addr remoteLen)
+        register(clientSock.AsyncFD)
+        # TODO: IPv6. Check ``sa_family``. http://stackoverflow.com/a/9212542/492186
+        retFuture.complete(
+          (address: $inet_ntoa(cast[ptr Sockaddr_in](remoteSockAddr).sin_addr),
+          client: clientSock.AsyncFD)
+        )
 
     var ol = PCustomOverlapped()
     GC_ref(ol)
@@ -1056,16 +1059,14 @@ when defined(windows) or defined(nimdoc):
 
   proc unregister*(ev: AsyncEvent) =
     ## Unregisters event ``ev``.
-    if ev.hWaiter != 0:
-      let p = getGlobalDispatcher()
-      p.handles.excl(AsyncFD(ev.hEvent))
-      if unregisterWait(ev.hWaiter) == 0:
-        let err = osLastError()
-        if err.int32 != ERROR_IO_PENDING:
-          raiseOSError(err)
-      ev.hWaiter = 0
-    else:
-      raise newException(ValueError, "Event is not registered!")
+    doAssert(ev.hWaiter != 0, "Event is not registered in the queue!")
+    let p = getGlobalDispatcher()
+    p.handles.excl(AsyncFD(ev.hEvent))
+    if unregisterWait(ev.hWaiter) == 0:
+      let err = osLastError()
+      if err.int32 != ERROR_IO_PENDING:
+        raiseOSError(err)
+    ev.hWaiter = 0
 
   proc close*(ev: AsyncEvent) =
     ## Closes event ``ev``.
@@ -1076,8 +1077,7 @@ when defined(windows) or defined(nimdoc):
 
   proc addEvent*(ev: AsyncEvent, cb: Callback) =
     ## Registers callback ``cb`` to be called when ``ev`` will be signaled
-    if ev.hWaiter != 0:
-      raise newException(ValueError, "Event is already registered!")
+    doAssert(ev.hWaiter == 0, "Event is already registered in the queue!")
 
     let p = getGlobalDispatcher()
     let hEvent = ev.hEvent
@@ -1086,17 +1086,22 @@ when defined(windows) or defined(nimdoc):
     var flags = WT_EXECUTEINWAITTHREAD.Dword
 
     proc eventcb(fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
-      if cb(fd):
-        # we need this check to avoid exception, if `unregister(event)` was
-        # called in callback.
-        deallocShared(cast[pointer](pcd))
-        if ev.hWaiter != 0: unregister(ev)
+      if ev.hWaiter != 0:
+        if cb(fd):
+          # we need this check to avoid exception, if `unregister(event)` was
+          # called in callback.
+          deallocShared(cast[pointer](pcd))
+          if ev.hWaiter != 0:
+            unregister(ev)
+        else:
+          # if callback returned `false`, then it wants to be called again, so
+          # we need to ref and protect `pcd.ovl` again, because it will be
+          # unrefed and disposed in `poll()`.
+          GC_ref(pcd.ovl)
+          pcd.ovl.data.cell = system.protect(rawEnv(pcd.ovl.data.cb))
       else:
-        # if callback returned `false`, then it wants to be called again, so
-        # we need to ref and protect `pcd.ovl` again, because it will be
-        # unrefed and disposed in `poll()`.
-        GC_ref(pcd.ovl)
-        pcd.ovl.data.cell = system.protect(rawEnv(pcd.ovl.data.cb))
+        # if ev.hWaiter == 0, then event was unregistered before `poll()` call.
+        deallocShared(cast[pointer](pcd))
 
     registerWaitableHandle(p, hEvent, flags, pcd, INFINITE, eventcb)
     ev.hWaiter = pcd.waitFd
@@ -1205,7 +1210,7 @@ else:
     not p.selector.isEmpty() or p.timers.len != 0 or p.callbacks.len != 0
 
   template processBasicCallbacks(ident, rwlist: untyped) =
-    # Process pending descriptor's callbacks.
+    # Process pending descriptor's and AsyncEvent callbacks.
     # Invoke every callback stored in `rwlist`, until first one
     # returned `false`, which means callback wants to stay
     # alive. In such case all remaining callbacks will be added
@@ -1231,7 +1236,14 @@ else:
           newList.add(cb)
 
     withData(p.selector, ident, adata) do:
+      # descriptor still present in queue.
       adata.rwlist = newList & adata.rwlist
+      rLength = len(adata.readList)
+      wLength = len(adata.writeList)
+    do:
+      # descriptor was unregistered in callback via `unregister()`.
+      rLength = -1
+      wLength = -1
 
   template processCustomCallbacks(ident: untyped) =
     # Process pending custom event callbacks. Custom events are
@@ -1250,11 +1262,16 @@ else:
     var cb = curList[0]
     if not cb(fd.AsyncFD):
       newList.add(cb)
-    else:
-      p.selector.unregister(fd)
 
     withData(p.selector, ident, adata) do:
+      # descriptor still present in queue.
       adata.readList = newList & adata.readList
+      if len(adata.readList) == 0:
+        # if no callbacks registered with descriptor, unregister it.
+        p.selector.unregister(fd)
+    do:
+      # descriptor was unregistered in callback via `unregister()`.
+      discard
 
   proc poll*(timeout = 500) =
     var keys: array[64, ReadyKey]
@@ -1275,6 +1292,8 @@ else:
         var custom = false
         let fd = keys[i].fd
         let events = keys[i].events
+        var rLength = 0 # len(data.readList) after callback
+        var wLength = 0 # len(data.writeList) after callback
 
         if Event.Read in events or events == {Event.Error}:
           processBasicCallbacks(fd, readList)
@@ -1283,8 +1302,10 @@ else:
           processBasicCallbacks(fd, writeList)
 
         if Event.User in events or events == {Event.Error}:
-          custom = true
           processBasicCallbacks(fd, readList)
+          custom = true
+          if rLength == 0:
+            p.selector.unregister(fd)
 
         when ioselSupportedPlatform:
           if (customSet * events) != {}:
@@ -1294,13 +1315,10 @@ else:
         # because state `data` can be modified in callback we need to update
         # descriptor events with currently registered callbacks.
         if not custom:
-          var update = false
           var newEvents: set[Event] = {}
-          p.selector.withData(fd, adata) do:
-            if len(adata.readList) > 0: incl(newEvents, Event.Read)
-            if len(adata.writeList) > 0: incl(newEvents, Event.Write)
-            update = true
-          if update:
+          if rLength != -1 and wLength != -1:
+            if rLength > 0: incl(newEvents, Event.Read)
+            if wLength > 0: incl(newEvents, Event.Write)
             p.selector.updateHandle(SocketHandle(fd), newEvents)
         inc(i)
 

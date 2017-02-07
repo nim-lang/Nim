@@ -1052,6 +1052,8 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # work without now. template/tsymchoicefield doesn't like an early exit
   # here at all!
   #if isSymChoice(n.sons[1]): return
+  when defined(nimsuggest):
+    if gCmd == cmdIdeTools: suggestExpr(c, n)
 
   var s = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared, checkModule})
   if s != nil:

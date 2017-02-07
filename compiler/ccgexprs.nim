@@ -1210,7 +1210,7 @@ proc genSeqConstr(p: BProc, t: PNode, d: var TLoc) =
 
 proc genArrToSeq(p: BProc, t: PNode, d: var TLoc) =
   var elem, a, arr: TLoc
-  if t.kind == nkBracket:
+  if t.sons[1].kind == nkBracket:
     t.sons[1].typ = t.typ
     genSeqConstr(p, t.sons[1], d)
     return
@@ -1383,7 +1383,9 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
 proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
   var a, b: TLoc
   assert(d.k == locNone)
-  initLocExpr(p, e.sons[1], a)
+  var x = e.sons[1]
+  if x.kind in {nkAddr, nkHiddenAddr}: x = x[0]
+  initLocExpr(p, x, a)
   initLocExpr(p, e.sons[2], b)
   let t = skipTypes(e.sons[1].typ, {tyVar})
   let setLenPattern = if not p.module.compileToCpp:
@@ -2001,7 +2003,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       if sfThread in sym.flags:
         accessThreadLocalVar(p, sym)
         if emulatedThreadVars():
-          putIntoDest(p, d, sym.loc.t, "NimTV->" & sym.loc.r)
+          putIntoDest(p, d, sym.loc.t, "NimTV_->" & sym.loc.r)
         else:
           putLocIntoDest(p, d, sym.loc)
       else:

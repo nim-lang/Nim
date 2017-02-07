@@ -1,12 +1,12 @@
 
 # -------------- post unzip steps ---------------------------------------------
 
-import strutils, os, osproc, browsers
+import strutils, os, osproc, streams, browsers
 
 const arch = $(sizeof(int)*8)
 
 proc downloadMingw() =
-  openDefaultBrowser("http://nim-lang.org/download/mingw$1.zip" % arch)
+  openDefaultBrowser("https://nim-lang.org/download/mingw$1.zip" % arch)
 
 when defined(windows):
   import registry
@@ -86,18 +86,21 @@ when defined(windows):
   proc checkGccArch(mingw: string): bool =
     let gccExe = mingw / r"gcc.exe"
     if fileExists(gccExe):
+      const nimCompat = "nim_compat.c"
+      writeFile(nimCompat, """typedef int
+        Nim_and_C_compiler_disagree_on_target_architecture[
+          $# == sizeof(void*) ? 1 : -1];
+      """ % $sizeof(int))
       try:
-        let arch = execProcess(gccExe, ["-dumpmachine"], nil, {poStdErrToStdOut,
-                                                               poUsePath}).strip
-        when hostCPU == "i386":
-          result = (arch.contains("i686-") and not arch.contains("w64")) or
-                    arch == "mingw32"
-        elif hostCPU == "amd64":
-          result = arch.contains("x86_64-") or arch.contains("i686-w64-mingw32")
-        else:
-          {.error: "Unknown CPU for Windows.".}
+        let p = startProcess(gccExe, "", ["-c", nimCompat], nil,
+                            {poStdErrToStdOut, poUsePath})
+        #echo p.outputStream.readAll()
+        result = p.waitForExit() == 0
       except OSError, IOError:
         result = false
+      finally:
+        removeFile(nimCompat)
+        removeFile(nimCompat.changeFileExt("o"))
 
   proc defaultMingwLocations(): seq[string] =
     proc probeDir(dir: string; result: var seq[string]) =

@@ -3252,19 +3252,18 @@ proc `/`*(x, y: int): float {.inline, noSideEffect.} =
 
 template spliceImpl(s, a, L, b: untyped): untyped =
   # make room for additional elements or cut:
-  var slen = s.len
-  var shift = b.len - L
-  var newLen = slen + shift
+  var shift = b.len - max(0,L)  # ignore negative slice size
+  var newLen = s.len + shift
   if shift > 0:
     # enlarge:
     setLen(s, newLen)
-    for i in countdown(newLen-1, a+shift+1): shallowCopy(s[i], s[i-shift])
+    for i in countdown(newLen-1, a+b.len): shallowCopy(s[i], s[i-shift])
   else:
-    for i in countup(a+b.len, s.len-1+shift): shallowCopy(s[i], s[i-shift])
+    for i in countup(a+b.len, newLen-1): shallowCopy(s[i], s[i-shift])
     # cut down:
     setLen(s, newLen)
   # fill the hole:
-  for i in 0 .. <b.len: s[i+a] = b[i]
+  for i in 0 .. <b.len: s[a+i] = b[i]
 
 when hasAlloc or defined(nimscript):
   proc `[]`*(s: string, x: Slice[int]): string {.inline.} =

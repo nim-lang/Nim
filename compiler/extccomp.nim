@@ -392,6 +392,8 @@ type
 var
   externalToLink: TLinkedList # files to link in addition to the file
                               # we compiled
+  linkOptionsCmd: string = ""
+  compileOptionsCmd: seq[string] = @[]
   linkOptions: string = ""
   compileOptions: string = ""
   ccompilerpath: string = ""
@@ -449,6 +451,12 @@ proc addLinkOption*(option: string) =
 proc addCompileOption*(option: string) =
   if strutils.find(compileOptions, option, 0) < 0:
     addOpt(compileOptions, option)
+
+proc addLinkOptionCmd*(option: string) =
+  addOpt(linkOptionsCmd, option)
+
+proc addCompileOptionCmd*(option: string) =
+  compileOptionsCmd.add(option)
 
 proc initVars*() =
   # we need to define the symbol here, because ``CC`` may have never been set!
@@ -524,6 +532,10 @@ proc add(s: var string, many: openArray[string]) =
 
 proc cFileSpecificOptions(cfilename: string): string =
   result = compileOptions
+  for option in compileOptionsCmd:
+    if strutils.find(result, option, 0) < 0:
+      addOpt(result, option)
+
   var trunk = splitFile(cfilename).name
   if optCDebug in gGlobalOptions:
     var key = trunk & ".debug"
@@ -544,7 +556,7 @@ proc getCompileOptions: string =
   result = cFileSpecificOptions("__dummy__")
 
 proc getLinkOptions: string =
-  result = linkOptions
+  result = linkOptions & " " & linkOptionsCmd & " "
   for linkedLib in items(cLinkedLibs):
     result.add(CC[cCompiler].linkLibCmd % linkedLib.quoteShell)
   for libDir in items(cLibs):
