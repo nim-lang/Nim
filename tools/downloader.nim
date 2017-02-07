@@ -22,7 +22,7 @@ proc download(pkg: string; c: Controls) {.async.} =
 
   client.onProgressChanged = onProgressChanged
   # XXX give a destination filename instead
-  let contents = await client.getContent("http://nim-lang.org/download/" & pkg & ".zip")
+  let contents = await client.getContent("https://nim-lang.org/download/" & pkg & ".zip")
   let z = "dist" / pkg & ".zip"
   # XXX make this async somehow:
   writeFile(z, contents)
