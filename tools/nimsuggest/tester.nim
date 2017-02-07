@@ -161,8 +161,16 @@ proc runTest(filename: string): int =
           answer.add '\L'
         if resp != answer and not smartCompare(resp, answer):
           report.add "\nTest failed: " & filename
-          report.add "\n  Expected:  " & resp
-          report.add "\n  But got:   " & answer
+          var hasDiff = false
+          for i in 0..min(resp.len-1, answer.len-1):
+            if resp[i] != answer[i]:
+              report.add "\n  Expected:  " & resp.substr(i)
+              report.add "\n  But got:   " & answer.substr(i)
+              hasDiff = true
+              break
+          if not hasDiff:
+            report.add "\n  Expected:  " & resp
+            report.add "\n  But got:   " & answer
   finally:
     inp.writeLine("quit")
     inp.flush()
