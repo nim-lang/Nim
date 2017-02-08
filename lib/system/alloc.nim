@@ -748,7 +748,7 @@ proc getOccupiedMem(a: MemRegion): int {.inline.} =
 
 # ---------------------- thread memory region -------------------------------
 
-template instantiateForRegion(allocator: expr) =
+template instantiateForRegion(allocator: untyped) =
   when defined(fulldebug):
     proc interiorAllocatedPtr*(p: pointer): pointer =
       result = interiorAllocatedPtr(allocator, p)

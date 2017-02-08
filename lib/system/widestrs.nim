@@ -39,9 +39,9 @@ const
   UNI_SUR_LOW_START = 0xDC00
   UNI_SUR_LOW_END = 0xDFFF
 
-template ones(n: expr): expr = ((1 shl n)-1)
+template ones(n: untyped): untyped = ((1 shl n)-1)
 
-template fastRuneAt(s: cstring, i: int, result: expr, doInc = true) =
+template fastRuneAt(s: cstring, i: int, result: untyped, doInc = true) =
   ## Returns the unicode character ``s[i]`` in `result`. If ``doInc == true``
   ## `i` is incremented by the number of bytes that have been processed.
   bind ones

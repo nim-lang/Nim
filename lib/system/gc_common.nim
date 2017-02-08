@@ -150,7 +150,7 @@ when allowForeignThreadGc:
       setStackBottom(addr(stackTop))
       initGC()
 else:
-  template setupForeignThreadGc*(): stmt =
+  template setupForeignThreadGc*() =
     {.error: "setupForeignThreadGc is available only when ``--threads:on`` and ``--tlsEmulation:off`` are used".}
 
 # ----------------- stack management --------------------------------------
@@ -197,7 +197,7 @@ when defined(sparc): # For SPARC architecture.
     var x = cast[ByteAddress](p)
     result = a <=% x and x <=% b
 
-  template forEachStackSlot(gch, gcMark: expr) {.immediate, dirty.} =
+  template forEachStackSlot(gch, gcMark: untyped) {.dirty.} =
     when defined(sparcv9):
       asm  """"flushw \n" """
     else:
@@ -235,7 +235,7 @@ elif stackIncreases:
       # a little hack to get the size of a JmpBuf in the generated C code
       # in a platform independent way
 
-  template forEachStackSlot(gch, gcMark: expr) {.immediate, dirty.} =
+  template forEachStackSlot(gch, gcMark: untyped) {.dirty.} =
     var registers {.noinit.}: C_JmpBuf
     if c_setjmp(registers) == 0'i32: # To fill the C stack with registers.
       var max = cast[ByteAddress](gch.stackBottom)
@@ -261,7 +261,7 @@ else:
         if a <=% x and x <=% b:
           return true
 
-    template forEachStackSlot(gch, gcMark: expr) {.immediate, dirty.} =
+    template forEachStackSlot(gch, gcMark: untyped) {.dirty.} =
       # We use a jmp_buf buffer that is in the C stack.
       # Used to traverse the stack and registers assuming
       # that 'setjmp' will save registers in the C stack.
@@ -299,7 +299,7 @@ else:
       var x = cast[ByteAddress](p)
       result = a <=% x and x <=% b
 
-    template forEachStackSlot(gch, gcMark: expr) {.immediate, dirty.} =
+    template forEachStackSlot(gch, gcMark: untyped) {.dirty.} =
       # We use a jmp_buf buffer that is in the C stack.
       # Used to traverse the stack and registers assuming
       # that 'setjmp' will save registers in the C stack.

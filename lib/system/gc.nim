@@ -144,7 +144,7 @@ proc internRefcount(p: pointer): int {.exportc: "getRefcount".} =
 when BitsPerPage mod (sizeof(int)*8) != 0:
   {.error: "(BitsPerPage mod BitsPerUnit) should be zero!".}
 
-template color(c): expr = c.refCount and colorMask
+template color(c): untyped = c.refCount and colorMask
 template setColor(c, col) =
   when col == rcBlack:
     c.refcount = c.refcount and not colorMask
@@ -167,7 +167,7 @@ proc writeCell(msg: cstring, c: PCell) =
     c_fprintf(stdout, "[GC] %s: %p %d %s rc=%ld; color=%ld\n",
               msg, c, kind, typName, c.refcount shr rcShift, c.color)
 
-template gcTrace(cell, state: expr): stmt {.immediate.} =
+template gcTrace(cell, state: untyped) =
   when traceGC: traceCell(cell, state)
 
 # forward declarations:
@@ -179,13 +179,13 @@ proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) {.benign.}
 # we need the prototype here for debugging purposes
 
 when hasThreadSupport and hasSharedHeap:
-  template `--`(x: expr): expr = atomicDec(x, rcIncrement) <% rcIncrement
-  template `++`(x: expr): stmt = discard atomicInc(x, rcIncrement)
+  template `--`(x: untyped): untyped = atomicDec(x, rcIncrement) <% rcIncrement
+  template `++`(x: untyped) = discard atomicInc(x, rcIncrement)
 else:
-  template `--`(x: expr): expr =
+  template `--`(x: untyped): untyped =
     dec(x, rcIncrement)
     x <% rcIncrement
-  template `++`(x: expr): stmt = inc(x, rcIncrement)
+  template `++`(x: untyped) = inc(x, rcIncrement)
 
 proc incRef(c: PCell) {.inline.} =
   gcAssert(isAllocatedPtr(gch.region, c), "incRef: interiorPtr")
@@ -419,7 +419,7 @@ proc addNewObjToZCT(res: PCell, gch: var GcHeap) {.inline.} =
   var d = gch.zct.d
   when true:
     # loop unrolled for performance:
-    template replaceZctEntry(i: expr) =
+    template replaceZctEntry(i: untyped) =
       c = d[i]
       if c.refcount >=% rcIncrement:
         c.refcount = c.refcount and not ZctFlag
