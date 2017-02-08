@@ -3,10 +3,44 @@
 
 import strutils, os, osproc, streams, browsers
 
-const arch = $(sizeof(int)*8)
+const
+  arch = $(sizeof(int)*8)
+  mingw = "mingw$1-6.3.0.7z" % arch
+  url = r"https://nim-lang.org/download/" & mingw
 
-proc downloadMingw() =
-  openDefaultBrowser("https://nim-lang.org/download/mingw$1.zip" % arch)
+type
+  DownloadResult = enum
+    Failure,
+    Manual,
+    Success
+
+proc unzip(): bool =
+  if not fileExists("dist" / mingw):
+    echo "Could not find ", "dist" / mingw
+    return false
+  try:
+    let p = osproc.startProcess(r"bin\7zG.exe", getCurrentDir() / r"dist",
+                                ["x", mingw])
+    if p.waitForExit != 0:
+      echo "Unpacking failed: " & mingw
+    else:
+      result = true
+  except:
+    result = false
+
+proc downloadMingw(): DownloadResult =
+  let curl = findExe"curl"
+  if curl.len > 0:
+    let cmd = curl & " --out " & "dist" / mingw & " " & url
+    if execShellCmd(cmd) != 0:
+      echo "download failed! ", cmd
+      openDefaultBrowser(url)
+      result = Manual
+    else:
+      if unzip(): result = Success
+  else:
+    openDefaultBrowser(url)
+    result = Manual
 
 when defined(windows):
   import registry
@@ -170,10 +204,16 @@ proc main() =
              "in the standard locations [Error]"
         if askBool("Do you want to download MingW from Nim's website? (y/n) "):
           let dest = getCurrentDir() / "dist"
-          downloadMingw()
-          echo "After download, unzip it in: ", dest
-          echo "so that ", dest / "mingw" & arch, " exists."
-          if askBool("Download and unzip successful? (y/n) "):
+          var retry = false
+          case downloadMingw()
+          of Manual:
+            echo "After download, move it to: ", dest
+            if askBool("Download successful? (y/n) "):
+              if unzip(): retry = true
+          of Failure: discard
+          of Success:
+            retry = true
+          if retry:
             incompat.setLen 0
             let alternative = tryDirs(incompat, defaultMingwLocations())
             if alternative.len == 0:
@@ -212,4 +252,7 @@ proc main() =
     echo("Add ", getCurrentDir(), "/bin to your PATH...")
 
 when isMainModule:
-  main()
+  when defined(testdownload):
+    discard downloadMingw()
+  else:
+    main()
