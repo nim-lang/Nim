@@ -2630,7 +2630,7 @@ when not defined(JS): #and not defined(nimscript):
 
   when hasAlloc:
     when not defined(gcStack):
-      proc initGC()
+      proc initGC() {.gcsafe.}
     when not defined(boehmgc) and not defined(useMalloc) and
         not defined(gogc) and not defined(gcStack):
       proc initAllocator() {.inline.}

@@ -312,3 +312,10 @@ when isMainModule:
   test.add("Connection", "Test")
   doAssert test["Connection", 2] == "Test"
   doAssert "upgrade" in test["Connection"]
+
+  # Bug #5344.
+  doAssert parseHeader("foobar: ") == ("foobar", @[""])
+  let (key, value) = parseHeader("foobar: ")
+  test = newHttpHeaders()
+  test[key] = value
+  doAssert test["foobar"] == ""

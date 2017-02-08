@@ -1585,6 +1585,22 @@ proc skipStmtList*(n: PNode): PNode =
   else:
     result = n
 
+proc toRef*(typ: PType): PType =
+  ## If ``typ`` is a tyObject then it is converted into a `ref <typ>` and
+  ## returned. Otherwise ``typ`` is simply returned as-is.
+  result = typ
+  if typ.kind == tyObject:
+    result = newType(tyRef, typ.owner)
+    rawAddSon(result, typ)
+
+proc toObject*(typ: PType): PType =
+  ## If ``typ`` is a tyRef then its immediate son is returned (which in many
+  ## cases should be a ``tyObject``).
+  ## Otherwise ``typ`` is simply returned as-is.
+  result = typ
+  if result.kind == tyRef:
+    result = result.lastSon
+
 when false:
   proc containsNil*(n: PNode): bool =
     # only for debugging
