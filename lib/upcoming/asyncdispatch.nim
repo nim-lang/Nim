@@ -212,13 +212,16 @@ when defined(windows) or defined(nimdoc):
   proc close*(dispatcher: PDispatcher) =
     ## Closes the Dispatcher, freeing the resources associated with it.
     ##
-    ## Raises ``ValueError`` if the dispatcher contains registered handles,
+    ## Raises ``AssertionError`` if the dispatcher contains registered handles,
     ## because it indicates lack of appropriate cleanup in the application.
+    ## Does NOT actually close the dispatcher if the ``AssertionError`` is
+    ## raised.
+    doAssert(
+      dispatcher.handles.len == 0,
+      "All handles must be unregistered prior to closing the dispatcher."
+    )
     if closeHandle(dispatcher.ioPort) == 0:
       raiseOSError(osLastError())
-    if dispatcher.handles.len != 0:
-      raise newException(ValueError,
-        "All handles must be unregistered prior to closing the dispatcher.")
 
   var gDisp{.threadvar.}: PDispatcher ## Global dispatcher
   proc getGlobalDispatcher*(): PDispatcher =
@@ -1156,13 +1159,15 @@ else:
   proc close*(dispatcher: PDispatcher) =
     ## Closes the Dispatcher, freeing the resources associated with it.
     ##
-    ## Raises ``ValueError`` if the dispatcher contains registered handles,
+    ## Raises ``AssertionError`` if the dispatcher contains registered handles,
     ## because it indicates lack of appropriate cleanup in the application.
-    let isEmpty = dispatcher.selector.isEmpty
+    ## Does NOT actually close the dispatcher if the ``AssertionError`` is
+    ## raised.
+    doAssert(
+      dispatcher.selector.isEmpty,
+      "All handles must be unregistered prior to closing the dispatcher."
+    )
     dispatcher.selector.close()
-    if not isEmpty:
-      raise newException(ValueError,
-        "All handles must be unregistered prior to closing the dispatcher.")
 
   var gDisp{.threadvar.}: PDispatcher ## Global dispatcher
   proc getGlobalDispatcher*(): PDispatcher =
