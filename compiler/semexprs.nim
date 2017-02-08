@@ -1094,7 +1094,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     of tyObject, tyTuple:
       if ty.n != nil and ty.n.kind == nkRecList:
         for field in ty.n:
-          if field.sym.name == i:
+          if field.kind == nkSym and field.sym.name == i:
             n.typ = newTypeWithSons(c, tyFieldAccessor, @[ty, field.sym.typ])
             n.typ.n = copyTree(n)
             return n
