@@ -135,7 +135,7 @@ when allowForeignThreadGc:
   var
     localGcInitialized {.rtlThreadVar.}: bool
 
-  proc setupForeignThreadGc*() =
+  proc setupForeignThreadGc*() {.gcsafe.} =
     ## Call this if you registered a callback that will be run from a thread not
     ## under your control. This has a cheap thread-local guard, so the GC for
     ## this thread will only be initialized once per thread, no matter how often
