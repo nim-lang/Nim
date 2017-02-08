@@ -29,7 +29,7 @@ proc nimLoadLibraryError(path: string) =
   stderr.rawWrite("could not load: ")
   stderr.rawWrite(path)
   stderr.rawWrite("\n")
-  when not(defined(nimDebugDlOpen)):
+  when not defined(nimDebugDlOpen) and not defined(windows):
     stderr.rawWrite("compile with -d:nimDebugDlOpen for more information\n")
   quit(1)
 
