@@ -32,6 +32,10 @@ proc c_fflush(f: File): cint {.
   importc: "fflush", header: "<stdio.h>".}
 proc c_fclose(f: File): cint {.
   importc: "fclose", header: "<stdio.h>".}
+proc c_clearerr(f: File) {.
+  importc: "clearerr", header: "<stdio.h>".}
+proc c_feof(f: File): cint {.
+  importc: "feof", header: "<stdio.h>".}
 
 # C routine that is used here:
 proc c_fread(buf: pointer, size, n: csize, f: File): csize {.
@@ -50,9 +54,18 @@ proc c_fwrite(buf: pointer, size, n: csize, f: File): cint {.
 proc raiseEIO(msg: string) {.noinline, noreturn.} =
   sysFatal(IOError, msg)
 
+proc raiseEOF() {.noinline, noreturn.} =
+  sysFatal(EOFError, "EOF reached")
+
+proc checkErr(f: File) =
+  if c_ferror(f) != 0:
+    c_clearerr(f)
+    raiseEIO("Unknown IO Error")
+
 {.push stackTrace:off, profiler:off.}
 proc readBuffer(f: File, buffer: pointer, len: Natural): int =
   result = c_fread(buffer, 1, len, f)
+  checkErr(f)
 
 proc readBytes(f: File, a: var openArray[int8|uint8], start, len: Natural): int =
   result = readBuffer(f, addr(a[start]), len)
@@ -62,10 +75,13 @@ proc readChars(f: File, a: var openArray[char], start, len: Natural): int =
     raiseEIO("buffer overflow: (start+len) > length of openarray buffer")
   result = readBuffer(f, addr(a[start]), len)
 
-proc write(f: File, c: cstring) = discard c_fputs(c, f)
+proc write(f: File, c: cstring) =
+  discard c_fputs(c, f)
+  checkErr(f)
 
 proc writeBuffer(f: File, buffer: pointer, len: Natural): int =
   result = c_fwrite(buffer, 1, len, f)
+  checkErr(f)
 
 proc writeBytes(f: File, a: openArray[int8|uint8], start, len: Natural): int =
   var x = cast[ptr array[0..1000_000_000, int8]](a)
@@ -98,7 +114,12 @@ const
   BufSize = 4000
 
 proc close*(f: File) = discard c_fclose(f)
-proc readChar*(f: File): char = result = char(c_fgetc(f))
+proc readChar(f: File): char =
+  let x = c_fgetc(f)
+  if x == -1: raiseEOF()
+  checkErr(f)
+  result = char(x)
+
 proc flushFile*(f: File) = discard c_fflush(f)
 proc getFileHandle*(f: File): FileHandle = c_fileno(f)
 
@@ -113,19 +134,18 @@ proc readLine(f: File, line: var TaintedString): bool =
       sp = cint(cast[PGenericSeq](line.string).space)
     line.string.setLen(sp)
   while true:
-    # memset to \l so that we can tell how far fgets wrote, even on EOF, where
-    # fgets doesn't append an \l
-    c_memset(addr line.string[pos], '\l'.ord, sp)
-    if c_fgets(addr line.string[pos], sp, f) == nil:
-      line.string.setLen(0)
-      return false
-    let m = c_memchr(addr line.string[pos], '\l'.ord, sp)
+    # memset to \L so that we can tell how far fgets wrote, even on EOF, where
+    # fgets doesn't append an \L
+    c_memset(addr line.string[pos], '\L'.ord, sp)
+    var fgetsSuccess = c_fgets(addr line.string[pos], sp, f) != nil
+    checkErr(f)
+    let m = c_memchr(addr line.string[pos], '\L'.ord, sp)
     if m != nil:
       # \l found: Could be our own or the one by fgets, in any case, we're done
       var last = cast[ByteAddress](m) - cast[ByteAddress](addr line.string[0])
       if last > 0 and line.string[last-1] == '\c':
         line.string.setLen(last-1)
-        return true
+        return fgetsSuccess
         # We have to distinguish between two possible cases:
         # \0\l\0 => line ending in a null character.
         # \0\l\l => last line without newline, null was put there by fgets.
@@ -133,7 +153,7 @@ proc readLine(f: File, line: var TaintedString): bool =
         if last < pos + sp - 1 and line.string[last+1] != '\0':
           dec last
       line.string.setLen(last)
-      return true
+      return fgetsSuccess
     else:
       # fgets will have inserted a null byte at the end of the string.
       dec sp
@@ -144,7 +164,7 @@ proc readLine(f: File, line: var TaintedString): bool =
 
 proc readLine(f: File): TaintedString =
   result = TaintedString(newStringOfCap(80))
-  if not readLine(f, result): raiseEIO("EOF reached")
+  if not readLine(f, result): raiseEOF()
 
 proc write(f: File, i: int) =
   when sizeof(int) == 8:
@@ -190,10 +210,7 @@ proc rawFileSize(file: File): int =
   discard c_fseek(file, clong(oldPos), 0)
 
 proc endOfFile(f: File): bool =
-  # do not blame me; blame the ANSI C standard this is so brain-damaged
-  var c = c_fgetc(f)
-  discard c_ungetc(c, f)
-  return c < 0'i32
+  result = c_feof(f) != 0
 
 proc readAllFile(file: File, len: int): string =
   # We acquire the filesize beforehand and hope it doesn't change.
@@ -203,8 +220,6 @@ proc readAllFile(file: File, len: int): string =
   if endOfFile(file):
     if bytes < len:
       result.setLen(bytes)
-  elif c_ferror(file) != 0:
-    raiseEIO("error while reading from file")
   else:
     # We read all the bytes but did not reach the EOF
     # Try to read it as a buffer

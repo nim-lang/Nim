@@ -435,6 +435,10 @@ type
     ## Raised if an IO error occurred.
     ##
     ## See the full `exception hierarchy`_.
+  EOFError* = object of IOError ## \
+    ## Raised if an IO "end of file" error occurred.
+    ##
+    ## See the full `exception hierarchy`_.
   OSError* = object of SystemError ## \
     ## Raised if an operating system service failed.
     ##
@@ -2778,8 +2782,9 @@ when not defined(JS): #and not defined(nimscript):
     proc endOfFile*(f: File): bool {.tags: [], benign.}
       ## Returns true iff `f` is at the end.
 
-    proc readChar*(f: File): char {.tags: [ReadIOEffect].}
-      ## Reads a single character from the stream `f`.
+    proc readChar*(f: File): char {.tags: [ReadIOEffect], deprecated.}
+      ## Reads a single character from the stream `f`. **Deprecated** since
+      ## version 0.16.2. Use some variant of ``readBuffer`` instead.
 
     proc flushFile*(f: File) {.tags: [WriteIOEffect].}
       ## Flushes `f`'s buffer.
