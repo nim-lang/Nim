@@ -1635,7 +1635,9 @@ else:
 
 when compileOption("threads"):
   onThreadDestruction() do ():
-    if not gDisp.isNil: gDisp.close()
+    if not gDisp.isNil:
+      gDisp.close()
+      gDisp = nil
 
 proc sleepAsync*(ms: int): Future[void] =
   ## Suspends the execution of the current async procedure for the next
