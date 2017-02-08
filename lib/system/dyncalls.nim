@@ -17,9 +17,12 @@
 const
   NilLibHandle: LibHandle = nil
 
+proc c_fwrite(buf: pointer, size, n: csize, f: File): cint {.
+  importc: "fwrite", header: "<stdio.h>".}
+
 proc rawWrite(f: File, s: string) =
   # we cannot throw an exception here!
-  discard writeBuffer(f, cstring(s), s.len)
+  discard c_fwrite(cstring(s), 1, s.len, f)
 
 proc nimLoadLibraryError(path: string) =
   # carefully written to avoid memory allocation:
@@ -126,7 +129,7 @@ elif defined(windows) or defined(dos):
     decorated[m] = '@'
     for i in countup(0, 50):
       var k = i * 4
-      if k div 100 == 0: 
+      if k div 100 == 0:
         if k div 10 == 0:
           m = m + 1
         else:

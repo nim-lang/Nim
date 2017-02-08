@@ -48,8 +48,6 @@ proc c_ferror(f: File): cint {.
   importc: "ferror", header: "<stdio.h>", tags: [].}
 proc c_setvbuf(f: File, buf: pointer, mode: cint, size: csize): cint {.
   importc: "setvbuf", header: "<stdio.h>", tags: [].}
-proc c_fwrite(buf: pointer, size, n: csize, f: File): cint {.
-  importc: "fwrite", header: "<stdio.h>".}
 
 proc raiseEIO(msg: string) {.noinline, noreturn.} =
   sysFatal(IOError, msg)
