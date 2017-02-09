@@ -33,8 +33,10 @@ template createCb(retFutureSym, iteratorNameSym,
       if not nameIterVar.finished:
         var next = nameIterVar()
         if next == nil:
-          assert retFutureSym.finished, "Async procedure's (" &
-                 name & ") return Future was not finished."
+          if not retFutureSym.finished:
+            let msg = "Async procedure ($1) yielded `nil`, are you await'ing a " &
+                    "`nil` Future?"
+            raise newException(AssertionError, msg % name)
         else:
           next.callback = cb
     except:
@@ -390,7 +392,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   if procBody.kind != nnkEmpty:
     result[6] = outerProcBody
   #echo(treeRepr(result))
-  #if prc[0].getName == "testInfix":
+  #if prc[0].getName == "beta":
   #  echo(toStrLit(result))
 
 macro async*(prc: untyped): untyped =
