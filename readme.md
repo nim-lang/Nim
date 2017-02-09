@@ -4,6 +4,21 @@ This repository contains the Nim compiler, Nim's stdlib, tools and documentation
 For more information about Nim, including downloads and documentation for
 the latest release, check out [Nim's website][nim-site].
 
+## Community
+[![Join the IRC chat][badge-nim-irc]][nim-irc]
+[![Join the Gitter chat][badge-nim-gitter]][nim-gitter]
+[![Get help][badge-nim-forum-gethelp]][nim-forum]
+[![View Nim posts on Stack Overflow][badge-nim-stackoverflow]][nim-stackoverflow-newest]
+[![Follow @nim_lang on Twitter][badge-nim-twitter]][nim-twitter]
+
+* The [forum][nim-forum] - the best place to ask questions and to discuss Nim.
+* [#nim IRC Channel (Freenode)][nim-irc] - a place to discuss Nim in real-time.
+  Also where most development decisions get made.
+* [Gitter][nim-gitter] - an additional place to discuss Nim in real-time. There
+  is a bridge between Gitter and the IRC channel.
+* [Stack Overflow][nim-stackoverflow] - a popular Q/A site for programming related
+  topics that includes posts about Nim.
+
 ## Compiling
 The compiler currently officially supports the following platform and
 architecture combinations:
@@ -15,10 +30,11 @@ architecture combinations:
 More platforms are supported, however they are not tested regularly and they
 may not be as stable as the above-listed platforms.
 
-Compiling the Nim compiler is quite straightforward. First, the C source of
-an older version of the Nim compiler is needed to bootstrap the latest 
-version because the Nim compiler itself is written in the Nim programming
-language. Those C sources are available within the 
+Compiling the Nim compiler is quite straightforward if you follow these steps:
+
+First, the C source of an older version of the Nim compiler is needed to
+bootstrap the latest version because the Nim compiler itself is written in the
+Nim programming language. Those C sources are available within the 
 [``nim-lang/csources``][csources-repo] repository.
 
 Next, to build from source you will need:
@@ -55,7 +71,7 @@ documentation and the website, among other things. The ``koch`` tool can also
 be used to run the Nim test suite. 
 
 Assuming that you added Nim's ``bin`` directory to your PATH, you may execute
-the tests using ``./koch tests``. The test suite takes a while to run, but you
+the tests using ``./koch tests``. The tests take a while to run, but you
 can run a subset of tests by specifying a category (for example 
 ``./koch tests cat async``).
 
@@ -63,24 +79,10 @@ For more information on the ``koch`` build tool please see the documentation
 within the [doc/koch.rst](doc/koch.rst) file.
 
 ## Nimble
-[Nimble][nimble-repo] is Nim's package manager. Assuming that you added Nim's
-``bin`` directory to your PATH, you may install Nimble by running ``koch nimble``
-within the root of the cloned repository.
-
-## Community
-[![Join the IRC chat][badge-nim-irc]][nim-irc]
-[![Join the Gitter chat][badge-nim-gitter]][nim-gitter]
-[![Get help][badge-nim-forum-gethelp]][nim-forum]
-[![View Nim posts on Stack Overflow][badge-nim-stackoverflow]][nim-stackoverflow-newest]
-[![Follow @nim_lang on Twitter][badge-nim-twitter]][nim-twitter]
-
-* The [forum][nim-forum] - the best place to ask questions and to discuss Nim.
-* [#nim IRC Channel (Freenode)][nim-irc] - a place to discuss Nim in real-time.
-  Also where most development decisions get made.
-* [Gitter][nim-gitter] - an additional place to discuss Nim in real-time. There
-  is a bridge between Gitter and the IRC channel.
-* [Stack Overflow][nim-stackoverflow] - a popular Q/A site for programming related
-  topics that includes posts about Nim.
+``nimble`` is Nim's package manager and it can be acquired from the
+[``nim-lang/nimble``][nimble-repo] repository. Assuming that you added Nim's
+``bin`` directory to your PATH, you may install Nimble from source by running
+``koch nimble`` within the root of the cloned repository.
 
 ## Contributing
 [![Contribute to Nim via Gratipay][badge-nim-gratipay]][nim-gratipay]
@@ -140,7 +142,7 @@ for some modules which explicitly state otherwise. As a result you may use any
 compatible license (essentially any license) for your own programs developed with
 Nim. You are explicitly permitted to develop commercial applications using Nim.
 
-Please read the copying.txt file for more details.
+Please read the [copying.txt](copying.txt) file for more details.
 
 Copyright © 2006-2017 Andreas Rumpf, all rights reserved.
 
