@@ -1177,10 +1177,21 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       localError(n.info, errGenerated,
                  "'destroy' or 'deepCopy' expected for 'override'")
 
+proc cursorInProcAux(n: PNode): bool =
+  if inCheckpoint(n.info) != cpNone: return true
+  for i in 0..<n.safeLen:
+    if cursorInProcAux(n[i]): return true
+
+proc cursorInProc(n: PNode): bool =
+  if n.info.fileIndex == gTrackPos.fileIndex:
+    result = cursorInProcAux(n)
+
 type
   TProcCompilationSteps = enum
     stepRegisterSymbol,
     stepDetermineType,
+
+import compilerlog
 
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
                 validPragmas: TSpecialWords,
@@ -1303,29 +1314,34 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     # Macros and Templates can have generic parameters, but they are
     # only used for overload resolution (there is no instantiation of
     # the symbol, so we must process the body now)
-    pushProcCon(c, s)
-    if n.sons[genericParamsPos].kind == nkEmpty or usePseudoGenerics:
-      if not usePseudoGenerics: paramsTypeCheck(c, s.typ)
-
-      c.p.wasForwarded = proto != nil
-      maybeAddResult(c, s, n)
-      if lfDynamicLib notin s.loc.flags:
-        # no semantic checking for importc:
-        let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
-        # unfortunately we cannot skip this step when in 'system.compiles'
-        # context as it may even be evaluated in 'system.compiles':
-        n.sons[bodyPos] = transformBody(c.module, semBody, s)
+    if not usePseudoGenerics and gIdeCmd in {ideSug, ideCon} and not
+        cursorInProc(n.sons[bodyPos]):
+      discard "speed up nimsuggest"
+      logStr "skipped " & s.name.s
     else:
-      if s.typ.sons[0] != nil and kind != skIterator:
-        addDecl(c, newSym(skUnknown, getIdent"result", nil, n.info))
-      openScope(c)
-      n.sons[bodyPos] = semGenericStmt(c, n.sons[bodyPos])
-      closeScope(c)
-      fixupInstantiatedSymbols(c, s)
-    if sfImportc in s.flags:
-      # so we just ignore the body after semantic checking for importc:
-      n.sons[bodyPos] = ast.emptyNode
-    popProcCon(c)
+      pushProcCon(c, s)
+      if n.sons[genericParamsPos].kind == nkEmpty or usePseudoGenerics:
+        if not usePseudoGenerics: paramsTypeCheck(c, s.typ)
+
+        c.p.wasForwarded = proto != nil
+        maybeAddResult(c, s, n)
+        if lfDynamicLib notin s.loc.flags:
+          # no semantic checking for importc:
+          let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
+          # unfortunately we cannot skip this step when in 'system.compiles'
+          # context as it may even be evaluated in 'system.compiles':
+          n.sons[bodyPos] = transformBody(c.module, semBody, s)
+      else:
+        if s.typ.sons[0] != nil and kind != skIterator:
+          addDecl(c, newSym(skUnknown, getIdent"result", nil, n.info))
+        openScope(c)
+        n.sons[bodyPos] = semGenericStmt(c, n.sons[bodyPos])
+        closeScope(c)
+        fixupInstantiatedSymbols(c, s)
+      if sfImportc in s.flags:
+        # so we just ignore the body after semantic checking for importc:
+        n.sons[bodyPos] = ast.emptyNode
+      popProcCon(c)
   else:
     if proto != nil: localError(n.info, errImplOfXexpected, proto.name.s)
     if {sfImportc, sfBorrow} * s.flags == {} and s.magic == mNone:

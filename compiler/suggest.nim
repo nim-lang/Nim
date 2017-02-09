@@ -297,10 +297,10 @@ proc suggestFieldAccess(c: PContext, n: PNode, outputs: var int) =
       suggestOperations(c, n, typ, outputs)
 
 type
-  TCheckPointResult = enum
+  TCheckPointResult* = enum
     cpNone, cpFuzzy, cpExact
 
-proc inCheckpoint(current: TLineInfo): TCheckPointResult =
+proc inCheckpoint*(current: TLineInfo): TCheckPointResult =
   if current.fileIndex == gTrackPos.fileIndex:
     if current.line == gTrackPos.line and
         abs(current.col-gTrackPos.col) < 4:

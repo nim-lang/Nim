@@ -73,7 +73,7 @@ proc addDep*(g: ModuleGraph; m: PSym, dep: int32) =
     deps.incl m.position.dependsOn(dep)
     # we compute the transitive closure later when quering the graph lazily.
     # this improve efficiency quite a lot:
-    invalidTransitiveClosure = true
+    #invalidTransitiveClosure = true
 
 proc addIncludeDep*(g: ModuleGraph; module, includeFile: int32) =
   discard hasKeyOrPut(inclToMod, includeFile, module)
