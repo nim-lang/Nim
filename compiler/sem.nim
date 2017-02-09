@@ -237,6 +237,14 @@ when false:
     result.handleIsOperator = proc (n: PNode): PNode =
       result = isOpImpl(c, n)
 
+proc hasCycle(n: PNode): bool =
+  incl n.flags, nfNone
+  for i in 0..<safeLen(n):
+    if nfNone in n[i].flags or hasCycle(n[i]):
+      result = true
+      break
+  excl n.flags, nfNone
+
 proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
   # recompute the types as 'eval' isn't guaranteed to construct types nor
   # that the types are sound:
@@ -246,7 +254,11 @@ proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
     else:
       result = evaluated
       let expectedType = eOrig.typ.skipTypes({tyStatic})
-      semmacrosanity.annotateType(result, expectedType)
+      if hasCycle(result):
+        globalError(eOrig.info, "the resulting AST is cyclic and cannot be processed further")
+        result = errorNode(c, eOrig)
+      else:
+        semmacrosanity.annotateType(result, expectedType)
   else:
     result = semExprWithType(c, evaluated)
     #result = fitNode(c, e.typ, result) inlined with special case:

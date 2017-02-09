@@ -98,7 +98,7 @@ type
   SomeNumber* = SomeInteger|SomeReal
     ## type class matching all number types
 
-proc defined*(x: expr): bool {.magic: "Defined", noSideEffect, compileTime.}
+proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## Special compile-time procedure that checks whether `x` is
   ## defined.
   ## `x` is an external symbol introduced through the compiler's
@@ -119,7 +119,7 @@ when defined(nimalias):
     TNumber: SomeNumber,
     TOrdinal: SomeOrdinal].}
 
-proc declared*(x: expr): bool {.magic: "Defined", noSideEffect, compileTime.}
+proc declared*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## Special compile-time procedure that checks whether `x` is
   ## declared. `x` has to be an identifier or a qualified identifier.
   ## This can be used to check whether a library provides a certain
@@ -133,11 +133,11 @@ proc declared*(x: expr): bool {.magic: "Defined", noSideEffect, compileTime.}
 when defined(useNimRtl):
   {.deadCodeElim: on.}
 
-proc definedInScope*(x: expr): bool {.
+proc definedInScope*(x: untyped): bool {.
   magic: "DefinedInScope", noSideEffect, deprecated, compileTime.}
   ## **Deprecated since version 0.9.6**: Use ``declaredInScope`` instead.
 
-proc declaredInScope*(x: expr): bool {.
+proc declaredInScope*(x: untyped): bool {.
   magic: "DefinedInScope", noSideEffect, compileTime.}
   ## Special compile-time procedure that checks whether `x` is
   ## declared in the current scope. `x` has to be an identifier.
@@ -160,7 +160,7 @@ proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Cannot be overloaded.
   discard
 
-proc `type`*(x: expr): typeDesc {.magic: "TypeOf", noSideEffect, compileTime.} =
+proc `type`*(x: untyped): typeDesc {.magic: "TypeOf", noSideEffect, compileTime.} =
   ## Builtin 'type' operator for accessing the type of an expression.
   ## Cannot be overloaded.
   discard
@@ -433,6 +433,10 @@ type
     ## See the full `exception hierarchy`_.
   IOError* = object of SystemError ## \
     ## Raised if an IO error occurred.
+    ##
+    ## See the full `exception hierarchy`_.
+  EOFError* = object of IOError ## \
+    ## Raised if an IO "end of file" error occurred.
     ##
     ## See the full `exception hierarchy`_.
   OSError* = object of SystemError ## \
@@ -2253,7 +2257,7 @@ iterator fields*[T: tuple|object](x: T): RootObj {.
   ## iterates over every field of `x`. Warning: This really transforms
   ## the 'for' and unrolls the loop. The current implementation also has a bug
   ## that affects symbol binding in the loop body.
-iterator fields*[S:tuple|object, T:tuple|object](x: S, y: T): tuple[a,b: expr] {.
+iterator fields*[S:tuple|object, T:tuple|object](x: S, y: T): tuple[a,b: untyped] {.
   magic: "Fields", noSideEffect.}
   ## iterates over every field of `x` and `y`.
   ## Warning: This is really transforms the 'for' and unrolls the loop.
@@ -2294,7 +2298,7 @@ iterator fieldPairs*[T: tuple|object](x: T): RootObj {.
   ## current implementation also has a bug that affects symbol binding in the
   ## loop body.
 iterator fieldPairs*[S: tuple|object, T: tuple|object](x: S, y: T): tuple[
-  a, b: expr] {.
+  a, b: untyped] {.
   magic: "FieldPairs", noSideEffect.}
   ## iterates over every field of `x` and `y`.
   ## Warning: This really transforms the 'for' and unrolls the loop.
@@ -2439,7 +2443,7 @@ when not defined(nimscript) and hasAlloc:
   proc GC_unref*(x: string) {.magic: "GCunref", benign.}
     ## see the documentation of `GC_ref`.
 
-template accumulateResult*(iter: expr) =
+template accumulateResult*(iter: untyped) =
   ## helps to convert an iterator to a proc.
   result = @[]
   for x in iter: add(result, x)
@@ -2554,7 +2558,8 @@ else:
   proc debugEcho*(x: varargs[expr, `$`]) {.magic: "Echo", noSideEffect,
                                              tags: [], raises: [].}
 
-template newException*(exceptn: typedesc, message: string; parentException: ref Exception = nil): expr =
+template newException*(exceptn: typedesc, message: string;
+                       parentException: ref Exception = nil): untyped =
   ## creates an exception object of type ``exceptn`` and sets its ``msg`` field
   ## to `message`. Returns the new exception object.
   var
@@ -2778,8 +2783,9 @@ when not defined(JS): #and not defined(nimscript):
     proc endOfFile*(f: File): bool {.tags: [], benign.}
       ## Returns true iff `f` is at the end.
 
-    proc readChar*(f: File): char {.tags: [ReadIOEffect].}
-      ## Reads a single character from the stream `f`.
+    proc readChar*(f: File): char {.tags: [ReadIOEffect], deprecated.}
+      ## Reads a single character from the stream `f`. **Deprecated** since
+      ## version 0.16.2. Use some variant of ``readBuffer`` instead.
 
     proc flushFile*(f: File) {.tags: [WriteIOEffect].}
       ## Flushes `f`'s buffer.
@@ -3602,7 +3608,7 @@ when hasAlloc:
       x[j+i] = item[j]
       inc(j)
 
-proc compiles*(x: expr): bool {.magic: "Compiles", noSideEffect, compileTime.} =
+proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.} =
   ## Special compile-time procedure that checks whether `x` can be compiled
   ## without any semantic error.
   ## This can be used to check whether a type supports some operation:
@@ -3666,7 +3672,7 @@ when hasAlloc and not defined(nimscript) and not defined(JS):
 
   include "system/deepcopy"
 
-proc procCall*(x: expr) {.magic: "ProcCall", compileTime.} =
+proc procCall*(x: untyped) {.magic: "ProcCall", compileTime.} =
   ## special magic to prohibit dynamic binding for `method`:idx: calls.
   ## This is similar to `super`:idx: in ordinary OO languages.
   ##

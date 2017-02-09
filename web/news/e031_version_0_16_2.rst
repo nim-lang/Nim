@@ -1,6 +1,12 @@
 Version 0.16.2 released
 =======================
 
+This release fixes the most important regressions introduced in 0.16.0. In
+particular memory manager and channel bugs have been fixed. The NSIS based
+installer is not provided anymore as the Nim website moved to ``https`` and
+this causes NSIS downloads to fail.
+
+
 Changelog
 ~~~~~~~~~
 
@@ -9,6 +15,10 @@ Changes affecting backwards compatibility
 
 - ``httpclient.request`` now respects ``maxRedirects`` option. Previously
   redirects were handled only by ``get`` and ``post`` procs.
+- The IO routines now raise ``EOFError`` for the "end of file" condition.
+  ``EOFError`` is a subtype of ``IOError`` and so it's easier to distinguish
+  between "error during read" and "error due to EOF".
+
 
 Library Additions
 -----------------
@@ -17,9 +27,19 @@ Library Additions
 Tool Additions
 --------------
 
+- The ``finish`` tool can now download MingW for you should it not find a
+  working MingW installation.
+
 
 Compiler Additions
 ------------------
+
+- The name mangling rules used by the C code generator changed. Most of the time
+  local variables and parameters are not mangled at all anymore. This improves
+  debugging experience.
+- The compiler produces explicit name mangling files when ``--debugger:native``
+  is enabled. Debuggers can read these ``.ndi`` files in order to improve
+  debugging Nim code.
 
 
 Language Additions

@@ -443,6 +443,8 @@ proc handleCmdLine(cache: IdentCache; config: ConfigRef) =
           "Cannot find Nim standard library: Nim compiler not in PATH")
     gPrefixDir = binaryPath.splitPath().head.parentDir()
     #msgs.writelnHook = proc (line: string) = logStr(line)
+    if gLogging:
+      logStr("START " & gProjectFull)
 
     loadConfigs(DefaultConfig, cache, config) # load all config files
     # now process command line arguments again, because some options in the

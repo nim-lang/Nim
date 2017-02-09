@@ -121,7 +121,6 @@ proc wrapInComesFrom*(info: TLineInfo; res: PNode): PNode =
   else:
     result = newNodeI(nkPar, info)
     result.add res
-    result.flags.incl nfNone
 
 proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym; fromHlo=false): PNode =
   inc(evalTemplateCounter)

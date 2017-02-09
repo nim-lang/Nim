@@ -522,7 +522,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkNode)
       let shiftedRb = rb + ord(regs[ra].node.kind == nkObjConstr)
       let dest = regs[ra].node
-      if dest.sons[shiftedRb].kind == nkExprColonExpr:
+      if dest.kind == nkNilLit:
+        stackTrace(c, tos, pc, errNilAccess)
+      elif dest.sons[shiftedRb].kind == nkExprColonExpr:
         putIntoNode(dest.sons[shiftedRb].sons[1], regs[rc])
       else:
         putIntoNode(dest.sons[shiftedRb], regs[rc])

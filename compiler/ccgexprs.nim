@@ -2158,17 +2158,72 @@ proc genNamedConstExpr(p: BProc, n: PNode): Rope =
   if n.kind == nkExprColonExpr: result = genConstExpr(p, n.sons[1])
   else: result = genConstExpr(p, n)
 
+proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo): Rope =
+  var t = skipTypes(typ, abstractRange-{tyTypeDesc})
+  case t.kind
+  of tyBool: result = rope"NIM_FALSE"
+  of tyEnum, tyChar, tyInt..tyInt64, tyUInt..tyUInt64: result = rope"0"
+  of tyFloat..tyFloat128: result = rope"0.0"
+  of tyCString, tyString, tyVar, tyPointer, tyPtr, tySequence, tyExpr,
+     tyStmt, tyTypeDesc, tyStatic, tyRef, tyNil:
+    result = rope"NIM_NIL"
+  of tyProc:
+    if t.callConv != ccClosure:
+      result = rope"NIM_NIL"
+    else:
+      result = rope"{NIM_NIL, NIM_NIL}"
+  of tyObject:
+    if not isObjLackingTypeField(t) and not p.module.compileToCpp:
+      result = "{{$1}}" % [genTypeInfo(p.module, t)]
+    else:
+      result = rope"{}"
+  of tyArray, tyTuple: result = rope"{}"
+  of tySet:
+    if mapType(t) == ctArray: result = rope"{}"
+    else: result = rope"0"
+  else:
+    globalError(info, "cannot create null element for: " & $t.kind)
+
+proc getNullValueAux(p: BProc; obj, cons: PNode, result: var Rope) =
+  case obj.kind
+  of nkRecList:
+    for i in countup(0, sonsLen(obj) - 1): getNullValueAux(p, obj.sons[i], cons, result)
+  of nkRecCase:
+    getNullValueAux(p, obj.sons[0], cons, result)
+    for i in countup(1, sonsLen(obj) - 1):
+      getNullValueAux(p, lastSon(obj.sons[i]), cons, result)
+  of nkSym:
+    if not result.isNil: result.add ", "
+    let field = obj.sym
+    for i in 1..<cons.len:
+      if cons[i].kind == nkExprColonExpr:
+        if cons[i][0].sym == field:
+          result.add genConstExpr(p, cons[i][1])
+          return
+      elif i == field.position:
+        result.add genConstExpr(p, cons[i])
+        return
+    # not found, produce default value:
+    result.add getDefaultValue(p, field.typ, cons.info)
+  else:
+    localError(cons.info, "cannot create null element for: " & $obj)
+
+proc genConstObjConstr(p: BProc; n: PNode): Rope =
+  var length = sonsLen(n)
+  result = nil
+  let t = n.typ.skipTypes(abstractInst)
+  if not isObjLackingTypeField(t) and not p.module.compileToCpp:
+    addf(result, "{$1}", [genTypeInfo(p.module, t)])
+  getNullValueAux(p, t.n, n, result)
+  result = "{$1}$n" % [result]
+
 proc genConstSimpleList(p: BProc, n: PNode): Rope =
   var length = sonsLen(n)
   result = rope("{")
   let t = n.typ.skipTypes(abstractInst)
-  if n.kind == nkObjConstr and not isObjLackingTypeField(t) and
-      not p.module.compileToCpp:
-    addf(result, "{$1}", [genTypeInfo(p.module, t)])
-    if n.len > 1: add(result, ",")
-  for i in countup(ord(n.kind == nkObjConstr), length - 2):
+  for i in countup(0, length - 2):
     addf(result, "$1,$n", [genNamedConstExpr(p, n.sons[i])])
-  if length > ord(n.kind == nkObjConstr):
+  if length > 0:
     add(result, genNamedConstExpr(p, n.sons[length - 1]))
   addf(result, "}$n", [])
 
@@ -2203,12 +2258,14 @@ proc genConstExpr(p: BProc, n: PNode): Rope =
     var cs: TBitSet
     toBitSet(n, cs)
     result = genRawSetData(cs, int(getSize(n.typ)))
-  of nkBracket, nkPar, nkClosure, nkObjConstr:
+  of nkBracket, nkPar, nkClosure:
     var t = skipTypes(n.typ, abstractInst)
     if t.kind == tySequence:
       result = genConstSeq(p, n, n.typ)
     else:
       result = genConstSimpleList(p, n)
+  of nkObjConstr:
+    result = genConstObjConstr(p, n)
   else:
     var d: TLoc
     initLocExpr(p, n, d)
