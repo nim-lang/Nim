@@ -9,11 +9,11 @@
 
 ## Implements some helper procs for Nimble (Nim's package manager) support.
 
-import parseutils, strutils, strtabs, os, options, msgs, lists
+import parseutils, strutils, strtabs, os, options, msgs
 
 proc addPath*(path: string, info: TLineInfo) =
-  if not contains(options.searchPaths, path):
-    lists.prependStr(options.searchPaths, path)
+  if not options.searchPaths.contains(path):
+    options.searchPaths.insert(path, 0)
 
 proc versionSplitPos(s: string): int =
   result = s.len-2
@@ -61,7 +61,7 @@ iterator chosen(packages: StringTableRef): string =
 proc addNimblePath(p: string, info: TLineInfo) =
   if not contains(options.searchPaths, p):
     message(info, hintPath, p)
-    lists.prependStr(options.lazyPaths, p)
+    options.lazyPaths.insert(p, 0)
 
 proc addPathRec(dir: string, info: TLineInfo) =
   var packages = newStringTable(modeStyleInsensitive)

@@ -943,7 +943,8 @@ proc genEcho(p: BProc, n: PNode) =
   # this unusal way of implementing it ensures that e.g. ``echo("hallo", 45)``
   # is threadsafe.
   internalAssert n.kind == nkBracket
-  discard lists.includeStr(p.module.headerFiles, "<stdio.h>")
+  if not p.module.headerFiles.contains("<stdio.h>"):
+    p.module.headerFiles.add("<stdio.h>")
   var args: Rope = nil
   var a: TLoc
   for i in countup(0, n.len-1):

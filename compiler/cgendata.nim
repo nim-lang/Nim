@@ -10,7 +10,7 @@
 ## This module contains the data structures for the C code generation phase.
 
 import
-  ast, astalgo, ropes, passes, options, intsets, lists, platform, sighashes,
+  ast, astalgo, ropes, passes, options, intsets, platform, sighashes,
   tables, ndi
 
 from msgs import TLineInfo
@@ -130,7 +130,7 @@ type
     forwTypeCache*: TypeCache # cache for forward declarations of types
     declaredThings*: IntSet   # things we have declared in this .c file
     declaredProtos*: IntSet   # prototypes we have declared in this .c file
-    headerFiles*: TLinkedList # needed headers to include
+    headerFiles*: seq[string] # needed headers to include
     typeInfoMarker*: TypeCache # needed for generating type information
     initProc*: BProc          # code for init procedure
     postInitProc*: BProc      # code to be executed after the init proc

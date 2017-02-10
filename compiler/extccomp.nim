@@ -13,7 +13,7 @@
 # nim files.
 
 import
-  lists, ropes, os, strutils, osproc, platform, condsyms, options, msgs,
+  ropes, os, strutils, osproc, platform, condsyms, options, msgs,
   securehash, streams
 
 #from debuginfo import writeDebugInfo
@@ -82,7 +82,7 @@ compiler gcc:
     includeCmd: " -I",
     linkDirCmd: " -L",
     linkLibCmd: " -l$1",
-    debug: "",
+    debug: " -g ",
     pic: "-fPIC",
     asmStmtFrmt: "asm($1);$n",
     structStmtFmt: "$1 $3 $2 ", # struct|union [packed] $name
@@ -390,7 +390,7 @@ type
   CfileList = seq[Cfile]
 
 var
-  externalToLink: TLinkedList # files to link in addition to the file
+  externalToLink: seq[string] # files to link in addition to the file
                               # we compiled
   linkOptionsCmd: string = ""
   compileOptionsCmd: seq[string] = @[]
@@ -486,11 +486,11 @@ proc resetCompilationLists* =
   # when the module is loaded/unloaded it adds/removes its items
   # That's because we still need to hash check the external files
   # Maybe we can do that in checkDep on the other hand?
-  initLinkedList(externalToLink)
+  externalToLink.setLen 0
 
 proc addExternalFileToLink*(filename: string) =
-  prependStr(externalToLink, filename)
-  # BUGFIX: was ``appendStr``
+  externalToLink.insert(filename, 0)
+  #prependStr(externalToLink, filename)
 
 proc execWithEcho(cmd: string, msg = hintExecuting): int =
   rawMessage(msg, cmd)
@@ -527,8 +527,8 @@ proc noAbsolutePaths: bool {.inline.} =
   # `optGenMapping` is included here for niminst.
   result = gGlobalOptions * {optGenScript, optGenMapping} != {}
 
-proc add(s: var string, many: openArray[string]) =
-  s.add many.join
+#proc add(s: var string, many: openArray[string]) =
+#  s.add many.join
 
 proc cFileSpecificOptions(cfilename: string): string =
   result = compileOptions
@@ -560,7 +560,7 @@ proc getLinkOptions: string =
   for linkedLib in items(cLinkedLibs):
     result.add(CC[cCompiler].linkLibCmd % linkedLib.quoteShell)
   for libDir in items(cLibs):
-    result.add([CC[cCompiler].linkDirCmd, libDir.quoteShell])
+    result.add(join([CC[cCompiler].linkDirCmd, libDir.quoteShell]))
 
 proc needsExeExt(): bool {.inline.} =
   result = (optGenScript in gGlobalOptions and targetOS == osWindows) or
@@ -611,7 +611,7 @@ proc getCompileCFileCmd*(cfile: Cfile): string =
     includeCmd = CC[c].includeCmd & quoteShell(libpath)
 
     for includeDir in items(cIncludes):
-      includeCmd.add([CC[c].includeCmd, includeDir.quoteShell])
+      includeCmd.add(join([CC[c].includeCmd, includeDir.quoteShell]))
 
     compilePattern = joinPath(ccompilerpath, exe)
   else:
@@ -786,14 +786,12 @@ proc callCCompiler*(projectfile: string) =
         rawMessage(errExecutionOfProgramFailed, cmds.join())
   if optNoLinking notin gGlobalOptions:
     # call the linker:
-    var it = PStrEntry(externalToLink.head)
     var objfiles = ""
-    while it != nil:
-      let objFile = if noAbsolutePaths(): it.data.extractFilename else: it.data
+    for it in externalToLink:
+      let objFile = if noAbsolutePaths(): it.extractFilename else: it
       add(objfiles, ' ')
       add(objfiles, quoteShell(
           addFileExt(objFile, CC[cCompiler].objExt)))
-      it = PStrEntry(it.next)
     for x in toCompile:
       add(objfiles, ' ')
       add(objfiles, quoteShell(x.obj))
@@ -836,15 +834,14 @@ proc writeJsonBuildInstructions*(projectfile: string) =
       else:
         lit "],\L"
 
-  proc linkfiles(f: File; buf, objfiles: var string; toLink: TLinkedList) =
-    var it = PStrEntry(toLink.head)
-    while it != nil:
-      let objfile = addFileExt(it.data, CC[cCompiler].objExt)
-      str objfile
+  proc linkfiles(f: File; buf, objfiles: var string; toLink: seq[string]) =
+    for i, it in toLink:
+      let objfile = addFileExt(it, CC[cCompiler].objExt)
+      str(objfile)
       add(objfiles, ' ')
       add(objfiles, quoteShell(objfile))
-      it = PStrEntry(it.next)
-      if it == nil:
+      
+      if i == toLink.high:
         lit "\L"
       else:
         lit ",\L"

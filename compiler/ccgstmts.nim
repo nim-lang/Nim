@@ -884,7 +884,8 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
   #
   if not isEmptyType(t.typ) and d.k == locNone:
     getTemp(p, t.typ, d)
-  discard lists.includeStr(p.module.headerFiles, "<setjmp.h>")
+  if not p.module.headerFiles.contains("<setjmp.h>"):
+    p.module.headerFiles.add("<setjmp.h>")
   genLineDir(p, t)
   var safePoint = getTempName(p.module)
   if getCompilerProc("Exception") != nil:
