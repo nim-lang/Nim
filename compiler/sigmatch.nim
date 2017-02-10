@@ -543,7 +543,7 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
       else:
         return isNone
     when useEffectSystem:
-      if not compatibleEffects(f, a): return isNone
+      if compatibleEffects(f, a) != efCompat: return isNone
 
   of tyNil:
     result = f.allowsNil
