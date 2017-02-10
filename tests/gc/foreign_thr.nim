@@ -32,7 +32,7 @@ when defined(linux):
     doAssert pthread_create(addr tid, addr attrs, wrapper, f) == 0
     doAssert pthread_join(tid, nil) == 0
 
-else:
+elif defined(windows):
   import winlean
   type
     WinThreadProc = proc (x: pointer): int32 {.stdcall.}
@@ -59,6 +59,9 @@ else:
     var h = createThread(nil, ThreadStackSize.int32, wrapper.WinThreadProc, cast[pointer](f), 0, dummyThreadId)
     doAssert h != 0.Handle
     doAssert waitForSingleObject(h, -1'i32) == 0.DWORD
+
+else:
+  {.fatal: "Unknown system".}
 
 proc f {.thread.} =
   var msg = "Hello " & "from foreign thread"
