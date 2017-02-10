@@ -1093,11 +1093,11 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       return readTypeParameter(c, ty, i, n.info)
     of tyObject, tyTuple:
       if ty.n != nil and ty.n.kind == nkRecList:
-        for field in ty.n:
-          if field.sym.name == i:
-            n.typ = newTypeWithSons(c, tyFieldAccessor, @[ty, field.sym.typ])
-            n.typ.n = copyTree(n)
-            return n
+        let field = lookupInRecord(ty.n, i)
+        if field != nil:
+          n.typ = newTypeWithSons(c, tyFieldAccessor, @[ty, field.typ])
+          n.typ.n = copyTree(n)
+          return n
     else:
       # echo "TYPE FIELD ACCESS"
       # debug ty
