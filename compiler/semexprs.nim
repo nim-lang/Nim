@@ -1093,11 +1093,33 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       return readTypeParameter(c, ty, i, n.info)
     of tyObject, tyTuple:
       if ty.n != nil and ty.n.kind == nkRecList:
+        var recCaseNodes: seq[PNode] # List of nodes of kind nkRecCase, used to avoid recursion
+        template returnField(field: untyped): untyped =
+          n.typ = newTypeWithSons(c, tyFieldAccessor, @[ty, field.sym.typ])
+          n.typ.n = copyTree(n)
+          return n
         for field in ty.n:
           if field.kind == nkSym and field.sym.name == i:
-            n.typ = newTypeWithSons(c, tyFieldAccessor, @[ty, field.sym.typ])
-            n.typ.n = copyTree(n)
-            return n
+            returnField(field)
+          elif field.kind == nkRecCase:
+            if recCaseNodes.isNil:
+              recCaseNodes = newSeq[PNode]()
+            recCaseNodes.add(field)
+        var currCase = 0
+        while currCase < len(recCaseNodes):
+          for field in recCaseNodes[currCase].sons:
+            if field.kind == nkSym:
+              if field.sym.name == i:
+                returnField(field)
+            else:
+              doAssert(field.kind in {nkOfBranch, nkElse})
+              let recList = field.sons[if field.kind == nkOfBranch: 1 else: 0]
+              for field in recList:
+                if field.kind == nkSym and field.sym.name == i:
+                  returnField(field)
+                elif field.kind == nkRecCase:
+                  recCaseNodes.add(field)
+          inc currCase
     else:
       # echo "TYPE FIELD ACCESS"
       # debug ty

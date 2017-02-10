@@ -1,10 +1,15 @@
 type
   Test = object
+    x: int
     case p: bool
     of true:
       a: int
     else:
-      discard
+      case q: bool
+      of true:
+        b: int
+      else:
+        discard
 
 proc f[T](t: typedesc[T]): int =
   1
