@@ -234,9 +234,9 @@ proc len*(row: InstantRow): int32 {.inline.} =
   ## returns number of columns in the row
   pqNfields(row.res)
 
-proc getColumnName*(row: InstantRow, col: int32) : string {.inline.} =
+proc getColumnName*(row: InstantRow, col: int) : string {.inline.} =
   ## returns name for given column in the row
-  $pqfname(row.res, col)
+  $pqfname(row.res, int32(col))
   
 proc getRow*(db: DbConn, query: SqlQuery,
              args: varargs[string, `$`]): Row {.tags: [ReadDbEffect].} =
