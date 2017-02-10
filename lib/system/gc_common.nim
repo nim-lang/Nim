@@ -149,9 +149,26 @@ when allowForeignThreadGc:
       var stackTop {.volatile.}: pointer
       setStackBottom(addr(stackTop))
       initGC()
+
+  proc tearDownForeignThreadGc*() {.gcsafe.} =
+    ## Call this to tear down the GC, previously initialized by ``setupForeignThreadGc``.
+    ## If GC has not been previously initialized, or has already been torn down, the
+    ## call does nothing.
+    ##
+    ## This function is available only when ``--threads:on`` and ``--tlsEmulation:off``
+    ## switches are used
+    if not localGcInitialized:
+      return
+    when declared(deallocOsPages): deallocOsPages()
+    localGcInitialized = false
+    when declared(gch): zeroMem(addr gch, sizeof(gch))
+
 else:
   template setupForeignThreadGc*() =
     {.error: "setupForeignThreadGc is available only when ``--threads:on`` and ``--tlsEmulation:off`` are used".}
+
+  template tearDownForeignThreadGc*() =
+    {.error: "tearDownForeignThreadGc is available only when ``--threads:on`` and ``--tlsEmulation:off`` are used".}
 
 # ----------------- stack management --------------------------------------
 #  inspired from Smart Eiffel
