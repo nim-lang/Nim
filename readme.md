@@ -1,9 +1,63 @@
 # <img src="https://raw.githubusercontent.com/nim-lang/assets/master/Art/logo-crown.png" width="36"> Nim [![Build Status](https://travis-ci.org/nim-lang/Nim.svg?branch=devel)](https://travis-ci.org/nim-lang/Nim)
+Efficient like C, expressive like Python and flexible like Lisp.
 
-This repo contains the Nim compiler, Nim's stdlib, tools and
-documentation. For more information about Nim, including downloads
-and documentation for the latest release, check out
-[Nim's website](http://nim-lang.org).
+```python
+proc binarySearch[T](a: openArray[T], key: T): int =
+  var b = len(a)
+  while result < b:
+    var mid = (result + b) div 2
+    if a[mid] < key: result = mid + 1
+    else: b = mid
+  if result >= len(a) or a[result] != key: result = -1
+```
+
+
+For more indepth information check [Nim's website](http://nim-lang.org).
+Other curated resources can be found at [Awesome Nim](https://github.com/VPashkov/awesome-nim)
+
+
+## Overview
+
+Nim is a modern general purpose programming language excelling in Async IO and C++ interop. These features make nim very suitable for:
+
+  - High performance games
+  - Servers/Micro services
+  - Embeddable applications
+  - Reusable libraries
+
+
+## Features
+**Compiler**
+  - [C, C++, js backends](http://nim-lang.org/docs/backends.html)
+  - [Configurable GC](http://nim-lang.org/docs/gc.html) - see also [Gsoc Idea](https://github.com/nim-lang/Nim/wiki/GSoC-2016-Ideas#make-nim-a-viable-research-platform-for-garbage-collection-algorithms)
+  - [Compile time Dead lock/race detection](http://nim-lang.org/blog/concurrency.html)
+  - [Efficent](https://github.com/kostya/benchmarks)
+  - [Fast Compiler] - Checked for regressions.
+  - [Small Binary](https://hookrace.net/blog/nim-binary-size/)
+  - [Write Tracking](http://nim-lang.org/blog/writetracking.html) - immutability
+
+**Langauge**
+  - [Concurrent](https://rosettacode.org/wiki/Synchronous_concurrency)
+  - [Domain Specific Languages](http://andreaferretti.github.io/rosencrantz/)
+  - [Hygenic Macros](http://nim-lang.org/docs/macros.html)
+  - [Low level memory allocation](https://rosettacode.org/wiki/Memory_allocation#Nim)
+  - [Type inference](https://nim-by-example.github.io/variables/type_casting_inference/) - Strongly typed
+  - Link to more features with examples such as  https://haxe.org/documentation/introduction/language-features.html
+
+**Tooling**
+  - [C2nim compiler](https://github.com/nim-lang/c2nim)
+  - [Editor Support](https://github.com/nim-lang/Nim/wiki/editor-support)
+  - [Suggest](https://github.com/nim-lang/nimsuggest)
+
+
+## What's being worked on Now
+  - link to highlevel roadmap, plan of what will be included, the vision!
+  - [Technical Roadmap](https://github.com/nim-lang/Nim/wiki/Roadmap)
+
+## Limitations
+  - Tail call optimization
+  - [Common Criticisms](https://github.com/nim-lang/Nim/wiki/Common-Criticisms)
+
 
 ## Compiling
 Compiling the Nim compiler is quite straightforward. Because
