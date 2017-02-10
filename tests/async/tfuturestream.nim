@@ -1,3 +1,17 @@
+discard """
+  file: "tfuturestream.nim"
+  exitcode: 0
+  output: '''
+0
+1
+2
+3
+4
+5
+Done
+Finished
+'''
+"""
 import asyncdispatch
 
 var fs = newFutureStream[string]()
