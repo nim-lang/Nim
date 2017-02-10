@@ -67,7 +67,7 @@ proc checkErr(f: File) =
 {.push stackTrace:off, profiler:off.}
 proc readBuffer(f: File, buffer: pointer, len: Natural): int =
   result = c_fread(buffer, 1, len, f)
-  checkErr(f)
+  if result != len: checkErr(f)
 
 proc readBytes(f: File, a: var openArray[int8|uint8], start, len: Natural): int =
   result = readBuffer(f, addr(a[start]), len)
@@ -118,8 +118,9 @@ const
 proc close*(f: File) = discard c_fclose(f)
 proc readChar(f: File): char =
   let x = c_fgetc(f)
-  if x == -1: raiseEOF()
-  checkErr(f)
+  if x < 0:
+    checkErr(f)
+    raiseEOF()
   result = char(x)
 
 proc flushFile*(f: File) = discard c_fflush(f)
@@ -140,7 +141,7 @@ proc readLine(f: File, line: var TaintedString): bool =
     # fgets doesn't append an \L
     c_memset(addr line.string[pos], '\L'.ord, sp)
     var fgetsSuccess = c_fgets(addr line.string[pos], sp, f) != nil
-    checkErr(f)
+    if not fgetsSuccess: checkErr(f)
     let m = c_memchr(addr line.string[pos], '\L'.ord, sp)
     if m != nil:
       # \l found: Could be our own or the one by fgets, in any case, we're done
