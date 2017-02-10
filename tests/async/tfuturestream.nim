@@ -14,21 +14,39 @@ Finished
 """
 import asyncdispatch
 
-var fs = newFutureStream[string]()
+var fs = newFutureStream[int]()
 
 proc alpha() {.async.} =
   for i in 0 .. 5:
     await sleepAsync(1000)
-    fs.put($i)
+    fs.put(i)
 
-  fs.complete("Done")
+  fs.complete()
 
 proc beta() {.async.} =
   while not fs.finished:
-    echo(await fs.takeAsync())
+    let (hasValue, value) = await fs.takeAsync()
+    if hasValue:
+      echo(value)
 
   echo("Finished")
 
 asyncCheck alpha()
 waitFor beta()
 
+# TODO: Something like this should work eventually.
+# proc delta(): FutureStream[string] {.async.} =
+#   for i in 0 .. 5:
+#     await sleepAsync(1000)
+#     result.put($i)
+
+#   return ""
+
+# proc omega() {.async.} =
+#   let fut = delta()
+#   while not fut.finished():
+#     echo(await fs.takeAsync())
+
+#   echo("Finished")
+
+# waitFor omega()
