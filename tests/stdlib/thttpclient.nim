@@ -49,7 +49,8 @@ proc asyncTest() {.async.} =
       echo("Downloaded ", progress, " of ", total)
       echo("Current rate: ", speed div 1000, "kb/s")
     client.onProgressChanged = onProgressChanged
-    discard await client.getContent("http://speedtest-ams2.digitalocean.com/100mb.test")
+    await client.downloadFile("http://speedtest-ams2.digitalocean.com/100mb.test",
+                              "100mb.test")
 
   client.close()
 
@@ -96,7 +97,8 @@ proc syncTest() =
       echo("Downloaded ", progress, " of ", total)
       echo("Current rate: ", speed div 1000, "kb/s")
     client.onProgressChanged = onProgressChanged
-    discard client.getContent("http://speedtest-ams2.digitalocean.com/100mb.test")
+    client.downloadFile("http://speedtest-ams2.digitalocean.com/100mb.test",
+                        "100mb.test")
 
   client.close()
 

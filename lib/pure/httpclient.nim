@@ -118,7 +118,7 @@
 
 import net, strutils, uri, parseutils, strtabs, base64, os, mimetypes,
   math, random, httpcore, times, tables, streams
-import asyncnet, asyncdispatch
+import asyncnet, asyncdispatch, asyncfile
 import nativesockets
 
 export httpcore except parseHeader # TODO: The ``except`` doesn't work
@@ -129,7 +129,7 @@ type
     status*: string
     headers*: HttpHeaders
     body: string # TODO: here for compatibility with old httpclient procs.
-    bodyStream*: StringStream
+    bodyStream*: Stream
 
   AsyncResponse* = ref object
     version*: string
@@ -696,10 +696,13 @@ proc postContent*(url: string, extraHeaders = "", body = "",
 proc downloadFile*(url: string, outputFilename: string,
                    sslContext: SSLContext = defaultSSLContext,
                    timeout = -1, userAgent = defUserAgent,
-                   proxy: Proxy = nil) =
+                   proxy: Proxy = nil) {.deprecated.} =
   ## | Downloads ``url`` and saves it to ``outputFilename``
   ## | An optional timeout can be specified in milliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
+  ##
+  ## **Deprecated since version 0.16.2**: use ``HttpClient.downloadFile``
+  ## instead.
   var f: File
   if open(f, outputFilename, fmWrite):
     f.write(getContent(url, sslContext = sslContext, timeout = timeout,
@@ -781,7 +784,8 @@ type
     when SocketType is AsyncSocket:
       bodyStream: FutureStream[string]
     else:
-      bodyStream: StringStream
+      bodyStream: Stream
+    getBody: bool ## When `false`, the body is never read in requestAux.
 
 type
   HttpClient* = HttpClientBase[Socket]
@@ -812,6 +816,7 @@ proc newHttpClient*(userAgent = defUserAgent,
   result.timeout = timeout
   result.onProgressChanged = nil
   result.bodyStream = newStringStream()
+  result.getBody = true
   when defined(ssl):
     result.sslContext = sslContext
 
@@ -843,6 +848,7 @@ proc newAsyncHttpClient*(userAgent = defUserAgent,
   result.timeout = -1 # TODO
   result.onProgressChanged = nil
   result.bodyStream = newFutureStream[string]("newAsyncHttpClient")
+  result.getBody = true
   when defined(ssl):
     result.sslContext = sslContext
 
@@ -933,10 +939,8 @@ proc parseBody(client: HttpClient | AsyncHttpClient,
   client.oneSecondProgress = 0
   client.lastProgressReport = 0
 
-  when client is HttpClient:
-    client.bodyStream = newStringStream()
-  else:
-    client.bodyStream = newFutureStream[string]("parseResponse")
+  when client is AsyncHttpClient:
+    assert(not client.bodyStream.finished)
 
   if headers.getOrDefault"Transfer-Encoding" == "chunked":
     await parseChunks(client)
@@ -1020,7 +1024,12 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
 
   if not fullyRead:
     httpError("Connection was closed before full request has been made")
+
   if getBody:
+    when client is HttpClient:
+      client.bodyStream = newStringStream()
+    else:
+      client.bodyStream = newFutureStream[string]("parseResponse")
     await parseBody(client, result.headers, result.version)
     result.bodyStream = client.bodyStream
 
@@ -1112,8 +1121,9 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: string,
   if body != "":
     await client.socket.send(body)
 
-  result = await parseResponse(client,
-                               httpMethod.toLower() notin ["head", "connect"])
+  let getBody = httpMethod.toLowerAscii() notin ["head", "connect"] and
+                client.getBody
+  result = await parseResponse(client, getBody)
 
   # Restore the clients proxy in case it was overwritten.
   client.proxy = savedProxy
@@ -1200,16 +1210,14 @@ proc post*(client: HttpClient | AsyncHttpClient, url: string, body = "",
     headers["Content-Type"] = mpHeader.split(": ")[1]
   headers["Content-Length"] = $len(xb)
 
-  result = await client.requestAux(url, $HttpPOST, xb,
-                                headers = headers)
+  result = await client.requestAux(url, $HttpPOST, xb, headers)
   # Handle redirects.
   var lastURL = url
   for i in 1..client.maxRedirects:
     if result.status.redirection():
       let redirectTo = getNewLocation(lastURL, result.headers)
       var meth = if result.status != "307": HttpGet else: HttpPost
-      result = await client.requestAux(redirectTo, $meth, xb,
-                                    headers = headers)
+      result = await client.requestAux(redirectTo, $meth, xb, headers)
       lastURL = redirectTo
 
 proc postContent*(client: HttpClient | AsyncHttpClient, url: string,
@@ -1228,3 +1236,27 @@ proc postContent*(client: HttpClient | AsyncHttpClient, url: string,
     raise newException(HttpRequestError, resp.status)
   else:
     return await resp.bodyStream.readAll()
+
+proc downloadFile*(client: HttpClient | AsyncHttpClient,
+                   url: string, filename: string): Future[void] {.multisync.} =
+  ## Downloads ``url`` and saves it to ``filename``.
+  client.getBody = false
+  let resp = await client.get(url)
+
+  when client is HttpClient:
+    client.bodyStream = newFileStream(filename, fmWrite)
+    if client.bodyStream.isNil:
+      fileError("Unable to open file")
+  else:
+    var f = openAsync(filename, fmWrite)
+    client.bodyStream = f.getWriteStream()
+
+  await parseBody(client, resp.headers, resp.version)
+
+  when client is HttpClient:
+    client.bodyStream.close()
+  else:
+    f.close()
+
+  if resp.code.is4xx or resp.code.is5xx:
+    raise newException(HttpRequestError, resp.status)

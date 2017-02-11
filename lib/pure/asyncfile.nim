@@ -476,3 +476,15 @@ proc close*(f: AsyncFile) =
     if close(f.fd.cint) == -1:
       raiseOSError(osLastError())
 
+proc writeFromStream(f: AsyncFile, fut: FutureStream[string]) {.async.} =
+  while true:
+    let (hasValue, value) = await fut.take()
+    if hasValue:
+      await f.write(value)
+    else:
+      break
+
+proc getWriteStream*(f: AsyncFile): FutureStream[string] =
+  ## Returns a new stream that can be used for writing to the file.
+  result = newFutureStream[string]()
+  asyncCheck writeFromStream(f, result)
