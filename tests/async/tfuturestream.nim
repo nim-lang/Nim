@@ -21,6 +21,7 @@ proc alpha() {.async.} =
     await sleepAsync(1000)
     await fs.put(i)
 
+  echo("Done")
   fs.complete()
 
 proc beta() {.async.} =
