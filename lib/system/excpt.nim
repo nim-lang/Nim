@@ -45,6 +45,17 @@ var
     # a global variable for the root of all try blocks
   currException {.threadvar.}: ref Exception
 
+type
+  FrameState = tuple[framePtr: PFrame, excHandler: PSafePoint, currException: ref Exception]
+
+proc getFrameState*(): FrameState {.compilerRtl, inl.} =
+  return (framePtr, excHandler, currException)
+
+proc setFrameState*(state: FrameState) {.compilerRtl, inl.} =
+  framePtr = state.framePtr
+  excHandler = state.excHandler
+  currException = state.currException
+
 proc getFrame*(): PFrame {.compilerRtl, inl.} = framePtr
 
 proc popFrame {.compilerRtl, inl.} =

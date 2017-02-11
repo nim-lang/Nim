@@ -117,6 +117,7 @@ when defined(unix):
   {.passC: "-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0"}
 
 const
+  CORO_CREATED = 0
   CORO_EXECUTING = 1
   CORO_FINISHED = 2
 
@@ -139,8 +140,7 @@ type
     current: DoublyLinkedNode[Coroutine]
     loop: Coroutine
 
-# Per-thread coroutine loop state.
-var ctx: CoroutineLoopContext
+var ctx {.threadvar.}: CoroutineLoopContext
 
 proc getCurrent(): Coroutine =
   ## Returns current executing coroutine object.
@@ -184,13 +184,13 @@ proc switchTo(current, to: Coroutine) =
 proc suspend*(sleepTime: float=0) =
   ## Stops coroutine execution and resumes no sooner than after ``sleeptime`` seconds.
   ## Until then other coroutines are executed.
-  var frame = getFrame()
   var sp {.volatile.}: pointer
   var current = getCurrent()
   GC_setCurrentStack(current.stack.start, cast[pointer](addr sp))
   current.sleepTime = sleepTime
+  var frame = getFrameState()
   switchTo(current, ctx.loop)
-  setFrame(frame)
+  setFrameState(frame)
 
 proc runCurrentTask() =
   ## Starts execution of current coroutine and updates it's state through coroutine's life.
@@ -243,9 +243,9 @@ proc run*() =
     var remaining = current.sleepTime - (float(getTicks() - current.lastRun) / 1_000_000_000)
     if remaining <= 0:
       # Save main loop context. Suspending coroutine will resume after this statement with
-      var frame = getFrame()
+      var frame = getFrameState()
       switchTo(ctx.loop, current)
-      setFrame(frame)
+      setFrameState(frame)
     else:
       if minDelay > 0 and remaining > 0:
         minDelay = min(remaining, minDelay)
@@ -255,6 +255,10 @@ proc run*() =
     if current.state == CORO_FINISHED:
       GC_removeStack(current.stack.start)
       var next = ctx.current.prev
+      if next == nil:
+        # If first coroutine ends then `prev` is nil even if more coroutines 
+        # are to be scheduled.
+        next = ctx.current.next
       ctx.coroutines.remove(ctx.current)
       when coroBackend != CORO_BACKEND_FIBERS:
         dealloc(current.stack.start)
@@ -287,7 +291,7 @@ when isMainModule:
     i: int
     order = newSeq[int](10)
 
-  proc Fibonacci(id: int, sleep: float32) =
+  proc testFibonacci(id: int, sleep: float32) =
     var sleepTime: float
     while steps > 0:
       echo id, " executing, slept for ", sleepTime
@@ -300,9 +304,31 @@ when isMainModule:
       suspend(sleep)
       sleepTime = float(getTicks() - sleepStart) / 1_000_000_000
 
-  start(proc() = Fibonacci(1, 0.01))
-  start(proc() = Fibonacci(2, 0.021))
+  start(proc() = testFibonacci(1, 0.01))
+  start(proc() = testFibonacci(2, 0.021))
   run()
   doAssert stackCheckValue == 1100220033
   doAssert first == 55.0
   doAssert order == @[1, 2, 1, 1, 2, 1, 1, 2, 1, 1]
+
+  order = newSeq[int](10)
+  i = 0
+
+  proc testExceptions(id: int, sleep: float) =
+    try:
+      order[i] = id; i += 1
+      suspend(sleep)
+      order[i] = id; i += 1
+      raise (ref ValueError)()
+    except:
+      order[i] = id; i += 1
+      suspend(sleep)
+      order[i] = id; i += 1
+    suspend(sleep)
+    order[i] = id; i += 1
+
+  start(proc() = testExceptions(1, 0.01))
+  start(proc() = testExceptions(2, 0.021))
+  run()
+  doAssert order == @[1, 2, 1, 1, 1, 2, 2, 1, 2, 2]
+  doAssert stackCheckValue == 1100220033
