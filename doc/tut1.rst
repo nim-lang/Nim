@@ -361,7 +361,7 @@ iterator:
 .. code-block:: nim
   echo "Counting to ten: "
   for i in countup(1, 10):
-    echo $i
+    echo i
   # --> Outputs 1 2 3 4 5 6 7 8 9 10 on different lines
 
 The built-in `$ <system.html#$>`_ operator turns an integer (``int``) and many
@@ -374,7 +374,7 @@ Each value is ``echo``-ed. This code does the same:
   echo "Counting to 10: "
   var i = 1
   while i <= 10:
-    echo $i
+    echo i
     inc(i) # increment i by 1
   # --> Outputs 1 2 3 4 5 6 7 8 9 10 on different lines
 
@@ -383,7 +383,7 @@ Counting down can be achieved as easily (but is less often needed):
 .. code-block:: nim
   echo "Counting down from 10 to 1: "
   for i in countdown(10, 1):
-    echo $i
+    echo i
   # --> Outputs 10 9 8 7 6 5 4 3 2 1 on different lines
 
 Since counting up occurs so often in programs, Nim also has a `..
@@ -827,7 +827,7 @@ Let's return to the boring counting example:
 .. code-block:: nim
   echo "Counting to ten: "
   for i in countup(1, 10):
-    echo $i
+    echo i
 
 Can a `countup <system.html#countup>`_ proc be written that supports this
 loop? Lets try:
@@ -1035,15 +1035,15 @@ there is a difference between the ``$`` and ``repr`` outputs:
     myString = "nim"
     myInteger = 42
     myFloat = 3.14
-  echo $myBool, ":", repr(myBool)
+  echo myBool, ":", repr(myBool)
   # --> true:true
-  echo $myCharacter, ":", repr(myCharacter)
+  echo myCharacter, ":", repr(myCharacter)
   # --> n:'n'
-  echo $myString, ":", repr(myString)
+  echo myString, ":", repr(myString)
   # --> nim:0x10fa8c050"nim"
-  echo $myInteger, ":", repr(myInteger)
+  echo myInteger, ":", repr(myInteger)
   # --> 42:42
-  echo $myFloat, ":", repr(myFloat)
+  echo myFloat, ":", repr(myFloat)
   # --> 3.1400000000000001e+00:3.1400000000000001e+00
 
 
@@ -1075,7 +1075,7 @@ at runtime by 0, the second by 1 and so on. Example:
       north, east, south, west
 
   var x = south      # `x` is of type `Direction`; its value is `south`
-  echo $x           # writes "south" to `stdout`
+  echo x           # writes "south" to `stdout`
 
 All comparison operators can be used with enumeration types.
 
@@ -1289,7 +1289,7 @@ value. Here the ``for`` statement is looping over the results from the
 
 .. code-block:: nim
   for i in @[3, 4, 5]:
-    echo $i
+    echo i
   # --> 3
   # --> 4
   # --> 5
