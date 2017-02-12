@@ -1512,6 +1512,17 @@ type
     ## compiler supports. Currently this is ``float64``, but it is
     ## platform-dependant in general.
 
+when defined(JS):
+  type BiggestUInt* = uint32
+    ## is an alias for the biggest unsigned integer type the Nim compiler
+    ## supports. Currently this is ``uint32`` for JS and ``uint64`` for other
+    ## targets.
+else:
+  type BiggestUInt* = uint64
+    ## is an alias for the biggest unsigned integer type the Nim compiler
+    ## supports. Currently this is ``uint32`` for JS and ``uint64`` for other
+    ## targets.
+
 {.deprecated: [TAddress: ByteAddress].}
 
 when defined(windows):
