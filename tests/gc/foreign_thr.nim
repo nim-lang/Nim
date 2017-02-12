@@ -1,7 +1,9 @@
 discard """
   output: '''
-Hello from foreign thread
-Hello from foreign thread
+Hello from thread
+Hello from thread
+Hello from thread
+Hello from thread
 '''
   cmd: "nim $target --hints:on --threads:on --tlsEmulation:off $options $file"
 """
