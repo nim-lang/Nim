@@ -390,8 +390,8 @@ type
   CfileList = seq[Cfile]
 
 var
-  externalToLink: seq[string] # files to link in addition to the file
-                              # we compiled
+  externalToLink: seq[string] = @[] # files to link in addition to the file
+                                    # we compiled
   linkOptionsCmd: string = ""
   compileOptionsCmd: seq[string] = @[]
   linkOptions: string = ""
