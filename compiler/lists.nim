@@ -59,9 +59,20 @@ proc newStrEntry(data: string): PStrEntry {.deprecated.} =
 proc appendStr*(list: var TLinkedList, data: string) {.deprecated.} =
   append(list, newStrEntry(data))
 
+proc appendStr*(list: var seq[string]; data: string) {.deprecated.} =
+  # just use system.add
+  list.add(data)
+
 proc includeStr*(list: var TLinkedList, data: string): bool {.deprecated.} =
   if contains(list, data): return true
   appendStr(list, data)       # else: add to list
+
+proc includeStr(list: var seq[string]; data: string): bool {.deprecated.} =
+  if list.contains(data):
+    result = true
+  else:
+    result = false
+    list.add data
 
 proc prepend*(list: var TLinkedList, entry: PListEntry) {.deprecated.} =
   inc(list.counter)
