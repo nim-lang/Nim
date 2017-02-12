@@ -132,7 +132,7 @@ proc getCurrOwner*(): PSym =
   # the documentation comment always gets
   # assigned to the current owner
   # BUGFIX: global array is needed!
-  result = gOwners[high(gOwners)]
+  result = gOwners[^1]
 
 proc pushOwner*(owner: PSym) =
   add(gOwners, owner)
@@ -143,7 +143,7 @@ proc popOwner*() =
   else: internalError("popOwner")
 
 proc lastOptionEntry*(c: PContext): POptionEntry =
-  result = c.optionStack[c.optionStack.high]
+  result = c.optionStack[^1]
 
 proc popProcCon*(c: PContext) {.inline.} = c.p = c.p.next
 

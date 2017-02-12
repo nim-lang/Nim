@@ -218,7 +218,7 @@ proc processCallConv(c: PContext, n: PNode) =
     var sw = whichKeyword(n.sons[1].ident)
     case sw
     of FirstCallConv..LastCallConv:
-      c.optionStack[c.optionStack.high].defaultCC = wordToCallConv(sw)
+      c.optionStack[^1].defaultCC = wordToCallConv(sw)
     else: localError(n.info, errCallConvExpected)
   else:
     localError(n.info, errCallConvExpected)
@@ -256,7 +256,7 @@ proc processDynLib(c: PContext, n: PNode, sym: PSym) =
   if (sym == nil) or (sym.kind == skModule):
     let lib = getLib(c, libDynamic, expectDynlibNode(c, n))
     if not lib.isOverriden:
-      c.optionStack[c.optionStack.high].dynlib = lib
+      c.optionStack[^1].dynlib = lib
   else:
     if n.kind == nkExprColonExpr:
       var lib = getLib(c, libDynamic, expectDynlibNode(c, n))
@@ -352,7 +352,7 @@ proc processPush(c: PContext, n: PNode, start: int) =
   if n.sons[start-1].kind == nkExprColonExpr:
     localError(n.info, errGenerated, "':' after 'push' not supported")
   var x = newOptionEntry()
-  var y = POptionEntry(c.optionStack[c.optionStack.high])
+  var y = c.optionStack[^1]
   x.options = gOptions
   x.defaultCC = y.defaultCC
   x.dynlib = y.dynlib
@@ -370,8 +370,8 @@ proc processPop(c: PContext, n: PNode) =
   if c.optionStack.len <= 1:
     localError(n.info, errAtPopWithoutPush)
   else:
-    gOptions = c.optionStack[c.optionStack.high].options
-    gNotes = c.optionStack[c.optionStack.high].notes
+    gOptions = c.optionStack[^1].options
+    gNotes = c.optionStack[^1].notes
     c.optionStack.setLen(c.optionStack.len - 1)
 
 proc processDefine(c: PContext, n: PNode) =
@@ -980,7 +980,7 @@ proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
 
     if lfExportLib in sym.loc.flags and sfExportc notin sym.flags:
       localError(n.info, errDynlibRequiresExportc)
-    var lib = c.optionStack[c.optionStack.high].dynlib
+    var lib = c.optionStack[^1].dynlib
     if {lfDynamicLib, lfHeader} * sym.loc.flags == {} and
         sfImportc in sym.flags and lib != nil:
       incl(sym.loc.flags, lfDynamicLib)
