@@ -19,7 +19,7 @@
 # * transforms 'defer' into a 'try finally' statement
 
 import
-  intsets, strutils, lists, options, ast, astalgo, trees, treetab, msgs, os,
+  intsets, strutils, options, ast, astalgo, trees, treetab, msgs, os,
   idents, renderer, types, passes, semfold, magicsys, cgmeth, rodread,
   lambdalifting, sempass2, lowerings, lookups
 
