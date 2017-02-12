@@ -224,12 +224,9 @@ proc processCallConv(c: PContext, n: PNode) =
     localError(n.info, errCallConvExpected)
 
 proc getLib(c: PContext, kind: TLibKind, path: PNode): PLib =
-  #var it = PLib(c.libs.head)
-  #while it != nil:
   for it in c.libs:
-    if it.kind == kind:
-      if trees.exprStructuralEquivalent(it.path, path): return it
-    #it = PLib(it.next)
+    if it.kind == kind and trees.exprStructuralEquivalent(it.path, path):
+      return it
       
   result = newLib(kind)
   result.path = path

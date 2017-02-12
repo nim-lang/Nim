@@ -737,7 +737,7 @@ type
   TLibKind* = enum
     libHeader, libDynamic
     
-  TLib* = object of RootObj # also misused for headers!
+  TLib* = object              # also misused for headers!
     kind*: TLibKind
     generated*: bool          # needed for the backends:
     isOverriden*: bool

@@ -17,8 +17,7 @@ import
   modulegraphs
 
 type
-  TOptionEntry* = object of RootObj          # entries to put on a
-                                             # stack for pragma parsing
+  TOptionEntry* = object      # entries to put on a stack for pragma parsing
     options*: TOptions
     defaultCC*: TCallingConvention
     dynlib*: PLib
