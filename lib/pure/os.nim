@@ -1002,8 +1002,8 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
 
 iterator walkDirRec*(dir: string, filter={pcFile, pcDir}): string {.
   tags: [ReadDirEffect].} =
-  ## walks over the directory `dir` and yields for each file in `dir`. The
-  ## full path for each file is returned.
+  ## Recursively walks over the directory `dir` and yields for each file in `dir`.
+  ## The full path for each file is returned. Directories are not returned.
   ## **Warning**:
   ## Modifying the directory structure while the iterator
   ## is traversing may result in undefined behavior!
