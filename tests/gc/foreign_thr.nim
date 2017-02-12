@@ -6,17 +6,21 @@ Hello from foreign thread
   cmd: "nim $target --hints:on --threads:on --tlsEmulation:off $options $file"
 """
 # Copied from stdlib
+import strutils
+
 const
   StackGuardSize = 4096
   ThreadStackMask = 1024*256*sizeof(int)-1
   ThreadStackSize = ThreadStackMask+1 - StackGuardSize
 
+type ThreadFunc = proc() {.thread.}
+
 when defined(linux):
   import posix
 
-  proc runInForeignThread(f: proc() {.thread.}) =
+  proc runInForeignThread(f: ThreadFunc) =
     proc wrapper(p: pointer): pointer {.noconv.} =
-      let thr = cast[proc() {.thread.}](p)
+      let thr = cast[ThreadFunc](p)
       setupForeignThreadGc()
       thr()
       tearDownForeignThreadGc()
@@ -45,7 +49,7 @@ elif defined(windows):
     stdcall, dynlib: "kernel32", importc: "CreateThread".}
 
   proc wrapper(p: pointer): int32 {.stdcall.} =
-    let thr = cast[proc() {.thread.}](p)
+    let thr = cast[ThreadFunc](p)
     setupForeignThreadGc()
     thr()
     tearDownForeignThreadGc()
@@ -54,7 +58,7 @@ elif defined(windows):
     tearDownForeignThreadGc()
     result = 0'i32
 
-  proc runInForeignThread(f: proc() {.thread.}) =
+  proc runInForeignThread(f: ThreadFunc) =
     var dummyThreadId: DWORD
     var h = createThread(nil, ThreadStackSize.int32, wrapper.WinThreadProc, cast[pointer](f), 0, dummyThreadId)
     doAssert h != 0.Handle
@@ -63,8 +67,20 @@ elif defined(windows):
 else:
   {.fatal: "Unknown system".}
 
+proc runInNativeThread(f: ThreadFunc) =
+  proc wrapper(f: ThreadFunc) {.thread.} =
+    # These operations must be NOP
+    setupForeignThreadGc()
+    tearDownForeignThreadGc()
+    f()
+    f()
+  var thr: Thread[ThreadFunc]
+  createThread(thr, wrapper, f)
+  joinThread(thr)
+
 proc f {.thread.} =
-  var msg = "Hello " & "from foreign thread"
+  var msg = "Hello " & "from thread"
   echo msg
 
 runInForeignThread(f)
+runInNativeThread(f)

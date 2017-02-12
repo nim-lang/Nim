@@ -144,6 +144,9 @@ when allowForeignThreadGc:
     ## This function is available only when ``--threads:on`` and ``--tlsEmulation:off``
     ## switches are used
     if not localGcInitialized:
+      if not gch.stackBottom.isNil:
+        # GC heap has already been initialized using ``initGC``
+        return
       localGcInitialized = true
       initAllocator()
       var stackTop {.volatile.}: pointer
