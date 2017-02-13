@@ -296,15 +296,20 @@ proc serveTcp(graph: ModuleGraph; cache: IdentCache) =
     stdoutSocket.send("\c\L")
     stdoutSocket.close()
 
+iterator items(arg: TLinkedList): string {.deprecated.} =
+  # make this file compile when searchPaths is TLinkedList, and when it is not.
+  var it = arg.head
+  while it != nil:
+    yield PStrEntry(it).data
+    it = it.next
+    
 proc serveEpc(server: Socket; graph: ModuleGraph; cache: IdentCache) =
   var client = newSocket()
   # Wait for connection
   accept(server, client)
   if gLogging:
-    var it = searchPaths.head
-    while it != nil:
-      logStr(PStrEntry(it).data)
-      it = it.next
+    for it in searchPaths:
+      logStr(it)
     msgs.writelnHook = proc (line: string) = logStr(line)
 
   while true:
