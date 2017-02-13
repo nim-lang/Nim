@@ -2,7 +2,7 @@ discard """
   output: '''true'''
 """
 
-import hashes, tables
+import hashes, tables, sharedtables, options
 
 const
   data = {
@@ -210,6 +210,31 @@ block clearCountTableTest:
   assert t.len() != 0
   t.clear()
   assert t.len() == 0
+
+block computeTest:
+  var t = initSharedTable[int, int]()
+  let retOpt1 = t.compute(1) do (k: int, v: Option[int]) -> (Option[int], ComputeAction):
+    assert(v.isNone())
+    return (some(42), ComputeAction.Keep)
+  assert(retOpt1.get() == 42)
+  assert(t.mget(1) == 42)
+  let retOpt2 = t.compute(1) do (k: int, v: Option[int]) -> (Option[int], ComputeAction):
+    assert(v.get() == 42)
+    result[1] = ComputeAction.Del
+  assert(retOpt2.isNone())
+  try:
+    discard t.mget(1)
+    assert(false, "KeyError expected")
+  except KeyError:
+    discard
+  let retOpt3 = t.compute(2) do (k: int, v: Option[int]) -> (Option[int], ComputeAction):
+    result[1] = ComputeAction.Del
+  assert(retOpt3.isNone())
+  try:
+    discard t.mget(2)
+    assert(false, "KeyError expected")
+  except KeyError:
+    discard
 
 proc orderedTableSortTest() =
   var t = initOrderedTable[string, int](2)

@@ -13,7 +13,7 @@
 ## lockfree hash table, you're doing it wrong.
 
 import
-  hashes, math, locks
+  hashes, math, locks, options
 
 include "system/inclrtl"
 
@@ -24,6 +24,10 @@ type
     data: KeyValuePairSeq[A, B]
     counter, dataLen: int
     lock: Lock
+
+  ComputeAction* {.pure.} = enum
+    Keep,
+    Del
 
 template maxHash(t): expr = t.dataLen-1
 
@@ -129,6 +133,25 @@ proc hasKeyOrPut*[A, B](t: var SharedTable[A, B], key: A, val: B): bool =
   ## returns true iff `key` is in the table, otherwise inserts `value`.
   withLock t:
     hasKeyOrPutImpl(enlarge)
+
+proc compute*[A, B](t: var SharedTable[A, B], key: A,
+                    mapper: proc(key: A, val: Option[B]):
+                      (Option[B], ComputeAction)): Option[B] =
+  ## Computes a new mapping for the ``key`` with the specified ``mapper``
+  ## procedure.
+  ##
+  ## The ``mapper`` takes the key and the current value (if present) as
+  ## parameters and returns a pair of a new value and an action.
+  ## If the action is ``ComputeAction.Del``, the key is removed from the table.
+  ## If the action is ``CopmuteAction.Keep``, the key is added or updated.
+  ## The value returned by ``compute`` is always the value returned by
+  ## the ``mapper``.
+  ##
+  ## The operation is performed atomically and other operations on the table
+  ## will be blocked while the ``mapper`` is invoked, so it should be short and
+  ## simple.
+  withLock t:
+    computeImpl(enlarge)
 
 proc `[]=`*[A, B](t: var SharedTable[A, B], key: A, val: B) =
   ## puts a (key, value)-pair into `t`.

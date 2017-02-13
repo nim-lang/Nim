@@ -116,13 +116,7 @@ template hasKeyOrPutImpl(enlarge) {.dirty.} =
     maybeRehashPutImpl(enlarge)
   else: result = true
 
-template default[T](t: typedesc[T]): T =
-  var v: T
-  v
-
-template delImpl() {.dirty.} =
-  var hc: Hash
-  var i = rawGet(t, key, hc)
+template delImplIdx(t, i) =
   let msk = maxHash(t)
   if i >= 0:
     dec(t.counter)
@@ -144,6 +138,39 @@ template delImpl() {.dirty.} =
           t.data[j] = t.data[i]
         else:
           shallowCopy(t.data[j], t.data[i]) # data[j] will be marked EMPTY next loop
+
+template computeImpl(enlarge) {.dirty.} =
+  var hc: Hash
+  var index = rawGet(t, key, hc)
+  # mapper must be invoked before enlarging, because it may
+  # return none() or raise
+  let curVal = if index >= 0: some(t.data[index].val)
+               else: none(type(t.data[0].val))
+  # if the key exists, call mapper with the actual key, because identity
+  # can be important.
+  let mapperRet = if index >= 0: mapper(t.data[index].key, curVal)
+                  else: mapper(key, curVal)
+  result = mapperRet[0]
+  case mapperRet[1]:
+  of ComputeAction.Del:
+    if index >= 0:
+      delImplIdx(t, index)
+  of ComputeAction.Keep:
+    if result.isSome():
+      let val = result.unsafeGet()
+      if index >= 0:
+        t.data[index].val = val
+      else:
+        maybeRehashPutImpl(enlarge)
+
+template default[T](t: typedesc[T]): T =
+  var v: T
+  v
+
+template delImpl() {.dirty.} =
+  var hc: Hash
+  var i = rawGet(t, key, hc)
+  delImplIdx(t, i)
 
 template clearImpl() {.dirty.} =
   for i in 0 .. <t.data.len:
