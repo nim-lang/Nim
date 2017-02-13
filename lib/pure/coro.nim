@@ -164,6 +164,7 @@ proc runCurrentTask()
 proc switchTo(current, to: Coroutine) =
   ## Switches execution from `current` into `to` context.
   to.lastRun = getTicks()
+  # Execution will switch to another fiber now.
   when coroBackend == CORO_BACKEND_FIBERS:
     SwitchToFiber(to.execContext)
   elif coroBackend == CORO_BACKEND_UCONTEXT:
@@ -180,13 +181,13 @@ proc switchTo(current, to: Coroutine) =
         doAssert false
   else:
     {.error: "Invalid coroutine backend set.".}
+  # Execution was just resumed. Set active stack to current one.
+  GC_setCurrentStack(current.stack.start)
 
 proc suspend*(sleepTime: float=0) =
   ## Stops coroutine execution and resumes no sooner than after ``sleeptime`` seconds.
   ## Until then other coroutines are executed.
-  var sp {.volatile.}: pointer
   var current = getCurrent()
-  GC_setCurrentStack(current.stack.start, cast[pointer](addr sp))
   current.sleepTime = sleepTime
   var frame = getFrameState()
   switchTo(current, ctx.loop)
@@ -195,6 +196,9 @@ proc suspend*(sleepTime: float=0) =
 proc runCurrentTask() =
   ## Starts execution of current coroutine and updates it's state through coroutine's life.
   var current = getCurrent()
+  # Execution of new fiber just started. Since it was entered not through `switchTo` we
+  # have to set active stack here as well.
+  GC_setCurrentStack(current.stack.start)
   current.state = CORO_EXECUTING
   current.fn()                    # Start coroutine execution
   current.state = CORO_FINISHED
@@ -228,6 +232,7 @@ proc start*(c: proc(), stacksize: int=defaultStackSize) =
       coro.execContext.uc_link = addr ctx.loop.execContext
       makecontext(coro.execContext, runCurrentTask, 0)
   coro.stack.size = stacksize
+  coro.state = CORO_CREATED
   GC_addStack(coro.stack.ends)
   ctx.coroutines.append(coro)
 
@@ -260,7 +265,9 @@ proc run*() =
         # are to be scheduled.
         next = ctx.current.next
       ctx.coroutines.remove(ctx.current)
-      when coroBackend != CORO_BACKEND_FIBERS:
+      when coroBackend == CORO_BACKEND_FIBERS:
+        DeleteFiber(coro.execContext)
+      else:
         dealloc(current.stack.start)
       current.stack.start = nil
       current.stack.ends = nil

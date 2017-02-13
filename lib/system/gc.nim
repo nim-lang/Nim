@@ -72,8 +72,11 @@ type
 
   GcHeap {.final, pure.} = object # this contains the zero count and
                                    # non-zero count table
-    stack: ptr GcStack
-    stackBottom: pointer
+    when defined(nimCoroutines):
+      stack: ptr GcStack
+      stackActive: ptr GcStack
+    else:
+      stackBottom: pointer
     cycleThreshold: int
     when useCellIds:
       idGenerator: int

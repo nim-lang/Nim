@@ -108,12 +108,15 @@ when defined(nimCoroutines):
       else:
         stack = stack.next
 
-  proc GC_setCurrentStack*(starts, pos: pointer) {.cdecl, exportc.} =
+  proc GC_setCurrentStack*(starts: pointer) {.cdecl, exportc.} =
+    var pos {.volatile.}: pointer
+    pos = addr(pos)
     var stack = gch.stack
     while stack != nil:
       if stack.starts == starts:
         stack.pos = pos
         stack.maxStackSize = max(stack.maxStackSize, stackSize(stack.starts, pos))
+        gch.stackActive = stack
         return
       stack = stack.next
     gcAssert(false, "Current stack position does not belong to registered stack")
@@ -183,7 +186,11 @@ when not defined(useNimRtl):
     #c_fprintf(stdout, "stack bottom: %p;\n", theStackBottom)
     # the first init must be the one that defines the stack bottom:
     when defined(nimCoroutines):
-      GC_addStack(theStackBottom)
+      if gch.stack == nil:
+        # `setStackBottom()` gets called multiple times from main thread.
+        # Add it only once.
+        GC_addStack(theStackBottom)
+        GC_setCurrentStack(theStackBottom)
     else:
       if gch.stackBottom == nil: gch.stackBottom = theStackBottom
       else:
@@ -279,10 +286,19 @@ else:
       type PStackSlice = ptr array[0..7, pointer]
       var registers {.noinit.}: C_JmpBuf
       discard c_setjmp(registers)
+      gch.stackActive.pos = addr(registers)
       for stack in items(gch.stack):
         stack.maxStackSize = max(stack.maxStackSize, stackSize(stack.starts))
         var max = cast[ByteAddress](stack.starts)
         var sp = cast[ByteAddress](stack.pos)
+        when defined(amd64):
+          if stack == gch.stackActive:
+            # words within the jmp_buf structure may not be properly aligned.
+            let regEnd = sp +% sizeof(registers)
+            while sp <% regEnd:
+              gcMark(gch, cast[PPointer](sp)[])
+              gcMark(gch, cast[PPointer](sp +% sizeof(pointer) div 2)[])
+              sp = sp +% sizeof(pointer)
         # loop unrolled:
         while sp <% max - 8*sizeof(pointer):
           gcMark(gch, cast[PStackSlice](sp)[0])
