@@ -69,16 +69,14 @@ import db_common
 export db_common
 
 type
-  DbConn* = PPGconn   ## encapsulates a database connection
-  Row* = seq[string]  ## a row of a dataset. NULL database values will be
-                      ## converted to nil.
-  InstantRow* = tuple[res: PPGresult, line: int32]  ## a handle that can be
-                                                    ## used to get a row's
-                                                    ## column text on demand
+  DbConn* = PPGconn    ## encapsulates a database connection
+  Row* = seq[string]   ## a row of a dataset. NULL database values will be
+                       ## converted to nil.
+  InstantRow* = object ## a handle that can be
+    res: PPGresult     ## used to get a row's
+    line: int          ## column text on demand             
   SqlPrepared* = distinct string ## a identifier for the prepared queries
-
-{.deprecated: [TRow: Row, TDbConn: DbConn,
-              TSqlPrepared: SqlPrepared].}
+{.deprecated: [TRow: Row, TDbConn: DbConn, TSqlPrepared: SqlPrepared].}
 
 proc dbError*(db: DbConn) {.noreturn.} =
   ## raises a DbError exception.
@@ -213,7 +211,7 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
   ## on demand using []. Returned handle is valid only within iterator body.
   var res = setupQuery(db, query, args)
   for i in 0..pqNtuples(res)-1:
-    yield (res: res, line: i)
+    yield InstantRow(res: res, line: i)
   pqClear(res)
 
 iterator instantRows*(db: DbConn, stmtName: SqlPrepared,
@@ -223,16 +221,170 @@ iterator instantRows*(db: DbConn, stmtName: SqlPrepared,
   ## on demand using []. Returned handle is valid only within iterator body.
   var res = setupQuery(db, stmtName, args)
   for i in 0..pqNtuples(res)-1:
-    yield (res: res, line: i)
+    yield InstantRow(res: res, line: i)
   pqClear(res)
 
-proc `[]`*(row: InstantRow, col: int32): string {.inline.} =
-  ## returns text for given column of the row
-  $pqgetvalue(row.res, row.line, col)
+proc getColumnType(res: PPGresult, col: int) : DbType =
+  ## returns DbType for given column in the row
+  ## defined in pg_type.h file in the postgres source code
+  ## Wire representation for types: http://www.npgsql.org/dev/types.html
+  var oid = pqftype(res, int32(col))
+  ## The integer returned is the internal OID number of the type
+  case oid
+  of 16: return DbType(kind: DbTypeKind.dbBool, name: "bool")
+  of 17: return DbType(kind: DbTypeKind.dbBlob, name: "bytea")
 
-proc len*(row: InstantRow): int32 {.inline.} =
+  of 21:   return DbType(kind: DbTypeKind.dbInt, name: "int2", size: 2)
+  of 23:   return DbType(kind: DbTypeKind.dbInt, name: "int4", size: 4)
+  of 20:   return DbType(kind: DbTypeKind.dbInt, name: "int8", size: 8)
+  of 1560: return DbType(kind: DbTypeKind.dbBit, name: "bit")  
+  of 1562: return DbType(kind: DbTypeKind.dbInt, name: "varbit")
+
+  of 18:   return DbType(kind: DbTypeKind.dbFixedChar, name: "char")
+  of 19:   return DbType(kind: DbTypeKind.dbFixedChar, name: "name")
+  of 1042: return DbType(kind: DbTypeKind.dbFixedChar, name: "bpchar")
+
+  of 25:   return DbType(kind: DbTypeKind.dbVarchar, name: "text")
+  of 1043: return DbType(kind: DbTypeKind.dbVarChar, name: "varchar")
+  of 2275: return DbType(kind: DbTypeKind.dbVarchar, name: "cstring")
+
+  of 700: return DbType(kind: DbTypeKind.dbFloat, name: "float4")
+  of 701: return DbType(kind: DbTypeKind.dbFloat, name: "float8")
+
+  of 790:  return DbType(kind: DbTypeKind.dbDecimal, name: "money")  
+  of 1700: return DbType(kind: DbTypeKind.dbDecimal, name: "numeric")
+
+  of 704:  return DbType(kind: DbTypeKind.dbTimeInterval, name: "tinterval")
+  of 702:  return DbType(kind: DbTypeKind.dbTimestamp, name: "abstime")
+  of 703:  return DbType(kind: DbTypeKind.dbTimeInterval, name: "reltime")
+  of 1082: return DbType(kind: DbTypeKind.dbDate, name: "date")
+  of 1083: return DbType(kind: DbTypeKind.dbTime, name: "time")
+  of 1114: return DbType(kind: DbTypeKind.dbTimestamp, name: "timestamp")
+  of 1184: return DbType(kind: DbTypeKind.dbTimestamp, name: "timestamptz")
+  of 1186: return DbType(kind: DbTypeKind.dbTimeInterval, name: "interval")
+  of 1266: return DbType(kind: DbTypeKind.dbTime, name: "timetz")
+
+  of 114:  return DbType(kind: DbTypeKind.dbJson, name: "json")
+  of 142:  return DbType(kind: DbTypeKind.dbXml, name: "xml")
+  of 3802: return DbType(kind: DbTypeKind.dbJson, name: "jsonb")
+
+  of 600: return DbType(kind: DbTypeKind.dbPoint, name: "point")
+  of 601: return DbType(kind: DbTypeKind.dbLseg, name: "lseg")
+  of 602: return DbType(kind: DbTypeKind.dbPath, name: "path")
+  of 603: return DbType(kind: DbTypeKind.dbBox, name: "box")
+  of 604: return DbType(kind: DbTypeKind.dbPolygon, name: "polygon")
+  of 628: return DbType(kind: DbTypeKind.dbLine, name: "line")
+  of 718: return DbType(kind: DbTypeKind.dbCircle, name: "circle")  
+
+  of 650: return DbType(kind: DbTypeKind.dbInet, name: "cidr")
+  of 829: return DbType(kind: DbTypeKind.dbMacAddress, name: "macaddr")
+  of 869: return DbType(kind: DbTypeKind.dbInet, name: "inet")
+  
+  of 2950: return DbType(kind: DbTypeKind.dbVarchar, name: "uuid")
+  of 3614: return DbType(kind: DbTypeKind.dbVarchar, name: "tsvector")
+  of 3615: return DbType(kind: DbTypeKind.dbVarchar, name: "tsquery")
+  of 2970: return DbType(kind: DbTypeKind.dbVarchar, name: "txid_snapshot")
+
+  of 27:   return DbType(kind: DbTypeKind.dbComposite, name: "tid")
+  of 1790: return DbType(kind: DbTypeKind.dbComposite, name: "refcursor")
+  of 2249: return DbType(kind: DbTypeKind.dbComposite, name: "record")
+  of 3904: return DbType(kind: DbTypeKind.dbComposite, name: "int4range")
+  of 3906: return DbType(kind: DbTypeKind.dbComposite, name: "numrange")
+  of 3908: return DbType(kind: DbTypeKind.dbComposite, name: "tsrange")
+  of 3910: return DbType(kind: DbTypeKind.dbComposite, name: "tstzrange")
+  of 3912: return DbType(kind: DbTypeKind.dbComposite, name: "daterange")
+  of 3926: return DbType(kind: DbTypeKind.dbComposite, name: "int8range")
+
+  of 22:   return DbType(kind: DbTypeKind.dbArray, name: "int2vector")
+  of 30:   return DbType(kind: DbTypeKind.dbArray, name: "oidvector")
+  of 143:  return DbType(kind: DbTypeKind.dbArray, name: "xml[]")
+  of 199:  return DbType(kind: DbTypeKind.dbArray, name: "json[]")
+  of 629:  return DbType(kind: DbTypeKind.dbArray, name: "line[]")
+  of 651:  return DbType(kind: DbTypeKind.dbArray, name: "cidr[]")
+  of 719:  return DbType(kind: DbTypeKind.dbArray, name: "circle[]")
+  of 791:  return DbType(kind: DbTypeKind.dbArray, name: "money[]")
+  of 1000: return DbType(kind: DbTypeKind.dbArray, name: "bool[]")
+  of 1001: return DbType(kind: DbTypeKind.dbArray, name: "bytea[]")
+  of 1002: return DbType(kind: DbTypeKind.dbArray, name: "char[]")
+  of 1003: return DbType(kind: DbTypeKind.dbArray, name: "name[]")
+  of 1005: return DbType(kind: DbTypeKind.dbArray, name: "int2[]")
+  of 1006: return DbType(kind: DbTypeKind.dbArray, name: "int2vector[]")
+  of 1007: return DbType(kind: DbTypeKind.dbArray, name: "int4[]")
+  of 1008: return DbType(kind: DbTypeKind.dbArray, name: "regproc[]")
+  of 1009: return DbType(kind: DbTypeKind.dbArray, name: "text[]")
+  of 1028: return DbType(kind: DbTypeKind.dbArray, name: "oid[]")
+  of 1010: return DbType(kind: DbTypeKind.dbArray, name: "tid[]")
+  of 1011: return DbType(kind: DbTypeKind.dbArray, name: "xid[]")
+  of 1012: return DbType(kind: DbTypeKind.dbArray, name: "cid[]")
+  of 1013: return DbType(kind: DbTypeKind.dbArray, name: "oidvector[]")
+  of 1014: return DbType(kind: DbTypeKind.dbArray, name: "bpchar[]")
+  of 1015: return DbType(kind: DbTypeKind.dbArray, name: "varchar[]")
+  of 1016: return DbType(kind: DbTypeKind.dbArray, name: "int8[]")
+  of 1017: return DbType(kind: DbTypeKind.dbArray, name: "point[]")
+  of 1018: return DbType(kind: DbTypeKind.dbArray, name: "lseg[]")
+  of 1019: return DbType(kind: DbTypeKind.dbArray, name: "path[]")
+  of 1020: return DbType(kind: DbTypeKind.dbArray, name: "box[]")
+  of 1021: return DbType(kind: DbTypeKind.dbArray, name: "float4[]")
+  of 1022: return DbType(kind: DbTypeKind.dbArray, name: "float8[]")
+  of 1023: return DbType(kind: DbTypeKind.dbArray, name: "abstime[]")
+  of 1024: return DbType(kind: DbTypeKind.dbArray, name: "reltime[]")
+  of 1025: return DbType(kind: DbTypeKind.dbArray, name: "tinterval[]")
+  of 1027: return DbType(kind: DbTypeKind.dbArray, name: "polygon[]")
+  of 1040: return DbType(kind: DbTypeKind.dbArray, name: "macaddr[]")
+  of 1041: return DbType(kind: DbTypeKind.dbArray, name: "inet[]")
+  of 1263: return DbType(kind: DbTypeKind.dbArray, name: "cstring[]")
+  of 1115: return DbType(kind: DbTypeKind.dbArray, name: "timestamp[]")
+  of 1182: return DbType(kind: DbTypeKind.dbArray, name: "date[]")
+  of 1183: return DbType(kind: DbTypeKind.dbArray, name: "time[]")
+  of 1185: return DbType(kind: DbTypeKind.dbArray, name: "timestamptz[]")
+  of 1187: return DbType(kind: DbTypeKind.dbArray, name: "interval[]")
+  of 1231: return DbType(kind: DbTypeKind.dbArray, name: "numeric[]")
+  of 1270: return DbType(kind: DbTypeKind.dbArray, name: "timetz[]")
+  of 1561: return DbType(kind: DbTypeKind.dbArray, name: "bit[]")
+  of 1563: return DbType(kind: DbTypeKind.dbArray, name: "varbit[]")
+  of 2201: return DbType(kind: DbTypeKind.dbArray, name: "refcursor[]")
+  of 2951: return DbType(kind: DbTypeKind.dbArray, name: "uuid[]")
+  of 3643: return DbType(kind: DbTypeKind.dbArray, name: "tsvector[]")
+  of 3645: return DbType(kind: DbTypeKind.dbArray, name: "tsquery[]")
+  of 3807: return DbType(kind: DbTypeKind.dbArray, name: "jsonb[]")
+  of 2949: return DbType(kind: DbTypeKind.dbArray, name: "txid_snapshot[]")
+  of 3905: return DbType(kind: DbTypeKind.dbArray, name: "int4range[]")
+  of 3907: return DbType(kind: DbTypeKind.dbArray, name: "numrange[]")
+  of 3909: return DbType(kind: DbTypeKind.dbArray, name: "tsrange[]")
+  of 3911: return DbType(kind: DbTypeKind.dbArray, name: "tstzrange[]")
+  of 3913: return DbType(kind: DbTypeKind.dbArray, name: "daterange[]")
+  of 3927: return DbType(kind: DbTypeKind.dbArray, name: "int8range[]")
+  of 2287: return DbType(kind: DbTypeKind.dbArray, name: "record[]")
+
+  of 705:  return DbType(kind: DbTypeKind.dbUnknown, name: "unknown")
+  else: return DbType(kind: DbTypeKind.dbUnknown, name: $oid) ## Query the system table pg_type to determine exactly which type is referenced.
+
+proc setColumnInfo(columns: var DbColumns; res: PPGresult; L: int32) =
+  setLen(columns, L)
+  for i in 0..<L:
+    columns[i].name = $pqfname(res, i)
+    columns[i].typ = getColumnType(res, i)
+    columns[i].tableName = $(pqftable(res, i)) ## Returns the OID of the table from which the given column was fetched.
+                                               ## Query the system table pg_class to determine exactly which table is referenced.  
+    #columns[i].primaryKey = libpq does not have a function for that
+    #columns[i].foreignKey = libpq does not have a function for that
+
+iterator instantRows*(db: DbConn; columns: var DbColumns; query: SqlQuery;
+                      args: varargs[string, `$`]): InstantRow
+                      {.tags: [ReadDbEffect].} =
+  var res = setupQuery(db, query, args)
+  setColumnInfo(columns, res, pqnfields(res))
+  for i in 0..<pqntuples(res):
+    yield InstantRow(res: res, line: i)
+  pqClear(res)
+
+proc `[]`*(row: InstantRow; col: int): string {.inline.} =
+  ## returns text for given column of the row
+  $pqgetvalue(row.res, int32(row.line), int32(col))
+
+proc len*(row: InstantRow): int {.inline.} =
   ## returns number of columns in the row
-  pqNfields(row.res)
+  int(pqNfields(row.res))
 
 proc getRow*(db: DbConn, query: SqlQuery,
              args: varargs[string, `$`]): Row {.tags: [ReadDbEffect].} =
