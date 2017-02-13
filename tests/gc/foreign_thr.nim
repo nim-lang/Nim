@@ -17,7 +17,7 @@ const
 
 type ThreadFunc = proc() {.thread.}
 
-when defined(linux):
+when defined(posix):
   import posix
 
   proc runInForeignThread(f: ThreadFunc) =

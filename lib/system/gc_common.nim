@@ -128,13 +128,7 @@ iterator items(stack: ptr GcStack): ptr GcStack =
     yield s
     s = s.next
 
-# There will be problems with GC in foreign threads if `threads` option is off or TLS emulation is enabled
-const allowForeignThreadGc = compileOption("threads") and not compileOption("tlsEmulation")
-
-when allowForeignThreadGc:
-  var
-    localGcInitialized {.rtlThreadVar.}: bool
-
+when declared(threadType):
   proc setupForeignThreadGc*() {.gcsafe.} =
     ## Call this if you registered a callback that will be run from a thread not
     ## under your control. This has a cheap thread-local guard, so the GC for
@@ -143,15 +137,12 @@ when allowForeignThreadGc:
     ##
     ## This function is available only when ``--threads:on`` and ``--tlsEmulation:off``
     ## switches are used
-    if not localGcInitialized:
-      if not gch.stackBottom.isNil:
-        # GC heap has already been initialized using ``initGC``
-        return
-      localGcInitialized = true
+    if threadType == ThreadType.None:
       initAllocator()
       var stackTop {.volatile.}: pointer
       setStackBottom(addr(stackTop))
       initGC()
+      threadType = ThreadType.ForeignThread
 
   proc tearDownForeignThreadGc*() {.gcsafe.} =
     ## Call this to tear down the GC, previously initialized by ``setupForeignThreadGc``.
@@ -160,10 +151,10 @@ when allowForeignThreadGc:
     ##
     ## This function is available only when ``--threads:on`` and ``--tlsEmulation:off``
     ## switches are used
-    if not localGcInitialized:
+    if threadType != ThreadType.ForeignThread:
       return
     when declared(deallocOsPages): deallocOsPages()
-    localGcInitialized = false
+    threadType = ThreadType.None
     when declared(gch): zeroMem(addr gch, sizeof(gch))
 
 else:
