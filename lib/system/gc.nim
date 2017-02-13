@@ -63,18 +63,18 @@ type
     cycleTableSize: int      # max entries in cycle table
     maxPause: int64          # max measured GC pause in nanoseconds
 
-  GcStack {.final.} = object
+  GcStack {.final, pure.} = object
     prev: ptr GcStack
     next: ptr GcStack
-    starts: pointer
+    bottom: pointer
     pos: pointer
     maxStackSize: int
 
   GcHeap {.final, pure.} = object # this contains the zero count and
                                    # non-zero count table
     when defined(nimCoroutines):
-      stack: ptr GcStack
-      stackActive: ptr GcStack
+      stack: GcStack
+      activeStack: ptr GcStack
     else:
       stackBottom: pointer
     cycleThreshold: int
@@ -119,6 +119,53 @@ template gcAssert(cond: bool, msg: string) =
       #var x: ptr int
       #echo x[]
       quit 1
+
+when defined(nimCoroutines):
+  iterator items(first: var GcStack): ptr GcStack =
+    var item = addr(first)
+    while true:
+      yield item
+      item = item.next
+      if item == addr(first):
+        break
+
+  proc append(first: var GcStack, stack: ptr GcStack) =
+    ## Append stack to the ring of stacks.
+    first.prev.next = stack
+    stack.prev = first.prev
+    first.prev = stack
+    stack.next = addr(first)
+
+  proc append(first: var GcStack): ptr GcStack =
+    ## Allocate new GcStack object, append it to the ring of stacks and return it.
+    result = cast[ptr GcStack](alloc0(sizeof(GcStack)))
+    first.append(result)
+
+  proc remove(first: var GcStack, stack: ptr GcStack) =
+    ## Remove stack from ring of stacks.
+    gcAssert(addr(first) != stack, "Main application stack can not be removed")
+    if addr(first) == stack or stack == nil:
+      return
+    stack.prev.next = stack.next
+    stack.next.prev = stack.prev
+    dealloc(stack)
+
+  proc remove(stack: ptr GcStack) =
+    gch.stack.remove(stack)
+
+  proc find(first: var GcStack, bottom: pointer): ptr GcStack =
+    ## Find stack struct based on bottom pointer. If `bottom` is nil then main
+    ## thread stack is is returned.
+    if bottom == nil:
+      return addr(gch.stack)
+
+    for stack in first.items():
+      if stack.bottom == bottom:
+        return stack
+
+  proc len(stack: var GcStack): int =
+    for _ in stack.items():
+      result = result + 1
 
 proc addZCT(s: var CellSeq, c: PCell) {.noinline.} =
   if (c.refcount and ZctFlag) == 0:
@@ -823,7 +870,10 @@ proc collectCTBody(gch: var GcHeap) =
     let t0 = getticks()
   sysAssert(allocInv(gch.region), "collectCT: begin")
 
-  when not defined(nimCoroutines):
+  when defined(nimCoroutines):
+    for stack in gch.stack.items():
+      gch.stat.maxStackSize = max(gch.stat.maxStackSize, stack.stackSize())
+  else:
     gch.stat.maxStackSize = max(gch.stat.maxStackSize, stackSize())
   sysAssert(gch.decStack.len == 0, "collectCT")
   prepareForInteriorPointerChecking(gch.region)
@@ -849,19 +899,11 @@ proc collectCTBody(gch: var GcHeap) =
       if gch.maxPause > 0 and duration > gch.maxPause:
         c_fprintf(stdout, "[GC] missed deadline: %ld\n", duration)
 
-when defined(nimCoroutines):
-  proc currentStackSizes(): int =
-    for stack in items(gch.stack):
-      result = result + stackSize(stack.starts, stack.pos)
-
 proc collectCT(gch: var GcHeap) =
   # stackMarkCosts prevents some pathological behaviour: Stack marking
   # becomes more expensive with large stacks and large stacks mean that
   # cells with RC=0 are more likely to be kept alive by the stack.
-  when defined(nimCoroutines):
-    let stackMarkCosts = max(currentStackSizes() div (16*sizeof(int)), ZctThreshold)
-  else:
-    let stackMarkCosts = max(stackSize() div (16*sizeof(int)), ZctThreshold)
+  let stackMarkCosts = max(stackSize() div (16*sizeof(int)), ZctThreshold)
   if (gch.zct.len >= stackMarkCosts or (cycleGC and
       getOccupiedMem(gch.region)>=gch.cycleThreshold) or alwaysGC) and
       gch.recGcLock == 0:
@@ -946,7 +988,7 @@ when not defined(useNimRtl):
     when defined(nimCoroutines):
       result = result & "[GC] number of stacks: " & $gch.stack.len & "\n"
       for stack in items(gch.stack):
-        result = result & "[GC]   stack " & stack.starts.repr & "[GC]     max stack size " & $stack.maxStackSize & "\n"
+        result = result & "[GC]   stack " & stack.bottom.repr & "[GC]     max stack size " & cast[pointer](stack.maxStackSize).repr & "\n"
     else:
       result = result & "[GC] max stack size: " & $gch.stat.maxStackSize & "\n"
     GC_enable()

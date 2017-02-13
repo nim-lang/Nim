@@ -26,9 +26,9 @@ include system/timers
 
 const defaultStackSize = 512 * 1024
 
-proc GC_addStack(starts: pointer) {.cdecl, importc.}
-proc GC_removeStack(starts: pointer) {.cdecl, importc.}
-proc GC_setCurrentStack(starts, pos: pointer) {.cdecl, importc.}
+proc GC_addStack(bottom: pointer) {.cdecl, importc.}
+proc GC_removeStack(bottom: pointer) {.cdecl, importc.}
+proc GC_setActiveStack(bottom: pointer) {.cdecl, importc.}
 
 const
   CORO_BACKEND_UCONTEXT = 0
@@ -50,11 +50,6 @@ when coroBackend == CORO_BACKEND_FIBERS:
   import windows.winlean
   type
     Context = pointer
-    Fiber {.final, pure.} = object
-      parameter: pointer
-      pad1: pointer
-      stackStart: pointer
-      stackEnd: pointer
 
 elif coroBackend == CORO_BACKEND_UCONTEXT:
   type
@@ -123,8 +118,8 @@ const
 
 type
   Stack = object
-    start: pointer
-    ends: pointer
+    top: pointer      # Top of the stack. Pointer used for deallocating stack if we own it.
+    bottom: pointer   # Very bottom of the stack, acts as unique stack identifier.
     size: int
 
   Coroutine = ref object
@@ -164,44 +159,59 @@ proc runCurrentTask()
 proc switchTo(current, to: Coroutine) =
   ## Switches execution from `current` into `to` context.
   to.lastRun = getTicks()
-  # Execution will switch to another fiber now.
-  when coroBackend == CORO_BACKEND_FIBERS:
-    SwitchToFiber(to.execContext)
-  elif coroBackend == CORO_BACKEND_UCONTEXT:
-    discard swapcontext(current.execContext, to.execContext)
-  elif coroBackend == CORO_BACKEND_SETJMP:
-    var res = setjmp(current.execContext)
-    if res == 0:
-      if to.state == CORO_EXECUTING:
-        # Coroutine is resumed.
-        longjmp(to.execContext, 1)
-      elif to.state == CORO_CREATED:
-        # Coroutine is started.
-        coroExecWithStack(runCurrentTask, to.stack.ends)
-        doAssert false
-  else:
-    {.error: "Invalid coroutine backend set.".}
-  # Execution was just resumed. Set active stack to current one.
-  GC_setCurrentStack(current.stack.start)
+  # Update position of current stack so gc invoked from another stack knows how much to scan.
+  GC_setActiveStack(current.stack.bottom)
+  var frame = getFrameState()
+  block:
+    # Execution will switch to another fiber now. We do not need to update current stack
+    when coroBackend == CORO_BACKEND_FIBERS:
+      SwitchToFiber(to.execContext)
+    elif coroBackend == CORO_BACKEND_UCONTEXT:
+      discard swapcontext(current.execContext, to.execContext)
+    elif coroBackend == CORO_BACKEND_SETJMP:
+      var res = setjmp(current.execContext)
+      if res == 0:
+        if to.state == CORO_EXECUTING:
+          # Coroutine is resumed.
+          longjmp(to.execContext, 1)
+        elif to.state == CORO_CREATED:
+          # Coroutine is started.
+          coroExecWithStack(runCurrentTask, to.stack.bottom)
+          doAssert false
+    else:
+      {.error: "Invalid coroutine backend set.".}
+  # Execution was just resumed. Restore frame information and set active stack.
+  setFrameState(frame)
+  GC_setActiveStack(current.stack.bottom)
 
 proc suspend*(sleepTime: float=0) =
   ## Stops coroutine execution and resumes no sooner than after ``sleeptime`` seconds.
   ## Until then other coroutines are executed.
   var current = getCurrent()
   current.sleepTime = sleepTime
-  var frame = getFrameState()
   switchTo(current, ctx.loop)
-  setFrameState(frame)
 
 proc runCurrentTask() =
   ## Starts execution of current coroutine and updates it's state through coroutine's life.
-  var current = getCurrent()
-  # Execution of new fiber just started. Since it was entered not through `switchTo` we
-  # have to set active stack here as well.
-  GC_setCurrentStack(current.stack.start)
-  current.state = CORO_EXECUTING
-  current.fn()                    # Start coroutine execution
-  current.state = CORO_FINISHED
+  var sp {.volatile.}: pointer
+  sp = addr(sp)
+  block:
+    var current = getCurrent()
+    current.stack.bottom = sp
+    # Execution of new fiber just started. Since it was entered not through `switchTo` we
+    # have to set active stack here as well. GC_removeStack() has to be called in main loop
+    # because we still need stack available in final suspend(0) call from which we will not
+    # return.
+    GC_addStack(sp)
+    # Activate current stack because we are executing in a new coroutine.
+    GC_setActiveStack(sp)
+    current.state = CORO_EXECUTING
+    try:
+      current.fn()                    # Start coroutine execution
+    except:
+      echo "Unhandled exception in coroutine."
+      writeStackTrace()
+    current.state = CORO_FINISHED
   suspend(0)                      # Exit coroutine without returning from coroExecWithStack()
   doAssert false
 
@@ -215,25 +225,20 @@ proc start*(c: proc(), stacksize: int=defaultStackSize) =
   when coroBackend == CORO_BACKEND_FIBERS:
     coro.execContext = CreateFiberEx(stacksize, stacksize,
       FIBER_FLAG_FLOAT_SWITCH, (proc(p: pointer): void {.stdcall.} = runCurrentTask()), nil)
-    var fiber = cast[ptr Fiber](coro.execContext)
-    coro.stack.start = fiber.stackStart
-    coro.stack.ends = fiber.stackEnd
     coro.stack.size = stacksize
   else:
     var stack: pointer
     while stack == nil:
       stack = alloc0(stacksize)
-    coro.stack.start = stack
-    coro.stack.ends = cast[pointer](cast[ByteAddress](stack) + stacksize)
+    coro.stack.top = stack
     when coroBackend == CORO_BACKEND_UCONTEXT:
       discard getcontext(coro.execContext)
-      coro.execContext.uc_stack.ss_sp = coro.stack.ends
+      coro.execContext.uc_stack.ss_sp = cast[pointer](cast[ByteAddress](stack) + stacksize)
       coro.execContext.uc_stack.ss_size = coro.stack.size
       coro.execContext.uc_link = addr ctx.loop.execContext
       makecontext(coro.execContext, runCurrentTask, 0)
   coro.stack.size = stacksize
   coro.state = CORO_CREATED
-  GC_addStack(coro.stack.ends)
   ctx.coroutines.append(coro)
 
 proc run*() =
@@ -248,9 +253,7 @@ proc run*() =
     var remaining = current.sleepTime - (float(getTicks() - current.lastRun) / 1_000_000_000)
     if remaining <= 0:
       # Save main loop context. Suspending coroutine will resume after this statement with
-      var frame = getFrameState()
       switchTo(ctx.loop, current)
-      setFrameState(frame)
     else:
       if minDelay > 0 and remaining > 0:
         minDelay = min(remaining, minDelay)
@@ -258,19 +261,19 @@ proc run*() =
         minDelay = remaining
 
     if current.state == CORO_FINISHED:
-      GC_removeStack(current.stack.start)
       var next = ctx.current.prev
       if next == nil:
         # If first coroutine ends then `prev` is nil even if more coroutines 
         # are to be scheduled.
         next = ctx.current.next
       ctx.coroutines.remove(ctx.current)
+      GC_removeStack(current.stack.bottom)
       when coroBackend == CORO_BACKEND_FIBERS:
-        DeleteFiber(coro.execContext)
+        DeleteFiber(current.execContext)
       else:
-        dealloc(current.stack.start)
-      current.stack.start = nil
-      current.stack.ends = nil
+        dealloc(current.stack.top)
+      current.stack.top = nil
+      current.stack.bottom = nil
       ctx.current = next
     elif ctx.current == nil or ctx.current.next == nil:
       ctx.current = ctx.coroutines.head
@@ -358,3 +361,25 @@ when isMainModule:
   run()
   doAssert order == @[0, 0, 1, 2, 1, 3, 4, 2, 3, 4]
   doAssert stackCheckValue == 1100220033
+
+  type Foo = ref object
+    number: int
+
+  GC_fullCollect()
+  var occupiedMemory = getOccupiedMem()
+
+  i = 0
+  var objects = newSeq[Foo](100)
+  proc terstGc(id: int, sleep: float) =
+    for n in 0..<50:
+      objects[i] = Foo(number: n)
+      i += 1
+
+  start(proc() = terstIterators(1, 0.01))
+  start(proc() = terstIterators(2, 0.021))
+  run()
+
+  doAssert occupiedMemory < getOccupiedMem()
+  objects = nil
+  GC_fullCollect()
+  doAssert occupiedMemory >= getOccupiedMem()
