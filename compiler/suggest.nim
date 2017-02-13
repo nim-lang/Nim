@@ -28,7 +28,7 @@ type
     column*: int                 # Starts at 0
     doc*: string           # Not escaped (yet)
     symkind*: TSymKind
-    forth*: string               # XXX TODO object on symkind
+    forth*: string               # type
     quality*: range[0..100]   # matching quality
     isGlobal*: bool # is a global variable
     tokenLen*: int
@@ -88,7 +88,7 @@ proc symToSuggest(s: PSym, isLocal: bool, section: string, li: TLineInfo;
     when not defined(noDocgen):
       result.doc = s.extractDocComment
 
-proc `$`(suggest: Suggest): string =
+proc `$`*(suggest: Suggest): string =
   result = $suggest.section
   result.add(sep)
   if suggest.section == ideHighlight:
@@ -131,7 +131,7 @@ proc suggestResult(s: Suggest) =
   if not isNil(suggestionResultHook):
     suggestionResultHook(s)
   else:
-    suggestWriteln($(s))
+    suggestWriteln($s)
 
 proc filterSym(s: PSym): bool {.inline.} =
   result = s.kind != skModule

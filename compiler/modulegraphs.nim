@@ -40,8 +40,12 @@ type
                               # module dependencies.
     backend*: RootRef # minor hack so that a backend can extend this easily
     config*: ConfigRef
+    doStopCompile*: proc(): bool {.closure.}
 
 {.this: g.}
+
+proc stopCompile*(g: ModuleGraph): bool {.inline.} =
+  result = doStopCompile != nil and doStopCompile()
 
 proc newModuleGraph*(config: ConfigRef = nil): ModuleGraph =
   result = ModuleGraph()

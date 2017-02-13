@@ -180,7 +180,7 @@ proc executeEpc(cmd: IdeCmd, args: SexpNode;
     dirtyfile = args[3].getStr(nil)
   execute(cmd, file, dirtyfile, int(line), int(column), graph, cache)
 
-proc returnEpc(socket: var Socket, uid: BiggestInt, s: SexpNode|string,
+proc returnEpc(socket: Socket, uid: BiggestInt, s: SexpNode|string,
                return_symbol = "return") =
   let response = $convertSexp([newSSymbol(return_symbol), uid, s])
   socket.send(toHex(len(response), 6))
@@ -208,6 +208,45 @@ template checkSanity(client, sizeHex, size, messageBuffer: typed) =
   if client.recv(messageBuffer, size) != size:
     raise newException(ValueError, "didn't get all the bytes")
 
+var
+  requests: Channel[string]
+  results: Channel[Suggest]
+
+proc toStdout() {.gcsafe.} =
+  while true:
+    let res = results.recv()
+    case res.section
+    of ideNone: break
+    of ideChk: echo res.doc
+    else: echo res
+
+proc toSocket(stdoutSocket: Socket) {.gcsafe.} =
+  while true:
+    let res = results.recv()
+    case res.section
+    of ideNone: break
+    of ideChk: stdoutSocket.send(res.doc & "\c\L")
+    else: stdoutSocket.send($res & "\c\L")
+
+proc toEpc(client: Socket; uid: BiggestInt) {.gcsafe.} =
+  var list = newSList()
+  while true:
+    let res = results.recv()
+    case res.section
+    of ideNone: break
+    of ideChk:
+      returnEpc(client, uid, sexp(res.doc))
+    else:
+      list.add sexp(res)
+  if gIdeCmd != ideChk:
+    returnEPC(client, uid, list)
+
+proc writelnHook(line: string) =
+  results.send(Suggest(section: ideChk, doc: line))
+
+proc sugResultHook(s: Suggest) =
+  results.send(s)
+
 template setVerbosity(level: typed) =
   gVerbosity = level
   gNotes = NotesVerbosity[gVerbosity]
@@ -217,16 +256,108 @@ proc connectToNextFreePort(server: Socket, host: string): Port =
   let (_, port) = server.getLocalAddr
   result = port
 
+type
+  ThreadParams = tuple[port: Port; address: string]
+
+proc replStdin(x: ThreadParams) {.thread.} =
+  if gEmitEof:
+    echo DummyEof
+    while true:
+      let line = readLine(stdin)
+      requests.send line
+      toStdout()
+      echo DummyEof
+      flushFile(stdout)
+  else:
+    echo Help
+    var line = ""
+    while readLineFromStdin("> ", line):
+      requests.send line
+      toStdout()
+      echo ""
+      flushFile(stdout)
+
+proc replTcp(x: ThreadParams) {.thread.} =
+  var server = newSocket()
+  server.bindAddr(x.port, x.address)
+  var inp = "".TaintedString
+  server.listen()
+  while true:
+    var stdoutSocket = newSocket()
+    accept(server, stdoutSocket)
+
+    stdoutSocket.readLine(inp)
+    requests.send inp
+    toSocket(stdoutSocket)
+    stdoutSocket.send("\c\L")
+    stdoutSocket.close()
+
+proc replEpc(x: ThreadParams) {.thread.} =
+  var server = newSocket()
+  let port = connectToNextFreePort(server, "localhost")
+  server.listen()
+  echo port
+
+  var client = newSocket()
+  # Wait for connection
+  accept(server, client)
+  while true:
+    var
+      sizeHex = ""
+      size = 0
+      messageBuffer = ""
+    checkSanity(client, sizeHex, size, messageBuffer)
+    let
+      message = parseSexp($messageBuffer)
+      epcAPI = message[0].getSymbol
+    case epcAPI:
+    of "call":
+      let
+        uid = message[1].getNum
+        args = message[3]
+
+      gIdeCmd = parseIdeCmd(message[2].getSymbol)
+      case gIdeCmd
+      of ideChk:
+        setVerbosity(1)
+        # Use full path because other emacs plugins depends it
+        gListFullPaths = true
+        incl(gGlobalOptions, optIdeDebug)
+      of ideSug, ideCon, ideDef, ideUse, ideDus, ideOutline, ideHighlight:
+        setVerbosity(0)
+      else: discard
+      requests.send messageBuffer
+      toEpc(client, uid)
+    of "methods":
+      returnEpc(client, message[1].getNum, listEPC())
+    of "epc-error":
+      # an unhandled exception forces down the whole process anyway, so we
+      # use 'quit' here instead of 'raise'
+      quit("recieved epc error: " & $messageBuffer)
+    else:
+      let errMessage = case epcAPI
+                       of "return", "return-error":
+                         "no return expected"
+                       else:
+                         "unexpected call: " & epcAPI
+      quit errMessage
+
 proc parseCmdLine(cmd: string; graph: ModuleGraph; cache: IdentCache) =
+  template sentinel() =
+    # send sentinel for the input reading thread:
+    results.send(Suggest(section: ideNone))
+
   template toggle(sw) =
     if sw in gGlobalOptions:
       excl(gGlobalOptions, sw)
     else:
       incl(gGlobalOptions, sw)
+    sentinel()
     return
 
   template err() =
     echo Help
+    sentinel()
     return
 
   var opc = ""
@@ -260,8 +391,47 @@ proc parseCmdLine(cmd: string; graph: ModuleGraph; cache: IdentCache) =
   i += parseInt(cmd, col, i)
 
   execute(gIdeCmd, orig, dirtyfile, line, col-1, graph, cache)
+  sentinel()
 
-proc serveStdin(graph: ModuleGraph; cache: IdentCache) =
+proc recompileFullProject(graph: ModuleGraph; cache: IdentCache) =
+  resetSystemArtifacts()
+  #let graph = newGraph(oldgraph.config)
+  graph.resetAllModules()
+  compileProject(graph, cache)
+
+proc mainThread(graph: ModuleGraph; cache: IdentCache) =
+  if gLogging:
+    var it = searchPaths.head
+    while it != nil:
+      logStr(PStrEntry(it).data)
+      it = it.next
+
+  msgs.writelnHook = writelnHook
+  suggestionResultHook = sugResultHook
+  graph.doStopCompile = proc (): bool = requests.peek() > 0
+  var idle = 0
+  while true:
+    let (hasData, req) = requests.tryRecv()
+    if hasData:
+      msgs.writelnHook = writelnHook
+      suggestionResultHook = sugResultHook
+
+      parseCmdLine(req, graph, cache)
+      idle = 0
+    else:
+      os.sleep 250
+      idle += 1
+    if idle == 20:
+      # we use some nimsuggest activity to enable a lazy recompile:
+      gIdeCmd = ideChk
+      msgs.writelnHook = proc (s: string) = discard
+      suggestionResultHook = proc (s: Suggest) = discard
+      recompileFullProject(graph, cache)
+
+var
+  inputThread: Thread[ThreadParams]
+
+proc serveStdin(graph: ModuleGraph; cache: IdentCache) {.deprecated.} =
   if gEmitEof:
     echo DummyEof
     while true:
@@ -277,7 +447,7 @@ proc serveStdin(graph: ModuleGraph; cache: IdentCache) =
       echo ""
       flushFile(stdout)
 
-proc serveTcp(graph: ModuleGraph; cache: IdentCache) =
+proc serveTcp(graph: ModuleGraph; cache: IdentCache) {.deprecated.} =
   var server = newSocket()
   server.bindAddr(gPort, gAddress)
   var inp = "".TaintedString
@@ -296,7 +466,7 @@ proc serveTcp(graph: ModuleGraph; cache: IdentCache) =
     stdoutSocket.send("\c\L")
     stdoutSocket.close()
 
-proc serveEpc(server: Socket; graph: ModuleGraph; cache: IdentCache) =
+proc serveEpc(server: Socket; graph: ModuleGraph; cache: IdentCache) {.deprecated.} =
   var client = newSocket()
   # Wait for connection
   accept(server, client)
@@ -365,25 +535,38 @@ proc mainCommand(graph: ModuleGraph; cache: IdentCache) =
   # do not stop after the first error:
   msgs.gErrorMax = high(int)
 
+  open(requests)
+  open(results)
+
   case gMode
-  of mstdin:
-    compileProject(graph, cache)
-    #modules.gFuzzyGraphChecking = false
-    serveStdin(graph, cache)
-  of mtcp:
-    # until somebody accepted the connection, produce no output (logging is too
-    # slow for big projects):
-    msgs.writelnHook = proc (msg: string) = discard
-    compileProject(graph, cache)
-    #modules.gFuzzyGraphChecking = false
-    serveTcp(graph, cache)
-  of mepc:
-    var server = newSocket()
-    let port = connectToNextFreePort(server, "localhost")
-    server.listen()
-    echo port
-    compileProject(graph, cache)
-    serveEpc(server, graph, cache)
+  of mstdin: createThread(inputThread, replStdin, (gPort, gAddress))
+  of mtcp: createThread(inputThread, replTcp, (gPort, gAddress))
+  of mepc: createThread(inputThread, replEpc, (gPort, gAddress))
+  mainThread(graph, cache)
+  joinThread(inputThread)
+  close(requests)
+  close(results)
+
+  when false:
+    case gMode
+    of mstdin:
+      compileProject(graph, cache)
+      #modules.gFuzzyGraphChecking = false
+      serveStdin(graph, cache)
+    of mtcp:
+      # until somebody accepted the connection, produce no output (logging is too
+      # slow for big projects):
+      msgs.writelnHook = proc (msg: string) = discard
+      compileProject(graph, cache)
+      #modules.gFuzzyGraphChecking = false
+      serveTcp(graph, cache)
+    of mepc:
+      var server = newSocket()
+      let port = connectToNextFreePort(server, "localhost")
+      server.listen()
+      echo port
+      compileProject(graph, cache)
+      serveEpc(server, graph, cache)
 
 proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
   var p = parseopt.initOptParser(cmd)

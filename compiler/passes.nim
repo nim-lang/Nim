@@ -171,6 +171,7 @@ proc processImplicits(implicits: seq[string], nodeKind: TNodeKind,
 
 proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream,
                     rd: PRodReader; cache: IdentCache): bool {.discardable.} =
+  if graph.stopCompile(): return true
   var
     p: TParsers
     a: TPassContextArray
@@ -198,6 +199,7 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream,
         processImplicits implicitIncludes, nkIncludeStmt, a, module
 
       while true:
+        if graph.stopCompile(): break
         var n = parseTopLevelStmt(p)
         if n.kind == nkEmpty: break
         if sfNoForward in module.flags:
@@ -219,6 +221,8 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream,
   else:
     openPassesCached(graph, a, module, rd)
     var n = loadInitSection(rd)
-    for i in countup(0, sonsLen(n) - 1): processTopLevelStmtCached(n.sons[i], a)
+    for i in countup(0, sonsLen(n) - 1):
+      if graph.stopCompile(): break
+      processTopLevelStmtCached(n.sons[i], a)
     closePassesCached(a)
   result = true
