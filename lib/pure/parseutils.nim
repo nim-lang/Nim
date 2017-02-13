@@ -289,9 +289,8 @@ proc parseUInt*(s: string, number: var uint, start = 0): int {.
   ## overflow detected.
   var res: BiggestUInt
   result = parseBiggestUInt(s, res, start)
-  when not defined(JS):
-    if (sizeof(uint) <= 4) and
-        (res > 0xFFFF_FFFF'u64):
+  when sizeof(BiggestUInt) > sizeof(uint) and sizeof(uint) <= 4:
+    if res > 0xFFFF_FFFF'u64:
       raise newException(OverflowError, "overflow")
   if result != 0:
     number = uint(res)
