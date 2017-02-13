@@ -339,3 +339,22 @@ when isMainModule:
   run()
   doAssert order == @[1, 2, 1, 1, 1, 2, 2, 1, 2, 2]
   doAssert stackCheckValue == 1100220033
+
+  order = newSeq[int](10)
+  i = 0
+
+  iterator suspendingIterator(sleep: float): int =
+    for i in 0..4:
+      yield i
+      suspend(sleep)
+
+  proc terstIterators(id: int, sleep: float) =
+    for n in suspendingIterator(sleep):
+      order[i] = n
+      i += 1
+
+  start(proc() = terstIterators(1, 0.01))
+  start(proc() = terstIterators(2, 0.021))
+  run()
+  doAssert order == @[0, 0, 1, 2, 1, 3, 4, 2, 3, 4]
+  doAssert stackCheckValue == 1100220033
