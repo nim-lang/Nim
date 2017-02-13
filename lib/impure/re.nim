@@ -290,7 +290,7 @@ proc find*(buf: cstring, pattern: Regex, matches: var openArray[string],
   for i in 1..int(res)-1:
     var a = rawMatches[i * 2]
     var b = rawMatches[i * 2 + 1]
-    if a >= 0'i32: matches[i-1] = bufSubstr(buf, int(a), int(b)-1)
+    if a >= 0'i32: matches[i-1] = bufSubstr(buf, int(a), int(b))
     else: matches[i-1] = nil
   return rawMatches[0]
 
