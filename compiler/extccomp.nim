@@ -82,7 +82,7 @@ compiler gcc:
     includeCmd: " -I",
     linkDirCmd: " -L",
     linkLibCmd: " -l$1",
-    debug: " -g ",
+    debug: "",
     pic: "-fPIC",
     asmStmtFrmt: "asm($1);$n",
     structStmtFmt: "$1 $3 $2 ", # struct|union [packed] $name
