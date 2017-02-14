@@ -490,7 +490,6 @@ proc resetCompilationLists* =
 
 proc addExternalFileToLink*(filename: string) =
   externalToLink.insert(filename, 0)
-  #prependStr(externalToLink, filename)
 
 proc execWithEcho(cmd: string, msg = hintExecuting): int =
   rawMessage(msg, cmd)
@@ -526,9 +525,6 @@ proc noAbsolutePaths: bool {.inline.} =
   # reasonable.
   # `optGenMapping` is included here for niminst.
   result = gGlobalOptions * {optGenScript, optGenMapping} != {}
-
-#proc add(s: var string, many: openArray[string]) =
-#  s.add many.join
 
 proc cFileSpecificOptions(cfilename: string): string =
   result = compileOptions
