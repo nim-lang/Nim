@@ -343,7 +343,7 @@ proc prevPermutation*[T](x: var openarray[T]): bool {.discardable.} =
   swap x[i-1], x[j]
 
   result = true
-
+  
 when isMainModule:
   # Tests for lowerBound
   var arr = @[1,2,3,5,6,7,8,9]
@@ -371,3 +371,113 @@ when isMainModule:
   for i in 0 .. high(arr1):
     assert arr1.reversed(0, i) == arr1.reversed()[high(arr1) - i .. high(arr1)]
     assert arr1.reversed(i, high(arr1)) == arr1.reversed()[0 .. high(arr1) - i]
+
+
+proc rotate*[T](arg: var openarray[T]; first, middle, last: int): int {.discardable.} =
+  ## Performs a left rotation on a range of elements.
+  ## Specifically, ``rotate`` swaps the elements in the range [first, last) in such a way
+  ## that the element at index ``middle`` becomes the first element of the sub range and
+  ## ``middle - 1`` becomes the last element of the sub range. The time complexity is
+  ## linear to ``last - first``. returns ``first + (last - middle)``. ``T`` must support swap operation
+  ##
+  ## ``first``
+  ##   the index of the first element that should be rotated.
+  ##
+  ## ``middle``
+  ##   the index of the element that should appear at the beginning of the rotated range.
+  ##
+  ## ``last``
+  ##   the index of the first element that should not be rotated anymore (exclusive upper bound).
+  ## 
+  ## .. code-block:: nim
+  ##     var list     = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  ##     list.rotate(1,4,9)
+  ##     echo @list  # @[0, 4, 5, 6, 7, 8, 1, 2, 3, 9, 10]
+
+  result = first + last - middle
+
+  if first == middle or middle == last:
+     return
+
+  assert first < middle
+  assert middle < last
+
+  # m prefix for mutable
+  var
+    mFirst = first
+    mMiddle = middle
+    next = middle
+
+  swap(arg[mFirst], arg[next])
+  mFirst += 1
+  next  += 1
+  if mFirst == mMiddle:
+    mMiddle = next
+
+  while next != last:
+    swap(arg[mFirst], arg[next])
+    mFirst += 1
+    next += 1
+    if mFirst == mMiddle:
+      mMiddle = next
+
+  next = mMiddle
+  while next != last:
+    swap(arg[mFirst], arg[next])
+    mFirst += 1
+    next += 1
+    if mFirst == mMiddle:
+      mMiddle = next
+    elif next == last:
+      next = mMiddle
+
+proc rotate[T](arg: var openarray[T]; middle: int): int {.discardable.} =
+  ## default arguments for first and last, so that this procedure operates on the entire
+  ## argument, and not just on a portion of it.
+  arg.rotate(0, middle, arg.len)
+
+proc rotated*[T](arg: openarray[T]; first, middle, last: int): seq[T] =
+  ## same as ``rotate``, just with the difference that it does
+  ## not modify the argument, but writes into a new ``seq`` instead
+  
+  result = newSeq[T](arg.len)
+
+  for i in 0 ..< first:
+    result[i] = arg[i]
+
+  let N = last - middle
+  let M = middle - first
+
+  for i in 0 ..< N:
+    result[first+i] = arg[middle+i]
+
+  for i in 0 ..< M:
+    result[first+N+i] = arg[first+i]
+
+  for i in last ..< arg.len:
+    result[i] = arg[i]
+
+proc rotated*[T](arg: openarray[T]; middle: int): seq[T] =
+  ## same as ``rotate``, just with the difference that it does
+  ## not modify the argument, but writes into a new ``seq`` instead
+  arg.rotated(0, middle, arg.len)
+  
+when isMainModule:
+  var list     = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  let list2    = list.rotated(1,4,9)
+  let expected = [0, 4, 5, 6, 7, 8, 1, 2, 3, 9, 10]
+  
+  doAssert list.rotate(1,4,9) == 6
+  doAssert list  ==  expected
+  doAssert list2 == @expected
+
+  var s0,s1,s2 = "xxxabcdefgxxx"
+
+  doAssert s0.rotate(3, 6, 10) == 7
+  doAssert s0 == "xxxdefgabcxxx"
+  doAssert s1.rotate(3, 5, 10) == 8
+  doAssert s1 == "xxxcdefgabxxx"
+  doAssert s2.rotate(3, 7, 10) == 6
+  doassert s2 == "xxxefgabcdxxx"
+
+    
