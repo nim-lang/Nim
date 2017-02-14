@@ -1857,10 +1857,10 @@ when hasAioH:
                a4: ptr SigEvent): cint {.importc, header: "<aio.h>".}
 
 # arpa/inet.h
-proc htonl*(a1: int32): int32 {.importc, header: "<arpa/inet.h>".}
-proc htons*(a1: int16): int16 {.importc, header: "<arpa/inet.h>".}
-proc ntohl*(a1: int32): int32 {.importc, header: "<arpa/inet.h>".}
-proc ntohs*(a1: int16): int16 {.importc, header: "<arpa/inet.h>".}
+proc htonl*(a1: uint32): uint32 {.importc, header: "<arpa/inet.h>".}
+proc htons*(a1: uint16): uint16 {.importc, header: "<arpa/inet.h>".}
+proc ntohl*(a1: uint32): uint32 {.importc, header: "<arpa/inet.h>".}
+proc ntohs*(a1: uint16): uint16 {.importc, header: "<arpa/inet.h>".}
 
 proc inet_addr*(a1: cstring): InAddrT {.importc, header: "<arpa/inet.h>".}
 proc inet_ntoa*(a1: InAddr): cstring {.importc, header: "<arpa/inet.h>".}
