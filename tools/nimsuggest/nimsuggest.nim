@@ -13,11 +13,11 @@ import strutils, os, parseopt, parseutils, sequtils, net, rdstdin, sexp
 # Do NOT import suggest. It will lead to wierd bugs with
 # suggestionResultHook, because suggest.nim is included by sigmatch.
 # So we import that one instead.
-import compiler/options, compiler/commands, compiler/modules, compiler/sem,
-  compiler/passes, compiler/passaux, compiler/msgs, compiler/nimconf,
-  compiler/extccomp, compiler/condsyms, compiler/lists,
-  compiler/sigmatch, compiler/ast, compiler/scriptconfig,
-  compiler/idents, compiler/modulegraphs
+import compiler / [options, commands, modules, sem,
+  passes, passaux, msgs, nimconf,
+  extccomp, condsyms, lists,
+  sigmatch, ast, scriptconfig,
+  idents, modulegraphs, compilerlog]
 
 when defined(windows):
   import winlean
@@ -67,12 +67,6 @@ const
 
 type
   EUnexpectedCommand = object of Exception
-
-proc logStr(line: string) =
-  var f: File
-  if open(f, getHomeDir() / "nimsuggest.log", fmAppend):
-    f.writeLine(line)
-    f.close()
 
 proc parseQuoted(cmd: string; outp: var string; start: int): int =
   var i = start
@@ -342,7 +336,7 @@ proc replEpc(x: ThreadParams) {.thread.} =
                          "unexpected call: " & epcAPI
       quit errMessage
 
-proc parseCmdLine(cmd: string; graph: ModuleGraph; cache: IdentCache) =
+proc execCmd(cmd: string; graph: ModuleGraph; cache: IdentCache) =
   template sentinel() =
     # send sentinel for the input reading thread:
     results.send(Suggest(section: ideNone))
@@ -394,8 +388,8 @@ proc parseCmdLine(cmd: string; graph: ModuleGraph; cache: IdentCache) =
   sentinel()
 
 proc recompileFullProject(graph: ModuleGraph; cache: IdentCache) =
+  echo "recompiling full project"
   resetSystemArtifacts()
-  #let graph = newGraph(oldgraph.config)
   graph.resetAllModules()
   compileProject(graph, cache)
 
@@ -416,12 +410,12 @@ proc mainThread(graph: ModuleGraph; cache: IdentCache) =
       msgs.writelnHook = writelnHook
       suggestionResultHook = sugResultHook
 
-      parseCmdLine(req, graph, cache)
+      execCmd(req, graph, cache)
       idle = 0
     else:
       os.sleep 250
       idle += 1
-    if idle == 20:
+    if idle == 20 and false:
       # we use some nimsuggest activity to enable a lazy recompile:
       gIdeCmd = ideChk
       msgs.writelnHook = proc (s: string) = discard
@@ -436,14 +430,14 @@ proc serveStdin(graph: ModuleGraph; cache: IdentCache) {.deprecated.} =
     echo DummyEof
     while true:
       let line = readLine(stdin)
-      parseCmdLine line, graph, cache
+      execCmd line, graph, cache
       echo DummyEof
       flushFile(stdout)
   else:
     echo Help
     var line = ""
     while readLineFromStdin("> ", line):
-      parseCmdLine line, graph, cache
+      execCmd line, graph, cache
       echo ""
       flushFile(stdout)
 
@@ -461,7 +455,7 @@ proc serveTcp(graph: ModuleGraph; cache: IdentCache) {.deprecated.} =
     accept(server, stdoutSocket)
 
     stdoutSocket.readLine(inp)
-    parseCmdLine inp.string, graph, cache
+    execCmd inp.string, graph, cache
 
     stdoutSocket.send("\c\L")
     stdoutSocket.close()
@@ -534,6 +528,9 @@ proc mainCommand(graph: ModuleGraph; cache: IdentCache) =
 
   # do not stop after the first error:
   msgs.gErrorMax = high(int)
+  # compile the project before showing any input so that we already
+  # can answer questions right away:
+  compileProject(graph, cache)
 
   open(requests)
   open(results)
