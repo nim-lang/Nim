@@ -52,8 +52,8 @@ install:
 
 build_script:
   - bin\nim c koch
-  - koch boot
-  - koch boot -d:release
+  - koch boot -d:nimCoroutines
+  - koch boot -d:release -d:nimCoroutines
   - koch nimble
   - nim e tests/test_nimscript.nims
   - nimble install zip -y
@@ -61,10 +61,10 @@ build_script:
   - nimble install sdl1
   - nimble install jester@#head
   - nimble install niminst
-  - nim c --taintMode:on tests/testament/tester
+  - nim c --taintMode:on -d:nimCoroutines tests/testament/tester
 
 test_script:
-  - tests\testament\tester --pedantic all
+  - tests\testament\tester --pedantic all -d:nimCoroutines
   - koch csource
   - koch zip
 
