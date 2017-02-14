@@ -1317,7 +1317,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if not usePseudoGenerics and gIdeCmd in {ideSug, ideCon} and not
         cursorInProc(n.sons[bodyPos]):
       discard "speed up nimsuggest"
-      logStr "skipped " & s.name.s
     else:
       pushProcCon(c, s)
       if n.sons[genericParamsPos].kind == nkEmpty or usePseudoGenerics:
