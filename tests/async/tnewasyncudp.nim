@@ -90,7 +90,7 @@ proc readMessages(server: AsyncFD) {.async.} =
       await sendTo(server, addr grammString[0], len(grammString),
                    cast[ptr SockAddr](addr saddr), slen)
       inc(msgCount)
-      saveReceivedPort(ntohs(saddr.sin_port).int)
+      saveReceivedPort(nativesockets.ntohs(saddr.sin_port).int)
     inc(i)
 
 proc createServer() {.async.} =
