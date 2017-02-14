@@ -41,6 +41,20 @@ var
 
 template origModuleName(m: PSym): string = m.name.s
 
+proc findDocComment(n: PNode): PNode =
+  if n == nil: return nil
+  if not isNil(n.comment): return n
+  for i in countup(0, safeLen(n)-1):
+    result = findDocComment(n.sons[i])
+    if result != nil: return
+
+proc extractDocComment(s: PSym): string =
+  let n = findDocComment(s.ast)
+  if not n.isNil:
+    result = n.comment.replace("\n##", "\n").strip
+  else:
+    result = ""
+
 proc symToSuggest(s: PSym, isLocal: bool, section: string, li: TLineInfo;
                   quality: range[0..100]): Suggest =
   result.section = parseIdeCmd(section)
@@ -57,10 +71,11 @@ proc symToSuggest(s: PSym, isLocal: bool, section: string, li: TLineInfo;
     result.qualifiedPath = @[]
     if not isLocal and s.kind != skModule:
       let ow = s.owner
-      if ow.kind != skModule and ow.owner != nil:
+      if ow != nil and ow.kind != skModule and ow.owner != nil:
         let ow2 = ow.owner
         result.qualifiedPath.add(ow2.origModuleName)
-      result.qualifiedPath.add(ow.origModuleName)
+      if ow != nil:
+        result.qualifiedPath.add(ow.origModuleName)
     result.qualifiedPath.add(s.name.s)
 
     if s.typ != nil:
@@ -201,7 +216,7 @@ proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} =
     let m = s.getModule()
     if m != nil and sfSystemModule in m.flags:
       if s.kind == skType: return
-      var exp = s.typ.sons[1].skipTypes({tyGenericInst, tyVar})
+      var exp = s.typ.sons[1].skipTypes({tyGenericInst, tyVar, tyAlias})
       if exp.kind == tyVarargs: exp = elemType(exp)
       if exp.kind in {tyExpr, tyStmt, tyGenericParam, tyAnything}: return
     result = sigmatch.argtypeMatches(c, s.typ.sons[1], firstArg)
@@ -267,18 +282,18 @@ proc suggestFieldAccess(c: PContext, n: PNode, outputs: var int) =
       t = t.sons[0]
     suggestOperations(c, n, typ, outputs)
   else:
-    typ = skipTypes(typ, {tyGenericInst, tyVar, tyPtr, tyRef})
+    let orig = skipTypes(typ, {tyGenericInst, tyAlias})
+    typ = skipTypes(typ, {tyGenericInst, tyVar, tyPtr, tyRef, tyAlias})
     if typ.kind == tyObject:
       var t = typ
       while true:
         suggestObject(c, t.n, outputs)
         if t.sons[0] == nil: break
         t = skipTypes(t.sons[0], skipPtrs)
-      suggestOperations(c, n, typ, outputs)
     elif typ.kind == tyTuple and typ.n != nil:
       suggestSymList(c, typ.n, outputs)
-      suggestOperations(c, n, typ, outputs)
-    else:
+    suggestOperations(c, n, orig, outputs)
+    if typ != orig:
       suggestOperations(c, n, typ, outputs)
 
 type
@@ -330,6 +345,8 @@ when defined(nimsuggest):
     info.fileIndex + info.line.int64 shl 32 + info.col.int64 shl 48
 
   proc addNoDup(s: PSym; info: TLineInfo) =
+    # ensure nothing gets too slow:
+    if s.allUsages.len > 500: return
     let infoAsInt = info.infoToInt
     for infoB in s.allUsages:
       if infoB.infoToInt == infoAsInt: return

@@ -98,7 +98,7 @@ proc startSuite(name: string) =
   template rawPrint() = echo("\n[Suite] ", name) 
   when not defined(ECMAScript):
     if colorOutput:
-      styledEcho styleBright, fgBlue, "\n[Suite] ", fgWhite, name
+      styledEcho styleBright, fgBlue, "\n[Suite] ", resetStyle, name
     else: rawPrint()
   else: rawPrint()
 
@@ -159,7 +159,7 @@ proc testDone(name: string, s: TestStatus, indent: bool) =
                     of FAILED: fgRed
                     of SKIPPED: fgYellow
                     else: fgWhite
-        styledEcho styleBright, color, prefix, "[", $s, "] ", fgWhite, name
+        styledEcho styleBright, color, prefix, "[", $s, "] ", resetStyle, name
       else:
         rawPrint()
     else:

@@ -107,7 +107,7 @@ proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags,
   var s = searchInScopes(c, ident).skipAlias(n)
   if s == nil:
     if ident.id notin ctx.toMixin and withinMixin notin flags:
-      localError(n.info, errUndeclaredIdentifier, ident.s)
+      errorUndeclaredIdentifier(c, n.info, ident.s)
   else:
     if withinBind in flags:
       result = symChoice(c, n, s, scClosed)
@@ -195,7 +195,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     if s == nil and withinMixin notin flags and
         fn.kind in {nkIdent, nkAccQuoted} and
         considerQuotedIdent(fn).id notin ctx.toMixin:
-      localError(n.info, errUndeclaredIdentifier, fn.renderTree)
+      errorUndeclaredIdentifier(c, n.info, fn.renderTree)
 
     var first = 0
     var mixinContext = false
@@ -338,9 +338,16 @@ proc semGenericStmt(c: PContext, n: PNode,
       var a = n.sons[i]
       checkMinSonsLen(a, 1)
       var L = sonsLen(a)
+      openScope(c)
       for j in countup(0, L-2):
-        a.sons[j] = semGenericStmt(c, a.sons[j], flags+{withinTypeDesc}, ctx)
+        if a.sons[j].isInfixAs():
+          addTempDecl(c, getIdentNode(a.sons[j][2]), skLet)
+          a.sons[j].sons[1] = semGenericStmt(c, a.sons[j][1], flags+{withinTypeDesc}, ctx)
+        else:
+          a.sons[j] = semGenericStmt(c, a.sons[j], flags+{withinTypeDesc}, ctx)
       a.sons[L-1] = semGenericStmtScope(c, a.sons[L-1], flags, ctx)
+      closeScope(c)
+
   of nkVarSection, nkLetSection:
     for i in countup(0, sonsLen(n) - 1):
       var a = n.sons[i]

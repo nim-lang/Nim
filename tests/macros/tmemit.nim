@@ -1,15 +1,16 @@
 discard """
   output: '''HELLO WORLD
-c_func'''
+c_func
+12'''
 """
 
 import macros, strutils
 
-emit("echo " & '"' & "hello world".toUpper & '"')
+emit("echo " & '"' & "hello world".toUpperAscii & '"')
 
 # bug #1025
 
-macro foo(icname): stmt =
+macro foo(icname): untyped =
   let ic = newStrLitNode($icname)
   result = quote do:
     proc x* =
@@ -19,3 +20,20 @@ macro foo(icname): stmt =
 
 foo(c_func)
 x()
+
+
+template volatileLoad[T](x: ptr T): T =
+  var res: T
+  {.emit: [res, " = (*(", type(x[]), " volatile*)", x, ");"].}
+  res
+
+template volatileStore[T](x: ptr T; y: T) =
+  {.emit: ["*((", type(x[]), " volatile*)(", x, ")) = ", y, ";"].}
+
+proc main =
+  var st: int
+  var foo: ptr int = addr st
+  volatileStore(foo, 12)
+  echo volatileLoad(foo)
+
+main()

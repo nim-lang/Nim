@@ -149,14 +149,25 @@ proc closePassesCached(a: var TPassContextArray) =
       m = gPasses[i].close(a[i], m)
     a[i] = nil                # free the memory here
 
+proc resolveMod(module, relativeTo: string): int32 =
+  let fullPath = findModule(module, relativeTo)
+  if fullPath.len == 0:
+    result = InvalidFileIDX
+  else:
+    result = fullPath.fileInfoIdx
+
 proc processImplicits(implicits: seq[string], nodeKind: TNodeKind,
-                      a: var TPassContextArray) =
+                      a: var TPassContextArray; m: PSym) =
+  # XXX fixme this should actually be relative to the config file!
+  let relativeTo = m.info.toFullPath
   for module in items(implicits):
-    var importStmt = newNodeI(nodeKind, gCmdLineInfo)
-    var str = newStrNode(nkStrLit, module)
-    str.info = gCmdLineInfo
-    importStmt.addSon str
-    if not processTopLevelStmt(importStmt, a): break
+    # implicit imports should not lead to a module importing itself
+    if m.position != resolveMod(module, relativeTo):
+      var importStmt = newNodeI(nodeKind, gCmdLineInfo)
+      var str = newStrNode(nkStrLit, module)
+      str.info = gCmdLineInfo
+      importStmt.addSon str
+      if not processTopLevelStmt(importStmt, a): break
 
 proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream,
                     rd: PRodReader; cache: IdentCache): bool {.discardable.} =
@@ -183,8 +194,8 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream,
         # modules to include between compilation runs? we'd need to track that
         # in ROD files. I think we should enable this feature only
         # for the interactive mode.
-        processImplicits implicitImports, nkImportStmt, a
-        processImplicits implicitIncludes, nkIncludeStmt, a
+        processImplicits implicitImports, nkImportStmt, a, module
+        processImplicits implicitIncludes, nkIncludeStmt, a, module
 
       while true:
         var n = parseTopLevelStmt(p)

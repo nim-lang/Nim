@@ -10,38 +10,87 @@
 ## This module contains helpers that deal with different byte orders
 ## (`endian`:idx:).
 
-proc swapEndian64*(outp, inp: pointer) =
-  ## copies `inp` to `outp` swapping bytes. Both buffers are supposed to
-  ## contain at least 8 bytes.
-  var i = cast[cstring](inp)
-  var o = cast[cstring](outp)
-  o[0] = i[7]
-  o[1] = i[6]
-  o[2] = i[5]
-  o[3] = i[4]
-  o[4] = i[3]
-  o[5] = i[2]
-  o[6] = i[1]
-  o[7] = i[0]
+when defined(gcc) or defined(llvm_gcc) or defined(clang):
+  const useBuiltinSwap = true
+  proc builtin_bswap16(a: uint16): uint16 {.
+      importc: "__builtin_bswap16", nodecl, nosideeffect.}
 
-proc swapEndian32*(outp, inp: pointer) =
-  ## copies `inp` to `outp` swapping bytes. Both buffers are supposed to
-  ## contain at least 4 bytes.
-  var i = cast[cstring](inp)
-  var o = cast[cstring](outp)
-  o[0] = i[3]
-  o[1] = i[2]
-  o[2] = i[1]
-  o[3] = i[0]
+  proc builtin_bswap32(a: uint32): uint32 {.
+      importc: "__builtin_bswap32", nodecl, nosideeffect.}
 
-proc swapEndian16*(outp, inp: pointer) =
-  ## copies `inp` to `outp` swapping bytes. Both buffers are supposed to
-  ## contain at least 2 bytes.
-  var
-    i = cast[cstring](inp)
-    o = cast[cstring](outp)
-  o[0] = i[1]
-  o[1] = i[0]
+  proc builtin_bswap64(a: uint64): uint64 {.
+      importc: "__builtin_bswap64", nodecl, nosideeffect.}
+elif defined(icc):
+  const useBuiltinSwap = true
+  proc builtin_bswap16(a: uint16): uint16 {.
+      importc: "_bswap16", nodecl, nosideeffect.}
+
+  proc builtin_bswap32(a: uint32): uint32 {.
+      importc: "_bswap", nodecl, nosideeffect.}
+
+  proc builtin_bswap64(a: uint64): uint64 {.
+      importc: "_bswap64", nodecl, nosideeffect.}
+elif defined(vcc):
+  const useBuiltinSwap = true
+  proc builtin_bswap16(a: uint16): uint16 {.
+      importc: "_byteswap_ushort", nodecl, header: "<intrin.h>", nosideeffect.}
+
+  proc builtin_bswap32(a: uint32): uint32 {.
+      importc: "_byteswap_ulong", nodecl, header: "<intrin.h>", nosideeffect.}
+
+  proc builtin_bswap64(a: uint64): uint64 {.
+      importc: "_byteswap_uint64", nodecl, header: "<intrin.h>", nosideeffect.}
+else:
+  const useBuiltinSwap = false
+
+when useBuiltinSwap:
+  proc swapEndian64*(outp, inp: pointer) {.inline, nosideeffect.}=
+    var i = cast[ptr uint64](inp)
+    var o = cast[ptr uint64](outp)
+    o[] = builtin_bswap64(i[])
+
+  proc swapEndian32*(outp, inp: pointer) {.inline, nosideeffect.}=
+    var i = cast[ptr uint32](inp)
+    var o = cast[ptr uint32](outp)
+    o[] = builtin_bswap32(i[])
+
+  proc swapEndian16*(outp, inp: pointer) {.inline, nosideeffect.}=
+    var i = cast[ptr uint16](inp)
+    var o = cast[ptr uint16](outp)
+    o[] = builtin_bswap16(i[])
+
+else:
+  proc swapEndian64*(outp, inp: pointer) =
+    ## copies `inp` to `outp` swapping bytes. Both buffers are supposed to
+    ## contain at least 8 bytes.
+    var i = cast[cstring](inp)
+    var o = cast[cstring](outp)
+    o[0] = i[7]
+    o[1] = i[6]
+    o[2] = i[5]
+    o[3] = i[4]
+    o[4] = i[3]
+    o[5] = i[2]
+    o[6] = i[1]
+    o[7] = i[0]
+
+  proc swapEndian32*(outp, inp: pointer) =
+    ## copies `inp` to `outp` swapping bytes. Both buffers are supposed to
+    ## contain at least 4 bytes.
+    var i = cast[cstring](inp)
+    var o = cast[cstring](outp)
+    o[0] = i[3]
+    o[1] = i[2]
+    o[2] = i[1]
+    o[3] = i[0]
+
+  proc swapEndian16*(outp, inp: pointer) =
+    ## copies `inp` to `outp` swapping bytes. Both buffers are supposed to
+    ## contain at least 2 bytes.
+    var i = cast[cstring](inp)
+    var o = cast[cstring](outp)
+    o[0] = i[1]
+    o[1] = i[0]
 
 when system.cpuEndian == bigEndian:
   proc littleEndian64*(outp, inp: pointer) {.inline.} = swapEndian64(outp, inp)

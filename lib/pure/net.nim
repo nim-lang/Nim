@@ -91,8 +91,8 @@ when defineSsl:
 
     SslContext* = ref object
       context*: SslCtx
-      extraInternalIndex: int
       referencedData: HashSet[int]
+      extraInternal: SslContextExtraInternal
 
     SslAcceptResult* = enum
       AcceptNoClient = 0, AcceptNoHandshake, AcceptSuccess
@@ -103,6 +103,10 @@ when defineSsl:
     SslClientGetPskFunc* = proc(hint: string): tuple[identity: string, psk: string]
 
     SslServerGetPskFunc* = proc(identity: string): string
+
+    SslContextExtraInternal = ref object of RootRef
+      serverGetPskFunc: SslServerGetPskFunc
+      clientGetPskFunc: SslClientGetPskFunc
 
   {.deprecated: [ESSL: SSLError, TSSLCVerifyMode: SSLCVerifyMode,
     TSSLProtVersion: SSLProtVersion, PSSLContext: SSLContext,
@@ -201,12 +205,12 @@ proc newSocket*(fd: SocketHandle, domain: Domain = AF_INET,
     protocol: Protocol = IPPROTO_TCP, buffered = true): Socket =
   ## Creates a new socket as specified by the params.
   assert fd != osInvalidSocket
-  new(result)
-  result.fd = fd
-  result.isBuffered = buffered
-  result.domain = domain
-  result.sockType = sockType
-  result.protocol = protocol
+  result = Socket(
+    fd: fd,
+    isBuffered: buffered,
+    domain: domain,
+    sockType: sockType,
+    protocol: protocol)
   if buffered:
     result.currPos = 0
 
@@ -241,11 +245,6 @@ when defineSsl:
   ErrLoadBioStrings()
   OpenSSL_add_all_algorithms()
 
-  type
-    SslContextExtraInternal = ref object of RootRef
-      serverGetPskFunc: SslServerGetPskFunc
-      clientGetPskFunc: SslClientGetPskFunc
-
   proc raiseSSLError*(s = "") =
     ## Raises a new SSL error.
     if s != "":
@@ -257,12 +256,6 @@ when defineSsl:
       raiseOSError(osLastError())
     var errStr = ErrErrorString(err, nil)
     raise newException(SSLError, $errStr)
-
-  proc getExtraDataIndex*(ctx: SSLContext): int =
-    ## Retrieves unique index for storing extra data in SSLContext.
-    result = SSL_CTX_get_ex_new_index(0, nil, nil, nil, nil).int
-    if result < 0:
-      raiseSSLError()
 
   proc getExtraData*(ctx: SSLContext, index: int): RootRef =
     ## Retrieves arbitrary data stored inside SSLContext.
@@ -348,15 +341,11 @@ when defineSsl:
     discard newCTX.SSLCTXSetMode(SSL_MODE_AUTO_RETRY)
     newCTX.loadCertificates(certFile, keyFile)
 
-    result = SSLContext(context: newCTX, extraInternalIndex: 0,
-        referencedData: initSet[int]())
-    result.extraInternalIndex = getExtraDataIndex(result)
-
-    let extraInternal = new(SslContextExtraInternal)
-    result.setExtraData(result.extraInternalIndex, extraInternal)
+    result = SSLContext(context: newCTX, referencedData: initSet[int](),
+      extraInternal: new(SslContextExtraInternal))
 
   proc getExtraInternal(ctx: SSLContext): SslContextExtraInternal =
-    return SslContextExtraInternal(ctx.getExtraData(ctx.extraInternalIndex))
+    return ctx.extraInternal
 
   proc destroyContext*(ctx: SSLContext) =
     ## Free memory referenced by SSLContext.
@@ -380,7 +369,7 @@ when defineSsl:
 
   proc pskClientCallback(ssl: SslPtr; hint: cstring; identity: cstring; max_identity_len: cuint; psk: ptr cuchar;
     max_psk_len: cuint): cuint {.cdecl.} =
-    let ctx = SSLContext(context: ssl.SSL_get_SSL_CTX, extraInternalIndex: 0)
+    let ctx = SSLContext(context: ssl.SSL_get_SSL_CTX)
     let hintString = if hint == nil: nil else: $hint
     let (identityString, pskString) = (ctx.clientGetPskFunc)(hintString)
     if psk.len.cuint > max_psk_len:
@@ -399,8 +388,6 @@ when defineSsl:
     ##
     ## Only used in PSK ciphersuites.
     ctx.getExtraInternal().clientGetPskFunc = fun
-    assert ctx.extraInternalIndex == 0,
-          "The pskClientCallback assumes the extraInternalIndex is 0"
     ctx.context.SSL_CTX_set_psk_client_callback(
         if fun == nil: nil else: pskClientCallback)
 
@@ -408,7 +395,7 @@ when defineSsl:
     return ctx.getExtraInternal().serverGetPskFunc
 
   proc pskServerCallback(ssl: SslCtx; identity: cstring; psk: ptr cuchar; max_psk_len: cint): cuint {.cdecl.} =
-    let ctx = SSLContext(context: ssl.SSL_get_SSL_CTX, extraInternalIndex: 0)
+    let ctx = SSLContext(context: ssl.SSL_get_SSL_CTX)
     let pskString = (ctx.serverGetPskFunc)($identity)
     if psk.len.cint > max_psk_len:
       return 0
@@ -439,7 +426,7 @@ when defineSsl:
     ## **Disclaimer**: This code is not well tested, may be very unsafe and
     ## prone to security vulnerabilities.
 
-    assert (not socket.isSSL)
+    assert(not socket.isSSL)
     socket.isSSL = true
     socket.sslContext = ctx
     socket.sslHandle = SSLNew(socket.sslContext.context)
@@ -560,9 +547,9 @@ proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
   else:
     var aiList = getAddrInfo(address, port, socket.domain)
     if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.SockLen) < 0'i32:
-      dealloc(aiList)
+      freeAddrInfo(aiList)
       raiseOSError(osLastError())
-    dealloc(aiList)
+    freeAddrInfo(aiList)
 
 proc acceptAddr*(server: Socket, client: var Socket, address: var string,
                  flags = {SocketFlag.SafeDisconn}) {.
@@ -1193,7 +1180,7 @@ proc sendTo*(socket: Socket, address: string, port: Port, data: pointer,
       break
     it = it.ai_next
 
-  dealloc(aiList)
+  freeAddrInfo(aiList)
 
 proc sendTo*(socket: Socket, address: string, port: Port,
              data: string): int {.tags: [WriteIOEffect].} =
@@ -1248,7 +1235,7 @@ proc IPv6_loopback*(): IpAddress =
     address_v6: [0'u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])
 
 proc `==`*(lhs, rhs: IpAddress): bool =
-  ## Compares two IpAddresses for Equality. Returns two if the addresses are equal
+  ## Compares two IpAddresses for Equality. Returns true if the addresses are equal
   if lhs.family != rhs.family: return false
   if lhs.family == IpAddressFamily.IPv4:
     for i in low(lhs.address_v4) .. high(lhs.address_v4):
@@ -1514,7 +1501,7 @@ proc connect*(socket: Socket, address: string,
     else: lastError = osLastError()
     it = it.ai_next
 
-  dealloc(aiList)
+  freeAddrInfo(aiList)
   if not success: raiseOSError(lastError)
 
   when defineSsl:
@@ -1562,7 +1549,7 @@ proc connectAsync(socket: Socket, name: string, port = Port(0),
 
     it = it.ai_next
 
-  dealloc(aiList)
+  freeAddrInfo(aiList)
   if not success: raiseOSError(lastError)
 
 proc connect*(socket: Socket, address: string, port = Port(0),

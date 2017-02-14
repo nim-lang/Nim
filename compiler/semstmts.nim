@@ -70,7 +70,7 @@ proc toCover(t: PType): BiggestInt =
   else:
     result = lengthOrd(skipTypes(t, abstractVar-{tyTypeDesc}))
 
-proc performProcvarCheck(c: PContext, n: PNode, s: PSym) =
+proc performProcvarCheck(c: PContext, info: TLineInfo, s: PSym) =
   ## Checks that the given symbol is a proper procedure variable, meaning
   ## that it
   var smoduleId = getModule(s).id
@@ -80,13 +80,17 @@ proc performProcvarCheck(c: PContext, n: PNode, s: PSym) =
       for module in c.friendModules:
         if smoduleId == module.id:
           break outer
-      localError(n.info, errXCannotBePassedToProcVar, s.name.s)
+      localError(info, errXCannotBePassedToProcVar, s.name.s)
 
 proc semProcvarCheck(c: PContext, n: PNode) =
-  let n = n.skipConv
-  if n.kind == nkSym and n.sym.kind in {skProc, skMethod, skConverter,
+  var n = n.skipConv
+  if n.kind in nkSymChoices:
+    for x in n:
+      if x.sym.kind in {skProc, skMethod, skConverter, skIterator}:
+        performProcvarCheck(c, n.info, x.sym)
+  elif n.kind == nkSym and n.sym.kind in {skProc, skMethod, skConverter,
                                         skIterator}:
-    performProcvarCheck(c, n, n.sym)
+    performProcvarCheck(c, n.info, n.sym)
 
 proc semProc(c: PContext, n: PNode): PNode
 
@@ -259,36 +263,64 @@ proc semTry(c: PContext, n: PNode): PNode =
   result = n
   inc c.p.inTryStmt
   checkMinSonsLen(n, 2)
+
   var typ = commonTypeBegin
   n.sons[0] = semExprBranchScope(c, n.sons[0])
   typ = commonType(typ, n.sons[0].typ)
+
   var check = initIntSet()
   var last = sonsLen(n) - 1
   for i in countup(1, last):
     var a = n.sons[i]
     checkMinSonsLen(a, 1)
     var length = sonsLen(a)
+    openScope(c)
     if a.kind == nkExceptBranch:
       # so that ``except [a, b, c]`` is supported:
       if length == 2 and a.sons[0].kind == nkBracket:
         a.sons[0..0] = a.sons[0].sons
         length = a.sonsLen
 
+      # Iterate through each exception type in the except branch.
       for j in countup(0, length-2):
-        var typ = semTypeNode(c, a.sons[j], nil)
-        if typ.kind == tyRef: typ = typ.sons[0]
+        var typeNode = a.sons[j] # e.g. `Exception`
+        var symbolNode: PNode = nil # e.g. `foobar`
+        # Handle the case where the `Exception as foobar` syntax is used.
+        if typeNode.isInfixAs():
+          typeNode = a.sons[j].sons[1]
+          symbolNode = a.sons[j].sons[2]
+
+        # Resolve the type ident into a PType.
+        var typ = semTypeNode(c, typeNode, nil).toObject()
         if typ.kind != tyObject:
           localError(a.sons[j].info, errExprCannotBeRaised)
-        a.sons[j] = newNodeI(nkType, a.sons[j].info)
-        a.sons[j].typ = typ
+
+        let newTypeNode = newNodeI(nkType, typeNode.info)
+        newTypeNode.typ = typ
+        if symbolNode.isNil:
+          a.sons[j] = newTypeNode
+        else:
+          a.sons[j].sons[1] = newTypeNode
+          # Add the exception ident to the symbol table.
+          let symbol = newSymG(skLet, symbolNode, c)
+          symbol.typ = typ.toRef()
+          addDecl(c, symbol)
+          # Overwrite symbol in AST with the symbol in the symbol table.
+          let symNode = newNodeI(nkSym, typeNode.info)
+          symNode.sym = symbol
+          a.sons[j].sons[2] = symNode
+
         if containsOrIncl(check, typ.id):
           localError(a.sons[j].info, errExceptionAlreadyHandled)
     elif a.kind != nkFinally:
       illFormedAst(n)
+
     # last child of an nkExcept/nkFinally branch is a statement:
     a.sons[length-1] = semExprBranchScope(c, a.sons[length-1])
     if a.kind != nkFinally: typ = commonType(typ, a.sons[length-1].typ)
     else: dec last
+    closeScope(c)
+
   dec c.p.inTryStmt
   if isEmptyType(typ) or typ.kind == tyNil:
     discardCheck(c, n.sons[0])
@@ -471,7 +503,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     # this can only happen for errornous var statements:
     if typ == nil: continue
     typeAllowedCheck(a.info, typ, symkind)
-    var tup = skipTypes(typ, {tyGenericInst})
+    var tup = skipTypes(typ, {tyGenericInst, tyAlias})
     if a.kind == nkVarTuple:
       if tup.kind != tyTuple:
         localError(a.info, errXExpected, "tuple")
@@ -583,7 +615,7 @@ proc semForVars(c: PContext, n: PNode): PNode =
   result = n
   var length = sonsLen(n)
   let iterBase = n.sons[length-2].typ
-  var iter = skipTypes(iterBase, {tyGenericInst})
+  var iter = skipTypes(iterBase, {tyGenericInst, tyAlias})
   # length == 3 means that there is one for loop variable
   # and thus no tuple unpacking:
   if iter.kind != tyTuple or length == 3:
@@ -745,7 +777,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       var t = semTypeNode(c, a.sons[2], s.typ)
       if s.typ == nil:
         s.typ = t
-      elif t != s.typ:
+      elif t != s.typ and (s.typ == nil or s.typ.kind != tyAlias):
         # this can happen for e.g. tcan_alias_specialised_generic:
         assignType(s.typ, t)
         #debug s.typ
@@ -759,8 +791,12 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
       if st.kind == tyGenericBody: st = st.lastSon
       internalAssert st.kind in {tyPtr, tyRef}
       internalAssert st.lastSon.sym == nil
-      st.lastSon.sym = newSym(skType, getIdent(s.name.s & ":ObjectType"),
+      incl st.flags, tfRefsAnonObj
+      let obj = newSym(skType, getIdent(s.name.s & ":ObjectType"),
                               getCurrOwner(), s.info)
+      obj.typ = st.lastSon
+      st.lastSon.sym = obj
+
 
 proc checkForMetaFields(n: PNode) =
   template checkMeta(t) =
@@ -777,7 +813,7 @@ proc checkForMetaFields(n: PNode) =
     let t = n.sym.typ
     case t.kind
     of tySequence, tySet, tyArray, tyOpenArray, tyVar, tyPtr, tyRef,
-       tyProc, tyGenericInvocation, tyGenericInst:
+       tyProc, tyGenericInvocation, tyGenericInst, tyAlias:
       let start = ord(t.kind in {tyGenericInvocation, tyGenericInst})
       for i in start .. <t.sons.len:
         checkMeta(t.sons[i])
@@ -804,8 +840,9 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
         assert t != nil
         if t.kind in {tyObject, tyEnum, tyDistinct}:
           assert s.typ != nil
-          assignType(s.typ, t)
-          s.typ.id = t.id     # same id
+          if s.typ.kind != tyAlias:
+            assignType(s.typ, t)
+            s.typ.id = t.id     # same id
       checkConstructedType(s.info, s.typ)
       if s.typ.kind in {tyObject, tyTuple} and not s.typ.n.isNil:
         checkForMetaFields(s.typ.n)
@@ -1366,7 +1403,9 @@ proc semMethod(c: PContext, n: PNode): PNode =
     for col in countup(1, sonsLen(tt)-1):
       let t = tt.sons[col]
       if t != nil and t.kind == tyGenericInvocation:
-        var x = skipTypes(t.sons[0], {tyVar, tyPtr, tyRef, tyGenericInst, tyGenericInvocation, tyGenericBody})
+        var x = skipTypes(t.sons[0], {tyVar, tyPtr, tyRef, tyGenericInst,
+                                      tyGenericInvocation, tyGenericBody,
+                                      tyAlias})
         if x.kind == tyObject and t.len-1 == result.sons[genericParamsPos].len:
           foundObj = true
           x.methods.safeAdd((col,s))
@@ -1433,7 +1472,7 @@ proc semPragmaBlock(c: PContext, n: PNode): PNode =
   for i in 0 .. <pragmaList.len:
     case whichPragma(pragmaList.sons[i])
     of wLine: setLine(result, pragmaList.sons[i].info)
-    of wLocks:
+    of wLocks, wGcSafe:
       result = n
       result.typ = n.sons[1].typ
     of wNoRewrite:

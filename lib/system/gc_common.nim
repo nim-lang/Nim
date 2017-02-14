@@ -17,6 +17,31 @@ proc protect*(x: pointer): ForeignCell =
   result.data = x
   result.owner = addr(gch)
 
+when defined(nimTypeNames):
+  proc dumpNumberOfInstances* =
+    var it = nimTypeRoot
+    while it != nil:
+      if it.instances > 0:
+        c_fprintf(stdout, "[Heap] %s: #%ld; bytes: %ld\n", it.name, it.instances, it.sizes)
+      it = it.nextType
+
+template decTypeSize(cell, t) =
+  # XXX this needs to use atomics for multithreaded apps!
+  when defined(nimTypeNames):
+    if t.kind in {tyString, tySequence}:
+      let len = cast[PGenericSeq](cellToUsr(cell)).len
+      let base = if t.kind == tyString: 1 else: t.base.size
+      let size = addInt(mulInt(len, base), GenericSeqSize)
+      dec t.sizes, size+sizeof(Cell)
+    else:
+      dec t.sizes, t.size+sizeof(Cell)
+    dec t.instances
+
+template incTypeSize(typ, size) =
+  when defined(nimTypeNames):
+    inc typ.instances
+    inc typ.sizes, size+sizeof(Cell)
+
 proc dispose*(x: ForeignCell) =
   when hasThreadSupport:
     # if we own it we can free it directly:
@@ -103,14 +128,8 @@ iterator items(stack: ptr GcStack): ptr GcStack =
     yield s
     s = s.next
 
-# There will be problems with GC in foreign threads if `threads` option is off or TLS emulation is enabled
-const allowForeignThreadGc = compileOption("threads") and not compileOption("tlsEmulation")
-
-when allowForeignThreadGc:
-  var
-    localGcInitialized {.rtlThreadVar.}: bool
-
-  proc setupForeignThreadGc*() =
+when declared(threadType):
+  proc setupForeignThreadGc*() {.gcsafe.} =
     ## Call this if you registered a callback that will be run from a thread not
     ## under your control. This has a cheap thread-local guard, so the GC for
     ## this thread will only be initialized once per thread, no matter how often
@@ -118,15 +137,32 @@ when allowForeignThreadGc:
     ##
     ## This function is available only when ``--threads:on`` and ``--tlsEmulation:off``
     ## switches are used
-    if not localGcInitialized:
-      localGcInitialized = true
+    if threadType == ThreadType.None:
       initAllocator()
       var stackTop {.volatile.}: pointer
       setStackBottom(addr(stackTop))
       initGC()
+      threadType = ThreadType.ForeignThread
+
+  proc tearDownForeignThreadGc*() {.gcsafe.} =
+    ## Call this to tear down the GC, previously initialized by ``setupForeignThreadGc``.
+    ## If GC has not been previously initialized, or has already been torn down, the
+    ## call does nothing.
+    ##
+    ## This function is available only when ``--threads:on`` and ``--tlsEmulation:off``
+    ## switches are used
+    if threadType != ThreadType.ForeignThread:
+      return
+    when declared(deallocOsPages): deallocOsPages()
+    threadType = ThreadType.None
+    when declared(gch): zeroMem(addr gch, sizeof(gch))
+
 else:
-  template setupForeignThreadGc*(): stmt =
+  template setupForeignThreadGc*() =
     {.error: "setupForeignThreadGc is available only when ``--threads:on`` and ``--tlsEmulation:off`` are used".}
+
+  template tearDownForeignThreadGc*() =
+    {.error: "tearDownForeignThreadGc is available only when ``--threads:on`` and ``--tlsEmulation:off`` are used".}
 
 # ----------------- stack management --------------------------------------
 #  inspired from Smart Eiffel
@@ -172,7 +208,7 @@ when defined(sparc): # For SPARC architecture.
     var x = cast[ByteAddress](p)
     result = a <=% x and x <=% b
 
-  template forEachStackSlot(gch, gcMark: expr) {.immediate, dirty.} =
+  template forEachStackSlot(gch, gcMark: untyped) {.dirty.} =
     when defined(sparcv9):
       asm  """"flushw \n" """
     else:
@@ -210,7 +246,7 @@ elif stackIncreases:
       # a little hack to get the size of a JmpBuf in the generated C code
       # in a platform independent way
 
-  template forEachStackSlot(gch, gcMark: expr) {.immediate, dirty.} =
+  template forEachStackSlot(gch, gcMark: untyped) {.dirty.} =
     var registers {.noinit.}: C_JmpBuf
     if c_setjmp(registers) == 0'i32: # To fill the C stack with registers.
       var max = cast[ByteAddress](gch.stackBottom)
@@ -236,7 +272,7 @@ else:
         if a <=% x and x <=% b:
           return true
 
-    template forEachStackSlot(gch, gcMark: expr) {.immediate, dirty.} =
+    template forEachStackSlot(gch, gcMark: untyped) {.dirty.} =
       # We use a jmp_buf buffer that is in the C stack.
       # Used to traverse the stack and registers assuming
       # that 'setjmp' will save registers in the C stack.
@@ -274,7 +310,7 @@ else:
       var x = cast[ByteAddress](p)
       result = a <=% x and x <=% b
 
-    template forEachStackSlot(gch, gcMark: expr) {.immediate, dirty.} =
+    template forEachStackSlot(gch, gcMark: untyped) {.dirty.} =
       # We use a jmp_buf buffer that is in the C stack.
       # Used to traverse the stack and registers assuming
       # that 'setjmp' will save registers in the C stack.

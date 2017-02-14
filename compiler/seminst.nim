@@ -97,10 +97,17 @@ proc genericCacheGet(genericSym: PSym, entry: TInstantiation;
       if inst.compilesId == id and sameInstantiation(entry, inst[]):
         return inst.sym
 
+when false:
+  proc `$`(x: PSym): string =
+    result = x.name.s & " " & " id " & $x.id
+
 proc freshGenSyms(n: PNode, owner, orig: PSym, symMap: var TIdTable) =
   # we need to create a fresh set of gensym'ed symbols:
-  if n.kind == nkSym and sfGenSym in n.sym.flags and
-      (n.sym.owner == orig or n.sym.owner.kind == skPackage):
+  #if n.kind == nkSym and sfGenSym in n.sym.flags:
+  #  if n.sym.owner != orig:
+  #    echo "symbol ", n.sym.name.s, " orig ", orig, " owner ", n.sym.owner
+  if n.kind == nkSym and {sfGenSym, sfFromGeneric} * n.sym.flags == {sfGenSym}: # and
+    #  (n.sym.owner == orig or n.sym.owner.kind in {skPackage}):
     let s = n.sym
     var x = PSym(idTableGet(symMap, s))
     if x == nil:

@@ -8,7 +8,7 @@ type
   TEventHandler[T] = proc (e: var TEventArgs, data: T) {.closure.}
   TEvent*[T] = object
     #handlers: seq[TEventHandler[T]] # Does not work
-    handlers: seq[proc (e: var TEventArgs, data: T) {.closure.}] # works
+    handlers: seq[proc (e: var TEventArgs, d: T) {.closure.}] # works
 
   TData = object
     x: int

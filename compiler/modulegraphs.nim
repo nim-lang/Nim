@@ -1,7 +1,7 @@
 #
 #
 #           The Nim Compiler
-#        (c) Copyright 2016 Andreas Rumpf
+#        (c) Copyright 2017 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -25,7 +25,7 @@
 ## - Its dependent module stays the same.
 ##
 
-import ast, intsets, tables
+import ast, intsets, tables, options
 
 type
   ModuleGraph* = ref object
@@ -36,20 +36,30 @@ type
     invalidTransitiveClosure: bool
     inclToMod*: Table[int32, int32] # mapping of include file to the
                                     # first module that included it
+    importStack*: seq[int32]  # The current import stack. Used for detecting recursive
+                              # module dependencies.
+    backend*: RootRef # minor hack so that a backend can extend this easily
+    config*: ConfigRef
 
 {.this: g.}
 
-proc newModuleGraph*(): ModuleGraph =
+proc newModuleGraph*(config: ConfigRef = nil): ModuleGraph =
   result = ModuleGraph()
   initStrTable(result.packageSyms)
   result.deps = initIntSet()
   result.modules = @[]
+  result.importStack = @[]
   result.inclToMod = initTable[int32, int32]()
+  if config.isNil:
+    result.config = newConfigRef()
+  else:
+    result.config = config
 
 proc resetAllModules*(g: ModuleGraph) =
   initStrTable(packageSyms)
   deps = initIntSet()
   modules = @[]
+  importStack = @[]
   inclToMod = initTable[int32, int32]()
 
 proc getModule*(g: ModuleGraph; fileIdx: int32): PSym =

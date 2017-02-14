@@ -207,7 +207,7 @@ proc lowBound*(x: PNode): PNode =
 
 proc highBound*(x: PNode): PNode =
   let typ = x.typ.skipTypes(abstractInst)
-  result = if typ.kind in {tyArrayConstr, tyArray}:
+  result = if typ.kind == tyArray:
              nkIntLit.newIntNode(lastOrd(typ))
            elif typ.kind == tySequence and x.kind == nkSym and
                x.sym.kind == skConst:

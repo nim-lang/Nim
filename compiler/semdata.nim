@@ -1,7 +1,7 @@
 #
 #
 #           The Nim Compiler
-#        (c) Copyright 2016 Andreas Rumpf
+#        (c) Copyright 2017 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -110,6 +110,7 @@ type
     cache*: IdentCache
     graph*: ModuleGraph
     signatures*: TStrTable
+    recursiveDep*: string
 
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
   result.genericSym = s
@@ -242,7 +243,16 @@ proc makeAndType*(c: PContext, t1, t2: PType): PType =
 
 proc makeOrType*(c: PContext, t1, t2: PType): PType =
   result = newTypeS(tyOr, c)
-  result.sons = @[t1, t2]
+  if t1.kind != tyOr and t2.kind != tyOr:
+    result.sons = @[t1, t2]
+  else:
+    template addOr(t1) =
+      if t1.kind == tyOr:
+        for x in t1.sons: result.rawAddSon x
+      else:
+        result.rawAddSon t1
+    addOr(t1)
+    addOr(t2)
   propagateToOwner(result, t1)
   propagateToOwner(result, t2)
   result.flags.incl((t1.flags + t2.flags) * {tfHasStatic})

@@ -31,11 +31,19 @@ proc semanticPasses =
   registerPass verbosePass
   registerPass semPass
 
+proc writeDepsFile(g: ModuleGraph; project: string) =
+  let f = open(changeFileExt(project, "deps"), fmWrite)
+  for m in g.modules:
+    if m != nil:
+      f.writeLine(toFullPath(m.position.int32))
+  f.close()
+
 proc commandGenDepend(graph: ModuleGraph; cache: IdentCache) =
   semanticPasses()
   registerPass(gendependPass)
-  registerPass(cleanupPass)
+  #registerPass(cleanupPass)
   compileProject(graph, cache)
+  writeDepsFile(graph, gProjectFull)
   generateDot(gProjectFull)
   execExternalProgram("dot -Tpng -o" & changeFileExt(gProjectFull, "png") &
       ' ' & changeFileExt(gProjectFull, "dot"))
@@ -64,9 +72,11 @@ proc commandCompileToC(graph: ModuleGraph; cache: IdentCache) =
   #registerPass(cleanupPass())
 
   compileProject(graph, cache)
-  cgenWriteModules()
+  cgenWriteModules(graph.backend, graph.config)
   if gCmd != cmdRun:
-    extccomp.callCCompiler(changeFileExt(gProjectFull, ""))
+    let proj = changeFileExt(gProjectFull, "")
+    extccomp.callCCompiler(proj)
+    extccomp.writeJsonBuildInstructions(proj)
 
 proc commandCompileToJS(graph: ModuleGraph; cache: IdentCache) =
   #incl(gGlobalOptions, optSafeCode)
@@ -261,9 +271,13 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
 
   if msgs.gErrorCounter == 0 and
      gCmd notin {cmdInterpret, cmdRun, cmdDump}:
+    when declared(system.getMaxMem):
+      let usedMem = formatSize(getMaxMem()) & " peekmem"
+    else:
+      let usedMem = formatSize(getTotalMem())
     rawMessage(hintSuccessX, [$gLinesCompiled,
                formatFloat(epochTime() - gLastCmdTime, ffDecimal, 3),
-               formatSize(getTotalMem()),
+               usedMem,
                if condSyms.isDefined("release"): "Release Build"
                else: "Debug Build"])
 
@@ -280,4 +294,4 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
 
   resetAttributes()
 
-proc mainCommand*() = mainCommand(newModuleGraph(), newIdentCache())
+proc mainCommand*() = mainCommand(newModuleGraph(newConfigRef()), newIdentCache())

@@ -211,14 +211,14 @@ proc genericReset(dest: pointer, mt: PNimType) =
     zeroMem(dest, mt.size) # set raw bits to zero
 
 proc selectBranch(discVal, L: int,
-                  a: ptr array[0..0x7fff, ptr TNimNode]): ptr TNimNode =
+                  a: ptr array[0x7fff, ptr TNimNode]): ptr TNimNode =
   result = a[L] # a[L] contains the ``else`` part (but may be nil)
   if discVal <% L:
     var x = a[discVal]
     if x != nil: result = x
 
 proc FieldDiscriminantCheck(oldDiscVal, newDiscVal: int,
-                            a: ptr array[0..0x7fff, ptr TNimNode],
+                            a: ptr array[0x7fff, ptr TNimNode],
                             L: int) {.compilerProc.} =
   var oldBranch = selectBranch(oldDiscVal, L, a)
   var newBranch = selectBranch(newDiscVal, L, a)

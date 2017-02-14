@@ -429,13 +429,14 @@ when defined(Windows) and not defined(useNimRtl):
       raiseOSError(osLastError())
 
   proc createAllPipeHandles(si: var STARTUPINFO;
-                            stdin, stdout, stderr: var Handle) =
+                            stdin, stdout, stderr: var Handle;
+                            hash: int) =
     var sa: SECURITY_ATTRIBUTES
     sa.nLength = sizeof(SECURITY_ATTRIBUTES).cint
     sa.lpSecurityDescriptor = nil
     sa.bInheritHandle = 1
-    let pipeOutName = newWideCString(r"\\.\pipe\stdout")
-    let pipeInName = newWideCString(r"\\.\pipe\stdin")
+    let pipeOutName = newWideCString(r"\\.\pipe\stdout" & $hash)
+    let pipeInName = newWideCString(r"\\.\pipe\stdin" & $hash)
     let pipeOut = createNamedPipe(pipeOutName,
       dwOpenMode=PIPE_ACCESS_INBOUND or FILE_FLAG_WRITE_THROUGH,
       dwPipeMode=PIPE_NOWAIT,
@@ -512,7 +513,7 @@ when defined(Windows) and not defined(useNimRtl):
         else:
           createPipeHandles(he, si.hStdError)
       else:
-        createAllPipeHandles(si, hi, ho, he)
+        createAllPipeHandles(si, hi, ho, he, cast[int](result))
       result.inHandle = FileHandle(hi)
       result.outHandle = FileHandle(ho)
       result.errHandle = FileHandle(he)
@@ -965,10 +966,16 @@ elif not defined(useNimRtl):
     var ret : int
     var status : cint = 1
     ret = waitpid(p.id, status, WNOHANG)
-    if WIFEXITED(status):
-      p.exitStatus = status
-    if ret == 0: return true # Can't establish status. Assume running.
-    result = ret == int(p.id)
+    if ret == int(p.id):
+      if WIFEXITED(status):
+        p.exitStatus = status
+        return false
+      else:
+        return true
+    elif ret == 0:
+      return true # Can't establish status. Assume running.
+    else:
+      return false
 
   proc terminate(p: Process) =
     if kill(p.id, SIGTERM) != 0'i32:

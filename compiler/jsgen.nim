@@ -139,7 +139,7 @@ proc declareGlobal(p: PProc; id: int; r: Rope) =
     p.locals.addf("global $1;$n", [r])
 
 const
-  MappedToObject = {tyObject, tyArray, tyArrayConstr, tyTuple, tyOpenArray,
+  MappedToObject = {tyObject, tyArray, tyTuple, tyOpenArray,
     tySet, tyVarargs}
 
 proc mapType(typ: PType): TJSTypeKind =
@@ -153,18 +153,19 @@ proc mapType(typ: PType): TJSTypeKind =
   of tyPointer:
     # treat a tyPointer like a typed pointer to an array of bytes
     result = etyBaseIndex
-  of tyRange, tyDistinct, tyOrdinal, tyProxy: result = mapType(t.sons[0])
+  of tyRange, tyDistinct, tyOrdinal, tyProxy:
+    result = mapType(t.sons[0])
   of tyInt..tyInt64, tyUInt..tyUInt64, tyEnum, tyChar: result = etyInt
   of tyBool: result = etyBool
   of tyFloat..tyFloat128: result = etyFloat
   of tySet: result = etyObject # map a set to a table
   of tyString, tySequence: result = etySeq
-  of tyObject, tyArray, tyArrayConstr, tyTuple, tyOpenArray, tyVarargs:
+  of tyObject, tyArray, tyTuple, tyOpenArray, tyVarargs:
     result = etyObject
   of tyNil: result = etyNull
   of tyGenericInst, tyGenericParam, tyGenericBody, tyGenericInvocation,
      tyNone, tyFromExpr, tyForward, tyEmpty, tyFieldAccessor,
-     tyExpr, tyStmt, tyTypeDesc, tyTypeClasses, tyVoid:
+     tyExpr, tyStmt, tyTypeDesc, tyTypeClasses, tyVoid, tyAlias:
     result = etyNone
   of tyStatic:
     if t.n != nil: result = mapType(lastSon t)
@@ -178,9 +179,31 @@ proc mapType(p: PProc; typ: PType): TJSTypeKind =
   else: result = mapType(typ)
 
 proc mangleName(s: PSym; target: TTarget): Rope =
+  proc validJsName(name: string): bool =
+    result = true
+    const reservedWords = ["abstract", "await", "boolean", "break", "byte",
+      "case", "catch", "char", "class", "const", "continue", "debugger",
+      "default", "delete", "do", "double", "else", "enum", "export", "extends",
+      "false", "final", "finally", "float", "for", "function", "goto", "if",
+      "implements", "import", "in", "instanceof", "int", "interface", "let",
+      "long", "native", "new", "null", "package", "private", "protected",
+      "public", "return", "short", "static", "super", "switch", "synchronized",
+      "this", "throw", "throws", "transient", "true", "try", "typeof", "var",
+      "void", "volatile", "while", "with", "yield"]
+    case name
+    of reservedWords:
+      return false
+    else:
+      discard
+    if name[0] in {'0'..'9'}: return false
+    for chr in name:
+      if chr notin {'A'..'Z','a'..'z','_','$','0'..'9'}:
+        return false
   result = s.loc.r
   if result == nil:
-    if target == targetJS or s.kind == skTemp:
+    if s.kind == skField and s.name.s.validJsName:
+      result = rope(s.name.s)
+    elif target == targetJS or s.kind == skTemp:
       result = rope(mangle(s.name.s))
     else:
       var x = newStringOfCap(s.name.s.len)
@@ -796,8 +819,8 @@ proc generateHeader(p: PProc, typ: PType): Rope =
         add(result, name)
         add(result, "_Idx")
     elif not (i == 1 and param.name.s == "this"):
-      let k = param.typ.skipTypes({tyGenericInst}).kind
-      if k in { tyVar, tyRef, tyPtr, tyPointer }:
+      let k = param.typ.skipTypes({tyGenericInst, tyAlias}).kind
+      if k in {tyVar, tyRef, tyPtr, tyPointer}:
         add(result, "&")
       add(result, "$")
       add(result, name)
@@ -964,7 +987,7 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
   internalAssert a.typ != etyBaseIndex and b.typ != etyBaseIndex
   r.address = a.res
   var typ = skipTypes(m.sons[0].typ, abstractPtrs)
-  if typ.kind in {tyArray, tyArrayConstr}: first = firstOrd(typ.sons[0])
+  if typ.kind == tyArray: first = firstOrd(typ.sons[0])
   else: first = 0
   if optBoundsCheck in p.options and not isConstExpr(m.sons[1]):
     useMagic(p, "chckIndx")
@@ -985,8 +1008,7 @@ proc genArrayAccess(p: PProc, n: PNode, r: var TCompRes) =
   var ty = skipTypes(n.sons[0].typ, abstractVarRange)
   if ty.kind in {tyRef, tyPtr}: ty = skipTypes(ty.lastSon, abstractVarRange)
   case ty.kind
-  of tyArray, tyArrayConstr, tyOpenArray, tySequence, tyString, tyCString,
-     tyVarargs:
+  of tyArray, tyOpenArray, tySequence, tyString, tyCString, tyVarargs:
     genArrayAddr(p, n, r)
   of tyTuple:
     if p.target == targetPHP:
@@ -1066,8 +1088,7 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
     else:
       let kindOfIndexedExpr = skipTypes(n.sons[0].sons[0].typ, abstractVarRange).kind
       case kindOfIndexedExpr
-      of tyArray, tyArrayConstr, tyOpenArray, tySequence, tyString, tyCString,
-          tyVarargs:
+      of tyArray, tyOpenArray, tySequence, tyString, tyCString, tyVarargs:
         genArrayAddr(p, n.sons[0], r)
       of tyTuple:
         genFieldAddr(p, n.sons[0], r)
@@ -1174,11 +1195,12 @@ proc genDeref(p: PProc, n: PNode, r: var TCompRes) =
   else:
     var a: TCompRes
     gen(p, n.sons[0], a)
+    r.kind = resExpr
     if a.typ == etyBaseIndex:
       r.res = "$1[$2]" % [a.address, a.res]
     elif n.sons[0].kind == nkCall:
       let tmp = p.getTemp
-      r.res = "($1 = $2, $1[0][$1[1]])" % [tmp, a.res]
+      r.res = "($1 = $2, $1[0])[$1[1]]" % [tmp, a.res]
     else:
       internalError(n.info, "genDeref")
 
@@ -1352,8 +1374,7 @@ proc createRecordVarAux(p: PProc, rec: PNode, excludedFieldIDs: IntSet, output: 
     if rec.sym.id notin excludedFieldIDs:
       if output.len > 0: output.add(", ")
       if p.target == targetJS:
-        output.add(mangleName(rec.sym, p.target))
-        output.add(": ")
+        output.addf("$#: ", [mangleName(rec.sym, p.target)])
       else:
         output.addf("'$#' => ", [mangleName(rec.sym, p.target)])
       output.add(createVar(p, rec.sym.typ, false))
@@ -1365,7 +1386,8 @@ proc createObjInitList(p: PProc, typ: PType, excludedFieldIDs: IntSet, output: v
     if output.len > 0: output.add(", ")
     addf(output, "m_type: $1" | "'m_type' => $#", [genTypeInfo(p, t)])
   while t != nil:
-    createRecordVarAux(p, t.skipTypes(skipPtrs).n, excludedFieldIDs, output)
+    t = t.skipTypes(skipPtrs)
+    createRecordVarAux(p, t.n, excludedFieldIDs, output)
     t = t.sons[0]
 
 proc arrayTypeForElemType(typ: PType): string =
@@ -1387,13 +1409,13 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
     result = putToSeq("0", indirect)
   of tyFloat..tyFloat128:
     result = putToSeq("0.0", indirect)
-  of tyRange, tyGenericInst:
+  of tyRange, tyGenericInst, tyAlias:
     result = createVar(p, lastSon(typ), indirect)
   of tySet:
     result = putToSeq("{}" | "array()", indirect)
   of tyBool:
     result = putToSeq("false", indirect)
-  of tyArray, tyArrayConstr:
+  of tyArray:
     let length = int(lengthOrd(t))
     let e = elemType(t)
     let jsTyp = arrayTypeForElemType(e)
@@ -1506,7 +1528,7 @@ proc genVarStmt(p: PProc, n: PNode) =
         assert(a.kind == nkIdentDefs)
         assert(a.sons[0].kind == nkSym)
         var v = a.sons[0].sym
-        if lfNoDecl notin v.loc.flags:
+        if lfNoDecl notin v.loc.flags and sfImportc notin v.flags:
           genLineDir(p, a)
           genVarInit(p, v, a.sons[2])
 
@@ -2172,7 +2194,7 @@ proc genHeader(target: TTarget): Rope =
   if target == targetJS:
     result = (
       "/* Generated by the Nim Compiler v$1 */$n" &
-      "/*   (c) 2016 Andreas Rumpf */$n$n" &
+      "/*   (c) 2017 Andreas Rumpf */$n$n" &
       "var framePtr = null;$n" &
       "var excHandler = 0;$n" &
       "var lastJSError = null;$n" &
@@ -2188,7 +2210,7 @@ proc genHeader(target: TTarget): Rope =
   else:
     result = ("<?php$n" &
               "/* Generated by the Nim Compiler v$1 */$n" &
-              "/*   (c) 2016 Andreas Rumpf */$n$n" &
+              "/*   (c) 2017 Andreas Rumpf */$n$n" &
               "$$framePtr = null;$n" &
               "$$excHandler = 0;$n" &
               "$$lastJSError = null;$n") %
@@ -2247,7 +2269,7 @@ proc genClass(obj: PType; content: Rope; ext: string) =
     else: nil
   let result = ("<?php$n" &
             "/* Generated by the Nim Compiler v$# */$n" &
-            "/*   (c) 2016 Andreas Rumpf */$n$n" &
+            "/*   (c) 2017 Andreas Rumpf */$n$n" &
             "require_once \"nimsystem.php\";$n" &
             "class $#$# {$n$#$n}$n") %
            [rope(VersionAsString), cls, extends, content]

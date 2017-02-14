@@ -114,6 +114,12 @@ proc createObj*(owner: PSym, info: TLineInfo): PType =
   rawAddSon(result, nil)
   incl result.flags, tfFinal
   result.n = newNodeI(nkRecList, info)
+  when true:
+    let s = newSym(skType, getIdent("Env_" & info.toFilename & "_" & $info.line),
+                   owner, info)
+    incl s.flags, sfAnon
+    s.typ = result
+    result.sym = s
 
 proc rawAddField*(obj: PType; field: PSym) =
   assert field.kind == skField
@@ -441,7 +447,7 @@ proc newIntLit*(value: BiggestInt): PNode =
   result.typ = getSysType(tyInt)
 
 proc genHigh*(n: PNode): PNode =
-  if skipTypes(n.typ, abstractVar).kind in {tyArrayConstr, tyArray}:
+  if skipTypes(n.typ, abstractVar).kind == tyArray:
     result = newIntLit(lastOrd(skipTypes(n.typ, abstractVar)))
   else:
     result = newNodeI(nkCall, n.info, 2)

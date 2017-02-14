@@ -40,7 +40,7 @@ type
     trailDelay*: float
     body: chipmunk.PBody
     shape: chipmunk.PShape
-import vehicles
+include vehicles
 const
   LGrabbable*  = (1 shl 0).TLayers
   LBorders*    = (1 shl 1).TLayers

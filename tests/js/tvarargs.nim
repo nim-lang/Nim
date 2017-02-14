@@ -6,7 +6,7 @@ type
     log*: proc() {.nimcall varargs.}
   Console = ref ConsoleObj
 
-var console* {.importc nodecl.}: Console
+var console* {.importc.}: Console
 
 when isMainModule:
   console.log "Hello, world"

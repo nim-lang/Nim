@@ -108,7 +108,7 @@ proc rawGet(t: StringTableRef, key: string): int =
     h = nextTry(h, high(t.data))
   result = - 1
 
-template get(t: StringTableRef, key: string): stmt {.immediate.} =
+template get(t: StringTableRef, key: string) =
   var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
   else:
@@ -129,10 +129,10 @@ proc mget*(t: StringTableRef, key: string): var string {.deprecated.} =
   ## ``KeyError`` exception is raised. Use ```[]``` instead.
   get(t, key)
 
-proc getOrDefault*(t: StringTableRef; key: string): string =
+proc getOrDefault*(t: StringTableRef; key: string, default: string = ""): string =
   var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
-  else: result = ""
+  else: result = default
 
 proc hasKey*(t: StringTableRef, key: string): bool {.rtlFunc, extern: "nst$1".} =
   ## returns true iff `key` is in the table `t`.

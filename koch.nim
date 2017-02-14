@@ -1,7 +1,7 @@
 #
 #
 #         Maintenance program for Nim
-#        (c) Copyright 2016 Andreas Rumpf
+#        (c) Copyright 2017 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -23,14 +23,14 @@ when defined(i386) and defined(windows) and defined(vcc):
 import
   os, strutils, parseopt, osproc, streams
 
-const VersionAsString = system.NimVersion #"0.10.2"
+const VersionAsString = system.NimVersion
 
 const
   HelpText = """
 +-----------------------------------------------------------------+
 |         Maintenance program for Nim                             |
 |             Version $1|
-|             (c) 2016 Andreas Rumpf                              |
+|             (c) 2017 Andreas Rumpf                              |
 +-----------------------------------------------------------------+
 Build time: $2, $3
 
@@ -70,10 +70,20 @@ Web options:
                            build the official docs, use UA-48159761-1
 """
 
+const gaCode = " --googleAnalytics:UA-48159761-1"
+
 proc exe(f: string): string =
   result = addFileExt(f, ExeExt)
   when defined(windows):
     result = result.replace('/','\\')
+
+template withDir(dir, body) =
+  let old = getCurrentDir()
+  try:
+    setCurrentDir(dir)
+    body
+  finally:
+    setCurrentdir(old)
 
 proc findNim(): string =
   var nim = "nim".exe
@@ -131,7 +141,7 @@ proc testUnixInstall() =
       # check the docs build:
       execCleanPath("./koch web", destDir / "bin")
       # check nimble builds:
-      execCleanPath("./bin/nim e install_tools.nims")
+      execCleanPath("./koch tools")
       # check the tests work:
       execCleanPath("./koch tests", destDir / "bin")
     else:
@@ -162,13 +172,11 @@ proc csource(args: string) =
 proc bundleNimbleSrc() =
   ## bunldeNimbleSrc() bundles a specific Nimble commit with the tarball. We
   ## always bundle the latest official release.
-  if dirExists("dist/nimble/.git"):
-    exec("git --git-dir dist/nimble/.git pull")
-  else:
+  if not dirExists("dist/nimble/.git"):
     exec("git clone https://github.com/nim-lang/nimble.git dist/nimble")
-  let tags = execProcess("git --git-dir dist/nimble/.git tag -l v*").splitLines
-  let tag = tags[^1]
-  exec("git --git-dir dist/nimble/.git checkout " & tag)
+  withDir("dist/nimble"):
+    exec("git checkout -f stable")
+    exec("git pull")
 
 proc bundleNimbleExe() =
   bundleNimbleSrc()
@@ -177,21 +185,31 @@ proc bundleNimbleExe() =
   nimexec("c dist/nimble/src/nimble.nim")
   copyExe("dist/nimble/src/nimble".exe, "bin/nimble".exe)
 
-proc buildNimble() =
-  ## buildNimble() builds Nimble for the building via "github". As such, we
-  ## choose the most recent commit of Nimble too.
+proc buildNimble(latest: bool) =
+  # old installations created nim/nimblepkg/*.nim files. We remove these
+  # here so that it cannot cause problems (nimble bug #306):
+  if dirExists("bin/nimblepkg"):
+    removeDir("bin/nimblepkg")
+  # if koch is used for a tar.xz, build the dist/nimble we shipped
+  # with the tarball:
   var installDir = "dist/nimble"
-  if dirExists("dist/nimble/.git"):
-    exec("git --git-dir dist/nimble/.git pull")
+  if not latest and dirExists(installDir) and not dirExists("dist/nimble/.git"):
+    discard "don't do the git dance"
   else:
-    # if dist/nimble exist, but is not a git repo, don't mess with it:
-    if dirExists(installDir):
-      var id = 0
-      while dirExists("dist/nimble" & $id):
-        inc id
-      installDir = "dist/nimble" & $id
-    exec("git clone https://github.com/nim-lang/nimble.git " & installDir)
-  nimexec("c " & installDir / "src/nimble.nim")
+    if not dirExists("dist/nimble/.git"):
+      if dirExists(installDir):
+        var id = 0
+        while dirExists("dist/nimble" & $id):
+          inc id
+        installDir = "dist/nimble" & $id
+      exec("git clone https://github.com/nim-lang/nimble.git " & installDir)
+    withDir(installDir):
+      if latest:
+        exec("git checkout -f master")
+      else:
+        exec("git checkout -f stable")
+      exec("git pull")
+  nimexec("c --noNimblePath -p:compiler " & installDir / "src/nimble.nim")
   copyExe(installDir / "src/nimble".exe, "bin/nimble".exe)
 
 proc bundleNimsuggest(buildExe: bool) =
@@ -205,6 +223,8 @@ proc bundleWinTools() =
   copyExe("tools/finish".exe, "finish".exe)
   removeFile("tools/finish".exe)
   nimexec("c -o:bin/vccexe.exe tools/vccenv/vccexe")
+  nimexec(r"c --cc:vcc --app:gui -o:bin\downloader.exe -d:ssl --noNimblePath " &
+          r"--path:..\ui tools\downloader.nim")
 
 proc zip(args: string) =
   bundleNimbleSrc()
@@ -227,19 +247,14 @@ proc buildTool(toolname, args: string) =
   nimexec("cc $# $#" % [args, toolname])
   copyFile(dest="bin"/ splitFile(toolname).name.exe, source=toolname.exe)
 
-proc buildTools() =
+proc buildTools(latest: bool) =
   let nimsugExe = "bin/nimsuggest".exe
   nimexec "c --noNimblePath -p:compiler -d:release -o:" & nimsugExe &
       " tools/nimsuggest/nimsuggest.nim"
 
   let nimgrepExe = "bin/nimgrep".exe
   nimexec "c -o:" & nimgrepExe & " tools/nimgrep.nim"
-  if dirExists"dist/nimble":
-    let nimbleExe = "bin/nimble".exe
-    nimexec "c --noNimblePath -p:compiler -o:" & nimbleExe &
-        " dist/nimble/src/nimble.nim"
-  else:
-    buildNimble()
+  buildNimble(latest)
 
 proc nsis(args: string) =
   bundleNimbleExe()
@@ -308,7 +323,8 @@ proc boot(args: string) =
   var finalDest = "bin" / "nim".exe
   # default to use the 'c' command:
   let bootOptions = if args.len == 0 or args.startsWith("-"): "c" else: ""
-  let smartNimcache = if "release" in args: "nimcache/release" else: "nimcache/debug"
+  let smartNimcache = (if "release" in args: "nimcache/r_" else: "nimcache/d_") &
+                      hostOs & "_" & hostCpu
 
   copyExe(findStartNim(), 0.thVersion)
   for i in 0..2:
@@ -369,8 +385,64 @@ proc clean(args: string) =
 
 # -------------- builds a release ---------------------------------------------
 
+proc patchConfig(lookFor, replaceBy: string) =
+  const
+    cfgFile = "config/nim.cfg"
+  try:
+    let cfg = readFile(cfgFile)
+    let newCfg = cfg.replace(lookFor, replaceBy)
+    if newCfg == cfg:
+      echo "Could not patch 'config/nim.cfg' [Error]"
+      echo "Reason: patch substring not found:"
+      echo lookFor
+    else:
+      writeFile(cfgFile, newCfg)
+  except IOError:
+    quit "Could not access 'config/nim.cfg' [Error]"
+
+proc winReleaseArch(arch: string) =
+  doAssert arch in ["32", "64"]
+  let cpu = if arch == "32": "i386" else: "amd64"
+
+  template withMingw(path, body) =
+    const orig = """#gcc.path = r"$nim\dist\mingw\bin""""
+    let replacePattern = """gcc.path = r"..\mingw$1\bin" # winrelease""" % arch
+    patchConfig(orig, replacePattern)
+    try:
+      body
+    finally:
+      patchConfig(replacePattern, orig)
+
+  withMingw r"..\mingw" & arch & r"\bin":
+    # Rebuilding koch is necessary because it uses its pointer size to
+    # determine which mingw link to put in the NSIS installer.
+    nimexec "c --out:koch_temp --cpu:$# koch" % cpu
+    exec "koch_temp boot -d:release --cpu:$#" % cpu
+    exec "koch_temp nsis -d:release"
+    exec "koch_temp zip -d:release"
+
+    when false:
+      # we now disable the NSIS installer as it cannot download from https
+      # and is broken in so many different ways it's not funny anymore:
+      moveFile r"build\nim_$#.exe" % VersionAsString,
+               r"web\upload\download\nim-$#_x$#.exe" % [VersionAsString, arch]
+    moveFile r"build\nim-$#.zip" % VersionAsString,
+             r"web\upload\download\nim-$#_x$#.zip" % [VersionAsString, arch]
+
 proc winRelease() =
-  exec(r"call ci\nsis_build.bat " & VersionAsString)
+  # Build -docs file:
+  when true:
+    web(gaCode)
+    withDir "web/upload/" & VersionAsString:
+      exec "7z a -tzip docs-$#.zip *.html" % VersionAsString
+    moveFile "web/upload/$1/docs-$1.zip" % VersionAsString,
+             "web/upload/download/docs-$1.zip" % VersionAsString
+  when true:
+    csource("-d:release")
+  when true:
+    winReleaseArch "32"
+  when true:
+    winReleaseArch "64"
 
 # -------------- tests --------------------------------------------------------
 
@@ -391,22 +463,28 @@ proc tests(args: string) =
     quit("tests failed", QuitFailure)
 
 proc temp(args: string) =
+  proc splitArgs(a: string): (string, string) =
+    # every --options before the command (indicated by starting
+    # with not a dash) is part of the bootArgs, the rest is part
+    # of the programArgs:
+    let args = os.parseCmdLine a
+    result = ("", "")
+    var i = 0
+    while i < args.len and args[i][0] == '-':
+      result[0].add " " & quoteShell(args[i])
+      inc i
+    while i < args.len:
+      result[1].add " " & quoteShell(args[i])
+      inc i
+
   var output = "compiler" / "nim".exe
   var finalDest = "bin" / "nim_temp".exe
   # 125 is the magic number to tell git bisect to skip the current
   # commit.
-  exec("nim c compiler" / "nim", 125)
+  let (bootArgs, programArgs) = splitArgs(args)
+  exec("nim c " & bootArgs & " compiler" / "nim", 125)
   copyExe(output, finalDest)
-  if args.len > 0: exec(finalDest & " " & args)
-
-proc copyDir(src, dest: string) =
-  for kind, path in walkDir(src, relative=true):
-    case kind
-    of pcDir: copyDir(dest / path, src / path)
-    of pcFile:
-      createDir(dest)
-      copyFile(src / path, dest / path)
-    else: discard
+  if programArgs.len > 0: exec(finalDest & " " & programArgs)
 
 proc pushCsources() =
   if not dirExists("../csources/.git"):
@@ -446,10 +524,10 @@ of cmdArgument:
   of "web": web(op.cmdLineRest)
   of "doc", "docs": web("--onlyDocs " & op.cmdLineRest)
   of "json2": web("--json2 " & op.cmdLineRest)
-  of "website": website(op.cmdLineRest & " --googleAnalytics:UA-48159761-1")
+  of "website": website(op.cmdLineRest & gaCode)
   of "web0":
     # undocumented command for Araq-the-merciful:
-    web(op.cmdLineRest & " --googleAnalytics:UA-48159761-1")
+    web(op.cmdLineRest & gaCode)
   of "pdf": pdf()
   of "csource", "csources": csource(op.cmdLineRest)
   of "zip": zip(op.cmdLineRest)
@@ -462,8 +540,9 @@ of cmdArgument:
   of "test", "tests": tests(op.cmdLineRest)
   of "temp": temp(op.cmdLineRest)
   of "winrelease": winRelease()
-  of "nimble": buildNimble()
-  of "tools": buildTools()
+  of "nimble": buildNimble(existsDir(".git"))
+  of "nimsuggest": bundleNimsuggest(buildExe=true)
+  of "tools": buildTools(existsDir(".git"))
   of "pushcsource", "pushcsources": pushCsources()
   else: showHelp()
 of cmdEnd: showHelp()

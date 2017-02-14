@@ -954,9 +954,11 @@ proc newIndent(curr, indent: int, ml: bool): int =
 proc nl(s: var string, ml: bool) =
   if ml: s.add("\n")
 
-proc escapeJson*(s: string): string =
+proc escapeJson*(s: string; result: var string) =
   ## Converts a string `s` to its JSON representation.
-  result = newStringOfCap(s.len + s.len shr 3)
+  ## Appends to ``result``.
+  const
+    HexChars = "0123456789ABCDEF"
   result.add("\"")
   for x in runes(s):
     var r = int(x)
@@ -967,9 +969,18 @@ proc escapeJson*(s: string): string =
       of '\\': result.add("\\\\")
       else: result.add(c)
     else:
-      result.add("\\u")
-      result.add(toHex(r, 4))
+      # toHex inlined for more speed (saves stupid string allocations):
+      result.add("\\u0000")
+      let start = result.len - 4
+      for j in countdown(3, 0):
+        result[j+start] = HexChars[r and 0xF]
+        r = r shr 4
   result.add("\"")
+
+proc escapeJson*(s: string): string =
+  ## Converts a string `s` to its JSON representation.
+  result = newStringOfCap(s.len + s.len shr 3)
+  escapeJson(s, result)
 
 proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
               lstArr = false, currIndent = 0) =
@@ -988,7 +999,7 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
         inc i
         # Need to indent more than {
         result.indent(newIndent(currIndent, indent, ml))
-        result.add(escapeJson(key))
+        escapeJson(key, result)
         result.add(": ")
         toPretty(result, val, indent, ml, false,
                  newIndent(currIndent, indent, ml))
@@ -999,16 +1010,19 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
       result.add("{}")
   of JString:
     if lstArr: result.indent(currIndent)
-    result.add(escapeJson(node.str))
+    escapeJson(node.str, result)
   of JInt:
     if lstArr: result.indent(currIndent)
-    result.add($node.num)
+    when defined(js): result.add($node.num)
+    else: result.add(node.num)
   of JFloat:
     if lstArr: result.indent(currIndent)
-    result.add($node.fnum)
+    # Fixme: implement new system.add ops for the JS target
+    when defined(js): result.add($node.fnum)
+    else: result.add(node.fnum)
   of JBool:
     if lstArr: result.indent(currIndent)
-    result.add($node.bval)
+    result.add(if node.bval: "true" else: "false")
   of JArray:
     if lstArr: result.indent(currIndent)
     if len(node.elems) != 0:
@@ -1057,16 +1071,18 @@ proc toUgly*(result: var string, node: JsonNode) =
     for key, value in pairs(node.fields):
       if comma: result.add ","
       else:     comma = true
-      result.add key.escapeJson()
+      key.escapeJson(result)
       result.add ":"
       result.toUgly value
     result.add "}"
   of JString:
-    result.add node.str.escapeJson()
+    node.str.escapeJson(result)
   of JInt:
-    result.add($node.num)
+    when defined(js): result.add($node.num)
+    else: result.add(node.num)
   of JFloat:
-    result.add($node.fnum)
+    when defined(js): result.add($node.fnum)
+    else: result.add(node.fnum)
   of JBool:
     result.add(if node.bval: "true" else: "false")
   of JNull:
@@ -1159,18 +1175,22 @@ when not defined(js):
   proc parseJson*(s: Stream, filename: string): JsonNode =
     ## Parses from a stream `s` into a `JsonNode`. `filename` is only needed
     ## for nice error messages.
+    ## If `s` contains extra data, it will raising `JsonParsingError`.
     var p: JsonParser
     p.open(s, filename)
     defer: p.close()
     discard getTok(p) # read first token
     result = p.parseJson()
+    eat(p, tkEof) # check there are no exstra data
 
   proc parseJson*(buffer: string): JsonNode =
     ## Parses JSON from `buffer`.
+    ## If `buffer` contains extra data, it will raising `JsonParsingError`.
     result = parseJson(newStringStream(buffer), "input")
 
   proc parseFile*(filename: string): JsonNode =
     ## Parses `file` into a `JsonNode`.
+    ## If `file` contains extra data, it will raising `JsonParsingError`.
     var stream = newFileStream(filename, fmRead)
     if stream == nil:
       raise newException(IOError, "cannot read from file: " & filename)
@@ -1393,5 +1413,21 @@ when isMainModule:
 
     var parsed2 = parseFile("tests/testdata/jsontest2.json")
     doAssert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
+
+  doAssert escapeJson("\10FoobarÄ") == "\"\\u000AFoobar\\u00C4\""
+
+  # Test with extra data
+  when not defined(js):
+    try:
+      discard parseJson("123 456")
+      doAssert(false)
+    except JsonParsingError:
+      doAssert getCurrentExceptionMsg().contains(errorMessages[errEofExpected])
+
+    try:
+      discard parseFile("tests/testdata/jsonwithextradata.json")
+      doAssert(false)
+    except JsonParsingError:
+      doAssert getCurrentExceptionMsg().contains(errorMessages[errEofExpected])
 
   echo("Tests succeeded!")

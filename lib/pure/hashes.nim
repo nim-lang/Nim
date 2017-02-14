@@ -127,6 +127,15 @@ proc hash*(x: string): Hash =
     h = h !& ord(x[i])
   result = !$h
 
+proc hash*(x: cstring): Hash =
+  ## efficient hashing of null-terminated strings
+  var h: Hash = 0
+  var i = 0
+  while x[i] != 0.char:
+    h = h !& ord(x[i])
+    inc i
+  result = !$h
+
 proc hash*(sBuf: string, sPos, ePos: int): Hash =
   ## efficient hashing of a string buffer, from starting
   ## position `sPos` to ending position `ePos`
@@ -239,6 +248,7 @@ proc hash*[A](x: set[A]): Hash =
 
 when isMainModule:
   doAssert( hash("aa bb aaaa1234") == hash("aa bb aaaa1234", 0, 13) )
+  doAssert( hash("aa bb aaaa1234") == hash(cstring("aa bb aaaa1234")) )
   doAssert( hashIgnoreCase("aa bb aaaa1234") == hash("aa bb aaaa1234") )
   doAssert( hashIgnoreStyle("aa bb aaaa1234") == hashIgnoreCase("aa bb aaaa1234") )
   let xx = @['H','e','l','l','o']

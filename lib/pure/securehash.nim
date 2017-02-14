@@ -43,13 +43,13 @@ type
 # Ported to Nim by Erik O'Leary
 
 type
-  Sha1State = array[0 .. 5-1, uint32]
+  Sha1State* = array[0 .. 5-1, uint32]
   Sha1Buffer = array[0 .. 80-1, uint32]
 
 template clearBuffer(w: Sha1Buffer, len = 16) =
   zeroMem(addr(w), len * sizeof(uint32))
 
-proc init(result: var Sha1State) =
+proc init*(result: var Sha1State) =
   result[0] = 0x67452301'u32
   result[1] = 0xefcdab89'u32
   result[2] = 0x98badcfe'u32
@@ -112,7 +112,7 @@ proc innerHash(state: var Sha1State, w: var Sha1Buffer) =
   wrap state[3], d
   wrap state[4], e
 
-template computeInternal(src: untyped) =
+proc sha1(src: cstring; len: int): Sha1Digest =
   #Initialize state
   var state: Sha1State
   init(state)
@@ -121,10 +121,10 @@ template computeInternal(src: untyped) =
   var w: Sha1Buffer
 
   #Loop through all complete 64byte blocks.
-  let byteLen         = src.len
+  let byteLen = len
   let endOfFullBlocks = byteLen - 64
   var endCurrentBlock = 0
-  var currentBlock    = 0
+  var currentBlock = 0
 
   while currentBlock <= endOfFullBlocks:
     endCurrentBlock = currentBlock + 64
@@ -169,9 +169,9 @@ template computeInternal(src: untyped) =
   for i in 0 .. Sha1DigestSize-1:
     result[i] = uint8((int(state[i shr 2]) shr ((3-(i and 3)) * 8)) and 255)
 
-proc sha1(src: string) : Sha1Digest =
+proc sha1(src: string): Sha1Digest =
   ## Calculate SHA1 from input string
-  computeInternal(src)
+  sha1(src, src.len)
 
 proc secureHash*(str: string): SecureHash = SecureHash(sha1(str))
 proc secureHashFile*(filename: string): SecureHash = secureHash(readFile(filename))

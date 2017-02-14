@@ -14,7 +14,8 @@ when haveZipLib:
   import zipfiles
 
 import
-  os, osproc, strutils, parseopt, parsecfg, strtabs, streams, debcreation
+  os, osproc, strutils, parseopt, parsecfg, strtabs, streams, debcreation,
+  securehash
 
 const
   maxOS = 20 # max number of OSes
@@ -476,23 +477,23 @@ proc writeFile(filename, content, newline: string) =
   else:
     quit("Cannot open for writing: " & filename)
 
-proc removeDuplicateFiles(c: var ConfigData) =
-  for osA in countdown(c.oses.len, 1):
-    for cpuA in countdown(c.cpus.len, 1):
+proc deduplicateFiles(c: var ConfigData) =
+  var tab = newStringTable()
+  let build = getOutputDir(c)
+  for osA in countup(1, c.oses.len):
+    for cpuA in countup(1, c.cpus.len):
       if c.cfiles[osA][cpuA].isNil: c.cfiles[osA][cpuA] = @[]
       if c.explicitPlatforms and not c.platforms[osA][cpuA]: continue
-      for i in 0..c.cfiles[osA][cpuA].len-1:
-        var dup = c.cfiles[osA][cpuA][i]
-        var f = extractFilename(dup)
-        for osB in 1..c.oses.len:
-          for cpuB in 1..c.cpus.len:
-            if osB != osA or cpuB != cpuA:
-              var orig = buildDir(osB, cpuB) / f
-              if existsFile(orig) and existsFile(dup) and
-                  sameFileContent(orig, dup):
-                # file is identical, so delete duplicate:
-                removeFile(dup)
-                c.cfiles[osA][cpuA][i] = orig
+      for dup in mitems(c.cfiles[osA][cpuA]):
+        let key = $secureHashFile(build / dup)
+        let val = buildDir(osA, cpuA) / extractFilename(dup)
+        let orig = tab.getOrDefault(key)
+        if orig.len > 0:
+          # file is identical, so delete duplicate:
+          removeFile(dup)
+          dup = orig
+        else:
+          tab[key] = val
 
 proc writeInstallScripts(c: var ConfigData) =
   if c.installScript:
@@ -506,7 +507,7 @@ proc srcdist(c: var ConfigData) =
   if not existsDir(getOutputDir(c) / "c_code"):
     createDir(getOutputDir(c) / "c_code")
   for x in walkFiles(c.libpath / "lib/*.h"):
-    echo(getOutputDir(c) / "c_code" / extractFilename(x))
+    when false: echo(getOutputDir(c) / "c_code" / extractFilename(x))
     copyFile(dest=getOutputDir(c) / "c_code" / extractFilename(x), source=x)
   var winIndex = -1
   var intel32Index = -1
@@ -536,7 +537,7 @@ proc srcdist(c: var ConfigData) =
         copyFile(dest=dest, source=c.cfiles[osA][cpuA][i])
         c.cfiles[osA][cpuA][i] = relDest
   # second pass: remove duplicate files
-  removeDuplicateFiles(c)
+  deduplicateFiles(c)
   writeFile(getOutputDir(c) / buildShFile, generateBuildShellScript(c), "\10")
   inclFilePermissions(getOutputDir(c) / buildShFile, {fpUserExec, fpGroupExec, fpOthersExec})
   writeFile(getOutputDir(c) / makeFile, generateMakefile(c), "\10")
@@ -623,7 +624,7 @@ proc xzDist(c: var ConfigData; windowsZip=false) =
 
   proc processFile(destFile, src: string) =
     let dest = tmpDir / destFile
-    echo "Copying ", src, " to ", dest
+    when false: echo "Copying ", src, " to ", dest
     if not existsFile(src):
       echo "[Warning] Source file doesn't exist: ", src
     let destDir = dest.splitFile.dir
@@ -668,7 +669,15 @@ proc xzDist(c: var ConfigData; windowsZip=false) =
     try:
       if windowsZip:
         if execShellCmd("7z a -tzip $1.zip $1" % proj) != 0:
-          echo("External program failed")
+          echo("External program failed (zip)")
+        when false:
+          writeFile("config.txt", """;!@Install@!UTF-8!
+Title="Nim v$1"
+BeginPrompt="Do you want to configure Nim v$1?"
+RunProgram="tools\downloader.exe"
+;!@InstallEnd@!""" % NimVersion)
+          if execShellCmd("7z a -sfx7zS2.sfx -t7z $1.exe $1" % proj) != 0:
+            echo("External program failed (7z)")
       else:
         if execShellCmd("XZ_OPT=-9 gtar Jcf $1.tar.xz $1 --exclude=.DS_Store" %
                         proj) != 0:

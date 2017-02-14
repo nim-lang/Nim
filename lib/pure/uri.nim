@@ -245,6 +245,10 @@ proc combine*(uris: varargs[Uri]): Uri =
   for i in 1 .. <uris.len:
     result = combine(result, uris[i])
 
+proc isAbsolute*(uri: Uri): bool =
+  ## returns true if URI is absolute, false otherwise
+  return uri.scheme != "" and (uri.hostname != "" or uri.path != "")
+
 proc `/`*(x: Uri, path: string): Uri =
   ## Concatenates the path specified to the specified URI's path.
   ##
@@ -452,3 +456,44 @@ when isMainModule:
   block:
     let foo = parseUri("http://example.com") / "/baz"
     doAssert foo.path == "/baz"
+
+  # isAbsolute tests
+  block:
+    doAssert "www.google.com".parseUri().isAbsolute() == false
+    doAssert "http://www.google.com".parseUri().isAbsolute() == true
+    doAssert "file:/dir/file".parseUri().isAbsolute() == true
+    doAssert "file://localhost/dir/file".parseUri().isAbsolute() == true
+    doAssert "urn:ISSN:1535-3613".parseUri().isAbsolute() == true
+
+    # path-relative URL *relative
+    doAssert "about".parseUri().isAbsolute == false
+    doAssert "about/staff.html".parseUri().isAbsolute == false
+    doAssert "about/staff.html?".parseUri().isAbsolute == false
+    doAssert "about/staff.html?parameters".parseUri().isAbsolute == false
+
+    # absolute-path-relative URL *relative
+    doAssert "/".parseUri().isAbsolute == false
+    doAssert "/about".parseUri().isAbsolute == false
+    doAssert "/about/staff.html".parseUri().isAbsolute == false
+    doAssert "/about/staff.html?".parseUri().isAbsolute == false
+    doAssert "/about/staff.html?parameters".parseUri().isAbsolute == false
+
+    # scheme-relative URL *relative
+    doAssert "//username:password@example.com:8888".parseUri().isAbsolute == false
+    doAssert "//username@example.com".parseUri().isAbsolute == false
+    doAssert "//example.com".parseUri().isAbsolute == false
+    doAssert "//example.com/".parseUri().isAbsolute == false
+    doAssert "//example.com/about".parseUri().isAbsolute == false
+    doAssert "//example.com/about/staff.html".parseUri().isAbsolute == false
+    doAssert "//example.com/about/staff.html?".parseUri().isAbsolute == false
+    doAssert "//example.com/about/staff.html?parameters".parseUri().isAbsolute == false
+
+    # absolute URL *absolute
+    doAssert "https://username:password@example.com:8888".parseUri().isAbsolute == true
+    doAssert "https://username@example.com".parseUri().isAbsolute == true
+    doAssert "https://example.com".parseUri().isAbsolute == true
+    doAssert "https://example.com/".parseUri().isAbsolute == true
+    doAssert "https://example.com/about".parseUri().isAbsolute == true
+    doAssert "https://example.com/about/staff.html".parseUri().isAbsolute == true
+    doAssert "https://example.com/about/staff.html?".parseUri().isAbsolute == true
+    doAssert "https://example.com/about/staff.html?parameters".parseUri().isAbsolute == true

@@ -1,6 +1,6 @@
 import
   sfml, chipmunk,
-  sg_assets, sfml_stuff, "../keineschweine"
+  sg_assets, sfml_stuff#, "../keineschweine"
 
 
 proc accel*(obj: PVehicle, dt: float) =

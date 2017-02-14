@@ -21,7 +21,7 @@ This tutorial assumes that you are familiar with basic programming concepts
 like variables, types or statements but is kept very basic. The `manual
 <manual.html>`_ contains many more examples of the advanced language features.
 All code examples in this tutorial, as well as the ones found in the rest of
-Nim's documentation, follow the `Nim style guide <nep1.html>`.
+Nim's documentation, follow the `Nim style guide <nep1.html>`_.
 
 
 The first program
@@ -124,6 +124,19 @@ hash character ``#``. Documentation comments start with ``##``:
 Documentation comments are tokens; they are only allowed at certain places in
 the input file as they belong to the syntax tree! This feature enables simpler
 documentation generators.
+
+Multiline comments are started with ``#[`` and terminated with ``]#``.  Multiline
+comments can also be nested.
+
+.. code-block:: nim
+  #[
+  You can have any Nim code text commented
+  out inside this with no indentation restrictions.
+        yes("May I ask a pointless question?")
+    #[
+       Note: these can be nested!!
+    ]#
+  ]#
 
 You can also use the `discard statement`_ together with *long string
 literals* to create block comments:
@@ -348,7 +361,7 @@ iterator:
 .. code-block:: nim
   echo "Counting to ten: "
   for i in countup(1, 10):
-    echo $i
+    echo i
   # --> Outputs 1 2 3 4 5 6 7 8 9 10 on different lines
 
 The built-in `$ <system.html#$>`_ operator turns an integer (``int``) and many
@@ -361,7 +374,7 @@ Each value is ``echo``-ed. This code does the same:
   echo "Counting to 10: "
   var i = 1
   while i <= 10:
-    echo $i
+    echo i
     inc(i) # increment i by 1
   # --> Outputs 1 2 3 4 5 6 7 8 9 10 on different lines
 
@@ -370,7 +383,7 @@ Counting down can be achieved as easily (but is less often needed):
 .. code-block:: nim
   echo "Counting down from 10 to 1: "
   for i in countdown(10, 1):
-    echo $i
+    echo i
   # --> Outputs 10 9 8 7 6 5 4 3 2 1 on different lines
 
 Since counting up occurs so often in programs, Nim also has a `..
@@ -380,6 +393,28 @@ Since counting up occurs so often in programs, Nim also has a `..
   for i in 1..10:
     ...
 
+Zero-indexed counting have two shortcuts ``..<`` and ``..^`` to simplify counting to one less then the higher index:
+
+.. code-block:: nim
+  for i in 0..<10:
+    ...  # 0..9
+
+or
+
+.. code-block:: nim
+  var s = "some string"
+  for i in 0..<s.len:
+    ...
+
+Other useful iterators for collections (like arrays and sequences) are
+* ``items`` and ``mitems``, which provides immutable and mutable elements respectively, and 
+* ``pairs`` and ``mpairs`` which provides the element and an index number (immutable and mutable respectively)
+
+.. code-block:: nim
+  for indx, itm in ["a","b"].pairs:
+    echo itm, " at index ", indx
+  # => a at index 0
+  # => b at index 1
 
 Scopes and the block statement
 ------------------------------
@@ -792,7 +827,7 @@ Let's return to the boring counting example:
 .. code-block:: nim
   echo "Counting to ten: "
   for i in countup(1, 10):
-    echo $i
+    echo i
 
 Can a `countup <system.html#countup>`_ proc be written that supports this
 loop? Lets try:
@@ -1000,15 +1035,15 @@ there is a difference between the ``$`` and ``repr`` outputs:
     myString = "nim"
     myInteger = 42
     myFloat = 3.14
-  echo $myBool, ":", repr(myBool)
+  echo myBool, ":", repr(myBool)
   # --> true:true
-  echo $myCharacter, ":", repr(myCharacter)
+  echo myCharacter, ":", repr(myCharacter)
   # --> n:'n'
-  echo $myString, ":", repr(myString)
+  echo myString, ":", repr(myString)
   # --> nim:0x10fa8c050"nim"
-  echo $myInteger, ":", repr(myInteger)
+  echo myInteger, ":", repr(myInteger)
   # --> 42:42
-  echo $myFloat, ":", repr(myFloat)
+  echo myFloat, ":", repr(myFloat)
   # --> 3.1400000000000001e+00:3.1400000000000001e+00
 
 
@@ -1040,7 +1075,7 @@ at runtime by 0, the second by 1 and so on. Example:
       north, east, south, west
 
   var x = south      # `x` is of type `Direction`; its value is `south`
-  echo $x           # writes "south" to `stdout`
+  echo x           # writes "south" to `stdout`
 
 All comparison operators can be used with enumeration types.
 
@@ -1254,7 +1289,7 @@ value. Here the ``for`` statement is looping over the results from the
 
 .. code-block:: nim
   for i in @[3, 4, 5]:
-    echo $i
+    echo i
   # --> 3
   # --> 4
   # --> 5
@@ -1516,8 +1551,14 @@ Example:
 A subtle issue with procedural types is that the calling convention of the
 procedure influences the type compatibility: procedural types are only compatible
 if they have the same calling convention. The different calling conventions are
-listed in the `manual <manual.html>`_.
+listed in the `manual <manual.html#types-procedural-type>`_.
 
+Distinct type
+-------------
+A Distinct type allows for the creation of new type that "does not imply a subtype relationship  between it and its base type".
+You must EXPLICITLY define all behaviour for the distinct type.
+To help with this, both the distinct type and its base type can cast from one type to the other.
+Examples are provided in the `manual <manual.html#types-distinct-type>`_.
 
 Modules
 =======

@@ -178,7 +178,7 @@ Conventions for multi-line statements and expressions
   consider renaming your procedure).
 
   .. code-block:: nim
-    proc lotsOfArguments(argOne: string, argTwo: int, argThree:float
+    proc lotsOfArguments(argOne: string, argTwo: int, argThree: float
                          argFour: proc(), argFive: bool): int
                         {.heyLookALongPragma.} =
 - Multi-line procedure calls should either have one argument per line (like

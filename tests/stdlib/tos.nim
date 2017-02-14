@@ -39,11 +39,14 @@ false
 true
 true
 Raises
+true
+true
+true
 '''
 """
 # test os path creation, iteration, and deletion
 
-import os
+import os, strutils
 
 let files = @["these.txt", "are.x", "testing.r", "files.q"]
 let dirs = @["some", "created", "test", "dirs"]
@@ -65,18 +68,21 @@ for file in files:
 
 echo "All:"
 
+template norm(x): untyped =
+  (when defined(windows): x.replace('\\', '/') else: x)
+
 for path in walkPattern(dname/"*"):
-  echo path
+  echo path.norm
 
 echo "Files:"
 
 for path in walkFiles(dname/"*"):
-  echo path
+  echo path.norm
 
 echo "Dirs:"
 
 for path in walkDirs(dname/"*"):
-  echo path
+  echo path.norm
 
 # Test removal of files dirs
 for dir in dirs:
@@ -108,3 +114,18 @@ try:
 except IOError:
   echo "Raises"
 removeFile(dname)
+
+# test copyDir:
+createDir("a/b")
+open("a/b/file.txt", fmWrite).close
+createDir("a/b/c")
+open("a/b/c/fileC.txt", fmWrite).close
+
+copyDir("a", "../dest/a")
+removeDir("a")
+
+echo dirExists("../dest/a/b")
+echo fileExists("../dest/a/b/file.txt")
+
+echo fileExists("../dest/a/b/c/fileC.txt")
+removeDir("../dest")

@@ -25,7 +25,8 @@ proc listDirs(a: VmArgs, filter: set[PathComponent]) =
     if kind in filter: result.add path
   setResult(a, result)
 
-proc setupVM*(module: PSym; cache: IdentCache; scriptName: string): PEvalContext =
+proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
+              config: ConfigRef = nil): PEvalContext =
   # For Nimble we need to export 'setupVM'.
   result = newCtx(module, cache)
   result.mode = emRepl
@@ -109,19 +110,22 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string): PEvalContext
     let arg = a.getString 1
     if arg.len > 0:
       gProjectName = arg
+      let path =
+        if gProjectName.isAbsolute: gProjectName
+        else: gProjectPath / gProjectName
       try:
-        gProjectFull = canonicalizePath(gProjectPath / gProjectName)
+        gProjectFull = canonicalizePath(path)
       except OSError:
-        gProjectFull = gProjectName
+        gProjectFull = path
   cbconf getCommand:
     setResult(a, options.command)
   cbconf switch:
-    processSwitch(a.getString 0, a.getString 1, passPP, unknownLineInfo())
+    processSwitch(a.getString 0, a.getString 1, passPP, module.info)
   cbconf hintImpl:
-    processSpecificNote(a.getString 0, wHint, passPP, unknownLineInfo(),
+    processSpecificNote(a.getString 0, wHint, passPP, module.info,
       a.getString 1)
   cbconf warningImpl:
-    processSpecificNote(a.getString 0, wWarning, passPP, unknownLineInfo(),
+    processSpecificNote(a.getString 0, wWarning, passPP, module.info,
       a.getString 1)
   cbconf patchFile:
     let key = a.getString(0) & "_" & a.getString(1)
@@ -133,12 +137,15 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string): PEvalContext
     gModuleOverrides[key] = val
   cbconf selfExe:
     setResult(a, os.getAppFilename())
+  cbconf cppDefine:
+    if config != nil:
+      options.cppDefine(config, a.getString(0))
 
 proc runNimScript*(cache: IdentCache; scriptName: string;
-                   freshDefines=true) =
+                   freshDefines=true; config: ConfigRef=nil) =
   passes.gIncludeFile = includeModule
   passes.gImportModule = importModule
-  let graph = newModuleGraph()
+  let graph = newModuleGraph(config)
   if freshDefines: initDefines()
 
   defineSymbol("nimscript")
@@ -150,7 +157,7 @@ proc runNimScript*(cache: IdentCache; scriptName: string;
 
   var m = graph.makeModule(scriptName)
   incl(m.flags, sfMainModule)
-  vm.globalCtx = setupVM(m, cache, scriptName)
+  vm.globalCtx = setupVM(m, cache, scriptName, config)
 
   graph.compileSystemModule(cache)
   discard graph.processModule(m, llStreamOpen(scriptName, fmRead), nil, cache)

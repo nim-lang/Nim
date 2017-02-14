@@ -244,7 +244,10 @@ proc pushSafePoint(f: PStackFrame; pc: int) =
   if f.safePoints.isNil: f.safePoints = @[]
   f.safePoints.add(pc)
 
-proc popSafePoint(f: PStackFrame) = discard f.safePoints.pop()
+proc popSafePoint(f: PStackFrame) =
+  # XXX this needs a proper fix!
+  if f.safePoints.len > 0:
+    discard f.safePoints.pop()
 
 proc cleanUpOnException(c: PCtx; tos: PStackFrame):
                                               tuple[pc: int, f: PStackFrame] =
@@ -401,6 +404,11 @@ template handleJmpBack() {.dirty.} =
       globalError(c.debug[pc], errTooManyIterations)
   dec(c.loopIterations)
 
+proc recSetFlagIsRef(arg: PNode) =
+  arg.flags.incl(nfIsRef)
+  for i in 0 ..< arg.safeLen:
+    arg.sons[i].recSetFlagIsRef
+
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
   var tos = tos
@@ -514,7 +522,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkNode)
       let shiftedRb = rb + ord(regs[ra].node.kind == nkObjConstr)
       let dest = regs[ra].node
-      if dest.sons[shiftedRb].kind == nkExprColonExpr:
+      if dest.kind == nkNilLit:
+        stackTrace(c, tos, pc, errNilAccess)
+      elif dest.sons[shiftedRb].kind == nkExprColonExpr:
         putIntoNode(dest.sons[shiftedRb].sons[1], regs[rc])
       else:
         putIntoNode(dest.sons[shiftedRb], regs[rc])
@@ -551,7 +561,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         if regs[rb].node.kind == nkRefTy:
           regs[ra].node = regs[rb].node.sons[0]
         else:
-          stackTrace(c, tos, pc, errGenerated, "limited VM support for pointers")
+          ensureKind(rkNode)
+          regs[ra].node = regs[rb].node
       else:
         stackTrace(c, tos, pc, errNilAccess)
     of opcWrDeref:
@@ -816,7 +827,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcAddSeqElem:
       decodeB(rkNode)
       if regs[ra].node.kind == nkBracket:
-        regs[ra].node.add(copyTree(regs[rb].regToNode))
+        regs[ra].node.add(copyValue(regs[rb].regToNode))
       else:
         stackTrace(c, tos, pc, errNilAccess)
     of opcGetImpl:
@@ -879,7 +890,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         # it's a callback:
         c.callbacks[-prc.offset-2].value(
           VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[pointer](regs),
-                 currentException: c.currentExceptionB))
+                 currentException: c.currentExceptionB,
+                 currentLineInfo: c.debug[pc]))
       elif sfImportc in prc.flags:
         if allowFFI notin c.features:
           globalError(c.debug[pc], errGenerated, "VM not allowed to do FFI")
@@ -923,8 +935,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                             c.module
         var macroCall = newNodeI(nkCall, c.debug[pc])
         macroCall.add(newSymNode(prc))
-        for i in 1 .. rc-1: macroCall.add(regs[rb+i].regToNode)
+        for i in 1 .. rc-1:
+          let node = regs[rb+i].regToNode
+          node.info = c.debug[pc]
+          macroCall.add(node)
         let a = evalTemplate(macroCall, prc, genSymOwner)
+        a.recSetFlagIsRef
         ensureKind(rkNode)
         regs[ra].node = a
     of opcTJmp:
@@ -1246,7 +1262,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       createStr regs[ra]
       regs[ra].node.strVal = opGorge(regs[rb].node.strVal,
                                      regs[rc].node.strVal, regs[rd].node.strVal,
-                                     c.debug[pc])
+                                     c.debug[pc])[0]
     of opcNError:
       decodeB(rkNode)
       let a = regs[ra].node
@@ -1605,6 +1621,7 @@ proc evalMacroCall*(module: PSym; cache: IdentCache, n, nOrig: PNode,
 
   setupGlobalCtx(module, cache)
   var c = globalCtx
+  c.comesFromHeuristic.line = -1
 
   c.callsite = nOrig
   let start = genProc(c, sym)

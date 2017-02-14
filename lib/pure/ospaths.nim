@@ -40,8 +40,7 @@ when not declared(getEnv) or defined(nimscript):
       TOSErrorCode: OSErrorCode
   ].}
   const
-    doslike = defined(windows) or defined(OS2) or defined(DOS)
-      # DOS-like filesystem
+    doslikeFileSystem* = defined(windows) or defined(OS2) or defined(DOS)
 
   when defined(Nimdoc): # only for proper documentation:
     const
@@ -120,7 +119,7 @@ when not declared(getEnv) or defined(nimscript):
     #  waterproof. In case of equal names the first volume found will do.
     #  Two colons "::" are the relative path to the parent. Three is to the
     #  grandparent etc.
-  elif doslike:
+  elif doslikeFileSystem:
     const
       CurDir* = '.'
       ParDir* = ".."
@@ -331,14 +330,16 @@ when not declared(getEnv) or defined(nimscript):
     if ext == "" or ext[0] == ExtSep: result = ext # no copy needed here
     else: result = ExtSep & ext
 
-  proc searchExtPos(s: string): int =
+  proc searchExtPos*(path: string): int =
+    ## Returns index of the '.' char in `path` if it signifies the beginning
+    ## of extension. Returns -1 otherwise.
     # BUGFIX: do not search until 0! .DS_Store is no file extension!
     result = -1
-    for i in countdown(len(s)-1, 1):
-      if s[i] == ExtSep:
+    for i in countdown(len(path)-1, 1):
+      if path[i] == ExtSep:
         result = i
         break
-      elif s[i] in {DirSep, AltSep}:
+      elif path[i] in {DirSep, AltSep}:
         break # do not skip over path
 
   proc splitFile*(path: string): tuple[dir, name, ext: string] {.
@@ -432,7 +433,7 @@ when not declared(getEnv) or defined(nimscript):
     ## Checks whether a given `path` is absolute.
     ##
     ## On Windows, network paths are considered absolute too.
-    when doslike:
+    when doslikeFileSystem:
       var len = len(path)
       result = (len > 0 and path[0] in {'/', '\\'}) or
                (len > 1 and path[0] in {'a'..'z', 'A'..'Z'} and path[1] == ':')
@@ -461,7 +462,7 @@ when not declared(getEnv) or defined(nimscript):
       var start: int
       if path[0] == '/':
         # an absolute path
-        when doslike:
+        when doslikeFileSystem:
           if drive != "":
             result = drive & ":" & DirSep
           else:
@@ -562,43 +563,52 @@ when declared(getEnv) or defined(nimscript):
       if lstat(path, rawInfo) < 0'i32: result = false
       else: result = S_ISLNK(rawInfo.st_mode)
 
-  proc findExe*(exe: string, followSymlinks: bool = true): string {.
+  const
+    ExeExts* = when defined(windows): ["exe", "cmd", "bat"] else: [""] ## \
+      ## platform specific file extension for executables. On Windows
+      ## ``["exe", "cmd", "bat"]``, on Posix ``[""]``.
+
+  proc findExe*(exe: string, followSymlinks: bool = true;
+                extensions=ExeExts): string {.
     tags: [ReadDirEffect, ReadEnvEffect, ReadIOEffect].} =
     ## Searches for `exe` in the current working directory and then
     ## in directories listed in the ``PATH`` environment variable.
-    ## Returns "" if the `exe` cannot be found. On DOS-like platforms, `exe`
-    ## is added the `ExeExt <#ExeExt>`_ file extension if it has none.
+    ## Returns "" if the `exe` cannot be found. `exe`
+    ## is added the `ExeExts <#ExeExts>`_ file extensions if it has none.
     ## If the system supports symlinks it also resolves them until it
     ## meets the actual file. This behavior can be disabled if desired.
-    result = addFileExt(exe, ExeExt)
-    if existsFile(result): return
+    for ext in extensions:
+      result = addFileExt(exe, ext)
+      if existsFile(result): return
     var path = string(getEnv("PATH"))
     for candidate in split(path, PathSep):
       when defined(windows):
         var x = (if candidate[0] == '"' and candidate[^1] == '"':
                   substr(candidate, 1, candidate.len-2) else: candidate) /
-               result
+               exe
       else:
-        var x = expandTilde(candidate) / result
-      if existsFile(x):
-        when not defined(windows) and declared(os):
-          while followSymlinks: # doubles as if here
-            if x.checkSymlink:
-              var r = newString(256)
-              var len = readlink(x, r, 256)
-              if len < 0:
-                raiseOSError(osLastError())
-              if len > 256:
-                r = newString(len+1)
-                len = readlink(x, r, len)
-              setLen(r, len)
-              if isAbsolute(r):
-                x = r
+        var x = expandTilde(candidate) / exe
+      for ext in extensions:
+        var x = addFileExt(x, ext)
+        if existsFile(x):
+          when not defined(windows) and declared(os):
+            while followSymlinks: # doubles as if here
+              if x.checkSymlink:
+                var r = newString(256)
+                var len = readlink(x, r, 256)
+                if len < 0:
+                  raiseOSError(osLastError())
+                if len > 256:
+                  r = newString(len+1)
+                  len = readlink(x, r, len)
+                setLen(r, len)
+                if isAbsolute(r):
+                  x = r
+                else:
+                  x = parentDir(x) / r
               else:
-                x = parentDir(x) / r
-            else:
-              break
-        return x
+                break
+          return x
     result = ""
 
 when defined(nimscript) or (defined(nimdoc) and not declared(os)):

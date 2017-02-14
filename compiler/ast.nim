@@ -322,7 +322,7 @@ type
                      # (apparently something with bootstrapping)
                      # if you need to add a type, they can apparently be reused
     tyNone, tyBool, tyChar,
-    tyEmpty, tyArrayConstr, tyNil, tyExpr, tyStmt, tyTypeDesc,
+    tyEmpty, tyAlias, tyNil, tyExpr, tyStmt, tyTypeDesc,
     tyGenericInvocation, # ``T[a, b]`` for types to invoke
     tyGenericBody,       # ``T[a, b, body]`` last parameter is the body
     tyGenericInst,       # ``T[a, b, realInstance]`` instantiated generic type
@@ -444,7 +444,7 @@ type
     nfPreventCg # this node should be ignored by the codegen
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 28)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 30)
     tfVarargs,        # procedure has C styled varargs
     tfNoSideEffect,   # procedure type does not allow side effects
     tfFinal,          # is the object final?
@@ -488,6 +488,7 @@ type
     tfBorrowDot       # distinct type borrows '.'
     tfTriggersCompileTime # uses the NimNode type which make the proc
                           # implicitly '.compiletime'
+    tfRefsAnonObj     # used for 'ref object' and 'ptr object'
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -853,6 +854,8 @@ type
     align*: int16             # the type's alignment requirements
     lockLevel*: TLockLevel    # lock level as required for deadlock checking
     loc*: TLoc
+    typeInst*: PType          # for generic instantiations the tyGenericInst that led to this
+                              # type.
 
   TPair* = object
     key*, val*: RootRef
@@ -907,7 +910,7 @@ const
   GenericTypes*: TTypeKinds = {tyGenericInvocation, tyGenericBody,
     tyGenericParam}
 
-  StructuralEquivTypes*: TTypeKinds = {tyArrayConstr, tyNil, tyTuple, tyArray,
+  StructuralEquivTypes*: TTypeKinds = {tyNil, tyTuple, tyArray,
     tySet, tyRange, tyPtr, tyRef, tyVar, tySequence, tyProc, tyOpenArray,
     tyVarargs}
 
@@ -920,7 +923,7 @@ const
     tyUInt..tyUInt64}
   IntegralTypes* = {tyBool, tyChar, tyEnum, tyInt..tyInt64,
     tyFloat..tyFloat128, tyUInt..tyUInt64}
-  ConstantDataTypes*: TTypeKinds = {tyArrayConstr, tyArray, tySet,
+  ConstantDataTypes*: TTypeKinds = {tyArray, tySet,
                                     tyTuple, tySequence}
   NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr, tySequence,
     tyProc, tyString, tyError}
@@ -1209,10 +1212,10 @@ proc newType*(kind: TTypeKind, owner: PSym): PType =
   result.lockLevel = UnspecifiedLockLevel
   when debugIds:
     registerId(result)
-  #if result.id == 92231:
-  #  echo "KNID ", kind
-  #  writeStackTrace()
-  #  messageOut(typeKindToStr[kind] & ' has id: ' & toString(result.id))
+  when false:
+    if result.id == 205734:
+      echo "KNID ", kind
+      writeStackTrace()
 
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(a.k): a.k = b.k
@@ -1370,8 +1373,8 @@ proc propagateToOwner*(owner, elem: PType) =
     owner.flags.incl tfHasMeta
 
   if tfHasAsgn in elem.flags:
-    let o2 = elem.skipTypes({tyGenericInst})
-    if o2.kind in {tyTuple, tyObject, tyArray, tyArrayConstr,
+    let o2 = elem.skipTypes({tyGenericInst, tyAlias})
+    if o2.kind in {tyTuple, tyObject, tyArray,
                    tySequence, tySet, tyDistinct}:
       o2.flags.incl tfHasAsgn
       owner.flags.incl tfHasAsgn
@@ -1381,7 +1384,7 @@ proc propagateToOwner*(owner, elem: PType) =
 
   if owner.kind notin {tyProc, tyGenericInst, tyGenericBody,
                        tyGenericInvocation, tyPtr}:
-    let elemB = elem.skipTypes({tyGenericInst})
+    let elemB = elem.skipTypes({tyGenericInst, tyAlias})
     if elemB.isGCedMem or tfHasGCedMem in elemB.flags:
       # for simplicity, we propagate this flag even to generics. We then
       # ensure this doesn't bite us in sempass2.
@@ -1538,7 +1541,8 @@ proc skipGenericOwner*(s: PSym): PSym =
   ## Generic instantiations are owned by their originating generic
   ## symbol. This proc skips such owners and goes straight to the owner
   ## of the generic itself (the module or the enclosing proc).
-  result = if s.kind in skProcKinds and sfFromGeneric in s.flags:
+  result = if s.kind in skProcKinds and {sfGenSym, sfFromGeneric} * s.flags ==
+                                                  {sfFromGeneric}:
              s.owner.owner
            else:
              s.owner
@@ -1580,6 +1584,22 @@ proc skipStmtList*(n: PNode): PNode =
     result = n.lastSon
   else:
     result = n
+
+proc toRef*(typ: PType): PType =
+  ## If ``typ`` is a tyObject then it is converted into a `ref <typ>` and
+  ## returned. Otherwise ``typ`` is simply returned as-is.
+  result = typ
+  if typ.kind == tyObject:
+    result = newType(tyRef, typ.owner)
+    rawAddSon(result, typ)
+
+proc toObject*(typ: PType): PType =
+  ## If ``typ`` is a tyRef then its immediate son is returned (which in many
+  ## cases should be a ``tyObject``).
+  ## Otherwise ``typ`` is simply returned as-is.
+  result = typ
+  if result.kind == tyRef:
+    result = result.lastSon
 
 when false:
   proc containsNil*(n: PNode): bool =

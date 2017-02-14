@@ -13,8 +13,10 @@
 
 import
   ast, strutils, strtabs, options, msgs, os, ropes, idents,
-  wordrecg, syntaxes, renderer, lexer, rstast, rst, rstgen, times, highlite,
-  importer, sempass2, json, xmltree, cgi, typesrenderer, astalgo
+  wordrecg, syntaxes, renderer, lexer, packages/docutils/rstast,
+  packages/docutils/rst, packages/docutils/rstgen, times,
+  packages/docutils/highlite, importer, sempass2, json, xmltree, cgi,
+  typesrenderer, astalgo
 
 type
   TSections = array[TSymKind, Rope]
@@ -207,26 +209,26 @@ proc getPlainDocstring(n: PNode): string =
         result = getPlainDocstring(n.sons[i])
         if result.len > 0: return
 
+when false:
+  proc findDocComment(n: PNode): PNode =
+    if n == nil: return nil
+    if not isNil(n.comment) and startsWith(n.comment, "##"): return n
+    for i in countup(0, safeLen(n)-1):
+      result = findDocComment(n.sons[i])
+      if result != nil: return
 
-proc findDocComment(n: PNode): PNode =
-  if n == nil: return nil
-  if not isNil(n.comment) and startsWith(n.comment, "##"): return n
-  for i in countup(0, safeLen(n)-1):
-    result = findDocComment(n.sons[i])
-    if result != nil: return
-
-proc extractDocComment*(s: PSym, d: PDoc = nil): string =
-  let n = findDocComment(s.ast)
-  result = ""
-  if not n.isNil:
-    if not d.isNil:
-      var dummyHasToc: bool
-      renderRstToOut(d[], parseRst(n.comment, toFilename(n.info),
-                                   toLinenumber(n.info), toColumn(n.info),
-                                   dummyHasToc, d.options + {roSkipPounds}),
-                     result)
-    else:
-      result = n.comment.substr(2).replace("\n##", "\n").strip
+  proc extractDocComment*(s: PSym, d: PDoc = nil): string =
+    let n = findDocComment(s.ast)
+    result = ""
+    if not n.isNil:
+      if not d.isNil:
+        var dummyHasToc: bool
+        renderRstToOut(d[], parseRst(n.comment, toFilename(n.info),
+                                     toLinenumber(n.info), toColumn(n.info),
+                                     dummyHasToc, d.options + {roSkipPounds}),
+                       result)
+      else:
+        result = n.comment.substr(2).replace("\n##", "\n").strip
 
 proc isVisible(n: PNode): bool =
   result = false

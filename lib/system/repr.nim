@@ -38,12 +38,12 @@ proc `$`(x: uint64): string =
     for t in 0 .. < half: swap(buf[t], buf[i-t-1])
     result = $buf
 
-proc reprStrAux(result: var string, s: string) =
+proc reprStrAux(result: var string, s: cstring; len: int) =
   if cast[pointer](s) == nil:
     add result, "nil"
     return
   add result, reprPointer(cast[pointer](s)) & "\""
-  for i in 0.. <s.len:
+  for i in 0.. <len:
     let c = s[i]
     case c
     of '"': add result, "\\\""
@@ -57,7 +57,7 @@ proc reprStrAux(result: var string, s: string) =
 
 proc reprStr(s: string): string {.compilerRtl.} =
   result = ""
-  reprStrAux(result, s)
+  reprStrAux(result, s, s.len)
 
 proc reprBool(x: bool): string {.compilerRtl.} =
   if x: result = "true"
@@ -89,7 +89,7 @@ proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
   result = $e & " (invalid data!)"
 
 type
-  PByteArray = ptr array[0.. 0xffff, int8]
+  PByteArray = ptr array[0xffff, int8]
 
 proc addSetElem(result: var string, elem: int, typ: PNimType) {.benign.} =
   case typ.kind
@@ -233,6 +233,14 @@ when not defined(useNimRtl):
         add result, " --> "
         reprAux(result, p, typ.base, cl)
 
+  proc getInt(p: pointer, size: int): int =
+    case size
+    of 1: return int(cast[ptr uint8](p)[])
+    of 2: return int(cast[ptr uint16](p)[])
+    of 4: return int(cast[ptr uint32](p)[])
+    of 8: return int(cast[ptr uint64](p)[])
+    else: discard
+
   proc reprAux(result: var string, p: pointer, typ: PNimType,
                cl: var ReprClosure) =
     if cl.recdepth == 0:
@@ -266,14 +274,16 @@ when not defined(useNimRtl):
     of tyFloat: add result, $(cast[ptr float](p)[])
     of tyFloat32: add result, $(cast[ptr float32](p)[])
     of tyFloat64: add result, $(cast[ptr float64](p)[])
-    of tyEnum: add result, reprEnum(cast[ptr int](p)[], typ)
+    of tyEnum: add result, reprEnum(getInt(p, typ.size), typ)
     of tyBool: add result, reprBool(cast[ptr bool](p)[])
     of tyChar: add result, reprChar(cast[ptr char](p)[])
-    of tyString: reprStrAux(result, cast[ptr string](p)[])
+    of tyString:
+      let sp = cast[ptr string](p)
+      reprStrAux(result, if sp[].isNil: nil else: sp[].cstring, sp[].len)
     of tyCString:
       let cs = cast[ptr cstring](p)[]
       if cs.isNil: add result, "nil"
-      else: reprStrAux(result, $cs)
+      else: reprStrAux(result, cs, cs.len)
     of tyRange: reprAux(result, p, typ.base, cl)
     of tyProc, tyPointer:
       if cast[PPointer](p)[] == nil: add result, "nil"

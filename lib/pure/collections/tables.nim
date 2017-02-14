@@ -224,7 +224,7 @@ template withValue*[A, B](t: var Table[A, B], key: A,
 
 iterator allValues*[A, B](t: Table[A, B]; key: A): B =
   ## iterates over any value in the table `t` that belongs to the given `key`.
-  var h: Hash = hash(key) and high(t.data)
+  var h: Hash = genHash(key) and high(t.data)
   while isFilled(t.data[h].hcode):
     if t.data[h].key == key:
       yield t.data[h].val
@@ -479,7 +479,7 @@ proc clear*[A, B](t: var OrderedTableRef[A, B]) =
   ## Resets the table so that is is empty.
   clear(t[])
 
-template forAllOrderedPairs(yieldStmt: untyped) {.oldimmediate, dirty.} =
+template forAllOrderedPairs(yieldStmt: untyped): typed {.dirty.} =
   var h = t.first
   while h >= 0:
     var nxt = t.data[h].next
@@ -674,13 +674,6 @@ proc len*[A, B](t: OrderedTableRef[A, B]): int {.inline.} =
   ## returns the number of keys in `t`.
   result = t.counter
 
-template forAllOrderedPairs(yieldStmt: untyped) {.oldimmediate, dirty.} =
-  var h = t.first
-  while h >= 0:
-    var nxt = t.data[h].next
-    if isFilled(t.data[h].hcode): yieldStmt
-    h = nxt
-
 iterator pairs*[A, B](t: OrderedTableRef[A, B]): (A, B) =
   ## iterates over any (key, value) pair in the table `t` in insertion
   ## order.
@@ -785,20 +778,22 @@ proc sort*[A, B](t: OrderedTableRef[A, B],
 
 proc del*[A, B](t: var OrderedTable[A, B], key: A) =
   ## deletes `key` from ordered hash table `t`. O(n) comlexity.
-  var prev = -1
-  let hc = hash(key)
-  forAllOrderedPairs:
-    if t.data[h].hcode == hc:
-      if t.first == h:
-        t.first = t.data[h].next
+  var n: OrderedKeyValuePairSeq[A, B]
+  newSeq(n, len(t.data))
+  var h = t.first
+  t.first = -1
+  t.last = -1
+  swap(t.data, n)
+  let hc = genHash(key)
+  while h >= 0:
+    var nxt = n[h].next
+    if isFilled(n[h].hcode):
+      if n[h].hcode == hc and n[h].key == key:
+        dec t.counter
       else:
-        t.data[prev].next = t.data[h].next
-      var zeroValue : type(t.data[h])
-      t.data[h] = zeroValue
-      dec t.counter
-      break
-    else:
-      prev = h
+        var j = -1 - rawGetKnownHC(t, n[h].key, n[h].hcode)
+        rawInsert(t, t.data, n[h].key, n[h].val, n[h].hcode, j)
+    h = nxt
 
 proc del*[A, B](t: var OrderedTableRef[A, B], key: A) =
   ## deletes `key` from ordered hash table `t`. O(n) comlexity.
@@ -819,11 +814,14 @@ proc len*[A](t: CountTable[A]): int =
   ## returns the number of keys in `t`.
   result = t.counter
 
-proc clear*[A](t: var CountTable[A] | CountTableRef[A]) =
+proc clear*[A](t: CountTableRef[A]) =
   ## Resets the table so that it is empty.
   clearImpl()
-  t.counter = 0
 
+proc clear*[A](t: var CountTable[A]) =
+  ## Resets the table so that it is empty.
+  clearImpl()
+  
 iterator pairs*[A](t: CountTable[A]): (A, int) =
   ## iterates over any (key, value) pair in the table `t`.
   for h in 0..high(t.data):
@@ -959,7 +957,7 @@ proc inc*[A](t: var CountTable[A], key: A, val = 1) =
     inc(t.counter)
 
 proc smallest*[A](t: CountTable[A]): tuple[key: A, val: int] =
-  ## returns the largest (key,val)-pair. Efficiency: O(n)
+  ## returns the (key,val)-pair with the smallest `val`. Efficiency: O(n)
   assert t.len > 0
   var minIdx = 0
   for h in 1..high(t.data):
@@ -1085,7 +1083,7 @@ proc inc*[A](t: CountTableRef[A], key: A, val = 1) =
   t[].inc(key, val)
 
 proc smallest*[A](t: CountTableRef[A]): (A, int) =
-  ## returns the largest (key,val)-pair. Efficiency: O(n)
+  ## returns the (key,val)-pair with the smallest `val`. Efficiency: O(n)
   t[].smallest
 
 proc largest*[A](t: CountTableRef[A]): (A, int) =
@@ -1163,6 +1161,20 @@ when isMainModule:
     for i in s4.values:
       doAssert(prev < i)
       prev = i
+
+  block: # Deletion from OrderedTable should account for collision groups. See issue #5057.
+    # The bug is reproducible only with exact keys
+    const key1 = "boy_jackpot.inGamma"
+    const key2 = "boy_jackpot.outBlack"
+
+    var t = {
+        key1: 0,
+        key2: 0
+    }.toOrderedTable()
+
+    t.del(key1)
+    assert(t.len == 1)
+    assert(key2 in t)
 
   var
     t1 = initCountTable[string]()

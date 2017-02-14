@@ -263,8 +263,8 @@ proc findNim(): string =
 
 proc exec(cmd: string) =
   echo(cmd)
-  let (_, exitCode) = osproc.execCmdEx(cmd)
-  if exitCode != 0: quit("external program failed")
+  let (outp, exitCode) = osproc.execCmdEx(cmd)
+  if exitCode != 0: quit outp
 
 proc sexec(cmds: openarray[string]) =
   ## Serial queue wrapper around exec.
@@ -272,10 +272,13 @@ proc sexec(cmds: openarray[string]) =
 
 proc mexec(cmds: openarray[string], processors: int) =
   ## Multiprocessor version of exec
-  if processors < 2:
+  doAssert processors > 0, "nimweb needs at least one processor"
+  if processors == 1:
     sexec(cmds)
     return
-  if execProcesses(cmds, {poStdErrToStdOut, poParentStreams, poEchoCmd}) != 0:
+  let r = execProcesses(cmds, {poStdErrToStdOut, poParentStreams, poEchoCmd},
+    n = processors)
+  if r != 0:
     echo "external program failed, retrying serial work queue for logs!"
     sexec(cmds)
 
@@ -322,11 +325,12 @@ proc buildPdfDoc(c: var TConfigData, destPath: string) =
   if os.execShellCmd("pdflatex -version") != 0:
     echo "pdflatex not found; no PDF documentation generated"
   else:
+    const pdflatexcmd = "pdflatex -interaction=nonstopmode "
     for d in items(c.pdf):
       exec(findNim() & " rst2tex $# $#" % [c.nimArgs, d])
       # call LaTeX twice to get cross references right:
-      exec("pdflatex " & changeFileExt(d, "tex"))
-      exec("pdflatex " & changeFileExt(d, "tex"))
+      exec(pdflatexcmd & changeFileExt(d, "tex"))
+      exec(pdflatexcmd & changeFileExt(d, "tex"))
       # delete all the crappy temporary files:
       let pdf = splitFile(d).name & ".pdf"
       let dest = destPath / pdf

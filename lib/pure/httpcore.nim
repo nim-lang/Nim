@@ -154,6 +154,10 @@ proc add*(headers: HttpHeaders, key, value: string) =
   else:
     headers.table[key.toLowerAscii].add(value)
 
+proc del*(headers: HttpHeaders, key: string) =
+  ## Delete the header entries associated with ``key``
+  headers.table.del(key.toLowerAscii)
+
 iterator pairs*(headers: HttpHeaders): tuple[key, value: string] =
   ## Yields each key, value pair.
   for k, v in headers.table:
@@ -202,6 +206,8 @@ proc parseHeader*(line: string): tuple[key: string, value: seq[string]] =
   inc(i) # skip :
   if i < len(line):
     i += parseList(line, result.value, i)
+  elif result.key.len > 0:
+    result.value = @[""]
   else:
     result.value = @[]
 
@@ -308,3 +314,12 @@ when isMainModule:
   test.add("Connection", "Test")
   doAssert test["Connection", 2] == "Test"
   doAssert "upgrade" in test["Connection"]
+
+  # Bug #5344.
+  doAssert parseHeader("foobar: ") == ("foobar", @[""])
+  let (key, value) = parseHeader("foobar: ")
+  test = newHttpHeaders()
+  test[key] = value
+  doAssert test["foobar"] == ""
+
+  doAssert parseHeader("foobar:") == ("foobar", @[""])

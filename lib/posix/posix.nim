@@ -104,6 +104,11 @@ type
 # that happens to match linux/amd64 - once the code is compiled, the correct
 # types from the headers will be used in the C code
 type
+  Timespec* {.importc: "struct timespec",
+               header: "<time.h>", final, pure.} = object ## struct timespec
+    tv_sec*: Time  ## Seconds.
+    tv_nsec*: int  ## Nanoseconds.
+
   Dirent* {.importc: "struct dirent",
              header: "<dirent.h>", final, pure.} = object ## dirent_t struct
     d_ino*: Ino  ## File serial number.
@@ -299,12 +304,14 @@ type
                            ## for this object. In some file system types, this
                            ## may vary from file to file.
     st_blocks*: Blkcnt     ## Number of blocks allocated for this object.
-    st_atime*: Time        ## Time of last access.
-    st_atimensec*: culong  ## Nanosecond part of last access time
-    st_mtime*: Time        ## Time of last data modification.
-    st_mtimensec*: culong  ## Nanosecond part of last modification time
-    st_ctime*: Time        ## Time of last status change.
-    st_ctimensec*: culong  ## Nanosecond part of last status time
+    when defined(macosx):
+      st_atime*: Time      ## Time of last access.
+      st_mtime*: Time      ## Time of last data modification.
+      st_ctime*: Time      ## Time of last status change.
+    else:
+      st_atim*: Timespec   ## Time of last access.
+      st_mtim*: Timespec   ## Time of last data modification.
+      st_ctim*: Timespec   ## Time of last status change.
     when defined(linux) and defined(amd64):
       reserved: array[3, clong]
 
@@ -345,10 +352,6 @@ type
       tm_gmtoff: clong  ## GMT offset, in seconds
       tm_zone: cstring
 
-  Timespec* {.importc: "struct timespec",
-               header: "<time.h>", final, pure.} = object ## struct timespec
-    tv_sec*: Time  ## Seconds.
-    tv_nsec*: int  ## Nanoseconds.
   Itimerspec* {.importc: "struct itimerspec", header: "<time.h>",
                  final, pure.} = object ## struct itimerspec
     it_interval*: Timespec  ## Timer period.
@@ -1654,6 +1657,17 @@ var
   MSG_OOB* {.importc, header: "<sys/socket.h>".}: cint
     ## Out-of-band data.
 
+when not defined(macosx):
+  proc st_atime*(s: Stat): Time {.inline.} =
+    ## Second-granularity time of last access
+    result = s.st_atim.tv_sec
+  proc st_mtime*(s: Stat): Time {.inline.} =
+    ## Second-granularity time of last data modification.
+    result = s.st_mtim.tv_sec
+  proc st_ctime*(s: Stat): Time {.inline.} =
+    ## Second-granularity time of last status change.
+    result = s.st_ctim.tv_sec
+
 proc WIFCONTINUED*(s:cint) : bool {.importc, header: "<sys/wait.h>".}
   ## True if child has been continued.
 proc WIFEXITED*(s:cint) : bool {.importc, header: "<sys/wait.h>".}
@@ -2419,6 +2433,10 @@ proc pthread_sigmask*(a1: cint, a2, a3: var Sigset): cint {.
 proc `raise`*(a1: cint): cint {.importc, header: "<signal.h>".}
 proc sigaction*(a1: cint, a2, a3: var Sigaction): cint {.
   importc, header: "<signal.h>".}
+
+proc sigaction*(a1: cint, a2: var Sigaction; a3: ptr Sigaction = nil): cint {.
+  importc, header: "<signal.h>".}
+
 proc sigaddset*(a1: var Sigset, a2: cint): cint {.importc, header: "<signal.h>".}
 proc sigaltstack*(a1, a2: var Stack): cint {.importc, header: "<signal.h>".}
 proc sigdelset*(a1: var Sigset, a2: cint): cint {.importc, header: "<signal.h>".}

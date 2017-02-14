@@ -70,7 +70,7 @@ type
     typ: ptr TNimType
     name: cstring
     len: int
-    sons: ptr array[0..0x7fff, ptr TNimNode]
+    sons: ptr array[0x7fff, ptr TNimNode]
 
   TNimTypeFlag = enum
     ntfNoRefs = 0,     # type contains no tyRef, tySequence, tyString
@@ -86,6 +86,14 @@ type
     finalizer: pointer # the finalizer for the type
     marker: proc (p: pointer, op: int) {.nimcall, benign.} # marker proc for GC
     deepcopy: proc (p: pointer): pointer {.nimcall, benign.}
+    when defined(nimTypeNames):
+      name: cstring
+      nextType: ptr TNimType
+      instances: int # count the number of instances
+      sizes: int # sizes of all instances in bytes
   PNimType = ptr TNimType
+
+when defined(nimTypeNames):
+  var nimTypeRoot {.codegenType.}: PNimType
 
 # node.len may be the ``first`` element of a set

@@ -102,8 +102,8 @@ proc commonType*(x, y: PType): PType =
   # if expressions, etc.:
   if x == nil: return x
   if y == nil: return y
-  var a = skipTypes(x, {tyGenericInst})
-  var b = skipTypes(y, {tyGenericInst})
+  var a = skipTypes(x, {tyGenericInst, tyAlias})
+  var b = skipTypes(y, {tyGenericInst, tyAlias})
   result = x
   if a.kind in {tyExpr, tyNil}: result = y
   elif b.kind in {tyExpr, tyNil}: result = x
@@ -115,10 +115,10 @@ proc commonType*(x, y: PType): PType =
     else:
       result = newType(tyTypeDesc, a.owner)
       rawAddSon(result, newType(tyNone, a.owner))
-  elif b.kind in {tyArray, tyArrayConstr, tySet, tySequence} and
+  elif b.kind in {tyArray, tySet, tySequence} and
       a.kind == b.kind:
     # check for seq[empty] vs. seq[int]
-    let idx = ord(b.kind in {tyArray, tyArrayConstr})
+    let idx = ord(b.kind == tyArray)
     if a.sons[idx].kind == tyEmpty: return y
   elif a.kind == tyTuple and b.kind == tyTuple and a.len == b.len:
     var nt: PType
@@ -237,6 +237,14 @@ when false:
     result.handleIsOperator = proc (n: PNode): PNode =
       result = isOpImpl(c, n)
 
+proc hasCycle(n: PNode): bool =
+  incl n.flags, nfNone
+  for i in 0..<safeLen(n):
+    if nfNone in n[i].flags or hasCycle(n[i]):
+      result = true
+      break
+  excl n.flags, nfNone
+
 proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
   # recompute the types as 'eval' isn't guaranteed to construct types nor
   # that the types are sound:
@@ -246,7 +254,11 @@ proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
     else:
       result = evaluated
       let expectedType = eOrig.typ.skipTypes({tyStatic})
-      semmacrosanity.annotateType(result, expectedType)
+      if hasCycle(result):
+        globalError(eOrig.info, "the resulting AST is cyclic and cannot be processed further")
+        result = errorNode(c, eOrig)
+      else:
+        semmacrosanity.annotateType(result, expectedType)
   else:
     result = semExprWithType(c, evaluated)
     #result = fitNode(c, e.typ, result) inlined with special case:
@@ -369,6 +381,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   result = evalMacroCall(c.module, c.cache, n, nOrig, sym)
   if efNoSemCheck notin flags:
     result = semAfterMacroCall(c, result, sym, flags)
+  result = wrapInComesFrom(nOrig.info, result)
   popInfoContext()
 
 proc forceBool(c: PContext, n: PNode): PNode =
@@ -439,11 +452,11 @@ proc isImportSystemStmt(n: PNode): bool =
   case n.kind
   of nkImportStmt:
     for x in n:
-      let f = checkModuleName(x)
+      let f = checkModuleName(x, false)
       if f == magicsys.systemModule.info.fileIndex:
         return true
   of nkImportExceptStmt, nkFromStmt:
-    let f = checkModuleName(n[0])
+    let f = checkModuleName(n[0], false)
     if f == magicsys.systemModule.info.fileIndex:
       return true
   else: discard

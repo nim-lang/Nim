@@ -261,8 +261,9 @@ proc gen(c: PCtx; n: PNode; flags: TGenFlags = {}) =
 proc genx(c: PCtx; n: PNode; flags: TGenFlags = {}): TRegister =
   var tmp: TDest = -1
   gen(c, n, tmp, flags)
-  internalAssert tmp >= 0
-  result = TRegister(tmp)
+  #internalAssert tmp >= 0 # 'nim check' does not like this internalAssert.
+  if tmp >= 0:
+    result = TRegister(tmp)
 
 proc clearDest(c: PCtx; n: PNode; dest: var TDest) {.inline.} =
   # stmt is different from 'void' in meta programming contexts.
@@ -1258,6 +1259,13 @@ proc isTemp(c: PCtx; dest: TDest): bool =
 template needsAdditionalCopy(n): untyped =
   not c.isTemp(dest) and not fitsRegister(n.typ)
 
+proc genAdditionalCopy(c: PCtx; n: PNode; opc: TOpcode;
+                       dest, idx, value: TRegister) =
+  var cc = c.getTemp(n.typ)
+  c.gABC(n, whichAsgnOpc(n), cc, value, 0)
+  c.gABC(n, opc, dest, idx, cc)
+  c.freeTemp(cc)
+
 proc preventFalseAlias(c: PCtx; n: PNode; opc: TOpcode;
                        dest, idx, value: TRegister) =
   # opcLdObj et al really means "load address". We sometimes have to create a
@@ -1265,10 +1273,7 @@ proc preventFalseAlias(c: PCtx; n: PNode; opc: TOpcode;
   # mylocal = a.b  # needs a copy of the data!
   assert n.typ != nil
   if needsAdditionalCopy(n):
-    var cc = c.getTemp(n.typ)
-    c.gABC(n, whichAsgnOpc(n), cc, value, 0)
-    c.gABC(n, opc, dest, idx, cc)
-    c.freeTemp(cc)
+    genAdditionalCopy(c, n, opc, dest, idx, value)
   else:
     c.gABC(n, opc, dest, idx, value)
 
@@ -1351,7 +1356,7 @@ proc genGlobalInit(c: PCtx; n: PNode; s: PSym) =
   c.gABx(n, opcLdGlobal, dest, s.position)
   if s.ast != nil:
     let tmp = c.genx(s.ast)
-    c.preventFalseAlias(n, opcWrDeref, dest, 0, tmp)
+    c.genAdditionalCopy(n, opcWrDeref, dest, 0, tmp)
     c.freeTemp(dest)
     c.freeTemp(tmp)
 
@@ -1482,7 +1487,7 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
       getNullValueAux(skipTypes(base, skipPtrs).n, result)
       base = base.sons[0]
     getNullValueAux(t.n, result)
-  of tyArray, tyArrayConstr:
+  of tyArray:
     result = newNodeIT(nkBracket, info, t)
     for i in countup(0, int(lengthOrd(t)) - 1):
       addSon(result, getNullValue(elemType(t), info))
@@ -1505,7 +1510,7 @@ proc genVarSection(c: PCtx; n: PNode) =
     #assert(a.sons[0].kind == nkSym) can happen for transformed vars
     if a.kind == nkVarTuple:
       for i in 0 .. a.len-3:
-        setSlot(c, a[i].sym)
+        if not a[i].sym.isGlobal: setSlot(c, a[i].sym)
         checkCanEval(c, a[i])
       c.gen(lowerTupleUnpacking(a, c.getOwner))
     elif a.sons[0].kind == nkSym:
@@ -1524,7 +1529,7 @@ proc genVarSection(c: PCtx; n: PNode) =
         if a.sons[2].kind != nkEmpty:
           let tmp = c.genx(a.sons[0], {gfAddrOf})
           let val = c.genx(a.sons[2])
-          c.preventFalseAlias(a.sons[2], opcWrDeref, tmp, 0, val)
+          c.genAdditionalCopy(a.sons[2], opcWrDeref, tmp, 0, val)
           c.freeTemp(val)
           c.freeTemp(tmp)
       else:

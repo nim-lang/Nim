@@ -118,7 +118,7 @@ proc genEnumInfo(p: PProc, typ: PType, name: Rope) =
          [name, genTypeInfo(p, typ.sons[0])])
 
 proc genEnumInfoPHP(p: PProc; t: PType): Rope =
-  let t = t.skipTypes({tyGenericInst, tyDistinct})
+  let t = t.skipTypes({tyGenericInst, tyDistinct, tyAlias})
   result = "$$NTI$1" % [rope(t.id)]
   p.declareGlobal(t.id, result)
   if containsOrIncl(p.g.typeInfoGenerated, t.id): return
@@ -137,7 +137,7 @@ proc genEnumInfoPHP(p: PProc; t: PType): Rope =
 proc genTypeInfo(p: PProc, typ: PType): Rope =
   if p.target == targetPHP:
     return makeJSString(typeToString(typ, preferModuleInfo))
-  let t = typ.skipTypes({tyGenericInst, tyDistinct})
+  let t = typ.skipTypes({tyGenericInst, tyDistinct, tyAlias})
   result = "NTI$1" % [rope(t.id)]
   if containsOrIncl(p.g.typeInfoGenerated, t.id): return
   case t.kind
@@ -155,7 +155,7 @@ proc genTypeInfo(p: PProc, typ: PType): Rope =
     prepend(p.g.typeInfo, s)
     addf(p.g.typeInfo, "$1.base = $2;$n",
          [result, genTypeInfo(p, t.lastSon)])
-  of tyArrayConstr, tyArray:
+  of tyArray:
     var s =
       "var $1 = {size: 0,kind: $2,base: null,node: null,finalizer: null};$n" %
               [result, rope(ord(t.kind))]

@@ -26,7 +26,8 @@ elif defined(posix):
 else:
   {.error: "OS module not ported to your operating system!".}
 
-include ospaths
+import ospaths
+export ospaths
 
 when defined(posix):
   when NoFakeVars:
@@ -848,12 +849,12 @@ template walkCommon(pattern: string, filter) =
     res = findFirstFile(pattern, f)
     if res != -1:
       defer: findClose(res)
+      let dotPos = searchExtPos(pattern)
       while true:
         if not skipFindData(f) and filter(f):
           # Windows bug/gotcha: 't*.nim' matches 'tfoo.nims' -.- so we check
           # that the file extensions have the same length ...
           let ff = getFilename(f)
-          let dotPos = searchExtPos(pattern)
           let idx = ff.len - pattern.len + dotPos
           if dotPos < 0 or idx >= ff.len or ff[idx] == '.' or
               pattern[dotPos+1] == '*':
@@ -1001,8 +1002,8 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
 
 iterator walkDirRec*(dir: string, filter={pcFile, pcDir}): string {.
   tags: [ReadDirEffect].} =
-  ## walks over the directory `dir` and yields for each file in `dir`. The
-  ## full path for each file is returned.
+  ## Recursively walks over the directory `dir` and yields for each file in `dir`.
+  ## The full path for each file is returned. Directories are not returned.
   ## **Warning**:
   ## Modifying the directory structure while the iterator
   ## is traversing may result in undefined behavior!
@@ -1109,7 +1110,7 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1",
   ## fail if the directory already exists because for most usages this does not
   ## indicate an error.
   var omitNext = false
-  when doslike:
+  when doslikeFileSystem:
     omitNext = isAbsolute(dir)
   for i in 1.. dir.len-1:
     if dir[i] in {DirSep, AltSep}:
@@ -1427,7 +1428,7 @@ elif defined(windows):
     if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLine())
     return TaintedString(ownArgv[i])
 
-elif not defined(createNimRtl):
+elif not defined(createNimRtl) and not(defined(posix) and appType == "lib"):
   # On Posix, there is no portable way to get the command line from a DLL.
   var
     cmdCount {.importc: "cmdCount".}: cint

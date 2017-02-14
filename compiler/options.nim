@@ -34,7 +34,8 @@ type                          # please make sure we have under 32 options
     optProfiler,              # profiler turned on
     optImplicitStatic,        # optimization: implicit at compile time
                               # evaluation
-    optPatterns               # en/disable pattern matching
+    optPatterns,              # en/disable pattern matching
+    optMemTracker
 
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
@@ -101,6 +102,17 @@ type
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideMod,
     ideHighlight, ideOutline
 
+  ConfigRef* = ref object ## eventually all global configuration should be moved here
+    cppDefines*: HashSet[string]
+    headerFile*: string
+
+proc newConfigRef*(): ConfigRef =
+  result = ConfigRef(cppDefines: initSet[string](),
+    headerFile: "")
+
+proc cppDefine*(c: ConfigRef; define: string) =
+  c.cppDefines.incl define
+
 var
   gIdeCmd*: IdeCmd
 
@@ -121,7 +133,7 @@ var
   outFile*: string = ""
   docSeeSrcUrl*: string = ""  # if empty, no seeSrc will be generated. \
   # The string uses the formatting variables `path` and `line`.
-  headerFile*: string = ""
+  #headerFile*: string = ""
   gVerbosity* = 1             # how verbose the compiler is
   gNumberOfProcessors*: int   # number of processors
   gWholeProject*: bool        # for 'doc2': output any dependency
@@ -199,7 +211,7 @@ proc getOutFile*(filename, ext: string): string =
 proc getPrefixDir*(): string =
   ## Gets the prefix dir, usually the parent directory where the binary resides.
   ##
-  ## This is overrided by some tools (namely nimsuggest) via the ``gPrefixDir``
+  ## This is overridden by some tools (namely nimsuggest) via the ``gPrefixDir``
   ## global.
   if gPrefixDir != "": result = gPrefixDir
   else:
@@ -226,15 +238,23 @@ proc setDefaultLibpath*() =
       libpath = parentNimLibPath
 
 proc canonicalizePath*(path: string): string =
-  when not FileSystemCaseSensitive: result = path.expandFilename.toLowerAscii
-  else: result = path.expandFilename
+  # on Windows, 'expandFilename' calls getFullPathName which doesn't do
+  # case corrections, so we have to use this convoluted way of retrieving
+  # the true filename (see tests/modules and Nimble uses 'import Uri' instead
+  # of 'import uri'):
+  when defined(windows):
+    result = path.expandFilename
+    for x in walkFiles(result):
+      return x
+  else:
+    result = path.expandFilename
 
 proc shortenDir*(dir: string): string =
   ## returns the interesting part of a dir
-  var prefix = getPrefixDir() & DirSep
+  var prefix = gProjectPath & DirSep
   if startsWith(dir, prefix):
     return substr(dir, len(prefix))
-  prefix = gProjectPath & DirSep
+  prefix = getPrefixDir() & DirSep
   if startsWith(dir, prefix):
     return substr(dir, len(prefix))
   result = dir
@@ -244,6 +264,12 @@ proc removeTrailingDirSep*(path: string): string =
     result = substr(path, 0, len(path) - 2)
   else:
     result = path
+
+proc disableNimblePath*() =
+  gNoNimblePath = true
+  lazyPaths.head = nil
+  lazyPaths.tail = nil
+  lazyPaths.counter = 0
 
 include packagehandling
 
@@ -371,17 +397,6 @@ proc findModule*(modulename, currentModule: string): string =
   if not existsFile(result):
     result = findFile(m)
   patchModule()
-
-proc libCandidates*(s: string, dest: var seq[string]) =
-  var le = strutils.find(s, '(')
-  var ri = strutils.find(s, ')', le+1)
-  if le >= 0 and ri > le:
-    var prefix = substr(s, 0, le - 1)
-    var suffix = substr(s, ri + 1)
-    for middle in split(substr(s, le + 1, ri - 1), '|'):
-      libCandidates(prefix & middle & suffix, dest)
-  else:
-    add(dest, s)
 
 proc canonDynlibName(s: string): string =
   let start = if s.startsWith("lib"): 3 else: 0

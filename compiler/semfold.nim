@@ -216,24 +216,24 @@ proc getIntervalType*(m: TMagic, n: PNode): PType =
     if b.kind in ordIntLit:
       let x = b.intVal|+|1
       if (x and -x) == x and x >= 0:
-        result = makeRange(a.typ, 0, b.intVal)
+        result = makeRange(n.typ, 0, b.intVal)
   of mModU:
     let a = n.sons[1]
     let b = n.sons[2]
-    if a.kind in ordIntLit:
+    if b.kind in ordIntLit:
       if b.intVal >= 0:
-        result = makeRange(a.typ, 0, b.intVal-1)
+        result = makeRange(n.typ, 0, b.intVal-1)
       else:
-        result = makeRange(a.typ, b.intVal+1, 0)
+        result = makeRange(n.typ, b.intVal+1, 0)
   of mModI:
     # so ... if you ever wondered about modulo's signedness; this defines it:
     let a = n.sons[1]
     let b = n.sons[2]
     if b.kind in {nkIntLit..nkUInt64Lit}:
       if b.intVal >= 0:
-        result = makeRange(a.typ, -(b.intVal-1), b.intVal-1)
+        result = makeRange(n.typ, -(b.intVal-1), b.intVal-1)
       else:
-        result = makeRange(a.typ, b.intVal+1, -(b.intVal+1))
+        result = makeRange(n.typ, b.intVal+1, -(b.intVal+1))
   of mDivI, mDivU:
     binaryOp(`|div|`)
   of mMinI:
@@ -538,7 +538,8 @@ proc getArrayConstr(m: PSym, n: PNode): PNode =
 
 proc foldArrayAccess(m: PSym, n: PNode): PNode =
   var x = getConstExpr(m, n.sons[0])
-  if x == nil or x.typ.skipTypes({tyGenericInst}).kind == tyTypeDesc: return
+  if x == nil or x.typ.skipTypes({tyGenericInst, tyAlias}).kind == tyTypeDesc:
+    return
 
   var y = getConstExpr(m, n.sons[1])
   if y == nil: return
@@ -768,7 +769,7 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
   of nkCast:
     var a = getConstExpr(m, n.sons[1])
     if a == nil: return
-    if n.typ.kind in NilableTypes:
+    if n.typ != nil and n.typ.kind in NilableTypes:
       # we allow compile-time 'cast' for pointer types:
       result = a
       result.typ = n.typ

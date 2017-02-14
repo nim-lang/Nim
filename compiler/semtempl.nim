@@ -112,6 +112,7 @@ type
     toBind, toMixin, toInject: IntSet
     owner: PSym
     cursorInBody: bool # only for nimsuggest
+    scopeN: int
     bracketExpr: PNode
 
 template withBracketExpr(ctx, x, body: untyped) =
@@ -141,8 +142,13 @@ proc isTemplParam(c: TemplCtx, n: PNode): bool {.inline.} =
 
 proc semTemplBody(c: var TemplCtx, n: PNode): PNode
 
-proc openScope(c: var TemplCtx) = openScope(c.c)
-proc closeScope(c: var TemplCtx) = closeScope(c.c)
+proc openScope(c: var TemplCtx) =
+  openScope(c.c)
+  inc c.scopeN
+
+proc closeScope(c: var TemplCtx) =
+  dec c.scopeN
+  closeScope(c.c)
 
 proc semTemplBodyScope(c: var TemplCtx, n: PNode): PNode =
   openScope(c)
@@ -166,6 +172,7 @@ proc newGenSym(kind: TSymKind, n: PNode, c: var TemplCtx): PSym =
   result = newSym(kind, considerQuotedIdent(n), c.owner, n.info)
   incl(result.flags, sfGenSym)
   incl(result.flags, sfShadowed)
+  if c.scopeN == 0: incl(result.flags, sfFromGeneric)
 
 proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
   # locals default to 'gensym':
@@ -263,9 +270,16 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
       n.sons[namePos] = ident
   else:
     n.sons[namePos] = semRoutineInTemplName(c, n.sons[namePos])
+  # open scope for parameters
   openScope(c)
-  for i in patternPos..bodyPos:
+  for i in patternPos..miscPos:
     n.sons[i] = semTemplBody(c, n.sons[i])
+  # open scope for locals
+  openScope(c)
+  n.sons[bodyPos] = semTemplBody(c, n.sons[bodyPos])
+  # close scope for locals
+  closeScope(c)
+  # close scope for parameters
   closeScope(c)
 
 proc semTemplSomeDecl(c: var TemplCtx, n: PNode, symKind: TSymKind; start=0) =
@@ -384,9 +398,15 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       var a = n.sons[i]
       checkMinSonsLen(a, 1)
       var L = sonsLen(a)
+      openScope(c)
       for j in countup(0, L-2):
-        a.sons[j] = semTemplBody(c, a.sons[j])
+        if a.sons[j].isInfixAs():
+          addLocalDecl(c, a.sons[j].sons[2], skLet)
+          a.sons[j].sons[1] = semTemplBody(c, a.sons[j][1])
+        else:
+          a.sons[j] = semTemplBody(c, a.sons[j])
       a.sons[L-1] = semTemplBodyScope(c, a.sons[L-1])
+      closeScope(c)
   of nkVarSection: semTemplSomeDecl(c, n, skVar)
   of nkLetSection: semTemplSomeDecl(c, n, skLet)
   of nkFormalParams:
@@ -438,7 +458,9 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   of nkPostfix:
     result.sons[1] = semTemplBody(c, n.sons[1])
   of nkPragma:
-    result = onlyReplaceParams(c, n)
+    for x in n:
+      if x.kind == nkExprColonExpr:
+        x.sons[1] = semTemplBody(c, x.sons[1])
   of nkBracketExpr:
     result = newNodeI(nkCall, n.info)
     result.add newIdentNode(getIdent("[]"), n.info)

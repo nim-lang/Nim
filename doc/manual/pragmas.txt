@@ -26,9 +26,6 @@ It can also be used as a statement, in that case it takes a list of *renamings*.
     Stream = ref object
   {.deprecated: [TFile: File, PStream: Stream].}
 
-The ``nimfix`` tool can be used to, without effort, automatically update your
-code and refactor it by performing these renamings.
-
 
 noSideEffect pragma
 -------------------
@@ -678,14 +675,15 @@ Example:
   {.push stackTrace:off.}
   proc embedsC() =
     var nimVar = 89
-    # use backticks to access Nim symbols within an emit section:
-    {.emit: """fprintf(stdout, "%d\n", cvariable + (int)`nimVar`);""".}
+    # access Nim symbols within an emit section outside of string literals:
+    {.emit: ["""fprintf(stdout, "%d\n", cvariable + (int)""", nimVar, ");"].}
   {.pop.}
 
   embedsC()
 
-As can be seen from the example, to Nim symbols can be referred via backticks.
-Use two backticks to produce a single verbatim backtick.
+For backwards compatibility, if the argument to the ``emit`` statement
+is a single string literal, Nim symbols can be referred to via backticks.
+This usage is however deprecated.
 
 For a toplevel emit statement the section where in the generated C/C++ file
 the code should be emitted can be influenced via the
