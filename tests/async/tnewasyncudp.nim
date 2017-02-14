@@ -33,8 +33,8 @@ proc prepareAddress(intaddr: uint32, intport: uint16): ptr Sockaddr_in =
     result.sin_family = toInt(nativesockets.AF_INET).int16
   else:
     result.sin_family = toInt(nativesockets.AF_INET)
-  result.sin_port = htons(intport)
-  result.sin_addr.s_addr = htonl(intaddr)
+  result.sin_port = nativesockets.htons(intport)
+  result.sin_addr.s_addr = nativesockets.htonl(intaddr)
 
 proc launchSwarm(name: ptr SockAddr) {.async.} =
   var i = 0
