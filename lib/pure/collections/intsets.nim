@@ -192,8 +192,9 @@ iterator items*(s: IntSet): int {.inline.} =
 template dollarImpl(): stmt =
   result = "{"
   for key in items(s):
-    if result.len > 1: result.add(", ")
     result.add($key)
+    result.add(", ")
+  if result.len > ", ".len: result.setlen(result.len - ", ".len)
   result.add("}")
 
 proc `$`*(s: IntSet): string =

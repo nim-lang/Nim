@@ -257,10 +257,11 @@ proc `$`*(t: StringTableRef): string {.rtlFunc, extern: "nstDollar".} =
   else:
     result = "{"
     for key, val in pairs(t):
-      if result.len > 1: result.add(", ")
       result.add(key)
       result.add(": ")
       result.add(val)
+      result.add(", ")
+    if result.len > ", ".len: result.setlen(result.len - ", ".len)
     result.add("}")
 
 when isMainModule:

@@ -178,8 +178,9 @@ proc `$`*[T](q: Queue[T]): string =
   ## Turn a queue into its string representation.
   result = "["
   for x in items(q):  # Don't remove the items here for reasons that don't fit in this margin.
-    if result.len > 1: result.add(", ")
     result.add($x)
+    result.add(", ")
+  if result.len > ", ".len: result.setlen(result.len - ", ".len)
   result.add("]")
 
 when isMainModule:

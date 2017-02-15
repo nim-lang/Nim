@@ -1173,8 +1173,9 @@ proc ra(n: SqlNode, s: var string, indent: int) =
     ra(n.sons[0], s, indent)
     s.add('(')
     for i in 1..n.len-1:
-      if i > 1: s.add(", ")
       ra(n.sons[i], s, indent)
+      s.add(", ")
+    if s.len > ", ".len: s.setlen(s.len - ", ".len)
     s.add(')')
   of nkReferences:
     s.add(" references ")
@@ -1219,10 +1220,11 @@ proc ra(n: SqlNode, s: var string, indent: int) =
     s.add(" set ")
     var L = n.len
     for i in 1 .. L-2:
-      if i > 1: s.add(", ")
       var it = n.sons[i]
       assert it.kind == nkAsgn
       ra(it, s, indent)
+      s.add(", ")
+    if s.len > ", ".len: s.setlen(s.len - ", ".len)
     ra(n.sons[L-1], s, indent)
     s.add(';')
   of nkDelete:
@@ -1279,8 +1281,9 @@ proc ra(n: SqlNode, s: var string, indent: int) =
     ra(n.sons[0], s, indent)
     s.add('(')
     for i in 1..n.len-1:
-      if i > 1: s.add(", ")
       ra(n.sons[i], s, indent)
+      s.add(", ")
+    if s.len > ", ".len: s.setlen(s.len - ", ".len)
     s.add(");")
   of nkCreateType, nkCreateTypeIfNotExists:
     s.add("create type ")
@@ -1299,8 +1302,9 @@ proc ra(n: SqlNode, s: var string, indent: int) =
     ra(n.sons[1], s, indent)
     s.add('(')
     for i in 2..n.len-1:
-      if i > 2: s.add(", ")
       ra(n.sons[i], s, indent)
+      s.add(", ")
+    if s.len > ", ".len: s.setlen(s.len - ", ".len)
     s.add(");")
   of nkEnumDef:
     s.add("enum ")
