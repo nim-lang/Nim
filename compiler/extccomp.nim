@@ -566,16 +566,18 @@ proc needsExeExt(): bool {.inline.} =
   result = (optGenScript in gGlobalOptions and targetOS == osWindows) or
            (platform.hostOS == osWindows)
 
-proc getCompilerExe(compiler: TSystemCC): string =
-  result = if gCmd == cmdCompileToCpp: CC[compiler].cppCompiler
-           else: CC[compiler].compilerExe
+proc getCompilerExe(compiler: TSystemCC; cfile: string): string =
+  result = if gCmd == cmdCompileToCpp and not cfile.endsWith(".c"):
+             CC[compiler].cppCompiler
+           else:
+             CC[compiler].compilerExe
   if result.len == 0:
     rawMessage(errCompilerDoesntSupportTarget, CC[compiler].name)
 
 proc getLinkerExe(compiler: TSystemCC): string =
   result = if CC[compiler].linkerExe.len > 0: CC[compiler].linkerExe
            elif gMixedMode and gCmd != cmdCompileToCpp: CC[compiler].cppCompiler
-           else: compiler.getCompilerExe
+           else: compiler.getCompilerExe("")
 
 proc getCompileCFileCmd*(cfile: Cfile): string =
   var c = cCompiler
@@ -596,7 +598,7 @@ proc getCompileCFileCmd*(cfile: Cfile): string =
 
   var options = cFileSpecificOptions(cfile.cname)
   var exe = getConfigVar(c, ".exe")
-  if exe.len == 0: exe = c.getCompilerExe
+  if exe.len == 0: exe = c.getCompilerExe(cfile.cname)
 
   if needsExeExt(): exe = addFileExt(exe, "exe")
   if optGenDynLib in gGlobalOptions and
@@ -614,7 +616,7 @@ proc getCompileCFileCmd*(cfile: Cfile): string =
     compilePattern = joinPath(ccompilerpath, exe)
   else:
     includeCmd = ""
-    compilePattern = c.getCompilerExe
+    compilePattern = c.getCompilerExe(cfile.cname)
 
   var cf = if noAbsolutePaths(): extractFilename(cfile.cname)
            else: cfile.cname

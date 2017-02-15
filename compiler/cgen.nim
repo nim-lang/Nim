@@ -715,10 +715,13 @@ proc genProcAux(m: BModule, prc: PSym) =
     add(generatedProc, ~"}$N")
   add(m.s[cfsProcs], generatedProc)
 
-proc crossesCppBoundary(m: BModule; sym: PSym): bool {.inline.} =
-  result = sfCompileToCpp in m.module.flags and
+proc requiresExternC(m: BModule; sym: PSym): bool {.inline.} =
+  result = (sfCompileToCpp in m.module.flags and
            sfCompileToCpp notin sym.getModule().flags and
-           gCmd != cmdCompileToCpp
+           gCmd != cmdCompileToCpp) or (
+           sym.flags * {sfImportc, sfInfixCall, sfCompilerProc} == {sfImportc} and
+           sym.magic == mNone and
+           gCmd == cmdCompileToCpp)
 
 proc genProcPrototype(m: BModule, sym: PSym) =
   useHeader(m, sym)
@@ -732,7 +735,7 @@ proc genProcPrototype(m: BModule, sym: PSym) =
     var header = genProcHeader(m, sym)
     if sfNoReturn in sym.flags and hasDeclspec in extccomp.CC[cCompiler].props:
       header = "__declspec(noreturn) " & header
-    if sym.typ.callConv != ccInline and crossesCppBoundary(m, sym):
+    if sym.typ.callConv != ccInline and requiresExternC(m, sym):
       header = "extern \"C\" " & header
     if sfPure in sym.flags and hasAttribute in CC[cCompiler].props:
       header.add(" __attribute__((naked))")
