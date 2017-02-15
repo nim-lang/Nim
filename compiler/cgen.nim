@@ -75,15 +75,13 @@ proc isSimpleConst(typ: PType): bool =
 proc useStringh(m: BModule) =
   if includesStringh notin m.flags:
     incl m.flags, includesStringh
-    if not m.headerFiles.contains("<string.h>"):
-      m.headerFiles.add "<string.h>"
+    m.includeHeader("<string.h>")
 
 proc useHeader(m: BModule, sym: PSym) =
   if lfHeader in sym.loc.flags:
     assert(sym.annex != nil)
     let str = getStr(sym.annex.path)
-    if not m.headerFiles.contains(str):
-      m.headerFiles.add str
+    m.includeHeader(str)
 
 proc cgsym(m: BModule, name: string): Rope
 
@@ -976,8 +974,7 @@ proc genMainProc(m: BModule) =
     else:
       nimMain = WinNimDllMain
       otherMain = WinCDllMain
-    if not m.headerFiles.contains("<windows.h>"):
-      m.headerFiles.add "<windows.h>"
+    m.includeHeader("<windows.h>")
   elif optGenDynLib in gGlobalOptions:
     nimMain = PosixNimDllMain
     otherMain = PosixCDllMain
