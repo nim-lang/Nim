@@ -235,7 +235,7 @@ proc toEpc(client: Socket; uid: BiggestInt) {.gcsafe.} =
   if gIdeCmd != ideChk:
     returnEPC(client, uid, list)
 
-proc writelnHook(line: string) =
+proc writelnToChannel(line: string) =
   results.send(Suggest(section: ideChk, doc: line))
 
 proc sugResultHook(s: Suggest) =
@@ -400,14 +400,14 @@ proc mainThread(graph: ModuleGraph; cache: IdentCache) =
       logStr(PStrEntry(it).data)
       it = it.next
 
-  msgs.writelnHook = writelnHook
+  msgs.writelnHook = writelnToChannel
   suggestionResultHook = sugResultHook
   graph.doStopCompile = proc (): bool = requests.peek() > 0
   var idle = 0
   while true:
     let (hasData, req) = requests.tryRecv()
     if hasData:
-      msgs.writelnHook = writelnHook
+      msgs.writelnHook = writelnToChannel
       suggestionResultHook = sugResultHook
 
       execCmd(req, graph, cache)
