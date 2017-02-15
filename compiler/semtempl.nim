@@ -172,7 +172,7 @@ proc newGenSym(kind: TSymKind, n: PNode, c: var TemplCtx): PSym =
   result = newSym(kind, considerQuotedIdent(n), c.owner, n.info)
   incl(result.flags, sfGenSym)
   incl(result.flags, sfShadowed)
-  if c.scopeN == 0: incl(result.flags, sfFromGeneric)
+  #if c.scopeN == 0: incl(result.flags, sfFromGeneric)
 
 proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
   # locals default to 'gensym':

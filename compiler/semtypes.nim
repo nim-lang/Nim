@@ -297,7 +297,7 @@ proc semOrdinal(c: PContext, n: PNode, prev: PType): PType =
 
 proc semTypeIdent(c: PContext, n: PNode): PSym =
   if n.kind == nkSym:
-    result = n.sym
+    result = getGenSym(c, n.sym)
   else:
     when defined(nimfix):
       result = pickSym(c, n, skType)
@@ -1319,8 +1319,9 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
           prev.id = s.typ.id
         result = prev
   of nkSym:
-    if n.sym.kind == skType and n.sym.typ != nil:
-      var t = n.sym.typ
+    let s = getGenSym(c, n.sym)
+    if s.kind == skType and s.typ != nil:
+      var t = s.typ
       let alias = maybeAliasType(c, t, prev)
       if alias != nil:
         result = alias
@@ -1332,7 +1333,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       markUsed(n.info, n.sym)
       styleCheckUse(n.info, n.sym)
     else:
-      if n.sym.kind != skError: localError(n.info, errTypeExpected)
+      if s.kind != skError: localError(n.info, errTypeExpected)
       result = newOrPrevType(tyError, prev, c)
   of nkObjectTy: result = semObjectNode(c, n, prev)
   of nkTupleTy: result = semTuple(c, n, prev)

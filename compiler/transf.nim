@@ -869,7 +869,10 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     else:
       result = transformSons(c, n)
   of nkIdentDefs, nkConstDef:
-    result = transformSons(c, n)
+    result = n.PTransNode
+    #transformSons(c, n)
+    let L = n.len-1
+    result[L] = transform(c, n.sons[L])
     # XXX comment handling really sucks:
     if importantComments():
       PNode(result).comment = n.comment
