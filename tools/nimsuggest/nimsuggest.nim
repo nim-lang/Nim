@@ -295,13 +295,6 @@ proc serveTcp(graph: ModuleGraph; cache: IdentCache) =
 
     stdoutSocket.send("\c\L")
     stdoutSocket.close()
-
-iterator items(arg: TLinkedList): string {.deprecated.} =
-  # make this file compile when searchPaths is TLinkedList, and when it is not.
-  var it = arg.head
-  while it != nil:
-    yield PStrEntry(it).data
-    it = it.next
     
 proc serveEpc(server: Socket; graph: ModuleGraph; cache: IdentCache) =
   var client = newSocket()
