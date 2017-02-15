@@ -1537,7 +1537,4 @@ proc typeMismatch*(n: PNode, formal, actual: PType) =
         msg.add "\n.tag effect is 'any tag allowed'"
       of efLockLevelsDiffer:
         msg.add "\nlock levels differ"
-    writeStackTrace()
-    debug actual.n
-    debug formal.n
     localError(n.info, errGenerated, msg)
