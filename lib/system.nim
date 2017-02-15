@@ -2375,6 +2375,11 @@ proc collectionToString[T: set | seq](x: T, b, e: string): string =
     when compiles(value.isNil):
       if value.isNil: result.add "nil"
       else: result.add($value)
+    elif type(value) is char:
+      if ord(value) < 32:
+        result.add("\\" & $ord(value))
+      else:
+        result.add($value)
     else:
       result.add($value)
     firstElement = false
