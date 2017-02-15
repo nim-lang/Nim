@@ -19,3 +19,16 @@ proc foo(): void =
   echo repr(v1 *** v2)
 
 foo()
+
+# bug #5383
+import sequtils
+
+proc zipWithIndex[A](ts: seq[A]): seq[(int, A)] =
+  toSeq(pairs(ts))
+
+proc main =
+  discard zipWithIndex(@["foo", "bar"])
+  discard zipWithIndex(@[1, 2])
+  discard zipWithIndex(@[true, false])
+
+main()

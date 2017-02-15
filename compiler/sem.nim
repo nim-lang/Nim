@@ -168,6 +168,16 @@ proc commonType*(x, y: PType): PType =
 proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym =
   result = newSym(kind, considerQuotedIdent(n), getCurrOwner(), n.info)
 
+proc getGenSym(c: PContext; s: PSym): PSym =
+  var it = c.p
+  while it != nil:
+    result = get(it, s)
+    if result != nil:
+      #echo "got from table ", result.name.s, " ", result.info
+      return result
+    it = it.next
+  result = s
+
 proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
   proc `$`(kind: TSymKind): string = substr(system.`$`(kind), 2).toLowerAscii
 
@@ -178,6 +188,11 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     if result.kind != kind:
       localError(n.info, "cannot use symbol of kind '" &
                  $result.kind & "' as a '" & $kind & "'")
+    if sfGenSym in result.flags and result.kind notin {skTemplate, skMacro, skParam}:
+      # declarative context, so produce a fresh gensym:
+      result = copySym(result)
+      result.ast = n.sym.ast
+      put(c.p, n.sym, result)
     # when there is a nested proc inside a template, semtmpl
     # will assign a wrong owner during the first pass over the
     # template; we must fix it here: see #909

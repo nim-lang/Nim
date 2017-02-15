@@ -39,6 +39,7 @@ type
     next*: PProcCon           # used for stacking procedure contexts
     wasForwarded*: bool       # whether the current proc has a separate header
     bracketExpr*: PNode       # current bracket expression (for ^ support)
+    mapping*: TIdTable
 
   TInstantiationPair* = object
     genericSym*: PSym
@@ -146,6 +147,15 @@ proc lastOptionEntry*(c: PContext): POptionEntry =
   result = POptionEntry(c.optionStack.tail)
 
 proc popProcCon*(c: PContext) {.inline.} = c.p = c.p.next
+
+proc put*(p: PProcCon; key, val: PSym) =
+  if p.mapping.data == nil: initIdTable(p.mapping)
+  #echo "put into table ", key.info
+  p.mapping.idTablePut(key, val)
+
+proc get*(p: PProcCon; key: PSym): PSym =
+  if p.mapping.data == nil: return nil
+  result = PSym(p.mapping.idTableGet(key))
 
 proc newOptionEntry*(): POptionEntry =
   new(result)

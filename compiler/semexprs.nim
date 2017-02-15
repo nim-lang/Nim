@@ -922,7 +922,8 @@ proc readTypeParameter(c: PContext, typ: PType,
         return newSymNode(copySym(tParam.sym).linkTo(foundTyp), info)
   #echo "came here: returned nil"
 
-proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
+proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
+  let s = getGenSym(c, sym)
   case s.kind
   of skConst:
     markUsed(n.info, s)
