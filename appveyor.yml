@@ -6,14 +6,9 @@ cache:
 - fasmw17159.zip
 # - i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
 
-matrix:
-  fast_finish: true     # set this flag to immediately finish build once one of the jobs fails.
-  allow_failures:
-    - platform: x64
-#   - platform: x86
-
 environment:
   matrix:
+    fast_finish: true
     - MINGW_DIR: mingw64
       MINGW_URL: https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win64/Personal%20Builds/mingw-builds/4.9.2/threads-win32/seh/x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z/download
       MINGW_ARCHIVE: x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z
