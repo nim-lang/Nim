@@ -7,10 +7,7 @@ cache:
 # - i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
 
 matrix:
-  fast_finish: true     # set this flag to immediately finish build once one of the jobs fails.
-  allow_failures:
-    - platform: x64
-#   - platform: x86
+  fast_finish: true
 
 environment:
   matrix:
