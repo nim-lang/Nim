@@ -220,7 +220,7 @@ proc genOptAsgnTuple(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
                      optAsgnLoc(src, t, field), newflags)
 
 proc genOptAsgnObject(p: BProc, dest, src: TLoc, flags: TAssignmentFlags,
-                      t: PNode) =
+                      t: PNode, typ: PType) =
   if t == nil: return
   let newflags =
     if src.s == OnStatic:
@@ -232,10 +232,11 @@ proc genOptAsgnObject(p: BProc, dest, src: TLoc, flags: TAssignmentFlags,
   case t.kind
   of nkSym:
     let field = t.sym
+    if field.loc.r == nil: fillObjectFields(p.module, typ)
     genAssignment(p, optAsgnLoc(dest, field.typ, field.loc.r),
                      optAsgnLoc(src, field.typ, field.loc.r), newflags)
   of nkRecList:
-    for child in items(t): genOptAsgnObject(p, dest, src, newflags, child)
+    for child in items(t): genOptAsgnObject(p, dest, src, newflags, child, typ)
   else: discard
 
 proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
@@ -315,9 +316,9 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
       genGenericAsgn(p, dest, src, flags)
     elif needsComplexAssignment(ty):
       if ty.sons[0].isNil and asgnComplexity(ty.n) <= 4:
-        discard getTypeDesc(p.module, dest.t)
+        discard getTypeDesc(p.module, ty)
         internalAssert ty.n != nil
-        genOptAsgnObject(p, dest, src, flags, ty.n)
+        genOptAsgnObject(p, dest, src, flags, ty.n, ty)
       else:
         genGenericAsgn(p, dest, src, flags)
     else:
