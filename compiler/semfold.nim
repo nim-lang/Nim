@@ -628,7 +628,10 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
     of {skProc, skMethod}:
       result = n
     of skType:
-      result = newSymNodeTypeDesc(s, n.info)
+      # XXX gensym'ed symbols can come here and cannot be resolved. This is
+      # dirty, but correct.
+      if s.typ != nil:
+        result = newSymNodeTypeDesc(s, n.info)
     of skGenericParam:
       if s.typ.kind == tyStatic:
         if s.typ.n != nil:
