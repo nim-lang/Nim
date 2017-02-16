@@ -659,7 +659,7 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
           localError(a.info, errCannotEvalXBecauseIncompletelyDefined,
                      "sizeof")
           result = nil
-        elif skipTypes(a.typ, typedescInst).kind in
+        elif skipTypes(a.typ, typedescInst+{tyRange}).kind in
              IntegralTypes+NilableTypes+{tySet}:
           #{tyArray,tyObject,tyTuple}:
           result = newIntNodeT(getSize(a.typ), n)
