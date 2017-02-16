@@ -215,7 +215,10 @@ proc rawFileSize(file: File): int =
   discard c_fseek(file, clong(oldPos), 0)
 
 proc endOfFile(f: File): bool =
-  result = c_feof(f) != 0
+  var c = c_fgetc(f)
+  discard c_ungetc(c, f)
+  return c < 0'i32
+  #result = c_feof(f) != 0
 
 proc readAllFile(file: File, len: int): string =
   # We acquire the filesize beforehand and hope it doesn't change.
