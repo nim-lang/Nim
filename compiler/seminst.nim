@@ -112,10 +112,12 @@ proc freshGenSyms(n: PNode, owner, orig: PSym, symMap: var TIdTable) =
     var x = PSym(idTableGet(symMap, s))
     if x != nil:
       n.sym = x
-    when false:
+    elif s.owner.kind == skPackage:
+      #echo "copied this ", s.name.s
       x = copySym(s, false)
       x.owner = owner
       idTablePut(symMap, s, x)
+      n.sym = x
   else:
     for i in 0 .. <safeLen(n): freshGenSyms(n.sons[i], owner, orig, symMap)
 
