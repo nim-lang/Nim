@@ -1185,7 +1185,7 @@ proc createHardlink*(src, dest: string) =
 
 proc parseCmdLine*(c: string): seq[string] {.
   noSideEffect, rtl, extern: "nos$1".} =
-  ## Splits a command line into several components;
+  ## Splits a `command line`:idx: into several components;
   ## This proc is only occasionally useful, better use the `parseopt` module.
   ##
   ## On Windows, it uses the following parsing rules

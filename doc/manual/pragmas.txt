@@ -1018,12 +1018,12 @@ the -d/--define option at compile time.
 The implementation currently provides the following possible options (various
 others may be added later).
 
-===============  ============================================
-pragma           description
-===============  ============================================
-intdefine        Reads in a build-time define as an integer
-strdefine        Reads in a build-time define as a string
-===============  ============================================
+=================  ============================================
+pragma             description
+=================  ============================================
+`intdefine`:idx:   Reads in a build-time define as an integer
+`strdefine`:idx:   Reads in a build-time define as a string
+=================  ============================================
 
 .. code-block:: nim
    const FooBar {.intdefine.}: int = 5
