@@ -1,3 +1,10 @@
+discard """
+  output: '''[0.0, 0.0, 0.0]
+
+[0.0, 0.0, 0.0, 0.0]
+
+5050'''
+"""
 
 template mathPerComponent(op: untyped): untyped =
   proc op*[N,T](v,u: array[N,T]): array[N,T] {.inline.} =
@@ -32,3 +39,11 @@ proc main =
   discard zipWithIndex(@[true, false])
 
 main()
+
+# bug #5405
+
+proc main2() =
+  let s = toSeq(1..100).foldL(a + b)
+  echo s
+
+main2()

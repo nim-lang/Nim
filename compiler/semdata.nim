@@ -157,6 +157,26 @@ proc get*(p: PProcCon; key: PSym): PSym =
   if p.mapping.data == nil: return nil
   result = PSym(p.mapping.idTableGet(key))
 
+proc getGenSym*(c: PContext; s: PSym): PSym =
+  if sfGenSym notin s.flags: return s
+  var it = c.p
+  while it != nil:
+    result = get(it, s)
+    if result != nil:
+      #echo "got from table ", result.name.s, " ", result.info
+      return result
+    it = it.next
+  result = s
+
+proc considerGenSyms*(c: PContext; n: PNode) =
+  if n.kind == nkSym:
+    let s = getGenSym(c, n.sym)
+    if n.sym != s:
+      n.sym = s
+  else:
+    for i in 0..<n.safeLen:
+      considerGenSyms(c, n.sons[i])
+
 proc newOptionEntry*(): POptionEntry =
   new(result)
   result.options = gOptions
