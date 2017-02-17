@@ -66,6 +66,10 @@ these procedures.
 In the near future we will be converting all exception types to refs to
 remove the need for the ``newException`` template.
 
+- A new pragma ``.used`` can be used for symbols to prevent
+the "declared but not used" warning. More details can be found `here <http://nim-lang.org/docs/manual.html#pragmas-used-pragma>`_.
+
+
 Bugfixes
 --------
 
