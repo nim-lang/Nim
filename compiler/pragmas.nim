@@ -588,6 +588,8 @@ proc pragmaLocks(c: PContext, it: PNode): TLockLevel =
         localError(it[1].info, "integer must be within 0.." & $MaxLockLevel)
       else:
         result = TLockLevel(x)
+    else:
+      result = UnknownLockLevel
 
 proc typeBorrow(sym: PSym, n: PNode) =
   if n.kind == nkExprColonExpr:
