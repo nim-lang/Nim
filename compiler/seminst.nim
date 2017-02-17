@@ -106,15 +106,18 @@ proc freshGenSyms(n: PNode, owner, orig: PSym, symMap: var TIdTable) =
   #if n.kind == nkSym and sfGenSym in n.sym.flags:
   #  if n.sym.owner != orig:
   #    echo "symbol ", n.sym.name.s, " orig ", orig, " owner ", n.sym.owner
-  if n.kind == nkSym and {sfGenSym, sfFromGeneric} * n.sym.flags == {sfGenSym}: # and
+  if n.kind == nkSym and sfGenSym in n.sym.flags: # and
     #  (n.sym.owner == orig or n.sym.owner.kind in {skPackage}):
     let s = n.sym
     var x = PSym(idTableGet(symMap, s))
-    if x == nil:
+    if x != nil:
+      n.sym = x
+    elif s.owner.kind == skPackage:
+      #echo "copied this ", s.name.s
       x = copySym(s, false)
       x.owner = owner
       idTablePut(symMap, s, x)
-    n.sym = x
+      n.sym = x
   else:
     for i in 0 .. <safeLen(n): freshGenSyms(n.sons[i], owner, orig, symMap)
 
