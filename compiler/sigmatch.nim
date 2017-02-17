@@ -1583,12 +1583,14 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
     result = c.semOperand(c, a, flags)
   else:
     result = a
+    considerGenSyms(c, result)
 
 proc prepareOperand(c: PContext; a: PNode): PNode =
   if a.typ.isNil:
     result = c.semOperand(c, a, {efDetermineType})
   else:
     result = a
+    considerGenSyms(c, result)
 
 proc prepareNamedParam(a: PNode) =
   if a.sons[0].kind != nkIdent:

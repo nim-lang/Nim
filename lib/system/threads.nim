@@ -285,7 +285,19 @@ when useStackMaskHack:
 when not defined(useNimRtl):
   when not useStackMaskHack:
     #when not defined(createNimRtl): initStackBottom()
-    when declared(initGC): initGC()
+    when declared(initGC):
+      initGC()
+      when not emulatedThreadVars:
+        type ThreadType {.pure.} = enum
+          None = 0,
+          NimThread = 1,
+          ForeignThread = 2
+        var
+          threadType {.rtlThreadVar.}: ThreadType
+
+        threadType = ThreadType.NimThread
+
+
 
   when emulatedThreadVars:
     if nimThreadVarsSize() > sizeof(ThreadLocalStorage):
@@ -442,6 +454,8 @@ proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) =
       # init the GC for refc/markandsweep
       setStackBottom(addr(p))
       initGC()
+      when declared(threadType):
+        threadType = ThreadType.NimThread
     when declared(registerThread):
       thrd.stackBottom = addr(thrd)
       registerThread(thrd)

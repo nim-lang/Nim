@@ -628,7 +628,10 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
     of {skProc, skMethod}:
       result = n
     of skType:
-      result = newSymNodeTypeDesc(s, n.info)
+      # XXX gensym'ed symbols can come here and cannot be resolved. This is
+      # dirty, but correct.
+      if s.typ != nil:
+        result = newSymNodeTypeDesc(s, n.info)
     of skGenericParam:
       if s.typ.kind == tyStatic:
         if s.typ.n != nil:
@@ -656,7 +659,7 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
           localError(a.info, errCannotEvalXBecauseIncompletelyDefined,
                      "sizeof")
           result = nil
-        elif skipTypes(a.typ, typedescInst).kind in
+        elif skipTypes(a.typ, typedescInst+{tyRange}).kind in
              IntegralTypes+NilableTypes+{tySet}:
           #{tyArray,tyObject,tyTuple}:
           result = newIntNodeT(getSize(a.typ), n)

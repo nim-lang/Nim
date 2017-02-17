@@ -1103,8 +1103,8 @@ proc asgnFieldDiscriminant(p: BProc, e: PNode) =
   genAssignment(p, a, tmp, {})
 
 proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
-  genLineDir(p, e)
   if e.sons[0].kind == nkSym and sfGoto in e.sons[0].sym.flags:
+    genLineDir(p, e)
     genGotoVar(p, e.sons[1])
   elif not fieldDiscriminantCheckNeeded(p, e):
     var a: TLoc
@@ -1114,8 +1114,11 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
       initLocExpr(p, e.sons[0], a)
     if fastAsgn: incl(a.flags, lfNoDeepCopy)
     assert(a.t != nil)
-    loadInto(p, e.sons[0], e.sons[1], a)
+    let ri = e.sons[1]
+    genLineDir(p, ri)
+    loadInto(p, e.sons[0], ri, a)
   else:
+    genLineDir(p, e)
     asgnFieldDiscriminant(p, e)
 
 proc genStmts(p: BProc, t: PNode) =

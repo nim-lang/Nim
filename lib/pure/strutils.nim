@@ -939,7 +939,7 @@ proc parseUInt*(s: string): uint {.noSideEffect, procvar,
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid unsigned integer: " & s)
 
-proc parseBiggestUInt*(s: string): uint64 {.noSideEffect, procvar,
+proc parseBiggestUInt*(s: string): BiggestUInt {.noSideEffect, procvar,
   rtl, extern: "nsuParseBiggestUInt".} =
   ## Parses a decimal unsigned integer value contained in `s`.
   ##

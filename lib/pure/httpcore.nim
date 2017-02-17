@@ -206,6 +206,8 @@ proc parseHeader*(line: string): tuple[key: string, value: seq[string]] =
   inc(i) # skip :
   if i < len(line):
     i += parseList(line, result.value, i)
+  elif result.key.len > 0:
+    result.value = @[""]
   else:
     result.value = @[]
 
@@ -319,3 +321,5 @@ when isMainModule:
   test = newHttpHeaders()
   test[key] = value
   doAssert test["foobar"] == ""
+
+  doAssert parseHeader("foobar:") == ("foobar", @[""])
