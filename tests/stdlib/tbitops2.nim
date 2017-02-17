@@ -97,9 +97,65 @@ proc main() =
     doAssert( U8.rotateLeftBits(3) == 0b10010001'u8)
     doAssert( U8.rotateRightBits(3) == 0b0100_0110'u8)
 
+
+
+  template test_undefined_impl(ffunc: untyped; expected: int; is_static: bool) =
+    doAssert( ffunc(0'u8) == expected)
+    doAssert( ffunc(0'i8) == expected)
+    doAssert( ffunc(0'u16) == expected)
+    doAssert( ffunc(0'i16) == expected)
+    doAssert( ffunc(0'u32) == expected)
+    doAssert( ffunc(0'i32) == expected)
+    doAssert( ffunc(0'u64) == expected)
+    doAssert( ffunc(0'i64) == expected)
+
+  template test_undefined(ffunc: untyped; expected: int) =
+    test_undefined_impl(ffunc, expected, false)
+    static:
+      test_undefined_impl(ffunc, expected, true)
+
+  when defined(noUndefinedBitOpts):
+    # check for undefined behavior with zero.
+    test_undefined(countSetBits, 0)
+    test_undefined(parityBits, 0)
+    test_undefined(firstSetBit, 0)
+    test_undefined(countLeadingZeroBits, 0)
+    test_undefined(countTrailingZeroBits, 0)
+    test_undefined(fastLog2, -1)
+
+    # check for undefined behavior with rotate by zero.
+    doAssert( U8.rotateLeftBits(0) == U8)
+    doAssert( U8.rotateRightBits(0) == U8)
+    doAssert( U16.rotateLeftBits(0) == U16)
+    doAssert( U16.rotateRightBits(0) == U16)
+    doAssert( U32.rotateLeftBits(0) == U32)
+    doAssert( U32.rotateRightBits(0) == U32)
+    doAssert( U64A.rotateLeftBits(0) == U64A)
+    doAssert( U64A.rotateRightBits(0) == U64A)
+
+    # check for undefined behavior with rotate by integer width.
+    {.push rangeChecks: off}
+    let (s8, s16, s32, s64) = (8, 16, 32, 64) # hack to get around compile time range check.
+    doAssert( U8.rotateLeftBits(s8) == U8)
+    doAssert( U8.rotateRightBits(s8) == U8)
+    doAssert( U16.rotateLeftBits(s16) == U16)
+    doAssert( U16.rotateRightBits(s16) == U16)
+    doAssert( U32.rotateLeftBits(s32) == U32)
+    doAssert( U32.rotateRightBits(s32) == U32)
+    doAssert( U64A.rotateLeftBits(s64) == U64A)
+    doAssert( U64A.rotateRightBits(s64) == U64A)
+    {.pop.}
+
+    static:    # check for undefined behavior with rotate by zero.
+      doAssert( U8.rotateLeftBits(0) == U8)
+      doAssert( U8.rotateRightBits(0) == U8)
+      doAssert( U16.rotateLeftBits(0) == U16)
+      doAssert( U16.rotateRightBits(0) == U16)
+      doAssert( U32.rotateLeftBits(0) == U32)
+      doAssert( U32.rotateRightBits(0) == U32)
+      doAssert( U64A.rotateLeftBits(0) == U64A)
+      doAssert( U64A.rotateRightBits(0) == U64A)
+
   echo "OK"
 
 main()
-
-
-

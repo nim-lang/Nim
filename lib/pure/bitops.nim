@@ -16,13 +16,20 @@
 ##
 ## This module is also compatible with other backends: ``Javascript``, ``Nimscript``
 ## as well as the ``compiletime VM``.
+##
+## As a result of using optimized function/intrinsics some functions can return
+## undefined results if the input is invalid. You can use the flag `noUndefinedBitOpts`
+## to force predictable behaviour for all input, causing a small performance hit.
+##
+## At this time only `fastLog2`, `firstSetBit, `countLeadingZeroBits`, `countTrailingZeroBits`
+## may return undefined and/or platform dependant value if given invalid input.
 
 
 const useBuiltins = not defined(noIntrinsicsBitOpts)
+const noUndefined = defined(noUndefinedBitOpts)
 const useGCC_builtins = (defined(gcc) or defined(llvm_gcc) or defined(clang)) and useBuiltins
 const useICC_builtins = defined(icc) and useBuiltins
 const useVCC_builtins = defined(vcc) and useBuiltins
-
 const arch64 = sizeof(int) == 8
 
 # #### Pure Nim version ####
@@ -205,7 +212,7 @@ proc popcount*(x: SomeInteger): int {.inline, nosideeffect.} =
 
 proc parityBits*(x: SomeInteger): int {.inline, nosideeffect.} =
   ## Calculate the bit parity in integer. If number of 1-bit
-  ## is odd parity is 1, otherwise 0.    when nimvm:
+  ## is odd parity is 1, otherwise 0.
   # Can be used a base if creating ASM version.
   # https://stackoverflow.com/questions/21617970/how-to-check-if-value-has-even-parity-of-bits-or-odd
   when nimvm:
@@ -220,11 +227,20 @@ proc parityBits*(x: SomeInteger): int {.inline, nosideeffect.} =
       else:                result = parity_impl(x.uint64)
 
 proc firstSetBit*(x: SomeInteger): int {.inline, nosideeffect.} =
-  ## Returns the 1-based index of the least significant set bit of x, or if x is zero, returns zero.
+  ## Returns the 1-based index of the least significant set bit of x.
+  ## If `x` is zero, when ``noUndefinedBitOpts`` is set, result is 0,
+  ## otherwise result is undefined.
+  # GCC builtin 'builtin_ffs' already handle zero input.
   when nimvm:
+    when noUndefined:
+      if x == 0:
+        return 0
     when sizeof(x) <= 4: result = firstSetBit_nim(x.uint32)
     else:                result = firstSetBit_nim(x.uint64)
   else:
+    when noUndefined and not useGCC_builtins:
+      if x == 0:
+        return 0
     when useGCC_builtins:
       when sizeof(x) <= 4: result = builtin_ffs(x.cint).int
       else:                result = builtin_ffsll(x.clonglong).int
@@ -248,6 +264,11 @@ proc firstSetBit*(x: SomeInteger): int {.inline, nosideeffect.} =
 
 proc fastLog2*(x: SomeInteger): int {.inline, nosideeffect.} =
   ## Quickly find the log base 2 of an integer.
+  ## If `x` is zero, when ``noUndefinedBitOpts`` is set, result is -1,
+  ## otherwise result is undefined.
+  when noUndefined:
+    if x == 0:
+      return -1
   when nimvm:
     when sizeof(x) <= 4: result = fastlog2_nim(x.uint32)
     else:                result = fastlog2_nim(x.uint64)
@@ -275,6 +296,11 @@ proc fastLog2*(x: SomeInteger): int {.inline, nosideeffect.} =
 
 proc countLeadingZeroBits*(x: SomeInteger): int {.inline, nosideeffect.} =
   ## Returns the number of leading zero bits in integer.
+  ## If `x` is zero, when ``noUndefinedBitOpts`` is set, result is 0,
+  ## otherwise result is undefined.
+  when noUndefined:
+    if x == 0:
+      return 0
   when nimvm:
       when sizeof(x) <= 4: result = sizeof(x)*8 - 1 - fastlog2_nim(x.uint32)
       else:                result = sizeof(x)*8 - 1 - fastlog2_nim(x.uint64)
@@ -288,6 +314,11 @@ proc countLeadingZeroBits*(x: SomeInteger): int {.inline, nosideeffect.} =
 
 proc countTrailingZeroBits*(x: SomeInteger): int {.inline, nosideeffect.} =
   ## Returns the number of trailing zeros in integer.
+  ## If `x` is zero, when ``noUndefinedBitOpts`` is set, result is 0,
+  ## otherwise result is undefined.
+  when noUndefined:
+    if x == 0:
+      return 0
   when nimvm:
     result = firstSetBit(x) - 1
   else:
@@ -297,47 +328,59 @@ proc countTrailingZeroBits*(x: SomeInteger): int {.inline, nosideeffect.} =
     else:
       result = firstSetBit(x) - 1
 
-
+{.push checks: off}
 
 proc rotateLeftBits*(value: uint8;
-           amount: range[1..7]): uint8 {.inline, noSideEffect.} =
+           amount: range[0..7]): uint8 {.inline, noSideEffect.} =
   ## Left-rotate bits in a 8-bits value.
-  result = (value shl amount) or (value shr (8 - amount))
+  # using this form instead of the one below should handle any value
+  # out of range as well as negative values.
+  # result = (value shl amount) or (value shr (8 - amount))
+  # taken from: https://en.wikipedia.org/wiki/Circular_shift#Implementing_circular_shifts
+  let amount = amount and 7
+  result = (value shl amount) or (value shr ( (-amount) and 7))
 
 proc rotateLeftBits*(value: uint16;
-           amount: range[1..15]): uint16 {.inline, noSideEffect.} =
+           amount: range[0..15]): uint16 {.inline, noSideEffect.} =
   ## Left-rotate bits in a 16-bits value.
-  result = (value shl amount) or (value shr (16 - amount))
+  let amount = amount and 15
+  result = (value shl amount) or (value shr ( (-amount) and 15))
 
 proc rotateLeftBits*(value: uint32;
-           amount: range[1..31]): uint32 {.inline, noSideEffect.} =
+           amount: range[0..31]): uint32 {.inline, noSideEffect.} =
   ## Left-rotate bits in a 32-bits value.
-  result = (value shl amount) or (value shr (32 - amount))
+  let amount = amount and 31
+  result = (value shl amount) or (value shr ( (-amount) and 31))
 
 proc rotateLeftBits*(value: uint64;
-           amount: range[1..63]): uint64 {.inline, noSideEffect.} =
+           amount: range[0..63]): uint64 {.inline, noSideEffect.} =
   ## Left-rotate bits in a 64-bits value.
-  result = (value shl amount) or (value shr (64 - amount))
+  let amount = amount and 63
+  result = (value shl amount) or (value shr ( (-amount) and 63))
 
 
 proc rotateRightBits*(value: uint8;
-            amount: range[1..7]): uint8 {.inline, noSideEffect.} =
+            amount: range[0..7]): uint8 {.inline, noSideEffect.} =
   ## Right-rotate bits in a 8-bits value.
-  result = (value shr amount) or (value shl (8 - amount))
+  let amount = amount and 7
+  result = (value shr amount) or (value shl ( (-amount) and 7))
 
 proc rotateRightBits*(value: uint16;
-            amount: range[1..15]): uint16 {.inline, noSideEffect.} =
+            amount: range[0..15]): uint16 {.inline, noSideEffect.} =
   ## Right-rotate bits in a 16-bits value.
-  result = (value shr amount) or (value shl (16 - amount))
+  let amount = amount and 15
+  result = (value shr amount) or (value shl ( (-amount) and 15))
 
 proc rotateRightBits*(value: uint32;
-            amount: range[1..31]): uint32 {.inline, noSideEffect.} =
+            amount: range[0..31]): uint32 {.inline, noSideEffect.} =
   ## Right-rotate bits in a 32-bits value.
-  result = (value shr amount) or (value shl (32 - amount))
+  let amount = amount and 31
+  result = (value shr amount) or (value shl ( (-amount) and 31))
 
 proc rotateRightBits*(value: uint64;
-            amount: range[1..63]): uint64 {.inline, noSideEffect.} =
+            amount: range[0..63]): uint64 {.inline, noSideEffect.} =
   ## Right-rotate bits in a 64-bits value.
-  result = (value shr amount) or (value shl (64 - amount))
+  let amount = amount and 63
+  result = (value shr amount) or (value shl ( (-amount) and 63))
 
 {.pop.}
