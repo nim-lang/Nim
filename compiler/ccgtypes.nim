@@ -24,7 +24,13 @@ proc isKeyword(w: PIdent): bool =
 
 proc mangleField(m: BModule; name: PIdent): string =
   result = mangle(name.s)
-  if isKeyword(name) or m.g.config.cppDefines.contains(result):
+  # fields are tricky to get right and thanks to generic types producing
+  # duplicates we can end up mangling the same field multiple times. However
+  # if we do so, the 'cppDefines' table might be modified in the meantime
+  # meaning we produce inconsistent field names (see bug #5404).
+  # Hence we do not check for ``m.g.config.cppDefines.contains(result)`` here
+  # anymore:
+  if isKeyword(name):
     result.add "_0"
 
 when false:
