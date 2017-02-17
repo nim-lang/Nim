@@ -67,6 +67,8 @@ type
     prev: ptr GcStack
     next: ptr GcStack
     bottom: pointer
+    when withRealTime:
+      bottomSaved: pointer
     pos: pointer
     maxStackSize: int
 
@@ -929,19 +931,40 @@ when withRealTime:
       collectCTBody(gch)
     release(gch)
 
-  proc GC_step*(us: int, strongAdvice = false, stackSize = -1) {.noinline.} =
-    var stackTop {.volatile.}: pointer
-    let prevStackBottom = gch.stackBottom
-    if stackSize >= 0:
-      stackTop = addr(stackTop)
-      when stackIncreases:
-        gch.stackBottom = cast[pointer](
-          cast[ByteAddress](stackTop) - sizeof(pointer) * 6 - stackSize)
-      else:
-        gch.stackBottom = cast[pointer](
-          cast[ByteAddress](stackTop) + sizeof(pointer) * 6 + stackSize)
-    GC_step(gch, us, strongAdvice)
-    gch.stackBottom = prevStackBottom
+  when defined(nimCoroutines):
+    proc GC_step*(us: int, strongAdvice = false, stackSize = -1) {.noinline.} =
+      if stackSize >= 0:
+        var stackTop {.volatile.}: pointer
+        gch.activeStack.pos = addr(stackTop)
+
+        for stack in gch.stack.items():
+          stack.bottomSaved = stack.bottom
+          when stackIncreases:
+            stack.bottom = cast[pointer](
+              cast[ByteAddress](stack.pos) - sizeof(pointer) * 6 - stackSize)
+          else:
+            stack.bottom = cast[pointer](
+              cast[ByteAddress](stack.pos) + sizeof(pointer) * 6 + stackSize)
+
+      GC_step(gch, us, strongAdvice)
+
+      if stackSize >= 0:
+        for stack in gch.stack.items():
+          stack.bottom = stack.bottomSaved
+  else:
+    proc GC_step*(us: int, strongAdvice = false, stackSize = -1) {.noinline.} =
+      var stackTop {.volatile.}: pointer
+      let prevStackBottom = gch.stackBottom
+      if stackSize >= 0:
+        stackTop = addr(stackTop)
+        when stackIncreases:
+          gch.stackBottom = cast[pointer](
+            cast[ByteAddress](stackTop) - sizeof(pointer) * 6 - stackSize)
+        else:
+          gch.stackBottom = cast[pointer](
+            cast[ByteAddress](stackTop) + sizeof(pointer) * 6 + stackSize)
+      GC_step(gch, us, strongAdvice)
+      gch.stackBottom = prevStackBottom
 
 when not defined(useNimRtl):
   proc GC_disable() =
