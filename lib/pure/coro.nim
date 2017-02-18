@@ -16,8 +16,11 @@
 ## -d:nimCoroutinesSetjmp        Use setjmp backend.
 ## -d:nimCoroutinesSetjmpBundled Use bundled setjmp implementation.
 
-when not defined(nimCoroutines) and not defined(nimdoc):
-  {.error: "Coroutines require -d:nimCoroutines".}
+when not nimCoroutines and not defined(nimdoc):
+  when defined(noNimCoroutines):
+    {.error: "Coroutines can not be used with -d:noNimCoroutines"}
+  else:
+    {.error: "Coroutines require -d:nimCoroutines".}
 
 import os
 import macros

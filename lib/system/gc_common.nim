@@ -109,7 +109,7 @@ else:
   proc len(stack: var GcStack): int = 1
 
 proc stackSize(stack: ptr GcStack): int {.noinline.} =
-  when defined(nimCoroutines):
+  when nimCoroutines:
     var pos = stack.pos
   else:
     var pos {.volatile.}: pointer
@@ -127,7 +127,7 @@ proc stackSize(): int {.noinline.} =
   for stack in gch.stack.items():
     result = result + stack.stackSize()
 
-when defined(nimCoroutines):
+when nimCoroutines:
   proc setPosition(stack: ptr GcStack, position: pointer) =
     stack.pos = position
     stack.maxStackSize = max(stack.maxStackSize, stack.stackSize())
@@ -198,7 +198,7 @@ else:
   const stackIncreases = false
 
 {.push stack_trace: off.}
-when defined(nimCoroutines):
+when nimCoroutines:
   proc GC_addStack(bottom: pointer) {.cdecl, exportc.} =
     # c_fprintf(stdout, "GC_addStack: %p;\n", bottom)
     var stack = gch.stack.append()
@@ -219,7 +219,7 @@ when defined(nimCoroutines):
 when not defined(useNimRtl):
   proc setStackBottom(theStackBottom: pointer) =
     # Initializes main stack of the thread.
-    when defined(nimCoroutines):
+    when nimCoroutines:
       if gch.stack.next == nil:
         # Main stack was not initialized yet
         gch.stack.next = addr(gch.stack)
@@ -257,7 +257,7 @@ proc isOnStack(p: pointer): bool =
   result = a <=% x and x <=% b
 
 when defined(sparc): # For SPARC architecture.
-  when defined(nimCoroutines):
+  when nimCoroutines:
     {.error: "Nim coroutines are not supported on this platform."}
 
   template forEachStackSlot(gch, gcMark: untyped) {.dirty.} =

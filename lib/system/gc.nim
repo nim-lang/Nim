@@ -64,14 +64,14 @@ type
     maxPause: int64          # max measured GC pause in nanoseconds
 
   GcStack {.final, pure.} = object
-    when defined(nimCoroutines):
+    when nimCoroutines:
       prev: ptr GcStack
       next: ptr GcStack
       maxStackSize: int      # Used to track statistics because we can not use
                              # GcStat.maxStackSize when multiple stacks exist.
     bottom: pointer
 
-    when withRealTime or defined(nimCoroutines):
+    when withRealTime or nimCoroutines:
       pos: pointer           # Used with `withRealTime` only for code clarity, see GC_Step().
     when withRealTime:
       bottomSaved: pointer
@@ -79,7 +79,7 @@ type
   GcHeap {.final, pure.} = object # this contains the zero count and
                                   # non-zero count table
     stack: GcStack
-    when defined(nimCoroutines):
+    when nimCoroutines:
       activeStack: ptr GcStack    # current executing coroutine stack.
     cycleThreshold: int
     when useCellIds:
@@ -827,7 +827,7 @@ proc collectCTBody(gch: var GcHeap) =
     let t0 = getticks()
   sysAssert(allocInv(gch.region), "collectCT: begin")
 
-  when defined(nimCoroutines):
+  when nimCoroutines:
     for stack in gch.stack.items():
       gch.stat.maxStackSize = max(gch.stat.maxStackSize, stack.stackSize())
   else:
@@ -948,7 +948,7 @@ when not defined(useNimRtl):
              "[GC] zct capacity: " & $gch.zct.cap & "\n" &
              "[GC] max cycle table size: " & $gch.stat.cycleTableSize & "\n" &
              "[GC] max pause time [ms]: " & $(gch.stat.maxPause div 1000_000) & "\n"
-    when defined(nimCoroutines):
+    when nimCoroutines:
       result = result & "[GC] number of stacks: " & $gch.stack.len & "\n"
       for stack in items(gch.stack):
         result = result & "[GC]   stack " & stack.bottom.repr & "[GC]     max stack size " & cast[pointer](stack.maxStackSize).repr & "\n"
