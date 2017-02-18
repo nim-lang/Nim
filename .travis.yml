@@ -2,7 +2,12 @@ sudo: false
 language: c
 os:
   - linux
+  - osx
 dist: trusty
+
+matrix:
+  allow_failures:
+    - os: osx
 
 addons:
   apt:
@@ -10,6 +15,11 @@ addons:
     - libcurl4-openssl-dev
     - libsdl1.2-dev
     - libgc-dev
+  brew:
+    packages:
+    - boehmgc
+    - node
+
 before_script:
   - set -e
   - curl --out fasm-1.71.39.tgz https://nim-lang.org/download/fasm-1.71.39.tgz
