@@ -582,14 +582,18 @@ proc pragmaLocks(c: PContext, it: PNode): TLockLevel =
   if it.kind != nkExprColonExpr:
     invalidPragma(it)
   else:
-    if it[1].kind != nkNilLit:
+    case it[1].kind
+    of nkStrLit, nkRStrLit, nkTripleStrLit:
+      if it[1].strVal == "unknown":
+        result = UnknownLockLevel
+      else:
+        localError(it[1].info, "invalid string literal for locks pragma (only allowed string is \"unknown\")")
+    else:
       let x = expectIntLit(c, it)
       if x < 0 or x > MaxLockLevel:
         localError(it[1].info, "integer must be within 0.." & $MaxLockLevel)
       else:
         result = TLockLevel(x)
-    else:
-      result = UnknownLockLevel
 
 proc typeBorrow(sym: PSym, n: PNode) =
   if n.kind == nkExprColonExpr:
