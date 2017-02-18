@@ -64,21 +64,23 @@ type
     maxPause: int64          # max measured GC pause in nanoseconds
 
   GcStack {.final, pure.} = object
-    prev: ptr GcStack
-    next: ptr GcStack
+    when defined(nimCoroutines):
+      prev: ptr GcStack
+      next: ptr GcStack
+      maxStackSize: int      # Used to track statistics because we can not use
+                             # GcStat.maxStackSize when multiple stacks exist.
     bottom: pointer
+
+    when withRealTime or defined(nimCoroutines):
+      pos: pointer           # Used with `withRealTime` only for code clarity, see GC_Step().
     when withRealTime:
       bottomSaved: pointer
-    pos: pointer
-    maxStackSize: int
 
   GcHeap {.final, pure.} = object # this contains the zero count and
-                                   # non-zero count table
+                                  # non-zero count table
+    stack: GcStack
     when defined(nimCoroutines):
-      stack: GcStack
-      activeStack: ptr GcStack
-    else:
-      stackBottom: pointer
+      activeStack: ptr GcStack    # current executing coroutine stack.
     cycleThreshold: int
     when useCellIds:
       idGenerator: int
@@ -121,53 +123,6 @@ template gcAssert(cond: bool, msg: string) =
       #var x: ptr int
       #echo x[]
       quit 1
-
-when defined(nimCoroutines):
-  iterator items(first: var GcStack): ptr GcStack =
-    var item = addr(first)
-    while true:
-      yield item
-      item = item.next
-      if item == addr(first):
-        break
-
-  proc append(first: var GcStack, stack: ptr GcStack) =
-    ## Append stack to the ring of stacks.
-    first.prev.next = stack
-    stack.prev = first.prev
-    first.prev = stack
-    stack.next = addr(first)
-
-  proc append(first: var GcStack): ptr GcStack =
-    ## Allocate new GcStack object, append it to the ring of stacks and return it.
-    result = cast[ptr GcStack](alloc0(sizeof(GcStack)))
-    first.append(result)
-
-  proc remove(first: var GcStack, stack: ptr GcStack) =
-    ## Remove stack from ring of stacks.
-    gcAssert(addr(first) != stack, "Main application stack can not be removed")
-    if addr(first) == stack or stack == nil:
-      return
-    stack.prev.next = stack.next
-    stack.next.prev = stack.prev
-    dealloc(stack)
-
-  proc remove(stack: ptr GcStack) =
-    gch.stack.remove(stack)
-
-  proc find(first: var GcStack, bottom: pointer): ptr GcStack =
-    ## Find stack struct based on bottom pointer. If `bottom` is nil then main
-    ## thread stack is is returned.
-    if bottom == nil:
-      return addr(gch.stack)
-
-    for stack in first.items():
-      if stack.bottom == bottom:
-        return stack
-
-  proc len(stack: var GcStack): int =
-    for _ in stack.items():
-      result = result + 1
 
 proc addZCT(s: var CellSeq, c: PCell) {.noinline.} =
   if (c.refcount and ZctFlag) == 0:
@@ -931,40 +886,25 @@ when withRealTime:
       collectCTBody(gch)
     release(gch)
 
-  when defined(nimCoroutines):
-    proc GC_step*(us: int, strongAdvice = false, stackSize = -1) {.noinline.} =
-      if stackSize >= 0:
-        var stackTop {.volatile.}: pointer
-        gch.activeStack.pos = addr(stackTop)
-
-        for stack in gch.stack.items():
-          stack.bottomSaved = stack.bottom
-          when stackIncreases:
-            stack.bottom = cast[pointer](
-              cast[ByteAddress](stack.pos) - sizeof(pointer) * 6 - stackSize)
-          else:
-            stack.bottom = cast[pointer](
-              cast[ByteAddress](stack.pos) + sizeof(pointer) * 6 + stackSize)
-
-      GC_step(gch, us, strongAdvice)
-
-      if stackSize >= 0:
-        for stack in gch.stack.items():
-          stack.bottom = stack.bottomSaved
-  else:
-    proc GC_step*(us: int, strongAdvice = false, stackSize = -1) {.noinline.} =
+  proc GC_step*(us: int, strongAdvice = false, stackSize = -1) {.noinline.} =
+    if stackSize >= 0:
       var stackTop {.volatile.}: pointer
-      let prevStackBottom = gch.stackBottom
-      if stackSize >= 0:
-        stackTop = addr(stackTop)
+      gch.getActiveStack().pos = addr(stackTop)
+
+      for stack in gch.stack.items():
+        stack.bottomSaved = stack.bottom
         when stackIncreases:
-          gch.stackBottom = cast[pointer](
-            cast[ByteAddress](stackTop) - sizeof(pointer) * 6 - stackSize)
+          stack.bottom = cast[pointer](
+            cast[ByteAddress](stack.pos) - sizeof(pointer) * 6 - stackSize)
         else:
-          gch.stackBottom = cast[pointer](
-            cast[ByteAddress](stackTop) + sizeof(pointer) * 6 + stackSize)
-      GC_step(gch, us, strongAdvice)
-      gch.stackBottom = prevStackBottom
+          stack.bottom = cast[pointer](
+            cast[ByteAddress](stack.pos) + sizeof(pointer) * 6 + stackSize)
+
+    GC_step(gch, us, strongAdvice)
+
+    if stackSize >= 0:
+      for stack in gch.stack.items():
+        stack.bottom = stack.bottomSaved
 
 when not defined(useNimRtl):
   proc GC_disable() =
