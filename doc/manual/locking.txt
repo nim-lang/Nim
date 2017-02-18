@@ -198,3 +198,22 @@ This is essential so that procs can be called within a ``locks`` section:
 As usual ``locks`` is an inferred effect and there is a subtype
 relation: ``proc () {.locks: N.}`` is a subtype of ``proc () {.locks: M.}``
 iff (M <= N).
+
+The ``locks`` pragma can also take the special value ``"unknown"``. This
+is useful in the context of dynamic method dispatching. In the following
+example, the compiler can infer a lock level of 0 for the ``base`` case.
+However, one of the overloaded methods calls a procvar which is
+potentially locking. Thus, the lock level of calling ``g.testMethod``
+cannot be inferred statically, leading to compiler warnings. By using
+``{.locks: "unknown".}``, the base method can be marked explicitly as
+having unknown lock level as well:
+
+.. code-block:: nim
+  type SomeBase* = ref object of RootObj
+  type SomeDerived* = ref object of SomeBase
+    memberProc*: proc ()
+
+  method testMethod(g: SomeBase) {.base, locks: "unknown".} = discard
+  method testMethod(g: SomeDerived) =
+    if g.memberProc != nil:
+      g.memberProc()
