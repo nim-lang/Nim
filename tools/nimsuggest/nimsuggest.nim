@@ -192,7 +192,7 @@ template sendEpc(results: typed, tdef, hook: untyped) =
   let res = sexp(results)
   if gLogging:
     logStr($res)
-  returnEPC(client, uid, res)
+  returnEpc(client, uid, res)
 
 template checkSanity(client, sizeHex, size, messageBuffer: typed) =
   if client.recv(sizeHex, 6) != 6:
@@ -233,7 +233,7 @@ proc toEpc(client: Socket; uid: BiggestInt) {.gcsafe.} =
     else:
       list.add sexp(res)
   if gIdeCmd != ideChk:
-    returnEPC(client, uid, list)
+    returnEpc(client, uid, list)
 
 proc writelnToChannel(line: string) =
   results.send(Suggest(section: ideChk, doc: line))
@@ -303,8 +303,8 @@ proc replEpc(x: ThreadParams) {.thread.} =
     checkSanity(client, sizeHex, size, messageBuffer)
     let
       message = parseSexp($messageBuffer)
-      epcAPI = message[0].getSymbol
-    case epcAPI:
+      epcApi = message[0].getSymbol
+    case epcApi
     of "call":
       let
         uid = message[1].getNum
@@ -320,16 +320,18 @@ proc replEpc(x: ThreadParams) {.thread.} =
       of ideSug, ideCon, ideDef, ideUse, ideDus, ideOutline, ideHighlight:
         setVerbosity(0)
       else: discard
-      requests.send messageBuffer
+      if gLogging:
+        logStr "MSG ARG: " & args.getStr
+      requests.send($gIdeCmd & " " & args.getStr)
       toEpc(client, uid)
     of "methods":
-      returnEpc(client, message[1].getNum, listEPC())
+      returnEpc(client, message[1].getNum, listEpc())
     of "epc-error":
       # an unhandled exception forces down the whole process anyway, so we
       # use 'quit' here instead of 'raise'
       quit("recieved epc error: " & $messageBuffer)
     else:
-      let errMessage = case epcAPI
+      let errMessage = case epcApi
                        of "return", "return-error":
                          "no return expected"
                        else:
