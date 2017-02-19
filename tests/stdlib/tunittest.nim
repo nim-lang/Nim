@@ -1,5 +1,11 @@
+discard """
+  nimout: "compile start\ncompile end"
+"""
+
 import unittest, sequtils
 
+static:
+  echo "compile start"
 
 proc doThings(spuds: var int): int =
   spuds = 24
@@ -10,9 +16,9 @@ test "#964":
   check spuds == 24
 
 
-from strutils import toUpper
+from strutils import toUpperAscii
 test "#1384":
-  check(@["hello", "world"].map(toUpper) == @["HELLO", "WORLD"])
+  check(@["hello", "world"].map(toUpperAscii) == @["HELLO", "WORLD"])
 
 
 import options
@@ -57,7 +63,7 @@ suite "suite with only teardown":
 
 suite "suite with only setup":
   setup:
-    var testVar = "from setup"
+    var testVar {.used.} = "from setup"
 
   test "unittest with only setup 1":
     check testVar == "from setup"
@@ -89,3 +95,6 @@ suite "bug #4494":
       var tags = @[1, 2, 3, 4, 5]
       check:
         allIt(0..3, tags[it] != tags[it + 1])
+
+static:
+  echo "compile end"
