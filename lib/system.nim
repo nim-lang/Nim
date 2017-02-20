@@ -2471,12 +2471,15 @@ template coroutinesSupportedPlatform(): bool =
     true
 
 when defined(nimCoroutines):
+  # Explicit opt-in.
   when not coroutinesSupportedPlatform():
     {.error: "Coroutines are not supported on this architecture and/or garbage collector.".}
   const nimCoroutines* = true
 elif defined(noNimCoroutines):
+  # Explicit opt-out.
   const nimCoroutines* = false
 else:
+  # Autodetect coroutine support.
   const nimCoroutines* = false
 
 {.push checks: off.}
