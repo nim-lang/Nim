@@ -17,7 +17,7 @@ const
 
 template tpath(): untyped = getAppDir() / "tests"
 
-proc parseTest(filename: string): Test =
+proc parseTest(filename: string; epcMode=false): Test =
   const cursorMarker = "#[!]#"
   let nimsug = curDir & addFileExt("nimsuggest", ExeExt)
   result.dest = getTempDir() / extractFilename(filename)
@@ -31,7 +31,10 @@ proc parseTest(filename: string): Test =
   for x in lines(filename):
     let marker = x.find(cursorMarker)+1
     if marker > 0:
-      markers.add "\"" & filename & "\";\"" & result.dest & "\":" & $i & ":" & $marker
+      if epcMode:
+        markers.add "(\"" & filename & "\" " & $i & " " & $marker & " \"" & result.dest & "\")"
+      else:
+        markers.add "\"" & filename & "\";\"" & result.dest & "\":" & $i & ":" & $marker
       tmp.writeLine x.replace(cursorMarker, "")
     else:
       tmp.writeLine x
@@ -136,9 +139,11 @@ proc smartCompare(pattern, x: string): bool =
 proc sendEpcStr(socket: Socket; cmd: string) =
   let s = cmd.find(' ')
   doAssert s > 0
-  let cmd = "(call 567 " & cmd.substr(0, s) & escapeJson(cmd.substr(s+1)) & ")"
-  socket.send toHex(cmd.len, 6)
-  socket.send cmd
+  var args = cmd.substr(s+1)
+  if not args.startsWith("("): args = escapeJson(args)
+  let c = "(call 567 " & cmd.substr(0, s) & args & ")"
+  socket.send toHex(c.len, 6)
+  socket.send c
 
 proc recvEpc(socket: Socket): string =
   var L = newStringOfCap(6)
@@ -216,7 +221,7 @@ proc doReport(filename, answer, resp: string; report: var string) =
       report.add "\n  But got:   " & answer
 
 proc runEpcTest(filename: string): int =
-  let s = parseTest filename
+  let s = parseTest(filename, true)
   for cmd in s.startup:
     if not runCmd(cmd, s.dest):
       quit "invalid command: " & cmd

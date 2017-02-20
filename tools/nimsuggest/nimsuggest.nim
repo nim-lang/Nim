@@ -286,6 +286,23 @@ proc replTcp(x: ThreadParams) {.thread.} =
     stdoutSocket.send("\c\L")
     stdoutSocket.close()
 
+proc argsToStr(x: SexpNode): string =
+  if x.kind != SList: return x.getStr
+  doAssert x.kind == SList
+  doAssert x.len >= 4
+  let file = x[0].getStr
+  let line = x[1].getNum
+  let col = x[2].getNum
+  let dirty = x[3].getStr
+  result = x[0].getStr.escape
+  if dirty.len > 0:
+    result.add ';'
+    result.add dirty.escape
+  result.add ':'
+  result.add line
+  result.add ':'
+  result.add col
+
 proc replEpc(x: ThreadParams) {.thread.} =
   var server = newSocket()
   let port = connectToNextFreePort(server, "localhost")
@@ -320,9 +337,10 @@ proc replEpc(x: ThreadParams) {.thread.} =
       of ideSug, ideCon, ideDef, ideUse, ideDus, ideOutline, ideHighlight:
         setVerbosity(0)
       else: discard
+      let cmd = $gIdeCmd & " " & args.argsToStr
       if gLogging:
-        logStr "MSG ARG: " & args.getStr
-      requests.send($gIdeCmd & " " & args.getStr)
+        logStr "MSG CMD: " & cmd
+      requests.send(cmd)
       toEpc(client, uid)
     of "methods":
       returnEpc(client, message[1].getNum, listEpc())
