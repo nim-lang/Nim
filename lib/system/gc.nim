@@ -12,9 +12,6 @@
 # Refcounting + Mark&Sweep. Complex algorithms avoided.
 # Been there, done that, didn't work.
 
-when defined(nimCoroutines):
-  import arch
-
 {.push profiler:off.}
 
 const

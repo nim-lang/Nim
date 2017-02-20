@@ -277,11 +277,8 @@ else:
       # Used to traverse the stack and registers assuming
       # that 'setjmp' will save registers in the C stack.
       type PStackSlice = ptr array[0..7, pointer]
-      var registers {.noinit.}: Registers
-      getRegisters(registers)
-      for i in registers.low .. registers.high:
-        gcMark(gch, cast[PPointer](registers[i]))
-
+      var registers {.noinit.}: C_JmpBuf
+      discard c_setjmp(registers)
       for stack in items(gch.stack):
         stack.maxStackSize = max(stack.maxStackSize, stackSize(stack.starts))
         var max = cast[ByteAddress](stack.starts)
