@@ -403,8 +403,10 @@ proc mainThread(graph: ModuleGraph; cache: IdentCache) =
       it = it.next
 
   proc wrHook(line: string) {.closure.} =
-    if gMode == mepc: discard
-    else: writelnToChannel(line)
+    if gMode == mepc:
+      if gLogging: logStr(line)
+    else:
+      writelnToChannel(line)
 
   msgs.writelnHook = wrHook
   suggestionResultHook = sugResultHook
