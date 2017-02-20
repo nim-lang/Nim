@@ -1842,9 +1842,9 @@ proc `$` *[Enum: enum](x: Enum): string {.magic: "EnumToStr", noSideEffect.}
   ## used instead. (In other words: *Overwriting* is possible.)
 
 # undocumented:
-proc getRefcount*[T](x: ref T): int {.importc: "getRefcount", noSideEffect.}
-proc getRefcount*(x: string): int {.importc: "getRefcount", noSideEffect.}
-proc getRefcount*[T](x: seq[T]): int {.importc: "getRefcount", noSideEffect.}
+proc getRefcount*[T](x: ref T): int {.importc: "getRefcount", header:"nimbase.h", noSideEffect.}
+proc getRefcount*(x: string): int {.importc: "getRefcount", header:"nimbase.h", noSideEffect.}
+proc getRefcount*[T](x: seq[T]): int {.importc: "getRefcount", header:"nimbase.h", noSideEffect.}
   ## retrieves the reference count of an heap-allocated object. The
   ## value is implementation-dependent.
 
