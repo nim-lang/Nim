@@ -176,7 +176,7 @@ proc sexpToAnswer(s: SexpNode): string =
       let typ = a[4].getStr
       let line = a[5].getNum
       let col = a[6].getNum
-      let doc = a[7].getStr.escapeJson
+      let doc = a[7].getStr.escape
       result.add section
       result.add '\t'
       result.add symk
@@ -201,6 +201,20 @@ proc sexpToAnswer(s: SexpNode): string =
       result.add "100"
     result.add '\L'
 
+proc doReport(filename, answer, resp: string; report: var string) =
+  if resp != answer and not smartCompare(resp, answer):
+    report.add "\nTest failed: " & filename
+    var hasDiff = false
+    for i in 0..min(resp.len-1, answer.len-1):
+      if resp[i] != answer[i]:
+        report.add "\n  Expected:  " & resp.substr(i)
+        report.add "\n  But got:   " & answer.substr(i)
+        hasDiff = true
+        break
+    if not hasDiff:
+      report.add "\n  Expected:  " & resp
+      report.add "\n  But got:   " & answer
+
 proc runEpcTest(filename: string): int =
   let s = parseTest filename
   for cmd in s.startup:
@@ -224,19 +238,10 @@ proc runEpcTest(filename: string): int =
       for req, resp in items(s.script):
         if not runCmd(req, s.dest):
           socket.sendEpcStr(req)
-          var answer = sexpToAnswer(parseSexp(socket.recvEpc()))
-          if resp != answer and not smartCompare(resp, answer):
-            report.add "\nTest failed: " & filename
-            var hasDiff = false
-            for i in 0..min(resp.len-1, answer.len-1):
-              if resp[i] != answer[i]:
-                report.add "\n  Expected:  " & resp.substr(i)
-                report.add "\n  But got:   " & answer.substr(i)
-                hasDiff = true
-                break
-            if not hasDiff:
-              report.add "\n  Expected:  " & resp
-              report.add "\n  But got:   " & answer
+          let sx = parseSexp(socket.recvEpc())
+          if not req.startsWith("mod "):
+            let answer = sexpToAnswer(sx)
+            doReport(filename, answer, resp, report)
     else:
       raise newException(ValueError, "cannot read port number")
   finally:
@@ -272,18 +277,7 @@ proc runTest(filename: string): int =
           if a == DummyEof: break
           answer.add a
           answer.add '\L'
-        if resp != answer and not smartCompare(resp, answer):
-          report.add "\nTest failed: " & filename
-          var hasDiff = false
-          for i in 0..min(resp.len-1, answer.len-1):
-            if resp[i] != answer[i]:
-              report.add "\n  Expected:  " & resp.substr(i)
-              report.add "\n  But got:   " & answer.substr(i)
-              hasDiff = true
-              break
-          if not hasDiff:
-            report.add "\n  Expected:  " & resp
-            report.add "\n  But got:   " & answer
+        doReport(filename, answer, resp, report)
   finally:
     inp.writeLine("quit")
     inp.flush()
@@ -295,11 +289,16 @@ proc runTest(filename: string): int =
 
 proc main() =
   var failures = 0
-  for x in walkFiles(getAppDir() / "tests/t*.nim"):
-    echo "Test ", x
+  when false:
+    let x = getAppDir() / "tests/twithin_macro.nim"
     let xx = expandFilename x
-    failures += runTest(xx)
     failures += runEpcTest(xx)
+  else:
+    for x in walkFiles(getAppDir() / "tests/t*.nim"):
+      echo "Test ", x
+      let xx = expandFilename x
+      failures += runTest(xx)
+      failures += runEpcTest(xx)
   if failures > 0:
     quit 1
 

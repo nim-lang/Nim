@@ -402,14 +402,18 @@ proc mainThread(graph: ModuleGraph; cache: IdentCache) =
       logStr(PStrEntry(it).data)
       it = it.next
 
-  msgs.writelnHook = writelnToChannel
+  proc wrHook(line: string) {.closure.} =
+    if gMode == mepc: discard
+    else: writelnToChannel(line)
+
+  msgs.writelnHook = wrHook
   suggestionResultHook = sugResultHook
   graph.doStopCompile = proc (): bool = requests.peek() > 0
   var idle = 0
   while true:
     let (hasData, req) = requests.tryRecv()
     if hasData:
-      msgs.writelnHook = writelnToChannel
+      msgs.writelnHook = wrHook
       suggestionResultHook = sugResultHook
 
       execCmd(req, graph, cache)
