@@ -25,19 +25,19 @@ const
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
     wAsmNoStackFrame, wError, wDiscardable, wNoInit, wDestructor, wCodegenDecl,
     wGensym, wInject, wRaises, wTags, wLocks, wDelegator, wGcSafe,
-    wOverride, wConstructor, wExportNims}
+    wOverride, wConstructor, wExportNims, wUsed}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas+{wBase}-{wImportCpp}
   templatePragmas* = {wImmediate, wDeprecated, wError, wGensym, wInject, wDirty,
-    wDelegator, wExportNims}
+    wDelegator, wExportNims, wUsed}
   macroPragmas* = {FirstCallConv..LastCallConv, wImmediate, wImportc, wExportc,
     wNodecl, wMagic, wNosideeffect, wCompilerproc, wDeprecated, wExtern,
     wImportCpp, wImportObjC, wError, wDiscardable, wGensym, wInject, wDelegator,
-    wExportNims}
+    wExportNims, wUsed}
   iteratorPragmas* = {FirstCallConv..LastCallConv, wNosideeffect, wSideeffect,
     wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow, wExtern,
     wImportCpp, wImportObjC, wError, wDiscardable, wGensym, wInject, wRaises,
-    wTags, wLocks, wGcSafe, wExportNims}
+    wTags, wLocks, wGcSafe, wExportNims, wUsed}
   exprPragmas* = {wLine, wLocks, wNoRewrite, wGcSafe}
   stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangechecks,
     wBoundchecks, wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints,
@@ -55,16 +55,16 @@ const
     wPure, wHeader, wCompilerproc, wFinal, wSize, wExtern, wShallow,
     wImportCpp, wImportObjC, wError, wIncompleteStruct, wByCopy, wByRef,
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
-    wBorrow, wGcSafe, wExportNims, wPartial}
+    wBorrow, wGcSafe, wExportNims, wPartial, wUsed}
   fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern,
-    wImportCpp, wImportObjC, wError, wGuard, wBitsize}
+    wImportCpp, wImportObjC, wError, wGuard, wBitsize, wUsed}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl,
     wMagic, wHeader, wDeprecated, wCompilerproc, wDynlib, wExtern,
     wImportCpp, wImportObjC, wError, wNoInit, wCompileTime, wGlobal,
-    wGensym, wInject, wCodegenDecl, wGuard, wGoto, wExportNims}
+    wGensym, wInject, wCodegenDecl, wGuard, wGoto, wExportNims, wUsed}
   constPragmas* = {wImportc, wExportc, wHeader, wDeprecated, wMagic, wNodecl,
     wExtern, wImportCpp, wImportObjC, wError, wGensym, wInject, wExportNims,
-    wIntDefine, wStrDefine}
+    wIntDefine, wStrDefine, wUsed}
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideeffect,
                       wThread, wRaises, wLocks, wTags, wGcSafe}
@@ -582,7 +582,13 @@ proc pragmaLocks(c: PContext, it: PNode): TLockLevel =
   if it.kind != nkExprColonExpr:
     invalidPragma(it)
   else:
-    if it[1].kind != nkNilLit:
+    case it[1].kind
+    of nkStrLit, nkRStrLit, nkTripleStrLit:
+      if it[1].strVal == "unknown":
+        result = UnknownLockLevel
+      else:
+        localError(it[1].info, "invalid string literal for locks pragma (only allowed string is \"unknown\")")
+    else:
       let x = expectIntLit(c, it)
       if x < 0 or x > MaxLockLevel:
         localError(it[1].info, "integer must be within 0.." & $MaxLockLevel)
@@ -961,6 +967,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         sym.magic = mIntDefine
       of wStrDefine:
         sym.magic = mStrDefine
+      of wUsed:
+        noVal(it)
+        if sym == nil: invalidPragma(it)
+        else: sym.flags.incl sfUsed
       else: invalidPragma(it)
     else: invalidPragma(it)
 
