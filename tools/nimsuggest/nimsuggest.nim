@@ -17,7 +17,7 @@ import compiler / [options, commands, modules, sem,
   passes, passaux, msgs, nimconf,
   extccomp, condsyms, lists,
   sigmatch, ast, scriptconfig,
-  idents, modulegraphs, compilerlog]
+  idents, modulegraphs, compilerlog, vm]
 
 when defined(windows):
   import winlean
@@ -40,6 +40,7 @@ Options:
   --log                   enable verbose logging to nimsuggest.log file
   --v2                    use version 2 of the protocol; more features and
                           much faster
+  --refresh               perform automatic refreshes to keep the analysis precise
   --tester                implies --v2 and --stdin and outputs a line
                           '""" & DummyEof & """' for the tester
 
@@ -57,10 +58,11 @@ var
   gMode: Mode
   gEmitEof: bool # whether we write '!EOF!' dummy lines
   gLogging = false
+  gRefresh: bool
 
 const
   seps = {':', ';', ' ', '\t'}
-  Help = "usage: sug|con|def|use|dus|chk|mod|highlight|outline file.nim[;dirtyfile.nim]:line:col\n" &
+  Help = "usage: sug|con|def|use|dus|chk|mod|highlight|outline|known file.nim[;dirtyfile.nim]:line:col\n" &
          "type 'quit' to quit\n" &
          "type 'debug' to toggle debug mode on/off\n" &
          "type 'terse' to toggle terse mode on/off"
@@ -144,7 +146,7 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
   gTrackPos = newLineInfo(dirtyIdx, line, col)
   gErrorCounter = 0
   if suggestVersion < 2:
-    usageSym = nil
+    graph.usageSym = nil
   if not isKnownFile:
     graph.compileProject(cache)
   if suggestVersion == 2 and gIdeCmd in {ideUse, ideDus} and
@@ -157,7 +159,7 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
     if gIdeCmd != ideMod:
       graph.compileProject(cache, modIdx)
   if gIdeCmd in {ideUse, ideDus}:
-    let u = if suggestVersion >= 2: graph.symFromInfo(gTrackPos) else: usageSym
+    let u = if suggestVersion >= 2: graph.symFromInfo(gTrackPos) else: graph.usageSym
     if u != nil:
       listUsages(u)
     else:
@@ -212,6 +214,7 @@ proc toStdout() {.gcsafe.} =
     case res.section
     of ideNone: break
     of ideChk: echo res.doc
+    of ideKnown: echo res.quality == 1
     else: echo res
 
 proc toSocket(stdoutSocket: Socket) {.gcsafe.} =
@@ -220,6 +223,7 @@ proc toSocket(stdoutSocket: Socket) {.gcsafe.} =
     case res.section
     of ideNone: break
     of ideChk: stdoutSocket.send(res.doc & "\c\L")
+    of ideKnown: stdoutSocket.send($(res.quality == 1) & "\c\L")
     else: stdoutSocket.send($res & "\c\L")
 
 proc toEpc(client: Socket; uid: BiggestInt) {.gcsafe.} =
@@ -229,11 +233,12 @@ proc toEpc(client: Socket; uid: BiggestInt) {.gcsafe.} =
     case res.section
     of ideNone: break
     of ideChk:
-      returnEpc(client, uid, sexp(res.doc))
+      list.add sexp(res.doc)
+    of ideKnown:
+      list.add sexp(res.quality == 1)
     else:
       list.add sexp(res)
-  if gIdeCmd != ideChk:
-    returnEpc(client, uid, list)
+  returnEpc(client, uid, list)
 
 proc writelnToChannel(line: string) =
   results.send(Suggest(section: ideChk, doc: line))
@@ -391,6 +396,7 @@ proc execCmd(cmd: string; graph: ModuleGraph; cache: IdentCache) =
   of "quit": quit()
   of "debug": toggle optIdeDebug
   of "terse": toggle optIdeTerse
+  of "known": gIdeCmd = ideKnown
   else: err()
   var dirtyfile = ""
   var orig = ""
@@ -404,14 +410,20 @@ proc execCmd(cmd: string; graph: ModuleGraph; cache: IdentCache) =
   i += skipWhile(cmd, seps, i)
   i += parseInt(cmd, col, i)
 
-  execute(gIdeCmd, orig, dirtyfile, line, col-1, graph, cache)
+  if gIdeCmd == ideKnown:
+    results.send(Suggest(section: ideKnown, quality: ord(fileInfoKnown(orig))))
+  else:
+    execute(gIdeCmd, orig, dirtyfile, line, col-1, graph, cache)
   sentinel()
 
 proc recompileFullProject(graph: ModuleGraph; cache: IdentCache) =
   echo "recompiling full project"
   resetSystemArtifacts()
+  vm.globalCtx = nil
   graph.resetAllModules()
+  GC_fullcollect()
   compileProject(graph, cache)
+  echo "recompiled!"
 
 proc mainThread(graph: ModuleGraph; cache: IdentCache) =
   if gLogging:
@@ -441,7 +453,7 @@ proc mainThread(graph: ModuleGraph; cache: IdentCache) =
     else:
       os.sleep 250
       idle += 1
-    if idle == 20 and false:
+    if idle == 20 and gRefresh:
       # we use some nimsuggest activity to enable a lazy recompile:
       gIdeCmd = ideChk
       msgs.writelnHook = proc (s: string) = discard
@@ -609,16 +621,14 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
       of "epc":
         gMode = mepc
         gVerbosity = 0          # Port number gotta be first.
-      of "debug":
-        incl(gGlobalOptions, optIdeDebug)
-      of "v2":
-        suggestVersion = 2
+      of "debug": incl(gGlobalOptions, optIdeDebug)
+      of "v2": suggestVersion = 2
       of "tester":
         suggestVersion = 2
         gMode = mstdin
         gEmitEof = true
-      of "log":
-        gLogging = true
+      of "log": gLogging = true
+      of "refresh": gRefresh = true
       else: processSwitch(pass, p)
     of cmdArgument:
       options.gProjectName = unixToNativePath(p.key)

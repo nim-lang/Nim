@@ -100,7 +100,7 @@ type
 
   IdeCmd* = enum
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideMod,
-    ideHighlight, ideOutline
+    ideHighlight, ideOutline, ideKnown
 
   ConfigRef* = ref object ## eventually all global configuration should be moved here
     cppDefines*: HashSet[string]
@@ -442,6 +442,7 @@ proc parseIdeCmd*(s: string): IdeCmd =
   of "mod": ideMod
   of "highlight": ideHighlight
   of "outline": ideOutline
+  of "known": ideKnown
   else: ideNone
 
 proc `$`*(c: IdeCmd): string =
@@ -456,3 +457,4 @@ proc `$`*(c: IdeCmd): string =
   of ideNone: "none"
   of ideHighlight: "highlight"
   of ideOutline: "outline"
+  of ideKnown: "known"
