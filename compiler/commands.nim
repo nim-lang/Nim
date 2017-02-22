@@ -26,8 +26,8 @@ bootSwitch(usedGoGC, defined(gogc), "--gc:go")
 bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 
 import
-  os, msgs, options, nversion, condsyms, strutils, extccomp, platform, lists,
-  wordrecg, parseutils, nimblecmd, idents, parseopt
+  os, msgs, options, nversion, condsyms, strutils, extccomp, platform,
+  wordrecg, parseutils, nimblecmd, idents, parseopt, sequtils
 
 # but some have deps to imported modules. Yay.
 bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
@@ -335,12 +335,14 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "excludepath":
     expectArg(switch, arg, pass, info)
     let path = processPath(arg, info)
-    lists.excludePath(options.searchPaths, path)
-    lists.excludePath(options.lazyPaths, path)
+    
+    options.searchPaths.keepItIf( cmpPaths(it, path) != 0 )
+    options.lazyPaths.keepItIf( cmpPaths(it, path) != 0 )
+    
     if (len(path) > 0) and (path[len(path) - 1] == DirSep):
       let strippedPath = path[0 .. (len(path) - 2)]
-      lists.excludePath(options.searchPaths, strippedPath)
-      lists.excludePath(options.lazyPaths, strippedPath)
+      options.searchPaths.keepItIf( cmpPaths(it, strippedPath) != 0 )
+      options.lazyPaths.keepItIf( cmpPaths(it, strippedPath) != 0 )
   of "nimcache":
     expectArg(switch, arg, pass, info)
     options.nimcacheDir = processPath(arg, info, true)

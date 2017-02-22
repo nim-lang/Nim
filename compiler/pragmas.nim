@@ -11,7 +11,7 @@
 
 import
   os, platform, condsyms, ast, astalgo, idents, semdata, msgs, renderer,
-  wordrecg, ropes, options, strutils, lists, extccomp, math, magicsys, trees,
+  wordrecg, ropes, options, strutils, extccomp, math, magicsys, trees,
   rodread, types, lookups
 
 const
@@ -218,20 +218,19 @@ proc processCallConv(c: PContext, n: PNode) =
     var sw = whichKeyword(n.sons[1].ident)
     case sw
     of FirstCallConv..LastCallConv:
-      POptionEntry(c.optionStack.tail).defaultCC = wordToCallConv(sw)
+      c.optionStack[^1].defaultCC = wordToCallConv(sw)
     else: localError(n.info, errCallConvExpected)
   else:
     localError(n.info, errCallConvExpected)
 
 proc getLib(c: PContext, kind: TLibKind, path: PNode): PLib =
-  var it = PLib(c.libs.head)
-  while it != nil:
-    if it.kind == kind:
-      if trees.exprStructuralEquivalent(it.path, path): return it
-    it = PLib(it.next)
+  for it in c.libs:
+    if it.kind == kind and trees.exprStructuralEquivalent(it.path, path):
+      return it
+      
   result = newLib(kind)
   result.path = path
-  append(c.libs, result)
+  c.libs.add result
   if path.kind in {nkStrLit..nkTripleStrLit}:
     result.isOverriden = options.isDynlibOverride(path.strVal)
 
@@ -254,7 +253,7 @@ proc processDynLib(c: PContext, n: PNode, sym: PSym) =
   if (sym == nil) or (sym.kind == skModule):
     let lib = getLib(c, libDynamic, expectDynlibNode(c, n))
     if not lib.isOverriden:
-      POptionEntry(c.optionStack.tail).dynlib = lib
+      c.optionStack[^1].dynlib = lib
   else:
     if n.kind == nkExprColonExpr:
       var lib = getLib(c, libDynamic, expectDynlibNode(c, n))
@@ -350,12 +349,12 @@ proc processPush(c: PContext, n: PNode, start: int) =
   if n.sons[start-1].kind == nkExprColonExpr:
     localError(n.info, errGenerated, "':' after 'push' not supported")
   var x = newOptionEntry()
-  var y = POptionEntry(c.optionStack.tail)
+  var y = c.optionStack[^1]
   x.options = gOptions
   x.defaultCC = y.defaultCC
   x.dynlib = y.dynlib
   x.notes = gNotes
-  append(c.optionStack, x)
+  c.optionStack.add(x)
   for i in countup(start, sonsLen(n) - 1):
     if processOption(c, n.sons[i]):
       # simply store it somewhere:
@@ -365,12 +364,12 @@ proc processPush(c: PContext, n: PNode, start: int) =
     #localError(n.info, errOptionExpected)
 
 proc processPop(c: PContext, n: PNode) =
-  if c.optionStack.counter <= 1:
+  if c.optionStack.len <= 1:
     localError(n.info, errAtPopWithoutPush)
   else:
-    gOptions = POptionEntry(c.optionStack.tail).options
-    gNotes = POptionEntry(c.optionStack.tail).notes
-    remove(c.optionStack, c.optionStack.tail)
+    gOptions = c.optionStack[^1].options
+    gNotes = c.optionStack[^1].notes
+    c.optionStack.setLen(c.optionStack.len - 1)
 
 proc processDefine(c: PContext, n: PNode) =
   if (n.kind == nkExprColonExpr) and (n.sons[1].kind == nkIdent):
@@ -977,8 +976,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
 proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
                       validPragmas: TSpecialWords) =
   if sym != nil and sym.kind != skModule:
-    var it = POptionEntry(c.optionStack.head)
-    while it != nil:
+    for it in c.optionStack:
       let o = it.otherPragmas
       if not o.isNil:
         pushInfoContext(n.info)
@@ -986,11 +984,10 @@ proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
           if singlePragma(c, sym, o, i, validPragmas):
             internalError(n.info, "implicitPragmas")
         popInfoContext()
-      it = it.next.POptionEntry
 
     if lfExportLib in sym.loc.flags and sfExportc notin sym.flags:
       localError(n.info, errDynlibRequiresExportc)
-    var lib = POptionEntry(c.optionStack.tail).dynlib
+    var lib = c.optionStack[^1].dynlib
     if {lfDynamicLib, lfHeader} * sym.loc.flags == {} and
         sfImportc in sym.flags and lib != nil:
       incl(sym.loc.flags, lfDynamicLib)
