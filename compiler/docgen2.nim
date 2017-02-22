@@ -33,11 +33,11 @@ template closeImpl(body: untyped) {.dirty.} =
     except IOError:
       discard
 
-proc close(p: PPassContext, n: PNode): PNode =
+proc close(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
   closeImpl:
     writeOutput(g.doc, g.module.filename, HtmlExt, useWarning)
 
-proc closeJson(p: PPassContext, n: PNode): PNode =
+proc closeJson(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
   closeImpl:
     writeOutputJson(g.doc, g.module.filename, ".json", useWarning)
 

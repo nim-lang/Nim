@@ -51,7 +51,7 @@ proc doDestructorStuff(c: PContext, s: PSym, n: PNode) =
       let destructableT = instantiateDestructor(c, t.sons[i])
       if destructableT != nil:
         n.sons[bodyPos].addSon(newNode(nkCall, t.sym.info, @[
-            useSym(destructableT.destructor),
+            useSym(destructableT.destructor, c.graph.usageSym),
             n.sons[paramsPos][1][0]]))
 
 proc destroyFieldOrFields(c: PContext, field: PNode, holder: PNode): PNode
@@ -60,8 +60,8 @@ proc destroySym(c: PContext, field: PSym, holder: PNode): PNode =
   let destructableT = instantiateDestructor(c, field.typ)
   if destructableT != nil:
     result = newNode(nkCall, field.info, @[
-      useSym(destructableT.destructor),
-      newNode(nkDotExpr, field.info, @[holder, useSym(field)])])
+      useSym(destructableT.destructor, c.graph.usageSym),
+      newNode(nkDotExpr, field.info, @[holder, useSym(field, c.graph.usageSym)])])
 
 proc destroyCase(c: PContext, n: PNode, holder: PNode): PNode =
   var nonTrivialFields = 0
@@ -181,7 +181,8 @@ proc createDestructorCall(c: PContext, s: PSym): PNode =
   let destructableT = instantiateDestructor(c, varTyp)
   if destructableT != nil:
     let call = semStmt(c, newNode(nkCall, s.info, @[
-      useSym(destructableT.destructor), useSym(s)]))
+      useSym(destructableT.destructor, c.graph.usageSym),
+      useSym(s, c.graph.usageSym)]))
     result = newNode(nkDefer, s.info, @[call])
 
 proc insertDestructors(c: PContext,
@@ -233,8 +234,8 @@ proc insertDestructors(c: PContext,
       tryStmt.addSon(
         newNode(nkFinally, info, @[
           semStmt(c, newNode(nkCall, info, @[
-            useSym(destructableT.destructor),
-            useSym(varId.sym)]))]))
+            useSym(destructableT.destructor, c.graph.usageSym),
+            useSym(varId.sym, c.graph.usageSym)]))]))
 
       result.outer = newNodeI(nkStmtList, info)
       varSection.sons.setLen(j+1)

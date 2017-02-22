@@ -107,7 +107,7 @@ proc semTypeTraits(c: PContext, n: PNode): PNode =
   if t.sonsLen > 0:
     # This is either a type known to sem or a typedesc
     # param to a regular proc (again, known at instantiation)
-    result = evalTypeTrait(n[0], t, getCurrOwner())
+    result = evalTypeTrait(n[0], t, getCurrOwner(c))
   else:
     # a typedesc variable, pass unmodified to evals
     result = n

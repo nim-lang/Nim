@@ -24,7 +24,7 @@ type
   TPassOpen* = proc (graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext {.nimcall.}
   TPassOpenCached* =
     proc (graph: ModuleGraph; module: PSym, rd: PRodReader): PPassContext {.nimcall.}
-  TPassClose* = proc (p: PPassContext, n: PNode): PNode {.nimcall.}
+  TPassClose* = proc (graph: ModuleGraph; p: PPassContext, n: PNode): PNode {.nimcall.}
   TPassProcess* = proc (p: PPassContext, topLevelStmt: PNode): PNode {.nimcall.}
 
   TPass* = tuple[open: TPassOpen, openCached: TPassOpenCached,
@@ -94,7 +94,7 @@ proc carryPass*(g: ModuleGraph; p: TPass, module: PSym; cache: IdentCache;
                 m: TPassData): TPassData =
   var c = p.open(g, module, cache)
   result.input = p.process(c, m.input)
-  result.closeOutput = if p.close != nil: p.close(c, m.closeOutput)
+  result.closeOutput = if p.close != nil: p.close(g, c, m.closeOutput)
                        else: m.closeOutput
 
 proc carryPasses*(g: ModuleGraph; nodes: PNode, module: PSym;
@@ -121,10 +121,10 @@ proc openPassesCached(g: ModuleGraph; a: var TPassContextArray, module: PSym,
     else:
       a[i] = nil
 
-proc closePasses(a: var TPassContextArray) =
+proc closePasses(graph: ModuleGraph; a: var TPassContextArray) =
   var m: PNode = nil
   for i in countup(0, gPassesLen - 1):
-    if not isNil(gPasses[i].close): m = gPasses[i].close(a[i], m)
+    if not isNil(gPasses[i].close): m = gPasses[i].close(graph, a[i], m)
     a[i] = nil                # free the memory here
 
 proc processTopLevelStmt(n: PNode, a: var TPassContextArray): bool =
@@ -142,11 +142,11 @@ proc processTopLevelStmtCached(n: PNode, a: var TPassContextArray) =
   for i in countup(0, gPassesLen - 1):
     if not isNil(gPasses[i].openCached): m = gPasses[i].process(a[i], m)
 
-proc closePassesCached(a: var TPassContextArray) =
+proc closePassesCached(graph: ModuleGraph; a: var TPassContextArray) =
   var m: PNode = nil
   for i in countup(0, gPassesLen - 1):
     if not isNil(gPasses[i].openCached) and not isNil(gPasses[i].close):
-      m = gPasses[i].close(a[i], m)
+      m = gPasses[i].close(graph, a[i], m)
     a[i] = nil                # free the memory here
 
 proc resolveMod(module, relativeTo: string): int32 =
@@ -215,7 +215,7 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream,
         elif not processTopLevelStmt(n, a): break
       closeParsers(p)
       if s.kind != llsStdIn: break
-    closePasses(a)
+    closePasses(graph, a)
     # id synchronization point for more consistent code generation:
     idSynchronizationPoint(1000)
   else:
@@ -224,5 +224,5 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream,
     for i in countup(0, sonsLen(n) - 1):
       if graph.stopCompile(): break
       processTopLevelStmtCached(n.sons[i], a)
-    closePassesCached(a)
+    closePassesCached(graph, a)
   result = true

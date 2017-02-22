@@ -41,6 +41,9 @@ type
     backend*: RootRef # minor hack so that a backend can extend this easily
     config*: ConfigRef
     doStopCompile*: proc(): bool {.closure.}
+    usageSym*: PSym # for nimsuggest
+    owners*: seq[PSym]
+    methods*: seq[tuple[methods: TSymSeq, dispatcher: PSym]]
 
 {.this: g.}
 
@@ -58,6 +61,8 @@ proc newModuleGraph*(config: ConfigRef = nil): ModuleGraph =
     result.config = newConfigRef()
   else:
     result.config = config
+  result.owners = @[]
+  result.methods = @[]
 
 proc resetAllModules*(g: ModuleGraph) =
   initStrTable(packageSyms)
@@ -65,6 +70,9 @@ proc resetAllModules*(g: ModuleGraph) =
   modules = @[]
   importStack = @[]
   inclToMod = initTable[int32, int32]()
+  usageSym = nil
+  owners = @[]
+  methods = @[]
 
 proc getModule*(g: ModuleGraph; fileIdx: int32): PSym =
   if fileIdx >= 0 and fileIdx < modules.len:

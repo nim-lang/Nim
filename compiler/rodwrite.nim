@@ -641,7 +641,7 @@ proc myOpen(g: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
   rawAddInterfaceSym(w, module)
   result = w
 
-proc myClose(c: PPassContext, n: PNode): PNode =
+proc myClose(graph: ModuleGraph; c: PPassContext, n: PNode): PNode =
   result = process(c, n)
   var w = PRodWriter(c)
   writeRod(w)
