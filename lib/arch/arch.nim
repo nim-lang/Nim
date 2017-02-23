@@ -46,7 +46,7 @@ elif defined(i386) or defined(nimdoc):
 else:
   {.error: "Unsupported architecture".}
 
-{.compile: "./" & ABI & "_" & hostCPU & ".asm"}
+{.compile: "./" & ABI & "_" & hostCPU & ".s"}
 
 type
   JmpBuf* = array[JmpBufReg.TOTAL, pointer]
