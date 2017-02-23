@@ -11,7 +11,7 @@ to stdout
 """
 import osproc, os, streams
 
-const filename = when defined(Windows): "tb.exe" else: "tb"
+const filename = when defined(Windows): "ta_out.exe" else: "ta_out"
 
 doAssert fileExists(getCurrentDir() / "tests" / "osproc" / filename)
 
