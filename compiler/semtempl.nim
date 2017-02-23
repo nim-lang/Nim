@@ -384,11 +384,13 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     checkSonsLen(n, 2)
     openScope(c)
     if n.sons[0].kind != nkEmpty:
-      # labels are always 'gensym'ed:
-      let s = newGenSym(skLabel, n.sons[0], c)
-      addPrelimDecl(c.c, s)
-      styleCheckDef(s)
-      n.sons[0] = newSymNode(s, n.sons[0].info)
+      addLocalDecl(c, n.sons[0], skLabel)
+      when false:
+        # labels are always 'gensym'ed:
+        let s = newGenSym(skLabel, n.sons[0], c)
+        addPrelimDecl(c.c, s)
+        styleCheckDef(s)
+        n.sons[0] = newSymNode(s, n.sons[0].info)
     n.sons[1] = semTemplBody(c, n.sons[1])
     closeScope(c)
   of nkTryStmt:
