@@ -12,7 +12,7 @@
 
 import
   ast, modules, idents, passes, passaux, condsyms,
-  options, nimconf, lists, sem, semdata, llstream, vm, vmdef, commands, msgs,
+  options, nimconf, sem, semdata, llstream, vm, vmdef, commands, msgs,
   os, times, osproc, wordrecg, strtabs, modulegraphs
 
 # we support 'cmpIgnoreStyle' natively for efficiency:
@@ -153,7 +153,7 @@ proc runNimScript*(cache: IdentCache; scriptName: string;
   registerPass(semPass)
   registerPass(evalPass)
 
-  appendStr(searchPaths, options.libpath)
+  searchPaths.add(options.libpath)
 
   var m = graph.makeModule(scriptName)
   incl(m.flags, sfMainModule)

@@ -10,7 +10,7 @@
 # This module implements the semantic checking pass.
 
 import
-  ast, strutils, hashes, lists, options, lexer, astalgo, trees, treetab,
+  ast, strutils, hashes, options, lexer, astalgo, trees, treetab,
   wordrecg, ropes, msgs, os, condsyms, idents, renderer, types, platform, math,
   magicsys, parser, nversion, nimsets, semfold, importer,
   procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
