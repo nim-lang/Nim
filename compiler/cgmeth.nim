@@ -35,15 +35,18 @@ proc genConv(n: PNode, d: PType, downcast: bool): PNode =
   else:
     result = n
 
+proc getDispatcher*(s: PSym): PSym =
+  ## can return nil if is has no dispatcher.
+  let dispn = lastSon(s.ast)
+  if dispn.kind == nkSym:
+    let disp = dispn.sym
+    if sfDispatcher in disp.flags: result = disp
+
 proc methodCall*(n: PNode): PNode =
   result = n
   # replace ordinary method by dispatcher method:
-  let dispn = lastSon(result.sons[0].sym.ast)
-  if dispn.kind == nkSym:
-    let disp = dispn.sym
-    if sfDispatcher notin disp.flags:
-      localError(n.info, "'" & $result & "' lacks a dispatcher")
-      return
+  let disp = getDispatcher(result.sons[0].sym)
+  if disp != nil:
     result.sons[0].sym = disp
     # change the arguments to up/downcasts to fit the dispatcher's parameters:
     for i in countup(1, sonsLen(result)-1):

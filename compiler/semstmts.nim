@@ -1443,6 +1443,19 @@ proc semProc(c: PContext, n: PNode): PNode =
 proc semMethod(c: PContext, n: PNode): PNode =
   if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "method")
   result = semProcAux(c, n, skMethod, methodPragmas)
+  # macros can transform converters to nothing:
+  if namePos >= result.safeLen: return result
+  var s = result.sons[namePos].sym
+  # we need to fix the 'auto' return type for the dispatcher here (see tautonotgeneric
+  # test case):
+  let disp = getDispatcher(s)
+  # auto return type?
+  if disp != nil and disp.typ.sons[0] != nil and disp.typ.sons[0].kind == tyExpr:
+    let ret = s.typ.sons[0]
+    disp.typ.sons[0] = ret
+    if disp.ast[resultPos].kind == nkSym:
+      if isEmptyType(ret): disp.ast.sons[resultPos] = emptyNode
+      else: disp.ast[resultPos].sym.typ = ret
 
 proc semConverterDef(c: PContext, n: PNode): PNode =
   if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "converter")
