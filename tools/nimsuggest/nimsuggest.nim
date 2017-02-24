@@ -423,7 +423,7 @@ proc recompileFullProject(graph: ModuleGraph; cache: IdentCache) =
   graph.resetAllModules()
   GC_fullcollect()
   compileProject(graph, cache)
-  echo "recompiled!"
+  echo GC_getStatistics()
 
 proc mainThread(graph: ModuleGraph; cache: IdentCache) =
   if gLogging:
