@@ -248,6 +248,7 @@ proc addParam(procType: PType; param: PSym) =
 proc liftBody(c: PContext; typ: PType; info: TLineInfo): PSym =
   var a: TLiftCtx
   a.info = info
+  a.c = c
   let body = newNodeI(nkStmtList, info)
   result = newSym(skProc, getIdent":lifted=", typ.owner, info)
   a.fn = result
