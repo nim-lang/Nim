@@ -2107,7 +2107,7 @@ proc semBlock(c: PContext, n: PNode): PNode =
     var labl = newSymG(skLabel, n.sons[0], c)
     if sfGenSym notin labl.flags:
       addDecl(c, labl)
-      n.sons[0] = newSymNode(labl, n.sons[0].info)
+    n.sons[0] = newSymNode(labl, n.sons[0].info)
     suggestSym(n.sons[0].info, labl)
     styleCheckDef(labl)
   n.sons[1] = semExpr(c, n.sons[1])

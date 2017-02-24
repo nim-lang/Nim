@@ -540,7 +540,7 @@ proc genBreakStmt(p: BProc, t: PNode) =
     # named break?
     assert(t.sons[0].kind == nkSym)
     var sym = t.sons[0].sym
-    assert(sym.loc.k == locOther)
+    doAssert(sym.loc.k == locOther)
     idx = sym.position-1
   else:
     # an unnamed 'break' can only break a loop after 'transf' pass:
