@@ -24,7 +24,7 @@
 ##       echo "run before each test"
 ##
 ##     teardown:
-##       echo "run after each test":
+##       echo "run after each test"
 ##
 ##     test "essential truths":
 ##       # give up and stop if this fails
