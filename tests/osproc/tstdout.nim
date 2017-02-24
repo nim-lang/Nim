@@ -16,7 +16,7 @@ const filename = when defined(Windows): "ta_out.exe" else: "ta_out"
 doAssert fileExists(getCurrentDir() / "tests" / "osproc" / filename)
 
 var p = startProcess(filename, getCurrentDir() / "tests" / "osproc",
-                     options={poStdErrToStdOut, poUsePath})
+                     options={poStdErrToStdOut})
 
 let outputStream = p.outputStream
 var x = newStringOfCap(120)
