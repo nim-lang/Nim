@@ -3,8 +3,7 @@ include system/timers
 
 var
   stackCheckValue = 1100220033
-  numbers = newSeq[int](10)
-  i = 0
+  numbers = newSeqOfCap[int](10)
 
 iterator theIterator(id: int, sleep: float): int =
   for i in 0..<5:
@@ -13,8 +12,7 @@ iterator theIterator(id: int, sleep: float): int =
 
 proc theCoroutine(id: int, sleep: float32) =
   for n in theIterator(id, sleep):
-    numbers[i] = n
-    inc(i)
+    numbers.add(n)
 
 var start = getTicks()
 start(proc() = theCoroutine(1, 0.01))

@@ -1,21 +1,20 @@
 import coro
 var
   stackCheckValue = 1100220033
-  numbers = newSeq[int](10)
-  i = 0
+  numbers = newSeqOfCap[int](10)
 
 proc testExceptions(id: int, sleep: float) =
   try:
-    numbers[i] = id; inc(i)
+    numbers.add(id)
     suspend(sleep)
-    numbers[i] = id; inc(i)
+    numbers.add(id)
     raise (ref ValueError)()
   except:
-    numbers[i] = id; inc(i)
+    numbers.add(id)
     suspend(sleep)
-    numbers[i] = id; inc(i)
+    numbers.add(id)
   suspend(sleep)
-  numbers[i] = id; inc(i)
+  numbers.add(id)
 
 start(proc() = testExceptions(1, 0.01))
 start(proc() = testExceptions(2, 0.011))
