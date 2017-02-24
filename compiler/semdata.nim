@@ -10,15 +10,14 @@
 ## This module contains the data structures for the semantic checking phase.
 
 import
-  strutils, lists, intsets, options, lexer, ast, astalgo, trees, treetab,
+  strutils, intsets, options, lexer, ast, astalgo, trees, treetab,
   wordrecg,
   ropes, msgs, platform, os, condsyms, idents, renderer, types, extccomp, math,
   magicsys, nversion, nimsets, parser, times, passes, rodread, vmdef,
   modulegraphs
 
 type
-  TOptionEntry* = object of lists.TListEntry # entries to put on a
-                                             # stack for pragma parsing
+  TOptionEntry* = object      # entries to put on a stack for pragma parsing
     options*: TOptions
     defaultCC*: TCallingConvention
     dynlib*: PLib
@@ -79,10 +78,10 @@ type
     inGenericInst*: int        # > 0 if we are instantiating a generic
     converters*: TSymSeq       # sequence of converters
     patterns*: TSymSeq         # sequence of pattern matchers
-    optionStack*: TLinkedList
+    optionStack*: seq[POptionEntry]
     symMapping*: TIdTable      # every gensym'ed symbol needs to be mapped
                                # to some new symbol in a generic instantiation
-    libs*: TLinkedList         # all libs used by this module
+    libs*: seq[PLib]           # all libs used by this module
     semConstExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.} # for the pragmas
     semExpr*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}
     semTryExpr*: proc (c: PContext, n: PNode,flags: TExprFlags = {}): PNode {.nimcall.}
@@ -130,7 +129,6 @@ proc getCurrOwner*(c: PContext): PSym =
   # owner field of syms)
   # the documentation comment always gets
   # assigned to the current owner
-  # BUGFIX: global array is needed!
   result = c.graph.owners[^1]
 
 proc pushOwner*(c: PContext; owner: PSym) =
@@ -142,7 +140,7 @@ proc popOwner*(c: PContext) =
   else: internalError("popOwner")
 
 proc lastOptionEntry*(c: PContext): POptionEntry =
-  result = POptionEntry(c.optionStack.tail)
+  result = c.optionStack[^1]
 
 proc popProcCon*(c: PContext) {.inline.} = c.p = c.p.next
 
@@ -185,9 +183,9 @@ proc newOptionEntry*(): POptionEntry =
 proc newContext*(graph: ModuleGraph; module: PSym; cache: IdentCache): PContext =
   new(result)
   result.ambiguousSymbols = initIntSet()
-  initLinkedList(result.optionStack)
-  initLinkedList(result.libs)
-  append(result.optionStack, newOptionEntry())
+  result.optionStack = @[]
+  result.libs = @[]
+  result.optionStack.add(newOptionEntry())
   result.module = module
   result.friendModules = @[module]
   result.converters = @[]

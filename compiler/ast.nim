@@ -10,7 +10,7 @@
 # abstract syntax tree + symbol table
 
 import
-  msgs, hashes, nversion, options, strutils, securehash, ropes, idents, lists,
+  msgs, hashes, nversion, options, strutils, securehash, ropes, idents,
   intsets, idgen
 
 type
@@ -736,13 +736,15 @@ type
 
   TLibKind* = enum
     libHeader, libDynamic
-  TLib* = object of lists.TListEntry # also misused for headers!
+    
+  TLib* = object              # also misused for headers!
     kind*: TLibKind
     generated*: bool          # needed for the backends:
     isOverriden*: bool
     name*: Rope
     path*: PNode              # can be a string literal!
 
+    
   CompilesId* = int ## id that is used for the caching logic within
                     ## ``system.compiles``. See the seminst module.
   TInstantiation* = object

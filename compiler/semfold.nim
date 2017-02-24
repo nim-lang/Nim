@@ -11,7 +11,7 @@
 # and evaluation phase
 
 import
-  strutils, lists, options, ast, astalgo, trees, treetab, nimsets, times,
+  strutils, options, ast, astalgo, trees, treetab, nimsets, times,
   nversion, platform, math, msgs, os, condsyms, idents, renderer, types,
   commands, magicsys, saturate
 

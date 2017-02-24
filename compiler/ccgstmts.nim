@@ -540,7 +540,7 @@ proc genBreakStmt(p: BProc, t: PNode) =
     # named break?
     assert(t.sons[0].kind == nkSym)
     var sym = t.sons[0].sym
-    assert(sym.loc.k == locOther)
+    doAssert(sym.loc.k == locOther)
     idx = sym.position-1
   else:
     # an unnamed 'break' can only break a loop after 'transf' pass:
@@ -884,7 +884,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
   #
   if not isEmptyType(t.typ) and d.k == locNone:
     getTemp(p, t.typ, d)
-  discard lists.includeStr(p.module.headerFiles, "<setjmp.h>")
+  p.module.includeHeader("<setjmp.h>")
   genLineDir(p, t)
   var safePoint = getTempName(p.module)
   if getCompilerProc("Exception") != nil:

@@ -30,6 +30,7 @@ proc semBreakOrContinue(c: PContext, n: PNode): PNode =
       of nkIdent: s = lookUp(c, n.sons[0])
       of nkSym: s = n.sons[0].sym
       else: illFormedAst(n)
+      s = getGenSym(c, s)
       if s.kind == skLabel and s.owner.id == c.p.owner.id:
         var x = newSymNode(s)
         x.info = n.info

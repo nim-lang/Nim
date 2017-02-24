@@ -15,7 +15,7 @@ import strutils, os, parseopt, parseutils, sequtils, net, rdstdin, sexp
 # So we import that one instead.
 import compiler / [options, commands, modules, sem,
   passes, passaux, msgs, nimconf,
-  extccomp, condsyms, lists,
+  extccomp, condsyms,
   sigmatch, ast, scriptconfig,
   idents, modulegraphs, compilerlog, vm]
 
@@ -427,10 +427,8 @@ proc recompileFullProject(graph: ModuleGraph; cache: IdentCache) =
 
 proc mainThread(graph: ModuleGraph; cache: IdentCache) =
   if gLogging:
-    var it = searchPaths.head
-    while it != nil:
-      logStr(PStrEntry(it).data)
-      it = it.next
+    for it in searchPaths:
+      logStr(it)
 
   proc wrHook(line: string) {.closure.} =
     if gMode == mepc:
@@ -503,10 +501,8 @@ proc serveEpc(server: Socket; graph: ModuleGraph; cache: IdentCache) {.deprecate
   # Wait for connection
   accept(server, client)
   if gLogging:
-    var it = searchPaths.head
-    while it != nil:
-      logStr(PStrEntry(it).data)
-      it = it.next
+    for it in searchPaths:
+      logStr(it)
     msgs.writelnHook = proc (line: string) = logStr(line)
 
   while true:
@@ -559,7 +555,7 @@ proc mainCommand(graph: ModuleGraph; cache: IdentCache) =
   incl gGlobalOptions, optCaasEnabled
   isServing = true
   wantMainModule()
-  appendStr(searchPaths, options.libpath)
+  add(searchPaths, options.libpath)
   #if gProjectFull.len != 0:
     # current path is always looked first for modules
   #  prependStr(searchPaths, gProjectPath)
