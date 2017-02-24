@@ -46,6 +46,8 @@
 ##
 ## **Warning:** The global list of handlers is a thread var, this means that
 ## the handlers must be re-added in each thread.
+## **Warning:** When logging on disk or console, only error and fatal messages
+## are flushed out immediately. Use flushFile() where needed.
 
 import strutils, times
 when not defined(js):
