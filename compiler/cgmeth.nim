@@ -60,8 +60,8 @@ type
 proc sameMethodBucket(a, b: PSym): MethodResult =
   if a.name.id != b.name.id: return
   if sonsLen(a.typ) != sonsLen(b.typ):
-    return                    # check for return type:
-  if not sameTypeOrNil(a.typ.sons[0], b.typ.sons[0]): return
+    return
+
   for i in countup(1, sonsLen(a.typ) - 1):
     var aa = a.typ.sons[i]
     var bb = b.typ.sons[i]
@@ -89,6 +89,14 @@ proc sameMethodBucket(a, b: PSym): MethodResult =
         return No
     else:
       return No
+  if result == Yes:
+    # check for return type:
+    if not sameTypeOrNil(a.typ.sons[0], b.typ.sons[0]):
+      if b.typ.sons[0] != nil and b.typ.sons[0].kind == tyExpr:
+        # infer 'auto' from the base to make it consistent:
+        b.typ.sons[0] = a.typ.sons[0]
+      else:
+        return No
 
 proc attachDispatcher(s: PSym, dispatcher: PNode) =
   var L = s.ast.len-1
