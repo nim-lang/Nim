@@ -484,7 +484,5 @@ proc writeFromStream(f: AsyncFile, fut: FutureStream[string]) {.async.} =
     else:
       break
 
-proc getWriteStream*(f: AsyncFile): FutureStream[string] =
-  ## Returns a new stream that can be used for writing to the file.
-  result = newFutureStream[string]()
-  asyncCheck writeFromStream(f, result)
+proc setWriteStream*(f: AsyncFile; fut: FutureStream[string]) {.async.} =
+  await writeFromStream(f, fut)

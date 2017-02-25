@@ -1247,15 +1247,13 @@ proc downloadFile*(client: HttpClient | AsyncHttpClient,
     client.bodyStream = newFileStream(filename, fmWrite)
     if client.bodyStream.isNil:
       fileError("Unable to open file")
-  else:
-    var f = openAsync(filename, fmWrite)
-    client.bodyStream = f.getWriteStream()
-
-  await parseBody(client, resp.headers, resp.version)
-
-  when client is HttpClient:
+    parseBody(client, resp.headers, resp.version)
     client.bodyStream.close()
   else:
+    client.bodyStream = newFutureStream[string]()
+    var f = openAsync(filename, fmWrite)
+    asyncCheck parseBody(client, resp.headers, resp.version)
+    await f.setWriteStream(client.bodyStream)
     f.close()
 
   if resp.code.is4xx or resp.code.is5xx:
