@@ -95,7 +95,7 @@ proc shouldRun(testName: string): bool =
   result = true
 
 proc startSuite(name: string) =
-  template rawPrint() = echo("\n[Suite] ", name) 
+  template rawPrint() = echo("\n[Suite] ", name)
   when not defined(ECMAScript):
     if colorOutput:
       styledEcho styleBright, fgBlue, "\n[Suite] ", resetStyle, name
@@ -134,15 +134,15 @@ template suite*(name, body) {.dirty.} =
   ##    [OK] (2 + -2) != 4
   block:
     bind startSuite
-    template setup(setupBody: untyped) {.dirty.} =
-      var testSetupIMPLFlag = true
+    template setup(setupBody: untyped) {.dirty, used.} =
+      var testSetupIMPLFlag {.used.} = true
       template testSetupIMPL: untyped {.dirty.} = setupBody
 
-    template teardown(teardownBody: untyped) {.dirty.} =
-      var testTeardownIMPLFlag = true
+    template teardown(teardownBody: untyped) {.dirty, used.} =
+      var testTeardownIMPLFlag {.used.} = true
       template testTeardownIMPL: untyped {.dirty.} = teardownBody
 
-    let testInSuiteImplFlag = true
+    let testInSuiteImplFlag {.used.} = true
     startSuite name
     body
 
