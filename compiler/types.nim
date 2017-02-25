@@ -1377,7 +1377,16 @@ proc compatibleEffectsAux(se, re: PNode): bool =
       return false
   result = true
 
-proc compatibleEffects*(formal, actual: PType): bool =
+type
+  EffectsCompat* = enum
+    efCompat
+    efRaisesDiffer
+    efRaisesUnknown
+    efTagsDiffer
+    efTagsUnknown
+    efLockLevelsDiffer
+
+proc compatibleEffects*(formal, actual: PType): EffectsCompat =
   # for proc type compatibility checking:
   assert formal.kind == tyProc and actual.kind == tyProc
   internalAssert formal.n.sons[0].kind == nkEffectList
@@ -1393,18 +1402,21 @@ proc compatibleEffects*(formal, actual: PType): bool =
     # 'r.msgHandler = if isNil(msgHandler): defaultMsgHandler else: msgHandler'
     if not isNil(se) and se.kind != nkArgList:
       # spec requires some exception or tag, but we don't know anything:
-      if real.len == 0: return false
-      result = compatibleEffectsAux(se, real.sons[exceptionEffects])
-      if not result: return
+      if real.len == 0: return efRaisesUnknown
+      let res = compatibleEffectsAux(se, real.sons[exceptionEffects])
+      if not res: return efRaisesDiffer
 
     let st = spec.sons[tagEffects]
     if not isNil(st) and st.kind != nkArgList:
       # spec requires some exception or tag, but we don't know anything:
-      if real.len == 0: return false
-      result = compatibleEffectsAux(st, real.sons[tagEffects])
-      if not result: return
-  result = formal.lockLevel.ord < 0 or
-      actual.lockLevel.ord <= formal.lockLevel.ord
+      if real.len == 0: return efTagsUnknown
+      let res = compatibleEffectsAux(st, real.sons[tagEffects])
+      if not res: return efTagsDiffer
+  if formal.lockLevel.ord < 0 or
+      actual.lockLevel.ord <= formal.lockLevel.ord:
+    result = efCompat
+  else:
+    result = efLockLevelsDiffer
 
 proc isCompileTimeOnly*(t: PType): bool {.inline.} =
   result = t.kind in {tyTypeDesc, tyStatic}
@@ -1508,6 +1520,21 @@ proc typeMismatch*(n: PNode, formal, actual: PType) =
     let named = typeToString(formal)
     let desc = typeToString(formal, preferDesc)
     let x = if named == desc: named else: named & " = " & desc
-    localError(n.info, errGenerated, msgKindToString(errTypeMismatch) &
-        typeToString(actual) & ") " &
-        `%`(msgKindToString(errButExpectedX), [x]))
+    var msg = msgKindToString(errTypeMismatch) &
+              typeToString(actual) & ") " &
+              msgKindToString(errButExpectedX) % [x]
+
+    if formal.kind == tyProc and actual.kind == tyProc:
+      case compatibleEffects(formal, actual)
+      of efCompat: discard
+      of efRaisesDiffer:
+        msg.add "\n.raise effects differ"
+      of efRaisesUnknown:
+        msg.add "\n.raise effect is 'can raise any'"
+      of efTagsDiffer:
+        msg.add "\n.tag effects differ"
+      of efTagsUnknown:
+        msg.add "\n.tag effect is 'any tag allowed'"
+      of efLockLevelsDiffer:
+        msg.add "\nlock levels differ"
+    localError(n.info, errGenerated, msg)

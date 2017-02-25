@@ -1366,7 +1366,7 @@ proc updateCachedModule(m: BModule) =
     cf.flags = {CfileFlag.Cached}
   addFileToCompile(cf)
 
-proc myClose(b: PPassContext, n: PNode): PNode =
+proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   result = n
   if b == nil or passes.skipCodegen(n): return
   var m = BModule(b)
@@ -1378,7 +1378,7 @@ proc myClose(b: PPassContext, n: PNode): PNode =
 
   if sfMainModule in m.module.flags:
     incl m.flags, objHasKidsValid
-    var disp = generateMethodDispatchers()
+    var disp = generateMethodDispatchers(graph)
     for i in 0..sonsLen(disp)-1: genProcAux(m, disp.sons[i].sym)
     genMainProc(m)
 

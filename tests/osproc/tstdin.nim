@@ -4,7 +4,7 @@ discard """
 """
 import osproc, os, streams
 
-const filename = when defined(Windows): "ta.exe" else: "ta"
+const filename = when defined(Windows): "ta_in.exe" else: "ta_in"
 
 doAssert fileExists(getCurrentDir() / "tests" / "osproc" / filename)
 

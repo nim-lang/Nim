@@ -61,7 +61,7 @@ iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym 
     if q.typ.kind notin {tyTypeDesc, tyGenericParam, tyStatic}+tyTypeClasses:
       continue
     let symKind = if q.typ.kind == tyStatic: skConst else: skType
-    var s = newSym(symKind, q.name, getCurrOwner(), q.info)
+    var s = newSym(symKind, q.name, getCurrOwner(c), q.info)
     s.flags = s.flags + {sfUsed, sfFromGeneric}
     var t = PType(idTableGet(pt, q.typ))
     if t == nil:
@@ -255,7 +255,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   incl(result.flags, sfFromGeneric)
   result.owner = fn
   result.ast = n
-  pushOwner(result)
+  pushOwner(c, result)
 
   openScope(c)
   let gp = n.sons[genericParamsPos]
@@ -304,7 +304,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   popProcCon(c)
   popInfoContext()
   closeScope(c)           # close scope for parameters
-  popOwner()
+  popOwner(c)
   c.currentScope = oldScope
   discard c.friendModules.pop()
   dec(c.instCounter)

@@ -73,7 +73,7 @@ type
 const
   isNilConversion = isConvertible # maybe 'isIntConv' fits better?
 
-proc markUsed*(info: TLineInfo, s: PSym)
+proc markUsed*(info: TLineInfo, s: PSym; usageSym: var PSym)
 
 template hasFauxMatch*(c: TCandidate): bool = c.fauxMatch != tyNone
 
@@ -543,7 +543,7 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
       else:
         return isNone
     when useEffectSystem:
-      if not compatibleEffects(f, a): return isNone
+      if compatibleEffects(f, a) != efCompat: return isNone
 
   of tyNil:
     result = f.allowsNil
@@ -1291,7 +1291,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       dest = generateTypeInstance(c, m.bindings, arg, dest)
     let fdest = typeRel(m, f, dest)
     if fdest in {isEqual, isGeneric}:
-      markUsed(arg.info, c.converters[i])
+      markUsed(arg.info, c.converters[i], c.graph.usageSym)
       var s = newSymNode(c.converters[i])
       s.typ = c.converters[i].typ
       s.info = arg.info
@@ -1551,7 +1551,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
       else: result = nil
     else:
       # only one valid interpretation found:
-      markUsed(arg.info, arg.sons[best].sym)
+      markUsed(arg.info, arg.sons[best].sym, m.c.graph.usageSym)
       styleCheckUse(arg.info, arg.sons[best].sym)
       result = paramTypesMatchAux(m, f, arg.sons[best].typ, arg.sons[best],
                                   argOrig)

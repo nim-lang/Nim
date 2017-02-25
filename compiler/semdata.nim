@@ -124,22 +124,19 @@ proc scopeDepth*(c: PContext): int {.inline.} =
   result = if c.currentScope != nil: c.currentScope.depthLevel
            else: 0
 
-var gOwners*: seq[PSym] = @[]
-
-proc getCurrOwner*(): PSym =
+proc getCurrOwner*(c: PContext): PSym =
   # owner stack (used for initializing the
   # owner field of syms)
   # the documentation comment always gets
   # assigned to the current owner
-  # BUGFIX: global array is needed!
-  result = gOwners[^1]
+  result = c.graph.owners[^1]
 
-proc pushOwner*(owner: PSym) =
-  add(gOwners, owner)
+proc pushOwner*(c: PContext; owner: PSym) =
+  add(c.graph.owners, owner)
 
-proc popOwner*() =
-  var length = len(gOwners)
-  if length > 0: setLen(gOwners, length - 1)
+proc popOwner*(c: PContext) =
+  var length = len(c.graph.owners)
+  if length > 0: setLen(c.graph.owners, length - 1)
   else: internalError("popOwner")
 
 proc lastOptionEntry*(c: PContext): POptionEntry =
@@ -225,7 +222,7 @@ proc addToLib*(lib: PLib, sym: PSym) =
   sym.annex = lib
 
 proc newTypeS*(kind: TTypeKind, c: PContext): PType =
-  result = newType(kind, getCurrOwner())
+  result = newType(kind, getCurrOwner(c))
 
 proc makePtrType*(c: PContext, baseType: PType): PType =
   result = newTypeS(tyPtr, c)
@@ -244,7 +241,7 @@ proc makeTypeDesc*(c: PContext, typ: PType): PType =
 
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let typedesc = makeTypeDesc(c, typ)
-  let sym = newSym(skType, c.cache.idAnon, getCurrOwner(), info).linkTo(typedesc)
+  let sym = newSym(skType, c.cache.idAnon, getCurrOwner(c), info).linkTo(typedesc)
   return newSymNode(sym, info)
 
 proc makeTypeFromExpr*(c: PContext, n: PNode): PType =
@@ -254,7 +251,7 @@ proc makeTypeFromExpr*(c: PContext, n: PNode): PType =
 
 proc newTypeWithSons*(c: PContext, kind: TTypeKind,
                       sons: seq[PType]): PType =
-  result = newType(kind, getCurrOwner())
+  result = newType(kind, getCurrOwner(c))
   result.sons = sons
 
 proc makeStaticExpr*(c: PContext, n: PNode): PNode =
@@ -325,7 +322,7 @@ proc errorNode*(c: PContext, n: PNode): PNode =
 
 proc fillTypeS*(dest: PType, kind: TTypeKind, c: PContext) =
   dest.kind = kind
-  dest.owner = getCurrOwner()
+  dest.owner = getCurrOwner(c)
   dest.size = - 1
 
 proc makeRangeType*(c: PContext; first, last: BiggestInt;

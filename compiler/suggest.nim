@@ -28,7 +28,7 @@ type
     column*: int                 # Starts at 0
     doc*: string           # Not escaped (yet)
     symkind*: TSymKind
-    forth*: string               # XXX TODO object on symkind
+    forth*: string               # type
     quality*: range[0..100]   # matching quality
     isGlobal*: bool # is a global variable
     tokenLen*: int
@@ -88,7 +88,7 @@ proc symToSuggest(s: PSym, isLocal: bool, section: string, li: TLineInfo;
     when not defined(noDocgen):
       result.doc = s.extractDocComment
 
-proc `$`(suggest: Suggest): string =
+proc `$`*(suggest: Suggest): string =
   result = $suggest.section
   result.add(sep)
   if suggest.section == ideHighlight:
@@ -131,7 +131,7 @@ proc suggestResult(s: Suggest) =
   if not isNil(suggestionResultHook):
     suggestionResultHook(s)
   else:
-    suggestWriteln($(s))
+    suggestWriteln($s)
 
 proc filterSym(s: PSym): bool {.inline.} =
   result = s.kind != skModule
@@ -297,10 +297,10 @@ proc suggestFieldAccess(c: PContext, n: PNode, outputs: var int) =
       suggestOperations(c, n, typ, outputs)
 
 type
-  TCheckPointResult = enum
+  TCheckPointResult* = enum
     cpNone, cpFuzzy, cpExact
 
-proc inCheckpoint(current: TLineInfo): TCheckPointResult =
+proc inCheckpoint*(current: TLineInfo): TCheckPointResult =
   if current.fileIndex == gTrackPos.fileIndex:
     if current.line == gTrackPos.line and
         abs(current.col-gTrackPos.col) < 4:
@@ -353,10 +353,10 @@ when defined(nimsuggest):
     s.allUsages.add(info)
 
 var
-  usageSym*: PSym
+  #usageSym*: PSym
   lastLineInfo*: TLineInfo
 
-proc findUsages(info: TLineInfo; s: PSym) =
+proc findUsages(info: TLineInfo; s: PSym; usageSym: var PSym) =
   if suggestVersion < 2:
     if usageSym == nil and isTracked(info, s.name.s.len):
       usageSym = s
@@ -385,7 +385,7 @@ proc ensureIdx[T](x: var T, y: int) =
 proc ensureSeq[T](x: var seq[T]) =
   if x == nil: newSeq(x, 0)
 
-proc suggestSym*(info: TLineInfo; s: PSym; isDecl=true) {.inline.} =
+proc suggestSym*(info: TLineInfo; s: PSym; usageSym: var PSym; isDecl=true) {.inline.} =
   ## misnamed: should be 'symDeclared'
   when defined(nimsuggest):
     if suggestVersion == 2:
@@ -395,20 +395,20 @@ proc suggestSym*(info: TLineInfo; s: PSym; isDecl=true) {.inline.} =
         s.addNoDup(info)
 
     if gIdeCmd == ideUse:
-      findUsages(info, s)
+      findUsages(info, s, usageSym)
     elif gIdeCmd == ideDef:
       findDefinition(info, s)
     elif gIdeCmd == ideDus and s != nil:
       if isTracked(info, s.name.s.len):
         suggestResult(symToSuggest(s, isLocal=false, $ideDef, 100))
-      findUsages(info, s)
+      findUsages(info, s, usageSym)
     elif gIdeCmd == ideHighlight and info.fileIndex == gTrackPos.fileIndex:
       suggestResult(symToSuggest(s, isLocal=false, $ideHighlight, info, 100))
     elif gIdeCmd == ideOutline and info.fileIndex == gTrackPos.fileIndex and
         isDecl:
       suggestResult(symToSuggest(s, isLocal=false, $ideOutline, info, 100))
 
-proc markUsed(info: TLineInfo; s: PSym) =
+proc markUsed(info: TLineInfo; s: PSym; usageSym: var PSym) =
   incl(s.flags, sfUsed)
   if s.kind == skEnumField and s.owner != nil:
     incl(s.owner.flags, sfUsed)
@@ -416,11 +416,11 @@ proc markUsed(info: TLineInfo; s: PSym) =
     if sfDeprecated in s.flags: message(info, warnDeprecated, s.name.s)
     if sfError in s.flags: localError(info, errWrongSymbolX, s.name.s)
   when defined(nimsuggest):
-    suggestSym(info, s, false)
+    suggestSym(info, s, usageSym, false)
 
-proc useSym*(sym: PSym): PNode =
+proc useSym*(sym: PSym; usageSym: var PSym): PNode =
   result = newSymNode(sym)
-  markUsed(result.info, sym)
+  markUsed(result.info, sym, usageSym)
 
 proc safeSemExpr*(c: PContext, n: PNode): PNode =
   # use only for idetools support!

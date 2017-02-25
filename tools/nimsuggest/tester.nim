@@ -3,7 +3,7 @@
 # before 'nimsuggest' is invoked to ensure this token doesn't make a
 # crucial difference for Nim's parser.
 
-import os, osproc, strutils, streams, re
+import os, osproc, strutils, streams, re, sexp, net
 
 type
   Test = object
@@ -17,7 +17,7 @@ const
 
 template tpath(): untyped = getAppDir() / "tests"
 
-proc parseTest(filename: string): Test =
+proc parseTest(filename: string; epcMode=false): Test =
   const cursorMarker = "#[!]#"
   let nimsug = curDir & addFileExt("nimsuggest", ExeExt)
   result.dest = getTempDir() / extractFilename(filename)
@@ -31,7 +31,10 @@ proc parseTest(filename: string): Test =
   for x in lines(filename):
     let marker = x.find(cursorMarker)+1
     if marker > 0:
-      markers.add "\"" & filename & "\";\"" & result.dest & "\":" & $i & ":" & $marker
+      if epcMode:
+        markers.add "(\"" & filename & "\" " & $i & " " & $marker & " \"" & result.dest & "\")"
+      else:
+        markers.add "\"" & filename & "\";\"" & result.dest & "\":" & $i & ":" & $marker
       tmp.writeLine x.replace(cursorMarker, "")
     else:
       tmp.writeLine x
@@ -133,6 +136,126 @@ proc smartCompare(pattern, x: string): bool =
   if pattern.contains('*'):
     result = match(x, re(escapeRe(pattern).replace("\\x2A","(.*)"), {}))
 
+proc sendEpcStr(socket: Socket; cmd: string) =
+  let s = cmd.find(' ')
+  doAssert s > 0
+  var args = cmd.substr(s+1)
+  if not args.startsWith("("): args = escapeJson(args)
+  let c = "(call 567 " & cmd.substr(0, s) & args & ")"
+  socket.send toHex(c.len, 6)
+  socket.send c
+
+proc recvEpc(socket: Socket): string =
+  var L = newStringOfCap(6)
+  if socket.recv(L, 6) != 6:
+    raise newException(ValueError, "recv A failed")
+  let x = parseHexInt(L)
+  result = newString(x)
+  if socket.recv(result, x) != x:
+    raise newException(ValueError, "recv B failed")
+
+proc sexpToAnswer(s: SexpNode): string =
+  result = ""
+  doAssert s.kind == SList
+  doAssert s.len >= 3
+  let m = s[2]
+  if m.kind != SList:
+    echo s
+  doAssert m.kind == SList
+  for a in m:
+    doAssert a.kind == SList
+    var first = true
+    #s.section,
+    #s.symkind,
+    #s.qualifiedPath.map(newSString),
+    #s.filePath,
+    #s.forth,
+    #s.line,
+    #s.column,
+    #s.doc
+    if a.len >= 8:
+      let section = a[0].getStr
+      let symk = a[1].getStr
+      let qp = a[2]
+      let file = a[3].getStr
+      let typ = a[4].getStr
+      let line = a[5].getNum
+      let col = a[6].getNum
+      let doc = a[7].getStr.escape
+      result.add section
+      result.add '\t'
+      result.add symk
+      result.add '\t'
+      var i = 0
+      for aa in qp:
+        if i > 0: result.add '.'
+        result.add aa.getStr
+        inc i
+      result.add '\t'
+      result.add typ
+      result.add '\t'
+      result.add file
+      result.add '\t'
+      result.add line
+      result.add '\t'
+      result.add col
+      result.add '\t'
+      result.add doc
+      result.add '\t'
+      # for now Nim EPC does not return the quality
+      result.add "100"
+    result.add '\L'
+
+proc doReport(filename, answer, resp: string; report: var string) =
+  if resp != answer and not smartCompare(resp, answer):
+    report.add "\nTest failed: " & filename
+    var hasDiff = false
+    for i in 0..min(resp.len-1, answer.len-1):
+      if resp[i] != answer[i]:
+        report.add "\n  Expected:  " & resp.substr(i)
+        report.add "\n  But got:   " & answer.substr(i)
+        hasDiff = true
+        break
+    if not hasDiff:
+      report.add "\n  Expected:  " & resp
+      report.add "\n  But got:   " & answer
+
+proc runEpcTest(filename: string): int =
+  let s = parseTest(filename, true)
+  for cmd in s.startup:
+    if not runCmd(cmd, s.dest):
+      quit "invalid command: " & cmd
+  let epccmd = s.cmd.replace("--tester", "--epc --v2")
+  let cl = parseCmdLine(epccmd)
+  var p = startProcess(command=cl[0], args=cl[1 .. ^1],
+                       options={poStdErrToStdOut, poUsePath,
+                       poInteractive, poDemon})
+  let outp = p.outputStream
+  let inp = p.inputStream
+  var report = ""
+  var a = newStringOfCap(120)
+  try:
+    # read the port number:
+    if outp.readLine(a):
+      let port = parseInt(a)
+      var socket = newSocket()
+      socket.connect("localhost", Port(port))
+      for req, resp in items(s.script):
+        if not runCmd(req, s.dest):
+          socket.sendEpcStr(req)
+          let sx = parseSexp(socket.recvEpc())
+          if not req.startsWith("mod "):
+            let answer = sexpToAnswer(sx)
+            doReport(filename, answer, resp, report)
+    else:
+      raise newException(ValueError, "cannot read port number")
+  finally:
+    close(p)
+  if report.len > 0:
+    echo "==== EPC ========================================"
+    echo report
+  result = report.len
+
 proc runTest(filename: string): int =
   let s = parseTest filename
   for cmd in s.startup:
@@ -159,31 +282,28 @@ proc runTest(filename: string): int =
           if a == DummyEof: break
           answer.add a
           answer.add '\L'
-        if resp != answer and not smartCompare(resp, answer):
-          report.add "\nTest failed: " & filename
-          var hasDiff = false
-          for i in 0..min(resp.len-1, answer.len-1):
-            if resp[i] != answer[i]:
-              report.add "\n  Expected:  " & resp.substr(i)
-              report.add "\n  But got:   " & answer.substr(i)
-              hasDiff = true
-              break
-          if not hasDiff:
-            report.add "\n  Expected:  " & resp
-            report.add "\n  But got:   " & answer
+        doReport(filename, answer, resp, report)
   finally:
     inp.writeLine("quit")
     inp.flush()
     close(p)
   if report.len > 0:
+    echo "==== STDIN ======================================"
     echo report
   result = report.len
 
 proc main() =
   var failures = 0
-  for x in walkFiles(getAppDir() / "tests/t*.nim"):
-    echo "Test ", x
-    failures += runTest(expandFilename(x))
+  when false:
+    let x = getAppDir() / "tests/twithin_macro.nim"
+    let xx = expandFilename x
+    failures += runEpcTest(xx)
+  else:
+    for x in walkFiles(getAppDir() / "tests/t*.nim"):
+      echo "Test ", x
+      let xx = expandFilename x
+      failures += runTest(xx)
+      failures += runEpcTest(xx)
   if failures > 0:
     quit 1
 
