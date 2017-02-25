@@ -11,7 +11,7 @@
 
 import
   ast, astalgo, hashes, trees, platform, magicsys, extccomp, options, intsets,
-  nversion, nimsets, msgs, securehash, bitsets, idents, lists, types,
+  nversion, nimsets, msgs, securehash, bitsets, idents, types,
   ccgutils, os, ropes, math, passes, rodread, wordrecg, treetab, cgmeth,
   condsyms, rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases,
   lowerings, semparallel, tables, sets, ndi
@@ -75,12 +75,13 @@ proc isSimpleConst(typ: PType): bool =
 proc useStringh(m: BModule) =
   if includesStringh notin m.flags:
     incl m.flags, includesStringh
-    discard lists.includeStr(m.headerFiles, "<string.h>")
+    m.includeHeader("<string.h>")
 
 proc useHeader(m: BModule, sym: PSym) =
   if lfHeader in sym.loc.flags:
     assert(sym.annex != nil)
-    discard lists.includeStr(m.headerFiles, getStr(sym.annex.path))
+    let str = getStr(sym.annex.path)
+    m.includeHeader(str)
 
 proc cgsym(m: BModule, name: string): Rope
 
@@ -594,15 +595,14 @@ proc cgsym(m: BModule, name: string): Rope =
 
 proc generateHeaders(m: BModule) =
   add(m.s[cfsHeaders], tnl & "#include \"nimbase.h\"" & tnl)
-  var it = PStrEntry(m.headerFiles.head)
-  while it != nil:
-    if it.data[0] == '#':
-      add(m.s[cfsHeaders], rope(it.data.replace('`', '"') & tnl))
-    elif it.data[0] notin {'\"', '<'}:
-      addf(m.s[cfsHeaders], "#include \"$1\"$N", [rope(it.data)])
+  
+  for it in m.headerFiles:
+    if it[0] == '#':
+      add(m.s[cfsHeaders], rope(it.replace('`', '"') & tnl))
+    elif it[0] notin {'\"', '<'}:
+      addf(m.s[cfsHeaders], "#include \"$1\"$N", [rope(it)])
     else:
-      addf(m.s[cfsHeaders], "#include $1$N", [rope(it.data)])
-    it = PStrEntry(it.next)
+      addf(m.s[cfsHeaders], "#include $1$N", [rope(it)])
   add(m.s[cfsHeaders], "#undef linux" & tnl)
 
 proc initFrame(p: BProc, procname, filename: Rope): Rope =
@@ -715,10 +715,13 @@ proc genProcAux(m: BModule, prc: PSym) =
     add(generatedProc, ~"}$N")
   add(m.s[cfsProcs], generatedProc)
 
-proc crossesCppBoundary(m: BModule; sym: PSym): bool {.inline.} =
-  result = sfCompileToCpp in m.module.flags and
+proc requiresExternC(m: BModule; sym: PSym): bool {.inline.} =
+  result = (sfCompileToCpp in m.module.flags and
            sfCompileToCpp notin sym.getModule().flags and
-           gCmd != cmdCompileToCpp
+           gCmd != cmdCompileToCpp) or (
+           sym.flags * {sfImportc, sfInfixCall, sfCompilerProc} == {sfImportc} and
+           sym.magic == mNone and
+           gCmd == cmdCompileToCpp)
 
 proc genProcPrototype(m: BModule, sym: PSym) =
   useHeader(m, sym)
@@ -732,7 +735,7 @@ proc genProcPrototype(m: BModule, sym: PSym) =
     var header = genProcHeader(m, sym)
     if sfNoReturn in sym.flags and hasDeclspec in extccomp.CC[cCompiler].props:
       header = "__declspec(noreturn) " & header
-    if sym.typ.callConv != ccInline and crossesCppBoundary(m, sym):
+    if sym.typ.callConv != ccInline and requiresExternC(m, sym):
       header = "extern \"C\" " & header
     if sfPure in sym.flags and hasAttribute in CC[cCompiler].props:
       header.add(" __attribute__((naked))")
@@ -971,7 +974,7 @@ proc genMainProc(m: BModule) =
     else:
       nimMain = WinNimDllMain
       otherMain = WinCDllMain
-    discard lists.includeStr(m.headerFiles, "<windows.h>")
+    m.includeHeader("<windows.h>")
   elif optGenDynLib in gGlobalOptions:
     nimMain = PosixNimDllMain
     otherMain = PosixCDllMain
@@ -1126,7 +1129,7 @@ proc initProcOptions(m: BModule): TOptions =
 proc rawNewModule(g: BModuleList; module: PSym, filename: string): BModule =
   new(result)
   result.tmpBase = rope("TM" & $hashOwner(module) & "_")
-  initLinkedList(result.headerFiles)
+  result.headerFiles = @[]
   result.declaredThings = initIntSet()
   result.declaredProtos = initIntSet()
   result.cfilename = filename
@@ -1163,7 +1166,7 @@ proc nullify[T](arr: var T) =
 proc resetModule*(m: BModule) =
   # between two compilations in CAAS mode, we can throw
   # away all the data that was written to disk
-  initLinkedList(m.headerFiles)
+  m.headerFiles = @[]
   m.declaredProtos = initIntSet()
   m.forwTypeCache = initTable[SigHash, Rope]()
   m.initProc = newProc(nil, m)
@@ -1363,7 +1366,7 @@ proc updateCachedModule(m: BModule) =
     cf.flags = {CfileFlag.Cached}
   addFileToCompile(cf)
 
-proc myClose(b: PPassContext, n: PNode): PNode =
+proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   result = n
   if b == nil or passes.skipCodegen(n): return
   var m = BModule(b)
@@ -1375,7 +1378,7 @@ proc myClose(b: PPassContext, n: PNode): PNode =
 
   if sfMainModule in m.module.flags:
     incl m.flags, objHasKidsValid
-    var disp = generateMethodDispatchers()
+    var disp = generateMethodDispatchers(graph)
     for i in 0..sonsLen(disp)-1: genProcAux(m, disp.sons[i].sym)
     genMainProc(m)
 

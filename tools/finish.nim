@@ -209,6 +209,9 @@ proc main() =
           of Manual:
             echo "After download, move it to: ", dest
             if askBool("Download successful? (y/n) "):
+              while not fileExists("dist" / mingw):
+                echo "could not find: ", "dist" / mingw
+                if not askBool("Try again? (y/n) "): break
               if unzip(): retry = true
           of Failure: discard
           of Success:

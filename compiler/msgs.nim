@@ -567,6 +567,15 @@ proc newFileInfo(fullPath, projPath: string): TFileInfo =
   if optEmbedOrigSrc in gGlobalOptions or true:
     result.lines = @[]
 
+proc fileInfoKnown*(filename: string): bool =
+  var
+    canon: string
+  try:
+    canon = canonicalizePath(filename)
+  except:
+    canon = filename
+  result = filenameToIndexTbl.hasKey(canon)
+
 proc fileInfoIdx*(filename: string; isKnownFile: var bool): int32 =
   var
     canon: string

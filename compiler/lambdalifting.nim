@@ -10,7 +10,7 @@
 # This include file implements lambda lifting for the transformator.
 
 import
-  intsets, strutils, lists, options, ast, astalgo, trees, treetab, msgs, os,
+  intsets, strutils, options, ast, astalgo, trees, treetab, msgs, os,
   idents, renderer, types, magicsys, rodread, lowerings, tables
 
 discard """

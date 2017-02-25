@@ -292,10 +292,15 @@ proc writeFreeList(a: MemRegion) =
               it, it.next, it.prev, it.size)
     it = it.next
 
+const nimMaxHeap {.intdefine.} = 0
+
 proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
   when not defined(emscripten):
     if not a.blockChunkSizeIncrease:
       let usedMem = a.currMem # - a.freeMem
+      when nimMaxHeap != 0:
+        if usedMem > nimMaxHeap * 1024 * 1024:
+          raiseOutOfMem()
       if usedMem < 64 * 1024:
         a.nextChunkSize = PageSize*4
       else:

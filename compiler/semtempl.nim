@@ -60,7 +60,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule): PNode =
     # (s.kind notin routineKinds or s.magic != mNone):
     # for instance 'nextTry' is both in tables.nim and astalgo.nim ...
     result = newSymNode(s, n.info)
-    markUsed(n.info, s)
+    markUsed(n.info, s, c.graph.usageSym)
   else:
     # semantic checking requires a type; ``fitNode`` deals with it
     # appropriately
@@ -172,7 +172,7 @@ proc newGenSym(kind: TSymKind, n: PNode, c: var TemplCtx): PSym =
   result = newSym(kind, considerQuotedIdent(n), c.owner, n.info)
   incl(result.flags, sfGenSym)
   incl(result.flags, sfShadowed)
-  if c.scopeN == 0: incl(result.flags, sfFromGeneric)
+  #if c.scopeN == 0: incl(result.flags, sfFromGeneric)
 
 proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
   # locals default to 'gensym':
@@ -384,11 +384,13 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     checkSonsLen(n, 2)
     openScope(c)
     if n.sons[0].kind != nkEmpty:
-      # labels are always 'gensym'ed:
-      let s = newGenSym(skLabel, n.sons[0], c)
-      addPrelimDecl(c.c, s)
-      styleCheckDef(s)
-      n.sons[0] = newSymNode(s, n.sons[0].info)
+      addLocalDecl(c, n.sons[0], skLabel)
+      when false:
+        # labels are always 'gensym'ed:
+        let s = newGenSym(skLabel, n.sons[0], c)
+        addPrelimDecl(c.c, s)
+        styleCheckDef(s)
+        n.sons[0] = newSymNode(s, n.sons[0].info)
     n.sons[1] = semTemplBody(c, n.sons[1])
     closeScope(c)
   of nkTryStmt:
@@ -559,7 +561,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   styleCheckDef(s)
   # check parameter list:
   #s.scope = c.currentScope
-  pushOwner(s)
+  pushOwner(c, s)
   openScope(c)
   n.sons[namePos] = newSymNode(s, n.sons[namePos].info)
   if n.sons[pragmasPos].kind != nkEmpty:
@@ -613,7 +615,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   # only parameters are resolved, no type checking is performed
   semIdeForTemplateOrGeneric(c, n.sons[bodyPos], ctx.cursorInBody)
   closeScope(c)
-  popOwner()
+  popOwner(c)
   s.ast = n
   result = n
   if n.sons[bodyPos].kind == nkEmpty:
@@ -758,7 +760,7 @@ proc semPattern(c: PContext, n: PNode): PNode =
   ctx.toMixin = initIntSet()
   ctx.toInject = initIntSet()
   ctx.c = c
-  ctx.owner = getCurrOwner()
+  ctx.owner = getCurrOwner(c)
   result = flattenStmts(semPatternBody(ctx, n))
   if result.kind in {nkStmtList, nkStmtListExpr}:
     if result.len == 1:

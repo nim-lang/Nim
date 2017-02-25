@@ -1512,6 +1512,17 @@ type
     ## compiler supports. Currently this is ``float64``, but it is
     ## platform-dependant in general.
 
+when defined(JS):
+  type BiggestUInt* = uint32
+    ## is an alias for the biggest unsigned integer type the Nim compiler
+    ## supports. Currently this is ``uint32`` for JS and ``uint64`` for other
+    ## targets.
+else:
+  type BiggestUInt* = uint64
+    ## is an alias for the biggest unsigned integer type the Nim compiler
+    ## supports. Currently this is ``uint32`` for JS and ``uint64`` for other
+    ## targets.
+
 {.deprecated: [TAddress: ByteAddress].}
 
 when defined(windows):
@@ -2732,6 +2743,7 @@ when not defined(JS): #and not defined(nimscript):
       # we use binary mode on Windows:
       c_setmode(c_fileno(stdin), O_BINARY)
       c_setmode(c_fileno(stdout), O_BINARY)
+      c_setmode(c_fileno(stderr), O_BINARY)
 
     when defined(endb):
       proc endbStep()

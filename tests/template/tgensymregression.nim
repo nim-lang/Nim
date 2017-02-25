@@ -1,3 +1,10 @@
+discard """
+  output: '''[0.0, 0.0, 0.0]
+
+[0.0, 0.0, 0.0, 0.0]
+
+5050'''
+"""
 
 template mathPerComponent(op: untyped): untyped =
   proc op*[N,T](v,u: array[N,T]): array[N,T] {.inline.} =
@@ -19,3 +26,24 @@ proc foo(): void =
   echo repr(v1 *** v2)
 
 foo()
+
+# bug #5383
+import sequtils
+
+proc zipWithIndex[A](ts: seq[A]): seq[(int, A)] =
+  toSeq(pairs(ts))
+
+proc main =
+  discard zipWithIndex(@["foo", "bar"])
+  discard zipWithIndex(@[1, 2])
+  discard zipWithIndex(@[true, false])
+
+main()
+
+# bug #5405
+
+proc main2() =
+  let s = toSeq(1..100).foldL(a + b)
+  echo s
+
+main2()

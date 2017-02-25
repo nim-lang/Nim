@@ -147,6 +147,7 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
       testSpec r, makeTest("tests/gc" / filename, options &
                     " -d:release --gc:boehm", cat, actionRun)
 
+  testWithoutBoehm "foreign_thr"
   test "gcemscripten"
   test "growobjcrash"
   test "gcbench"

@@ -11,7 +11,7 @@
 
 import
   os, platform, condsyms, ast, astalgo, idents, semdata, msgs, renderer,
-  wordrecg, ropes, options, strutils, lists, extccomp, math, magicsys, trees,
+  wordrecg, ropes, options, strutils, extccomp, math, magicsys, trees,
   rodread, types, lookups
 
 const
@@ -25,19 +25,19 @@ const
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
     wAsmNoStackFrame, wError, wDiscardable, wNoInit, wDestructor, wCodegenDecl,
     wGensym, wInject, wRaises, wTags, wLocks, wDelegator, wGcSafe,
-    wOverride, wConstructor, wExportNims}
+    wOverride, wConstructor, wExportNims, wUsed}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas+{wBase}-{wImportCpp}
   templatePragmas* = {wImmediate, wDeprecated, wError, wGensym, wInject, wDirty,
-    wDelegator, wExportNims}
+    wDelegator, wExportNims, wUsed}
   macroPragmas* = {FirstCallConv..LastCallConv, wImmediate, wImportc, wExportc,
     wNodecl, wMagic, wNosideeffect, wCompilerproc, wDeprecated, wExtern,
     wImportCpp, wImportObjC, wError, wDiscardable, wGensym, wInject, wDelegator,
-    wExportNims}
+    wExportNims, wUsed}
   iteratorPragmas* = {FirstCallConv..LastCallConv, wNosideeffect, wSideeffect,
     wImportc, wExportc, wNodecl, wMagic, wDeprecated, wBorrow, wExtern,
     wImportCpp, wImportObjC, wError, wDiscardable, wGensym, wInject, wRaises,
-    wTags, wLocks, wGcSafe, wExportNims}
+    wTags, wLocks, wGcSafe, wExportNims, wUsed}
   exprPragmas* = {wLine, wLocks, wNoRewrite, wGcSafe}
   stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangechecks,
     wBoundchecks, wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints,
@@ -55,16 +55,16 @@ const
     wPure, wHeader, wCompilerproc, wFinal, wSize, wExtern, wShallow,
     wImportCpp, wImportObjC, wError, wIncompleteStruct, wByCopy, wByRef,
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
-    wBorrow, wGcSafe, wExportNims, wPartial}
+    wBorrow, wGcSafe, wExportNims, wPartial, wUsed}
   fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern,
-    wImportCpp, wImportObjC, wError, wGuard, wBitsize}
+    wImportCpp, wImportObjC, wError, wGuard, wBitsize, wUsed}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl,
     wMagic, wHeader, wDeprecated, wCompilerproc, wDynlib, wExtern,
     wImportCpp, wImportObjC, wError, wNoInit, wCompileTime, wGlobal,
-    wGensym, wInject, wCodegenDecl, wGuard, wGoto, wExportNims}
+    wGensym, wInject, wCodegenDecl, wGuard, wGoto, wExportNims, wUsed}
   constPragmas* = {wImportc, wExportc, wHeader, wDeprecated, wMagic, wNodecl,
     wExtern, wImportCpp, wImportObjC, wError, wGensym, wInject, wExportNims,
-    wIntDefine, wStrDefine}
+    wIntDefine, wStrDefine, wUsed}
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideeffect,
                       wThread, wRaises, wLocks, wTags, wGcSafe}
@@ -218,20 +218,19 @@ proc processCallConv(c: PContext, n: PNode) =
     var sw = whichKeyword(n.sons[1].ident)
     case sw
     of FirstCallConv..LastCallConv:
-      POptionEntry(c.optionStack.tail).defaultCC = wordToCallConv(sw)
+      c.optionStack[^1].defaultCC = wordToCallConv(sw)
     else: localError(n.info, errCallConvExpected)
   else:
     localError(n.info, errCallConvExpected)
 
 proc getLib(c: PContext, kind: TLibKind, path: PNode): PLib =
-  var it = PLib(c.libs.head)
-  while it != nil:
-    if it.kind == kind:
-      if trees.exprStructuralEquivalent(it.path, path): return it
-    it = PLib(it.next)
+  for it in c.libs:
+    if it.kind == kind and trees.exprStructuralEquivalent(it.path, path):
+      return it
+      
   result = newLib(kind)
   result.path = path
-  append(c.libs, result)
+  c.libs.add result
   if path.kind in {nkStrLit..nkTripleStrLit}:
     result.isOverriden = options.isDynlibOverride(path.strVal)
 
@@ -254,7 +253,7 @@ proc processDynLib(c: PContext, n: PNode, sym: PSym) =
   if (sym == nil) or (sym.kind == skModule):
     let lib = getLib(c, libDynamic, expectDynlibNode(c, n))
     if not lib.isOverriden:
-      POptionEntry(c.optionStack.tail).dynlib = lib
+      c.optionStack[^1].dynlib = lib
   else:
     if n.kind == nkExprColonExpr:
       var lib = getLib(c, libDynamic, expectDynlibNode(c, n))
@@ -350,12 +349,12 @@ proc processPush(c: PContext, n: PNode, start: int) =
   if n.sons[start-1].kind == nkExprColonExpr:
     localError(n.info, errGenerated, "':' after 'push' not supported")
   var x = newOptionEntry()
-  var y = POptionEntry(c.optionStack.tail)
+  var y = c.optionStack[^1]
   x.options = gOptions
   x.defaultCC = y.defaultCC
   x.dynlib = y.dynlib
   x.notes = gNotes
-  append(c.optionStack, x)
+  c.optionStack.add(x)
   for i in countup(start, sonsLen(n) - 1):
     if processOption(c, n.sons[i]):
       # simply store it somewhere:
@@ -365,12 +364,12 @@ proc processPush(c: PContext, n: PNode, start: int) =
     #localError(n.info, errOptionExpected)
 
 proc processPop(c: PContext, n: PNode) =
-  if c.optionStack.counter <= 1:
+  if c.optionStack.len <= 1:
     localError(n.info, errAtPopWithoutPush)
   else:
-    gOptions = POptionEntry(c.optionStack.tail).options
-    gNotes = POptionEntry(c.optionStack.tail).notes
-    remove(c.optionStack, c.optionStack.tail)
+    gOptions = c.optionStack[^1].options
+    gNotes = c.optionStack[^1].notes
+    c.optionStack.setLen(c.optionStack.len - 1)
 
 proc processDefine(c: PContext, n: PNode) =
   if (n.kind == nkExprColonExpr) and (n.sons[1].kind == nkIdent):
@@ -582,7 +581,13 @@ proc pragmaLocks(c: PContext, it: PNode): TLockLevel =
   if it.kind != nkExprColonExpr:
     invalidPragma(it)
   else:
-    if it[1].kind != nkNilLit:
+    case it[1].kind
+    of nkStrLit, nkRStrLit, nkTripleStrLit:
+      if it[1].strVal == "unknown":
+        result = UnknownLockLevel
+      else:
+        localError(it[1].info, "invalid string literal for locks pragma (only allowed string is \"unknown\")")
+    else:
       let x = expectIntLit(c, it)
       if x < 0 or x > MaxLockLevel:
         localError(it[1].info, "integer must be within 0.." & $MaxLockLevel)
@@ -961,14 +966,17 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         sym.magic = mIntDefine
       of wStrDefine:
         sym.magic = mStrDefine
+      of wUsed:
+        noVal(it)
+        if sym == nil: invalidPragma(it)
+        else: sym.flags.incl sfUsed
       else: invalidPragma(it)
     else: invalidPragma(it)
 
 proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
                       validPragmas: TSpecialWords) =
   if sym != nil and sym.kind != skModule:
-    var it = POptionEntry(c.optionStack.head)
-    while it != nil:
+    for it in c.optionStack:
       let o = it.otherPragmas
       if not o.isNil:
         pushInfoContext(n.info)
@@ -976,11 +984,10 @@ proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
           if singlePragma(c, sym, o, i, validPragmas):
             internalError(n.info, "implicitPragmas")
         popInfoContext()
-      it = it.next.POptionEntry
 
     if lfExportLib in sym.loc.flags and sfExportc notin sym.flags:
       localError(n.info, errDynlibRequiresExportc)
-    var lib = POptionEntry(c.optionStack.tail).dynlib
+    var lib = c.optionStack[^1].dynlib
     if {lfDynamicLib, lfHeader} * sym.loc.flags == {} and
         sfImportc in sym.flags and lib != nil:
       incl(sym.loc.flags, lfDynamicLib)

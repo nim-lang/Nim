@@ -10,7 +10,7 @@
 # abstract syntax tree + symbol table
 
 import
-  msgs, hashes, nversion, options, strutils, securehash, ropes, idents, lists,
+  msgs, hashes, nversion, options, strutils, securehash, ropes, idents,
   intsets, idgen
 
 type
@@ -736,13 +736,15 @@ type
 
   TLibKind* = enum
     libHeader, libDynamic
-  TLib* = object of lists.TListEntry # also misused for headers!
+    
+  TLib* = object              # also misused for headers!
     kind*: TLibKind
     generated*: bool          # needed for the backends:
     isOverriden*: bool
     name*: Rope
     path*: PNode              # can be a string literal!
 
+    
   CompilesId* = int ## id that is used for the caching logic within
                     ## ``system.compiles``. See the seminst module.
   TInstantiation* = object
@@ -1541,8 +1543,7 @@ proc skipGenericOwner*(s: PSym): PSym =
   ## Generic instantiations are owned by their originating generic
   ## symbol. This proc skips such owners and goes straight to the owner
   ## of the generic itself (the module or the enclosing proc).
-  result = if s.kind in skProcKinds and {sfGenSym, sfFromGeneric} * s.flags ==
-                                                  {sfFromGeneric}:
+  result = if s.kind in skProcKinds and sfFromGeneric in s.flags:
              s.owner.owner
            else:
              s.owner

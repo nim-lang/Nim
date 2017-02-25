@@ -1002,8 +1002,8 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
 
 iterator walkDirRec*(dir: string, filter={pcFile, pcDir}): string {.
   tags: [ReadDirEffect].} =
-  ## walks over the directory `dir` and yields for each file in `dir`. The
-  ## full path for each file is returned.
+  ## Recursively walks over the directory `dir` and yields for each file in `dir`.
+  ## The full path for each file is returned. Directories are not returned.
   ## **Warning**:
   ## Modifying the directory structure while the iterator
   ## is traversing may result in undefined behavior!
@@ -1185,7 +1185,7 @@ proc createHardlink*(src, dest: string) =
 
 proc parseCmdLine*(c: string): seq[string] {.
   noSideEffect, rtl, extern: "nos$1".} =
-  ## Splits a command line into several components;
+  ## Splits a `command line`:idx: into several components;
   ## This proc is only occasionally useful, better use the `parseopt` module.
   ##
   ## On Windows, it uses the following parsing rules

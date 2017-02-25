@@ -19,7 +19,7 @@
 # * transforms 'defer' into a 'try finally' statement
 
 import
-  intsets, strutils, lists, options, ast, astalgo, trees, treetab, msgs, os,
+  intsets, strutils, options, ast, astalgo, trees, treetab, msgs, os,
   idents, renderer, types, passes, semfold, magicsys, cgmeth, rodread,
   lambdalifting, sempass2, lowerings, lookups
 
@@ -694,9 +694,10 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
     # bugfix: check after 'transformSons' if it's still a method call:
     # use the dispatcher for the call:
     if s.sons[0].kind == nkSym and s.sons[0].sym.kind == skMethod:
-      let t = lastSon(s.sons[0].sym.ast)
-      if t.kind != nkSym or sfDispatcher notin t.sym.flags:
-        methodDef(s.sons[0].sym, false)
+      when false:
+        let t = lastSon(s.sons[0].sym.ast)
+        if t.kind != nkSym or sfDispatcher notin t.sym.flags:
+          methodDef(s.sons[0].sym, false)
       result = methodCall(s).PTransNode
     else:
       result = s.PTransNode
@@ -869,7 +870,12 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     else:
       result = transformSons(c, n)
   of nkIdentDefs, nkConstDef:
-    result = transformSons(c, n)
+    when true:
+      result = transformSons(c, n)
+    else:
+      result = n.PTransNode
+      let L = n.len-1
+      result[L] = transform(c, n.sons[L])
     # XXX comment handling really sucks:
     if importantComments():
       PNode(result).comment = n.comment

@@ -561,16 +561,16 @@ proc toPretty(result: var string, node: SexpNode, indent = 2, ml = true,
     result.add(escapeJson(node.str))
   of SInt:
     if lstArr: result.indent(currIndent)
-    result.add($node.num)
+    result.add(node.num)
   of SFloat:
     if lstArr: result.indent(currIndent)
-    result.add($node.fnum)
+    result.add(node.fnum)
   of SNil:
     if lstArr: result.indent(currIndent)
     result.add("nil")
   of SSymbol:
     if lstArr: result.indent(currIndent)
-    result.add($node.symbol)
+    result.add(node.symbol)
   of SList:
     if lstArr: result.indent(currIndent)
     if len(node.elems) != 0:

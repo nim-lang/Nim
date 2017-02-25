@@ -19,7 +19,7 @@ when true:
   q(B()) # This call reported as ambiguous.
 
 # bug #2219
-template testPred(a: expr) =
+template testPred(a: untyped) =
   block:
     type A = object of RootObj
     type B = object of A

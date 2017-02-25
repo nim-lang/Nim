@@ -1556,7 +1556,10 @@ proc myProcess(c: PPassContext, n: PNode): PNode =
     result = n
   oldErrorCount = msgs.gErrorCounter
 
-const evalPass* = makePass(myOpen, nil, myProcess, myProcess)
+proc myClose(graph: ModuleGraph; c: PPassContext, n: PNode): PNode =
+  myProcess(c, n)
+
+const evalPass* = makePass(myOpen, nil, myProcess, myClose)
 
 proc evalConstExprAux(module: PSym; cache: IdentCache; prc: PSym, n: PNode,
                       mode: TEvalMode): PNode =

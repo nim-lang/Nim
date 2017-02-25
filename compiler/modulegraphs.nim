@@ -40,8 +40,15 @@ type
                               # module dependencies.
     backend*: RootRef # minor hack so that a backend can extend this easily
     config*: ConfigRef
+    doStopCompile*: proc(): bool {.closure.}
+    usageSym*: PSym # for nimsuggest
+    owners*: seq[PSym]
+    methods*: seq[tuple[methods: TSymSeq, dispatcher: PSym]]
 
 {.this: g.}
+
+proc stopCompile*(g: ModuleGraph): bool {.inline.} =
+  result = doStopCompile != nil and doStopCompile()
 
 proc newModuleGraph*(config: ConfigRef = nil): ModuleGraph =
   result = ModuleGraph()
@@ -54,6 +61,8 @@ proc newModuleGraph*(config: ConfigRef = nil): ModuleGraph =
     result.config = newConfigRef()
   else:
     result.config = config
+  result.owners = @[]
+  result.methods = @[]
 
 proc resetAllModules*(g: ModuleGraph) =
   initStrTable(packageSyms)
@@ -61,6 +70,9 @@ proc resetAllModules*(g: ModuleGraph) =
   modules = @[]
   importStack = @[]
   inclToMod = initTable[int32, int32]()
+  usageSym = nil
+  owners = @[]
+  methods = @[]
 
 proc getModule*(g: ModuleGraph; fileIdx: int32): PSym =
   if fileIdx >= 0 and fileIdx < modules.len:
@@ -73,7 +85,7 @@ proc addDep*(g: ModuleGraph; m: PSym, dep: int32) =
     deps.incl m.position.dependsOn(dep)
     # we compute the transitive closure later when quering the graph lazily.
     # this improve efficiency quite a lot:
-    invalidTransitiveClosure = true
+    #invalidTransitiveClosure = true
 
 proc addIncludeDep*(g: ModuleGraph; module, includeFile: int32) =
   discard hasKeyOrPut(inclToMod, includeFile, module)

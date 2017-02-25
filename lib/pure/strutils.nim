@@ -898,7 +898,7 @@ proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
 
 proc toHex*[T](x: T): string =
   ## Shortcut for ``toHex(x, T.sizeOf * 2)``
-  toHex(x, T.sizeOf * 2)
+  toHex(BiggestInt(x), T.sizeOf * 2)
 
 proc intToStr*(x: int, minchars: Positive = 1): string {.noSideEffect,
   rtl, extern: "nsuIntToStr".} =
@@ -939,7 +939,7 @@ proc parseUInt*(s: string): uint {.noSideEffect, procvar,
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid unsigned integer: " & s)
 
-proc parseBiggestUInt*(s: string): uint64 {.noSideEffect, procvar,
+proc parseBiggestUInt*(s: string): BiggestUInt {.noSideEffect, procvar,
   rtl, extern: "nsuParseBiggestUInt".} =
   ## Parses a decimal unsigned integer value contained in `s`.
   ##

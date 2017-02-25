@@ -18,7 +18,11 @@ Changes affecting backwards compatibility
 - The IO routines now raise ``EOFError`` for the "end of file" condition.
   ``EOFError`` is a subtype of ``IOError`` and so it's easier to distinguish
   between "error during read" and "error due to EOF".
-
+- A hash procedure has been added for ``cstring`` type in ``hashes`` module.
+  Previously, hash of a ``cstring`` would be calculated as a hash of the
+  pointer. Now the hash is calculated from the contents of the string, assuming
+  ``cstring`` is a null-terminated string. Equal ``string`` and ``cstring``
+  values produce an equal hash value.
 
 Library Additions
 -----------------
@@ -61,6 +65,10 @@ these procedures.
 
 In the near future we will be converting all exception types to refs to
 remove the need for the ``newException`` template.
+
+- A new pragma ``.used`` can be used for symbols to prevent
+the "declared but not used" warning. More details can be found `here <http://nim-lang.org/docs/manual.html#pragmas-used-pragma>`_.
+
 
 Bugfixes
 --------

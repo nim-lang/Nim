@@ -12,10 +12,10 @@
 
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
                      flags: TExprFlags = {}): PNode =
-  markUsed(n.info, s)
+  markUsed(n.info, s, c.graph.usageSym)
   styleCheckUse(n.info, s)
   pushInfoContext(n.info)
-  result = evalTemplate(n, s, getCurrOwner(), efFromHlo in flags)
+  result = evalTemplate(n, s, getCurrOwner(c), efFromHlo in flags)
   if efNoSemCheck notin flags: result = semAfterMacroCall(c, result, s, flags)
   popInfoContext()
 
@@ -209,7 +209,7 @@ proc semConv(c: PContext, n: PNode): PNode =
       let it = op.sons[i]
       let status = checkConvertible(c, result.typ, it.typ)
       if status in {convOK, convNotNeedeed}:
-        markUsed(n.info, it.sym)
+        markUsed(n.info, it.sym, c.graph.usageSym)
         styleCheckUse(n.info, it.sym)
         markIndirect(c, it.sym)
         return it
@@ -922,10 +922,11 @@ proc readTypeParameter(c: PContext, typ: PType,
         return newSymNode(copySym(tParam.sym).linkTo(foundTyp), info)
   #echo "came here: returned nil"
 
-proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
+proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
+  let s = getGenSym(c, sym)
   case s.kind
   of skConst:
-    markUsed(n.info, s)
+    markUsed(n.info, s, c.graph.usageSym)
     styleCheckUse(n.info, s)
     case skipTypes(s.typ, abstractInst-{tyTypeDesc}).kind
     of  tyNil, tyChar, tyInt..tyInt64, tyFloat..tyFloat128,
@@ -949,20 +950,20 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       result = newSymNode(s, n.info)
   of skMacro:
     if efNoEvaluateGeneric in flags and s.ast[genericParamsPos].len > 0:
-      markUsed(n.info, s)
+      markUsed(n.info, s, c.graph.usageSym)
       styleCheckUse(n.info, s)
       result = newSymNode(s, n.info)
     else:
       result = semMacroExpr(c, n, n, s, flags)
   of skTemplate:
     if efNoEvaluateGeneric in flags and s.ast[genericParamsPos].len > 0:
-      markUsed(n.info, s)
+      markUsed(n.info, s, c.graph.usageSym)
       styleCheckUse(n.info, s)
       result = newSymNode(s, n.info)
     else:
       result = semTemplateExpr(c, n, s, flags)
   of skParam:
-    markUsed(n.info, s)
+    markUsed(n.info, s, c.graph.usageSym)
     styleCheckUse(n.info, s)
     if s.typ.kind == tyStatic and s.typ.n != nil:
       # XXX see the hack in sigmatch.nim ...
@@ -984,7 +985,7 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     if s.magic == mNimvm:
       localError(n.info, "illegal context for 'nimvm' magic")
 
-    markUsed(n.info, s)
+    markUsed(n.info, s, c.graph.usageSym)
     styleCheckUse(n.info, s)
     result = newSymNode(s, n.info)
     # We cannot check for access to outer vars for example because it's still
@@ -1002,7 +1003,7 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       n.typ = s.typ
       return n
   of skType:
-    markUsed(n.info, s)
+    markUsed(n.info, s, c.graph.usageSym)
     styleCheckUse(n.info, s)
     if s.typ.kind == tyStatic and s.typ.n != nil:
       return s.typ.n
@@ -1024,7 +1025,7 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
           if f != nil and fieldVisible(c, f):
             # is the access to a public field or in the same module or in a friend?
             doAssert f == s
-            markUsed(n.info, f)
+            markUsed(n.info, f, c.graph.usageSym)
             styleCheckUse(n.info, f)
             result = newNodeIT(nkDotExpr, n.info, f.typ)
             result.add makeDeref(newSymNode(p.selfSym))
@@ -1037,11 +1038,11 @@ proc semSym(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
           if ty.sons[0] == nil: break
           ty = skipTypes(ty.sons[0], skipPtrs)
     # old code, not sure if it's live code:
-    markUsed(n.info, s)
+    markUsed(n.info, s, c.graph.usageSym)
     styleCheckUse(n.info, s)
     result = newSymNode(s, n.info)
   else:
-    markUsed(n.info, s)
+    markUsed(n.info, s, c.graph.usageSym)
     styleCheckUse(n.info, s)
     result = newSymNode(s, n.info)
 
@@ -1061,7 +1062,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       result = symChoice(c, n, s, scClosed)
       if result.kind == nkSym: result = semSym(c, n, s, flags)
     else:
-      markUsed(n.sons[1].info, s)
+      markUsed(n.sons[1].info, s, c.graph.usageSym)
       result = semSym(c, n, s, flags)
     styleCheckUse(n.sons[1].info, s)
     return
@@ -1086,18 +1087,18 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
         result = newSymNode(f)
         result.info = n.info
         result.typ = ty
-        markUsed(n.info, f)
+        markUsed(n.info, f, c.graph.usageSym)
         styleCheckUse(n.info, f)
         return
     of tyTypeParamsHolders:
       return readTypeParameter(c, ty, i, n.info)
     of tyObject, tyTuple:
       if ty.n != nil and ty.n.kind == nkRecList:
-        for field in ty.n:
-          if field.sym.name == i:
-            n.typ = newTypeWithSons(c, tyFieldAccessor, @[ty, field.sym.typ])
-            n.typ.n = copyTree(n)
-            return n
+        let field = lookupInRecord(ty.n, i)
+        if field != nil:
+          n.typ = newTypeWithSons(c, tyFieldAccessor, @[ty, field.typ])
+          n.typ.n = copyTree(n)
+          return n
     else:
       # echo "TYPE FIELD ACCESS"
       # debug ty
@@ -1119,7 +1120,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if f != nil:
       if fieldVisible(c, f):
         # is the access to a public field or in the same module or in a friend?
-        markUsed(n.sons[1].info, f)
+        markUsed(n.sons[1].info, f, c.graph.usageSym)
         styleCheckUse(n.sons[1].info, f)
         n.sons[0] = makeDeref(n.sons[0])
         n.sons[1] = newSymNode(f) # we now have the correct field
@@ -1133,7 +1134,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   elif ty.kind == tyTuple and ty.n != nil:
     f = getSymFromList(ty.n, i)
     if f != nil:
-      markUsed(n.sons[1].info, f)
+      markUsed(n.sons[1].info, f, c.graph.usageSym)
       styleCheckUse(n.sons[1].info, f)
       n.sons[0] = makeDeref(n.sons[0])
       n.sons[1] = newSymNode(f)
@@ -1580,9 +1581,8 @@ proc getMagicSym(magic: TMagic): PSym =
   result = newSym(skProc, getIdent($magic), systemModule, gCodegenLineInfo)
   result.magic = magic
 
-proc newAnonSym(c: PContext; kind: TSymKind, info: TLineInfo,
-                owner = getCurrOwner()): PSym =
-  result = newSym(kind, c.cache.idAnon, owner, info)
+proc newAnonSym(c: PContext; kind: TSymKind, info: TLineInfo): PSym =
+  result = newSym(kind, c.cache.idAnon, getCurrOwner(c), info)
   result.flags = {sfGenSym}
 
 proc semExpandToAst(c: PContext, n: PNode): PNode =
@@ -1591,7 +1591,7 @@ proc semExpandToAst(c: PContext, n: PNode): PNode =
   if expandedSym.kind == skError: return n
 
   macroCall.sons[0] = newSymNode(expandedSym, macroCall.info)
-  markUsed(n.info, expandedSym)
+  markUsed(n.info, expandedSym, c.graph.usageSym)
   styleCheckUse(n.info, expandedSym)
 
   for i in countup(1, macroCall.len-1):
@@ -1682,7 +1682,7 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   # open a scope for temporary symbol inclusions:
   let oldScope = c.currentScope
   openScope(c)
-  let oldOwnerLen = len(gOwners)
+  let oldOwnerLen = len(c.graph.owners)
   let oldGenerics = c.generics
   let oldErrorOutputs = errorOutputs
   errorOutputs = {}
@@ -1708,7 +1708,7 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   c.inGenericInst = oldInGenericInst
   c.p = oldProcCon
   msgs.setInfoContextLen(oldContextLen)
-  setLen(gOwners, oldOwnerLen)
+  setLen(c.graph.owners, oldOwnerLen)
   c.currentScope = oldScope
   errorOutputs = oldErrorOutputs
   msgs.gErrorCounter = oldErrorCount
@@ -2106,8 +2106,8 @@ proc semBlock(c: PContext, n: PNode): PNode =
     var labl = newSymG(skLabel, n.sons[0], c)
     if sfGenSym notin labl.flags:
       addDecl(c, labl)
-      n.sons[0] = newSymNode(labl, n.sons[0].info)
-    suggestSym(n.sons[0].info, labl)
+    n.sons[0] = newSymNode(labl, n.sons[0].info)
+    suggestSym(n.sons[0].info, labl, c.graph.usageSym)
     styleCheckDef(labl)
   n.sons[1] = semExpr(c, n.sons[1])
   n.typ = n.sons[1].typ

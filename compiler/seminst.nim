@@ -61,7 +61,7 @@ iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym 
     if q.typ.kind notin {tyTypeDesc, tyGenericParam, tyStatic}+tyTypeClasses:
       continue
     let symKind = if q.typ.kind == tyStatic: skConst else: skType
-    var s = newSym(symKind, q.name, getCurrOwner(), q.info)
+    var s = newSym(symKind, q.name, getCurrOwner(c), q.info)
     s.flags = s.flags + {sfUsed, sfFromGeneric}
     var t = PType(idTableGet(pt, q.typ))
     if t == nil:
@@ -106,15 +106,18 @@ proc freshGenSyms(n: PNode, owner, orig: PSym, symMap: var TIdTable) =
   #if n.kind == nkSym and sfGenSym in n.sym.flags:
   #  if n.sym.owner != orig:
   #    echo "symbol ", n.sym.name.s, " orig ", orig, " owner ", n.sym.owner
-  if n.kind == nkSym and {sfGenSym, sfFromGeneric} * n.sym.flags == {sfGenSym}: # and
+  if n.kind == nkSym and sfGenSym in n.sym.flags: # and
     #  (n.sym.owner == orig or n.sym.owner.kind in {skPackage}):
     let s = n.sym
     var x = PSym(idTableGet(symMap, s))
-    if x == nil:
+    if x != nil:
+      n.sym = x
+    elif s.owner.kind == skPackage:
+      #echo "copied this ", s.name.s
       x = copySym(s, false)
       x.owner = owner
       idTablePut(symMap, s, x)
-    n.sym = x
+      n.sym = x
   else:
     for i in 0 .. <safeLen(n): freshGenSyms(n.sons[i], owner, orig, symMap)
 
@@ -252,7 +255,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   incl(result.flags, sfFromGeneric)
   result.owner = fn
   result.ast = n
-  pushOwner(result)
+  pushOwner(c, result)
 
   openScope(c)
   let gp = n.sons[genericParamsPos]
@@ -301,7 +304,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   popProcCon(c)
   popInfoContext()
   closeScope(c)           # close scope for parameters
-  popOwner()
+  popOwner(c)
   c.currentScope = oldScope
   discard c.friendModules.pop()
   dec(c.instCounter)

@@ -108,7 +108,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   var trueSymbol = strTableGet(magicsys.systemModule.tab, getIdent"true")
   if trueSymbol == nil:
     localError(n.info, errSystemNeeds, "true")
-    trueSymbol = newSym(skUnknown, getIdent"true", getCurrOwner(), n.info)
+    trueSymbol = newSym(skUnknown, getIdent"true", getCurrOwner(c), n.info)
     trueSymbol.typ = getSysType(tyBool)
 
   result.sons[0] = newSymNode(trueSymbol, n.info)

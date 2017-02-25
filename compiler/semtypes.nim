@@ -297,7 +297,7 @@ proc semOrdinal(c: PContext, n: PNode, prev: PType): PType =
 
 proc semTypeIdent(c: PContext, n: PNode): PSym =
   if n.kind == nkSym:
-    result = n.sym
+    result = getGenSym(c, n.sym)
   else:
     when defined(nimfix):
       result = pickSym(c, n, skType)
@@ -306,7 +306,7 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
     else:
       result = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared})
     if result != nil:
-      markUsed(n.info, result)
+      markUsed(n.info, result, c.graph.usageSym)
       styleCheckUse(n.info, result)
       if result.kind == skParam and result.typ.kind == tyTypeDesc:
         # This is a typedesc param. is it already bound?
@@ -608,7 +608,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
     let rec = rectype.sym
     for i in countup(0, sonsLen(n)-3):
       var f = semIdentWithPragma(c, skField, n.sons[i], {sfExported})
-      suggestSym(n.sons[i].info, f)
+      suggestSym(n.sons[i].info, f, c.graph.usageSym)
       f.typ = typ
       f.position = pos
       if (rec != nil) and ({sfImportc, sfExportc} * rec.flags != {}) and
@@ -750,7 +750,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
         return genericParams.sons[i].typ
 
     let owner = if typeClass.sym != nil: typeClass.sym
-                else: getCurrOwner()
+                else: getCurrOwner(c)
     var s = newSym(skType, finalTypId, owner, info)
     if typId == nil: s.flags.incl(sfAnon)
     s.linkTo(typeClass)
@@ -850,7 +850,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
 
   of tyGenericInst:
     if paramType.lastSon.kind == tyUserTypeClass:
-      var cp = copyType(paramType, getCurrOwner(), false)
+      var cp = copyType(paramType, getCurrOwner(c), false)
       cp.kind = tyUserTypeClassInst
       return addImplicitGeneric(cp)
 
@@ -876,10 +876,10 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       result = liftingWalk(expanded, true)
 
   of tyUserTypeClass, tyBuiltInTypeClass, tyAnd, tyOr, tyNot:
-    result = addImplicitGeneric(copyType(paramType, getCurrOwner(), true))
+    result = addImplicitGeneric(copyType(paramType, getCurrOwner(c), true))
 
   of tyGenericParam:
-    markUsed(info, paramType.sym)
+    markUsed(info, paramType.sym, c.graph.usageSym)
     styleCheckUse(info, paramType.sym)
     if tfWildcard in paramType.flags:
       paramType.flags.excl tfWildcard
@@ -1267,7 +1267,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     of mExpr:
       result = semTypeNode(c, n.sons[0], nil)
       if result != nil:
-        result = copyType(result, getCurrOwner(), false)
+        result = copyType(result, getCurrOwner(c), false)
         for i in countup(1, n.len - 1):
           result.rawAddSon(semTypeNode(c, n.sons[i], nil))
     of mDistinct:
@@ -1319,8 +1319,9 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
           prev.id = s.typ.id
         result = prev
   of nkSym:
-    if n.sym.kind == skType and n.sym.typ != nil:
-      var t = n.sym.typ
+    let s = getGenSym(c, n.sym)
+    if s.kind == skType and s.typ != nil:
+      var t = s.typ
       let alias = maybeAliasType(c, t, prev)
       if alias != nil:
         result = alias
@@ -1329,10 +1330,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       else:
         assignType(prev, t)
         result = prev
-      markUsed(n.info, n.sym)
+      markUsed(n.info, n.sym, c.graph.usageSym)
       styleCheckUse(n.info, n.sym)
     else:
-      if n.sym.kind != skError: localError(n.info, errTypeExpected)
+      if s.kind != skError: localError(n.info, errTypeExpected)
       result = newOrPrevType(tyError, prev, c)
   of nkObjectTy: result = semObjectNode(c, n, prev)
   of nkTupleTy: result = semTuple(c, n, prev)

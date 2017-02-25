@@ -171,21 +171,23 @@ proc readLine(f: File): TaintedString =
 
 proc write(f: File, i: int) =
   when sizeof(int) == 8:
-    c_fprintf(f, "%lld", i)
+    if c_fprintf(f, "%lld", i) < 0: checkErr(f)
   else:
-    c_fprintf(f, "%ld", i)
+    if c_fprintf(f, "%ld", i) < 0: checkErr(f)
 
 proc write(f: File, i: BiggestInt) =
   when sizeof(BiggestInt) == 8:
-    c_fprintf(f, "%lld", i)
+    if c_fprintf(f, "%lld", i) < 0: checkErr(f)
   else:
-    c_fprintf(f, "%ld", i)
+    if c_fprintf(f, "%ld", i) < 0: checkErr(f)
 
 proc write(f: File, b: bool) =
   if b: write(f, "true")
   else: write(f, "false")
-proc write(f: File, r: float32) = c_fprintf(f, "%g", r)
-proc write(f: File, r: BiggestFloat) = c_fprintf(f, "%g", r)
+proc write(f: File, r: float32) =
+  if c_fprintf(f, "%g", r) < 0: checkErr(f)
+proc write(f: File, r: BiggestFloat) =
+  if c_fprintf(f, "%g", r) < 0: checkErr(f)
 
 proc write(f: File, c: char) = discard c_putc(ord(c), f)
 proc write(f: File, a: varargs[string, `$`]) =
@@ -213,7 +215,10 @@ proc rawFileSize(file: File): int =
   discard c_fseek(file, clong(oldPos), 0)
 
 proc endOfFile(f: File): bool =
-  result = c_feof(f) != 0
+  var c = c_fgetc(f)
+  discard c_ungetc(c, f)
+  return c < 0'i32
+  #result = c_feof(f) != 0
 
 proc readAllFile(file: File, len: int): string =
   # We acquire the filesize beforehand and hope it doesn't change.
