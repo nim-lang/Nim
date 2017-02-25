@@ -31,7 +31,7 @@
 ##
 ##    waitFor server.serve(Port(8080), cb)
 
-import tables, asyncnet, asyncdispatch, parseutils, uri, strutils
+import tables, asyncnet, asyncdispatch, parseutils, uri, strutils, nativesockets
 import httpcore
 
 export httpcore except parseHeader
@@ -241,7 +241,7 @@ proc serve*(server: AsyncHttpServer, port: Port,
   ## specified address and port.
   ##
   ## When a request is made by a client the specified callback will be called.
-  server.socket = newAsyncSocket()
+  server.socket = newAsyncSocket(AF_INET6)
   if server.reuseAddr:
     server.socket.setSockOpt(OptReuseAddr, true)
   if server.reusePort:
