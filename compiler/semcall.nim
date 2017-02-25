@@ -327,7 +327,7 @@ proc inferWithMetatype(c: PContext, formal: PType,
     result.typ = generateTypeInstance(c, m.bindings, arg.info,
                                       formal.skipTypes({tyCompositeTypeClass}))
   else:
-    typeMismatch(arg, formal, arg.typ)
+    typeMismatch(arg.info, formal, arg.typ)
     # error correction:
     result = copyTree(arg)
     result.typ = formal
