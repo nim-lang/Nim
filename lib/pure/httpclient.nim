@@ -1185,7 +1185,7 @@ proc post*(client: HttpClient | AsyncHttpClient, url: string, body = "",
   ## specified in ``client.maxRedirects``.
   let (mpHeader, mpBody) = format(multipart)
   # TODO: Support FutureStream for `body` parameter.
-  template withNewLine(x): expr =
+  template withNewLine(x): untyped =
     if x.len > 0 and not x.endsWith("\c\L"):
       x & "\c\L"
     else:
