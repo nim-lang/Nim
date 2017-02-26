@@ -218,8 +218,13 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
   of tyTuple:
     if inst:
       result = newNodeX(nkTupleTy)
-      for s in t.n.sons:
-        result.add newIdentDefs(s)
+      # only named tuples have a node, unnamed tuples don't
+      if t.n.isNil:
+        for subType in t.sons:
+          result.add newIdentDefs(ast.emptyNode, subType)
+      else:
+        for s in t.n.sons:
+          result.add newIdentDefs(s)
     else:
       result = mapTypeToBracket("tuple", mTuple, t, info)
   of tySet: result = mapTypeToBracket("set", mSet, t, info)
