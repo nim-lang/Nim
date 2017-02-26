@@ -47,6 +47,8 @@
 ## Tests can be nested, however failure of a nested test will not mark the
 ## parent test as failed. Setup and teardown are inherited. Setup can be
 ## overridden locally.
+## Compiled test files return the number of failed test as exit code, while
+## nim c -r <testfile.nim> exits with 0 or 1
 
 import
   macros
