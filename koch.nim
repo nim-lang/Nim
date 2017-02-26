@@ -223,7 +223,9 @@ proc bundleWinTools() =
   copyExe("tools/finish".exe, "finish".exe)
   removeFile("tools/finish".exe)
   nimexec("c -o:bin/vccexe.exe tools/vccenv/vccexe")
+  nimexec("c -o:bin/nimgrab.exe -d:ssl tools/nimgrab.nim")
   when false:
+    # not yet a tool worth including
     nimexec(r"c --cc:vcc --app:gui -o:bin\downloader.exe -d:ssl --noNimblePath " &
             r"--path:..\ui tools\downloader.nim")
 
@@ -541,6 +543,7 @@ of cmdArgument:
   of "test", "tests": tests(op.cmdLineRest)
   of "temp": temp(op.cmdLineRest)
   of "winrelease": winRelease()
+  of "wintools": bundleWinTools()
   of "nimble": buildNimble(existsDir(".git"))
   of "nimsuggest": bundleNimsuggest(buildExe=true)
   of "tools": buildTools(existsDir(".git"))

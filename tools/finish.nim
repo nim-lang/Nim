@@ -30,8 +30,12 @@ proc unzip(): bool =
 
 proc downloadMingw(): DownloadResult =
   let curl = findExe"curl"
+  var cmd: string
   if curl.len > 0:
-    let cmd = curl & " --out " & "dist" / mingw & " " & url
+    cmd = curl & " --out " & "dist" / mingw & " " & url
+  elif fileExists"bin/nimgrab.exe":
+    cmd = "bin/nimgrab.exe " & url & " dist" / mingw
+  if cmd.len > 0:
     if execShellCmd(cmd) != 0:
       echo "download failed! ", cmd
       openDefaultBrowser(url)
