@@ -144,7 +144,7 @@ proc add*[T](q: var Queue[T], item: T) =
   var cap = q.mask+1
   if unlikely(q.count >= cap):
     var n = newSeq[T](cap*2)
-    for i, x in q:  # don't use copyMem because the GC and because it's slower.
+    for i, x in pairs(q):  # don't use copyMem because the GC and because it's slower.
       shallowCopy(n[i], x)
     shallowCopy(q.data, n)
     q.mask = cap*2 - 1
