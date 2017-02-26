@@ -200,8 +200,8 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
   proc addComma(r: Rope): Rope =
     result = if r == nil: r else: r & ~", "
 
-  const PatProc = "$1.ClEnv? $1.ClPrc($3$1.ClEnv):(($4)($1.ClPrc))($2)"
-  const PatIter = "$1.ClPrc($3$1.ClEnv)" # we know the env exists
+  const PatProc = "$1.ClE_0? $1.ClP_0($3$1.ClE_0):(($4)($1.ClP_0))($2)"
+  const PatIter = "$1.ClP_0($3$1.ClE_0)" # we know the env exists
   var op: TLoc
   initLocExpr(p, ri.sons[0], op)
   var pl: Rope

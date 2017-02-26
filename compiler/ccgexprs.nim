@@ -296,10 +296,10 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   of tyProc:
     if needsComplexAssignment(dest.t):
       # optimize closure assignment:
-      let a = optAsgnLoc(dest, dest.t, "ClEnv".rope)
-      let b = optAsgnLoc(src, dest.t, "ClEnv".rope)
+      let a = optAsgnLoc(dest, dest.t, "ClE_0".rope)
+      let b = optAsgnLoc(src, dest.t, "ClE_0".rope)
       genRefAssign(p, a, b, flags)
-      linefmt(p, cpsStmts, "$1.ClPrc = $2.ClPrc;$n", rdLoc(dest), rdLoc(src))
+      linefmt(p, cpsStmts, "$1.ClP_0 = $2.ClP_0;$n", rdLoc(dest), rdLoc(src))
     else:
       linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   of tyTuple:
@@ -602,14 +602,14 @@ proc genEqProc(p: BProc, e: PNode, d: var TLoc) =
   initLocExpr(p, e.sons[2], b)
   if a.t.skipTypes(abstractInst).callConv == ccClosure:
     putIntoDest(p, d, e.typ,
-      "($1.ClPrc == $2.ClPrc && $1.ClEnv == $2.ClEnv)" % [rdLoc(a), rdLoc(b)])
+      "($1.ClP_0 == $2.ClP_0 && $1.ClE_0 == $2.ClE_0)" % [rdLoc(a), rdLoc(b)])
   else:
     putIntoDest(p, d, e.typ, "($1 == $2)" % [rdLoc(a), rdLoc(b)])
 
 proc genIsNil(p: BProc, e: PNode, d: var TLoc) =
   let t = skipTypes(e.sons[1].typ, abstractRange)
   if t.kind == tyProc and t.callConv == ccClosure:
-    unaryExpr(p, e, d, "($1.ClPrc == 0)")
+    unaryExpr(p, e, d, "($1.ClP_0 == 0)")
   else:
     unaryExpr(p, e, d, "($1 == 0)")
 
@@ -1851,11 +1851,11 @@ proc genClosure(p: BProc, n: PNode, d: var TLoc) =
     # tasyncawait.nim breaks with this optimization:
     when false:
       if d.k != locNone:
-        linefmt(p, cpsStmts, "$1.ClPrc = $2; $1.ClEnv = $3;$n",
+        linefmt(p, cpsStmts, "$1.ClP_0 = $2; $1.ClE_0 = $3;$n",
                 d.rdLoc, a.rdLoc, b.rdLoc)
     else:
       getTemp(p, n.typ, tmp)
-      linefmt(p, cpsStmts, "$1.ClPrc = $2; $1.ClEnv = $3;$n",
+      linefmt(p, cpsStmts, "$1.ClP_0 = $2; $1.ClE_0 = $3;$n",
               tmp.rdLoc, a.rdLoc, b.rdLoc)
       putLocIntoDest(p, d, tmp)
 

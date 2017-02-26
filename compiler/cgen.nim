@@ -628,7 +628,7 @@ proc closureSetup(p: BProc, prc: PSym) =
   #echo "created environment: ", env.id, " for ", prc.name.s
   assignLocalVar(p, env)
   # generate cast assignment:
-  linefmt(p, cpsStmts, "$1 = ($2) ClEnv;$n",
+  linefmt(p, cpsStmts, "$1 = ($2) ClE_0;$n",
           rdLoc(env.loc), getTypeDesc(p.module, env.typ))
 
 proc easyResultAsgn(n: PNode): PNode =
