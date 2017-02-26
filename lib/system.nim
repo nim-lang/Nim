@@ -3149,20 +3149,20 @@ when not defined(JS): #and not defined(nimscript):
       ## retrieves the raw proc pointer of the closure `x`. This is
       ## useful for interfacing closures with C.
       {.emit: """
-      `result` = `x`.ClPrc;
+      `result` = `x`.ClP_0;
       """.}
 
     proc rawEnv*[T: proc](x: T): pointer {.noSideEffect, inline.} =
       ## retrieves the raw environment pointer of the closure `x`. This is
       ## useful for interfacing closures with C.
       {.emit: """
-      `result` = `x`.ClEnv;
+      `result` = `x`.ClE_0;
       """.}
 
     proc finished*[T: proc](x: T): bool {.noSideEffect, inline.} =
       ## can be used to determine if a first class iterator has finished.
       {.emit: """
-      `result` = *((NI*) `x`.ClEnv) < 0;
+      `result` = *((NI*) `x`.ClE_0) < 0;
       """.}
 
 elif defined(JS):
