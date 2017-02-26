@@ -84,6 +84,9 @@
 ## .. code-block:: Nim
 ##   client.onProgressChanged = nil
 ##
+## **Warning:** The ``total`` reported by httpclient may be 0 in some cases.
+##
+##
 ## SSL/TLS support
 ## ===============
 ## This requires the OpenSSL library, fortunately it's widely used and installed
