@@ -1652,6 +1652,7 @@ proc escape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
   ## The procedure has been designed so that its output is usable for many
   ## different common syntaxes. The resulting string is prefixed with
   ## `prefix` and suffixed with `suffix`. Both may be empty strings.
+  ## **Note**: This is not correct for producing Ansi C code!
   result = newStringOfCap(s.len + s.len shr 2)
   result.add(prefix)
   for c in items(s):
