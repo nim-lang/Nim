@@ -339,9 +339,6 @@ when not defined(ssl):
 var defaultSSLContext {.threadvar.}: SSLContext
 when defined(ssl):
   defaultSSLContext = newContext(verifyMode = CVerifyNone)
-  when compileOption("threads"):
-    onThreadCreation do ():
-      defaultSSLContext = newContext(verifyMode = CVerifyNone)
 
 proc newProxy*(url: string, auth = ""): Proxy =
   ## Constructs a new ``TProxy`` object.
