@@ -449,8 +449,8 @@ proc semBranchRange(c: PContext, t, a, b: PNode, covered: var BiggestInt): PNode
   checkMinSonsLen(t, 1)
   let ac = semConstExpr(c, a)
   let bc = semConstExpr(c, b)
-  let at = fitNode(c, t.sons[0].typ, ac).skipConvTakeType
-  let bt = fitNode(c, t.sons[0].typ, bc).skipConvTakeType
+  let at = fitNode(c, t.sons[0].typ, ac, ac.info).skipConvTakeType
+  let bt = fitNode(c, t.sons[0].typ, bc, bc.info).skipConvTakeType
 
   result = newNodeI(nkRange, a.info)
   result.add(at)
@@ -472,7 +472,7 @@ proc semCaseBranchSetElem(c: PContext, t, b: PNode,
     checkSonsLen(b, 2)
     result = semBranchRange(c, t, b.sons[0], b.sons[1], covered)
   else:
-    result = fitNode(c, t.sons[0].typ, b)
+    result = fitNode(c, t.sons[0].typ, b, b.info)
     inc(covered)
 
 proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
@@ -493,7 +493,7 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
         return
       elif r.kind notin {nkCurly, nkBracket} or len(r) == 0:
         checkMinSonsLen(t, 1)
-        branch.sons[i] = skipConv(fitNode(c, t.sons[0].typ, r))
+        branch.sons[i] = skipConv(fitNode(c, t.sons[0].typ, r, r.info))
         inc(covered)
       else:
         # first element is special and will overwrite: branch.sons[i]:
@@ -947,7 +947,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         # example code that triggers it:
         # proc sort[T](cmp: proc(a, b: T): int = cmp)
         if not containsGenericType(typ):
-          def = fitNode(c, typ, def)
+          def = fitNode(c, typ, def, def.info)
     if not hasType and not hasDefault:
       if isType: localError(a.info, "':' expected")
       if kind in {skTemplate, skMacro}:
@@ -1479,7 +1479,7 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
         # from manyloc/named_argument_bug/triengine:
         def.typ = def.typ.skipTypes({tyTypeDesc})
         if not containsGenericType(def.typ):
-          def = fitNode(c, typ, def)
+          def = fitNode(c, typ, def, def.info)
 
     if typ == nil:
       typ = newTypeS(tyGenericParam, c)

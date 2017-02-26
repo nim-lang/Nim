@@ -95,7 +95,7 @@ proc random*(max: float): float {.benign.} =
 
 proc random*[T](x: Slice[T]): T =
   ## For a slice `a .. b` returns a value in the range `a .. b-1`.
-  result = random(x.b - x.a) + x.a
+  result = T(random(x.b - x.a)) + x.a
 
 proc random*[T](a: openArray[T]): T =
   ## returns a random element from the openarray `a`.

@@ -112,6 +112,14 @@ proc hash*(x: int64): Hash {.inline.} =
   ## efficient hashing of int64 integers
   result = toU32(x)
 
+proc hash*(x: uint): Hash {.inline.} =
+  ## efficient hashing of unsigned integers
+  result = cast[int](x)
+
+proc hash*(x: uint64): Hash {.inline.} =
+  ## efficient hashing of uint64 integers
+  result = toU32(cast[int](x))
+
 proc hash*(x: char): Hash {.inline.} =
   ## efficient hashing of characters
   result = ord(x)

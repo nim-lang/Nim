@@ -194,13 +194,13 @@ proc semConv(c: PContext, n: PNode): PNode =
     of convOK:
       # handle SomeProcType(SomeGenericProc)
       if op.kind == nkSym and op.sym.isGenericRoutine:
-        result.sons[1] = fitNode(c, result.typ, result.sons[1])
+        result.sons[1] = fitNode(c, result.typ, result.sons[1], result.info)
       elif op.kind == nkPar and targetType.kind == tyTuple:
-        op = fitNode(c, targetType, op)
+        op = fitNode(c, targetType, op, result.info)
     of convNotNeedeed:
       message(n.info, hintConvFromXtoItselfNotNeeded, result.typ.typeToString)
     of convNotLegal:
-      result = fitNode(c, result.typ, result.sons[1])
+      result = fitNode(c, result.typ, result.sons[1], result.info)
       if result == nil:
         localError(n.info, errGenerated, msgKindToString(errIllegalConvFromXtoY)%
           [op.typ.typeToString, result.typ.typeToString])
@@ -445,7 +445,7 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       x = n.sons[i]
       if x.kind == nkExprColonExpr and sonsLen(x) == 2:
         var idx = semConstExpr(c, x.sons[0])
-        idx = fitNode(c, indexType, idx)
+        idx = fitNode(c, indexType, idx, x.info)
         if lastIndex+1 != getOrdValue(idx):
           localError(x.info, errInvalidOrderInArrayConstructor)
         x = x.sons[1]
@@ -458,7 +458,7 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       inc(lastIndex)
     addSonSkipIntLit(result.typ, typ)
     for i in 0 .. <result.len:
-      result.sons[i] = fitNode(c, typ, result.sons[i])
+      result.sons[i] = fitNode(c, typ, result.sons[i], result.sons[i].info)
   result.typ.sons[0] = makeRangeType(c, 0, sonsLen(result) - 1, n.info)
 
 proc fixAbstractType(c: PContext, n: PNode) =
@@ -1393,9 +1393,9 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           c.p.resultSym.typ = rhs.typ
           c.p.owner.typ.sons[0] = rhs.typ
         else:
-          typeMismatch(n, lhs.typ, rhs.typ)
+          typeMismatch(n.info, lhs.typ, rhs.typ)
 
-    n.sons[1] = fitNode(c, le, rhs)
+    n.sons[1] = fitNode(c, le, rhs, n.info)
     if tfHasAsgn in lhs.typ.flags and not lhsIsResult and
         mode != noOverloadedAsgn:
       return overloadedAsgn(c, lhs, n.sons[1])
@@ -1494,7 +1494,7 @@ proc semYield(c: PContext, n: PNode): PNode =
     let restype = iterType.sons[0]
     if restype != nil:
       if restype.kind != tyExpr:
-        n.sons[0] = fitNode(c, restype, n.sons[0])
+        n.sons[0] = fitNode(c, restype, n.sons[0], n.info)
       if n.sons[0].typ == nil: internalError(n.info, "semYield")
 
       if resultTypeIsInferrable(restype):
@@ -1929,13 +1929,14 @@ proc semSetConstr(c: PContext, n: PNode): PNode =
     addSonSkipIntLit(result.typ, typ)
     for i in countup(0, sonsLen(n) - 1):
       var m: PNode
+      let info = n.sons[i].info
       if isRange(n.sons[i]):
-        m = newNodeI(nkRange, n.sons[i].info)
-        addSon(m, fitNode(c, typ, n.sons[i].sons[1]))
-        addSon(m, fitNode(c, typ, n.sons[i].sons[2]))
+        m = newNodeI(nkRange, info)
+        addSon(m, fitNode(c, typ, n.sons[i].sons[1], info))
+        addSon(m, fitNode(c, typ, n.sons[i].sons[2], info))
       elif n.sons[i].kind == nkRange: m = n.sons[i] # already semchecked
       else:
-        m = fitNode(c, typ, n.sons[i])
+        m = fitNode(c, typ, n.sons[i], info)
       addSon(result, m)
 
 proc semTableConstr(c: PContext, n: PNode): PNode =
@@ -2081,7 +2082,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       t = skipTypes(t.sons[0], skipPtrs)
     if f != nil and fieldVisible(c, f):
       it.sons[0] = newSymNode(f)
-      e = fitNode(c, f.typ, e)
+      e = fitNode(c, f.typ, e, it.info)
       # small hack here in a nkObjConstr the ``nkExprColonExpr`` node can have
       # 3 children the last being the field check
       if check != nil:

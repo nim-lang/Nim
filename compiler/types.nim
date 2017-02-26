@@ -1515,7 +1515,7 @@ proc skipHiddenSubConv*(n: PNode): PNode =
   else:
     result = n
 
-proc typeMismatch*(n: PNode, formal, actual: PType) =
+proc typeMismatch*(info: TLineInfo, formal, actual: PType) =
   if formal.kind != tyError and actual.kind != tyError:
     let named = typeToString(formal)
     let desc = typeToString(formal, preferDesc)
@@ -1537,4 +1537,4 @@ proc typeMismatch*(n: PNode, formal, actual: PType) =
         msg.add "\n.tag effect is 'any tag allowed'"
       of efLockLevelsDiffer:
         msg.add "\nlock levels differ"
-    localError(n.info, errGenerated, msg)
+    localError(info, errGenerated, msg)

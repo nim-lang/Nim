@@ -32,7 +32,7 @@ proc semExprNoType(c: PContext, n: PNode): PNode
 proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc semProcBody(c: PContext, n: PNode): PNode
 
-proc fitNode(c: PContext, formal: PType, arg: PNode): PNode
+proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode
 proc changeType(n: PNode, newType: PType, check: bool)
 
 proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode
@@ -69,7 +69,7 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
       #  echo "passing to safeSemExpr: ", renderTree(n)
       discard safeSemExpr(c, n)
 
-proc fitNode(c: PContext, formal: PType, arg: PNode): PNode =
+proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
   if arg.typ.isNil:
     localError(arg.info, errExprXHasNoType,
                renderTree(arg, {renderNoComments}))
@@ -79,7 +79,7 @@ proc fitNode(c: PContext, formal: PType, arg: PNode): PNode =
   else:
     result = indexTypesMatch(c, formal, arg.typ, arg)
     if result == nil:
-      typeMismatch(arg, formal, arg.typ)
+      typeMismatch(info, formal, arg.typ)
       # error correction:
       result = copyTree(arg)
       result.typ = formal
@@ -367,7 +367,7 @@ proc semAfterMacroCall(c: PContext, n: PNode, s: PSym,
       #result = symNodeFromType(c, typ, n.info)
     else:
       result = semExpr(c, result, flags)
-      result = fitNode(c, s.typ.sons[0], result)
+      result = fitNode(c, s.typ.sons[0], result, result.info)
       #GlobalError(s.info, errInvalidParamKindX, typeToString(s.typ.sons[0]))
   dec(evalTemplateCounter)
   discard c.friendModules.pop()
@@ -390,12 +390,12 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   popInfoContext()
 
 proc forceBool(c: PContext, n: PNode): PNode =
-  result = fitNode(c, getSysType(tyBool), n)
+  result = fitNode(c, getSysType(tyBool), n, n.info)
   if result == nil: result = n
 
 proc semConstBoolExpr(c: PContext, n: PNode): PNode =
   let nn = semExprWithType(c, n)
-  result = fitNode(c, getSysType(tyBool), nn)
+  result = fitNode(c, getSysType(tyBool), nn, nn.info)
   if result == nil:
     localError(n.info, errConstExprExpected)
     return nn

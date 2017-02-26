@@ -209,7 +209,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
       param.owner = prc
       param.typ = result.sons[i]
       if oldParam.ast != nil:
-        param.ast = fitNode(c, param.typ, oldParam.ast)
+        param.ast = fitNode(c, param.typ, oldParam.ast, oldParam.ast.info)
 
       # don't be lazy here and call replaceTypeVarsN(cl, originalParams[i])!
       result.n.sons[i] = newSymNode(param)

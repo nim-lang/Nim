@@ -169,7 +169,8 @@ proc methodDef*(g: ModuleGraph; s: PSym, fromCache: bool) =
       fixupDispatcher(s, disp)
       #echo "fixup ", disp.name.s, " ", disp.id
       when useEffectSystem: checkMethodEffects(disp, s)
-      if sfBase in s.flags and g.methods[i].methods[0] != s:
+      if {sfBase, sfFromGeneric} * s.flags == {sfBase} and
+           g.methods[i].methods[0] != s:
         # already exists due to forwarding definition?
         localError(s.info, "method is not a base")
       return
