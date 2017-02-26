@@ -595,7 +595,7 @@ proc cgsym(m: BModule, name: string): Rope =
 
 proc generateHeaders(m: BModule) =
   add(m.s[cfsHeaders], tnl & "#include \"nimbase.h\"" & tnl)
-  
+
   for it in m.headerFiles:
     if it[0] == '#':
       add(m.s[cfsHeaders], rope(it.replace('`', '"') & tnl))
@@ -1377,9 +1377,10 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   registerModuleToMain(m.g, m.module)
 
   if sfMainModule in m.module.flags:
-    incl m.flags, objHasKidsValid
-    var disp = generateMethodDispatchers(graph)
-    for i in 0..sonsLen(disp)-1: genProcAux(m, disp.sons[i].sym)
+    if m.g.forwardedProcsCounter == 0:
+      incl m.flags, objHasKidsValid
+    let disp = generateMethodDispatchers(graph)
+    for x in disp: genProcAux(m, x.sym)
     genMainProc(m)
 
 proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
