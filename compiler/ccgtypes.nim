@@ -413,7 +413,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
       # this fixes the 'sort' bug:
       if param.typ.kind == tyVar: param.loc.s = OnUnknown
       # need to pass hidden parameter:
-      addf(params, ", NI $1Len$2", [param.loc.r, j.rope])
+      addf(params, ", NI $1Len_$2", [param.loc.r, j.rope])
       inc(j)
       arr = arr.sons[0]
   if t.sons[0] != nil and isInvalidReturnType(t.sons[0]):

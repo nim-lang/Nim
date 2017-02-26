@@ -109,7 +109,7 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
     initLocExpr(p, n, a)
     case skipTypes(a.t, abstractVar).kind
     of tyOpenArray, tyVarargs:
-      result = "$1, $1Len0" % [rdLoc(a)]
+      result = "$1, $1Len_0" % [rdLoc(a)]
     of tyString, tySequence:
       if skipTypes(n.typ, abstractInst).kind == tyVar and
             not compileToCpp(p.module):

@@ -336,12 +336,12 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     # passed to an open array?
     if needsComplexAssignment(dest.t):
       linefmt(p, cpsStmts,     # XXX: is this correct for arrays?
-           "#genericAssignOpenArray((void*)$1, (void*)$2, $1Len0, $3);$n",
+           "#genericAssignOpenArray((void*)$1, (void*)$2, $1Len_0, $3);$n",
            addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t))
     else:
       useStringh(p.module)
       linefmt(p, cpsStmts,
-           "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($1[0])*$1Len0);$n",
+           "memcpy((void*)$1, (NIM_CONST void*)$2, sizeof($1[0])*$1Len_0);$n",
            rdLoc(dest), rdLoc(src))
   of tySet:
     if mapType(ty) == ctArray:
@@ -384,7 +384,7 @@ proc genDeepCopy(p: BProc; dest, src: TLoc) =
             addrLoc(dest), rdLoc(src), genTypeInfo(p.module, dest.t))
   of tyOpenArray, tyVarargs:
     linefmt(p, cpsStmts,
-         "#genericDeepCopyOpenArray((void*)$1, (void*)$2, $1Len0, $3);$n",
+         "#genericDeepCopyOpenArray((void*)$1, (void*)$2, $1Len_0, $3);$n",
          addrLoc(dest), addrLocOrTemp(src), genTypeInfo(p.module, dest.t))
   of tySet:
     if mapType(ty) == ctArray:
@@ -861,7 +861,7 @@ proc genOpenArrayElem(p: BProc, x, y: PNode, d: var TLoc) =
   initLocExpr(p, x, a)
   initLocExpr(p, y, b) # emit range check:
   if optBoundsCheck in p.options:
-    linefmt(p, cpsStmts, "if ((NU)($1) >= (NU)($2Len0)) #raiseIndexError();$n",
+    linefmt(p, cpsStmts, "if ((NU)($1) >= (NU)($2Len_0)) #raiseIndexError();$n",
             rdLoc(b), rdLoc(a)) # BUGFIX: ``>=`` and not ``>``!
   if d.k == locNone: d.s = a.s
   putIntoDest(p, d, elemType(skipTypes(a.t, abstractVar)),
@@ -1322,7 +1322,7 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
     var b: TLoc
     case a.t.kind
     of tyOpenArray, tyVarargs:
-      putIntoDest(p, b, e.typ, "$1, $1Len0" % [rdLoc(a)], a.s)
+      putIntoDest(p, b, e.typ, "$1, $1Len_0" % [rdLoc(a)], a.s)
     of tyString, tySequence:
       putIntoDest(p, b, e.typ,
                   "$1->data, $1->$2" % [rdLoc(a), lenField(p)], a.s)
@@ -1362,8 +1362,8 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   let typ = skipTypes(a.typ, abstractVar)
   case typ.kind
   of tyOpenArray, tyVarargs:
-    if op == mHigh: unaryExpr(p, e, d, "($1Len0-1)")
-    else: unaryExpr(p, e, d, "$1Len0")
+    if op == mHigh: unaryExpr(p, e, d, "($1Len_0-1)")
+    else: unaryExpr(p, e, d, "$1Len_0")
   of tyCString:
     useStringh(p.module)
     if op == mHigh: unaryExpr(p, e, d, "($1 ? (strlen($1)-1) : -1)")
