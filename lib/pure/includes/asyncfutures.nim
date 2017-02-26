@@ -297,7 +297,7 @@ proc read*[T](future: FutureStream[T]): Future[(bool, T)] =
         res[0] = false
       else:
         res[0] = true
-        res[1] = fs.queue.popLast()
+        res[1] = fs.queue.popFirst()
 
       if not resFut.finished:
         resFut.complete(res)
