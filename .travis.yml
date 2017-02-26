@@ -30,8 +30,8 @@ before_script:
   - export PATH=$(pwd)/bin:$PATH
 script:
   - nim c koch
-  - ./koch boot -d:nimCoroutines
-  - ./koch boot -d:release -d:nimCoroutines
+  - ./koch boot
+  - ./koch boot -d:release
   - ./koch nimble
   - nim e tests/test_nimscript.nims
   - nimble install zip -y

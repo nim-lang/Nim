@@ -43,8 +43,8 @@ install:
 
 build_script:
   - bin\nim c koch
-  - koch boot -d:nimCoroutines
-  - koch boot -d:release -d:nimCoroutines
+  - koch boot
+  - koch boot -d:release
   - koch nimble
   - nim e tests/test_nimscript.nims
   - nimble install zip -y
