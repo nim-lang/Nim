@@ -131,7 +131,7 @@ type
     version*: string
     status*: string
     headers*: HttpHeaders
-    body: string # TODO: here for compatibility with old httpclient procs.
+    body: string
     bodyStream*: Stream
 
   AsyncResponse* = ref object
@@ -162,19 +162,6 @@ proc `body=`*(response: Response, value: string) {.deprecated.} =
   ##
   ## **This is deprecated and should not be used**.
   response.body = value
-
-proc readAll*(future: FutureStream[string]): Future[string] {.async.} =
-  ## Returns a future that will complete when all the string data from the
-  ## specified future stream is retrieved.
-
-  # TODO: Move this to asyncfutures.
-  result = ""
-  while true:
-    let (hasValue, value) = await future.take()
-    if hasValue:
-      result.add(value)
-    else:
-      break
 
 proc body*(response: AsyncResponse): Future[string] {.async.} =
   ## Reads the response's body and caches it. The read is performed only
@@ -650,7 +637,7 @@ proc post*(url: string, extraHeaders = "", body = "",
   ## **Deprecated since version 0.15.0**: use ``HttpClient.post`` instead.
   let (mpHeaders, mpBody) = format(multipart)
 
-  template withNewLine(x): expr =
+  template withNewLine(x): untyped =
     if x.len > 0 and not x.endsWith("\c\L"):
       x & "\c\L"
     else:
@@ -891,10 +878,7 @@ proc recvFull(client: HttpClient | AsyncHttpClient, size: int, timeout: int,
 
     readLen.inc(data.len)
     if keep:
-      when client.socket is Socket:
-        client.bodyStream.write(data)
-      else:
-        await client.bodyStream.put(data)
+      await client.bodyStream.write(data)
 
     await reportProgress(client, data.len)
 
@@ -1253,11 +1237,15 @@ proc downloadFile*(client: HttpClient | AsyncHttpClient,
     parseBody(client, resp.headers, resp.version)
     client.bodyStream.close()
   else:
-    client.bodyStream = newFutureStream[string]()
-    var f = openAsync(filename, fmWrite)
+    client.bodyStream = newFutureStream[string]("downloadFile")
+    var file = openAsync(filename, fmWrite)
+    # Let `parseBody` write response data into client.bodyStream in the
+    # background.
     asyncCheck parseBody(client, resp.headers, resp.version)
-    await f.setWriteStream(client.bodyStream)
-    f.close()
+    # The `writeFromStream` proc will complete once all the data in the
+    # `bodyStream` has been written to the file.
+    await file.writeFromStream(client.bodyStream)
+    file.close()
 
   if resp.code.is4xx or resp.code.is5xx:
     raise newException(HttpRequestError, resp.status)

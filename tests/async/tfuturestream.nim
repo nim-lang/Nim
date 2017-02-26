@@ -19,14 +19,14 @@ var fs = newFutureStream[int]()
 proc alpha() {.async.} =
   for i in 0 .. 5:
     await sleepAsync(1000)
-    await fs.put(i)
+    await fs.write(i)
 
   echo("Done")
   fs.complete()
 
 proc beta() {.async.} =
   while not fs.finished:
-    let (hasValue, value) = await fs.take()
+    let (hasValue, value) = await fs.read()
     if hasValue:
       echo(value)
 
