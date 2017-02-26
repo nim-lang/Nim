@@ -1669,7 +1669,7 @@ proc readAll*(future: FutureStream[string]): Future[string] {.async.} =
   ## specified future stream is retrieved.
   result = ""
   while true:
-    let (hasValue, value) = await future.take()
+    let (hasValue, value) = await future.read()
     if hasValue:
       result.add(value)
     else:
