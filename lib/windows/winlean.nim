@@ -1036,3 +1036,17 @@ else:
   proc readConsoleInput*(hConsoleInput: Handle, lpBuffer: pointer, nLength: cint,
                         lpNumberOfEventsRead: ptr cint): cint
        {.stdcall, dynlib: "kernel32", importc: "ReadConsoleInputW".}
+
+type
+  LPFIBER_START_ROUTINE* = proc (param: pointer): void {.stdcall.}
+
+const
+  FIBER_FLAG_FLOAT_SWITCH* = 0x01
+
+proc CreateFiber*(stackSize: int, fn: LPFIBER_START_ROUTINE, param: pointer): pointer {.stdcall, discardable, dynlib: "kernel32", importc.}
+proc CreateFiberEx*(stkCommit: int, stkReserve: int, flags: int32, fn: LPFIBER_START_ROUTINE, param: pointer): pointer {.stdcall, discardable, dynlib: "kernel32", importc.}
+proc ConvertThreadToFiber*(param: pointer): pointer {.stdcall, discardable, dynlib: "kernel32", importc.}
+proc ConvertThreadToFiberEx*(param: pointer, flags: int32): pointer {.stdcall, discardable, dynlib: "kernel32", importc.}
+proc DeleteFiber*(fiber: pointer): void {.stdcall, discardable, dynlib: "kernel32", importc.}
+proc SwitchToFiber*(fiber: pointer): void {.stdcall, discardable, dynlib: "kernel32", importc.}
+proc GetCurrentFiber*(): pointer {.stdcall, importc, header: "Windows.h".}

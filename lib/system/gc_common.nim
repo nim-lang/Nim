@@ -57,76 +57,96 @@ proc isNotForeign*(x: ForeignCell): bool =
   ## No deep copy has to be performed then.
   x.owner == addr(gch)
 
-proc len(stack: ptr GcStack): int =
-  if stack == nil:
-    return 0
-
-  var s = stack
-  result = 1
-  while s.next != nil:
-    inc(result)
-    s = s.next
-
-when defined(nimCoroutines):
-  proc stackSize(stackBottom: pointer, pos: pointer=nil): int {.noinline.} =
-    var sp: pointer
-    if pos == nil:
-      var stackTop {.volatile.}: pointer
-      sp = addr(stackTop)
-    else:
-      sp = pos
-    result = abs(cast[int](sp) - cast[int](stackBottom))
-
-  proc GC_addStack*(starts: pointer) {.cdecl, exportc.} =
-    var sp {.volatile.}: pointer
-    var stack = cast[ptr GcStack](alloc0(sizeof(GcStack)))
-    stack.starts = starts
-    stack.pos = addr sp
-    if gch.stack == nil:
-      gch.stack = stack
-    else:
-      stack.next = gch.stack
-      gch.stack.prev = stack
-      gch.stack = stack
-    # c_fprintf(stdout, "[GC] added stack 0x%016X\n", starts)
-
-  proc GC_removeStack*(starts: pointer) {.cdecl, exportc.} =
-    var stack = gch.stack
-    while stack != nil:
-      if stack.starts == starts:
-        if stack.prev == nil:
-          if stack.next != nil:
-            stack.next.prev = nil
-          gch.stack = stack.next
-        else:
-          stack.prev.next = stack.next
-          if stack.next != nil:
-              stack.next.prev = stack.prev
-        dealloc(stack)
-        # echo "[GC] removed stack ", starts.repr
+when nimCoroutines:
+  iterator items(first: var GcStack): ptr GcStack =
+    var item = addr(first)
+    while true:
+      yield item
+      item = item.next
+      if item == addr(first):
         break
-      else:
-        stack = stack.next
 
-  proc GC_setCurrentStack*(starts, pos: pointer) {.cdecl, exportc.} =
-    var stack = gch.stack
-    while stack != nil:
-      if stack.starts == starts:
-        stack.pos = pos
-        stack.maxStackSize = max(stack.maxStackSize, stackSize(stack.starts, pos))
-        return
-      stack = stack.next
-    gcAssert(false, "Current stack position does not belong to registered stack")
+  proc append(first: var GcStack, stack: ptr GcStack) =
+    ## Append stack to the ring of stacks.
+    first.prev.next = stack
+    stack.prev = first.prev
+    first.prev = stack
+    stack.next = addr(first)
+
+  proc append(first: var GcStack): ptr GcStack =
+    ## Allocate new GcStack object, append it to the ring of stacks and return it.
+    result = cast[ptr GcStack](alloc0(sizeof(GcStack)))
+    first.append(result)
+
+  proc remove(first: var GcStack, stack: ptr GcStack) =
+    ## Remove stack from ring of stacks.
+    gcAssert(addr(first) != stack, "Main application stack can not be removed")
+    if addr(first) == stack or stack == nil:
+      return
+    stack.prev.next = stack.next
+    stack.next.prev = stack.prev
+    dealloc(stack)
+
+  proc remove(stack: ptr GcStack) =
+    gch.stack.remove(stack)
+
+  proc find(first: var GcStack, bottom: pointer): ptr GcStack =
+    ## Find stack struct based on bottom pointer. If `bottom` is nil then main
+    ## thread stack is is returned.
+    if bottom == nil:
+      return addr(gch.stack)
+
+    for stack in first.items():
+      if stack.bottom == bottom:
+        return stack
+
+  proc len(stack: var GcStack): int =
+    for _ in stack.items():
+      result = result + 1
 else:
-  proc stackSize(): int {.noinline.} =
-    var stackTop {.volatile.}: pointer
-    result = abs(cast[int](addr(stackTop)) - cast[int](gch.stackBottom))
+  # This iterator gets optimized out in forEachStackSlot().
+  iterator items(first: var GcStack): ptr GcStack = yield addr(first)
+  proc len(stack: var GcStack): int = 1
 
-iterator items(stack: ptr GcStack): ptr GcStack =
-  var s = stack
-  while not isNil(s):
-    yield s
-    s = s.next
+proc stackSize(stack: ptr GcStack): int {.noinline.} =
+  when nimCoroutines:
+    var pos = stack.pos
+  else:
+    var pos {.volatile.}: pointer
+    pos = addr(pos)
+
+  if pos != nil:
+    when defined(stackIncreases):
+      result = cast[ByteAddress](pos) -% cast[ByteAddress](stack.bottom)
+    else:
+      result = cast[ByteAddress](stack.bottom) -% cast[ByteAddress](pos)
+  else:
+    result = 0
+
+proc stackSize(): int {.noinline.} =
+  for stack in gch.stack.items():
+    result = result + stack.stackSize()
+
+when nimCoroutines:
+  proc setPosition(stack: ptr GcStack, position: pointer) =
+    stack.pos = position
+    stack.maxStackSize = max(stack.maxStackSize, stack.stackSize())
+
+  proc setPosition(stack: var GcStack, position: pointer) =
+    setPosition(addr(stack), position)
+
+  proc getActiveStack(gch: var GcHeap): ptr GcStack =
+    return gch.activeStack
+
+  proc isActiveStack(stack: ptr GcStack): bool =
+    return gch.activeStack == stack
+else:
+  # Stack positions do not need to be tracked if coroutines are not used.
+  proc setPosition(stack: ptr GcStack, position: pointer) = discard
+  proc setPosition(stack: var GcStack, position: pointer) = discard
+  # There is just one stack - main stack of the thread. It is active always.
+  proc getActiveStack(gch: var GcHeap): ptr GcStack = addr(gch.stack)
+  proc isActiveStack(stack: ptr GcStack): bool = true
 
 when declared(threadType):
   proc setupForeignThreadGc*() {.gcsafe.} =
@@ -177,36 +197,68 @@ elif defined(hppa) or defined(hp9000) or defined(hp9000s300) or
 else:
   const stackIncreases = false
 
+{.push stack_trace: off.}
+when nimCoroutines:
+  proc GC_addStack(bottom: pointer) {.cdecl, exportc.} =
+    # c_fprintf(stdout, "GC_addStack: %p;\n", bottom)
+    var stack = gch.stack.append()
+    stack.bottom = bottom
+    stack.setPosition(bottom)
+
+  proc GC_removeStack(bottom: pointer) {.cdecl, exportc.} =
+    # c_fprintf(stdout, "GC_removeStack: %p;\n", bottom)
+    gch.stack.find(bottom).remove()
+
+  proc GC_setActiveStack(bottom: pointer) {.cdecl, exportc.} =
+    ## Sets active stack and updates current stack position.
+    # c_fprintf(stdout, "GC_setActiveStack: %p;\n", bottom)
+    var sp {.volatile.}: pointer
+    gch.activeStack = gch.stack.find(bottom)
+    gch.activeStack.setPosition(addr(sp))
+
 when not defined(useNimRtl):
-  {.push stack_trace: off.}
   proc setStackBottom(theStackBottom: pointer) =
-    #c_fprintf(stdout, "stack bottom: %p;\n", theStackBottom)
-    # the first init must be the one that defines the stack bottom:
-    when defined(nimCoroutines):
-      GC_addStack(theStackBottom)
-    else:
-      if gch.stackBottom == nil: gch.stackBottom = theStackBottom
+    # Initializes main stack of the thread.
+    when nimCoroutines:
+      if gch.stack.next == nil:
+        # Main stack was not initialized yet
+        gch.stack.next = addr(gch.stack)
+        gch.stack.prev = addr(gch.stack)
+        gch.stack.bottom = theStackBottom
+        gch.stack.maxStackSize = 0
+        gch.activeStack = addr(gch.stack)
+
+    if gch.stack.bottom == nil:
+      # This branch will not be called when -d:nimCoroutines - it is fine,
+      # because same thing is done just above.
+      #c_fprintf(stdout, "stack bottom: %p;\n", theStackBottom)
+      # the first init must be the one that defines the stack bottom:
+      gch.stack.bottom = theStackBottom
+    elif theStackBottom != gch.stack.bottom:
+      var a = cast[ByteAddress](theStackBottom) # and not PageMask - PageSize*2
+      var b = cast[ByteAddress](gch.stack.bottom)
+      #c_fprintf(stdout, "old: %p new: %p;\n",gch.stack.bottom,theStackBottom)
+      when stackIncreases:
+        gch.stack.bottom = cast[pointer](min(a, b))
       else:
-        var a = cast[ByteAddress](theStackBottom) # and not PageMask - PageSize*2
-        var b = cast[ByteAddress](gch.stackBottom)
-        #c_fprintf(stdout, "old: %p new: %p;\n",gch.stackBottom,theStackBottom)
-        when stackIncreases:
-          gch.stackBottom = cast[pointer](min(a, b))
-        else:
-          gch.stackBottom = cast[pointer](max(a, b))
-  {.pop.}
+        gch.stack.bottom = cast[pointer](max(a, b))
+
+    gch.stack.setPosition(theStackBottom)
+{.pop.}
+
+proc isOnStack(p: pointer): bool =
+  var stackTop {.volatile.}: pointer
+  stackTop = addr(stackTop)
+  var a = cast[ByteAddress](gch.getActiveStack().bottom)
+  var b = cast[ByteAddress](stackTop)
+  when not stackIncreases:
+    swap(a, b)
+  var x = cast[ByteAddress](p)
+  result = a <=% x and x <=% b
 
 when defined(sparc): # For SPARC architecture.
-  when defined(nimCoroutines):
+  when nimCoroutines:
     {.error: "Nim coroutines are not supported on this platform."}
-
-  proc isOnStack(p: pointer): bool =
-    var stackTop {.volatile.}: pointer
-    stackTop = addr(stackTop)
-    var b = cast[ByteAddress](gch.stackBottom)
-    var a = cast[ByteAddress](stackTop)
-    var x = cast[ByteAddress](p)
-    result = a <=% x and x <=% b
 
   template forEachStackSlot(gch, gcMark: untyped) {.dirty.} =
     when defined(sparcv9):
@@ -215,7 +267,7 @@ when defined(sparc): # For SPARC architecture.
       asm  """"ta      0x3   ! ST_FLUSH_WINDOWS\n" """
 
     var
-      max = gch.stackBottom
+      max = gch.stack.bottom
       sp: PPointer
       stackTop: array[0..1, pointer]
     sp = addr(stackTop[0])
@@ -231,16 +283,6 @@ elif stackIncreases:
   # ---------------------------------------------------------------------------
   # Generic code for architectures where addresses increase as the stack grows.
   # ---------------------------------------------------------------------------
-  when defined(nimCoroutines):
-    {.error: "Nim coroutines are not supported on this platform."}
-  proc isOnStack(p: pointer): bool =
-    var stackTop {.volatile.}: pointer
-    stackTop = addr(stackTop)
-    var a = cast[ByteAddress](gch.stackBottom)
-    var b = cast[ByteAddress](stackTop)
-    var x = cast[ByteAddress](p)
-    result = a <=% x and x <=% b
-
   var
     jmpbufSize {.importc: "sizeof(jmp_buf)", nodecl.}: int
       # a little hack to get the size of a JmpBuf in the generated C code
@@ -248,84 +290,42 @@ elif stackIncreases:
 
   template forEachStackSlot(gch, gcMark: untyped) {.dirty.} =
     var registers {.noinit.}: C_JmpBuf
+    # sp will traverse the JMP_BUF as well (jmp_buf size is added,
+    # otherwise sp would be below the registers structure).
+    var regAddr = addr(registers) +% jmpbufSize
+
     if c_setjmp(registers) == 0'i32: # To fill the C stack with registers.
-      var max = cast[ByteAddress](gch.stackBottom)
-      var sp = cast[ByteAddress](addr(registers)) +% jmpbufSize -% sizeof(pointer)
-      # sp will traverse the JMP_BUF as well (jmp_buf size is added,
-      # otherwise sp would be below the registers structure).
-      while sp >=% max:
-        gcMark(gch, cast[PPointer](sp)[])
-        sp = sp -% sizeof(pointer)
+      for stack in gch.stack.items():
+        var max = cast[ByteAddress](gch.stack.bottom)
+        var sp = cast[ByteAddress](addr(registers)) -% sizeof(pointer)
+        while sp >=% max:
+          gcMark(gch, cast[PPointer](sp)[])
+          sp = sp -% sizeof(pointer)
 
 else:
   # ---------------------------------------------------------------------------
   # Generic code for architectures where addresses decrease as the stack grows.
   # ---------------------------------------------------------------------------
-  when defined(nimCoroutines):
-    proc isOnStack(p: pointer): bool =
-      var stackTop {.volatile.}: pointer
-      stackTop = addr(stackTop)
-      for stack in items(gch.stack):
-        var b = cast[ByteAddress](stack.starts)
-        var a = cast[ByteAddress](stack.starts) - stack.maxStackSize
-        var x = cast[ByteAddress](p)
-        if a <=% x and x <=% b:
-          return true
-
-    template forEachStackSlot(gch, gcMark: untyped) {.dirty.} =
-      # We use a jmp_buf buffer that is in the C stack.
-      # Used to traverse the stack and registers assuming
-      # that 'setjmp' will save registers in the C stack.
-      type PStackSlice = ptr array[0..7, pointer]
-      var registers {.noinit.}: Registers
-      getRegisters(registers)
-      for i in registers.low .. registers.high:
-        gcMark(gch, cast[PPointer](registers[i]))
-
-      for stack in items(gch.stack):
-        stack.maxStackSize = max(stack.maxStackSize, stackSize(stack.starts))
-        var max = cast[ByteAddress](stack.starts)
-        var sp = cast[ByteAddress](stack.pos)
-        # loop unrolled:
-        while sp <% max - 8*sizeof(pointer):
-          gcMark(gch, cast[PStackSlice](sp)[0])
-          gcMark(gch, cast[PStackSlice](sp)[1])
-          gcMark(gch, cast[PStackSlice](sp)[2])
-          gcMark(gch, cast[PStackSlice](sp)[3])
-          gcMark(gch, cast[PStackSlice](sp)[4])
-          gcMark(gch, cast[PStackSlice](sp)[5])
-          gcMark(gch, cast[PStackSlice](sp)[6])
-          gcMark(gch, cast[PStackSlice](sp)[7])
-          sp = sp +% sizeof(pointer)*8
-        # last few entries:
-        while sp <=% max:
-          gcMark(gch, cast[PPointer](sp)[])
-          sp = sp +% sizeof(pointer)
-  else:
-    proc isOnStack(p: pointer): bool =
-      var stackTop {.volatile.}: pointer
-      stackTop = addr(stackTop)
-      var b = cast[ByteAddress](gch.stackBottom)
-      var a = cast[ByteAddress](stackTop)
-      var x = cast[ByteAddress](p)
-      result = a <=% x and x <=% b
-
-    template forEachStackSlot(gch, gcMark: untyped) {.dirty.} =
-      # We use a jmp_buf buffer that is in the C stack.
-      # Used to traverse the stack and registers assuming
-      # that 'setjmp' will save registers in the C stack.
-      type PStackSlice = ptr array[0..7, pointer]
-      var registers {.noinit.}: C_JmpBuf
-      if c_setjmp(registers) == 0'i32: # To fill the C stack with registers.
-        var max = cast[ByteAddress](gch.stackBottom)
+  template forEachStackSlot(gch, gcMark: untyped) {.dirty.} =
+    # We use a jmp_buf buffer that is in the C stack.
+    # Used to traverse the stack and registers assuming
+    # that 'setjmp' will save registers in the C stack.
+    type PStackSlice = ptr array[0..7, pointer]
+    var registers {.noinit.}: C_JmpBuf
+    # Update position of stack gc is executing in.
+    gch.getActiveStack().setPosition(addr(registers))
+    if c_setjmp(registers) == 0'i32: # To fill the C stack with registers.
+      for stack in gch.stack.items():
+        var max = cast[ByteAddress](stack.bottom)
         var sp = cast[ByteAddress](addr(registers))
         when defined(amd64):
-          # words within the jmp_buf structure may not be properly aligned.
-          let regEnd = sp +% sizeof(registers)
-          while sp <% regEnd:
-            gcMark(gch, cast[PPointer](sp)[])
-            gcMark(gch, cast[PPointer](sp +% sizeof(pointer) div 2)[])
-            sp = sp +% sizeof(pointer)
+          if stack.isActiveStack():
+            # words within the jmp_buf structure may not be properly aligned.
+            let regEnd = sp +% sizeof(registers)
+            while sp <% regEnd:
+              gcMark(gch, cast[PPointer](sp)[])
+              gcMark(gch, cast[PPointer](sp +% sizeof(pointer) div 2)[])
+              sp = sp +% sizeof(pointer)
         # Make sure sp is word-aligned
         sp = sp and not (sizeof(pointer) - 1)
         # loop unrolled:

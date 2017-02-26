@@ -2462,6 +2462,26 @@ template accumulateResult*(iter: untyped) =
 # we have to compute this here before turning it off in except.nim anyway ...
 const NimStackTrace = compileOption("stacktrace")
 
+template coroutinesSupportedPlatform(): bool =
+  when defined(sparc) or defined(ELATE) or compileOption("gc", "v2") or 
+    defined(boehmgc) or defined(gogc) or defined(nogc) or defined(gcStack) or 
+    defined(gcMarkAndSweep):
+    false
+  else:
+    true
+
+when defined(nimCoroutines):
+  # Explicit opt-in.
+  when not coroutinesSupportedPlatform():
+    {.error: "Coroutines are not supported on this architecture and/or garbage collector.".}
+  const nimCoroutines* = true
+elif defined(noNimCoroutines):
+  # Explicit opt-out.
+  const nimCoroutines* = false
+else:
+  # Autodetect coroutine support.
+  const nimCoroutines* = false
+
 {.push checks: off.}
 # obviously we cannot generate checking operations here :-)
 # because it would yield into an endless recursion
