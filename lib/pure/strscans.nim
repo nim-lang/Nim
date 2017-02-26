@@ -62,7 +62,7 @@ Startswith vs full match
 ========================
 
 ``scanf`` returns true if the input string **starts with** the specified
-pattern. If instead it should only return true if theres is also nothing
+pattern. If instead it should only return true if there is also nothing
 left in the input, append ``$.`` to your pattern.
 
 
@@ -112,6 +112,147 @@ It also possible to pass arguments to a user definable matcher:
   if scanf("2013-01-03", "${ndigits(4)}-${ndigits(2)}-${ndigits(2)}$.", year, month, day):
     ...
 
+
+The scanp macro
+===============
+
+This module also implements a ``scanp`` macro, which syntax somewhat resembles
+an EBNF or PEG grammar, except that it uses Nim's expression syntax and so has
+to use prefix instead of postfix operators.
+
+==============   ===============================================================
+``(E)``          Grouping
+``*E``           Zero or more
+``+E``           One or more
+``?E``           Zero or One
+``E{n,m}``       From ``n`` up to ``m`` times ``E``
+``~Ε``           Not predicate
+``a ^* b``       Shortcut for ``?(a *(b a))``. Usually used for separators.
+``a ^* b``       Shortcut for ``?(a +(b a))``. Usually used for separators.
+``'a'``          Matches a single character
+``{'a'..'b'}``   Matches a character set
+``"s"``          Matches a string
+``E -> a``       Bind matching to some action
+``$_``           Access the currently matched character
+==============   ===============================================================
+
+Note that unordered or ordered choice operators (``/``, ``|``) are
+not implemented.
+
+Simple example that parses the ``/etc/passwd`` file line by line:
+
+.. code-block:: nim
+
+  const
+    etc_passwd = """root:x:0:0:root:/root:/bin/bash
+  daemon:x:1:1:daemon:/usr/sbin:/bin/sh
+  bin:x:2:2:bin:/bin:/bin/sh
+  sys:x:3:3:sys:/dev:/bin/sh
+  nobody:x:65534:65534:nobody:/nonexistent:/bin/sh
+  messagebus:x:103:107::/var/run/dbus:/bin/false
+  """
+
+  proc parsePasswd(content: string): seq[string] =
+    result = @[]
+    var idx = 0
+    while true:
+      var entry = ""
+      if scanp(content, idx, +(~{'\L', '\0'} -> entry.add($_)), '\L'):
+        result.add entry
+      else:
+        break
+
+The ``scanp`` maps the grammar code into Nim code that performs the parsing.
+The parsing is performed with the help of 3 helper templates that that can be
+implemented for a custom type.
+
+These templates need to be named ``atom`` and ``nxt``. ``atom`` should be
+overloaded to handle both single characters and sets of character.
+
+.. code-block:: nim
+
+  import streams
+
+  template atom(input: Stream; idx: int; c: char): bool =
+    ## Used in scanp for the matching of atoms (usually chars).
+    peekChar(input) == c
+
+  template atom(input: Stream; idx: int; s: set[char]): bool =
+    peekChar(input) in s
+
+  template nxt(input: Stream; idx, step: int = 1) =
+    inc(idx, step)
+    setPosition(input, idx)
+
+  if scanp(content, idx, +( ~{'\L', '\0'} -> entry.add(peekChar($input))), '\L'):
+    result.add entry
+
+
+Calling ordinary Nim procs inside the macro is possible:
+
+.. code-block:: nim
+
+  proc digits(s: string; intVal: var int; start: int): int =
+    var x = 0
+    while result+start < s.len and s[result+start] in {'0'..'9'} and s[result+start] != ':':
+      x = x * 10 + s[result+start].ord - '0'.ord
+      inc result
+    intVal = x
+
+  proc extractUsers(content: string): seq[string] =
+    # Extracts the username and home directory
+    # of each entry (with UID greater than 1000)
+    const
+      digits = {'0'..'9'}
+    result = @[]
+    var idx = 0
+    while true:
+      var login = ""
+      var uid = 0
+      var homedir = ""
+      if scanp(content, idx, *(~ {':', '\0'}) -> login.add($_), ':', * ~ ':', ':',
+              digits($input, uid, $index), ':', *`digits`, ':', * ~ ':', ':',
+              *('/', * ~{':', '/'}) -> homedir.add($_), ':', *('/', * ~{'\L', '/'}), '\L'):
+        if uid >= 1000:
+          result.add login & " " & homedir
+      else:
+        break
+
+When used for matching, keep in mind that likewise scanf, no backtracking
+is performed.
+
+.. code-block:: nim
+
+  proc skipUntil(s: string; until: string; unless = '\0'; start: int): int =
+    # Skips all characters until the string `until` is found. Returns 0
+    # if the char `unless` is found first or the end is reached.
+    var i = start
+    var u = 0
+    while true:
+      if s[i] == '\0' or s[i] == unless:
+        return 0
+      elif s[i] == until[0]:
+        u = 1
+        while i+u < s.len and u < until.len and s[i+u] == until[u]:
+          inc u
+        if u >= until.len: break
+      inc(i)
+    result = i+u-start
+
+  iterator collectLinks(s: string): string =
+    const quote = {'\'', '"'}
+    var idx, old = 0
+    var res = ""
+    while idx < s.len:
+      old = idx
+      if scanp(s, idx, "<a", skipUntil($input, "href=", '>', $index),
+              `quote`, *( ~`quote`) -> res.add($_)):
+        yield res
+        res = ""
+      idx = old + 1
+
+  for r in collectLinks(body):
+    echo r
 ]##
 
 
