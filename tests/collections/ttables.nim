@@ -1,4 +1,5 @@
 discard """
+  cmd: "nim c --threads:on $file"
   output: '''true'''
 """
 
