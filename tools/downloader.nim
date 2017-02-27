@@ -36,10 +36,7 @@ proc download(pkg: string; c: Controls) {.async.} =
     c.bar.value = clamp(int(progress*100 div total), 0, 100)
 
   client.onProgressChanged = onProgressChanged
-  # XXX give a destination filename instead
-  let contents = await client.getContent("https://nim-lang.org/download/" & pkg & ".7z")
-  # XXX make this async somehow:
-  writeFile(z, contents)
+  await client.downloadFile("https://nim-lang.org/download/" & pkg & ".7z", z)
   c.bar.value = 100
   let p = osproc.startProcess("7zG.exe", getCurrentDir() / r"..\dist",
                               ["x", pkg & ".7z"])

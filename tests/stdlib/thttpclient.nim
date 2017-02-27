@@ -13,7 +13,9 @@ proc asyncTest() {.async.} =
   var client = newAsyncHttpClient()
   var resp = await client.request("http://example.com/")
   doAssert(resp.code.is2xx)
-  doAssert("<title>Example Domain</title>" in resp.body)
+  var body = await resp.body
+  body = await resp.body # Test caching
+  doAssert("<title>Example Domain</title>" in body)
 
   resp = await client.request("http://example.com/404")
   doAssert(resp.code.is4xx)
@@ -47,7 +49,8 @@ proc asyncTest() {.async.} =
       echo("Downloaded ", progress, " of ", total)
       echo("Current rate: ", speed div 1000, "kb/s")
     client.onProgressChanged = onProgressChanged
-    discard await client.getContent("http://speedtest-ams2.digitalocean.com/100mb.test")
+    await client.downloadFile("http://speedtest-ams2.digitalocean.com/100mb.test",
+                              "100mb.test")
 
   client.close()
 
@@ -94,7 +97,8 @@ proc syncTest() =
       echo("Downloaded ", progress, " of ", total)
       echo("Current rate: ", speed div 1000, "kb/s")
     client.onProgressChanged = onProgressChanged
-    discard client.getContent("http://speedtest-ams2.digitalocean.com/100mb.test")
+    client.downloadFile("http://speedtest-ams2.digitalocean.com/100mb.test",
+                        "100mb.test")
 
   client.close()
 

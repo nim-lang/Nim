@@ -476,3 +476,16 @@ proc close*(f: AsyncFile) =
     if close(f.fd.cint) == -1:
       raiseOSError(osLastError())
 
+proc writeFromStream*(f: AsyncFile, fs: FutureStream[string]) {.async.} =
+  ## Reads data from the specified future stream until it is completed.
+  ## The data which is read is written to the file immediately and
+  ## freed from memory.
+  ##
+  ## This procedure is perfect for saving streamed data to a file without
+  ## wasting memory.
+  while true:
+    let (hasValue, value) = await fs.read()
+    if hasValue:
+      await f.write(value)
+    else:
+      break

@@ -1664,6 +1664,17 @@ proc accept*(socket: AsyncFD,
 # -- Await Macro
 include asyncmacro
 
+proc readAll*(future: FutureStream[string]): Future[string] {.async.} =
+  ## Returns a future that will complete when all the string data from the
+  ## specified future stream is retrieved.
+  result = ""
+  while true:
+    let (hasValue, value) = await future.read()
+    if hasValue:
+      result.add(value)
+    else:
+      break
+
 proc recvLine*(socket: AsyncFD): Future[string] {.async.} =
   ## Reads a line of data from ``socket``. Returned future will complete once
   ## a full line is read or an error occurs.

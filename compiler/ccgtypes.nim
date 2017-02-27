@@ -413,7 +413,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
       # this fixes the 'sort' bug:
       if param.typ.kind == tyVar: param.loc.s = OnUnknown
       # need to pass hidden parameter:
-      addf(params, ", NI $1Len$2", [param.loc.r, j.rope])
+      addf(params, ", NI $1Len_$2", [param.loc.r, j.rope])
       inc(j)
       arr = arr.sons[0]
   if t.sons[0] != nil and isInvalidReturnType(t.sons[0]):
@@ -427,7 +427,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     addf(params, " Result", [])
   if t.callConv == ccClosure and declareEnvironment:
     if params != nil: add(params, ", ")
-    add(params, "void* ClEnv")
+    add(params, "void* ClE_0")
   if tfVarargs in t.flags:
     if params != nil: add(params, ", ")
     add(params, "...")
@@ -678,8 +678,8 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
              [rope(CallingConvToStr[t.callConv]), rettype, result, desc])
       else:
         addf(m.s[cfsTypes], "typedef struct {$n" &
-            "N_NIMCALL_PTR($2, ClPrc) $3;$n" &
-            "void* ClEnv;$n} $1;$n",
+            "N_NIMCALL_PTR($2, ClP_0) $3;$n" &
+            "void* ClE_0;$n} $1;$n",
              [result, rettype, desc])
   of tySequence:
     # we cannot use getTypeForward here because then t would be associated
@@ -815,8 +815,8 @@ proc getClosureType(m: BModule, t: PType, kind: TClosureTypeKind): Rope =
            [rope(CallingConvToStr[t.callConv]), rettype, result, desc])
     else:
       addf(m.s[cfsTypes], "typedef struct {$n" &
-          "N_NIMCALL_PTR($2, ClPrc) $3;$n" &
-          "void* ClEnv;$n} $1;$n",
+          "N_NIMCALL_PTR($2, ClP_0) $3;$n" &
+          "void* ClE_0;$n} $1;$n",
            [result, rettype, desc])
 
 proc finishTypeDescriptions(m: BModule) =

@@ -355,57 +355,21 @@ type
 {.deprecated: [TThread: Thread, TThreadId: ThreadId].}
 
 var
-  threadCreationHandlers: array[60, proc () {.nimcall, gcsafe.}]
-  countThreadCreationHandlers: int
+  threadDestructionHandlers {.rtlThreadVar.}: seq[proc () {.closure, gcsafe.}]
 
-  threadDestructionHandlers: array[60, proc () {.nimcall, gcsafe.}]
-  countThreadDestructionHandlers: int
-
-proc onThreadCreation*(handler: proc () {.nimcall, gcsafe.}) =
-  ## Registers a global handler that is called at thread creation.
-  ## This can be used to initialize thread local variables properly.
-  ## Note that the handler has to be .gcafe and so the typical usage
-  ## looks like:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##  var
-  ##    someGlobal: string = "some string here"
-  ##    perThread {.threadvar.}: string
-  ##
-  ##  proc setPerThread() =
-  ##    {.gcsafe.}:
-  ##      deepCopy(perThread, someGlobal)
-  ##
-  ##  onThreadCreation(setPerThread)
-  ##
-  ## **Note**: The registration is currently not threadsafe! Better
-  ## call ``onThreadCreation`` before any thread started its work!
-  threadCreationHandlers[countThreadCreationHandlers] = handler
-  inc countThreadCreationHandlers
-
-proc onThreadDestruction*(handler: proc () {.nimcall, gcsafe.}) =
-  ## Registers a global handler that is called at thread destruction.
-  ## Threads are destructed when the ``.thread`` proc returns
-  ## normally or raises an exception. Note that unhandled exceptions
+proc onThreadDestruction*(handler: proc () {.closure, gcsafe.}) =
+  ## Registers a *thread local* handler that is called at the thread's
+  ## destruction.
+  ## A thread is destructed when the ``.thread`` proc returns
+  ## normally or when it raises an exception. Note that unhandled exceptions
   ## in a thread nevertheless cause the whole process to die.
-  threadDestructionHandlers[countThreadDestructionHandlers] = handler
-  inc countThreadDestructionHandlers
-
-template beforeThreadRuns() =
-  for i in 0..countThreadCreationHandlers-1:
-    threadCreationHandlers[i]()
+  if threadDestructionHandlers.isNil:
+    threadDestructionHandlers = @[]
+  threadDestructionHandlers.add handler
 
 template afterThreadRuns() =
-  for i in countdown(countThreadDestructionHandlers-1, 0):
+  for i in countdown(threadDestructionHandlers.len-1, 0):
     threadDestructionHandlers[i]()
-
-proc runOnThreadCreationHandlers*() =
-  ## This runs every registered ``onThreadCreation`` handler and is usually
-  ## used to initialize thread local storage for the main thread. Since the
-  ## main thread is **not** created via ``createThread`` it doesn't run the
-  ## handlers automatically.
-  beforeThreadRuns()
 
 when not defined(boehmgc) and not hasSharedHeap and not defined(gogc) and not defined(gcstack):
   proc deallocOsPages()
@@ -421,7 +385,6 @@ when defined(boehmgc):
 
   proc threadProcWrapDispatch[TArg](sb: pointer, thrd: pointer) {.noconv.} =
     boehmGC_register_my_thread(sb)
-    beforeThreadRuns()
     try:
       let thrd = cast[ptr Thread[TArg]](thrd)
       when TArg is void:
@@ -433,7 +396,6 @@ when defined(boehmgc):
     boehmGC_unregister_my_thread()
 else:
   proc threadProcWrapDispatch[TArg](thrd: ptr Thread[TArg]) =
-    beforeThreadRuns()
     try:
       when TArg is void:
         thrd.dataFn()

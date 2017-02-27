@@ -642,10 +642,6 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "experimental":
     expectNoArg(switch, arg, pass, info)
     gExperimentalMode = true
-  of "assembler":
-    cAssembler = nameToCC(arg)
-    if cAssembler notin cValidAssemblers:
-      localError(info, errGenerated, "'$1' is not a valid assembler." % [arg])
   of "nocppexceptions":
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optNoCppExceptions)

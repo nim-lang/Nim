@@ -170,7 +170,7 @@ proc genBreakState(p: BProc, n: PNode) =
   else:
     initLocExpr(p, n.sons[0], a)
     # the environment is guaranteed to contain the 'state' field at offset 0:
-    lineF(p, cpsStmts, "if ((((NI*) $1.ClEnv)[0]) < 0) break;$n", [rdLoc(a)])
+    lineF(p, cpsStmts, "if ((((NI*) $1.ClE_0)[0]) < 0) break;$n", [rdLoc(a)])
   #  lineF(p, cpsStmts, "if (($1) < 0) break;$n", [rdLoc(a)])
 
 proc genVarPrototypeAux(m: BModule, sym: PSym)
