@@ -532,7 +532,7 @@ var
 proc toCChar*(c: char): string =
   case c
   of '\0'..'\x1F', '\x80'..'\xFF': result = '\\' & toOctal(c)
-  of '\'', '\"', '\\': result = '\\' & c
+  of '\'', '\"', '\\', '?': result = '\\' & c
   else: result = $(c)
 
 proc makeCString*(s: string): Rope =
