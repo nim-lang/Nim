@@ -125,7 +125,7 @@ General FAQ
   What about editor support?
   --------------------------
 
-  - Nim IDE: https://github.com/nim-lang/Aporia
+  - Native Nim Editor: https://github.com/nim-lang/Aporia
   - Visual Studio Code: https://marketplace.visualstudio.com/items?itemName=kosz78.nim
   - Emacs: https://github.com/nim-lang/nim-mode
   - Vim: https://github.com/zah/nimrod.vim/
