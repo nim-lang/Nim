@@ -174,7 +174,7 @@ proc processTimers(p: PDispatcherBase) {.inline.} =
   while i < count:
     if curTime >= p.timers[i].finishAt:
       p.timers[i].fut.complete()
-      p.timers.del(i)
+      p.timers.delete(i)
       count.dec()
     i.inc()
 
