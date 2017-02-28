@@ -140,14 +140,10 @@ type
 proc processTimers(p: PDispatcherBase) {.inline.} =
   #Process just part if timers at a step
   var count = p.timers.len
-  var i = 0
-  let curTime = epochTime()
-  while i < count:
-    if curTime >= p.timers[i].finishAt:
-      p.timers[i].fut.complete()
-      p.timers.delete(i)
-      count.dec()
-    i.inc()
+  let t = epochTime()
+  while count > 0 and t >= p.timers[0].finishAt:
+    p.timers.pop().fut.complete()
+    dec count
 
 proc processPendingCallbacks(p: PDispatcherBase) =
   while p.callbacks.len > 0:
