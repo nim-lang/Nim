@@ -13,6 +13,8 @@
 ##
 ## **Note:** The current implementation of message passing is slow and does
 ## not work with cyclic data structures.
+## **Note:** Channels cannot be passed between threads. Use globals or pass
+## them by `ptr`.
 
 when not declared(NimString):
   {.error: "You must not import this module explicitly".}

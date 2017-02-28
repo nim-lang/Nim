@@ -139,7 +139,7 @@ proc substituteLog*(frmt: string, level: Level, args: varargs[string, `$`]): str
     result.add(arg)
 
 method log*(logger: Logger, level: Level, args: varargs[string, `$`]) {.
-            raises: [Exception],
+            raises: [Exception], gcsafe,
             tags: [TimeEffect, WriteIOEffect, ReadIOEffect], base.} =
   ## Override this method in custom loggers. Default implementation does
   ## nothing.

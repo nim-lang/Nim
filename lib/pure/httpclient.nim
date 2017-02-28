@@ -337,8 +337,16 @@ proc parseResponse(s: Socket, getBody: bool, timeout: int): Response =
 when not defined(ssl):
   type SSLContext = ref object
 var defaultSSLContext {.threadvar.}: SSLContext
+
 when defined(ssl):
   defaultSSLContext = newContext(verifyMode = CVerifyNone)
+  template contextOrDefault(ctx: SSLContext): SSLContext =
+    var result = ctx
+    if ctx == nil:
+      if defaultSSLContext == nil:
+        defaultSSLContext = newContext(verifyMode = CVerifyNone)
+      result = defaultSSLContext
+    result
 
 proc newProxy*(url: string, auth = ""): Proxy =
   ## Constructs a new ``TProxy`` object.
@@ -805,7 +813,7 @@ proc newHttpClient*(userAgent = defUserAgent,
   result.bodyStream = newStringStream()
   result.getBody = true
   when defined(ssl):
-    result.sslContext = sslContext
+    result.sslContext = contextOrDefault(sslContext)
 
 type
   AsyncHttpClient* = HttpClientBase[AsyncSocket]
@@ -837,7 +845,7 @@ proc newAsyncHttpClient*(userAgent = defUserAgent,
   result.bodyStream = newFutureStream[string]("newAsyncHttpClient")
   result.getBody = true
   when defined(ssl):
-    result.sslContext = sslContext
+    result.sslContext = contextOrDefault(sslContext)
 
 proc close*(client: HttpClient | AsyncHttpClient) =
   ## Closes any connections held by the HTTP client.
