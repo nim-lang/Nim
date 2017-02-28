@@ -114,9 +114,9 @@ when defined(unix):
   {.passC: "-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0"}
 
 const
-  CORO_CREATED* = 0
-  CORO_EXECUTING* = 1
-  CORO_FINISHED* = 2
+  CORO_CREATED = 0
+  CORO_EXECUTING = 1
+  CORO_FINISHED = 2
 
 type
   Stack {.pure.} = object
