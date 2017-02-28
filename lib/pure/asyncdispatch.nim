@@ -167,8 +167,13 @@ type
     callbacks: Deque[proc ()]
 
 proc processTimers(p: PDispatcherBase) {.inline.} =
+  #Process just part if timers at a step
+  var part = newSeq[tuple[finishAt: float, fut: Future[void]]]()
   while p.timers.len > 0 and epochTime() >= p.timers[0].finishAt:
-    p.timers.pop().fut.complete()
+    part.add(p.timers.pop())
+
+  for t in part:
+    t.fut.complete()
 
 proc processPendingCallbacks(p: PDispatcherBase) =
   while p.callbacks.len > 0:
