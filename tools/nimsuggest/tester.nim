@@ -233,22 +233,25 @@ proc runEpcTest(filename: string): int =
   let outp = p.outputStream
   let inp = p.inputStream
   var report = ""
-  var a = newStringOfCap(120)
+  #var a = newStringOfCap(120)
   try:
     # read the port number:
-    if outp.readLine(a):
-      let port = parseInt(a)
-      var socket = newSocket()
-      socket.connect("localhost", Port(port))
-      for req, resp in items(s.script):
-        if not runCmd(req, s.dest):
-          socket.sendEpcStr(req)
-          let sx = parseSexp(socket.recvEpc())
-          if not req.startsWith("mod "):
-            let answer = sexpToAnswer(sx)
-            doReport(filename, answer, resp, report)
-    else:
-      raise newException(ValueError, "cannot read port number")
+    #discard outp.readLine(a)
+    var i = 0
+    while not osproc.hasData(p) and i < 100:
+      os.sleep(50)
+      inc i
+    let a = outp.readAll().strip()
+    let port = parseInt(a)
+    var socket = newSocket()
+    socket.connect("localhost", Port(port))
+    for req, resp in items(s.script):
+      if not runCmd(req, s.dest):
+        socket.sendEpcStr(req)
+        let sx = parseSexp(socket.recvEpc())
+        if not req.startsWith("mod "):
+          let answer = sexpToAnswer(sx)
+          doReport(filename, answer, resp, report)
   finally:
     close(p)
   if report.len > 0:
@@ -302,7 +305,9 @@ proc main() =
     for x in walkFiles(getAppDir() / "tests/t*.nim"):
       echo "Test ", x
       let xx = expandFilename x
-      failures += runTest(xx)
+      when not defined(windows):
+        # XXX Windows IO redirection seems bonkers:
+        failures += runTest(xx)
       failures += runEpcTest(xx)
   if failures > 0:
     quit 1
