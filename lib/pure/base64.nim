@@ -1,4 +1,4 @@
-#
+##
 #
 #            Nim's Runtime Library
 #        (c) Copyright 2010 Andreas Rumpf
@@ -44,13 +44,23 @@
 const
   cb64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
-template encodeInternal(s: expr, lineLen: int, newLine: string): stmt {.immediate.} =
+template encodeInternal(s: expr, lineLen: int, newLine: string, trailing=false): stmt {.immediate.} =
   ## encodes `s` into base64 representation. After `lineLen` characters, a
-  ## `newline` is added.
+  ## `newline` is added. When `trailing` is `false` no trailing 
+  ## `newLine` is added on the last occurrence of `lineLen` characters. 
+  ## When `true` a trailing `newLine` is always added after `lineLen`
+  ## characters.
+  if s.isNil or s.len == 0: return s
   var total = ((len(s) + 2) div 3) * 4
   var numLines = (total + lineLen - 1) div lineLen
-  if numLines > 0: inc(total, (numLines-1) * newLine.len)
-
+  
+  # prevent index out of bounds exception when encoded length == lineLen
+  # while allowing the choice between a new line after each line
+  # excluding the last or only line (default) - or including when
+  # trailing == true
+  var incBy = if trailing: numLines else: numLines-1
+  inc(total, incBy * newLine.len)
+  
   result = newString(total)
   var i = 0
   var r = 0
@@ -63,10 +73,12 @@ template encodeInternal(s: expr, lineLen: int, newLine: string): stmt {.immediat
     result[r+1] = cb64[((a and 3) shl 4) or ((b and 0xF0) shr 4)]
     result[r+2] = cb64[((b and 0x0F) shl 2) or ((c and 0xC0) shr 6)]
     result[r+3] = cb64[c and 0x3F]
+
     inc(r, 4)
     inc(i, 3)
     inc(currLine, 4)
-    if currLine >= lineLen and i != s.len-2:
+    # avoid index out of bounds when lineLen == encoded length
+    if currLine >= lineLen and i != s.len-2 and r < total:
       for x in items(newLine):
         result[r] = x
         inc(r)
@@ -95,20 +107,26 @@ template encodeInternal(s: expr, lineLen: int, newLine: string): stmt {.immediat
     #assert(r == result.len)
     discard
 
-proc encode*[T:SomeInteger|char](s: openarray[T], lineLen = 75, newLine="\13\10"): string =
+proc encode*[T:SomeInteger|char](s: openarray[T], lineLen = 75, newLine="\13\10", trailing=false): string =
   ## encodes `s` into base64 representation. After `lineLen` characters, a
-  ## `newline` is added.
+  ## `newline` is added.  When `trailing` is `false` no trailing 
+  ## `newLine` is added on the last occurrence of `lineLen` characters. 
+  ## When `true` a trailing `newLine` is always added after `lineLen`
+  ## characters.
   ##
   ## This procedure encodes an openarray (array or sequence) of either integers
   ## or characters.
-  encodeInternal(s, lineLen, newLine)
+  encodeInternal(s, lineLen, newLine, trailing)
 
-proc encode*(s: string, lineLen = 75, newLine="\13\10"): string =
+proc encode*(s: string, lineLen = 75, newLine="\13\10", trailing=false): string =
   ## encodes `s` into base64 representation. After `lineLen` characters, a
-  ## `newline` is added.
+  ## `newline` is added.  When `trailing` is `false` no trailing 
+  ## `newLine` is added on the last occurrence of `lineLen` characters. 
+  ## When `true` a trailing `newLine` is always added after `lineLen`
+  ## characters.
   ##
   ## This procedure encodes a string.
-  encodeInternal(s, lineLen, newLine)
+  encodeInternal(s, lineLen, newLine, trailing)
 
 proc decodeByte(b: char): int {.inline.} =
   case b
@@ -155,12 +173,15 @@ when isMainModule:
   assert encode("asure.") == "YXN1cmUu"
   assert encode("sure.") == "c3VyZS4="
 
+  const testInputEncodesTo76 = "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
   const longText = """Man is distinguished, not only by his reason, but by this
     singular passion from other animals, which is a lust of the mind,
     that by a perseverance of delight in the continued and indefatigable
     generation of knowledge, exceeds the short vehemence of any carnal
     pleasure."""
   const tests = ["", "abc", "xyz", "man", "leasure.", "sure.", "easure.",
-                 "asure.", longText]
+                 "asure.", longText, testInputEncodesTo76]
+ 
   for t in items(tests):
-    assert decode(encode(t)) == t
+    assert decode(encode(t, lineLen=76)) == t
+    assert decode(encode(t, lineLen=76, trailing=true)) == t
