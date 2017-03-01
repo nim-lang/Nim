@@ -290,9 +290,6 @@ elif stackIncreases:
 
   template forEachStackSlot(gch, gcMark: untyped) {.dirty.} =
     var registers {.noinit.}: C_JmpBuf
-    # sp will traverse the JMP_BUF as well (jmp_buf size is added,
-    # otherwise sp would be below the registers structure).
-    var regAddr = addr(registers) +% jmpbufSize
 
     if c_setjmp(registers) == 0'i32: # To fill the C stack with registers.
       for stack in gch.stack.items():
