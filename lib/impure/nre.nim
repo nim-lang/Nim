@@ -527,7 +527,7 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
       # 0-len match
       flags = pcre.NOTEMPTY_ATSTART
     match = str.matchImpl(pattern, offset, endpos, flags)
-    
+
     if match.isNone:
       # either the end of the input or the string
       # cannot be split here - we also need to bail
