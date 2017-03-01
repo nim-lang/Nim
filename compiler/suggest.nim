@@ -20,8 +20,13 @@
 ## - If there is a prefix (foo|), symbols starting with this prefix come first.
 ## - If the prefix is part of the name (but the name doesn't start with it),
 ##   these symbols come second.
-## - Otherwise consider the context. We currently distinguish between type
-##   and non-type contexts.
+## - If we have a prefix, only symbols matching this prefix are returned and
+##   nothing else.
+## - If we have no prefix, consider the context. We currently distinguish
+##   between type and non-type contexts.
+## - Finally, sort matches by relevance. The relevance is determined by the
+##   number of usages, so ``strutils.replace`` comes before
+##   ``strutils.wordWrap``.
 
 # included from sigmatch.nim
 
