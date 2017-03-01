@@ -50,7 +50,7 @@ template encodeInternal(s: expr, lineLen: int, newLine: string): stmt {.immediat
   var total = ((len(s) + 2) div 3) * 4
   var numLines = (total + lineLen - 1) div lineLen
   if numLines > 0: inc(total, (numLines - 1) * newLine.len)
-  
+
   result = newString(total)
   var i = 0
   var r = 0
@@ -155,7 +155,7 @@ when isMainModule:
   assert encode("easure.") == "ZWFzdXJlLg=="
   assert encode("asure.") == "YXN1cmUu"
   assert encode("sure.") == "c3VyZS4="
-  
+
   const testInputExpandsTo76 = "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
   const testInputExpands = "++++++++++++++++++++++++++++++"
   const longText = """Man is distinguished, not only by his reason, but by this
@@ -165,7 +165,7 @@ when isMainModule:
     pleasure."""
   const tests = ["", "abc", "xyz", "man", "leasure.", "sure.", "easure.",
                  "asure.", longText, testInputExpandsTo76, testInputExpands]
- 
+
   for t in items(tests):
     assert decode(encode(t)) == t
     assert decode(encode(t, lineLen=40)) == t
