@@ -542,6 +542,9 @@ proc gethostbyaddr*(ip: ptr InAddr, len: cuint, theType: cint): ptr Hostent {.
 proc gethostbyname*(name: cstring): ptr Hostent {.
   stdcall, importc: "gethostbyname", dynlib: ws2dll.}
 
+proc gethostname*(hostname: cstring, len: cint): cint {.
+  stdcall, importc: "gethostname", dynlib: ws2dll.}
+
 proc socket*(af, typ, protocol: cint): SocketHandle {.
   stdcall, importc: "socket", dynlib: ws2dll.}
 
