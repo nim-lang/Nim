@@ -39,6 +39,7 @@ __clang__
 #  pragma GCC diagnostic ignored "-Wswitch-bool"
 #  pragma GCC diagnostic ignored "-Wmacro-redefined"
 #  pragma GCC diagnostic ignored "-Wincompatible-pointer-types-discards-qualifiers"
+#  pragma GCC diagnostic ignored "-Wpointer-bool-conversion"
 #endif
 
 #if defined(_MSC_VER)
