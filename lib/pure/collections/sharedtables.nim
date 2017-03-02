@@ -151,7 +151,28 @@ proc compute*[A, B](t: var SharedTable[A, B], key: A,
   ## will be blocked while the ``mapper`` is invoked, so it should be short and
   ## simple.
   withLock t:
-    computeImpl(enlarge)
+    var hc: Hash
+    var index = rawGet(t, key, hc)
+    # mapper must be invoked before enlarging, because it may
+    # return none() or raise
+    let curVal = if index >= 0: some(t.data[index].val)
+                 else: none(type(t.data[0].val))
+    # if the key exists, call mapper with the actual key, because identity
+    # can be important.
+    let mapperRet = if index >= 0: mapper(t.data[index].key, curVal)
+                    else: mapper(key, curVal)
+    result = mapperRet[0]
+    case mapperRet[1]:
+    of ComputeAction.Del:
+      if index >= 0:
+        delImplIdx(t, index)
+    of ComputeAction.Keep:
+      if result.isSome():
+        let val = result.unsafeGet()
+        if index >= 0:
+          t.data[index].val = val
+        else:
+          maybeRehashPutImpl(enlarge)
 
 proc `[]=`*[A, B](t: var SharedTable[A, B], key: A, val: B) =
   ## puts a (key, value)-pair into `t`.
