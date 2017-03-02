@@ -767,20 +767,16 @@ proc splitLines*(s: string): seq[string] {.noSideEffect,
 
 proc countLines*(s: string): int {.noSideEffect,
   rtl, extern: "nsuCountLines".} =
-  ## Returns the number of new line separators in the string `s`.
+  ## Returns the number of lines in the string `s`.
   ##
   ## This is the same as ``len(splitLines(s))``, but much more efficient
   ## because it doesn't modify the string creating temporal objects. Every
   ## `character literal <manual.html#character-literals>`_ newline combination
   ## (CR, LF, CR-LF) is supported.
   ##
-  ## Despite its name this proc might not actually return the *number of lines*
-  ## in `s` because the concept of what a line is can vary. For example, a
-  ## string like ``Hello world`` is a line of text, but the proc will return a
-  ## value of zero because there are no newline separators.  Also, text editors
-  ## usually don't count trailing newline characters in a text file as a new
-  ## empty line, but this proc will.
-  var i = 0
+  ## In this context, a line is any string seperated by a newline combination.
+  ## A line can be an empty string.
+  var i = 1
   while i < s.len:
     case s[i]
     of '\c':
