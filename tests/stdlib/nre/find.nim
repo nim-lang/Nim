@@ -1,7 +1,7 @@
 import unittest, sequtils
 import nre except toSeq
 import optional_nonstrict
-import times, strutils 
+import times, strutils
 
 suite "find":
   test "find text":
