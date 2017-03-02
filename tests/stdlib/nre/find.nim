@@ -31,7 +31,7 @@ suite "find":
     ## we expect nothing to be found and we should be bailing out early which means that
     ## the timing difference between searching in small and large data should be well
     ## within a tolerance area
-    const tolerance = 0.00001
+    const tolerance = 0.0001
     var smallData = repeat("url.sequence = \"http://whatever.com/jwhrejrhrjrhrjhrrjhrjrhrjrh\"", 10)
     var largeData = repeat("url.sequence = \"http://whatever.com/jwhrejrhrjrhrjhrrjhrjrhrjrh\"", 1000000)
     var start = cpuTime()
