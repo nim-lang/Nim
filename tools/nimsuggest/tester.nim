@@ -212,8 +212,8 @@ proc doReport(filename, answer, resp: string; report: var string) =
     var hasDiff = false
     for i in 0..min(resp.len-1, answer.len-1):
       if resp[i] != answer[i]:
-        report.add "\n  Expected:  " & resp.substr(i)
-        report.add "\n  But got:   " & answer.substr(i)
+        report.add "\n  Expected:  " & resp.substr(i, i+200)
+        report.add "\n  But got:   " & answer.substr(i, i+200)
         hasDiff = true
         break
     if not hasDiff:
@@ -233,15 +233,17 @@ proc runEpcTest(filename: string): int =
   let outp = p.outputStream
   let inp = p.inputStream
   var report = ""
-  #var a = newStringOfCap(120)
   try:
     # read the port number:
-    #discard outp.readLine(a)
-    var i = 0
-    while not osproc.hasData(p) and i < 100:
-      os.sleep(50)
-      inc i
-    let a = outp.readAll().strip()
+    when defined(posix):
+      var a = newStringOfCap(120)
+      discard outp.readLine(a)
+    else:
+      var i = 0
+      while not osproc.hasData(p) and i < 100:
+        os.sleep(50)
+        inc i
+      let a = outp.readAll().strip()
     let port = parseInt(a)
     var socket = newSocket()
     socket.connect("localhost", Port(port))
@@ -298,7 +300,7 @@ proc runTest(filename: string): int =
 proc main() =
   var failures = 0
   when false:
-    let x = getAppDir() / "tests/twithin_macro.nim"
+    let x = getAppDir() / "tests/tdot1.nim"
     let xx = expandFilename x
     failures += runEpcTest(xx)
   else:

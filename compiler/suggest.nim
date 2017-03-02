@@ -161,6 +161,8 @@ proc filterSym(s: PSym; prefix: PNode): bool {.inline.} =
       if n.len > 0:
         result = prefixMatch(s, n[0])
     else: discard
+    if result:
+      echo "indeed a prefix match ", n
   if s.kind != skModule:
     result = prefix.isNil or prefixMatch(s, prefix)
 
@@ -471,7 +473,10 @@ proc suggestExpr*(c: PContext, node: PNode) =
     if n == nil: n = node
     if n.kind == nkDotExpr:
       var obj = safeSemExpr(c, n.sons[0])
-      let prefix = if n.len == 2: n[1] else: nil
+      # it can happen that errnously we have collected the fieldname
+      # of the next line, so we check the 'field' is actually on the same
+      # line as the object to prevent this from happening:
+      let prefix = if n.len == 2 and n[1].info.line == n[0].info.line: n[1] else: nil
       suggestFieldAccess(c, obj, prefix, outputs)
 
       #if optIdeDebug in gGlobalOptions:

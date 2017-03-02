@@ -161,6 +161,10 @@ proc addTempDecl(c: PContext; n: PNode; kind: TSymKind) =
 proc semGenericStmt(c: PContext, n: PNode,
                     flags: TSemGenericFlags, ctx: var GenericCtx): PNode =
   result = n
+
+  when defined(nimsuggest):
+    if withinTypeDesc in flags: inc c.inTypeContext
+
   #if gCmd == cmdIdeTools: suggestStmt(c, n)
   semIdeForTemplateOrGenericCheck(n, ctx.cursorInBody)
 
@@ -457,6 +461,10 @@ proc semGenericStmt(c: PContext, n: PNode,
   else:
     for i in countup(0, sonsLen(n) - 1):
       result.sons[i] = semGenericStmt(c, n.sons[i], flags, ctx)
+
+  when defined(nimsuggest):
+    if withinTypeDesc in flags: dec c.inTypeContext
+
 
 proc semGenericStmt(c: PContext, n: PNode): PNode =
   var ctx: GenericCtx
