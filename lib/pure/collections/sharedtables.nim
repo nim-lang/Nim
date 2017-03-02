@@ -13,7 +13,7 @@
 ## lockfree hash table, you're doing it wrong.
 
 import
-  hashes, math, locks, options
+  hashes, math, locks
 
 include "system/inclrtl"
 
@@ -24,10 +24,6 @@ type
     data: KeyValuePairSeq[A, B]
     counter, dataLen: int
     lock: Lock
-
-  ComputeAction* {.pure.} = enum
-    Keep,
-    Del
 
 template maxHash(t): expr = t.dataLen-1
 
@@ -134,45 +130,51 @@ proc hasKeyOrPut*[A, B](t: var SharedTable[A, B], key: A, val: B): bool =
   withLock t:
     hasKeyOrPutImpl(enlarge)
 
-proc compute*[A, B](t: var SharedTable[A, B], key: A,
-                    mapper: proc(key: A, val: Option[B]):
-                      (Option[B], ComputeAction)): Option[B] =
+proc withKey*[A, B](t: var SharedTable[A, B], key: A,
+                    mapper: proc(key: A, val: var B, pairExists: var bool)) =
   ## Computes a new mapping for the ``key`` with the specified ``mapper``
   ## procedure.
   ##
-  ## The ``mapper`` takes the key and the current value (if present) as
-  ## parameters and returns a pair of a new value and an action.
-  ## If the action is ``ComputeAction.Del``, the key is removed from the table.
-  ## If the action is ``CopmuteAction.Keep``, the key is added or updated.
-  ## The value returned by ``compute`` is always the value returned by
-  ## the ``mapper``.
+  ## The ``mapper`` takes 3 arguments:
+  ##   #. ``key`` - the current key, if it exists, or the key passed to
+  ##      ``withKey`` otherwise;
+  ##   #. ``val`` - the current value, if the key exists, or default value
+  ##      of the type otherwise;
+  ##   #. ``pairExists`` - ``true`` if the key exists, ``false`` otherwise.
+  ## The ``mapper`` can can modify ``val`` and ``pairExists`` values to change
+  ## the mapping of the key or delete it from the table.
+  ## When adding a value, make sure to set ``pairExists`` to ``true`` along
+  ## with modifying the ``val``.
   ##
   ## The operation is performed atomically and other operations on the table
   ## will be blocked while the ``mapper`` is invoked, so it should be short and
   ## simple.
+  ##
+  ## Example usage:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   # If value exists, decrement it.
+  ##   # If it becomes zero or less, delete the key
+  ##   t.withKey(1'i64) do (k: int64, v: var int, pairExists: var bool):
+  ##     if pairExists:
+  ##       dec v
+  ##       if v <= 0:
+  ##         pairExists = false
   withLock t:
     var hc: Hash
     var index = rawGet(t, key, hc)
-    # mapper must be invoked before enlarging, because it may
-    # return none() or raise
-    let curVal = if index >= 0: some(t.data[index].val)
-                 else: none(type(t.data[0].val))
-    # if the key exists, call mapper with the actual key, because identity
-    # can be important.
-    let mapperRet = if index >= 0: mapper(t.data[index].key, curVal)
-                    else: mapper(key, curVal)
-    result = mapperRet[0]
-    case mapperRet[1]:
-    of ComputeAction.Del:
-      if index >= 0:
+
+    var pairExists = index >= 0
+    if pairExists:
+      mapper(t.data[index].key, t.data[index].val, pairExists)
+      if not pairExists:
         delImplIdx(t, index)
-    of ComputeAction.Keep:
-      if result.isSome():
-        let val = result.unsafeGet()
-        if index >= 0:
-          t.data[index].val = val
-        else:
-          maybeRehashPutImpl(enlarge)
+    else:
+      var val: B
+      mapper(key, val, pairExists)
+      if pairExists:
+        maybeRehashPutImpl(enlarge)
 
 proc `[]=`*[A, B](t: var SharedTable[A, B], key: A, val: B) =
   ## puts a (key, value)-pair into `t`.

@@ -3,7 +3,7 @@ discard """
   output: '''true'''
 """
 
-import hashes, tables, sharedtables, options
+import hashes, tables, sharedtables
 
 const
   data = {
@@ -212,25 +212,23 @@ block clearCountTableTest:
   t.clear()
   assert t.len() == 0
 
-block computeTest:
+block withKeyTest:
   var t = initSharedTable[int, int]()
-  let retOpt1 = t.compute(1) do (k: int, v: Option[int]) -> (Option[int], ComputeAction):
-    assert(v.isNone())
-    return (some(42), ComputeAction.Keep)
-  assert(retOpt1.get() == 42)
+  t.withKey(1) do (k: int, v: var int, pairExists: var bool):
+    assert(v == 0)
+    pairExists = true
+    v = 42
   assert(t.mget(1) == 42)
-  let retOpt2 = t.compute(1) do (k: int, v: Option[int]) -> (Option[int], ComputeAction):
-    assert(v.get() == 42)
-    result[1] = ComputeAction.Del
-  assert(retOpt2.isNone())
+  t.withKey(1) do (k: int, v: var int, pairExists: var bool):
+    assert(v == 42)
+    pairExists = false
   try:
     discard t.mget(1)
     assert(false, "KeyError expected")
   except KeyError:
     discard
-  let retOpt3 = t.compute(2) do (k: int, v: Option[int]) -> (Option[int], ComputeAction):
-    result[1] = ComputeAction.Del
-  assert(retOpt3.isNone())
+  t.withKey(2) do (k: int, v: var int, pairExists: var bool):
+    pairExists = false
   try:
     discard t.mget(2)
     assert(false, "KeyError expected")
