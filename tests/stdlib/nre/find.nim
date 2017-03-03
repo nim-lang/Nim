@@ -30,17 +30,12 @@ suite "find":
   test "bail early":
     ## we expect nothing to be found and we should be bailing out early which means that
     ## the timing difference between searching in small and large data should be well
-    ## within a tolerance area
-    const tolerance = 0.0001
-    var smallData = repeat("url.sequence = \"http://whatever.com/jwhrejrhrjrhrjhrrjhrjrhrjrh\"", 10)
-    var largeData = repeat("url.sequence = \"http://whatever.com/jwhrejrhrjrhrjhrrjhrjrhrjrh\"", 1000000)
-    var start = cpuTime()
-    check(largeData.findAll(re"url.*? = &#39;(.*?)&#39;") == newSeq[string]())
-    var stop = cpuTime()
-    var elapsedLarge = stop - start
-    start = cpuTime()
-    check(smallData.findAll(re"url.*? = &#39;(.*?)&#39;") == newSeq[string]())
-    stop = cpuTime()
-    var elapsedSmall = stop - start
-    var difference =  elapsedLarge - elapsedSmall
-    check(difference < tolerance)
+    ## within a tolerance margin
+    const small = 10
+    const large = 1000
+    var smallData = repeat("url.sequence = \"http://whatever.com/jwhrejrhrjrhrjhrrjhrjrhrjrh\" ", small)
+    var largeData = repeat("url.sequence = \"http://whatever.com/jwhrejrhrjrhrjhrrjhrjrhrjrh\" ", large)
+    var expression = re"^url.* = &#34;(.*?)&#34;"
+
+    check(smallData.findAll(expression) == newSeq[string]())
+    check(largeData.findAll(expression) == newSeq[string]())
