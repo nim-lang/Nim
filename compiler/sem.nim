@@ -381,6 +381,16 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   if sym == c.p.owner:
     globalError(n.info, errRecursiveDependencyX, sym.name.s)
 
+  let genericParams = if sfImmediate in sym.flags: 0
+                      else: sym.ast[genericParamsPos].len
+  let suppliedParams = n.safeLen - 1
+
+  if suppliedParams < genericParams:
+    globalError(n.info, errMissingGenericParamsForTemplate, n.renderTree)
+
+  if suppliedParams != genericParams + sym.typ.len - 1:
+    globalError(n.info, errWrongNumberOfArgumentsInCall, n.renderTree)
+
   #if c.evalContext == nil:
   #  c.evalContext = c.createEvalContext(emStatic)
   result = evalMacroCall(c.module, c.cache, n, nOrig, sym)
