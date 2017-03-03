@@ -27,6 +27,8 @@
 ## - Finally, sort matches by relevance. The relevance is determined by the
 ##   number of usages, so ``strutils.replace`` comes before
 ##   ``strutils.wordWrap``.
+## - In any case, sorting also considers scoping information. Local variables
+##   get high priority.
 
 # included from sigmatch.nim
 
