@@ -719,9 +719,9 @@ proc generateHeaders(requestUrl: Uri, httpMethod: string,
     if requestUrl.query.len > 0:
       result.add("?" & requestUrl.query)
   else:
-    # Remove the 'http://' from the URL for CONNECT requests.
+    # Remove the 'http://' from the URL for CONNECT requests for TLS connections.
     var modifiedUrl = requestUrl
-    modifiedUrl.scheme = ""
+    if requestUrl.scheme == "https": modifiedUrl.scheme = ""
     result.add($modifiedUrl)
 
   # HTTP/1.1\c\l
