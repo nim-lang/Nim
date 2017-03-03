@@ -1010,8 +1010,10 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       result.n.typ = r
 
   if genericParams != nil and genericParams.len > 0:
-    result.flags.incl tfUnresolved
     for n in genericParams:
+      if sfUsed notin n.sym.flags:
+        result.flags.incl tfUnresolved
+
       if tfWildcard in n.sym.typ.flags:
         n.sym.kind = skType
         n.sym.typ.flags.excl tfWildcard
