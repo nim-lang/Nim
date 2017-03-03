@@ -250,18 +250,18 @@ proc parseInt*(s: string, number: var int, start = 0): int {.
   elif result != 0:
     number = int(res)
 
-# overflowChecks doesn't work with uint64
-proc rawParseUInt(s: string, b: var uint64, start = 0): int =
+# overflowChecks doesn't work with BiggestUInt
+proc rawParseUInt(s: string, b: var BiggestUInt, start = 0): int =
   var
-    res = 0'u64
-    prev = 0'u64
+    res = 0.BiggestUInt
+    prev = 0.BiggestUInt
     i = start
   if s[i] == '+': inc(i) # Allow
   if s[i] in {'0'..'9'}:
     b = 0
     while s[i] in {'0'..'9'}:
       prev = res
-      res = res * 10 + (ord(s[i]) - ord('0')).uint64
+      res = res * 10 + (ord(s[i]) - ord('0')).BiggestUInt
       if prev > res:
         return 0 # overflowChecks emulation
       inc(i)
@@ -269,13 +269,13 @@ proc rawParseUInt(s: string, b: var uint64, start = 0): int =
     b = res
     result = i - start
 
-proc parseBiggestUInt*(s: string, number: var uint64, start = 0): int {.
+proc parseBiggestUInt*(s: string, number: var BiggestUInt, start = 0): int {.
   rtl, extern: "npuParseBiggestUInt", noSideEffect.} =
   ## parses an unsigned integer starting at `start` and stores the value
   ## into `number`.
   ## Result is the number of processed chars or 0 if there is no integer
   ## or overflow detected.
-  var res: uint64
+  var res: BiggestUInt
   # use 'res' for exception safety (don't write to 'number' in case of an
   # overflow exception):
   result = rawParseUInt(s, res, start)
@@ -287,12 +287,12 @@ proc parseUInt*(s: string, number: var uint, start = 0): int {.
   ## into `number`.
   ## Result is the number of processed chars or 0 if there is no integer or
   ## overflow detected.
-  var res: uint64
+  var res: BiggestUInt
   result = parseBiggestUInt(s, res, start)
-  if (sizeof(uint) <= 4) and
-      (res > 0xFFFF_FFFF'u64):
-    raise newException(OverflowError, "overflow")
-  elif result != 0:
+  when sizeof(BiggestUInt) > sizeof(uint) and sizeof(uint) <= 4:
+    if res > 0xFFFF_FFFF'u64:
+      raise newException(OverflowError, "overflow")
+  if result != 0:
     number = uint(res)
 
 proc parseBiggestFloat*(s: string, number: var BiggestFloat, start = 0): int {.

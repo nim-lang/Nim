@@ -8,7 +8,7 @@
 #
 
 import
-  os, lists, strutils, strtabs, osproc, sets
+  os, strutils, strtabs, osproc, sets
 
 const
   hasTinyCBackend* = defined(tinyc)
@@ -100,7 +100,18 @@ type
 
   IdeCmd* = enum
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideMod,
-    ideHighlight, ideOutline
+    ideHighlight, ideOutline, ideKnown, ideMsg
+
+  ConfigRef* = ref object ## eventually all global configuration should be moved here
+    cppDefines*: HashSet[string]
+    headerFile*: string
+
+proc newConfigRef*(): ConfigRef =
+  result = ConfigRef(cppDefines: initSet[string](),
+    headerFile: "")
+
+proc cppDefine*(c: ConfigRef; define: string) =
+  c.cppDefines.incl define
 
 var
   gIdeCmd*: IdeCmd
@@ -118,11 +129,12 @@ var
   gExitcode*: int8
   gCmd*: TCommands = cmdNone  # the command
   gSelectedGC* = gcRefc       # the selected GC
-  searchPaths*, lazyPaths*: TLinkedList
+  searchPaths*: seq[string] = @[]
+  lazyPaths*: seq[string]   = @[]
   outFile*: string = ""
   docSeeSrcUrl*: string = ""  # if empty, no seeSrc will be generated. \
   # The string uses the formatting variables `path` and `line`.
-  headerFile*: string = ""
+  #headerFile*: string = ""
   gVerbosity* = 1             # how verbose the compiler is
   gNumberOfProcessors*: int   # number of processors
   gWholeProject*: bool        # for 'doc2': output any dependency
@@ -256,9 +268,7 @@ proc removeTrailingDirSep*(path: string): string =
 
 proc disableNimblePath*() =
   gNoNimblePath = true
-  lazyPaths.head = nil
-  lazyPaths.tail = nil
-  lazyPaths.counter = 0
+  lazyPaths.setLen(0)
 
 include packagehandling
 
@@ -325,27 +335,22 @@ proc completeGeneratedFilePath*(f: string, createSubDir: bool = true): string =
   result = joinPath(subdir, tail)
   #echo "completeGeneratedFilePath(", f, ") = ", result
 
-iterator iterSearchPath*(searchPaths: TLinkedList): string =
-  var it = PStrEntry(searchPaths.head)
-  while it != nil:
-    yield it.data
-    it = PStrEntry(it.next)
-
 proc rawFindFile(f: string): string =
-  for it in iterSearchPath(searchPaths):
+  for it in searchPaths:
     result = joinPath(it, f)
     if existsFile(result):
       return result.canonicalizePath
   result = ""
 
 proc rawFindFile2(f: string): string =
-  var it = PStrEntry(lazyPaths.head)
-  while it != nil:
-    result = joinPath(it.data, f)
+  for i, it in lazyPaths:
+    result = joinPath(it, f)
     if existsFile(result):
-      bringToFront(lazyPaths, it)
+      # bring to front
+      for j in countDown(i,1):
+        swap(lazyPaths[j], lazyPaths[j-1])
+
       return result.canonicalizePath
-    it = PStrEntry(it.next)
   result = ""
 
 template patchModule() {.dirty.} =
@@ -431,6 +436,8 @@ proc parseIdeCmd*(s: string): IdeCmd =
   of "mod": ideMod
   of "highlight": ideHighlight
   of "outline": ideOutline
+  of "known": ideKnown
+  of "msg": ideMsg
   else: ideNone
 
 proc `$`*(c: IdeCmd): string =
@@ -445,3 +452,5 @@ proc `$`*(c: IdeCmd): string =
   of ideNone: "none"
   of ideHighlight: "highlight"
   of ideOutline: "outline"
+  of ideKnown: "known"
+  of ideMsg: "msg"

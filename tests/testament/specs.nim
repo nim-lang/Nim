@@ -154,7 +154,23 @@ proc parseSpec*(filename: string): TSpec =
     of "nimout":
       result.nimout = e.value
     of "disabled":
-      if parseCfgBool(e.value): result.err = reIgnored
+      case e.value.normalize
+      of "y", "yes", "true", "1", "on": result.err = reIgnored
+      of "n", "no", "false", "0", "off": discard
+      of "win", "windows":
+        when defined(windows): result.err = reIgnored
+      of "linux":
+        when defined(linux): result.err = reIgnored
+      of "bsd":
+        when defined(bsd): result.err = reIgnored
+      of "macosx":
+        when defined(macosx): result.err = reIgnored
+      of "unix":
+        when defined(unix): result.err = reIgnored
+      of "posix":
+        when defined(posix): result.err = reIgnored
+      else:
+        raise newException(ValueError, "cannot interpret as a bool: " & e.value)
     of "cmd":
       if e.value.startsWith("nim "):
         result.cmd = "compiler" / e.value

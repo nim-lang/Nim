@@ -108,7 +108,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   var trueSymbol = strTableGet(magicsys.systemModule.tab, getIdent"true")
   if trueSymbol == nil:
     localError(n.info, errSystemNeeds, "true")
-    trueSymbol = newSym(skUnknown, getIdent"true", getCurrOwner(), n.info)
+    trueSymbol = newSym(skUnknown, getIdent"true", getCurrOwner(c), n.info)
     trueSymbol.typ = getSysType(tyBool)
 
   result.sons[0] = newSymNode(trueSymbol, n.info)
@@ -128,7 +128,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   for i in 1..call.len-1:
     var tupleTypeB = skipTypes(call.sons[i].typ, abstractVar-{tyTypeDesc})
     if not sameType(tupleTypeA, tupleTypeB):
-      typeMismatch(call.sons[i], tupleTypeA, tupleTypeB)
+      typeMismatch(call.sons[i].info, tupleTypeA, tupleTypeB)
 
   inc(c.p.nestedLoopCounter)
   if tupleTypeA.kind == tyTuple:

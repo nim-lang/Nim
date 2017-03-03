@@ -225,7 +225,7 @@ proc foreignDepInstallCmd*(foreignPackageName: string): (string, bool) =
     else:
       result = ("<your package manager here> install " & p, true)
   else:
-    result = ("brew install " & p, true)
+    result = ("brew install " & p, false)
 
 proc foreignDep*(foreignPackageName: string) =
   ## Registers 'foreignPackageName' to the internal list of foreign deps.

@@ -388,6 +388,7 @@ proc debugTree(n: PNode, indent: int, maxRecDepth: int;
              [istr, makeYamlString($n.kind)]
     addf(result, ",$N$1\"info\": $2", [istr, lineInfoToStr(n.info)])
     if maxRecDepth != 0:
+      addf(result, ",$N$1\"flags\": $2", [istr, rope($n.flags)])
       case n.kind
       of nkCharLit..nkUInt64Lit:
         addf(result, ",$N$1\"intVal\": $2", [istr, rope(n.intVal)])

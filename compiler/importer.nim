@@ -206,6 +206,7 @@ proc evalImport(c: PContext, n: PNode): PNode =
       for x in it[2]:
         let f = renderTree(x, {renderNoComments})
         let a = newStrNode(nkStrLit, (dir & sep & f).replace(" "))
+        a.info = it.info
         impMod(c, a)
     else:
       impMod(c, it)

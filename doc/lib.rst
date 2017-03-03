@@ -415,6 +415,9 @@ Modules for JS backend
 * `dom <dom.html>`_
   Declaration of the Document Object Model for the JS backend.
 
+* `jsffi <jsffi.html>`_
+  Types and macros for easier interaction with JavaScript.
+
 
 Deprecated modules
 ------------------
@@ -583,4 +586,4 @@ Nim programming language.
   nimblepkglist.js or have javascript disabled in your browser.</b></div>
 
   <script type="text/javascript" src="nimblepkglist.js"></script>
-  <script type="text/javascript" src="http://irclogs.nim-lang.org/packages?callback=gotPackageList" async></script>
+  <script type="text/javascript" src="https://irclogs.nim-lang.org/packages?callback=gotPackageList" async></script>

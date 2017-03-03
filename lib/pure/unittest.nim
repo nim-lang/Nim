@@ -24,7 +24,7 @@
 ##       echo "run before each test"
 ##
 ##     teardown:
-##       echo "run after each test":
+##       echo "run after each test"
 ##
 ##     test "essential truths":
 ##       # give up and stop if this fails
@@ -47,6 +47,8 @@
 ## Tests can be nested, however failure of a nested test will not mark the
 ## parent test as failed. Setup and teardown are inherited. Setup can be
 ## overridden locally.
+## Compiled test files return the number of failed test as exit code, while
+## nim c -r <testfile.nim> exits with 0 or 1
 
 import
   macros
@@ -95,7 +97,7 @@ proc shouldRun(testName: string): bool =
   result = true
 
 proc startSuite(name: string) =
-  template rawPrint() = echo("\n[Suite] ", name) 
+  template rawPrint() = echo("\n[Suite] ", name)
   when not defined(ECMAScript):
     if colorOutput:
       styledEcho styleBright, fgBlue, "\n[Suite] ", resetStyle, name
@@ -134,15 +136,15 @@ template suite*(name, body) {.dirty.} =
   ##    [OK] (2 + -2) != 4
   block:
     bind startSuite
-    template setup(setupBody: untyped) {.dirty.} =
-      var testSetupIMPLFlag = true
+    template setup(setupBody: untyped) {.dirty, used.} =
+      var testSetupIMPLFlag {.used.} = true
       template testSetupIMPL: untyped {.dirty.} = setupBody
 
-    template teardown(teardownBody: untyped) {.dirty.} =
-      var testTeardownIMPLFlag = true
+    template teardown(teardownBody: untyped) {.dirty, used.} =
+      var testTeardownIMPLFlag {.used.} = true
       template testTeardownIMPL: untyped {.dirty.} = teardownBody
 
-    let testInSuiteImplFlag = true
+    let testInSuiteImplFlag {.used.} = true
     startSuite name
     body
 
@@ -380,8 +382,7 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
   ##  expect IOError, OSError, ValueError, AssertionError:
   ##    defectiveRobot()
   let exp = callsite()
-  template expectBody(errorTypes, lineInfoLit: expr,
-                      body: stmt): NimNode {.dirty.} =
+  template expectBody(errorTypes, lineInfoLit, body): NimNode {.dirty.} =
     try:
       body
       checkpoint(lineInfoLit & ": Expect Failed, no exception was thrown.")

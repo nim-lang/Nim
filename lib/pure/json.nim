@@ -952,7 +952,7 @@ proc newIndent(curr, indent: int, ml: bool): int =
   else: return indent
 
 proc nl(s: var string, ml: bool) =
-  if ml: s.add("\n")
+  s.add(if ml: "\n" else: " ")
 
 proc escapeJson*(s: string; result: var string) =
   ## Converts a string `s` to its JSON representation.
@@ -986,15 +986,14 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
               lstArr = false, currIndent = 0) =
   case node.kind
   of JObject:
-    if currIndent != 0 and not lstArr: result.nl(ml)
-    result.indent(currIndent) # Indentation
+    if lstArr: result.indent(currIndent) # Indentation
     if node.fields.len > 0:
       result.add("{")
       result.nl(ml) # New line
       var i = 0
       for key, val in pairs(node.fields):
         if i > 0:
-          result.add(", ")
+          result.add(",")
           result.nl(ml) # New Line
         inc i
         # Need to indent more than {
@@ -1030,7 +1029,7 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
       result.nl(ml)
       for i in 0..len(node.elems)-1:
         if i > 0:
-          result.add(", ")
+          result.add(",")
           result.nl(ml) # New Line
         toPretty(result, node.elems[i], indent, ml,
             true, newIndent(currIndent, indent, ml))

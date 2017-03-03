@@ -1,12 +1,50 @@
 
 # -------------- post unzip steps ---------------------------------------------
 
-import strutils, os, osproc, browsers
+import strutils, os, osproc, streams, browsers
 
-const arch = $(sizeof(int)*8)
+const
+  arch = $(sizeof(int)*8)
+  mingw = "mingw$1-6.3.0.7z" % arch
+  url = r"https://nim-lang.org/download/" & mingw
 
-proc downloadMingw() =
-  openDefaultBrowser("http://nim-lang.org/download/mingw$1.zip" % arch)
+type
+  DownloadResult = enum
+    Failure,
+    Manual,
+    Success
+
+proc unzip(): bool =
+  if not fileExists("dist" / mingw):
+    echo "Could not find ", "dist" / mingw
+    return false
+  try:
+    let p = osproc.startProcess(r"bin\7zG.exe", getCurrentDir() / r"dist",
+                                ["x", mingw])
+    if p.waitForExit != 0:
+      echo "Unpacking failed: " & mingw
+    else:
+      result = true
+  except:
+    result = false
+
+proc downloadMingw(): DownloadResult =
+  let curl = findExe"curl"
+  var cmd: string
+  if curl.len > 0:
+    cmd = curl & " --out " & "dist" / mingw & " " & url
+  elif fileExists"bin/nimgrab.exe":
+    cmd = "bin/nimgrab.exe " & url & " dist" / mingw
+  if cmd.len > 0:
+    if execShellCmd(cmd) != 0:
+      echo "download failed! ", cmd
+      openDefaultBrowser(url)
+      result = Manual
+    else:
+      if unzip(): result = Success
+  else:
+    openDefaultBrowser(url)
+    result = Manual
 
 when defined(windows):
   import registry
@@ -86,17 +124,21 @@ when defined(windows):
   proc checkGccArch(mingw: string): bool =
     let gccExe = mingw / r"gcc.exe"
     if fileExists(gccExe):
+      const nimCompat = "nim_compat.c"
+      writeFile(nimCompat, """typedef int
+        Nim_and_C_compiler_disagree_on_target_architecture[
+          $# == sizeof(void*) ? 1 : -1];
+      """ % $sizeof(int))
       try:
-        let arch = execProcess(gccExe, ["-dumpmachine"], nil, {poStdErrToStdOut,
-                                                               poUsePath})
-        when hostCPU == "i386":
-          result = arch.contains("i686-")
-        elif hostCPU == "amd64":
-          result = arch.contains("x86_64-")
-        else:
-          {.error: "Unknown CPU for Windows.".}
+        let p = startProcess(gccExe, "", ["-c", nimCompat], nil,
+                            {poStdErrToStdOut, poUsePath})
+        #echo p.outputStream.readAll()
+        result = p.waitForExit() == 0
       except OSError, IOError:
         result = false
+      finally:
+        removeFile(nimCompat)
+        removeFile(nimCompat.changeFileExt("o"))
 
   proc defaultMingwLocations(): seq[string] =
     proc probeDir(dir: string; result: var seq[string]) =
@@ -166,10 +208,19 @@ proc main() =
              "in the standard locations [Error]"
         if askBool("Do you want to download MingW from Nim's website? (y/n) "):
           let dest = getCurrentDir() / "dist"
-          downloadMingw()
-          echo "After download, unzip it in: ", dest
-          echo "so that ", dest / "mingw" & arch, " exists."
-          if askBool("Download and unzip successful? (y/n) "):
+          var retry = false
+          case downloadMingw()
+          of Manual:
+            echo "After download, move it to: ", dest
+            if askBool("Download successful? (y/n) "):
+              while not fileExists("dist" / mingw):
+                echo "could not find: ", "dist" / mingw
+                if not askBool("Try again? (y/n) "): break
+              if unzip(): retry = true
+          of Failure: discard
+          of Success:
+            retry = true
+          if retry:
             incompat.setLen 0
             let alternative = tryDirs(incompat, defaultMingwLocations())
             if alternative.len == 0:
@@ -208,4 +259,7 @@ proc main() =
     echo("Add ", getCurrentDir(), "/bin to your PATH...")
 
 when isMainModule:
-  main()
+  when defined(testdownload):
+    discard downloadMingw()
+  else:
+    main()

@@ -1,6 +1,7 @@
 import unittest, sequtils
 import nre except toSeq
 import optional_nonstrict
+import times, strutils
 
 suite "find":
   test "find text":
@@ -25,3 +26,16 @@ suite "find":
     check("word word".findAll(re"\b") == @["", "", "", ""])
     check("word\r\lword".findAll(re"(*ANYCRLF)(?m)$") == @["", ""])
     check("слово слово".findAll(re"(*U)\b") == @["", "", "", ""])
+
+  test "bail early":
+    ## we expect nothing to be found and we should be bailing out early which means that
+    ## the timing difference between searching in small and large data should be well
+    ## within a tolerance margin
+    const small = 10
+    const large = 1000
+    var smallData = repeat("url.sequence = \"http://whatever.com/jwhrejrhrjrhrjhrrjhrjrhrjrh\" ", small)
+    var largeData = repeat("url.sequence = \"http://whatever.com/jwhrejrhrjrhrjhrrjhrjrhrjrh\" ", large)
+    var expression = re"^url.* = &#34;(.*?)&#34;"
+
+    check(smallData.findAll(expression) == newSeq[string]())
+    check(largeData.findAll(expression) == newSeq[string]())

@@ -62,8 +62,6 @@ be used:
     {.gcsafe.}:
       deepCopy(perThread, someGlobal)
 
-  onThreadCreation(setPerThread)
-
 
 Future directions:
 

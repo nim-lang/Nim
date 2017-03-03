@@ -129,7 +129,7 @@ proc expandIfNeeded[T](deq: var Deque[T]) =
   var cap = deq.mask + 1
   if unlikely(deq.count >= cap):
     var n = newSeq[T](cap * 2)
-    for i, x in deq:  # don't use copyMem because the GC and because it's slower.
+    for i, x in pairs(deq):  # don't use copyMem because the GC and because it's slower.
       shallowCopy(n[i], x)
     shallowCopy(deq.data, n)
     deq.mask = cap * 2 - 1

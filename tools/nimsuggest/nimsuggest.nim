@@ -1,7 +1,7 @@
 #
 #
 #           The Nim Compiler
-#        (c) Copyright 2016 Andreas Rumpf
+#        (c) Copyright 2017 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -13,11 +13,11 @@ import strutils, os, parseopt, parseutils, sequtils, net, rdstdin, sexp
 # Do NOT import suggest. It will lead to wierd bugs with
 # suggestionResultHook, because suggest.nim is included by sigmatch.
 # So we import that one instead.
-import compiler/options, compiler/commands, compiler/modules, compiler/sem,
-  compiler/passes, compiler/passaux, compiler/msgs, compiler/nimconf,
-  compiler/extccomp, compiler/condsyms, compiler/lists,
-  compiler/sigmatch, compiler/ast, compiler/scriptconfig,
-  compiler/idents, compiler/modulegraphs
+import compiler / [options, commands, modules, sem,
+  passes, passaux, msgs, nimconf,
+  extccomp, condsyms,
+  sigmatch, ast, scriptconfig,
+  idents, modulegraphs, vm]
 
 when defined(windows):
   import winlean
@@ -40,6 +40,7 @@ Options:
   --log                   enable verbose logging to nimsuggest.log file
   --v2                    use version 2 of the protocol; more features and
                           much faster
+  --refresh               perform automatic refreshes to keep the analysis precise
   --tester                implies --v2 and --stdin and outputs a line
                           '""" & DummyEof & """' for the tester
 
@@ -49,7 +50,7 @@ In addition, all command line options of Nim that do not affect code generation
 are supported.
 """
 type
-  Mode = enum mstdin, mtcp, mepc
+  Mode = enum mstdin, mtcp, mepc, mcmdline
 
 var
   gPort = 6000.Port
@@ -57,22 +58,31 @@ var
   gMode: Mode
   gEmitEof: bool # whether we write '!EOF!' dummy lines
   gLogging = false
+  gRefresh: bool
+
+  requests: Channel[string]
+  results: Channel[Suggest]
+
+proc writelnToChannel(line: string) =
+  results.send(Suggest(section: ideMsg, doc: line))
+
+proc sugResultHook(s: Suggest) =
+  results.send(s)
+
+proc errorHook(info: TLineInfo; msg: string; sev: Severity) =
+  results.send(Suggest(section: ideChk, filePath: toFullPath(info),
+    line: toLinenumber(info), column: toColumn(info), doc: msg,
+    forth: $sev))
 
 const
   seps = {':', ';', ' ', '\t'}
-  Help = "usage: sug|con|def|use|dus|chk|mod|highlight|outline file.nim[;dirtyfile.nim]:line:col\n" &
+  Help = "usage: sug|con|def|use|dus|chk|mod|highlight|outline|known file.nim[;dirtyfile.nim]:line:col\n" &
          "type 'quit' to quit\n" &
          "type 'debug' to toggle debug mode on/off\n" &
          "type 'terse' to toggle terse mode on/off"
 
 type
   EUnexpectedCommand = object of Exception
-
-proc logStr(line: string) =
-  var f: File
-  if open(f, getHomeDir() / "nimsuggest.log", fmAppend):
-    f.writeLine(line)
-    f.close()
 
 proc parseQuoted(cmd: string; outp: var string; start: int): int =
   var i = start
@@ -88,15 +98,17 @@ proc sexp(s: IdeCmd|TSymKind): SexpNode = sexp($s)
 proc sexp(s: Suggest): SexpNode =
   # If you change the order here, make sure to change it over in
   # nim-mode.el too.
+  let qp = if s.qualifiedPath.isNil: @[] else: s.qualifiedPath
   result = convertSexp([
     s.section,
     s.symkind,
-    s.qualifiedPath.map(newSString),
+    qp.map(newSString),
     s.filePath,
     s.forth,
     s.line,
     s.column,
-    s.doc
+    s.doc,
+    s.quality
   ])
 
 proc sexp(s: seq[Suggest]): SexpNode =
@@ -137,8 +149,12 @@ proc symFromInfo(graph: ModuleGraph; gTrackPos: TLineInfo): PSym =
 proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
              graph: ModuleGraph; cache: IdentCache) =
   if gLogging:
-    logStr("cmd: " & $cmd & ", file: " & file & ", dirtyFile: " & dirtyfile & "[" & $line & ":" & $col & "]")
+    log("cmd: " & $cmd & ", file: " & file & ", dirtyFile: " & dirtyfile &
+          "[" & $line & ":" & $col & "]")
   gIdeCmd = cmd
+  if cmd == ideChk:
+    msgs.structuredErrorHook = errorHook
+    msgs.writelnHook = proc (s: string) = discard
   if cmd == ideUse and suggestVersion != 2:
     graph.resetAllModules()
   var isKnownFile = true
@@ -150,7 +166,7 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
   gTrackPos = newLineInfo(dirtyIdx, line, col)
   gErrorCounter = 0
   if suggestVersion < 2:
-    usageSym = nil
+    graph.usageSym = nil
   if not isKnownFile:
     graph.compileProject(cache)
   if suggestVersion == 2 and gIdeCmd in {ideUse, ideDus} and
@@ -163,7 +179,7 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
     if gIdeCmd != ideMod:
       graph.compileProject(cache, modIdx)
   if gIdeCmd in {ideUse, ideDus}:
-    let u = if suggestVersion >= 2: graph.symFromInfo(gTrackPos) else: usageSym
+    let u = if suggestVersion >= 2: graph.symFromInfo(gTrackPos) else: graph.usageSym
     if u != nil:
       listUsages(u)
     else:
@@ -180,25 +196,11 @@ proc executeEpc(cmd: IdeCmd, args: SexpNode;
     dirtyfile = args[3].getStr(nil)
   execute(cmd, file, dirtyfile, int(line), int(column), graph, cache)
 
-proc returnEpc(socket: var Socket, uid: BiggestInt, s: SexpNode|string,
+proc returnEpc(socket: Socket, uid: BiggestInt, s: SexpNode|string,
                return_symbol = "return") =
   let response = $convertSexp([newSSymbol(return_symbol), uid, s])
   socket.send(toHex(len(response), 6))
   socket.send(response)
-
-template sendEpc(results: typed, tdef, hook: untyped) =
-  hook = proc (s: tdef) =
-    results.add(
-      # Put newlines to parse output by flycheck-nim.el
-      when results is string: s & "\n"
-      else: s
-    )
-
-  executeEpc(gIdeCmd, args, graph, cache)
-  let res = sexp(results)
-  if gLogging:
-    logStr($res)
-  returnEPC(client, uid, res)
 
 template checkSanity(client, sizeHex, size, messageBuffer: typed) =
   if client.recv(sizeHex, 6) != 6:
@@ -207,6 +209,38 @@ template checkSanity(client, sizeHex, size, messageBuffer: typed) =
     raise newException(ValueError, "invalid size hex: " & $sizeHex)
   if client.recv(messageBuffer, size) != size:
     raise newException(ValueError, "didn't get all the bytes")
+
+proc toStdout() {.gcsafe.} =
+  while true:
+    let res = results.recv()
+    case res.section
+    of ideNone: break
+    of ideMsg: echo res.doc
+    of ideKnown: echo res.quality == 1
+    else: echo res
+
+proc toSocket(stdoutSocket: Socket) {.gcsafe.} =
+  while true:
+    let res = results.recv()
+    case res.section
+    of ideNone: break
+    of ideMsg: stdoutSocket.send(res.doc & "\c\L")
+    of ideKnown: stdoutSocket.send($(res.quality == 1) & "\c\L")
+    else: stdoutSocket.send($res & "\c\L")
+
+proc toEpc(client: Socket; uid: BiggestInt) {.gcsafe.} =
+  var list = newSList()
+  while true:
+    let res = results.recv()
+    case res.section
+    of ideNone: break
+    of ideMsg:
+      list.add sexp(res.doc)
+    of ideKnown:
+      list.add sexp(res.quality == 1)
+    else:
+      list.add sexp(res)
+  returnEpc(client, uid, list)
 
 template setVerbosity(level: typed) =
   gVerbosity = level
@@ -217,16 +251,131 @@ proc connectToNextFreePort(server: Socket, host: string): Port =
   let (_, port) = server.getLocalAddr
   result = port
 
-proc parseCmdLine(cmd: string; graph: ModuleGraph; cache: IdentCache) =
+type
+  ThreadParams = tuple[port: Port; address: string]
+
+proc replStdinSingleCmd(line: string) =
+  requests.send line
+  toStdout()
+  echo ""
+  flushFile(stdout)
+
+proc replStdin(x: ThreadParams) {.thread.} =
+  if gEmitEof:
+    echo DummyEof
+    while true:
+      let line = readLine(stdin)
+      requests.send line
+      toStdout()
+      echo DummyEof
+      flushFile(stdout)
+  else:
+    echo Help
+    var line = ""
+    while readLineFromStdin("> ", line):
+      replStdinSingleCmd(line)
+
+proc replCmdline(x: ThreadParams) {.thread.} =
+  replStdinSingleCmd(x.address)
+  requests.send "quit"
+
+proc replTcp(x: ThreadParams) {.thread.} =
+  var server = newSocket()
+  server.bindAddr(x.port, x.address)
+  var inp = "".TaintedString
+  server.listen()
+  while true:
+    var stdoutSocket = newSocket()
+    accept(server, stdoutSocket)
+
+    stdoutSocket.readLine(inp)
+    requests.send inp
+    toSocket(stdoutSocket)
+    stdoutSocket.send("\c\L")
+    stdoutSocket.close()
+
+proc argsToStr(x: SexpNode): string =
+  if x.kind != SList: return x.getStr
+  doAssert x.kind == SList
+  doAssert x.len >= 4
+  let file = x[0].getStr
+  let line = x[1].getNum
+  let col = x[2].getNum
+  let dirty = x[3].getStr
+  result = x[0].getStr.escape
+  if dirty.len > 0:
+    result.add ';'
+    result.add dirty.escape
+  result.add ':'
+  result.add line
+  result.add ':'
+  result.add col
+
+proc replEpc(x: ThreadParams) {.thread.} =
+  var server = newSocket()
+  let port = connectToNextFreePort(server, "localhost")
+  server.listen()
+  echo port
+  stdout.flushFile()
+
+  var client = newSocket()
+  # Wait for connection
+  accept(server, client)
+  while true:
+    var
+      sizeHex = ""
+      size = 0
+      messageBuffer = ""
+    checkSanity(client, sizeHex, size, messageBuffer)
+    let
+      message = parseSexp($messageBuffer)
+      epcApi = message[0].getSymbol
+    case epcApi
+    of "call":
+      let
+        uid = message[1].getNum
+        args = message[3]
+
+      gIdeCmd = parseIdeCmd(message[2].getSymbol)
+      case gIdeCmd
+      of ideSug, ideCon, ideDef, ideUse, ideDus, ideOutline, ideHighlight:
+        setVerbosity(0)
+      else: discard
+      let cmd = $gIdeCmd & " " & args.argsToStr
+      if gLogging:
+        log "MSG CMD: " & cmd
+      requests.send(cmd)
+      toEpc(client, uid)
+    of "methods":
+      returnEpc(client, message[1].getNum, listEpc())
+    of "epc-error":
+      # an unhandled exception forces down the whole process anyway, so we
+      # use 'quit' here instead of 'raise'
+      quit("recieved epc error: " & $messageBuffer)
+    else:
+      let errMessage = case epcApi
+                       of "return", "return-error":
+                         "no return expected"
+                       else:
+                         "unexpected call: " & epcAPI
+      quit errMessage
+
+proc execCmd(cmd: string; graph: ModuleGraph; cache: IdentCache) =
+  template sentinel() =
+    # send sentinel for the input reading thread:
+    results.send(Suggest(section: ideNone))
+
   template toggle(sw) =
     if sw in gGlobalOptions:
       excl(gGlobalOptions, sw)
     else:
       incl(gGlobalOptions, sw)
+    sentinel()
     return
 
   template err() =
     echo Help
+    sentinel()
     return
 
   var opc = ""
@@ -238,14 +387,15 @@ proc parseCmdLine(cmd: string; graph: ModuleGraph; cache: IdentCache) =
   of "use": gIdeCmd = ideUse
   of "dus": gIdeCmd = ideDus
   of "mod": gIdeCmd = ideMod
-  of "chk":
-    gIdeCmd = ideChk
-    incl(gGlobalOptions, optIdeDebug)
+  of "chk": gIdeCmd = ideChk
   of "highlight": gIdeCmd = ideHighlight
   of "outline": gIdeCmd = ideOutline
-  of "quit": quit()
+  of "quit":
+    sentinel()
+    quit()
   of "debug": toggle optIdeDebug
   of "terse": toggle optIdeTerse
+  of "known": gIdeCmd = ideKnown
   else: err()
   var dirtyfile = ""
   var orig = ""
@@ -259,95 +409,56 @@ proc parseCmdLine(cmd: string; graph: ModuleGraph; cache: IdentCache) =
   i += skipWhile(cmd, seps, i)
   i += parseInt(cmd, col, i)
 
-  execute(gIdeCmd, orig, dirtyfile, line, col-1, graph, cache)
-
-proc serveStdin(graph: ModuleGraph; cache: IdentCache) =
-  if gEmitEof:
-    echo DummyEof
-    while true:
-      let line = readLine(stdin)
-      parseCmdLine line, graph, cache
-      echo DummyEof
-      flushFile(stdout)
+  if gIdeCmd == ideKnown:
+    results.send(Suggest(section: ideKnown, quality: ord(fileInfoKnown(orig))))
   else:
-    echo Help
-    var line = ""
-    while readLineFromStdin("> ", line):
-      parseCmdLine line, graph, cache
-      echo ""
-      flushFile(stdout)
+    execute(gIdeCmd, orig, dirtyfile, line, col-1, graph, cache)
+  sentinel()
 
-proc serveTcp(graph: ModuleGraph; cache: IdentCache) =
-  var server = newSocket()
-  server.bindAddr(gPort, gAddress)
-  var inp = "".TaintedString
-  server.listen()
+proc recompileFullProject(graph: ModuleGraph; cache: IdentCache) =
+  echo "recompiling full project"
+  resetSystemArtifacts()
+  vm.globalCtx = nil
+  graph.resetAllModules()
+  GC_fullcollect()
+  compileProject(graph, cache)
+  echo GC_getStatistics()
 
-  while true:
-    var stdoutSocket = newSocket()
-    msgs.writelnHook = proc (line: string) =
-      stdoutSocket.send(line & "\c\L")
-
-    accept(server, stdoutSocket)
-
-    stdoutSocket.readLine(inp)
-    parseCmdLine inp.string, graph, cache
-
-    stdoutSocket.send("\c\L")
-    stdoutSocket.close()
-
-proc serveEpc(server: Socket; graph: ModuleGraph; cache: IdentCache) =
-  var client = newSocket()
-  # Wait for connection
-  accept(server, client)
+proc mainThread(graph: ModuleGraph; cache: IdentCache) =
   if gLogging:
-    var it = searchPaths.head
-    while it != nil:
-      logStr(PStrEntry(it).data)
-      it = it.next
-    msgs.writelnHook = proc (line: string) = logStr(line)
+    for it in searchPaths:
+      log(it)
 
-  while true:
-    var
-      sizeHex = ""
-      size = 0
-      messageBuffer = ""
-    checkSanity(client, sizeHex, size, messageBuffer)
-    let
-      message = parseSexp($messageBuffer)
-      epcAPI = message[0].getSymbol
-    case epcAPI:
-    of "call":
-      let
-        uid = message[1].getNum
-        args = message[3]
-
-      gIdeCmd = parseIdeCmd(message[2].getSymbol)
-      case gIdeCmd
-      of ideChk:
-        setVerbosity(1)
-        # Use full path because other emacs plugins depends it
-        gListFullPaths = true
-        incl(gGlobalOptions, optIdeDebug)
-        var hints_or_errors = ""
-        sendEpc(hints_or_errors, string, msgs.writelnHook)
-      of ideSug, ideCon, ideDef, ideUse, ideDus, ideOutline, ideHighlight:
-        setVerbosity(0)
-        var suggests: seq[Suggest] = @[]
-        sendEpc(suggests, Suggest, suggestionResultHook)
-      else: discard
-    of "methods":
-      returnEpc(client, message[1].getNum, listEPC())
-    of "epc-error":
-      stderr.writeline("recieved epc error: " & $messageBuffer)
-      raise newException(IOError, "epc error")
+  proc wrHook(line: string) {.closure.} =
+    if gMode == mepc:
+      if gLogging: log(line)
     else:
-      let errMessage = case epcAPI
-                       of "return", "return-error":
-                         "no return expected"
-                       else:
-                         "unexpected call: " & epcAPI
-      raise newException(EUnexpectedCommand, errMessage)
+      writelnToChannel(line)
+
+  msgs.writelnHook = wrHook
+  suggestionResultHook = sugResultHook
+  graph.doStopCompile = proc (): bool = requests.peek() > 0
+  var idle = 0
+  while true:
+    let (hasData, req) = requests.tryRecv()
+    if hasData:
+      msgs.writelnHook = wrHook
+      suggestionResultHook = sugResultHook
+      execCmd(req, graph, cache)
+      idle = 0
+    else:
+      os.sleep 250
+      idle += 1
+    if idle == 20 and gRefresh:
+      # we use some nimsuggest activity to enable a lazy recompile:
+      gIdeCmd = ideChk
+      msgs.writelnHook = proc (s: string) = discard
+      msgs.structuredErrorHook = nil
+      suggestionResultHook = proc (s: Suggest) = discard
+      recompileFullProject(graph, cache)
+
+var
+  inputThread: Thread[ThreadParams]
 
 proc mainCommand(graph: ModuleGraph; cache: IdentCache) =
   clearPasses()
@@ -357,33 +468,31 @@ proc mainCommand(graph: ModuleGraph; cache: IdentCache) =
   incl gGlobalOptions, optCaasEnabled
   isServing = true
   wantMainModule()
-  appendStr(searchPaths, options.libpath)
-  #if gProjectFull.len != 0:
-    # current path is always looked first for modules
-  #  prependStr(searchPaths, gProjectPath)
+  add(searchPaths, options.libpath)
 
   # do not stop after the first error:
   msgs.gErrorMax = high(int)
+  # do not print errors, but log them
+  msgs.writelnHook = proc (s: string) = log(s)
+  msgs.structuredErrorHook = nil
+
+  # compile the project before showing any input so that we already
+  # can answer questions right away:
+  compileProject(graph, cache)
+
+  open(requests)
+  open(results)
 
   case gMode
-  of mstdin:
-    compileProject(graph, cache)
-    #modules.gFuzzyGraphChecking = false
-    serveStdin(graph, cache)
-  of mtcp:
-    # until somebody accepted the connection, produce no output (logging is too
-    # slow for big projects):
-    msgs.writelnHook = proc (msg: string) = discard
-    compileProject(graph, cache)
-    #modules.gFuzzyGraphChecking = false
-    serveTcp(graph, cache)
-  of mepc:
-    var server = newSocket()
-    let port = connectToNextFreePort(server, "localhost")
-    server.listen()
-    echo port
-    compileProject(graph, cache)
-    serveEpc(server, graph, cache)
+  of mstdin: createThread(inputThread, replStdin, (gPort, gAddress))
+  of mtcp: createThread(inputThread, replTcp, (gPort, gAddress))
+  of mepc: createThread(inputThread, replEpc, (gPort, gAddress))
+  of mcmdline: createThread(inputThread, replCmdline,
+                            (gPort, "sug \"" & options.gProjectFull & "\":" & gAddress))
+  mainThread(graph, cache)
+  joinThread(inputThread)
+  close(requests)
+  close(results)
 
 proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
   var p = parseopt.initOptParser(cmd)
@@ -400,25 +509,27 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
         gAddress = p.val
         gMode = mtcp
       of "stdin": gMode = mstdin
+      of "cmdline":
+        gMode = mcmdline
+        suggestVersion = 2
+        gAddress = p.val
       of "epc":
         gMode = mepc
         gVerbosity = 0          # Port number gotta be first.
-      of "debug":
-        incl(gGlobalOptions, optIdeDebug)
-      of "v2":
-        suggestVersion = 2
+      of "debug": incl(gGlobalOptions, optIdeDebug)
+      of "v2": suggestVersion = 2
       of "tester":
         suggestVersion = 2
         gMode = mstdin
         gEmitEof = true
-      of "log":
-        gLogging = true
+      of "log": gLogging = true
+      of "refresh": gRefresh = true
       else: processSwitch(pass, p)
     of cmdArgument:
       options.gProjectName = unixToNativePath(p.key)
       # if processArgument(pass, p, argsCount): break
 
-proc handleCmdLine(cache: IdentCache) =
+proc handleCmdLine(cache: IdentCache; config: ConfigRef) =
   if paramCount() == 0:
     stdout.writeline(Usage)
   else:
@@ -442,34 +553,30 @@ proc handleCmdLine(cache: IdentCache) =
       raise newException(IOError,
           "Cannot find Nim standard library: Nim compiler not in PATH")
     gPrefixDir = binaryPath.splitPath().head.parentDir()
-    #msgs.writelnHook = proc (line: string) = logStr(line)
+    #msgs.writelnHook = proc (line: string) = log(line)
+    if gLogging:
+      log("START " & gProjectFull)
 
-    loadConfigs(DefaultConfig, cache) # load all config files
+    loadConfigs(DefaultConfig, cache, config) # load all config files
     # now process command line arguments again, because some options in the
     # command line can overwite the config file's settings
     options.command = "nimsuggest"
     let scriptFile = gProjectFull.changeFileExt("nims")
     if fileExists(scriptFile):
-      runNimScript(cache, scriptFile, freshDefines=false)
+      runNimScript(cache, scriptFile, freshDefines=false, config)
       # 'nim foo.nims' means to just run the NimScript file and do nothing more:
       if scriptFile == gProjectFull: return
     elif fileExists(gProjectPath / "config.nims"):
       # directory wide NimScript file
-      runNimScript(cache, gProjectPath / "config.nims", freshDefines=false)
+      runNimScript(cache, gProjectPath / "config.nims", freshDefines=false, config)
 
     extccomp.initVars()
     processCmdLine(passCmd2, "")
 
-    let graph = newModuleGraph()
+    let graph = newModuleGraph(config)
     graph.suggestMode = true
     mainCommand(graph, cache)
 
-when false:
-  proc quitCalled() {.noconv.} =
-    writeStackTrace()
-
-  addQuitProc(quitCalled)
-
 condsyms.initDefines()
 defineSymbol "nimsuggest"
-handleCmdline(newIdentCache())
+handleCmdline(newIdentCache(), newConfigRef())

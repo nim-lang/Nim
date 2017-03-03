@@ -1,0 +1,62 @@
+version: '{build}'
+
+cache:
+- x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z
+- sqlite-dll-win64-x64-3160200.zip
+# - i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
+
+matrix:
+  fast_finish: true
+
+environment:
+  matrix:
+    - MINGW_DIR: mingw64
+      MINGW_URL: https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win64/Personal%20Builds/mingw-builds/4.9.2/threads-win32/seh/x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z/download
+      MINGW_ARCHIVE: x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z
+      SQLITE_URL: http://www.sqlite.org/2017/sqlite-dll-win64-x64-3160200.zip
+      SQLITE_ARCHIVE: sqlite-dll-win64-x64-3160200.zip
+      platform: x64
+    # - MINGW_DIR: mingw32
+    #   MINGW_URL: https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win32/Personal%20Builds/mingw-builds/4.9.2/threads-win32/dwarf/i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z/download
+    #   MINGW_ARCHIVE: i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
+    #   SQLITE_URL: http://www.sqlite.org/2017/sqlite-dll-win32-x86-3160200.zip
+    #   SQLITE_ARCHIVE: sqlite-dll-win32-x86-3160200.zip
+    #   platform: x86
+
+install:
+  - MKDIR %CD%\DIST
+  - MKDIR %CD%\DIST\PCRE
+  - nuget install pcre -Verbosity quiet -Version 8.33.0.1 -OutputDirectory %CD%\DIST\PCRE
+  - IF not exist "%SQLITE_ARCHIVE%" appveyor DownloadFile "%SQLITE_URL%" -FileName "%SQLITE_ARCHIVE%"
+  - 7z x -y "%SQLITE_ARCHIVE%" -o"%CD%\DIST"> nul
+  - IF not exist "%MINGW_ARCHIVE%" appveyor DownloadFile "%MINGW_URL%" -FileName "%MINGW_ARCHIVE%"
+  - 7z x -y "%MINGW_ARCHIVE%" -o"%CD%\DIST"> nul
+  - SET PATH=%CD%\DIST\%MINGW_DIR%\BIN;%CD%\BIN;%PATH%
+  - IF "%PLATFORM%" == "x64" ( copy C:\OpenSSL-Win64\libeay32.dll %CD%\BIN\libeay64.dll & copy C:\OpenSSL-Win64\libeay32.dll %CD%\BIN\libeay32.dll & copy C:\OpenSSL-Win64\libssl32.dll %CD%\BIN\libssl64.dll & copy C:\OpenSSL-Win64\libssl32.dll %CD%\BIN\libssl32.dll )
+    ELSE ( copy C:\OpenSSL-Win32\libeay32.dll %CD%\BIN\libeay32.dll & copy C:\OpenSSL-Win32\libssl32.dll %CD%\BIN\libssl32.dll )
+  - IF "%PLATFORM%" == "x64" ( copy %CD%\DIST\sqlite3.dll %CD%\BIN\sqlite3_64.dll ) ELSE ( copy %CD%\DIST\sqlite3.dll %CD%\BIN\sqlite3_32.dll )
+  - IF "%PLATFORM%" == "x64" ( copy %CD%\DIST\PCRE\pcre.redist.8.33.0.1\build\native\bin\v100\x64\Release\dynamic\utf8\pcre8.dll %CD%\bin\pcre64.dll ) ELSE ( copy %CD%\DIST\PCRE\pcre.redist.8.33.0.1\build\native\bin\v100\Win32\Release\dynamic\utf8\pcre8.dll %CD%\bin\pcre32.dll )
+  - git clone --depth 1 https://github.com/nim-lang/csources
+  - cd csources
+  - IF "%PLATFORM%" == "x64" ( build64.bat ) else ( build.bat )
+  - cd ..
+
+build_script:
+  - bin\nim c koch
+  - koch boot
+  - koch boot -d:release
+  - koch nimble
+  - nim e tests/test_nimscript.nims
+  - nimble install zip -y
+  - nimble install opengl
+  - nimble install sdl1
+  - nimble install jester@#head
+  - nimble install niminst
+  - nim c --taintMode:on -d:nimCoroutines tests/testament/tester
+
+test_script:
+  - tests\testament\tester --pedantic all -d:nimCoroutines
+  - koch csource
+  - koch zip
+
+deploy: off

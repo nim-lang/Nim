@@ -137,7 +137,7 @@ etc. Note that currently the ``deprecated`` statement does not work well with
 overloading so for routines the latter variant is better.
 
 
-`Deprecated <http://nim-lang.org/docs/manual.html#pragmas-deprecated-pragma>`_
+`Deprecated <https://nim-lang.org/docs/manual.html#pragmas-deprecated-pragma>`_
 pragma in the manual.
 
 

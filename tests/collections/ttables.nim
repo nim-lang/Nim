@@ -1,8 +1,9 @@
 discard """
+  cmd: "nim c --threads:on $file"
   output: '''true'''
 """
 
-import hashes, tables
+import hashes, tables, sharedtables
 
 const
   data = {
@@ -190,28 +191,49 @@ block zeroHashKeysTest:
   doZeroHashValueTest(toOrderedTable[string,string]({"egg": "sausage"}),
       "", "spam")
 
-# Until #4448 is fixed, these tests will fail
-when false:
-  block clearTableTest:
-    var t = data.toTable
-    assert t.len() != 0
-    t.clear()
-    assert t.len() == 0
+block clearTableTest:
+  var t = data.toTable
+  assert t.len() != 0
+  t.clear()
+  assert t.len() == 0
 
-  block clearOrderedTableTest:
-    var t = data.toOrderedTable
-    assert t.len() != 0
-    t.clear()
-    assert t.len() == 0
+block clearOrderedTableTest:
+  var t = data.toOrderedTable
+  assert t.len() != 0
+  t.clear()
+  assert t.len() == 0
 
-  block clearCountTableTest:
-    var t = initCountTable[string]()
-    t.inc("90", 3)
-    t.inc("12", 2)
-    t.inc("34", 1)
-    assert t.len() != 0
-    t.clear()
-    assert t.len() == 0
+block clearCountTableTest:
+  var t = initCountTable[string]()
+  t.inc("90", 3)
+  t.inc("12", 2)
+  t.inc("34", 1)
+  assert t.len() != 0
+  t.clear()
+  assert t.len() == 0
+
+block withKeyTest:
+  var t = initSharedTable[int, int]()
+  t.withKey(1) do (k: int, v: var int, pairExists: var bool):
+    assert(v == 0)
+    pairExists = true
+    v = 42
+  assert(t.mget(1) == 42)
+  t.withKey(1) do (k: int, v: var int, pairExists: var bool):
+    assert(v == 42)
+    pairExists = false
+  try:
+    discard t.mget(1)
+    assert(false, "KeyError expected")
+  except KeyError:
+    discard
+  t.withKey(2) do (k: int, v: var int, pairExists: var bool):
+    pairExists = false
+  try:
+    discard t.mget(2)
+    assert(false, "KeyError expected")
+  except KeyError:
+    discard
 
 proc orderedTableSortTest() =
   var t = initOrderedTable[string, int](2)

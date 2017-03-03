@@ -1,7 +1,18 @@
-# Helper that is run after Nim's installation.
+## Helper that is run after Nim's installation.
+
+## We download mirror'ed mingw packages. The originals came from:
+##
+## https://sourceforge.net/projects/mingw-w64/files/Toolchains%20
+##   targetting%20Win32/Personal%20Builds/mingw-builds/6.3.0/threads-win32/
+##   dwarf/i686-6.3.0-release-win32-dwarf-rt_v5-rev1.7z/download
+## https://sourceforge.net/projects/mingw-w64/files/Toolchains%20
+##   targetting%20Win64/Personal%20Builds/mingw-builds/6.3.0/threads-win32/
+##   seh/x86_64-6.3.0-release-win32-seh-rt_v5-rev1.7z/download
+##
+
 
 import
-  ui, asyncdispatch, httpclient, os, finish, registry, strutils
+  ui, asyncdispatch, httpclient, os, finish, registry, strutils, osproc
 
 type
   Actions = object
@@ -14,6 +25,10 @@ type
 const arch = $(sizeof(int)*8)
 
 proc download(pkg: string; c: Controls) {.async.} =
+  let z = r"..\dist" / pkg & ".7z"
+  if fileExists(z):
+    c.lab.text = z & " already exists"
+    return
   c.bar.value = 0
   var client = newAsyncHttpClient()
   proc onProgressChanged(total, progress, speed: BiggestInt) {.async.} =
@@ -21,31 +36,16 @@ proc download(pkg: string; c: Controls) {.async.} =
     c.bar.value = clamp(int(progress*100 div total), 0, 100)
 
   client.onProgressChanged = onProgressChanged
-  # XXX give a destination filename instead
-  let contents = await client.getContent("http://nim-lang.org/download/" & pkg & ".zip")
-  let z = "dist" / pkg & ".zip"
-  # XXX make this async somehow:
-  writeFile(z, contents)
+  await client.downloadFile("https://nim-lang.org/download/" & pkg & ".7z", z)
   c.bar.value = 100
-  let olddir = getCurrentDir()
-  try:
-    setCurrentDir(olddir  / "dist")
-    if os.execShellCmd("bin\\7zG.exe x " & pkg & ".zip") != 0:
-      c.lab.text = "Unpacking failed: " & z
-  finally:
-    setCurrentdir(olddir)
-
-  when false:
-    var a: ZipArchive
-    if open(a, z, fmRead):
-      extractAll(a, "dist")
-      close(a)
-    else:
-      c.lab.text = "Error: cannot open: " & z
+  let p = osproc.startProcess("7zG.exe", getCurrentDir() / r"..\dist",
+                              ["x", pkg & ".7z"])
+  if p.waitForExit != 0:
+    c.lab.text = "Unpacking failed: " & z
 
 proc apply(a: Actions; c: Controls) {.async.} =
   if a.mingw:
-    await download("mingw" & arch, c)
+    await download("mingw" & arch & "-6.3.0", c)
   if a.aporia:
     await download("aporia-0.4.0", c)
 

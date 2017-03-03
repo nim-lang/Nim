@@ -120,9 +120,7 @@ template default[T](t: typedesc[T]): T =
   var v: T
   v
 
-template delImpl() {.dirty.} =
-  var hc: Hash
-  var i = rawGet(t, key, hc)
+template delImplIdx(t, i) =
   let msk = maxHash(t)
   if i >= 0:
     dec(t.counter)
@@ -144,6 +142,11 @@ template delImpl() {.dirty.} =
           t.data[j] = t.data[i]
         else:
           shallowCopy(t.data[j], t.data[i]) # data[j] will be marked EMPTY next loop
+
+template delImpl() {.dirty.} =
+  var hc: Hash
+  var i = rawGet(t, key, hc)
+  delImplIdx(t, i)
 
 template clearImpl() {.dirty.} =
   for i in 0 .. <t.data.len:

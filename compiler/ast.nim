@@ -10,7 +10,7 @@
 # abstract syntax tree + symbol table
 
 import
-  msgs, hashes, nversion, options, strutils, securehash, ropes, idents, lists,
+  msgs, hashes, nversion, options, strutils, securehash, ropes, idents,
   intsets, idgen
 
 type
@@ -736,13 +736,15 @@ type
 
   TLibKind* = enum
     libHeader, libDynamic
-  TLib* = object of lists.TListEntry # also misused for headers!
+    
+  TLib* = object              # also misused for headers!
     kind*: TLibKind
     generated*: bool          # needed for the backends:
     isOverriden*: bool
     name*: Rope
     path*: PNode              # can be a string literal!
 
+    
   CompilesId* = int ## id that is used for the caching logic within
                     ## ``system.compiles``. See the seminst module.
   TInstantiation* = object
@@ -1583,6 +1585,22 @@ proc skipStmtList*(n: PNode): PNode =
     result = n.lastSon
   else:
     result = n
+
+proc toRef*(typ: PType): PType =
+  ## If ``typ`` is a tyObject then it is converted into a `ref <typ>` and
+  ## returned. Otherwise ``typ`` is simply returned as-is.
+  result = typ
+  if typ.kind == tyObject:
+    result = newType(tyRef, typ.owner)
+    rawAddSon(result, typ)
+
+proc toObject*(typ: PType): PType =
+  ## If ``typ`` is a tyRef then its immediate son is returned (which in many
+  ## cases should be a ``tyObject``).
+  ## Otherwise ``typ`` is simply returned as-is.
+  result = typ
+  if result.kind == tyRef:
+    result = result.lastSon
 
 when false:
   proc containsNil*(n: PNode): bool =

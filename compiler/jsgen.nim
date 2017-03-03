@@ -31,7 +31,7 @@ implements the required case distinction.
 
 import
   ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp, options,
-  nversion, nimsets, msgs, securehash, bitsets, idents, lists, types, os,
+  nversion, nimsets, msgs, securehash, bitsets, idents, types, os,
   times, ropes, math, passes, ccgutils, wordrecg, renderer, rodread, rodutils,
   intsets, cgmeth, lowerings
 
@@ -1528,7 +1528,7 @@ proc genVarStmt(p: PProc, n: PNode) =
         assert(a.kind == nkIdentDefs)
         assert(a.sons[0].kind == nkSym)
         var v = a.sons[0].sym
-        if lfNoDecl notin v.loc.flags:
+        if lfNoDecl notin v.loc.flags and sfImportc notin v.flags:
           genLineDir(p, a)
           genVarInit(p, v, a.sons[2])
 
@@ -2237,13 +2237,13 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   add(p.g.code, p.body)
   globals.unique = p.unique
 
-proc wholeCode*(m: BModule): Rope =
+proc wholeCode(graph: ModuleGraph; m: BModule): Rope =
   for prc in globals.forwarded:
     if not globals.generatedSyms.containsOrIncl(prc.id):
       var p = newProc(globals, m, nil, m.module.options)
       attachProc(p, prc)
 
-  var disp = generateMethodDispatchers()
+  var disp = generateMethodDispatchers(graph)
   for i in 0..sonsLen(disp)-1:
     let prc = disp.sons[i].sym
     if not globals.generatedSyms.containsOrIncl(prc.id):
@@ -2277,7 +2277,7 @@ proc genClass(obj: PType; content: Rope; ext: string) =
   let outfile = changeFileExt(completeCFilePath($cls), ext)
   discard writeRopeIfNotEqual(result, outfile)
 
-proc myClose(b: PPassContext, n: PNode): PNode =
+proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   if passes.skipCodegen(n): return n
   result = myProcess(b, n)
   var m = BModule(b)
@@ -2285,7 +2285,7 @@ proc myClose(b: PPassContext, n: PNode): PNode =
     let ext = if m.target == targetJS: "js" else: "php"
     let f = if globals.classes.len == 0: m.module.filename
             else: "nimsystem"
-    let code = wholeCode(m)
+    let code = wholeCode(graph, m)
     let outfile =
       if options.outFile.len > 0:
         if options.outFile.isAbsolute: options.outFile

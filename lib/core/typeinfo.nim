@@ -67,7 +67,7 @@ type
       rawTypePtr: pointer
 
   ppointer = ptr pointer
-  pbyteArray = ptr array[0.. 0xffff, int8]
+  pbyteArray = ptr array[0xffff, int8]
 
   TGenericSeq {.importc.} = object
     len, space: int

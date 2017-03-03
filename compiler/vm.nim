@@ -522,7 +522,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkNode)
       let shiftedRb = rb + ord(regs[ra].node.kind == nkObjConstr)
       let dest = regs[ra].node
-      if dest.sons[shiftedRb].kind == nkExprColonExpr:
+      if dest.kind == nkNilLit:
+        stackTrace(c, tos, pc, errNilAccess)
+      elif dest.sons[shiftedRb].kind == nkExprColonExpr:
         putIntoNode(dest.sons[shiftedRb].sons[1], regs[rc])
       else:
         putIntoNode(dest.sons[shiftedRb], regs[rc])
@@ -559,7 +561,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         if regs[rb].node.kind == nkRefTy:
           regs[ra].node = regs[rb].node.sons[0]
         else:
-          stackTrace(c, tos, pc, errGenerated, "limited VM support for pointers")
+          ensureKind(rkNode)
+          regs[ra].node = regs[rb].node
       else:
         stackTrace(c, tos, pc, errNilAccess)
     of opcWrDeref:
@@ -932,7 +935,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                             c.module
         var macroCall = newNodeI(nkCall, c.debug[pc])
         macroCall.add(newSymNode(prc))
-        for i in 1 .. rc-1: macroCall.add(regs[rb+i].regToNode)
+        for i in 1 .. rc-1:
+          let node = regs[rb+i].regToNode
+          node.info = c.debug[pc]
+          macroCall.add(node)
         let a = evalTemplate(macroCall, prc, genSymOwner)
         a.recSetFlagIsRef
         ensureKind(rkNode)
@@ -1550,7 +1556,10 @@ proc myProcess(c: PPassContext, n: PNode): PNode =
     result = n
   oldErrorCount = msgs.gErrorCounter
 
-const evalPass* = makePass(myOpen, nil, myProcess, myProcess)
+proc myClose(graph: ModuleGraph; c: PPassContext, n: PNode): PNode =
+  myProcess(c, n)
+
+const evalPass* = makePass(myOpen, nil, myProcess, myClose)
 
 proc evalConstExprAux(module: PSym; cache: IdentCache; prc: PSym, n: PNode,
                       mode: TEvalMode): PNode =
@@ -1615,6 +1624,7 @@ proc evalMacroCall*(module: PSym; cache: IdentCache, n, nOrig: PNode,
 
   setupGlobalCtx(module, cache)
   var c = globalCtx
+  c.comesFromHeuristic.line = -1
 
   c.callsite = nOrig
   let start = genProc(c, sym)

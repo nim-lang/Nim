@@ -13,7 +13,7 @@
 # nim files.
 
 import
-  lists, ropes, os, strutils, osproc, platform, condsyms, options, msgs,
+  ropes, os, strutils, osproc, platform, condsyms, options, msgs,
   securehash, streams
 
 #from debuginfo import writeDebugInfo
@@ -21,7 +21,7 @@ import
 type
   TSystemCC* = enum
     ccNone, ccGcc, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc,
-    ccTcc, ccPcc, ccUcc, ccIcl, asmFasm
+    ccTcc, ccPcc, ccUcc, ccIcl
   TInfoCCProp* = enum         # properties of the C compiler:
     hasSwitchRange,           # CC allows ranges in switch statements (GNU C)
     hasComputedGoto,          # CC has computed goto (GNU C extension)
@@ -320,31 +320,6 @@ compiler ucc:
     packedPragma: "", # XXX: not supported yet
     props: {})
 
-# fasm assembler
-compiler fasm:
-  result = (
-    name: "fasm",
-    objExt: "o",
-    optSpeed: "",
-    optSize: "",
-    compilerExe: "fasm",
-    cppCompiler: "fasm",
-    compileTmpl: "$file $objfile",
-    buildGui: "",
-    buildDll: "",
-    buildLib: "",
-    linkerExe: "",
-    linkTmpl: "",
-    includeCmd: "",
-    linkDirCmd: "",
-    linkLibCmd: "",
-    debug: "",
-    pic: "",
-    asmStmtFrmt: "",
-    structStmtFmt: "",
-    packedPragma: "",
-    props: {})
-
 const
   CC*: array[succ(low(TSystemCC))..high(TSystemCC), TInfoCC] = [
     gcc(),
@@ -358,32 +333,41 @@ const
     tcc(),
     pcc(),
     ucc(),
-    icl(),
-    fasm()]
+    icl()]
 
   hExt* = ".h"
 
 var
   cCompiler* = ccGcc # the used compiler
-  cAssembler* = ccNone
   gMixedMode*: bool  # true if some module triggered C++ codegen
   cIncludes*: seq[string] = @[]   # directories to search for included files
   cLibs*: seq[string] = @[]       # directories to search for lib files
   cLinkedLibs*: seq[string] = @[] # libraries to link
-
-const
-  cValidAssemblers* = {asmFasm}
 
 # implementation
 
 proc libNameTmpl(): string {.inline.} =
   result = if targetOS == osWindows: "$1.lib" else: "lib$1.a"
 
+type
+  CfileFlag* {.pure.} = enum
+    Cached,    ## no need to recompile this time
+    External   ## file was introduced via .compile pragma
+
+  Cfile* = object
+    cname*, obj*: string
+    flags*: set[CFileFlag]
+  CfileList = seq[Cfile]
+
 var
-  toLink, toCompile, externalToCompile: TLinkedList
+  externalToLink: seq[string] = @[] # files to link in addition to the file
+                                    # we compiled
+  linkOptionsCmd: string = ""
+  compileOptionsCmd: seq[string] = @[]
   linkOptions: string = ""
   compileOptions: string = ""
   ccompilerpath: string = ""
+  toCompile: CfileList = @[]
 
 proc nameToCC*(name: string): TSystemCC =
   ## Returns the kind of compiler referred to by `name`, or ccNone
@@ -438,6 +422,12 @@ proc addCompileOption*(option: string) =
   if strutils.find(compileOptions, option, 0) < 0:
     addOpt(compileOptions, option)
 
+proc addLinkOptionCmd*(option: string) =
+  addOpt(linkOptionsCmd, option)
+
+proc addCompileOptionCmd*(option: string) =
+  compileOptionsCmd.add(option)
+
 proc initVars*() =
   # we need to define the symbol here, because ``CC`` may have never been set!
   for i in countup(low(CC), high(CC)): undefSymbol(CC[i].name)
@@ -452,23 +442,24 @@ proc completeCFilePath*(cfile: string, createSubDir: bool = true): string =
 
 proc toObjFile*(filename: string): string =
   # Object file for compilation
+  #if filename.endsWith(".cpp"):
+  #  result = changeFileExt(filename, "cpp." & CC[cCompiler].objExt)
+  #else:
   result = changeFileExt(filename, CC[cCompiler].objExt)
 
-proc addFileToCompile*(filename: string) =
-  appendStr(toCompile, filename)
+proc addFileToCompile*(cf: Cfile) =
+  toCompile.add(cf)
 
 proc resetCompilationLists* =
-  initLinkedList(toCompile)
+  toCompile.setLen 0
   ## XXX: we must associate these with their originating module
   # when the module is loaded/unloaded it adds/removes its items
   # That's because we still need to hash check the external files
   # Maybe we can do that in checkDep on the other hand?
-  initLinkedList(externalToCompile)
-  initLinkedList(toLink)
+  externalToLink.setLen 0
 
-proc addFileToLink*(filename: string) =
-  prependStr(toLink, filename)
-  # BUGFIX: was ``appendStr``
+proc addExternalFileToLink*(filename: string) =
+  externalToLink.insert(filename, 0)
 
 proc execWithEcho(cmd: string, msg = hintExecuting): int =
   rawMessage(msg, cmd)
@@ -505,13 +496,12 @@ proc noAbsolutePaths: bool {.inline.} =
   # `optGenMapping` is included here for niminst.
   result = gGlobalOptions * {optGenScript, optGenMapping} != {}
 
-var fileCounter: int
-
-proc add(s: var string, many: openArray[string]) =
-  s.add many.join
-
 proc cFileSpecificOptions(cfilename: string): string =
   result = compileOptions
+  for option in compileOptionsCmd:
+    if strutils.find(result, option, 0) < 0:
+      addOpt(result, option)
+
   var trunk = splitFile(cfilename).name
   if optCDebug in gGlobalOptions:
     var key = trunk & ".debug"
@@ -532,47 +522,34 @@ proc getCompileOptions: string =
   result = cFileSpecificOptions("__dummy__")
 
 proc getLinkOptions: string =
-  result = linkOptions
+  result = linkOptions & " " & linkOptionsCmd & " "
   for linkedLib in items(cLinkedLibs):
     result.add(CC[cCompiler].linkLibCmd % linkedLib.quoteShell)
   for libDir in items(cLibs):
-    result.add([CC[cCompiler].linkDirCmd, libDir.quoteShell])
+    result.add(join([CC[cCompiler].linkDirCmd, libDir.quoteShell]))
 
 proc needsExeExt(): bool {.inline.} =
   result = (optGenScript in gGlobalOptions and targetOS == osWindows) or
            (platform.hostOS == osWindows)
 
-proc getCompilerExe(compiler: TSystemCC): string =
-  result = if gCmd == cmdCompileToCpp: CC[compiler].cppCompiler
-           else: CC[compiler].compilerExe
+proc getCompilerExe(compiler: TSystemCC; cfile: string): string =
+  result = if gCmd == cmdCompileToCpp and not cfile.endsWith(".c"):
+             CC[compiler].cppCompiler
+           else:
+             CC[compiler].compilerExe
   if result.len == 0:
     rawMessage(errCompilerDoesntSupportTarget, CC[compiler].name)
 
 proc getLinkerExe(compiler: TSystemCC): string =
   result = if CC[compiler].linkerExe.len > 0: CC[compiler].linkerExe
            elif gMixedMode and gCmd != cmdCompileToCpp: CC[compiler].cppCompiler
-           else: compiler.getCompilerExe
+           else: compiler.getCompilerExe("")
 
-proc getCompileCFileCmd*(cfilename: string, isExternal = false): string =
+proc getCompileCFileCmd*(cfile: Cfile): string =
   var c = cCompiler
-  if cfilename.endswith(".asm"):
-    var customAssembler = getConfigVar("assembler")
-    if customAssembler.len > 0:
-      c = nameToCC(customAssembler)
-    else:
-      if targetCPU == cpuI386 or targetCPU == cpuAmd64:
-        c = asmFasm
-      else:
-        c = ccNone
-
-    if c == ccNone:
-      rawMessage(errExternalAssemblerNotFound, "")
-    elif c notin cValidAssemblers:
-      rawMessage(errExternalAssemblerNotValid, customAssembler)
-
-  var options = cFileSpecificOptions(cfilename)
+  var options = cFileSpecificOptions(cfile.cname)
   var exe = getConfigVar(c, ".exe")
-  if exe.len == 0: exe = c.getCompilerExe
+  if exe.len == 0: exe = c.getCompilerExe(cfile.cname)
 
   if needsExeExt(): exe = addFileExt(exe, "exe")
   if optGenDynLib in gGlobalOptions and
@@ -585,47 +562,55 @@ proc getCompileCFileCmd*(cfilename: string, isExternal = false): string =
     includeCmd = CC[c].includeCmd & quoteShell(libpath)
 
     for includeDir in items(cIncludes):
-      includeCmd.add([CC[c].includeCmd, includeDir.quoteShell])
+      includeCmd.add(join([CC[c].includeCmd, includeDir.quoteShell]))
 
     compilePattern = joinPath(ccompilerpath, exe)
   else:
     includeCmd = ""
-    compilePattern = c.getCompilerExe
+    compilePattern = c.getCompilerExe(cfile.cname)
 
-  var cfile = if noAbsolutePaths(): extractFilename(cfilename)
-              else: cfilename
-  var objfile = if not isExternal or noAbsolutePaths():
-                  toObjFile(cfile)
-                else:
-                  completeCFilePath(toObjFile(cfile))
+  var cf = if noAbsolutePaths(): extractFilename(cfile.cname)
+           else: cfile.cname
+
+  var objfile =
+    if cfile.obj.len == 0:
+      if not cfile.flags.contains(CfileFlag.External) or noAbsolutePaths():
+        toObjFile(cf)
+      else:
+        completeCFilePath(toObjFile(cf))
+    elif noAbsolutePaths():
+      extractFilename(cfile.obj)
+    else:
+      cfile.obj
+
   objfile = quoteShell(objfile)
-  cfile = quoteShell(cfile)
+  cf = quoteShell(cf)
   result = quoteShell(compilePattern % [
-    "file", cfile, "objfile", objfile, "options", options,
+    "file", cf, "objfile", objfile, "options", options,
     "include", includeCmd, "nim", getPrefixDir(),
     "nim", getPrefixDir(), "lib", libpath])
   add(result, ' ')
   addf(result, CC[c].compileTmpl, [
-    "file", cfile, "objfile", objfile,
+    "file", cf, "objfile", objfile,
     "options", options, "include", includeCmd,
     "nim", quoteShell(getPrefixDir()),
     "nim", quoteShell(getPrefixDir()),
     "lib", quoteShell(libpath)])
 
-proc footprint(filename: string): SecureHash =
+proc footprint(cfile: Cfile): SecureHash =
   result = secureHash(
-    $secureHashFile(filename) &
+    $secureHashFile(cfile.cname) &
     platform.OS[targetOS].name &
     platform.CPU[targetCPU].name &
     extccomp.CC[extccomp.cCompiler].name &
-    getCompileCFileCmd(filename, true))
+    getCompileCFileCmd(cfile))
 
-proc externalFileChanged(filename: string): bool =
+proc externalFileChanged(cfile: Cfile): bool =
   if gCmd notin {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToLLVM}:
     return false
 
-  var hashFile = toGeneratedFile(filename.withPackageName, "sha1")
-  var currentHash = footprint(filename)
+  var hashFile = toGeneratedFile(cfile.cname.withPackageName, "sha1")
+  var currentHash = footprint(cfile)
   var f: File
   if open(f, hashFile, fmRead):
     let oldHash = parseSecureHash(f.readLine())
@@ -638,24 +623,30 @@ proc externalFileChanged(filename: string): bool =
       f.writeLine($currentHash)
       close(f)
 
-proc addExternalFileToCompile*(filename: string) =
-  if optForceFullMake in gGlobalOptions or externalFileChanged(filename):
-    appendStr(externalToCompile, filename)
+proc addExternalFileToCompile*(c: var Cfile) =
+  if optForceFullMake notin gGlobalOptions and not externalFileChanged(c):
+    c.flags.incl CfileFlag.Cached
+  toCompile.add(c)
 
-proc compileCFile(list: TLinkedList, script: var Rope, cmds: var TStringSeq,
-                  prettyCmds: var TStringSeq, isExternal: bool) =
-  var it = PStrEntry(list.head)
-  while it != nil:
-    inc(fileCounter)          # call the C compiler for the .c file:
-    var compileCmd = getCompileCFileCmd(it.data, isExternal)
+proc addExternalFileToCompile*(filename: string) =
+  var c = Cfile(cname: filename,
+    obj: toObjFile(completeCFilePath(changeFileExt(filename, ""), false)),
+    flags: {CfileFlag.External})
+  addExternalFileToCompile(c)
+
+proc compileCFile(list: CFileList, script: var Rope, cmds: var TStringSeq,
+                  prettyCmds: var TStringSeq) =
+  for it in list:
+    # call the C compiler for the .c file:
+    if it.flags.contains(CfileFlag.Cached): continue
+    var compileCmd = getCompileCFileCmd(it)
     if optCompileOnly notin gGlobalOptions:
       add(cmds, compileCmd)
-      let (dir, name, ext) = splitFile(it.data)
+      let (_, name, _) = splitFile(it.cname)
       add(prettyCmds, "CC: " & name)
     if optGenScript in gGlobalOptions:
       add(script, compileCmd)
       add(script, tnl)
-    it = PStrEntry(it.next)
 
 proc getLinkCmd(projectfile, objfiles: string): string =
   if optGenStaticLib in gGlobalOptions:
@@ -712,7 +703,6 @@ proc callCCompiler*(projectfile: string) =
   if gGlobalOptions * {optCompileOnly, optGenScript} == {optCompileOnly}:
     return # speed up that call if only compiling and no script shall be
            # generated
-  fileCounter = 0
   #var c = cCompiler
   var script: Rope = nil
   var cmds: TStringSeq = @[]
@@ -725,8 +715,7 @@ proc callCCompiler*(projectfile: string) =
       rawMessage(errGenerated, "execution of an external compiler program '" &
         cmds[idx] & "' failed with exit code: " & $exitCode & "\n\n" &
         p.outputStream.readAll.strip)
-  compileCFile(toCompile, script, cmds, prettyCmds, false)
-  compileCFile(externalToCompile, script, cmds, prettyCmds, true)
+  compileCFile(toCompile, script, cmds, prettyCmds)
   if optCompileOnly notin gGlobalOptions:
     if gNumberOfProcessors == 0: gNumberOfProcessors = countProcessors()
     var res = 0
@@ -748,14 +737,15 @@ proc callCCompiler*(projectfile: string) =
         rawMessage(errExecutionOfProgramFailed, cmds.join())
   if optNoLinking notin gGlobalOptions:
     # call the linker:
-    var it = PStrEntry(toLink.head)
     var objfiles = ""
-    while it != nil:
-      let objFile = if noAbsolutePaths(): it.data.extractFilename else: it.data
+    for it in externalToLink:
+      let objFile = if noAbsolutePaths(): it.extractFilename else: it
       add(objfiles, ' ')
       add(objfiles, quoteShell(
           addFileExt(objFile, CC[cCompiler].objExt)))
-      it = PStrEntry(it.next)
+    for x in toCompile:
+      add(objfiles, ' ')
+      add(objfiles, quoteShell(x.obj))
 
     linkCmd = getLinkCmd(projectfile, objfiles)
     if optCompileOnly notin gGlobalOptions:
@@ -780,29 +770,29 @@ proc writeJsonBuildInstructions*(projectfile: string) =
     else:
       f.write escapeJson(x)
 
-  proc cfiles(f: File; buf: var string; list: TLinkedList, isExternal: bool) =
-    var it = PStrEntry(list.head)
-    while it != nil:
-      let compileCmd = getCompileCFileCmd(it.data, isExternal)
+  proc cfiles(f: File; buf: var string; list: CfileList, isExternal: bool) =
+    var i = 0
+    for it in list:
+      if CfileFlag.Cached in it.flags: continue
+      let compileCmd = getCompileCFileCmd(it)
       lit "["
-      str it.data
+      str it.cname
       lit ", "
       str compileCmd
-      it = PStrEntry(it.next)
-      if it == nil:
+      inc i
+      if i == list.len:
         lit "]\L"
       else:
         lit "],\L"
 
-  proc linkfiles(f: File; buf, objfiles: var string; toLink: TLinkedList) =
-    var it = PStrEntry(toLink.head)
-    while it != nil:
-      let objfile = addFileExt(it.data, CC[cCompiler].objExt)
-      str objfile
+  proc linkfiles(f: File; buf, objfiles: var string; toLink: seq[string]) =
+    for i, it in toLink:
+      let objfile = addFileExt(it, CC[cCompiler].objExt)
+      str(objfile)
       add(objfiles, ' ')
       add(objfiles, quoteShell(objfile))
-      it = PStrEntry(it.next)
-      if it == nil:
+      
+      if i == toLink.high:
         lit "\L"
       else:
         lit ",\L"
@@ -816,28 +806,24 @@ proc writeJsonBuildInstructions*(projectfile: string) =
   if open(f, jsonFile, fmWrite):
     lit "{\"compile\":[\L"
     cfiles(f, buf, toCompile, false)
-    lit "],\L\"extcompile\":[\L"
-    cfiles(f, buf, externalToCompile, true)
     lit "],\L\"link\":[\L"
     var objfiles = ""
-    linkfiles(f, buf, objfiles, toLink)
+    # XXX add every file here that is to link
+    linkfiles(f, buf, objfiles, externalToLink)
 
     lit "],\L\"linkcmd\": "
     str getLinkCmd(projectfile, objfiles)
     lit "\L}\L"
     close(f)
 
-proc genMappingFiles(list: TLinkedList): Rope =
-  var it = PStrEntry(list.head)
-  while it != nil:
-    addf(result, "--file:r\"$1\"$N", [rope(it.data)])
-    it = PStrEntry(it.next)
+proc genMappingFiles(list: CFileList): Rope =
+  for it in list:
+    addf(result, "--file:r\"$1\"$N", [rope(it.cname)])
 
 proc writeMapping*(gSymbolMapping: Rope) =
   if optGenMapping notin gGlobalOptions: return
   var code = rope("[C_Files]\n")
   add(code, genMappingFiles(toCompile))
-  add(code, genMappingFiles(externalToCompile))
   add(code, "\n[C_Compiler]\nFlags=")
   add(code, strutils.escape(getCompileOptions()))
 

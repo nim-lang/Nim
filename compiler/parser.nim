@@ -514,12 +514,12 @@ proc parsePar(p: var TParser): PNode =
     var a = simpleExpr(p)
     if p.tok.tokType == tkEquals:
       # special case: allow assignments
+      let asgn = newNodeP(nkAsgn, p)
       getTok(p)
       optInd(p, result)
       let b = parseExpr(p)
-      let asgn = newNodeI(nkAsgn, a.info, 2)
-      asgn.sons[0] = a
-      asgn.sons[1] = b
+      asgn.add a
+      asgn.add b
       result.add(asgn)
       if p.tok.tokType == tkSemiColon:
         semiStmtList(p, result)
@@ -1184,10 +1184,10 @@ proc parseExprStmt(p: var TParser): PNode =
   #|            ))?
   var a = simpleExpr(p)
   if p.tok.tokType == tkEquals:
+    result = newNodeP(nkAsgn, p)
     getTok(p)
     optInd(p, result)
     var b = parseExpr(p)
-    result = newNodeI(nkAsgn, a.info)
     addSon(result, a)
     addSon(result, b)
   else:

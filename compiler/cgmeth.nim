@@ -11,7 +11,7 @@
 
 import
   intsets, options, ast, astalgo, msgs, idents, renderer, types, magicsys,
-  sempass2, strutils
+  sempass2, strutils, modulegraphs
 
 proc genConv(n: PNode, d: PType, downcast: bool): PNode =
   var dest = skipTypes(d, abstractPtrs)
@@ -35,19 +35,24 @@ proc genConv(n: PNode, d: PType, downcast: bool): PNode =
   else:
     result = n
 
+proc getDispatcher*(s: PSym): PSym =
+  ## can return nil if is has no dispatcher.
+  let dispn = lastSon(s.ast)
+  if dispn.kind == nkSym:
+    let disp = dispn.sym
+    if sfDispatcher in disp.flags: result = disp
+
 proc methodCall*(n: PNode): PNode =
   result = n
   # replace ordinary method by dispatcher method:
-  var disp = lastSon(result.sons[0].sym.ast).sym
-  assert sfDispatcher in disp.flags
-  result.sons[0].sym = disp
-  # change the arguments to up/downcasts to fit the dispatcher's parameters:
-  for i in countup(1, sonsLen(result)-1):
-    result.sons[i] = genConv(result.sons[i], disp.typ.sons[i], true)
-
-# save for incremental compilation:
-var
-  gMethods: seq[tuple[methods: TSymSeq, dispatcher: PSym]] = @[]
+  let disp = getDispatcher(result.sons[0].sym)
+  if disp != nil:
+    result.sons[0].sym = disp
+    # change the arguments to up/downcasts to fit the dispatcher's parameters:
+    for i in countup(1, sonsLen(result)-1):
+      result.sons[i] = genConv(result.sons[i], disp.typ.sons[i], true)
+  else:
+    localError(n.info, "'" & $result.sons[0] & "' lacks a dispatcher")
 
 type
   MethodResult = enum No, Invalid, Yes
@@ -55,8 +60,8 @@ type
 proc sameMethodBucket(a, b: PSym): MethodResult =
   if a.name.id != b.name.id: return
   if sonsLen(a.typ) != sonsLen(b.typ):
-    return                    # check for return type:
-  if not sameTypeOrNil(a.typ.sons[0], b.typ.sons[0]): return
+    return
+
   for i in countup(1, sonsLen(a.typ) - 1):
     var aa = a.typ.sons[i]
     var bb = b.typ.sons[i]
@@ -84,6 +89,14 @@ proc sameMethodBucket(a, b: PSym): MethodResult =
         return No
     else:
       return No
+  if result == Yes:
+    # check for return type:
+    if not sameTypeOrNil(a.typ.sons[0], b.typ.sons[0]):
+      if b.typ.sons[0] != nil and b.typ.sons[0].kind == tyExpr:
+        # infer 'auto' from the base to make it consistent:
+        b.typ.sons[0] = a.typ.sons[0]
+      else:
+        return No
 
 proc attachDispatcher(s: PSym, dispatcher: PNode) =
   var L = s.ast.len-1
@@ -144,27 +157,28 @@ proc fixupDispatcher(meth, disp: PSym) =
       if disp.typ.lockLevel < meth.typ.lockLevel:
         disp.typ.lockLevel = meth.typ.lockLevel
 
-proc methodDef*(s: PSym, fromCache: bool) =
-  let L = len(gMethods)
+proc methodDef*(g: ModuleGraph; s: PSym, fromCache: bool) =
+  let L = len(g.methods)
   var witness: PSym
   for i in countup(0, L - 1):
-    let disp = gMethods[i].dispatcher
+    let disp = g.methods[i].dispatcher
     case sameMethodBucket(disp, s)
     of Yes:
-      add(gMethods[i].methods, s)
+      add(g.methods[i].methods, s)
       attachDispatcher(s, lastSon(disp.ast))
       fixupDispatcher(s, disp)
       #echo "fixup ", disp.name.s, " ", disp.id
       when useEffectSystem: checkMethodEffects(disp, s)
-      if sfBase in s.flags and gMethods[i].methods[0] != s:
+      if {sfBase, sfFromGeneric} * s.flags == {sfBase} and
+           g.methods[i].methods[0] != s:
         # already exists due to forwarding definition?
         localError(s.info, "method is not a base")
       return
     of No: discard
     of Invalid:
-      if witness.isNil: witness = gMethods[i].methods[0]
+      if witness.isNil: witness = g.methods[i].methods[0]
   # create a new dispatcher:
-  add(gMethods, (methods: @[s], dispatcher: createDispatcher(s)))
+  add(g.methods, (methods: @[s], dispatcher: createDispatcher(s)))
   #echo "adding ", s.info
   #if fromCache:
   #  internalError(s.info, "no method dispatcher found")
@@ -258,12 +272,12 @@ proc genDispatcher(methods: TSymSeq, relevantCols: IntSet): PSym =
       disp = ret
   result.ast.sons[bodyPos] = disp
 
-proc generateMethodDispatchers*(): PNode =
+proc generateMethodDispatchers*(g: ModuleGraph): PNode =
   result = newNode(nkStmtList)
-  for bucket in countup(0, len(gMethods) - 1):
+  for bucket in countup(0, len(g.methods) - 1):
     var relevantCols = initIntSet()
-    for col in countup(1, sonsLen(gMethods[bucket].methods[0].typ) - 1):
-      if relevantCol(gMethods[bucket].methods, col): incl(relevantCols, col)
-    sortBucket(gMethods[bucket].methods, relevantCols)
+    for col in countup(1, sonsLen(g.methods[bucket].methods[0].typ) - 1):
+      if relevantCol(g.methods[bucket].methods, col): incl(relevantCols, col)
+    sortBucket(g.methods[bucket].methods, relevantCols)
     addSon(result,
-           newSymNode(genDispatcher(gMethods[bucket].methods, relevantCols)))
+           newSymNode(genDispatcher(g.methods[bucket].methods, relevantCols)))

@@ -7,19 +7,16 @@ var
   someGlobal: string = "some string here"
   perThread {.threadvar.}: string
 
-proc setPerThread() =
-  {.gcsafe.}:
-    deepCopy(perThread, someGlobal)
-
-proc threadDied() {.gcsafe} =
+proc threadDied() {.gcsafe.} =
   echo "dying ", perThread
 
 proc foo() {.thread.} =
+  onThreadDestruction threadDied
+  {.gcsafe.}:
+    deepCopy(perThread, someGlobal)
   echo perThread
 
 proc main =
-  onThreadCreation setPerThread
-  onThreadDestruction threadDied
   var t: Thread[void]
   createThread[void](t, foo)
   t.joinThread()

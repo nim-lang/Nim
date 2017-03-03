@@ -10,15 +10,14 @@
 ## This module contains the data structures for the semantic checking phase.
 
 import
-  strutils, lists, intsets, options, lexer, ast, astalgo, trees, treetab,
+  strutils, intsets, options, lexer, ast, astalgo, trees, treetab,
   wordrecg,
   ropes, msgs, platform, os, condsyms, idents, renderer, types, extccomp, math,
   magicsys, nversion, nimsets, parser, times, passes, rodread, vmdef,
   modulegraphs
 
 type
-  TOptionEntry* = object of lists.TListEntry # entries to put on a
-                                             # stack for pragma parsing
+  TOptionEntry* = object      # entries to put on a stack for pragma parsing
     options*: TOptions
     defaultCC*: TCallingConvention
     dynlib*: PLib
@@ -39,6 +38,7 @@ type
     next*: PProcCon           # used for stacking procedure contexts
     wasForwarded*: bool       # whether the current proc has a separate header
     bracketExpr*: PNode       # current bracket expression (for ^ support)
+    mapping*: TIdTable
 
   TInstantiationPair* = object
     genericSym*: PSym
@@ -78,10 +78,10 @@ type
     inGenericInst*: int        # > 0 if we are instantiating a generic
     converters*: TSymSeq       # sequence of converters
     patterns*: TSymSeq         # sequence of pattern matchers
-    optionStack*: TLinkedList
+    optionStack*: seq[POptionEntry]
     symMapping*: TIdTable      # every gensym'ed symbol needs to be mapped
                                # to some new symbol in a generic instantiation
-    libs*: TLinkedList         # all libs used by this module
+    libs*: seq[PLib]           # all libs used by this module
     semConstExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.} # for the pragmas
     semExpr*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}
     semTryExpr*: proc (c: PContext, n: PNode,flags: TExprFlags = {}): PNode {.nimcall.}
@@ -111,6 +111,8 @@ type
     graph*: ModuleGraph
     signatures*: TStrTable
     recursiveDep*: string
+    suggestionsMade*: bool
+    inTypeContext*: int
 
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
   result.genericSym = s
@@ -124,28 +126,54 @@ proc scopeDepth*(c: PContext): int {.inline.} =
   result = if c.currentScope != nil: c.currentScope.depthLevel
            else: 0
 
-var gOwners*: seq[PSym] = @[]
-
-proc getCurrOwner*(): PSym =
+proc getCurrOwner*(c: PContext): PSym =
   # owner stack (used for initializing the
   # owner field of syms)
   # the documentation comment always gets
   # assigned to the current owner
-  # BUGFIX: global array is needed!
-  result = gOwners[high(gOwners)]
+  result = c.graph.owners[^1]
 
-proc pushOwner*(owner: PSym) =
-  add(gOwners, owner)
+proc pushOwner*(c: PContext; owner: PSym) =
+  add(c.graph.owners, owner)
 
-proc popOwner*() =
-  var length = len(gOwners)
-  if length > 0: setLen(gOwners, length - 1)
+proc popOwner*(c: PContext) =
+  var length = len(c.graph.owners)
+  if length > 0: setLen(c.graph.owners, length - 1)
   else: internalError("popOwner")
 
 proc lastOptionEntry*(c: PContext): POptionEntry =
-  result = POptionEntry(c.optionStack.tail)
+  result = c.optionStack[^1]
 
 proc popProcCon*(c: PContext) {.inline.} = c.p = c.p.next
+
+proc put*(p: PProcCon; key, val: PSym) =
+  if p.mapping.data == nil: initIdTable(p.mapping)
+  #echo "put into table ", key.info
+  p.mapping.idTablePut(key, val)
+
+proc get*(p: PProcCon; key: PSym): PSym =
+  if p.mapping.data == nil: return nil
+  result = PSym(p.mapping.idTableGet(key))
+
+proc getGenSym*(c: PContext; s: PSym): PSym =
+  if sfGenSym notin s.flags: return s
+  var it = c.p
+  while it != nil:
+    result = get(it, s)
+    if result != nil:
+      #echo "got from table ", result.name.s, " ", result.info
+      return result
+    it = it.next
+  result = s
+
+proc considerGenSyms*(c: PContext; n: PNode) =
+  if n.kind == nkSym:
+    let s = getGenSym(c, n.sym)
+    if n.sym != s:
+      n.sym = s
+  else:
+    for i in 0..<n.safeLen:
+      considerGenSyms(c, n.sons[i])
 
 proc newOptionEntry*(): POptionEntry =
   new(result)
@@ -157,9 +185,9 @@ proc newOptionEntry*(): POptionEntry =
 proc newContext*(graph: ModuleGraph; module: PSym; cache: IdentCache): PContext =
   new(result)
   result.ambiguousSymbols = initIntSet()
-  initLinkedList(result.optionStack)
-  initLinkedList(result.libs)
-  append(result.optionStack, newOptionEntry())
+  result.optionStack = @[]
+  result.libs = @[]
+  result.optionStack.add(newOptionEntry())
   result.module = module
   result.friendModules = @[module]
   result.converters = @[]
@@ -196,7 +224,7 @@ proc addToLib*(lib: PLib, sym: PSym) =
   sym.annex = lib
 
 proc newTypeS*(kind: TTypeKind, c: PContext): PType =
-  result = newType(kind, getCurrOwner())
+  result = newType(kind, getCurrOwner(c))
 
 proc makePtrType*(c: PContext, baseType: PType): PType =
   result = newTypeS(tyPtr, c)
@@ -215,7 +243,7 @@ proc makeTypeDesc*(c: PContext, typ: PType): PType =
 
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let typedesc = makeTypeDesc(c, typ)
-  let sym = newSym(skType, c.cache.idAnon, getCurrOwner(), info).linkTo(typedesc)
+  let sym = newSym(skType, c.cache.idAnon, getCurrOwner(c), info).linkTo(typedesc)
   return newSymNode(sym, info)
 
 proc makeTypeFromExpr*(c: PContext, n: PNode): PType =
@@ -225,7 +253,7 @@ proc makeTypeFromExpr*(c: PContext, n: PNode): PType =
 
 proc newTypeWithSons*(c: PContext, kind: TTypeKind,
                       sons: seq[PType]): PType =
-  result = newType(kind, getCurrOwner())
+  result = newType(kind, getCurrOwner(c))
   result.sons = sons
 
 proc makeStaticExpr*(c: PContext, n: PNode): PNode =
@@ -296,7 +324,7 @@ proc errorNode*(c: PContext, n: PNode): PNode =
 
 proc fillTypeS*(dest: PType, kind: TTypeKind, c: PContext) =
   dest.kind = kind
-  dest.owner = getCurrOwner()
+  dest.owner = getCurrOwner(c)
   dest.size = - 1
 
 proc makeRangeType*(c: PContext; first, last: BiggestInt;
