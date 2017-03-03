@@ -98,15 +98,17 @@ proc sexp(s: IdeCmd|TSymKind): SexpNode = sexp($s)
 proc sexp(s: Suggest): SexpNode =
   # If you change the order here, make sure to change it over in
   # nim-mode.el too.
+  let qp = if s.qualifiedPath.isNil: @[] else: s.qualifiedPath
   result = convertSexp([
     s.section,
     s.symkind,
-    s.qualifiedPath.map(newSString),
+    qp.map(newSString),
     s.filePath,
     s.forth,
     s.line,
     s.column,
-    s.doc
+    s.doc,
+    s.quality
   ])
 
 proc sexp(s: seq[Suggest]): SexpNode =
@@ -199,7 +201,6 @@ proc returnEpc(socket: Socket, uid: BiggestInt, s: SexpNode|string,
   let response = $convertSexp([newSSymbol(return_symbol), uid, s])
   socket.send(toHex(len(response), 6))
   socket.send(response)
-  log "did send " & response
 
 template checkSanity(client, sizeHex, size, messageBuffer: typed) =
   if client.recv(sizeHex, 6) != 6:
@@ -386,12 +387,12 @@ proc execCmd(cmd: string; graph: ModuleGraph; cache: IdentCache) =
   of "use": gIdeCmd = ideUse
   of "dus": gIdeCmd = ideDus
   of "mod": gIdeCmd = ideMod
-  of "chk":
-    gIdeCmd = ideChk
-    incl(gGlobalOptions, optIdeDebug)
+  of "chk": gIdeCmd = ideChk
   of "highlight": gIdeCmd = ideHighlight
   of "outline": gIdeCmd = ideOutline
-  of "quit": quit()
+  of "quit":
+    sentinel()
+    quit()
   of "debug": toggle optIdeDebug
   of "terse": toggle optIdeTerse
   of "known": gIdeCmd = ideKnown

@@ -828,6 +828,12 @@ proc getMessageStr(msg: TMsgKind, arg: string): string =
 type
   TErrorHandling = enum doNothing, doAbort, doRaise
 
+proc log*(s: string) {.procvar.} =
+  var f: File
+  if open(f, getHomeDir() / "nimsuggest.log", fmAppend):
+    f.writeLine(s)
+    close(f)
+
 proc quit(msg: TMsgKind) =
   if defined(debug) or msg == errInternal or hintStackTrace in gNotes:
     if stackTraceAvailable() and isNil(writelnHook):
@@ -837,12 +843,6 @@ proc quit(msg: TMsgKind) =
           "To create a stacktrace, rerun compilation with ./koch temp " &
           options.command & " <file>")
   quit 1
-
-proc log*(s: string) {.procvar.} =
-  var f: File
-  if open(f, getHomeDir() / "nimsuggest.log", fmAppend):
-    f.writeLine(s)
-    close(f)
 
 proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
   if msg >= fatalMin and msg <= fatalMax:

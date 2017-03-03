@@ -173,7 +173,7 @@ proc sexpToAnswer(s: SexpNode): string =
     #s.line,
     #s.column,
     #s.doc
-    if a.len >= 8:
+    if a.len >= 9:
       let section = a[0].getStr
       let symk = a[1].getStr
       let qp = a[2]
@@ -187,10 +187,11 @@ proc sexpToAnswer(s: SexpNode): string =
       result.add symk
       result.add '\t'
       var i = 0
-      for aa in qp:
-        if i > 0: result.add '.'
-        result.add aa.getStr
-        inc i
+      if qp.kind == SList:
+        for aa in qp:
+          if i > 0: result.add '.'
+          result.add aa.getStr
+          inc i
       result.add '\t'
       result.add typ
       result.add '\t'
@@ -202,8 +203,7 @@ proc sexpToAnswer(s: SexpNode): string =
       result.add '\t'
       result.add doc
       result.add '\t'
-      # for now Nim EPC does not return the quality
-      result.add "100"
+      result.add a[8].getNum
     result.add '\L'
 
 proc doReport(filename, answer, resp: string; report: var string) =
@@ -233,6 +233,7 @@ proc runEpcTest(filename: string): int =
   let outp = p.outputStream
   let inp = p.inputStream
   var report = ""
+  var socket = newSocket()
   try:
     # read the port number:
     when defined(posix):
@@ -245,7 +246,6 @@ proc runEpcTest(filename: string): int =
         inc i
       let a = outp.readAll().strip()
     let port = parseInt(a)
-    var socket = newSocket()
     socket.connect("localhost", Port(port))
     for req, resp in items(s.script):
       if not runCmd(req, s.dest):
@@ -255,6 +255,7 @@ proc runEpcTest(filename: string): int =
           let answer = sexpToAnswer(sx)
           doReport(filename, answer, resp, report)
   finally:
+    socket.sendEpcStr "return arg"
     close(p)
   if report.len > 0:
     echo "==== EPC ========================================"
@@ -299,7 +300,7 @@ proc runTest(filename: string): int =
 
 proc main() =
   var failures = 0
-  when true:
+  when false:
     let x = getAppDir() / "tests/tchk1.nim"
     let xx = expandFilename x
     failures += runEpcTest(xx)
