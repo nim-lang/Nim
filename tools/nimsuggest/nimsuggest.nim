@@ -199,20 +199,7 @@ proc returnEpc(socket: Socket, uid: BiggestInt, s: SexpNode|string,
   let response = $convertSexp([newSSymbol(return_symbol), uid, s])
   socket.send(toHex(len(response), 6))
   socket.send(response)
-
-template sendEpc(results: typed, tdef, hook: untyped) =
-  hook = proc (s: tdef) =
-    results.add(
-      # Put newlines to parse output by flycheck-nim.el
-      when results is string: s & "\n"
-      else: s
-    )
-
-  executeEpc(gIdeCmd, args, graph, cache)
-  let res = sexp(results)
-  if gLogging:
-    log($res)
-  returnEpc(client, uid, res)
+  log "did send " & response
 
 template checkSanity(client, sizeHex, size, messageBuffer: typed) =
   if client.recv(sizeHex, 6) != 6:
@@ -350,11 +337,6 @@ proc replEpc(x: ThreadParams) {.thread.} =
 
       gIdeCmd = parseIdeCmd(message[2].getSymbol)
       case gIdeCmd
-      of ideChk:
-        setVerbosity(1)
-        # Use full path because other emacs plugins depends it
-        gListFullPaths = true
-        incl(gGlobalOptions, optIdeDebug)
       of ideSug, ideCon, ideDef, ideUse, ideDus, ideOutline, ideHighlight:
         setVerbosity(0)
       else: discard

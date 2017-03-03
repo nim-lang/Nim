@@ -148,7 +148,7 @@ proc sendEpcStr(socket: Socket; cmd: string) =
 proc recvEpc(socket: Socket): string =
   var L = newStringOfCap(6)
   if socket.recv(L, 6) != 6:
-    raise newException(ValueError, "recv A failed")
+    raise newException(ValueError, "recv A failed #" & L & "#")
   let x = parseHexInt(L)
   result = newString(x)
   if socket.recv(result, x) != x:
@@ -225,7 +225,7 @@ proc runEpcTest(filename: string): int =
   for cmd in s.startup:
     if not runCmd(cmd, s.dest):
       quit "invalid command: " & cmd
-  let epccmd = s.cmd.replace("--tester", "--epc --v2")
+  let epccmd = s.cmd.replace("--tester", "--epc --v2 --log")
   let cl = parseCmdLine(epccmd)
   var p = startProcess(command=cl[0], args=cl[1 .. ^1],
                        options={poStdErrToStdOut, poUsePath,
@@ -299,8 +299,8 @@ proc runTest(filename: string): int =
 
 proc main() =
   var failures = 0
-  when false:
-    let x = getAppDir() / "tests/tdot1.nim"
+  when true:
+    let x = getAppDir() / "tests/tchk1.nim"
     let xx = expandFilename x
     failures += runEpcTest(xx)
   else:
