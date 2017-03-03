@@ -870,7 +870,7 @@ proc buildLinesHTMLTable(d: PDoc; params: CodeBlockParams, code: string):
               d.config.getOrDefault"doc.listing_end" % id)
     return
 
-  var codeLines = 1 + code.strip.countLines
+  var codeLines = code.strip.countLines
   assert codeLines > 0
   result.beginTable = """<table class="line-nums-table"><tbody><tr><td class="blob-line-nums"><pre class="line-nums">"""
   var line = params.startLine

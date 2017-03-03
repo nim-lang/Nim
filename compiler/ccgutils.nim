@@ -181,7 +181,7 @@ proc mangle*(name: string): string =
     of '_':
       # we generate names like 'foo_9' for scope disambiguations and so
       # disallow this here:
-      if i < name.len-1 and name[i+1] in Digits:
+      if i > 0 and i < name.len-1 and name[i+1] in Digits:
         discard
       else:
         add(result, c)

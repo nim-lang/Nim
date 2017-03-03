@@ -49,7 +49,7 @@ template encodeInternal(s: expr, lineLen: int, newLine: string): stmt {.immediat
   ## `newline` is added.
   var total = ((len(s) + 2) div 3) * 4
   var numLines = (total + lineLen - 1) div lineLen
-  if numLines > 0: inc(total, (numLines-1) * newLine.len)
+  if numLines > 0: inc(total, (numLines - 1) * newLine.len)
 
   result = newString(total)
   var i = 0
@@ -66,7 +66,8 @@ template encodeInternal(s: expr, lineLen: int, newLine: string): stmt {.immediat
     inc(r, 4)
     inc(i, 3)
     inc(currLine, 4)
-    if currLine >= lineLen and i != s.len-2:
+    # avoid index out of bounds when lineLen == encoded length
+    if currLine >= lineLen and i != s.len-2 and r < total:
       for x in items(newLine):
         result[r] = x
         inc(r)
@@ -155,12 +156,17 @@ when isMainModule:
   assert encode("asure.") == "YXN1cmUu"
   assert encode("sure.") == "c3VyZS4="
 
+  const testInputExpandsTo76 = "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+  const testInputExpands = "++++++++++++++++++++++++++++++"
   const longText = """Man is distinguished, not only by his reason, but by this
     singular passion from other animals, which is a lust of the mind,
     that by a perseverance of delight in the continued and indefatigable
     generation of knowledge, exceeds the short vehemence of any carnal
     pleasure."""
   const tests = ["", "abc", "xyz", "man", "leasure.", "sure.", "easure.",
-                 "asure.", longText]
+                 "asure.", longText, testInputExpandsTo76, testInputExpands]
+
   for t in items(tests):
     assert decode(encode(t)) == t
+    assert decode(encode(t, lineLen=40)) == t
+    assert decode(encode(t, lineLen=76)) == t

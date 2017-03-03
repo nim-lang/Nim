@@ -374,6 +374,22 @@ proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} =
   result.addrList = cstringArrayToSeq(s.h_addr_list)
   result.length = int(s.h_length)
 
+proc getHostname*(): string {.tags: [ReadIOEffect].} =
+  ## Returns the local hostname (not the FQDN)
+  # https://tools.ietf.org/html/rfc1035#section-2.3.1
+  # https://tools.ietf.org/html/rfc2181#section-11
+  const size = 64
+  result = newString(size)
+  when useWinVersion:
+    let success = winlean.getHostname(result, size)
+  else:
+    # Posix
+    let success = posix.getHostname(result, size)
+  if success != 0.cint:
+    raiseOSError(osLastError())
+  let x = len(cstring(result))
+  result.setLen(x)
+
 proc getSockDomain*(socket: SocketHandle): Domain =
   ## returns the socket's domain (AF_INET or AF_INET6).
   var name: SockAddr

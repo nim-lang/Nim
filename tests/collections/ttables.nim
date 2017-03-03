@@ -1,8 +1,9 @@
 discard """
+  cmd: "nim c --threads:on $file"
   output: '''true'''
 """
 
-import hashes, tables
+import hashes, tables, sharedtables
 
 const
   data = {
@@ -210,6 +211,29 @@ block clearCountTableTest:
   assert t.len() != 0
   t.clear()
   assert t.len() == 0
+
+block withKeyTest:
+  var t = initSharedTable[int, int]()
+  t.withKey(1) do (k: int, v: var int, pairExists: var bool):
+    assert(v == 0)
+    pairExists = true
+    v = 42
+  assert(t.mget(1) == 42)
+  t.withKey(1) do (k: int, v: var int, pairExists: var bool):
+    assert(v == 42)
+    pairExists = false
+  try:
+    discard t.mget(1)
+    assert(false, "KeyError expected")
+  except KeyError:
+    discard
+  t.withKey(2) do (k: int, v: var int, pairExists: var bool):
+    pairExists = false
+  try:
+    discard t.mget(2)
+    assert(false, "KeyError expected")
+  except KeyError:
+    discard
 
 proc orderedTableSortTest() =
   var t = initOrderedTable[string, int](2)
