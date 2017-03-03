@@ -107,6 +107,7 @@ type
     errCannotInferTypeOfTheLiteral,
     errCannotInferReturnType,
     errGenericLambdaNotAllowed,
+    errProcHasNoConcreteType,
     errCompilerDoesntSupportTarget,
     errUser,
     warnCannotOpenFile,
@@ -369,6 +370,7 @@ const
     errGenericLambdaNotAllowed: "A nested proc can have generic parameters only when " &
                                 "it is used as an operand to another routine and the types " &
                                 "of the generic paramers can be inferred from the expected signature.",
+    errProcHasNoConcreteType: "'$1' doesn't have a concrete type, due to unspecified generic parameters.",
     errCompilerDoesntSupportTarget: "The current compiler \'$1\' doesn't support the requested compilation target",
     errUser: "$1",
     warnCannotOpenFile: "cannot open \'$1\'",
