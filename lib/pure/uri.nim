@@ -559,11 +559,8 @@ when isMainModule:
     var t1 = {"user": @["李王"], "mail": @["李王@example.com"]}.newTable().newQuery()
     var t2 = {"user": @["Günter Jürgen"], "mail": @["günter-jürgen@example.com"]}.newTable().newQuery()
     var tt = {"users": @[t1,t2]}.newTable()
-    # echo t1
-    # echo t2
     ur.query = tt.newQuery()
     assert ur.query.parseQuery() == tt
-    # echo ur
 
   block: # test parseQuery with uri as param
     var ur = parseUri("http://www.example.com/?id=4221")
