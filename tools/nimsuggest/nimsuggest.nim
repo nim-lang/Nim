@@ -17,7 +17,7 @@ import compiler / [options, commands, modules, sem,
   passes, passaux, msgs, nimconf,
   extccomp, condsyms,
   sigmatch, ast, scriptconfig,
-  idents, modulegraphs, compilerlog, vm]
+  idents, modulegraphs, vm]
 
 when defined(windows):
   import winlean
@@ -59,6 +59,20 @@ var
   gEmitEof: bool # whether we write '!EOF!' dummy lines
   gLogging = false
   gRefresh: bool
+
+  requests: Channel[string]
+  results: Channel[Suggest]
+
+proc writelnToChannel(line: string) =
+  results.send(Suggest(section: ideMsg, doc: line))
+
+proc sugResultHook(s: Suggest) =
+  results.send(s)
+
+proc errorHook(info: TLineInfo; msg: string; sev: Severity) =
+  results.send(Suggest(section: ideChk, filePath: toFullPath(info),
+    line: toLinenumber(info), column: toColumn(info), doc: msg,
+    forth: $sev))
 
 const
   seps = {':', ';', ' ', '\t'}
@@ -133,9 +147,12 @@ proc symFromInfo(graph: ModuleGraph; gTrackPos: TLineInfo): PSym =
 proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
              graph: ModuleGraph; cache: IdentCache) =
   if gLogging:
-    logStr("cmd: " & $cmd & ", file: " & file & ", dirtyFile: " & dirtyfile &
+    log("cmd: " & $cmd & ", file: " & file & ", dirtyFile: " & dirtyfile &
           "[" & $line & ":" & $col & "]")
   gIdeCmd = cmd
+  if cmd == ideChk:
+    msgs.structuredErrorHook = errorHook
+    msgs.writelnHook = proc (s: string) = discard
   if cmd == ideUse and suggestVersion != 2:
     graph.resetAllModules()
   var isKnownFile = true
@@ -194,7 +211,7 @@ template sendEpc(results: typed, tdef, hook: untyped) =
   executeEpc(gIdeCmd, args, graph, cache)
   let res = sexp(results)
   if gLogging:
-    logStr($res)
+    log($res)
   returnEpc(client, uid, res)
 
 template checkSanity(client, sizeHex, size, messageBuffer: typed) =
@@ -205,16 +222,12 @@ template checkSanity(client, sizeHex, size, messageBuffer: typed) =
   if client.recv(messageBuffer, size) != size:
     raise newException(ValueError, "didn't get all the bytes")
 
-var
-  requests: Channel[string]
-  results: Channel[Suggest]
-
 proc toStdout() {.gcsafe.} =
   while true:
     let res = results.recv()
     case res.section
     of ideNone: break
-    of ideChk: echo res.doc
+    of ideMsg: echo res.doc
     of ideKnown: echo res.quality == 1
     else: echo res
 
@@ -223,7 +236,7 @@ proc toSocket(stdoutSocket: Socket) {.gcsafe.} =
     let res = results.recv()
     case res.section
     of ideNone: break
-    of ideChk: stdoutSocket.send(res.doc & "\c\L")
+    of ideMsg: stdoutSocket.send(res.doc & "\c\L")
     of ideKnown: stdoutSocket.send($(res.quality == 1) & "\c\L")
     else: stdoutSocket.send($res & "\c\L")
 
@@ -233,19 +246,13 @@ proc toEpc(client: Socket; uid: BiggestInt) {.gcsafe.} =
     let res = results.recv()
     case res.section
     of ideNone: break
-    of ideChk:
+    of ideMsg:
       list.add sexp(res.doc)
     of ideKnown:
       list.add sexp(res.quality == 1)
     else:
       list.add sexp(res)
   returnEpc(client, uid, list)
-
-proc writelnToChannel(line: string) =
-  results.send(Suggest(section: ideChk, doc: line))
-
-proc sugResultHook(s: Suggest) =
-  results.send(s)
 
 template setVerbosity(level: typed) =
   gVerbosity = level
@@ -353,7 +360,7 @@ proc replEpc(x: ThreadParams) {.thread.} =
       else: discard
       let cmd = $gIdeCmd & " " & args.argsToStr
       if gLogging:
-        logStr "MSG CMD: " & cmd
+        log "MSG CMD: " & cmd
       requests.send(cmd)
       toEpc(client, uid)
     of "methods":
@@ -437,11 +444,11 @@ proc recompileFullProject(graph: ModuleGraph; cache: IdentCache) =
 proc mainThread(graph: ModuleGraph; cache: IdentCache) =
   if gLogging:
     for it in searchPaths:
-      logStr(it)
+      log(it)
 
   proc wrHook(line: string) {.closure.} =
     if gMode == mepc:
-      if gLogging: logStr(line)
+      if gLogging: log(line)
     else:
       writelnToChannel(line)
 
@@ -454,7 +461,6 @@ proc mainThread(graph: ModuleGraph; cache: IdentCache) =
     if hasData:
       msgs.writelnHook = wrHook
       suggestionResultHook = sugResultHook
-
       execCmd(req, graph, cache)
       idle = 0
     else:
@@ -464,6 +470,7 @@ proc mainThread(graph: ModuleGraph; cache: IdentCache) =
       # we use some nimsuggest activity to enable a lazy recompile:
       gIdeCmd = ideChk
       msgs.writelnHook = proc (s: string) = discard
+      msgs.structuredErrorHook = nil
       suggestionResultHook = proc (s: Suggest) = discard
       recompileFullProject(graph, cache)
 
@@ -482,6 +489,10 @@ proc mainCommand(graph: ModuleGraph; cache: IdentCache) =
 
   # do not stop after the first error:
   msgs.gErrorMax = high(int)
+  # do not print errors, but log them
+  msgs.writelnHook = proc (s: string) = log(s)
+  msgs.structuredErrorHook = nil
+
   # compile the project before showing any input so that we already
   # can answer questions right away:
   compileProject(graph, cache)
@@ -559,9 +570,9 @@ proc handleCmdLine(cache: IdentCache; config: ConfigRef) =
       raise newException(IOError,
           "Cannot find Nim standard library: Nim compiler not in PATH")
     gPrefixDir = binaryPath.splitPath().head.parentDir()
-    #msgs.writelnHook = proc (line: string) = logStr(line)
+    #msgs.writelnHook = proc (line: string) = log(line)
     if gLogging:
-      logStr("START " & gProjectFull)
+      log("START " & gProjectFull)
 
     loadConfigs(DefaultConfig, cache, config) # load all config files
     # now process command line arguments again, because some options in the

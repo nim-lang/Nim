@@ -1193,8 +1193,6 @@ type
     stepRegisterSymbol,
     stepDetermineType,
 
-import compilerlog
-
 proc hasObjParam(s: PSym): bool =
   var t = s.typ
   for col in countup(1, sonsLen(t)-1):

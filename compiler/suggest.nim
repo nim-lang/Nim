@@ -9,7 +9,7 @@
 
 ## This file implements features required for IDE support.
 ##
-## Due to Nim's natures and the fact that ``system.nim`` is always imported,
+## Due to Nim's nature and the fact that ``system.nim`` is always imported,
 ## there are lots of potential symbols. Furthermore thanks to templates and
 ## macros even context based analysis does not help much: In a context like
 ## ``let x: |`` where a type has to follow, that type might be constructed from
@@ -126,7 +126,8 @@ proc `$`*(suggest: Suggest): string =
   else:
     result.add($suggest.symkind)
     result.add(sep)
-    result.add(suggest.qualifiedPath.join("."))
+    if suggest.qualifiedPath != nil:
+      result.add(suggest.qualifiedPath.join("."))
     result.add(sep)
     result.add(suggest.forth)
     result.add(sep)
@@ -161,8 +162,6 @@ proc filterSym(s: PSym; prefix: PNode): bool {.inline.} =
       if n.len > 0:
         result = prefixMatch(s, n[0])
     else: discard
-    if result:
-      echo "indeed a prefix match ", n
   if s.kind != skModule:
     result = prefix.isNil or prefixMatch(s, prefix)
 

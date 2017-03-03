@@ -100,7 +100,7 @@ type
 
   IdeCmd* = enum
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideMod,
-    ideHighlight, ideOutline, ideKnown
+    ideHighlight, ideOutline, ideKnown, ideMsg
 
   ConfigRef* = ref object ## eventually all global configuration should be moved here
     cppDefines*: HashSet[string]
@@ -349,7 +349,7 @@ proc rawFindFile2(f: string): string =
       # bring to front
       for j in countDown(i,1):
         swap(lazyPaths[j], lazyPaths[j-1])
-      
+
       return result.canonicalizePath
   result = ""
 
@@ -437,6 +437,7 @@ proc parseIdeCmd*(s: string): IdeCmd =
   of "highlight": ideHighlight
   of "outline": ideOutline
   of "known": ideKnown
+  of "msg": ideMsg
   else: ideNone
 
 proc `$`*(c: IdeCmd): string =
@@ -452,3 +453,4 @@ proc `$`*(c: IdeCmd): string =
   of ideHighlight: "highlight"
   of ideOutline: "outline"
   of ideKnown: "known"
+  of ideMsg: "msg"

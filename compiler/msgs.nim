@@ -631,12 +631,17 @@ proc unknownLineInfo*(): TLineInfo =
   result.col = int16(-1)
   result.fileIndex = -1
 
+type
+  Severity* {.pure.} = enum ## VS Code only supports these three
+    Hint, Warning, Error
+
 var
   msgContext: seq[TLineInfo] = @[]
   lastError = unknownLineInfo()
 
   errorOutputs* = {eStdOut, eStdErr}
   writelnHook*: proc (output: string) {.closure.}
+  structuredErrorHook*: proc (info: TLineInfo; msg: string; severity: Severity) {.closure.}
 
 proc suggestWriteln*(s: string) =
   if eStdOut in errorOutputs:
@@ -745,6 +750,8 @@ proc msgWriteln*(s: string, flags: MsgFlags = {}) =
   ## is present, then it is used to output message rather than stderr/stdout.
   ## This behavior can be altered by given optional flags.
 
+  ## This is used for 'nim dump' etc. where we don't have nimsuggest
+  ## support.
   #if gCmd == cmdIdeTools and optCDebug notin gGlobalOptions: return
 
   if not isNil(writelnHook) and msgSkipHook notin flags:
@@ -833,7 +840,7 @@ proc quit(msg: TMsgKind) =
 
 proc log*(s: string) {.procvar.} =
   var f: File
-  if open(f, "nimsuggest.log", fmAppend):
+  if open(f, getHomeDir() / "nimsuggest.log", fmAppend):
     f.writeLine(s)
     close(f)
 
@@ -858,12 +865,16 @@ proc writeContext(lastinfo: TLineInfo) =
   var info = lastinfo
   for i in countup(0, len(msgContext) - 1):
     if msgContext[i] != lastinfo and msgContext[i] != info:
-      styledMsgWriteln(styleBright,
-                       PosFormat % [toMsgFilename(msgContext[i]),
-                                    coordToStr(msgContext[i].line),
-                                    coordToStr(msgContext[i].col+1)],
-                       resetStyle,
-                       getMessageStr(errInstantiationFrom, ""))
+      if structuredErrorHook != nil:
+        structuredErrorHook(msgContext[i], getMessageStr(errInstantiationFrom, ""),
+                            Severity.Error)
+      else:
+        styledMsgWriteln(styleBright,
+                         PosFormat % [toMsgFilename(msgContext[i]),
+                                      coordToStr(msgContext[i].line),
+                                      coordToStr(msgContext[i].col+1)],
+                         resetStyle,
+                         getMessageStr(errInstantiationFrom, ""))
     info = msgContext[i]
 
 proc ignoreMsgBecauseOfIdeTools(msg: TMsgKind): bool =
@@ -873,13 +884,16 @@ proc rawMessage*(msg: TMsgKind, args: openArray[string]) =
   var
     title: string
     color: ForegroundColor
-    kind:  string
+    kind: string
+    sev: Severity
   case msg
   of errMin..errMax:
+    sev = Severity.Error
     writeContext(unknownLineInfo())
     title = ErrorTitle
     color = ErrorColor
   of warnMin..warnMax:
+    sev = Severity.Warning
     if optWarns notin gOptions: return
     if msg notin gNotes: return
     writeContext(unknownLineInfo())
@@ -888,13 +902,18 @@ proc rawMessage*(msg: TMsgKind, args: openArray[string]) =
     kind = WarningsToStr[ord(msg) - ord(warnMin)]
     inc(gWarnCounter)
   of hintMin..hintMax:
+    sev = Severity.Hint
     if optHints notin gOptions: return
     if msg notin gNotes: return
     title = HintTitle
     color = HintColor
     kind = HintsToStr[ord(msg) - ord(hintMin)]
     inc(gHintCounter)
-  let s = `%`(msgKindToString(msg), args)
+  let s = msgKindToString(msg) % args
+
+  if structuredErrorHook != nil:
+    structuredErrorHook(unknownLineInfo(), s & (if kind != nil: KindFormat % kind else: ""), sev)
+
   if not ignoreMsgBecauseOfIdeTools(msg):
     if kind != nil:
       styledMsgWriteln(color, title, resetStyle, s,
@@ -932,8 +951,10 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
     color: ForegroundColor
     kind:  string
     ignoreMsg = false
+    sev: Severity
   case msg
   of errMin..errMax:
+    sev = Severity.Error
     writeContext(info)
     title = ErrorTitle
     color = ErrorColor
@@ -942,6 +963,7 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
     #ignoreMsg = lastError == info and eh != doAbort
     lastError = info
   of warnMin..warnMax:
+    sev = Severity.Warning
     ignoreMsg = optWarns notin gOptions or msg notin gNotes
     if not ignoreMsg: writeContext(info)
     title = WarningTitle
@@ -949,6 +971,7 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
     kind = WarningsToStr[ord(msg) - ord(warnMin)]
     inc(gWarnCounter)
   of hintMin..hintMax:
+    sev = Severity.Hint
     ignoreMsg = optHints notin gOptions or msg notin gNotes
     title = HintTitle
     color = HintColor
@@ -960,14 +983,18 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
   let x = PosFormat % [toMsgFilename(info), coordToStr(info.line),
                        coordToStr(info.col+1)]
   let s = getMessageStr(msg, arg)
-  if not ignoreMsg and not ignoreMsgBecauseOfIdeTools(msg):
-    if kind != nil:
-      styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s,
-                       KindColor, `%`(KindFormat, kind))
-    else:
-      styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s)
-    if msg in errMin..errMax and hintSource in gNotes:
-      info.writeSurroundingSrc
+
+  if not ignoreMsg:
+    if structuredErrorHook != nil:
+      structuredErrorHook(info, s & (if kind != nil: KindFormat % kind else: ""), sev)
+    if not ignoreMsgBecauseOfIdeTools(msg):
+      if kind != nil:
+        styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s,
+                         KindColor, `%`(KindFormat, kind))
+      else:
+        styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s)
+      if msg in errMin..errMax and hintSource in gNotes:
+        info.writeSurroundingSrc
   handleError(msg, eh, s)
 
 proc fatal*(info: TLineInfo, msg: TMsgKind, arg = "") =
@@ -992,12 +1019,12 @@ proc message*(info: TLineInfo, msg: TMsgKind, arg = "") =
   liMessage(info, msg, arg, doNothing)
 
 proc internalError*(info: TLineInfo, errMsg: string) =
-  if gCmd == cmdIdeTools: return
+  if gCmd == cmdIdeTools and structuredErrorHook.isNil: return
   writeContext(info)
   liMessage(info, errInternal, errMsg, doAbort)
 
 proc internalError*(errMsg: string) =
-  if gCmd == cmdIdeTools: return
+  if gCmd == cmdIdeTools and structuredErrorHook.isNil: return
   writeContext(unknownLineInfo())
   rawMessage(errInternal, errMsg)
 
