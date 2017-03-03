@@ -547,7 +547,9 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     if prefer != preferExported:
       result.add("(" & typeToString(t.sons[0]) & ")")
   of tyProc:
-    result = if tfIterator in t.flags: "iterator (" else: "proc ("
+    result = if tfIterator in t.flags: "iterator " else: "proc "
+    if tfUnresolved in t.flags: result.add "[*missing parameters*]"
+    result.add "("
     for i in countup(1, sonsLen(t) - 1):
       if t.n != nil and i < t.n.len and t.n[i].kind == nkSym:
         add(result, t.n[i].sym.name.s)
