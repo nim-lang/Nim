@@ -134,17 +134,14 @@ proc main() =
     doAssert( U64A.rotateRightBits(0) == U64A)
 
     # check for undefined behavior with rotate by integer width.
-    {.push rangeChecks: off}
-    let (s8, s16, s32, s64) = (8, 16, 32, 64) # hack to get around compile time range check.
-    doAssert( U8.rotateLeftBits(s8) == U8)
-    doAssert( U8.rotateRightBits(s8) == U8)
-    doAssert( U16.rotateLeftBits(s16) == U16)
-    doAssert( U16.rotateRightBits(s16) == U16)
-    doAssert( U32.rotateLeftBits(s32) == U32)
-    doAssert( U32.rotateRightBits(s32) == U32)
-    doAssert( U64A.rotateLeftBits(s64) == U64A)
-    doAssert( U64A.rotateRightBits(s64) == U64A)
-    {.pop.}
+    doAssert( U8.rotateLeftBits(8) == U8)
+    doAssert( U8.rotateRightBits(8) == U8)
+    doAssert( U16.rotateLeftBits(16) == U16)
+    doAssert( U16.rotateRightBits(16) == U16)
+    doAssert( U32.rotateLeftBits(32) == U32)
+    doAssert( U32.rotateRightBits(32) == U32)
+    doAssert( U64A.rotateLeftBits(64) == U64A)
+    doAssert( U64A.rotateRightBits(64) == U64A)
 
     static:    # check for undefined behavior with rotate by zero.
       doAssert( U8.rotateLeftBits(0) == U8)
@@ -155,6 +152,16 @@ proc main() =
       doAssert( U32.rotateRightBits(0) == U32)
       doAssert( U64A.rotateLeftBits(0) == U64A)
       doAssert( U64A.rotateRightBits(0) == U64A)
+
+      # check for undefined behavior with rotate by integer width.
+      doAssert( U8.rotateLeftBits(8) == U8)
+      doAssert( U8.rotateRightBits(8) == U8)
+      doAssert( U16.rotateLeftBits(16) == U16)
+      doAssert( U16.rotateRightBits(16) == U16)
+      doAssert( U32.rotateLeftBits(32) == U32)
+      doAssert( U32.rotateRightBits(32) == U32)
+      doAssert( U64A.rotateLeftBits(64) == U64A)
+      doAssert( U64A.rotateRightBits(64) == U64A)
 
   echo "OK"
 

@@ -179,7 +179,7 @@ elif useICC_builtins:
     discard fnc(index.addr, v)
     index.int
 
-{.push rangeChecks: off}
+
 proc countSetBits*(x: SomeInteger): int {.inline, nosideeffect.} =
   ## Counts the set bits in integer. (also called Hamming weight.)
   # TODO: figure out if ICC support _popcnt32/_popcnt64 on platform without POPCNT.
@@ -242,8 +242,8 @@ proc firstSetBit*(x: SomeInteger): int {.inline, nosideeffect.} =
       if x == 0:
         return 0
     when useGCC_builtins:
-      when sizeof(x) <= 4: result = builtin_ffs(x.cint).int
-      else:                result = builtin_ffsll(x.clonglong).int
+      when sizeof(x) <= 4: result = builtin_ffs(cast[cint](x.cuint)).int
+      else:                result = builtin_ffsll(cast[clonglong](x.culonglong)).int
     elif useVCC_builtins:
       when sizeof(x) <= 4:
         result = 1 + vcc_scan_impl(bitScanForward, x.culong)
@@ -328,10 +328,9 @@ proc countTrailingZeroBits*(x: SomeInteger): int {.inline, nosideeffect.} =
     else:
       result = firstSetBit(x) - 1
 
-{.push checks: off}
 
 proc rotateLeftBits*(value: uint8;
-           amount: range[0..7]): uint8 {.inline, noSideEffect.} =
+           amount: range[0..8]): uint8 {.inline, noSideEffect.} =
   ## Left-rotate bits in a 8-bits value.
   # using this form instead of the one below should handle any value
   # out of range as well as negative values.
@@ -341,46 +340,44 @@ proc rotateLeftBits*(value: uint8;
   result = (value shl amount) or (value shr ( (-amount) and 7))
 
 proc rotateLeftBits*(value: uint16;
-           amount: range[0..15]): uint16 {.inline, noSideEffect.} =
+           amount: range[0..16]): uint16 {.inline, noSideEffect.} =
   ## Left-rotate bits in a 16-bits value.
   let amount = amount and 15
   result = (value shl amount) or (value shr ( (-amount) and 15))
 
 proc rotateLeftBits*(value: uint32;
-           amount: range[0..31]): uint32 {.inline, noSideEffect.} =
+           amount: range[0..32]): uint32 {.inline, noSideEffect.} =
   ## Left-rotate bits in a 32-bits value.
   let amount = amount and 31
   result = (value shl amount) or (value shr ( (-amount) and 31))
 
 proc rotateLeftBits*(value: uint64;
-           amount: range[0..63]): uint64 {.inline, noSideEffect.} =
+           amount: range[0..64]): uint64 {.inline, noSideEffect.} =
   ## Left-rotate bits in a 64-bits value.
   let amount = amount and 63
   result = (value shl amount) or (value shr ( (-amount) and 63))
 
 
 proc rotateRightBits*(value: uint8;
-            amount: range[0..7]): uint8 {.inline, noSideEffect.} =
+            amount: range[0..8]): uint8 {.inline, noSideEffect.} =
   ## Right-rotate bits in a 8-bits value.
   let amount = amount and 7
   result = (value shr amount) or (value shl ( (-amount) and 7))
 
 proc rotateRightBits*(value: uint16;
-            amount: range[0..15]): uint16 {.inline, noSideEffect.} =
+            amount: range[0..16]): uint16 {.inline, noSideEffect.} =
   ## Right-rotate bits in a 16-bits value.
   let amount = amount and 15
   result = (value shr amount) or (value shl ( (-amount) and 15))
 
 proc rotateRightBits*(value: uint32;
-            amount: range[0..31]): uint32 {.inline, noSideEffect.} =
+            amount: range[0..32]): uint32 {.inline, noSideEffect.} =
   ## Right-rotate bits in a 32-bits value.
   let amount = amount and 31
   result = (value shr amount) or (value shl ( (-amount) and 31))
 
 proc rotateRightBits*(value: uint64;
-            amount: range[0..63]): uint64 {.inline, noSideEffect.} =
+            amount: range[0..64]): uint64 {.inline, noSideEffect.} =
   ## Right-rotate bits in a 64-bits value.
   let amount = amount and 63
   result = (value shr amount) or (value shl ( (-amount) and 63))
-
-{.pop.}
