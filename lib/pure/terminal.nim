@@ -589,7 +589,7 @@ macro styledWriteLine*(f: File, m: varargs[expr]): stmt =
   ## .. code-block:: nim
   ##
   ##   proc error(msg: string) =
-  ##     styleWriteLine(stderr, fgRed, "Error: ", resetStyle, msg)
+  ##     styledWriteLine(stderr, fgRed, "Error: ", resetStyle, msg)
   ##
   let m = callsite()
   var reset = false
