@@ -478,7 +478,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       typ = semTypeNode(c, a.sons[length-2], nil)
     else:
       typ = nil
-    var def: PNode
+    var def: PNode = ast.emptyNode
     if a.sons[length-1].kind != nkEmpty:
       def = semExprWithType(c, a.sons[length-1], {efAllowDestructor})
       if def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
@@ -500,7 +500,6 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           localError(def.info, errCannotInferTypeOfTheLiteral,
                      ($typ.kind).substr(2).toLowerAscii)
     else:
-      def = ast.emptyNode
       if symkind == skLet: localError(a.info, errLetNeedsInit)
 
     # this can only happen for errornous var statements:
@@ -539,7 +538,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
             if warnShadowIdent in gNotes and not identWithin(def, v.name):
               message(a.info, warnShadowIdent, v.name.s)
       if a.kind != nkVarTuple:
-        if def != nil and def.kind != nkEmpty:
+        if def.kind != nkEmpty:
           # this is needed for the evaluation pass and for the guard checking:
           v.ast = def
           if sfThread in v.flags: localError(def.info, errThreadvarCannotInit)
@@ -1193,8 +1192,6 @@ type
   TProcCompilationSteps = enum
     stepRegisterSymbol,
     stepDetermineType,
-
-import compilerlog
 
 proc hasObjParam(s: PSym): bool =
   var t = s.typ

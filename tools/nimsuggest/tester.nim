@@ -148,7 +148,7 @@ proc sendEpcStr(socket: Socket; cmd: string) =
 proc recvEpc(socket: Socket): string =
   var L = newStringOfCap(6)
   if socket.recv(L, 6) != 6:
-    raise newException(ValueError, "recv A failed")
+    raise newException(ValueError, "recv A failed #" & L & "#")
   let x = parseHexInt(L)
   result = newString(x)
   if socket.recv(result, x) != x:
@@ -173,7 +173,7 @@ proc sexpToAnswer(s: SexpNode): string =
     #s.line,
     #s.column,
     #s.doc
-    if a.len >= 8:
+    if a.len >= 9:
       let section = a[0].getStr
       let symk = a[1].getStr
       let qp = a[2]
@@ -187,10 +187,11 @@ proc sexpToAnswer(s: SexpNode): string =
       result.add symk
       result.add '\t'
       var i = 0
-      for aa in qp:
-        if i > 0: result.add '.'
-        result.add aa.getStr
-        inc i
+      if qp.kind == SList:
+        for aa in qp:
+          if i > 0: result.add '.'
+          result.add aa.getStr
+          inc i
       result.add '\t'
       result.add typ
       result.add '\t'
@@ -202,8 +203,7 @@ proc sexpToAnswer(s: SexpNode): string =
       result.add '\t'
       result.add doc
       result.add '\t'
-      # for now Nim EPC does not return the quality
-      result.add "100"
+      result.add a[8].getNum
     result.add '\L'
 
 proc doReport(filename, answer, resp: string; report: var string) =
@@ -212,8 +212,8 @@ proc doReport(filename, answer, resp: string; report: var string) =
     var hasDiff = false
     for i in 0..min(resp.len-1, answer.len-1):
       if resp[i] != answer[i]:
-        report.add "\n  Expected:  " & resp.substr(i)
-        report.add "\n  But got:   " & answer.substr(i)
+        report.add "\n  Expected:  " & resp.substr(i, i+200)
+        report.add "\n  But got:   " & answer.substr(i, i+200)
         hasDiff = true
         break
     if not hasDiff:
@@ -225,7 +225,7 @@ proc runEpcTest(filename: string): int =
   for cmd in s.startup:
     if not runCmd(cmd, s.dest):
       quit "invalid command: " & cmd
-  let epccmd = s.cmd.replace("--tester", "--epc --v2")
+  let epccmd = s.cmd.replace("--tester", "--epc --v2 --log")
   let cl = parseCmdLine(epccmd)
   var p = startProcess(command=cl[0], args=cl[1 .. ^1],
                        options={poStdErrToStdOut, poUsePath,
@@ -233,23 +233,29 @@ proc runEpcTest(filename: string): int =
   let outp = p.outputStream
   let inp = p.inputStream
   var report = ""
-  var a = newStringOfCap(120)
+  var socket = newSocket()
   try:
     # read the port number:
-    if outp.readLine(a):
-      let port = parseInt(a)
-      var socket = newSocket()
-      socket.connect("localhost", Port(port))
-      for req, resp in items(s.script):
-        if not runCmd(req, s.dest):
-          socket.sendEpcStr(req)
-          let sx = parseSexp(socket.recvEpc())
-          if not req.startsWith("mod "):
-            let answer = sexpToAnswer(sx)
-            doReport(filename, answer, resp, report)
+    when defined(posix):
+      var a = newStringOfCap(120)
+      discard outp.readLine(a)
     else:
-      raise newException(ValueError, "cannot read port number")
+      var i = 0
+      while not osproc.hasData(p) and i < 100:
+        os.sleep(50)
+        inc i
+      let a = outp.readAll().strip()
+    let port = parseInt(a)
+    socket.connect("localhost", Port(port))
+    for req, resp in items(s.script):
+      if not runCmd(req, s.dest):
+        socket.sendEpcStr(req)
+        let sx = parseSexp(socket.recvEpc())
+        if not req.startsWith("mod "):
+          let answer = sexpToAnswer(sx)
+          doReport(filename, answer, resp, report)
   finally:
+    socket.sendEpcStr "return arg"
     close(p)
   if report.len > 0:
     echo "==== EPC ========================================"
@@ -295,14 +301,16 @@ proc runTest(filename: string): int =
 proc main() =
   var failures = 0
   when false:
-    let x = getAppDir() / "tests/twithin_macro.nim"
+    let x = getAppDir() / "tests/tchk1.nim"
     let xx = expandFilename x
     failures += runEpcTest(xx)
   else:
     for x in walkFiles(getAppDir() / "tests/t*.nim"):
       echo "Test ", x
       let xx = expandFilename x
-      failures += runTest(xx)
+      when not defined(windows):
+        # XXX Windows IO redirection seems bonkers:
+        failures += runTest(xx)
       failures += runEpcTest(xx)
   if failures > 0:
     quit 1

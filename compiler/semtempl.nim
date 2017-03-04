@@ -289,7 +289,11 @@ proc semTemplSomeDecl(c: var TemplCtx, n: PNode, symKind: TSymKind; start=0) =
     if (a.kind != nkIdentDefs) and (a.kind != nkVarTuple): illFormedAst(a)
     checkMinSonsLen(a, 3)
     var L = sonsLen(a)
+    when defined(nimsuggest):
+      inc c.c.inTypeContext
     a.sons[L-2] = semTemplBody(c, a.sons[L-2])
+    when defined(nimsuggest):
+      dec c.c.inTypeContext
     a.sons[L-1] = semTemplBody(c, a.sons[L-1])
     for j in countup(0, L-3):
       addLocalDecl(c, a.sons[j], symKind)

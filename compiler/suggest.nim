@@ -8,6 +8,27 @@
 #
 
 ## This file implements features required for IDE support.
+##
+## Due to Nim's nature and the fact that ``system.nim`` is always imported,
+## there are lots of potential symbols. Furthermore thanks to templates and
+## macros even context based analysis does not help much: In a context like
+## ``let x: |`` where a type has to follow, that type might be constructed from
+## a template like ``extractField(MyObject, fieldName)``. We deal with this
+## problem by smart sorting so that the likely symbols come first. This sorting
+## is done this way:
+##
+## - If there is a prefix (foo|), symbols starting with this prefix come first.
+## - If the prefix is part of the name (but the name doesn't start with it),
+##   these symbols come second.
+## - If we have a prefix, only symbols matching this prefix are returned and
+##   nothing else.
+## - If we have no prefix, consider the context. We currently distinguish
+##   between type and non-type contexts.
+## - Finally, sort matches by relevance. The relevance is determined by the
+##   number of usages, so ``strutils.replace`` comes before
+##   ``strutils.wordWrap``.
+## - In any case, sorting also considers scoping information. Local variables
+##   get high priority.
 
 # included from sigmatch.nim
 
@@ -107,7 +128,8 @@ proc `$`*(suggest: Suggest): string =
   else:
     result.add($suggest.symkind)
     result.add(sep)
-    result.add(suggest.qualifiedPath.join("."))
+    if suggest.qualifiedPath != nil:
+      result.add(suggest.qualifiedPath.join("."))
     result.add(sep)
     result.add(suggest.forth)
     result.add(sep)
@@ -133,11 +155,20 @@ proc suggestResult(s: Suggest) =
   else:
     suggestWriteln($s)
 
-proc filterSym(s: PSym): bool {.inline.} =
-  result = s.kind != skModule
+proc filterSym(s: PSym; prefix: PNode): bool {.inline.} =
+  proc prefixMatch(s: PSym; n: PNode): bool =
+    case n.kind
+    of nkIdent: result = s.name.s.startsWith(n.ident.s)
+    of nkSym: result = s.name.s.startsWith(n.sym.name.s)
+    of nkOpenSymChoice, nkClosedSymChoice, nkAccQuoted:
+      if n.len > 0:
+        result = prefixMatch(s, n[0])
+    else: discard
+  if s.kind != skModule:
+    result = prefix.isNil or prefixMatch(s, prefix)
 
-proc filterSymNoOpr(s: PSym): bool {.inline.} =
-  result = s.kind != skModule and s.name.s[0] in lexer.SymChars and
+proc filterSymNoOpr(s: PSym; prefix: PNode): bool {.inline.} =
+  result = filterSym(s, prefix) and s.name.s[0] in lexer.SymChars and
      not isKeyword(s.name)
 
 proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
@@ -148,8 +179,8 @@ proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
       result = true
       break
 
-proc suggestField(c: PContext, s: PSym, outputs: var int) =
-  if filterSym(s) and fieldVisible(c, s):
+proc suggestField(c: PContext, s: PSym; f: PNode; outputs: var int) =
+  if filterSym(s, f) and fieldVisible(c, s):
     suggestResult(symToSuggest(s, isLocal=true, $ideSug, 100))
     inc outputs
 
@@ -166,22 +197,22 @@ template wholeSymTab(cond, section: untyped) =
         suggestResult(symToSuggest(it, isLocal = isLocal, section, 100))
         inc outputs
 
-proc suggestSymList(c: PContext, list: PNode, outputs: var int) =
+proc suggestSymList(c: PContext, list, f: PNode, outputs: var int) =
   for i in countup(0, sonsLen(list) - 1):
     if list.sons[i].kind == nkSym:
-      suggestField(c, list.sons[i].sym, outputs)
+      suggestField(c, list.sons[i].sym, f, outputs)
     #else: InternalError(list.info, "getSymFromList")
 
-proc suggestObject(c: PContext, n: PNode, outputs: var int) =
+proc suggestObject(c: PContext, n, f: PNode, outputs: var int) =
   case n.kind
   of nkRecList:
-    for i in countup(0, sonsLen(n)-1): suggestObject(c, n.sons[i], outputs)
+    for i in countup(0, sonsLen(n)-1): suggestObject(c, n.sons[i], f, outputs)
   of nkRecCase:
     var L = sonsLen(n)
     if L > 0:
-      suggestObject(c, n.sons[0], outputs)
-      for i in countup(1, L-1): suggestObject(c, lastSon(n.sons[i]), outputs)
-  of nkSym: suggestField(c, n.sym, outputs)
+      suggestObject(c, n.sons[0], f, outputs)
+      for i in countup(1, L-1): suggestObject(c, lastSon(n.sons[i]), f, outputs)
+  of nkSym: suggestField(c, n.sym, f, outputs)
   else: discard
 
 proc nameFits(c: PContext, s: PSym, n: PNode): bool =
@@ -205,7 +236,7 @@ proc argsFit(c: PContext, candidate: PSym, n, nOrig: PNode): bool =
     result = false
 
 proc suggestCall(c: PContext, n, nOrig: PNode, outputs: var int) =
-  wholeSymTab(filterSym(it) and nameFits(c, it, n) and argsFit(c, it, n, nOrig),
+  wholeSymTab(filterSym(it, nil) and nameFits(c, it, n) and argsFit(c, it, n, nOrig),
               $ideCon)
 
 proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} =
@@ -221,22 +252,22 @@ proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} =
       if exp.kind in {tyExpr, tyStmt, tyGenericParam, tyAnything}: return
     result = sigmatch.argtypeMatches(c, s.typ.sons[1], firstArg)
 
-proc suggestOperations(c: PContext, n: PNode, typ: PType, outputs: var int) =
+proc suggestOperations(c: PContext, n, f: PNode, typ: PType, outputs: var int) =
   assert typ != nil
-  wholeSymTab(filterSymNoOpr(it) and typeFits(c, it, typ), $ideSug)
+  wholeSymTab(filterSymNoOpr(it, f) and typeFits(c, it, typ), $ideSug)
 
-proc suggestEverything(c: PContext, n: PNode, outputs: var int) =
+proc suggestEverything(c: PContext, n, f: PNode, outputs: var int) =
   # do not produce too many symbols:
   var isLocal = true
   for scope in walkScopes(c.currentScope):
     if scope == c.topLevelScope: isLocal = false
     for it in items(scope.symbols):
-      if filterSym(it):
+      if filterSym(it, f):
         suggestResult(symToSuggest(it, isLocal = isLocal, $ideSug, 0))
         inc outputs
-    if scope == c.topLevelScope: break
+    if scope == c.topLevelScope and f.isNil: break
 
-proc suggestFieldAccess(c: PContext, n: PNode, outputs: var int) =
+proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var int) =
   # special code that deals with ``myObj.``. `n` is NOT the nkDotExpr-node, but
   # ``myObj``.
   var typ = n.typ
@@ -252,7 +283,7 @@ proc suggestFieldAccess(c: PContext, n: PNode, outputs: var int) =
         if m == nil: typ = nil
         else:
           for it in items(n.sym.tab):
-            if filterSym(it):
+            if filterSym(it, field):
               suggestResult(symToSuggest(it, isLocal=false, $ideSug, 100))
               inc outputs
           suggestResult(symToSuggest(m, isLocal=false, $ideMod, 100))
@@ -263,38 +294,38 @@ proc suggestFieldAccess(c: PContext, n: PNode, outputs: var int) =
       if n.sym == c.module:
         # all symbols accessible, because we are in the current module:
         for it in items(c.topLevelScope.symbols):
-          if filterSym(it):
+          if filterSym(it, field):
             suggestResult(symToSuggest(it, isLocal=false, $ideSug, 100))
             inc outputs
       else:
         for it in items(n.sym.tab):
-          if filterSym(it):
+          if filterSym(it, field):
             suggestResult(symToSuggest(it, isLocal=false, $ideSug, 100))
             inc outputs
     else:
       # fallback:
-      suggestEverything(c, n, outputs)
+      suggestEverything(c, n, field, outputs)
   elif typ.kind == tyEnum and n.kind == nkSym and n.sym.kind == skType:
     # look up if the identifier belongs to the enum:
     var t = typ
     while t != nil:
-      suggestSymList(c, t.n, outputs)
+      suggestSymList(c, t.n, field, outputs)
       t = t.sons[0]
-    suggestOperations(c, n, typ, outputs)
+    suggestOperations(c, n, field, typ, outputs)
   else:
     let orig = skipTypes(typ, {tyGenericInst, tyAlias})
     typ = skipTypes(typ, {tyGenericInst, tyVar, tyPtr, tyRef, tyAlias})
     if typ.kind == tyObject:
       var t = typ
       while true:
-        suggestObject(c, t.n, outputs)
+        suggestObject(c, t.n, field, outputs)
         if t.sons[0] == nil: break
         t = skipTypes(t.sons[0], skipPtrs)
     elif typ.kind == tyTuple and typ.n != nil:
-      suggestSymList(c, typ.n, outputs)
-    suggestOperations(c, n, orig, outputs)
+      suggestSymList(c, typ.n, field, outputs)
+    suggestOperations(c, n, field, orig, outputs)
     if typ != orig:
-      suggestOperations(c, n, typ, outputs)
+      suggestOperations(c, n, field, typ, outputs)
 
 type
   TCheckPointResult* = enum
@@ -443,13 +474,22 @@ proc suggestExpr*(c: PContext, node: PNode) =
     if n == nil: n = node
     if n.kind == nkDotExpr:
       var obj = safeSemExpr(c, n.sons[0])
-      suggestFieldAccess(c, obj, outputs)
+      # it can happen that errnously we have collected the fieldname
+      # of the next line, so we check the 'field' is actually on the same
+      # line as the object to prevent this from happening:
+      let prefix = if n.len == 2 and n[1].info.line == n[0].info.line: n[1] else: nil
+      suggestFieldAccess(c, obj, prefix, outputs)
 
       #if optIdeDebug in gGlobalOptions:
       #  echo "expression ", renderTree(obj), " has type ", typeToString(obj.typ)
       #writeStackTrace()
     else:
-      suggestEverything(c, n, outputs)
+      #let m = findClosestSym(node)
+      #if m != nil:
+      #  suggestPrefix(c, m, outputs)
+      #else:
+      let prefix = if cp == cpExact: n else: nil
+      suggestEverything(c, n, prefix, outputs)
 
   elif gIdeCmd == ideCon:
     var n = findClosestCall(node)
@@ -471,3 +511,17 @@ proc suggestExpr*(c: PContext, node: PNode) =
 
 proc suggestStmt*(c: PContext, n: PNode) =
   suggestExpr(c, n)
+
+proc suggestSentinel*(c: PContext) =
+  if gIdeCmd != ideSug or c.module.position != gTrackPos.fileIndex: return
+  if c.compilesContextId > 0: return
+  inc(c.compilesContextId)
+  # suggest everything:
+  var isLocal = true
+  for scope in walkScopes(c.currentScope):
+    if scope == c.topLevelScope: isLocal = false
+    for it in items(scope.symbols):
+      if filterSymNoOpr(it, nil):
+        suggestResult(symToSuggest(it, isLocal = isLocal, $ideSug, 0))
+
+  dec(c.compilesContextId)

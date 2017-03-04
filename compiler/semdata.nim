@@ -111,6 +111,8 @@ type
     graph*: ModuleGraph
     signatures*: TStrTable
     recursiveDep*: string
+    suggestionsMade*: bool
+    inTypeContext*: int
 
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
   result.genericSym = s

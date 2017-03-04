@@ -519,12 +519,17 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
       recoverContext(c)
       c.inGenericInst = oldInGenericInst
       msgs.setInfoContextLen(oldContextLen)
-      if getCurrentException() of ESuggestDone: result = nil
-      else: result = ast.emptyNode
+      if getCurrentException() of ESuggestDone:
+        c.suggestionsMade = true
+        result = nil
+      else:
+        result = ast.emptyNode
       #if gCmd == cmdIdeTools: findSuggest(c, n)
 
 proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   var c = PContext(context)
+  if gCmd == cmdIdeTools and not c.suggestionsMade:
+    suggestSentinel(c)
   closeScope(c)         # close module's scope
   rawCloseScope(c)      # imported symbols; don't check for unused ones!
   result = newNode(nkStmtList)

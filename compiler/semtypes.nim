@@ -1169,6 +1169,8 @@ proc fixupTypeOf(c: PContext, prev: PType, typExpr: PNode) =
 
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   result = nil
+  when defined(nimsuggest):
+    inc c.inTypeContext
 
   if gCmd == cmdIdeTools: suggestExpr(c, n)
   case n.kind
@@ -1374,6 +1376,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     localError(n.info, errTypeExpected)
     result = newOrPrevType(tyError, prev, c)
   n.typ = result
+  when defined(nimsuggest):
+    dec c.inTypeContext
 
 proc setMagicType(m: PSym, kind: TTypeKind, size: int) =
   m.typ.kind = kind

@@ -382,8 +382,7 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
   ##  expect IOError, OSError, ValueError, AssertionError:
   ##    defectiveRobot()
   let exp = callsite()
-  template expectBody(errorTypes, lineInfoLit: expr,
-                      body: stmt): NimNode {.dirty.} =
+  template expectBody(errorTypes, lineInfoLit, body): NimNode {.dirty.} =
     try:
       body
       checkpoint(lineInfoLit & ": Expect Failed, no exception was thrown.")
