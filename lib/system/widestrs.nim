@@ -38,10 +38,11 @@ const
   UNI_SUR_HIGH_END = 0xDBFF
   UNI_SUR_LOW_START = 0xDC00
   UNI_SUR_LOW_END = 0xDFFF
+  UNI_REPL = 0xFFFD
 
-template ones(n: expr): expr = ((1 shl n)-1)
+template ones(n: untyped): untyped = ((1 shl n)-1)
 
-template fastRuneAt(s: cstring, i: int, result: expr, doInc = true) =
+template fastRuneAt(s: cstring, i, L: int, result: untyped, doInc = true) =
   ## Returns the unicode character ``s[i]`` in `result`. If ``doInc == true``
   ## `i` is incremented by the number of bytes that have been processed.
   bind ones
@@ -51,24 +52,36 @@ template fastRuneAt(s: cstring, i: int, result: expr, doInc = true) =
     when doInc: inc(i)
   elif ord(s[i]) shr 5 == 0b110:
     #assert(ord(s[i+1]) shr 6 == 0b10)
-    result = (ord(s[i]) and (ones(5))) shl 6 or (ord(s[i+1]) and ones(6))
-    when doInc: inc(i, 2)
+    if i <= L - 2:
+      result = (ord(s[i]) and (ones(5))) shl 6 or (ord(s[i+1]) and ones(6))
+      when doInc: inc(i, 2)
+    else:
+      result = UNI_REPL
+      when doInc: inc(i)
   elif ord(s[i]) shr 4 == 0b1110:
-    #assert(ord(s[i+1]) shr 6 == 0b10)
-    #assert(ord(s[i+2]) shr 6 == 0b10)
-    result = (ord(s[i]) and ones(4)) shl 12 or
-             (ord(s[i+1]) and ones(6)) shl 6 or
-             (ord(s[i+2]) and ones(6))
-    when doInc: inc(i, 3)
+    if i <= L - 3:
+      #assert(ord(s[i+1]) shr 6 == 0b10)
+      #assert(ord(s[i+2]) shr 6 == 0b10)
+      result = (ord(s[i]) and ones(4)) shl 12 or
+               (ord(s[i+1]) and ones(6)) shl 6 or
+               (ord(s[i+2]) and ones(6))
+      when doInc: inc(i, 3)
+    else:
+      result = UNI_REPL
+      when doInc: inc(i)
   elif ord(s[i]) shr 3 == 0b11110:
-    #assert(ord(s[i+1]) shr 6 == 0b10)
-    #assert(ord(s[i+2]) shr 6 == 0b10)
-    #assert(ord(s[i+3]) shr 6 == 0b10)
-    result = (ord(s[i]) and ones(3)) shl 18 or
-             (ord(s[i+1]) and ones(6)) shl 12 or
-             (ord(s[i+2]) and ones(6)) shl 6 or
-             (ord(s[i+3]) and ones(6))
-    when doInc: inc(i, 4)
+    if i <= L - 4:
+      #assert(ord(s[i+1]) shr 6 == 0b10)
+      #assert(ord(s[i+2]) shr 6 == 0b10)
+      #assert(ord(s[i+3]) shr 6 == 0b10)
+      result = (ord(s[i]) and ones(3)) shl 18 or
+               (ord(s[i+1]) and ones(6)) shl 12 or
+               (ord(s[i+2]) and ones(6)) shl 6 or
+               (ord(s[i+3]) and ones(6))
+      when doInc: inc(i, 4)
+    else:
+      result = UNI_REPL
+      when doInc: inc(i)
   else:
     result = 0xFFFD
     when doInc: inc(i)
@@ -78,7 +91,7 @@ iterator runes(s: cstring, L: int): int =
     i = 0
     result: int
   while i < L:
-    fastRuneAt(s, i, result, true)
+    fastRuneAt(s, i, L, result, true)
     yield result
 
 proc newWideCString*(source: cstring, L: int): WideCString =

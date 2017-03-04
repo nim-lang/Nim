@@ -13,7 +13,7 @@ import strutils, os, parseopt
 import compiler/[options, commands, modules, sem,
   passes, passaux, nimfix/pretty,
   msgs, nimconf,
-  extccomp, condsyms, lists,
+  extccomp, condsyms,
   modulegraphs, idents]
 
 const Usage = """
@@ -39,10 +39,10 @@ proc mainCommand =
   registerPass verbosePass
   registerPass semPass
   gCmd = cmdPretty
-  appendStr(searchPaths, options.libpath)
+  searchPaths.add options.libpath
   if gProjectFull.len != 0:
     # current path is always looked first for modules
-    prependStr(searchPaths, gProjectPath)
+    searchPaths.insert(gProjectPath, 0)
 
   compileProject(newModuleGraph(), newIdentCache())
   pretty.overwriteFiles()

@@ -11,7 +11,7 @@
 # and evaluation phase
 
 import
-  strutils, lists, options, ast, astalgo, trees, treetab, nimsets, times,
+  strutils, options, ast, astalgo, trees, treetab, nimsets, times,
   nversion, platform, math, msgs, os, condsyms, idents, renderer, types,
   commands, magicsys, saturate
 
@@ -216,24 +216,24 @@ proc getIntervalType*(m: TMagic, n: PNode): PType =
     if b.kind in ordIntLit:
       let x = b.intVal|+|1
       if (x and -x) == x and x >= 0:
-        result = makeRange(a.typ, 0, b.intVal)
+        result = makeRange(n.typ, 0, b.intVal)
   of mModU:
     let a = n.sons[1]
     let b = n.sons[2]
     if b.kind in ordIntLit:
       if b.intVal >= 0:
-        result = makeRange(a.typ, 0, b.intVal-1)
+        result = makeRange(n.typ, 0, b.intVal-1)
       else:
-        result = makeRange(a.typ, b.intVal+1, 0)
+        result = makeRange(n.typ, b.intVal+1, 0)
   of mModI:
     # so ... if you ever wondered about modulo's signedness; this defines it:
     let a = n.sons[1]
     let b = n.sons[2]
     if b.kind in {nkIntLit..nkUInt64Lit}:
       if b.intVal >= 0:
-        result = makeRange(a.typ, -(b.intVal-1), b.intVal-1)
+        result = makeRange(n.typ, -(b.intVal-1), b.intVal-1)
       else:
-        result = makeRange(a.typ, b.intVal+1, -(b.intVal+1))
+        result = makeRange(n.typ, b.intVal+1, -(b.intVal+1))
   of mDivI, mDivU:
     binaryOp(`|div|`)
   of mMinI:
@@ -628,7 +628,10 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
     of {skProc, skMethod}:
       result = n
     of skType:
-      result = newSymNodeTypeDesc(s, n.info)
+      # XXX gensym'ed symbols can come here and cannot be resolved. This is
+      # dirty, but correct.
+      if s.typ != nil:
+        result = newSymNodeTypeDesc(s, n.info)
     of skGenericParam:
       if s.typ.kind == tyStatic:
         if s.typ.n != nil:
@@ -656,7 +659,7 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
           localError(a.info, errCannotEvalXBecauseIncompletelyDefined,
                      "sizeof")
           result = nil
-        elif skipTypes(a.typ, typedescInst).kind in
+        elif skipTypes(a.typ, typedescInst+{tyRange}).kind in
              IntegralTypes+NilableTypes+{tySet}:
           #{tyArray,tyObject,tyTuple}:
           result = newIntNodeT(getSize(a.typ), n)

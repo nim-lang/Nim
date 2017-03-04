@@ -5,8 +5,8 @@ import macros
 
 # Test that parameters are properly gensym'ed finally:
 
-template genNodeKind(kind, name: expr): stmt =
-  proc name*(children: varargs[PNimrodNode]): PNimrodNode {.compiletime.}=
+template genNodeKind(kind, name: untyped) =
+  proc name*(children: varargs[NimNode]): NimNode {.compiletime.}=
     result = newNimNode(kind)
     for c in children:
       result.add(c)
@@ -22,7 +22,7 @@ type Something = object
 
 proc testA(x: Something) = discard
 
-template def(name: expr) {.immediate.} =
+template def(name: untyped) =
   proc testB[T](reallyUniqueName: T) =
     `test name`(reallyUniqueName)
 def A
@@ -35,8 +35,7 @@ testB(x)
 # Test that templates in generics still work (regression to fix the
 # regression...)
 
-template forStatic(index: expr, slice: Slice[int], predicate: stmt):
-                   stmt {.immediate.} =
+template forStatic(index, slice, predicate: untyped) =
   const a = slice.a
   const b = slice.b
   when a <= b:

@@ -6,7 +6,7 @@ discard """
 
 var i {.compileTime.} = 2
 
-template defineId*(t: typedesc): stmt =
+template defineId*(t: typedesc) =
   const id {.genSym.} = i
   static: inc(i)
   proc idFor*(T: typedesc[t]): int {.inline, raises: [].} = id

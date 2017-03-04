@@ -14,8 +14,11 @@ var
   producer, consumer: Thread[void]
   chan: Channel[TMsg]
   printedLines = 0
+  prodId: int
+  consId: int
 
 proc consume() {.thread.} =
+  consId = getThreadId()
   while true:
     var x = recv(chan)
     if x.k == mEof: break
@@ -23,6 +26,7 @@ proc consume() {.thread.} =
     atomicInc(printedLines)
 
 proc produce() {.thread.} =
+  prodId = getThreadId()
   var m: TMsg
   var input = open("readme.txt")
   var line = ""
@@ -40,5 +44,6 @@ joinThread(consumer)
 joinThread(producer)
 
 close(chan)
+doAssert prodId != consId
 echo printedLines
 

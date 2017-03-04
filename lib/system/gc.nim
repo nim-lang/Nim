@@ -12,9 +12,6 @@
 # Refcounting + Mark&Sweep. Complex algorithms avoided.
 # Been there, done that, didn't work.
 
-when defined(nimCoroutines):
-  import arch
-
 {.push profiler:off.}
 
 const
@@ -66,17 +63,24 @@ type
     cycleTableSize: int      # max entries in cycle table
     maxPause: int64          # max measured GC pause in nanoseconds
 
-  GcStack {.final.} = object
-    prev: ptr GcStack
-    next: ptr GcStack
-    starts: pointer
-    pos: pointer
-    maxStackSize: int
+  GcStack {.final, pure.} = object
+    when nimCoroutines:
+      prev: ptr GcStack
+      next: ptr GcStack
+      maxStackSize: int      # Used to track statistics because we can not use
+                             # GcStat.maxStackSize when multiple stacks exist.
+    bottom: pointer
+
+    when withRealTime or nimCoroutines:
+      pos: pointer           # Used with `withRealTime` only for code clarity, see GC_Step().
+    when withRealTime:
+      bottomSaved: pointer
 
   GcHeap {.final, pure.} = object # this contains the zero count and
-                                   # non-zero count table
-    stack: ptr GcStack
-    stackBottom: pointer
+                                  # non-zero count table
+    stack: GcStack
+    when nimCoroutines:
+      activeStack: ptr GcStack    # current executing coroutine stack.
     cycleThreshold: int
     when useCellIds:
       idGenerator: int
@@ -144,7 +148,7 @@ proc internRefcount(p: pointer): int {.exportc: "getRefcount".} =
 when BitsPerPage mod (sizeof(int)*8) != 0:
   {.error: "(BitsPerPage mod BitsPerUnit) should be zero!".}
 
-template color(c): expr = c.refCount and colorMask
+template color(c): untyped = c.refCount and colorMask
 template setColor(c, col) =
   when col == rcBlack:
     c.refcount = c.refcount and not colorMask
@@ -167,7 +171,7 @@ proc writeCell(msg: cstring, c: PCell) =
     c_fprintf(stdout, "[GC] %s: %p %d %s rc=%ld; color=%ld\n",
               msg, c, kind, typName, c.refcount shr rcShift, c.color)
 
-template gcTrace(cell, state: expr): stmt {.immediate.} =
+template gcTrace(cell, state: untyped) =
   when traceGC: traceCell(cell, state)
 
 # forward declarations:
@@ -179,13 +183,13 @@ proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) {.benign.}
 # we need the prototype here for debugging purposes
 
 when hasThreadSupport and hasSharedHeap:
-  template `--`(x: expr): expr = atomicDec(x, rcIncrement) <% rcIncrement
-  template `++`(x: expr): stmt = discard atomicInc(x, rcIncrement)
+  template `--`(x: untyped): untyped = atomicDec(x, rcIncrement) <% rcIncrement
+  template `++`(x: untyped) = discard atomicInc(x, rcIncrement)
 else:
-  template `--`(x: expr): expr =
+  template `--`(x: untyped): untyped =
     dec(x, rcIncrement)
     x <% rcIncrement
-  template `++`(x: expr): stmt = inc(x, rcIncrement)
+  template `++`(x: untyped) = inc(x, rcIncrement)
 
 proc incRef(c: PCell) {.inline.} =
   gcAssert(isAllocatedPtr(gch.region, c), "incRef: interiorPtr")
@@ -419,7 +423,7 @@ proc addNewObjToZCT(res: PCell, gch: var GcHeap) {.inline.} =
   var d = gch.zct.d
   when true:
     # loop unrolled for performance:
-    template replaceZctEntry(i: expr) =
+    template replaceZctEntry(i: untyped) =
       c = d[i]
       if c.refcount >=% rcIncrement:
         c.refcount = c.refcount and not ZctFlag
@@ -472,7 +476,7 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   gcAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
   collectCT(gch)
   var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell)))
-  gcAssert typ.kind in {tyString, tySequence} or size >= typ.base.size, "size too small"
+  #gcAssert typ.kind in {tyString, tySequence} or size >= typ.base.size, "size too small"
   gcAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
   res.typ = typ
@@ -823,7 +827,10 @@ proc collectCTBody(gch: var GcHeap) =
     let t0 = getticks()
   sysAssert(allocInv(gch.region), "collectCT: begin")
 
-  when not defined(nimCoroutines):
+  when nimCoroutines:
+    for stack in gch.stack.items():
+      gch.stat.maxStackSize = max(gch.stat.maxStackSize, stack.stackSize())
+  else:
     gch.stat.maxStackSize = max(gch.stat.maxStackSize, stackSize())
   sysAssert(gch.decStack.len == 0, "collectCT")
   prepareForInteriorPointerChecking(gch.region)
@@ -849,19 +856,11 @@ proc collectCTBody(gch: var GcHeap) =
       if gch.maxPause > 0 and duration > gch.maxPause:
         c_fprintf(stdout, "[GC] missed deadline: %ld\n", duration)
 
-when defined(nimCoroutines):
-  proc currentStackSizes(): int =
-    for stack in items(gch.stack):
-      result = result + stackSize(stack.starts, stack.pos)
-
 proc collectCT(gch: var GcHeap) =
   # stackMarkCosts prevents some pathological behaviour: Stack marking
   # becomes more expensive with large stacks and large stacks mean that
   # cells with RC=0 are more likely to be kept alive by the stack.
-  when defined(nimCoroutines):
-    let stackMarkCosts = max(currentStackSizes() div (16*sizeof(int)), ZctThreshold)
-  else:
-    let stackMarkCosts = max(stackSize() div (16*sizeof(int)), ZctThreshold)
+  let stackMarkCosts = max(stackSize() div (16*sizeof(int)), ZctThreshold)
   if (gch.zct.len >= stackMarkCosts or (cycleGC and
       getOccupiedMem(gch.region)>=gch.cycleThreshold) or alwaysGC) and
       gch.recGcLock == 0:
@@ -888,18 +887,24 @@ when withRealTime:
     release(gch)
 
   proc GC_step*(us: int, strongAdvice = false, stackSize = -1) {.noinline.} =
-    var stackTop {.volatile.}: pointer
-    let prevStackBottom = gch.stackBottom
     if stackSize >= 0:
-      stackTop = addr(stackTop)
-      when stackIncreases:
-        gch.stackBottom = cast[pointer](
-          cast[ByteAddress](stackTop) - sizeof(pointer) * 6 - stackSize)
-      else:
-        gch.stackBottom = cast[pointer](
-          cast[ByteAddress](stackTop) + sizeof(pointer) * 6 + stackSize)
+      var stackTop {.volatile.}: pointer
+      gch.getActiveStack().pos = addr(stackTop)
+
+      for stack in gch.stack.items():
+        stack.bottomSaved = stack.bottom
+        when stackIncreases:
+          stack.bottom = cast[pointer](
+            cast[ByteAddress](stack.pos) - sizeof(pointer) * 6 - stackSize)
+        else:
+          stack.bottom = cast[pointer](
+            cast[ByteAddress](stack.pos) + sizeof(pointer) * 6 + stackSize)
+
     GC_step(gch, us, strongAdvice)
-    gch.stackBottom = prevStackBottom
+
+    if stackSize >= 0:
+      for stack in gch.stack.items():
+        stack.bottom = stack.bottomSaved
 
 when not defined(useNimRtl):
   proc GC_disable() =
@@ -943,10 +948,10 @@ when not defined(useNimRtl):
              "[GC] zct capacity: " & $gch.zct.cap & "\n" &
              "[GC] max cycle table size: " & $gch.stat.cycleTableSize & "\n" &
              "[GC] max pause time [ms]: " & $(gch.stat.maxPause div 1000_000) & "\n"
-    when defined(nimCoroutines):
+    when nimCoroutines:
       result = result & "[GC] number of stacks: " & $gch.stack.len & "\n"
       for stack in items(gch.stack):
-        result = result & "[GC]   stack " & stack.starts.repr & "[GC]     max stack size " & $stack.maxStackSize & "\n"
+        result = result & "[GC]   stack " & stack.bottom.repr & "[GC]     max stack size " & cast[pointer](stack.maxStackSize).repr & "\n"
     else:
       result = result & "[GC] max stack size: " & $gch.stat.maxStackSize & "\n"
     GC_enable()

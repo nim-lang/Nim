@@ -110,8 +110,10 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
 
   runBasicDLLTest c, r, cat, options
   runBasicDLLTest c, r, cat, options & " -d:release"
-  runBasicDLLTest c, r, cat, options & " --gc:boehm"
-  runBasicDLLTest c, r, cat, options & " -d:release --gc:boehm"
+  when not defined(windows):
+    # still cannot find a recent Windows version of boehm.dll:
+    runBasicDLLTest c, r, cat, options & " --gc:boehm"
+    runBasicDLLTest c, r, cat, options & " -d:release --gc:boehm"
 
 # ------------------------------ GC tests -------------------------------------
 
@@ -145,6 +147,7 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
       testSpec r, makeTest("tests/gc" / filename, options &
                     " -d:release --gc:boehm", cat, actionRun)
 
+  testWithoutBoehm "foreign_thr"
   test "gcemscripten"
   test "growobjcrash"
   test "gcbench"
@@ -201,6 +204,7 @@ proc threadTests(r: var TResults, cat: Category, options: string) =
   #test "tthreadanalysis3"
   test "tthreadheapviolation1"
   test "tonthreadcreation"
+  test "tracy_allocator"
 
 # ------------------------- IO tests ------------------------------------------
 
@@ -270,6 +274,8 @@ proc findMainFile(dir: string): string =
 proc manyLoc(r: var TResults, cat: Category, options: string) =
   for kind, dir in os.walkDir("tests/manyloc"):
     if kind == pcDir:
+      when defined(windows):
+        if dir.endsWith"nake": continue
       let mainfile = findMainFile(dir)
       if mainfile != "":
         testNoSpec r, makeTest(mainfile, options, cat)
@@ -279,9 +285,9 @@ proc compileExample(r: var TResults, pattern, options: string, cat: Category) =
     testNoSpec r, makeTest(test, options, cat)
 
 proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
-  var disabledSet = disabledFiles.toSet()
   for test in os.walkFiles(pattern):
-    if test notin disabledSet:
+    let name = extractFilename(test)
+    if name notin disabledFiles:
       let contents = readFile(test).string
       if contents.contains("when isMainModule"):
         testSpec r, makeTest(test, options, cat, actionRunNoSpec)

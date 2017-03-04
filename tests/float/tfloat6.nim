@@ -7,6 +7,7 @@ discard """
 1e-06 : 1e-06
 10.000001 : 10.000001
 100.000001 : 100.000001'''
+  disabled: "windows"
 """
 
 import strutils

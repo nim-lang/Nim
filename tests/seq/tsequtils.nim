@@ -7,7 +7,8 @@ Filter Iterator: 7
 Filter: [3, 5, 7]
 FilterIt: [1, 3, 7]
 Concat: [1, 3, 5, 7, 2, 4, 6]
-Deduplicate: [1, 2, 3, 4, 5, 7]'''
+Deduplicate: [1, 2, 3, 4, 5, 7]
+@[()]'''
 
 """
 
@@ -52,4 +53,12 @@ echo "Concat: ", $$(concatseq)
 var seq3 = @[1,2,3,4,5,5,5,7]
 var dedupseq = deduplicate(seq3)
 echo "Deduplicate: ", $$(dedupseq)
+# bug #4973
+type
+  SomeObj = object
+  OtherObj = object
+    field: SomeObj
 
+let aSeq = @[OtherObj(field: SomeObj())]
+let someObjSeq = aSeq.mapIt(it.field)
+echo someObjSeq

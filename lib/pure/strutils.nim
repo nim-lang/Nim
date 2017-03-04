@@ -767,20 +767,16 @@ proc splitLines*(s: string): seq[string] {.noSideEffect,
 
 proc countLines*(s: string): int {.noSideEffect,
   rtl, extern: "nsuCountLines".} =
-  ## Returns the number of new line separators in the string `s`.
+  ## Returns the number of lines in the string `s`.
   ##
   ## This is the same as ``len(splitLines(s))``, but much more efficient
   ## because it doesn't modify the string creating temporal objects. Every
   ## `character literal <manual.html#character-literals>`_ newline combination
   ## (CR, LF, CR-LF) is supported.
   ##
-  ## Despite its name this proc might not actually return the *number of lines*
-  ## in `s` because the concept of what a line is can vary. For example, a
-  ## string like ``Hello world`` is a line of text, but the proc will return a
-  ## value of zero because there are no newline separators.  Also, text editors
-  ## usually don't count trailing newline characters in a text file as a new
-  ## empty line, but this proc will.
-  var i = 0
+  ## In this context, a line is any string seperated by a newline combination.
+  ## A line can be an empty string.
+  var i = 1
   while i < s.len:
     case s[i]
     of '\c':
@@ -898,7 +894,7 @@ proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
 
 proc toHex*[T](x: T): string =
   ## Shortcut for ``toHex(x, T.sizeOf * 2)``
-  toHex(x, T.sizeOf * 2)
+  toHex(BiggestInt(x), T.sizeOf * 2)
 
 proc intToStr*(x: int, minchars: Positive = 1): string {.noSideEffect,
   rtl, extern: "nsuIntToStr".} =
@@ -939,7 +935,7 @@ proc parseUInt*(s: string): uint {.noSideEffect, procvar,
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid unsigned integer: " & s)
 
-proc parseBiggestUInt*(s: string): uint64 {.noSideEffect, procvar,
+proc parseBiggestUInt*(s: string): BiggestUInt {.noSideEffect, procvar,
   rtl, extern: "nsuParseBiggestUInt".} =
   ## Parses a decimal unsigned integer value contained in `s`.
   ##
@@ -1652,6 +1648,7 @@ proc escape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
   ## The procedure has been designed so that its output is usable for many
   ## different common syntaxes. The resulting string is prefixed with
   ## `prefix` and suffixed with `suffix`. Both may be empty strings.
+  ## **Note**: This is not correct for producing Ansi C code!
   result = newStringOfCap(s.len + s.len shr 2)
   result.add(prefix)
   for c in items(s):

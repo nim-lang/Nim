@@ -327,7 +327,7 @@ proc inferWithMetatype(c: PContext, formal: PType,
     result.typ = generateTypeInstance(c, m.bindings, arg.info,
                                       formal.skipTypes({tyCompositeTypeClass}))
   else:
-    typeMismatch(arg, formal, arg.typ)
+    typeMismatch(arg.info, formal, arg.typ)
     # error correction:
     result = copyTree(arg)
     result.typ = formal
@@ -335,7 +335,7 @@ proc inferWithMetatype(c: PContext, formal: PType,
 proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
   assert x.state == csMatch
   var finalCallee = x.calleeSym
-  markUsed(n.sons[0].info, finalCallee)
+  markUsed(n.sons[0].info, finalCallee, c.graph.usageSym)
   styleCheckUse(n.sons[0].info, finalCallee)
   assert finalCallee.ast != nil
   if x.hasFauxMatch:
@@ -411,7 +411,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
     let tm = typeRel(m, formal, arg, true)
     if tm in {isNone, isConvertible}: return nil
   var newInst = generateInstance(c, s, m.bindings, n.info)
-  markUsed(n.info, s)
+  markUsed(n.info, s, c.graph.usageSym)
   styleCheckUse(n.info, s)
   result = newSymNode(newInst, n.info)
 

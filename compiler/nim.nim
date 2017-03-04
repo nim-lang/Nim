@@ -37,7 +37,7 @@ proc prependCurDir(f: string): string =
   else:
     result = f
 
-proc handleCmdLine(cache: IdentCache) =
+proc handleCmdLine(cache: IdentCache; config: ConfigRef) =
   if paramCount() == 0:
     writeCommandLineUsage()
   else:
@@ -59,22 +59,22 @@ proc handleCmdLine(cache: IdentCache) =
       gProjectName = p.name
     else:
       gProjectPath = canonicalizePath getCurrentDir()
-    loadConfigs(DefaultConfig) # load all config files
+    loadConfigs(DefaultConfig, config) # load all config files
     let scriptFile = gProjectFull.changeFileExt("nims")
     if fileExists(scriptFile):
-      runNimScript(cache, scriptFile, freshDefines=false)
+      runNimScript(cache, scriptFile, freshDefines=false, config)
       # 'nim foo.nims' means to just run the NimScript file and do nothing more:
       if scriptFile == gProjectFull: return
     elif fileExists(gProjectPath / "config.nims"):
       # directory wide NimScript file
-      runNimScript(cache, gProjectPath / "config.nims", freshDefines=false)
+      runNimScript(cache, gProjectPath / "config.nims", freshDefines=false, config)
     # now process command line arguments again, because some options in the
     # command line can overwite the config file's settings
     extccomp.initVars()
     processCmdLine(passCmd2, "")
     if options.command == "":
       rawMessage(errNoCommand, command)
-    mainCommand(newModuleGraph(), cache)
+    mainCommand(newModuleGraph(config), cache)
     if optHints in gOptions and hintGCStats in gNotes: echo(GC_getStatistics())
     #echo(GC_getStatistics())
     if msgs.gErrorCounter == 0:
@@ -118,5 +118,5 @@ when compileOption("gc", "v2") or compileOption("gc", "refc"):
 condsyms.initDefines()
 
 when not defined(selftest):
-  handleCmdLine(newIdentCache())
+  handleCmdLine(newIdentCache(), newConfigRef())
   msgQuit(int8(msgs.gErrorCounter > 0))

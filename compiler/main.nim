@@ -15,7 +15,7 @@ import
   wordrecg, sem, semdata, idents, passes, docgen, extccomp,
   cgen, jsgen, json, nversion,
   platform, nimconf, importer, passaux, depends, vm, vmdef, types, idgen,
-  docgen2, service, parser, modules, ccgutils, sigmatch, ropes, lists,
+  docgen2, service, parser, modules, ccgutils, sigmatch, ropes,
   modulegraphs
 
 from magicsys import systemModule, resetSysTypes
@@ -72,7 +72,7 @@ proc commandCompileToC(graph: ModuleGraph; cache: IdentCache) =
   #registerPass(cleanupPass())
 
   compileProject(graph, cache)
-  cgenWriteModules(graph.backend)
+  cgenWriteModules(graph.backend, graph.config)
   if gCmd != cmdRun:
     let proj = changeFileExt(gProjectFull, "")
     extccomp.callCCompiler(proj)
@@ -151,7 +151,7 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
   # In "nim serve" scenario, each command must reset the registered passes
   clearPasses()
   gLastCmdTime = epochTime()
-  appendStr(searchPaths, options.libpath)
+  searchPaths.add(options.libpath)
   when false: # gProjectFull.len != 0:
     # current path is always looked first for modules
     prependStr(searchPaths, gProjectPath)
@@ -229,7 +229,7 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
       for s in definedSymbolNames(): definedSymbols.elems.add(%s)
 
       var libpaths = newJArray()
-      for dir in iterSearchPath(searchPaths): libpaths.elems.add(%dir)
+      for dir in searchPaths: libpaths.elems.add(%dir)
 
       var dumpdata = % [
         (key: "version", val: %VersionAsString),
@@ -245,7 +245,7 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
       for s in definedSymbolNames(): msgWriteln(s, {msgStdout, msgSkipHook})
       msgWriteln("-- end of list --", {msgStdout, msgSkipHook})
 
-      for it in iterSearchPath(searchPaths): msgWriteln(it)
+      for it in searchPaths: msgWriteln(it)
   of "check":
     gCmd = cmdCheck
     commandCheck(graph, cache)
@@ -294,4 +294,4 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
 
   resetAttributes()
 
-proc mainCommand*() = mainCommand(newModuleGraph(), newIdentCache())
+proc mainCommand*() = mainCommand(newModuleGraph(newConfigRef()), newIdentCache())

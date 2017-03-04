@@ -72,4 +72,19 @@ block:
   var t = initTable[int, int]()
   t[0] = 0
 
+# Check hashability of all integer types (issue #5429)
+block:
+  let intTables = (
+    newTable[int, string](),
+    newTable[int8, string](),
+    newTable[int16, string](),
+    newTable[int32, string](),
+    newTable[int64, string](),
+    newTable[uint, string](),
+    newTable[uint8, string](),
+    newTable[uint16, string](),
+    newTable[uint32, string](),
+    newTable[uint64, string](),
+  )
+
 echo "true"

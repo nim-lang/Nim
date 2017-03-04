@@ -46,6 +46,8 @@
 ##
 ## **Warning:** The global list of handlers is a thread var, this means that
 ## the handlers must be re-added in each thread.
+## **Warning:** When logging on disk or console, only error and fatal messages
+## are flushed out immediately. Use flushFile() where needed.
 
 import strutils, times
 when not defined(js):
@@ -137,7 +139,7 @@ proc substituteLog*(frmt: string, level: Level, args: varargs[string, `$`]): str
     result.add(arg)
 
 method log*(logger: Logger, level: Level, args: varargs[string, `$`]) {.
-            raises: [Exception],
+            raises: [Exception], gcsafe,
             tags: [TimeEffect, WriteIOEffect, ReadIOEffect], base.} =
   ## Override this method in custom loggers. Default implementation does
   ## nothing.

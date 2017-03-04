@@ -10,9 +10,6 @@
 # A simple mark&sweep garbage collector for Nim. Define the
 # symbol ``gcUseBitvectors`` to generate a variant of this GC.
 
-when defined(nimCoroutines):
-  import arch
-
 {.push profiler:off.}
 
 const
@@ -24,7 +21,7 @@ const
   rcGrey = 1   # unused
   rcBlack = 2
 
-template mulThreshold(x): expr {.immediate.} = x * 2
+template mulThreshold(x): untyped = x * 2
 
 when defined(memProfiler):
   proc nimProfile(requestedSize: int)
@@ -51,17 +48,22 @@ type
     maxStackSize: int        # max stack size
     freedObjects: int        # max entries in cycle table
 
-  GcStack {.final.} = object
-    prev: ptr GcStack
-    next: ptr GcStack
-    starts: pointer
-    pos: pointer
-    maxStackSize: int
+  GcStack {.final, pure.} = object
+    when nimCoroutines:
+      prev: ptr GcStack
+      next: ptr GcStack
+      maxStackSize: int      # Used to track statistics because we can not use
+                             # GcStat.maxStackSize when multiple stacks exist.
+    bottom: pointer
+
+    when nimCoroutines:
+      pos: pointer
 
   GcHeap = object            # this contains the zero count and
                              # non-zero count table
-    stack: ptr GcStack
-    stackBottom: pointer
+    stack: GcStack
+    when nimCoroutines:
+      activeStack: ptr GcStack    # current executing coroutine stack.
     cycleThreshold: int
     when useCellIds:
       idGenerator: int
@@ -423,7 +425,7 @@ proc markStackAndRegisters(gch: var GcHeap) {.noinline, cdecl.} =
   forEachStackSlot(gch, gcMark)
 
 proc collectCTBody(gch: var GcHeap) =
-  when not defined(nimCoroutines):
+  when not nimCoroutines:
     gch.stat.maxStackSize = max(gch.stat.maxStackSize, stackSize())
   prepareForInteriorPointerChecking(gch.region)
   markStackAndRegisters(gch)
@@ -479,10 +481,10 @@ when not defined(useNimRtl):
              "[GC] collections: " & $gch.stat.collections & "\n" &
              "[GC] max threshold: " & $gch.stat.maxThreshold & "\n" &
              "[GC] freed objects: " & $gch.stat.freedObjects & "\n"
-    when defined(nimCoroutines):
+    when nimCoroutines:
       result = result & "[GC] number of stacks: " & $gch.stack.len & "\n"
       for stack in items(gch.stack):
-        result = result & "[GC]   stack " & stack.starts.repr & "[GC]     max stack size " & $stack.maxStackSize & "\n"
+        result = result & "[GC]   stack " & stack.bottom.repr & "[GC]     max stack size " & $stack.maxStackSize & "\n"
     else:
       result = result & "[GC] max stack size: " & $gch.stat.maxStackSize & "\n"
     GC_enable()

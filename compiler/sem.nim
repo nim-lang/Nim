@@ -10,7 +10,7 @@
 # This module implements the semantic checking pass.
 
 import
-  ast, strutils, hashes, lists, options, lexer, astalgo, trees, treetab,
+  ast, strutils, hashes, options, lexer, astalgo, trees, treetab,
   wordrecg, ropes, msgs, os, condsyms, idents, renderer, types, platform, math,
   magicsys, parser, nversion, nimsets, semfold, importer,
   procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
@@ -32,7 +32,7 @@ proc semExprNoType(c: PContext, n: PNode): PNode
 proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc semProcBody(c: PContext, n: PNode): PNode
 
-proc fitNode(c: PContext, formal: PType, arg: PNode): PNode
+proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode
 proc changeType(n: PNode, newType: PType, check: bool)
 
 proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode
@@ -69,7 +69,7 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
       #  echo "passing to safeSemExpr: ", renderTree(n)
       discard safeSemExpr(c, n)
 
-proc fitNode(c: PContext, formal: PType, arg: PNode): PNode =
+proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
   if arg.typ.isNil:
     localError(arg.info, errExprXHasNoType,
                renderTree(arg, {renderNoComments}))
@@ -79,7 +79,7 @@ proc fitNode(c: PContext, formal: PType, arg: PNode): PNode =
   else:
     result = indexTypesMatch(c, formal, arg.typ, arg)
     if result == nil:
-      typeMismatch(arg, formal, arg.typ)
+      typeMismatch(info, formal, arg.typ)
       # error correction:
       result = copyTree(arg)
       result.typ = formal
@@ -166,7 +166,7 @@ proc commonType*(x, y: PType): PType =
         result.addSonSkipIntLit(r)
 
 proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym =
-  result = newSym(kind, considerQuotedIdent(n), getCurrOwner(), n.info)
+  result = newSym(kind, considerQuotedIdent(n), getCurrOwner(c), n.info)
 
 proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
   proc `$`(kind: TSymKind): string = substr(system.`$`(kind), 2).toLowerAscii
@@ -178,12 +178,17 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     if result.kind != kind:
       localError(n.info, "cannot use symbol of kind '" &
                  $result.kind & "' as a '" & $kind & "'")
+    if sfGenSym in result.flags and result.kind notin {skTemplate, skMacro, skParam}:
+      # declarative context, so produce a fresh gensym:
+      result = copySym(result)
+      result.ast = n.sym.ast
+      put(c.p, n.sym, result)
     # when there is a nested proc inside a template, semtmpl
     # will assign a wrong owner during the first pass over the
     # template; we must fix it here: see #909
-    result.owner = getCurrOwner()
+    result.owner = getCurrOwner(c)
   else:
-    result = newSym(kind, considerQuotedIdent(n), getCurrOwner(), n.info)
+    result = newSym(kind, considerQuotedIdent(n), getCurrOwner(c), n.info)
   #if kind in {skForVar, skLet, skVar} and result.owner.kind == skModule:
   #  incl(result.flags, sfGlobal)
 
@@ -237,6 +242,14 @@ when false:
     result.handleIsOperator = proc (n: PNode): PNode =
       result = isOpImpl(c, n)
 
+proc hasCycle(n: PNode): bool =
+  incl n.flags, nfNone
+  for i in 0..<safeLen(n):
+    if nfNone in n[i].flags or hasCycle(n[i]):
+      result = true
+      break
+  excl n.flags, nfNone
+
 proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
   # recompute the types as 'eval' isn't guaranteed to construct types nor
   # that the types are sound:
@@ -246,7 +259,11 @@ proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
     else:
       result = evaluated
       let expectedType = eOrig.typ.skipTypes({tyStatic})
-      semmacrosanity.annotateType(result, expectedType)
+      if hasCycle(result):
+        globalError(eOrig.info, "the resulting AST is cyclic and cannot be processed further")
+        result = errorNode(c, eOrig)
+      else:
+        semmacrosanity.annotateType(result, expectedType)
   else:
     result = semExprWithType(c, evaluated)
     #result = fitNode(c, e.typ, result) inlined with special case:
@@ -350,7 +367,7 @@ proc semAfterMacroCall(c: PContext, n: PNode, s: PSym,
       #result = symNodeFromType(c, typ, n.info)
     else:
       result = semExpr(c, result, flags)
-      result = fitNode(c, s.typ.sons[0], result)
+      result = fitNode(c, s.typ.sons[0], result, result.info)
       #GlobalError(s.info, errInvalidParamKindX, typeToString(s.typ.sons[0]))
   dec(evalTemplateCounter)
   discard c.friendModules.pop()
@@ -359,7 +376,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   flags: TExprFlags = {}): PNode =
   pushInfoContext(nOrig.info)
 
-  markUsed(n.info, sym)
+  markUsed(n.info, sym, c.graph.usageSym)
   styleCheckUse(n.info, sym)
   if sym == c.p.owner:
     globalError(n.info, errRecursiveDependencyX, sym.name.s)
@@ -373,12 +390,12 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   popInfoContext()
 
 proc forceBool(c: PContext, n: PNode): PNode =
-  result = fitNode(c, getSysType(tyBool), n)
+  result = fitNode(c, getSysType(tyBool), n, n.info)
   if result == nil: result = n
 
 proc semConstBoolExpr(c: PContext, n: PNode): PNode =
   let nn = semExprWithType(c, n)
-  result = fitNode(c, getSysType(tyBool), nn)
+  result = fitNode(c, getSysType(tyBool), nn, nn.info)
   if result == nil:
     localError(n.info, errConstExprExpected)
     return nn
@@ -417,7 +434,7 @@ proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
   c.instTypeBoundOp = sigmatch.instTypeBoundOp
 
   pushProcCon(c, module)
-  pushOwner(c.module)
+  pushOwner(c, c.module)
   c.importTable = openScope(c)
   c.importTable.addSym(module) # a module knows itself
   if sfSystemModule in module.flags:
@@ -433,7 +450,7 @@ proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
 
 proc myOpenCached(graph: ModuleGraph; module: PSym; rd: PRodReader): PPassContext =
   result = myOpen(graph, module, rd.cache)
-  for m in items(rd.methods): methodDef(m, true)
+  for m in items(rd.methods): methodDef(graph, m, true)
 
 proc isImportSystemStmt(n: PNode): bool =
   if magicsys.systemModule == nil: return false
@@ -485,7 +502,7 @@ proc recoverContext(c: PContext) =
   # faster than wrapping every stack operation in a 'try finally' block and
   # requires far less code.
   c.currentScope = c.topLevelScope
-  while getCurrOwner().kind != skModule: popOwner()
+  while getCurrOwner(c).kind != skModule: popOwner(c)
   while c.p != nil and c.p.owner.kind != skModule: c.p = c.p.next
 
 proc myProcess(context: PPassContext, n: PNode): PNode =
@@ -502,12 +519,17 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
       recoverContext(c)
       c.inGenericInst = oldInGenericInst
       msgs.setInfoContextLen(oldContextLen)
-      if getCurrentException() of ESuggestDone: result = nil
-      else: result = ast.emptyNode
+      if getCurrentException() of ESuggestDone:
+        c.suggestionsMade = true
+        result = nil
+      else:
+        result = ast.emptyNode
       #if gCmd == cmdIdeTools: findSuggest(c, n)
 
-proc myClose(context: PPassContext, n: PNode): PNode =
+proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   var c = PContext(context)
+  if gCmd == cmdIdeTools and not c.suggestionsMade:
+    suggestSentinel(c)
   closeScope(c)         # close module's scope
   rawCloseScope(c)      # imported symbols; don't check for unused ones!
   result = newNode(nkStmtList)
@@ -516,7 +538,7 @@ proc myClose(context: PPassContext, n: PNode): PNode =
   addCodeForGenerics(c, result)
   if c.module.ast != nil:
     result.add(c.module.ast)
-  popOwner()
+  popOwner(c)
   popProcCon(c)
 
 const semPass* = makePass(myOpen, myOpenCached, myProcess, myClose)

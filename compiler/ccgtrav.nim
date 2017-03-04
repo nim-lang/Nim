@@ -87,7 +87,7 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, typ: PType) =
     lineCg(p, cpsStmts, c.visitorFrmt, accessor)
   of tyProc:
     if typ.callConv == ccClosure:
-      lineCg(p, cpsStmts, c.visitorFrmt, rfmt(nil, "$1.ClEnv", accessor))
+      lineCg(p, cpsStmts, c.visitorFrmt, rfmt(nil, "$1.ClE_0", accessor))
   else:
     discard
 
@@ -145,7 +145,7 @@ proc genTraverseProcForGlobal(m: BModule, s: PSym): Rope =
 
   if sfThread in s.flags and emulatedThreadVars():
     accessThreadLocalVar(p, s)
-    sLoc = "NimTV->" & sLoc
+    sLoc = "NimTV_->" & sLoc
 
   c.visitorFrmt = "#nimGCvisit((void*)$1, 0);$n"
   c.p = p

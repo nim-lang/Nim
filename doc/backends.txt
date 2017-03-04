@@ -461,3 +461,11 @@ can then attach a GC to this thread via
 It is **not** safe to disable the garbage collector and enable it after the
 call from your background thread even if the code you are calling is short
 lived.
+
+Before the thread exits, you should tear down the thread's GC to prevent memory
+leaks by calling
+
+.. code-block:: nim
+
+  system.tearDownForeignThreadGc()
+

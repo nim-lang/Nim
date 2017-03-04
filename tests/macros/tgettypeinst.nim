@@ -120,3 +120,7 @@ test(Tree):
     right: ref Tree
 test(proc (a: int, b: Foo[2,float]))
 test(proc (a: int, b: Foo[2,float]): Bar[3,int])
+
+# bug #4862
+static:
+  discard typedesc[(int, int)].getTypeImpl

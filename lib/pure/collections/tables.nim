@@ -814,11 +814,14 @@ proc len*[A](t: CountTable[A]): int =
   ## returns the number of keys in `t`.
   result = t.counter
 
-proc clear*[A](t: var CountTable[A] | CountTableRef[A]) =
+proc clear*[A](t: CountTableRef[A]) =
   ## Resets the table so that it is empty.
   clearImpl()
-  t.counter = 0
 
+proc clear*[A](t: var CountTable[A]) =
+  ## Resets the table so that it is empty.
+  clearImpl()
+  
 iterator pairs*[A](t: CountTable[A]): (A, int) =
   ## iterates over any (key, value) pair in the table `t`.
   for h in 0..high(t.data):

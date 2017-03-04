@@ -33,16 +33,16 @@ proc eqStrings(a, b: NimString): bool {.inline, compilerProc.} =
     equalMem(addr(a.data), addr(b.data), a.len)
 
 when declared(allocAtomic):
-  template allocStr(size: expr): expr =
+  template allocStr(size: untyped): untyped =
     cast[NimString](allocAtomic(size))
 
-  template allocStrNoInit(size: expr): expr =
+  template allocStrNoInit(size: untyped): untyped =
     cast[NimString](boehmAllocAtomic(size))
 else:
-  template allocStr(size: expr): expr =
+  template allocStr(size: untyped): untyped =
     cast[NimString](newObj(addr(strDesc), size))
 
-  template allocStrNoInit(size: expr): expr =
+  template allocStrNoInit(size: untyped): untyped =
     cast[NimString](newObjNoInit(addr(strDesc), size))
 
 proc rawNewStringNoInit(space: int): NimString {.compilerProc.} =

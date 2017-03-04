@@ -96,7 +96,7 @@ web command
 The `web`:idx: command converts the documentation in the ``doc`` directory
 from rst to HTML. It also repeats the same operation but places the result in
 the ``web/upload`` which can be used to update the website at
-http://nim-lang.org.
+https://nim-lang.org.
 
 By default the documentation will be built in parallel using the number of
 available CPU cores. If any documentation build sub commands fail, they will
