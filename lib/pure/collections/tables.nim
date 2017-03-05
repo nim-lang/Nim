@@ -754,7 +754,7 @@ proc newOrderedTable*[A, B](initialSize=64): OrderedTableRef[A, B] =
 proc newOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTableRef[A, B] =
   ## creates a new ordered hash table that contains the given `pairs`.
   result = newOrderedTable[A, B](rightSize(pairs.len))
-  for key, val in items(pairs): result[key] = val
+  for key, val in items(pairs): result.add(key, val)
 
 proc `$`*[A, B](t: OrderedTableRef[A, B]): string =
   ## The `$` operator for ordered hash tables.
@@ -1241,3 +1241,17 @@ when isMainModule:
   clearTable.clear()
   doAssert(not clearTable.hasKey(123123))
   doAssert clearTable.getOrDefault(42) == nil
+
+  block: #5482
+    var a = [("wrong?","foo"), ("wrong?", "foo2")].newOrderedTable()  
+    var b = newOrderedTable[string, string](initialSize=2)
+    b.add("wrong?", "foo")
+    b.add("wrong?", "foo2")
+    assert a == b    
+
+  block: #5482
+    var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()  
+    var b = newOrderedTable[string, string](initialSize=2)
+    b.add("wrong?", "foo")
+    b.add("wrong?", "foo2")
+    assert a == b    
