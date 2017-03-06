@@ -96,7 +96,7 @@ __clang__
   NIM_THREADVAR declaration based on
   http://stackoverflow.com/questions/18298280/how-to-declare-a-variable-as-thread-local-portably
 */
-#if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
 #  define NIM_THREADVAR _Thread_local
 #elif defined _WIN32 && ( \
        defined _MSC_VER || \
