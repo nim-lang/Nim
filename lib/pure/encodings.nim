@@ -277,7 +277,7 @@ else:
 
   var errno {.importc, header: "<errno.h>".}: cint
 
-  when defined(freebsd):
+  when defined(freebsd) or defined(netbsd):
     {.pragma: importIconv, cdecl, header: "<iconv.h>".}
   else:
     {.pragma: importIconv, cdecl, dynlib: iconvDll.}
