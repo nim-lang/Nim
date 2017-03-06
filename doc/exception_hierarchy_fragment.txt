@@ -15,6 +15,7 @@
   * `IndexError <system.html#IndexError>`_
   * `ObjectAssignmentError <system.html#ObjectAssignmentError>`_
   * `ObjectConversionError <system.html#ObjectConversionError>`_
+  * `UnimplementedError` <system.html#UnimplementedError>`_
   * `ValueError <system.html#ValueError>`_
     * `KeyError <system.html#KeyError>`_
   * `ReraiseError <system.html#ReraiseError>`_
