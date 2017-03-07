@@ -43,7 +43,7 @@ Next, to build from source you will need:
     ``Visual C++`` or ``Intel C++``. It is recommended to use ``gcc`` 3.x or
     later.
   * Either ``git`` or ``wget`` to download the needed source repositories.
-  * The ``build-essentials`` package when using ``gcc`` on Ubuntu (and likely
+  * The ``build-essential`` package when using ``gcc`` on Ubuntu (and likely
     other distros as well). 
 
 Then, if you are on a \*nix system or Windows, the following steps should compile
