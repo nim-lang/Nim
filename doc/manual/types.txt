@@ -143,7 +143,7 @@ affected by this rule: ``-``, ``+``, ``*``, ``min``, ``max``, ``succ``,
 ``pred``, ``mod``, ``div``, ``%%``, ``and`` (bitwise ``and``).
 
 Bitwise ``and`` only produces a ``range`` if one of its operands is a
-constant *x* so that (x+1) is a number of two.
+constant *x* so that (x+1) is a power of two.
 (Bitwise ``and`` is then a ``%%`` operation.)
 
 This means that the following code is accepted:
