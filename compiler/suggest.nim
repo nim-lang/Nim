@@ -156,8 +156,9 @@ proc `$`*(suggest: Suggest): string =
     if suggestVersion == 2:
       result.add(sep)
       result.add($suggest.quality)
-      result.add(sep)
-      result.add($suggest.prefix)
+      if suggest.section == ideSug:
+        result.add(sep)
+        result.add($suggest.prefix)
 
 proc symToSuggest(s: PSym, isLocal: bool, section: string;
                   quality: range[0..100], prefix: PrefixMatch; inTypeContext: bool): Suggest =

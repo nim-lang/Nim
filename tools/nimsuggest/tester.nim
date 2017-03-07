@@ -164,7 +164,6 @@ proc sexpToAnswer(s: SexpNode): string =
   doAssert m.kind == SList
   for a in m:
     doAssert a.kind == SList
-    var first = true
     #s.section,
     #s.symkind,
     #s.qualifiedPath.map(newSString),
@@ -300,9 +299,11 @@ proc runTest(filename: string): int =
 
 proc main() =
   var failures = 0
-  when false:
-    let x = getAppDir() / "tests/tchk1.nim"
+  if os.paramCount() > 0:
+    let f = os.paramStr(1)
+    let x = getAppDir() / f
     let xx = expandFilename x
+    failures += runTest(xx)
     failures += runEpcTest(xx)
   else:
     for x in walkFiles(getAppDir() / "tests/t*.nim"):
