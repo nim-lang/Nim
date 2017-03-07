@@ -9,7 +9,7 @@
 
 ## This module implements URI parsing as specified by RFC 3986.
 
-import strutils, parseutils, tables, cgi
+import strutils, parseutils, tables, cgi, sequtils
 
 type
   Url* = distinct string
@@ -312,35 +312,45 @@ proc `$`*(u: Uri): string =
     result.add("#")
     result.add(u.anchor)
 
-proc parseQuery*(query: string): TableRef[string, seq[string]] = 
+proc parseQuery*(query: string): OrderedTableRef[string, string] = 
   ## parses the query part of an uri.
+  var start = 0
+  var key, val = ""
+  var queryBlock = ""
   if query == "":
     return
-  result = newTable[string, seq[string]]()
-  for part in query.split("&"):
-    if "=" in part:
-      let buf = part.split("=")
-      if not result.hasKey(buf[0]):
-        result.add(buf[0], @[])
-      result[buf[0].decodeUrl].add(buf[1..^1].join("=").decodeUrl)
+  result = newOrderedTable[string, string]()
+  for i in 0..query.len:
+    if query[i] == '&' or i == query.len:
+      start = i
+      var inval = false
+      for each in queryBlock:
+        if not inval and each == '=': 
+          inval = true
+          continue
+        if inval:
+          val.add each
+        else:
+          key.add each
+      result.add(key.decodeUrl, val.decodeUrl)
+      setLen(key, 0)
+      setLen(val, 0)
+      setLen(queryBlock, 0)
     else:
-      discard result.hasKeyOrPut(part, @[])
+      queryBlock.add(query[i])
 
-proc parseQuery*(uri: Uri): TableRef[string, seq[string]] =
+proc parseQuery*(uri: Uri): OrderedTableRef[string, string] =
   return parseQuery(uri.query)
   
-proc newQuery(query: TableRef[string, seq[string]]): string =
+proc newQuery(query: OrderedTableRef[string, string]): string =
   ## generates a query string
   ## eg: "faa=faa%3Dfaa"
   result = ""
   var first = true
   for key, val in query.pairs: 
-    for combinedVal in val:
-      if first:
-        first = false
-      else:
-        result.add("&")
-      result.add(key.encodeUrl() & "=" & combinedVal.encodeUrl())
+    if first: first = false
+    else: result.add("&")
+    result.add(key.encodeUrl() & "=" & val.encodeUrl())
 
 when isMainModule:
   block:
@@ -531,41 +541,46 @@ when isMainModule:
 
   block: # parseQuery & newQuery tests
     assert "foo=baa&baz=bahhz&baz=bahhz2".parseQuery() == 
-      {"baz": @["bahhz", "bahhz2"], "foo": @["baa"]}.newTable()
+        { "foo": "baa", "baz": "bahhz", "baz": "bahhz2"}.newOrderedTable()
+    assert "foo=baa&baz=bahhz&baz=bahhz2".parseQuery() == 
+      {"foo": "baa", "baz": "bahhz", "baz": "bahhz2"}.newOrderedTable()
 
     assert "http://example.com/res.some?foo=baa&baz=bahhz&baz=bahhz2"
       .parseUri().query.parseQuery() == 
-        {"baz": @["bahhz", "bahhz2"], "foo": @["baa"]}.newTable()
+        {"foo": "baa", "baz": "bahhz", "baz": "bahhz2"}.newOrderedTable()
     
-    assert "faa".parseQuery() == {"faa": newSeq[string]()}.newTable()
-    assert "faa&faa".parseQuery() == {"faa": newSeq[string]()}.newTable()
-    assert "faa=faa=faa".parseQuery() == {"faa": @["faa=faa"]}.newTable()
-    assert "faa=faa%3Dfaa".parseQuery() == {"faa": @["faa=faa"]}.newTable()
+    assert "faa".parseQuery() == {"faa": ""}.newOrderedTable()
+    assert "faa&faa".parseQuery() == {"faa": "", "faa": ""}.newOrderedTable()
+    assert "faa=faa=faa".parseQuery() == {"faa": "faa=faa"}.newOrderedTable()
+    assert "faa=faa%3Dfaa".parseQuery() == {"faa": "faa=faa"}.newOrderedTable()
     
-  block: 
+  block:
     var ur = parseUri("http://www.example.com/")
-    var tt = {"user": @["Günter Jürgen"], "mail": @["günter-jürgen@example.com"]}.newTable
+    var tt = {"user": "Günter Jürgen", "mail": "günter-jürgen@example.com"}.newOrderedTable()
     ur.query = newQuery(tt)
     assert ur.query.parseQuery == tt
 
-  block: 
+  block:
     var ur = parseUri("http://www.example.com/")
-    var tt = {"user": @["李王"], "mail": @["李王@example.com"]}.newTable
+    var tt = {"user": "李王", "mail": "李王@example.com"}.newOrderedTable()
     ur.query = newQuery(tt)
     assert ur.query.parseQuery == tt  
 
-  block: 
+  block: # queries in query
     var ur = parseUri("http://www.example.com/")
-    var t1 = {"user": @["李王"], "mail": @["李王@example.com"]}.newTable().newQuery()
-    var t2 = {"user": @["Günter Jürgen"], "mail": @["günter-jürgen@example.com"]}.newTable().newQuery()
-    var tt = {"users": @[t1,t2]}.newTable()
+    var t1 = {"user": "李王", "mail": "李王@example.com"}.newOrderedTable().newQuery()
+    var t2 = {"user": "Günter Jürgen", "mail": "günter-jürgen@example.com"}.newOrderedTable().newQuery()
+    var tt = {"users": t1, "users": t2}.newOrderedTable()
     ur.query = tt.newQuery()
     assert ur.query.parseQuery() == tt
 
   block: # test parseQuery with uri as param
     var ur = parseUri("http://www.example.com/?id=4221")
-    assert ur.parseQuery()["id"] == @["4221"]
+    assert ur.parseQuery()["id"] == "4221"
 
   block:
     var ur = parseUri("http://www.example.com/?id=4221&id=1338")
-    assert parseQuery(ur)["id"] == @["4221", "1338"]  
+    var qu = parseQuery(ur)
+    assert toSeq(qu.values) == @["4221", "1338"]
+    assert toSeq(qu.keys) == @["id","id"]
+    assert toSeq(qu.pairs) ==  @[("id", "4221"), ("id", "1338")]
