@@ -155,6 +155,9 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
   if cmd == ideChk:
     msgs.structuredErrorHook = errorHook
     msgs.writelnHook = proc (s: string) = discard
+  else:
+    msgs.structuredErrorHook = nil
+    msgs.writelnHook = proc (s: string) = discard
   if cmd == ideUse and suggestVersion != 2:
     graph.resetAllModules()
   var isKnownFile = true
