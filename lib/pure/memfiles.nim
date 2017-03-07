@@ -36,7 +36,7 @@ type
       mapHandle: Handle
       wasOpened: bool   ## only close if wasOpened
     else:
-      handle: cint
+      handle*: cint
 
 {.deprecated: [TMemFile: MemFile].}
 
@@ -250,9 +250,9 @@ proc close*(f: var MemFile) =
       error = (closeHandle(f.mapHandle) == 0) or error
       error = (closeHandle(f.fHandle) == 0) or error
   else:
-    if f.handle != 0:
-      error = munmap(f.mem, f.size) != 0
-      lastErr = osLastError()
+    error = munmap(f.mem, f.size) != 0
+    lastErr = osLastError()
+    if f.handle != -1:
       error = (close(f.handle) != 0) or error
 
   f.size = 0
@@ -263,7 +263,7 @@ proc close*(f: var MemFile) =
     f.mapHandle = 0
     f.wasOpened = false
   else:
-    f.handle = 0
+    f.handle = -1
 
   if error: raiseOSError(lastErr)
 
