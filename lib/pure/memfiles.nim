@@ -193,7 +193,7 @@ proc open*(filename: string, mode: FileMode = fmRead,
   else:
     template fail(errCode: OSErrorCode, msg: expr) =
       rollback()
-      if result.handle != 0: discard close(result.handle)
+      if result.handle != -1: discard close(result.handle)
       raiseOSError(errCode)
 
     var flags = if readonly: O_RDONLY else: O_RDWR
