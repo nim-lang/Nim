@@ -618,11 +618,19 @@ proc `$`*[A, B](t: OrderedTable[A, B]): string =
 proc `==`*[A, B](s, t: OrderedTable[A, B]): bool =
   ## The `==` operator for ordered hash tables. Returns true iff both the
   ## content and the order are equal.
-  if s.counter == t.counter:
-    forAllOrderedPairs:
-      if s.data[h] != t.data[h]: return false
-    result = true
-  else: result = false
+  if s.counter != t.counter:
+    return false
+  var ht = t.first
+  var hs = s.first
+  while ht >= 0 and hs >= 0:
+    var nxtt = t.data[ht].next
+    var nxts = s.data[hs].next
+    if isFilled(t.data[ht].hcode) and isFilled(s.data[hs].hcode): 
+      if (s.data[hs].key != t.data[ht].key) and (s.data[hs].val != t.data[ht].val):
+        return false
+    ht = nxtt
+    hs = nxts
+  return true
 
 proc sort*[A, B](t: var OrderedTable[A, B],
                  cmp: proc (x,y: (A, B)): int) =
@@ -1233,17 +1241,18 @@ when isMainModule:
     t.inc(testKey,3)
     doAssert 3 == t.getOrDefault(testKey)
 
-  # Clear tests
-  var clearTable = newTable[int, string]()
-  clearTable[42] = "asd"
-  clearTable[123123] = "piuyqwb "
-  doAssert clearTable[42] == "asd"
-  clearTable.clear()
-  doAssert(not clearTable.hasKey(123123))
-  doAssert clearTable.getOrDefault(42) == nil
+  block:
+    # Clear tests
+    var clearTable = newTable[int, string]()
+    clearTable[42] = "asd"
+    clearTable[123123] = "piuyqwb "
+    doAssert clearTable[42] == "asd"
+    clearTable.clear()
+    doAssert(not clearTable.hasKey(123123))
+    doAssert clearTable.getOrDefault(42) == nil
 
   block: #5482
-    var a = [("wrong?","foo"), ("wrong?", "foo2")].newOrderedTable()  
+    var a = [("wrong?","foo"), ("wrong?", "foo2")].newOrderedTable()
     var b = newOrderedTable[string, string](initialSize=2)
     b.add("wrong?", "foo")
     b.add("wrong?", "foo2")
@@ -1255,3 +1264,28 @@ when isMainModule:
     b.add("wrong?", "foo")
     b.add("wrong?", "foo2")
     assert a == b    
+
+  block: #5487
+    var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()  
+    var b = newOrderedTable[string, string]() # notice, default size!
+    b.add("wrong?", "foo")
+    b.add("wrong?", "foo2")
+    assert a == b
+
+  block: #5487
+    var a = [("wrong?","foo"), ("wrong?", "foo2")].newOrderedTable()
+    var b = newOrderedTable[string, string]()  # notice, default size!
+    b.add("wrong?", "foo")
+    b.add("wrong?", "foo2")
+    assert a == b
+
+  block: 
+    var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable() 
+    var b = [("wrong?","foo"), ("wrong?", "foo2")].newOrderedTable() 
+    var c = newOrderedTable[string, string]() # notice, default size!
+    c.add("wrong?", "foo")
+    c.add("wrong?", "foo2")    
+    assert a == b
+    assert a == c
+    
+
