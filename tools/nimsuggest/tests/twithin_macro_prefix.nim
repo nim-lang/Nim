@@ -204,6 +204,6 @@ echo r
 discard """
 $nimsuggest --tester $file
 >sug $1
-sug;;skField;;age;;int;;$file;;167;;6;;"";;100
-sug;;skMethod;;twithin_macro_prefix.age_human_yrs;;proc (self: Animal): int;;$file;;169;;9;;"";;100
+sug;;skField;;age;;int;;$file;;167;;6;;"";;100;;Prefix
+sug;;skMethod;;twithin_macro_prefix.age_human_yrs;;proc (self: Animal): int;;$file;;169;;9;;"";;100;;Prefix
 """

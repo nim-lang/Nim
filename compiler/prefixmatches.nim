@@ -12,9 +12,9 @@ from strutils import toLowerAscii
 type
   PrefixMatch* {.pure.} = enum
     None,   ## no prefix detected
-    Prefix, ## prefix does match the symbol
-    Substr, ## prefix is a substring of the symbol
     Abbrev  ## prefix is an abbreviation of the symbol
+    Substr, ## prefix is a substring of the symbol
+    Prefix, ## prefix does match the symbol
 
 proc prefixMatch*(p, s: string): PrefixMatch =
   template eq(a, b): bool = a.toLowerAscii == b.toLowerAscii
