@@ -144,10 +144,8 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode
 
 proc openScope(c: var TemplCtx) =
   openScope(c.c)
-  inc c.scopeN
 
 proc closeScope(c: var TemplCtx) =
-  dec c.scopeN
   closeScope(c.c)
 
 proc semTemplBodyScope(c: var TemplCtx, n: PNode): PNode =
@@ -172,7 +170,6 @@ proc newGenSym(kind: TSymKind, n: PNode, c: var TemplCtx): PSym =
   result = newSym(kind, considerQuotedIdent(n), c.owner, n.info)
   incl(result.flags, sfGenSym)
   incl(result.flags, sfShadowed)
-  #if c.scopeN == 0: incl(result.flags, sfFromGeneric)
 
 proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
   # locals default to 'gensym':
@@ -275,10 +272,12 @@ proc semRoutineInTemplBody(c: var TemplCtx, n: PNode, k: TSymKind): PNode =
   for i in patternPos..miscPos:
     n.sons[i] = semTemplBody(c, n.sons[i])
   # open scope for locals
+  inc c.scopeN
   openScope(c)
   n.sons[bodyPos] = semTemplBody(c, n.sons[bodyPos])
   # close scope for locals
   closeScope(c)
+  dec c.scopeN
   # close scope for parameters
   closeScope(c)
 
@@ -346,7 +345,8 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   of nkBindStmt:
     result = semBindStmt(c.c, n, c.toBind)
   of nkMixinStmt:
-    result = semMixinStmt(c.c, n, c.toMixin)
+    if c.scopeN > 0: result = semTemplBodySons(c, n)
+    else: result = semMixinStmt(c.c, n, c.toMixin)
   of nkEmpty, nkSym..nkNilLit:
     discard
   of nkIfStmt:

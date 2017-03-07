@@ -2324,12 +2324,16 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkIfExpr, nkIfStmt: result = semIf(c, n)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv, nkHiddenCallConv:
     checkSonsLen(n, 2)
+    considerGenSyms(c, n)
   of nkStringToCString, nkCStringToString, nkObjDownConv, nkObjUpConv:
     checkSonsLen(n, 1)
+    considerGenSyms(c, n)
   of nkChckRangeF, nkChckRange64, nkChckRange:
     checkSonsLen(n, 3)
+    considerGenSyms(c, n)
   of nkCheckedFieldExpr:
     checkMinSonsLen(n, 2)
+    considerGenSyms(c, n)
   of nkTableConstr:
     result = semTableConstr(c, n)
   of nkClosedSymChoice, nkOpenSymChoice:
