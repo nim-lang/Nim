@@ -25,26 +25,19 @@ already available.
 Installation
 ============
 
-Nimsuggest is available as a Nimble package but currently does not install
-properly via Nimble. As nimsuggest is part of the compiler it also doesn't make
-too much sense as a Nimble package. Instead we will do the building manually::
+Nimsuggest is part of Nim's core. Build it via::
 
-  cd compiler/nimsuggest
-  nim c -d:release nimsuggest
-  cp nimsuggest ../../bin
-  # OR: copy the nimsuggest binary to where your 'nim' binary is
-  cd ../..
-
+  koch nimsuggest
 
 
 Nimsuggest invocation
 =====================
 
-Run it via ``nimsuggest --stdin myproject.nim``. Nimsuggest is a server that
-takes queries that are related to ``myproject``. There is some support so that
-you can throw random ``.nim`` files which are not part of ``myproject`` at
-Nimsuggest too, but usually the query refer to modules/files that are part of
-``myproject``.
+Run it via ``nimsuggest --stdin --debug --v2 myproject.nim``. Nimsuggest is a
+server that takes queries that are related to ``myproject``. There is some
+support so that you can throw random ``.nim`` files which are not part
+of ``myproject`` at Nimsuggest too, but usually the query refer to modules/files
+that are part of ``myproject``.
 
 ``--stdin`` means that Nimsuggest reads the query from ``stdin``. This is great
 for testing things out and playing with it but for an editor communication
