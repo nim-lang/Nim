@@ -113,6 +113,7 @@ type
     recursiveDep*: string
     suggestionsMade*: bool
     inTypeContext*: int
+    suggestionNode*: PNode
 
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
   result.genericSym = s

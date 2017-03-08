@@ -525,37 +525,42 @@ proc safeSemExpr*(c: PContext, n: PNode): PNode =
   except ERecoverableError:
     result = ast.emptyNode
 
+proc sugExpr(c: PContext, node: PNode, outputs: var Suggestions; cp: TCheckPointResult) =
+  var n = findClosestDot(node)
+  if n == nil: n = node
+  if n.kind == nkDotExpr:
+    var obj = safeSemExpr(c, n.sons[0])
+    # it can happen that errnously we have collected the fieldname
+    # of the next line, so we check the 'field' is actually on the same
+    # line as the object to prevent this from happening:
+    let prefix = if n.len == 2 and n[1].info.line == n[0].info.line: n[1] else: nil
+    suggestFieldAccess(c, obj, prefix, outputs)
+
+    #if optIdeDebug in gGlobalOptions:
+    #  echo "expression ", renderTree(obj), " has type ", typeToString(obj.typ)
+    #writeStackTrace()
+  else:
+    #let m = findClosestSym(node)
+    #if m != nil:
+    #  suggestPrefix(c, m, outputs)
+    #else:
+    let prefix = if cp == cpExact: n else: nil
+    suggestEverything(c, n, prefix, outputs)
+
 proc suggestExpr*(c: PContext, node: PNode) =
   if gTrackPos.line < 0: return
   var cp = inCheckpoint(node.info)
   if cp == cpNone: return
   # This keeps semExpr() from coming here recursively:
+  if cp == cpFuzzy:
+    c.suggestionNode = node
+    return
+
   if c.compilesContextId > 0: return
   inc(c.compilesContextId)
-
   var outputs: Suggestions = @[]
   if gIdeCmd == ideSug:
-    var n = findClosestDot(node)
-    if n == nil: n = node
-    if n.kind == nkDotExpr:
-      var obj = safeSemExpr(c, n.sons[0])
-      # it can happen that errnously we have collected the fieldname
-      # of the next line, so we check the 'field' is actually on the same
-      # line as the object to prevent this from happening:
-      let prefix = if n.len == 2 and n[1].info.line == n[0].info.line: n[1] else: nil
-      suggestFieldAccess(c, obj, prefix, outputs)
-
-      #if optIdeDebug in gGlobalOptions:
-      #  echo "expression ", renderTree(obj), " has type ", typeToString(obj.typ)
-      #writeStackTrace()
-    else:
-      #let m = findClosestSym(node)
-      #if m != nil:
-      #  suggestPrefix(c, m, outputs)
-      #else:
-      let prefix = if cp == cpExact: n else: nil
-      suggestEverything(c, n, prefix, outputs)
-
+    sugExpr(c, node, outputs, cp)
   elif gIdeCmd == ideCon:
     var n = findClosestCall(node)
     if n == nil: n = node
@@ -583,17 +588,20 @@ proc suggestSentinel*(c: PContext) =
   if gIdeCmd != ideSug or c.module.position != gTrackPos.fileIndex: return
   if c.compilesContextId > 0: return
   inc(c.compilesContextId)
-  # suggest everything:
-  var isLocal = true
   var outputs: Suggestions = @[]
-  var scopeN = 0
-  for scope in walkScopes(c.currentScope):
-    if scope == c.topLevelScope: isLocal = false
-    dec scopeN
-    for it in items(scope.symbols):
-      var pm: PrefixMatch
-      if filterSymNoOpr(it, nil, pm):
-        outputs.add(symToSuggest(it, isLocal = isLocal, $ideSug, 0, PrefixMatch.None, false, scopeN))
+  if c.suggestionNode != nil:
+    sugExpr(c, c.suggestionNode, outputs, cpExact)
+  else:
+    # suggest everything:
+    var isLocal = true
+    var scopeN = 0
+    for scope in walkScopes(c.currentScope):
+      if scope == c.topLevelScope: isLocal = false
+      dec scopeN
+      for it in items(scope.symbols):
+        var pm: PrefixMatch
+        if filterSymNoOpr(it, nil, pm):
+          outputs.add(symToSuggest(it, isLocal = isLocal, $ideSug, 0, PrefixMatch.None, false, scopeN))
 
-  produceOutput(outputs)
   dec(c.compilesContextId)
+  produceOutput(outputs)
