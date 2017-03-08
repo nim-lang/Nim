@@ -11,7 +11,7 @@
 ## Do not import it directly. To activate thread support you need to compile
 ## with the ``--threads:on`` command line switch.
 ##
-## **Note:** The current implementation of message passing is slow and does
+## **Note:** The current implementation of message passing does
 ## not work with cyclic data structures.
 ## **Note:** Channels cannot be passed between threads. Use globals or pass
 ## them by `ptr`.
