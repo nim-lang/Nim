@@ -1,3 +1,10 @@
+nimsuggest
+==========
+
+- disable in string and comments
+- bug "goto definition for gTrackPos" in suggest.nim
+
+
 version 1.0 battle plan
 =======================
 

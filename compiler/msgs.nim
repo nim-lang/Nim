@@ -736,6 +736,8 @@ proc `??`* (info: TLineInfo, filename: string): bool =
   # only for debugging purposes
   result = filename in info.toFilename
 
+const trackPosInvalidFileIdx* = -2 # special marker so that no suggestions
+                                   # are produced within comments and string literals
 var gTrackPos*: TLineInfo
 
 type
