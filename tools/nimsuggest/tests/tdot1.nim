@@ -11,4 +11,4 @@ type
     x, y: int
 
 proc main(f: Foo) =
-  f.#[!]#
+  if f.#[!]#:

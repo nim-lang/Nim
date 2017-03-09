@@ -405,13 +405,16 @@ proc inCheckpoint*(current: TLineInfo): TCheckPointResult =
     if current.line >= gTrackPos.line:
       return cpFuzzy
 
-proc findClosestDot(n: PNode): PNode =
+proc findClosestDot(n: PNode; inType: var bool): PNode =
   if n.kind == nkDotExpr and inCheckpoint(n.info) == cpExact:
     result = n
   else:
     for i in 0.. <safeLen(n):
-      result = findClosestDot(n.sons[i])
-      if result != nil: return
+      result = findClosestDot(n.sons[i], inType)
+      if result != nil:
+        #if n.kind == nkIdentDefs and i == n.len-2:
+        #  inType = true
+        return
 
 proc findClosestCall(n: PNode): PNode =
   if n.kind in nkCallKinds and inCheckpoint(n.info) == cpExact:
@@ -526,8 +529,11 @@ proc safeSemExpr*(c: PContext, n: PNode): PNode =
     result = ast.emptyNode
 
 proc sugExpr(c: PContext, node: PNode, outputs: var Suggestions; cp: TCheckPointResult) =
-  var n = findClosestDot(node)
+  var inTypeSection = false
+  var n = findClosestDot(node, inTypeSection)
   if n == nil: n = node
+  if inTypeSection: inc c.inTypeContext
+  echo "came here ", n.kind
   if n.kind == nkDotExpr:
     var obj = safeSemExpr(c, n.sons[0])
     # it can happen that errnously we have collected the fieldname
@@ -546,16 +552,13 @@ proc sugExpr(c: PContext, node: PNode, outputs: var Suggestions; cp: TCheckPoint
     #else:
     let prefix = if cp == cpExact: n else: nil
     suggestEverything(c, n, prefix, outputs)
+  if inTypeSection: dec c.inTypeContext
 
 proc suggestExpr*(c: PContext, node: PNode) =
   if gTrackPos.line < 0: return
   var cp = inCheckpoint(node.info)
   if cp == cpNone: return
   # This keeps semExpr() from coming here recursively:
-  if cp == cpFuzzy:
-    c.suggestionNode = node
-    return
-
   if c.compilesContextId > 0: return
   inc(c.compilesContextId)
   var outputs: Suggestions = @[]
@@ -589,19 +592,16 @@ proc suggestSentinel*(c: PContext) =
   if c.compilesContextId > 0: return
   inc(c.compilesContextId)
   var outputs: Suggestions = @[]
-  if c.suggestionNode != nil:
-    sugExpr(c, c.suggestionNode, outputs, cpExact)
-  else:
-    # suggest everything:
-    var isLocal = true
-    var scopeN = 0
-    for scope in walkScopes(c.currentScope):
-      if scope == c.topLevelScope: isLocal = false
-      dec scopeN
-      for it in items(scope.symbols):
-        var pm: PrefixMatch
-        if filterSymNoOpr(it, nil, pm):
-          outputs.add(symToSuggest(it, isLocal = isLocal, $ideSug, 0, PrefixMatch.None, false, scopeN))
+  # suggest everything:
+  var isLocal = true
+  var scopeN = 0
+  for scope in walkScopes(c.currentScope):
+    if scope == c.topLevelScope: isLocal = false
+    dec scopeN
+    for it in items(scope.symbols):
+      var pm: PrefixMatch
+      if filterSymNoOpr(it, nil, pm):
+        outputs.add(symToSuggest(it, isLocal = isLocal, $ideSug, 0, PrefixMatch.None, false, scopeN))
 
   dec(c.compilesContextId)
   produceOutput(outputs)
