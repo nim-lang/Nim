@@ -417,7 +417,7 @@ type
     ## Base exception class.
     ##
     ## Each exception has to inherit from `Exception`. See the full `exception
-    ## hierarchy`_.
+    ## hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
     parent*: ref Exception ## parent exception (can be used as a stack)
     name*: cstring ## The exception's name is its Nim identifier.
                    ## This field is filled automatically in the
@@ -430,51 +430,51 @@ type
   SystemError* = object of Exception ## \
     ## Abstract class for exceptions that the runtime system raises.
     ##
-    ## See the full `exception hierarchy`_.
+    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
   IOError* = object of SystemError ## \
     ## Raised if an IO error occurred.
     ##
-    ## See the full `exception hierarchy`_.
+    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
   EOFError* = object of IOError ## \
     ## Raised if an IO "end of file" error occurred.
     ##
-    ## See the full `exception hierarchy`_.
+    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
   OSError* = object of SystemError ## \
     ## Raised if an operating system service failed.
     ##
-    ## See the full `exception hierarchy`_.
+    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
     errorCode*: int32 ## OS-defined error code describing this error.
   LibraryError* = object of OSError ## \
     ## Raised if a dynamic library could not be loaded.
     ##
-    ## See the full `exception hierarchy`_.
+    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
   ResourceExhaustedError* = object of SystemError ## \
     ## Raised if a resource request could not be fulfilled.
     ##
-    ## See the full `exception hierarchy`_.
+    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
   ArithmeticError* = object of Exception ## \
     ## Raised if any kind of arithmetic error occurred.
     ##
-    ## See the full `exception hierarchy`_.
+    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
   DivByZeroError* = object of ArithmeticError ## \
     ## Raised for runtime integer divide-by-zero errors.
     ##
-    ## See the full `exception hierarchy`_.
+    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
 
   OverflowError* = object of ArithmeticError ## \
     ## Raised for runtime integer overflows.
     ##
     ## This happens for calculations whose results are too large to fit in the
-    ## provided bits.  See the full `exception hierarchy`_.
+    ## provided bits.  See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
   AccessViolationError* = object of Exception ## \
     ## Raised for invalid memory access errors
     ##
-    ## See the full `exception hierarchy`_.
+    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
   AssertionError* = object of Exception ## \
     ## Raised when assertion is proved wrong.
     ##
     ## Usually the result of using the `assert() template <#assert>`_.  See the
-    ## full `exception hierarchy`_.
+    ## full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
   ValueError* = object of Exception ## \
     ## Raised for string and object conversion errors.
   KeyError* = object of ValueError ## \
@@ -482,66 +482,66 @@ type
     ##
     ## Mostly used by the `tables <tables.html>`_ module, it can also be raised
     ## by other collection modules like `sets <sets.html>`_ or `strtabs
-    ## <strtabs.html>`_. See the full `exception hierarchy`_.
+    ## <strtabs.html>`_. See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
   OutOfMemError* = object of SystemError ## \
     ## Raised for unsuccessful attempts to allocate memory.
     ##
-    ## See the full `exception hierarchy`_.
+    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
   IndexError* = object of Exception ## \
     ## Raised if an array index is out of bounds.
     ##
-    ## See the full `exception hierarchy`_.
+    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
 
   FieldError* = object of Exception ## \
     ## Raised if a record field is not accessible because its dicriminant's
     ## value does not fit.
     ##
-    ## See the full `exception hierarchy`_.
+    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
   RangeError* = object of Exception ## \
     ## Raised if a range check error occurred.
     ##
-    ## See the full `exception hierarchy`_.
+    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
   StackOverflowError* = object of SystemError ## \
     ## Raised if the hardware stack used for subroutine calls overflowed.
     ##
-    ## See the full `exception hierarchy`_.
+    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
   ReraiseError* = object of Exception ## \
     ## Raised if there is no exception to reraise.
     ##
-    ## See the full `exception hierarchy`_.
+    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
   ObjectAssignmentError* = object of Exception ## \
     ## Raised if an object gets assigned to its parent's object.
     ##
-    ## See the full `exception hierarchy`_.
+    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
   ObjectConversionError* = object of Exception ## \
     ## Raised if an object is converted to an incompatible object type.
     ## You can use ``of`` operator to check if conversion will succeed.
     ##
-    ## See the full `exception hierarchy`_.
+    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
   FloatingPointError* = object of Exception ## \
     ## Base class for floating point exceptions.
     ##
-    ## See the full `exception hierarchy`_.
+    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
   FloatInvalidOpError* = object of FloatingPointError ## \
     ## Raised by invalid operations according to IEEE.
     ##
     ## Raised by ``0.0/0.0``, for example.  See the full `exception
-    ## hierarchy`_.
+    ## hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
   FloatDivByZeroError* = object of FloatingPointError ## \
     ## Raised by division by zero.
     ##
     ## Divisor is zero and dividend is a finite nonzero number.  See the full
-    ## `exception hierarchy`_.
+    ## `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
   FloatOverflowError* = object of FloatingPointError ## \
     ## Raised for overflows.
     ##
     ## The operation produced a result that exceeds the range of the exponent.
-    ## See the full `exception hierarchy`_.
+    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
   FloatUnderflowError* = object of FloatingPointError ## \
     ## Raised for underflows.
     ##
     ## The operation produced a result that is too small to be represented as a
-    ## normal number. See the full `exception hierarchy`_.
+    ## normal number. See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
   FloatInexactError* = object of FloatingPointError ## \
     ## Raised for inexact results.
     ##
@@ -549,11 +549,11 @@ type
     ## precision -- for example: ``2.0 / 3.0, log(1.1)``
     ##
     ## **NOTE**: Nim currently does not detect these!  See the full
-    ## `exception hierarchy`_.
+    ## `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
   DeadThreadError* = object of Exception ## \
     ## Raised if it is attempted to send a message to a dead thread.
     ##
-    ## See the full `exception hierarchy`_.
+    ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
 
 {.deprecated: [TObject: RootObj, PObject: RootRef, TEffect: RootEffect,
   FTime: TimeEffect, FIO: IOEffect, FReadIO: ReadIOEffect,
