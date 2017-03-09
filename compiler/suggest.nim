@@ -405,38 +405,11 @@ proc inCheckpoint*(current: TLineInfo): TCheckPointResult =
     if current.line >= gTrackPos.line:
       return cpFuzzy
 
-proc findClosestDot(n: PNode; inType: var bool): PNode =
-  if n.kind == nkDotExpr and inCheckpoint(n.info) == cpExact:
-    result = n
-  else:
-    for i in 0.. <safeLen(n):
-      result = findClosestDot(n.sons[i], inType)
-      if result != nil:
-        #if n.kind == nkIdentDefs and i == n.len-2:
-        #  inType = true
-        return
-
-proc findClosestCall(n: PNode): PNode =
-  if n.kind in nkCallKinds and inCheckpoint(n.info) == cpExact:
-    result = n
-  else:
-    for i in 0.. <safeLen(n):
-      result = findClosestCall(n.sons[i])
-      if result != nil: return
-
 proc isTracked*(current: TLineInfo, tokenLen: int): bool =
   if current.fileIndex==gTrackPos.fileIndex and current.line==gTrackPos.line:
     let col = gTrackPos.col
     if col >= current.col and col <= current.col+tokenLen-1:
       return true
-
-proc findClosestSym(n: PNode): PNode =
-  if n.kind == nkSym and inCheckpoint(n.info) == cpExact:
-    result = n
-  elif n.kind notin {nkNone..nkNilLit}:
-    for i in 0.. <sonsLen(n):
-      result = findClosestSym(n.sons[i])
-      if result != nil: return
 
 when defined(nimsuggest):
   # Since TLineInfo defined a == operator that doesn't include the column,
@@ -528,45 +501,33 @@ proc safeSemExpr*(c: PContext, n: PNode): PNode =
   except ERecoverableError:
     result = ast.emptyNode
 
-proc sugExpr(c: PContext, node: PNode, outputs: var Suggestions; cp: TCheckPointResult) =
-  var inTypeSection = false
-  var n = findClosestDot(node, inTypeSection)
-  if n == nil: n = node
-  if inTypeSection: inc c.inTypeContext
-  echo "came here ", n.kind
+proc sugExpr(c: PContext, n: PNode, outputs: var Suggestions) =
   if n.kind == nkDotExpr:
     var obj = safeSemExpr(c, n.sons[0])
     # it can happen that errnously we have collected the fieldname
     # of the next line, so we check the 'field' is actually on the same
     # line as the object to prevent this from happening:
-    let prefix = if n.len == 2 and n[1].info.line == n[0].info.line: n[1] else: nil
+    let prefix = if n.len == 2 and n[1].info.line == n[0].info.line and
+       not gTrackPosAttached: n[1] else: nil
+    echo n[1].kind
     suggestFieldAccess(c, obj, prefix, outputs)
 
     #if optIdeDebug in gGlobalOptions:
     #  echo "expression ", renderTree(obj), " has type ", typeToString(obj.typ)
     #writeStackTrace()
   else:
-    #let m = findClosestSym(node)
-    #if m != nil:
-    #  suggestPrefix(c, m, outputs)
-    #else:
-    let prefix = if cp == cpExact: n else: nil
+    let prefix = if gTrackPosAttached: nil else: n
     suggestEverything(c, n, prefix, outputs)
-  if inTypeSection: dec c.inTypeContext
 
-proc suggestExpr*(c: PContext, node: PNode) =
-  if gTrackPos.line < 0: return
-  var cp = inCheckpoint(node.info)
-  if cp == cpNone: return
+proc suggestExpr*(c: PContext, n: PNode) =
+  if not exactEquals(gTrackPos, n.info): return
   # This keeps semExpr() from coming here recursively:
   if c.compilesContextId > 0: return
   inc(c.compilesContextId)
   var outputs: Suggestions = @[]
   if gIdeCmd == ideSug:
-    sugExpr(c, node, outputs, cp)
+    sugExpr(c, n, outputs)
   elif gIdeCmd == ideCon:
-    var n = findClosestCall(node)
-    if n == nil: n = node
     if n.kind in nkCallKinds:
       var a = copyNode(n)
       var x = safeSemExpr(c, n.sons[0])

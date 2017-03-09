@@ -67,6 +67,10 @@ type
   TTokTypes* = set[TTokType]
 
 const
+  weakTokens = {tkComma, tkSemiColon, tkColon,
+                tkParRi, tkParDotRi, tkBracketRi, tkBracketDotRi,
+                tkCurlyRi} # \
+    # tokens that should not be considered for previousToken
   tokKeywordLow* = succ(tkSymbol)
   tokKeywordHigh* = pred(tkIntLit)
   TokTypeToStr*: array[TTokType, string] = ["tkInvalid", "[EOF]",
@@ -105,6 +109,9 @@ type
                               # so that it is the correct default value
     base2, base8, base16
 
+  CursorPosition* {.pure.} = enum ## XXX remove this again
+    None, InToken, BeforeToken, AfterToken
+
   TToken* = object            # a Nim token
     tokType*: TTokType        # the type of the token
     indent*: int              # the indentation; != -1 if the token has been
@@ -128,8 +135,11 @@ type
                               # needs so much look-ahead
     currLineIndent*: int
     strongSpaces*, allowTabs*: bool
+    cursor*: CursorPosition
     errorHandler*: TErrorHandler
     cache*: IdentCache
+    when defined(nimsuggest):
+      previousToken: TLineInfo
 
 var gLinesCompiled*: int  # all lines that have been compiled
 
@@ -203,6 +213,7 @@ proc openLexer*(lex: var TLexer, fileIdx: int32, inputstream: PLLStream;
   lex.currLineIndent = 0
   inc(lex.lineNumber, inputstream.lineOffset)
   lex.cache = cache
+  lex.previousToken.fileIndex = fileIdx
 
 proc openLexer*(lex: var TLexer, filename: string, inputstream: PLLStream;
                 cache: IdentCache) =
@@ -234,6 +245,41 @@ proc lexMessagePos(L: var TLexer, msg: TMsgKind, pos: int, arg = "") =
 
 proc matchTwoChars(L: TLexer, first: char, second: set[char]): bool =
   result = (L.buf[L.bufpos] == first) and (L.buf[L.bufpos + 1] in second)
+
+template tokenBegin(pos) {.dirty.} =
+  when defined(nimsuggest):
+    var colA = getColNumber(L, pos)
+
+template tokenEnd(pos) {.dirty.} =
+  when defined(nimsuggest):
+    let colB = getColNumber(L, pos)
+    if L.fileIdx == gTrackPos.fileIndex and gTrackPos.col in colA..colB and
+        L.lineNumber == gTrackPos.line and gIdeCmd in {ideSug, ideCon}:
+      L.cursor = CursorPosition.InToken
+      gTrackPos.col = colA.int16
+    colA = 0
+
+template tokenEndIgnore(pos) =
+  when defined(nimsuggest):
+    let colB = getColNumber(L, pos)
+    if L.fileIdx == gTrackPos.fileIndex and gTrackPos.col in colA..colB and
+        L.lineNumber == gTrackPos.line and gIdeCmd in {ideSug, ideCon}:
+      gTrackPos.fileIndex = trackPosInvalidFileIdx
+      gTrackPos.line = -1
+    colA = 0
+
+template tokenEndPrevious(pos) =
+  when defined(nimsuggest):
+    # when we detect the cursor in whitespace, we attach the track position
+    # to the token that came before that, but only if we haven't detected
+    # the cursor in a string literal or comment:
+    let colB = getColNumber(L, pos)
+    if L.fileIdx == gTrackPos.fileIndex and gTrackPos.col in colA..colB and
+        L.lineNumber == gTrackPos.line and gIdeCmd in {ideSug, ideCon}:
+      L.cursor = CursorPosition.BeforeToken
+      gTrackPos = L.previousToken
+      gTrackPosAttached = true
+    colA = 0
 
 {.push overflowChecks: off.}
 # We need to parse the largest uint literal without overflow checks
@@ -318,6 +364,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
   result.literal = ""
   result.base = base10
   startpos = L.bufpos
+  tokenBegin(startPos)
 
   # First stage: find out base, make verifications, build token literal string
   if L.buf[L.bufpos] == '0' and L.buf[L.bufpos + 1] in baseCodeChars + {'O'}:
@@ -526,6 +573,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
     lexMessageLitNum(L, errInvalidNumber, startpos)
   except OverflowError, RangeError:
     lexMessageLitNum(L, errNumberOutOfRange, startpos)
+  tokenEnd(postPos-1)
   L.bufpos = postPos
 
 proc handleHexChar(L: var TLexer, xi: var int) =
@@ -642,21 +690,11 @@ proc handleCRLF(L: var TLexer, pos: int): int =
     result = nimlexbase.handleLF(L, pos)
   else: result = pos
 
-template tokenRange(colA, pos) =
-  when defined(nimsuggest):
-    let colB = getColNumber(L, pos)
-    if L.fileIdx == gTrackPos.fileIndex and gTrackPos.col in colA..colB and
-        L.lineNumber == gTrackPos.line and gIdeCmd == ideSug:
-      gTrackPos.fileIndex = trackPosInvalidFileIdx
-      gTrackPos.line = -1
-    colA = 0
-
 proc getString(L: var TLexer, tok: var TToken, rawMode: bool) =
   var pos = L.bufpos + 1          # skip "
   var buf = L.buf                 # put `buf` in a register
   var line = L.lineNumber         # save linenumber for better error message
-  when defined(nimsuggest):
-    var colA = getColNumber(L, pos)
+  tokenBegin(pos)
   if buf[pos] == '\"' and buf[pos+1] == '\"':
     tok.tokType = tkTripleStrLit # long string literal:
     inc(pos, 2)               # skip ""
@@ -672,18 +710,18 @@ proc getString(L: var TLexer, tok: var TToken, rawMode: bool) =
       of '\"':
         if buf[pos+1] == '\"' and buf[pos+2] == '\"' and
             buf[pos+3] != '\"':
-          tokenRange(colA, pos+2)
+          tokenEndIgnore(pos+2)
           L.bufpos = pos + 3 # skip the three """
           break
         add(tok.literal, '\"')
         inc(pos)
       of CR, LF:
-        tokenRange(colA, pos)
+        tokenEndIgnore(pos)
         pos = handleCRLF(L, pos)
         buf = L.buf
         add(tok.literal, tnl)
       of nimlexbase.EndOfFile:
-        tokenRange(colA, pos)
+        tokenEndIgnore(pos)
         var line2 = L.lineNumber
         L.lineNumber = line
         lexMessagePos(L, errClosingTripleQuoteExpected, L.lineStart)
@@ -704,11 +742,11 @@ proc getString(L: var TLexer, tok: var TToken, rawMode: bool) =
           inc(pos, 2)
           add(tok.literal, '"')
         else:
-          tokenRange(colA, pos)
+          tokenEndIgnore(pos)
           inc(pos) # skip '"'
           break
       elif c in {CR, LF, nimlexbase.EndOfFile}:
-        tokenRange(colA, pos)
+        tokenEndIgnore(pos)
         lexMessage(L, errClosingQuoteExpected)
         break
       elif (c == '\\') and not rawMode:
@@ -721,6 +759,7 @@ proc getString(L: var TLexer, tok: var TToken, rawMode: bool) =
     L.bufpos = pos
 
 proc getCharacter(L: var TLexer, tok: var TToken) =
+  tokenBegin(L.bufpos)
   inc(L.bufpos)               # skip '
   var c = L.buf[L.bufpos]
   case c
@@ -730,12 +769,14 @@ proc getCharacter(L: var TLexer, tok: var TToken) =
     tok.literal = $c
     inc(L.bufpos)
   if L.buf[L.bufpos] != '\'': lexMessage(L, errMissingFinalQuote)
+  tokenEndIgnore(L.bufpos)
   inc(L.bufpos)               # skip '
 
 proc getSymbol(L: var TLexer, tok: var TToken) =
   var h: Hash = 0
   var pos = L.bufpos
   var buf = L.buf
+  tokenBegin(pos)
   while true:
     var c = buf[pos]
     case c
@@ -762,6 +803,7 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
       inc(pos)
 
     else: break
+  tokenEnd(pos-1)
   h = !$h
   tok.ident = L.cache.getIdent(addr(L.buf[L.bufpos]), pos - L.bufpos, h)
   L.bufpos = pos
@@ -782,6 +824,7 @@ proc endOperator(L: var TLexer, tok: var TToken, pos: int,
 proc getOperator(L: var TLexer, tok: var TToken) =
   var pos = L.bufpos
   var buf = L.buf
+  tokenBegin(pos)
   var h: Hash = 0
   while true:
     var c = buf[pos]
@@ -789,6 +832,7 @@ proc getOperator(L: var TLexer, tok: var TToken) =
     h = h !& ord(c)
     inc(pos)
   endOperator(L, tok, pos, h)
+  tokenEnd(pos-1)
   # advance pos but don't store it in L.bufpos so the next token (which might
   # be an operator too) gets the preceding spaces:
   tok.strongSpaceB = 0
@@ -803,8 +847,7 @@ proc skipMultiLineComment(L: var TLexer; tok: var TToken; start: int;
   var pos = start
   var buf = L.buf
   var toStrip = 0
-  when defined(nimsuggest):
-    var colA = getColNumber(L, pos)
+  tokenBegin(pos)
   # detect the amount of indentation:
   if isDoc:
     toStrip = getColNumber(L, pos)
@@ -831,20 +874,20 @@ proc skipMultiLineComment(L: var TLexer; tok: var TToken; start: int;
       if isDoc:
         if buf[pos+1] == '#' and buf[pos+2] == '#':
           if nesting == 0:
-            tokenRange(colA, pos+2)
+            tokenEndIgnore(pos+2)
             inc(pos, 3)
             break
           dec nesting
         tok.literal.add ']'
       elif buf[pos+1] == '#':
         if nesting == 0:
-          tokenRange(colA, pos+1)
+          tokenEndIgnore(pos+1)
           inc(pos, 2)
           break
         dec nesting
       inc pos
     of CR, LF:
-      tokenRange(colA, pos)
+      tokenEndIgnore(pos)
       pos = handleCRLF(L, pos)
       buf = L.buf
       # strip leading whitespace:
@@ -856,7 +899,7 @@ proc skipMultiLineComment(L: var TLexer; tok: var TToken; start: int;
           inc pos
           dec c
     of nimlexbase.EndOfFile:
-      tokenRange(colA, pos)
+      tokenEndIgnore(pos)
       lexMessagePos(L, errGenerated, pos, "end of multiline comment expected")
       break
     else:
@@ -867,8 +910,6 @@ proc skipMultiLineComment(L: var TLexer; tok: var TToken; start: int;
 proc scanComment(L: var TLexer, tok: var TToken) =
   var pos = L.bufpos
   var buf = L.buf
-  when defined(nimsuggest):
-    var colA = getColNumber(L, pos)
   tok.tokType = tkComment
   # iNumber contains the number of '\n' in the token
   tok.iNumber = 0
@@ -876,6 +917,7 @@ proc scanComment(L: var TLexer, tok: var TToken) =
   if buf[pos+2] == '[':
     skipMultiLineComment(L, tok, pos+3, true)
     return
+  tokenBegin(pos)
   inc(pos, 2)
 
   var toStrip = 0
@@ -889,7 +931,7 @@ proc scanComment(L: var TLexer, tok: var TToken) =
       if buf[pos] == '\\': lastBackslash = pos+1
       add(tok.literal, buf[pos])
       inc(pos)
-    tokenRange(colA, pos)
+    tokenEndIgnore(pos)
     pos = handleCRLF(L, pos)
     buf = L.buf
     var indent = 0
@@ -908,13 +950,14 @@ proc scanComment(L: var TLexer, tok: var TToken) =
     else:
       if buf[pos] > ' ':
         L.indentAhead = indent
-      tokenRange(colA, pos)
+      tokenEndIgnore(pos)
       break
   L.bufpos = pos
 
 proc skip(L: var TLexer, tok: var TToken) =
   var pos = L.bufpos
   var buf = L.buf
+  tokenBegin(pos)
   tok.strongSpaceA = 0
   while true:
     case buf[pos]
@@ -925,6 +968,7 @@ proc skip(L: var TLexer, tok: var TToken) =
       if not L.allowTabs: lexMessagePos(L, errTabulatorsAreNotAllowed, pos)
       inc(pos)
     of CR, LF:
+      tokenEndPrevious(pos)
       pos = handleCRLF(L, pos)
       buf = L.buf
       var indent = 0
@@ -951,15 +995,24 @@ proc skip(L: var TLexer, tok: var TToken) =
         pos = L.bufpos
         buf = L.buf
       else:
-        when defined(nimsuggest):
-          var colA = getColNumber(L, pos)
+        tokenBegin(pos)
         while buf[pos] notin {CR, LF, nimlexbase.EndOfFile}: inc(pos)
-        tokenRange(colA, pos)
+        tokenEndIgnore(pos+1)
     else:
       break                   # EndOfFile also leaves the loop
+  tokenEndPrevious(pos-1)
   L.bufpos = pos
 
 proc rawGetTok*(L: var TLexer, tok: var TToken) =
+  template atTokenEnd() {.dirty.} =
+    when defined(nimsuggest):
+      # we attach the cursor to the last *strong* token
+      if tok.tokType notin weakTokens:
+        L.previousToken.line = tok.line.int16
+        L.previousToken.col = tok.col.int16
+
+  when defined(nimsuggest):
+    L.cursor = CursorPosition.None
   fillToken(tok)
   if L.indentAhead >= 0:
     tok.indent = L.indentAhead
@@ -1022,10 +1075,12 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
       inc(L.bufpos)
     of '.':
       when defined(nimsuggest):
-        if L.fileIdx == gTrackPos.fileIndex and tok.col+1 == gTrackPos.col and
+        if L.fileIdx == gTrackPos.fileIndex and tok.col == gTrackPos.col and
             tok.line == gTrackPos.line and gIdeCmd == ideSug:
           tok.tokType = tkDot
+          L.cursor = CursorPosition.InToken
           inc(L.bufpos)
+          atTokenEnd()
           return
       if L.buf[L.bufpos+1] == ']':
         tok.tokType = tkBracketDotRi
@@ -1092,3 +1147,4 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
         tok.tokType = tkInvalid
         lexMessage(L, errInvalidToken, c & " (\\" & $(ord(c)) & ')')
         inc(L.bufpos)
+  atTokenEnd()

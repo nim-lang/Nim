@@ -214,9 +214,9 @@ proc buildNimble(latest: bool) =
 
 proc bundleNimsuggest(buildExe: bool) =
   if buildExe:
-    nimexec("c --noNimblePath -d:release -p:compiler tools/nimsuggest/nimsuggest.nim")
-    copyExe("tools/nimsuggest/nimsuggest".exe, "bin/nimsuggest".exe)
-    removeFile("tools/nimsuggest/nimsuggest".exe)
+    nimexec("c --noNimblePath -d:release -p:compiler nimsuggest/nimsuggest.nim")
+    copyExe("nimsuggest/nimsuggest".exe, "bin/nimsuggest".exe)
+    removeFile("nimsuggest/nimsuggest".exe)
 
 proc bundleWinTools() =
   nimexec("c tools/finish.nim")
@@ -253,7 +253,7 @@ proc buildTool(toolname, args: string) =
 proc buildTools(latest: bool) =
   let nimsugExe = "bin/nimsuggest".exe
   nimexec "c --noNimblePath -p:compiler -d:release -o:" & nimsugExe &
-      " tools/nimsuggest/nimsuggest.nim"
+      " nimsuggest/nimsuggest.nim"
 
   let nimgrepExe = "bin/nimgrep".exe
   nimexec "c -o:" & nimgrepExe & " tools/nimgrep.nim"

@@ -174,6 +174,7 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
   else: msgs.setDirtyFile(dirtyIdx, nil)
 
   gTrackPos = newLineInfo(dirtyIdx, line, col)
+  gTrackPosAttached = false
   gErrorCounter = 0
   if suggestVersion < 2:
     graph.usageSym = nil
