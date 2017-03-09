@@ -213,7 +213,8 @@ proc openLexer*(lex: var TLexer, fileIdx: int32, inputstream: PLLStream;
   lex.currLineIndent = 0
   inc(lex.lineNumber, inputstream.lineOffset)
   lex.cache = cache
-  lex.previousToken.fileIndex = fileIdx
+  when defined(nimsuggest):
+    lex.previousToken.fileIndex = fileIdx
 
 proc openLexer*(lex: var TLexer, filename: string, inputstream: PLLStream;
                 cache: IdentCache) =

@@ -38,10 +38,9 @@ Options:
   --epc                   use emacs epc mode
   --debug                 enable debug output
   --log                   enable verbose logging to nimsuggest.log file
-  --v2                    use version 2 of the protocol; more features and
-                          much faster
+  --v1                    use version 1 of the protocol; for backwards compatibility
   --refresh               perform automatic refreshes to keep the analysis precise
-  --tester                implies --v2 and --stdin and outputs a line
+  --tester                implies --stdin and outputs a line
                           '""" & DummyEof & """' for the tester
 
 The server then listens to the connection and takes line-based commands.
@@ -50,7 +49,7 @@ In addition, all command line options of Nim that do not affect code generation
 are supported.
 """
 type
-  Mode = enum mstdin, mtcp, mepc, mcmdline
+  Mode = enum mstdin, mtcp, mepc, mcmdsug, mcmdcon
   CachedMsg = object
     info: TLineInfo
     msg: string
@@ -165,7 +164,7 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
   else:
     msgs.structuredErrorHook = nil
     msgs.writelnHook = proc (s: string) = discard
-  if cmd == ideUse and suggestVersion != 2:
+  if cmd == ideUse and suggestVersion != 0:
     graph.resetAllModules()
   var isKnownFile = true
   let dirtyIdx = file.fileInfoIdx(isKnownFile)
@@ -176,11 +175,11 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
   gTrackPos = newLineInfo(dirtyIdx, line, col)
   gTrackPosAttached = false
   gErrorCounter = 0
-  if suggestVersion < 2:
+  if suggestVersion == 1:
     graph.usageSym = nil
   if not isKnownFile:
     graph.compileProject(cache)
-  if suggestVersion == 2 and gIdeCmd in {ideUse, ideDus} and
+  if suggestVersion == 0 and gIdeCmd in {ideUse, ideDus} and
       dirtyfile.len == 0:
     discard "no need to recompile anything"
   else:
@@ -190,7 +189,7 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
     if gIdeCmd != ideMod:
       graph.compileProject(cache, modIdx)
   if gIdeCmd in {ideUse, ideDus}:
-    let u = if suggestVersion >= 2: graph.symFromInfo(gTrackPos) else: graph.usageSym
+    let u = if suggestVersion != 1: graph.symFromInfo(gTrackPos) else: graph.usageSym
     if u != nil:
       listUsages(u)
     else:
@@ -503,8 +502,10 @@ proc mainCommand(graph: ModuleGraph; cache: IdentCache) =
   of mstdin: createThread(inputThread, replStdin, (gPort, gAddress))
   of mtcp: createThread(inputThread, replTcp, (gPort, gAddress))
   of mepc: createThread(inputThread, replEpc, (gPort, gAddress))
-  of mcmdline: createThread(inputThread, replCmdline,
+  of mcmdsug: createThread(inputThread, replCmdline,
                             (gPort, "sug \"" & options.gProjectFull & "\":" & gAddress))
+  of mcmdcon: createThread(inputThread, replCmdline,
+                            (gPort, "con \"" & options.gProjectFull & "\":" & gAddress))
   mainThread(graph, cache)
   joinThread(inputThread)
   close(requests)
@@ -525,17 +526,21 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
         gAddress = p.val
         gMode = mtcp
       of "stdin": gMode = mstdin
-      of "cmdline":
-        gMode = mcmdline
-        suggestVersion = 2
+      of "cmdsug":
+        gMode = mcmdsug
         gAddress = p.val
+        incl(gGlobalOptions, optIdeDebug)
+      of "cmdcon":
+        gMode = mcmdcon
+        gAddress = p.val
+        incl(gGlobalOptions, optIdeDebug)
       of "epc":
         gMode = mepc
         gVerbosity = 0          # Port number gotta be first.
       of "debug": incl(gGlobalOptions, optIdeDebug)
-      of "v2": suggestVersion = 2
+      of "v2": suggestVersion = 0
+      of "v1": suggestVersion = 1
       of "tester":
-        suggestVersion = 2
         gMode = mstdin
         gEmitEof = true
         gRefresh = false

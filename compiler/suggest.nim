@@ -181,7 +181,7 @@ proc `$`*(suggest: Suggest): string =
     result.add(sep)
     when not defined(noDocgen):
       result.add(suggest.doc.escape)
-    if suggestVersion == 2:
+    if suggestVersion == 0:
       result.add(sep)
       result.add($suggest.quality)
       if suggest.section == ideSug:
@@ -202,6 +202,10 @@ proc suggestResult(s: Suggest) =
 proc produceOutput(a: var Suggestions) =
   if gIdeCmd in {ideSug, ideCon}:
     a.sort cmpSuggestions
+  when false:
+    # debug code
+    writeStackTrace()
+    if a.len > 10: a.setLen(10)
   if not isNil(suggestionResultHook):
     for s in a:
       suggestionResultHook(s)
@@ -332,7 +336,7 @@ proc suggestEverything(c: PContext, n, f: PNode, outputs: var Suggestions) =
       var pm: PrefixMatch
       if filterSym(it, f, pm):
         outputs.add(symToSuggest(it, isLocal = isLocal, $ideSug, 0, pm, c.inTypeContext > 0, scopeN))
-    if scope == c.topLevelScope and f.isNil: break
+    #if scope == c.topLevelScope and f.isNil: break
 
 proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) =
   # special code that deals with ``myObj.``. `n` is NOT the nkDotExpr-node, but
@@ -340,7 +344,7 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
   var typ = n.typ
   var pm: PrefixMatch
   when defined(nimsuggest):
-    if n.kind == nkSym and n.sym.kind == skError and suggestVersion == 2:
+    if n.kind == nkSym and n.sym.kind == skError and suggestVersion == 0:
       # consider 'foo.|' where 'foo' is some not imported module.
       let fullPath = findModule(n.sym.name.s, n.info.toFullPath)
       if fullPath.len == 0:
@@ -429,7 +433,7 @@ var
   lastLineInfo*: TLineInfo
 
 proc findUsages(info: TLineInfo; s: PSym; usageSym: var PSym) =
-  if suggestVersion < 2:
+  if suggestVersion == 1:
     if usageSym == nil and isTracked(info, s.name.s.len):
       usageSym = s
       suggestResult(symToSuggest(s, isLocal=false, $ideUse, 100, PrefixMatch.None, false, 0))
@@ -460,7 +464,7 @@ proc ensureSeq[T](x: var seq[T]) =
 proc suggestSym*(info: TLineInfo; s: PSym; usageSym: var PSym; isDecl=true) {.inline.} =
   ## misnamed: should be 'symDeclared'
   when defined(nimsuggest):
-    if suggestVersion == 2:
+    if suggestVersion == 0:
       if s.allUsages.isNil:
         s.allUsages = @[info]
       else:
@@ -509,7 +513,6 @@ proc sugExpr(c: PContext, n: PNode, outputs: var Suggestions) =
     # line as the object to prevent this from happening:
     let prefix = if n.len == 2 and n[1].info.line == n[0].info.line and
        not gTrackPosAttached: n[1] else: nil
-    echo n[1].kind
     suggestFieldAccess(c, obj, prefix, outputs)
 
     #if optIdeDebug in gGlobalOptions:
@@ -519,8 +522,7 @@ proc sugExpr(c: PContext, n: PNode, outputs: var Suggestions) =
     let prefix = if gTrackPosAttached: nil else: n
     suggestEverything(c, n, prefix, outputs)
 
-proc suggestExpr*(c: PContext, n: PNode) =
-  if not exactEquals(gTrackPos, n.info): return
+proc suggestExprNoCheck*(c: PContext, n: PNode) =
   # This keeps semExpr() from coming here recursively:
   if c.compilesContextId > 0: return
   inc(c.compilesContextId)
@@ -544,6 +546,16 @@ proc suggestExpr*(c: PContext, n: PNode) =
   if outputs.len > 0 and gIdeCmd in {ideSug, ideCon, ideDef}:
     produceOutput(outputs)
     suggestQuit()
+
+proc suggestExpr*(c: PContext, n: PNode) =
+  if exactEquals(gTrackPos, n.info): suggestExprNoCheck(c, n)
+
+proc suggestDecl*(c: PContext, n: PNode; s: PSym) =
+  let attached = gTrackPosAttached
+  if attached: inc(c.inTypeContext)
+  defer:
+    if attached: dec(c.inTypeContext)
+  suggestExpr(c, n)
 
 proc suggestStmt*(c: PContext, n: PNode) =
   suggestExpr(c, n)

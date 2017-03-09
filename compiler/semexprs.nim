@@ -1054,7 +1054,9 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # here at all!
   #if isSymChoice(n.sons[1]): return
   when defined(nimsuggest):
-    if gCmd == cmdIdeTools: suggestExpr(c, n)
+    if gCmd == cmdIdeTools:
+      suggestExpr(c, n)
+      if exactEquals(gTrackPos, n[1].info): suggestExprNoCheck(c, n)
 
   var s = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared, checkModule})
   if s != nil:
@@ -2234,6 +2236,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit:
     # check if it is an expression macro:
     checkMinSonsLen(n, 1)
+    #when defined(nimsuggest):
+    #  if gIdeCmd == ideCon and gTrackPos == n.info: suggestExprNoCheck(c, n)
     let mode = if nfDotField in n.flags: {} else: {checkUndeclared}
     var s = qualifiedLookUp(c, n.sons[0], mode)
     if s != nil:
