@@ -424,7 +424,7 @@ proc execCmd(cmd: string; graph: ModuleGraph; cache: IdentCache; cachedMsgs: Cac
   else:
     if gIdeCmd == ideChk:
       for cm in cachedMsgs: errorHook(cm.info, cm.msg, cm.sev)
-    execute(gIdeCmd, orig, dirtyfile, line, col-1, graph, cache)
+    execute(gIdeCmd, orig, dirtyfile, line, col, graph, cache)
   sentinel()
 
 proc recompileFullProject(graph: ModuleGraph; cache: IdentCache) =
