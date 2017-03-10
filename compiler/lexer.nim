@@ -253,7 +253,7 @@ template tokenBegin(pos) {.dirty.} =
 
 template tokenEnd(pos) {.dirty.} =
   when defined(nimsuggest):
-    let colB = getColNumber(L, pos)
+    let colB = getColNumber(L, pos)+1
     if L.fileIdx == gTrackPos.fileIndex and gTrackPos.col in colA..colB and
         L.lineNumber == gTrackPos.line and gIdeCmd in {ideSug, ideCon}:
       L.cursor = CursorPosition.InToken
@@ -1076,10 +1076,11 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
       inc(L.bufpos)
     of '.':
       when defined(nimsuggest):
-        if L.fileIdx == gTrackPos.fileIndex and tok.col == gTrackPos.col and
+        if L.fileIdx == gTrackPos.fileIndex and tok.col+1 == gTrackPos.col and
             tok.line == gTrackPos.line and gIdeCmd == ideSug:
           tok.tokType = tkDot
           L.cursor = CursorPosition.InToken
+          gTrackPos.col = tok.col.int16
           inc(L.bufpos)
           atTokenEnd()
           return
