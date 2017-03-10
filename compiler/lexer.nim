@@ -1061,6 +1061,10 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
         inc(L.bufpos)
       else:
         tok.tokType = tkParLe
+        when defined(nimsuggest):
+          if L.fileIdx == gTrackPos.fileIndex and tok.col < gTrackPos.col and
+                    tok.line == gTrackPos.line and gIdeCmd == ideCon:
+            gTrackPos.col = tok.col.int16
     of ')':
       tok.tokType = tkParRi
       inc(L.bufpos)
