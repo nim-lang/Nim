@@ -420,11 +420,6 @@ proc binaryStrSearch*(x: openArray[string], y: string): int =
       return mid
   result = - 1
 
-template nimdbg*: untyped = c.module.fileIdx == gProjectMainIdx
-template cnimdbg*: untyped = p.module.module.fileIdx == gProjectMainIdx
-template pnimdbg*: untyped = p.lex.fileIdx == gProjectMainIdx
-template lnimdbg*: untyped = L.fileIdx == gProjectMainIdx
-
 proc parseIdeCmd*(s: string): IdeCmd =
   case s:
   of "sug": ideSug
