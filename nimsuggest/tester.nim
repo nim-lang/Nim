@@ -30,8 +30,8 @@ proc parseTest(filename: string; epcMode=false): Test =
   var markers = newSeq[string]()
   var i = 1
   for x in lines(filename):
-    let marker = x.find(cursorMarker)+1
-    if marker > 0:
+    let marker = x.find(cursorMarker)
+    if marker >= 0:
       if epcMode:
         markers.add "(\"" & filename & "\" " & $i & " " & $marker & " \"" & result.dest & "\")"
       else:
