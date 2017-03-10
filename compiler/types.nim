@@ -20,6 +20,7 @@ type
     preferName, preferDesc, preferExported, preferModuleInfo, preferGenericArg
 
 proc typeToString*(typ: PType; prefer: TPreferedDesc = preferName): string
+template `$`*(typ: PType): string = typeToString(typ)
 
 proc base*(t: PType): PType =
   result = t.sons[0]
