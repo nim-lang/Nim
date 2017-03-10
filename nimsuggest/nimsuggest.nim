@@ -40,6 +40,7 @@ Options:
   --log                   enable verbose logging to nimsuggest.log file
   --v1                    use version 1 of the protocol; for backwards compatibility
   --refresh               perform automatic refreshes to keep the analysis precise
+  --maxresults:N          limit the number of suggestions to N
   --tester                implies --stdin and outputs a line
                           '""" & DummyEof & """' for the tester
 
@@ -550,6 +551,8 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
           gRefresh = parseBool(p.val)
         else:
           gRefresh = true
+      of "maxresults":
+        suggestMaxResults = parseInt(p.val)
       else: processSwitch(pass, p)
     of cmdArgument:
       options.gProjectName = unixToNativePath(p.key)

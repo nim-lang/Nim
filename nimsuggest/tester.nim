@@ -304,8 +304,7 @@ proc runTest(filename: string): int =
 proc main() =
   var failures = 0
   if os.paramCount() > 0:
-    let f = os.paramStr(1)
-    let x = getAppDir() / f
+    let x = os.paramStr(1)
     let xx = expandFilename x
     failures += runTest(xx)
     failures += runEpcTest(xx)
