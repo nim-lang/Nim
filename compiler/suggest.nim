@@ -555,6 +555,12 @@ proc suggestDecl*(c: PContext, n: PNode; s: PSym) =
 proc suggestStmt*(c: PContext, n: PNode) =
   suggestExpr(c, n)
 
+proc suggestEnum*(c: PContext; n: PNode; t: PType) =
+  var outputs: Suggestions = @[]
+  suggestSymList(c, t.n, nil, n.info, outputs)
+  produceOutput(outputs)
+  if outputs.len > 0: suggestQuit()
+
 proc suggestSentinel*(c: PContext) =
   if gIdeCmd != ideSug or c.module.position != gTrackPos.fileIndex: return
   if c.compilesContextId > 0: return
