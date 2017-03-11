@@ -36,7 +36,7 @@ type
       mapHandle: Handle
       wasOpened: bool   ## only close if wasOpened
     else:
-      handle*: cint
+      handle: cint
 
 {.deprecated: [TMemFile: MemFile].}
 
@@ -83,7 +83,8 @@ proc unmapMem*(f: var MemFile, p: pointer, size: int) =
 
 
 proc open*(filename: string, mode: FileMode = fmRead,
-           mappedSize = -1, offset = 0, newFileSize = -1): MemFile =
+           mappedSize = -1, offset = 0, newFileSize = -1,
+           allowRemap = false): MemFile =
   ## opens a memory mapped file. If this fails, ``EOS`` is raised.
   ##
   ## ``newFileSize`` can only be set if the file does not exist and is opened
@@ -94,6 +95,9 @@ proc open*(filename: string, mode: FileMode = fmRead,
   ##
   ## ``offset`` must be multiples of the PAGE SIZE of your OS
   ## (usually 4K or 8K but is unique to your OS)
+  ##
+  ## ``allowRemap`` only needs to be true if you want to call ``mapMem`` on
+  ## the resulting MemFile; else file handles are not kept open.
   ##
   ## Example:
   ##
@@ -189,6 +193,9 @@ proc open*(filename: string, mode: FileMode = fmRead,
       else: result.size = fileSize.int
 
     result.wasOpened = true
+    if not allowRemap and result.handle != INVALID_HANDLE_VALUE:
+      if closeHandle(result.handle) == 0:
+        result.fHandle = INVALID_HANDLE_VALUE
 
   else:
     template fail(errCode: OSErrorCode, msg: expr) =
@@ -236,6 +243,10 @@ proc open*(filename: string, mode: FileMode = fmRead,
     if result.mem == cast[pointer](MAP_FAILED):
       fail(osLastError(), "file mapping failed")
 
+    if not allowRemap and result.handle != -1:
+      if close(result.handle) == 0:
+        result.handle = -1
+
 proc close*(f: var MemFile) =
   ## closes the memory mapped file `f`. All changes are written back to the
   ## file system, if `f` was opened with write access.
@@ -244,11 +255,12 @@ proc close*(f: var MemFile) =
   var lastErr: OSErrorCode
 
   when defined(windows):
-    if f.fHandle != INVALID_HANDLE_VALUE and f.wasOpened:
+    if f.wasOpened:
       error = unmapViewOfFile(f.mem) == 0
       lastErr = osLastError()
       error = (closeHandle(f.mapHandle) == 0) or error
-      error = (closeHandle(f.fHandle) == 0) or error
+      if f.fHandle != INVALID_HANDLE_VALUE:
+        error = (closeHandle(f.fHandle) == 0) or error
   else:
     error = munmap(f.mem, f.size) != 0
     lastErr = osLastError()
