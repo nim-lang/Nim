@@ -36,7 +36,7 @@ type
       mapHandle: Handle
       wasOpened: bool   ## only close if wasOpened
     else:
-      handle: cint
+      handle*: cint
 
 {.deprecated: [TMemFile: MemFile].}
 
