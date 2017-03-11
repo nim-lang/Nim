@@ -204,10 +204,10 @@ echo r
 discard """
 $nimsuggest --tester $file
 >sug $1
-sug;;skField;;name;;string;;$file;;166;;6;;"";;100
-sug;;skField;;age;;int;;$file;;167;;6;;"";;100
-sug;;skMethod;;twithin_macro.age_human_yrs;;proc (self: Animal): int;;$file;;169;;9;;"";;100
-sug;;skMacro;;twithin_macro.class;;proc (head: untyped, body: untyped): untyped{.gcsafe, locks: <unknown>.};;$file;;4;;6;;"Iterates over the children of the NimNode ``n``.";;100
-sug;;skMethod;;twithin_macro.vocalize;;proc (self: Animal): string;;$file;;168;;9;;"";;100
-sug;;skMethod;;twithin_macro.vocalize;;proc (self: Rabbit): string;;$file;;184;;9;;"";;100*
+sug;;skField;;age;;int;;$file;;167;;6;;"";;100;;None
+sug;;skField;;name;;string;;$file;;166;;6;;"";;100;;None
+sug;;skMethod;;twithin_macro.age_human_yrs;;proc (self: Animal): int;;$file;;169;;9;;"";;100;;None
+sug;;skMethod;;twithin_macro.vocalize;;proc (self: Animal): string;;$file;;168;;9;;"";;100;;None
+sug;;skMethod;;twithin_macro.vocalize;;proc (self: Rabbit): string;;$file;;184;;9;;"";;100;;None
+sug;;skMacro;;twithin_macro.class;;proc (head: untyped, body: untyped): untyped{.gcsafe, locks: <unknown>.};;$file;;4;;6;;"";;50;;None*
 """

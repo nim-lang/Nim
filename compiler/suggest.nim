@@ -32,7 +32,7 @@
 
 # included from sigmatch.nim
 
-import algorithm, sequtils
+import algorithm, prefixmatches
 
 when defined(nimsuggest):
   import passes, tables # importer
@@ -41,9 +41,11 @@ const
   sep = '\t'
 
 type
-  Suggest* = object
+  Suggest* = ref object
     section*: IdeCmd
     qualifiedPath*: seq[string]
+    name*: PIdent                # not used beyond sorting purposes; name is also
+                                 # part of 'qualifiedPath'
     filePath*: string
     line*: int                   # Starts at 1
     column*: int                 # Starts at 0
@@ -52,7 +54,11 @@ type
     forth*: string               # type
     quality*: range[0..100]   # matching quality
     isGlobal*: bool # is a global variable
+    contextFits*: bool # type/non-type context matches
+    prefix*: PrefixMatch
+    scope*, localUsages*, globalUsages*: int # more usages is better
     tokenLen*: int
+  Suggestions* = seq[Suggest]
 
 var
   suggestionResultHook*: proc (result: Suggest) {.closure.}
@@ -65,23 +71,57 @@ template origModuleName(m: PSym): string = m.name.s
 proc findDocComment(n: PNode): PNode =
   if n == nil: return nil
   if not isNil(n.comment): return n
-  for i in countup(0, safeLen(n)-1):
-    result = findDocComment(n.sons[i])
+  if n.kind in {nkStmtList, nkStmtListExpr} and n.len > 0:
+    result = findDocComment(n.sons[0])
     if result != nil: return
+    if n.len > 1:
+      result = findDocComment(n.sons[1])
+  elif n.kind in {nkAsgn, nkFastAsgn} and n.len == 2:
+    result = findDocComment(n.sons[1])
 
 proc extractDocComment(s: PSym): string =
-  let n = findDocComment(s.ast)
+  var n = findDocComment(s.ast)
+  if n.isNil and s.kind in routineKinds and s.ast != nil:
+    n = findDocComment(s.ast[bodyPos])
   if not n.isNil:
     result = n.comment.replace("\n##", "\n").strip
   else:
     result = ""
 
+proc cmpSuggestions(a, b: Suggest): int =
+  template cf(field) {.dirty.} =
+    result = b.field.int - a.field.int
+    if result != 0: return result
+
+  cf scope
+  cf prefix
+  # when the first type matches, it's better when it's a generic match:
+  cf quality
+  cf contextFits
+  cf localUsages
+  cf globalUsages
+  # if all is equal, sort alphabetically for deterministic output,
+  # independent of hashing order:
+  result = cmp(a.name.s, b.name.s)
+
 proc symToSuggest(s: PSym, isLocal: bool, section: string, li: TLineInfo;
-                  quality: range[0..100]): Suggest =
+                  quality: range[0..100]; prefix: PrefixMatch;
+                  inTypeContext: bool; scope: int): Suggest =
+  new(result)
   result.section = parseIdeCmd(section)
   result.quality = quality
   result.isGlobal = sfGlobal in s.flags
   result.tokenLen = s.name.s.len
+  result.prefix = prefix
+  result.contextFits = inTypeContext == (s.kind in {skType, skGenericParam})
+  result.scope = scope
+  result.name = s.name
+  when defined(nimsuggest):
+    result.globalUsages = s.allUsages.len
+    var c = 0
+    for u in s.allUsages:
+      if u.fileIndex == li.fileIndex: inc c
+    result.localUsages = c
   if optIdeTerse in gGlobalOptions:
     result.symkind = s.kind
     result.filePath = toFullPath(li)
@@ -144,10 +184,14 @@ proc `$`*(suggest: Suggest): string =
     if suggestVersion == 2:
       result.add(sep)
       result.add($suggest.quality)
+      if suggest.section == ideSug:
+        result.add(sep)
+        result.add($suggest.prefix)
 
 proc symToSuggest(s: PSym, isLocal: bool, section: string;
-                  quality: range[0..100]): Suggest =
-  result = symToSuggest(s, isLocal, section, s.info, quality)
+                  quality: range[0..100], prefix: PrefixMatch; inTypeContext: bool;
+                  scope: int): Suggest =
+  result = symToSuggest(s, isLocal, section, s.info, quality, prefix, inTypeContext, scope)
 
 proc suggestResult(s: Suggest) =
   if not isNil(suggestionResultHook):
@@ -155,20 +199,34 @@ proc suggestResult(s: Suggest) =
   else:
     suggestWriteln($s)
 
-proc filterSym(s: PSym; prefix: PNode): bool {.inline.} =
-  proc prefixMatch(s: PSym; n: PNode): bool =
+proc produceOutput(a: var Suggestions) =
+  if gIdeCmd in {ideSug, ideCon}:
+    a.sort cmpSuggestions
+  if not isNil(suggestionResultHook):
+    for s in a:
+      suggestionResultHook(s)
+  else:
+    for s in a:
+      suggestWriteln($s)
+
+proc filterSym(s: PSym; prefix: PNode; res: var PrefixMatch): bool {.inline.} =
+  proc prefixMatch(s: PSym; n: PNode): PrefixMatch =
     case n.kind
-    of nkIdent: result = s.name.s.startsWith(n.ident.s)
-    of nkSym: result = s.name.s.startsWith(n.sym.name.s)
+    of nkIdent: result = n.ident.s.prefixMatch(s.name.s)
+    of nkSym: result = n.sym.name.s.prefixMatch(s.name.s)
     of nkOpenSymChoice, nkClosedSymChoice, nkAccQuoted:
       if n.len > 0:
         result = prefixMatch(s, n[0])
     else: discard
   if s.kind != skModule:
-    result = prefix.isNil or prefixMatch(s, prefix)
+    if prefix != nil:
+      res = prefixMatch(s, prefix)
+      result = res != PrefixMatch.None
+    else:
+      result = true
 
-proc filterSymNoOpr(s: PSym; prefix: PNode): bool {.inline.} =
-  result = filterSym(s, prefix) and s.name.s[0] in lexer.SymChars and
+proc filterSymNoOpr(s: PSym; prefix: PNode; res: var PrefixMatch): bool {.inline.} =
+  result = filterSym(s, prefix, res) and s.name.s[0] in lexer.SymChars and
      not isKeyword(s.name)
 
 proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
@@ -179,31 +237,38 @@ proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
       result = true
       break
 
-proc suggestField(c: PContext, s: PSym; f: PNode; outputs: var int) =
-  if filterSym(s, f) and fieldVisible(c, s):
-    suggestResult(symToSuggest(s, isLocal=true, $ideSug, 100))
-    inc outputs
+proc suggestField(c: PContext, s: PSym; f: PNode; outputs: var Suggestions) =
+  var pm: PrefixMatch
+  if filterSym(s, f, pm) and fieldVisible(c, s):
+    outputs.add(symToSuggest(s, isLocal=true, $ideSug, 100, pm, c.inTypeContext > 0, 0))
+
+proc getQuality(s: PSym): range[0..100] =
+  if s.typ != nil and s.typ.len > 1:
+    var exp = s.typ.sons[1].skipTypes({tyGenericInst, tyVar, tyAlias})
+    if exp.kind == tyVarargs: exp = elemType(exp)
+    if exp.kind in {tyExpr, tyStmt, tyGenericParam, tyAnything}: return 50
+  return 100
 
 template wholeSymTab(cond, section: untyped) =
   var isLocal = true
+  var scopeN = 0
   for scope in walkScopes(c.currentScope):
     if scope == c.topLevelScope: isLocal = false
-    var entries = sequtils.toSeq(items(scope.symbols))
-    sort(entries) do (a,b: PSym) -> int:
-      return cmp(a.name.s, b.name.s)
-    for item in entries:
+    dec scopeN
+    for item in scope.symbols:
       let it {.inject.} = item
+      var pm {.inject.}: PrefixMatch
       if cond:
-        suggestResult(symToSuggest(it, isLocal = isLocal, section, 100))
-        inc outputs
+        outputs.add(symToSuggest(it, isLocal = isLocal, section, getQuality(it),
+                                 pm, c.inTypeContext > 0, scopeN))
 
-proc suggestSymList(c: PContext, list, f: PNode, outputs: var int) =
+proc suggestSymList(c: PContext, list, f: PNode, outputs: var Suggestions) =
   for i in countup(0, sonsLen(list) - 1):
     if list.sons[i].kind == nkSym:
       suggestField(c, list.sons[i].sym, f, outputs)
     #else: InternalError(list.info, "getSymFromList")
 
-proc suggestObject(c: PContext, n, f: PNode, outputs: var int) =
+proc suggestObject(c: PContext, n, f: PNode, outputs: var Suggestions) =
   case n.kind
   of nkRecList:
     for i in countup(0, sonsLen(n)-1): suggestObject(c, n.sons[i], f, outputs)
@@ -235,8 +300,8 @@ proc argsFit(c: PContext, candidate: PSym, n, nOrig: PNode): bool =
   else:
     result = false
 
-proc suggestCall(c: PContext, n, nOrig: PNode, outputs: var int) =
-  wholeSymTab(filterSym(it, nil) and nameFits(c, it, n) and argsFit(c, it, n, nOrig),
+proc suggestCall(c: PContext, n, nOrig: PNode, outputs: var Suggestions) =
+  wholeSymTab(filterSym(it, nil, pm) and nameFits(c, it, n) and argsFit(c, it, n, nOrig),
               $ideCon)
 
 proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} =
@@ -252,25 +317,28 @@ proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} =
       if exp.kind in {tyExpr, tyStmt, tyGenericParam, tyAnything}: return
     result = sigmatch.argtypeMatches(c, s.typ.sons[1], firstArg)
 
-proc suggestOperations(c: PContext, n, f: PNode, typ: PType, outputs: var int) =
+proc suggestOperations(c: PContext, n, f: PNode, typ: PType, outputs: var Suggestions) =
   assert typ != nil
-  wholeSymTab(filterSymNoOpr(it, f) and typeFits(c, it, typ), $ideSug)
+  wholeSymTab(filterSymNoOpr(it, f, pm) and typeFits(c, it, typ), $ideSug)
 
-proc suggestEverything(c: PContext, n, f: PNode, outputs: var int) =
+proc suggestEverything(c: PContext, n, f: PNode, outputs: var Suggestions) =
   # do not produce too many symbols:
   var isLocal = true
+  var scopeN = 0
   for scope in walkScopes(c.currentScope):
     if scope == c.topLevelScope: isLocal = false
+    dec scopeN
     for it in items(scope.symbols):
-      if filterSym(it, f):
-        suggestResult(symToSuggest(it, isLocal = isLocal, $ideSug, 0))
-        inc outputs
+      var pm: PrefixMatch
+      if filterSym(it, f, pm):
+        outputs.add(symToSuggest(it, isLocal = isLocal, $ideSug, 0, pm, c.inTypeContext > 0, scopeN))
     if scope == c.topLevelScope and f.isNil: break
 
-proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var int) =
+proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) =
   # special code that deals with ``myObj.``. `n` is NOT the nkDotExpr-node, but
   # ``myObj``.
   var typ = n.typ
+  var pm: PrefixMatch
   when defined(nimsuggest):
     if n.kind == nkSym and n.sym.kind == skError and suggestVersion == 2:
       # consider 'foo.|' where 'foo' is some not imported module.
@@ -283,10 +351,10 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var int) =
         if m == nil: typ = nil
         else:
           for it in items(n.sym.tab):
-            if filterSym(it, field):
-              suggestResult(symToSuggest(it, isLocal=false, $ideSug, 100))
-              inc outputs
-          suggestResult(symToSuggest(m, isLocal=false, $ideMod, 100))
+            if filterSym(it, field, pm):
+              outputs.add(symToSuggest(it, isLocal=false, $ideSug, 100, pm, c.inTypeContext > 0, -100))
+          outputs.add(symToSuggest(m, isLocal=false, $ideMod, 100, PrefixMatch.None,
+            c.inTypeContext > 0, -99))
 
   if typ == nil:
     # a module symbol has no type for example:
@@ -294,14 +362,12 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var int) =
       if n.sym == c.module:
         # all symbols accessible, because we are in the current module:
         for it in items(c.topLevelScope.symbols):
-          if filterSym(it, field):
-            suggestResult(symToSuggest(it, isLocal=false, $ideSug, 100))
-            inc outputs
+          if filterSym(it, field, pm):
+            outputs.add(symToSuggest(it, isLocal=false, $ideSug, 100, pm, c.inTypeContext > 0, -99))
       else:
         for it in items(n.sym.tab):
-          if filterSym(it, field):
-            suggestResult(symToSuggest(it, isLocal=false, $ideSug, 100))
-            inc outputs
+          if filterSym(it, field, pm):
+            outputs.add(symToSuggest(it, isLocal=false, $ideSug, 100, pm, c.inTypeContext > 0, -99))
     else:
       # fallback:
       suggestEverything(c, n, field, outputs)
@@ -313,7 +379,7 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var int) =
       t = t.sons[0]
     suggestOperations(c, n, field, typ, outputs)
   else:
-    let orig = skipTypes(typ, {tyGenericInst, tyAlias})
+    let orig = typ # skipTypes(typ, {tyGenericInst, tyAlias})
     typ = skipTypes(typ, {tyGenericInst, tyVar, tyPtr, tyRef, tyAlias})
     if typ.kind == tyObject:
       var t = typ
@@ -384,17 +450,16 @@ when defined(nimsuggest):
     s.allUsages.add(info)
 
 var
-  #usageSym*: PSym
   lastLineInfo*: TLineInfo
 
 proc findUsages(info: TLineInfo; s: PSym; usageSym: var PSym) =
   if suggestVersion < 2:
     if usageSym == nil and isTracked(info, s.name.s.len):
       usageSym = s
-      suggestResult(symToSuggest(s, isLocal=false, $ideUse, 100))
+      suggestResult(symToSuggest(s, isLocal=false, $ideUse, 100, PrefixMatch.None, false, 0))
     elif s == usageSym:
       if lastLineInfo != info:
-        suggestResult(symToSuggest(s, isLocal=false, $ideUse, info, 100))
+        suggestResult(symToSuggest(s, isLocal=false, $ideUse, info, 100, PrefixMatch.None, false, 0))
       lastLineInfo = info
 
 when defined(nimsuggest):
@@ -402,12 +467,12 @@ when defined(nimsuggest):
     #echo "usages ", len(s.allUsages)
     for info in s.allUsages:
       let x = if info == s.info and info.col == s.info.col: "def" else: "use"
-      suggestResult(symToSuggest(s, isLocal=false, x, info, 100))
+      suggestResult(symToSuggest(s, isLocal=false, x, info, 100, PrefixMatch.None, false, 0))
 
 proc findDefinition(info: TLineInfo; s: PSym) =
   if s.isNil: return
   if isTracked(info, s.name.s.len):
-    suggestResult(symToSuggest(s, isLocal=false, $ideDef, 100))
+    suggestResult(symToSuggest(s, isLocal=false, $ideDef, 100, PrefixMatch.None, false, 0))
     suggestQuit()
 
 proc ensureIdx[T](x: var T, y: int) =
@@ -431,13 +496,13 @@ proc suggestSym*(info: TLineInfo; s: PSym; usageSym: var PSym; isDecl=true) {.in
       findDefinition(info, s)
     elif gIdeCmd == ideDus and s != nil:
       if isTracked(info, s.name.s.len):
-        suggestResult(symToSuggest(s, isLocal=false, $ideDef, 100))
+        suggestResult(symToSuggest(s, isLocal=false, $ideDef, 100, PrefixMatch.None, false, 0))
       findUsages(info, s, usageSym)
     elif gIdeCmd == ideHighlight and info.fileIndex == gTrackPos.fileIndex:
-      suggestResult(symToSuggest(s, isLocal=false, $ideHighlight, info, 100))
+      suggestResult(symToSuggest(s, isLocal=false, $ideHighlight, info, 100, PrefixMatch.None, false, 0))
     elif gIdeCmd == ideOutline and info.fileIndex == gTrackPos.fileIndex and
         isDecl:
-      suggestResult(symToSuggest(s, isLocal=false, $ideOutline, info, 100))
+      suggestResult(symToSuggest(s, isLocal=false, $ideOutline, info, 100, PrefixMatch.None, false, 0))
 
 proc markUsed(info: TLineInfo; s: PSym; usageSym: var PSym) =
   incl(s.flags, sfUsed)
@@ -464,11 +529,11 @@ proc suggestExpr*(c: PContext, node: PNode) =
   if gTrackPos.line < 0: return
   var cp = inCheckpoint(node.info)
   if cp == cpNone: return
-  var outputs = 0
   # This keeps semExpr() from coming here recursively:
   if c.compilesContextId > 0: return
   inc(c.compilesContextId)
 
+  var outputs: Suggestions = @[]
   if gIdeCmd == ideSug:
     var n = findClosestDot(node)
     if n == nil: n = node
@@ -507,7 +572,9 @@ proc suggestExpr*(c: PContext, node: PNode) =
       suggestCall(c, a, n, outputs)
 
   dec(c.compilesContextId)
-  if outputs > 0 and gIdeCmd in {ideSug, ideCon, ideDef}: suggestQuit()
+  if outputs.len > 0 and gIdeCmd in {ideSug, ideCon, ideDef}:
+    produceOutput(outputs)
+    suggestQuit()
 
 proc suggestStmt*(c: PContext, n: PNode) =
   suggestExpr(c, n)
@@ -518,10 +585,15 @@ proc suggestSentinel*(c: PContext) =
   inc(c.compilesContextId)
   # suggest everything:
   var isLocal = true
+  var outputs: Suggestions = @[]
+  var scopeN = 0
   for scope in walkScopes(c.currentScope):
     if scope == c.topLevelScope: isLocal = false
+    dec scopeN
     for it in items(scope.symbols):
-      if filterSymNoOpr(it, nil):
-        suggestResult(symToSuggest(it, isLocal = isLocal, $ideSug, 0))
+      var pm: PrefixMatch
+      if filterSymNoOpr(it, nil, pm):
+        outputs.add(symToSuggest(it, isLocal = isLocal, $ideSug, 0, PrefixMatch.None, false, scopeN))
 
+  produceOutput(outputs)
   dec(c.compilesContextId)

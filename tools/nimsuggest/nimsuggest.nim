@@ -17,7 +17,7 @@ import compiler / [options, commands, modules, sem,
   passes, passaux, msgs, nimconf,
   extccomp, condsyms,
   sigmatch, ast, scriptconfig,
-  idents, modulegraphs, vm]
+  idents, modulegraphs, vm, prefixmatches]
 
 when defined(windows):
   import winlean
@@ -51,6 +51,11 @@ are supported.
 """
 type
   Mode = enum mstdin, mtcp, mepc, mcmdline
+  CachedMsg = object
+    info: TLineInfo
+    msg: string
+    sev: Severity
+  CachedMsgs = seq[CachedMsg]
 
 var
   gPort = 6000.Port
@@ -93,7 +98,7 @@ proc parseQuoted(cmd: string; outp: var string; start: int): int =
     i += parseUntil(cmd, outp, seps, i)
   result = i
 
-proc sexp(s: IdeCmd|TSymKind): SexpNode = sexp($s)
+proc sexp(s: IdeCmd|TSymKind|PrefixMatch): SexpNode = sexp($s)
 
 proc sexp(s: Suggest): SexpNode =
   # If you change the order here, make sure to change it over in
@@ -110,6 +115,8 @@ proc sexp(s: Suggest): SexpNode =
     s.doc,
     s.quality
   ])
+  if s.section == ideSug:
+    result.add convertSexp(s.prefix)
 
 proc sexp(s: seq[Suggest]): SexpNode =
   result = newSList()
@@ -154,6 +161,9 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
   gIdeCmd = cmd
   if cmd == ideChk:
     msgs.structuredErrorHook = errorHook
+    msgs.writelnHook = proc (s: string) = discard
+  else:
+    msgs.structuredErrorHook = nil
     msgs.writelnHook = proc (s: string) = discard
   if cmd == ideUse and suggestVersion != 2:
     graph.resetAllModules()
@@ -360,7 +370,7 @@ proc replEpc(x: ThreadParams) {.thread.} =
                          "unexpected call: " & epcAPI
       quit errMessage
 
-proc execCmd(cmd: string; graph: ModuleGraph; cache: IdentCache) =
+proc execCmd(cmd: string; graph: ModuleGraph; cache: IdentCache; cachedMsgs: CachedMsgs) =
   template sentinel() =
     # send sentinel for the input reading thread:
     results.send(Suggest(section: ideNone))
@@ -412,17 +422,19 @@ proc execCmd(cmd: string; graph: ModuleGraph; cache: IdentCache) =
   if gIdeCmd == ideKnown:
     results.send(Suggest(section: ideKnown, quality: ord(fileInfoKnown(orig))))
   else:
+    if gIdeCmd == ideChk:
+      for cm in cachedMsgs: errorHook(cm.info, cm.msg, cm.sev)
     execute(gIdeCmd, orig, dirtyfile, line, col-1, graph, cache)
   sentinel()
 
 proc recompileFullProject(graph: ModuleGraph; cache: IdentCache) =
-  echo "recompiling full project"
+  #echo "recompiling full project"
   resetSystemArtifacts()
   vm.globalCtx = nil
   graph.resetAllModules()
   GC_fullcollect()
   compileProject(graph, cache)
-  echo GC_getStatistics()
+  #echo GC_getStatistics()
 
 proc mainThread(graph: ModuleGraph; cache: IdentCache) =
   if gLogging:
@@ -439,12 +451,13 @@ proc mainThread(graph: ModuleGraph; cache: IdentCache) =
   suggestionResultHook = sugResultHook
   graph.doStopCompile = proc (): bool = requests.peek() > 0
   var idle = 0
+  var cachedMsgs: CachedMsgs = @[]
   while true:
     let (hasData, req) = requests.tryRecv()
     if hasData:
       msgs.writelnHook = wrHook
       suggestionResultHook = sugResultHook
-      execCmd(req, graph, cache)
+      execCmd(req, graph, cache, cachedMsgs)
       idle = 0
     else:
       os.sleep 250
@@ -453,7 +466,9 @@ proc mainThread(graph: ModuleGraph; cache: IdentCache) =
       # we use some nimsuggest activity to enable a lazy recompile:
       gIdeCmd = ideChk
       msgs.writelnHook = proc (s: string) = discard
-      msgs.structuredErrorHook = nil
+      cachedMsgs.setLen 0
+      msgs.structuredErrorHook = proc (info: TLineInfo; msg: string; sev: Severity) =
+        cachedMsgs.add(CachedMsg(info: info, msg: msg, sev: sev))
       suggestionResultHook = proc (s: Suggest) = discard
       recompileFullProject(graph, cache)
 
@@ -522,8 +537,13 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
         suggestVersion = 2
         gMode = mstdin
         gEmitEof = true
+        gRefresh = false
       of "log": gLogging = true
-      of "refresh": gRefresh = true
+      of "refresh":
+        if p.val.len > 0:
+          gRefresh = parseBool(p.val)
+        else:
+          gRefresh = true
       else: processSwitch(pass, p)
     of cmdArgument:
       options.gProjectName = unixToNativePath(p.key)

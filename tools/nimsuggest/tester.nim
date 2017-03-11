@@ -20,6 +20,7 @@ template tpath(): untyped = getAppDir() / "tests"
 proc parseTest(filename: string; epcMode=false): Test =
   const cursorMarker = "#[!]#"
   let nimsug = curDir & addFileExt("nimsuggest", ExeExt)
+  let libpath = findExe("nim").splitFile().dir /../ "lib"
   result.dest = getTempDir() / extractFilename(filename)
   result.cmd = nimsug & " --tester " & result.dest
   result.script = @[]
@@ -42,7 +43,7 @@ proc parseTest(filename: string; epcMode=false): Test =
       inc specSection
     elif specSection == 1:
       if x.startsWith("$nimsuggest"):
-        result.cmd = x % ["nimsuggest", nimsug, "file", filename]
+        result.cmd = x % ["nimsuggest", nimsug, "file", filename, "lib", libpath]
       elif x.startsWith("!"):
         if result.cmd.len == 0:
           result.startup.add x
@@ -54,7 +55,7 @@ proc parseTest(filename: string; epcMode=false): Test =
         result.script.add((x.substr(1).replaceWord("$path", tpath()), ""))
       elif x.len > 0:
         # expected output line:
-        let x = x % ["file", filename]
+        let x = x % ["file", filename, "lib", libpath]
         result.script[^1][1].add x.replace(";;", "\t") & '\L'
         # else: ignore empty lines for better readability of the specs
     inc i
@@ -164,7 +165,6 @@ proc sexpToAnswer(s: SexpNode): string =
   doAssert m.kind == SList
   for a in m:
     doAssert a.kind == SList
-    var first = true
     #s.section,
     #s.symkind,
     #s.qualifiedPath.map(newSString),
@@ -204,6 +204,9 @@ proc sexpToAnswer(s: SexpNode): string =
       result.add doc
       result.add '\t'
       result.add a[8].getNum
+      if a.len >= 10:
+        result.add '\t'
+        result.add a[9].getStr
     result.add '\L'
 
 proc doReport(filename, answer, resp: string; report: var string) =
@@ -300,9 +303,11 @@ proc runTest(filename: string): int =
 
 proc main() =
   var failures = 0
-  when false:
-    let x = getAppDir() / "tests/tchk1.nim"
+  if os.paramCount() > 0:
+    let f = os.paramStr(1)
+    let x = getAppDir() / f
     let xx = expandFilename x
+    failures += runTest(xx)
     failures += runEpcTest(xx)
   else:
     for x in walkFiles(getAppDir() / "tests/t*.nim"):

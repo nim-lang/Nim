@@ -17,13 +17,13 @@ proc main(f: Foo) =
 discard """
 $nimsuggest --tester $file
 >sug $1
-sug;;skField;;x;;int;;$file;;8;;4;;"";;100
-sug;;skField;;y;;int;;$file;;8;;7;;"";;100
-sug;;skProc;;tdot2.main;;proc (f: Foo);;$file;;12;;5;;"";;100
+sug;;skField;;x;;int;;$file;;8;;4;;"";;100;;None
+sug;;skField;;y;;int;;$file;;8;;7;;"";;100;;None
+sug;;skProc;;tdot2.main;;proc (f: Foo);;$file;;12;;5;;"";;100;;None
 !edit 0i32 1i32
 >sug $1
-sug;;skField;;x;;int;;$file;;8;;4;;"";;100
-sug;;skField;;y;;int;;$file;;8;;7;;"";;100
-sug;;skField;;z;;string;;$file;;10;;6;;"";;100
-sug;;skProc;;tdot2.main;;proc (f: Foo);;$file;;12;;5;;"";;100
+sug;;skField;;x;;int;;$file;;8;;4;;"";;100;;None
+sug;;skField;;y;;int;;$file;;8;;7;;"";;100;;None
+sug;;skField;;z;;string;;$file;;10;;6;;"";;100;;None
+sug;;skProc;;tdot2.main;;proc (f: Foo);;$file;;12;;5;;"";;100;;None
 """
