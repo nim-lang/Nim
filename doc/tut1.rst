@@ -658,8 +658,8 @@ a tuple as a return value instead of using var parameters.
 Discard statement
 -----------------
 To call a procedure that returns a value just for its side effects and ignoring
-its return value, a ``discard`` statement **has** to be used. Nim does not
-allow to silently throw away a return value:
+its return value, a ``discard`` statement **must** be used. Nim does not
+allow silently throwing away a return value:
 
 .. code-block:: nim
   discard yes("May I ask a pointless question?")
@@ -708,7 +708,7 @@ The compiler checks that each parameter receives exactly one argument.
 Default values
 --------------
 To make the ``createWindow`` proc easier to use it should provide `default
-values`, these are values that are used as arguments if the caller does not
+values`; these are values that are used as arguments if the caller does not
 specify them:
 
 .. code-block:: nim
@@ -750,19 +750,19 @@ algorithm. Ambiguous calls are reported as errors.
 Operators
 ---------
 The Nim library makes heavy use of overloading - one reason for this is that
-each operator like ``+`` is a just an overloaded proc. The parser lets you
+each operator like ``+`` is just an overloaded proc. The parser lets you
 use operators in `infix notation` (``a + b``) or `prefix notation` (``+ a``).
 An infix operator always receives two arguments, a prefix operator always one.
-Postfix operators are not possible, because this would be ambiguous: does
+(Postfix operators are not possible, because this would be ambiguous: does
 ``a @ @ b`` mean ``(a) @ (@b)`` or ``(a@) @ (b)``? It always means
-``(a) @ (@b)``, because there are no postfix operators in Nim.
+``(a) @ (@b)``, because there are no postfix operators in Nim.)
 
 Apart from a few built-in keyword operators such as ``and``, ``or``, ``not``,
 operators always consist of these characters:
 ``+  -  *  \  /  <  >  =  @  $  ~  &  %  !  ?  ^  .  |``
 
 User defined operators are allowed. Nothing stops you from defining your own
-``@!?+~`` operator, but readability can suffer.
+``@!?+~`` operator, but doing so may reduce readability.
 
 The operator's precedence is determined by its first character. The details
 can be found in the manual.
@@ -785,7 +785,7 @@ Forward declarations
 --------------------
 
 Every variable, procedure, etc. needs to be declared before it can be used.
-(The reason for this is that it is non-trivial to do better than that in a
+(The reason for this is that it is non-trivial to avoid this need in a
 language that supports meta programming as extensively as Nim does.)
 However, this cannot be done for mutually recursive procedures:
 
@@ -822,7 +822,7 @@ whose value is then returned implicitly.
 Iterators
 =========
 
-Let's return to the boring counting example:
+Let's return to the simple counting example:
 
 .. code-block:: nim
   echo "Counting to ten: "
@@ -843,7 +843,7 @@ However, this does not work. The problem is that the procedure should not
 only ``return``, but return and **continue** after an iteration has
 finished. This *return and continue* is called a `yield` statement. Now
 the only thing left to do is to replace the ``proc`` keyword by ``iterator``
-and there it is - our first iterator:
+and here it is - our first iterator:
 
 .. code-block:: nim
   iterator countup(a, b: int): int =
@@ -856,8 +856,8 @@ Iterators look very similar to procedures, but there are several
 important differences:
 
 * Iterators can only be called from for loops.
-* Iterators cannot contain a ``return`` statement and procs cannot contain a
-  ``yield`` statement.
+* Iterators cannot contain a ``return`` statement (and procs cannot contain a
+  ``yield`` statement).
 * Iterators have no implicit ``result`` variable.
 * Iterators do not support recursion.
 * Iterators cannot be forward declared, because the compiler must be able
@@ -866,8 +866,8 @@ important differences:
 
 However, you can also use a ``closure`` iterator to get a different set of
 restrictions. See `first class iterators <manual.html#first-class-iterators>`_
-for details. Iterators can have the same name and parameters as a proc,
-essentially they have their own namespace. Therefore it is common practice to
+for details. Iterators can have the same name and parameters as a proc, since
+essentially they have their own namespaces. Therefore it is common practice to
 wrap iterators in procs of the same name which accumulate the result of the
 iterator and return it as a sequence, like ``split`` from the `strutils module
 <strutils.html>`_.
@@ -882,13 +882,13 @@ that are available for them in detail.
 Booleans
 --------
 
-The boolean type is named ``bool`` in Nim and consists of the two
+Nim's boolean type is called ``bool`` and consists of the two
 pre-defined values ``true`` and ``false``. Conditions in while,
-if, elif, when statements need to be of type bool.
+if, elif, and when statements must be of type bool.
 
 The operators ``not, and, or, xor, <, <=, >, >=, !=, ==`` are defined
-for the bool type. The ``and`` and ``or`` operators perform short-cut
-evaluation. Example:
+for the bool type. The ``and`` and ``or`` operators perform short-circuit
+evaluation. For example:
 
 .. code-block:: nim
 
@@ -899,8 +899,8 @@ evaluation. Example:
 
 Characters
 ----------
-The `character type` is named ``char`` in Nim. Its size is one byte.
-Thus it cannot represent an UTF-8 character, but a part of it.
+The `character type` is called ``char``. Its size is always one byte, so
+it cannot represent most UTF-8 characters; but it *can* represent one of the bytes that makes up a multi-byte UTF-8 character.
 The reason for this is efficiency: for the overwhelming majority of use-cases,
 the resulting programs will still handle UTF-8 properly as UTF-8 was specially
 designed for this.
@@ -914,11 +914,11 @@ Converting from an integer to a ``char`` is done with the ``chr`` proc.
 
 Strings
 -------
-String variables in Nim are **mutable**, so appending to a string
-is quite efficient. Strings in Nim are both zero-terminated and have a
-length field. One can retrieve a string's length with the builtin ``len``
+String variables are **mutable**, so appending to a string
+is possible, and quite efficient. Strings in Nim are both zero-terminated and have a
+length field. A string's length can be retrieved with the builtin ``len``
 procedure; the length never counts the terminating zero. Accessing the
-terminating zero is no error and often leads to simpler code:
+terminating zero is not an error and often leads to simpler code:
 
 .. code-block:: nim
   if s[i] == 'a' and s[i+1] == 'b':
@@ -928,15 +928,15 @@ terminating zero is no error and often leads to simpler code:
 The assignment operator for strings copies the string. You can use the ``&``
 operator to concatenate strings and ``add`` to append to a string.
 
-Strings are compared by their lexicographical order. All comparison operators
-are available. Per convention, all strings are UTF-8 strings, but this is not
+Strings are compared using their lexicographical order. All the comparison operators
+are supported. By convention, all strings are UTF-8 encoded, but this is not
 enforced. For example, when reading strings from binary files, they are merely
 a sequence of bytes. The index operation ``s[i]`` means the i-th *char* of
 ``s``, not the i-th *unichar*.
 
 String variables are initialized with a special value, called ``nil``. However,
 most string operations cannot deal with ``nil`` (leading to an exception being
-raised) for performance reasons. One should use empty strings ``""``
+raised) for performance reasons. It is best to use empty strings ``""``
 rather than ``nil`` as the *empty* value. But ``""`` often creates a string
 object on the heap, so there is a trade-off to be made here.
 
@@ -947,7 +947,7 @@ Nim has these integer types built-in:
 ``int int8 int16 int32 int64 uint uint8 uint16 uint32 uint64``.
 
 The default integer type is ``int``. Integer literals can have a *type suffix*
-to mark them to be of another integer type:
+to specify a non-default integer type:
 
 
 .. code-block:: nim
@@ -961,18 +961,18 @@ Most often integers are used for counting objects that reside in memory, so
 ``int`` has the same size as a pointer.
 
 The common operators ``+ - * div mod  <  <=  ==  !=  >  >=`` are defined for
-integers. The ``and or xor not`` operators are defined for integers too and
+integers. The ``and or xor not`` operators are also defined for integers, and
 provide *bitwise* operations. Left bit shifting is done with the ``shl``, right
 shifting with the ``shr`` operator. Bit shifting operators always treat their
 arguments as *unsigned*. For `arithmetic bit shifts`:idx: ordinary
 multiplication or division can be used.
 
-Unsigned operations all wrap around; they cannot lead to over- or underflow
+Unsigned operations all wrap around; they cannot lead to over- or under-flow
 errors.
 
-`Automatic type conversion`:idx: is performed in expressions where different
+Lossless `Automatic type conversion`:idx: is performed in expressions where different
 kinds of integer types are used. However, if the type conversion
-loses information, the `EOutOfRange`:idx: exception is raised (if the error
+would cause loss of information, the `EOutOfRange`:idx: exception is raised (if the error
 cannot be detected at compile time).
 
 
@@ -981,9 +981,9 @@ Floats
 Nim has these floating point types built-in: ``float float32 float64``.
 
 The default float type is ``float``. In the current implementation,
-``float`` is always 64 bit wide.
+``float`` is always 64-bits.
 
-Float literals can have a *type suffix* to mark them to be of another float
+Float literals can have a *type suffix* to specify a non-default float
 type:
 
 .. code-block:: nim
@@ -993,18 +993,18 @@ type:
     z = 0.0'f64  # z is of type ``float64``
 
 The common operators ``+ - * /  <  <=  ==  !=  >  >=`` are defined for
-floats and follow the IEEE standard.
+floats and follow the IEEE-754 standard.
 
 Automatic type conversion in expressions with different kinds of floating
 point types is performed: the smaller type is converted to the larger. Integer
-types are **not** converted to floating point types automatically and vice
-versa. The `toInt <system.html#toInt>`_ and `toFloat <system.html#toFloat>`_
-procs can be used for these conversions.
+types are **not** converted to floating point types automatically, nor vice
+versa. Use the `toInt <system.html#toInt>`_ and `toFloat <system.html#toFloat>`_
+procs for these conversions.
 
 
 Type Conversion
 ---------------
-Conversion between basic types in nim is performed by using the
+Conversion between basic types is performed by using the
 type as a function:
 
 .. code-block:: nim
@@ -1019,9 +1019,9 @@ Internal type representation
 ============================
 
 As mentioned earlier, the built-in `$ <system.html#$>`_ (stringify) operator
-turns any basic type into a string, which you can then print to the screen
-with the ``echo`` proc. However, advanced types, or types you may define
-yourself won't work with the ``$`` operator until you define one for them.
+turns any basic type into a string, which you can then print to the console
+using the ``echo`` proc. However, advanced types, and your own custom types,
+won't work with the ``$`` operator until you define it for them.
 Sometimes you just want to debug the current value of a complex type without
 having to write its ``$`` operator.  You can use then the `repr
 <system.html#repr>`_ proc which works with any type and even complex data
@@ -1057,7 +1057,7 @@ In Nim new types can be defined within a ``type`` statement:
     biggestInt = int64      # biggest integer type that is available
     biggestFloat = float64  # biggest float type that is available
 
-Enumeration and object types cannot be defined on the fly, but only within a
+Enumeration and object types may only be defined within a
 ``type`` statement.
 
 
