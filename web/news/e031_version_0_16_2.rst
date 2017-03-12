@@ -23,6 +23,9 @@ Changes affecting backwards compatibility
   pointer. Now the hash is calculated from the contents of the string, assuming
   ``cstring`` is a null-terminated string. Equal ``string`` and ``cstring``
   values produce an equal hash value.
+- ``memfiles.open`` now closes file handleds/fds by default.  Passing
+  ``allowRemap=true`` to ``memfiles.open`` recovers the old behavior.  The old
+  behavior is only needed to call ``mapMem`` on the resulting ``MemFile``.
 
 Library Additions
 -----------------
