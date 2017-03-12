@@ -30,6 +30,8 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   #  result = errorNode(c, n)
   if result.typ != nil:
     # XXX tyGenericInst here?
+    if result.typ.kind == tyProc and tfUnresolved in result.typ.flags:
+      localError(n.info, errProcHasNoConcreteType, n.renderTree)
     if result.typ.kind == tyVar: result = newDeref(result)
   elif {efWantStmt, efAllowStmt} * flags != {}:
     result.typ = newTypeS(tyVoid, c)

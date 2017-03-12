@@ -80,8 +80,13 @@ proc evalTemplateArgs(n: PNode, s: PSym; fromHlo: bool): PNode =
     expectedRegularParams = <s.typ.len
     givenRegularParams = totalParams - genericParams
   if givenRegularParams < 0: givenRegularParams = 0
+
   if totalParams > expectedRegularParams + genericParams:
     globalError(n.info, errWrongNumberOfArguments)
+
+  if totalParams < genericParams:
+    globalError(n.info, errMissingGenericParamsForTemplate,
+                n.renderTree)
 
   result = newNodeI(nkArgList, n.info)
   for i in 1 .. givenRegularParams:

@@ -64,6 +64,8 @@ type
     errVarForOutParamNeeded,
     errPureTypeMismatch, errTypeMismatch, errButExpected, errButExpectedX,
     errAmbiguousCallXYZ, errWrongNumberOfArguments,
+    errWrongNumberOfArgumentsInCall,
+    errMissingGenericParamsForTemplate,
     errXCannotBePassedToProcVar,
     errXCannotBeInParamDecl, errPragmaOnlyInHeaderOfProcX, errImplOfXNotAllowed,
     errImplOfXexpected, errNoSymbolToBorrowFromFound, errDiscardValueX,
@@ -108,6 +110,7 @@ type
     errCannotInferTypeOfTheLiteral,
     errCannotInferReturnType,
     errGenericLambdaNotAllowed,
+    errProcHasNoConcreteType,
     errCompilerDoesntSupportTarget,
     errUser,
     warnCannotOpenFile,
@@ -270,6 +273,8 @@ const
     errButExpectedX: "but expected \'$1\'",
     errAmbiguousCallXYZ: "ambiguous call; both $1 and $2 match for: $3",
     errWrongNumberOfArguments: "wrong number of arguments",
+    errWrongNumberOfArgumentsInCall: "wrong number of arguments in call to '$1'",
+    errMissingGenericParamsForTemplate: "'$1' has unspecified generic parameters",
     errXCannotBePassedToProcVar: "\'$1\' cannot be passed to a procvar",
     errXCannotBeInParamDecl: "$1 cannot be declared in parameter declaration",
     errPragmaOnlyInHeaderOfProcX: "pragmas are only allowed in the header of a proc; redefinition of $1",
@@ -371,6 +376,7 @@ const
     errGenericLambdaNotAllowed: "A nested proc can have generic parameters only when " &
                                 "it is used as an operand to another routine and the types " &
                                 "of the generic paramers can be inferred from the expected signature.",
+    errProcHasNoConcreteType: "'$1' doesn't have a concrete type, due to unspecified generic parameters.",
     errCompilerDoesntSupportTarget: "The current compiler \'$1\' doesn't support the requested compilation target",
     errUser: "$1",
     warnCannotOpenFile: "cannot open \'$1\'",
