@@ -489,10 +489,10 @@ Example:
   else:
     echo "unknown operating system"
 
-The ``when`` statement is almost identical to the ``if`` statement with some
+The ``when`` statement is almost identical to the ``if`` statement, but with these
 differences:
 
-* Each condition has to be a constant expression since it is evaluated by the
+* Each condition must be a constant expression since it is evaluated by the
   compiler.
 * The statements within a branch do not open a new scope.
 * The compiler checks the semantics and produces code *only* for the statements
@@ -516,8 +516,8 @@ In Nim there is a distinction between *simple statements* and *complex
 statements*. *Simple statements* cannot contain other statements:
 Assignment, procedure calls or the ``return`` statement belong to the simple
 statements. *Complex statements* like ``if``, ``when``, ``for``, ``while`` can
-contain other statements. To avoid ambiguities, complex statements always have
-to be indented, but single simple statements do not:
+contain other statements. To avoid ambiguities, complex statements must always
+be indented, but single simple statements do not:
 
 .. code-block:: nim
   # no indentation needed for single assignment statement:
@@ -586,9 +586,9 @@ false if they answered "no" (or something similar). A ``return`` statement
 leaves the procedure (and therefore the while loop) immediately. The
 ``(question: string): bool`` syntax describes that the procedure expects a
 parameter named ``question`` of type ``string`` and returns a value of type
-``bool``. ``Bool`` is a built-in type: the only valid values for ``bool`` are
+``bool``. The ``bool`` type is built-in: the only valid values for ``bool`` are
 ``true`` and ``false``.
-The conditions in if or while statements should be of the type ``bool``.
+The conditions in if or while statements must be of type ``bool``.
 
 Some terminology: in the example ``question`` is called a (formal) *parameter*,
 ``"Should I..."`` is called an *argument* that is passed to this parameter.
