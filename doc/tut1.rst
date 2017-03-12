@@ -1156,9 +1156,9 @@ Sets
 Arrays
 ------
 An array is a simple fixed length container. Each element in
-the array has the same type. The array's index type can be any ordinal type.
+an array has the same type. The array's index type can be any ordinal type.
 
-Arrays can be constructed via ``[]``:
+Arrays can be constructed using ``[]``:
 
 .. code-block:: nim
 
@@ -1222,7 +1222,7 @@ subdivided in height levels accessed through their integer index:
   #tower[0][1] = on
 
 Note how the built-in ``len`` proc returns only the array's first dimension
-length.  Another way of defining the ``LightTower`` to show better its
+length.  Another way of defining the ``LightTower`` to better illustrate its
 nested nature would be to omit the previous definition of the ``LevelSetting``
 type and instead write it embedded directly as the type of the first dimension:
 
@@ -1230,7 +1230,7 @@ type and instead write it embedded directly as the type of the first dimension:
   type
     LightTower = array[1..10, array[north..west, BlinkLights]]
 
-It is quite frequent to have arrays start at zero, so there's a shortcut syntax
+It is quite common to have arrays start at zero, so there's a shortcut syntax
 to specify a range from zero to the specified index minus one:
 
 .. code-block:: nim
@@ -1288,8 +1288,8 @@ value. Here the ``for`` statement is looping over the results from the
 <system.html>`_ module.  Examples:
 
 .. code-block:: nim
-  for i in @[3, 4, 5]:
-    echo i
+  for value in @[3, 4, 5]:
+    echo value
   # --> 3
   # --> 4
   # --> 5
@@ -1320,7 +1320,7 @@ type does not matter.
 
   fruits = @[]                  # creates an empty sequence on the heap that will be referenced by 'fruits'
 
-  capitals = ["New York", "London", "Berlin"]   # array 'capitals' allows only assignment of three elements
+  capitals = ["New York", "London", "Berlin"]   # array 'capitals' allows assignment of only three elements
   fruits.add("Banana")          # sequence 'fruits' is dynamically expandable during runtime
   fruits.add("Mango")
 
@@ -1406,7 +1406,7 @@ the same type and of the same name in the same order.
 
 The assignment operator for tuples copies each component. The notation
 ``t.field`` is used to access a tuple's field. Another notation is
-``t[i]`` to access the ``i``'th field. Here ``i`` needs to be a constant
+``t[i]`` to access the ``i``'th field. Here ``i`` must be a constant
 integer.
 
 .. code-block:: nim
@@ -1449,10 +1449,10 @@ Tuples can be *unpacked* during variable assignment (and only then!). This can
 be handy to assign directly the fields of the tuples to individually named
 variables. An example of this is the `splitFile <os.html#splitFile>`_ proc
 from the `os module <os.html>`_ which returns the directory, name and
-extension of a path at the same time. For tuple unpacking to work you have to
-use parenthesis around the values you want to assign the unpacking to,
+extension of a path at the same time. For tuple unpacking to work you must
+use parentheses around the values you want to assign the unpacking to,
 otherwise you will be assigning the same value to all the individual
-variables! Example:
+variables! For example:
 
 .. code-block:: nim
 
@@ -1494,12 +1494,12 @@ point to and modify the same location in memory.
 
 Nim distinguishes between `traced`:idx: and `untraced`:idx: references.
 Untraced references are also called *pointers*. Traced references point to
-objects of a garbage collected heap, untraced references point to
-manually allocated objects or to objects somewhere else in memory. Thus
+objects in a garbage collected heap, untraced references point to
+manually allocated objects or to objects elsewhere in memory. Thus
 untraced references are *unsafe*. However for certain low-level operations
-(accessing the hardware) untraced references are unavoidable.
+(e.g., accessing the hardware), untraced references are necessary.
 
-Traced references are declared with the **ref** keyword, untraced references
+Traced references are declared with the **ref** keyword; untraced references
 are declared with the **ptr** keyword.
 
 The empty ``[]`` subscript notation can be used to *derefer* a reference,
@@ -1520,10 +1520,10 @@ operators perform implicit dereferencing operations for reference types:
   n.data = 9
   # no need to write n[].data; in fact n[].data is highly discouraged!
 
-To allocate a new traced object, the built-in procedure ``new`` has to be used.
+To allocate a new traced object, the built-in procedure ``new`` must be used.
 To deal with untraced memory, the procedures ``alloc``, ``dealloc`` and
-``realloc`` can be used. The documentation of the `system <system.html>`_
-module contains further information.
+``realloc`` can be used. The `system <system.html>`_
+module's documentation contains further details.
 
 If a reference points to *nothing*, it has the value ``nil``.
 
@@ -1555,8 +1555,8 @@ listed in the `manual <manual.html#types-procedural-type>`_.
 
 Distinct type
 -------------
-A Distinct type allows for the creation of new type that "does not imply a subtype relationship  between it and its base type".
-You must EXPLICITLY define all behaviour for the distinct type.
+A Distinct type allows for the creation of new type that "does not imply a subtype relationship between it and its base type".
+You must **explicitly** define all behaviour for the distinct type.
 To help with this, both the distinct type and its base type can cast from one type to the other.
 Examples are provided in the `manual <manual.html#types-distinct-type>`_.
 
@@ -1564,8 +1564,8 @@ Modules
 =======
 Nim supports splitting a program into pieces with a module concept.
 Each module is in its own file. Modules enable `information hiding`:idx: and
-`separate compilation`:idx:. A module may gain access to symbols of another
-module by the `import`:idx: statement. Only top-level symbols that are marked
+`separate compilation`:idx:. A module may gain access to the symbols of another
+module by using the `import`:idx: statement. Only top-level symbols that are marked
 with an asterisk (``*``) are exported:
 
 .. code-block:: nim
@@ -1585,7 +1585,7 @@ with an asterisk (``*``) are exported:
 
 The above module exports ``x`` and ``*``, but not ``y``.
 
-The top-level statements of a module are executed at the start of the program.
+A module's top-level statements are executed at the start of the program.
 This can be used to initialize complex data structures for example.
 
 Each module has a special magic constant ``isMainModule`` that is true if the
@@ -1625,8 +1625,8 @@ This is best illustrated by an example:
     result = x + 1
 
 
-A symbol of a module *can* be *qualified* with the ``module.symbol`` syntax. If
-the symbol is ambiguous, it even *has* to be qualified. A symbol is ambiguous
+A symbol of a module *can* be *qualified* with the ``module.symbol`` syntax. And if
+a symbol is ambiguous, it *must* be qualified. A symbol is ambiguous
 if it is defined in two (or more) different modules and both modules are
 imported by a third one:
 
@@ -1642,7 +1642,7 @@ imported by a third one:
   # Module C
   import A, B
   write(stdout, x) # error: x is ambiguous
-  write(stdout, A.x) # no error: qualifier used
+  write(stdout, A.x) # okay: qualifier used
 
   var x = 4
   write(stdout, x) # not ambiguous: uses the module C's x
