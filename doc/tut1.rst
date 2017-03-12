@@ -411,8 +411,8 @@ Other useful iterators for collections (like arrays and sequences) are
 * ``pairs`` and ``mpairs`` which provides the element and an index number (immutable and mutable respectively)
 
 .. code-block:: nim
-  for indx, itm in ["a","b"].pairs:
-    echo itm, " at index ", indx
+  for index, item in ["a","b"].pairs:
+    echo item, " at index ", index
   # => a at index 0
   # => b at index 1
 
