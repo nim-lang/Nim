@@ -393,7 +393,7 @@ Since counting up occurs so often in programs, Nim also has a `..
   for i in 1..10:
     ...
 
-Zero-indexed counting have two shortcuts ``..<`` and ``..^`` to simplify counting to one less then the higher index:
+Zero-indexed counting have two shortcuts ``..<`` and ``..^`` to simplify counting to one less than the higher index:
 
 .. code-block:: nim
   for i in 0..<10:
