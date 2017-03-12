@@ -1063,10 +1063,10 @@ Enumeration and object types may only be defined within a
 
 Enumerations
 ------------
-A variable of an enumeration type can only be assigned a value of a
-limited set. This set consists of ordered symbols. Each symbol is mapped
+A variable of an enumeration type can only be assigned one of the enumeration's specified values.
+These values are a set of ordered symbols. Each symbol is mapped
 to an integer value internally. The first symbol is represented
-at runtime by 0, the second by 1 and so on. Example:
+at runtime by 0, the second by 1 and so on. For example:
 
 .. code-block:: nim
 
@@ -1077,17 +1077,17 @@ at runtime by 0, the second by 1 and so on. Example:
   var x = south      # `x` is of type `Direction`; its value is `south`
   echo x           # writes "south" to `stdout`
 
-All comparison operators can be used with enumeration types.
+All the comparison operators can be used with enumeration types.
 
 An enumeration's symbol can be qualified to avoid ambiguities:
 ``Direction.south``.
 
-The ``$`` operator can convert any enumeration value to its name, the ``ord``
-proc to its underlying integer value.
+The ``$`` operator can convert any enumeration value to its name, and the ``ord``
+proc can convert it to its underlying integer value.
 
 For better interfacing to other programming languages, the symbols of enum
 types can be assigned an explicit ordinal value. However, the ordinal values
-have to be in ascending order. A symbol whose ordinal value is not
+must be in ascending order. A symbol whose ordinal value is not
 explicitly given is assigned the value of the previous symbol + 1.
 
 An explicit ordered enum can have *holes*:
@@ -1142,8 +1142,8 @@ subrange types (and vice versa) are allowed.
 
 The ``system`` module defines the important `Natural <system.html#Natural>`_
 type as ``range[0..high(int)]`` (`high <system.html#high>`_ returns the
-maximal value). Other programming languages mandate the usage of unsigned
-integers for natural numbers. This is often **wrong**: you don't want unsigned
+maximal value). Other programming languages may suggest the use of unsigned
+integers for natural numbers. This is often **unwise**: you don't want unsigned
 arithmetic (which wraps around) just because the numbers cannot be negative.
 Nim's ``Natural`` type helps to avoid this common programming error.
 
