@@ -1514,6 +1514,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
       if arg.sons[i].sym.kind in {skProc, skMethod, skConverter, skIterator}:
         copyCandidate(z, m)
         z.callee = arg.sons[i].typ
+        if tfUnresolved in z.callee.flags: continue
         z.calleeSym = arg.sons[i].sym
         #if arg.sons[i].sym.name.s == "cmp":
         #  ggDebug = true

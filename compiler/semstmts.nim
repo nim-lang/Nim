@@ -499,6 +499,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         if hasEmpty(typ):
           localError(def.info, errCannotInferTypeOfTheLiteral,
                      ($typ.kind).substr(2).toLowerAscii)
+        elif typ.kind == tyProc and tfUnresolved in typ.flags:
+          localError(def.info, errProcHasNoConcreteType, def.renderTree)
     else:
       if symkind == skLet: localError(a.info, errLetNeedsInit)
 
