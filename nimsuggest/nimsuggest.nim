@@ -62,7 +62,7 @@ var
   gAddress = ""
   gMode: Mode
   gEmitEof: bool # whether we write '!EOF!' dummy lines
-  gLogging = false
+  gLogging = defined(logging)
   gRefresh: bool
 
   requests: Channel[string]
@@ -78,6 +78,9 @@ proc errorHook(info: TLineInfo; msg: string; sev: Severity) =
   results.send(Suggest(section: ideChk, filePath: toFullPath(info),
     line: toLinenumber(info), column: toColumn(info), doc: msg,
     forth: $sev))
+
+proc myLog(s: string) =
+  if gLogging: log(s)
 
 const
   seps = {':', ';', ' ', '\t'}
@@ -155,16 +158,15 @@ proc symFromInfo(graph: ModuleGraph; gTrackPos: TLineInfo): PSym =
 
 proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
              graph: ModuleGraph; cache: IdentCache) =
-  if gLogging:
-    log("cmd: " & $cmd & ", file: " & file & ", dirtyFile: " & dirtyfile &
-          "[" & $line & ":" & $col & "]")
+  myLog("cmd: " & $cmd & ", file: " & file & ", dirtyFile: " & dirtyfile &
+        "[" & $line & ":" & $col & "]")
   gIdeCmd = cmd
   if cmd == ideChk:
     msgs.structuredErrorHook = errorHook
-    msgs.writelnHook = proc (s: string) = discard
+    msgs.writelnHook = myLog
   else:
     msgs.structuredErrorHook = nil
-    msgs.writelnHook = proc (s: string) = discard
+    msgs.writelnHook = myLog
   if cmd == ideUse and suggestVersion != 0:
     graph.resetAllModules()
   var isKnownFile = true
@@ -353,8 +355,7 @@ proc replEpc(x: ThreadParams) {.thread.} =
         setVerbosity(0)
       else: discard
       let cmd = $gIdeCmd & " " & args.argsToStr
-      if gLogging:
-        log "MSG CMD: " & cmd
+      myLog "MSG CMD: " & cmd
       requests.send(cmd)
       toEpc(client, uid)
     of "methods":
@@ -583,8 +584,7 @@ proc handleCmdLine(cache: IdentCache; config: ConfigRef) =
           "Cannot find Nim standard library: Nim compiler not in PATH")
     gPrefixDir = binaryPath.splitPath().head.parentDir()
     #msgs.writelnHook = proc (line: string) = log(line)
-    if gLogging:
-      log("START " & gProjectFull)
+    myLog("START " & gProjectFull)
 
     loadConfigs(DefaultConfig, cache, config) # load all config files
     # now process command line arguments again, because some options in the
