@@ -5,7 +5,7 @@ discard """
 import
   macros, strutils
 
-macro test_macro*(n: stmt): stmt {.immediate.} =
+macro test_macro*(s: string, n: stmt): stmt {.immediate.} =
   result = newNimNode(nnkStmtList)
   var ass : NimNode = newNimNode(nnkAsgn)
   add(ass, newIdentNode("str"))

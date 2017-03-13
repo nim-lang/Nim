@@ -26,6 +26,9 @@ Changes affecting backwards compatibility
 - Macros accepting `varargs` arguments will now receive a node having the
   `nkArgList` node kind. Previous code expecting the node kind to be `nkBracket`
   may have to be updated.
+- ``memfiles.open`` now closes file handleds/fds by default.  Passing
+  ``allowRemap=true`` to ``memfiles.open`` recovers the old behavior.  The old
+  behavior is only needed to call ``mapMem`` on the resulting ``MemFile``.
 
 Library Additions
 -----------------

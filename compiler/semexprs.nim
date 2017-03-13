@@ -30,6 +30,8 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   #  result = errorNode(c, n)
   if result.typ != nil:
     # XXX tyGenericInst here?
+    if result.typ.kind == tyProc and tfUnresolved in result.typ.flags:
+      localError(n.info, errProcHasNoConcreteType, n.renderTree)
     if result.typ.kind == tyVar: result = newDeref(result)
   elif {efWantStmt, efAllowStmt} * flags != {}:
     result.typ = newTypeS(tyVoid, c)
@@ -218,13 +220,16 @@ proc semConv(c: PContext, n: PNode): PNode =
 proc semCast(c: PContext, n: PNode): PNode =
   ## Semantically analyze a casting ("cast[type](param)")
   checkSonsLen(n, 2)
+  let targetType = semTypeNode(c, n.sons[0], nil)
+  let castedExpr = semExprWithType(c, n.sons[1])
+  if tfHasMeta in targetType.flags:
+    localError(n.sons[0].info, errCastToANonConcreteType, $targetType)
+  if not isCastable(targetType, castedExpr.typ):
+    localError(n.info, errExprCannotBeCastToX, $targetType)
   result = newNodeI(nkCast, n.info)
-  result.typ = semTypeNode(c, n.sons[0], nil)
+  result.typ = targetType
   addSon(result, copyTree(n.sons[0]))
-  addSon(result, semExprWithType(c, n.sons[1]))
-  if not isCastable(result.typ, result.sons[1].typ):
-    localError(result.info, errExprCannotBeCastToX,
-               typeToString(result.typ))
+  addSon(result, castedExpr)
 
 proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
   const
