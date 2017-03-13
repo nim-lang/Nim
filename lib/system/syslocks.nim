@@ -75,6 +75,28 @@ when defined(Windows):
   proc waitSysCondWindows(cond: var SysCond) =
     discard waitForSingleObject(cond, -1'i32)
 
+elif defined(genode):
+  const
+    Header = "nim/syslocks.h"
+  type
+    SysLock {.importcpp: "Nim::SysLock", pure, final,
+              header: Header.} = object
+    SysCond {.importcpp: "Nim::SysCond", pure, final,
+              header: Header.} = object
+
+  proc initSysLock(L: var SysLock) = discard
+  proc deinitSys(L: var SysLock) = discard
+  proc acquireSys(L: var SysLock) {.noSideEffect, importcpp.}
+  proc tryAcquireSys(L: var SysLock): bool {.noSideEffect, importcpp.}
+  proc releaseSys(L: var SysLock) {.noSideEffect, importcpp.}
+
+  proc initSysCond(L: var SysCond) = discard
+  proc deinitSysCond(L: var SysCond) = discard
+  proc waitSysCond(cond: var SysCond, lock: var SysLock) {.
+    noSideEffect, importcpp.}
+  proc signalSysCond(cond: var SysCond) {.
+    noSideEffect, importcpp.}
+
 else:
   type
     SysLock {.importc: "pthread_mutex_t", pure, final,

@@ -146,6 +146,17 @@ elif defined(windows) or defined(dos):
       if result != nil: return
     procAddrError(name)
 
+elif defined(genode):
+
+  proc nimUnloadLibrary(lib: LibHandle) {.
+    error: "nimUnloadLibrary not implemented".}
+
+  proc nimLoadLibrary(path: string): LibHandle {.
+    error: "nimLoadLibrary not implemented".}
+
+  proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr {.
+    error: "nimGetProcAddr not implemented".}
+
 else:
   {.error: "no implementation for dyncalls".}
 

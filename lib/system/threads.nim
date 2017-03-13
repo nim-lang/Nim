@@ -46,7 +46,11 @@ const
   maxRegisters = 256 # don't think there is an arch with more registers
   useStackMaskHack = false ## use the stack mask hack for better performance
   StackGuardSize = 4096
-  ThreadStackMask = 1024*256*sizeof(int)-1
+  ThreadStackMask =
+    when defined(genode):
+      1024*64*sizeof(int)-1
+    else:
+      1024*256*sizeof(int)-1
   ThreadStackSize = ThreadStackMask+1 - StackGuardSize
 
 when defined(windows):
@@ -114,6 +118,30 @@ when defined(windows):
   proc getThreadId*(): int =
     ## get the ID of the currently running thread.
     result = int(getCurrentThreadId())
+
+elif defined(genode):
+  const
+    GenodeHeader = "nim/threads.h"
+  type
+    SysThread* {.importcpp: "Nim::SysThread",
+                 header: GenodeHeader, final, pure.} = object
+    GenodeThreadProc = proc (x: pointer) {.noconv.}
+    ThreadVarSlot = cint
+
+  proc initThread(s: var SysThread,
+                  stackSize: culonglong,
+                  entry: GenodeThreadProc,
+                  arg: pointer) {.
+    importcpp: "#.initThread(genodeEnv, @)".}
+
+  proc threadVarAlloc(): ThreadVarSlot {.
+    importcpp: "Nim::threadVarAlloc", header: GenodeHeader.}
+
+  proc threadVarSetValue(s: ThreadVarSlot, value: pointer) {.
+    importcpp: "Nim::threadVarSetValue(@)", header: GenodeHeader.}
+
+  proc threadVarGetValue(s: ThreadVarSlot): pointer {.
+    importcpp: "Nim::threadVarGetValue(@)", header: GenodeHeader.}
 
 else:
   when not defined(macosx):
@@ -451,6 +479,9 @@ when defined(windows):
   proc threadProcWrapper[TArg](closure: pointer): int32 {.stdcall.} =
     threadProcWrapperBody(closure)
     # implicitly return 0
+elif defined(genode):
+   proc threadProcWrapper[TArg](closure: pointer) {.noconv.} =
+    threadProcWrapperBody(closure)
 else:
   proc threadProcWrapper[TArg](closure: pointer): pointer {.noconv.} =
     threadProcWrapperBody(closure)
@@ -481,6 +512,14 @@ when hostOS == "windows":
       discard waitForMultipleObjects(int32(count),
                                      cast[ptr SysThread](addr(a)), 1, -1)
       inc(k, MAXIMUM_WAIT_OBJECTS)
+
+elif defined(genode):
+  proc joinThread*[TArg](t: Thread[TArg]) {.importcpp.}
+    ## waits for the thread `t` to finish.
+
+  proc joinThreads*[TArg](t: varargs[Thread[TArg]]) =
+    ## waits for every thread in `t` to finish.
+    for i in 0..t.high: joinThread(t[i])
 
 else:
   proc joinThread*[TArg](t: Thread[TArg]) {.inline.} =
@@ -524,6 +563,20 @@ when hostOS == "windows":
     ## thread's `affinity`:idx:. If you don't know what this means, you
     ## shouldn't use this proc.
     setThreadAffinityMask(t.sys, uint(1 shl cpu))
+
+elif defined(genode):
+  proc createThread*[TArg](t: var Thread[TArg],
+                           tp: proc (arg: TArg) {.thread, nimcall.},
+                           param: TArg) =
+    when TArg isnot void: t.data = param
+    t.dataFn = tp
+    when hasSharedHeap: t.stackSize = ThreadStackSize
+    t.sys.initThread(
+      ThreadStackSize.culonglong,
+      threadProcWrapper[TArg], addr(t))
+
+  proc pinToCpu*[Arg](t: var Thread[Arg]; cpu: Natural) =
+    {.error: "cannot change thread affinity after initialization".}
 
 else:
   proc createThread*[TArg](t: var Thread[TArg],

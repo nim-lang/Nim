@@ -801,16 +801,16 @@ proc putEnv*(key, val: string) {.tags: [WriteEnvEffect].} =
   else:
     add environment, (key & '=' & val)
     indx = high(environment)
-  when defined(unix):
-    if c_putenv(environment[indx]) != 0'i32:
-      raiseOSError(osLastError())
-  else:
+  when defined(windows):
     when useWinUnicode:
       var k = newWideCString(key)
       var v = newWideCString(val)
       if setEnvironmentVariableW(k, v) == 0'i32: raiseOSError(osLastError())
     else:
       if setEnvironmentVariableA(key, val) == 0'i32: raiseOSError(osLastError())
+  else:
+    if c_putenv(environment[indx]) != 0'i32:
+      raiseOSError(osLastError())
 
 iterator envPairs*(): tuple[key, value: TaintedString] {.tags: [ReadEnvEffect].} =
   ## Iterate over all `environments variables`:idx:. In the first component
@@ -1067,7 +1067,7 @@ proc rawCreateDir(dir: string): bool =
       result = false
     else:
       raiseOSError(osLastError())
-  elif defined(unix):
+  elif defined(posix):
     let res = mkdir(dir, 0o777)
     if res == 0'i32:
       result = true
@@ -1532,6 +1532,14 @@ when defined(macosx):
   proc getExecPath2(c: cstring, size: var cuint32): bool {.
     importc: "_NSGetExecutablePath", header: "<mach-o/dyld.h>".}
 
+when defined(genode):
+  proc getApplGenode(): string =
+    ## Genode will not implicitly expose the component name
+    if paramCount() > 0:
+      getApplHeuristic()
+    else:
+      "unknown"
+
 proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
   ## Returns the filename of the application's executable.
   ##
@@ -1582,6 +1590,8 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
       result = getApplAux("/proc/self/exe")
     elif defined(solaris):
       result = getApplAux("/proc/" & $getpid() & "/path/a.out")
+    elif defined(genode):
+      result = getApplGenode()
     elif defined(freebsd) or defined(dragonfly):
       result = getApplFreebsd()
     # little heuristic that may work on other POSIX-like systems:

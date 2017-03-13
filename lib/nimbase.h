@@ -122,6 +122,8 @@ __clang__
 */
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
 #  define NIM_THREADVAR _Thread_local
+#elif defined __GENODE__
+#  define NIM_THREADVAR
 #elif defined _WIN32 && ( \
        defined _MSC_VER || \
        defined __ICL || \
@@ -496,6 +498,11 @@ typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == siz
 #  include <tool/gnu/toolMacros.h>
 #elif defined(__FreeBSD__)
 #  include <sys/types.h>
+#endif
+
+#if defined(__GENODE__)
+#include <libc/component.h>
+extern Libc::Env *genodeEnv;
 #endif
 
 /* Compile with -d:checkAbi and a sufficiently C11:ish compiler to enable */

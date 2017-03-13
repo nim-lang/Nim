@@ -37,6 +37,10 @@ when defined(macosx) or defined(bsd):
               a: var csize, b: pointer, c: int): cint {.
               importc: "sysctl", nodecl.}
 
+when defined(genode):
+  proc affinitySpaceTotal(): cuint {.
+    importcpp: "genodeEnv->cpu().affinity_space().total()".}
+
 proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
   ## returns the numer of the processors/cores the machine has.
   ## Returns 0 if it cannot be detected.
@@ -61,7 +65,8 @@ proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
   elif defined(irix):
     var SC_NPROC_ONLN {.importc: "_SC_NPROC_ONLN", header: "<unistd.h>".}: cint
     result = sysconf(SC_NPROC_ONLN)
+  elif defined(genode):
+    result = affinitySpaceTotal().int
   else:
     result = sysconf(SC_NPROCESSORS_ONLN)
   if result <= 0: result = 1
-
