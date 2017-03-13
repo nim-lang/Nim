@@ -1651,7 +1651,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
     if a >= formalLen-1 and formal != nil and formal.typ.isVarargsUntyped:
       incl(marker, formal.position)
       if container.isNil:
-        container = newNodeIT(nkBracket, n.sons[a].info, arrayConstr(c, n.info))
+        container = newNodeIT(nkArgList, n.sons[a].info, arrayConstr(c, n.info))
         setSon(m.call, formal.position + 1, container)
       else:
         incrIndexType(container.typ)
@@ -1739,7 +1739,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
 
         if formal.typ.isVarargsUntyped:
           if container.isNil:
-            container = newNodeIT(nkBracket, n.sons[a].info, arrayConstr(c, n.info))
+            container = newNodeIT(nkArgList, n.sons[a].info, arrayConstr(c, n.info))
             setSon(m.call, formal.position + 1, container)
           else:
             incrIndexType(container.typ)
