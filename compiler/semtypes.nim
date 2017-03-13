@@ -673,8 +673,9 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
       localError(n.info, errIllegalRecursionInTypeX, "object")
     else:
       var concreteBase = skipGenericInvocation(base)
-      if concreteBase.kind == tyObject and tfFinal notin concreteBase.flags:
-        addInheritedFields(c, check, pos, concreteBase)
+      if concreteBase.kind in {tyObject, tyGenericParam} and tfFinal notin concreteBase.flags:
+        if concreteBase.kind == tyObject:
+          addInheritedFields(c, check, pos, concreteBase)
       else:
         if concreteBase.kind != tyError:
           localError(n.sons[1].info, errInheritanceOnlyWithNonFinalObjects)
@@ -1042,6 +1043,35 @@ proc semBlockType(c: PContext, n: PNode, prev: PType): PType =
 proc semGenericParamInInvocation(c: PContext, n: PNode): PType =
   result = semTypeNode(c, n, nil)
 
+proc semRecordTypeAux(c: PContext, n: PNode, check: var IntSet) =
+  if n == nil: return
+  case n.kind
+  of nkRecList:
+    for son in n.sons:
+      semRecordTypeAux(c, son, check)
+  of nkSym:
+    if containsOrIncl(check, n.sym.name.id):
+      localError(n.info, errAttemptToRedefine, n.sym.name.s)
+  of nkEmpty: discard
+  else: illFormedAst(n)
+
+proc semObjectType(c: PContext, n: PNode, t: PType) =
+  var check = initIntSet()
+  var realBase = t.sons[0]
+  var pos = 0
+  var base = skipTypesOrNil(realBase, skipPtrs)
+  if base.isNil:
+    localError(n.info, errIllegalRecursionInTypeX, "object")
+  else:
+    var concreteBase = skipGenericInvocation(base)
+    if concreteBase.kind == tyObject and tfFinal notin concreteBase.flags:
+      addInheritedFields(c, check, pos, concreteBase)
+    else:
+      if concreteBase.kind != tyError:
+        localError(n.info, errInheritanceOnlyWithNonFinalObjects)
+
+  semRecordTypeAux(c, t.n, check)
+
 proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   if s.typ == nil:
     localError(n.info, "cannot instantiate the '$1' $2" %
@@ -1103,6 +1133,14 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
       else:
         result = instGenericContainer(c, n.info, result,
                                       allowMetaTypes = false)
+
+  # special check for generic object with
+  # parameterized parent
+  if result.kind == tyGenericInst:
+    var t = result.lastSon()
+    if t.kind in {tyRef, tyPtr}: t = t.lastSon()
+    if t.kind == tyObject and t.sons[0] != nil:
+      semObjectType(c, n, t)
 
 proc semTypeExpr(c: PContext, n: PNode; prev: PType): PType =
   var n = semExprWithType(c, n, {efDetermineType})
