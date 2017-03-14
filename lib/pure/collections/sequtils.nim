@@ -16,9 +16,6 @@
 ## <manual.html#anonymous-procs>`_ to procs like ``filter`` to reduce typing.
 ## Anonymous procs can use `the special do notation <manual.html#do-notation>`_
 ## which is more convenient in certain situations.
-##
-## **Note**: This interface will change as soon as the compiler supports
-## closures and proper coroutines.
 
 include "system/inclrtl"
 

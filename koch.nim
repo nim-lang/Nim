@@ -512,6 +512,14 @@ proc pushCsources() =
   finally:
     setCurrentDir(cwd)
 
+proc valgrind(cmd: string) =
+  exec("nim c " & cmd)
+  var i = cmd.len-1
+  while i >= 0 and cmd[i] != ' ': dec i
+  let file = if i >= 0: substr(cmd, i+1) else: cmd
+  let supp = getAppDir() / "tools" / "nimgrind.supp"
+  exec("valgrind --suppressions=" & supp & " " & changeFileExt(file, ""))
+
 proc showHelp() =
   quit(HelpText % [VersionAsString & spaces(44-len(VersionAsString)),
                    CompileDate, CompileTime], QuitSuccess)
@@ -548,5 +556,6 @@ of cmdArgument:
   of "nimsuggest": bundleNimsuggest(buildExe=true)
   of "tools": buildTools(existsDir(".git"))
   of "pushcsource", "pushcsources": pushCsources()
+  of "valgrind": valgrind(op.cmdLineRest)
   else: showHelp()
 of cmdEnd: showHelp()
