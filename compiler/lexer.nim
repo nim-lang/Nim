@@ -1080,7 +1080,7 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
       inc(L.bufpos)
     of '.':
       when defined(nimsuggest):
-        if L.fileIdx == gTrackPos.fileIndex and tok.col+1 == gTrackPos.col and
+        if L.fileIdx == gTrackPos.fileIndex and tok.col == gTrackPos.col and
             tok.line == gTrackPos.line and gIdeCmd == ideSug:
           tok.tokType = tkDot
           L.cursor = CursorPosition.InToken

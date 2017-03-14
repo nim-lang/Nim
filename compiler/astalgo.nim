@@ -67,6 +67,23 @@ proc debug*(n: PSym) {.deprecated.}
 proc debug*(n: PType) {.deprecated.}
 proc debug*(n: PNode) {.deprecated.}
 
+template mdbg*: bool {.dirty.} =
+  when compiles(c.module):
+    c.module.fileIdx == gProjectMainIdx
+  elif compiles(m.c.module):
+    m.c.module.fileIdx == gProjectMainIdx
+  elif compiles(cl.c.module):
+    cl.c.module.fileIdx == gProjectMainIdx
+  elif compiles(p):
+    when compiles(p.lex):
+      p.lex.fileIdx == gProjectMainIdx
+    else:
+      p.module.module.fileIdx == gProjectMainIdx
+  elif compiles(L.fileIdx):
+    L.fileIdx == gProjectMainIdx
+  else:
+    false
+
 # --------------------------- ident tables ----------------------------------
 proc idTableGet*(t: TIdTable, key: PIdObj): RootRef
 proc idTableGet*(t: TIdTable, key: int): RootRef
