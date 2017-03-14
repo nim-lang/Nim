@@ -18,6 +18,11 @@ when defined(noSignalHandler):
 # We don't want to memtrack the tracking code ...
 {.push memtracker: off.}
 
+when declared(getThreadId):
+  template myThreadId(): untyped = getThreadId()
+else:
+  template myThreadId(): untyped = 0
+
 type
   LogEntry* = object
     op*: cstring
@@ -25,6 +30,7 @@ type
     size*: int
     file*: cstring
     line*: int
+    thread*: int
   TrackLog* = object
     count*: int
     disabled: bool
@@ -59,7 +65,7 @@ proc addEntry(entry: LogEntry) =
       let c = cast[int](entry.address)
       let d = c + entry.size-1
       if x <= d and c <= y:
-        interesting = true
+        interesting = myThreadId() != entry.thread # true
         break
     if interesting:
       gLog.disabled = true
@@ -76,12 +82,12 @@ proc addEntry(entry: LogEntry) =
 
 proc memTrackerWrite(address: pointer; size: int; file: cstring; line: int) {.compilerProc.} =
   addEntry LogEntry(op: "write", address: address,
-      size: size, file: file, line: line)
+      size: size, file: file, line: line, thread: myThreadId())
 
 proc memTrackerOp*(op: cstring; address: pointer; size: int) {.tags: [],
          locks: 0, gcsafe.} =
   addEntry LogEntry(op: op, address: address, size: size,
-      file: "", line: 0)
+      file: "", line: 0, thread: myThreadId())
 
 proc memTrackerDisable*() =
   gLog.disabled = true

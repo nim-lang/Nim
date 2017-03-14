@@ -320,9 +320,13 @@ proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
   incCurrMem(a, size)
   inc(a.freeMem, size)
   result.heapLink = a.heapLink
-  when defined(debugHeapLinks):
-    cprintf("owner: %p; result: %p; next pointer %p\n", addr(a), result, result.heapLink)
   result.origSize = size
+  when defined(debugHeapLinks):
+    cprintf("owner: %p; result: %p; next pointer %p; size: %ld\n", addr(a),
+      result, result.heapLink, result.origSize)
+
+  when defined(memtracker):
+    trackLocation(addr result.origSize, sizeof(int)*2)
   a.heapLink = result
 
   sysAssert((cast[ByteAddress](result) and PageMask) == 0, "requestOsChunks 1")
@@ -435,6 +439,7 @@ proc freeBigChunk(a: var MemRegion, c: PBigChunk) =
   listAdd(a.freeChunksList, c)
   # set 'used' to false:
   c.origSize = c.origSize and not 1
+  track("setUsedToFalse", addr c.origSize, sizeof(int))
   #else:
   #  freeOsChunks(a, c, c.size)
 
@@ -443,6 +448,7 @@ proc splitChunk(a: var MemRegion, c: PBigChunk, size: int) =
   sysAssert(rest notin a.freeChunksList, "splitChunk")
   rest.size = c.size - size
   rest.origSize = 0 # not used and size irrelevant
+  track("rest.origSize", addr rest.origSize, sizeof(int))
   rest.next = nil
   rest.prev = nil
   rest.prevSize = size
@@ -479,6 +485,8 @@ proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
   result.prevSize = 0 # XXX why is this needed?
   # set 'used' to to true:
   result.origSize = result.origSize or 1
+  track("setUsedToFalse", addr result.origSize, sizeof(int))
+
   incl(a, a.chunkStarts, pageIndex(result))
   dec(a.freeMem, size)
 
@@ -723,9 +731,10 @@ proc deallocOsPages(a: var MemRegion) =
   # we free every 'ordinarily' allocated page by iterating over the page bits:
   var it = a.heapLink
   while it != nil:
-    when defined(debugHeapLinks):
-      cprintf("owner %p; dealloc A: %p\n", addr(a), it)
     let next = it.heapLink
+    when defined(debugHeapLinks):
+      cprintf("owner %p; dealloc A: %p size: %ld; next: %p\n", addr(a),
+        it, it.origSize and not 1, next)
     sysAssert it.origSize >= PageSize, "origSize too small"
     # note:
     osDeallocPages(it, it.origSize and not 1)
