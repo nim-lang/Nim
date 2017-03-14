@@ -23,6 +23,30 @@ __clang__
 #ifndef NIMBASE_H
 #define NIMBASE_H
 
+/*------------ declaring a custom attribute to support using LLVM's Address Sanitizer ------------ */
+
+/*
+   This definition exists to provide support for using the LLVM ASAN (Address SANitizer) tooling with Nim. This 
+   should only be used to mark implementations of the GC system that raise false flags with the ASAN tooling, or
+   for functions that are hot and need to be disabled for performance reasons. Based on the official ASAN 
+   documentation, both the clang and gcc compilers are supported. In addition to that, a check is performed to 
+   verify that the necessary attribute is supported by the compiler.
+
+   To flag a proc as ignored, append the following code pragma to the proc declaration:
+      {.codegenDecl: "CLANG_NO_SANITIZE_ADDRESS $# $#$#".} 
+
+   For further information, please refer to the official documentation:
+     https://github.com/google/sanitizers/wiki/AddressSanitizer
+ */
+#define CLANG_NO_SANITIZE_ADDRESS
+#if defined(__clang__) || defined (__GNUC__)
+#  if __has_attribute(no_sanitize_address)
+#    undef CLANG_NO_SANITIZE_ADDRESS
+#    define CLANG_NO_SANITIZE_ADDRESS __attribute__((no_sanitize_address))
+#  endif
+#endif
+
+
 /* ------------ ignore typical warnings in Nim-generated files ------------- */
 #if defined(__GNUC__) || defined(__clang__)
 #  pragma GCC diagnostic ignored "-Wpragmas"
