@@ -2,10 +2,15 @@ discard """
   output: '''(width: 11, color: 13)
 (width: 15, weight: 13, taste: 11, color: 14)
 (width: 17, color: 16)
-(width: 12.0, taste: yummy, color: 13)'''
+(width: 12.0, taste: yummy, color: 13)
+(width: 0, tast_e: 0.0, kind: Smooth, skin: 1.5, color: 12)'''
 """
 # bug #5264
 type
+  Texture = enum
+    Smooth
+    Coarse
+    
   FruitBase = object of RootObj
     color: int
 
@@ -25,6 +30,15 @@ type
     width: X
     taste: Y
 
+  Lemon[T] = object of T
+    width: int
+    tast_e: float64
+    case kind: Texture
+    of Smooth:
+      skin: float64
+    of Coarse:
+      grain: int   
+      
 var x: Apple[FruitBase]
 x.color = 13
 x.width = 11
@@ -57,3 +71,7 @@ z.taste = "yummy"
 #z.setColor(13) #this trigger other bug
 z.color = 13
 echo z
+
+var k = Lemon[FruitBase](kind: Smooth, skin: 1.5)
+k.setColor(12)
+echo k

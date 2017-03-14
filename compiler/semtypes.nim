@@ -622,6 +622,13 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
       else: addSon(a, newSymNode(f))
       styleCheckDef(f)
     if a.kind != nkEmpty: addSon(father, a)
+  of nkSym:
+    # this branch only valid during generic object
+    # with parameterized parent second check.
+    # There is no branch validity check here
+    if containsOrIncl(check, n.sym.name.id):
+      localError(n.info, errAttemptToRedefine, n.sym.name.s)
+    addSon(father, n)
   of nkEmpty: discard
   else: illFormedAst(n)
 
@@ -1043,18 +1050,6 @@ proc semBlockType(c: PContext, n: PNode, prev: PType): PType =
 proc semGenericParamInInvocation(c: PContext, n: PNode): PType =
   result = semTypeNode(c, n, nil)
 
-proc semRecordTypeAux(c: PContext, n: PNode, check: var IntSet) =
-  if n == nil: return
-  case n.kind
-  of nkRecList:
-    for son in n.sons:
-      semRecordTypeAux(c, son, check)
-  of nkSym:
-    if containsOrIncl(check, n.sym.name.id):
-      localError(n.info, errAttemptToRedefine, n.sym.name.s)
-  of nkEmpty: discard
-  else: illFormedAst(n)
-
 proc semObjectType(c: PContext, n: PNode, t: PType) =
   var check = initIntSet()
   var realBase = t.sons[0]
@@ -1069,8 +1064,8 @@ proc semObjectType(c: PContext, n: PNode, t: PType) =
     else:
       if concreteBase.kind != tyError:
         localError(n.info, errInheritanceOnlyWithNonFinalObjects)
-
-  semRecordTypeAux(c, t.n, check)
+  var newf = newNodeI(nkRecList, n.info)
+  semRecordNodeAux(c, t.n, check, pos, newf, t)
 
 proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   if s.typ == nil:
