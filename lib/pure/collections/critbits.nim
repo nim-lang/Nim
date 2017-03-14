@@ -8,8 +8,9 @@
 #
 
 ## This module implements a `crit bit tree`:idx: which is an efficient
-## container for a set or a mapping of strings. Based on the excellent paper
+## container for a sorted set of strings, or for a sorted mapping of strings. Based on the excellent paper
 ## by Adam Langley.
+## (A crit bit tree is a form of `radix tree`:idx: or `patricia trie`:idx:.)
 
 include "system/inclrtl"
 
