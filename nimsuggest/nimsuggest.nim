@@ -556,7 +556,13 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
         suggestMaxResults = parseInt(p.val)
       else: processSwitch(pass, p)
     of cmdArgument:
-      options.gProjectName = unixToNativePath(p.key)
+      let a = unixToNativePath(p.key)
+      if dirExists(a) and not fileExists(a.addFileExt("nim")):
+        options.gProjectName = findProjectNimFile(a)
+        # don't make it worse, report the error the old way:
+        if options.gProjectName.len == 0: options.gProjectName = a
+      else:
+        options.gProjectName = a
       # if processArgument(pass, p, argsCount): break
 
 proc handleCmdLine(cache: IdentCache; config: ConfigRef) =
