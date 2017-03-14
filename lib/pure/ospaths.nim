@@ -25,8 +25,8 @@ when not declared(getEnv) or defined(nimscript):
     WriteEnvEffect* = object of WriteIOEffect ## effect that denotes a write
                                               ## to an environment variable
 
-    ReadDirEffect* = object of ReadIOEffect   ## effect that denotes a write
-                                              ## operation to the directory
+    ReadDirEffect* = object of ReadIOEffect   ## effect that denotes a read
+                                              ## operation from the directory
                                               ## structure
     WriteDirEffect* = object of WriteIOEffect ## effect that denotes a write
                                               ## operation to

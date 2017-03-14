@@ -2,7 +2,7 @@ Procedures
 ==========
 
 What most programming languages call `methods`:idx: or `functions`:idx: are
-called `procedures`:idx: in Nim (which is the correct terminology). A procedure
+called `procedures`:idx: in Nim. A procedure
 declaration consists of an identifier, zero or more formal parameters, a return
 value type and a block of code. Formal parameters are declared as a list of
 identifiers separated by either comma or semicolon. A parameter is given a type

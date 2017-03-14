@@ -38,10 +38,10 @@ Options:
   --epc                   use emacs epc mode
   --debug                 enable debug output
   --log                   enable verbose logging to nimsuggest.log file
-  --v2                    use version 2 of the protocol; more features and
-                          much faster
+  --v1                    use version 1 of the protocol; for backwards compatibility
   --refresh               perform automatic refreshes to keep the analysis precise
-  --tester                implies --v2 and --stdin and outputs a line
+  --maxresults:N          limit the number of suggestions to N
+  --tester                implies --stdin and outputs a line
                           '""" & DummyEof & """' for the tester
 
 The server then listens to the connection and takes line-based commands.
@@ -50,7 +50,7 @@ In addition, all command line options of Nim that do not affect code generation
 are supported.
 """
 type
-  Mode = enum mstdin, mtcp, mepc, mcmdline
+  Mode = enum mstdin, mtcp, mepc, mcmdsug, mcmdcon
   CachedMsg = object
     info: TLineInfo
     msg: string
@@ -62,7 +62,7 @@ var
   gAddress = ""
   gMode: Mode
   gEmitEof: bool # whether we write '!EOF!' dummy lines
-  gLogging = false
+  gLogging = defined(logging)
   gRefresh: bool
 
   requests: Channel[string]
@@ -78,6 +78,9 @@ proc errorHook(info: TLineInfo; msg: string; sev: Severity) =
   results.send(Suggest(section: ideChk, filePath: toFullPath(info),
     line: toLinenumber(info), column: toColumn(info), doc: msg,
     forth: $sev))
+
+proc myLog(s: string) =
+  if gLogging: log(s)
 
 const
   seps = {':', ';', ' ', '\t'}
@@ -155,17 +158,16 @@ proc symFromInfo(graph: ModuleGraph; gTrackPos: TLineInfo): PSym =
 
 proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
              graph: ModuleGraph; cache: IdentCache) =
-  if gLogging:
-    log("cmd: " & $cmd & ", file: " & file & ", dirtyFile: " & dirtyfile &
-          "[" & $line & ":" & $col & "]")
+  myLog("cmd: " & $cmd & ", file: " & file & ", dirtyFile: " & dirtyfile &
+        "[" & $line & ":" & $col & "]")
   gIdeCmd = cmd
   if cmd == ideChk:
     msgs.structuredErrorHook = errorHook
-    msgs.writelnHook = proc (s: string) = discard
+    msgs.writelnHook = myLog
   else:
     msgs.structuredErrorHook = nil
-    msgs.writelnHook = proc (s: string) = discard
-  if cmd == ideUse and suggestVersion != 2:
+    msgs.writelnHook = myLog
+  if cmd == ideUse and suggestVersion != 0:
     graph.resetAllModules()
   var isKnownFile = true
   let dirtyIdx = file.fileInfoIdx(isKnownFile)
@@ -174,12 +176,13 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
   else: msgs.setDirtyFile(dirtyIdx, nil)
 
   gTrackPos = newLineInfo(dirtyIdx, line, col)
+  gTrackPosAttached = false
   gErrorCounter = 0
-  if suggestVersion < 2:
+  if suggestVersion == 1:
     graph.usageSym = nil
   if not isKnownFile:
     graph.compileProject(cache)
-  if suggestVersion == 2 and gIdeCmd in {ideUse, ideDus} and
+  if suggestVersion == 0 and gIdeCmd in {ideUse, ideDus} and
       dirtyfile.len == 0:
     discard "no need to recompile anything"
   else:
@@ -189,7 +192,7 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
     if gIdeCmd != ideMod:
       graph.compileProject(cache, modIdx)
   if gIdeCmd in {ideUse, ideDus}:
-    let u = if suggestVersion >= 2: graph.symFromInfo(gTrackPos) else: graph.usageSym
+    let u = if suggestVersion != 1: graph.symFromInfo(gTrackPos) else: graph.usageSym
     if u != nil:
       listUsages(u)
     else:
@@ -352,8 +355,7 @@ proc replEpc(x: ThreadParams) {.thread.} =
         setVerbosity(0)
       else: discard
       let cmd = $gIdeCmd & " " & args.argsToStr
-      if gLogging:
-        log "MSG CMD: " & cmd
+      myLog "MSG CMD: " & cmd
       requests.send(cmd)
       toEpc(client, uid)
     of "methods":
@@ -424,7 +426,7 @@ proc execCmd(cmd: string; graph: ModuleGraph; cache: IdentCache; cachedMsgs: Cac
   else:
     if gIdeCmd == ideChk:
       for cm in cachedMsgs: errorHook(cm.info, cm.msg, cm.sev)
-    execute(gIdeCmd, orig, dirtyfile, line, col-1, graph, cache)
+    execute(gIdeCmd, orig, dirtyfile, line, col, graph, cache)
   sentinel()
 
 proc recompileFullProject(graph: ModuleGraph; cache: IdentCache) =
@@ -502,8 +504,10 @@ proc mainCommand(graph: ModuleGraph; cache: IdentCache) =
   of mstdin: createThread(inputThread, replStdin, (gPort, gAddress))
   of mtcp: createThread(inputThread, replTcp, (gPort, gAddress))
   of mepc: createThread(inputThread, replEpc, (gPort, gAddress))
-  of mcmdline: createThread(inputThread, replCmdline,
+  of mcmdsug: createThread(inputThread, replCmdline,
                             (gPort, "sug \"" & options.gProjectFull & "\":" & gAddress))
+  of mcmdcon: createThread(inputThread, replCmdline,
+                            (gPort, "con \"" & options.gProjectFull & "\":" & gAddress))
   mainThread(graph, cache)
   joinThread(inputThread)
   close(requests)
@@ -524,17 +528,21 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
         gAddress = p.val
         gMode = mtcp
       of "stdin": gMode = mstdin
-      of "cmdline":
-        gMode = mcmdline
-        suggestVersion = 2
+      of "cmdsug":
+        gMode = mcmdsug
         gAddress = p.val
+        incl(gGlobalOptions, optIdeDebug)
+      of "cmdcon":
+        gMode = mcmdcon
+        gAddress = p.val
+        incl(gGlobalOptions, optIdeDebug)
       of "epc":
         gMode = mepc
         gVerbosity = 0          # Port number gotta be first.
       of "debug": incl(gGlobalOptions, optIdeDebug)
-      of "v2": suggestVersion = 2
+      of "v2": suggestVersion = 0
+      of "v1": suggestVersion = 1
       of "tester":
-        suggestVersion = 2
         gMode = mstdin
         gEmitEof = true
         gRefresh = false
@@ -544,9 +552,17 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
           gRefresh = parseBool(p.val)
         else:
           gRefresh = true
+      of "maxresults":
+        suggestMaxResults = parseInt(p.val)
       else: processSwitch(pass, p)
     of cmdArgument:
-      options.gProjectName = unixToNativePath(p.key)
+      let a = unixToNativePath(p.key)
+      if dirExists(a) and not fileExists(a.addFileExt("nim")):
+        options.gProjectName = findProjectNimFile(a)
+        # don't make it worse, report the error the old way:
+        if options.gProjectName.len == 0: options.gProjectName = a
+      else:
+        options.gProjectName = a
       # if processArgument(pass, p, argsCount): break
 
 proc handleCmdLine(cache: IdentCache; config: ConfigRef) =
@@ -574,8 +590,7 @@ proc handleCmdLine(cache: IdentCache; config: ConfigRef) =
           "Cannot find Nim standard library: Nim compiler not in PATH")
     gPrefixDir = binaryPath.splitPath().head.parentDir()
     #msgs.writelnHook = proc (line: string) = log(line)
-    if gLogging:
-      log("START " & gProjectFull)
+    myLog("START " & gProjectFull)
 
     loadConfigs(DefaultConfig, cache, config) # load all config files
     # now process command line arguments again, because some options in the

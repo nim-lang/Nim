@@ -291,10 +291,13 @@ proc transformBreak(c: PTransf, n: PNode): PTransNode =
       else:
         result = newTransNode(n.kind, n.info, 1)
         result[0] = lablCopy.PTransNode
-  else:
+  elif c.breakSyms.len > 0:
+    # this check can fail for 'nim check'
     let labl = c.breakSyms[c.breakSyms.high]
     result = transformSons(c, n)
     result[0] = newSymNode(labl).PTransNode
+  else:
+    result = n.PTransNode
 
 proc unpackTuple(c: PTransf, n: PNode, father: PTransNode) =
   # XXX: BUG: what if `n` is an expression with side-effects?

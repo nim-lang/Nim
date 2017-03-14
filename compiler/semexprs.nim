@@ -30,6 +30,8 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   #  result = errorNode(c, n)
   if result.typ != nil:
     # XXX tyGenericInst here?
+    if result.typ.kind == tyProc and tfUnresolved in result.typ.flags:
+      localError(n.info, errProcHasNoConcreteType, n.renderTree)
     if result.typ.kind == tyVar: result = newDeref(result)
   elif {efWantStmt, efAllowStmt} * flags != {}:
     result.typ = newTypeS(tyVoid, c)
@@ -218,13 +220,16 @@ proc semConv(c: PContext, n: PNode): PNode =
 proc semCast(c: PContext, n: PNode): PNode =
   ## Semantically analyze a casting ("cast[type](param)")
   checkSonsLen(n, 2)
+  let targetType = semTypeNode(c, n.sons[0], nil)
+  let castedExpr = semExprWithType(c, n.sons[1])
+  if tfHasMeta in targetType.flags:
+    localError(n.sons[0].info, errCastToANonConcreteType, $targetType)
+  if not isCastable(targetType, castedExpr.typ):
+    localError(n.info, errExprCannotBeCastToX, $targetType)
   result = newNodeI(nkCast, n.info)
-  result.typ = semTypeNode(c, n.sons[0], nil)
+  result.typ = targetType
   addSon(result, copyTree(n.sons[0]))
-  addSon(result, semExprWithType(c, n.sons[1]))
-  if not isCastable(result.typ, result.sons[1].typ):
-    localError(result.info, errExprCannotBeCastToX,
-               typeToString(result.typ))
+  addSon(result, castedExpr)
 
 proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
   const
@@ -1054,7 +1059,9 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # here at all!
   #if isSymChoice(n.sons[1]): return
   when defined(nimsuggest):
-    if gCmd == cmdIdeTools: suggestExpr(c, n)
+    if gCmd == cmdIdeTools:
+      suggestExpr(c, n)
+      if exactEquals(gTrackPos, n[1].info): suggestExprNoCheck(c, n)
 
   var s = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared, checkModule})
   if s != nil:
@@ -2234,6 +2241,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit:
     # check if it is an expression macro:
     checkMinSonsLen(n, 1)
+    #when defined(nimsuggest):
+    #  if gIdeCmd == ideCon and gTrackPos == n.info: suggestExprNoCheck(c, n)
     let mode = if nfDotField in n.flags: {} else: {checkUndeclared}
     var s = qualifiedLookUp(c, n.sons[0], mode)
     if s != nil:

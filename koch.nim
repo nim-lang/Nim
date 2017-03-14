@@ -214,9 +214,9 @@ proc buildNimble(latest: bool) =
 
 proc bundleNimsuggest(buildExe: bool) =
   if buildExe:
-    nimexec("c --noNimblePath -d:release -p:compiler tools/nimsuggest/nimsuggest.nim")
-    copyExe("tools/nimsuggest/nimsuggest".exe, "bin/nimsuggest".exe)
-    removeFile("tools/nimsuggest/nimsuggest".exe)
+    nimexec("c --noNimblePath -d:release -p:compiler nimsuggest/nimsuggest.nim")
+    copyExe("nimsuggest/nimsuggest".exe, "bin/nimsuggest".exe)
+    removeFile("nimsuggest/nimsuggest".exe)
 
 proc bundleWinTools() =
   nimexec("c tools/finish.nim")
@@ -253,7 +253,7 @@ proc buildTool(toolname, args: string) =
 proc buildTools(latest: bool) =
   let nimsugExe = "bin/nimsuggest".exe
   nimexec "c --noNimblePath -p:compiler -d:release -o:" & nimsugExe &
-      " tools/nimsuggest/nimsuggest.nim"
+      " nimsuggest/nimsuggest.nim"
 
   let nimgrepExe = "bin/nimgrep".exe
   nimexec "c -o:" & nimgrepExe & " tools/nimgrep.nim"
@@ -512,6 +512,14 @@ proc pushCsources() =
   finally:
     setCurrentDir(cwd)
 
+proc valgrind(cmd: string) =
+  exec("nim c " & cmd)
+  var i = cmd.len-1
+  while i >= 0 and cmd[i] != ' ': dec i
+  let file = if i >= 0: substr(cmd, i+1) else: cmd
+  let supp = getAppDir() / "tools" / "nimgrind.supp"
+  exec("valgrind --suppressions=" & supp & " " & changeFileExt(file, ""))
+
 proc showHelp() =
   quit(HelpText % [VersionAsString & spaces(44-len(VersionAsString)),
                    CompileDate, CompileTime], QuitSuccess)
@@ -548,5 +556,6 @@ of cmdArgument:
   of "nimsuggest": bundleNimsuggest(buildExe=true)
   of "tools": buildTools(existsDir(".git"))
   of "pushcsource", "pushcsources": pushCsources()
+  of "valgrind": valgrind(op.cmdLineRest)
   else: showHelp()
 of cmdEnd: showHelp()

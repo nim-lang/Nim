@@ -392,6 +392,23 @@ proc findModule*(modulename, currentModule: string): string =
     result = findFile(m)
   patchModule()
 
+proc findProjectNimFile*(pkg: string): string =
+  const extensions = [".nims", ".cfg", ".nimcfg", ".nimble"]
+  var candidates: seq[string] = @[]
+  for k, f in os.walkDir(pkg, relative=true):
+    if k == pcFile and f != "config.nims":
+      let (_, name, ext) = splitFile(f)
+      if ext in extensions:
+        let x = changeFileExt(pkg / name, ".nim")
+        if fileExists(x):
+          candidates.add x
+  for c in candidates:
+    # nim-foo foo  or  foo  nfoo
+    if (pkg in c) or (c in pkg): return c
+  if candidates.len >= 1:
+    return candidates[0]
+  return ""
+
 proc canonDynlibName(s: string): string =
   let start = if s.startsWith("lib"): 3 else: 0
   let ende = strutils.find(s, {'(', ')', '.'})
@@ -419,11 +436,6 @@ proc binaryStrSearch*(x: openArray[string], y: string): int =
     else:
       return mid
   result = - 1
-
-template nimdbg*: untyped = c.module.fileIdx == gProjectMainIdx
-template cnimdbg*: untyped = p.module.module.fileIdx == gProjectMainIdx
-template pnimdbg*: untyped = p.lex.fileIdx == gProjectMainIdx
-template lnimdbg*: untyped = L.fileIdx == gProjectMainIdx
 
 proc parseIdeCmd*(s: string): IdeCmd =
   case s:

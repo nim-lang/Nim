@@ -1846,6 +1846,7 @@ proc parseTypeDef(p: var TParser): PNode =
   else:
     addSon(result, ast.emptyNode)
   if p.tok.tokType == tkEquals:
+    result.info = parLineInfo(p)
     getTok(p)
     optInd(p, result)
     addSon(result, parseTypeDefAux(p))
@@ -2002,12 +2003,12 @@ proc parseStmt(p: var TParser): PNode =
           break
         p.hasProgress = false
         var a = complexOrSimpleStmt(p)
-        if not p.hasProgress and p.tok.tokType == tkEof: break
-        if a.kind != nkEmpty and p.hasProgress:
+        if a.kind != nkEmpty:
           addSon(result, a)
         else:
           parMessage(p, errExprExpected, p.tok)
           getTok(p)
+        if not p.hasProgress and p.tok.tokType == tkEof: break
   else:
     # the case statement is only needed for better error messages:
     case p.tok.tokType

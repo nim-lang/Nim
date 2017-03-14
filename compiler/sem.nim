@@ -167,6 +167,8 @@ proc commonType*(x, y: PType): PType =
 
 proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym =
   result = newSym(kind, considerQuotedIdent(n), getCurrOwner(c), n.info)
+  when defined(nimsuggest):
+    suggestDecl(c, n, result)
 
 proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
   proc `$`(kind: TSymKind): string = substr(system.`$`(kind), 2).toLowerAscii
@@ -191,6 +193,8 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     result = newSym(kind, considerQuotedIdent(n), getCurrOwner(c), n.info)
   #if kind in {skForVar, skLet, skVar} and result.owner.kind == skModule:
   #  incl(result.flags, sfGlobal)
+  when defined(nimsuggest):
+    suggestDecl(c, n, result)
 
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
                  allowed: TSymFlags): PSym
@@ -380,6 +384,13 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   styleCheckUse(n.info, sym)
   if sym == c.p.owner:
     globalError(n.info, errRecursiveDependencyX, sym.name.s)
+
+  let genericParams = if sfImmediate in sym.flags: 0
+                      else: sym.ast[genericParamsPos].len
+  let suppliedParams = max(n.safeLen - 1, 0)
+
+  if suppliedParams < genericParams:
+    globalError(n.info, errMissingGenericParamsForTemplate, n.renderTree)
 
   #if c.evalContext == nil:
   #  c.evalContext = c.createEvalContext(emStatic)

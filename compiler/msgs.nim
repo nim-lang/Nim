@@ -64,6 +64,8 @@ type
     errVarForOutParamNeeded,
     errPureTypeMismatch, errTypeMismatch, errButExpected, errButExpectedX,
     errAmbiguousCallXYZ, errWrongNumberOfArguments,
+    errWrongNumberOfArgumentsInCall,
+    errMissingGenericParamsForTemplate,
     errXCannotBePassedToProcVar,
     errXCannotBeInParamDecl, errPragmaOnlyInHeaderOfProcX, errImplOfXNotAllowed,
     errImplOfXexpected, errNoSymbolToBorrowFromFound, errDiscardValueX,
@@ -89,6 +91,7 @@ type
     errMainModuleMustBeSpecified,
     errXExpected,
     errTIsNotAConcreteType,
+    errCastToANonConcreteType,
     errInvalidSectionStart, errGridTableNotImplemented, errGeneralParseError,
     errNewSectionExpected, errWhitespaceExpected, errXisNoValidIndexFile,
     errCannotRenderX, errVarVarTypeNotAllowed, errInstantiateXExplicitly,
@@ -107,6 +110,7 @@ type
     errCannotInferTypeOfTheLiteral,
     errCannotInferReturnType,
     errGenericLambdaNotAllowed,
+    errProcHasNoConcreteType,
     errCompilerDoesntSupportTarget,
     errUser,
     warnCannotOpenFile,
@@ -269,6 +273,8 @@ const
     errButExpectedX: "but expected \'$1\'",
     errAmbiguousCallXYZ: "ambiguous call; both $1 and $2 match for: $3",
     errWrongNumberOfArguments: "wrong number of arguments",
+    errWrongNumberOfArgumentsInCall: "wrong number of arguments in call to '$1'",
+    errMissingGenericParamsForTemplate: "'$1' has unspecified generic parameters",
     errXCannotBePassedToProcVar: "\'$1\' cannot be passed to a procvar",
     errXCannotBeInParamDecl: "$1 cannot be declared in parameter declaration",
     errPragmaOnlyInHeaderOfProcX: "pragmas are only allowed in the header of a proc; redefinition of $1",
@@ -326,6 +332,7 @@ const
     errMainModuleMustBeSpecified: "please, specify a main module in the project configuration file",
     errXExpected: "\'$1\' expected",
     errTIsNotAConcreteType: "\'$1\' is not a concrete type.",
+    errCastToANonConcreteType: "cannot cast to a non concrete type: \'$1\'",
     errInvalidSectionStart: "invalid section start",
     errGridTableNotImplemented: "grid table is not implemented",
     errGeneralParseError: "general parse error",
@@ -369,6 +376,7 @@ const
     errGenericLambdaNotAllowed: "A nested proc can have generic parameters only when " &
                                 "it is used as an operand to another routine and the types " &
                                 "of the generic paramers can be inferred from the expected signature.",
+    errProcHasNoConcreteType: "'$1' doesn't have a concrete type, due to unspecified generic parameters.",
     errCompilerDoesntSupportTarget: "The current compiler \'$1\' doesn't support the requested compilation target",
     errUser: "$1",
     warnCannotOpenFile: "cannot open \'$1\'",
@@ -739,6 +747,8 @@ proc `??`* (info: TLineInfo, filename: string): bool =
 const trackPosInvalidFileIdx* = -2 # special marker so that no suggestions
                                    # are produced within comments and string literals
 var gTrackPos*: TLineInfo
+var gTrackPosAttached*: bool ## whether the tracking position was attached to some
+                             ## close token.
 
 type
   MsgFlag* = enum  ## flags altering msgWriteln behavior
@@ -862,6 +872,9 @@ proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
 
 proc `==`*(a, b: TLineInfo): bool =
   result = a.line == b.line and a.fileIndex == b.fileIndex
+
+proc exactEquals*(a, b: TLineInfo): bool =
+  result = a.fileIndex == b.fileIndex and a.line == b.line and a.col == b.col
 
 proc writeContext(lastinfo: TLineInfo) =
   var info = lastinfo

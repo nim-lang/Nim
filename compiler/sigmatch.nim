@@ -1514,6 +1514,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
       if arg.sons[i].sym.kind in {skProc, skMethod, skConverter, skIterator}:
         copyCandidate(z, m)
         z.callee = arg.sons[i].typ
+        if tfUnresolved in z.callee.flags: continue
         z.calleeSym = arg.sons[i].sym
         #if arg.sons[i].sym.name.s == "cmp":
         #  ggDebug = true
@@ -1650,7 +1651,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
     if a >= formalLen-1 and formal != nil and formal.typ.isVarargsUntyped:
       incl(marker, formal.position)
       if container.isNil:
-        container = newNodeIT(nkBracket, n.sons[a].info, arrayConstr(c, n.info))
+        container = newNodeIT(nkArgList, n.sons[a].info, arrayConstr(c, n.info))
         setSon(m.call, formal.position + 1, container)
       else:
         incrIndexType(container.typ)
@@ -1738,7 +1739,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
 
         if formal.typ.isVarargsUntyped:
           if container.isNil:
-            container = newNodeIT(nkBracket, n.sons[a].info, arrayConstr(c, n.info))
+            container = newNodeIT(nkArgList, n.sons[a].info, arrayConstr(c, n.info))
             setSon(m.call, formal.position + 1, container)
           else:
             incrIndexType(container.typ)

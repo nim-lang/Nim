@@ -411,6 +411,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
     let tm = typeRel(m, formal, arg, true)
     if tm in {isNone, isConvertible}: return nil
   var newInst = generateInstance(c, s, m.bindings, n.info)
+  newInst.typ.flags.excl tfUnresolved
   markUsed(n.info, s, c.graph.usageSym)
   styleCheckUse(n.info, s)
   result = newSymNode(newInst, n.info)
