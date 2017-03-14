@@ -717,7 +717,11 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
   # we even look at the type definitions on the right
   for i in countup(0, sonsLen(n) - 1):
     var a = n.sons[i]
-    if gCmd == cmdIdeTools: suggestStmt(c, a)
+    when defined(nimsuggest):
+      if gCmd == cmdIdeTools:
+        inc c.inTypeContext
+        suggestStmt(c, a)
+        dec c.inTypeContext
     if a.kind == nkCommentStmt: continue
     if a.kind != nkTypeDef: illFormedAst(a)
     checkSonsLen(a, 3)

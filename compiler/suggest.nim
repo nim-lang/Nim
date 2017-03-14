@@ -72,7 +72,7 @@ template origModuleName(m: PSym): string = m.name.s
 proc findDocComment(n: PNode): PNode =
   if n == nil: return nil
   if not isNil(n.comment): return n
-  if n.kind in {nkStmtList, nkStmtListExpr} and n.len > 0:
+  if n.kind in {nkStmtList, nkStmtListExpr, nkObjectTy, nkRecList} and n.len > 0:
     result = findDocComment(n.sons[0])
     if result != nil: return
     if n.len > 1:
@@ -194,7 +194,7 @@ proc suggestResult(s: Suggest) =
 proc produceOutput(a: var Suggestions) =
   if gIdeCmd in {ideSug, ideCon}:
     a.sort cmpSuggestions
-  when false:
+  when defined(debug):
     # debug code
     writeStackTrace()
   if a.len > suggestMaxResults: a.setLen(suggestMaxResults)

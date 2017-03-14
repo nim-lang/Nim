@@ -1846,6 +1846,7 @@ proc parseTypeDef(p: var TParser): PNode =
   else:
     addSon(result, ast.emptyNode)
   if p.tok.tokType == tkEquals:
+    result.info = parLineInfo(p)
     getTok(p)
     optInd(p, result)
     addSon(result, parseTypeDefAux(p))
