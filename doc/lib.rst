@@ -84,7 +84,7 @@ Collections and algorithms
   Efficient implementation of a set of ints as a sparse bit set.
 * `critbits <critbits.html>`_
   This module implements a *crit bit tree* which is an efficient
-  container for a set or a mapping of strings.
+  container for a sorted set of strings, or for a sorted mapping of strings.
 * `sequtils <sequtils.html>`_
   This module implements operations for the built-in seq type
   which were inspired by functional programming languages.
