@@ -205,7 +205,8 @@ proc semCase(c: PContext, n: PNode): PNode =
   var typ = commonTypeBegin
   var hasElse = false
   var notOrdinal = false
-  case skipTypes(n.sons[0].typ, abstractVarRange-{tyTypeDesc}).kind
+  let caseTyp = skipTypes(n.sons[0].typ, abstractVarRange-{tyTypeDesc})
+  case caseTyp.kind
   of tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32, tyBool:
     chckCovered = true
   of tyFloat..tyFloat128, tyString, tyError:
@@ -215,6 +216,9 @@ proc semCase(c: PContext, n: PNode): PNode =
     return
   for i in countup(1, sonsLen(n) - 1):
     var x = n.sons[i]
+    when defined(nimsuggest):
+      if gIdeCmd == ideSug and exactEquals(gTrackPos, x.info) and caseTyp.kind == tyEnum:
+        suggestEnum(c, x, caseTyp)
     case x.kind
     of nkOfBranch:
       checkMinSonsLen(x, 2)
@@ -713,7 +717,11 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
   # we even look at the type definitions on the right
   for i in countup(0, sonsLen(n) - 1):
     var a = n.sons[i]
-    if gCmd == cmdIdeTools: suggestStmt(c, a)
+    when defined(nimsuggest):
+      if gCmd == cmdIdeTools:
+        inc c.inTypeContext
+        suggestStmt(c, a)
+        dec c.inTypeContext
     if a.kind == nkCommentStmt: continue
     if a.kind != nkTypeDef: illFormedAst(a)
     checkSonsLen(a, 3)

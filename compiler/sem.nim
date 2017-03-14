@@ -167,6 +167,8 @@ proc commonType*(x, y: PType): PType =
 
 proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym =
   result = newSym(kind, considerQuotedIdent(n), getCurrOwner(c), n.info)
+  when defined(nimsuggest):
+    suggestDecl(c, n, result)
 
 proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
   proc `$`(kind: TSymKind): string = substr(system.`$`(kind), 2).toLowerAscii
@@ -191,6 +193,8 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     result = newSym(kind, considerQuotedIdent(n), getCurrOwner(c), n.info)
   #if kind in {skForVar, skLet, skVar} and result.owner.kind == skModule:
   #  incl(result.flags, sfGlobal)
+  when defined(nimsuggest):
+    suggestDecl(c, n, result)
 
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
                  allowed: TSymFlags): PSym

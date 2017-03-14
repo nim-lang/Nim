@@ -747,6 +747,8 @@ proc `??`* (info: TLineInfo, filename: string): bool =
 const trackPosInvalidFileIdx* = -2 # special marker so that no suggestions
                                    # are produced within comments and string literals
 var gTrackPos*: TLineInfo
+var gTrackPosAttached*: bool ## whether the tracking position was attached to some
+                             ## close token.
 
 type
   MsgFlag* = enum  ## flags altering msgWriteln behavior
@@ -870,6 +872,9 @@ proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
 
 proc `==`*(a, b: TLineInfo): bool =
   result = a.line == b.line and a.fileIndex == b.fileIndex
+
+proc exactEquals*(a, b: TLineInfo): bool =
+  result = a.fileIndex == b.fileIndex and a.line == b.line and a.col == b.col
 
 proc writeContext(lastinfo: TLineInfo) =
   var info = lastinfo

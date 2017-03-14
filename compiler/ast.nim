@@ -738,7 +738,7 @@ type
 
   TLibKind* = enum
     libHeader, libDynamic
-    
+
   TLib* = object              # also misused for headers!
     kind*: TLibKind
     generated*: bool          # needed for the backends:
@@ -746,7 +746,7 @@ type
     name*: Rope
     path*: PNode              # can be a string literal!
 
-    
+
   CompilesId* = int ## id that is used for the caching logic within
                     ## ``system.compiles``. See the seminst module.
   TInstantiation* = object
@@ -1261,7 +1261,7 @@ proc assignType*(dest, src: PType) =
   # this fixes 'type TLock = TSysLock':
   if src.sym != nil:
     if dest.sym != nil:
-      dest.sym.flags = dest.sym.flags + src.sym.flags
+      dest.sym.flags = dest.sym.flags + (src.sym.flags-{sfExported})
       if dest.sym.annex == nil: dest.sym.annex = src.sym.annex
       mergeLoc(dest.sym.loc, src.sym.loc)
     else:
