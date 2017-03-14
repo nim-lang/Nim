@@ -622,6 +622,13 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
       else: addSon(a, newSymNode(f))
       styleCheckDef(f)
     if a.kind != nkEmpty: addSon(father, a)
+  of nkSym:
+    # this branch only valid during generic object
+    # with parameterized parent second check.
+    # There is no branch validity check here
+    if containsOrIncl(check, n.sym.name.id):
+      localError(n.info, errAttemptToRedefine, n.sym.name.s)
+    addSon(father, n)
   of nkEmpty: discard
   else: illFormedAst(n)
 
@@ -673,8 +680,9 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
       localError(n.info, errIllegalRecursionInTypeX, "object")
     else:
       var concreteBase = skipGenericInvocation(base)
-      if concreteBase.kind == tyObject and tfFinal notin concreteBase.flags:
-        addInheritedFields(c, check, pos, concreteBase)
+      if concreteBase.kind in {tyObject, tyGenericParam} and tfFinal notin concreteBase.flags:
+        if concreteBase.kind == tyObject:
+          addInheritedFields(c, check, pos, concreteBase)
       else:
         if concreteBase.kind != tyError:
           localError(n.sons[1].info, errInheritanceOnlyWithNonFinalObjects)
@@ -1045,6 +1053,23 @@ proc semBlockType(c: PContext, n: PNode, prev: PType): PType =
 proc semGenericParamInInvocation(c: PContext, n: PNode): PType =
   result = semTypeNode(c, n, nil)
 
+proc semObjectTypeForInheritedGenericInst(c: PContext, n: PNode, t: PType) =
+  var check = initIntSet()
+  var realBase = t.sons[0]
+  var pos = 0
+  var base = skipTypesOrNil(realBase, skipPtrs)
+  if base.isNil:
+    localError(n.info, errIllegalRecursionInTypeX, "object")
+  else:
+    var concreteBase = skipGenericInvocation(base)
+    if concreteBase.kind == tyObject and tfFinal notin concreteBase.flags:
+      addInheritedFields(c, check, pos, concreteBase)
+    else:
+      if concreteBase.kind != tyError:
+        localError(n.info, errInheritanceOnlyWithNonFinalObjects)
+  var newf = newNodeI(nkRecList, n.info)
+  semRecordNodeAux(c, t.n, check, pos, newf, t)
+
 proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   if s.typ == nil:
     localError(n.info, "cannot instantiate the '$1' $2" %
@@ -1106,6 +1131,12 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
       else:
         result = instGenericContainer(c, n.info, result,
                                       allowMetaTypes = false)
+
+  # special check for generic object with
+  # parameterized parent
+  let tx = result.skipTypes(abstractPtrs)
+  if tx != result and tx.kind == tyObject and tx.sons[0] != nil:
+    semObjectTypeForInheritedGenericInst(c, n, tx)
 
 proc semTypeExpr(c: PContext, n: PNode; prev: PType): PType =
   var n = semExprWithType(c, n, {efDetermineType})
