@@ -227,7 +227,7 @@ proc getLib(c: PContext, kind: TLibKind, path: PNode): PLib =
   for it in c.libs:
     if it.kind == kind and trees.exprStructuralEquivalent(it.path, path):
       return it
-      
+
   result = newLib(kind)
   result.path = path
   c.libs.add result
