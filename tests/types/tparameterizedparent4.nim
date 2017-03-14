@@ -8,11 +8,11 @@ type
   Texture = enum
     Smooth
     Coarse
-  
+
   FruitBase = object of RootObj
     color: int
     grain: string
-    
+
   Apple[T] = object of T
     width: int
     tast_e: float64
@@ -20,11 +20,11 @@ type
     of Smooth:
       skin: float64
     of Coarse:
-      grain: int    
+      grain: int
 
 proc setColor(self: var FruitBase, c: int) =
   self.color = c
-  
+
 var x = Apple[FruitBase](kind: Smooth, skin: 1.5)
 x.setColor(14)
 echo x

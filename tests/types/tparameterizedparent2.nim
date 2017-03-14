@@ -10,7 +10,7 @@ type
   Texture = enum
     Smooth
     Coarse
-    
+
   FruitBase = object of RootObj
     color: int
 
@@ -37,8 +37,8 @@ type
     of Smooth:
       skin: float64
     of Coarse:
-      grain: int   
-      
+      grain: int
+
 var x: Apple[FruitBase]
 x.color = 13
 x.width = 11

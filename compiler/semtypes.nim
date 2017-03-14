@@ -1050,7 +1050,7 @@ proc semBlockType(c: PContext, n: PNode, prev: PType): PType =
 proc semGenericParamInInvocation(c: PContext, n: PNode): PType =
   result = semTypeNode(c, n, nil)
 
-proc semObjectType(c: PContext, n: PNode, t: PType) =
+proc semObjectTypeForInheritedGenericInst(c: PContext, n: PNode, t: PType) =
   var check = initIntSet()
   var realBase = t.sons[0]
   var pos = 0
@@ -1131,11 +1131,9 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
 
   # special check for generic object with
   # parameterized parent
-  if result.kind == tyGenericInst:
-    var t = result.lastSon()
-    if t.kind in {tyRef, tyPtr}: t = t.lastSon()
-    if t.kind == tyObject and t.sons[0] != nil:
-      semObjectType(c, n, t)
+  let tx = result.skipTypes(abstractPtrs)
+  if tx != result and tx.kind == tyObject and tx.sons[0] != nil:
+    semObjectTypeForInheritedGenericInst(c, n, tx)
 
 proc semTypeExpr(c: PContext, n: PNode; prev: PType): PType =
   var n = semExprWithType(c, n, {efDetermineType})
