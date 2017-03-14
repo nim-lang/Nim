@@ -39,7 +39,7 @@ __clang__
      https://github.com/google/sanitizers/wiki/AddressSanitizer
  */
 #define CLANG_NO_SANITIZE_ADDRESS
-#if defined(__clang__) || defined (__GNUC__)
+#if defined(__clang__)
 #  if __has_attribute(no_sanitize_address)
 #    undef CLANG_NO_SANITIZE_ADDRESS
 #    define CLANG_NO_SANITIZE_ADDRESS __attribute__((no_sanitize_address))
