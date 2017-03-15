@@ -1138,14 +1138,22 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   if tx != result and tx.kind == tyObject and tx.sons[0] != nil:
     semObjectTypeForInheritedGenericInst(c, n, tx)
 
+proc maybeAliasType(c: PContext; typeExpr, prev: PType): PType
+
 proc semTypeExpr(c: PContext, n: PNode; prev: PType): PType =
   var n = semExprWithType(c, n, {efDetermineType})
   if n.typ.kind == tyTypeDesc:
     result = n.typ.base
-    # fix types constructed by macros:
-    if prev != nil and prev.sym != nil and result.sym.isNil:
-      result.sym = prev.sym
-      result.sym.typ = result
+    # fix types constructed by macros/template:
+    if prev != nil and prev.sym != nil:
+      if result.sym.isNil:
+        # types constructed by macros
+        result.sym = prev.sym
+        result.sym.typ = result
+      else:
+        # types constructed by template
+        let alias = maybeAliasType(c, result, prev)
+        if alias != nil: result = alias
   else:
     localError(n.info, errTypeExpected, n.renderTree)
     result = errorType(c)
@@ -1284,8 +1292,6 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = typExpr.typ
       else:
         result = semTypeExpr(c, n, prev)
-        let alias = maybeAliasType(c, result, prev)
-        if alias != nil: result = alias
   of nkWhenStmt:
     var whenResult = semWhen(c, n, false)
     if whenResult.kind == nkStmtList: whenResult.kind = nkStmtListType
