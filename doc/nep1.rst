@@ -81,7 +81,8 @@ changed in the future.
 
     var aVariable = "Meep"
 
-    type FooBar = object
+    type
+      FooBar = object
 
   For constants coming from a C/C++ wrapper, ALL_UPPERCASE are allowed, but ugly.
   (Why shout CONSTANT? Constants do no harm, variables do!)
@@ -99,25 +100,28 @@ changed in the future.
 - Exception and Error types should have the "Error" suffix.
 
   .. code-block:: nim
-    type UnluckyError = object of Exception
+    type
+      UnluckyError = object of Exception
 - Unless marked with the `{.pure.}` pragma, members of enums should have an
   identifying prefix, such as an abbreviation of the enum's name.
 
   .. code-block:: nim
-    type PathComponent = enum
-      pcDir
-      pcLinkToDir
-      pcFile
-      pcLinkToFile
+    type
+      PathComponent = enum
+        pcDir
+        pcLinkToDir
+        pcFile
+        pcLinkToFile
 - Non-pure enum values should use camelCase whereas pure enum values should use
   PascalCase.
 
   .. code-block:: nim
-    type PathComponent {.pure.} = enum
-      Dir
-      LinkToDir
-      File
-      LinkToFile
+    type
+      PathComponent {.pure.} = enum
+        Dir
+        LinkToDir
+        File
+        LinkToFile
 - In the age of HTTP, HTML, FTP, TCP, IP, UTF, WWW it is foolish to pretend
   these are somewhat special words requiring all uppercase. Instead tread them as what they are: Real words. So it's ``parseUrl`` rather than ``parseURL``, ``checkHttpHeader`` instead of ``checkHTTPHeader`` etc.
 
