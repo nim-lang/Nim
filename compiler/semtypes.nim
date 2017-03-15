@@ -1147,11 +1147,18 @@ proc semTypeExpr(c: PContext, n: PNode; prev: PType): PType =
     # fix types constructed by macros/template:
     if prev != nil and prev.sym != nil:
       if result.sym.isNil:
-        # types constructed by macros
+        # Behold! you're witnessing enormous power yielded
+        # by macros. Only macros can summon unnamed types
+        # and cast spell upon AST. Here we need to give
+        # it a name taken from left hand side's node
         result.sym = prev.sym
         result.sym.typ = result
       else:
-        # types constructed by template
+        # Less powerful routine like template do not have
+        # the ability to produce unnamed types. But still
+        # it has wild power to push a type a bit too far.
+        # So we need to hold it back using alias and prevent
+        # unnecessary new type creation
         let alias = maybeAliasType(c, result, prev)
         if alias != nil: result = alias
   else:
