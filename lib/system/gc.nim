@@ -593,6 +593,7 @@ proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
             break
           dec(j)
       beforeDealloc(gch, ol, "growObj stack trash")
+      decTypeSize(ol, ol.typ)
       rawDealloc(gch.region, ol)
     else:
       # we split the old refcount in 2 parts. XXX This is still not entirely
@@ -751,7 +752,13 @@ proc gcMark(gch: var GcHeap, p: pointer) {.inline.} =
         add(gch.decStack, cell)
   sysAssert(allocInv(gch.region), "gcMark end")
 
-proc markStackAndRegisters(gch: var GcHeap) {.noinline, cdecl.} =
+#[
+  This method is conditionally marked with an attribute so that it gets ignored by the LLVM ASAN
+  (Address SANitizer) intrumentation as it will raise false errors due to the implementation of 
+  garbage collection that is used by Nim. For more information, please see the documentation of 
+  `CLANG_NO_SANITIZE_ADDRESS` in `lib/nimbase.h`.
+ ]#
+proc markStackAndRegisters(gch: var GcHeap) {.noinline, cdecl, codegenDecl: "CLANG_NO_SANITIZE_ADDRESS $# $#$#".} =
   forEachStackSlot(gch, gcMark)
 
 proc collectZCT(gch: var GcHeap): bool =
