@@ -593,6 +593,7 @@ proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
             break
           dec(j)
       beforeDealloc(gch, ol, "growObj stack trash")
+      decTypeSize(ol, ol.typ)
       rawDealloc(gch.region, ol)
     else:
       # we split the old refcount in 2 parts. XXX This is still not entirely
