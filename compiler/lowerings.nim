@@ -141,6 +141,7 @@ proc addField*(obj: PType; s: PSym) =
   # because of 'gensym' support, we have to mangle the name with its ID.
   # This is hacky but the clean solution is much more complex than it looks.
   var field = newSym(skField, getIdent(s.name.s & $s.id), s.owner, s.info)
+  incl(field.flags, sfAnon)
   let t = skipIntLit(s.typ)
   field.typ = t
   assert t.kind != tyStmt
