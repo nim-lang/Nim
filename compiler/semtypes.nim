@@ -1284,6 +1284,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = typExpr.typ
       else:
         result = semTypeExpr(c, n, prev)
+        let alias = maybeAliasType(c, result, prev)
+        if alias != nil: result = alias
   of nkWhenStmt:
     var whenResult = semWhen(c, n, false)
     if whenResult.kind == nkStmtList: whenResult.kind = nkStmtListType
