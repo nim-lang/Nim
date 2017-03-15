@@ -1629,13 +1629,21 @@ proc genRepr(p: PProc, n: PNode, r: var TCompRes) =
     return
   let t = skipTypes(n.sons[1].typ, abstractVarRange)
   case t.kind
-  of tyInt..tyUInt64:
-    unaryExpr(p, n, r, "", "(\"\"+ ($1))")
+  of tyInt..tyInt64,tyUInt..tyUInt64:
+    unaryExpr(p, n, r, "reprInt", "reprInt($1)")
+  of tyChar:
+    unaryExpr(p, n, r, "reprChar", "reprChar($1)")
+  of tyBool:
+    unaryExpr(p, n, r, "reprBool", "reprBool($1)")
+  of tyFloat..tyFloat128:
+    unaryExpr(p,n,r, "reprFloat","reprFloat($1)")
+  of tyString:
+    unaryExpr(p,n,r,"reprStr","reprStr($1)")
   of tyEnum, tyOrdinal:
+    useMagic(p, "reprEnum")
     gen(p, n.sons[1], r)
-    useMagic(p, "cstrToNimstr")
     r.kind = resExpr
-    r.res = "cstrToNimstr($1.node.sons[$2].name)" % [genTypeInfo(p, t), r.res]
+    r.res = "reprEnum($1,$2)" % [r.res,genTypeInfo(p, t)]
   else:
     # XXX:
     internalError(n.info, "genRepr: Not implemented")
