@@ -1,5 +1,7 @@
 discard """
   disabled: windows
+  disabled: bsd
+  disabled: macosx
 """
 
 import unittest
