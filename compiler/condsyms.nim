@@ -41,7 +41,7 @@ proc isDefined*(symbol: string): bool =
       result = targetOS in {osLinux, osMorphos, osSkyos, osIrix, osPalmos,
                             osQnx, osAtari, osAix,
                             osHaiku, osVxWorks, osSolaris, osNetbsd,
-                            osFreebsd, osOpenbsd, osMacosx}
+                            osFreebsd, osOpenbsd, osDragonfly, osMacosx}
     of "bsd":
       result = targetOS in {osNetbsd, osFreebsd, osOpenbsd}
     of "emulatedthreadvars":
