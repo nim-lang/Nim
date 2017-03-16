@@ -20,8 +20,8 @@ type
   TSystemOS* = enum # Also add OS in initialization section and alias
                     # conditionals to condsyms (end of module).
     osNone, osDos, osWindows, osOs2, osLinux, osMorphos, osSkyos, osSolaris,
-    osIrix, osNetbsd, osFreebsd, osOpenbsd, osAix, osPalmos, osQnx, osAmiga,
-    osAtari, osNetware, osMacos, osMacosx, osHaiku, osVxworks,
+    osIrix, osNetbsd, osFreebsd, osOpenbsd, osDragonfly, osAix, osPalmos, osQnx,
+    osAmiga, osAtari, osNetware, osMacos, osMacosx, osHaiku, osVxworks,
     osJS, osNimrodVM, osStandalone
 
 type
@@ -92,6 +92,13 @@ const
       scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".",
       props: {ospNeedsPIC, ospPosix}),
      (name: "OpenBSD", parDir: "..",
+      dllFrmt: "lib$1.so", altDirSep: "/",
+      objExt: ".o", newLine: "\x0A",
+      pathSep: ":", dirSep: "/",
+      scriptExt: ".sh", curDir: ".",
+      exeExt: "", extSep: ".",
+      props: {ospNeedsPIC, ospPosix}),
+     (name: "DragonFly", parDir: "..",
       dllFrmt: "lib$1.so", altDirSep: "/",
       objExt: ".o", newLine: "\x0A",
       pathSep: ":", dirSep: "/",
