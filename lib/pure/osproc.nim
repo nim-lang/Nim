@@ -1161,7 +1161,7 @@ elif not defined(useNimRtl):
     if b: result = -1
     if WIFEXITED(status):
       p.exitStatus = status
-      result = p.exitStatus.int shr 8
+      result = (status and 0xFF00) shr 8
     else:
       result = -1
 
