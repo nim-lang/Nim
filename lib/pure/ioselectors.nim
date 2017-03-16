@@ -33,12 +33,14 @@ const hasThreadSupport = compileOption("threads") and defined(threadsafe)
 
 const ioselSupportedPlatform* = defined(macosx) or defined(freebsd) or
                                 defined(netbsd) or defined(openbsd) or
+                                defined(dragonfly) or
                                 (defined(linux) and not defined(android))
   ## This constant is used to determine whether the destination platform is
   ## fully supported by ``ioselectors`` module.
 
 const bsdPlatform = defined(macosx) or defined(freebsd) or
-                    defined(netbsd) or defined(openbsd)
+                    defined(netbsd) or defined(openbsd) or
+                    defined(dragonfly)
 
 when defined(nimdoc):
   type

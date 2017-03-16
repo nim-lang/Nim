@@ -22,7 +22,7 @@ const
 when defined(kqcache):
   const CACHE_EVENTS = true
 
-when defined(macosx) or defined(freebsd):
+when defined(macosx) or defined(freebsd) or defined(dragonfly):
   when defined(macosx):
     const MAX_DESCRIPTORS_ID = 29 # KERN_MAXFILESPERPROC (MacOS)
   else:
