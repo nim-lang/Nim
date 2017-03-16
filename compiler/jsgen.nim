@@ -1644,6 +1644,11 @@ proc genRepr(p: PProc, n: PNode, r: var TCompRes) =
     gen(p, n.sons[1], r)
     r.kind = resExpr
     r.res = "reprEnum($1,$2)" % [r.res,genTypeInfo(p, t)]
+  of tySet:
+    useMagic(p, "reprSet")
+    gen(p, n.sons[1], r)
+    r.kind = resExpr
+    r.res = "reprSet($1,$2)" % [r.res,genTypeInfo(p, t)]
   else:
     # XXX:
     internalError(n.info, "genRepr: Not implemented")

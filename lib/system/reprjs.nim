@@ -35,7 +35,6 @@ proc `$`(x: uint64): string =
 proc isUndefined[T](x:T):bool {.inline.} = {.emit: "`result`= `x` === undefined;"}
 
 proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
-  # CHECKME: revert to c-like behaviour? (offsets and linear search)
   if not typ.node.sons[e].isUndefined :
     $typ.node.sons[e].name
   else:
@@ -56,12 +55,12 @@ proc reprStrAux(result: var string, s: cstring; len: int) =
     let c = s[i]
     case c
     of '"': add result, "\\\""
-    of '\\': add result, "\\\\" # BUGFIX: forgotten
-    of '\10': add result, "\\10\"\n\"" # " \n " # better readability
+    of '\\': add result, "\\\\"
+    of '\10': add result, "\\10\"\n\""
     of '\128' .. '\255', '\0'..'\9', '\11'..'\31':
       add result, "\\" & reprInt(ord(c))
     else:
-      add result, reprInt(ord(c)) # Stop the char being repr'd
+      add result, reprInt(ord(c)) # Not sure about this.
   add result, "\""
 
 proc reprStr(s: string): string {.compilerRtl.} =
@@ -70,3 +69,72 @@ proc reprStr(s: string): string {.compilerRtl.} =
     add result, "nil"
     return
   reprStrAux(result, s, s.len)
+
+proc addSetElem(result: var string, elem: int, typ: PNimType) =
+  # Dispatch each element to the correct repr proc
+  case typ.kind
+  of tyEnum: add result, reprEnum(elem, typ)
+  of tyBool: add result, reprBool(bool(elem))
+  of tyChar: add result, reprChar(chr(elem))
+  of tyRange: addSetElem(result, elem, typ.base) # Note the base to advance toward the element type
+  of tyInt..tyInt64, tyUInt8, tyUInt16: add result, reprInt(elem)
+  else: # data corrupt --> inform the user
+    add result, " (invalid data!)"
+
+iterator SetKeys(s:int): int {.inline.} =
+  # The type of s is a lie, it's expected to be a set.
+  # This means every key has to be a positive integer.
+  # Iterate over the JS object representing a set 
+  # and returns the keys as int.
+  var len: int
+  var yieldRes : int
+  var i : int = 0
+  asm """
+  var setObjKeys = Object.getOwnPropertyNames(`s`);
+  `len` = setObjKeys.length
+  """
+  while i<len:
+    asm "`yieldRes` = parseInt(setObjKeys[`i`],10);\n"
+    yield yieldRes
+    inc i
+
+proc reprSetAux(result: var string, s:int, typ: PNimType) {.asmNoStackFrame.}=
+  add result, "{"
+  var first : bool = true
+  for el in SetKeys(s):
+    if first:
+      first  = false
+    else:
+      add result, ", "
+    addSetElem(result,el,typ.base)
+  #[
+  Alternative:
+
+  let fieldcount: int = 0 # we cheat using asm to set it to its value.
+  var el : int
+  asm """
+  var setObjKeys = Object.getOwnPropertyNames(`s`);
+  `fieldcount` = setObjKeys.length
+  """
+  case fieldcount
+  of 0: discard
+  of 1:
+    asm "`el` = parseInt(setObjKeys[0],10);\n"
+    addSetElem(result,el,typ.base)
+  of 2:
+    asm "`el` = parseInt(setObjKeys[0],10);\n"
+    addSetElem(result,el,typ.base)
+    add result, ", "      
+    asm "`el` = parseInt(setObjKeys[1],10);\n"
+    addSetElem(result,el,typ.base)
+  else:
+    for i in 0 .. < fieldcount:
+      asm "`el` = parseInt(setObjKeys[`i`],10);\n"
+      if i != fieldcount-1:
+        add result, ", "
+      addSetElem(result,el,typ.base)]#
+  add result, "}"
+
+proc reprSet(e: int, typ: PNimType): string {.compilerRtl.} =
+  result = ""
+  reprSetAux(result, e, typ)
