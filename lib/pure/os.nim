@@ -1464,7 +1464,7 @@ when declared(paramCount) or defined(nimdoc):
     for i in 1..paramCount():
       result.add(paramStr(i))
 
-when defined(freebsd):
+when defined(freebsd) or defined(dragonfly):
   proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr csize,
               newp: pointer, newplen: csize): cint
        {.importc: "sysctl",header: """#include <sys/types.h>
@@ -1472,8 +1472,12 @@ when defined(freebsd):
   const
     CTL_KERN = 1
     KERN_PROC = 14
-    KERN_PROC_PATHNAME = 12
     MAX_PATH = 1024
+
+  when defined(freebsd):
+    const KERN_PROC_PATHNAME = 12
+  else:
+    const KERN_PROC_PATHNAME = 9
 
   proc getApplFreebsd(): string =
     var pathLength = csize(MAX_PATH)
@@ -1578,7 +1582,7 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
       result = getApplAux("/proc/self/exe")
     elif defined(solaris):
       result = getApplAux("/proc/" & $getpid() & "/path/a.out")
-    elif defined(freebsd):
+    elif defined(freebsd) or defined(dragonfly):
       result = getApplFreebsd()
     # little heuristic that may work on other POSIX-like systems:
     if result.len == 0:
