@@ -156,7 +156,7 @@ method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
       try:
         writeLine(stdout, ln)
         if level in {lvlError, lvlFatal}: flushFile(stdout)
-      except:
+      except IOError:
         discard
 
 proc newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr): ConsoleLogger =
