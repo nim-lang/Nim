@@ -184,7 +184,7 @@ template test*(name, body) {.dirty.} =
   bind shouldRun, checkpoints, testDone
 
   if shouldRun(name):
-    checkpoints = @[]
+    checkpoints = @[ "Test: " & $name ]
     var testStatusIMPL {.inject.} = OK
 
     try:
