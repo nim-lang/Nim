@@ -1086,8 +1086,12 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   of tyBuiltInTypeClass:
     considerPreviousT:
       let targetKind = f.sons[0].kind
-      if targetKind == a.skipTypes({tyRange, tyGenericInst, tyBuiltInTypeClass, tyAlias}).kind or
-         (targetKind in {tyProc, tyPointer} and a.kind == tyNil):
+      let effectiveArgType = a.skipTypes({tyRange, tyGenericInst,
+                                          tyBuiltInTypeClass, tyAlias})
+      let typeClassMatches = targetKind == effectiveArgType.kind and
+                             not effectiveArgType.isEmptyContainer
+      if typeClassMatches or
+        (targetKind in {tyProc, tyPointer} and effectiveArgType.kind == tyNil):
         put(c, f, a)
         return isGeneric
       else:
