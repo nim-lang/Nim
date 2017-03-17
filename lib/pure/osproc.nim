@@ -990,7 +990,7 @@ elif not defined(useNimRtl):
     import kqueue, times
 
     proc waitForExit(p: Process, timeout: int = -1): int =
-      if p.exitStatus != -3: return int(p.exitStatus) shr 8
+      if p.exitStatus != -3: return ((p.exitStatus and 0xFF00) shr 8)
       if timeout == -1:
         var status : cint = 1
         if waitpid(p.id, status, 0) < 0:
@@ -1155,13 +1155,13 @@ elif not defined(useNimRtl):
 
   proc peekExitCode(p: Process): int =
     var status : cint = 1
-    if p.exitStatus != -3: return int(p.exitStatus) shr 8
+    if p.exitStatus != -3: return ((p.exitStatus and 0xFF00) shr 8)
     var ret = waitpid(p.id, status, WNOHANG)
     var b = ret == int(p.id)
     if b: result = -1
     if WIFEXITED(status):
       p.exitStatus = status
-      result = p.exitStatus.int shr 8
+      result = (status and 0xFF00) shr 8
     else:
       result = -1
 
