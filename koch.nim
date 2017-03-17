@@ -513,12 +513,26 @@ proc pushCsources() =
     setCurrentDir(cwd)
 
 proc valgrind(cmd: string) =
-  exec("nim c " & cmd)
-  var i = cmd.len-1
-  while i >= 0 and cmd[i] != ' ': dec i
-  let file = if i >= 0: substr(cmd, i+1) else: cmd
+  # somewhat hacky: '=' sign means "pass to valgrind" else "pass to Nim"
+  let args = parseCmdLine(cmd)
+  var nimcmd = ""
+  var valcmd = ""
+  for i, a in args:
+    if i == args.len-1:
+      # last element is the filename:
+      valcmd.add ' '
+      valcmd.add changeFileExt(a, ExeExt)
+      nimcmd.add ' '
+      nimcmd.add a
+    elif '=' in a:
+      valcmd.add ' '
+      valcmd.add a
+    else:
+      nimcmd.add ' '
+      nimcmd.add a
+  exec("nim c" & nimcmd)
   let supp = getAppDir() / "tools" / "nimgrind.supp"
-  exec("valgrind --suppressions=" & supp & " " & changeFileExt(file, ""))
+  exec("valgrind --suppressions=" & supp & valcmd)
 
 proc showHelp() =
   quit(HelpText % [VersionAsString & spaces(44-len(VersionAsString)),
