@@ -1649,15 +1649,22 @@ proc genRepr(p: PProc, n: PNode, r: var TCompRes) =
     gen(p, n.sons[1], r)
     r.kind = resExpr
     r.res = "reprSet($1,$2)" % [r.res,genTypeInfo(p, t)]
-  of tyArray, tyOpenArray:
+  of tyArray,tySequence:
     useMagic(p, "reprAny")
     gen(p, n.sons[1], r)
     r.kind = resExpr
     # The 0 is for the pointer index ( which we assume to start at zero )
-    r.res = "reprAny($1,0,$2)" % [r.res,genTypeInfo(p, t)]
+    r.res = "reprAny($1,$2)" % [r.res,genTypeInfo(p, t)]
+  of tyPointer:
+    useMagic(p, "reprPointer")
+    gen(p, n.sons[1], r)
+    r.kind = resExpr
+    # The 0 is for the pointer index ( which we assume to start at zero )
+    r.res = "reprPointer($1)" % [r.res]
+  
   else:
     # XXX:
-    internalError(n.info, "genRepr: Not implemented")
+    internalError(n.info, "genRepr: Not implemented: " & $t.kind)
 
 proc genOf(p: PProc, n: PNode, r: var TCompRes) =
   var x: TCompRes
