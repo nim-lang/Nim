@@ -45,7 +45,7 @@ type
     inst*: PInstantiation
 
   TExprFlag* = enum
-    efLValue, efWantIterator, efInTypeof,
+    efLValue, efWantIterator, efWantStatic, efInTypeof,
     efWantStmt, efAllowStmt, efDetermineType, efExplain,
     efAllowDestructor, efWantValue, efOperand, efNoSemCheck,
     efNoProcvarCheck, efNoEvaluateGeneric, efInCall, efFromHlo,
