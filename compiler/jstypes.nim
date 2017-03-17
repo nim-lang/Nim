@@ -157,8 +157,8 @@ proc genTypeInfo(p: PProc, typ: PType): Rope =
          [result, genTypeInfo(p, t.lastSon)])
   of tyArray:
     var s =
-      "var $1 = {size: $3,kind: $2,base: null,node: null,finalizer: null};$n" %
-              [result, rope(ord(t.kind)), rope(lengthOrd(t))]
+      "var $1 = {size: 0,kind: $2,base: null,node: null,finalizer: null};$n" %
+              [result, rope(ord(t.kind))]
     prepend(p.g.typeInfo, s)
     addf(p.g.typeInfo, "$1.base = $2;$n",
          [result, genTypeInfo(p, t.sons[1])])
