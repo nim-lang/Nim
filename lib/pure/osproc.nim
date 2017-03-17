@@ -986,11 +986,11 @@ elif not defined(useNimRtl):
       raiseOsError(osLastError())
 
   when defined(macosx) or defined(freebsd) or defined(netbsd) or
-       defined(openbsd):
+       defined(openbsd) or defined(dragonfly):
     import kqueue, times
 
     proc waitForExit(p: Process, timeout: int = -1): int =
-      if p.exitStatus != -3: return ((p.exitStatus and 0xFF00) shr 8)
+      if p.exitStatus != -3: return((p.exitStatus and 0xFF00) shr 8)
       if timeout == -1:
         var status : cint = 1
         if waitpid(p.id, status, 0) < 0:
@@ -1041,7 +1041,7 @@ elif not defined(useNimRtl):
         finally:
           discard posix.close(kqFD)
 
-      result = int(p.exitStatus) shr 8
+      result = ((p.exitStatus and 0xFF00) shr 8)
   else:
     import times
 
@@ -1077,7 +1077,7 @@ elif not defined(useNimRtl):
       # ``waitPid`` fails if the process is not running anymore. But then
       # ``running`` probably set ``p.exitStatus`` for us. Since ``p.exitStatus`` is
       # initialized with -3, wrong success exit codes are prevented.
-      if p.exitStatus != -3: return int(p.exitStatus) shr 8
+      if p.exitStatus != -3: return((p.exitStatus and 0xFF00) shr 8)
       if timeout == -1:
         var status : cint = 1
         if waitpid(p.id, status, 0) < 0:
@@ -1151,19 +1151,17 @@ elif not defined(useNimRtl):
             if sigprocmask(SIG_UNBLOCK, nmask, omask) == -1:
               raiseOSError(osLastError())
 
-      result = int(p.exitStatus) shr 8
+      result = ((p.exitStatus and 0xFF00) shr 8)
 
   proc peekExitCode(p: Process): int =
-    var status : cint = 1
-    if p.exitStatus != -3: return ((p.exitStatus and 0xFF00) shr 8)
+    var status = cint(0)
+    result = -1
+    if p.exitStatus != -3: return((p.exitStatus and 0xFF00) shr 8)
     var ret = waitpid(p.id, status, WNOHANG)
-    var b = ret == int(p.id)
-    if b: result = -1
-    if WIFEXITED(status):
-      p.exitStatus = status
-      result = (status and 0xFF00) shr 8
-    else:
-      result = -1
+    if ret > 0:
+      if WIFEXITED(status):
+        p.exitStatus = status
+        result = (status and 0xFF00) shr 8
 
   proc createStream(stream: var Stream, handle: var FileHandle,
                     fileMode: FileMode) =
