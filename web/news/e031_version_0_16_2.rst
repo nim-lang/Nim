@@ -49,7 +49,13 @@ Changes affecting backwards compatibility
   instead of signed integers.
 - In Nim identifiers en-dash (Unicode point U+2013) is not an alias for the
   underscore anymore. Use underscores and fix your programming font instead.
-
+- When the ``requiresInit`` pragma is applied to a record type, future versions
+  of Nim will also require you to initialize all the fields of the type during
+  object construction. For now, only a warning will be produced.
+- The Object construction syntax now performs a number of additional safety
+  checks. When fields within case objects are initialiazed, the compiler will
+  now demand that the respective discriminator field has a matching known
+  compile-time value.
 
 Library Additions
 -----------------
