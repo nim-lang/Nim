@@ -260,6 +260,9 @@ template skip* =
   testStatusIMPL = SKIPPED
   checkpoints = @[]
 
+macro isLiteral(value: expr[typed]): expr =
+  bool(value.kind == nnkSym and value.symbol.getImpl.kind == nnkNilLit)
+
 macro check*(conditions: untyped): untyped =
   ## Verify if a statement or a list of statements is true.
   ## A helpful error message and set checkpoints are printed out on
@@ -287,9 +290,20 @@ macro check*(conditions: untyped): untyped =
     var a = value # XXX: we need "var: var" here in order to
                   # preserve the semantics of var params
 
+  template isNil(value: expr): expr =
+    when compiles(value == nil):
+      value == nil
+    else:
+      false
+
   template print(name, value: expr): stmt =
-    when compiles(string($value)):
-      checkpoint(name & " was " & $value)
+    when isLiteral(value):
+      discard
+    elif compiles(string($value)):
+      if isNil(value):
+        checkpoint(name & " was nil")
+      else:
+        checkpoint(name & " was " & $value)
 
   proc inspectArgs(exp: NimNode): NimNode =
     result = copyNimTree(exp)
@@ -303,6 +317,10 @@ macro check*(conditions: untyped): untyped =
           var argStr = exp[i].toStrLit
           var paramAst = exp[i]
           if exp[i].kind == nnkIdent:
+            argsPrintOuts.add getAst(print(argStr, paramAst))
+          if exp[i].kind == nnkDotExpr:
+            argsPrintOuts.add getAst(print(argStr, paramAst))
+          if exp[i].kind == nnkBracketExpr:
             argsPrintOuts.add getAst(print(argStr, paramAst))
           if exp[i].kind in nnkCallKinds:
             var callVar = newIdentNode(":c" & $counter)
@@ -343,6 +361,9 @@ macro check*(conditions: untyped): untyped =
     for i in countup(0, checked.len - 1):
       if checked[i].kind != nnkCommentStmt:
         result.add(newCall(!"check", checked[i]))
+
+  of nnkLetSection:
+    result = checked
 
   else:
     template rewrite(Exp, lineInfoLit: expr, expLit: string): stmt =
