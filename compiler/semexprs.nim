@@ -2146,7 +2146,8 @@ proc semConstrField(c: PContext, flags: TExprFlags,
       return
 
     var initValue = semExprFlagDispatched(c, assignment[1], flags)
-    initValue = fitNode(c, field.typ, initValue, assignment.info)
+    if initValue != nil:
+      initValue = fitNode(c, field.typ, initValue, assignment.info)
     assignment.sons[0] = newSymNode(field)
     assignment.sons[1] = initValue
     assignment.flags.incl nfSem
@@ -2252,9 +2253,8 @@ proc semConstructFields(c: PContext, recNode: PNode,
       if discriminatorVal == nil:
         let fields = fieldsPresentInBranch(selectedBranch)
         localError(initExpr.info,
-          "the discriminator '$1' appearing in the construction of a case " &
-          "object must be a compile-time value in order to prove that it's " &
-          "initialize field(s) $2.",
+          "you must provide a compile-time value for the discriminator '$1' " &
+          "in order to prove that it's safe to initialize $2.",
           [discriminator.sym.name.s, fields])
         mergeInitStatus(result, initNone)
       else:
@@ -2344,17 +2344,15 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # field (if this is a case object, initialized fields in two different
   # branches will be reported as an error):
   let initResult = semContructType(c, t, n, flags)
-  if initResult == initConflict:
-    localError(n.info,
-      "invalid object construction. " &
-      "fields from conflicting case branches have been initialized.")
-    return
 
   # It's possible that the object was not fully initialized while
   # specifying a .requiresInit. pragma.
   # XXX: Turn this into an error in the next release
   if tfNeedsInit in t.flags and initResult != initFull:
-    message(n.info, warnUser,
+    # XXX: Disable this warning for now, because tfNeedsInit is propagated
+    # too aggressively from fields to object types (and this is not correct
+    # in case objects)
+    when false: message(n.info, warnUser,
       "object type uses the 'requiresInit' pragma, but not all fields " &
       "have been initialized. future versions of Nim will treat this as " &
       "an error")
