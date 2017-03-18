@@ -1,4 +1,4 @@
-Version 0.16.2 released
+Version 0.17.0 released
 =======================
 
 This release fixes the most important regressions introduced in 0.16.0. In
@@ -29,6 +29,16 @@ Changes affecting backwards compatibility
 - ``memfiles.open`` now closes file handleds/fds by default.  Passing
   ``allowRemap=true`` to ``memfiles.open`` recovers the old behavior.  The old
   behavior is only needed to call ``mapMem`` on the resulting ``MemFile``.
+- ``posix.nim``: For better C++ interop the field
+  ``sa_sigaction*: proc (x: cint, y: var SigInfo, z: pointer) {.noconv.}`` was
+  changed
+  to ``sa_sigaction*: proc (x: cint, y: ptr SigInfo, z: pointer) {.noconv.}``.
+- The compiler doesn't infer effects for ``.base`` methods anymore. This means
+  you need to annotate them with ``.gcsafe`` or similar to clearly declare
+  upfront every implementation needs to fullfill these contracts.
+- ``system.getAst templateCall(x, y)`` now typechecks the ``templateCall``
+  properly. You need to patch your code accordingly.
+
 
 Library Additions
 -----------------
