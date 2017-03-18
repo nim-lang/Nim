@@ -2098,24 +2098,17 @@ proc isTupleType(n: PNode): bool =
   return true
 
 type
-  InitializationResult = enum
+  InitStatus = enum
     initUnknown
     initFull     # All  of the fields have been initialized
     initPartial  # Some of the fields have been initialized
     initNone     # None of the fields have been initialized
     initConflict # Fields from different branches have been initialized
 
-  InitStatus = object
-    status: InitializationResult
-    missingFields: seq[int]
-    conflictingFields: seq[int]
-    assumptions: seq[(int, PNode)] # field and expected value
-
-proc mergeInitStatus(existing: var InitializationResult,
-                     newStatus: InitializationResult) =
+proc mergeInitStatus(existing: var InitStatus, newStatus: InitStatus) =
   case newStatus
   of initConflict:
-    existing = initConflict
+    existing = newStatus
   of initPartial:
     if existing in {initUnknown, initFull, initNone}:
       existing = initPartial
@@ -2132,102 +2125,210 @@ proc mergeInitStatus(existing: var InitializationResult,
   of initUnknown:
     discard
 
+proc locateFieldInInitExpr(field: PSym, initExpr: PNode): PNode =
+  # Returns the assignment nkExprColonExpr node or nil
+  let fieldId = field.name.id
+  for i in 1 .. <initExpr.len:
+    let assignment = initExpr[i]
+    internalAssert assignment.kind == nkExprColonExpr
+
+    if fieldId == considerQuotedIdent(assignment[0]).id:
+      return assignment
+
 proc semConstrField(c: PContext, flags: TExprFlags,
                     field: PSym, initExpr: PNode): PNode =
-  let fieldId = field.name.id
+  let assignment = locateFieldInInitExpr(field, initExpr)
+  if assignment != nil:
+    if nfSem in assignment.flags: return assignment[1]
+    if not fieldVisible(c, field):
+      localError(initExpr.info,
+        "the field '$1' is not accessible.", [field.name.s])
+      return
 
-  for i in 1 .. <initExpr.len:
-    let asgnExpr = initExpr[i]
-    internalAssert asgnExpr.kind == nkExprColonExpr
+    var initValue = semExprFlagDispatched(c, assignment[1], flags)
+    initValue = fitNode(c, field.typ, initValue, assignment.info)
+    assignment.sons[0] = newSymNode(field)
+    assignment.sons[1] = initValue
+    assignment.flags.incl nfSem
+    return initValue
 
-    if fieldId == considerQuotedIdent(asgnExpr[0]).id:
-      if not fieldVisible(c, field):
-        localError(initExpr.info,
-                   "the field '$1' is not accessible.", [field.name.s])
-        return
-
-      var initValue: PNode
-      if efWantStatic in flags:
-        initValue = tryConstExpr(c, asgnExpr[1])
-        if initValue == nil:
-          localError(asgnExpr[1].info,
-                     "the discriminator '$1' appearing in the construction " &
-                     "of a case object must be a compile-time value.",
-                     [field.name.s])
-          return
-      else:
-        initValue = semExprWithType(c, asgnExpr[1], flags*{efAllowDestructor})
-
-      asgnExpr.sons[0] = newSymNode(field)
-      asgnExpr.sons[1] = fitNode(c, field.typ, initValue, asgnExpr.info)
-      asgnExpr.flags.incl nfSem
-      return initValue
-
-  if {tfNotNil, tfNeedsInit} * field.typ.flags != {}:
-    localError(initExpr.info, "field not initialized: " & field.name.s)
-
-  return
-
-proc matchesAnyCaseInNkOf(matched, branches: PNode): bool =
-  for i in 0 .. (branches.len - 2):
-    if exprStructuralEquivalent(branches[i], matched):
+proc caseBranchMatchesExpr(branch, matched: PNode): bool =
+  for i in 0 .. (branch.len - 2):
+    if exprStructuralEquivalent(branch[i], matched):
       return true
 
   return false
 
-proc semConstructFields(c: PContext, info: TLineInfo, flags: TExprFlags,
-                        t: PType, recNode, initExpr: PNode): InitStatus =
-  result.status = initUnknown
+proc pickCaseBranch(caseExpr, matched: PNode): PNode =
+  # XXX: Perhaps this proc already exists somewhere
+  let endsWithElse = caseExpr{-1}.kind == nkElse
+  for i in 1 .. caseExpr.len - 1 - int(endsWithElse):
+    if caseExpr[i].caseBranchMatchesExpr(matched):
+      return caseExpr[i]
+
+  if endsWithElse:
+    return caseExpr{-1}
+
+iterator directFieldsInRecList(recList: PNode): PNode =
+  # XXX: We can remove this case by making all nkOfBranch nodes
+  # regular. Currently, they try to avoid using nkRecList if they
+  # include only a single field
+  if recList.kind == nkSym:
+    yield recList
+  else:
+    internalAssert recList.kind == nkRecList
+    for field in recList:
+      if field.kind != nkSym: continue
+      yield field
+
+template quoeStr(s: string): string = "'" & s & "'"
+
+proc fieldsPresentInInitExpr(fieldsRecList, initExpr: PNode): string =
+  result = ""
+  for field in directFieldsInRecList(fieldsRecList):
+    let assignment = locateFieldInInitExpr(field.sym, initExpr)
+    if assignment != nil:
+      if result.len != 0: result.add ", "
+      result.add field.sym.name.s.quoeStr
+
+proc missingMandatoryFields(fieldsRecList, initExpr: PNode): string =
+  for r in directFieldsInRecList(fieldsRecList):
+    if {tfNotNil, tfNeedsInit} * r.sym.typ.flags != {}:
+      let assignment = locateFieldInInitExpr(r.sym, initExpr)
+      if assignment == nil:
+        if result == nil:
+          result = r.sym.name.s
+        else:
+          result.add ", "
+          result.add r.sym.name.s
+
+proc checkForMissingFields(recList, initExpr: PNode) =
+  let missing = missingMandatoryFields(recList, initExpr)
+  if missing != nil:
+    localError(initExpr.info, "fields not initialized: $1.", [missing])
+
+proc semConstructFields(c: PContext, recNode: PNode,
+                        initExpr: PNode, flags: TExprFlags): InitStatus =
+  result = initUnknown
 
   case recNode.kind
   of nkRecList:
     for field in recNode:
-      let status = semConstructFields(c, info, flags, nil, field, initExpr)
-      mergeInitStatus(result.status, status.status)
-
-    if t != nil and t.sons[0] != nil:
-      var t = skipTypes(t.sons[0], skipPtrs)
-      let status = semConstructFields(c, info, flags, t, t.n, initExpr)
-      mergeInitStatus(result.status, status.status)
+      let status = semConstructFields(c, field, initExpr, flags)
+      mergeInitStatus(result, status)
 
   of nkRecCase:
+    template fieldsPresentInBranch(branchIdx: int): string =
+      fieldsPresentInInitExpr(recNode[branchIdx]{-1}, initExpr)
+
+    template checkMissingFields(branchNode: PNode) =
+      checkForMissingFields(branchNode{-1}, initExpr)
+
     let discriminator = recNode.sons[0];
     internalAssert discriminator.kind == nkSym
     var selectedBranch = -1
 
     for i in 1 .. <recNode.len:
-      let innerNode = if recNode[i].kind == nkOfBranch:
-          recNode[i]{-1}
-        else:
-          recNode[i][0]
-
-      let s = semConstructFields(c, info, flags, nil, innerNode, initExpr)
-      if s.status notin {initNone, initUnknown}:
-        mergeInitStatus(result.status, s.status)
+      let innerRecords = recNode[i]{-1}
+      let status = semConstructFields(c, innerRecords, initExpr, flags)
+      if status notin {initNone, initUnknown}:
+        mergeInitStatus(result, status)
         if selectedBranch != -1:
-          localError(initExpr.info, "conflicting branches")
-          result.status = initConflict
+          let prevFields = fieldsPresentInBranch(selectedBranch)
+          let currentFields = fieldsPresentInBranch(i)
+          localError(initExpr.info,
+            "The fields ($1) and ($2) cannot be initialized together, " &
+            "because they are from conflicting branches in the case object.",
+            [prevFields, currentFields])
+          result = initConflict
         else:
           selectedBranch = i
 
-    if selectedBranch >= 0 and selectedBranch < recNode.len - 1:
-      let discriminatorVal = semConstrField(c, flags + {efWantStatic},
-                                           discriminator.sym, initExpr)
+    if selectedBranch != -1:
+      let branchNode = recNode[selectedBranch]
+      let flags = flags*{efAllowDestructor} + {efNeedStatic, efPreferNilResult}
+      let discriminatorVal = semConstrField(c, flags,
+                                            discriminator.sym, initExpr)
       if discriminatorVal == nil:
-        localError(initExpr.info, "discrimantor not const")
-      elif not discriminatorVal.matchesAnyCaseInNkOf(recNode[selectedBranch]):
-        localError(initExpr.info, "wrong branch taken")
+        let fields = fieldsPresentInBranch(selectedBranch)
+        localError(initExpr.info,
+          "the discriminator '$1' appearing in the construction of a case " &
+          "object must be a compile-time value in order to prove that it's " &
+          "initialize field(s) $2.",
+          [discriminator.sym.name.s, fields])
+        mergeInitStatus(result, initNone)
+      else:
+        let discriminatorVal = discriminatorVal.skipHidden
+
+        template wrongBranchError(i) =
+          let fields = fieldsPresentInBranch(i)
+          localError(initExpr.info,
+            "a case selecting discriminator '$1' with value '$2' " &
+            "appears in the object construction, but the field(s) $3 " &
+            "are in conflict with this value.",
+            [discriminator.sym.name.s, discriminatorVal.renderTree, fields])
+
+        if branchNode.kind != nkElse:
+          if not branchNode.caseBranchMatchesExpr(discriminatorVal):
+            wrongBranchError(selectedBranch)
+        else:
+          # With an else clause, check that all other branches don't match:
+          for i in 1 .. (recNode.len - 2):
+            if recNode[i].caseBranchMatchesExpr(discriminatorVal):
+              wrongBranchError(i)
+              break
+
+      # When a branch is selected with a partial match, some of the fields
+      # that were not initialized may be mandatory. We must check for this:
+      if result == initPartial:
+        checkMissingFields branchNode
+
     else:
-      result.status = initNone
-      let f = semConstrField(c, flags, discriminator.sym, initExpr)
-      mergeInitStatus(result.status, if f != nil: initFull else: initNone)
+      result = initNone
+      let discriminatorVal = semConstrField(c, flags + {efPreferStatic},
+                                            discriminator.sym, initExpr)
+      if discriminatorVal == nil:
+        # None of the branches were explicitly selected by the user and no
+        # value was given to the discrimator. We can assume that it will be
+        # initialized to zero and this will select a particular branch as
+        # a result:
+        let matchedBranch = recNode.pickCaseBranch newIntLit(0)
+        checkMissingFields matchedBranch
+      else:
+        result = initPartial
+        if discriminatorVal.kind == nkIntLit:
+          # When the discriminator is a compile-time value, we also know
+          # which brach will be selected:
+          let matchedBranch = recNode.pickCaseBranch discriminatorVal
+          if matchedBranch != nil: checkMissingFields matchedBranch
+        else:
+          # All bets are off. If any of the branches has a mandatory
+          # fields we must produce an error:
+          for i in 1 .. <recNode.len: checkMissingFields recNode[i]
 
   of nkSym:
-    let e = semConstrField(c, flags, recNode.sym, initExpr)
-    result.status = if e != nil: initFull else: initNone
+    let field = recNode.sym
+    let e = semConstrField(c, flags, field, initExpr)
+    result = if e != nil: initFull else: initNone
 
   else:
     internalAssert false
+
+proc semContructType(c: PContext, t: PType,
+                     initExpr: PNode, flags: TExprFlags): InitStatus =
+  var t = t
+  result = initUnknown
+
+  while true:
+    let status = semConstrFields(c, t.n, initExpr, flags)
+    mergeInitStatus(result, status)
+
+    if status in {initPartial, initNone, initUnknown}:
+      checkForMissingFields t.n, initExpr
+
+    let base = t.sons[0]
+    if base == nil: break
+    t = skipTypes(base, skipPtrs)
 
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var t = semTypeNode(c, n.sons[0], nil)
@@ -2242,8 +2343,8 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # Check if the object is fully initialized by recursively testing each
   # field (if this is a case object, initialized fields in two different
   # branches will be reported as an error):
-  let initResult = semConstructFields(c, n.info, flags, t, t.n, result)
-  if initResult.status == initConflict:
+  let initResult = semContructType(c, t, n, flags)
+  if initResult == initConflict:
     localError(n.info,
       "invalid object construction. " &
       "fields from conflicting case branches have been initialized.")
@@ -2252,7 +2353,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # It's possible that the object was not fully initialized while
   # specifying a .requiresInit. pragma.
   # XXX: Turn this into an error in the next release
-  if tfNeedsInit in t.flags and initResult.status != initFull:
+  if tfNeedsInit in t.flags and initResult != initFull:
     message(n.info, warnUser,
       "object type uses the 'requiresInit' pragma, but not all fields " &
       "have been initialized. future versions of Nim will treat this as " &

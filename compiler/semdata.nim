@@ -45,8 +45,19 @@ type
     inst*: PInstantiation
 
   TExprFlag* = enum
-    efLValue, efWantIterator, efWantStatic, efInTypeof,
-    efWantStmt, efAllowStmt, efDetermineType, efExplain,
+    efLValue, efWantIterator, efInTypeof,
+    efNeedStatic,
+      # Use this in contexts where a static value is mandatory
+    efPreferStatic,
+      # Use this in contexts where a static value could bring more
+      # information, but it's not strictly mandatory. This may become
+      # the default with implicit statics in the future.
+    efPreferNilResult,
+      # Use this if you want a certain result (e.g. static value),
+      # but you don't want to trigger a hard error. For example,
+      # you may be in position to supply a better error message
+      # to the user.
+    efWantStmt, efAllowStmt, efDetermineType, exExplain,
     efAllowDestructor, efWantValue, efOperand, efNoSemCheck,
     efNoProcvarCheck, efNoEvaluateGeneric, efInCall, efFromHlo,
   
