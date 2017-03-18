@@ -41,6 +41,19 @@ type
 
 {.deprecated: [TSet: HashSet].}
 
+template default[T](t: typedesc[T]): T =
+  ## Used by clear methods to get a default value.
+  var v: T
+  v
+
+proc clear*[A](s: var HashSet[A]) = 
+  ## Clears the HashSet back to an empty state, without shrinking
+  ## any of the existing storage. O(n) where n is the size of the hash bucket.
+  s.counter = 0
+  for i in 0..<s.data.len:
+    s.data[i].hcode = 0
+    s.data[i].key   = default(type(s.data[i].key))
+
 # hcode for real keys cannot be zero.  hcode==0 signifies an empty slot.  These
 # two procs retain clarity of that encoding without the space cost of an enum.
 proc isEmpty(hcode: Hash): bool {.inline.} =
@@ -580,6 +593,18 @@ type
     counter, first, last: int
 
 {.deprecated: [TOrderedSet: OrderedSet].}
+
+proc clear*[A](s: var OrderedSet[A]) = 
+  ## Clears the OrderedSet back to an empty state, without shrinking
+  ## any of the existing storage. O(n) where n is the size of the hash bucket.
+  s.counter = 0
+  s.first = -1
+  s.last = -1
+  for i in 0..<s.data.len:
+    s.data[i].hcode = 0
+    s.data[i].next = 0
+    s.data[i].key = default(type(s.data[i].key))
+
 
 proc isValid*[A](s: OrderedSet[A]): bool =
   ## Returns `true` if the ordered set has been initialized with `initSet

@@ -153,8 +153,11 @@ method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
       let cln: cstring = ln
       {.emit: "console.log(`cln`);".}
     else:
-      writeLine(stdout, ln)
-      if level in {lvlError, lvlFatal}: flushFile(stdout)
+      try:
+        writeLine(stdout, ln)
+        if level in {lvlError, lvlFatal}: flushFile(stdout)
+      except IOError:
+        discard
 
 proc newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr): ConsoleLogger =
   ## Creates a new console logger. This logger logs to the console.

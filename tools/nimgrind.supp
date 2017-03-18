@@ -12,3 +12,10 @@
     fun:markStackAndRegisters*
     ...
 }
+{
+    unmarkStackAndRegisters_Value8
+    Memcheck:Value8
+    ...
+    fun:unmarkStackAndRegisters_zoTIuavlrCHyw3B8MBaLJA_6
+    ...
+}

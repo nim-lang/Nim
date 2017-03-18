@@ -38,7 +38,8 @@ when defined(windows):
     SIGSEGV = cint(11)
     SIGTERM = cint(15)
 elif defined(macosx) or defined(linux) or defined(freebsd) or
-     defined(openbsd) or defined(netbsd) or defined(solaris):
+     defined(openbsd) or defined(netbsd) or defined(solaris) or
+     defined(dragonfly):
   const
     SIGABRT = cint(6)
     SIGFPE = cint(8)

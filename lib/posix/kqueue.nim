@@ -11,7 +11,8 @@
 
 from posix import Timespec
 
-when defined(macosx) or defined(freebsd) or defined(openbsd):
+when defined(macosx) or defined(freebsd) or defined(openbsd) or
+     defined(dragonfly):
   const
     EVFILT_READ*     = -1
     EVFILT_WRITE*    = -2
@@ -40,6 +41,11 @@ elif defined(freebsd):
     EVFILT_FS*       = -9  ## filesystem events
     EVFILT_LIO*      = -10 ## attached to lio requests
     EVFILT_USER*     = -11 ## user events
+elif defined(dragonfly):
+  const
+    EVFILT_EXCEPT*   = -8  ## exceptional conditions
+    EVFILT_USER*     = -9  ## user events
+    EVFILT_FS*       = -10 ## filesystem events
 
 # Actions:
 const
@@ -64,9 +70,9 @@ const
 const
   EV_EOF*      = 0x8000 ## EOF detected
   EV_ERROR*    = 0x4000 ## Error, data contains errno
+  EV_NODATA*   = 0x1000 ## EOF and no more data
 
-
-when defined(macosx) or defined(freebsd):
+when defined(macosx) or defined(freebsd) or defined(dragonfly):
   # EVFILT_USER is not supported by OpenBSD and NetBSD
   #
   # data/hint flags/masks for EVFILT_USER, shared with userspace
