@@ -72,7 +72,7 @@ else:
   var SEGV_MAPERR {.importc, header: "<signal.h>".}: cint
 
   {.push stackTrace: off.}
-  proc segfaultHandler(sig: cint, y: var SigInfo, z: pointer) {.noconv.} =
+  proc segfaultHandler(sig: cint, y: ptr SigInfo, z: pointer) {.noconv.} =
     if y.si_code == SEGV_MAPERR:
       {.gcsafe.}:
         raise se
