@@ -758,10 +758,11 @@ macro `=~`(x: PNode, pat: untyped): bool =
     of nnkIdent:
       let c = newTree(nnkStmtListExpr, newLetStmt(pat, x))
       conds.add c
-      if ($pat)[^1] == 'c': c.add(getAst(isVal(pat)))
+      # XXX why is this 'isVal(pat)' and not 'isVal(x)'?
+      if ($pat)[^1] == 'c': c.add(getAst(isVal(x)))
       else: c.add bindSym"true"
     of nnkIntLit:
-      conds.add(getAst(isIntVal(pat.intVal)))
+      conds.add(getAst(isIntVal(x, pat.intVal)))
     else:
       error("invalid pattern")
 

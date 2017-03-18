@@ -1594,17 +1594,23 @@ proc newAnonSym(c: PContext; kind: TSymKind, info: TLineInfo): PSym =
 
 proc semExpandToAst(c: PContext, n: PNode): PNode =
   let macroCall = n[1]
-  let expandedSym = expectMacroOrTemplateCall(c, macroCall)
-  if expandedSym.kind == skError: return n
 
-  macroCall.sons[0] = newSymNode(expandedSym, macroCall.info)
-  markUsed(n.info, expandedSym, c.graph.usageSym)
-  styleCheckUse(n.info, expandedSym)
+  when false:
+    let expandedSym = expectMacroOrTemplateCall(c, macroCall)
+    if expandedSym.kind == skError: return n
 
-  for i in countup(1, macroCall.len-1):
-    #if macroCall.sons[0].typ.sons[i].kind != tyExpr:
-    macroCall.sons[i] = semExprWithType(c, macroCall[i], {})
+    macroCall.sons[0] = newSymNode(expandedSym, macroCall.info)
+    markUsed(n.info, expandedSym, c.graph.usageSym)
+    styleCheckUse(n.info, expandedSym)
 
+  if isCallExpr(macroCall):
+    for i in countup(1, macroCall.len-1):
+      #if macroCall.sons[0].typ.sons[i].kind != tyExpr:
+      macroCall.sons[i] = semExprWithType(c, macroCall[i], {})
+    # we just perform overloading resolution here:
+    n.sons[1] = semOverloadedCall(c, macroCall, macroCall, {skTemplate, skMacro})
+  else:
+    localError(n.info, "getAst takes a call, but got " & n.renderTree)
   # Preserve the magic symbol in order to be handled in evals.nim
   internalAssert n.sons[0].sym.magic == mExpandToAst
   #n.typ = getSysSym("NimNode").typ # expandedSym.getReturnType

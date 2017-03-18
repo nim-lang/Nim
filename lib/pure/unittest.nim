@@ -324,8 +324,8 @@ macro check*(conditions: untyped): untyped =
 
   case checked.kind
   of nnkCallKinds:
-    template rewrite(call, lineInfoLit: expr, callLit: string,
-                     argAssgs, argPrintOuts: stmt): stmt =
+    template rewrite(call, lineInfoLit, callLit,
+                     argAssgs, argPrintOuts) =
       block:
         argAssgs #all callables (and assignments) are run here
         if not call:
@@ -345,8 +345,8 @@ macro check*(conditions: untyped): untyped =
         result.add(newCall(!"check", checked[i]))
 
   else:
-    template rewrite(Exp, lineInfoLit: expr, expLit: string): stmt =
-      if not Exp:
+    template rewrite(exp, lineInfoLit, expLit) =
+      if not exp:
         checkpoint(lineInfoLit & ": Check failed: " & expLit)
         fail()
 
