@@ -50,7 +50,10 @@ proc prefixMatch*(p, s: string): PrefixMatch =
         if j < p.len and eq(p[j], s[i]): inc j
         else: return PrefixMatch.None
       inc i
-    return PrefixMatch.Abbrev
+    if j >= p.len:
+      return PrefixMatch.Abbrev
+    else:
+      return PrefixMatch.None
   return PrefixMatch.None
 
 when isMainModule:
@@ -84,3 +87,4 @@ when isMainModule:
   check PrefixMatch.None:
     ("foobar", "afkslfjd_as")
     ("xyz", "X_yuuZuuZe")
+    ("ru", "remotes")
