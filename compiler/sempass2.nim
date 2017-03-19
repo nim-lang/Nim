@@ -577,6 +577,9 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
         markGcUnsafe(tracked, a)
       elif tfNoSideEffect notin op.flags:
         markSideEffect(tracked, a)
+  if paramType != nil and paramType.kind == tyVar:
+    if n.kind == nkSym and isLocalVar(tracked, n.sym):
+      makeVolatile(tracked, n.sym)
   notNilCheck(tracked, n, paramType)
 
 proc breaksBlock(n: PNode): bool =
