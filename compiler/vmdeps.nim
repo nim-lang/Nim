@@ -214,7 +214,12 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
         result = atomicType(t.sym)
   of tyEnum:
     result = newNodeIT(nkEnumTy, if t.n.isNil: info else: t.n.info, t)
-    result.add copyTree(t.n)
+    if inst:
+      result.add ast.emptyNode
+      for c in t.n.sons:
+        result.add copyTree(c)
+    else:
+      result.add copyTree(t.n)
   of tyTuple:
     if inst:
       result = newNodeX(nkTupleTy)
