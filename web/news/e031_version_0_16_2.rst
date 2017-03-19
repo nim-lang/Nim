@@ -38,6 +38,10 @@ Changes affecting backwards compatibility
   upfront every implementation needs to fullfill these contracts.
 - ``system.getAst templateCall(x, y)`` now typechecks the ``templateCall``
   properly. You need to patch your code accordingly.
+- ``macros.getType`` and ``macros.getTypeImpl`` for an enum will now return an
+  AST that is the same as what is used to define an enum.  Previously the AST
+  returned had a repeated ``EnumTy`` node and was missing the initial pragma
+  node (which is currently empty for an enum).
 
 
 Library Additions

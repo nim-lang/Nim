@@ -214,7 +214,9 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
         result = atomicType(t.sym)
   of tyEnum:
     result = newNodeIT(nkEnumTy, if t.n.isNil: info else: t.n.info, t)
-    result.add copyTree(t.n)
+    result.add ast.emptyNode  # pragma node, currently always empty for enum
+    for c in t.n.sons:
+      result.add copyTree(c)
   of tyTuple:
     if inst:
       result = newNodeX(nkTupleTy)
