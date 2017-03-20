@@ -2229,20 +2229,16 @@ proc removeSuffix*(s: var string, chars: set[char] = Newlines) {.
   ##   userInput == "Hello World"
   ##   otherInput.removeSuffix({'!', '?'})
   ##   otherInput == "Hello!?"
-
+  if s.len == 0: return
   var last = len(s) - 1
-
   if chars == Newlines:
     if s[last] == '\10':
       last -= 1
-
     if s[last] == '\13':
       last -= 1
-
   else:
     if s[last] in chars:
       last -= 1
-
   s.setLen(last + 1)
 
 proc removeSuffix*(s: var string, c: char) {.
@@ -2263,13 +2259,10 @@ proc removeSuffix*(s: var string, suffix: string) {.
   ##     answers = "yeses"
   ##   answers.removeSuffix("es")
   ##   answers == "yes"
-
   var newLen = s.len
-
   if s.endsWith(suffix):
     newLen -= len(suffix)
-
-  s.setLen(newLen)
+    s.setLen(newLen)
 
 when isMainModule:
   doAssert align("abc", 4) == " abc"

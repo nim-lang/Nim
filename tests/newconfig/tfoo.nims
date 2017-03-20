@@ -7,6 +7,7 @@ exec "gcc -v"
 import ospaths
 
 --forceBuild
+--path: "../friends"
 
 warning("uninit", off)
 hint("processing", off)

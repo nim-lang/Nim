@@ -272,12 +272,25 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
 proc processPath(path: string, info: TLineInfo,
                  notRelativeToProj = false): string =
   let p = if notRelativeToProj or os.isAbsolute(path) or
-              '$' in path or path[0] == '.':
+              '$' in path:
             path
           else:
             options.gProjectPath / path
   try:
     result = pathSubs(p, info.toFullPath().splitFile().dir)
+  except ValueError:
+    localError(info, "invalid path: " & p)
+    result = p
+
+proc processCfgPath(path: string, info: TLineInfo): string =
+  let path = if path[0] == '"': strutils.unescape(path) else: path
+  let basedir = info.toFullPath().splitFile().dir
+  let p = if os.isAbsolute(path) or '$' in path:
+            path
+          else:
+            basedir / path
+  try:
+    result = pathSubs(p, basedir)
   except ValueError:
     localError(info, "invalid path: " & p)
     result = p
@@ -322,7 +335,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   case switch.normalize
   of "path", "p":
     expectArg(switch, arg, pass, info)
-    addPath(processPath(arg, info), info)
+    addPath(if pass == passPP: processCfgPath(arg, info) else: processPath(arg, info), info)
   of "nimblepath", "babelpath":
     # keep the old name for compat
     if pass in {passCmd2, passPP} and not options.gNoNimblePath:
@@ -335,10 +348,10 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "excludepath":
     expectArg(switch, arg, pass, info)
     let path = processPath(arg, info)
-    
+
     options.searchPaths.keepItIf( cmpPaths(it, path) != 0 )
     options.lazyPaths.keepItIf( cmpPaths(it, path) != 0 )
-    
+
     if (len(path) > 0) and (path[len(path) - 1] == DirSep):
       let strippedPath = path[0 .. (len(path) - 2)]
       options.searchPaths.keepItIf( cmpPaths(it, strippedPath) != 0 )

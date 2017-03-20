@@ -204,7 +204,12 @@ else:
     proc getThreadId*(): int =
       ## get the ID of the currently running thread.
       result = int(syscall(NR_gettid))
-  elif defined(macosx) or defined(bsd):
+  elif defined(dragonfly):
+    proc lwp_gettid(): int32 {.importc, header: "unistd.h".}
+
+    proc getThreadId*(): int =
+      result = int(lwp_gettid())
+  elif defined(macosx) or defined(freebsd) or defined(openbsd) or defined(netbsd):
     proc pthread_threadid_np(y: pointer; x: var uint64): cint {.importc, header: "pthread.h".}
 
     proc getThreadId*(): int =
@@ -220,7 +225,6 @@ else:
     proc getThreadId*(): int =
       ## get the ID of the currently running thread.
       result = int(thr_self())
-
 
 const
   emulatedThreadVars = compileOption("tlsEmulation")
@@ -461,17 +465,22 @@ proc handle*[TArg](t: Thread[TArg]): SysThread {.inline.} =
   result = t.sys
 
 when hostOS == "windows":
+  const MAXIMUM_WAIT_OBJECTS = 64
+
   proc joinThread*[TArg](t: Thread[TArg]) {.inline.} =
     ## waits for the thread `t` to finish.
     discard waitForSingleObject(t.sys, -1'i32)
 
   proc joinThreads*[TArg](t: varargs[Thread[TArg]]) =
     ## waits for every thread in `t` to finish.
-    var a: array[0..255, SysThread]
-    sysAssert a.len >= t.len, "a.len >= t.len"
-    for i in 0..t.high: a[i] = t[i].sys
-    discard waitForMultipleObjects(t.len.int32,
-                                   cast[ptr SysThread](addr(a)), 1, -1)
+    var a: array[MAXIMUM_WAIT_OBJECTS, SysThread]
+    var k = 0
+    while k < len(t):
+      var count = min(len(t) - k, MAXIMUM_WAIT_OBJECTS)
+      for i in 0..(count - 1): a[i] = t[i + k].sys
+      discard waitForMultipleObjects(int32(count),
+                                     cast[ptr SysThread](addr(a)), 1, -1)
+      inc(k, MAXIMUM_WAIT_OBJECTS)
 
 else:
   proc joinThread*[TArg](t: Thread[TArg]) {.inline.} =

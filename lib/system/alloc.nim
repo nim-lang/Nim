@@ -326,7 +326,7 @@ proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
       result, result.heapLink, result.origSize)
 
   when defined(memtracker):
-    trackLocation(addr result.origSize, sizeof(int)*2)
+    trackLocation(addr result.origSize, sizeof(int))
   a.heapLink = result
 
   sysAssert((cast[ByteAddress](result) and PageMask) == 0, "requestOsChunks 1")
@@ -447,7 +447,7 @@ proc splitChunk(a: var MemRegion, c: PBigChunk, size: int) =
   var rest = cast[PBigChunk](cast[ByteAddress](c) +% size)
   sysAssert(rest notin a.freeChunksList, "splitChunk")
   rest.size = c.size - size
-  rest.origSize = 0 # not used and size irrelevant
+  rest.origSize = rest.origSize and not 1 # not used
   track("rest.origSize", addr rest.origSize, sizeof(int))
   rest.next = nil
   rest.prev = nil

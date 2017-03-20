@@ -1145,14 +1145,29 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   if tx != result and tx.kind == tyObject and tx.sons[0] != nil:
     semObjectTypeForInheritedGenericInst(c, n, tx)
 
+proc maybeAliasType(c: PContext; typeExpr, prev: PType): PType
+
 proc semTypeExpr(c: PContext, n: PNode; prev: PType): PType =
   var n = semExprWithType(c, n, {efDetermineType})
   if n.typ.kind == tyTypeDesc:
     result = n.typ.base
-    # fix types constructed by macros:
-    if prev != nil and prev.sym != nil and result.sym.isNil:
-      result.sym = prev.sym
-      result.sym.typ = result
+    # fix types constructed by macros/template:
+    if prev != nil and prev.sym != nil:
+      if result.sym.isNil:
+        # Behold! you're witnessing enormous power yielded
+        # by macros. Only macros can summon unnamed types
+        # and cast spell upon AST. Here we need to give
+        # it a name taken from left hand side's node
+        result.sym = prev.sym
+        result.sym.typ = result
+      else:
+        # Less powerful routine like template do not have
+        # the ability to produce unnamed types. But still
+        # it has wild power to push a type a bit too far.
+        # So we need to hold it back using alias and prevent
+        # unnecessary new type creation
+        let alias = maybeAliasType(c, result, prev)
+        if alias != nil: result = alias
   else:
     localError(n.info, errTypeExpected, n.renderTree)
     result = errorType(c)

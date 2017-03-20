@@ -352,7 +352,7 @@ type
     sa_mask*: Sigset ## Set of signals to be blocked during execution of
                       ## the signal handling function.
     sa_flags*: cint   ## Special flags.
-    sa_sigaction*: proc (x: cint, y: var SigInfo, z: pointer) {.noconv.}
+    sa_sigaction*: proc (x: cint, y: ptr SigInfo, z: pointer) {.noconv.}
 
   Stack* {.importc: "stack_t",
             header: "<signal.h>", final, pure.} = object ## stack_t

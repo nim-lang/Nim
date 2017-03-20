@@ -34,4 +34,46 @@ block setWithSequences:
   doAssert s.contains(@[1, 2, 3])
   doAssert( not s.contains(@[4, 5, 6]) )
 
+block setClearWorked:
+  var s = initSet[char]() 
+
+  for c in "this is a test":
+    s.incl(c)
+
+  doAssert len(s) == 7
+  clear(s)
+  doAssert len(s) == 0
+
+  s.incl('z')
+  for c in "this is a test":
+    s.incl(c)
+
+  doAssert len(s) == 8
+
+block orderedSetClearWorked:
+  var s = initOrderedSet[char]()
+
+  for c in "eat at joes":
+    s.incl(c)
+
+  var r = ""
+
+  for c in items(s):
+    add(r, c)
+
+  doAssert r == "eat jos"
+  clear(s)
+
+  s.incl('z')
+  for c in "eat at joes":
+    s.incl(c)
+
+  r = "" 
+  for c in items(s):
+    add(r, c)
+
+  doAssert r == "zeat jos"
+
+
+
 

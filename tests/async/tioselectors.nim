@@ -45,11 +45,11 @@ when not defined(windows):
     var aiList = getAddrInfo("0.0.0.0", Port(13337))
     if bindAddr(server_socket, aiList.ai_addr,
                 aiList.ai_addrlen.Socklen) < 0'i32:
-      dealloc(aiList)
+      freeAddrInfo(aiList)
       raiseOSError(osLastError())
     if server_socket.listen() == -1:
       raiseOSError(osLastError())
-    dealloc(aiList)
+    freeAddrInfo(aiList)
 
     aiList = getAddrInfo("127.0.0.1", Port(13337))
     discard posix.connect(client_socket, aiList.ai_addr,
@@ -58,7 +58,7 @@ when not defined(windows):
     registerHandle(selector, server_socket, {Event.Read}, 0)
     registerHandle(selector, client_socket, {Event.Write}, 0)
 
-    dealloc(aiList)
+    freeAddrInfo(aiList)
     discard selector.select(100)
 
     var sockAddress: SockAddr
@@ -497,15 +497,15 @@ else:
     var aiList = getAddrInfo("0.0.0.0", Port(13337))
     if bindAddr(server_socket, aiList.ai_addr,
                 aiList.ai_addrlen.Socklen) < 0'i32:
-      dealloc(aiList)
+      freeAddrInfo(aiList)
       raiseOSError(osLastError())
     discard server_socket.listen()
-    dealloc(aiList)
+    freeAddrInfo(aiList)
 
     aiList = getAddrInfo("127.0.0.1", Port(13337))
     discard connect(client_socket, aiList.ai_addr,
                     aiList.ai_addrlen.Socklen)
-    dealloc(aiList)
+    freeAddrInfo(aiList)
     # for some reason Windows select doesn't return both
     # descriptors from first call, so we need to make 2 calls
     discard selector.select(100)
