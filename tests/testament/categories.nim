@@ -186,25 +186,11 @@ proc longGCTests(r: var TResults, cat: Category, options: string) =
 
 proc threadTests(r: var TResults, cat: Category, options: string) =
   template test(filename: untyped) =
-    testSpec r, makeTest("tests/threads" / filename, options, cat, actionRun)
-    testSpec r, makeTest("tests/threads" / filename, options &
-      " -d:release", cat, actionRun)
-    testSpec r, makeTest("tests/threads" / filename, options &
-      " --tlsEmulation:on", cat, actionRun)
-
-  test "tactors"
-  test "tactors2"
-  test "threadex"
-  # deactivated because output capturing still causes problems sometimes:
-  #test "trecursive_actor"
-  #test "threadring"
-  #test "tthreadanalysis"
-  #test "tthreadsort"
-  test "tthreadanalysis2"
-  #test "tthreadanalysis3"
-  test "tthreadheapviolation1"
-  test "tonthreadcreation"
-  test "tracy_allocator"
+    testSpec r, makeTest(filename, options, cat, actionRun)
+    testSpec r, makeTest(filename, options & " -d:release", cat, actionRun)
+    testSpec r, makeTest(filename, options & " --tlsEmulation:on", cat, actionRun)
+  for t in os.walkFiles("tests/threads/t*.nim"):
+    test(t)
 
 # ------------------------- IO tests ------------------------------------------
 

@@ -1,4 +1,5 @@
 discard """
+  disabled: yes
   outputsub: "channel is empty"
 """
 

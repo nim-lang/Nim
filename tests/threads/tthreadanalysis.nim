@@ -1,4 +1,5 @@
 discard """
+  disabled: yes
   outputsub: "101"
   errormsg: "'threadFunc' is not GC-safe"
   line: 39
