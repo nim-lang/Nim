@@ -217,12 +217,18 @@ proc reprAux(result: var string, p: int, typ: PNimType,
   of tyFloat..tyFloat128:
     add result, reprFloat(cast[float](p))
   of tyString:
+    # do we want same behaviour as C?
     add result, reprStr(cast[string](p))
+  of tyCString:
+    if cast[cstring](p).isnil:
+      add result, "nil"
+    else:
+      reprStrAux(result,cast[cstring](p),cast[cstring](p).len)
   of tyEnum, tyOrdinal:
     add result, reprEnum(p,typ)
   of tySet:
     add result, reprSet(p,typ)
-  of tyArray,tySequence:
+  of tyArray,tyArrayConstr,tySequence:
     add result, reprArray(p,typ,cl)
   else:
     add result, "(invalid data!)"
