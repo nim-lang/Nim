@@ -219,7 +219,7 @@ proc bundleNimsuggest(buildExe: bool) =
     removeFile("nimsuggest/nimsuggest".exe)
 
 proc buildVccTool() =
-  nimexec("c -o:bin/vccexe.exe tools/vccenv/vccexe")
+  nimexec("c -o:bin/vccexe.exe tools/vccexe/vccexe")
 
 proc bundleWinTools() =
   nimexec("c tools/finish.nim")
