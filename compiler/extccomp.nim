@@ -785,14 +785,24 @@ proc writeJsonBuildInstructions*(projectfile: string) =
       else:
         lit "],\L"
 
-  proc linkfiles(f: File; buf, objfiles: var string; toLink: seq[string]) =
-    for i, it in toLink:
-      let objfile = addFileExt(it, CC[cCompiler].objExt)
-      str(objfile)
+  proc linkfiles(f: File; buf, objfiles: var string) =
+    for i, it in externalToLink:
+      let
+        objFile = if noAbsolutePaths(): it.extractFilename else: it
+        objStr = addFileExt(objFile, CC[cCompiler].objExt)
       add(objfiles, ' ')
-      add(objfiles, quoteShell(objfile))
-      
-      if i == toLink.high:
+      add(objfiles, objStr)
+      str objStr
+      if toCompile.len == 0 and i == externalToLink.high:
+        lit "\L"
+      else:
+        lit ",\L"
+    for i, x in toCompile:
+      let objStr = quoteShell(x.obj)
+      add(objfiles, ' ')
+      add(objfiles, objStr)
+      str objStr
+      if i == toCompile.high:
         lit "\L"
       else:
         lit ",\L"
@@ -809,7 +819,7 @@ proc writeJsonBuildInstructions*(projectfile: string) =
     lit "],\L\"link\":[\L"
     var objfiles = ""
     # XXX add every file here that is to link
-    linkfiles(f, buf, objfiles, externalToLink)
+    linkfiles(f, buf, objfiles)
 
     lit "],\L\"linkcmd\": "
     str getLinkCmd(projectfile, objfiles)
