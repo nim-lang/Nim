@@ -814,6 +814,8 @@ template ifFastObjectTypeCheckFailed(a, b: PType, body: untyped) =
     if tfFromGeneric in a.flags * b.flags and a.sym.id == b.sym.id:
       # ok, we need the expensive structural check
       body
+    elif tfFromGeneric in a.flags + b.flags:
+      result = a.sym.id == b.sym.id
 
 proc sameObjectTypes*(a, b: PType): bool =
   # specialized for efficiency (sigmatch uses it)
