@@ -1428,7 +1428,9 @@ elif defined(windows):
     if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLine())
     return TaintedString(ownArgv[i])
 
-elif not defined(createNimRtl) and not(defined(posix) and appType == "lib"):
+elif not defined(createNimRtl) and
+  not(defined(posix) and appType == "lib") and
+  not defined(genode):
   # On Posix, there is no portable way to get the command line from a DLL.
   var
     cmdCount {.importc: "cmdCount".}: cint
@@ -1532,14 +1534,6 @@ when defined(macosx):
   proc getExecPath2(c: cstring, size: var cuint32): bool {.
     importc: "_NSGetExecutablePath", header: "<mach-o/dyld.h>".}
 
-when defined(genode):
-  proc getApplGenode(): string =
-    ## Genode will not implicitly expose the component name
-    if paramCount() > 0:
-      getApplHeuristic()
-    else:
-      "unknown"
-
 proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
   ## Returns the filename of the application's executable.
   ##
@@ -1591,7 +1585,7 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
     elif defined(solaris):
       result = getApplAux("/proc/" & $getpid() & "/path/a.out")
     elif defined(genode):
-      result = getApplGenode()
+      raiseOSError("POSIX command line not supported")
     elif defined(freebsd) or defined(dragonfly):
       result = getApplFreebsd()
     # little heuristic that may work on other POSIX-like systems:

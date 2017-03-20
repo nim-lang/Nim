@@ -1398,9 +1398,8 @@ when defined(nimdoc):
 
 
 elif defined(genode):
-  proc quit*(errorcode: int = QuitSuccess) {.
-    magic: "Exit", importcpp: "genodeEnv->parent().exit(@)",
-    header: "<base/env.h>".}
+  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn,
+    importcpp: "genodeEnv->parent().exit(@)", header: "<base/env.h>".}
 
 else:
   proc quit*(errorcode: int = QuitSuccess) {.
@@ -2473,8 +2472,8 @@ template accumulateResult*(iter: untyped) =
 const NimStackTrace = compileOption("stacktrace")
 
 template coroutinesSupportedPlatform(): bool =
-  when defined(sparc) or defined(ELATE) or compileOption("gc", "v2") or 
-    defined(boehmgc) or defined(gogc) or defined(nogc) or defined(gcStack) or 
+  when defined(sparc) or defined(ELATE) or compileOption("gc", "v2") or
+    defined(boehmgc) or defined(gogc) or defined(nogc) or defined(gcStack) or
     defined(gcMarkAndSweep):
     false
   else:

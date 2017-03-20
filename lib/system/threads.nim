@@ -576,7 +576,8 @@ elif defined(genode):
       threadProcWrapper[TArg], addr(t))
 
   proc pinToCpu*[Arg](t: var Thread[Arg]; cpu: Natural) =
-    {.error: "cannot change thread affinity after initialization".}
+    {.hint: "cannot change Genode thread CPU affinity after initialization".}
+    discard
 
 else:
   proc createThread*[TArg](t: var Thread[TArg],

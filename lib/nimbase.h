@@ -122,8 +122,6 @@ __clang__
 */
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
 #  define NIM_THREADVAR _Thread_local
-#elif defined __GENODE__
-#  define NIM_THREADVAR
 #elif defined _WIN32 && ( \
        defined _MSC_VER || \
        defined __ICL || \
