@@ -201,6 +201,52 @@ proc reprArray(a: int, typ: PNimType,
     reprAux(result, el, typ.base, cl )  
   add result, "]"
 
+iterator ObjFieldPairs(o: int): tuple[index:int,key:cstring,val:int] {.inline.} =
+  # The type of o is a lie, but it's expected to be an object.
+  # Iterate over the JS object representing the object 
+  # and returns a tuple composed of the index in the keys array,
+  # the key as cstring and value as (fake) int.
+  var len: int
+  var yieldKey : cstring
+  var yieldVal : int
+  var i : int = 0
+  asm """
+  var ObjKeys = Object.getOwnPropertyNames(`o`);
+  `len` = ObjKeys.length
+  """
+  while i<len:
+    asm """
+      `yieldKey` = ObjKeys[`i`];
+      `yieldVal` = `o`[ObjKeys[`i`]];
+      """
+    yield (i,yieldKey,yieldVal)
+    inc i
+
+proc reprRecordAux(result: var string, s: int, typ: PNimType,cl: var ReprClosure) =
+  add result, "["
+
+  var first : bool = true
+  var once : bool = typ.node.sons.isnil 
+    # if the object has more than one field, sons is not nil and contains the fields.
+    # if the object has only one field, sons is nil.
+  for i,key,val in ObjFieldPairs(s):
+    if first:
+      first  = false
+    else:
+      add result, ",\n"
+    add result, $key & " = "
+    if once:
+      # Strangely enough, if the object only has one field the length is 0
+      reprAux(result,val,typ.node.typ,cl)
+    else:
+      reprAux(result,val,typ.node.sons[i].typ,cl)
+  add result, "]"
+
+proc reprRecord(e: int, typ: PNimType,cl: var ReprClosure): string {.compilerRtl.} =
+  result = ""
+  reprRecordAux(result, e, typ,cl)
+
+
 proc reprAux(result: var string, p: int, typ: PNimType, 
             cl: var ReprClosure) =
   if cl.recdepth == 0:
@@ -228,8 +274,14 @@ proc reprAux(result: var string, p: int, typ: PNimType,
     add result, reprEnum(p,typ)
   of tySet:
     add result, reprSet(p,typ)
+  of tyRange: reprAux(result,p,typ.base,cl)
+  of tyObject:
+    add result, reprRecord(p,typ,cl)
   of tyArray,tyArrayConstr,tySequence:
     add result, reprArray(p,typ,cl)
+  #of tyProc:
+  #    if cast[PPointer](p)[] == nil: add result, "nil"
+  #    else: add result, reprPointer(cast[PPointer](p)[])
   else:
     add result, "(invalid data!)"
   inc(cl.recdepth)
