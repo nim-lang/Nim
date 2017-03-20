@@ -1623,7 +1623,11 @@ proc semExpandToAst(c: PContext, n: PNode): PNode =
     elif cands >= 2:
       localError(n.info, "ambiguous symbol in 'getAst' context: " & $macroCall)
     else:
-      macroCall.sons[0] = newSymNode(cand)
+      let info = macroCall.sons[0].info
+      macroCall.sons[0] = newSymNode(cand, info)
+      markUsed(info, cand, c.graph.usageSym)
+      styleCheckUse(info, cand)
+
     # we just perform overloading resolution here:
     #n.sons[1] = semOverloadedCall(c, macroCall, macroCall, {skTemplate, skMacro})
   else:
