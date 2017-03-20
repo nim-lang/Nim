@@ -15,6 +15,8 @@ dnimcache/
 *.zip
 *.iss
 *.log
+*.ilk
+*.pdb
 
 mapping.txt
 tags
