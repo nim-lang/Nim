@@ -21,6 +21,7 @@ proc reprBool(x: bool): string {.compilerRtl.} =
   if x: result = "true"
   else: result = "false"
 
+#[
 proc `$`(x: uint64): string =
   if x == 0:
     result = "0"
@@ -38,8 +39,9 @@ proc `$`(x: uint64): string =
     # Reverse
     for t in 0 .. < half: swap(buf[t], buf[i-t-1])
     result = $buf
+]#
 
-proc isUndefined[T](x:T):bool {.inline.} = {.emit: "`result`= `x` === undefined;"}
+proc isUndefined[T](x: T): bool {.inline.} = {.emit: "`result`= `x` === undefined;"}
 
 proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
   if not typ.node.sons[e].isUndefined :
@@ -73,22 +75,26 @@ proc reprStrAux(result: var string, s: cstring; len: int) =
 proc reprStr(s: string): string {.compilerRtl.} =
   result = ""
   if cast[pointer](s).isnil:
+    # Handle nil strings here because they don't have a length field in js
+    # TODO: check for null/undefined before generating call to length in js
+    # Also: c backend repr of a nil string is <pointer>"", but repr of an 
+    # array of string that is not initialized is [nil, nil, ...]
     add result, "nil"
     return
   reprStrAux(result, s, s.len)
 
 proc addSetElem(result: var string, elem: int, typ: PNimType) =
-  # Dispatch each element to the correct repr proc
+  # Dispatch each set element to the correct repr<Type> proc
   case typ.kind
   of tyEnum: add result, reprEnum(elem, typ)
   of tyBool: add result, reprBool(bool(elem))
   of tyChar: add result, reprChar(chr(elem))
-  of tyRange: addSetElem(result, elem, typ.base) # Note the base to advance toward the element type
+  of tyRange: addSetElem(result, elem, typ.base) # Note the base to advance towards the element type
   of tyInt..tyInt64, tyUInt8, tyUInt16: add result, reprInt(elem)
   else: # data corrupt --> inform the user
     add result, " (invalid data!)"
 
-iterator SetKeys(s:int): int {.inline.} =
+iterator SetKeys(s: int): int {.inline.} =
   # The type of s is a lie, but it's expected to be a set.
   # This means every key has to be a positive integer.
   # Iterate over the JS object representing a set 
@@ -105,7 +111,7 @@ iterator SetKeys(s:int): int {.inline.} =
     yield yieldRes
     inc i
 
-iterator ArrayItems(s:int): int {.inline.} =
+iterator ArrayItems(s: int): int {.inline.} =
   # The type of s is a lie, but it's expected to be an array.
   # This means every key has to be a positive integer.
   # Iterate over the JS array items,
@@ -122,7 +128,7 @@ iterator ArrayItems(s:int): int {.inline.} =
       yield yieldRes
       inc i
 
-proc reprSetAux(result: var string, s:int, typ: PNimType) {.asmNoStackFrame.}=
+proc reprSetAux(result: var string, s: int, typ: PNimType) =
   add result, "{"
   var first : bool = true
   for el in SetKeys(s):
@@ -185,13 +191,7 @@ proc reprArray(a: int, typ: PNimType,
   if typ.kind == tySequence and cast[pointer](a).isnil: return "nil"
 
   result = if typ.kind == tySequence: "@[" else: "["
-  
-  #[]
-  for i in 0 .. < typ.size:
-    if i > 0: add result, ", "
-    reprAux(result, p, typ.base, cl )
-    #echo (p.pointToUndefined)
-    asm "`p`_Idx++;"]#
+  # We prepend @ to seq, the C backend prepends the pointer to the seq
   var first : bool = true
   for el in ArrayItems(a):
     if first:
@@ -229,12 +229,8 @@ proc reprAux(result: var string, p: int, typ: PNimType,
   inc(cl.recdepth)
 
 proc reprAny(p: int, typ: PNimType): string {.compilerRtl.}=
-  var
-    cl: ReprClosure
+  var cl: ReprClosure
   initReprClosure(cl)
   result = ""
-  if typ.kind in {tyObject, tyTuple, tyArray, tyArrayConstr, tySet}:
-    reprAux(result, p, typ, cl)
-  else:
-    reprAux(result, p, typ, cl)
+  reprAux(result, p, typ, cl)
   add result, "\n"

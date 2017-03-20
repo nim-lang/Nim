@@ -1627,41 +1627,46 @@ proc genRepr(p: PProc, n: PNode, r: var TCompRes) =
   if p.target == targetPHP:
     localError(n.info, "'repr' not available for PHP backend")
     return
+  gen(p, n.sons[1], r)
+  
   let t = skipTypes(n.sons[1].typ, abstractVarRange)
   case t.kind
   of tyInt..tyInt64,tyUInt..tyUInt64:
-    unaryExpr(p, n, r, "reprInt", "reprInt($1)")
+    useMagic(p, "reprInt")
+    r.res = "reprInt($1)" % [r.rdLoc]
+    r.kind = resExpr
   of tyChar:
-    unaryExpr(p, n, r, "reprChar", "reprChar($1)")
+    useMagic(p, "reprChar")
+    r.res = "reprChar($1)" % [r.rdLoc]
+    r.kind = resExpr
   of tyBool:
-    unaryExpr(p, n, r, "reprBool", "reprBool($1)")
+    useMagic(p, "reprBool")
+    r.res = "reprBool($1)" % [r.rdLoc]
+    r.kind = resExpr
   of tyFloat..tyFloat128:
-    unaryExpr(p,n,r, "reprFloat","reprFloat($1)")
+    useMagic(p, "reprFloat")
+    r.res = "reprFloat($1)" % [r.rdLoc]
+    r.kind = resExpr
   of tyString:
-    unaryExpr(p,n,r,"reprStr","reprStr($1)")
+    useMagic(p, "reprStr")
+    r.res = "reprStr($1)" % [r.rdLoc]
+    r.kind = resExpr
   of tyEnum, tyOrdinal:
     useMagic(p, "reprEnum")
-    gen(p, n.sons[1], r)
     r.kind = resExpr
     r.res = "reprEnum($1,$2)" % [r.res,genTypeInfo(p, t)]
   of tySet:
     useMagic(p, "reprSet")
-    gen(p, n.sons[1], r)
     r.kind = resExpr
     r.res = "reprSet($1,$2)" % [r.res,genTypeInfo(p, t)]
   of tyArray,tySequence:
     useMagic(p, "reprAny")
-    gen(p, n.sons[1], r)
     r.kind = resExpr
-    # The 0 is for the pointer index ( which we assume to start at zero )
     r.res = "reprAny($1,$2)" % [r.res,genTypeInfo(p, t)]
   of tyPointer:
     useMagic(p, "reprPointer")
-    gen(p, n.sons[1], r)
     r.kind = resExpr
-    # The 0 is for the pointer index ( which we assume to start at zero )
     r.res = "reprPointer($1)" % [r.res]
-  
   else:
     # XXX:
     internalError(n.info, "genRepr: Not implemented: " & $t.kind)
