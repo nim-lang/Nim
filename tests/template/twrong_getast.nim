@@ -1,5 +1,5 @@
 discard """
-  errormsg: "type mismatch"
+  errormsg: "expected a template that takes 3 arguments"
   line: 16
 """
 
