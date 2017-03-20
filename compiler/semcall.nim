@@ -44,7 +44,7 @@ proc initCandidateSymbols(c: PContext, headSymbol: PNode,
   while symx != nil:
     if symx.kind in filter:
       result.add((symx, o.lastOverloadScope))
-      symx = nextOverloadIter(o, c, headSymbol)
+    symx = nextOverloadIter(o, c, headSymbol)
   if result.len > 0:
     initCandidate(c, best, result[0].s, initialBinding, result[0].scope)
     initCandidate(c, alt, result[0].s, initialBinding, result[0].scope)
