@@ -110,16 +110,17 @@ iterator ArrayItems(s:int): int {.inline.} =
   # This means every key has to be a positive integer.
   # Iterate over the JS array items,
   # and returns the element as a (fake) int.
-  var len: int
-  var yieldRes : int
-  var i : int = 0
-  asm """
-  `len` = `s`.length;
-  """
-  while i<len:
-    asm "`yieldRes` = `s`[`i`];\n"
-    yield yieldRes
-    inc i
+  if not cast[pointer](s).isnil:
+    var len: int
+    var yieldRes : int
+    var i : int = 0
+    asm """
+    `len` = `s`.length;
+    """
+    while i<len:
+      asm "`yieldRes` = `s`[`i`];\n"
+      yield yieldRes
+      inc i
 
 proc reprSetAux(result: var string, s:int, typ: PNimType) {.asmNoStackFrame.}=
   add result, "{"
@@ -180,7 +181,11 @@ proc reprAux(result: var string, p: int, typ: PNimType, cl: var ReprClosure)
 
 proc reprArray(a: int, typ: PNimType, 
               cl: var ReprClosure):string {.compilerRtl.} =
+  
+  if typ.kind == tySequence and cast[pointer](a).isnil: return "nil"
+
   result = if typ.kind == tySequence: "@[" else: "["
+  
   #[]
   for i in 0 .. < typ.size:
     if i > 0: add result, ", "
