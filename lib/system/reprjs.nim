@@ -14,8 +14,8 @@ proc reprFloat(x: float): string {.compilerproc.} =
   if $x == $(x.int): $x & ".0"
   else: $x
 
-proc reprPointer(x: int): string {.compilerproc.} = $x
-  
+proc reprPointer(p: int): string {.compilerproc.} = $p
+  # Do we need to generate the full 8bytes ? In js a pointer is an int anyway
 
 proc reprBool(x: bool): string {.compilerRtl.} =
   if x: result = "true"

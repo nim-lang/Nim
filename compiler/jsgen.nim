@@ -1659,17 +1659,22 @@ proc genRepr(p: PProc, n: PNode, r: var TCompRes) =
     useMagic(p, "reprSet")
     r.kind = resExpr
     r.res = "reprSet($1,$2)" % [r.res,genTypeInfo(p, t)]
-  of tyArray,tySequence:
-    useMagic(p, "reprAny")
-    r.kind = resExpr
-    r.res = "reprAny($1,$2)" % [r.res,genTypeInfo(p, t)]
+  of tyEmpty, tyVoid:
+    localError(n.info, "'repr' doesn't support 'void' type")
+  #of tyCString, tyArray, tyRef, tyPtr, tyPointer, tyNil, tySequence:
   of tyPointer:
+    # TODO: investigate why the element pointed to is passed as first arg to rawEcho
     useMagic(p, "reprPointer")
     r.kind = resExpr
     r.res = "reprPointer($1)" % [r.res]
   else:
-    # XXX:
-    internalError(n.info, "genRepr: Not implemented: " & $t.kind)
+    useMagic(p, "reprAny")
+    r.kind = resExpr
+    r.res = "reprAny($1,$2)" % [r.res,genTypeInfo(p, t)]
+  
+  #else:
+  #  # XXX:
+  #  internalError(n.info, "genRepr: Not implemented: " & $t.kind)
 
 proc genOf(p: PProc, n: PNode, r: var TCompRes) =
   var x: TCompRes
