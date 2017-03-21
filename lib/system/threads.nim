@@ -242,7 +242,6 @@ type
 
   PGcThread = ptr GcThread
   GcThread {.pure, inheritable.} = object
-    sys: SysThread
     when emulatedThreadVars and not useStackMaskHack:
       tls: ThreadLocalStorage
     else:
@@ -345,18 +344,16 @@ when not defined(useNimRtl):
 # use ``stdcall`` since it is mapped to ``noconv`` on UNIX anyway.
 
 type
-  Thread* {.pure, final.}[TArg] =
-      object of GcThread  ## Nim thread. A thread is a heavy object (~14K)
-                          ## that **must not** be part of a message! Use
-                          ## a ``ThreadId`` for that.
+  Thread* {.pure, final.}[TArg] = object
+    core: PGcThread
+    sys: SysThread
     when TArg is void:
       dataFn: proc () {.nimcall, gcsafe.}
     else:
       dataFn: proc (m: TArg) {.nimcall, gcsafe.}
       data: TArg
-  ThreadId*[TArg] = ptr Thread[TArg]  ## the current implementation uses
-                                       ## a pointer as a thread ID.
-{.deprecated: [TThread: Thread, TThreadId: ThreadId].}
+
+{.deprecated: [TThread: Thread].}
 
 var
   threadDestructionHandlers {.rtlThreadVar.}: seq[proc () {.closure, gcsafe.}]
@@ -423,19 +420,20 @@ proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) =
       when declared(threadType):
         threadType = ThreadType.NimThread
     when declared(registerThread):
-      thrd.stackBottom = addr(thrd)
-      registerThread(thrd)
+      thrd.core.stackBottom = addr(thrd)
+      registerThread(thrd.core)
     p(thrd)
-    when declared(registerThread): unregisterThread(thrd)
+    when declared(registerThread): unregisterThread(thrd.core)
     when declared(deallocOsPages): deallocOsPages()
   else:
     threadProcWrapDispatch(thrd)
 
 template threadProcWrapperBody(closure: expr) {.immediate.} =
-  when declared(globalsSlot): threadVarSetValue(globalsSlot, closure)
+  var thrd = cast[ptr Thread[TArg]](closure)
+  var core = thrd.core
+  when declared(globalsSlot): threadVarSetValue(globalsSlot, thrd.core)
   when declared(initAllocator):
     initAllocator()
-  var thrd = cast[ptr Thread[TArg]](closure)
   threadProcWrapStackFrame(thrd)
   # Since an unhandled exception terminates the whole process (!), there is
   # no need for a ``try finally`` here, nor would it be correct: The current
@@ -444,7 +442,9 @@ template threadProcWrapperBody(closure: expr) {.immediate.} =
   # page!
 
   # mark as not running anymore:
+  thrd.core = nil
   thrd.dataFn = nil
+  deallocShared(cast[pointer](core))
 
 {.push stack_trace:off.}
 when defined(windows):
@@ -491,8 +491,6 @@ else:
     ## waits for every thread in `t` to finish.
     for i in 0..t.high: joinThread(t[i])
 
-when false:
-  # XXX a thread should really release its heap here somehow:
   proc destroyThread*[TArg](t: var Thread[TArg]) =
     ## forces the thread `t` to terminate. This is potentially dangerous if
     ## you don't have full control over `t` and its acquired resources.
@@ -502,6 +500,10 @@ when false:
       discard pthread_cancel(t.sys)
     when declared(registerThread): unregisterThread(addr(t))
     t.dataFn = nil
+    ## if thread `t` already exited, `t.core` will be `null`.
+    if not isNil(t.core):
+      deallocShared(t.core)
+      t.core = nil
 
 when hostOS == "windows":
   proc createThread*[TArg](t: var Thread[TArg],
@@ -510,9 +512,11 @@ when hostOS == "windows":
     ## creates a new thread `t` and starts its execution. Entry point is the
     ## proc `tp`. `param` is passed to `tp`. `TArg` can be ``void`` if you
     ## don't need to pass any data to the thread.
+    t.core = cast[PGcThread](allocShared0(sizeof(GcThread)))
+
     when TArg isnot void: t.data = param
     t.dataFn = tp
-    when hasSharedHeap: t.stackSize = ThreadStackSize
+    when hasSharedHeap: t.core.stackSize = ThreadStackSize
     var dummyThreadId: int32
     t.sys = createThread(nil, ThreadStackSize, threadProcWrapper[TArg],
                          addr(t), 0'i32, dummyThreadId)
@@ -532,9 +536,11 @@ else:
     ## creates a new thread `t` and starts its execution. Entry point is the
     ## proc `tp`. `param` is passed to `tp`. `TArg` can be ``void`` if you
     ## don't need to pass any data to the thread.
+    t.core = cast[PGcThread](allocShared0(sizeof(GcThread)))
+
     when TArg isnot void: t.data = param
     t.dataFn = tp
-    when hasSharedHeap: t.stackSize = ThreadStackSize
+    when hasSharedHeap: t.core.stackSize = ThreadStackSize
     var a {.noinit.}: PthreadAttr
     pthread_attr_init(a)
     pthread_attr_setstacksize(a, ThreadStackSize)
@@ -553,10 +559,6 @@ else:
 
 proc createThread*(t: var Thread[void], tp: proc () {.thread, nimcall.}) =
   createThread[void](t, tp)
-
-proc threadId*[TArg](t: var Thread[TArg]): ThreadId[TArg] {.inline.} =
-  ## returns the thread ID of `t`.
-  result = addr(t)
 
 when false:
   proc mainThreadId*[TArg](): ThreadId[TArg] =
