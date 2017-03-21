@@ -66,8 +66,9 @@ proc vccVarsAll*(path: string, arch: VccArch = vccarchUnspecified, platform_type
   let comSpecOut = execProcess(comSpecExec, options = comSpecOpts)
   result = newStringTable(modeCaseInsensitive)
   for line in comSpecOut.splitLines:
-    when not defined(release) or defined(debug):
-      echo line
     let idx = line.find('=')
     if idx > 0:
       result[line[0..(idx - 1)]] = line[(idx + 1)..(line.len - 1)]
+    else:
+      when not defined(release) or defined(debug):
+        echo line
