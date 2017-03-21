@@ -78,7 +78,7 @@ proc reprStr(s: string): string {.compilerRtl.} =
     # Handle nil strings here because they don't have a length field in js
     # TODO: check for null/undefined before generating call to length in js
     # Also: c backend repr of a nil string is <pointer>"", but repr of an 
-    # array of string that is not initialized is [nil, nil, ...]
+    # array of string that is not initialized is [nil, nil, ...] ??
     add result, "nil"
     return
   reprStrAux(result, s, s.len)
@@ -110,23 +110,6 @@ iterator SetKeys(s: int): int {.inline.} =
     asm "`yieldRes` = parseInt(setObjKeys[`i`],10);\n"
     yield yieldRes
     inc i
-
-iterator ArrayItems(s: int): int {.inline.} =
-  # The type of s is a lie, but it's expected to be an array.
-  # This means every key has to be a positive integer.
-  # Iterate over the JS array items,
-  # and returns the element as a (fake) int.
-  if not cast[pointer](s).isnil:
-    var len: int
-    var yieldRes : int
-    var i : int = 0
-    asm """
-    `len` = `s`.length;
-    """
-    while i<len:
-      asm "`yieldRes` = `s`[`i`];\n"
-      yield yieldRes
-      inc i
 
 proc reprSetAux(result: var string, s: int, typ: PNimType) =
   add result, "{"
@@ -183,32 +166,49 @@ proc reprBreak(result: var string, cl: ReprClosure) =
   add result, "\n"
   for i in 0..cl.indent-1: add result, ' '
 
-proc reprAux(result: var string, p: int, typ: PNimType, cl: var ReprClosure) 
+proc reprAux(result: var string, p: pointer, typ: PNimType, cl: var ReprClosure) 
 
-proc reprArray(a: int, typ: PNimType, 
+proc reprArray(a: pointer, typ: PNimType, 
               cl: var ReprClosure):string {.compilerRtl.} =
-  
-  if typ.kind == tySequence and cast[pointer](a).isnil: return "nil"
+  var isnilseq : bool
+  # isnil is not enough here as it would try to deref into a
+  asm """
+    if (`a` === null) { 
+    `isnilseq` = true 
+    } else if (`a`[0] === null) { 
+    `isnilseq` = true
+    } else {`isnilseq` = false
+    };
+    """
+  if typ.kind == tySequence and isnilseq:
+    return "nil"
 
-  result = if typ.kind == tySequence: "@[" else: "["
   # We prepend @ to seq, the C backend prepends the pointer to the seq
-  var first : bool = true
-  for el in ArrayItems(a):
-    if first:
-      first  = false
-    else:
+  result = if typ.kind == tySequence: "@[" else: "["
+  var len: int
+  var i : int = 0
+  asm """
+  `len` = `a`.length;
+  """
+  var dereffed : pointer = a
+  for i in 0 .. < len:
+    if i>0 :
       add result, ", "
-    reprAux(result, el, typ.base, cl )  
+    asm "`dereffed`_Idx = `i`;\n" # advance the pointer
+    asm "`dereffed` = `a`[`dereffed`_Idx];\n" # point to element at index
+    reprAux(result, dereffed, typ.base, cl )  
+      
   add result, "]"
 
-iterator ObjFieldPairs(o: int): tuple[index:int,key:cstring,val:int] {.inline.} =
+
+iterator ObjFieldPairs(o: pointer): tuple[index:int,key:cstring,val:pointer] {.inline.} =
   # The type of o is a lie, but it's expected to be an object.
   # Iterate over the JS object representing the object 
   # and returns a tuple composed of the index in the keys array,
   # the key as cstring and value as (fake) int.
   var len: int
   var yieldKey : cstring
-  var yieldVal : int
+  var yieldVal : pointer = o
   var i : int = 0
   asm """
   var ObjKeys = Object.getOwnPropertyNames(`o`);
@@ -222,14 +222,14 @@ iterator ObjFieldPairs(o: int): tuple[index:int,key:cstring,val:int] {.inline.} 
     yield (i,yieldKey,yieldVal)
     inc i
 
-proc reprRecordAux(result: var string, s: int, typ: PNimType,cl: var ReprClosure) =
+proc reprRecordAux(result: var string, o: pointer, typ: PNimType,cl: var ReprClosure) =
   add result, "["
 
   var first : bool = true
   var once : bool = typ.node.sons.isnil 
     # if the object has more than one field, sons is not nil and contains the fields.
     # if the object has only one field, sons is nil.
-  for i,key,val in ObjFieldPairs(s):
+  for i,key,val in ObjFieldPairs(o):
     if first:
       first  = false
     else:
@@ -242,12 +242,12 @@ proc reprRecordAux(result: var string, s: int, typ: PNimType,cl: var ReprClosure
       reprAux(result,val,typ.node.sons[i].typ,cl)
   add result, "]"
 
-proc reprRecord(e: int, typ: PNimType,cl: var ReprClosure): string {.compilerRtl.} =
+proc reprRecord(o: pointer, typ: PNimType,cl: var ReprClosure): string {.compilerRtl.} =
   result = ""
-  reprRecordAux(result, e, typ,cl)
+  reprRecordAux(result, o, typ,cl)
 
 
-proc reprAux(result: var string, p: int, typ: PNimType, 
+proc reprAux(result: var string, p: pointer, typ: PNimType, 
             cl: var ReprClosure) =
   if cl.recdepth == 0:
     add result, "..."
@@ -255,7 +255,7 @@ proc reprAux(result: var string, p: int, typ: PNimType,
   dec(cl.recdepth)
   case typ.kind
   of tyInt..tyInt64,tyUInt..tyUInt64:
-    add result, reprInt(p)    
+    add result, reprInt(cast[int](p))    
   of tyChar:
     add result, reprChar(cast[char](p))    
   of tyBool:
@@ -263,17 +263,27 @@ proc reprAux(result: var string, p: int, typ: PNimType,
   of tyFloat..tyFloat128:
     add result, reprFloat(cast[float](p))
   of tyString:
-    # do we want same behaviour as C?
-    add result, reprStr(cast[string](p))
-  of tyCString:
-    if cast[cstring](p).isnil:
+    var fp : int
+    asm "`fp` = `p`;"
+    if cast[string](fp).isnil:
       add result, "nil"
     else:
-      reprStrAux(result,cast[cstring](p),cast[cstring](p).len)
+      add result, reprStr(cast[string](p))
+  of tyCString:
+    var fp : int
+    asm "`fp` = `p`;"
+    if cast[cstring](fp).isnil:
+      add result, "nil"
+    else:
+      reprStrAux(result,cast[ptr string](p)[], cast[ptr string](p)[].len)
   of tyEnum, tyOrdinal:
-    add result, reprEnum(p,typ)
+    var fp : int
+    asm "`fp` = `p`;"
+    add result, reprEnum(fp,typ)
   of tySet:
-    add result, reprSet(p,typ)
+    var fp : int
+    asm "`fp` = `p`;"
+    add result, reprSet(fp,typ)
   of tyRange: reprAux(result,p,typ.base,cl)
   of tyObject:
     add result, reprRecord(p,typ,cl)
@@ -286,7 +296,7 @@ proc reprAux(result: var string, p: int, typ: PNimType,
     add result, "(invalid data!)"
   inc(cl.recdepth)
 
-proc reprAny(p: int, typ: PNimType): string {.compilerRtl.}=
+proc reprAny(p: pointer, typ: PNimType): string {.compilerRtl.}=
   var cl: ReprClosure
   initReprClosure(cl)
   result = ""
