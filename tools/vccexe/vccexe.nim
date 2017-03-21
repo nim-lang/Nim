@@ -1,4 +1,4 @@
-import strutils, strtabs, os, osproc, vcvarsall
+import strutils, strtabs, os, osproc, vcvarsall, vccdiscover
 
 when defined(release):
   let vccOptions = {poParentStreams}
@@ -6,12 +6,14 @@ else:
   let vccOptions = {poEchoCmd, poParentStreams}
 
 const 
+  vccversionPrefix = "--vccversion"
   vcvarsallPrefix = "--vcvarsall"
   commandPrefix = "--command"
   platformPrefix = "--platform"
   sdktypePrefix = "--sdktype"
   sdkversionPrefix = "--sdkversion"
 
+  vccversionSepIdx = vccversionPrefix.len
   vcvarsallSepIdx = vcvarsallPrefix.len
   commandSepIdx = commandPrefix.len
   platformSepIdx = platformPrefix.len
@@ -27,6 +29,9 @@ const
 Usage:
   vccexe [options] [compileroptions]
 Options:
+  --vccversion:<v>    Optionally specify the VCC version to discover
+                      <v>: 0, 90, 100, 110, 120, 140
+                      Argument value is passed on to vccdiscover utility
   --vcvarsall:<path>  Path to the Developer Command Prompt utility vcvarsall.bat that selects
                       the appropiate devlopment settings.
                       Usual path for Visual Studio 2015 and below:
@@ -54,6 +59,7 @@ command was specified
 """
 
 when isMainModule:
+  var vccversionArg: seq[string] = @[]
   var vcvarsallArg: string = nil
   var commandArg: string = nil
   var platformArg: VccArch
@@ -65,7 +71,9 @@ when isMainModule:
   var wrapperArgs = commandLineParams()
   for wargv in wrapperArgs:
     # Check whether the current argument contains -- prefix
-    if wargv.startsWith(vcvarsallPrefix): # Check for vcvarsall
+    if wargv.startsWith(vccversionPrefix): # Check for vccversion
+      vccversionArg.add(wargv.substr(vccversionSepIdx + 1))
+    elif wargv.startsWith(vcvarsallPrefix): # Check for vcvarsall
       vcvarsallArg = wargv.substr(vcvarsallSepIdx + 1)
     elif wargv.startsWith(commandPrefix): # Check for command
       commandArg = wargv.substr(commandSepIdx + 1)
@@ -79,6 +87,18 @@ when isMainModule:
       if (wargv.len == 2) and (wargv[1] == '?'):
         echo HelpText
       clArgs.add(wargv)
+
+  for vccversionItem in vccversionArg:
+    var vccversionValue: VccVersion
+    try:
+      vccversionValue = cast[VccVersion](parseInt(vccversionItem))
+    except ValueError:
+      continue
+    vcvarsallArg = discoverVccVcVarsAllPath(vccversionValue)
+    if vcvarsallArg.len > 0:
+      break
+  if vcvarsallArg.len < 1 and vccversionArg.len < 1:
+    vcvarsallArg = discoverVccVcVarsAllPath()
 
   var vcvars = vccVarsAll(vcvarsallArg, platformArg, sdkTypeArg, sdkVersionArg)
   if vcvars != nil:
