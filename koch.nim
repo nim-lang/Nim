@@ -218,11 +218,14 @@ proc bundleNimsuggest(buildExe: bool) =
     copyExe("nimsuggest/nimsuggest".exe, "bin/nimsuggest".exe)
     removeFile("nimsuggest/nimsuggest".exe)
 
+proc buildVccTool() =
+  nimexec("c -o:bin/vccexe.exe tools/vccenv/vccexe")
+
 proc bundleWinTools() =
   nimexec("c tools/finish.nim")
   copyExe("tools/finish".exe, "finish".exe)
   removeFile("tools/finish".exe)
-  nimexec("c -o:bin/vccexe.exe tools/vccenv/vccexe")
+  buildVccTool()
   nimexec("c -o:bin/nimgrab.exe -d:ssl tools/nimgrab.nim")
   when false:
     # not yet a tool worth including
@@ -257,6 +260,7 @@ proc buildTools(latest: bool) =
 
   let nimgrepExe = "bin/nimgrep".exe
   nimexec "c -o:" & nimgrepExe & " tools/nimgrep.nim"
+  when defined(windows): buildVccTool()
   buildNimble(latest)
 
 proc nsis(args: string) =
