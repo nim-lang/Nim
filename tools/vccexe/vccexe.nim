@@ -1,10 +1,5 @@
 import strutils, strtabs, os, osproc, vcvarsall, vccdiscover
 
-when defined(release):
-  let vccOptions = {poParentStreams}
-else:
-  let vccOptions = {poEchoCmd, poParentStreams}
-
 const 
   vccversionPrefix = "--vccversion"
   vcvarsallPrefix = "--vcvarsall"
@@ -12,6 +7,7 @@ const
   platformPrefix = "--platform"
   sdktypePrefix = "--sdktype"
   sdkversionPrefix = "--sdkversion"
+  verbosePrefix = "--verbose"
 
   vccversionSepIdx = vccversionPrefix.len
   vcvarsallSepIdx = vcvarsallPrefix.len
@@ -65,6 +61,7 @@ when isMainModule:
   var platformArg: VccArch
   var sdkTypeArg: VccPlatformType
   var sdkVersionArg: string = nil
+  var verboseArg: bool = false
 
   var clArgs: seq[TaintedString] = @[]
 
@@ -83,6 +80,8 @@ when isMainModule:
       sdkTypeArg = parseEnum[VccPlatformType](wargv.substr(sdktypeSepIdx + 1))
     elif wargv.startsWith(sdkversionPrefix): # Check for sdkversion
       sdkVersionArg = wargv.substr(sdkversionSepIdx + 1)
+    elif wargv.startsWith(verbosePrefix):
+      verboseArg = true
     else: # Regular cl.exe argument -> store for final cl.exe invocation
       if (wargv.len == 2) and (wargv[1] == '?'):
         echo HelpText
@@ -100,10 +99,14 @@ when isMainModule:
   if vcvarsallArg.len < 1 and vccversionArg.len < 1:
     vcvarsallArg = discoverVccVcVarsAllPath()
 
-  var vcvars = vccVarsAll(vcvarsallArg, platformArg, sdkTypeArg, sdkVersionArg)
+  var vcvars = vccVarsAll(vcvarsallArg, platformArg, sdkTypeArg, sdkVersionArg, verboseArg)
   if vcvars != nil:
     for vccEnvKey, vccEnvVal in vcvars:
       putEnv(vccEnvKey, vccEnvVal)
+
+  var vccOptions = {poParentStreams}
+  if verboseArg:
+    vccOptions.incl poEchoCmd
 
   if commandArg.len < 1:
     commandArg = "cl.exe"

@@ -27,7 +27,7 @@ type
     vccplatUWP = "uwp",
     vccplatOneCore = "onecore"
 
-proc vccVarsAll*(path: string, arch: VccArch = vccarchUnspecified, platform_type: VccPlatformType = vccplatEmpty, sdk_version: string = nil): StringTableRef =
+proc vccVarsAll*(path: string, arch: VccArch = vccarchUnspecified, platform_type: VccPlatformType = vccplatEmpty, sdk_version: string = nil, verbose: bool = false): StringTableRef =
   var vccvarsallpath = path
   # Assume that default executable is in current directory or in PATH
   if path == nil or path.len < 1:
@@ -59,16 +59,14 @@ proc vccVarsAll*(path: string, arch: VccArch = vccarchUnspecified, platform_type
     comSpecCmd = "cmd"
   
   let comSpecExec = "\"$1\" /C \"$2 && SET\"" % [comSpecCmd, vcvarsExec]
-  when defined(release):
-    let comSpecOpts = {poEvalCommand, poDemon, poStdErrToStdOut}
-  else:
-    let comSpecOpts = {poEchoCmd, poEvalCommand, poDemon, poStdErrToStdOut}
+  var comSpecOpts = {poEvalCommand, poDemon, poStdErrToStdOut}
+  if verbose:
+    comSpecOpts.incl poEchoCmd
   let comSpecOut = execProcess(comSpecExec, options = comSpecOpts)
   result = newStringTable(modeCaseInsensitive)
   for line in comSpecOut.splitLines:
     let idx = line.find('=')
     if idx > 0:
       result[line[0..(idx - 1)]] = line[(idx + 1)..(line.len - 1)]
-    else:
-      when not defined(release) or defined(debug):
-        echo line
+    elif verbose:
+      echo line
