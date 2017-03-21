@@ -1607,8 +1607,29 @@ proc semExpandToAst(c: PContext, n: PNode): PNode =
     for i in countup(1, macroCall.len-1):
       #if macroCall.sons[0].typ.sons[i].kind != tyExpr:
       macroCall.sons[i] = semExprWithType(c, macroCall[i], {})
+    # performing overloading resolution here produces too serious regressions:
+    let headSymbol = macroCall[0]
+    var cands = 0
+    var cand: PSym = nil
+    var o: TOverloadIter
+    var symx = initOverloadIter(o, c, headSymbol)
+    while symx != nil:
+      if symx.kind in {skTemplate, skMacro} and symx.typ.len == macroCall.len:
+        cand = symx
+        inc cands
+      symx = nextOverloadIter(o, c, headSymbol)
+    if cands == 0:
+      localError(n.info, "expected a template that takes " & $(macroCall.len-1) & " arguments")
+    elif cands >= 2:
+      localError(n.info, "ambiguous symbol in 'getAst' context: " & $macroCall)
+    else:
+      let info = macroCall.sons[0].info
+      macroCall.sons[0] = newSymNode(cand, info)
+      markUsed(info, cand, c.graph.usageSym)
+      styleCheckUse(info, cand)
+
     # we just perform overloading resolution here:
-    n.sons[1] = semOverloadedCall(c, macroCall, macroCall, {skTemplate, skMacro})
+    #n.sons[1] = semOverloadedCall(c, macroCall, macroCall, {skTemplate, skMacro})
   else:
     localError(n.info, "getAst takes a call, but got " & n.renderTree)
   # Preserve the magic symbol in order to be handled in evals.nim
