@@ -88,7 +88,7 @@ when isMainModule:
   if commandArg.len < 1:
     commandArg = "cl.exe"
   let vccProcess = startProcess(
-      "cl.exe",
+      commandArg,
       args = clArgs,
       options = vccOptions
     )
