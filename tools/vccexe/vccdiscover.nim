@@ -38,6 +38,10 @@ Arguments:
   <version>   Optionally specify the version to discover
     Valid values: 0, 90, 100, 110, 120, 140
     A value of 0 will discover the latest installed SDK
+
+For each specified version the utility prints a line with the 
+following format:
+<version>: <path>
 """
   var quitValue = 0
   let args = commandLineParams()
