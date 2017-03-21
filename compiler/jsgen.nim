@@ -1623,58 +1623,58 @@ proc genToArray(p: PProc; n: PNode; r: var TCompRes) =
     localError(x.info, "'toArray' needs an array literal")
   r.res.add(")")
 
+proc genReprAux(p: PProc, n: PNode, r: var TCompRes, magic:string, typ:Rope = nil) =
+  useMagic(p,magic)
+  add(r.res, magic & "(")
+  var a: TCompRes
+  gen(p, n.sons[1], a)
+  if (n.sons[1].typ.kind in {tyObject, tyArray, tyTuple, tyOpenArray,
+    tyVarargs,tySequence}):
+    add(r.res, a.res)
+    add(r.res, ", null") # the pointer argument in reprAny is expandend to (pointedto, pointer), so we need to fill it
+  elif skipTypes(n.sons[1].typ, abstractVar).kind in {tyOpenArray, tyVarargs} and
+      a.typ == etyBaseIndex :
+    # unreachable?
+    add(r.res, "$1[$2]" % [a.address, a.res])
+    add(r.res, ", null")
+  elif a.typ == etyBaseIndex:
+    add(r.res, a.address)
+    add(r.res, ", ")
+    add(r.res, a.res)
+  else:
+    add(r.res, a.res)
+  if not typ.isnil:
+    add(r.res,", ")
+    add(r.res,typ)
+  add(r.res, ")")
+
 proc genRepr(p: PProc, n: PNode, r: var TCompRes) =
   if p.target == targetPHP:
     localError(n.info, "'repr' not available for PHP backend")
     return
-  gen(p, n.sons[1], r)
-  
   let t = skipTypes(n.sons[1].typ, abstractVarRange)
   case t.kind
   of tyInt..tyInt64,tyUInt..tyUInt64:
-    useMagic(p, "reprInt")
-    r.res = "reprInt($1)" % [r.rdLoc]
-    r.kind = resExpr
+    genReprAux(p,n,r, "reprInt")
   of tyChar:
-    useMagic(p, "reprChar")
-    r.res = "reprChar($1)" % [r.rdLoc]
-    r.kind = resExpr
+    genReprAux(p,n,r, "reprChar")
   of tyBool:
-    useMagic(p, "reprBool")
-    r.res = "reprBool($1)" % [r.rdLoc]
-    r.kind = resExpr
+    genReprAux(p,n,r, "reprBool")
   of tyFloat..tyFloat128:
-    useMagic(p, "reprFloat")
-    r.res = "reprFloat($1)" % [r.rdLoc]
-    r.kind = resExpr
+    genReprAux(p,n,r, "reprFloat")
   of tyString:
-    useMagic(p, "reprStr")
-    r.res = "reprStr($1)" % [r.rdLoc]
-    r.kind = resExpr
+    genReprAux(p,n,r, "reprStr")
   of tyEnum, tyOrdinal:
-    useMagic(p, "reprEnum")
-    r.kind = resExpr
-    r.res = "reprEnum($1,$2)" % [r.res,genTypeInfo(p, t)]
+    genReprAux(p,n,r, "reprEnum",genTypeInfo(p,t))
   of tySet:
-    useMagic(p, "reprSet")
-    r.kind = resExpr
-    r.res = "reprSet($1,$2)" % [r.res,genTypeInfo(p, t)]
+    genReprAux(p,n,r, "reprSet",genTypeInfo(p,t))
   of tyEmpty, tyVoid:
     localError(n.info, "'repr' doesn't support 'void' type")
   #of tyCString, tyArray, tyRef, tyPtr, tyPointer, tyNil, tySequence:
-  of tyPointer:
-    # TODO: investigate why the element pointed to is passed as first arg to rawEcho
-    useMagic(p, "reprPointer")
-    r.kind = resExpr
-    r.res = "reprPointer($1)" % [r.res]
+#  of tyPointer,tyPtr,tyRef:
+#    genReprAux(p,n,r, "reprAny",genTypeInfo(p,t))
   else:
-    useMagic(p, "reprAny")
-    r.kind = resExpr
-    r.res = "reprAny($1,$2)" % [r.res,genTypeInfo(p, t)]
-  
-  #else:
-  #  # XXX:
-  #  internalError(n.info, "genRepr: Not implemented: " & $t.kind)
+    genReprAux(p,n,r,"reprAny",genTypeInfo(p,t))
 
 proc genOf(p: PProc, n: PNode, r: var TCompRes) =
   var x: TCompRes
