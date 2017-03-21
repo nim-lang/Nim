@@ -485,6 +485,10 @@ proc mainCommand(graph: ModuleGraph; cache: IdentCache) =
   incl gGlobalOptions, optCaasEnabled
   isServing = true
   wantMainModule()
+
+  if not fileExists(gProjectFull):
+    quit "cannot find file: " & gProjectFull
+
   add(searchPaths, options.libpath)
 
   # do not stop after the first error:
