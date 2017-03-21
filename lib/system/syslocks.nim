@@ -77,7 +77,7 @@ when defined(Windows):
 
 elif defined(genode):
   const
-    Header = "nim/syslocks.h"
+    Header = "genode/syslocks.h"
   type
     SysLock {.importcpp: "Nim::SysLock", pure, final,
               header: Header.} = object

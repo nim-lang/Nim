@@ -121,12 +121,12 @@ when defined(windows):
 
 elif defined(genode):
   const
-    GenodeHeader = "nim/threads.h"
+    GenodeHeader = "genode/threads.h"
   type
     SysThread* {.importcpp: "Nim::SysThread",
                  header: GenodeHeader, final, pure.} = object
     GenodeThreadProc = proc (x: pointer) {.noconv.}
-    ThreadVarSlot = cint
+    ThreadVarSlot = int
 
   proc initThread(s: var SysThread,
                   stackSize: culonglong,
@@ -134,14 +134,33 @@ elif defined(genode):
                   arg: pointer) {.
     importcpp: "#.initThread(genodeEnv, @)".}
 
-  proc threadVarAlloc(): ThreadVarSlot {.
-    importcpp: "Nim::threadVarAlloc", header: GenodeHeader.}
+  proc threadVarAlloc(): ThreadVarSlot = 0
 
-  proc threadVarSetValue(s: ThreadVarSlot, value: pointer) {.
-    importcpp: "Nim::threadVarSetValue(@)", header: GenodeHeader.}
+  proc offMainThread(): bool {.
+    importcpp: "Nim::SysThread::offMainThread",
+    header: GenodeHeader.}
 
-  proc threadVarGetValue(s: ThreadVarSlot): pointer {.
-    importcpp: "Nim::threadVarGetValue(@)", header: GenodeHeader.}
+  proc threadVarSetValue(value: pointer) {.
+    importcpp: "Nim::SysThread::threadVarSetValue(@)",
+    header: GenodeHeader.}
+
+  proc threadVarGetValue(): pointer {.
+    importcpp: "Nim::SysThread::threadVarGetValue()",
+    header: GenodeHeader.}
+
+  var mainTls: pointer
+
+  proc threadVarSetValue(s: ThreadVarSlot, value: pointer) {.inline.} =
+    if offMainThread():
+      threadVarSetValue(value);
+    else:
+      mainTls = value
+
+  proc threadVarGetValue(s: ThreadVarSlot): pointer {.inline.} =
+    if offMainThread():
+      threadVarGetValue();
+    else:
+      mainTls
 
 else:
   when not defined(macosx):
