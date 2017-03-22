@@ -52,13 +52,13 @@ test(OrderR, OrderG)
 test(OrderR, OrderAlias)
 test(OrderG, OrderAlias)
 
-typeRep(OrderAlias, Order)  # true
-typeRep(OrderR, Order)      # true
-typeRep(OrderG, Order)      # true
+typeRep(OrderAlias.R, Order.R)  # true
+typeRep(OrderR.R, Order.R)      # true
+typeRep(OrderG.R, Order.R)      # true
 
-typeRep(OrderR, OrderAlias) # true
-typeRep(OrderG, OrderAlias) # true
-typeRep(OrderR, OrderG)     # true
+typeRep(OrderR.R, OrderAlias.R) # true
+typeRep(OrderG.R, OrderAlias.R) # true
+typeRep(OrderR.R, OrderG.R)     # true
 
 echo OrderR.R      # R
 echo OrderG.R      # R
