@@ -1627,22 +1627,19 @@ proc genReprAux(p: PProc, n: PNode, r: var TCompRes, magic:string, typ:Rope = ni
   useMagic(p,magic)
   add(r.res, magic & "(")
   var a: TCompRes
+
   gen(p, n.sons[1], a)
-  if (n.sons[1].typ.kind in {tyObject, tyArray, tyTuple, tyOpenArray,
-    tyVarargs,tySequence}):
-    add(r.res, a.res)
-    add(r.res, ", null") # the pointer argument in reprAny is expandend to (pointedto, pointer), so we need to fill it
-  elif skipTypes(n.sons[1].typ, abstractVar).kind in {tyOpenArray, tyVarargs} and
-      a.typ == etyBaseIndex :
-    # unreachable?
-    add(r.res, "$1[$2]" % [a.address, a.res])
-    add(r.res, ", null")
-  elif a.typ == etyBaseIndex:
-    add(r.res, a.address)
-    add(r.res, ", ")
-    add(r.res, a.res)
+  if magic == "reprAny":
+    # the pointer argument in reprAny is expandend to 
+    # (pointedto, pointer), so we need to fill it
+    if a.address.isnil:
+      add(r.res, a.res)
+      add(r.res, ", null") 
+    else:
+      add(r.res, "$1, $2" % [a.address, a.res])
   else:
-    add(r.res, a.res)
+    add(r.res,a.res)
+
   if not typ.isnil:
     add(r.res,", ")
     add(r.res,typ)
@@ -1670,9 +1667,8 @@ proc genRepr(p: PProc, n: PNode, r: var TCompRes) =
     genReprAux(p,n,r, "reprSet",genTypeInfo(p,t))
   of tyEmpty, tyVoid:
     localError(n.info, "'repr' doesn't support 'void' type")
-  #of tyCString, tyArray, tyRef, tyPtr, tyPointer, tyNil, tySequence:
-#  of tyPointer,tyPtr,tyRef:
-#    genReprAux(p,n,r, "reprAny",genTypeInfo(p,t))
+  of tyPointer: 
+    genReprAux(p,n,r, "reprPointer")
   else:
     genReprAux(p,n,r,"reprAny",genTypeInfo(p,t))
 
