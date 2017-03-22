@@ -80,7 +80,7 @@ proc `[]`*[T](deq: Deque[T], i: Natural) : T {.inline.} =
   ## Access the i-th element of `deq` by order from first to last.
   ## deq[0] is the first, deq[^1] is the last.
   xBoundsCheck(deq, i)
-  return deq.data[(deq.first + i) and deq.mask]
+  return deq.data[(deq.head + i) and deq.mask]
 
 proc `[]`*[T](deq: var Deque[T], i: Natural): var T {.inline.} =
   ## Access the i-th element of `deq` and returns a mutable
