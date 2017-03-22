@@ -2084,9 +2084,8 @@ proc checkInitialized(n: PNode, ids: IntSet, info: TLineInfo) =
 
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var t = semTypeNode(c, n.sons[0], nil)
-  result = n
-  result.typ = t
-  result.kind = nkObjConstr
+  result = newNodeIT(nkObjConstr, n.info, t)
+  result.add n.sons[0]
   t = skipTypes(t, {tyGenericInst, tyAlias})
   if t.kind == tyRef: t = skipTypes(t.sons[0], {tyGenericInst, tyAlias})
   if t.kind != tyObject:
@@ -2125,6 +2124,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
     else:
       localError(it.info, errUndeclaredFieldX, id.s)
     it.sons[1] = e
+    result.add it
     # XXX object field name check for 'case objects' if the kind is static?
   if tfNeedsInit in objType.flags:
     while true:
