@@ -9,8 +9,8 @@
  */
 
 
-#ifndef _NIM__LIB__GENODE__THREAD_H_
-#define _NIM__LIB__GENODE__THREAD_H_
+#ifndef _GENODE_CPP__THREAD_H_
+#define _GENODE_CPP__THREAD_H_
 
 #include <base/thread.h>
 #include <util/avl_tree.h>

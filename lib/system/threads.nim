@@ -121,7 +121,7 @@ when defined(windows):
 
 elif defined(genode):
   const
-    GenodeHeader = "genode/threads.h"
+    GenodeHeader = "genode_cpp/threads.h"
   type
     SysThread* {.importcpp: "Nim::SysThread",
                  header: GenodeHeader, final, pure.} = object

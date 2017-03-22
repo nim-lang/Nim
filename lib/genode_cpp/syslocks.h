@@ -8,8 +8,8 @@
  *
  */
 
-#ifndef _NIM__LIB__GENODE__SYSLOCKS_H_
-#define _NIM__LIB__GENODE__SYSLOCKS_H_
+#ifndef _GENODE_CPP__SYSLOCKS_H_
+#define _GENODE_CPP__SYSLOCKS_H_
 
 /* Genode includes */
 #include <base/semaphore.h>
