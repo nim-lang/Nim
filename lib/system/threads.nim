@@ -491,6 +491,8 @@ else:
     ## waits for every thread in `t` to finish.
     for i in 0..t.high: joinThread(t[i])
 
+when false:
+  # XXX a thread should really release its heap here somehow:
   proc destroyThread*[TArg](t: var Thread[TArg]) =
     ## forces the thread `t` to terminate. This is potentially dangerous if
     ## you don't have full control over `t` and its acquired resources.
