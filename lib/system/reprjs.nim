@@ -305,9 +305,11 @@ proc reprAux(result: var string, p: pointer, typ: PNimType,
     add result, reprPointer(p)
   of tyPtr,tyRef:
     reprRef(result,p,typ,cl)
-  #of tyProc:
-  #    if cast[PPointer](p)[] == nil: add result, "nil"
-  #    else: add result, reprPointer(cast[PPointer](p)[])
+  of tyProc:
+    if p.ispointedtonil:
+      add result, "nil"
+    else:
+      add result, reprPointer(p)
   else:
     add result, "(invalid data!)"
   inc(cl.recdepth)
