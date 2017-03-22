@@ -430,7 +430,7 @@ proc newConfig*(): Config =
   ## Useful when wanting to create a configuration file.
   result = newOrderedTable[string, OrderedTableRef[string, string]]()
 
-proc loadConfigFromStream*(stream: Stream, filename: string = "[stream]"): Config =
+proc loadConfig*(stream: Stream, filename: string = "[stream]"): Config =
   ## Load the specified configuration from stream into a new Config instance.
   ## `filename` parameter is only used for nicer error messages.
   var dict = newOrderedTable[string, OrderedTableRef[string, string]]()
@@ -463,18 +463,12 @@ proc loadConfigFromStream*(stream: Stream, filename: string = "[stream]"): Confi
   close(p)
   result = dict
 
-proc loadConfigFromString*(str: string, filename: string = "[string]"): Config =
-  ## Load the specified configuration from string into a new Config instance.
-  ## `filename` parameter is only used for nicer error messages.
-  let stream = newStringStream(str)
-  defer: stream.close()
-  result = loadConfigFromStream(stream, filename)
-
 proc loadConfig*(filename: string): Config =
   ## Load the specified configuration file into a new Config instance.
-  let fileStream = newFileStream(filename, fmRead)
+  let file = open(filename, fmRead)
+  let fileStream = newFileStream(file)
   defer: fileStream.close()
-  result = loadConfigFromStream(fileStream, filename)
+  result = fileStream.loadConfig(filename)
 
 proc replace(s: string): string =
   var d = ""
@@ -494,21 +488,19 @@ proc replace(s: string): string =
     inc(i)
   result = d
 
-proc writeConfigToStream*(dict: Config, stream: Stream) =
+proc writeConfig*(dict: Config, stream: Stream) =
   ## Writes the contents of the table to the specified stream
-  ## Note: Comment statement will be ignored.
-  var section, key, value, kv, segmentChar:string
-  for pair in dict.pairs():
-    section = pair[0]
+  ##
+  ## **Note:** Comment statement will be ignored.
+  for section, sectionData in dict.pairs():
     if section != "": ## Not general section
       if not allCharsInSet(section, SymChars): ## Non system character
         stream.writeLine("[\"" & section & "\"]")
       else:
         stream.writeLine("[" & section & "]")
-    for pair2 in pair[1].pairs():
-      key = pair2[0]
-      value = pair2[1]
-      if key[0] == '-' and key[1] == '-': ## If it is a command key
+    for key, value in sectionData.pairs():
+      var kv, segmentChar: string
+      if key.len > 1 and key[0] == '-' and key[1] == '-': ## If it is a command key
         segmentChar = ":"
         if not allCharsInSet(key[2..key.len()-1], SymChars):
           kv.add("--\"")
@@ -536,20 +528,21 @@ proc writeConfigToStream*(dict: Config, stream: Stream) =
           kv.add(value)
       stream.writeLine(kv)
 
-proc writeConfigToString*(dict: Config): string =
+proc `$`*(dict: Config): string =
   ## Writes the contents of the table to string.
   ## Note: Comment statement will be ignored.
   let stream = newStringStream()
   defer: stream.close()
-  dict.writeConfigToStream(stream)
+  dict.writeConfig(stream)
   result = stream.data
 
 proc writeConfig*(dict: Config, filename: string) =
   ## Writes the contents of the table to the specified configuration file.
   ## Note: Comment statement will be ignored.
-  let fileStream = newFileStream(filename, fmRead)
+  let file = open(filename, fmWrite)
+  let fileStream = newFileStream(filename)
   defer: fileStream.close()
-  dict.writeConfigToStream(fileStream)
+  dict.writeConfig(fileStream)
 
 proc getSectionValue*(dict: Config, section, key: string): string =
   ## Gets the Key value of the specified Section.
