@@ -297,7 +297,7 @@ proc reprAux(result: var string, p: pointer, typ: PNimType,
     asm "`fp` = `p`;"
     add result, reprSet(fp,typ)
   of tyRange: reprAux(result,p,typ.base,cl)
-  of tyObject:
+  of tyObject,tyTuple:
     add result, reprRecord(p,typ,cl)
   of tyArray,tyArrayConstr,tySequence:
     add result, reprArray(p,typ,cl)
