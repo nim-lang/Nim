@@ -259,6 +259,14 @@ proc reprRecord(o: pointer, typ: PNimType,cl: var ReprClosure): string {.compile
   result = ""
   reprRecordAux(result, o, typ,cl)
 
+
+proc reprJSONStringify(p: int): string {.compilerRtl.}=
+  # As a last resort, use stringify
+  # We use this for tyOpenArray, tyVarargs while genTypeInfo is not implemented
+  var tmp : cstring
+  asm "`tmp` = JSON.stringify(`p`);"
+  result = $tmp
+
 proc reprAux(result: var string, p: pointer, typ: PNimType, 
             cl: var ReprClosure) =
   if cl.recdepth == 0:
@@ -311,7 +319,7 @@ proc reprAux(result: var string, p: pointer, typ: PNimType,
     else:
       add result, reprPointer(p)
   else:
-    add result, "(invalid data!)"
+    add result, "(invalid data!)" & reprJsonStringify(cast[int](p))
   inc(cl.recdepth)
 
 proc reprAny(p: pointer, typ: PNimType): string {.compilerRtl.}=

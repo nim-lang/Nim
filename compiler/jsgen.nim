@@ -1669,6 +1669,8 @@ proc genRepr(p: PProc, n: PNode, r: var TCompRes) =
     localError(n.info, "'repr' doesn't support 'void' type")
   of tyPointer: 
     genReprAux(p,n,r, "reprPointer")
+  of tyOpenArray,tyVarargs:
+    genReprAux(p,n,r, "reprJSONStringify")
   else:
     genReprAux(p,n,r,"reprAny",genTypeInfo(p,t))
 
