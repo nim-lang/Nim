@@ -14,8 +14,17 @@ proc reprFloat(x: float): string {.compilerproc.} =
   if $x == $(x.int): $x & ".0"
   else: $x
 
-proc reprPointer(p: int): string {.compilerproc.} = $p
+proc reprPointer(p: pointer): string {.compilerproc.} = 
   # Do we need to generate the full 8bytes ? In js a pointer is an int anyway
+  var tmp : int
+  asm """
+    if (`p`_Idx == null){
+      `tmp` = 0
+    }else {
+    `tmp` =  `p`_Idx
+    }
+  """
+  result = $tmp
 
 proc reprBool(x: bool): string {.compilerRtl.} =
   if x: result = "true"
@@ -170,23 +179,27 @@ proc reprAux(result: var string, p: pointer, typ: PNimType, cl: var ReprClosure)
 
 proc reprArray(a: pointer, typ: PNimType, 
               cl: var ReprClosure):string {.compilerRtl.} =
-  var isnilseq : bool
-  # isnil is not enough here as it would try to deref into a
+  var isnilarrorseq : bool
+  # isnil is not enough here as it would try to deref `a` without knowing what's inside
   asm """
-    if (`a` === null) { 
-    `isnilseq` = true 
-    } else if (`a`[0] === null) { 
-    `isnilseq` = true
-    } else {`isnilseq` = false
+    if (`a` == null) { 
+    `isnilarrorseq` = true 
+    } else if (`a`[0] == null) { 
+    `isnilarrorseq` = true
+    } else {`isnilarrorseq` = false
     };
     """
-  if typ.kind == tySequence and isnilseq:
+  if typ.kind == tySequence and isnilarrorseq:
     return "nil"
 
-  # We prepend @ to seq, the C backend prepends the pointer to the seq
+  # We prepend @ to seq, the C backend prepends the pointer to the seq.
   result = if typ.kind == tySequence: "@[" else: "["
-  var len: int
+  var len: int = 0
   var i : int = 0
+  
+  #if isnilarrorseq:
+    # skip if the array is null (eg it's a ref that isn't initialized)
+  
   asm """
   `len` = `a`.length;
   """
@@ -197,48 +210,48 @@ proc reprArray(a: pointer, typ: PNimType,
     asm "`dereffed`_Idx = `i`;\n" # advance the pointer
     asm "`dereffed` = `a`[`dereffed`_Idx];\n" # point to element at index
     reprAux(result, dereffed, typ.base, cl )  
-      
+  
   add result, "]"
 
-
-iterator ObjFieldPairs(o: pointer): tuple[index:int,key:cstring,val:pointer] {.inline.} =
-  # The type of o is a lie, but it's expected to be an object.
-  # Iterate over the JS object representing the object 
-  # and returns a tuple composed of the index in the keys array,
-  # the key as cstring and value as (fake) int.
-  var len: int
-  var yieldKey : cstring
-  var yieldVal : pointer = o
-  var i : int = 0
+proc ispointedtonil(p:pointer):bool {.inline.}=
   asm """
-  var ObjKeys = Object.getOwnPropertyNames(`o`);
-  `len` = ObjKeys.length
+  if (`p` === null ){ `result` = true }
   """
-  while i<len:
+
+proc reprRef(result: var string, p: pointer, typ: PNimType,
+          cl: var ReprClosure) =
+  if p.ispointedtonil:
+    add result  , "nil"
+    return
+  add result, "ref " & reprPointer(p)
+  add result, " --> "
+  if not( typ.base.kind == tyArray):
     asm """
-      `yieldKey` = ObjKeys[`i`];
-      `yieldVal` = `o`[ObjKeys[`i`]];
-      """
-    yield (i,yieldKey,yieldVal)
-    inc i
+    if (`p` != null && `p`.length > 0) {
+      `p` = `p`[`p`_Idx];
+    }"""
+  reprAux(result, p, typ.base, cl)
 
 proc reprRecordAux(result: var string, o: pointer, typ: PNimType,cl: var ReprClosure) =
   add result, "["
-
+  
   var first : bool = true
-  var once : bool = typ.node.sons.isnil 
-    # if the object has more than one field, sons is not nil and contains the fields.
-    # if the object has only one field, sons is nil.
-  for i,key,val in ObjFieldPairs(o):
-    if first:
-      first  = false
-    else:
-      add result, ",\n"
+  var val : pointer = o
+  if typ.node.len == 0:
+    # if the object has only one field, len is 0  and sons is nil, the field is in node
+    let key : cstring =  typ.node.name
     add result, $key & " = "
-    if once:
-      # Strangely enough, if the object only has one field the length is 0
-      reprAux(result,val,typ.node.typ,cl)
-    else:
+    asm "`val` = `o`.`key`;\n"
+    reprAux(result,val,typ.node.typ,cl)
+  else:
+    # if the object has more than one field, sons is not nil and contains the fields.
+    for i in 0 .. < typ.node.len:
+      if first: first  = false
+      else: add result, ",\n"
+
+      let key : cstring =  typ.node.sons[i].name
+      add result, $key & " = "
+      asm "`val` = `o`[`key`];\n" # access the field by name
       reprAux(result,val,typ.node.sons[i].typ,cl)
   add result, "]"
 
@@ -246,12 +259,11 @@ proc reprRecord(o: pointer, typ: PNimType,cl: var ReprClosure): string {.compile
   result = ""
   reprRecordAux(result, o, typ,cl)
 
-
 proc reprAux(result: var string, p: pointer, typ: PNimType, 
             cl: var ReprClosure) =
   if cl.recdepth == 0:
     add result, "..."
-    return
+    return 
   dec(cl.recdepth)
   case typ.kind
   of tyInt..tyInt64,tyUInt..tyUInt64:
@@ -289,6 +301,10 @@ proc reprAux(result: var string, p: pointer, typ: PNimType,
     add result, reprRecord(p,typ,cl)
   of tyArray,tyArrayConstr,tySequence:
     add result, reprArray(p,typ,cl)
+  of tyPointer:
+    add result, reprPointer(p)
+  of tyPtr,tyRef:
+    reprRef(result,p,typ,cl)
   #of tyProc:
   #    if cast[PPointer](p)[] == nil: add result, "nil"
   #    else: add result, reprPointer(cast[PPointer](p)[])
