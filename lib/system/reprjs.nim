@@ -282,12 +282,12 @@ proc reprAux(result: var string, p: pointer, typ: PNimType,
     else:
       add result, reprStr(cast[string](p))
   of tyCString:
-    var fp : int
+    var fp : cstring
     asm "`fp` = `p`;"
-    if cast[cstring](fp).isnil:
+    if fp.isnil:
       add result, "nil"
     else:
-      reprStrAux(result,cast[ptr string](p)[], cast[ptr string](p)[].len)
+      reprStrAux(result,fp, fp.len)
   of tyEnum, tyOrdinal:
     var fp : int
     asm "`fp` = `p`;"
