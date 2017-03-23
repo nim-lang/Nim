@@ -645,7 +645,10 @@ proc tryRemoveFile*(file: string): bool {.rtl, extern: "nos$1", tags: [WriteDirE
       let f = file
     if deleteFile(f) == 0:
       result = false
-      if getLastError() == ERROR_ACCESS_DENIED and
+      let err = getLastError()
+      if err == ERROR_FILE_NOT_FOUND or err == ERROR_PATH_NOT_FOUND:
+        result = true
+      elif err == ERROR_ACCESS_DENIED and
          setFileAttributes(f, FILE_ATTRIBUTE_NORMAL) != 0 and
          deleteFile(f) != 0:
         result = true
