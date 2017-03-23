@@ -35,5 +35,6 @@ except:
   echo "Second readLine raised an exception"
 
 echo line
+f.close()
 
 removeFile(fn)
