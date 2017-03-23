@@ -1433,7 +1433,6 @@ proc semReturn(c: PContext, n: PNode): PNode =
 
 proc semProcBody(c: PContext, n: PNode): PNode =
   openScope(c)
-
   result = semExpr(c, n)
   if c.p.resultSym != nil and not isEmptyType(result.typ):
     # transform ``expr`` to ``result = expr``, but not if the expr is already
