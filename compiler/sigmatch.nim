@@ -350,7 +350,7 @@ proc handleFloatRange(f, a: PType): TTypeRelation =
       else: result = isIntConv
     else: result = isNone
 
-template genericParamPut(c: var TCandidate; last, fGenericOrigin: PType) =
+proc genericParamPut(c: var TCandidate; last, fGenericOrigin: PType) =
  if fGenericOrigin != nil and last.kind == tyGenericInst and
      last.len-1 == fGenericOrigin.len:
    for i in countup(1, sonsLen(fGenericOrigin) - 1):
