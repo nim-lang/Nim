@@ -350,6 +350,14 @@ proc handleFloatRange(f, a: PType): TTypeRelation =
       else: result = isIntConv
     else: result = isNone
 
+proc genericParamPut(c: var TCandidate; last, fGenericOrigin: PType) =
+ if fGenericOrigin != nil and last.kind == tyGenericInst and
+     last.len-1 == fGenericOrigin.len:
+   for i in countup(1, sonsLen(fGenericOrigin) - 1):
+     let x = PType(idTableGet(c.bindings, fGenericOrigin.sons[i]))
+     if x == nil:
+       put(c, fGenericOrigin.sons[i], last.sons[i])
+
 proc isObjectSubtype(c: var TCandidate; a, f, fGenericOrigin: PType): int =
   var t = a
   assert t.kind == tyObject
@@ -363,12 +371,7 @@ proc isObjectSubtype(c: var TCandidate; a, f, fGenericOrigin: PType): int =
     t = skipTypes(t, skipPtrs)
     inc depth
   if t != nil:
-    if fGenericOrigin != nil and last.kind == tyGenericInst and
-        last.len-1 == fGenericOrigin.len:
-      for i in countup(1, sonsLen(fGenericOrigin) - 1):
-        let x = PType(idTableGet(c.bindings, fGenericOrigin.sons[i]))
-        if x == nil:
-          put(c, fGenericOrigin.sons[i], last.sons[i])
+    genericParamPut(c, last, fGenericOrigin)
     result = depth
   else:
     result = -1
@@ -398,7 +401,7 @@ proc skipToObject(t: PType; skipped: var SkippedPtr): PType =
       break
   if r.kind == tyObject and ptrs <= 1: result = r
 
-proc isGenericSubtype(a, f: PType, d: var int): bool =
+proc isGenericSubtype(c: var TCandidate; a, f: PType, d: var int, fGenericOrigin: PType = nil): bool =
   assert f.kind in {tyGenericInst, tyGenericInvocation, tyGenericBody}
   var askip = skippedNone
   var fskip = skippedNone
@@ -406,14 +409,17 @@ proc isGenericSubtype(a, f: PType, d: var int): bool =
   let r = f.skipToObject(fskip)
   if r == nil: return false
   var depth = 0
+  var last = a
   # XXX sameObjectType can return false here. Need to investigate
   # why that is but sameObjectType does way too much work here anyway.
   while t != nil and r.sym != t.sym and askip == fskip:
     t = t.sons[0]
-    if t != nil: t = t.skipToObject(askip)
-    else: break
+    if t == nil: break
+    last = t
+    t = t.skipToObject(askip)
     inc depth
   if t != nil and askip == fskip:
+    genericParamPut(c, last, fGenericOrigin)
     d = depth
     result = true
 
@@ -999,7 +1005,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       # simply no match for now:
       discard
     elif x.kind == tyGenericInst and
-          ((f.sons[0] == x.sons[0]) or isGenericSubtype(x, f, depth)) and
+          ((f.sons[0] == x.sons[0]) or isGenericSubType(c, x, f, depth)) and
           (sonsLen(x) - 1 == sonsLen(f)):
       for i in countup(1, sonsLen(f) - 1):
         if x.sons[i].kind == tyGenericParam:
@@ -1038,6 +1044,14 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
             internalError("wrong instantiated type!")
           else:
             put(c, f.sons[i], x)
+
+      if result == isNone:
+        # Here object inheriting from generic/specialized generic object
+        # crossing path with metatypes/aliases, so we need to separate them
+        # by checking sym.id
+        let genericSubtype = isGenericSubType(c, x, f, depth, f)
+        if not (genericSubtype and aobj.sym.id != fobj.sym.id):
+          depth = -1
 
       if depth >= 0:
         c.inheritancePenalty += depth
