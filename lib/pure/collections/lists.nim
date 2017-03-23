@@ -16,18 +16,17 @@
 ## * ``DoublyLinkedList`` and ``DoublyLinkedRing`` are ``O(1)`` to `remove` elements
 ## * ``SinglyLinkedList`` and ``SingleLinkedRing`` are ``O(n)`` to `remove` elements `(with lower memory usage)`
 ##
+##  All examples are showing DoublyLinkedList.  It is assumed the reader can translate
+##  these examples to the other List/Ring types.
+##
 ## Initializing a list/ring
 ## ====================
 ##
 ## .. code-block:: Nim
 ##   import lists, random
 ##   var
-##     emptyIntDlr = initDoublyLinkedRing[int]()
-##     emptyStrSll = initSinglyLinkedList[string]()
-##     sll = @[1, 2, 3, 4].toSinglyLinkedList()
+##     emptyIntDlr = initDoublyLinkedList[int]()
 ##     dll = @[1, 2, 3, 4].toDoublyLinkedList()
-##     slr = @[1, 2, 3, 4].toSinglyLinkedRing()
-##     dlr = @[1, 2, 3, 4].toDoublyLinkedRing()
 ##     randDll = newDoublyLinkedListWith(10, random(100))  # dll of 10 random numbers
 ##   echo randDll
 ##
@@ -37,14 +36,8 @@
 ## .. code-block:: nim
 ##   import lists
 ##   var
-##     sll = @[1, 2, 3, 4].toSinglyLinkedList()
-##     sqSll = sll.toSeq
 ##     dll = @[1, 2, 3, 4].toDoublyLinkedList()
 ##     sqDll = dll.toSeq
-##     slr = @[1, 2, 3, 4].toSinglyLinkedRing()
-##     sqSlr = slr.toSeq
-##     dlr = @[1, 2, 3, 4].toDoublyLinkedRing()
-##     sqDlr = dlr.toSeq
 ##
 ## Transforming a list/ring
 ## ========================
@@ -52,87 +45,33 @@
 ## .. code-block:: nim
 ##   import lists
 ##   var
-##     sll1 = @[1, 2, 3, 4].toSinglyLinkedList()
-##     sll2 = map(sll1, proc(x: int): string = $x)  # MAP
 ##     dll1 = @[1, 2, 3, 4].toDoublyLinkedList()
-##     dll2 = map(dll1, proc(x: int): string = $x)  # MAP
-##     slr1 = @[1, 2, 3, 4].toSinglyLinkedRing()
-##     slr2 = map(slr1, proc(x: int): string = $x)  # MAP
-##     dlr1 = @[1, 2, 3, 4].toDoublyLinkedRing()
-##     dlr2 = map(dlr1, proc(x: int): string = $x)  # MAP
+##     dll2 = map(dll1, proc(x: int): string = $x)  # map
 ##
-##   assert sll2 == @["1", "2", "3", "4"].toSinglyLinkedList()
 ##   assert dll2 == @["1", "2", "3", "4"].toDoublyLinkedList()
-##   assert slr2 == @["1", "2", "3", "4"].toSinglyLinkedRing()
-##   assert dlr2 == @["1", "2", "3", "4"].toDoublyLinkedRing()
 ##
-##   var sll = @["1", "2", "3", "4"].toSinglyLinkedList()
-##   apply(sll, proc(x: var string) = x &= "42")  # APPLY #1
-##   echo sll   # --> ["142", "242", "342", "442"]
-##
-##   var dll = @["1", "2", "3", "4"].toSinglyLinkedList()
-##   apply(dll, proc(x: var string) = x &= "42")  # APPLY #1
+##   var dll = @["1", "2", "3", "4"].toDoublyLinkedList()
+##   apply(dll, proc(x: var string) = x &= "42")  # apply #1
 ##   echo dll   # --> ["142", "242", "342", "442"]
 ##
-##   var slr = @["1", "2", "3", "4"].toSinglyLinkedList()
-##   apply(slr, proc(x: var string) = x &= "42")  # APPLY #1
-##   echo slr   # --> ["142", "242", "342", "442"]
-##
-##   var dlr = @["1", "2", "3", "4"].toSinglyLinkedList()
-##   apply(dlr, proc(x: var string) = x &= "42")  # APPLY #1
-##   echo dlr   # --> ["142", "242", "342", "442"]
-##
-##   sll = @["1", "2", "3", "4"].toSinglyLinkedList()
-##   apply(sll, proc(x: var string) = x &= "42")  # APPLY #2
-##   echo sll   # --> ["142", "242", "342", "442"]
-##
-##   dll = @["1", "2", "3", "4"].toSinglyLinkedList()
-##   apply(dll, proc(x: var string) = x &= "42")  # APPLY #2
+##   dll = @["1", "2", "3", "4"].toDoublyLinkedList()
+##   apply(dll, proc(x: var string) = x &= "42")  # apply #2
 ##   echo dll   # --> ["142", "242", "342", "442"]
-##
-##   slr = @["1", "2", "3", "4"].toSinglyLinkedList()
-##   apply(slr, proc(x: var string) = x &= "42")  # APPLY #2
-##   echo slr   # --> ["142", "242", "342", "442"]
-##
-##   dlr = @["1", "2", "3", "4"].toSinglyLinkedList()
-##   apply(dlr, proc(x: var string) = x &= "42")  # APPLY #2
-##   echo dlr   # --> ["142", "242", "342", "442"]
 ##
 ## **Using future module**
 ##
 ## .. code-block:: nim
 ##   import lists, future
 ##   var
-##     sll1 = @[1, 2, 3, 4].toSinglyLinkedList()
-##     sll2 = map(sll1, (x) => $x)  # MAP
 ##     dll1 = @[1, 2, 3, 4].toDoublyLinkedList()
-##     dll2 = map(dll1, (x) => $x)  # MAP
-##     slr1 = @[1, 2, 3, 4].toSinglyLinkedRing()
-##     slr2 = map(slr1, (x) => $x)  # MAP
-##     dlr1 = @[1, 2, 3, 4].toDoublyLinkedRing()
-##     dlr2 = map(dlr1, (x) => $x)  # MAP
+##     dll2 = map(dll1, (x) => $x)  # map
 ##
-##   assert sll2 == @["1", "2", "3", "4"].toSinglyLinkedList()
 ##   assert dll2 == @["1", "2", "3", "4"].toDoublyLinkedList()
-##   assert slr2 == @["1", "2", "3", "4"].toSinglyLinkedRing()
-##   assert dlr2 == @["1", "2", "3", "4"].toDoublyLinkedRing()
-##
-##   var sll = @["1", "2", "3", "4"].toSinglyLinkedList()
-##   apply(sll, (x) => $x & "42")  # APPLY #2
-##   echo sll   # --> ["142", "242", "342", "442"]
 ##
 ##   var dll = @["1", "2", "3", "4"].toSinglyLinkedList()
-##   apply(dll, (x) => $x & "42")  # APPLY #2
+##   apply(dll, (x) => $x & "42")  # apply #2
 ##   echo dll   # --> ["142", "242", "342", "442"]
 ##
-##   var slr = @["1", "2", "3", "4"].toSinglyLinkedList()
-##   apply(slr, (x) => $x & "42")  # APPLY #2
-##   echo slr   # --> ["142", "242", "342", "442"]
-##
-##   var dlr = @["1", "2", "3", "4"].toSinglyLinkedList()
-##   apply(dlr, (x) => $x & "42")  # APPLY #2
-##   echo dlr   # --> ["142", "242", "342", "442"]
-
 when not defined(nimhygiene):
   {.pragma: dirty.}
 

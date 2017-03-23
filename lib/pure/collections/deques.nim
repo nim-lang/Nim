@@ -64,17 +64,17 @@
 ##   import deques
 ##   var deq = @[1,2,3,4,5].toDeque
 ##
-##   for v in deq.items:  # ITEMS (immutable)
+##   for v in deq.items:  # (immutable)
 ##     echo v
 ##
-##   for v in deq.mitems: # MITEMS (can modify)
+##   for v in deq.mitems: # (can modify)
 ##     v += 2
 ##   echo deq  # -> [3,4,5,6,7]
 ##
-##   for i, v in deq.pairs: # PAIRS
+##   for i, v in deq.pairs: # (immutable)
 ##     echo "Index: ", i, " value: ", v
 ##
-##   for i, v in deq.mpairs: # MPAIRS
+##   for i, v in deq.mpairs: # (can modify)
 ##     if i == 2:
 ##       v += 2
 ##   echo deq  # -> [3,4,7,6,7]
@@ -87,14 +87,14 @@
 ##   import deques
 ##   var
 ##     deq1 = @[1, 2, 3, 4].toDeque()
-##     deq2 = deq1.map(proc(x: int): string = $x) # MAP
+##     deq2 = deq1.map(proc(x: int): string = $x) # map
 ##   assert deq2 == @["1", "2", "3", "4"].toDeque()
 ##
-##   deq2.apply(proc(x: var string) = x &= "42") # APPLY #1
+##   deq2.apply(proc(x: var string) = x &= "42") # apply #1
 ##   # deq2 --> ["142", "242", "342", "442"]
 ##
 ##   deq2 = @["1", "2", "3", "4"].toDeque
-##   deq2.apply(proc(x: string): string = x & "42") # APPLY #2
+##   deq2.apply(proc(x: string): string = x & "42") # apply #2
 ##   # deq2 --> ["142", "242", "342", "442"]
 ##
 ## **Using the future module**
@@ -103,10 +103,10 @@
 ##   import deques, future
 ##   var
 ##     deq1 = @[1, 2, 3, 4].toDeque()
-##     deq2 = deq1.map((x) => $x) # MAP
+##     deq2 = deq1.map((x) => $x) # map
 ##   assert deq2 == @["1", "2", "3", "4"].toDeque()
 ##
-##   deq2.apply((x) => x & "42") # APPLY #2
+##   deq2.apply((x) => x & "42") # apply #2
 ##   # deq2 --> ["142", "242", "342", "442"]
 
 import math
