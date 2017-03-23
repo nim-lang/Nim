@@ -407,7 +407,7 @@ or
     ...
 
 Other useful iterators for collections (like arrays and sequences) are
-* ``items`` and ``mitems``, which provides immutable and mutable elements respectively, and 
+* ``items`` and ``mitems``, which provides immutable and mutable elements respectively, and
 * ``pairs`` and ``mpairs`` which provides the element and an index number (immutable and mutable respectively)
 
 .. code-block:: nim
@@ -1394,6 +1394,27 @@ slice's bounds can hold any value supported by
 their type, but it is the proc using the slice object which defines what values
 are accepted.
 
+ To understand some of the different ways of specifying the indices of strings, arrays, sequences, etc.,
+ it must be remembered that Nim uses zero-based indices.
+
+ So the string ``b`` is of length 19, and two different ways of specifying the indices are
+
+ .. code-block:: nim
+
+  "Slices are useless."
+   |          |     |
+   0         11    17   using indices
+  ^19        ^8    ^2   using ^ syntax
+
+ where ``b[0..^1]`` is equivalent to ``b[0..b.len-1]`` and ``b[0..<b.len]``, and it can be seen that the ``^1`` provides a short-hand way of specifying the ``b.len-1``
+
+ In the above example, because the string ends in a period, to get the portion of the string that is "useless" and replace it with "useful"
+
+ ``b[11..^2]`` is the portion "useless", and
+ ``b[11..^2] = "useful"`` replaces the "useless" portion with "useful",
+ giving the result "Slices are useful."
+
+ Note: alternate ways of writing this are ``b[^8..^2] = "useful"`` or as ``b[11..b.len-2] = "useful"`` or as ``b[11..<b.len-1] = "useful"`` or as ....
 
 Tuples
 ------
