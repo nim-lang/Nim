@@ -1,5 +1,5 @@
 discard """
-  ouput: '''x as ParameterizedType[T]
+  output: '''x as ParameterizedType[T]
 x as ParameterizedType[T]
 x as ParameterizedType[T]
 x as ParameterizedType
