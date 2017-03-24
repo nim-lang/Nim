@@ -51,10 +51,10 @@ template macroToExpand(s): untyped =
   s.kind in {skMacro, skTemplate} and (s.typ.len == 1 or sfAllUntyped in s.flags)
 
 template macroToExpandSym(s): untyped =
-  s.kind in {skMacro, skTemplate} and (s.typ.len == 1)
+  s.kind in {skMacro, skTemplate} and (s.typ.len == 1) and not fromDotExpr
 
 proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
-                          ctx: var GenericCtx): PNode =
+                          ctx: var GenericCtx; fromDotExpr=false): PNode =
   semIdeForTemplateOrGenericCheck(n, ctx.cursorInBody)
   incl(s.flags, sfUsed)
   case s.kind
@@ -145,7 +145,7 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
       elif s.name.id in ctx.toMixin:
         result = newDot(result, symChoice(c, n, s, scForceOpen))
       else:
-        let syms = semGenericStmtSymbol(c, n, s, ctx)
+        let syms = semGenericStmtSymbol(c, n, s, ctx, fromDotExpr=true)
         if syms.kind == nkSym:
           let choice = symChoice(c, n, s, scForceOpen)
           choice.kind = nkClosedSymChoice
