@@ -6,7 +6,10 @@ true
 p has been called.
 p has been called.
 implicit generic
-generic'''
+generic
+false
+true
+-1'''
 """
 
 # https://github.com/nim-lang/Nim/issues/1147
@@ -65,4 +68,33 @@ c1(@[1])
 
 proc c2[T](x: Container[T]) = echo "generic"
 c2(@[1])
+
+# https://github.com/nim-lang/Nim/issues/2882
+type
+  Paper = object
+    name: string
+
+  Bendable = concept x
+    bend(x is Bendable)
+
+proc bend(p: Paper): Paper = Paper(name: "bent-" & p.name)
+
+var paper = Paper(name: "red")
+echo paper is Bendable
+
+type
+  A = concept self
+    size(self) is int
+
+  B = object
+
+proc size(self: B): int =
+  return -1  
+
+proc size(self: A): int =
+  return 0  
+
+let b = B()
+echo b is A
+echo b.size()
 
