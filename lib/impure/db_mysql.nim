@@ -183,7 +183,6 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
       if row == nil: break
       for i in 0..L-1:
         if row[i] == nil:
-          shallowCopy(backup[i], result[i])
           result[i] = nil
         else:
           if result[i] == nil:
