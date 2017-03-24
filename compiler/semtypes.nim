@@ -185,12 +185,16 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
   for i in 0..1:
     rangeT[i] = range[i].typ.skipTypes({tyStatic}).skipIntLit
 
-  if not sameType(rangeT[0].skipTypes({tyRange}), rangeT[1].skipTypes({tyRange})):
-    localError(n.info, errPureTypeMismatch)
-  elif not rangeT[0].isOrdinalType:
-    localError(n.info, errOrdinalTypeExpected)
-  elif enumHasHoles(rangeT[0]):
-    localError(n.info, errEnumXHasHoles, rangeT[0].sym.name.s)
+  let hasUnknownTypes = c.inGenericContext > 0 and
+    rangeT[0].kind == tyFromExpr or rangeT[1].kind == tyFromExpr
+
+  if not hasUnknownTypes:
+    if not sameType(rangeT[0].skipTypes({tyRange}), rangeT[1].skipTypes({tyRange})):
+      localError(n.info, errPureTypeMismatch)
+    elif not rangeT[0].isOrdinalType:
+      localError(n.info, errOrdinalTypeExpected)
+    elif enumHasHoles(rangeT[0]):
+      localError(n.info, errEnumXHasHoles, rangeT[0].sym.name.s)
 
   for i in 0..1:
     if hasGenericArguments(range[i]):
@@ -228,7 +232,8 @@ proc semRange(c: PContext, n: PNode, prev: PType): PType =
     result = newOrPrevType(tyError, prev, c)
 
 proc semArrayIndex(c: PContext, n: PNode): PType =
-  if isRange(n): result = semRangeAux(c, n, nil)
+  if isRange(n):
+    result = semRangeAux(c, n, nil)
   else:
     let e = semExprWithType(c, n, {efDetermineType})
     if e.typ.kind == tyFromExpr:
