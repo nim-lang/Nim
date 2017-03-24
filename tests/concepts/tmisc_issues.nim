@@ -4,7 +4,9 @@ true
 true
 true
 p has been called.
-p has been called.'''
+p has been called.
+implicit generic
+generic'''
 """
 
 # https://github.com/nim-lang/Nim/issues/1147
@@ -48,4 +50,19 @@ proc p[A: ProtocolFollower, B: ProtocolFollower](a: A, b: B) =
 
 p(ImplementorA(), ImplementorA())
 p(ImplementorA(), ImplementorB())
+
+# https://github.com/nim-lang/Nim/issues/2423
+proc put*[T](c: seq[T], x: T) = echo "generic"
+proc put*(c: seq) = echo "implicit generic"
+
+type
+  Container[T] = concept c
+    put(c)
+    put(c, T)
+
+proc c1(x: Container) = echo "implicit generic"
+c1(@[1])
+
+proc c2[T](x: Container[T]) = echo "generic"
+c2(@[1])
 
