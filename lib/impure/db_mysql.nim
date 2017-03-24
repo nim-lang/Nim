@@ -180,10 +180,13 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
       row = mysql.fetchRow(sqlres)
       if row == nil: break
       for i in 0..L-1:
-        setLen(result[i], 0)
         if row[i] == nil:
           result[i] = nil
         else:
+          if result[i] == nil:
+            result[i] = ""
+          else:
+            setLen(result[i], 0)
           add(result[i], row[i])
       yield result
     properFreeResult(sqlres, row)
