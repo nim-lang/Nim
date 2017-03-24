@@ -154,9 +154,13 @@ proc `addr`*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
   discard
 
 proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
-  ## Builtin 'addr' operator for taking the address of a memory location.
-  ## This works even for ``let`` variables or parameters for better interop
-  ## with C and so it is considered even more unsafe than the ordinary ``addr``.
+  ## Builtin 'addr' operator for taking the address of a memory
+  ## location.  This works even for ``let`` variables or parameters
+  ## for better interop with C and so it is considered even more
+  ## unsafe than the ordinary ``addr``.  When you use it to write a
+  ## wrapper for a C library, you should always check that the
+  ## original library does never write to data behind the pointer that
+  ## is returned from this procedure.
   ## Cannot be overloaded.
   discard
 

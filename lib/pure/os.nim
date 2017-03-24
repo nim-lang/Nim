@@ -617,20 +617,6 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
     flushFile(d)
     close(d)
 
-proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
-  tags: [ReadIOEffect, WriteIOEffect].} =
-  ## Moves a file from `source` to `dest`. If this fails, `OSError` is raised.
-  when defined(Windows):
-    when useWinUnicode:
-      let s = newWideCString(source)
-      let d = newWideCString(dest)
-      if moveFileW(s, d) == 0'i32: raiseOSError(osLastError())
-    else:
-      if moveFileA(source, dest) == 0'i32: raiseOSError(osLastError())
-  else:
-    if c_rename(source, dest) != 0'i32:
-      raiseOSError(osLastError(), $strerror(errno))
-
 when not declared(ENOENT) and not defined(Windows):
   when NoFakeVars:
     const ENOENT = cint(2) # 2 on most systems including Solaris
@@ -647,24 +633,62 @@ when defined(Windows):
     template setFileAttributes(file, attrs: untyped): untyped =
       setFileAttributesA(file, attrs)
 
-proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect].} =
-  ## Removes the `file`. If this fails, `OSError` is raised. This does not fail
+proc tryRemoveFile*(file: string): bool {.rtl, extern: "nos$1", tags: [WriteDirEffect].} =
+  ## Removes the `file`. If this fails, returns `false`. This does not fail
   ## if the file never existed in the first place.
   ## On Windows, ignores the read-only attribute.
+  result = true
   when defined(Windows):
     when useWinUnicode:
       let f = newWideCString(file)
     else:
       let f = file
     if deleteFile(f) == 0:
-      if getLastError() == ERROR_ACCESS_DENIED:
-        if setFileAttributes(f, FILE_ATTRIBUTE_NORMAL) == 0:
-          raiseOSError(osLastError())
-        if deleteFile(f) == 0:
-          raiseOSError(osLastError())
+      result = false
+      let err = getLastError()
+      if err == ERROR_FILE_NOT_FOUND or err == ERROR_PATH_NOT_FOUND:
+        result = true
+      elif err == ERROR_ACCESS_DENIED and
+         setFileAttributes(f, FILE_ATTRIBUTE_NORMAL) != 0 and
+         deleteFile(f) != 0:
+        result = true
   else:
     if c_remove(file) != 0'i32 and errno != ENOENT:
+      result = false
+
+proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect].} =
+  ## Removes the `file`. If this fails, `OSError` is raised. This does not fail
+  ## if the file never existed in the first place.
+  ## On Windows, ignores the read-only attribute.
+  if not tryRemoveFile(file):
+    when defined(Windows):
+      raiseOSError(osLastError())
+    else:
       raiseOSError(osLastError(), $strerror(errno))
+
+proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
+  tags: [ReadIOEffect, WriteIOEffect].} =
+  ## Moves a file from `source` to `dest`. If this fails, `OSError` is raised.
+  when defined(Windows):
+    when useWinUnicode:
+      let s = newWideCString(source)
+      let d = newWideCString(dest)
+      if moveFileW(s, d) == 0'i32: raiseOSError(osLastError())
+    else:
+      if moveFileA(source, dest) == 0'i32: raiseOSError(osLastError())
+  else:
+    if c_rename(source, dest) != 0'i32:
+      let err = osLastError()
+      if err == EXDEV.OSErrorCode:
+        # Fallback to copy & del
+        copyFile(source, dest)
+        try:
+          removeFile(source)
+        except:
+          discard tryRemoveFile(dest)
+          raise
+      else:
+        raiseOSError(err, $strerror(errno))
 
 proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   tags: [ExecIOEffect].} =
@@ -1616,7 +1640,8 @@ proc sleep*(milsecs: int) {.rtl, extern: "nos$1", tags: [TimeEffect].} =
 
 proc getFileSize*(file: string): BiggestInt {.rtl, extern: "nos$1",
   tags: [ReadIOEffect].} =
-  ## returns the file size of `file`. Can raise ``OSError``.
+  ## returns the file size of `file` (in bytes). An ``OSError`` exception is
+  ## raised in case of an error.
   when defined(windows):
     var a: WIN32_FIND_DATA
     var resA = findFirstFile(file, a)

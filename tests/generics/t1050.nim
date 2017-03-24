@@ -14,3 +14,16 @@ proc arrayItem(a: ArrayType): auto =
 var arr: ArrayType[int]
 echo arrayItem(arr)
 
+# bug #5597
+
+template fail() = "what"
+
+proc g[T](x: var T) =
+  x.fail = 3
+
+type
+  Obj = object
+    fail: int
+
+var y: Obj
+g y
