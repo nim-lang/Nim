@@ -175,22 +175,31 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
   if sqlres != nil:
     var
       L = int(mysql.numFields(sqlres))
-      backup = newRow(L)
       row: cstringArray
       result: Row
+      backup: Row
     newSeq(result, L)
-    for i in 0..L-1:
-      shallowCopy(result[i], backup[i])
     while true:
       row = mysql.fetchRow(sqlres)
       if row == nil: break
       for i in 0..L-1:
         if row[i] == nil:
+          if backup == nil:
+            newSeq(backup, L)
+          if backup[i] == nil and result[i] != nil:
+            shallowCopy(backup[i], result[i])
           result[i] = nil
         else:
           if result[i] == nil:
-            shallowCopy(result[i], backup[i])
-          setLen(result[i], 0)
+            if backup != nil:
+              if backup[i] == nil:
+                backup[i] = ""
+              shallowCopy(result[i], backup[i])
+              setLen(result[i], 0)
+            else:
+              result[i] = ""
+          else:
+            setLen(result[i], 0)
           add(result[i], row[i])
       yield result
     properFreeResult(sqlres, row)
