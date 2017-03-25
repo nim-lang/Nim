@@ -241,7 +241,7 @@ proc reprRecordAux(result: var string, o: pointer, typ: PNimType,cl: var ReprClo
     # if the object has only one field, len is 0  and sons is nil, the field is in node
     let key : cstring =  typ.node.name
     add result, $key & " = "
-    asm "`val` = `o`.`key`;\n"
+    asm "`val` = `o`[`key`];\n"
     reprAux(result,val,typ.node.typ,cl)
   else:
     # if the object has more than one field, sons is not nil and contains the fields.
