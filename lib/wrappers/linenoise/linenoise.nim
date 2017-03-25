@@ -14,8 +14,7 @@ type
 
   CompletionCallback* = proc (a2: cstring; a3: ptr Completions) {.cdecl.}
 
-{.emit: staticRead"clinenoise.h".}
-{.emit: staticRead"clinenoise.c".}
+{.compile: "linenoise.c".}
 
 proc setCompletionCallback*(a2: ptr CompletionCallback) {.
     importc: "linenoiseSetCompletionCallback".}
