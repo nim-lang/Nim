@@ -6,6 +6,7 @@
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
+# The generic ``repr`` procedure for the javascript backend.
 
 proc reprInt(x: int64): string {.compilerproc.} = return $x
 proc reprFloat(x: float): string {.compilerproc.} = 
@@ -20,7 +21,7 @@ proc reprPointer(p: pointer): string {.compilerproc.} =
   asm """
     if (`p`_Idx == null){
       `tmp` = 0
-    }else {
+    } else {
     `tmp` =  `p`_Idx
     }
   """
@@ -30,33 +31,13 @@ proc reprBool(x: bool): string {.compilerRtl.} =
   if x: result = "true"
   else: result = "false"
 
-#[
-proc `$`(x: uint64): string =
-  if x == 0:
-    result = "0"
-  else:
-    var buf: array[60, char]
-    var i = 0
-    var n = x
-    while n != 0:
-      let nn = n div 10'u64
-      buf[i] = char(n - 10'u64 * nn + ord('0'))
-      inc i
-      n = nn
-
-    let half = i div 2
-    # Reverse
-    for t in 0 .. < half: swap(buf[t], buf[i-t-1])
-    result = $buf
-]#
-
 proc isUndefined[T](x: T): bool {.inline.} = {.emit: "`result`= `x` === undefined;"}
 
 proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
   if not typ.node.sons[e].isUndefined :
-    $typ.node.sons[e].name
+    result = $typ.node.sons[e].name
   else:
-    $e & " (invalid data!)"
+    result = $e & " (invalid data!)"
   
 proc reprChar(x: char): string {.compilerRtl.} =
   result = "\'"
@@ -67,9 +48,9 @@ proc reprChar(x: char): string {.compilerRtl.} =
   else: add result, x
   add result, "\'"
 
-proc reprStrAux(result: var string, s: cstring; len: int) =
+proc reprStrAux(result: var string, s: cstring, len: int) =
   add result, "\""
-  for i in 0.. <len:
+  for i in 0 .. <len:
     let c = s[i]
     case c
     of '"': add result, "\\\""
@@ -105,7 +86,6 @@ proc addSetElem(result: var string, elem: int, typ: PNimType) =
 
 iterator SetKeys(s: int): int {.inline.} =
   # The type of s is a lie, but it's expected to be a set.
-  # This means every key has to be a positive integer.
   # Iterate over the JS object representing a set 
   # and returns the keys as int.
   var len: int
@@ -129,33 +109,6 @@ proc reprSetAux(result: var string, s: int, typ: PNimType) =
     else:
       add result, ", "
     addSetElem(result,el,typ.base)
-  #[
-  Alternative without iterator:
-
-  let fieldcount: int = 0 # we cheat using asm to set it to its value.
-  var el : int
-  asm """
-  var setObjKeys = Object.getOwnPropertyNames(`s`);
-  `fieldcount` = setObjKeys.length
-  """
-  case fieldcount
-  of 0: discard
-  of 1:
-    asm "`el` = parseInt(setObjKeys[0],10);\n"
-    addSetElem(result,el,typ.base)
-  of 2:
-    asm "`el` = parseInt(setObjKeys[0],10);\n"
-    addSetElem(result,el,typ.base)
-    add result, ", "      
-    asm "`el` = parseInt(setObjKeys[1],10);\n"
-    addSetElem(result,el,typ.base)
-  else:
-    for i in 0 .. < fieldcount:
-      asm "`el` = parseInt(setObjKeys[`i`],10);\n"
-      if i != fieldcount-1:
-        add result, ", "
-      addSetElem(result,el,typ.base)
-  ]#
   add result, "}"
 
 proc reprSet(e: int, typ: PNimType): string {.compilerRtl.} =
@@ -171,14 +124,10 @@ proc initReprClosure(cl: var ReprClosure) =
   cl.recdepth = -1      # default is to display everything!
   cl.indent = 0
 
-proc reprBreak(result: var string, cl: ReprClosure) =
-  add result, "\n"
-  for i in 0..cl.indent-1: add result, ' '
-
 proc reprAux(result: var string, p: pointer, typ: PNimType, cl: var ReprClosure) 
 
 proc reprArray(a: pointer, typ: PNimType, 
-              cl: var ReprClosure):string {.compilerRtl.} =
+              cl: var ReprClosure): string {.compilerRtl.} =
   var isnilarrorseq : bool
   # isnil is not enough here as it would try to deref `a` without knowing what's inside
   asm """
@@ -196,24 +145,21 @@ proc reprArray(a: pointer, typ: PNimType,
   result = if typ.kind == tySequence: "@[" else: "["
   var len: int = 0
   var i : int = 0
-  
-  #if isnilarrorseq:
-    # skip if the array is null (eg it's a ref that isn't initialized)
-  
+    
   asm """
   `len` = `a`.length;
   """
-  var dereffed : pointer = a
+  var dereffed: pointer = a
   for i in 0 .. < len:
     if i>0 :
       add result, ", "
     asm "`dereffed`_Idx = `i`;\n" # advance the pointer
     asm "`dereffed` = `a`[`dereffed`_Idx];\n" # point to element at index
-    reprAux(result, dereffed, typ.base, cl )  
+    reprAux(result, dereffed, typ.base, cl)  
   
   add result, "]"
 
-proc ispointedtonil(p:pointer):bool {.inline.}=
+proc ispointedtonil(p: pointer): bool {.inline.}=
   asm """
   if (`p` === null ){ `result` = true }
   """
@@ -235,24 +181,24 @@ proc reprRef(result: var string, p: pointer, typ: PNimType,
 proc reprRecordAux(result: var string, o: pointer, typ: PNimType,cl: var ReprClosure) =
   add result, "["
   
-  var first : bool = true
-  var val : pointer = o
+  var first: bool = true
+  var val: pointer = o
   if typ.node.len == 0:
     # if the object has only one field, len is 0  and sons is nil, the field is in node
-    let key : cstring =  typ.node.name
+    let key: cstring =  typ.node.name
     add result, $key & " = "
     asm "`val` = `o`[`key`];\n"
-    reprAux(result,val,typ.node.typ,cl)
+    reprAux(result, val, typ.node.typ, cl)
   else:
     # if the object has more than one field, sons is not nil and contains the fields.
     for i in 0 .. < typ.node.len:
       if first: first  = false
       else: add result, ",\n"
 
-      let key : cstring =  typ.node.sons[i].name
+      let key: cstring =  typ.node.sons[i].name
       add result, $key & " = "
       asm "`val` = `o`[`key`];\n" # access the field by name
-      reprAux(result,val,typ.node.sons[i].typ,cl)
+      reprAux(result, val, typ.node.sons[i].typ, cl)
   add result, "]"
 
 proc reprRecord(o: pointer, typ: PNimType,cl: var ReprClosure): string {.compilerRtl.} =
@@ -263,7 +209,7 @@ proc reprRecord(o: pointer, typ: PNimType,cl: var ReprClosure): string {.compile
 proc reprJSONStringify(p: int): string {.compilerRtl.}=
   # As a last resort, use stringify
   # We use this for tyOpenArray, tyVarargs while genTypeInfo is not implemented
-  var tmp : cstring
+  var tmp: cstring
   asm "`tmp` = JSON.stringify(`p`);"
   result = $tmp
 
@@ -283,25 +229,25 @@ proc reprAux(result: var string, p: pointer, typ: PNimType,
   of tyFloat..tyFloat128:
     add result, reprFloat(cast[float](p))
   of tyString:
-    var fp : int
+    var fp: int
     asm "`fp` = `p`;"
     if cast[string](fp).isnil:
       add result, "nil"
     else:
       add result, reprStr(cast[string](p))
   of tyCString:
-    var fp : cstring
+    var fp: cstring
     asm "`fp` = `p`;"
     if fp.isnil:
       add result, "nil"
     else:
       reprStrAux(result,fp, fp.len)
   of tyEnum, tyOrdinal:
-    var fp : int
+    var fp: int
     asm "`fp` = `p`;"
     add result, reprEnum(fp,typ)
   of tySet:
-    var fp : int
+    var fp: int
     asm "`fp` = `p`;"
     add result, reprSet(fp,typ)
   of tyRange: reprAux(result,p,typ.base,cl)
