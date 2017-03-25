@@ -338,3 +338,81 @@ Field1 = "tuple!"],
 p = 0,
 q = "cstringtest"]
 """)
+
+block another:
+  type 
+    Size1 = enum 
+      s1a, s1b
+    Size2 = enum 
+      s2c=0, s2d=20000
+    Size3 = enum 
+      s3e=0, s3f=2000000000
+
+  doassert(repr([s1a, s1b]) == "[s1a, s1b]\n")
+  doassert(repr([s2c, s2d]) == "[s2c, s2d]\n")
+  doassert(repr([s3e, s3f]) == "[s3e, s3f]\n")
+
+block another2:
+  
+  type
+    AnEnum = enum
+      en1, en2, en3, en4, en5, en6
+
+    Point {.final.} = object
+      x, y, z: int
+      s: array [0..1, string]
+      e: AnEnum
+
+  var
+    p: Point
+    q: ref Point
+    s: seq[ref Point]
+
+  p.x = 0
+  p.y = 13
+  p.z = 45
+  p.s[0] = "abc"
+  p.s[1] = "xyz"
+  p.e = en6
+
+  new(q)
+  q[] = p
+
+  s = @[q, q, q, q]
+
+  doassert(repr(p) == """
+[x = 0,
+y = 13,
+z = 45,
+s = ["abc", "xyz"],
+e = en6]
+""")
+  doassert(repr(q) == """
+ref 0 --> [x = 0,
+y = 13,
+z = 45,
+s = ["abc", "xyz"],
+e = en6]
+""")
+  doassert(repr(s) == """
+@[ref 0 --> [x = 0,
+y = 13,
+z = 45,
+s = ["abc", "xyz"],
+e = en6], ref 1 --> [x = 0,
+y = 13,
+z = 45,
+s = ["abc", "xyz"],
+e = en6], ref 2 --> [x = 0,
+y = 13,
+z = 45,
+s = ["abc", "xyz"],
+e = en6], ref 3 --> [x = 0,
+y = 13,
+z = 45,
+s = ["abc", "xyz"],
+e = en6]]
+""")
+  doassert(repr(en4) == "en4")
+
+  doassert(repr({'a'..'p'}) == "{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p'}")
