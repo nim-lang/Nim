@@ -160,8 +160,8 @@ proc discardCheck(c: PContext, result: PNode) =
       else:
         var n = result
         while n.kind in skipForDiscardable: n = n.lastSon
-        var s = "in expression '" & $n & "': value of type '" &
-            result.typ.typeToString & "' has to be discarded"
+        var s = "expression '" & $n & "' is of type '" &
+            result.typ.typeToString & "' and has to be discarded"
         if result.typ.kind == tyProc:
           s.add "; for a function call use ()"
         localError(n.info,  s)
