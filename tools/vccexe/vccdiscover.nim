@@ -1,15 +1,33 @@
+## VCC compiler backend discovery Utility
+##
+## Module to discover the path to the vcvarsall utility of a VCC compiler backend.
+## The module supports discovery for either the latest recognizable version (default)
+## or discovery of a specific VCC compiler backend version.
+##
+## This module can also produce a standalone command-line executable.
+## It supports a `--help` command-line argument. Refer to its output for further
+## documentation on the `vccdiscover` standalone command-line application.
+
 import strutils, os, vccenv
 
 type
-  VccVersion* = enum
-    vccUndefined = (0, ""),
-    vcc90  =  vs90, # Visual Studio 2008
-    vcc100 = vs100, # Visual Studio 2010
-    vcc110 = vs110, # Visual Studio 2012
-    vcc120 = vs120, # Visual Studio 2013
-    vcc140 = vs140  # Visual Studio 2015
+  VccVersion* = enum ## VCC compiler backend versions
+    vccUndefined = (0, ""), ## VCC version undefined, resolves to the latest recognizable VCC version
+    vcc90  =  vs90, ## Visual Studio 2008 (Version 9.0)
+    vcc100 = vs100, ## Visual Studio 2010 (Version 10.0)
+    vcc110 = vs110, ## Visual Studio 2012 (Version 11.0)
+    vcc120 = vs120, ## Visual Studio 2013 (Version 12.0)
+    vcc140 = vs140  ## Visual Studio 2015 (Version 14.0)
 
 proc discoverVccVcVarsAllPath*(version: VccVersion = vccUndefined): string =
+  ## Returns the path to the vcvarsall utility of the specified VCC compiler backend.
+  ##
+  ## version
+  ##   The specific version of the VCC compiler backend to discover.
+  ##   Defaults to the latest recognized VCC compiler backend that is found on the system.
+  ##
+  ## Returns `nil` if the VCC compiler backend discovery failed.
+
   # TODO: Attempt discovery using vswhere utility.
 
   # Attempt discovery through VccEnv 

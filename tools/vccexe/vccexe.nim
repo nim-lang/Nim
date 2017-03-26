@@ -47,6 +47,8 @@ Options:
   --sdkversion:<v>    Use a specific Windows SDK version:
                       <v> is either the full Windows 10 SDK version number or 
                       "8.1" to use the windows 8.1 SDK
+  --verbose           Echoes the command line for loading the Developer Command Prompt
+                      and the command line passed on to the secondary command.
 
 Other command line arguments are passed on to the
 secondary command specified by --command or to the
@@ -65,6 +67,11 @@ when isMainModule:
 
   var clArgs: seq[TaintedString] = @[]
 
+  # Cannot use usual command-line argument parser here
+  # Since vccexe command-line arguments are intermingled
+  # with the secondary command-line arguments which have
+  # a syntax that is not supported by the default nim
+  # argument parser.
   var wrapperArgs = commandLineParams()
   for wargv in wrapperArgs:
     # Check whether the current argument contains -- prefix
@@ -87,6 +94,8 @@ when isMainModule:
         echo HelpText
       clArgs.add(wargv)
 
+  # Support for multiple specified versions. Attempt VCC discovery for each version
+  # specified, first successful discovery wins
   for vccversionItem in vccversionArg:
     var vccversionValue: VccVersion
     try:
@@ -96,9 +105,11 @@ when isMainModule:
     vcvarsallArg = discoverVccVcVarsAllPath(vccversionValue)
     if vcvarsallArg.len > 0:
       break
+  # VCC version not specified, discover latest (call discover without args)
   if vcvarsallArg.len < 1 and vccversionArg.len < 1:
     vcvarsallArg = discoverVccVcVarsAllPath()
 
+  # Call vcvarsall to get the appropiate VCC process environment
   var vcvars = vccVarsAll(vcvarsallArg, platformArg, sdkTypeArg, sdkVersionArg, verboseArg)
   if vcvars != nil:
     for vccEnvKey, vccEnvVal in vcvars:
@@ -108,8 +119,11 @@ when isMainModule:
   if verboseArg:
     vccOptions.incl poEchoCmd
 
+  # Default to the cl.exe command if no secondary command was specified
   if commandArg.len < 1:
     commandArg = "cl.exe"
+
+  # Run VCC command with the VCC process environment
   let vccProcess = startProcess(
       commandArg,
       args = clArgs,
