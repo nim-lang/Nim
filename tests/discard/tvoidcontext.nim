@@ -1,5 +1,5 @@
 discard """
-  errormsg: "value of type 'string' has to be discarded"
+  errormsg: '''expression '"invalid"' is of type 'string' and has to be discarded'''
   line: 12
 """
 
