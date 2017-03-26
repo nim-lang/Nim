@@ -642,6 +642,10 @@ proc toU32*(a: int64): int32 {.asmNoStackFrame, compilerproc.} =
 proc nimMin(a, b: int): int {.compilerproc.} = return if a <= b: a else: b
 proc nimMax(a, b: int): int {.compilerproc.} = return if a >= b: a else: b
 
+proc chckNilDisp(p: pointer) {.compilerproc.} =
+  if p == nil:
+    sysFatal(NilAccessError, "cannot dispatch; dispatcher is nil")
+
 type NimString = string # hack for hti.nim
 include "system/hti"
 
