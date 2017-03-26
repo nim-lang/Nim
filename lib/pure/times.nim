@@ -619,7 +619,7 @@ elif defined(JS):
     result.setMonth(ord(timeInfo.month))
     result.setFullYear(timeInfo.year)
     result.setDate(timeInfo.monthday)
-    result.setSeconds(timeInfo.second + timeInfo.timezone)
+    result.setSeconds(timeInfo.second)
 
   proc `-` (a, b: Time): int64 =
     return a.getTime() - b.getTime()
