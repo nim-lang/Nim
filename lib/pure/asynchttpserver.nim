@@ -36,6 +36,9 @@ import httpcore
 
 export httpcore except parseHeader
 
+const
+  maxLine = 8*1024
+
 # TODO: If it turns out that the decisions that asynchttpserver makes
 # explicitly, about whether to close the client sockets or upgrade them are
 # wrong, then add a return value which determines what to do for the callback.
@@ -139,12 +142,14 @@ proc processClient(client: AsyncSocket, address: string,
     for i in 0..1:
       lineFut.mget().setLen(0)
       lineFut.clean()
-      await client.recvLineInto(lineFut) # TODO: Timeouts.
+      await client.recvLineInto(lineFut, maxLength=maxLine) # TODO: Timeouts.
 
       if lineFut.mget == "":
         client.close()
         return
 
+      if lineFut.mget.len > maxLine:
+        await request.respond(Http413, "Entity too large")
       if lineFut.mget != "\c\L":
         break
 
@@ -178,10 +183,12 @@ proc processClient(client: AsyncSocket, address: string,
       i = 0
       lineFut.mget.setLen(0)
       lineFut.clean()
-      await client.recvLineInto(lineFut)
+      await client.recvLineInto(lineFut, maxLength=maxLine)
 
       if lineFut.mget == "":
         client.close(); return
+      if lineFut.mget.len > maxLine:
+        await request.respond(Http413, "Entity too large")
       if lineFut.mget == "\c\L": break
       let (key, value) = parseHeader(lineFut.mget)
       request.headers[key] = value
