@@ -598,6 +598,7 @@ elif defined(JS):
     result.year = t.getFullYear()
     result.weekday = weekDays[t.getDay()]
     result.yearday = 0
+    result.timezone = getTimezone()
 
   proc getGMTime(t: Time): TimeInfo =
     result.second = t.getUTCSeconds()

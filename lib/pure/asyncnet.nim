@@ -464,8 +464,7 @@ proc recvLineInto*(socket: AsyncSocket, resString: FutureVar[string],
   ## The partial line **will be lost**.
   ##
   ## The ``maxLength`` parameter determines the maximum amount of characters
-  ## that can be read before a ``ValueError`` is raised. This prevents Denial
-  ## of Service (DOS) attacks.
+  ## that can be read. ``resString`` will be truncated after that.
   ##
   ## **Warning**: The ``Peek`` flag is not yet implemented.
   ##
@@ -519,10 +518,7 @@ proc recvLineInto*(socket: AsyncSocket, resString: FutureVar[string],
       socket.currPos.inc()
 
       # Verify that this isn't a DOS attack: #3847.
-      if resString.mget.len > maxLength:
-        let msg = "recvLine received more than the specified `maxLength` " &
-                  "allowed."
-        raise newException(ValueError, msg)
+      if resString.mget.len > maxLength: break
   else:
     var c = ""
     while true:
@@ -546,10 +542,7 @@ proc recvLineInto*(socket: AsyncSocket, resString: FutureVar[string],
       resString.mget.add c
 
       # Verify that this isn't a DOS attack: #3847.
-      if resString.mget.len > maxLength:
-        let msg = "recvLine received more than the specified `maxLength` " &
-                  "allowed."
-        raise newException(ValueError, msg)
+      if resString.mget.len > maxLength: break
   resString.complete()
 
 proc recvLine*(socket: AsyncSocket,
@@ -569,8 +562,7 @@ proc recvLine*(socket: AsyncSocket,
   ## The partial line **will be lost**.
   ##
   ## The ``maxLength`` parameter determines the maximum amount of characters
-  ## that can be read before a ``ValueError`` is raised. This prevents Denial
-  ## of Service (DOS) attacks.
+  ## that can be read. The result is truncated after that.
   ##
   ## **Warning**: The ``Peek`` flag is not yet implemented.
   ##

@@ -558,6 +558,10 @@ type
     ## Raised if it is attempted to send a message to a dead thread.
     ##
     ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
+  NilAccessError* = object of SystemError ## \
+    ## Raised on dereferences of ``nil`` pointers.
+    ##
+    ## This is only raised if the ``segfaults.nim`` module was imported!
 
 {.deprecated: [TObject: RootObj, PObject: RootRef, TEffect: RootEffect,
   FTime: TimeEffect, FIO: IOEffect, FReadIO: ReadIOEffect,
@@ -2467,8 +2471,8 @@ template accumulateResult*(iter: untyped) =
 const NimStackTrace = compileOption("stacktrace")
 
 template coroutinesSupportedPlatform(): bool =
-  when defined(sparc) or defined(ELATE) or compileOption("gc", "v2") or 
-    defined(boehmgc) or defined(gogc) or defined(nogc) or defined(gcStack) or 
+  when defined(sparc) or defined(ELATE) or compileOption("gc", "v2") or
+    defined(boehmgc) or defined(gogc) or defined(nogc) or defined(gcStack) or
     defined(gcMarkAndSweep):
     false
   else:
