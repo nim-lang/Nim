@@ -10,4 +10,4 @@ import times
 
 block yeardayTest:
   # check if yearday attribute is properly set on TimeInfo creation
-  doAssert fromSeconds(2147483647).getGMTime().yearday == 0
+  doAssert fromSeconds(2147483647).getGMTime().yearday == 18
