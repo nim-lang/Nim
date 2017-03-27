@@ -1657,8 +1657,8 @@ proc getFileSize*(file: string): BiggestInt {.rtl, extern: "nos$1",
 
 when defined(Windows):
   type
-    DeviceId* = int32
-    FileId* = int64
+    DeviceId* = uint32
+    FileId* = BiggestInt
 else:
   type
     DeviceId* = Dev
@@ -1682,8 +1682,8 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
   ## or a 'Stat' structure on posix
   when defined(Windows):
     template toTime(e: FILETIME): untyped {.gensym.} = winTimeToUnixTime(rdFileTime(e)) # local templates default to bind semantics
-    template merge(a, b): untyped = a or (b shl 32)
-    formalInfo.id.device = rawInfo.dwVolumeSerialNumber
+    template merge(a, b): untyped = BiggestInt(a) or (BiggestInt(b) shl 32)
+    formalInfo.id.device = DeviceId(rawInfo.dwVolumeSerialNumber)
     formalInfo.id.file = merge(rawInfo.nFileIndexLow, rawInfo.nFileIndexHigh)
     formalInfo.size = merge(rawInfo.nFileSizeLow, rawInfo.nFileSizeHigh)
     formalInfo.linkCount = rawInfo.nNumberOfLinks
@@ -1711,7 +1711,7 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
       if (rawInfo.st_mode and rawMode) != 0'i32:
         formalInfo.permissions.incl(formalMode)
     formalInfo.id = (rawInfo.st_dev, rawInfo.st_ino)
-    formalInfo.size = rawInfo.st_size
+    formalInfo.size = BiggestInt(rawInfo.st_size)
     formalInfo.linkCount = rawInfo.st_Nlink
     formalInfo.lastAccessTime = rawInfo.st_atime
     formalInfo.lastWriteTime = rawInfo.st_mtime
