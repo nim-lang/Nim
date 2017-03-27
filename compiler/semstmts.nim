@@ -500,6 +500,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           #changeType(def.skipConv, typ, check=true)
       else:
         typ = skipIntLit(def.typ)
+        if typ.kind in tyUserTypeClasses and typ.isResolvedUserTypeClass:
+          typ = typ.lastSon
         if hasEmpty(typ):
           localError(def.info, errCannotInferTypeOfTheLiteral,
                      ($typ.kind).substr(2).toLowerAscii)
