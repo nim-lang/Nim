@@ -406,6 +406,8 @@ proc setInterval*(w: Window, function: proc (), pause: int): ref TInterval
 proc setTimeout*(w: Window, code: cstring, pause: int): ref TTimeOut
 proc setTimeout*(w: Window, function: proc (), pause: int): ref TInterval
 proc stop*(w: Window)
+proc requestAnimationFrame*(w: Window, function: proc (time: float)): int
+proc cancelAnimationFrame*(w: Window, id: int)
 
 # Node "methods"
 proc appendChild*(n, child: Node)

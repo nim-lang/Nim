@@ -41,30 +41,26 @@ Options:
 Possible Commands:
   boot [options]           bootstraps with given command line options
   distrohelper [bindir]    helper for distro packagers
-  geninstall               generate ./install.sh; Unix only!
-  testinstall              test tar.xz package; Unix only! Only for devs!
-  clean                    cleans Nim project; removes generated files
-  web [options]            generates the website and the full documentation
-  website [options]        generates only the website
-  csource [options]        builds the C sources for installation
-  pdf                      builds the PDF documentation
-  zip                      builds the installation ZIP package
-  xz                       builds the installation XZ package
-  nsis [options]           builds the NSIS Setup installer (for Windows)
-  tests [options]          run the testsuite
-  temp options             creates a temporary compiler for testing
-  winrelease               creates a release (for coredevs only)
-  nimble                   builds the Nimble tool
   tools                    builds Nim related tools
-  pushcsource              push generated C sources to its repo! Only for devs!
+  nimble                   builds the Nimble tool
 Boot options:
   -d:release               produce a release version of the compiler
-  -d:tinyc                 include the Tiny C backend (not supported on Windows)
   -d:useLinenoise          use the linenoise library for interactive mode
                            (not needed on Windows)
-  -d:nativeStacktrace      use native stack traces (only for Mac OS X or Linux)
-  -d:noCaas                build Nim without CAAS support
   -d:avoidTimeMachine      only for Mac OS X, excludes nimcache dir from backups
+
+Commands for core developers:
+  web [options]            generates the website and the full documentation
+  website [options]        generates only the website
+  csource -d:release       builds the C sources for installation
+  pdf                      builds the PDF documentation
+  zip                      builds the installation zip package
+  xz                       builds the installation tar.xz package
+  testinstall              test tar.xz package; Unix only!
+  tests [options]          run the testsuite
+  temp options             creates a temporary compiler for testing
+  winrelease               creates a Windows release
+  pushcsource              push generated C sources to its repo
 Web options:
   --googleAnalytics:UA-... add the given google analytics code to the docs. To
                            build the official docs, use UA-48159761-1
@@ -218,11 +214,14 @@ proc bundleNimsuggest(buildExe: bool) =
     copyExe("nimsuggest/nimsuggest".exe, "bin/nimsuggest".exe)
     removeFile("nimsuggest/nimsuggest".exe)
 
+proc buildVccTool() =
+  nimexec("c -o:bin/vccexe.exe tools/vccenv/vccexe")
+
 proc bundleWinTools() =
   nimexec("c tools/finish.nim")
   copyExe("tools/finish".exe, "finish".exe)
   removeFile("tools/finish".exe)
-  nimexec("c -o:bin/vccexe.exe tools/vccenv/vccexe")
+  buildVccTool()
   nimexec("c -o:bin/nimgrab.exe -d:ssl tools/nimgrab.nim")
   when false:
     # not yet a tool worth including
@@ -257,6 +256,7 @@ proc buildTools(latest: bool) =
 
   let nimgrepExe = "bin/nimgrep".exe
   nimexec "c -o:" & nimgrepExe & " tools/nimgrep.nim"
+  when defined(windows): buildVccTool()
   buildNimble(latest)
 
 proc nsis(args: string) =

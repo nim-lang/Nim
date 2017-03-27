@@ -154,9 +154,13 @@ proc `addr`*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
   discard
 
 proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
-  ## Builtin 'addr' operator for taking the address of a memory location.
-  ## This works even for ``let`` variables or parameters for better interop
-  ## with C and so it is considered even more unsafe than the ordinary ``addr``.
+  ## Builtin 'addr' operator for taking the address of a memory
+  ## location.  This works even for ``let`` variables or parameters
+  ## for better interop with C and so it is considered even more
+  ## unsafe than the ordinary ``addr``.  When you use it to write a
+  ## wrapper for a C library, you should always check that the
+  ## original library does never write to data behind the pointer that
+  ## is returned from this procedure.
   ## Cannot be overloaded.
   discard
 
@@ -554,6 +558,10 @@ type
     ## Raised if it is attempted to send a message to a dead thread.
     ##
     ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
+  NilAccessError* = object of SystemError ## \
+    ## Raised on dereferences of ``nil`` pointers.
+    ##
+    ## This is only raised if the ``segfaults.nim`` module was imported!
 
 {.deprecated: [TObject: RootObj, PObject: RootRef, TEffect: RootEffect,
   FTime: TimeEffect, FIO: IOEffect, FReadIO: ReadIOEffect,
@@ -2463,8 +2471,8 @@ template accumulateResult*(iter: untyped) =
 const NimStackTrace = compileOption("stacktrace")
 
 template coroutinesSupportedPlatform(): bool =
-  when defined(sparc) or defined(ELATE) or compileOption("gc", "v2") or 
-    defined(boehmgc) or defined(gogc) or defined(nogc) or defined(gcStack) or 
+  when defined(sparc) or defined(ELATE) or compileOption("gc", "v2") or
+    defined(boehmgc) or defined(gogc) or defined(nogc) or defined(gcStack) or
     defined(gcMarkAndSweep):
     false
   else:

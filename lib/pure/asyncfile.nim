@@ -489,3 +489,13 @@ proc writeFromStream*(f: AsyncFile, fs: FutureStream[string]) {.async.} =
       await f.write(value)
     else:
       break
+
+proc readToStream*(f: AsyncFile, fs: FutureStream[string]) {.async.} =
+  ## Writes data to the specified future stream as the file is read.
+  while true:
+    let data = await read(f, 4000)
+    if data.len == 0:
+      break
+    await fs.write(data)
+
+  fs.complete()

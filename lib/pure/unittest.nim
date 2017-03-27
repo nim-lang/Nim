@@ -375,7 +375,6 @@ template test*(name, body) {.dirty.} =
   ensureFormattersInitialized()
 
   if shouldRun(name):
-    var stackTrace {.inject.}: string
     checkpoints = @[]
     var testStatusIMPL {.inject.} = OK
 
@@ -391,7 +390,7 @@ template test*(name, body) {.dirty.} =
     except:
       when not defined(js):
         checkpoint("Unhandled exception: " & getCurrentExceptionMsg())
-        stackTrace = getCurrentException().getStackTrace()
+        var stackTrace {.inject.} = getCurrentException().getStackTrace()
       fail()
 
     finally:

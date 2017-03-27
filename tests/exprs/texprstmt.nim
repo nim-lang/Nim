@@ -1,6 +1,6 @@
 discard """
   line: 10
-  errormsg: "value of type 'string' has to be discarded"
+  errormsg: "expression 'result[1 .. -(len(result), 1)]' is of type 'string' and has to be discarded"
 """
 
 # bug #578

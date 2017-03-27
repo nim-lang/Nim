@@ -604,6 +604,7 @@ proc generateHeaders(m: BModule) =
     else:
       addf(m.s[cfsHeaders], "#include $1$N", [rope(it)])
   add(m.s[cfsHeaders], "#undef linux" & tnl)
+  add(m.s[cfsHeaders], "#undef near" & tnl)
 
 proc initFrame(p: BProc, procname, filename: Rope): Rope =
   discard cgsym(p.module, "nimFrame")

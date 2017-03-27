@@ -355,7 +355,7 @@ proc semOpAux(c: PContext, n: PNode) =
     var a = n.sons[i]
     if a.kind == nkExprEqExpr and sonsLen(a) == 2:
       var info = a.sons[0].info
-      a.sons[0] = newIdentNode(considerQuotedIdent(a.sons[0]), info)
+      a.sons[0] = newIdentNode(considerQuotedIdent(a.sons[0], a), info)
       a.sons[1] = semExprWithType(c, a.sons[1], flags)
       a.typ = a.sons[1].typ
     else:
@@ -1076,7 +1076,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
   n.sons[0] = semExprWithType(c, n.sons[0], flags+{efDetermineType})
   #restoreOldStyleType(n.sons[0])
-  var i = considerQuotedIdent(n.sons[1])
+  var i = considerQuotedIdent(n.sons[1], n)
   var ty = n.sons[0].typ
   var f: PSym = nil
   result = nil
@@ -1160,7 +1160,7 @@ proc dotTransformation(c: PContext, n: PNode): PNode =
     addSon(result, n.sons[1])
     addSon(result, copyTree(n[0]))
   else:
-    var i = considerQuotedIdent(n.sons[1])
+    var i = considerQuotedIdent(n.sons[1], n)
     result = newNodeI(nkDotCall, n.info)
     result.flags.incl nfDotField
     addSon(result, newIdentNode(i, n[1].info))
@@ -1280,7 +1280,7 @@ proc semArrayAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   c.p.bracketExpr = oldBracketExpr
 
 proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
-  var id = considerQuotedIdent(a[1])
+  var id = considerQuotedIdent(a[1], a)
   var setterId = newIdentNode(getIdent(id.s & '='), n.info)
   # a[0] is already checked for semantics, that does ``builtinFieldAccess``
   # this is ugly. XXX Semantic checking should use the ``nfSem`` flag for
@@ -1433,7 +1433,6 @@ proc semReturn(c: PContext, n: PNode): PNode =
 
 proc semProcBody(c: PContext, n: PNode): PNode =
   openScope(c)
-
   result = semExpr(c, n)
   if c.p.resultSym != nil and not isEmptyType(result.typ):
     # transform ``expr`` to ``result = expr``, but not if the expr is already
@@ -1530,7 +1529,7 @@ proc lookUpForDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
     checkSonsLen(n, 2)
     var m = lookUpForDefined(c, n.sons[0], onlyCurrentScope)
     if m != nil and m.kind == skModule:
-      let ident = considerQuotedIdent(n[1])
+      let ident = considerQuotedIdent(n[1], n)
       if m == c.module:
         result = strTableGet(c.topLevelScope.symbols, ident)
       else:
@@ -1549,7 +1548,7 @@ proc semDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PNode =
   checkSonsLen(n, 2)
   # we replace this node by a 'true' or 'false' node:
   result = newIntNode(nkIntLit, 0)
-  if not onlyCurrentScope and considerQuotedIdent(n[0]).s == "defined":
+  if not onlyCurrentScope and considerQuotedIdent(n[0], n).s == "defined":
     if n.sons[1].kind != nkIdent:
       localError(n.info, "obsolete usage of 'defined', use 'declared' instead")
     elif condsyms.isDefined(n.sons[1].ident):
@@ -2084,9 +2083,8 @@ proc checkInitialized(n: PNode, ids: IntSet, info: TLineInfo) =
 
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var t = semTypeNode(c, n.sons[0], nil)
-  result = n
-  result.typ = t
-  result.kind = nkObjConstr
+  result = newNodeIT(nkObjConstr, n.info, t)
+  result.add n.sons[0]
   t = skipTypes(t, {tyGenericInst, tyAlias})
   if t.kind == tyRef: t = skipTypes(t.sons[0], {tyGenericInst, tyAlias})
   if t.kind != tyObject:
@@ -2099,7 +2097,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if it.kind != nkExprColonExpr:
       localError(n.info, errNamedExprExpected)
       break
-    let id = considerQuotedIdent(it.sons[0])
+    let id = considerQuotedIdent(it.sons[0], it)
 
     if containsOrIncl(ids, id.id):
       localError(it.info, errFieldInitTwice, id.s)
@@ -2125,6 +2123,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
     else:
       localError(it.info, errUndeclaredFieldX, id.s)
     it.sons[1] = e
+    result.add it
     # XXX object field name check for 'case objects' if the kind is static?
   if tfNeedsInit in objType.flags:
     while true:

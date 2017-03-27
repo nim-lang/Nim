@@ -96,5 +96,12 @@ suite "bug #4494":
       check:
         allIt(0..3, tags[it] != tags[it + 1])
 
+suite "bug #5571":
+  test "can define gcsafe procs within tests":
+    proc doTest {.gcsafe.} =
+      let line = "a"
+      check: line == "a"
+    doTest()
+
 static:
   echo "compile end"
