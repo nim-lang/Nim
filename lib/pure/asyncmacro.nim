@@ -40,6 +40,8 @@ template createCb(retFutureSym, iteratorNameSym,
         else:
           next.callback = cb
     except:
+      futureVarCompletions
+
       if retFutureSym.finished:
         # Take a look at tasyncexceptions for the bug which this fixes.
         # That test explains it better than I can here.
@@ -47,7 +49,6 @@ template createCb(retFutureSym, iteratorNameSym,
       else:
         retFutureSym.fail(getCurrentException())
 
-      futureVarCompletions
   cb()
   #{.pop.}
 proc generateExceptionCheck(futSym,
@@ -123,12 +124,16 @@ template createVar(result: var NimNode, futSymName: string,
   result.add newVarStmt(futSym, asyncProc) # -> var future<x> = y
   useVar(result, futSym, valueReceiver, rootReceiver, fromNode)
 
-proc createFutureVarCompletions(futureVarIdents: seq[NimNode]): NimNode
-                                {.compileTime.} =
-  result = newStmtList()
+proc createFutureVarCompletions(futureVarIdents: seq[NimNode],
+    fromNode: NimNode): NimNode {.compileTime.} =
+  result = newNimNode(nnkStmtList, fromNode)
   # Add calls to complete each FutureVar parameter.
   for ident in futureVarIdents:
     # Only complete them if they have not been completed already by the user.
+    # TODO: Once https://github.com/nim-lang/Nim/issues/5617 is fixed.
+    # TODO: Add line info to the complete() call!
+    # In the meantime, this was really useful for debugging :)
+    #result.add(newCall(newIdentNode("echo"), newStrLitNode(fromNode.lineinfo)))
     result.add newIfStmt(
       (
         newCall(newIdentNode("not"),
@@ -145,6 +150,10 @@ proc processBody(node, retFutureSym: NimNode,
   case node.kind
   of nnkReturnStmt:
     result = newNimNode(nnkStmtList, node)
+
+    # As I've painfully found out, the order here really DOES matter.
+    result.add createFutureVarCompletions(futureVarIdents, node)
+
     if node[0].kind == nnkEmpty:
       if not subTypeIsVoid:
         result.add newCall(newIdentNode("complete"), retFutureSym,
@@ -157,8 +166,6 @@ proc processBody(node, retFutureSym: NimNode,
       if x.kind == nnkYieldStmt: result.add x
       else:
         result.add newCall(newIdentNode("complete"), retFutureSym, x)
-
-    result.add createFutureVarCompletions(futureVarIdents)
 
     result.add newNimNode(nnkReturnStmt, node).add(newNilLit())
     return # Don't process the children of this return stmt
@@ -347,6 +354,8 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
                                     futureVarIdents, nil)
   # don't do anything with forward bodies (empty)
   if procBody.kind != nnkEmpty:
+    procBody.add(createFutureVarCompletions(futureVarIdents, nil))
+
     if not subtypeIsVoid:
       procBody.insert(0, newNimNode(nnkPragma).add(newIdentNode("push"),
         newNimNode(nnkExprColonExpr).add(newNimNode(nnkBracketExpr).add(
@@ -366,8 +375,6 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
       # -> complete(retFuture)
       procBody.add(newCall(newIdentNode("complete"), retFutureSym))
 
-    procBody.add(createFutureVarCompletions(futureVarIdents))
-
     var closureIterator = newProc(iteratorNameSym, [newIdentNode("FutureBase")],
                                   procBody, nnkIteratorDef)
     closureIterator[4] = newNimNode(nnkPragma, prc[6]).add(newIdentNode("closure"))
@@ -377,7 +384,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
     #var cbName = newIdentNode("cb")
     var procCb = getAst createCb(retFutureSym, iteratorNameSym,
                          newStrLitNode(prc[0].getName),
-                         createFutureVarCompletions(futureVarIdents))
+                         createFutureVarCompletions(futureVarIdents, nil))
     outerProcBody.add procCb
 
     # -> return retFuture
@@ -398,7 +405,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   if procBody.kind != nnkEmpty:
     result[6] = outerProcBody
   #echo(treeRepr(result))
-  #if prc[0].getName == "beta":
+  #if prc[0].getName == "recvLineInto":
   #  echo(toStrLit(result))
 
 macro async*(prc: untyped): untyped =
