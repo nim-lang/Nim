@@ -597,8 +597,11 @@ elif defined(JS):
     result.month = Month(t.getMonth())
     result.year = t.getFullYear()
     result.weekday = weekDays[t.getDay()]
-    result.yearday = 0
     result.timezone = getTimezone()
+
+    result.yearday = result.monthday - 1
+    for month in mJan..<result.month:
+      result.yearday += getDaysInMonth(month, result.year)
 
   proc getGMTime(t: Time): TimeInfo =
     result.second = t.getUTCSeconds()
@@ -608,7 +611,10 @@ elif defined(JS):
     result.month = Month(t.getUTCMonth())
     result.year = t.getUTCFullYear()
     result.weekday = weekDays[t.getUTCDay()]
-    result.yearday = 0
+
+    result.yearday = result.monthday - 1
+    for month in mJan..<result.month:
+      result.yearday += getDaysInMonth(month, result.year)
 
   proc timeInfoToTime(timeInfo: TimeInfo): Time = toTime(timeInfo)
 
