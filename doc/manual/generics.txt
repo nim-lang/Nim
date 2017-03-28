@@ -116,7 +116,8 @@ type class           matches
 ``array``            any array type
 ``set``              any set type
 ``seq``              any seq type
-``any``              any type
+``auto``             any type
+``any``              distinct auto (see below)
 ==================   ===================================================
 
 Furthermore, every generic type automatically creates a type class of the same
@@ -196,6 +197,9 @@ supply all type parameters of the generic type, because any missing ones will
 be inferred to have the equivalent of the `any` type class and thus they will
 match anything without discrimination.
 
+To help you write more concise implicitly generic procs, the Nim's system
+module includes the named types `T1` through `T9` which are bind once aliases
+of the `auto` type.
 
 Concepts
 --------
@@ -273,7 +277,7 @@ value that will be matched only as a type.
 Please note that the ``is`` operator allows one to easily verify the precise
 type signatures of the required operations, but since type inference and
 default parameters are still applied in the concept body, it's also possible
-to encode usage protocols that do not reveal implementation details.
+to describe usage protocols that do not reveal implementation details.
 
 Much like generics, concepts are instantiated exactly once for each tested type
 and any static code included within the body is executed only once.
@@ -378,8 +382,8 @@ operator and also when types dependent on them are being matched:
 
 .. code-block:: nim
   type
-    MyConcept[M, N: static[int]; T] = concept x
-      x.foo(SquareMatrix[N, T]) is array[M, int]
+    MatrixReducer[M, N: static[int]; T] = concept x
+      x.reduce(SquareMatrix[N, T]) is array[M, int]
 
 The Nim compiler includes a simple linear equation solver, allowing it to
 infer static params in some situations where integer arithmetic is involved.
@@ -410,7 +414,7 @@ to match several procs accepting the same wide class of types:
 
 On the other hand, using ``bind once`` types allows you to test for equivalent
 types used in multiple signatures, without actually requiring any concrete
-types, thus allowing you to encode implementation detail types:
+types, thus allowing you to encode implementation-defined types:
 
 .. code-block:: nim
   type
@@ -425,9 +429,24 @@ types, thus allowing you to encode implementation detail types:
                   # and it must be a numeric sequence
 
 As seen in the previous examples, you can refer to generic concepts such as
-Enumerable[T] just by their short name. Much like the regular generic types,
+`Enumerable[T]` just by their short name. Much like the regular generic types,
 the concept will be automatically instantiated with the bind once auto type
 in the place of each missing generic param.
+
+Please note that generic concepts such as `Enumerable[T]` can be matched
+against concrete types such as `string`. Nim doesn't require the concept
+type to have the same number of parameters as the type being matched.
+In order to express such a requirement, you'll need to rely on a type
+mapping operator such a `genericHead` or `stripGenericParams` within the
+concept body:
+
+.. code-block:: nim
+  import future, typetraits
+
+  type
+    Functor[A] = concept f
+      f.value is A
+      map(f, A -> T1) is genericHead(f.type)[T1]
 
 
 Concept derived values

@@ -98,6 +98,17 @@ type
   SomeNumber* = SomeInteger|SomeReal
     ## type class matching all number types
 
+  T1* = auto
+  T2* = auto
+  T3* = auto
+  T4* = auto
+  T5* = auto
+  T6* = auto
+  T7* = auto
+  T8* = auto
+  T9* = auto
+    ## Helper types for writing implicitly generic procs
+
 proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## Special compile-time procedure that checks whether `x` is
   ## defined.
