@@ -197,9 +197,6 @@ supply all type parameters of the generic type, because any missing ones will
 be inferred to have the equivalent of the `any` type class and thus they will
 match anything without discrimination.
 
-To help you write more concise implicitly generic procs, the Nim's system
-module includes the named types `T1` through `T9` which are bind once aliases
-of the `auto` type.
 
 Concepts
 --------
@@ -436,17 +433,35 @@ in the place of each missing generic param.
 Please note that generic concepts such as `Enumerable[T]` can be matched
 against concrete types such as `string`. Nim doesn't require the concept
 type to have the same number of parameters as the type being matched.
-In order to express such a requirement, you'll need to rely on a type
-mapping operator such a `genericHead` or `stripGenericParams` within the
-concept body:
+If you wish to express a requirement towards the generic parameters of
+the matched type, you can use a type mapping operator such as `genericHead`
+or `stripGenericParams` within the body of the concept to obtain the
+uninstantiated version of the type, which you can then try to instantiate
+in any required way. For example, here is how one might define the classic
+`Functor` concept from Haskell and then demonstrate that Nim's `Option[T]`
+type is an instance of it:
 
 .. code-block:: nim
   import future, typetraits
 
   type
     Functor[A] = concept f
-      f.value is A
-      map(f, A -> T1) is genericHead(f.type)[T1]
+      type MatchedGenericType = genericHead(f.type)
+        # `f` will be a value of a type such as `Option[T]`
+        # `MatchedGenericType` will become the `Option` type
+
+      f.val is A
+        # The Functor should provide a way to obtain
+        # a value stored inside it
+
+      type T = auto
+      map(f, A -> T) is MatchedGenericType[T]
+        # And it should provide a way to map one instance of
+        # the Functor to a instance of a different type, given
+        # a suitable `map` operation for the enclosed values
+
+  import options
+  echo Option[int] is Functor # prints true
 
 
 Concept derived values

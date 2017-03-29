@@ -22,10 +22,10 @@ type
   TCandidateState* = enum
     csEmpty, csMatch, csNoMatch
 
-  CandidateError = tuple
-    sym: PSym
-    unmatchedVarParam: int
-    diagnostics: seq[string]
+  CandidateError* = object
+    sym*: PSym
+    unmatchedVarParam*: int
+    diagnostics*: seq[string]
   
   CandidateErrors* = seq[CandidateError]
 
@@ -589,8 +589,8 @@ proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
 proc matchUserTypeClass*(c: PContext, m: var TCandidate,
                          ff, a: PType): PType =
   var
-    Concept = ff.skipTypes({tyUserTypeClassInst})
-    body = Concept.n[3]
+    typeClass = ff.skipTypes({tyUserTypeClassInst})
+    body = typeClass.n[3]
   if c.inTypeClass > 4:
     localError(body.info, $body & " too nested for type matching")
     return nil
@@ -611,7 +611,7 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
         param: PSym
 
       template paramSym(kind): untyped =
-        newSym(kind, typeParamName, Concept.sym, Concept.sym.info)
+        newSym(kind, typeParamName, typeClass.sym, typeClass.sym.info)
 
       block addTypeParam:
         for prev in typeParams:
@@ -642,7 +642,7 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
       
       addDecl(c, param)
 
-  for param in Concept.n[0]:
+  for param in typeClass.n[0]:
     var
       dummyName: PNode
       dummyType: PType
@@ -665,7 +665,7 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
 
     internalAssert dummyName.kind == nkIdent
     var dummyParam = newSym(if modifier == tyTypeDesc: skType else: skVar,
-                            dummyName.ident, Concept.sym, Concept.sym.info)
+                            dummyName.ident, typeClass.sym, typeClass.sym.info)
     dummyParam.typ = dummyType
     addDecl(c, dummyParam)
 
@@ -675,7 +675,7 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
     errorPrefix: string
     flags: TExprFlags = {}
     collectDiagnostics = m.diagnostics != nil or
-                         sfExplain in Concept.sym.flags
+                         sfExplain in typeClass.sym.flags
   
   if collectDiagnostics:
     oldWriteHook = writelnHook
@@ -684,7 +684,7 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
     diagnostics = @[]
     flags = {efExplain}
     writelnHook = proc (s: string) =
-      if errorPrefix == nil: errorPrefix = Concept.sym.name.s & ":"
+      if errorPrefix == nil: errorPrefix = typeClass.sym.name.s & ":"
       let msg = s.replace("Error:", errorPrefix)
       if oldWriteHook != nil: oldWriteHook msg
       diagnostics.add msg
@@ -704,7 +704,7 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
     put(m, p[1], p[0].typ)
 
   if ff.kind == tyUserTypeClassInst:
-    result = generateTypeInstance(c, m.bindings, Concept.sym.info, ff)
+    result = generateTypeInstance(c, m.bindings, typeClass.sym.info, ff)
   else:
     result = copyType(ff, ff.owner, true)
 

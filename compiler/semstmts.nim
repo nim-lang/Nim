@@ -1555,9 +1555,14 @@ proc usesResult(n: PNode): bool =
       for c in n:
         if usesResult(c): return true
 
-proc inferConceptStaticParam(c: PContext, typ: PType, n: PNode) =
+proc inferConceptStaticParam(c: PContext, inferred, n: PNode) =
+  var typ = inferred.typ
   let res = semConstExpr(c, n)
-  if not sameType(res.typ, typ.base): localError(n.info, "")
+  if not sameType(res.typ, typ.base):
+    localError(n.info,
+      "cannot infer the concept parameter '%s', due to a type mismatch. " &
+      "attempt to equate '%s' and '%s'.",
+      [inferred.renderTree, $res.typ, $typ.base])
   typ.n = res
 
 proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
@@ -1616,12 +1621,14 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
       if c.inTypeClass > 0 and expr.typ != nil:
         case expr.typ.kind
         of tyBool:
-          if expr.kind == nkInfix and expr[0].sym.name.s == "==":
+          if expr.kind == nkInfix and
+             expr[0].kind == nkSym and
+             expr[0].sym.name.s == "==":
             if expr[1].typ.isUnresolvedStatic:
-              inferConceptStaticParam(c, expr[1].typ, expr[2])
+              inferConceptStaticParam(c, expr[1], expr[2])
               continue
             elif expr[2].typ.isUnresolvedStatic:
-              inferConceptStaticParam(c, expr[2].typ, expr[1])
+              inferConceptStaticParam(c, expr[2], expr[1])
               continue
             
           let verdict = semConstExpr(c, n[i])

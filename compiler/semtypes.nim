@@ -1235,7 +1235,7 @@ proc symFromExpectedTypeNode(c: PContext, n: PNode): PSym =
   if n.kind == nkType:
     result = symFromType(n.typ, n.info)
   else:
-    localError(n.info, "xx")
+    localError(n.info, errTypeExpected)
     result = errorSym(c, n)
 
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =

@@ -99,7 +99,10 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
           if cmp < 0: best = z   # x is better than the best so far
           elif cmp == 0: alt = z # x is as good as the best so far
       elif errors != nil or z.diagnostics != nil:
-        errors.safeAdd((sym, int z.mutabilityProblem, z.diagnostics))
+        errors.safeAdd(CandidateError(
+          sym: sym,
+          unmatchedVarParam: int z.mutabilityProblem,
+          diagnostics: z.diagnostics))
     else:
       # Symbol table has been modified. Restart and pre-calculate all syms
       # before any further candidate init and compare. SLOW, but rare case.
@@ -126,9 +129,9 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
   # we do a pre-analysis. If all types produce the same string, we will add
   # module information.
   let proto = describeArgs(c, n, 1, preferName)
-  for err, mut, diagnostics in items(errors):
+  for err in errors:
     var errProto = ""
-    let n = err.typ.n
+    let n = err.sym.typ.n
     for i in countup(1, n.len - 1):
       var p = n.sons[i]
       if p.kind == nkSym:
@@ -140,16 +143,17 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       break
 
   var candidates = ""
-  for err, mut, diagnostics in items(errors):
-    if err.kind in routineKinds and err.ast != nil:
-      add(candidates, renderTree(err.ast,
+  for err in errors:
+    if err.sym.kind in routineKinds and err.sym.ast != nil:
+      add(candidates, renderTree(err.sym.ast,
             {renderNoBody, renderNoComments, renderNoPragmas}))
     else:
-      add(candidates, err.getProcHeader(prefer))
+      add(candidates, err.sym.getProcHeader(prefer))
     add(candidates, "\n")
-    if mut != 0 and mut < n.len:
-      add(candidates, "for a 'var' type a variable needs to be passed, but '" & renderTree(n[mut]) & "' is immutable\n")
-    for diag in diagnostics:
+    if err.unmatchedVarParam != 0 and err.unmatchedVarParam < n.len:
+      add(candidates, "for a 'var' type a variable needs to be passed, but '" &
+                      renderTree(n[err.unmatchedVarParam]) & "' is immutable\n")
+    for diag in err.diagnostics:
       add(candidates, diag & "\n")
   
   result = (prefer, candidates)
@@ -180,7 +184,9 @@ proc bracketNotFoundError(c: PContext; n: PNode) =
   var symx = initOverloadIter(o, c, headSymbol)
   while symx != nil:
     if symx.kind in routineKinds:
-      errors.add((symx, 0, nil))
+      errors.add(CandidateError(sym: symx,
+                                unmatchedVarParam: 0,
+                                diagnostics: nil))
     symx = nextOverloadIter(o, c, headSymbol)
   if errors.len == 0:
     localError(n.info, "could not resolve: " & $n)
@@ -405,7 +411,7 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
       n.sons[1] = n.sons[1].sons[0]
       notFoundError(c, n, errors)
   else:
-    if efExplain notin flags:
+    if efExplain notin flags and c.compilesContextId == 0:
       # repeat the overload resolution,
       # this time enabling all the diagnostic output (this should fail again)
       discard semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
