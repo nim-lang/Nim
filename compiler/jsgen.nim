@@ -1391,6 +1391,7 @@ proc createObjInitList(p: PProc, typ: PType, excludedFieldIDs: IntSet, output: v
     t = t.sons[0]
 
 proc arrayTypeForElemType(typ: PType): string =
+  # XXX This should also support tyEnum and tyBool
   case typ.kind
   of tyInt, tyInt32: "Int32Array"
   of tyInt16: "Int16Array"
