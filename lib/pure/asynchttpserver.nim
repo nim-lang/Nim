@@ -36,6 +36,9 @@ import httpcore
 
 export httpcore except parseHeader
 
+const
+  maxLine = 8*1024
+
 # TODO: If it turns out that the decisions that asynchttpserver makes
 # explicitly, about whether to close the client sockets or upgrade them are
 # wrong, then add a return value which determines what to do for the callback.
@@ -97,6 +100,18 @@ proc respond*(req: Request, code: HttpCode, content: string,
 
   if headers != nil:
     msg.addHeaders(headers)
+  msg.add("Content-Length: ")
+  # this particular way saves allocations:
+  msg.add content.len
+  msg.add "\c\L\c\L"
+  msg.add(content)
+  result = req.client.send(msg)
+
+proc respondError(req: Request, code: HttpCode): Future[void] =
+  ## Responds to the request with the specified ``HttpCode``.
+  let content = $code
+  var msg = "HTTP/1.1 " & content & "\c\L"
+
   msg.add("Content-Length: " & $content.len & "\c\L\c\L")
   msg.add(content)
   result = req.client.send(msg)
@@ -139,12 +154,16 @@ proc processClient(client: AsyncSocket, address: string,
     for i in 0..1:
       lineFut.mget().setLen(0)
       lineFut.clean()
-      await client.recvLineInto(lineFut) # TODO: Timeouts.
+      await client.recvLineInto(lineFut, maxLength=maxLine) # TODO: Timeouts.
 
       if lineFut.mget == "":
         client.close()
         return
 
+      if lineFut.mget.len > maxLine:
+        await request.respondError(Http413)
+        client.close()
+        return
       if lineFut.mget != "\c\L":
         break
 
@@ -157,19 +176,17 @@ proc processClient(client: AsyncSocket, address: string,
           # TODO: this is likely slow.
           request.reqMethod = parseEnum[HttpMethod]("http" & linePart)
         except ValueError:
-          asyncCheck request.respond(Http400, "Invalid request method. Got: " &
-                                     linePart)
+          asyncCheck request.respondError(Http400)
           continue
       of 1: parseUri(linePart, request.url)
       of 2:
         try:
           request.protocol = parseProtocol(linePart)
         except ValueError:
-          asyncCheck request.respond(Http400,
-            "Invalid request protocol. Got: " & linePart)
+          asyncCheck request.respondError(Http400)
           continue
       else:
-        await request.respond(Http400, "Invalid request. Got: " & lineFut.mget)
+        await request.respondError(Http400)
         continue
       inc i
 
@@ -178,9 +195,12 @@ proc processClient(client: AsyncSocket, address: string,
       i = 0
       lineFut.mget.setLen(0)
       lineFut.clean()
-      await client.recvLineInto(lineFut)
+      await client.recvLineInto(lineFut, maxLength=maxLine)
 
       if lineFut.mget == "":
+        client.close(); return
+      if lineFut.mget.len > maxLine:
+        await request.respondError(Http413)
         client.close(); return
       if lineFut.mget == "\c\L": break
       let (key, value) = parseHeader(lineFut.mget)
