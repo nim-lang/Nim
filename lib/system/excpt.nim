@@ -73,7 +73,8 @@ proc popSafePoint {.compilerRtl, inl.} =
   excHandler = excHandler.prev
 
 proc pushCurrentException(e: ref Exception) {.compilerRtl, inl.} =
-  e.parent = currException
+  #if e.parent.isNil:
+  #  e.parent = currException
   currException = e
 
 proc popCurrentException {.compilerRtl, inl.} =
@@ -279,7 +280,7 @@ proc raiseExceptionAux(e: ref Exception) =
       quitOrDebug()
 
 proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
-  e.name = ename
+  if e.name.isNil: e.name = ename
   when hasSomeStackTrace:
     e.trace = ""
     rawWriteStackTrace(e.trace)
