@@ -49,7 +49,7 @@ proc reprChar(x: char): string {.compilerRtl.} =
   add(result, "\'")
 
 proc reprStrAux(result: var string, s: cstring, len: int) =
-  add result, "\""
+  add(result, "\"")
   for i in 0 .. <len:
     let c = s[i]
     case c
@@ -246,11 +246,11 @@ proc reprAux(result: var string, p: pointer, typ: PNimType,
   of tyEnum, tyOrdinal:
     var fp: int
     {. emit: "`fp` = `p`;\n" .}
-    add(result, reprEnum(fp,typ))
+    add(result, reprEnum(fp, typ))
   of tySet:
     var fp: int
     {. emit: "`fp` = `p`;\n" .}
-    add(result, reprSet(fp,typ))
+    add(result, reprSet(fp, typ))
   of tyRange: reprAux(result, p, typ.base, cl)
   of tyObject, tyTuple:
     add(result, reprRecord(p, typ, cl))
