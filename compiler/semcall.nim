@@ -411,7 +411,7 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
       n.sons[1] = n.sons[1].sons[0]
       notFoundError(c, n, errors)
   else:
-    if efExplain notin flags and c.compilesContextId == 0:
+    if efExplain notin flags:
       # repeat the overload resolution,
       # this time enabling all the diagnostic output (this should fail again)
       discard semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
