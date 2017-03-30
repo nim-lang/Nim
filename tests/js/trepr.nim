@@ -259,7 +259,7 @@ block procs:
 block bunch:
   type
     AnEnum = enum
-      eA,eB,eC
+      eA, eB, eC
     B = object
       a: string
       b: seq[char] 
