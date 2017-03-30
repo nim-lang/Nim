@@ -886,7 +886,7 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType; name, base: Rope) =
     discard cgsym(m, "nimTypeRoot")
     addf(m.s[cfsTypeInit3], "$1.nextType = nimTypeRoot; nimTypeRoot=&$1;$n",
          [name])
-  addf(m.s[cfsVars], "TNimType $1;$n", [name])
+  addf(m.s[cfsVars], "TNimType $1; /* $2 */$n",
 
 proc genTypeInfoAux(m: BModule, typ, origType: PType, name: Rope) =
   var base: Rope
@@ -941,7 +941,7 @@ proc genObjectFields(m: BModule, typ, origType: PType, n: PNode, expr: Rope) =
     addf(m.s[cfsTypeInit3], "$1.kind = 3;$n" &
         "$1.offset = offsetof($2, $3);$n" & "$1.typ = $4;$n" &
         "$1.name = $5;$n" & "$1.sons = &$6[0];$n" &
-        "$1.len = $7;$n", [expr, getTypeDesc(m, origType), field.loc.r,
+        "$1.len = $7;$n", [expr, getTypeDesc(m, typ), field.loc.r,
                            genTypeInfo(m, field.typ),
                            makeCString(field.name.s),
                            tmp, rope(L)])
@@ -976,7 +976,7 @@ proc genObjectFields(m: BModule, typ, origType: PType, n: PNode, expr: Rope) =
         internalError(n.info, "genObjectFields")
       addf(m.s[cfsTypeInit3], "$1.kind = 1;$n" &
           "$1.offset = offsetof($2, $3);$n" & "$1.typ = $4;$n" &
-          "$1.name = $5;$n", [expr, getTypeDesc(m, origType),
+          "$1.name = $5;$n", [expr, getTypeDesc(m, typ),
           field.loc.r, genTypeInfo(m, field.typ), makeCString(field.name.s)])
   else: internalError(n.info, "genObjectFields")
 
@@ -984,7 +984,7 @@ proc genObjectInfo(m: BModule, typ, origType: PType, name: Rope) =
   if typ.kind == tyObject: genTypeInfoAux(m, typ, origType, name)
   else: genTypeInfoAuxBase(m, typ, origType, name, rope("0"))
   var tmp = getNimNode(m)
-  if not isImportedCppType(typ):
+  if not isImportedType(typ):
     genObjectFields(m, typ, origType, typ.n, tmp)
   addf(m.s[cfsTypeInit3], "$1.node = &$2;$n", [name, tmp])
   var t = typ.sons[0]
@@ -1116,7 +1116,7 @@ proc genTypeInfo(m: BModule, t: PType): Rope =
     # reference the type info as extern here
     discard cgsym(m, "TNimType")
     discard cgsym(m, "TNimNode")
-    addf(m.s[cfsVars], "extern TNimType $1;$n", [result])
+    addf(m.s[cfsVars], "extern TNimType $1; /* $2 */$n",
     return "(&".rope & result & ")".rope
 
   m.g.typeInfoMarker[sig] = result

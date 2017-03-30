@@ -11,6 +11,7 @@
 import posix
 
 type
+  Cc* = cuchar
   Speed* = cuint
   Cflag* = cuint
 {.deprecated: [Tcflag: Cflag].}
@@ -24,7 +25,12 @@ type
     c_oflag*: Cflag        # output mode flags
     c_cflag*: Cflag        # control mode flags
     c_lflag*: Cflag        # local mode flags
-    c_cc*: array[NCCS, cuchar]  # control characters
+    when defined(linux):
+      c_line*: Cc            # line discipline
+    c_cc*: array[NCCS, Cc]   # control characters
+    when defined(linux):
+      c_ispeed: Speed        # input speed
+      c_ospeed: Speed        # output speed
 
 # cc characters
 
