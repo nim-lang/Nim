@@ -1623,8 +1623,8 @@ proc genToArray(p: PProc; n: PNode; r: var TCompRes) =
     localError(x.info, "'toArray' needs an array literal")
   r.res.add(")")
 
-proc genReprAux(p: PProc, n: PNode, r: var TCompRes, magic:string, typ:Rope = nil) =
-  useMagic(p,magic)
+proc genReprAux(p: PProc, n: PNode, r: var TCompRes, magic: string, typ: Rope = nil) =
+  useMagic(p, magic)
   add(r.res, magic & "(")
   var a: TCompRes
 
@@ -1632,17 +1632,17 @@ proc genReprAux(p: PProc, n: PNode, r: var TCompRes, magic:string, typ:Rope = ni
   if magic == "reprAny":
     # the pointer argument in reprAny is expandend to 
     # (pointedto, pointer), so we need to fill it
-    if a.address.isnil:
+    if a.address.isNil:
       add(r.res, a.res)
       add(r.res, ", null") 
     else:
       add(r.res, "$1, $2" % [a.address, a.res])
   else:
-    add(r.res,a.res)
+    add(r.res, a.res)
 
-  if not typ.isnil:
-    add(r.res,", ")
-    add(r.res,typ)
+  if not typ.isNil:
+    add(r.res, ", ")
+    add(r.res, typ)
   add(r.res, ")")
 
 proc genRepr(p: PProc, n: PNode, r: var TCompRes) =
@@ -1650,8 +1650,8 @@ proc genRepr(p: PProc, n: PNode, r: var TCompRes) =
     localError(n.info, "'repr' not available for PHP backend")
     return
   let t = skipTypes(n.sons[1].typ, abstractVarRange)
-  case t.kind
-  of tyInt..tyInt64,tyUInt..tyUInt64:
+  case t.kind:
+  of tyInt..tyInt64, tyUInt..tyUInt64:
     genReprAux(p,n,r, "reprInt")
   of tyChar:
     genReprAux(p,n,r, "reprChar")
@@ -1662,17 +1662,17 @@ proc genRepr(p: PProc, n: PNode, r: var TCompRes) =
   of tyString:
     genReprAux(p,n,r, "reprStr")
   of tyEnum, tyOrdinal:
-    genReprAux(p,n,r, "reprEnum",genTypeInfo(p,t))
+    genReprAux(p,n,r, "reprEnum", genTypeInfo(p,t))
   of tySet:
-    genReprAux(p,n,r, "reprSet",genTypeInfo(p,t))
+    genReprAux(p,n,r, "reprSet", genTypeInfo(p,t))
   of tyEmpty, tyVoid:
     localError(n.info, "'repr' doesn't support 'void' type")
   of tyPointer: 
     genReprAux(p,n,r, "reprPointer")
-  of tyOpenArray,tyVarargs:
+  of tyOpenArray, tyVarargs:
     genReprAux(p,n,r, "reprJSONStringify")
   else:
-    genReprAux(p,n,r,"reprAny",genTypeInfo(p,t))
+    genReprAux(p,n,r, "reprAny", genTypeInfo(p,t))
 
 proc genOf(p: PProc, n: PNode, r: var TCompRes) =
   var x: TCompRes

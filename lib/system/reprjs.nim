@@ -17,24 +17,24 @@ proc reprFloat(x: float): string {.compilerproc.} =
 
 proc reprPointer(p: pointer): string {.compilerproc.} = 
   # Do we need to generate the full 8bytes ? In js a pointer is an int anyway
-  var tmp : int
-  asm """
-    if (`p`_Idx == null){
-      `tmp` = 0
+  var tmp: int
+  {. emit: """
+    if (`p`_Idx == null) {
+      `tmp` = 0;
     } else {
-    `tmp` =  `p`_Idx
+      `tmp` = `p`_Idx;
     }
-  """
+  """ .}
   result = $tmp
 
 proc reprBool(x: bool): string {.compilerRtl.} =
   if x: result = "true"
   else: result = "false"
 
-proc isUndefined[T](x: T): bool {.inline.} = {.emit: "`result`= `x` === undefined;"}
+proc isUndefined[T](x: T): bool {.inline.} = {.emit: "`result` = `x` === undefined;"}
 
 proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
-  if not typ.node.sons[e].isUndefined :
+  if not typ.node.sons[e].isUndefined:
     result = $typ.node.sons[e].name
   else:
     result = $e & " (invalid data!)"
@@ -42,74 +42,74 @@ proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
 proc reprChar(x: char): string {.compilerRtl.} =
   result = "\'"
   case x
-  of '"': add result, "\\\""
-  of '\\': add result, "\\\\"
-  of '\128' .. '\255', '\0'..'\31': add result, "\\" & reprInt(ord(x))
-  else: add result, x
-  add result, "\'"
+  of '"': add(result, "\\\"")
+  of '\\': add(result, "\\\\")
+  of '\128'..'\255', '\0'..'\31': add( result, "\\" & reprInt(ord(x)) )
+  else: add(result, x)
+  add(result, "\'")
 
 proc reprStrAux(result: var string, s: cstring, len: int) =
   add result, "\""
   for i in 0 .. <len:
     let c = s[i]
     case c
-    of '"': add result, "\\\""
-    of '\\': add result, "\\\\"
-    of '\10': add result, "\\10\"\n\""
-    of '\128' .. '\255', '\0'..'\9', '\11'..'\31':
-      add result, "\\" & reprInt(ord(c))
+    of '"': add(result, "\\\"")
+    of '\\': add(result, "\\\\")
+    of '\10': add(result, "\\10\"\n\"")
+    of '\128'..'\255', '\0'..'\9', '\11'..'\31':
+      add( result, "\\" & reprInt(ord(c)) )
     else:
-      add result, reprInt(ord(c)) # Not sure about this.
-  add result, "\""
+      add( result, reprInt(ord(c)) ) # Not sure about this.
+  add(result, "\"")
 
 proc reprStr(s: string): string {.compilerRtl.} =
   result = ""
-  if cast[pointer](s).isnil:
+  if cast[pointer](s).isNil:
     # Handle nil strings here because they don't have a length field in js
-    # TODO: check for null/undefined before generating call to length in js
+    # TODO: check for null/undefined before generating call to length in js?
     # Also: c backend repr of a nil string is <pointer>"", but repr of an 
     # array of string that is not initialized is [nil, nil, ...] ??
-    add result, "nil"
-    return
-  reprStrAux(result, s, s.len)
+    add(result, "nil")
+  else:
+    reprStrAux(result, s, s.len)
 
 proc addSetElem(result: var string, elem: int, typ: PNimType) =
   # Dispatch each set element to the correct repr<Type> proc
-  case typ.kind
-  of tyEnum: add result, reprEnum(elem, typ)
-  of tyBool: add result, reprBool(bool(elem))
-  of tyChar: add result, reprChar(chr(elem))
+  case typ.kind:
+  of tyEnum: add(result, reprEnum(elem, typ))
+  of tyBool: add(result, reprBool(bool(elem)))
+  of tyChar: add(result, reprChar(chr(elem)))
   of tyRange: addSetElem(result, elem, typ.base) # Note the base to advance towards the element type
   of tyInt..tyInt64, tyUInt8, tyUInt16: add result, reprInt(elem)
   else: # data corrupt --> inform the user
-    add result, " (invalid data!)"
+    add(result, " (invalid data!)")
 
-iterator SetKeys(s: int): int {.inline.} =
+iterator setKeys(s: int): int {.inline.} =
   # The type of s is a lie, but it's expected to be a set.
   # Iterate over the JS object representing a set 
   # and returns the keys as int.
   var len: int
-  var yieldRes : int
-  var i : int = 0
-  asm """
+  var yieldRes: int
+  var i: int = 0
+  {. emit: """
   var setObjKeys = Object.getOwnPropertyNames(`s`);
-  `len` = setObjKeys.length
-  """
-  while i<len:
-    asm "`yieldRes` = parseInt(setObjKeys[`i`],10);\n"
+  `len` = setObjKeys.length;
+  """ .}
+  while i < len:
+    {. emit: "`yieldRes` = parseInt(setObjKeys[`i`],10);\n" .}
     yield yieldRes
     inc i
 
 proc reprSetAux(result: var string, s: int, typ: PNimType) =
-  add result, "{"
-  var first : bool = true
-  for el in SetKeys(s):
+  add(result, "{")
+  var first: bool = true
+  for el in setKeys(s):
     if first:
-      first  = false
+      first = false
     else:
-      add result, ", "
-    addSetElem(result,el,typ.base)
-  add result, "}"
+      add(result, ", ")
+    addSetElem(result, el, typ.base)
+  add(result, "}")
 
 proc reprSet(e: int, typ: PNimType): string {.compilerRtl.} =
   result = ""
@@ -117,160 +117,161 @@ proc reprSet(e: int, typ: PNimType): string {.compilerRtl.} =
 
 type
   ReprClosure {.final.} = object
-    recdepth: int       # do not recurse endlessly
+    recDepth: int       # do not recurse endlessly
     indent: int         # indentation
 
 proc initReprClosure(cl: var ReprClosure) =
-  cl.recdepth = -1      # default is to display everything!
+  cl.recDepth = -1 # default is to display everything!
   cl.indent = 0
 
 proc reprAux(result: var string, p: pointer, typ: PNimType, cl: var ReprClosure) 
 
 proc reprArray(a: pointer, typ: PNimType, 
               cl: var ReprClosure): string {.compilerRtl.} =
-  var isnilarrorseq : bool
+  var isNilArrayOrSeq: bool
   # isnil is not enough here as it would try to deref `a` without knowing what's inside
-  asm """
+  {. emit: """
     if (`a` == null) { 
-    `isnilarrorseq` = true 
+      `isNilArrayOrSeq` = true;
     } else if (`a`[0] == null) { 
-    `isnilarrorseq` = true
-    } else {`isnilarrorseq` = false
+      `isNilArrayOrSeq` = true;
+    } else {
+      `isNilArrayOrSeq` = false;
     };
-    """
-  if typ.kind == tySequence and isnilarrorseq:
+    """ .}
+  if typ.kind == tySequence and isNilArrayOrSeq:
     return "nil"
 
   # We prepend @ to seq, the C backend prepends the pointer to the seq.
   result = if typ.kind == tySequence: "@[" else: "["
   var len: int = 0
-  var i : int = 0
+  var i: int = 0
     
-  asm """
-  `len` = `a`.length;
-  """
+  {. emit: "`len` = `a`.length;\n" .}
   var dereffed: pointer = a
   for i in 0 .. < len:
-    if i>0 :
-      add result, ", "
-    asm "`dereffed`_Idx = `i`;\n" # advance the pointer
-    asm "`dereffed` = `a`[`dereffed`_Idx];\n" # point to element at index
+    if i > 0 :
+      add(result, ", ")
+    # advance pointer and point to element at index
+    {. emit: """
+    `dereffed`_Idx = `i`; 
+    `dereffed` = `a`[`dereffed`_Idx];
+    """ .}
     reprAux(result, dereffed, typ.base, cl)  
   
-  add result, "]"
+  add(result, "]")
 
-proc ispointedtonil(p: pointer): bool {.inline.}=
-  asm """
-  if (`p` === null ){ `result` = true }
-  """
+proc isPointedToNil(p: pointer): bool {.inline.}=
+  {. emit: "if (`p` === null) {`result` = true};\n" .}
 
 proc reprRef(result: var string, p: pointer, typ: PNimType,
           cl: var ReprClosure) =
-  if p.ispointedtonil:
-    add result  , "nil"
+  if p.isPointedToNil:
+    add(result  , "nil")
     return
-  add result, "ref " & reprPointer(p)
-  add result, " --> "
-  if not( typ.base.kind == tyArray):
-    asm """
+  add( result, "ref " & reprPointer(p) )
+  add(result, " --> ")
+  if typ.base.kind != tyArray:
+    {. emit: """
     if (`p` != null && `p`.length > 0) {
       `p` = `p`[`p`_Idx];
-    }"""
+    }
+    """ .}
   reprAux(result, p, typ.base, cl)
 
-proc reprRecordAux(result: var string, o: pointer, typ: PNimType,cl: var ReprClosure) =
-  add result, "["
+proc reprRecordAux(result: var string, o: pointer, typ: PNimType, cl: var ReprClosure) =
+  add(result, "[")
   
   var first: bool = true
   var val: pointer = o
   if typ.node.len == 0:
     # if the object has only one field, len is 0  and sons is nil, the field is in node
-    let key: cstring =  typ.node.name
-    add result, $key & " = "
-    asm "`val` = `o`[`key`];\n"
+    let key: cstring = typ.node.name
+    add(result, $key & " = ")
+    {. emit: "`val` = `o`[`key`];\n" .}
     reprAux(result, val, typ.node.typ, cl)
   else:
     # if the object has more than one field, sons is not nil and contains the fields.
-    for i in 0 .. < typ.node.len:
-      if first: first  = false
-      else: add result, ",\n"
+    for i in 0 .. <typ.node.len:
+      if first: first = false
+      else: add(result, ",\n")
 
-      let key: cstring =  typ.node.sons[i].name
-      add result, $key & " = "
-      asm "`val` = `o`[`key`];\n" # access the field by name
+      let key: cstring = typ.node.sons[i].name
+      add(result, $key & " = ")
+      {. emit: "`val` = `o`[`key`];\n" .} # access the field by name
       reprAux(result, val, typ.node.sons[i].typ, cl)
-  add result, "]"
+  add(result, "]")
 
-proc reprRecord(o: pointer, typ: PNimType,cl: var ReprClosure): string {.compilerRtl.} =
+proc reprRecord(o: pointer, typ: PNimType, cl: var ReprClosure): string {.compilerRtl.} =
   result = ""
   reprRecordAux(result, o, typ,cl)
 
 
-proc reprJSONStringify(p: int): string {.compilerRtl.}=
+proc reprJSONStringify(p: int): string {.compilerRtl.} =
   # As a last resort, use stringify
   # We use this for tyOpenArray, tyVarargs while genTypeInfo is not implemented
   var tmp: cstring
-  asm "`tmp` = JSON.stringify(`p`);"
+  {. emit: "`tmp` = JSON.stringify(`p`);\n" .}
   result = $tmp
 
 proc reprAux(result: var string, p: pointer, typ: PNimType, 
             cl: var ReprClosure) =
-  if cl.recdepth == 0:
-    add result, "..."
+  if cl.recDepth == 0:
+    add(result, "...")
     return 
-  dec(cl.recdepth)
+  dec(cl.recDepth)
   case typ.kind
-  of tyInt..tyInt64,tyUInt..tyUInt64:
-    add result, reprInt(cast[int](p))    
+  of tyInt..tyInt64, tyUInt..tyUInt64:
+    add( result, reprInt(cast[int](p)) )
   of tyChar:
-    add result, reprChar(cast[char](p))    
+    add( result, reprChar(cast[char](p)) )
   of tyBool:
-    add result, reprBool(cast[bool](p))    
+    add( result, reprBool(cast[bool](p)) )
   of tyFloat..tyFloat128:
-    add result, reprFloat(cast[float](p))
+    add( result, reprFloat(cast[float](p)) )
   of tyString:
     var fp: int
-    asm "`fp` = `p`;"
-    if cast[string](fp).isnil:
-      add result, "nil"
+    {. emit: "`fp` = `p`;\n" .}
+    if cast[string](fp).isNil:
+      add(result, "nil")
     else:
-      add result, reprStr(cast[string](p))
+      add( result, reprStr(cast[string](p)) )
   of tyCString:
     var fp: cstring
-    asm "`fp` = `p`;"
-    if fp.isnil:
-      add result, "nil"
+    {. emit: "`fp` = `p`;\n" .}
+    if fp.isNil:
+      add(result, "nil")
     else:
-      reprStrAux(result,fp, fp.len)
+      reprStrAux(result, fp, fp.len)
   of tyEnum, tyOrdinal:
     var fp: int
-    asm "`fp` = `p`;"
-    add result, reprEnum(fp,typ)
+    {. emit: "`fp` = `p`;\n" .}
+    add(result, reprEnum(fp,typ))
   of tySet:
     var fp: int
-    asm "`fp` = `p`;"
-    add result, reprSet(fp,typ)
-  of tyRange: reprAux(result,p,typ.base,cl)
-  of tyObject,tyTuple:
-    add result, reprRecord(p,typ,cl)
-  of tyArray,tyArrayConstr,tySequence:
-    add result, reprArray(p,typ,cl)
+    {. emit: "`fp` = `p`;\n" .}
+    add(result, reprSet(fp,typ))
+  of tyRange: reprAux(result, p, typ.base, cl)
+  of tyObject, tyTuple:
+    add(result, reprRecord(p, typ, cl))
+  of tyArray, tyArrayConstr, tySequence:
+    add(result, reprArray(p, typ, cl))
   of tyPointer:
-    add result, reprPointer(p)
-  of tyPtr,tyRef:
-    reprRef(result,p,typ,cl)
+    add(result, reprPointer(p))
+  of tyPtr, tyRef:
+    reprRef(result, p, typ, cl)
   of tyProc:
-    if p.ispointedtonil:
-      add result, "nil"
+    if p.isPointedToNil:
+      add(result, "nil")
     else:
-      add result, reprPointer(p)
+      add(result, reprPointer(p))
   else:
-    add result, "(invalid data!)" & reprJsonStringify(cast[int](p))
-  inc(cl.recdepth)
+    add( result, "(invalid data!)" & reprJsonStringify(cast[int](p)) )
+  inc(cl.recDepth)
 
-proc reprAny(p: pointer, typ: PNimType): string {.compilerRtl.}=
+proc reprAny(p: pointer, typ: PNimType): string {.compilerRtl.} =
   var cl: ReprClosure
   initReprClosure(cl)
   result = ""
   reprAux(result, p, typ, cl)
-  add result, "\n"
+  add(result, "\n")
