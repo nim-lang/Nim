@@ -91,9 +91,9 @@ block chars:
 
 block strings:
   let 
-    a:string = "12345"
-    b:string = "hello,repr"
-    c:string = "hi\nthere"
+    a: string = "12345"
+    b: string = "hello,repr"
+    c: string = "hi\nthere"
   when defined js: # C prepends the pointer, JS does not.
     doAssert(repr(a) == "\"12345\"")
     doAssert(repr(b) == "\"hello,repr\"")
