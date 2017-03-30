@@ -1652,27 +1652,27 @@ proc genRepr(p: PProc, n: PNode, r: var TCompRes) =
   let t = skipTypes(n.sons[1].typ, abstractVarRange)
   case t.kind:
   of tyInt..tyInt64, tyUInt..tyUInt64:
-    genReprAux(p,n,r, "reprInt")
+    genReprAux(p, n, r, "reprInt")
   of tyChar:
-    genReprAux(p,n,r, "reprChar")
+    genReprAux(p, n, r, "reprChar")
   of tyBool:
-    genReprAux(p,n,r, "reprBool")
+    genReprAux(p, n, r, "reprBool")
   of tyFloat..tyFloat128:
-    genReprAux(p,n,r, "reprFloat")
+    genReprAux(p, n, r, "reprFloat")
   of tyString:
-    genReprAux(p,n,r, "reprStr")
+    genReprAux(p, n, r, "reprStr")
   of tyEnum, tyOrdinal:
-    genReprAux(p,n,r, "reprEnum", genTypeInfo(p,t))
+    genReprAux(p, n, r, "reprEnum", genTypeInfo(p, t))
   of tySet:
-    genReprAux(p,n,r, "reprSet", genTypeInfo(p,t))
+    genReprAux(p, n, r, "reprSet", genTypeInfo(p, t))
   of tyEmpty, tyVoid:
     localError(n.info, "'repr' doesn't support 'void' type")
   of tyPointer: 
-    genReprAux(p,n,r, "reprPointer")
+    genReprAux(p, n, r, "reprPointer")
   of tyOpenArray, tyVarargs:
-    genReprAux(p,n,r, "reprJSONStringify")
+    genReprAux(p, n, r, "reprJSONStringify")
   else:
-    genReprAux(p,n,r, "reprAny", genTypeInfo(p,t))
+    genReprAux(p, n, r, "reprAny", genTypeInfo(p, t))
 
 proc genOf(p: PProc, n: PNode, r: var TCompRes) =
   var x: TCompRes
