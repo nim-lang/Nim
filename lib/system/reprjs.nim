@@ -157,7 +157,7 @@ proc reprArray(a: pointer, typ: PNimType,
     `dereffed`_Idx = `i`; 
     `dereffed` = `a`[`dereffed`_Idx];
     """ .}
-    reprAux(result, dereffed, typ.base, cl)  
+    reprAux(result, dereffed, typ.base, cl)
   
   add(result, "]")
 
@@ -167,7 +167,7 @@ proc isPointedToNil(p: pointer): bool {.inline.}=
 proc reprRef(result: var string, p: pointer, typ: PNimType,
           cl: var ReprClosure) =
   if p.isPointedToNil:
-    add(result  , "nil")
+    add(result , "nil")
     return
   add( result, "ref " & reprPointer(p) )
   add(result, " --> ")
