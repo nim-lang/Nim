@@ -1050,7 +1050,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         # crossing path with metatypes/aliases, so we need to separate them
         # by checking sym.id
         let genericSubtype = isGenericSubType(c, x, f, depth, f)
-        if not (genericSubtype and aobj.sym.id != fobj.sym.id):
+        if not (genericSubtype and aobj.sym.id != fobj.sym.id) and aOrig.kind != tyGenericBody:
           depth = -1
 
       if depth >= 0:
