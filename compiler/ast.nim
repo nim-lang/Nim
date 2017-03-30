@@ -1356,6 +1356,17 @@ proc skipTypesOrNil*(t: PType, kinds: TTypeKinds): PType =
     if result.len == 0: return nil
     result = lastSon(result)
 
+proc repeatsInNode*(symbol: PSym; n: PNode): bool =
+  ## Checks if a sym is repeated in the first son
+  ## somewhere in a node
+  ## useful for checking for recursion in same cases
+  result = false
+  var current = n
+  while current.kind == nkSym or safeLen(current) > 0:
+    if current.kind == nkSym:
+      return current.sym == symbol
+    current = current.sons[0]
+
 proc isGCedMem*(t: PType): bool {.inline.} =
   result = t.kind in {tyString, tyRef, tySequence} or
            t.kind == tyProc and t.callConv == ccClosure

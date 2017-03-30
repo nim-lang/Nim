@@ -859,7 +859,10 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
       checkConstructedType(s.info, s.typ)
       if s.typ.kind in {tyObject, tyTuple} and not s.typ.n.isNil:
         checkForMetaFields(s.typ.n)
-
+    elif len(a.sons) > 2 and a.sons[1].kind == nkGenericParams and 
+          repeatsInNode(a.sons[0].sym, a.sons[2]):
+      localError(n.info, errIllegalRecursionInTypeX, typeToString(a.sons[0].sym.typ))
+      
 proc semAllTypeSections(c: PContext; n: PNode): PNode =
   proc gatherStmts(c: PContext; n: PNode; result: PNode) {.nimcall.} =
     case n.kind
