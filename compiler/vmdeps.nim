@@ -175,7 +175,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
           result.add mapTypeToAst(t.sons[i], info)
     else:
       result = mapTypeToAstX(t.lastSon, info, inst, allowRecursion)
-  of tyGenericBody, tyOrdinal, tyUserTypeClassInst:
+  of tyGenericBody, tyOrdinal:
     result = mapTypeToAst(t.lastSon, info)
   of tyDistinct:
     if inst:
@@ -285,15 +285,19 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
   of tyProxy: result = atomicType("error", mNone)
   of tyBuiltInTypeClass:
     result = mapTypeToBracket("builtinTypeClass", mNone, t, info)
-  of tyUserTypeClass:
-    result = mapTypeToBracket("concept", mNone, t, info)
-    result.add t.n.copyTree
+  of tyUserTypeClass, tyUserTypeClassInst:
+    if t.isResolvedUserTypeClass:
+      result = mapTypeToAst(t.lastSon, info)
+    else:
+      result = mapTypeToBracket("concept", mNone, t, info)
+      result.add t.n.copyTree
   of tyCompositeTypeClass:
     result = mapTypeToBracket("compositeTypeClass", mNone, t, info)
   of tyAnd: result = mapTypeToBracket("and", mAnd, t, info)
   of tyOr: result = mapTypeToBracket("or", mOr, t, info)
   of tyNot: result = mapTypeToBracket("not", mNot, t, info)
   of tyAnything: result = atomicType("anything", mNone)
+  of tyInferred: internalAssert false
   of tyStatic, tyFromExpr, tyFieldAccessor:
     if inst:
       if t.n != nil: result = t.n.copyTree

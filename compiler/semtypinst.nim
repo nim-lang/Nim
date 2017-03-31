@@ -122,6 +122,7 @@ proc isTypeParam(n: PNode): bool =
 proc hasGenericArguments*(n: PNode): bool =
   if n.kind == nkSym:
     return n.sym.kind == skGenericParam or
+           tfInferrableStatic in n.sym.typ.flags or
            (n.sym.kind == skType and
             n.sym.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} != {})
   else:
@@ -144,7 +145,7 @@ proc reResolveCallsWithTypedescParams(cl: var TReplTypeVars, n: PNode): PNode =
       if isTypeParam(n[i]): needsFixing = true
     if needsFixing:
       n.sons[0] = newSymNode(n.sons[0].sym.owner)
-      return cl.c.semOverloadedCall(cl.c, n, n, {skProc})
+      return cl.c.semOverloadedCall(cl.c, n, n, {skProc}, {})
 
   for i in 0 .. <n.safeLen:
     n.sons[i] = reResolveCallsWithTypedescParams(cl, n[i])
@@ -403,6 +404,8 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   case t.kind
   of tyGenericInvocation:
     result = handleGenericInvocation(cl, t)
+    if result.lastSon.kind == tyUserTypeClass:
+      result.kind = tyUserTypeClassInst
 
   of tyGenericBody:
     localError(cl.info, errCannotInstantiateX, typeToString(t))
@@ -444,10 +447,10 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     elif t.sons[0].kind != tyNone:
       result = makeTypeDesc(cl.c, replaceTypeVarsT(cl, t.sons[0]))
 
-  of tyUserTypeClass:
+  of tyUserTypeClass, tyStatic:
     result = t
 
-  of tyGenericInst:
+  of tyGenericInst, tyUserTypeClassInst:
     bailout()
     result = instCopyType(cl, t)
     idTablePut(cl.localCache, t, result)
@@ -501,8 +504,9 @@ proc initTypeVars*(p: PContext, pt: TIdTable, info: TLineInfo;
   result.owner = owner
 
 proc replaceTypesInBody*(p: PContext, pt: TIdTable, n: PNode;
-                         owner: PSym): PNode =
+                         owner: PSym, allowMetaTypes = false): PNode =
   var cl = initTypeVars(p, pt, n.info, owner)
+  cl.allowMetaTypes = allowMetaTypes
   pushInfoContext(n.info)
   result = replaceTypeVarsN(cl, n)
   popInfoContext()

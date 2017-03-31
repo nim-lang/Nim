@@ -55,16 +55,17 @@ const
   # TODO: Remove tyTypeDesc from each abstractX and (where necessary)
   # replace with typedescX
   abstractPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyDistinct, tyOrdinal,
-                   tyTypeDesc, tyAlias}
+                   tyTypeDesc, tyAlias, tyInferred}
   abstractVar* = {tyVar, tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc,
-                  tyAlias}
+                  tyAlias, tyInferred}
   abstractRange* = {tyGenericInst, tyRange, tyDistinct, tyOrdinal, tyTypeDesc,
-                    tyAlias}
+                    tyAlias, tyInferred}
   abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
-                       tyTypeDesc, tyAlias}
-  abstractInst* = {tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias}
-
-  skipPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyTypeDesc, tyAlias}
+                       tyTypeDesc, tyAlias, tyInferred}
+  abstractInst* = {tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias,
+                   tyInferred}
+  skipPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyTypeDesc, tyAlias,
+               tyInferred}
   # typedescX is used if we're sure tyTypeDesc should be included (or skipped)
   typedescPtrs* = abstractPtrs + {tyTypeDesc}
   typedescInst* = abstractInst + {tyTypeDesc}
@@ -182,7 +183,7 @@ proc iterOverTypeAux(marker: var IntSet, t: PType, iter: TTypeIter,
   if result: return
   if not containsOrIncl(marker, t.id):
     case t.kind
-    of tyGenericInst, tyGenericBody, tyAlias:
+    of tyGenericInst, tyGenericBody, tyAlias, tyInferred:
       result = iterOverTypeAux(marker, lastSon(t), iter, closure)
     else:
       for i in countup(0, sonsLen(t) - 1):
@@ -410,11 +411,18 @@ const
     "unused0", "unused1",
     "unused2", "varargs[$1]", "unused", "Error Type",
     "BuiltInTypeClass", "UserTypeClass",
-    "UserTypeClassInst", "CompositeTypeClass",
+    "UserTypeClassInst", "CompositeTypeClass", "inferred",
     "and", "or", "not", "any", "static", "TypeFromExpr", "FieldAccessor",
     "void"]
 
 const preferToResolveSymbols = {preferName, preferModuleInfo, preferGenericArg}
+
+template bindConcreteTypeToUserTypeClass*(tc, concrete: PType) =
+  tc.sons.safeAdd concrete
+  tc.flags.incl tfResolved
+
+template isResolvedUserTypeClass*(t: PType): bool =
+  tfResolved in t.flags
 
 proc addTypeFlags(name: var string, typ: PType) {.inline.} =
   if tfNotNil in typ.flags: name.add(" not nil")
@@ -460,6 +468,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       if t.n != nil: result.add "(" & renderTree(t.n) & ")"
   of tyUserTypeClass:
     internalAssert t.sym != nil and t.sym.owner != nil
+    if t.isResolvedUserTypeClass: return typeToString(t.lastSon)
     return t.sym.owner.name.s
   of tyBuiltInTypeClass:
     result = case t.base.kind:
@@ -476,6 +485,10 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       of tyTuple: "tuple"
       of tyOpenArray: "openarray"
       else: typeToStr[t.base.kind]
+  of tyInferred:
+    let concrete = t.previouslyInferred
+    if concrete != nil: result = typeToString(concrete)
+    else: result = "inferred[" & typeToString(t.base) & "]"
   of tyUserTypeClassInst:
     let body = t.base
     result = body.sym.name.s & "["
@@ -971,7 +984,9 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     result = sameTypeOrNilAux(a.sons[0], b.sons[0], c) and
         sameValue(a.n.sons[0], b.n.sons[0]) and
         sameValue(a.n.sons[1], b.n.sons[1])
-  of tyGenericInst, tyAlias: discard
+  of tyGenericInst, tyAlias, tyInferred:
+    cycleCheck()
+    result = sameTypeAux(a.lastSon, b.lastSon, c)
   of tyNone: result = false
   of tyUnused, tyUnused0, tyUnused1, tyUnused2: internalError("sameFlags")
 
@@ -1118,7 +1133,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     result = nil
   of tyOrdinal:
     if kind != skParam: result = t
-  of tyGenericInst, tyDistinct, tyAlias:
+  of tyGenericInst, tyDistinct, tyAlias, tyInferred:
     result = typeAllowedAux(marker, lastSon(t), kind, flags)
   of tyRange:
     if skipTypes(t.sons[0], abstractInst-{tyTypeDesc}).kind notin
@@ -1305,14 +1320,20 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
     if result < 0: return
     if a < maxAlign: a = maxAlign
     result = align(result, a)
+  of tyInferred:
+    if typ.len > 1:
+      result = computeSizeAux(typ.lastSon, a)
   of tyGenericInst, tyDistinct, tyGenericBody, tyAlias:
     result = computeSizeAux(lastSon(typ), a)
+  of tyTypeClasses:
+    result = if typ.isResolvedUserTypeClass: computeSizeAux(typ.lastSon, a)
+             else: szUnknownSize
   of tyTypeDesc:
     result = computeSizeAux(typ.base, a)
   of tyForward: return szIllegalRecursion
   of tyStatic:
-    if typ.n != nil: result = computeSizeAux(lastSon(typ), a)
-    else: result = szUnknownSize
+    result = if typ.n != nil: computeSizeAux(typ.lastSon, a)
+             else: szUnknownSize
   else:
     #internalError("computeSizeAux()")
     result = szUnknownSize
@@ -1333,18 +1354,17 @@ proc getSize(typ: PType): BiggestInt =
   if result < 0: internalError("getSize: " & $typ.kind)
 
 proc containsGenericTypeIter(t: PType, closure: RootRef): bool =
-  if t.kind == tyStatic:
+  case t.kind
+  of tyStatic:
     return t.n == nil
-
-  if t.kind == tyTypeDesc:
+  of tyTypeDesc:
     if t.base.kind == tyNone: return true
     if containsGenericTypeIter(t.base, closure): return true
     return false
-
-  if t.kind in GenericTypes + tyTypeClasses + {tyFromExpr}:
+  of GenericTypes + tyTypeClasses + {tyFromExpr}:
     return true
-
-  return false
+  else:
+    return false
 
 proc containsGenericType*(t: PType): bool =
   result = iterOverType(t, containsGenericTypeIter, nil)

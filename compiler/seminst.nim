@@ -304,7 +304,8 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
       pragma(c, result, n.sons[pragmasPos], allRoutinePragmas)
     if isNil(n.sons[bodyPos]):
       n.sons[bodyPos] = copyTree(fn.getBody)
-    instantiateBody(c, n, fn.typ.n, result, fn)
+    if c.inGenericContext == 0:
+      instantiateBody(c, n, fn.typ.n, result, fn)
     sideEffectsCheck(c, result)
     paramsTypeCheck(c, result.typ)
   else:
