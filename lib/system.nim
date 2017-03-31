@@ -1384,25 +1384,34 @@ var programResult* {.exportc: "nim_program_result".}: int
   ## under normal circumstances. When the program is terminated
   ## prematurely using ``quit``, this value is ignored.
 
-proc quit*(errorcode: int = QuitSuccess) {.
-  magic: "Exit", importc: "exit", header: "<stdlib.h>", noreturn.}
-  ## Stops the program immediately with an exit code.
-  ##
-  ## Before stopping the program the "quit procedures" are called in the
-  ## opposite order they were added with `addQuitProc <#addQuitProc>`_.
-  ## ``quit`` never returns and ignores any exception that may have been raised
-  ## by the quit procedures.  It does *not* call the garbage collector to free
-  ## all the memory, unless a quit procedure calls `GC_fullCollect
-  ## <#GC_fullCollect>`_.
-  ##
-  ## The proc ``quit(QuitSuccess)`` is called implicitly when your nim
-  ## program finishes without incident. A raised unhandled exception is
-  ## equivalent to calling ``quit(QuitFailure)``.
-  ##
-  ## Note that this is a *runtime* call and using ``quit`` inside a macro won't
-  ## have any compile time effect. If you need to stop the compiler inside a
-  ## macro, use the `error <manual.html#error-pragma>`_ or `fatal
-  ## <manual.html#fatal-pragma>`_ pragmas.
+when defined(nimdoc):
+  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
+    ## Stops the program immediately with an exit code.
+    ##
+    ## Before stopping the program the "quit procedures" are called in the
+    ## opposite order they were added with `addQuitProc <#addQuitProc>`_.
+    ## ``quit`` never returns and ignores any exception that may have been raised
+    ## by the quit procedures.  It does *not* call the garbage collector to free
+    ## all the memory, unless a quit procedure calls `GC_fullCollect
+    ## <#GC_fullCollect>`_.
+    ##
+    ## The proc ``quit(QuitSuccess)`` is called implicitly when your nim
+    ## program finishes without incident. A raised unhandled exception is
+    ## equivalent to calling ``quit(QuitFailure)``.
+    ##
+    ## Note that this is a *runtime* call and using ``quit`` inside a macro won't
+    ## have any compile time effect. If you need to stop the compiler inside a
+    ## macro, use the `error <manual.html#error-pragma>`_ or `fatal
+    ## <manual.html#fatal-pragma>`_ pragmas.
+
+
+elif defined(genode):
+  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn,
+    importcpp: "genodeEnv->parent().exit(@)", header: "<base/env.h>".}
+
+else:
+  proc quit*(errorcode: int = QuitSuccess) {.
+    magic: "Exit", importc: "exit", header: "<stdlib.h>", noreturn.}
 
 template sysAssert(cond: bool, msg: string) =
   when defined(useSysAssert):

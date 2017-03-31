@@ -966,6 +966,19 @@ proc genMainProc(m: BModule) =
         MainProcs &
       "}$N$N"
 
+    GenodeNimMain =
+      "Libc::Env *genodeEnv;$N" &
+      NimMainBody
+
+    ComponentConstruct =
+      "void Libc::Component::construct(Libc::Env &env) {$N" &
+      "\tgenodeEnv = &env;$N" &
+      "\tLibc::with_libc([&] () {$n\t" &
+      MainProcs &
+      "\t});$N" &
+      "\tenv.parent().exit(0);$N" &
+      "}$N$N"
+
   var nimMain, otherMain: FormatStr
   if platform.targetOS == osWindows and
       gGlobalOptions * {optGenGuiApp, optGenDynLib} != {}:
@@ -976,6 +989,9 @@ proc genMainProc(m: BModule) =
       nimMain = WinNimDllMain
       otherMain = WinCDllMain
     m.includeHeader("<windows.h>")
+  elif platform.targetOS == osGenode:
+    nimMain = GenodeNimMain
+    otherMain = ComponentConstruct
   elif optGenDynLib in gGlobalOptions:
     nimMain = PosixNimDllMain
     otherMain = PosixCDllMain
