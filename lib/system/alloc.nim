@@ -763,6 +763,8 @@ proc getOccupiedMem(a: MemRegion): int {.inline.} =
 # ---------------------- thread memory region -------------------------------
 
 template instantiateForRegion(allocator: untyped) =
+  {.push stackTrace: off.}
+
   when defined(fulldebug):
     proc interiorAllocatedPtr*(p: pointer): pointer =
       result = interiorAllocatedPtr(allocator, p)
@@ -850,5 +852,6 @@ template instantiateForRegion(allocator: untyped) =
 
     proc getOccupiedSharedMem(): int =
       sharedMemStatsShared(sharedHeap.currMem - sharedHeap.freeMem)
+  {.pop.}
 
 {.pop.}

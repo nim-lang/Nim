@@ -46,7 +46,11 @@ const
   maxRegisters = 256 # don't think there is an arch with more registers
   useStackMaskHack = false ## use the stack mask hack for better performance
   StackGuardSize = 4096
-  ThreadStackMask = 1024*256*sizeof(int)-1
+  ThreadStackMask =
+    when defined(genode):
+      1024*64*sizeof(int)-1
+    else:
+      1024*256*sizeof(int)-1
   ThreadStackSize = ThreadStackMask+1 - StackGuardSize
 
 when defined(windows):
@@ -114,6 +118,49 @@ when defined(windows):
   proc getThreadId*(): int =
     ## get the ID of the currently running thread.
     result = int(getCurrentThreadId())
+
+elif defined(genode):
+  const
+    GenodeHeader = "genode_cpp/threads.h"
+  type
+    SysThread* {.importcpp: "Nim::SysThread",
+                 header: GenodeHeader, final, pure.} = object
+    GenodeThreadProc = proc (x: pointer) {.noconv.}
+    ThreadVarSlot = int
+
+  proc initThread(s: var SysThread,
+                  stackSize: culonglong,
+                  entry: GenodeThreadProc,
+                  arg: pointer) {.
+    importcpp: "#.initThread(genodeEnv, @)".}
+
+  proc threadVarAlloc(): ThreadVarSlot = 0
+
+  proc offMainThread(): bool {.
+    importcpp: "Nim::SysThread::offMainThread",
+    header: GenodeHeader.}
+
+  proc threadVarSetValue(value: pointer) {.
+    importcpp: "Nim::SysThread::threadVarSetValue(@)",
+    header: GenodeHeader.}
+
+  proc threadVarGetValue(): pointer {.
+    importcpp: "Nim::SysThread::threadVarGetValue()",
+    header: GenodeHeader.}
+
+  var mainTls: pointer
+
+  proc threadVarSetValue(s: ThreadVarSlot, value: pointer) {.inline.} =
+    if offMainThread():
+      threadVarSetValue(value);
+    else:
+      mainTls = value
+
+  proc threadVarGetValue(s: ThreadVarSlot): pointer {.inline.} =
+    if offMainThread():
+      threadVarGetValue();
+    else:
+      mainTls
 
 else:
   when not defined(macosx):
@@ -242,7 +289,6 @@ type
 
   PGcThread = ptr GcThread
   GcThread {.pure, inheritable.} = object
-    sys: SysThread
     when emulatedThreadVars and not useStackMaskHack:
       tls: ThreadLocalStorage
     else:
@@ -345,18 +391,16 @@ when not defined(useNimRtl):
 # use ``stdcall`` since it is mapped to ``noconv`` on UNIX anyway.
 
 type
-  Thread* {.pure, final.}[TArg] =
-      object of GcThread  ## Nim thread. A thread is a heavy object (~14K)
-                          ## that **must not** be part of a message! Use
-                          ## a ``ThreadId`` for that.
+  Thread* {.pure, final.}[TArg] = object
+    core: PGcThread
+    sys: SysThread
     when TArg is void:
       dataFn: proc () {.nimcall, gcsafe.}
     else:
       dataFn: proc (m: TArg) {.nimcall, gcsafe.}
       data: TArg
-  ThreadId*[TArg] = ptr Thread[TArg]  ## the current implementation uses
-                                       ## a pointer as a thread ID.
-{.deprecated: [TThread: Thread, TThreadId: ThreadId].}
+
+{.deprecated: [TThread: Thread].}
 
 var
   threadDestructionHandlers {.rtlThreadVar.}: seq[proc () {.closure, gcsafe.}]
@@ -423,19 +467,20 @@ proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) =
       when declared(threadType):
         threadType = ThreadType.NimThread
     when declared(registerThread):
-      thrd.stackBottom = addr(thrd)
-      registerThread(thrd)
+      thrd.core.stackBottom = addr(thrd)
+      registerThread(thrd.core)
     p(thrd)
-    when declared(registerThread): unregisterThread(thrd)
+    when declared(registerThread): unregisterThread(thrd.core)
     when declared(deallocOsPages): deallocOsPages()
   else:
     threadProcWrapDispatch(thrd)
 
 template threadProcWrapperBody(closure: expr) {.immediate.} =
-  when declared(globalsSlot): threadVarSetValue(globalsSlot, closure)
+  var thrd = cast[ptr Thread[TArg]](closure)
+  var core = thrd.core
+  when declared(globalsSlot): threadVarSetValue(globalsSlot, thrd.core)
   when declared(initAllocator):
     initAllocator()
-  var thrd = cast[ptr Thread[TArg]](closure)
   threadProcWrapStackFrame(thrd)
   # Since an unhandled exception terminates the whole process (!), there is
   # no need for a ``try finally`` here, nor would it be correct: The current
@@ -444,13 +489,18 @@ template threadProcWrapperBody(closure: expr) {.immediate.} =
   # page!
 
   # mark as not running anymore:
+  thrd.core = nil
   thrd.dataFn = nil
+  deallocShared(cast[pointer](core))
 
 {.push stack_trace:off.}
 when defined(windows):
   proc threadProcWrapper[TArg](closure: pointer): int32 {.stdcall.} =
     threadProcWrapperBody(closure)
     # implicitly return 0
+elif defined(genode):
+   proc threadProcWrapper[TArg](closure: pointer) {.noconv.} =
+    threadProcWrapperBody(closure)
 else:
   proc threadProcWrapper[TArg](closure: pointer): pointer {.noconv.} =
     threadProcWrapperBody(closure)
@@ -482,6 +532,14 @@ when hostOS == "windows":
                                      cast[ptr SysThread](addr(a)), 1, -1)
       inc(k, MAXIMUM_WAIT_OBJECTS)
 
+elif defined(genode):
+  proc joinThread*[TArg](t: Thread[TArg]) {.importcpp.}
+    ## waits for the thread `t` to finish.
+
+  proc joinThreads*[TArg](t: varargs[Thread[TArg]]) =
+    ## waits for every thread in `t` to finish.
+    for i in 0..t.high: joinThread(t[i])
+
 else:
   proc joinThread*[TArg](t: Thread[TArg]) {.inline.} =
     ## waits for the thread `t` to finish.
@@ -502,6 +560,10 @@ when false:
       discard pthread_cancel(t.sys)
     when declared(registerThread): unregisterThread(addr(t))
     t.dataFn = nil
+    ## if thread `t` already exited, `t.core` will be `null`.
+    if not isNil(t.core):
+      deallocShared(t.core)
+      t.core = nil
 
 when hostOS == "windows":
   proc createThread*[TArg](t: var Thread[TArg],
@@ -510,9 +572,11 @@ when hostOS == "windows":
     ## creates a new thread `t` and starts its execution. Entry point is the
     ## proc `tp`. `param` is passed to `tp`. `TArg` can be ``void`` if you
     ## don't need to pass any data to the thread.
+    t.core = cast[PGcThread](allocShared0(sizeof(GcThread)))
+
     when TArg isnot void: t.data = param
     t.dataFn = tp
-    when hasSharedHeap: t.stackSize = ThreadStackSize
+    when hasSharedHeap: t.core.stackSize = ThreadStackSize
     var dummyThreadId: int32
     t.sys = createThread(nil, ThreadStackSize, threadProcWrapper[TArg],
                          addr(t), 0'i32, dummyThreadId)
@@ -525,6 +589,21 @@ when hostOS == "windows":
     ## shouldn't use this proc.
     setThreadAffinityMask(t.sys, uint(1 shl cpu))
 
+elif defined(genode):
+  proc createThread*[TArg](t: var Thread[TArg],
+                           tp: proc (arg: TArg) {.thread, nimcall.},
+                           param: TArg) =
+    when TArg isnot void: t.data = param
+    t.dataFn = tp
+    when hasSharedHeap: t.stackSize = ThreadStackSize
+    t.sys.initThread(
+      ThreadStackSize.culonglong,
+      threadProcWrapper[TArg], addr(t))
+
+  proc pinToCpu*[Arg](t: var Thread[Arg]; cpu: Natural) =
+    {.hint: "cannot change Genode thread CPU affinity after initialization".}
+    discard
+
 else:
   proc createThread*[TArg](t: var Thread[TArg],
                            tp: proc (arg: TArg) {.thread, nimcall.},
@@ -532,9 +611,11 @@ else:
     ## creates a new thread `t` and starts its execution. Entry point is the
     ## proc `tp`. `param` is passed to `tp`. `TArg` can be ``void`` if you
     ## don't need to pass any data to the thread.
+    t.core = cast[PGcThread](allocShared0(sizeof(GcThread)))
+
     when TArg isnot void: t.data = param
     t.dataFn = tp
-    when hasSharedHeap: t.stackSize = ThreadStackSize
+    when hasSharedHeap: t.core.stackSize = ThreadStackSize
     var a {.noinit.}: PthreadAttr
     pthread_attr_init(a)
     pthread_attr_setstacksize(a, ThreadStackSize)
@@ -553,10 +634,6 @@ else:
 
 proc createThread*(t: var Thread[void], tp: proc () {.thread, nimcall.}) =
   createThread[void](t, tp)
-
-proc threadId*[TArg](t: var Thread[TArg]): ThreadId[TArg] {.inline.} =
-  ## returns the thread ID of `t`.
-  result = addr(t)
 
 when false:
   proc mainThreadId*[TArg](): ThreadId[TArg] =

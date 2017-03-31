@@ -890,7 +890,7 @@ proc genSeqElem(p: BProc, x, y: PNode, d: var TLoc) =
               rfmt(nil, "$1->data[$2]", rdLoc(a), rdCharLoc(b)), a.s)
 
 proc genBracketExpr(p: BProc; n: PNode; d: var TLoc) =
-  var ty = skipTypes(n.sons[0].typ, abstractVarRange)
+  var ty = skipTypes(n.sons[0].typ, abstractVarRange + tyUserTypeClasses)
   if ty.kind in {tyRef, tyPtr}: ty = skipTypes(ty.lastSon, abstractVarRange)
   case ty.kind
   of tyArray: genArrayElem(p, n.sons[0], n.sons[1], d)
@@ -944,7 +944,6 @@ proc genEcho(p: BProc, n: PNode) =
   # this unusal way of implementing it ensures that e.g. ``echo("hallo", 45)``
   # is threadsafe.
   internalAssert n.kind == nkBracket
-  p.module.includeHeader("<stdio.h>")
   var args: Rope = nil
   var a: TLoc
   for i in countup(0, n.len-1):
@@ -953,9 +952,15 @@ proc genEcho(p: BProc, n: PNode) =
     else:
       initLocExpr(p, n.sons[i], a)
       addf(args, ", $1? ($1)->data:\"nil\"", [rdLoc(a)])
-  linefmt(p, cpsStmts, "printf($1$2);$n",
-          makeCString(repeat("%s", n.len) & tnl), args)
-  linefmt(p, cpsStmts, "fflush(stdout);$n")
+  if platform.targetOS == osGenode:
+    # bypass libc and print directly to the Genode LOG session
+    p.module.includeHeader("<base/log.h>")
+    linefmt(p, cpsStmts, """Genode::log(""$1);$n""", args)
+  else:
+    p.module.includeHeader("<stdio.h>")
+    linefmt(p, cpsStmts, "printf($1$2);$n",
+            makeCString(repeat("%s", n.len) & tnl), args)
+    linefmt(p, cpsStmts, "fflush(stdout);$n")
 
 proc gcUsage(n: PNode) =
   if gSelectedGC == gcNone: message(n.info, warnGcMem, n.renderTree)
@@ -1359,7 +1364,7 @@ proc genDollar(p: BProc, n: PNode, d: var TLoc, frmt: string) =
 proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   var a = e.sons[1]
   if a.kind == nkHiddenAddr: a = a.sons[0]
-  let typ = skipTypes(a.typ, abstractVar)
+  var typ = skipTypes(a.typ, abstractVar + tyUserTypeClasses)
   case typ.kind
   of tyOpenArray, tyVarargs:
     if op == mHigh: unaryExpr(p, e, d, "($1Len_0-1)")

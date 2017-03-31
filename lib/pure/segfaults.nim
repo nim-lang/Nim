@@ -13,10 +13,6 @@
 ##
 ## Tested on these OSes: Linux, Windows, OSX
 
-type
-  NilAccessError* = object of SystemError ## \
-    ## Raised on dereferences of ``nil`` pointers.
-
 # do allocate memory upfront:
 var se: ref NilAccessError
 new(se)

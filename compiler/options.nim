@@ -41,7 +41,6 @@ type                          # please make sure we have under 32 options
   TGlobalOption* = enum       # **keep binary compatible**
     gloptNone, optForceFullMake, optDeadCodeElim,
     optListCmd, optCompileOnly, optNoLinking,
-    optReportConceptFailures, # report 'compiles' or 'concept' matching failures
     optCDebug,                # turn on debugging information
     optGenDynLib,             # generate a dynamic library
     optGenStaticLib,          # generate a static library
@@ -73,8 +72,8 @@ type                          # please make sure we have under 32 options
   TGlobalOptions* = set[TGlobalOption]
 
 const
-  harmlessOptions* = {optForceFullMake, optNoLinking, optReportConceptFailures,
-    optRun, optUseColors, optStdout}
+  harmlessOptions* = {optForceFullMake, optNoLinking, optRun,
+                      optUseColors, optStdout}
 
 type
   TCommands* = enum           # Nim's commands

@@ -5,6 +5,7 @@ os:
   - osx
 dist: trusty
 
+
 matrix:
   allow_failures:
     - os: osx
@@ -15,10 +16,10 @@ addons:
     - libcurl4-openssl-dev
     - libsdl1.2-dev
     - libgc-dev
-  brew:
-    packages:
-    - boehmgc
-    - node
+
+before_install:
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install boehmgc; fi
 
 before_script:
   - set -e
@@ -42,4 +43,3 @@ script:
   - nim c --taintMode:on -d:nimCoroutines tests/testament/tester
   - tests/testament/tester --pedantic all -d:nimCoroutines
   - ./koch csource
-  - ./koch xz

@@ -1010,8 +1010,7 @@ proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
   ## the specified time an ETimeout exception will be raised.
   ##
   ## The ``maxLength`` parameter determines the maximum amount of characters
-  ## that can be read before a ``ValueError`` is raised. This prevents Denial
-  ## of Service (DOS) attacks.
+  ## that can be read. The result is truncated after that.
   ##
   ## **Warning**: Only the ``SafeDisconn`` flag is currently supported.
 
@@ -1047,10 +1046,7 @@ proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
     add(line.string, c)
 
     # Verify that this isn't a DOS attack: #3847.
-    if line.string.len > maxLength:
-      let msg = "recvLine received more than the specified `maxLength` " &
-                "allowed."
-      raise newException(ValueError, msg)
+    if line.string.len > maxLength: break
 
 proc recvLine*(socket: Socket, timeout = -1,
                flags = {SocketFlag.SafeDisconn},
@@ -1069,8 +1065,7 @@ proc recvLine*(socket: Socket, timeout = -1,
   ## the specified time an ETimeout exception will be raised.
   ##
   ## The ``maxLength`` parameter determines the maximum amount of characters
-  ## that can be read before a ``ValueError`` is raised. This prevents Denial
-  ## of Service (DOS) attacks.
+  ## that can be read. The result is truncated after that.
   ##
   ## **Warning**: Only the ``SafeDisconn`` flag is currently supported.
   result = ""

@@ -1,5 +1,6 @@
 discard """
   output: '''b()
+720 120.0
 720 120.0'''
 """
 
@@ -16,13 +17,12 @@ proc fac[T](x: T): T =
 
 echo fac(6), " ", fac(5.0)
 
-when false:
-  # This still doesn't work...
-  # test recursive generic with forwarding:
-  proc fac2[T](x: T): T
+# test recursive generic with forwarding:
+proc fac2[T](x: T): T
 
-  echo fac2(6), " ", fac2(5.0)
+echo fac2(6), " ", fac2(5.0)
 
-  proc fac2[T](x: T): T =
-    if x == 0: return 1
-    else: return fac2(x-1)*x
+proc fac2[T](x: T): T =
+  if x == 0: return 1
+  else: return fac2(x-1)*x
+

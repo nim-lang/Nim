@@ -154,9 +154,13 @@ proc `addr`*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
   discard
 
 proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
-  ## Builtin 'addr' operator for taking the address of a memory location.
-  ## This works even for ``let`` variables or parameters for better interop
-  ## with C and so it is considered even more unsafe than the ordinary ``addr``.
+  ## Builtin 'addr' operator for taking the address of a memory
+  ## location.  This works even for ``let`` variables or parameters
+  ## for better interop with C and so it is considered even more
+  ## unsafe than the ordinary ``addr``.  When you use it to write a
+  ## wrapper for a C library, you should always check that the
+  ## original library does never write to data behind the pointer that
+  ## is returned from this procedure.
   ## Cannot be overloaded.
   discard
 
@@ -554,6 +558,10 @@ type
     ## Raised if it is attempted to send a message to a dead thread.
     ##
     ## See the full `exception hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
+  NilAccessError* = object of SystemError ## \
+    ## Raised on dereferences of ``nil`` pointers.
+    ##
+    ## This is only raised if the ``segfaults.nim`` module was imported!
 
 {.deprecated: [TObject: RootObj, PObject: RootRef, TEffect: RootEffect,
   FTime: TimeEffect, FIO: IOEffect, FReadIO: ReadIOEffect,
@@ -1376,25 +1384,34 @@ var programResult* {.exportc: "nim_program_result".}: int
   ## under normal circumstances. When the program is terminated
   ## prematurely using ``quit``, this value is ignored.
 
-proc quit*(errorcode: int = QuitSuccess) {.
-  magic: "Exit", importc: "exit", header: "<stdlib.h>", noreturn.}
-  ## Stops the program immediately with an exit code.
-  ##
-  ## Before stopping the program the "quit procedures" are called in the
-  ## opposite order they were added with `addQuitProc <#addQuitProc>`_.
-  ## ``quit`` never returns and ignores any exception that may have been raised
-  ## by the quit procedures.  It does *not* call the garbage collector to free
-  ## all the memory, unless a quit procedure calls `GC_fullCollect
-  ## <#GC_fullCollect>`_.
-  ##
-  ## The proc ``quit(QuitSuccess)`` is called implicitly when your nim
-  ## program finishes without incident. A raised unhandled exception is
-  ## equivalent to calling ``quit(QuitFailure)``.
-  ##
-  ## Note that this is a *runtime* call and using ``quit`` inside a macro won't
-  ## have any compile time effect. If you need to stop the compiler inside a
-  ## macro, use the `error <manual.html#error-pragma>`_ or `fatal
-  ## <manual.html#fatal-pragma>`_ pragmas.
+when defined(nimdoc):
+  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
+    ## Stops the program immediately with an exit code.
+    ##
+    ## Before stopping the program the "quit procedures" are called in the
+    ## opposite order they were added with `addQuitProc <#addQuitProc>`_.
+    ## ``quit`` never returns and ignores any exception that may have been raised
+    ## by the quit procedures.  It does *not* call the garbage collector to free
+    ## all the memory, unless a quit procedure calls `GC_fullCollect
+    ## <#GC_fullCollect>`_.
+    ##
+    ## The proc ``quit(QuitSuccess)`` is called implicitly when your nim
+    ## program finishes without incident. A raised unhandled exception is
+    ## equivalent to calling ``quit(QuitFailure)``.
+    ##
+    ## Note that this is a *runtime* call and using ``quit`` inside a macro won't
+    ## have any compile time effect. If you need to stop the compiler inside a
+    ## macro, use the `error <manual.html#error-pragma>`_ or `fatal
+    ## <manual.html#fatal-pragma>`_ pragmas.
+
+
+elif defined(genode):
+  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn,
+    importcpp: "genodeEnv->parent().exit(@)", header: "<base/env.h>".}
+
+else:
+  proc quit*(errorcode: int = QuitSuccess) {.
+    magic: "Exit", importc: "exit", header: "<stdlib.h>", noreturn.}
 
 template sysAssert(cond: bool, msg: string) =
   when defined(useSysAssert):
@@ -2463,8 +2480,8 @@ template accumulateResult*(iter: untyped) =
 const NimStackTrace = compileOption("stacktrace")
 
 template coroutinesSupportedPlatform(): bool =
-  when defined(sparc) or defined(ELATE) or compileOption("gc", "v2") or 
-    defined(boehmgc) or defined(gogc) or defined(nogc) or defined(gcStack) or 
+  when defined(sparc) or defined(ELATE) or compileOption("gc", "v2") or
+    defined(boehmgc) or defined(gogc) or defined(nogc) or defined(gcStack) or
     defined(gcMarkAndSweep):
     false
   else:

@@ -130,6 +130,16 @@ type
     readOnly*: bool
     options*: seq[OptionElement]
 
+  # https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement
+  HtmlElement* = ref object of Element
+    contentEditable*: string
+    isContentEditable*: bool
+    dir*: string
+    offsetHeight*: int
+    offsetWidth*: int
+    offsetLeft*: int
+    offsetTop*: int
+
   LinkElement* = ref LinkObj
   LinkObj {.importc.} = object of ElementObj
     target*: cstring
@@ -270,6 +280,8 @@ type
     wordSpacing*: cstring
     zIndex*: int
 
+  # TODO: A lot of the fields in Event belong to a more specific type of event.
+  # TODO: Should we clean this up?
   Event* = ref EventObj
   EventObj {.importc.} = object of RootObj
     target*: Node
@@ -309,6 +321,20 @@ type
     SELECT*: int
     SUBMIT*: int
     UNLOAD*: int
+
+  TouchList* {.importc.} = ref object of RootObj
+    length*: int
+
+  TouchEvent* {.importc.} = ref object of Event
+    changedTouches*, targetTouches*, touches*: TouchList
+
+  Touch* {.importc.} = ref object of RootObj
+    identifier*: int
+    screenX*, screenY*, clientX*, clientY*, pageX*, pageY*: int
+    target*: Element
+    radiusX*, radiusY*: int
+    rotationAngle*: int
+    force*: float
 
   Location* = ref LocationObj
   LocationObj {.importc.} = object of RootObj
@@ -406,6 +432,8 @@ proc setInterval*(w: Window, function: proc (), pause: int): ref TInterval
 proc setTimeout*(w: Window, code: cstring, pause: int): ref TTimeOut
 proc setTimeout*(w: Window, function: proc (), pause: int): ref TInterval
 proc stop*(w: Window)
+proc requestAnimationFrame*(w: Window, function: proc (time: float)): int
+proc cancelAnimationFrame*(w: Window, id: int)
 
 # Node "methods"
 proc appendChild*(n, child: Node)
@@ -485,6 +513,10 @@ proc setAttribute*(s: Style, attr, value: cstring, caseSensitive=false)
 
 # Event "methods"
 proc preventDefault*(ev: Event)
+
+# TouchEvent "methods"
+proc identifiedTouch*(list: TouchList): Touch
+proc item*(list: TouchList, i: int): Touch
 
 {.pop.}
 

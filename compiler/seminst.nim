@@ -125,6 +125,11 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind)
 
 proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
   if n.sons[bodyPos].kind != nkEmpty:
+    let procParams = result.typ.n
+    for i in 1 .. <procParams.len:
+      addDecl(c, procParams[i].sym)
+    maybeAddResult(c, result, result.ast)
+
     inc c.inGenericInst
     # add it here, so that recursive generic procs are possible:
     var b = n.sons[bodyPos]
@@ -147,13 +152,17 @@ proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
   for i in countup(0, c.generics.len - 1):
     if c.generics[i].genericSym.id == s.id:
       var oldPrc = c.generics[i].inst.sym
+      pushProcCon(c, oldPrc)
+      pushOwner(c, oldPrc)
       pushInfoContext(oldPrc.info)
       openScope(c)
       var n = oldPrc.ast
       n.sons[bodyPos] = copyTree(s.getBody)
-      instantiateBody(c, n, nil, oldPrc, s)
+      instantiateBody(c, n, oldPrc.typ.n, oldPrc, s)
       closeScope(c)
       popInfoContext()
+      popOwner(c)
+      popProcCon(c)
 
 proc sideEffectsCheck(c: PContext, s: PSym) =
   when false:
@@ -173,7 +182,7 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
   result = replaceTypeVarsT(cl, header)
 
 proc instantiateProcType(c: PContext, pt: TIdTable,
-                          prc: PSym, info: TLineInfo) =
+                         prc: PSym, info: TLineInfo) =
   # XXX: Instantiates a generic proc signature, while at the same
   # time adding the instantiated proc params into the current scope.
   # This is necessary, because the instantiation process may refer to
@@ -229,7 +238,6 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   skipIntLiteralParams(result)
 
   prc.typ = result
-  maybeAddResult(c, prc, prc.ast)
   popInfoContext()
 
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
@@ -296,7 +304,8 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
       pragma(c, result, n.sons[pragmasPos], allRoutinePragmas)
     if isNil(n.sons[bodyPos]):
       n.sons[bodyPos] = copyTree(fn.getBody)
-    instantiateBody(c, n, fn.typ.n, result, fn)
+    if c.inGenericContext == 0:
+      instantiateBody(c, n, fn.typ.n, result, fn)
     sideEffectsCheck(c, result)
     paramsTypeCheck(c, result.typ)
   else:

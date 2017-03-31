@@ -42,6 +42,11 @@ Changes affecting backwards compatibility
   AST that is the same as what is used to define an enum.  Previously the AST
   returned had a repeated ``EnumTy`` node and was missing the initial pragma
   node (which is currently empty for an enum).
+- If the dispatcher parameter's value used in multi method is ``nil``,
+  a ``NilError`` exception is raised. The old behavior was that the method
+  would be a ``nop`` then.
+- ``posix.nim``: the family of ``ntohs`` procs now takes unsigned integers
+  instead of signed integers.
 
 
 Library Additions

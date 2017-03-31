@@ -508,8 +508,8 @@ else:
     freeAddrInfo(aiList)
     # for some reason Windows select doesn't return both
     # descriptors from first call, so we need to make 2 calls
-    discard selector.select(100)
-    var rcm = selector.select(100)
+    discard selector.select(1000)
+    var rcm = selector.select(1000)
     assert(len(rcm) == 2)
 
     var sockAddress = SockAddr()
@@ -526,7 +526,7 @@ else:
 
     selector.updateHandle(client_socket, {Event.Read})
 
-    var rc2 = selector.select(100)
+    var rc2 = selector.select(1000)
     assert(len(rc2) == 1)
 
     var read_count = recv(server2_socket, addr buffer[0], 128, 0)
@@ -595,7 +595,7 @@ else:
     proc event_wait_thread(event: SelectEvent) {.thread.} =
       var selector = newSelector[int]()
       selector.registerEvent(event, 1)
-      var rc = selector.select(500)
+      var rc = selector.select(1500)
       if len(rc) == 1:
         inc(counter)
       selector.unregister(event)

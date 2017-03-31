@@ -50,7 +50,11 @@ proc chckRangeF(x, a, b: float): float =
 
 proc chckNil(p: pointer) =
   if p == nil:
-    sysFatal(ValueError, "attempt to write to a nil address")
+    sysFatal(NilAccessError, "attempt to write to a nil address")
+
+proc chckNilDisp(p: pointer) {.compilerproc.} =
+  if p == nil:
+    sysFatal(NilAccessError, "cannot dispatch; dispatcher is nil")
 
 proc chckObj(obj, subclass: PNimType) {.compilerproc.} =
   # checks if obj is of type subclass:

@@ -39,7 +39,7 @@ directly or indirectly through a call to a GC unsafe proc.
 The `gcsafe`:idx: annotation can be used to mark a proc to be gcsafe,
 otherwise this property is inferred by the compiler. Note that ``noSideEffect``
 implies ``gcsafe``. The only way to create a thread is via ``spawn`` or
-``createThead``. ``spawn`` is usually the preferable method. Either way
+``createThread``. ``spawn`` is usually the preferable method. Either way
 the invoked proc must not use ``var`` parameters nor must any of its parameters
 contain a ``ref`` or ``closure`` type. This enforces
 the *no heap sharing restriction*.

@@ -9,7 +9,8 @@ Windows
 Zips
 %%%%
 
-We now encourage you to install via the provided zipfiles:
+Since the website moved to https, only installation via the provided zipfiles
+is supported:
 
 * | 32 bit: `nim-0.16.0_x32.zip <download/nim-0.16.0_x32.zip>`_
   | SHA-256  69af94a6875a02543c1bf0fa03c665f126f8500a2c0e226c32571e64c6842e57
@@ -25,21 +26,14 @@ You can find the required DLLs here, if you lack them for some reason:
   | SHA-256  198112d3d6dc74d7964ba452158d44bfa57adef4dc47be8c39903f2a24e4a555
 
 
-Exes
-%%%%
+These versions of mingw are known to work:
 
-You can download an installer for both 32 bit and 64 bit versions of
-Windows below. Note that these installers have some known issues and
-so will unlikely to be provided further in the future. These
-installers have everything you need to use Nim, including a C compiler.
+* | 32 bit: `mingw32-6.3.0 <download/mingw32-6.3.0.7z>`_
+  | SHA-256  1239a56d4c42e146b2cb25dc4d0871bd83f569d0a51a9198e84d010e0a75745a
+* | 64 bit: `mingw64-6.3.0 <download/mingw64-6.3.0.7z>`_
+  | SHA-256  9a23d12d96a10e67093c1f2042275c6a7d29da9e2ead573d0f24f4a6d53761a1
 
-* | 32 bit: `nim-0.16.0_x32.exe <download/nim-0.16.0_x32.exe>`_
-  | SHA-256  37c55d9f9b3a2947559901c8bbd10b6a16191b562ca2bebdc145a6c24f5d004e
-* | 64 bit: `nim-0.16.0_x64.exe <download/nim-0.16.0_x64.exe>`_
-  | SHA-256  13934282b01cbcaf7ad7aecb67e954dd0ea2b576c6c8102016cb9a9a30cce744
 
-These installers also include Aporia, Nimble and other useful Nim tools to get
-you started with Nim development!
 
 Installation based on generated C code
 --------------------------------------

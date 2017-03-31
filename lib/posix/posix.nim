@@ -109,12 +109,17 @@ type
   Dirent* {.importc: "struct dirent",
              header: "<dirent.h>", final, pure.} = object ## dirent_t struct
     d_ino*: Ino  ## File serial number.
-    when defined(linux) or defined(macosx) or defined(bsd):
+    when defined(dragonfly):
+      # DragonflyBSD doesn't have `d_reclen` field.
+      d_type*: uint8 
+    elif defined(linux) or defined(macosx) or defined(freebsd) or
+         defined(netbsd) or defined(openbsd):
       d_reclen*: cshort ## Length of this record. (not POSIX)
       d_type*: int8 ## Type of file; not supported by all filesystem types.
                     ## (not POSIX)
-      when defined(linux) or defined(bsd):
+      when defined(linux) or defined(openbsd):
         d_off*: Off  ## Not an offset. Value that ``telldir()`` would return.
+
     d_name*: array[0..255, char] ## Name of entry.
 
   Tflock* {.importc: "struct flock", final, pure,
@@ -1857,10 +1862,10 @@ when hasAioH:
                a4: ptr SigEvent): cint {.importc, header: "<aio.h>".}
 
 # arpa/inet.h
-proc htonl*(a1: int32): int32 {.importc, header: "<arpa/inet.h>".}
-proc htons*(a1: int16): int16 {.importc, header: "<arpa/inet.h>".}
-proc ntohl*(a1: int32): int32 {.importc, header: "<arpa/inet.h>".}
-proc ntohs*(a1: int16): int16 {.importc, header: "<arpa/inet.h>".}
+proc htonl*(a1: uint32): uint32 {.importc, header: "<arpa/inet.h>".}
+proc htons*(a1: uint16): uint16 {.importc, header: "<arpa/inet.h>".}
+proc ntohl*(a1: uint32): uint32 {.importc, header: "<arpa/inet.h>".}
+proc ntohs*(a1: uint16): uint16 {.importc, header: "<arpa/inet.h>".}
 
 proc inet_addr*(a1: cstring): InAddrT {.importc, header: "<arpa/inet.h>".}
 proc inet_ntoa*(a1: InAddr): cstring {.importc, header: "<arpa/inet.h>".}

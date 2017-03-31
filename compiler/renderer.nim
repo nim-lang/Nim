@@ -34,6 +34,7 @@ type
     pendingWhitespace: int
     comStack*: seq[PNode]  # comment stack
     flags*: TRenderFlags
+    inGenericParams: bool
     checkAnon: bool        # we're in a context that can contain sfAnon
     inPragma: int
 
@@ -83,7 +84,7 @@ proc initSrcGen(g: var TSrcGen, renderFlags: TRenderFlags) =
   g.flags = renderFlags
   g.pendingNL = -1
   g.pendingWhitespace = -1
-  g.checkAnon = false
+  g.inGenericParams = false
 
 proc addTok(g: var TSrcGen, kind: TTokType, s: string) =
   var length = len(g.tokens)
@@ -692,14 +693,14 @@ proc gproc(g: var TSrcGen, n: PNode) =
 
   if n.sons[patternPos].kind != nkEmpty:
     gpattern(g, n.sons[patternPos])
-  let oldCheckAnon = g.checkAnon
-  g.checkAnon = true
+  let oldInGenericParams = g.inGenericParams
+  g.inGenericParams = true
   if renderNoBody in g.flags and n[miscPos].kind != nkEmpty and
       n[miscPos][1].kind != nkEmpty:
     gsub(g, n[miscPos][1])
   else:
     gsub(g, n.sons[genericParamsPos])
-  g.checkAnon = oldCheckAnon
+  g.inGenericParams = oldInGenericParams
   gsub(g, n.sons[paramsPos])
   gsub(g, n.sons[pragmasPos])
   if renderNoBody notin g.flags:
@@ -765,7 +766,10 @@ proc gasm(g: var TSrcGen, n: PNode) =
     gsub(g, n.sons[1])
 
 proc gident(g: var TSrcGen, n: PNode) =
-  if g.checkAnon and n.kind == nkSym and sfAnon in n.sym.flags: return
+  if g.inGenericParams and n.kind == nkSym:
+    if sfAnon in n.sym.flags or
+      (n.typ != nil and tfImplicitTypeParam in n.typ.flags): return
+
   var t: TTokType
   var s = atom(n)
   if (s[0] in lexer.SymChars):
@@ -1315,9 +1319,16 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     gcoms(g)
     gstmts(g, lastSon(n), c)
   of nkGenericParams:
-    put(g, tkBracketLe, "[")
-    gcomma(g, n)
-    put(g, tkBracketRi, "]")
+    proc hasExplicitParams(gp: PNode): bool =
+      for p in gp:
+        if p.typ == nil or tfImplicitTypeParam notin p.typ.flags:
+          return true
+      return false
+    
+    if n.hasExplicitParams:
+      put(g, tkBracketLe, "[")
+      gcomma(g, n)
+      put(g, tkBracketRi, "]")
   of nkFormalParams:
     put(g, tkParLe, "(")
     gsemicolon(g, n, 1)

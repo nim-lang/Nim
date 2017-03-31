@@ -235,6 +235,13 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
   of nkStmtList, nkStmtListExpr:
     if n.typ != nil:
       result = isAssignable(owner, n.lastSon, isUnsafeAddr)
+  of nkVarTy:
+    # XXX: The fact that this is here is a bit of a hack.
+    # The goal is to allow the use of checks such as "foo(var T)"
+    # within concepts. Semantically, it's not correct to say that
+    # nkVarTy denotes an lvalue, but the example above is the only
+    # possible code which will get us here
+    result = arLValue
   else:
     discard
 

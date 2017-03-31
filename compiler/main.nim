@@ -272,7 +272,7 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
   if msgs.gErrorCounter == 0 and
      gCmd notin {cmdInterpret, cmdRun, cmdDump}:
     when declared(system.getMaxMem):
-      let usedMem = formatSize(getMaxMem()) & " peekmem"
+      let usedMem = formatSize(getMaxMem()) & " peakmem"
     else:
       let usedMem = formatSize(getTotalMem())
     rawMessage(hintSuccessX, [$gLinesCompiled,

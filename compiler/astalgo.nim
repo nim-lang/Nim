@@ -82,7 +82,7 @@ template mdbg*: bool {.dirty.} =
   elif compiles(L.fileIdx):
     L.fileIdx == gProjectMainIdx
   else:
-    false
+    error()
 
 # --------------------------- ident tables ----------------------------------
 proc idTableGet*(t: TIdTable, key: PIdObj): RootRef

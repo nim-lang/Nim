@@ -112,15 +112,17 @@ proc lowerBound*[T](a: openArray[T], key: T, cmp: proc(x,y: T): int {.closure.})
       count = step
 
 proc lowerBound*[T](a: openArray[T], key: T): int = lowerBound(a, key, cmp[T])
+
+template `<-` (a, b) =
+  when false:
+    a = b
+  elif onlySafeCode:
+    shallowCopy(a, b)
+  else:
+    copyMem(addr(a), addr(b), sizeof(T))
+
 proc merge[T](a, b: var openArray[T], lo, m, hi: int,
               cmp: proc (x, y: T): int {.closure.}, order: SortOrder) =
-  template `<-` (a, b) =
-    when false:
-      a = b
-    elif onlySafeCode:
-      shallowCopy(a, b)
-    else:
-      copyMem(addr(a), addr(b), sizeof(T))
   # optimization: If max(left) <= min(right) there is nothing to do!
   # 1 2 3 4  ## 5 6 7 8
   # -> O(n) for sorted arrays.

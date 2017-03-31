@@ -566,7 +566,10 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   pushTransCon(c, newC)
   for i in countup(1, sonsLen(call) - 1):
     var arg = transform(c, call.sons[i]).PNode
-    var formal = skipTypes(iter.typ, abstractInst).n.sons[i].sym
+    let ff = skipTypes(iter.typ, abstractInst)
+    # can happen for 'nim check':
+    if i >= ff.n.len: return result
+    var formal = ff.n.sons[i].sym
     case putArgInto(arg, formal.typ)
     of paDirectMapping:
       idNodeTablePut(newC.mapping, formal, arg)

@@ -15,17 +15,28 @@ import
 
 proc ensureNoMissingOrUnusedSymbols(scope: PScope)
 
-proc considerQuotedIdent*(n: PNode): PIdent =
+proc noidentError(n, origin: PNode) =
+  var m = ""
+  if origin != nil:
+    m.add "in expression '" & origin.renderTree & "': "
+  m.add "identifier expected, but found '" & n.renderTree & "'"
+  localError(n.info, m)
+
+proc considerQuotedIdent*(n: PNode, origin: PNode = nil): PIdent =
   ## Retrieve a PIdent from a PNode, taking into account accent nodes.
+  ## ``origin`` can be nil. If it is not nil, it is used for a better
+  ## error message.
+  template handleError(n, origin: PNode) =
+    noidentError(n, origin)
+    result = getIdent"<Error>"
+
   case n.kind
   of nkIdent: result = n.ident
   of nkSym: result = n.sym.name
   of nkAccQuoted:
     case n.len
-    of 0:
-      localError(n.info, errIdentifierExpected, renderTree(n))
-      result = getIdent"<Error>"
-    of 1: result = considerQuotedIdent(n.sons[0])
+    of 0: handleError(n, origin)
+    of 1: result = considerQuotedIdent(n.sons[0], origin)
     else:
       var id = ""
       for i in 0.. <n.len:
@@ -33,14 +44,11 @@ proc considerQuotedIdent*(n: PNode): PIdent =
         case x.kind
         of nkIdent: id.add(x.ident.s)
         of nkSym: id.add(x.sym.name.s)
-        else:
-          localError(n.info, errIdentifierExpected, renderTree(n))
-          return getIdent"<Error>"
+        else: handleError(n, origin)
       result = getIdent(id)
   of nkOpenSymChoice, nkClosedSymChoice: result = n.sons[0].sym.name
   else:
-    localError(n.info, errIdentifierExpected, renderTree(n))
-    result = getIdent"<Error>"
+    handleError(n, origin)
 
 template addSym*(scope: PScope, s: PSym) =
   strTableAdd(scope.symbols, s)
@@ -353,7 +361,7 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
       if n.sons[1].kind == nkIdent:
         ident = n.sons[1].ident
       elif n.sons[1].kind == nkAccQuoted:
-        ident = considerQuotedIdent(n.sons[1])
+        ident = considerQuotedIdent(n.sons[1], n)
       if ident != nil:
         if o.m == c.module:
           # a module may access its private members:
@@ -363,8 +371,7 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
         else:
           result = initIdentIter(o.it, o.m.tab, ident).skipAlias(n)
       else:
-        localError(n.sons[1].info, errIdentifierExpected,
-                   renderTree(n.sons[1]))
+        noidentError(n.sons[1], n)
         result = errorSym(c, n.sons[1])
   of nkClosedSymChoice, nkOpenSymChoice:
     o.mode = oimSymChoice

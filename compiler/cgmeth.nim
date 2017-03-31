@@ -229,6 +229,7 @@ proc genDispatcher(methods: TSymSeq, relevantCols: IntSet): PSym =
   var base = lastSon(methods[0].ast).sym
   result = base
   var paramLen = sonsLen(base.typ)
+  var nilchecks = newNodeI(nkStmtList, base.info)
   var disp = newNodeI(nkIfStmt, base.info)
   var ands = getSysSym("and")
   var iss = getSysSym("of")
@@ -239,7 +240,11 @@ proc genDispatcher(methods: TSymSeq, relevantCols: IntSet): PSym =
       if contains(relevantCols, col):
         var isn = newNodeIT(nkCall, base.info, getSysType(tyBool))
         addSon(isn, newSymNode(iss))
-        addSon(isn, newSymNode(base.typ.n.sons[col].sym))
+        let param = base.typ.n.sons[col].sym
+        addSon(isn, newSymNode(param))
+        if param.typ.skipTypes(abstractInst).kind in {tyRef, tyPtr}:
+          addSon(nilchecks, newTree(nkCall,
+                newSymNode(getCompilerProc"chckNilDisp"), newSymNode(param)))
         addSon(isn, newNodeIT(nkType, base.info, curr.typ.sons[col]))
         if cond != nil:
           var a = newNodeIT(nkCall, base.info, getSysType(tyBool))
@@ -270,7 +275,8 @@ proc genDispatcher(methods: TSymSeq, relevantCols: IntSet): PSym =
       addSon(disp, a)
     else:
       disp = ret
-  result.ast.sons[bodyPos] = disp
+  nilchecks.add disp
+  result.ast.sons[bodyPos] = nilchecks
 
 proc generateMethodDispatchers*(g: ModuleGraph): PNode =
   result = newNode(nkStmtList)
