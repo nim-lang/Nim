@@ -287,7 +287,7 @@ proc checkBinary(p: TParser) {.inline.} =
 #| optInd = COMMENT?
 #| optPar = (IND{>} | IND{=})?
 #|
-#| simpleExpr = arrowExpr (OP0 optInd arrowExpr)*
+#| simpleExpr = arrowExpr (OP0 optInd arrowExpr)* pragma?
 #| arrowExpr = assignExpr (OP1 optInd assignExpr)*
 #| assignExpr = orExpr (OP2 optInd orExpr)*
 #| orExpr = andExpr (OP3 optInd andExpr)*
@@ -771,8 +771,7 @@ proc parseOperators(p: var TParser, headNode: PNode,
 
 proc simpleExprAux(p: var TParser, limit: int, mode: TPrimaryMode): PNode =
   result = primary(p, mode)
-  if p.tok.tokType == tkCurlyDotLe and
-     p.lex.lineNumber == result.info.line and
+  if p.tok.tokType == tkCurlyDotLe and (p.tok.indent < 0 or realInd(p)) and
      mode == pmNormal:
     var pragmaExp = newNodeP(nkPragmaExpr, p)
     pragmaExp.addSon result
