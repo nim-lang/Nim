@@ -2427,7 +2427,7 @@ when defined(android):
   var NR_rt_sigtimedwait {.importc: "__NR_rt_sigtimedwait", header: "<sys/syscall.h>".}: clong
 
   proc sigtimedwait*(a1: var Sigset, a2: var SigInfo, a3: var Timespec): cint =
-    result = syscall(NR_rt_sigtimedwait, a1, a2, a3)
+    result = cint(syscall(NR_rt_sigtimedwait, a1, a2, a3, sizeof(Sigset)))
 else:
   proc sigtimedwait*(a1: var Sigset, a2: var SigInfo,
                    a3: var Timespec): cint {.importc, header: "<signal.h>".}
