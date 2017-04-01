@@ -2424,7 +2424,7 @@ proc sigsuspend*(a1: var Sigset): cint {.importc, header: "<signal.h>".}
 
 when defined(android):
   proc syscall(arg: clong): clong {.varargs, importc: "syscall", header: "<unistd.h>".}
-  var NR_rt_sigtimedwait {.importc: "__NR_rt_sigtimedwait", header: "<sys/syscall.h>".}: int
+  var NR_rt_sigtimedwait {.importc: "__NR_rt_sigtimedwait", header: "<sys/syscall.h>".}: clong
 
   proc sigtimedwait*(a1: var Sigset, a2: var SigInfo, a3: var Timespec): cint =
     result = syscall(NR_rt_sigtimedwait, a1, a2, a3)
