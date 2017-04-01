@@ -135,7 +135,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     let isCall = ord(n.kind in nkCallKinds+{nkBracketExpr})
     let n = if n[0].kind == nkBracket: n[0] else: n
     checkMinSonsLen(n, 1)
-    var base = semTypeNode(c, n.lastSon, nil)
+    var base = semTypeNode(c, n.lastSon, nil).skipTypes({tyTypeDesc})
     result = newOrPrevType(kind, prev, c)
     var isNilable = false
     # check every except the last is an object:
@@ -155,7 +155,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
 proc semVarType(c: PContext, n: PNode, prev: PType): PType =
   if sonsLen(n) == 1:
     result = newOrPrevType(tyVar, prev, c)
-    var base = semTypeNode(c, n.sons[0], nil)
+    var base = semTypeNode(c, n.sons[0], nil).skipTypes({tyTypeDesc})
     if base.kind == tyVar:
       localError(n.info, errVarVarTypeNotAllowed)
       base = base.sons[0]
@@ -185,16 +185,21 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
   for i in 0..1:
     rangeT[i] = range[i].typ.skipTypes({tyStatic}).skipIntLit
 
-  if not sameType(rangeT[0].skipTypes({tyRange}), rangeT[1].skipTypes({tyRange})):
-    localError(n.info, errPureTypeMismatch)
-  elif not rangeT[0].isOrdinalType:
-    localError(n.info, errOrdinalTypeExpected)
-  elif enumHasHoles(rangeT[0]):
-    localError(n.info, errEnumXHasHoles, rangeT[0].sym.name.s)
+  let hasUnknownTypes = c.inGenericContext > 0 and
+    rangeT[0].kind == tyFromExpr or rangeT[1].kind == tyFromExpr
+
+  if not hasUnknownTypes:
+    if not sameType(rangeT[0].skipTypes({tyRange}), rangeT[1].skipTypes({tyRange})):
+      localError(n.info, errPureTypeMismatch)
+    elif not rangeT[0].isOrdinalType:
+      localError(n.info, errOrdinalTypeExpected)
+    elif enumHasHoles(rangeT[0]):
+      localError(n.info, errEnumXHasHoles, rangeT[0].sym.name.s)
 
   for i in 0..1:
     if hasGenericArguments(range[i]):
       result.n.addSon makeStaticExpr(c, range[i])
+      result.flags.incl tfUnresolved
     else:
       result.n.addSon semConstExpr(c, range[i])
 
@@ -227,7 +232,8 @@ proc semRange(c: PContext, n: PNode, prev: PType): PType =
     result = newOrPrevType(tyError, prev, c)
 
 proc semArrayIndex(c: PContext, n: PNode): PType =
-  if isRange(n): result = semRangeAux(c, n, nil)
+  if isRange(n):
+    result = semRangeAux(c, n, nil)
   else:
     let e = semExprWithType(c, n, {efDetermineType})
     if e.typ.kind == tyFromExpr:
@@ -765,6 +771,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     let owner = if typeClass.sym != nil: typeClass.sym
                 else: getCurrOwner(c)
     var s = newSym(skType, finalTypId, owner, info)
+    if sfExplain in owner.flags: s.flags.incl sfExplain
     if typId == nil: s.flags.incl(sfAnon)
     s.linkTo(typeClass)
     typeClass.flags.incl tfImplicitTypeParam
@@ -843,9 +850,9 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
 
     for i in 0 .. paramType.sonsLen - 2:
       if paramType.sons[i].kind == tyStatic:
-        var x = copyNode(ast.emptyNode)
-        x.typ = paramType.sons[i]
-        result.rawAddSon makeTypeFromExpr(c, x) # aka 'tyUnknown'
+        var staticCopy = paramType.sons[i].exactReplica
+        staticCopy.flags.incl tfInferrableStatic
+        result.rawAddSon staticCopy
       else:
         result.rawAddSon newTypeS(tyAnything, c)
 
@@ -883,12 +890,13 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     for i in 1 .. <paramType.len:
       let lifted = liftingWalk(paramType.sons[i])
       if lifted != nil: paramType.sons[i] = lifted
-    when false:
+
+    if paramType.base.lastSon.kind == tyUserTypeClass:
       let expanded = instGenericContainer(c, info, paramType,
                                           allowMetaTypes = true)
       result = liftingWalk(expanded, true)
 
-  of tyUserTypeClass, tyBuiltInTypeClass, tyAnd, tyOr, tyNot:
+  of tyUserTypeClasses, tyBuiltInTypeClass, tyAnd, tyOr, tyNot:
     result = addImplicitGeneric(copyType(paramType, getCurrOwner(c), true))
 
   of tyGenericParam:
@@ -1223,6 +1231,13 @@ proc fixupTypeOf(c: PContext, prev: PType, typExpr: PNode) =
     result.sym = prev.sym
     assignType(prev, result)
 
+proc symFromExpectedTypeNode(c: PContext, n: PNode): PSym =
+  if n.kind == nkType:
+    result = symFromType(n.typ, n.info)
+  else:
+    localError(n.info, errTypeExpected)
+    result = errorSym(c, n)
+
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   result = nil
   when defined(nimsuggest):
@@ -1237,6 +1252,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     let typExpr = semExprWithType(c, n.sons[0], {efInTypeof})
     fixupTypeOf(c, prev, typExpr)
     result = typExpr.typ
+    if result.kind == tyTypeDesc: result.flags.incl tfExplicit
   of nkPar:
     if sonsLen(n) == 1: result = semTypeNode(c, n.sons[0], prev)
     else:
@@ -1312,7 +1328,9 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     result = semTypeNode(c, whenResult, prev)
   of nkBracketExpr:
     checkMinSonsLen(n, 2)
-    var s = semTypeIdent(c, n.sons[0])
+    var head = n.sons[0]
+    var s = if head.kind notin nkCallKinds: semTypeIdent(c, head)
+            else: symFromExpectedTypeNode(c, semExpr(c, head))
     case s.magic
     of mArray: result = semArray(c, n, prev)
     of mOpenArray: result = semContainer(c, n, tyOpenArray, "openarray", prev)
@@ -1344,6 +1362,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     else: result = semGeneric(c, n, s, prev)
   of nkDotExpr:
     let typeExpr = semExpr(c, n)
+    if typeExpr.typ.kind == tyFromExpr:
+      return typeExpr.typ
     if typeExpr.typ.kind != tyTypeDesc:
       localError(n.info, errTypeExpected)
       result = errorType(c)
@@ -1403,7 +1423,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkDistinctTy: result = semDistinct(c, n, prev)
   of nkStaticTy:
     result = newOrPrevType(tyStatic, prev, c)
-    var base = semTypeNode(c, n.sons[0], nil)
+    var base = semTypeNode(c, n.sons[0], nil).skipTypes({tyTypeDesc})
     result.rawAddSon(base)
     result.flags.incl tfHasStatic
   of nkIteratorTy:

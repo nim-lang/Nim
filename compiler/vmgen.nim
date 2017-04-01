@@ -1678,7 +1678,8 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       elif sfImportc in s.flags: c.importcSym(n.info, s)
       genLit(c, n, dest)
     of skConst:
-      gen(c, s.ast, dest)
+      let constVal = if s.ast != nil: s.ast else: s.typ.n
+      gen(c, constVal, dest)
     of skEnumField:
       if dest < 0: dest = c.getTemp(n.typ)
       if s.position >= low(int16) and s.position <= high(int16):

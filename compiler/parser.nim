@@ -66,6 +66,7 @@ proc parseSymbol*(p: var TParser, allowNil = false): PNode
 proc parseTry(p: var TParser; isExpr: bool): PNode
 proc parseCase(p: var TParser): PNode
 proc parseStmtPragma(p: var TParser): PNode
+proc parsePragma(p: var TParser): PNode
 # implementation
 
 proc getTok(p: var TParser) =
@@ -286,7 +287,7 @@ proc checkBinary(p: TParser) {.inline.} =
 #| optInd = COMMENT?
 #| optPar = (IND{>} | IND{=})?
 #|
-#| simpleExpr = arrowExpr (OP0 optInd arrowExpr)*
+#| simpleExpr = arrowExpr (OP0 optInd arrowExpr)* pragma?
 #| arrowExpr = assignExpr (OP1 optInd assignExpr)*
 #| assignExpr = orExpr (OP2 optInd orExpr)*
 #| orExpr = andExpr (OP3 optInd andExpr)*
@@ -770,6 +771,12 @@ proc parseOperators(p: var TParser, headNode: PNode,
 
 proc simpleExprAux(p: var TParser, limit: int, mode: TPrimaryMode): PNode =
   result = primary(p, mode)
+  if p.tok.tokType == tkCurlyDotLe and (p.tok.indent < 0 or realInd(p)) and
+     mode == pmNormal:
+    var pragmaExp = newNodeP(nkPragmaExpr, p)
+    pragmaExp.addSon result
+    pragmaExp.addSon p.parsePragma
+    result = pragmaExp
   result = parseOperators(p, result, limit, mode)
 
 proc simpleExpr(p: var TParser, mode = pmNormal): PNode =
@@ -1793,8 +1800,16 @@ proc parseObject(p: var TParser): PNode =
   addSon(result, parseObjectPart(p))
 
 proc parseTypeClassParam(p: var TParser): PNode =
-  if p.tok.tokType in {tkOut, tkVar}:
-    result = newNodeP(nkVarTy, p)
+  let modifier = case p.tok.tokType
+    of tkOut, tkVar: nkVarTy
+    of tkPtr: nkPtrTy
+    of tkRef: nkRefTy
+    of tkStatic: nkStaticTy
+    of tkType: nkTypeOfExpr
+    else: nkEmpty
+
+  if modifier != nkEmpty:
+    result = newNodeP(modifier, p)
     getTok(p)
     result.addSon(p.parseSymbol)
   else:

@@ -167,6 +167,8 @@ proc mapType(typ: PType): TJSTypeKind =
      tyNone, tyFromExpr, tyForward, tyEmpty, tyFieldAccessor,
      tyExpr, tyStmt, tyTypeDesc, tyTypeClasses, tyVoid, tyAlias:
     result = etyNone
+  of tyInferred:
+    result = mapType(typ.lastSon)
   of tyStatic:
     if t.n != nil: result = mapType(lastSon t)
     else: result = etyNone
@@ -1391,6 +1393,7 @@ proc createObjInitList(p: PProc, typ: PType, excludedFieldIDs: IntSet, output: v
     t = t.sons[0]
 
 proc arrayTypeForElemType(typ: PType): string =
+  # XXX This should also support tyEnum and tyBool
   case typ.kind
   of tyInt, tyInt32: "Int32Array"
   of tyInt16: "Int16Array"
@@ -1623,22 +1626,56 @@ proc genToArray(p: PProc; n: PNode; r: var TCompRes) =
     localError(x.info, "'toArray' needs an array literal")
   r.res.add(")")
 
+proc genReprAux(p: PProc, n: PNode, r: var TCompRes, magic: string, typ: Rope = nil) =
+  useMagic(p, magic)
+  add(r.res, magic & "(")
+  var a: TCompRes
+
+  gen(p, n.sons[1], a)
+  if magic == "reprAny":
+    # the pointer argument in reprAny is expandend to 
+    # (pointedto, pointer), so we need to fill it
+    if a.address.isNil:
+      add(r.res, a.res)
+      add(r.res, ", null") 
+    else:
+      add(r.res, "$1, $2" % [a.address, a.res])
+  else:
+    add(r.res, a.res)
+
+  if not typ.isNil:
+    add(r.res, ", ")
+    add(r.res, typ)
+  add(r.res, ")")
+
 proc genRepr(p: PProc, n: PNode, r: var TCompRes) =
   if p.target == targetPHP:
     localError(n.info, "'repr' not available for PHP backend")
     return
   let t = skipTypes(n.sons[1].typ, abstractVarRange)
-  case t.kind
-  of tyInt..tyUInt64:
-    unaryExpr(p, n, r, "", "(\"\"+ ($1))")
+  case t.kind:
+  of tyInt..tyInt64, tyUInt..tyUInt64:
+    genReprAux(p, n, r, "reprInt")
+  of tyChar:
+    genReprAux(p, n, r, "reprChar")
+  of tyBool:
+    genReprAux(p, n, r, "reprBool")
+  of tyFloat..tyFloat128:
+    genReprAux(p, n, r, "reprFloat")
+  of tyString:
+    genReprAux(p, n, r, "reprStr")
   of tyEnum, tyOrdinal:
-    gen(p, n.sons[1], r)
-    useMagic(p, "cstrToNimstr")
-    r.kind = resExpr
-    r.res = "cstrToNimstr($1.node.sons[$2].name)" % [genTypeInfo(p, t), r.res]
+    genReprAux(p, n, r, "reprEnum", genTypeInfo(p, t))
+  of tySet:
+    genReprAux(p, n, r, "reprSet", genTypeInfo(p, t))
+  of tyEmpty, tyVoid:
+    localError(n.info, "'repr' doesn't support 'void' type")
+  of tyPointer: 
+    genReprAux(p, n, r, "reprPointer")
+  of tyOpenArray, tyVarargs:
+    genReprAux(p, n, r, "reprJSONStringify")
   else:
-    # XXX:
-    internalError(n.info, "genRepr: Not implemented")
+    genReprAux(p, n, r, "reprAny", genTypeInfo(p, t))
 
 proc genOf(p: PProc, n: PNode, r: var TCompRes) =
   var x: TCompRes

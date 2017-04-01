@@ -45,6 +45,8 @@ Changes affecting backwards compatibility
 - If the dispatcher parameter's value used in multi method is ``nil``,
   a ``NilError`` exception is raised. The old behavior was that the method
   would be a ``nop`` then.
+- ``posix.nim``: the family of ``ntohs`` procs now takes unsigned integers
+  instead of signed integers.
 
 
 Library Additions
