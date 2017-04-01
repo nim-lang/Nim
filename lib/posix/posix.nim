@@ -2423,8 +2423,11 @@ proc sigset*(a1: int, a2: proc (x: cint) {.noconv.}) {.
 proc sigsuspend*(a1: var Sigset): cint {.importc, header: "<signal.h>".}
 
 when defined(android):
-  proc sigtimedwait*(a1: var Sigset, a2: var SigInfo,
-                   a3: var Timespec, sigsetsize: csize = sizeof(culong)*2): cint {.importc: "__rt_sigtimedwait", header:"<signal.h>".}
+  proc syscall(arg: clong): clong {.varargs, importc: "syscall", header: "<unistd.h>".}
+  var NR_rt_sigtimedwait {.importc: "__NR_rt_sigtimedwait", header: "<sys/syscall.h>".}: int
+
+  proc sigtimedwait*(a1: var Sigset, a2: var SigInfo, a3: var Timespec): cint =
+    result = syscall(NR_rt_sigtimedwait, a1, a2, a3)
 else:
   proc sigtimedwait*(a1: var Sigset, a2: var SigInfo,
                    a3: var Timespec): cint {.importc, header: "<signal.h>".}
