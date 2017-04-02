@@ -47,6 +47,8 @@ Changes affecting backwards compatibility
   would be a ``nop`` then.
 - ``posix.nim``: the family of ``ntohs`` procs now takes unsigned integers
   instead of signed integers.
+- In Nim identifiers en-dash (Unicode point U+2013) is not an alias for the
+  underscore anymore. Use underscores and fix your programming font instead.
 
 
 Library Additions
