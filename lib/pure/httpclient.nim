@@ -320,7 +320,7 @@ proc parseResponse(s: Socket, getBody: bool, timeout: int): Response =
       if line[linei] != ':': httpError("invalid headers")
       inc(linei) # Skip :
 
-      result.headers[name] = line[linei.. ^1].strip()
+      result.headers.add(name, line[linei.. ^1].strip())
       # Ensure the server isn't trying to DoS us.
       if result.headers.len > headerLimit:
         httpError("too many headers")
@@ -1010,7 +1010,7 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
       if line[linei] != ':': httpError("invalid headers")
       inc(linei) # Skip :
 
-      result.headers[name] = line[linei.. ^1].strip()
+      result.headers.add(name, line[linei.. ^1].strip())
       if result.headers.len > headerLimit:
         httpError("too many headers")
 
