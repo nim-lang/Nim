@@ -96,6 +96,19 @@ remove the need for the ``newException`` template.
 - A new pragma ``.used`` can be used for symbols to prevent
 the "declared but not used" warning. More details can be
 found `here <http://nim-lang.org/docs/manual.html#pragmas-used-pragma>`_.
+- The popular "colon block of statements" syntax is now also supported for
+  ``let`` and ``var`` statements:
+
+.. code-block:: nim
+  template ve(value, effect): untyped =
+    effect
+    val
+
+  let x = ve(4):
+    echo "welcome to Nim!"
+
+This is particularly useful for DSLs that help in tree construction.
+
 
 
 Bugfixes
