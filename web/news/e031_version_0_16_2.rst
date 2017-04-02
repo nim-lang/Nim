@@ -45,6 +45,9 @@ Changes affecting backwards compatibility
 - If the dispatcher parameter's value used in multi method is ``nil``,
   a ``NilError`` exception is raised. The old behavior was that the method
   would be a ``nop`` then.
+- In Nim identifiers en-dash (Unicode point U+2013) is not an alias for the
+  underscore anymore. Use underscores and fix your programming font instead.
+
 
 
 Library Additions

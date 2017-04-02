@@ -17,7 +17,7 @@
 
 import
   hashes, options, msgs, strutils, platform, idents, nimlexbase, llstream,
-  wordrecg, etcpriv
+  wordrecg
 
 const
   MaxLineLength* = 80         # lines longer than this lead to a warning
@@ -158,8 +158,6 @@ proc isNimIdentifier*(s: string): bool =
     while i < sLen:
       if s[i] == '_':
         inc(i)
-      elif isMagicIdentSeparatorRune(cstring s, i):
-        inc(i, magicIdentSeparatorRuneByteWidth)
       if s[i] notin SymChars: return
       inc(i)
     result = true
@@ -782,27 +780,17 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
     var c = buf[pos]
     case c
     of 'a'..'z', '0'..'9', '\x80'..'\xFF':
-      if  c == '\226' and
-          buf[pos+1] == '\128' and
-          buf[pos+2] == '\147':  # It's a 'magic separator' en-dash Unicode
-        if buf[pos + magicIdentSeparatorRuneByteWidth] notin SymChars or
-            isMagicIdentSeparatorRune(buf, pos+magicIdentSeparatorRuneByteWidth) or pos == L.bufpos:
-          lexMessage(L, errInvalidToken, "–")
-          break
-        inc(pos, magicIdentSeparatorRuneByteWidth)
-      else:
-        h = h !& ord(c)
-        inc(pos)
+      h = h !& ord(c)
+      inc(pos)
     of 'A'..'Z':
       c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
       h = h !& ord(c)
       inc(pos)
     of '_':
-      if buf[pos+1] notin SymChars or isMagicIdentSeparatorRune(buf, pos+1):
+      if buf[pos+1] notin SymChars:
         lexMessage(L, errInvalidToken, "_")
         break
       inc(pos)
-
     else: break
   tokenEnd(pos-1)
   h = !$h
@@ -1117,8 +1105,7 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
       inc(L.bufpos)
     of '_':
       inc(L.bufpos)
-      if L.buf[L.bufpos] notin SymChars+{'_'} and not
-          isMagicIdentSeparatorRune(L.buf, L.bufpos):
+      if L.buf[L.bufpos] notin SymChars+{'_'}:
         tok.tokType = tkSymbol
         tok.ident = L.cache.getIdent("_")
       else:
