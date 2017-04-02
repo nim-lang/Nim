@@ -1862,10 +1862,10 @@ when hasAioH:
                a4: ptr SigEvent): cint {.importc, header: "<aio.h>".}
 
 # arpa/inet.h
-proc htonl*(a1: int32): int32 {.importc, header: "<arpa/inet.h>".}
-proc htons*(a1: int16): int16 {.importc, header: "<arpa/inet.h>".}
-proc ntohl*(a1: int32): int32 {.importc, header: "<arpa/inet.h>".}
-proc ntohs*(a1: int16): int16 {.importc, header: "<arpa/inet.h>".}
+proc htonl*(a1: uint32): uint32 {.importc, header: "<arpa/inet.h>".}
+proc htons*(a1: uint16): uint16 {.importc, header: "<arpa/inet.h>".}
+proc ntohl*(a1: uint32): uint32 {.importc, header: "<arpa/inet.h>".}
+proc ntohs*(a1: uint16): uint16 {.importc, header: "<arpa/inet.h>".}
 
 proc inet_addr*(a1: cstring): InAddrT {.importc, header: "<arpa/inet.h>".}
 proc inet_ntoa*(a1: InAddr): cstring {.importc, header: "<arpa/inet.h>".}
@@ -2423,11 +2423,15 @@ proc sigset*(a1: int, a2: proc (x: cint) {.noconv.}) {.
 proc sigsuspend*(a1: var Sigset): cint {.importc, header: "<signal.h>".}
 
 when defined(android):
-  proc sigtimedwait*(a1: var Sigset, a2: var SigInfo,
-                   a3: var Timespec, sigsetsize: csize = sizeof(culong)*2): cint {.importc: "__rt_sigtimedwait", header:"<signal.h>".}
+  proc syscall(arg: clong): clong {.varargs, importc: "syscall", header: "<unistd.h>".}
+  var NR_rt_sigtimedwait {.importc: "__NR_rt_sigtimedwait", header: "<sys/syscall.h>".}: clong
+  var NSIGMAX {.importc: "NSIG", header: "<signal.h>".}: clong
+
+  proc sigtimedwait*(a1: var Sigset, a2: var SigInfo, a3: var Timespec): cint =
+    result = cint(syscall(NR_rt_sigtimedwait, addr(a1), addr(a2), addr(a3), NSIGMAX div 8))
 else:
   proc sigtimedwait*(a1: var Sigset, a2: var SigInfo,
-                   a3: var Timespec): cint {.importc, header: "<signal.h>".}
+                     a3: var Timespec): cint {.importc, header: "<signal.h>".}
 
 proc sigwait*(a1: var Sigset, a2: var cint): cint {.
   importc, header: "<signal.h>".}

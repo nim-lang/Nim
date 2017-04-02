@@ -825,16 +825,16 @@ proc putEnv*(key, val: string) {.tags: [WriteEnvEffect].} =
   else:
     add environment, (key & '=' & val)
     indx = high(environment)
-  when defined(unix):
-    if c_putenv(environment[indx]) != 0'i32:
-      raiseOSError(osLastError())
-  else:
+  when defined(windows):
     when useWinUnicode:
       var k = newWideCString(key)
       var v = newWideCString(val)
       if setEnvironmentVariableW(k, v) == 0'i32: raiseOSError(osLastError())
     else:
       if setEnvironmentVariableA(key, val) == 0'i32: raiseOSError(osLastError())
+  else:
+    if c_putenv(environment[indx]) != 0'i32:
+      raiseOSError(osLastError())
 
 iterator envPairs*(): tuple[key, value: TaintedString] {.tags: [ReadEnvEffect].} =
   ## Iterate over all `environments variables`:idx:. In the first component
@@ -1091,7 +1091,7 @@ proc rawCreateDir(dir: string): bool =
       result = false
     else:
       raiseOSError(osLastError())
-  elif defined(unix):
+  elif defined(posix):
     let res = mkdir(dir, 0o777)
     if res == 0'i32:
       result = true
@@ -1452,7 +1452,9 @@ elif defined(windows):
     if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLine())
     return TaintedString(ownArgv[i])
 
-elif not defined(createNimRtl) and not(defined(posix) and appType == "lib"):
+elif not defined(createNimRtl) and
+  not(defined(posix) and appType == "lib") and
+  not defined(genode):
   # On Posix, there is no portable way to get the command line from a DLL.
   var
     cmdCount {.importc: "cmdCount".}: cint
@@ -1606,6 +1608,8 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
       result = getApplAux("/proc/self/exe")
     elif defined(solaris):
       result = getApplAux("/proc/" & $getpid() & "/path/a.out")
+    elif defined(genode):
+      raiseOSError("POSIX command line not supported")
     elif defined(freebsd) or defined(dragonfly):
       result = getApplFreebsd()
     # little heuristic that may work on other POSIX-like systems:

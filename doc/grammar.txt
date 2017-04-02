@@ -174,7 +174,8 @@ typeClass = typeClassParam ^* ',' (pragma)? ('of' typeDesc ^* ',')?
 typeDef = identWithPragmaDot genericParamList? '=' optInd typeDefAux
             indAndComment?
 varTuple = '(' optInd identWithPragma ^+ comma optPar ')' '=' optInd expr
-variable = (varTuple / identColonEquals) indAndComment
+colonBody = colcom stmt doBlocks?
+variable = (varTuple / identColonEquals) colonBody? indAndComment
 bindStmt = 'bind' optInd qualifiedIdent ^+ comma
 mixinStmt = 'mixin' optInd qualifiedIdent ^+ comma
 pragmaStmt = pragma (':' COMMENT? stmt)?
