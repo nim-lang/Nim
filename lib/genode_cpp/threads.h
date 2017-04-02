@@ -13,7 +13,6 @@
 #define _GENODE_CPP__THREAD_H_
 
 #include <base/thread.h>
-#include <util/avl_tree.h>
 #include <util/reconstructible.h>
 
 namespace Nim { struct SysThread; }
