@@ -205,13 +205,12 @@ proc semCase(c: PContext, n: PNode): PNode =
   var covered: BiggestInt = 0
   var typ = commonTypeBegin
   var hasElse = false
-  var notOrdinal = false
   let caseTyp = skipTypes(n.sons[0].typ, abstractVarRange-{tyTypeDesc})
   case caseTyp.kind
   of tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32, tyBool:
     chckCovered = true
   of tyFloat..tyFloat128, tyString, tyError:
-    notOrdinal = true
+    discard
   else:
     localError(n.info, errSelectorMustBeOfCertainTypes)
     return
@@ -244,9 +243,6 @@ proc semCase(c: PContext, n: PNode): PNode =
       hasElse = true
     else:
       illFormedAst(x)
-  if notOrdinal and not hasElse:
-    message(n.info, warnDeprecated,
-            "use 'else: discard'; non-ordinal case without 'else'")
   if chckCovered:
     if covered == toCover(n.sons[0].typ):
       hasElse = true
@@ -1631,7 +1627,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
             elif expr[2].typ.isUnresolvedStatic:
               inferConceptStaticParam(c, expr[2], expr[1])
               continue
-            
+
           let verdict = semConstExpr(c, n[i])
           if verdict.intVal == 0:
             localError(result.info, "type class predicate failed")
@@ -1655,7 +1651,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
           of nkPragma, nkCommentStmt, nkNilLit, nkEmpty: discard
           else: localError(n.sons[j].info, errStmtInvalidAfterReturn)
       else: discard
-  
+
   if result.len == 1 and
      c.inTypeClass == 0 and # concept bodies should be preserved as a stmt list
      result.sons[0].kind != nkDefer:
