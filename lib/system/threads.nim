@@ -593,6 +593,8 @@ elif defined(genode):
   proc createThread*[TArg](t: var Thread[TArg],
                            tp: proc (arg: TArg) {.thread, nimcall.},
                            param: TArg) =
+    t.core = cast[PGcThread](allocShared0(sizeof(GcThread)))
+
     when TArg isnot void: t.data = param
     t.dataFn = tp
     when hasSharedHeap: t.stackSize = ThreadStackSize

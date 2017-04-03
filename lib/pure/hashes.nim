@@ -39,7 +39,7 @@
 ##    result = !$h
 
 import
-  strutils, etcpriv
+  strutils
 
 type
   Hash* = int ## a hash value; hash tables using these values should
@@ -163,8 +163,6 @@ proc hashIgnoreStyle*(x: string): Hash =
     var c = x[i]
     if c == '_':
       inc(i)
-    elif isMagicIdentSeparatorRune(cstring(x), i):
-      inc(i, magicIdentSeparatorRuneByteWidth)
     else:
       if c in {'A'..'Z'}:
         c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
@@ -185,8 +183,6 @@ proc hashIgnoreStyle*(sBuf: string, sPos, ePos: int): Hash =
     var c = sBuf[i]
     if c == '_':
       inc(i)
-    elif isMagicIdentSeparatorRune(cstring(sBuf), i):
-      inc(i, magicIdentSeparatorRuneByteWidth)
     else:
       if c in {'A'..'Z'}:
         c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()

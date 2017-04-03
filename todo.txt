@@ -4,7 +4,6 @@ version 1.0 battle plan
 - make 'not nil' the default (produce warnings instead of errors for
   a smooth migration path)
 - case objects needs to be safe and need to support pattern matching
-- sanctionize some macro implementation for interfaces
 - implement a way to forward object type declarations across module
   boundaries; C++ style
 - fix "high priority" bugs

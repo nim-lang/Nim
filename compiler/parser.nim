@@ -696,7 +696,7 @@ proc primarySuffix(p: var TParser, r: PNode, baseIndent: int): PNode =
       result = namedParams(p, result, nkCall, tkParRi)
       if result.len > 1 and result.sons[1].kind == nkExprColonExpr:
         result.kind = nkObjConstr
-      else:
+      elif p.tok.tokType == tkDo:
         parseDoBlocks(p, result)
     of tkDo:
       # progress guaranteed
@@ -972,10 +972,8 @@ proc optPragmas(p: var TParser): PNode =
   else:
     result = ast.emptyNode
 
-proc parseDoBlock(p: var TParser): PNode =
+proc parseDoBlock(p: var TParser; info: TLineInfo): PNode =
   #| doBlock = 'do' paramListArrow pragmas? colcom stmt
-  let info = parLineInfo(p)
-  getTok(p)
   let params = parseParamList(p, retColon=false)
   let pragmas = optPragmas(p)
   colcom(p, result)
@@ -985,11 +983,10 @@ proc parseDoBlock(p: var TParser): PNode =
 
 proc parseDoBlocks(p: var TParser, call: PNode) =
   #| doBlocks = doBlock ^* IND{=}
-  if p.tok.tokType == tkDo:
-    #withInd(p):
-    #  addSon(call, parseDoBlock(p))
-    while sameOrNoInd(p) and p.tok.tokType == tkDo:
-      addSon(call, parseDoBlock(p))
+  while sameOrNoInd(p) and p.tok.tokType == tkDo:
+    let info = parLineInfo(p)
+    getTok(p)
+    addSon(call, parseDoBlock(p, info))
 
 proc parseProcExpr(p: var TParser, isExpr: bool): PNode =
   #| procExpr = 'proc' paramListColon pragmas? ('=' COMMENT? stmt)?
@@ -1889,9 +1886,18 @@ proc parseVarTuple(p: var TParser): PNode =
   addSon(result, parseExpr(p))
 
 proc parseVariable(p: var TParser): PNode =
-  #| variable = (varTuple / identColonEquals) indAndComment
+  #| colonBody = colcom stmt doBlocks?
+  #| variable = (varTuple / identColonEquals) colonBody? indAndComment
   if p.tok.tokType == tkParLe: result = parseVarTuple(p)
   else: result = parseIdentColonEquals(p, {withPragma})
+  if p.tok.tokType == tkColon and p.tok.indent < 0:
+    let last = result.len-1
+    let ex = result.sons[last]
+    if ex.kind != nkEmpty:
+      let call = makeCall(ex)
+      call.add parseDoBlock(p, parLineInfo(p))
+      parseDoBlocks(p, call)
+      result.sons[last] = call
   indAndComment(p, result)
 
 proc parseBind(p: var TParser, k: TNodeKind): PNode =
