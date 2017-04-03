@@ -112,6 +112,12 @@ found `here <http://nim-lang.org/docs/manual.html#pragmas-used-pragma>`_.
 This is particularly useful for DSLs that help in tree construction.
 
 
+Language changes
+----------------
+
+- The ``.procvar`` annotation is not required anymore. That doesn't mean you
+  can pass ``system.$`` to ``map`` just yet though.
+
 
 Bugfixes
 --------

@@ -514,8 +514,17 @@ proc propagateEffects(tracked: PEffects, n: PNode, s: PSym) =
     markSideEffect(tracked, s)
   mergeLockLevels(tracked, n, s.getLockLevel)
 
+proc procVarcheck(n: PNode) =
+  if n.kind in nkSymChoices:
+    for x in n: procVarCheck(x)
+  elif n.kind == nkSym and n.sym.magic != mNone:
+    localError(n.info, errXCannotBePassedToProcVar, n.sym.name.s)
+
 proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
   let n = n.skipConv
+  procVarcheck skipConvAndClosure(n)
+  #elif n.kind in nkSymChoices:
+  #  echo "came here"
   if paramType != nil and tfNotNil in paramType.flags and
       n.typ != nil and tfNotNil notin n.typ.flags:
     if n.kind == nkAddr:

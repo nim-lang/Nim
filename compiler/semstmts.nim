@@ -71,27 +71,29 @@ proc toCover(t: PType): BiggestInt =
   else:
     result = lengthOrd(skipTypes(t, abstractVar-{tyTypeDesc}))
 
-proc performProcvarCheck(c: PContext, info: TLineInfo, s: PSym) =
-  ## Checks that the given symbol is a proper procedure variable, meaning
-  ## that it
-  var smoduleId = getModule(s).id
-  if sfProcvar notin s.flags and s.typ.callConv == ccDefault and
-      smoduleId != c.module.id:
-    block outer:
-      for module in c.friendModules:
-        if smoduleId == module.id:
-          break outer
-      localError(info, errXCannotBePassedToProcVar, s.name.s)
+when false:
+  proc performProcvarCheck(c: PContext, info: TLineInfo, s: PSym) =
+    ## Checks that the given symbol is a proper procedure variable, meaning
+    ## that it
+    var smoduleId = getModule(s).id
+    if sfProcvar notin s.flags and s.typ.callConv == ccDefault and
+        smoduleId != c.module.id:
+      block outer:
+        for module in c.friendModules:
+          if smoduleId == module.id:
+            break outer
+        localError(info, errXCannotBePassedToProcVar, s.name.s)
 
-proc semProcvarCheck(c: PContext, n: PNode) =
-  var n = n.skipConv
-  if n.kind in nkSymChoices:
-    for x in n:
-      if x.sym.kind in {skProc, skMethod, skConverter, skIterator}:
-        performProcvarCheck(c, n.info, x.sym)
-  elif n.kind == nkSym and n.sym.kind in {skProc, skMethod, skConverter,
-                                        skIterator}:
-    performProcvarCheck(c, n.info, n.sym)
+template semProcvarCheck(c: PContext, n: PNode) =
+  when false:
+    var n = n.skipConv
+    if n.kind in nkSymChoices:
+      for x in n:
+        if x.sym.kind in {skProc, skMethod, skConverter, skIterator}:
+          performProcvarCheck(c, n.info, x.sym)
+    elif n.kind == nkSym and n.sym.kind in {skProc, skMethod, skConverter,
+                                          skIterator}:
+      performProcvarCheck(c, n.info, n.sym)
 
 proc semProc(c: PContext, n: PNode): PNode
 
