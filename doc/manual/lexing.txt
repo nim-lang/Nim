@@ -133,8 +133,7 @@ Two identifiers are considered equal if the following algorithm returns true:
       a.replace(re"_|–", "").toLower == b.replace(re"_|–", "").toLower
 
 That means only the first letters are compared in a case sensitive manner. Other
-letters are compared case insensitively and underscores and en-dash (Unicode
-point U+2013) are ignored.
+letters are compared case insensitively and underscores are ignored.
 
 This rather unorthodox way to do identifier comparisons is called
 `partial case insensitivity`:idx: and has some advantages over the conventional

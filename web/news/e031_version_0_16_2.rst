@@ -47,6 +47,8 @@ Changes affecting backwards compatibility
   would be a ``nop`` then.
 - ``posix.nim``: the family of ``ntohs`` procs now takes unsigned integers
   instead of signed integers.
+- In Nim identifiers en-dash (Unicode point U+2013) is not an alias for the
+  underscore anymore. Use underscores and fix your programming font instead.
 
 
 Library Additions
@@ -96,6 +98,19 @@ remove the need for the ``newException`` template.
 - A new pragma ``.used`` can be used for symbols to prevent
 the "declared but not used" warning. More details can be
 found `here <http://nim-lang.org/docs/manual.html#pragmas-used-pragma>`_.
+- The popular "colon block of statements" syntax is now also supported for
+  ``let`` and ``var`` statements:
+
+.. code-block:: nim
+  template ve(value, effect): untyped =
+    effect
+    val
+
+  let x = ve(4):
+    echo "welcome to Nim!"
+
+This is particularly useful for DSLs that help in tree construction.
+
 
 
 Bugfixes
