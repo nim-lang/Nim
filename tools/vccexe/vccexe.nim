@@ -1,9 +1,39 @@
-import strutils, strtabs, os, osproc, vcvarsall, vccdiscover
+import strutils, strtabs, os, osproc, vcvarsall, vccenv
+
+type
+  VccVersion* = enum ## VCC compiler backend versions
+    vccUndefined = (0, ""), ## VCC version undefined, resolves to the latest recognizable VCC version
+    vcc90  =  vs90, ## Visual Studio 2008 (Version 9.0)
+    vcc100 = vs100, ## Visual Studio 2010 (Version 10.0)
+    vcc110 = vs110, ## Visual Studio 2012 (Version 11.0)
+    vcc120 = vs120, ## Visual Studio 2013 (Version 12.0)
+    vcc140 = vs140  ## Visual Studio 2015 (Version 14.0)
+
+proc discoverVccVcVarsAllPath*(version: VccVersion = vccUndefined): string =
+  ## Returns the path to the vcvarsall utility of the specified VCC compiler backend.
+  ##
+  ## version
+  ##   The specific version of the VCC compiler backend to discover.
+  ##   Defaults to the latest recognized VCC compiler backend that is found on the system.
+  ##
+  ## Returns `nil` if the VCC compiler backend discovery failed.
+
+  # TODO: Attempt discovery using vswhere utility.
+
+  # Attempt discovery through VccEnv
+  # (Trying Visual Studio Common Tools Environment Variables)
+  result = vccEnvVcVarsAllPath(cast[VccEnvVersion](version))
+  if result.len > 0:
+    return
+
+  # All attempts to dicover vcc failed
 
 const 
   vccversionPrefix = "--vccversion"
+  printPathPrefix = "--printPath"
   vcvarsallPrefix = "--vcvarsall"
   commandPrefix = "--command"
+  noCommandPrefix = "--noCommand"
   platformPrefix = "--platform"
   sdktypePrefix = "--sdktype"
   sdkversionPrefix = "--sdkversion"
@@ -19,6 +49,8 @@ const
   HelpText = """
 +-----------------------------------------------------------------+
 |         Microsoft C/C++ compiler wrapper for Nim                |
+|                                &                                |
+|        Microsoft C/C++ Compiler Discovery Utility               |
 |            (c) 2017 Fredrik Hoeisaether Rasch                   |
 +-----------------------------------------------------------------+
 
@@ -27,7 +59,17 @@ Usage:
 Options:
   --vccversion:<v>    Optionally specify the VCC version to discover
                       <v>: 0, 90, 100, 110, 120, 140
-                      Argument value is passed on to vccdiscover utility
+                      If <v> is omitted, attempts to discover the latest
+                      installed version. <v>: 0, 90, 100, 110, 120, 140
+                      A value of 0 will discover the latest installed SDK
+                      Multiple values can be specified, separated by ,
+  --printPath         Print the discovered path of the vcvarsall utility
+                      of the VCC version specified with the --vccversion argument.
+                      For each specified version the utility prints a line with the
+                      following format: <version>: <path>
+  --noCommand         Flag to supress VCC secondary command execution
+                      Useful in conjuction with --vccversion and --printPath to
+                      only perfom VCC discovery, but without executing VCC tools
   --vcvarsall:<path>  Path to the Developer Command Prompt utility vcvarsall.bat that selects
                       the appropiate devlopment settings.
                       Usual path for Visual Studio 2015 and below:
@@ -58,8 +100,10 @@ command was specified
 
 when isMainModule:
   var vccversionArg: seq[string] = @[]
+  var printPathArg: bool = false
   var vcvarsallArg: string = nil
   var commandArg: string = nil
+  var noCommandArg: bool = false
   var platformArg: VccArch
   var sdkTypeArg: VccPlatformType
   var sdkVersionArg: string = nil
@@ -77,10 +121,14 @@ when isMainModule:
     # Check whether the current argument contains -- prefix
     if wargv.startsWith(vccversionPrefix): # Check for vccversion
       vccversionArg.add(wargv.substr(vccversionSepIdx + 1))
+    elif wargv.cmpIgnoreCase(printPathPrefix) == 0: # Check for printPath
+      printPathArg = true
     elif wargv.startsWith(vcvarsallPrefix): # Check for vcvarsall
       vcvarsallArg = wargv.substr(vcvarsallSepIdx + 1)
     elif wargv.startsWith(commandPrefix): # Check for command
       commandArg = wargv.substr(commandSepIdx + 1)
+    elif wargv.cmpIgnoreCase(noCommandPrefix) == 0: # Check for noCommand
+      noCommandArg = true
     elif wargv.startsWith(platformPrefix): # Check for platform
       platformArg = parseEnum[VccArch](wargv.substr(platformSepIdx + 1))
     elif wargv.startsWith(sdktypePrefix): # Check for sdktype
@@ -96,8 +144,8 @@ when isMainModule:
 
   # Support for multiple specified versions. Attempt VCC discovery for each version
   # specified, first successful discovery wins
+  var vccversionValue: VccVersion = vccUndefined
   for vccversionItem in vccversionArg:
-    var vccversionValue: VccVersion
     try:
       vccversionValue = cast[VccVersion](parseInt(vccversionItem))
     except ValueError:
@@ -107,7 +155,14 @@ when isMainModule:
       break
   # VCC version not specified, discover latest (call discover without args)
   if vcvarsallArg.len < 1 and vccversionArg.len < 1:
+    vccversionValue = vccUndefined
     vcvarsallArg = discoverVccVcVarsAllPath()
+
+  if printPathArg:
+    var head = $vccversionValue
+    if head.len < 1:
+      head = "latest"
+    echo "$1: $2" % [head, vcvarsallArg]
 
   # Call vcvarsall to get the appropiate VCC process environment
   var vcvars = vccVarsAll(vcvarsallArg, platformArg, sdkTypeArg, sdkVersionArg, verboseArg)
@@ -123,10 +178,11 @@ when isMainModule:
   if commandArg.len < 1:
     commandArg = "cl.exe"
 
-  # Run VCC command with the VCC process environment
-  let vccProcess = startProcess(
-      commandArg,
-      args = clArgs,
-      options = vccOptions
-    )
-  quit vccProcess.waitForExit()
+  if not noCommandArg:
+    # Run VCC command with the VCC process environment
+    let vccProcess = startProcess(
+        commandArg,
+        args = clArgs,
+        options = vccOptions
+      )
+    quit vccProcess.waitForExit()
