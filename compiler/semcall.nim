@@ -155,7 +155,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
                       renderTree(n[err.unmatchedVarParam]) & "' is immutable\n")
     for diag in err.diagnostics:
       add(candidates, diag & "\n")
-  
+
   result = (prefer, candidates)
 
 proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
@@ -256,7 +256,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         f.ident.s[0..f.ident.s.len-2]).withInfo(n.info)
       let callOp = newIdentNode(getIdent".=", n.info)
       n.sons[0..1] = [callOp, n[1], calleeName]
-      excl(n.flags, nfDotSetter)
+      #excl(n.flags, nfDotSetter)
       orig.sons[0..1] = [callOp, orig[1], calleeName]
       pickBest(callOp)
 
