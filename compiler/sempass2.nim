@@ -806,7 +806,7 @@ proc track(tracked: PEffects, n: PNode) =
       track(tracked, n.sons[i])
     setLen(tracked.init, oldState)
   of nkObjConstr:
-    track(tracked, n.sons[0])
+    when false: track(tracked, n.sons[0])
     let oldFacts = tracked.guards.len
     for i in 1 .. <len(n):
       let x = n.sons[i]

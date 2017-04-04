@@ -99,7 +99,7 @@ remove the need for the ``newException`` template.
 the "declared but not used" warning. More details can be
 found `here <http://nim-lang.org/docs/manual.html#pragmas-used-pragma>`_.
 - The popular "colon block of statements" syntax is now also supported for
-  ``let`` and ``var`` statements:
+  ``let`` and ``var`` statements and assignments:
 
 .. code-block:: nim
   template ve(value, effect): untyped =
