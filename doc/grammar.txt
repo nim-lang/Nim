@@ -103,7 +103,7 @@ macroColon = ':' stmt? ( IND{=} 'of' exprList ':' stmt
                        | IND{=} 'except' exprList ':' stmt
                        | IND{=} 'else' ':' stmt )*
 exprStmt = simpleExpr
-         (( '=' optInd expr )
+         (( '=' optInd expr colonBody? )
          / ( expr ^+ comma
              doBlocks
               / macroColon
