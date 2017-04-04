@@ -522,7 +522,8 @@ proc procVarcheck(n: PNode) =
 
 proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
   let n = n.skipConv
-  procVarcheck skipConvAndClosure(n)
+  if paramType.isNil or paramType.kind != tyTypeDesc:
+    procVarcheck skipConvAndClosure(n)
   #elif n.kind in nkSymChoices:
   #  echo "came here"
   if paramType != nil and tfNotNil in paramType.flags and
