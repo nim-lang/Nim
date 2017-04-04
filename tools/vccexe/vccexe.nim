@@ -46,7 +46,7 @@ const
   sdktypeSepIdx = sdktypePrefix.len
   sdkversionSepIdx = sdkversionPrefix.len
   
-  HelpText = """
+  helpText = """
 +-----------------------------------------------------------------+
 |         Microsoft C/C++ compiler wrapper for Nim                |
 |                                &                                |
@@ -139,7 +139,7 @@ when isMainModule:
       verboseArg = true
     else: # Regular cl.exe argument -> store for final cl.exe invocation
       if (wargv.len == 2) and (wargv[1] == '?'):
-        echo HelpText
+        echo helpText
       clArgs.add(wargv)
 
   # Support for multiple specified versions. Attempt VCC discovery for each version
