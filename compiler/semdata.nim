@@ -57,7 +57,7 @@ type
       # but you don't want to trigger a hard error. For example,
       # you may be in position to supply a better error message
       # to the user.
-    efWantStmt, efAllowStmt, efDetermineType, exExplain,
+    efWantStmt, efAllowStmt, efDetermineType, efExplain,
     efAllowDestructor, efWantValue, efOperand, efNoSemCheck,
     efNoProcvarCheck, efNoEvaluateGeneric, efInCall, efFromHlo,
   
