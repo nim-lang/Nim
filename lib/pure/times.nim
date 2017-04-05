@@ -1194,7 +1194,7 @@ when not defined(JS):
     importc: "gmtime", header: "<time.h>", tags: [].}
   proc timec(timer: ptr Time): Time {.
     importc: "time", header: "<time.h>", tags: [].}
-  proc mktime(t: StructTM): Time {.
+  proc mktime(t: ptr StructTM): Time {.
     importc: "mktime", header: "<time.h>", tags: [].}
   proc getClock(): Clock {.importc: "clock", header: "<time.h>", tags: [TimeEffect].}
   proc difftime(a, b: Time): float {.importc: "difftime", header: "<time.h>",
@@ -1270,7 +1270,8 @@ when not defined(JS):
     var cTimeInfo = timeInfo # for C++ we have to make a copy
     # because the header of mktime is broken in my version of libc
 
-    result = mktime(timeInfoToTM(cTimeInfo))
+    var T1 = timeInfoToTM(cTimeInfo)
+    result = mktime(T1.addr)
     # mktime is defined to interpret the input as local time. As timeInfoToTM
     # does ignore the timezone, we need to adjust this here.
     result = Time(TimeImpl(result) - getTimezone() + timeInfo.timezone)
