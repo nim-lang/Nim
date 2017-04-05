@@ -70,14 +70,16 @@ else:
       result = O_RDWR
     result = result or O_NONBLOCK
 
-proc getFileSize(f: AsyncFile): int64 =
+proc getFileSize*(f: AsyncFile): int64 =
   ## Retrieves the specified file's size.
   when defined(windows) or defined(nimdoc):
     var high: DWord
     let low = getFileSize(f.fd.Handle, addr high)
     if low == INVALID_FILE_SIZE:
       raiseOSError(osLastError())
-    return (high shl 32) or low
+    result = (high shl 32) or low
+  else:
+    result = lseek(f.fd.cint, 0, SEEK_END)
 
 proc openAsync*(filename: string, mode = fmRead): AsyncFile =
   ## Opens a file specified by the path in ``filename`` using
@@ -465,6 +467,22 @@ proc write*(f: AsyncFile, data: string): Future[void] =
     if not cb(f.fd):
       addWrite(f.fd, cb)
   return retFuture
+
+proc setFileSize*(f: AsyncFile, length: int64) =
+  ## Set a file length.
+  when defined(windows) or defined(nimdoc):
+    var
+      high = (length shr 32).Dword
+    let
+      low = (length and 0xffffffff).Dword
+      status = setFilePointer(f.fd.Handle, low, addr high, 0)
+      lastErr = osLastError()
+    if (status == INVALID_SET_FILE_POINTER and lastErr.int32 != NO_ERROR) or
+       (setEndOfFile(f.fd.Handle) == 0):
+      raiseOSError(osLastError())
+  else:
+    if ftruncate(f.fd.cint, length) == -1:
+      raiseOSError(osLastError())
 
 proc close*(f: AsyncFile) =
   ## Closes the file specified.
