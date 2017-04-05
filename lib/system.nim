@@ -3663,7 +3663,7 @@ proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.
   ## This can be used to check whether a type supports some operation:
   ##
   ## .. code-block:: Nim
-  ##   when not compiles(3 + 4):
+  ##   when compiles(3 + 4):
   ##     echo "'+' for integers is available"
   discard
 
