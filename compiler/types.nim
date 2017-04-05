@@ -1206,49 +1206,59 @@ const
 
 proc computeSizeAlign(typ: PType): void
 
-proc computeObjectOffsetsRecursive(n: PNode, a: var BiggestInt, currOffset: var BiggestInt): BiggestInt =
+proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt): tuple[size, align: BiggestInt] =
   ## returns object size
-  var maxAlign, maxSize, b, res: BiggestInt
+  var maxAlign, offset, res: BiggestInt
   case n.kind
   of nkRecCase:
     assert(n.sons[0].kind == nkSym)
-    result = computeObjectOffsetsRecursive(n.sons[0], a, currOffset)
-    maxSize = 0
-    maxAlign = 1
+    result = computeObjectOffsetsRecursive(n.sons[0], initialOffset)
+    var maxSize: BiggestInt = 0
+    offset  = initialOffset
+
     for i in 1 ..< sonsLen(n):
-      case n.sons[i].kind
+      let child = n.sons[i]
+      case child.kind
       of nkOfBranch, nkElse:
-        res = computeObjectOffsetsRecursive(lastSon(n.sons[i]), b, currOffset)
-        if res < 0: return res
-        maxSize = max(maxSize, res)
-        maxAlign = max(maxAlign, b)
-      else: internalError("computeObjectOffsetsRecursive(record case branch)")
-    currOffset = align(currOffset, maxAlign) + maxSize
-    result = align(result, maxAlign) + maxSize
-    a = maxAlign
+        let (size, align) = computeObjectOffsetsRecursive(n.sons[i].lastSon, offset)
+        if size < 0:
+          result.size  = size
+          result.align = align
+          return
+        offset += size
+        maxSize = max(maxSize, size)
+        result.align = max(result.align, align)
+      else:
+        internalError("computeObjectOffsetsRecursive(record case branch)")
+
+    result.size = align(initialOffset, result.align) + align(maxSize, result.align)
 
   of nkRecList:
-    result = 0
-    maxAlign = 1
+    result.align = 1
+    result.size  = initialOffset
+
     for i, child in n.sons:
-      res = computeObjectOffsetsRecursive(child, b, currOffset)
-      if res < 0:
-        return res
-      currOffset = align(currOffset, b) + res
-      result = align(result, b) + res
-      maxAlign = max(maxAlign, b)
-    a = maxAlign
+      let (size,align) = computeObjectOffsetsRecursive(child, result.size)
+      if size < 0:
+        result.size  = size
+        result.align = align
+        return
+
+      result.size  = align(offset, align) + size
+      result.align = max(result.align, align)
+
+    result.align = maxAlign
+    result.size = align(result.size, maxAlign)
 
   of nkSym:
     n.sym.typ.computeSizeAlign
-    result = n.sym.typ.size
-    n.sym.offset = int(currOffset)
+    result.size  = n.sym.typ.size
+    result.align = n.sym.typ.align
+    n.sym.offset = int(initialOffset)
+
   else:
-    a = 1
-    result = szNonConcreteType
-
-
-
+    result.align = 1
+    result.size  = szNonConcreteType
 
 proc computeSizeAlign(typ: PType): void =
   ## computes and sets ``size`` and ``align`` members of ``typ``
@@ -1405,12 +1415,13 @@ proc computeSizeAlign(typ: PType): void =
     else:
       maxAlign = 1
 
-    var a: BiggestInt = 0
-    sizeAccum = computeObjectOffsetsRecursive(typ.n, a, sizeAccum)
-    if sizeAccum < 0:
-      typ.size = sizeAccum
-      typ.align = int16(sizeAccum)
-    maxAlign = max(a, maxAlign)
+    let (size,align) = computeObjectOffsetsRecursive(typ.n, sizeAccum)
+    if size < 0:
+      typ.size = size
+      typ.align = int16(align)
+      return
+
+    maxAlign = max(align, maxAlign)
     typ.size  = align(sizeAccum, maxAlign)
     typ.align = int16(maxAlign)
 
