@@ -1003,16 +1003,6 @@ Nim supports these `calling conventions`:idx:\:
 
 Most calling conventions exist only for the Windows 32-bit platform.
 
-Assigning/passing a procedure to a procedural variable is only allowed if one
-of the following conditions hold:
-1) The procedure that is accessed resides in the current module.
-2) The procedure is marked with the ``procvar`` pragma (see `procvar pragma <#pragmas-procvar-pragma>`_).
-3) The procedure has a calling convention that differs from ``nimcall``.
-4) The procedure is anonymous.
-
-The rules' purpose is to prevent the case that extending a non-``procvar``
-procedure with default parameters breaks client code.
-
 The default calling convention is ``nimcall``, unless it is an inner proc (a
 proc inside of a proc). For an inner proc an analysis is performed whether it
 accesses its environment. If it does so, it has the calling convention
