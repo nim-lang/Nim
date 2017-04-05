@@ -1,4 +1,14 @@
-
+discard """
+  msg: '''uint32
+uint32
+float
+uint32
+uint32
+float'''
+  output: '''(weight: 17.0, color: 11)
+(weight: 0.0, color: 11.0, width: 17)
+0'''
+"""
 # bug 5570
 import macros
 
@@ -22,17 +32,6 @@ getTypeName(x.color)
 x.setColor(11)
 echo x
 
-discard """
-  msg: '''uint32
-uint32
-float
-uint32
-uint32
-float'''
-  output: '''(weight: 17.0, color: 11)
-(weight: 0.0, color: 11.0, width: 17)
-0'''
-"""
 type
   BaseCar[T, K] = object of RootObj
     color: T
