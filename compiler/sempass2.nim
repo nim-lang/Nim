@@ -833,6 +833,10 @@ proc track(tracked: PEffects, n: PNode) =
   of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,
       nkMacroDef, nkTemplateDef, nkLambda, nkDo:
     discard
+  of nkCast, nkHiddenStdConv, nkHiddenSubConv, nkConv:
+    if n.len == 2: track(tracked, n.sons[1])
+  of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
+    if n.len == 1: track(tracked, n.sons[0])
   else:
     for i in 0 .. <safeLen(n): track(tracked, n.sons[i])
 
