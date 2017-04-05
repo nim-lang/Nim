@@ -1204,91 +1204,105 @@ const
   szIllegalRecursion* = -2
   szUnknownSize* = -1
 
-proc computeSizeAndAlign(typ: PType): void
-proc computeRecSizeAux(n: PNode, a, currOffset: var BiggestInt): BiggestInt =
+proc computeSizeAlign(typ: PType): void
+
+proc computeObjectOffsetsRecursive(n: PNode, a: var BiggestInt, currOffset: var BiggestInt): BiggestInt =
+  ## returns object size
   var maxAlign, maxSize, b, res: BiggestInt
   case n.kind
   of nkRecCase:
     assert(n.sons[0].kind == nkSym)
-    result = computeRecSizeAux(n.sons[0], a, currOffset)
+    result = computeObjectOffsetsRecursive(n.sons[0], a, currOffset)
     maxSize = 0
     maxAlign = 1
-    for i in countup(1, sonsLen(n) - 1):
+    for i in 1 ..< sonsLen(n):
       case n.sons[i].kind
       of nkOfBranch, nkElse:
-        res = computeRecSizeAux(lastSon(n.sons[i]), b, currOffset)
+        res = computeObjectOffsetsRecursive(lastSon(n.sons[i]), b, currOffset)
         if res < 0: return res
         maxSize = max(maxSize, res)
         maxAlign = max(maxAlign, b)
-      else: internalError("computeRecSizeAux(record case branch)")
+      else: internalError("computeObjectOffsetsRecursive(record case branch)")
     currOffset = align(currOffset, maxAlign) + maxSize
     result = align(result, maxAlign) + maxSize
     a = maxAlign
+
   of nkRecList:
     result = 0
     maxAlign = 1
-    for i in countup(0, sonsLen(n) - 1):
-      res = computeRecSizeAux(n.sons[i], b, currOffset)
-      if res < 0: return res
+    for i, child in n.sons:
+      res = computeObjectOffsetsRecursive(child, b, currOffset)
+      if res < 0:
+        return res
       currOffset = align(currOffset, b) + res
       result = align(result, b) + res
-      if b > maxAlign: maxAlign = b
+      maxAlign = max(maxAlign, b)
     a = maxAlign
+
   of nkSym:
-    n.sym.typ.computeSizeAndAlign
+    n.sym.typ.computeSizeAlign
     result = n.sym.typ.size
     n.sym.offset = int(currOffset)
   else:
     a = 1
     result = szNonConcreteType
 
-proc computeSizeAndAlign(typ: PType): void =
+
+
+
+proc computeSizeAlign(typ: PType): void =
   ## computes and sets ``size`` and ``align`` members of ``typ``
 
-  var maxAlign, sizeAccum, length: BiggestInt
+  if typ.size >= 0:
+    # nothing to do, size already computed
+    return
+
   if typ.size == szIllegalRecursion:
     # we are already computing the size of the type
     # --> illegal recursion in type
-    return
-  if typ.size >= 0:
-    # size already computed
+    typ.align = szIllegalRecursion
     return
   typ.size = szIllegalRecursion # mark as being computed
+
+  var maxAlign, sizeAccum, length: BiggestInt
+
   case typ.kind
   of tyInt, tyUInt:
     typ.size = intSize
     typ.align = int16(intSize)
-    return
+
   of tyInt8, tyUInt8, tyBool, tyChar:
     typ.size = 1
     typ.align = 1
-    return
+
   of tyInt16, tyUInt16:
     typ.size = 2
     typ.align = 2
-    return
+
   of tyInt32, tyUInt32, tyFloat32:
     typ.size = 4
     typ.align = 4
-    return
+
   of tyInt64, tyUInt64, tyFloat64:
     typ.size = 8
     typ.align = 8
-    return
+
   of tyFloat128:
     typ.size  = 16
     typ.align = 16
-    return
+
   of tyFloat:
     typ.size = floatSize
     typ.align = int16(floatSize)
-    return
+
+
   of tyProc:
     if typ.callConv == ccClosure:
       typ.size = 2 * ptrSize
     else:
       typ.size = ptrSize
     typ.align = int16(ptrSize)
+
   of tyNil, tyCString, tyString, tySequence, tyPtr, tyRef, tyVar, tyOpenArray:
     let base = typ.lastSon
     if base == typ or (base.kind == tyTuple and base.size==szIllegalRecursion):
@@ -1297,9 +1311,9 @@ proc computeSizeAndAlign(typ: PType): void =
     else:
       typ.size  = ptrSize
       typ.align = int16(ptrSize)
-    return
+
   of tyArray:
-    typ.sons[1].computeSizeAndAlign
+    typ.sons[1].computeSizeAlign
     let elemSize = typ.sons[1].size
     if elemSize < 0:
       typ.size  = elemSize
@@ -1307,6 +1321,7 @@ proc computeSizeAndAlign(typ: PType): void =
     else:
       typ.size  = lengthOrd(typ.sons[0]) * elemSize
       typ.align = typ.sons[1].align
+
   of tyEnum:
     if firstOrd(typ) < 0:
       typ.size  = 4              # use signed int32
@@ -1325,6 +1340,7 @@ proc computeSizeAndAlign(typ: PType): void =
       else:
         typ.size = 8
         typ.align = 8
+
   of tySet:
     if typ.sons[0].kind == tyGenericParam:
       typ.size  = szUnknownSize
@@ -1344,80 +1360,93 @@ proc computeSizeAndAlign(typ: PType): void =
       else:
         typ.size = align(length, 8) div 8 + 1
     typ.align = int16(typ.size)
+
   of tyRange:
-    typ.sons[0].computeSizeAndAlign
+    typ.sons[0].computeSizeAlign
     typ.size = typ.sons[0].size
     typ.align = typ.sons[0].align
+
   of tyTuple:
     maxAlign = 1
     sizeAccum = 0
+
     for i in countup(0, sonsLen(typ) - 1):
-      typ.sons[i].computeSizeAndAlign
-      let s = typ.sons[i].size
-      let a = typ.sons[i].align
-      if s < 0:
-        typ.size  = s
-        typ.align = a
+      let child = typ.sons[i]
+      child.computeSizeAlign
+
+      if child.size < 0:
+        typ.size  = child.size
+        typ.align = child.align
         return
 
-      maxAlign = max(maxAlign, a)
-      sizeAccum = align(sizeAccum, a) + s
+      maxAlign = max(maxAlign, child.align)
+      sizeAccum = align(sizeAccum, child.align) + child.size
 
     typ.size  = align(sizeAccum, maxAlign)
     typ.align = int16(maxAlign)
+
   of tyObject:
+    sizeAccum = 0
+    maxAlign  = 1
+
     if typ.sons[0] != nil:
       let st = skipTypes(typ.sons[0], skipPtrs)
-      st.computeSizeAndAlign
+      st.computeSizeAlign
+
       if st.size < 0:
         typ.size = st.size
         typ.align = st.align
         return
-      sizeAccum = 0
-      maxAlign = st.align
+
+      maxAlign = max(maxAlign, st.align)
     elif isObjectWithTypeFieldPredicate(typ):
-      sizeAccum = intSize
+      sizeAccum += intSize
       maxAlign  = intSize
     else:
-      sizeAccum = 0
       maxAlign = 1
 
     var a: BiggestInt = 0
-    sizeAccum = computeRecSizeAux(typ.n, a, sizeAccum)
+    sizeAccum = computeObjectOffsetsRecursive(typ.n, a, sizeAccum)
     if sizeAccum < 0:
       typ.size = sizeAccum
       typ.align = int16(sizeAccum)
     maxAlign = max(a, maxAlign)
     typ.size  = align(sizeAccum, maxAlign)
     typ.align = int16(maxAlign)
+
   of tyInferred:
     if typ.len > 1:
-      typ.lastSon.computeSizeAndAlign
+      typ.lastSon.computeSizeAlign
       typ.size = typ.lastSon.size
       typ.align = typ.lastSon.align
+
   of tyGenericInst, tyDistinct, tyGenericBody, tyAlias:
-    typ.lastSon.computeSizeAndAlign
+    typ.lastSon.computeSizeAlign
     typ.size = typ.lastSon.size
     typ.align = typ.lastSon.align
+
   of tyTypeClasses:
     if typ.isResolvedUserTypeClass:
-      typ.lastSon.computeSizeAndAlign
+      typ.lastSon.computeSizeAlign
       typ.size = typ.lastSon.size
       typ.align = typ.lastSon.align
     else:
       typ.size = szUnknownSize
       typ.align = szUnknownSize
+
   of tyTypeDesc:
-    typ.base.computeSizeAndAlign
+    typ.base.computeSizeAlign
     typ.size = typ.base.size
     typ.align = typ.base.align
+
   of tyForward:
+    # is this really illegal recursion, or maybe just unknown?
     typ.size = szIllegalRecursion
-    # mabe?
     typ.align = szIllegalRecursion
+
   of tyStatic:
     if typ.n != nil:
-      typ.lastSon.computeSizeAndAlign
+      typ.lastSon.computeSizeAlign
       typ.size = typ.lastSon.size
       typ.align = typ.lastSon.align
     else:
@@ -1428,7 +1457,7 @@ proc computeSizeAndAlign(typ: PType): void =
     typ.align = szUnknownSize
 
 proc computeSize(typ: PType): BiggestInt =
-  typ.computeSizeAndAlign
+  typ.computeSizeAlign
   result = typ.size
 
 proc getReturnType*(s: PSym): PType =
@@ -1437,9 +1466,11 @@ proc getReturnType*(s: PSym): PType =
   result = s.typ.sons[0]
 
 proc getSize(typ: PType): BiggestInt =
-  typ.computeSizeAndAlign
+  ##
+  typ.computeSizeAlign
   result = typ.size
-  if result < 0: internalError("getSize: " & $typ.kind)
+  if result < 0:
+    internalError("getSize: " & $typ.kind)
 
 proc containsGenericTypeIter(t: PType, closure: RootRef): bool =
   case t.kind
