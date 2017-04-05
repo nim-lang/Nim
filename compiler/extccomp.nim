@@ -697,6 +697,17 @@ proc getLinkCmd(projectfile, objfiles: string): string =
         "nim", quoteShell(getPrefixDir()),
         "lib", quoteShell(libpath)])
 
+template tryExceptOSErrorMessage(errorPrefix: string = "", body: untyped): typed =
+  try:
+    body
+  except OSError:
+    let ose = (ref OSError)(getCurrentException())
+    if errorPrefix.len > 0:
+      rawMessage(errGenerated, errorPrefix & " " & ose.msg & " " & $ose.errorCode)
+    else:
+      rawMessage(errExecutionOfProgramFailed, ose.msg & " " & $ose.errorCode)
+    raise
+
 proc callCCompiler*(projectfile: string) =
   var
     linkCmd: string
@@ -721,16 +732,11 @@ proc callCCompiler*(projectfile: string) =
     var res = 0
     if gNumberOfProcessors <= 1:
       for i in countup(0, high(cmds)):
-        try:
+        tryExceptOSErrorMessage("invocation of external compiler program failed."):
           res = execWithEcho(cmds[i])
-        except OSError:
-          let ose = (ref OSError)(getCurrentException())
-          rawMessage(errGenerated, "invocation of external compiler program failed. " &
-            ose.msg & " " & $ose.errorCode)
-          raise
         if res != 0: rawMessage(errExecutionOfProgramFailed, cmds[i])
     else:
-      try:
+      tryExceptOSErrorMessage("invocation of external compiler program failed."):
         if optListCmd in gGlobalOptions or gVerbosity > 1:
           res = execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams},
                               gNumberOfProcessors, afterRunEvent=runCb)
@@ -740,11 +746,6 @@ proc callCCompiler*(projectfile: string) =
         else:
           res = execProcesses(cmds, {poStdErrToStdOut, poUsePath, poParentStreams},
                               gNumberOfProcessors, afterRunEvent=runCb)
-      except OSError:
-        let ose = (ref OSError)(getCurrentException())
-        rawMessage(errGenerated, "invocation of external compiler program failed. " &
-            ose.msg & " " & $ose.errorCode)
-        raise
     if res != 0:
       if gNumberOfProcessors <= 1:
         rawMessage(errExecutionOfProgramFailed, cmds.join())
@@ -762,14 +763,9 @@ proc callCCompiler*(projectfile: string) =
 
     linkCmd = getLinkCmd(projectfile, objfiles)
     if optCompileOnly notin gGlobalOptions:
-      try:
+      tryExceptOSErrorMessage("invocation of external linker program failed."):
         execExternalProgram(linkCmd,
           if optListCmd in gGlobalOptions or gVerbosity > 1: hintExecuting else: hintLinking)
-      except OSError:
-        let ose = (ref OSError)(getCurrentException())
-        rawMessage(errGenerated, "invocation of external linker program failed. " &
-            ose.msg & " " & $ose.errorCode)
-        raise
   else:
     linkCmd = ""
   if optGenScript in gGlobalOptions:
