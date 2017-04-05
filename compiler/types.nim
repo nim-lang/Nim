@@ -1204,7 +1204,7 @@ const
   szIllegalRecursion* = -2
   szUnknownSize* = -1
 
-proc computeSizeAux(typ: PType): void
+proc computeSizeAndAlign(typ: PType): void
 proc computeRecSizeAux(n: PNode, a, currOffset: var BiggestInt): BiggestInt =
   var maxAlign, maxSize, b, res: BiggestInt
   case n.kind
@@ -1235,14 +1235,14 @@ proc computeRecSizeAux(n: PNode, a, currOffset: var BiggestInt): BiggestInt =
       if b > maxAlign: maxAlign = b
     a = maxAlign
   of nkSym:
-    n.sym.typ.computeSizeAux
+    n.sym.typ.computeSizeAndAlign
     result = n.sym.typ.size
     n.sym.offset = int(currOffset)
   else:
     a = 1
     result = szNonConcreteType
 
-proc computeSizeAux(typ: PType): void =
+proc computeSizeAndAlign(typ: PType): void =
   ## computes and sets ``size`` and ``align`` members of ``typ``
 
   var maxAlign, sizeAccum, length: BiggestInt
@@ -1299,7 +1299,7 @@ proc computeSizeAux(typ: PType): void =
       typ.align = int16(ptrSize)
     return
   of tyArray:
-    typ.sons[1].computeSizeAux
+    typ.sons[1].computeSizeAndAlign
     let elemSize = typ.sons[1].size
     if elemSize < 0:
       typ.size  = elemSize
@@ -1345,14 +1345,14 @@ proc computeSizeAux(typ: PType): void =
         typ.size = align(length, 8) div 8 + 1
     typ.align = int16(typ.size)
   of tyRange:
-    typ.sons[0].computeSizeAux
+    typ.sons[0].computeSizeAndAlign
     typ.size = typ.sons[0].size
     typ.align = typ.sons[0].align
   of tyTuple:
     maxAlign = 1
     sizeAccum = 0
     for i in countup(0, sonsLen(typ) - 1):
-      typ.sons[i].computeSizeAux
+      typ.sons[i].computeSizeAndAlign
       let s = typ.sons[i].size
       let a = typ.sons[i].align
       if s < 0:
@@ -1368,7 +1368,7 @@ proc computeSizeAux(typ: PType): void =
   of tyObject:
     if typ.sons[0] != nil:
       let st = skipTypes(typ.sons[0], skipPtrs)
-      st.computeSizeAux
+      st.computeSizeAndAlign
       if st.size < 0:
         typ.size = st.size
         typ.align = st.align
@@ -1392,23 +1392,23 @@ proc computeSizeAux(typ: PType): void =
     typ.align = int16(maxAlign)
   of tyInferred:
     if typ.len > 1:
-      typ.lastSon.computeSizeAux
+      typ.lastSon.computeSizeAndAlign
       typ.size = typ.lastSon.size
       typ.align = typ.lastSon.align
   of tyGenericInst, tyDistinct, tyGenericBody, tyAlias:
-    typ.lastSon.computeSizeAux
+    typ.lastSon.computeSizeAndAlign
     typ.size = typ.lastSon.size
     typ.align = typ.lastSon.align
   of tyTypeClasses:
     if typ.isResolvedUserTypeClass:
-      typ.lastSon.computeSizeAux
+      typ.lastSon.computeSizeAndAlign
       typ.size = typ.lastSon.size
       typ.align = typ.lastSon.align
     else:
       typ.size = szUnknownSize
       typ.align = szUnknownSize
   of tyTypeDesc:
-    typ.base.computeSizeAux
+    typ.base.computeSizeAndAlign
     typ.size = typ.base.size
     typ.align = typ.base.align
   of tyForward:
@@ -1417,7 +1417,7 @@ proc computeSizeAux(typ: PType): void =
     typ.align = szIllegalRecursion
   of tyStatic:
     if typ.n != nil:
-      typ.lastSon.computeSizeAux
+      typ.lastSon.computeSizeAndAlign
       typ.size = typ.lastSon.size
       typ.align = typ.lastSon.align
     else:
@@ -1428,7 +1428,7 @@ proc computeSizeAux(typ: PType): void =
     typ.align = szUnknownSize
 
 proc computeSize(typ: PType): BiggestInt =
-  typ.computeSizeAux
+  typ.computeSizeAndAlign
   result = typ.size
 
 proc getReturnType*(s: PSym): PType =
@@ -1437,7 +1437,8 @@ proc getReturnType*(s: PSym): PType =
   result = s.typ.sons[0]
 
 proc getSize(typ: PType): BiggestInt =
-  result = computeSize(typ)
+  typ.computeSizeAndAlign
+  result = typ.size
   if result < 0: internalError("getSize: " & $typ.kind)
 
 proc containsGenericTypeIter(t: PType, closure: RootRef): bool =
