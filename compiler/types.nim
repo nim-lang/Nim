@@ -1204,7 +1204,7 @@ const
   szIllegalRecursion* = -2
   szUnknownSize* = -1
 
-proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt
+proc computeSizeAux(typ: PType): void
 proc computeRecSizeAux(n: PNode, a, currOffset: var BiggestInt): BiggestInt =
   var maxAlign, maxSize, b, res: BiggestInt
   case n.kind
@@ -1235,133 +1235,201 @@ proc computeRecSizeAux(n: PNode, a, currOffset: var BiggestInt): BiggestInt =
       if b > maxAlign: maxAlign = b
     a = maxAlign
   of nkSym:
-    result = computeSizeAux(n.sym.typ, a)
+    n.sym.typ.computeSizeAux
+    result = n.sym.typ.size
     n.sym.offset = int(currOffset)
   else:
     a = 1
     result = szNonConcreteType
 
-proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
-  var res, maxAlign, length, currOffset: BiggestInt
+proc computeSizeAux(typ: PType): void =
+  ## computes and sets ``size`` and ``align`` members of ``typ``
+
+  var maxAlign, sizeAccum, length: BiggestInt
   if typ.size == szIllegalRecursion:
     # we are already computing the size of the type
     # --> illegal recursion in type
-    return szIllegalRecursion
+    return
   if typ.size >= 0:
     # size already computed
-    result = typ.size
-    a = typ.align
     return
   typ.size = szIllegalRecursion # mark as being computed
   case typ.kind
   of tyInt, tyUInt:
-    result = intSize
-    a = result
+    typ.size = intSize
+    typ.align = int16(intSize)
+    return
   of tyInt8, tyUInt8, tyBool, tyChar:
-    result = 1
-    a = result
+    typ.size = 1
+    typ.align = 1
+    return
   of tyInt16, tyUInt16:
-    result = 2
-    a = result
+    typ.size = 2
+    typ.align = 2
+    return
   of tyInt32, tyUInt32, tyFloat32:
-    result = 4
-    a = result
+    typ.size = 4
+    typ.align = 4
+    return
   of tyInt64, tyUInt64, tyFloat64:
-    result = 8
-    a = result
+    typ.size = 8
+    typ.align = 8
+    return
   of tyFloat128:
-    result = 16
-    a = result
+    typ.size  = 16
+    typ.align = 16
+    return
   of tyFloat:
-    result = floatSize
-    a = result
+    typ.size = floatSize
+    typ.align = int16(floatSize)
+    return
   of tyProc:
-    if typ.callConv == ccClosure: result = 2 * ptrSize
-    else: result = ptrSize
-    a = ptrSize
+    if typ.callConv == ccClosure:
+      typ.size = 2 * ptrSize
+    else:
+      typ.size = ptrSize
+    typ.align = int16(ptrSize)
   of tyNil, tyCString, tyString, tySequence, tyPtr, tyRef, tyVar, tyOpenArray:
     let base = typ.lastSon
     if base == typ or (base.kind == tyTuple and base.size==szIllegalRecursion):
-      result = szIllegalRecursion
-    else: result = ptrSize
-    a = result
+      typ.size  = szIllegalRecursion
+      typ.align = szIllegalRecursion
+    else:
+      typ.size  = ptrSize
+      typ.align = int16(ptrSize)
+    return
   of tyArray:
-    let elemSize = computeSizeAux(typ.sons[1], a)
-    if elemSize < 0: return elemSize
-    result = lengthOrd(typ.sons[0]) * elemSize
+    typ.sons[1].computeSizeAux
+    let elemSize = typ.sons[1].size
+    if elemSize < 0:
+      typ.size  = elemSize
+      typ.align = int16(elemSize)
+    else:
+      typ.size  = lengthOrd(typ.sons[0]) * elemSize
+      typ.align = typ.sons[1].align
   of tyEnum:
     if firstOrd(typ) < 0:
-      result = 4              # use signed int32
+      typ.size  = 4              # use signed int32
+      typ.align = 4
     else:
       length = lastOrd(typ)   # BUGFIX: use lastOrd!
-      if length + 1 < `shl`(1, 8): result = 1
-      elif length + 1 < `shl`(1, 16): result = 2
-      elif length + 1 < `shl`(BiggestInt(1), 32): result = 4
-      else: result = 8
-    a = result
+      if length + 1 < `shl`(1, 8):
+        typ.size  = 1
+        typ.align = 1
+      elif length + 1 < `shl`(1, 16):
+        typ.size = 2
+        typ.align = 2
+      elif length + 1 < `shl`(BiggestInt(1), 32):
+        typ.size = 4
+        typ.align = 4
+      else:
+        typ.size = 8
+        typ.align = 8
   of tySet:
     if typ.sons[0].kind == tyGenericParam:
-      result = szUnknownSize
+      typ.size  = szUnknownSize
+      typ.align = szUnknownSize # in original version this was 1
     else:
       length = lengthOrd(typ.sons[0])
-      if length <= 8: result = 1
-      elif length <= 16: result = 2
-      elif length <= 32: result = 4
-      elif length <= 64: result = 8
-      elif align(length, 8) mod 8 == 0: result = align(length, 8) div 8
-      else: result = align(length, 8) div 8 + 1
-    a = result
+      if length <= 8:
+        typ.size = 1
+      elif length <= 16:
+        typ.size = 2
+      elif length <= 32:
+        typ.size = 4
+      elif length <= 64:
+        typ.size = 8
+      elif align(length, 8) mod 8 == 0:
+        typ.size  = align(length, 8) div 8
+      else:
+        typ.size = align(length, 8) div 8 + 1
+    typ.align = int16(typ.size)
   of tyRange:
-    result = computeSizeAux(typ.sons[0], a)
+    typ.sons[0].computeSizeAux
+    typ.size = typ.sons[0].size
+    typ.align = typ.sons[0].align
   of tyTuple:
-    result = 0
     maxAlign = 1
+    sizeAccum = 0
     for i in countup(0, sonsLen(typ) - 1):
-      res = computeSizeAux(typ.sons[i], a)
-      if res < 0: return res
+      typ.sons[i].computeSizeAux
+      let s = typ.sons[i].size
+      let a = typ.sons[i].align
+      if s < 0:
+        typ.size  = s
+        typ.align = a
+        return
+
       maxAlign = max(maxAlign, a)
-      result = align(result, a) + res
-    result = align(result, maxAlign)
-    a = maxAlign
+      sizeAccum = align(sizeAccum, a) + s
+
+    typ.size  = align(sizeAccum, maxAlign)
+    typ.align = int16(maxAlign)
   of tyObject:
     if typ.sons[0] != nil:
-      result = computeSizeAux(typ.sons[0].skipTypes(skipPtrs), a)
-      if result < 0: return
-      maxAlign = a
+      let st = skipTypes(typ.sons[0], skipPtrs)
+      st.computeSizeAux
+      if st.size < 0:
+        typ.size = st.size
+        typ.align = st.align
+        return
+      sizeAccum = 0
+      maxAlign = st.align
     elif isObjectWithTypeFieldPredicate(typ):
-      result = intSize
-      maxAlign = result
+      sizeAccum = intSize
+      maxAlign  = intSize
     else:
-      result = 0
+      sizeAccum = 0
       maxAlign = 1
-    currOffset = result
-    result = computeRecSizeAux(typ.n, a, currOffset)
-    if result < 0: return
-    if a < maxAlign: a = maxAlign
-    result = align(result, a)
+
+    var a: BiggestInt = 0
+    sizeAccum = computeRecSizeAux(typ.n, a, sizeAccum)
+    if sizeAccum < 0:
+      typ.size = sizeAccum
+      typ.align = int16(sizeAccum)
+    maxAlign = max(a, maxAlign)
+    typ.size  = align(sizeAccum, maxAlign)
+    typ.align = int16(maxAlign)
   of tyInferred:
     if typ.len > 1:
-      result = computeSizeAux(typ.lastSon, a)
+      typ.lastSon.computeSizeAux
+      typ.size = typ.lastSon.size
+      typ.align = typ.lastSon.align
   of tyGenericInst, tyDistinct, tyGenericBody, tyAlias:
-    result = computeSizeAux(lastSon(typ), a)
+    typ.lastSon.computeSizeAux
+    typ.size = typ.lastSon.size
+    typ.align = typ.lastSon.align
   of tyTypeClasses:
-    result = if typ.isResolvedUserTypeClass: computeSizeAux(typ.lastSon, a)
-             else: szUnknownSize
+    if typ.isResolvedUserTypeClass:
+      typ.lastSon.computeSizeAux
+      typ.size = typ.lastSon.size
+      typ.align = typ.lastSon.align
+    else:
+      typ.size = szUnknownSize
+      typ.align = szUnknownSize
   of tyTypeDesc:
-    result = computeSizeAux(typ.base, a)
-  of tyForward: return szIllegalRecursion
+    typ.base.computeSizeAux
+    typ.size = typ.base.size
+    typ.align = typ.base.align
+  of tyForward:
+    typ.size = szIllegalRecursion
+    # mabe?
+    typ.align = szIllegalRecursion
   of tyStatic:
-    result = if typ.n != nil: computeSizeAux(typ.lastSon, a)
-             else: szUnknownSize
+    if typ.n != nil:
+      typ.lastSon.computeSizeAux
+      typ.size = typ.lastSon.size
+      typ.align = typ.lastSon.align
+    else:
+      typ.size = szUnknownSize
+      typ.align = szUnknownSize
   else:
-    #internalError("computeSizeAux()")
-    result = szUnknownSize
-  typ.size = result
-  typ.align = int16(a)
+    typ.size  = szUnknownSize
+    typ.align = szUnknownSize
 
 proc computeSize(typ: PType): BiggestInt =
-  var a: BiggestInt = 1
-  result = computeSizeAux(typ, a)
+  typ.computeSizeAux
+  result = typ.size
 
 proc getReturnType*(s: PSym): PType =
   # Obtains the return type of a iterator/proc/macro/template
