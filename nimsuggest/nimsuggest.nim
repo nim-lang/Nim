@@ -287,6 +287,7 @@ proc replStdin(x: ThreadParams) {.thread.} =
     var line = ""
     while readLineFromStdin("> ", line):
       replStdinSingleCmd(line)
+    requests.send "quit"
 
 proc replCmdline(x: ThreadParams) {.thread.} =
   replStdinSingleCmd(x.address)
