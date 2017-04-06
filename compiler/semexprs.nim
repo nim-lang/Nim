@@ -2097,75 +2097,7 @@ proc isTupleType(n: PNode): bool =
       return false
   return true
 
-proc checkInitialized(n: PNode, ids: IntSet, info: TLineInfo) =
-  case n.kind
-  of nkRecList:
-    for i in countup(0, sonsLen(n) - 1):
-      checkInitialized(n.sons[i], ids, info)
-  of nkRecCase:
-    if (n.sons[0].kind != nkSym): internalError(info, "checkInitialized")
-    checkInitialized(n.sons[0], ids, info)
-    when false:
-      # XXX we cannot check here, as we don't know the branch!
-      for i in countup(1, sonsLen(n) - 1):
-        case n.sons[i].kind
-        of nkOfBranch, nkElse: checkInitialized(lastSon(n.sons[i]), ids, info)
-        else: internalError(info, "checkInitialized")
-  of nkSym:
-    if {tfNotNil, tfNeedsInit} * n.sym.typ.flags != {} and
-        n.sym.name.id notin ids:
-      message(info, errGenerated, "field not initialized: " & n.sym.name.s)
-  else: internalError(info, "checkInitialized")
-
-proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
-  var t = semTypeNode(c, n.sons[0], nil)
-  result = newNodeIT(nkObjConstr, n.info, t)
-  result.add n.sons[0]
-  t = skipTypes(t, {tyGenericInst, tyAlias})
-  if t.kind == tyRef: t = skipTypes(t.sons[0], {tyGenericInst, tyAlias})
-  if t.kind != tyObject:
-    localError(n.info, errGenerated, "object constructor needs an object type")
-    return
-  var objType = t
-  var ids = initIntSet()
-  for i in 1.. <n.len:
-    let it = n.sons[i]
-    if it.kind != nkExprColonExpr:
-      localError(n.info, errNamedExprExpected)
-      break
-    let id = considerQuotedIdent(it.sons[0], it)
-
-    if containsOrIncl(ids, id.id):
-      localError(it.info, errFieldInitTwice, id.s)
-    var e = semExprWithType(c, it.sons[1], flags*{efAllowDestructor})
-    var
-      check: PNode = nil
-      f: PSym
-    t = objType
-    while true:
-      check = nil
-      f = lookupInRecordAndBuildCheck(c, it, t.n, id, check)
-      if f != nil: break
-      if t.sons[0] == nil: break
-      t = skipTypes(t.sons[0], skipPtrs)
-    if f != nil and fieldVisible(c, f):
-      it.sons[0] = newSymNode(f)
-      e = fitNode(c, f.typ, e, it.info)
-      # small hack here in a nkObjConstr the ``nkExprColonExpr`` node can have
-      # 3 children the last being the field check
-      if check != nil:
-        check.sons[0] = it.sons[0]
-        it.add(check)
-    else:
-      localError(it.info, errUndeclaredFieldX, id.s)
-    it.sons[1] = e
-    result.add it
-    # XXX object field name check for 'case objects' if the kind is static?
-  if tfNeedsInit in objType.flags:
-    while true:
-      checkInitialized(objType.n, ids, n.info)
-      if objType.sons[0] == nil: break
-      objType = skipTypes(objType.sons[0], skipPtrs)
+include semobjconstr
 
 proc semBlock(c: PContext, n: PNode): PNode =
   result = n
