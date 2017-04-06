@@ -279,6 +279,7 @@ proc replStdin(x: ThreadParams) {.thread.} =
     while true:
       let line = readLine(stdin)
       requests.send line
+      if line == "quit": break
       toStdout()
       echo DummyEof
       flushFile(stdout)
