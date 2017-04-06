@@ -737,6 +737,11 @@ proc `%`*(o: ref object): JsonNode =
   else:
     result = %(o[])
 
+proc `%`*(o: enum): JsonNode =
+  ## Construct a JsonNode that represents the specified enum value as a
+  ## string. Creates a new ``JString JsonNode``.
+  result = %($o)
+
 proc toJson(x: NimNode): NimNode {.compiletime.} =
   case x.kind
   of nnkBracket: # array
