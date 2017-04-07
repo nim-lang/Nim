@@ -123,7 +123,7 @@ proc toInt*(p: Protocol): cint
   ## Converts the Protocol enum to a platform-dependent ``cint``.
 
 when not useWinVersion:
-  proc toInt(domain: Domain): TSa_Family =
+  proc toInt(domain: Domain): cshort =
     case domain
     of AF_UNIX:        result = posix.AF_UNIX
     of AF_INET:        result = posix.AF_INET
@@ -149,7 +149,7 @@ when not useWinVersion:
     else: discard
 
 else:
-  proc toInt(domain: Domain): cint =
+  proc toInt(domain: Domain): cshort =
     result = toU16(ord(domain))
 
   proc toInt(typ: SockType): cint =
