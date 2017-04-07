@@ -267,7 +267,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     # little HACK to support the new 'var T' as return type:
     linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
     return
-  let ty = skipTypes(dest.t, abstractRange)
+  let ty = skipTypes(dest.t, abstractRange + tyUserTypeClasses)
   case ty.kind
   of tyRef:
     genRefAssign(p, dest, src, flags)
