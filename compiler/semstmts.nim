@@ -851,9 +851,12 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
         # type aliases are hard:
         var t = semTypeNode(c, x, nil)
         assert t != nil
-        if t.kind in {tyObject, tyEnum, tyDistinct}:
-          assert s.typ != nil
-          if s.typ.kind != tyAlias:
+        if s.typ != nil and s.typ.kind != tyAlias:
+          if t.kind in {tyProc, tyGenericInst} and not t.isMetaType:
+            assignType(s.typ, t)
+            s.typ.id = t.id
+          elif t.kind in {tyObject, tyEnum, tyDistinct}:
+            assert s.typ != nil
             assignType(s.typ, t)
             s.typ.id = t.id     # same id
       checkConstructedType(s.info, s.typ)
