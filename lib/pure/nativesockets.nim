@@ -113,7 +113,7 @@ proc `==`*(a, b: Port): bool {.borrow.}
 proc `$`*(p: Port): string {.borrow.}
   ## returns the port number as a string
 
-proc toInt*(domain: Domain): TSa_Family
+proc toInt*(domain: Domain): cshort
   ## Converts the Domain enum to a platform-dependent ``cint``.
 
 proc toInt*(typ: SockType): cint
