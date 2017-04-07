@@ -1606,6 +1606,12 @@ proc setupMacroParam(x: PNode, typ: PType): TFullReg =
     n.typ = x.typ
     result.node = n
 
+iterator genericParamsInMacroCall*(macroSym: PSym, call: PNode): (PSym, PNode) =
+  let gp = macroSym.ast[genericParamsPos]
+  for i in 0 .. <gp.len:
+    let idx = macroSym.typ.len + i
+    yield (gp[i].sym, call.sons[idx])
+
 var evalMacroCounter: int
 
 proc evalMacroCall*(module: PSym; cache: IdentCache, n, nOrig: PNode,

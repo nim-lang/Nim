@@ -26,7 +26,7 @@ type
     sym*: PSym
     unmatchedVarParam*: int
     diagnostics*: seq[string]
-  
+
   CandidateErrors* = seq[CandidateError]
 
   TCandidate* = object
@@ -68,7 +68,7 @@ type
                               # future.
     mutabilityProblem*: uint8 # tyVar mismatch
     inheritancePenalty: int  # to prefer closest father object type
-  
+
   TTypeRelation* = enum      # order is important!
     isNone, isConvertible,
     isIntConv,
@@ -639,7 +639,7 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
                         makeTypeDesc(c, typ)
 
         typeParams.safeAdd((param, typ))
-      
+
       addDecl(c, param)
 
   for param in typeClass.n[0]:
@@ -676,7 +676,7 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
     flags: TExprFlags = {}
     collectDiagnostics = m.diagnostics != nil or
                          sfExplain in typeClass.sym.flags
-  
+
   if collectDiagnostics:
     oldWriteHook = writelnHook
     # XXX: we can't write to m.diagnostics directly, because
@@ -688,13 +688,13 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
       let msg = s.replace("Error:", errorPrefix)
       if oldWriteHook != nil: oldWriteHook msg
       diagnostics.add msg
-   
+
   var checkedBody = c.semTryExpr(c, body.copyTree, flags)
 
   if collectDiagnostics:
     writelnHook = oldWriteHook
     for msg in diagnostics: m.diagnostics.safeAdd msg
-  
+
   if checkedBody == nil: return nil
 
   # The inferrable type params have been identified during the semTryExpr above.
@@ -746,7 +746,7 @@ proc inferStaticParam*(lhs: PNode, rhs: BiggestInt): PType =
   #
   # Preconditions:
   #
-  #   * The input of this proc must be semantized 
+  #   * The input of this proc must be semantized
   #     - all templates should be expanded
   #     - aby constant folding possible should already be performed
   #
@@ -769,13 +769,13 @@ proc inferStaticParam*(lhs: PNode, rhs: BiggestInt): PType =
         return inferStaticParam(lhs[2], rhs - lhs[1].intVal)
       elif lhs[2].kind == nkIntLit:
         return inferStaticParam(lhs[1], rhs - lhs[2].intVal)
-    
+
     of mDec, mSubI, mSubU, mPred:
       if lhs[1].kind == nkIntLit:
         return inferStaticParam(lhs[2], lhs[1].intVal - rhs)
       elif lhs[2].kind == nkIntLit:
         return inferStaticParam(lhs[1], rhs + lhs[2].intVal)
-    
+
     of mMulI, mMulU:
       if lhs[1].kind == nkIntLit:
         if rhs mod lhs[1].intVal == 0:
@@ -783,34 +783,34 @@ proc inferStaticParam*(lhs: PNode, rhs: BiggestInt): PType =
       elif lhs[2].kind == nkIntLit:
         if rhs mod lhs[2].intVal == 0:
           return inferStaticParam(lhs[1], rhs div lhs[2].intVal)
-    
+
     of mDivI, mDivU:
       if lhs[1].kind == nkIntLit:
         if lhs[1].intVal mod rhs == 0:
           return inferStaticParam(lhs[2], lhs[1].intVal div rhs)
       elif lhs[2].kind == nkIntLit:
         return inferStaticParam(lhs[1], lhs[2].intVal * rhs)
-    
+
     of mShlI:
       if lhs[2].kind == nkIntLit:
         return inferStaticParam(lhs[1], rhs shr lhs[2].intVal)
-    
+
     of mShrI:
       if lhs[2].kind == nkIntLit:
         return inferStaticParam(lhs[1], rhs shl lhs[2].intVal)
-    
+
     of mUnaryMinusI:
       return inferStaticParam(lhs[1], -rhs)
-    
+
     of mUnaryPlusI, mToInt, mToBiggestInt:
       return inferStaticParam(lhs[1], rhs)
-    
+
     else: discard
-  
+
   elif lhs.kind == nkSym and lhs.typ.kind == tyStatic and lhs.typ.n == nil:
     lhs.typ.n = newIntNode(nkIntLit, rhs)
     return lhs.typ
-  
+
   return nil
 
 proc failureToInferStaticParam(n: PNode) =
@@ -825,7 +825,7 @@ proc inferStaticsInRange(c: var TCandidate,
                                           allowUnresolved = true)
   let upperBound = tryResolvingStaticExpr(c, inferred.n[1],
                                           allowUnresolved = true)
-  
+
   template doInferStatic(c: var TCandidate, e: PNode, r: BiggestInt) =
     var exp = e
     var rhs = r
@@ -1049,7 +1049,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       result = typeRel(c, f.sons[1].skipTypes({tyTypeDesc}),
                           a.sons[1].skipTypes({tyTypeDesc}))
       if result < isGeneric: return isNone
-      
+
       if fRange.rangeHasUnresolvedStatic:
         return inferStaticsInRange(c, fRange, a)
       elif c.c.inTypeClass > 0 and aRange.rangeHasUnresolvedStatic:
@@ -1204,8 +1204,48 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   of tyEmpty, tyVoid:
     if a.kind == f.kind: result = isEqual
 
-  of tyGenericInst, tyAlias:
+  of tyAlias:
     result = typeRel(c, lastSon(f), a)
+
+  of tyGenericInst:
+    var prev = PType(idTableGet(c.bindings, f))
+    var f = if prev == nil: f else: prev
+
+    let roota = a.skipGenericAlias
+    let rootf = f.skipGenericAlias
+
+    var m = c
+    if a.kind == tyGenericInst:
+      if roota.base == rootf.base:
+        for i in 1 .. rootf.sonsLen-2:
+          let ff = rootf.sons[i]
+          let aa = roota.sons[i]
+          result = typeRel(c, ff, aa)
+          if result notin {isEqual, isGeneric}: return isNone
+          # if ff.kind == tyRange and result != isEqual: return isNone
+
+        if prev == nil: put(c, f, a)
+        result = isGeneric
+      else:
+        var aAsObject = roota.lastSon
+        if rootf.lastSon.kind in {tyAnd, tyOr}:
+          result = typeRel(c, lastSon(f), a)
+          if result != isNone: put(c, f, a)
+          return
+
+        if rootf.lastSon.kind == tyRef and aAsObject.kind == tyRef:
+          aAsObject = aAsObject.base
+
+        if aAsObject.kind == tyObject:
+          let baseType = aAsObject.base
+          if baseType != nil:
+            c.inheritancePenalty += 1
+            return typeRel(c, f, baseType)
+
+        result = isNone
+    else:
+      result = typeRel(c, lastSon(f), a)
+      if result != isNone: put(c, f, a)
 
   of tyGenericBody:
     considerPreviousT:
@@ -1217,6 +1257,12 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
 
   of tyGenericInvocation:
     var x = a.skipGenericAlias
+    
+    # XXX: This is very hacky. It should be moved back into liftTypeParam
+    if x.kind == tyGenericInst and c.calleeSym != nil and c.calleeSym.kind == skProc:
+      let inst = prepareMetatypeForSigmatch(c.c, c.bindings, c.call.info, f)
+      return typeRel(c, inst, a)
+
     var depth = 0
     if x.kind == tyGenericInvocation or f.sons[0].kind != tyGenericBody:
       #InternalError("typeRel: tyGenericInvocation -> tyGenericInvocation")
@@ -2086,6 +2132,7 @@ proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
     localError(info, errGenerated, "cannot instantiate '" & dc.name.s & "'")
     return nil
   var f = dc.typ.sons[col]
+
   if op == attachedDeepCopy:
     if f.kind in {tyRef, tyPtr}: f = f.lastSon
   else:
