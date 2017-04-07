@@ -57,6 +57,7 @@ type
     status*: cstring
     toolbar*: ref TToolBar
     frames*: seq[TFrame]
+    screen*: Screen
 
   Frame* = ref FrameObj
   FrameObj {.importc.} = object of WindowObj
@@ -129,6 +130,7 @@ type
     name*: cstring
     readOnly*: bool
     options*: seq[OptionElement]
+    clientWidth*, clientHeight*: int
 
   # https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement
   HtmlElement* = ref object of Element
@@ -393,10 +395,17 @@ type
   TTimeOut* {.importc.} = object of RootObj
   TInterval* {.importc.} = object of RootObj
 
+  AddEventListenerOptions* = object
+    capture*: bool
+    once*: bool
+    passive*: bool
+
 {.push importcpp.}
 
 # EventTarget "methods"
 proc addEventListener*(et: EventTarget, ev: cstring, cb: proc(ev: Event), useCapture: bool = false)
+proc addEventListener*(et: EventTarget, ev: cstring, cb: proc(ev: Event), options: AddEventListenerOptions)
+
 
 # Window "methods"
 proc alert*(w: Window, msg: cstring)
@@ -470,6 +479,8 @@ proc releaseEvents*(d: Document, eventMask: int) {.deprecated.}
 proc routeEvent*(d: Document, event: Event)
 proc write*(d: Document, text: cstring)
 proc writeln*(d: Document, text: cstring)
+proc querySelector*(d: Document, selectors: cstring): Element
+proc querySelectorAll*(d: Document, selectors: cstring): seq[Element]
 
 # Element "methods"
 proc blur*(e: Element)

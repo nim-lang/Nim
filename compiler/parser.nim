@@ -1208,7 +1208,7 @@ proc parseMacroColon(p: var TParser, x: PNode): PNode =
 
 proc parseExprStmt(p: var TParser): PNode =
   #| exprStmt = simpleExpr
-  #|          (( '=' optInd expr )
+  #|          (( '=' optInd expr colonBody? )
   #|          / ( expr ^+ comma
   #|              doBlocks
   #|               / macroColon
@@ -1219,6 +1219,12 @@ proc parseExprStmt(p: var TParser): PNode =
     getTok(p)
     optInd(p, result)
     var b = parseExpr(p)
+    if p.tok.tokType == tkColon and p.tok.indent < 0:
+      if b.kind != nkEmpty:
+        let call = makeCall(b)
+        call.add parseDoBlock(p, parLineInfo(p))
+        parseDoBlocks(p, call)
+        b = call
     addSon(result, a)
     addSon(result, b)
   else:

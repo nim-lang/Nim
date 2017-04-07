@@ -694,7 +694,9 @@ the ``case`` statement: The branches in a ``case`` section may be indented too.
 In the example the ``kind`` field is called the `discriminator`:idx:\: For
 safety its address cannot be taken and assignments to it are restricted: The
 new value must not lead to a change of the active object branch. For an object
-branch switch ``system.reset`` has to be used.
+branch switch ``system.reset`` has to be used. Also, when the fields of a
+particular branch are specified during object construction, the correct value
+for the discriminator must be supplied at compile-time.
 
 
 Set type
@@ -1002,16 +1004,6 @@ Nim supports these `calling conventions`:idx:\:
     improve speed.
 
 Most calling conventions exist only for the Windows 32-bit platform.
-
-Assigning/passing a procedure to a procedural variable is only allowed if one
-of the following conditions hold:
-1) The procedure that is accessed resides in the current module.
-2) The procedure is marked with the ``procvar`` pragma (see `procvar pragma <#pragmas-procvar-pragma>`_).
-3) The procedure has a calling convention that differs from ``nimcall``.
-4) The procedure is anonymous.
-
-The rules' purpose is to prevent the case that extending a non-``procvar``
-procedure with default parameters breaks client code.
 
 The default calling convention is ``nimcall``, unless it is an inner proc (a
 proc inside of a proc). For an inner proc an analysis is performed whether it

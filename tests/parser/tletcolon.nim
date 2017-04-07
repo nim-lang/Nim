@@ -18,7 +18,8 @@ template y(val, body): untyped =
 proc mana =
   let foo = x:
     echo "boo"
-  var foo2 = y 3:
+  var foo2: int
+  foo2 = y 3:
     echo "3"
   echo foo, " ", foo2
 

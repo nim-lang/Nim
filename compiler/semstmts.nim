@@ -71,27 +71,29 @@ proc toCover(t: PType): BiggestInt =
   else:
     result = lengthOrd(skipTypes(t, abstractVar-{tyTypeDesc}))
 
-proc performProcvarCheck(c: PContext, info: TLineInfo, s: PSym) =
-  ## Checks that the given symbol is a proper procedure variable, meaning
-  ## that it
-  var smoduleId = getModule(s).id
-  if sfProcvar notin s.flags and s.typ.callConv == ccDefault and
-      smoduleId != c.module.id:
-    block outer:
-      for module in c.friendModules:
-        if smoduleId == module.id:
-          break outer
-      localError(info, errXCannotBePassedToProcVar, s.name.s)
+when false:
+  proc performProcvarCheck(c: PContext, info: TLineInfo, s: PSym) =
+    ## Checks that the given symbol is a proper procedure variable, meaning
+    ## that it
+    var smoduleId = getModule(s).id
+    if sfProcvar notin s.flags and s.typ.callConv == ccDefault and
+        smoduleId != c.module.id:
+      block outer:
+        for module in c.friendModules:
+          if smoduleId == module.id:
+            break outer
+        localError(info, errXCannotBePassedToProcVar, s.name.s)
 
-proc semProcvarCheck(c: PContext, n: PNode) =
-  var n = n.skipConv
-  if n.kind in nkSymChoices:
-    for x in n:
-      if x.sym.kind in {skProc, skMethod, skConverter, skIterator}:
-        performProcvarCheck(c, n.info, x.sym)
-  elif n.kind == nkSym and n.sym.kind in {skProc, skMethod, skConverter,
-                                        skIterator}:
-    performProcvarCheck(c, n.info, n.sym)
+template semProcvarCheck(c: PContext, n: PNode) =
+  when false:
+    var n = n.skipConv
+    if n.kind in nkSymChoices:
+      for x in n:
+        if x.sym.kind in {skProc, skMethod, skConverter, skIterator}:
+          performProcvarCheck(c, n.info, x.sym)
+    elif n.kind == nkSym and n.sym.kind in {skProc, skMethod, skConverter,
+                                          skIterator}:
+      performProcvarCheck(c, n.info, n.sym)
 
 proc semProc(c: PContext, n: PNode): PNode
 
@@ -205,13 +207,12 @@ proc semCase(c: PContext, n: PNode): PNode =
   var covered: BiggestInt = 0
   var typ = commonTypeBegin
   var hasElse = false
-  var notOrdinal = false
   let caseTyp = skipTypes(n.sons[0].typ, abstractVarRange-{tyTypeDesc})
   case caseTyp.kind
   of tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32, tyBool:
     chckCovered = true
   of tyFloat..tyFloat128, tyString, tyError:
-    notOrdinal = true
+    discard
   else:
     localError(n.info, errSelectorMustBeOfCertainTypes)
     return
@@ -244,9 +245,6 @@ proc semCase(c: PContext, n: PNode): PNode =
       hasElse = true
     else:
       illFormedAst(x)
-  if notOrdinal and not hasElse:
-    message(n.info, warnDeprecated,
-            "use 'else: discard'; non-ordinal case without 'else'")
   if chckCovered:
     if covered == toCover(n.sons[0].typ):
       hasElse = true
@@ -1631,7 +1629,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
             elif expr[2].typ.isUnresolvedStatic:
               inferConceptStaticParam(c, expr[2], expr[1])
               continue
-            
+
           let verdict = semConstExpr(c, n[i])
           if verdict.intVal == 0:
             localError(result.info, "type class predicate failed")
@@ -1655,7 +1653,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
           of nkPragma, nkCommentStmt, nkNilLit, nkEmpty: discard
           else: localError(n.sons[j].info, errStmtInvalidAfterReturn)
       else: discard
-  
+
   if result.len == 1 and
      c.inTypeClass == 0 and # concept bodies should be preserved as a stmt list
      result.sons[0].kind != nkDefer:

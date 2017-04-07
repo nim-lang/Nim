@@ -1,5 +1,5 @@
 discard """
-  errormsg: "field not initialized: bar"
+  errormsg: "fields not initialized: bar"
   line: "13"
 """
 
