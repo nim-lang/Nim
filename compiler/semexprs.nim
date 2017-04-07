@@ -16,7 +16,7 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
   styleCheckUse(n.info, s)
   pushInfoContext(n.info)
   result = evalTemplate(n, s, getCurrOwner(c), efFromHlo in flags)
-  if efNoSemCheck notin flags: result = semAfterMacroCall(c, result, s, flags)
+  if efNoSemCheck notin flags: result = semAfterMacroCall(c, n, result, s, flags)
   popInfoContext()
 
 proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags = {}): PNode

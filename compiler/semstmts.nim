@@ -1177,7 +1177,8 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       var objB = t.sons[2]
       while true:
         if objB.kind == tyGenericBody: objB = objB.lastSon
-        elif objB.kind == tyGenericInvocation: objB = objB.sons[0]
+        elif objB.kind in {tyGenericInvocation, tyGenericInst}:
+          objB = objB.sons[0]
         else: break
       if obj.kind in {tyObject, tyDistinct} and sameType(obj, objB):
         if obj.assignment.isNil:

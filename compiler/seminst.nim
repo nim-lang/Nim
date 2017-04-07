@@ -36,7 +36,8 @@ proc rawPushProcCon(c: PContext, owner: PSym) =
   c.p = x
 
 proc rawHandleSelf(c: PContext; owner: PSym) =
-  if c.selfName != nil and owner.kind in {skProc, skMethod, skConverter, skIterator, skMacro} and owner.typ != nil:
+  const callableSymbols = {skProc, skMethod, skConverter, skIterator, skMacro}
+  if c.selfName != nil and owner.kind in callableSymbols and owner.typ != nil:
     let params = owner.typ.n
     if params.len > 1:
       let arg = params[1].sym

@@ -1346,6 +1346,9 @@ proc initIdTable*(x: var TIdTable) =
   x.counter = 0
   newSeq(x.data, StartSize)
 
+proc newIdTable*: TIdTable =
+  initIdTable(result)
+
 proc resetIdTable*(x: var TIdTable) =
   x.counter = 0
   # clear and set to old initial size:
