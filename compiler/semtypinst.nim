@@ -12,7 +12,7 @@
 import ast, astalgo, msgs, types, magicsys, semdata, renderer
 
 const
-  tfInstClearedFlags = {tfHasMeta}
+  tfInstClearedFlags = {tfHasMeta, tfUnresolved}
 
 proc checkPartialConstructedType(info: TLineInfo, t: PType) =
   if tfAcyclic in t.flags and skipTypes(t, abstractInst).kind != tyObject:
