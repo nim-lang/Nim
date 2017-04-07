@@ -694,7 +694,9 @@ the ``case`` statement: The branches in a ``case`` section may be indented too.
 In the example the ``kind`` field is called the `discriminator`:idx:\: For
 safety its address cannot be taken and assignments to it are restricted: The
 new value must not lead to a change of the active object branch. For an object
-branch switch ``system.reset`` has to be used.
+branch switch ``system.reset`` has to be used. Also, when the fields of a
+particular branch are specified during object construction, the correct value
+for the discriminator must be supplied at compile-time.
 
 
 Set type

@@ -45,7 +45,7 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc activate(c: PContext, n: PNode)
 proc semQuoteAst(c: PContext, n: PNode): PNode
 proc finishMethod(c: PContext, s: PSym)
-
+proc evalAtCompileTime(c: PContext, n: PNode): PNode
 proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode
 
 proc isArrayConstr(n: PNode): bool {.inline.} =
@@ -327,6 +327,20 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
       result = e
     else:
       result = fixupTypeAfterEval(c, result, e)
+
+proc semExprFlagDispatched(c: PContext, n: PNode, flags: TExprFlags): PNode =
+  if efNeedStatic in flags:
+    if efPreferNilResult in flags:
+      return tryConstExpr(c, n)
+    else:
+      return semConstExpr(c, n)
+  else:
+    result = semExprWithType(c, n, flags)
+    if efPreferStatic in flags:
+      var evaluated = getConstExpr(c.module, result)
+      if evaluated != nil: return evaluated
+      evaluated = evalAtCompileTime(c, result)
+      if evaluated != nil: return evaluated
 
 include hlo, seminst, semcall
 
