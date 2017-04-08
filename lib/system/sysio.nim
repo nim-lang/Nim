@@ -52,8 +52,6 @@ proc c_ferror(f: File): cint {.
   importc: "ferror", header: "<stdio.h>", tags: [].}
 proc c_setvbuf(f: File, buf: pointer, mode: cint, size: csize): cint {.
   importc: "setvbuf", header: "<stdio.h>", tags: [].}
-proc c_ftruncate(f: FileHandle, len: clong): cint {.
-  importc: "ftruncate", header: "<unistd.h>".}
 
 proc raiseEIO(msg: string) {.noinline, noreturn.} =
   sysFatal(IOError, msg)
@@ -374,11 +372,6 @@ proc getFileSize(f: File): int64 =
   discard c_fseek(f, 0, 2) # seek the end of the file
   result = getFilePos(f)
   setFilePos(f, oldPos)
-
-proc setFileSize(f: File, size: int64) =
-  ## Set a file length.
-  if c_ftruncate(getFileHandle f, size.clong) == -1:
-    raiseEIO("cannot truncate file")
 
 proc readFile(filename: string): TaintedString =
   var f: File

@@ -2895,9 +2895,6 @@ when not defined(JS): #and not defined(nimscript):
     proc getFileSize*(f: File): int64 {.tags: [ReadIOEffect], benign.}
       ## retrieves the file size (in bytes) of `f`.
 
-    proc setFileSize*(f: File, size: int64) {.tags: [ReadIOEffect], benign.}
-      ## changes the size of file `f` (in bytes).
-
     proc readBytes*(f: File, a: var openArray[int8|uint8], start, len: Natural): int {.
       tags: [ReadIOEffect], benign.}
       ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
