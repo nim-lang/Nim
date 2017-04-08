@@ -1207,57 +1207,40 @@ const
 proc computeSizeAlign(typ: PType): void
 
 
-proc computeSubObjectSizeAlign(n: PNode): tuple[size, align: BiggestInt] =
+proc computeSubObjectAlign(n: PNode): BiggestInt =
   ## returns object size and align
   case n.kind
   of nkRecCase:
-    result.align = 1
     assert(n.sons[0].kind == nkSym)
-    result = computeSubObjectSizeAlign(n.sons[0])
-
-    var maxChildSize: BiggestInt = 0
+    result = computeSubObjectAlign(n.sons[0])
 
     for i in 1 ..< sonsLen(n):
       let child = n.sons[i]
       case child.kind
       of nkOfBranch, nkElse:
-        # TODO this is wrong initial offset might be wrong because of union alignment
-        let (size, align) = computeSubObjectSizeAlign(n.sons[i].lastSon)
-
-        if size < 0:
-          result.size  = size
-          result.align = align
-          return
-        maxChildSize = max(maxChildSize, size)
-        result.align = max(result.align, align)
+        let align = computeSubObjectAlign(child.lastSon)
+        if align < 0:
+          return align
+        result = max(result, align)
       else:
         internalError("computeObjectOffsetsRecursive(record case branch)")
 
-    result.size = align(result.size, result.align) + align(maxChildSize, result.align)
-
   of nkRecList:
-    result.align = 1
+    result = 1
 
     for i, child in n.sons:
-      let (size,align) = computeSubObjectSizeAlign(child)
-      if size < 0:
-        result.size  = size
-        result.align = align
-        return
+      let align = computeSubObjectAlign(n.sons[i])
+      if align < 0:
+        return align
 
-      result.size  = align(result.size, align) + size
-      result.align = max(result.align, align)
-
-    result.size = align(result.size, result.align)
+      result = max(result, align)
 
   of nkSym:
     n.sym.typ.computeSizeAlign
-    result.size  = n.sym.typ.size
-    result.align = n.sym.typ.align
+    result = n.sym.typ.align
 
   else:
-    result.size  = szNonConcreteType
-    result.align = 1
+    result = 1
 
 proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt): tuple[size, align: BiggestInt] =
   ## ``size`` object size without padding bytes at the end
@@ -1269,7 +1252,6 @@ proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt): tuple[s
     assert(n.sons[0].kind == nkSym)
     let (kindSize, kindAlign) = computeObjectOffsetsRecursive(n.sons[0], initialOffset)
 
-    var maxChildSize: BiggestInt = 0
     var maxChildAlign: BiggestInt = 0
 
     for i in 1 ..< sonsLen(n):
@@ -1277,13 +1259,13 @@ proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt): tuple[s
       case child.kind
       of nkOfBranch, nkElse:
         # offset parameter cannot be known yet, it needs to know the alignment first
-        let (size, align) = computeSubObjectSizeAlign(n.sons[i].lastSon)
+        let align = computeSubObjectAlign(n.sons[i].lastSon)
 
-        if size < 0:
-          result.size  = size
+        if align < 0:
+          result.size  = align
           result.align = align
           return
-        maxChildSize = max(maxChildSize, size)
+
         maxChildAlign = max(maxChildAlign, align)
       else:
         internalError("computeObjectOffsetsRecursive(record case branch)")
@@ -1291,8 +1273,10 @@ proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt): tuple[s
     # the union neds to be aligned first, before the offsets can be assigned
     let kindUnionOffset = align(initialOffset + kindSize, maxChildAlign)
 
+    var maxChildSize: BiggestInt = 0
     for i in 1 ..< sonsLen(n):
-      discard computeObjectOffsetsRecursive(n.sons[i].lastSon, kindUnionOffset)
+      let (size, align) = computeObjectOffsetsRecursive(n.sons[i].lastSon, kindUnionOffset)
+      maxChildSize = max(maxChildSize, size)
 
     result.align = max(kindAlign, maxChildAlign)
     result.size  = align(kindSize, maxChildAlign) + maxChildSize
@@ -1323,6 +1307,8 @@ proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt): tuple[s
   else:
     result.align = 1
     result.size  = szNonConcreteType
+
+# TODO this one needs an alignment map of the individual types
 
 proc computeSizeAlign(typ: PType): void =
   ## computes and sets ``size`` and ``align`` members of ``typ``
