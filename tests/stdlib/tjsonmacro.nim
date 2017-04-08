@@ -2,33 +2,33 @@ discard """
   file: "tjsonmacro.nim"
   output: ""
 """
-import json, macros, strutils
-
-type
-  Point[T] = object
-    x, y: T
-
-  ReplayEventKind* = enum
-    FoodAppeared, FoodEaten, DirectionChanged
-
-  ReplayEvent* = object
-    time*: float
-    case kind*: ReplayEventKind
-    of FoodAppeared, FoodEaten:
-      foodPos*: Point[float]
-    of DirectionChanged:
-      playerPos*: float
-
-  Replay* = ref object
-    events*: seq[ReplayEvent]
-    test: int
-    test2: string
-    test3: bool
-    testNil: string
+import json, strutils
 
 when isMainModule:
   # Tests inspired by own use case (with some additional tests).
   # This should succeed.
+  type
+    Point[T] = object
+      x, y: T
+
+    ReplayEventKind* = enum
+      FoodAppeared, FoodEaten, DirectionChanged
+
+    ReplayEvent* = object
+      time*: float
+      case kind*: ReplayEventKind
+      of FoodAppeared, FoodEaten:
+        foodPos*: Point[float]
+      of DirectionChanged:
+        playerPos*: float
+
+    Replay* = ref object
+      events*: seq[ReplayEvent]
+      test: int
+      test2: string
+      test3: bool
+      testNil: string
+
   var x = Replay(
     events: @[
       ReplayEvent(
@@ -53,7 +53,57 @@ when isMainModule:
   doAssert y.test == 18827361
   doAssert y.test2 == "hello world"
   doAssert y.test3
-  doAssert y.testNil == nil
+  doAssert y.testNil.isNil
+
+  # TODO: Test for custom object variants (without an enum).
+  # TODO: Test for object variant with an else branch.
 
   # Tests that verify the error messages for invalid data.
-  # TODO:
+  block:
+    type
+      Person = object
+        name: string
+        age: int
+
+    var node = %{
+      "name": %"Dominik"
+    }
+
+    try:
+      discard to(node, Person)
+      doAssert false
+    except KeyError as exc:
+      doAssert("age" in exc.msg)
+    except:
+      doAssert false
+
+    node["age"] = %false
+
+    try:
+      discard to(node, Person)
+      doAssert false
+    except JsonKindError as exc:
+      doAssert("age" in exc.msg)
+    except:
+      doAssert false
+
+    type
+      PersonAge = enum
+        Fifteen, Sixteen
+
+      PersonCase = object
+        name: string
+        case age: PersonAge
+        of Fifteen:
+          discard
+        of Sixteen:
+          id: string
+
+    try:
+      discard to(node, PersonCase)
+      doAssert false
+    except JsonKindError as exc:
+      doAssert("age" in exc.msg)
+    except:
+      doAssert false
+

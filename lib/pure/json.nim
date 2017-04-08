@@ -124,6 +124,9 @@ type
     state: seq[ParserState]
     filename: string
 
+  JsonKindError* = object of ValueError ## raised by the ``to`` macro if the
+                                        ## JSON kind is incorrect.
+
 {.deprecated: [TJsonEventKind: JsonEventKind, TJsonError: JsonError,
   TJsonParser: JsonParser, TTokKind: TokKind].}
 
@@ -1289,14 +1292,24 @@ proc createJsonIndexer(jsonNode: NimNode,
     indexNode
   )
 
-proc getEnum(node: JsonNode, T: typedesc): T =
-  # TODO: Exceptions.
+template verifyJsonKind(node: JsonNode, kinds: set[JsonNodeKind],
+                        ast: string) =
+  if node.kind notin kinds:
+    let msg = "Incorrect JSON kind. Wanted '$1' in '$2' but got '$3'." % [
+      $kinds,
+      ast,
+      $node.kind
+    ]
+    raise newException(JsonKindError, msg)
+
+proc getEnum(node: JsonNode, ast: string, T: typedesc): T =
+  verifyJsonKind(node, {JString}, ast)
   return parseEnum[T](node.getStr())
 
 proc toIdentNode(typeNode: NimNode): NimNode =
   ## Converts a Sym type node (returned by getType et al.) into an
-  ## Ident node. Placing Sym type nodes is unsound (according to @Araq)
-  ## so this is necessary.
+  ## Ident node. Placing Sym type nodes inside the resulting code AST is
+  ## unsound (according to @Araq) so this is necessary.
   case typeNode.kind
   of nnkSym:
     return newIdentNode($typeNode)
@@ -1317,7 +1330,8 @@ proc createIfStmtForOf(ofBranch, jsonNode, kindType,
 
   # -> getEnum(`jsonNode`, `kindType`)
   let getEnumSym = bindSym("getEnum")
-  let getEnumCall = newCall(getEnumSym, jsonNode, kindType)
+  let astStrLit = toStrLit(jsonNode)
+  let getEnumCall = newCall(getEnumSym, jsonNode, astStrLit, kindType)
 
   var cond = newEmptyNode()
   for ofCond in ofBranch:
@@ -1398,7 +1412,8 @@ proc processObjField(field, jsonNode: NimNode): seq[NimNode] =
     # Add the "case" field's value.
     let kindType = toIdentNode(getTypeInst(field[0]))
     let getEnumSym = bindSym("getEnum")
-    let getEnumCall = newCall(getEnumSym, kindJsonNode, kindType)
+    let astStrLit = toStrLit(kindJsonNode)
+    let getEnumCall = newCall(getEnumSym, kindJsonNode, astStrLit, kindType)
     exprColonExpr.add(getEnumCall)
 
     # Iterate through each `of` branch.
@@ -1439,25 +1454,25 @@ proc processType(typeName: NimNode, obj: NimNode,
     of "float":
       result = quote do:
         (
-          assert `jsonNode`.kind == JFloat;
+          verifyJsonKind(`jsonNode`, {JFloat}, astToStr(`jsonNode`));
           `jsonNode`.fnum
         )
     of "string":
       result = quote do:
         (
-          assert `jsonNode`.kind in {JString, JNull};
+          verifyJsonKind(`jsonNode`, {JString, JNull}, astToStr(`jsonNode`));
           if `jsonNode`.kind == JNull: nil else: `jsonNode`.str
         )
     of "int":
       result = quote do:
         (
-          assert `jsonNode`.kind == JInt;
+          verifyJsonKind(`jsonNode`, {JInt}, astToStr(`jsonNode`));
           `jsonNode`.num.int
         )
     of "bool":
       result = quote do:
         (
-          assert `jsonNode`.kind == JBool;
+          verifyJsonKind(`jsonNode`, {JBool}, astToStr(`jsonNode`));
           `jsonNode`.bval
         )
     else:
