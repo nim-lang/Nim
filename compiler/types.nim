@@ -886,6 +886,9 @@ proc isGenericAlias*(t: PType): bool =
 proc skipGenericAlias*(t: PType): PType =
   return if t.isGenericAlias: t.lastSon else: t
 
+proc sameFlags*(a, b: PType): bool {.inline.} =
+  result = eqTypeFlags*a.flags == eqTypeFlags*b.flags
+
 proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
   template cycleCheck() =
     # believe it or not, the direct check for ``containsOrIncl(c, a, b)``
@@ -897,9 +900,6 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       inc c.recCheck
     else:
       if containsOrIncl(c, a, b): return true
-
-  proc sameFlags(a, b: PType): bool {.inline.} =
-    result = eqTypeFlags*a.flags == eqTypeFlags*b.flags
 
   if x == y: return true
   var a = skipTypes(x, {tyGenericInst, tyAlias})
