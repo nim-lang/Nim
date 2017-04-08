@@ -679,6 +679,9 @@ elif not defined(useNimRtl):
     readIdx = 0
     writeIdx = 1
 
+  proc isExitStatus(status: cint): bool =
+    WIFEXITED(status) or WIFSIGNALED(status)
+
   proc envToCStringArray(t: StringTableRef): cstringArray =
     result = cast[cstringArray](alloc0((t.len + 1) * sizeof(cstring)))
     var i = 0
@@ -967,7 +970,7 @@ elif not defined(useNimRtl):
     var status : cint = 1
     ret = waitpid(p.id, status, WNOHANG)
     if ret == int(p.id):
-      if WIFEXITED(status):
+      if isExitStatus(status):
         p.exitStatus = status
         return false
       else:
@@ -1159,7 +1162,7 @@ elif not defined(useNimRtl):
     if p.exitStatus != -3: return((p.exitStatus and 0xFF00) shr 8)
     var ret = waitpid(p.id, status, WNOHANG)
     if ret > 0:
-      if WIFEXITED(status):
+      if isExitStatus(status):
         p.exitStatus = status
         result = (status and 0xFF00) shr 8
 
