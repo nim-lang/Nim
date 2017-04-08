@@ -1272,6 +1272,326 @@ else:
   proc parseJson*(buffer: string): JsonNode =
     return parseNativeJson(buffer).convertObject()
 
+# -- Json deserialiser macro. --
+
+proc createJsonIndexer(jsonNode: NimNode,
+                       index: string | int | NimNode): NimNode
+    {.compileTime.} =
+  when index is string:
+    let indexNode = newStrLitNode(index)
+  elif index is int:
+    let indexNode = newIntLitNode(index)
+  elif index is NimNode:
+    let indexNode = index
+
+  result = newNimNode(nnkBracketExpr).add(
+    jsonNode,
+    indexNode
+  )
+
+proc getEnum(node: JsonNode, T: typedesc): T =
+  # TODO: Exceptions.
+  return parseEnum[T](node.getStr())
+
+proc toIdentNode(typeNode: NimNode): NimNode =
+  ## Converts a Sym type node (returned by getType et al.) into an
+  ## Ident node. Placing Sym type nodes is unsound (according to @Araq)
+  ## so this is necessary.
+  case typeNode.kind
+  of nnkSym:
+    return newIdentNode($typeNode)
+  of nnkBracketExpr:
+    result = typeNode
+    for i in 0..<len(result):
+      result[i] = newIdentNode($result[i])
+  of nnkIdent:
+    return typeNode
+  else:
+    assert false, "Cannot convert typeNode to an ident node: " & $typeNode.kind
+
+proc createIfStmtForOf(ofBranch, jsonNode, kindType,
+                       value: NimNode): NimNode {.compileTime.} =
+  ## Transforms a case of branch into an if statement to be placed as the
+  ## ExprColonExpr body expr.
+  expectKind(ofBranch, nnkOfBranch)
+
+  # -> getEnum(`jsonNode`, `kindType`)
+  let getEnumSym = bindSym("getEnum")
+  let getEnumCall = newCall(getEnumSym, jsonNode, kindType)
+
+  var cond = newEmptyNode()
+  for ofCond in ofBranch:
+    if ofCond.kind == nnkRecList:
+      break
+
+    if cond.kind == nnkEmpty:
+      cond = infix(getEnumCall, "==", ofCond)
+    else:
+      cond = infix(cond, "or", infix(getEnumCall, "==", ofCond))
+
+  return newIfStmt(
+    (cond, value)
+  )
+
+proc createConstructor(typeSym, jsonNode: NimNode): NimNode {.compileTime.}
+proc processObjField(field, jsonNode: NimNode): seq[NimNode] {.compileTime.}
+proc processOfBranch(ofBranch, jsonNode, kindType,
+                     kindJsonNode: NimNode): seq[NimNode] {.compileTime.} =
+  ## Processes each field inside of an object's ``of`` branch.
+  ## For each field a new ExprColonExpr node is created and put in the
+  ## resulting list.
+  ##
+  ## Sample ``ofBranch`` AST:
+  ##
+  ## .. code-block::plain
+  ##     OfBranch                      of 0, 1:
+  ##       IntLit 0                      foodPos: float
+  ##       IntLit 1                      enemyPos: float
+  ##       RecList
+  ##         Sym "foodPos"
+  ##         Sym "enemyPos"
+  result = @[]
+  for branchField in ofBranch[^1]:
+    let objFields = processObjField(branchField, jsonNode)
+
+    for objField in objFields:
+      let exprColonExpr = newNimNode(nnkExprColonExpr)
+      result.add(exprColonExpr)
+      # Add the name of the field.
+      exprColonExpr.add(toIdentNode(objField[0]))
+
+      # Add the value of the field.
+      let ifStmt = createIfStmtForOf(ofBranch, kindJsonNode, kindType, objField[1])
+      exprColonExpr.add(ifStmt)
+
+proc processObjField(field, jsonNode: NimNode): seq[NimNode] =
+  ## Process a field from a ``RecList``.
+  ##
+  ## The field will typically be a simple ``Sym`` node, but for object variants
+  ## it may also be a ``RecCase`` in which case things become complicated.
+  result = @[]
+  case field.kind
+  of nnkSym:
+    # Ordinary field. For example, `name: string`.
+    let exprColonExpr = newNimNode(nnkExprColonExpr)
+    result.add(exprColonExpr)
+
+    # Add the field name.
+    exprColonExpr.add(toIdentNode(field))
+
+    # Add the field value.
+    # -> jsonNode["`field`"]
+    let indexedJsonNode = createJsonIndexer(jsonNode, $field)
+    exprColonExpr.add(createConstructor(getTypeInst(field), indexedJsonNode))
+
+  of nnkRecCase:
+    # A "case" field that introduces a variant.
+    let exprColonExpr = newNimNode(nnkExprColonExpr)
+    result.add(exprColonExpr)
+
+    # Add the "case" field name (usually "kind").
+    exprColonExpr.add(toIdentNode(field[0]))
+
+    # -> jsonNode["`field[0]`"]
+    let kindJsonNode = createJsonIndexer(jsonNode, $field[0])
+
+    # Add the "case" field's value.
+    let kindType = toIdentNode(getTypeInst(field[0]))
+    let getEnumSym = bindSym("getEnum")
+    let getEnumCall = newCall(getEnumSym, kindJsonNode, kindType)
+    exprColonExpr.add(getEnumCall)
+
+    # Iterate through each `of` branch.
+    for i in 1 .. <field.len:
+      expectKind(field[i], nnkOfBranch)
+
+      result.add processOfBranch(field[i], jsonNode, kindType, kindJsonNode)
+  else:
+    assert false, "Unable to process object field: " & $field.kind
+
+  assert result.len > 0
+
+proc processType(typeName: NimNode, obj: NimNode,
+                 jsonNode: NimNode): NimNode {.compileTime.} =
+  ## Process a type such as ``Sym "float"`` or ``ObjectTy ...``.
+  ##
+  ## Sample ``ObjectTy``:
+  ##
+  ## .. code-block::plain
+  ##     ObjectTy
+  ##       Empty
+  ##       Empty
+  ##       RecList
+  ##         Sym "events"
+  case obj.kind
+  of nnkObjectTy:
+    # Create object constructor.
+    result = newNimNode(nnkObjConstr)
+    result.add(typeName) # Name of the type to construct.
+
+    # Process each object field and add it as an exprColonExpr
+    expectKind(obj[2], nnkRecList)
+    for field in obj[2]:
+      let nodes = processObjField(field, jsonNode)
+      result.add(nodes)
+  of nnkSym:
+    case ($typeName).normalize
+    of "float":
+      result = quote do:
+        (
+          assert `jsonNode`.kind == JFloat;
+          `jsonNode`.fnum
+        )
+    else:
+      assert false, "Unable to process nnkSym " & $typeName
+  else:
+    assert false, "Unable to process type: " & $obj.kind
+
+  assert(not result.isNil(), "processType not initialised.")
+
+proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
+  ## Accepts a type description, i.e. "ref Type", "seq[Type]", "Type" etc.
+  ##
+  ## The ``jsonNode`` refers to the node variable that we are deserialising.
+  ##
+  ## Returns an object constructor node.
+  echo("--createConsuctor-- \n", treeRepr(typeSym))
+  echo()
+
+  case typeSym.kind
+  of nnkBracketExpr:
+    var bracketName = ($typeSym[0]).normalize
+    case bracketName
+    of "ref":
+      # Ref type.
+      var typeName = $typeSym[1]
+      # Remove the `:ObjectType` suffix.
+      if typeName.endsWith(":ObjectType"):
+        typeName = typeName[0 .. ^12]
+
+      let obj = getType(typeSym[1])
+      result = processType(newIdentNode(typeName), obj, jsonNode)
+    of "seq":
+      let seqT = typeSym[1]
+      let forLoopI = newIdentNode("i")
+      let indexerNode = createJsonIndexer(jsonNode, forLoopI)
+      let constructorNode = createConstructor(seqT, indexerNode)
+
+      # Create a statement expression containing a for loop.
+      result = quote do:
+        (
+          var list: `typeSym` = @[];
+          # if `jsonNode`.kind != JArray:
+          #   # TODO: Improve error message.
+          #   raise newException(ValueError, "Expected a list")
+          for `forLoopI` in 0 .. <`jsonNode`.len: list.add(`constructorNode`);
+          list
+        )
+    else:
+      # Generic type.
+      let obj = getType(typeSym)
+      echo(obj.treeRepr, typeSym[0].treeRepr)
+      result = processType(typeSym, obj, jsonNode)
+  of nnkSym:
+    let obj = getType(typeSym)
+    result = processType(typeSym, obj, jsonNode)
+  else:
+    assert false, "Unable to create constructor for: " & $typeSym.kind
+
+  assert(not result.isNil(), "Constructor not initialised.")
+
+proc postProcess(node: NimNode): NimNode
+proc postProcessValue(value: NimNode, depth=0): NimNode =
+  ## Looks for object constructors and calls the ``postProcess`` procedure
+  ## on them. Otherwise it just returns the node as-is.
+  case value.kind
+  of nnkObjConstr:
+    result = postProcess(value)
+  else:
+    result = value
+    for i in 0 .. <len(result):
+      result[i] = postProcessValue(result[i])
+
+proc postProcessExprColonExpr(exprColonExpr, resIdent: NimNode): NimNode =
+  ## Transform each field mapping in the ExprColonExpr into a simple
+  ## field assignment. Special processing is performed if the field mapping
+  ## has an if statement.
+  ##
+  ## ..code-block::plain
+  ##    field: (if true: 12)  ->  if true: `resIdent`.field = 12
+  expectKind(exprColonExpr, nnkExprColonExpr)
+  let fieldName = exprColonExpr[0]
+  let fieldValue = exprColonExpr[1]
+  case fieldValue.kind
+  of nnkIfStmt:
+    assert fieldValue.len == 1, "Cannot postProcess two ElifBranches."
+    expectKind(fieldValue[0], nnkElifBranch)
+
+    let cond = fieldValue[0][0]
+    let bodyValue = postProcessValue(fieldValue[0][1])
+    result =
+      quote do:
+        if `cond`:
+          `resIdent`.`fieldName` = `bodyValue`
+  else:
+    let fieldValue = postProcessValue(fieldValue)
+    result =
+      quote do:
+        `resIdent`.`fieldName` = `fieldValue`
+
+
+proc postProcess(node: NimNode): NimNode =
+  ## The ``createConstructor`` proc creates a ObjConstr node which contains
+  ## if statements for fields that may not be assignable (due to an object
+  ## variant). Nim doesn't handle this, but may do in the future.
+  ##
+  ## For simplicity, we post process the object constructor into multiple
+  ## assignments.
+  ##
+  ## For example:
+  ##
+  ## ..code-block::plain
+  ##    Object(                           (var res = Object();
+  ##      field: if true: 12      ->       if true: res.field = 12;
+  ##    )                                  res)
+  result = newNimNode(nnkStmtListExpr)
+
+  expectKind(node, nnkObjConstr)
+
+  # Create the type.
+  # -> var res = Object()
+  var resIdent = newIdentNode("res")
+  # TODO: Placing `node[0]` inside quote is buggy
+  var resType = toIdentNode(node[0])
+
+  result.add(
+    quote do:
+      var `resIdent` = `resType`();
+  )
+
+  # Process each ExprColonExpr.
+  for i in 1..<len(node):
+    result.add postProcessExprColonExpr(node[i], resIdent)
+
+  # Return the `res` variable.
+  result.add(
+    quote do:
+      `resIdent`
+  )
+
+
+macro to*(node: JsonNode, T: typedesc): untyped =
+  let typeNode = getType(T)
+  expectKind(typeNode, nnkBracketExpr)
+  assert(($typeNode[0]).normalize == "typedesc")
+
+  result = createConstructor(typeNode[1], node)
+  result = postProcess(result)
+
+  echo(toStrLit(result))
+  # TODO: Remove this
+  #result = newStmtList()
+
 when false:
   import os
   var s = newFileStream(paramStr(1), fmRead)
