@@ -1442,6 +1442,24 @@ proc processType(typeName: NimNode, obj: NimNode,
           assert `jsonNode`.kind == JFloat;
           `jsonNode`.fnum
         )
+    of "string":
+      result = quote do:
+        (
+          assert `jsonNode`.kind in {JString, JNull};
+          if `jsonNode`.kind == JNull: nil else: `jsonNode`.str
+        )
+    of "int":
+      result = quote do:
+        (
+          assert `jsonNode`.kind == JInt;
+          `jsonNode`.num.int
+        )
+    of "bool":
+      result = quote do:
+        (
+          assert `jsonNode`.kind == JBool;
+          `jsonNode`.bval
+        )
     else:
       assert false, "Unable to process nnkSym " & $typeName
   else:
@@ -1620,6 +1638,7 @@ when false:
 # To get that we shall use, obj["json"]
 
 when isMainModule:
+  # Note: Macro tests are in tests/stdlib/tjsonmacro.nim
 
   let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd", "c": "\ud83c\udf83", "d": "\u00E6"}"""
   # nil passthrough
