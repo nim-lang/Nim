@@ -125,9 +125,9 @@ proc toInt*(p: Protocol): cint
 when not useWinVersion:
   proc toInt(domain: Domain): cshort =
     case domain
-    of AF_UNIX:        result = posix.AF_UNIX
-    of AF_INET:        result = posix.AF_INET
-    of AF_INET6:       result = posix.AF_INET6
+    of AF_UNIX:        result = posix.AF_UNIX.cshort
+    of AF_INET:        result = posix.AF_INET.cshort
+    of AF_INET6:       result = posix.AF_INET6.cshort
     else: discard
 
   proc toInt(typ: SockType): cint =
