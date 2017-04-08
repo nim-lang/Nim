@@ -9,7 +9,7 @@
 
 # This module does the instantiation of generic types.
 
-import ast, astalgo, msgs, types, magicsys, semdata, renderer
+import ast, astalgo, msgs, types, magicsys, semdata, renderer, options
 
 const
   tfInstClearedFlags = {tfHasMeta, tfUnresolved}
@@ -50,6 +50,9 @@ proc searchInstTypes*(key: PType): PType =
       # types such as Channel[empty]. Why?
       # See the notes for PActor in handleGenericInvocation
       return
+    if not sameFlags(inst, key):
+      continue
+
     block matchType:
       for j in 1 .. high(key.sons):
         # XXX sameType is not really correct for nested generics?
@@ -247,10 +250,11 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     result = PType(idTableGet(cl.localCache, t))
   else:
     result = searchInstTypes(t)
+
   if result != nil and eqTypeFlags*result.flags == eqTypeFlags*t.flags: return
   for i in countup(1, sonsLen(t) - 1):
     var x = t.sons[i]
-    if x.kind == tyGenericParam:
+    if x.kind in {tyGenericParam}:
       x = lookupTypeVar(cl, x)
       if x != nil:
         if header == t: header = instCopyType(cl, t)

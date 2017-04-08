@@ -1422,9 +1422,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
             internalAssert a.sons != nil and a.sons.len > 0
             c.typedescMatched = true
             var aa = a
-            while aa.kind in {tyTypeDesc, tyGenericParam} and
-                aa.len > 0:
+            while aa.kind in {tyTypeDesc, tyGenericParam} and aa.len > 0:
               aa = lastSon(aa)
+            if aa.kind == tyGenericParam:
+              return isGeneric
             result = typeRel(c, f.base, aa)
             if result > isGeneric: result = isGeneric
         else:
