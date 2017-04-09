@@ -1336,6 +1336,7 @@ proc createGetEnumCall(jsonNode, kindType: NimNode): NimNode =
   return getEnumCall
 
 proc createOfBranchCond(ofBranch, getEnumCall: NimNode): NimNode =
+  ## Creates an expression that acts as the condition for an ``of`` branch.
   var cond = newIdentNode("false")
   for ofCond in ofBranch:
     if ofCond.kind == nnkRecList:
@@ -1346,20 +1347,6 @@ proc createOfBranchCond(ofBranch, getEnumCall: NimNode): NimNode =
 
   return cond
 
-proc createIfStmtForOf(ofBranch, jsonNode, kindType,
-                       value: NimNode): NimNode {.compileTime.} =
-  ## Transforms a case ``of`` branch into an if statement to be placed as the
-  ## ExprColonExpr body expr.
-  expectKind(ofBranch, nnkOfBranch)
-
-  let getEnumCall = createGetEnumCall(jsonNode, kindType)
-  let cond = createOfBranchCond(ofBranch, getEnumCall)
-
-  return newIfStmt(
-    (cond, value)
-  )
-
-proc createConstructor(typeSym, jsonNode: NimNode): NimNode {.compileTime.}
 proc processObjField(field, jsonNode: NimNode): seq[NimNode] {.compileTime.}
 proc processOfBranch(ofBranch, jsonNode, kindType,
                      kindJsonNode: NimNode): seq[NimNode] {.compileTime.} =
@@ -1377,6 +1364,8 @@ proc processOfBranch(ofBranch, jsonNode, kindType,
   ##         Sym "foodPos"
   ##         Sym "enemyPos"
   result = @[]
+  let getEnumCall = createGetEnumCall(kindJsonNode, kindType)
+
   for branchField in ofBranch[^1]:
     let objFields = processObjField(branchField, jsonNode)
 
@@ -1387,8 +1376,10 @@ proc processOfBranch(ofBranch, jsonNode, kindType,
       exprColonExpr.add(toIdentNode(objField[0]))
 
       # Add the value of the field.
-      let ifStmt = createIfStmtForOf(ofBranch, kindJsonNode, kindType, objField[1])
-      exprColonExpr.add(ifStmt)
+      let cond = createOfBranchCond(ofBranch, getEnumCall)
+      exprColonExpr.add(newIfStmt(
+        (cond, objField[1])
+      ))
 
 proc processElseBranch(recCaseNode, elseBranch, jsonNode, kindType,
                        kindJsonNode: NimNode): seq[NimNode] {.compileTime.} =
@@ -1427,6 +1418,7 @@ proc processElseBranch(recCaseNode, elseBranch, jsonNode, kindType,
       let ifStmt = newIfStmt((cond, objField[1]))
       exprColonExpr.add(ifStmt)
 
+proc createConstructor(typeSym, jsonNode: NimNode): NimNode {.compileTime.}
 proc processObjField(field, jsonNode: NimNode): seq[NimNode] =
   ## Process a field from a ``RecList``.
   ##
@@ -1541,8 +1533,8 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
   ## The ``jsonNode`` refers to the node variable that we are deserialising.
   ##
   ## Returns an object constructor node.
-  echo("--createConsuctor-- \n", treeRepr(typeSym))
-  echo()
+  # echo("--createConsuctor-- \n", treeRepr(typeSym))
+  # echo()
 
   case typeSym.kind
   of nnkBracketExpr:
@@ -1576,7 +1568,6 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
     else:
       # Generic type.
       let obj = getType(typeSym)
-      echo(obj.treeRepr, typeSym[0].treeRepr)
       result = processType(typeSym, obj, jsonNode)
   of nnkSym:
     let obj = getType(typeSym)
@@ -1667,6 +1658,40 @@ proc postProcess(node: NimNode): NimNode =
 
 
 macro to*(node: JsonNode, T: typedesc): untyped =
+  ## `Unmarshals`:idx: the specified node into the object type specified.
+  ##
+  ## Known limitations:
+  ##
+  ##   * Heterogeneous arrays are not supported.
+  ##   * Sets in object variants are not supported.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: Nim
+  ##     let jsonNode = parseJson("""
+  ##        {
+  ##          "person": {
+  ##            "name": "Nimmer",
+  ##            "age": 21
+  ##          },
+  ##          "list": [1, 2, 3, 4]
+  ##        }
+  ##     """)
+  ##
+  ##     type
+  ##       Person = object
+  ##         name: string
+  ##         age: int
+  ##
+  ##       Data = object
+  ##         person: Person
+  ##         list: seq[int]
+  ##
+  ##     var data = to(jsonNode, Data)
+  ##     doAssert data.person.name == "Nimmer"
+  ##     doAssert data.person.age == 21
+  ##     doAssert data.list == @[1, 2, 3, 4]
+
   let typeNode = getType(T)
   expectKind(typeNode, nnkBracketExpr)
   assert(($typeNode[0]).normalize == "typedesc")
@@ -1674,9 +1699,7 @@ macro to*(node: JsonNode, T: typedesc): untyped =
   result = createConstructor(typeNode[1], node)
   result = postProcess(result)
 
-  echo(toStrLit(result))
-  # TODO: Remove this
-  #result = newStmtList()
+  #echo(toStrLit(result))
 
 when false:
   import os

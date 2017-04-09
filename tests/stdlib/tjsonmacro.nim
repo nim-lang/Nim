@@ -91,6 +91,7 @@ when isMainModule:
     doAssert result.other == node["other"].getNum()
 
   # TODO: Test object variant with set in of branch.
+  # TODO: Should we support heterogenous arrays?
 
   # Tests that verify the error messages for invalid data.
   block:
@@ -141,3 +142,28 @@ when isMainModule:
     except:
       doAssert false
 
+  # Test the example in json module.
+  block:
+    let jsonNode = parseJson("""
+      {
+        "person": {
+          "name": "Nimmer",
+          "age": 21
+        },
+        "list": [1, 2, 3, 4]
+      }
+    """)
+
+    type
+      Person = object
+        name: string
+        age: int
+
+      Data = object
+        person: Person
+        list: seq[int]
+
+    var data = to(jsonNode, Data)
+    doAssert data.person.name == "Nimmer"
+    doAssert data.person.age == 21
+    doAssert data.list == @[1, 2, 3, 4]
