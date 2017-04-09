@@ -167,3 +167,19 @@ when isMainModule:
     doAssert data.person.name == "Nimmer"
     doAssert data.person.age == 21
     doAssert data.list == @[1, 2, 3, 4]
+
+  # Test non-variant enum fields.
+  block:
+    type
+      EnumType = enum
+        Foo, Bar
+
+      TestEnum = object
+        field: EnumType
+
+    var node = %{
+      "field": %"Bar"
+    }
+
+    var result = to(node, TestEnum)
+    doAssert result.field == Bar

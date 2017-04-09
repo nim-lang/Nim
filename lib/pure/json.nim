@@ -1421,7 +1421,6 @@ proc processElseBranch(recCaseNode, elseBranch, jsonNode, kindType,
   ##     RecList
   ##       Sym "other"
   result = @[]
-  # TODO: Remove duplication between processOfBranch
   let getEnumCall = createGetEnumCall(kindJsonNode, kindType)
 
   # We need to build up a list of conditions from each ``of`` branch so that
@@ -1525,6 +1524,13 @@ proc processType(typeName: NimNode, obj: NimNode,
     for field in obj[2]:
       let nodes = processObjField(field, jsonNode)
       result.add(nodes)
+  of nnkEnumTy:
+    let instType = toIdentNode(getTypeInst(typeName))
+    let getEnumCall = createGetEnumCall(jsonNode, instType)
+    result = quote do:
+      (
+        `getEnumCall`
+      )
   of nnkSym:
     case ($typeName).normalize
     of "float":
