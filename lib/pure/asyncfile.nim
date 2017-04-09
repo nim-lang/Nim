@@ -481,7 +481,8 @@ proc setFileSize*(f: AsyncFile, length: int64) =
        (setEndOfFile(f.fd.Handle) == 0):
       raiseOSError(osLastError())
   else:
-    if ftruncate(f.fd.cint, length) == -1:
+    # will truncate if Off is a 32-bit type!
+    if ftruncate(f.fd.cint, length.Off) == -1:
       raiseOSError(osLastError())
 
 proc close*(f: AsyncFile) =
