@@ -14,25 +14,56 @@
 ## JSON is based on a subset of the JavaScript Programming Language,
 ## Standard ECMA-262 3rd Edition - December 1999.
 ##
-## Usage example:
+## Dynamically retrieving fields from JSON
+## =======================================
 ##
-## .. code-block:: nim
-##  let
-##    small_json = """{"test": 1.3, "key2": true}"""
-##    jobj = parseJson(small_json)
-##  assert (jobj.kind == JObject)\
-##  jobj["test"] = newJFloat(0.7)  # create or update
-##  echo($jobj["test"].fnum)
-##  echo($jobj["key2"].bval)
-##  echo jobj{"missing key"}.getFNum(0.1)  # read a float value using a default
-##  jobj{"a", "b", "c"} = newJFloat(3.3)  # created nested keys
+## This module allows you to access fields in a parsed JSON object in two
+## different ways, one of them is described in this section.
 ##
-## Results in:
+## The ``parseJson`` procedure takes a string containing JSON and returns a
+## ``JsonNode`` object. This is an object variant and it is either a
+## ``JObject``, ``JArray``, ``JString``, ``JInt``, ``JFloat``, ``JBool`` or
+## ``JNull``. You
+## check the kind of this object variant by using the ``kind`` accessor.
 ##
-## .. code-block:: nim
+## For a ``JsonNode`` who's kind is ``JObject``, you can acess its fields using
+## the ``[]`` operator. The following example shows how to do this:
 ##
-##   1.3000000000000000e+00
-##   true
+## .. code-block:: Nim
+##   let jsonNode = parseJson("""{"key": 3.14}""")
+##   doAssert jsonNode.kind == JObject
+##   doAssert jsonNode["key"].kind == JFloat
+##
+## Retrieving the value of a JSON node can then be achieved using one of the
+## helper procedures, which include:
+##
+## * ``getNum``
+## * ``getFNum``
+## * ``getStr``
+## * ``getBVal``
+##
+## To retrieve the value of ``"key"`` you can do the following:
+##
+## .. code-block:: Nim
+##   doAssert jsonNode["key"].getFNum() == 3.14
+##
+## The ``[]`` operator will raise an exception when the specified field does
+## not exist. If you wish to avoid this behaviour you can use the ``{}``
+## operator instead, it will simply return ``nil`` when the field is not found.
+## The ``get``-family of procedures will return a default value when called on
+## ``nil``.
+##
+## Unmarshalling JSON into a type
+## ==============================
+##
+## This module allows you to access fields in a parsed JSON object in two
+## different ways, one of them is described in this section.
+##
+## This is done using the ``to`` macro. Take a look at
+## `its documentation <#to.m,JsonNode,typedesc>`_ to see an example of its use.
+##
+## Creating JSON
+## =============
 ##
 ## This module can also be used to comfortably create JSON using the `%*`
 ## operator:
