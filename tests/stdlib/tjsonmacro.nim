@@ -55,8 +55,42 @@ when isMainModule:
   doAssert y.test3
   doAssert y.testNil.isNil
 
-  # TODO: Test for custom object variants (without an enum).
-  # TODO: Test for object variant with an else branch.
+  # Test for custom object variants (without an enum) and with an else branch.
+  block:
+    type
+      TestVariant = object
+        name: string
+        case age: uint8
+        of 2:
+          preSchool: string
+        of 8:
+          primarySchool: string
+        else:
+          other: int
+
+    var node = %{
+      "name": %"Nim",
+      "age": %8,
+      "primarySchool": %"Sandtown"
+    }
+
+    var result = to(node, TestVariant)
+    doAssert result.age == 8
+    doAssert result.name == "Nim"
+    doAssert result.primarySchool == "Sandtown"
+
+    node = %{
+      "name": %"⚔️Foo☢️",
+      "age": %25,
+      "other": %98
+    }
+
+    result = to(node, TestVariant)
+    doAssert result.name == node["name"].getStr()
+    doAssert result.age == node["age"].getNum().uint8
+    doAssert result.other == node["other"].getNum()
+
+  # TODO: Test object variant with set in of branch.
 
   # Tests that verify the error messages for invalid data.
   block:

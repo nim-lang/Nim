@@ -1303,8 +1303,14 @@ template verifyJsonKind(node: JsonNode, kinds: set[JsonNodeKind],
     raise newException(JsonKindError, msg)
 
 proc getEnum(node: JsonNode, ast: string, T: typedesc): T =
-  verifyJsonKind(node, {JString}, ast)
-  return parseEnum[T](node.getStr())
+  when T is SomeInteger:
+    # TODO: I shouldn't need this proc.
+    proc convert[T](x: BiggestInt): T = T(x)
+    verifyJsonKind(node, {JInt}, ast)
+    return convert[T](node.getNum())
+  else:
+    verifyJsonKind(node, {JString}, ast)
+    return parseEnum[T](node.getStr())
 
 proc toIdentNode(typeNode: NimNode): NimNode =
   ## Converts a Sym type node (returned by getType et al.) into an
@@ -1322,26 +1328,32 @@ proc toIdentNode(typeNode: NimNode): NimNode =
   else:
     assert false, "Cannot convert typeNode to an ident node: " & $typeNode.kind
 
-proc createIfStmtForOf(ofBranch, jsonNode, kindType,
-                       value: NimNode): NimNode {.compileTime.} =
-  ## Transforms a case of branch into an if statement to be placed as the
-  ## ExprColonExpr body expr.
-  expectKind(ofBranch, nnkOfBranch)
-
+proc createGetEnumCall(jsonNode, kindType: NimNode): NimNode =
   # -> getEnum(`jsonNode`, `kindType`)
   let getEnumSym = bindSym("getEnum")
   let astStrLit = toStrLit(jsonNode)
   let getEnumCall = newCall(getEnumSym, jsonNode, astStrLit, kindType)
+  return getEnumCall
 
-  var cond = newEmptyNode()
+proc createOfBranchCond(ofBranch, getEnumCall: NimNode): NimNode =
+  var cond = newIdentNode("false")
   for ofCond in ofBranch:
     if ofCond.kind == nnkRecList:
       break
 
-    if cond.kind == nnkEmpty:
-      cond = infix(getEnumCall, "==", ofCond)
-    else:
-      cond = infix(cond, "or", infix(getEnumCall, "==", ofCond))
+    let comparison = infix(getEnumCall, "==", ofCond)
+    cond = infix(cond, "or", comparison)
+
+  return cond
+
+proc createIfStmtForOf(ofBranch, jsonNode, kindType,
+                       value: NimNode): NimNode {.compileTime.} =
+  ## Transforms a case ``of`` branch into an if statement to be placed as the
+  ## ExprColonExpr body expr.
+  expectKind(ofBranch, nnkOfBranch)
+
+  let getEnumCall = createGetEnumCall(jsonNode, kindType)
+  let cond = createOfBranchCond(ofBranch, getEnumCall)
 
   return newIfStmt(
     (cond, value)
@@ -1376,6 +1388,43 @@ proc processOfBranch(ofBranch, jsonNode, kindType,
 
       # Add the value of the field.
       let ifStmt = createIfStmtForOf(ofBranch, kindJsonNode, kindType, objField[1])
+      exprColonExpr.add(ifStmt)
+
+proc processElseBranch(recCaseNode, elseBranch, jsonNode, kindType,
+                       kindJsonNode: NimNode): seq[NimNode] {.compileTime.} =
+  ## Processes each field inside of a variant object's ``else`` branch.
+  ##
+  ## ..code-block::plain
+  ##   Else
+  ##     RecList
+  ##       Sym "other"
+  result = @[]
+  # TODO: Remove duplication between processOfBranch
+  let getEnumCall = createGetEnumCall(kindJsonNode, kindType)
+
+  # We need to build up a list of conditions from each ``of`` branch so that
+  # we can then negate it to get ``else``.
+  var cond = newIdentNode("false")
+  for i in 1 .. <len(recCaseNode):
+    if recCaseNode[i].kind == nnkElse:
+      break
+
+    cond = infix(cond, "or", createOfBranchCond(recCaseNode[i], getEnumCall))
+
+  # Negate the condition.
+  cond = prefix(cond, "not")
+
+  for branchField in elseBranch[^1]:
+    let objFields = processObjField(branchField, jsonNode)
+
+    for objField in objFields:
+      let exprColonExpr = newNimNode(nnkExprColonExpr)
+      result.add(exprColonExpr)
+      # Add the name of the field.
+      exprColonExpr.add(toIdentNode(objField[0]))
+
+      # Add the value of the field.
+      let ifStmt = newIfStmt((cond, objField[1]))
       exprColonExpr.add(ifStmt)
 
 proc processObjField(field, jsonNode: NimNode): seq[NimNode] =
@@ -1418,9 +1467,13 @@ proc processObjField(field, jsonNode: NimNode): seq[NimNode] =
 
     # Iterate through each `of` branch.
     for i in 1 .. <field.len:
-      expectKind(field[i], nnkOfBranch)
-
-      result.add processOfBranch(field[i], jsonNode, kindType, kindJsonNode)
+      case field[i].kind
+      of nnkOfBranch:
+        result.add processOfBranch(field[i], jsonNode, kindType, kindJsonNode)
+      of nnkElse:
+        result.add processElseBranch(field, field[i], jsonNode, kindType, kindJsonNode)
+      else:
+        assert false, "Expected OfBranch or Else node kinds, got: " & $field[i].kind
   else:
     assert false, "Unable to process object field: " & $field.kind
 
@@ -1593,7 +1646,7 @@ proc postProcess(node: NimNode): NimNode =
 
   # Create the type.
   # -> var res = Object()
-  var resIdent = newIdentNode("res")
+  var resIdent = genSym(nskVar, "res")
   # TODO: Placing `node[0]` inside quote is buggy
   var resType = toIdentNode(node[0])
 
