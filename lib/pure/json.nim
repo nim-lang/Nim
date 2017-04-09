@@ -1357,7 +1357,7 @@ proc toIdentNode(typeNode: NimNode): NimNode =
   of nnkIdent:
     return typeNode
   else:
-    assert false, "Cannot convert typeNode to an ident node: " & $typeNode.kind
+    doAssert false, "Cannot convert typeNode to an ident node: " & $typeNode.kind
 
 proc createGetEnumCall(jsonNode, kindType: NimNode): NimNode =
   # -> getEnum(`jsonNode`, `kindType`)
@@ -1496,11 +1496,11 @@ proc processObjField(field, jsonNode: NimNode): seq[NimNode] =
       of nnkElse:
         result.add processElseBranch(field, field[i], jsonNode, kindType, kindJsonNode)
       else:
-        assert false, "Expected OfBranch or Else node kinds, got: " & $field[i].kind
+        doAssert false, "Expected OfBranch or Else node kinds, got: " & $field[i].kind
   else:
-    assert false, "Unable to process object field: " & $field.kind
+    doAssert false, "Unable to process object field: " & $field.kind
 
-  assert result.len > 0
+  doAssert result.len > 0
 
 proc processType(typeName: NimNode, obj: NimNode,
                  jsonNode: NimNode): NimNode {.compileTime.} =
@@ -1552,11 +1552,11 @@ proc processType(typeName: NimNode, obj: NimNode,
           `jsonNode`.bval
         )
     else:
-      assert false, "Unable to process nnkSym " & $typeName
+      doAssert false, "Unable to process nnkSym " & $typeName
   else:
-    assert false, "Unable to process type: " & $obj.kind
+    doAssert false, "Unable to process type: " & $obj.kind
 
-  assert(not result.isNil(), "processType not initialised.")
+  doAssert(not result.isNil(), "processType not initialised.")
 
 proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
   ## Accepts a type description, i.e. "ref Type", "seq[Type]", "Type" etc.
@@ -1604,9 +1604,9 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
     let obj = getType(typeSym)
     result = processType(typeSym, obj, jsonNode)
   else:
-    assert false, "Unable to create constructor for: " & $typeSym.kind
+    doAssert false, "Unable to create constructor for: " & $typeSym.kind
 
-  assert(not result.isNil(), "Constructor not initialised.")
+  doAssert(not result.isNil(), "Constructor not initialised.")
 
 proc postProcess(node: NimNode): NimNode
 proc postProcessValue(value: NimNode, depth=0): NimNode =
@@ -1632,17 +1632,19 @@ proc postProcessExprColonExpr(exprColonExpr, resIdent: NimNode): NimNode =
   let fieldValue = exprColonExpr[1]
   case fieldValue.kind
   of nnkIfStmt:
-    assert fieldValue.len == 1, "Cannot postProcess two ElifBranches."
+    doAssert fieldValue.len == 1, "Cannot postProcess two ElifBranches."
     expectKind(fieldValue[0], nnkElifBranch)
 
     let cond = fieldValue[0][0]
     let bodyValue = postProcessValue(fieldValue[0][1])
+    doAssert(bodyValue.kind != nnkNilLit)
     result =
       quote do:
         if `cond`:
           `resIdent`.`fieldName` = `bodyValue`
   else:
     let fieldValue = postProcessValue(fieldValue)
+    doAssert(fieldValue.kind != nnkNilLit)
     result =
       quote do:
         `resIdent`.`fieldName` = `fieldValue`
@@ -1725,7 +1727,7 @@ macro to*(node: JsonNode, T: typedesc): untyped =
 
   let typeNode = getType(T)
   expectKind(typeNode, nnkBracketExpr)
-  assert(($typeNode[0]).normalize == "typedesc")
+  doAssert(($typeNode[0]).normalize == "typedesc")
 
   result = createConstructor(typeNode[1], node)
   result = postProcess(result)
