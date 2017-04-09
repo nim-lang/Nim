@@ -90,7 +90,11 @@ proc evalTemplateArgs(n: PNode, s: PSym; fromHlo: bool): PNode =
 
   result = newNodeI(nkArgList, n.info)
   for i in 1 .. givenRegularParams:
-    result.addSon n.sons[i]
+    let p = n[i]
+    if p != nil and p.kind == nkDo and s.typ.sons[i].kind in {tyStmt, tyExpr}:
+      result.addSon p[bodyPos]
+    else:
+      result.addSon p
 
   # handle parameters with default values, which were
   # not supplied by the user

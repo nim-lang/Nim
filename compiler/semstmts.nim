@@ -1066,13 +1066,6 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   popOwner(c)
   result.typ = s.typ
 
-proc semDo(c: PContext, n: PNode, flags: TExprFlags): PNode =
-  # 'do' without params produces a stmt:
-  if n[genericParamsPos].kind == nkEmpty and n[paramsPos].kind == nkEmpty:
-    result = semStmt(c, n[bodyPos])
-  else:
-    result = semLambda(c, n, flags)
-
 proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   var n = n
 
