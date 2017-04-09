@@ -1172,7 +1172,7 @@ proc parseMacroColon(p: var TParser, x: PNode): PNode =
     result = makeCall(result)
     getTok(p)
     skipComment(p, result)
-    let stmtList = newNodeP(nkStmtList, p)
+    var stmtList = newNodeP(nkStmtList, p)
     if p.tok.tokType notin {tkOf, tkElif, tkElse, tkExcept}:
       let body = parseStmt(p)
       stmtList.add body
@@ -1202,9 +1202,9 @@ proc parseMacroColon(p: var TParser, x: PNode): PNode =
       if b.kind == nkElse: break
     if stmtList.len == 1 and stmtList[0].kind == nkStmtList:
       # to keep backwards compatibility (see tests/vm/tstringnil)
-      result.add stmtList[0]
-    else:
-      result.add stmtList
+      stmtList = stmtList[0]
+    result.add newProcNode(nkDo, stmtList.info, stmtList,
+                           params = emptyNode, pragmas = emptyNode)
 
 proc parseExprStmt(p: var TParser): PNode =
   #| exprStmt = simpleExpr

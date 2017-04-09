@@ -1,8 +1,10 @@
 discard """
 output: '''
 click at 10,20
+lost focus 1
 lost focus 2
 registered handler for UserEvent 1
+registered handler for UserEvent 2
 registered handler for UserEvent 3'''
 """
 
@@ -27,10 +29,8 @@ var b = Button()
 b.onClick do (e: Event):
   echo "click at ", e.x, ",", e.y
 
-when false:
-  # this syntax doesn't work yet
-  b.onFocusLost:
-    echo "lost focus 1"
+b.onFocusLost:
+  echo "lost focus 1"
 
 b.onFocusLost do:
   echo "lost focus 2"
@@ -38,10 +38,8 @@ b.onFocusLost do:
 b.onUserEvent("UserEvent 1") do:
   discard
 
-when false:
-  # this syntax doesn't work yet
-  b.onUserEvent("UserEvent 2"):
-    discard
+b.onUserEvent("UserEvent 2"):
+  discard
 
 b.onUserEvent("UserEvent 3", () => echo "event 2")
 
