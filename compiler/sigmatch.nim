@@ -1061,6 +1061,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     # varargs[expr] is special too but handled earlier. So we only need to
     # handle varargs[stmt] which is the same as varargs[typed]:
     if f.kind == tyVarargs:
+      if tfVarargs in a.flags:
+        return typeRel(c, f.base, a.lastSon)
       if tfOldSchoolExprStmt in f.sons[0].flags:
         if f.sons[0].kind == tyExpr: return
       elif f.sons[0].kind == tyStmt: return
@@ -2055,6 +2057,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
             #assert(container == nil)
             if container.isNil:
               container = newNodeIT(nkBracket, n.sons[a].info, arrayConstr(c, arg))
+              container.typ.flags.incl tfVarargs
             else:
               incrIndexType(container.typ)
             addSon(container, arg)

@@ -1599,7 +1599,8 @@ proc setupMacroParam(x: PNode, typ: PType): TFullReg =
     putIntoReg(result, x)
   else:
     result.kind = rkNode
-    var n = x
+    var n = if typ.kind in {tyStmt,tyExpr} and x.kind == nkDo: x[bodyPos]
+            else: x
     if n.kind in {nkHiddenSubConv, nkHiddenStdConv}: n = n.sons[1]
     n = n.canonValue
     n.flags.incl nfIsRef

@@ -1,0 +1,47 @@
+discard """
+output: '''
+click at 10,20
+lost focus 2
+registered handler for UserEvent 1
+registered handler for UserEvent 3'''
+"""
+
+import future
+
+type
+  Button = object
+  Event = object
+    x, y: int
+
+proc onClick(x: Button, handler: proc(x: Event)) =
+  handler(Event(x: 10, y: 20))
+
+proc onFocusLost(x: Button, handler: proc()) =
+  handler()
+
+proc onUserEvent(x: Button, eventName: string, handler: proc) =
+  echo "registered handler for ", eventName
+
+var b = Button()
+
+b.onClick do (e: Event):
+  echo "click at ", e.x, ",", e.y
+
+when false:
+  # this syntax doesn't work yet
+  b.onFocusLost:
+    echo "lost focus 1"
+
+b.onFocusLost do:
+  echo "lost focus 2"
+
+b.onUserEvent("UserEvent 1") do:
+  discard
+
+when false:
+  # this syntax doesn't work yet
+  b.onUserEvent("UserEvent 2"):
+    discard
+
+b.onUserEvent("UserEvent 3", () => echo "event 2")
+
