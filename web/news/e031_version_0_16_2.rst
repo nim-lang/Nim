@@ -49,7 +49,13 @@ Changes affecting backwards compatibility
   instead of signed integers.
 - In Nim identifiers en-dash (Unicode point U+2013) is not an alias for the
   underscore anymore. Use underscores and fix your programming font instead.
-
+- When the ``requiresInit`` pragma is applied to a record type, future versions
+  of Nim will also require you to initialize all the fields of the type during
+  object construction. For now, only a warning will be produced.
+- The Object construction syntax now performs a number of additional safety
+  checks. When fields within case objects are initialiazed, the compiler will
+  now demand that the respective discriminator field has a matching known
+  compile-time value.
 
 Library Additions
 -----------------
@@ -99,7 +105,7 @@ remove the need for the ``newException`` template.
 the "declared but not used" warning. More details can be
 found `here <http://nim-lang.org/docs/manual.html#pragmas-used-pragma>`_.
 - The popular "colon block of statements" syntax is now also supported for
-  ``let`` and ``var`` statements:
+  ``let`` and ``var`` statements and assignments:
 
 .. code-block:: nim
   template ve(value, effect): untyped =
@@ -111,6 +117,12 @@ found `here <http://nim-lang.org/docs/manual.html#pragmas-used-pragma>`_.
 
 This is particularly useful for DSLs that help in tree construction.
 
+
+Language changes
+----------------
+
+- The ``.procvar`` annotation is not required anymore. That doesn't mean you
+  can pass ``system.$`` to ``map`` just yet though.
 
 
 Bugfixes

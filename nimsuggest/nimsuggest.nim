@@ -279,6 +279,7 @@ proc replStdin(x: ThreadParams) {.thread.} =
     while true:
       let line = readLine(stdin)
       requests.send line
+      if line == "quit": break
       toStdout()
       echo DummyEof
       flushFile(stdout)
@@ -287,6 +288,7 @@ proc replStdin(x: ThreadParams) {.thread.} =
     var line = ""
     while readLineFromStdin("> ", line):
       replStdinSingleCmd(line)
+    requests.send "quit"
 
 proc replCmdline(x: ThreadParams) {.thread.} =
   replStdinSingleCmd(x.address)

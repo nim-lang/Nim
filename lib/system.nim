@@ -1986,7 +1986,7 @@ proc min*(x, y: int64): int64 {.magic: "MinI", noSideEffect.} =
   ## The minimum value of two integers.
   if x <= y: x else: y
 
-proc min*[T](x: varargs[T]): T =
+proc min*[T](x: openArray[T]): T =
   ## The minimum value of `x`. ``T`` needs to have a ``<`` operator.
   result = x[0]
   for i in 1..high(x):
@@ -2004,7 +2004,7 @@ proc max*(x, y: int64): int64 {.magic: "MaxI", noSideEffect.} =
   ## The maximum value of two integers.
   if y <= x: x else: y
 
-proc max*[T](x: varargs[T]): T =
+proc max*[T](x: openArray[T]): T =
   ## The maximum value of `x`. ``T`` needs to have a ``<`` operator.
   result = x[0]
   for i in 1..high(x):
@@ -3663,7 +3663,7 @@ proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.
   ## This can be used to check whether a type supports some operation:
   ##
   ## .. code-block:: Nim
-  ##   when not compiles(3 + 4):
+  ##   when compiles(3 + 4):
   ##     echo "'+' for integers is available"
   discard
 
