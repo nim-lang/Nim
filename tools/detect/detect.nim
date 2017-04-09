@@ -28,10 +28,6 @@ int main() {
 }
 """
 
-type
-  TTypeKind = enum
-    cint, cshort, clong, cstring, pointer
-
 var
   hd = ""
   tl = ""
@@ -69,20 +65,20 @@ proc main =
   #removeFile(addFileExt(gen, "c"))
   echo("Success")
 
-proc v(name: string, typ: TTypeKind=cint) =
+proc v(name: string, typ: string="cint") =
   var n = if name[0] == '_': substr(name, 1) else: name
   var t = $typ
   case typ
-  of pointer:
+  of "pointer":
     addf(tl,
       "#ifdef $3\n  fprintf(f, \"  $1* = cast[$2](%p)\\n\", $3);\n#endif\n",
       n, t, name)
 
-  of cstring:
+  of "cstring":
     addf(tl,
       "#ifdef $3\n  fprintf(f, \"  $1* = $2(\\\"%s\\\")\\n\", $3);\n#endif\n",
       n, t, name)
-  of clong:
+  of "clong":
     addf(tl,
       "#ifdef $3\n  fprintf(f, \"  $1* = $2(%ld)\\n\", $3);\n#endif\n",
       n, t, name)
@@ -539,7 +535,7 @@ if header("<unistd.h>"):
   v("_SC_NPROCESSORS_ONLN")
 
 if header("<semaphore.h>"):
-  v("SEM_FAILED", pointer)
+  v("SEM_FAILED", "pointer")
 
 if header("<sys/ipc.h>"):
   v("IPC_CREAT")
@@ -594,7 +590,7 @@ if header("<sys/mman.h>"):
   v("MS_INVALIDATE")
   v("MCL_CURRENT")
   v("MCL_FUTURE")
-  v("MAP_FAILED", pointer)
+  v("MAP_FAILED", "pointer")
   v("POSIX_MADV_NORMAL")
   v("POSIX_MADV_SEQUENTIAL")
   v("POSIX_MADV_RANDOM")
@@ -606,7 +602,7 @@ if header("<sys/mman.h>"):
 
 
 if header("<time.h>"):
-  v("CLOCKS_PER_SEC", clong)
+  v("CLOCKS_PER_SEC", "clong")
   v("CLOCK_PROCESS_CPUTIME_ID")
   v("CLOCK_THREAD_CPUTIME_ID")
   v("CLOCK_REALTIME")
@@ -795,16 +791,16 @@ if header("<netdb.h>"):
   v("EAI_OVERFLOW")
 
 if header("<poll.h>"):
-  v("POLLIN", cshort)
-  v("POLLRDNORM", cshort)
-  v("POLLRDBAND", cshort)
-  v("POLLPRI", cshort)
-  v("POLLOUT", cshort)
-  v("POLLWRNORM", cshort)
-  v("POLLWRBAND", cshort)
-  v("POLLERR", cshort)
-  v("POLLHUP", cshort)
-  v("POLLNVAL", cshort)
+  v("POLLIN", "cshort")
+  v("POLLRDNORM", "cshort")
+  v("POLLRDBAND", "cshort")
+  v("POLLPRI", "cshort")
+  v("POLLOUT", "cshort")
+  v("POLLWRNORM", "cshort")
+  v("POLLWRBAND", "cshort")
+  v("POLLERR", "cshort")
+  v("POLLHUP", "cshort")
+  v("POLLNVAL", "cshort")
 
 if header("<spawn.h>"):
   v("POSIX_SPAWN_RESETIDS")
