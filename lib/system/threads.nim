@@ -182,7 +182,7 @@ else:
       SysThread* {.importc: "pthread_t", header: "<sys/types.h>" .} = distinct culong
       Pthread_attr {.importc: "pthread_attr_t",
                        header: "<sys/types.h>", final, pure.} = object
-        abi: array[56, uint8]
+        abi: array[56 div sizeof(clong), clong]
       ThreadVarSlot {.importc: "pthread_key_t", header: "<sys/types.h>".} = distinct cuint
   else:
     type
