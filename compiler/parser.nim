@@ -67,6 +67,7 @@ proc parseTry(p: var TParser; isExpr: bool): PNode
 proc parseCase(p: var TParser): PNode
 proc parseStmtPragma(p: var TParser): PNode
 proc parsePragma(p: var TParser): PNode
+proc postExprBlocks(p: var TParser, x: PNode): PNode
 # implementation
 
 proc getTok(p: var TParser) =
@@ -364,7 +365,10 @@ proc colonOrEquals(p: var TParser, a: PNode): PNode =
 proc exprColonEqExpr(p: var TParser): PNode =
   #| exprColonEqExpr = expr (':'|'=' expr)?
   var a = parseExpr(p)
-  result = colonOrEquals(p, a)
+  if p.tok.tokType == tkDo:
+    result = postExprBlocks(p, a)
+  else:
+    result = colonOrEquals(p, a)
 
 proc exprList(p: var TParser, endTok: TTokType, result: PNode) =
   #| exprList = expr ^+ comma
@@ -668,7 +672,6 @@ proc namedParams(p: var TParser, callee: PNode,
   # progress guaranteed
   exprColonEqExprListAux(p, endTok, result)
 
-proc postExprBlocks(p: var TParser, x: PNode): PNode
 proc primarySuffix(p: var TParser, r: PNode, baseIndent: int): PNode =
   #| primarySuffix = '(' (exprColonEqExpr comma?)* ')' doBlocks?
   #|       | doBlocks

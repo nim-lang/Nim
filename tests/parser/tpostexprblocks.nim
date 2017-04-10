@@ -211,6 +211,18 @@ StmtList
       StmtList
         DiscardStmt
           Empty
+  Call
+    Ident !"foo"
+    Ident !"x"
+    Call
+      Ident !"bar"
+      StmtList
+        DiscardStmt
+          Empty
+      Else
+        StmtList
+          DiscardStmt
+            Empty
   VarSection
     IdentDefs
       Ident !"a"
@@ -431,6 +443,13 @@ dumpTree:
     discard
   else:
     discard
+
+  # call with blocks as a param
+  foo(x, bar do:
+    discard
+  else:
+    discard
+  )
 
   # introduce a variable
   var a = foo
