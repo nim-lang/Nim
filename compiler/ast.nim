@@ -452,6 +452,7 @@ type
     nfExprCall  # this is an attempt to call a regular expression
     nfIsRef     # this node is a 'ref' node; used for the VM
     nfPreventCg # this node should be ignored by the codegen
+    nfBlockArg  # this a stmtlist appearing in a call (e.g. a do block)
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 30)

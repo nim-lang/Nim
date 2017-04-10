@@ -112,6 +112,12 @@ proc toJs*[T](val: T): JsObject {. importcpp: "(#)" .}
 
 template toJs*(s: string): JsObject = cstring(s).toJs
 
+macro jsFromAst*(n: untyped): untyped =
+  result = n
+  if n.kind == nnkStmtList:
+    result = newProc(procType = nnkDo, body = result)
+  return quote: toJs(`result`)
+
 proc `&`*(a, b: cstring): cstring {.importcpp: "(# + #)".}
   ## Concatenation operator for JavaScript strings
 
@@ -220,7 +226,7 @@ macro `.=`*(obj: JsObject, field: static[cstring], value: untyped): untyped =
 
 macro `.()`*(obj: JsObject,
              field: static[cstring],
-             args: varargs[JsObject, toJs]): JsObject =
+             args: varargs[JsObject, jsFromAst]): JsObject =
   ## Experimental "method call" operator for type JsObject.
   ## Takes the name of a method of the JavaScript object (`field`) and calls
   ## it with `args` as arguments, returning a JsObject (which may be discarded,
@@ -244,7 +250,7 @@ macro `.()`*(obj: JsObject,
     if not mangledNames.hasKey($field):
       mangledNames[$field] = $mangleJsName(field)
     importString = "#." & mangledNames[$field] & "(@)"
-  result = quote do:
+  result = quote:
     proc helper(o: JsObject): JsObject
       {. importcpp: `importString`, gensym, discardable .}
     helper(`obj`)

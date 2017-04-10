@@ -35,11 +35,11 @@ b.onFocusLost:
 b.onFocusLost do:
   echo "lost focus 2"
 
-b.onUserEvent("UserEvent 1") do:
+b.onUserEvent "UserEvent 1" do:
   discard
 
-b.onUserEvent("UserEvent 2"):
+b.onUserEvent "UserEvent 2":
   discard
 
-b.onUserEvent("UserEvent 3", () => echo "event 2")
+b.onUserEvent("UserEvent 3", () => echo "event 3")
 
