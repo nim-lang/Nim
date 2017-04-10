@@ -1170,13 +1170,11 @@ proc postExprBlocks(p: var TParser, x: PNode): PNode =
     skipComment(p, result)
     if p.tok.tokType notin {tkOf, tkElif, tkElse, tkExcept}:
       var stmtList = newNodeP(nkStmtList, p)
-      let body = parseStmt(p)
-      stmtList.add body
+      stmtList.add parseStmt(p)
+      # to keep backwards compatibility (see tests/vm/tstringnil)
+      if stmtList[0].kind == nkStmtList: stmtList = stmtList[0]
 
-      if stmtList.len == 1 and stmtList[0].kind == nkStmtList:
-        # to keep backwards compatibility (see tests/vm/tstringnil)
-        stmtList = stmtList[0]
-
+      stmtList.flags.incl nfBlockArg
       if openingParams.kind != nkEmpty:
         result.add newProcNode(nkDo, stmtList.info, stmtList,
                                params = openingParams, pragmas = openingPragmas)
@@ -1209,7 +1207,10 @@ proc postExprBlocks(p: var TParser, x: PNode): PNode =
         else: break
         eat(p, tkColon)
         nextBlock.addSon parseStmt(p)
+
+      nextBlock.flags.incl nfBlockArg
       result.add nextBlock
+
       if nextBlock.kind == nkElse: break
   else:
     if openingParams.kind != nkEmpty:

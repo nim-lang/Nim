@@ -1259,7 +1259,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
 
   of tyGenericInvocation:
     var x = a.skipGenericAlias
-    
     # XXX: This is very hacky. It should be moved back into liftTypeParam
     if x.kind == tyGenericInst and c.calleeSym != nil and c.calleeSym.kind == skProc:
       let inst = prepareMetatypeForSigmatch(c.c, c.bindings, c.call.info, f)
@@ -1639,6 +1638,10 @@ proc incMatches(m: var TCandidate; r: TTypeRelation; convMatch = 1) =
   of isEqual: inc(m.exactMatches)
   of isNone: discard
 
+template matchesVoidProc(t: PType): bool =
+  (t.kind == tyProc and t.len == 1 and t.sons[0] == nil) or
+    (t.kind == tyBuiltInTypeClass and t.sons[0].kind == tyProc)
+
 proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
                         argSemantized, argOrig: PNode): PNode =
   var
@@ -1775,6 +1778,14 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       inc(m.genericMatches)
       m.fauxMatch = a.kind
       return arg
+    elif a.kind == tyVoid and f.matchesVoidProc and argOrig.kind == nkStmtList:
+      # lift do blocks without params to lambdas
+      let lifted = c.semExpr(c, newProcNode(nkDo, argOrig.info, argOrig), {})
+      if f.kind == tyBuiltInTypeClass:
+        inc m.genericMatches
+        put(m, f, lifted.typ)
+      inc m.convMatches
+      return implicitConv(nkHiddenStdConv, f, lifted, m, c)
     result = userConvMatch(c, m, f, a, arg)
     # check for a base type match, which supports varargs[T] without []
     # constructor in a call:

@@ -1652,7 +1652,11 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
       else: discard
 
   if result.len == 1 and
-     c.inTypeClass == 0 and # concept bodies should be preserved as a stmt list
+     # concept bodies should be preserved as a stmt list:
+     c.inTypeClass == 0 and
+     # also, don't make life complicated for macros.
+     # they will always expect a proper stmtlist:
+     nfBlockArg notin n.flags and
      result.sons[0].kind != nkDefer:
     result = result.sons[0]
 

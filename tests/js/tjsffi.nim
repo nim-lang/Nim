@@ -1,5 +1,6 @@
 discard """
-  output: '''true
+output: '''
+true
 true
 true
 true
@@ -19,7 +20,8 @@ true
 2
 12
 Event { name: 'click: test' }
-Event { name: 'reloaded: test' }'''
+Event { name: 'reloaded: test' }
+'''
 """
 
 import macros, jsffi, jsconsole
@@ -306,6 +308,6 @@ block:
   on("click") do (e: Event):
     console.log e
 
-  jslib.on("reloaded") do:
+  jslib.on "reloaded" do:
     console.log jsarguments[0]
 
