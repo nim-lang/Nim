@@ -133,7 +133,7 @@ type
 
   SOBool* = enum ## Boolean socket options.
     OptAcceptConn, OptBroadcast, OptDebug, OptDontRoute, OptKeepAlive,
-    OptOOBInline, OptReuseAddr
+    OptOOBInline, OptReuseAddr, OptReusePort
 
   RecvLineResult* = enum ## result for recvLineAsync
     RecvFullLine, RecvPartialLine, RecvDisconnected, RecvFail
@@ -783,6 +783,7 @@ proc toCInt(opt: SOBool): cint =
   of OptKeepAlive: SO_KEEPALIVE
   of OptOOBInline: SO_OOBINLINE
   of OptReuseAddr: SO_REUSEADDR
+  of OptReusePort: SO_REUSEPORT
 
 proc getSockOpt*(socket: Socket, opt: SOBool, level = SOL_SOCKET): bool {.
   tags: [ReadIOEffect].} =
