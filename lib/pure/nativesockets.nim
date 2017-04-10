@@ -239,7 +239,7 @@ template ntohl*(x: int32): untyped {.deprecated.} =
   ## **Warning**: This template is deprecated since 0.14.0, IPv4
   ## addresses are now treated as unsigned integers. Please use the unsigned
   ## version of this template.
-  cast[int32](ntohl(cast[uint32](x)))
+  cast[int32](nativesockets.ntohl(cast[uint32](x)))
 
 proc ntohs*(x: uint16): uint16 =
   ## Converts 16-bit unsigned integers from network to host byte order. On
@@ -255,7 +255,7 @@ template ntohs*(x: int16): untyped {.deprecated.} =
   ## **Warning**: This template is deprecated since 0.14.0, where port
   ## numbers became unsigned integers. Please use the unsigned version of
   ## this template.
-  cast[int16](ntohs(cast[uint16](x)))
+  cast[int16](nativesockets.ntohs(cast[uint16](x)))
 
 template htonl*(x: int32): untyped {.deprecated.} =
   ## Converts 32-bit integers from host to network byte order. On machines
