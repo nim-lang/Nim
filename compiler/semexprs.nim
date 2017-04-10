@@ -47,10 +47,11 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     #raiseRecoverableError("")
     result = errorNode(c, n)
   if result.typ == nil or result.typ == enforceVoidContext:
-    # we cannot check for 'void' in macros ...
-    localError(n.info, errExprXHasNoType,
-               renderTree(result, {renderNoComments}))
-    result.typ = errorType(c)
+    if n.kind != nkStmtList:
+      # we cannot check for 'void' in macros ...
+      localError(n.info, errExprXHasNoType,
+                 renderTree(result, {renderNoComments}))
+      result.typ = errorType(c)
   else:
     if efNoProcvarCheck notin flags: semProcvarCheck(c, result)
     if result.typ.kind == tyVar: result = newDeref(result)
