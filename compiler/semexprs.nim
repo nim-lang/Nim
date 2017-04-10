@@ -1715,7 +1715,7 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
   # We transform the do block into a template with a param for
   # each interpolation. We'll pass this template to getAst.
   var
-    doBlk = n{-1}
+    quotedBlock = n{-1}
     op = if n.len == 3: expectString(c, n[1]) else: "``"
     quotes = newSeq[PNode](1)
       # the quotes will be added to a nkCall statement
@@ -1723,20 +1723,23 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
     ids = newSeq[PNode]()
       # this will store the generated param names
 
-  if doBlk.kind != nkDo:
+  if quotedBlock.kind != nkStmtList:
     localError(n.info, errXExpected, "block")
 
-  processQuotations(doBlk.sons[bodyPos], op, quotes, ids)
+  processQuotations(quotedBlock, op, quotes, ids)
 
-  doBlk.sons[namePos] = newAnonSym(c, skTemplate, n.info).newSymNode
+  var dummyTemplate = newProcNode(
+    nkTemplateDef, quotedBlock.info, quotedBlock,
+    name = newAnonSym(c, skTemplate, n.info).newSymNode)
+
   if ids.len > 0:
-    doBlk.sons[paramsPos] = newNodeI(nkFormalParams, n.info)
-    doBlk[paramsPos].add getSysSym("typed").newSymNode # return type
+    dummyTemplate.sons[paramsPos] = newNodeI(nkFormalParams, n.info)
+    dummyTemplate[paramsPos].add getSysSym("typed").newSymNode # return type
     ids.add getSysSym("untyped").newSymNode # params type
     ids.add emptyNode # no default value
-    doBlk[paramsPos].add newNode(nkIdentDefs, n.info, ids)
+    dummyTemplate[paramsPos].add newNode(nkIdentDefs, n.info, ids)
 
-  var tmpl = semTemplateDef(c, doBlk)
+  var tmpl = semTemplateDef(c, dummyTemplate)
   quotes[0] = tmpl[namePos]
   result = newNode(nkCall, n.info, @[
     getMagicSym(mExpandToAst).newSymNode,
