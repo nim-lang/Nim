@@ -1344,7 +1344,9 @@ proc parseReturnOrRaise(p: var TParser, kind: TNodeKind): PNode =
     # NL terminates:
     addSon(result, ast.emptyNode)
   else:
-    addSon(result, parseExpr(p))
+    var e = parseExpr(p)
+    e = postExprBlocks(p, e)
+    addSon(result, e)
 
 proc parseIfOrWhen(p: var TParser, kind: TNodeKind): PNode =
   #| condStmt = expr colcom stmt COMMENT?
