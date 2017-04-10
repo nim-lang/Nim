@@ -1168,19 +1168,20 @@ proc postExprBlocks(p: var TParser, x: PNode): PNode =
     result = makeCall(result)
     getTok(p)
     skipComment(p, result)
-    var stmtList = newNodeP(nkStmtList, p)
-    let body = parseStmt(p)
-    stmtList.add body
+    if p.tok.tokType notin {tkOf, tkElif, tkElse, tkExcept}:
+      var stmtList = newNodeP(nkStmtList, p)
+      let body = parseStmt(p)
+      stmtList.add body
 
-    if stmtList.len == 1 and stmtList[0].kind == nkStmtList:
-      # to keep backwards compatibility (see tests/vm/tstringnil)
-      stmtList = stmtList[0]
+      if stmtList.len == 1 and stmtList[0].kind == nkStmtList:
+        # to keep backwards compatibility (see tests/vm/tstringnil)
+        stmtList = stmtList[0]
 
-    if openingParams.kind != nkEmpty:
-      result.add newProcNode(nkDo, stmtList.info, stmtList,
-                             params = openingParams, pragmas = openingPragmas)
-    else:
-      result.add stmtList
+      if openingParams.kind != nkEmpty:
+        result.add newProcNode(nkDo, stmtList.info, stmtList,
+                               params = openingParams, pragmas = openingPragmas)
+      else:
+        result.add stmtList
 
     while sameInd(p):
       var nextBlock: PNode
