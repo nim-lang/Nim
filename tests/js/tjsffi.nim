@@ -21,6 +21,7 @@ true
 12
 Event { name: 'click: test' }
 Event { name: 'reloaded: test' }
+Event { name: 'updates: test' }
 '''
 """
 
@@ -295,7 +296,7 @@ block:
   """
   function Event(name) { this.name = name; }
   function on(eventName, eventHandler) { eventHandler(new Event(eventName + ": test")); }
-  var jslib = { "on": on };
+  var jslib = { "on": on, "subscribe": on };
   """
   .}
 
@@ -309,5 +310,10 @@ block:
     console.log e
 
   jslib.on "reloaded" do:
+    console.log jsarguments[0]
+
+  # this test case is different from the above, because
+  # `subscribe` is not overloaded in the current scope
+  jslib.subscribe "updates":
     console.log jsarguments[0]
 

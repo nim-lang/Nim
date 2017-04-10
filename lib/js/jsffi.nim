@@ -78,6 +78,7 @@ type
     ## Statically typed wrapper around a JavaScript object.
   NotString = concept c
     c isnot string
+  js* = JsObject
 
 var jsarguments* {.importc: "arguments", nodecl}: JsObject
   ## JavaScript's arguments pseudo-variable
@@ -133,10 +134,6 @@ proc `/=` *(x, y: JsObject): JsObject {. importcpp: "(# /= #)", discardable .}
 proc `%=` *(x, y: JsObject): JsObject {. importcpp: "(# %= #)", discardable .}
 proc `++` *(x: JsObject): JsObject    {. importcpp: "(++#)" .}
 proc `--` *(x: JsObject): JsObject    {. importcpp: "(--#)" .}
-# proc `==` *(x, y: JsObject): JsObject {. importcpp: "(# == #)" .}
-# proc `===`*(x, y: JsObject): JsObject {. importcpp: "(# === #)" .}
-# proc `!=` *(x, y: JsObject): JsObject {. importcpp: "(# != #)" .}
-# proc `!==`*(x, y: JsObject): JsObject {. importcpp: "(# !== #)" .}
 proc `>`  *(x, y: JsObject): JsObject {. importcpp: "(# > #)" .}
 proc `<`  *(x, y: JsObject): JsObject {. importcpp: "(# < #)" .}
 proc `>=` *(x, y: JsObject): JsObject {. importcpp: "(# >= #)" .}
