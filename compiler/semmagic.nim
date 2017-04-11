@@ -237,6 +237,13 @@ proc semOf(c: PContext, n: PNode): PNode =
 
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
+  ## This function basically works like a macro, with the difference
+  ## that it is implemented in the compiler and not on the nimvm.
+  ## ``c`` the current module, a symbol table to a very good approximation
+  ## ``n`` the ast like it would be passed to a real macro
+  ## ``flags`` Some flags for more contextual information on how the
+  ## "macro" is calld.
+
   case n[0].sym.magic
   of mAddr:
     checkSonsLen(n, 2)
@@ -244,6 +251,15 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mTypeOf:
     checkSonsLen(n, 2)
     result = semTypeOf(c, n.sons[1])
+  of mSizeOf:
+    echo "evaluating mSizeOf"
+    result = newIntNode(nkIntLit, 0)
+  of mAlignOf:
+    echo "evaluating mAlignOf"
+    result = newIntNode(nkIntLit, 0)
+  of mOffsetOf:
+    echo "evaluating mOffsetOf"
+    result = newIntNode(nkIntLit, 0)
   of mArrGet: result = semArrGet(c, n, flags)
   of mArrPut: result = semArrPut(c, n, flags)
   of mAsgn: result = semAsgnOpr(c, n)
