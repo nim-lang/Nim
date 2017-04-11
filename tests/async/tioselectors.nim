@@ -510,7 +510,9 @@ else:
     # descriptors from first call, so we need to make 2 calls
     var rcm1 = selector.select(1000)
     var rcm2 = selector.select(1000)
-    assert((len(rcm1) + len(rcm2)) == 2)
+    assert((len(rcm1) + len(rcm2)) == 2,
+           "rcm1 = " & $len(rcm1) & " + " & "rcm2 = " & $len(rcm2) &
+           " != 2")
 
     var sockAddress = SockAddr()
     var addrLen = sizeof(sockAddress).Socklen
