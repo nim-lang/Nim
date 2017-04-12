@@ -26,8 +26,14 @@ proc c_memset(p: pointer, value: cint, size: csize): pointer {.
 proc c_strcmp(a, b: cstring): cint {.
   importc: "strcmp", header: "<string.h>", noSideEffect.}
 
-type
-  C_JmpBuf {.importc: "jmp_buf", header: "<setjmp.h>".} = object
+when defined(linux) and defined(amd64):
+  type
+    C_JmpBuf {.importc: "jmp_buf", header: "<setjmp.h>", bycopy.} = object
+        abi: array[200 div sizeof(clong), clong]
+else:
+  type
+    C_JmpBuf {.importc: "jmp_buf", header: "<setjmp.h>".} = object
+
 
 when defined(windows):
   const
