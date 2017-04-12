@@ -35,6 +35,7 @@ type
     cmd: seq[string]
     pos: int
     remainingShortOptions: string
+    skipParser: bool
     kind*: CmdLineKind        ## the dected command line token
     key*, val*: TaintedString ## key and value pair; ``key`` is the option
                               ## or the argument, ``value`` is not "" if
@@ -47,6 +48,7 @@ proc initOptParser*(cmdline: seq[string]): OptParser {.rtl.} =
   ## argument 0 - program name.
   ## If cmdline == nil default to current command line arguments.
   result.remainingShortOptions = ""
+  result.skipParser = false
   when not defined(createNimRtl):
     if cmdline == nil:
       result.cmd = commandLineParams()
@@ -102,7 +104,14 @@ proc next(p: var OptParser) =
   let token = p.cmd[p.pos]
   p.pos += 1
 
-  if token.startsWith("--"):
+  if p.skipParser:
+    p.kind = cmdArgument
+    p.key = token
+    p.val = ""
+  elif token == "--":
+    p.skipParser = true
+    p.next()
+  elif token.startsWith("--"):
     p.kind = cmdLongOption
     nextOption(p, token[2..token.len-1], allowEmpty=true)
   elif token.startsWith("-"):
