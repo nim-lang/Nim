@@ -3,3 +3,4 @@ pre.i
 genconsts.c
 other_consts.nim
 linux_amd64_consts.nim
+libc

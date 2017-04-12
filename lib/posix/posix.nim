@@ -32,6 +32,10 @@
 # error only if they actualy try to use the missing declaration
 {.deadCodeElim: on.}  # dce option deprecated
 
+# Posix.nim is deprecated, instead use import libc.<header> to get all your
+# platform has to offer!
+
+
 # TODO these constants don't seem to be fetched from a header file for unknown
 #      platforms - where do they come from and why are they here?
 when false:
@@ -99,6 +103,10 @@ elif defined(nintendoswitch):
 else:
   include posix_other
 
+# Backwards compatibility - would be nice if we could export xxx.*!
+include libc/dlfcn
+include libc/fcntl
+
 # There used to be this name in posix.nim a long time ago, not sure why!
 
 when StatHasNanoseconds:
@@ -163,20 +171,6 @@ proc readdir_r*(a1: ptr DIR, a2: ptr Dirent, a3: ptr ptr Dirent): cint  {.
 proc rewinddir*(a1: ptr DIR)  {.importc, header: "<dirent.h>".}
 proc seekdir*(a1: ptr DIR, a2: int)  {.importc, header: "<dirent.h>".}
 proc telldir*(a1: ptr DIR): int {.importc, header: "<dirent.h>".}
-
-# dlfcn.h
-proc dlclose*(a1: pointer): cint {.importc, header: "<dlfcn.h>".}
-proc dlerror*(): cstring {.importc, header: "<dlfcn.h>".}
-proc dlopen*(a1: cstring, a2: cint): pointer {.importc, header: "<dlfcn.h>".}
-proc dlsym*(a1: pointer, a2: cstring): pointer {.importc, header: "<dlfcn.h>".}
-
-proc creat*(a1: cstring, a2: Mode): cint {.importc, header: "<fcntl.h>".}
-proc fcntl*(a1: cint | SocketHandle, a2: cint): cint {.varargs, importc, header: "<fcntl.h>".}
-proc open*(a1: cstring, a2: cint): cint {.varargs, importc, header: "<fcntl.h>".}
-proc posix_fadvise*(a1: cint, a2, a3: Off, a4: cint): cint {.
-  importc, header: "<fcntl.h>".}
-proc posix_fallocate*(a1: cint, a2, a3: Off): cint {.
-  importc, header: "<fcntl.h>".}
 
 when not defined(haiku) and not defined(OpenBSD):
   proc fmtmsg*(a1: int, a2: cstring, a3: cint,
