@@ -86,7 +86,6 @@ when defined(linux) and defined(amd64):
 else:
   include posix_other
 
-
 when not defined(macosx):
   proc st_atime*(s: Stat): Time {.inline.} =
     ## Second-granularity time of last access
@@ -107,16 +106,17 @@ proc WIFSIGNALED*(s:cint) : bool {.importc, header: "<sys/wait.h>".}
 proc WIFSTOPPED*(s:cint) : bool {.importc, header: "<sys/wait.h>".}
   ## True if child is currently stopped.
 
-proc aio_cancel*(a1: cint, a2: ptr Taiocb): cint {.importc, header: "<aio.h>".}
-proc aio_error*(a1: ptr Taiocb): cint {.importc, header: "<aio.h>".}
-proc aio_fsync*(a1: cint, a2: ptr Taiocb): cint {.importc, header: "<aio.h>".}
-proc aio_read*(a1: ptr Taiocb): cint {.importc, header: "<aio.h>".}
-proc aio_return*(a1: ptr Taiocb): int {.importc, header: "<aio.h>".}
-proc aio_suspend*(a1: ptr ptr Taiocb, a2: cint, a3: ptr Timespec): cint {.
-                 importc, header: "<aio.h>".}
-proc aio_write*(a1: ptr Taiocb): cint {.importc, header: "<aio.h>".}
-proc lio_listio*(a1: cint, a2: ptr ptr Taiocb, a3: cint,
-             a4: ptr SigEvent): cint {.importc, header: "<aio.h>".}
+when hasAioH:
+  proc aio_cancel*(a1: cint, a2: ptr Taiocb): cint {.importc, header: "<aio.h>".}
+  proc aio_error*(a1: ptr Taiocb): cint {.importc, header: "<aio.h>".}
+  proc aio_fsync*(a1: cint, a2: ptr Taiocb): cint {.importc, header: "<aio.h>".}
+  proc aio_read*(a1: ptr Taiocb): cint {.importc, header: "<aio.h>".}
+  proc aio_return*(a1: ptr Taiocb): int {.importc, header: "<aio.h>".}
+  proc aio_suspend*(a1: ptr ptr Taiocb, a2: cint, a3: ptr Timespec): cint {.
+                   importc, header: "<aio.h>".}
+  proc aio_write*(a1: ptr Taiocb): cint {.importc, header: "<aio.h>".}
+  proc lio_listio*(a1: cint, a2: ptr ptr Taiocb, a3: cint,
+               a4: ptr SigEvent): cint {.importc, header: "<aio.h>".}
 
 # arpa/inet.h
 proc htonl*(a1: uint32): uint32 {.importc, header: "<arpa/inet.h>".}
