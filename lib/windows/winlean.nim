@@ -264,17 +264,31 @@ else:
   proc getModuleFileNameA*(handle: Handle, buf: cstring, size: int32): int32 {.
     importc: "GetModuleFileNameA", dynlib: "kernel32", stdcall.}
 
+proc winXPOrLess: bool {.compiletime.} =
+  let ver = "cmd /c ver".gorge
+  # here we get something like "Microsoft Windows XP [Version 5.1.2600]"
+    # cmd.exe exists from Win2000, so for more compatibility
+    # a bat file containing just "ver" should be used (let ver = "ver.bat")
+  var i = ver.len
+  while i > 0:
+    if ver[i] == ' ': break
+    dec i
+  i == 0 or (ver[i+1] > '1' and ver[i+1] < '6')
+const isWinXPOrLess* = winXPOrLess()
+
 when useWinUnicode:
-  proc createSymbolicLinkW*(lpSymlinkFileName, lpTargetFileName: WideCString,
-                         flags: DWORD): int32 {.
-    importc:"CreateSymbolicLinkW", dynlib: "kernel32", stdcall.}
+  when not isWinXPOrLess:
+    proc createSymbolicLinkW*(lpSymlinkFileName, lpTargetFileName: WideCString,
+                           flags: DWORD): int32 {.
+      importc:"CreateSymbolicLinkW", dynlib: "kernel32", stdcall.}
   proc createHardLinkW*(lpFileName, lpExistingFileName: WideCString,
                          security: pointer=nil): int32 {.
     importc:"CreateHardLinkW", dynlib: "kernel32", stdcall.}
 else:
-  proc createSymbolicLinkA*(lpSymlinkFileName, lpTargetFileName: cstring,
-                           flags: DWORD): int32 {.
-    importc:"CreateSymbolicLinkA", dynlib: "kernel32", stdcall.}
+  when not isWinXPOrLess:
+    proc createSymbolicLinkA*(lpSymlinkFileName, lpTargetFileName: cstring,
+                             flags: DWORD): int32 {.
+      importc:"CreateSymbolicLinkA", dynlib: "kernel32", stdcall.}
   proc createHardLinkA*(lpFileName, lpExistingFileName: cstring,
                            security: pointer=nil): int32 {.
     importc:"CreateHardLinkA", dynlib: "kernel32", stdcall.}
