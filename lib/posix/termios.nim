@@ -18,13 +18,25 @@ type
 const
   NCCS* = when defined(macosx): 20 else: 32
 
-type
-  Termios* {.importc: "struct termios", header: "<termios.h>".} = object
-    c_iflag*: Cflag        # input mode flags
-    c_oflag*: Cflag        # output mode flags
-    c_cflag*: Cflag        # control mode flags
-    c_lflag*: Cflag        # local mode flags
-    c_cc*: array[NCCS, cuchar]  # control characters
+when defined(linux) and defined(amd64):
+  type
+    Termios* {.importc: "struct termios", header: "<termios.h>".} = object
+      c_iflag*: Cflag        # input mode flags
+      c_oflag*: Cflag        # output mode flags
+      c_cflag*: Cflag        # control mode flags
+      c_lflag*: Cflag        # local mode flags
+      c_line*: cuchar
+      c_cc*: array[NCCS, cuchar]  # control characters
+      c_ispeed*: Speed
+      c_ospeed*: Speed
+else:
+  type
+    Termios* {.importc: "struct termios", header: "<termios.h>".} = object
+      c_iflag*: Cflag        # input mode flags
+      c_oflag*: Cflag        # output mode flags
+      c_cflag*: Cflag        # control mode flags
+      c_lflag*: Cflag        # local mode flags
+      c_cc*: array[NCCS, cuchar]  # control characters
 
 # cc characters
 

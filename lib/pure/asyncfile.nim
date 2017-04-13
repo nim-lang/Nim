@@ -312,7 +312,7 @@ proc setFilePos*(f: AsyncFile, pos: int64) =
   ## operations. The file's first byte has the index zero.
   f.offset = pos
   when not defined(windows) and not defined(nimdoc):
-    let ret = lseek(f.fd.cint, pos, SEEK_SET)
+    let ret = lseek(f.fd.cint, pos.Off, SEEK_SET)
     if ret == -1:
       raiseOSError(osLastError())
 
@@ -481,7 +481,8 @@ proc setFileSize*(f: AsyncFile, length: int64) =
        (setEndOfFile(f.fd.Handle) == 0):
       raiseOSError(osLastError())
   else:
-    if ftruncate(f.fd.cint, length) == -1:
+    # will truncate if Off is a 32-bit type!
+    if ftruncate(f.fd.cint, length.Off) == -1:
       raiseOSError(osLastError())
 
 proc close*(f: AsyncFile) =

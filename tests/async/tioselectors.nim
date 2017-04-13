@@ -508,9 +508,10 @@ else:
     freeAddrInfo(aiList)
     # for some reason Windows select doesn't return both
     # descriptors from first call, so we need to make 2 calls
-    discard selector.select(1000)
-    var rcm = selector.select(1000)
-    assert(len(rcm) == 2)
+    var rcm1 = selector.select(1000)
+    var rcm2 = selector.select(1000)
+    let rcm = len(rcm1) + len(rcm2)
+    assert(rcm >= 2 and rcm <= 4)
 
     var sockAddress = SockAddr()
     var addrLen = sizeof(sockAddress).Socklen

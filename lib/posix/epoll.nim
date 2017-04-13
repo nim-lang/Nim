@@ -38,8 +38,10 @@ type
   epoll_data* {.importc: "union epoll_data",
       header: "<sys/epoll.h>", pure, final.} = object # TODO: This is actually a union.
     #thePtr* {.importc: "ptr".}: pointer
-    fd* {.importc: "fd".}: cint # \
-    #u32*: uint32
+    fd* {.importc: "fd".}: cint
+    when defined(linux) and defined(amd64):
+      u32: uint32 # this field ensures that binary size is right - it cannot be
+                  # used because its offset is wrong
     #u64*: uint64
 
   epoll_event* {.importc: "struct epoll_event", header: "<sys/epoll.h>", pure, final.} = object
