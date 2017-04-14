@@ -68,6 +68,7 @@ proc parseCase(p: var TParser): PNode
 proc parseStmtPragma(p: var TParser): PNode
 proc parsePragma(p: var TParser): PNode
 proc postExprBlocks(p: var TParser, x: PNode): PNode
+proc parseExprStmt(p: var TParser): PNode
 # implementation
 
 proc getTok(p: var TParser) =
@@ -523,7 +524,9 @@ proc parsePar(p: var TParser): PNode =
     result.add(parseStmtPragma(p))
   elif p.tok.tokType != tkParRi:
     var a = simpleExpr(p)
-    if p.tok.tokType == tkEquals:
+    if p.tok.tokType == tkDo:
+      result = postExprBlocks(p, a)
+    elif p.tok.tokType == tkEquals:
       # special case: allow assignments
       let asgn = newNodeP(nkAsgn, p)
       getTok(p)
