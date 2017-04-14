@@ -113,7 +113,7 @@ proc `==`*(a, b: Port): bool {.borrow.}
 proc `$`*(p: Port): string {.borrow.}
   ## returns the port number as a string
 
-proc toInt*(domain: Domain): cint
+proc toInt*(domain: Domain): cshort
   ## Converts the Domain enum to a platform-dependent ``cint``.
 
 proc toInt*(typ: SockType): cint
@@ -123,11 +123,11 @@ proc toInt*(p: Protocol): cint
   ## Converts the Protocol enum to a platform-dependent ``cint``.
 
 when not useWinVersion:
-  proc toInt(domain: Domain): cint =
+  proc toInt(domain: Domain): cshort =
     case domain
-    of AF_UNIX:        result = posix.AF_UNIX
-    of AF_INET:        result = posix.AF_INET
-    of AF_INET6:       result = posix.AF_INET6
+    of AF_UNIX:        result = posix.AF_UNIX.cshort
+    of AF_INET:        result = posix.AF_INET.cshort
+    of AF_INET6:       result = posix.AF_INET6.cshort
     else: discard
 
   proc toInt(typ: SockType): cint =
@@ -149,7 +149,7 @@ when not useWinVersion:
     else: discard
 
 else:
-  proc toInt(domain: Domain): cint =
+  proc toInt(domain: Domain): cshort =
     result = toU16(ord(domain))
 
   proc toInt(typ: SockType): cint =
@@ -239,7 +239,7 @@ template ntohl*(x: int32): untyped {.deprecated.} =
   ## **Warning**: This template is deprecated since 0.14.0, IPv4
   ## addresses are now treated as unsigned integers. Please use the unsigned
   ## version of this template.
-  cast[int32](ntohl(cast[uint32](x)))
+  cast[int32](nativesockets.ntohl(cast[uint32](x)))
 
 proc ntohs*(x: uint16): uint16 =
   ## Converts 16-bit unsigned integers from network to host byte order. On
@@ -255,7 +255,7 @@ template ntohs*(x: int16): untyped {.deprecated.} =
   ## **Warning**: This template is deprecated since 0.14.0, where port
   ## numbers became unsigned integers. Please use the unsigned version of
   ## this template.
-  cast[int16](ntohs(cast[uint16](x)))
+  cast[int16](nativesockets.ntohs(cast[uint16](x)))
 
 template htonl*(x: int32): untyped {.deprecated.} =
   ## Converts 32-bit integers from host to network byte order. On machines

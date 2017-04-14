@@ -26,14 +26,14 @@ __clang__
 /*------------ declaring a custom attribute to support using LLVM's Address Sanitizer ------------ */
 
 /*
-   This definition exists to provide support for using the LLVM ASAN (Address SANitizer) tooling with Nim. This 
+   This definition exists to provide support for using the LLVM ASAN (Address SANitizer) tooling with Nim. This
    should only be used to mark implementations of the GC system that raise false flags with the ASAN tooling, or
-   for functions that are hot and need to be disabled for performance reasons. Based on the official ASAN 
-   documentation, both the clang and gcc compilers are supported. In addition to that, a check is performed to 
+   for functions that are hot and need to be disabled for performance reasons. Based on the official ASAN
+   documentation, both the clang and gcc compilers are supported. In addition to that, a check is performed to
    verify that the necessary attribute is supported by the compiler.
 
    To flag a proc as ignored, append the following code pragma to the proc declaration:
-      {.codegenDecl: "CLANG_NO_SANITIZE_ADDRESS $# $#$#".} 
+      {.codegenDecl: "CLANG_NO_SANITIZE_ADDRESS $# $#$#".}
 
    For further information, please refer to the official documentation:
      https://github.com/google/sanitizers/wiki/AddressSanitizer
@@ -64,6 +64,7 @@ __clang__
 #  pragma GCC diagnostic ignored "-Wmacro-redefined"
 #  pragma GCC diagnostic ignored "-Wincompatible-pointer-types-discards-qualifiers"
 #  pragma GCC diagnostic ignored "-Wpointer-bool-conversion"
+#  pragma GCC diagnostic ignored "-Wconstant-conversion"
 #endif
 
 #if defined(_MSC_VER)

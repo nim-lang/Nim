@@ -177,18 +177,28 @@ else:
     else:
       type Time = int
 
+  when defined(linux) and defined(amd64):
+    type
+      SysThread* {.importc: "pthread_t",
+                  header: "<sys/types.h>" .} = distinct culong
+      Pthread_attr {.importc: "pthread_attr_t",
+                    header: "<sys/types.h>".} = object
+        abi: array[56 div sizeof(clong), clong]
+      ThreadVarSlot {.importc: "pthread_key_t",
+                    header: "<sys/types.h>".} = distinct cuint
+  else:
+    type
+      SysThread* {.importc: "pthread_t", header: "<sys/types.h>".} = object
+      Pthread_attr {.importc: "pthread_attr_t",
+                       header: "<sys/types.h>".} = object
+      ThreadVarSlot {.importc: "pthread_key_t",
+                     header: "<sys/types.h>".} = object
   type
-    SysThread* {.importc: "pthread_t", header: "<sys/types.h>",
-                 final, pure.} = object
-    Pthread_attr {.importc: "pthread_attr_t",
-                     header: "<sys/types.h>", final, pure.} = object
-
-    Timespec {.importc: "struct timespec",
-                header: "<time.h>", final, pure.} = object
+    Timespec {.importc: "struct timespec", header: "<time.h>".} = object
       tv_sec: Time
       tv_nsec: clong
   {.deprecated: [TSysThread: SysThread, Tpthread_attr: PThreadAttr,
-                Ttimespec: Timespec].}
+                Ttimespec: Timespec, TThreadVarSlot: ThreadVarSlot].}
 
   proc pthread_attr_init(a1: var PthreadAttr) {.
     importc, header: pthreadh.}
@@ -204,11 +214,6 @@ else:
 
   proc pthread_cancel(a1: SysThread): cint {.
     importc: "pthread_cancel", header: pthreadh.}
-
-  type
-    ThreadVarSlot {.importc: "pthread_key_t", pure, final,
-                   header: "<sys/types.h>".} = object
-  {.deprecated: [TThreadVarSlot: ThreadVarSlot].}
 
   proc pthread_getspecific(a1: ThreadVarSlot): pointer {.
     importc: "pthread_getspecific", header: pthreadh.}
@@ -234,6 +239,9 @@ else:
       importc: "pthread_attr_setstack", header: pthreadh.}
 
   type CpuSet {.importc: "cpu_set_t", header: schedh.} = object
+     when defined(linux) and defined(amd64):
+       abi: array[1024 div (8 * sizeof(culong)), culong]
+
   proc cpusetZero(s: var CpuSet) {.importc: "CPU_ZERO", header: schedh.}
   proc cpusetIncl(cpu: cint; s: var CpuSet) {.
     importc: "CPU_SET", header: schedh.}
