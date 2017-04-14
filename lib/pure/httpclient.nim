@@ -449,7 +449,7 @@ proc format(p: MultipartData): tuple[header, body: string] =
     if not found:
       break
 
-  result.header = "Content-Type: multipart/form-data; boundary=" & bound & "\c\L"
+  result.header = "Content-Type: multipart/form-data; boundary=" & bound
   result.body = ""
   for s in p.content:
     result.body.add("--" & bound & "\c\L" & s)
