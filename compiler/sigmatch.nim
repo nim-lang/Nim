@@ -1383,13 +1383,14 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     if f.isResolvedUserTypeClass:
       result = typeRel(c, f.lastSon, a)
     else:
-      var matched = matchUserTypeClass(c.c, c, f, aOrig)
-      if matched != nil:
-        bindConcreteTypeToUserTypeClass(matched, a)
-        put(c, f, matched)
-        result = isGeneric
-      else:
-        result = isNone
+      considerPreviousT:
+        var matched = matchUserTypeClass(c.c, c, f, aOrig)
+        if matched != nil:
+          bindConcreteTypeToUserTypeClass(matched, a)
+          if doBind: put(c, f, matched)
+          result = isGeneric
+        else:
+          result = isNone
 
   of tyCompositeTypeClass:
     considerPreviousT:
@@ -1407,6 +1408,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       if result != isNone:
         put(c, f, a)
         result = isGeneric
+
   of tyGenericParam:
     var x = PType(idTableGet(c.bindings, f))
     if x == nil:
@@ -1436,7 +1438,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
           result = isNone
       else:
         if f.sonsLen > 0 and f.sons[0].kind != tyNone:
-          result = typeRel(c, f.lastSon, a)
+          result = typeRel(c, f.lastSon, a, false)
           if doBind and result notin {isNone, isGeneric}:
             let concrete = concreteType(c, a)
             if concrete == nil: return isNone
