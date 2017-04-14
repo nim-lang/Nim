@@ -56,6 +56,8 @@ Changes affecting backwards compatibility
   checks. When fields within case objects are initialiazed, the compiler will
   now demand that the respective discriminator field has a matching known
   compile-time value.
+- On posix, the results of `waitForExit`, `peekExitCode`, `execCmd` will return
+  128 + signal number if the application terminates via signal.
 
 Library Additions
 -----------------

@@ -682,6 +682,13 @@ elif not defined(useNimRtl):
   proc isExitStatus(status: cint): bool =
     WIFEXITED(status) or WIFSIGNALED(status)
 
+  proc exitStatus(status: cint): cint =
+    if WIFSIGNALED(status):
+      # like the shell!
+      128 + WTERMSIG(status)
+    else:
+      WEXITSTATUS(status)
+
   proc envToCStringArray(t: StringTableRef): cstringArray =
     result = cast[cstringArray](alloc0((t.len + 1) * sizeof(cstring)))
     var i = 0
@@ -993,7 +1000,9 @@ elif not defined(useNimRtl):
     import kqueue, times
 
     proc waitForExit(p: Process, timeout: int = -1): int =
-      if p.exitStatus != -3: return((p.exitStatus and 0xFF00) shr 8)
+      if p.exitStatus != -3:
+        return exitStatus(p.exitStatus)
+
       if timeout == -1:
         var status : cint = 1
         if waitpid(p.id, status, 0) < 0:
@@ -1044,7 +1053,7 @@ elif not defined(useNimRtl):
         finally:
           discard posix.close(kqFD)
 
-      result = ((p.exitStatus and 0xFF00) shr 8)
+      result = exitStatus(p.exitStatus)
   else:
     import times
 
@@ -1080,7 +1089,9 @@ elif not defined(useNimRtl):
       # ``waitPid`` fails if the process is not running anymore. But then
       # ``running`` probably set ``p.exitStatus`` for us. Since ``p.exitStatus`` is
       # initialized with -3, wrong success exit codes are prevented.
-      if p.exitStatus != -3: return((p.exitStatus and 0xFF00) shr 8)
+      if p.exitStatus != -3:
+        return exitStatus(p.exitStatus)
+
       if timeout == -1:
         var status : cint = 1
         if waitpid(p.id, status, 0) < 0:
@@ -1154,17 +1165,19 @@ elif not defined(useNimRtl):
             if sigprocmask(SIG_UNBLOCK, nmask, omask) == -1:
               raiseOSError(osLastError())
 
-      result = ((p.exitStatus and 0xFF00) shr 8)
+      result = exitStatus(p.exitStatus)
 
   proc peekExitCode(p: Process): int =
     var status = cint(0)
     result = -1
-    if p.exitStatus != -3: return((p.exitStatus and 0xFF00) shr 8)
+    if p.exitStatus != -3:
+      return exitStatus(p.exitStatus)
+
     var ret = waitpid(p.id, status, WNOHANG)
     if ret > 0:
       if isExitStatus(status):
         p.exitStatus = status
-        result = (status and 0xFF00) shr 8
+        result = exitStatus(status)
 
   proc createStream(stream: var Stream, handle: var FileHandle,
                     fileMode: FileMode) =
@@ -1192,7 +1205,8 @@ elif not defined(useNimRtl):
 
   proc execCmd(command: string): int =
     when defined(linux):
-      result = csystem(command) shr 8
+      let tmp = csystem(command)
+      result = if tmp == -1: tmp else: exitStatus(tmp)
     else:
       result = csystem(command)
 
