@@ -826,7 +826,7 @@ proc inferStaticsInRange(c: var TCandidate,
   let upperBound = tryResolvingStaticExpr(c, inferred.n[1],
                                           allowUnresolved = true)
 
-  template doInferStatic(c: var TCandidate, e: PNode, r: BiggestInt) =
+  template doInferStatic(e: PNode, r: BiggestInt) =
     var exp = e
     var rhs = r
     var inferred = inferStaticParam(exp, rhs)
@@ -842,9 +842,9 @@ proc inferStaticsInRange(c: var TCandidate,
         return isGeneric
       else:
         return isNone
-    doInferStatic(c, upperBound, lengthOrd(concrete) + lowerBound.intVal - 1)
+    doInferStatic(upperBound, lengthOrd(concrete) + lowerBound.intVal - 1)
   elif upperBound.kind == nkIntLit:
-    doInferStatic(c, lowerBound, upperBound.intVal + 1 - lengthOrd(concrete))
+    doInferStatic(lowerBound, upperBound.intVal + 1 - lengthOrd(concrete))
 
 template subtypeCheck() =
   if result <= isSubrange and f.lastSon.skipTypes(abstractInst).kind in {tyRef, tyPtr, tyVar}:
@@ -1054,8 +1054,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         return inferStaticsInRange(c, fRange, a)
       elif c.c.inTypeClass > 0 and aRange.rangeHasUnresolvedStatic:
         return inferStaticsInRange(c, aRange, f)
-      elif lengthOrd(fRange) != lengthOrd(a):
-        result = isNone
+      else:
+        if lengthOrd(fRange) != lengthOrd(aRange):
+          result = isNone
     else: discard
   of tyOpenArray, tyVarargs:
     # varargs[expr] is special too but handled earlier. So we only need to
@@ -1260,7 +1261,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   of tyGenericInvocation:
     var x = a.skipGenericAlias
     # XXX: This is very hacky. It should be moved back into liftTypeParam
-    if x.kind == tyGenericInst and c.calleeSym != nil and c.calleeSym.kind == skProc:
+    if x.kind in {tyGenericInst, tyArray} and
+       c.calleeSym != nil and
+       c.calleeSym.kind == skProc:
       let inst = prepareMetatypeForSigmatch(c.c, c.bindings, c.call.info, f)
       return typeRel(c, inst, a)
 
