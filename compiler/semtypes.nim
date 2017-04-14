@@ -904,8 +904,9 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
                                           allowMetaTypes = true)
       result = liftingWalk(expanded, true)
 
-  of tyUserTypeClasses, tyBuiltInTypeClass, tyAnd, tyOr, tyNot:
-    result = addImplicitGeneric(copyType(paramType, getCurrOwner(c), true))
+  of tyUserTypeClasses, tyBuiltInTypeClass, tyCompositeTypeClass,
+     tyAnd, tyOr, tyNot:
+    result = addImplicitGeneric(copyType(paramType, getCurrOwner(c), false))
 
   of tyGenericParam:
     markUsed(info, paramType.sym, c.graph.usageSym)
