@@ -371,6 +371,17 @@ StmtList
         StmtList
           DiscardStmt
             Empty
+  Call
+    DotExpr
+      Ident !"result"
+      Ident !"add"
+    BracketExpr
+      Call
+        Ident !"quote"
+        StmtList
+          DiscardStmt
+            Empty
+      IntLit 0
 '''
 """
 
@@ -494,4 +505,9 @@ dumpTree:
     discard
   else:
     discard
+
+  # some edge cases
+  result.add((quote do:
+    discard
+  )[0])
 
