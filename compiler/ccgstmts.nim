@@ -39,13 +39,11 @@ proc genVarTuple(p: BProc, n: PNode) =
   var L = sonsLen(n)
 
   # if we have a something that's been captured, use the lowering instead:
-  var useLowering = false
   for i in countup(0, L-3):
     if n[i].kind != nkSym:
-      useLowering = true; break
-  if useLowering:
-    genStmts(p, lowerTupleUnpacking(n, p.prc))
-    return
+      genStmts(p, lowerTupleUnpacking(n, p.prc))
+      return
+
   genLineDir(p, n)
   initLocExpr(p, n.sons[L-1], tup)
   var t = tup.t.skipTypes(abstractInst)
@@ -182,10 +180,11 @@ proc genGotoVar(p: BProc; value: PNode) =
     lineF(p, cpsStmts, "goto NIMSTATE_$#;$n", [value.intVal.rope])
 
 proc genSingleVar(p: BProc, a: PNode) =
-  var v = a.sons[0].sym
-  if {sfCompileTime, sfGoto} * v.flags != {}:
+  let v = a.sons[0].sym
+  if sfCompileTime in v.flags: return
+  if sfGoto in v.flags:
     # translate 'var state {.goto.} = X' into 'goto LX':
-    if sfGoto in v.flags: genGotoVar(p, a.sons[2])
+    genGotoVar(p, a.sons[2])
     return
   var targetProc = p
   if sfGlobal in v.flags:
