@@ -10,10 +10,10 @@
 import parseutils, strutils, os, osproc, streams, parsecfg
 
 
-var compilerPrefix* = "compiler" / "nim"
+var compilerPrefix* = "compiler" / "nim "
 
 proc cmdTemplate*(): string =
-  compilerPrefix & " $target --lib:lib --hints:on -d:testing $options $file"
+  compilerPrefix & "$target --lib:lib --hints:on -d:testing $options $file"
 
 type
   TTestAction* = enum
