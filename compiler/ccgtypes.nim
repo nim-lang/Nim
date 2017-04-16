@@ -1094,7 +1094,7 @@ proc genDeepCopyProc(m: BModule; s: PSym; result: Rope) =
 
 proc genTypeInfo(m: BModule, t: PType): Rope =
   let origType = t
-  var t = skipTypes(origType, irrelevantForBackend)
+  var t = skipTypes(origType, irrelevantForBackend + tyUserTypeClasses)
 
   let sig = hashType(origType)
   result = m.typeInfoMarker.getOrDefault(sig)

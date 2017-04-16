@@ -81,6 +81,8 @@ template mdbg*: bool {.dirty.} =
       p.lex.fileIdx == gProjectMainIdx
     else:
       p.module.module.fileIdx == gProjectMainIdx
+  elif compiles(m.module.fileIdx):
+    m.module.fileIdx == gProjectMainIdx
   elif compiles(L.fileIdx):
     L.fileIdx == gProjectMainIdx
   else:
