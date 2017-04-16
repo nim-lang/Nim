@@ -810,6 +810,10 @@ proc inferStaticParam*(c: var TCandidate, lhs: PNode, rhs: BiggestInt): bool =
     var inferred = newTypeWithSons(c.c, tyStatic, lhs.typ.sons)
     inferred.n = newIntNode(nkIntLit, rhs)
     put(c, lhs.typ, inferred)
+    if c.c.inTypeClass > 0:
+      # inside concepts, binding is currently done with
+      # direct mutation of the involved types:
+      lhs.typ.n = inferred.n
     return true
 
   return false
