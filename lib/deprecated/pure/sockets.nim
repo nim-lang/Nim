@@ -219,7 +219,7 @@ template htons(x: uint16): expr =
   sockets.ntohs(x)
 
 when defined(Posix):
-  proc toInt(domain: Domain): cint =
+  proc toInt(domain: Domain): TSa_Family =
     case domain
     of AF_UNIX:        result = posix.AF_UNIX
     of AF_INET:        result = posix.AF_INET

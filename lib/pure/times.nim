@@ -47,15 +47,26 @@ type
     dMon, dTue, dWed, dThu, dFri, dSat, dSun
 
 when defined(posix) and not defined(JS):
-  type
-    TimeImpl {.importc: "time_t", header: "<time.h>".} = int
-    Time* = distinct TimeImpl ## distinct type that represents a time
-                              ## measured as number of seconds since the epoch
+  when defined(linux) and defined(amd64):
+    type
+      TimeImpl {.importc: "time_t", header: "<time.h>".} = clong
+      Time* = distinct TimeImpl ## distinct type that represents a time
+                                ## measured as number of seconds since the epoch
 
-    Timeval {.importc: "struct timeval",
-              header: "<sys/select.h>".} = object ## struct timeval
-      tv_sec: int  ## Seconds.
-      tv_usec: int ## Microseconds.
+      Timeval {.importc: "struct timeval",
+                header: "<sys/select.h>".} = object ## struct timeval
+        tv_sec: clong  ## Seconds.
+        tv_usec: clong ## Microseconds.
+  else:
+    type
+      TimeImpl {.importc: "time_t", header: "<time.h>".} = int
+      Time* = distinct TimeImpl ## distinct type that represents a time
+                                ## measured as number of seconds since the epoch
+
+      Timeval {.importc: "struct timeval",
+                header: "<sys/select.h>".} = object ## struct timeval
+        tv_sec: int  ## Seconds.
+        tv_usec: int ## Microseconds.
 
   # we cannot import posix.nim here, because posix.nim depends on times.nim.
   # Ok, we could, but I don't want circular dependencies.
@@ -1103,7 +1114,7 @@ when not defined(JS):
   when defined(freebsd) or defined(netbsd) or defined(openbsd) or
       defined(macosx):
     type
-      StructTM {.importc: "struct tm", final.} = object
+      StructTM {.importc: "struct tm".} = object
         second {.importc: "tm_sec".},
           minute {.importc: "tm_min".},
           hour {.importc: "tm_hour".},
@@ -1116,7 +1127,7 @@ when not defined(JS):
         gmtoff {.importc: "tm_gmtoff".}: clong
   else:
     type
-      StructTM {.importc: "struct tm", final.} = object
+      StructTM {.importc: "struct tm".} = object
         second {.importc: "tm_sec".},
           minute {.importc: "tm_min".},
           hour {.importc: "tm_hour".},
@@ -1126,6 +1137,9 @@ when not defined(JS):
           weekday {.importc: "tm_wday".},
           yearday {.importc: "tm_yday".},
           isdst {.importc: "tm_isdst".}: cint
+        when defined(linux) and defined(amd64):
+          gmtoff {.importc: "tm_gmtoff".}: clong
+          zone {.importc: "tm_zone".}: cstring
   type
     TimeInfoPtr = ptr StructTM
     Clock {.importc: "clock_t".} = distinct int
