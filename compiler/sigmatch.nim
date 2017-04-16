@@ -177,6 +177,13 @@ proc sumGeneric(t: PType): int =
         tyOpenArray, tyVarargs, tySet, tyRange, tySequence, tyGenericBody:
       t = t.lastSon
       inc result
+    of tyOr:
+      var maxBranch = 0
+      for branch in t.sons:
+        let branchSum = branch.sumGeneric
+        if branchSum > maxBranch: maxBranch = branchSum
+      inc result, maxBranch + 1
+      break
     of tyVar:
       t = t.sons[0]
       inc result
@@ -185,8 +192,8 @@ proc sumGeneric(t: PType): int =
       t = t.lastSon
       if t.kind == tyEmpty: break
       inc result
-    of tyGenericInvocation, tyTuple, tyProc:
-      result += ord(t.kind == tyGenericInvocation)
+    of tyGenericInvocation, tyTuple, tyProc, tyAnd:
+      result += ord(t.kind in {tyGenericInvocation, tyAnd})
       for i in 0 .. <t.len:
         if t.sons[i] != nil:
           result += t.sons[i].sumGeneric
@@ -228,6 +235,15 @@ proc complexDisambiguation(a, b: PType): int =
     for i in 1 .. <b.len: y += b.sons[i].sumGeneric
     result = x - y
 
+proc writeMatches*(c: TCandidate) =
+  echo "Candidate '", c.calleeSym.name.s, "' at ", c.calleeSym.info
+  echo "  exact matches: ", c.exactMatches
+  echo "  generic matches: ", c.genericMatches
+  echo "  subtype matches: ", c.subtypeMatches
+  echo "  intconv matches: ", c.intConvMatches
+  echo "  conv matches: ", c.convMatches
+  echo "  inheritance: ", c.inheritancePenalty
+
 proc cmpCandidates*(a, b: TCandidate): int =
   result = a.exactMatches - b.exactMatches
   if result != 0: return
@@ -247,14 +263,6 @@ proc cmpCandidates*(a, b: TCandidate): int =
   # only as a last resort, consider scoping:
   if result != 0: return
   result = a.calleeScope - b.calleeScope
-
-proc writeMatches*(c: TCandidate) =
-  writeLine(stdout, "exact matches: " & $c.exactMatches)
-  writeLine(stdout, "generic matches: " & $c.genericMatches)
-  writeLine(stdout, "subtype matches: " & $c.subtypeMatches)
-  writeLine(stdout, "intconv matches: " & $c.intConvMatches)
-  writeLine(stdout, "conv matches: " & $c.convMatches)
-  writeLine(stdout, "inheritance: " & $c.inheritancePenalty)
 
 proc argTypeToString(arg: PNode; prefer: TPreferedDesc): string =
   if arg.kind in nkSymChoices:
