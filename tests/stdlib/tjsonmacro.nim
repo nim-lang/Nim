@@ -159,11 +159,11 @@ when isMainModule:
         name: string
         age: int
 
-      Data = object
+      Data1 = object # TODO: Codegen bug when changed to ``Data``.
         person: Person
         list: seq[int]
 
-    var data = to(jsonNode, Data)
+    var data = to(jsonNode, Data1)
     doAssert data.person.name == "Nimmer"
     doAssert data.person.age == 21
     doAssert data.list == @[1, 2, 3, 4]
@@ -183,3 +183,29 @@ when isMainModule:
 
     var result = to(node, TestEnum)
     doAssert result.field == Bar
+
+  # Test ref type in field.
+  block:
+    let jsonNode = parseJson("""
+      {
+        "person": {
+          "name": "Nimmer",
+          "age": 21
+        },
+        "list": [1, 2, 3, 4]
+      }
+    """)
+
+    type
+      Person = ref object
+        name: string
+        age: int
+
+      Data = object
+        person: Person
+        list: seq[int]
+
+    var data = to(jsonNode, Data)
+    doAssert data.person.name == "Nimmer"
+    doAssert data.person.age == 21
+    doAssert data.list == @[1, 2, 3, 4]

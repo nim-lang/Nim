@@ -1608,7 +1608,11 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
       result = processType(typeSym, obj, jsonNode)
   of nnkSym:
     let obj = getType(typeSym)
-    result = processType(typeSym, obj, jsonNode)
+    if obj.kind == nnkBracketExpr:
+      # When `Sym "Foo"` turns out to be a `ref object`.
+      result = createConstructor(obj, jsonNode)
+    else:
+      result = processType(typeSym, obj, jsonNode)
   else:
     doAssert false, "Unable to create constructor for: " & $typeSym.kind
 
