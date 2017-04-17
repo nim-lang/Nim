@@ -186,7 +186,7 @@ when isMainModule:
 
   # Test ref type in field.
   block:
-    let jsonNode = parseJson("""
+    var jsonNode = parseJson("""
       {
         "person": {
           "name": "Nimmer",
@@ -209,3 +209,12 @@ when isMainModule:
     doAssert data.person.name == "Nimmer"
     doAssert data.person.age == 21
     doAssert data.list == @[1, 2, 3, 4]
+
+    jsonNode = parseJson("""
+      {
+        "person": null,
+        "list": [1, 2, 3, 4]
+      }
+    """)
+    data = to(jsonNode, Data)
+    doAssert data.person.isNil

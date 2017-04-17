@@ -1502,7 +1502,7 @@ proc processObjField(field, jsonNode: NimNode): seq[NimNode] =
   doAssert result.len > 0
 
 proc processType(typeName: NimNode, obj: NimNode,
-                 jsonNode: NimNode): NimNode {.compileTime.} =
+                 jsonNode: NimNode, isRef: bool): NimNode {.compileTime.} =
   ## Process a type such as ``Sym "float"`` or ``ObjectTy ...``.
   ##
   ## Sample ``ObjectTy``:
@@ -1524,6 +1524,20 @@ proc processType(typeName: NimNode, obj: NimNode,
     for field in obj[2]:
       let nodes = processObjField(field, jsonNode)
       result.add(nodes)
+
+    # Object might be null. So we need to check for that.
+    if isRef:
+      result = quote do:
+        verifyJsonKind(`jsonNode`, {JObject, JNull}, astToStr(`jsonNode`))
+        if `jsonNode`.kind == JNull:
+          nil
+        else:
+          `result`
+    else:
+      result = quote do:
+        verifyJsonKind(`jsonNode`, {JObject}, astToStr(`jsonNode`));
+        `result`
+
   of nnkEnumTy:
     let instType = toIdentNode(getTypeInst(typeName))
     let getEnumCall = createGetEnumCall(jsonNode, instType)
@@ -1591,7 +1605,7 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
         typeName = typeName[0 .. ^12]
 
       let obj = getType(typeSym[1])
-      result = processType(newIdentNode(typeName), obj, jsonNode)
+      result = processType(newIdentNode(typeName), obj, jsonNode, true)
     of "seq":
       let seqT = typeSym[1]
       let forLoopI = newIdentNode("i")
@@ -1611,21 +1625,21 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
     else:
       # Generic type.
       let obj = getType(typeSym)
-      result = processType(typeSym, obj, jsonNode)
+      result = processType(typeSym, obj, jsonNode, false)
   of nnkSym:
     let obj = getType(typeSym)
     if obj.kind == nnkBracketExpr:
       # When `Sym "Foo"` turns out to be a `ref object`.
       result = createConstructor(obj, jsonNode)
     else:
-      result = processType(typeSym, obj, jsonNode)
+      result = processType(typeSym, obj, jsonNode, false)
   else:
     doAssert false, "Unable to create constructor for: " & $typeSym.kind
 
   doAssert(not result.isNil(), "Constructor not initialised.")
 
 proc postProcess(node: NimNode): NimNode
-proc postProcessValue(value: NimNode, depth=0): NimNode =
+proc postProcessValue(value: NimNode): NimNode =
   ## Looks for object constructors and calls the ``postProcess`` procedure
   ## on them. Otherwise it just returns the node as-is.
   case value.kind
@@ -1746,9 +1760,10 @@ macro to*(node: JsonNode, T: typedesc): untyped =
   doAssert(($typeNode[0]).normalize == "typedesc")
 
   result = createConstructor(typeNode[1], node)
-  result = postProcess(result)
+  # TODO: Rename postProcessValue and move it (?)
+  result = postProcessValue(result)
 
-  #echo(toStrLit(result))
+  echo(toStrLit(result))
 
 when false:
   import os
