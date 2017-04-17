@@ -1550,8 +1550,8 @@ proc processType(typeName: NimNode, obj: NimNode,
     of "float":
       result = quote do:
         (
-          verifyJsonKind(`jsonNode`, {JFloat}, astToStr(`jsonNode`));
-          `jsonNode`.fnum
+          verifyJsonKind(`jsonNode`, {JFloat, JInt}, astToStr(`jsonNode`));
+          if `jsonNode`.kind == JFloat: `jsonNode`.fnum else: `jsonNode`.num.float
         )
     of "string":
       result = quote do:
