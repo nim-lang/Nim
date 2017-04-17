@@ -218,3 +218,12 @@ when isMainModule:
     """)
     data = to(jsonNode, Data)
     doAssert data.person.isNil
+
+  block:
+    type
+      FooBar = object
+        field: float
+
+    let x = parseJson("""{ "field": 5}""")
+    let data = to(x, FooBar)
+    doAssert data.field == 5.0
