@@ -39,7 +39,7 @@ proc setCookie*(key, value: string, domain = "", path = "",
   if domain != "": result.add("; Domain=" & domain)
   if path != "": result.add("; Path=" & path)
   if expires != "": result.add("; Expires=" & expires)
-  if secure: result.add("; secure")
+  if secure: result.add("; Secure")
   if httpOnly: result.add("; HttpOnly")
 
 proc setCookie*(key, value: string, expires: TimeInfo,
