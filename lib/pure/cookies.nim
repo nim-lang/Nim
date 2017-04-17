@@ -50,7 +50,7 @@ proc setCookie*(key, value: string, expires: TimeInfo,
   ##
   ## **Note:** UTC is assumed as the timezone for ``expires``.
   return setCookie(key, value, domain, path,
-                   format(expires, "ddd',' dd MMM yyyy HH:mm:ss 'UTC'"),
+                   format(expires, "ddd',' dd MMM yyyy HH:mm:ss 'GMT'"),
                    noname, secure, httpOnly)
 
 when isMainModule:
