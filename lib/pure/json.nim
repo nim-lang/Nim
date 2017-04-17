@@ -1551,6 +1551,12 @@ proc processType(typeName: NimNode, obj: NimNode,
           verifyJsonKind(`jsonNode`, {JInt}, astToStr(`jsonNode`));
           `jsonNode`.num.int
         )
+    of "biggestint":
+      result = quote do:
+        (
+          verifyJsonKind(`jsonNode`, {JInt}, astToStr(`jsonNode`));
+          `jsonNode`.num
+        )
     of "bool":
       result = quote do:
         (
