@@ -1240,13 +1240,15 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         if prev == nil: put(c, f, a)
         result = isGeneric
       else:
-        var aAsObject = roota.lastSon
-        if rootf.lastSon.kind in {tyAnd, tyOr}:
+        let fKind = rootf.lastSon.kind
+        if fKind in {tyAnd, tyOr}:
           result = typeRel(c, lastSon(f), a)
           if result != isNone: put(c, f, a)
           return
 
-        if rootf.lastSon.kind == tyRef and aAsObject.kind == tyRef:
+        var aAsObject = roota.lastSon
+
+        if fKind in {tyRef, tyPtr} and aAsObject.kind == fKind:
           aAsObject = aAsObject.base
 
         if aAsObject.kind == tyObject:
