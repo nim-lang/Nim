@@ -776,6 +776,12 @@ proc `%`*(o: enum): JsonNode =
   ## string. Creates a new ``JString JsonNode``.
   result = %($o)
 
+proc `%`*[T](elements: openArray[T]): JsonNode =
+  ## Generic constructor for JSON data. Creates a new `JArray JsonNode`
+  result = newJArray()
+  for elem in elements:
+    result.add(%elem)
+
 proc toJson(x: NimNode): NimNode {.compiletime.} =
   case x.kind
   of nnkBracket: # array
