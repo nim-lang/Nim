@@ -113,7 +113,7 @@ relation is extended to the types ``var``, ``ref``, ``ptr``:
 
 Convertible relation
 --------------------
-A type ``a`` is **implicitly** convertible to type ``b`` iff the following
+A type ``a`` is **implicitly** convertible to type ``b`` if the following
 algorithm returns true:
 
 .. code-block:: nim
@@ -143,7 +143,7 @@ algorithm returns true:
     of string:
       result = b == cstring
 
-A type ``a`` is **explicitly** convertible to type ``b`` iff the following
+A type ``a`` is **explicitly** convertible to type ``b`` if the following
 algorithm returns true:
 
 .. code-block:: nim
@@ -181,7 +181,7 @@ The type conversion ``T(a)`` is an L-value if ``a`` is an L-value and
 Assignment compatibility
 ------------------------
 
-An expression ``b`` can be assigned to an expression ``a`` iff ``a`` is an
+An expression ``b`` can be assigned to an expression ``a`` if ``a`` is an
 `l-value` and ``isImplicitlyConvertible(b.typ, a.typ)`` holds.
 
 

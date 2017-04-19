@@ -427,7 +427,7 @@ returned by idetools returns also the pragmas for the proc.
         col 7:
     "Opens a file named `filename` with given `mode`.
 
-     Default mode is readonly. Returns true iff the file could be opened.
+     Default mode is readonly. Returns true if the file could be opened.
      This throws no exception if the file could not be opened."
 
 
