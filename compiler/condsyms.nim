@@ -102,6 +102,7 @@ proc initDefines*() =
   defineSymbol("nimtypedescfixed")
   defineSymbol("nimKnowsNimvm")
   defineSymbol("nimArrIdx")
+  defineSymbol("nimHasalignOf")
   defineSymbol("nimImmediateDeprecated")
   defineSymbol("nimNewShiftOps")
   defineSymbol("nimDistros")

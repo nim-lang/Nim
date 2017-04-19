@@ -77,7 +77,6 @@ proc canFormAcycle*(typ: PType): bool
 proc isCompatibleToCString*(a: PType): bool
 proc getOrdValue*(n: PNode): BiggestInt
 proc computeSize*(typ: PType): BiggestInt
-proc getSize*(typ: PType): BiggestInt
 proc isPureObject*(typ: PType): bool
 proc invalidGenericInst*(f: PType): bool
   # for debugging
@@ -256,6 +255,7 @@ proc containsObject(t: PType): bool =
   result = searchTypeFor(t, isObjectPredicate)
 
 proc isObjectWithTypeFieldPredicate(t: PType): bool =
+
   result = t.kind == tyObject and t.sons[0] == nil and
       not (t.sym != nil and {sfPure, sfInfixCall} * t.sym.flags != {}) and
       tfFinal notin t.flags
@@ -1279,10 +1279,12 @@ proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt): tuple[s
       maxChildSize = max(maxChildSize, size)
 
     result.align = max(kindAlign, maxChildAlign)
-    result.size  = align(kindSize, maxChildAlign) + maxChildSize
+    result.size  = align(align(kindSize, maxChildAlign) + maxChildSize, result.align)
 
   of nkRecList:
-    result.align = 1
+
+    result.align = 1 # maximum of all member alignments
+
     var offset = initialOffset
 
     for i, child in n.sons:
@@ -1293,16 +1295,20 @@ proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt): tuple[s
         result.align = align
         return
 
-      result.size  = align(result.size, align) + size
+      offset = align(offset, align) + size
+
       result.align = max(result.align, align)
 
-    result.size = align(result.size, result.align)
+    # final alignment
+    result.size  = align(offset, result.align)
 
   of nkSym:
     n.sym.typ.computeSizeAlign
     result.size  = n.sym.typ.size
     result.align = n.sym.typ.align
-    n.sym.offset = align(initialOffset, result.align).int
+    let offset = align(initialOffset, result.align).int
+    n.sym.offset = offset
+    #echo "offsetof(", n.sym.name.s, "): initialOffset: ", initialOffset, " size: ", result.size, " align: ", result.align
 
   else:
     result.align = 1
@@ -1316,6 +1322,9 @@ proc computeSizeAlign(typ: PType): void =
   if typ.size >= 0:
     # nothing to do, size already computed
     return
+
+  if typ.sym != nil and typ.sym.name.s == "RootObj":
+    debug typ.sym
 
   if typ.size == szIllegalRecursion:
     # we are already computing the size of the type
@@ -1449,9 +1458,26 @@ proc computeSizeAlign(typ: PType): void =
     var headerSize : BiggestInt
     var headerAlign: int16
 
+    var isRootObj = false
+
     if typ.sons[0] != nil:
-      let st = skipTypes(typ.sons[0], skipPtrs)
+      var st = typ.sons[0]
+      #echo "skipTypes, "
+      #debug typ
+      #echo typ.sons.len
+
+      while st.kind in skipPtrs:
+        st = st.sons[^1]
+
+
+      #debug st
+      #echo st.sons.len
+
       st.computeSizeAlign
+
+
+      #echo st.size
+      #echo st.align
 
       if st.size < 0:
         typ.size = st.size
@@ -1460,9 +1486,12 @@ proc computeSizeAlign(typ: PType): void =
 
       headerSize  = st.size
       headerAlign = st.align
+
     elif isObjectWithTypeFieldPredicate(typ):
-      headerSize   = intSize
-      headerAlign  = int16(intSize)
+      # this branch is taken for RootObj
+      headerSize = intSize
+      headerAlign = intSize.int16
+
     else:
       headerSize  = 0
       headerAlign = 1
@@ -1475,7 +1504,9 @@ proc computeSizeAlign(typ: PType): void =
       return
 
     maxAlign = max(align, headerAlign)
-    typ.size  = align(headerSize + size, maxAlign)
+    # header size is already in size from computeObjectOffsetsRecursive
+    # maxAlign is probably not changed at all from headerAlign
+    typ.size  = align(size, maxAlign)
     typ.align = int16(maxAlign)
 
   of tyInferred:
@@ -1529,12 +1560,21 @@ proc getReturnType*(s: PSym): PType =
   assert s.kind in skProcKinds
   result = s.typ.sons[0]
 
-proc getSize(typ: PType): BiggestInt =
-  ##
+proc getAlign*(typ: PType): BiggestInt =
+  typ.computeSizeAlign
+  result = typ.align
+  if result < 0:
+    internalError("getAlign: " & $typ.kind)
+
+proc getSize*(typ: PType): BiggestInt =
   typ.computeSizeAlign
   result = typ.size
   if result < 0:
     internalError("getSize: " & $typ.kind)
+
+proc getOffset*(typ: PType, member: PNode): BiggestInt =
+  typ.computeSizeAlign
+
 
 proc containsGenericTypeIter(t: PType, closure: RootRef): bool =
   case t.kind

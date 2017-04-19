@@ -633,8 +633,18 @@ proc sizeof*[T](x: T): int {.magic: "SizeOf", noSideEffect.}
   ##  sizeof('A') #=> 1
   ##  sizeof(2) #=> 8
 
-proc alignOf*[T](x: T): int {.magic: "AlignOf", noSideEffect.}
-proc offsetOf*(typ: typed, member: untyped): int {.magic: "OffsetOf", noSideEffect.}
+when defined(nimHasalignOf):
+  proc alignOf*[T](x: T): int {.magic: "AlignOf", noSideEffect.}
+  proc offsetOfDotExpr(typeAccess: typed): int {.magic: "OffsetOf", noSideEffect, compileTime.}
+
+  template offsetOf*[T](t : typedesc[T]; member: untyped): int =
+    var tmp: T
+    offsetOfDotExpr(tmp.member)
+
+  template offsetOf*[T](value : T; member: untyped): int =
+    offsetOfDotExpr(value.member)
+
+  #proc offsetOf*(memberaccess: typed): int {.magic: "OffsetOf", noSideEffect.}
 
 when defined(nimtypedescfixed):
   proc sizeof*(x: typedesc): int {.magic: "SizeOf", noSideEffect.}

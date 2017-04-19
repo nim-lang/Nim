@@ -237,6 +237,7 @@ proc semOf(c: PContext, n: PNode): PNode =
 
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
+  ## This is the preferred code point to implement magics.
   ## This function basically works like a macro, with the difference
   ## that it is implemented in the compiler and not on the nimvm.
   ## ``c`` the current module, a symbol table to a very good approximation
@@ -252,16 +253,44 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     checkSonsLen(n, 2)
     result = semTypeOf(c, n.sons[1])
   of mSizeOf:
-    echo "evaluating mSizeOf"
-    result = newIntNode(nkIntLit, 0)
+    result = newIntNode(nkIntLit, n[1].typ.getSize)
+    result.info = n.info
+    result.typ = n.typ
   of mAlignOf:
-    echo "evaluating mAlignOf"
-    result = newIntNode(nkIntLit, 0)
+    # let typ = n[1].typ
+    # let align = typ.getAlign
+    # debug typ
+    # echo "evaluating: ", n, " type: ", typ, " value: ", align
+    result = newIntNode(nkIntLit, n[1].typ.getAlign)
+    result.info = n.info
+    result.typ = n.typ
   of mOffsetOf:
-    echo "evaluating mOffsetOf"
-    result = newIntNode(nkIntLit, 0)
-  of mArrGet: result = semArrGet(c, n, flags)
-  of mArrPut: result = semArrPut(c, n, flags)
+    var dotExpr: PNode
+
+    block findDotExpr:
+      if n[1].kind == nkDotExpr:
+        dotExpr = n[1]
+      elif n[1].kind == nkCheckedFieldExpr:
+        dotExpr = n[1][0]
+      else:
+        #echo "evaluating: ", n, " type1: ", type1, " type2: ", type2
+        debug n[1]
+        illFormedAst(n)
+
+    assert dotExpr != nil
+
+    let value = dotExpr[0]
+    let member = dotExpr[1]
+
+    discard value.typ.computeSize
+
+    result = newIntNode(nkIntLit, member.sym.offset)
+    result.info = n.info
+    result.typ = n.typ
+  of mArrGet:
+    result = semArrGet(c, n, flags)
+  of mArrPut:
+    result = semArrPut(c, n, flags)
   of mAsgn: result = semAsgnOpr(c, n)
   of mIsPartOf: result = semIsPartOf(c, n, flags)
   of mTypeTrait: result = semTypeTraits(c, n)
