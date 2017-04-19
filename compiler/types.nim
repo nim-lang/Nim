@@ -1246,16 +1246,35 @@ proc computeSubObjectAlign(n: PNode): BiggestInt =
 proc breakpointxyz(): void =
   echo "breakpointxyz"
 
+
+var recursion = 0
+
 proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt, debug: bool): tuple[offset, align: BiggestInt] =
   ## ``offset`` is the offset within the object, after the node has been written, no padding bytes added
   ## ``align`` maximum alignment from all sub nodes
+
+  recursion += 1
+  defer:
+    recursion -= 1
+
+  if debug:
+    let name = case n.kind
+                    of nkSym:
+                      n.sym.name.s
+                    of nkIdent:
+                      n.ident.s
+                    else:
+                      ""
+
+
+    echo repeat("  ", recursion), "-", n.kind, "- ", name, "> initial offset: ", initialOffset
 
   result.align = 1
   case n.kind
   of nkRecCase:
 
     assert(n.sons[0].kind == nkSym)
-    let (kindSize, kindAlign) = computeObjectOffsetsRecursive(n.sons[0], initialOffset, debug)
+    let (kindOffset, kindAlign) = computeObjectOffsetsRecursive(n.sons[0], initialOffset, debug)
 
     var maxChildAlign: BiggestInt = 0
 
@@ -1276,12 +1295,12 @@ proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt, debug: b
         internalError("computeObjectOffsetsRecursive(record case branch)")
 
     # the union neds to be aligned first, before the offsets can be assigned
-    let kindUnionOffset = align(initialOffset + kindSize, maxChildAlign)
+    let kindUnionOffset = align(kindOffset, maxChildAlign)
 
     var maxChildOffset: BiggestInt = 0
     for i in 1 ..< sonsLen(n):
-      let (size, align) = computeObjectOffsetsRecursive(n.sons[i].lastSon, kindUnionOffset, debug)
-      maxChildOffset = max(maxChildOffset, size)
+      let (offset, align) = computeObjectOffsetsRecursive(n.sons[i].lastSon, kindUnionOffset, debug)
+      maxChildOffset = max(maxChildOffset, offset)
 
     result.align = max(kindAlign, maxChildAlign)
     result.offset  = maxChildOffset
@@ -1320,7 +1339,7 @@ proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt, debug: b
     result.offset  = szNonConcreteType
 
   if debug:
-    echo "result.offset: ", result.offset, " result.align: ", result.align
+    echo repeat("  ", recursion), " offset: ", result.offset, " align: ", result.align
 
 # TODO this one needs an alignment map of the individual types
 
@@ -1504,7 +1523,7 @@ proc computeSizeAlign(typ: PType): void =
     let (offset, align) = computeObjectOffsetsRecursive(typ.n, headerSize, debug)
 
     if debug:
-      echo "       offset: ", offset, "        align: ", align
+      echo "objectoffest: ", offset, "        align: ", align
 
     if offset < 0:
       typ.size = offset

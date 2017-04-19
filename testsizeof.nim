@@ -204,13 +204,14 @@ proc main(): void =
   testSizeAlignOf(t,a,b,c,d,e,f,g,ro, e1, e2, e4, e8, eoa, eob)
 
   macro testOffsetOf(a,b1,b2: untyped): untyped =
-    let member = newLit(b2.repr)
+    let typeName = newLit(a.repr)
+    let member   = newLit(b2.repr)
     result = quote do:
       let
         c_offset   = c_offsetof(`a`,`b1`)
         nim_offset = offsetof(`a`,`b2`)
       if c_offset != nim_offset:
-        echo a.type.name, ".", `member`, " offset: ", c_offset, " != ", nim_offset
+        echo `typeName`, ".", `member`, " offset: ", c_offset, " != ", nim_offset
 
   template testOffsetOf(a,b: untyped): untyped =
     testOffsetOf(a,b,b)
@@ -254,6 +255,15 @@ proc main(): void =
   testOffsetOf(EnumObjectB, b)
   testOffsetOf(EnumObjectB, c)
   testOffsetOf(EnumObjectB, d)
+
+  testOffsetOf(RecursiveStuff, kind)
+  testOffsetOf(RecursiveStuff, kindU.S1.a,             a)
+  testOffsetOf(RecursiveStuff, kindU.S2.b,             b)
+  testOffsetOf(RecursiveStuff, kindU.S3.kind2,         kind2)
+  testOffsetOf(RecursiveStuff, kindU.S3.kind2U.S1.ca1, ca1)
+  testOffsetOf(RecursiveStuff, kindU.S3.kind2U.S1.ca2, ca2)
+  testOffsetOf(RecursiveStuff, kindU.S3.kind2U.S2.cb,  cb)
+  testOffsetOf(RecursiveStuff, kindU.S3.kind2U.S3.cc,  cc)
 
 
 main()
