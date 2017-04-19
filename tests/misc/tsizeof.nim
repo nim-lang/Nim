@@ -1,3 +1,6 @@
+discard """
+  output: ""
+"""
 
 # TODO test with inheritance
 # TODO test with small sized kind
