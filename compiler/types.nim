@@ -1223,7 +1223,7 @@ proc computeSubObjectAlign(n: PNode): BiggestInt =
           return align
         result = max(result, align)
       else:
-        internalError("computeObjectOffsetsRecursive(record case branch)")
+        internalError("computeSubObjectAlign")
 
   of nkRecList:
     result = 1
@@ -1242,15 +1242,16 @@ proc computeSubObjectAlign(n: PNode): BiggestInt =
   else:
     result = 1
 
-proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt): tuple[size, align: BiggestInt] =
+proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt, debug: bool): tuple[size, align: BiggestInt] =
   ## ``size`` object size without padding bytes at the end
   ## ``align`` maximum alignment from all sub nodes
 
   result.align = 1
   case n.kind
   of nkRecCase:
+
     assert(n.sons[0].kind == nkSym)
-    let (kindSize, kindAlign) = computeObjectOffsetsRecursive(n.sons[0], initialOffset)
+    let (kindSize, kindAlign) = computeObjectOffsetsRecursive(n.sons[0], initialOffset, debug)
 
     var maxChildAlign: BiggestInt = 0
 
@@ -1275,11 +1276,14 @@ proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt): tuple[s
 
     var maxChildSize: BiggestInt = 0
     for i in 1 ..< sonsLen(n):
-      let (size, align) = computeObjectOffsetsRecursive(n.sons[i].lastSon, kindUnionOffset)
+      let (size, align) = computeObjectOffsetsRecursive(n.sons[i].lastSon, kindUnionOffset, debug)
       maxChildSize = max(maxChildSize, size)
 
     result.align = max(kindAlign, maxChildAlign)
-    result.size  = align(align(kindSize, maxChildAlign) + maxChildSize, result.align)
+    result.size  = align(maxChildSize, result.align)
+
+    if debug:
+      echo "result.size: ", result.size, " result.align: ", result.align
 
   of nkRecList:
 
@@ -1288,7 +1292,7 @@ proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt): tuple[s
     var offset = initialOffset
 
     for i, child in n.sons:
-      let (size,align) = computeObjectOffsetsRecursive(child, offset)
+      let (size,align) = computeObjectOffsetsRecursive(child, offset, debug)
 
       if size < 0:
         result.size  = size
@@ -1322,9 +1326,6 @@ proc computeSizeAlign(typ: PType): void =
   if typ.size >= 0:
     # nothing to do, size already computed
     return
-
-  if typ.sym != nil and typ.sym.name.s == "RootObj":
-    debug typ.sym
 
   if typ.size == szIllegalRecursion:
     # we are already computing the size of the type
@@ -1458,8 +1459,6 @@ proc computeSizeAlign(typ: PType): void =
     var headerSize : BiggestInt
     var headerAlign: int16
 
-    var isRootObj = false
-
     if typ.sons[0] != nil:
       var st = typ.sons[0]
       #echo "skipTypes, "
@@ -1496,7 +1495,11 @@ proc computeSizeAlign(typ: PType): void =
       headerSize  = 0
       headerAlign = 1
 
-    let (size, align) = computeObjectOffsetsRecursive(typ.n, headerSize)
+    let debug = typ.sym.name.s == "PaddingBeforeBranchA"
+    let (size,align) = computeObjectOffsetsRecursive(typ.n, headerSize, debug)
+
+    if debug:
+      echo "       size: ", size, "        align: ", align
 
     if size < 0:
       typ.size = size

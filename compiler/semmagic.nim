@@ -273,8 +273,6 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       elif n[1].kind == nkCheckedFieldExpr:
         dotExpr = n[1][0]
       else:
-        #echo "evaluating: ", n, " type1: ", type1, " type2: ", type2
-        debug n[1]
         illFormedAst(n)
 
     assert dotExpr != nil

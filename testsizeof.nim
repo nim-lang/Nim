@@ -31,6 +31,18 @@ type
     ValueA
     ValueB
 
+  EnumObjectA = object
+    a : Enum1
+    b : Enum2
+    c : Enum4
+    d : Enum8
+
+  EnumObjectB = object
+    a : Enum8
+    b : Enum4
+    c : Enum2
+    d : Enum1
+
   TrivialType = object
     x,y,z: int8
 
@@ -131,17 +143,16 @@ type
 import macros, typetraits
 
 proc strAlign(arg: string): string =
-  const minLen = 20
+  const minLen = 22
   result = arg
   for i in 0 ..< minLen - arg.len:
     result &= ' '
 
 proc intAlign(arg: int): string =
   const minLen = 4
-  result = ""
-  for i in 0 ..< minLen - result.len:
-    result &= ' '
-  result &= $arg
+  result = $arg
+  while result.len < minLen:
+    result.insert(" ")
 
 macro c_offsetof(a: typed, b: untyped): int32 =
   let bliteral = newLit(repr(b))
@@ -170,6 +181,9 @@ proc main(): void =
     e2: Enum2
     e4: Enum4
     e8: Enum8
+  var
+    eoa: EnumObjectA
+    eob: EnumObjectB
 
   echo "sizes:"
 
@@ -177,21 +191,29 @@ proc main(): void =
     result = newStmtList()
     for arg in args:
       result.add quote do:
-        echo `arg`.type.name.strAlign, ": ", intAlign(sizeof(`arg`)), "\t", intAlign(alignof(`arg`)), "\t", intAlign(c_sizeof(`arg`))
+        let
+          c_size = c_sizeof(`arg`)
+          nim_size = sizeof(`arg`)
+        if nim_size != c_size:
+          echo strAlign(`arg`.type.name & ": "), " size: ",
+               intAlign(c_size),   " !=  ",
+               intAlign(nim_size), " align: ",
+               intAlign(alignof(`arg`))
 
-  testSizeAlignOf(a,b,c,d,e,f,g,ro, e1, e2, e4, e8)
+  testSizeAlignOf(a,b,c,d,e,f,g,ro, e1, e2, e4, e8, eoa, eob)
 
-  echo "alignof(a.a): ", alignof(a.a)
-
-  echo "offsets:"
+  template testOffsetOf(a,b1,b2: untyped): untyped =
+    let
+      c_offset   = c_offsetof(a,b1)
+      nim_offset = offsetof(a,b2)
+    if c_offset != nim_offset:
+      echo a.type.name, " offset: ", c_offset, " != ", nim_offset
 
   template testOffsetOf(a,b: untyped): untyped =
-    echo c_offsetof(a,b), " <--> ", offsetof(a, b)
+    testOffsetOf(a,b,b)
 
-  var h: TrivialType
   testOffsetOf(TrivialType, z)
 
-  # SimpleAlignment
   testOffsetOf(SimpleAlignment, a)
   testOffsetOf(SimpleAlignment, b)
   testOffsetOf(SimpleAlignment, c)
@@ -199,36 +221,34 @@ proc main(): void =
   testOffsetOf(AlignAtEnd, b)
   testOffsetOf(AlignAtEnd, c)
 
-  echo "SimpleBranch"
+  testOffsetOf(SimpleBranch, kindU, a)
+  testOffsetOf(SimpleBranch, kindU, b)
+  testOffsetOf(SimpleBranch, kindU, c)
 
-  echo c_offsetof(SimpleBranch, kindU), " <--> ", offsetof(SimpleBranch, a)
-  echo c_offsetof(SimpleBranch, kindU), " <--> ", offsetof(SimpleBranch, b)
-  echo c_offsetof(SimpleBranch, kindU), " <--> ", offsetof(SimpleBranch, c)
+  testOffsetOf(PaddingBeforeBranchA, cause)
+  testOffsetOf(PaddingBeforeBranchA, kindU, a)
+  testOffsetOf(PaddingBeforeBranchB, cause)
+  testOffsetOf(PaddingBeforeBranchB, kindU, a)
 
-  echo "PaddingBeforeBranch"
+  testOffsetOf(PaddingAfterBranch, kindU, a)
+  testOffsetOf(PaddingAfterBranch, cause)
 
-  echo c_offsetof(PaddingBeforeBranchA, cause), " <--> ", offsetof(PaddingBeforeBranchA, cause)
-  echo c_offsetof(PaddingBeforeBranchA, kindU), " <--> ", offsetof(PaddingBeforeBranchA, a)
-  echo c_offsetof(PaddingBeforeBranchB, cause), " <--> ", offsetof(PaddingBeforeBranchB, cause)
-  echo c_offsetof(PaddingBeforeBranchB, kindU), " <--> ", offsetof(PaddingBeforeBranchB, a)
+  testOffsetOf(Foobar, c)
 
-  echo "PaddingAfterBranch"
+  testOffsetOf(Bazing, a)
 
-  echo c_offsetof(PaddingAfterBranch, kindU), " <--> ", offsetof(PaddingAfterBranch, a)
-  echo c_offsetof(PaddingAfterBranch, cause), " <--> ", offsetof(PaddingAfterBranch, cause)
+  testOffsetOf(InheritanceA, a)
+  testOffsetOf(InheritanceB, b)
+  testOffsetOf(InheritanceC, c)
 
-  echo "Foobar"
+  testOffsetOf(EnumObjectA, a)
+  testOffsetOf(EnumObjectA, b)
+  testOffsetOf(EnumObjectA, c)
+  testOffsetOf(EnumObjectA, d)
+  testOffsetOf(EnumObjectB, a)
+  testOffsetOf(EnumObjectB, b)
+  testOffsetOf(EnumObjectB, c)
+  testOffsetOf(EnumObjectB, d)
 
-  echo c_offsetof(Foobar, c), " <--> ", offsetof(Foobar, c)
-
-  echo "Bazing"
-
-  echo c_offsetof(Bazing, a), " <--> ", offsetof(Bazing, a)
-
-  echo "Inheritance"
-
-  echo c_offsetof(InheritanceA, a), " <--> ", offsetof(InheritanceC, a)
-  echo c_offsetof(InheritanceB, b), " <--> ", offsetof(InheritanceC, b)
-  echo c_offsetof(InheritanceC, c), " <--> ", offsetof(InheritanceC, c)
 
 main()
