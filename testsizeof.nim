@@ -168,6 +168,7 @@ macro c_sizeof(a: typed): int32 =
     res
 
 proc main(): void =
+  var t : TrivialType
   var a : SimpleAlignment
   var b : AlignAtEnd
   var c : SimpleBranch
@@ -200,18 +201,22 @@ proc main(): void =
                intAlign(nim_size), " align: ",
                intAlign(alignof(`arg`))
 
-  testSizeAlignOf(a,b,c,d,e,f,g,ro, e1, e2, e4, e8, eoa, eob)
+  testSizeAlignOf(t,a,b,c,d,e,f,g,ro, e1, e2, e4, e8, eoa, eob)
 
-  template testOffsetOf(a,b1,b2: untyped): untyped =
-    let
-      c_offset   = c_offsetof(a,b1)
-      nim_offset = offsetof(a,b2)
-    if c_offset != nim_offset:
-      echo a.type.name, " offset: ", c_offset, " != ", nim_offset
+  macro testOffsetOf(a,b1,b2: untyped): untyped =
+    let member = newLit(b2.repr)
+    result = quote do:
+      let
+        c_offset   = c_offsetof(`a`,`b1`)
+        nim_offset = offsetof(`a`,`b2`)
+      if c_offset != nim_offset:
+        echo a.type.name, ".", `member`, " offset: ", c_offset, " != ", nim_offset
 
   template testOffsetOf(a,b: untyped): untyped =
     testOffsetOf(a,b,b)
 
+  testOffsetOf(TrivialType, x)
+  testOffsetOf(TrivialType, y)
   testOffsetOf(TrivialType, z)
 
   testOffsetOf(SimpleAlignment, a)

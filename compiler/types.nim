@@ -1242,8 +1242,12 @@ proc computeSubObjectAlign(n: PNode): BiggestInt =
   else:
     result = 1
 
-proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt, debug: bool): tuple[size, align: BiggestInt] =
-  ## ``size`` object size without padding bytes at the end
+
+proc breakpointxyz(): void =
+  echo "breakpointxyz"
+
+proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt, debug: bool): tuple[offset, align: BiggestInt] =
+  ## ``offset`` is the offset within the object, after the node has been written, no padding bytes added
   ## ``align`` maximum alignment from all sub nodes
 
   result.align = 1
@@ -1263,7 +1267,7 @@ proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt, debug: b
         let align = computeSubObjectAlign(n.sons[i].lastSon)
 
         if align < 0:
-          result.size  = align
+          result.offset  = align
           result.align = align
           return
 
@@ -1274,16 +1278,13 @@ proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt, debug: b
     # the union neds to be aligned first, before the offsets can be assigned
     let kindUnionOffset = align(initialOffset + kindSize, maxChildAlign)
 
-    var maxChildSize: BiggestInt = 0
+    var maxChildOffset: BiggestInt = 0
     for i in 1 ..< sonsLen(n):
       let (size, align) = computeObjectOffsetsRecursive(n.sons[i].lastSon, kindUnionOffset, debug)
-      maxChildSize = max(maxChildSize, size)
+      maxChildOffset = max(maxChildOffset, size)
 
     result.align = max(kindAlign, maxChildAlign)
-    result.size  = align(maxChildSize, result.align)
-
-    if debug:
-      echo "result.size: ", result.size, " result.align: ", result.align
+    result.offset  = maxChildOffset
 
   of nkRecList:
 
@@ -1292,31 +1293,34 @@ proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt, debug: b
     var offset = initialOffset
 
     for i, child in n.sons:
-      let (size,align) = computeObjectOffsetsRecursive(child, offset, debug)
+      let (new_offset, align) = computeObjectOffsetsRecursive(child, offset, debug)
 
-      if size < 0:
-        result.size  = size
+      if new_offset < 0:
+        result.offset  = new_offset
         result.align = align
         return
 
-      offset = align(offset, align) + size
+      offset = new_offset
 
       result.align = max(result.align, align)
 
     # final alignment
-    result.size  = align(offset, result.align)
+    result.offset  = align(offset, result.align)
 
   of nkSym:
     n.sym.typ.computeSizeAlign
-    result.size  = n.sym.typ.size
-    result.align = n.sym.typ.align
-    let offset = align(initialOffset, result.align).int
-    n.sym.offset = offset
-    #echo "offsetof(", n.sym.name.s, "): initialOffset: ", initialOffset, " size: ", result.size, " align: ", result.align
+    let size  = n.sym.typ.size
+    let align = n.sym.typ.align
+    result.align  = align
+    n.sym.offset = align(initialOffset, align).int
+    result.offset = n.sym.offset + n.sym.typ.size
 
   else:
     result.align = 1
-    result.size  = szNonConcreteType
+    result.offset  = szNonConcreteType
+
+  if debug:
+    echo "result.offset: ", result.offset, " result.align: ", result.align
 
 # TODO this one needs an alignment map of the individual types
 
@@ -1495,22 +1499,22 @@ proc computeSizeAlign(typ: PType): void =
       headerSize  = 0
       headerAlign = 1
 
-    let debug = typ.sym.name.s == "PaddingBeforeBranchA"
-    let (size,align) = computeObjectOffsetsRecursive(typ.n, headerSize, debug)
+    let debug = typ.sym.name.s == "RecursiveStuff"
+
+    let (offset, align) = computeObjectOffsetsRecursive(typ.n, headerSize, debug)
 
     if debug:
-      echo "       size: ", size, "        align: ", align
+      echo "       offset: ", offset, "        align: ", align
 
-    if size < 0:
-      typ.size = size
+    if offset < 0:
+      typ.size = offset
       typ.align = int16(align)
       return
 
-    maxAlign = max(align, headerAlign)
     # header size is already in size from computeObjectOffsetsRecursive
     # maxAlign is probably not changed at all from headerAlign
-    typ.size  = align(size, maxAlign)
-    typ.align = int16(maxAlign)
+    typ.align = int16(max(align, headerAlign))
+    typ.size  = align(offset, typ.align)
 
   of tyInferred:
     if typ.len > 1:
