@@ -785,7 +785,7 @@ proc sort*[A, B](t: OrderedTableRef[A, B],
   t[].sort(cmp)
 
 proc del*[A, B](t: var OrderedTable[A, B], key: A) =
-  ## deletes `key` from ordered hash table `t`. O(n) comlexity.
+  ## deletes `key` from ordered hash table `t`. O(n) complexity.
   var n: OrderedKeyValuePairSeq[A, B]
   newSeq(n, len(t.data))
   var h = t.first
@@ -804,7 +804,7 @@ proc del*[A, B](t: var OrderedTable[A, B], key: A) =
     h = nxt
 
 proc del*[A, B](t: var OrderedTableRef[A, B], key: A) =
-  ## deletes `key` from ordered hash table `t`. O(n) comlexity.
+  ## deletes `key` from ordered hash table `t`. O(n) complexity.
   t[].del(key)
 
 # ------------------------------ count tables -------------------------------
