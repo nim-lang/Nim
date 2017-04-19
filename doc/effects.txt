@@ -7,7 +7,7 @@ explicit like in Haskell?
 
 
 The idea is that side effects and partial evaluation belong together:
-Iff a proc is side effect free and all its argument are evaluable at
+If a proc is side effect free and all its argument are evaluable at
 compile time, it can be evaluated by the compiler. However, really
 difficult is the ``newString`` proc: If it is simply wrapped, it
 should not be evaluated at compile time! On other occasions it can
