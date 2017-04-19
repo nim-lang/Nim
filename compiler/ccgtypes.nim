@@ -282,7 +282,7 @@ proc ccgIntroducedPtr(s: PSym): bool =
 
 proc fillResult(param: PSym) =
   fillLoc(param.loc, locParam, param.typ, ~"Result",
-          OnStack)
+          stackPlacement(param.typ))
   if mapReturnType(param.typ) != ctArray and isInvalidReturnType(param.typ):
     incl(param.loc.flags, lfIndirect)
     param.loc.s = OnUnknown
@@ -376,9 +376,9 @@ proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet): Rope =
     result = getTypeDescAux(m, t, check)
 
 proc paramStorageLoc(param: PSym): TStorageLoc =
-  if param.typ.skipTypes({tyVar, tyTypeDesc}).kind notin {
-          tyArray, tyOpenArray, tyVarargs}:
-    result = OnStack
+  let t = param.typ.skipTypes({tyVar, tyTypeDesc})
+  if t.kind notin {tyArray, tyOpenArray, tyVarargs}:
+    result = stackPlacement(t)
   else:
     result = OnUnknown
 

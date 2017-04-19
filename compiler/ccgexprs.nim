@@ -132,32 +132,12 @@ proc genSetNode(p: BProc, n: PNode): Rope =
   else:
     result = genRawSetData(cs, size)
 
-proc getStorageLoc(n: PNode): TStorageLoc =
-  case n.kind
-  of nkSym:
-    case n.sym.kind
-    of skParam, skTemp:
-      result = OnStack
-    of skVar, skForVar, skResult, skLet:
-      if sfGlobal in n.sym.flags: result = OnHeap
-      else: result = OnStack
-    of skConst:
-      if sfGlobal in n.sym.flags: result = OnHeap
-      else: result = OnUnknown
-    else: result = OnUnknown
-  of nkDerefExpr, nkHiddenDeref:
-    case n.sons[0].typ.kind
-    of tyVar: result = OnUnknown
-    of tyPtr: result = OnStack
-    of tyRef: result = OnHeap
-    else: internalError(n.info, "getStorageLoc")
-  of nkBracketExpr, nkDotExpr, nkObjDownConv, nkObjUpConv:
-    result = getStorageLoc(n.sons[0])
-  else: result = OnUnknown
-
 proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   if dest.s == OnStack or not usesNativeGC():
     linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
+  elif dest.s == OnStackShadowDup:
+    linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
+    linefmt(p, cpsStmts, "$1 = $2;$n", dupLoc(dest), rdLoc(src))
   elif dest.s == OnHeap:
     # location is on heap
     # now the writer barrier is inlined for performance:
@@ -184,6 +164,8 @@ proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   else:
     linefmt(p, cpsStmts, "#unsureAsgnRef((void**) $1, $2);$n",
             addrLoc(dest), rdLoc(src))
+    if preciseStack():
+      linefmt(p, cpsStmts, "$1 = $2;$n", dupLoc(dest), rdLoc(src))
 
 proc asgnComplexity(n: PNode): int =
   if n != nil:
@@ -241,7 +223,7 @@ proc genOptAsgnObject(p: BProc, dest, src: TLoc, flags: TAssignmentFlags,
 
 proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   # Consider:
-  # type TMyFastString {.shallow.} = string
+  # type MyFastString {.shallow.} = string
   # Due to the implementation of pragmas this would end up to set the
   # tfShallow flag for the built-in string type too! So we check only
   # here for this flag, where it is reasonably safe to do so
@@ -259,6 +241,9 @@ proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   else:
     linefmt(p, cpsStmts, "#genericAssign((void*)$1, (void*)$2, $3);$n",
             addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t))
+  if dest.s == OnStackShadowDup:
+    linefmt(p, cpsStmts, "#genericAssignDup((void*)&$1, (void*)$2, $3);$n",
+            dupLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t))
 
 proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   # This function replaces all other methods for generating
@@ -277,12 +262,17 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     else:
       linefmt(p, cpsStmts, "#genericSeqAssign($1, $2, $3);$n",
               addrLoc(dest), rdLoc(src), genTypeInfo(p.module, dest.t))
+      if dest.s == OnStackShadowDup:
+        linefmt(p, cpsStmts, "$1 = $2;$n", dest.dupLoc, dest.rdLoc)
   of tyString:
     if needToCopy notin flags and src.s != OnStatic:
       genRefAssign(p, dest, src, flags)
     else:
       if dest.s == OnStack or not usesNativeGC():
         linefmt(p, cpsStmts, "$1 = #copyString($2);$n", dest.rdLoc, src.rdLoc)
+      elif dest.s == OnStackShadowDup:
+        linefmt(p, cpsStmts, "$1 = #copyString($2);$n", dest.rdLoc, src.rdLoc)
+        linefmt(p, cpsStmts, "$1 = $2;$n", dest.dupLoc, dest.rdLoc)
       elif dest.s == OnHeap:
         # we use a temporary to care for the dreaded self assignment:
         var tmp: TLoc
@@ -293,6 +283,8 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
       else:
         linefmt(p, cpsStmts, "#unsureAsgnRef((void**) $1, #copyString($2));$n",
                addrLoc(dest), rdLoc(src))
+        if preciseStack():
+          linefmt(p, cpsStmts, "$1 = $2;$n", dest.dupLoc, dest.rdLoc)
   of tyProc:
     if needsComplexAssignment(dest.t):
       # optimize closure assignment:
@@ -1170,6 +1162,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   var t = e.typ.skipTypes(abstractInst)
   getTemp(p, t, tmp)
   let isRef = t.kind == tyRef
+  let stck = stackPlacement(t)
   var r = rdLoc(tmp)
   if isRef:
     rawGenNew(p, tmp, nil)
@@ -1193,7 +1186,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     add(tmp2.r, field.loc.r)
     tmp2.k = locTemp
     tmp2.t = field.loc.t
-    tmp2.s = if isRef: OnHeap else: OnStack
+    tmp2.s = if isRef: OnHeap else: stck
     expr(p, it.sons[1], tmp2)
 
   if d.k == locNone:

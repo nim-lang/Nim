@@ -739,6 +739,8 @@ type
     OnUnknown,                # location is unknown (stack, heap or static)
     OnStatic,                 # in a static section
     OnStack,                  # location is on hardware stack
+    OnStackShadowDup,         # location is on the stack but also replicated
+                              # on the shadow stack
     OnHeap                    # location is on heap or global
                               # (reference counting needed)
   TLocFlags* = set[TLocFlag]
@@ -748,6 +750,7 @@ type
     flags*: TLocFlags         # location's flags
     t*: PType                 # type of location
     r*: Rope                  # rope value of location (code generators)
+    dup*: Rope                # duplicated location for precise stack scans
 
   # ---------------- end of backend information ------------------------------
 

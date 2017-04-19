@@ -244,6 +244,10 @@ proc addrLoc(a: TLoc): Rope =
   if lfIndirect notin a.flags and mapType(a.t) != ctArray:
     result = "(&" & result & ")"
 
+proc dupLoc(a: TLoc): Rope =
+  result = a.dup
+  assert result != nil
+
 proc rdCharLoc(a: TLoc): Rope =
   # read a location that may need a char-cast:
   result = rdLoc(a)
@@ -288,12 +292,13 @@ proc resetLoc(p: BProc, loc: var TLoc) =
   if not isComplexValueType(typ):
     if containsGcRef:
       var nilLoc: TLoc
-      initLoc(nilLoc, locTemp, loc.t, OnStack)
+      initLoc(nilLoc, locTemp, loc.t, stackPlacement(typ))
       nilLoc.r = rope("NIM_NIL")
       genRefAssign(p, loc, nilLoc, {afSrcIsNil})
     else:
       linefmt(p, cpsStmts, "$1 = 0;$n", rdLoc(loc))
   else:
+    XXX use stackPlacement here?
     if optNilCheck in p.options:
       linefmt(p, cpsStmts, "#chckNil((void*)$1);$n", addrLoc(loc))
     if loc.s != OnStack:
@@ -343,17 +348,21 @@ proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
   linefmt(p, cpsLocals, "$1 $2;$n", getTypeDesc(p.module, t), result.r)
   result.k = locTemp
   result.t = t
-  result.s = OnStack
+  result.s = stackPlacement(t)
   result.flags = {}
   constructLoc(p, result, not needsInit)
 
 proc initGCFrame(p: BProc): Rope =
-  if p.gcFrameId > 0: result = "struct {$1} GCFRAME_;$n" % [p.gcFrameType]
+  if p.gcFrameLen > 0:
+    result = ropegc(p.module, """
+    struct {#GcFrameBase b_; $1} GCF_;$n
+    GCF_.b_.L=$2;$n
+    #pushGcFrame((GcFrameBase*)&GCF_);$n""" % [
+    p.gcFrameType, rope(p.gcFrameLen)])
 
 proc deinitGCFrame(p: BProc): Rope =
-  if p.gcFrameId > 0:
-    result = ropecg(p.module,
-                    "if (((NU)&GCFRAME_) < 4096) #nimGCFrame(&GCFRAME_);$n")
+  if p.gcFrameLen > 0:
+    result = ropecg(p.module, "#popGcFrame();$n")
 
 proc localDebugInfo(p: BProc, s: PSym) =
   if {optStackTrace, optEndb} * p.options != {optStackTrace, optEndb}: return
@@ -370,7 +379,7 @@ proc localDebugInfo(p: BProc, s: PSym) =
 
 proc localVarDecl(p: BProc; s: PSym): Rope =
   if s.loc.k == locNone:
-    fillLoc(s.loc, locLocalVar, s.typ, mangleLocalName(p, s), OnStack)
+    fillLoc(s.loc, locLocalVar, s.typ, mangleLocalName(p, s), stackPlacement(s.typ))
     if s.kind == skLet: incl(s.loc.flags, lfNoDeepCopy)
   result = getTypeDesc(p.module, s.typ)
   if s.constraint.isNil:
