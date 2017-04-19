@@ -79,7 +79,7 @@ proc getOrdValue*(n: PNode): BiggestInt
 proc computeSize*(typ: PType): BiggestInt
 proc isPureObject*(typ: PType): bool
 proc invalidGenericInst*(f: PType): bool
-  # for debugging
+
 type
   TTypeFieldResult* = enum
     frNone,                   # type has no object type field
@@ -1083,7 +1083,6 @@ proc typeAllowedNode(marker: var IntSet, n: PNode, kind: TSymKind,
                      flags: TTypeAllowedFlags = {}): PType =
   if n != nil:
     result = typeAllowedAux(marker, n.typ, kind, flags)
-    #if not result: debug(n.typ)
     if result == nil:
       case n.kind
       of nkNone..nkNilLit:
@@ -1247,34 +1246,16 @@ proc breakpointxyz(): void =
   echo "breakpointxyz"
 
 
-var recursion = 0
-
-proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt, debug: bool): tuple[offset, align: BiggestInt] =
+proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt): tuple[offset, align: BiggestInt] =
   ## ``offset`` is the offset within the object, after the node has been written, no padding bytes added
   ## ``align`` maximum alignment from all sub nodes
-
-  recursion += 1
-  defer:
-    recursion -= 1
-
-  if debug:
-    let name = case n.kind
-                    of nkSym:
-                      n.sym.name.s
-                    of nkIdent:
-                      n.ident.s
-                    else:
-                      ""
-
-
-    echo repeat("  ", recursion), "-", n.kind, "- ", name, "> initial offset: ", initialOffset
 
   result.align = 1
   case n.kind
   of nkRecCase:
 
     assert(n.sons[0].kind == nkSym)
-    let (kindOffset, kindAlign) = computeObjectOffsetsRecursive(n.sons[0], initialOffset, debug)
+    let (kindOffset, kindAlign) = computeObjectOffsetsRecursive(n.sons[0], initialOffset)
 
     var maxChildAlign: BiggestInt = 0
 
@@ -1299,7 +1280,7 @@ proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt, debug: b
 
     var maxChildOffset: BiggestInt = 0
     for i in 1 ..< sonsLen(n):
-      let (offset, align) = computeObjectOffsetsRecursive(n.sons[i].lastSon, kindUnionOffset, debug)
+      let (offset, align) = computeObjectOffsetsRecursive(n.sons[i].lastSon, kindUnionOffset)
       maxChildOffset = max(maxChildOffset, offset)
 
     result.align = max(kindAlign, maxChildAlign)
@@ -1312,7 +1293,7 @@ proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt, debug: b
     var offset = initialOffset
 
     for i, child in n.sons:
-      let (new_offset, align) = computeObjectOffsetsRecursive(child, offset, debug)
+      let (new_offset, align) = computeObjectOffsetsRecursive(child, offset)
 
       if new_offset < 0:
         result.offset  = new_offset
@@ -1337,9 +1318,6 @@ proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt, debug: b
   else:
     result.align = 1
     result.offset  = szNonConcreteType
-
-  if debug:
-    echo repeat("  ", recursion), " offset: ", result.offset, " align: ", result.align
 
 # TODO this one needs an alignment map of the individual types
 
@@ -1484,22 +1462,11 @@ proc computeSizeAlign(typ: PType): void =
 
     if typ.sons[0] != nil:
       var st = typ.sons[0]
-      #echo "skipTypes, "
-      #debug typ
-      #echo typ.sons.len
 
       while st.kind in skipPtrs:
         st = st.sons[^1]
 
-
-      #debug st
-      #echo st.sons.len
-
       st.computeSizeAlign
-
-
-      #echo st.size
-      #echo st.align
 
       if st.size < 0:
         typ.size = st.size
@@ -1518,12 +1485,7 @@ proc computeSizeAlign(typ: PType): void =
       headerSize  = 0
       headerAlign = 1
 
-    let debug = typ.sym.name.s == "RecursiveStuff"
-
-    let (offset, align) = computeObjectOffsetsRecursive(typ.n, headerSize, debug)
-
-    if debug:
-      echo "objectoffest: ", offset, "        align: ", align
+    let (offset, align) = computeObjectOffsetsRecursive(typ.n, headerSize)
 
     if offset < 0:
       typ.size = offset

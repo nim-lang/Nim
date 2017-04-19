@@ -167,6 +167,7 @@ macro c_sizeof(a: typed): int32 =
     {.emit: [res, " = sizeof(", `a`, ");"] .}
     res
 
+
 proc main(): void =
   var t : TrivialType
   var a : SimpleAlignment
@@ -185,8 +186,6 @@ proc main(): void =
   var
     eoa: EnumObjectA
     eob: EnumObjectB
-
-  echo "sizes:"
 
   macro testSizeAlignOf(args: varargs[untyped]): untyped =
     result = newStmtList()
