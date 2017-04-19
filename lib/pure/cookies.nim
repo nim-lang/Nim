@@ -39,7 +39,7 @@ proc setCookie*(key, value: string, domain = "", path = "",
   if domain != "": result.add("; Domain=" & domain)
   if path != "": result.add("; Path=" & path)
   if expires != "": result.add("; Expires=" & expires)
-  if secure: result.add("; secure")
+  if secure: result.add("; Secure")
   if httpOnly: result.add("; HttpOnly")
 
 proc setCookie*(key, value: string, expires: TimeInfo,
@@ -50,7 +50,7 @@ proc setCookie*(key, value: string, expires: TimeInfo,
   ##
   ## **Note:** UTC is assumed as the timezone for ``expires``.
   return setCookie(key, value, domain, path,
-                   format(expires, "ddd',' dd MMM yyyy HH:mm:ss 'UTC'"),
+                   format(expires, "ddd',' dd MMM yyyy HH:mm:ss 'GMT'"),
                    noname, secure, httpOnly)
 
 when isMainModule:
