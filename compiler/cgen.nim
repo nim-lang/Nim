@@ -298,7 +298,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
     else:
       linefmt(p, cpsStmts, "$1 = 0;$n", rdLoc(loc))
   else:
-    XXX use stackPlacement here?
+    # XXX use stackPlacement here?
     if optNilCheck in p.options:
       linefmt(p, cpsStmts, "#chckNil((void*)$1);$n", addrLoc(loc))
     if loc.s != OnStack:

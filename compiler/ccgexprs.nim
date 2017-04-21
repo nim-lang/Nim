@@ -730,6 +730,9 @@ proc genTupleElem(p: BProc, e: PNode, d: var TLoc) =
   else: internalError(e.info, "genTupleElem")
   addf(r, ".Field$1", [rope(i)])
   putIntoDest(p, d, tupType.sons[i], r, a.s)
+  if a.s == OnStackShadowDup:
+    d.s = OnStackShadowDup
+    d.dup = ropef("$1[$2]", a.dup, ithRefInTuple(tupType, i))
 
 proc lookupFieldAgain(p: BProc, ty: PType; field: PSym; r: var Rope): PSym =
   var ty = ty
@@ -754,12 +757,18 @@ proc genRecordField(p: BProc, e: PNode, d: var TLoc) =
     # so we use Field$i
     addf(r, ".Field$1", [rope(f.position)])
     putIntoDest(p, d, f.typ, r, a.s)
+    if a.s == OnStackShadowDup:
+      d.s = OnStackShadowDup
+      d.dup = ropef("$1[$2]", a.dup, ithRefInTuple(ty, f.position))
   else:
     let field = lookupFieldAgain(p, ty, f, r)
     if field.loc.r == nil: fillObjectFields(p.module, ty)
     if field.loc.r == nil: internalError(e.info, "genRecordField 3 " & typeToString(ty))
     addf(r, ".$1", [field.loc.r])
     putIntoDest(p, d, field.typ, r, a.s)
+    if a.s == OnStackShadowDup and field.loc.dup != nil:
+      d.s = OnStackShadowDup
+      d.dup = ropef("$1.$2", a.dup, field.loc.dup)
   #d.s = a.s
 
 proc genInExprAux(p: BProc, e: PNode, a, b, d: var TLoc)
@@ -811,6 +820,9 @@ proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
     genFieldCheck(p, e, r, field, ty)
     add(r, rfmt(nil, ".$1", field.loc.r))
     putIntoDest(p, d, field.typ, r, a.s)
+    if a.s == OnStackShadowDup and field.loc.dup != nil:
+      d.s = OnStackShadowDup
+      d.dup = ropef("$1.$2", a.dup, field.loc.dup)
   else:
     genRecordField(p, e.sons[0], d)
 
@@ -838,6 +850,9 @@ proc genArrayElem(p: BProc, x, y: PNode, d: var TLoc) =
   d.inheritLocation(a)
   putIntoDest(p, d, elemType(skipTypes(ty, abstractVar)),
               rfmt(nil, "$1[($2)- $3]", rdLoc(a), rdCharLoc(b), first), a.s)
+  if a.s == OnStackShadowDup:
+    d.s = OnStackShadowDup
+    d.dup = ropef("$1[($2)- $3]", a.dup, rdCharLoc(b), first)
 
 proc genCStringElem(p: BProc, x, y: PNode, d: var TLoc) =
   var a, b: TLoc
@@ -858,6 +873,9 @@ proc genOpenArrayElem(p: BProc, x, y: PNode, d: var TLoc) =
   if d.k == locNone: d.s = a.s
   putIntoDest(p, d, elemType(skipTypes(a.t, abstractVar)),
               rfmt(nil, "$1[$2]", rdLoc(a), rdCharLoc(b)), a.s)
+  if a.s == OnStackShadowDup:
+    d.s = OnStackShadowDup
+    d.dup = ropef("$1[$2]", a.dup, rdCharLoc(b))
 
 proc genSeqElem(p: BProc, x, y: PNode, d: var TLoc) =
   var a, b: TLoc
