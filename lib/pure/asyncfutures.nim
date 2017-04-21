@@ -1,5 +1,5 @@
+import deques, strutils
 
-# TODO: This shouldn't need to be included, but should ideally be exported.
 type
   FutureBase* = ref object of RootObj ## Untyped future.
     cb: proc () {.closure,gcsafe.}
@@ -30,7 +30,7 @@ type
 when not defined(release):
   var currentID = 0
 
-proc callSoon*(cbproc: proc ()) {.gcsafe.}
+var callSoon* {.threadvar.}: proc (cbproc: proc ()) {.gcsafe.}
 
 template setupFutureBase(fromProc: string) =
   new(result)

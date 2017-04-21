@@ -130,7 +130,8 @@ export Port, SocketFlag
 
 # TODO: Check if yielded future is nil and throw a more meaningful exception
 
-include "../includes/asyncfutures"
+import asyncfutures
+export asyncfutures
 
 type
   PDispatcherBase = ref object of RootRef
@@ -1718,7 +1719,7 @@ proc recvLine*(socket: AsyncFD): Future[string] {.async.} =
       return
     add(result, c)
 
-proc callSoon*(cbproc: proc ()) =
+asyncfutures.callSoon = proc (cbproc: proc ()) =
   ## Schedule `cbproc` to be called as soon as possible.
   ## The callback is called when control returns to the event loop.
   getGlobalDispatcher().callbacks.addLast(cbproc)
