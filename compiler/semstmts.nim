@@ -126,7 +126,8 @@ proc semExprBranchScope(c: PContext, n: PNode): PNode =
 const
   skipForDiscardable = {nkIfStmt, nkIfExpr, nkCaseStmt, nkOfBranch,
     nkElse, nkStmtListExpr, nkTryStmt, nkFinally, nkExceptBranch,
-    nkElifBranch, nkElifExpr, nkElseExpr, nkBlockStmt, nkBlockExpr}
+    nkElifBranch, nkElifExpr, nkElseExpr, nkBlockStmt, nkBlockExpr,
+    nkHiddenStdConv, nkCast}
 
 proc implicitlyDiscardable(n: PNode): bool =
   var n = n

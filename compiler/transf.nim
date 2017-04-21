@@ -395,6 +395,9 @@ proc generateThunk(prc: PNode, dest: PType): PNode =
   result.add(newNodeIT(nkNilLit, prc.info, getSysType(tyNil)))
 
 proc transformConv(c: PTransf, n: PNode): PTransNode =
+  # the value of the cast is being discarded
+  if n.typ == nil:
+    return transform(c, n.sons[1])
   # numeric types need range checks:
   var dest = skipTypes(n.typ, abstractVarRange)
   var source = skipTypes(n.sons[1].typ, abstractVarRange)
@@ -848,6 +851,12 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     result = transformAddrDeref(c, n, nkAddr, nkHiddenAddr)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     result = transformConv(c, n)
+  of nkCast:
+    # drop the cast if the whole expression has been discarded
+    if n.typ == nil:
+      result = transform(c, n.sons[1])
+    else:
+      result = transformSons(c, n)
   of nkDiscardStmt:
     result = PTransNode(n)
     if n.sons[0].kind != nkEmpty:
