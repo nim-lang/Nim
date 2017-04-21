@@ -9,7 +9,10 @@ proc foo {.async.} =
   discard
 
 # With additional pragmas:
-proc bar {.async, inline.}
+proc bar {.async, cdecl.}
 
 proc bar {.async.} =
   discard
+
+proc verifyCdeclPresent(p: proc : Future[void] {.cdecl.}) = discard
+verifyCdeclPresent(bar)
