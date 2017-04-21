@@ -395,6 +395,9 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
 
   result = prc
 
+  # If prc is proc declaration after forward declaration and pragma node kind is
+  # nnkPragma, Nim will complain that pragmas are not allowed even if the node
+  # has no children. We're replacing empty nnkPragma node with nnkEmpty here.
   if result.pragma.len == 0:
     result.pragma = newEmptyNode()
 
