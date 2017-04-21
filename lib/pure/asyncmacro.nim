@@ -395,6 +395,9 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
 
   result = prc
 
+  if result.pragma.len == 0:
+    result.pragma = newEmptyNode()
+
   if subtypeIsVoid:
     # Add discardable pragma.
     if returnType.kind == nnkEmpty:
