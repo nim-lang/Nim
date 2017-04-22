@@ -663,6 +663,12 @@ embed parameters from an external command at compile time:
 .. code-block:: Nim
   {.passC: gorge("pkg-config --cflags sdl").}
 
+Additionally, files that are included as part of flags or other arguments 
+passed to this pragma are not tracked for changes by the nim compiler. To
+declare an external file dependency, use the ``staticRead`` method or the 
+``-f`` command line option to force recompilation.
+
+
 PassL pragma
 ------------
 The ``passL`` pragma can be used to pass additional parameters to the linker
@@ -676,6 +682,11 @@ embed parameters from an external command at compile time:
 
 .. code-block:: Nim
   {.passL: gorge("pkg-config --libs sdl").}
+
+Additionally, files that are included as part of flags or other arguments 
+passed to this pragma are not tracked for changes by the nim compiler. To
+declare an external file dependency, use the ``staticRead`` method or the 
+``-f`` command line option to force recompilation.
 
 
 Emit pragma
