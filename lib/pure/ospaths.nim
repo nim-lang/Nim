@@ -517,6 +517,7 @@ when declared(getEnv) or defined(nimscript):
     tags: [ReadEnvEffect, ReadIOEffect].} =
     ## Returns the config directory of the current user for applications.
     when defined(windows): return string(getEnv("APPDATA")) & "\\"
+    elif getEnv("XDG_CONFIG_DIR"): return string(getEnv("XDG_CONFIG_DIR")) & "/"
     else: return string(getEnv("HOME")) & "/.config/"
 
   proc getTempDir*(): string {.rtl, extern: "nos$1",
