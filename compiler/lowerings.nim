@@ -74,7 +74,7 @@ proc lowerTupleUnpackingForAsgn*(n: PNode; owner: PSym): PNode =
   let value = n.lastSon
   result = newNodeI(nkStmtList, n.info)
 
-  var temp = newSym(skTemp, getIdent(genPrefix), owner, value.info)
+  var temp = newSym(skLet, getIdent(genPrefix), owner, value.info)
   var v = newNodeI(nkLetSection, value.info)
   let tempAsNode = newSymNode(temp) #newIdentNode(getIdent(genPrefix & $temp.id), value.info)
 
