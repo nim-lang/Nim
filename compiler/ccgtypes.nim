@@ -22,8 +22,8 @@ proc isKeyword(w: PIdent): bool =
      ord(wInline): return true
   else: return false
 
-proc mangleField(m: BModule; name: PIdent): string =
-  result = mangle(name.s)
+proc mangleField(m: BModule; name: PIdent, postfix: string = nil): string =
+  result = if postfix.isNil: mangle(name.s) else: mangle(name.s & postfix)
   # fields are tricky to get right and thanks to generic types producing
   # duplicates we can end up mangling the same field multiple times. However
   # if we do so, the 'cppDefines' table might be modified in the meantime
@@ -443,7 +443,10 @@ proc mangleRecFieldName(m: BModule; field: PSym, rectype: PType): Rope =
       ({sfImportc, sfExportc} * rectype.sym.flags != {}):
     result = field.loc.r
   else:
-    result = rope(mangleField(m, field.name))
+    if contains(field.flags, sfAnon):
+      result = rope(mangleField(m, field.name, "_" & $field.id))
+    else:
+      result = rope(mangleField(m, field.name))
   if result == nil: internalError(field.info, "mangleRecFieldName")
 
 proc genRecordFieldsAux(m: BModule, n: PNode,
