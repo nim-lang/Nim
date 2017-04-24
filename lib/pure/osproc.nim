@@ -209,9 +209,16 @@ proc waitForExit*(p: Process, timeout: int = -1): int {.rtl,
   ##
   ## **Warning**: Be careful when using waitForExit for processes created without
   ## poParentStreams because they may fill output buffers, causing deadlock.
+  ##
+  ## On posix, if the process has exited because of a signal, 128 + signal
+  ## number will be returned.
+
 
 proc peekExitCode*(p: Process): int {.tags: [].}
   ## return -1 if the process is still running. Otherwise the process' exit code
+  ##
+  ## On posix, if the process has exited because of a signal, 128 + signal
+  ## number will be returned.
 
 proc inputStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
   ## returns ``p``'s input stream for writing to.
