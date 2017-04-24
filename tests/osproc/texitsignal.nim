@@ -27,7 +27,7 @@ if paramCount() == 0:
   when defined(windows):
     # windows kill happens using TerminateProcess(h, 0), so we should get a
     # 0 here
-    echo p.waitForExit() == 0:
+    echo p.waitForExit() == 0
   else:
     # on posix (non-windows), kill sends SIGKILL
     echo p.waitForExit() == 128 + SIGKILL
