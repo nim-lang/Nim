@@ -47,8 +47,9 @@ const
 template encodeInternal(s: typed, lineLen: int, newLine: string): untyped =
   ## encodes `s` into base64 representation. After `lineLen` characters, a
   ## `newline` is added.
-  var total = ((len(s) + 2) div 3) * 4
-  var numLines = (total + lineLen - 1) div lineLen
+  let 
+    total = ((len(s) + 2) div 3) * 4
+    numLines = (total + lineLen - 1) div lineLen
   if numLines > 0: inc(total, (numLines - 1) * newLine.len)
 
   result = newString(total)
@@ -76,7 +77,7 @@ template encodeInternal(s: typed, lineLen: int, newLine: string): untyped =
       currLine = 0
 
   if i < s.len-1:
-    var 
+    let 
       a = ord(s[i])
       b = ord(s[i+1])
     result[r] = cb64[a shr 2]
@@ -86,7 +87,7 @@ template encodeInternal(s: typed, lineLen: int, newLine: string): untyped =
     if r+4 != result.len:
       setLen(result, r+4)
   elif i < s.len:
-    var a = ord(s[i])
+    let a = ord(s[i])
     result[r] = cb64[a shr 2]
     result[r+1] = cb64[(a and 3) shl 4]
     result[r+2] = '='
