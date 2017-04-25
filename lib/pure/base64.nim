@@ -44,7 +44,7 @@
 const
   cb64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
-template encodeInternal(s: typed, lineLen: int, newLine: string): untyped {.immediate.} =
+template encodeInternal(s: typed, lineLen: int, newLine: string): untyped =
   ## encodes `s` into base64 representation. After `lineLen` characters, a
   ## `newline` is added.
   var total = ((len(s) + 2) div 3) * 4
