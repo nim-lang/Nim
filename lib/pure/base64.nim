@@ -44,12 +44,11 @@
 const
   cb64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
-template encodeInternal(s: typed, lineLen: int, newLine: string): untyped =
+template encodeInternal(s: typed, lineLen: int, newLine: string): untyped {.immediate.} =
   ## encodes `s` into base64 representation. After `lineLen` characters, a
   ## `newline` is added.
-  let 
-    total = ((len(s) + 2) div 3) * 4
-    numLines = (total + lineLen - 1) div lineLen
+  var total = ((len(s) + 2) div 3) * 4
+  let numLines = (total + lineLen - 1) div lineLen
   if numLines > 0: inc(total, (numLines - 1) * newLine.len)
 
   result = newString(total)
