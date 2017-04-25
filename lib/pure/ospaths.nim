@@ -523,6 +523,11 @@ when declared(getEnv) or defined(nimscript):
     tags: [ReadEnvEffect, ReadIOEffect].} =
     ## Returns the temporary directory of the current user for applications to
     ## save temporary files in.
+    when defined(tempDir):
+      const tempDir {.strdefine.}: string = nil
+      if not tempDir.isNil() and tempDir.len > 0:
+        return tempDir
+    
     when defined(windows): return string(getEnv("TEMP")) & "\\"
     else: return "/tmp/"
 
