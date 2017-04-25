@@ -35,6 +35,7 @@ PS4=""
 #  add(result, "# platform detection\n")
 ucpu=`uname -m`
 uos=`uname`
+uosname=`uname -o`
 #  add(result, "# bin dir detection\n")
 binDir=?{firstBinPath(c).toUnix}
 
@@ -49,6 +50,7 @@ fi
 #  add(result, "# convert to lower case:\n")
 ucpu=`echo $ucpu | tr "[:upper:]" "[:lower:]"`
 uos=`echo $uos | tr "[:upper:]" "[:lower:]"`
+uosname=`echo $uosname | tr "[:upper:]" "[:lower:]"`
 
 case $uos in
   *linux* )
@@ -132,6 +134,13 @@ case $ucpu in
     echo 2>&1 "Error: unknown processor: $ucpu"
     exit 1
     ;;
+esac
+
+case $uosname in
+  *android* )
+	LINK_FLAGS="$LINK_FLAGS -landroid-glob"
+	myosname="android"
+	;;
 esac
 
 #  add(result, "# call the compiler:\n")
