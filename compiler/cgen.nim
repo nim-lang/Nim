@@ -1315,8 +1315,11 @@ proc shouldRecompile(code: Rope, cfile: Cfile): bool =
   if optForceFullMake notin gGlobalOptions:
     if not equalsFile(code, cfile.cname):
       if isDefined("nimdiff"):
-        copyFile(cfile.cname, cfile.cname & ".backup")
-        echo "diff ", cfile.cname, ".backup ", cfile.cname
+        if fileExists(cfile.cname):
+          copyFile(cfile.cname, cfile.cname & ".backup")
+          echo "diff ", cfile.cname, ".backup ", cfile.cname
+        else:
+          echo "new file ", cfile.cname
       writeRope(code, cfile.cname)
       return
     if existsFile(cfile.obj) and os.fileNewer(cfile.obj, cfile.cname):
