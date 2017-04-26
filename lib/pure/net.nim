@@ -66,7 +66,7 @@
 ##
 
 {.deadCodeElim: on.}
-import nativesockets, os, strutils, parseutils, times, sets
+import nativesockets, os, strutils, parseutils, times, sets, options
 export Port, `$`, `==`
 export Domain, SockType, Protocol
 
@@ -669,7 +669,7 @@ proc close*(socket: Socket) =
   ## Closes a socket.
   try:
     when defineSsl:
-      if socket.isSSL:
+      if socket.isSSL and socket.sslHandle != nil:
         ErrClearError()
         # As we are closing the underlying socket immediately afterwards,
         # it is valid, under the TLS standard, to perform a unidirectional
@@ -1477,6 +1477,43 @@ proc isIpAddress*(address_str: string): bool {.tags: [].} =
     return false
   return true
 
+proc dial*(address: string, port: Port,
+           protocol = IPPROTO_TCP, buffered = true): Socket
+           {.tags: [ReadIOEffect, WriteIOEffect].} =
+  let sockType = protocol.toSockType()
+
+  let aiList = getAddrInfo(address, port, AF_UNSPEC, sockType, protocol)
+  var success = false
+  var lastError: OSErrorCode
+  var it = aiList
+  var fd: SocketHandle
+  var domain: Domain
+  while it != nil:
+    let domainOpt = it.ai_family.toKnownDomain()
+    if domainOpt.isNone:
+      it = it.ai_next
+      continue
+    domain = domainOpt.unsafeGet()
+    let fd = newNativeSocket(domain, sockType, protocol)
+    if fd == osInvalidSocket:
+      freeAddrInfo(aiList)
+      raiseOSError(osLastError())
+    if connect(fd, it.ai_addr, it.ai_addrlen.SockLen) == 0'i32:
+      success = true
+      break
+    else:
+      fd.close()
+      lastError = osLastError()
+    it = it.ai_next
+  freeAddrInfo(aiList)
+
+  if success:
+    result = newSocket(fd, domain, sockType, protocol)
+  else:
+    if lastError != 0.OSErrorCode:
+      raiseOSError(lastError)
+    else:
+      raise newException(IOError, "Couldn't resolve hostname: " & address)
 
 proc connect*(socket: Socket, address: string,
     port = Port(0)) {.tags: [ReadIOEffect].} =

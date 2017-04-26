@@ -12,7 +12,7 @@
 
 # TODO: Clean up the exports a bit and everything else in general.
 
-import os
+import os, options
 
 when hostOS == "solaris":
   {.passl: "-lsocket -lnsl".}
@@ -52,9 +52,11 @@ type
   Domain* = enum    ## domain, which specifies the protocol family of the
                     ## created socket. Other domains than those that are listed
                     ## here are unsupported.
-    AF_UNIX,        ## for local socket (using a file). Unsupported on Windows.
+    AF_UNSPEC = 0,  ## unspecified domain (can be detected automatically by
+                    ## some procedures, such as getaddrinfo)
+    AF_UNIX = 1,    ## for local socket (using a file). Unsupported on Windows.
     AF_INET = 2,    ## for network protocol IPv4 or
-    AF_INET6 = 23   ## for network protocol IPv6.
+    AF_INET6 = when defined(macosx): 30 else: 23   ## for network protocol IPv6.
 
   SockType* = enum     ## second argument to `socket` proc
     SOCK_STREAM = 1,   ## reliable stream-oriented service or Stream Sockets
@@ -116,6 +118,10 @@ proc `$`*(p: Port): string {.borrow.}
 proc toInt*(domain: Domain): cshort
   ## Converts the Domain enum to a platform-dependent ``cint``.
 
+proc toKnownDomain*(family: cint): Option[Domain]
+  ## Converts the platform-dependent ``cint`` to the Domain or none(),
+  ## if the ``cint`` is not known.
+
 proc toInt*(typ: SockType): cint
   ## Converts the SockType enum to a platform-dependent ``cint``.
 
@@ -125,10 +131,17 @@ proc toInt*(p: Protocol): cint
 when not useWinVersion:
   proc toInt(domain: Domain): cshort =
     case domain
+    of AF_UNSPEC:      result = posix.AF_UNSPEC.cshort
     of AF_UNIX:        result = posix.AF_UNIX.cshort
     of AF_INET:        result = posix.AF_INET.cshort
     of AF_INET6:       result = posix.AF_INET6.cshort
-    else: discard
+
+  proc toKnownDomain(family: cint): Option[Domain] =
+    result = if   family == posix.AF_UNSPEC: some(Domain.AF_UNSPEC)
+             elif family == posix.AF_UNIX:   some(Domain.AF_UNIX)
+             elif family == posix.AF_INET:   some(Domain.AF_INET)
+             elif family == posix.AF_INET6:  some(Domain.AF_INET6)
+             else: none(Domain)
 
   proc toInt(typ: SockType): cint =
     case typ
@@ -136,7 +149,6 @@ when not useWinVersion:
     of SOCK_DGRAM:     result = posix.SOCK_DGRAM
     of SOCK_SEQPACKET: result = posix.SOCK_SEQPACKET
     of SOCK_RAW:       result = posix.SOCK_RAW
-    else: discard
 
   proc toInt(p: Protocol): cint =
     case p
@@ -146,11 +158,16 @@ when not useWinVersion:
     of IPPROTO_IPV6:   result = posix.IPPROTO_IPV6
     of IPPROTO_RAW:    result = posix.IPPROTO_RAW
     of IPPROTO_ICMP:   result = posix.IPPROTO_ICMP
-    else: discard
 
 else:
   proc toInt(domain: Domain): cshort =
     result = toU16(ord(domain))
+
+  proc toKnownDomain(family: cint): Option[Domain] =
+    result = if   family == winlean.AF_UNSPEC: some(Domain.AF_UNSPEC)
+             elif family == winlean.AF_INET:   some(Domain.AF_INET)
+             elif family == winlean.AF_INET6:  some(Domain.AF_INET6)
+             else: none(Domain)
 
   proc toInt(typ: SockType): cint =
     result = cint(ord(typ))
@@ -158,6 +175,14 @@ else:
   proc toInt(p: Protocol): cint =
     result = cint(ord(p))
 
+proc toSockType*(protocol: Protocol): SockType =
+  result = case protocol
+  of IPPROTO_TCP:
+    SOCK_STREAM
+  of IPPROTO_UDP:
+    SOCK_DGRAM
+  of IPPROTO_IP, IPPROTO_IPV6, IPPROTO_RAW, IPPROTO_ICMP:
+    SOCK_RAW
 
 proc newNativeSocket*(domain: Domain = AF_INET,
                       sockType: SockType = SOCK_STREAM,
@@ -392,14 +417,14 @@ proc getHostname*(): string {.tags: [ReadIOEffect].} =
 
 proc getSockDomain*(socket: SocketHandle): Domain =
   ## returns the socket's domain (AF_INET or AF_INET6).
-  var name: SockAddr
+  var name: Sockaddr_in6
   var namelen = sizeof(name).SockLen
   if getsockname(socket, cast[ptr SockAddr](addr(name)),
                  addr(namelen)) == -1'i32:
     raiseOSError(osLastError())
-  if name.sa_family == nativeAfInet:
+  if name.sin6_family == nativeAfInet:
     result = AF_INET
-  elif name.sa_family == nativeAfInet6:
+  elif name.sin6_family == nativeAfInet6:
     result = AF_INET6
   else:
     raiseOSError(osLastError(), "unknown socket family in getSockFamily")

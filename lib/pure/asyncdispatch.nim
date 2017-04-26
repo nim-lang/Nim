@@ -9,7 +9,7 @@
 
 include "system/inclrtl"
 
-import os, oids, tables, strutils, times, heapqueue
+import os, oids, tables, strutils, times, heapqueue, options
 
 import nativesockets, net, deques
 
@@ -384,68 +384,6 @@ when defined(windows) or defined(nimdoc):
     fun(lpOutputBuffer, dwReceiveDataLength, dwLocalAddressLength,
                   dwRemoteAddressLength, LocalSockaddr, LocalSockaddrLength,
                   RemoteSockaddr, RemoteSockaddrLength)
-
-  proc connect*(socket: AsyncFD, address: string, port: Port,
-    domain = nativesockets.AF_INET): Future[void] =
-    ## Connects ``socket`` to server at ``address:port``.
-    ##
-    ## Returns a ``Future`` which will complete when the connection succeeds
-    ## or an error occurs.
-    verifyPresence(socket)
-    var retFuture = newFuture[void]("connect")
-    # Apparently ``ConnectEx`` expects the socket to be initially bound:
-    var saddr: Sockaddr_in
-    saddr.sin_family = int16(toInt(domain))
-    saddr.sin_port = 0
-    saddr.sin_addr.s_addr = INADDR_ANY
-    if bindAddr(socket.SocketHandle, cast[ptr SockAddr](addr(saddr)),
-                  sizeof(saddr).SockLen) < 0'i32:
-      raiseOSError(osLastError())
-
-    var aiList = getAddrInfo(address, port, domain)
-    var success = false
-    var lastError: OSErrorCode
-    var it = aiList
-    while it != nil:
-      # "the OVERLAPPED structure must remain valid until the I/O completes"
-      # http://blogs.msdn.com/b/oldnewthing/archive/2011/02/02/10123392.aspx
-      var ol = PCustomOverlapped()
-      GC_ref(ol)
-      ol.data = CompletionData(fd: socket, cb:
-        proc (fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
-          if not retFuture.finished:
-            if errcode == OSErrorCode(-1):
-              retFuture.complete()
-            else:
-              retFuture.fail(newException(OSError, osErrorMsg(errcode)))
-      )
-
-      var ret = connectEx(socket.SocketHandle, it.ai_addr,
-                          sizeof(Sockaddr_in).cint, nil, 0, nil,
-                          cast[POVERLAPPED](ol))
-      if ret:
-        # Request to connect completed immediately.
-        success = true
-        retFuture.complete()
-        # We don't deallocate ``ol`` here because even though this completed
-        # immediately poll will still be notified about its completion and it will
-        # free ``ol``.
-        break
-      else:
-        lastError = osLastError()
-        if lastError.int32 == ERROR_IO_PENDING:
-          # In this case ``ol`` will be deallocated in ``poll``.
-          success = true
-          break
-        else:
-          GC_unref(ol)
-          success = false
-      it = it.ai_next
-
-    freeAddrInfo(aiList)
-    if not success:
-      retFuture.fail(newException(OSError, osErrorMsg(lastError)))
-    return retFuture
 
   proc recv*(socket: AsyncFD, size: int,
              flags = {SocketFlag.SafeDisconn}): Future[string] =
@@ -825,16 +763,22 @@ when defined(windows) or defined(nimdoc):
 
   proc newAsyncNativeSocket*(domain, sockType, protocol: cint): AsyncFD =
     ## Creates a new socket and registers it with the dispatcher implicitly.
-    result = newNativeSocket(domain, sockType, protocol).AsyncFD
-    result.SocketHandle.setBlocking(false)
+    let handle = newNativeSocket(domain, sockType, protocol)
+    if handle == osInvalidSocket:
+      raiseOSError(osLastError())
+    handle.setBlocking(false)
+    result = handle.AsyncFD
     register(result)
 
   proc newAsyncNativeSocket*(domain: Domain = nativesockets.AF_INET,
                              sockType: SockType = SOCK_STREAM,
                              protocol: Protocol = IPPROTO_TCP): AsyncFD =
     ## Creates a new socket and registers it with the dispatcher implicitly.
-    result = newNativeSocket(domain, sockType, protocol).AsyncFD
-    result.SocketHandle.setBlocking(false)
+    let handle = newNativeSocket(domain, sockType, protocol)
+    if handle == osInvalidSocket:
+      raiseOSError(osLastError())
+    handle.setBlocking(false)
+    result = handle.AsyncFD
     register(result)
 
   proc closeSocket*(socket: AsyncFD) =
@@ -1017,19 +961,25 @@ else:
 
   proc newAsyncNativeSocket*(domain: cint, sockType: cint,
                              protocol: cint): AsyncFD =
-    result = newNativeSocket(domain, sockType, protocol).AsyncFD
-    result.SocketHandle.setBlocking(false)
+    let handle = newNativeSocket(domain, sockType, protocol)
+    if handle == osInvalidSocket:
+      raiseOSError(osLastError())
+    handle.setBlocking(false)
     when defined(macosx):
-      result.SocketHandle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)
+      handle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)
+    result = handle.AsyncFD
     register(result)
 
   proc newAsyncNativeSocket*(domain: Domain = AF_INET,
                              sockType: SockType = SOCK_STREAM,
                              protocol: Protocol = IPPROTO_TCP): AsyncFD =
-    result = newNativeSocket(domain, sockType, protocol).AsyncFD
-    result.SocketHandle.setBlocking(false)
+    let handle = newNativeSocket(domain, sockType, protocol)
+    if handle == osInvalidSocket:
+      raiseOSError(osLastError())
+    handle.setBlocking(false)
     when defined(macosx):
-      result.SocketHandle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)
+      handle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)
+    result = handle.AsyncFD
     register(result)
 
   proc closeSocket*(sock: AsyncFD) =
@@ -1114,50 +1064,6 @@ else:
     processTimers(p)
     # Callback queue processing
     processPendingCallbacks(p)
-
-  proc connect*(socket: AsyncFD, address: string, port: Port,
-    domain = AF_INET): Future[void] =
-    var retFuture = newFuture[void]("connect")
-
-    proc cb(fd: AsyncFD): bool =
-      var ret = SocketHandle(fd).getSockOptInt(cint(SOL_SOCKET), cint(SO_ERROR))
-      if ret == 0:
-          # We have connected.
-          retFuture.complete()
-          return true
-      elif ret == EINTR:
-          # interrupted, keep waiting
-          return false
-      else:
-          retFuture.fail(newException(OSError, osErrorMsg(OSErrorCode(ret))))
-          return true
-
-    assert getSockDomain(socket.SocketHandle) == domain
-    var aiList = getAddrInfo(address, port, domain)
-    var success = false
-    var lastError: OSErrorCode
-    var it = aiList
-    while it != nil:
-      var ret = connect(socket.SocketHandle, it.ai_addr, it.ai_addrlen.Socklen)
-      if ret == 0:
-        # Request to connect completed immediately.
-        success = true
-        retFuture.complete()
-        break
-      else:
-        lastError = osLastError()
-        if lastError.int32 == EINTR or lastError.int32 == EINPROGRESS:
-          success = true
-          addWrite(socket, cb)
-          break
-        else:
-          success = false
-      it = it.ai_next
-
-    freeAddrInfo(aiList)
-    if not success:
-      retFuture.fail(newException(OSError, osErrorMsg(lastError)))
-    return retFuture
 
   proc recv*(socket: AsyncFD, size: int,
              flags = {SocketFlag.SafeDisconn}): Future[string] =
@@ -1324,6 +1230,9 @@ else:
         retFuture.complete((getAddrString(cast[ptr SockAddr](addr sockAddress)), client.AsyncFD))
     addRead(socket, cb)
     return retFuture
+
+# Common procedures between current and upcoming asyncdispatch
+include includes.asynccommon
 
 proc sleepAsync*(ms: int): Future[void] =
   ## Suspends the execution of the current async procedure for the next
