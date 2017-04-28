@@ -956,6 +956,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
 
   case a.kind
   of tyOr:
+    # XXX: deal with the current dual meaning of tyGenericParam
+    c.typedescMatched = true
     # seq[int|string] vs seq[number]
     # both int and string must match against number
     # but ensure that '[T: A|A]' matches as good as '[T: A]' (bug #2219):
@@ -964,15 +966,18 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       let x = typeRel(c, f, branch, false)
       if x == isNone: return isNone
       if x < result: result = x
+    return
 
   of tyAnd:
+    # XXX: deal with the current dual meaning of tyGenericParam
+    c.typedescMatched = true
     # seq[Sortable and Iterable] vs seq[Sortable]
     # only one match is enough
     for branch in a.sons:
       let x = typeRel(c, f, branch, false)
       if x != isNone:
         return if x >= isGeneric: isGeneric else: x
-    result = isNone
+    return isNone
 
   of tyNot:
     case f.kind
