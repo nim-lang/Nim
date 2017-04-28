@@ -13,6 +13,9 @@ Changelog
 Changes affecting backwards compatibility
 -----------------------------------------
 
+- There are now two different HTTP response types, ``Response`` and
+  ``AsyncResponse``. ``AsyncResponse``'s ``body`` accessor returns a
+  ``Future[string]``!
 - ``httpclient.request`` now respects ``maxRedirects`` option. Previously
   redirects were handled only by ``get`` and ``post`` procs.
 - The IO routines now raise ``EOFError`` for the "end of file" condition.
