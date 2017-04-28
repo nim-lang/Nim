@@ -29,17 +29,19 @@ proc newBountySource(team, token: string): BountySource =
   result.client.headers["Referer"] = "https://salt.bountysource.com/teams/nim/admin/supporters"
   result.client.headers["Origin"] = "https://salt.bountysource.com/"
 
+import typetraits
+
 proc getSupporters(self: BountySource): Future[JsonNode] {.async.} =
   let response = await self.client.get(apiUrl &
     "/supporters?order=monthly&per_page=200&team_slug=" & self.team)
   doAssert response.status.startsWith($Http200)
-  return parseJson(response.body)
+  return parseJson(await response.body)
 
 proc getGithubUser(username: string): Future[JsonNode] {.async.} =
   let client = newAsyncHttpClient()
   let response = await client.get(githubApiUrl & "/users/" & username)
   if response.status.startsWith($Http200):
-    return parseJson(response.body)
+    return parseJson(await response.body)
   else:
     echo("Could not get Github user: ", username, ". ", response.status)
     return nil
