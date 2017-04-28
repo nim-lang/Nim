@@ -1502,8 +1502,8 @@ proc dial*(address: string, port: Port,
       success = true
       break
     else:
-      fd.close()
       lastError = osLastError()
+      fd.close()
     it = it.ai_next
   freeAddrInfo(aiList)
 

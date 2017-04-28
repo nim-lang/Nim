@@ -118,10 +118,6 @@ proc `$`*(p: Port): string {.borrow.}
 proc toInt*(domain: Domain): cshort
   ## Converts the Domain enum to a platform-dependent ``cint``.
 
-proc toKnownDomain*(family: cint): Option[Domain]
-  ## Converts the platform-dependent ``cint`` to the Domain or none(),
-  ## if the ``cint`` is not known.
-
 proc toInt*(typ: SockType): cint
   ## Converts the SockType enum to a platform-dependent ``cint``.
 
@@ -136,7 +132,9 @@ when not useWinVersion:
     of AF_INET:        result = posix.AF_INET.cshort
     of AF_INET6:       result = posix.AF_INET6.cshort
 
-  proc toKnownDomain(family: cint): Option[Domain] =
+  proc toKnownDomain*(family: cint): Option[Domain] =
+    ## Converts the platform-dependent ``cint`` to the Domain or none(),
+    ## if the ``cint`` is not known.
     result = if   family == posix.AF_UNSPEC: some(Domain.AF_UNSPEC)
              elif family == posix.AF_UNIX:   some(Domain.AF_UNIX)
              elif family == posix.AF_INET:   some(Domain.AF_INET)
@@ -163,7 +161,9 @@ else:
   proc toInt(domain: Domain): cshort =
     result = toU16(ord(domain))
 
-  proc toKnownDomain(family: cint): Option[Domain] =
+  proc toKnownDomain*(family: cint): Option[Domain] =
+    ## Converts the platform-dependent ``cint`` to the Domain or none(),
+    ## if the ``cint`` is not known.
     result = if   family == winlean.AF_UNSPEC: some(Domain.AF_UNSPEC)
              elif family == winlean.AF_INET:   some(Domain.AF_INET)
              elif family == winlean.AF_INET6:  some(Domain.AF_INET6)
