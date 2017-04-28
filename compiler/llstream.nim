@@ -79,12 +79,12 @@ proc endsWith*(x: string, s: set[char]): bool =
     result = true
 
 const
-  LineContinuationOprs = {'+', '-', '*', '/', '\\', '<', '>', '!', '?', '^',
+  # also used by the standard template filter:
+  LineContinuationOprs* = {'+', '-', '*', '/', '\\', '<', '>', '!', '?', '^',
                           '|', '%', '&', '$', '@', '~', ','}
   AdditionalLineContinuationOprs = {'#', ':', '='}
 
-proc endsWithOpr*(x: string): bool =
-  # also used by the standard template filter:
+proc endsWithOpr(x: string): bool =
   result = x.endsWith(LineContinuationOprs)
 
 proc continueLine(line: string, inTripleString: bool): bool {.inline.} =
