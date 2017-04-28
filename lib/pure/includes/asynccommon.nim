@@ -135,10 +135,12 @@ template asyncAddrInfoLoop(addrInfo: ptr AddrInfo, fd: untyped,
 
 proc dial*(address: string, port: Port,
            protocol: Protocol = IPPROTO_TCP): Future[AsyncFD] =
-  ## Establishes connection to the specified address:port pair via the
-  ## specified protocol.
+  ## Establishes connection to the specified ``address``:``port`` pair via the
+  ## specified protocol. The procedure iterates through possible
+  ## resolutions of the ``address`` until it succeeds, meaning that it
+  ## seamlessly works with both IPv4 and IPv6.
   ## Returns the async file descriptor, registered in the dispatcher of
-  ## the current thread
+  ## the current thread, ready to send or receive data.
   let retFuture = newFuture[AsyncFD]("dial")
   result = retFuture
   let sockType = protocol.toSockType()

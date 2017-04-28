@@ -246,6 +246,11 @@ when defineSsl:
 
 proc dial*(address: string, port: Port, protocol = IPPROTO_TCP,
            buffered = true): Future[AsyncSocket] {.async.} =
+  ## Establishes connection to the specified ``address``:``port`` pair via the
+  ## specified protocol. The procedure iterates through possible
+  ## resolutions of the ``address`` until it succeeds, meaning that it
+  ## seamlessly works with both IPv4 and IPv6.
+  ## Returns AsyncSocket ready to send or receive data.
   let asyncFd = await asyncdispatch.dial(address, port, protocol)
   let sockType = protocol.toSockType()
   let domain = getSockDomain(asyncFd.SocketHandle)
