@@ -153,7 +153,8 @@ proc connect*(socket: AsyncFD, address: string, port: Port,
 
   when defined(windows):
     verifyPresence(socket)
-  assert getSockDomain(socket.SocketHandle) == domain
+  else:
+    assert getSockDomain(socket.SocketHandle) == domain
 
   let aiList = getAddrInfo(address, port, domain)
   when defined(windows):
