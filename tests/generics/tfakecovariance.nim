@@ -35,8 +35,8 @@ reject wantsSpecificContainers(derived)
 # Now, let's make a more general solution able to catch all derived types:
 
 type
-  DerivedFrom[T] = concept type A
-    var derived: ref A
+  DerivedFrom[T] = concept type D
+    var derived: ref D
     var base: ref T = derived
 
 proc wantsDerived(x: DerivedFrom[BaseObj]) = discard
@@ -53,4 +53,26 @@ accept wantsDerivedContainer(baseContainer)
 accept wantsDerivedContainer(derivedContainer)
 
 reject wantsDerivedContainer(nonDerivedContainer)
+
+# The previous solutions were solving the problem for a single overload.
+# Let's solve it for multiple overloads by introducing a converter:
+
+type
+  OtherContainer[T] = object
+
+proc wantsBaseContainer1(c: OtherContainer[BaseObj]) = discard
+proc wantsBaseContainer2(c: OtherContainer[BaseObj]) = discard
+
+converter derivedToBase(c: OtherContainer[DerivedFrom[BaseObj]]): OtherContainer[BaseObj] = discard
+
+block:
+  var baseContainer: OtherContainer[BaseObj]
+  var derivedContainer: OtherContainer[DerivedObj]
+  var nonDerivedContainer: OtherContainer[NonDerivedObj]
+
+  accept wantsBaseContainer1(derivedContainer)
+  reject wantsBaseContainer1(nonDerivedContainer)
+
+  accept wantsBaseContainer2(derivedContainer)
+  reject wantsBaseContainer2(nonDerivedContainer)
 
