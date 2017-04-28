@@ -1496,8 +1496,9 @@ proc dial*(address: string, port: Port,
     domain = domainOpt.unsafeGet()
     let fd = newNativeSocket(domain, sockType, protocol)
     if fd == osInvalidSocket:
+      let err = osLastError()
       freeAddrInfo(aiList)
-      raiseOSError(osLastError())
+      raiseOSError(err)
     if connect(fd, it.ai_addr, it.ai_addrlen.SockLen) == 0'i32:
       success = true
       break
