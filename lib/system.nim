@@ -59,9 +59,6 @@ const
 {.push warning[GcMem]: off, warning[Uninit]: off.}
 {.push hints: off.}
 
-proc `|` *(a, b: typedesc): typedesc {.magic: "TypeTrait", noSideEffect.}
-  ## Constructs an `or` meta class
-
 proc `or` *(a, b: typedesc): typedesc {.magic: "TypeTrait", noSideEffect.}
   ## Constructs an `or` meta class
 
