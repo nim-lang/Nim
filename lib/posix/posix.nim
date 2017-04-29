@@ -97,15 +97,6 @@ when not defined(macosx):
     ## Second-granularity time of last status change.
     result = s.st_ctim.tv_sec
 
-proc WIFCONTINUED*(s:cint) : bool {.importc, header: "<sys/wait.h>".}
-  ## True if child has been continued.
-proc WIFEXITED*(s:cint) : bool {.importc, header: "<sys/wait.h>".}
-  ## True if child exited normally.
-proc WIFSIGNALED*(s:cint) : bool {.importc, header: "<sys/wait.h>".}
-  ## True if child exited due to uncaught signal.
-proc WIFSTOPPED*(s:cint) : bool {.importc, header: "<sys/wait.h>".}
-  ## True if child is currently stopped.
-
 when hasAioH:
   proc aio_cancel*(a1: cint, a2: ptr Taiocb): cint {.importc, header: "<aio.h>".}
   proc aio_error*(a1: ptr Taiocb): cint {.importc, header: "<aio.h>".}
