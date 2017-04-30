@@ -1,7 +1,10 @@
 discard """
   output: '''{"age": 12, "bio": "\u042F Cletus", "blob": [65, 66, 67, 128], "name": "Cletus"}
 true
-true'''
+true
+alpha 100
+omega 200
+'''
 """
 
 import marshal
@@ -83,3 +86,22 @@ var instance1 = Person(name: "Cletus", age: 12,
 echo($$instance1)
 echo(to[Person]($$instance1).bio == instance1.bio)
 echo(to[Person]($$instance1).blob == instance1.blob)
+
+# bug 5757
+
+type
+  Something = object
+    x: string
+    y: int
+
+var data1 = """{"x": "alpha", "y": 100}"""
+var data2 = """{"x": "omega", "y": 200}"""
+
+var r = to[Something](data1)
+
+echo r.x, " ", r.y
+
+r = to[Something](data2)
+
+echo r.x, " ", r.y
+
