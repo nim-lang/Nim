@@ -29,8 +29,6 @@ proc newBountySource(team, token: string): BountySource =
   result.client.headers["Referer"] = "https://salt.bountysource.com/teams/nim/admin/supporters"
   result.client.headers["Origin"] = "https://salt.bountysource.com/"
 
-import typetraits
-
 proc getSupporters(self: BountySource): Future[JsonNode] {.async.} =
   let response = await self.client.get(apiUrl &
     "/supporters?order=monthly&per_page=200&team_slug=" & self.team)
