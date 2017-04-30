@@ -2203,7 +2203,7 @@ proc getNullValueAux(p: BProc; obj, cons: PNode, result: var Rope) =
     let field = obj.sym
     for i in 1..<cons.len:
       if cons[i].kind == nkExprColonExpr:
-        if cons[i][0].sym == field:
+        if cons[i][0].sym.name == field.name:
           result.add genConstExpr(p, cons[i][1])
           return
       elif i == field.position:
