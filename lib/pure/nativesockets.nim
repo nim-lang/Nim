@@ -440,20 +440,18 @@ proc getAddrString*(sockAddr: ptr SockAddr): string =
     result = newString(addrLen)
     let addr6 = addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr
     when not useWinVersion:
-      discard posix.inet_ntop(posix.AF_INET6, addr6, addr result[0],
-          result.len.int32)
+      if posix.inet_ntop(posix.AF_INET6, addr6, addr result[0],
+                         result.len.int32) == nil:
+        raiseOSError(osLastError())
       if posix.IN6_IS_ADDR_V4MAPPED(addr6) != 0:
         result = result.substr("::ffff:".len)
     else:
-      discard winlean.inet_ntop(winlean.AF_INET6, addr6, addr result[0],
-          result.len.int32)
-    for i, c in result:
-      if c == '\0':
-        result.setLen(i)
-        break
+      if winlean.inet_ntop(winlean.AF_INET6, addr6, addr result[0],
+                           result.len.int32) == nil:
+        raiseOSError(osLastError())
+    setLen(result, len(cstring(result)))
   else:
-    raiseOSError(osLastError(), "unknown socket family in getAddrString")
-
+    raise newException(IOError, "Unknown socket family in getAddrString")
 
 proc getSockName*(socket: SocketHandle): Port =
   ## returns the socket's associated port number.

@@ -708,11 +708,14 @@ when defined(windows) or defined(nimdoc):
                              dwLocalAddressLength, dwRemoteAddressLength,
                              addr localSockaddr, addr localLen,
                              addr remoteSockaddr, addr remoteLen)
-        register(clientSock.AsyncFD)
-        retFuture.complete(
-          (address: getAddrString(remoteSockAddr),
-          client: clientSock.AsyncFD)
-        )
+        try:
+          let address = getAddrString(remoteSockAddr)
+          register(clientSock.AsyncFD)
+          retFuture.complete((address: address, client: clientSock.AsyncFD))
+        except:
+          # getAddrString may raise
+          clientSock.close()
+          retFuture.fail(getCurrentException())
 
     var ol = PCustomOverlapped()
     GC_ref(ol)
@@ -1430,9 +1433,14 @@ else:
           else:
             retFuture.fail(newException(OSError, osErrorMsg(lastError)))
       else:
-        register(client.AsyncFD)
-        retFuture.complete((getAddrString(cast[ptr SockAddr](addr sockAddress)),
-                            client.AsyncFD))
+        try:
+          let address = getAddrString(cast[ptr SockAddr](addr sockAddress))
+          register(client.AsyncFD)
+          retFuture.complete((address, client.AsyncFD))
+        except:
+          # getAddrString may raise
+          client.close()
+          retFuture.fail(getCurrentException())
     addRead(socket, cb)
     return retFuture
 
