@@ -677,8 +677,8 @@ when defined(windows) or defined(nimdoc):
     var lpOutputBuf = newString(lpOutputLen)
     var dwBytesReceived: Dword
     let dwReceiveDataLength = 0.Dword # We don't want any data to be read.
-    let dwLocalAddressLength = Dword(sizeof(Sockaddr_in) + 16)
-    let dwRemoteAddressLength = Dword(sizeof(Sockaddr_in) + 16)
+    let dwLocalAddressLength = Dword(sizeof(Sockaddr_in6) + 16)
+    let dwRemoteAddressLength = Dword(sizeof(Sockaddr_in6) + 16)
 
     template failAccept(errcode) =
       if flags.isDisconnectionError(errcode):
@@ -709,9 +709,8 @@ when defined(windows) or defined(nimdoc):
                              addr localSockaddr, addr localLen,
                              addr remoteSockaddr, addr remoteLen)
         register(clientSock.AsyncFD)
-        # TODO: IPv6. Check ``sa_family``. http://stackoverflow.com/a/9212542/492186
         retFuture.complete(
-          (address: $inet_ntoa(cast[ptr Sockaddr_in](remoteSockAddr).sin_addr),
+          (address: getAddrString(remoteSockAddr),
           client: clientSock.AsyncFD)
         )
 
@@ -745,26 +744,6 @@ when defined(windows) or defined(nimdoc):
       # free ``ol``.
 
     return retFuture
-
-  proc newAsyncNativeSocket*(domain, sockType, protocol: cint): AsyncFD =
-    ## Creates a new socket and registers it with the dispatcher implicitly.
-    let handle = newNativeSocket(domain, sockType, protocol)
-    if handle == osInvalidSocket:
-      raiseOSError(osLastError())
-    handle.setBlocking(false)
-    result = handle.AsyncFD
-    register(result)
-
-  proc newAsyncNativeSocket*(domain: Domain = nativesockets.AF_INET,
-                             sockType: SockType = SOCK_STREAM,
-                             protocol: Protocol = IPPROTO_TCP): AsyncFD =
-    ## Creates a new socket and registers it with the dispatcher implicitly.
-    let handle = newNativeSocket(domain, sockType, protocol)
-    if handle == osInvalidSocket:
-      raiseOSError(osLastError())
-    handle.setBlocking(false)
-    result = handle.AsyncFD
-    register(result)
 
   proc closeSocket*(socket: AsyncFD) =
     ## Closes a socket and ensures that it is unregistered.
@@ -1102,29 +1081,6 @@ else:
     let p = getGlobalDispatcher()
     var data = newAsyncData()
     p.selector.registerHandle(fd.SocketHandle, {}, data)
-
-  proc newAsyncNativeSocket*(domain: cint, sockType: cint,
-                             protocol: cint): AsyncFD =
-    let handle = newNativeSocket(domain, sockType, protocol)
-    if handle == osInvalidSocket:
-      raiseOSError(osLastError())
-    handle.setBlocking(false)
-    when defined(macosx):
-      handle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)
-    result = handle.AsyncFD
-    register(result)
-
-  proc newAsyncNativeSocket*(domain: Domain = AF_INET,
-                             sockType: SockType = SOCK_STREAM,
-                             protocol: Protocol = IPPROTO_TCP): AsyncFD =
-    let handle = newNativeSocket(domain, sockType, protocol)
-    if handle == osInvalidSocket:
-      raiseOSError(osLastError())
-    handle.setBlocking(false)
-    when defined(macosx):
-      handle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)
-    result = handle.AsyncFD
-    register(result)
 
   proc closeSocket*(sock: AsyncFD) =
     let disp = getGlobalDispatcher()

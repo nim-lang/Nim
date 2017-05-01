@@ -1,3 +1,22 @@
+template newAsyncNativeSocketImpl(domain, sockType, protocol) =
+  let handle = newNativeSocket(domain, sockType, protocol)
+  if handle == osInvalidSocket:
+    raiseOSError(osLastError())
+  handle.setBlocking(false)
+  when defined(macosx):
+    handle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)
+  result = handle.AsyncFD
+  register(result)
+
+proc newAsyncNativeSocket*(domain: cint, sockType: cint,
+                           protocol: cint): AsyncFD =
+  newAsyncNativeSocketImpl(domain, sockType, protocol)
+
+proc newAsyncNativeSocket*(domain: Domain = Domain.AF_INET,
+                           sockType: SockType = SOCK_STREAM,
+                           protocol: Protocol = IPPROTO_TCP): AsyncFD =
+  newAsyncNativeSocketImpl(domain, sockType, protocol)
+
 when defined(windows) or defined(nimdoc):
   proc bindToDomain(handle: SocketHandle, domain: Domain) =
     # Extracted into a separate proc, because connect() on Windows requires
@@ -88,8 +107,17 @@ template asyncAddrInfoLoop(addrInfo: ptr AddrInfo, fd: untyped,
   when shouldCreateFd:
     let sockType = protocol.toSockType()
 
+    var fdPerDomain: array[low(Domain).ord..high(Domain).ord, AsyncFD]
+    for i in low(fdPerDomain)..high(fdPerDomain):
+      fdPerDomain[i] = osInvalidSocket.AsyncFD
+    template closeUnusedFds(domainToKeep = -1) {.dirty.} =
+      for i, fd in fdPerDomain:
+        if fd != osInvalidSocket.AsyncFD and i != domainToKeep:
+          fd.closeSocket()
+
   var lastException: ref Exception
   var curAddrInfo = addrInfo
+  var domain: Domain
   when shouldCreateFd:
     var curFd: AsyncFD
   else:
@@ -98,10 +126,7 @@ template asyncAddrInfoLoop(addrInfo: ptr AddrInfo, fd: untyped,
     if fut == nil or fut.failed:
       if fut != nil:
         lastException = fut.readError()
-        when shouldCreateFd:
-          curFd.closeSocket()
 
-      var domain: Domain
       while curAddrInfo != nil:
         let domainOpt = curAddrInfo.ai_family.toKnownDomain()
         if domainOpt.isSome:
@@ -111,22 +136,34 @@ template asyncAddrInfoLoop(addrInfo: ptr AddrInfo, fd: untyped,
 
       if curAddrInfo == nil:
         freeAddrInfo(addrInfo)
+        when shouldCreateFd:
+          closeUnusedFds()
         if lastException != nil:
           retFuture.fail(lastException)
         else:
           retFuture.fail(newException(
-            IOError, "Couldn't resolve hostname: " & address))
+            IOError, "Couldn't resolve address: " & address))
         return
 
       when shouldCreateFd:
-        curFd = newAsyncNativeSocket(domain, sockType, protocol)
-        when defined(windows):
-          curFd.SocketHandle.bindToDomain(domain)
+        curFd = fdPerDomain[ord(domain)]
+        if curFd == osInvalidSocket.AsyncFD:
+          try:
+            curFd = newAsyncNativeSocket(domain, sockType, protocol)
+          except:
+            freeAddrInfo(addrInfo)
+            closeUnusedFds()
+            raise getCurrentException()
+          when defined(windows):
+            curFd.SocketHandle.bindToDomain(domain)
+          fdPerDomain[ord(domain)] = curFd
+
       doConnect(curFd, curAddrInfo).callback = tryNextAddrInfo
       curAddrInfo = curAddrInfo.ai_next
     else:
       freeAddrInfo(addrInfo)
       when shouldCreateFd:
+        closeUnusedFds(ord(domain))
         retFuture.complete(curFd)
       else:
         retFuture.complete()
