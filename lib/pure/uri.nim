@@ -354,6 +354,17 @@ when isMainModule:
     doAssert($test == str)
 
   block:
+    # IPv6 address
+    let str = "foo://[::1]:1234/bar?baz=true&qux#quux"
+    let uri = parseUri(str)
+    doAssert uri.scheme == "foo"
+    doAssert uri.hostname == "::1"
+    doAssert uri.port == "1234"
+    doAssert uri.path == "/bar"
+    doAssert uri.query == "baz=true&qux"
+    doAssert uri.anchor == "quux"
+
+  block:
     let str = "urn:example:animal:ferret:nose"
     let test = parseUri(str)
     doAssert test.scheme == "urn"
