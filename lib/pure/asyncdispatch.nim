@@ -236,6 +236,20 @@ when defined(windows) or defined(nimdoc):
     result.timers.newHeapQueue()
     result.callbacks = initDeque[proc ()](64)
 
+  proc close*(dispatcher: PDispatcher) =
+    ## Closes the Dispatcher, freeing the resources associated with it.
+    ##
+    ## Raises ``AssertionError`` if the dispatcher contains registered handles,
+    ## because it indicates lack of appropriate cleanup in the application.
+    ## Does NOT actually close the dispatcher if the ``AssertionError`` is
+    ## raised.
+    doAssert(
+      dispatcher.handles.len == 0,
+      "All handles must be unregistered prior to closing the dispatcher."
+    )
+    if closeHandle(dispatcher.ioPort) == 0:
+      raiseOSError(osLastError())
+
   var gDisp{.threadvar.}: PDispatcher ## Global dispatcher
   proc getGlobalDispatcher*(): PDispatcher =
     ## Retrieves the global thread-local dispatcher.
@@ -1000,6 +1014,19 @@ else:
     result.timers.newHeapQueue()
     result.callbacks = initDeque[proc ()](64)
 
+  proc close*(dispatcher: PDispatcher) =
+    ## Closes the Dispatcher, freeing the resources associated with it.
+    ##
+    ## Raises ``AssertionError`` if the dispatcher contains registered handles,
+    ## because it indicates lack of appropriate cleanup in the application.
+    ## Does NOT actually close the dispatcher if the ``AssertionError`` is
+    ## raised.
+    doAssert(
+      dispatcher.selector.len == 0,
+      "All handles must be unregistered prior to closing the dispatcher."
+    )
+    dispatcher.selector.close()
+
   var gDisp{.threadvar.}: PDispatcher ## Global dispatcher
   proc getGlobalDispatcher*(): PDispatcher =
     if gDisp.isNil: gDisp = newDispatcher()
@@ -1324,6 +1351,12 @@ else:
         retFuture.complete((getAddrString(cast[ptr SockAddr](addr sockAddress)), client.AsyncFD))
     addRead(socket, cb)
     return retFuture
+
+when compileOption("threads"):
+  onThreadDestruction() do ():
+    if not gDisp.isNil:
+      gDisp.close()
+      gDisp = nil
 
 proc sleepAsync*(ms: int): Future[void] =
   ## Suspends the execution of the current async procedure for the next
