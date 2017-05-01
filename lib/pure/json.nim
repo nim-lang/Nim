@@ -1213,22 +1213,22 @@ when not defined(js):
   proc parseJson*(s: Stream, filename: string): JsonNode =
     ## Parses from a stream `s` into a `JsonNode`. `filename` is only needed
     ## for nice error messages.
-    ## If `s` contains extra data, it will raising `JsonParsingError`.
+    ## If `s` contains extra data, it will raise `JsonParsingError`.
     var p: JsonParser
     p.open(s, filename)
     defer: p.close()
     discard getTok(p) # read first token
     result = p.parseJson()
-    eat(p, tkEof) # check there are no exstra data
+    eat(p, tkEof) # check if there is no extra data
 
   proc parseJson*(buffer: string): JsonNode =
     ## Parses JSON from `buffer`.
-    ## If `buffer` contains extra data, it will raising `JsonParsingError`.
+    ## If `buffer` contains extra data, it will raise `JsonParsingError`.
     result = parseJson(newStringStream(buffer), "input")
 
   proc parseFile*(filename: string): JsonNode =
     ## Parses `file` into a `JsonNode`.
-    ## If `file` contains extra data, it will raising `JsonParsingError`.
+    ## If `file` contains extra data, it will raise `JsonParsingError`.
     var stream = newFileStream(filename, fmRead)
     if stream == nil:
       raise newException(IOError, "cannot read from file: " & filename)
