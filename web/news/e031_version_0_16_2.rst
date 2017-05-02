@@ -66,7 +66,10 @@ Library Additions
 -----------------
 
 - Added ``system.onThreadDestruction``.
-
+- Added ``dial`` procedure to networking modules: ``net``, ``asyncdispatch``,
+  ``asyncnet``. It merges socket creation, address resolution, and connection
+  into single step. When using ``dial``, you don't have to worry about
+  IPv4 vs IPv6 problem. ``httpclient`` now supports IPv6.
 
 Tool Additions
 --------------
