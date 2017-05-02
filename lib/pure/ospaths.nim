@@ -569,7 +569,7 @@ when declared(getEnv) or defined(nimscript):
       ## ``["exe", "cmd", "bat"]``, on Posix ``[""]``.
 
   proc findExe*(exe: string, followSymlinks: bool = true;
-                extensions=ExeExts): string {.
+                extensions: openarray[string]=ExeExts): string {.
     tags: [ReadDirEffect, ReadEnvEffect, ReadIOEffect].} =
     ## Searches for `exe` in the current working directory and then
     ## in directories listed in the ``PATH`` environment variable.
