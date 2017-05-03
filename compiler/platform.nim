@@ -21,8 +21,8 @@ type
                     # conditionals to condsyms (end of module).
     osNone, osDos, osWindows, osOs2, osLinux, osMorphos, osSkyos, osSolaris,
     osIrix, osNetbsd, osFreebsd, osOpenbsd, osDragonfly, osAix, osPalmos, osQnx,
-    osAmiga, osAtari, osNetware, osMacos, osMacosx, osHaiku, osVxworks, osGenode
-    osJS, osNimrodVM, osStandalone
+    osAmiga, osAtari, osNetware, osMacos, osMacosx, osHaiku, osAndroid, osVxworks
+    osGenode, osJS, osNimrodVM, osStandalone
 
 type
   TInfoOSProp* = enum
@@ -143,6 +143,10 @@ const
       objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/",
       scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".",
       props: {ospNeedsPIC, ospPosix, ospLacksThreadVars}),
+     (name: "Android", parDir: "..", dllFrmt: "lib$1.so", altDirSep: "/",
+      objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/",
+      scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".",
+      props: {ospNeedsPIC, ospPosix}),
      (name: "VxWorks", parDir: "..", dllFrmt: "lib$1.so", altDirSep: "/",
       objExt: ".o", newLine: "\x0A", pathSep: ";", dirSep: "\\",
       scriptExt: ".sh", curDir: ".", exeExt: ".vxe", extSep: ".",
