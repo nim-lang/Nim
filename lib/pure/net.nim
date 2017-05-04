@@ -66,7 +66,7 @@
 ##
 
 {.deadCodeElim: on.}
-import nativesockets, os, strutils, parseutils, times, sets
+import nativesockets, os, strutils, parseutils, times, sets, options
 export Port, `$`, `==`
 export Domain, SockType, Protocol
 
@@ -669,7 +669,7 @@ proc close*(socket: Socket) =
   ## Closes a socket.
   try:
     when defineSsl:
-      if socket.isSSL:
+      if socket.isSSL and socket.sslHandle != nil:
         ErrClearError()
         # As we are closing the underlying socket immediately afterwards,
         # it is valid, under the TLS standard, to perform a unidirectional
@@ -1477,6 +1477,63 @@ proc isIpAddress*(address_str: string): bool {.tags: [].} =
     return false
   return true
 
+proc dial*(address: string, port: Port,
+           protocol = IPPROTO_TCP, buffered = true): Socket
+           {.tags: [ReadIOEffect, WriteIOEffect].} =
+  ## Establishes connection to the specified ``address``:``port`` pair via the
+  ## specified protocol. The procedure iterates through possible
+  ## resolutions of the ``address`` until it succeeds, meaning that it
+  ## seamlessly works with both IPv4 and IPv6.
+  ## Returns Socket ready to send or receive data.
+  let sockType = protocol.toSockType()
+
+  let aiList = getAddrInfo(address, port, AF_UNSPEC, sockType, protocol)
+
+  var fdPerDomain: array[low(Domain).ord..high(Domain).ord, SocketHandle]
+  for i in low(fdPerDomain)..high(fdPerDomain):
+    fdPerDomain[i] = osInvalidSocket
+  template closeUnusedFds(domainToKeep = -1) {.dirty.} =
+    for i, fd in fdPerDomain:
+      if fd != osInvalidSocket and i != domainToKeep:
+        fd.close()
+
+  var success = false
+  var lastError: OSErrorCode
+  var it = aiList
+  var domain: Domain
+  var lastFd: SocketHandle
+  while it != nil:
+    let domainOpt = it.ai_family.toKnownDomain()
+    if domainOpt.isNone:
+      it = it.ai_next
+      continue
+    domain = domainOpt.unsafeGet()
+    lastFd = fdPerDomain[ord(domain)]
+    if lastFd == osInvalidSocket:
+      lastFd = newNativeSocket(domain, sockType, protocol)
+      if lastFd == osInvalidSocket:
+        # we always raise if socket creation failed, because it means a
+        # network system problem (e.g. not enough FDs), and not an unreachable
+        # address.
+        let err = osLastError()
+        freeAddrInfo(aiList)
+        closeUnusedFds()
+        raiseOSError(err)
+      fdPerDomain[ord(domain)] = lastFd
+    if connect(lastFd, it.ai_addr, it.ai_addrlen.SockLen) == 0'i32:
+      success = true
+      break
+    lastError = osLastError()
+    it = it.ai_next
+  freeAddrInfo(aiList)
+  closeUnusedFds(ord(domain))
+
+  if success:
+    result = newSocket(lastFd, domain, sockType, protocol)
+  elif lastError != 0.OSErrorCode:
+    raiseOSError(lastError)
+  else:
+    raise newException(IOError, "Couldn't resolve address: " & address)
 
 proc connect*(socket: Socket, address: string,
     port = Port(0)) {.tags: [ReadIOEffect].} =

@@ -13,6 +13,9 @@ Changelog
 Changes affecting backwards compatibility
 -----------------------------------------
 
+- There are now two different HTTP response types, ``Response`` and
+  ``AsyncResponse``. ``AsyncResponse``'s ``body`` accessor returns a
+  ``Future[string]``!
 - ``httpclient.request`` now respects ``maxRedirects`` option. Previously
   redirects were handled only by ``get`` and ``post`` procs.
 - The IO routines now raise ``EOFError`` for the "end of file" condition.
@@ -56,12 +59,17 @@ Changes affecting backwards compatibility
   checks. When fields within case objects are initialiazed, the compiler will
   now demand that the respective discriminator field has a matching known
   compile-time value.
+- On posix, the results of `waitForExit`, `peekExitCode`, `execCmd` will return
+  128 + signal number if the application terminates via signal.
 
 Library Additions
 -----------------
 
 - Added ``system.onThreadDestruction``.
-
+- Added ``dial`` procedure to networking modules: ``net``, ``asyncdispatch``,
+  ``asyncnet``. It merges socket creation, address resolution, and connection
+  into single step. When using ``dial``, you don't have to worry about
+  IPv4 vs IPv6 problem. ``httpclient`` now supports IPv6.
 
 Tool Additions
 --------------
