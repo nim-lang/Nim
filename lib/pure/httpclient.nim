@@ -512,7 +512,7 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
         raise newException(HttpRequestError,
                            "The proxy server rejected a CONNECT request, " &
                            "so a secure connection could not be established.")
-      sslContext.wrapConnectedSocket(s, handshakeAsClient)
+      sslContext.wrapConnectedSocket(s, handshakeAsClient, hostUrl.hostname)
     else:
       raise newException(HttpRequestError, "SSL support not available. Cannot connect via proxy over SSL")
   else:
@@ -1060,7 +1060,8 @@ proc newConnection(client: HttpClient | AsyncHttpClient,
     when defined(ssl):
       if isSsl:
         try:
-          client.sslContext.wrapConnectedSocket(client.socket, handshakeAsClient)
+          client.sslContext.wrapConnectedSocket(
+            client.socket, handshakeAsClient, url.hostname)
         except:
           client.socket.close()
           raise getCurrentException()
@@ -1102,7 +1103,8 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: string,
         raise newException(HttpRequestError,
                            "The proxy server rejected a CONNECT request, " &
                            "so a secure connection could not be established.")
-      client.sslContext.wrapConnectedSocket(client.socket, handshakeAsClient)
+      client.sslContext.wrapConnectedSocket(
+        client.socket, handshakeAsClient, requestUrl.hostname)
       client.proxy = nil
     else:
       raise newException(HttpRequestError,
