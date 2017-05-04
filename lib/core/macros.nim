@@ -8,6 +8,7 @@
 #
 
 include "system/inclrtl"
+from strutils import escape
 
 ## This module contains the interface to the compiler's abstract syntax
 ## tree (`AST`:idx:). Macros operate on this tree.
@@ -509,24 +510,35 @@ proc lispRepr*(n: NimNode): string {.compileTime, benign.} =
   add(result, ")")
 
 proc codeRepr*(n: NimNode): string {.compileTime, benign.} =
-  ## Convert the AST `n` to a string of nim code to generate the AST
+  ## Convert the AST `n` to a human-readable tree-like string.
   ##
-  ## See also `repr`, `treeRepr`, and `lispRepr`.
+  ## See also `repr` and `lispRepr`.
   proc traverse(res: var string, level: int, n: NimNode) {.benign.} =
     for i in 0..level-1: res.add "  "
-    if n.kind in {nnkEmpty, nnkNilLit, nnkCharLit..nnkInt64Lit, nnkFloatLit..nnkFloat64Lit, nnkStrLit..nnkTripleStrLit, nnkIdent, nnkSym, nnkNone}:
+    if n.kind in {
+      nnkEmpty,
+      nnkNilLit,
+      nnkIdent,
+      nnkSym,
+      nnkNone}:
       res.add("new" & ($n.kind).substr(3) & "Node(")
+    elif n.kind in {
+      nnkCharLit..nnkInt64Lit,
+      nnkFloatLit..nnkFloat64Lit,
+      nnkStrLit..nnkTripleStrLit}:
+      res.add("newLit(")
     else:
       res.add($n.kind)
 
     case n.kind
     of nnkEmpty: discard # same as nil node in this representation
     of nnkNilLit: res.add("nil")
-    of nnkCharLit..nnkInt64Lit: res.add($n.intVal)
+    of nnkCharLit: res.add("'" & $chr(n.intVal) & "'")
+    of nnkIntLit..nnkInt64Lit: res.add($n.intVal)
     of nnkFloatLit..nnkFloat64Lit: res.add($n.floatVal)
-    of nnkStrLit..nnkTripleStrLit: res.add("\"" & $n.strVal & "\"")
-    of nnkIdent: res.add("!\"" & $n.ident & '"')
-    of nnkSym: res.add("\"" & $n.symbol & '"')
+    of nnkStrLit..nnkTripleStrLit: res.add($n.strVal.escape())
+    of nnkIdent: res.add("!" & ($n.ident).escape())
+    of nnkSym: res.add(($n.symbol).escape())
     of nnkNone: assert false
     else:
       res.add(".newTree(")
@@ -540,7 +552,15 @@ proc codeRepr*(n: NimNode): string {.compileTime, benign.} =
       for i in 0..level-1: res.add "  "
       res.add(")")
 
-    if n.kind in {nnkEmpty, nnkNilLit, nnkCharLit..nnkInt64Lit, nnkFloatLit..nnkFloat64Lit, nnkStrLit..nnkTripleStrLit, nnkIdent, nnkSym, nnkNone}:
+    if n.kind in {
+      nnkEmpty,
+      nnkNilLit,
+      nnkCharLit..nnkInt64Lit,
+      nnkFloatLit..nnkFloat64Lit,
+      nnkStrLit..nnkTripleStrLit,
+      nnkIdent,
+      nnkSym,
+      nnkNone}:
       res.add(")")
 
   result = ""
