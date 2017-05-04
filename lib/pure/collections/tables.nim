@@ -278,7 +278,7 @@ proc take*[A, B](t: var Table[A, B], key: A, val: var B): bool =
   var index = rawGet(t, key, hc)
   result = index >= 0
   if result:
-    val = t.data[index].val
+    shallowCopy(val, t.data[index].val)
     delImplIdx(t, index)
 
 proc enlarge[A, B](t: var Table[A, B]) =
