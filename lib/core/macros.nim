@@ -460,7 +460,7 @@ proc nestList*(theProc: NimIdent,
 proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
   ## Convert the AST `n` to a human-readable tree-like string.
   ##
-  ## See also `repr` and `lispRepr`.
+  ## See also `repr`, `lispRepr`, and `codeRepr`.
   proc traverse(res: var string, level: int, n: NimNode) {.benign.} =
     for i in 0..level-1: res.add "  "
     res.add(($n.kind).substr(3))
@@ -485,7 +485,7 @@ proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
 proc lispRepr*(n: NimNode): string {.compileTime, benign.} =
   ## Convert the AST `n` to a human-readable lisp-like string,
   ##
-  ## See also `repr` and `treeRepr`.
+  ## See also `repr`, `treeRepr`, and `codeRepr`.
 
   result = ($n.kind).substr(3)
   add(result, "(")
@@ -508,9 +508,47 @@ proc lispRepr*(n: NimNode): string {.compileTime, benign.} =
 
   add(result, ")")
 
+proc codeRepr*(n: NimNode): string {.compileTime, benign.} =
+  ## Convert the AST `n` to a string of nim code to generate the AST
+  ##
+  ## See also `repr`, `treeRepr`, and `lispRepr`.
+  proc traverse(res: var string, level: int, n: NimNode) {.benign.} =
+    for i in 0..level-1: res.add "  "
+    if n.kind in {nnkEmpty, nnkNilLit, nnkCharLit..nnkInt64Lit, nnkFloatLit..nnkFloat64Lit, nnkStrLit..nnkTripleStrLit, nnkIdent, nnkSym, nnkNone}:
+      res.add("new" & ($n.kind).substr(3) & "Node(")
+    else:
+      res.add($n.kind)
+
+    case n.kind
+    of nnkEmpty: discard # same as nil node in this representation
+    of nnkNilLit: res.add("nil")
+    of nnkCharLit..nnkInt64Lit: res.add($n.intVal)
+    of nnkFloatLit..nnkFloat64Lit: res.add($n.floatVal)
+    of nnkStrLit..nnkTripleStrLit: res.add("\"" & $n.strVal & "\"")
+    of nnkIdent: res.add("!\"" & $n.ident & '"')
+    of nnkSym: res.add("\"" & $n.symbol & '"')
+    of nnkNone: assert false
+    else:
+      res.add(".newTree(")
+      for j in 0..<n.len:
+        res.add "\n"
+        traverse(res, level + 1, n[j])
+        if j != n.len-1:
+          res.add(",")
+
+      res.add("\n")
+      for i in 0..level-1: res.add "  "
+      res.add(")")
+
+    if n.kind in {nnkEmpty, nnkNilLit, nnkCharLit..nnkInt64Lit, nnkFloatLit..nnkFloat64Lit, nnkStrLit..nnkTripleStrLit, nnkIdent, nnkSym, nnkNone}:
+      res.add(")")
+
+  result = ""
+  traverse(result, 0, n)
+
 macro dumpTree*(s: untyped): untyped = echo s.treeRepr
   ## Accepts a block of nim code and prints the parsed abstract syntax
-  ## tree using the `toTree` function. Printing is done *at compile time*.
+  ## tree using the `treeRepr` function. Printing is done *at compile time*.
   ##
   ## You can use this as a tool to explore the Nim's abstract syntax
   ## tree and to discover what kind of nodes must be created to represent
@@ -518,7 +556,16 @@ macro dumpTree*(s: untyped): untyped = echo s.treeRepr
 
 macro dumpLisp*(s: untyped): untyped = echo s.lispRepr
   ## Accepts a block of nim code and prints the parsed abstract syntax
-  ## tree using the `toLisp` function. Printing is done *at compile time*.
+  ## tree using the `lespRepr` function. Printing is done *at compile time*.
+  ##
+  ## See `dumpTree`.
+
+macro dumpCode*(s: untyped): untyped = echo s.codeRepr
+  ## Accepts a block of nim code and prints the parsed abstract syntax
+  ## tree using the `codeRepr` function. Printing is done *at compile time*.
+  ##
+  ## You can use this as a tool to write macros quicker by writing example
+  ## outputs and then copying the snippets into the macro for modification.
   ##
   ## See `dumpTree`.
 
