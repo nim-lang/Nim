@@ -556,7 +556,7 @@ macro dumpTree*(s: untyped): untyped = echo s.treeRepr
 
 macro dumpLisp*(s: untyped): untyped = echo s.lispRepr
   ## Accepts a block of nim code and prints the parsed abstract syntax
-  ## tree using the `lespRepr` function. Printing is done *at compile time*.
+  ## tree using the `lispRepr` function. Printing is done *at compile time*.
   ##
   ## See `dumpTree`.
 
