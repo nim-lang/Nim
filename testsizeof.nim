@@ -2,6 +2,8 @@
 # TODO test with inheritance
 # TODO test with small sized kind
 # TODO test padding byes in inheritance object
+# TODO test packed pragma (do a test cast that automatically tests with and without packed pragma)
+
 
 type
   MyEnum {.pure.} = enum
