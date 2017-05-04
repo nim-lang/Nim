@@ -2016,6 +2016,12 @@ proc min*(x, y: float): float {.magic: "MinF64", noSideEffect.} =
   if x <= y: x else: y
 proc max*(x, y: float): float {.magic: "MaxF64", noSideEffect.} =
   if y <= x: x else: y
+
+proc min*[T](x, y: T): T =
+  if x <= y: x else: y
+
+proc max*[T](x, y: T): T =
+  if y <= x: x else: y
 {.pop.}
 
 proc clamp*[T](x, a, b: T): T =

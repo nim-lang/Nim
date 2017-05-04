@@ -434,22 +434,23 @@ proc binaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
 
 proc unsignedTrimmerJS(size: BiggestInt): Rope =
   case size
-    of 1: rope"& 0xff"
-    of 2: rope"& 0xffff"
-    of 4: rope">>> 0"
-    else: rope""
+  of 1: rope"& 0xff"
+  of 2: rope"& 0xffff"
+  of 4: rope">>> 0"
+  else: rope""
 
 proc unsignedTrimmerPHP(size: BiggestInt): Rope =
   case size
-    of 1: rope"& 0xff"
-    of 2: rope"& 0xffff"
-    of 4: rope"& 0xffffffff"
-    else: rope""
+  of 1: rope"& 0xff"
+  of 2: rope"& 0xffff"
+  of 4: rope"& 0xffffffff"
+  else: rope""
 
 template unsignedTrimmer(size: BiggestInt): Rope =
   size.unsignedTrimmerJS | size.unsignedTrimmerPHP
 
-proc binaryUintExpr(p: PProc, n: PNode, r: var TCompRes, op: string, reassign: bool = false) =
+proc binaryUintExpr(p: PProc, n: PNode, r: var TCompRes, op: string,
+                    reassign = false) =
   var x, y: TCompRes
   gen(p, n.sons[1], x)
   gen(p, n.sons[2], y)
@@ -1633,11 +1634,11 @@ proc genReprAux(p: PProc, n: PNode, r: var TCompRes, magic: string, typ: Rope = 
 
   gen(p, n.sons[1], a)
   if magic == "reprAny":
-    # the pointer argument in reprAny is expandend to 
+    # the pointer argument in reprAny is expandend to
     # (pointedto, pointer), so we need to fill it
     if a.address.isNil:
       add(r.res, a.res)
-      add(r.res, ", null") 
+      add(r.res, ", null")
     else:
       add(r.res, "$1, $2" % [a.address, a.res])
   else:
@@ -1670,7 +1671,7 @@ proc genRepr(p: PProc, n: PNode, r: var TCompRes) =
     genReprAux(p, n, r, "reprSet", genTypeInfo(p, t))
   of tyEmpty, tyVoid:
     localError(n.info, "'repr' doesn't support 'void' type")
-  of tyPointer: 
+  of tyPointer:
     genReprAux(p, n, r, "reprPointer")
   of tyOpenArray, tyVarargs:
     genReprAux(p, n, r, "reprJSONStringify")
@@ -1863,8 +1864,8 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
 proc genSetConstr(p: PProc, n: PNode, r: var TCompRes) =
   var
     a, b: TCompRes
-  useMagic(p, "SetConstr")
-  r.res = rope("SetConstr(")
+  useMagic(p, "setConstr")
+  r.res = rope("setConstr(")
   r.kind = resExpr
   for i in countup(0, sonsLen(n) - 1):
     if i > 0: add(r.res, ", ")
@@ -1877,6 +1878,12 @@ proc genSetConstr(p: PProc, n: PNode, r: var TCompRes) =
       gen(p, it, a)
       add(r.res, a.res)
   add(r.res, ")")
+  # emit better code for constant sets:
+  if p.target == targetJS and isDeepConstExpr(n):
+    inc(p.g.unique)
+    let tmp = rope("ConstSet") & rope(p.g.unique)
+    addf(p.g.constants, "var $1 = $2;$n", [tmp, r.res])
+    r.res = tmp
 
 proc genArrayConstr(p: PProc, n: PNode, r: var TCompRes) =
   var a: TCompRes
@@ -2128,6 +2135,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     else: r.res = rope(f.toStrMaxPrecision)
     r.kind = resExpr
   of nkCallKinds:
+    if isEmptyType(n.typ): genLineDir(p, n)
     if (n.sons[0].kind == nkSym) and (n.sons[0].sym.magic != mNone):
       genMagic(p, n, r)
     elif n.sons[0].kind == nkSym and sfInfixCall in n.sons[0].sym.flags and

@@ -50,6 +50,7 @@ proc add*(url: var Url, a: Url) {.deprecated.} =
 proc parseAuthority(authority: string, result: var Uri) =
   var i = 0
   var inPort = false
+  var inIPv6 = false
   while true:
     case authority[i]
     of '@':
@@ -59,7 +60,14 @@ proc parseAuthority(authority: string, result: var Uri) =
       result.hostname.setLen(0)
       inPort = false
     of ':':
-      inPort = true
+      if inIPv6:
+        result.hostname.add(authority[i])
+      else:
+        inPort = true
+    of '[':
+      inIPv6 = true
+    of ']':
+      inIPv6 = false
     of '\0': break
     else:
       if inPort:
@@ -344,6 +352,17 @@ when isMainModule:
     doAssert test.query == "type=animal&name=narwhal"
     doAssert test.anchor == "nose"
     doAssert($test == str)
+
+  block:
+    # IPv6 address
+    let str = "foo://[::1]:1234/bar?baz=true&qux#quux"
+    let uri = parseUri(str)
+    doAssert uri.scheme == "foo"
+    doAssert uri.hostname == "::1"
+    doAssert uri.port == "1234"
+    doAssert uri.path == "/bar"
+    doAssert uri.query == "baz=true&qux"
+    doAssert uri.anchor == "quux"
 
   block:
     let str = "urn:example:animal:ferret:nose"

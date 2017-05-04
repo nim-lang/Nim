@@ -495,7 +495,7 @@ type
     ai_family*: cint        ## Address family of socket.
     ai_socktype*: cint      ## Socket type.
     ai_protocol*: cint      ## Protocol of socket.
-    ai_addrlen*: int        ## Length of socket address.
+    ai_addrlen*: csize        ## Length of socket address.
     ai_canonname*: cstring  ## Canonical name of service location.
     ai_addr*: ptr SockAddr ## Socket address of socket.
     ai_next*: ptr AddrInfo ## Pointer to next in list.
@@ -803,6 +803,7 @@ const
   SIO_GET_EXTENSION_FUNCTION_POINTER* = WSAIORW(IOC_WS2,6).DWORD
   SO_UPDATE_ACCEPT_CONTEXT* = 0x700B
   AI_V4MAPPED* = 0x0008
+  AF_UNSPEC* = 0
   AF_INET* = 2
   AF_INET6* = 23
 

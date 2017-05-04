@@ -1266,7 +1266,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
     result.typ = makeTypeDesc(c, semTypeNode(c, n, nil))
     #result = symNodeFromType(c, semTypeNode(c, n, nil), n.info)
   of tyTuple:
-    checkSonsLen(n, 2)
+    if n.len != 2: return nil
     n.sons[0] = makeDeref(n.sons[0])
     c.p.bracketExpr = n.sons[0]
     # [] operator for tuples requires constant expression:
@@ -1276,9 +1276,9 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
       var idx = getOrdValue(n.sons[1])
       if idx >= 0 and idx < sonsLen(arr): n.typ = arr.sons[int(idx)]
       else: localError(n.info, errInvalidIndexValueForTuple)
+      result = n
     else:
-      localError(n.info, errIndexTypesDoNotMatch)
-    result = n
+      result = nil
   else:
     let s = if n.sons[0].kind == nkSym: n.sons[0].sym
             elif n[0].kind in nkSymChoices: n.sons[0][0].sym

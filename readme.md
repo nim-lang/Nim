@@ -1,4 +1,4 @@
-# ![Logo][image-nim-logo] Nim [![Build Status][badge-nim-travisci]][nim-travisci]
+# <img src="https://raw.githubusercontent.com/nim-lang/assets/master/Art/logo-crown.png" height="28px"/> Nim [![Build Status][badge-nim-travisci]][nim-travisci]
 
 This repository contains the Nim compiler, Nim's stdlib, tools and documentation.
 For more information about Nim, including downloads and documentation for
@@ -171,5 +171,4 @@ Copyright © 2006-2017 Andreas Rumpf, all rights reserved.
 [badge-nim-gratipay]: https://img.shields.io/gratipay/team/nim.svg?style=flat-square
 [badge-nim-bountysource]: https://img.shields.io/bountysource/team/nim/activity.svg?style=flat-square
 [badge-nim-bitcoin]: https://img.shields.io/badge/bitcoin-1BXfuKM2uvoD6mbx4g5xM3eQhLzkCK77tJ-D69134.svg?style=flat-square
-[image-nim-logo]: https://images1-focus-opensocial.googleusercontent.com/gadgets/proxy?url=https://raw.githubusercontent.com/nim-lang/assets/master/Art/logo-crown.png&container=focus&resize_w=36&refresh=21600
 [pull-request-instructions]: https://help.github.com/articles/using-pull-requests/

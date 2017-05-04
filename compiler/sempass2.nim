@@ -517,7 +517,7 @@ proc propagateEffects(tracked: PEffects, n: PNode, s: PSym) =
 proc procVarcheck(n: PNode) =
   if n.kind in nkSymChoices:
     for x in n: procVarCheck(x)
-  elif n.kind == nkSym and n.sym.magic != mNone:
+  elif n.kind == nkSym and n.sym.magic != mNone and n.sym.kind in routineKinds:
     localError(n.info, errXCannotBePassedToProcVar, n.sym.name.s)
 
 proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =

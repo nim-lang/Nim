@@ -434,7 +434,7 @@ proc `[]=`*(p: var MultipartData, name: string,
   ##     "<html><head></head><body><p>test</p></body></html>")
   p.add(name, file.content, file.name, file.contentType)
 
-proc format(p: MultipartData): tuple[header, body: string] =
+proc format(p: MultipartData): tuple[contentType, body: string] =
   if p == nil or p.content == nil or p.content.len == 0:
     return ("", "")
 
@@ -449,7 +449,7 @@ proc format(p: MultipartData): tuple[header, body: string] =
     if not found:
       break
 
-  result.header = "Content-Type: multipart/form-data; boundary=" & bound & "\c\L"
+  result.contentType = "multipart/form-data; boundary=" & bound
   result.body = ""
   for s in p.content:
     result.body.add("--" & bound & "\c\L" & s)
@@ -640,7 +640,7 @@ proc post*(url: string, extraHeaders = "", body = "",
   ## ``multipart/form-data`` POSTs comfortably.
   ##
   ## **Deprecated since version 0.15.0**: use ``HttpClient.post`` instead.
-  let (mpHeaders, mpBody) = format(multipart)
+  let (mpContentType, mpBody) = format(multipart)
 
   template withNewLine(x): untyped =
     if x.len > 0 and not x.endsWith("\c\L"):
@@ -650,8 +650,11 @@ proc post*(url: string, extraHeaders = "", body = "",
 
   var xb = mpBody.withNewLine() & body
 
-  var xh = extraHeaders.withNewLine() & mpHeaders.withNewLine() &
+  var xh = extraHeaders.withNewLine() &
     withNewLine("Content-Length: " & $len(xb))
+
+  if not multipart.isNil:
+    xh.add(withNewLine("Content-Type: " & mpContentType))
 
   result = request(url, httpPOST, xh, xb, sslContext, timeout, userAgent,
                    proxy)
@@ -1030,32 +1033,38 @@ proc newConnection(client: HttpClient | AsyncHttpClient,
   if client.currentURL.hostname != url.hostname or
       client.currentURL.scheme != url.scheme or
       client.currentURL.port != url.port:
+    let isSsl = url.scheme.toLowerAscii() == "https"
+
+    if isSsl and not defined(ssl):
+      raise newException(HttpRequestError,
+        "SSL support is not available. Cannot connect over SSL.")
+
     if client.connected:
       client.close()
-
-    when client is HttpClient:
-      client.socket = newSocket()
-    elif client is AsyncHttpClient:
-      client.socket = newAsyncSocket()
-    else: {.fatal: "Unsupported client type".}
 
     # TODO: I should be able to write 'net.Port' here...
     let port =
       if url.port == "":
-        if url.scheme.toLower() == "https":
+        if isSsl:
           nativesockets.Port(443)
         else:
           nativesockets.Port(80)
       else: nativesockets.Port(url.port.parseInt)
 
-    if url.scheme.toLower() == "https":
-      when defined(ssl):
-        client.sslContext.wrapSocket(client.socket)
-      else:
-        raise newException(HttpRequestError,
-                  "SSL support is not available. Cannot connect over SSL.")
+    when client is HttpClient:
+      client.socket = await net.dial(url.hostname, port)
+    elif client is AsyncHttpClient:
+      client.socket = await asyncnet.dial(url.hostname, port)
+    else: {.fatal: "Unsupported client type".}
 
-    await client.socket.connect(url.hostname, port)
+    when defined(ssl):
+      if isSsl:
+        try:
+          client.sslContext.wrapConnectedSocket(client.socket, handshakeAsClient)
+        except:
+          client.socket.close()
+          raise getCurrentException()
+
     client.currentURL = url
     client.connected = true
 
@@ -1188,7 +1197,7 @@ proc post*(client: HttpClient | AsyncHttpClient, url: string, body = "",
   ##
   ## This procedure will follow redirects up to a maximum number of redirects
   ## specified in ``client.maxRedirects``.
-  let (mpHeader, mpBody) = format(multipart)
+  let (mpContentType, mpBody) = format(multipart)
   # TODO: Support FutureStream for `body` parameter.
   template withNewLine(x): untyped =
     if x.len > 0 and not x.endsWith("\c\L"):
@@ -1199,7 +1208,7 @@ proc post*(client: HttpClient | AsyncHttpClient, url: string, body = "",
 
   var headers = newHttpHeaders()
   if multipart != nil:
-    headers["Content-Type"] = mpHeader.split(": ")[1]
+    headers["Content-Type"] = mpContentType
   headers["Content-Length"] = $len(xb)
 
   result = await client.requestAux(url, $HttpPOST, xb, headers)
