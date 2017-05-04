@@ -689,22 +689,6 @@ proc newSeqOfCap*[T](cap: Natural): seq[T] {.
   ## ``cap``.
   discard
 
-proc len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.
-  magic: "LengthOpenArray", noSideEffect.}
-proc len*(x: string): int {.magic: "LengthStr", noSideEffect.}
-proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.}
-proc len*[I, T](x: array[I, T]): int {.magic: "LengthArray", noSideEffect.}
-proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
-  ## returns the length of an array, an openarray, a sequence or a string.
-  ## This is roughly the same as ``high(T)-low(T)+1``, but its resulting type is
-  ## always an int.
-  ##
-  ## .. code-block:: nim
-  ##  var arr = [1,1,1,1,1]
-  ##  len(arr) #=> 5
-  ##  for i in 0..<arr.len:
-  ##    echo arr[i] #=> 1,1,1,1,1
-
 # set routines:
 proc incl*[T](x: var set[T], y: T) {.magic: "Incl", noSideEffect.}
   ## includes element ``y`` to the set ``x``. This is the same as
@@ -1268,6 +1252,28 @@ proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
   ##   tmp.add("ab")
   ##   tmp.add("cd")
   ##   assert(tmp == "abcd")
+
+proc len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.
+  magic: "LengthOpenArray", noSideEffect.}
+proc len*(x: string): int {.magic: "LengthStr", noSideEffect.}
+proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.}
+proc len*[I, T](x: array[I, T]): int {.magic: "LengthArray", noSideEffect.}
+proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
+  ## returns the length of an array, an openarray, a sequence or a string.
+  ## This is roughly the same as ``high(T)-low(T)+1``, but its resulting type is
+  ## always an int.
+  ##
+  ## .. code-block:: nim
+  ##  var arr = [1,1,1,1,1]
+  ##  len(arr) #=> 5
+  ##  for i in 0..<arr.len:
+  ##    echo arr[i] #=> 1,1,1,1,1
+
+proc len*[T: Ordinal](x: Slice[T]): int {.inline, noSideEffect.} =
+  ## returns the length of an ordinal slice
+  result = ord(x.b) - ord(x.a) + 1
+  if result < 0: result = 0
+
 
 type
   Endianness* = enum ## is a type describing the endianness of a processor.
