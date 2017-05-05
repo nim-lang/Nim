@@ -515,16 +515,8 @@ proc codeRepr*(n: NimNode): string {.compileTime, benign.} =
   ## See also `repr`, `treeRepr`, and `lispRepr`.
 
   const
-    NodeKinds = {
-      nnkEmpty,
-      nnkNilLit,
-      nnkIdent,
-      nnkSym,
-      nnkNone}
-    LitKinds = {
-      nnkCharLit..nnkInt64Lit,
-      nnkFloatLit..nnkFloat64Lit,
-      nnkStrLit..nnkTripleStrLit}
+    NodeKinds = {nnkEmpty, nnkNilLit, nnkIdent, nnkSym, nnkNone}
+    LitKinds = {nnkCharLit..nnkInt64Lit, nnkFloatLit..nnkFloat64Lit, nnkStrLit..nnkTripleStrLit}
 
   proc escape(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect.} =
     ## Functions copied from strutils
