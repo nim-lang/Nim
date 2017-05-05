@@ -235,6 +235,21 @@ block withKeyTest:
   except KeyError:
     discard
 
+block takeTest:
+  var t = initTable[string, int]()
+  t["key"] = 123
+
+  var val = 0
+  assert(t.take("key", val))
+  assert(val == 123)
+
+  val = -1
+  assert(not t.take("key", val))
+  assert(val == -1)
+
+  assert(not t.take("otherkey", val))
+  assert(val == -1)
+
 proc orderedTableSortTest() =
   var t = initOrderedTable[string, int](2)
   for key, val in items(data): t[key] = val
