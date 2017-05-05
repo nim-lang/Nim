@@ -8,7 +8,6 @@
 #
 
 include "system/inclrtl"
-from strutils import escape
 
 ## This module contains the interface to the compiler's abstract syntax
 ## tree (`AST`:idx:). Macros operate on this tree.
@@ -462,6 +461,7 @@ proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
   ## Convert the AST `n` to a human-readable tree-like string.
   ##
   ## See also `repr`, `lispRepr`, and `codeRepr`.
+
   proc traverse(res: var string, level: int, n: NimNode) {.benign.} =
     for i in 0..level-1: res.add "  "
     res.add(($n.kind).substr(3))
@@ -510,28 +510,60 @@ proc lispRepr*(n: NimNode): string {.compileTime, benign.} =
   add(result, ")")
 
 proc codeRepr*(n: NimNode): string {.compileTime, benign.} =
-  ## Convert the AST `n` to a human-readable tree-like string.
+  ## Convert the AST `n` to the code required to generate that AST.
   ##
-  ## See also `repr` and `lispRepr`.
-  proc traverse(res: var string, level: int, n: NimNode) {.benign.} =
-    for i in 0..level-1: res.add "  "
-    if n.kind in {
+  ## See also `repr`, `treeRepr`, and `lispRepr`.
+
+  const
+    NodeKinds = {
       nnkEmpty,
       nnkNilLit,
       nnkIdent,
       nnkSym,
-      nnkNone}:
-      res.add("new" & ($n.kind).substr(3) & "Node(")
-    elif n.kind in {
+      nnkNone}
+    LitKinds = {
       nnkCharLit..nnkInt64Lit,
       nnkFloatLit..nnkFloat64Lit,
-      nnkStrLit..nnkTripleStrLit}:
+      nnkStrLit..nnkTripleStrLit}
+
+  proc escape(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect.} =
+    ## Functions copied from strutils
+    proc toHex(x: BiggestInt, len: Positive): string {.noSideEffect, rtl.} =
+      const
+        HexChars = "0123456789ABCDEF"
+      var
+        t = x
+      result = newString(len)
+      for j in countdown(len-1, 0):
+        result[j] = HexChars[t and 0xF]
+        t = t shr 4
+        # handle negative overflow
+        if t == 0 and x < 0: t = -1
+
+    result = newStringOfCap(s.len + s.len shr 2)
+    result.add(prefix)
+    for c in items(s):
+      case c
+      of '\0'..'\31', '\128'..'\255':
+        add(result, "\\x")
+        add(result, toHex(ord(c), 2))
+      of '\\': add(result, "\\\\")
+      of '\'': add(result, "\\'")
+      of '\"': add(result, "\\\"")
+      else: add(result, c)
+    add(result, suffix)
+
+  proc traverse(res: var string, level: int, n: NimNode) {.benign.} =
+    for i in 0..level-1: res.add "  "
+    if n.kind in NodeKinds:
+      res.add("new" & ($n.kind).substr(3) & "Node(")
+    elif n.kind in LitKinds:
       res.add("newLit(")
     else:
       res.add($n.kind)
 
     case n.kind
-    of nnkEmpty: discard # same as nil node in this representation
+    of nnkEmpty: discard
     of nnkNilLit: res.add("nil")
     of nnkCharLit: res.add("'" & $chr(n.intVal) & "'")
     of nnkIntLit..nnkInt64Lit: res.add($n.intVal)
@@ -552,15 +584,7 @@ proc codeRepr*(n: NimNode): string {.compileTime, benign.} =
       for i in 0..level-1: res.add "  "
       res.add(")")
 
-    if n.kind in {
-      nnkEmpty,
-      nnkNilLit,
-      nnkCharLit..nnkInt64Lit,
-      nnkFloatLit..nnkFloat64Lit,
-      nnkStrLit..nnkTripleStrLit,
-      nnkIdent,
-      nnkSym,
-      nnkNone}:
+    if n.kind in NodeKinds+LitKinds:
       res.add(")")
 
   result = ""
