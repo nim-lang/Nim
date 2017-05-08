@@ -68,6 +68,8 @@ type
     nnkProcTy,
     nnkIteratorTy,         # iterator type
     nnkSharedTy,           # 'shared T'
+    nnkInTy,
+    nnkOutTy,
     nnkEnumTy,
     nnkEnumFieldDef,
     nnkArglist, nnkPattern

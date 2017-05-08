@@ -212,6 +212,8 @@ type
     nkIteratorTy,         # iterator type
     nkSharedTy,           # 'shared T'
                           # we use 'nkPostFix' for the 'not nil' addition
+    nkInTy,               # prefix `in` used to mark contravariant types
+    nkOutTy,              # prefix `out` used to mark covariant types
     nkEnumTy,             # enum body
     nkEnumFieldDef,       # `ident = expr` in an enumeration
     nkArgList,            # argument list
@@ -268,6 +270,8 @@ type
     sfDiscardable,    # returned value may be discarded implicitly
     sfOverriden,      # proc is overriden
     sfGenSym          # symbol is 'gensym'ed; do not add to symbol table
+    sfCovariant       # covariant generic param
+    sfContravariant   # contravariant generic param
 
   TSymFlags* = set[TSymFlag]
 
