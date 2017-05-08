@@ -242,6 +242,11 @@ when defined(windows) or defined(nimdoc):
     if gDisp.isNil: gDisp = newDispatcher()
     result = gDisp
 
+  proc setGlobalDispatcher*(disp: PDispatcher) =
+    if not gDisp.isNil:
+      assert gDisp.callbacks.len == 0
+    gDisp = disp
+
   proc register*(fd: AsyncFD) =
     ## Registers ``fd`` with the dispatcher.
     let p = getGlobalDispatcher()
@@ -930,6 +935,11 @@ else:
   proc getGlobalDispatcher*(): PDispatcher =
     if gDisp.isNil: gDisp = newDispatcher()
     result = gDisp
+
+  proc setGlobalDispatcher*(disp: PDispatcher) =
+    if not gDisp.isNil:
+      assert gDisp.callbacks.len == 0
+    gDisp = disp
 
   proc update(fd: AsyncFD, events: set[Event]) =
     let p = getGlobalDispatcher()
