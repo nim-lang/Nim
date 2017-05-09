@@ -1800,7 +1800,6 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mCompiles: result = semCompiles(c, setMs(n, s), flags)
   #of mLow: result = semLowHigh(c, setMs(n, s), mLow)
   #of mHigh: result = semLowHigh(c, setMs(n, s), mHigh)
-  of mSizeOf: result = semSizeof(c, setMs(n, s))
   of mIs: result = semIs(c, setMs(n, s), flags)
   #of mOf: result = semOf(c, setMs(n, s))
   of mShallowCopy: result = semShallowCopy(c, n, flags)

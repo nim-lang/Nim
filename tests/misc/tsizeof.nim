@@ -6,7 +6,68 @@ discard """
 # TODO test with small sized kind
 # TODO test padding byes in inheritance object
 # TODO test packed pragma (do a test cast that automatically tests with and without packed pragma)
+# TODO automatically test with packed and unpacked
 
+import macros, typetraits
+
+
+macro testSizeAlignOf(args: varargs[untyped]): untyped =
+  result = newStmtList()
+  for arg in args:
+    result.add quote do:
+      let
+        c_size = c_sizeof(`arg`)
+        nim_size = sizeof(`arg`)
+      if nim_size != c_size:
+        echo strAlign(`arg`.type.name & ": "), " size: ",
+             intAlign(c_size),   " !=  ",
+             intAlign(nim_size), " align: ",
+             intAlign(alignof(`arg`))
+
+macro testOffsetOf(a,b1,b2: untyped): untyped =
+  let typeName = newLit(a.repr)
+  let member   = newLit(b2.repr)
+  result = quote do:
+    let
+      c_offset   = c_offsetof(`a`,`b1`)
+      nim_offset = offsetof(`a`,`b2`)
+    if c_offset != nim_offset:
+      echo `typeName`, ".", `member`, " offset: ", c_offset, " != ", nim_offset
+
+template testOffsetOf(a,b: untyped): untyped =
+  testOffsetOf(a,b,b)
+
+
+
+proc strAlign(arg: string): string =
+  const minLen = 22
+  result = arg
+  for i in 0 ..< minLen - arg.len:
+    result &= ' '
+
+proc intAlign(arg: int): string =
+  const minLen = 4
+  result = $arg
+  while result.len < minLen:
+    result.insert(" ")
+
+macro c_offsetof(a: typed, b: untyped): int32 =
+  let bliteral = newLit(repr(b))
+  result = quote do:
+    var res: int32
+    {.emit: [res, " = offsetof(", `a`, ", ", `bliteral`, ");"] .}
+    res
+
+macro c_sizeof(a: typed): int32 =
+  result = quote do:
+    var res: int32
+    {.emit: [res, " = sizeof(", `a`, ");"] .}
+    res
+
+when false:
+  {.pragma: objectconfig.}
+else:
+  {.pragma: objectconfig, packed.}
 
 type
   MyEnum {.pure.} = enum
@@ -34,31 +95,31 @@ type
     ValueA
     ValueB
 
-  EnumObjectA = object
+  EnumObjectA  {.objectconfig.} = object
     a : Enum1
     b : Enum2
     c : Enum4
     d : Enum8
 
-  EnumObjectB = object
+  EnumObjectB  {.objectconfig.} = object
     a : Enum8
     b : Enum4
     c : Enum2
     d : Enum1
 
-  TrivialType = object
+  TrivialType  {.objectconfig.} = object
     x,y,z: int8
 
-  SimpleAlignment = object
+  SimpleAlignment {.objectconfig.} = object
     # behaves differently on 32bit Windows and 32bit Linux
     a,b: int8
     c: int64
 
-  AlignAtEnd = object
+  AlignAtEnd {.objectconfig.} = object
     a: int64
     b,c: int8
 
-  SimpleBranch = object
+  SimpleBranch {.objectconfig.} = object
     case kind: MyEnum
     of MyEnum.ValueA:
       a: int16
@@ -67,7 +128,7 @@ type
     of MyEnum.ValueC:
       c: int64
 
-  PaddingBeforeBranchA = object
+  PaddingBeforeBranchA {.objectconfig.} = object
     cause: int8
     case kind: MyEnum
     of MyEnum.ValueA:
@@ -77,7 +138,7 @@ type
     of MyEnum.ValueC:
       c: int64
 
-  PaddingBeforeBranchB = object
+  PaddingBeforeBranchB {.objectconfig.} = object
     cause: int8
     case kind: MyEnum
     of MyEnum.ValueA:
@@ -88,7 +149,7 @@ type
       c: int32
 
 
-  PaddingAfterBranch = object
+  PaddingAfterBranch {.objectconfig.} = object
     case kind: MyEnum
     of MyEnum.ValueA:
       a: int8
@@ -98,7 +159,7 @@ type
       c: int32
     cause: int64
 
-  RecursiveStuff = object
+  RecursiveStuff {.objectconfig.} = object
     case kind: MyEnum
     of MyEnum.ValueA:
       a: int16
@@ -113,7 +174,7 @@ type
       of MyEnum.ValueC:
         cc: int64
 
-  Foobar = object
+  Foobar {.objectconfig.} = object
     case kind: OtherEnum
     of OtherEnum.ValueA:
       a: uint8
@@ -121,18 +182,18 @@ type
       b: int8
     c: int8
 
-  Bazing = object of RootObj
+  Bazing {.objectconfig.} = object of RootObj
     a: int64
     # TODO test on 32 bit system
     # only there the object header is smaller than the first member
 
-  InheritanceA = object of RootObj
+  InheritanceA {.objectconfig.} = object of RootObj
     a: char
 
-  InheritanceB = object of InheritanceA
+  InheritanceB {.objectconfig.} = object of InheritanceA
     b: char
 
-  InheritanceC = object of InheritanceB
+  InheritanceC {.objectconfig.} = object of InheritanceB
     c: char
 
   #Float128Test = object
@@ -142,34 +203,7 @@ type
   #Bazang = object of RootObj
   #  a: float128
 
-
-import macros, typetraits
-
-proc strAlign(arg: string): string =
-  const minLen = 22
-  result = arg
-  for i in 0 ..< minLen - arg.len:
-    result &= ' '
-
-proc intAlign(arg: int): string =
-  const minLen = 4
-  result = $arg
-  while result.len < minLen:
-    result.insert(" ")
-
-macro c_offsetof(a: typed, b: untyped): int32 =
-  let bliteral = newLit(repr(b))
-  result = quote do:
-    var res: int32
-    {.emit: [res, " = offsetof(", `a`, ", ", `bliteral`, ");"] .}
-    res
-
-macro c_sizeof(a: typed): int32 =
-  result = quote do:
-    var res: int32
-    {.emit: [res, " = sizeof(", `a`, ");"] .}
-    res
-
+const trivialSize = sizeof(TrivialType) # needs to be able to evaluate at compile time
 
 proc main(): void =
   var t : TrivialType
@@ -190,33 +224,7 @@ proc main(): void =
     eoa: EnumObjectA
     eob: EnumObjectB
 
-  macro testSizeAlignOf(args: varargs[untyped]): untyped =
-    result = newStmtList()
-    for arg in args:
-      result.add quote do:
-        let
-          c_size = c_sizeof(`arg`)
-          nim_size = sizeof(`arg`)
-        if nim_size != c_size:
-          echo strAlign(`arg`.type.name & ": "), " size: ",
-               intAlign(c_size),   " !=  ",
-               intAlign(nim_size), " align: ",
-               intAlign(alignof(`arg`))
-
   testSizeAlignOf(t,a,b,c,d,e,f,g,ro, e1, e2, e4, e8, eoa, eob)
-
-  macro testOffsetOf(a,b1,b2: untyped): untyped =
-    let typeName = newLit(a.repr)
-    let member   = newLit(b2.repr)
-    result = quote do:
-      let
-        c_offset   = c_offsetof(`a`,`b1`)
-        nim_offset = offsetof(`a`,`b2`)
-      if c_offset != nim_offset:
-        echo `typeName`, ".", `member`, " offset: ", c_offset, " != ", nim_offset
-
-  template testOffsetOf(a,b: untyped): untyped =
-    testOffsetOf(a,b,b)
 
   testOffsetOf(TrivialType, x)
   testOffsetOf(TrivialType, y)

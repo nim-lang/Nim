@@ -117,10 +117,45 @@ proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt): tuple[o
     result.align = 1
     result.offset  = szNonConcreteType
 
+proc computePackedObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt): BiggestInt =
+  ## ``result`` is the offset within the object, after the node has been written, no padding bytes added
+  case n.kind
+  of nkRecCase:
+
+    assert(n.sons[0].kind == nkSym)
+    let kindOffset = computePackedObjectOffsetsRecursive(n.sons[0], initialOffset)
+    # the union neds to be aligned first, before the offsets can be assigned
+    let kindUnionOffset = kindOffset
+
+    var maxChildOffset: BiggestInt = 0
+    for i in 1 ..< sonsLen(n):
+      let offset = computePackedObjectOffsetsRecursive(n.sons[i].lastSon, kindUnionOffset)
+      maxChildOffset = max(maxChildOffset, offset)
+
+    result  = maxChildOffset
+
+
+
+  of nkRecList:
+    result = initialOffset
+    for i, child in n.sons:
+      result = computePackedObjectOffsetsRecursive(child, result)
+      if result < 0:
+        break
+
+  of nkSym:
+    n.sym.typ.computeSizeAlign
+    n.sym.offset = initialOffset.int
+    result = n.sym.offset + n.sym.typ.size
+
+  else:
+    result = szNonConcreteType
+
 # TODO this one needs an alignment map of the individual types
 
 proc computeSizeAlign(typ: PType): void =
   ## computes and sets ``size`` and ``align`` members of ``typ``
+
 
   if typ.size >= 0:
     # nothing to do, size already computed
@@ -283,7 +318,11 @@ proc computeSizeAlign(typ: PType): void =
       headerSize  = 0
       headerAlign = 1
 
-    let (offset, align) = computeObjectOffsetsRecursive(typ.n, headerSize)
+    let (offset, align) =
+      if tfPacked in typ.flags:
+        (computePackedObjectOffsetsRecursive(typ.n, headerSize), BiggestInt(1))
+      else:
+        computeObjectOffsetsRecursive(typ.n, headerSize)
 
     if offset < 0:
       typ.size = offset
@@ -292,8 +331,13 @@ proc computeSizeAlign(typ: PType): void =
 
     # header size is already in size from computeObjectOffsetsRecursive
     # maxAlign is probably not changed at all from headerAlign
-    typ.align = int16(max(align, headerAlign))
-    typ.size  = align(offset, typ.align)
+
+    if tfPacked in typ.flags:
+      typ.size = offset
+      typ.align = 1
+    else:
+      typ.size  = align(offset, typ.align)
+      typ.align = int16(max(align, headerAlign))
 
   of tyInferred:
     if typ.len > 1:

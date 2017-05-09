@@ -620,7 +620,7 @@ proc unsafeNew*[T](a: var ref T, size: Natural) {.magic: "New", noSideEffect.}
   ## of the passed ``size``. This should only be used for optimization
   ## purposes when you know what you're doing!
 
-proc sizeof*[T](x: T): int {.magic: "SizeOf", noSideEffect.}
+proc sizeof*[T](x: T): int {.magic: "SizeOf", noSideEffect, compileTime.}
   ## returns the size of ``x`` in bytes. Since this is a low-level proc,
   ## its usage is discouraged - using ``new`` for the most cases suffices
   ## that one never needs to know ``x``'s size. As a special semantic rule,

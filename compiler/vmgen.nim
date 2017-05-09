@@ -979,8 +979,6 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.gABC(n, if m == mOf: opcOf else: opcIs, dest, tmp, idx)
     c.freeTemp(tmp)
     c.freeTemp(idx)
-  of mSizeOf:
-    globalError(n.info, errCannotInterpretNodeX, renderTree(n))
   of mHigh:
     if dest < 0: dest = c.getTemp(n.typ)
     let tmp = c.genx(n.sons[1])

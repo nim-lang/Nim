@@ -658,19 +658,6 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
       of mNone:
         # If it has no sideEffect, it should be evaluated. But not here.
         return
-      of mSizeOf:
-        var a = n.sons[1]
-        if computeSize(a.typ) < 0:
-          localError(a.info, errCannotEvalXBecauseIncompletelyDefined,
-                     "sizeof")
-          result = nil
-        elif skipTypes(a.typ, typedescInst+{tyRange}).kind in
-             IntegralTypes+NilableTypes+{tySet}:
-          #{tyArray,tyObject,tyTuple}:
-          result = newIntNodeT(getSize(a.typ), n)
-        else:
-          result = nil
-          # XXX: size computation for complex types is still wrong
       of mLow:
         result = newIntNodeT(firstOrd(n.sons[1].typ), n)
       of mHigh:
