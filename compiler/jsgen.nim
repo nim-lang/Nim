@@ -1864,8 +1864,8 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
 proc genSetConstr(p: PProc, n: PNode, r: var TCompRes) =
   var
     a, b: TCompRes
-  useMagic(p, "SetConstr")
-  r.res = rope("SetConstr(")
+  useMagic(p, "setConstr")
+  r.res = rope("setConstr(")
   r.kind = resExpr
   for i in countup(0, sonsLen(n) - 1):
     if i > 0: add(r.res, ", ")
@@ -1878,6 +1878,12 @@ proc genSetConstr(p: PProc, n: PNode, r: var TCompRes) =
       gen(p, it, a)
       add(r.res, a.res)
   add(r.res, ")")
+  # emit better code for constant sets:
+  if p.target == targetJS and isDeepConstExpr(n):
+    inc(p.g.unique)
+    let tmp = rope("ConstSet") & rope(p.g.unique)
+    addf(p.g.constants, "var $1 = $2;$n", [tmp, r.res])
+    r.res = tmp
 
 proc genArrayConstr(p: PProc, n: PNode, r: var TCompRes) =
   var a: TCompRes
