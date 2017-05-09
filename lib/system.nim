@@ -1692,7 +1692,7 @@ when not defined(nimscript):
       ## from it before writing to it is undefined behaviour!
       ## The allocated memory belongs to its allocating thread!
       ## Use `allocShared` to allocate from a shared heap.
-    proc createU*(T: typedesc, size = 1.Positive): ptr T {.inline, benign.} =
+    proc createU*[T](typ: typedesc[T], size = 1.Positive): ptr T {.inline, benign.} =
       ## allocates a new memory block with at least ``T.sizeof * size``
       ## bytes. The block has to be freed with ``resize(block, 0)`` or
       ## ``free(block)``. The block is not initialized, so reading
@@ -1707,7 +1707,7 @@ when not defined(nimscript):
       ## containing zero, so it is somewhat safer than ``alloc``.
       ## The allocated memory belongs to its allocating thread!
       ## Use `allocShared0` to allocate from a shared heap.
-    proc create*(T: typedesc, size = 1.Positive): ptr T {.inline, benign.} =
+    proc create*[T](typ: typedesc[T], size = 1.Positive): ptr T {.inline, benign.} =
       ## allocates a new memory block with at least ``T.sizeof * size``
       ## bytes. The block has to be freed with ``resize(block, 0)`` or
       ## ``free(block)``. The block is initialized with all bytes
@@ -1748,7 +1748,7 @@ when not defined(nimscript):
       ## ``reallocShared(block, 0)`` or ``deallocShared(block)``. The block
       ## is not initialized, so reading from it before writing to it is
       ## undefined behaviour!
-    proc createSharedU*(T: typedesc, size = 1.Positive): ptr T {.inline,
+    proc createSharedU*[T](typ: typedesc[T], size = 1.Positive): ptr T {.inline,
                                                                  benign.} =
       ## allocates a new memory block on the shared heap with at
       ## least ``T.sizeof * size`` bytes. The block has to be freed with
@@ -1762,7 +1762,7 @@ when not defined(nimscript):
       ## ``reallocShared(block, 0)`` or ``deallocShared(block)``.
       ## The block is initialized with all bytes
       ## containing zero, so it is somewhat safer than ``allocShared``.
-    proc createShared*(T: typedesc, size = 1.Positive): ptr T {.inline.} =
+    proc createShared*[T](typ: typedesc[T], size = 1.Positive): ptr T {.inline.} =
       ## allocates a new memory block on the shared heap with at
       ## least ``T.sizeof * size`` bytes. The block has to be freed with
       ## ``resizeShared(block, 0)`` or ``freeShared(block)``.
