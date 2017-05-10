@@ -135,7 +135,10 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     let isCall = ord(n.kind in nkCallKinds+{nkBracketExpr})
     let n = if n[0].kind == nkBracket: n[0] else: n
     checkMinSonsLen(n, 1)
-    var base = semTypeNode(c, n.lastSon, nil).skipTypes({tyTypeDesc})
+    var base = semTypeNode(c, n.lastSon, nil)
+    let skippedBase = base.skipTypes({tyTypeDesc})
+    if skippedBase.kind != tyNone: base = skippedBase
+
     result = newOrPrevType(kind, prev, c)
     var isNilable = false
     # check every except the last is an object:
