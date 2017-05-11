@@ -180,7 +180,7 @@ elif defined(linux):
     if result.epollFD < 0:
       raiseOSError(osLastError())
     when MultiThreaded:
-      result.fds = initSharedTable[SocketHandle, SelectorKey]()
+      result.fds.initSharedTable()
     else:
       result.fds = initTable[SocketHandle, SelectorKey]()
 
@@ -269,7 +269,7 @@ elif defined(macosx) or defined(freebsd) or defined(openbsd) or defined(netbsd):
     if result.kqFD < 0:
       raiseOSError(osLastError())
     when MultiThreaded:
-      result.fds = initSharedTable[SocketHandle, SelectorKey]()
+      result.fds.initSharedTable()
     else:
       result.fds = initTable[SocketHandle, SelectorKey]()
 
@@ -356,7 +356,7 @@ elif not defined(nimdoc):
 
   proc newSelector*(): Selector =
     when MultiThreaded:
-      result.fds = initSharedTable[SocketHandle, SelectorKey]()
+      result.fds.initSharedTable()
     else:
       result.fds = initTable[SocketHandle, SelectorKey]()
 

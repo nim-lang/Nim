@@ -329,7 +329,7 @@ proc initGC() =
       init(gch.marked)
       init(gch.additionalRoots)
     when hasThreadSupport:
-      gch.toDispose = initSharedList[pointer]()
+      gch.toDispose.initSharedList()
 
 when useMarkForDebug or useBackupGc:
   type
