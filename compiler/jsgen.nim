@@ -2272,7 +2272,6 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   genModule(p, n)
   add(p.g.code, p.locals)
   add(p.g.code, p.body)
-  globals.unique = p.unique
 
 proc wholeCode(graph: ModuleGraph; m: BModule): Rope =
   for prc in globals.forwarded:

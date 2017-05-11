@@ -599,7 +599,7 @@ Result variable
 A procedure that returns a value has an implicit ``result`` variable declared
 that represents the return value. A ``return`` statement with no expression is a
 shorthand for ``return result``. The ``result`` value is always returned
-automatically at the end a procedure if there is no ``return`` statement at
+automatically at the end of a procedure if there is no ``return`` statement at
 the exit.
 
 .. code-block:: nim
