@@ -1,5 +1,29 @@
 discard """
-cmd: "nim check $file"
+cmd: "nim cpp $file"
+output: '''
+cat
+cat
+dog
+dog
+cat
+cat
+dog
+dog X
+cat
+cat
+dog
+dog
+dog value
+cat value
+dog value
+cat value
+dog
+dog
+dog value
+cat value
+dog 1
+dog 2
+'''
 """
 
 template accept(x) =
@@ -8,9 +32,20 @@ template accept(x) =
 template reject(x) =
   static: assert(not compiles(x))
 
+import macros
+
+macro skipElse(n: untyped): typed = n[0]
+
+template acceptWithCovariance(x, otherwise): typed =
+  when nimEnableCovariance:
+    x
+  else:
+    reject(x)
+    skipElse(otherwise)
+
 type
   Animal = object of TObject
-    x: int
+    x: string
 
   Dog = object of Animal
     y: int
@@ -21,24 +56,94 @@ type
   AnimalRef = ref Animal
   AnimalPtr = ptr Animal
 
-var dog = new(Dog)
-var cat = new(Cat)
+  RefAlias[T] = ref T
 
-proc wantsRefArray(x: array[2, ref Animal]) = discard
+var dog = new(Dog)
+dog.x = "dog"
+
+var cat = new(Cat)
+cat.x = "cat"
+
+proc makeDerivedRef(x: string): ref Dog =
+  new(result)
+  result.x = x
+
+proc makeDerived(x: string): Dog =
+  result.x = x
+
+var covariantSeq = @[makeDerivedRef("dog 1"), makeDerivedRef("dog 2")]
+var nonCovariantSeq = @[makeDerived("dog 1"), makeDerived("dog 2")]
+var covariantArr = [makeDerivedRef("dog 1"), makeDerivedRef("dog 2")]
+var nonCovariantArr = [makeDerived("dog 1"), makeDerived("dog 2")]
+
+proc wantsCovariantSeq1(s: seq[ref Animal]) =
+  for a in s: echo a.x
+
+proc wantsCovariantSeq2(s: seq[AnimalRef]) =
+  for a in s: echo a.x
+
+proc wantsCovariantSeq3(s: seq[RefAlias[Animal]]) =
+  for a in s: echo a.x
+
+proc wantsCovariantOperArray(s: openarray[ref Animal]) =
+  for a in s: echo a.x
+
+proc modifiesCovariantOperArray(s: var openarray[ref Animal]) =
+  for a in s: echo a.x
+
+proc modifiesDerivedOperArray(s: var openarray[ref Dog]) =
+  for a in s: echo a.x
+
+proc wantsNonCovariantOperArray(s: openarray[Animal]) =
+  for a in s: echo a.x
+
+proc wantsCovariantArray(s: array[2, ref Animal]) =
+  for a in s: echo a.x
+
+proc wantsNonCovariantSeq(s: seq[Animal]) =
+  for a in s: echo a.x
+
+proc wantsNonCovariantArray(s: array[2, Animal]) =
+  for a in s: echo a.x
+
+proc modifiesCovariantSeq(s: var seq[ref Animal]) =
+  for a in s: echo a.x
+
+proc modifiesCovariantArray(s: var array[2, ref Animal]) =
+  for a in s: echo a.x
+
+proc modifiesCovariantSeq(s: ptr seq[ref Animal]) =
+  for a in s[]: echo a.x
+
+proc modifiesCovariantArray(s: ptr array[2, ref Animal]) =
+  for a in s[]: echo a.x
+
+proc modifiesDerivedSeq(s: var seq[ref Dog]) =
+  for a in s: echo a.x
+
+proc modifiesDerivedArray(s: var array[2, ref Dog]) =
+  for a in s: echo a.x
+
+proc modifiesDerivedSeq(s: ptr seq[ref Dog]) =
+  for a in s[]: echo a.x
+
+proc modifiesDerivedArray(s: ptr array[2, ref Dog]) =
+  for a in s[]: echo a.x
 
 accept:
-  wantsRefArray([AnimalRef(dog), AnimalRef(dog)])
-  wantsRefArray([AnimalRef(cat), AnimalRef(dog)])
-  wantsRefArray([AnimalRef(cat), dog])
+  wantsCovariantArray([AnimalRef(dog), AnimalRef(dog)])
+  wantsCovariantArray([AnimalRef(cat), AnimalRef(dog)])
+  wantsCovariantArray([AnimalRef(cat), dog])
 
   # there is a special rule that detects the base
   # type of polymorphic arrays
-  wantsRefArray([cat, dog])
+  wantsCovariantArray([cat, dog])
 
-reject:
-  # But the current lack of covariance kicks in
-  # when we try to pass a derived type array
-  wantsRefArray([cat, cat])
+acceptWithCovariance:
+  wantsCovariantArray([cat, cat])
+else:
+  echo "cat"
+  echo "cat"
 
 var animalRefArray: array[2, ref Animal]
 
@@ -46,15 +151,21 @@ accept:
   animalRefArray = [AnimalRef(dog), AnimalRef(dog)]
   animalRefArray = [AnimalRef(cat), dog]
 
-reject:
+acceptWithCovariance:
   animalRefArray = [dog, dog]
+  wantsCovariantArray animalRefArray
+else:
+  echo "dog"
+  echo "dog"
 
 accept:
   var animal: AnimalRef = dog
   animal = cat
 
 var vdog: Dog
+vdog.x = "dog value"
 var vcat: Cat
+vcat.x = "cat value"
 
 reject:
   vcat = vdog
@@ -79,22 +190,93 @@ accept:
 proc wantsRefSeq(x: seq[AnimalRef]) = discard
 
 accept:
-  wantsRefSeq(@[AnimalRef(dog), AnimalRef(dog)])
-  wantsRefSeq(@[AnimalRef(cat), AnimalRef(dog)])
-  wantsRefSeq(@[AnimalRef(cat), dog])
-  wantsRefSeq(@[cat, dog])
+  wantsCovariantSeq1(@[AnimalRef(dog), AnimalRef(dog)])
+  wantsCovariantSeq1(@[AnimalRef(cat), AnimalRef(dog)])
+  wantsCovariantSeq1(@[AnimalRef(cat), dog])
+  wantsCovariantSeq1(@[cat, dog])
 
-reject:
-  wantsRefSeq(@[cat, cat])
+  wantsCovariantSeq2(@[AnimalRef(dog), AnimalRef(dog)])
+  wantsCovariantSeq2(@[AnimalRef(cat), AnimalRef(dog)])
+  wantsCovariantSeq2(@[AnimalRef(cat), dog])
+  wantsCovariantSeq2(@[cat, dog])
+
+  wantsCovariantSeq3(@[AnimalRef(dog), AnimalRef(dog)])
+  wantsCovariantSeq3(@[AnimalRef(cat), AnimalRef(dog)])
+  wantsCovariantSeq3(@[AnimalRef(cat), dog])
+  wantsCovariantSeq3(@[cat, dog])
+
+  wantsCovariantOperArray([cat, dog])
+
+acceptWithCovariance:
+  wantsCovariantSeq1(@[cat, cat])
+  wantsCovariantSeq2(@[dog, makeDerivedRef("dog X")])
+  # XXX: wantsCovariantSeq3(@[cat, cat])
+
+  wantsCovariantOperArray(@[cat, cat])
+  wantsCovariantOperArray([dog, dog])
+else:
+  echo "cat"
+  echo "cat"
+  echo "dog"
+  echo "dog X"
+  echo "cat"
+  echo "cat"
+  echo "dog"
+  echo "dog"
+
+var dogRefs = @[dog, dog]
+var dogRefsArray = [dog, dog]
+var animalRefs = @[dog, cat]
+
+accept:
+  modifiesDerivedArray(dogRefsArray)
+  modifiesDerivedSeq(dogRefs)
+
+reject modifiesCovariantSeq(dogRefs)
+reject modifiesCovariantSeq(addr(dogRefs))
+reject modifiesCovariantSeq(dogRefs.addr)
+
+reject modifiesCovariantArray([dog, dog])
+reject modifiesCovariantArray(dogRefsArray)
+reject modifiesCovariantArray(addr(dogRefsArray))
+reject modifiesCovariantArray(dogRefsArray.addr)
+
+var dogValues = @[vdog, vdog]
+var dogValuesArray = [vdog, vdog]
+var animalValues = @[Animal(vdog), Animal(vcat)]
+var animalValuesArray = [Animal(vdog), Animal(vcat)]
+
+wantsNonCovariantSeq animalValues
+wantsNonCovariantArray animalValuesArray
+
+reject wantsNonCovariantSeq(dogRefs)
+reject modifiesCovariantOperArray(dogRefs)
+reject wantsNonCovariantArray(dogRefsArray)
+reject wantsNonCovariantSeq(dogValues)
+reject wantsNonCovariantArray(dogValuesArray)
+reject modifiesValueArray()
+
+modifiesDerivedOperArray dogRefs
+reject modifiesDerivedOperArray(dogValues)
+reject modifiesDerivedOperArray(animalRefs)
+
+wantsNonCovariantOperArray animalValues
+reject wantsNonCovariantOperArray(animalRefs)
+reject wantsNonCovariantOperArray(dogRefs)
+reject wantsNonCovariantOperArray(dogValues)
 
 var animalRefSeq: seq[ref Animal]
 
 accept:
-  animalRefArray = [AnimalRef(dog), AnimalRef(dog)]
-  animalRefArray = [AnimalRef(cat), dog]
+  animalRefSeq = @[AnimalRef(dog), AnimalRef(dog)]
+  animalRefSeq = @[AnimalRef(cat), dog]
 
-reject:
-  animalRefArray = [dog, dog]
+acceptWithCovariance:
+  animalRefSeq = @[makeDerivedRef("dog 1"), makeDerivedRef("dog 2")]
+  wantsCovariantSeq1(animalRefSeq)
+else:
+  echo "dog 1"
+  echo "dog 2"
 
 var pdog: ptr Dog
 var pcat: ptr Cat
@@ -115,17 +297,6 @@ proc wantsVarPointer2(x: var AnimalPtr) =
 
 reject wantsVarPointer1(pdog)
 reject wantsVarPointer2(pcat)
-
-proc usesVarRefSeq(x: var seq[AnimalRef]) = discard
-proc usesVarRefArray(x: var array[2, AnimalRef]) = discard
-
-reject:
-  var catsSeq = @[cat, cat]
-  usesVarRefSeq catsSeq
-
-reject:
-  var catsArray = [cat, cat]
-  usesVarRefArray catsArray
 
 # covariance may be allowed for certain extern types
 
@@ -177,9 +348,6 @@ var
   ptrPtrAnimal: ptr ptr Animal
 
 reject: ptrPtrDog = ptrPtrAnimal
-
-type
-  RefAlias[T] = ref T
 
 # Try to break the rules by introducing some tricky
 # double indirection types:
