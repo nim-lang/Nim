@@ -595,6 +595,8 @@ proc handleCmdLine(cache: IdentCache; config: ConfigRef) =
       raise newException(IOError,
           "Cannot find Nim standard library: Nim compiler not in PATH")
     gPrefixDir = binaryPath.splitPath().head.parentDir()
+    if not dirExists(gPrefixDir / "lib"): gPrefixDir = ""
+
     #msgs.writelnHook = proc (line: string) = log(line)
     myLog("START " & gProjectFull)
 

@@ -165,8 +165,22 @@ when someGcc and hasThreadSupport:
 
   template fence*() = atomicThreadFence(ATOMIC_SEQ_CST)
 elif defined(vcc) and hasThreadSupport:
-  proc addAndFetch*(p: ptr int, val: int): int {.
-    importc: "_InterlockedExchangeAdd", header: "<intrin.h>".}
+  when defined(cpp):
+    when sizeof(int) == 8:
+      proc addAndFetch*(p: ptr int, val: int): int {.
+        importcpp: "_InterlockedExchangeAdd64(static_cast<NI volatile *>(#), #)",
+        header: "<intrin.h>".}
+    else:
+      proc addAndFetch*(p: ptr int, val: int): int {.
+        importcpp: "_InterlockedExchangeAdd(static_cast<NI volatile *>(#), #)",
+        header: "<intrin.h>".}
+  else:
+    when sizeof(int) == 8:
+      proc addAndFetch*(p: ptr int, val: int): int {.
+        importc: "_InterlockedExchangeAdd64", header: "<intrin.h>".}
+    else:
+      proc addAndFetch*(p: ptr int, val: int): int {.
+        importc: "_InterlockedExchangeAdd", header: "<intrin.h>".}
 
   proc fence*() {.importc: "_ReadWriteBarrier", header: "<intrin.h>".}
 
@@ -180,6 +194,7 @@ proc atomicInc*(memLoc: var int, x: int = 1): int =
     result = atomic_add_fetch(memLoc.addr, x, ATOMIC_RELAXED)
   elif defined(vcc) and hasThreadSupport:
     result = addAndFetch(memLoc.addr, x)
+    inc(result, x)
   else:
     inc(memLoc, x)
     result = memLoc
@@ -192,6 +207,7 @@ proc atomicDec*(memLoc: var int, x: int = 1): int =
       result = atomic_add_fetch(memLoc.addr, -x, ATOMIC_RELAXED)
   elif defined(vcc) and hasThreadSupport:
     result = addAndFetch(memLoc.addr, -x)
+    dec(result, x)
   else:
     dec(memLoc, x)
     result = memLoc
