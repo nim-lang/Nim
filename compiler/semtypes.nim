@@ -136,6 +136,9 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     let n = if n[0].kind == nkBracket: n[0] else: n
     checkMinSonsLen(n, 1)
     var t = semTypeNode(c, n.lastSon, nil)
+    if c.inGenericContext > 0:
+      if t.sym != nil and sfCovariant in t.sym.flags:
+        t.sym.flags.incl sfStrongCovariant
     if t.kind == tyTypeDesc and tfUnresolved notin t.flags:
       t = t.base
     result = newOrPrevType(kind, prev, c)
@@ -1590,9 +1593,9 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
       if paramName.kind in {nkInTy, nkOutTy}:
         if father == nil or sfImportc notin father.sym.flags:
           localError(paramName.info, errInOutFlagNotExtern)
-        paramName = paramName[0]
         covarianceFlag = if paramName.kind == nkInTy: sfContravariant
                          else: sfCovariant
+        paramName = paramName[0]
 
       var s = if finalType.kind == tyStatic or tfWildcard in typ.flags:
           newSymG(skGenericParam, paramName, c).linkTo(finalType)

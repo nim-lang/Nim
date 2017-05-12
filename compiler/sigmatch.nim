@@ -69,6 +69,12 @@ type
     mutabilityProblem*: uint8 # tyVar mismatch
     inheritancePenalty: int  # to prefer closest father object type
 
+  TTypeRelFlag* = enum
+    trDontBind
+    trNoCovariance
+
+  TTypeRelFlags* = set[TTypeRelFlag]
+
   TTypeRelation* = enum      # order is important!
     isNone, isConvertible,
     isIntConv,
@@ -296,7 +302,9 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1;
     add(result, argTypeToString(arg, prefer))
     if i != sonsLen(n) - 1: add(result, ", ")
 
-proc typeRel*(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation
+proc typeRel*(c: var TCandidate, f, aOrig: PType,
+              flags: TTypeRelFlags = {}): TTypeRelation
+
 proc concreteType(c: TCandidate, t: PType): PType =
   case t.kind
   of tyNil:
@@ -860,7 +868,28 @@ template subtypeCheck() =
   if result <= isSubrange and f.lastSon.skipTypes(abstractInst).kind in {tyRef, tyPtr, tyVar}:
     result = isNone
 
-proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
+proc isCovariantPtr(c: var TCandidate, f, a: PType): bool =
+  # this proc is always called for a pair of matching types
+  assert f.kind == a.kind
+
+  template baseTypesCheck(lhs, rhs: PType): bool =
+    lhs.kind notin {tyPtr, tyRef, tyVar} and
+      typeRel(c, lhs, rhs, {trNoCovariance}) == isSubtype
+
+  case f.kind
+  of tyRef, tyPtr:
+    return baseTypesCheck(f.base, a.base)
+  of tyGenericInst:
+    let body = f.base
+    return body == a.base and
+           a.sonsLen == 3 and
+           sfStrongCovariant in body.sons[0].sym.flags and
+           baseTypesCheck(f.sons[1], a.sons[1])
+  else:
+    return false
+
+proc typeRel(c: var TCandidate, f, aOrig: PType,
+            flags: TTypeRelFlags = {}): TTypeRelation =
   # typeRel can be used to establish various relationships between types:
   #
   # 1) When used with concrete types, it will check for type equivalence
@@ -927,6 +956,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
         result = isEqual
       return
 
+  template doBind: bool = trDontBind notin flags
+
   # var and static arguments match regular modifier-free types
   var a = aOrig.skipTypes({tyStatic, tyVar}).maybeSkipDistinct(c.calleeSym)
   # XXX: Theoretically, maybeSkipDistinct could be called before we even
@@ -963,7 +994,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     # but ensure that '[T: A|A]' matches as good as '[T: A]' (bug #2219):
     result = isGeneric
     for branch in a.sons:
-      let x = typeRel(c, f, branch, false)
+      let x = typeRel(c, f, branch, flags + {trDontBind})
       if x == isNone: return isNone
       if x < result: result = x
     return
@@ -974,7 +1005,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     # seq[Sortable and Iterable] vs seq[Sortable]
     # only one match is enough
     for branch in a.sons:
-      let x = typeRel(c, f, branch, false)
+      let x = typeRel(c, f, branch, flags + {trDontBind})
       if x != isNone:
         return if x >= isGeneric: isGeneric else: x
     return isNone
@@ -1001,7 +1032,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   of tyUserTypeClass, tyUserTypeClassInst:
     # consider this: 'var g: Node' *within* a concept where 'Node'
     # is a concept too (tgraph)
-    let x = typeRel(c, a, f, false)
+    let x = typeRel(c, a, f, flags + {trDontBind})
     if x >= isGeneric:
       return isGeneric
   else: discard
@@ -1047,7 +1078,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
   of tyFloat128: result = handleFloatRange(f, a)
   of tyVar:
     if aOrig.kind == tyVar: result = typeRel(c, f.base, aOrig.base)
-    else: result = typeRel(c, f.base, aOrig)
+    else: result = typeRel(c, f.base, aOrig, flags + {trNoCovariance})
     subtypeCheck()
   of tyArray:
     case a.kind
@@ -1163,7 +1194,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
       if a.len < f.len: return isNone
       for i in 0..f.len-2:
         if typeRel(c, f.sons[i], a.sons[i]) == isNone: return isNone
-      result = typeRel(c, f.lastSon, a.lastSon)
+      result = typeRel(c, f.lastSon, a.lastSon, flags + {trNoCovariance})
       subtypeCheck()
       if result <= isConvertible: result = isNone
       elif tfNotNil in f.flags and tfNotNil notin a.flags:
@@ -1235,15 +1266,30 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
     var m = c
     if a.kind == tyGenericInst:
       if roota.base == rootf.base:
+        let nextFlags = flags + {trNoCovariance}
+        var hasCovariance = false
         for i in 1 .. rootf.sonsLen-2:
           let ff = rootf.sons[i]
           let aa = roota.sons[i]
-          result = typeRel(c, ff, aa)
-          if result notin {isEqual, isGeneric}: return isNone
-          # if ff.kind == tyRange and result != isEqual: return isNone
+          result = typeRel(c, ff, aa, nextFlags)
+          if result notin {isEqual, isGeneric}:
+            if trNoCovariance notin flags and ff.kind == aa.kind:
+              let paramFlags = rootf.base.sons[i-1].sym.flags
+              hasCovariance =
+                if sfCovariant in paramFlags:
+                  if sfStrongCovariant in paramFlags:
+                    ff.kind notin {tyRef, tyPtr} and result == isSubtype
+                  else:
+                    isCovariantPtr(c, ff, aa)
+                else:
+                  sfContravariant in paramFlags and
+                    typeRel(c, aa, ff) == isSubtype
+              if hasCovariance:
+                continue
 
+            return isNone
         if prev == nil: put(c, f, a)
-        result = isGeneric
+        result = if hasCovariance: isGeneric else: isGeneric
       else:
         let fKind = rootf.lastSon.kind
         if fKind in {tyAnd, tyOr}:
@@ -1455,7 +1501,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType, doBind = true): TTypeRelation =
           result = isNone
       else:
         if f.sonsLen > 0 and f.sons[0].kind != tyNone:
-          result = typeRel(c, f.lastSon, a, false)
+          result = typeRel(c, f.lastSon, a, flags + {trDontBind})
           if doBind and result notin {isNone, isGeneric}:
             let concrete = concreteType(c, a)
             if concrete == nil: return isNone

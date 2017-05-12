@@ -270,7 +270,8 @@ type
     sfDiscardable,    # returned value may be discarded implicitly
     sfOverriden,      # proc is overriden
     sfGenSym          # symbol is 'gensym'ed; do not add to symbol table
-    sfCovariant       # covariant generic param
+    sfCovariant       # covariant generic param mimicing seq/array type
+    sfStrongCovariant # covariant generic param mimicing ptr type
     sfContravariant   # contravariant generic param
 
   TSymFlags* = set[TSymFlag]
