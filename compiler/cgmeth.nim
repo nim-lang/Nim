@@ -233,6 +233,12 @@ proc genDispatcher(methods: TSymSeq, relevantCols: IntSet): PSym =
   var disp = newNodeI(nkIfStmt, base.info)
   var ands = getSysSym("and")
   var iss = getSysSym("of")
+  for col in countup(1, paramLen - 1):
+    if contains(relevantCols, col):
+      let param = base.typ.n.sons[col].sym
+      if param.typ.skipTypes(abstractInst).kind in {tyRef, tyPtr}:
+        addSon(nilchecks, newTree(nkCall,
+            newSymNode(getCompilerProc"chckNilDisp"), newSymNode(param)))
   for meth in countup(0, high(methods)):
     var curr = methods[meth]      # generate condition:
     var cond: PNode = nil
@@ -242,9 +248,6 @@ proc genDispatcher(methods: TSymSeq, relevantCols: IntSet): PSym =
         addSon(isn, newSymNode(iss))
         let param = base.typ.n.sons[col].sym
         addSon(isn, newSymNode(param))
-        if param.typ.skipTypes(abstractInst).kind in {tyRef, tyPtr}:
-          addSon(nilchecks, newTree(nkCall,
-                newSymNode(getCompilerProc"chckNilDisp"), newSymNode(param)))
         addSon(isn, newNodeIT(nkType, base.info, curr.typ.sons[col]))
         if cond != nil:
           var a = newNodeIT(nkCall, base.info, getSysType(tyBool))
