@@ -37,6 +37,18 @@ type
   float32* {.magic: Float32.} ## 32 bit floating point type
   float64* {.magic: Float.} ## 64 bit floating point type
 
+# Nim's version. Note that "NimVersion*: string" is defined further below.
+const
+  NimMajor*: int = 0
+    ## is the major number of Nim's version.
+  NimMinor*: int = 16
+    ## is the minor number of Nim's version.
+  NimPatch*: int = 1
+    ## is the patch number of Nim's version.
+  NimVersionTuple*: tuple[major: int, minor: int, patch: int] =
+    (NimMajor, NimMinor, NimPatch)
+    ## is the version of Nim as a tuple.
+
 # 'float64' is now an alias to 'float'; this solves many problems
 
 type # we need to start a new type section here, so that ``0`` can have a type
@@ -1876,15 +1888,6 @@ const
     ## that you cannot compare a floating point value to this value
     ## and expect a reasonable result - use the `classify` procedure
     ## in the module ``math`` for checking for NaN.
-  NimMajor*: int = 0
-    ## is the major number of Nim's version.
-
-  NimMinor*: int = 16
-    ## is the minor number of Nim's version.
-
-  NimPatch*: int = 1
-    ## is the patch number of Nim's version.
-
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
     ## is the version of Nim as a string.
 
