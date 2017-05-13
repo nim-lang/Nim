@@ -867,6 +867,22 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
         s.typ.sons[sonsLen(s.typ) - 1] = body
         if sfCovariant in s.flags:
           checkCovariantParamsUsages(s.typ)
+          # XXX: This is a temporary limitation:
+          # The codegen currently produces various failures with
+          # generic imported types that have fields, but we need
+          # the fields specified in order to detect weak covariance.
+          # The proper solution is to teach the codegen how to handle
+          # such types, because this would offer various interesting
+          # possibilities such as instantiating C++ generic types with
+          # garbage collected Nim types.
+          if sfImportc in s.flags:
+            var body = s.typ.lastSon
+            if body.kind == tyObject:
+              # erases all declared fields
+              body.n.sons = nil
+
+          debug s.typ
+          echo s.typ[0].sym.flags
 
       popOwner(c)
       closeScope(c)

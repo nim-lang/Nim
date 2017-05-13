@@ -44,7 +44,7 @@ template acceptWithCovariance(x, otherwise): typed =
     skipElse(otherwise)
 
 type
-  Animal = object of TObject
+  Animal = object of RootObj
     x: string
 
   Dog = object of Animal
@@ -302,12 +302,15 @@ reject wantsVarPointer2(pcat)
 
 {.emit: """
 template <class T> struct FN { typedef void (*type)(T); };
-template <class T> struct ARR { typedef T type[2]; };
+template <class T> struct ARR { typedef T DataType[2]; DataType data; };
 """.}
 
 type
-  MyPtr {.importcpp: "'0 *"} [out T] = distinct ptr T
-  MySeq {.importcpp: "ARR<'0>::type"} [out T] = object
+  MyPtr {.importcpp: "'0 *"} [out T] = object
+
+  MySeq {.importcpp: "ARR<'0>", nodecl} [out T] = object
+    data: array[2, T]
+
   MyAction {.importcpp: "FN<'0>::type"} [in T] = object
 
 var
