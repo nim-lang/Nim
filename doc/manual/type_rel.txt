@@ -147,7 +147,7 @@ also have pointer-like covariance:
 
 .. code-block:: nim
   type
-    GuiWidget = object of TObject
+    GuiWidget = object of RootObj
     Button = object of GuiWidget
     ComboBox = object of GuiWidget
 
@@ -184,7 +184,7 @@ sequence (i.e. it will be covariant only when instantiated with ``ptr`` and
 .. code-block:: nim
 
   type
-    Base = object of TObject
+    Base = object of RootObj
     Derived = object of Base
 
   proc consumeBaseValues(b: RingBuffer[Base]) = ...

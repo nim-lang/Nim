@@ -1609,8 +1609,9 @@ proc setupMacroParam(x: PNode, typ: PType): TFullReg =
 iterator genericParamsInMacroCall*(macroSym: PSym, call: PNode): (PSym, PNode) =
   let gp = macroSym.ast[genericParamsPos]
   for i in 0 .. <gp.len:
-    let idx = macroSym.typ.len + i
-    yield (gp[i].sym, call.sons[idx])
+    let genericParam = gp[i].sym
+    let posInCall = macroSym.typ.len + i
+    yield (genericParam, call[posInCall])
 
 var evalMacroCounter: int
 

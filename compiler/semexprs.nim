@@ -683,27 +683,9 @@ proc bracketedMacro(n: PNode): PSym =
     if result.kind notin {skMacro, skTemplate}:
       result = nil
 
-proc semBracketedMacro(c: PContext; outer, inner: PNode; s: PSym;
-                       flags: TExprFlags): PNode =
-  # We received untransformed bracket expression coming from macroOrTmpl[].
-  # Transform it to macro or template call, where first come normal
-  # arguments, next come generic template arguments.
-  var sons = newSeq[PNode]()
-  sons.add inner.sons[0]
-  # Normal arguments:
-  for i in 1..<outer.len:
-    sons.add outer.sons[i]
-  # Generic template arguments from bracket expression:
-  for i in 1..<inner.len:
-    sons.add inner.sons[i]
-  shallowCopy(outer.sons, sons)
-  # FIXME: Shouldn't we check sfImmediate and call semDirectOp?
-  # However passing to semDirectOp doesn't work here.
-  case s.kind
-  of skMacro: result = semMacroExpr(c, outer, outer, s, flags)
-  of skTemplate: result = semTemplateExpr(c, outer, s, flags)
-  else: assert(false)
-  return
+proc setGenericParams(c: PContext, n: PNode) =
+  for i in 1 .. <n.len:
+    n[i].typ = semTypeNode(c, n[i], nil)
 
 proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
   result = n
@@ -745,7 +727,8 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     elif n.sons[0].kind == nkBracketExpr:
       let s = bracketedMacro(n.sons[0])
       if s != nil:
-        return semBracketedMacro(c, n, n.sons[0], s, flags)
+        setGenericParams(c, n[0])
+        return semDirectOp(c, n, flags)
 
   let nOrig = n.copyTree
   semOpAux(c, n)
@@ -2163,10 +2146,6 @@ proc shouldBeBracketExpr(n: PNode): bool =
           for i in 1..<a.len: be.add(a[i])
           n.sons[0] = be
           return true
-
-proc setGenericParams(c: PContext, n: PNode) =
-  for i in 1 .. <n.len:
-    n[i].typ = semTypeNode(c, n[i], nil)
 
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = n
