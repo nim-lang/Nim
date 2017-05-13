@@ -339,13 +339,14 @@ proc writeBuffer*(f: AsyncFile, buf: pointer, size: int): Future[void] =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             assert bytesCount == size.int32
+            f.offset.inc(size)
             retFuture.complete()
           else:
             retFuture.fail(newException(OSError, osErrorMsg(errcode)))
     )
-    ol.offset = DWord(f.offset and 0xffffffff)
-    ol.offsetHigh = DWord(f.offset shr 32)
-    f.offset.inc(size)
+    # 0xff... means "append" which is what we want here:
+    ol.offset = DWord(0xffffffffi32)
+    ol.offsetHigh = DWord(0xffffffffi32)
 
     # According to MSDN we're supposed to pass nil to lpNumberOfBytesWritten.
     let ret = writeFile(f.fd.Handle, buf, size.int32, nil,
@@ -364,6 +365,7 @@ proc writeBuffer*(f: AsyncFile, buf: pointer, size: int): Future[void] =
         retFuture.fail(newException(OSError, osErrorMsg(osLastError())))
       else:
         assert bytesWritten == size.int32
+        f.offset.inc(size)
         retFuture.complete()
   else:
     var written = 0
@@ -409,6 +411,7 @@ proc write*(f: AsyncFile, data: string): Future[void] =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             assert bytesCount == data.len.int32
+            f.offset.inc(data.len)
             retFuture.complete()
           else:
             retFuture.fail(newException(OSError, osErrorMsg(errcode)))
@@ -416,9 +419,9 @@ proc write*(f: AsyncFile, data: string): Future[void] =
           dealloc buffer
           buffer = nil
     )
-    ol.offset = DWord(f.offset and 0xffffffff)
-    ol.offsetHigh = DWord(f.offset shr 32)
-    f.offset.inc(data.len)
+    # 0xff... means "append" which is what we want here:
+    ol.offset = DWord(0xffffffffi32)
+    ol.offsetHigh = DWord(0xffffffffi32)
 
     # According to MSDN we're supposed to pass nil to lpNumberOfBytesWritten.
     let ret = writeFile(f.fd.Handle, buffer, data.len.int32, nil,
@@ -440,6 +443,7 @@ proc write*(f: AsyncFile, data: string): Future[void] =
         retFuture.fail(newException(OSError, osErrorMsg(osLastError())))
       else:
         assert bytesWritten == data.len.int32
+        f.offset.inc(data.len)
         retFuture.complete()
   else:
     var written = 0
