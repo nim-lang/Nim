@@ -381,7 +381,7 @@ const
                                 "of the generic paramers can be inferred from the expected signature.",
     errProcHasNoConcreteType: "'$1' doesn't have a concrete type, due to unspecified generic parameters.",
     errCompilerDoesntSupportTarget: "The current compiler \'$1\' doesn't support the requested compilation target",
-    errInOutFlagNotExtern: "`in` and `out` flags can be used only with imported types",
+    errInOutFlagNotExtern: "The `$1` modifier can be used only with imported types",
     errUser: "$1",
     warnCannotOpenFile: "cannot open \'$1\'",
     warnOctalEscape: "octal escape sequences do not exist; leading zero is ignored",
