@@ -1074,8 +1074,8 @@ at runtime by 0, the second by 1 and so on. For example:
     Direction = enum
       north, east, south, west
 
-  var x = south      # `x` is of type `Direction`; its value is `south`
-  echo x           # writes "south" to `stdout`
+  var x = south     # `x` is of type `Direction`; its value is `south`
+  echo x            # writes "south" to `stdout`
 
 All the comparison operators can be used with enumeration types.
 
@@ -1132,11 +1132,11 @@ A subrange type is a range of values from an integer or enumeration type
 
 .. code-block:: nim
   type
-    Subrange = range[0..5]
+    MySubrange = range[0..5]
 
 
-``Subrange`` is a subrange of ``int`` which can only hold the values 0
-to 5. Assigning any other value to a variable of type ``Subrange`` is a
+``MySubrange`` is a subrange of ``int`` which can only hold the values 0
+to 5. Assigning any other value to a variable of type ``MySubrange`` is a
 compile-time or runtime error. Assignments from the base type to one of its
 subrange types (and vice versa) are allowed.
 
