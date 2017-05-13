@@ -881,9 +881,6 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
               # erases all declared fields
               body.n.sons = nil
 
-          debug s.typ
-          echo s.typ[0].sym.flags
-
       popOwner(c)
       closeScope(c)
     elif a.sons[2].kind != nkEmpty:
