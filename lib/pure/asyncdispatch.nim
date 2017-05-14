@@ -9,7 +9,7 @@
 
 include "system/inclrtl"
 
-import os, oids, tables, strutils, times, heapqueue, options
+import os, tables, strutils, times, heapqueue, options
 
 import nativesockets, net, deques
 
