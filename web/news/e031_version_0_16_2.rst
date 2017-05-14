@@ -45,6 +45,8 @@ Changes affecting backwards compatibility
   AST that is the same as what is used to define an enum.  Previously the AST
   returned had a repeated ``EnumTy`` node and was missing the initial pragma
   node (which is currently empty for an enum).
+- ``macros.getTypeImpl`` now correctly returns the implementation for a symbol
+  of type ``tyGenericBody``.
 - If the dispatcher parameter's value used in multi method is ``nil``,
   a ``NilError`` exception is raised. The old behavior was that the method
   would be a ``nop`` then.
