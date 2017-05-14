@@ -59,7 +59,7 @@ proc genObjectFields(p: PProc, typ: PType, n: PNode): Rope =
         u = rope(lengthOrd(field.typ))
       else: internalError(n.info, "genObjectFields(nkRecCase)")
       if result != nil: add(result, ", " & tnl)
-      addf(result, "[SetConstr($1), $2]",
+      addf(result, "[setConstr($1), $2]",
            [u, genObjectFields(p, typ, lastSon(b))])
     result = ("{kind: 3, offset: \"$1\", len: $3, " &
         "typ: $2, name: $4, sons: [$5]}") % [
