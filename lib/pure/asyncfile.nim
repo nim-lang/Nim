@@ -343,6 +343,10 @@ proc writeBuffer*(f: AsyncFile, buf: pointer, size: int): Future[void] =
           else:
             retFuture.fail(newException(OSError, osErrorMsg(errcode)))
     )
+    # passing -1 here should work according to MSDN, but doesn't. For more
+    # information see
+    # http://stackoverflow.com/questions/33650899/does-asynchronous-file-
+    #   appending-in-windows-preserve-order
     ol.offset = DWord(f.offset and 0xffffffff)
     ol.offsetHigh = DWord(f.offset shr 32)
     f.offset.inc(size)
