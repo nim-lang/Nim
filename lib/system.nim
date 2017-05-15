@@ -368,8 +368,6 @@ include "system/inclrtl"
 const NoFakeVars* = defined(nimscript) ## true if the backend doesn't support \
   ## "fake variables" like 'var EBADF {.importc.}: cint'.
 
-const ArrayDummySize = when defined(cpu16): 10_000 else: 100_000_000
-
 when not defined(JS):
   type
     TGenericSeq {.compilerproc, pure, inheritable.} = object
@@ -377,7 +375,7 @@ when not defined(JS):
       when defined(gogc):
         elemSize: int
     PGenericSeq {.exportc.} = ptr TGenericSeq
-    UncheckedCharArray {.unchecked.} = array[0..ArrayDummySize, char]
+    UncheckedCharArray {.unchecked.} = array[0, char]
     # len and space without counting the terminating zero:
     NimStringDesc {.compilerproc, final.} = object of TGenericSeq
       data: UncheckedCharArray
@@ -1585,8 +1583,9 @@ type # these work for most platforms:
   culonglong* {.importc: "unsigned long long", nodecl.} = uint64
     ## This is the same as the type ``unsigned long long`` in *C*.
 
-  cstringArray* {.importc: "char**", nodecl.} = ptr
-    array[0..ArrayDummySize, cstring]
+  UncheckedCStringArray {.unchecked.} = array[0, cstring]
+  cstringArray* {.importc: "char**", nodecl.} = ptr UncheckedCStringArray
+
     ## This is binary compatible to the type ``char**`` in *C*. The array's
     ## high value is large enough to disable bounds checking in practice.
     ## Use `cstringArrayToSeq` to convert it into a ``seq[string]``.
@@ -2976,7 +2975,8 @@ when not defined(JS): #and not defined(nimscript):
       ## creates a NULL terminated cstringArray from `a`. The result has to
       ## be freed with `deallocCStringArray` after it's not needed anymore.
       result = cast[cstringArray](alloc0((a.len+1) * sizeof(cstring)))
-      let x = cast[ptr array[0..ArrayDummySize, string]](a)
+      type UncheckedStringArray {.unchecked.} = array[0, string]
+      let x = cast[ptr UncheckedStringArray](a)
       for i in 0 .. a.high:
         result[i] = cast[cstring](alloc0(x[i].len+1))
         copyMem(result[i], addr(x[i][0]), x[i].len)
