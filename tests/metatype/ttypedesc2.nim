@@ -18,7 +18,7 @@ when true:
       uoffset_t* = uint32
       FlatBufferBuilder* = object
 
-      uarray* {.unchecked.} [T]  = array [0..0, T]
+      uarray* {.unchecked.} [T]  = array [0, T]
       Array* [T] = object
           o*: uoffset_t
           len*: int

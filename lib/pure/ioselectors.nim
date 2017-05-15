@@ -208,7 +208,7 @@ else:
     import locks
 
     type
-      SharedArray {.unchecked.}[T] = array[0..100, T]
+      SharedArray {.unchecked.}[T] = array[0, T]
 
     proc allocSharedArray[T](nsize: int): ptr SharedArray[T] =
       result = cast[ptr SharedArray[T]](allocShared0(sizeof(T) * nsize))
