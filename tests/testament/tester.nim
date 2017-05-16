@@ -34,6 +34,7 @@ Options:
   --failing                 only show failing/ignored tests
   --pedantic                return non-zero status code if there are failures
   --targets:"c c++ js objc" run tests for specified targets (default: all)
+  --nim:path                use a particular nim executable (default: compiler/nim)
 """ % resultsFile
 
 type
@@ -367,7 +368,7 @@ proc testNoSpec(r: var TResults, test: TTest) =
   # does not extract the spec because the file is not supposed to have any
   #let tname = test.name.addFileExt(".nim")
   inc(r.total)
-  let given = callCompiler(cmdTemplate, test.name, test.options, test.target)
+  let given = callCompiler(cmdTemplate(), test.name, test.options, test.target)
   r.addResult(test, "", given.msg, given.err)
   if given.err == reSuccess: inc(r.passed)
 
@@ -376,7 +377,7 @@ proc testC(r: var TResults, test: TTest) =
   let tname = test.name.addFileExt(".c")
   inc(r.total)
   styledEcho "Processing ", fgCyan, extractFilename(tname)
-  var given = callCCompiler(cmdTemplate, test.name & ".c", test.options, test.target)
+  var given = callCCompiler(cmdTemplate(), test.name & ".c", test.options, test.target)
   if given.err != reSuccess:
     r.addResult(test, "", given.msg, given.err)
   elif test.action == actionRun:
@@ -424,6 +425,7 @@ proc main() =
     of "failing": optFailing = true
     of "pedantic": optPedantic = true
     of "targets": targets = parseTargets(p.val.string)
+    of "nim": compilerPrefix = p.val.string
     else: quit Usage
     p.next()
   if p.kind != cmdArgument: quit Usage
