@@ -39,9 +39,6 @@ type
 # not detected by detect.nim, guarded by #ifdef __USE_UNIX98 in glibc
 const SIG_HOLD* = cast[SigHandler](2)
 
-# There used to be this name in posix.nim a long time ago, not sure why!
-{.deprecated: [cSIG_HOLD: SIG_HOLD].}
-
 type
   Timespec* {.importc: "struct timespec",
                header: "<time.h>", final, pure.} = object ## struct timespec

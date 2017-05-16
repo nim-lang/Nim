@@ -89,6 +89,9 @@ when defined(linux) and defined(amd64):
 else:
   include posix_other
 
+# There used to be this name in posix.nim a long time ago, not sure why!
+{.deprecated: [cSIG_HOLD: SIG_HOLD].}
+
 when not defined(macosx):
   proc st_atime*(s: Stat): Time {.inline.} =
     ## Second-granularity time of last access
