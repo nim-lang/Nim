@@ -267,6 +267,10 @@ Define               Effect
                      temporary directory returned by ``os.getTempDir()``.
                      The value **should** end with a directory separator 
                      character. (Relevant for the Android platform)
+``useShPath``        This symbol takes a string as its value, like 
+                     ``--define:useShPath:/opt/sh/bin/sh`` to override the
+                     path for the ``sh`` binary, in cases where it is not
+                     located in the default location ``/bin/sh``
 ==================   =========================================================
 
 
