@@ -452,10 +452,12 @@ type
     nfExprCall  # this is an attempt to call a regular expression
     nfIsRef     # this node is a 'ref' node; used for the VM
     nfPreventCg # this node should be ignored by the codegen
+    nfBlockArg  # this a stmtlist appearing in a call (e.g. a do block)
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 30)
     tfVarargs,        # procedure has C styled varargs
+                      # tyArray type represeting a varargs list
     tfNoSideEffect,   # procedure type does not allow side effects
     tfFinal,          # is the object final?
     tfInheritable,    # is the object inheritable?
@@ -1348,6 +1350,9 @@ proc newStrTable*: TStrTable =
 proc initIdTable*(x: var TIdTable) =
   x.counter = 0
   newSeq(x.data, StartSize)
+
+proc newIdTable*: TIdTable =
+  initIdTable(result)
 
 proc resetIdTable*(x: var TIdTable) =
   x.counter = 0

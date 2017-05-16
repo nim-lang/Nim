@@ -252,7 +252,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     # little HACK to support the new 'var T' as return type:
     linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
     return
-  let ty = skipTypes(dest.t, abstractRange)
+  let ty = skipTypes(dest.t, abstractRange + tyUserTypeClasses)
   case ty.kind
   of tyRef:
     genRefAssign(p, dest, src, flags)
@@ -751,7 +751,7 @@ proc genRecordField(p: BProc, e: PNode, d: var TLoc) =
   genRecordFieldAux(p, e, d, a)
   var r = rdLoc(a)
   var f = e.sons[1].sym
-  let ty = skipTypes(a.t, abstractInst)
+  let ty = skipTypes(a.t, abstractInst + tyUserTypeClasses)
   if ty.kind == tyTuple:
     # we found a unique tuple type which lacks field information
     # so we use Field$i

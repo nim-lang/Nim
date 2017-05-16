@@ -164,7 +164,7 @@ proc mapType(typ: PType): TCTypeKind =
   of tySet: result = mapSetType(typ)
   of tyOpenArray, tyArray, tyVarargs: result = ctArray
   of tyObject, tyTuple: result = ctStruct
-  of tyUserTypeClass, tyUserTypeClassInst:
+  of tyUserTypeClasses:
     internalAssert typ.isResolvedUserTypeClass
     return mapType(typ.lastSon)
   of tyGenericBody, tyGenericInst, tyGenericParam, tyDistinct, tyOrdinal,
@@ -1094,7 +1094,7 @@ proc genDeepCopyProc(m: BModule; s: PSym; result: Rope) =
 
 proc genTypeInfo(m: BModule, t: PType): Rope =
   let origType = t
-  var t = skipTypes(origType, irrelevantForBackend)
+  var t = skipTypes(origType, irrelevantForBackend + tyUserTypeClasses)
 
   let sig = hashType(origType)
   result = m.typeInfoMarker.getOrDefault(sig)
@@ -1131,6 +1131,9 @@ proc genTypeInfo(m: BModule, t: PType): Rope =
   of tyStatic:
     if t.n != nil: result = genTypeInfo(m, lastSon t)
     else: internalError("genTypeInfo(" & $t.kind & ')')
+  of tyUserTypeClasses:
+    internalAssert t.isResolvedUserTypeClass
+    return genTypeInfo(m, t.lastSon)
   of tyProc:
     if t.callConv != ccClosure:
       genTypeInfoAuxBase(m, t, t, result, rope"0")
