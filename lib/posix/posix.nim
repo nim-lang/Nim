@@ -79,12 +79,18 @@ const
   DT_SOCK* = 12   ## UNIX domain socket.
   DT_WHT* = 14
 
+# Special types
+type Sighandler = proc (a: cint) {.noconv.}
+
 # Platform specific stuff
 
 when defined(linux) and defined(amd64):
   include posix_linux_amd64
 else:
   include posix_other
+
+# There used to be this name in posix.nim a long time ago, not sure why!
+{.deprecated: [cSIG_HOLD: SIG_HOLD].}
 
 when not defined(macosx):
   proc st_atime*(s: Stat): Time {.inline.} =
@@ -659,7 +665,7 @@ proc sighold*(a1: cint): cint {.importc, header: "<signal.h>".}
 proc sigignore*(a1: cint): cint {.importc, header: "<signal.h>".}
 proc siginterrupt*(a1, a2: cint): cint {.importc, header: "<signal.h>".}
 proc sigismember*(a1: var Sigset, a2: cint): cint {.importc, header: "<signal.h>".}
-proc signal*(a1: cint, a2: proc (x: cint) {.noconv.}) {.
+proc signal*(a1: cint, a2: Sighandler) {.
   importc, header: "<signal.h>".}
 proc sigpause*(a1: cint): cint {.importc, header: "<signal.h>".}
 proc sigpending*(a1: var Sigset): cint {.importc, header: "<signal.h>".}

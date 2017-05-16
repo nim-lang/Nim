@@ -399,6 +399,9 @@ const SS_ONSTACK* = cint(1)
 const SS_DISABLE* = cint(2)
 const MINSIGSTKSZ* = cint(2048)
 const SIGSTKSZ* = cint(8192)
+const SIG_DFL* = cast[Sighandler](0)
+const SIG_ERR* = cast[Sighandler](-1)
+const SIG_IGN* = cast[Sighandler](1)
 
 # <sys/ipc.h>
 const IPC_CREAT* = cint(512)
