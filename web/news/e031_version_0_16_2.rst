@@ -63,6 +63,10 @@ Changes affecting backwards compatibility
   compile-time value.
 - On posix, the results of `waitForExit`, `peekExitCode`, `execCmd` will return
   128 + signal number if the application terminates via signal.
+- ``ospaths.getConfigDir`` now conforms to the XDG Base Directory specification
+  on non-Windows OSs. It returns the value of the XDG_CONFIG_DIR environment
+  variable if it is set, and returns the default configuration directory,
+  "~/.config/", otherwise.
 
 Library Additions
 -----------------
