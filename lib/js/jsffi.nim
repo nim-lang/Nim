@@ -78,6 +78,10 @@ type
     ## Statically typed wrapper around a JavaScript object.
   NotString = concept c
     c isnot string
+  js* = JsObject
+
+var jsarguments* {.importc: "arguments", nodecl}: JsObject
+  ## JavaScript's arguments pseudo-variable
 
 # New
 proc newJsObject*: JsObject {. importcpp: "{@}" .}
@@ -93,16 +97,62 @@ proc hasOwnProperty*(x: JsObject, prop: cstring): bool
 proc jsTypeOf*(x: JsObject): cstring {. importcpp: "typeof(#)" .}
   ## Returns the name of the JsObject's JavaScript type as a cstring.
 
+proc jsnew*(x: auto): JsObject {.importcpp: "(new #)".}
+  ## Turns a regular function call into an invocation of the
+  ## JavaScript's `new` operator
+
+proc jsdelete*(x: auto): JsObject {.importcpp: "(delete #)".}
+  ## JavaScript's `delete` operator
+
 # Conversion to and from JsObject
 proc to*(x: JsObject, T: typedesc): T {. importcpp: "(#)" .}
   ## Converts a JsObject `x` to type `T`.
+
 proc toJs*[T](val: T): JsObject {. importcpp: "(#)" .}
   ## Converts a value of any type to type JsObject
+
+template toJs*(s: string): JsObject = cstring(s).toJs
+
+macro jsFromAst*(n: untyped): untyped =
+  result = n
+  if n.kind == nnkStmtList:
+    result = newProc(procType = nnkDo, body = result)
+  return quote: toJs(`result`)
+
+proc `&`*(a, b: cstring): cstring {.importcpp: "(# + #)".}
+  ## Concatenation operator for JavaScript strings
+
+proc `+`  *(x, y: JsObject): JsObject {. importcpp: "(# + #)" .}
+proc `-`  *(x, y: JsObject): JsObject {. importcpp: "(# - #)" .}
+proc `*`  *(x, y: JsObject): JsObject {. importcpp: "(# * #)" .}
+proc `/`  *(x, y: JsObject): JsObject {. importcpp: "(# / #)" .}
+proc `%`  *(x, y: JsObject): JsObject {. importcpp: "(# % #)" .}
+proc `+=` *(x, y: JsObject): JsObject {. importcpp: "(# += #)", discardable .}
+proc `-=` *(x, y: JsObject): JsObject {. importcpp: "(# -= #)", discardable .}
+proc `*=` *(x, y: JsObject): JsObject {. importcpp: "(# *= #)", discardable .}
+proc `/=` *(x, y: JsObject): JsObject {. importcpp: "(# /= #)", discardable .}
+proc `%=` *(x, y: JsObject): JsObject {. importcpp: "(# %= #)", discardable .}
+proc `++` *(x: JsObject): JsObject    {. importcpp: "(++#)" .}
+proc `--` *(x: JsObject): JsObject    {. importcpp: "(--#)" .}
+proc `>`  *(x, y: JsObject): JsObject {. importcpp: "(# > #)" .}
+proc `<`  *(x, y: JsObject): JsObject {. importcpp: "(# < #)" .}
+proc `>=` *(x, y: JsObject): JsObject {. importcpp: "(# >= #)" .}
+proc `<=` *(x, y: JsObject): JsObject {. importcpp: "(# <= #)" .}
+proc `and`*(x, y: JsObject): JsObject {. importcpp: "(# && #)" .}
+proc `or` *(x, y: JsObject): JsObject {. importcpp: "(# || #)" .}
+proc `not`*(x: JsObject): JsObject    {. importcpp: "(!#)" .}
+proc `in` *(x, y: JsObject): JsObject {. importcpp: "(# in #)" .}
 
 proc `[]`*(obj: JsObject, field: cstring): JsObject {. importcpp: getImpl .}
   ## Return the value of a property of name `field` from a JsObject `obj`.
 
+proc `[]`*(obj: JsObject, field: int): JsObject {. importcpp: getImpl .}
+  ## Return the value of a property of name `field` from a JsObject `obj`.
+
 proc `[]=`*[T](obj: JsObject, field: cstring, val: T) {. importcpp: setImpl .}
+  ## Set the value of a property of name `field` in a JsObject `obj` to `v`.
+
+proc `[]=`*[T](obj: JsObject, field: int, val: T) {. importcpp: setImpl .}
   ## Set the value of a property of name `field` in a JsObject `obj` to `v`.
 
 proc `[]`*[K: NotString, V](obj: JsAssoc[K, V], field: K): V
@@ -171,8 +221,9 @@ macro `.=`*(obj: JsObject, field: static[cstring], value: untyped): untyped =
         {. importcpp: `importString`, gensym .}
       helper(`obj`, `value`)
 
-macro `.()`*(obj: JsObject, field: static[cstring],
-    args: varargs[JsObject, toJs]): JsObject =
+macro `.()`*(obj: JsObject,
+             field: static[cstring],
+             args: varargs[JsObject, jsFromAst]): JsObject =
   ## Experimental "method call" operator for type JsObject.
   ## Takes the name of a method of the JavaScript object (`field`) and calls
   ## it with `args` as arguments, returning a JsObject (which may be discarded,
@@ -196,9 +247,9 @@ macro `.()`*(obj: JsObject, field: static[cstring],
     if not mangledNames.hasKey($field):
       mangledNames[$field] = $mangleJsName(field)
     importString = "#." & mangledNames[$field] & "(@)"
-  result = quote do:
+  result = quote:
     proc helper(o: JsObject): JsObject
-      {. importcpp: `importString`, gensym .}
+      {. importcpp: `importString`, gensym, discardable .}
     helper(`obj`)
   for idx in 0 ..< args.len:
     let paramName = newIdentNode(!("param" & $idx))
@@ -206,7 +257,7 @@ macro `.()`*(obj: JsObject, field: static[cstring],
     result[1].add args[idx].copyNimTree
 
 macro `.`*[K: string | cstring, V](obj: JsAssoc[K, V],
-  field: static[cstring]): V =
+                                   field: static[cstring]): V =
   ## Experimental dot accessor (get) for type JsAssoc.
   ## Returns the value of a property of name `field` from a JsObject `x`.
   var importString: string
@@ -222,7 +273,8 @@ macro `.`*[K: string | cstring, V](obj: JsAssoc[K, V],
     helper(`obj`)
 
 macro `.=`*[K: string | cstring, V](obj: JsAssoc[K, V],
-  field: static[cstring], value: V): untyped =
+                                    field: static[cstring],
+                                    value: V): untyped =
   ## Experimental dot accessor (set) for type JsAssoc.
   ## Sets the value of a property of name `field` in a JsObject `x` to `value`.
   var importString: string
@@ -238,7 +290,8 @@ macro `.=`*[K: string | cstring, V](obj: JsAssoc[K, V],
     helper(`obj`, `value`)
 
 macro `.()`*[K: string | cstring, V: proc](obj: JsAssoc[K, V],
-  field: static[cstring], args: varargs[untyped]): auto =
+                                           field: static[cstring],
+                                           args: varargs[untyped]): auto =
   ## Experimental "method call" operator for type JsAssoc.
   ## Takes the name of a method of the JavaScript object (`field`) and calls
   ## it with `args` as arguments. Here, everything is typechecked, so you do not

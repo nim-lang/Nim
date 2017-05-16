@@ -59,14 +59,13 @@ template wrap(body: typed): untyped =
 
 macro makeProc(): typed =
   # Make a template tree
-  result = (quote do:
+  result = quote do:
     proc someProc* =
       wrap do:
         let x = 123
         # Implicit conversion here
         let s: string = x
         echo s
-  )
 
 makeProc()
 

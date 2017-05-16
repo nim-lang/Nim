@@ -135,7 +135,9 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     let isCall = ord(n.kind in nkCallKinds+{nkBracketExpr})
     let n = if n[0].kind == nkBracket: n[0] else: n
     checkMinSonsLen(n, 1)
-    var base = semTypeNode(c, n.lastSon, nil).skipTypes({tyTypeDesc})
+    var t = semTypeNode(c, n.lastSon, nil)
+    if t.kind == tyTypeDesc and tfUnresolved notin t.flags:
+      t = t.base
     result = newOrPrevType(kind, prev, c)
     var isNilable = false
     # check every except the last is an object:
@@ -149,7 +151,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
               tyError, tyObject}:
           message n[i].info, errGenerated, "region needs to be an object type"
         addSonSkipIntLit(result, region)
-    addSonSkipIntLit(result, base)
+    addSonSkipIntLit(result, t)
     #if not isNilable: result.flags.incl tfNotNil
 
 proc semVarType(c: PContext, n: PNode, prev: PType): PType =
@@ -891,13 +893,20 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       let lifted = liftingWalk(paramType.sons[i])
       if lifted != nil: paramType.sons[i] = lifted
 
-    if paramType.base.lastSon.kind == tyUserTypeClass:
+    let body = paramType.base
+    if body.kind == tyForward:
+      # this may happen for proc type appearing in a type section
+      # before one of its param types
+      return
+
+    if body.lastSon.kind == tyUserTypeClass:
       let expanded = instGenericContainer(c, info, paramType,
                                           allowMetaTypes = true)
       result = liftingWalk(expanded, true)
 
-  of tyUserTypeClasses, tyBuiltInTypeClass, tyAnd, tyOr, tyNot:
-    result = addImplicitGeneric(copyType(paramType, getCurrOwner(c), true))
+  of tyUserTypeClasses, tyBuiltInTypeClass, tyCompositeTypeClass,
+     tyAnd, tyOr, tyNot:
+    result = addImplicitGeneric(copyType(paramType, getCurrOwner(c), false))
 
   of tyGenericParam:
     markUsed(info, paramType.sym, c.graph.usageSym)
@@ -1065,6 +1074,7 @@ proc semBlockType(c: PContext, n: PNode, prev: PType): PType =
 
 proc semGenericParamInInvocation(c: PContext, n: PNode): PType =
   result = semTypeNode(c, n, nil)
+  n.typ = makeTypeDesc(c, result)
 
 proc semObjectTypeForInheritedGenericInst(c: PContext, n: PNode, t: PType) =
   var

@@ -90,7 +90,7 @@ proc evalTemplateArgs(n: PNode, s: PSym; fromHlo: bool): PNode =
 
   result = newNodeI(nkArgList, n.info)
   for i in 1 .. givenRegularParams:
-    result.addSon n.sons[i]
+    result.addSon n[i]
 
   # handle parameters with default values, which were
   # not supplied by the user

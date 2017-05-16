@@ -851,9 +851,12 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
         # type aliases are hard:
         var t = semTypeNode(c, x, nil)
         assert t != nil
-        if t.kind in {tyObject, tyEnum, tyDistinct}:
-          assert s.typ != nil
-          if s.typ.kind != tyAlias:
+        if s.typ != nil and s.typ.kind != tyAlias:
+          if t.kind in {tyProc, tyGenericInst} and not t.isMetaType:
+            assignType(s.typ, t)
+            s.typ.id = t.id
+          elif t.kind in {tyObject, tyEnum, tyDistinct}:
+            assert s.typ != nil
             assignType(s.typ, t)
             s.typ.id = t.id     # same id
       checkConstructedType(s.info, s.typ)
@@ -1063,13 +1066,6 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   popOwner(c)
   result.typ = s.typ
 
-proc semDo(c: PContext, n: PNode, flags: TExprFlags): PNode =
-  # 'do' without params produces a stmt:
-  if n[genericParamsPos].kind == nkEmpty and n[paramsPos].kind == nkEmpty:
-    result = semStmt(c, n[bodyPos])
-  else:
-    result = semLambda(c, n, flags)
-
 proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   var n = n
 
@@ -1174,7 +1170,8 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       var objB = t.sons[2]
       while true:
         if objB.kind == tyGenericBody: objB = objB.lastSon
-        elif objB.kind == tyGenericInvocation: objB = objB.sons[0]
+        elif objB.kind in {tyGenericInvocation, tyGenericInst}:
+          objB = objB.sons[0]
         else: break
       if obj.kind in {tyObject, tyDistinct} and sameType(obj, objB):
         if obj.assignment.isNil:
@@ -1655,7 +1652,11 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
       else: discard
 
   if result.len == 1 and
-     c.inTypeClass == 0 and # concept bodies should be preserved as a stmt list
+     # concept bodies should be preserved as a stmt list:
+     c.inTypeClass == 0 and
+     # also, don't make life complicated for macros.
+     # they will always expect a proper stmtlist:
+     nfBlockArg notin n.flags and
      result.sons[0].kind != nkDefer:
     result = result.sons[0]
 

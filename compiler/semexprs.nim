@@ -16,7 +16,7 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
   styleCheckUse(n.info, s)
   pushInfoContext(n.info)
   result = evalTemplate(n, s, getCurrOwner(c), efFromHlo in flags)
-  if efNoSemCheck notin flags: result = semAfterMacroCall(c, result, s, flags)
+  if efNoSemCheck notin flags: result = semAfterMacroCall(c, n, result, s, flags)
   popInfoContext()
 
 proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
@@ -47,10 +47,11 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     #raiseRecoverableError("")
     result = errorNode(c, n)
   if result.typ == nil or result.typ == enforceVoidContext:
-    # we cannot check for 'void' in macros ...
-    localError(n.info, errExprXHasNoType,
-               renderTree(result, {renderNoComments}))
-    result.typ = errorType(c)
+    if n.kind != nkStmtList:
+      # we cannot check for 'void' in macros ...
+      localError(n.info, errExprXHasNoType,
+                 renderTree(result, {renderNoComments}))
+      result.typ = errorType(c)
   else:
     if efNoProcvarCheck notin flags: semProcvarCheck(c, result)
     if result.typ.kind == tyVar: result = newDeref(result)
@@ -1155,6 +1156,8 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     ty = n.sons[0].typ
     return nil
   ty = skipTypes(ty, {tyGenericInst, tyVar, tyPtr, tyRef, tyAlias})
+  if ty.kind in tyUserTypeClasses and ty.isResolvedUserTypeClass:
+    ty = ty.lastSon
   while tfBorrowDot in ty.flags: ty = ty.skipTypes({tyDistinct})
   var check: PNode = nil
   if ty.kind == tyObject:
@@ -1713,7 +1716,7 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
   # We transform the do block into a template with a param for
   # each interpolation. We'll pass this template to getAst.
   var
-    doBlk = n{-1}
+    quotedBlock = n{-1}
     op = if n.len == 3: expectString(c, n[1]) else: "``"
     quotes = newSeq[PNode](1)
       # the quotes will be added to a nkCall statement
@@ -1721,20 +1724,23 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
     ids = newSeq[PNode]()
       # this will store the generated param names
 
-  if doBlk.kind != nkDo:
+  if quotedBlock.kind != nkStmtList:
     localError(n.info, errXExpected, "block")
 
-  processQuotations(doBlk.sons[bodyPos], op, quotes, ids)
+  processQuotations(quotedBlock, op, quotes, ids)
 
-  doBlk.sons[namePos] = newAnonSym(c, skTemplate, n.info).newSymNode
+  var dummyTemplate = newProcNode(
+    nkTemplateDef, quotedBlock.info, quotedBlock,
+    name = newAnonSym(c, skTemplate, n.info).newSymNode)
+
   if ids.len > 0:
-    doBlk.sons[paramsPos] = newNodeI(nkFormalParams, n.info)
-    doBlk[paramsPos].add getSysSym("typed").newSymNode # return type
+    dummyTemplate.sons[paramsPos] = newNodeI(nkFormalParams, n.info)
+    dummyTemplate[paramsPos].add getSysSym("typed").newSymNode # return type
     ids.add getSysSym("untyped").newSymNode # params type
     ids.add emptyNode # no default value
-    doBlk[paramsPos].add newNode(nkIdentDefs, n.info, ids)
+    dummyTemplate[paramsPos].add newNode(nkIdentDefs, n.info, ids)
 
-  var tmpl = semTemplateDef(c, doBlk)
+  var tmpl = semTemplateDef(c, dummyTemplate)
   quotes[0] = tmpl[namePos]
   result = newNode(nkCall, n.info, @[
     getMagicSym(mExpandToAst).newSymNode,
@@ -2325,8 +2331,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkCurly: result = semSetConstr(c, n)
   of nkBracket: result = semArrayConstr(c, n, flags)
   of nkObjConstr: result = semObjConstr(c, n, flags)
-  of nkLambda: result = semLambda(c, n, flags)
-  of nkDo: result = semDo(c, n, flags)
+  of nkLambdaKinds: result = semLambda(c, n, flags)
   of nkDerefExpr: result = semDeref(c, n)
   of nkAddr:
     result = n
