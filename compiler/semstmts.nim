@@ -1084,6 +1084,9 @@ proc semProcAnnotation(c: PContext, prc: PNode;
     var x = newNodeI(nkCall, n.info)
     x.add(newSymNode(m))
     prc.sons[pragmasPos] = copyExcept(n, i)
+    if prc[pragmasPos].kind != nkEmpty and prc[pragmasPos].len == 0:
+      prc.sons[pragmasPos] = emptyNode
+
     if it.kind == nkExprColonExpr:
       # pass pragma argument to the macro too:
       x.add(it.sons[1])
