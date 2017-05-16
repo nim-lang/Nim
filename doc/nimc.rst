@@ -262,6 +262,11 @@ Define               Effect
                      what's in the Nim file with what's in the C header
                      (requires a C compiler with _Static_assert support, like
                      any C11 compiler)
+``tempDir``          This symbol takes a string as its value, like 
+                     ``--define:tempDir:/some/temp/path`` to override the
+                     temporary directory returned by ``os.getTempDir()``.
+                     The value **should** end with a directory separator 
+                     character. (Relevant for the Android platform)
 ==================   =========================================================
 
 
