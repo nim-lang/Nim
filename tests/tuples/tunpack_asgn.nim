@@ -21,6 +21,8 @@ proc pg[T](x, y: var T) =
 
 # test as a top level statement:
 var x, y, a, b: int
+# test for regression:
+(x, y) = (1, 2)
 (x, y) = fooBar()
 
 echo x, " ", y

@@ -13,6 +13,9 @@ Changelog
 Changes affecting backwards compatibility
 -----------------------------------------
 
+- There are now two different HTTP response types, ``Response`` and
+  ``AsyncResponse``. ``AsyncResponse``'s ``body`` accessor returns a
+  ``Future[string]``!
 - ``httpclient.request`` now respects ``maxRedirects`` option. Previously
   redirects were handled only by ``get`` and ``post`` procs.
 - The IO routines now raise ``EOFError`` for the "end of file" condition.
@@ -42,6 +45,8 @@ Changes affecting backwards compatibility
   AST that is the same as what is used to define an enum.  Previously the AST
   returned had a repeated ``EnumTy`` node and was missing the initial pragma
   node (which is currently empty for an enum).
+- ``macros.getTypeImpl`` now correctly returns the implementation for a symbol
+  of type ``tyGenericBody``.
 - If the dispatcher parameter's value used in multi method is ``nil``,
   a ``NilError`` exception is raised. The old behavior was that the method
   would be a ``nop`` then.
@@ -56,12 +61,21 @@ Changes affecting backwards compatibility
   checks. When fields within case objects are initialiazed, the compiler will
   now demand that the respective discriminator field has a matching known
   compile-time value.
+- On posix, the results of `waitForExit`, `peekExitCode`, `execCmd` will return
+  128 + signal number if the application terminates via signal.
+- ``ospaths.getConfigDir`` now conforms to the XDG Base Directory specification
+  on non-Windows OSs. It returns the value of the XDG_CONFIG_DIR environment
+  variable if it is set, and returns the default configuration directory,
+  "~/.config/", otherwise.
 
 Library Additions
 -----------------
 
 - Added ``system.onThreadDestruction``.
-
+- Added ``dial`` procedure to networking modules: ``net``, ``asyncdispatch``,
+  ``asyncnet``. It merges socket creation, address resolution, and connection
+  into single step. When using ``dial``, you don't have to worry about
+  IPv4 vs IPv6 problem. ``httpclient`` now supports IPv6.
 
 Tool Additions
 --------------

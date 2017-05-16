@@ -172,7 +172,7 @@ proc raiseIndexError() {.compilerproc, noreturn.} =
 proc raiseFieldError(f: string) {.compilerproc, noreturn.} =
   raise newException(FieldError, f & " is not accessible")
 
-proc SetConstr() {.varargs, asmNoStackFrame, compilerproc.} =
+proc setConstr() {.varargs, asmNoStackFrame, compilerproc.} =
   when defined(nimphp):
     asm """
       $args = func_get_args();

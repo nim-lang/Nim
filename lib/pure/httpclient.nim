@@ -512,7 +512,7 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
         raise newException(HttpRequestError,
                            "The proxy server rejected a CONNECT request, " &
                            "so a secure connection could not be established.")
-      sslContext.wrapConnectedSocket(s, handshakeAsClient)
+      sslContext.wrapConnectedSocket(s, handshakeAsClient, hostUrl.hostname)
     else:
       raise newException(HttpRequestError, "SSL support not available. Cannot connect via proxy over SSL")
   else:
@@ -1033,32 +1033,39 @@ proc newConnection(client: HttpClient | AsyncHttpClient,
   if client.currentURL.hostname != url.hostname or
       client.currentURL.scheme != url.scheme or
       client.currentURL.port != url.port:
+    let isSsl = url.scheme.toLowerAscii() == "https"
+
+    if isSsl and not defined(ssl):
+      raise newException(HttpRequestError,
+        "SSL support is not available. Cannot connect over SSL.")
+
     if client.connected:
       client.close()
-
-    when client is HttpClient:
-      client.socket = newSocket()
-    elif client is AsyncHttpClient:
-      client.socket = newAsyncSocket()
-    else: {.fatal: "Unsupported client type".}
 
     # TODO: I should be able to write 'net.Port' here...
     let port =
       if url.port == "":
-        if url.scheme.toLower() == "https":
+        if isSsl:
           nativesockets.Port(443)
         else:
           nativesockets.Port(80)
       else: nativesockets.Port(url.port.parseInt)
 
-    if url.scheme.toLower() == "https":
-      when defined(ssl):
-        client.sslContext.wrapSocket(client.socket)
-      else:
-        raise newException(HttpRequestError,
-                  "SSL support is not available. Cannot connect over SSL.")
+    when client is HttpClient:
+      client.socket = await net.dial(url.hostname, port)
+    elif client is AsyncHttpClient:
+      client.socket = await asyncnet.dial(url.hostname, port)
+    else: {.fatal: "Unsupported client type".}
 
-    await client.socket.connect(url.hostname, port)
+    when defined(ssl):
+      if isSsl:
+        try:
+          client.sslContext.wrapConnectedSocket(
+            client.socket, handshakeAsClient, url.hostname)
+        except:
+          client.socket.close()
+          raise getCurrentException()
+
     client.currentURL = url
     client.connected = true
 
@@ -1096,7 +1103,8 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: string,
         raise newException(HttpRequestError,
                            "The proxy server rejected a CONNECT request, " &
                            "so a secure connection could not be established.")
-      client.sslContext.wrapConnectedSocket(client.socket, handshakeAsClient)
+      client.sslContext.wrapConnectedSocket(
+        client.socket, handshakeAsClient, requestUrl.hostname)
       client.proxy = nil
     else:
       raise newException(HttpRequestError,

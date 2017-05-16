@@ -1238,10 +1238,7 @@ proc parseExprStmt(p: var TParser): PNode =
         addSon(result, e)
         if p.tok.tokType != tkComma: break
     elif p.tok.indent < 0 and isExprStart(p):
-      if a.kind == nkCommand:
-        result = a
-      else:
-        result = newNode(nkCommand, a.info, @[a])
+      result = newNode(nkCommand, a.info, @[a])
       while true:
         var e = parseExpr(p)
         addSon(result, e)

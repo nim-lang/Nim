@@ -611,3 +611,18 @@ when hasSpawnH:
     # OR'ing of flags:
     const POSIX_SPAWN_USEVFORK* = cint(0)
 
+# <sys/wait.h>
+proc WEXITSTATUS*(s: cint): cint {.importc, header: "<sys/wait.h>".}
+  ## Exit code, iff WIFEXITED(s)
+proc WTERMSIG*(s: cint): cint {.importc, header: "<sys/wait.h>".}
+  ## Termination signal, iff WIFSIGNALED(s)
+proc WSTOPSIG*(s: cint): cint {.importc, header: "<sys/wait.h>".}
+  ## Stop signal, iff WIFSTOPPED(s)
+proc WIFEXITED*(s: cint): bool {.importc, header: "<sys/wait.h>".}
+  ## True if child exited normally.
+proc WIFSIGNALED*(s: cint): bool {.importc, header: "<sys/wait.h>".}
+  ## True if child exited due to uncaught signal.
+proc WIFSTOPPED*(s: cint): bool {.importc, header: "<sys/wait.h>".}
+  ## True if child is currently stopped.
+proc WIFCONTINUED*(s: cint): bool {.importc, header: "<sys/wait.h>".}
+  ## True if child has been continued.

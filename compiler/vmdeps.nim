@@ -175,7 +175,12 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
           result.add mapTypeToAst(t.sons[i], info)
     else:
       result = mapTypeToAstX(t.lastSon, info, inst, allowRecursion)
-  of tyGenericBody, tyOrdinal:
+  of tyGenericBody:
+    if inst:
+      result = mapTypeToAstX(t.lastSon, info, inst, true)
+    else:
+      result = mapTypeToAst(t.lastSon, info)
+  of tyOrdinal:
     result = mapTypeToAst(t.lastSon, info)
   of tyDistinct:
     if inst:

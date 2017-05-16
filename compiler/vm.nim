@@ -1651,8 +1651,16 @@ proc evalMacroCall*(module: PSym; cache: IdentCache, n, nOrig: PNode,
   for i in 0 .. <gp.len:
     if sfImmediate notin sym.flags:
       let idx = sym.typ.len + i
-      tos.slots[idx] = setupMacroParam(n.sons[idx], gp[i].sym.typ)
+      if idx < n.len:
+        tos.slots[idx] = setupMacroParam(n.sons[idx], gp[i].sym.typ)
+      else:
+        dec(evalMacroCounter)
+        c.callsite = nil
+        localError(n.info, "expected " & $gp.len &
+                   " generic parameter(s)")
     elif gp[i].sym.typ.kind in {tyStatic, tyTypeDesc}:
+      dec(evalMacroCounter)
+      c.callsite = nil
       globalError(n.info, "static[T] or typedesc nor supported for .immediate macros")
   # temporary storage:
   #for i in L .. <maxSlots: tos.slots[i] = newNode(nkEmpty)
