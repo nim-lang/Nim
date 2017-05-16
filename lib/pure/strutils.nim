@@ -1881,6 +1881,8 @@ proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
   ## of significant digits to be printed.
   ## `precision`'s default value is the maximum number of meaningful digits
   ## after the decimal point for Nim's ``float`` type.
+  ##
+  ## If ``precision == 0``, it tries to format it nicely.
   result = formatBiggestFloat(f, format, precision, decimalSep)
 
 proc trimZeros*(x: var string) {.noSideEffect.} =

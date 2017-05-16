@@ -299,8 +299,13 @@ proc raiseExceptionAux(e: ref Exception) =
 proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
   if e.name.isNil: e.name = ename
   when hasSomeStackTrace:
-    e.trace = ""
-    rawWriteStackTrace(e.trace)
+    if e.trace.isNil:
+      e.trace = ""
+      rawWriteStackTrace(e.trace)
+    elif framePtr != nil:
+      e.trace.add "[[reraised from:\n"
+      auxWriteStackTrace(framePtr, e.trace)
+      e.trace.add "]]\n"
   raiseExceptionAux(e)
 
 proc reraiseException() {.compilerRtl.} =
