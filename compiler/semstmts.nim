@@ -1325,8 +1325,16 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       implicitPragmas(c, s, n, validPragmas)
   else:
     if n.sons[pragmasPos].kind != nkEmpty:
-      localError(n.sons[pragmasPos].info, errPragmaOnlyInHeaderOfProcX,
-        "'" & proto.name.s & "' from " & $proto.info)
+      pragma(c, s, n.sons[pragmasPos], validPragmas)
+      # To ease macro generation that produce forwarded .async procs we now
+      # allow a bit redudancy in the pragma declarations. The rule is
+      # a prototype's pragma list must be a superset of the current pragma
+      # list.
+      # XXX This needs more checks eventually, for example that external
+      # linking names do agree:
+      if proto.typ.callConv != s.typ.callConv or proto.typ.flags < s.typ.flags:
+        localError(n.sons[pragmasPos].info, errPragmaOnlyInHeaderOfProcX,
+          "'" & proto.name.s & "' from " & $proto.info)
     if sfForward notin proto.flags:
       wrongRedefinition(n.info, proto.name.s)
     excl(proto.flags, sfForward)
