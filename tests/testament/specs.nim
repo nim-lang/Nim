@@ -9,8 +9,11 @@
 
 import parseutils, strutils, os, osproc, streams, parsecfg
 
-const
-  cmdTemplate* = r"compiler" / "nim $target --lib:lib --hints:on -d:testing $options $file"
+
+var compilerPrefix* = "compiler" / "nim "
+
+proc cmdTemplate*(): string =
+  compilerPrefix & "$target --lib:lib --hints:on -d:testing $options $file"
 
 type
   TTestAction* = enum
@@ -100,7 +103,7 @@ proc specDefaults*(result: var TSpec) =
   result.outp = ""
   result.nimout = ""
   result.ccodeCheck = ""
-  result.cmd = cmdTemplate
+  result.cmd = cmdTemplate()
   result.line = 0
   result.column = 0
   result.tfile = ""
@@ -173,7 +176,7 @@ proc parseSpec*(filename: string): TSpec =
         raise newException(ValueError, "cannot interpret as a bool: " & e.value)
     of "cmd":
       if e.value.startsWith("nim "):
-        result.cmd = "compiler" / e.value
+        result.cmd = compilerPrefix & e.value[4..^1]
       else:
         result.cmd = e.value
     of "ccodecheck": result.ccodeCheck = e.value

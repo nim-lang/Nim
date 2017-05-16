@@ -119,9 +119,13 @@ proc v(name: string, typ = "cint", no_other = false) =
     addf(tl,
       "#ifdef $3\n  fprintf(f, \"const $1* = $2(%ld)\\n\", $3);\n#endif\n",
       n, t, name)
-  else:
+  of "cint", "cshort", "InAddrScalar", "TSa_Family":
     addf(tl,
       "#ifdef $3\n  fprintf(f, \"const $1* = $2(%d)\\n\", $3);\n#endif\n",
+      n, t, name)
+  else:
+    addf(tl,
+      "#ifdef $3\n  fprintf(f, \"const $1* = cast[$2](%d)\\n\", $3);\n#endif\n",
       n, t, name)
 
 
@@ -543,6 +547,11 @@ v("SS_ONSTACK")
 v("SS_DISABLE")
 v("MINSIGSTKSZ")
 v("SIGSTKSZ")
+
+v("SIG_HOLD", "Sighandler")
+v("SIG_DFL", "Sighandler")
+v("SIG_ERR", "Sighandler")
+v("SIG_IGN", "Sighandler")
 
 header("<sys/ipc.h>")
 v("IPC_CREAT")

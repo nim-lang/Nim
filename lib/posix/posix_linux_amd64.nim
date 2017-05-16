@@ -36,6 +36,9 @@ type
 
 {.deprecated: [TSocketHandle: SocketHandle].}
 
+# not detected by detect.nim, guarded by #ifdef __USE_UNIX98 in glibc
+const SIG_HOLD* = cast[SigHandler](2)
+
 type
   Timespec* {.importc: "struct timespec",
                header: "<time.h>", final, pure.} = object ## struct timespec
