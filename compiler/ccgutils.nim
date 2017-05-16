@@ -220,7 +220,7 @@ proc makeLLVMString*(s: string): Rope =
       add(result, rope(res))
       setLen(res, 0)
     case s[i]
-    of '\0'..'\x1F', '\x80'..'\xFF', '\"', '\\':
+    of '\0'..'\x1F', '\x7F'..'\xFF', '\"', '\\':
       add(res, '\\')
       add(res, toHex(ord(s[i]), 2))
     else: add(res, s[i])

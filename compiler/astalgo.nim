@@ -219,7 +219,7 @@ proc rspaces(x: int): Rope =
 
 proc toYamlChar(c: char): string =
   case c
-  of '\0'..'\x1F', '\x80'..'\xFF': result = "\\u" & strutils.toHex(ord(c), 4)
+  of '\0'..'\x1F', '\x7F'..'\xFF': result = "\\u" & strutils.toHex(ord(c), 4)
   of '\'', '\"', '\\': result = '\\' & c
   else: result = $c
 
