@@ -111,6 +111,105 @@ relation is extended to the types ``var``, ``ref``, ``ptr``:
 .. XXX nil is a special value!
 
 
+Covariance
+----------
+
+Covariance in Nim can be introduced only though pointer-like types such
+as ``ptr`` and ``ref``. Sequence, Array and OpenArray types, instantiated
+with pointer-like types will be considered covariant if and only if they
+are also immutable. The introduction of a ``var`` modifier or additional
+``ptr`` or ``ref`` indirections would result in invariant treatment of
+these types.
+
+``proc`` types are currently always invariant, but future versions of Nim
+may relax this rule.
+
+User-defined generic types may also be covariant with respect to some of
+their parameters. By default, all generic params are considered invariant,
+but you may choose the apply the prefix modifier ``in`` to a parameter to
+make it contravariant or ``out`` to make it covariant:
+
+.. code-block:: nim
+  type
+    AnnotatedPtr[out T] =
+      metadata: MyTypeInfo
+      p: ref T
+
+    RingBuffer[out T] =
+      startPos: int
+      data: seq[T]
+
+    Action {.importcpp: "std::function<void ('0)>".} [in T] = object
+
+When the designated generic parameter is used to instantiate a pointer-like
+type as in the case of `AnnotatedPtr` above, the resulting generic type will
+also have pointer-like covariance:
+
+.. code-block:: nim
+  type
+    GuiWidget = object of RootObj
+    Button = object of GuiWidget
+    ComboBox = object of GuiWidget
+
+  var
+    widgetPtr: AnnotatedPtr[GuiWidget]
+    buttonPtr: AnnotatedPtr[Button]
+
+  ...
+
+  proc drawWidget[T](x: AnnotatedPtr[GuiWidget]) = ...
+
+  # you can call procs expecting base types by supplying a derived type
+  drawWidget(buttonPtr)
+
+  # and you can convert more-specific pointer types to more general ones
+  widgetPtr = buttonPtr
+
+Just like with regular pointers, covariance will be enabled only for immutable
+values:
+
+.. code-block:: nim
+  proc makeComboBox[T](x: var AnnotatedPtr[GuiWidget]) =
+    x.p = new(ComboBox)
+
+  makeComboBox(buttonPtr) # Error, AnnotatedPtr[Button] cannot be modified
+                          # to point to a ComboBox
+
+On the other hand, in the `RingBuffer` example above, the designated generic
+param is used to instantiate the non-pointer ``seq`` type, which means that
+the resulting generic type will have covariance that mimics an array or
+sequence (i.e. it will be covariant only when instantiated with ``ptr`` and
+``ref`` types):
+
+.. code-block:: nim
+
+  type
+    Base = object of RootObj
+    Derived = object of Base
+
+  proc consumeBaseValues(b: RingBuffer[Base]) = ...
+
+  var derivedValues: RingBuffer[Derived]
+
+  consumeBaseValues(derivedValues) # Error, Base and Derived values may differ
+                                   # in size
+
+  proc consumeBasePointers(b: RingBuffer[ptr Base]) = ...
+
+  var derivedPointers: RingBuffer[ptr Derived]
+
+  consumeBaseValues(derivedPointers) # This is legal
+
+Please note that Nim will treat the user-defined pointer-like types as
+proper alternatives to the built-in pointer types. That is, types such
+as `seq[AnnotatedPtr[T]]` or `RingBuffer[AnnotatedPtr[T]]` will also be
+considered covariant and you can create new pointer-like types by instantiating
+other user-defined pointer-like types.
+
+The contravariant parameters introduced with the ``in`` modifier are currently
+useful only when interfacing with imported types having such semantics.
+
+
 Convertible relation
 --------------------
 A type ``a`` is **implicitly** convertible to type ``b`` iff the following
@@ -119,6 +218,8 @@ algorithm returns true:
 .. code-block:: nim
   # XXX range types?
   proc isImplicitlyConvertible(a, b: PType): bool =
+    if isSubtype(a, b) or isCovariant(a, b):
+      return true
     case a.kind
     of int:     result = b in {int8, int16, int32, int64, uint, uint8, uint16,
                                uint32, uint64, float, float32, float64}

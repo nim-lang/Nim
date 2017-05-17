@@ -103,3 +103,4 @@ proc initDefines*() =
   defineSymbol("nimNewShiftOps")
   defineSymbol("nimDistros")
   defineSymbol("nimHasCppDefine")
+  defineSymbol("nimGenericInOutFlags")
