@@ -377,7 +377,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
 
     var closureIterator = newProc(iteratorNameSym, [newIdentNode("FutureBase")],
                                   procBody, nnkIteratorDef)
-    closureIterator.pragma = copyNimTree(prc.pragma)
+    closureIterator.pragma = newNimNode(nnkPragma, lineInfoFrom=prc.body)
     closureIterator.addPragma(newIdentNode("closure"))
     closureIterator.addPragma(newIdentNode("gcsafe"))
     outerProcBody.add(closureIterator)
