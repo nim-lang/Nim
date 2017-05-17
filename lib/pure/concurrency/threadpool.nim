@@ -418,7 +418,7 @@ proc spawn*(call: expr): expr {.magic: "Spawn".}
 proc pinnedSpawn*(id: ThreadId; call: expr): expr {.magic: "Spawn".}
   ## always spawns a new task on the worker thread with ``id``, so that
   ## the 'call' is **always** executed on
-  ## the this thread. 'call' has to be proc call 'p(...)' where 'p'
+  ## the thread. 'call' has to be proc call 'p(...)' where 'p'
   ## is gcsafe and has a return type that is either 'void' or compatible
   ## with ``FlowVar[T]``.
 

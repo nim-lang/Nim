@@ -44,21 +44,23 @@
 const
   cb64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
-template encodeInternal(s: expr, lineLen: int, newLine: string): stmt {.immediate.} =
+template encodeInternal(s: typed, lineLen: int, newLine: string): untyped =
   ## encodes `s` into base64 representation. After `lineLen` characters, a
   ## `newline` is added.
   var total = ((len(s) + 2) div 3) * 4
-  var numLines = (total + lineLen - 1) div lineLen
-  if numLines > 0: inc(total, (numLines-1) * newLine.len)
+  let numLines = (total + lineLen - 1) div lineLen
+  if numLines > 0: inc(total, (numLines - 1) * newLine.len)
 
   result = newString(total)
-  var i = 0
-  var r = 0
-  var currLine = 0
+  var 
+    i = 0
+    r = 0
+    currLine = 0
   while i < s.len - 2:
-    var a = ord(s[i])
-    var b = ord(s[i+1])
-    var c = ord(s[i+2])
+    let
+      a = ord(s[i])
+      b = ord(s[i+1])
+      c = ord(s[i+2])
     result[r] = cb64[a shr 2]
     result[r+1] = cb64[((a and 3) shl 4) or ((b and 0xF0) shr 4)]
     result[r+2] = cb64[((b and 0x0F) shl 2) or ((c and 0xC0) shr 6)]
@@ -66,15 +68,17 @@ template encodeInternal(s: expr, lineLen: int, newLine: string): stmt {.immediat
     inc(r, 4)
     inc(i, 3)
     inc(currLine, 4)
-    if currLine >= lineLen and i != s.len-2:
+    # avoid index out of bounds when lineLen == encoded length
+    if currLine >= lineLen and i != s.len-2 and r < total:
       for x in items(newLine):
         result[r] = x
         inc(r)
       currLine = 0
 
   if i < s.len-1:
-    var a = ord(s[i])
-    var b = ord(s[i+1])
+    let 
+      a = ord(s[i])
+      b = ord(s[i+1])
     result[r] = cb64[a shr 2]
     result[r+1] = cb64[((a and 3) shl 4) or ((b and 0xF0) shr 4)]
     result[r+2] = cb64[((b and 0x0F) shl 2)]
@@ -82,7 +86,7 @@ template encodeInternal(s: expr, lineLen: int, newLine: string): stmt {.immediat
     if r+4 != result.len:
       setLen(result, r+4)
   elif i < s.len:
-    var a = ord(s[i])
+    let a = ord(s[i])
     result[r] = cb64[a shr 2]
     result[r+1] = cb64[(a and 3) shl 4]
     result[r+2] = '='
@@ -126,15 +130,17 @@ proc decode*(s: string): string =
   # total is an upper bound, as we will skip arbitrary whitespace:
   result = newString(total)
 
-  var i = 0
-  var r = 0
+  var 
+    i = 0
+    r = 0
   while true:
     while s[i] in Whitespace: inc(i)
     if i < s.len-3:
-      var a = s[i].decodeByte
-      var b = s[i+1].decodeByte
-      var c = s[i+2].decodeByte
-      var d = s[i+3].decodeByte
+      let
+        a = s[i].decodeByte
+        b = s[i+1].decodeByte
+        c = s[i+2].decodeByte
+        d = s[i+3].decodeByte
 
       result[r] = chr((a shl 2) and 0xff or ((b shr 4) and 0x03))
       result[r+1] = chr((b shl 4) and 0xff or ((c shr 2) and 0x0F))
@@ -155,12 +161,17 @@ when isMainModule:
   assert encode("asure.") == "YXN1cmUu"
   assert encode("sure.") == "c3VyZS4="
 
+  const testInputExpandsTo76 = "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+  const testInputExpands = "++++++++++++++++++++++++++++++"
   const longText = """Man is distinguished, not only by his reason, but by this
     singular passion from other animals, which is a lust of the mind,
     that by a perseverance of delight in the continued and indefatigable
     generation of knowledge, exceeds the short vehemence of any carnal
     pleasure."""
   const tests = ["", "abc", "xyz", "man", "leasure.", "sure.", "easure.",
-                 "asure.", longText]
+                 "asure.", longText, testInputExpandsTo76, testInputExpands]
+
   for t in items(tests):
     assert decode(encode(t)) == t
+    assert decode(encode(t, lineLen=40)) == t
+    assert decode(encode(t, lineLen=76)) == t

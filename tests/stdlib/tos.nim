@@ -39,6 +39,9 @@ false
 true
 true
 Raises
+true
+true
+true
 '''
 """
 # test os path creation, iteration, and deletion
@@ -111,3 +114,18 @@ try:
 except IOError:
   echo "Raises"
 removeFile(dname)
+
+# test copyDir:
+createDir("a/b")
+open("a/b/file.txt", fmWrite).close
+createDir("a/b/c")
+open("a/b/c/fileC.txt", fmWrite).close
+
+copyDir("a", "../dest/a")
+removeDir("a")
+
+echo dirExists("../dest/a/b")
+echo fileExists("../dest/a/b/file.txt")
+
+echo fileExists("../dest/a/b/c/fileC.txt")
+removeDir("../dest")

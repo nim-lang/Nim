@@ -67,6 +67,27 @@ proc debug*(n: PSym) {.deprecated.}
 proc debug*(n: PType) {.deprecated.}
 proc debug*(n: PNode) {.deprecated.}
 
+template mdbg*: bool {.dirty.} =
+  when compiles(c.module):
+    c.module.fileIdx == gProjectMainIdx
+  elif compiles(c.c.module):
+    c.c.module.fileIdx == gProjectMainIdx
+  elif compiles(m.c.module):
+    m.c.module.fileIdx == gProjectMainIdx
+  elif compiles(cl.c.module):
+    cl.c.module.fileIdx == gProjectMainIdx
+  elif compiles(p):
+    when compiles(p.lex):
+      p.lex.fileIdx == gProjectMainIdx
+    else:
+      p.module.module.fileIdx == gProjectMainIdx
+  elif compiles(m.module.fileIdx):
+    m.module.fileIdx == gProjectMainIdx
+  elif compiles(L.fileIdx):
+    L.fileIdx == gProjectMainIdx
+  else:
+    error()
+
 # --------------------------- ident tables ----------------------------------
 proc idTableGet*(t: TIdTable, key: PIdObj): RootRef
 proc idTableGet*(t: TIdTable, key: int): RootRef
@@ -388,6 +409,7 @@ proc debugTree(n: PNode, indent: int, maxRecDepth: int;
              [istr, makeYamlString($n.kind)]
     addf(result, ",$N$1\"info\": $2", [istr, lineInfoToStr(n.info)])
     if maxRecDepth != 0:
+      addf(result, ",$N$1\"flags\": $2", [istr, rope($n.flags)])
       case n.kind
       of nkCharLit..nkUInt64Lit:
         addf(result, ",$N$1\"intVal\": $2", [istr, rope(n.intVal)])

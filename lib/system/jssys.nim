@@ -172,7 +172,7 @@ proc raiseIndexError() {.compilerproc, noreturn.} =
 proc raiseFieldError(f: string) {.compilerproc, noreturn.} =
   raise newException(FieldError, f & " is not accessible")
 
-proc SetConstr() {.varargs, asmNoStackFrame, compilerproc.} =
+proc setConstr() {.varargs, asmNoStackFrame, compilerproc.} =
   when defined(nimphp):
     asm """
       $args = func_get_args();
@@ -641,6 +641,10 @@ proc toU32*(a: int64): int32 {.asmNoStackFrame, compilerproc.} =
 
 proc nimMin(a, b: int): int {.compilerproc.} = return if a <= b: a else: b
 proc nimMax(a, b: int): int {.compilerproc.} = return if a >= b: a else: b
+
+proc chckNilDisp(p: pointer) {.compilerproc.} =
+  if p == nil:
+    sysFatal(NilAccessError, "cannot dispatch; dispatcher is nil")
 
 type NimString = string # hack for hti.nim
 include "system/hti"

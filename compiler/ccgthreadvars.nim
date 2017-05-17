@@ -19,9 +19,9 @@ proc accessThreadLocalVar(p: BProc, s: PSym) =
   if emulatedThreadVars() and not p.threadVarAccessed:
     p.threadVarAccessed = true
     incl p.module.flags, usesThreadVars
-    addf(p.procSec(cpsLocals), "\tNimThreadVars* NimTV;$n", [])
+    addf(p.procSec(cpsLocals), "\tNimThreadVars* NimTV_;$n", [])
     add(p.procSec(cpsInit),
-      ropecg(p.module, "\tNimTV = (NimThreadVars*) #GetThreadLocalVars();$n"))
+      ropecg(p.module, "\tNimTV_ = (NimThreadVars*) #GetThreadLocalVars();$n"))
 
 var
   nimtv: Rope                 # Nim thread vars; the struct body
@@ -57,8 +57,8 @@ proc generateThreadLocalStorage(m: BModule) =
 
 proc generateThreadVarsSize(m: BModule) =
   if nimtv != nil:
-    let externc = if gCmd != cmdCompileToCpp and
-                       sfCompileToCpp in m.module.flags: "extern \"C\""
+    let externc = if gCmd == cmdCompileToCpp or
+                       sfCompileToCpp in m.module.flags: "extern \"C\" "
                   else: ""
     addf(m.s[cfsProcs],
       "$#NI NimThreadVarsSize(){return (NI)sizeof(NimThreadVars);}$n",

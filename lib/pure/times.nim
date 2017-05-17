@@ -47,15 +47,26 @@ type
     dMon, dTue, dWed, dThu, dFri, dSat, dSun
 
 when defined(posix) and not defined(JS):
-  type
-    TimeImpl {.importc: "time_t", header: "<time.h>".} = int
-    Time* = distinct TimeImpl ## distinct type that represents a time
-                              ## measured as number of seconds since the epoch
+  when defined(linux) and defined(amd64):
+    type
+      TimeImpl {.importc: "time_t", header: "<time.h>".} = clong
+      Time* = distinct TimeImpl ## distinct type that represents a time
+                                ## measured as number of seconds since the epoch
 
-    Timeval {.importc: "struct timeval",
-              header: "<sys/select.h>".} = object ## struct timeval
-      tv_sec: int  ## Seconds.
-      tv_usec: int ## Microseconds.
+      Timeval {.importc: "struct timeval",
+                header: "<sys/select.h>".} = object ## struct timeval
+        tv_sec: clong  ## Seconds.
+        tv_usec: clong ## Microseconds.
+  else:
+    type
+      TimeImpl {.importc: "time_t", header: "<time.h>".} = int
+      Time* = distinct TimeImpl ## distinct type that represents a time
+                                ## measured as number of seconds since the epoch
+
+      Timeval {.importc: "struct timeval",
+                header: "<sys/select.h>".} = object ## struct timeval
+        tv_sec: int  ## Seconds.
+        tv_usec: int ## Microseconds.
 
   # we cannot import posix.nim here, because posix.nim depends on times.nim.
   # Ok, we could, but I don't want circular dependencies.
@@ -384,259 +395,6 @@ proc `miliseconds=`*(t: var TimeInterval, milliseconds: int) {.deprecated.} =
   ## **Warning:** This should not be used! It will be removed in the next
   ## version.
   t.milliseconds = milliseconds
-
-when not defined(JS):
-  proc epochTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].}
-    ## gets time after the UNIX epoch (1970) in seconds. It is a float
-    ## because sub-second resolution is likely to be supported (depending
-    ## on the hardware/OS).
-
-  proc cpuTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].}
-    ## gets time spent that the CPU spent to run the current process in
-    ## seconds. This may be more useful for benchmarking than ``epochTime``.
-    ## However, it may measure the real time instead (depending on the OS).
-    ## The value of the result has no meaning.
-    ## To generate useful timing values, take the difference between
-    ## the results of two ``cpuTime`` calls:
-    ##
-    ## .. code-block:: nim
-    ##   var t0 = cpuTime()
-    ##   doWork()
-    ##   echo "CPU time [s] ", cpuTime() - t0
-
-when not defined(JS):
-  # C wrapper:
-  when defined(freebsd) or defined(netbsd) or defined(openbsd) or
-      defined(macosx):
-    type
-      StructTM {.importc: "struct tm", final.} = object
-        second {.importc: "tm_sec".},
-          minute {.importc: "tm_min".},
-          hour {.importc: "tm_hour".},
-          monthday {.importc: "tm_mday".},
-          month {.importc: "tm_mon".},
-          year {.importc: "tm_year".},
-          weekday {.importc: "tm_wday".},
-          yearday {.importc: "tm_yday".},
-          isdst {.importc: "tm_isdst".}: cint
-        gmtoff {.importc: "tm_gmtoff".}: clong
-  else:
-    type
-      StructTM {.importc: "struct tm", final.} = object
-        second {.importc: "tm_sec".},
-          minute {.importc: "tm_min".},
-          hour {.importc: "tm_hour".},
-          monthday {.importc: "tm_mday".},
-          month {.importc: "tm_mon".},
-          year {.importc: "tm_year".},
-          weekday {.importc: "tm_wday".},
-          yearday {.importc: "tm_yday".},
-          isdst {.importc: "tm_isdst".}: cint
-  type
-    TimeInfoPtr = ptr StructTM
-    Clock {.importc: "clock_t".} = distinct int
-
-  when not defined(windows):
-    # This is not ANSI C, but common enough
-    proc timegm(t: StructTM): Time {.
-      importc: "timegm", header: "<time.h>", tags: [].}
-
-  proc localtime(timer: ptr Time): TimeInfoPtr {.
-    importc: "localtime", header: "<time.h>", tags: [].}
-  proc gmtime(timer: ptr Time): TimeInfoPtr {.
-    importc: "gmtime", header: "<time.h>", tags: [].}
-  proc timec(timer: ptr Time): Time {.
-    importc: "time", header: "<time.h>", tags: [].}
-  proc mktime(t: StructTM): Time {.
-    importc: "mktime", header: "<time.h>", tags: [].}
-  proc getClock(): Clock {.importc: "clock", header: "<time.h>", tags: [TimeEffect].}
-  proc difftime(a, b: Time): float {.importc: "difftime", header: "<time.h>",
-    tags: [].}
-
-  var
-    clocksPerSec {.importc: "CLOCKS_PER_SEC", nodecl.}: int
-
-  # our own procs on top of that:
-  proc tmToTimeInfo(tm: StructTM, local: bool): TimeInfo =
-    const
-      weekDays: array[0..6, WeekDay] = [
-        dSun, dMon, dTue, dWed, dThu, dFri, dSat]
-    TimeInfo(second: int(tm.second),
-      minute: int(tm.minute),
-      hour: int(tm.hour),
-      monthday: int(tm.monthday),
-      month: Month(tm.month),
-      year: tm.year + 1900'i32,
-      weekday: weekDays[int(tm.weekday)],
-      yearday: int(tm.yearday),
-      isDST: tm.isdst > 0,
-      timezone: if local: getTimezone() else: 0
-    )
-
-
-  proc timeInfoToTM(t: TimeInfo): StructTM =
-    const
-      weekDays: array[WeekDay, int8] = [1'i8,2'i8,3'i8,4'i8,5'i8,6'i8,0'i8]
-    result.second = t.second
-    result.minute = t.minute
-    result.hour = t.hour
-    result.monthday = t.monthday
-    result.month = ord(t.month)
-    result.year = cint(t.year - 1900)
-    result.weekday = weekDays[t.weekday]
-    result.yearday = t.yearday
-    result.isdst = if t.isDST: 1 else: 0
-
-  when not defined(useNimRtl):
-    proc `-` (a, b: Time): int64 =
-      return toBiggestInt(difftime(a, b))
-
-  proc getStartMilsecs(): int =
-    #echo "clocks per sec: ", clocksPerSec, "clock: ", int(getClock())
-    #return getClock() div (clocksPerSec div 1000)
-    when defined(macosx):
-      result = toInt(toFloat(int(getClock())) / (toFloat(clocksPerSec) / 1000.0))
-    else:
-      result = int(getClock()) div (clocksPerSec div 1000)
-    when false:
-      var a: Timeval
-      posix_gettimeofday(a)
-      result = a.tv_sec * 1000'i64 + a.tv_usec div 1000'i64
-      #echo "result: ", result
-
-  proc getTime(): Time = return timec(nil)
-  proc getLocalTime(t: Time): TimeInfo =
-    var a = t
-    let lt = localtime(addr(a))
-    assert(not lt.isNil)
-    result = tmToTimeInfo(lt[], true)
-    # copying is needed anyway to provide reentrancity; thus
-    # the conversion is not expensive
-
-  proc getGMTime(t: Time): TimeInfo =
-    var a = t
-    result = tmToTimeInfo(gmtime(addr(a))[], false)
-    # copying is needed anyway to provide reentrancity; thus
-    # the conversion is not expensive
-
-  proc toTime(timeInfo: TimeInfo): Time =
-    var cTimeInfo = timeInfo # for C++ we have to make a copy
-    # because the header of mktime is broken in my version of libc
-
-    result = mktime(timeInfoToTM(cTimeInfo))
-    # mktime is defined to interpret the input as local time. As timeInfoToTM
-    # does ignore the timezone, we need to adjust this here.
-    result = Time(TimeImpl(result) - getTimezone() + timeInfo.timezone)
-
-  proc timeInfoToTime(timeInfo: TimeInfo): Time = toTime(timeInfo)
-
-  const
-    epochDiff = 116444736000000000'i64
-    rateDiff = 10000000'i64 # 100 nsecs
-
-  proc unixTimeToWinTime*(t: Time): int64 =
-    ## converts a UNIX `Time` (``time_t``) to a Windows file time
-    result = int64(t) * rateDiff + epochDiff
-
-  proc winTimeToUnixTime*(t: int64): Time =
-    ## converts a Windows time to a UNIX `Time` (``time_t``)
-    result = Time((t - epochDiff) div rateDiff)
-
-  proc getTimezone(): int =
-    when defined(freebsd) or defined(netbsd) or defined(openbsd):
-      var a = timec(nil)
-      let lt = localtime(addr(a))
-      # BSD stores in `gmtoff` offset east of UTC in seconds,
-      # but posix systems using west of UTC in seconds
-      return -(lt.gmtoff)
-    else:
-      return timezone
-
-  proc fromSeconds(since1970: float): Time = Time(since1970)
-
-  proc toSeconds(time: Time): float = float(time)
-
-  when not defined(useNimRtl):
-    proc epochTime(): float =
-      when defined(posix):
-        var a: Timeval
-        posix_gettimeofday(a)
-        result = toFloat(a.tv_sec) + toFloat(a.tv_usec)*0.00_0001
-      elif defined(windows):
-        var f: winlean.FILETIME
-        getSystemTimeAsFileTime(f)
-        var i64 = rdFileTime(f) - epochDiff
-        var secs = i64 div rateDiff
-        var subsecs = i64 mod rateDiff
-        result = toFloat(int(secs)) + toFloat(int(subsecs)) * 0.0000001
-      else:
-        {.error: "unknown OS".}
-
-    proc cpuTime(): float =
-      result = toFloat(int(getClock())) / toFloat(clocksPerSec)
-
-elif defined(JS):
-  proc newDate(): Time {.importc: "new Date".}
-  proc internGetTime(): Time {.importc: "new Date", tags: [].}
-
-  proc newDate(value: float): Time {.importc: "new Date".}
-  proc newDate(value: string): Time {.importc: "new Date".}
-  proc getTime(): Time =
-    # Warning: This is something different in JS.
-    return newDate()
-
-  const
-    weekDays: array[0..6, WeekDay] = [
-      dSun, dMon, dTue, dWed, dThu, dFri, dSat]
-
-  proc getLocalTime(t: Time): TimeInfo =
-    result.second = t.getSeconds()
-    result.minute = t.getMinutes()
-    result.hour = t.getHours()
-    result.monthday = t.getDate()
-    result.month = Month(t.getMonth())
-    result.year = t.getFullYear()
-    result.weekday = weekDays[t.getDay()]
-    result.yearday = 0
-
-  proc getGMTime(t: Time): TimeInfo =
-    result.second = t.getUTCSeconds()
-    result.minute = t.getUTCMinutes()
-    result.hour = t.getUTCHours()
-    result.monthday = t.getUTCDate()
-    result.month = Month(t.getUTCMonth())
-    result.year = t.getUTCFullYear()
-    result.weekday = weekDays[t.getUTCDay()]
-    result.yearday = 0
-
-  proc timeInfoToTime(timeInfo: TimeInfo): Time = toTime(timeInfo)
-
-  proc toTime*(timeInfo: TimeInfo): Time =
-    result = internGetTime()
-    result.setMinutes(timeInfo.minute)
-    result.setHours(timeInfo.hour)
-    result.setMonth(ord(timeInfo.month))
-    result.setFullYear(timeInfo.year)
-    result.setDate(timeInfo.monthday)
-    result.setSeconds(timeInfo.second + timeInfo.timezone)
-
-  proc `-` (a, b: Time): int64 =
-    return a.getTime() - b.getTime()
-
-  var
-    startMilsecs = getTime()
-
-  proc getStartMilsecs(): int =
-    ## get the milliseconds from the start of the program
-    return int(getTime() - startMilsecs)
-
-  proc fromSeconds(since1970: float): Time = result = newDate(since1970 * 1000)
-
-  proc toSeconds(time: Time): float = result = time.getTime() / 1000
-
-  proc getTimezone(): int = result = newDate().getTimezoneOffset() * 60
-
-  proc epochTime*(): float {.tags: [TimeEffect].} = newDate().toSeconds()
 
 proc getDateStr*(): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
   ## gets the current date as a string of the format ``YYYY-MM-DD``.
@@ -1331,6 +1089,262 @@ proc toTimeInterval*(t: Time): TimeInterval =
   # Milliseconds not available from Time
   var tInfo = t.getLocalTime()
   initInterval(0, tInfo.second, tInfo.minute, tInfo.hour, tInfo.weekday.ord, tInfo.month.ord, tInfo.year)
+
+when not defined(JS):
+  proc epochTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].}
+    ## gets time after the UNIX epoch (1970) in seconds. It is a float
+    ## because sub-second resolution is likely to be supported (depending
+    ## on the hardware/OS).
+
+  proc cpuTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].}
+    ## gets time spent that the CPU spent to run the current process in
+    ## seconds. This may be more useful for benchmarking than ``epochTime``.
+    ## However, it may measure the real time instead (depending on the OS).
+    ## The value of the result has no meaning.
+    ## To generate useful timing values, take the difference between
+    ## the results of two ``cpuTime`` calls:
+    ##
+    ## .. code-block:: nim
+    ##   var t0 = cpuTime()
+    ##   doWork()
+    ##   echo "CPU time [s] ", cpuTime() - t0
+
+when not defined(JS):
+  # C wrapper:
+  when defined(freebsd) or defined(netbsd) or defined(openbsd) or
+      defined(macosx):
+    type
+      StructTM {.importc: "struct tm".} = object
+        second {.importc: "tm_sec".},
+          minute {.importc: "tm_min".},
+          hour {.importc: "tm_hour".},
+          monthday {.importc: "tm_mday".},
+          month {.importc: "tm_mon".},
+          year {.importc: "tm_year".},
+          weekday {.importc: "tm_wday".},
+          yearday {.importc: "tm_yday".},
+          isdst {.importc: "tm_isdst".}: cint
+        gmtoff {.importc: "tm_gmtoff".}: clong
+  else:
+    type
+      StructTM {.importc: "struct tm".} = object
+        second {.importc: "tm_sec".},
+          minute {.importc: "tm_min".},
+          hour {.importc: "tm_hour".},
+          monthday {.importc: "tm_mday".},
+          month {.importc: "tm_mon".},
+          year {.importc: "tm_year".},
+          weekday {.importc: "tm_wday".},
+          yearday {.importc: "tm_yday".},
+          isdst {.importc: "tm_isdst".}: cint
+        when defined(linux) and defined(amd64):
+          gmtoff {.importc: "tm_gmtoff".}: clong
+          zone {.importc: "tm_zone".}: cstring
+  type
+    TimeInfoPtr = ptr StructTM
+    Clock {.importc: "clock_t".} = distinct int
+
+  when not defined(windows):
+    # This is not ANSI C, but common enough
+    proc timegm(t: StructTM): Time {.
+      importc: "timegm", header: "<time.h>", tags: [].}
+
+  proc localtime(timer: ptr Time): TimeInfoPtr {.
+    importc: "localtime", header: "<time.h>", tags: [].}
+  proc gmtime(timer: ptr Time): TimeInfoPtr {.
+    importc: "gmtime", header: "<time.h>", tags: [].}
+  proc timec(timer: ptr Time): Time {.
+    importc: "time", header: "<time.h>", tags: [].}
+  proc mktime(t: StructTM): Time {.
+    importc: "mktime", header: "<time.h>", tags: [].}
+  proc getClock(): Clock {.importc: "clock", header: "<time.h>", tags: [TimeEffect].}
+  proc difftime(a, b: Time): float {.importc: "difftime", header: "<time.h>",
+    tags: [].}
+
+  var
+    clocksPerSec {.importc: "CLOCKS_PER_SEC", nodecl.}: int
+
+  # our own procs on top of that:
+  proc tmToTimeInfo(tm: StructTM, local: bool): TimeInfo =
+    const
+      weekDays: array[0..6, WeekDay] = [
+        dSun, dMon, dTue, dWed, dThu, dFri, dSat]
+    TimeInfo(second: int(tm.second),
+      minute: int(tm.minute),
+      hour: int(tm.hour),
+      monthday: int(tm.monthday),
+      month: Month(tm.month),
+      year: tm.year + 1900'i32,
+      weekday: weekDays[int(tm.weekday)],
+      yearday: int(tm.yearday),
+      isDST: tm.isdst > 0,
+      timezone: if local: getTimezone() else: 0
+    )
+
+
+  proc timeInfoToTM(t: TimeInfo): StructTM =
+    const
+      weekDays: array[WeekDay, int8] = [1'i8,2'i8,3'i8,4'i8,5'i8,6'i8,0'i8]
+    result.second = t.second
+    result.minute = t.minute
+    result.hour = t.hour
+    result.monthday = t.monthday
+    result.month = ord(t.month)
+    result.year = cint(t.year - 1900)
+    result.weekday = weekDays[t.weekday]
+    result.yearday = t.yearday
+    result.isdst = if t.isDST: 1 else: 0
+
+  when not defined(useNimRtl):
+    proc `-` (a, b: Time): int64 =
+      return toBiggestInt(difftime(a, b))
+
+  proc getStartMilsecs(): int =
+    #echo "clocks per sec: ", clocksPerSec, "clock: ", int(getClock())
+    #return getClock() div (clocksPerSec div 1000)
+    when defined(macosx):
+      result = toInt(toFloat(int(getClock())) / (toFloat(clocksPerSec) / 1000.0))
+    else:
+      result = int(getClock()) div (clocksPerSec div 1000)
+    when false:
+      var a: Timeval
+      posix_gettimeofday(a)
+      result = a.tv_sec * 1000'i64 + a.tv_usec div 1000'i64
+      #echo "result: ", result
+
+  proc getTime(): Time = return timec(nil)
+  proc getLocalTime(t: Time): TimeInfo =
+    var a = t
+    let lt = localtime(addr(a))
+    assert(not lt.isNil)
+    result = tmToTimeInfo(lt[], true)
+    # copying is needed anyway to provide reentrancity; thus
+    # the conversion is not expensive
+
+  proc getGMTime(t: Time): TimeInfo =
+    var a = t
+    result = tmToTimeInfo(gmtime(addr(a))[], false)
+    # copying is needed anyway to provide reentrancity; thus
+    # the conversion is not expensive
+
+  proc toTime(timeInfo: TimeInfo): Time =
+    var cTimeInfo = timeInfo # for C++ we have to make a copy
+    # because the header of mktime is broken in my version of libc
+
+    result = mktime(timeInfoToTM(cTimeInfo))
+    # mktime is defined to interpret the input as local time. As timeInfoToTM
+    # does ignore the timezone, we need to adjust this here.
+    result = Time(TimeImpl(result) - getTimezone() + timeInfo.timezone)
+
+  proc timeInfoToTime(timeInfo: TimeInfo): Time = toTime(timeInfo)
+
+  const
+    epochDiff = 116444736000000000'i64
+    rateDiff = 10000000'i64 # 100 nsecs
+
+  proc unixTimeToWinTime*(t: Time): int64 =
+    ## converts a UNIX `Time` (``time_t``) to a Windows file time
+    result = int64(t) * rateDiff + epochDiff
+
+  proc winTimeToUnixTime*(t: int64): Time =
+    ## converts a Windows time to a UNIX `Time` (``time_t``)
+    result = Time((t - epochDiff) div rateDiff)
+
+  proc getTimezone(): int =
+    when defined(freebsd) or defined(netbsd) or defined(openbsd):
+      var a = timec(nil)
+      let lt = localtime(addr(a))
+      # BSD stores in `gmtoff` offset east of UTC in seconds,
+      # but posix systems using west of UTC in seconds
+      return -(lt.gmtoff)
+    else:
+      return timezone
+
+  proc fromSeconds(since1970: float): Time = Time(since1970)
+
+  proc toSeconds(time: Time): float = float(time)
+
+  when not defined(useNimRtl):
+    proc epochTime(): float =
+      when defined(posix):
+        var a: Timeval
+        posix_gettimeofday(a)
+        result = toFloat(a.tv_sec) + toFloat(a.tv_usec)*0.00_0001
+      elif defined(windows):
+        var f: winlean.FILETIME
+        getSystemTimeAsFileTime(f)
+        var i64 = rdFileTime(f) - epochDiff
+        var secs = i64 div rateDiff
+        var subsecs = i64 mod rateDiff
+        result = toFloat(int(secs)) + toFloat(int(subsecs)) * 0.0000001
+      else:
+        {.error: "unknown OS".}
+
+    proc cpuTime(): float =
+      result = toFloat(int(getClock())) / toFloat(clocksPerSec)
+
+elif defined(JS):
+  proc newDate(): Time {.importc: "new Date".}
+  proc internGetTime(): Time {.importc: "new Date", tags: [].}
+
+  proc newDate(value: float): Time {.importc: "new Date".}
+  proc newDate(value: cstring): Time {.importc: "new Date".}
+  proc getTime(): Time =
+    # Warning: This is something different in JS.
+    return newDate()
+
+  const
+    weekDays: array[0..6, WeekDay] = [
+      dSun, dMon, dTue, dWed, dThu, dFri, dSat]
+
+  proc getLocalTime(t: Time): TimeInfo =
+    result.second = t.getSeconds()
+    result.minute = t.getMinutes()
+    result.hour = t.getHours()
+    result.monthday = t.getDate()
+    result.month = Month(t.getMonth())
+    result.year = t.getFullYear()
+    result.weekday = weekDays[t.getDay()]
+    result.timezone = getTimezone()
+
+    result.yearday = result.monthday - 1
+    for month in mJan..<result.month:
+      result.yearday += getDaysInMonth(month, result.year)
+
+  proc getGMTime(t: Time): TimeInfo =
+    result.second = t.getUTCSeconds()
+    result.minute = t.getUTCMinutes()
+    result.hour = t.getUTCHours()
+    result.monthday = t.getUTCDate()
+    result.month = Month(t.getUTCMonth())
+    result.year = t.getUTCFullYear()
+    result.weekday = weekDays[t.getUTCDay()]
+
+    result.yearday = result.monthday - 1
+    for month in mJan..<result.month:
+      result.yearday += getDaysInMonth(month, result.year)
+
+  proc timeInfoToTime(timeInfo: TimeInfo): Time = toTime(timeInfo)
+
+  proc toTime*(timeInfo: TimeInfo): Time = newDate($timeInfo)
+
+  proc `-` (a, b: Time): int64 =
+    return a.getTime() - b.getTime()
+
+  var
+    startMilsecs = getTime()
+
+  proc getStartMilsecs(): int =
+    ## get the milliseconds from the start of the program
+    return int(getTime() - startMilsecs)
+
+  proc fromSeconds(since1970: float): Time = result = newDate(since1970 * 1000)
+
+  proc toSeconds(time: Time): float = result = time.getTime() / 1000
+
+  proc getTimezone(): int = result = newDate().getTimezoneOffset() * 60
+
+  proc epochTime*(): float {.tags: [TimeEffect].} = newDate().toSeconds()
 
 
 when isMainModule:

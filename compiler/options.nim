@@ -8,7 +8,7 @@
 #
 
 import
-  os, lists, strutils, strtabs, osproc, sets
+  os, strutils, strtabs, osproc, sets
 
 const
   hasTinyCBackend* = defined(tinyc)
@@ -41,7 +41,6 @@ type                          # please make sure we have under 32 options
   TGlobalOption* = enum       # **keep binary compatible**
     gloptNone, optForceFullMake, optDeadCodeElim,
     optListCmd, optCompileOnly, optNoLinking,
-    optReportConceptFailures, # report 'compiles' or 'concept' matching failures
     optCDebug,                # turn on debugging information
     optGenDynLib,             # generate a dynamic library
     optGenStaticLib,          # generate a static library
@@ -73,8 +72,8 @@ type                          # please make sure we have under 32 options
   TGlobalOptions* = set[TGlobalOption]
 
 const
-  harmlessOptions* = {optForceFullMake, optNoLinking, optReportConceptFailures,
-    optRun, optUseColors, optStdout}
+  harmlessOptions* = {optForceFullMake, optNoLinking, optRun,
+                      optUseColors, optStdout}
 
 type
   TCommands* = enum           # Nim's commands
@@ -100,7 +99,18 @@ type
 
   IdeCmd* = enum
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideMod,
-    ideHighlight, ideOutline
+    ideHighlight, ideOutline, ideKnown, ideMsg
+
+  ConfigRef* = ref object ## eventually all global configuration should be moved here
+    cppDefines*: HashSet[string]
+    headerFile*: string
+
+proc newConfigRef*(): ConfigRef =
+  result = ConfigRef(cppDefines: initSet[string](),
+    headerFile: "")
+
+proc cppDefine*(c: ConfigRef; define: string) =
+  c.cppDefines.incl define
 
 var
   gIdeCmd*: IdeCmd
@@ -118,11 +128,12 @@ var
   gExitcode*: int8
   gCmd*: TCommands = cmdNone  # the command
   gSelectedGC* = gcRefc       # the selected GC
-  searchPaths*, lazyPaths*: TLinkedList
+  searchPaths*: seq[string] = @[]
+  lazyPaths*: seq[string]   = @[]
   outFile*: string = ""
   docSeeSrcUrl*: string = ""  # if empty, no seeSrc will be generated. \
   # The string uses the formatting variables `path` and `line`.
-  headerFile*: string = ""
+  #headerFile*: string = ""
   gVerbosity* = 1             # how verbose the compiler is
   gNumberOfProcessors*: int   # number of processors
   gWholeProject*: bool        # for 'doc2': output any dependency
@@ -200,7 +211,7 @@ proc getOutFile*(filename, ext: string): string =
 proc getPrefixDir*(): string =
   ## Gets the prefix dir, usually the parent directory where the binary resides.
   ##
-  ## This is overrided by some tools (namely nimsuggest) via the ``gPrefixDir``
+  ## This is overridden by some tools (namely nimsuggest) via the ``gPrefixDir``
   ## global.
   if gPrefixDir != "": result = gPrefixDir
   else:
@@ -256,9 +267,7 @@ proc removeTrailingDirSep*(path: string): string =
 
 proc disableNimblePath*() =
   gNoNimblePath = true
-  lazyPaths.head = nil
-  lazyPaths.tail = nil
-  lazyPaths.counter = 0
+  lazyPaths.setLen(0)
 
 include packagehandling
 
@@ -325,27 +334,22 @@ proc completeGeneratedFilePath*(f: string, createSubDir: bool = true): string =
   result = joinPath(subdir, tail)
   #echo "completeGeneratedFilePath(", f, ") = ", result
 
-iterator iterSearchPath*(searchPaths: TLinkedList): string =
-  var it = PStrEntry(searchPaths.head)
-  while it != nil:
-    yield it.data
-    it = PStrEntry(it.next)
-
 proc rawFindFile(f: string): string =
-  for it in iterSearchPath(searchPaths):
+  for it in searchPaths:
     result = joinPath(it, f)
     if existsFile(result):
       return result.canonicalizePath
   result = ""
 
 proc rawFindFile2(f: string): string =
-  var it = PStrEntry(lazyPaths.head)
-  while it != nil:
-    result = joinPath(it.data, f)
+  for i, it in lazyPaths:
+    result = joinPath(it, f)
     if existsFile(result):
-      bringToFront(lazyPaths, it)
+      # bring to front
+      for j in countDown(i,1):
+        swap(lazyPaths[j], lazyPaths[j-1])
+
       return result.canonicalizePath
-    it = PStrEntry(it.next)
   result = ""
 
 template patchModule() {.dirty.} =
@@ -387,6 +391,23 @@ proc findModule*(modulename, currentModule: string): string =
     result = findFile(m)
   patchModule()
 
+proc findProjectNimFile*(pkg: string): string =
+  const extensions = [".nims", ".cfg", ".nimcfg", ".nimble"]
+  var candidates: seq[string] = @[]
+  for k, f in os.walkDir(pkg, relative=true):
+    if k == pcFile and f != "config.nims":
+      let (_, name, ext) = splitFile(f)
+      if ext in extensions:
+        let x = changeFileExt(pkg / name, ".nim")
+        if fileExists(x):
+          candidates.add x
+  for c in candidates:
+    # nim-foo foo  or  foo  nfoo
+    if (pkg in c) or (c in pkg): return c
+  if candidates.len >= 1:
+    return candidates[0]
+  return ""
+
 proc canonDynlibName(s: string): string =
   let start = if s.startsWith("lib"): 3 else: 0
   let ende = strutils.find(s, {'(', ')', '.'})
@@ -415,11 +436,6 @@ proc binaryStrSearch*(x: openArray[string], y: string): int =
       return mid
   result = - 1
 
-template nimdbg*: untyped = c.module.fileIdx == gProjectMainIdx
-template cnimdbg*: untyped = p.module.module.fileIdx == gProjectMainIdx
-template pnimdbg*: untyped = p.lex.fileIdx == gProjectMainIdx
-template lnimdbg*: untyped = L.fileIdx == gProjectMainIdx
-
 proc parseIdeCmd*(s: string): IdeCmd =
   case s:
   of "sug": ideSug
@@ -431,6 +447,8 @@ proc parseIdeCmd*(s: string): IdeCmd =
   of "mod": ideMod
   of "highlight": ideHighlight
   of "outline": ideOutline
+  of "known": ideKnown
+  of "msg": ideMsg
   else: ideNone
 
 proc `$`*(c: IdeCmd): string =
@@ -445,3 +463,5 @@ proc `$`*(c: IdeCmd): string =
   of ideNone: "none"
   of ideHighlight: "highlight"
   of ideOutline: "outline"
+  of ideKnown: "known"
+  of ideMsg: "msg"

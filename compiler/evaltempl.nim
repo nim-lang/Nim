@@ -80,12 +80,17 @@ proc evalTemplateArgs(n: PNode, s: PSym; fromHlo: bool): PNode =
     expectedRegularParams = <s.typ.len
     givenRegularParams = totalParams - genericParams
   if givenRegularParams < 0: givenRegularParams = 0
+
   if totalParams > expectedRegularParams + genericParams:
     globalError(n.info, errWrongNumberOfArguments)
 
+  if totalParams < genericParams:
+    globalError(n.info, errMissingGenericParamsForTemplate,
+                n.renderTree)
+
   result = newNodeI(nkArgList, n.info)
   for i in 1 .. givenRegularParams:
-    result.addSon n.sons[i]
+    result.addSon n[i]
 
   # handle parameters with default values, which were
   # not supplied by the user
@@ -121,7 +126,6 @@ proc wrapInComesFrom*(info: TLineInfo; res: PNode): PNode =
   else:
     result = newNodeI(nkPar, info)
     result.add res
-    result.flags.incl nfNone
 
 proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym; fromHlo=false): PNode =
   inc(evalTemplateCounter)

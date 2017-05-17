@@ -74,9 +74,9 @@ proc lowerTupleUnpackingForAsgn*(n: PNode; owner: PSym): PNode =
   let value = n.lastSon
   result = newNodeI(nkStmtList, n.info)
 
-  var temp = newSym(skTemp, getIdent(genPrefix), owner, value.info)
+  var temp = newSym(skLet, getIdent("_"), owner, value.info)
   var v = newNodeI(nkLetSection, value.info)
-  let tempAsNode = newIdentNode(getIdent(genPrefix & $temp.id), value.info)
+  let tempAsNode = newSymNode(temp) #newIdentNode(getIdent(genPrefix & $temp.id), value.info)
 
   var vpart = newNodeI(nkIdentDefs, tempAsNode.info, 3)
   vpart.sons[0] = tempAsNode
@@ -115,7 +115,7 @@ proc createObj*(owner: PSym, info: TLineInfo): PType =
   incl result.flags, tfFinal
   result.n = newNodeI(nkRecList, info)
   when true:
-    let s = newSym(skType, getIdent("Env_" & info.toFilename & "_" & $info.line),
+    let s = newSym(skType, getIdent("Env_" & info.toFilename),
                    owner, info)
     incl s.flags, sfAnon
     s.typ = result
@@ -137,10 +137,32 @@ proc rawIndirectAccess*(a: PNode; field: PSym; info: TLineInfo): PNode =
   addSon(result, newSymNode(field))
   result.typ = field.typ
 
+proc lookupInRecord(n: PNode, id: int): PSym =
+  result = nil
+  case n.kind
+  of nkRecList:
+    for i in countup(0, sonsLen(n) - 1):
+      result = lookupInRecord(n.sons[i], id)
+      if result != nil: return
+  of nkRecCase:
+    if n.sons[0].kind != nkSym: return
+    result = lookupInRecord(n.sons[0], id)
+    if result != nil: return
+    for i in countup(1, sonsLen(n) - 1):
+      case n.sons[i].kind
+      of nkOfBranch, nkElse:
+        result = lookupInRecord(lastSon(n.sons[i]), id)
+        if result != nil: return
+      else: discard
+  of nkSym:
+    if n.sym.id == -abs(id): result = n.sym
+  else: discard
+
 proc addField*(obj: PType; s: PSym) =
   # because of 'gensym' support, we have to mangle the name with its ID.
   # This is hacky but the clean solution is much more complex than it looks.
-  var field = newSym(skField, getIdent(s.name.s & $s.id), s.owner, s.info)
+  var field = newSym(skField, getIdent(s.name.s & $obj.n.len), s.owner, s.info)
+  field.id = -s.id
   let t = skipIntLit(s.typ)
   field.typ = t
   assert t.kind != tyStmt
@@ -148,9 +170,9 @@ proc addField*(obj: PType; s: PSym) =
   addSon(obj.n, newSymNode(field))
 
 proc addUniqueField*(obj: PType; s: PSym) =
-  let fieldName = getIdent(s.name.s & $s.id)
-  if lookupInRecord(obj.n, fieldName) == nil:
-    var field = newSym(skField, fieldName, s.owner, s.info)
+  if lookupInRecord(obj.n, s.id) == nil:
+    var field = newSym(skField, getIdent(s.name.s & $obj.n.len), s.owner, s.info)
+    field.id = -s.id
     let t = skipIntLit(s.typ)
     field.typ = t
     assert t.kind != tyStmt
@@ -159,13 +181,36 @@ proc addUniqueField*(obj: PType; s: PSym) =
 
 proc newDotExpr(obj, b: PSym): PNode =
   result = newNodeI(nkDotExpr, obj.info)
-  let field = getSymFromList(obj.typ.n, getIdent(b.name.s & $b.id))
+  let field = lookupInRecord(obj.typ.n, b.id)
   assert field != nil, b.name.s
   addSon(result, newSymNode(obj))
   addSon(result, newSymNode(field))
   result.typ = field.typ
 
-proc indirectAccess*(a: PNode, b: string, info: TLineInfo): PNode =
+proc indirectAccess*(a: PNode, b: int, info: TLineInfo): PNode =
+  # returns a[].b as a node
+  var deref = newNodeI(nkHiddenDeref, info)
+  deref.typ = a.typ.skipTypes(abstractInst).sons[0]
+  var t = deref.typ.skipTypes(abstractInst)
+  var field: PSym
+  while true:
+    assert t.kind == tyObject
+    field = lookupInRecord(t.n, b)
+    if field != nil: break
+    t = t.sons[0]
+    if t == nil: break
+    t = t.skipTypes(skipPtrs)
+  #if field == nil:
+  #  echo "FIELD ", b
+  #  debug deref.typ
+  internalAssert field != nil
+  addSon(deref, a)
+  result = newNodeI(nkDotExpr, info)
+  addSon(result, deref)
+  addSon(result, newSymNode(field))
+  result.typ = field.typ
+
+proc indirectAccess(a: PNode, b: string, info: TLineInfo): PNode =
   # returns a[].b as a node
   var deref = newNodeI(nkHiddenDeref, info)
   deref.typ = a.typ.skipTypes(abstractInst).sons[0]
@@ -191,11 +236,10 @@ proc indirectAccess*(a: PNode, b: string, info: TLineInfo): PNode =
 
 proc getFieldFromObj*(t: PType; v: PSym): PSym =
   assert v.kind != skField
-  let fieldName = getIdent(v.name.s & $v.id)
   var t = t
   while true:
     assert t.kind == tyObject
-    result = getSymFromList(t.n, fieldName)
+    result = lookupInRecord(t.n, v.id)
     if result != nil: break
     t = t.sons[0]
     if t == nil: break
@@ -203,7 +247,7 @@ proc getFieldFromObj*(t: PType; v: PSym): PSym =
 
 proc indirectAccess*(a: PNode, b: PSym, info: TLineInfo): PNode =
   # returns a[].b as a node
-  result = indirectAccess(a, b.name.s & $b.id, info)
+  result = indirectAccess(a, b.id, info)
 
 proc indirectAccess*(a, b: PSym, info: TLineInfo): PNode =
   result = indirectAccess(newSymNode(a), b, info)

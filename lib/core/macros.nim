@@ -225,7 +225,13 @@ proc `ident=`*(n: NimNode, val: NimIdent) {.magic: "NSetIdent", noSideEffect.}
 proc `strVal=`*(n: NimNode, val: string) {.magic: "NSetStrVal", noSideEffect.}
 
 proc newNimNode*(kind: NimNodeKind,
-                 n: NimNode=nil): NimNode {.magic: "NNewNimNode", noSideEffect.}
+                 lineInfoFrom: NimNode=nil): NimNode
+  {.magic: "NNewNimNode", noSideEffect.}
+  ## Creates a new AST node of the specified kind.
+  ##
+  ## The ``lineInfoFrom`` parameter is used for line information when the
+  ## produced code crashes. You should ensure that it is set to a node that
+  ## you are transforming.
 
 proc copyNimNode*(n: NimNode): NimNode {.magic: "NCopyNimNode", noSideEffect.}
 proc copyNimTree*(n: NimNode): NimNode {.magic: "NCopyNimTree", noSideEffect.}
@@ -741,6 +747,8 @@ proc `$`*(node: NimNode): string {.compileTime.} =
   of nnkSym:
     result = $node.symbol
   of nnkOpenSymChoice, nnkClosedSymChoice:
+    result = $node[0]
+  of nnkAccQuoted:
     result = $node[0]
   else:
     badNodeKind node.kind, "$"

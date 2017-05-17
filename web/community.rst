@@ -6,7 +6,7 @@ Nim's Community
   Forum
   -----
 
-  The `Nim forum <http://forum.nim-lang.org/>`_ is the place where most
+  The `Nim forum <https://forum.nim-lang.org/>`_ is the place where most
   discussions related to the language happen. It not only includes discussions
   relating to the design of Nim but also allows for beginners to ask questions
   relating to Nim.
@@ -35,7 +35,7 @@ Nim's Community
   welcome any questions that you may have!
 
   You may also be interested in reading the
-  `IRC logs <http://irclogs.nim-lang.org/>`_ which are an archive of all
+  `IRC logs <https://irclogs.nim-lang.org/>`_ which are an archive of all
   of the previous discussions that took place in the IRC channel.
 
 

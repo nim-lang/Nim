@@ -22,12 +22,16 @@ proc isKeyword(w: PIdent): bool =
      ord(wInline): return true
   else: return false
 
-proc mangleField(name: PIdent): string =
+proc mangleField(m: BModule; name: PIdent): string =
   result = mangle(name.s)
+  # fields are tricky to get right and thanks to generic types producing
+  # duplicates we can end up mangling the same field multiple times. However
+  # if we do so, the 'cppDefines' table might be modified in the meantime
+  # meaning we produce inconsistent field names (see bug #5404).
+  # Hence we do not check for ``m.g.config.cppDefines.contains(result)`` here
+  # anymore:
   if isKeyword(name):
-    result[0] = result[0].toUpperAscii
-    # Mangling makes everything lowercase,
-    # but some identifiers are C keywords
+    result.add "_0"
 
 when false:
   proc hashOwner(s: PSym): SigHash =
@@ -67,55 +71,50 @@ proc idOrSig(m: BModule; s: PSym): Rope =
 proc mangleName(m: BModule; s: PSym): Rope =
   result = s.loc.r
   if result == nil:
-    let keepOrigName = s.kind in skLocalVars - {skForVar} and
-      {sfFromGeneric, sfGlobal, sfShadowed, sfGenSym} * s.flags == {} and
-      not isKeyword(s.name)
-    # Even with all these inefficient checks, the bootstrap
-    # time is actually improved. This is probably because so many
-    # rope concatenations are now eliminated.
-    #
-    # sfFromGeneric is needed in order to avoid multiple
-    # definitions of certain variables generated in transf with
-    # names such as:
-    # `r`, `res`
-    # I need to study where these come from.
-    #
-    # about sfShadowed:
-    # consider the following Nim code:
-    #   var x = 10
-    #   block:
-    #     var x = something(x)
-    # The generated C code will be:
-    #   NI x;
-    #   x = 10;
-    #   {
-    #     NI x;
-    #     x = something(x); // Oops, x is already shadowed here
-    #   }
-    # Right now, we work-around by not keeping the original name
-    # of the shadowed variable, but we can do better - we can
-    # create an alternative reference to it in the outer scope and
-    # use that in the inner scope.
-    #
-    # about isCKeyword:
-    # Nim variable names can be C keywords.
-    # We need to avoid such names in the generated code.
-    #
-    # about sfGlobal:
-    # This seems to be harder - a top level extern variable from
-    # another modules can have the same name as a local one.
-    # Maybe we should just implement sfShadowed for them too.
-    #
-    # about skForVar:
-    # These are not properly scoped now - we need to add blocks
-    # around for loops in transf
     result = s.name.s.mangle.rope
-    if keepOrigName:
-      result.add "0"
-    else:
-      add(result, m.idOrSig(s))
+    add(result, m.idOrSig(s))
     s.loc.r = result
+    writeMangledName(m.ndi, s)
 
+proc mangleParamName(m: BModule; s: PSym): Rope =
+  ## we cannot use 'sigConflicts' here since we have a BModule, not a BProc.
+  ## Fortunately C's scoping rules are sane enough so that that doesn't
+  ## cause any trouble.
+  result = s.loc.r
+  if result == nil:
+    var res = s.name.s.mangle
+    if isKeyword(s.name) or m.g.config.cppDefines.contains(res):
+      res.add "_0"
+    result = res.rope
+    s.loc.r = result
+    writeMangledName(m.ndi, s)
+
+proc mangleLocalName(p: BProc; s: PSym): Rope =
+  assert s.kind in skLocalVars+{skTemp}
+  assert sfGlobal notin s.flags
+  result = s.loc.r
+  if result == nil:
+    var key = s.name.s.mangle
+    shallow(key)
+    let counter = p.sigConflicts.getOrDefault(key)
+    result = key.rope
+    if s.kind == skTemp:
+      # speed up conflict search for temps (these are quite common):
+      if counter != 0: result.add "_" & rope(counter+1)
+    elif counter != 0 or isKeyword(s.name) or p.module.g.config.cppDefines.contains(key):
+      result.add "_" & rope(counter+1)
+    p.sigConflicts.inc(key)
+    s.loc.r = result
+    if s.kind != skTemp: writeMangledName(p.module.ndi, s)
+
+proc scopeMangledParam(p: BProc; param: PSym) =
+  ## parameter generation only takes BModule, not a BProc, so we have to
+  ## remember these parameter names are already in scope to be able to
+  ## generate unique identifiers reliably (consider that ``var a = a`` is
+  ## even an idiom in Nim).
+  var key = param.name.s.mangle
+  shallow(key)
+  p.sigConflicts.inc(key)
 
 const
   irrelevantForBackend = {tyGenericBody, tyGenericInst, tyGenericInvocation,
@@ -165,8 +164,11 @@ proc mapType(typ: PType): TCTypeKind =
   of tySet: result = mapSetType(typ)
   of tyOpenArray, tyArray, tyVarargs: result = ctArray
   of tyObject, tyTuple: result = ctStruct
+  of tyUserTypeClasses:
+    internalAssert typ.isResolvedUserTypeClass
+    return mapType(typ.lastSon)
   of tyGenericBody, tyGenericInst, tyGenericParam, tyDistinct, tyOrdinal,
-     tyTypeDesc, tyAlias:
+     tyTypeDesc, tyAlias, tyInferred:
     result = mapType(lastSon(typ))
   of tyEnum:
     if firstOrd(typ) < 0:
@@ -393,7 +395,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     var param = t.n.sons[i].sym
     if isCompileTimeOnly(param.typ): continue
     if params != nil: add(params, ~", ")
-    fillLoc(param.loc, locParam, param.typ, mangleName(m, param),
+    fillLoc(param.loc, locParam, param.typ, mangleParamName(m, param),
             param.paramStorageLoc)
     if ccgIntroducedPtr(param):
       add(params, getTypeDescWeak(m, param.typ, check))
@@ -414,7 +416,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
       # this fixes the 'sort' bug:
       if param.typ.kind == tyVar: param.loc.s = OnUnknown
       # need to pass hidden parameter:
-      addf(params, ", NI $1Len$2", [param.loc.r, j.rope])
+      addf(params, ", NI $1Len_$2", [param.loc.r, j.rope])
       inc(j)
       arr = arr.sons[0]
   if t.sons[0] != nil and isInvalidReturnType(t.sons[0]):
@@ -428,7 +430,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     addf(params, " Result", [])
   if t.callConv == ccClosure and declareEnvironment:
     if params != nil: add(params, ", ")
-    add(params, "void* ClEnv")
+    add(params, "void* ClE_0")
   if tfVarargs in t.flags:
     if params != nil: add(params, ", ")
     add(params, "...")
@@ -436,12 +438,12 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
   else: add(params, ")")
   params = "(" & params
 
-proc mangleRecFieldName(field: PSym, rectype: PType): Rope =
+proc mangleRecFieldName(m: BModule; field: PSym, rectype: PType): Rope =
   if (rectype.sym != nil) and
       ({sfImportc, sfExportc} * rectype.sym.flags != {}):
     result = field.loc.r
   else:
-    result = rope(mangleField(field.name))
+    result = rope(mangleField(m, field.name))
   if result == nil: internalError(field.info, "mangleRecFieldName")
 
 proc genRecordFieldsAux(m: BModule, n: PNode,
@@ -480,7 +482,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
     let field = n.sym
     if field.typ.kind == tyVoid: return
     #assert(field.ast == nil)
-    let sname = mangleRecFieldName(field, rectype)
+    let sname = mangleRecFieldName(m, field, rectype)
     let ae = if accessExpr != nil: "$1.$2" % [accessExpr, sname]
              else: sname
     fillLoc(field.loc, locField, field.typ, ae, OnUnknown)
@@ -679,8 +681,8 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
              [rope(CallingConvToStr[t.callConv]), rettype, result, desc])
       else:
         addf(m.s[cfsTypes], "typedef struct {$n" &
-            "N_NIMCALL_PTR($2, ClPrc) $3;$n" &
-            "void* ClEnv;$n} $1;$n",
+            "N_NIMCALL_PTR($2, ClP_0) $3;$n" &
+            "void* ClE_0;$n} $1;$n",
              [result, rettype, desc])
   of tySequence:
     # we cannot use getTypeForward here because then t would be associated
@@ -788,7 +790,8 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
       of 1, 2, 4, 8: addf(m.s[cfsTypes], "typedef NU$2 $1;$n", [result, rope(s*8)])
       else: addf(m.s[cfsTypes], "typedef NU8 $1[$2];$n",
              [result, rope(getSize(t))])
-  of tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias:
+  of tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias,
+     tyUserTypeClass, tyUserTypeClassInst, tyInferred:
     result = getTypeDescAux(m, lastSon(t), check)
   else:
     internalError("getTypeDescAux(" & $t.kind & ')')
@@ -816,8 +819,8 @@ proc getClosureType(m: BModule, t: PType, kind: TClosureTypeKind): Rope =
            [rope(CallingConvToStr[t.callConv]), rettype, result, desc])
     else:
       addf(m.s[cfsTypes], "typedef struct {$n" &
-          "N_NIMCALL_PTR($2, ClPrc) $3;$n" &
-          "void* ClEnv;$n} $1;$n",
+          "N_NIMCALL_PTR($2, ClP_0) $3;$n" &
+          "void* ClE_0;$n} $1;$n",
            [result, rettype, desc])
 
 proc finishTypeDescriptions(m: BModule) =
@@ -880,10 +883,13 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType; name, base: Rope) =
   #else MessageOut("can contain a cycle: " & typeToString(typ))
   if flags != 0:
     addf(m.s[cfsTypeInit3], "$1.flags = $2;$n", [name, rope(flags)])
+  discard cgsym(m, "TNimType")
   if isDefined("nimTypeNames"):
     addf(m.s[cfsTypeInit3], "$1.name = $2;$n",
         [name, makeCstring typeToString(origType, preferName)])
-  discard cgsym(m, "TNimType")
+    discard cgsym(m, "nimTypeRoot")
+    addf(m.s[cfsTypeInit3], "$1.nextType = nimTypeRoot; nimTypeRoot=&$1;$n",
+         [name])
   addf(m.s[cfsVars], "TNimType $1;$n", [name])
 
 proc genTypeInfoAux(m: BModule, typ, origType: PType, name: Rope) =
@@ -982,7 +988,7 @@ proc genObjectInfo(m: BModule, typ, origType: PType, name: Rope) =
   if typ.kind == tyObject: genTypeInfoAux(m, typ, origType, name)
   else: genTypeInfoAuxBase(m, typ, origType, name, rope("0"))
   var tmp = getNimNode(m)
-  if not isImportedCppType(typ):
+  if not isImportedType(typ):
     genObjectFields(m, typ, origType, typ.n, tmp)
   addf(m.s[cfsTypeInit3], "$1.node = &$2;$n", [name, tmp])
   var t = typ.sons[0]
@@ -1088,7 +1094,7 @@ proc genDeepCopyProc(m: BModule; s: PSym; result: Rope) =
 
 proc genTypeInfo(m: BModule, t: PType): Rope =
   let origType = t
-  var t = skipTypes(origType, irrelevantForBackend)
+  var t = skipTypes(origType, irrelevantForBackend + tyUserTypeClasses)
 
   let sig = hashType(origType)
   result = m.typeInfoMarker.getOrDefault(sig)
@@ -1100,13 +1106,11 @@ proc genTypeInfo(m: BModule, t: PType): Rope =
     discard cgsym(m, "TNimType")
     discard cgsym(m, "TNimNode")
     addf(m.s[cfsVars], "extern TNimType $1;$n", [result])
-    #return "(&".rope & result & ")".rope
-    #result = "NTI$1" % [rope($sig)]
     # also store in local type section:
     m.typeInfoMarker[sig] = result
     return "(&".rope & result & ")".rope
 
-  result = "NTI$1" % [rope($sig)]
+  result = "NTI$1_" % [rope($sig)]
   m.typeInfoMarker[sig] = result
 
   let owner = t.skipTypes(typedescPtrs).owner.getModule
@@ -1127,6 +1131,9 @@ proc genTypeInfo(m: BModule, t: PType): Rope =
   of tyStatic:
     if t.n != nil: result = genTypeInfo(m, lastSon t)
     else: internalError("genTypeInfo(" & $t.kind & ')')
+  of tyUserTypeClasses:
+    internalAssert t.isResolvedUserTypeClass
+    return genTypeInfo(m, t.lastSon)
   of tyProc:
     if t.callConv != ccClosure:
       genTypeInfoAuxBase(m, t, t, result, rope"0")

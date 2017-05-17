@@ -9,8 +9,11 @@
 
 import parseutils, strutils, os, osproc, streams, parsecfg
 
-const
-  cmdTemplate* = r"compiler" / "nim $target --lib:lib --hints:on -d:testing $options $file"
+
+var compilerPrefix* = "compiler" / "nim "
+
+proc cmdTemplate*(): string =
+  compilerPrefix & "$target --lib:lib --hints:on -d:testing $options $file"
 
 type
   TTestAction* = enum
@@ -100,7 +103,7 @@ proc specDefaults*(result: var TSpec) =
   result.outp = ""
   result.nimout = ""
   result.ccodeCheck = ""
-  result.cmd = cmdTemplate
+  result.cmd = cmdTemplate()
   result.line = 0
   result.column = 0
   result.tfile = ""
@@ -154,10 +157,26 @@ proc parseSpec*(filename: string): TSpec =
     of "nimout":
       result.nimout = e.value
     of "disabled":
-      if parseCfgBool(e.value): result.err = reIgnored
+      case e.value.normalize
+      of "y", "yes", "true", "1", "on": result.err = reIgnored
+      of "n", "no", "false", "0", "off": discard
+      of "win", "windows":
+        when defined(windows): result.err = reIgnored
+      of "linux":
+        when defined(linux): result.err = reIgnored
+      of "bsd":
+        when defined(bsd): result.err = reIgnored
+      of "macosx":
+        when defined(macosx): result.err = reIgnored
+      of "unix":
+        when defined(unix): result.err = reIgnored
+      of "posix":
+        when defined(posix): result.err = reIgnored
+      else:
+        raise newException(ValueError, "cannot interpret as a bool: " & e.value)
     of "cmd":
       if e.value.startsWith("nim "):
-        result.cmd = "compiler" / e.value
+        result.cmd = compilerPrefix & e.value[4..^1]
       else:
         result.cmd = e.value
     of "ccodecheck": result.ccodeCheck = e.value

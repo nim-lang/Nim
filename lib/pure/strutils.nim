@@ -767,20 +767,16 @@ proc splitLines*(s: string): seq[string] {.noSideEffect,
 
 proc countLines*(s: string): int {.noSideEffect,
   rtl, extern: "nsuCountLines".} =
-  ## Returns the number of new line separators in the string `s`.
+  ## Returns the number of lines in the string `s`.
   ##
   ## This is the same as ``len(splitLines(s))``, but much more efficient
   ## because it doesn't modify the string creating temporal objects. Every
   ## `character literal <manual.html#character-literals>`_ newline combination
   ## (CR, LF, CR-LF) is supported.
   ##
-  ## Despite its name this proc might not actually return the *number of lines*
-  ## in `s` because the concept of what a line is can vary. For example, a
-  ## string like ``Hello world`` is a line of text, but the proc will return a
-  ## value of zero because there are no newline separators.  Also, text editors
-  ## usually don't count trailing newline characters in a text file as a new
-  ## empty line, but this proc will.
-  var i = 0
+  ## In this context, a line is any string seperated by a newline combination.
+  ## A line can be an empty string.
+  var i = 1
   while i < s.len:
     case s[i]
     of '\c':
@@ -809,7 +805,7 @@ proc split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.noSideEff
   ## Substrings are separated by the string `sep`. This is a wrapper around the
   ## `split iterator <#split.i,string,string>`_.
   doAssert(sep.len > 0)
-  
+
   accumulateResult(split(s, sep, maxsplit))
 
 proc rsplit*(s: string, seps: set[char] = Whitespace,
@@ -898,7 +894,7 @@ proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
 
 proc toHex*[T](x: T): string =
   ## Shortcut for ``toHex(x, T.sizeOf * 2)``
-  toHex(x, T.sizeOf * 2)
+  toHex(BiggestInt(x), T.sizeOf * 2)
 
 proc intToStr*(x: int, minchars: Positive = 1): string {.noSideEffect,
   rtl, extern: "nsuIntToStr".} =
@@ -939,7 +935,7 @@ proc parseUInt*(s: string): uint {.noSideEffect, procvar,
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid unsigned integer: " & s)
 
-proc parseBiggestUInt*(s: string): uint64 {.noSideEffect, procvar,
+proc parseBiggestUInt*(s: string): BiggestUInt {.noSideEffect, procvar,
   rtl, extern: "nsuParseBiggestUInt".} =
   ## Parses a decimal unsigned integer value contained in `s`.
   ##
@@ -1318,11 +1314,11 @@ proc preprocessSub(sub: string, a: var SkipTable) =
   for i in 0..m-1: a[sub[i]] = m-i
 {.pop.}
 
-proc findAux(s, sub: string, start: int, a: SkipTable): int =
+proc findAux(s, sub: string, start, last: int, a: SkipTable): int =
   # Fast "quick search" algorithm:
   var
     m = len(sub)
-    n = len(s)
+    n = last + 1
   # search:
   var j = start
   while j <= n - m:
@@ -1333,30 +1329,53 @@ proc findAux(s, sub: string, start: int, a: SkipTable): int =
     inc(j, a[s[j+m]])
   return -1
 
-proc find*(s, sub: string, start: Natural = 0): int {.noSideEffect,
+when not (defined(js) or defined(nimdoc) or defined(nimscript)):
+  proc c_memchr(cstr: pointer, c: char, n: csize): pointer {.
+                importc: "memchr", header: "<string.h>" .}
+  const hasCStringBuiltin = true
+else:
+  const hasCStringBuiltin = false
+
+proc find*(s, sub: string, start: Natural = 0, last: Natural = 0): int {.noSideEffect,
   rtl, extern: "nsuFindStr".} =
-  ## Searches for `sub` in `s` starting at position `start`.
+  ## Searches for `sub` in `s` inside range `start`..`last`.
+  ## If `last` is unspecified, it defaults to `s.high`.
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
   var a {.noinit.}: SkipTable
+  let last = if last==0: s.high else: last
   preprocessSub(sub, a)
-  result = findAux(s, sub, start, a)
+  result = findAux(s, sub, start, last, a)
 
-proc find*(s: string, sub: char, start: Natural = 0): int {.noSideEffect,
+proc find*(s: string, sub: char, start: Natural = 0, last: Natural = 0): int {.noSideEffect,
   rtl, extern: "nsuFindChar".} =
-  ## Searches for `sub` in `s` starting at position `start`.
+  ## Searches for `sub` in `s` inside range `start`..`last`.
+  ## If `last` is unspecified, it defaults to `s.high`.
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
-  for i in start..len(s)-1:
-    if sub == s[i]: return i
+  let last = if last==0: s.high else: last
+  when nimvm:
+    for i in start..last:
+      if sub == s[i]: return i
+  else:
+    when hasCStringBuiltin:
+      let found = c_memchr(s[start].unsafeAddr, sub, last-start+1)
+      if not found.isNil:
+        return cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
+    else:
+      for i in start..last:
+        if sub == s[i]: return i
+
   return -1
 
-proc find*(s: string, chars: set[char], start: Natural = 0): int {.noSideEffect,
+proc find*(s: string, chars: set[char], start: Natural = 0, last: Natural = 0): int {.noSideEffect,
   rtl, extern: "nsuFindCharSet".} =
-  ## Searches for `chars` in `s` starting at position `start`.
+  ## Searches for `chars` in `s` inside range `start`..`last`.
+  ## If `last` is unspecified, it defaults to `s.high`.
   ##
   ## If `s` contains none of the characters in `chars`, -1 is returned.
-  for i in start..s.len-1:
+  let last = if last==0: s.high else: last
+  for i in start..last:
     if s[i] in chars: return i
   return -1
 
@@ -1383,6 +1402,15 @@ proc rfind*(s: string, sub: char, start: int = -1): int {.noSideEffect,
   let realStart = if start == -1: s.len-1 else: start
   for i in countdown(realStart, 0):
     if sub == s[i]: return i
+  return -1
+
+proc rfind*(s: string, chars: set[char], start: int = -1): int {.noSideEffect.} =
+  ## Searches for `chars` in `s` in reverse starting at position `start`.
+  ##
+  ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
+  let realStart = if start == -1: s.len-1 else: start
+  for i in countdown(realStart, 0):
+    if s[i] in chars: return i
   return -1
 
 proc center*(s: string, width: int, fillChar: char = ' '): string {.
@@ -1472,9 +1500,10 @@ proc replace*(s, sub: string, by = ""): string {.noSideEffect,
   var a {.noinit.}: SkipTable
   result = ""
   preprocessSub(sub, a)
+  let last = s.high
   var i = 0
   while true:
-    var j = findAux(s, sub, i, a)
+    var j = findAux(s, sub, i, last, a)
     if j < 0: break
     add result, substr(s, i, j - 1)
     add result, by
@@ -1506,8 +1535,9 @@ proc replaceWord*(s, sub: string, by = ""): string {.noSideEffect,
   result = ""
   preprocessSub(sub, a)
   var i = 0
+  let last = s.high
   while true:
-    var j = findAux(s, sub, i, a)
+    var j = findAux(s, sub, i, last, a)
     if j < 0: break
     # word boundary?
     if (j == 0 or s[j-1] notin wordChars) and
@@ -1618,6 +1648,7 @@ proc escape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
   ## The procedure has been designed so that its output is usable for many
   ## different common syntaxes. The resulting string is prefixed with
   ## `prefix` and suffixed with `suffix`. Both may be empty strings.
+  ## **Note**: This is not correct for producing Ansi C code!
   result = newStringOfCap(s.len + s.len shr 2)
   result.add(prefix)
   for c in items(s):
@@ -1850,6 +1881,8 @@ proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
   ## of significant digits to be printed.
   ## `precision`'s default value is the maximum number of meaningful digits
   ## after the decimal point for Nim's ``float`` type.
+  ##
+  ## If ``precision == 0``, it tries to format it nicely.
   result = formatBiggestFloat(f, format, precision, decimalSep)
 
 proc trimZeros*(x: var string) {.noSideEffect.} =
@@ -2198,20 +2231,16 @@ proc removeSuffix*(s: var string, chars: set[char] = Newlines) {.
   ##   userInput == "Hello World"
   ##   otherInput.removeSuffix({'!', '?'})
   ##   otherInput == "Hello!?"
-
+  if s.len == 0: return
   var last = len(s) - 1
-
   if chars == Newlines:
     if s[last] == '\10':
       last -= 1
-
     if s[last] == '\13':
       last -= 1
-
   else:
     if s[last] in chars:
       last -= 1
-
   s.setLen(last + 1)
 
 proc removeSuffix*(s: var string, c: char) {.
@@ -2232,13 +2261,10 @@ proc removeSuffix*(s: var string, suffix: string) {.
   ##     answers = "yeses"
   ##   answers.removeSuffix("es")
   ##   answers == "yes"
-
   var newLen = s.len
-
   if s.endsWith(suffix):
     newLen -= len(suffix)
-
-  s.setLen(newLen)
+    s.setLen(newLen)
 
 when isMainModule:
   doAssert align("abc", 4) == " abc"

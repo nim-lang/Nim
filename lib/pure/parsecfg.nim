@@ -430,39 +430,45 @@ proc newConfig*(): Config =
   ## Useful when wanting to create a configuration file.
   result = newOrderedTable[string, OrderedTableRef[string, string]]()
 
-proc loadConfig*(filename: string): Config =
-  ## Load the specified configuration file into a new Config instance.
+proc loadConfig*(stream: Stream, filename: string = "[stream]"): Config =
+  ## Load the specified configuration from stream into a new Config instance.
+  ## `filename` parameter is only used for nicer error messages.
   var dict = newOrderedTable[string, OrderedTableRef[string, string]]()
   var curSection = "" ## Current section,
                       ## the default value of the current section is "",
                       ## which means that the current section is a common
   var p: CfgParser
-  var fileStream = newFileStream(filename, fmRead)
-  if fileStream != nil:
-    open(p, fileStream, filename)
-    while true:
-      var e = next(p)
-      case e.kind
-      of cfgEof:
-        break
-      of cfgSectionStart: # Only look for the first time the Section
-        curSection = e.section
-      of cfgKeyValuePair:
-        var t = newOrderedTable[string, string]()
-        if dict.hasKey(curSection):
-          t = dict[curSection]
-        t[e.key] = e.value
-        dict[curSection] = t
-      of cfgOption:
-        var c = newOrderedTable[string, string]()
-        if dict.hasKey(curSection):
-          c = dict[curSection]
-        c["--" & e.key] = e.value
-        dict[curSection] = c
-      of cfgError:
-        break
-    close(p)
+  open(p, stream, filename)
+  while true:
+    var e = next(p)
+    case e.kind
+    of cfgEof:
+      break
+    of cfgSectionStart: # Only look for the first time the Section
+      curSection = e.section
+    of cfgKeyValuePair:
+      var t = newOrderedTable[string, string]()
+      if dict.hasKey(curSection):
+        t = dict[curSection]
+      t[e.key] = e.value
+      dict[curSection] = t
+    of cfgOption:
+      var c = newOrderedTable[string, string]()
+      if dict.hasKey(curSection):
+        c = dict[curSection]
+      c["--" & e.key] = e.value
+      dict[curSection] = c
+    of cfgError:
+      break
+  close(p)
   result = dict
+
+proc loadConfig*(filename: string): Config =
+  ## Load the specified configuration file into a new Config instance.
+  let file = open(filename, fmRead)
+  let fileStream = newFileStream(file)
+  defer: fileStream.close()
+  result = fileStream.loadConfig(filename)
 
 proc replace(s: string): string =
   var d = ""
@@ -482,54 +488,62 @@ proc replace(s: string): string =
     inc(i)
   result = d
 
+proc writeConfig*(dict: Config, stream: Stream) =
+  ## Writes the contents of the table to the specified stream
+  ##
+  ## **Note:** Comment statement will be ignored.
+  for section, sectionData in dict.pairs():
+    if section != "": ## Not general section
+      if not allCharsInSet(section, SymChars): ## Non system character
+        stream.writeLine("[\"" & section & "\"]")
+      else:
+        stream.writeLine("[" & section & "]")
+    for key, value in sectionData.pairs():
+      var kv, segmentChar: string
+      if key.len > 1 and key[0] == '-' and key[1] == '-': ## If it is a command key
+        segmentChar = ":"
+        if not allCharsInSet(key[2..key.len()-1], SymChars):
+          kv.add("--\"")
+          kv.add(key[2..key.len()-1])
+          kv.add("\"")
+        else:
+          kv = key
+      else:
+        segmentChar = "="
+        kv = key
+      if value != "": ## If the key is not empty
+        if not allCharsInSet(value, SymChars):
+          if find(value, '"') == -1:
+            kv.add(segmentChar)
+            kv.add("\"")
+            kv.add(replace(value))
+            kv.add("\"")
+          else:
+            kv.add(segmentChar)
+            kv.add("\"\"\"")
+            kv.add(replace(value))
+            kv.add("\"\"\"")
+        else:
+          kv.add(segmentChar)
+          kv.add(value)
+      stream.writeLine(kv)
+
+proc `$`*(dict: Config): string =
+  ## Writes the contents of the table to string.
+  ## Note: Comment statement will be ignored.
+  let stream = newStringStream()
+  defer: stream.close()
+  dict.writeConfig(stream)
+  result = stream.data
+
 proc writeConfig*(dict: Config, filename: string) =
   ## Writes the contents of the table to the specified configuration file.
   ## Note: Comment statement will be ignored.
-  var file: File
-  if file.open(filename, fmWrite):
-    try:
-      var section, key, value, kv, segmentChar:string
-      for pair in dict.pairs():
-        section = pair[0]
-        if section != "": ## Not general section
-          if not allCharsInSet(section, SymChars): ## Non system character
-            file.writeLine("[\"" & section & "\"]")
-          else:
-            file.writeLine("[" & section & "]")
-        for pair2 in pair[1].pairs():
-          key = pair2[0]
-          value = pair2[1]
-          if key[0] == '-' and key[1] == '-': ## If it is a command key
-            segmentChar = ":"
-            if not allCharsInSet(key[2..key.len()-1], SymChars):
-              kv.add("--\"")
-              kv.add(key[2..key.len()-1])
-              kv.add("\"")
-            else:
-              kv = key
-          else:
-            segmentChar = "="
-            kv = key
-          if value != "": ## If the key is not empty
-            if not allCharsInSet(value, SymChars):
-              if find(value, '"') == -1:
-                kv.add(segmentChar)
-                kv.add("\"")
-                kv.add(replace(value))
-                kv.add("\"")
-              else:
-                kv.add(segmentChar)
-                kv.add("\"\"\"")
-                kv.add(replace(value))
-                kv.add("\"\"\"")
-            else:
-              kv.add(segmentChar)
-              kv.add(value)
-          file.writeLine(kv)
-    except:
-      raise
-    finally:
-      file.close()
+  let file = open(filename, fmWrite)
+  defer: file.close()
+  let fileStream = newFileStream(file)
+  defer: fileStream.close()
+  dict.writeConfig(fileStream)
 
 proc getSectionValue*(dict: Config, section, key: string): string =
   ## Gets the Key value of the specified Section.

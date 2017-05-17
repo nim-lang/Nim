@@ -80,7 +80,7 @@ proc `[]`*[T](deq: Deque[T], i: Natural) : T {.inline.} =
   ## Access the i-th element of `deq` by order from first to last.
   ## deq[0] is the first, deq[^1] is the last.
   xBoundsCheck(deq, i)
-  return deq.data[(deq.first + i) and deq.mask]
+  return deq.data[(deq.head + i) and deq.mask]
 
 proc `[]`*[T](deq: var Deque[T], i: Natural): var T {.inline.} =
   ## Access the i-th element of `deq` and returns a mutable
@@ -129,7 +129,7 @@ proc expandIfNeeded[T](deq: var Deque[T]) =
   var cap = deq.mask + 1
   if unlikely(deq.count >= cap):
     var n = newSeq[T](cap * 2)
-    for i, x in deq:  # don't use copyMem because the GC and because it's slower.
+    for i, x in pairs(deq):  # don't use copyMem because the GC and because it's slower.
       shallowCopy(n[i], x)
     shallowCopy(deq.data, n)
     deq.mask = cap * 2 - 1

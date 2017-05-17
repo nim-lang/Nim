@@ -84,7 +84,7 @@ proc hlo(c: PContext, n: PNode): PNode =
       if isEmptyType(n.typ) and isEmptyType(result.typ):
         discard
       else:
-        result = fitNode(c, n.typ, result)
+        result = fitNode(c, n.typ, result, n.info)
       # optimization has been applied so check again:
       result = commonOptimizations(c.module, result)
       result = hlo(c, result)

@@ -84,7 +84,7 @@ Collections and algorithms
   Efficient implementation of a set of ints as a sparse bit set.
 * `critbits <critbits.html>`_
   This module implements a *crit bit tree* which is an efficient
-  container for a set or a mapping of strings.
+  container for a sorted set of strings, or for a sorted mapping of strings.
 * `sequtils <sequtils.html>`_
   This module implements operations for the built-in seq type
   which were inspired by functional programming languages.
@@ -415,6 +415,9 @@ Modules for JS backend
 * `dom <dom.html>`_
   Declaration of the Document Object Model for the JS backend.
 
+* `jsffi <jsffi.html>`_
+  Types and macros for easier interaction with JavaScript.
+
 
 Deprecated modules
 ------------------
@@ -583,4 +586,4 @@ Nim programming language.
   nimblepkglist.js or have javascript disabled in your browser.</b></div>
 
   <script type="text/javascript" src="nimblepkglist.js"></script>
-  <script type="text/javascript" src="http://irclogs.nim-lang.org/packages?callback=gotPackageList" async></script>
+  <script type="text/javascript" src="https://irclogs.nim-lang.org/packages?callback=gotPackageList" async></script>

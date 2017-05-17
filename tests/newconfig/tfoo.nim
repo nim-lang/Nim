@@ -7,6 +7,7 @@ discard """
 when not defined(definedefine):
   {.fatal: "wrong nim script configuration".}
 
-import math
+import math, mfriends
 
+discard gen[int]()
 echo "hello world! ", ln 2.0

@@ -20,6 +20,7 @@ type
     preferName, preferDesc, preferExported, preferModuleInfo, preferGenericArg
 
 proc typeToString*(typ: PType; prefer: TPreferedDesc = preferName): string
+template `$`*(typ: PType): string = typeToString(typ)
 
 proc base*(t: PType): PType =
   result = t.sons[0]
@@ -54,16 +55,17 @@ const
   # TODO: Remove tyTypeDesc from each abstractX and (where necessary)
   # replace with typedescX
   abstractPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyDistinct, tyOrdinal,
-                   tyTypeDesc, tyAlias}
+                   tyTypeDesc, tyAlias, tyInferred}
   abstractVar* = {tyVar, tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc,
-                  tyAlias}
+                  tyAlias, tyInferred}
   abstractRange* = {tyGenericInst, tyRange, tyDistinct, tyOrdinal, tyTypeDesc,
-                    tyAlias}
+                    tyAlias, tyInferred}
   abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
-                       tyTypeDesc, tyAlias}
-  abstractInst* = {tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias}
-
-  skipPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyTypeDesc, tyAlias}
+                       tyTypeDesc, tyAlias, tyInferred}
+  abstractInst* = {tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias,
+                   tyInferred}
+  skipPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyTypeDesc, tyAlias,
+               tyInferred}
   # typedescX is used if we're sure tyTypeDesc should be included (or skipped)
   typedescPtrs* = abstractPtrs + {tyTypeDesc}
   typedescInst* = abstractInst + {tyTypeDesc}
@@ -181,7 +183,7 @@ proc iterOverTypeAux(marker: var IntSet, t: PType, iter: TTypeIter,
   if result: return
   if not containsOrIncl(marker, t.id):
     case t.kind
-    of tyGenericInst, tyGenericBody, tyAlias:
+    of tyGenericInst, tyGenericBody, tyAlias, tyInferred:
       result = iterOverTypeAux(marker, lastSon(t), iter, closure)
     else:
       for i in countup(0, sonsLen(t) - 1):
@@ -409,11 +411,18 @@ const
     "unused0", "unused1",
     "unused2", "varargs[$1]", "unused", "Error Type",
     "BuiltInTypeClass", "UserTypeClass",
-    "UserTypeClassInst", "CompositeTypeClass",
+    "UserTypeClassInst", "CompositeTypeClass", "inferred",
     "and", "or", "not", "any", "static", "TypeFromExpr", "FieldAccessor",
     "void"]
 
 const preferToResolveSymbols = {preferName, preferModuleInfo, preferGenericArg}
+
+template bindConcreteTypeToUserTypeClass*(tc, concrete: PType) =
+  tc.sons.safeAdd concrete
+  tc.flags.incl tfResolved
+
+template isResolvedUserTypeClass*(t: PType): bool =
+  tfResolved in t.flags
 
 proc addTypeFlags(name: var string, typ: PType) {.inline.} =
   if tfNotNil in typ.flags: name.add(" not nil")
@@ -459,6 +468,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       if t.n != nil: result.add "(" & renderTree(t.n) & ")"
   of tyUserTypeClass:
     internalAssert t.sym != nil and t.sym.owner != nil
+    if t.isResolvedUserTypeClass: return typeToString(t.lastSon)
     return t.sym.owner.name.s
   of tyBuiltInTypeClass:
     result = case t.base.kind:
@@ -475,6 +485,10 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       of tyTuple: "tuple"
       of tyOpenArray: "openarray"
       else: typeToStr[t.base.kind]
+  of tyInferred:
+    let concrete = t.previouslyInferred
+    if concrete != nil: result = typeToString(concrete)
+    else: result = "inferred[" & typeToString(t.base) & "]"
   of tyUserTypeClassInst:
     let body = t.base
     result = body.sym.name.s & "["
@@ -547,7 +561,9 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     if prefer != preferExported:
       result.add("(" & typeToString(t.sons[0]) & ")")
   of tyProc:
-    result = if tfIterator in t.flags: "iterator (" else: "proc ("
+    result = if tfIterator in t.flags: "iterator " else: "proc "
+    if tfUnresolved in t.flags: result.add "[*missing parameters*]"
+    result.add "("
     for i in countup(1, sonsLen(t) - 1):
       if t.n != nil and i < t.n.len and t.n[i].kind == nkSym:
         add(result, t.n[i].sym.name.s)
@@ -870,6 +886,9 @@ proc isGenericAlias*(t: PType): bool =
 proc skipGenericAlias*(t: PType): PType =
   return if t.isGenericAlias: t.lastSon else: t
 
+proc sameFlags*(a, b: PType): bool {.inline.} =
+  result = eqTypeFlags*a.flags == eqTypeFlags*b.flags
+
 proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
   template cycleCheck() =
     # believe it or not, the direct check for ``containsOrIncl(c, a, b)``
@@ -881,9 +900,6 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       inc c.recCheck
     else:
       if containsOrIncl(c, a, b): return true
-
-  proc sameFlags(a, b: PType): bool {.inline.} =
-    result = eqTypeFlags*a.flags == eqTypeFlags*b.flags
 
   if x == y: return true
   var a = skipTypes(x, {tyGenericInst, tyAlias})
@@ -968,7 +984,9 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     result = sameTypeOrNilAux(a.sons[0], b.sons[0], c) and
         sameValue(a.n.sons[0], b.n.sons[0]) and
         sameValue(a.n.sons[1], b.n.sons[1])
-  of tyGenericInst, tyAlias: discard
+  of tyGenericInst, tyAlias, tyInferred:
+    cycleCheck()
+    result = sameTypeAux(a.lastSon, b.lastSon, c)
   of tyNone: result = false
   of tyUnused, tyUnused0, tyUnused1, tyUnused2: internalError("sameFlags")
 
@@ -1115,7 +1133,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     result = nil
   of tyOrdinal:
     if kind != skParam: result = t
-  of tyGenericInst, tyDistinct, tyAlias:
+  of tyGenericInst, tyDistinct, tyAlias, tyInferred:
     result = typeAllowedAux(marker, lastSon(t), kind, flags)
   of tyRange:
     if skipTypes(t.sons[0], abstractInst-{tyTypeDesc}).kind notin
@@ -1302,14 +1320,20 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
     if result < 0: return
     if a < maxAlign: a = maxAlign
     result = align(result, a)
+  of tyInferred:
+    if typ.len > 1:
+      result = computeSizeAux(typ.lastSon, a)
   of tyGenericInst, tyDistinct, tyGenericBody, tyAlias:
     result = computeSizeAux(lastSon(typ), a)
+  of tyTypeClasses:
+    result = if typ.isResolvedUserTypeClass: computeSizeAux(typ.lastSon, a)
+             else: szUnknownSize
   of tyTypeDesc:
     result = computeSizeAux(typ.base, a)
   of tyForward: return szIllegalRecursion
   of tyStatic:
-    if typ.n != nil: result = computeSizeAux(lastSon(typ), a)
-    else: result = szUnknownSize
+    result = if typ.n != nil: computeSizeAux(typ.lastSon, a)
+             else: szUnknownSize
   else:
     #internalError("computeSizeAux()")
     result = szUnknownSize
@@ -1330,18 +1354,17 @@ proc getSize(typ: PType): BiggestInt =
   if result < 0: internalError("getSize: " & $typ.kind)
 
 proc containsGenericTypeIter(t: PType, closure: RootRef): bool =
-  if t.kind == tyStatic:
+  case t.kind
+  of tyStatic:
     return t.n == nil
-
-  if t.kind == tyTypeDesc:
+  of tyTypeDesc:
     if t.base.kind == tyNone: return true
     if containsGenericTypeIter(t.base, closure): return true
     return false
-
-  if t.kind in GenericTypes + tyTypeClasses + {tyFromExpr}:
+  of GenericTypes + tyTypeClasses + {tyFromExpr}:
     return true
-
-  return false
+  else:
+    return false
 
 proc containsGenericType*(t: PType): bool =
   result = iterOverType(t, containsGenericTypeIter, nil)
@@ -1377,7 +1400,16 @@ proc compatibleEffectsAux(se, re: PNode): bool =
       return false
   result = true
 
-proc compatibleEffects*(formal, actual: PType): bool =
+type
+  EffectsCompat* = enum
+    efCompat
+    efRaisesDiffer
+    efRaisesUnknown
+    efTagsDiffer
+    efTagsUnknown
+    efLockLevelsDiffer
+
+proc compatibleEffects*(formal, actual: PType): EffectsCompat =
   # for proc type compatibility checking:
   assert formal.kind == tyProc and actual.kind == tyProc
   internalAssert formal.n.sons[0].kind == nkEffectList
@@ -1393,18 +1425,21 @@ proc compatibleEffects*(formal, actual: PType): bool =
     # 'r.msgHandler = if isNil(msgHandler): defaultMsgHandler else: msgHandler'
     if not isNil(se) and se.kind != nkArgList:
       # spec requires some exception or tag, but we don't know anything:
-      if real.len == 0: return false
-      result = compatibleEffectsAux(se, real.sons[exceptionEffects])
-      if not result: return
+      if real.len == 0: return efRaisesUnknown
+      let res = compatibleEffectsAux(se, real.sons[exceptionEffects])
+      if not res: return efRaisesDiffer
 
     let st = spec.sons[tagEffects]
     if not isNil(st) and st.kind != nkArgList:
       # spec requires some exception or tag, but we don't know anything:
-      if real.len == 0: return false
-      result = compatibleEffectsAux(st, real.sons[tagEffects])
-      if not result: return
-  result = formal.lockLevel.ord < 0 or
-      actual.lockLevel.ord <= formal.lockLevel.ord
+      if real.len == 0: return efTagsUnknown
+      let res = compatibleEffectsAux(st, real.sons[tagEffects])
+      if not res: return efTagsDiffer
+  if formal.lockLevel.ord < 0 or
+      actual.lockLevel.ord <= formal.lockLevel.ord:
+    result = efCompat
+  else:
+    result = efLockLevelsDiffer
 
 proc isCompileTimeOnly*(t: PType): bool {.inline.} =
   result = t.kind in {tyTypeDesc, tyStatic}
@@ -1503,11 +1538,26 @@ proc skipHiddenSubConv*(n: PNode): PNode =
   else:
     result = n
 
-proc typeMismatch*(n: PNode, formal, actual: PType) =
+proc typeMismatch*(info: TLineInfo, formal, actual: PType) =
   if formal.kind != tyError and actual.kind != tyError:
     let named = typeToString(formal)
     let desc = typeToString(formal, preferDesc)
     let x = if named == desc: named else: named & " = " & desc
-    localError(n.info, errGenerated, msgKindToString(errTypeMismatch) &
-        typeToString(actual) & ") " &
-        `%`(msgKindToString(errButExpectedX), [x]))
+    var msg = msgKindToString(errTypeMismatch) &
+              typeToString(actual) & ") " &
+              msgKindToString(errButExpectedX) % [x]
+
+    if formal.kind == tyProc and actual.kind == tyProc:
+      case compatibleEffects(formal, actual)
+      of efCompat: discard
+      of efRaisesDiffer:
+        msg.add "\n.raise effects differ"
+      of efRaisesUnknown:
+        msg.add "\n.raise effect is 'can raise any'"
+      of efTagsDiffer:
+        msg.add "\n.tag effects differ"
+      of efTagsUnknown:
+        msg.add "\n.tag effect is 'any tag allowed'"
+      of efLockLevelsDiffer:
+        msg.add "\nlock levels differ"
+    localError(info, errGenerated, msg)

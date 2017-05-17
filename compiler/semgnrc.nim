@@ -51,10 +51,10 @@ template macroToExpand(s): untyped =
   s.kind in {skMacro, skTemplate} and (s.typ.len == 1 or sfAllUntyped in s.flags)
 
 template macroToExpandSym(s): untyped =
-  s.kind in {skMacro, skTemplate} and (s.typ.len == 1)
+  s.kind in {skMacro, skTemplate} and (s.typ.len == 1) and not fromDotExpr
 
 proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
-                          ctx: var GenericCtx): PNode =
+                          ctx: var GenericCtx; fromDotExpr=false): PNode =
   semIdeForTemplateOrGenericCheck(n, ctx.cursorInBody)
   incl(s.flags, sfUsed)
   case s.kind
@@ -145,7 +145,7 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
       elif s.name.id in ctx.toMixin:
         result = newDot(result, symChoice(c, n, s, scForceOpen))
       else:
-        let syms = semGenericStmtSymbol(c, n, s, ctx)
+        let syms = semGenericStmtSymbol(c, n, s, ctx, fromDotExpr=true)
         if syms.kind == nkSym:
           let choice = symChoice(c, n, s, scForceOpen)
           choice.kind = nkClosedSymChoice
@@ -161,6 +161,10 @@ proc addTempDecl(c: PContext; n: PNode; kind: TSymKind) =
 proc semGenericStmt(c: PContext, n: PNode,
                     flags: TSemGenericFlags, ctx: var GenericCtx): PNode =
   result = n
+
+  when defined(nimsuggest):
+    if withinTypeDesc in flags: inc c.inTypeContext
+
   #if gCmd == cmdIdeTools: suggestStmt(c, n)
   semIdeForTemplateOrGenericCheck(n, ctx.cursorInBody)
 
@@ -174,7 +178,11 @@ proc semGenericStmt(c: PContext, n: PNode,
     # XXX for example: ``result.add`` -- ``add`` needs to be looked up here...
     var dummy: bool
     result = fuzzyLookup(c, n, flags, ctx, dummy)
-  of nkEmpty, nkSym..nkNilLit:
+  of nkSym:
+    let a = n.sym
+    let b = getGenSym(c, a)
+    if b != a: n.sym = b
+  of nkEmpty, succ(nkSym)..nkNilLit:
     # see tests/compile/tgensymgeneric.nim:
     # We need to open the gensym'ed symbol again so that the instantiation
     # creates a fresh copy; but this is wrong the very first reason for gensym
@@ -338,9 +346,16 @@ proc semGenericStmt(c: PContext, n: PNode,
       var a = n.sons[i]
       checkMinSonsLen(a, 1)
       var L = sonsLen(a)
+      openScope(c)
       for j in countup(0, L-2):
-        a.sons[j] = semGenericStmt(c, a.sons[j], flags+{withinTypeDesc}, ctx)
+        if a.sons[j].isInfixAs():
+          addTempDecl(c, getIdentNode(a.sons[j][2]), skLet)
+          a.sons[j].sons[1] = semGenericStmt(c, a.sons[j][1], flags+{withinTypeDesc}, ctx)
+        else:
+          a.sons[j] = semGenericStmt(c, a.sons[j], flags+{withinTypeDesc}, ctx)
       a.sons[L-1] = semGenericStmtScope(c, a.sons[L-1], flags, ctx)
+      closeScope(c)
+
   of nkVarSection, nkLetSection:
     for i in countup(0, sonsLen(n) - 1):
       var a = n.sons[i]
@@ -446,6 +461,10 @@ proc semGenericStmt(c: PContext, n: PNode,
   else:
     for i in countup(0, sonsLen(n) - 1):
       result.sons[i] = semGenericStmt(c, n.sons[i], flags, ctx)
+
+  when defined(nimsuggest):
+    if withinTypeDesc in flags: dec c.inTypeContext
+
 
 proc semGenericStmt(c: PContext, n: PNode): PNode =
   var ctx: GenericCtx

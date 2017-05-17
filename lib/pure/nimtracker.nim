@@ -19,7 +19,9 @@ import sqlite3
 
 var
   dbHandle: PSqlite3
-  insertStmt: Pstmt
+  insertStmt {.threadvar.}: Pstmt
+
+const insertQuery = "INSERT INTO tracking(op, address, size, file, line) values (?, ?, ?, ?, ?)"
 
 template sbind(x: int; value) =
   when value is cstring:
@@ -32,7 +34,11 @@ template sbind(x: int; value) =
       quit "could not bind value"
 
 when defined(memTracker):
-  proc logEntries(log: TrackLog) {.nimcall, locks: 0, tags: [].} =
+  proc logEntries(log: TrackLog) {.nimcall, locks: 0, tags: [], gcsafe.} =
+    if insertStmt.isNil:
+      if prepare_v2(dbHandle, insertQuery,
+          insertQuery.len, insertStmt, nil) != SQLITE_OK:
+        quit "could not bind query to insertStmt " & $sqlite3.errmsg(dbHandle)
     for i in 0..log.count-1:
       var success = false
       let e = log.data[i]
@@ -46,7 +52,7 @@ when defined(memTracker):
       if step(insertStmt) == SQLITE_DONE:
         success = true
       if not success:
-        quit "could not write to database!"
+        quit "could not write to database! " & $sqlite3.errmsg(dbHandle)
 
 proc execQuery(q: string) =
   var s: Pstmt
@@ -71,10 +77,12 @@ proc setupDb() =
 if sqlite3.open("memtrack.db", dbHandle) == SQLITE_OK:
   setupDb()
   const query = "INSERT INTO tracking(op, address, size, file, line) values (?, ?, ?, ?, ?)"
-  if prepare_v2(dbHandle, query,
-      query.len, insertStmt, nil) == SQLITE_OK:
+  if prepare_v2(dbHandle, insertQuery,
+      insertQuery.len, insertStmt, nil) == SQLITE_OK:
     when defined(memTracker):
       setTrackLogger logEntries
   else:
     quit "could not prepare statement B " & $sqlite3.errmsg(dbHandle)
+else:
+  quit "could not setup sqlite " & $sqlite3.errmsg(dbHandle)
 {.pop.}

@@ -12,7 +12,7 @@
 
 # TODO: Clean up the exports a bit and everything else in general.
 
-import os
+import os, options
 
 when hostOS == "solaris":
   {.passl: "-lsocket -lnsl".}
@@ -22,16 +22,18 @@ const useWinVersion = defined(Windows) or defined(nimdoc)
 when useWinVersion:
   import winlean
   export WSAEWOULDBLOCK, WSAECONNRESET, WSAECONNABORTED, WSAENETRESET,
+         WSANOTINITIALISED, WSAENOTSOCK, WSAEINPROGRESS, WSAEINTR,
          WSAEDISCON, ERROR_NETNAME_DELETED
 else:
   import posix
   export fcntl, F_GETFL, O_NONBLOCK, F_SETFL, EAGAIN, EWOULDBLOCK, MSG_NOSIGNAL,
-    EINTR, EINPROGRESS, ECONNRESET, EPIPE, ENETRESET
+    EINTR, EINPROGRESS, ECONNRESET, EPIPE, ENETRESET, EBADF
   export Sockaddr_storage, Sockaddr_un, Sockaddr_un_path_length
 
 export SocketHandle, Sockaddr_in, Addrinfo, INADDR_ANY, SockAddr, SockLen,
   Sockaddr_in6,
-  inet_ntoa, recv, `==`, connect, send, accept, recvfrom, sendto
+  inet_ntoa, recv, `==`, connect, send, accept, recvfrom, sendto,
+  freeAddrInfo
 
 export
   SO_ERROR,
@@ -50,9 +52,11 @@ type
   Domain* = enum    ## domain, which specifies the protocol family of the
                     ## created socket. Other domains than those that are listed
                     ## here are unsupported.
-    AF_UNIX,        ## for local socket (using a file). Unsupported on Windows.
+    AF_UNSPEC = 0,  ## unspecified domain (can be detected automatically by
+                    ## some procedures, such as getaddrinfo)
+    AF_UNIX = 1,    ## for local socket (using a file). Unsupported on Windows.
     AF_INET = 2,    ## for network protocol IPv4 or
-    AF_INET6 = 23   ## for network protocol IPv6.
+    AF_INET6 = when defined(macosx): 30 else: 23   ## for network protocol IPv6.
 
   SockType* = enum     ## second argument to `socket` proc
     SOCK_STREAM = 1,   ## reliable stream-oriented service or Stream Sockets
@@ -111,7 +115,7 @@ proc `==`*(a, b: Port): bool {.borrow.}
 proc `$`*(p: Port): string {.borrow.}
   ## returns the port number as a string
 
-proc toInt*(domain: Domain): cint
+proc toInt*(domain: Domain): cshort
   ## Converts the Domain enum to a platform-dependent ``cint``.
 
 proc toInt*(typ: SockType): cint
@@ -121,12 +125,21 @@ proc toInt*(p: Protocol): cint
   ## Converts the Protocol enum to a platform-dependent ``cint``.
 
 when not useWinVersion:
-  proc toInt(domain: Domain): cint =
+  proc toInt(domain: Domain): cshort =
     case domain
-    of AF_UNIX:        result = posix.AF_UNIX
-    of AF_INET:        result = posix.AF_INET
-    of AF_INET6:       result = posix.AF_INET6
-    else: discard
+    of AF_UNSPEC:      result = posix.AF_UNSPEC.cshort
+    of AF_UNIX:        result = posix.AF_UNIX.cshort
+    of AF_INET:        result = posix.AF_INET.cshort
+    of AF_INET6:       result = posix.AF_INET6.cshort
+
+  proc toKnownDomain*(family: cint): Option[Domain] =
+    ## Converts the platform-dependent ``cint`` to the Domain or none(),
+    ## if the ``cint`` is not known.
+    result = if   family == posix.AF_UNSPEC: some(Domain.AF_UNSPEC)
+             elif family == posix.AF_UNIX:   some(Domain.AF_UNIX)
+             elif family == posix.AF_INET:   some(Domain.AF_INET)
+             elif family == posix.AF_INET6:  some(Domain.AF_INET6)
+             else: none(Domain)
 
   proc toInt(typ: SockType): cint =
     case typ
@@ -134,7 +147,6 @@ when not useWinVersion:
     of SOCK_DGRAM:     result = posix.SOCK_DGRAM
     of SOCK_SEQPACKET: result = posix.SOCK_SEQPACKET
     of SOCK_RAW:       result = posix.SOCK_RAW
-    else: discard
 
   proc toInt(p: Protocol): cint =
     case p
@@ -144,11 +156,18 @@ when not useWinVersion:
     of IPPROTO_IPV6:   result = posix.IPPROTO_IPV6
     of IPPROTO_RAW:    result = posix.IPPROTO_RAW
     of IPPROTO_ICMP:   result = posix.IPPROTO_ICMP
-    else: discard
 
 else:
-  proc toInt(domain: Domain): cint =
+  proc toInt(domain: Domain): cshort =
     result = toU16(ord(domain))
+
+  proc toKnownDomain*(family: cint): Option[Domain] =
+    ## Converts the platform-dependent ``cint`` to the Domain or none(),
+    ## if the ``cint`` is not known.
+    result = if   family == winlean.AF_UNSPEC: some(Domain.AF_UNSPEC)
+             elif family == winlean.AF_INET:   some(Domain.AF_INET)
+             elif family == winlean.AF_INET6:  some(Domain.AF_INET6)
+             else: none(Domain)
 
   proc toInt(typ: SockType): cint =
     result = cint(ord(typ))
@@ -156,6 +175,14 @@ else:
   proc toInt(p: Protocol): cint =
     result = cint(ord(p))
 
+proc toSockType*(protocol: Protocol): SockType =
+  result = case protocol
+  of IPPROTO_TCP:
+    SOCK_STREAM
+  of IPPROTO_UDP:
+    SOCK_DGRAM
+  of IPPROTO_IP, IPPROTO_IPV6, IPPROTO_RAW, IPPROTO_ICMP:
+    SOCK_RAW
 
 proc newNativeSocket*(domain: Domain = AF_INET,
                       sockType: SockType = SOCK_STREAM,
@@ -197,7 +224,7 @@ proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
                   protocol: Protocol = IPPROTO_TCP): ptr AddrInfo =
   ##
   ##
-  ## **Warning**: The resulting ``ptr TAddrInfo`` must be freed using ``dealloc``!
+  ## **Warning**: The resulting ``ptr AddrInfo`` must be freed using ``freeAddrInfo``!
   var hints: AddrInfo
   result = nil
   hints.ai_family = toInt(domain)
@@ -216,7 +243,8 @@ proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
     else:
       raiseOSError(osLastError(), $gai_strerror(gaiResult))
 
-proc dealloc*(ai: ptr AddrInfo) =
+proc dealloc*(ai: ptr AddrInfo) {.deprecated.} =
+  ## Deprecated since 0.16.2. Use ``freeAddrInfo`` instead.
   freeaddrinfo(ai)
 
 proc ntohl*(x: uint32): uint32 =
@@ -229,14 +257,14 @@ proc ntohl*(x: uint32): uint32 =
                  (x shl 8'u32 and 0xff0000'u32) or
                  (x shl 24'u32)
 
-template ntohl*(x: int32): expr {.deprecated.} =
+template ntohl*(x: int32): untyped {.deprecated.} =
   ## Converts 32-bit integers from network to host byte order.
   ## On machines where the host byte order is the same as network byte order,
   ## this is a no-op; otherwise, it performs a 4-byte swap operation.
   ## **Warning**: This template is deprecated since 0.14.0, IPv4
   ## addresses are now treated as unsigned integers. Please use the unsigned
   ## version of this template.
-  cast[int32](ntohl(cast[uint32](x)))
+  cast[int32](nativesockets.ntohl(cast[uint32](x)))
 
 proc ntohs*(x: uint16): uint16 =
   ## Converts 16-bit unsigned integers from network to host byte order. On
@@ -245,16 +273,16 @@ proc ntohs*(x: uint16): uint16 =
   when cpuEndian == bigEndian: result = x
   else: result = (x shr 8'u16) or (x shl 8'u16)
 
-template ntohs*(x: int16): expr {.deprecated.} =
+template ntohs*(x: int16): untyped {.deprecated.} =
   ## Converts 16-bit integers from network to host byte order. On
   ## machines where the host byte order is the same as network byte order,
   ## this is a no-op; otherwise, it performs a 2-byte swap operation.
   ## **Warning**: This template is deprecated since 0.14.0, where port
   ## numbers became unsigned integers. Please use the unsigned version of
   ## this template.
-  cast[int16](ntohs(cast[uint16](x)))
+  cast[int16](nativesockets.ntohs(cast[uint16](x)))
 
-template htonl*(x: int32): expr {.deprecated.} =
+template htonl*(x: int32): untyped {.deprecated.} =
   ## Converts 32-bit integers from host to network byte order. On machines
   ## where the host byte order is the same as network byte order, this is
   ## a no-op; otherwise, it performs a 4-byte swap operation.
@@ -263,13 +291,13 @@ template htonl*(x: int32): expr {.deprecated.} =
   ## version of this template.
   nativesockets.ntohl(x)
 
-template htonl*(x: uint32): expr =
+template htonl*(x: uint32): untyped =
   ## Converts 32-bit unsigned integers from host to network byte order. On
   ## machines where the host byte order is the same as network byte order,
   ## this is a no-op; otherwise, it performs a 4-byte swap operation.
   nativesockets.ntohl(x)
 
-template htons*(x: int16): expr {.deprecated.} =
+template htons*(x: int16): untyped {.deprecated.} =
   ## Converts 16-bit integers from host to network byte order.
   ## On machines where the host byte order is the same as network byte
   ## order, this is a no-op; otherwise, it performs a 2-byte swap operation.
@@ -278,7 +306,7 @@ template htons*(x: int16): expr {.deprecated.} =
   ## this template.
   nativesockets.ntohs(x)
 
-template htons*(x: uint16): expr =
+template htons*(x: uint16): untyped =
   ## Converts 16-bit unsigned integers from host to network byte order.
   ## On machines where the host byte order is the same as network byte
   ## order, this is a no-op; otherwise, it performs a 2-byte swap operation.
@@ -371,16 +399,32 @@ proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} =
   result.addrList = cstringArrayToSeq(s.h_addr_list)
   result.length = int(s.h_length)
 
+proc getHostname*(): string {.tags: [ReadIOEffect].} =
+  ## Returns the local hostname (not the FQDN)
+  # https://tools.ietf.org/html/rfc1035#section-2.3.1
+  # https://tools.ietf.org/html/rfc2181#section-11
+  const size = 64
+  result = newString(size)
+  when useWinVersion:
+    let success = winlean.getHostname(result, size)
+  else:
+    # Posix
+    let success = posix.getHostname(result, size)
+  if success != 0.cint:
+    raiseOSError(osLastError())
+  let x = len(cstring(result))
+  result.setLen(x)
+
 proc getSockDomain*(socket: SocketHandle): Domain =
   ## returns the socket's domain (AF_INET or AF_INET6).
-  var name: SockAddr
+  var name: Sockaddr_in6
   var namelen = sizeof(name).SockLen
   if getsockname(socket, cast[ptr SockAddr](addr(name)),
                  addr(namelen)) == -1'i32:
     raiseOSError(osLastError())
-  if name.sa_family == nativeAfInet:
+  if name.sin6_family == nativeAfInet:
     result = AF_INET
-  elif name.sa_family == nativeAfInet6:
+  elif name.sin6_family == nativeAfInet6:
     result = AF_INET6
   else:
     raiseOSError(osLastError(), "unknown socket family in getSockFamily")
@@ -391,17 +435,23 @@ proc getAddrString*(sockAddr: ptr SockAddr): string =
   if sockAddr.sa_family == nativeAfInet:
     result = $inet_ntoa(cast[ptr Sockaddr_in](sockAddr).sin_addr)
   elif sockAddr.sa_family == nativeAfInet6:
+    let addrLen = when not useWinVersion: posix.INET6_ADDRSTRLEN
+                  else: 46 # it's actually 46 in both cases
+    result = newString(addrLen)
+    let addr6 = addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr
     when not useWinVersion:
-      # TODO: Windows
-      result = newString(posix.INET6_ADDRSTRLEN)
-      let addr6 = addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr
-      discard posix.inet_ntop(posix.AF_INET6, addr6, result.cstring,
-          result.len.int32)
+      if posix.inet_ntop(posix.AF_INET6, addr6, addr result[0],
+                         result.len.int32) == nil:
+        raiseOSError(osLastError())
       if posix.IN6_IS_ADDR_V4MAPPED(addr6) != 0:
         result = result.substr("::ffff:".len)
+    else:
+      if winlean.inet_ntop(winlean.AF_INET6, addr6, addr result[0],
+                           result.len.int32) == nil:
+        raiseOSError(osLastError())
+    setLen(result, len(cstring(result)))
   else:
-    raiseOSError(osLastError(), "unknown socket family in getAddrString")
-
+    raise newException(IOError, "Unknown socket family in getAddrString")
 
 proc getSockName*(socket: SocketHandle): Port =
   ## returns the socket's associated port number.
@@ -548,14 +598,37 @@ proc pruneSocketSet(s: var seq[SocketHandle], fd: var TFdSet) =
       inc(i)
   setLen(s, L)
 
-proc select*(readfds: var seq[SocketHandle], timeout = 500): int =
-  ## Traditional select function. This function will return the number of
-  ## sockets that are ready to be read from, written to, or which have errors.
-  ## If there are none; 0 is returned.
-  ## ``Timeout`` is in milliseconds and -1 can be specified for no timeout.
+proc select*(readfds: var seq[SocketHandle], timeout = 500): int {.deprecated.} =
+  ## When a socket in ``readfds`` is ready to be read from then a non-zero
+  ## value will be returned specifying the count of the sockets which can be
+  ## read from. The sockets which can be read from will also be removed
+  ## from ``readfds``.
   ##
-  ## A socket is removed from the specific ``seq`` when it has data waiting to
-  ## be read/written to or has errors (``exceptfds``).
+  ## ``timeout`` is specified in milliseconds and ``-1`` can be specified for
+  ## an unlimited time.
+  ## **Warning:** This is deprecated since version 0.16.2.
+  ## Use the ``selectRead`` procedure instead.
+  var tv {.noInit.}: Timeval = timeValFromMilliseconds(timeout)
+
+  var rd: TFdSet
+  var m = 0
+  createFdSet((rd), readfds, m)
+
+  if timeout != -1:
+    result = int(select(cint(m+1), addr(rd), nil, nil, addr(tv)))
+  else:
+    result = int(select(cint(m+1), addr(rd), nil, nil, nil))
+
+  pruneSocketSet(readfds, (rd))
+
+proc selectRead*(readfds: var seq[SocketHandle], timeout = 500): int =
+  ## When a socket in ``readfds`` is ready to be read from then a non-zero
+  ## value will be returned specifying the count of the sockets which can be
+  ## read from. The sockets which can be read from will also be removed
+  ## from ``readfds``.
+  ##
+  ## ``timeout`` is specified in milliseconds and ``-1`` can be specified for
+  ## an unlimited time.
   var tv {.noInit.}: Timeval = timeValFromMilliseconds(timeout)
 
   var rd: TFdSet

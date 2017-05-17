@@ -26,8 +26,8 @@ bootSwitch(usedGoGC, defined(gogc), "--gc:go")
 bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 
 import
-  os, msgs, options, nversion, condsyms, strutils, extccomp, platform, lists,
-  wordrecg, parseutils, nimblecmd, idents, parseopt
+  os, msgs, options, nversion, condsyms, strutils, extccomp, platform,
+  wordrecg, parseutils, nimblecmd, idents, parseopt, sequtils
 
 # but some have deps to imported modules. Yay.
 bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
@@ -47,7 +47,8 @@ type
     passPP                    # preprocessor called processCommand()
 
 proc processCommand*(switch: string, pass: TCmdLinePass)
-proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo)
+proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
+                    config: ConfigRef = nil)
 
 # implementation
 
@@ -193,9 +194,7 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
 proc processCompile(filename: string) =
   var found = findFile(filename)
   if found == "": found = filename
-  var trunc = changeFileExt(found, "")
   extccomp.addExternalFileToCompile(found)
-  extccomp.addFileToLink(completeCFilePath(trunc, false))
 
 proc testCompileOptionArg*(switch, arg: string, info: TLineInfo): bool =
   case switch.normalize
@@ -273,12 +272,25 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
 proc processPath(path: string, info: TLineInfo,
                  notRelativeToProj = false): string =
   let p = if notRelativeToProj or os.isAbsolute(path) or
-              '$' in path or path[0] == '.':
+              '$' in path:
             path
           else:
             options.gProjectPath / path
   try:
     result = pathSubs(p, info.toFullPath().splitFile().dir)
+  except ValueError:
+    localError(info, "invalid path: " & p)
+    result = p
+
+proc processCfgPath(path: string, info: TLineInfo): string =
+  let path = if path[0] == '"': strutils.unescape(path) else: path
+  let basedir = info.toFullPath().splitFile().dir
+  let p = if os.isAbsolute(path) or '$' in path:
+            path
+          else:
+            basedir / path
+  try:
+    result = pathSubs(p, basedir)
   except ValueError:
     localError(info, "invalid path: " & p)
     result = p
@@ -314,7 +326,8 @@ proc dynlibOverride(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     expectArg(switch, arg, pass, info)
     options.inclDynlibOverride(arg)
 
-proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
+proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
+                   config: ConfigRef = nil) =
   var
     theOS: TSystemOS
     cpu: TSystemCPU
@@ -322,7 +335,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   case switch.normalize
   of "path", "p":
     expectArg(switch, arg, pass, info)
-    addPath(processPath(arg, info), info)
+    addPath(if pass == passPP: processCfgPath(arg, info) else: processPath(arg, info), info)
   of "nimblepath", "babelpath":
     # keep the old name for compat
     if pass in {passCmd2, passPP} and not options.gNoNimblePath:
@@ -335,12 +348,14 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   of "excludepath":
     expectArg(switch, arg, pass, info)
     let path = processPath(arg, info)
-    lists.excludePath(options.searchPaths, path)
-    lists.excludePath(options.lazyPaths, path)
+
+    options.searchPaths.keepItIf( cmpPaths(it, path) != 0 )
+    options.lazyPaths.keepItIf( cmpPaths(it, path) != 0 )
+
     if (len(path) > 0) and (path[len(path) - 1] == DirSep):
       let strippedPath = path[0 .. (len(path) - 2)]
-      lists.excludePath(options.searchPaths, strippedPath)
-      lists.excludePath(options.lazyPaths, strippedPath)
+      options.searchPaths.keepItIf( cmpPaths(it, strippedPath) != 0 )
+      options.lazyPaths.keepItIf( cmpPaths(it, strippedPath) != 0 )
   of "nimcache":
     expectArg(switch, arg, pass, info)
     options.nimcacheDir = processPath(arg, info, true)
@@ -370,7 +385,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     if pass in {passCmd2, passPP}: processCompile(arg)
   of "link":
     expectArg(switch, arg, pass, info)
-    if pass in {passCmd2, passPP}: addFileToLink(arg)
+    if pass in {passCmd2, passPP}: addExternalFileToLink(arg)
   of "debuginfo":
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optCDebug)
@@ -463,8 +478,6 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   of "linedir": processOnOffSwitch({optLineDir}, arg, pass, info)
   of "assertions", "a": processOnOffSwitch({optAssert}, arg, pass, info)
   of "deadcodeelim": processOnOffSwitchG({optDeadCodeElim}, arg, pass, info)
-  of "reportconceptfailures":
-    processOnOffSwitchG({optReportConceptFailures}, arg, pass, info)
   of "threads":
     processOnOffSwitchG({optThreads}, arg, pass, info)
     #if optThreads in gGlobalOptions: incl(gNotes, warnGcUnsafe)
@@ -511,10 +524,10 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     else: localError(info, errGuiConsoleOrLibExpectedButXFound, arg)
   of "passc", "t":
     expectArg(switch, arg, pass, info)
-    if pass in {passCmd2, passPP}: extccomp.addCompileOption(arg)
+    if pass in {passCmd2, passPP}: extccomp.addCompileOptionCmd(arg)
   of "passl", "l":
     expectArg(switch, arg, pass, info)
-    if pass in {passCmd2, passPP}: extccomp.addLinkOption(arg)
+    if pass in {passCmd2, passPP}: extccomp.addLinkOptionCmd(arg)
   of "cincludes":
     expectArg(switch, arg, pass, info)
     if pass in {passCmd2, passPP}: cIncludes.add arg.processPath(info)
@@ -525,7 +538,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     expectArg(switch, arg, pass, info)
     if pass in {passCmd2, passPP}: cLinkedLibs.add arg.processPath(info)
   of "header":
-    headerFile = arg
+    if config != nil: config.headerFile = arg
     incl(gGlobalOptions, optGenIndex)
   of "index":
     processOnOffSwitchG({optGenIndex}, arg, pass, info)
@@ -640,14 +653,14 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   of "experimental":
     expectNoArg(switch, arg, pass, info)
     gExperimentalMode = true
-  of "assembler":
-    cAssembler = nameToCC(arg)
-    if cAssembler notin cValidAssemblers:
-      localError(info, errGenerated, "'$1' is not a valid assembler." % [arg])
   of "nocppexceptions":
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optNoCppExceptions)
     defineSymbol("noCppExceptions")
+  of "cppdefine":
+    expectArg(switch, arg, pass, info)
+    if config != nil:
+      config.cppDefine(arg)
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(switch, arg)
     else: invalidCmdLineOption(pass, switch, info)

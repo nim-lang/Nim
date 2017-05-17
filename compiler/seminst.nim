@@ -36,7 +36,8 @@ proc rawPushProcCon(c: PContext, owner: PSym) =
   c.p = x
 
 proc rawHandleSelf(c: PContext; owner: PSym) =
-  if c.selfName != nil and owner.kind in {skProc, skMethod, skConverter, skIterator, skMacro} and owner.typ != nil:
+  const callableSymbols = {skProc, skMethod, skConverter, skIterator, skMacro}
+  if c.selfName != nil and owner.kind in callableSymbols and owner.typ != nil:
     let params = owner.typ.n
     if params.len > 1:
       let arg = params[1].sym
@@ -61,7 +62,7 @@ iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym 
     if q.typ.kind notin {tyTypeDesc, tyGenericParam, tyStatic}+tyTypeClasses:
       continue
     let symKind = if q.typ.kind == tyStatic: skConst else: skType
-    var s = newSym(symKind, q.name, getCurrOwner(), q.info)
+    var s = newSym(symKind, q.name, getCurrOwner(c), q.info)
     s.flags = s.flags + {sfUsed, sfFromGeneric}
     var t = PType(idTableGet(pt, q.typ))
     if t == nil:
@@ -97,17 +98,27 @@ proc genericCacheGet(genericSym: PSym, entry: TInstantiation;
       if inst.compilesId == id and sameInstantiation(entry, inst[]):
         return inst.sym
 
+when false:
+  proc `$`(x: PSym): string =
+    result = x.name.s & " " & " id " & $x.id
+
 proc freshGenSyms(n: PNode, owner, orig: PSym, symMap: var TIdTable) =
   # we need to create a fresh set of gensym'ed symbols:
-  if n.kind == nkSym and sfGenSym in n.sym.flags and
-      (n.sym.owner == orig or n.sym.owner.kind == skPackage):
+  #if n.kind == nkSym and sfGenSym in n.sym.flags:
+  #  if n.sym.owner != orig:
+  #    echo "symbol ", n.sym.name.s, " orig ", orig, " owner ", n.sym.owner
+  if n.kind == nkSym and sfGenSym in n.sym.flags: # and
+    #  (n.sym.owner == orig or n.sym.owner.kind in {skPackage}):
     let s = n.sym
     var x = PSym(idTableGet(symMap, s))
-    if x == nil:
+    if x != nil:
+      n.sym = x
+    elif s.owner.kind == skPackage:
+      #echo "copied this ", s.name.s
       x = copySym(s, false)
       x.owner = owner
       idTablePut(symMap, s, x)
-    n.sym = x
+      n.sym = x
   else:
     for i in 0 .. <safeLen(n): freshGenSyms(n.sons[i], owner, orig, symMap)
 
@@ -115,6 +126,11 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind)
 
 proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
   if n.sons[bodyPos].kind != nkEmpty:
+    let procParams = result.typ.n
+    for i in 1 .. <procParams.len:
+      addDecl(c, procParams[i].sym)
+    maybeAddResult(c, result, result.ast)
+
     inc c.inGenericInst
     # add it here, so that recursive generic procs are possible:
     var b = n.sons[bodyPos]
@@ -137,13 +153,17 @@ proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
   for i in countup(0, c.generics.len - 1):
     if c.generics[i].genericSym.id == s.id:
       var oldPrc = c.generics[i].inst.sym
+      pushProcCon(c, oldPrc)
+      pushOwner(c, oldPrc)
       pushInfoContext(oldPrc.info)
       openScope(c)
       var n = oldPrc.ast
       n.sons[bodyPos] = copyTree(s.getBody)
-      instantiateBody(c, n, nil, oldPrc, s)
+      instantiateBody(c, n, oldPrc.typ.n, oldPrc, s)
       closeScope(c)
       popInfoContext()
+      popOwner(c)
+      popProcCon(c)
 
 proc sideEffectsCheck(c: PContext, s: PSym) =
   when false:
@@ -163,7 +183,7 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
   result = replaceTypeVarsT(cl, header)
 
 proc instantiateProcType(c: PContext, pt: TIdTable,
-                          prc: PSym, info: TLineInfo) =
+                         prc: PSym, info: TLineInfo) =
   # XXX: Instantiates a generic proc signature, while at the same
   # time adding the instantiated proc params into the current scope.
   # This is necessary, because the instantiation process may refer to
@@ -199,7 +219,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
       param.owner = prc
       param.typ = result.sons[i]
       if oldParam.ast != nil:
-        param.ast = fitNode(c, param.typ, oldParam.ast)
+        param.ast = fitNode(c, param.typ, oldParam.ast, oldParam.ast.info)
 
       # don't be lazy here and call replaceTypeVarsN(cl, originalParams[i])!
       result.n.sons[i] = newSymNode(param)
@@ -219,7 +239,6 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   skipIntLiteralParams(result)
 
   prc.typ = result
-  maybeAddResult(c, prc, prc.ast)
   popInfoContext()
 
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
@@ -245,7 +264,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   incl(result.flags, sfFromGeneric)
   result.owner = fn
   result.ast = n
-  pushOwner(result)
+  pushOwner(c, result)
 
   openScope(c)
   let gp = n.sons[genericParamsPos]
@@ -286,7 +305,8 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
       pragma(c, result, n.sons[pragmasPos], allRoutinePragmas)
     if isNil(n.sons[bodyPos]):
       n.sons[bodyPos] = copyTree(fn.getBody)
-    instantiateBody(c, n, fn.typ.n, result, fn)
+    if c.inGenericContext == 0:
+      instantiateBody(c, n, fn.typ.n, result, fn)
     sideEffectsCheck(c, result)
     paramsTypeCheck(c, result.typ)
   else:
@@ -294,7 +314,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   popProcCon(c)
   popInfoContext()
   closeScope(c)           # close scope for parameters
-  popOwner()
+  popOwner(c)
   c.currentScope = oldScope
   discard c.friendModules.pop()
   dec(c.instCounter)

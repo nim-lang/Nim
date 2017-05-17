@@ -26,7 +26,8 @@ elif defined(posix):
 else:
   {.error: "OS module not ported to your operating system!".}
 
-include ospaths
+import ospaths
+export ospaths
 
 when defined(posix):
   when NoFakeVars:
@@ -616,20 +617,6 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
     flushFile(d)
     close(d)
 
-proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
-  tags: [ReadIOEffect, WriteIOEffect].} =
-  ## Moves a file from `source` to `dest`. If this fails, `OSError` is raised.
-  when defined(Windows):
-    when useWinUnicode:
-      let s = newWideCString(source)
-      let d = newWideCString(dest)
-      if moveFileW(s, d) == 0'i32: raiseOSError(osLastError())
-    else:
-      if moveFileA(source, dest) == 0'i32: raiseOSError(osLastError())
-  else:
-    if c_rename(source, dest) != 0'i32:
-      raiseOSError(osLastError(), $strerror(errno))
-
 when not declared(ENOENT) and not defined(Windows):
   when NoFakeVars:
     const ENOENT = cint(2) # 2 on most systems including Solaris
@@ -646,24 +633,62 @@ when defined(Windows):
     template setFileAttributes(file, attrs: untyped): untyped =
       setFileAttributesA(file, attrs)
 
-proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect].} =
-  ## Removes the `file`. If this fails, `OSError` is raised. This does not fail
+proc tryRemoveFile*(file: string): bool {.rtl, extern: "nos$1", tags: [WriteDirEffect].} =
+  ## Removes the `file`. If this fails, returns `false`. This does not fail
   ## if the file never existed in the first place.
   ## On Windows, ignores the read-only attribute.
+  result = true
   when defined(Windows):
     when useWinUnicode:
       let f = newWideCString(file)
     else:
       let f = file
     if deleteFile(f) == 0:
-      if getLastError() == ERROR_ACCESS_DENIED:
-        if setFileAttributes(f, FILE_ATTRIBUTE_NORMAL) == 0:
-          raiseOSError(osLastError())
-        if deleteFile(f) == 0:
-          raiseOSError(osLastError())
+      result = false
+      let err = getLastError()
+      if err == ERROR_FILE_NOT_FOUND or err == ERROR_PATH_NOT_FOUND:
+        result = true
+      elif err == ERROR_ACCESS_DENIED and
+         setFileAttributes(f, FILE_ATTRIBUTE_NORMAL) != 0 and
+         deleteFile(f) != 0:
+        result = true
   else:
     if c_remove(file) != 0'i32 and errno != ENOENT:
+      result = false
+
+proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect].} =
+  ## Removes the `file`. If this fails, `OSError` is raised. This does not fail
+  ## if the file never existed in the first place.
+  ## On Windows, ignores the read-only attribute.
+  if not tryRemoveFile(file):
+    when defined(Windows):
+      raiseOSError(osLastError())
+    else:
       raiseOSError(osLastError(), $strerror(errno))
+
+proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
+  tags: [ReadIOEffect, WriteIOEffect].} =
+  ## Moves a file from `source` to `dest`. If this fails, `OSError` is raised.
+  when defined(Windows):
+    when useWinUnicode:
+      let s = newWideCString(source)
+      let d = newWideCString(dest)
+      if moveFileW(s, d) == 0'i32: raiseOSError(osLastError())
+    else:
+      if moveFileA(source, dest) == 0'i32: raiseOSError(osLastError())
+  else:
+    if c_rename(source, dest) != 0'i32:
+      let err = osLastError()
+      if err == EXDEV.OSErrorCode:
+        # Fallback to copy & del
+        copyFile(source, dest)
+        try:
+          removeFile(source)
+        except:
+          discard tryRemoveFile(dest)
+          raise
+      else:
+        raiseOSError(err, $strerror(errno))
 
 proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   tags: [ExecIOEffect].} =
@@ -800,16 +825,16 @@ proc putEnv*(key, val: string) {.tags: [WriteEnvEffect].} =
   else:
     add environment, (key & '=' & val)
     indx = high(environment)
-  when defined(unix):
-    if c_putenv(environment[indx]) != 0'i32:
-      raiseOSError(osLastError())
-  else:
+  when defined(windows):
     when useWinUnicode:
       var k = newWideCString(key)
       var v = newWideCString(val)
       if setEnvironmentVariableW(k, v) == 0'i32: raiseOSError(osLastError())
     else:
       if setEnvironmentVariableA(key, val) == 0'i32: raiseOSError(osLastError())
+  else:
+    if c_putenv(environment[indx]) != 0'i32:
+      raiseOSError(osLastError())
 
 iterator envPairs*(): tuple[key, value: TaintedString] {.tags: [ReadEnvEffect].} =
   ## Iterate over all `environments variables`:idx:. In the first component
@@ -848,12 +873,12 @@ template walkCommon(pattern: string, filter) =
     res = findFirstFile(pattern, f)
     if res != -1:
       defer: findClose(res)
+      let dotPos = searchExtPos(pattern)
       while true:
         if not skipFindData(f) and filter(f):
           # Windows bug/gotcha: 't*.nim' matches 'tfoo.nims' -.- so we check
           # that the file extensions have the same length ...
           let ff = getFilename(f)
-          let dotPos = searchExtPos(pattern)
           let idx = ff.len - pattern.len + dotPos
           if dotPos < 0 or idx >= ff.len or ff[idx] == '.' or
               pattern[dotPos+1] == '*':
@@ -1001,8 +1026,8 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
 
 iterator walkDirRec*(dir: string, filter={pcFile, pcDir}): string {.
   tags: [ReadDirEffect].} =
-  ## walks over the directory `dir` and yields for each file in `dir`. The
-  ## full path for each file is returned.
+  ## Recursively walks over the directory `dir` and yields for each file in `dir`.
+  ## The full path for each file is returned. Directories are not returned.
   ## **Warning**:
   ## Modifying the directory structure while the iterator
   ## is traversing may result in undefined behavior!
@@ -1066,7 +1091,7 @@ proc rawCreateDir(dir: string): bool =
       result = false
     else:
       raiseOSError(osLastError())
-  elif defined(unix):
+  elif defined(posix):
     let res = mkdir(dir, 0o777)
     if res == 0'i32:
       result = true
@@ -1109,7 +1134,7 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1",
   ## fail if the directory already exists because for most usages this does not
   ## indicate an error.
   var omitNext = false
-  when doslike:
+  when doslikeFileSystem:
     omitNext = isAbsolute(dir)
   for i in 1.. dir.len-1:
     if dir[i] in {DirSep, AltSep}:
@@ -1184,7 +1209,7 @@ proc createHardlink*(src, dest: string) =
 
 proc parseCmdLine*(c: string): seq[string] {.
   noSideEffect, rtl, extern: "nos$1".} =
-  ## Splits a command line into several components;
+  ## Splits a `command line`:idx: into several components;
   ## This proc is only occasionally useful, better use the `parseopt` module.
   ##
   ## On Windows, it uses the following parsing rules
@@ -1427,7 +1452,9 @@ elif defined(windows):
     if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLine())
     return TaintedString(ownArgv[i])
 
-elif not defined(createNimRtl) and not(defined(posix) and appType == "lib"):
+elif not defined(createNimRtl) and
+  not(defined(posix) and appType == "lib") and
+  not defined(genode):
   # On Posix, there is no portable way to get the command line from a DLL.
   var
     cmdCount {.importc: "cmdCount".}: cint
@@ -1463,7 +1490,7 @@ when declared(paramCount) or defined(nimdoc):
     for i in 1..paramCount():
       result.add(paramStr(i))
 
-when defined(freebsd):
+when defined(freebsd) or defined(dragonfly):
   proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr csize,
               newp: pointer, newplen: csize): cint
        {.importc: "sysctl",header: """#include <sys/types.h>
@@ -1471,8 +1498,12 @@ when defined(freebsd):
   const
     CTL_KERN = 1
     KERN_PROC = 14
-    KERN_PROC_PATHNAME = 12
     MAX_PATH = 1024
+
+  when defined(freebsd):
+    const KERN_PROC_PATHNAME = 12
+  else:
+    const KERN_PROC_PATHNAME = 9
 
   proc getApplFreebsd(): string =
     var pathLength = csize(MAX_PATH)
@@ -1577,7 +1608,9 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
       result = getApplAux("/proc/self/exe")
     elif defined(solaris):
       result = getApplAux("/proc/" & $getpid() & "/path/a.out")
-    elif defined(freebsd):
+    elif defined(genode):
+      raiseOSError("POSIX command line not supported")
+    elif defined(freebsd) or defined(dragonfly):
       result = getApplFreebsd()
     # little heuristic that may work on other POSIX-like systems:
     if result.len == 0:
@@ -1611,7 +1644,8 @@ proc sleep*(milsecs: int) {.rtl, extern: "nos$1", tags: [TimeEffect].} =
 
 proc getFileSize*(file: string): BiggestInt {.rtl, extern: "nos$1",
   tags: [ReadIOEffect].} =
-  ## returns the file size of `file`. Can raise ``OSError``.
+  ## returns the file size of `file` (in bytes). An ``OSError`` exception is
+  ## raised in case of an error.
   when defined(windows):
     var a: WIN32_FIND_DATA
     var resA = findFirstFile(file, a)
@@ -1682,7 +1716,7 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
         formalInfo.permissions.incl(formalMode)
     formalInfo.id = (rawInfo.st_dev, rawInfo.st_ino)
     formalInfo.size = rawInfo.st_size
-    formalInfo.linkCount = rawInfo.st_Nlink
+    formalInfo.linkCount = rawInfo.st_Nlink.BiggestInt
     formalInfo.lastAccessTime = rawInfo.st_atime
     formalInfo.lastWriteTime = rawInfo.st_mtime
     formalInfo.creationTime = rawInfo.st_ctime

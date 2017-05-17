@@ -45,6 +45,17 @@ var
     # a global variable for the root of all try blocks
   currException {.threadvar.}: ref Exception
 
+type
+  FrameState = tuple[framePtr: PFrame, excHandler: PSafePoint, currException: ref Exception]
+
+proc getFrameState*(): FrameState {.compilerRtl, inl.} =
+  return (framePtr, excHandler, currException)
+
+proc setFrameState*(state: FrameState) {.compilerRtl, inl.} =
+  framePtr = state.framePtr
+  excHandler = state.excHandler
+  currException = state.currException
+
 proc getFrame*(): PFrame {.compilerRtl, inl.} = framePtr
 
 proc popFrame {.compilerRtl, inl.} =
@@ -62,7 +73,8 @@ proc popSafePoint {.compilerRtl, inl.} =
   excHandler = excHandler.prev
 
 proc pushCurrentException(e: ref Exception) {.compilerRtl, inl.} =
-  e.parent = currException
+  #if e.parent.isNil:
+  #  e.parent = currException
   currException = e
 
 proc popCurrentException {.compilerRtl, inl.} =
@@ -212,6 +224,12 @@ proc quitOrDebug() {.inline.} =
   else:
     endbStep() # call the debugger
 
+when false:
+  proc rawRaise*(e: ref Exception) =
+    ## undocumented. Do not use.
+    pushCurrentException(e)
+    c_longjmp(excHandler.context, 1)
+
 proc raiseExceptionAux(e: ref Exception) =
   if localRaiseHook != nil:
     if not localRaiseHook(e): return
@@ -262,10 +280,15 @@ proc raiseExceptionAux(e: ref Exception) =
       quitOrDebug()
 
 proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
-  e.name = ename
+  if e.name.isNil: e.name = ename
   when hasSomeStackTrace:
-    e.trace = ""
-    rawWriteStackTrace(e.trace)
+    if e.trace.isNil:
+      e.trace = ""
+      rawWriteStackTrace(e.trace)
+    elif framePtr != nil:
+      e.trace.add "[[reraised from:\n"
+      auxWriteStackTrace(framePtr, e.trace)
+      e.trace.add "]]\n"
   raiseExceptionAux(e)
 
 proc reraiseException() {.compilerRtl.} =
@@ -318,7 +341,7 @@ when defined(endb):
 
 when not defined(noSignalHandler):
   proc signalHandler(sign: cint) {.exportc: "signalHandler", noconv.} =
-    template processSignal(s, action: expr) {.immediate,  dirty.} =
+    template processSignal(s, action: untyped) {.dirty.} =
       if s == SIGINT: action("SIGINT: Interrupted by Ctrl-C.\n")
       elif s == SIGSEGV:
         action("SIGSEGV: Illegal storage access. (Attempt to read from nil?)\n")
@@ -371,5 +394,4 @@ when not defined(noSignalHandler):
 proc setControlCHook(hook: proc () {.noconv.} not nil) =
   # ugly cast, but should work on all architectures:
   type SignalHandler = proc (sign: cint) {.noconv, benign.}
-  {.deprecated: [TSignalHandler: SignalHandler].}
   c_signal(SIGINT, cast[SignalHandler](hook))

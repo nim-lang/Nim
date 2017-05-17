@@ -59,7 +59,7 @@ proc genObjectFields(p: PProc, typ: PType, n: PNode): Rope =
         u = rope(lengthOrd(field.typ))
       else: internalError(n.info, "genObjectFields(nkRecCase)")
       if result != nil: add(result, ", " & tnl)
-      addf(result, "[SetConstr($1), $2]",
+      addf(result, "[setConstr($1), $2]",
            [u, genObjectFields(p, typ, lastSon(b))])
     result = ("{kind: 3, offset: \"$1\", len: $3, " &
         "typ: $2, name: $4, sons: [$5]}") % [
@@ -104,10 +104,10 @@ proc genEnumInfo(p: PProc, typ: PType, name: Rope) =
     let field = typ.n.sons[i].sym
     if i > 0: add(s, ", " & tnl)
     let extName = if field.ast == nil: field.name.s else: field.ast.strVal
-    addf(s, "{kind: 1, offset: $1, typ: $2, name: $3, len: 0, sons: null}",
+    addf(s, "\"$1\": {kind: 1, offset: $1, typ: $2, name: $3, len: 0, sons: null}",
          [rope(field.position), name, makeJSString(extName)])
   var n = ("var NNI$1 = {kind: 2, offset: 0, typ: null, " &
-      "name: null, len: $2, sons: [$3]};$n") % [rope(typ.id), rope(length), s]
+      "name: null, len: $2, sons: {$3}};$n") % [rope(typ.id), rope(length), s]
   s = ("var $1 = {size: 0, kind: $2, base: null, node: null, " &
        "finalizer: null};$n") % [name, rope(ord(typ.kind))]
   prepend(p.g.typeInfo, s)

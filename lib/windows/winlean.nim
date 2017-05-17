@@ -419,9 +419,6 @@ const
 
   ws2dll = "Ws2_32.dll"
 
-  WSAEWOULDBLOCK* = 10035
-  WSAEINPROGRESS* = 10036
-
 proc wsaGetLastError*(): cint {.importc: "WSAGetLastError", dynlib: ws2dll.}
 
 type
@@ -438,7 +435,7 @@ type
 
   SockAddr* {.importc: "SOCKADDR", header: "winsock2.h".} = object
     sa_family*: int16 # unsigned
-    sa_data: array[0..13, char]
+    sa_data*: array[0..13, char]
 
   PSockAddr = ptr SockAddr
 
@@ -498,7 +495,7 @@ type
     ai_family*: cint        ## Address family of socket.
     ai_socktype*: cint      ## Socket type.
     ai_protocol*: cint      ## Protocol of socket.
-    ai_addrlen*: int        ## Length of socket address.
+    ai_addrlen*: csize        ## Length of socket address.
     ai_canonname*: cstring  ## Canonical name of service location.
     ai_addr*: ptr SockAddr ## Socket address of socket.
     ai_next*: ptr AddrInfo ## Pointer to next in list.
@@ -544,6 +541,9 @@ proc gethostbyaddr*(ip: ptr InAddr, len: cuint, theType: cint): ptr Hostent {.
 
 proc gethostbyname*(name: cstring): ptr Hostent {.
   stdcall, importc: "gethostbyname", dynlib: ws2dll.}
+
+proc gethostname*(hostname: cstring, len: cint): cint {.
+  stdcall, importc: "gethostname", dynlib: ws2dll.}
 
 proc socket*(af, typ, protocol: cint): SocketHandle {.
   stdcall, importc: "socket", dynlib: ws2dll.}
@@ -667,6 +667,8 @@ const
 
 # Error Constants
 const
+  ERROR_FILE_NOT_FOUND* = 2
+  ERROR_PATH_NOT_FOUND* = 3
   ERROR_ACCESS_DENIED* = 5
   ERROR_HANDLE_EOF* = 38
   ERROR_BAD_ARGUMENTS* = 165
@@ -760,6 +762,11 @@ const
   WSAEDISCON* = 10101
   WSAENETRESET* = 10052
   WSAETIMEDOUT* = 10060
+  WSANOTINITIALISED* = 10093
+  WSAENOTSOCK* = 10038
+  WSAEINPROGRESS* = 10036
+  WSAEINTR* = 10004
+  WSAEWOULDBLOCK* = 10035
   ERROR_NETNAME_DELETED* = 64
   STATUS_PENDING* = 0x103
 
@@ -796,6 +803,7 @@ const
   SIO_GET_EXTENSION_FUNCTION_POINTER* = WSAIORW(IOC_WS2,6).DWORD
   SO_UPDATE_ACCEPT_CONTEXT* = 0x700B
   AI_V4MAPPED* = 0x0008
+  AF_UNSPEC* = 0
   AF_INET* = 2
   AF_INET6* = 23
 
@@ -852,7 +860,7 @@ proc getProcessTimes*(hProcess: Handle; lpCreationTime, lpExitTime,
   dynlib: "kernel32", importc: "GetProcessTimes".}
 
 type inet_ntop_proc = proc(family: cint, paddr: pointer, pStringBuffer: cstring,
-                      stringBufSize: int32): cstring {.stdcall.}
+                      stringBufSize: int32): cstring {.gcsafe, stdcall.}
 
 var inet_ntop_real: inet_ntop_proc = nil
 
@@ -1034,3 +1042,17 @@ else:
   proc readConsoleInput*(hConsoleInput: Handle, lpBuffer: pointer, nLength: cint,
                         lpNumberOfEventsRead: ptr cint): cint
        {.stdcall, dynlib: "kernel32", importc: "ReadConsoleInputW".}
+
+type
+  LPFIBER_START_ROUTINE* = proc (param: pointer): void {.stdcall.}
+
+const
+  FIBER_FLAG_FLOAT_SWITCH* = 0x01
+
+proc CreateFiber*(stackSize: int, fn: LPFIBER_START_ROUTINE, param: pointer): pointer {.stdcall, discardable, dynlib: "kernel32", importc.}
+proc CreateFiberEx*(stkCommit: int, stkReserve: int, flags: int32, fn: LPFIBER_START_ROUTINE, param: pointer): pointer {.stdcall, discardable, dynlib: "kernel32", importc.}
+proc ConvertThreadToFiber*(param: pointer): pointer {.stdcall, discardable, dynlib: "kernel32", importc.}
+proc ConvertThreadToFiberEx*(param: pointer, flags: int32): pointer {.stdcall, discardable, dynlib: "kernel32", importc.}
+proc DeleteFiber*(fiber: pointer): void {.stdcall, discardable, dynlib: "kernel32", importc.}
+proc SwitchToFiber*(fiber: pointer): void {.stdcall, discardable, dynlib: "kernel32", importc.}
+proc GetCurrentFiber*(): pointer {.stdcall, importc, header: "Windows.h".}

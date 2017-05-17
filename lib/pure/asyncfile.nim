@@ -70,14 +70,16 @@ else:
       result = O_RDWR
     result = result or O_NONBLOCK
 
-proc getFileSize(f: AsyncFile): int64 =
+proc getFileSize*(f: AsyncFile): int64 =
   ## Retrieves the specified file's size.
   when defined(windows) or defined(nimdoc):
     var high: DWord
     let low = getFileSize(f.fd.Handle, addr high)
     if low == INVALID_FILE_SIZE:
       raiseOSError(osLastError())
-    return (high shl 32) or low
+    result = (high shl 32) or low
+  else:
+    result = lseek(f.fd.cint, 0, SEEK_END)
 
 proc openAsync*(filename: string, mode = fmRead): AsyncFile =
   ## Opens a file specified by the path in ``filename`` using
@@ -310,7 +312,7 @@ proc setFilePos*(f: AsyncFile, pos: int64) =
   ## operations. The file's first byte has the index zero.
   f.offset = pos
   when not defined(windows) and not defined(nimdoc):
-    let ret = lseek(f.fd.cint, pos, SEEK_SET)
+    let ret = lseek(f.fd.cint, pos.Off, SEEK_SET)
     if ret == -1:
       raiseOSError(osLastError())
 
@@ -337,13 +339,17 @@ proc writeBuffer*(f: AsyncFile, buf: pointer, size: int): Future[void] =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             assert bytesCount == size.int32
-            f.offset.inc(size)
             retFuture.complete()
           else:
             retFuture.fail(newException(OSError, osErrorMsg(errcode)))
     )
+    # passing -1 here should work according to MSDN, but doesn't. For more
+    # information see
+    # http://stackoverflow.com/questions/33650899/does-asynchronous-file-
+    #   appending-in-windows-preserve-order
     ol.offset = DWord(f.offset and 0xffffffff)
     ol.offsetHigh = DWord(f.offset shr 32)
+    f.offset.inc(size)
 
     # According to MSDN we're supposed to pass nil to lpNumberOfBytesWritten.
     let ret = writeFile(f.fd.Handle, buf, size.int32, nil,
@@ -362,7 +368,6 @@ proc writeBuffer*(f: AsyncFile, buf: pointer, size: int): Future[void] =
         retFuture.fail(newException(OSError, osErrorMsg(osLastError())))
       else:
         assert bytesWritten == size.int32
-        f.offset.inc(size)
         retFuture.complete()
   else:
     var written = 0
@@ -408,7 +413,6 @@ proc write*(f: AsyncFile, data: string): Future[void] =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             assert bytesCount == data.len.int32
-            f.offset.inc(data.len)
             retFuture.complete()
           else:
             retFuture.fail(newException(OSError, osErrorMsg(errcode)))
@@ -418,6 +422,7 @@ proc write*(f: AsyncFile, data: string): Future[void] =
     )
     ol.offset = DWord(f.offset and 0xffffffff)
     ol.offsetHigh = DWord(f.offset shr 32)
+    f.offset.inc(data.len)
 
     # According to MSDN we're supposed to pass nil to lpNumberOfBytesWritten.
     let ret = writeFile(f.fd.Handle, buffer, data.len.int32, nil,
@@ -439,7 +444,6 @@ proc write*(f: AsyncFile, data: string): Future[void] =
         retFuture.fail(newException(OSError, osErrorMsg(osLastError())))
       else:
         assert bytesWritten == data.len.int32
-        f.offset.inc(data.len)
         retFuture.complete()
   else:
     var written = 0
@@ -466,6 +470,23 @@ proc write*(f: AsyncFile, data: string): Future[void] =
       addWrite(f.fd, cb)
   return retFuture
 
+proc setFileSize*(f: AsyncFile, length: int64) =
+  ## Set a file length.
+  when defined(windows) or defined(nimdoc):
+    var
+      high = (length shr 32).Dword
+    let
+      low = (length and 0xffffffff).Dword
+      status = setFilePointer(f.fd.Handle, low, addr high, 0)
+      lastErr = osLastError()
+    if (status == INVALID_SET_FILE_POINTER and lastErr.int32 != NO_ERROR) or
+       (setEndOfFile(f.fd.Handle) == 0):
+      raiseOSError(osLastError())
+  else:
+    # will truncate if Off is a 32-bit type!
+    if ftruncate(f.fd.cint, length.Off) == -1:
+      raiseOSError(osLastError())
+
 proc close*(f: AsyncFile) =
   ## Closes the file specified.
   unregister(f.fd)
@@ -476,3 +497,26 @@ proc close*(f: AsyncFile) =
     if close(f.fd.cint) == -1:
       raiseOSError(osLastError())
 
+proc writeFromStream*(f: AsyncFile, fs: FutureStream[string]) {.async.} =
+  ## Reads data from the specified future stream until it is completed.
+  ## The data which is read is written to the file immediately and
+  ## freed from memory.
+  ##
+  ## This procedure is perfect for saving streamed data to a file without
+  ## wasting memory.
+  while true:
+    let (hasValue, value) = await fs.read()
+    if hasValue:
+      await f.write(value)
+    else:
+      break
+
+proc readToStream*(f: AsyncFile, fs: FutureStream[string]) {.async.} =
+  ## Writes data to the specified future stream as the file is read.
+  while true:
+    let data = await read(f, 4000)
+    if data.len == 0:
+      break
+    await fs.write(data)
+
+  fs.complete()

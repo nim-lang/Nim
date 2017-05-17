@@ -30,7 +30,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
       if d.k in {locTemp, locNone} or not leftAppearsOnRightSide(le, ri):
         # Great, we can use 'd':
         if d.k == locNone: getTemp(p, typ.sons[0], d, needsInit=true)
-        elif d.k notin {locExpr, locTemp} and not hasNoInit(ri):
+        elif d.k notin {locTemp} and not hasNoInit(ri):
           # reset before pass as 'result' var:
           resetLoc(p, d)
         add(pl, addrLoc(d))
@@ -109,7 +109,7 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
     initLocExpr(p, n, a)
     case skipTypes(a.t, abstractVar).kind
     of tyOpenArray, tyVarargs:
-      result = "$1, $1Len0" % [rdLoc(a)]
+      result = "$1, $1Len_0" % [rdLoc(a)]
     of tyString, tySequence:
       if skipTypes(n.typ, abstractInst).kind == tyVar and
             not compileToCpp(p.module):
@@ -200,8 +200,8 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
   proc addComma(r: Rope): Rope =
     result = if r == nil: r else: r & ~", "
 
-  const PatProc = "$1.ClEnv? $1.ClPrc($3$1.ClEnv):(($4)($1.ClPrc))($2)"
-  const PatIter = "$1.ClPrc($3$1.ClEnv)" # we know the env exists
+  const PatProc = "$1.ClE_0? $1.ClP_0($3$1.ClE_0):(($4)($1.ClP_0))($2)"
+  const PatIter = "$1.ClP_0($3$1.ClE_0)" # we know the env exists
   var op: TLoc
   initLocExpr(p, ri.sons[0], op)
   var pl: Rope
@@ -226,7 +226,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
         # Great, we can use 'd':
         if d.k == locNone:
           getTemp(p, typ.sons[0], d, needsInit=true)
-        elif d.k notin {locExpr, locTemp} and not hasNoInit(ri):
+        elif d.k notin {locTemp} and not hasNoInit(ri):
           # reset before pass as 'result' var:
           resetLoc(p, d)
         add(pl, addrLoc(d))

@@ -10,7 +10,7 @@ operator =  OP0 | OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9
 prefixOperator = operator
 optInd = COMMENT?
 optPar = (IND{>} | IND{=})?
-simpleExpr = arrowExpr (OP0 optInd arrowExpr)*
+simpleExpr = arrowExpr (OP0 optInd arrowExpr)* pragma?
 arrowExpr = assignExpr (OP1 optInd assignExpr)*
 assignExpr = orExpr (OP2 optInd orExpr)*
 orExpr = andExpr (OP3 optInd andExpr)*
@@ -23,8 +23,6 @@ mulExpr = dollarExpr (OP9 optInd dollarExpr)*
 dollarExpr = primary (OP10 optInd primary)*
 symbol = '`' (KEYW|IDENT|literal|(operator|'('|')'|'['|']'|'{'|'}'|'=')+)+ '`'
        | IDENT | 'addr' | 'type'
-indexExpr = expr
-indexExprList = indexExpr ^+ comma
 exprColonEqExpr = expr (':'|'=' expr)?
 exprList = expr ^+ comma
 dotExpr = expr '.' optInd symbol
@@ -105,7 +103,7 @@ macroColon = ':' stmt? ( IND{=} 'of' exprList ':' stmt
                        | IND{=} 'except' exprList ':' stmt
                        | IND{=} 'else' ':' stmt )*
 exprStmt = simpleExpr
-         (( '=' optInd expr )
+         (( '=' optInd expr colonBody? )
          / ( expr ^+ comma
              doBlocks
               / macroColon
@@ -176,7 +174,8 @@ typeClass = typeClassParam ^* ',' (pragma)? ('of' typeDesc ^* ',')?
 typeDef = identWithPragmaDot genericParamList? '=' optInd typeDefAux
             indAndComment?
 varTuple = '(' optInd identWithPragma ^+ comma optPar ')' '=' optInd expr
-variable = (varTuple / identColonEquals) indAndComment
+colonBody = colcom stmt doBlocks?
+variable = (varTuple / identColonEquals) colonBody? indAndComment
 bindStmt = 'bind' optInd qualifiedIdent ^+ comma
 mixinStmt = 'mixin' optInd qualifiedIdent ^+ comma
 pragmaStmt = pragma (':' COMMENT? stmt)?
@@ -194,7 +193,7 @@ complexOrSimpleStmt = (ifStmt | whenStmt | whileStmt
                     | 'converter' routine
                     | 'type' section(typeDef)
                     | 'const' section(constant)
-                    | ('let' | 'var') section(variable)
+                    | ('let' | 'var' | 'using') section(variable)
                     | bindStmt | mixinStmt)
                     / simpleStmt
 stmt = (IND{>} complexOrSimpleStmt^+(IND{=} / ';') DED)

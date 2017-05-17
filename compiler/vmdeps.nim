@@ -175,7 +175,12 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
           result.add mapTypeToAst(t.sons[i], info)
     else:
       result = mapTypeToAstX(t.lastSon, info, inst, allowRecursion)
-  of tyGenericBody, tyOrdinal, tyUserTypeClassInst:
+  of tyGenericBody:
+    if inst:
+      result = mapTypeToAstX(t.lastSon, info, inst, true)
+    else:
+      result = mapTypeToAst(t.lastSon, info)
+  of tyOrdinal:
     result = mapTypeToAst(t.lastSon, info)
   of tyDistinct:
     if inst:
@@ -214,12 +219,19 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
         result = atomicType(t.sym)
   of tyEnum:
     result = newNodeIT(nkEnumTy, if t.n.isNil: info else: t.n.info, t)
-    result.add copyTree(t.n)
+    result.add ast.emptyNode  # pragma node, currently always empty for enum
+    for c in t.n.sons:
+      result.add copyTree(c)
   of tyTuple:
     if inst:
       result = newNodeX(nkTupleTy)
-      for s in t.n.sons:
-        result.add newIdentDefs(s)
+      # only named tuples have a node, unnamed tuples don't
+      if t.n.isNil:
+        for subType in t.sons:
+          result.add mapTypeToAst(subType, info)
+      else:
+        for s in t.n.sons:
+          result.add newIdentDefs(s)
     else:
       result = mapTypeToBracket("tuple", mTuple, t, info)
   of tySet: result = mapTypeToBracket("set", mSet, t, info)
@@ -278,15 +290,19 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
   of tyProxy: result = atomicType("error", mNone)
   of tyBuiltInTypeClass:
     result = mapTypeToBracket("builtinTypeClass", mNone, t, info)
-  of tyUserTypeClass:
-    result = mapTypeToBracket("concept", mNone, t, info)
-    result.add t.n.copyTree
+  of tyUserTypeClass, tyUserTypeClassInst:
+    if t.isResolvedUserTypeClass:
+      result = mapTypeToAst(t.lastSon, info)
+    else:
+      result = mapTypeToBracket("concept", mNone, t, info)
+      result.add t.n.copyTree
   of tyCompositeTypeClass:
     result = mapTypeToBracket("compositeTypeClass", mNone, t, info)
   of tyAnd: result = mapTypeToBracket("and", mAnd, t, info)
   of tyOr: result = mapTypeToBracket("or", mOr, t, info)
   of tyNot: result = mapTypeToBracket("not", mNot, t, info)
   of tyAnything: result = atomicType("anything", mNone)
+  of tyInferred: internalAssert false
   of tyStatic, tyFromExpr, tyFieldAccessor:
     if inst:
       if t.n != nil: result = t.n.copyTree

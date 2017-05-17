@@ -7,7 +7,7 @@ discard """
 import macros
 
 macro mixer(n: typed): untyped =
-  expectKind(n, nnkCharLit)
-  
+  expectKind(n[0], nnkCharLit)
+
 mixer:
   echo "owh"

@@ -206,6 +206,8 @@ proc parseHeader*(line: string): tuple[key: string, value: seq[string]] =
   inc(i) # skip :
   if i < len(line):
     i += parseList(line, result.value, i)
+  elif result.key.len > 0:
+    result.value = @[""]
   else:
     result.value = @[]
 
@@ -283,7 +285,7 @@ proc `$`*(code: HttpCode): string =
 proc `==`*(a, b: HttpCode): bool {.borrow.}
 
 proc `==`*(rawCode: string, code: HttpCode): bool =
-  return rawCode.toLower() == ($code).toLower()
+  return cmpIgnoreCase(rawCode, $code) == 0
 
 proc is2xx*(code: HttpCode): bool =
   ## Determines whether ``code`` is a 2xx HTTP status code.
@@ -302,7 +304,7 @@ proc is5xx*(code: HttpCode): bool =
   return code.int in {500 .. 599}
 
 proc `$`*(httpMethod: HttpMethod): string =
-  return (system.`$`(httpMethod))[4 .. ^1].toUpper()
+  return (system.`$`(httpMethod))[4 .. ^1].toUpperAscii()
 
 when isMainModule:
   var test = newHttpHeaders()
@@ -312,3 +314,12 @@ when isMainModule:
   test.add("Connection", "Test")
   doAssert test["Connection", 2] == "Test"
   doAssert "upgrade" in test["Connection"]
+
+  # Bug #5344.
+  doAssert parseHeader("foobar: ") == ("foobar", @[""])
+  let (key, value) = parseHeader("foobar: ")
+  test = newHttpHeaders()
+  test[key] = value
+  doAssert test["foobar"] == ""
+
+  doAssert parseHeader("foobar:") == ("foobar", @[""])

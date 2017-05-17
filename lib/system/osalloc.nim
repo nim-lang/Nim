@@ -77,6 +77,19 @@ when defined(emscripten):
     var mmapDescr = cast[EmscriptenMMapBlock](mmapDescrPos)
     munmap(mmapDescr.realPointer, mmapDescr.realSize)
 
+elif defined(genode):
+
+  proc osAllocPages(size: int): pointer {.
+   importcpp: "genodeEnv->rm().attach(genodeEnv->ram().alloc(@))".}
+
+  proc osTryAllocPages(size: int): pointer =
+    {.emit: """try {""".}
+    result = osAllocPages size
+    {.emit: """} catch (...) { }""".}
+
+  proc osDeallocPages(p: pointer, size: int) {.
+    importcpp: "genodeEnv->rm().detach(#)".}
+
 elif defined(posix):
   const
     PROT_READ  = 1             # page can be read
@@ -132,7 +145,7 @@ elif defined(windows):
                     header: "<windows.h>", stdcall, importc: "VirtualAlloc".}
 
   proc virtualFree(lpAddress: pointer, dwSize: int,
-                   dwFreeType: int32) {.header: "<windows.h>", stdcall,
+                   dwFreeType: int32): cint {.header: "<windows.h>", stdcall,
                    importc: "VirtualFree".}
 
   proc osAllocPages(size: int): pointer {.inline.} =
@@ -151,7 +164,10 @@ elif defined(windows):
     # Windows :-(. We have to live with MEM_DECOMMIT instead.
     # Well that used to be the case but MEM_DECOMMIT fragments the address
     # space heavily, so we now treat Windows as a strange unmap target.
-    when reallyOsDealloc: virtualFree(p, 0, MEM_RELEASE)
+    when reallyOsDealloc:
+      if virtualFree(p, 0, MEM_RELEASE) == 0:
+        cprintf "yes, failing!"
+        quit 1
     #VirtualFree(p, size, MEM_DECOMMIT)
 
 elif hostOS == "standalone":

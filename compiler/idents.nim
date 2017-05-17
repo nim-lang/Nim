@@ -12,7 +12,7 @@
 # id. This module is essential for the compiler's performance.
 
 import
-  hashes, strutils, etcpriv, wordrecg
+  hashes, strutils, wordrecg
 
 type
   TIdObj* = object of RootObj
@@ -45,8 +45,6 @@ proc cmpIgnoreStyle(a, b: cstring, blen: int): int =
   while j < blen:
     while a[i] == '_': inc(i)
     while b[j] == '_': inc(j)
-    while isMagicIdentSeparatorRune(a, i): inc(i, magicIdentSeparatorRuneByteWidth)
-    while isMagicIdentSeparatorRune(b, j): inc(j, magicIdentSeparatorRuneByteWidth)
     # tolower inlined:
     var aa = a[i]
     var bb = b[j]

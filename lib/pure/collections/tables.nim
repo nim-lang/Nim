@@ -269,6 +269,18 @@ proc del*[A, B](t: var Table[A, B], key: A) =
   ## deletes `key` from hash table `t`.
   delImpl()
 
+proc take*[A, B](t: var Table[A, B], key: A, val: var B): bool =
+  ## Deletes the ``key`` from the table.
+  ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
+  ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
+  ## unchanged.
+  var hc: Hash
+  var index = rawGet(t, key, hc)
+  result = index >= 0
+  if result:
+    shallowCopy(val, t.data[index].val)
+    delImplIdx(t, index)
+
 proc enlarge[A, B](t: var Table[A, B]) =
   var n: KeyValuePairSeq[A, B]
   newSeq(n, len(t.data) * growthFactor)
@@ -423,6 +435,13 @@ proc add*[A, B](t: TableRef[A, B], key: A, val: B) =
 proc del*[A, B](t: TableRef[A, B], key: A) =
   ## deletes `key` from hash table `t`.
   t[].del(key)
+
+proc take*[A, B](t: TableRef[A, B], key: A, val: var B): bool =
+  ## Deletes the ``key`` from the table.
+  ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
+  ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
+  ## unchanged.
+  result = t[].take(key, val)
 
 proc newTable*[A, B](initialSize=64): TableRef[A, B] =
   new(result)
@@ -618,11 +637,19 @@ proc `$`*[A, B](t: OrderedTable[A, B]): string =
 proc `==`*[A, B](s, t: OrderedTable[A, B]): bool =
   ## The `==` operator for ordered hash tables. Returns true iff both the
   ## content and the order are equal.
-  if s.counter == t.counter:
-    forAllOrderedPairs:
-      if s.data[h] != t.data[h]: return false
-    result = true
-  else: result = false
+  if s.counter != t.counter:
+    return false
+  var ht = t.first
+  var hs = s.first
+  while ht >= 0 and hs >= 0:
+    var nxtt = t.data[ht].next
+    var nxts = s.data[hs].next
+    if isFilled(t.data[ht].hcode) and isFilled(s.data[hs].hcode):
+      if (s.data[hs].key != t.data[ht].key) and (s.data[hs].val != t.data[ht].val):
+        return false
+    ht = nxtt
+    hs = nxts
+  return true
 
 proc sort*[A, B](t: var OrderedTable[A, B],
                  cmp: proc (x,y: (A, B)): int) =
@@ -754,7 +781,7 @@ proc newOrderedTable*[A, B](initialSize=64): OrderedTableRef[A, B] =
 proc newOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTableRef[A, B] =
   ## creates a new ordered hash table that contains the given `pairs`.
   result = newOrderedTable[A, B](rightSize(pairs.len))
-  for key, val in items(pairs): result[key] = val
+  for key, val in items(pairs): result.add(key, val)
 
 proc `$`*[A, B](t: OrderedTableRef[A, B]): string =
   ## The `$` operator for ordered hash tables.
@@ -777,7 +804,7 @@ proc sort*[A, B](t: OrderedTableRef[A, B],
   t[].sort(cmp)
 
 proc del*[A, B](t: var OrderedTable[A, B], key: A) =
-  ## deletes `key` from ordered hash table `t`. O(n) comlexity.
+  ## deletes `key` from ordered hash table `t`. O(n) complexity.
   var n: OrderedKeyValuePairSeq[A, B]
   newSeq(n, len(t.data))
   var h = t.first
@@ -796,7 +823,7 @@ proc del*[A, B](t: var OrderedTable[A, B], key: A) =
     h = nxt
 
 proc del*[A, B](t: var OrderedTableRef[A, B], key: A) =
-  ## deletes `key` from ordered hash table `t`. O(n) comlexity.
+  ## deletes `key` from ordered hash table `t`. O(n) complexity.
   t[].del(key)
 
 # ------------------------------ count tables -------------------------------
@@ -814,10 +841,13 @@ proc len*[A](t: CountTable[A]): int =
   ## returns the number of keys in `t`.
   result = t.counter
 
-proc clear*[A](t: var CountTable[A] | CountTableRef[A]) =
+proc clear*[A](t: CountTableRef[A]) =
   ## Resets the table so that it is empty.
   clearImpl()
-  t.counter = 0
+
+proc clear*[A](t: var CountTable[A]) =
+  ## Resets the table so that it is empty.
+  clearImpl()
 
 iterator pairs*[A](t: CountTable[A]): (A, int) =
   ## iterates over any (key, value) pair in the table `t`.
@@ -1230,11 +1260,51 @@ when isMainModule:
     t.inc(testKey,3)
     doAssert 3 == t.getOrDefault(testKey)
 
-  # Clear tests
-  var clearTable = newTable[int, string]()
-  clearTable[42] = "asd"
-  clearTable[123123] = "piuyqwb "
-  doAssert clearTable[42] == "asd"
-  clearTable.clear()
-  doAssert(not clearTable.hasKey(123123))
-  doAssert clearTable.getOrDefault(42) == nil
+  block:
+    # Clear tests
+    var clearTable = newTable[int, string]()
+    clearTable[42] = "asd"
+    clearTable[123123] = "piuyqwb "
+    doAssert clearTable[42] == "asd"
+    clearTable.clear()
+    doAssert(not clearTable.hasKey(123123))
+    doAssert clearTable.getOrDefault(42) == nil
+
+  block: #5482
+    var a = [("wrong?","foo"), ("wrong?", "foo2")].newOrderedTable()
+    var b = newOrderedTable[string, string](initialSize=2)
+    b.add("wrong?", "foo")
+    b.add("wrong?", "foo2")
+    assert a == b
+
+  block: #5482
+    var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()
+    var b = newOrderedTable[string, string](initialSize=2)
+    b.add("wrong?", "foo")
+    b.add("wrong?", "foo2")
+    assert a == b
+
+  block: #5487
+    var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()
+    var b = newOrderedTable[string, string]() # notice, default size!
+    b.add("wrong?", "foo")
+    b.add("wrong?", "foo2")
+    assert a == b
+
+  block: #5487
+    var a = [("wrong?","foo"), ("wrong?", "foo2")].newOrderedTable()
+    var b = newOrderedTable[string, string]()  # notice, default size!
+    b.add("wrong?", "foo")
+    b.add("wrong?", "foo2")
+    assert a == b
+
+  block:
+    var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()
+    var b = [("wrong?","foo"), ("wrong?", "foo2")].newOrderedTable()
+    var c = newOrderedTable[string, string]() # notice, default size!
+    c.add("wrong?", "foo")
+    c.add("wrong?", "foo2")
+    assert a == b
+    assert a == c
+
+

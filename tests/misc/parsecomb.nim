@@ -29,10 +29,10 @@ method runInput[T, O](self: Parser[T, O], inp: Input[T]): Result[T, O] =
   # XXX: above needed for now, as without the `tmp` bit below, it compiles to invalid C.
   tmp(self)(inp)
 
-method run*[T, O](self: Parser[T, O], toks: seq[T]): Result[T, O] =
+proc run*[T, O](self: Parser[T, O], toks: seq[T]): Result[T, O] =
   self.runInput(Input[T](toks: toks, index: 0))
 
-method chain*[T, O1, O2](self: Parser[T, O1], nextp: proc (v: O1): Parser[T, O2]): Parser[T, O2] =
+proc chain*[T, O1, O2](self: Parser[T, O1], nextp: proc (v: O1): Parser[T, O2]): Parser[T, O2] =
   result = proc (inp: Input[T]): Result[T, O2] =
     let r = self.runInput(inp)
     case r.kind:
@@ -41,7 +41,7 @@ method chain*[T, O1, O2](self: Parser[T, O1], nextp: proc (v: O1): Parser[T, O2]
     of rkFailure:
       Result[T, O2](kind: rkFailure)
 
-method skip[T](self: Input[T], n: int): Input[T] =
+method skip[T](self: Input[T], n: int): Input[T] {.base.} =
   Input[T](toks: self.toks, index: self.index + n)
 
 proc pskip*[T](n: int): Parser[T, tuple[]] =
@@ -69,11 +69,11 @@ proc `+`*[T, O](first: Parser[T, O], second: Parser[T, O]): Parser[T, O] =
 
 # end of primitives (definitions involving Parser(..))
 
-method map*[T, O1, O2](self: Parser[T, O1], p: proc (v: O1): O2): Parser[T, O2] =
+proc map*[T, O1, O2](self: Parser[T, O1], p: proc (v: O1): O2): Parser[T, O2] =
   self.chain(proc (v: O1): Parser[T, O2] =
     unit[T, O2](p(v)))
 
-method then*[T, O1, O2](self: Parser[T, O1], next: Parser[T, O2]): Parser[T, O2] =
+proc then*[T, O1, O2](self: Parser[T, O1], next: Parser[T, O2]): Parser[T, O2] =
   self.chain(proc (v: O1): Parser[T, O2] =
     next)
 

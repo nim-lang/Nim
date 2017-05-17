@@ -37,9 +37,6 @@ when not defined(windows):
     var client_socket = create_test_socket()
     var server_socket = create_test_socket()
 
-    registerHandle(selector, server_socket, {Event.Read}, 0)
-    registerHandle(selector, client_socket, {Event.Write}, 0)
-
     var option : int32 = 1
     if setsockopt(server_socket, cint(SOL_SOCKET), cint(SO_REUSEADDR),
                   addr(option), sizeof(option).SockLen) < 0:
@@ -48,18 +45,21 @@ when not defined(windows):
     var aiList = getAddrInfo("0.0.0.0", Port(13337))
     if bindAddr(server_socket, aiList.ai_addr,
                 aiList.ai_addrlen.Socklen) < 0'i32:
-      dealloc(aiList)
+      freeAddrInfo(aiList)
       raiseOSError(osLastError())
-    discard server_socket.listen()
-    dealloc(aiList)
+    if server_socket.listen() == -1:
+      raiseOSError(osLastError())
+    freeAddrInfo(aiList)
 
     aiList = getAddrInfo("127.0.0.1", Port(13337))
     discard posix.connect(client_socket, aiList.ai_addr,
                           aiList.ai_addrlen.Socklen)
-    dealloc(aiList)
+
+    registerHandle(selector, server_socket, {Event.Read}, 0)
+    registerHandle(selector, client_socket, {Event.Write}, 0)
+
+    freeAddrInfo(aiList)
     discard selector.select(100)
-    var rc1 = selector.select(100)
-    assert(len(rc1) == 2)
 
     var sockAddress: SockAddr
     var addrLen = sizeof(sockAddress).Socklen
@@ -126,15 +126,15 @@ when not defined(windows):
     var selector = newSelector[int]()
     var event = newSelectEvent()
     selector.registerEvent(event, 1)
-    selector.flush()
+    var rc0 = selector.select(0)
     event.setEvent()
     var rc1 = selector.select(0)
     event.setEvent()
     var rc2 = selector.select(0)
     var rc3 = selector.select(0)
-    assert(len(rc1) == 1 and len(rc2) == 1 and len(rc3) == 0)
-    var ev1 = rc1[0].data
-    var ev2 = rc2[0].data
+    assert(len(rc0) == 0 and len(rc1) == 1 and len(rc2) == 1 and len(rc3) == 0)
+    var ev1 = selector.getData(rc1[0].fd)
+    var ev2 = selector.getData(rc2[0].fd)
     assert(ev1 == 1 and ev2 == 1)
     selector.unregister(event)
     event.close()
@@ -150,11 +150,11 @@ when not defined(windows):
       var rc2 = selector.select(140)
       assert(len(rc1) == 1 and len(rc2) == 1)
       selector.unregister(timer)
-      selector.flush()
+      discard selector.select(0)
       selector.registerTimer(100, true, 0)
-      var rc3 = selector.select(120)
       var rc4 = selector.select(120)
-      assert(len(rc3) == 1 and len(rc4) == 0)
+      var rc5 = selector.select(120)
+      assert(len(rc4) == 1 and len(rc5) == 0)
       assert(selector.isEmpty())
       selector.close()
       result = true
@@ -193,12 +193,14 @@ when not defined(windows):
       var s1 = selector.registerSignal(SIGUSR1, 1)
       var s2 = selector.registerSignal(SIGUSR2, 2)
       var s3 = selector.registerSignal(SIGTERM, 3)
-      selector.flush()
-
+      discard selector.select(0)
       discard posix.kill(pid, SIGUSR1)
       discard posix.kill(pid, SIGUSR2)
       discard posix.kill(pid, SIGTERM)
       var rc = selector.select(0)
+      var cd0 = selector.getData(rc[0].fd)
+      var cd1 = selector.getData(rc[1].fd)
+      var cd2 = selector.getData(rc[2].fd)
       selector.unregister(s1)
       selector.unregister(s2)
       selector.unregister(s3)
@@ -211,7 +213,7 @@ when not defined(windows):
           raiseOSError(osLastError())
 
       assert(len(rc) == 3)
-      assert(rc[0].data + rc[1].data + rc[2].data == 6) # 1 + 2 + 3
+      assert(cd0 + cd1 + cd2 == 6, $(cd0 + cd1 + cd2)) # 1 + 2 + 3
       assert(equalMem(addr sigset1o, addr sigset2o, sizeof(Sigset)))
       assert(selector.isEmpty())
       result = true
@@ -286,8 +288,8 @@ when not defined(windows):
         events: set[Event]
 
     proc vnode_test(): bool =
-      proc validate[T](test: openarray[ReadyKey[T]],
-                       check: openarray[valType]): bool =
+      proc validate(test: openarray[ReadyKey],
+                    check: openarray[valType]): bool =
         result = false
         if len(test) == len(check):
           for checkItem in check:
@@ -300,7 +302,7 @@ when not defined(windows):
             if not result:
               break
 
-      var res: seq[ReadyKey[int]]
+      var res: seq[ReadyKey]
       var selector = newSelector[int]()
       var events = {Event.VnodeWrite, Event.VnodeDelete, Event.VnodeExtend,
                     Event.VnodeAttrib, Event.VnodeLink, Event.VnodeRename,
@@ -315,7 +317,7 @@ when not defined(windows):
         raiseOsError(osLastError())
 
       selector.registerVnode(dirfd, events, 1)
-      selector.flush()
+      discard selector.select(0)
 
       # chmod testDirectory to 0777
       chmodPath(testDirectory, 0x1FF)
@@ -337,7 +339,6 @@ when not defined(windows):
       # open test directory for watching
       var testfd = openWatch(testDirectory & "/test")
       selector.registerVnode(testfd, events, 2)
-      selector.flush()
       doAssert(len(selector.select(0)) == 0)
 
       # rename test directory
@@ -381,7 +382,7 @@ when not defined(windows):
 
       testfd = openWatch(testDirectory & "/testfile")
       selector.registerVnode(testfd, events, 1)
-      selector.flush()
+      discard selector.select(0)
 
       # write data to test file
       writeFile(testDirectory & "/testfile", "TESTDATA")
@@ -433,7 +434,6 @@ when not defined(windows):
     proc event_wait_thread(event: SelectEvent) {.thread.} =
       var selector = newSelector[int]()
       selector.registerEvent(event, 1)
-      selector.flush()
       var rc = selector.select(1000)
       if len(rc) == 1:
         inc(counter)
@@ -497,20 +497,21 @@ else:
     var aiList = getAddrInfo("0.0.0.0", Port(13337))
     if bindAddr(server_socket, aiList.ai_addr,
                 aiList.ai_addrlen.Socklen) < 0'i32:
-      dealloc(aiList)
+      freeAddrInfo(aiList)
       raiseOSError(osLastError())
     discard server_socket.listen()
-    dealloc(aiList)
+    freeAddrInfo(aiList)
 
     aiList = getAddrInfo("127.0.0.1", Port(13337))
     discard connect(client_socket, aiList.ai_addr,
                     aiList.ai_addrlen.Socklen)
-    dealloc(aiList)
+    freeAddrInfo(aiList)
     # for some reason Windows select doesn't return both
     # descriptors from first call, so we need to make 2 calls
-    discard selector.select(100)
-    var rcm = selector.select(100)
-    assert(len(rcm) == 2)
+    var rcm1 = selector.select(1000)
+    var rcm2 = selector.select(1000)
+    let rcm = len(rcm1) + len(rcm2)
+    assert(rcm >= 2 and rcm <= 4)
 
     var sockAddress = SockAddr()
     var addrLen = sizeof(sockAddress).Socklen
@@ -526,7 +527,7 @@ else:
 
     selector.updateHandle(client_socket, {Event.Read})
 
-    var rc2 = selector.select(100)
+    var rc2 = selector.select(1000)
     assert(len(rc2) == 1)
 
     var read_count = recv(server2_socket, addr buffer[0], 128, 0)
@@ -573,15 +574,15 @@ else:
     var selector = newSelector[int]()
     var event = newSelectEvent()
     selector.registerEvent(event, 1)
-    selector.flush()
+    discard selector.select(0)
     event.setEvent()
     var rc1 = selector.select(0)
     event.setEvent()
     var rc2 = selector.select(0)
     var rc3 = selector.select(0)
     assert(len(rc1) == 1 and len(rc2) == 1 and len(rc3) == 0)
-    var ev1 = rc1[0].data
-    var ev2 = rc2[0].data
+    var ev1 = selector.getData(rc1[0].fd)
+    var ev2 = selector.getData(rc2[0].fd)
     assert(ev1 == 1 and ev2 == 1)
     selector.unregister(event)
     event.close()
@@ -595,8 +596,7 @@ else:
     proc event_wait_thread(event: SelectEvent) {.thread.} =
       var selector = newSelector[int]()
       selector.registerEvent(event, 1)
-      selector.flush()
-      var rc = selector.select(500)
+      var rc = selector.select(1500)
       if len(rc) == 1:
         inc(counter)
       selector.unregister(event)

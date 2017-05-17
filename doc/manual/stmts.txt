@@ -130,9 +130,9 @@ If a proc is annotated with the ``noinit`` pragma this refers to its implicit
 
 
 The implicit initialization can be also prevented by the `requiresInit`:idx:
-type pragma. The compiler requires an explicit initialization then. However
-it does a `control flow analysis`:idx: to prove the variable has been
-initialized and does not rely on syntactic properties:
+type pragma. The compiler requires an explicit initialization for the object
+and all of its fields. However it does a `control flow analysis`:idx: to prove
+the variable has been initialized and does not rely on syntactic properties:
 
 .. code-block:: nim
   type

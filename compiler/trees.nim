@@ -38,7 +38,7 @@ proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
         # don't go nuts here: same symbol as string is enough:
         result = a.sym.name.id == b.sym.name.id
     of nkIdent: result = a.ident.id == b.ident.id
-    of nkCharLit..nkInt64Lit: result = a.intVal == b.intVal
+    of nkCharLit..nkUInt64Lit: result = a.intVal == b.intVal
     of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
     of nkEmpty, nkNilLit, nkType: result = true
@@ -62,7 +62,7 @@ proc sameTree*(a, b: PNode): bool =
       # don't go nuts here: same symbol as string is enough:
       result = a.sym.name.id == b.sym.name.id
     of nkIdent: result = a.ident.id == b.ident.id
-    of nkCharLit..nkInt64Lit: result = a.intVal == b.intVal
+    of nkCharLit..nkUInt64Lit: result = a.intVal == b.intVal
     of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
     of nkEmpty, nkNilLit, nkType: result = true
@@ -96,7 +96,7 @@ proc isDeepConstExpr*(n: PNode): bool =
     result = true
   of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv:
     result = isDeepConstExpr(n.sons[1])
-  of nkCurly, nkBracket, nkPar, nkObjConstr, nkClosure:
+  of nkCurly, nkBracket, nkPar, nkObjConstr, nkClosure, nkRange:
     for i in ord(n.kind == nkObjConstr) .. <n.len:
       if not isDeepConstExpr(n.sons[i]): return false
     if n.typ.isNil: result = true

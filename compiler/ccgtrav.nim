@@ -32,6 +32,9 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, n: PNode;
     if (n.sons[0].kind != nkSym): internalError(n.info, "genTraverseProc")
     var p = c.p
     let disc = n.sons[0].sym
+    if disc.loc.r == nil: fillObjectFields(c.p.module, typ)
+    if disc.loc.t == nil:
+      internalError(n.info, "genTraverseProc()")
     lineF(p, cpsStmts, "switch ($1.$2) {$n", [accessor, disc.loc.r])
     for i in countup(1, sonsLen(n) - 1):
       let branch = n.sons[i]
@@ -87,7 +90,7 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, typ: PType) =
     lineCg(p, cpsStmts, c.visitorFrmt, accessor)
   of tyProc:
     if typ.callConv == ccClosure:
-      lineCg(p, cpsStmts, c.visitorFrmt, rfmt(nil, "$1.ClEnv", accessor))
+      lineCg(p, cpsStmts, c.visitorFrmt, rfmt(nil, "$1.ClE_0", accessor))
   else:
     discard
 
@@ -145,7 +148,7 @@ proc genTraverseProcForGlobal(m: BModule, s: PSym): Rope =
 
   if sfThread in s.flags and emulatedThreadVars():
     accessThreadLocalVar(p, s)
-    sLoc = "NimTV->" & sLoc
+    sLoc = "NimTV_->" & sLoc
 
   c.visitorFrmt = "#nimGCvisit((void*)$1, 0);$n"
   c.p = p

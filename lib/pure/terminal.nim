@@ -589,7 +589,7 @@ macro styledWriteLine*(f: File, m: varargs[expr]): stmt =
   ## .. code-block:: nim
   ##
   ##   proc error(msg: string) =
-  ##     styleWriteLine(stderr, fgRed, "Error: ", resetStyle, msg)
+  ##     styledWriteLine(stderr, fgRed, "Error: ", resetStyle, msg)
   ##
   let m = callsite()
   var reset = false
@@ -630,7 +630,7 @@ proc getch*(): char =
   when defined(windows):
     let fd = getStdHandle(STD_INPUT_HANDLE)
     var keyEvent = KEY_EVENT_RECORD()
-    var numRead: cint 
+    var numRead: cint
     while true:
       # Block until character is entered
       doAssert(waitForSingleObject(fd, INFINITE) == WAIT_OBJECT_0)

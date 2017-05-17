@@ -244,6 +244,17 @@ when defineSsl:
           else:
             raiseSSLError("Socket has been disconnected")
 
+proc dial*(address: string, port: Port, protocol = IPPROTO_TCP,
+           buffered = true): Future[AsyncSocket] {.async.} =
+  ## Establishes connection to the specified ``address``:``port`` pair via the
+  ## specified protocol. The procedure iterates through possible
+  ## resolutions of the ``address`` until it succeeds, meaning that it
+  ## seamlessly works with both IPv4 and IPv6.
+  ## Returns AsyncSocket ready to send or receive data.
+  let asyncFd = await asyncdispatch.dial(address, port, protocol)
+  let sockType = protocol.toSockType()
+  let domain = getSockDomain(asyncFd.SocketHandle)
+  result = newAsyncSocket(asyncFd, domain, sockType, protocol, buffered)
 
 proc connect*(socket: AsyncSocket, address: string, port: Port) {.async.} =
   ## Connects ``socket`` to server at ``address:port``.
@@ -253,6 +264,11 @@ proc connect*(socket: AsyncSocket, address: string, port: Port) {.async.} =
   await connect(socket.fd.AsyncFD, address, port, socket.domain)
   if socket.isSsl:
     when defineSsl:
+      if not isIpAddress(address):
+        # Set the SNI address for this connection. This call can fail if
+        # we're not using TLSv1+.
+        discard SSL_set_tlsext_host_name(socket.sslHandle, address)
+
       let flags = {SocketFlag.SafeDisconn}
       sslSetConnectState(socket.sslHandle)
       sslLoop(socket, flags, sslDoHandshake(socket.sslHandle))
@@ -459,8 +475,7 @@ proc recvLineInto*(socket: AsyncSocket, resString: FutureVar[string],
   ## The partial line **will be lost**.
   ##
   ## The ``maxLength`` parameter determines the maximum amount of characters
-  ## that can be read before a ``ValueError`` is raised. This prevents Denial
-  ## of Service (DOS) attacks.
+  ## that can be read. ``resString`` will be truncated after that.
   ##
   ## **Warning**: The ``Peek`` flag is not yet implemented.
   ##
@@ -514,10 +529,7 @@ proc recvLineInto*(socket: AsyncSocket, resString: FutureVar[string],
       socket.currPos.inc()
 
       # Verify that this isn't a DOS attack: #3847.
-      if resString.mget.len > maxLength:
-        let msg = "recvLine received more than the specified `maxLength` " &
-                  "allowed."
-        raise newException(ValueError, msg)
+      if resString.mget.len > maxLength: break
   else:
     var c = ""
     while true:
@@ -541,10 +553,7 @@ proc recvLineInto*(socket: AsyncSocket, resString: FutureVar[string],
       resString.mget.add c
 
       # Verify that this isn't a DOS attack: #3847.
-      if resString.mget.len > maxLength:
-        let msg = "recvLine received more than the specified `maxLength` " &
-                  "allowed."
-        raise newException(ValueError, msg)
+      if resString.mget.len > maxLength: break
   resString.complete()
 
 proc recvLine*(socket: AsyncSocket,
@@ -564,8 +573,7 @@ proc recvLine*(socket: AsyncSocket,
   ## The partial line **will be lost**.
   ##
   ## The ``maxLength`` parameter determines the maximum amount of characters
-  ## that can be read before a ``ValueError`` is raised. This prevents Denial
-  ## of Service (DOS) attacks.
+  ## that can be read. The result is truncated after that.
   ##
   ## **Warning**: The ``Peek`` flag is not yet implemented.
   ##
@@ -603,9 +611,9 @@ proc bindAddr*(socket: AsyncSocket, port = Port(0), address = "") {.
 
   var aiList = getAddrInfo(realaddr, port, socket.domain)
   if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.Socklen) < 0'i32:
-    dealloc(aiList)
+    freeAddrInfo(aiList)
     raiseOSError(osLastError())
-  dealloc(aiList)
+  freeAddrInfo(aiList)
 
 proc close*(socket: AsyncSocket) =
   ## Closes the socket.
@@ -639,9 +647,12 @@ when defineSsl:
     sslSetBio(socket.sslHandle, socket.bioIn, socket.bioOut)
 
   proc wrapConnectedSocket*(ctx: SslContext, socket: AsyncSocket,
-                            handshake: SslHandshakeType) =
+                            handshake: SslHandshakeType,
+                            hostname: string = nil) =
     ## Wraps a connected socket in an SSL context. This function effectively
     ## turns ``socket`` into an SSL socket.
+    ## ``hostname`` should be specified so that the client knows which hostname
+    ## the server certificate should be validated against.
     ##
     ## This should be called on a connected socket, and will perform
     ## an SSL handshake immediately.
@@ -652,6 +663,10 @@ when defineSsl:
 
     case handshake
     of handshakeAsClient:
+      if not hostname.isNil and not isIpAddress(hostname):
+        # Set the SNI address for this connection. This call can fail if
+        # we're not using TLSv1+.
+        discard SSL_set_tlsext_host_name(socket.sslHandle, hostname)
       sslSetConnectState(socket.sslHandle)
     of handshakeAsServer:
       sslSetAcceptState(socket.sslHandle)

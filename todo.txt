@@ -1,7 +1,11 @@
 version 1.0 battle plan
 =======================
 
-- iters for js
+- make 'not nil' the default (produce warnings instead of errors for
+  a smooth migration path)
+- case objects needs to be safe and need to support pattern matching
+- implement a way to forward object type declarations across module
+  boundaries; C++ style
 - fix "high priority" bugs
 - try to fix as many compiler crashes as reasonable
 
@@ -21,7 +25,6 @@ Not critical for 1.0
   'static[T]' mess in the compiler!
 - ``not`` or ``~`` for the effects system
 - document and stress test ``.partial`` object declarations
-- add "all threads are blocked" detection to 'spawn'
 - figure out why C++ bootstrapping is so much slower
 - The bitwise 'not' operator cold be renamed to 'bnot' to
   prevent 'not 4 == 5' from compiling. -> requires 'mixin' annotation for procs!
@@ -30,8 +33,6 @@ Not critical for 1.0
   - incrSeq
   - addChar
 - pragmas need 'bindSym' support
-- allow simple read accesses to global variables --> difficult to ensure that
-  no data races happen
 - pragmas need re-work: 'push' is dangerous, 'hasPragma' does not work
   reliably with user-defined pragmas
 - memory manager: add a measure of fragmentation
@@ -39,8 +40,6 @@ Not critical for 1.0
 - optimize 'genericReset'; 'newException' leads to code bloat
 
 - prevent 'alloc(TypeWithGCedMemory)'?
-- split docgen into separate tool; not happy how it worked with ``nimsuggest``
-  though
 - map ``string`` and ``seq`` to ``std::string`` and ``std::vector``
 - macro support for '='; bind '=' to a memory region
 - macros as type pragmas
@@ -50,7 +49,6 @@ Bugs
 ====
 
 - VM: Pegs do not work at compile-time
-- VM: ptr/ref T cannot work in general
 - blocks can "export" an identifier but the CCG generates {} for them ...
 - ConcreteTypes in a 'case' means we don't check for duplicated case branches
 
@@ -58,8 +56,7 @@ Bugs
 GC
 ==
 
-- use big blocks in the allocator
-- provide tool/API to track leaks/object counts
+- use slightly bigger blocks in the allocator
 - resizing of strings/sequences could take into account the memory that
   is allocated
 
@@ -67,7 +64,6 @@ GC
 Concurrency
 ===========
 
-- test 'deepCopy' for closures
 - implement 'foo[1..4] = spawn(f[4..7])'
 
 Low priority:

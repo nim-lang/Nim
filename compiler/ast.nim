@@ -10,7 +10,7 @@
 # abstract syntax tree + symbol table
 
 import
-  msgs, hashes, nversion, options, strutils, securehash, ropes, idents, lists,
+  msgs, hashes, nversion, options, strutils, securehash, ropes, idents,
   intsets, idgen
 
 type
@@ -224,7 +224,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # already 32 flags!
+  TSymFlag* = enum    # already 33 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -252,6 +252,7 @@ type
     sfProcvar,        # proc can be passed to a proc var
     sfDiscriminant,   # field is a discriminant in a record/object
     sfDeprecated,     # symbol is deprecated
+    sfExplain,        # provide more diagnostics when this symbol is used
     sfError,          # usage of symbol should trigger a compile-time error
     sfShadowed,       # a symbol that was shadowed in some inner scope
     sfThread,         # proc will run as a thread
@@ -354,44 +355,52 @@ type
     tyUnused,
     tyProxy # used as errornous type (for idetools)
 
-    tyBuiltInTypeClass #\
+    tyBuiltInTypeClass
       # Type such as the catch-all object, tuple, seq, etc
 
-    tyUserTypeClass #\
+    tyUserTypeClass
       # the body of a user-defined type class
 
-    tyUserTypeClassInst #\
+    tyUserTypeClassInst
       # Instance of a parametric user-defined type class.
       # Structured similarly to tyGenericInst.
       # tyGenericInst represents concrete types, while
       # this is still a "generic param" that will bind types
       # and resolves them during sigmatch and instantiation.
 
-    tyCompositeTypeClass #\
+    tyCompositeTypeClass
       # Type such as seq[Number]
       # The notes for tyUserTypeClassInst apply here as well
       # sons[0]: the original expression used by the user.
       # sons[1]: fully expanded and instantiated meta type
       # (potentially following aliases)
 
-    tyAnd, tyOr, tyNot #\
+    tyInferred
+      # In the initial state `base` stores a type class constraining
+      # the types that can be inferred. After a candidate type is
+      # selected, it's stored in `lastSon`. Between `base` and `lastSon`
+      # there may be 0, 2 or more types that were also considered as
+      # possible candidates in the inference process (i.e. lastSon will
+      # be updated to store a type best conforming to all candidates)
+
+    tyAnd, tyOr, tyNot
       # boolean type classes such as `string|int`,`not seq`,
       # `Sortable and Enumable`, etc
 
-    tyAnything #\
+    tyAnything
       # a type class matching any type
 
-    tyStatic #\
+    tyStatic
       # a value known at compile type (the underlying type is .base)
 
-    tyFromExpr #\
+    tyFromExpr
       # This is a type representing an expression that depends
       # on generic parameters (the expression is stored in t.n)
       # It will be converted to a real type only during generic
       # instantiation and prior to this it has the potential to
       # be any type.
 
-    tyFieldAccessor #\
+    tyFieldAccessor
       # Expressions such as Type.field (valid in contexts such
       # as the `is` operator and magics like `high` and `low`).
       # Could be lifted to a single argument proc returning the
@@ -400,7 +409,7 @@ type
       # sons[1]: field type
       # .n: nkDotExpr storing the field name
 
-    tyVoid #\
+    tyVoid
       # now different from tyEmpty, hurray!
 
 static:
@@ -420,6 +429,7 @@ const
                     tyAnd, tyOr, tyNot, tyAnything}
 
   tyMetaTypes* = {tyGenericParam, tyTypeDesc, tyExpr} + tyTypeClasses
+  tyUserTypeClasses* = {tyUserTypeClass, tyUserTypeClassInst}
 
 type
   TTypeKinds* = set[TTypeKind]
@@ -442,10 +452,12 @@ type
     nfExprCall  # this is an attempt to call a regular expression
     nfIsRef     # this node is a 'ref' node; used for the VM
     nfPreventCg # this node should be ignored by the codegen
+    nfBlockArg  # this a stmtlist appearing in a call (e.g. a do block)
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 30)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: beyond that)
     tfVarargs,        # procedure has C styled varargs
+                      # tyArray type represeting a varargs list
     tfNoSideEffect,   # procedure type does not allow side effects
     tfFinal,          # is the object final?
     tfInheritable,    # is the object inheritable?
@@ -460,7 +472,11 @@ type
                       # proc foo(T: typedesc, list: seq[T]): var T
                       # proc foo(L: static[int]): array[L, int]
                       # can be attached to ranges to indicate that the range
+                      # can be attached to generic procs with free standing
+                      # type parameters: e.g. proc foo[T]()
                       # depends on unresolved static params.
+    tfResolved        # marks a user type class, after it has been bound to a
+                      # concrete type (lastSon becomes the concrete type)
     tfRetType,        # marks return types in proc (used to detect type classes
                       # used as return types for return type inference)
     tfCapturesEnv,    # whether proc really captures some environment
@@ -480,6 +496,9 @@ type
     tfHasStatic
     tfGenericTypeParam
     tfImplicitTypeParam
+    tfInferrableStatic
+    tfExplicit        # for typedescs, marks types explicitly prefixed with the
+                      # `type` operator (e.g. type int)
     tfWildcard        # consider a proc like foo[T, I](x: Type[T, I])
                       # T and I here can bind to both typedesc and static types
                       # before this is determined, we'll consider them to be a
@@ -489,6 +508,9 @@ type
     tfTriggersCompileTime # uses the NimNode type which make the proc
                           # implicitly '.compiletime'
     tfRefsAnonObj     # used for 'ref object' and 'ptr object'
+    tfCovariant       # covariant generic param mimicing a ptr type
+    tfWeakCovariant   # covariant generic param mimicing a seq/array type
+    tfContravariant   # contravariant generic param
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -736,12 +758,14 @@ type
 
   TLibKind* = enum
     libHeader, libDynamic
-  TLib* = object of lists.TListEntry # also misused for headers!
+
+  TLib* = object              # also misused for headers!
     kind*: TLibKind
     generated*: bool          # needed for the backends:
     isOverriden*: bool
     name*: Rope
     path*: PNode              # can be a string literal!
+
 
   CompilesId* = int ## id that is used for the caching logic within
                     ## ``system.compiles``. See the seminst module.
@@ -983,15 +1007,17 @@ proc add*(father, son: PNode) =
   if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
 
-proc `[]`*(n: PNode, i: int): PNode {.inline.} =
-  result = n.sons[i]
+type Indexable = PNode | PType
+
+template `[]`*(n: Indexable, i: int): Indexable =
+  n.sons[i]
 
 template `-|`*(b, s: untyped): untyped =
   (if b >= 0: b else: s.len + b)
 
 # son access operators with support for negative indices
-template `{}`*(n: PNode, i: int): untyped = n[i -| n]
-template `{}=`*(n: PNode, i: int, s: PNode) =
+template `{}`*(n: Indexable, i: int): untyped = n[i -| n]
+template `{}=`*(n: Indexable, i: int, s: Indexable) =
   n.sons[i -| n] = s
 
 when defined(useNodeIds):
@@ -1032,6 +1058,9 @@ proc newStrNode*(kind: TNodeKind, strVal: string): PNode =
   result = newNode(kind)
   result.strVal = strVal
 
+template previouslyInferred*(t: PType): PType =
+  if t.sons.len > 1: t.lastSon else: nil
+
 proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
              info: TLineInfo): PSym =
   # generates a symbol and initializes the hash field too
@@ -1057,6 +1086,9 @@ proc isMetaType*(t: PType): bool =
   return t.kind in tyMetaTypes or
          (t.kind == tyStatic and t.n == nil) or
          tfHasMeta in t.flags
+
+proc isUnresolvedStatic*(t: PType): bool =
+  return t.kind == tyStatic and t.n == nil
 
 proc linkTo*(t: PType, s: PSym): PType {.discardable.} =
   t.sym = s
@@ -1257,7 +1289,7 @@ proc assignType*(dest, src: PType) =
   # this fixes 'type TLock = TSysLock':
   if src.sym != nil:
     if dest.sym != nil:
-      dest.sym.flags = dest.sym.flags + src.sym.flags
+      dest.sym.flags = dest.sym.flags + (src.sym.flags-{sfExported})
       if dest.sym.annex == nil: dest.sym.annex = src.sym.annex
       mergeLoc(dest.sym.loc, src.sym.loc)
     else:
@@ -1273,6 +1305,8 @@ proc copyType*(t: PType, owner: PSym, keepId: bool): PType =
   else:
     when debugIds: registerId(result)
   result.sym = t.sym          # backend-info should not be copied
+
+proc exactReplica*(t: PType): PType = copyType(t, t.owner, true)
 
 proc copySym*(s: PSym, keepId: bool = false): PSym =
   result = newSym(s.kind, s.name, s.owner, s.info)
@@ -1318,6 +1352,9 @@ proc newStrTable*: TStrTable =
 proc initIdTable*(x: var TIdTable) =
   x.counter = 0
   newSeq(x.data, StartSize)
+
+proc newIdTable*: TIdTable =
+  initIdTable(result)
 
 proc resetIdTable*(x: var TIdTable) =
   x.counter = 0
@@ -1557,7 +1594,7 @@ proc hasPattern*(s: PSym): bool {.inline.} =
   result = isRoutine(s) and s.ast.sons[patternPos].kind != nkEmpty
 
 iterator items*(n: PNode): PNode =
-  for i in 0.. <n.len: yield n.sons[i]
+  for i in 0.. <n.safeLen: yield n.sons[i]
 
 iterator pairs*(n: PNode): tuple[i: int, n: PNode] =
   for i in 0.. <n.len: yield (i, n.sons[i])
@@ -1583,6 +1620,32 @@ proc skipStmtList*(n: PNode): PNode =
     result = n.lastSon
   else:
     result = n
+
+proc toRef*(typ: PType): PType =
+  ## If ``typ`` is a tyObject then it is converted into a `ref <typ>` and
+  ## returned. Otherwise ``typ`` is simply returned as-is.
+  result = typ
+  if typ.kind == tyObject:
+    result = newType(tyRef, typ.owner)
+    rawAddSon(result, typ)
+
+proc toObject*(typ: PType): PType =
+  ## If ``typ`` is a tyRef then its immediate son is returned (which in many
+  ## cases should be a ``tyObject``).
+  ## Otherwise ``typ`` is simply returned as-is.
+  result = typ
+  if result.kind == tyRef:
+    result = result.lastSon
+
+proc findUnresolvedStatic*(n: PNode): PNode =
+  if n.kind == nkSym and n.typ.kind == tyStatic and n.typ.n == nil:
+    return n
+
+  for son in n:
+    let n = son.findUnresolvedStatic
+    if n != nil: return n
+
+  return nil
 
 when false:
   proc containsNil*(n: PNode): bool =

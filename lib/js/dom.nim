@@ -57,6 +57,7 @@ type
     status*: cstring
     toolbar*: ref TToolBar
     frames*: seq[TFrame]
+    screen*: Screen
 
   Frame* = ref FrameObj
   FrameObj {.importc.} = object of WindowObj
@@ -129,6 +130,17 @@ type
     name*: cstring
     readOnly*: bool
     options*: seq[OptionElement]
+    clientWidth*, clientHeight*: int
+
+  # https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement
+  HtmlElement* = ref object of Element
+    contentEditable*: string
+    isContentEditable*: bool
+    dir*: string
+    offsetHeight*: int
+    offsetWidth*: int
+    offsetLeft*: int
+    offsetTop*: int
 
   LinkElement* = ref LinkObj
   LinkObj {.importc.} = object of ElementObj
@@ -270,6 +282,8 @@ type
     wordSpacing*: cstring
     zIndex*: int
 
+  # TODO: A lot of the fields in Event belong to a more specific type of event.
+  # TODO: Should we clean this up?
   Event* = ref EventObj
   EventObj {.importc.} = object of RootObj
     target*: Node
@@ -309,6 +323,20 @@ type
     SELECT*: int
     SUBMIT*: int
     UNLOAD*: int
+
+  TouchList* {.importc.} = ref object of RootObj
+    length*: int
+
+  TouchEvent* {.importc.} = ref object of Event
+    changedTouches*, targetTouches*, touches*: TouchList
+
+  Touch* {.importc.} = ref object of RootObj
+    identifier*: int
+    screenX*, screenY*, clientX*, clientY*, pageX*, pageY*: int
+    target*: Element
+    radiusX*, radiusY*: int
+    rotationAngle*: int
+    force*: float
 
   Location* = ref LocationObj
   LocationObj {.importc.} = object of RootObj
@@ -367,10 +395,17 @@ type
   TTimeOut* {.importc.} = object of RootObj
   TInterval* {.importc.} = object of RootObj
 
+  AddEventListenerOptions* = object
+    capture*: bool
+    once*: bool
+    passive*: bool
+
 {.push importcpp.}
 
 # EventTarget "methods"
 proc addEventListener*(et: EventTarget, ev: cstring, cb: proc(ev: Event), useCapture: bool = false)
+proc addEventListener*(et: EventTarget, ev: cstring, cb: proc(ev: Event), options: AddEventListenerOptions)
+
 
 # Window "methods"
 proc alert*(w: Window, msg: cstring)
@@ -406,6 +441,8 @@ proc setInterval*(w: Window, function: proc (), pause: int): ref TInterval
 proc setTimeout*(w: Window, code: cstring, pause: int): ref TTimeOut
 proc setTimeout*(w: Window, function: proc (), pause: int): ref TInterval
 proc stop*(w: Window)
+proc requestAnimationFrame*(w: Window, function: proc (time: float)): int
+proc cancelAnimationFrame*(w: Window, id: int)
 
 # Node "methods"
 proc appendChild*(n, child: Node)
@@ -442,6 +479,8 @@ proc releaseEvents*(d: Document, eventMask: int) {.deprecated.}
 proc routeEvent*(d: Document, event: Event)
 proc write*(d: Document, text: cstring)
 proc writeln*(d: Document, text: cstring)
+proc querySelector*(d: Document, selectors: cstring): Element
+proc querySelectorAll*(d: Document, selectors: cstring): seq[Element]
 
 # Element "methods"
 proc blur*(e: Element)
@@ -485,6 +524,10 @@ proc setAttribute*(s: Style, attr, value: cstring, caseSensitive=false)
 
 # Event "methods"
 proc preventDefault*(ev: Event)
+
+# TouchEvent "methods"
+proc identifiedTouch*(list: TouchList): Touch
+proc item*(list: TouchList, i: int): Touch
 
 {.pop.}
 

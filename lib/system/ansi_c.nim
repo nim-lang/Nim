@@ -26,8 +26,14 @@ proc c_memset(p: pointer, value: cint, size: csize): pointer {.
 proc c_strcmp(a, b: cstring): cint {.
   importc: "strcmp", header: "<string.h>", noSideEffect.}
 
-type
-  C_JmpBuf {.importc: "jmp_buf", header: "<setjmp.h>".} = object
+when defined(linux) and defined(amd64):
+  type
+    C_JmpBuf {.importc: "jmp_buf", header: "<setjmp.h>", bycopy.} = object
+        abi: array[200 div sizeof(clong), clong]
+else:
+  type
+    C_JmpBuf {.importc: "jmp_buf", header: "<setjmp.h>".} = object
+
 
 when defined(windows):
   const
@@ -38,7 +44,8 @@ when defined(windows):
     SIGSEGV = cint(11)
     SIGTERM = cint(15)
 elif defined(macosx) or defined(linux) or defined(freebsd) or
-     defined(openbsd) or defined(netbsd) or defined(solaris):
+     defined(openbsd) or defined(netbsd) or defined(solaris) or
+     defined(dragonfly):
   const
     SIGABRT = cint(6)
     SIGFPE = cint(8)
@@ -63,7 +70,7 @@ else:
 when defined(macosx):
   const SIGBUS = cint(10)
 else:
-  template SIGBUS: expr = SIGSEGV
+  template SIGBUS: untyped = SIGSEGV
 
 when defined(nimSigSetjmp) and not defined(nimStdSetjmp):
   proc c_longjmp(jmpb: C_JmpBuf, retval: cint) {.

@@ -10,7 +10,7 @@
 type
   PtrTable = ptr object
     counter, max: int
-    data: array[0..0xff_ffff, (pointer, pointer)]
+    data: array[0xff_ffff, (pointer, pointer)]
 
 template hashPtr(key: pointer): int = cast[int](key) shr 8
 template allocPtrTable: untyped =

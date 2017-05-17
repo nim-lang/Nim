@@ -105,7 +105,7 @@ proc considerOverloadedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
   of attachedDestructor:
     let op = t.destructor
     if op != nil:
-      markUsed(c.info, op)
+      markUsed(c.info, op, c.c.graph.usageSym)
       styleCheckUse(c.info, op)
       body.add newDestructorCall(op, x)
       result = true
@@ -123,14 +123,14 @@ proc considerOverloadedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
         op = t.assignment
         if op == nil:
           op = liftBody(c.c, t, c.info)
-      markUsed(c.info, op)
+      markUsed(c.info, op, c.c.graph.usageSym)
       styleCheckUse(c.info, op)
       body.add newAsgnCall(c.c, op, x, y)
       result = true
   of attachedDeepCopy:
     let op = t.deepCopy
     if op != nil:
-      markUsed(c.info, op)
+      markUsed(c.info, op, c.c.graph.usageSym)
       styleCheckUse(c.info, op)
       body.add newDeepCopyCall(op, x, y)
       result = true
@@ -226,7 +226,7 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
      tyGenericParam, tyGenericBody, tyNil, tyExpr, tyStmt,
      tyTypeDesc, tyGenericInvocation, tyForward:
     internalError(c.info, "assignment requested for type: " & typeToString(t))
-  of tyOrdinal, tyRange,
+  of tyOrdinal, tyRange, tyInferred,
      tyGenericInst, tyFieldAccessor, tyStatic, tyVar, tyAlias:
     liftBodyAux(c, lastSon(t), body, x, y)
   of tyUnused, tyUnused0, tyUnused1, tyUnused2: internalError("liftBodyAux")
@@ -248,6 +248,7 @@ proc addParam(procType: PType; param: PSym) =
 proc liftBody(c: PContext; typ: PType; info: TLineInfo): PSym =
   var a: TLiftCtx
   a.info = info
+  a.c = c
   let body = newNodeI(nkStmtList, info)
   result = newSym(skProc, getIdent":lifted=", typ.owner, info)
   a.fn = result

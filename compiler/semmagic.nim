@@ -24,7 +24,7 @@ proc semTypeOf(c: PContext; n: PNode): PNode =
   result = newNodeI(nkTypeOfExpr, n.info)
   let typExpr = semExprWithType(c, n, {efInTypeof})
   result.add typExpr
-  result.typ = makeTypeDesc(c, typExpr.typ.skipTypes({tyTypeDesc}))
+  result.typ = makeTypeDesc(c, typExpr.typ)
 
 type
   SemAsgnMode = enum asgnNormal, noOverloadedSubscript, noOverloadedAsgn
@@ -86,17 +86,66 @@ proc semInstantiationInfo(c: PContext, n: PNode): PNode =
   result.add(filename)
   result.add(line)
 
-proc evalTypeTrait(trait: PNode, operand: PType, context: PSym): PNode =
-  let typ = operand.skipTypes({tyTypeDesc})
-  case trait.sym.name.s.normalize
+proc toNode(t: PType, i: TLineInfo): PNode =
+  result = newNodeIT(nkType, i, t)
+
+const
+  # these are types that use the bracket syntax for instantiation
+  # they can be subjected to the type traits `genericHead` and
+  # `Uninstantiated`
+  tyUserDefinedGenerics* = {tyGenericInst, tyGenericInvocation,
+                            tyUserTypeClassInst}
+
+  tyMagicGenerics* = {tySet, tySequence, tyArray, tyOpenArray}
+
+  tyGenericLike* = tyUserDefinedGenerics +
+                   tyMagicGenerics +
+                   {tyCompositeTypeClass}
+
+proc uninstantiate(t: PType): PType =
+  result = case t.kind
+    of tyMagicGenerics: t
+    of tyUserDefinedGenerics: t.base
+    of tyCompositeTypeClass: uninstantiate t.sons[1]
+    else: t
+
+proc evalTypeTrait(traitCall: PNode, operand: PType, context: PSym): PNode =
+  const skippedTypes = {tyTypeDesc}
+  let trait = traitCall[0]
+  internalAssert trait.kind == nkSym
+  var operand = operand.skipTypes(skippedTypes)
+
+  template operand2: PType =
+    traitCall.sons[2].typ.skipTypes({tyTypeDesc})
+
+  template typeWithSonsResult(kind, sons): PNode =
+    newTypeWithSons2(kind, context, sons).toNode(traitCall.info)
+
+  case trait.sym.name.s
+  of "or", "|":
+    return typeWithSonsResult(tyOr, @[operand, operand2])
+  of "and":
+    return typeWithSonsResult(tyAnd, @[operand, operand2])
+  of "not":
+    return typeWithSonsResult(tyNot, @[operand])
   of "name":
-    result = newStrNode(nkStrLit, typ.typeToString(preferName))
+    result = newStrNode(nkStrLit, operand.typeToString(preferName))
     result.typ = newType(tyString, context)
-    result.info = trait.info
+    result.info = traitCall.info
   of "arity":
-    result = newIntNode(nkIntLit, typ.len - ord(typ.kind==tyProc))
+    result = newIntNode(nkIntLit, operand.len - ord(operand.kind==tyProc))
     result.typ = newType(tyInt, context)
-    result.info = trait.info
+    result.info = traitCall.info
+  of "genericHead":
+    var res = uninstantiate(operand)
+    if res == operand and res.kind notin tyMagicGenerics:
+      localError(traitCall.info,
+        "genericHead expects a generic type. The given type was " &
+        typeToString(operand))
+      return newType(tyError, context).toNode(traitCall.info)
+    result = res.base.toNode(traitCall.info)
+  of "stripGenericParams":
+    result = uninstantiate(operand).toNode(traitCall.info)
   else:
     internalAssert false
 
@@ -107,7 +156,7 @@ proc semTypeTraits(c: PContext, n: PNode): PNode =
   if t.sonsLen > 0:
     # This is either a type known to sem or a typedesc
     # param to a regular proc (again, known at instantiation)
-    result = evalTypeTrait(n[0], t, getCurrOwner())
+    result = evalTypeTrait(n, t, getCurrOwner(c))
   else:
     # a typedesc variable, pass unmodified to evals
     result = n

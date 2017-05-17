@@ -34,6 +34,7 @@ Options:
   --failing                 only show failing/ignored tests
   --pedantic                return non-zero status code if there are failures
   --targets:"c c++ js objc" run tests for specified targets (default: all)
+  --nim:path                use a particular nim executable (default: compiler/nim)
 """ % resultsFile
 
 type
@@ -62,6 +63,8 @@ let
   pegOfInterest = pegLineError / pegOtherError
 
 var targets = {low(TTarget)..high(TTarget)}
+
+proc normalizeMsg(s: string): string = s.strip.replace("\C\L", "\L")
 
 proc callCompiler(cmdTemplate, filename, options: string,
                   target: TTarget): TSpec =
@@ -107,12 +110,6 @@ proc callCompiler(cmdTemplate, filename, options: string,
     result.msg = matches[0]
   elif suc =~ pegSuccess:
     result.err = reSuccess
-
-  if result.err == reNimcCrash and
-     ("Your platform is not supported" in result.msg or
-      "cannot open 'sdl'" in result.msg or
-      "cannot open 'opengl'" in result.msg):
-    result.err = reIgnored
 
 proc callCCompiler(cmdTemplate, filename, options: string,
                   target: TTarget): TSpec =
@@ -190,6 +187,8 @@ proc addResult(r: var TResults, test: TTest,
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest) =
   if strip(expected.msg) notin strip(given.msg):
     r.addResult(test, expected.msg, given.msg, reMsgsDiffer)
+  elif expected.nimout.len > 0 and expected.nimout.normalizeMsg notin given.nimout.normalizeMsg:
+    r.addResult(test, expected.nimout, given.nimout, reMsgsDiffer)
   elif expected.tfile == "" and extractFilename(expected.file) != extractFilename(given.file) and
       "internal error:" notin expected.msg:
     r.addResult(test, expected.file, given.file, reFilesDiffer)
@@ -369,7 +368,7 @@ proc testNoSpec(r: var TResults, test: TTest) =
   # does not extract the spec because the file is not supposed to have any
   #let tname = test.name.addFileExt(".nim")
   inc(r.total)
-  let given = callCompiler(cmdTemplate, test.name, test.options, test.target)
+  let given = callCompiler(cmdTemplate(), test.name, test.options, test.target)
   r.addResult(test, "", given.msg, given.err)
   if given.err == reSuccess: inc(r.passed)
 
@@ -378,7 +377,7 @@ proc testC(r: var TResults, test: TTest) =
   let tname = test.name.addFileExt(".c")
   inc(r.total)
   styledEcho "Processing ", fgCyan, extractFilename(tname)
-  var given = callCCompiler(cmdTemplate, test.name & ".c", test.options, test.target)
+  var given = callCCompiler(cmdTemplate(), test.name & ".c", test.options, test.target)
   if given.err != reSuccess:
     r.addResult(test, "", given.msg, given.err)
   elif test.action == actionRun:
@@ -393,9 +392,14 @@ proc makeTest(test, options: string, cat: Category, action = actionCompile,
   result = TTest(cat: cat, name: test, options: options,
                  target: target, action: action, startTime: epochTime())
 
-const
-  # array of modules disabled from compilation test of stdlib.
-  disabledFiles = ["-"]
+when defined(windows):
+  const
+    # array of modules disabled from compilation test of stdlib.
+    disabledFiles = ["coro.nim", "fsmonitor.nim"]
+else:
+  const
+    # array of modules disabled from compilation test of stdlib.
+    disabledFiles = ["-"]
 
 include categories
 
@@ -421,6 +425,7 @@ proc main() =
     of "failing": optFailing = true
     of "pedantic": optPedantic = true
     of "targets": targets = parseTargets(p.val.string)
+    of "nim": compilerPrefix = p.val.string
     else: quit Usage
     p.next()
   if p.kind != cmdArgument: quit Usage
@@ -460,7 +465,9 @@ proc main() =
   backend.close()
   if optPedantic:
     var failed = r.total - r.passed - r.skipped
-    if failed > 0 : quit(QuitFailure)
+    if failed > 0:
+      echo "FAILURE! total: ", r.total, " passed: ", r.passed, " skipped: ", r.skipped
+      quit(QuitFailure)
 
 if paramCount() == 0:
   quit Usage

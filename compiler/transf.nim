@@ -19,9 +19,9 @@
 # * transforms 'defer' into a 'try finally' statement
 
 import
-  intsets, strutils, lists, options, ast, astalgo, trees, treetab, msgs, os,
+  intsets, strutils, options, ast, astalgo, trees, treetab, msgs, os,
   idents, renderer, types, passes, semfold, magicsys, cgmeth, rodread,
-  lambdalifting, sempass2, lowerings
+  lambdalifting, sempass2, lowerings, lookups
 
 # implementation
 
@@ -133,13 +133,17 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
     # simply exchange the symbol:
     b = s.getBody
     if b.kind != nkSym: internalError(n.info, "wrong AST for borrowed symbol")
-    b = newSymNode(b.sym)
-    b.info = n.info
+    b = newSymNode(b.sym, n.info)
   else:
     b = n
   while tc != nil:
     result = idNodeTableGet(tc.mapping, b.sym)
-    if result != nil: return
+    if result != nil:
+      # this slightly convoluted way ensures the line info stays correct:
+      if result.kind == nkSym:
+        result = copyNode(result)
+        result.info = n.info
+      return
     tc = tc.next
   result = b
 
@@ -287,10 +291,13 @@ proc transformBreak(c: PTransf, n: PNode): PTransNode =
       else:
         result = newTransNode(n.kind, n.info, 1)
         result[0] = lablCopy.PTransNode
-  else:
+  elif c.breakSyms.len > 0:
+    # this check can fail for 'nim check'
     let labl = c.breakSyms[c.breakSyms.high]
     result = transformSons(c, n)
     result[0] = newSymNode(labl).PTransNode
+  else:
+    result = n.PTransNode
 
 proc unpackTuple(c: PTransf, n: PNode, father: PTransNode) =
   # XXX: BUG: what if `n` is an expression with side-effects?
@@ -559,7 +566,10 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   pushTransCon(c, newC)
   for i in countup(1, sonsLen(call) - 1):
     var arg = transform(c, call.sons[i]).PNode
-    var formal = skipTypes(iter.typ, abstractInst).n.sons[i].sym
+    let ff = skipTypes(iter.typ, abstractInst)
+    # can happen for 'nim check':
+    if i >= ff.n.len: return result
+    var formal = ff.n.sons[i].sym
     case putArgInto(arg, formal.typ)
     of paDirectMapping:
       idNodeTablePut(newC.mapping, formal, arg)
@@ -679,7 +689,7 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
           inc(j)
       add(result, a.PTransNode)
     if len(result) == 2: result = result[1]
-  elif magic == mNBindSym:
+  elif magic in {mNBindSym, mTypeOf}:
     # for bindSym(myconst) we MUST NOT perform constant folding:
     result = n.PTransNode
   elif magic == mProcCall:
@@ -690,12 +700,43 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
     # bugfix: check after 'transformSons' if it's still a method call:
     # use the dispatcher for the call:
     if s.sons[0].kind == nkSym and s.sons[0].sym.kind == skMethod:
-      let t = lastSon(s.sons[0].sym.ast)
-      if t.kind != nkSym or sfDispatcher notin t.sym.flags:
-        methodDef(s.sons[0].sym, false)
+      when false:
+        let t = lastSon(s.sons[0].sym.ast)
+        if t.kind != nkSym or sfDispatcher notin t.sym.flags:
+          methodDef(s.sons[0].sym, false)
       result = methodCall(s).PTransNode
     else:
       result = s.PTransNode
+
+proc transformExceptBranch(c: PTransf, n: PNode): PTransNode =
+  result = transformSons(c, n)
+  if n[0].isInfixAs():
+    let excTypeNode = n[0][1]
+    let actions = newTransNode(nkStmtList, n[1].info, 2)
+    # Generating `let exc = (excType)(getCurrentException())`
+    # -> getCurrentException()
+    let excCall = PTransNode(callCodegenProc("getCurrentException", ast.emptyNode))
+    # -> (excType)
+    let convNode = newTransNode(nkHiddenSubConv, n[1].info, 2)
+    convNode[0] = PTransNode(ast.emptyNode)
+    convNode[1] = excCall
+    PNode(convNode).typ = excTypeNode.typ.toRef()
+    # -> let exc = ...
+    let identDefs = newTransNode(nkIdentDefs, n[1].info, 3)
+    identDefs[0] = PTransNode(n[0][2])
+    identDefs[1] = PTransNode(ast.emptyNode)
+    identDefs[2] = convNode
+
+    let letSection = newTransNode(nkLetSection, n[1].info, 1)
+    letSection[0] = identDefs
+    # Place the let statement and body of the 'except' branch into new stmtList.
+    actions[0] = letSection
+    actions[1] = transformSons(c, n[1])
+    # Overwrite 'except' branch body with our stmtList.
+    result[1] = actions
+
+    # Replace the `Exception as foobar` with just `Exception`.
+    result[0] = result[0][1]
 
 proc dontInlineConstant(orig, cnst: PNode): bool {.inline.} =
   # symbols that expand to a complex constant (array, etc.) should not be
@@ -820,7 +861,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
   of nkConstSection:
     # do not replace ``const c = 3`` with ``const 3 = 3``
     return transformConstSection(c, n)
-  of nkTypeSection:
+  of nkTypeSection, nkTypeOfExpr:
     # no need to transform type sections:
     return PTransNode(n)
   of nkVarSection, nkLetSection:
@@ -835,7 +876,12 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     else:
       result = transformSons(c, n)
   of nkIdentDefs, nkConstDef:
-    result = transformSons(c, n)
+    when true:
+      result = transformSons(c, n)
+    else:
+      result = n.PTransNode
+      let L = n.len-1
+      result[L] = transform(c, n.sons[L])
     # XXX comment handling really sucks:
     if importantComments():
       PNode(result).comment = n.comment
@@ -847,10 +893,13 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     if a.kind == nkSym:
       n.sons[1] = transformSymAux(c, a)
     return PTransNode(n)
+  of nkExceptBranch:
+    result = transformExceptBranch(c, n)
   else:
     result = transformSons(c, n)
   when false:
     if oldDeferAnchor != nil: c.deferAnchor = oldDeferAnchor
+
   var cnst = getConstExpr(c.module, PNode(result))
   # we inline constants if they are not complex constants:
   if cnst != nil and not dontInlineConstant(n, cnst):

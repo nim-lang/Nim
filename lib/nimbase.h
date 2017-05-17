@@ -23,6 +23,30 @@ __clang__
 #ifndef NIMBASE_H
 #define NIMBASE_H
 
+/*------------ declaring a custom attribute to support using LLVM's Address Sanitizer ------------ */
+
+/*
+   This definition exists to provide support for using the LLVM ASAN (Address SANitizer) tooling with Nim. This
+   should only be used to mark implementations of the GC system that raise false flags with the ASAN tooling, or
+   for functions that are hot and need to be disabled for performance reasons. Based on the official ASAN
+   documentation, both the clang and gcc compilers are supported. In addition to that, a check is performed to
+   verify that the necessary attribute is supported by the compiler.
+
+   To flag a proc as ignored, append the following code pragma to the proc declaration:
+      {.codegenDecl: "CLANG_NO_SANITIZE_ADDRESS $# $#$#".}
+
+   For further information, please refer to the official documentation:
+     https://github.com/google/sanitizers/wiki/AddressSanitizer
+ */
+#define CLANG_NO_SANITIZE_ADDRESS
+#if defined(__clang__)
+#  if __has_attribute(no_sanitize_address)
+#    undef CLANG_NO_SANITIZE_ADDRESS
+#    define CLANG_NO_SANITIZE_ADDRESS __attribute__((no_sanitize_address))
+#  endif
+#endif
+
+
 /* ------------ ignore typical warnings in Nim-generated files ------------- */
 #if defined(__GNUC__) || defined(__clang__)
 #  pragma GCC diagnostic ignored "-Wpragmas"
@@ -39,6 +63,8 @@ __clang__
 #  pragma GCC diagnostic ignored "-Wswitch-bool"
 #  pragma GCC diagnostic ignored "-Wmacro-redefined"
 #  pragma GCC diagnostic ignored "-Wincompatible-pointer-types-discards-qualifiers"
+#  pragma GCC diagnostic ignored "-Wpointer-bool-conversion"
+#  pragma GCC diagnostic ignored "-Wconstant-conversion"
 #endif
 
 #if defined(_MSC_VER)
@@ -95,7 +121,7 @@ __clang__
   NIM_THREADVAR declaration based on
   http://stackoverflow.com/questions/18298280/how-to-declare-a-variable-as-thread-local-portably
 */
-#if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
 #  define NIM_THREADVAR _Thread_local
 #elif defined _WIN32 && ( \
        defined _MSC_VER || \
@@ -402,16 +428,29 @@ struct TFrame {
   NI16 calldepth;
 };
 
-#define nimfr(proc, file) \
-  TFrame FR; \
-  FR.procname = proc; FR.filename = file; FR.line = 0; FR.len = 0; nimFrame(&FR);
+#ifdef NIM_NEW_MANGLING_RULES
+  #define nimfr_(proc, file) \
+    TFrame FR_; \
+    FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = 0; nimFrame(&FR_);
 
-#define nimfrs(proc, file, slots, length) \
-  struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; VarSlot s[slots];} FR; \
-  FR.procname = proc; FR.filename = file; FR.line = 0; FR.len = length; nimFrame((TFrame*)&FR);
+  #define nimfrs_(proc, file, slots, length) \
+    struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; VarSlot s[slots];} FR_; \
+    FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = length; nimFrame((TFrame*)&FR_);
 
-#define nimln(n, file) \
-  FR.line = n; FR.filename = file;
+  #define nimln_(n, file) \
+    FR_.line = n; FR_.filename = file;
+#else
+  #define nimfr(proc, file) \
+    TFrame FR; \
+    FR.procname = proc; FR.filename = file; FR.line = 0; FR.len = 0; nimFrame(&FR);
+
+  #define nimfrs(proc, file, slots, length) \
+    struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; VarSlot s[slots];} FR; \
+    FR.procname = proc; FR.filename = file; FR.line = 0; FR.len = length; nimFrame((TFrame*)&FR);
+
+  #define nimln(n, file) \
+    FR.line = n; FR.filename = file;
+#endif
 
 #define NIM_POSIX_INIT  __attribute__((constructor))
 
@@ -458,6 +497,11 @@ typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == siz
 #  include <tool/gnu/toolMacros.h>
 #elif defined(__FreeBSD__)
 #  include <sys/types.h>
+#endif
+
+#if defined(__GENODE__)
+#include <libc/component.h>
+extern Libc::Env *genodeEnv;
 #endif
 
 /* Compile with -d:checkAbi and a sufficiently C11:ish compiler to enable */
