@@ -78,8 +78,10 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
                         [p.module.tmpBase, rope(id)])
     else:
       result = makeCString(n.strVal)
-  of nkFloatLit..nkFloat64Lit:
+  of nkFloatLit, nkFloat64Lit:
     result = rope(n.floatVal.toStrMaxPrecision)
+  of nkFloat32Lit:
+    result = rope(n.floatVal.toStrMaxPrecision("f"))
   else:
     internalError(n.info, "genLiteral(" & $n.kind & ')')
     result = nil
