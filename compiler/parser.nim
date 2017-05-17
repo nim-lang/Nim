@@ -1520,6 +1520,13 @@ proc parseGenericParam(p: var TParser): PNode =
   # progress guaranteed
   while true:
     case p.tok.tokType
+    of tkIn, tkOut:
+      let kind = if p.tok.tokType == tkIn: nkInTy
+                 else: nkOutTy
+      a = newNodeP(kind, p)
+      getTok(p)
+      expectIdent(p)
+      a.addSon(parseSymbol(p))
     of tkSymbol, tkAccent:
       a = parseSymbol(p)
       if a.kind == nkEmpty: return
@@ -1548,7 +1555,7 @@ proc parseGenericParamList(p: var TParser): PNode =
   getTok(p)
   optInd(p, result)
   # progress guaranteed
-  while p.tok.tokType in {tkSymbol, tkAccent}:
+  while p.tok.tokType in {tkSymbol, tkAccent, tkIn, tkOut}:
     var a = parseGenericParam(p)
     addSon(result, a)
     if p.tok.tokType notin {tkComma, tkSemiColon}: break

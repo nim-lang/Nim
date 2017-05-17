@@ -212,6 +212,8 @@ type
     nkIteratorTy,         # iterator type
     nkSharedTy,           # 'shared T'
                           # we use 'nkPostFix' for the 'not nil' addition
+    nkInTy,               # prefix `in` used to mark contravariant types
+    nkOutTy,              # prefix `out` used to mark covariant types
     nkEnumTy,             # enum body
     nkEnumFieldDef,       # `ident = expr` in an enumeration
     nkArgList,            # argument list
@@ -268,6 +270,9 @@ type
     sfDiscardable,    # returned value may be discarded implicitly
     sfOverriden,      # proc is overriden
     sfGenSym          # symbol is 'gensym'ed; do not add to symbol table
+    sfCovariant       # covariant generic param mimicing a ptr type
+    sfWeakCovariant   # covariant generic param mimicing a seq/array type
+    sfContravariant   # contravariant generic param
 
   TSymFlags* = set[TSymFlag]
 
@@ -1004,15 +1009,17 @@ proc add*(father, son: PNode) =
   if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
 
-proc `[]`*(n: PNode, i: int): PNode {.inline.} =
-  result = n.sons[i]
+type Indexable = PNode | PType
+
+template `[]`*(n: Indexable, i: int): Indexable =
+  n.sons[i]
 
 template `-|`*(b, s: untyped): untyped =
   (if b >= 0: b else: s.len + b)
 
 # son access operators with support for negative indices
-template `{}`*(n: PNode, i: int): untyped = n[i -| n]
-template `{}=`*(n: PNode, i: int, s: PNode) =
+template `{}`*(n: Indexable, i: int): untyped = n[i -| n]
+template `{}=`*(n: Indexable, i: int, s: Indexable) =
   n.sons[i -| n] = s
 
 when defined(useNodeIds):

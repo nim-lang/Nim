@@ -1584,10 +1584,25 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
                       # type for each generic param. the index
                       # of the parameter will be stored in the
                       # attached symbol.
+      var paramName = a.sons[j]
+      var covarianceFlag = sfPure
+
+      if paramName.kind in {nkInTy, nkOutTy}:
+        if not nimEnableCovariance or paramName.kind == nkInTy:
+          if father == nil or sfImportc notin father.sym.flags:
+            localError(paramName.info, errInOutFlagNotExtern,
+                       if paramName.kind == nkInTy: "in" else: "out")
+        covarianceFlag = if paramName.kind == nkInTy: sfContravariant
+                         else: sfCovariant
+        if father != nil: father.sym.flags.incl sfCovariant
+        paramName = paramName[0]
+
       var s = if finalType.kind == tyStatic or tfWildcard in typ.flags:
-          newSymG(skGenericParam, a.sons[j], c).linkTo(finalType)
+          newSymG(skGenericParam, paramName, c).linkTo(finalType)
         else:
-          newSymG(skType, a.sons[j], c).linkTo(finalType)
+          newSymG(skType, paramName, c).linkTo(finalType)
+
+      if covarianceFlag != sfPure: s.flags.incl(covarianceFlag)
       if def.kind != nkEmpty: s.ast = def
       if father != nil: addSonSkipIntLit(father, s.typ)
       s.position = result.len

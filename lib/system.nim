@@ -49,12 +49,24 @@ type
   cstring* {.magic: Cstring.} ## built-in cstring (*compatible string*) type
   pointer* {.magic: Pointer.} ## built-in pointer type, use the ``addr``
                               ## operator to get a pointer to a variable
+
+  typedesc* {.magic: TypeDesc.} ## meta type to denote a type description
+
 const
   on* = true    ## alias for ``true``
   off* = false  ## alias for ``false``
 
 {.push warning[GcMem]: off, warning[Uninit]: off.}
 {.push hints: off.}
+
+proc `or` *(a, b: typedesc): typedesc {.magic: "TypeTrait", noSideEffect.}
+  ## Constructs an `or` meta class
+
+proc `and` *(a, b: typedesc): typedesc {.magic: "TypeTrait", noSideEffect.}
+  ## Constructs an `and` meta class
+
+proc `not` *(a: typedesc): typedesc {.magic: "TypeTrait", noSideEffect.}
+  ## Constructs an `not` meta class
 
 type
   Ordinal* {.magic: Ordinal.}[T] ## Generic ordinal type. Includes integer,
@@ -66,11 +78,11 @@ type
   `ref`* {.magic: Pointer.}[T] ## built-in generic traced pointer type
 
   `nil` {.magic: "Nil".}
+
   expr* {.magic: Expr, deprecated.} ## meta type to denote an expression (for templates)
-                        ## **Deprecated** since version 0.15. Use ``untyped`` instead.
+    ## **Deprecated** since version 0.15. Use ``untyped`` instead.
   stmt* {.magic: Stmt, deprecated.} ## meta type to denote a statement (for templates)
     ## **Deprecated** since version 0.15. Use ``typed`` instead.
-  typedesc* {.magic: TypeDesc.} ## meta type to denote a type description
   void* {.magic: "VoidType".}   ## meta type to denote the absence of any type
   auto* {.magic: Expr.} ## meta type for automatic type determination
   any* = distinct auto ## meta type for any supported type
@@ -1332,6 +1344,7 @@ const
   hasThreadSupport = compileOption("threads") and not defined(nimscript)
   hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
   taintMode = compileOption("taintmode")
+  nimEnableCovariance* = defined(nimEnableCovariance) # or true
 
 when hasThreadSupport and defined(tcc) and not compileOption("tlsEmulation"):
   # tcc doesn't support TLS
