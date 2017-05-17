@@ -212,8 +212,6 @@ type
     nkIteratorTy,         # iterator type
     nkSharedTy,           # 'shared T'
                           # we use 'nkPostFix' for the 'not nil' addition
-    nkInTy,               # prefix `in` used to mark contravariant types
-    nkOutTy,              # prefix `out` used to mark covariant types
     nkEnumTy,             # enum body
     nkEnumFieldDef,       # `ident = expr` in an enumeration
     nkArgList,            # argument list
@@ -226,7 +224,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # already 32 flags!
+  TSymFlag* = enum    # already 33 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -270,9 +268,6 @@ type
     sfDiscardable,    # returned value may be discarded implicitly
     sfOverriden,      # proc is overriden
     sfGenSym          # symbol is 'gensym'ed; do not add to symbol table
-    sfCovariant       # covariant generic param mimicing a ptr type
-    sfWeakCovariant   # covariant generic param mimicing a seq/array type
-    sfContravariant   # contravariant generic param
 
   TSymFlags* = set[TSymFlag]
 
@@ -460,7 +455,7 @@ type
     nfBlockArg  # this a stmtlist appearing in a call (e.g. a do block)
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 30)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: beyond that)
     tfVarargs,        # procedure has C styled varargs
                       # tyArray type represeting a varargs list
     tfNoSideEffect,   # procedure type does not allow side effects
@@ -513,6 +508,9 @@ type
     tfTriggersCompileTime # uses the NimNode type which make the proc
                           # implicitly '.compiletime'
     tfRefsAnonObj     # used for 'ref object' and 'ptr object'
+    tfCovariant       # covariant generic param mimicing a ptr type
+    tfWeakCovariant   # covariant generic param mimicing a seq/array type
+    tfContravariant   # contravariant generic param
 
   TTypeFlags* = set[TTypeFlag]
 

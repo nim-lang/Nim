@@ -883,7 +883,7 @@ proc isCovariantPtr(c: var TCandidate, f, a: PType): bool =
     let body = f.base
     return body == a.base and
            a.sonsLen == 3 and
-           sfWeakCovariant notin body.sons[0].sym.flags and
+           tfWeakCovariant notin body.sons[0].flags and
            baseTypesCheck(f.sons[1], a.sons[1])
   else:
     return false
@@ -1302,22 +1302,22 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           result = typeRel(c, ff, aa, nextFlags)
           if result notin {isEqual, isGeneric}:
             if trNoCovariance notin flags and ff.kind == aa.kind:
-              let paramFlags = rootf.base.sons[i-1].sym.flags
+              let paramFlags = rootf.base.sons[i-1].flags
               hasCovariance =
-                if sfCovariant in paramFlags:
-                  if sfWeakCovariant in paramFlags:
+                if tfCovariant in paramFlags:
+                  if tfWeakCovariant in paramFlags:
                     isCovariantPtr(c, ff, aa)
                   else:
                     ff.kind notin {tyRef, tyPtr} and result == isSubtype
                 else:
-                  sfContravariant in paramFlags and
+                  tfContravariant in paramFlags and
                     typeRel(c, aa, ff) == isSubtype
               if hasCovariance:
                 continue
 
             return isNone
         if prev == nil: put(c, f, a)
-        result = if hasCovariance: isGeneric else: isGeneric
+        result = isGeneric
       else:
         let fKind = rootf.lastSon.kind
         if fKind in {tyAnd, tyOr}:

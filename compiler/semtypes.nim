@@ -1585,24 +1585,23 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
                       # of the parameter will be stored in the
                       # attached symbol.
       var paramName = a.sons[j]
-      var covarianceFlag = sfPure
+      var covarianceFlag = tfUnresolved
 
-      if paramName.kind in {nkInTy, nkOutTy}:
-        if not nimEnableCovariance or paramName.kind == nkInTy:
+      if paramName.safeLen == 2:
+        if not nimEnableCovariance or paramName[0].ident.s == "in":
           if father == nil or sfImportc notin father.sym.flags:
-            localError(paramName.info, errInOutFlagNotExtern,
-                       if paramName.kind == nkInTy: "in" else: "out")
-        covarianceFlag = if paramName.kind == nkInTy: sfContravariant
-                         else: sfCovariant
-        if father != nil: father.sym.flags.incl sfCovariant
-        paramName = paramName[0]
+            localError(paramName.info, errInOutFlagNotExtern, paramName[0].ident.s)
+        covarianceFlag = if paramName[0].ident.s == "in": tfContravariant
+                         else: tfCovariant
+        if father != nil: father.flags.incl tfCovariant
+        paramName = paramName[1]
 
       var s = if finalType.kind == tyStatic or tfWildcard in typ.flags:
           newSymG(skGenericParam, paramName, c).linkTo(finalType)
         else:
           newSymG(skType, paramName, c).linkTo(finalType)
 
-      if covarianceFlag != sfPure: s.flags.incl(covarianceFlag)
+      if covarianceFlag != tfUnresolved: s.typ.flags.incl(covarianceFlag)
       if def.kind != nkEmpty: s.ast = def
       if father != nil: addSonSkipIntLit(father, s.typ)
       s.position = result.len
