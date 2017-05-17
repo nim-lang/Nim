@@ -510,7 +510,21 @@ proc lispRepr*(n: NimNode): string {.compileTime, benign.} =
   add(result, ")")
 
 proc codeRepr*(n: NimNode): string {.compileTime, benign.} =
-  ## Convert the AST `n` to the code required to generate that AST.
+  ## Convert the AST `n` to the code required to generate that AST. So for example
+  ##
+  ## .. code-block:: nim
+  ##   codeRepr:
+  ##     echo "Hello world"
+  ##
+  ## Would output:
+  ##
+  ## .. code-block:: nim
+  ##   nnkStmtList.newTree(
+  ##     nnkCommand.newTree(
+  ##       newIdentNode(!"echo"),
+  ##       newLit("Hello world")
+  ##     )
+  ##   )
   ##
   ## See also `repr`, `treeRepr`, and `lispRepr`.
 
