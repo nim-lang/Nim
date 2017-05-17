@@ -1521,9 +1521,9 @@ proc parseGenericParam(p: var TParser): PNode =
   while true:
     case p.tok.tokType
     of tkIn, tkOut:
-      let kind = if p.tok.tokType == tkIn: nkInTy
-                 else: nkOutTy
-      a = newNodeP(kind, p)
+      let x = p.lex.cache.getIdent(if p.tok.tokType == tkIn: "in" else: "out")
+      a = newNodeP(nkPrefix, p)
+      a.addSon newIdentNodeP(x, p)
       getTok(p)
       expectIdent(p)
       a.addSon(parseSymbol(p))

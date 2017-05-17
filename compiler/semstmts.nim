@@ -758,7 +758,7 @@ proc checkCovariantParamsUsages(genericType: PType) =
 
     case t.kind
     of tyGenericParam:
-      t.sym.flags.incl sfWeakCovariant
+      t.flags.incl tfWeakCovariant
       return true
 
     of tyObject:
@@ -783,17 +783,17 @@ proc checkCovariantParamsUsages(genericType: PType) =
       for i in 1 .. <t.len:
         let param = t[i]
         if param.kind == tyGenericParam:
-          if sfCovariant in param.sym.flags:
-            let formalFlags = targetBody[i-1].sym.flags
-            if sfCovariant notin formalFlags:
+          if tfCovariant in param.flags:
+            let formalFlags = targetBody[i-1].flags
+            if tfCovariant notin formalFlags:
               error("covariant param '" & param.sym.name.s &
                     "' used in a non-covariant position")
-            elif sfWeakCovariant in formalFlags:
-              param.sym.flags.incl sfWeakCovariant
+            elif tfWeakCovariant in formalFlags:
+              param.flags.incl tfWeakCovariant
             result = true
-          elif sfContravariant in param.sym.flags:
+          elif tfContravariant in param.flags:
             let formalParam = targetBody[i-1].sym
-            if sfContravariant notin formalParam.flags:
+            if tfContravariant notin formalParam.typ.flags:
               error("contravariant param '" & param.sym.name.s &
                     "' used in a non-contravariant position")
             result = true
@@ -865,7 +865,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
         body.sym = s
         body.size = -1 # could not be computed properly
         s.typ.sons[sonsLen(s.typ) - 1] = body
-        if sfCovariant in s.flags:
+        if tfCovariant in s.typ.flags:
           checkCovariantParamsUsages(s.typ)
           # XXX: This is a temporary limitation:
           # The codegen currently produces various failures with
