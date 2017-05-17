@@ -227,3 +227,23 @@ when isMainModule:
     let x = parseJson("""{ "field": 5}""")
     let data = to(x, FooBar)
     doAssert data.field == 5.0
+
+  block:
+    type
+      BirdColor = object
+        name: string
+        rgb: array[3, float]
+
+    type
+      Bird = object
+        age: int
+        height: float
+        name: string
+        colors: array[2, BirdColor]
+
+    var red = BirdColor(name: "red", rgb: [1.0, 0.0, 0.0])
+    var blue = Birdcolor(name: "blue", rgb: [0.0, 0.0, 1.0])
+    var b = Bird(age: 3, height: 1.734, name: "bardo", colors: [red, blue])
+    let jnode = %b
+    let data = jnode.to(Bird)
+    doAssert data == b
