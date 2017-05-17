@@ -306,7 +306,6 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
             " proc/method definition or lambda node expected.")
 
   let prcName = prc.name.getName
-  hint("Processing " & prcName & " as an async proc.")
 
   let returnType = prc.params[0]
   var baseType: NimNode
@@ -527,8 +526,6 @@ macro multisync*(prc: untyped): untyped =
   ##
   ## The generated async procedures use the ``async`` macro, whereas the
   ## generated synchronous procedures simply strip off the ``await`` calls.
-  hint("Processing " & prc[0].getName & " as a multisync proc.")
-
   let (sync, asyncPrc) = splitProc(prc)
   result = newStmtList()
   result.add(asyncSingleProc(asyncPrc))
