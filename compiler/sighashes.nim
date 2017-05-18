@@ -154,7 +154,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     else:
       c.hashSym(t.sym)
     return
-  of tyAlias, tyGenericInst:
+  of tyAlias, tyGenericInst, tyUserTypeClasses:
     c.hashType t.lastSon, flags
     return
   else:
@@ -201,16 +201,6 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
   of tyRef, tyPtr, tyGenericBody, tyVar:
     c.hashType t.lastSon, flags
     if tfVarIsPtr in t.flags: c &= ".varisptr"
-  of tyUserTypeClass:
-    if t.sym != nil and t.sym.owner != nil:
-      c &= t.sym.owner.name.s
-    else:
-      c &= "unknown typeclass"
-  of tyUserTypeClassInst:
-    let body = t.sons[0]
-    c.hashSym body.sym
-    for i in countup(1, sonsLen(t) - 2):
-      c.hashType t.sons[i], flags
   of tyFromExpr, tyFieldAccessor:
     c.hashTree(t.n)
   of tyTuple:

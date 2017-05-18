@@ -429,7 +429,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
   for i in 1..sonsLen(n)-1:
     let formal = s.ast.sons[genericParamsPos].sons[i-1].typ
     let arg = n[i].typ
-    let tm = typeRel(m, formal, arg, true)
+    let tm = typeRel(m, formal, arg)
     if tm in {isNone, isConvertible}: return nil
   var newInst = generateInstance(c, s, m.bindings, n.info)
   newInst.typ.flags.excl tfUnresolved

@@ -70,6 +70,8 @@ proc debug*(n: PNode) {.deprecated.}
 template mdbg*: bool {.dirty.} =
   when compiles(c.module):
     c.module.fileIdx == gProjectMainIdx
+  elif compiles(c.c.module):
+    c.c.module.fileIdx == gProjectMainIdx
   elif compiles(m.c.module):
     m.c.module.fileIdx == gProjectMainIdx
   elif compiles(cl.c.module):
@@ -79,6 +81,8 @@ template mdbg*: bool {.dirty.} =
       p.lex.fileIdx == gProjectMainIdx
     else:
       p.module.module.fileIdx == gProjectMainIdx
+  elif compiles(m.module.fileIdx):
+    m.module.fileIdx == gProjectMainIdx
   elif compiles(L.fileIdx):
     L.fileIdx == gProjectMainIdx
   else:

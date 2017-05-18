@@ -421,14 +421,7 @@ proc winReleaseArch(arch: string) =
     # determine which mingw link to put in the NSIS installer.
     nimexec "c --out:koch_temp --cpu:$# koch" % cpu
     exec "koch_temp boot -d:release --cpu:$#" % cpu
-    exec "koch_temp nsis -d:release"
     exec "koch_temp zip -d:release"
-
-    when false:
-      # we now disable the NSIS installer as it cannot download from https
-      # and is broken in so many different ways it's not funny anymore:
-      moveFile r"build\nim_$#.exe" % VersionAsString,
-               r"web\upload\download\nim-$#_x$#.exe" % [VersionAsString, arch]
     moveFile r"build\nim-$#.zip" % VersionAsString,
              r"web\upload\download\nim-$#_x$#.zip" % [VersionAsString, arch]
 

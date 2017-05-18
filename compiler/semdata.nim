@@ -277,6 +277,10 @@ proc makeTypeFromExpr*(c: PContext, n: PNode): PType =
   assert n != nil
   result.n = n
 
+proc newTypeWithSons2*(kind: TTypeKind, owner: PSym, sons: seq[PType]): PType =
+  result = newType(kind, owner)
+  result.sons = sons
+
 proc newTypeWithSons*(c: PContext, kind: TTypeKind,
                       sons: seq[PType]): PType =
   result = newType(kind, getCurrOwner(c))

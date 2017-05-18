@@ -1608,7 +1608,7 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
       result = processType(newIdentNode(typeName), obj, jsonNode, true)
     of "seq":
       let seqT = typeSym[1]
-      let forLoopI = newIdentNode("i")
+      let forLoopI = genSym(nskForVar, "i")
       let indexerNode = createJsonIndexer(jsonNode, forLoopI)
       let constructorNode = createConstructor(seqT, indexerNode)
 
@@ -1616,12 +1616,25 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
       result = quote do:
         (
           var list: `typeSym` = @[];
-          # if `jsonNode`.kind != JArray:
-          #   # TODO: Improve error message.
-          #   raise newException(ValueError, "Expected a list")
+          verifyJsonKind(`jsonNode`, {JArray}, astToStr(`jsonNode`));
           for `forLoopI` in 0 .. <`jsonNode`.len: list.add(`constructorNode`);
           list
         )
+    of "array":
+      let arrayT = typeSym[2]
+      let forLoopI = genSym(nskForVar, "i")
+      let indexerNode = createJsonIndexer(jsonNode, forLoopI)
+      let constructorNode = createConstructor(arrayT, indexerNode)
+
+      # Create a statement expression containing a for loop.
+      result = quote do:
+        (
+          var list: `typeSym`;
+          verifyJsonKind(`jsonNode`, {JArray}, astToStr(`jsonNode`));
+          for `forLoopI` in 0 .. <`jsonNode`.len: list[`forLoopI`] =`constructorNode`;
+          list
+        )
+
     else:
       # Generic type.
       let obj = getType(typeSym)

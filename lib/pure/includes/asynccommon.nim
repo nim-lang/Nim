@@ -3,7 +3,7 @@ template newAsyncNativeSocketImpl(domain, sockType, protocol) =
   if handle == osInvalidSocket:
     raiseOSError(osLastError())
   handle.setBlocking(false)
-  when defined(macosx):
+  when defined(macosx) and not defined(nimdoc):
     handle.setSockOptInt(SOL_SOCKET, SO_NOSIGPIPE, 1)
   result = handle.AsyncFD
   register(result)

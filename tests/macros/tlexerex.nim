@@ -1,8 +1,7 @@
-
 import macros
 
-macro match*(s: cstring|string; pos: int; sections: untyped): untyped =
-  for sec in sections.children:
+macro match*(s: cstring|string; pos: int; sections: varargs[untyped]): untyped =
+  for sec in sections:
     expectKind sec, nnkOfBranch
     expectLen sec, 2
   result = newStmtList()

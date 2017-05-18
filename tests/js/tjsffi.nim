@@ -1,5 +1,5 @@
 discard """
-  output: '''true
+output: '''
 true
 true
 true
@@ -14,10 +14,18 @@ true
 true
 true
 true
-true'''
+true
+true
+3
+2
+12
+Event { name: 'click: test' }
+Event { name: 'reloaded: test' }
+Event { name: 'updates: test' }
+'''
 """
 
-import macros, jsffi
+import macros, jsffi, jsconsole
 
 # Tests for JsObject
 # Test JsObject []= and []
@@ -55,8 +63,8 @@ block:
 block:
   proc test(): bool =
     let obj = newJsObject()
-    obj.`?!$` = proc(x, y, z: int, t: string): string = t & $(x + y + z)
-    obj.`?!$`(1, 2, 3, "Result is: ").to(string) == "Result is: 6"
+    obj.`?!$` = proc(x, y, z: int, t: cstring): cstring = t & $(x + y + z)
+    obj.`?!$`(1, 2, 3, "Result is: ").to(cstring) == "Result is: 6"
   echo test()
 
 # Test JsObject []()
@@ -265,3 +273,47 @@ block:
     let obj = TestObject(a: 9, onWhatever: bindMethod(handleWhatever))
     obj.onWhatever(1) == 10
   echo test()
+
+block:
+  {.emit: "function jsProc(n) { return n; }" .}
+  proc jsProc(x: int32): JsObject {.importc: "jsProc".}
+
+  proc test() =
+    var x = jsProc(1)
+    var y = jsProc(2)
+    console.log x + y
+    console.log ++x
+
+    x += jsProc(10)
+    console.log x
+
+  test()
+
+import macros
+
+block:
+  {.emit:
+  """
+  function Event(name) { this.name = name; }
+  function on(eventName, eventHandler) { eventHandler(new Event(eventName + ": test")); }
+  var jslib = { "on": on, "subscribe": on };
+  """
+  .}
+
+  type Event = object
+    name: cstring
+
+  proc on(event: cstring, handler: proc) {.importc: "on".}
+  var jslib {.importc: "jslib", nodecl.}: JsObject
+
+  on("click") do (e: Event):
+    console.log e
+
+  jslib.on "reloaded" do:
+    console.log jsarguments[0]
+
+  # this test case is different from the above, because
+  # `subscribe` is not overloaded in the current scope
+  jslib.subscribe "updates":
+    console.log jsarguments[0]
+
