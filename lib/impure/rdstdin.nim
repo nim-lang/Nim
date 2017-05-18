@@ -100,12 +100,17 @@ when defined(Windows):
     stdout.write "\n"
 
 else:
-  import linenoise, termios
+  import linenoise, termios, posix
 
   proc readLineFromStdin*(prompt: string): TaintedString {.
                           tags: [ReadIOEffect, WriteIOEffect].} =
+    errno = 0
     var buffer = linenoise.readLine(prompt)
     if isNil(buffer):
+      # linenoise eats SIGINT and sets errno to EAGAIN, therefore reraise SIGINT.
+      if errno == EAGAIN:
+        discard `raise`(SIGINT)
+        errno = 0
       raise newException(IOError, "Linenoise returned nil")
     result = TaintedString($buffer)
     if result.string.len > 0:
@@ -114,8 +119,13 @@ else:
 
   proc readLineFromStdin*(prompt: string, line: var TaintedString): bool {.
                           tags: [ReadIOEffect, WriteIOEffect].} =
+    errno = 0
     var buffer = linenoise.readLine(prompt)
     if isNil(buffer):
+      # linenoise eats SIGINT and sets errno to EAGAIN, therefore reraise SIGINT.
+      if errno == EAGAIN:
+        discard `raise`(SIGINT)
+        errno = 0
       line.string.setLen(0)
       return false
     line = TaintedString($buffer)
