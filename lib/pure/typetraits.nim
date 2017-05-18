@@ -34,10 +34,10 @@ proc `$`*(t: typedesc): string =
   name(t)
 
 proc arity*(t: typedesc): int {.magic: "TypeTrait".}
-  ## Returns the arity of the given type
+  ## Return the arity of the given type
 
 proc genericHead*(t: typedesc): typedesc {.magic: "TypeTrait".}
-  ## Accepts an instantiated generic type and returns its
+  ## Accept an instantiated generic type and return its
   ## uninstantiated form.
   ##
   ## For example:
