@@ -2047,6 +2047,14 @@ proc clamp*[T](x, a, b: T): T =
   if x > b: return b
   return x
 
+proc len*[T: Ordinal](x: Slice[T]): int {.noSideEffect, inline.} =
+  ## length of ordinal slice, when x.b < x.a returns zero length
+  ##
+  ## .. code-block:: Nim
+  ##   assert((0..5).len == 6)
+  ##   assert((5..2).len == 0)
+  result = max(0, ord(x.b) - ord(x.a) + 1)
+
 iterator items*[T](a: openArray[T]): T {.inline.} =
   ## iterates over each item of `a`.
   var i = 0
