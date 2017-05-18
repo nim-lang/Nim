@@ -152,6 +152,10 @@ proc tryExec(cmd: string): bool =
 proc safeRemove(filename: string) =
   if existsFile(filename): removeFile(filename)
 
+proc overwriteFile(source, dest: string) =
+  safeRemove(dest)
+  moveFile(source, dest)
+
 proc copyExe(source, dest: string) =
   safeRemove(dest)
   copyFile(dest=dest, source=source)
@@ -388,33 +392,17 @@ proc clean(args: string) =
 
 # -------------- builds a release ---------------------------------------------
 
-proc patchConfig(lookFor, replaceBy: string) =
-  const
-    cfgFile = "config/nim.cfg"
-  try:
-    let cfg = readFile(cfgFile)
-    let newCfg = cfg.replace(lookFor, replaceBy)
-    if newCfg == cfg:
-      echo "Could not patch 'config/nim.cfg' [Error]"
-      echo "Reason: patch substring not found:"
-      echo lookFor
-    else:
-      writeFile(cfgFile, newCfg)
-  except IOError:
-    quit "Could not access 'config/nim.cfg' [Error]"
-
 proc winReleaseArch(arch: string) =
   doAssert arch in ["32", "64"]
   let cpu = if arch == "32": "i386" else: "amd64"
 
   template withMingw(path, body) =
-    const orig = """#gcc.path = r"$nim\dist\mingw\bin""""
-    let replacePattern = """gcc.path = r"..\mingw$1\bin" # winrelease""" % arch
-    patchConfig(orig, replacePattern)
+    let prevPath = getEnv("PATH")
+    putEnv("PATH", path & PathSep & prevPath)
     try:
       body
     finally:
-      patchConfig(replacePattern, orig)
+      putEnv("PATH", prevPath)
 
   withMingw r"..\mingw" & arch & r"\bin":
     # Rebuilding koch is necessary because it uses its pointer size to
@@ -422,7 +410,7 @@ proc winReleaseArch(arch: string) =
     nimexec "c --out:koch_temp --cpu:$# koch" % cpu
     exec "koch_temp boot -d:release --cpu:$#" % cpu
     exec "koch_temp zip -d:release"
-    moveFile r"build\nim-$#.zip" % VersionAsString,
+    overwriteFile r"build\nim-$#.zip" % VersionAsString,
              r"web\upload\download\nim-$#_x$#.zip" % [VersionAsString, arch]
 
 proc winRelease() =
@@ -431,8 +419,8 @@ proc winRelease() =
     web(gaCode)
     withDir "web/upload/" & VersionAsString:
       exec "7z a -tzip docs-$#.zip *.html" % VersionAsString
-    moveFile "web/upload/$1/docs-$1.zip" % VersionAsString,
-             "web/upload/download/docs-$1.zip" % VersionAsString
+    overwriteFile "web/upload/$1/docs-$1.zip" % VersionAsString,
+                  "web/upload/download/docs-$1.zip" % VersionAsString
   when true:
     csource("-d:release")
   when true:
