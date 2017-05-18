@@ -1047,6 +1047,17 @@ there is a difference between the ``$`` and ``repr`` outputs:
   # --> 3.1400000000000001e+00:3.1400000000000001e+00
 
 
+Type descriptions
+-----------------
+
+To print a typedesc, first ``import typetraits``:
+
+.. code-block: nim
+  import typetraits
+  echo type(42)
+  # --> int
+
+
 Advanced types
 ==============
 
