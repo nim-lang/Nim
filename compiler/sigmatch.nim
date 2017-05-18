@@ -1366,12 +1366,17 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     elif x.kind == tyGenericInst and
           ((f.sons[0] == x.sons[0]) or isGenericSubType(c, x, f, depth)) and
           (sonsLen(x) - 1 == sonsLen(f)):
-      for i in countup(1, sonsLen(f) - 1):
-        if x.sons[i].kind == tyGenericParam:
-          internalError("wrong instantiated type!")
-        elif typeRel(c, f.sons[i], x.sons[i]) <= isSubtype:
-          # Workaround for regression #4589
-          if f.sons[i].kind != tyTypeDesc: return
+
+      if depth > 0:
+        discard isGenericSubType(c, x, f, depth, f)
+      else:
+        for i in countup(1, sonsLen(f) - 1):
+          if x.sons[i].kind == tyGenericParam:
+            internalError("wrong instantiated type!")
+          elif typeRel(c, f.sons[i], x.sons[i]) <= isSubtype:
+            # Workaround for regression #4589
+            if f.sons[i].kind != tyTypeDesc: return
+
       c.inheritancePenalty += depth
       result = isGeneric
     else:
