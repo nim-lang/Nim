@@ -19,8 +19,6 @@ proc name*(t: typedesc): string {.magic: "TypeTrait".}
   ##
   ##   import typetraits
   ##
-  ##   proc `$`*(T: typedesc): string = name(T)
-  ##
   ##   template test(x): stmt =
   ##     echo "type: ", type(x), ", value: ", x
   ##
@@ -30,6 +28,10 @@ proc name*(t: typedesc): string {.magic: "TypeTrait".}
   ##   # --> type: string, value: Foo
   ##   test(@['A','B'])
   ##   # --> type: seq[char], value: @[A, B]
+
+proc `$`*(t: typedesc): string =
+  ## Stringify a type, so that "echo type(42)" will work
+  name(t)
 
 proc arity*(t: typedesc): int {.magic: "TypeTrait".}
   ## Returns the arity of the given type
@@ -49,3 +51,11 @@ proc stripGenericParams*(t: typedesc): typedesc {.magic: "TypeTrait".}
   ## This trait is similar to `genericHead`, but instead of producing
   ## error for non-generic types, it will just return them unmodified
 
+when isMainModule:
+  block:
+    # echo type(42)
+    import streams
+    var ss = newStringStream()
+    ss.write($type(42)) # needs `$`
+    ss.setPosition(0)
+    doAssert ss.readAll() == "int"
