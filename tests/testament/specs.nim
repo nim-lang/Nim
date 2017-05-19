@@ -52,6 +52,7 @@ type
     exitCode*: int
     msg*: string
     ccodeCheck*: string
+    maxCodeSize*: int
     err*: TResultEnum
     substr*, sortoutput*: bool
     targets*: set[TTarget]
@@ -109,6 +110,7 @@ proc specDefaults*(result: var TSpec) =
   result.tfile = ""
   result.tline = 0
   result.tcolumn = 0
+  result.maxCodeSize = 0
 
 proc parseTargets*(value: string): set[TTarget] =
   for v in value.normalize.split:
@@ -180,6 +182,7 @@ proc parseSpec*(filename: string): TSpec =
       else:
         result.cmd = e.value
     of "ccodecheck": result.ccodeCheck = e.value
+    of "maxcodesize": discard parseInt(e.value, result.maxCodeSize)
     of "target", "targets":
       for v in e.value.normalize.split:
         case v
