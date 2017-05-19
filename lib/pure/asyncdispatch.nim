@@ -1307,7 +1307,7 @@ proc recvLine*(socket: AsyncFD): Future[string] {.async, deprecated.} =
   ##
   ## **Deprecated since version 0.15.0**: Use ``asyncnet.recvLine()`` instead.
 
-  template addNLIfEmpty(): stmt =
+  template addNLIfEmpty(): untyped =
     if result.len == 0:
       result.add("\c\L")
 

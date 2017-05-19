@@ -10,7 +10,7 @@ OK
 import macros
 
 # Bug from the forum
-macro addEcho1(s: untyped): stmt =
+macro addEcho1(s: untyped): untyped =
   s.body.add(newCall("echo", newStrLitNode("OK")))
   result = s
 
@@ -32,7 +32,7 @@ proc foo(): seq[NimNode] {.compiletime.} =
   result.add test()
   result.add parseExpr("echo(5+56)")
 
-macro bar(): stmt =
+macro bar() =
   result = newNimNode(nnkStmtList)
   let x = foo()
   for xx in x:

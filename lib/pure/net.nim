@@ -797,7 +797,7 @@ when false: #defineSsl:
     ##
     ## ``AcceptNoClient`` will be returned when no client is currently attempting
     ## to connect.
-    template doHandshake(): stmt =
+    template doHandshake(): untyped =
       when defineSsl:
         if server.isSSL:
           client.setBlocking(false)

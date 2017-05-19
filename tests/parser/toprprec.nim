@@ -4,9 +4,11 @@ discard """
 """
 # Test operator precedence:
 
-template `@` (x: expr): expr {.immediate.} = self.x
-template `@!` (x: expr): expr {.immediate.} = x
-template `===` (x: expr): expr {.immediate.} = x
+template `@` (x: untyped): untyped =
+  `self`.x
+
+template `@!` (x: untyped): untyped = x
+template `===` (x: untyped): untyped = x
 
 type
   TO = object
@@ -14,7 +16,7 @@ type
   TA = tuple[a, b: int, obj: TO]
 
 proc init(self: var TA): string =
-  @a = 3
+  (@a) = 3
   === @b = 4
   @obj.x = 4
   @! === result = "abc"
@@ -34,6 +36,3 @@ var s: TA
 assert init(s) == "4"
 
 echo "done"
-
-
-

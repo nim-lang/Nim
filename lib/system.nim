@@ -79,10 +79,11 @@ type
 
   `nil` {.magic: "Nil".}
 
-  expr* {.magic: Expr, deprecated.} ## meta type to denote an expression (for templates)
-    ## **Deprecated** since version 0.15. Use ``untyped`` instead.
-  stmt* {.magic: Stmt, deprecated.} ## meta type to denote a statement (for templates)
-    ## **Deprecated** since version 0.15. Use ``typed`` instead.
+  #expr* {.magic: Expr, deprecated.} ## meta type to denote an expression (for templates)
+  ## **Deprecated** since version 0.15. Use ``untyped`` instead.
+  #stmt* {.magic: Stmt, deprecated.} ## meta type to denote a statement (for templates)
+  ## **Deprecated** since version 0.15. Use ``typed`` instead.
+
   void* {.magic: "VoidType".}   ## meta type to denote the absence of any type
   auto* {.magic: Expr.} ## meta type for automatic type determination
   any* = distinct auto ## meta type for any supported type

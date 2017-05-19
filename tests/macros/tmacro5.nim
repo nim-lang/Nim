@@ -3,7 +3,7 @@ import macros,json
 var decls{.compileTime.}: seq[NimNode] = @[]
 var impls{.compileTime.}: seq[NimNode] = @[]
 
-macro importImpl_forward(name, returns): stmt {.immediate.} =
+macro importImpl_forward(name, returns: untyped): untyped =
   result = newNimNode(nnkEmpty)
   var func_name = newNimNode(nnkAccQuoted)
   func_name.add newIdentNode("import")
