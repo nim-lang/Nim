@@ -44,7 +44,7 @@ proc computeSubObjectAlign(n: PNode): BiggestInt =
   else:
     result = 1
 
-proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt): tuple[offset, align: BiggestInt] =
+proc computeObjectOffsetsFoldFunction(n: PNode, initialOffset: BiggestInt): tuple[offset, align: BiggestInt] =
   ## ``offset`` is the offset within the object, after the node has been written, no padding bytes added
   ## ``align`` maximum alignment from all sub nodes
 
@@ -53,7 +53,7 @@ proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt): tuple[o
   of nkRecCase:
 
     assert(n.sons[0].kind == nkSym)
-    let (kindOffset, kindAlign) = computeObjectOffsetsRecursive(n.sons[0], initialOffset)
+    let (kindOffset, kindAlign) = computeObjectOffsetsFoldFunction(n.sons[0], initialOffset)
 
     var maxChildAlign: BiggestInt = 0
 
@@ -71,14 +71,14 @@ proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt): tuple[o
 
         maxChildAlign = max(maxChildAlign, align)
       else:
-        internalError("computeObjectOffsetsRecursive(record case branch)")
+        internalError("computeObjectOffsetsFoldFunction(record case branch)")
 
     # the union neds to be aligned first, before the offsets can be assigned
     let kindUnionOffset = align(kindOffset, maxChildAlign)
 
     var maxChildOffset: BiggestInt = 0
     for i in 1 ..< sonsLen(n):
-      let (offset, align) = computeObjectOffsetsRecursive(n.sons[i].lastSon, kindUnionOffset)
+      let (offset, align) = computeObjectOffsetsFoldFunction(n.sons[i].lastSon, kindUnionOffset)
       maxChildOffset = max(maxChildOffset, offset)
 
     result.align = max(kindAlign, maxChildAlign)
@@ -91,7 +91,7 @@ proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt): tuple[o
     var offset = initialOffset
 
     for i, child in n.sons:
-      let (new_offset, align) = computeObjectOffsetsRecursive(child, offset)
+      let (new_offset, align) = computeObjectOffsetsFoldFunction(child, offset)
 
       if new_offset < 0:
         result.offset  = new_offset
@@ -117,29 +117,42 @@ proc computeObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt): tuple[o
     result.align = 1
     result.offset  = szNonConcreteType
 
-proc computePackedObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt): BiggestInt =
+
+var recDepth = 0
+proc computePackedObjectOffsetsFoldFunction(n: PNode, initialOffset: BiggestInt, debug : bool): BiggestInt =
   ## ``result`` is the offset within the object, after the node has been written, no padding bytes added
+  recDepth += 1
+  defer:
+    recDepth -= 1
+
+  if debug:
+    if n.kind == nkSym:
+      echo repeat("--", recDepth) & "> ", initialOffset, "  ", n.kind, "  ", n.sym.name.s
+    else:
+      echo repeat("--", recDepth) & "> ", initialOffset, "  ", n.kind
+
   case n.kind
   of nkRecCase:
 
     assert(n.sons[0].kind == nkSym)
-    let kindOffset = computePackedObjectOffsetsRecursive(n.sons[0], initialOffset)
+    let kindOffset = computePackedObjectOffsetsFoldFunction(n.sons[0], initialOffset, debug)
     # the union neds to be aligned first, before the offsets can be assigned
     let kindUnionOffset = kindOffset
 
-    var maxChildOffset: BiggestInt = 0
+    var maxChildOffset: BiggestInt = kindUnionOffset
     for i in 1 ..< sonsLen(n):
-      let offset = computePackedObjectOffsetsRecursive(n.sons[i].lastSon, kindUnionOffset)
+      let offset = computePackedObjectOffsetsFoldFunction(n.sons[i].lastSon, kindUnionOffset, debug)
       maxChildOffset = max(maxChildOffset, offset)
 
+    if debug:
+      echo repeat("  ", recDepth), "result: ", maxChildOffset
+
     result  = maxChildOffset
-
-
 
   of nkRecList:
     result = initialOffset
     for i, child in n.sons:
-      result = computePackedObjectOffsetsRecursive(child, result)
+      result = computePackedObjectOffsetsFoldFunction(child, result, debug)
       if result < 0:
         break
 
@@ -155,7 +168,6 @@ proc computePackedObjectOffsetsRecursive(n: PNode, initialOffset: BiggestInt): B
 
 proc computeSizeAlign(typ: PType): void =
   ## computes and sets ``size`` and ``align`` members of ``typ``
-
 
   if typ.size >= 0:
     # nothing to do, size already computed
@@ -318,18 +330,21 @@ proc computeSizeAlign(typ: PType): void =
       headerSize  = 0
       headerAlign = 1
 
+    if tfPacked in typ.flags and typ.sym.name.s == "RecursiveStuff":
+      debug typ
+
     let (offset, align) =
       if tfPacked in typ.flags:
-        (computePackedObjectOffsetsRecursive(typ.n, headerSize), BiggestInt(1))
+        (computePackedObjectOffsetsFoldFunction(typ.n, headerSize, tfPacked in typ.flags and typ.sym.name.s == "RecursiveStuff"), BiggestInt(1))
       else:
-        computeObjectOffsetsRecursive(typ.n, headerSize)
+        computeObjectOffsetsFoldFunction(typ.n, headerSize)
 
     if offset < 0:
       typ.size = offset
       typ.align = int16(align)
       return
 
-    # header size is already in size from computeObjectOffsetsRecursive
+    # header size is already in size from computeObjectOffsetsFoldFunction
     # maxAlign is probably not changed at all from headerAlign
 
     if tfPacked in typ.flags:

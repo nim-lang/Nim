@@ -160,19 +160,22 @@ type
     cause: int64
 
   RecursiveStuff {.objectconfig.} = object
-    case kind: MyEnum
-    of MyEnum.ValueA:
-      a: int16
-    of MyEnum.ValueB:
-      b: int32
-    of MyEnum.ValueC:
-      case kind2: MyEnum
-      of MyEnum.ValueA:
-        ca1, ca2: int16
-      of MyEnum.ValueB:
-        cb: int32
-      of MyEnum.ValueC:
-        cc: int64
+    case kind: MyEnum    # packedOffset:    0
+    of MyEnum.ValueA:    # packedOffset:
+      a: int16           # packedOffset:    1
+    of MyEnum.ValueB:    # packedOffset:
+      b: int32           # packedOffset:    1
+    of MyEnum.ValueC:    # packedOffset:
+      case kind2: MyEnum # packedOffset:    1
+      of MyEnum.ValueA:  # packedOffset:
+        ca1: int8
+        ca2: int32
+      of MyEnum.ValueB:  # packedOffset:
+        cb: int32        # packedOffset:    2
+      of MyEnum.ValueC:  # packedOffset:
+        cc: int64        # packedOffset:    2
+      d1: int8
+      d2: int64
 
   Foobar {.objectconfig.} = object
     case kind: OtherEnum
@@ -274,6 +277,8 @@ proc main(): void =
   testOffsetOf(RecursiveStuff, kindU.S3.kind2U.S1.ca2, ca2)
   testOffsetOf(RecursiveStuff, kindU.S3.kind2U.S2.cb,  cb)
   testOffsetOf(RecursiveStuff, kindU.S3.kind2U.S3.cc,  cc)
+  testOffsetOf(RecursiveStuff, kindU.S3.d1,            d1)
+  testOffsetOf(RecursiveStuff, kindU.S3.d2,            d2)
 
 
 main()
