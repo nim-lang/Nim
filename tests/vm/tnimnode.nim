@@ -72,3 +72,11 @@ static:
   echo "OK"
   
 
+static:
+  echo "testing creation of comment node"
+  var docComment: NimNode = newNimNode(nnkCommentStmt)
+  docComment.strVal = "This is a doc comment"
+
+  assertEq repr(docComment), "## This is a doc comment"
+
+  echo "OK"
