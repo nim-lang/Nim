@@ -447,12 +447,10 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["", "", "Math.floor($1)", "Math.floor($1)"], # ToInt
     ["", "", "Math.floor($1)", "Math.floor($1)"], # ToBiggestInt
     ["nimCharToStr", "nimCharToStr", "nimCharToStr($1)", "nimCharToStr($1)"],
-    ["nimBoolToStr", "nimBoolToStr", "nimBoolToStr($1)", "nimBoolToStr($1)"], [
-      "cstrToNimstr", "cstrToNimstr", "cstrToNimstr(($1)+\"\")",
-      "cstrToNimstr(($1)+\"\")"], ["cstrToNimstr", "cstrToNimstr",
-                                   "cstrToNimstr(($1)+\"\")",
-                                   "cstrToNimstr(($1)+\"\")"], ["cstrToNimstr",
-      "cstrToNimstr", "cstrToNimstr(($1)+\"\")", "cstrToNimstr(($1)+\"\")"],
+    ["nimBoolToStr", "nimBoolToStr", "nimBoolToStr($1)", "nimBoolToStr($1)"],
+    ["cstrToNimstr", "cstrToNimstr", "cstrToNimstr(($1)+\"\")", "cstrToNimstr(($1)+\"\")"],
+    ["cstrToNimstr", "cstrToNimstr", "cstrToNimstr(($1)+\"\")", "cstrToNimstr(($1)+\"\")"],
+    ["cstrToNimstr", "cstrToNimstr", "cstrToNimstr(($1)+\"\")", "cstrToNimstr(($1)+\"\")"],
     ["cstrToNimstr", "cstrToNimstr", "cstrToNimstr($1)", "cstrToNimstr($1)"],
     ["", "", "$1", "$1"]]
 
@@ -507,18 +505,18 @@ proc unaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
   r.res = frmt % [r.rdLoc]
   r.kind = resExpr
 
-proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic, ops: TMagicOps) =
+proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   var
     x, y: TCompRes
   let i = ord(optOverflowCheck notin p.options)
-  useMagic(p, ops[op][i])
+  useMagic(p, jsOps[op][i])
   if sonsLen(n) > 2:
     gen(p, n.sons[1], x)
     gen(p, n.sons[2], y)
-    r.res = ops[op][i + 2] % [x.rdLoc, y.rdLoc]
+    r.res = jsOps[op][i + 2] % [x.rdLoc, y.rdLoc]
   else:
     gen(p, n.sons[1], r)
-    r.res = ops[op][i + 2] % [r.rdLoc]
+    r.res = jsOps[op][i + 2] % [r.rdLoc]
 
 proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   case op
@@ -533,7 +531,7 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
       gen(p, n.sons[2], y)
       r.res = "intval($1 / $2)" % [x.rdLoc, y.rdLoc]
     else:
-      arithAux(p, n, r, op, jsOps)
+      arithAux(p, n, r, op)
   of mModI:
     if p.target == targetPHP:
       var x, y: TCompRes
@@ -541,7 +539,7 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
       gen(p, n.sons[2], y)
       r.res = "($1 % $2)" % [x.rdLoc, y.rdLoc]
     else:
-      arithAux(p, n, r, op, jsOps)
+      arithAux(p, n, r, op)
   of mShrI:
     var x, y: TCompRes
     gen(p, n.sons[1], x)
@@ -566,9 +564,9 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
       else:
         gen(p, n.sons[1], r)
     else:
-      arithAux(p, n, r, op, jsOps)
+      arithAux(p, n, r, op)
   else:
-    arithAux(p, n, r, op, jsOps)
+    arithAux(p, n, r, op)
   r.kind = resExpr
 
 proc hasFrameInfo(p: PProc): bool =
@@ -813,7 +811,8 @@ proc genAsmOrEmitStmt(p: PProc, n: PNode) =
   p.body.add p.indentLine(nil)
   for i in countup(0, sonsLen(n) - 1):
     case n.sons[i].kind
-    of nkStrLit..nkTripleStrLit: p.body.add(n.sons[i].strVal)
+    of nkStrLit..nkTripleStrLit:
+      p.body.add(n.sons[i].strVal)
     of nkSym:
       let v = n.sons[i].sym
       if p.target == targetPHP and v.kind in {skVar, skLet, skTemp, skConst, skResult, skParam, skForVar}:
@@ -1557,7 +1556,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     else:
       s = a.res
     if isIndirect(v):
-      lineF(p, "var $1 = /**/[$2];$n", [v.loc.r, s])
+      lineF(p, "var $1 = [$2];$n", [v.loc.r, s])
     else:
       lineF(p, "var $1 = $2;$n" | "$$$1 = $2;$n", [v.loc.r, s])
 
@@ -2272,7 +2271,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkPragma: genPragma(p, n)
   of nkProcDef, nkMethodDef, nkConverterDef:
     var s = n.sons[namePos].sym
-    if {sfExportc, sfCompilerProc} * s.flags == {sfExportc}:
+    if sfExportc in s.flags and compilingLib:
       genSym(p, n.sons[namePos], r)
       r.res = nil
   of nkGotoState, nkState:
