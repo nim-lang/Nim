@@ -1407,7 +1407,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
          regs[rb].kind in {rkNode}:
         dest.strVal = regs[rb].node.strVal
       elif dest.kind == nkCommentStmt:
-        dest.strVal = regs[rb].node.strVal
+        dest.comment = regs[rb].node.strVal
       else:
         stackTrace(c, tos, pc, errFieldXNotFound, "strVal")
     of opcNNewNimNode:
