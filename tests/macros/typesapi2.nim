@@ -31,7 +31,7 @@ static: assert(ref int is testTypesym(ref int))
 static: assert(void is testTypesym(void))
 
 
-macro tts2 (t:untyped, idx:int): untyped =
+macro tts2 (t:typed, idx:int): untyped =
     var ty = t.getType
     if ty.typekind == ntyTypedesc:
         # skip typedesc get to the real type

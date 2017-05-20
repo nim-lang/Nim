@@ -1,6 +1,8 @@
 discard """
   output: '''a 1 b 2 x @[3, 4, 5] y 6 z 7
 yay
+12
+yay
 12'''
 """
 
@@ -9,9 +11,16 @@ proc test(a, b: int, x: varargs[int]; y, z: int) =
 
 test 1, 2, 3, 4, 5, 6, 7
 
-template takesBlock(a, b: int, x: varargs[expr]; blck: stmt) =
+template takesBlockA(a, b: untyped; x: varargs[typed]; blck: untyped): untyped =
   blck
   echo a, b
 
-takesBlock 1, 2, "some", 0.90, "random stuff":
+takesBlockA 1, 2, "some", 0.90, "random stuff":
+  echo "yay"
+
+template takesBlockB(a, b: untyped; x: varargs[untyped]; blck: untyped): untyped =
+  blck
+  echo a, b
+
+takesBlockB 1, 2, "some", 0.90, "random stuff":
   echo "yay"

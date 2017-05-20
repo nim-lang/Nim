@@ -5,7 +5,7 @@ discard """
 import
   macros, strutils
 
-macro outterMacro*(n: untyped): untyped =
+macro outterMacro*(n, blck: untyped): untyped =
   let n = callsite()
   var j : string = "hi"
   proc innerProc(i: int): string =

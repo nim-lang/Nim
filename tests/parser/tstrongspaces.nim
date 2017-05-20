@@ -42,7 +42,7 @@ echo (1, 2, 2)
 
 template `&`(a, b: int): int = a and b
 template `|`(a, b: int): int = a - b
-template `++`(a, b: int): int = a + b == 8009
+template `++`(a, b: int): bool = a + b == 8009
 
 when true:
   let b = 66

@@ -18,7 +18,7 @@ case_token: inc i
 
 #bug #488
 
-macro foo: stmt =
+macro foo: typed =
   var exp = newCall("whatwhat", newIntLitNode(1))
   if compiles(getAst(exp)): return exp
   else: echo "Does not compute!"

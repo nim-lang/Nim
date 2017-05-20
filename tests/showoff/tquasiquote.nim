@@ -4,7 +4,7 @@ discard """
 
 import macros
 
-macro check(ex: expr): stmt =
+macro check(ex: untyped): untyped =
   var info = ex.lineInfo
   var expString = ex.toStrLit
   result = quote do:

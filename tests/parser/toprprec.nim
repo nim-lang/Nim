@@ -4,7 +4,7 @@ discard """
 """
 # Test operator precedence:
 
-template `@` (x: untyped): untyped =
+template `@` (x: untyped): untyped {.immediate.} =
   `self`.x
 
 template `@!` (x: untyped): untyped = x
@@ -16,7 +16,7 @@ type
   TA = tuple[a, b: int, obj: TO]
 
 proc init(self: var TA): string =
-  (@a) = 3
+  @a = 3
   === @b = 4
   @obj.x = 4
   @! === result = "abc"

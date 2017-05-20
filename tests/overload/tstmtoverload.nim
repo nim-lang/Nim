@@ -2,17 +2,17 @@
 # bug #2481
 import math
 
-template test(loopCount: int, extraI: int, testBody: stmt): stmt =
+template test(loopCount: int, extraI: int, testBody: untyped): typed =
   block:
     for i in 0..loopCount-1:
       testBody
     echo "done extraI=", extraI
 
-template test(loopCount: int, extraF: float, testBody: stmt): stmt =
+template test(loopCount: int, extraF: float, testBody: untyped): typed =
   block:
     test(loopCount, round(extraF).int, testBody)
 
-template test(loopCount: int, testBody: stmt): stmt =
+template test(loopCount: int, testBody: untyped): typed =
   block:
     test(loopCount, 0, testBody)
     echo "done extraI passed 0"
