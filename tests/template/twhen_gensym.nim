@@ -3,7 +3,7 @@ discard """
 """
 
 # bug #2670
-template testTemplate(b: bool): stmt =
+template testTemplate(b: bool): typed =
     when b:
         var a = "hi"
     else:

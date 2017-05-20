@@ -15,7 +15,7 @@ proc fac[T](x: T): T =
   if x <= 1: return 1
   else: return x.`*`(fac(x-1))
 
-macro macrotest(n: untyped): untyped =
+macro macrotest(n: varargs[untyped]): untyped =
   let n = callsite()
   expectKind(n, nnkCall)
   expectMinLen(n, 2)
@@ -82,4 +82,3 @@ for i in 2..6:
 
 when isMainModule:
   {.hint: "this is the main file".}
-
