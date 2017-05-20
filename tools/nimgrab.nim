@@ -7,7 +7,11 @@ when defined(windows):
     proc progress(status: DownloadStatus, progress: uint, total: uint,
                   message: string) {.procvar, gcsafe.} =
       echo "Downloading " & url
-      echo clamp(int(progress.BiggestInt*100 div total.BiggestInt), 0, 100), "%"
+      let t = total.BiggestInt
+      if t != 0:
+        echo clamp(int(progress.BiggestInt*100 div t), 0, 100), "%"
+      else:
+        echo "0%"
 
     downloadToFile(url, file, {optUseCache}, progress)
     echo "100%"

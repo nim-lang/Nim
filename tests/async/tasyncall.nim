@@ -2,19 +2,19 @@ discard """
   file: "tasyncall.nim"
   exitcode: 0
 """
-import times, sequtils
+import times, sequtils, unittest
 import asyncdispatch
 
 const
   taskCount = 10
-  sleepDuration = 500
+  sleepDuration = 50
 
 proc futureWithValue(x: int): Future[int] {.async.} =
   await sleepAsync(sleepDuration)
   return x
 
 proc futureWithoutValue() {.async.} =
-  await sleepAsync(1000)
+  await sleepAsync(sleepDuration)
 
 proc testFuturesWithValue(x: int): seq[int] =
   var tasks = newSeq[Future[int]](taskCount)
@@ -40,38 +40,39 @@ proc testVarargs(x, y, z: int): seq[int] =
 
   result = waitFor all(a, b, c)
 
-block:
-  let
-    startTime = cpuTime()
-    results = testFuturesWithValue(42)
-    expected = repeat(42, taskCount)
-    execTime = cpuTime() - startTime
+suite "tasyncall":
+  test "testFuturesWithValue":
+    let
+      startTime = cpuTime()
+      results = testFuturesWithValue(42)
+      expected = repeat(42, taskCount)
+      execTime = cpuTime() - startTime
 
-  doAssert execTime * 1000 < taskCount * sleepDuration
-  doAssert results == expected
+    doAssert execTime * 1000 < taskCount * sleepDuration
+    doAssert results == expected
 
-block:
-  let startTime = cpuTime()
-  testFuturesWithoutValues()
-  let execTime = cpuTime() - startTime
+  test "testFuturesWithoutValues":
+    let startTime = cpuTime()
+    testFuturesWithoutValues()
+    let execTime = cpuTime() - startTime
 
-  doAssert execTime * 1000 < taskCount * sleepDuration
+    doAssert execTime * 1000 < taskCount * sleepDuration
 
-block:
-  let
-    startTime = cpuTime()
-    results = testVarargs(1, 2, 3)
-    expected = @[1, 2, 3]
-    execTime = cpuTime() - startTime
+  test "testVarargs":
+    let
+      startTime = cpuTime()
+      results = testVarargs(1, 2, 3)
+      expected = @[1, 2, 3]
+      execTime = cpuTime() - startTime
 
-  doAssert execTime * 100 < taskCount * sleepDuration
-  doAssert results == expected
+    doAssert execTime * 100 < taskCount * sleepDuration
+    doAssert results == expected
 
-block:
-  let
-    noIntFuturesFut = all(newSeq[Future[int]]())
-    noVoidFuturesFut = all(newSeq[Future[void]]())
+  test "all on seq[Future]":
+    let
+      noIntFuturesFut = all(newSeq[Future[int]]())
+      noVoidFuturesFut = all(newSeq[Future[void]]())
 
-  doAssert noIntFuturesFut.finished and not noIntFuturesFut.failed
-  doAssert noVoidFuturesFut.finished and not noVoidFuturesFut.failed
-  doAssert noIntFuturesFut.read() == @[]
+    doAssert noIntFuturesFut.finished and not noIntFuturesFut.failed
+    doAssert noVoidFuturesFut.finished and not noVoidFuturesFut.failed
+    doAssert noIntFuturesFut.read() == @[]

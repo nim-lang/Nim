@@ -1,11 +1,13 @@
 discard """
   cmd: "nim c --threads:on -d:ssl $file"
+  exitcode: 0
+  output: "OK"
 """
 
 import strutils
 from net import TimeoutError
 
-import httpclient, asyncdispatch
+import nativesockets, os, httpclient, asyncdispatch
 
 const manualTests = false
 
@@ -102,16 +104,52 @@ proc syncTest() =
 
   client.close()
 
-  # Timeout test.
-  client = newHttpClient(timeout = 1)
-  try:
-    resp = client.request("http://example.com/")
-    doAssert false, "TimeoutError should have been raised."
-  except TimeoutError:
-    discard
-  except:
-    doAssert false, "TimeoutError should have been raised."
+  when false:
+    # Disabled for now because it causes troubles with AppVeyor
+    # Timeout test.
+    client = newHttpClient(timeout = 1)
+    try:
+      resp = client.request("http://example.com/")
+      doAssert false, "TimeoutError should have been raised."
+    except TimeoutError:
+      discard
+    except:
+      doAssert false, "TimeoutError should have been raised."
+
+proc makeIPv6HttpServer(hostname: string, port: Port): AsyncFD =
+  let fd = newNativeSocket(AF_INET6)
+  setSockOptInt(fd, SOL_SOCKET, SO_REUSEADDR, 1)
+  var aiList = getAddrInfo(hostname, port, AF_INET6)
+  if bindAddr(fd, aiList.ai_addr, aiList.ai_addrlen.Socklen) < 0'i32:
+    freeAddrInfo(aiList)
+    raiseOSError(osLastError())
+  freeAddrInfo(aiList)
+  if listen(fd) != 0:
+    raiseOSError(osLastError())
+  setBlocking(fd, false)
+
+  var serverFd = fd.AsyncFD
+  register(serverFd)
+  result = serverFd
+
+  proc onAccept(fut: Future[AsyncFD]) {.gcsafe.} =
+    if not fut.failed:
+      let clientFd = fut.read()
+      clientFd.send("HTTP/1.1 200 OK\r\LContent-Length: 0\r\LConnection: Closed\r\L\r\L").callback = proc() =
+        clientFd.closeSocket()
+      serverFd.accept().callback = onAccept
+  serverFd.accept().callback = onAccept
+
+proc ipv6Test() =
+  var client = newAsyncHttpClient()
+  let serverFd = makeIPv6HttpServer("::1", Port(18473))
+  var resp = waitFor client.request("http://[::1]:18473/")
+  doAssert(resp.status == "200 OK")
+  serverFd.closeSocket()
+  client.close()
 
 syncTest()
-
 waitFor(asyncTest())
+ipv6Test()
+
+echo "OK"

@@ -889,14 +889,14 @@ proc genMainProc(m: BModule) =
     # prevents inlining of the NimMainInner function and dependent
     # functions, which might otherwise merge their stack frames.
     PreMainBody =
-      "void PreMainInner() {$N" &
+      "void PreMainInner(void) {$N" &
       "\tsystemInit000();$N" &
       "$1" &
       "$2" &
       "$3" &
       "}$N$N" &
-      "void PreMain() {$N" &
-      "\tvoid (*volatile inner)();$N" &
+      "void PreMain(void) {$N" &
+      "\tvoid (*volatile inner)(void);$N" &
       "\tsystemDatInit000();$N" &
       "\tinner = PreMainInner;$N" &
       "$4$5" &
@@ -915,7 +915,7 @@ proc genMainProc(m: BModule) =
 
     NimMainProc =
       "N_CDECL(void, NimMain)(void) {$N" &
-        "\tvoid (*volatile inner)();$N" &
+        "\tvoid (*volatile inner)(void);$N" &
         "\tPreMain();$N" &
         "\tinner = NimMainInner;$N" &
         "$2" &
@@ -1315,8 +1315,11 @@ proc shouldRecompile(code: Rope, cfile: Cfile): bool =
   if optForceFullMake notin gGlobalOptions:
     if not equalsFile(code, cfile.cname):
       if isDefined("nimdiff"):
-        copyFile(cfile.cname, cfile.cname & ".backup")
-        echo "diff ", cfile.cname, ".backup ", cfile.cname
+        if fileExists(cfile.cname):
+          copyFile(cfile.cname, cfile.cname & ".backup")
+          echo "diff ", cfile.cname, ".backup ", cfile.cname
+        else:
+          echo "new file ", cfile.cname
       writeRope(code, cfile.cname)
       return
     if existsFile(cfile.obj) and os.fileNewer(cfile.obj, cfile.cname):

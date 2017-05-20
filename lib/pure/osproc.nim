@@ -209,9 +209,16 @@ proc waitForExit*(p: Process, timeout: int = -1): int {.rtl,
   ##
   ## **Warning**: Be careful when using waitForExit for processes created without
   ## poParentStreams because they may fill output buffers, causing deadlock.
+  ##
+  ## On posix, if the process has exited because of a signal, 128 + signal
+  ## number will be returned.
+
 
 proc peekExitCode*(p: Process): int {.tags: [].}
   ## return -1 if the process is still running. Otherwise the process' exit code
+  ##
+  ## On posix, if the process has exited because of a signal, 128 + signal
+  ## number will be returned.
 
 proc inputStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
   ## returns ``p``'s input stream for writing to.
@@ -328,7 +335,8 @@ proc execProcesses*(cmds: openArray[string],
       if afterRunEvent != nil: afterRunEvent(i, p)
       close(p)
 
-proc select*(readfds: var seq[Process], timeout = 500): int {.benign.}
+proc select*(readfds: var seq[Process], timeout = 500): int
+  {.benign, deprecated.}
   ## `select` with a sensible Nim interface. `timeout` is in milliseconds.
   ## Specify -1 for no timeout. Returns the number of processes that are
   ## ready to read from. The processes that are ready to be read from are
@@ -336,6 +344,9 @@ proc select*(readfds: var seq[Process], timeout = 500): int {.benign.}
   ##
   ## **Warning**: This function may give unexpected or completely wrong
   ## results on Windows.
+  ##
+  ## **Deprecated since version 0.17.0**: This procedure isn't cross-platform
+  ## and so should not be used in newly written code.
 
 when not defined(useNimRtl):
   proc execProcess(command: string,
@@ -679,6 +690,16 @@ elif not defined(useNimRtl):
     readIdx = 0
     writeIdx = 1
 
+  proc isExitStatus(status: cint): bool =
+    WIFEXITED(status) or WIFSIGNALED(status)
+
+  proc exitStatus(status: cint): cint =
+    if WIFSIGNALED(status):
+      # like the shell!
+      128 + WTERMSIG(status)
+    else:
+      WEXITSTATUS(status)
+
   proc envToCStringArray(t: StringTableRef): cstringArray =
     result = cast[cstringArray](alloc0((t.len + 1) * sizeof(cstring)))
     var i = 0
@@ -842,18 +863,15 @@ elif not defined(useNimRtl):
       if data.workingDir.len > 0:
         setCurrentDir($data.workingDir)
       var pid: Pid
-      var err: OSErrorCode
 
       if data.optionPoUsePath:
         res = posix_spawnp(pid, data.sysCommand, fops, attr, data.sysArgs, data.sysEnv)
-        if res != 0'i32: err = osLastError()
       else:
         res = posix_spawn(pid, data.sysCommand, fops, attr, data.sysArgs, data.sysEnv)
-        if res != 0'i32: err = osLastError()
 
       discard posix_spawn_file_actions_destroy(fops)
       discard posix_spawnattr_destroy(attr)
-      if res != 0'i32: raiseOSError(err)
+      if res != 0'i32: raiseOSError(OSErrorCode(res))
 
       return pid
   else:
@@ -967,7 +985,7 @@ elif not defined(useNimRtl):
     var status : cint = 1
     ret = waitpid(p.id, status, WNOHANG)
     if ret == int(p.id):
-      if WIFEXITED(status):
+      if isExitStatus(status):
         p.exitStatus = status
         return false
       else:
@@ -990,7 +1008,9 @@ elif not defined(useNimRtl):
     import kqueue, times
 
     proc waitForExit(p: Process, timeout: int = -1): int =
-      if p.exitStatus != -3: return((p.exitStatus and 0xFF00) shr 8)
+      if p.exitStatus != -3:
+        return exitStatus(p.exitStatus)
+
       if timeout == -1:
         var status : cint = 1
         if waitpid(p.id, status, 0) < 0:
@@ -1041,7 +1061,7 @@ elif not defined(useNimRtl):
         finally:
           discard posix.close(kqFD)
 
-      result = ((p.exitStatus and 0xFF00) shr 8)
+      result = exitStatus(p.exitStatus)
   else:
     import times
 
@@ -1077,7 +1097,9 @@ elif not defined(useNimRtl):
       # ``waitPid`` fails if the process is not running anymore. But then
       # ``running`` probably set ``p.exitStatus`` for us. Since ``p.exitStatus`` is
       # initialized with -3, wrong success exit codes are prevented.
-      if p.exitStatus != -3: return((p.exitStatus and 0xFF00) shr 8)
+      if p.exitStatus != -3:
+        return exitStatus(p.exitStatus)
+
       if timeout == -1:
         var status : cint = 1
         if waitpid(p.id, status, 0) < 0:
@@ -1151,17 +1173,19 @@ elif not defined(useNimRtl):
             if sigprocmask(SIG_UNBLOCK, nmask, omask) == -1:
               raiseOSError(osLastError())
 
-      result = ((p.exitStatus and 0xFF00) shr 8)
+      result = exitStatus(p.exitStatus)
 
   proc peekExitCode(p: Process): int =
     var status = cint(0)
     result = -1
-    if p.exitStatus != -3: return((p.exitStatus and 0xFF00) shr 8)
+    if p.exitStatus != -3:
+      return exitStatus(p.exitStatus)
+
     var ret = waitpid(p.id, status, WNOHANG)
     if ret > 0:
-      if WIFEXITED(status):
+      if isExitStatus(status):
         p.exitStatus = status
-        result = (status and 0xFF00) shr 8
+        result = exitStatus(status)
 
   proc createStream(stream: var Stream, handle: var FileHandle,
                     fileMode: FileMode) =
@@ -1189,7 +1213,8 @@ elif not defined(useNimRtl):
 
   proc execCmd(command: string): int =
     when defined(linux):
-      result = csystem(command) shr 8
+      let tmp = csystem(command)
+      result = if tmp == -1: tmp else: exitStatus(tmp)
     else:
       result = csystem(command)
 

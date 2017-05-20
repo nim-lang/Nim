@@ -1336,6 +1336,11 @@ proc parseGenericParam(p: var TParser): PNode =
   result = newNodeP(nkIdentDefs, p)
   while true:
     case p.tok.tokType
+    of tkIn, tkOut:
+      let t = p.tok.tokType
+      getTok(p)
+      expectIdent(p)
+      a = parseSymbol(p)
     of tkSymbol, tkAccent:
       a = parseSymbol(p)
       if a.kind == nkEmpty: return

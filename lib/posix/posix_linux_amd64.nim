@@ -36,6 +36,9 @@ type
 
 {.deprecated: [TSocketHandle: SocketHandle].}
 
+# not detected by detect.nim, guarded by #ifdef __USE_UNIX98 in glibc
+const SIG_HOLD* = cast[SigHandler](2)
+
 type
   Timespec* {.importc: "struct timespec",
                header: "<time.h>", final, pure.} = object ## struct timespec
@@ -602,3 +605,12 @@ var
 include posix_linux_amd64_consts
 
 const POSIX_SPAWN_USEVFORK* = cint(0x40)  # needs _GNU_SOURCE!
+
+# <sys/wait.h>
+proc WEXITSTATUS*(s: cint): cint =  (s and 0xff00) shr 8
+proc WTERMSIG*(s:cint): cint = s and 0x7f
+proc WSTOPSIG*(s:cint): cint = WEXITSTATUS(s)
+proc WIFEXITED*(s:cint) : bool = WTERMSIG(s) == 0
+proc WIFSIGNALED*(s:cint) : bool = (cast[int8]((s and 0x7f) + 1) shr 1) > 0
+proc WIFSTOPPED*(s:cint) : bool = (s and 0xff) == 0x7f
+proc WIFCONTINUED*(s:cint) : bool = s == W_CONTINUED

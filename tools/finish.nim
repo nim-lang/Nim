@@ -92,7 +92,13 @@ when defined(windows):
       echo "Could not access 'config/nim.cfg' [Error]"
 
   proc addToPathEnv*(e: string) =
-    let p = getUnicodeValue(r"Environment", "Path", HKEY_CURRENT_USER)
+    var p: string
+    try:
+      p = getUnicodeValue(r"Environment", "Path", HKEY_CURRENT_USER)
+    except OSError:
+      p = getUnicodeValue(
+        r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment",
+        "Path", HKEY_LOCAL_MACHINE)
     let x = if e.contains(Whitespace): "\"" & e & "\"" else: e
     setUnicodeValue(r"Environment", "Path", p & ";" & x, HKEY_CURRENT_USER)
 
