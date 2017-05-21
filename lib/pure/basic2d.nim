@@ -116,16 +116,40 @@ proc safeArccos(v:float):float=
   return arccos(clamp(v,-1.0,1.0))
 
 
-template makeBinOpVector(s:expr)=
+template makeBinOpVector(s:untyped)=
   ## implements binary operators ``+``, ``-``, ``*`` and ``/`` for vectors
   proc s*(a,b:Vector2d):Vector2d {.inline,noInit.} = vector2d(s(a.x,b.x),s(a.y,b.y))
   proc s*(a:Vector2d,b:float):Vector2d {.inline,noInit.}  = vector2d(s(a.x,b),s(a.y,b))
   proc s*(a:float,b:Vector2d):Vector2d {.inline,noInit.}  = vector2d(s(a,b.x),s(a,b.y))
 
-template makeBinOpAssignVector(s:expr)=
+template makeBinOpAssignVector(s:untyped)=
   ## implements inplace binary operators ``+=``, ``-=``, ``/=`` and ``*=`` for vectors
   proc s*(a:var Vector2d,b:Vector2d) {.inline.} = s(a.x,b.x) ; s(a.y,b.y)
   proc s*(a:var Vector2d,b:float) {.inline.} = s(a.x,b) ; s(a.y,b)
+  proc s*(a:var float,b:Vector2d) {.inline.} = s(a,b.x) ; s(a,b.y)
+
+
+template makeBinOpMatrix1(s:untyped)=
+  ## implements binary operators ``+``, ``-`` and ``/`` for matrices and vectors
+  proc s*(a,b:Matrix2d):Matrix2d {.inline,noInit.} = matrix2d(s(a.ax,b.ax),s(a.ay,b.ay),s(a.bx,b.bx),s(a.by,b.by),s(a.tx,b.tx),s(a.ty,b.ty))
+  proc s*(a:Matrix2d,b:Vector2d):Matrix2d {.inline,noInit.} = matrix2d(s(a.ax,b.x),s(a.ay,b.y),s(a.bx,b.x),s(a.by,b.y),s(a.tx,b.x),s(a.ty,b.y))
+  proc s*(a:Vector2d,b:Matrix2d):Matrix2d {.inline,noInit.} = matrix2d(s(a.x,b.ax),s(a.y,b.ay),s(a.x,b.bx),s(a.y,b.by),s(a.x,b.tx),s(a.y,b.ty))
+
+template makeBinOpMatrix2(s:untyped)=
+  ## implements binary operators ``+``, ``-`` and ``/`` for matrices and floats
+  proc s*(a:Matrix2d,b:float):Matrix2d {.inline,noInit.}  = matrix2d(s(a.ax,b),s(a.ay,b),s(a.bx,b),s(a.by,b),s(a.tx,b),s(a.ty,b))
+  proc s*(a:float,b:Matrix2d):Matrix2d {.inline,noInit.} = matrix2d(s(a,b.ax),s(a,b.ay),s(a,b.bx),s(a,b.by),s(a,b.tx),s(a,b.ty))
+
+template makeBinOpAssignMatrix1(s:untyped)=
+  ## implements inplace binary operators ``+=``, ``-=`` and ``/=`` for matrices and vectors
+  proc s*(a:var Matrix2d,b:Matrix2d) {.inline.} = s(a.ax,b.ax) ; s(a.ay,b.ay) ; s(a.bx,b.bx) ; s(a.by,b.by) ; s(a.tx,b.tx) ; s(a.ty,b.ty)
+  proc s*(a:var Matrix2d,b:Vector2d) {.inline.} = s(a.ax,b.x) ; s(a.ay,b.y) ; s(a.bx,b.x) ; s(a.by,b.y) ; s(a.tx,b.x) ; s(a.ty,b.y)
+  proc s*(a:var Vector2d,b:Matrix2d) {.inline.} = s(a.x,b.ax) ; s(a.y,b.ay) ; s(a.x,b.bx) ; s(a.y,b.by) ; s(a.x,b.tx) ; s(a.y,b.ty)
+
+template makeBinOpAssignMatrix2(s:untyped)=
+  ## implements inplace binary operators ``+=``, ``-=`` and ``/=`` for matrices and floats
+  proc s*(a:var Matrix2d,b:float) {.inline.} = s(a.ax,b) ; s(a.ay,b) ; s(a.bx,b) ; s(a.by,b) ; s(a.tx,b) ; s(a.ty,b)
+  proc s*(a:var float,b:Matrix2d) {.inline.} = s(a,b.ax) ; s(a,b.ay) ; s(a,b.bx) ; s(a,b.by) ; s(a,b.tx) ; s(a,b.ty)
 
 
 # ***************************************
@@ -555,6 +579,20 @@ makeBinOpAssignVector(`+=`)
 makeBinOpAssignVector(`-=`)
 makeBinOpAssignVector(`*=`)
 makeBinOpAssignVector(`/=`)
+makeBinOpMatrix1(`+`)
+makeBinOpMatrix1(`-`)
+makeBinOpMatrix1(`/`)
+makeBinOpMatrix2(`+`)
+makeBinOpMatrix2(`-`)
+makeBinOpMatrix2(`*`)
+makeBinOpMatrix2(`/`)
+makeBinOpAssignMatrix1(`+=`)
+makeBinOpAssignMatrix1(`-=`)
+makeBinOpAssignMatrix1(`/=`)
+makeBinOpAssignMatrix2(`+=`)
+makeBinOpAssignMatrix2(`-=`)
+makeBinOpAssignMatrix2(`*=`)
+makeBinOpAssignMatrix2(`/=`)
 
 
 proc dot*(v1,v2:Vector2d):float=
