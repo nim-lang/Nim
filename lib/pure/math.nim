@@ -105,12 +105,185 @@ proc nextPowerOfTwo*(x: int): int {.noSideEffect.} =
   result = result or (result shr 1)
   result += 1 + ord(x<=0)
 
-proc countBits32*(n: int32): int {.noSideEffect.} =
-  ## Counts the set bits in `n`.
-  var v = n
-  v = v -% ((v shr 1'i32) and 0x55555555'i32)
-  v = (v and 0x33333333'i32) +% ((v shr 2'i32) and 0x33333333'i32)
-  result = ((v +% (v shr 4'i32) and 0xF0F0F0F'i32) *% 0x1010101'i32) shr 24'i32
+{.push noSideEffect.}
+
+proc countBitsImpl(x: uint8): int =
+  ## Software implementation of population count.
+  var v = x
+  v = v - ((v shr 1) and 0x55'u8)
+  v = (v and 0x33'u8) + ((v shr 2) and 0x33'u8)
+  v = (v + (v shr 4)) and 0x0F'u8
+  result = int(v)
+proc countBitsImpl(x: uint16): int =
+  ## Software implementation of population count.
+  var v = x
+  v = v - ((v shr 1) and 0x5555'u16)
+  v = (v and 0x3333'u16) + ((v shr 2) and 0x3333'u16)
+  v = (v + (v shr 4)) and 0x0F0F'u16
+  result = int((v * 0x0101'u16) shr 8)
+proc countBitsImpl(x: uint32): int =
+  ## Software implementation of population count.
+  var v = x
+  v = v - ((v shr 1) and 0x55555555'u32)
+  v = (v and 0x33333333'u32) + ((v shr 2) and 0x33333333'u32)
+  v = (v + (v shr 4)) and 0x0F0F0F0F'u32
+  result = int((v * 0x01010101'u32) shr 24)
+proc countBitsImpl(x: uint64): int =
+  ## Software implementation of population count.
+  var v = x
+  v = v - ((v shr 1) and 0x5555555555555555'u64)
+  v = (v and 0x3333333333333333'u64) + ((v shr 2) and 0x3333333333333333'u64)
+  v = (v + (v shr 4)) and 0x0F0F0F0F0F0F0F0F'u64
+  result = int((v * 0x0101010101010101'u64) shr 56)
+
+# Define countBits for unsigned, explicitly sized types:
+
+when defined(hardwareCountBits):
+  # C compiler intrinsic generation is enabled.
+
+  proc builtinPopcount(x: cuint): cint {.importc: "__builtin_popcount", nodecl.}
+  proc builtinPopcount(x: culong): cint {.importc: "__builtin_popcountl", nodecl.}
+  proc builtinPopcount(x: culonglong): cint {.importc: "__builtin_popcountll", nodecl.}
+
+  # Temporarily disable bounds checking, since we do a lot of converting between
+  # integer types.
+  {.push checks: off.}
+
+  proc countBits*(x: uint64): int {.inline.} =
+    ## Count the number of '1' bits in x (also known as the population count
+    ## or Hamming weight of x). See the documentation for countBits(int) for
+    ## details on the implementation of this operation.
+    # One of cuint, culong or culonglong will be 8 bytes long in almost all
+    # circumstances.
+    when sizeof(cuint) == sizeof(uint64):
+      int(builtinPopcount(cuint(x)))
+    else:
+      when sizeof(culong) == sizeof(uint64):
+        int(builtinPopcount(culong(x)))
+      else:
+        when sizeof(culonglong) == sizeof(uint64):
+          int(builtinPopcount(culonglong(x)))
+        else:
+          # Fall back to software implementation.
+          countBitsImpl(x)
+  proc countBits*(x: uint32): int {.inline.} =
+    ## Count the number of '1' bits in x (also known as the population count
+    ## or Hamming weight of x). See the documentation for countBits(int) for
+    ## details on the implementation of this operation.
+    # One of cuint, culong or culonglong might be 4 bytes long.
+    when sizeof(cuint) == sizeof(uint32):
+      int(builtinPopcount(cuint(x)))
+    else:
+      when sizeof(culong) == sizeof(uint32):
+        int(builtinPopcount(culong(x)))
+      else:
+        when sizeof(culonglong) == sizeof(uint32):
+          int(builtinPopcount(culonglong(x)))
+        else:
+          # Fall back to 64-bit intrinsic.
+          countBits(uint64(x))
+  proc countBits*(x: uint16): int {.inline.} =
+    ## Count the number of '1' bits in x (also known as the population count
+    ## or Hamming weight of x). See the documentation for countBits(int) for
+    ## details on the implementation of this operation.
+    # Uses 32-bit builtinPopcount if available, 64-bit builtinPopcount otherwise.
+    countBits(uint32(x))
+  proc countBits*(x: uint8): int {.inline.} =
+    ## Count the number of '1' bits in x (also known as the population count
+    ## or Hamming weight of x). See the documentation for countBits(int) for
+    ## details on the implementation of this operation.
+    # Uses 32-bit builtinPopcount if available, 64-bit builtinPopcount otherwise.
+    countBits(uint32(x))
+
+  {.pop.} # {.push checks: off.}
+
+  # Also pass -mpopcnt to the C compiler, which means that it should use the
+  # CPU's popcnt instruction if available. Otherwise, the compiler uses its
+  # own software implementation of popcount.
+  {.passC: "-mpopcnt".}
+
+else:
+  # C compiler intrinsic generation is disabled or unavailable, so fall back to
+  # software implementations.
+
+  proc countBits*(x: uint8): int {.inline.} =
+    ## Count the number of '1' bits in x (also known as the population count
+    ## or Hamming weight of x). See the documentation for countBits(int) for
+    ## details on the implementation of this operation.
+    countBitsImpl(x)
+  proc countBits*(x: uint16): int {.inline.} =
+    ## Count the number of '1' bits in x (also known as the population count
+    ## or Hamming weight of x). See the documentation for countBits(int) for
+    ## details on the implementation of this operation.
+    countBitsImpl(x)
+  proc countBits*(x: uint32): int {.inline.} =
+    ## Count the number of '1' bits in x (also known as the population count
+    ## or Hamming weight of x). See the documentation for countBits(int) for
+    ## details on the implementation of this operation.
+    countBitsImpl(x)
+  proc countBits*(x: uint64): int {.inline.} =
+    ## Count the number of '1' bits in x (also known as the population count
+    ## or Hamming weight of x). See the documentation for countBits(int) for
+    ## details on the implementation of this operation.
+    countBitsImpl(x)
+
+# Temporarily disable bounds checking, since we do a lot of converting between
+# integer types.
+{.push checks: off.}
+
+# Define countBits for signed, explicitly sized types:
+proc countBits*(x: int8): int {.inline.} =
+  ## Count the number of '1' bits in x (also known as the population count
+  ## or Hamming weight of x). See the documentation for countBits(int) for
+  ## details on the implementation of this operation.
+  countBits(uint8(x))
+proc countBits*(x: int16): int {.inline.} =
+  ## Count the number of '1' bits in x (also known as the population count
+  ## or Hamming weight of x). See the documentation for countBits(int) for
+  ## details on the implementation of this operation.
+  countBits(uint16(x))
+proc countBits*(x: int32): int {.inline.} =
+  ## Count the number of '1' bits in x (also known as the population count
+  ## or Hamming weight of x). See the documentation for countBits(int) for
+  ## details on the implementation of this operation.
+  countBits(uint32(x))
+proc countBits*(x: int64): int {.inline.} =
+  ## Count the number of '1' bits in x (also known as the population count
+  ## or Hamming weight of x). See the documentation for countBits(int) for
+  ## details on the implementation of this operation.
+  countBits(uint64(x))
+
+# Define countBits for non-explicitly sized types:
+proc countBits*(x: uint): int {.inline.} =
+  ## Count the number of '1' bits in x (also known as the population count
+  ## or Hamming weight of x). See the documentation for countBits(int) for
+  ## details on the implementation of this operation.
+  when sizeof(uint) == sizeof(uint32):
+    countBits(uint32(x))
+  else:
+    countBits(uint64(x))
+proc countBits*(x: int): int {.inline.} =
+  ## Count the number of '1' bits in x (also known as the population count
+  ## or Hamming weight of x). By default, this will use a small lookup table
+  ## to compute the result.
+  ##
+  ## Passing the '-d:ccCountBits' flag to the Nim compiler will use the
+  ## C compiler's own implementation. gcc's implementation doesn't require a
+  ## lookup table, but can be much slower.
+  ##
+  ## Passing the '-d:hardwareCountBits' flag to the Nim compiler will attempt
+  ## to use the CPU's population count instruction if possible. This is
+  ## generally a much more efficient implementation, but is only present on
+  ## modern x86 CPUs.
+  when sizeof(int) == sizeof(int32):
+    countBits(int32(x))
+  else:
+    countBits(int64(x))
+
+{.pop.} # {.push checks: off.}
+{.pop.} # {.push noSideEffect.}
+
+{.deprecated: [countBits32: countBits].}
 
 proc sum*[T](x: openArray[T]): T {.noSideEffect.} =
   ## Computes the sum of the elements in `x`.
