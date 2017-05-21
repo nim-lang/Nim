@@ -2198,6 +2198,7 @@ proc `%` *(formatstr: string, a: openArray[string]): string {.noSideEffect,
   ##
   ## The variables are compared with `cmpIgnoreStyle`. `ValueError` is
   ## raised if an ill-formed format string has been passed to the `%` operator.
+  ## More advanced string interpolation can be done using the subexes module.
   result = newStringOfCap(formatstr.len + a.len shl 4)
   addf(result, formatstr, a)
 
