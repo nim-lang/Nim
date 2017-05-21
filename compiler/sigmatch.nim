@@ -1494,6 +1494,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           result = typeRel(c, ff, aa)
           if result == isNone: return
           if ff.kind == tyRange and result != isEqual: return isNone
+      elif a.kind == tyGenericBody and roota == f.base:
+        result = isGeneric
       else:
         result = typeRel(c, rootf.lastSon, a)
       if result != isNone:
