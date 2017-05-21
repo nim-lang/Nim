@@ -535,6 +535,9 @@ proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
          n.kind in procDefs+{nkObjConstr, nkBracket}:
       # 'p' is not nil obviously:
       return
+    elif n.kind == nkPrefix and n.sons[0].kind == nkSym and
+        n.sons[0].sym.magic == mArrToSeq:
+      return
     case impliesNotNil(tracked.guards, n)
     of impUnknown:
       message(n.info, errGenerated,

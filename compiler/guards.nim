@@ -555,6 +555,8 @@ proc impliesIn(fact, loc, aSet: PNode): TImplication =
 proc valueIsNil(n: PNode): TImplication =
   if n.kind == nkNilLit: impYes
   elif n.kind in {nkStrLit..nkTripleStrLit, nkBracket, nkObjConstr}: impNo
+  elif n.kind == nkPrefix and n.sons[0].kind == nkSym and
+      n.sons[0].sym.magic == mArrToSeq: impNo
   else: impUnknown
 
 proc impliesIsNil(fact, eq: PNode): TImplication =
