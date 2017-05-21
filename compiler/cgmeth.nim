@@ -189,7 +189,7 @@ proc methodDef*(g: ModuleGraph; s: PSym, fromCache: bool) =
     message(s.info, warnUseBase)
 
 proc relevantCol(methods: TSymSeq, col: int): bool =
-  # returns true iff the position is relevant
+  # returns true if the position is relevant
   var t = methods[0].typ.sons[col].skipTypes(skipPtrs)
   if t.kind == tyObject:
     for i in countup(1, high(methods)):

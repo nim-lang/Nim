@@ -231,7 +231,7 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B =
     h = nextTry(h, high(t.data))
 
 proc hasKey*[A, B](t: Table[A, B], key: A): bool =
-  ## returns true iff `key` is in the table `t`.
+  ## returns true if `key` is in the table `t`.
   var hc: Hash
   result = rawGet(t, key, hc) >= 0
 
@@ -299,7 +299,7 @@ proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
   mgetOrPutImpl(enlarge)
 
 proc hasKeyOrPut*[A, B](t: var Table[A, B], key: A, val: B): bool =
-  ## returns true iff `key` is in the table, otherwise inserts `value`.
+  ## returns true if `key` is in the table, otherwise inserts `value`.
   hasKeyOrPutImpl(enlarge)
 
 proc `[]=`*[A, B](t: var Table[A, B], key: A, val: B) =
@@ -347,7 +347,7 @@ proc `$`*[A, B](t: Table[A, B]): string =
   dollarImpl()
 
 proc hasKey*[A, B](t: TableRef[A, B], key: A): bool =
-  ## returns true iff `key` is in the table `t`.
+  ## returns true if `key` is in the table `t`.
   result = t[].hasKey(key)
 
 template equalsImpl(s, t: typed): typed =
@@ -360,7 +360,7 @@ template equalsImpl(s, t: typed): typed =
     return true
 
 proc `==`*[A, B](s, t: Table[A, B]): bool =
-  ## The `==` operator for hash tables. Returns ``true`` iff the content of both
+  ## The `==` operator for hash tables. Returns ``true`` if the content of both
   ## tables contains the same key-value pairs. Insert order does not matter.
   equalsImpl(s, t)
 
@@ -417,7 +417,7 @@ proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, val: B): var B =
   t[].mgetOrPut(key, val)
 
 proc hasKeyOrPut*[A, B](t: var TableRef[A, B], key: A, val: B): bool =
-  ## returns true iff `key` is in the table, otherwise inserts `value`.
+  ## returns true if `key` is in the table, otherwise inserts `value`.
   t[].hasKeyOrPut(key, val)
 
 proc contains*[A, B](t: TableRef[A, B], key: A): bool =
@@ -457,7 +457,7 @@ proc `$`*[A, B](t: TableRef[A, B]): string =
   dollarImpl()
 
 proc `==`*[A, B](s, t: TableRef[A, B]): bool =
-  ## The `==` operator for hash tables. Returns ``true`` iff either both tables
+  ## The `==` operator for hash tables. Returns ``true`` if either both tables
   ## are ``nil`` or none is ``nil`` and the content of both tables contains the
   ## same key-value pairs. Insert order does not matter.
   if isNil(s): result = isNil(t)
@@ -564,7 +564,7 @@ proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A): B =
 
 
 proc hasKey*[A, B](t: OrderedTable[A, B], key: A): bool =
-  ## returns true iff `key` is in the table `t`.
+  ## returns true if `key` is in the table `t`.
   var hc: Hash
   result = rawGet(t, key, hc) >= 0
 
@@ -609,7 +609,7 @@ proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): var B =
   mgetOrPutImpl(enlarge)
 
 proc hasKeyOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): bool =
-  ## returns true iff `key` is in the table, otherwise inserts `value`.
+  ## returns true if `key` is in the table, otherwise inserts `value`.
   hasKeyOrPutImpl(enlarge)
 
 proc initOrderedTable*[A, B](initialSize=64): OrderedTable[A, B] =
@@ -635,7 +635,7 @@ proc `$`*[A, B](t: OrderedTable[A, B]): string =
   dollarImpl()
 
 proc `==`*[A, B](s, t: OrderedTable[A, B]): bool =
-  ## The `==` operator for ordered hash tables. Returns true iff both the
+  ## The `==` operator for ordered hash tables. Returns true if both the
   ## content and the order are equal.
   if s.counter != t.counter:
     return false
@@ -750,11 +750,11 @@ proc mgetOrPut*[A, B](t: OrderedTableRef[A, B], key: A, val: B): var B =
   result = t[].mgetOrPut(key, val)
 
 proc hasKeyOrPut*[A, B](t: var OrderedTableRef[A, B], key: A, val: B): bool =
-  ## returns true iff `key` is in the table, otherwise inserts `val`.
+  ## returns true if `key` is in the table, otherwise inserts `val`.
   result = t[].hasKeyOrPut(key, val)
 
 proc hasKey*[A, B](t: OrderedTableRef[A, B], key: A): bool =
-  ## returns true iff `key` is in the table `t`.
+  ## returns true if `key` is in the table `t`.
   result = t[].hasKey(key)
 
 proc contains*[A, B](t: OrderedTableRef[A, B], key: A): bool =
@@ -788,7 +788,7 @@ proc `$`*[A, B](t: OrderedTableRef[A, B]): string =
   dollarImpl()
 
 proc `==`*[A, B](s, t: OrderedTableRef[A, B]): bool =
-  ## The `==` operator for ordered hash tables. Returns true iff either both
+  ## The `==` operator for ordered hash tables. Returns true if either both
   ## tables are ``nil`` or none is ``nil`` and the content and the order of
   ## both are equal.
   if isNil(s): result = isNil(t)
@@ -913,7 +913,7 @@ proc getOrDefault*[A](t: CountTable[A], key: A): int =
   if index >= 0: result = t.data[index].val
 
 proc hasKey*[A](t: CountTable[A], key: A): bool =
-  ## returns true iff `key` is in the table `t`.
+  ## returns true if `key` is in the table `t`.
   result = rawGet(t, key) >= 0
 
 proc contains*[A](t: CountTable[A], key: A): bool =
@@ -968,7 +968,7 @@ proc `$`*[A](t: CountTable[A]): string =
   dollarImpl()
 
 proc `==`*[A](s, t: CountTable[A]): bool =
-  ## The `==` operator for count tables. Returns ``true`` iff both tables
+  ## The `==` operator for count tables. Returns ``true`` if both tables
   ## contain the same keys with the same count. Insert order does not matter.
   equalsImpl(s, t)
 
@@ -1067,7 +1067,7 @@ proc getOrDefault*[A](t: CountTableRef[A], key: A): int =
   result = t[].getOrDefault(key)
 
 proc hasKey*[A](t: CountTableRef[A], key: A): bool =
-  ## returns true iff `key` is in the table `t`.
+  ## returns true if `key` is in the table `t`.
   result = t[].hasKey(key)
 
 proc contains*[A](t: CountTableRef[A], key: A): bool =
@@ -1098,7 +1098,7 @@ proc `$`*[A](t: CountTableRef[A]): string =
   dollarImpl()
 
 proc `==`*[A](s, t: CountTableRef[A]): bool =
-  ## The `==` operator for count tables. Returns ``true`` iff either both tables
+  ## The `==` operator for count tables. Returns ``true`` if either both tables
   ## are ``nil`` or none is ``nil`` and both contain the same keys with the same
   ## count. Insert order does not matter.
   if isNil(s): result = isNil(t)

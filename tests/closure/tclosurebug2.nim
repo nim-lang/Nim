@@ -108,7 +108,7 @@ proc mget*[A, B](t: var TOrderedTable[A, B], key: A): var B =
   else: raise newException(KeyError, "key not found: " & $key)
 
 proc hasKey*[A, B](t: TOrderedTable[A, B], key: A): bool =
-  ## returns true iff `key` is in the table `t`.
+  ## returns true if `key` is in the table `t`.
   result = rawGet(t, key) >= 0
 
 proc rawInsert[A, B](t: var TOrderedTable[A, B],

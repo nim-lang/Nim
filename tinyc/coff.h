@@ -225,7 +225,7 @@ struct lineno
         union
         {
                 long    l_symndx ;      /* sym. table index of function name
-                                                iff l_lnno == 0      */
+                                                if l_lnno == 0      */
                 long    l_paddr ;       /* (physical) address of line number */
         }               l_addr ;
         unsigned short  l_lnno ;        /* line number */

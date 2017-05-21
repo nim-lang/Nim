@@ -71,7 +71,7 @@ proc `[]`*[A, B](t: TTable[A, B], key: A): B =
   if index >= 0: result = t.data[index].val
 
 proc hasKey*[A, B](t: TTable[A, B], key: A): bool =
-  ## returns true iff `key` is in the table `t`.
+  ## returns true if `key` is in the table `t`.
   result = rawGet(t, key) >= 0
 
 proc rawInsert[A, B](t: var TTable[A, B], data: var TKeyValuePairSeq[A, B],
@@ -176,7 +176,7 @@ proc `[]`*[A](t: TCountTable[A], key: A): int =
   if index >= 0: result = t.data[index].val
 
 proc hasKey*[A](t: TCountTable[A], key: A): bool =
-  ## returns true iff `key` is in the table `t`.
+  ## returns true if `key` is in the table `t`.
   result = rawGet(t, key) >= 0
 
 proc rawInsert[A](t: TCountTable[A], data: var seq[tuple[key: A, val: int]],

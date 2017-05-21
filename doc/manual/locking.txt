@@ -197,7 +197,7 @@ This is essential so that procs can be called within a ``locks`` section:
 
 As usual ``locks`` is an inferred effect and there is a subtype
 relation: ``proc () {.locks: N.}`` is a subtype of ``proc () {.locks: M.}``
-iff (M <= N).
+if (M <= N).
 
 The ``locks`` pragma can also take the special value ``"unknown"``. This
 is useful in the context of dynamic method dispatching. In the following
