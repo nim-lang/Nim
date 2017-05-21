@@ -224,12 +224,12 @@ proc `-`*(a, b: Time): int64 {.
 
 proc `<`*(a, b: Time): bool {.
   rtl, extern: "ntLtTime", tags: [], raises: [], noSideEffect.} =
-  ## returns true iff ``a < b``, that is iff a happened before b.
+  ## returns true if ``a < b``, that is if a happened before b.
   result = a - b < 0
 
 proc `<=` * (a, b: Time): bool {.
   rtl, extern: "ntLeTime", tags: [], raises: [], noSideEffect.}=
-  ## returns true iff ``a <= b``.
+  ## returns true if ``a <= b``.
   result = a - b <= 0
 
 proc `==`*(a, b: Time): bool {.

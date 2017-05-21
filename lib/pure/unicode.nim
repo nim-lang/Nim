@@ -1334,7 +1334,7 @@ proc toTitle*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
   return Rune(c)
 
 proc isLower*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
-  ## Returns true iff ``c`` is a lower case Unicode character.
+  ## Returns true if ``c`` is a lower case Unicode character.
   ## If possible, prefer ``isLower`` over ``isUpper``.
   var c = RuneImpl(c)
   # Note: toUpperRanges is correct here!
@@ -1346,7 +1346,7 @@ proc isLower*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
     return true
 
 proc isUpper*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
-  ## Returns true iff ``c`` is a upper case Unicode character.
+  ## Returns true if ``c`` is a upper case Unicode character.
   ## If possible, prefer ``isLower`` over ``isUpper``.
   var c = RuneImpl(c)
   # Note: toLowerRanges is correct here!
@@ -1358,7 +1358,7 @@ proc isUpper*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
     return true
 
 proc isAlpha*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
-  ## Returns true iff ``c`` is an *alpha* Unicode character (i.e., a letter)
+  ## Returns true if ``c`` is an *alpha* Unicode character (i.e., a letter)
   if isUpper(c) or isLower(c):
     return true
   var c = RuneImpl(c)
@@ -1370,18 +1370,18 @@ proc isAlpha*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
     return true
 
 proc isTitle*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
-  ## Returns true iff ``c`` is a Unicode titlecase character
+  ## Returns true if ``c`` is a Unicode titlecase character
   return isUpper(c) and isLower(c)
 
 proc isWhiteSpace*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
-  ## Returns true iff ``c`` is a Unicode whitespace character
+  ## Returns true if ``c`` is a Unicode whitespace character
   var c = RuneImpl(c)
   var p = binarySearch(c, spaceRanges, len(spaceRanges) div 2, 2)
   if p >= 0 and c >= spaceRanges[p] and c <= spaceRanges[p+1]:
     return true
 
 proc isCombining*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
-  ## Returns true iff ``c`` is a Unicode combining character
+  ## Returns true if ``c`` is a Unicode combining character
   var c = RuneImpl(c)
 
   # Optimized to return false immediately for ASCII
@@ -1405,22 +1405,22 @@ template runeCheck(s, runeProc) =
 
 proc isUpper*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nuc$1Str".} =
-  ## Returns true iff `s` contains all upper case unicode characters.
+  ## Returns true if `s` contains all upper case unicode characters.
   runeCheck(s, isUpper)
 
 proc isLower*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nuc$1Str".} =
-  ## Returns true iff `s` contains all lower case unicode characters.
+  ## Returns true if `s` contains all lower case unicode characters.
   runeCheck(s, isLower)
 
 proc isAlpha*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nuc$1Str".} =
-  ## Returns true iff `s` contains all alphabetic unicode characters.
+  ## Returns true if `s` contains all alphabetic unicode characters.
   runeCheck(s, isAlpha)
 
 proc isSpace*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nuc$1Str".} =
-  ## Returns true iff `s` contains all whitespace unicode characters.
+  ## Returns true if `s` contains all whitespace unicode characters.
   runeCheck(s, isWhiteSpace)
 
 template convertRune(s, runeProc) =
@@ -1619,9 +1619,9 @@ proc toRunes*(s: string): seq[Rune] =
 proc cmpRunesIgnoreCase*(a, b: string): int {.rtl, extern: "nuc$1", procvar.} =
   ## Compares two UTF-8 strings and ignores the case. Returns:
   ##
-  ## | 0 iff a == b
-  ## | < 0 iff a < b
-  ## | > 0 iff a > b
+  ## | 0 if a == b
+  ## | < 0 if a < b
+  ## | > 0 if a > b
   var i = 0
   var j = 0
   var ar, br: Rune

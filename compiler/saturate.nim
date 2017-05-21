@@ -68,7 +68,7 @@ proc `|*|`*(a, b: BiggestInt): BiggestInt =
   # The difference either is or isn't significant compared to the
   # true value (of which floatProd is a good approximation).
 
-  # abs(diff)/abs(prod) <= 1/32 iff
+  # abs(diff)/abs(prod) <= 1/32 if
   #   32 * abs(diff) <= abs(prod) -- 5 good bits is "close enough"
   if 32.0 * abs(resAsFloat - floatProd) <= abs(floatProd):
     return result

@@ -59,7 +59,7 @@ proc addEntry(entry: LogEntry) =
     var interesting = false
     for i in 0..ilocn-1:
       let p = ilocs[i]
-      #  X..Y and C..D overlap iff (X <= D and C <= Y)
+      #  X..Y and C..D overlap if (X <= D and C <= Y)
       let x = p[0]
       let y = p[0]+p[1]-1
       let c = cast[int](entry.address)
