@@ -35,6 +35,33 @@ These versions of mingw are known to work:
 
 
 
+Installing on Linux Distributions
+=================================
+Ubuntu Linux and its derivatives
+--------------------------------
+There is a Ubuntu PPA that can be used to install Nim.    
+Ubuntu 14.04 LTS and Ubuntu 16.04 LTS:     
+``sudo add-apt-repository ppa:jonathonf/nimlang``    
+``sudo apt-get update``   
+``sudo apt-get install nim nim-doc``   
+
+Fedora and its derivatives
+--------------------------
+There is a Copr repository for Ferdora 23+
+Here's how you can use them
+``sudo dnf copr enable avsej/nim``
+``sudo dnf install nim``
+
+Arch and its derivatives
+------------------------
+There is a Nim package in Arch's official repos but its orphaned and hasn't been updated since 0.15                           
+Here's how you can install it if you may   
+``sudo pacman -Sy nim``
+There is also an unofficial Nim package in the AUR but it's the development code directly from GitHub.    
+Here's how you can install it   
+``yaourt -S nim-git``
+
+
 Installation based on generated C code
 --------------------------------------
 
