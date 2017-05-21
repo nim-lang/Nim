@@ -571,7 +571,7 @@ proc parseAttribute(my: var XmlParser) =
           add(my.b, buf[pos])
           inc(pos)
   else:
-    markError(my, errQuoteExpected)
+    # markError(my, errQuoteExpected)
     # error corrections: guess what was meant
     while buf[pos] != '>' and buf[pos] > ' ':
       add(my.b, buf[pos])
