@@ -691,3 +691,22 @@ the address of variables, but one can't use it on variables declared through
   # The following line doesn't compile:
   echo repr(addr(t1))
   # Error: expression has no address
+
+
+The unsafeAddr operator
+-----------------------
+The ``unsafeAddr`` is another operator that acts like the ``addr`` operator
+(returning the address of an l-value).  It's difference is that the compiler
+will not do any type checking when it is used.  You should attempt to use the
+``addr`` operator first.  There are cases such as lower level memory & data
+manipulation where you will have to use this.
+
+.. code-block:: nim
+
+  var pixelData = seq[uint8]
+
+  # ...
+
+  # casting a sequence of uint8 bytes to a cuchar pointer
+  let pixelPtr = cast[ptr cuchar](pixelData[0].unsafeAddr]
+
