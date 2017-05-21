@@ -386,6 +386,10 @@ proc len*(row: InstantRow): int {.inline.} =
   ## returns number of columns in the row
   int(pqNfields(row.res))
 
+proc getColumnName*(row: InstantRow, col: int) : string {.inline.} =
+  ## returns name for given column in the row
+  $pqfname(row.res, int32(col))
+  
 proc getRow*(db: DbConn, query: SqlQuery,
              args: varargs[string, `$`]): Row {.tags: [ReadDbEffect].} =
   ## retrieves a single row. If the query doesn't return any rows, this proc
