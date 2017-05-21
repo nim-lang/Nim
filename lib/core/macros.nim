@@ -673,8 +673,18 @@ template expectRoutine(node: NimNode) =
   expectKind(node, RoutineNodes)
 
 proc name*(someProc: NimNode): NimNode {.compileTime.} =
+  ## Returns name node of the proc. Note: if result is nnkPostfix
+  ## the name is not unpacked. Use `unpackedName` to obtain the "pure" name.
   someProc.expectRoutine
   result = someProc[0]
+
+proc unpackedName*(someProc: NimNode): NimNode {.compileTime.} =
+  ## Returns name node of the proc. Note: if result is nnkPostfix
+  ## the name is unpacked.
+  result = someProc.name
+  if not result.isNil and result.kind == nnkPostfix:
+    result = result[1]
+
 proc `name=`*(someProc: NimNode; val: NimNode) {.compileTime.} =
   someProc.expectRoutine
   someProc[0] = val
