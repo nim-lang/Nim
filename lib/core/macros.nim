@@ -460,7 +460,7 @@ proc nestList*(theProc: NimIdent,
 proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
   ## Convert the AST `n` to a human-readable tree-like string.
   ##
-  ## See also `repr`, `lispRepr`, and `codeRepr`.
+  ## See also `repr`, `lispRepr`, and `astGenRepr`.
 
   proc traverse(res: var string, level: int, n: NimNode) {.benign.} =
     for i in 0..level-1: res.add "  "
@@ -486,7 +486,7 @@ proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
 proc lispRepr*(n: NimNode): string {.compileTime, benign.} =
   ## Convert the AST `n` to a human-readable lisp-like string,
   ##
-  ## See also `repr`, `treeRepr`, and `codeRepr`.
+  ## See also `repr`, `treeRepr`, and `astGenRepr`.
 
   result = ($n.kind).substr(3)
   add(result, "(")
