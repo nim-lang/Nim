@@ -156,3 +156,18 @@ Exception hierarchy
 The exception tree is defined in the `system <system.html>`_ module:
 
 .. include:: ../exception_hierarchy_fragment.txt
+
+
+Custom Exceptions
+-----------------
+
+Custom exceptions are defined by creating types that inherit from an already
+existing exception type, such ``Exception``. These exceptions can then be
+created by calling `newException` with the custom exception type and message:
+
+.. code-block:: nim
+  type MyCustomException = object of Exception
+  raise newException(MyCustomException, "Something went wrong!")
+  
+Custom exception types may only be object types - ``newException`` 
+procedure does not currently accept reference types.
