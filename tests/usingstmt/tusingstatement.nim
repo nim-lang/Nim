@@ -12,7 +12,7 @@ import
 # Nim's destructors offer a mechanism for automatic
 # disposal of resources.
 #
-macro autoClose(c, blck: untyped): untyped =
+macro autoClose(args: varargs[untyped]): untyped =
   let e = callsite()
   if e.len != 3:
     error "Using statement: unexpected number of arguments. Got " &
