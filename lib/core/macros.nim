@@ -509,11 +509,11 @@ proc lispRepr*(n: NimNode): string {.compileTime, benign.} =
 
   add(result, ")")
 
-proc codeRepr*(n: NimNode): string {.compileTime, benign.} =
+proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
   ## Convert the AST `n` to the code required to generate that AST. So for example
   ##
   ## .. code-block:: nim
-  ##   codeRepr:
+  ##   astGenRepr:
   ##     echo "Hello world"
   ##
   ## Would output:
@@ -610,9 +610,9 @@ macro dumpLisp*(s: untyped): untyped = echo s.lispRepr
   ##
   ## See `dumpTree`.
 
-macro dumpCode*(s: untyped): untyped = echo s.codeRepr
+macro dumpAstGen*(s: untyped): untyped = echo s.astGenRepr
   ## Accepts a block of nim code and prints the parsed abstract syntax
-  ## tree using the `codeRepr` function. Printing is done *at compile time*.
+  ## tree using the `astGenRepr` function. Printing is done *at compile time*.
   ##
   ## You can use this as a tool to write macros quicker by writing example
   ## outputs and then copying the snippets into the macro for modification.
