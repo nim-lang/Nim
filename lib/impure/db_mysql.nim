@@ -98,14 +98,16 @@ type
     len: int
 
   SQLInputKind = enum
-    SQLIntKind, SQLFloatKind, SQLStringKind, SQLNullKind
+    SQLSIntKind, SQLUIntKind, SQLFloatKind, SQLStringKind, SQLNullKind
 
   SQLInput = object
     case kind*: SQLInputKind
-    of SQLIntKind:
-      num*: int
+    of SQLSIntKind:
+      num*: BiggestInt
+    of SQLUIntKind:
+      unum*: BiggestUInt
     of SQLFloatKind:
-      fnum*: float
+      fnum*: BiggestFloat
     of SQLStringKind:
       str*: string
     of SQLNullKind:
@@ -152,22 +154,28 @@ proc dbQuote*(s: SQLInput): string =
         of Letters+Digits: result.add c
         else: result.add "\\" & c
     add(result, '\'')
-  of SQLIntKind:
+  of SQLSIntKind:
     result = $s.num
+  of SQLUIntKind:
+    result = $s.unum
   of SQLFloatKind:
     result = $s.fnum
   of SQLNullKind:
     result = "NULL"
 
-proc toSQLInput*(x: int): SQLInput =
-  result.kind = SQLIntKind
-  result.num = x
+proc toSQLInput*(x: SomeInteger): SQLInput =
+  when x is SomeSignedInt:
+    result.kind = SQLSIntKind
+    result.num = x
+  when x is SomeUnsignedInt:
+    result.kind = SQLUIntKind
+    result.unum = x
 
 proc toSQLInput*(x: bool): SQLInput =
-  result.kind = SQLIntKind
-  result.num = if x: 1 else: 0
+  result.kind = SQLUIntKind
+  result.unum = if x: 1 else: 0
 
-proc toSQLInput*(x: float): SQLInput =
+proc toSQLInput*(x: SomeReal): SQLInput =
   result.kind = SQLFloatKind
   result.fnum = x
 
@@ -460,7 +468,7 @@ proc open*(connection, user, password, database: string): DbConn {.
   if mysql.realConnect(result, host, user, password, database,
                        port, nil, 0) == nil:
     var errmsg = $mysql.error(result)
-    db_mysql.close(result)
+    mydb_mysql.close(result)
     dbError(errmsg)
 
 proc setEncoding*(connection: DbConn, encoding: string): bool {.
