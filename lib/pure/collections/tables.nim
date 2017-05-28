@@ -269,6 +269,18 @@ proc del*[A, B](t: var Table[A, B], key: A) =
   ## deletes `key` from hash table `t`.
   delImpl()
 
+proc take*[A, B](t: var Table[A, B], key: A, val: var B): bool =
+  ## Deletes the ``key`` from the table.
+  ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
+  ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
+  ## unchanged.
+  var hc: Hash
+  var index = rawGet(t, key, hc)
+  result = index >= 0
+  if result:
+    shallowCopy(val, t.data[index].val)
+    delImplIdx(t, index)
+
 proc enlarge[A, B](t: var Table[A, B]) =
   var n: KeyValuePairSeq[A, B]
   newSeq(n, len(t.data) * growthFactor)
@@ -423,6 +435,13 @@ proc add*[A, B](t: TableRef[A, B], key: A, val: B) =
 proc del*[A, B](t: TableRef[A, B], key: A) =
   ## deletes `key` from hash table `t`.
   t[].del(key)
+
+proc take*[A, B](t: TableRef[A, B], key: A, val: var B): bool =
+  ## Deletes the ``key`` from the table.
+  ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
+  ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
+  ## unchanged.
+  result = t[].take(key, val)
 
 proc newTable*[A, B](initialSize=64): TableRef[A, B] =
   new(result)
@@ -625,7 +644,7 @@ proc `==`*[A, B](s, t: OrderedTable[A, B]): bool =
   while ht >= 0 and hs >= 0:
     var nxtt = t.data[ht].next
     var nxts = s.data[hs].next
-    if isFilled(t.data[ht].hcode) and isFilled(s.data[hs].hcode): 
+    if isFilled(t.data[ht].hcode) and isFilled(s.data[hs].hcode):
       if (s.data[hs].key != t.data[ht].key) and (s.data[hs].val != t.data[ht].val):
         return false
     ht = nxtt
@@ -785,7 +804,7 @@ proc sort*[A, B](t: OrderedTableRef[A, B],
   t[].sort(cmp)
 
 proc del*[A, B](t: var OrderedTable[A, B], key: A) =
-  ## deletes `key` from ordered hash table `t`. O(n) comlexity.
+  ## deletes `key` from ordered hash table `t`. O(n) complexity.
   var n: OrderedKeyValuePairSeq[A, B]
   newSeq(n, len(t.data))
   var h = t.first
@@ -804,7 +823,7 @@ proc del*[A, B](t: var OrderedTable[A, B], key: A) =
     h = nxt
 
 proc del*[A, B](t: var OrderedTableRef[A, B], key: A) =
-  ## deletes `key` from ordered hash table `t`. O(n) comlexity.
+  ## deletes `key` from ordered hash table `t`. O(n) complexity.
   t[].del(key)
 
 # ------------------------------ count tables -------------------------------
@@ -829,7 +848,7 @@ proc clear*[A](t: CountTableRef[A]) =
 proc clear*[A](t: var CountTable[A]) =
   ## Resets the table so that it is empty.
   clearImpl()
-  
+
 iterator pairs*[A](t: CountTable[A]): (A, int) =
   ## iterates over any (key, value) pair in the table `t`.
   for h in 0..high(t.data):
@@ -1256,17 +1275,17 @@ when isMainModule:
     var b = newOrderedTable[string, string](initialSize=2)
     b.add("wrong?", "foo")
     b.add("wrong?", "foo2")
-    assert a == b    
+    assert a == b
 
   block: #5482
-    var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()  
+    var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()
     var b = newOrderedTable[string, string](initialSize=2)
     b.add("wrong?", "foo")
     b.add("wrong?", "foo2")
-    assert a == b    
+    assert a == b
 
   block: #5487
-    var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()  
+    var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()
     var b = newOrderedTable[string, string]() # notice, default size!
     b.add("wrong?", "foo")
     b.add("wrong?", "foo2")
@@ -1279,13 +1298,13 @@ when isMainModule:
     b.add("wrong?", "foo2")
     assert a == b
 
-  block: 
-    var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable() 
-    var b = [("wrong?","foo"), ("wrong?", "foo2")].newOrderedTable() 
+  block:
+    var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()
+    var b = [("wrong?","foo"), ("wrong?", "foo2")].newOrderedTable()
     var c = newOrderedTable[string, string]() # notice, default size!
     c.add("wrong?", "foo")
-    c.add("wrong?", "foo2")    
+    c.add("wrong?", "foo2")
     assert a == b
     assert a == c
-    
+
 

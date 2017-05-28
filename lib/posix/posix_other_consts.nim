@@ -414,6 +414,10 @@ var SS_ONSTACK* {.importc: "SS_ONSTACK", header: "<signal.h>".}: cint
 var SS_DISABLE* {.importc: "SS_DISABLE", header: "<signal.h>".}: cint
 var MINSIGSTKSZ* {.importc: "MINSIGSTKSZ", header: "<signal.h>".}: cint
 var SIGSTKSZ* {.importc: "SIGSTKSZ", header: "<signal.h>".}: cint
+var SIG_HOLD* {.importc: "SIG_HOLD", header: "<signal.h>".}: Sighandler
+var SIG_DFL* {.importc: "SIG_DFL", header: "<signal.h>".}: Sighandler
+var SIG_ERR* {.importc: "SIG_ERR", header: "<signal.h>".}: Sighandler
+var SIG_IGN* {.importc: "SIG_IGN", header: "<signal.h>".}: Sighandler
 
 # <sys/ipc.h>
 var IPC_CREAT* {.importc: "IPC_CREAT", header: "<sys/ipc.h>".}: cint

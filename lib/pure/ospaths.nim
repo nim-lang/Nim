@@ -516,7 +516,16 @@ when declared(getEnv) or defined(nimscript):
   proc getConfigDir*(): string {.rtl, extern: "nos$1",
     tags: [ReadEnvEffect, ReadIOEffect].} =
     ## Returns the config directory of the current user for applications.
+    ##
+    ## On non-Windows OSs, this proc conforms to the XDG Base Directory
+    ## spec. Thus, this proc returns the value of the XDG_CONFIG_DIR environment
+    ## variable if it is set, and returns the default configuration directory,
+    ## "~/.config/", otherwise.
+    ##
+    ## An OS-dependent trailing slash is always present at the end of the
+    ## returned string; `\\` on Windows and `/` on all other OSs.
     when defined(windows): return string(getEnv("APPDATA")) & "\\"
+    elif getEnv("XDG_CONFIG_DIR"): return string(getEnv("XDG_CONFIG_DIR")) & "/"
     else: return string(getEnv("HOME")) & "/.config/"
 
   proc getTempDir*(): string {.rtl, extern: "nos$1",
@@ -569,7 +578,7 @@ when declared(getEnv) or defined(nimscript):
       ## ``["exe", "cmd", "bat"]``, on Posix ``[""]``.
 
   proc findExe*(exe: string, followSymlinks: bool = true;
-                extensions=ExeExts): string {.
+                extensions: openarray[string]=ExeExts): string {.
     tags: [ReadDirEffect, ReadEnvEffect, ReadIOEffect].} =
     ## Searches for `exe` in the current working directory and then
     ## in directories listed in the ``PATH`` environment variable.

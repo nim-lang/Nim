@@ -42,7 +42,7 @@ echo p2 is AbstractPointOfFloat      # true
 echo p2.x is float and p2.y is float # true
 
 # https://github.com/nim-lang/Nim/issues/2018
-type ProtocolFollower = generic
+type ProtocolFollower = concept
   true # not a particularly involved protocol
 
 type ImplementorA = object

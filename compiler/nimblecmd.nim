@@ -17,15 +17,17 @@ proc addPath*(path: string, info: TLineInfo) =
 
 proc versionSplitPos(s: string): int =
   result = s.len-2
-  while result > 1 and s[result] in {'0'..'9', '.'}: dec result
+  #while result > 1 and s[result] in {'0'..'9', '.'}: dec result
+  while result > 1 and s[result] != '-': dec result
   if s[result] != '-': result = s.len
 
 const
-  latest = "head"
+  latest = ""
 
 proc `<.`(a, b: string): bool =
   # wether a has a smaller version than b:
-  if a == latest: return false
+  if a == latest: return true
+  elif b == latest: return false
   var i = 0
   var j = 0
   var verA = 0
@@ -33,8 +35,13 @@ proc `<.`(a, b: string): bool =
   while true:
     let ii = parseInt(a, verA, i)
     let jj = parseInt(b, verB, j)
-    # if A has no number left, but B has, B is preferred:  0.8 vs 0.8.3
-    if ii <= 0 or jj <= 0: return jj > 0
+    if ii <= 0 or jj <= 0:
+      # if A has no number and B has but A has no number whatsoever ("#head"),
+      # A is preferred:
+      if ii > 0 and jj <= 0 and j == 0: return true
+      if ii <= 0 and jj > 0 and i == 0: return false
+      # if A has no number left, but B has, B is preferred:  0.8 vs 0.8.3
+      return jj > 0
     if verA < verB: return true
     elif verA > verB: return false
     # else: same version number; continue:
@@ -46,12 +53,9 @@ proc `<.`(a, b: string): bool =
 proc addPackage(packages: StringTableRef, p: string) =
   let x = versionSplitPos(p)
   let name = p.substr(0, x-1)
-  if x < p.len:
-    let version = p.substr(x+1)
-    if packages.getOrDefault(name) <. version:
-      packages[name] = version
-  else:
-    packages[name] = latest
+  let version = if x < p.len: p.substr(x+1) else: ""
+  if packages.getOrDefault(name) <. version:
+    packages[name] = version
 
 iterator chosen(packages: StringTableRef): string =
   for key, val in pairs(packages):
@@ -76,3 +80,18 @@ proc addPathRec(dir: string, info: TLineInfo) =
 proc nimblePath*(path: string, info: TLineInfo) =
   addPathRec(path, info)
   addNimblePath(path, info)
+
+when isMainModule:
+  var rr = newStringTable()
+  addPackage rr, "irc-#head"
+  addPackage rr, "irc-0.1.0"
+  addPackage rr, "irc"
+  addPackage rr, "another"
+  addPackage rr, "another-0.1"
+
+  addPackage rr, "ab-0.1.3"
+  addPackage rr, "ab-0.1"
+  addPackage rr, "justone"
+
+  for p in rr.chosen:
+    echo p

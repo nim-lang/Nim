@@ -9,10 +9,10 @@
 
 # This module does the instantiation of generic types.
 
-import ast, astalgo, msgs, types, magicsys, semdata, renderer
+import ast, astalgo, msgs, types, magicsys, semdata, renderer, options
 
 const
-  tfInstClearedFlags = {tfHasMeta}
+  tfInstClearedFlags = {tfHasMeta, tfUnresolved}
 
 proc checkPartialConstructedType(info: TLineInfo, t: PType) =
   if tfAcyclic in t.flags and skipTypes(t, abstractInst).kind != tyObject:
@@ -50,6 +50,9 @@ proc searchInstTypes*(key: PType): PType =
       # types such as Channel[empty]. Why?
       # See the notes for PActor in handleGenericInvocation
       return
+    if not sameFlags(inst, key):
+      continue
+
     block matchType:
       for j in 1 .. high(key.sons):
         # XXX sameType is not really correct for nested generics?
@@ -231,6 +234,7 @@ proc lookupTypeVar(cl: var TReplTypeVars, t: PType): PType =
 proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
   # XXX: relying on allowMetaTypes is a kludge
   result = copyType(t, t.owner, cl.allowMetaTypes)
+  if cl.allowMetaTypes: return
   result.flags.incl tfFromGeneric
   if not (t.kind in tyMetaTypes or
          (t.kind == tyStatic and t.n == nil)):
@@ -247,10 +251,11 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
     result = PType(idTableGet(cl.localCache, t))
   else:
     result = searchInstTypes(t)
+
   if result != nil and eqTypeFlags*result.flags == eqTypeFlags*t.flags: return
   for i in countup(1, sonsLen(t) - 1):
     var x = t.sons[i]
-    if x.kind == tyGenericParam:
+    if x.kind in {tyGenericParam}:
       x = lookupTypeVar(cl, x)
       if x != nil:
         if header == t: header = instCopyType(cl, t)
@@ -307,31 +312,32 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   rawAddSon(result, newbody)
   checkPartialConstructedType(cl.info, newbody)
   let dc = newbody.deepCopy
-  if dc != nil and sfFromGeneric notin newbody.deepCopy.flags:
-    # 'deepCopy' needs to be instantiated for
-    # generics *when the type is constructed*:
-    newbody.deepCopy = cl.c.instTypeBoundOp(cl.c, dc, result, cl.info,
-                                            attachedDeepCopy, 1)
-  if bodyIsNew and newbody.typeInst == nil:
-    #doassert newbody.typeInst == nil
-    newbody.typeInst = result
-    if tfRefsAnonObj in newbody.flags and newbody.kind != tyGenericInst:
-      # can come here for tyGenericInst too, see tests/metatype/ttypeor.nim
-      # need to look into this issue later
-      assert newbody.kind in {tyRef, tyPtr}
-      assert newbody.lastSon.typeInst == nil
-      newbody.lastSon.typeInst = result
-  let asgn = newbody.assignment
-  if asgn != nil and sfFromGeneric notin asgn.flags:
-    # '=' needs to be instantiated for generics when the type is constructed:
-    newbody.assignment = cl.c.instTypeBoundOp(cl.c, asgn, result, cl.info,
-                                              attachedAsgn, 1)
-  let methods = skipTypes(bbody, abstractPtrs).methods
-  for col, meth in items(methods):
-    # we instantiate the known methods belonging to that type, this causes
-    # them to be registered and that's enough, so we 'discard' the result.
-    discard cl.c.instTypeBoundOp(cl.c, meth, result, cl.info,
-      attachedAsgn, col)
+  if cl.allowMetaTypes == false:
+    if dc != nil and sfFromGeneric notin newbody.deepCopy.flags:
+      # 'deepCopy' needs to be instantiated for
+      # generics *when the type is constructed*:
+      newbody.deepCopy = cl.c.instTypeBoundOp(cl.c, dc, result, cl.info,
+                                              attachedDeepCopy, 1)
+    if bodyIsNew and newbody.typeInst == nil:
+      #doassert newbody.typeInst == nil
+      newbody.typeInst = result
+      if tfRefsAnonObj in newbody.flags and newbody.kind != tyGenericInst:
+        # can come here for tyGenericInst too, see tests/metatype/ttypeor.nim
+        # need to look into this issue later
+        assert newbody.kind in {tyRef, tyPtr}
+        assert newbody.lastSon.typeInst == nil
+        newbody.lastSon.typeInst = result
+    let asgn = newbody.assignment
+    if asgn != nil and sfFromGeneric notin asgn.flags:
+      # '=' needs to be instantiated for generics when the type is constructed:
+      newbody.assignment = cl.c.instTypeBoundOp(cl.c, asgn, result, cl.info,
+                                                attachedAsgn, 1)
+    let methods = skipTypes(bbody, abstractPtrs).methods
+    for col, meth in items(methods):
+      # we instantiate the known methods belonging to that type, this causes
+      # them to be registered and that's enough, so we 'discard' the result.
+      discard cl.c.instTypeBoundOp(cl.c, meth, result, cl.info,
+        attachedAsgn, col)
 
 proc eraseVoidParams*(t: PType) =
   # transform '(): void' into '()' because old parts of the compiler really
@@ -522,6 +528,14 @@ proc replaceTypesForLambda*(p: PContext, pt: TIdTable, n: PNode;
 proc generateTypeInstance*(p: PContext, pt: TIdTable, info: TLineInfo,
                            t: PType): PType =
   var cl = initTypeVars(p, pt, info, nil)
+  pushInfoContext(info)
+  result = replaceTypeVarsT(cl, t)
+  popInfoContext()
+
+proc prepareMetatypeForSigmatch*(p: PContext, pt: TIdTable, info: TLineInfo,
+                                 t: PType): PType =
+  var cl = initTypeVars(p, pt, info, nil)
+  cl.allowMetaTypes = true
   pushInfoContext(info)
   result = replaceTypeVarsT(cl, t)
   popInfoContext()

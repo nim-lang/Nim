@@ -1213,22 +1213,22 @@ when not defined(js):
   proc parseJson*(s: Stream, filename: string): JsonNode =
     ## Parses from a stream `s` into a `JsonNode`. `filename` is only needed
     ## for nice error messages.
-    ## If `s` contains extra data, it will raising `JsonParsingError`.
+    ## If `s` contains extra data, it will raise `JsonParsingError`.
     var p: JsonParser
     p.open(s, filename)
     defer: p.close()
     discard getTok(p) # read first token
     result = p.parseJson()
-    eat(p, tkEof) # check there are no exstra data
+    eat(p, tkEof) # check if there is no extra data
 
   proc parseJson*(buffer: string): JsonNode =
     ## Parses JSON from `buffer`.
-    ## If `buffer` contains extra data, it will raising `JsonParsingError`.
+    ## If `buffer` contains extra data, it will raise `JsonParsingError`.
     result = parseJson(newStringStream(buffer), "input")
 
   proc parseFile*(filename: string): JsonNode =
     ## Parses `file` into a `JsonNode`.
-    ## If `file` contains extra data, it will raising `JsonParsingError`.
+    ## If `file` contains extra data, it will raise `JsonParsingError`.
     var stream = newFileStream(filename, fmRead)
     if stream == nil:
       raise newException(IOError, "cannot read from file: " & filename)
@@ -1502,7 +1502,7 @@ proc processObjField(field, jsonNode: NimNode): seq[NimNode] =
   doAssert result.len > 0
 
 proc processType(typeName: NimNode, obj: NimNode,
-                 jsonNode: NimNode): NimNode {.compileTime.} =
+                 jsonNode: NimNode, isRef: bool): NimNode {.compileTime.} =
   ## Process a type such as ``Sym "float"`` or ``ObjectTy ...``.
   ##
   ## Sample ``ObjectTy``:
@@ -1524,6 +1524,20 @@ proc processType(typeName: NimNode, obj: NimNode,
     for field in obj[2]:
       let nodes = processObjField(field, jsonNode)
       result.add(nodes)
+
+    # Object might be null. So we need to check for that.
+    if isRef:
+      result = quote do:
+        verifyJsonKind(`jsonNode`, {JObject, JNull}, astToStr(`jsonNode`))
+        if `jsonNode`.kind == JNull:
+          nil
+        else:
+          `result`
+    else:
+      result = quote do:
+        verifyJsonKind(`jsonNode`, {JObject}, astToStr(`jsonNode`));
+        `result`
+
   of nnkEnumTy:
     let instType = toIdentNode(getTypeInst(typeName))
     let getEnumCall = createGetEnumCall(jsonNode, instType)
@@ -1536,8 +1550,8 @@ proc processType(typeName: NimNode, obj: NimNode,
     of "float":
       result = quote do:
         (
-          verifyJsonKind(`jsonNode`, {JFloat}, astToStr(`jsonNode`));
-          `jsonNode`.fnum
+          verifyJsonKind(`jsonNode`, {JFloat, JInt}, astToStr(`jsonNode`));
+          if `jsonNode`.kind == JFloat: `jsonNode`.fnum else: `jsonNode`.num.float
         )
     of "string":
       result = quote do:
@@ -1550,6 +1564,12 @@ proc processType(typeName: NimNode, obj: NimNode,
         (
           verifyJsonKind(`jsonNode`, {JInt}, astToStr(`jsonNode`));
           `jsonNode`.num.int
+        )
+    of "biggestint":
+      result = quote do:
+        (
+          verifyJsonKind(`jsonNode`, {JInt}, astToStr(`jsonNode`));
+          `jsonNode`.num
         )
     of "bool":
       result = quote do:
@@ -1585,10 +1605,10 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
         typeName = typeName[0 .. ^12]
 
       let obj = getType(typeSym[1])
-      result = processType(newIdentNode(typeName), obj, jsonNode)
+      result = processType(newIdentNode(typeName), obj, jsonNode, true)
     of "seq":
       let seqT = typeSym[1]
-      let forLoopI = newIdentNode("i")
+      let forLoopI = genSym(nskForVar, "i")
       let indexerNode = createJsonIndexer(jsonNode, forLoopI)
       let constructorNode = createConstructor(seqT, indexerNode)
 
@@ -1596,26 +1616,43 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
       result = quote do:
         (
           var list: `typeSym` = @[];
-          # if `jsonNode`.kind != JArray:
-          #   # TODO: Improve error message.
-          #   raise newException(ValueError, "Expected a list")
+          verifyJsonKind(`jsonNode`, {JArray}, astToStr(`jsonNode`));
           for `forLoopI` in 0 .. <`jsonNode`.len: list.add(`constructorNode`);
           list
         )
+    of "array":
+      let arrayT = typeSym[2]
+      let forLoopI = genSym(nskForVar, "i")
+      let indexerNode = createJsonIndexer(jsonNode, forLoopI)
+      let constructorNode = createConstructor(arrayT, indexerNode)
+
+      # Create a statement expression containing a for loop.
+      result = quote do:
+        (
+          var list: `typeSym`;
+          verifyJsonKind(`jsonNode`, {JArray}, astToStr(`jsonNode`));
+          for `forLoopI` in 0 .. <`jsonNode`.len: list[`forLoopI`] =`constructorNode`;
+          list
+        )
+
     else:
       # Generic type.
       let obj = getType(typeSym)
-      result = processType(typeSym, obj, jsonNode)
+      result = processType(typeSym, obj, jsonNode, false)
   of nnkSym:
     let obj = getType(typeSym)
-    result = processType(typeSym, obj, jsonNode)
+    if obj.kind == nnkBracketExpr:
+      # When `Sym "Foo"` turns out to be a `ref object`.
+      result = createConstructor(obj, jsonNode)
+    else:
+      result = processType(typeSym, obj, jsonNode, false)
   else:
     doAssert false, "Unable to create constructor for: " & $typeSym.kind
 
   doAssert(not result.isNil(), "Constructor not initialised.")
 
 proc postProcess(node: NimNode): NimNode
-proc postProcessValue(value: NimNode, depth=0): NimNode =
+proc postProcessValue(value: NimNode): NimNode =
   ## Looks for object constructors and calls the ``postProcess`` procedure
   ## on them. Otherwise it just returns the node as-is.
   case value.kind
@@ -1736,9 +1773,10 @@ macro to*(node: JsonNode, T: typedesc): untyped =
   doAssert(($typeNode[0]).normalize == "typedesc")
 
   result = createConstructor(typeNode[1], node)
-  result = postProcess(result)
+  # TODO: Rename postProcessValue and move it (?)
+  result = postProcessValue(result)
 
-  #echo(toStrLit(result))
+  # echo(toStrLit(result))
 
 when false:
   import os

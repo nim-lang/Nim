@@ -70,6 +70,8 @@ proc debug*(n: PNode) {.deprecated.}
 template mdbg*: bool {.dirty.} =
   when compiles(c.module):
     c.module.fileIdx == gProjectMainIdx
+  elif compiles(c.c.module):
+    c.c.module.fileIdx == gProjectMainIdx
   elif compiles(m.c.module):
     m.c.module.fileIdx == gProjectMainIdx
   elif compiles(cl.c.module):
@@ -79,6 +81,8 @@ template mdbg*: bool {.dirty.} =
       p.lex.fileIdx == gProjectMainIdx
     else:
       p.module.module.fileIdx == gProjectMainIdx
+  elif compiles(m.module.fileIdx):
+    m.module.fileIdx == gProjectMainIdx
   elif compiles(L.fileIdx):
     L.fileIdx == gProjectMainIdx
   else:
@@ -215,7 +219,7 @@ proc rspaces(x: int): Rope =
 
 proc toYamlChar(c: char): string =
   case c
-  of '\0'..'\x1F', '\x80'..'\xFF': result = "\\u" & strutils.toHex(ord(c), 4)
+  of '\0'..'\x1F', '\x7F'..'\xFF': result = "\\u" & strutils.toHex(ord(c), 4)
   of '\'', '\"', '\\': result = '\\' & c
   else: result = $c
 
