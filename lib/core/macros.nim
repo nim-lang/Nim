@@ -255,6 +255,11 @@ proc newStrLitNode*(s: string): NimNode {.compileTime, noSideEffect.} =
   result = newNimNode(nnkStrLit)
   result.strVal = s
 
+proc newCommentStmtNode*(s: string): NimNode {.compileTime, noSideEffect.} =
+  ## creates a comment statement node
+  result = newNimNode(nnkCommentStmt)
+  result.strVal = s
+
 proc newIntLitNode*(i: BiggestInt): NimNode {.compileTime.} =
   ## creates a int literal node from `i`
   result = newNimNode(nnkIntLit)
@@ -274,6 +279,7 @@ proc newIdentNode*(i: string): NimNode {.compileTime.} =
   ## creates an identifier node from `i`
   result = newNimNode(nnkIdent)
   result.ident = !i
+
 
 type
   BindSymRule* = enum    ## specifies how ``bindSym`` behaves
@@ -835,6 +841,8 @@ proc `$`*(node: NimNode): string {.compileTime.} =
     result = $node[0]
   of nnkAccQuoted:
     result = $node[0]
+  of nnkCommentStmt:
+    result = node.strVal
   else:
     badNodeKind node.kind, "$"
 
