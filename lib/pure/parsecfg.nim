@@ -542,7 +542,6 @@ proc writeConfig*(dict: Config, filename: string) =
   let file = open(filename, fmWrite)
   defer: file.close()
   let fileStream = newFileStream(file)
-  defer: fileStream.close()
   dict.writeConfig(fileStream)
 
 proc getSectionValue*(dict: Config, section, key: string): string =
