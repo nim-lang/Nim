@@ -23,7 +23,7 @@ proc toStrMaxPrecision*(f: BiggestFloat, literalPostfix = ""): string =
   else:
     var buf: array[0..80, char]
     c_sprintf(buf, "%#.16e" & literalPostfix, f)
-    result = $buf
+    result = newString(buf)
 
 proc encodeStr*(s: string, result: var string) =
   for i in countup(0, len(s) - 1):
@@ -133,4 +133,3 @@ iterator decodeStrArray*(s: cstring): string =
   while s[i] != '\0':
     yield decodeStr(s, i)
     if s[i] == ' ': inc i
-

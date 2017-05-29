@@ -18,7 +18,7 @@ proc reprFloat(x: float): string {.compilerproc.} = return $x
 proc reprPointer(x: pointer): string {.compilerproc.} =
   var buf: array[0..59, char]
   discard c_sprintf(buf, "%p", x)
-  return $buf
+  return newString(buf)
 
 proc `$`(x: uint64): string =
   if x == 0:
@@ -36,7 +36,7 @@ proc `$`(x: uint64): string =
     let half = i div 2
     # Reverse
     for t in 0 .. < half: swap(buf[t], buf[i-t-1])
-    result = $buf
+    result = newString(buf)
 
 proc reprStrAux(result: var string, s: cstring; len: int) =
   if cast[pointer](s) == nil:
