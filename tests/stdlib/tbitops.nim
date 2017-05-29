@@ -81,15 +81,28 @@ proc main() =
     doAssert( U8.rotateLeftBits(3) == 0b10010001'u8)
     doAssert( U8.rotateRightBits(3) == 0b0100_0110'u8)
 
+    doAssert( U64A.swapEndian == 0b00010001_01111010_01001000_10011001_10001010_01111100_00111111_01000100'u64)
+    doAssert( I64A.swapEndian == 0b00010001_01111010_01001000_10011001_10001010_01111100_00111111_01000100'i64)
+    doAssert( U32.swapEndian == 0b01010000_11011010_10011100_11010101'u32)
+    doAssert( I32.swapEndian == 0b01010000_11011010_10011100_11010101'i32)
+    doAssert( U16.swapEndian == 0b00101000_00100111'u16)
+    doAssert( I16.swapEndian == 0b00101000_00100111'i16)
+    doAssert( U8.swapEndian == U8)
+    doAssert( I8.swapEndian == I8)
+
     template test_impl(ffunc: untyped) =
       doAssert( compiles( ffunc(-1'i8)))
       doAssert( compiles( ffunc(-1'i16)))
       doAssert( compiles( ffunc(-1'i32)))
       doAssert( compiles( ffunc(-1'i64)))
+      doAssert( compiles( ffunc(0xFF'i8)))
+      doAssert( compiles( ffunc(0xFF7F'i16)))
+      doAssert( compiles( ffunc(0xFFFFFF7F'i32)))
+      doAssert( compiles( ffunc(0xFFFFFFFFFFFFFF7F'i64)))
       doAssert( compiles( ffunc(0xFF'u8)))
-      doAssert( compiles( ffunc(0xFFFF'u16)))
-      doAssert( compiles( ffunc(0xFFFFFFFF'u32)))
-      doAssert( compiles( ffunc(0xFFFFFFFFFFFFFFFF'u64)))
+      doAssert( compiles( ffunc(0xFF7F'u16)))
+      doAssert( compiles( ffunc(0xFFFFFF7F'u32)))
+      doAssert( compiles( ffunc(0xFFFFFFFFFFFFFF7F'u64)))
 
     # this checks that casting signed from/to unsigned in procs doesn't crash
     test_impl(countSetBits)
@@ -98,6 +111,7 @@ proc main() =
     test_impl(countLeadingZeroBits)
     test_impl(countTrailingZeroBits)
     test_impl(fastLog2)
+    test_impl(swapEndian)
 
   test()
   static :

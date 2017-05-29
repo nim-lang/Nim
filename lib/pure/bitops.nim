@@ -41,6 +41,13 @@ template toUint16[T](x: T): uint16 =
   when sizeof(x) == 1: cast[uint8](x).uint16
   else:                cast[uint16](x)
 
+template gen_bswap64_impl[T](x: uint64; retype: typedesc[T]): uint64 =
+  # get lo and hi DWORD, use bswap32 and recombine, swapping lo and hi DWORD
+  let lo = builtin_bswap32(cast[T]( (x and 0xFFFFFFFF'u64).uint32) )
+  let hi = builtin_bswap32(cast[T]( (x shr 32).uint32) )
+  cast[uint32](hi).uint64 or (cast[uint32](lo).uint64 shl 32)
+
+
 # #### Pure Nim version ####
 
 proc firstSetBit_nim(x: uint32): int {.inline, nosideeffect.} =
@@ -112,6 +119,29 @@ proc countSetBits_nim(n: uint64): int {.inline, noSideEffect.} =
   v = (v + (v shr 4'u64) and 0x0F0F0F0F0F0F0F0F'u64)
   result = ((v * 0x0101010101010101'u64) shr 56'u64).int
 
+proc swapEndian_nim*(val: uint16): uint16 {.inline, noSideEffect.} =
+  ## Reverse byte order in integer.
+  result =  ((val and 0xFF00'u16) shr  8) or
+            ((val and 0x00FF'u16) shl 8)
+
+proc swapEndian_nim*(val: uint32): uint32 {.inline, noSideEffect.} =
+  ## Reverse byte order in integer.
+  result =  ((val and 0xFF000000'u32) shr 24) or
+            ((val and 0x00FF0000'u32) shr  8) or
+            ((val and 0x0000FF00'u32) shl  8) or
+            ((val and 0x000000FF'u32) shl 24)
+
+proc swapEndian_nim*(val: uint64): uint64 {.inline, noSideEffect.} =
+  ## Reverse byte order in integer.
+  result =  ((val and 0x00000000000000FF'u64) shl 56) or
+            ((val and 0x000000000000FF00'u64) shl 40) or
+            ((val and 0x0000000000FF0000'u64) shl 24) or
+            ((val and 0x00000000FF000000'u64) shl  8) or
+            ((val and 0x000000FF00000000'u64) shr  8) or
+            ((val and 0x0000FF0000000000'u64) shr 24) or
+            ((val and 0x00FF000000000000'u64) shr 40) or
+            ((val and 0xFF00000000000000'u64) shr 56)
+
 
 template parity_impl[T](value: T): int =
   # formula id from: https://graphics.stanford.edu/%7Eseander/bithacks.html#ParityParallel
@@ -148,6 +178,11 @@ when useGCC_builtins:
   proc builtin_ctz(x: cuint): cint {.importc: "__builtin_ctz", cdecl.}
   proc builtin_ctzll(x: culonglong): cint {.importc: "__builtin_ctzll", cdecl.}
 
+  # Returns x with the order of the bytes reversed; for example, 0xaabb becomes 0xbbaa. Byte here always means exactly 8 bits.
+  proc builtin_bswap16(x: uint16): uint16 {.importc: "__builtin_bswap16", nodecl, nosideeffect.}
+  proc builtin_bswap32(x: uint32): uint32 {.importc: "__builtin_bswap32", nodecl, nosideeffect.}
+  proc builtin_bswap64(x: uint64): uint64 {.importc: "__builtin_bswap64", nodecl, nosideeffect.}
+
 elif useVCC_builtins:
   # Counts the number of one bits (population count) in a 16-, 32-, or 64-byte unsigned integer.
   proc builtin_popcnt16(a2: uint16): uint16 {.importc: "__popcnt16" header: "<intrin.h>", nosideeffect.}
@@ -161,6 +196,11 @@ elif useVCC_builtins:
   # Search the mask data from least significant bit (LSB) to the most significant bit (MSB) for a set bit (1).
   proc bitScanForward(index: ptr culong, mask: culong): cuchar {.importc: "_BitScanForward", header: "<intrin.h>", nosideeffect.}
   proc bitScanForward64(index: ptr culong, mask: uint64): cuchar {.importc: "_BitScanForward64", header: "<intrin.h>", nosideeffect.}
+
+  # https://msdn.microsoft.com/en-us/library/a3140177.aspx?query=
+  proc builtin_bswap16(a: cushort): cushort {.importc: "_byteswap_ushort", nodecl, header: "<intrin.h>", nosideeffect.}
+  proc builtin_bswap32(a: culong): culong {.importc: "_byteswap_ulong", nodecl, header: "<intrin.h>", nosideeffect.}
+  proc builtin_bswap64(a: uint64): uint64 {.importc: "_byteswap_uint64", nodecl, header: "<intrin.h>", nosideeffect.}
 
   template vcc_scan_impl(fnc: untyped; v: untyped): int =
     var index: culong
@@ -182,6 +222,11 @@ elif useICC_builtins:
   # Returns the number of leading 0-bits in x, starting at the most significant bit position. If x is 0, the result is undefined.
   proc bitScanReverse(p: ptr uint32, b: uint32): cuchar {.importc: "_BitScanReverse", header: "<immintrin.h>", nosideeffect.}
   proc bitScanReverse64(p: ptr uint32, b: uint64): cuchar {.importc: "_BitScanReverse64", header: "<immintrin.h>", nosideeffect.}
+
+  # Swap byte order in integer
+  # https://software.intel.com/sites/landingpage/IntrinsicsGuide/#techs=MMX,SSE,SSE2,SSE3,SSSE3,SSE4_1,SSE4_2,AVX,AVX2,FMA,AVX_512,KNC,SVML,Other&text=swap&expand=559,3035,559,558
+  proc builtin_bswap32(a: cint): cint {.importc: "_bswap", header: "<immintrin.h>", nodecl, nosideeffect.}
+  proc builtin_bswap64(a: int64): int64 {.importc: "_bswap64", header: "<immintrin.h>", nodecl, nosideeffect.}
 
   template icc_scan_impl(fnc: untyped; v: untyped): int =
     var index: uint32
@@ -337,6 +382,33 @@ proc countTrailingZeroBits*(x: SomeInteger): int {.inline, nosideeffect.} =
     else:
       result = firstSetBit(x) - 1
 
+proc swapEndian*[T:SomeInteger](x: T): T {.inline, nosideeffect.} =
+  ## Reverse byte order in integer.
+  when nimvm:
+    when sizeof(x) == 1: result = x
+    elif sizeof(x) == 2: result = cast[T](swapEndian_nim(x.toUint16))
+    elif sizeof(x) == 4: result = cast[T](swapEndian_nim(x.toUint32))
+    else:                result = cast[T](swapEndian_nim(x.uint64))
+  else:
+    when sizeof(x) == 1: result = x
+    elif useGCC_builtins:
+      when sizeof(x) == 2: result = cast[T](builtin_bswap16(x.toUint16))
+      elif sizeof(x) == 4: result = cast[T](builtin_bswap32(x.toUint32))
+      else:                result = cast[T](builtin_bswap64(x.uint64))
+    elif useVCC_builtins:
+      when sizeof(x) == 2: result = cast[T](builtin_bswap16(cast[cushort](x.toUint16)))
+      elif sizeof(x) == 4: result = cast[T](builtin_bswap32(cast[culong](x.toUint32)))
+      elif arch64:         result = cast[T](builtin_bswap64(x.uint64))
+      else:                result = cast[T](gen_bswap64_impl(x.uint64, culong))
+    elif useICC_builtins:
+      when sizeof(x) == 2: result = cast[T](swapEndian_nim(x.toUint16)) # no builtin bswap16 for ICC
+      elif sizeof(x) == 4: result = cast[T](builtin_bswap32(cast[cint](x.toUint32)))
+      elif arch64:         result = cast[T](builtin_bswap64(x.int64))
+      else:                result = cast[T](gen_bswap64_impl(x.uint64, cint))
+    else:
+      when sizeof(x) == 2: result = cast[T](swapEndian_nim(x.toUint16))
+      elif sizeof(x) == 4: result = cast[T](swapEndian_nim(x.toUint32))
+      else:                result = cast[T](swapEndian_nim(x.uint64))
 
 proc rotateLeftBits*(value: uint8;
            amount: range[0..8]): uint8 {.inline, noSideEffect.} =
