@@ -545,7 +545,7 @@ proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       "(($4)($1) * ($4)($2))", # MulF64
       "(($4)($1) / ($4)($2))", # DivF64
 
-      "($4)((NU$3)($1) >> (NU$3)($2))", # ShrI
+      "($4)((NU$5)($1) >> (NU$3)($2))", # ShrI
       "($4)((NU$3)($1) << (NU$3)($2))", # ShlI
       "($4)($1 & $2)",      # BitandI
       "($4)($1 | $2)",      # BitorI
@@ -585,16 +585,17 @@ proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       "($1 != $2)"]           # Xor
   var
     a, b: TLoc
-    s: BiggestInt
+    s, k: BiggestInt
   assert(e.sons[1].typ != nil)
   assert(e.sons[2].typ != nil)
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], b)
   # BUGFIX: cannot use result-type here, as it may be a boolean
   s = max(getSize(a.t), getSize(b.t)) * 8
+  k = getSize(a.t) * 8
   putIntoDest(p, d, e.typ,
               binArithTab[op] % [rdLoc(a), rdLoc(b), rope(s),
-                                      getSimpleTypeDesc(p.module, e.typ)])
+                                      getSimpleTypeDesc(p.module, e.typ), rope(k)])
 
 proc genEqProc(p: BProc, e: PNode, d: var TLoc) =
   var a, b: TLoc
