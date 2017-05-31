@@ -264,7 +264,12 @@ else:
 
     proc getThreadId*(): int =
       result = int(lwp_gettid())
-  elif defined(macosx) or defined(freebsd) or defined(openbsd) or defined(netbsd):
+  elif defined(openbsd):
+    proc getthrid(): int32 {.importc: "getthrid", header: "<unistd.h>".}
+
+    proc getThreadId*(): int =
+      result = int(getthrid())
+  elif defined(macosx) or defined(freebsd) or defined(netbsd):
     proc pthread_threadid_np(y: pointer; x: var uint64): cint {.importc, header: "pthread.h".}
 
     proc getThreadId*(): int =
