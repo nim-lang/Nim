@@ -408,7 +408,13 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
     else:
       # get rid of the deref again for a better error message:
       n.sons[1] = n.sons[1].sons[0]
-      notFoundError(c, n, errors)
+      #notFoundError(c, n, errors)
+      if efExplain notin flags:
+        # repeat the overload resolution,
+        # this time enabling all the diagnostic output (this should fail again)
+        discard semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
+      else:
+        notFoundError(c, n, errors)
   else:
     if efExplain notin flags:
       # repeat the overload resolution,
