@@ -136,7 +136,8 @@ proc dbQuote*(s: SQLInput): string =
   ## Database sanitizes the SQLInput
   case s.kind:
   of SQLStringKind:
-    result = "'"
+    result = newStringOfCap(s.str.len + 2)
+    result.add "'"
     for c in items(s.str):
       # Substitution rules from here "https://www.owasp.org/index.php/SQL_Injection_Prevention_Cheat_Sheet"
       case c:
