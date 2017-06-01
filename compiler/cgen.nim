@@ -47,10 +47,6 @@ proc findPendingModule(m: BModule, s: PSym): BModule =
   var ms = getModule(s)
   result = m.g.modules[ms.position]
 
-proc emitLazily(s: PSym): bool {.inline.} =
-  result = optDeadCodeElim in gGlobalOptions or
-           sfDeadCodeElim in getModule(s).flags
-
 proc initLoc(result: var TLoc, k: TLocKind, typ: PType, s: TStorageLoc) =
   result.k = k
   result.s = s
