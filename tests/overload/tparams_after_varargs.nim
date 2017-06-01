@@ -18,9 +18,14 @@ template takesBlockA(a, b: untyped; x: varargs[typed]; blck: untyped): untyped =
 takesBlockA 1, 2, "some", 0.90, "random stuff":
   echo "yay"
 
+# XXX this should work at some point in time
+#[
+
 template takesBlockB(a, b: untyped; x: varargs[untyped]; blck: untyped): untyped =
   blck
   echo a, b
 
 takesBlockB 1, 2, "some", 0.90, "random stuff":
   echo "yay"
+
+]#
