@@ -1,5 +1,5 @@
 import macros
-macro case_token(n: untyped): untyped =
+macro case_token(n: untyped): untyped {.immediate.} =
   # creates a lexical analyzer from regular expressions
   # ... (implementation is an exercise for the reader :-)
   nil

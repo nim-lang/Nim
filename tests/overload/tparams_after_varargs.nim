@@ -2,8 +2,7 @@ discard """
   output: '''a 1 b 2 x @[3, 4, 5] y 6 z 7
 yay
 12
-yay
-12'''
+'''
 """
 
 proc test(a, b: int, x: varargs[int]; y, z: int) =
@@ -11,21 +10,10 @@ proc test(a, b: int, x: varargs[int]; y, z: int) =
 
 test 1, 2, 3, 4, 5, 6, 7
 
+# XXX maybe this should also work with ``varargs[untyped]``
 template takesBlockA(a, b: untyped; x: varargs[typed]; blck: untyped): untyped =
   blck
   echo a, b
 
 takesBlockA 1, 2, "some", 0.90, "random stuff":
   echo "yay"
-
-# XXX this should work at some point in time
-#[
-
-template takesBlockB(a, b: untyped; x: varargs[untyped]; blck: untyped): untyped =
-  blck
-  echo a, b
-
-takesBlockB 1, 2, "some", 0.90, "random stuff":
-  echo "yay"
-
-]#

@@ -11,14 +11,13 @@ var x = if 4 != 5:
   else:
     "no"
 
-macro mymacro(n): untyped =
+macro mymacro(n): untyped {.immediate.} =
   discard
 
 mymacro:
   echo "test"
 else:
   echo "else part"
-
 
 if 4 == 3:
   echo "bug"
