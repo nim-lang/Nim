@@ -1,6 +1,21 @@
 import sequtils
-type Matrix*[M,N: static[int];T] = array[M, array[N, T]]
+
+type Matrix*[M,N: static[int];T:SomeNumber] = array[M, array[N, T]]
  
+template toMat[M,N,T](iter: untyped): untyped =
+  when compiles(iter.len):
+    var i = 0
+    var result:Matrix[M,N,T] 
+    for x in iter:
+      result[i] = x
+      inc i
+    result
+  else:
+    var result: Matrix[M,N,T] 
+    for x in iter:
+      result.add(x)
+    result
+
 proc `$`*(m: Matrix): string =
   result = "(["
   for arr in m:
