@@ -51,7 +51,7 @@ proc `-`*[M,N,T](m: Matrix[M,N,T]): Matrix[M,N,T]=
     for j in result[0].low .. result[0].high:
         result[i][j] = -m[i][j]
 
-proc `*`*[M,P,N,T](a: Matrix[M,P,T]; k:int): Matrix[M,N,T]=
+proc `*`*[M,P,N,T](a: Matrix[M,P,T]; k:T): Matrix[M,N,T]=
   for i in result.low .. result.high:
     for j in result[0].low .. result[0].high:
         result[i][j] = k*a[i][j]
