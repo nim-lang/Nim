@@ -1755,8 +1755,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       binaryExpr(p, n, r, "addChar",
           "if ($1 != null) { addChar($1, $2); } else { $1 = [$2, 0]; }")
     else:
-      binaryExpr(p, n, r, "",
-          "$1 .= chr($2)")
+      binaryExpr(p, n, r, "", "$1 .= chr($2)")
   of mAppendStrStr:
     if p.target == targetJS:
       if skipTypes(n.sons[1].typ, abstractVarRange).kind == tyCString:
@@ -1766,15 +1765,23 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
           "if ($1 != null) { $1 = ($1.slice(0, -1)).concat($2); } else { $1 = $2;}")
       # XXX: make a copy of $2, because of Javascript's sucking semantics
     else:
-      binaryExpr(p, n, r, "",
-          "$1 .= $2;")
+      binaryExpr(p, n, r, "", "$1 .= $2;")
   of mAppendSeqElem:
     if p.target == targetJS:
-      binaryExpr(p, n, r, "",
-          "if ($1 != null) { $1.push($2); } else { $1 = [$2]; }")
+      var x, y: TCompRes
+      gen(p, n.sons[1], x)
+      gen(p, n.sons[2], y)
+      if needsNoCopy(p, n[2]):
+        r.res = "if ($1 != null) { $1.push($2); } else { $1 = [$2]; }" % [x.rdLoc, y.rdLoc]
+      else:
+        useMagic(p, "nimCopy")
+        let c = getTemp(p, defineInLocals=false)
+        lineF(p, "var $1 = nimCopy(null, $2, $3);$n",
+             [c, y.rdLoc, genTypeInfo(p, n[2].typ)])
+        r.res = "if ($1 != null) { $1.push($2); } else { $1 = [$2]; }" % [x.rdLoc, c]
+      r.kind = resExpr
     else:
-      binaryExpr(p, n, r, "",
-          "$1[] = $2")
+      binaryExpr(p, n, r, "", "$1[] = $2")
   of mConStrStr:
     if p.target == targetJS:
       genConStrStr(p, n, r)
