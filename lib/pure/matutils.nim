@@ -1,4 +1,4 @@
-import sequtils
+import sequtils,math
 
 type Matrix*[M,N: static[int];T:SomeNumber] = array[M, array[N, T]]
  
@@ -51,10 +51,15 @@ proc `-`*[M,N,T](m: Matrix[M,N,T]): Matrix[M,N,T]=
     for j in result[0].low .. result[0].high:
         result[i][j] = -m[i][j]
 
-proc `*`*[M,P,N,T](a: Matrix[M,P,T]; k:int): Matrix[M,N,T]=
+proc `*`*[M,N,T](a: Matrix[M,N,T]; k:T): Matrix[M,N,T]=
   for i in result.low .. result.high:
     for j in result[0].low .. result[0].high:
         result[i][j] = k*a[i][j]
+
+proc `**`*[M,N,T](a: Matrix[M,N,T]; k:float64): Matrix[M,N,float64]=
+  for i in result.low .. result.high:
+    for j in result[0].low .. result[0].high:
+        result[i][j] = pow(float64(a[i][j]),k)
 
 when isMainModule:
   let a = [[1.0,  1.0,  1.0,   1.0],
@@ -79,3 +84,4 @@ when isMainModule:
   echo x*y
   echo x-x
   echo -x
+  echo x ** 2
