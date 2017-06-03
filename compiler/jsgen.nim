@@ -944,7 +944,15 @@ proc genAsgn(p: PProc, n: PNode) =
 
 proc genFastAsgn(p: PProc, n: PNode) =
   genLineDir(p, n)
-  genAsgnAux(p, n.sons[0], n.sons[1], noCopyNeeded=true)
+  # 'shallowCopy' always produced 'noCopyNeeded = true' here but this is wrong
+  # for code like
+  #  while j >= pos:
+  #    dest[i].shallowCopy(dest[j])
+  # See bug #5933. So we try to be more compatible with the C backend semantics
+  # here for 'shallowCopy'. This is an educated guess and might require further
+  # changes later:
+  let noCopy = n[0].typ.skipTypes(abstractInst).kind in {tySequence, tyString}
+  genAsgnAux(p, n.sons[0], n.sons[1], noCopyNeeded=noCopy)
 
 proc genSwap(p: PProc, n: PNode) =
   var a, b: TCompRes
@@ -1841,7 +1849,14 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       else: binaryExpr(p, n, r, "subInt", "$1 = subInt($1, $2)")
   of mSetLengthStr:
     binaryExpr(p, n, r, "", "$1.length = $2+1; $1[$1.length-1] = 0" | "$1 = substr($1, 0, $2)")
-  of mSetLengthSeq: binaryExpr(p, n, r, "", "$1.length = $2" | "$1 = array_slice($1, 0, $2)")
+  of mSetLengthSeq:
+    var x, y: TCompRes
+    gen(p, n.sons[1], x)
+    gen(p, n.sons[2], y)
+    let t = skipTypes(n.sons[1].typ, abstractVar).sons[0]
+    r.res = """if ($1.length < $2) { for (var i=$1.length;i<$2;++i) $1.push($3); }
+               else { $1.length = $2; }""" % [x.rdLoc, y.rdLoc, createVar(p, t, false)]
+    r.kind = resExpr
   of mCard: unaryExpr(p, n, r, "SetCard", "SetCard($1)")
   of mLtSet: binaryExpr(p, n, r, "SetLt", "SetLt($1, $2)")
   of mLeSet: binaryExpr(p, n, r, "SetLe", "SetLe($1, $2)")
