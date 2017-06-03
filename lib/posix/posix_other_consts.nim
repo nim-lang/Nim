@@ -369,6 +369,7 @@ var SCHED_OTHER* {.importc: "SCHED_OTHER", header: "<sched.h>".}: cint
 var SEM_FAILED* {.importc: "SEM_FAILED", header: "<semaphore.h>".}: pointer
 
 # <signal.h>
+var SIG_DFL* {.importc, header: "<signal.h>".}: proc (x: cint) {.noconv.}
 var SIGEV_NONE* {.importc: "SIGEV_NONE", header: "<signal.h>".}: cint
 var SIGEV_SIGNAL* {.importc: "SIGEV_SIGNAL", header: "<signal.h>".}: cint
 var SIGEV_THREAD* {.importc: "SIGEV_THREAD", header: "<signal.h>".}: cint
