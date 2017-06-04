@@ -84,4 +84,8 @@ when isMainModule:
   echo x*y
   echo x-x
   echo -x
+<<<<<<< HEAD
   echo x**2
+=======
+  echo x ** 2
+>>>>>>> 0dab3fe42cd23ab1b2552e44378b1707107eabb0
