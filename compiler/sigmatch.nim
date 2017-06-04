@@ -1339,7 +1339,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         result = isNone
     else:
       result = typeRel(c, lastSon(f), a)
-      if result != isNone: put(c, f, a)
+      if result != isNone and a.kind != tyNil:
+        put(c, f, a)
 
   of tyGenericBody:
     considerPreviousT:
