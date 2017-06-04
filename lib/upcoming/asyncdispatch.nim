@@ -9,11 +9,12 @@
 
 include "system/inclrtl"
 
-import os, tables, strutils, times, heapqueue, lists, options
+import os, tables, strutils, times, heapqueue, lists, options, asyncfutures
 
 import nativesockets, net, deques
 
 export Port, SocketFlag
+export asyncfutures
 
 #{.injectStmt: newGcInvariant().}
 
@@ -130,8 +131,6 @@ export Port, SocketFlag
 
 # TODO: Check if yielded future is nil and throw a more meaningful exception
 
-include "../includes/asyncfutures"
-
 type
   PDispatcherBase = ref object of RootRef
     timers: HeapQueue[tuple[finishAt: float, fut: Future[void]]]
@@ -160,6 +159,12 @@ proc adjustedTimeout(p: PDispatcherBase, timeout: int): int {.inline.} =
     if timeout == -1 or (curTime + (timeout / 1000)) > timerTimeout:
       result = int((timerTimeout - curTime) * 1000)
       if result < 0: result = 0
+
+proc callSoon*(cbproc: proc ()) {.gcsafe.}
+
+proc initGlobalDispatcher =
+  if asyncfutures.callSoonProc == nil:
+    asyncfutures.callSoonProc = callSoon
 
 when defined(windows) or defined(nimdoc):
   import winlean, sets, hashes
@@ -214,15 +219,17 @@ when defined(windows) or defined(nimdoc):
     result.callbacks = initDeque[proc ()](64)
 
   var gDisp{.threadvar.}: PDispatcher ## Global dispatcher
-  proc getGlobalDispatcher*(): PDispatcher =
-    ## Retrieves the global thread-local dispatcher.
-    if gDisp.isNil: gDisp = newDispatcher()
-    result = gDisp
 
   proc setGlobalDispatcher*(disp: PDispatcher) =
     if not gDisp.isNil:
       assert gDisp.callbacks.len == 0
     gDisp = disp
+    initGlobalDispatcher()
+
+  proc getGlobalDispatcher*(): PDispatcher =
+    if gDisp.isNil:
+      setGlobalDispatcher(newDispatcher())
+    result = gDisp
 
   proc register*(fd: AsyncFD) =
     ## Registers ``fd`` with the dispatcher.
@@ -1081,14 +1088,17 @@ else:
     result.callbacks = initDeque[proc ()](InitDelayedCallbackListSize)
 
   var gDisp{.threadvar.}: PDispatcher ## Global dispatcher
-  proc getGlobalDispatcher*(): PDispatcher =
-    if gDisp.isNil: gDisp = newDispatcher()
-    result = gDisp
 
   proc setGlobalDispatcher*(disp: PDispatcher) =
     if not gDisp.isNil:
       assert gDisp.callbacks.len == 0
     gDisp = disp
+    initGlobalDispatcher()
+
+  proc getGlobalDispatcher*(): PDispatcher =
+    if gDisp.isNil:
+      setGlobalDispatcher(newDispatcher())
+    result = gDisp
 
   proc register*(fd: AsyncFD) =
     let p = getGlobalDispatcher()

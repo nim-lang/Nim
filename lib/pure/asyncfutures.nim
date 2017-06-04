@@ -1,3 +1,6 @@
+include "system/inclrtl"
+
+import os, tables, strutils, times, heapqueue, options, deques
 
 # TODO: This shouldn't need to be included, but should ideally be exported.
 type
@@ -30,7 +33,14 @@ type
 when not defined(release):
   var currentID = 0
 
-proc callSoon*(cbproc: proc ()) {.gcsafe.}
+var callSoonProc* {.threadvar.}: (proc(cbproc: proc ()) {.gcsafe.})
+
+proc callSoon(cbproc: proc ()) =
+  if callSoonProc == nil:
+    # Loop not initialized yet. Call the function directly to allow setup code to use futures.
+    cbproc()
+  else:
+    callSoonProc(cbproc)
 
 template setupFutureBase(fromProc: string) =
   new(result)
