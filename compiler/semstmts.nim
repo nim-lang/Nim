@@ -144,7 +144,7 @@ proc fixNilType(n: PNode) =
   n.typ = nil
 
 proc discardCheck(c: PContext, result: PNode) =
-  if c.inTypeClass > 0: return
+  if c.matchedConcept != nil: return
   if result.typ != nil and result.typ.kind notin {tyStmt, tyVoid}:
     if result.kind == nkNilLit:
       result.typ = nil
@@ -1761,7 +1761,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
     else:
       var expr = semExpr(c, n.sons[i], flags)
       n.sons[i] = expr
-      if c.inTypeClass > 0 and expr.typ != nil:
+      if c.matchedConcept != nil and expr.typ != nil:
         case expr.typ.kind
         of tyBool:
           if expr.kind == nkInfix and
@@ -1800,7 +1800,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
   if result.len == 1 and
      # concept bodies should be preserved as a stmt list:
-     c.inTypeClass == 0 and
+     c.matchedConcept == nil and
      # also, don't make life complicated for macros.
      # they will always expect a proper stmtlist:
      nfBlockArg notin n.flags and

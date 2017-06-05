@@ -257,8 +257,8 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   # NOTE: for access of private fields within generics from a different module
   # we set the friend module:
   c.friendModules.add(getModule(fn))
-  let oldInTypeClass = c.inTypeClass
-  c.inTypeClass = 0
+  let oldMatchedConcept = c.matchedConcept
+  c.matchedConcept = nil
   let oldScope = c.currentScope
   while not isTopLevel(c): c.currentScope = c.currentScope.parent
   result = copySym(fn, false)
@@ -319,5 +319,5 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   c.currentScope = oldScope
   discard c.friendModules.pop()
   dec(c.instCounter)
-  c.inTypeClass = oldInTypeClass
+  c.matchedConcept = oldMatchedConcept
   if result.kind == skMethod: finishMethod(c, result)

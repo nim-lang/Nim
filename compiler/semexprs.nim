@@ -705,7 +705,7 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
     analyseIfAddressTakenInCall(c, result)
     if callee.magic != mNone:
       result = magicsAfterOverloadResolution(c, result, flags)
-  if c.inTypeClass == 0:
+  if c.matchedConcept == nil:
     result = evalAtCompileTime(c, result)
 
 proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
@@ -2147,7 +2147,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     let checks = if efNoEvaluateGeneric in flags: {checkUndeclared}
                  else: {checkUndeclared, checkModule, checkAmbiguity}
     var s = qualifiedLookUp(c, n, checks)
-    if c.inTypeClass == 0: semCaptureSym(s, c.p.owner)
+    if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)
     result = semSym(c, n, s, flags)
     if s.kind in {skProc, skMethod, skConverter, skIterator}:
       #performProcvarCheck(c, n, s)

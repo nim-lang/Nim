@@ -594,8 +594,11 @@ proc foldConStrStr(m: PSym, n: PNode): PNode =
 
 proc newSymNodeTypeDesc*(s: PSym; info: TLineInfo): PNode =
   result = newSymNode(s, info)
-  result.typ = newType(tyTypeDesc, s.owner)
-  result.typ.addSonSkipIntLit(s.typ)
+  if s.typ.kind != tyTypeDesc:
+    result.typ = newType(tyTypeDesc, s.owner)
+    result.typ.addSonSkipIntLit(s.typ)
+  else:
+    result.typ = s.typ
 
 proc getConstExpr(m: PSym, n: PNode): PNode =
   result = nil
