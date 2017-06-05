@@ -3540,6 +3540,11 @@ template `&=`*(x, y: typed) =
 when declared(File):
   template `&=`*(f: File, x: typed) = write(f, x)
 
+proc `&=`*[T](a: var seq[T], b: seq[T]) =
+  ## Appends `b` to the end of `a`
+  for i in b:
+    a.add(i)
+
 proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
   ## converts the AST of `x` into a string representation. This is very useful
   ## for debugging.
