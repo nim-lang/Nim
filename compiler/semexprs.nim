@@ -880,20 +880,6 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
     if r.sym.name.id == field.id: result = r.sym
   else: illFormedAst(n)
 
-proc makeDeref(n: PNode): PNode =
-  var t = skipTypes(n.typ, {tyGenericInst, tyAlias})
-  result = n
-  if t.kind == tyVar:
-    result = newNodeIT(nkHiddenDeref, n.info, t.sons[0])
-    addSon(result, n)
-    t = skipTypes(t.sons[0], {tyGenericInst, tyAlias})
-  while t.kind in {tyPtr, tyRef}:
-    var a = result
-    let baseTyp = t.lastSon
-    result = newNodeIT(nkHiddenDeref, n.info, baseTyp)
-    addSon(result, a)
-    t = skipTypes(baseTyp, {tyGenericInst, tyAlias})
-
 const
   tyTypeParamsHolders = {tyGenericInst, tyCompositeTypeClass}
   tyDotOpTransparent = {tyVar, tyPtr, tyRef, tyAlias}
@@ -920,7 +906,7 @@ proc readTypeParameter(c: PContext, typ: PType,
 
       else:
         discard
-  
+
   if typ.kind != tyUserTypeClass:
     let ty = if typ.kind == tyCompositeTypeClass: typ.sons[1].skipGenericAlias
              else: typ.skipGenericAlias
@@ -2285,14 +2271,14 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       pragma = n[1]
       pragmaName = considerQuotedIdent(pragma[0])
       flags = flags
-    
+
     case whichKeyword(pragmaName)
     of wExplain:
       flags.incl efExplain
     else:
       # what other pragmas are allowed for expressions? `likely`, `unlikely`
       invalidPragma(n)
-    
+
     result = semExpr(c, n[0], flags)
   of nkPar:
     case checkPar(n)
