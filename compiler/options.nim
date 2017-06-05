@@ -186,6 +186,9 @@ var
 
 const oKeepVariableNames* = true
 
+template compilingLib*: bool =
+  gGlobalOptions * {optGenGuiApp, optGenDynLib} != {}
+
 proc mainCommandArg*: string =
   ## This is intended for commands like check or parse
   ## which will work on the main project file unless

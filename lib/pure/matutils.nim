@@ -51,15 +51,15 @@ proc `-`*[M,N,T](m: Matrix[M,N,T]): Matrix[M,N,T]=
     for j in result[0].low .. result[0].high:
         result[i][j] = -m[i][j]
 
-proc `*`*[M,N,T,T2](a: Matrix[M,N,T]; k:T2): Matrix[M,N,T2]=
+proc `*`*[M,N,T](a: Matrix[M,N,T]; k:float64): Matrix[M,N,float64]=
   for i in result.low .. result.high:
     for j in result[0].low .. result[0].high:
-           result[i][j] = k * a[i][j]
+           result[i][j] = k * a[i][j].float64
 
 proc `**`*[M,N,T](a: Matrix[M,N,T]; k:float64): Matrix[M,N,float64]=
   for i in result.low .. result.high:
     for j in result[0].low .. result[0].high:
-        result[i][j] = pow(float64(a[i][j]),k)
+        result[i][j] = pow(k,a[i][j].float64)        
 
 when isMainModule:
   let a = [[1.0,  1.0,  1.0,   1.0],
@@ -67,7 +67,7 @@ when isMainModule:
          [3.0,  9.0, 27.0,  81.0],
          [4.0, 16.0, 64.0, 256.0]]
  
-  let b = [[  4.0  , -3.0  ,  4/3.0,  -1/4.0 ],
+  let b = [[4.0  , -3.0  ,  4/3.0,  -1/4.0 ],
          [-13/3.0, 19/4.0, -7/3.0,  11/24.0],
          [  3/2.0, -2.0  ,  7/6.0,  -1/4.0 ],
          [ -1/6.0,  1/4.0, -1/6.0,   1/24.0]]
@@ -86,3 +86,4 @@ when isMainModule:
   echo -x
   echo x ** 2
   echo x * 1.2
+

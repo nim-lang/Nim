@@ -212,20 +212,31 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest) =
 proc generatedFile(path, name: string, target: TTarget): string =
   let ext = targetToExt[target]
   result = path / "nimcache" /
-    (if target == targetJS: path.splitPath.tail & "_" else: "compiler_") &
+    (if target == targetJS: "" else: "compiler_") &
     name.changeFileExt(ext)
 
-proc codegenCheck(test: TTest, check: string, given: var TSpec) =
+proc needsCodegenCheck(spec: TSpec): bool =
+  result = spec.maxCodeSize > 0 or spec.ccodeCheck.len > 0
+
+proc codegenCheck(test: TTest, spec: TSpec, expectedMsg: var string,
+                  given: var TSpec) =
   try:
     let (path, name, _) = test.name.splitFile
     let genFile = generatedFile(path, name, test.target)
     let contents = readFile(genFile).string
-    if check[0] == '\\':
-      # little hack to get 'match' support:
-      if not contents.match(check.peg):
+    let check = spec.ccodeCheck
+    if check.len > 0:
+      if check[0] == '\\':
+        # little hack to get 'match' support:
+        if not contents.match(check.peg):
+          given.err = reCodegenFailure
+      elif contents.find(check.peg) < 0:
         given.err = reCodegenFailure
-    elif contents.find(check.peg) < 0:
+      expectedMsg = check
+    if spec.maxCodeSize > 0 and contents.len > spec.maxCodeSize:
       given.err = reCodegenFailure
+      given.msg = "generated code size: " & $contents.len
+      expectedMsg = "max allowed size: " & $spec.maxCodeSize
   except ValueError:
     given.err = reInvalidPeg
     echo getCurrentExceptionMsg()
@@ -248,9 +259,8 @@ proc compilerOutputTests(test: TTest, given: var TSpec, expected: TSpec;
   var expectedmsg: string = ""
   var givenmsg: string = ""
   if given.err == reSuccess:
-    if expected.ccodeCheck.len > 0:
-      codegenCheck(test, expected.ccodeCheck, given)
-      expectedmsg = expected.ccodeCheck
+    if expected.needsCodegenCheck:
+      codegenCheck(test, expected, expectedmsg, given)
       givenmsg = given.msg
     if expected.nimout.len > 0:
       expectedmsg = expected.nimout
