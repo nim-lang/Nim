@@ -188,7 +188,7 @@ proc adjustedTimeout(p: PDispatcherBase, timeout: int): int {.inline.} =
       result = int((timerTimeout - curTime) * 1000)
       if result < 0: result = 0
 
-proc callSoon*(cbproc: proc ()) {.gcsafe.}
+proc callSoon(cbproc: proc ()) {.gcsafe.}
 
 proc initGlobalDispatcher =
   if asyncfutures.callSoonProc == nil:
@@ -1336,7 +1336,7 @@ proc recvLine*(socket: AsyncFD): Future[string] {.async, deprecated.} =
       return
     add(result, c)
 
-proc callSoon*(cbproc: proc ()) =
+proc callSoon(cbproc: proc ()) =
   ## Schedule `cbproc` to be called as soon as possible.
   ## The callback is called when control returns to the event loop.
   getGlobalDispatcher().callbacks.addLast(cbproc)
