@@ -73,7 +73,7 @@ proc add*[A](x: var SharedList[A]; y: A) =
     node.d[node.dataLen] = y
     inc(node.dataLen)
 
-proc initSharedList*[A](): SharedList[A] =
+proc initSharedList*[A](result: var SharedList[A]) =
   initLock result.lock
   result.head = nil
   result.tail = nil

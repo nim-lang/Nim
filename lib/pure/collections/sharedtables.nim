@@ -191,7 +191,7 @@ proc del*[A, B](t: var SharedTable[A, B], key: A) =
   withLock t:
     delImpl()
 
-proc initSharedTable*[A, B](initialSize=64): SharedTable[A, B] =
+proc initSharedTable*[A, B](result: var SharedTable[A, B], initialSize=64) =
   ## creates a new hash table that is empty.
   ##
   ## `initialSize` needs to be a power of two. If you need to accept runtime

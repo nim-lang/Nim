@@ -24,7 +24,7 @@ type
       stupidLock: SysLock
       counter: int
 
-proc createCondVar(): CondVar =
+proc initCondVar(result: var CondVar) =
   initSysCond(result.c)
   when defined(posix):
     initSysLock(result.stupidLock)
@@ -55,11 +55,8 @@ type
     event, slowPath: bool
     slow: CondVar
 
-proc createFastCondVar(): FastCondVar =
-  initSysCond(result.slow.c)
-  when defined(posix):
-    initSysLock(result.slow.stupidLock)
-    #acquireSys(result.slow.stupidLock)
+proc initFastCondVar(result: var FastCondVar) =
+  initCondVar(result.slow)
   result.event = false
   result.slowPath = false
 
@@ -93,7 +90,7 @@ proc barrierLeave*(b: ptr Barrier) {.compilerProc.} =
 
 proc openBarrier*(b: ptr Barrier) {.compilerProc.} =
   b.counter = 0
-  b.cv = createCondVar()
+  b.cv.initCondVar()
 
 proc closeBarrier*(b: ptr Barrier) {.compilerProc.} =
   await(b.cv)
@@ -117,7 +114,8 @@ proc nimArgsPassingDone(p: pointer) {.compilerProc.} =
   let w = cast[ptr Worker](p)
   signal(w.taskStarted)
 
-var gSomeReady = createFastCondVar()
+var gSomeReady: FastCondVar
+gSomeReady.initFastCondVar()
 
 proc slave(w: ptr Worker) {.thread.} =
   while true:
@@ -143,8 +141,8 @@ var
 
 proc setup() =
   for i in 0.. <NumThreads:
-    workersData[i].taskArrived = createCondVar()
-    workersData[i].taskStarted = createFastCondVar()
+    workersData[i].taskArrived.initCondVar()
+    workersData[i].taskStarted.initFastCondVar()
     createThread(workers[i], slave, addr(workersData[i]))
 
 proc preferSpawn*(): bool =
