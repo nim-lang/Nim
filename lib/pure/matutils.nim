@@ -51,10 +51,10 @@ proc `-`*[M,N,T](m: Matrix[M,N,T]): Matrix[M,N,T]=
     for j in result[0].low .. result[0].high:
         result[i][j] = -m[i][j]
 
-proc `*`*[M,N,T](a: Matrix[M,N,T]; k:T): Matrix[M,N,T]=
+proc `*`*[M,N,T,T2](a: Matrix[M,N,T]; k:T2): Matrix[M,N,T2]=
   for i in result.low .. result.high:
     for j in result[0].low .. result[0].high:
-        result[i][j] = k*a[i][j]
+           result[i][j] = k * a[i][j]
 
 proc `**`*[M,N,T](a: Matrix[M,N,T]; k:float64): Matrix[M,N,float64]=
   for i in result.low .. result.high:
@@ -85,3 +85,4 @@ when isMainModule:
   echo x-x
   echo -x
   echo x ** 2
+  echo x * 1.2
