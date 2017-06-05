@@ -16,3 +16,5 @@ proc T() =
 
 
 T()
+static:
+    T()
