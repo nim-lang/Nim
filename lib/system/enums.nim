@@ -3,8 +3,8 @@ import macros
 # XXX: https://github.com/nim-lang/Nim/issues/5881
 macro setImpl(T: typedesc[enum]): auto =
     result = newNimNode(nnkCurly)
-    for T in T.getType[1]:
-        if T.kind != nnkEmpty: result.add T
+    for m in T.getType[1]:
+        if m.kind != nnkEmpty: result.add m
 
 # XXX: it should be possible to apply 'compileTime' to this proc
 proc set*(T: typedesc[enum]): auto =
