@@ -914,7 +914,7 @@ proc discriminatorTableName(m: BModule, objtype: PType, d: PSym): Rope =
 proc discriminatorTableDecl(m: BModule, objtype: PType, d: PSym): Rope =
   discard cgsym(m, "TNimNode")
   var tmp = discriminatorTableName(m, objtype, d)
-  result = "TNimNode* $1[$2];$n" % [tmp, rope(lengthOrd(d.typ)+1)]
+  result = "TNimNode* $1[$2];$n" % [tmp, rope(lastOrd(d.typ)+2)]
 
 proc genObjectFields(m: BModule, typ, origType: PType, n: PNode, expr: Rope) =
   case n.kind
@@ -937,7 +937,7 @@ proc genObjectFields(m: BModule, typ, origType: PType, n: PNode, expr: Rope) =
     assert(n.sons[0].kind == nkSym)
     var field = n.sons[0].sym
     var tmp = discriminatorTableName(m, typ, field)
-    var L = lengthOrd(field.typ)
+    var L = lastOrd(field.typ)+1
     assert L > 0
     if field.loc.r == nil: fillObjectFields(m, typ)
     if field.loc.t == nil:
