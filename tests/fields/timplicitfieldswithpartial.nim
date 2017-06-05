@@ -1,5 +1,5 @@
 discard """
-  out: '''(foo0: 38, other1: string here)
+  output: '''(foo: 38, other: string here)
 43'''
 """
 
@@ -12,7 +12,7 @@ proc my(f: Foo) =
   let f.foo = 38
   let f.other = "string here"
   echo f[]
-  echo f.foo0 + 5
+  echo f.foo + 5
 
 var g: Foo
 new(g)

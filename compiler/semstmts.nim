@@ -485,7 +485,7 @@ proc fillPartialObject(c: PContext; n: PNode; typ: PType) =
     let y = considerQuotedIdent(n[1])
     let obj = x.typ.skipTypes(abstractPtrs)
     if obj.kind == tyObject and tfPartial in obj.flags:
-      let field = newSym(skField, getIdent(y.s & $obj.n.len), obj.sym, n[1].info)
+      let field = newSym(skField, getIdent(y.s), obj.sym, n[1].info)
       field.typ = skipIntLit(typ)
       field.position = sonsLen(obj.n)
       addSon(obj.n, newSymNode(field))
