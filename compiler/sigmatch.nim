@@ -607,14 +607,24 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
   var
     typeClass = ff.skipTypes({tyUserTypeClassInst})
     body = typeClass.n[3]
-  if c.inTypeClass > 4:
-    localError(body.info, $body & " too nested for type matching")
-    return nil
+    matchedConceptContext: TMatchedConcept
+    prevMatchedConcept = c.matchedConcept
+    prevCandidateType = typeClass[0][0]
+
+  if prevMatchedConcept != nil:
+    matchedConceptContext.prev = prevMatchedConcept
+    matchedConceptContext.depth = prevMatchedConcept.depth + 1
+    if prevMatchedConcept.depth > 4:
+      localError(body.info, $body & " too nested for type matching")
+      return nil
 
   openScope(c)
-  inc c.inTypeClass
+  matchedConceptContext.candidateType = a
+  typeClass[0].sons[0] = a
+  c.matchedConcept = addr(matchedConceptContext)
   defer:
-    dec c.inTypeClass
+    c.matchedConcept = prevMatchedConcept
+    typeClass[0].sons[0] = prevCandidateType
     closeScope(c)
 
   var typeParams: seq[(PSym, PType)]
@@ -657,33 +667,6 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
         typeParams.safeAdd((param, typ))
 
       addDecl(c, param)
-
-  for param in typeClass.n[0]:
-    var
-      dummyName: PNode
-      dummyType: PType
-
-    let modifier = case param.kind
-      of nkVarTy: tyVar
-      of nkRefTy: tyRef
-      of nkPtrTy: tyPtr
-      of nkStaticTy: tyStatic
-      of nkTypeOfExpr: tyTypeDesc
-      else: tyNone
-
-    if modifier != tyNone:
-      dummyName = param[0]
-      dummyType = c.makeTypeWithModifier(modifier, a)
-      if modifier == tyTypeDesc: dummyType.flags.incl tfExplicit
-    else:
-      dummyName = param
-      dummyType = a
-
-    internalAssert dummyName.kind == nkIdent
-    var dummyParam = newSym(if modifier == tyTypeDesc: skType else: skVar,
-                            dummyName.ident, typeClass.sym, typeClass.sym.info)
-    dummyParam.typ = dummyType
-    addDecl(c, dummyParam)
 
   var
     oldWriteHook: type(writelnHook)
@@ -826,7 +809,7 @@ proc inferStaticParam*(c: var TCandidate, lhs: PNode, rhs: BiggestInt): bool =
     var inferred = newTypeWithSons(c.c, tyStatic, lhs.typ.sons)
     inferred.n = newIntNode(nkIntLit, rhs)
     put(c, lhs.typ, inferred)
-    if c.c.inTypeClass > 0:
+    if c.c.matchedConcept != nil:
       # inside concepts, binding is currently done with
       # direct mutation of the involved types:
       lhs.typ.n = inferred.n
@@ -916,7 +899,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   assert(aOrig != nil)
 
   var
-    useTypeLoweringRuleInTypeClass = c.c.inTypeClass > 0 and
+    useTypeLoweringRuleInTypeClass = c.c.matchedConcept != nil and
                                      not c.isNoCall and
                                      f.kind != tyTypeDesc and
                                      tfExplicit notin aOrig.flags
@@ -965,7 +948,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   # for example, but unfortunately `prepareOperand` is not called in certain
   # situation when nkDotExpr are rotated to nkDotCalls
 
-  if a.kind in {tyGenericInst, tyAlias} and
+  if aOrig.kind == tyAlias:
+    return typeRel(c, f, lastSon(aOrig))
+
+  if a.kind == tyGenericInst and
       skipTypes(f, {tyVar}).kind notin {
         tyGenericBody, tyGenericInvocation,
         tyGenericInst, tyGenericParam} + tyTypeClasses:
@@ -1106,7 +1092,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
       if fRange.rangeHasUnresolvedStatic:
         return inferStaticsInRange(c, fRange, a)
-      elif c.c.inTypeClass > 0 and aRange.rangeHasUnresolvedStatic:
+      elif c.c.matchedConcept != nil and aRange.rangeHasUnresolvedStatic:
         return inferStaticsInRange(c, aRange, f)
       else:
         if lengthOrd(fRange) != lengthOrd(aRange):

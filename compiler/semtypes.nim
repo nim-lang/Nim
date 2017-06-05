@@ -1202,17 +1202,51 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
   # if n.sonsLen == 0: return newConstraint(c, tyTypeClass)
   if nfBase2 in n.flags:
     message(n.info, warnDeprecated, "use 'concept' instead; 'generic'")
-  result = newOrPrevType(tyUserTypeClass, prev, c)
-  result.n = n
-
   let
     pragmas = n[1]
     inherited = n[2]
 
+  result = newOrPrevType(tyUserTypeClass, prev, c)
+  var owner = getCurrOwner(c)
+  var candidateTypeSlot = newTypeWithSons(owner, tyAlias, @[c.errorType])
+  result.sons = @[candidateTypeSlot]
+  result.n = n
+
   if inherited.kind != nkEmpty:
     for n in inherited.sons:
       let typ = semTypeNode(c, n, nil)
-      result.sons.safeAdd(typ)
+      result.sons.add(typ)
+
+  openScope(c)
+  for param in n[0]:
+    var
+      dummyName: PNode
+      dummyType: PType
+
+    let modifier = case param.kind
+      of nkVarTy: tyVar
+      of nkRefTy: tyRef
+      of nkPtrTy: tyPtr
+      of nkStaticTy: tyStatic
+      of nkTypeOfExpr: tyTypeDesc
+      else: tyNone
+
+    if modifier != tyNone:
+      dummyName = param[0]
+      dummyType = c.makeTypeWithModifier(modifier, candidateTypeSlot)
+      if modifier == tyTypeDesc: dummyType.flags.incl tfExplicit
+    else:
+      dummyName = param
+      dummyType = candidateTypeSlot
+
+    internalAssert dummyName.kind == nkIdent
+    var dummyParam = newSym(if modifier == tyTypeDesc: skType else: skVar,
+                            dummyName.ident, owner, owner.info)
+    dummyParam.typ = dummyType
+    addDecl(c, dummyParam)
+
+  result.n.sons[3] = semConceptBody(c, n[3])
+  closeScope(c)
 
 proc semProcTypeWithScope(c: PContext, n: PNode,
                         prev: PType, kind: TSymKind): PType =
