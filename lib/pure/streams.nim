@@ -334,12 +334,16 @@ when not defined(js):
     if result > 0:
       copyMem(buffer, addr(s.data[s.pos]), result)
       inc(s.pos, result)
+    else:
+      result = 0
 
   proc ssPeekData(s: Stream, buffer: pointer, bufLen: int): int =
     var s = StringStream(s)
     result = min(bufLen, s.data.len - s.pos)
     if result > 0:
       copyMem(buffer, addr(s.data[s.pos]), result)
+    else:
+      result = 0
 
   proc ssWriteData(s: Stream, buffer: pointer, bufLen: int) =
     var s = StringStream(s)
