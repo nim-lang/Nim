@@ -2393,9 +2393,7 @@ proc `$`*[T: tuple|object](x: T): string =
   ##   $(23, 45) == "(23, 45)"
   ##   $() == "()"
   result = "("
-  var firstElement = true
   for name, value in fieldPairs(x):
-    if not firstElement: result.add(", ")
     result.add(name)
     result.add(": ")
     when compiles($value):
@@ -2404,24 +2402,24 @@ proc `$`*[T: tuple|object](x: T): string =
         else: result.add($value)
       else:
         result.add($value)
-      firstElement = false
     else:
       result.add("...")
+    result.add(", ")
+  if result.len > ", ".len: result.setlen(result.len - ", ".len)
   result.add(")")
 
 proc collectionToString[T: set | seq](x: T, b, e: string): string =
   when x is seq:
     if x.isNil: return "nil"
   result = b
-  var firstElement = true
   for value in items(x):
-    if not firstElement: result.add(", ")
     when compiles(value.isNil):
       if value.isNil: result.add "nil"
       else: result.add($value)
     else:
       result.add($value)
-    firstElement = false
+    result.add(", ")
+  if result.len > ", ".len: result.setlen(result.len - ", ".len)
   result.add(e)
 
 proc `$`*[T](x: set[T]): string =

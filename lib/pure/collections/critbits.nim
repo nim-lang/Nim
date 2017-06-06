@@ -309,11 +309,12 @@ proc `$`*[T](c: CritBitTree[T]): string =
     result = newStringOfCap(c.count * avgItemLen)
     result.add("{")
     for key, val in pairs(c):
-      if result.len > 1: result.add(", ")
       result.add($key)
       when T isnot void:
         result.add(": ")
         result.add($val)
+      result.add(", ")
+    if result.len > ", ".len: result.setlen(result.len - ", ".len)
     result.add("}")
 
 when isMainModule:

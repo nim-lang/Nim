@@ -389,8 +389,9 @@ proc toSet*[A](keys: openArray[A]): HashSet[A] =
 template dollarImpl() {.dirty.} =
   result = "{"
   for key in items(s):
-    if result.len > 1: result.add(", ")
     result.add($key)
+    result.add(", ")
+  if result.len > ", ".len: result.setlen(result.len - ", ".len)
   result.add("}")
 
 proc `$`*[A](s: HashSet[A]): string =

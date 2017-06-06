@@ -184,8 +184,9 @@ proc `$`*[T](deq: Deque[T]): string =
   ## Turn a deque into its string representation.
   result = "["
   for x in deq:
-    if result.len > 1: result.add(", ")
     result.add($x)
+    result.add(", ")
+  if result.len > ", ".len: result.setlen(result.len - ", ".len)
   result.add("]")
 
 when isMainModule:

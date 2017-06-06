@@ -161,8 +161,9 @@ iterator nodes*[T](L: DoublyLinkedRing[T]): DoublyLinkedNode[T] =
 template dollarImpl() {.dirty.} =
   result = "["
   for x in nodes(L):
-    if result.len > 1: result.add(", ")
     result.add($x.value)
+    result.add(", ")
+  if result.len > ", ".len: result.setlen(result.len - ", ".len)
   result.add("]")
 
 proc `$`*[T](L: SinglyLinkedList[T]): string =
