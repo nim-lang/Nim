@@ -13,9 +13,6 @@ inf
 nan
 nil
 nil
-(a: 0, b: nil)
-nil
-ptr (a: 0, b: nil)'''
 """
 
 echo($(@[23, 45]))
@@ -49,12 +46,8 @@ type
     b: string
 
 var foo1: Foo
-var foo2: ref Foo
-var foo3: ptr Foo = foo1.addr
 
-echo foo1
-echo foo2
-echo foo3
+doAssert $foo1 == "(a: 0, b: nil)"
 
 const
   data = @['a','b', '\0', 'c','d']
@@ -67,5 +60,6 @@ import strutils
 # array test
 let arr = ['H','e','l','l','o',' ','W','o','r','l','d','!','\0']
 
+# not sure if this is really a good idea
 doAssert startsWith($arr, "[H, e, l, l, o,  , W, o, r, l, d, !,")
-doAssert newString(arr) == "Hello World!"
+doAssert $arr.cstring == "Hello World!"

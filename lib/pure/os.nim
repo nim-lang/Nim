@@ -1010,7 +1010,7 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
         while true:
           var x = readdir(d)
           if x == nil: break
-          var y = newString(x.d_name)
+          var y = $x.d_name.cstring
           if y != "." and y != "..":
             var s: Stat
             if not relative:

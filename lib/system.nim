@@ -1872,21 +1872,6 @@ proc `$` *[Enum: enum](x: Enum): string {.magic: "EnumToStr", noSideEffect.}
   ## a ``$`` operator for a concrete enumeration is provided, this is
   ## used instead. (In other words: *Overwriting* is possible.)
 
-proc newString*[N](data: array[N, char]): string {.noSideEffect.} =
-  ## Construct a string from an array of characters. The `data` is
-  ## expected to be a null terminated string as it is often used in C.
-  when nimvm:
-    # cannot cast on the vm
-    # not recommended to use this procedure on the vm at all, but at least it doesn't fail.
-    result = ""
-    for c in data:
-      if c == '\0':
-        return
-      else:
-        result.add c
-  else:
-    result = $(cast[cstring](data[0].unsafeAddr))
-
 # undocumented:
 proc getRefcount*[T](x: ref T): int {.importc: "getRefcount", noSideEffect.}
 proc getRefcount*(x: string): int {.importc: "getRefcount", noSideEffect.}
