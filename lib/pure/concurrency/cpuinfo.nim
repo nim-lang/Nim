@@ -69,4 +69,4 @@ proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
     result = affinitySpaceTotal().int
   else:
     result = sysconf(SC_NPROCESSORS_ONLN)
-  if result <= 0: result = 1
+  if result <= 0: result = 0

@@ -465,6 +465,38 @@ proc hasEmpty(typ: PType): bool =
     for s in typ.sons:
       result = result or hasEmpty(s)
 
+proc makeDeref(n: PNode): PNode =
+  var t = skipTypes(n.typ, {tyGenericInst, tyAlias})
+  result = n
+  if t.kind == tyVar:
+    result = newNodeIT(nkHiddenDeref, n.info, t.sons[0])
+    addSon(result, n)
+    t = skipTypes(t.sons[0], {tyGenericInst, tyAlias})
+  while t.kind in {tyPtr, tyRef}:
+    var a = result
+    let baseTyp = t.lastSon
+    result = newNodeIT(nkHiddenDeref, n.info, baseTyp)
+    addSon(result, a)
+    t = skipTypes(baseTyp, {tyGenericInst, tyAlias})
+
+proc fillPartialObject(c: PContext; n: PNode; typ: PType) =
+  if n.len == 2:
+    let x = semExprWithType(c, n[0])
+    let y = considerQuotedIdent(n[1])
+    let obj = x.typ.skipTypes(abstractPtrs)
+    if obj.kind == tyObject and tfPartial in obj.flags:
+      let field = newSym(skField, getIdent(y.s), obj.sym, n[1].info)
+      field.typ = skipIntLit(typ)
+      field.position = sonsLen(obj.n)
+      addSon(obj.n, newSymNode(field))
+      n.sons[0] = makeDeref x
+      n.sons[1] = newSymNode(field)
+    else:
+      localError(n.info, "implicit object field construction " &
+        "requires a .partial object, but got " & typeToString(obj))
+  else:
+    localError(n.info, "nkDotNode requires 2 children")
+
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   var b: PNode
   result = copyNode(n)
@@ -529,6 +561,11 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       message(a.info, warnEachIdentIsTuple)
 
     for j in countup(0, length-3):
+      if a[j].kind == nkDotExpr:
+        fillPartialObject(c, a[j],
+          if a.kind != nkVarTuple: typ else: tup.sons[j])
+        addToVarSection(c, result, n, a)
+        continue
       var v = semIdentDef(c, a.sons[j], symkind)
       if sfGenSym notin v.flags and not isDiscardUnderscore(v):
         addInterfaceDecl(c, v)

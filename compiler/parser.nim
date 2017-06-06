@@ -846,6 +846,7 @@ type
   TDeclaredIdentFlag = enum
     withPragma,               # identifier may have pragma
     withBothOptional          # both ':' and '=' parts are optional
+    withDot                   # allow 'var ident.ident = value'
   TDeclaredIdentFlags = set[TDeclaredIdentFlag]
 
 proc parseIdentColonEquals(p: var TParser, flags: TDeclaredIdentFlags): PNode =
@@ -859,7 +860,7 @@ proc parseIdentColonEquals(p: var TParser, flags: TDeclaredIdentFlags): PNode =
   while true:
     case p.tok.tokType
     of tkSymbol, tkAccent:
-      if withPragma in flags: a = identWithPragma(p)
+      if withPragma in flags: a = identWithPragma(p, allowDot=withdot in flags)
       else: a = parseSymbol(p)
       if a.kind == nkEmpty: return
     else: break
@@ -1889,7 +1890,7 @@ proc parseVarTuple(p: var TParser): PNode =
   optInd(p, result)
   # progress guaranteed
   while p.tok.tokType in {tkSymbol, tkAccent}:
-    var a = identWithPragma(p)
+    var a = identWithPragma(p, allowDot=true)
     addSon(result, a)
     if p.tok.tokType != tkComma: break
     getTok(p)
@@ -1905,7 +1906,7 @@ proc parseVariable(p: var TParser): PNode =
   #| colonBody = colcom stmt doBlocks?
   #| variable = (varTuple / identColonEquals) colonBody? indAndComment
   if p.tok.tokType == tkParLe: result = parseVarTuple(p)
-  else: result = parseIdentColonEquals(p, {withPragma})
+  else: result = parseIdentColonEquals(p, {withPragma, withDot})
   result{-1} = postExprBlocks(p, result{-1})
   indAndComment(p, result)
 

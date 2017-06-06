@@ -47,10 +47,6 @@ proc findPendingModule(m: BModule, s: PSym): BModule =
   var ms = getModule(s)
   result = m.g.modules[ms.position]
 
-proc emitLazily(s: PSym): bool {.inline.} =
-  result = optDeadCodeElim in gGlobalOptions or
-           sfDeadCodeElim in getModule(s).flags
-
 proc initLoc(result: var TLoc, k: TLocKind, typ: PType, s: TStorageLoc) =
   result.k = k
   result.s = s
@@ -142,6 +138,13 @@ proc ropecg(m: BModule, frmt: FormatStr, args: varargs[Rope]): Rope =
 template rfmt(m: BModule, fmt: string, args: varargs[Rope]): untyped =
   ropecg(m, fmt, args)
 
+var indent = "\t".rope
+
+proc indentLine(p: BProc, r: Rope): Rope =
+  result = r
+  for i in countup(0, p.blocks.len-1):
+    prepend(result, indent)
+
 proc appcg(m: BModule, c: var Rope, frmt: FormatStr,
            args: varargs[Rope]) =
   add(c, ropecg(m, frmt, args))
@@ -153,11 +156,6 @@ proc appcg(m: BModule, s: TCFileSection, frmt: FormatStr,
 proc appcg(p: BProc, s: TCProcSection, frmt: FormatStr,
            args: varargs[Rope]) =
   add(p.s(s), ropecg(p.module, frmt, args))
-
-var indent = "\t".rope
-proc indentLine(p: BProc, r: Rope): Rope =
-  result = r
-  for i in countup(0, p.blocks.len-1): prepend(result, indent)
 
 proc line(p: BProc, s: TCProcSection, r: Rope) =
   add(p.s(s), indentLine(p, r))
