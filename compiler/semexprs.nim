@@ -229,7 +229,10 @@ proc semCast(c: PContext, n: PNode): PNode =
   if tfHasMeta in targetType.flags:
     localError(n.sons[0].info, errCastToANonConcreteType, $targetType)
   if not isCastable(targetType, castedExpr.typ):
-    localError(n.info, errExprCannotBeCastToX, $targetType & "=" & typeToString( targetType, preferDesc))
+    let tar = $targetType
+    let alt = typeToString(targetType, preferDesc)
+    let msg = if tar != alt: tar & "=" & alt else: tar
+    localError(n.info, errExprCannotBeCastToX, msg)
   result = newNodeI(nkCast, n.info)
   result.typ = targetType
   addSon(result, copyTree(n.sons[0]))
