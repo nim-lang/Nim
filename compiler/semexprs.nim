@@ -152,6 +152,8 @@ proc isCastable(dst, src: PType): bool =
     result = false
   elif typeAllowed(dst, skParam) != nil:
     result = false
+  elif dst.kind == tyProc and dst.callConv == ccClosure:
+    result = src.kind == tyProc and src.callConv == ccClosure
   else:
     result = (dstSize >= srcSize) or
         (skipTypes(dst, abstractInst).kind in IntegralTypes) or
@@ -227,7 +229,10 @@ proc semCast(c: PContext, n: PNode): PNode =
   if tfHasMeta in targetType.flags:
     localError(n.sons[0].info, errCastToANonConcreteType, $targetType)
   if not isCastable(targetType, castedExpr.typ):
-    localError(n.info, errExprCannotBeCastToX, $targetType)
+    let tar = $targetType
+    let alt = typeToString(targetType, preferDesc)
+    let msg = if tar != alt: tar & "=" & alt else: tar
+    localError(n.info, errExprCannotBeCastToX, msg)
   result = newNodeI(nkCast, n.info)
   result.typ = targetType
   addSon(result, copyTree(n.sons[0]))
