@@ -54,7 +54,7 @@ proc getVTable(T: typedesc): ptr VTable =
 
   return vtbl.addr
 
-proc create(T: typedesc): T =
+proc create[T](typ: typedesc[T]): T =
   result.vtbl = getVTable(T)
 
 proc baseFoo(o: var TBase): int =
