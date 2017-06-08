@@ -145,14 +145,14 @@ proc setIntLitType*(result: PNode) =
   case platform.intSize
   of 8: result.typ = getIntLitType(result)
   of 4:
-    if i >= low(int32) and i <= high(int32):
+    if i >= low(int32) and i <= high(uint32).BiggestInt:
       result.typ = getIntLitType(result)
     else:
       result.typ = getSysType(tyInt64)
   of 2:
     if i >= low(int16) and i <= high(int16):
       result.typ = getIntLitType(result)
-    elif i >= low(int32) and i <= high(int32):
+    elif i >= low(int32) and i <= high(uint32).BiggestInt:
       result.typ = getSysType(tyInt32)
     else:
       result.typ = getSysType(tyInt64)
@@ -162,7 +162,7 @@ proc setIntLitType*(result: PNode) =
       result.typ = getIntLitType(result)
     elif i >= low(int16) and i <= high(int16):
       result.typ = getSysType(tyInt16)
-    elif i >= low(int32) and i <= high(int32):
+    elif i >= low(int32) and i <= high(uint32).BiggestInt:
       result.typ = getSysType(tyInt32)
     else:
       result.typ = getSysType(tyInt64)

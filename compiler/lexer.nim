@@ -565,7 +565,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
 
     # Promote int literal to int64? Not always necessary, but more consistent
     if result.tokType == tkIntLit:
-      if (result.iNumber < low(int32)) or (result.iNumber > high(int32)):
+      if (result.iNumber < low(int32)) or (result.iNumber > high(uint32).Biggestint):
         result.tokType = tkInt64Lit
 
   except ValueError:
