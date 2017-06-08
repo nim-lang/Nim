@@ -59,3 +59,11 @@ suite "random float":
     var rand2:float = random(1000000.0)
     check rand1 != rand2
 
+suite "^":
+  test "compiles for valid types":
+    check: compiles(5 ^ 2)
+    check: compiles(5.5 ^ 2)
+    check: compiles(5.5 ^ 2.int8)
+    check: compiles(5.5 ^ 2.uint)
+    check: compiles(5.5 ^ 2.uint8)
+    check: not compiles(5.5 ^ 2.2)
