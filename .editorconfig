@@ -1,0 +1,5 @@
+[*.{nim,cfg,nims,nimble}]
+root = true
+tab_width = 2
+indent_style = space
+charset = utf-8-bom
