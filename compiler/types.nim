@@ -139,6 +139,9 @@ proc getProcHeader*(sym: PSym; prefer: TPreferedDesc = preferName): string =
   add(result, ')')
   if n.sons[0].typ != nil:
     result.add(": " & typeToString(n.sons[0].typ, prefer))
+  result.add "[declared in "
+  result.add($sym.info)
+  result.add "]"
 
 proc elemType*(t: PType): PType =
   assert(t != nil)
@@ -688,6 +691,7 @@ type
     ExactTypeDescValues
     ExactGenericParams
     ExactConstraints
+    ExactGcSafety
     AllowCommonBase
 
   TTypeCmpFlags* = set[TTypeCmpFlag]
@@ -976,6 +980,8 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     cycleCheck()
     if a.kind == tyUserTypeClass and a.n != nil: return a.n == b.n
     result = sameChildrenAux(a, b, c) and sameFlags(a, b)
+    if result and ExactGcSafety in c.flags:
+      result = a.flags * {tfThread} == b.flags * {tfThread}
     if result and a.kind == tyProc:
       result = ((IgnoreCC in c.flags) or a.callConv == b.callConv) and
                ((ExactConstraints notin c.flags) or sameConstraints(a.n, b.n))
