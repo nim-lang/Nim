@@ -63,6 +63,9 @@ proc isNil*(v: View): bool =
 proc len*(v: View): int =
   return v.length
 
+proc data*[T](v: View[T]): ptr T =
+  return v.data
+
 proc ptrAdd[T](p: pointer, i: int): ptr T =
   return cast[ptr T](cast[int](p) +% (i * sizeof(T)))
 

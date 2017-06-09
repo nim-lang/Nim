@@ -32,6 +32,8 @@
 ##      echo line
 ##    fs.close()
 
+import views
+
 include "system/inclrtl"
 
 proc newEIO(msg: string): ref IOError =
@@ -119,6 +121,9 @@ proc readData*(s, unused: Stream, buffer: pointer,
   ## low level proc that reads data into an untyped `buffer` of `bufLen` size.
   result = s.readDataImpl(s, buffer, bufLen)
 
+proc readSync*(s: Stream, buf: ByteView): int =
+  return s.readDataImpl(s, buf.data, buf.len)
+
 proc peekData*(s: Stream, buffer: pointer, bufLen: int): int =
   ## low level proc that reads data into an untyped `buffer` of `bufLen` size
   ## without moving stream position
@@ -134,6 +139,10 @@ proc writeData*(s, unused: Stream, buffer: pointer,
   ## low level proc that writes an untyped `buffer` of `bufLen` size
   ## to the stream `s`.
   s.writeDataImpl(s, buffer, bufLen)
+
+proc writeSync*(s: Stream, buf: ByteView): int =
+  s.writeDataImpl(s, buf.data, buf.len)
+  return buf.len
 
 proc write*[T](s: Stream, x: T) =
   ## generic write procedure. Writes `x` to the stream `s`. Implementation:

@@ -66,7 +66,7 @@
 ##
 
 {.deadCodeElim: on.}
-import nativesockets, os, strutils, parseutils, times, sets, options
+import nativesockets, os, strutils, parseutils, times, sets, options, views
 export Port, `$`, `==`
 export Domain, SockType, Protocol
 
@@ -1138,6 +1138,19 @@ proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
     socket.socketError(result, lastError = lastError)
   data.setLen(result)
 
+proc readSync*(socket: Socket, buf: ByteView): int =
+  ## Reads data into the buffer. Returns number of bytes read.
+  ##
+  ## Return value of 0 indicates end of file.
+
+  result = recv(socket, buf.data, buf.len, -1)
+  if result < 0:
+    let lastError = getSocketError(socket)
+    if isDisconnectionError({SocketFlag.SafeDisconn}, lastError):
+      return 0
+    else:
+      socket.socketError(result, lastError = lastError)
+
 proc recv*(socket: Socket, size: int, timeout = -1,
            flags = {SocketFlag.SafeDisconn}): string {.inline.} =
   ## Higher-level version of ``recv`` which returns a string.
@@ -1311,6 +1324,20 @@ proc send*(socket: Socket, data: pointer, size: int): int {.
     when defined(solaris):
       const MSG_NOSIGNAL = 0
     result = send(socket.fd, data, size, int32(MSG_NOSIGNAL))
+
+proc writeSync*(socket: Socket, buf: ByteView): int =
+  ## Sends data to the socket. Returns number of bytes written.
+  ##
+  ## Return value of 0 indicates end of file (i.e. disconnection or TCP shutdown)
+  let sent = send(socket, buf.data, buf.len)
+  if sent < 0:
+    let lastError = osLastError()
+    if isDisconnectionError({SocketFlag.SafeDisconn}, lastError):
+      return 0
+    else:
+      socketError(socket, lastError = lastError)
+
+  return sent
 
 proc send*(socket: Socket, data: string,
            flags = {SocketFlag.SafeDisconn}) {.tags: [WriteIOEffect].} =
