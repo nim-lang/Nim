@@ -10,7 +10,7 @@ type
     x: int
 
 proc initOdArray*[As: static[int], T](len: int): OdArray[As, T] =
-  result.l = len
+  result.x = len
 
 echo initOdArray[10, int](100)
 
