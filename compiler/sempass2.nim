@@ -218,12 +218,11 @@ proc listGcUnsafety(s: PSym; onlyWarning: bool; cycleCheck: var IntSet) =
       message(s.info, msgKind,
         "'$#' is not GC-safe as it calls '$#'" %
         [s.name.s, u.name.s])
-    of skParam:
+    of skParam, skForVar:
       message(s.info, msgKind,
         "'$#' is not GC-safe as it performs an indirect call via '$#'" %
         [s.name.s, u.name.s])
     else:
-      internalAssert u.kind == skUnknown
       message(u.info, msgKind,
         "'$#' is not GC-safe as it performs an indirect call here" % s.name.s)
 

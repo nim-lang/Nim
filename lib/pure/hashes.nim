@@ -139,9 +139,14 @@ proc hash*(x: cstring): Hash =
   ## efficient hashing of null-terminated strings
   var h: Hash = 0
   var i = 0
-  while x[i] != 0.char:
-    h = h !& ord(x[i])
-    inc i
+  when defined(js):
+    while i < x.len:
+      h = h !& ord(x[i])
+      inc i
+  else:
+    while x[i] != 0.char:
+      h = h !& ord(x[i])
+      inc i
   result = !$h
 
 proc hash*(sBuf: string, sPos, ePos: int): Hash =
