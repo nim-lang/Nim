@@ -1578,6 +1578,12 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
           if not exprStructuralEquivalent(f.n, aOrig.n):
             result = isNone
         if result != isNone: put(c, f, aOrig)
+      elif aOrig.n != nil:
+        result = typeRel(c, f.lastSon, aOrig.n.typ)
+        if result != isNone:
+          var boundType = newTypeWithSons(c.c, tyStatic, @[aOrig.n.typ])
+          boundType.n = aOrig.n
+          put(c, f, boundType)
       else:
         result = isNone
     elif prev.kind == tyStatic:

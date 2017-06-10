@@ -446,7 +446,8 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
 proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   assert n.kind == nkBracketExpr
   for i in 1..sonsLen(n)-1:
-    n.sons[i].typ = semTypeNode(c, n.sons[i], nil)
+    let e = semExpr(c, n.sons[i])
+    n.sons[i].typ = e.typ.skipTypes({tyTypeDesc})
   var s = s
   var a = n.sons[0]
   if a.kind == nkSym:
