@@ -16,6 +16,11 @@ output: '''
 2x3 VectorVector [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
 
 2x3 VectorArray [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
+
+@[1, 2]
+@[1, 2]
+@[1, 2]@[3, 4]
+@[1, 2]@[3, 4]
 '''
 """
 
@@ -78,4 +83,29 @@ proc arrayTest =
   echo "2x3 VectorArray ", repr(mat_ok_runtime_3)
 
 arrayTest()
+
+# https://github.com/nim-lang/Nim/issues/5756
+
+type
+  Vec*[N : static[int]] = object
+    arr*: array[N, int32]
+
+  Mat*[M,N: static[int]] = object
+    arr*: array[M, Vec[N]]
+
+proc vec2*(x,y:int32) : Vec[2] =
+  result.arr = [x,y]
+
+proc mat2*(a,b: Vec[2]): Mat[2,2] =
+  result.arr = [a,b]
+
+const a = vec2(1,2)
+echo @(a.arr)
+let x = a
+echo @(x.arr)
+
+const b = mat2(vec2(1, 2), vec2(3, 4))
+echo @(b.arr[0].arr), @(b.arr[1].arr)
+let y = b
+echo @(y.arr[0].arr), @(y.arr[1].arr)
 
