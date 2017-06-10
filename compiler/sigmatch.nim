@@ -1781,6 +1781,13 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
         arg.typ.sons = @[evaluated.typ]
         arg.typ.n = evaluated
         a = arg.typ
+      else:
+        if m.callee.kind == tyGenericBody:
+          if f.kind == tyStatic and typeRel(m, f.base, a) != isNone:
+            result = makeStaticExpr(m.c, arg)
+            result.typ.flags.incl tfUnresolved
+            result.typ.n = arg
+            return
 
   var r = typeRel(m, f, a)
 
