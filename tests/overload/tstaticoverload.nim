@@ -16,7 +16,7 @@ proc foo(s: static[string]) =
   echo "static: ", s
 
 let l = "let"
-let v = "var"
+var v = "var"
 const c = "const"
 
 type staticString = static[string]
