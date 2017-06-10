@@ -204,7 +204,9 @@ proc sumGeneric(t: PType): int =
         if t.sons[i] != nil:
           result += t.sons[i].sumGeneric
       break
-    of tyGenericParam, tyExpr, tyStatic, tyStmt: break
+    of tyStatic:
+      return t.sons[0].sumGeneric + 1
+    of tyGenericParam, tyExpr, tyStmt: break
     of tyAlias: t = t.lastSon
     of tyBool, tyChar, tyEnum, tyObject, tyPointer,
         tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128,
