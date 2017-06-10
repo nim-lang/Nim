@@ -174,10 +174,14 @@ proc sideEffectsCheck(c: PContext, s: PSym) =
 
 proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
                           allowMetaTypes = false): PType =
-  var cl: TReplTypeVars
+  var
+    typeMap: LayeredIdTable
+    cl: TReplTypeVars
+
   initIdTable(cl.symMap)
-  initIdTable(cl.typeMap)
   initIdTable(cl.localCache)
+  initIdTable(typeMap.topLayer)
+  cl.typeMap = addr(typeMap)
   cl.info = info
   cl.c = c
   cl.allowMetaTypes = allowMetaTypes
@@ -201,7 +205,8 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   #addDecl(c, prc)
 
   pushInfoContext(info)
-  var cl = initTypeVars(c, pt, info, nil)
+  var typeMap = initLayeredTypeMap(pt)
+  var cl = initTypeVars(c, addr(typeMap), info, nil)
   var result = instCopyType(cl, prc.typ)
   let originalParams = result.n
   result.n = originalParams.shallowCopy
