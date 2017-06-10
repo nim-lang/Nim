@@ -127,7 +127,8 @@ proc replaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
 proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
   let t = replaceTypeVarsT(cl, n.typ)
   if t != nil and t.kind == tyStatic and t.n != nil:
-    return t.n
+    return if tfUnresolved in t.flags: prepareNode(cl, t.n)
+           else: t.n
   result = copyNode(n)
   result.typ = t
   if result.kind == nkSym: result.sym = replaceTypeVarsS(cl, n.sym)
