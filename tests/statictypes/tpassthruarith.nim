@@ -7,6 +7,8 @@ output: '''
 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+[1, 2, 3, 4]
 '''
 """
 
@@ -39,4 +41,14 @@ var o = bigger2(m)
 echo repr(m)
 echo repr(n)
 echo repr(o)
+
+type
+  Vect[N: static[int], A] = array[N, A]
+
+proc push[N: static[int], A](a: Vect[N, A], x: A): Vect[N + 1, A] =
+  for n in 0 .. < N:
+    result[n] = a[n]
+  result[N] = x
+
+echo repr(push([1, 2, 3], 4))
 
