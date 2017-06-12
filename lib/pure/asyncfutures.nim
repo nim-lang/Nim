@@ -4,8 +4,15 @@ import os, tables, strutils, times, heapqueue, options, deques
 
 # TODO: This shouldn't need to be included, but should ideally be exported.
 type
+  CallbackFunc = proc () {.closure, gcsafe.}
+
+  CallbackList = object
+    function: CallbackFunc
+    next: ref CallbackList
+
   FutureBase* = ref object of RootObj ## Untyped future.
-    cb: proc () {.closure,gcsafe.}
+    callbacks: CallbackList
+
     finished: bool
     error*: ref Exception ## Stored exception
     errorStackTrace*: string
@@ -86,6 +93,33 @@ proc checkFinished[T](future: Future[T]) =
       err.cause = future
       raise err
 
+proc call(callbacks: var CallbackList) =
+  var current = callbacks
+
+  while true:
+    if current.function != nil:
+      callSoon(current.function)
+
+    if current.next == nil:
+      break
+    else:
+      current = current.next[]
+
+  # callback will be called only once, let GC collect them now
+  callbacks.next = nil
+  callbacks.function = nil
+
+proc add(callbacks: var CallbackList, function: CallbackFunc) =
+  if callbacks.function == nil:
+    callbacks.function = function
+    assert callbacks.next == nil
+  else:
+    let newNext = new(ref CallbackList)
+    newNext.function = callbacks.function
+    newNext.next = callbacks.next
+    callbacks.next = newNext
+    callbacks.function = function
+
 proc complete*[T](future: Future[T], val: T) =
   ## Completes ``future`` with value ``val``.
   #assert(not future.finished, "Future already finished, cannot finish twice.")
@@ -93,8 +127,7 @@ proc complete*[T](future: Future[T], val: T) =
   assert(future.error == nil)
   future.value = val
   future.finished = true
-  if future.cb != nil:
-    future.cb()
+  future.callbacks.call()
 
 proc complete*(future: Future[void]) =
   ## Completes a void ``future``.
@@ -102,8 +135,7 @@ proc complete*(future: Future[void]) =
   checkFinished(future)
   assert(future.error == nil)
   future.finished = true
-  if future.cb != nil:
-    future.cb()
+  future.callbacks.call()
 
 proc complete*[T](future: FutureVar[T]) =
   ## Completes a ``FutureVar``.
@@ -111,8 +143,7 @@ proc complete*[T](future: FutureVar[T]) =
   checkFinished(fut)
   assert(fut.error == nil)
   fut.finished = true
-  if fut.cb != nil:
-    fut.cb()
+  fut.callbacks.call
 
 proc complete*[T](future: FutureVar[T], val: T) =
   ## Completes a ``FutureVar`` with value ``val``.
@@ -134,26 +165,36 @@ proc fail*[T](future: Future[T], error: ref Exception) =
   future.error = error
   future.errorStackTrace =
     if getStackTrace(error) == "": getStackTrace() else: getStackTrace(error)
-  if future.cb != nil:
-    future.cb()
+  future.callbacks.call
+
+proc clearCallbacks(future: FutureBase) =
+  future.callbacks.function = nil
+  future.callbacks.next = nil
+
+proc addCallback*(future: FutureBase, cb: proc() {.closure,gcsafe.}) =
+  ## Adds the callbacks proc to be called when the future completes.
+  ##
+  ## If future has already completed then ``cb`` will be called immediately.
+  assert cb != nil
+  if future.finished:
+    callSoon(cb)
   else:
-    # This is to prevent exceptions from being silently ignored when a future
-    # is discarded.
-    # TODO: This may turn out to be a bad idea.
-    # Turns out this is a bad idea.
-    #raise error
-    discard
+    future.callbacks.add cb
+
+proc addCallback*[T](future: Future[T], cb: proc(future: Future[T]) {.closure,gcsafe.}) =
+  ## Adds the callbacks proc to be called when the future completes.
+  ##
+  ## If future has already completed then ``cb`` will be called immediately.
+  future.addCallback proc() = cb(future)
 
 proc `callback=`*(future: FutureBase, cb: proc () {.closure,gcsafe.}) =
-  ## Sets the callback proc to be called when the future completes.
+  ## Clears the list of callbacks and sets the callback proc to be called when the future completes.
   ##
   ## If future has already completed then ``cb`` will be called immediately.
   ##
-  ## **Note**: You most likely want the other ``callback`` setter which
-  ## passes ``future`` as a param to the callback.
-  future.cb = cb
-  if future.finished:
-    callSoon(future.cb)
+  ## It's recommended to use ``addCallback`` or ``then`` instead.
+  future.clearCallbacks
+  future.addCallback cb
 
 proc `callback=`*[T](future: Future[T],
     cb: proc (future: Future[T]) {.closure,gcsafe.}) =
