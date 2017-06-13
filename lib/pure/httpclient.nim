@@ -62,7 +62,8 @@
 ##   let body = %*{
 ##       "data": "some text"
 ##   }
-##   echo client.request("http://some.api", httpMethod = HttpPost, body = $body)
+##   var response =  client.request("http://some.api", httpMethod = HttpPost, body = $body)
+##   echo response.status
 ##
 ## Progress reporting
 ## ==================
