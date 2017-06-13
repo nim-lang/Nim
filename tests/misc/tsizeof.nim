@@ -14,7 +14,7 @@ import macros, typetraits
 macro testSizeAlignOf(args: varargs[untyped]): untyped =
   result = newStmtList()
   for arg in args:
-    result.add quote do:
+    result.add(quote do:
       let
         c_size = c_sizeof(`arg`)
         nim_size = sizeof(`arg`)
@@ -23,6 +23,7 @@ macro testSizeAlignOf(args: varargs[untyped]): untyped =
              intAlign(c_size),   " !=  ",
              intAlign(nim_size), " align: ",
              intAlign(alignof(`arg`))
+    )
 
 macro testOffsetOf(a,b1,b2: untyped): untyped =
   let typeName = newLit(a.repr)
