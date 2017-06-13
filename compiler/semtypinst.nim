@@ -243,6 +243,7 @@ proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
 proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   # tyGenericInvocation[A, tyGenericInvocation[A, B]]
   # is difficult to handle:
+  const eqFlags = eqTypeFlags + {tfGcSafe}
   var body = t.sons[0]
   if body.kind != tyGenericBody: internalError(cl.info, "no generic body")
   var header: PType = t
@@ -252,7 +253,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   else:
     result = searchInstTypes(t)
 
-  if result != nil and eqTypeFlags*result.flags == eqTypeFlags*t.flags: return
+  if result != nil and eqFlags*result.flags == eqFlags*t.flags: return
   for i in countup(1, sonsLen(t) - 1):
     var x = t.sons[i]
     if x.kind in {tyGenericParam}:
@@ -267,7 +268,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   if header != t:
     # search again after first pass:
     result = searchInstTypes(header)
-    if result != nil and eqTypeFlags*result.flags == eqTypeFlags*t.flags: return
+    if result != nil and eqFlags*result.flags == eqFlags*t.flags: return
   else:
     header = instCopyType(cl, t)
 

@@ -470,6 +470,17 @@ proc temp(args: string) =
   copyExe(output, finalDest)
   if programArgs.len > 0: exec(finalDest & " " & programArgs)
 
+proc xtemp(cmd: string) =
+  let d = getAppDir()
+  copyExe(d / "bin" / "nim".exe, d / "bin" / "nim_backup".exe)
+  try:
+    withDir(d):
+      temp"-d:debug"
+    copyExe(d / "bin" / "nim_temp".exe, d / "bin" / "nim".exe)
+    exec(cmd)
+  finally:
+    copyExe(d / "bin" / "nim_backup".exe, d / "bin" / "nim".exe)
+
 proc pushCsources() =
   if not dirExists("../csources/.git"):
     quit "[Error] no csources git repository found"
@@ -545,6 +556,7 @@ of cmdArgument:
   of "testinstall": testUnixInstall()
   of "test", "tests": tests(op.cmdLineRest)
   of "temp": temp(op.cmdLineRest)
+  of "xtemp": xtemp(op.cmdLineRest)
   of "winrelease": winRelease()
   of "wintools": bundleWinTools()
   of "nimble": buildNimble(existsDir(".git"))
