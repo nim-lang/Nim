@@ -601,8 +601,18 @@ proc generateHeaders(m: BModule) =
       addf(m.s[cfsHeaders], "#include \"$1\"$N", [rope(it)])
     else:
       addf(m.s[cfsHeaders], "#include $1$N", [rope(it)])
+  add(m.s[cfsHeaders], "#undef LANGUAGE_C" & tnl)
+  add(m.s[cfsHeaders], "#undef MIPSEB" & tnl)
+  add(m.s[cfsHeaders], "#undef MIPSEL" & tnl)
+  add(m.s[cfsHeaders], "#undef PPC" & tnl)
+  add(m.s[cfsHeaders], "#undef R3000" & tnl)
+  add(m.s[cfsHeaders], "#undef R4000" & tnl)
+  add(m.s[cfsHeaders], "#undef i386" & tnl)
   add(m.s[cfsHeaders], "#undef linux" & tnl)
+  add(m.s[cfsHeaders], "#undef mips" & tnl)
   add(m.s[cfsHeaders], "#undef near" & tnl)
+  add(m.s[cfsHeaders], "#undef powerpc" & tnl)
+  add(m.s[cfsHeaders], "#undef unix" & tnl)
 
 proc initFrame(p: BProc, procname, filename: Rope): Rope =
   discard cgsym(p.module, "nimFrame")
