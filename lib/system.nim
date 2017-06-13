@@ -3774,7 +3774,8 @@ proc locals*(): RootObj {.magic: "Plugin", noSideEffect.} =
 
 when hasAlloc and not defined(nimscript) and not defined(JS):
   proc deepCopy*[T](x: var T, y: T) {.noSideEffect, magic: "DeepCopy".} =
-    ## performs a deep copy of `x`. This is also used by the code generator
+    ## performs a deep copy of `y` and copies it into `x`.
+    ## This is also used by the code generator
     ## for the implementation of ``spawn``.
     discard
 
