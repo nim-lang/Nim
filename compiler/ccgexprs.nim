@@ -1578,8 +1578,14 @@ proc genSomeCast(p: BProc, e: PNode, d: var TLoc) =
     putIntoDest(p, d, e.typ, "(($1) ($2))" %
         [getClosureType(p.module, etyp, clHalfWithEnv), rdCharLoc(a)], a.s)
   else:
-    putIntoDest(p, d, e.typ, "(($1) ($2))" %
-        [getTypeDesc(p.module, e.typ), rdCharLoc(a)], a.s)
+    let srcTyp = skipTypes(e.sons[1].typ, abstractRange)
+    # C++ does not like direct casts from pointer to shorter integral types
+    if srcTyp.kind in {tyPtr, tyPointer} and etyp.kind in IntegralTypes:
+      putIntoDest(p, d, e.typ, "(($1) (ptrdiff_t) ($2))" %
+          [getTypeDesc(p.module, e.typ), rdCharLoc(a)], a.s)
+    else:
+      putIntoDest(p, d, e.typ, "(($1) ($2))" %
+          [getTypeDesc(p.module, e.typ), rdCharLoc(a)], a.s)
 
 proc genCast(p: BProc, e: PNode, d: var TLoc) =
   const ValueTypes = {tyFloat..tyFloat128, tyTuple, tyObject, tyArray}
