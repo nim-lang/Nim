@@ -127,7 +127,7 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
   i.inc protocol.parseInt(result.minor, i)
 
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
-  client.send("HTTP/1.1 " & status & "\c\L")
+  client.send("HTTP/1.1 " & status & "\c\L\c\L") 
 
 proc processClient(client: AsyncSocket, address: string,
                    callback: proc (request: Request):
