@@ -317,6 +317,12 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mEqProc:
     result = newIntNodeT(ord(
         exprStructuralEquivalent(a, b, strictSymEquality=true)), n)
+  of mEnumLen:
+    let t = skipTypes(a.typ, abstractRange)
+    result = newIntNodeT(t.n.sons.len, n)
+  of mEnumOrdinal:
+    let t = skipTypes(a.typ, abstractRange)
+    result = newIntNodeT(ord(tfEnumHasHoles notin t.flags), n)
   else: discard
 
 proc getConstIfExpr(c: PSym, n: PNode): PNode =

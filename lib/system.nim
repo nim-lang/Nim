@@ -393,6 +393,12 @@ proc `<` *[T](x, y: ref T): bool {.magic: "LtPtr", noSideEffect.}
 proc `<` *[T](x, y: ptr T): bool {.magic: "LtPtr", noSideEffect.}
 proc `<` *(x, y: pointer): bool {.magic: "LtPtr", noSideEffect.}
 
+proc len*[Enum: enum](x: typedesc[Enum]): int {.magic: "EnumLen", noSideEffect.}
+  ## returns the number of fields in enum
+
+proc isOrdinal*[Enum: enum](x: typedesc[Enum]): bool {.magic: "EnumOrdinal", noSideEffect.}
+  ## returns true if enum is an ordinal (ie: has no holes.)
+
 template `!=` * (x, y: untyped): untyped =
   ## unequals operator. This is a shorthand for ``not (x == y)``.
   not (x == y)
