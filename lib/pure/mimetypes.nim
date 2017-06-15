@@ -515,7 +515,7 @@ proc getExt*(mimedb: MimeDB, mimetype: string, default = "txt"): string =
 proc getMediaType*(mimedb: MimeDB, ext: string, default = "text"): string =
   ## Returns the mediatype corresponding to the given extension.
   ## Returns ``default`` if ``ext`` could not be found.
-  let mimetype = mimedb.getMimetype(ext)
+  let mimetype = mimedb.getMimetype(ext, default & "/")
   for idx, ch in mimetype:
     if ch == '/':
       return mimetype[0..idx-1]
@@ -529,3 +529,4 @@ when isMainModule:
   assert m.getMimetype("mp4") == "video/mp4"
   assert m.getExt("text/html") == "html"
   assert m.getMediaType("mp3") == "audio"
+  assert m.getMediaType("nothere", "bin") == "bin"
