@@ -2241,10 +2241,20 @@ iterator mitems*(a: var cstring): var char {.inline.} =
     yield a[i]
     inc(i)
 
-iterator items*(E: typedesc[enum]): E =
+
+proc enumGet[T: enum](index: int; t: typedesc[T]): T  {.magic: "EnumGet", noSideEffect.}
+
+iterator items*[E: enum](t: typedesc[E]): E =
   ## iterates over the values of the enum ``E``.
-  for v in low(E)..high(E):
-    yield v
+  when defined(JS) or t.isOrdinal:
+    for v in low(E)..high(E):
+      yield v
+  else:
+    let last = E.len - 1
+    var i = 0
+    while i <= last:
+      yield enumGet(i, E)
+      inc(i)
 
 iterator items*[T](s: HSlice[T, T]): T =
   ## iterates over the slice `s`, yielding each value between `s.a` and `s.b`

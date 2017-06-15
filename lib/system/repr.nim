@@ -80,6 +80,9 @@ proc reprChar(x: char): string {.compilerRtl.} =
 # 16~24 seems like a sweet spot
 const binarySearchCutoff = 16
 
+proc enumGet(idx: int, sons: ptr array[0x7FFF, ptr TNimNode]): int {.compilerRtl.} =
+  result = sons[idx].offset
+
 proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
   ## Return string representation for enumeration values
   var n = typ.node
