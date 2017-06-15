@@ -543,7 +543,7 @@ var
 
 proc toCChar*(c: char): string =
   case c
-  of '\0'..'\x1F', '\x80'..'\xFF': result = '\\' & toOctal(c)
+  of '\0'..'\x1F', '\x7F'..'\xFF': result = '\\' & toOctal(c)
   of '\'', '\"', '\\', '?': result = '\\' & c
   else: result = $(c)
 

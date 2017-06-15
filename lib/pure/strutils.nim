@@ -1643,7 +1643,7 @@ proc escape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
   ## * replaces any ``\`` by ``\\``
   ## * replaces any ``'`` by ``\'``
   ## * replaces any ``"`` by ``\"``
-  ## * replaces any other character in the set ``{'\0'..'\31', '\128'..'\255'}``
+  ## * replaces any other character in the set ``{'\0'..'\31', '\127'..'\255'}``
   ##   by ``\xHH`` where ``HH`` is its hexadecimal value.
   ## The procedure has been designed so that its output is usable for many
   ## different common syntaxes. The resulting string is prefixed with
@@ -1653,7 +1653,7 @@ proc escape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
   result.add(prefix)
   for c in items(s):
     case c
-    of '\0'..'\31', '\128'..'\255':
+    of '\0'..'\31', '\127'..'\255':
       add(result, "\\x")
       add(result, toHex(ord(c), 2))
     of '\\': add(result, "\\\\")
