@@ -371,7 +371,7 @@ proc esc(c: char, reserved = {'\0'..'\255'}): string =
   of '\a': result = "\\a"
   of '\\': result = "\\\\"
   of 'a'..'z', 'A'..'Z', '0'..'9', '_': result = $c
-  elif c < ' ' or c >= '\128': result = '\\' & $ord(c)
+  elif c < ' ' or c >= '\127': result = '\\' & $ord(c)
   elif c in reserved: result = '\\' & c
   else: result = $c
 

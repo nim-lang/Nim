@@ -395,6 +395,12 @@ proc radToDeg*[T: float32|float64](d: T): T {.inline.} =
   ## Convert from radians to degrees
   result = T(d) / RadPerDeg
 
+proc sgn*[T: SomeNumber](x: T): int {.inline.} =
+  ## Sign function. Returns -1 for negative numbers and `NegInf`, 1 for
+  ## positive numbers and `Inf`, and 0 for positive zero, negative zero and
+  ## `NaN`.
+  ord(T(0) < x) - ord(x < T(0))
+
 proc `mod`*[T: float32|float64](x, y: T): T =
   ## Computes the modulo operation for float operators. Equivalent
   ## to ``x - y * floor(x/y)``. Note that the remainder will always
@@ -447,6 +453,7 @@ when isMainModule and not defined(JS):
   assert(lgamma(1.0) == 0.0) # ln(1.0) == 0.0
   assert(erf(6.0) > erf(5.0))
   assert(erfc(6.0) < erfc(5.0))
+
 when isMainModule:
   # Function for approximate comparison of floats
   proc `==~`(x, y: float): bool = (abs(x-y) < 1e-9)
@@ -509,3 +516,21 @@ when isMainModule:
     doAssert(classify(trunc(-1e1000000'f32)) == fcNegInf)
     doAssert(classify(trunc(f_nan.float32)) == fcNan)
     doAssert(classify(trunc(0.0'f32)) == fcZero)
+
+  block: # sgn() tests
+    assert sgn(1'i8) == 1
+    assert sgn(1'i16) == 1
+    assert sgn(1'i32) == 1
+    assert sgn(1'i64) == 1
+    assert sgn(1'u8) == 1
+    assert sgn(1'u16) == 1
+    assert sgn(1'u32) == 1
+    assert sgn(1'u64) == 1
+    assert sgn(-12342.8844'f32) == -1
+    assert sgn(123.9834'f64) == 1
+    assert sgn(0'i32) == 0
+    assert sgn(0'f32) == 0
+    assert sgn(NegInf) == -1
+    assert sgn(Inf) == 1
+    assert sgn(NaN) == 0
+
