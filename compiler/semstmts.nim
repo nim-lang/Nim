@@ -1129,7 +1129,7 @@ proc semProcAnnotation(c: PContext, prc: PNode;
       x.add(it.sons[1])
     x.add(prc)
     # recursion assures that this works for multiple macro annotations too:
-    result = semStmt(c, x)
+    result = semExpr(c, x)
     # since a proc annotation can set pragmas, we process these here again.
     # This is required for SqueakNim-like export pragmas.
     if result.kind in procDefs and result[namePos].kind == nkSym and
