@@ -470,7 +470,12 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
           let a = genRecordFieldsAux(m, k, "$1.$2" % [ae, sname], rectype,
                                      check)
           if a != nil:
-            add(unionBody, "struct {")
+            if tfPacked notin rectype.flags:
+              add(unionBody, "struct {")
+            else:
+              addf(unionBody, CC[cCompiler].structStmtFmt,
+                [rope"struct", nil, rope(CC[cCompiler].packedPragma)])
+              add(unionBody, "{")
             add(unionBody, a)
             addf(unionBody, "} $1;$n", [sname])
         else:

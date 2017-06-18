@@ -88,7 +88,8 @@ proc sameInstantiation(a, b: TInstantiation): bool =
   if a.concreteTypes.len == b.concreteTypes.len:
     for i in 0..a.concreteTypes.high:
       if not compareTypes(a.concreteTypes[i], b.concreteTypes[i],
-                          flags = {ExactTypeDescValues}): return
+                          flags = {ExactTypeDescValues,
+                                   ExactGcSafety}): return
     result = true
 
 proc genericCacheGet(genericSym: PSym, entry: TInstantiation;

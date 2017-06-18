@@ -149,26 +149,41 @@ proc cmdLineRest*(p: OptParser): TaintedString {.rtl, extern: "npo$1".} =
   ## retrieves the rest of the command line that has not been parsed yet.
   result = strip(substr(p.cmd, p.pos, len(p.cmd) - 1)).TaintedString
 
+iterator getopt*(p: var OptParser): tuple[kind: CmdLineKind, key, val: TaintedString] =
+  ## This is an convenience iterator for iterating over the given OptParser object.
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##   var p = initOptParser("--left --debug:3 -l=4 -r:2")
+  ##   for kind, key, val in p.getopt():
+  ##     case kind
+  ##     of cmdArgument:
+  ##       filename = key
+  ##     of cmdLongOption, cmdShortOption:
+  ##       case key
+  ##       of "help", "h": writeHelp()
+  ##       of "version", "v": writeVersion()
+  ##     of cmdEnd: assert(false) # cannot happen
+  ##   if filename == "":
+  ##     # no filename has been given, so we show the help:
+  ##     writeHelp()
+  p.pos = 0
+  while true:
+    next(p)
+    if p.kind == cmdEnd: break
+    yield (p.kind, p.key, p.val)
+
 when declared(initOptParser):
   iterator getopt*(): tuple[kind: CmdLineKind, key, val: TaintedString] =
-    ## This is an convenience iterator for iterating over the command line.
-    ## This uses the OptParser object. Example:
+    ## This is an convenience iterator for iterating over the command line arguments.
+    ## This create a new OptParser object.
+    ## See above for a more detailed example
     ##
     ## .. code-block:: nim
-    ##   var
-    ##     filename = ""
     ##   for kind, key, val in getopt():
-    ##     case kind
-    ##     of cmdArgument:
-    ##       filename = key
-    ##     of cmdLongOption, cmdShortOption:
-    ##       case key
-    ##       of "help", "h": writeHelp()
-    ##       of "version", "v": writeVersion()
-    ##     of cmdEnd: assert(false) # cannot happen
-    ##   if filename == "":
-    ##     # no filename has been given, so we show the help:
-    ##     writeHelp()
+    ##     # this will iterate over all arguments passed to the cmdline.
+    ##     continue
+    ##
     var p = initOptParser()
     while true:
       next(p)
