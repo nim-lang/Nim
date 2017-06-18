@@ -761,6 +761,14 @@ proc newEnum*(
     
   ## Creates a new enum. `name` must be an ident. Fields are allowed to be
   ## either idents or EnumFieldDef
+  ##
+  ## .. code-block:: nim
+  ##
+  ##    newEnum(name = ident("Colors"), fields = [ident("Blue"), ident("Red")],
+  ##      public = true, pure = false)
+  ##
+  ##    # type Colors* = Blue Red
+  ##
     
   expectKind name, nnkIdent
   doAssert len(fields) > 0, "Enum must contain at least one field"
