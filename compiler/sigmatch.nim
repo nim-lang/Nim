@@ -1040,11 +1040,12 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
            else: isNone
 
   of tyUserTypeClass, tyUserTypeClassInst:
-    # consider this: 'var g: Node' *within* a concept where 'Node'
-    # is a concept too (tgraph)
-    let x = typeRel(c, a, f, flags + {trDontBind})
-    if x >= isGeneric:
-      return isGeneric
+    if c.c.matchedConcept != nil:
+      # consider this: 'var g: Node' *within* a concept where 'Node'
+      # is a concept too (tgraph)
+      let x = typeRel(c, a, f, flags + {trDontBind})
+      if x >= isGeneric:
+        return isGeneric
   else: discard
 
   case f.kind

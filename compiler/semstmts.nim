@@ -1777,7 +1777,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
           let verdict = semConstExpr(c, n[i])
           if verdict.intVal == 0:
-            localError(result.info, "type class predicate failed")
+            localError(result.info, "concept predicate failed")
         of tyUnknown: continue
         else: discard
       if n.sons[i].typ == enforceVoidContext: #or usesResult(n.sons[i]):
