@@ -628,9 +628,9 @@ proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
   else:
     result = isNone
 
-proc matchUserTypeClass*(c: PContext, m: var TCandidate,
-                         ff, a: PType): PType =
+proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
   var
+    c = m.c
     typeClass = ff.skipTypes({tyUserTypeClassInst})
     body = typeClass.n[3]
     matchedConceptContext: TMatchedConcept
@@ -661,6 +661,9 @@ proc matchUserTypeClass*(c: PContext, m: var TCandidate,
         typeParamName = ff.base.sons[i-1].sym.name
         typ = ff.sons[i]
         param: PSym
+        alreadyBound = PType(idTableGet(m.bindings, typ))
+
+      if alreadyBound != nil: typ = alreadyBound
 
       template paramSym(kind): untyped =
         newSym(kind, typeParamName, typeClass.sym, typeClass.sym.info)
@@ -1490,7 +1493,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
     else:
       considerPreviousT:
         if aOrig == f: return isEqual
-        var matched = matchUserTypeClass(c.c, c, f, aOrig)
+        var matched = matchUserTypeClass(c, f, aOrig)
         if matched != nil:
           bindConcreteTypeToUserTypeClass(matched, a)
           if doBind: put(c, f, matched)
