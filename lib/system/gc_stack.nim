@@ -79,7 +79,7 @@ template withRegion*(r: MemRegion; body: untyped) =
   try:
     body
   finally:
-    r = tlRegion
+    #r = tlRegion
     tlRegion = oldRegion
 
 template inc(p: pointer, s: int) =
