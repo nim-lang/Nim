@@ -20,6 +20,11 @@ when defined(windows):
 else:
   import posix
 
+  type
+    Handle = cint
+
+  const INVALID_HANDLE_VALUE = -1
+
 when defined(linux):
   import linux
 
@@ -144,7 +149,10 @@ proc startProcess*(command: string,
                    workingDir: string = "",
                    args: openArray[string] = [],
                    env: StringTableRef = nil,
-                   options: set[ProcessOption] = {poStdErrToStdOut}):
+                   options: set[ProcessOption] = {poStdErrToStdOut}, 
+                   hIn: Handle = INVALID_HANDLE_VALUE, 
+                   hOut: Handle = INVALID_HANDLE_VALUE, 
+                   hErr: Handle = INVALID_HANDLE_VALUE):
               Process {.rtl, extern: "nosp$1", tags: [ExecIOEffect, ReadEnvEffect].}
   ## Starts a process. `Command` is the executable file, `workingDir` is the
   ## process's working directory. If ``workingDir == ""`` the current directory
@@ -155,7 +163,10 @@ proc startProcess*(command: string,
   ## If ``env == nil`` the environment is inherited of
   ## the parent process. `options` are additional flags that may be passed
   ## to `startProcess`. See the documentation of ``ProcessOption`` for the
-  ## meaning of these flags. You need to `close` the process when done.
+  ## meaning of these flags. `hIn`, `hOut`, and `hErr` are optional parameters for
+  ## supplying your own handles for stdin, stdout, and stderr. These are only valid
+  ## when you have not specified poParentStreams in `options`. 
+  ## You need to `close` the process when done.
   ##
   ## Note that you can't pass any `args` if you use the option
   ## ``poEvalCommand``, which invokes the system shell to run the specified
@@ -367,6 +378,11 @@ when not defined(useNimRtl):
       elif not running(p): break
     close(p)
 
+proc assertNoHandlesWithParentStreams(hIn, hOut, hErr: Handle) = 
+  let msg = "Can not pass in/out/err handles when poParentStreams is set"
+  assert(hIn == INVALID_HANDLE_VALUE, msg)
+  assert(hOut == INVALID_HANDLE_VALUE, msg)
+  assert(hErr == INVALID_HANDLE_VALUE, msg)
 
 when defined(Windows) and not defined(useNimRtl):
   # We need to implement a handle stream for Windows:
@@ -376,6 +392,8 @@ when defined(Windows) and not defined(useNimRtl):
       handle: Handle
       atTheEnd: bool
   {.deprecated: [TFileHandleStream: FileHandleStream].}
+
+  const HANDLE_FLAG_INHERIT = 1
 
   proc hsClose(s: Stream) = discard # nothing to do here
   proc hsAtEnd(s: Stream): bool = return PFileHandleStream(s).atTheEnd
@@ -500,11 +518,17 @@ when defined(Windows) and not defined(useNimRtl):
   proc fileClose(h: Handle) {.inline.} =
     if h > 4: discard closeHandle(h)
 
+  proc handleOrDefault(h, default: Handle) : Handle {.inline.} =
+    result = if h != INVALID_HANDLE_VALUE: h else: default
+
   proc startProcess(command: string,
                  workingDir: string = "",
                  args: openArray[string] = [],
                  env: StringTableRef = nil,
-                 options: set[ProcessOption] = {poStdErrToStdOut}): Process =
+                 options: set[ProcessOption] = {poStdErrToStdOut}, 
+                 hIn: Handle = INVALID_HANDLE_VALUE,
+                 hOut: Handle = INVALID_HANDLE_VALUE, 
+                 hErr: Handle = INVALID_HANDLE_VALUE): Process =
     var
       si: STARTUPINFO
       procInfo: PROCESS_INFORMATION
@@ -517,18 +541,28 @@ when defined(Windows) and not defined(useNimRtl):
       si.dwFlags = STARTF_USESTDHANDLES # STARTF_USESHOWWINDOW or
       if poInteractive notin options:
         createPipeHandles(si.hStdInput, hi)
+        if hIn != INVALID_HANDLE_VALUE:
+          si.hStdInput = hIn
+
         createPipeHandles(ho, si.hStdOutput)
+        if hOut != INVALID_HANDLE_VALUE:
+          si.hStdOutput = hOut
+
         if poStdErrToStdOut in options:
           si.hStdError = si.hStdOutput
           he = ho
         else:
           createPipeHandles(he, si.hStdError)
+          if hErr != INVALID_HANDLE_VALUE:
+            si.hStdError = hErr
       else:
         createAllPipeHandles(si, hi, ho, he, cast[int](result))
       result.inHandle = FileHandle(hi)
       result.outHandle = FileHandle(ho)
       result.errHandle = FileHandle(he)
     else:
+      assertNoHandlesWithParentStreams(hIn, hOut, hErr)
+
       si.hStdError = getStdHandle(STD_ERROR_HANDLE)
       si.hStdInput = getStdHandle(STD_INPUT_HANDLE)
       si.hStdOutput = getStdHandle(STD_OUTPUT_HANDLE)
@@ -748,7 +782,10 @@ elif not defined(useNimRtl):
                  workingDir: string = "",
                  args: openArray[string] = [],
                  env: StringTableRef = nil,
-                 options: set[ProcessOption] = {poStdErrToStdOut}): Process =
+                 options: set[ProcessOption] = {poStdErrToStdOut}, 
+                 hIn: Handle = INVALID_HANDLE_VALUE, 
+                 hOut: Handle = INVALID_HANDLE_VALUE,
+                 hErr: Handle = INVALID_HANDLE_VALUE): Process =
     var
       pStdin, pStdout, pStderr: array[0..1, cint]
     new(result)
@@ -758,6 +795,21 @@ elif not defined(useNimRtl):
       if pipe(pStdin) != 0'i32 or pipe(pStdout) != 0'i32 or
          pipe(pStderr) != 0'i32:
         raiseOSError(osLastError())
+
+      if hIn != INVALID_HANDLE_VALUE:
+        discard close(pStdin[readIdx])
+        pStdin[readIdx] = hIn
+
+      if hOut != INVALID_HANDLE_VALUE:
+        discard close(pStdout[writeIdx])
+        pStdout[writeIdx] = hOut
+
+      if hErr != INVALID_HANDLE_VALUE:
+        discard close(pStderr[writeIdx])
+        pStderr[writeIdx] = hErr
+
+    else:
+      assertNoHandlesWithParentStreams(hIn, hOut, hErr)
 
     var sysCommand: string
     var sysArgsRaw: seq[string]
