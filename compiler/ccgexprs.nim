@@ -665,7 +665,9 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
       d.s = OnHeap
   else:
     var a: TLoc
-    let typ = skipTypes(e.sons[0].typ, abstractInst)
+    var typ = skipTypes(e.sons[0].typ, abstractInst)
+    if typ.kind in {tyUserTypeClass, tyUserTypeClassInst} and typ.isResolvedUserTypeClass:
+      typ = typ.lastSon
     if typ.kind == tyVar and tfVarIsPtr notin typ.flags and p.module.compileToCpp and e.sons[0].kind == nkHiddenAddr:
       initLocExprSingleUse(p, e[0][0], d)
       return
