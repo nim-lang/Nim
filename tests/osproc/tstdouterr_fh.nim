@@ -27,7 +27,7 @@ import osproc, os, streams
 when defined(windows):
   from winlean import get_osfhandle, Handle
 
-const filename = when defined(Windows): "ta_out.exe" else: "ta_out"
+const filename = addFileExt("ta_out", ExeExt)
 
 doAssert fileExists(getCurrentDir() / "tests" / "osproc" / filename)
 

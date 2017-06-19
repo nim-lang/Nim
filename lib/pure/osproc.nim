@@ -378,8 +378,8 @@ when not defined(useNimRtl):
       elif not running(p): break
     close(p)
 
-proc assertNoHandlesWithParentStreams(hIn, hOut, hErr: Handle) = 
-  let msg = "Can not pass in/out/err handles when poParentStreams is set"
+template assertNoHandlesWithParentStreams(hIn, hOut, hErr: Handle) = 
+  const msg = "Can not pass in/out/err handles when poParentStreams is set"
   assert(hIn == INVALID_HANDLE_VALUE, msg)
   assert(hOut == INVALID_HANDLE_VALUE, msg)
   assert(hErr == INVALID_HANDLE_VALUE, msg)
