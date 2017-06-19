@@ -106,7 +106,10 @@ proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
       result = convNotNeedeed
     return
   var d = skipTypes(castDest, abstractVar)
-  var s = skipTypes(src, abstractVar-{tyTypeDesc})
+  var s = src
+  if s.kind in tyUserTypeClasses and s.isResolvedUserTypeClass:
+    s = s.lastSon
+  s = skipTypes(s, abstractVar-{tyTypeDesc})
   var pointers = 0
   while (d != nil) and (d.kind in {tyPtr, tyRef}) and (d.kind == s.kind):
     d = d.lastSon
