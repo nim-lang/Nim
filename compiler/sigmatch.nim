@@ -307,12 +307,13 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1;
 proc typeRelImpl*(c: var TCandidate, f, aOrig: PType,
                   flags: TTypeRelFlags = {}): TTypeRelation
 
-var nextTypeRel = 0
+const traceTypeRel = false
+
+when traceTypeRel:
+  var nextTypeRel = 0
 
 template typeRel*(c: var TCandidate, f, aOrig: PType,
                  flags: TTypeRelFlags = {}): TTypeRelation =
-  const traceTypeRel = false
-
   when traceTypeRel:
     var enteringAt = nextTypeRel
     if mdbg:
@@ -320,6 +321,7 @@ template typeRel*(c: var TCandidate, f, aOrig: PType,
       echo "----- TYPE REL ", enteringAt
       debug f
       debug aOrig
+      # writeStackTrace()
 
   let r = typeRelImpl(c, f, aOrig, flags)
 
@@ -1487,6 +1489,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
       result = typeRel(c, f.lastSon, a)
     else:
       considerPreviousT:
+        if aOrig == f: return isEqual
         var matched = matchUserTypeClass(c.c, c, f, aOrig)
         if matched != nil:
           bindConcreteTypeToUserTypeClass(matched, a)
