@@ -1415,7 +1415,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       result = errorType(c)
     else:
       result = typeExpr.typ.base
-      if result.isMetaType:
+      if result.isMetaType and
+         result.kind != tyUserTypeClass:
+           # the dot expression may refer to a concept type in
+           # a different module. allow a normal alias then.
         let preprocessed = semGenericStmt(c, n)
         result = makeTypeFromExpr(c, preprocessed.copyTree)
       else:

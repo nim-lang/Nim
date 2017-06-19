@@ -467,6 +467,8 @@ proc hasEmpty(typ: PType): bool =
 
 proc makeDeref(n: PNode): PNode =
   var t = skipTypes(n.typ, {tyGenericInst, tyAlias})
+  if t.kind in tyUserTypeClasses and t.isResolvedUserTypeClass:
+    t = t.lastSon
   result = n
   if t.kind == tyVar:
     result = newNodeIT(nkHiddenDeref, n.info, t.sons[0])
