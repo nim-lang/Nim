@@ -1129,9 +1129,9 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # reset to prevent 'nil' bug: see "tests/reject/tenumitems.nim":
     ty = n.sons[0].typ
     return nil
-  ty = skipTypes(ty, {tyGenericInst, tyVar, tyPtr, tyRef, tyAlias})
   if ty.kind in tyUserTypeClasses and ty.isResolvedUserTypeClass:
     ty = ty.lastSon
+  ty = skipTypes(ty, {tyGenericInst, tyVar, tyPtr, tyRef, tyAlias})
   while tfBorrowDot in ty.flags: ty = ty.skipTypes({tyDistinct})
   var check: PNode = nil
   if ty.kind == tyObject:
