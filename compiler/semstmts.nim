@@ -1761,7 +1761,8 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
     else:
       var expr = semExpr(c, n.sons[i], flags)
       n.sons[i] = expr
-      if c.matchedConcept != nil and expr.typ != nil:
+      if c.matchedConcept != nil and expr.typ != nil and
+         (nfFromTemplate notin n.flags or i != last):
         case expr.typ.kind
         of tyBool:
           if expr.kind == nkInfix and

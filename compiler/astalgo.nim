@@ -407,6 +407,8 @@ proc debugTree(n: PNode, indent: int, maxRecDepth: int;
     var istr = rspaces(indent + 2)
     result = "{$N$1\"kind\": $2" %
              [istr, makeYamlString($n.kind)]
+    when defined(useNodeIds):
+      addf(result, ",$N$1\"id\": $2", [istr, rope(n.id)])
     addf(result, ",$N$1\"info\": $2", [istr, lineInfoToStr(n.info)])
     if maxRecDepth != 0:
       addf(result, ",$N$1\"flags\": $2", [istr, rope($n.flags)])
