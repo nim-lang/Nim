@@ -557,10 +557,12 @@ when defined(Windows) and not defined(useNimRtl):
       if poInteractive notin options:
         createPipeHandles(si.hStdInput, hi)
         if hIn != INVALID_HANDLE_VALUE:
+          fileClose(si.hStdInput)
           si.hStdInput = hIn
 
         createPipeHandles(ho, si.hStdOutput)
         if hOut != INVALID_HANDLE_VALUE:
+          fileClose(si.hStdOutput)
           si.hStdOutput = hOut
 
         if poStdErrToStdOut in options:
@@ -569,6 +571,7 @@ when defined(Windows) and not defined(useNimRtl):
         else:
           createPipeHandles(he, si.hStdError)
           if hErr != INVALID_HANDLE_VALUE:
+            fileClose(si.hStdError)
             si.hStdError = hErr
       else:
         createAllPipeHandles(si, hi, ho, he, cast[int](result))
