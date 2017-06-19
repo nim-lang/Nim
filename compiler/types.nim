@@ -424,6 +424,12 @@ template bindConcreteTypeToUserTypeClass*(tc, concrete: PType) =
   tc.sons.safeAdd concrete
   tc.flags.incl tfResolved
 
+# TODO: It would be a good idea to kill the special state of a resolved
+# concept by switching to tyAlias within the instantiated procs.
+# Currently, tyAlias is always skipped with lastSon, which means that
+# we can store information about the matched concept in another position.
+# Then builtInFieldAccess can be modified to properly read the derived
+# consts and types stored within the concept.
 template isResolvedUserTypeClass*(t: PType): bool =
   tfResolved in t.flags
 
