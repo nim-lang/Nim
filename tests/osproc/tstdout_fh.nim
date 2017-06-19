@@ -21,8 +21,6 @@ Got expected assertion when supplying hOut with poParentStreams
 # test that stdout filehandle can be supplied directly
 
 import osproc, os, streams
-when defined(windows):
-  from winlean import get_osfhandle, Handle
 
 const filename = addFileExt("ta_out", ExeExt)
 
@@ -33,12 +31,7 @@ let outname = getCurrentDir() / "tests" / "osproc" / "tstdout.txt"
 var outfile: File
 doAssert outfile.open(outname, fmWrite, bufSize=0)
 
-when defined(windows):
-  var
-    outfileHandle = outfile.getFileHandle()
-    outhandle = outfileHandle.get_osfhandle()
-else:
-  var outhandle = outfile.getFileHandle()
+var outhandle = outfile.getFileHandle().getRealHandle()
 
 var p = startProcess(filename, getCurrentDir() / "tests" / "osproc",
                      options={},  # explicitly disable stdErrToStdOut
@@ -52,11 +45,7 @@ echo "--------------------------------------"
 
 
 doAssert outfile.open(outname, fmWrite, bufSize=0)
-when defined(windows):
-  outfileHandle = outfile.getFileHandle()
-  outhandle = outfileHandle.get_osfhandle()
-else:
-  outhandle = outfile.getFileHandle()
+outhandle = outfile.getFileHandle().getRealHandle()
 
 p = startProcess(filename, getCurrentDir() / "tests" / "osproc",
                  options={poStdErrToStdOut},
@@ -70,11 +59,7 @@ echo "--------------------------------------"
 
 
 doAssert outfile.open(outname, fmWrite, bufSize=0)
-when defined(windows):
-  outfileHandle = outfile.getFileHandle()
-  outhandle = outfileHandle.get_osfhandle()
-else:
-  outhandle = outfile.getFileHandle()
+outhandle = outfile.getFileHandle().getRealHandle()
 
 try:
   p = startProcess(filename, getCurrentDir() / "tests" / "osproc",

@@ -24,8 +24,6 @@ to stdout
 # test that stdout filehandle can be supplied directly
 # (this test is essentially a clone of tstdout.nim)
 import osproc, os, streams
-when defined(windows):
-  from winlean import get_osfhandle, Handle
 
 const filename = addFileExt("ta_out", ExeExt)
 
@@ -40,17 +38,9 @@ var
   errfile: File
 doAssert outfile.open(outname, fmWrite, bufSize=0)
 doAssert errfile.open(errname, fmWrite, bufSize=0)
-when defined(windows):
-  var
-    outfileHandle = outfile.getFileHandle()
-    outhandle = outfileHandle.get_osfhandle()
-    errfileHandle = errfile.getFileHandle()
-    errhandle = errfileHandle.get_osfhandle()
-else:
-  var
-    outhandle = outfile.getFileHandle()
-    errhandle = errfile.getFileHandle()
-
+var
+  outhandle = outfile.getFileHandle().getRealHandle()
+  errhandle = errfile.getFileHandle().getRealHandle()
 
 var p = startProcess(filename, getCurrentDir() / "tests" / "osproc",
                      options={},  # explicitly disable stdErrToStdOut
@@ -70,14 +60,8 @@ echo "--------------------------------------"
 
 doAssert outfile.open(outname, fmWrite, bufSize=0)
 doAssert errfile.open(errname, fmWrite, bufSize=0)
-when defined(windows):
-  outfileHandle = outfile.getFileHandle()
-  outhandle = outfileHandle.get_osfhandle()
-  errfileHandle = errfile.getFileHandle()
-  errhandle = errfileHandle.get_osfhandle()
-else:
-  outhandle = outfile.getFileHandle()
-  errhandle = errfile.getFileHandle()
+outhandle = outfile.getFileHandle().getRealHandle()
+errhandle = errfile.getFileHandle().getRealHandle()
 
 p = startProcess(filename, getCurrentDir() / "tests" / "osproc",
                  options={poStdErrToStdOut},

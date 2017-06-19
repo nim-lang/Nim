@@ -8,8 +8,6 @@ Got expected assertion when supplying hIn with poParentStreams
 
 # test that stdin filehandle can be supplied directly
 import osproc, os, streams
-when defined(windows):
-  from winlean import get_osfhandle, Handle
 
 const filename = addFileExt("ta_in", ExeExt)
 
@@ -21,13 +19,7 @@ writeFile(inname, "5\n")
 
 var infile: File
 doAssert infile.open(inname, fmRead)
-when defined(windows):
-  var
-    infileHandle = infile.getFileHandle()
-    inhandle = infileHandle.get_osfhandle()
-else:
-  var inhandle = infile.getFileHandle()
-
+var inhandle = infile.getFileHandle().getRealHandle()
 
 var p = startProcess(filename, getCurrentDir() / "tests" / "osproc",
                      hIn = inhandle)
@@ -41,11 +33,7 @@ while true:
 
 
 doAssert infile.open(inname, fmRead)
-when defined(windows):
-  infileHandle = infile.getFileHandle()
-  inhandle = infileHandle.get_osfhandle()
-else:
-  inhandle = infile.getFileHandle()
+inhandle = infile.getFileHandle().getRealHandle()
 try:
   p = startProcess(filename, getCurrentDir() / "tests" / "osproc",
                   options={poParentStreams},

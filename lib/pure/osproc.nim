@@ -65,6 +65,20 @@ type
 const poUseShell* {.deprecated.} = poUsePath
   ## Deprecated alias for poUsePath.
 
+proc getRealHandle*(handle: cint) : Handle = 
+  ## Converts a C file handle to a platform native equivalent.
+  ## On Windows this uses ``_get_osfhandle`` to return a Windows 
+  ## native Handle. 
+  ## On all other platforms, the C file handle is returned.
+  ## The primary use case for this is to be able to pass
+  ## file handles for stdin/stdout/stderr to ``startProcess``
+  ## without needing to worry about platform specific issues. 
+  ## e.g. ``startProcess(..., hOut=f.getFileHandle().getRealHandle())``
+  when defined(windows):
+    result = get_osfhandle(handle)
+  else:
+    result = handle
+
 proc quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
   ## Quote s, so it can be safely passed to Windows API.
   ## Based on Python's subprocess.list2cmdline
@@ -165,7 +179,8 @@ proc startProcess*(command: string,
   ## to `startProcess`. See the documentation of ``ProcessOption`` for the
   ## meaning of these flags. `hIn`, `hOut`, and `hErr` are optional parameters for
   ## supplying your own handles for stdin, stdout, and stderr. These are only valid
-  ## when you have not specified poParentStreams in `options`. 
+  ## when you have not specified poParentStreams in `options`. See the documentation
+  ## of ``getRealHandle`` for how to specify these in a cross platform way. 
   ## You need to `close` the process when done.
   ##
   ## Note that you can't pass any `args` if you use the option

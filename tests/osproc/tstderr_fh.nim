@@ -13,8 +13,6 @@ Got expected assertion when supplying hErr with poParentStreams
 # test that stderr filehandle can be supplied directly
 
 import osproc, os, streams
-when defined(windows):
-  from winlean import get_osfhandle, Handle
 
 const filename = addFileExt("ta_out", ExeExt)
 
@@ -25,12 +23,7 @@ let errname = getCurrentDir() / "tests" / "osproc" / "tstderr.txt"
 var errfile: File
 doAssert errfile.open(errname, fmWrite, bufSize=0)
 
-when defined(windows):
-  var
-    errfileHandle = errfile.getFileHandle()
-    errhandle = errfileHandle.get_osfhandle()
-else:
-  var errhandle = errfile.getFileHandle()
+var errhandle = errfile.getFileHandle().getRealHandle()
 
 var p = startProcess(filename, getCurrentDir() / "tests" / "osproc",
                      options={},  # explicitly disable stdErrToStdOut
@@ -43,11 +36,7 @@ stdout.write readFile(errname)
 echo "--------------------------------------"
 
 doAssert errfile.open(errname, fmWrite, bufSize=0)
-when defined(windows):
-  errfileHandle = errfile.getFileHandle()
-  errhandle = errfileHandle.get_osfhandle()
-else:
-  errhandle = errfile.getFileHandle()
+errhandle = errfile.getFileHandle().getRealHandle()
 
 p = startProcess(filename, getCurrentDir() / "tests" / "osproc",
                  options={poStdErrToStdOut},
@@ -61,11 +50,7 @@ stdout.write readFile(errname)
 echo "--------------------------------------"
 
 doAssert errfile.open(errname, fmWrite, bufSize=0)
-when defined(windows):
-  errfileHandle = errfile.getFileHandle()
-  errhandle = errfileHandle.get_osfhandle()
-else:
-  errhandle = errfile.getFileHandle()
+errhandle = errfile.getFileHandle().getRealHandle()
 try:
   p = startProcess(filename, getCurrentDir() / "tests" / "osproc",
                   options={poParentStreams},
