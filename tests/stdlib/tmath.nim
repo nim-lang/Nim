@@ -1,4 +1,15 @@
-import math, random
+discard """
+  action: run
+  output: '''[Suite] random int
+
+[Suite] random float
+
+[Suite] ^
+
+'''
+"""
+
+import math, random, os
 import unittest
 import sets
 
@@ -26,6 +37,7 @@ suite "random int":
   test "randomize() again gives new numbers":
     randomize()
     var rand1 = random(1000000)
+    os.sleep(200)
     randomize()
     var rand2 = random(1000000)
     check rand1 != rand2
@@ -55,7 +67,16 @@ suite "random float":
   test "randomize() again gives new numbers":
     randomize()
     var rand1:float = random(1000000.0)
+    os.sleep(200)
     randomize()
     var rand2:float = random(1000000.0)
     check rand1 != rand2
 
+suite "^":
+  test "compiles for valid types":
+    check: compiles(5 ^ 2)
+    check: compiles(5.5 ^ 2)
+    check: compiles(5.5 ^ 2.int8)
+    check: compiles(5.5 ^ 2.uint)
+    check: compiles(5.5 ^ 2.uint8)
+    check: not compiles(5.5 ^ 2.2)
