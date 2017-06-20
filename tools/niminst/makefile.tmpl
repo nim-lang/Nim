@@ -45,7 +45,7 @@ ifeq ($(uos),darwin)
   CC = clang
   LINKER = clang
   LINK_FLAGS += -ldl -lm
-  ifeq ($HOSTTYPE,x86_64)
+  ifeq ($(HOSTTYPE),x86_64)
     ucpu = amd64
   endif
 endif
@@ -130,7 +130,7 @@ ifeq ($(ucpu),armv6l)
   mycpu = arm
 endif
 ifndef ucpu
-  $(error unknown processor : $(ucpu))
+  $(error unknown processor: $(ucpu))
 endif
 
 # for osA in 1..c.oses.len:
