@@ -78,8 +78,10 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
                         [p.module.tmpBase, rope(id)])
     else:
       result = makeCString(n.strVal)
-  of nkFloatLit..nkFloat64Lit:
+  of nkFloatLit, nkFloat64Lit:
     result = rope(n.floatVal.toStrMaxPrecision)
+  of nkFloat32Lit:
+    result = rope(n.floatVal.toStrMaxPrecision("f"))
   else:
     internalError(n.info, "genLiteral(" & $n.kind & ')')
     result = nil
@@ -267,7 +269,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     # little HACK to support the new 'var T' as return type:
     linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
     return
-  let ty = skipTypes(dest.t, abstractRange)
+  let ty = skipTypes(dest.t, abstractRange + tyUserTypeClasses)
   case ty.kind
   of tyRef:
     genRefAssign(p, dest, src, flags)
@@ -543,7 +545,7 @@ proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       "(($4)($1) * ($4)($2))", # MulF64
       "(($4)($1) / ($4)($2))", # DivF64
 
-      "($4)((NU$3)($1) >> (NU$3)($2))", # ShrI
+      "($4)((NU$5)($1) >> (NU$3)($2))", # ShrI
       "($4)((NU$3)($1) << (NU$3)($2))", # ShlI
       "($4)($1 & $2)",      # BitandI
       "($4)($1 | $2)",      # BitorI
@@ -583,16 +585,17 @@ proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       "($1 != $2)"]           # Xor
   var
     a, b: TLoc
-    s: BiggestInt
+    s, k: BiggestInt
   assert(e.sons[1].typ != nil)
   assert(e.sons[2].typ != nil)
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], b)
   # BUGFIX: cannot use result-type here, as it may be a boolean
   s = max(getSize(a.t), getSize(b.t)) * 8
+  k = getSize(a.t) * 8
   putIntoDest(p, d, e.typ,
               binArithTab[op] % [rdLoc(a), rdLoc(b), rope(s),
-                                      getSimpleTypeDesc(p.module, e.typ)])
+                                      getSimpleTypeDesc(p.module, e.typ), rope(k)])
 
 proc genEqProc(p: BProc, e: PNode, d: var TLoc) =
   var a, b: TLoc
@@ -662,7 +665,9 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
       d.s = OnHeap
   else:
     var a: TLoc
-    let typ = skipTypes(e.sons[0].typ, abstractInst)
+    var typ = skipTypes(e.sons[0].typ, abstractInst)
+    if typ.kind in {tyUserTypeClass, tyUserTypeClassInst} and typ.isResolvedUserTypeClass:
+      typ = typ.lastSon
     if typ.kind == tyVar and tfVarIsPtr notin typ.flags and p.module.compileToCpp and e.sons[0].kind == nkHiddenAddr:
       initLocExprSingleUse(p, e[0][0], d)
       return
@@ -756,7 +761,7 @@ proc genRecordField(p: BProc, e: PNode, d: var TLoc) =
   genRecordFieldAux(p, e, d, a)
   var r = rdLoc(a)
   var f = e.sons[1].sym
-  let ty = skipTypes(a.t, abstractInst)
+  let ty = skipTypes(a.t, abstractInst + tyUserTypeClasses)
   if ty.kind == tyTuple:
     # we found a unique tuple type which lacks field information
     # so we use Field$i
@@ -2146,8 +2151,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       # are not transformed correctly. We work around this issue (#411) here
       # by ensuring it's no inner proc (owner is a module):
       if prc.skipGenericOwner.kind == skModule and sfCompileTime notin prc.flags:
-        if (optDeadCodeElim notin gGlobalOptions and
-            sfDeadCodeElim notin getModule(prc).flags) or
+        if (not emitLazily(prc)) or
             ({sfExportc, sfCompilerProc} * prc.flags == {sfExportc}) or
             (sfExportc in prc.flags and lfExportLib in prc.loc.flags) or
             (prc.kind == skMethod):
@@ -2203,7 +2207,7 @@ proc getNullValueAux(p: BProc; obj, cons: PNode, result: var Rope) =
     let field = obj.sym
     for i in 1..<cons.len:
       if cons[i].kind == nkExprColonExpr:
-        if cons[i][0].sym == field:
+        if cons[i][0].sym.name == field.name:
           result.add genConstExpr(p, cons[i][1])
           return
       elif i == field.position:

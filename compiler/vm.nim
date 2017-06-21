@@ -1406,6 +1406,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if dest.kind in {nkStrLit..nkTripleStrLit} and
          regs[rb].kind in {rkNode}:
         dest.strVal = regs[rb].node.strVal
+      elif dest.kind == nkCommentStmt and regs[rb].kind in {rkNode}:
+        dest.comment = regs[rb].node.strVal
       else:
         stackTrace(c, tos, pc, errFieldXNotFound, "strVal")
     of opcNNewNimNode:
@@ -1605,6 +1607,13 @@ proc setupMacroParam(x: PNode, typ: PType): TFullReg =
     n.flags.incl nfIsRef
     n.typ = x.typ
     result.node = n
+
+iterator genericParamsInMacroCall*(macroSym: PSym, call: PNode): (PSym, PNode) =
+  let gp = macroSym.ast[genericParamsPos]
+  for i in 0 .. <gp.len:
+    let genericParam = gp[i].sym
+    let posInCall = macroSym.typ.len + i
+    yield (genericParam, call[posInCall])
 
 var evalMacroCounter: int
 

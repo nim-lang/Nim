@@ -255,12 +255,21 @@ elif defined(gogc):
         next_gc: uint64          # next GC (in heap_alloc time)
         last_gc: uint64          # last GC (in absolute time)
         pause_total_ns: uint64
-        pause_ns: array[256, uint64]
+        pause_ns: array[256, uint64] # circular buffer of recent gc pause lengths
+        pause_end: array[256, uint64] # circular buffer of recent gc end times (nanoseconds since 1970)
         numgc: uint32
+        numforcedgc: uint32      # number of user-forced GCs
+        gc_cpu_fraction: float64 # fraction of CPU time used by GC
         enablegc: cbool
         debuggc: cbool
         # Statistics about allocation size classes.
         by_size: array[goNumSizeClasses, goMStats_inner_struct]
+        # Statistics below here are not exported to MemStats directly.
+        tinyallocs: uint64       # number of tiny allocations that didn't cause actual allocation; not exported to go directly
+        gc_trigger: uint64
+        heap_live: uint64
+        heap_scan: uint64
+        heap_marked: uint64
 
   proc goRuntime_ReadMemStats(a2: ptr goMStats) {.cdecl,
     importc: "runtime_ReadMemStats",

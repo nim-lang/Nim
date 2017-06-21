@@ -96,9 +96,8 @@ started contributing, you should familiarize yourself with the repository struct
 
 * ``bin/``, ``build/`` - these directories are empty, but are used when Nim is built.
 * ``compiler/`` - the compiler source code. Also includes nimfix, and plugins within
-  ``compiler/nimfix`` and ``compiler/plugins`` respectively. Nimsuggest was moved to
-  the [``nim-lang/nimsuggest``][nimsuggest-repo] repository, though it previously also 
-  lived within the ``compiler/`` directory.
+  ``compiler/nimfix`` and ``compiler/plugins`` respectively.
+* ``nimsuggest`` - the nimsuggest tool that previously lived in the [``nim-lang/nimsuggest``][nimsuggest-repo] repository. 
 * ``config/`` - the configuration for the compiler and documentation generator.
 * ``doc/`` - the documentation files in reStructuredText format.
 * ``lib/`` - the standard library, including:

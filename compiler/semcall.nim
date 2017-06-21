@@ -408,7 +408,13 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
     else:
       # get rid of the deref again for a better error message:
       n.sons[1] = n.sons[1].sons[0]
-      notFoundError(c, n, errors)
+      #notFoundError(c, n, errors)
+      if efExplain notin flags:
+        # repeat the overload resolution,
+        # this time enabling all the diagnostic output (this should fail again)
+        discard semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
+      else:
+        notFoundError(c, n, errors)
   else:
     if efExplain notin flags:
       # repeat the overload resolution,
@@ -429,7 +435,7 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
   for i in 1..sonsLen(n)-1:
     let formal = s.ast.sons[genericParamsPos].sons[i-1].typ
     let arg = n[i].typ
-    let tm = typeRel(m, formal, arg, true)
+    let tm = typeRel(m, formal, arg)
     if tm in {isNone, isConvertible}: return nil
   var newInst = generateInstance(c, s, m.bindings, n.info)
   newInst.typ.flags.excl tfUnresolved
@@ -440,7 +446,8 @@ proc explicitGenericSym(c: PContext, n: PNode, s: PSym): PNode =
 proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   assert n.kind == nkBracketExpr
   for i in 1..sonsLen(n)-1:
-    n.sons[i].typ = semTypeNode(c, n.sons[i], nil)
+    let e = semExpr(c, n.sons[i])
+    n.sons[i].typ = e.typ.skipTypes({tyTypeDesc})
   var s = s
   var a = n.sons[0]
   if a.kind == nkSym:

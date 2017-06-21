@@ -108,3 +108,12 @@ installation of Nimble is done with this simple script:
 
   mvFile "nimble" & $id & "/src/nimble".toExe, "bin/nimble".toExe
 
+You can also use the shebang ``#!/usr/bin/env nim``, as long as your filename
+ends with ``.nims``:
+
+.. code-block:: nim
+
+  #!/usr/bin/env nim
+  mode = ScriptMode.Silent
+
+  echo "hello world"

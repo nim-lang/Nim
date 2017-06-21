@@ -351,8 +351,8 @@ when false:
     for i in 0 ..< n.safeLen:
       resetSemFlag(n[i])
 
-proc semAfterMacroCall(c: PContext, n: PNode, s: PSym,
-                       flags: TExprFlags): PNode =
+proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
+                       s: PSym, flags: TExprFlags): PNode =
   ## Semantically check the output of a macro.
   ## This involves processes such as re-checking the macro output for type
   ## coherence, making sure that variables declared with 'let' aren't
@@ -363,8 +363,8 @@ proc semAfterMacroCall(c: PContext, n: PNode, s: PSym,
     globalError(s.info, errTemplateInstantiationTooNested)
   c.friendModules.add(s.owner.getModule)
 
-  result = n
-  excl(n.flags, nfSem)
+  result = macroResult
+  excl(result.flags, nfSem)
   #resetSemFlag n
   if s.typ.sons[0] == nil:
     result = semStmt(c, result)
@@ -378,13 +378,26 @@ proc semAfterMacroCall(c: PContext, n: PNode, s: PSym,
     of tyStmt:
       result = semStmt(c, result)
     of tyTypeDesc:
-      if n.kind == nkStmtList: result.kind = nkStmtListType
+      if result.kind == nkStmtList: result.kind = nkStmtListType
       var typ = semTypeNode(c, result, nil)
       result.typ = makeTypeDesc(c, typ)
       #result = symNodeFromType(c, typ, n.info)
     else:
+      var retType = s.typ.sons[0]
+      if s.ast[genericParamsPos] != nil and retType.isMetaType:
+        # The return type may depend on the Macro arguments
+        # e.g. template foo(T: typedesc): seq[T]
+        # We will instantiate the return type here, because
+        # we now know the supplied arguments
+        var paramTypes = newIdTable()
+        for param, value in genericParamsInMacroCall(s, call):
+          idTablePut(paramTypes, param.typ, value.typ)
+
+        retType = generateTypeInstance(c, paramTypes,
+                                       macroResult.info, retType)
+
       result = semExpr(c, result, flags)
-      result = fitNode(c, s.typ.sons[0], result, result.info)
+      result = fitNode(c, retType, result, result.info)
       #GlobalError(s.info, errInvalidParamKindX, typeToString(s.typ.sons[0]))
   dec(evalTemplateCounter)
   discard c.friendModules.pop()
@@ -409,7 +422,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   #  c.evalContext = c.createEvalContext(emStatic)
   result = evalMacroCall(c.module, c.cache, n, nOrig, sym)
   if efNoSemCheck notin flags:
-    result = semAfterMacroCall(c, result, sym, flags)
+    result = semAfterMacroCall(c, n, result, sym, flags)
   result = wrapInComesFrom(nOrig.info, result)
   popInfoContext()
 
@@ -429,6 +442,7 @@ proc semConstBoolExpr(c: PContext, n: PNode): PNode =
     result = nn
 
 proc semGenericStmt(c: PContext, n: PNode): PNode
+proc semConceptBody(c: PContext, n: PNode): PNode
 
 include semtypes, semtempl, semgnrc, semstmts, semexprs
 

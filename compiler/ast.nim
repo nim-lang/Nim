@@ -224,7 +224,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # already 32 flags!
+  TSymFlag* = enum    # already 33 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -452,10 +452,13 @@ type
     nfExprCall  # this is an attempt to call a regular expression
     nfIsRef     # this node is a 'ref' node; used for the VM
     nfPreventCg # this node should be ignored by the codegen
+    nfBlockArg  # this a stmtlist appearing in a call (e.g. a do block)
+    nfFromTemplate # a top-level node returned from a template
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 30)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: beyond that)
     tfVarargs,        # procedure has C styled varargs
+                      # tyArray type represeting a varargs list
     tfNoSideEffect,   # procedure type does not allow side effects
     tfFinal,          # is the object final?
     tfInheritable,    # is the object inheritable?
@@ -506,6 +509,9 @@ type
     tfTriggersCompileTime # uses the NimNode type which make the proc
                           # implicitly '.compiletime'
     tfRefsAnonObj     # used for 'ref object' and 'ptr object'
+    tfCovariant       # covariant generic param mimicing a ptr type
+    tfWeakCovariant   # covariant generic param mimicing a seq/array type
+    tfContravariant   # contravariant generic param
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -951,7 +957,8 @@ const
     skMacro, skTemplate, skConverter, skEnumField, skLet, skStub, skAlias}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
                                       nfDotSetter, nfDotField,
-                                      nfIsRef, nfPreventCg, nfLL}
+                                      nfIsRef, nfPreventCg, nfLL,
+                                      nfFromTemplate}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2
@@ -1002,15 +1009,17 @@ proc add*(father, son: PNode) =
   if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
 
-proc `[]`*(n: PNode, i: int): PNode {.inline.} =
-  result = n.sons[i]
+type Indexable = PNode | PType
+
+template `[]`*(n: Indexable, i: int): Indexable =
+  n.sons[i]
 
 template `-|`*(b, s: untyped): untyped =
   (if b >= 0: b else: s.len + b)
 
 # son access operators with support for negative indices
-template `{}`*(n: PNode, i: int): untyped = n[i -| n]
-template `{}=`*(n: PNode, i: int, s: PNode) =
+template `{}`*(n: Indexable, i: int): untyped = n[i -| n]
+template `{}=`*(n: Indexable, i: int, s: Indexable) =
   n.sons[i -| n] = s
 
 when defined(useNodeIds):
@@ -1345,6 +1354,9 @@ proc newStrTable*: TStrTable =
 proc initIdTable*(x: var TIdTable) =
   x.counter = 0
   newSeq(x.data, StartSize)
+
+proc newIdTable*: TIdTable =
+  initIdTable(result)
 
 proc resetIdTable*(x: var TIdTable) =
   x.counter = 0
