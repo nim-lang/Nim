@@ -123,7 +123,8 @@ when not defined(nimscript):
       proc getMil(t: Time): int {.importcpp: "getTime", nodecl.}
       randomize(getMil times.getTime())
     else:
-      randomize(int times.getTime())
+      let time = int(times.epochTime() * 1_000_000_000)
+      randomize(time)
 
 {.pop.}
 

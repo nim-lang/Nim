@@ -106,7 +106,10 @@ proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
       result = convNotNeedeed
     return
   var d = skipTypes(castDest, abstractVar)
-  var s = skipTypes(src, abstractVar-{tyTypeDesc})
+  var s = src
+  if s.kind in tyUserTypeClasses and s.isResolvedUserTypeClass:
+    s = s.lastSon
+  s = skipTypes(s, abstractVar-{tyTypeDesc})
   var pointers = 0
   while (d != nil) and (d.kind in {tyPtr, tyRef}) and (d.kind == s.kind):
     d = d.lastSon
@@ -705,7 +708,7 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
     analyseIfAddressTakenInCall(c, result)
     if callee.magic != mNone:
       result = magicsAfterOverloadResolution(c, result, flags)
-  if c.inTypeClass == 0:
+  if c.matchedConcept == nil:
     result = evalAtCompileTime(c, result)
 
 proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
@@ -1129,9 +1132,9 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # reset to prevent 'nil' bug: see "tests/reject/tenumitems.nim":
     ty = n.sons[0].typ
     return nil
-  ty = skipTypes(ty, {tyGenericInst, tyVar, tyPtr, tyRef, tyAlias})
   if ty.kind in tyUserTypeClasses and ty.isResolvedUserTypeClass:
     ty = ty.lastSon
+  ty = skipTypes(ty, {tyGenericInst, tyVar, tyPtr, tyRef, tyAlias})
   while tfBorrowDot in ty.flags: ty = ty.skipTypes({tyDistinct})
   var check: PNode = nil
   if ty.kind == tyObject:
@@ -2147,7 +2150,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     let checks = if efNoEvaluateGeneric in flags: {checkUndeclared}
                  else: {checkUndeclared, checkModule, checkAmbiguity}
     var s = qualifiedLookUp(c, n, checks)
-    if c.inTypeClass == 0: semCaptureSym(s, c.p.owner)
+    if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)
     result = semSym(c, n, s, flags)
     if s.kind in {skProc, skMethod, skConverter, skIterator}:
       #performProcvarCheck(c, n, s)

@@ -110,7 +110,7 @@ proc uninstantiate(t: PType): PType =
     else: t
 
 proc evalTypeTrait(traitCall: PNode, operand: PType, context: PSym): PNode =
-  const skippedTypes = {tyTypeDesc}
+  const skippedTypes = {tyTypeDesc, tyAlias}
   let trait = traitCall[0]
   internalAssert trait.kind == nkSym
   var operand = operand.skipTypes(skippedTypes)
@@ -119,7 +119,7 @@ proc evalTypeTrait(traitCall: PNode, operand: PType, context: PSym): PNode =
     traitCall.sons[2].typ.skipTypes({tyTypeDesc})
 
   template typeWithSonsResult(kind, sons): PNode =
-    newTypeWithSons2(kind, context, sons).toNode(traitCall.info)
+    newTypeWithSons(context, kind, sons).toNode(traitCall.info)
 
   case trait.sym.name.s
   of "or", "|":
