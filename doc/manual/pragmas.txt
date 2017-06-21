@@ -1006,15 +1006,36 @@ CodegenDecl pragma
 ------------------
 
 The ``codegenDecl`` pragma can be used to directly influence Nim's code
-generator. It receives a format string that determines how the variable or
-proc is declared in the generated code:
+generator. It receives a format string that determines how the variable 
+or proc is declared in the generated code.
+
+For variables $1 in the format string represents the type of the variable
+and $2 is the name of the variable.
+
+The following Nim code:
 
 .. code-block:: nim
   var
     a {.codegenDecl: "$# progmem $#".}: int
+    
+will generate this C code:
 
+.. code-block:: c
+  int progmem a
+
+For procedures $1 is the return type of the procedure, $2 is the name of
+the procedure and $3 is the parameter list.
+
+The following nim code:
+
+.. code-block:: nim
   proc myinterrupt() {.codegenDecl: "__interrupt $# $#$#".} =
     echo "realistic interrupt handler"
+
+will generate this code:
+
+.. code-block:: c
+  __interrupt void myinterrupt()
 
 
 InjectStmt pragma
