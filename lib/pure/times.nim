@@ -479,7 +479,7 @@ proc `-=`*(t: var Time, ti: TimeInterval) =
   t = toTime(getLocalTime(t) - ti)
 
 proc `-`*(t: Time, ti: TimeInterval): Time =
-  ## adds the interval `ti` to Time `t`
+  ## subtracts the interval `ti` from Time `t`
   ##
   ## ``echo getTime() - 1.day``
   result = toTime(getLocalTime(t) - ti)
