@@ -810,16 +810,24 @@ proc genAsmOrEmitStmt(p: PProc, n: PNode) =
   genLineDir(p, n)
   p.body.add p.indentLine(nil)
   for i in countup(0, sonsLen(n) - 1):
-    case n.sons[i].kind
+    let it = n[i]
+    case it.kind
     of nkStrLit..nkTripleStrLit:
-      p.body.add(n.sons[i].strVal)
+      p.body.add(it.strVal)
     of nkSym:
-      let v = n.sons[i].sym
-      if p.target == targetPHP and v.kind in {skVar, skLet, skTemp, skConst, skResult, skParam, skForVar}:
-        p.body.add "$"
-      p.body.add mangleName(v, p.target)
+      let v = it.sym
+      # for backwards compatibility we don't deref syms here :-(
+      if v.kind in {skVar, skLet, skTemp, skConst, skResult, skParam, skForVar}:
+        if p.target == targetPHP: p.body.add "$"
+        p.body.add mangleName(v, p.target)
+      else:
+        var r: TCompRes
+        gen(p, it, r)
+        p.body.add(r.rdLoc)
     else:
-      internalError(n.sons[i].info, "jsgen: genAsmOrEmitStmt()")
+      var r: TCompRes
+      gen(p, it, r)
+      p.body.add(r.rdLoc)
   p.body.add tnl
 
 proc genIf(p: PProc, n: PNode, r: var TCompRes) =
