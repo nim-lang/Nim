@@ -257,13 +257,14 @@ proc genDispatcher(methods: TSymSeq, relevantCols: IntSet): PSym =
           cond = a
         else:
           cond = isn
-    var call = newNodeI(nkCall, base.info)
+    let retTyp = base.typ.sons[0]
+    let call = newNodeIT(nkCall, base.info, retTyp)
     addSon(call, newSymNode(curr))
     for col in countup(1, paramLen - 1):
       addSon(call, genConv(newSymNode(base.typ.n.sons[col].sym),
                            curr.typ.sons[col], false))
     var ret: PNode
-    if base.typ.sons[0] != nil:
+    if retTyp != nil:
       var a = newNodeI(nkFastAsgn, base.info)
       addSon(a, newSymNode(base.ast.sons[resultPos].sym))
       addSon(a, call)
