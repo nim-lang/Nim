@@ -791,18 +791,18 @@ proc findEnvVar(key: string): int =
     if startsWith(environment[i], temp): return i
   return -1
 
-proc getEnv*(key: string): TaintedString {.tags: [ReadEnvEffect].} =
+proc getEnv*(key: string, ifMissing = ""): TaintedString {.tags: [ReadEnvEffect].} =
   ## Returns the value of the `environment variable`:idx: named `key`.
   ##
-  ## If the variable does not exist, "" is returned. To distinguish
-  ## whether a variable exists or it's value is just "", call
+  ## If the variable does not exist, `ifMissing` (by default "") is returned.
+  ## To distinguish whether a variable exists or it's value is just "", call
   ## `existsEnv(key)`.
   var i = findEnvVar(key)
   if i >= 0:
     return TaintedString(substr(environment[i], find(environment[i], '=')+1))
   else:
     var env = c_getenv(key)
-    if env == nil: return TaintedString("")
+    if env == nil: return TaintedString(ifMissing)
     result = TaintedString($env)
 
 proc existsEnv*(key: string): bool {.tags: [ReadEnvEffect].} =
