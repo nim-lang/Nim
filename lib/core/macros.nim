@@ -754,10 +754,8 @@ proc newIfStmt*(branches: varargs[tuple[cond, body: NimNode]]):
   for i in branches:
     result.add(newNimNode(nnkElifBranch).add(i.cond, i.body))
 
-proc newEnum*(
-    name:         NimNode,
-    fields:       openArray[NimNode],
-    public, pure: bool): NimNode {.compileTime.} =
+proc newEnum*(name: NimNode, fields: openArray[NimNode],
+              public, pure: bool): NimNode {.compileTime.} =
     
   ## Creates a new enum. `name` must be an ident. Fields are allowed to be
   ## either idents or EnumFieldDef
