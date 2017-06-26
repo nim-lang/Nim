@@ -1,29 +1,34 @@
-discard """
-  output: '''XY is Node
-MyGraph is Graph'''
-"""
 # bug #3452
 import math
 
 type
-    Node* = concept n
-        `==`(n, n) is bool
+  Node* = concept n
+    `==`(n, n) is bool
 
-    Graph* = concept g
-        var x: Node
-        distance(g, x, x) is float
+  Graph1* = concept g
+    type N = Node
+    distance(g, N, N) is float
 
-    XY* = tuple[x, y: int]
+  Graph2 = concept g
+    distance(g, Node, Node) is float
 
-    MyGraph* = object
-        points: seq[XY]
+  Graph3 = concept g
+    var x: Node
+    distance(g, x, x) is float
 
-if XY is Node:
-    echo "XY is Node"
+  XY* = tuple[x, y: int]
+
+  MyGraph* = object
+    points: seq[XY]
+
+static:
+  assert XY is Node
 
 proc distance*( g: MyGraph, a, b: XY): float =
-    sqrt( pow(float(a.x - b.x), 2) + pow(float(a.y - b.y), 2) )
+  sqrt( pow(float(a.x - b.x), 2) + pow(float(a.y - b.y), 2) )
 
-if MyGraph is Graph:
-    echo "MyGraph is Graph"
+static:
+  assert MyGraph is Graph1
+  assert MyGraph is Graph2
+  assert MyGraph is Graph3
 

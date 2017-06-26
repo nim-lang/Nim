@@ -424,6 +424,12 @@ template bindConcreteTypeToUserTypeClass*(tc, concrete: PType) =
   tc.sons.safeAdd concrete
   tc.flags.incl tfResolved
 
+# TODO: It would be a good idea to kill the special state of a resolved
+# concept by switching to tyAlias within the instantiated procs.
+# Currently, tyAlias is always skipped with lastSon, which means that
+# we can store information about the matched concept in another position.
+# Then builtInFieldAccess can be modified to properly read the derived
+# consts and types stored within the concept.
 template isResolvedUserTypeClass*(t: PType): bool =
   tfResolved in t.flags
 
@@ -440,6 +446,13 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       result = t.sym.name.s & " literal(" & $t.n.intVal & ")"
     elif prefer == preferName or t.sym.owner.isNil:
       result = t.sym.name.s
+      if t.kind == tyGenericParam and t.sons != nil and t.sonsLen > 0:
+        result.add ": "
+        var first = true
+        for son in t.sons:
+          if not first: result.add " or "
+          result.add son.typeToString
+          first = false
     else:
       result = t.sym.owner.name.s & '.' & t.sym.name.s
     result.addTypeFlags(t)
@@ -461,7 +474,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     add(result, ']')
   of tyTypeDesc:
     if t.sons[0].kind == tyNone: result = "typedesc"
-    else: result = "typedesc[" & typeToString(t.sons[0]) & "]"
+    else: result = "type " & typeToString(t.sons[0])
   of tyStatic:
     internalAssert t.len > 0
     if prefer == preferGenericArg and t.n != nil:

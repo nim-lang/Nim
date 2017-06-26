@@ -235,7 +235,7 @@ when not defined(JS):
         x = x and (not (1'u64 shl (64'u64-12'u64-e) - 1'u64))
 
       result = cast[float64](x)
-    
+
     proc truncImpl(f: float32): float32 =
       const
         mask : uint32 = 0xFF
@@ -255,7 +255,7 @@ when not defined(JS):
         x = x and (not (1'u32 shl (32'u32-9'u32-e) - 1'u32))
 
       result = cast[float32](x)
-      
+
     proc trunc*(x: float64): float64 =
       if classify(x) in {fcZero, fcNegZero, fcNan, fcInf, fcNegInf}: return x
       result = truncImpl(x)
@@ -413,10 +413,13 @@ proc `mod`*[T: float32|float64](x, y: T): T =
 {.pop.}
 {.pop.}
 
-proc `^`*[T](x, y: T): T =
+proc `^`*[T](x: T, y: Natural): T =
   ## Computes ``x`` to the power ``y`. ``x`` must be non-negative, use
   ## `pow <#pow,float,float>` for negative exponents.
-  assert y >= T(0)
+  when compiles(y >= T(0)):
+    assert y >= T(0)
+  else:
+    assert T(y) >= T(0)
   var (x, y) = (x, y)
   result = 1
 

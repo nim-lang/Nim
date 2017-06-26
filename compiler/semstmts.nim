@@ -144,7 +144,7 @@ proc fixNilType(n: PNode) =
   n.typ = nil
 
 proc discardCheck(c: PContext, result: PNode) =
-  if c.inTypeClass > 0: return
+  if c.matchedConcept != nil: return
   if result.typ != nil and result.typ.kind notin {tyStmt, tyVoid}:
     if result.kind == nkNilLit:
       result.typ = nil
@@ -467,6 +467,8 @@ proc hasEmpty(typ: PType): bool =
 
 proc makeDeref(n: PNode): PNode =
   var t = skipTypes(n.typ, {tyGenericInst, tyAlias})
+  if t.kind in tyUserTypeClasses and t.isResolvedUserTypeClass:
+    t = t.lastSon
   result = n
   if t.kind == tyVar:
     result = newNodeIT(nkHiddenDeref, n.info, t.sons[0])
@@ -1129,7 +1131,7 @@ proc semProcAnnotation(c: PContext, prc: PNode;
       x.add(it.sons[1])
     x.add(prc)
     # recursion assures that this works for multiple macro annotations too:
-    result = semStmt(c, x)
+    result = semExpr(c, x)
     # since a proc annotation can set pragmas, we process these here again.
     # This is required for SqueakNim-like export pragmas.
     if result.kind in procDefs and result[namePos].kind == nkSym and
@@ -1761,7 +1763,8 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
     else:
       var expr = semExpr(c, n.sons[i], flags)
       n.sons[i] = expr
-      if c.inTypeClass > 0 and expr.typ != nil:
+      if c.matchedConcept != nil and expr.typ != nil and
+         (nfFromTemplate notin n.flags or i != last):
         case expr.typ.kind
         of tyBool:
           if expr.kind == nkInfix and
@@ -1776,7 +1779,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
           let verdict = semConstExpr(c, n[i])
           if verdict.intVal == 0:
-            localError(result.info, "type class predicate failed")
+            localError(result.info, "concept predicate failed")
         of tyUnknown: continue
         else: discard
       if n.sons[i].typ == enforceVoidContext: #or usesResult(n.sons[i]):
@@ -1800,7 +1803,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
   if result.len == 1 and
      # concept bodies should be preserved as a stmt list:
-     c.inTypeClass == 0 and
+     c.matchedConcept == nil and
      # also, don't make life complicated for macros.
      # they will always expect a proper stmtlist:
      nfBlockArg notin n.flags and

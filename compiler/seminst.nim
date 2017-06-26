@@ -174,10 +174,14 @@ proc sideEffectsCheck(c: PContext, s: PSym) =
 
 proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
                           allowMetaTypes = false): PType =
-  var cl: TReplTypeVars
+  var
+    typeMap: LayeredIdTable
+    cl: TReplTypeVars
+
   initIdTable(cl.symMap)
-  initIdTable(cl.typeMap)
   initIdTable(cl.localCache)
+  initIdTable(typeMap.topLayer)
+  cl.typeMap = addr(typeMap)
   cl.info = info
   cl.c = c
   cl.allowMetaTypes = allowMetaTypes
@@ -201,7 +205,8 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   #addDecl(c, prc)
 
   pushInfoContext(info)
-  var cl = initTypeVars(c, pt, info, nil)
+  var typeMap = initLayeredTypeMap(pt)
+  var cl = initTypeVars(c, addr(typeMap), info, nil)
   var result = instCopyType(cl, prc.typ)
   let originalParams = result.n
   result.n = originalParams.shallowCopy
@@ -257,8 +262,8 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   # NOTE: for access of private fields within generics from a different module
   # we set the friend module:
   c.friendModules.add(getModule(fn))
-  let oldInTypeClass = c.inTypeClass
-  c.inTypeClass = 0
+  let oldMatchedConcept = c.matchedConcept
+  c.matchedConcept = nil
   let oldScope = c.currentScope
   while not isTopLevel(c): c.currentScope = c.currentScope.parent
   result = copySym(fn, false)
@@ -319,5 +324,5 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   c.currentScope = oldScope
   discard c.friendModules.pop()
   dec(c.instCounter)
-  c.inTypeClass = oldInTypeClass
+  c.matchedConcept = oldMatchedConcept
   if result.kind == skMethod: finishMethod(c, result)
