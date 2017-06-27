@@ -97,7 +97,7 @@ proc cmpic*(a, b: string): int =
   ## Compares `a` and `b` ignoring case.
   cmpIgnoreCase(a, b)
 
-proc getEnv*(key: string): string {.tags: [ReadIOEffect].} =
+proc getEnv*(key: string, ifMissing = ""): string {.tags: [ReadIOEffect].} =
   ## Retrieves the environment variable of name `key`.
   builtin
 
