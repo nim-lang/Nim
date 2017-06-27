@@ -418,6 +418,82 @@ when not defined(js):
     var f: File
     if open(f, filename, mode): result = newFileStream(f)
 
+  import net, os
+
+  type
+    NetworkStream* = ref NetworkStreamObj ## a stream that encapsulates a `Socket`
+    NetworkStreamObj* = object of Stream
+      sock: Socket
+      eof: bool
+
+  proc netClose(s: Stream) =
+    if NetworkStream(s).sock != nil:
+      close(NetworkStream(s).sock)
+      NetworkStream(s).sock = nil
+
+  proc netFlush(s: Stream) = discard
+
+  proc netAtEnd(s: Stream): bool = NetworkStream(s).eof
+
+  proc netSetPosition(s: Stream, pos: int) = discard
+    ## Setting position is not supported on a socket
+    ## TODO: Should this raise an exception?
+
+  proc netGetPosition(s: Stream): int = 0
+    ## Setting position is not supported on a socket
+    ## TODO: Should this raise an exception?
+
+  proc netReadData(s: Stream, buffer: pointer, bufLen: int): int =
+    result = NetworkStream(s).sock.recv(buffer, bufLen)
+    if result == 0:
+      NetworkStream(s).eof = true
+    elif result < 0:
+      let lastError = osLastError()
+      if {SocketFlag.SafeDisconn}.isDisconnectionError(lastError):
+        NetworkStream(s).eof = true
+      else:
+        raise newEIO("cannot read from stream")
+
+  proc netPeekData(s: Stream, buffer: pointer, bufLen: int): int = 0
+    ## TODO: Peek not currently supported as we can't get/set position on a socket
+
+  proc netWriteData(s: Stream, buffer: pointer, bufLen: int) =
+    var
+      totalWritten = 0
+      numWritten = 0
+      mutBuffer: pointer = buffer
+
+    while totalWritten < bufLen:
+      numWritten = NetworkStream(s).sock.send(mutBuffer, bufLen - numWritten)
+
+      if numWritten < 0:
+        let lastError = osLastError()
+        if {SocketFlag.SafeDisconn}.isDisconnectionError(lastError):
+          NetworkStream(s).eof = true
+        else:
+          raise newEIO("cannot write to stream")
+      else:
+        inc(totalWritten, numWritten)
+        if totalWritten < bufLen:
+          mutBuffer = cast[pointer](cast[int](mutBuffer) + numWritten)
+
+  proc newNetworkStream*(sock: Socket): NetworkStream =
+    ## creates a new stream from the socket `sock`.
+    ##
+    ## `sock` should have the `SOCK_STREAM` socket type.
+    if sock.sockType != SOCK_STREAM:
+      raise newEIO("Only stream socket types can be used with a network stream")
+
+    new(result)
+    result.sock = sock
+    result.closeImpl = netClose
+    result.atEndImpl = netAtEnd
+    result.setPositionImpl = netSetPosition
+    result.getPositionImpl = netGetPosition
+    result.readDataImpl = netReadData
+    result.peekDataImpl = netPeekData
+    result.writeDataImpl = netWriteData
+    result.flushImpl = netFlush
 
 when true:
   discard

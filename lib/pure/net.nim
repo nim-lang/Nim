@@ -138,7 +138,7 @@ type
       of false: nil
     lastError: OSErrorCode ## stores the last error on this socket
     domain: Domain
-    sockType: SockType
+    sockType*: SockType
     protocol: Protocol
 
   Socket* = ref SocketImpl
