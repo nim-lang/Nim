@@ -1092,8 +1092,8 @@ proc alignLeft*(s: string, count: Natural, padding = ' '): string {.noSideEffect
   ##   assert alignLeft("1232", 6, '#') == "1232##"
   if s.len < count:
     result = newString(count)
-    for i in 0 ..< s.len:
-      result[i] = s[i]
+    if s.len > 0:
+      result[0 .. (s.len - 1)] = s
     for i in s.len ..< count:
       result[i] = padding
   else:
