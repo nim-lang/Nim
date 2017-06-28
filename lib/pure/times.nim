@@ -98,46 +98,47 @@ elif defined(windows):
 
 elif defined(JS):
   type
-    Time* = ref TimeObj
-    TimeObj {.importc.} = object
-      getDay: proc (): int {.tags: [], raises: [], benign.}
-      getFullYear: proc (): int {.tags: [], raises: [], benign.}
-      getHours: proc (): int {.tags: [], raises: [], benign.}
-      getMilliseconds: proc (): int {.tags: [], raises: [], benign.}
-      getMinutes: proc (): int {.tags: [], raises: [], benign.}
-      getMonth: proc (): int {.tags: [], raises: [], benign.}
-      getSeconds: proc (): int {.tags: [], raises: [], benign.}
-      getTime: proc (): int {.tags: [], raises: [], noSideEffect, benign.}
-      getTimezoneOffset: proc (): int {.tags: [], raises: [], benign.}
-      getDate: proc (): int {.tags: [], raises: [], benign.}
-      getUTCDate: proc (): int {.tags: [], raises: [], benign.}
-      getUTCFullYear: proc (): int {.tags: [], raises: [], benign.}
-      getUTCHours: proc (): int {.tags: [], raises: [], benign.}
-      getUTCMilliseconds: proc (): int {.tags: [], raises: [], benign.}
-      getUTCMinutes: proc (): int {.tags: [], raises: [], benign.}
-      getUTCMonth: proc (): int {.tags: [], raises: [], benign.}
-      getUTCSeconds: proc (): int {.tags: [], raises: [], benign.}
-      getUTCDay: proc (): int {.tags: [], raises: [], benign.}
-      getYear: proc (): int {.tags: [], raises: [], benign.}
-      parse: proc (s: cstring): Time {.tags: [], raises: [], benign.}
-      setDate: proc (x: int) {.tags: [], raises: [], benign.}
-      setFullYear: proc (x: int) {.tags: [], raises: [], benign.}
-      setHours: proc (x: int) {.tags: [], raises: [], benign.}
-      setMilliseconds: proc (x: int) {.tags: [], raises: [], benign.}
-      setMinutes: proc (x: int) {.tags: [], raises: [], benign.}
-      setMonth: proc (x: int) {.tags: [], raises: [], benign.}
-      setSeconds: proc (x: int) {.tags: [], raises: [], benign.}
-      setTime: proc (x: int) {.tags: [], raises: [], benign.}
-      setUTCDate: proc (x: int) {.tags: [], raises: [], benign.}
-      setUTCFullYear: proc (x: int) {.tags: [], raises: [], benign.}
-      setUTCHours: proc (x: int) {.tags: [], raises: [], benign.}
-      setUTCMilliseconds: proc (x: int) {.tags: [], raises: [], benign.}
-      setUTCMinutes: proc (x: int) {.tags: [], raises: [], benign.}
-      setUTCMonth: proc (x: int) {.tags: [], raises: [], benign.}
-      setUTCSeconds: proc (x: int) {.tags: [], raises: [], benign.}
-      setYear: proc (x: int) {.tags: [], raises: [], benign.}
-      toGMTString: proc (): cstring {.tags: [], raises: [], benign.}
-      toLocaleString: proc (): cstring {.tags: [], raises: [], benign.}
+    TimeBase = float
+    Time* = distinct TimeBase
+
+  proc getDay(t: Time): int {.tags: [], raises: [], benign, importcpp.}
+  proc getFullYear(t: Time): int {.tags: [], raises: [], benign, importcpp.}
+  proc getHours(t: Time): int {.tags: [], raises: [], benign, importcpp.}
+  proc getMilliseconds(t: Time): int {.tags: [], raises: [], benign, importcpp.}
+  proc getMinutes(t: Time): int {.tags: [], raises: [], benign, importcpp.}
+  proc getMonth(t: Time): int {.tags: [], raises: [], benign, importcpp.}
+  proc getSeconds(t: Time): int {.tags: [], raises: [], benign, importcpp.}
+  proc getTime(t: Time): int {.tags: [], raises: [], noSideEffect, benign, importcpp.}
+  proc getTimezoneOffset(t: Time): int {.tags: [], raises: [], benign, importcpp.}
+  proc getDate(t: Time): int {.tags: [], raises: [], benign, importcpp.}
+  proc getUTCDate(t: Time): int {.tags: [], raises: [], benign, importcpp.}
+  proc getUTCFullYear(t: Time): int {.tags: [], raises: [], benign, importcpp.}
+  proc getUTCHours(t: Time): int {.tags: [], raises: [], benign, importcpp.}
+  proc getUTCMilliseconds(t: Time): int {.tags: [], raises: [], benign, importcpp.}
+  proc getUTCMinutes(t: Time): int {.tags: [], raises: [], benign, importcpp.}
+  proc getUTCMonth(t: Time): int {.tags: [], raises: [], benign, importcpp.}
+  proc getUTCSeconds(t: Time): int {.tags: [], raises: [], benign, importcpp.}
+  proc getUTCDay(t: Time): int {.tags: [], raises: [], benign, importcpp.}
+  proc getYear(t: Time): int {.tags: [], raises: [], benign, importcpp.}
+  proc parse(t: Time; s: cstring): Time {.tags: [], raises: [], benign, importcpp.}
+  proc setDate(t: Time; x: int) {.tags: [], raises: [], benign, importcpp.}
+  proc setFullYear(t: Time; x: int) {.tags: [], raises: [], benign, importcpp.}
+  proc setHours(t: Time; x: int) {.tags: [], raises: [], benign, importcpp.}
+  proc setMilliseconds(t: Time; x: int) {.tags: [], raises: [], benign, importcpp.}
+  proc setMinutes(t: Time; x: int) {.tags: [], raises: [], benign, importcpp.}
+  proc setMonth(t: Time; x: int) {.tags: [], raises: [], benign, importcpp.}
+  proc setSeconds(t: Time; x: int) {.tags: [], raises: [], benign, importcpp.}
+  proc setTime(t: Time; x: int) {.tags: [], raises: [], benign, importcpp.}
+  proc setUTCDate(t: Time; x: int) {.tags: [], raises: [], benign, importcpp.}
+  proc setUTCFullYear(t: Time; x: int) {.tags: [], raises: [], benign, importcpp.}
+  proc setUTCHours(t: Time; x: int) {.tags: [], raises: [], benign, importcpp.}
+  proc setUTCMilliseconds(t: Time; x: int) {.tags: [], raises: [], benign, importcpp.}
+  proc setUTCMinutes(t: Time; x: int) {.tags: [], raises: [], benign, importcpp.}
+  proc setUTCMonth(t: Time; x: int) {.tags: [], raises: [], benign, importcpp.}
+  proc setUTCSeconds(t: Time; x: int) {.tags: [], raises: [], benign, importcpp.}
+  proc setYear(t: Time; x: int) {.tags: [], raises: [], benign, importcpp.}
+  proc toGMTString(t: Time): cstring {.tags: [], raises: [], benign, importcpp.}
+  proc toLocaleString(t: Time): cstring {.tags: [], raises: [], benign, importcpp.}
 
 type
   TimeInfo* = object of RootObj ## represents a time in different parts
@@ -225,17 +226,26 @@ proc `-`*(a, b: Time): int64 {.
 proc `<`*(a, b: Time): bool {.
   rtl, extern: "ntLtTime", tags: [], raises: [], noSideEffect.} =
   ## returns true iff ``a < b``, that is iff a happened before b.
-  result = a - b < 0
+  when defined(js):
+    result = TimeBase(a) < TimeBase(b)
+  else:
+    result = a - b < 0
 
 proc `<=` * (a, b: Time): bool {.
   rtl, extern: "ntLeTime", tags: [], raises: [], noSideEffect.}=
   ## returns true iff ``a <= b``.
-  result = a - b <= 0
+  when defined(js):
+    result = TimeBase(a) <= TimeBase(b)
+  else:
+    result = a - b <= 0
 
 proc `==`*(a, b: Time): bool {.
   rtl, extern: "ntEqTime", tags: [], raises: [], noSideEffect.} =
   ## returns true if ``a == b``, that is if both times represent the same value
-  result = a - b == 0
+  when defined(js):
+    result = TimeBase(a) == TimeBase(b)
+  else:
+    result = a - b == 0
 
 proc getTimezone*(): int {.tags: [TimeEffect], raises: [], benign.}
   ## returns the offset of the local (non-DST) timezone in seconds west of UTC.
