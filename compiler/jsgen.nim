@@ -1985,10 +1985,19 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
     if i > 1: add(initList, ", ")
     var it = n.sons[i]
     internalAssert it.kind == nkExprColonExpr
-    gen(p, it.sons[1], a)
+    let val = it.sons[1]
+    gen(p, val, a)
     var f = it.sons[0].sym
     if f.loc.r == nil: f.loc.r = mangleName(f, p.target)
     fieldIDs.incl(f.id)
+
+    let typ = val.typ.skipTypes(abstractInst)
+    if (typ.kind in IntegralTypes+{tyCstring, tyRef, tyPtr} and
+          mapType(p, typ) != etyBaseIndex) or needsNoCopy(p, it.sons[1]):
+      discard
+    else:
+      useMagic(p, "nimCopy")
+      a.res = "nimCopy(null, $1, $2)" % [a.rdLoc, genTypeInfo(p, typ)]
     addf(initList, "$#: $#" | "'$#' => $#" , [f.loc.r, a.res])
   let t = skipTypes(n.typ, abstractInst + skipPtrs)
   createObjInitList(p, t, fieldIDs, initList)
