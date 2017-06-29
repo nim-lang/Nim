@@ -3,7 +3,8 @@ discard """
 5
 0
 5
-@[1, 2]'''
+@[1, 2]
+~'''
 """
 
 # bug #2476
@@ -44,3 +45,10 @@ let a = View(data: new(seq[int]))
 a.data[] = @[1, 2]
 
 echo a.data[]
+
+# bug #5379
+var input = newSeq[ref string]()
+input.add(nil)
+input.add(new string)
+input[1][] = "~"
+echo input[1][]
