@@ -705,7 +705,7 @@ proc len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.
   magic: "LengthOpenArray", noSideEffect.}
 proc len*(x: string): int {.magic: "LengthStr", noSideEffect.}
 proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.}
-proc len*[I, T](x: array[I, T]): int {.magic: "LengthArray", noSideEffect.}
+proc len*(x: (type array)|array): int {.magic: "LengthArray", noSideEffect.}
 proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
   ## returns the length of an array, an openarray, a sequence or a string.
   ## This is roughly the same as ``high(T)-low(T)+1``, but its resulting type is
