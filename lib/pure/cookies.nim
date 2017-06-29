@@ -15,7 +15,7 @@ import strtabs, times
 proc parseCookies*(s: string): StringTableRef =
   ## parses cookies into a string table. Example input: "a=1; foo=bar"
   ## The proc is meant to parse the Cookie header set by a client, not the
-  ## "Set-Cookie" header set by servers.
+  ## "Set-Cookie" header set by servers. "Set-Cookie" has different semantics.
   result = newStringTable(modeCaseInsensitive)
   var i = 0
   while true:
