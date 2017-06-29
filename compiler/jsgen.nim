@@ -1047,15 +1047,15 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
   var typ = skipTypes(m.sons[0].typ, abstractPtrs)
   if typ.kind == tyArray: first = firstOrd(typ.sons[0])
   else: first = 0
-  if optBoundsCheck in p.options and not isConstExpr(m.sons[1]):
+  if optBoundsCheck in p.options:
     useMagic(p, "chckIndx")
     if p.target == targetPHP:
       if typ.kind != tyString:
-        r.res = "chckIndx($1, $2, count($3))-$2" % [b.res, rope(first), a.res]
+        r.res = "chckIndx($1, $2, count($3)-1)-$2" % [b.res, rope(first), a.res]
       else:
         r.res = "chckIndx($1, $2, strlen($3))-$2" % [b.res, rope(first), a.res]
     else:
-      r.res = "chckIndx($1, $2, $3.length)-$2" % [b.res, rope(first), a.res]
+      r.res = "chckIndx($1, $2, $3.length-1)-$2" % [b.res, rope(first), a.res]
   elif first != 0:
     r.res = "($1)-$2" % [b.res, rope(first)]
   else:
