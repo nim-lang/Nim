@@ -56,7 +56,7 @@ build_script:
 
 test_script:
   - tests\testament\tester --pedantic all -d:nimCoroutines
-  - koch csource
-  - koch zip
+#  - koch csource
+#  - koch zip
 
 deploy: off
