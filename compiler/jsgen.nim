@@ -939,6 +939,8 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
       if y.kind == nkCall:
         let tmp = p.getTemp(false)
         lineF(p, "var $1 = $4; $2 = $1[0]; $3 = $1[1];$n", [tmp, a.address, a.res, b.rdLoc])
+      elif b.typ == etyBaseIndex:
+        lineF(p, "$# = $#;$n", [a.res, b.rdLoc])
       else:
         internalError(x.info, "genAsgn")
     else:
