@@ -1248,17 +1248,21 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
   r.kind = resVal
 
 proc genDeref(p: PProc, n: PNode, r: var TCompRes) =
-  if mapType(p, n.sons[0].typ) == etyObject:
-    gen(p, n.sons[0], r)
+  let it = n.sons[0]
+  let t = mapType(p, it.typ)
+  if t == etyObject:
+    gen(p, it, r)
   else:
     var a: TCompRes
-    gen(p, n.sons[0], a)
+    gen(p, it, a)
     r.kind = resExpr
     if a.typ == etyBaseIndex:
       r.res = "$1[$2]" % [a.address, a.res]
-    elif n.sons[0].kind == nkCall:
+    elif it.kind == nkCall:
       let tmp = p.getTemp
       r.res = "($1 = $2, $1[0])[$1[1]]" % [tmp, a.res]
+    elif t == etyBaseIndex:
+      r.res = "$1[0]" % [a.res]
     else:
       internalError(n.info, "genDeref")
 

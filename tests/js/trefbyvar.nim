@@ -2,7 +2,8 @@ discard """
   output: '''0
 5
 0
-5'''
+5
+@[1, 2]'''
 """
 
 # bug #2476
@@ -33,3 +34,13 @@ proc main =
   echo t.m
 
 main()
+
+# bug #5974
+type
+  View* = object
+    data: ref seq[int]
+
+let a = View(data: new(seq[int]))
+a.data[] = @[1, 2]
+
+echo a.data[]
