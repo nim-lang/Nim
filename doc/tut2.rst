@@ -723,7 +723,7 @@ regular expressions:
 
 .. code-block:: nim
 
-  macro case_token(n: typed): typed =
+  macro case_token(n: varargs[untyped]): typed =
     # creates a lexical analyzer from regular expressions
     # ... (implementation is an exercise for the reader :-)
     discard
