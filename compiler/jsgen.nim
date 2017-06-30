@@ -1446,7 +1446,7 @@ proc createRecordVarAux(p: PProc, rec: PNode, excludedFieldIDs: IntSet, output: 
 
 proc createObjInitList(p: PProc, typ: PType, excludedFieldIDs: IntSet, output: var Rope) =
   var t = typ
-  if tfFinal notin t.flags or t.sons[0] != nil:
+  if objHasTypeField(t):
     if output.len > 0: output.add(", ")
     addf(output, "m_type: $1" | "'m_type' => $#", [genTypeInfo(p, t)])
   while t != nil:
