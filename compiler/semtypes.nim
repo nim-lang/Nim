@@ -1202,6 +1202,15 @@ proc freshType(res, prev: PType): PType {.inline.} =
   else:
     result = res
 
+template modifierTypeKindOfNode(n: PNode): TTypeKind =
+  case n.kind
+  of nkVarTy: tyVar
+  of nkRefTy: tyRef
+  of nkPtrTy: tyPtr
+  of nkStaticTy: tyStatic
+  of nkTypeOfExpr: tyTypeDesc
+  else: tyNone
+
 proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
   # if n.sonsLen == 0: return newConstraint(c, tyTypeClass)
   if nfBase2 in n.flags:
@@ -1227,13 +1236,7 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
       dummyName: PNode
       dummyType: PType
 
-    let modifier = case param.kind
-      of nkVarTy: tyVar
-      of nkRefTy: tyRef
-      of nkPtrTy: tyPtr
-      of nkStaticTy: tyStatic
-      of nkTypeOfExpr: tyTypeDesc
-      else: tyNone
+    let modifier = param.modifierTypeKindOfNode
 
     if modifier != tyNone:
       dummyName = param[0]

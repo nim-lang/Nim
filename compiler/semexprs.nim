@@ -2206,9 +2206,14 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     message(n.info, warnDeprecated, "bind")
     result = semExpr(c, n.sons[0], flags)
   of nkTypeOfExpr, nkTupleTy, nkTupleClassTy, nkRefTy..nkEnumTy, nkStaticTy:
+    if c.matchedConcept != nil and n.len == 1:
+      let modifier = n.modifierTypeKindOfNode
+      if modifier != tyNone:
+        var baseType = semExpr(c, n[0]).typ.skipTypes({tyTypeDesc})
+        result.typ = c.makeTypeDesc(c.newTypeWithSons(modifier, @[baseType]))
+        return
     var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})
     result.typ = makeTypeDesc(c, typ)
-    #result = symNodeFromType(c, typ, n.info)
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit:
     # check if it is an expression macro:
     checkMinSonsLen(n, 1)
