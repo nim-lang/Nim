@@ -730,7 +730,6 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
       of wCompileTime:
         noVal(it)
         incl(sym.flags, sfCompileTime)
-        incl(sym.loc.flags, lfNoDecl)
       of wGlobal:
         noVal(it)
         incl(sym.flags, sfGlobal)
