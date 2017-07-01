@@ -52,13 +52,16 @@ proc renderType(n: PNode): string =
     else:
       result = "ptr"
   of nkProcTy:
-    assert len(n) > 1
-    let params = n[0]
-    assert params.kind == nkFormalParams
-    assert len(params) > 0
-    result = "proc("
-    for i in 1 .. <len(params): result.add(renderType(params[i]) & ',')
-    result[<len(result)] = ')'
+    assert len(n) != 1
+    if len(n) > 1:
+      let params = n[0]
+      assert params.kind == nkFormalParams
+      assert len(params) > 0
+      result = "proc("
+      for i in 1 .. <len(params): result.add(renderType(params[i]) & ',')
+      result[<len(result)] = ')'
+    else:
+      result = "proc"
   of nkIdentDefs:
     assert len(n) >= 3
     let typePos = len(n) - 2
