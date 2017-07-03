@@ -534,14 +534,14 @@ proc recvLineInto*(socket: AsyncSocket, resString: FutureVar[string],
     var c = ""
     while true:
       let recvFut = recv(socket, 1, flags)
-      c = recvFut.read()
+      c = await recvFut
       if c.len == 0:
         resString.mget.setLen(0)
         resString.complete()
         return
       if c == "\r":
         let recvFut = recv(socket, 1, flags) # Skip \L
-        c = recvFut.read()
+        c = await recvFut
         assert c == "\L"
         addNLIfEmpty()
         resString.complete()
