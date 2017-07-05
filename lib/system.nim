@@ -818,7 +818,6 @@ proc `not` *(x: int): int {.magic: "BitnotI", noSideEffect, deprecated.}
 proc `not` *(x: int8): int8 {.magic: "BitnotI", noSideEffect, deprecated.}
 proc `not` *(x: int16): int16 {.magic: "BitnotI", noSideEffect, deprecated.}
 proc `not` *(x: int32): int32 {.magic: "BitnotI", noSideEffect, deprecated.}
-
 proc `~` *(x: int): int {.magic: "BitnotI", noSideEffect.}
 proc `~` *(x: int8): int8 {.magic: "BitnotI", noSideEffect.}
 proc `~` *(x: int16): int16 {.magic: "BitnotI", noSideEffect.}
