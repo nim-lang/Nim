@@ -158,7 +158,7 @@ proc detectOsImpl(d: Distribution): bool =
   of Distribution.ArchLinux:
     result = "arch" in toLowerAscii(uname())
   of Distribution.OpenSUSE:
-    result = "suse" in toLowerAscii(uname())
+    result = "suse" in toLowerAscii(uname()) or "suse" in toLowerAscii(release())
   of Distribution.GoboLinux:
     result = "-Gobo " in uname()
   of Distribution.OpenMandriva:
