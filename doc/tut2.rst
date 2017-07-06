@@ -206,7 +206,7 @@ for any type:
 
   echo "abc".len # is the same as echo len("abc")
   echo "abc".toUpper()
-  echo {'a', 'b', 'c'}.card
+  echo({'a', 'b', 'c'}.card)
   stdout.writeLine("Hallo") # the same as writeLine(stdout, "Hallo")
 
 (Another way to look at the method call syntax is that it provides the missing
