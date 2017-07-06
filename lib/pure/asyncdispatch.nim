@@ -191,9 +191,9 @@ proc adjustedTimeout(p: PDispatcherBase, timeout: int): int {.inline.} =
 
 proc callSoon(cbproc: proc ()) {.gcsafe.}
 
-proc initGlobalDispatcher =
-  if asyncfutures.callSoonProc == nil:
-    asyncfutures.callSoonProc = callSoon
+proc initCallSoonProc =
+  if asyncfutures.getCallSoonProc() == nil:
+    asyncfutures.setCallSoonProc(callSoon)
 
 when defined(windows) or defined(nimdoc):
   import winlean, sets, hashes
@@ -247,7 +247,7 @@ when defined(windows) or defined(nimdoc):
     if not gDisp.isNil:
       assert gDisp.callbacks.len == 0
     gDisp = disp
-    initGlobalDispatcher()
+    initCallSoonProc()
 
   proc getGlobalDispatcher*(): PDispatcher =
     if gDisp.isNil:
@@ -944,7 +944,7 @@ else:
     if not gDisp.isNil:
       assert gDisp.callbacks.len == 0
     gDisp = disp
-    initGlobalDispatcher()
+    initCallSoonProc()
 
   proc getGlobalDispatcher*(): PDispatcher =
     if gDisp.isNil:

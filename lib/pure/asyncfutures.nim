@@ -1,5 +1,3 @@
-include "system/inclrtl"
-
 import os, tables, strutils, times, heapqueue, options, deques
 
 # TODO: This shouldn't need to be included, but should ideally be exported.
@@ -34,9 +32,22 @@ type
 when not defined(release):
   var currentID = 0
 
-var callSoonProc* {.threadvar.}: (proc(cbproc: proc ()) {.gcsafe.})
+var callSoonProc {.threadvar.}: (proc(cbproc: proc ()) {.gcsafe.})
+
+proc getCallSoonProc*(): (proc(cbproc: proc ()) {.gcsafe.}) =
+  ## Get current implementation of ``callSoon``.
+  return callSoonProc
+
+proc setCallSoonProc*(p: (proc(cbproc: proc ()) {.gcsafe.})) =
+  ## Change current implementation of ``callSoon``. This is normally called when dispatcher from ``asyncdispatcher`` is initialized.
+  callSoonProc = p
 
 proc callSoon*(cbproc: proc ()) =
+  ## Call ``cbproc`` "soon".
+  ##
+  ## If async dispatcher is running, ``cbproc`` will be executed during next dispatcher tick.
+  ##
+  ## If async dispatcher is not running, ``cbproc`` will be executed immediately.
   if callSoonProc == nil:
     # Loop not initialized yet. Call the function directly to allow setup code to use futures.
     cbproc()
