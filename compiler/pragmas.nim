@@ -125,8 +125,9 @@ proc processImportCpp(s: PSym, extname: string, info: TLineInfo) =
   incl(s.flags, sfImportc)
   incl(s.flags, sfInfixCall)
   excl(s.flags, sfForward)
-  let m = s.getModule()
-  incl(m.flags, sfCompileToCpp)
+  if gCmd == cmdCompileToC:
+    let m = s.getModule()
+    incl(m.flags, sfCompileToCpp)
   extccomp.gMixedMode = true
 
 proc processImportObjC(s: PSym, extname: string, info: TLineInfo) =
