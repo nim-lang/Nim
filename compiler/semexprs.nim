@@ -2187,11 +2187,11 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     if result.typ == nil: result.typ = getSysType(tyUInt32)
   of nkUInt64Lit:
     if result.typ == nil: result.typ = getSysType(tyUInt64)
-  of nkFloatLit:
-    if result.typ == nil: result.typ = getFloatLitType(result)
+  #of nkFloatLit:
+  #  if result.typ == nil: result.typ = getFloatLitType(result)
   of nkFloat32Lit:
     if result.typ == nil: result.typ = getSysType(tyFloat32)
-  of nkFloat64Lit:
+  of nkFloat64Lit, nkFloatLit:
     if result.typ == nil: result.typ = getSysType(tyFloat64)
   of nkFloat128Lit:
     if result.typ == nil: result.typ = getSysType(tyFloat128)
