@@ -1467,7 +1467,7 @@ elif defined(windows):
     tags: [ReadIOEffect].} =
     # Docstring in nimdoc block.
     if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLine())
-    if i < cmdCount and i >= 0: return TaintedString(ownArgv[i])
+    if i < ownArgv.len and i >= 0: return TaintedString(ownArgv[i])
     raise newException(IndexError, "invalid index")
 
 elif not defined(createNimRtl) and
