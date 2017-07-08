@@ -1015,6 +1015,95 @@ macro expandMacros*(body: typed): untyped =
   result = getAst(inner(body))
   echo result.toStrLit
 
+proc replaceIdent*(inNode: NimNode, ident: NimIdent, withNode: NimNode) =
+  ## Given a tree of nodes `inNode` replaces all occurences of `ident` with
+  ## copies of `withNode`.
+  for i in 0 ..< inNode.len:
+    if inNode[i].kind == nnkIdent and inNode[i].ident == ident:
+      inNode[i] = copyNimTree(withNode)
+    else:
+      inNode[i].replaceIdent(ident, withNode)
+
+proc pragmaNodeForAttrSubj(subj: NimNode): NimNode =
+  var subj = subj
+  if subj.kind == nnkSym:
+    subj = getImpl(subj.symbol)
+    subj.expectRoutine()
+    result = subj.pragma
+  elif subj.kind == nnkDotExpr:
+    let typDef = getImpl(getTypeInst(subj[0]).symbol)
+    typDef.expectKind(nnkTypeDef)
+    typDef[2].expectKind(nnkObjectTy)
+    let recList = typDef[2][2]
+    for identDefs in recList:
+      for i in 0 ..< identDefs.len - 2:
+        if identDefs[i].kind == nnkPragmaExpr and identDefs[i][0].kind == nnkIdent and $identDefs[i][0] == $subj[1]:
+          return identDefs[i][1]
+
+iterator attrs(pragmaNode: NimNode): NimNode =
+  pragmaNode.expectKind({nnkPragma, nnkEmpty})
+  for p in pragmaNode:
+    if p.kind == nnkExprColonExpr and p[0].kind == nnkIdent and $p[0] == "attr":
+      let sub = p[1]
+      if sub.kind in {nnkCurly, nnkBracket}:
+        for s in sub: yield s
+      else:
+        yield sub
+
+macro findAttrIt*(subj: typed, predicate: untyped): int =
+  ## Returns index of attribute matching `predicate` or -1 if no match.
+  ## `subj` must be either a routine symbol or an nnkDotExpr referring to field
+  ## acces of an object instance. The returned value can then be used in `attrAt`.
+  ##
+  ## .. code-block:: nim
+  ##   import macros
+  ##
+  ##   type MyAttr = object
+  ##   proc myProc() {.attr: MyAttr.} = discard
+  ##   assert(myProc.findAttrIt(it is MyAttr) == 0)
+  ##   assert(myProc.findAttrIt(it is RootObj) == -1)
+  ##   type MyObj = object
+  ##     myField {.attr: MyAttr.}: int
+  ##   var o: MyObj
+  ##   assert(o.myField.findAttrIt(it is MyAttr) == 0)
+  ##   assert(o.myField.findAttrIt(it is RootObj) == -1)
+  let pragmaNode = pragmaNodeForAttrSubj(subj)
+  if pragmaNode.isNil:
+    result = newLit(-1)
+    return
+
+  result = newNimNode(nnkWhenStmt)
+  var idx = 0
+  for attr in pragmaNode.attrs:
+    let p = copyNimTree(predicate)
+    p.replaceIdent(!"it", attr)
+    result.add(newNimNode(nnkElifExpr).add(
+      p,
+      newLit(idx)
+      ))
+    inc idx
+
+  result.add(newNimNode(nnkElse).add(newLit(-1)))
+
+macro attrAt*(subj: typed, idx: static[int]): untyped =
+  ## Returns attribute of `subj`, at `idx`. Note that attributes are in fact
+  ## object types.
+  ##
+  ## .. code-block:: nim
+  ##   import macros
+  ##
+  ##   type MyAttr[T] = object
+  ##   proc myProc() {.attr: MyAttr[int].} = discard
+  ##   type ExtractedAttr = myProc.attrAt(myProc.findAttrIt(it is MyAttr))
+  ##   assert(ExtractedAttr is MyAttr[int])
+  let pragmaNode = pragmaNodeForAttrSubj(subj)
+  result = newNimNode(nnkWhenStmt)
+  var i = 0
+  for attr in pragmaNode.attrs:
+    if i == idx: return copyNimTree(attr)
+    inc i
+  assert(false, "Attr index out of bounds")
+
 when not defined(booting):
   template emit*(e: static[string]): untyped {.deprecated.} =
     ## accepts a single string argument and treats it as nim code
