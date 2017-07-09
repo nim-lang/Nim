@@ -1288,6 +1288,10 @@ proc genArg(p: PProc, n: PNode, param: PSym, r: var TCompRes) =
     add(r.res, a.address)
     add(r.res, ", ")
     add(r.res, a.res)
+  elif n.typ.kind == tyVar and n.kind in nkCallKinds:
+    # this fixes bug #5608:
+    let tmp = getTemp(p)
+    add(r.res, "($1 = $2, $1[0]), $1[1]" % [tmp, a.rdLoc])
   else:
     add(r.res, a.res)
 
