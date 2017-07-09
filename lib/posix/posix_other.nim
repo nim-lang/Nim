@@ -48,7 +48,7 @@ type
       # DragonflyBSD doesn't have `d_reclen` field.
       d_type*: uint8 
     elif defined(linux) or defined(macosx) or defined(freebsd) or
-         defined(netbsd) or defined(openbsd):
+         defined(netbsd) or defined(openbsd) or defined(genode):
       d_reclen*: cshort ## Length of this record. (not POSIX)
       d_type*: int8 ## Type of file; not supported by all filesystem types.
                     ## (not POSIX)
