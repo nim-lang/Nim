@@ -529,6 +529,14 @@ when not defined(useNimRtl):
     gch.cycleThreshold = oldThreshold
     release(gch)
 
+  proc GC_fastCollect() =
+    acquire(gch)
+    var oldThreshold = gch.cycleThreshold
+    gch.cycleThreshold = high(gch.cycleThreshold)-1 # disable cycle collection
+    collectCT(gch)
+    gch.cycleThreshold = oldThreshold
+    release(gch)
+
   proc GC_getStatistics(): string =
     GC_disable()
     result = "[GC] total memory: " & $getTotalMem() & "\n" &

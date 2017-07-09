@@ -1023,6 +1023,12 @@ when not defined(useNimRtl):
     collectCT(gch)
     gch.cycleThreshold = oldThreshold
 
+  proc GC_fastCollect() =
+    var oldThreshold = gch.cycleThreshold
+    gch.cycleThreshold = high(gch.cycleThreshold)-1 # disable cycle collection
+    collectCT(gch)
+    gch.cycleThreshold = oldThreshold
+
   proc GC_getStatistics(): string =
     GC_disable()
     result = "[GC] total memory: " & $(getTotalMem()) & "\n" &

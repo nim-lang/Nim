@@ -138,6 +138,7 @@ when defined(boehmgc):
     proc GC_disable() = boehmGC_disable()
     proc GC_enable() = boehmGC_enable()
     proc GC_fullCollect() = boehmGCfullCollect()
+    proc GC_fastCollect() = GC_fullCollect()
     proc GC_setStrategy(strategy: GC_Strategy) = discard
     proc GC_enableMarkAndSweep() = discard
     proc GC_disableMarkAndSweep() = discard
@@ -208,6 +209,7 @@ elif defined(gogc):
   proc GC_enable() = discard
   proc goRuntimeGC(force: int32) {.importc: "runtime_gc", dynlib: goLib.}
   proc GC_fullCollect() = goRuntimeGC(2)
+  proc GC_fastCollect() = GC_fullCollect()
   proc GC_setStrategy(strategy: GC_Strategy) = discard
   proc GC_enableMarkAndSweep() = discard
   proc GC_disableMarkAndSweep() = discard
@@ -507,6 +509,7 @@ elif defined(nogc):
   proc GC_disable() = discard
   proc GC_enable() = discard
   proc GC_fullCollect() = discard
+  proc GC_fastCollect() = discard
   proc GC_setStrategy(strategy: GC_Strategy) = discard
   proc GC_enableMarkAndSweep() = discard
   proc GC_disableMarkAndSweep() = discard

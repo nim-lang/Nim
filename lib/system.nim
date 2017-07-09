@@ -2471,6 +2471,10 @@ when not defined(nimscript) and hasAlloc:
       ## forces a full garbage collection pass.
       ## Ordinary code does not need to call this (and should not).
 
+    proc GC_fastCollect*() {.rtl, benign.}
+      ## forces a fast garbage collection pass.
+      ## This will typically be faster than GC_fullCollect and may not collect cycles.
+
     proc GC_setStrategy*(strategy: GC_Strategy) {.rtl, deprecated, benign.}
       ## tells the GC the desired strategy for the application.
       ## **Deprecated** since version 0.8.14. This has always been a nop.
@@ -2508,6 +2512,9 @@ when not defined(nimscript) and hasAlloc:
 
     template GC_fullCollect* =
       {.warning: "GC_fullCollect is a no-op in JavaScript".}
+
+    template GC_fastCollect* =
+      {.warning: "GC_fastCollect is a no-op in JavaScript".}
 
     template GC_setStrategy* =
       {.warning: "GC_setStrategy is a no-op in JavaScript".}
