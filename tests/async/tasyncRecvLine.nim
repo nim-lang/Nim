@@ -1,5 +1,5 @@
 discard """
-  file: "tasyncsend4754.nim"
+  file: "tasyncRecvLine.nim"
   output: '''
 Hello World
 Hello World
