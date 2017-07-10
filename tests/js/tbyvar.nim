@@ -10,6 +10,7 @@ bar 12
 (nums: @[5, 5, 50, 5, 5, 5, 5, 5, 5, 5])
 (nums: @[5, 5, 45, 5, 5, 5, 5, 5, 5, 5])
 (nums: @[5, 5, 9, 5, 5, 5, 5, 5, 5, 5])
+asd
 '''
 """
 
@@ -102,3 +103,20 @@ f[2] -= 5
 echo f
 f[2] /= 5
 echo f
+
+# regression for #5608
+import tables
+
+type
+  SomeObj = ref object
+    s: cstring
+
+var a = initTable[cstring, Table[cstring, SomeObj]]()
+
+var b = initTable[cstring, SomeObj]()
+
+b.add(cstring"b", SomeObj(s: cstring"asd"))
+
+a.add(cstring"a", b)
+
+echo a[cstring"a"][cstring"b"].s
