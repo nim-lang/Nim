@@ -69,7 +69,8 @@ proc `==`(a, b: TLockLevel): bool {.borrow.}
 proc max(a, b: TLockLevel): TLockLevel {.borrow.}
 
 proc isLocalVar(a: PEffects, s: PSym): bool =
-  s.kind in {skVar, skResult} and sfGlobal notin s.flags and s.owner == a.owner
+  s.kind in {skVar, skResult} and sfGlobal notin s.flags and
+    s.owner == a.owner and s.typ != nil
 
 proc getLockLevel(t: PType): TLockLevel =
   var t = t

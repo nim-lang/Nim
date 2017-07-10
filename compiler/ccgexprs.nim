@@ -2126,7 +2126,14 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     if n.sons[0].kind != nkEmpty:
       genLineDir(p, n)
       var a: TLoc
-      initLocExpr(p, n.sons[0], a)
+      if n[0].kind in nkCallKinds:
+        # bug #6037: do not assign to a temp in C++ mode:
+        incl a.flags, lfSingleUse
+        genCall(p, n[0], a)
+        if lfSingleUse notin a.flags:
+          line(p, cpsStmts, a.r & ";" & tnl)
+      else:
+        initLocExpr(p, n.sons[0], a)
   of nkAsmStmt: genAsmStmt(p, n)
   of nkTryStmt:
     if p.module.compileToCpp and optNoCppExceptions notin gGlobalOptions:
