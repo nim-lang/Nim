@@ -319,8 +319,8 @@ proc toStrLit*(n: NimNode): NimNode {.compileTime.} =
 
 type
   LineInfo* = object
-    filename: string
-    line,column: int
+    filename*: string
+    line*,column*: int
 
 proc `$`*(arg: Lineinfo): string =
   result = arg.filename & "(" & $arg.line & ", " & $arg.column & ")"
