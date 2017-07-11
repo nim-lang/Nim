@@ -1310,8 +1310,15 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNLineInfo:
       decodeB(rkNode)
       let n = regs[rb].node
+
       createStr regs[ra]
-      regs[ra].node.strVal = n.info.toFileLineCol
+      debug(regs[rb].node)
+      echo "---"
+      debug(regs[ra].node)
+
+      #regs[ra].node.strVal = n.info.toFileLineCol
+      # result = n.info.toFilename & "(" & $n.info.line & ", " & $n.info.col & ")"
+
       regs[ra].node.info = c.debug[pc]
     of opcEqIdent:
       decodeBC(rkInt)
