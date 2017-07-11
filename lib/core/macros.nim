@@ -338,12 +338,6 @@ proc lineinfo*(n: NimNode): LineInfo {.compileTime.} =
   result.line = n.getLine
   result.column = n.getColumn
 
-static:
-  var li = LineInfo(filename: "main.nim", line: 10, column: 11)
-  li = foobar(li)
-  #echo li
-
-
 proc internalParseExpr(s: string): NimNode {.
   magic: "ParseExprToAst", noSideEffect.}
 
