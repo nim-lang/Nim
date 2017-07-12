@@ -1558,7 +1558,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   popOwner(c)
   if n.sons[patternPos].kind != nkEmpty:
     c.patterns.add(s)
-  if isAnon: result.typ = s.typ
+  if isAnon:
+    n.kind = nkLambda
+    result.typ = s.typ
   if isTopLevel(c) and s.kind != skIterator and
       s.typ.callConv == ccClosure:
     localError(s.info, "'.closure' calling convention for top level routines is invalid")
