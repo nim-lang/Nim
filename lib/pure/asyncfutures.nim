@@ -32,7 +32,7 @@ type
 when not defined(release):
   var currentID = 0
 
-var callSoonProc {.threadvar.}: (proc(cbproc: proc ()) {.gcsafe.})
+var callSoonProc {.threadvar.}: proc (cbproc: proc ()) {.gcsafe.}
 
 proc getCallSoonProc*(): (proc(cbproc: proc ()) {.gcsafe.}) =
   ## Get current implementation of ``callSoon``.
@@ -48,7 +48,7 @@ proc callSoon*(cbproc: proc ()) =
   ## If async dispatcher is running, ``cbproc`` will be executed during next dispatcher tick.
   ##
   ## If async dispatcher is not running, ``cbproc`` will be executed immediately.
-  if callSoonProc == nil:
+  if callSoonProc.isNil:
     # Loop not initialized yet. Call the function directly to allow setup code to use futures.
     cbproc()
   else:
@@ -108,10 +108,10 @@ proc call(callbacks: var CallbackList) =
   var current = callbacks
 
   while true:
-    if current.function != nil:
+    if not current.function.isNil:
       callSoon(current.function)
 
-    if current.next == nil:
+    if current.next.isNil:
       break
     else:
       current = current.next[]
@@ -121,7 +121,7 @@ proc call(callbacks: var CallbackList) =
   callbacks.function = nil
 
 proc add(callbacks: var CallbackList, function: CallbackFunc) =
-  if callbacks.function == nil:
+  if callbacks.function.isNil:
     callbacks.function = function
     assert callbacks.next == nil
   else:
@@ -154,7 +154,7 @@ proc complete*[T](future: FutureVar[T]) =
   checkFinished(fut)
   assert(fut.error == nil)
   fut.finished = true
-  fut.callbacks.call
+  fut.callbacks.call()
 
 proc complete*[T](future: FutureVar[T], val: T) =
   ## Completes a ``FutureVar`` with value ``val``.
@@ -176,7 +176,7 @@ proc fail*[T](future: Future[T], error: ref Exception) =
   future.error = error
   future.errorStackTrace =
     if getStackTrace(error) == "": getStackTrace() else: getStackTrace(error)
-  future.callbacks.call
+  future.callbacks.call()
 
 proc clearCallbacks(future: FutureBase) =
   future.callbacks.function = nil
@@ -192,11 +192,15 @@ proc addCallback*(future: FutureBase, cb: proc() {.closure,gcsafe.}) =
   else:
     future.callbacks.add cb
 
-proc addCallback*[T](future: Future[T], cb: proc(future: Future[T]) {.closure,gcsafe.}) =
+proc addCallback*[T](future: Future[T],
+                     cb: proc (future: Future[T]) {.closure,gcsafe.}) =
   ## Adds the callbacks proc to be called when the future completes.
   ##
   ## If future has already completed then ``cb`` will be called immediately.
-  future.addCallback proc() = cb(future)
+  future.addCallback(
+    proc() =
+      cb(future)
+  )
 
 proc `callback=`*(future: FutureBase, cb: proc () {.closure,gcsafe.}) =
   ## Clears the list of callbacks and sets the callback proc to be called when the future completes.

@@ -164,7 +164,7 @@ proc adjustedTimeout(p: PDispatcherBase, timeout: int): int {.inline.} =
 proc callSoon(cbproc: proc ()) {.gcsafe.}
 
 proc initCallSoonProc =
-  if asyncfutures.getCallSoonProc() == nil:
+  if asyncfutures.getCallSoonProc().isNil:
     asyncfutures.setCallSoonProc(callSoon)
 
 when defined(windows) or defined(nimdoc):
