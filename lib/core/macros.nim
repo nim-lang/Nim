@@ -333,10 +333,13 @@ proc getLine(arg: NimNode): int {.magic: "NLineInfo", noSideEffect.}
 proc getColumn(arg: NimNode): int {.magic: "NLineInfo", noSideEffect.}
 proc getFile(arg: NimNode): string {.magic: "NLineInfo", noSideEffect.}
 
-proc lineinfo*(n: NimNode): LineInfo {.compileTime.} =
+proc lineInfoObj*(n: NimNode): LineInfo {.compileTime.} =
   result.filename = n.getFile
   result.line = n.getLine
   result.column = n.getColumn
+
+proc lineInfo*(arg: NimNode): string {.compileTime.} =
+  $arg.lineInfoObj
 
 proc internalParseExpr(s: string): NimNode {.
   magic: "ParseExprToAst", noSideEffect.}
