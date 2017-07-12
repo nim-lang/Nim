@@ -238,7 +238,7 @@ var onUnhandledException*: (proc (errorMsg: string) {.
 
 template unhandled(buf, body) =
   if onUnhandledException != nil:
-    onUnhandledException(buf)
+    onUnhandledException($buf)
   else:
     body
 
