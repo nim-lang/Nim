@@ -182,14 +182,49 @@ when defined(windows):
     template wrapBinary(varname, winApiProc, arg, arg2: untyped) =
       var varname = winApiProc(newWideCString(arg), arg2)
     proc findFirstFile(a: string, b: var WIN32_FIND_DATA): Handle =
-      result = findFirstFileW(newWideCString(a), b)
+      var
+        vi: OSVERSIONINFO
+        windowsXPorLater: bool
+        windows7orLater: bool
+      vi.dwOSVersionInfoSize = cast[DWORD](vi.sizeof)
+      discard getVersionExW(addr(vi))
+      windowsXPorLater = vi.dwMajorVersion > 5 or (vi.dwMajorVersion == 5 and vi.dwMinorVersion >= 1) 
+      windows7orLater = vi.dwMajorVersion >= 6 and vi.dwMinorVersion >= 1
+      if not windowsXPorLater:
+        result = findFirstFileW(newWideCString(a), b)
+      else:
+        var
+          findExInfo: FINDEX_INFO_LEVELS = FindExInfoStandard
+          findExFlags: DWORD = 0
+        if windows7orLater: 
+          findExInfo = FindExInfoBasic
+          findExFlags = FIND_FIRST_EX_LARGE_FETCH
+        result = findFirstFileExW(newWideCString(a), findExInfo, b, FindExSearchNameMatch, nil, findExFlags)
     template findNextFile(a, b: untyped): untyped = findNextFileW(a, b)
     template getCommandLine(): untyped = getCommandLineW()
 
     template getFilename(f: untyped): untyped =
       $cast[WideCString](addr(f.cFilename[0]))
   else:
-    template findFirstFile(a, b: untyped): untyped = findFirstFileA(a, b)
+    proc findFirstFile(a: string, b: var WIN32_FIND_DATA): Handle = 
+      var
+        vi: OSVERSIONINFO
+        windowsXPorLater: bool
+        windows7orLater: bool
+      vi.dwOSVersionInfoSize = cast[DWORD](vi.sizeof)
+      discard getVersionExW(addr(vi))
+      windowsXPorLater = vi.dwMajorVersion > 5 or (vi.dwMajorVersion == 5 and vi.dwMinorVersion >= 1) 
+      windows7orLater = (vi.dwMajorVersion >= 6 and vi.dwMinorVersion >= 1) 
+      if not windowsXPorLater:
+        result = findFirstFileA(newWideCString(a), b)
+      else:
+        var
+          findExInfo: FINDEX_INFO_LEVELS = FindExInfoStandard
+          findExFlags: DWORD = 0
+        if windows7orLater: 
+          findExInfo = FindExInfoBasic
+          findExFlags = FIND_FIRST_EX_LARGE_FETCH
+        result = findFirstFileExA(newWideCString(a), findExInfo, b, FindExSearchNameMatch, nil, findExFlags)
     template findNextFile(a, b: untyped): untyped = findNextFileA(a, b)
     template getCommandLine(): untyped = getCommandLineA()
 
