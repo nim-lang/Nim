@@ -73,12 +73,11 @@ proc popSafePoint {.compilerRtl, inl.} =
   excHandler = excHandler.prev
 
 proc pushCurrentException(e: ref Exception) {.compilerRtl, inl.} =
-  #if e.parent.isNil:
-  #  e.parent = currException
+  e.up = currException
   currException = e
 
 proc popCurrentException {.compilerRtl, inl.} =
-  currException = nil # currException.parent
+  currException = currException.up
 
 # some platforms have native support for stack traces:
 const

@@ -442,6 +442,7 @@ type
                                         ## providing an exception message
                                         ## is bad style.
     trace: string
+    up: ref Exception # used for stacking exceptions. Not exported!
 
   SystemError* = object of Exception ## \
     ## Abstract class for exceptions that the runtime system raises.
