@@ -540,8 +540,8 @@ proc writeConfig*(dict: Config, filename: string) =
   ## Writes the contents of the table to the specified configuration file.
   ## Note: Comment statement will be ignored.
   let file = open(filename, fmWrite)
-  let fileStream = newFileStream(filename)
-  defer: fileStream.close()
+  defer: file.close()
+  let fileStream = newFileStream(file)
   dict.writeConfig(fileStream)
 
 proc getSectionValue*(dict: Config, section, key: string): string =

@@ -155,5 +155,7 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym; fromHlo=false): PNode =
     #if ctx.instLines: result.info = n.info
     for i in countup(0, safeLen(body) - 1):
       evalTemplateAux(body.sons[i], args, ctx, result)
+  result.flags.incl nfFromTemplate
   result = wrapInComesFrom(n.info, result)
   dec(evalTemplateCounter)
+

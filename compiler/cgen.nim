@@ -47,10 +47,6 @@ proc findPendingModule(m: BModule, s: PSym): BModule =
   var ms = getModule(s)
   result = m.g.modules[ms.position]
 
-proc emitLazily(s: PSym): bool {.inline.} =
-  result = optDeadCodeElim in gGlobalOptions or
-           sfDeadCodeElim in getModule(s).flags
-
 proc initLoc(result: var TLoc, k: TLocKind, typ: PType, s: TStorageLoc) =
   result.k = k
   result.s = s
@@ -142,6 +138,13 @@ proc ropecg(m: BModule, frmt: FormatStr, args: varargs[Rope]): Rope =
 template rfmt(m: BModule, fmt: string, args: varargs[Rope]): untyped =
   ropecg(m, fmt, args)
 
+var indent = "\t".rope
+
+proc indentLine(p: BProc, r: Rope): Rope =
+  result = r
+  for i in countup(0, p.blocks.len-1):
+    prepend(result, indent)
+
 proc appcg(m: BModule, c: var Rope, frmt: FormatStr,
            args: varargs[Rope]) =
   add(c, ropecg(m, frmt, args))
@@ -153,11 +156,6 @@ proc appcg(m: BModule, s: TCFileSection, frmt: FormatStr,
 proc appcg(p: BProc, s: TCProcSection, frmt: FormatStr,
            args: varargs[Rope]) =
   add(p.s(s), ropecg(p.module, frmt, args))
-
-var indent = "\t".rope
-proc indentLine(p: BProc, r: Rope): Rope =
-  result = r
-  for i in countup(0, p.blocks.len-1): prepend(result, indent)
 
 proc line(p: BProc, s: TCProcSection, r: Rope) =
   add(p.s(s), indentLine(p, r))
@@ -612,8 +610,18 @@ proc generateHeaders(m: BModule) =
       addf(m.s[cfsHeaders], "#include \"$1\"$N", [rope(it)])
     else:
       addf(m.s[cfsHeaders], "#include $1$N", [rope(it)])
+  add(m.s[cfsHeaders], "#undef LANGUAGE_C" & tnl)
+  add(m.s[cfsHeaders], "#undef MIPSEB" & tnl)
+  add(m.s[cfsHeaders], "#undef MIPSEL" & tnl)
+  add(m.s[cfsHeaders], "#undef PPC" & tnl)
+  add(m.s[cfsHeaders], "#undef R3000" & tnl)
+  add(m.s[cfsHeaders], "#undef R4000" & tnl)
+  add(m.s[cfsHeaders], "#undef i386" & tnl)
   add(m.s[cfsHeaders], "#undef linux" & tnl)
+  add(m.s[cfsHeaders], "#undef mips" & tnl)
   add(m.s[cfsHeaders], "#undef near" & tnl)
+  add(m.s[cfsHeaders], "#undef powerpc" & tnl)
+  add(m.s[cfsHeaders], "#undef unix" & tnl)
 
 proc initFrame(p: BProc, procname, filename: Rope): Rope =
   discard cgsym(p.module, "nimFrame")
@@ -898,14 +906,14 @@ proc genMainProc(m: BModule) =
     # prevents inlining of the NimMainInner function and dependent
     # functions, which might otherwise merge their stack frames.
     PreMainBody =
-      "void PreMainInner() {$N" &
+      "void PreMainInner(void) {$N" &
       "\tsystemInit000();$N" &
       "$1" &
       "$2" &
       "$3" &
       "}$N$N" &
-      "void PreMain() {$N" &
-      "\tvoid (*volatile inner)();$N" &
+      "void PreMain(void) {$N" &
+      "\tvoid (*volatile inner)(void);$N" &
       "\tsystemDatInit000();$N" &
       "\tinner = PreMainInner;$N" &
       "$4$5" &
@@ -924,7 +932,7 @@ proc genMainProc(m: BModule) =
 
     NimMainProc =
       "N_CDECL(void, NimMain)(void) {$N" &
-        "\tvoid (*volatile inner)();$N" &
+        "\tvoid (*volatile inner)(void);$N" &
         "\tPreMain();$N" &
         "\tinner = NimMainInner;$N" &
         "$2" &

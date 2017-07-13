@@ -39,6 +39,9 @@ type
     inPragma*: int             # Pragma level
     inSemiStmtList*: int
 
+  SymbolMode = enum
+    smNormal, smAllowNil, smAfterDot
+
 proc parseAll*(p: var TParser): PNode
 proc closeParser*(p: var TParser)
 proc parseTopLevelStmt*(p: var TParser): PNode
@@ -62,7 +65,7 @@ proc optPar*(p: var TParser)
 proc optInd*(p: var TParser, n: PNode)
 proc indAndComment*(p: var TParser, n: PNode)
 proc setBaseFlags*(n: PNode, base: TNumericalBase)
-proc parseSymbol*(p: var TParser, allowNil = false): PNode
+proc parseSymbol*(p: var TParser, mode = smNormal): PNode
 proc parseTry(p: var TParser; isExpr: bool): PNode
 proc parseCase(p: var TParser): PNode
 proc parseStmtPragma(p: var TParser): PNode
@@ -304,13 +307,24 @@ proc colcom(p: var TParser, n: PNode) =
   eat(p, tkColon)
   skipComment(p, n)
 
-proc parseSymbol(p: var TParser, allowNil = false): PNode =
+proc parseSymbol(p: var TParser, mode = smNormal): PNode =
   #| symbol = '`' (KEYW|IDENT|literal|(operator|'('|')'|'['|']'|'{'|'}'|'=')+)+ '`'
-  #|        | IDENT | 'addr' | 'type'
+  #|        | IDENT | KEYW
   case p.tok.tokType
-  of tkSymbol, tkAddr, tkType:
+  of tkSymbol:
     result = newIdentNodeP(p.tok.ident, p)
     getTok(p)
+  of tokKeywordLow..tokKeywordHigh:
+    if p.tok.tokType == tkAddr or p.tok.tokType == tkType or mode == smAfterDot:
+      # for backwards compatibility these 2 are always valid:
+      result = newIdentNodeP(p.tok.ident, p)
+      getTok(p)
+    elif p.tok.tokType == tkNil and mode == smAllowNil:
+      result = newNodeP(nkNilLit, p)
+      getTok(p)
+    else:
+      parMessage(p, errIdentifierExpected, p.tok)
+      result = ast.emptyNode
   of tkAccent:
     result = newNodeP(nkAccQuoted, p)
     getTok(p)
@@ -336,16 +350,12 @@ proc parseSymbol(p: var TParser, allowNil = false): PNode =
         break
     eat(p, tkAccent)
   else:
-    if allowNil and p.tok.tokType == tkNil:
-      result = newNodeP(nkNilLit, p)
-      getTok(p)
-    else:
-      parMessage(p, errIdentifierExpected, p.tok)
-      # BUGFIX: We must consume a token here to prevent endless loops!
-      # But: this really sucks for idetools and keywords, so we don't do it
-      # if it is a keyword:
-      #if not isKeyword(p.tok.tokType): getTok(p)
-      result = ast.emptyNode
+    parMessage(p, errIdentifierExpected, p.tok)
+    # BUGFIX: We must consume a token here to prevent endless loops!
+    # But: this really sucks for idetools and keywords, so we don't do it
+    # if it is a keyword:
+    #if not isKeyword(p.tok.tokType): getTok(p)
+    result = ast.emptyNode
 
 proc colonOrEquals(p: var TParser, a: PNode): PNode =
   if p.tok.tokType == tkColon:
@@ -390,7 +400,7 @@ proc dotExpr(p: var TParser, a: PNode): PNode =
   result = newNodeI(nkDotExpr, info)
   optInd(p, result)
   addSon(result, a)
-  addSon(result, parseSymbol(p))
+  addSon(result, parseSymbol(p, smAfterDot))
 
 proc qualifiedIdent(p: var TParser): PNode =
   #| qualifiedIdent = symbol ('.' optInd symbol)?
@@ -846,6 +856,7 @@ type
   TDeclaredIdentFlag = enum
     withPragma,               # identifier may have pragma
     withBothOptional          # both ':' and '=' parts are optional
+    withDot                   # allow 'var ident.ident = value'
   TDeclaredIdentFlags = set[TDeclaredIdentFlag]
 
 proc parseIdentColonEquals(p: var TParser, flags: TDeclaredIdentFlags): PNode =
@@ -859,7 +870,7 @@ proc parseIdentColonEquals(p: var TParser, flags: TDeclaredIdentFlags): PNode =
   while true:
     case p.tok.tokType
     of tkSymbol, tkAccent:
-      if withPragma in flags: a = identWithPragma(p)
+      if withPragma in flags: a = identWithPragma(p, allowDot=withdot in flags)
       else: a = parseSymbol(p)
       if a.kind == nkEmpty: return
     else: break
@@ -1004,10 +1015,10 @@ proc isExprStart(p: TParser): bool =
     result = true
   else: result = false
 
-proc parseSymbolList(p: var TParser, result: PNode, allowNil = false) =
+proc parseSymbolList(p: var TParser, result: PNode) =
   # progress guaranteed
   while true:
-    var s = parseSymbol(p, allowNil)
+    var s = parseSymbol(p, smAllowNil)
     if s.kind == nkEmpty: break
     addSon(result, s)
     if p.tok.tokType != tkComma: break
@@ -1028,7 +1039,7 @@ proc parseTypeDescKAux(p: var TParser, kind: TNodeKind,
     getTok(p)
     let list = newNodeP(nodeKind, p)
     result.addSon list
-    parseSymbolList(p, list, allowNil = true)
+    parseSymbolList(p, list)
 
 proc parseExpr(p: var TParser): PNode =
   #| expr = (ifExpr
@@ -1520,6 +1531,13 @@ proc parseGenericParam(p: var TParser): PNode =
   # progress guaranteed
   while true:
     case p.tok.tokType
+    of tkIn, tkOut:
+      let x = p.lex.cache.getIdent(if p.tok.tokType == tkIn: "in" else: "out")
+      a = newNodeP(nkPrefix, p)
+      a.addSon newIdentNodeP(x, p)
+      getTok(p)
+      expectIdent(p)
+      a.addSon(parseSymbol(p))
     of tkSymbol, tkAccent:
       a = parseSymbol(p)
       if a.kind == nkEmpty: return
@@ -1548,7 +1566,7 @@ proc parseGenericParamList(p: var TParser): PNode =
   getTok(p)
   optInd(p, result)
   # progress guaranteed
-  while p.tok.tokType in {tkSymbol, tkAccent}:
+  while p.tok.tokType in {tkSymbol, tkAccent, tkIn, tkOut}:
     var a = parseGenericParam(p)
     addSon(result, a)
     if p.tok.tokType notin {tkComma, tkSemiColon}: break
@@ -1882,7 +1900,7 @@ proc parseVarTuple(p: var TParser): PNode =
   optInd(p, result)
   # progress guaranteed
   while p.tok.tokType in {tkSymbol, tkAccent}:
-    var a = identWithPragma(p)
+    var a = identWithPragma(p, allowDot=true)
     addSon(result, a)
     if p.tok.tokType != tkComma: break
     getTok(p)
@@ -1898,7 +1916,7 @@ proc parseVariable(p: var TParser): PNode =
   #| colonBody = colcom stmt doBlocks?
   #| variable = (varTuple / identColonEquals) colonBody? indAndComment
   if p.tok.tokType == tkParLe: result = parseVarTuple(p)
-  else: result = parseIdentColonEquals(p, {withPragma})
+  else: result = parseIdentColonEquals(p, {withPragma, withDot})
   result{-1} = postExprBlocks(p, result{-1})
   indAndComment(p, result)
 

@@ -41,6 +41,7 @@ proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
     of nkCharLit..nkUInt64Lit: result = a.intVal == b.intVal
     of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
+    of nkCommentStmt: result = a.comment == b.comment
     of nkEmpty, nkNilLit, nkType: result = true
     else:
       if sonsLen(a) == sonsLen(b):
@@ -109,9 +110,11 @@ proc isDeepConstExpr*(n: PNode): bool =
 
 proc isRange*(n: PNode): bool {.inline.} =
   if n.kind in nkCallKinds:
-    if n[0].kind == nkIdent and n[0].ident.id == ord(wDotDot) or
-        n[0].kind in {nkClosedSymChoice, nkOpenSymChoice} and
-        n[0][1].sym.name.id == ord(wDotDot):
+    let callee = n[0]
+    if (callee.kind == nkIdent and callee.ident.id == ord(wDotDot)) or
+       (callee.kind == nkSym and callee.sym.name.id == ord(wDotDot)) or
+       (callee.kind in {nkClosedSymChoice, nkOpenSymChoice} and
+        callee[1].sym.name.id == ord(wDotDot)):
       result = true
 
 proc whichPragma*(n: PNode): TSpecialWord =

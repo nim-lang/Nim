@@ -666,29 +666,38 @@ proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect].} 
     else:
       raiseOSError(osLastError(), $strerror(errno))
 
-proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
-  tags: [ReadIOEffect, WriteIOEffect].} =
-  ## Moves a file from `source` to `dest`. If this fails, `OSError` is raised.
+proc tryMoveFSObject(source, dest: string): bool =
+  ## Moves a file or directory from `source` to `dest`. Returns false in case
+  ## of `EXDEV` error. In case of other errors `OSError` is raised. Returns
+  ## true in case of success.
   when defined(Windows):
     when useWinUnicode:
       let s = newWideCString(source)
       let d = newWideCString(dest)
-      if moveFileW(s, d) == 0'i32: raiseOSError(osLastError())
+      if moveFileExW(s, d, MOVEFILE_COPY_ALLOWED) == 0'i32: raiseOSError(osLastError())
     else:
-      if moveFileA(source, dest) == 0'i32: raiseOSError(osLastError())
+      if moveFileExA(source, dest, MOVEFILE_COPY_ALLOWED) == 0'i32: raiseOSError(osLastError())
   else:
     if c_rename(source, dest) != 0'i32:
       let err = osLastError()
       if err == EXDEV.OSErrorCode:
-        # Fallback to copy & del
-        copyFile(source, dest)
-        try:
-          removeFile(source)
-        except:
-          discard tryRemoveFile(dest)
-          raise
+        return false
       else:
         raiseOSError(err, $strerror(errno))
+  return true
+
+proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
+  tags: [ReadIOEffect, WriteIOEffect].} =
+  ## Moves a file from `source` to `dest`. If this fails, `OSError` is raised.
+  if not tryMoveFSObject(source, dest):
+    when not defined(windows):
+      # Fallback to copy & del
+      copyFile(source, dest)
+      try:
+        removeFile(source)
+      except:
+        discard tryRemoveFile(dest)
+        raise
 
 proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   tags: [ExecIOEffect].} =
@@ -1369,6 +1378,14 @@ proc exclFilePermissions*(filename: string,
   ##   setFilePermissions(filename, getFilePermissions(filename)-permissions)
   setFilePermissions(filename, getFilePermissions(filename)-permissions)
 
+proc moveDir*(source, dest: string) {.tags: [ReadIOEffect, WriteIOEffect].} =
+  ## Moves a directory from `source` to `dest`. If this fails, `OSError` is raised.
+  if not tryMoveFSObject(source, dest):
+    when not defined(windows):
+      # Fallback to copy & del
+      copyDir(source, dest)
+      removeDir(source)
+
 include ospaths
 
 proc expandSymlink*(symlinkPath: string): string =
@@ -1412,7 +1429,7 @@ when defined(nimdoc):
   proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
     ## Returns the `i`-th `command line argument`:idx: given to the application.
     ##
-    ## `i` should be in the range `1..paramCount()`, the `EInvalidIndex`
+    ## `i` should be in the range `1..paramCount()`, the `IndexError`
     ## exception will be raised for invalid values.  Instead of iterating over
     ## `paramCount() <#paramCount>`_ with this proc you can call the
     ## convenience `commandLineParams() <#commandLineParams>`_.
@@ -1450,7 +1467,8 @@ elif defined(windows):
     tags: [ReadIOEffect].} =
     # Docstring in nimdoc block.
     if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLine())
-    return TaintedString(ownArgv[i])
+    if i < ownArgv.len and i >= 0: return TaintedString(ownArgv[i])
+    raise newException(IndexError, "invalid index")
 
 elif not defined(createNimRtl) and
   not(defined(posix) and appType == "lib") and

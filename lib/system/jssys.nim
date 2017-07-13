@@ -446,7 +446,7 @@ when defined(kwin):
       print(buf);
     """
 
-elif defined(nodejs):
+elif not defined(nimOldEcho):
   proc ewriteln(x: cstring) = log(x)
 
   proc rawEcho {.compilerproc, asmNoStackFrame.} =

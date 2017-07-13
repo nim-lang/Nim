@@ -117,6 +117,12 @@ else:
       when defined(linux) and defined(amd64):
         abi: array[48 div sizeof(clonglong), clonglong]
 
+    SysCondAttr {.importc: "pthread_condattr_t", pure, final
+               header: """#include <sys/types.h>
+                          #include <pthread.h>""".} = object
+      when defined(linux) and defined(amd64):
+        abi: array[4 div sizeof(cint), cint]  # actually a cint
+
     SysLockType = distinct cint
 
   proc initSysLockAux(L: var SysLockObj, attr: ptr SysLockAttr) {.
@@ -185,7 +191,7 @@ else:
       importc: "pthread_mutexattr_settype", header: "<pthread.h>", noSideEffect.}
 
   else:
-    proc initSysCondAux(cond: var SysCondObj, cond_attr: pointer) {.
+    proc initSysCondAux(cond: var SysCondObj, cond_attr: ptr SysCondAttr = nil) {.
       importc: "pthread_cond_init", header: "<pthread.h>", noSideEffect.}
     proc deinitSysCondAux(cond: var SysCondObj) {.noSideEffect,
       importc: "pthread_cond_destroy", header: "<pthread.h>".}
@@ -196,7 +202,7 @@ else:
       importc: "pthread_cond_signal", header: "<pthread.h>", noSideEffect.}
 
     when defined(ios):
-      proc initSysCond(cond: var SysCond, cond_attr: pointer = nil) =
+      proc initSysCond(cond: var SysCond, cond_attr: ptr SysCondAttr = nil) =
         cond = cast[SysCond](c_malloc(sizeof(SysCondObj)))
         initSysCondAux(cond[], cond_attr)
 
@@ -209,7 +215,7 @@ else:
       template signalSysCond(cond: var SysCond) =
         signalSysCondAux(cond[])
     else:
-      template initSysCond(cond: var SysCond, cond_attr: pointer = nil) =
+      template initSysCond(cond: var SysCond, cond_attr: ptr SysCondAttr = nil) =
         initSysCondAux(cond, cond_attr)
       template deinitSysCond(cond: var SysCond) =
         deinitSysCondAux(cond)

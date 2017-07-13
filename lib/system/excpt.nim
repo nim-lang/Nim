@@ -90,12 +90,11 @@ proc popSafePoint {.compilerRtl, inl.} =
   excHandler = excHandler.prev
 
 proc pushCurrentException(e: ref Exception) {.compilerRtl, inl.} =
-  #if e.parent.isNil:
-  #  e.parent = currException
+  e.up = currException
   currException = e
 
 proc popCurrentException {.compilerRtl, inl.} =
-  currException = nil # currException.parent
+  currException = currException.up
 
 # some platforms have native support for stack traces:
 const
@@ -247,6 +246,18 @@ when false:
     pushCurrentException(e)
     c_longjmp(excHandler.context, 1)
 
+var onUnhandledException*: (proc (errorMsg: string) {.
+  nimcall.}) ## set this error \
+  ## handler to override the existing behaviour on an unhandled exception.
+  ## The default is to write a stacktrace to ``stderr`` and then call ``quit(1)``.
+  ## Unstable API.
+
+template unhandled(buf, body) =
+  if onUnhandledException != nil:
+    onUnhandledException($buf)
+  else:
+    body
+
 proc raiseExceptionAux(e: ref Exception) =
   if localRaiseHook != nil:
     if not localRaiseHook(e): return
@@ -277,7 +288,9 @@ proc raiseExceptionAux(e: ref Exception) =
         add(buf, " [")
         add(buf, $e.name)
         add(buf, "]\n")
-        showErrorMessage(buf)
+        unhandled(buf):
+          showErrorMessage(buf)
+          quitOrDebug()
       else:
         # ugly, but avoids heap allocations :-)
         template xadd(buf, s, slen: expr) =
@@ -293,8 +306,9 @@ proc raiseExceptionAux(e: ref Exception) =
         add(buf, " [")
         xadd(buf, e.name, e.name.len)
         add(buf, "]\n")
-        showErrorMessage(buf)
-      quitOrDebug()
+        unhandled(buf):
+          showErrorMessage(buf)
+          quitOrDebug()
 
 proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
   if e.name.isNil: e.name = ename

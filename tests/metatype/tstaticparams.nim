@@ -1,6 +1,6 @@
 discard """
   file: "tstaticparams.nim"
-  output: "abracadabra\ntest\n3\n15\n4\n2\nfloat\n3\nfloat\nyin\nyang"
+  output: "abracadabra\ntest\n3\n15\n4\n2\nfloat\n3\nfloat\nyin\nyang\n2\n4\n4\n2\n3"
 """
 
 type
@@ -139,4 +139,37 @@ dontBind1 bb_2
 
 dontBind2 bb_1
 dontBind2 bb_2
+
+# https://github.com/nim-lang/Nim/issues/4524 
+const
+  size* = 2
+
+proc arraySize[N: static[int]](A: array[N, int]): int =
+  result = A.high - A.low + 1
+
+var A: array[size, int] = [1, 2]
+echo arraySize(A)
+
+# https://github.com/nim-lang/Nim/issues/3153
+
+proc outSize1[M: static[int], A](xs: array[M, A]): int = M
+echo outSize1([1, 2, 3, 4])
+
+type
+  Arr[N: static[int], A] = array[N, A]
+
+proc outSize2[M: static[int], A](xs: Arr[M, A]): int = M
+echo outSize2([1, 2, 3, 4]) # 4
+
+echo outSize2([
+  [1, 2, 3],
+  [4, 5, 6]
+]) # 2
+
+proc inSize[M, N: static[int]](xs: Arr[M, Arr[N, int]]): int = N
+
+echo inSize([
+  [1, 2, 3],
+  [4, 5, 6]
+])
 

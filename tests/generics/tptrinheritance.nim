@@ -10,7 +10,7 @@ proc newMutableArrayAbstract*(): NSMutableArrayAbstract = discard
 template newMutableArray*(T: typedesc): NSMutableArray[T] =
   cast[NSMutableArray[T]](newMutableArrayAbstract())
 
-proc writeObjects*(p: NSPasteboard, o: ptr NSArray[NSPasteboardItem]) = discard
+proc writeObjects*(p: NSPasteboard, o: NSArray[NSPasteboardItem]) = discard
 
 let a = newMutableArray NSPasteboardItem
 var x: NSMutableArray[NSPasteboardItem]
