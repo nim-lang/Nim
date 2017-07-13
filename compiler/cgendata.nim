@@ -90,7 +90,7 @@ type
     splitDecls*: int          # > 0 if we are in some context for C++ that
                               # requires 'T x = T()' to become 'T x; x = T()'
                               # (yes, C++ is weird like that)
-    gcFrameLen*: int          # the number of slots in the GC-Frame
+    gcFrameId*: Natural       # for the GC stack marking
     gcFrameType*: Rope        # the struct {} we put the GC markers into
     sigConflicts*: CountTable[string]
 

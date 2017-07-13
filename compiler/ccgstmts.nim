@@ -802,8 +802,6 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   endBlock(p, ropecg(p.module, "} catch (NimException& $1) {$n", [exc]))
   if optStackTrace in p.options:
     linefmt(p, cpsStmts, "#setFrame((TFrame*)&FR_);$n")
-  if p.gcFrameLen > 0:
-    linefmt(p, cpsStmts, "#setGcFrame((#GcFrameBase*)&GCF_);$n")
   inc p.inExceptBlock
   var i = 1
   var catchAllPresent = false
@@ -912,9 +910,6 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
   linefmt(p, cpsStmts, "#popSafePoint();$n")
   if optStackTrace in p.options:
     linefmt(p, cpsStmts, "#setFrame((TFrame*)&FR_);$n")
-  if p.gcFrameLen > 0:
-    linefmt(p, cpsStmts, "#setGcFrame((#GcFrameBase*)&GCF_);$n")
-
   inc p.inExceptBlock
   var i = 1
   while (i < length) and (t.sons[i].kind == nkExceptBranch):
