@@ -12,7 +12,7 @@ include "system/inclrtl"
 import os, tables, strutils, times, heapqueue, lists, options, asyncstreams
 import asyncfutures except callSoon
 
-import nativesockets, net, deques
+import nativesockets, net
 
 export Port, SocketFlag
 export asyncfutures, asyncstreams
@@ -135,7 +135,6 @@ export asyncfutures, asyncstreams
 type
   PDispatcherBase = ref object of RootRef
     timers: HeapQueue[tuple[finishAt: float, fut: Future[void]]]
-    callbacks: Deque[proc ()]
 
 proc processTimers(p: PDispatcherBase) {.inline.} =
   #Process just part if timers at a step
@@ -144,11 +143,6 @@ proc processTimers(p: PDispatcherBase) {.inline.} =
   while count > 0 and t >= p.timers[0].finishAt:
     p.timers.pop().fut.complete()
     dec count
-
-proc processPendingCallbacks(p: PDispatcherBase) =
-  while p.callbacks.len > 0:
-    var cb = p.callbacks.popFirst()
-    cb()
 
 proc adjustedTimeout(p: PDispatcherBase, timeout: int): int {.inline.} =
   # If dispatcher has active timers this proc returns the timeout
@@ -160,12 +154,6 @@ proc adjustedTimeout(p: PDispatcherBase, timeout: int): int {.inline.} =
     if timeout == -1 or (curTime + (timeout / 1000)) > timerTimeout:
       result = int((timerTimeout - curTime) * 1000)
       if result < 0: result = 0
-
-proc callSoon(cbproc: proc ()) {.gcsafe.}
-
-proc initCallSoonProc =
-  if asyncfutures.getCallSoonProc().isNil:
-    asyncfutures.setCallSoonProc(callSoon)
 
 when defined(windows) or defined(nimdoc):
   import winlean, sets, hashes
@@ -217,15 +205,11 @@ when defined(windows) or defined(nimdoc):
     result.ioPort = createIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)
     result.handles = initSet[AsyncFD]()
     result.timers.newHeapQueue()
-    result.callbacks = initDeque[proc ()](64)
 
   var gDisp{.threadvar.}: PDispatcher ## Global dispatcher
 
   proc setGlobalDispatcher*(disp: PDispatcher) =
-    if not gDisp.isNil:
-      assert gDisp.callbacks.len == 0
     gDisp = disp
-    initCallSoonProc()
 
   proc getGlobalDispatcher*(): PDispatcher =
     if gDisp.isNil:
@@ -251,16 +235,18 @@ when defined(windows) or defined(nimdoc):
   proc hasPendingOperations*(): bool =
     ## Returns `true` if the global dispatcher has pending operations.
     let p = getGlobalDispatcher()
-    p.handles.len != 0 or p.timers.len != 0 or p.callbacks.len != 0
+    p.handles.len != 0 or p.timers.len != 0 or pendingCallbacks.len != 0
 
   proc poll*(timeout = 500) =
     ## Waits for completion events and processes them. Raises ``ValueError``
     ## if there are no pending operations.
-    let p = getGlobalDispatcher()
-    if p.handles.len == 0 and p.timers.len == 0 and p.callbacks.len == 0:
+    if not hasPendingOperations():
       raise newException(ValueError,
         "No handles or timers registered in dispatcher.")
 
+    # Callback queue processing
+    processPendingCallbacks()
+    let p = getGlobalDispatcher()
     let at = p.adjustedTimeout(timeout)
     var llTimeout =
       if at == -1: winlean.INFINITE
@@ -308,7 +294,7 @@ when defined(windows) or defined(nimdoc):
     # Timer processing.
     processTimers(p)
     # Callback queue processing
-    processPendingCallbacks(p)
+    processPendingCallbacks()
 
   var acceptEx*: WSAPROC_ACCEPTEX
   var connectEx*: WSAPROC_CONNECTEX
@@ -1086,15 +1072,11 @@ else:
     new result
     result.selector = newSelector[AsyncData]()
     result.timers.newHeapQueue()
-    result.callbacks = initDeque[proc ()](InitDelayedCallbackListSize)
 
   var gDisp{.threadvar.}: PDispatcher ## Global dispatcher
 
   proc setGlobalDispatcher*(disp: PDispatcher) =
-    if not gDisp.isNil:
-      assert gDisp.callbacks.len == 0
     gDisp = disp
-    initCallSoonProc()
 
   proc getGlobalDispatcher*(): PDispatcher =
     if gDisp.isNil:
@@ -1141,7 +1123,7 @@ else:
 
   proc hasPendingOperations*(): bool =
     let p = getGlobalDispatcher()
-    not p.selector.isEmpty() or p.timers.len != 0 or p.callbacks.len != 0
+    not p.selector.isEmpty() or p.timers.len != 0 or pendingCallbacks.len != 0
 
   template processBasicCallbacks(ident, rwlist: untyped) =
     # Process pending descriptor's and AsyncEvent callbacks.
@@ -1210,15 +1192,17 @@ else:
   proc poll*(timeout = 500) =
     var keys: array[64, ReadyKey]
 
-    let p = getGlobalDispatcher()
     when ioselSupportedPlatform:
       let customSet = {Event.Timer, Event.Signal, Event.Process,
                        Event.Vnode}
 
-    if p.selector.isEmpty() and p.timers.len == 0 and p.callbacks.len == 0:
+    if not hasPendingOperations():
       raise newException(ValueError,
         "No handles or timers registered in dispatcher.")
 
+    # Callback queue processing
+    processPendingCallbacks()
+    let p = getGlobalDispatcher()
     if not p.selector.isEmpty():
       var count = p.selector.selectInto(p.adjustedTimeout(timeout), keys)
       var i = 0
@@ -1259,7 +1243,7 @@ else:
     # Timer processing.
     processTimers(p)
     # Callback queue processing
-    processPendingCallbacks(p)
+    processPendingCallbacks()
 
   proc recv*(socket: AsyncFD, size: int,
              flags = {SocketFlag.SafeDisconn}): Future[string] =
@@ -1611,11 +1595,6 @@ proc recvLine*(socket: AsyncFD): Future[string] {.async.} =
       addNLIfEmpty()
       return
     add(result, c)
-
-proc callSoon(cbproc: proc ()) =
-  ## Schedule `cbproc` to be called as soon as possible.
-  ## The callback is called when control returns to the event loop.
-  getGlobalDispatcher().callbacks.addLast(cbproc)
 
 proc runForever*() =
   ## Begins a never ending global dispatcher poll loop.

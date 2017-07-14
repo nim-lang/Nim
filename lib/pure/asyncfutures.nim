@@ -32,27 +32,42 @@ type
 when not defined(release):
   var currentID = 0
 
-var callSoonProc {.threadvar.}: proc (cbproc: proc ()) {.gcsafe.}
+var pendingCallbacksUpdated {.threadvar.}: proc() {.gcsafe.}
+var pendingCallbacks* {.threadvar.}: seq[proc()]
 
-proc getCallSoonProc*(): (proc(cbproc: proc ()) {.gcsafe.}) =
-  ## Get current implementation of ``callSoon``.
-  return callSoonProc
+proc getPendingCallbacksUpdatedProc*(): (proc() {.gcsafe.}) =
+  ## Get current implementation of ``pendingCallbacksUpdated``.
+  return pendingCallbacksUpdated
 
-proc setCallSoonProc*(p: (proc(cbproc: proc ()) {.gcsafe.})) =
-  ## Change current implementation of ``callSoon``. This is normally called when dispatcher from ``asyncdispatcher`` is initialized.
-  callSoonProc = p
+proc setPendingCallbacksUpdatedProc*(p: (proc() {.gcsafe.})) =
+  ## Change current implementation of ``pendingCallbacksUpdated``.
+  ## This may be called by dispatcher when it is initialized.
+  pendingCallbacksUpdated = p
+
+var tmpCallbacks {.threadvar.}: seq[proc() {.gcsafe.}]
+
+proc processPendingCallbacks*() =
+  ## Helper for dispatcher implementation to fire all of the pending callbacks.
+  ## This proc accounts for reentrancy, that is, it doesn't return until all
+  ## of the callbacks are fired, including those that were added during
+  ## processing.
+  if tmpCallbacks.isNil:
+    tmpCallbacks = @[]
+  while pendingCallbacks.len != 0:
+    swap(pendingCallbacks, tmpCallbacks)
+    for i in 0 ..< tmpCallbacks.len:
+      tmpCallbacks[i]()
+      tmpCallbacks[i] = nil
+    tmpCallbacks.setLen(0)
 
 proc callSoon*(cbproc: proc ()) =
   ## Call ``cbproc`` "soon".
   ##
-  ## If async dispatcher is running, ``cbproc`` will be executed during next dispatcher tick.
-  ##
-  ## If async dispatcher is not running, ``cbproc`` will be executed immediately.
-  if callSoonProc.isNil:
-    # Loop not initialized yet. Call the function directly to allow setup code to use futures.
-    cbproc()
-  else:
-    callSoonProc(cbproc)
+  ## Adds `cbproc` to list of pending callbacks. It is dispatcher's responsibility
+  ## to handle them.
+  pendingCallbacks.safeAdd(cbproc)
+  if not pendingCallbacksUpdated.isNil:
+    pendingCallbacksUpdated()
 
 template setupFutureBase(fromProc: string) =
   new(result)
