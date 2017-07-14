@@ -2,6 +2,7 @@ discard """
   output: '''OK'''
 """
 
+#bug #6046
 import parsecfg
 
 var config = newConfig()
