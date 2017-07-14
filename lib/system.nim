@@ -634,7 +634,8 @@ proc sizeof*[T](x: T): int {.magic: "SizeOf", noSideEffect, compileTime.}
   ##  sizeof(2) #=> 8
 
 when defined(nimHasalignOf):
-  proc alignOf*[T](x: T): int {.magic: "AlignOf", noSideEffect.}
+  proc alignof*[T](x: T): int {.magic: "AlignOf", noSideEffect.}
+
   proc offsetOfDotExpr(typeAccess: typed): int {.magic: "OffsetOf", noSideEffect, compileTime.}
 
   template offsetOf*[T](t : typedesc[T]; member: untyped): int =
@@ -648,6 +649,7 @@ when defined(nimHasalignOf):
 
 when defined(nimtypedescfixed):
   proc sizeof*(x: typedesc): int {.magic: "SizeOf", noSideEffect.}
+  proc alignof*(x: typedesc): int {.magic: "SizeOf", noSideEffect.}
 
 proc `<`*[T](x: Ordinal[T]): T {.magic: "UnaryLt", noSideEffect.}
   ## unary ``<`` that can be used for nice looking excluding ranges:

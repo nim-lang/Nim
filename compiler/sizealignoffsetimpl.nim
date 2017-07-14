@@ -178,39 +178,68 @@ proc computeSizeAlign(typ: PType): void =
     # --> illegal recursion in type
     typ.align = szIllegalRecursion
     return
-  typ.size = szIllegalRecursion # mark as being computed
 
+  typ.size = szIllegalRecursion # mark as being computed
   var maxAlign, sizeAccum, length: BiggestInt
 
-  case typ.kind
+  var tk = typ.kind
+  if tk == tyInt:
+    case intSize
+    of 2:
+      tk = tyInt16
+    of 4:
+      tk = tyInt32
+    of 8:
+      tk = tyInt64
+    else:
+      internalError("unhandled insize: " & $intSize)
+  elif tk == tyUInt:
+    case intSize
+    of 2:
+      tk = tyUInt16
+    of 4:
+      tk = tyUInt32
+    of 8:
+      tk = tyUInt64
+    else:
+      internalError("unhandled insize: " & $intSize)
+
+  case tk
   of tyInt, tyUInt:
-    typ.size = intSize
-    typ.align = int16(intSize)
+    internalError("this should already have been handled")
 
   of tyInt8, tyUInt8, tyBool, tyChar:
+    echo CPU[targetCPU].bit, "  ", targetOS, " ", typ.kind
     typ.size = 1
     typ.align = 1
 
   of tyInt16, tyUInt16:
+    echo CPU[targetCPU].bit, "  ", targetOS, " ", typ.kind
     typ.size = 2
     typ.align = 2
 
   of tyInt32, tyUInt32, tyFloat32:
+    echo CPU[targetCPU].bit, "  ", targetOS, " ", typ.kind
     typ.size = 4
     typ.align = 4
 
   of tyInt64, tyUInt64, tyFloat64:
+    echo CPU[targetCPU].bit, "  ", targetOS, " ", typ.kind
     typ.size = 8
-    typ.align = 8
+    if CPU[targetCPU].bit == 32 and targetOS == osLinux:
+      typ.align = 4
+    else:
+      typ.align = 8
 
   of tyFloat128:
+    echo CPU[targetCPU].bit, "  ", targetOS, " ", typ.kind
     typ.size  = 16
     typ.align = 16
 
   of tyFloat:
+    echo CPU[targetCPU].bit, "  ", targetOS, " ", typ.kind
     typ.size = floatSize
     typ.align = int16(floatSize)
-
 
   of tyProc:
     if typ.callConv == ccClosure:
@@ -219,7 +248,14 @@ proc computeSizeAlign(typ: PType): void =
       typ.size = ptrSize
     typ.align = int16(ptrSize)
 
-  of tyNil, tyCString, tyString, tySequence, tyPtr, tyRef, tyVar, tyOpenArray:
+  of tyNil, tyString:
+    typ.size = ptrSize
+    typ.align = int16(ptrSize)
+
+  of tyCString, tySequence, tyPtr, tyRef, tyVar, tyOpenArray:
+    if tk == tyCString:
+      debug(typ.lastSon)
+
     let base = typ.lastSon
     if base == typ or (base.kind == tyTuple and base.size==szIllegalRecursion):
       typ.size  = szIllegalRecursion
@@ -330,12 +366,10 @@ proc computeSizeAlign(typ: PType): void =
       headerSize  = 0
       headerAlign = 1
 
-    if tfPacked in typ.flags and typ.sym.name.s == "RecursiveStuff":
-      debug typ
-
     let (offset, align) =
       if tfPacked in typ.flags:
-        (computePackedObjectOffsetsFoldFunction(typ.n, headerSize, tfPacked in typ.flags and typ.sym.name.s == "RecursiveStuff"), BiggestInt(1))
+        (computePackedObjectOffsetsFoldFunction(typ.n, headerSize, false), BiggestInt(1))
+        #(computePackedObjectOffsetsFoldFunction(typ.n, headerSize, tfPacked in typ.flags and typ.sym.name.s == "RecursiveStuff"), BiggestInt(1))
       else:
         computeObjectOffsetsFoldFunction(typ.n, headerSize)
 

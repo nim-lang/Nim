@@ -1250,7 +1250,7 @@ proc newType*(kind: TTypeKind, owner: PSym): PType =
     registerId(result)
   when false:
     if result.id == 205734:
-      echo "KNID ", kind
+      echo "KIND ", kind
       writeStackTrace()
 
 proc mergeLoc(a: var TLoc, b: TLoc) =

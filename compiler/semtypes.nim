@@ -1670,4 +1670,3 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
       s.position = result.len
       addSon(result, newSymNode(s))
       if sfGenSym notin s.flags: addDecl(c, s)
-

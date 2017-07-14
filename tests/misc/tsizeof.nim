@@ -38,8 +38,6 @@ macro testOffsetOf(a,b1,b2: untyped): untyped =
 template testOffsetOf(a,b: untyped): untyped =
   testOffsetOf(a,b,b)
 
-
-
 proc strAlign(arg: string): string =
   const minLen = 22
   result = arg
@@ -65,7 +63,16 @@ macro c_sizeof(a: typed): int32 =
     {.emit: [res, " = sizeof(", `a`, ");"] .}
     res
 
-when false:
+macro c_alignof(arg: untyped): untyped =
+  let typeSym = genSym(nskType, "AlignTestType"&arg.repr)
+  result = quote do:
+    type
+      `typeSym` = object
+        causeAlign: byte
+        member: `arg`
+    c_offsetof(`typeSym`, member)
+
+when true:
   {.pragma: objectconfig.}
 else:
   {.pragma: objectconfig, packed.}
@@ -149,7 +156,6 @@ type
     of MyEnum.ValueC:
       c: int32
 
-
   PaddingAfterBranch {.objectconfig.} = object
     case kind: MyEnum
     of MyEnum.ValueA:
@@ -208,6 +214,30 @@ type
   #  a: float128
 
 const trivialSize = sizeof(TrivialType) # needs to be able to evaluate at compile time
+
+macro testAlign(arg:untyped):untyped =
+  let prefix = newLit(arg.lineinfo & "  alignof " & arg.repr & " ")
+  result = quote do:
+    let cAlign = c_alignof(`arg`)
+    let nimAlign = alignof(`arg`)
+    if cAlign != nimAlign:
+      echo `prefix`, cAlign, " != ", nimAlign
+
+testAlign(pointer)
+testAlign(int)
+testAlign(uint)
+testAlign(int8)
+testAlign(int16)
+testAlign(int32)
+testAlign(int64)
+testAlign(uint8)
+testAlign(uint16)
+testAlign(uint32)
+testAlign(uint64)
+testAlign(float)
+testAlign(float32)
+testAlign(float64)
+testAlign(SimpleAlignment)
 
 proc main(): void =
   var t : TrivialType
