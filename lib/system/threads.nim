@@ -274,7 +274,15 @@ else:
 
     proc getThreadId*(): int =
       result = int(lwp_self())
-  elif defined(macosx) or defined(freebsd):
+  elif defined(freebsd):
+    proc syscall(arg: cint, arg0: ptr cint): cint {.varargs, importc: "syscall", header: "<unistd.h>".}
+    var SYS_thr_self {.importc:"SYS_thr_self", header:"<sys/syscall.h>"}: cint
+
+    proc getThreadId*(): int =
+      var tid = 0.cint
+      discard syscall(SYS_thr_self, addr tid)
+      result = tid
+  elif defined(macosx):
     proc pthread_threadid_np(y: pointer; x: var uint64): cint {.importc, header: "pthread.h".}
 
     proc getThreadId*(): int =
