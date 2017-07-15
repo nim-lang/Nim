@@ -10,7 +10,7 @@
 # This module implements the renderer of the standard Nim representation.
 
 import
-  lexer, options, idents, strutils, ast, msgs
+  migrate, lexer, options, idents, strutils, ast, msgs
 
 type
   TRenderFlag* = enum
@@ -28,7 +28,7 @@ type
     pos*: int              # current position for iteration over the buffer
     idx*: int              # current token index for iteration over the buffer
     tokens*: TRenderTokSeq
-    buf*: string
+    buf*: system.mstring
     pendingNL*: int        # negative if not active; else contains the
                            # indentation value
     pendingWhitespace: int
@@ -80,7 +80,7 @@ proc initSrcGen(g: var TSrcGen, renderFlags: TRenderFlags) =
   g.lineLen = 0
   g.pos = 0
   g.idx = 0
-  g.buf = ""
+  g.buf = tomut""
   g.flags = renderFlags
   g.pendingNL = -1
   g.pendingWhitespace = -1
@@ -152,7 +152,7 @@ proc toNimChar(c: char): string =
   of '\'', '\"', '\\': result = '\\' & c
   else: result = c & ""
 
-proc makeNimString(s: string): string =
+proc makeNimString(s: string): string {.strBuilder.} =
   result = "\""
   for i in countup(0, len(s)-1): add(result, toNimChar(s[i]))
   add(result, '\"')
@@ -162,20 +162,20 @@ proc putComment(g: var TSrcGen, s: string) =
   var i = 0
   var isCode = (len(s) >= 2) and (s[1] != ' ')
   var ind = g.lineLen
-  var com = "## "
+  var com = tomut"## "
   while true:
     case s[i]
     of '\0':
       break
     of '\x0D':
-      put(g, tkComment, com)
-      com = "## "
+      put(g, tkComment, $com)
+      com = tomut"## "
       inc(i)
       if s[i] == '\x0A': inc(i)
       optNL(g, ind)
     of '\x0A':
-      put(g, tkComment, com)
-      com = "## "
+      put(g, tkComment, $com)
+      com = tomut"## "
       inc(i)
       optNL(g, ind)
     of ' ', '\x09':
@@ -188,13 +188,13 @@ proc putComment(g: var TSrcGen, s: string) =
       var j = i
       while s[j] > ' ': inc(j)
       if not isCode and (g.lineLen + (j - i) > MaxLineLen):
-        put(g, tkComment, com)
+        put(g, tkComment, $com)
         optNL(g, ind)
-        com = "## "
+        com = tomut"## "
       while s[i] > ' ':
         add(com, s[i])
         inc(i)
-  put(g, tkComment, com)
+  put(g, tkComment, $com)
   optNL(g)
 
 proc maxLineLength(s: string): int =
@@ -221,24 +221,24 @@ proc maxLineLength(s: string): int =
 proc putRawStr(g: var TSrcGen, kind: TTokType, s: string) =
   var i = 0
   var hi = len(s) - 1
-  var str = ""
+  var str = tomut""
   while i <= hi:
     case s[i]
     of '\x0D':
-      put(g, kind, str)
-      str = ""
+      put(g, kind, $str)
+      str = tomut""
       inc(i)
       if (i <= hi) and (s[i] == '\x0A'): inc(i)
       optNL(g, 0)
     of '\x0A':
-      put(g, kind, str)
-      str = ""
+      put(g, kind, $str)
+      str = tomut""
       inc(i)
       optNL(g, 0)
     else:
       add(str, s[i])
       inc(i)
-  put(g, kind, str)
+  put(g, kind, $str)
 
 proc containsNL(s: string): bool =
   for i in countup(0, len(s) - 1):
@@ -1364,7 +1364,7 @@ proc renderTree(n: PNode, renderFlags: TRenderFlags = {}): string =
   var g: TSrcGen
   initSrcGen(g, renderFlags)
   gsub(g, n)
-  result = g.buf
+  result = $g.buf
 
 proc renderModule(n: PNode, filename: string,
                   renderFlags: TRenderFlags = {}) =
@@ -1381,9 +1381,9 @@ proc renderModule(n: PNode, filename: string,
     else: discard
   gcoms(g)
   if optStdout in gGlobalOptions:
-    write(stdout, g.buf)
+    write(stdout, g.buf.unsafeBorrow)
   elif open(f, filename, fmWrite):
-    write(f, g.buf)
+    write(f, g.buf.unsafeBorrow)
     close(f)
   else:
     rawMessage(errCannotOpenFile, filename)
@@ -1396,7 +1396,7 @@ proc getNextTok(r: var TSrcGen, kind: var TTokType, literal: var string) =
   if r.idx < len(r.tokens):
     kind = r.tokens[r.idx].kind
     var length = r.tokens[r.idx].length.int
-    literal = substr(r.buf, r.pos, r.pos + length - 1)
+    literal = substr(r.buf.unsafeBorrow, r.pos, r.pos + length - 1)
     inc(r.pos, length)
     inc(r.idx)
   else:

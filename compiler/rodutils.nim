@@ -8,7 +8,7 @@
 #
 
 ## Serialization utilities for the compiler.
-import strutils
+import migrate, strutils
 
 proc c_sprintf(buf, frmt: cstring) {.importc: "sprintf", header: "<stdio.h>", nodecl, varargs.}
 
@@ -25,7 +25,7 @@ proc toStrMaxPrecision*(f: BiggestFloat, literalPostfix = ""): string =
     c_sprintf(buf, "%#.16e" & literalPostfix, f)
     result = $buf
 
-proc encodeStr*(s: string, result: var string) =
+proc encodeStr*(s: string, result: var mstring) =
   for i in countup(0, len(s) - 1):
     case s[i]
     of 'a'..'z', 'A'..'Z', '0'..'9', '_': add(result, s[i])
@@ -38,7 +38,7 @@ proc hexChar(c: char, xi: var int) =
   of 'A'..'F': xi = (xi shl 4) or (ord(c) - ord('A') + 10)
   else: discard
 
-proc decodeStr*(s: cstring, pos: var int): string =
+proc decodeStr*(s: cstring, pos: var int): string {.strBuilder.} =
   var i = pos
   result = ""
   while true:
@@ -80,20 +80,20 @@ template encodeIntImpl(self) =
   if v != 0: self(v, result)
   add(result, d)
 
-proc encodeVBiggestIntAux(x: BiggestInt, result: var string) =
+proc encodeVBiggestIntAux(x: BiggestInt, result: var mstring) =
   ## encode a biggest int as a variable length base 190 int.
   encodeIntImpl(encodeVBiggestIntAux)
 
-proc encodeVBiggestInt*(x: BiggestInt, result: var string) =
+proc encodeVBiggestInt*(x: BiggestInt, result: var mstring) =
   ## encode a biggest int as a variable length base 190 int.
   encodeVBiggestIntAux(x +% vintDelta, result)
   #  encodeIntImpl(encodeVBiggestInt)
 
-proc encodeVIntAux(x: int, result: var string) =
+proc encodeVIntAux(x: int, result: var mstring) =
   ## encode an int as a variable length base 190 int.
   encodeIntImpl(encodeVIntAux)
 
-proc encodeVInt*(x: int, result: var string) =
+proc encodeVInt*(x: int, result: var mstring) =
   ## encode an int as a variable length base 190 int.
   encodeVIntAux(x +% vintDelta, result)
 
@@ -133,4 +133,3 @@ iterator decodeStrArray*(s: cstring): string =
   while s[i] != '\0':
     yield decodeStr(s, i)
     if s[i] == ' ': inc i
-

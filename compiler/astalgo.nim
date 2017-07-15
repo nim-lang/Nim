@@ -229,16 +229,16 @@ proc makeYamlString*(s: string): Rope =
   # further information.
   const MaxLineLength = 64
   result = nil
-  var res = "\""
+  var res = tomut("\"")
   for i in countup(0, if s.isNil: -1 else: (len(s)-1)):
     if (i + 1) mod MaxLineLength == 0:
       add(res, '\"')
       add(res, "\n")
-      add(result, rope(res))
-      res = "\""              # reset
+      add(result, rope($res))
+      res = tomut("\"" )             # reset
     add(res, toYamlChar(s[i]))
   add(res, '\"')
-  add(result, rope(res))
+  add(result, rope($res))
 
 proc flagsToStr[T](flags: set[T]): Rope =
   if flags == {}:

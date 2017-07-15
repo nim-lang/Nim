@@ -52,7 +52,7 @@ proc loadMaxIds*(project: string) =
   if open(f, project.toGid, fmRead):
     var line = newStringOfCap(20)
     if f.readLine(line):
-      var frontEndId = parseInt(line)
+      var frontEndId = parseInt(line.unsafeBorrow)
       if f.readLine(line):
         # var backEndId = parseInt(line)
         gFrontEndId = max(gFrontEndId, frontEndId)

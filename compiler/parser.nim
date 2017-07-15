@@ -122,7 +122,7 @@ proc rawSkipComment(p: var TParser, node: PNode) =
   if p.tok.tokType == tkComment:
     if node != nil:
       if node.comment == nil: node.comment = ""
-      add(node.comment, p.tok.literal)
+      add(system.mstring(node.comment), p.tok.literal)
     else:
       parMessage(p, errInternal, "skipComment")
     getTok(p)
@@ -336,12 +336,12 @@ proc parseSymbol(p: var TParser, mode = smNormal): PNode =
           parMessage(p, errIdentifierExpected, p.tok)
         break
       of tkOpr, tkDot, tkDotDot, tkEquals, tkParLe..tkParDotRi:
-        var accm = ""
+        var accm = tomut""
         while p.tok.tokType in {tkOpr, tkDot, tkDotDot, tkEquals,
                                 tkParLe..tkParDotRi}:
           accm.add(tokToStr(p.tok))
           getTok(p)
-        result.add(newIdentNodeP(p.lex.cache.getIdent(accm), p))
+        result.add(newIdentNodeP(p.lex.cache.getIdent($accm), p))
       of tokKeywordLow..tokKeywordHigh, tkSymbol, tkIntLit..tkCharLit:
         result.add(newIdentNodeP(p.lex.cache.getIdent(tokToStr(p.tok)), p))
         getTok(p)
@@ -474,12 +474,12 @@ proc parseGStrLit(p: var TParser, a: PNode): PNode =
   of tkGStrLit:
     result = newNodeP(nkCallStrLit, p)
     addSon(result, a)
-    addSon(result, newStrNodeP(nkRStrLit, p.tok.literal, p))
+    addSon(result, newStrNodeP(nkRStrLit, $p.tok.literal, p))
     getTok(p)
   of tkGTripleStrLit:
     result = newNodeP(nkCallStrLit, p)
     addSon(result, a)
-    addSon(result, newStrNodeP(nkTripleStrLit, p.tok.literal, p))
+    addSon(result, newStrNodeP(nkTripleStrLit, $p.tok.literal, p))
     getTok(p)
   else:
     result = a
@@ -644,13 +644,13 @@ proc identOrLiteral(p: var TParser, mode: TPrimaryMode): PNode =
     setBaseFlags(result, p.tok.base)
     getTok(p)
   of tkStrLit:
-    result = newStrNodeP(nkStrLit, p.tok.literal, p)
+    result = newStrNodeP(nkStrLit, $p.tok.literal, p)
     getTok(p)
   of tkRStrLit:
-    result = newStrNodeP(nkRStrLit, p.tok.literal, p)
+    result = newStrNodeP(nkRStrLit, $p.tok.literal, p)
     getTok(p)
   of tkTripleStrLit:
-    result = newStrNodeP(nkTripleStrLit, p.tok.literal, p)
+    result = newStrNodeP(nkTripleStrLit, $p.tok.literal, p)
     getTok(p)
   of tkCharLit:
     result = newIntNodeP(nkCharLit, ord(p.tok.literal[0]), p)
@@ -1514,10 +1514,10 @@ proc parseAsm(p: var TParser): PNode =
   if p.tok.tokType == tkCurlyDotLe: addSon(result, parsePragma(p))
   else: addSon(result, ast.emptyNode)
   case p.tok.tokType
-  of tkStrLit: addSon(result, newStrNodeP(nkStrLit, p.tok.literal, p))
-  of tkRStrLit: addSon(result, newStrNodeP(nkRStrLit, p.tok.literal, p))
+  of tkStrLit: addSon(result, newStrNodeP(nkStrLit, $p.tok.literal, p))
+  of tkRStrLit: addSon(result, newStrNodeP(nkRStrLit, $p.tok.literal, p))
   of tkTripleStrLit: addSon(result,
-                            newStrNodeP(nkTripleStrLit, p.tok.literal, p))
+                            newStrNodeP(nkTripleStrLit, $p.tok.literal, p))
   else:
     parMessage(p, errStringLiteralExpected)
     addSon(result, ast.emptyNode)
@@ -1614,7 +1614,7 @@ proc parseRoutine(p: var TParser, kind: TNodeKind): PNode =
 proc newCommentStmt(p: var TParser): PNode =
   #| commentStmt = COMMENT
   result = newNodeP(nkCommentStmt, p)
-  result.comment = p.tok.literal
+  result.comment = $p.tok.literal
   getTok(p)
 
 type
