@@ -1052,7 +1052,7 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
               y = dir / y
             var k = pcFile
 
-            when defined(linux) or defined(macosx) or defined(bsd):
+            when defined(linux) or defined(macosx) or defined(bsd) or defined(genode):
               if x.d_type != DT_UNKNOWN:
                 if x.d_type == DT_DIR: k = pcDir
                 if x.d_type == DT_LNK:

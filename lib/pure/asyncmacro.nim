@@ -28,7 +28,7 @@ template createCb(retFutureSym, iteratorNameSym,
                   name, futureVarCompletions: untyped) =
   var nameIterVar = iteratorNameSym
   #{.push stackTrace: off.}
-  proc cb {.closure,gcsafe.} =
+  proc cb {.closure.} =
     try:
       if not nameIterVar.finished:
         var next = nameIterVar()
@@ -38,7 +38,8 @@ template createCb(retFutureSym, iteratorNameSym,
                     "`nil` Future?"
             raise newException(AssertionError, msg % name)
         else:
-          next.callback = cb
+          {.gcsafe.}:
+            next.callback = (proc() {.closure, gcsafe.})(cb)
     except:
       futureVarCompletions
 
@@ -379,7 +380,10 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
                                   procBody, nnkIteratorDef)
     closureIterator.pragma = newNimNode(nnkPragma, lineInfoFrom=prc.body)
     closureIterator.addPragma(newIdentNode("closure"))
-    closureIterator.addPragma(newIdentNode("gcsafe"))
+
+    # If proc has an explicit gcsafe pragma, we add it to iterator as well.
+    if prc.pragma.findChild(it.kind in {nnkSym, nnkIdent} and $it == "gcsafe") != nil:
+      closureIterator.addPragma(newIdentNode("gcsafe"))
     outerProcBody.add(closureIterator)
 
     # -> createCb(retFuture)
