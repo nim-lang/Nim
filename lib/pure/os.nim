@@ -17,7 +17,7 @@
 include "system/inclrtl"
 
 import
-  strutils, times
+  migrate, strutils, times
 
 when defined(windows):
   import winlean
@@ -304,8 +304,10 @@ proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1".} =
   else:
     result = getLastModificationTime(a) - getLastModificationTime(b) > 0
 
-proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [].} =
+proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [], strBuilder.} =
   ## Returns the `current working directory`:idx:.
+  when defined(nimImmutableStrings):
+    var result0: mstring
   when defined(windows):
     var bufsize = MAX_PATH.int32
     when useWinUnicode:
@@ -318,7 +320,7 @@ proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [].} =
           res = newWideCString("", L)
           bufsize = L
         else:
-          result = res$L
+          result = mstring(res$L)
           break
     else:
       result = newString(bufsize)
@@ -336,8 +338,8 @@ proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [].} =
     var bufsize = 1024 # should be enough
     result = newString(bufsize)
     while true:
-      if getcwd(result, bufsize) != nil:
-        setLen(result, c_strlen(result))
+      if getcwd(result.string, bufsize) != nil:
+        setLen(result, c_strlen(result.string))
         break
       else:
         let err = osLastError()
@@ -1249,7 +1251,7 @@ proc parseCmdLine*(c: string): seq[string] {.
   ## occurs within ``"`` or ``'`` quotes.
   result = @[]
   var i = 0
-  var a = ""
+  var a = mstring""
   while true:
     setLen(a, 0)
     # eat all delimiting whitespace
@@ -1304,7 +1306,7 @@ proc parseCmdLine*(c: string): seq[string] {.
         while c[i] > ' ':
           add(a, c[i])
           inc(i)
-    add(result, a)
+    add(result, $a)
 
 proc copyFileWithPermissions*(source, dest: string,
                               ignorePermissionErrors = true) =
@@ -1395,14 +1397,15 @@ proc expandSymlink*(symlinkPath: string): string =
   when defined(windows):
     result = symlinkPath
   else:
-    result = newString(256)
-    var len = readlink(symlinkPath, result, 256)
-    if len < 0:
-      raiseOSError(osLastError())
-    if len > 256:
-      result = newString(len+1)
-      len = readlink(symlinkPath, result, len)
-    setLen(result, len)
+    strBody:
+      result = newString(256)
+      var len = readlink(symlinkPath, result.string, 256)
+      if len < 0:
+        raiseOSError(osLastError())
+      if len > 256:
+        result = newString(len+1)
+        len = readlink(symlinkPath, result.string, len)
+      setLen(result, len)
 
 when defined(nimdoc):
   # Common forward declaration docstring block for parameter retrieval procs.
@@ -1523,7 +1526,7 @@ when defined(freebsd) or defined(dragonfly):
   else:
     const KERN_PROC_PATHNAME = 9
 
-  proc getApplFreebsd(): string =
+  proc getApplFreebsd(): string {.strBuilder.} =
     var pathLength = csize(MAX_PATH)
     result = newString(pathLength)
     var req = [CTL_KERN.cint, KERN_PROC.cint, KERN_PROC_PATHNAME.cint, -1.cint]
@@ -1542,12 +1545,12 @@ when defined(freebsd) or defined(dragonfly):
         break
 
 when defined(linux) or defined(solaris) or defined(bsd) or defined(aix):
-  proc getApplAux(procPath: string): string =
+  proc getApplAux(procPath: string): string {.strBuilder.} =
     result = newString(256)
-    var len = readlink(procPath, result, 256)
+    var len = readlink(procPath, result.string, 256)
     if len > 256:
       result = newString(len+1)
-      len = readlink(procPath, result, len)
+      len = readlink(procPath, result.string, len)
     setLen(result, len)
 
 when not (defined(windows) or defined(macosx)):
@@ -1616,7 +1619,7 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
   elif defined(macosx):
     var size: cuint32
     getExecPath1(nil, size)
-    result = newString(int(size))
+    result = newString(int(size)).string
     if getExecPath2(result, size):
       result = "" # error!
     if result.len > 0:

@@ -35,7 +35,7 @@ proc strAlgoBody(n, res: NimNode; firstAsgn: var bool): NimNode =
 
 macro strBuilder*(n: untyped): untyped =
   when defined(nimImmutableStrings):
-    let res = ident"result0" #genSym(nskVar, "result0")
+    let res = ident"result0"
     result = copyNimNode(n)
     for i in 0..<n.len:
       if i == 6:
@@ -48,4 +48,18 @@ macro strBuilder*(n: untyped): untyped =
         result.add n[i]
   else:
     result = n
-  #echo repr result
+  when defined(debugStrBuilder):
+    echo repr result
+
+macro strBody*(n: untyped): untyped =
+  when defined(nimImmutableStrings):
+    var firstAsgn = true
+    let res = ident"result0"
+    var b = strAlgoBody(n, res, firstAsgn)
+    expectKind b, nnkStmtList
+    b.add newAssignment(ident"result", newCall("$", res))
+    result = b
+  else:
+    result = n
+  when defined(debugStrBuilder):
+    echo repr result

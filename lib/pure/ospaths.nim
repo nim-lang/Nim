@@ -12,7 +12,7 @@
 
 when not declared(os):
   {.pragma: rtl.}
-  import strutils
+  import strutils, migrate
 
 when defined(nimscript) or (defined(nimdoc) and not declared(os)):
   {.pragma: rtl.}
@@ -459,45 +459,48 @@ when not declared(getEnv) or defined(nimscript):
     when defined(unix):
       result = path
     else:
-      var start: int
-      if path[0] == '/':
-        # an absolute path
-        when doslikeFileSystem:
-          if drive != "":
-            result = drive & ":" & DirSep
+      when defined(nimImmutableStrings):
+        var result0: mstring
+      strBody:
+        var start: int
+        if path[0] == '/':
+          # an absolute path
+          when doslikeFileSystem:
+            if drive != "":
+              result = drive & ":" & DirSep
+            else:
+              result = mstring($DirSep)
+          elif defined(macos):
+            result = "" # must not start with ':'
           else:
             result = $DirSep
-        elif defined(macos):
-          result = "" # must not start with ':'
+          start = 1
+        elif path[0] == '.' and path[1] == '/':
+          # current directory
+          result = mstring($CurDir)
+          start = 2
         else:
-          result = $DirSep
-        start = 1
-      elif path[0] == '.' and path[1] == '/':
-        # current directory
-        result = $CurDir
-        start = 2
-      else:
-        result = ""
-        start = 0
+          result = ""
+          start = 0
 
-      var i = start
-      while i < len(path): # ../../../ --> ::::
-        if path[i] == '.' and path[i+1] == '.' and path[i+2] == '/':
-          # parent directory
-          when defined(macos):
-            if result[high(result)] == ':':
-              add result, ':'
+        var i = start
+        while i < len(path): # ../../../ --> ::::
+          if path[i] == '.' and path[i+1] == '.' and path[i+2] == '/':
+            # parent directory
+            when defined(macos):
+              if result[high(result)] == ':':
+                add result, ':'
+              else:
+                add result, ParDir
             else:
-              add result, ParDir
+              add result, ParDir & DirSep
+            inc(i, 3)
+          elif path[i] == '/':
+            add result, DirSep
+            inc(i)
           else:
-            add result, ParDir & DirSep
-          inc(i, 3)
-        elif path[i] == '/':
-          add result, DirSep
-          inc(i)
-        else:
-          add result, path[i]
-          inc(i)
+            add result, path[i]
+            inc(i)
 
 when defined(nimdoc) and not declared(os):
   proc getEnv(x: string): string = discard
@@ -604,17 +607,17 @@ when declared(getEnv) or defined(nimscript):
             while followSymlinks: # doubles as if here
               if x.checkSymlink:
                 var r = newString(256)
-                var len = readlink(x, r, 256)
+                var len = readlink(x, r.string, 256)
                 if len < 0:
                   raiseOSError(osLastError())
                 if len > 256:
                   r = newString(len+1)
-                  len = readlink(x, r, len)
+                  len = readlink(x, r.string, len)
                 setLen(r, len)
-                if isAbsolute(r):
-                  x = r
+                if isAbsolute(r.string):
+                  x = $r
                 else:
-                  x = parentDir(x) / r
+                  x = parentDir(x) / r.string
               else:
                 break
           return x
