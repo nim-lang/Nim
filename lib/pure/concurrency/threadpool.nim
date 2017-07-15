@@ -526,10 +526,12 @@ proc nimSpawn4(fn: WorkerProc; data: pointer; id: ThreadId) {.compilerProc.} =
     if selectWorker(addr(distinguishedData[id]), fn, data): break
     await(distinguishedData[id].readyForTask)
 
+template spawnInAllThreads(e: untyped) =
+  ## Spawn `e` on all of the threadpool threads.
+  for i in 0 .. <currentPoolSize:
+    pinnedSpawn(i, e)
 
-proc sync*() =
-  ## a simple barrier to wait for all spawn'ed tasks. If you need more elaborate
-  ## waiting, you have to use an explicit barrier.
+proc syncAux() {.inline.} =
   var toRelease = 0
   while true:
     var allReady = true
@@ -542,5 +544,13 @@ proc sync*() =
 
   for i in 0 ..< toRelease:
     signal(gSomeReady)
+
+proc sync*(cleanup: bool = true) =
+  ## A simple barrier to wait for all spawn'ed tasks. Calls `GC_fullCollect()`
+  ## on all threads if `cleanup` is `true`. If you need more elaborate
+  ## waiting, you have to use an explicit barrier.
+  syncAux()
+  if cleanup:
+    spawnInAllThreads GC_fullCollect()
 
 setup()
