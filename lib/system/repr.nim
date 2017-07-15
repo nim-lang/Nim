@@ -38,7 +38,7 @@ proc `$`(x: uint64): string =
     for t in 0 .. < half: swap(buf[t], buf[i-t-1])
     result = $buf
 
-proc reprStrAux(result: var string, s: cstring; len: int) =
+proc reprStrAux(result: var mstring, s: cstring; len: int) =
   if cast[pointer](s) == nil:
     add result, "nil"
     return
@@ -55,16 +55,16 @@ proc reprStrAux(result: var string, s: cstring; len: int) =
       result.add(c)
   add result, "\""
 
-proc reprStr(s: string): string {.compilerRtl.} =
-  result = ""
+proc reprStr(s: string): mstring {.compilerRtl.} =
+  result = mstring""
   reprStrAux(result, s, s.len)
 
 proc reprBool(x: bool): string {.compilerRtl.} =
   if x: result = "true"
   else: result = "false"
 
-proc reprChar(x: char): string {.compilerRtl.} =
-  result = "\'"
+proc reprChar(x: char): mstring {.compilerRtl.} =
+  result = mstring"\'"
   case x
   of '"': add result, "\\\""
   of '\\': add result, "\\\\"
@@ -91,7 +91,7 @@ proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
 type
   PByteArray = ptr array[0xffff, int8]
 
-proc addSetElem(result: var string, elem: int, typ: PNimType) {.benign.} =
+proc addSetElem(result: var mstring, elem: int, typ: PNimType) {.benign.} =
   case typ.kind
   of tyEnum: add result, reprEnum(elem, typ)
   of tyBool: add result, reprBool(bool(elem))
@@ -101,7 +101,7 @@ proc addSetElem(result: var string, elem: int, typ: PNimType) {.benign.} =
   else: # data corrupt --> inform the user
     add result, " (invalid data!)"
 
-proc reprSetAux(result: var string, p: pointer, typ: PNimType) =
+proc reprSetAux(result: var mstring, p: pointer, typ: PNimType) =
   # "typ.slots.len" field is for sets the "first" field
   var elemCounter = 0  # we need this flag for adding the comma at
                        # the right places
@@ -127,8 +127,8 @@ proc reprSetAux(result: var string, p: pointer, typ: PNimType) =
         inc(elemCounter)
   add result, "}"
 
-proc reprSet(p: pointer, typ: PNimType): string {.compilerRtl.} =
-  result = ""
+proc reprSet(p: pointer, typ: PNimType): mstring {.compilerRtl.} =
+  result = mstring""
   reprSetAux(result, p, typ)
 
 type
@@ -156,14 +156,14 @@ when not defined(useNimRtl):
     when hasThreadSupport and hasSharedHeap and declared(heapLock):
       ReleaseSys(HeapLock)
 
-  proc reprBreak(result: var string, cl: ReprClosure) =
+  proc reprBreak(result: var mstring, cl: ReprClosure) =
     add result, "\n"
     for i in 0..cl.indent-1: add result, ' '
 
-  proc reprAux(result: var string, p: pointer, typ: PNimType,
+  proc reprAux(result: var mstring, p: pointer, typ: PNimType,
                cl: var ReprClosure) {.benign.}
 
-  proc reprArray(result: var string, p: pointer, typ: PNimType,
+  proc reprArray(result: var mstring, p: pointer, typ: PNimType,
                  cl: var ReprClosure) =
     add result, "["
     var bs = typ.base.size
@@ -172,7 +172,7 @@ when not defined(useNimRtl):
       reprAux(result, cast[pointer](cast[ByteAddress](p) + i*bs), typ.base, cl)
     add result, "]"
 
-  proc reprSequence(result: var string, p: pointer, typ: PNimType,
+  proc reprSequence(result: var mstring, p: pointer, typ: PNimType,
                     cl: var ReprClosure) =
     if p == nil:
       add result, "nil"
@@ -185,7 +185,7 @@ when not defined(useNimRtl):
               typ.base, cl)
     add result, "]"
 
-  proc reprRecordAux(result: var string, p: pointer, n: ptr TNimNode,
+  proc reprRecordAux(result: var mstring, p: pointer, n: ptr TNimNode,
                      cl: var ReprClosure) {.benign.} =
     case n.kind
     of nkNone: sysAssert(false, "reprRecordAux")
@@ -202,13 +202,13 @@ when not defined(useNimRtl):
       reprAux(result, cast[pointer](cast[ByteAddress](p) + n.offset), n.typ, cl)
       if m != nil: reprRecordAux(result, p, m, cl)
 
-  proc reprRecord(result: var string, p: pointer, typ: PNimType,
+  proc reprRecord(result: var mstring, p: pointer, typ: PNimType,
                   cl: var ReprClosure) =
     add result, "["
     var curTyp = typ
     var first = true
     while curTyp != nil:
-      var part = ""
+      var part = mstring""
       reprRecordAux(part, p, curTyp.node, cl)
       if part.len > 0:
         if not first:
@@ -218,7 +218,7 @@ when not defined(useNimRtl):
       curTyp = curTyp.base
     add result, "]"
 
-  proc reprRef(result: var string, p: pointer, typ: PNimType,
+  proc reprRef(result: var mstring, p: pointer, typ: PNimType,
                cl: var ReprClosure) =
     # we know that p is not nil here:
     when declared(CellSet):
@@ -241,7 +241,7 @@ when not defined(useNimRtl):
     of 8: return int(cast[ptr uint64](p)[])
     else: discard
 
-  proc reprAux(result: var string, p: pointer, typ: PNimType,
+  proc reprAux(result: var mstring, p: pointer, typ: PNimType,
                cl: var ReprClosure) =
     if cl.recdepth == 0:
       add result, "..."
@@ -297,24 +297,26 @@ proc reprOpenArray(p: pointer, length: int, elemtyp: PNimType): string {.
   var
     cl: ReprClosure
   initReprClosure(cl)
-  result = "["
+  var r = mstring"["
   var bs = elemtyp.size
   for i in 0..length - 1:
-    if i > 0: add result, ", "
-    reprAux(result, cast[pointer](cast[ByteAddress](p) + i*bs), elemtyp, cl)
-  add result, "]"
+    if i > 0: add r, ", "
+    reprAux(r, cast[pointer](cast[ByteAddress](p) + i*bs), elemtyp, cl)
+  add r, "]"
   deinitReprClosure(cl)
+  returnString(r)
 
 when not defined(useNimRtl):
   proc reprAny(p: pointer, typ: PNimType): string =
     var
       cl: ReprClosure
     initReprClosure(cl)
-    result = ""
+    var r = mstring""
     if typ.kind in {tyObject, tyTuple, tyArray, tyArrayConstr, tySet}:
-      reprAux(result, p, typ, cl)
+      reprAux(r, p, typ, cl)
     else:
       var p = p
-      reprAux(result, addr(p), typ, cl)
-    add result, "\n"
+      reprAux(r, addr(p), typ, cl)
+    add r, "\n"
     deinitReprClosure(cl)
+    returnString(r)

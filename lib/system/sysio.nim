@@ -126,36 +126,36 @@ proc readChar(f: File): char =
 proc flushFile*(f: File) = discard c_fflush(f)
 proc getFileHandle*(f: File): FileHandle = c_fileno(f)
 
-proc readLine(f: File, line: var TaintedString): bool =
+proc readLine(f: File, line: var mstring): bool =
   var pos = 0
   var sp: cint = 80
   # Use the currently reserved space for a first try
-  if line.string.isNil:
-    line = TaintedString(newStringOfCap(80))
+  if line.isNil:
+    line = newStringOfCap(80)
   else:
     when not defined(nimscript):
-      sp = cint(cast[PGenericSeq](line.string).space)
-    line.string.setLen(sp)
+      sp = cint(cast[PGenericSeq](line).space)
+    line.setLen(sp)
   while true:
     # memset to \L so that we can tell how far fgets wrote, even on EOF, where
     # fgets doesn't append an \L
-    c_memset(addr line.string[pos], '\L'.ord, sp)
-    var fgetsSuccess = c_fgets(addr line.string[pos], sp, f) != nil
+    c_memset(addr line[pos], '\L'.ord, sp)
+    var fgetsSuccess = c_fgets(addr line[pos], sp, f) != nil
     if not fgetsSuccess: checkErr(f)
-    let m = c_memchr(addr line.string[pos], '\L'.ord, sp)
+    let m = c_memchr(addr line[pos], '\L'.ord, sp)
     if m != nil:
       # \l found: Could be our own or the one by fgets, in any case, we're done
-      var last = cast[ByteAddress](m) - cast[ByteAddress](addr line.string[0])
-      if last > 0 and line.string[last-1] == '\c':
-        line.string.setLen(last-1)
+      var last = cast[ByteAddress](m) - cast[ByteAddress](addr line[0])
+      if last > 0 and line[last-1] == '\c':
+        line.setLen(last-1)
         return fgetsSuccess
         # We have to distinguish between two possible cases:
         # \0\l\0 => line ending in a null character.
         # \0\l\l => last line without newline, null was put there by fgets.
-      elif last > 0 and line.string[last-1] == '\0':
-        if last < pos + sp - 1 and line.string[last+1] != '\0':
+      elif last > 0 and line[last-1] == '\0':
+        if last < pos + sp - 1 and line[last+1] != '\0':
           dec last
-      line.string.setLen(last)
+      line.setLen(last)
       return fgetsSuccess
     else:
       # fgets will have inserted a null byte at the end of the string.
@@ -163,11 +163,11 @@ proc readLine(f: File, line: var TaintedString): bool =
     # No \l found: Increase buffer and read more
     inc pos, sp
     sp = 128 # read in 128 bytes at a time
-    line.string.setLen(pos+sp)
+    line.setLen(pos+sp)
 
 proc readLine(f: File): TaintedString =
   result = TaintedString(newStringOfCap(80))
-  if not readLine(f, result): raiseEOF()
+  if not readLine(f, mstring result): raiseEOF()
 
 proc write(f: File, i: int) =
   when sizeof(int) == 8:
@@ -193,19 +193,26 @@ proc write(f: File, c: char) = discard c_putc(ord(c), f)
 proc write(f: File, a: varargs[string, `$`]) =
   for x in items(a): write(f, x)
 
+template returnString(r) =
+  when defined(nimImmutableStrings):
+    result = $r
+  else:
+    shallowCopy(result, r)
+
 proc readAllBuffer(file: File): string =
   # This proc is for File we want to read but don't know how many
   # bytes we need to read before the buffer is empty.
-  result = ""
+  var r = mstring""
   var buffer = newString(BufSize)
   while true:
     var bytesRead = readBuffer(file, addr(buffer[0]), BufSize)
     if bytesRead == BufSize:
-      result.add(buffer)
+      r.add(buffer)
     else:
       buffer.setLen(bytesRead)
-      result.add(buffer)
+      r.add(buffer)
       break
+  returnString(r)
 
 proc rawFileSize(file: File): int =
   # this does not raise an error opposed to `getFileSize`
@@ -223,15 +230,16 @@ proc endOfFile(f: File): bool =
 proc readAllFile(file: File, len: int): string =
   # We acquire the filesize beforehand and hope it doesn't change.
   # Speeds things up.
-  result = newString(len)
-  let bytes = readBuffer(file, addr(result[0]), len)
+  var r = newString(len)
+  let bytes = readBuffer(file, addr(r[0]), len)
   if endOfFile(file):
     if bytes < len:
-      result.setLen(bytes)
+      r.setLen(bytes)
   else:
     # We read all the bytes but did not reach the EOF
     # Try to read it as a buffer
-    result.add(readAllBuffer(file))
+    r.add(readAllBuffer(file))
+  returnString(r)
 
 proc readAllFile(file: File): string =
   var len = rawFileSize(file)

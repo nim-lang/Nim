@@ -123,7 +123,7 @@ proc newWideCString*(s: string): WideCString =
   result = newWideCString(s, s.len)
 
 proc `$`*(w: WideCString, estimate: int, replacement: int = 0xFFFD): string =
-  result = newStringOfCap(estimate + estimate shr 2)
+  var r = newStringOfCap(estimate + estimate shr 2)
 
   var i = 0
   while w[i].int16 != 0'i16:
@@ -145,24 +145,25 @@ proc `$`*(w: WideCString, estimate: int, replacement: int = 0xFFFD): string =
       ch = replacement
 
     if ch < 0x80:
-      result.add chr(ch)
+      r.add chr(ch)
     elif ch < 0x800:
-      result.add chr((ch shr 6) or 0xc0)
-      result.add chr((ch and 0x3f) or 0x80)
+      r.add chr((ch shr 6) or 0xc0)
+      r.add chr((ch and 0x3f) or 0x80)
     elif ch < 0x10000:
-      result.add chr((ch shr 12) or 0xe0)
-      result.add chr(((ch shr 6) and 0x3f) or 0x80)
-      result.add chr((ch and 0x3f) or 0x80)
+      r.add chr((ch shr 12) or 0xe0)
+      r.add chr(((ch shr 6) and 0x3f) or 0x80)
+      r.add chr((ch and 0x3f) or 0x80)
     elif ch <= 0x10FFFF:
-      result.add chr((ch shr 18) or 0xf0)
-      result.add chr(((ch shr 12) and 0x3f) or 0x80)
-      result.add chr(((ch shr 6) and 0x3f) or 0x80)
-      result.add chr((ch and 0x3f) or 0x80)
+      r.add chr((ch shr 18) or 0xf0)
+      r.add chr(((ch shr 12) and 0x3f) or 0x80)
+      r.add chr(((ch shr 6) and 0x3f) or 0x80)
+      r.add chr((ch and 0x3f) or 0x80)
     else:
       # replacement char(in case user give very large number):
-      result.add chr(0xFFFD shr 12 or 0b1110_0000)
-      result.add chr(0xFFFD shr 6 and ones(6) or 0b10_0000_00)
-      result.add chr(0xFFFD and ones(6) or 0b10_0000_00)
+      r.add chr(0xFFFD shr 12 or 0b1110_0000)
+      r.add chr(0xFFFD shr 6 and ones(6) or 0b10_0000_00)
+      r.add chr(0xFFFD and ones(6) or 0b10_0000_00)
+  returnString(r)
 
 proc `$`*(s: WideCString): string =
   result = s $ 80

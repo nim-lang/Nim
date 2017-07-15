@@ -1,7 +1,7 @@
 /*
 
             Nim's Runtime Library
-        (c) Copyright 2015 Andreas Rumpf
+        (c) Copyright 2017 Andreas Rumpf
 
     See the file "copying.txt", included in this
     distribution, for details about the copyright.
@@ -373,11 +373,13 @@ static N_INLINE(NI32, float32ToInt32)(float x) {
 
 #define float64ToInt64(x) ((NI64) (x))
 
+#define NIM_STRLIT_FLAG ((NU)(1) << ((NIM_INTBITS) - 2)) /* This has to be the same as system.strlitFlag! */
+
 #define STRING_LITERAL(name, str, length) \
   static const struct {                   \
     TGenericSeq Sup;                      \
     NIM_CHAR data[(length) + 1];          \
-  } name = {{length, length}, str}
+  } name = {{length, (NI) ((NU)length | NIM_STRLIT_FLAG)}, str}
 
 typedef struct TStringDesc* string;
 

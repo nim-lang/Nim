@@ -88,6 +88,11 @@ proc cstrToNimstr(str: cstring): NimString {.compilerRtl.} =
   if str == nil: NimString(nil)
   else: toNimStr(str, str.len)
 
+when defined(nimImmutableStrings):
+  template wasMoved(x: NimString): bool = (x.reserved and seqShallowFlag) != 0
+else:
+  template wasMoved(x: NimString): bool = false
+
 proc copyString(src: NimString): NimString {.compilerRtl.} =
   if src != nil:
     if (src.reserved and seqShallowFlag) != 0:
@@ -96,6 +101,10 @@ proc copyString(src: NimString): NimString {.compilerRtl.} =
       result = rawNewStringNoInit(src.len)
       result.len = src.len
       copyMem(addr(result.data), addr(src.data), src.len + 1)
+      sysAssert((seqShallowFlag and result.reserved) == 0, "copyString")
+      when defined(nimImmutableStrings):
+        if (src.reserved and strlitFlag) != 0:
+          result.reserved = (result.reserved and not strlitFlag) or seqShallowFlag
 
 proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
   if src != nil:
@@ -109,6 +118,10 @@ proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
       result = rawNewStringNoInit(src.len)
     result.len = src.len
     copyMem(addr(result.data), addr(src.data), src.len + 1)
+    sysAssert((seqShallowFlag and result.reserved) == 0, "copyStringRC1")
+    when defined(nimImmutableStrings):
+      if (src.reserved and strlitFlag) != 0:
+        result.reserved = (result.reserved and not strlitFlag) or seqShallowFlag
 
 proc copyDeepString(src: NimString): NimString {.inline.} =
   if src != nil:
@@ -135,7 +148,9 @@ proc addChar(s: NimString, c: char): NimString =
   if result.len >= result.space:
     result.reserved = resize(result.space)
     result = cast[NimString](growObj(result,
-      sizeof(TGenericSeq) + result.reserved + 1))
+      sizeof(TGenericSeq) + result.space + 1))
+  elif wasMoved(s):
+    result = copyString(s)
   result.data[result.len] = c
   result.data[result.len+1] = '\0'
   inc(result.len)
@@ -172,7 +187,7 @@ proc addChar(s: NimString, c: char): NimString =
 #   s = rawNewString(0);
 
 proc resizeString(dest: NimString, addlen: int): NimString {.compilerRtl.} =
-  if dest.len + addlen <= dest.space:
+  if dest.len + addlen <= dest.space and not wasMoved(dest):
     result = dest
   else: # slow path:
     var sp = max(resize(dest.space), dest.len + addlen)
@@ -193,7 +208,7 @@ proc appendChar(dest: NimString, c: char) {.compilerproc, inline.} =
 
 proc setLengthStr(s: NimString, newLen: int): NimString {.compilerRtl.} =
   var n = max(newLen, 0)
-  if n <= s.space:
+  if n <= s.space and not wasMoved(s):
     result = s
   else:
     result = resizeString(s, n)
@@ -263,7 +278,7 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
   result.len = newLen
 
 # --------------- other string routines ----------------------------------
-proc add*(result: var string; x: int64) =
+proc add*(result: var mstring; x: int64) =
   let base = result.len
   setLen(result, base + sizeof(x)*4)
   var i = 0
@@ -283,10 +298,9 @@ proc add*(result: var string; x: int64) =
     swap(result[base+j], result[base+i-j-1])
 
 proc nimIntToStr(x: int): string {.compilerRtl.} =
-  result = newStringOfCap(sizeof(x)*4)
-  result.add x
+  wrapMutstringAdd newStringOfCap(sizeof(x)*4), x
 
-proc add*(result: var string; x: float) =
+proc add*(result: var mstring; x: float) =
   var buf: array[0..64, char]
   var n: int = c_sprintf(buf, "%.16g", x)
   var hasDot = false
@@ -313,8 +327,7 @@ proc add*(result: var string; x: float) =
     result.add buf
 
 proc nimFloatToStr(f: float): string {.compilerproc.} =
-  result = newStringOfCap(8)
-  result.add f
+  wrapMutstringAdd newStringOfCap(8), f
 
 proc c_strtod(buf: cstring, endptr: ptr cstring): float64 {.
   importc: "strtod", header: "<stdlib.h>", noSideEffect.}
@@ -478,15 +491,19 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   number = c_strtod(t, nil)
 
 proc nimInt64ToStr(x: int64): string {.compilerRtl.} =
-  result = newStringOfCap(sizeof(x)*4)
-  result.add x
+  wrapMutstringAdd newStringOfCap(sizeof(x)*4), x
 
 proc nimBoolToStr(x: bool): string {.compilerRtl.} =
   return if x: "true" else: "false"
 
 proc nimCharToStr(x: char): string {.compilerRtl.} =
-  result = newString(1)
-  result[0] = x
+  when defined(nimImmutableStrings):
+    var r = newString(1)
+    r[0] = x
+    result = $r
+  else:
+    result = newString(1)
+    result[0] = x
 
 proc binaryStrSearch(x: openArray[string], y: string): int {.compilerproc.} =
   var

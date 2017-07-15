@@ -1204,7 +1204,6 @@ proc semDeref(c: PContext, n: PNode): PNode =
   case t.kind
   of tyRef, tyPtr: n.typ = t.lastSon
   else: result = nil
-  #GlobalError(n.sons[0].info, errCircumNeedsPointer)
 
 proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
   ## returns nil if not a built-in subscript operator; also called for the
@@ -1219,11 +1218,12 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # make sure we don't evaluate generic macros/templates
   n.sons[0] = semExprWithType(c, n.sons[0],
                               {efNoProcvarCheck, efNoEvaluateGeneric})
-  let arr = skipTypes(n.sons[0].typ, {tyGenericInst,
+  var arr = skipTypes(n.sons[0].typ, {tyGenericInst,
                                       tyVar, tyPtr, tyRef, tyAlias})
+  if arr.kind == tyDistinct and arr.sym.name.s == "mutstring":
+    arr = arr.lastSon
   case arr.kind
-  of tyArray, tyOpenArray, tyVarargs, tySequence, tyString,
-     tyCString:
+  of tyArray, tyOpenArray, tyVarargs, tySequence, tyString, tyCString:
     if n.len != 2: return nil
     n.sons[0] = makeDeref(n.sons[0])
     c.p.bracketExpr = n.sons[0]

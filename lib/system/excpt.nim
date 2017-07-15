@@ -27,11 +27,14 @@ else:
   proc writeToStdErr(msg: cstring) =
     discard MessageBoxA(0, msg, nil, 0)
 
-proc showErrorMessage(data: cstring) {.gcsafe.} =
+template showErrorMessage(data) =
   if errorMessageWriter != nil:
     errorMessageWriter($data)
   else:
-    writeToStdErr(data)
+    when defined(nimImmutableStrings):
+      writeToStdErr($data)
+    else:
+      writeToStdErr(data)
 
 proc chckIndx(i, a, b: int): int {.inline, compilerproc, benign.}
 proc chckRange(i, a, b: int): int {.inline, compilerproc, benign.}
@@ -155,7 +158,7 @@ when not hasThreadSupport:
   var
     tempFrames: array[0..127, PFrame] # should not be alloc'd on stack
 
-proc auxWriteStackTrace(f: PFrame, s: var string) =
+proc auxWriteStackTrace(f: PFrame, s: var mstring) =
   when hasThreadSupport:
     var
       tempFrames: array[0..127, PFrame] # but better than a threadvar
@@ -209,7 +212,7 @@ proc auxWriteStackTrace(f: PFrame, s: var string) =
 proc stackTraceAvailable*(): bool
 
 when hasSomeStackTrace:
-  proc rawWriteStackTrace(s: var string) =
+  proc rawWriteStackTrace(s: var mstring) =
     when NimStackTrace:
       if framePtr == nil:
         add(s, "No stack traceback available\n")
@@ -289,7 +292,7 @@ proc raiseExceptionAux(e: ref Exception) =
         add(buf, $e.name)
         add(buf, "]\n")
         unhandled(buf):
-          showErrorMessage(buf)
+          showErrorMessage($buf)
           quitOrDebug()
       else:
         # ugly, but avoids heap allocations :-)
@@ -307,14 +310,14 @@ proc raiseExceptionAux(e: ref Exception) =
         xadd(buf, e.name, e.name.len)
         add(buf, "]\n")
         unhandled(buf):
-          showErrorMessage(buf)
+          showErrorMessage($buf)
           quitOrDebug()
 
 proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
   if e.name.isNil: e.name = ename
   when hasSomeStackTrace:
     if e.trace.isNil:
-      e.trace = ""
+      e.trace = mstring""
       rawWriteStackTrace(e.trace)
     elif framePtr != nil:
       e.trace.add "[[reraised from:\n"
@@ -330,22 +333,39 @@ proc reraiseException() {.compilerRtl.} =
 
 proc writeStackTrace() =
   when hasSomeStackTrace:
-    var s = ""
+    var s = mstring""
     rawWriteStackTrace(s)
-    showErrorMessage(s)
+    showErrorMessage($s)
   else:
     showErrorMessage("No stack traceback available\n")
 
+template wrapMutstring(initialValue, f) =
+  when defined(nimImmutableStrings):
+    var r = mstring(initialValue)
+    f(r)
+    result = $r
+  else:
+    result = initialValue
+    f(result)
+
+template wrapMutstringAdd(initialValue, x) =
+  when defined(nimImmutableStrings):
+    var r = initialValue
+    r.add x
+    result = $r
+  else:
+    result = initialValue
+    result.add x
+
 proc getStackTrace(): string =
   when hasSomeStackTrace:
-    result = ""
-    rawWriteStackTrace(result)
+    wrapMutstring("", rawWriteStackTrace)
   else:
     result = "No stack traceback available\n"
 
 proc getStackTrace(e: ref Exception): string =
   if not isNil(e) and not isNil(e.trace):
-    result = e.trace
+    result = $e.trace
   else:
     result = ""
 

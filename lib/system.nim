@@ -195,6 +195,14 @@ proc `or`*(x, y: bool): bool {.magic: "Or", noSideEffect.}
 proc `xor`*(x, y: bool): bool {.magic: "Xor", noSideEffect.}
   ## Boolean `exclusive or`; returns true iff ``x != y``.
 
+type
+  mutstring* = distinct string  ## A mutable string. Often called `StringBuilder`:idx:
+                                ## in other languages.
+when defined(nimImmutableStrings):
+  type mstring = mutstring
+else:
+  type mstring = string
+
 proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
   ## creates a new object of type ``T`` and returns a safe (traced)
   ## reference to it in ``a``.
@@ -397,7 +405,7 @@ when not defined(JS):
 
 when not defined(JS) and not defined(nimscript):
   template space(s: PGenericSeq): int {.dirty.} =
-    s.reserved and not seqShallowFlag
+    s.reserved and not (seqShallowFlag or strlitFlag)
 
   include "system/hti"
 
@@ -441,7 +449,7 @@ type
     msg* {.exportc: "message".}: string ## the exception's message. Not
                                         ## providing an exception message
                                         ## is bad style.
-    trace: string
+    trace: mstring
     up: ref Exception # used for stacking exceptions. Not exported!
 
   SystemError* = object of Exception ## \
@@ -705,6 +713,7 @@ proc newSeqOfCap*[T](cap: Natural): seq[T] {.
 proc len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.
   magic: "LengthOpenArray", noSideEffect.}
 proc len*(x: string): int {.magic: "LengthStr", noSideEffect.}
+proc len*(x: mutstring): int {.magic: "LengthStr", noSideEffect.}
 proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.}
 proc len*[I, T](x: array[I, T]): int {.magic: "LengthArray", noSideEffect.}
 proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
@@ -1211,7 +1220,7 @@ proc setLen*[T](s: var seq[T], newlen: Natural) {.
   ## ``s`` will be truncated. `s` cannot be nil! To initialize a sequence with
   ## a size, use ``newSeq`` instead.
 
-proc setLen*(s: var string, newlen: Natural) {.
+proc setLen*(s: var mstring, newlen: Natural) {.
   magic: "SetLengthStr", noSideEffect.}
   ## sets the length of `s` to `newlen`.
   ## If the current length is greater than the new length,
@@ -1223,7 +1232,7 @@ proc setLen*(s: var string, newlen: Natural) {.
   ##  myS.setLen(3)
   ##  echo myS, " is fantastic!!"
 
-proc newString*(len: Natural): string {.
+proc newString*(len: Natural): mstring {.
   magic: "NewString", importc: "mnewString", noSideEffect.}
   ## returns a new string of length ``len`` but with uninitialized
   ## content. One needs to fill the string character after character
@@ -1231,7 +1240,7 @@ proc newString*(len: Natural): string {.
   ## optimization purposes; the same effect can be achieved with the
   ## ``&`` operator or with ``add``.
 
-proc newStringOfCap*(cap: Natural): string {.
+proc newStringOfCap*(cap: Natural): mstring {.
   magic: "NewStringOfCap", importc: "rawNewString", noSideEffect.}
   ## returns a new string of length ``0`` but with capacity `cap`.This
   ## procedure exists only for optimization purposes; the same effect can
@@ -1265,22 +1274,25 @@ proc `&` * (x: char, y: string): string {.
 # implementation note: These must all have the same magic value "ConStrStr" so
 # that the merge optimization works properly.
 
-proc add*(x: var string, y: char) {.magic: "AppendStrCh", noSideEffect.}
+proc add*(x: var mstring, y: char) {.magic: "AppendStrCh", noSideEffect.}
   ## Appends `y` to `x` in place
   ##
   ## .. code-block:: Nim
-  ##   var tmp = ""
+  ##   var tmp = mutstring""
   ##   tmp.add('a')
   ##   tmp.add('b')
-  ##   assert(tmp == "ab")
-proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
+  ##   assert($tmp == "ab")
+proc add*(x: var mstring, y: string) {.magic: "AppendStrStr", noSideEffect.}
   ## Concatenates `x` and `y` in place
   ##
   ## .. code-block:: Nim
-  ##   var tmp = ""
+  ##   var tmp = mutstring""
   ##   tmp.add("ab")
   ##   tmp.add("cd")
-  ##   assert(tmp == "abcd")
+  ##   assert($tmp == "abcd")
+
+when defined(nimImmutableStrings):
+  proc add*(x: var mstring, y: mstring) {.magic: "AppendStrStr", noSideEffect.}
 
 type
   Endianness* = enum ## is a type describing the endianness of a processor.
@@ -1315,6 +1327,9 @@ const
     ## "amd64", "mips", "mipsel", "arm", "arm64".
 
   seqShallowFlag = low(int)
+  strlitFlag = 1 shl (sizeof(int)*8 - 2) # later versions of the codegen \
+               # emit this flag
+               # for string literals, it allows for some optimizations.
 
 {.push profiler: off.}
 when defined(nimKnowsNimvm):
@@ -2036,6 +2051,13 @@ proc min*[T](x, y: T): T =
 
 proc max*[T](x, y: T): T =
   if y <= x: x else: y
+
+when defined(nimImmutableStrings):
+  proc `$`*(x: var mutstring): string =
+    when not defined(JS) and not defined(nimscript):
+      var s = cast[PGenericSeq](x)
+      s.reserved = s.reserved or seqShallowFlag
+    shallowCopy(result, string x)
 {.pop.}
 
 proc clamp*[T](x, a, b: T): T =
@@ -2205,6 +2227,7 @@ iterator mpairs*(a: var cstring): tuple[key: int, val: var char] {.inline.} =
 proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*[T](x: ref T): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil".}
+proc isNil*(x: mutstring): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*[T](x: ptr T): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: pointer): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: cstring): bool {.noSideEffect, magic: "IsNil".}
@@ -2641,7 +2664,7 @@ when defined(JS):
 
 elif hasAlloc:
   {.push stack_trace:off, profiler:off.}
-  proc add*(x: var string, y: cstring) =
+  proc add*(x: var mstring, y: cstring) =
     var i = 0
     while y[i] != '\0':
       add(x, y[i])
@@ -2939,12 +2962,12 @@ when not defined(JS): #and not defined(nimscript):
     proc write*(f: File, a: varargs[string, `$`]) {.tags: [WriteIOEffect], benign.}
       ## Writes a value to the file `f`. May throw an IO exception.
 
-    proc readLine*(f: File): TaintedString  {.tags: [ReadIOEffect], benign.}
+    proc readLine*(f: File): TaintedString {.tags: [ReadIOEffect], benign.}
       ## reads a line of text from the file `f`. May throw an IO exception.
       ## A line of text may be delimited by ``LF`` or ``CRLF``. The newline
       ## character(s) are not part of the returned string.
 
-    proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
+    proc readLine*(f: File, line: var mstring): bool {.tags: [ReadIOEffect],
                   benign.}
       ## reads a line of text from the file `f` into `line`. `line` must not be
       ## ``nil``! May throw an IO exception.
@@ -3193,8 +3216,8 @@ when not defined(JS): #and not defined(nimscript):
       ##     writeFile(filename, buffer)
       var f = open(filename, bufSize=8000)
       defer: close(f)
-      var res = TaintedString(newStringOfCap(80))
-      while f.readLine(res): yield res
+      var res = newStringOfCap(80)
+      while f.readLine(res): yield TaintedString($res)
 
     iterator lines*(f: File): TaintedString {.tags: [ReadIOEffect].} =
       ## Iterate over any line in the file `f`.
@@ -3209,8 +3232,8 @@ when not defined(JS): #and not defined(nimscript):
       ##         if letter == '0':
       ##           result.zeros += 1
       ##       result.lines += 1
-      var res = TaintedString(newStringOfCap(80))
-      while f.readLine(res): yield res
+      var res = newStringOfCap(80)
+      while f.readLine(res): yield TaintedString($res)
 
   when not defined(nimscript) and hasAlloc:
     include "system/assign"
@@ -3385,7 +3408,7 @@ when hasAlloc or defined(nimscript):
     ## slice operation for strings.
     result = s.substr(x.a, x.b)
 
-  proc `[]=`*(s: var string, x: Slice[int], b: string) =
+  proc `[]=`*(s: var mstring, x: Slice[int], b: string) =
     ## slice assignment for strings. If
     ## ``b.len`` is not exactly the number of elements that are referred to
     ## by `x`, a `splice`:idx: is performed:
@@ -3686,7 +3709,8 @@ proc shallow*(s: var string) {.noSideEffect, inline.} =
   ## purposes.
   when not defined(JS) and not defined(nimscript):
     var s = cast[PGenericSeq](s)
-    s.reserved = s.reserved or seqShallowFlag
+    if (s.reserved and strlitFlag) == 0:
+      s.reserved = s.reserved or seqShallowFlag
 
 type
   NimNodeObj = object
@@ -3704,7 +3728,7 @@ when false:
     payload()
 
 when hasAlloc:
-  proc insert*(x: var string, item: string, i = 0.Natural) {.noSideEffect.} =
+  proc insert*(x: var mstring, item: string, i = 0.Natural) {.noSideEffect.} =
     ## inserts `item` into `x` at position `i`.
     var xl = x.len
     setLen(x, xl+item.len)
@@ -3738,16 +3762,20 @@ when hasAlloc:
     if x == nil: x = @[y]
     else: x.add(y)
 
-  proc safeAdd*(x: var string, y: char) =
+  proc safeAdd*(x: var mstring, y: char) =
     ## Adds ``y`` to ``x``. If ``x`` is ``nil`` it is initialized to ``""``
-    if x == nil: x = ""
+    if x.isNil: x = mstring""
     x.add(y)
 
-  proc safeAdd*(x: var string, y: string) =
+  proc safeAdd*(x: var mstring, y: string) =
     ## Adds ``y`` to ``x`` unless ``x`` is not yet initalized; in that
     ## case, ``x`` becomes ``y``
-    if x == nil: x = y
-    else: x.add(y)
+    when defined(nimImmutableStrings):
+      if x.isNil: x = mstring""
+      x.add(y)
+    else:
+      if x.isNil: x = y
+      else: x.add(y)
 
 proc locals*(): RootObj {.magic: "Plugin", noSideEffect.} =
   ## generates a tuple constructor expression listing all the local variables
