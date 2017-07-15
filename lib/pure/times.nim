@@ -36,7 +36,7 @@
                       # of the standard library!
 
 import
-  strutils, parseutils
+  migrate, strutils, parseutils
 
 include "system/inclrtl"
 
@@ -501,7 +501,7 @@ const
   minutesInHour = 60
   epochStartYear = 1970
 
-proc formatToken(info: TimeInfo, token: string, buf: var string) =
+proc formatToken(info: TimeInfo, token: string, buf: var mstring) =
   ## Helper of the format proc to parse individual tokens.
   ##
   ## Pass the found token in the user input string, and the buffer where the
@@ -622,7 +622,7 @@ proc formatToken(info: TimeInfo, token: string, buf: var string) =
     raise newException(ValueError, "Invalid format string: " & token)
 
 
-proc format*(info: TimeInfo, f: string): string =
+proc format*(info: TimeInfo, f: string): string {.strBuilder.} =
   ## This function formats `info` as specified by `f`. The following format
   ## specifiers are available:
   ##
@@ -663,13 +663,13 @@ proc format*(info: TimeInfo, f: string): string =
 
   result = ""
   var i = 0
-  var currentF = ""
+  var currentF = mstring""
   while true:
     case f[i]
     of ' ', '-', '/', ':', '\'', '\0', '(', ')', '[', ']', ',':
-      formatToken(info, currentF, result)
+      formatToken(info, currentF.string, result)
 
-      currentF = ""
+      currentF = mstring""
       if f[i] == '\0': break
 
       if f[i] == '\'':
@@ -684,9 +684,9 @@ proc format*(info: TimeInfo, f: string): string =
       if currentF.len < 1 or currentF[high(currentF)] == f[i]:
         currentF.add(f[i])
       else:
-        formatToken(info, currentF, result)
+        formatToken(info, currentF.string, result)
         dec(i) # Move position back to re-process the character separately.
-        currentF = ""
+        currentF = mstring""
 
     inc(i)
 
@@ -947,7 +947,7 @@ proc parse*(value, layout: string): TimeInfo =
   ## unambiguous format string like ``yyyyMMddhhmmss`` is valid too.
   var i = 0 # pointer for format string
   var j = 0 # pointer for value string
-  var token = ""
+  var token = mstring""
   # Assumes current day of month, month and year, but time is reset to 00:00:00. Weekday will be reset after parsing.
   var info = getLocalTime(getTime())
   info.hour = 0
@@ -959,9 +959,9 @@ proc parse*(value, layout: string): TimeInfo =
     case layout[i]
     of ' ', '-', '/', ':', '\'', '\0', '(', ')', '[', ']', ',':
       if token.len > 0:
-        parseToken(info, token, value, j)
+        parseToken(info, token.string, value, j)
       # Reset token
-      token = ""
+      token = mstring""
       # Break if at end of line
       if layout[i] == '\0': break
       # Skip separator and everything between single quotes
@@ -981,8 +981,8 @@ proc parse*(value, layout: string): TimeInfo =
         token.add(layout[i])
         inc(i)
       else:
-        parseToken(info, token, value, j)
-        token = ""
+        parseToken(info, token.string, value, j)
+        token = mstring""
 
   if info.isDST:
     # means that no timezone has been parsed. In this case, we need to check
