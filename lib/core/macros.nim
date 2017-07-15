@@ -558,7 +558,7 @@ proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
   ## Convert the AST `n` to a human-readable tree-like string.
   ##
   ## See also `repr` and `lispRepr`.
-  proc traverse(res: var string, level: int, n: NimNode) {.benign.} =
+  proc traverse(res: var mstring, level: int, n: NimNode) {.benign.} =
     for i in 0..level-1: res.add "  "
     res.add(($n.kind).substr(3))
 
@@ -577,33 +577,34 @@ proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
         traverse(res, level + 1, n[j])
 
   result = ""
-  traverse(result, 0, n)
+  traverse(mstring(result), 0, n)
 
 proc lispRepr*(n: NimNode): string {.compileTime, benign.} =
   ## Convert the AST `n` to a human-readable lisp-like string,
   ##
   ## See also `repr` and `treeRepr`.
 
-  result = ($n.kind).substr(3)
-  add(result, "(")
+  var res = mstring(($n.kind).substr(3))
+  add(res, "(")
 
   case n.kind
   of nnkEmpty: discard # same as nil node in this representation
-  of nnkNilLit: add(result, "nil")
-  of nnkCharLit..nnkInt64Lit: add(result, $n.intVal)
-  of nnkFloatLit..nnkFloat64Lit: add(result, $n.floatVal)
-  of nnkStrLit..nnkTripleStrLit: add(result, $n.strVal)
-  of nnkIdent: add(result, "!\"" & $n.ident & '"')
-  of nnkSym: add(result, $n.symbol)
+  of nnkNilLit: add(res, "nil")
+  of nnkCharLit..nnkInt64Lit: add(res, $n.intVal)
+  of nnkFloatLit..nnkFloat64Lit: add(res, $n.floatVal)
+  of nnkStrLit..nnkTripleStrLit: add(res, $n.strVal)
+  of nnkIdent: add(res, "!\"" & $n.ident & '"')
+  of nnkSym: add(res, $n.symbol)
   of nnkNone: assert false
   else:
     if n.len > 0:
-      add(result, lispRepr(n[0]))
+      add(res, lispRepr(n[0]))
       for j in 1..n.len-1:
-        add(result, ", ")
-        add(result, lispRepr(n[j]))
+        add(res, ", ")
+        add(res, lispRepr(n[j]))
 
-  add(result, ")")
+  add(res, ")")
+  returnString(res)
 
 macro dumpTree*(s: untyped): untyped = echo s.treeRepr
   ## Accepts a block of nim code and prints the parsed abstract syntax

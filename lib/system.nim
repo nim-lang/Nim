@@ -199,9 +199,9 @@ type
   mutstring* = distinct string  ## A mutable string. Often called `StringBuilder`:idx:
                                 ## in other languages.
 when defined(nimImmutableStrings):
-  type mstring = mutstring
+  type mstring* = mutstring
 else:
-  type mstring = string
+  type mstring* = string
 
 proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
   ## creates a new object of type ``T`` and returns a safe (traced)
@@ -2409,6 +2409,12 @@ proc `<`*[T: tuple](x, y: T): bool =
     if c > 0: return false
   return false
 
+template returnString*(r) =
+  when defined(nimImmutableStrings):
+    result = $r
+  else:
+    shallowCopy(result, r)
+
 proc `$`*[T: tuple|object](x: T): string =
   ## generic ``$`` operator for tuples that is lifted from the components
   ## of `x`. Example:
@@ -2416,37 +2422,39 @@ proc `$`*[T: tuple|object](x: T): string =
   ## .. code-block:: nim
   ##   $(23, 45) == "(23, 45)"
   ##   $() == "()"
-  result = "("
+  var res = mstring"("
   var firstElement = true
   for name, value in fieldPairs(x):
-    if not firstElement: result.add(", ")
-    result.add(name)
-    result.add(": ")
+    if not firstElement: res.add(", ")
+    res.add(name)
+    res.add(": ")
     when compiles($value):
       when compiles(value.isNil):
-        if value.isNil: result.add "nil"
-        else: result.add($value)
+        if value.isNil: res.add "nil"
+        else: res.add($value)
       else:
-        result.add($value)
+        res.add($value)
       firstElement = false
     else:
-      result.add("...")
-  result.add(")")
+      res.add("...")
+  res.add(")")
+  returnString(res)
 
 proc collectionToString[T: set | seq](x: T, b, e: string): string =
   when x is seq:
     if x.isNil: return "nil"
-  result = b
+  var res = mstring b
   var firstElement = true
   for value in items(x):
-    if not firstElement: result.add(", ")
+    if not firstElement: res.add(", ")
     when compiles(value.isNil):
-      if value.isNil: result.add "nil"
-      else: result.add($value)
+      if value.isNil: res.add "nil"
+      else: res.add($value)
     else:
-      result.add($value)
+      res.add($value)
     firstElement = false
-  result.add(e)
+  res.add(e)
+  returnString(res)
 
 proc `$`*[T](x: set[T]): string =
   ## generic ``$`` operator for sets that is lifted from the components

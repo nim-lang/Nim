@@ -1531,7 +1531,7 @@ proc processMagicType(c: PContext, m: PSym) =
   of mFloat128: setMagicType(m, tyFloat128, 16)
   of mBool: setMagicType(m, tyBool, 1)
   of mChar: setMagicType(m, tyChar, 1)
-  of mString:
+  of TMagic.mString:
     setMagicType(m, tyString, ptrSize)
     rawAddSon(m.typ, getSysType(tyChar))
   of mCstring:

@@ -270,7 +270,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
     result.add t.n.sons[0].copyTree
     result.add t.n.sons[1].copyTree
   of tyPointer: result = atomicType("pointer", mPointer)
-  of tyString: result = atomicType("string", mString)
+  of tyString: result = atomicType("string", TMagic.mString)
   of tyCString: result = atomicType("cstring", mCString)
   of tyInt: result = atomicType("int", mInt)
   of tyInt8: result = atomicType("int8", mInt8)

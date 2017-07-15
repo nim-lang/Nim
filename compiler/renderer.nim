@@ -704,7 +704,7 @@ proc gproc(g: var TSrcGen, n: PNode) =
   gsub(g, n.sons[paramsPos])
   gsub(g, n.sons[pragmasPos])
   if renderNoBody notin g.flags:
-    if n.sons[bodyPos].kind != nkEmpty:
+    if bodyPos < n.len and n.sons[bodyPos].kind != nkEmpty:
       put(g, tkSpaces, Space)
       putWithSpace(g, tkEquals, "=")
       indentNL(g)
@@ -1324,7 +1324,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
         if p.typ == nil or tfImplicitTypeParam notin p.typ.flags:
           return true
       return false
-    
+
     if n.hasExplicitParams:
       put(g, tkBracketLe, "[")
       gcomma(g, n)

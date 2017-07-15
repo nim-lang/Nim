@@ -193,12 +193,6 @@ proc write(f: File, c: char) = discard c_putc(ord(c), f)
 proc write(f: File, a: varargs[string, `$`]) =
   for x in items(a): write(f, x)
 
-template returnString(r) =
-  when defined(nimImmutableStrings):
-    result = $r
-  else:
-    shallowCopy(result, r)
-
 proc readAllBuffer(file: File): string =
   # This proc is for File we want to read but don't know how many
   # bytes we need to read before the buffer is empty.
