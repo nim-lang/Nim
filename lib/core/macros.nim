@@ -527,10 +527,17 @@ proc newLit*[N,T](arg: array[N,T]): NimNode {.compileTime.} =
     result.add newLit(x)
 
 proc newLit*[T](arg: seq[T]): NimNode {.compileTime.} =
-  result = nnkBracket.newTree
+  var bracket = nnkBracket.newTree
   for x in arg:
-    result.add newLit(x)
-  result = nnkPrefix.newTree(bindSym"@", result)
+    bracket.add newLit(x)
+
+  result = nnkCall.newTree(
+    nnkBracketExpr.newTree(
+      nnkAccQuoted.newTree( bindSym"@" ),
+      getTypeInst( bindSym"T" )
+    ),
+    bracket
+  )
 
 proc newLit*(arg: tuple): NimNode {.compileTime.} =
   result = nnkPar.newTree
