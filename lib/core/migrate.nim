@@ -48,4 +48,4 @@ macro strBuilder*(n: untyped): untyped =
         result.add n[i]
   else:
     result = n
-  echo repr result
+  #echo repr result
