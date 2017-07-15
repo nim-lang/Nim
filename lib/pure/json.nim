@@ -89,7 +89,7 @@
 ##    echo j2
 
 import
-  hashes, tables, strutils, lexbase, streams, unicode, macros
+  migrate, hashes, tables, strutils, lexbase, streams, unicode, macros
 
 export
   tables.`$`
@@ -148,7 +148,7 @@ type
     stateExpectObjectComma, stateExpectColon, stateExpectValue
 
   JsonParser* = object of BaseLexer ## the parser object.
-    a: string
+    a: mstring
     tok: TokKind
     kind: JsonEventKind
     err: JsonError
@@ -194,27 +194,27 @@ proc open*(my: var JsonParser, input: Stream, filename: string) =
   my.filename = filename
   my.state = @[stateStart]
   my.kind = jsonError
-  my.a = ""
+  my.a = mstring""
 
 proc close*(my: var JsonParser) {.inline.} =
   ## closes the parser `my` and its associated input stream.
   lexbase.close(my)
 
-proc str*(my: JsonParser): string {.inline.} =
+proc str*(my: var JsonParser): string {.inline.} =
   ## returns the character data for the events: ``jsonInt``, ``jsonFloat``,
   ## ``jsonString``
   assert(my.kind in {jsonInt, jsonFloat, jsonString})
-  return my.a
+  return $my.a
 
 proc getInt*(my: JsonParser): BiggestInt {.inline.} =
   ## returns the number for the event: ``jsonInt``
   assert(my.kind == jsonInt)
-  return parseBiggestInt(my.a)
+  return parseBiggestInt(my.a.string)
 
 proc getFloat*(my: JsonParser): float {.inline.} =
   ## returns the number for the event: ``jsonFloat``
   assert(my.kind == jsonFloat)
-  return parseFloat(my.a)
+  return parseFloat(my.a.string)
 
 proc kind*(my: JsonParser): JsonEventKind {.inline.} =
   ## returns the current event type for the JSON parser
@@ -434,7 +434,7 @@ proc getTok(my: var JsonParser): TokKind =
   case my.buf[my.bufpos]
   of '-', '.', '0'..'9':
     parseNumber(my)
-    if {'.', 'e', 'E'} in my.a:
+    if {'.', 'e', 'E'} in my.a.string:
       result = tkFloat
     else:
       result = tkInt
@@ -462,7 +462,7 @@ proc getTok(my: var JsonParser): TokKind =
     result = tkEof
   of 'a'..'z', 'A'..'Z', '_':
     parseName(my)
-    case my.a
+    case my.a.string
     of "null": result = tkNull
     of "true": result = tkTrue
     of "false": result = tkFalse
@@ -983,17 +983,17 @@ proc copy*(p: JsonNode): JsonNode =
 
 # ------------- pretty printing ----------------------------------------------
 
-proc indent(s: var string, i: int) =
+proc indent(s: var mstring, i: int) =
   s.add(spaces(i))
 
 proc newIndent(curr, indent: int, ml: bool): int =
   if ml: return curr + indent
   else: return indent
 
-proc nl(s: var string, ml: bool) =
+proc nl(s: var mstring, ml: bool) =
   s.add(if ml: "\n" else: " ")
 
-proc escapeJson*(s: string; result: var string) =
+proc escapeJson*(s: string; result: var mstring) =
   ## Converts a string `s` to its JSON representation.
   ## Appends to ``result``.
   const
@@ -1016,12 +1016,12 @@ proc escapeJson*(s: string; result: var string) =
         r = r shr 4
   result.add("\"")
 
-proc escapeJson*(s: string): string =
+proc escapeJson*(s: string): string {.strBuilder.} =
   ## Converts a string `s` to its JSON representation.
   result = newStringOfCap(s.len + s.len shr 3)
   escapeJson(s, result)
 
-proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
+proc toPretty(result: var mstring, node: JsonNode, indent = 2, ml = true,
               lstArr = false, currIndent = 0) =
   case node.kind
   of JObject:
@@ -1080,13 +1080,13 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
     if lstArr: result.indent(currIndent)
     result.add("null")
 
-proc pretty*(node: JsonNode, indent = 2): string =
+proc pretty*(node: JsonNode, indent = 2): string {.strBuilder.} =
   ## Returns a JSON Representation of `node`, with indentation and
   ## on multiple lines.
   result = ""
   toPretty(result, node, indent)
 
-proc toUgly*(result: var string, node: JsonNode) =
+proc toUgly*(result: var mstring, node: JsonNode) =
   ## Converts `node` to its JSON Representation, without
   ## regard for human readability. Meant to improve ``$`` string
   ## conversion performance.
@@ -1126,7 +1126,7 @@ proc toUgly*(result: var string, node: JsonNode) =
   of JNull:
     result.add "null"
 
-proc `$`*(node: JsonNode): string =
+proc `$`*(node: JsonNode): string {.strBuilder.} =
   ## Converts `node` to its JSON Representation on one line.
   result = newStringOfCap(node.len shl 1)
   toUgly(result, node)
@@ -1166,14 +1166,14 @@ proc parseJson(p: var JsonParser): JsonNode =
   case p.tok
   of tkString:
     # we capture 'p.a' here, so we need to give it a fresh buffer afterwards:
-    result = newJStringMove(p.a)
-    p.a = ""
+    result = newJStringMove($p.a)
+    p.a = mstring""
     discard getTok(p)
   of tkInt:
-    result = newJInt(parseBiggestInt(p.a))
+    result = newJInt(parseBiggestInt(p.a.string))
     discard getTok(p)
   of tkFloat:
-    result = newJFloat(parseFloat(p.a))
+    result = newJFloat(parseFloat(p.a.string))
     discard getTok(p)
   of tkTrue:
     result = newJBool(true)
@@ -1190,7 +1190,7 @@ proc parseJson(p: var JsonParser): JsonNode =
     while p.tok != tkCurlyRi:
       if p.tok != tkString:
         raiseParseErr(p, "string literal as key")
-      var key = p.a
+      var key = $p.a
       discard getTok(p)
       eat(p, tkColon)
       var val = parseJson(p)

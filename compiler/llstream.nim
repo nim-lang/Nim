@@ -10,7 +10,7 @@
 ## Low-level streams for high performance.
 
 import
-  strutils
+  migrate, strutils
 
 # support '-d:useGnuReadline' for backwards compatibility:
 when not defined(windows) and (defined(useGnuReadline) or defined(useLinenoise)):
@@ -25,7 +25,7 @@ type
   TLLStream* = object of RootObj
     kind*: TLLStreamKind # accessible for low-level access (lexbase uses this)
     f*: File
-    s*: string
+    s*: mstring
     rd*, wr*: int             # for string streams
     lineOffset*: int          # for fake stdin line numbers
 
@@ -33,7 +33,7 @@ type
 
 proc llStreamOpen*(data: string): PLLStream =
   new(result)
-  result.s = data
+  result.s = tomut data
   result.kind = llsString
 
 proc llStreamOpen*(f: File): PLLStream =
@@ -53,7 +53,7 @@ proc llStreamOpen*(): PLLStream =
 proc llStreamOpenStdIn*(): PLLStream =
   new(result)
   result.kind = llsStdIn
-  result.s = ""
+  result.s = tomut""
   result.lineOffset = -1
 
 proc llStreamClose*(s: PLLStream) =
@@ -65,7 +65,7 @@ proc llStreamClose*(s: PLLStream) =
 
 when not declared(readLineFromStdin):
   # fallback implementation:
-  proc readLineFromStdin(prompt: string, line: var string): bool =
+  proc readLineFromStdin(prompt: string, line: var mstring): bool =
     stdout.write(prompt)
     result = readLine(stdin, line)
     if not result:
@@ -101,15 +101,15 @@ proc countTriples(s: string): int =
     inc i
 
 proc llReadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int =
-  s.s = ""
+  s.s = tomut""
   s.rd = 0
   var line = newStringOfCap(120)
   var triples = 0
   while readLineFromStdin(if s.s.len == 0: ">>> " else: "... ", line):
     add(s.s, line)
     add(s.s, "\n")
-    inc triples, countTriples(line)
-    if not continueLine(line, (triples and 1) == 1): break
+    inc triples, countTriples(line.unsafeBorrow)
+    if not continueLine(line.unsafeBorrow, (triples and 1) == 1): break
   inc(s.lineOffset)
   result = min(bufLen, len(s.s) - s.rd)
   if result > 0:
@@ -130,7 +130,7 @@ proc llStreamRead*(s: PLLStream, buf: pointer, bufLen: int): int =
   of llsStdIn:
     result = llReadFromStdin(s, buf, bufLen)
 
-proc llStreamReadLine*(s: PLLStream, line: var string): bool =
+proc llStreamReadLine*(s: PLLStream, line: var mstring): bool =
   setLen(line, 0)
   case s.kind
   of llsNone:
@@ -199,15 +199,16 @@ proc llStreamReadAll*(s: PLLStream): string =
   of llsNone, llsStdIn:
     result = ""
   of llsString:
-    if s.rd == 0: result = s.s
-    else: result = substr(s.s, s.rd)
+    if s.rd == 0: result = $s.s
+    else: result = substr(s.s.unsafeBorrow, s.rd)
     s.rd = len(s.s)
   of llsFile:
-    result = newString(bufSize)
-    var bytes = readBuffer(s.f, addr(result[0]), bufSize)
-    var i = bytes
-    while bytes == bufSize:
-      setLen(result, i + bufSize)
-      bytes = readBuffer(s.f, addr(result[i + 0]), bufSize)
-      inc(i, bytes)
-    setLen(result, i)
+    strBody:
+      result = newString(bufSize)
+      var bytes = readBuffer(s.f, addr(result[0]), bufSize)
+      var i = bytes
+      while bytes == bufSize:
+        setLen(result, i + bufSize)
+        bytes = readBuffer(s.f, addr(result[i + 0]), bufSize)
+        inc(i, bytes)
+      setLen(result, i)

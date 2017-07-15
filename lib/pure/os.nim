@@ -320,7 +320,7 @@ proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [], strBuilder.} =
           res = newWideCString("", L)
           bufsize = L
         else:
-          result = mstring(res$L)
+          result = tomut(res$L)
           break
     else:
       result = newString(bufsize)
@@ -1251,7 +1251,7 @@ proc parseCmdLine*(c: string): seq[string] {.
   ## occurs within ``"`` or ``'`` quotes.
   result = @[]
   var i = 0
-  var a = mstring""
+  var a = tomut""
   while true:
     setLen(a, 0)
     # eat all delimiting whitespace

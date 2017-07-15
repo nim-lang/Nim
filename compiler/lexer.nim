@@ -123,7 +123,7 @@ type
                               # or float literals
     strongSpaceA*: int8       # leading spaces of an operator
     strongSpaceB*: int8       # trailing spaces of an operator
-    literal*: string          # the parsed (string) literal; and
+    literal*: mstring         # the parsed (string) literal; and
                               # documentation comments are here too
     line*, col*: int
 
@@ -166,7 +166,7 @@ proc tokToStr*(tok: TToken): string =
   case tok.tokType
   of tkIntLit..tkInt64Lit: result = $tok.iNumber
   of tkFloatLit..tkFloat64Lit: result = $tok.fNumber
-  of tkInvalid, tkStrLit..tkCharLit, tkComment: result = tok.literal
+  of tkInvalid, tkStrLit..tkCharLit, tkComment: result = $tok.literal
   of tkParLe..tkColon, tkEof, tkAccent:
     result = TokTypeToStr[tok.tokType]
   else:
@@ -188,7 +188,7 @@ proc initToken*(L: var TToken) =
   L.iNumber = 0
   L.indent = 0
   L.strongSpaceA = 0
-  L.literal = ""
+  L.literal = tomut""
   L.fNumber = 0.0
   L.base = base10
   L.ident = nil
@@ -335,7 +335,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
       'c', 'C', 'b', 'B', '_', '.', '\'', 'd', 'i', 'u'}
     var msgPos = L.bufpos
     var t: TToken
-    t.literal = ""
+    t.literal = tomut""
     L.bufpos = startpos # Use L.bufpos as pos because of matchChars
     matchChars(L, t, literalishChars)
     # We must verify +/- specifically so that we're not past the literal
@@ -349,7 +349,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
       add(t.literal, L.buf[L.bufpos])
       matchChars(L, t, {'0'..'9'})
     L.bufpos = msgPos
-    lexMessage(L, msg, t.literal)
+    lexMessage(L, msg, t.literal.unsafeBorrow)
 
   var
     startpos, endpos: int
@@ -360,7 +360,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
     literalishChars = baseCodeChars + {'A'..'F', 'a'..'f', '0'..'9', '_', '\''}
     floatTypes = {tkFloatLit, tkFloat32Lit, tkFloat64Lit, tkFloat128Lit}
   result.tokType = tkIntLit   # int literal until we know better
-  result.literal = ""
+  result.literal = tomut""
   result.base = base10
   startpos = L.bufpos
   tokenBegin(startPos)
@@ -539,15 +539,15 @@ proc getNumber(L: var TLexer, result: var TToken) =
     else:
       case result.tokType
       of floatTypes:
-        result.fNumber = parseFloat(result.literal)
+        result.fNumber = parseFloat(result.literal.unsafeBorrow)
       of tkUint64Lit:
         xi = 0
-        let len = unsafeParseUInt(result.literal, xi)
+        let len = unsafeParseUInt(result.literal.unsafeBorrow, xi)
         if len != result.literal.len or len == 0:
           raise newException(ValueError, "invalid integer: " & $xi)
         result.iNumber = xi
       else:
-        result.iNumber = parseBiggestInt(result.literal)
+        result.iNumber = parseBiggestInt(result.literal.unsafeBorrow)
 
       # Explicit bounds checks
       let outOfRange = case result.tokType:
@@ -663,7 +663,7 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
     else: lexMessage(L, errInvalidCharacterConstant)
   else: lexMessage(L, errInvalidCharacterConstant)
 
-proc newString(s: cstring, len: int): string =
+proc newString(s: cstring, len: int): mstring =
   ## XXX, how come there is no support for this?
   result = newString(len)
   for i in 0 .. <len:
@@ -679,7 +679,7 @@ proc handleCRLF(L: var TLexer, pos: int): int =
     if optEmbedOrigSrc in gGlobalOptions:
       let lineStart = cast[ByteAddress](L.buf) + L.lineStart
       let line = newString(cast[cstring](lineStart), col)
-      addSourceLine(L.fileIdx, line)
+      addSourceLine(L.fileIdx, $line)
 
   case L.buf[pos]
   of CR:
@@ -766,7 +766,7 @@ proc getCharacter(L: var TLexer, tok: var TToken) =
   of '\0'..pred(' '), '\'': lexMessage(L, errInvalidCharacterConstant)
   of '\\': getEscapedChar(L, tok)
   else:
-    tok.literal = $c
+    tok.literal = tomut($c)
     inc(L.bufpos)
   if L.buf[L.bufpos] != '\'': lexMessage(L, errMissingFinalQuote)
   tokenEndIgnore(L.bufpos)
@@ -1110,7 +1110,7 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
         tok.tokType = tkSymbol
         tok.ident = L.cache.getIdent("_")
       else:
-        tok.literal = $c
+        tok.literal = tomut($c)
         tok.tokType = tkInvalid
         lexMessage(L, errInvalidToken, c & " (\\" & $(ord(c)) & ')')
     of '\"':
@@ -1137,7 +1137,7 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
         tok.tokType = tkEof
         tok.indent = 0
       else:
-        tok.literal = $c
+        tok.literal = tomut($c)
         tok.tokType = tkInvalid
         lexMessage(L, errInvalidToken, c & " (\\" & $(ord(c)) & ')')
         inc(L.bufpos)

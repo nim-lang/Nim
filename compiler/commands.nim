@@ -108,9 +108,9 @@ proc invalidCmdLineOption(pass: TCmdLinePass, switch: string, info: TLineInfo) =
   if switch == " ": localError(info, errInvalidCmdLineOption, "-")
   else: localError(info, errInvalidCmdLineOption, addPrefix(switch))
 
-proc splitSwitch(switch: string, cmd, arg: var string, pass: TCmdLinePass,
+proc splitSwitch(switch: string, cmd, arg: var mstring, pass: TCmdLinePass,
                  info: TLineInfo) =
-  cmd = ""
+  cmd = tomut""
   var i = 0
   if i < len(switch) and switch[i] == '-': inc(i)
   if i < len(switch) and switch[i] == '-': inc(i)
@@ -119,8 +119,8 @@ proc splitSwitch(switch: string, cmd, arg: var string, pass: TCmdLinePass,
     of 'a'..'z', 'A'..'Z', '0'..'9', '_', '.': add(cmd, switch[i])
     else: break
     inc(i)
-  if i >= len(switch): arg = ""
-  elif switch[i] in {':', '=', '['}: arg = substr(switch, i + 1)
+  if i >= len(switch): arg = tomut""
+  elif switch[i] in {':', '=', '['}: arg = mstring substr(switch, i + 1)
   else: invalidCmdLineOption(pass, switch, info)
 
 proc processOnOffSwitch(op: TOptions, arg: string, pass: TCmdLinePass,
@@ -161,7 +161,7 @@ var
 
 proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
                          info: TLineInfo; orig: string) =
-  var id = ""  # arg = "X]:on|off"
+  var id = tomut""  # arg = "X]:on|off"
   var i = 0
   var n = hintMin
   while i < len(arg) and (arg[i] != ']'):
@@ -172,13 +172,13 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
   if i < len(arg) and (arg[i] in {':', '='}): inc(i)
   else: invalidCmdLineOption(pass, orig, info)
   if state == wHint:
-    var x = findStr(msgs.HintsToStr, id)
+    var x = findStr(msgs.HintsToStr, $id)
     if x >= 0: n = TNoteKind(x + ord(hintMin))
-    else: localError(info, "unknown hint: " & id)
+    else: localError(info, "unknown hint: " & $id)
   else:
-    var x = findStr(msgs.WarningsToStr, id)
+    var x = findStr(msgs.WarningsToStr, $id)
     if x >= 0: n = TNoteKind(x + ord(warnMin))
-    else: localError(info, "unknown warning: " & id)
+    else: localError(info, "unknown warning: " & $id)
   case substr(arg, i).normalize
   of "on":
     incl(gNotes, n)
@@ -331,7 +331,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   var
     theOS: TSystemOS
     cpu: TSystemCPU
-    key, val: string
+    key, val: mstring
   case switch.normalize
   of "path", "p":
     expectArg(switch, arg, pass, info)
@@ -371,7 +371,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(switch, arg, pass, info)
     if {':', '='} in arg:
       splitSwitch(arg, key, val, pass, info)
-      defineSymbol(key, val)
+      defineSymbol($key, $val)
     else:
       defineSymbol(arg)
   of "undef", "u":
@@ -614,7 +614,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "putenv":
     expectArg(switch, arg, pass, info)
     splitSwitch(arg, key, val, pass, info)
-    os.putEnv(key, val)
+    os.putEnv($key, $val)
   of "cc":
     expectArg(switch, arg, pass, info)
     setCC(arg)
@@ -666,9 +666,9 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     else: invalidCmdLineOption(pass, switch, info)
 
 proc processCommand(switch: string, pass: TCmdLinePass) =
-  var cmd, arg: string
+  var cmd, arg: mstring
   splitSwitch(switch, cmd, arg, pass, gCmdLineInfo)
-  processSwitch(cmd, arg, pass, gCmdLineInfo)
+  processSwitch($cmd, $arg, pass, gCmdLineInfo)
 
 
 var
@@ -679,30 +679,30 @@ var
 proc processSwitch*(pass: TCmdLinePass; p: OptParser) =
   # hint[X]:off is parsed as (p.key = "hint[X]", p.val = "off")
   # we fix this here
-  var bracketLe = strutils.find(p.key, '[')
+  var bracketLe = strutils.find(p.key.unsafeBorrow, '[')
   if bracketLe >= 0:
-    var key = substr(p.key, 0, bracketLe - 1)
-    var val = substr(p.key, bracketLe + 1) & ':' & p.val
+    var key = substr(p.key.unsafeBorrow, 0, bracketLe - 1)
+    var val = substr(p.key.unsafeBorrow, bracketLe + 1) & ':' & p.val.unsafeBorrow
     processSwitch(key, val, pass, gCmdLineInfo)
   else:
-    processSwitch(p.key, p.val, pass, gCmdLineInfo)
+    processSwitch(p.key.unsafeBorrow, p.val.unsafeBorrow, pass, gCmdLineInfo)
 
 proc processArgument*(pass: TCmdLinePass; p: OptParser;
                       argsCount: var int): bool =
   if argsCount == 0:
     # nim filename.nims  is the same as "nim e filename.nims":
-    if p.key.endswith(".nims"):
+    if p.key.unsafeBorrow.endswith(".nims"):
       options.command = "e"
-      options.gProjectName = unixToNativePath(p.key)
+      options.gProjectName = unixToNativePath($p.key)
       arguments = cmdLineRest(p)
       result = true
     elif pass != passCmd2:
-      options.command = p.key
+      options.command = $p.key
   else:
-    if pass == passCmd1: options.commandArgs.add p.key
+    if pass == passCmd1: options.commandArgs.add($p.key)
     if argsCount == 1:
       # support UNIX style filenames everywhere for portable build scripts:
-      options.gProjectName = unixToNativePath(p.key)
+      options.gProjectName = unixToNativePath($p.key)
       arguments = cmdLineRest(p)
       result = true
   inc argsCount

@@ -22,7 +22,7 @@
 include "system/inclrtl"
 
 import
-  os, strutils
+  migrate, os, strutils
 
 type
   CmdLineKind* = enum         ## the detected command line token
@@ -32,17 +32,17 @@ type
     cmdShortOption            ## a short option ``-c`` detected
   OptParser* =
       object of RootObj ## this object implements the command line parser
-    cmd: string
+    cmd: mstring
     pos: int
     inShortState: bool
     kind*: CmdLineKind        ## the dected command line token
-    key*, val*: TaintedString ## key and value pair; ``key`` is the option
+    key*, val*: mstring       ## key and value pair; ``key`` is the option
                               ## or the argument, ``value`` is not "" if
                               ## the option was given a value
 
 {.deprecated: [TCmdLineKind: CmdLineKind, TOptParser: OptParser].}
 
-proc parseWord(s: string, i: int, w: var string,
+proc parseWord(s: string, i: int, w: var mstring,
                delim: set[char] = {'\x09', ' ', '\0'}): int =
   result = i
   if s[result] == '\"':
@@ -57,7 +57,9 @@ proc parseWord(s: string, i: int, w: var string,
       inc(result)
 
 when declared(os.paramCount):
-  proc quote(s: string): string =
+  proc quote(s: string): string {.strBuilder.} =
+    when defined(nimImmutableStrings):
+      var result0: mstring
     if find(s, {' ', '\t'}) >= 0 and s[0] != '"':
       if s[0] == '-':
         result = newStringOfCap(s.len)
@@ -71,9 +73,9 @@ when declared(os.paramCount):
           inc i
         result.add '"'
       else:
-        result = '"' & s & '"'
+        result = mstring('"' & s & '"')
     else:
-      result = s
+      result = tomut s
 
   # we cannot provide this for NimRtl creation on Posix, because we can't
   # access the command line arguments then!
@@ -84,20 +86,20 @@ when declared(os.paramCount):
     result.pos = 0
     result.inShortState = false
     if cmdline != "":
-      result.cmd = cmdline
+      result.cmd = tomut cmdline
     else:
-      result.cmd = ""
+      result.cmd = tomut""
       for i in countup(1, paramCount()):
         result.cmd.add quote(paramStr(i).string)
         result.cmd.add ' '
     result.kind = cmdEnd
-    result.key = TaintedString""
-    result.val = TaintedString""
+    result.key = tomut""
+    result.val = tomut""
 
 proc handleShortOption(p: var OptParser) =
   var i = p.pos
   p.kind = cmdShortOption
-  add(p.key.string, p.cmd[i])
+  add(p.key, p.cmd[i])
   inc(i)
   p.inShortState = true
   while p.cmd[i] in {'\x09', ' '}:
@@ -107,7 +109,7 @@ proc handleShortOption(p: var OptParser) =
     inc(i)
     p.inShortState = false
     while p.cmd[i] in {'\x09', ' '}: inc(i)
-    i = parseWord(p.cmd, i, p.val.string)
+    i = parseWord(p.cmd.string, i, p.val)
   if p.cmd[i] == '\0': p.inShortState = false
   p.pos = i
 
@@ -117,8 +119,8 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
   var i = p.pos
   while p.cmd[i] in {'\x09', ' '}: inc(i)
   p.pos = i
-  setLen(p.key.string, 0)
-  setLen(p.val.string, 0)
+  setLen(p.key, 0)
+  setLen(p.val, 0)
   if p.inShortState:
     handleShortOption(p)
     return
@@ -130,12 +132,12 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
     if p.cmd[i] == '-':
       p.kind = cmdLongoption
       inc(i)
-      i = parseWord(p.cmd, i, p.key.string, {'\0', ' ', '\x09', ':', '='})
+      i = parseWord(p.cmd.string, i, p.key, {'\0', ' ', '\x09', ':', '='})
       while p.cmd[i] in {'\x09', ' '}: inc(i)
       if p.cmd[i] in {':', '='}:
         inc(i)
         while p.cmd[i] in {'\x09', ' '}: inc(i)
-        p.pos = parseWord(p.cmd, i, p.val.string)
+        p.pos = parseWord(p.cmd.string, i, p.val)
       else:
         p.pos = i
     else:
@@ -143,11 +145,11 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
       handleShortOption(p)
   else:
     p.kind = cmdArgument
-    p.pos = parseWord(p.cmd, i, p.key.string)
+    p.pos = parseWord(p.cmd.string, i, p.key)
 
 proc cmdLineRest*(p: OptParser): TaintedString {.rtl, extern: "npo$1".} =
   ## retrieves the rest of the command line that has not been parsed yet.
-  result = strip(substr(p.cmd, p.pos, len(p.cmd) - 1)).TaintedString
+  result = strip(substr(p.cmd.string, p.pos, len(p.cmd) - 1)).TaintedString
 
 iterator getopt*(p: var OptParser): tuple[kind: CmdLineKind, key, val: TaintedString] =
   ## This is an convenience iterator for iterating over the given OptParser object.
@@ -171,7 +173,7 @@ iterator getopt*(p: var OptParser): tuple[kind: CmdLineKind, key, val: TaintedSt
   while true:
     next(p)
     if p.kind == cmdEnd: break
-    yield (p.kind, p.key, p.val)
+    yield (p.kind, $p.key, $p.val)
 
 when declared(initOptParser):
   iterator getopt*(): tuple[kind: CmdLineKind, key, val: TaintedString] =
@@ -188,6 +190,6 @@ when declared(initOptParser):
     while true:
       next(p)
       if p.kind == cmdEnd: break
-      yield (p.kind, p.key, p.val)
+      yield (p.kind, $p.key, $p.val)
 
 {.pop.}

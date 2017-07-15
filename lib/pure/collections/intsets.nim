@@ -14,7 +14,7 @@
 ## copy; use ``assign`` to get a deep copy.
 
 import
-  hashes, math
+  migrate, hashes, math
 
 type
   BitScalar = int
@@ -189,16 +189,13 @@ iterator items*(s: IntSet): int {.inline.} =
       inc(i)
     r = r.next
 
-template dollarImpl(): stmt =
+proc `$`*(s: IntSet): string {.strBuilder.} =
+  ## The `$` operator for int sets.
   result = "{"
   for key in items(s):
     if result.len > 1: result.add(", ")
     result.add($key)
   result.add("}")
-
-proc `$`*(s: IntSet): string =
-  ## The `$` operator for int sets.
-  dollarImpl()
 
 proc empty*(s: IntSet): bool {.inline, deprecated.} =
   ## returns true if `s` is empty. This is safe to call even before

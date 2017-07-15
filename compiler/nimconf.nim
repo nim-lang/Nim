@@ -160,9 +160,9 @@ proc parseAssignment(L: var TLexer, tok: var TToken; config: ConfigRef) =
     confTok(L, tok, config)           # skip unnecessary prefix
   var info = getLineInfo(L, tok) # save for later in case of an error
   checkSymbol(L, tok)
-  var s = tokToStr(tok)
+  var s = tomut tokToStr(tok)
   confTok(L, tok, config)             # skip symbol
-  var val = ""
+  var val = tomut""
   while tok.tokType == tkDot:
     add(s, '.')
     confTok(L, tok, config)
@@ -192,10 +192,10 @@ proc parseAssignment(L: var TLexer, tok: var TToken; config: ConfigRef) =
       add(val, tokToStr(tok))
       confTok(L, tok, config)
   if percent:
-    processSwitch(s, strtabs.`%`(val, options.gConfigVars,
+    processSwitch($s, strtabs.`%`($val, options.gConfigVars,
                                 {useEnvironment, useEmpty}), passPP, info, config)
   else:
-    processSwitch(s, val, passPP, info, config)
+    processSwitch($s, $val, passPP, info, config)
 
 proc readConfigFile(filename: string; cache: IdentCache; config: ConfigRef) =
   var

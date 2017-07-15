@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import strutils
+import migrate, strutils
 
 const Sha1DigestSize = 20
 
@@ -175,7 +175,7 @@ proc sha1(src: string): Sha1Digest =
 
 proc secureHash*(str: string): SecureHash = SecureHash(sha1(str))
 proc secureHashFile*(filename: string): SecureHash = secureHash(readFile(filename))
-proc `$`*(self: SecureHash): string =
+proc `$`*(self: SecureHash): string {.strBuilder.} =
   result = ""
   for v in Sha1Digest(self):
     result.add(toHex(int(v), 2))

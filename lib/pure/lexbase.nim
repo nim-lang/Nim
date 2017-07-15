@@ -12,7 +12,7 @@
 ## needs refilling.
 
 import
-  strutils, streams
+  migrate, strutils, streams
 
 const
   EndOfFile* = '\0'           ## end of file marker
@@ -163,7 +163,7 @@ proc getColNumber*(L: BaseLexer, pos: int): int =
   ## retrieves the current column.
   result = abs(pos - L.lineStart)
 
-proc getCurrentLine*(L: BaseLexer, marker: bool = true): string =
+proc getCurrentLine*(L: BaseLexer, marker: bool = true): string {.strBuilder.} =
   ## retrieves the current line.
   var i: int
   result = ""

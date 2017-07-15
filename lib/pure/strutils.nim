@@ -1122,7 +1122,7 @@ proc wordWrap*(s: string, maxLineWidth = 80,
   ## Word wraps `s`.
   result = newStringOfCap(s.len + s.len shr 6)
   var spaceLeft = maxLineWidth
-  var lastSep = mstring""
+  var lastSep = tomut""
   for word, isSep in tokenize(s, seps):
     if isSep:
       lastSep = mstring word

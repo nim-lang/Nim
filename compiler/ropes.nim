@@ -56,7 +56,7 @@
 #  To cache them they are inserted in a `cache` array.
 
 import
-  platform, hashes
+  migrate, platform, hashes
 
 type
   FormatStr* = string  # later we may change it to CString for better
@@ -91,12 +91,6 @@ proc newRope(data: string = nil): Rope =
   if data != nil:
     result.length = len(data)
     result.data = data
-
-proc newMutableRope*(capacity = 30): Rope =
-  ## creates a new rope that supports direct modifications of the rope's
-  ## 'data' and 'length' fields.
-  new(result)
-  result.data = newStringOfCap(capacity)
 
 proc freezeMutableRope*(r: Rope) {.inline.} =
   r.length = r.data.len
@@ -212,7 +206,7 @@ proc writeRope*(head: Rope, filename: string, useWarning = false) =
   else:
     errorHandler(rCannotOpenFile, filename, useWarning)
 
-proc `$`*(r: Rope): string =
+proc `$`*(r: Rope): string {.strBuilder.} =
   ## converts a rope back to a string.
   result = newString(r.len)
   setLen(result, 0)

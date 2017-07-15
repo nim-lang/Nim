@@ -12,6 +12,7 @@
 {.deadCodeElim: on.}
 
 include "system/inclrtl"
+import migrate
 
 type
   RuneImpl = int32 # underlying type of Rune
@@ -157,7 +158,7 @@ proc runeAt*(s: string, i: Natural): Rune =
   ## Returns the unicode character in ``s`` at byte index ``i``
   fastRuneAt(s, i, result, false)
 
-template fastToUTF8Copy*(c: Rune, s: var string, pos: int, doInc = true) =
+template fastToUTF8Copy*(c: Rune, s: var mstring, pos: int, doInc = true) =
   ## Copies UTF-8 representation of `c` into the preallocated string `s`
   ## starting at position `pos`. If `doInc == true`, `pos` is incremented
   ## by the number of bytes that have been processed.
@@ -208,7 +209,7 @@ template fastToUTF8Copy*(c: Rune, s: var string, pos: int, doInc = true) =
   else:
     discard # error, exception?
 
-proc toUTF8*(c: Rune): string {.rtl, extern: "nuc$1".} =
+proc toUTF8*(c: Rune): string {.rtl, extern: "nuc$1", strBuilder.} =
   ## Converts a rune into its UTF-8 representation
   result = ""
   fastToUTF8Copy(c, result, 0, false)
@@ -217,7 +218,7 @@ proc `$`*(rune: Rune): string =
   ## Converts a Rune to a string
   rune.toUTF8
 
-proc `$`*(runes: seq[Rune]): string =
+proc `$`*(runes: seq[Rune]): string {.strBuilder.} =
   ## Converts a sequence of Runes to a string
   result = ""
   for rune in runes: result.add(rune.toUTF8)
@@ -1425,7 +1426,7 @@ proc isSpace*(s: string): bool {.noSideEffect, procvar,
 
 template convertRune(s, runeProc) =
   ## Convert runes in `s` using `runeProc` as the converter.
-  result = newString(len(s))
+  var res = newString(len(s))
 
   var
     i = 0
@@ -1437,7 +1438,8 @@ template convertRune(s, runeProc) =
     fastRuneAt(s, i, rune, doInc=true)
     rune = runeProc(rune)
 
-    rune.fastToUTF8Copy(result, lastIndex)
+    rune.fastToUTF8Copy(res, lastIndex)
+  returnString res
 
 proc toUpper*(s: string): string {.noSideEffect, procvar,
   rtl, extern: "nuc$1Str".} =
@@ -1450,7 +1452,7 @@ proc toLower*(s: string): string {.noSideEffect, procvar,
   convertRune(s, toLower)
 
 proc swapCase*(s: string): string {.noSideEffect, procvar,
-  rtl, extern: "nuc$1".} =
+  rtl, extern: "nuc$1", strBuilder.} =
   ## Swaps the case of unicode characters in `s`
   ##
   ## Returns a new string such that the cases of all unicode characters
@@ -1490,7 +1492,7 @@ proc capitalize*(s: string): string {.noSideEffect, procvar,
   result = $toUpper(rune) & substr(s, i)
 
 proc translate*(s: string, replacements: proc(key: string): string): string {.
-  rtl, extern: "nuc$1".} =
+  rtl, extern: "nuc$1", strBuilder.} =
   ## Translates words in a string using the `replacements` proc to substitute
   ## words inside `s` with their replacements
   ##
@@ -1539,7 +1541,7 @@ proc translate*(s: string, replacements: proc(key: string): string): string {.
     result.add(replacements(word))
 
 proc title*(s: string): string {.noSideEffect, procvar,
-  rtl, extern: "nuc$1".} =
+  rtl, extern: "nuc$1", strBuilder.} =
   ## Converts `s` to a unicode title.
   ##
   ## Returns a new string such that the first character
@@ -1633,7 +1635,7 @@ proc cmpRunesIgnoreCase*(a, b: string): int {.rtl, extern: "nuc$1", procvar.} =
     if result != 0: return
   result = a.len - b.len
 
-proc reversed*(s: string): string =
+proc reversed*(s: string): string {.strBuilder.} =
   ## Returns the reverse of ``s``, interpreting it as Unicode characters.
   ## Unicode combining characters are correctly interpreted as well:
   ##

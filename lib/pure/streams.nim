@@ -362,7 +362,7 @@ when not defined(js):
   proc newStringStream*(s: string = ""): StringStream =
     ## creates a new stream from the string `s`.
     new(result)
-    result.data = mstring s
+    result.data = tomut s
     result.pos = 0
     result.closeImpl = ssClose
     result.atEndImpl = ssAtEnd

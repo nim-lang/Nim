@@ -17,7 +17,7 @@ proc strAlgoBody(n, res: NimNode; firstAsgn: var bool): NimNode =
   of nnkAsgn, nnkFastAsgn:
     if n[0].kind == nnkIdent and eqIdent(n[0], "result"):
       let a = if n[1].kind in {nnkStrLit..nnkTripleStrLit}:
-                newCall("mstring", n[1])
+                newCall("tomut", n[1])
               else:
                 n[1]
       if firstAsgn:

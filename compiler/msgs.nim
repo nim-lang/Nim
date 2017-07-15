@@ -8,7 +8,7 @@
 #
 
 import
-  options, strutils, os, tables, ropes, platform, terminal, macros
+  migrate, options, strutils, os, tables, ropes, platform, terminal, macros
 
 type
   TMsgKind* = enum
@@ -560,7 +560,7 @@ proc makeCString*(s: string): Rope =
       add(res, '\"')
     add(res, toCChar(s[i]))
   add(res, '\"')
-  add(result, rope(res))
+  add(result, rope($res))
 
 
 proc newFileInfo(fullPath, projPath: string): TFileInfo =
@@ -655,7 +655,7 @@ var
   writelnHook*: proc (output: string) {.closure.}
   structuredErrorHook*: proc (info: TLineInfo; msg: string; severity: Severity) {.closure.}
 
-proc concat(strings: openarray[string]): string =
+proc concat(strings: openarray[string]): string {.strBuilder.} =
   var totalLen = 0
   for s in strings: totalLen += s.len
   result = newStringOfCap totalLen

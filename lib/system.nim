@@ -1894,6 +1894,11 @@ proc getRefcount*[T](x: seq[T]): int {.importc: "getRefcount", noSideEffect.}
   ## retrieves the reference count of an heap-allocated object. The
   ## value is implementation-dependent.
 
+template tomut*(s: string): mstring =
+  when defined(nimImmutableStrings): mstring(substr(s))
+  else: mstring(s)
+
+template unsafeBorrow*(x: mutstring): string = string(x)
 
 const
   Inf* {.magic: "Inf".} = 1.0 / 0.0
@@ -2053,10 +2058,13 @@ proc max*[T](x, y: T): T =
   if y <= x: x else: y
 
 when defined(nimImmutableStrings):
-  proc `$`*(x: var mutstring): string =
+  proc `$`*(x: mutstring): string =
     when not defined(JS) and not defined(nimscript):
-      var s = cast[PGenericSeq](x)
-      s.reserved = s.reserved or seqShallowFlag
+      when nimvm:
+        discard
+      else:
+        var s = cast[PGenericSeq](x)
+        s.reserved = s.reserved or seqShallowFlag
     shallowCopy(result, string x)
 {.pop.}
 
@@ -2422,7 +2430,7 @@ proc `$`*[T: tuple|object](x: T): string =
   ## .. code-block:: nim
   ##   $(23, 45) == "(23, 45)"
   ##   $() == "()"
-  var res = mstring"("
+  var res = tomut"("
   var firstElement = true
   for name, value in fieldPairs(x):
     if not firstElement: res.add(", ")
@@ -2443,7 +2451,7 @@ proc `$`*[T: tuple|object](x: T): string =
 proc collectionToString[T: set | seq](x: T, b, e: string): string =
   when x is seq:
     if x.isNil: return "nil"
-  var res = mstring b
+  var res = tomut b
   var firstElement = true
   for value in items(x):
     if not firstElement: res.add(", ")
@@ -3772,14 +3780,14 @@ when hasAlloc:
 
   proc safeAdd*(x: var mstring, y: char) =
     ## Adds ``y`` to ``x``. If ``x`` is ``nil`` it is initialized to ``""``
-    if x.isNil: x = mstring""
+    if x.isNil: x = tomut""
     x.add(y)
 
   proc safeAdd*(x: var mstring, y: string) =
     ## Adds ``y`` to ``x`` unless ``x`` is not yet initalized; in that
     ## case, ``x`` becomes ``y``
     when defined(nimImmutableStrings):
-      if x.isNil: x = mstring""
+      if x.isNil: x = tomut""
       x.add(y)
     else:
       if x.isNil: x = y

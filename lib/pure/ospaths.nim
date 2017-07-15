@@ -469,7 +469,7 @@ when not declared(getEnv) or defined(nimscript):
             if drive != "":
               result = drive & ":" & DirSep
             else:
-              result = mstring($DirSep)
+              result = tomut($DirSep)
           elif defined(macos):
             result = "" # must not start with ':'
           else:
@@ -477,7 +477,7 @@ when not declared(getEnv) or defined(nimscript):
           start = 1
         elif path[0] == '.' and path[1] == '/':
           # current directory
-          result = mstring($CurDir)
+          result = tomut($CurDir)
           start = 2
         else:
           result = ""

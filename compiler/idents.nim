@@ -93,8 +93,12 @@ proc getIdent*(self: IdentCache; identifier: cstring, length: int, h: Hash): PId
     result = result.next
   new(result)
   result.h = h
-  result.s = newString(length)
-  for i in countup(0, length - 1): result.s[i] = identifier[i]
+  var res = newString(length)
+  for i in countup(0, length - 1): res[i] = identifier[i]
+  when defined(nimImmutableStrings):
+    result.s = $res
+  else:
+    shallowCopy(result.s, res)
   result.next = buckets[idx]
   buckets[idx] = result
   if id == 0:

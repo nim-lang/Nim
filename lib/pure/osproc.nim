@@ -68,7 +68,7 @@ proc quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1"
   let needQuote = {' ', '\t'} in s or s.len == 0
 
   result = ""
-  var backslashBuff = mstring""
+  var backslashBuff = tomut""
   if needQuote:
     result.add("\"")
 
@@ -409,7 +409,7 @@ when defined(Windows) and not defined(useNimRtl):
     result.writeDataImpl = hsWriteData
 
   proc buildCommandLine(a: string, args: openArray[string]): cstring =
-    var res = mstring(quoteShell(a))
+    var res = tomut(quoteShell(a))
     for i in 0..high(args):
       res.add(' ')
       res.add(quoteShell(args[i]))
