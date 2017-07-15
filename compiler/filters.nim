@@ -61,11 +61,11 @@ proc filterStrip(stdin: PLLStream, filename: string, call: PNode): PLLStream =
   result = llStreamOpen("")
   var line = newStringOfCap(80)
   while llStreamReadLine(stdin, line):
-    var stripped = strip(line, leading, trailing)
+    var stripped = strip(line.unsafeBorrow, leading, trailing)
     if len(pattern) == 0 or startsWith(stripped, pattern):
       llStreamWriteln(result, stripped)
     else:
-      llStreamWriteln(result, line)
+      llStreamWriteln(result, line.unsafeBorrow)
   llStreamClose(stdin)
 
 proc filterReplace(stdin: PLLStream, filename: string, call: PNode): PLLStream =
@@ -75,5 +75,5 @@ proc filterReplace(stdin: PLLStream, filename: string, call: PNode): PLLStream =
   result = llStreamOpen("")
   var line = newStringOfCap(80)
   while llStreamReadLine(stdin, line):
-    llStreamWriteln(result, replace(line, sub, by))
+    llStreamWriteln(result, replace(line.unsafeBorrow, sub, by))
   llStreamClose(stdin)

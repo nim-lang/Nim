@@ -10,7 +10,7 @@
 # this module contains routines for accessing and iterating over types
 
 import
-  intsets, ast, astalgo, trees, msgs, strutils, platform, renderer
+  migrate, intsets, ast, astalgo, trees, msgs, strutils, platform, renderer
 
 proc firstOrd*(t: PType): BiggestInt
 proc lastOrd*(t: PType): BiggestInt
@@ -124,8 +124,8 @@ proc isCompatibleToCString(a: PType): bool =
         (a.sons[1].kind == tyChar):
       result = true
 
-proc getProcHeader*(sym: PSym; prefer: TPreferedDesc = preferName): string =
-  result = sym.owner.name.s & '.' & sym.name.s & '('
+proc getProcHeader*(sym: PSym; prefer: TPreferedDesc = preferName): string {.strBuilder.} =
+  result = system.mstring(sym.owner.name.s & '.' & sym.name.s & '(')
   var n = sym.typ.n
   for i in countup(1, sonsLen(n) - 1):
     var p = n.sons[i]
@@ -433,7 +433,7 @@ template bindConcreteTypeToUserTypeClass*(tc, concrete: PType) =
 template isResolvedUserTypeClass*(t: PType): bool =
   tfResolved in t.flags
 
-proc addTypeFlags(name: var string, typ: PType) {.inline.} =
+proc addTypeFlags(name: var system.mstring, typ: PType) {.inline.} =
   if tfNotNil in typ.flags: name.add(" not nil")
 
 proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
@@ -447,15 +447,17 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     elif prefer == preferName or t.sym.owner.isNil:
       result = t.sym.name.s
       if t.kind == tyGenericParam and t.sons != nil and t.sonsLen > 0:
-        result.add ": "
+        var res = tomut(result)
+        res.add ": "
         var first = true
         for son in t.sons:
-          if not first: result.add " or "
-          result.add son.typeToString
+          if not first: res.add " or "
+          res.add son.typeToString
           first = false
+        result = $res
     else:
       result = t.sym.owner.name.s & '.' & t.sym.name.s
-    result.addTypeFlags(t)
+    system.mstring(result).addTypeFlags(t)
     return
   case t.kind
   of tyInt:
@@ -468,10 +470,12 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         result = "int literal(" & $t.n.intVal & ")"
   of tyGenericBody, tyGenericInst, tyGenericInvocation:
     result = typeToString(t.sons[0]) & '['
+    var res = tomut(result)
     for i in countup(1, sonsLen(t)-1-ord(t.kind != tyGenericInvocation)):
-      if i > 1: add(result, ", ")
-      add(result, typeToString(t.sons[i], preferGenericArg))
-    add(result, ']')
+      if i > 1: add(res, ", ")
+      add(res, typeToString(t.sons[i], preferGenericArg))
+    add(res, ']')
+    result = $res
   of tyTypeDesc:
     if t.sons[0].kind == tyNone: result = "typedesc"
     else: result = "type " & typeToString(t.sons[0])
@@ -481,7 +485,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       result = t.n.renderTree
     else:
       result = "static[" & typeToString(t.sons[0]) & "]"
-      if t.n != nil: result.add "(" & renderTree(t.n) & ")"
+      if t.n != nil: result = result & "(" & renderTree(t.n) & ")"
   of tyUserTypeClass:
     internalAssert t.sym != nil and t.sym.owner != nil
     if t.isResolvedUserTypeClass: return typeToString(t.lastSon)
@@ -508,10 +512,12 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   of tyUserTypeClassInst:
     let body = t.base
     result = body.sym.name.s & "["
+    var res = tomut(result)
     for i in countup(1, sonsLen(t) - 2):
-      if i > 1: add(result, ", ")
-      add(result, typeToString(t.sons[i]))
-    result.add "]"
+      if i > 1: add(res, ", ")
+      add(res, typeToString(t.sons[i]))
+    res.add "]"
+    result = $res
   of tyAnd:
     result = typeToString(t.sons[0]) & " and " & typeToString(t.sons[1])
   of tyOr:
@@ -544,51 +550,55 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   of tyTuple:
     # we iterate over t.sons here, because t.n may be nil
     if t.n != nil:
-      result = "tuple["
+      var res = tomut"tuple["
       assert(sonsLen(t.n) == sonsLen(t))
       for i in countup(0, sonsLen(t.n) - 1):
         assert(t.n.sons[i].kind == nkSym)
-        add(result, t.n.sons[i].sym.name.s & ": " & typeToString(t.sons[i]))
-        if i < sonsLen(t.n) - 1: add(result, ", ")
-      add(result, ']')
+        add(res, t.n.sons[i].sym.name.s & ": " & typeToString(t.sons[i]))
+        if i < sonsLen(t.n) - 1: add(res, ", ")
+      add(res, ']')
+      result = $res
     elif sonsLen(t) == 0:
       result = "tuple[]"
     else:
-      result = "("
+      var res = tomut"("
       for i in countup(0, sonsLen(t) - 1):
-        add(result, typeToString(t.sons[i]))
-        if i < sonsLen(t) - 1: add(result, ", ")
-      add(result, ')')
+        add(res, typeToString(t.sons[i]))
+        if i < sonsLen(t) - 1: add(res, ", ")
+      add(res, ')')
+      result = $res
   of tyPtr, tyRef, tyVar:
-    result = typeToStr[t.kind]
+    var res = tomut typeToStr[t.kind]
     if t.len >= 2:
-      setLen(result, result.len-1)
-      result.add '['
+      setLen(res, result.len-1)
+      res.add '['
       for i in countup(0, sonsLen(t) - 1):
-        add(result, typeToString(t.sons[i]))
-        if i < sonsLen(t) - 1: add(result, ", ")
-      result.add ']'
+        add(res, typeToString(t.sons[i]))
+        if i < sonsLen(t) - 1: add(res, ", ")
+      res.add ']'
     else:
-      result.add typeToString(t.sons[0])
+      res.add typeToString(t.sons[0])
+    result = $res
   of tyRange:
-    result = "range "
+    var res = tomut"range "
     if t.n != nil and t.n.kind == nkRange:
-      result.add rangeToStr(t.n)
+      res.add rangeToStr(t.n)
     if prefer != preferExported:
-      result.add("(" & typeToString(t.sons[0]) & ")")
+      res.add("(" & typeToString(t.sons[0]) & ")")
+    result = $res
   of tyProc:
-    result = if tfIterator in t.flags: "iterator " else: "proc "
-    if tfUnresolved in t.flags: result.add "[*missing parameters*]"
-    result.add "("
+    var res = if tfIterator in t.flags: tomut"iterator " else: tomut"proc "
+    if tfUnresolved in t.flags: res.add "[*missing parameters*]"
+    res.add "("
     for i in countup(1, sonsLen(t) - 1):
       if t.n != nil and i < t.n.len and t.n[i].kind == nkSym:
-        add(result, t.n[i].sym.name.s)
-        add(result, ": ")
-      add(result, typeToString(t.sons[i]))
-      if i < sonsLen(t) - 1: add(result, ", ")
-    add(result, ')')
-    if t.sons[0] != nil: add(result, ": " & typeToString(t.sons[0]))
-    var prag = if t.callConv == ccDefault: "" else: CallingConvToStr[t.callConv]
+        add(res, t.n[i].sym.name.s)
+        add(res, ": ")
+      add(res, typeToString(t.sons[i]))
+      if i < sonsLen(t) - 1: add(res, ", ")
+    add(res, ')')
+    if t.sons[0] != nil: add(res, ": " & typeToString(t.sons[0]))
+    var prag = tomut(if t.callConv == ccDefault: "" else: CallingConvToStr[t.callConv])
     if tfNoSideEffect in t.flags:
       addSep(prag)
       add(prag, "noSideEffect")
@@ -598,12 +608,13 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     if t.lockLevel.ord != UnspecifiedLockLevel.ord:
       addSep(prag)
       add(prag, "locks: " & $t.lockLevel)
-    if len(prag) != 0: add(result, "{." & prag & ".}")
+    if len(prag) != 0: add(res, "{." & $prag & ".}")
+    result = $res
   of tyVarargs:
     result = typeToStr[t.kind] % typeToString(t.sons[0])
   else:
     result = typeToStr[t.kind]
-  result.addTypeFlags(t)
+  system.mstring(result).addTypeFlags(t)
 
 proc firstOrd(t: PType): BiggestInt =
   case t.kind
@@ -1562,9 +1573,9 @@ proc typeMismatch*(info: TLineInfo, formal, actual: PType) =
     let named = typeToString(formal)
     let desc = typeToString(formal, preferDesc)
     let x = if named == desc: named else: named & " = " & desc
-    var msg = msgKindToString(errTypeMismatch) &
+    var msg = tomut(msgKindToString(errTypeMismatch) &
               typeToString(actual) & ") " &
-              msgKindToString(errButExpectedX) % [x]
+              msgKindToString(errButExpectedX) % [x])
 
     if formal.kind == tyProc and actual.kind == tyProc:
       case compatibleEffects(formal, actual)
@@ -1579,4 +1590,4 @@ proc typeMismatch*(info: TLineInfo, formal, actual: PType) =
         msg.add "\n.tag effect is 'any tag allowed'"
       of efLockLevelsDiffer:
         msg.add "\nlock levels differ"
-    localError(info, errGenerated, msg)
+    localError(info, errGenerated, $msg)

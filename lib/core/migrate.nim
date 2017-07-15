@@ -28,6 +28,12 @@ proc strAlgoBody(n, res: NimNode; firstAsgn: var bool): NimNode =
   of nnkIdent:
     if eqIdent(n, "result"): return res
     if eqIdent(n, "result0"): firstAsgn = false
+  of nnkReturnStmt:
+    if not firstAsgn:
+      result = newStmtList()
+      result.add newAssignment(ident"result", newCall("$", res))
+      result.add n
+      return result
   else: discard
   result = copyNimNode(n)
   for i in 0..<n.len:

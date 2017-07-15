@@ -68,9 +68,9 @@ proc parsePipe(filename: string, inputStream: PLLStream; cache: IdentCache): PNo
   if s != nil:
     var line = newStringOfCap(80)
     discard llStreamReadLine(s, line)
-    var i = utf8Bom(line)
+    var i = utf8Bom(line.unsafeBorrow)
     var linenumber = 1
-    if containsShebang(line, i):
+    if containsShebang(line.unsafeBorrow, i):
       discard llStreamReadLine(s, line)
       i = 0
       inc linenumber
@@ -78,7 +78,8 @@ proc parsePipe(filename: string, inputStream: PLLStream; cache: IdentCache): PNo
       inc(i, 2)
       while line[i] in Whitespace: inc(i)
       var q: TParser
-      parser.openParser(q, filename, llStreamOpen(substr(line, i)), cache)
+      parser.openParser(q, filename,
+        llStreamOpen(substr(line.unsafeBorrow, i)), cache)
       result = parser.parseAll(q)
       parser.closeParser(q)
     llStreamClose(s)
@@ -120,7 +121,7 @@ proc applyFilter(p: var TParsers, n: PNode, filename: string,
   if f != filtNone:
     if hintCodeBegin in gNotes:
       rawMessage(hintCodeBegin, [])
-      msgWriteln(result.s)
+      msgWriteln(result.s.unsafeBorrow)
       rawMessage(hintCodeEnd, [])
 
 proc evalPipe(p: var TParsers, n: PNode, filename: string,

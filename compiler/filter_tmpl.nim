@@ -25,7 +25,7 @@ type
     state: TParseState
     info: TLineInfo
     indent, emitPar: int
-    x: string                # the current input line
+    x: system.mstring        # the current input line
     outp: PLLStream          # the ouput will be parsed by pnimsyn
     subsChar, nimDirective: char
     emit, conc, toStr: string
@@ -71,14 +71,14 @@ proc parseLine(p: var TTmplParser) =
     inc(j)
     while p.x[j] == ' ': inc(j)
     let d = j
-    var keyw = ""
+    var keyw = tomut""
     while p.x[j] in PatternChars:
       add(keyw, p.x[j])
       inc(j)
 
     scanPar(p, j)
-    p.pendingExprLine = withInExpr(p) or llstream.endsWithOpr(p.x)
-    case keyw
+    p.pendingExprLine = withInExpr(p) or llstream.endsWithOpr(p.x.unsafeBorrow)
+    case $keyw
     of "end":
       if p.indent >= 2:
         dec(p.indent, 2)
@@ -90,20 +90,20 @@ proc parseLine(p: var TTmplParser) =
     of "if", "when", "try", "while", "for", "block", "case", "proc", "iterator",
        "converter", "macro", "template", "method":
       llStreamWrite(p.outp, spaces(p.indent))
-      llStreamWrite(p.outp, substr(p.x, d))
+      llStreamWrite(p.outp, substr(p.x.unsafeBorrow, d))
       inc(p.indent, 2)
     of "elif", "of", "else", "except", "finally":
       llStreamWrite(p.outp, spaces(p.indent - 2))
-      llStreamWrite(p.outp, substr(p.x, d))
+      llStreamWrite(p.outp, substr(p.x.unsafeBorrow, d))
     of "wLet", "wVar", "wConst", "wType":
       llStreamWrite(p.outp, spaces(p.indent))
-      llStreamWrite(p.outp, substr(p.x, d))
-      if not p.x.contains({':', '='}):
+      llStreamWrite(p.outp, substr(p.x.unsafeBorrow, d))
+      if not p.x.unsafeBorrow.contains({':', '='}):
         # no inline element --> treat as block:
         inc(p.indent, 2)
     else:
       llStreamWrite(p.outp, spaces(p.indent))
-      llStreamWrite(p.outp, substr(p.x, d))
+      llStreamWrite(p.outp, substr(p.x.unsafeBorrow, d))
     p.state = psDirective
   else:
     # data line

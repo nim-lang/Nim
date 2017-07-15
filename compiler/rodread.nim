@@ -89,7 +89,7 @@
 #
 
 import
-  os, options, strutils, nversion, ast, astalgo, msgs, platform, condsyms,
+  migrate, os, options, strutils, nversion, ast, astalgo, msgs, platform, condsyms,
   ropes, idents, securehash, idgen, types, rodutils, memfiles, tables
 
 type
@@ -118,7 +118,7 @@ type
   TIndex*{.final.} = object   # an index with compression
     lastIdxKey*, lastIdxVal*: int
     tab*: TIITable
-    r*: string                # writers use this
+    r*: system.mstring        # writers use this
     offset*: int              # readers use this
 
   TRodReader* = object of RootObj
@@ -510,7 +510,7 @@ proc skipSection(r: PRodReader) =
   else:
     internalError("skipSection " & $r.line)
 
-proc rdWord(r: PRodReader): string =
+proc rdWord(r: PRodReader): string {.strBuilder.} =
   result = ""
   while r.s[r.pos] in {'A'..'Z', '_', 'a'..'z', '0'..'9'}:
     add(result, r.s[r.pos])
@@ -732,12 +732,12 @@ proc newRodReader(modfilename: string, hash: SecureHash,
     initIiTable(r.index.tab)
     initIiTable(r.imports.tab) # looks like a ROD file
     inc(r.pos, 4)
-    var version = ""
+    var version = tomut""
     while r.s[r.pos] notin {'\0', '\x0A'}:
       add(version, r.s[r.pos])
       inc(r.pos)
     if r.s[r.pos] == '\x0A': inc(r.pos)
-    if version != RodFileVersion:
+    if $version != RodFileVersion:
       # since ROD files are only for caching, no backwards compatibility is
       # needed
       #echo "expected version ", version, " ", RodFileVersion
@@ -805,18 +805,18 @@ proc rrGetSym(r: PRodReader, id: int, info: TLineInfo): PSym =
       # import from other module:
       var moduleID = iiTableGet(r.imports.tab, id)
       if moduleID < 0:
-        var x = ""
+        var x = tomut""
         encodeVInt(id, x)
-        internalError(info, "missing from both indexes: +" & x)
+        internalError(info, "missing from both indexes: +" & $x)
       var rd = getReader(moduleID)
       d = iiTableGet(rd.index.tab, id)
       if d != InvalidKey:
         result = decodeSymSafePos(rd, d, info)
       else:
-        var x = ""
+        var x = tomut""
         encodeVInt(id, x)
         when false: findSomeWhere(id)
-        internalError(info, "rrGetSym: no reader found: +" & x)
+        internalError(info, "rrGetSym: no reader found: +" & $x)
     else:
       # own symbol:
       result = decodeSymSafePos(r, d, info)

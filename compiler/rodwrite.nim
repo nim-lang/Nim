@@ -12,9 +12,11 @@
 # writing of rod files is split into two different modules.
 
 import
-  intsets, os, options, strutils, nversion, ast, astalgo, msgs, platform,
+  intsets, os, options, strutils, nversion, astalgo, msgs, platform,
   condsyms, ropes, idents, securehash, rodread, passes, importer, idgen,
-  rodutils
+  rodutils, migrate
+
+import ast except TMagic
 
 from modulegraphs import ModuleGraph
 
@@ -23,15 +25,15 @@ type
     module: PSym
     hash: SecureHash
     options: TOptions
-    defines: string
-    inclDeps: string
-    modDeps: string
-    interf: string
-    compilerProcs: string
+    defines: mstring
+    inclDeps: mstring
+    modDeps: mstring
+    interf: mstring
+    compilerProcs: mstring
     index, imports: TIndex
-    converters, methods: string
-    init: string
-    data: string
+    converters, methods: mstring
+    init: mstring
+    data: mstring
     sstack: TSymSeq          # a stack of symbols to process
     tstack: TTypeSeq         # a stack of types to process
     files: TStringSeq
@@ -40,8 +42,8 @@ type
 
   PRodWriter = ref TRodWriter
 
-proc getDefines(): string =
-  result = ""
+proc getDefines(): mstring =
+  result = tomut""
   for d in definedSymbolNames():
     if result.len != 0: add(result, " ")
     add(result, d)
@@ -63,20 +65,20 @@ proc newRodWriter(hash: SecureHash, module: PSym; cache: IdentCache): PRodWriter
   result.tstack = @[]
   initIiTable(result.index.tab)
   initIiTable(result.imports.tab)
-  result.index.r = ""
-  result.imports.r = ""
+  result.index.r = tomut""
+  result.imports.r = tomut""
   result.hash = hash
   result.module = module
   result.defines = getDefines()
   result.options = options.gOptions
   result.files = @[]
-  result.inclDeps = ""
-  result.modDeps = ""
+  result.inclDeps = tomut""
+  result.modDeps = tomut""
   result.interf = newStringOfCap(2_000)
-  result.compilerProcs = ""
-  result.converters = ""
-  result.methods = ""
-  result.init = ""
+  result.compilerProcs = tomut""
+  result.converters = tomut""
+  result.methods = tomut""
+  result.init = tomut""
   result.origFile = module.info.toFullPath
   result.data = newStringOfCap(12_000)
   result.cache = cache
@@ -111,7 +113,7 @@ proc pushSym(w: PRodWriter, s: PSym) =
     w.sstack.add(s)
 
 proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode,
-                result: var string) =
+                result: var mstring) =
   if n == nil:
     # nil nodes have to be stored too:
     result.add("()")
@@ -171,7 +173,7 @@ proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode,
       encodeNode(w, n.info, n.sons[i], result)
   add(result, ')')
 
-proc encodeLoc(w: PRodWriter, loc: TLoc, result: var string) =
+proc encodeLoc(w: PRodWriter, loc: TLoc, result: var mstring) =
   var oldLen = result.len
   result.add('<')
   if loc.k != low(loc.k): encodeVInt(ord(loc.k), result)
@@ -194,7 +196,7 @@ proc encodeLoc(w: PRodWriter, loc: TLoc, result: var string) =
   else:
     add(result, '>')
 
-proc encodeType(w: PRodWriter, t: PType, result: var string) =
+proc encodeType(w: PRodWriter, t: PType, result: var mstring) =
   if t == nil:
     # nil nodes have to be stored too:
     result.add("[]")
@@ -259,7 +261,7 @@ proc encodeType(w: PRodWriter, t: PType, result: var string) =
       encodeVInt(t.sons[i].id, result)
       pushType(w, t.sons[i])
 
-proc encodeLib(w: PRodWriter, lib: PLib, info: TLineInfo, result: var string) =
+proc encodeLib(w: PRodWriter, lib: PLib, info: TLineInfo, result: var mstring) =
   add(result, '|')
   encodeVInt(ord(lib.kind), result)
   add(result, '|')
@@ -268,7 +270,7 @@ proc encodeLib(w: PRodWriter, lib: PLib, info: TLineInfo, result: var string) =
   encodeNode(w, info, lib.path, result)
 
 proc encodeInstantiations(w: PRodWriter; s: seq[PInstantiation];
-                          result: var string) =
+                          result: var mstring) =
   for t in s:
     result.add('\15')
     encodeVInt(t.sym.id, result)
@@ -280,7 +282,7 @@ proc encodeInstantiations(w: PRodWriter; s: seq[PInstantiation];
     result.add('\20')
     encodeVInt(t.compilesId, result)
 
-proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
+proc encodeSym(w: PRodWriter, s: PSym, result: var mstring) =
   if s == nil:
     # nil nodes have to be stored too:
     result.add("{}")
@@ -308,7 +310,7 @@ proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
   if s.flags != {}:
     result.add('$')
     encodeVInt(cast[int32](s.flags), result)
-  if s.magic != mNone:
+  if s.magic != ast.mNone:
     result.add('@')
     encodeVInt(ord(s.magic), result)
   if s.options != w.options:
@@ -480,85 +482,85 @@ proc writeRod(w: PRodWriter) =
   f.write("NIM:")
   f.write(RodFileVersion)
   f.write(rodNL)
-  var id = "ID:"
+  var id = tomut"ID:"
   encodeVInt(w.module.id, id)
-  f.write(id)
+  f.write($id)
   f.write(rodNL)
 
-  var orig = "ORIGFILE:"
+  var orig = tomut"ORIGFILE:"
   encodeStr(w.origFile, orig)
-  f.write(orig)
+  f.write($orig)
   f.write(rodNL)
 
-  var hash = "HASH:"
+  var hash = tomut"HASH:"
   encodeStr($w.hash, hash)
-  f.write(hash)
+  f.write($hash)
   f.write(rodNL)
 
-  var options = "OPTIONS:"
+  var options = tomut"OPTIONS:"
   encodeVInt(cast[int32](w.options), options)
-  f.write(options)
+  f.write($options)
   f.write(rodNL)
 
-  var goptions = "GOPTIONS:"
+  var goptions = tomut"GOPTIONS:"
   encodeVInt(cast[int32](gGlobalOptions), goptions)
-  f.write(goptions)
+  f.write($goptions)
   f.write(rodNL)
 
-  var cmd = "CMD:"
+  var cmd = tomut"CMD:"
   encodeVInt(cast[int32](gCmd), cmd)
-  f.write(cmd)
+  f.write($cmd)
   f.write(rodNL)
 
   f.write("DEFINES:")
   f.write(w.defines)
   f.write(rodNL)
 
-  var files = "FILES(" & rodNL
+  var files = tomut("FILES(" & rodNL)
   for i in countup(0, high(w.files)):
     encodeStr(w.files[i], files)
     files.add(rodNL)
-  f.write(files)
+  f.write($files)
   f.write(')' & rodNL)
 
   f.write("INCLUDES(" & rodNL)
-  f.write(w.inclDeps)
+  f.write($w.inclDeps)
   f.write(')' & rodNL)
 
   f.write("DEPS:")
-  f.write(w.modDeps)
+  f.write($w.modDeps)
   f.write(rodNL)
 
   f.write("INTERF(" & rodNL)
-  f.write(w.interf)
+  f.write($w.interf)
   f.write(')' & rodNL)
 
   f.write("COMPILERPROCS(" & rodNL)
-  f.write(w.compilerProcs)
+  f.write($w.compilerProcs)
   f.write(')' & rodNL)
 
   f.write("INDEX(" & rodNL)
-  f.write(w.index.r)
+  f.write($w.index.r)
   f.write(')' & rodNL)
 
   f.write("IMPORTS(" & rodNL)
-  f.write(w.imports.r)
+  f.write($w.imports.r)
   f.write(')' & rodNL)
 
   f.write("CONVERTERS:")
-  f.write(w.converters)
+  f.write($w.converters)
   f.write(rodNL)
 
   f.write("METHODS:")
-  f.write(w.methods)
+  f.write($w.methods)
   f.write(rodNL)
 
   f.write("INIT(" & rodNL)
-  f.write(w.init)
+  f.write($w.init)
   f.write(')' & rodNL)
 
   f.write("DATA(" & rodNL)
-  f.write(w.data)
+  f.write($w.data)
   f.write(')' & rodNL)
   # write trailing zero which is necessary because we use memory mapped files
   # for reading:
@@ -585,7 +587,7 @@ proc process(c: PPassContext, n: PNode): PNode =
     if s == nil: internalError(n.info, "rodwrite.process")
     if n.sons[bodyPos] == nil:
       internalError(n.info, "rodwrite.process: body is nil")
-    if n.sons[bodyPos].kind != nkEmpty or s.magic != mNone or
+    if n.sons[bodyPos].kind != nkEmpty or s.magic != ast.mNone or
         sfForward notin s.flags:
       addInterfaceSym(w, s)
   of nkMethodDef:
@@ -593,7 +595,7 @@ proc process(c: PPassContext, n: PNode): PNode =
     if s == nil: internalError(n.info, "rodwrite.process")
     if n.sons[bodyPos] == nil:
       internalError(n.info, "rodwrite.process: body is nil")
-    if n.sons[bodyPos].kind != nkEmpty or s.magic != mNone or
+    if n.sons[bodyPos].kind != nkEmpty or s.magic != ast.mNone or
         sfForward notin s.flags:
       pushSym(w, s)
       processStacks(w, false)

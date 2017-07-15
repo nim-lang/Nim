@@ -16,11 +16,11 @@ import
 proc ensureNoMissingOrUnusedSymbols(scope: PScope)
 
 proc noidentError(n, origin: PNode) =
-  var m = ""
+  var m = tomut""
   if origin != nil:
     m.add "in expression '" & origin.renderTree & "': "
   m.add "identifier expected, but found '" & n.renderTree & "'"
-  localError(n.info, m)
+  localError(n.info, $m)
 
 proc considerQuotedIdent*(n: PNode, origin: PNode = nil): PIdent =
   ## Retrieve a PIdent from a PNode, taking into account accent nodes.
@@ -38,14 +38,14 @@ proc considerQuotedIdent*(n: PNode, origin: PNode = nil): PIdent =
     of 0: handleError(n, origin)
     of 1: result = considerQuotedIdent(n.sons[0], origin)
     else:
-      var id = ""
+      var id = tomut""
       for i in 0.. <n.len:
         let x = n.sons[i]
         case x.kind
         of nkIdent: id.add(x.ident.s)
         of nkSym: id.add(x.sym.name.s)
         else: handleError(n, origin)
-      result = getIdent(id)
+      result = getIdent($id)
   of nkOpenSymChoice, nkClosedSymChoice: result = n.sons[0].sym.name
   else:
     handleError(n, origin)
@@ -238,7 +238,7 @@ else:
   template fixSpelling(n: PNode; ident: PIdent; op: untyped) = discard
 
 proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
-  var err = "Error: ambiguous identifier: '" & s.name.s & "'"
+  var err = tomut("Error: ambiguous identifier: '" & s.name.s & "'")
   var ti: TIdentIter
   var candidate = initIdentIter(ti, c.importTable.symbols, s.name)
   var i = 0
@@ -248,16 +248,16 @@ proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
     err.add candidate.owner.name.s & "." & candidate.name.s
     candidate = nextIdentIter(ti, c.importTable.symbols)
     inc i
-  localError(info, errGenerated, err)
+  localError(info, errGenerated, $err)
 
 proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string) =
-  var err = "undeclared identifier: '" & name & "'"
+  var err = tomut("undeclared identifier: '" & name & "'")
   if c.recursiveDep.len > 0:
     err.add "\nThis might be caused by a recursive module dependency: "
     err.add c.recursiveDep
     # prevent excessive errors for 'nim check'
     c.recursiveDep = nil
-  localError(info, errGenerated, err)
+  localError(info, errGenerated, $err)
 
 proc lookUp*(c: PContext, n: PNode): PSym =
   # Looks up a symbol. Generates an error in case of nil.
