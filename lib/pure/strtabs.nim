@@ -13,7 +13,7 @@
 ## for the string table is also provided.
 
 import
-  hashes, strutils
+  hashes, strutils, migrate
 
 when defined(js):
   {.pragma: rtlFunc.}
@@ -221,7 +221,7 @@ proc newStringTable*(keyValuePairs: varargs[tuple[key, val: string]],
   for key, val in items(keyValuePairs): result[key] = val
 
 proc `%`*(f: string, t: StringTableRef, flags: set[FormatFlag] = {}): string {.
-  rtlFunc, extern: "nstFormat".} =
+  rtlFunc, extern: "nstFormat", strBuilder.} =
   ## The `%` operator for string tables.
   const
     PatternChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\x80'..'\xFF'}
@@ -255,13 +255,14 @@ proc `$`*(t: StringTableRef): string {.rtlFunc, extern: "nstDollar".} =
   if t.len == 0:
     result = "{:}"
   else:
-    result = "{"
-    for key, val in pairs(t):
-      if result.len > 1: result.add(", ")
-      result.add(key)
-      result.add(": ")
-      result.add(val)
-    result.add("}")
+    strBody:
+      result = "{"
+      for key, val in pairs(t):
+        if result.len > 1: result.add(", ")
+        result.add(key)
+        result.add(": ")
+        result.add(val)
+      result.add("}")
 
 when isMainModule:
   var x = {"k": "v", "11": "22", "565": "67"}.newStringTable

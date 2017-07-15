@@ -13,7 +13,7 @@
 include "system/inclrtl"
 
 import
-  strutils, os, strtabs, streams, cpuinfo
+  migrate, strutils, os, strtabs, streams, cpuinfo
 
 when defined(windows):
   import winlean
@@ -60,14 +60,15 @@ type
 const poUseShell* {.deprecated.} = poUsePath
   ## Deprecated alias for poUsePath.
 
-proc quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
+proc quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1",
+                                             strBuilder.} =
   ## Quote s, so it can be safely passed to Windows API.
   ## Based on Python's subprocess.list2cmdline
   ## See http://msdn.microsoft.com/en-us/library/17w5ykft.aspx
   let needQuote = {' ', '\t'} in s or s.len == 0
 
   result = ""
-  var backslashBuff = ""
+  var backslashBuff = mstring""
   if needQuote:
     result.add("\"")
 
@@ -362,8 +363,8 @@ when not defined(useNimRtl):
     while true:
       # FIXME: converts CR-LF to LF.
       if outp.readLine(line):
-        result.string.add(line.string)
-        result.string.add("\n")
+        result.mstring.add(line.string)
+        result.mstring.add("\n")
       elif not running(p): break
     close(p)
 
@@ -408,7 +409,7 @@ when defined(Windows) and not defined(useNimRtl):
     result.writeDataImpl = hsWriteData
 
   proc buildCommandLine(a: string, args: openArray[string]): cstring =
-    var res = quoteShell(a)
+    var res = mstring(quoteShell(a))
     for i in 0..high(args):
       res.add(' ')
       res.add(quoteShell(args[i]))
@@ -1277,8 +1278,8 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
   var line = newStringOfCap(120).TaintedString
   while true:
     if outp.readLine(line):
-      result[0].string.add(line.string)
-      result[0].string.add("\n")
+      result[0].mstring.add(line.string)
+      result[0].mstring.add("\n")
     else:
       result[1] = peekExitCode(p)
       if result[1] != -1: break

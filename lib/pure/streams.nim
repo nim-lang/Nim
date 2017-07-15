@@ -33,6 +33,7 @@
 ##    fs.close()
 
 include "system/inclrtl"
+import migrate
 
 proc newEIO(msg: string): ref IOError =
   new(result)
@@ -101,7 +102,7 @@ proc readData*(s: Stream, buffer: pointer, bufLen: int): int =
   ## low level proc that reads data into an untyped `buffer` of `bufLen` size.
   result = s.readDataImpl(s, buffer, bufLen)
 
-proc readAll*(s: Stream): string =
+proc readAll*(s: Stream): string {.strBuilder.} =
   ## Reads all available data.
   const bufferSize = 1000
   result = newString(bufferSize)
@@ -245,14 +246,14 @@ proc readStr*(s: Stream, length: int): TaintedString =
   ## an error occurred.
   result = newString(length).TaintedString
   var L = readData(s, addr(string(result)[0]), length)
-  if L != length: setLen(result.string, L)
+  if L != length: setLen(result.mstring, L)
 
 proc peekStr*(s: Stream, length: int): TaintedString =
   ## peeks a string of length `length` from the stream `s`. Raises `EIO` if
   ## an error occurred.
   result = newString(length).TaintedString
   var L = peekData(s, addr(string(result)[0]), length)
-  if L != length: setLen(result.string, L)
+  if L != length: setLen(result.mstring, L)
 
 proc readLine*(s: Stream, line: var TaintedString): bool =
   ## reads a line of text from the stream `s` into `line`. `line` must not be
@@ -261,7 +262,7 @@ proc readLine*(s: Stream, line: var TaintedString): bool =
   ## ``CRLF``. The newline character(s) are not part of the returned string.
   ## Returns ``false`` if the end of the file has been reached, ``true``
   ## otherwise. If ``false`` is returned `line` contains no new data.
-  line.string.setLen(0)
+  line.mstring.setLen(0)
   while true:
     var c = readChar(s)
     if c == '\c':
@@ -271,7 +272,7 @@ proc readLine*(s: Stream, line: var TaintedString): bool =
     elif c == '\0':
       if line.len > 0: break
       else: return false
-    line.string.add(c)
+    line.mstring.add(c)
   result = true
 
 proc peekLine*(s: Stream, line: var TaintedString): bool =
@@ -297,7 +298,7 @@ proc readLine*(s: Stream): TaintedString =
     if c == '\L' or c == '\0':
       break
     else:
-      result.string.add(c)
+      result.mstring.add(c)
 
 proc peekLine*(s: Stream): TaintedString =
   ## Peeks a line from a stream `s`. Note: This is not very efficient. Raises
@@ -311,7 +312,7 @@ when not defined(js):
   type
     StringStream* = ref StringStreamObj ## a stream that encapsulates a string
     StringStreamObj* = object of StreamObj
-      data*: string
+      data*: mstring
       pos: int
 
   {.deprecated: [PStringStream: StringStream, TStringStream: StringStreamObj].}
@@ -361,7 +362,7 @@ when not defined(js):
   proc newStringStream*(s: string = ""): StringStream =
     ## creates a new stream from the string `s`.
     new(result)
-    result.data = s
+    result.data = mstring s
     result.pos = 0
     result.closeImpl = ssClose
     result.atEndImpl = ssAtEnd
