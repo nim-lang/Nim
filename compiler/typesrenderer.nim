@@ -57,28 +57,32 @@ proc renderType(n: PNode): string =
       let params = n[0]
       assert params.kind == nkFormalParams
       assert len(params) > 0
-      result = "proc("
-      for i in 1 .. <len(params): result.add(renderType(params[i]) & ',')
-      result[<len(result)] = ')'
+      strBody:
+        result = "proc("
+        for i in 1 .. <len(params): result.add(renderType(params[i]) & ',')
+        result[<len(result)] = ')'
     else:
       result = "proc"
   of nkIdentDefs:
     assert len(n) >= 3
     let typePos = len(n) - 2
     let typeStr = renderType(n[typePos])
-    result = typeStr
-    for i in 1 .. <typePos:
-      assert n[i].kind == nkIdent
-      result.add(',' & typeStr)
+    strBody:
+      result = tomut typeStr
+      for i in 1 .. <typePos:
+        assert n[i].kind == nkIdent
+        result.add(',' & typeStr)
   of nkTupleTy:
-    result = "tuple["
-    for i in 0 .. <len(n): result.add(renderType(n[i]) & ',')
-    result[<len(result)] = ']'
+    strBody:
+      result = tomut "tuple["
+      for i in 0 .. <len(n): result.add(renderType(n[i]) & ',')
+      result[<len(result)] = ']'
   of nkBracketExpr:
     assert len(n) >= 2
-    result = renderType(n[0]) & '['
-    for i in 1 .. <len(n): result.add(renderType(n[i]) & ',')
-    result[<len(result)] = ']'
+    strBody:
+      result = tomut(renderType(n[0]) & '[')
+      for i in 1 .. <len(n): result.add(renderType(n[i]) & ',')
+      result[<len(result)] = ']'
   else: result = ""
   assert(not result.isNil)
 
@@ -114,8 +118,9 @@ proc renderParamTypes*(n: PNode, sep = defaultParamSeparator): string =
   ## string output is meant for the HTML renderer. If there are no parameters,
   ## the empty string is returned. The parameters will be joined by `sep` but
   ## other characters may appear too, like ``[]`` or ``|``.
-  result = ""
   var found: seq[string] = @[]
   renderParamTypes(found, n)
   if found.len > 0:
     result = found.join(sep)
+  else:
+    result = ""
