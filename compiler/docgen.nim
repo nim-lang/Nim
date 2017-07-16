@@ -16,7 +16,7 @@ import
   wordrecg, syntaxes, renderer, lexer, packages/docutils/rstast,
   packages/docutils/rst, packages/docutils/rstgen, times,
   packages/docutils/highlite, importer, sempass2, json, xmltree, cgi,
-  typesrenderer, astalgo
+  typesrenderer, astalgo, migrate
 
 type
   TSections = array[TSymKind, Rope]
@@ -147,16 +147,16 @@ proc ropeFormatNamedVars(frmt: FormatStr, varnames: openArray[string],
         num = j
         add(result, varvalues[j - 1])
       of 'A'..'Z', 'a'..'z', '\x80'..'\xFF':
-        var id = ""
+        var id = tomut""
         while true:
           add(id, frmt[i])
           inc(i)
           if not (frmt[i] in {'A'..'Z', '_', 'a'..'z', '\x80'..'\xFF'}): break
-        var idx = getVarIdx(varnames, id)
+        var idx = getVarIdx(varnames, $id)
         if idx >= 0: add(result, varvalues[idx])
-        else: rawMessage(errUnknownSubstitionVar, id)
+        else: rawMessage(errUnknownSubstitionVar, $id)
       of '{':
-        var id = ""
+        var id = tomut""
         inc(i)
         while frmt[i] != '}':
           if frmt[i] == '\0': rawMessage(errTokenExpected, "}")
@@ -164,9 +164,9 @@ proc ropeFormatNamedVars(frmt: FormatStr, varnames: openArray[string],
           inc(i)
         inc(i)                # skip }
                               # search for the variable:
-        var idx = getVarIdx(varnames, id)
+        var idx = getVarIdx(varnames, $id)
         if idx >= 0: add(result, varvalues[idx])
-        else: rawMessage(errUnknownSubstitionVar, id)
+        else: rawMessage(errUnknownSubstitionVar, $id)
       else: internalError("ropeFormatNamedVars")
     var start = i
     while i < L:
@@ -174,7 +174,7 @@ proc ropeFormatNamedVars(frmt: FormatStr, varnames: openArray[string],
       else: break
     if i - 1 >= start: add(result, substr(frmt, start, i - 1))
 
-proc genComment(d: PDoc, n: PNode): string =
+proc genComment(d: PDoc, n: PNode): string {.strBuilder.} =
   result = ""
   var dummyHasToc: bool
   if n.comment != nil:
@@ -251,9 +251,10 @@ proc getName(d: PDoc, n: PNode, splitAfter = -1): string =
   of nkSym: result = esc(d.target, n.sym.renderDefinitionName, splitAfter)
   of nkIdent: result = esc(d.target, n.ident.s, splitAfter)
   of nkAccQuoted:
-    result = esc(d.target, "`")
-    for i in 0.. <n.len: result.add(getName(d, n[i], splitAfter))
-    result.add esc(d.target, "`")
+    strBody:
+      result = tomut esc(d.target, "`")
+      for i in 0.. <n.len: result.add(getName(d, n[i], splitAfter))
+      result.add esc(d.target, "`")
   of nkOpenSymChoice, nkClosedSymChoice:
     result = getName(d, n[0], splitAfter)
   else:
@@ -267,9 +268,9 @@ proc getNameIdent(n: PNode): PIdent =
   of nkSym: result = n.sym.name
   of nkIdent: result = n.ident
   of nkAccQuoted:
-    var r = ""
+    var r = tomut""
     for i in 0.. <n.len: r.add(getNameIdent(n[i]).s)
-    result = getIdent(r)
+    result = getIdent($r)
   of nkOpenSymChoice, nkClosedSymChoice:
     result = getNameIdent(n[0])
   else:
@@ -283,7 +284,8 @@ proc getRstName(n: PNode): PRstNode =
   of nkIdent: result = newRstNode(rnLeaf, n.ident.s)
   of nkAccQuoted:
     result = getRstName(n.sons[0])
-    for i in 1 .. <n.len: result.text.add(getRstName(n[i]).text)
+    for i in 1 .. <n.len:
+      system.mstring(result.text).add(getRstName(n[i]).text)
   of nkOpenSymChoice, nkClosedSymChoice:
     result = getRstName(n[0])
   else:
@@ -311,7 +313,7 @@ proc newUniquePlainSymbol(d: PDoc, original: string): string =
     count += 1
 
 
-proc complexName(k: TSymKind, n: PNode, baseName: string): string =
+proc complexName(k: TSymKind, n: PNode, baseName: string): string {.strBuilder.} =
   ## Builds a complex unique href name for the node.
   ##
   ## Pass as ``baseName`` the plain symbol obtained from the nodeName. The
@@ -323,7 +325,7 @@ proc complexName(k: TSymKind, n: PNode, baseName: string): string =
   ##
   ## If you modify the output of this proc, please update the anchor generation
   ## section of ``doc/docgen.txt``.
-  result = baseName
+  result = tomut baseName
   case k:
   of skProc: result.add(defaultParamSeparator)
   of skMacro: result.add(".m" & defaultParamSeparator)
@@ -346,7 +348,7 @@ proc isCallable(n: PNode): bool =
     result = false
 
 
-proc docstringSummary(rstText: string): string =
+proc docstringSummary(rstText: string): string {.strBuilder.} =
   ## Returns just the first line or a brief chunk of text from a rst string.
   ##
   ## Most docstrings will contain a one liner summary, so stripping at the
@@ -359,15 +361,15 @@ proc docstringSummary(rstText: string): string =
   ## trimming done, an ellipsis unicode char is added.
   const maxDocstringChars = 100
   assert(rstText.len < 2 or (rstText[0] == '#' and rstText[1] == '#'))
-  result = rstText.substr(2).strip
-  var pos = result.find('\L')
+  result = tomut rstText.substr(2).strip
+  var pos = result.unsafeBorrow.find('\L')
   if pos > 0:
     result.delete(pos, result.len - 1)
     result.add("…")
   if pos < maxDocstringChars:
     return
   # Try to keep trimming at other natural boundaries.
-  pos = result.find({'.', ',', ':'})
+  pos = result.unsafeBorrow.find({'.', ',', ':'})
   let last = result.len - 1
   if pos > 0 and pos < last:
     result.delete(pos, last)
@@ -381,7 +383,8 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     nameRope = name.rope
     plainDocstring = getPlainDocstring(n) # call here before genRecComment!
   var result: Rope = nil
-  var literal, plainName = ""
+  var literal = ""
+  var pnm = tomut""
   var kind = tkEof
   var comm = genRecComment(d, n)  # call this here for the side-effect!
   var r: TSrcGen
@@ -392,7 +395,8 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     getNextTok(r, kind, literal)
     if kind == tkEof:
       break
-    plainName.add(literal)
+    pnm.add(literal)
+  let plainName = $pnm
 
   # Render the HTML hyperlink.
   initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments})
@@ -490,11 +494,11 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   # Ironically for types the complexSymbol is *cleaner* than the plainName
   # because it doesn't include object fields or documentation comments. So we
   # use the plain one for callable elements, and the complex for the rest.
-  var linkTitle = changeFileExt(extractFilename(d.filename), "") & " : "
+  var linkTitle = tomut(changeFileExt(extractFilename(d.filename), "") & " : ")
   if n.isCallable: linkTitle.add(xmltree.escape(plainName.strip))
   else: linkTitle.add(xmltree.escape(complexSymbol.strip))
 
-  setIndexTerm(d[], symbolOrId, name, linkTitle,
+  setIndexTerm(d[], symbolOrId, name, $linkTitle,
     xmltree.escape(plainDocstring.docstringSummary))
   if k == skType and nameNode.kind == nkSym:
     d.types.strTableAdd nameNode.sym
@@ -512,8 +516,8 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonNode =
                  "col": %n.info.col}
   if comm != nil and comm != "":
     result["description"] = %comm
-  if r.buf != nil:
-    result["code"] = %r.buf
+  if not r.buf.isNil:
+    result["code"] = % $r.buf
 
 proc checkForFalse(n: PNode): bool =
   result = n.kind == nkIdent and cmpIgnoreStyle(n.ident.s, "false") == 0
@@ -619,9 +623,9 @@ proc genOutFile(d: PDoc): Rope =
     code, content: Rope
     title = ""
   var j = 0
-  var tmp = ""
+  var tmp = tomut""
   renderTocEntries(d[], j, 1, tmp)
-  var toc = tmp.rope
+  var toc = ($tmp).rope
   for i in countup(low(TSymKind), high(TSymKind)):
     genSection(d, i)
     add(toc, d.toc[i])
@@ -631,7 +635,7 @@ proc genOutFile(d: PDoc): Rope =
 
   # Extract the title. Non API modules generate an entry in the index table.
   if d.meta[metaTitle].len != 0:
-    title = d.meta[metaTitle]
+    title = $d.meta[metaTitle]
     setIndexTerm(d[], "", title)
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
@@ -650,8 +654,8 @@ proc genOutFile(d: PDoc): Rope =
         "tableofcontents", "moduledesc", "date", "time",
         "content", "author", "version", "analytics"],
         [title.rope, toc, d.modDesc, rope(getDateStr()),
-                     rope(getClockStr()), content, d.meta[metaAuthor].rope,
-                     d.meta[metaVersion].rope, d.analytics.rope])
+                     rope(getClockStr()), content, rope($d.meta[metaAuthor]),
+                     rope($d.meta[metaVersion]), d.analytics.rope])
   else:
     code = content
   result = code
@@ -711,7 +715,7 @@ proc commandRstAux(filename, outExt: string) =
   #d.modDesc = newMutableRope(30_000)
   renderRstToOut(d[], rst, modDesc)
   #freezeMutableRope(d.modDesc)
-  d.modDesc = rope(modDesc)
+  d.modDesc = rope($modDesc)
   writeOutput(d, filename, outExt)
   generateIndex(d)
 
