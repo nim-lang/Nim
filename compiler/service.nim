@@ -34,8 +34,8 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
     case p.kind
     of cmdEnd: break
     of cmdLongoption, cmdShortOption:
-      if p.key == " ":
-        p.key = "-"
+      if p.key.unsafeBorrow == " ":
+        p.key = tomut"-"
         if processArgument(pass, p, argsCount): break
       else:
         processSwitch(pass, p)
@@ -68,7 +68,7 @@ proc serve*(cache: IdentCache; action: proc (cache: IdentCache){.nimcall.}) =
       let p = getConfigVar("server.port")
       let port = if p.len > 0: parseInt(p).Port else: 6000.Port
       server.bindAddr(port, getConfigVar("server.address"))
-      var inp = "".TaintedString
+      var inp = system.mstring""
       server.listen()
       var stdoutSocket = newSocket()
       msgs.writelnHook = proc (line: string) =

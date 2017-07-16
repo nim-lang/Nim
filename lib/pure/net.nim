@@ -66,7 +66,7 @@
 ##
 
 {.deadCodeElim: on.}
-import nativesockets, os, strutils, parseutils, times, sets, options
+import nativesockets, os, strutils, parseutils, times, sets, options, migrate
 export Port, `$`, `==`
 export Domain, SockType, Protocol
 
@@ -1114,7 +1114,7 @@ proc recv*(socket: Socket, data: pointer, size: int, timeout: int): int {.
 
   result = read
 
-proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
+proc recv*(socket: Socket, data: var mstring, size: int, timeout = -1,
            flags = {SocketFlag.SafeDisconn}): int =
   ## Higher-level version of ``recv``.
   ##
@@ -1139,7 +1139,7 @@ proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
   data.setLen(result)
 
 proc recv*(socket: Socket, size: int, timeout = -1,
-           flags = {SocketFlag.SafeDisconn}): string {.inline.} =
+           flags = {SocketFlag.SafeDisconn}): string {.inline, strBuilder.} =
   ## Higher-level version of ``recv`` which returns a string.
   ##
   ## When ``""`` is returned the socket's connection has been closed.
@@ -1174,7 +1174,7 @@ proc peekChar(socket: Socket, c: var char): int {.tags: [ReadIOEffect].} =
         return
     result = recv(socket.fd, addr(c), 1, MSG_PEEK)
 
-proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
+proc readLine*(socket: Socket, line: var mstring, timeout = -1,
                flags = {SocketFlag.SafeDisconn}, maxLength = MaxLineLength) {.
   tags: [ReadIOEffect, TimeEffect].} =
   ## Reads a line of data from ``socket``.
@@ -1197,22 +1197,22 @@ proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
 
   template addNLIfEmpty() =
     if line.len == 0:
-      line.string.add("\c\L")
+      line.add("\c\L")
 
   template raiseSockError() {.dirty.} =
     let lastError = getSocketError(socket)
-    if flags.isDisconnectionError(lastError): setLen(line.string, 0); return
+    if flags.isDisconnectionError(lastError): setLen(line, 0); return
     socket.socketError(n, lastError = lastError)
 
   var waited = 0.0
 
-  setLen(line.string, 0)
+  setLen(line, 0)
   while true:
     var c: char
     discard waitFor(socket, waited, timeout, 1, "readLine")
     var n = recv(socket, addr(c), 1)
     if n < 0: raiseSockError()
-    elif n == 0: setLen(line.string, 0); return
+    elif n == 0: setLen(line, 0); return
     if c == '\r':
       discard waitFor(socket, waited, timeout, 1, "readLine")
       n = peekChar(socket, c)
@@ -1224,14 +1224,14 @@ proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
     elif c == '\L':
       addNLIfEmpty()
       return
-    add(line.string, c)
+    add(line, c)
 
     # Verify that this isn't a DOS attack: #3847.
-    if line.string.len > maxLength: break
+    if line.len > maxLength: break
 
 proc recvLine*(socket: Socket, timeout = -1,
                flags = {SocketFlag.SafeDisconn},
-               maxLength = MaxLineLength): TaintedString =
+               maxLength = MaxLineLength): TaintedString {.strBuilder.} =
   ## Reads a line of data from ``socket``.
   ##
   ## If a full line is read ``\r\L`` is not
@@ -1252,7 +1252,7 @@ proc recvLine*(socket: Socket, timeout = -1,
   result = ""
   readLine(socket, result, timeout, flags, maxLength)
 
-proc recvFrom*(socket: Socket, data: var string, length: int,
+proc recvFrom*(socket: Socket, data: var mstring, length: int,
                address: var string, port: var Port, flags = 0'i32): int {.
                tags: [ReadIOEffect].} =
   ## Receives data from ``socket``. This function should normally be used with
@@ -1423,7 +1423,7 @@ proc `==`*(lhs, rhs: IpAddress): bool =
       if lhs.address_v6[i] != rhs.address_v6[i]: return false
   return true
 
-proc `$`*(address: IpAddress): string =
+proc `$`*(address: IpAddress): string {.strBuilder.} =
   ## Converts an IpAddress into the textual representation
   result = ""
   case address.family

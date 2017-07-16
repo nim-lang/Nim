@@ -449,7 +449,7 @@ proc getAddrString*(sockAddr: ptr SockAddr): string =
       if winlean.inet_ntop(winlean.AF_INET6, addr6, addr result[0],
                            result.len.int32) == nil:
         raiseOSError(osLastError())
-    setLen(result, len(cstring(result)))
+    setLen(result.mstring, len(cstring(result)))
   else:
     raise newException(IOError, "Unknown socket family in getAddrString")
 
