@@ -8,6 +8,7 @@
 #
 
 ## Module for computing MD5 checksums.
+import migrate
 
 type
   MD5State = array[0..3, uint32]
@@ -211,7 +212,7 @@ proc toMD5*(s: string): MD5Digest =
   md5Update(c, cstring(s), len(s))
   md5Final(c, result)
 
-proc `$`*(d: MD5Digest): string =
+proc `$`*(d: MD5Digest): string {.strBuilder.} =
   ## converts a MD5Digest value into its string representation
   const digits = "0123456789abcdef"
   result = ""

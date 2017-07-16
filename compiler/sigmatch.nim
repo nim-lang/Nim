@@ -285,7 +285,7 @@ proc argTypeToString(arg: PNode; prefer: TPreferedDesc): string =
     result = arg.typ.typeToString(prefer)
 
 proc describeArgs*(c: PContext, n: PNode, startIdx = 1;
-                   prefer: TPreferedDesc = preferName): string =
+                   prefer: TPreferedDesc = preferName): string {.strBuilder.} =
   result = ""
   for i in countup(startIdx, n.len - 1):
     var arg = n.sons[i]

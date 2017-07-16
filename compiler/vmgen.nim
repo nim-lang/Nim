@@ -43,7 +43,7 @@ type
 proc debugInfo(info: TLineInfo): string =
   result = info.toFilename.splitFile.name & ":" & $info.line
 
-proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
+proc codeListing(c: PCtx, result: var system.mstring, start=0; last = -1) =
   # first iteration: compute all necessary labels:
   var jumpTargets = initIntSet()
   let last = if last < 0: c.code.len-1 else: min(last, c.code.len-1)
@@ -90,7 +90,7 @@ proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
     inc i
 
 proc echoCode*(c: PCtx; start=0; last = -1) {.deprecated.} =
-  var buf = ""
+  var buf = tomut""
   codeListing(c, buf, start, last)
   echo buf
 

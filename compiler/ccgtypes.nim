@@ -11,7 +11,7 @@
 
 # ------------------------- Name Mangling --------------------------------
 
-import sighashes
+import sighashes, migrate
 
 proc isKeyword(w: PIdent): bool =
   # Nim and C++ share some keywords
@@ -22,8 +22,8 @@ proc isKeyword(w: PIdent): bool =
      ord(wInline): return true
   else: return false
 
-proc mangleField(m: BModule; name: PIdent): string =
-  result = mangle(name.s)
+proc mangleField(m: BModule; name: PIdent): string {.strBuilder.} =
+  result = tomut mangle(name.s)
   # fields are tricky to get right and thanks to generic types producing
   # duplicates we can end up mangling the same field multiple times. However
   # if we do so, the 'cppDefines' table might be modified in the meantime
@@ -82,10 +82,10 @@ proc mangleParamName(m: BModule; s: PSym): Rope =
   ## cause any trouble.
   result = s.loc.r
   if result == nil:
-    var res = s.name.s.mangle
-    if isKeyword(s.name) or m.g.config.cppDefines.contains(res):
+    var res = tomut s.name.s.mangle
+    if isKeyword(s.name) or m.g.config.cppDefines.contains(res.unsafeBorrow):
       res.add "_0"
-    result = res.rope
+    result = rope($res)
     s.loc.r = result
     writeMangledName(m.ndi, s)
 

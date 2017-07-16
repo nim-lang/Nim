@@ -162,11 +162,11 @@ proc discardCheck(c: PContext, result: PNode) =
       else:
         var n = result
         while n.kind in skipForDiscardable: n = n.lastSon
-        var s = "expression '" & $n & "' is of type '" &
-            result.typ.typeToString & "' and has to be discarded"
+        var s = tomut("expression '" & $n & "' is of type '" &
+            result.typ.typeToString & "' and has to be discarded")
         if result.typ.kind == tyProc:
           s.add "; for a function call use ()"
-        localError(n.info,  s)
+        localError(n.info, $s)
 
 proc semIf(c: PContext, n: PNode): PNode =
   result = n

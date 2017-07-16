@@ -66,7 +66,7 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
     stackTraceAux(c, x.next, x.comesFrom, recursionLimit-1)
     var info = c.debug[pc]
     # we now use the same format as in system/except.nim
-    var s = toFilename(info)
+    var s = tomut toFilename(info)
     var line = toLinenumber(info)
     if line > 0:
       add(s, '(')
@@ -75,7 +75,7 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
     if x.prc != nil:
       for k in 1..max(1, 25-s.len): add(s, ' ')
       add(s, x.prc.name.s)
-    msgWriteln(s)
+    msgWriteln($s)
 
 proc stackTrace(c: PCtx, tos: PStackFrame, pc: int,
                 msg: TMsgKind, arg = "", n: PNode = nil) =
@@ -339,12 +339,12 @@ proc opConv*(dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType): bool =
     of tyCString:
       if src.node.kind == nkBracket:
         # Array of chars
-        var strVal = ""
+        var strVal = tomut""
         for son in src.node.sons:
           let c = char(son.intVal)
           if c == '\0': break
           strVal.add(c)
-        dest.node.strVal = strVal
+        dest.node.strVal = $strVal
       else:
         dest.node.strVal = src.node.strVal
     of tyChar:
@@ -813,17 +813,18 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcConcatStr:
       decodeBC(rkNode)
       createStr regs[ra]
-      regs[ra].node.strVal = getstr(regs[rb])
+      var r = tomut getstr(regs[rb])
       for i in rb+1..rb+rc-1:
-        regs[ra].node.strVal.add getstr(regs[i])
+        r.add getstr(regs[i])
+      regs[ra].node.strVal = $r
     of opcAddStrCh:
       decodeB(rkNode)
       #createStrKeepNode regs[ra]
-      regs[ra].node.strVal.add(regs[rb].intVal.chr)
+      system.mstring(regs[ra].node.strVal).add(regs[rb].intVal.chr)
     of opcAddStrStr:
       decodeB(rkNode)
       #createStrKeepNode regs[ra]
-      regs[ra].node.strVal.add(regs[rb].node.strVal)
+      system.mstring(regs[ra].node.strVal).add(regs[rb].node.strVal)
     of opcAddSeqElem:
       decodeB(rkNode)
       if regs[ra].node.kind == nkBracket:
@@ -843,11 +844,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if rb == 1:
         msgWriteln(regs[ra].node.strVal, {msgStdout})
       else:
-        var outp = ""
+        var outp = tomut""
         for i in ra..ra+rb-1:
           #if regs[i].kind != rkNode: debug regs[i]
           outp.add(regs[i].node.strVal)
-        msgWriteln(outp, {msgStdout})
+        msgWriteln($outp, {msgStdout})
     of opcContainsSet:
       decodeBC(rkInt)
       regs[ra].intVal = ord(inSet(regs[rb].node, regs[rc].regToNode))
@@ -1039,7 +1040,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNewStr:
       decodeB(rkNode)
       regs[ra].node = newNodeI(nkStrLit, c.debug[pc])
-      regs[ra].node.strVal = newString(regs[rb].intVal.int)
+      regs[ra].node.strVal = $newString(regs[rb].intVal.int)
     of opcLdImmInt:
       # dest = immediate value
       decodeBx(rkInt)
@@ -1101,7 +1102,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcSetLenStr:
       decodeB(rkNode)
       #createStrKeepNode regs[ra]
-      regs[ra].node.strVal.setLen(regs[rb].intVal.int)
+      system.mstring(regs[ra].node.strVal).setLen(regs[rb].intVal.int)
     of opcOf:
       decodeBC(rkInt)
       let typ = c.types[regs[rc].intVal.int]
@@ -1302,7 +1303,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcQueryErrorFlag:
       createStr regs[ra]
       regs[ra].node.strVal = c.errorFlag
-      c.errorFlag.setLen 0
+      when defined(nimImmutableStrings): c.errorFlag = ""
+      else: c.errorFlag.setLen 0
     of opcCallSite:
       ensureKind(rkNode)
       if c.callsite != nil: regs[ra].node = c.callsite
@@ -1469,8 +1471,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       inc pc
       let typ = c.types[c.code[pc].regBx - wordExcess]
       createStrKeepNode(regs[ra])
-      if regs[ra].node.strVal.isNil: regs[ra].node.strVal = newStringOfCap(1000)
-      storeAny(regs[ra].node.strVal, typ, regs[rb].regToNode)
+      #if regs[ra].node.strVal.isNil: regs[ra].node.strVal = newStringOfCap(1000)
+      #storeAny(regs[ra].node.strVal, typ, regs[rb].regToNode)
+      var r = newStringOfCap(1000)
+      storeAny(r, typ, regs[rb].regToNode)
+      regs[ra].node.strVal = $r
     inc pc
 
 proc execute(c: PCtx, start: int): PNode =

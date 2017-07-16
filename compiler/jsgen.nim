@@ -33,7 +33,7 @@ import
   ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp, options,
   nversion, nimsets, msgs, securehash, bitsets, idents, types, os,
   times, ropes, math, passes, ccgutils, wordrecg, renderer, rodread, rodutils,
-  intsets, cgmeth, lowerings
+  intsets, cgmeth, lowerings, migrate
 
 from modulegraphs import ModuleGraph
 
@@ -250,13 +250,13 @@ proc mangleName(s: PSym; target: TTarget): Rope =
         else:
           x.add("HEX" & toHex(ord(c), 2))
         inc i
-      result = rope(x)
+      result = rope($x)
     if s.name.s != "this" and s.kind != skField:
       add(result, "_")
       add(result, rope(s.id))
     s.loc.r = result
 
-proc escapeJSString(s: string): string =
+proc escapeJSString(s: string): string {.strBuilder.} =
   result = newStringOfCap(s.len + s.len shr 2)
   result.add("\"")
   for c in items(s):

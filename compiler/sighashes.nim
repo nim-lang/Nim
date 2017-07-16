@@ -9,7 +9,7 @@
 
 ## Computes hash values for routine (proc, method etc) signatures.
 
-import ast, md5
+import ast, md5, migrate
 from hashes import Hash
 from astalgo import debug
 from types import typeToString, preferDesc
@@ -39,7 +39,7 @@ else:
       "0", "1", "2", "3", "4", "5", "6", "7", "8", "9a",
       "9b", "9c"]
 
-  proc toBase64a(s: cstring, len: int): string =
+  proc toBase64a(s: cstring, len: int): string {.strBuilder.} =
     ## encodes `s` into base64 representation.
     result = newStringOfCap(((len + 2) div 3) * 4)
     result.add '_'

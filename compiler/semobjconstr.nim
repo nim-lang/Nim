@@ -98,29 +98,29 @@ iterator directFieldsInRecList(recList: PNode): PNode =
 
 template quoteStr(s: string): string = "'" & s & "'"
 
-proc fieldsPresentInInitExpr(fieldsRecList, initExpr: PNode): string =
-  result = ""
+proc fieldsPresentInInitExpr(fieldsRecList, initExpr: PNode): system.mstring =
+  result = tomut""
   for field in directFieldsInRecList(fieldsRecList):
     let assignment = locateFieldInInitExpr(field.sym, initExpr)
     if assignment != nil:
       if result.len != 0: result.add ", "
       result.add field.sym.name.s.quoteStr
 
-proc missingMandatoryFields(fieldsRecList, initExpr: PNode): string =
+proc missingMandatoryFields(fieldsRecList, initExpr: PNode): system.mstring =
   for r in directFieldsInRecList(fieldsRecList):
     if {tfNotNil, tfNeedsInit} * r.sym.typ.flags != {}:
       let assignment = locateFieldInInitExpr(r.sym, initExpr)
       if assignment == nil:
-        if result == nil:
-          result = r.sym.name.s
+        if result.isNil:
+          result = tomut r.sym.name.s
         else:
           result.add ", "
           result.add r.sym.name.s
 
 proc checkForMissingFields(recList, initExpr: PNode) =
   let missing = missingMandatoryFields(recList, initExpr)
-  if missing != nil:
-    localError(initExpr.info, "fields not initialized: $1.", [missing])
+  if not missing.isNil:
+    localError(initExpr.info, "fields not initialized: $1.", [$missing])
 
 proc semConstructFields(c: PContext, recNode: PNode,
                         initExpr: PNode, flags: TExprFlags): InitStatus =
@@ -133,7 +133,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
       mergeInitStatus(result, status)
 
   of nkRecCase:
-    template fieldsPresentInBranch(branchIdx: int): string =
+    template fieldsPresentInBranch(branchIdx: int): untyped =
       fieldsPresentInInitExpr(recNode[branchIdx]{-1}, initExpr)
 
     template checkMissingFields(branchNode: PNode) =
@@ -154,7 +154,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
           localError(initExpr.info,
             "The fields ($1) and ($2) cannot be initialized together, " &
             "because they are from conflicting branches in the case object.",
-            [prevFields, currentFields])
+            [$prevFields, $currentFields])
           result = initConflict
         else:
           selectedBranch = i
@@ -169,7 +169,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
         localError(initExpr.info,
           "you must provide a compile-time value for the discriminator '$1' " &
           "in order to prove that it's safe to initialize $2.",
-          [discriminator.sym.name.s, fields])
+          [discriminator.sym.name.s, $fields])
         mergeInitStatus(result, initNone)
       else:
         let discriminatorVal = discriminatorVal.skipHidden
@@ -180,7 +180,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
             "a case selecting discriminator '$1' with value '$2' " &
             "appears in the object construction, but the field(s) $3 " &
             "are in conflict with this value.",
-            [discriminator.sym.name.s, discriminatorVal.renderTree, fields])
+            [discriminator.sym.name.s, discriminatorVal.renderTree, $fields])
 
         if branchNode.kind != nkElse:
           if not branchNode.caseBranchMatchesExpr(discriminatorVal):
@@ -248,7 +248,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var t = semTypeNode(c, n.sons[0], nil)
   result = newNodeIT(nkObjConstr, n.info, t)
   for child in n: result.add child
-  
+
   t = skipTypes(t, {tyGenericInst, tyAlias})
   if t.kind == tyRef: t = skipTypes(t.sons[0], {tyGenericInst, tyAlias})
   if t.kind != tyObject:

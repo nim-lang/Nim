@@ -9,7 +9,8 @@
 
 ## Implements marshaling for the VM.
 
-import streams, json, intsets, tables, ast, astalgo, idents, types, msgs
+import streams, json, intsets, tables, astalgo, idents, types, msgs
+import ast except TMagic
 
 proc ptrToInt(x: PNode): int {.inline.} =
   result = cast[int](x) # don't skip alignment
@@ -33,9 +34,9 @@ proc getField(n: PNode; position: int): PSym =
     if n.sym.position == position: result = n.sym
   else: discard
 
-proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet)
+proc storeAny(s: var mstring; t: PType; a: PNode; stored: var IntSet)
 
-proc storeObj(s: var string; typ: PType; x: PNode; stored: var IntSet) =
+proc storeObj(s: var mstring; typ: PType; x: PNode; stored: var IntSet) =
   internalAssert x.kind == nkObjConstr
   let start = 1
   for i in countup(start, sonsLen(x) - 1):
@@ -58,7 +59,7 @@ proc skipColon*(n: PNode): PNode =
   if n.kind == nkExprColonExpr:
     result = n.sons[1]
 
-proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet) =
+proc storeAny(s: var mstring; t: PType; a: PNode; stored: var IntSet) =
   case t.kind
   of tyNone: assert false
   of tyBool: s.add($(a.intVal != 0))
@@ -131,7 +132,7 @@ proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet) =
   else:
     internalError a.info, "cannot marshal at compile-time " & t.typeToString
 
-proc storeAny*(s: var string; t: PType; a: PNode) =
+proc storeAny*(s: var mstring; t: PType; a: PNode) =
   var stored = initIntSet()
   storeAny(s, t, a, stored)
 

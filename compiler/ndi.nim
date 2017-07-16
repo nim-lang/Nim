@@ -16,7 +16,7 @@ type
   NdiFile* = object
     enabled: bool
     f: File
-    buf: string
+    buf: system.mstring
 
 proc doWrite(f: var NdiFile; s: PSym) =
   f.buf.setLen 0
@@ -25,7 +25,7 @@ proc doWrite(f: var NdiFile; s: PSym) =
   f.buf.add s.info.col.int
   f.f.write(s.name.s, "\t")
   f.f.writeRope(s.loc.r)
-  f.f.writeLine("\t", s.info.toFullPath, "\t", f.buf)
+  f.f.writeLine("\t", s.info.toFullPath, "\t", f.buf.unsafeBorrow)
 
 template writeMangledName*(f: NdiFile; s: PSym) =
   if f.enabled: doWrite(f, s)

@@ -146,8 +146,8 @@ proc symToSuggest(s: PSym, isLocal: bool, section: IdeCmd, info: TLineInfo;
   result.line = toLinenumber(infox)
   result.column = toColumn(infox)
 
-proc `$`*(suggest: Suggest): string =
-  result = $suggest.section
+proc `$`*(suggest: Suggest): string {.strBuilder.} =
+  result = tomut($suggest.section)
   result.add(sep)
   if suggest.section == ideHighlight:
     if suggest.symkind == skVar and suggest.isGlobal:

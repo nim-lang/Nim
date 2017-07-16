@@ -130,7 +130,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
   # module information.
   let proto = describeArgs(c, n, 1, preferName)
   for err in errors:
-    var errProto = ""
+    var errProto = tomut""
     let n = err.sym.typ.n
     for i in countup(1, n.len - 1):
       var p = n.sons[i]
@@ -138,11 +138,11 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
         add(errProto, typeToString(p.sym.typ, preferName))
         if i != n.len-1: add(errProto, ", ")
       # else: ignore internal error as we're already in error handling mode
-    if errProto == proto:
+    if $errProto == proto:
       prefer = preferModuleInfo
       break
 
-  var candidates = ""
+  var candidates = tomut""
   for err in errors:
     if err.sym.kind in routineKinds and err.sym.ast != nil:
       add(candidates, renderTree(err.sym.ast,
@@ -156,7 +156,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
     for diag in err.diagnostics:
       add(candidates, diag & "\n")
 
-  result = (prefer, candidates)
+  result = (prefer, $candidates)
 
 proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   # Gives a detailed error message; this is separated from semOverloadedCall,
@@ -170,12 +170,12 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
     return
 
   let (prefer, candidates) = presentFailedCandidates(c, n, errors)
-  var result = msgKindToString(errTypeMismatch)
+  var result = tomut msgKindToString(errTypeMismatch)
   add(result, describeArgs(c, n, 1, prefer))
   add(result, ')')
   if candidates != "":
     add(result, "\n" & msgKindToString(errButExpected) & "\n" & candidates)
-  localError(n.info, errGenerated, result)
+  localError(n.info, errGenerated, $result)
 
 proc bracketNotFoundError(c: PContext; n: PNode) =
   var errors: CandidateErrors = @[]
@@ -284,7 +284,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       globalError(n.info, errGenerated, "ambiguous call")
     elif gErrorCounter == 0:
       # don't cascade errors
-      var args = "("
+      var args = tomut"("
       for i in countup(1, sonsLen(n) - 1):
         if i > 1: add(args, ", ")
         add(args, typeToString(n.sons[i].typ))
@@ -292,7 +292,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
       localError(n.info, errGenerated, msgKindToString(errAmbiguousCallXYZ) % [
         getProcHeader(result.calleeSym), getProcHeader(alt.calleeSym),
-        args])
+        $args])
 
 proc instGenericConvertersArg*(c: PContext, a: PNode, x: TCandidate) =
   if a.kind == nkHiddenCallConv and a.sons[0].kind == nkSym:

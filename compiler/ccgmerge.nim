@@ -69,7 +69,7 @@ proc genSectionEnd*(ps: TCProcSection): Rope =
   if compilationCachePresent:
     result = rope(NimMergeEndMark & tnl)
 
-proc writeTypeCache(a: TypeCache, s: var string) =
+proc writeTypeCache(a: TypeCache, s: var system.mstring) =
   var i = 0
   for id, value in pairs(a):
     if i == 10:
@@ -83,7 +83,7 @@ proc writeTypeCache(a: TypeCache, s: var string) =
     inc i
   s.add('}')
 
-proc writeIntSet(a: IntSet, s: var string) =
+proc writeIntSet(a: IntSet, s: var system.mstring) =
   var i = 0
   for x in items(a):
     if i == 10:
@@ -97,7 +97,7 @@ proc writeIntSet(a: IntSet, s: var string) =
 
 proc genMergeInfo*(m: BModule): Rope =
   if optSymbolFiles notin gGlobalOptions: return nil
-  var s = "/*\tNIM_merge_INFO:"
+  var s = tomut"/*\tNIM_merge_INFO:"
   s.add(tnl)
   s.add("typeCache:{")
   writeTypeCache(m.typeCache, s)
@@ -112,7 +112,7 @@ proc genMergeInfo*(m: BModule): Rope =
   encodeVInt(cast[int](m.flags), s)
   s.add(tnl)
   s.add("*/")
-  result = s.rope
+  result = rope($s)
 
 template `^`(pos: int): untyped = L.buf[pos]
 
@@ -170,9 +170,9 @@ proc readVerbatimSection(L: var TBaseLexer): Rope =
       r.add(buf[pos])
       inc pos
   L.bufpos = pos
-  result = r.rope
+  result = rope($r)
 
-proc readKey(L: var TBaseLexer, result: var string) =
+proc readKey(L: var TBaseLexer, result: var system.mstring) =
   var pos = L.bufpos
   var buf = L.buf
   setLen(result, 0)
@@ -217,7 +217,7 @@ proc processMergeInfo(L: var TBaseLexer, m: BModule) =
       inc(L.bufpos, 2)
       break
     readKey(L, k)
-    case k
+    case k.unsafeBorrow
     of "typeCache": readTypeCache(L, m.typeCache)
     of "declared":  readIntSet(L, m.declaredThings)
     of "typeInfo":
@@ -225,7 +225,7 @@ proc processMergeInfo(L: var TBaseLexer, m: BModule) =
     of "labels":    m.labels = decodeVInt(L.buf, L.bufpos)
     of "flags":
       m.flags = cast[set[CodegenFlag]](decodeVInt(L.buf, L.bufpos) != 0)
-    else: internalError("ccgmerge: unknown key: " & k)
+    else: internalError("ccgmerge: unknown key: " & $k)
 
 when not defined(nimhygiene):
   {.pragma: inject.}
@@ -246,7 +246,7 @@ proc readMergeInfo*(cfilename: string, m: BModule) =
   ## reads the merge meta information into `m`.
   withCFile(cfilename):
     readKey(L, k)
-    if k == "NIM_merge_INFO":
+    if k.unsafeBorrow == "NIM_merge_INFO":
       processMergeInfo(L, m)
       break
 
@@ -259,7 +259,7 @@ proc readMergeSections(cfilename: string, m: var TMergeSections) =
   ## reads the merge sections into `m`.
   withCFile(cfilename):
     readKey(L, k)
-    if k == "NIM_merge_INFO":
+    if k.unsafeBorrow == "NIM_merge_INFO":
       discard
     elif ^L.bufpos == '*' and ^(L.bufpos+1) == '/':
       inc(L.bufpos, 2)
@@ -267,15 +267,15 @@ proc readMergeSections(cfilename: string, m: var TMergeSections) =
       skipWhite(L)
       var verbatim = readVerbatimSection(L)
       skipWhite(L)
-      var sectionA = CFileSectionNames.find(k)
+      var sectionA = CFileSectionNames.find(k.unsafeBorrow)
       if sectionA > 0 and sectionA <= high(TCFileSection).int:
         m.f[TCFileSection(sectionA)] = verbatim
       else:
-        var sectionB = CProcSectionNames.find(k)
+        var sectionB = CProcSectionNames.find(k.unsafeBorrow)
         if sectionB >= 0 and sectionB <= high(TCProcSection).int:
           m.p[TCProcSection(sectionB)] = verbatim
         else:
-          internalError("ccgmerge: unknown section: " & k)
+          internalError("ccgmerge: unknown section: " & $k)
     else:
       internalError("ccgmerge: '*/' expected")
 

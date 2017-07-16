@@ -11,7 +11,7 @@
 
 import
   ast, astalgo, ropes, hashes, strutils, types, msgs, wordrecg,
-  platform, trees, options
+  platform, trees, options, migrate
 
 proc getPragmaStmt*(n: PNode, w: TSpecialWord): PNode =
   case n.kind
@@ -159,13 +159,13 @@ proc getUniqueType*(key: PType): PType =
         result = slowSearch(key, k)
     of tyUnused, tyUnused0, tyUnused1, tyUnused2: internalError("getUniqueType")
 
-proc makeSingleLineCString*(s: string): string =
+proc makeSingleLineCString*(s: string): string {.strBuilder.} =
   result = "\""
   for c in items(s):
     result.add(c.toCChar)
   result.add('\"')
 
-proc mangle*(name: string): string =
+proc mangle*(name: string): string {.strBuilder.} =
   result = newStringOfCap(name.len)
   var start = 0
   if name[0] in Digits:

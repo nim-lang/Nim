@@ -10,13 +10,14 @@
 import ast, types, msgs, os, osproc, streams, options, idents, securehash
 
 proc readOutput(p: Process): (string, int) =
-  result[0] = ""
+  var r = tomut""
   var output = p.outputStream
   while not output.atEnd:
-    result[0].add(output.readLine)
-    result[0].add("\n")
-  if result[0].len > 0:
-    result[0].setLen(result[0].len - "\n".len)
+    r.add(output.readLine)
+    r.add("\n")
+  if r.len > 0:
+    r.setLen(r.len - "\n".len)
+  result[0] = $r
   result[1] = p.waitForExit
 
 proc opGorge*(cmd, input, cache: string, info: TLineInfo): (string, int) =

@@ -404,7 +404,7 @@ proc getHostname*(): string {.tags: [ReadIOEffect].} =
   # https://tools.ietf.org/html/rfc1035#section-2.3.1
   # https://tools.ietf.org/html/rfc2181#section-11
   const size = 64
-  result = newString(size)
+  result = string newString(size)
   when useWinVersion:
     let success = winlean.getHostname(result, size)
   else:
@@ -413,7 +413,7 @@ proc getHostname*(): string {.tags: [ReadIOEffect].} =
   if success != 0.cint:
     raiseOSError(osLastError())
   let x = len(cstring(result))
-  result.setLen(x)
+  result.mstring.setLen(x)
 
 proc getSockDomain*(socket: SocketHandle): Domain =
   ## returns the socket's domain (AF_INET or AF_INET6).
@@ -437,7 +437,7 @@ proc getAddrString*(sockAddr: ptr SockAddr): string =
   elif sockAddr.sa_family == nativeAfInet6:
     let addrLen = when not useWinVersion: posix.INET6_ADDRSTRLEN
                   else: 46 # it's actually 46 in both cases
-    result = newString(addrLen)
+    result = string newString(addrLen)
     let addr6 = addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr
     when not useWinVersion:
       if posix.inet_ntop(posix.AF_INET6, addr6, addr result[0],

@@ -752,7 +752,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
         return emptyNode
       else:
         var hasErrorType = false
-        var msg = msgKindToString(errTypeMismatch)
+        var msg = tomut msgKindToString(errTypeMismatch)
         for i in countup(1, sonsLen(n) - 1):
           if i > 1: add(msg, ", ")
           let nt = n.sons[i].typ
@@ -763,7 +763,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
         if not hasErrorType:
           add(msg, ")\n" & msgKindToString(errButExpected) & "\n" &
               typeToString(n.sons[0].typ))
-          localError(n.info, errGenerated, msg)
+          localError(n.info, errGenerated, $msg)
         return errorNode(c, n)
       result = nil
     else:

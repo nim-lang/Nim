@@ -951,7 +951,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
   linefmt(p, cpsStmts, "if ($1.status != 0) #reraiseException();$n", safePoint)
 
 proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
-  var res = ""
+  var res = tomut""
   for i in countup(0, sonsLen(t) - 1):
     case t.sons[i].kind
     of nkStrLit..nkTripleStrLit:
@@ -981,7 +981,7 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
       #internalError(t.sons[i].info, "genAsmOrEmitStmt()")
 
   if isAsmStmt and hasGnuAsm in CC[cCompiler].props:
-    for x in splitLines(res):
+    for x in splitLines(res.unsafeBorrow):
       var j = 0
       while x[j] in {' ', '\t'}: inc(j)
       if x[j] in {'"', ':'}:
@@ -995,7 +995,7 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
         add(result, "\\n\"\n")
   else:
     res.add(tnl)
-    result = res.rope
+    result = rope($res)
 
 proc genAsmStmt(p: BProc, t: PNode) =
   assert(t.kind == nkAsmStmt)
