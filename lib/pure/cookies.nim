@@ -9,7 +9,7 @@
 
 ## This module implements helper procs for parsing Cookies.
 
-import strtabs, times
+import strtabs, times, migrate
 
 proc parseCookies*(s: string): StringTableRef =
   ## parses cookies into a string table.
@@ -30,7 +30,7 @@ proc parseCookies*(s: string): StringTableRef =
 
 proc setCookie*(key, value: string, domain = "", path = "",
                 expires = "", noName = false,
-                secure = false, httpOnly = false): string =
+                secure = false, httpOnly = false): string {.strBuilder.} =
   ## Creates a command in the format of
   ## ``Set-Cookie: key=value; Domain=...; ...``
   result = ""

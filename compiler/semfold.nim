@@ -292,10 +292,10 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mFloatToStr: result = newStrNodeT($getFloat(a), n)
   of mCStrToStr, mCharToStr:
     if a.kind == nkBracket:
-      var s = ""
+      var s = tomut""
       for b in a.sons:
         s.add b.getStrOrChar
-      result = newStrNodeT(s, n)
+      result = newStrNodeT($s, n)
     else:
       result = newStrNodeT(getStrOrChar(a), n)
   of mStrToStr: result = a
@@ -456,11 +456,12 @@ proc foldFieldAccess(m: PSym, n: PNode): PNode =
 
 proc foldConStrStr(m: PSym, n: PNode): PNode =
   result = newNodeIT(nkStrLit, n.info, n.typ)
-  result.strVal = ""
+  var r = tomut""
   for i in countup(1, sonsLen(n) - 1):
     let a = getConstExpr(m, n.sons[i])
     if a == nil: return nil
-    result.strVal.add(getStrOrChar(a))
+    r.add(getStrOrChar(a))
+  result.strVal = $r
 
 proc newSymNodeTypeDesc*(s: PSym; info: TLineInfo): PNode =
   result = newSymNode(s, info)

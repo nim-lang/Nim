@@ -12,7 +12,7 @@
 ## also supported.
 
 import
-  os, strutils, rstast
+  migrate, os, strutils, rstast
 
 type
   RstParseOption* = enum     ## options for the RST parser
@@ -118,7 +118,7 @@ type
   Token = object             # a RST token
     kind*: TokType           # the type of the token
     ival*: int                # the indentation or parsed integer value
-    symbol*: string           # the parsed symbol as string
+    symbol*: mstring           # the parsed symbol as string
     line*, col*: int          # line and column of the token
 
   TokenSeq = seq[Token]
@@ -192,10 +192,10 @@ proc getIndent(L: var Lexer, tok: var Token) =
   tok.line = L.line
   L.col = tok.ival
   tok.ival = max(tok.ival - L.baseIndent, 0)
-  tok.symbol = "\n" & spaces(tok.ival)
+  tok.symbol = tomut("\n" & spaces(tok.ival))
 
 proc rawGetTok(L: var Lexer, tok: var Token) =
-  tok.symbol = ""
+  tok.symbol = tomut""
   tok.ival = 0
   var c = L.buf[L.bufpos]
   case c
@@ -339,7 +339,9 @@ proc rstMessage(p: RstParser, msgKind: MsgKind, arg: string, line, col: int) =
 proc rstMessage(p: RstParser, msgKind: MsgKind) =
   p.s.msgHandler(p.filename, p.line + p.tok[p.idx].line,
                              p.col + p.tok[p.idx].col, msgKind,
-                             p.tok[p.idx].symbol)
+                             $p.tok[p.idx].symbol)
+
+proc `==`(x: mstring; y: string): bool {.inline.} = x.unsafeBorrow == y
 
 when false:
   proc corrupt(p: RstParser) =
@@ -365,17 +367,17 @@ proc initParser(p: var RstParser, sharedState: PSharedState) =
   p.line = 1
   p.s = sharedState
 
-proc addNodesAux(n: PRstNode, result: var string) =
+proc addNodesAux(n: PRstNode, result: var mstring) =
   if n.kind == rnLeaf:
     add(result, n.text)
   else:
     for i in countup(0, len(n) - 1): addNodesAux(n.sons[i], result)
 
-proc addNodes(n: PRstNode): string =
+proc addNodes(n: PRstNode): string {.strBuilder.} =
   result = ""
   addNodesAux(n, result)
 
-proc rstnodeToRefnameAux(n: PRstNode, r: var string, b: var bool) =
+proc rstnodeToRefnameAux(n: PRstNode, r: var mstring, b: var bool) =
   if n.kind == rnLeaf:
     for i in countup(0, len(n.text) - 1):
       case n.text[i]
@@ -400,7 +402,7 @@ proc rstnodeToRefnameAux(n: PRstNode, r: var string, b: var bool) =
   else:
     for i in countup(0, len(n) - 1): rstnodeToRefnameAux(n.sons[i], r, b)
 
-proc rstnodeToRefname(n: PRstNode): string =
+proc rstnodeToRefname(n: PRstNode): string {.strBuilder.} =
   result = ""
   var b = false
   rstnodeToRefnameAux(n, result, b)
@@ -445,7 +447,7 @@ proc findRef(p: var RstParser, key: string): PRstNode =
       return p.s.refs[i].value
 
 proc newLeaf(p: var RstParser): PRstNode =
-  result = newRstNode(rnLeaf, p.tok[p.idx].symbol)
+  result = newRstNode(rnLeaf, $p.tok[p.idx].symbol)
 
 proc getReferenceName(p: var RstParser, endStr: string): PRstNode =
   var res = newRstNode(rnInner)
@@ -454,7 +456,7 @@ proc getReferenceName(p: var RstParser, endStr: string): PRstNode =
     of tkWord, tkOther, tkWhite:
       add(res, newLeaf(p))
     of tkPunct:
-      if p.tok[p.idx].symbol == endStr:
+      if p.tok[p.idx].symbol.unsafeBorrow == endStr:
         inc(p.idx)
         break
       else:
@@ -548,7 +550,7 @@ proc match(p: RstParser, start: int, expr: string): bool =
       if result:
         case p.tok[j].symbol[0]
         of 'a'..'z', 'A'..'Z': result = len(p.tok[j].symbol) == 1
-        of '0'..'9': result = allCharsInSet(p.tok[j].symbol, {'0'..'9'})
+        of '0'..'9': result = allCharsInSet(p.tok[j].symbol.unsafeBorrow, {'0'..'9'})
         else: discard
     else:
       var c = expr[i]
@@ -615,14 +617,14 @@ proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
       result = newRstNode(rnGeneralRole)
       n.kind = rnInner
       add(result, n)
-      add(result, newRstNode(rnLeaf, p.tok[p.idx + 1].symbol))
+      add(result, newRstNode(rnLeaf, $p.tok[p.idx + 1].symbol))
     inc(p.idx, 3)
 
 proc matchVerbatim(p: RstParser, start: int, expr: string): int =
   result = start
   var j = 0
   while j < expr.len and result < p.tok.len and
-        continuesWith(expr, p.tok[result].symbol, j):
+        continuesWith(expr, p.tok[result].symbol.unsafeBorrow, j):
     inc j, p.tok[result].symbol.len
     inc result
   if j < expr.len: result = 0
@@ -646,7 +648,7 @@ when false:
 proc isUrl(p: RstParser, i: int): bool =
   result = (p.tok[i+1].symbol == ":") and (p.tok[i+2].symbol == "//") and
     (p.tok[i+3].kind == tkWord) and
-    (p.tok[i].symbol in ["http", "https", "ftp", "telnet", "file"])
+    (p.tok[i].symbol.unsafeBorrow in ["http", "https", "ftp", "telnet", "file"])
 
 proc parseUrl(p: var RstParser, father: PRstNode) =
   #if p.tok[p.idx].symbol[strStart] == '<':
@@ -745,6 +747,7 @@ proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
   else:
     args = nil
   var n = newRstNode(rnLeaf, "")
+  var txt = tomut""
   while true:
     case p.tok[p.idx].kind
     of tkEof:
@@ -755,11 +758,13 @@ proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
         inc(p.idx)
         break
       else:
-        add(n.text, p.tok[p.idx].symbol)
+        add(txt, p.tok[p.idx].symbol)
         inc(p.idx)
     else:
-      add(n.text, p.tok[p.idx].symbol)
+      add(txt, p.tok[p.idx].symbol)
       inc(p.idx)
+
+  n.text = $txt
   var lb = newRstNode(rnLiteralBlock)
   add(lb, n)
   result = newRstNode(rnCodeBlock)
@@ -826,19 +831,20 @@ proc getDirective(p: var RstParser): string =
   if p.tok[p.idx].kind == tkWhite and p.tok[p.idx+1].kind == tkWord:
     var j = p.idx
     inc(p.idx)
-    result = p.tok[p.idx].symbol
-    inc(p.idx)
-    while p.tok[p.idx].kind in {tkWord, tkPunct, tkAdornment, tkOther}:
-      if p.tok[p.idx].symbol == "::": break
-      add(result, p.tok[p.idx].symbol)
+    strBody:
+      result = p.tok[p.idx].symbol
       inc(p.idx)
-    if p.tok[p.idx].kind == tkWhite: inc(p.idx)
-    if p.tok[p.idx].symbol == "::":
-      inc(p.idx)
-      if (p.tok[p.idx].kind == tkWhite): inc(p.idx)
-    else:
-      p.idx = j               # set back
-      result = ""             # error
+      while p.tok[p.idx].kind in {tkWord, tkPunct, tkAdornment, tkOther}:
+        if p.tok[p.idx].symbol == "::": break
+        add(result, p.tok[p.idx].symbol)
+        inc(p.idx)
+      if p.tok[p.idx].kind == tkWhite: inc(p.idx)
+      if p.tok[p.idx].symbol == "::":
+        inc(p.idx)
+        if (p.tok[p.idx].kind == tkWhite): inc(p.idx)
+      else:
+        p.idx = j               # set back
+        result = ""             # error
   else:
     result = ""
 
@@ -964,6 +970,7 @@ proc parseDotDot(p: var RstParser): PRstNode {.gcsafe.}
 proc parseLiteralBlock(p: var RstParser): PRstNode =
   result = newRstNode(rnLiteralBlock)
   var n = newRstNode(rnLeaf, "")
+  var txt = tomut""
   if p.tok[p.idx].kind == tkIndent:
     var indent = p.tok[p.idx].ival
     inc(p.idx)
@@ -975,16 +982,17 @@ proc parseLiteralBlock(p: var RstParser): PRstNode =
         if (p.tok[p.idx].ival < indent):
           break
         else:
-          add(n.text, "\n")
-          add(n.text, spaces(p.tok[p.idx].ival - indent))
+          add(txt, "\n")
+          add(txt, spaces(p.tok[p.idx].ival - indent))
           inc(p.idx)
       else:
-        add(n.text, p.tok[p.idx].symbol)
+        add(txt, p.tok[p.idx].symbol)
         inc(p.idx)
   else:
     while not (p.tok[p.idx].kind in {tkIndent, tkEof}):
-      add(n.text, p.tok[p.idx].symbol)
+      add(txt, p.tok[p.idx].symbol)
       inc(p.idx)
+  n.text = $txt
   add(result, n)
 
 proc getLevel(map: var LevelMap, lvl: var int, c: char): int =
@@ -1152,7 +1160,7 @@ proc parseDoc(p: var RstParser): PRstNode {.gcsafe.}
 proc parseSimpleTable(p: var RstParser): PRstNode =
   var
     cols: IntSeq
-    row: seq[string]
+    row: seq[mstring]
     i, last, line: int
     c: char
     q: RstParser
@@ -1174,7 +1182,7 @@ proc parseSimpleTable(p: var RstParser): PRstNode =
       if a != nil:
         for j in 0..len(a)-1: a.sons[j].kind = rnTableHeaderCell
     if p.tok[p.idx].kind == tkEof: break
-    for j in countup(0, high(row)): row[j] = ""
+    for j in countup(0, high(row)): row[j] = tomut""
     # the following while loop iterates over the lines a single cell may span:
     line = p.tok[p.idx].line
     while true:
@@ -1196,7 +1204,7 @@ proc parseSimpleTable(p: var RstParser): PRstNode =
       q.col = cols[j]
       q.line = line - 1
       q.filename = p.filename
-      q.col += getTokens(row[j], false, q.tok)
+      q.col += getTokens(row[j].unsafeBorrow, false, q.tok)
       b = newRstNode(rnTableDataCell)
       add(b, parseDoc(q))
       add(a, b)
@@ -1230,7 +1238,7 @@ proc parseOverline(p: var RstParser): PRstNode =
 proc parseBulletList(p: var RstParser): PRstNode =
   result = nil
   if p.tok[p.idx + 1].kind == tkWhite:
-    var bullet = p.tok[p.idx].symbol
+    var bullet = $p.tok[p.idx].symbol
     var col = p.tok[p.idx].col
     result = newRstNode(rnBulletList)
     pushInd(p, p.tok[p.idx + 2].col)
@@ -1401,7 +1409,7 @@ proc parseSectionWrapper(p: var RstParser): PRstNode =
     result = result.sons[0]
 
 proc `$`(t: Token): string =
-  result = $t.kind & ' ' & (if isNil(t.symbol): "NIL" else: t.symbol)
+  result = $t.kind & ' ' & (if isNil(t.symbol): "NIL" else: $t.symbol)
 
 proc parseDoc(p: var RstParser): PRstNode =
   result = parseSectionWrapper(p)
@@ -1663,15 +1671,15 @@ proc parseDotDot(p: var RstParser): PRstNode =
     var a = getReferenceName(p, "|")
     var b: PRstNode
     if p.tok[p.idx].kind == tkWhite: inc(p.idx)
-    if cmpIgnoreStyle(p.tok[p.idx].symbol, "replace") == 0:
+    if cmpIgnoreStyle(p.tok[p.idx].symbol.unsafeBorrow, "replace") == 0:
       inc(p.idx)
       expect(p, "::")
       b = untilEol(p)
-    elif cmpIgnoreStyle(p.tok[p.idx].symbol, "image") == 0:
+    elif cmpIgnoreStyle(p.tok[p.idx].symbol.unsafeBorrow, "image") == 0:
       inc(p.idx)
       b = dirImage(p)
     else:
-      rstMessage(p, meInvalidDirective, p.tok[p.idx].symbol)
+      rstMessage(p, meInvalidDirective, p.tok[p.idx].symbol.unsafeBorrow)
     setSub(p, addNodes(a), b)
   elif match(p, p.idx, " ["):
     # footnotes, citations

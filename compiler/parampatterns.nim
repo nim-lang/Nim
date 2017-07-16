@@ -36,7 +36,7 @@ type
     ppLocal,
     ppSideEffect,
     ppNoSideEffect
-  TPatternCode = string
+  TPatternCode = system.mstring
 
 const
   MaxStackSize* = 64 ## max required stack size by the VM
@@ -119,16 +119,17 @@ proc semNodeKindConstraints*(p: PNode): PNode =
   ## efficient internal format.
   assert p.kind == nkCurlyExpr
   result = newNodeI(nkStrLit, p.info)
-  result.strVal = newStringOfCap(10)
-  result.strVal.add(chr(aqNone.ord))
+  var r = newStringOfCap(10)
+  r.add(chr(aqNone.ord))
   if p.len >= 2:
     for i in 1.. <p.len:
-      compileConstraints(p.sons[i], result.strVal)
-    if result.strVal.len > MaxStackSize-1:
+      compileConstraints(p.sons[i], r)
+    if r.len > MaxStackSize-1:
       internalError(p.info, "parameter pattern too complex")
   else:
     patternError(p)
-  result.strVal.add(ppEof)
+  r.add(ppEof)
+  result.strVal = $r
 
 type
   TSideEffectAnalysis* = enum

@@ -210,7 +210,7 @@ proc nimNextToken(g: var GeneralTokenizer) =
       else:
         while g.buf[pos] notin {'\0', '\x0A', '\x0D'}: inc(pos)
     of 'a'..'z', 'A'..'Z', '_', '\x80'..'\xFF':
-      var id = ""
+      var id = tomut""
       while g.buf[pos] in SymChars + {'_'}:
         add(id, g.buf[pos])
         inc(pos)
@@ -237,7 +237,7 @@ proc nimNextToken(g: var GeneralTokenizer) =
             inc(pos)
           if g.buf[pos] == '\"': inc(pos)
       else:
-        g.kind = nimGetKeyword(id)
+        g.kind = nimGetKeyword($id)
     of '0':
       inc(pos)
       case g.buf[pos]
@@ -473,11 +473,11 @@ proc clikeNextToken(g: var GeneralTokenizer, keywords: openArray[string],
       else:
         g.kind = gtOperator
     of 'a'..'z', 'A'..'Z', '_', '\x80'..'\xFF':
-      var id = ""
+      var id = tomut""
       while g.buf[pos] in symChars:
         add(id, g.buf[pos])
         inc(pos)
-      if isKeyword(keywords, id) >= 0: g.kind = gtKeyword
+      if isKeyword(keywords, $id) >= 0: g.kind = gtKeyword
       else: g.kind = gtIdentifier
     of '0':
       inc(pos)

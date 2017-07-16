@@ -29,9 +29,9 @@
 ##    writeLine(stdout, "your password: " & myData["password"])
 ##    writeLine(stdout, "</body></html>")
 
-import strutils, os, strtabs, cookies
+import strutils, os, strtabs, cookies, migrate
 
-proc encodeUrl*(s: string): string =
+proc encodeUrl*(s: string): string {.strBuilder.} =
   ## Encodes a value to be HTTP safe: This means that characters in the set
   ## ``{'A'..'Z', 'a'..'z', '0'..'9', '_'}`` are carried over to the result,
   ## a space is converted to ``'+'`` and every other character is encoded as
@@ -52,7 +52,7 @@ proc handleHexChar(c: char, x: var int) {.inline.} =
   of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
   else: assert(false)
 
-proc decodeUrl*(s: string): string =
+proc decodeUrl*(s: string): string {.strBuilder.} =
   ## Decodes a value from its HTTP representation: This means that a ``'+'``
   ## is converted to a space, ``'%xx'`` (where ``xx`` denotes a hexadecimal
   ## value) is converted to the character with ordinal number ``xx``, and
@@ -76,7 +76,7 @@ proc decodeUrl*(s: string): string =
 
 {.deprecated: [URLDecode: decodeUrl, URLEncode: encodeUrl].}
 
-proc addXmlChar(dest: var string, c: char) {.inline.} =
+proc addXmlChar(dest: var mstring, c: char) {.inline.} =
   case c
   of '&': add(dest, "&amp;")
   of '<': add(dest, "&lt;")
@@ -84,7 +84,7 @@ proc addXmlChar(dest: var string, c: char) {.inline.} =
   of '\"': add(dest, "&quot;")
   else: add(dest, c)
 
-proc xmlEncode*(s: string): string =
+proc xmlEncode*(s: string): string {.strBuilder.} =
   ## Encodes a value to be XML safe:
   ## * ``"`` is replaced by ``&quot;``
   ## * ``<`` is replaced by ``&lt;``
@@ -117,9 +117,10 @@ proc getEncodedData(allowedMethods: set[RequestMethod]): string =
     if methodPost notin allowedMethods:
       cgiError("'REQUEST_METHOD' 'POST' is not supported")
     var L = parseInt(getEnv("CONTENT_LENGTH").string)
-    result = newString(L)
-    if readBuffer(stdin, addr(result[0]), L) != L:
-      cgiError("cannot read from stdin")
+    strBody:
+      result = newString(L)
+      if readBuffer(stdin, addr(result[0]), L) != L:
+        cgiError("cannot read from stdin")
   of "GET":
     if methodGet notin allowedMethods:
       cgiError("'REQUEST_METHOD' 'GET' is not supported")
@@ -132,8 +133,8 @@ iterator decodeData*(data: string): tuple[key, value: TaintedString] =
   ## Reads and decodes CGI data and yields the (name, value) pairs the
   ## data consists of.
   var i = 0
-  var name = ""
-  var value = ""
+  var name = tomut""
+  var value = tomut""
   # decode everything in one pass:
   while data[i] != '\0':
     setLen(name, 0) # reuse memory
@@ -165,7 +166,7 @@ iterator decodeData*(data: string): tuple[key, value: TaintedString] =
       of '&', '\0': break
       else: add(value, data[i])
       inc(i)
-    yield (name.TaintedString, value.TaintedString)
+    yield (($name).TaintedString, ($value).TaintedString)
     if data[i] == '&': inc(i)
     elif data[i] == '\0': break
     else: cgiError("'&' expected")
@@ -332,14 +333,14 @@ proc setTestData*(keysvalues: varargs[string]) =
   ##    setTestData("name", "Hanz", "password", "12345")
   putEnv("REQUEST_METHOD", "GET")
   var i = 0
-  var query = ""
+  var query = tomut""
   while i < keysvalues.len:
     add(query, encodeUrl(keysvalues[i]))
     add(query, '=')
     add(query, encodeUrl(keysvalues[i+1]))
     add(query, '&')
     inc(i, 2)
-  putEnv("QUERY_STRING", query)
+  putEnv("QUERY_STRING", $query)
 
 proc writeContentType*() =
   ## call this before starting to send your HTML data to `stdout`. This

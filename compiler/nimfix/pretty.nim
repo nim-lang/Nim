@@ -11,7 +11,7 @@
 ## to convert Nim code into a consistent style.
 
 import
-  strutils, os, intsets, strtabs
+  migrate, strutils, os, intsets, strtabs
 
 import compiler/options, compiler/ast, compiler/astalgo, compiler/msgs,
   compiler/semdata, compiler/nimfix/prettybase, compiler/ropes, compiler/idents
@@ -47,7 +47,7 @@ proc `=~`(s: string, a: openArray[string]): bool =
   for x in a:
     if s.startsWith(x): return true
 
-proc beautifyName(s: string, k: TSymKind): string =
+proc beautifyName(s: string, k: TSymKind): string {.strBuilder.} =
   # minimal set of rules here for transition:
   # GC_ is allowed
 

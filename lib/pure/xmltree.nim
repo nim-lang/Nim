@@ -9,7 +9,7 @@
 
 ## A simple XML tree. More efficient and simpler than the DOM.
 
-import macros, strtabs
+import macros, strtabs, migrate
 
 type
   XmlNode* = ref XmlNodeObj ## an XML tree consists of ``PXmlNode``'s.
@@ -97,7 +97,7 @@ proc innerText*(n: XmlNode): string =
   ## - If `n` is `xnElement`, runs recursively on each child node and
   ##   concatenates the results.
   ## - Otherwise returns an empty string.
-  proc worker(res: var string, n: XmlNode) =
+  proc worker(res: var mstring, n: XmlNode) =
     case n.k
     of xnText, xnEntity:
       res.add(n.fText)
@@ -107,8 +107,9 @@ proc innerText*(n: XmlNode): string =
     else:
       discard
 
-  result = ""
-  worker(result, n)
+  strBody:
+    result = ""
+    worker(result, n)
 
 proc tag*(n: XmlNode): string {.inline.} =
   ## gets the tag name of `n`. `n` has to be an ``xnElement`` node.
@@ -196,7 +197,7 @@ proc `clientData=`*(n: XmlNode, data: int) {.inline.} =
   ## parser and generator.
   n.fClientData = data
 
-proc addEscaped*(result: var string, s: string) =
+proc addEscaped*(result: var mstring, s: string) =
   ## same as ``result.add(escape(s))``, but more efficient.
   for c in items(s):
     case c
@@ -208,7 +209,7 @@ proc addEscaped*(result: var string, s: string) =
     of '/': result.add("&#x2F;")
     else: result.add(c)
 
-proc escape*(s: string): string =
+proc escape*(s: string): string {.strBuilder.} =
   ## escapes `s` for inclusion into an XML document.
   ## Escapes these characters:
   ##
@@ -225,7 +226,7 @@ proc escape*(s: string): string =
   result = newStringOfCap(s.len)
   addEscaped(result, s)
 
-proc addIndent(result: var string, indent: int) =
+proc addIndent(result: var mstring, indent: int) =
   result.add("\n")
   for i in 1..indent: result.add(' ')
 
@@ -235,10 +236,10 @@ proc noWhitespace(n: XmlNode): bool =
   for i in 0..n.len-1:
     if n[i].kind in {xnText, xnEntity}: return true
 
-proc add*(result: var string, n: XmlNode, indent = 0, indWidth = 2) =
+proc add*(result: var mstring, n: XmlNode, indent = 0, indWidth = 2) =
   ## adds the textual representation of `n` to `result`.
 
-  proc addEscapedAttr(result: var string, s: string) =
+  proc addEscapedAttr(result: var mstring, s: string) =
     # `addEscaped` alternative with less escaped characters.
     # Only to be used for escaping attribute values enclosed in double quotes!
     for c in items(s):
@@ -300,7 +301,7 @@ const
   xmlHeader* = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n"
     ## header to use for complete XML output
 
-proc `$`*(n: XmlNode): string =
+proc `$`*(n: XmlNode): string {.strBuilder.} =
   ## converts `n` into its string representation. No ``<$xml ...$>`` declaration
   ## is produced, so that the produced XML fragments are composable.
   result = ""

@@ -102,13 +102,13 @@ type
 {.deprecated: [TRenderContext: RenderContext].}
 
 proc renderRstToRst(d: var RenderContext, n: PRstNode,
-                    result: var string) {.gcsafe.}
+                    result: var mstring) {.gcsafe.}
 
-proc renderRstSons(d: var RenderContext, n: PRstNode, result: var string) =
+proc renderRstSons(d: var RenderContext, n: PRstNode, result: var mstring) =
   for i in countup(0, len(n) - 1):
     renderRstToRst(d, n.sons[i], result)
 
-proc renderRstToRst(d: var RenderContext, n: PRstNode, result: var string) =
+proc renderRstToRst(d: var RenderContext, n: PRstNode, result: var mstring) =
   # this is needed for the index generation; it may also be useful for
   # debugging, but most code is already debugged...
   const
@@ -133,7 +133,7 @@ proc renderRstToRst(d: var RenderContext, n: PRstNode, result: var string) =
     result.add("\n")
     result.add(ind)
 
-    var headline = ""
+    var headline = tomut""
     renderRstSons(d, n, headline)
 
     let lvl = repeat(lvlToChar[n.level], headline.len - d.indent)
@@ -155,7 +155,7 @@ proc renderRstToRst(d: var RenderContext, n: PRstNode, result: var string) =
     renderRstSons(d, n, result)
   of rnBulletItem:
     inc(d.indent, 2)
-    var tmp = ""
+    var tmp = tomut""
     renderRstSons(d, n, tmp)
     if tmp.len > 0:
       result.add("\n")
@@ -165,7 +165,7 @@ proc renderRstToRst(d: var RenderContext, n: PRstNode, result: var string) =
     dec(d.indent, 2)
   of rnEnumItem:
     inc(d.indent, 4)
-    var tmp = ""
+    var tmp = tomut""
     renderRstSons(d, n, tmp)
     if tmp.len > 0:
       result.add("\n")
@@ -189,7 +189,7 @@ proc renderRstToRst(d: var RenderContext, n: PRstNode, result: var string) =
     renderRstSons(d, n, result)
     dec(d.indent, 2)
   of rnField:
-    var tmp = ""
+    var tmp = tomut""
     renderRstToRst(d, n.sons[0], tmp)
 
     var L = max(tmp.len + 3, 30)
@@ -285,7 +285,7 @@ proc renderRstToRst(d: var RenderContext, n: PRstNode, result: var string) =
   else:
     result.add("Error: cannot render: " & $n.kind)
 
-proc renderRstToRst*(n: PRstNode, result: var string) =
+proc renderRstToRst*(n: PRstNode, result: var mstring) =
   ## renders `n` into its string representation and appends to `result`.
   var d: RenderContext
   renderRstToRst(d, n, result)
