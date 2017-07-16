@@ -13,7 +13,7 @@
 import
   intsets, ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst,
   magicsys, condsyms, idents, lexer, options, parampatterns, strutils, trees,
-  nimfix.pretty
+  nimfix.pretty, migrate
 
 when not defined(noDocgen):
   import docgen
@@ -274,10 +274,11 @@ proc cmpCandidates*(a, b: TCandidate): int =
 
 proc argTypeToString(arg: PNode; prefer: TPreferedDesc): string =
   if arg.kind in nkSymChoices:
-    result = typeToString(arg[0].typ, prefer)
-    for i in 1 .. <arg.len:
-      result.add(" | ")
-      result.add typeToString(arg[i].typ, prefer)
+    strBody:
+      result = tomut typeToString(arg[0].typ, prefer)
+      for i in 1 .. <arg.len:
+        result.add(" | ")
+        result.add typeToString(arg[i].typ, prefer)
   elif arg.typ == nil:
     result = "void"
   else:
