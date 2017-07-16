@@ -274,7 +274,7 @@ else:
 
     proc getThreadId*(): int =
       result = int(lwp_self())
-  elif defined(macosx) or defined(freebsd):
+  elif defined(macosx):
     proc pthread_threadid_np(y: pointer; x: var uint64): cint {.importc, header: "pthread.h".}
 
     proc getThreadId*(): int =
@@ -282,6 +282,15 @@ else:
       var x: uint64
       result = pthread_threadid_np(nil, x)
       result = int(x)
+  elif defined(freebsd):
+    proc pthread_getthreadid_np(y: pointer; x: var uint64): cint {.importc, header: "pthread.h".}
+
+    proc getThreadId*(): int =
+      ## get the ID of the currently running thread.
+      var x: uint64
+      result = pthread_getthreadid_np(nil, x)
+      result = int(x)
+
   elif defined(solaris):
     # just a guess really:
     type thread_t {.importc: "thread_t", header: "<thread.h>".} = distinct int
