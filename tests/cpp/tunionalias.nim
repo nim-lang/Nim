@@ -1,5 +1,6 @@
 discard """
   output: '''100'''
+  cmd: "nim cpp $file"
 """
 #bug #6016
 type
