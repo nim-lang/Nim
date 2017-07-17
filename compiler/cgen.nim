@@ -209,13 +209,13 @@ proc genLineDir(p: BProc, t: PNode) =
   if ({optStackTrace, optEndb} * p.options == {optStackTrace, optEndb}) and
       (p.prc == nil or sfPure notin p.prc.flags):
     if freshLineInfo(p, tt.info):
-      linefmt(p, cpsStmts, "#endb($1, $2);$n",
+      linefmt(p, cpsStmts, "#endb($1, $2);$N",
               line.rope, makeCString(toFilename(tt.info)))
   elif ({optLineTrace, optStackTrace} * p.options ==
       {optLineTrace, optStackTrace}) and
       (p.prc == nil or sfPure notin p.prc.flags) and tt.info.fileIndex >= 0:
     if freshLineInfo(p, tt.info):
-      linefmt(p, cpsStmts, "nimln_($1, $2);$n",
+      linefmt(p, cpsStmts, "nimln_($1, $2);$N",
               line.rope, tt.info.quotedFilename)
 
 proc postStmtActions(p: BProc) {.inline.} =
