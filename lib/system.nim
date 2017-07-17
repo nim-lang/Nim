@@ -1898,7 +1898,7 @@ template tomut*(s: string): mstring =
   when defined(nimImmutableStrings): mstring(substr(s))
   else: mstring(s)
 
-template unsafeBorrow*(x: mutstring): string = string(x)
+template unsafeBorrow*(x: mstring): string = string(x)
 
 const
   Inf* {.magic: "Inf".} = 1.0 / 0.0
@@ -3866,6 +3866,12 @@ proc xlen*[T](x: seq[T]): int {.magic: "XLenSeq", noSideEffect.} =
   ## This is an optimization that rarely makes sense.
   discard
 
+when defined(nimImmutableStrings):
+  proc cloneMut*(m: mstring): mstring =
+    result = cast[mstring](newOwnedString(cast[NimString](m), m.len))
+
+else:
+  template cloneMut*(x: mstring): mstring = x
 
 proc `==` *(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
                                    inline.} =

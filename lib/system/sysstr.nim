@@ -106,6 +106,12 @@ proc copyString(src: NimString): NimString {.compilerRtl.} =
         if (src.reserved and strlitFlag) != 0:
           result.reserved = (result.reserved and not strlitFlag) or seqShallowFlag
 
+proc newOwnedString(src: NimString; n: int): NimString =
+  result = rawNewStringNoInit(n)
+  result.len = n
+  copyMem(addr(result.data), addr(src.data), n)
+  result.data[n] = '\0'
+
 proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
   if src != nil:
     when declared(newObjRC1):
@@ -150,7 +156,7 @@ proc addChar(s: NimString, c: char): NimString =
     result = cast[NimString](growObj(result,
       sizeof(TGenericSeq) + result.space + 1))
   elif wasMoved(s):
-    result = copyString(s)
+    result = newOwnedString(s, s.len)
   result.data[result.len] = c
   result.data[result.len+1] = '\0'
   inc(result.len)
@@ -208,7 +214,9 @@ proc appendChar(dest: NimString, c: char) {.compilerproc, inline.} =
 
 proc setLengthStr(s: NimString, newLen: int): NimString {.compilerRtl.} =
   var n = max(newLen, 0)
-  if n <= s.space and not wasMoved(s):
+  if wasMoved(s):
+    result = newOwnedString(s, n)
+  elif n <= s.space:
     result = s
   else:
     result = resizeString(s, n)

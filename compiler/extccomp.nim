@@ -522,7 +522,7 @@ proc getCompileOptions: string =
   result = cFileSpecificOptions("__dummy__")
 
 proc getLinkOptions: string {.strBuilder.} =
-  result = mstring($linkOptions)
+  result = cloneMut linkOptions
   result.add " "
   result.add linkOptionsCmd
   result.add " "
