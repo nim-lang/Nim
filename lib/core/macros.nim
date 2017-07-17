@@ -317,9 +317,29 @@ proc toStrLit*(n: NimNode): NimNode {.compileTime.} =
   ## in a string literal node
   return newStrLitNode(repr(n))
 
-proc lineinfo*(n: NimNode): string {.magic: "NLineInfo", noSideEffect.}
+type
+  LineInfo* = object
+    filename*: string
+    line*,column*: int
+
+proc `$`*(arg: Lineinfo): string =
+  result = arg.filename & "(" & $arg.line & ", " & $arg.column & ")"
+
+#proc lineinfo*(n: NimNode): LineInfo {.magic: "NLineInfo", noSideEffect.}
   ## returns the position the node appears in the original source file
   ## in the form filename(line, col)
+
+proc getLine(arg: NimNode): int {.magic: "NLineInfo", noSideEffect.}
+proc getColumn(arg: NimNode): int {.magic: "NLineInfo", noSideEffect.}
+proc getFile(arg: NimNode): string {.magic: "NLineInfo", noSideEffect.}
+
+proc lineInfoObj*(n: NimNode): LineInfo {.compileTime.} =
+  result.filename = n.getFile
+  result.line = n.getLine
+  result.column = n.getColumn
+
+proc lineInfo*(arg: NimNode): string {.compileTime.} =
+  $arg.lineInfoObj
 
 proc internalParseExpr(s: string): NimNode {.
   magic: "ParseExprToAst", noSideEffect.}

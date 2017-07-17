@@ -1,5 +1,5 @@
 discard """
-  outputsub: '''tquasiquote.nim(14,8): Check failed: 1 > 2'''
+  outputsub: '''tquasiquote.nim(14, 8): Check failed: 1 > 2'''
 """
 
 import macros
