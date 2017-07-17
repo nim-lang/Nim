@@ -335,6 +335,7 @@ proc getTypePre(m: BModule, typ: PType; sig: SigHash): Rope =
     if result == nil: result = cacheGetType(m.typeCache, sig)
 
 proc structOrUnion(t: PType): Rope =
+  let t = t.skipTypes({tyAlias})
   (if tfUnion in t.flags: rope("union") else: rope("struct"))
 
 proc getForwardStructFormat(m: BModule): string =
