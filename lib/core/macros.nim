@@ -255,6 +255,11 @@ proc newStrLitNode*(s: string): NimNode {.compileTime, noSideEffect.} =
   result = newNimNode(nnkStrLit)
   result.strVal = s
 
+proc newCommentStmtNode*(s: string): NimNode {.compileTime, noSideEffect.} =
+  ## creates a comment statement node
+  result = newNimNode(nnkCommentStmt)
+  result.strVal = s
+
 proc newIntLitNode*(i: BiggestInt): NimNode {.compileTime.} =
   ## creates a int literal node from `i`
   result = newNimNode(nnkIntLit)
@@ -274,6 +279,7 @@ proc newIdentNode*(i: string): NimNode {.compileTime.} =
   ## creates an identifier node from `i`
   result = newNimNode(nnkIdent)
   result.ident = !i
+
 
 type
   BindSymRule* = enum    ## specifies how ``bindSym`` behaves
@@ -432,19 +438,111 @@ proc newLit*(c: char): NimNode {.compileTime.} =
   result = newNimNode(nnkCharLit)
   result.intVal = ord(c)
 
-proc newLit*(i: BiggestInt): NimNode {.compileTime.} =
+
+proc newLit*(i: int): NimNode {.compileTime.} =
   ## produces a new integer literal node.
   result = newNimNode(nnkIntLit)
   result.intVal = i
+
+proc newLit*(i: int8): NimNode {.compileTime.} =
+  ## produces a new integer literal node.
+  result = newNimNode(nnkInt8Lit)
+  result.intVal = i
+
+proc newLit*(i: int16): NimNode {.compileTime.} =
+  ## produces a new integer literal node.
+  result = newNimNode(nnkInt16Lit)
+  result.intVal = i
+
+proc newLit*(i: int32): NimNode {.compileTime.} =
+  ## produces a new integer literal node.
+  result = newNimNode(nnkInt32Lit)
+  result.intVal = i
+
+proc newLit*(i: int64): NimNode {.compileTime.} =
+  ## produces a new integer literal node.
+  result = newNimNode(nnkInt64Lit)
+  result.intVal = i
+
+proc newLit*(i: uint): NimNode {.compileTime.} =
+  ## produces a new unsigned integer literal node.
+  result = newNimNode(nnkUIntLit)
+  result.intVal = BiggestInt(i)
+
+proc newLit*(i: uint8): NimNode {.compileTime.} =
+  ## produces a new unsigned integer literal node.
+  result = newNimNode(nnkUInt8Lit)
+  result.intVal = BiggestInt(i)
+
+proc newLit*(i: uint16): NimNode {.compileTime.} =
+  ## produces a new unsigned integer literal node.
+  result = newNimNode(nnkUInt16Lit)
+  result.intVal = BiggestInt(i)
+
+proc newLit*(i: uint32): NimNode {.compileTime.} =
+  ## produces a new unsigned integer literal node.
+  result = newNimNode(nnkUInt32Lit)
+  result.intVal = BiggestInt(i)
+
+proc newLit*(i: uint64): NimNode {.compileTime.} =
+  ## produces a new unsigned integer literal node.
+  result = newNimNode(nnkUInt64Lit)
+  result.intVal = BiggestInt(i)
 
 proc newLit*(b: bool): NimNode {.compileTime.} =
   ## produces a new boolean literal node.
   result = if b: bindSym"true" else: bindSym"false"
 
-proc newLit*(f: BiggestFloat): NimNode {.compileTime.} =
+when false:
+  # the float type is not really a distinct type as described in https://github.com/nim-lang/Nim/issues/5875
+  proc newLit*(f: float): NimNode {.compileTime.} =
+    ## produces a new float literal node.
+    result = newNimNode(nnkFloatLit)
+    result.floatVal = f
+
+proc newLit*(f: float32): NimNode {.compileTime.} =
   ## produces a new float literal node.
-  result = newNimNode(nnkFloatLit)
+  result = newNimNode(nnkFloat32Lit)
   result.floatVal = f
+
+proc newLit*(f: float64): NimNode {.compileTime.} =
+  ## produces a new float literal node.
+  result = newNimNode(nnkFloat64Lit)
+  result.floatVal = f
+
+when compiles(float128):
+  proc newLit*(f: float128): NimNode {.compileTime.} =
+    ## produces a new float literal node.
+    result = newNimNode(nnkFloat128Lit)
+    result.floatVal = f
+
+proc newLit*(arg: object): NimNode {.compileTime.} =
+  result = nnkObjConstr.newTree(arg.type.getTypeInst[1])
+  for a, b in arg.fieldPairs:
+    result.add nnkExprColonExpr.newTree( newIdentNode(a), newLit(b) )
+
+proc newLit*[N,T](arg: array[N,T]): NimNode {.compileTime.} =
+  result = nnkBracket.newTree
+  for x in arg:
+    result.add newLit(x)
+
+proc newLit*[T](arg: seq[T]): NimNode {.compileTime.} =
+  var bracket = nnkBracket.newTree
+  for x in arg:
+    bracket.add newLit(x)
+
+  result = nnkCall.newTree(
+    nnkBracketExpr.newTree(
+      nnkAccQuoted.newTree( bindSym"@" ),
+      getTypeInst( bindSym"T" )
+    ),
+    bracket
+  )
+
+proc newLit*(arg: tuple): NimNode {.compileTime.} =
+  result = nnkPar.newTree
+  for a,b in arg.fieldPairs:
+    result.add nnkExprColonExpr.newTree( newIdentNode(a), newLit(b) )
 
 proc newLit*(s: string): NimNode {.compileTime.} =
   ## produces a new string literal node.
@@ -750,6 +848,8 @@ proc `$`*(node: NimNode): string {.compileTime.} =
     result = $node[0]
   of nnkAccQuoted:
     result = $node[0]
+  of nnkCommentStmt:
+    result = node.strVal
   else:
     badNodeKind node.kind, "$"
 

@@ -530,6 +530,7 @@ proc nimSpawn4(fn: WorkerProc; data: pointer; id: ThreadId) {.compilerProc.} =
 proc sync*() =
   ## a simple barrier to wait for all spawn'ed tasks. If you need more elaborate
   ## waiting, you have to use an explicit barrier.
+  var toRelease = 0
   while true:
     var allReady = true
     for i in 0 .. <currentPoolSize:
@@ -537,5 +538,9 @@ proc sync*() =
       allReady = allReady and workersData[i].ready
     if allReady: break
     await(gSomeReady)
+    inc toRelease
+
+  for i in 0 ..< toRelease:
+    signal(gSomeReady)
 
 setup()

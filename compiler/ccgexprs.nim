@@ -545,7 +545,7 @@ proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       "(($4)($1) * ($4)($2))", # MulF64
       "(($4)($1) / ($4)($2))", # DivF64
 
-      "($4)((NU$3)($1) >> (NU$3)($2))", # ShrI
+      "($4)((NU$5)($1) >> (NU$3)($2))", # ShrI
       "($4)((NU$3)($1) << (NU$3)($2))", # ShlI
       "($4)($1 & $2)",      # BitandI
       "($4)($1 | $2)",      # BitorI
@@ -585,16 +585,17 @@ proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       "($1 != $2)"]           # Xor
   var
     a, b: TLoc
-    s: BiggestInt
+    s, k: BiggestInt
   assert(e.sons[1].typ != nil)
   assert(e.sons[2].typ != nil)
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], b)
   # BUGFIX: cannot use result-type here, as it may be a boolean
   s = max(getSize(a.t), getSize(b.t)) * 8
+  k = getSize(a.t) * 8
   putIntoDest(p, d, e.typ,
               binArithTab[op] % [rdLoc(a), rdLoc(b), rope(s),
-                                      getSimpleTypeDesc(p.module, e.typ)])
+                                      getSimpleTypeDesc(p.module, e.typ), rope(k)])
 
 proc genEqProc(p: BProc, e: PNode, d: var TLoc) =
   var a, b: TLoc
@@ -664,7 +665,9 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
       d.s = OnHeap
   else:
     var a: TLoc
-    let typ = skipTypes(e.sons[0].typ, abstractInst)
+    var typ = skipTypes(e.sons[0].typ, abstractInst)
+    if typ.kind in {tyUserTypeClass, tyUserTypeClassInst} and typ.isResolvedUserTypeClass:
+      typ = typ.lastSon
     if typ.kind == tyVar and tfVarIsPtr notin typ.flags and p.module.compileToCpp and e.sons[0].kind == nkHiddenAddr:
       initLocExprSingleUse(p, e[0][0], d)
       return
@@ -2123,7 +2126,14 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     if n.sons[0].kind != nkEmpty:
       genLineDir(p, n)
       var a: TLoc
-      initLocExpr(p, n.sons[0], a)
+      if n[0].kind in nkCallKinds:
+        # bug #6037: do not assign to a temp in C++ mode:
+        incl a.flags, lfSingleUse
+        genCall(p, n[0], a)
+        if lfSingleUse notin a.flags:
+          line(p, cpsStmts, a.r & ";" & tnl)
+      else:
+        initLocExpr(p, n.sons[0], a)
   of nkAsmStmt: genAsmStmt(p, n)
   of nkTryStmt:
     if p.module.compileToCpp and optNoCppExceptions notin gGlobalOptions:
@@ -2148,8 +2158,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       # are not transformed correctly. We work around this issue (#411) here
       # by ensuring it's no inner proc (owner is a module):
       if prc.skipGenericOwner.kind == skModule and sfCompileTime notin prc.flags:
-        if (optDeadCodeElim notin gGlobalOptions and
-            sfDeadCodeElim notin getModule(prc).flags) or
+        if (not emitLazily(prc)) or
             ({sfExportc, sfCompilerProc} * prc.flags == {sfExportc}) or
             (sfExportc in prc.flags and lfExportLib in prc.loc.flags) or
             (prc.kind == skMethod):

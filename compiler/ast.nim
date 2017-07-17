@@ -453,6 +453,7 @@ type
     nfIsRef     # this node is a 'ref' node; used for the VM
     nfPreventCg # this node should be ignored by the codegen
     nfBlockArg  # this a stmtlist appearing in a call (e.g. a do block)
+    nfFromTemplate # a top-level node returned from a template
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: beyond that)
@@ -956,7 +957,8 @@ const
     skMacro, skTemplate, skConverter, skEnumField, skLet, skStub, skAlias}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
                                       nfDotSetter, nfDotField,
-                                      nfIsRef, nfPreventCg, nfLL}
+                                      nfIsRef, nfPreventCg, nfLL,
+                                      nfFromTemplate}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2

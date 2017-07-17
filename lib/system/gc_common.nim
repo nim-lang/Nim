@@ -25,6 +25,13 @@ when defined(nimTypeNames):
         c_fprintf(stdout, "[Heap] %s: #%ld; bytes: %ld\n", it.name, it.instances, it.sizes)
       it = it.nextType
 
+  when defined(nimGcRefLeak):
+    proc oomhandler() =
+      c_fprintf(stdout, "[Heap] ROOTS: #%ld\n", gch.additionalRoots.len)
+      writeLeaks()
+
+    outOfMemHook = oomhandler
+
 template decTypeSize(cell, t) =
   # XXX this needs to use atomics for multithreaded apps!
   when defined(nimTypeNames):

@@ -1492,20 +1492,6 @@ variables! For example:
   echo badname
   echo badext
 
-Tuple unpacking **only** works in ``var`` or ``let`` blocks. The following code
-won't compile:
-
-.. code-block:: nim
-
-  import os
-
-  var
-    path = "usr/local/nimc.html"
-    dir, name, ext = ""
-
-  (dir, name, ext) = splitFile(path)
-  # --> Error: '(dir, name, ext)' cannot be assigned to
-
 
 Reference and pointer types
 ---------------------------

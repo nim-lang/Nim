@@ -28,7 +28,7 @@ template createCb(retFutureSym, iteratorNameSym,
                   name, futureVarCompletions: untyped) =
   var nameIterVar = iteratorNameSym
   #{.push stackTrace: off.}
-  proc cb {.closure,gcsafe.} =
+  proc cb {.closure.} =
     try:
       if not nameIterVar.finished:
         var next = nameIterVar()
@@ -38,7 +38,10 @@ template createCb(retFutureSym, iteratorNameSym,
                     "`nil` Future?"
             raise newException(AssertionError, msg % name)
         else:
-          next.callback = cb
+          {.gcsafe.}:
+            {.push hint[ConvFromXtoItselfNotNeeded]: off.}
+            next.callback = (proc() {.closure, gcsafe.})(cb)
+            {.pop.}
     except:
       futureVarCompletions
 
@@ -301,7 +304,7 @@ proc verifyReturnType(typeName: string) {.compileTime.} =
 proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   ## This macro transforms a single procedure into a closure iterator.
   ## The ``async`` macro supports a stmtList holding multiple async procedures.
-  if prc.kind notin {nnkProcDef, nnkLambda, nnkMethodDef}:
+  if prc.kind notin {nnkProcDef, nnkLambda, nnkMethodDef, nnkDo}:
       error("Cannot transform this node kind into an async proc." &
             " proc/method definition or lambda node expected.")
 
@@ -379,7 +382,10 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
                                   procBody, nnkIteratorDef)
     closureIterator.pragma = newNimNode(nnkPragma, lineInfoFrom=prc.body)
     closureIterator.addPragma(newIdentNode("closure"))
-    closureIterator.addPragma(newIdentNode("gcsafe"))
+
+    # If proc has an explicit gcsafe pragma, we add it to iterator as well.
+    if prc.pragma.findChild(it.kind in {nnkSym, nnkIdent} and $it == "gcsafe") != nil:
+      closureIterator.addPragma(newIdentNode("gcsafe"))
     outerProcBody.add(closureIterator)
 
     # -> createCb(retFuture)
