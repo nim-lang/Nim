@@ -744,14 +744,17 @@ proc genTupleElem(p: BProc, e: PNode, d: var TLoc) =
   addf(r, ".Field$1", [rope(i)])
   putIntoDest(p, d, tupType.sons[i], r, a.s)
 
-proc lookupFieldAgain(p: BProc, ty: PType; field: PSym; r: var Rope): PSym =
+proc lookupFieldAgain(p: BProc, ty: PType; field: PSym; r: var Rope;
+                      resTyp: ptr PType = nil): PSym =
   var ty = ty
   assert r != nil
   while ty != nil:
     ty = ty.skipTypes(skipPtrs)
     assert(ty.kind in {tyTuple, tyObject})
     result = lookupInRecord(ty.n, field.name)
-    if result != nil: break
+    if result != nil:
+      if resTyp != nil: resTyp[] = ty
+      break
     if not p.module.compileToCpp: add(r, ".Sup")
     ty = ty.sons[0]
   if result == nil: internalError(field.info, "genCheckedRecordField")
@@ -768,8 +771,9 @@ proc genRecordField(p: BProc, e: PNode, d: var TLoc) =
     addf(r, ".Field$1", [rope(f.position)])
     putIntoDest(p, d, f.typ, r, a.s)
   else:
-    let field = lookupFieldAgain(p, ty, f, r)
-    if field.loc.r == nil: fillObjectFields(p.module, ty)
+    var rtyp: PType
+    let field = lookupFieldAgain(p, ty, f, r, addr rtyp)
+    if field.loc.r == nil and rtyp != nil: fillObjectFields(p.module, rtyp)
     if field.loc.r == nil: internalError(e.info, "genRecordField 3 " & typeToString(ty))
     addf(r, ".$1", [field.loc.r])
     putIntoDest(p, d, field.typ, r, a.s)
