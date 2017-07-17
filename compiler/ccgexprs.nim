@@ -2123,17 +2123,19 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       # See tests/run/tcnstseq3 for an example that would fail otherwise.
       genAsgn(p, n, fastAsgn=p.prc != nil)
   of nkDiscardStmt:
-    if n.sons[0].kind != nkEmpty:
+    let ex = n[0]
+    if ex.kind != nkEmpty:
       genLineDir(p, n)
       var a: TLoc
-      if n[0].kind in nkCallKinds:
+      if ex.kind in nkCallKinds and (ex[0].kind != nkSym or
+                                     ex[0].sym.magic == mNone):
         # bug #6037: do not assign to a temp in C++ mode:
         incl a.flags, lfSingleUse
-        genCall(p, n[0], a)
+        genCall(p, ex, a)
         if lfSingleUse notin a.flags:
           line(p, cpsStmts, a.r & ";" & tnl)
       else:
-        initLocExpr(p, n.sons[0], a)
+        initLocExpr(p, ex, a)
   of nkAsmStmt: genAsmStmt(p, n)
   of nkTryStmt:
     if p.module.compileToCpp and optNoCppExceptions notin gGlobalOptions:
