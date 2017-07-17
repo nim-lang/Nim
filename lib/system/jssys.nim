@@ -53,7 +53,7 @@ proc isNimException(): bool {.asmNoStackFrame.} =
   else:
     asm "return `lastJSError`.m_type;"
 
-proc getCurrentException*(): ref Exception =
+proc getCurrentException*(): ref Exception {.compilerRtl, benign.} =
   if isNimException(): result = cast[ref Exception](lastJSError)
 
 proc getCurrentExceptionMsg*(): string =
