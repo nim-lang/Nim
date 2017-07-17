@@ -189,6 +189,22 @@ resides in its own directory so that the generated ``nimcache`` directory
 is not shared between different projects.
 
 
+Compiler Selection
+==================
+
+To change the compiler from the default compiler (at the command line)::
+
+  nim c --cc:llvm_gcc --compile_only myfile.nim
+
+This uses the configuration defined in ``config\nim.cfg`` for ``lvm_gcc``.
+
+If nimcache already contains compiled code from a different compiler for the same project,
+add the ``-f`` flag to force all files to be recompiled.
+
+The default compiler is defined at the top of ``config\nim.cfg``.  Changing this setting
+affects the compiler used by ``koch`` to (re)build Nim.
+
+
 Cross compilation
 =================
 
