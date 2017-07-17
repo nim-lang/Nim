@@ -129,7 +129,7 @@ compiler vcc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$3$n$1 $2",
-    packedPragma: "#pragma pack(1)",
+    packedPragma: "#pragma pack(1)$n$1$n#pragma pack(pop)$n",
     props: {hasCpp, hasAssume, hasDeclspec})
 
 # Intel C/C++ Compiler
@@ -216,7 +216,7 @@ compiler dmc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$3$n$1 $2",
-    packedPragma: "#pragma pack(1)",
+    packedPragma: "#pragma pack(1)$n$1$n#pragma pack(pop)$n",
     props: {hasCpp})
 
 # Watcom C Compiler

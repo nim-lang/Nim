@@ -39,7 +39,9 @@ template createCb(retFutureSym, iteratorNameSym,
             raise newException(AssertionError, msg % name)
         else:
           {.gcsafe.}:
+            {.push hint[ConvFromXtoItselfNotNeeded]: off.}
             next.callback = (proc() {.closure, gcsafe.})(cb)
+            {.pop.}
     except:
       futureVarCompletions
 

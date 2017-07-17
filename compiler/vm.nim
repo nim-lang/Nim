@@ -1307,12 +1307,24 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       ensureKind(rkNode)
       if c.callsite != nil: regs[ra].node = c.callsite
       else: stackTrace(c, tos, pc, errFieldXNotFound, "callsite")
-    of opcNLineInfo:
+    of opcNGetFile:
       decodeB(rkNode)
       let n = regs[rb].node
-      createStr regs[ra]
-      regs[ra].node.strVal = n.info.toFileLineCol
-      regs[ra].node.info = c.debug[pc]
+      regs[ra].node = newStrNode(nkStrLit, n.info.toFilename)
+      regs[ra].node.info = n.info
+      regs[ra].node.typ = n.typ
+    of opcNGetLine:
+      decodeB(rkNode)
+      let n = regs[rb].node
+      regs[ra].node = newIntNode(nkIntLit, n.info.line)
+      regs[ra].node.info = n.info
+      regs[ra].node.typ = n.typ
+    of opcNGetColumn:
+      decodeB(rkNode)
+      let n = regs[rb].node
+      regs[ra].node = newIntNode(nkIntLit, n.info.col)
+      regs[ra].node.info = n.info
+      regs[ra].node.typ = n.typ
     of opcEqIdent:
       decodeBC(rkInt)
       if regs[rb].node.kind == nkIdent and regs[rc].node.kind == nkIdent:

@@ -473,11 +473,14 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
             if tfPacked notin rectype.flags:
               add(unionBody, "struct {")
             else:
-              addf(unionBody, CC[cCompiler].structStmtFmt,
-                [rope"struct", nil, rope(CC[cCompiler].packedPragma)])
-              add(unionBody, "{")
+              if hasAttribute in CC[cCompiler].props:
+                add(unionBody, "struct __attribute__((__packed__)){" )
+              else:
+                addf(unionBody, "#pragma pack(1)$nstruct{", [])
             add(unionBody, a)
             addf(unionBody, "} $1;$n", [sname])
+            if tfPacked in rectype.flags and hasAttribute notin CC[cCompiler].props:
+              addf(unionBody, "#pragma pack(pop)$n", [])
         else:
           add(unionBody, genRecordFieldsAux(m, k, ae, rectype, check))
       else: internalError("genRecordFieldsAux(record case branch)")
@@ -524,12 +527,16 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
   # declare the record:
   var hasField = false
 
-  var attribute: Rope =
-    if tfPacked in typ.flags: rope(CC[cCompiler].packedPragma)
-    else: nil
+  if tfPacked in typ.flags:
+    if hasAttribute in CC[cCompiler].props:
+      result = structOrUnion(typ) & " __attribute__((__packed__))"
+    else:
+      result = "#pragma pack(1)" & tnl & structOrUnion(typ)
+  else:
+    result = structOrUnion(typ)
 
-  result = ropecg(m, CC[cCompiler].structStmtFmt,
-    [structOrUnion(typ), name, attribute])
+  result.add " "
+  result.add name
 
   if typ.kind == tyObject:
 
@@ -537,7 +544,7 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
       if (typ.sym != nil and sfPure in typ.sym.flags) or tfFinal in typ.flags:
         appcg(m, result, " {$n", [])
       else:
-        appcg(m, result, " {$n#TNimType* m_type;$n", [name, attribute])
+        appcg(m, result, " {$n#TNimType* m_type;$n", [])
         hasField = true
     elif m.compileToCpp:
       appcg(m, result, " : public $1 {$n",
@@ -556,6 +563,8 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
   else:
     add(result, desc)
   add(result, "};" & tnl)
+  if tfPacked in typ.flags and hasAttribute notin CC[cCompiler].props:
+    result.add "#pragma pack(pop)" & tnl
 
 proc getTupleDesc(m: BModule, typ: PType, name: Rope,
                   check: var IntSet): Rope =
