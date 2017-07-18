@@ -1,44 +1,32 @@
 discard """
-  output:'''@[23, 45]
-@[, foo, bar]
-{a, b, c}
-2.3242
-2.982
-123912.1
-123912.1823
-5.0
-1e+100
-inf
--inf
-nan
-nil
-nil
+  output:""
 """
 
-echo($(@[23, 45]))
-echo($(@["", "foo", "bar"]))
-#echo($(["", "foo", "bar"]))
-#echo($([23, 45]))
+doAssert "@[23, 45]" == $(@[23, 45])
+doAssert  "[32, 45]" == $([32, 45])
+doAssert "@[, foo, bar]" == $(@["", "foo", "bar"])
+doAssert  "[, foo, bar]" ==  $(["", "foo", "bar"])
+
 # bug #2395
-
 let alphaSet: set[char] = {'a'..'c'}
-echo alphaSet
-
-echo($(2.3242))
-echo($(2.982))
-echo($(123912.1))
-echo($(123912.1823))
-echo($(5.0))
-echo($(1e100))
-echo($(1e1000000))
-echo($(-1e1000000))
-echo($(0.0/0.0))
+doAssert "{a, b, c}" == $alphaSet
+doAssert "2.3242" == $(2.3242)
+doAssert "2.982" == $(2.982)
+doAssert "123912.1" == $(123912.1)
+doAssert "123912.1823" == $(123912.1823)
+doAssert "5.0" == $(5.0)
+doAssert "1e+100" == $(1e100)
+doAssert "inf" == $(1e1000000)
+doAssert "-inf" == $(-1e1000000)
+doAssert "nan" == $(0.0/0.0)
 
 # nil tests
+# maybe a bit inconsistent in types
 var x: seq[string]
-var y: string
-echo(x)
-echo(y)
+doAssert "nil" == $(x)
+
+var y: string = nil
+doAssert nil == $(y)
 
 type
   Foo = object
