@@ -685,6 +685,11 @@ proc namedParams(p: var TParser, callee: PNode,
   # progress guaranteed
   exprColonEqExprListAux(p, endTok, result)
 
+proc commandParam(p: var TParser): PNode =
+  result = parseExpr(p)
+  if p.tok.tokType == tkDo:
+    result = postExprBlocks(p, result)
+
 proc primarySuffix(p: var TParser, r: PNode, baseIndent: int): PNode =
   #| primarySuffix = '(' (exprColonEqExpr comma?)* ')' doBlocks?
   #|       | doBlocks
@@ -733,7 +738,7 @@ proc primarySuffix(p: var TParser, r: PNode, baseIndent: int): PNode =
         when true:
           # progress NOT guaranteed
           p.hasProgress = false
-          addSon result, parseExpr(p)
+          addSon result, commandParam(p)
           if not p.hasProgress: break
         else:
           while p.tok.tokType != tkEof:
@@ -1253,14 +1258,12 @@ proc parseExprStmt(p: var TParser): PNode =
       while true:
         getTok(p)
         optInd(p, result)
-        var e = parseExpr(p)
-        addSon(result, e)
+        addSon(result, commandParam(p))
         if p.tok.tokType != tkComma: break
     elif p.tok.indent < 0 and isExprStart(p):
       result = newNode(nkCommand, a.info, @[a])
       while true:
-        var e = parseExpr(p)
-        addSon(result, e)
+        addSon(result, commandParam(p))
         if p.tok.tokType != tkComma: break
         getTok(p)
         optInd(p, result)
