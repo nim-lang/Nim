@@ -248,12 +248,20 @@ calls can use the ``do`` keyword:
 .. code-block:: nim
   sort(cities) do (x,y: string) -> int:
     cmp(x.len, y.len)
+
   # Less parenthesis using the method plus command syntax:
   cities = cities.map do (x:string) -> string:
     "City of " & x
 
+  # In macros, the do notation is often used for quasi-quoting
+  macroResults.add quote do:
+    if not `ex`:
+      echo `info`, ": Check failed: ", `expString`
+
 ``do`` is written after the parentheses enclosing the regular proc params.
 The proc expression represented by the do block is appended to them.
+In calls using the command syntax, the do block will bind to the immediately
+preceeding expression, transforming it in a call.
 
 ``do`` with parentheses is an anonymous ``proc``; however a ``do`` without
 parentheses is just a block of code. The ``do`` notation can be used to
