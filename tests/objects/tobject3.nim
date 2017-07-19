@@ -89,3 +89,22 @@ echo sizeof(testObject_1)
 echo sizeof(testObject_2)
 echo sizeof(testObject_3[int64])
 echo sizeof(testObject_4[int64])
+
+# bug  #5892
+type
+    Foo6 = distinct array[4, float32]
+    AnotherFoo = distinct array[4, float32]
+
+    AbstractAnimationSampler* = ref object of RootObj
+
+    AnimationSampler*[T] = ref object of AbstractAnimationSampler
+        sampleImpl: proc(s: AnimationSampler[T], p: float): T
+
+    ArrayAnimationSampler*[T] = ref object of AnimationSampler[T]
+
+proc newArrayAnimationSampler*[T](): ArrayAnimationSampler[T] =
+    result.new()
+    result.sampleImpl = nil
+
+discard newArrayAnimationSampler[Foo6]()
+discard newArrayAnimationSampler[AnotherFoo]()

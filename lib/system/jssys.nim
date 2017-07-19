@@ -157,10 +157,10 @@ proc reraiseException() {.compilerproc, asmNoStackFrame.} =
 
     asm "throw lastJSError;"
 
-proc raiseOverflow {.exportc: "raiseOverflow", noreturn.} =
+proc raiseOverflow {.exportc: "raiseOverflow", noreturn, compilerProc.} =
   raise newException(OverflowError, "over- or underflow")
 
-proc raiseDivByZero {.exportc: "raiseDivByZero", noreturn.} =
+proc raiseDivByZero {.exportc: "raiseDivByZero", noreturn, compilerProc.} =
   raise newException(DivByZeroError, "division by zero")
 
 proc raiseRangeError() {.compilerproc, noreturn.} =
