@@ -1,10 +1,7 @@
 discard """
   file: "tfinally3.nim"
-  output: '''false
-Within finally->try
-Traceback (most recent call last)
-tfinally3.nim(24)        tfinally3
-Error: unhandled exception: First [Exception]'''
+  outputsub: '''false
+Within finally->try'''
   exitCode: 1
 """
 # Test break in try statement:
