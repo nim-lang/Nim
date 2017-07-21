@@ -33,6 +33,7 @@ proc processContent(content: string) =
 
   for pkg in jsonArr:
     assert pkg.kind == JObject
+    if not pkg.hasKey"url": continue
     let pkgWeb =
       if pkg.hasKey("web"): pkg["web"].str
       else: pkg["url"].str
@@ -40,7 +41,7 @@ proc processContent(content: string) =
       desc = pkg["description"].str
       dot = if desc.high > 0 and desc[desc.high] in endings: "" else: "."
       listItem = li(a(href=pkgWeb, pkg["name"].str), " ", desc & dot)
-    if pkg["url"].str.startsWith("git://github.com/nimrod-code") or
+    if pkg["url"].str.startsWith("https://github.com/nim-lang") or
        pkg["url"].str.startsWith("git://github.com/nim-lang") or
        "official" in pkg["tags"].elems:
       officialCount.inc
