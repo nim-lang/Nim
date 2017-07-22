@@ -19,6 +19,8 @@ type
 
 {.deprecated: [TLock: Lock, TCond: Cond].}
 
+{.push stackTrace: off.}
+
 proc initLock*(lock: var Lock) {.inline.} =
   ## Initializes the given lock.
   initSysLock(lock)
@@ -66,3 +68,5 @@ template withLock*(a: Lock, body: untyped) =
       body
     finally:
       a.release()
+
+{.pop.}

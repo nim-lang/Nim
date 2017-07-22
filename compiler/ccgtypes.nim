@@ -12,6 +12,7 @@
 # ------------------------- Name Mangling --------------------------------
 
 import sighashes
+from lowerings import createObj
 
 proc isKeyword(w: PIdent): bool =
   # Nim and C++ share some keywords
@@ -1092,7 +1093,8 @@ proc fakeClosureType(owner: PSym): PType =
   result = newType(tyTuple, owner)
   result.rawAddSon(newType(tyPointer, owner))
   var r = newType(tyRef, owner)
-  r.rawAddSon(newType(tyTuple, owner))
+  let obj = createObj(owner, owner.info, final=false)
+  r.rawAddSon(obj)
   result.rawAddSon(r)
 
 type
