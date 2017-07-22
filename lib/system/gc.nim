@@ -238,21 +238,6 @@ proc nimGCunref(p: pointer) {.compilerProc.} =
 
 include gc_common
 
-proc prepareDealloc(cell: PCell) =
-  when useMarkForDebug:
-    gcAssert(cell notin gch.marked, "Cell still alive!")
-  let t = cell.typ
-  if t.finalizer != nil:
-    # the finalizer could invoke something that
-    # allocates memory; this could trigger a garbage
-    # collection. Since we are already collecting we
-    # prevend recursive entering here by a lock.
-    # XXX: we should set the cell's children to nil!
-    inc(gch.recGcLock)
-    (cast[Finalizer](t.finalizer))(cellToUsr(cell))
-    dec(gch.recGcLock)
-  decTypeSize(cell, t)
-
 template beforeDealloc(gch: var GcHeap; c: PCell; msg: typed) =
   when false:
     for i in 0..gch.decStack.len-1:
