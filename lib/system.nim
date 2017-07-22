@@ -413,7 +413,7 @@ type
     ## is an int type ranging from one to the maximum value
     ## of an int. This type is often useful for documentation and debugging.
 
-  RootObj* {.exportc: "TNimObject", inheritable.} =
+  RootObj* {.compilerProc, inheritable.} =
     object ## the root of Nim's object hierarchy. Objects should
            ## inherit from RootObj or one of its descendants. However,
            ## objects that have no ancestor are allowed.
@@ -3269,7 +3269,7 @@ when not defined(JS): #and not defined(nimscript):
     proc finished*[T: proc](x: T): bool {.noSideEffect, inline.} =
       ## can be used to determine if a first class iterator has finished.
       {.emit: """
-      `result` = *((NI*) `x`.ClE_0) < 0;
+      `result` = ((NI*) `x`.ClE_0)[1] < 0;
       """.}
 
 elif defined(JS):
