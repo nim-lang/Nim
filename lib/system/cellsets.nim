@@ -30,13 +30,13 @@ type
     key: ByteAddress   # start address at bit 0
     bits: array[BitIndex, int] # a bit vector
 
-  PPageDescArray = ptr array[0..1000_000, PPageDesc]
+  PPageDescArray = ptr array[ArrayDummySize, PPageDesc]
   CellSet {.final, pure.} = object
     counter, max: int
     head: PPageDesc
     data: PPageDescArray
 
-  PCellArray = ptr array[0..100_000_000, PCell]
+  PCellArray = ptr array[ArrayDummySize, PCell]
   CellSeq {.final, pure.} = object
     len, cap: int
     d: PCellArray

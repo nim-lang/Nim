@@ -221,18 +221,6 @@ when defined(nimGcRefLeak):
 
 include gc_common
 
-proc prepareDealloc(cell: PCell) =
-  if cell.typ.finalizer != nil:
-    # the finalizer could invoke something that
-    # allocates memory; this could trigger a garbage
-    # collection. Since we are already collecting we
-    # prevend recursive entering here by a lock.
-    # XXX: we should set the cell's children to nil!
-    inc(gch.recGcLock)
-    (cast[Finalizer](cell.typ.finalizer))(cellToUsr(cell))
-    dec(gch.recGcLock)
-  decTypeSize cell, cell.typ
-
 proc initGC() =
   when not defined(useNimRtl):
     gch.cycleThreshold = InitialThreshold
