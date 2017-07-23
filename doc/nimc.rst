@@ -210,7 +210,7 @@ Cross compilation
 
 To cross compile, use for example::
 
-  nim c --cpu:i386 --os:linux --compile_only --gen_script myproject.nim
+  nim c --cpu:i386 --os:linux --compileOnly --genScript myproject.nim
 
 Then move the C code and the compile script ``compile_myproject.sh`` to your
 Linux i386 machine and run the script.
