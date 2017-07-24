@@ -646,6 +646,13 @@ proc pragmaGuard(c: PContext; it: PNode; kind: TSymKind): PSym =
   else:
     result = qualifiedLookUp(c, n, {checkUndeclared})
 
+proc lookupMacro(c: PContext, n: PNode): PSym =
+  if n.kind == nkSym:
+    result = n.sym
+    if result.kind notin {skMacro, skTemplate}: result = nil
+  else:
+    result = searchInScopes(c, considerQuotedIdent(n), {skMacro, skTemplate})
+
 proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
                   validPragmas: TSpecialWords): bool =
   var it = n.sons[i]
@@ -974,7 +981,18 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         if sym == nil: invalidPragma(it)
         else: sym.flags.incl sfUsed
       else: invalidPragma(it)
-    else: invalidPragma(it)
+    else:
+      let m = lookupMacro(c, key)
+      if m == nil:
+        invalidPragma(it)
+      let x = newNodeI(nkCall, it.info)
+      x.add(newSymNode(m))
+      if it.kind == nkExprColonExpr:
+        x.add(it.sons[1])
+
+      discard c.semExpr(c, x) # Check for errors
+
+      n.sons[i] = x
 
 proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
                       validPragmas: TSpecialWords) =
