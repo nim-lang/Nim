@@ -1042,6 +1042,49 @@ macro expandMacros*(body: typed): untyped =
   result = getAst(inner(body))
   echo result.toStrLit
 
+proc pragmaNodeForAttrSubj(subj: NimNode): NimNode =
+  subj.expectKind(nnkDotExpr)
+  let typDef = getImpl(getTypeInst(subj[0]).symbol)
+  typDef.expectKind(nnkTypeDef)
+  typDef[2].expectKind(nnkObjectTy)
+  let recList = typDef[2][2]
+  for identDefs in recList:
+    for i in 0 ..< identDefs.len - 2:
+      if identDefs[i].kind == nnkPragmaExpr and identDefs[i][0].kind == nnkIdent and $identDefs[i][0] == $subj[1]:
+        return identDefs[i][1]
+
+macro hasCustomPragma*(n: typed, cp: untyped{nkIdent}): untyped =
+  ## Expands to `true` if expression `n` which is expected to be `nnkDotExpr`
+  ## has custom pragma `cp`.
+  ##
+  ## .. code-block:: nim
+  ##   template myAttr() = discard
+  ##   type MyObj = object
+  ##     myField {.myAttr.}: int
+  ##   var o: MyObj
+  ##   assert(o.myField.hasCustomPragma(myAttr) == 0)
+  let pragmaNode = pragmaNodeForAttrSubj(n)
+  for p in pragmaNode:
+    if p.kind == nnkCall and p.len > 0 and p[0].kind == nnkSym and $p[0] == $cp:
+      return newLit(true)
+  return newLit(false)
+
+macro getCustomPragmaVal*(n: typed, cp: untyped{nkIdent}): untyped =
+  ## Expands to value of custom pragma `cp` of expression `n` which is expected
+  ## to be `nnkDotExpr`.
+  ##
+  ## .. code-block:: nim
+  ##   template serializationKey(key: string) = discard
+  ##   type MyObj = object
+  ##     myField {.serializationKey: "mf".}: int
+  ##   var o: MyObj
+  ##   assert(o.myField.getCustomPragmaVal(serializationKey) == "mf")
+  let pragmaNode = pragmaNodeForAttrSubj(n)
+  for p in pragmaNode:
+    if p.kind == nnkCall and p.len > 1 and p[0].kind == nnkSym and $p[0] == $cp:
+      return p[1]
+  return newEmptyNode()
+
 when not defined(booting):
   template emit*(e: static[string]): untyped {.deprecated.} =
     ## accepts a single string argument and treats it as nim code
