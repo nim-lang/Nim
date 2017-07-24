@@ -1940,6 +1940,7 @@ iterator countdown*[T](a, b: T, step = 1): T {.inline.} =
   ## step count. `T` may be any ordinal type, `step` may only
   ## be positive. **Note**: This fails to count to ``low(int)`` if T = int for
   ## efficiency reasons.
+  mixin dec
   when T is IntLikeForCount:
     var res = int(a)
     while res >= int(b):
@@ -1968,11 +1969,13 @@ iterator countup*[S, T](a: S, b: T, step = 1): T {.inline.} =
   ## step count. `S`, `T` may be any ordinal type, `step` may only
   ## be positive. **Note**: This fails to count to ``high(int)`` if T = int for
   ## efficiency reasons.
+  mixin inc
   countupImpl:
     inc(res, step)
 
 iterator `..`*[S, T](a: S, b: T): T {.inline.} =
   ## An alias for `countup`.
+  mixin inc
   countupImpl:
     inc(res)
 
@@ -3811,6 +3814,7 @@ template `..<`*(a, b: untyped): untyped {.dirty.} =
   a .. <b
 
 iterator `..<`*[S,T](a: S, b: T): T =
+  mixin inc
   var i = T(a)
   while i < b:
     yield i
