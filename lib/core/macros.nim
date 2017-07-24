@@ -146,6 +146,10 @@ proc `$`*(s: NimSym): string {.magic: "IdentToStr", noSideEffect.}
 proc `==`*(a, b: NimIdent): bool {.magic: "EqIdent", noSideEffect.}
   ## compares two Nim identifiers
 
+proc `==`*(a, b: NimSym): bool {.magic: "EqSym", noSideEffect, compileTime.} =
+  ## compares two Nim symbols
+  discard
+
 proc `==`*(a, b: NimNode): bool {.magic: "EqNimrodNode", noSideEffect.}
   ## compares two Nim nodes
 

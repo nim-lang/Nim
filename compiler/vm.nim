@@ -1331,6 +1331,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].intVal = ord(regs[rb].node.ident.id == regs[rc].node.ident.id)
       else:
         regs[ra].intVal = 0
+    of opcEqSym:
+      decodeBC(rkInt)
+      if regs[rb].node.kind == nkSym and regs[rc].node.kind == nkSym:
+        regs[ra].intVal = ord(regs[rb].node.sym == regs[rc].node.sym)
+      else:
+        regs[ra].intVal = 0
     of opcStrToIdent:
       decodeB(rkNode)
       if regs[rb].node.kind notin {nkStrLit..nkTripleStrLit}:

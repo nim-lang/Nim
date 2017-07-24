@@ -99,7 +99,7 @@ type
     opcNWarning,
     opcNHint,
     opcNGetLine, opcNGetColumn, opcNGetFile,
-    opcEqIdent,
+    opcEqIdent, opcEqSym
     opcStrToIdent,
     opcIdentToStr,
     opcGetImpl,
