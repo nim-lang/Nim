@@ -2425,6 +2425,14 @@ proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
         result.add "nil"
       else:
         result.add($value)
+    # prevent temporary string allocation
+    elif compiles(result.add(value)):
+      # don't insert '\0' characters into the result string
+      when value is char:
+        if value != '\0':
+          result.add(value)
+      else:
+        result.add(value)
     else:
       result.add($value)
 
@@ -3306,7 +3314,6 @@ elif defined(JS):
 proc `$`*[T, IDX](x: array[IDX, T]): string =
   ## generic ``$`` operator for arrays that is lifted from the components
   collectionToString(x, "[", ", ", "]")
-
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noReturn.} =
   ## a shorthand for ``echo(errormsg); quit(errorcode)``.
