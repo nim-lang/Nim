@@ -127,7 +127,7 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
   i.inc protocol.parseInt(result.minor, i)
 
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
-  client.send("HTTP/1.1 " & status & "\c\L\c\L") 
+  client.send("HTTP/1.1 " & status & "\c\L\c\L")
 
 proc processClient(client: AsyncSocket, address: string,
                    callback: proc (request: Request):
@@ -233,7 +233,7 @@ proc processClient(client: AsyncSocket, address: string,
           await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
           continue
     elif request.reqMethod == HttpPost:
-      await request.respond(Http400, "Bad Request. No Content-Length.")
+      await request.respond(Http411, "Content-Length required.")
       continue
 
     # Call the user's callback.
