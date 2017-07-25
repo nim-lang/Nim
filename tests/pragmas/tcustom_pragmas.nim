@@ -1,6 +1,15 @@
 import macros
 
 block:
+  template myAttr() {.pragma.}
+  template myAttr2() {.pragma.}
+
+  proc myProc() {.myAttr.} = discard
+  const myAttrIdx = myProc.hasCustomPragma(myAttr)
+  assert(myAttrIdx)
+  assert(not myProc.hasCustomPragma(myAttr2))
+
+block:
   template myAttr(a: string) {.pragma.}
 
   type MyObj = object

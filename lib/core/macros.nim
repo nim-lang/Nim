@@ -1043,15 +1043,20 @@ macro expandMacros*(body: typed): untyped =
   echo result.toStrLit
 
 proc pragmaNodeForAttrSubj(subj: NimNode): NimNode =
-  subj.expectKind(nnkDotExpr)
-  let typDef = getImpl(getTypeInst(subj[0]).symbol)
-  typDef.expectKind(nnkTypeDef)
-  typDef[2].expectKind(nnkObjectTy)
-  let recList = typDef[2][2]
-  for identDefs in recList:
-    for i in 0 ..< identDefs.len - 2:
-      if identDefs[i].kind == nnkPragmaExpr and identDefs[i][0].kind == nnkIdent and $identDefs[i][0] == $subj[1]:
-        return identDefs[i][1]
+  var subj = subj
+  if subj.kind == nnkSym:
+    subj = getImpl(subj.symbol)
+    subj.expectRoutine()
+    result = subj.pragma
+  elif subj.kind == nnkDotExpr:
+    let typDef = getImpl(getTypeInst(subj[0]).symbol)
+    typDef.expectKind(nnkTypeDef)
+    typDef[2].expectKind(nnkObjectTy)
+    let recList = typDef[2][2]
+    for identDefs in recList:
+      for i in 0 ..< identDefs.len - 2:
+        if identDefs[i].kind == nnkPragmaExpr and identDefs[i][0].kind == nnkIdent and $identDefs[i][0] == $subj[1]:
+          return identDefs[i][1]
 
 macro hasCustomPragma*(n: typed, cp: untyped{nkIdent}): untyped =
   ## Expands to `true` if expression `n` which is expected to be `nnkDotExpr`
