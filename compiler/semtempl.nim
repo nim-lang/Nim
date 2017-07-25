@@ -622,7 +622,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   popOwner(c)
   s.ast = n
   result = n
-  if n.sons[bodyPos].kind == nkEmpty:
+  if n.sons[bodyPos].kind == nkEmpty and sfPragmaTempl notin s.flags:
     localError(n.info, errImplOfXexpected, s.name.s)
   var proto = searchForProc(c, c.currentScope, s)
   if proto == nil:

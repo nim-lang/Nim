@@ -1,7 +1,7 @@
 import macros
 
 block:
-  template myAttr(a: string) = discard
+  template myAttr(a: string) {.pragma.}
 
   type MyObj = object
     myField {.myAttr: "hi".}: int
@@ -9,8 +9,8 @@ block:
   assert o.myField.hasCustomPragma(myAttr)
 
 block: # A bit more advanced case
-  template serializationKey(s: string) = discard
-  template defaultValue(V: typed) = discard
+  template serializationKey(s: string) {.pragma.}
+  template defaultValue(V: typed) {.pragma.}
 
   type MySerializable = object
     a {.serializationKey: "asdf", defaultValue: 5.} : int

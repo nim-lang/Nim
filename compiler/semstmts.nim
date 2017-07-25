@@ -1102,13 +1102,6 @@ proc copyExcept(n: PNode, i: int): PNode =
   for j in 0.. <n.len:
     if j != i: result.add(n.sons[j])
 
-proc lookupMacro(c: PContext, n: PNode): PSym =
-  if n.kind == nkSym:
-    result = n.sym
-    if result.kind notin {skMacro, skTemplate}: result = nil
-  else:
-    result = searchInScopes(c, considerQuotedIdent(n), {skMacro, skTemplate})
-
 proc semProcAnnotation(c: PContext, prc: PNode;
                        validPragmas: TSpecialWords): PNode =
   var n = prc.sons[pragmasPos]
@@ -1124,6 +1117,9 @@ proc semProcAnnotation(c: PContext, prc: PNode;
           prc.sons[pragmasPos] = copyExcept(n, i)
         else:
           localError(prc.info, errOnlyACallOpCanBeDelegator)
+      continue
+    elif sfPragmaTempl in m.flags:
+      n.sons[i] = semPragmaTempl(c, m, it)
       continue
     # we transform ``proc p {.m, rest.}`` into ``m(do: proc p {.rest.})`` and
     # let the semantic checker deal with it:

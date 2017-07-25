@@ -29,7 +29,7 @@ const
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas+{wBase}-{wImportCpp}
   templatePragmas* = {wImmediate, wDeprecated, wError, wGensym, wInject, wDirty,
-    wDelegator, wExportNims, wUsed}
+    wDelegator, wExportNims, wUsed, wPragma}
   macroPragmas* = {FirstCallConv..LastCallConv, wImmediate, wImportc, wExportc,
     wNodecl, wMagic, wNosideeffect, wCompilerproc, wDeprecated, wExtern,
     wImportCpp, wImportObjC, wError, wDiscardable, wGensym, wInject, wDelegator,
@@ -646,12 +646,25 @@ proc pragmaGuard(c: PContext; it: PNode; kind: TSymKind): PSym =
   else:
     result = qualifiedLookUp(c, n, {checkUndeclared})
 
-proc lookupMacro(c: PContext, n: PNode): PSym =
+proc lookupMacro*(c: PContext, n: PNode): PSym =
   if n.kind == nkSym:
     result = n.sym
     if result.kind notin {skMacro, skTemplate}: result = nil
   else:
     result = searchInScopes(c, considerQuotedIdent(n), {skMacro, skTemplate})
+
+proc semPragmaTempl*(c: PContext, s: PSym, n: PNode): PNode =
+  let validationNode = newNodeI(nkCall, n.info)
+  validationNode.add(newSymNode(s))
+  if n.kind == nkExprColonExpr:
+    validationNode.add(n.sons[1])
+  discard c.semExpr(c, validationNode) # Check for errors
+
+  if n.kind == nkExprColonExpr:
+    result = n
+    result.sons[0] = newSymNode(s)
+  else:
+    result = newSymNode(s)
 
 proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
                   validPragmas: TSpecialWords): bool =
@@ -859,8 +872,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         result = true
       of wPop: processPop(c, it)
       of wPragma:
-        processPragma(c, n, i)
-        result = true
+        if sym.kind == skTemplate:
+          sym.flags.incl(sfPragmaTempl)
+        else:
+          processPragma(c, n, i)
+          result = true
       of wDiscardable:
         noVal(it)
         if sym != nil: incl(sym.flags, sfDiscardable)
@@ -983,16 +999,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
       else: invalidPragma(it)
     else:
       let m = lookupMacro(c, key)
-      if m == nil:
+      if m == nil or sfPragmaTempl notin m.flags:
         invalidPragma(it)
-      let x = newNodeI(nkCall, it.info)
-      x.add(newSymNode(m))
-      if it.kind == nkExprColonExpr:
-        x.add(it.sons[1])
-
-      discard c.semExpr(c, x) # Check for errors
-
-      n.sons[i] = x
+      n.sons[i] = semPragmaTempl(c, m, it)
 
 proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
                       validPragmas: TSpecialWords) =

@@ -1065,7 +1065,8 @@ macro hasCustomPragma*(n: typed, cp: untyped{nkIdent}): untyped =
   ##   assert(o.myField.hasCustomPragma(myAttr) == 0)
   let pragmaNode = pragmaNodeForAttrSubj(n)
   for p in pragmaNode:
-    if p.kind == nnkCall and p.len > 0 and p[0].kind == nnkSym and $p[0] == $cp:
+    if (p.kind == nnkSym and $p == $cp) or
+        (p.kind == nnkExprColonExpr and p.len > 0 and p[0].kind == nnkSym and $p[0] == $cp):
       return newLit(true)
   return newLit(false)
 
@@ -1081,7 +1082,7 @@ macro getCustomPragmaVal*(n: typed, cp: untyped{nkIdent}): untyped =
   ##   assert(o.myField.getCustomPragmaVal(serializationKey) == "mf")
   let pragmaNode = pragmaNodeForAttrSubj(n)
   for p in pragmaNode:
-    if p.kind == nnkCall and p.len > 1 and p[0].kind == nnkSym and $p[0] == $cp:
+    if p.kind == nnkExprColonExpr and p.len > 0 and p[0].kind == nnkSym and $p[0] == $cp:
       return p[1]
   return newEmptyNode()
 
