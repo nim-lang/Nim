@@ -584,7 +584,8 @@ proc nestList*(theProc: NimIdent,
 proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
   ## Convert the AST `n` to a human-readable tree-like string.
   ##
-  ## See also `repr` and `lispRepr`.
+  ## See also `repr`, `lispRepr`, and `astGenRepr`.
+
   proc traverse(res: var string, level: int, n: NimNode) {.benign.} =
     for i in 0..level-1: res.add "  "
     res.add(($n.kind).substr(3))
@@ -609,7 +610,7 @@ proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
 proc lispRepr*(n: NimNode): string {.compileTime, benign.} =
   ## Convert the AST `n` to a human-readable lisp-like string,
   ##
-  ## See also `repr` and `treeRepr`.
+  ## See also `repr`, `treeRepr`, and `astGenRepr`.
 
   result = ($n.kind).substr(3)
   add(result, "(")
@@ -632,9 +633,96 @@ proc lispRepr*(n: NimNode): string {.compileTime, benign.} =
 
   add(result, ")")
 
+proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
+  ## Convert the AST `n` to the code required to generate that AST. So for example
+  ##
+  ## .. code-block:: nim
+  ##   astGenRepr:
+  ##     echo "Hello world"
+  ##
+  ## Would output:
+  ##
+  ## .. code-block:: nim
+  ##   nnkStmtList.newTree(
+  ##     nnkCommand.newTree(
+  ##       newIdentNode(!"echo"),
+  ##       newLit("Hello world")
+  ##     )
+  ##   )
+  ##
+  ## See also `repr`, `treeRepr`, and `lispRepr`.
+
+  const
+    NodeKinds = {nnkEmpty, nnkNilLit, nnkIdent, nnkSym, nnkNone}
+    LitKinds = {nnkCharLit..nnkInt64Lit, nnkFloatLit..nnkFloat64Lit, nnkStrLit..nnkTripleStrLit}
+
+  proc escape(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect.} =
+    ## Functions copied from strutils
+    proc toHex(x: BiggestInt, len: Positive): string {.noSideEffect, rtl.} =
+      const
+        HexChars = "0123456789ABCDEF"
+      var
+        t = x
+      result = newString(len)
+      for j in countdown(len-1, 0):
+        result[j] = HexChars[t and 0xF]
+        t = t shr 4
+        # handle negative overflow
+        if t == 0 and x < 0: t = -1
+
+    result = newStringOfCap(s.len + s.len shr 2)
+    result.add(prefix)
+    for c in items(s):
+      case c
+      of '\0'..'\31', '\128'..'\255':
+        add(result, "\\x")
+        add(result, toHex(ord(c), 2))
+      of '\\': add(result, "\\\\")
+      of '\'': add(result, "\\'")
+      of '\"': add(result, "\\\"")
+      else: add(result, c)
+    add(result, suffix)
+
+  proc traverse(res: var string, level: int, n: NimNode) {.benign.} =
+    for i in 0..level-1: res.add "  "
+    if n.kind in NodeKinds:
+      res.add("new" & ($n.kind).substr(3) & "Node(")
+    elif n.kind in LitKinds:
+      res.add("newLit(")
+    else:
+      res.add($n.kind)
+
+    case n.kind
+    of nnkEmpty: discard
+    of nnkNilLit: res.add("nil")
+    of nnkCharLit: res.add("'" & $chr(n.intVal) & "'")
+    of nnkIntLit..nnkInt64Lit: res.add($n.intVal)
+    of nnkFloatLit..nnkFloat64Lit: res.add($n.floatVal)
+    of nnkStrLit..nnkTripleStrLit: res.add($n.strVal.escape())
+    of nnkIdent: res.add("!" & ($n.ident).escape())
+    of nnkSym: res.add(($n.symbol).escape())
+    of nnkNone: assert false
+    else:
+      res.add(".newTree(")
+      for j in 0..<n.len:
+        res.add "\n"
+        traverse(res, level + 1, n[j])
+        if j != n.len-1:
+          res.add(",")
+
+      res.add("\n")
+      for i in 0..level-1: res.add "  "
+      res.add(")")
+
+    if n.kind in NodeKinds+LitKinds:
+      res.add(")")
+
+  result = ""
+  traverse(result, 0, n)
+
 macro dumpTree*(s: untyped): untyped = echo s.treeRepr
   ## Accepts a block of nim code and prints the parsed abstract syntax
-  ## tree using the `toTree` function. Printing is done *at compile time*.
+  ## tree using the `treeRepr` function. Printing is done *at compile time*.
   ##
   ## You can use this as a tool to explore the Nim's abstract syntax
   ## tree and to discover what kind of nodes must be created to represent
@@ -642,7 +730,16 @@ macro dumpTree*(s: untyped): untyped = echo s.treeRepr
 
 macro dumpLisp*(s: untyped): untyped = echo s.lispRepr
   ## Accepts a block of nim code and prints the parsed abstract syntax
-  ## tree using the `toLisp` function. Printing is done *at compile time*.
+  ## tree using the `lispRepr` function. Printing is done *at compile time*.
+  ##
+  ## See `dumpTree`.
+
+macro dumpAstGen*(s: untyped): untyped = echo s.astGenRepr
+  ## Accepts a block of nim code and prints the parsed abstract syntax
+  ## tree using the `astGenRepr` function. Printing is done *at compile time*.
+  ##
+  ## You can use this as a tool to write macros quicker by writing example
+  ## outputs and then copying the snippets into the macro for modification.
   ##
   ## See `dumpTree`.
 
