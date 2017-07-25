@@ -758,7 +758,7 @@ proc addfmtfmt(fmtstr: string; args: NimNode; retvar: NimNode): NimNode {.compil
     if arg.cnt == 0:
       warning("Argument " & $(i+1) & " `" & args[i].repr & "` is not used in format string")
 
-macro addfmt(s: var string, fmtstr: string{lit}, args: varargs[expr]): expr =
+macro addfmt(s: var string, fmtstr: string{lit}, args: varargs[typed]): untyped =
   ## The same as `s.add(fmtstr.fmt(args...))` but faster.
   result = addfmtfmt($fmtstr, args, s)
 

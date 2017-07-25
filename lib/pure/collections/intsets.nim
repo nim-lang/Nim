@@ -189,7 +189,7 @@ iterator items*(s: IntSet): int {.inline.} =
       inc(i)
     r = r.next
 
-template dollarImpl(): stmt =
+template dollarImpl(): untyped =
   result = "{"
   for key in items(s):
     if result.len > 1: result.add(", ")

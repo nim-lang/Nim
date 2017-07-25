@@ -18,7 +18,7 @@ proc foo(T: typedesc[int or bool]): string =
   a = 10
   result = "int or bool " & ($a)
 
-template foo(T: typedesc[seq]): expr = "seq"
+template foo(T: typedesc[seq]): string = "seq"
 
 test "types can be used as proc params":
   # XXX: `check` needs to know that TFoo[int, float] is a type and

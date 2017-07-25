@@ -2,7 +2,7 @@
 # be used as a type
 import macros
 
-macro testTypesym (t:stmt): expr =
+macro testTypesym (t:typed): untyped =
     var ty = t.getType
     if ty.typekind == ntyTypedesc:
         # skip typedesc get to the real type
@@ -31,7 +31,7 @@ static: assert(ref int is testTypesym(ref int))
 static: assert(void is testTypesym(void))
 
 
-macro tts2 (t:stmt, idx:int): expr =
+macro tts2 (t:typed, idx:int): untyped =
     var ty = t.getType
     if ty.typekind == ntyTypedesc:
         # skip typedesc get to the real type
@@ -46,4 +46,3 @@ static:
     assert(tts2(TestFN2, 1) is string)
     assert(tts2(TestFN2, 2) is int)
     assert(tts2(TestFN2, 3) is float)
-

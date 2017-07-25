@@ -12,14 +12,14 @@
 discard """
   hygienic templates:
 
-    template `||` (a, b: expr): expr =
+    template `||` (a, b: untyped): untyped =
       let aa = a
       if aa: aa else: b
 
     var
       a, b: T
 
-    a || b || a
+    echo a || b || a
 
   Each evaluation context has to be different and we need to perform
   some form of preliminary symbol lookup in template definitions. Hygiene is

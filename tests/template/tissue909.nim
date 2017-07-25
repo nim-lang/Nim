@@ -8,7 +8,7 @@ template baz() =
     var y = foo
     discard y()
 
-macro test(): stmt =
+macro test(): untyped =
   result = getAst(baz())
   echo(treeRepr(result))
 

@@ -215,7 +215,7 @@ proc combine*(base: Uri, reference: Uri): Uri =
   ##   let bar = combine(parseUri("http://example.com/foo/bar/"), parseUri("baz"))
   ##   assert bar.path == "/foo/bar/baz"
 
-  template setAuthority(dest, src: expr): stmt =
+  template setAuthority(dest, src): untyped =
     dest.hostname = src.hostname
     dest.username = src.username
     dest.port = src.port

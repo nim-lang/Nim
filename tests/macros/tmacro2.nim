@@ -12,7 +12,7 @@ proc testBlock(): string {.compileTime.} =
     echo "outer block"
   result = "ta-da"
 
-macro mac(n: expr): expr =
+macro mac(n: typed): string =
   let n = callsite()
   expectKind(n, nnkCall)
   expectLen(n, 2)

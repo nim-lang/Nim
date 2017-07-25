@@ -447,7 +447,7 @@ proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) =
   else:
     threadProcWrapDispatch(thrd)
 
-template threadProcWrapperBody(closure: expr) {.immediate.} =
+template threadProcWrapperBody(closure: untyped): untyped =
   var thrd = cast[ptr Thread[TArg]](closure)
   var core = thrd.core
   when declared(globalsSlot): threadVarSetValue(globalsSlot, thrd.core)

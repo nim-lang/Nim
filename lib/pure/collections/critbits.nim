@@ -143,14 +143,15 @@ proc `[]=`*[T](c: var CritBitTree[T], key: string, val: T) =
   var n = rawInsert(c, key)
   n.val = val
 
-template get[T](c: CritBitTree[T], key: string): T {.immediate.} =
+template get[T](c: CritBitTree[T], key: string): T =
   let n = rawGet(c, key)
-  if n != nil: result = n.val
-  else:
+  if n == nil:
     when compiles($key):
       raise newException(KeyError, "key not found: " & $key)
     else:
       raise newException(KeyError, "key not found")
+
+  n.val
 
 proc `[]`*[T](c: CritBitTree[T], key: string): T {.inline, deprecatedGet.} =
   ## retrieves the value at ``c[key]``. If `key` is not in `t`, the

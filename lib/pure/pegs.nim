@@ -139,7 +139,7 @@ proc addChoice(dest: var Peg, elem: Peg) =
     else: add(dest, elem)
   else: add(dest, elem)
 
-template multipleOp(k: PegKind, localOpt: expr) =
+template multipleOp(k: PegKind, localOpt: untyped) =
   result.kind = k
   result.sons = @[]
   for x in items(a):
@@ -328,32 +328,32 @@ proc newNonTerminal*(name: string, line, column: int): NonTerminal {.
   result.line = line
   result.col = column
 
-template letters*: expr =
+template letters*: Peg =
   ## expands to ``charset({'A'..'Z', 'a'..'z'})``
   charSet({'A'..'Z', 'a'..'z'})
 
-template digits*: expr =
+template digits*: Peg =
   ## expands to ``charset({'0'..'9'})``
   charSet({'0'..'9'})
 
-template whitespace*: expr =
+template whitespace*: Peg =
   ## expands to ``charset({' ', '\9'..'\13'})``
   charSet({' ', '\9'..'\13'})
 
-template identChars*: expr =
+template identChars*: Peg =
   ## expands to ``charset({'a'..'z', 'A'..'Z', '0'..'9', '_'})``
   charSet({'a'..'z', 'A'..'Z', '0'..'9', '_'})
 
-template identStartChars*: expr =
+template identStartChars*: Peg =
   ## expands to ``charset({'A'..'Z', 'a'..'z', '_'})``
   charSet({'a'..'z', 'A'..'Z', '_'})
 
-template ident*: expr =
+template ident*: Peg =
   ## same as ``[a-zA-Z_][a-zA-z_0-9]*``; standard identifier
   sequence(charSet({'a'..'z', 'A'..'Z', '_'}),
            *charSet({'a'..'z', 'A'..'Z', '0'..'9', '_'}))
 
-template natural*: expr =
+template natural*: Peg =
   ## same as ``\d+``
   +digits
 
@@ -514,10 +514,10 @@ proc bounds*(c: Captures,
 when not useUnicode:
   type
     Rune = char
-  template fastRuneAt(s, i, ch: expr) =
+  template fastRuneAt(s, i, ch) =
     ch = s[i]
     inc(i)
-  template runeLenAt(s, i: expr): expr = 1
+  template runeLenAt(s, i): untyped = 1
 
   proc isAlpha(a: char): bool {.inline.} = return a in {'a'..'z','A'..'Z'}
   proc isUpper(a: char): bool {.inline.} = return a in {'A'..'Z'}
@@ -735,7 +735,7 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int {.
     else: result = -1
   of pkRule, pkList: assert false
 
-template fillMatches(s, caps, c: expr) =
+template fillMatches(s, caps, c) =
   for k in 0..c.ml-1:
     let startIdx = c.matches[k][0]
     let endIdx = c.matches[k][1]

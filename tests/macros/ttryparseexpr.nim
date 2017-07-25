@@ -5,7 +5,7 @@ discard """
 # feature request #1473
 import macros
 
-macro test(text: string): expr =
+macro test(text: string): untyped =
   try:
     result = parseExpr(text.strVal)
   except ValueError:

@@ -8,7 +8,7 @@ discard """
 template optWrite{
   write(f, x)
   ((write|writeLine){w})(f, y)
-}(x, y: varargs[expr], f, w: expr) =
+}(x, y: varargs[untyped], f, w: untyped) =
   w(f, "|", x, y, "|")
 
 if true:

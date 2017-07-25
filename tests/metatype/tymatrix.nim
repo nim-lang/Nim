@@ -1,6 +1,6 @@
 import typetraits
 
-template reject(e: expr) =
+template reject(e) =
   static: assert(not compiles(e))
 
 type
