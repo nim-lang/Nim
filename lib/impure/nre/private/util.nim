@@ -16,7 +16,7 @@ proc checkNil(arg: string): string =
   else:
     return arg
 
-template formatStr*(howExpr, namegetter, idgetter: expr): expr =
+template formatStr*(howExpr, namegetter, idgetter): untyped =
   let how = howExpr
   var val = newStringOfCap(how.len)
   var i = 0

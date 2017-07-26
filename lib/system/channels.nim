@@ -203,12 +203,12 @@ proc rawRecv(q: PRawChannel, data: pointer, typ: PNimType) =
   storeAux(data, addr(q.data[q.rd * typ.size]), typ, q, mLoad)
   q.rd = (q.rd + 1) and q.mask
 
-template lockChannel(q: expr, action: stmt) {.immediate.} =
+template lockChannel(q, action): untyped =
   acquireSys(q.lock)
   action
   releaseSys(q.lock)
 
-template sendImpl(q: expr) {.immediate.} =
+template sendImpl(q) =
   if q.mask == ChannelDeadMask:
     sysFatal(DeadThreadError, "cannot send message; thread died")
   acquireSys(q.lock)

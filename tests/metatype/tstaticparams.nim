@@ -74,7 +74,7 @@ matrix_2(tmat, ar2)
 matrix_3(tmat, ar1)
 matrix_4(tmat, ar2)
 
-template reject(x): stmt =
+template reject(x): untyped =
   static: assert(not compiles(x))
 
 # test with arrays of wrong size

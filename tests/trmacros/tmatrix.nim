@@ -15,7 +15,7 @@ proc `$`(a: TMat): string = result = $a.dummy
 proc mat21(): TMat =
   result.dummy = 21
 
-macro optOps{ (`+`|`-`|`*`) ** a }(a: TMat): expr =
+macro optOps{ (`+`|`-`|`*`) ** a }(a: TMat): untyped =
   echo treeRepr(a)
   result = newCall(bindSym"mat21")
 

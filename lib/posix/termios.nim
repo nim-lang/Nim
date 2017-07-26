@@ -174,7 +174,7 @@ var
 # Compare a character C to a value VAL from the `cc' array in a
 #   `struct termios'.  If VAL is _POSIX_VDISABLE, no character can match it.
 
-template cceq*(val, c: expr): expr =
+template cceq*(val, c): untyped =
   c == val and val != POSIX_VDISABLE
 
 # Return the output baud rate stored in *TERMIOS_P.
