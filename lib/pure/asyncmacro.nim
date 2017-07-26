@@ -28,7 +28,7 @@ template createCb(retFutureSym, iteratorNameSym,
                   name, futureVarCompletions: untyped) =
   var nameIterVar = iteratorNameSym
   #{.push stackTrace: off.}
-  proc cb {.closure.} =
+  proc cb0 {.closure.} =
     try:
       if not nameIterVar.finished:
         var next = nameIterVar()
@@ -40,7 +40,7 @@ template createCb(retFutureSym, iteratorNameSym,
         else:
           {.gcsafe.}:
             {.push hint[ConvFromXtoItselfNotNeeded]: off.}
-            next.callback = (proc() {.closure, gcsafe.})(cb)
+            next.callback = (proc() {.closure, gcsafe.})(cb0)
             {.pop.}
     except:
       futureVarCompletions
@@ -52,7 +52,7 @@ template createCb(retFutureSym, iteratorNameSym,
       else:
         retFutureSym.fail(getCurrentException())
 
-  cb()
+  cb0()
   #{.pop.}
 proc generateExceptionCheck(futSym,
     tryStmt, rootReceiver, fromNode: NimNode): NimNode {.compileTime.} =
