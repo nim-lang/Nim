@@ -373,29 +373,7 @@ when isMainModule:
     assert arr1.reversed(i, high(arr1)) == arr1.reversed()[0 .. high(arr1) - i]
 
 
-proc rotate*[T](arg: var openarray[T]; first, middle, last: int): int =
-  ## Performs a left rotation on a range of elements.
-  ## Specifically, ``rotate`` swaps the elements in the range [first, last) in such a way
-  ## that the element at index ``middle`` becomes the first element of the sub range and
-  ## ``middle - 1`` becomes the last element of the sub range. The time complexity is
-  ## linear to ``last - first``. returns ``first + (last - middle)``. ``T`` must support swap operation
-  ## returs ``first + last - middle``, the new index, where the element this was at index ``last`` will
-  ## be ater the rotation.
-  ##
-  ## ``first``
-  ##   the index of the first element that should be rotated.
-  ##
-  ## ``middle``
-  ##   the index of the element that should appear at the beginning of the rotated range.
-  ##
-  ## ``last``
-  ##   the index of the first element that should not be rotated anymore (exclusive upper bound).
-  ##
-  ## .. code-block:: nim
-  ##     var list     = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-  ##     list.rotate(1,4,9)
-  ##     echo @list  # @[0, 4, 5, 6, 7, 8, 1, 2, 3, 9, 10]
-
+proc rotate_internal[T](arg: var openarray[T]; first, middle, last: int): int =
   result = first + last - middle
 
   if first == middle or middle == last:
@@ -433,52 +411,70 @@ proc rotate*[T](arg: var openarray[T]; first, middle, last: int): int =
     elif next == last:
       next = mMiddle
 
-proc rotate*[T](arg: var openarray[T]; middle: int): int =
-  ## default arguments for first and last, so that this procedure operates on entire
-  ## ``arg``, and not just on a part of it.
-  arg.rotate(0, middle, arg.len)
-
-proc rotated*[T](arg: openarray[T]; first, middle, last: int): seq[T] =
-  ## same as ``rotate``, just with the difference that it does
-  ## not modify the argument. It creates a new ``seq`` instead
-
+proc rotated_internal[T](arg: openarray[T]; first, middle, last: int): seq[T] =
   result = newSeq[T](arg.len)
-
   for i in 0 ..< first:
     result[i] = arg[i]
-
   let N = last - middle
   let M = middle - first
-
   for i in 0 ..< N:
     result[first+i] = arg[middle+i]
-
   for i in 0 ..< M:
     result[first+N+i] = arg[first+i]
-
   for i in last ..< arg.len:
     result[i] = arg[i]
 
-proc rotated*[T](arg: openarray[T]; middle: int): seq[T] =
-  ## same as ``rotate``, just with the difference that it does
-  ## not modify the argument. It creates a new ``seq`` instead
+proc rotateLeft*[T](arg: var openarray[T]; slice: Slice[int]; dist: int): int =
+  ## Performs a left rotation on a range of elements.
+  ## Specifically, ``rotate`` rotates the elements at ``slice`` by ``dist`` positions..
+  ## The element at index ``slice.a + dist`` will be at index ``slice.a``.
+  ## The element at index ``slice.b`` will be at ``slice.a + dist -1``.
+  ## The element at index ``slice.a`` will be at ``slice.b + 1 - dist``.
+  ## The element at index ``slice.a + dist - 1`` will be at ``slice.b``.
+  ## Elements outsize of ``slice`` well be left unchanged.
+  ## The time complexity is linear to ``slice.b - slice.a + 1``.
+  ##
+  ## ``slice``
+  ##   the indices of the element range that should be rotated.
+  ##
+  ## ``dist``
+  ##   the distance in amount of elements that the data should be rotated.
+  ##
+  ## .. code-block:: nim
+  ##     var list     = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  ##     list.rotateLeft(1 .. 8, 3)
+  ##     echo @list  # @[0, 4, 5, 6, 7, 8, 1, 2, 3, 9, 10]
+  arg.rotate_internal(slice.a, slice.a+dist, slice.b + 1)
 
-  arg.rotated(0, middle, arg.len)
+proc rotateLeft*[T](arg: var openarray[T]; dist: int): int =
+  ## default arguments for slice, so that this procedure operates on the entire
+  ## ``arg``, and not just on a part of it.
+  arg.rotate_internal(0, dist, arg.len)
+
+proc rotatedLeft*[T](arg: openarray[T]; slice: Slice[int], dist: int): seq[T] =
+  ## same as ``rotateLeft``, just with the difference that it does
+  ## not modify the argument. It creates a new ``seq`` instead
+  arg.rotated_internal(slice.a, slice.a+dist, slice.b+1)
+
+proc rotatedLeft*[T](arg: openarray[T]; dist: int): seq[T] =
+  ## same as ``rotateLeft``, just with the difference that it does
+  ## not modify the argument. It creates a new ``seq`` instead
+  arg.rotated_internal(0, dist, arg.len)
 
 when isMainModule:
   var list     = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-  let list2    = list.rotated(1,4,9)
+  let list2    = list.rotatedLeft(1 ..< 9, 3)
   let expected = [0, 4, 5, 6, 7, 8, 1, 2, 3, 9, 10]
 
-  doAssert list.rotate(1,4,9) == 6
+  doAssert list.rotateLeft(1 ..< 9, 3) == 6
   doAssert list  ==  expected
   doAssert list2 == @expected
 
   var s0,s1,s2 = "xxxabcdefgxxx"
 
-  doAssert s0.rotate(3, 6, 10) == 7
+  doAssert s0.rotateLeft(3 ..< 10, 3) == 7
   doAssert s0 == "xxxdefgabcxxx"
-  doAssert s1.rotate(3, 5, 10) == 8
+  doAssert s1.rotateLeft(3 ..< 10, 2) == 8
   doAssert s1 == "xxxcdefgabxxx"
-  doAssert s2.rotate(3, 7, 10) == 6
+  doAssert s2.rotateLeft(3 ..< 10, 4) == 6
   doassert s2 == "xxxefgabcdxxx"
