@@ -147,10 +147,12 @@ proc openParsers*(p: var TParsers, fileIdx: int32, inputstream: PLLStream;
   if pipe != nil: s = evalPipe(p, pipe, filename, inputstream)
   else: s = inputstream
   case p.skin
-  of skinStandard, skinBraces, skinEndX:
+  of skinStandard, skinEndX:
     parser.openParser(p.parser, fileIdx, s, cache, false)
   of skinStrongSpaces:
     parser.openParser(p.parser, fileIdx, s, cache, true)
+  of skinBraces:
+    pbraces.openParser(p.parser, fileIdx, s, cache)
 
 proc closeParsers*(p: var TParsers) =
   parser.closeParser(p.parser)

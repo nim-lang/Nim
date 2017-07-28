@@ -28,7 +28,7 @@ import
   llstream, lexer, idents, strutils, ast, astalgo, msgs
 
 type
-  TParser*{.final.} = object   # A TParser object represents a file that
+  TParser* = object            # A TParser object represents a file that
                                # is being parsed
     currInd: int               # current indentation level
     firstTok, strongSpaces: bool # Has the first token been read?
@@ -38,8 +38,11 @@ type
     tok*: TToken               # The current token
     inPragma*: int             # Pragma level
     inSemiStmtList*: int
+    indentStack*: seq[int]     # only used by the new parser
+    upcomingTok*, prevTok*: TTokType
+    parLe*, parRi*: int
 
-  SymbolMode = enum
+  SymbolMode* = enum
     smNormal, smAllowNil, smAfterDot
 
 proc parseAll*(p: var TParser): PNode
@@ -1346,7 +1349,7 @@ proc parseReturnOrRaise(p: var TParser, kind: TNodeKind): PNode =
   #| yieldStmt = 'yield' optInd expr?
   #| discardStmt = 'discard' optInd expr?
   #| breakStmt = 'break' optInd expr?
-  #| continueStmt = 'break' optInd expr?
+  #| continueStmt = 'continue' optInd expr?
   result = newNodeP(kind, p)
   getTok(p)
   if p.tok.tokType == tkComment:

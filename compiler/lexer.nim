@@ -944,6 +944,23 @@ proc scanComment(L: var TLexer, tok: var TToken) =
       break
   L.bufpos = pos
 
+proc newlineFollows*(L: var TLexer): bool =
+  var pos = L.bufpos
+  var buf = L.buf
+  while true:
+    case buf[pos]
+    of ' ', '\t':
+      inc(pos)
+    of CR, LF:
+      result = true
+      break
+    of '#':
+      inc(pos)
+      if buf[pos] == '#': inc(pos)
+      if buf[pos] != '[': return true
+    else:
+      break
+
 proc skip(L: var TLexer, tok: var TToken) =
   var pos = L.bufpos
   var buf = L.buf
