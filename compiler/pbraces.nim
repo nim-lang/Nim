@@ -21,20 +21,31 @@ proc isOperator(tok: TTokType): bool =
   ## Determines if the given token is an operator type token.
   tok in oprSet
 
-proc getTok(p: var TParser) =
+template introduceInd() =
+  if p.tok.tokType in {tkUsing, tkType, tkLet, tkVar, tkConst,
+                      tkColon, tkEquals, tkObject, tkEnum, tkTuple} and
+      newlineFollows(p.lex):
+    inc p.parLe
+    p.indentStack.add p.lex.currLineIndent
+
+proc getTok2(p: var TParser) =
   ## Get the next token from the parser's lexer, and store it in the parser's
   ## `tok` member.
   if p.parLe > 0:
     dec p.parLe
     p.tok.tokType = tkParLe
+    p.prevTok = p.tok.tokType
     return
   if p.parRi > 0:
     dec p.parRi
     p.tok.tokType = tkParRi
+    p.prevTok = p.tok.tokType
     return
   if p.upcomingTok != tkInvalid:
     p.tok.tokType = p.upcomingTok
     p.upcomingTok = tkInvalid
+    p.prevTok = p.tok.tokType
+    introduceInd()
     return
   p.prevTok = p.tok.tokType
   rawGetTok(p.lex, p.tok)
@@ -46,7 +57,7 @@ proc getTok(p: var TParser) =
         inc p.parRi
         discard p.indentStack.pop()
       dec p.parRi
-      return
+      #return
     elif p.prevTok notin {tkComma, tkSemicolon, tkParLe, tkBracketLe,
                           tkBracketDotLe, tkCurlyLe, tkCurlyDotLe,
                           tkColon, tkEquals} +
@@ -54,13 +65,13 @@ proc getTok(p: var TParser) =
       p.upcomingTok = p.tok.tokType
       p.tok.tokType = tkSemiColon
       p.tok.indent = -1
-      return
+      #return
   # special tokens that trigger indentation computations:
-  if p.tok.tokType in {tkUsing, tkType, tkLet, tkVar, tkConst,
-                      tkColon, tkEquals, tkObject, tkEnum, tkTuple} and
-      newlineFollows(p.lex):
-    inc p.parLe
-    p.indentStack.add p.lex.currLineIndent
+  introduceInd()
+
+proc getTok(p: var TParser) =
+  getTok2(p)
+  #echo "tok ", p.tok.tokType
 
 proc openParser*(p: var TParser, fileIdx: int32, inputStream: PLLStream;
                  cache: IdentCache) =
@@ -259,7 +270,7 @@ proc parseSymbol(p: var TParser, mode = smNormal): PNode =
     result = newIdentNodeP(p.tok.ident, p)
     getTok(p)
   of tokKeywordLow..tokKeywordHigh:
-    if p.tok.tokType == tkAddr or p.tok.tokType == tkType or mode == smAfterDot:
+    if p.tok.tokType == tkAddr or mode == smAfterDot:
       # for backwards compatibility these 2 are always valid:
       result = newIdentNodeP(p.tok.ident, p)
       getTok(p)
@@ -514,7 +525,7 @@ proc identOrLiteral(p: var TParser, mode: TPrimaryMode): PNode =
   #| tupleConstr = '(' optInd (exprColonEqExpr comma?)* optPar ')'
   #| arrayConstr = '[' optInd (exprColonEqExpr comma?)* optPar ']'
   case p.tok.tokType
-  of tkSymbol, tkType, tkAddr:
+  of tkSymbol, tkAddr:
     result = newIdentNodeP(p.tok.ident, p)
     getTok(p)
     result = parseGStrLit(p, result)
@@ -1523,6 +1534,7 @@ proc parseEnum(p: var TParser): PNode =
   result = newNodeP(nkEnumTy, p)
   getTok(p)
   addSon(result, ast.emptyNode)
+  eat(p, tkParLe)
   optInd(p, result)
   flexComment(p, result)
   optInd(p, result)
