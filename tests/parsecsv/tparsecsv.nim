@@ -1,11 +1,18 @@
-discard """
-  line: 11
-  msg: "Error: unhandled exception: (0, 0) Error: cannot open: nosuchfile.txt [CsvError]"
-"""
+ discard """
+  action: run
+  output: "[Suite] Tests for CSV parser in parsecsv"
+  exitCode: 0
+ """
 
+import unittest
 import parsecsv
-
+ 
 # Should get an error message for a missing file (rather than a SIGSEGV)
-var parser: CsvParser
-parser.open("nosuchfile.txt")
-parser.close()
+
+suite "Tests for CSV parser in parsecsv":
+
+  test "Opening blank file should give exception and not SIGSEGV":
+    var parser: CsvParser
+    expect CsvError:
+      parser.open("nosuchfile.txt")
+      parser.close()
