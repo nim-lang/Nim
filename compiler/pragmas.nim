@@ -872,7 +872,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         result = true
       of wPop: processPop(c, it)
       of wPragma:
-        if sym.kind == skTemplate:
+        if not sym.isNil and sym.kind == skTemplate:
           sym.flags.incl(sfPragmaTempl)
         else:
           processPragma(c, n, i)

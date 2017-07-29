@@ -1054,7 +1054,7 @@ proc pragmaNodeForAttrSubj(subj: NimNode): NimNode =
     typDef[2].expectKind(nnkObjectTy)
     let recList = typDef[2][2]
     for identDefs in recList:
-      for i in 0 ..< identDefs.len - 2:
+      for i in 0 .. identDefs.len - 3:
         if identDefs[i].kind == nnkPragmaExpr and identDefs[i][0].kind == nnkIdent and $identDefs[i][0] == $subj[1]:
           return identDefs[i][1]
 
