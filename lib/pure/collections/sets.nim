@@ -660,9 +660,12 @@ proc card*[A](s: OrderedSet[A]): int {.inline.} =
 
 template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
   var h = s.first
+  var idx = 0
   while h >= 0:
     var nxt = s.data[h].next
-    if isFilled(s.data[h].hcode): yieldStmt
+    if isFilled(s.data[h].hcode):
+      yieldStmt
+      inc(idx)
     h = nxt
 
 iterator items*[A](s: OrderedSet[A]): A =
@@ -686,6 +689,11 @@ iterator items*[A](s: OrderedSet[A]): A =
   assert s.isValid, "The set needs to be initialized."
   forAllOrderedPairs:
     yield s.data[h].key
+
+iterator pairs*[A](s: OrderedSet[A]): tuple[a: int, b: A] =
+  assert s.isValid, "The set needs to be initialized"
+  forAllOrderedPairs:
+    yield (idx, s.data[h].key)
 
 proc rawGetKnownHC[A](s: OrderedSet[A], key: A, hc: Hash): int {.inline.} =
   rawGetKnownHCImpl()
@@ -1027,6 +1035,12 @@ when isMainModule and not defined(release):
         b.incl((x - 2, y + 1))
       assert a.len == b.card
       assert a.len == 2
+
+    block setPairsIterator:
+      var s = toOrderedSet([1, 3, 5, 7])
+      var items = newSeq[tuple[a: int, b: int]]()
+      for idx, item in s: items.add((idx, item))
+      assert items == @[(0, 1), (1, 3), (2, 5), (3, 7)]
 
     block exclusions:
       var s = toOrderedSet([1, 2, 3, 6, 7, 4])
