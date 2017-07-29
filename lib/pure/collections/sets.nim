@@ -287,8 +287,6 @@ proc exclImpl[A](s: var HashSet[A], key: A) : bool {. inline .} =
 
   if i >= 0:
     result = false
-    s.data[i].hcode = 0
-    s.data[i].key = default(type(s.data[i].key))
     dec(s.counter)
     while true:         # KnuthV3 Algo6.4R adapted for i=i+1 instead of i=i-1
       var j = i         # The correctness of this depends on (h+1) in nextTry,
@@ -300,7 +298,7 @@ proc exclImpl[A](s: var HashSet[A], key: A) : bool {. inline .} =
         if isEmpty(s.data[i].hcode):   # end of collision cluster; So all done
           return
         r = s.data[i].hcode and msk    # "home" location of key@i
-      shallowCopy(s.data[j], s.data[i]) # data[j] will be marked EMPTY next loop
+      shallowCopy(s.data[j], s.data[i]) # data[i] will be marked EMPTY next loop
 
 proc missingOrExcl*[A](s: var HashSet[A], key: A): bool =
   ## Excludes `key` in the set `s` and tells if `key` was removed from `s`.
@@ -760,6 +758,50 @@ proc incl*[A](s: var HashSet[A], other: OrderedSet[A]) =
   assert other.isValid, "The set `other` needs to be initialized."
   for item in other: incl(s, item)
 
+proc excl*[A](s: var OrderedSet[A], key: A) =
+  ## Excludes `key` from the set `s`.
+  ## This is a O(n) operation.
+  ##
+  ## This doesn't do anything if `key` is not found in `s`. Example:
+  ##
+  ## .. code-block::
+  ##   var s = toSet([2, 3, 6, 7])
+  ##   s.excl(2)
+  ##   s.excl(2)
+  ##   assert s.len == 3
+  assert s.isValid, "The set needs to be initialized."
+  var hc: Hash
+  var i = rawGet(s, key, hc)
+  var msk = high(s.data)
+
+  if i >= 0:
+    # Fix ordering
+    if s.first == i:
+      s.first = s.data[i].next
+    else:
+      var itr = s.first
+      while true:
+        if (s.data[itr].next == i):
+          s.data[itr].next = s.data[i].next
+          if s.last == i:
+            s.last = itr
+          break
+        itr = s.data[itr].next
+
+    dec(s.counter)
+    while true:         # KnuthV3 Algo6.4R adapted for i=i+1 instead of i=i-1
+      var j = i         # The correctness of this depends on (h+1) in nextTry,
+      var r = j         # though may be adaptable to other simple sequences.
+      s.data[i].hcode = 0              # mark current EMPTY
+      s.data[i].key = default(type(s.data[i].key))
+      s.data[i].next = 0
+      doWhile((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
+        i = (i + 1) and msk            # increment mod table size
+        if isEmpty(s.data[i].hcode):   # end of collision cluster; So all done
+          return
+        r = s.data[i].hcode and msk    # "home" location of key@i
+      shallowCopy(s.data[j], s.data[i]) # data[i] will be marked EMPTY next loop
+
 proc containsOrIncl*[A](s: var OrderedSet[A], key: A): bool =
   ## Includes `key` in the set `s` and tells if `key` was added to `s`.
   ##
@@ -985,6 +1027,18 @@ when isMainModule and not defined(release):
         b.incl((x - 2, y + 1))
       assert a.len == b.card
       assert a.len == 2
+
+    block exclusions:
+      var s = toOrderedSet([1, 2, 3, 6, 7, 4])
+
+      s.excl(3)
+      s.excl(3)
+      s.excl(1)
+      s.excl(4)
+
+      var items = newSeq[int]()
+      for item in s: items.add item
+      assert items == @[2, 6, 7]
 
     #block orderedSetIterator:
     #  var a = initOrderedSet[int]()
