@@ -77,7 +77,7 @@ proc raiseEInvalidCsv(filename: string, line, col: int,
 
 template `||`[T](a, default: T): T =
   ## `||` is a helper to allow replacing nilable types with a default
-  if a.isNil(): default else: a 
+  if a.isNil(): default else: a
 
 proc error(my: CsvParser, pos: int, msg: string) =
   raiseEInvalidCsv(my.filename || "", my.lineNumber, getColNumber(my, pos), msg)
