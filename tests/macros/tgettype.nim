@@ -18,3 +18,10 @@ macro testGeneric(T: typedesc[Model]): string=
 
 echo testUser
 echo User.testGeneric
+
+macro assertVoid(e: typed): untyped =
+  assert(getTypeInst(e).typeKind == ntyVoid)
+
+proc voidProc() = discard
+
+assertVoid voidProc()
