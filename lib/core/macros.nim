@@ -94,8 +94,9 @@ type
     ntyVarargs,
     ntyUnused,
     ntyError,
-    ntyBuiltinTypeClass, ntyConcept, ntyConceptInst, ntyComposite,
-    ntyAnd, ntyOr, ntyNot
+    ntyBuiltinTypeClass, ntyUserTypeClass, ntyUserTypeClassInst,
+    ntyCompositeTypeClass, ntyInferred, ntyAnd, ntyOr, ntyNot,
+    ntyAnything, ntyStatic, ntyFromExpr, ntyFieldAccessor, ntyVoid
 
   TNimTypeKinds* {.deprecated.} = set[NimTypeKind]
   NimSymKind* = enum
