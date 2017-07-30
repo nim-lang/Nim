@@ -87,7 +87,7 @@ within the [doc/koch.rst](doc/koch.rst) file.
 
 ## Contributors
 
-This project exists thanks to all the people who contribute. [[Contribute]](CONTRIBUTING.md).
+This project exists thanks to all the people who contribute. [Read on to find out how to contribute](#contributing).
 <a href="graphs/contributors"><img src="https://opencollective.com/Nim/contributors.svg?width=890" /></a>
 
 ## Contributing
@@ -145,7 +145,7 @@ If you have any questions feel free to submit a question on the
 
 ## Backers
 
-Thank you to all our backers! 🙏 [[Become a backer](https://opencollective.com/Nim#backer)]
+Thank you to all our backers! [[Become a backer](https://opencollective.com/Nim#backer)]
 
 <a href="https://opencollective.com/Nim#backers" target="_blank"><img src="https://opencollective.com/Nim/backers.svg?width=890"></a>
 
@@ -165,7 +165,7 @@ Support this project by becoming a sponsor. Your logo will show up here with a l
 <a href="https://opencollective.com/Nim/sponsor/8/website" target="_blank"><img src="https://opencollective.com/Nim/sponsor/8/avatar.svg"></a>
 <a href="https://opencollective.com/Nim/sponsor/9/website" target="_blank"><img src="https://opencollective.com/Nim/sponsor/9/avatar.svg"></a>
 
-
+You can also see a list of all our sponsors/backers from various payment services on the [sponsors page](https://nim-lang.org/sponsors.html) of our website.
 
 ## License
 The compiler and the standard library are licensed under the MIT license, except
