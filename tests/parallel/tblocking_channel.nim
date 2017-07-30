@@ -1,3 +1,6 @@
+discard """
+output: ""
+"""
 import threadpool, os
 
 var chan: Channel[int]
