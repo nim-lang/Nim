@@ -165,8 +165,7 @@ proc complete*[T](future: FutureVar[T], val: T) =
   assert(fut.error.isNil())
   fut.finished = true
   fut.value = val
-  if not fut.cb.isNil():
-    fut.cb()
+  fut.callbacks.call()
 
 proc fail*[T](future: Future[T], error: ref Exception) =
   ## Completes ``future`` with ``error``.

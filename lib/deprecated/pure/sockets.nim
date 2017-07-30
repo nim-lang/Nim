@@ -206,16 +206,16 @@ proc htons*(x: int16): int16 =
   ## order, this is a no-op; otherwise, it performs a 2-byte swap operation.
   result = sockets.ntohs(x)
 
-template ntohl(x: uint32): expr =
+template ntohl(x: uint32): uint32 =
   cast[uint32](sockets.ntohl(cast[int32](x)))
 
-template ntohs(x: uint16): expr =
+template ntohs(x: uint16): uint16 =
   cast[uint16](sockets.ntohs(cast[int16](x)))
 
-template htonl(x: uint32): expr =
+template htonl(x: uint32): uint32 =
   sockets.ntohl(x)
 
-template htons(x: uint16): expr =
+template htons(x: uint16): uint16 =
   sockets.ntohs(x)
 
 when defined(Posix):
@@ -442,14 +442,13 @@ proc parseIp4*(s: string): BiggestInt =
   if s[i] != '\0': invalidIp4(s)
   result = BiggestInt(a shl 24 or b shl 16 or c shl 8 or d)
 
-template gaiNim(a, p, h, list: expr): stmt =
-  block:
-    var gaiResult = getaddrinfo(a, $p, addr(h), list)
-    if gaiResult != 0'i32:
-      when defined(windows):
-        raiseOSError(osLastError())
-      else:
-        raiseOSError(osLastError(), $gai_strerror(gaiResult))
+template gaiNim(a, p, h, list: untyped): untyped =
+  var gaiResult = getaddrinfo(a, $p, addr(h), list)
+  if gaiResult != 0'i32:
+    when defined(windows):
+      raiseOSError(osLastError())
+    else:
+      raiseOSError(osLastError(), $gai_strerror(gaiResult))
 
 proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
   tags: [ReadIOEffect].} =
@@ -493,8 +492,8 @@ proc getSockName*(socket: Socket): Port =
     raiseOSError(osLastError())
   result = Port(sockets.ntohs(name.sin_port))
 
-template acceptAddrPlain(noClientRet, successRet: expr,
-                         sslImplementation: stmt): stmt {.immediate.} =
+template acceptAddrPlain(noClientRet, successRet: int,
+                         sslImplementation: untyped): untyped =
   assert(client != nil)
   var sockAddress: Sockaddr_in
   var addrLen = sizeof(sockAddress).SockLen
@@ -594,7 +593,7 @@ when defined(ssl):
     ##
     ## ``AcceptNoClient`` will be returned when no client is currently attempting
     ## to connect.
-    template doHandshake(): stmt =
+    template doHandshake(): untyped =
       when defined(ssl):
         if server.isSSL:
           client.setBlocking(false)
@@ -1278,7 +1277,7 @@ proc recvLine*(socket: Socket, line: var TaintedString, timeout = -1): bool {.
   ## **Deprecated since version 0.9.2**: This function has been deprecated in
   ## favour of readLine.
 
-  template addNLIfEmpty(): stmt =
+  template addNLIfEmpty(): untyped =
     if line.len == 0:
       line.add("\c\L")
 
@@ -1319,7 +1318,7 @@ proc readLine*(socket: Socket, line: var TaintedString, timeout = -1) {.
   ## A timeout can be specified in milliseconds, if data is not received within
   ## the specified time an ETimeout exception will be raised.
 
-  template addNLIfEmpty(): stmt =
+  template addNLIfEmpty(): untyped =
     if line.len == 0:
       line.add("\c\L")
 

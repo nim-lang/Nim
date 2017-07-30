@@ -5,7 +5,7 @@ discard """
 import
   macros, strutils
 
-macro outterMacro*(n: stmt): stmt {.immediate.} =
+macro outterMacro*(n, blck: untyped): untyped =
   let n = callsite()
   var j : string = "hi"
   proc innerProc(i: int): string =
@@ -27,5 +27,3 @@ var str: string
 outterMacro(str):
   "hellow"
 echo str
-
-

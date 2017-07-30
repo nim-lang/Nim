@@ -5,7 +5,7 @@ int'''
 
 import macros
 
-macro checkType(ex: stmt; expected: expr): stmt =
+macro checkType(ex: typed; expected: string): untyped =
   var t = ex.getType()
   echo t
 

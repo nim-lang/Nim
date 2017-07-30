@@ -98,7 +98,7 @@ type
     opcNError,
     opcNWarning,
     opcNHint,
-    opcNLineInfo,
+    opcNGetLine, opcNGetColumn, opcNGetFile,
     opcEqIdent,
     opcStrToIdent,
     opcIdentToStr,

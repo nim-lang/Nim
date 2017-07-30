@@ -301,6 +301,11 @@ proc `+`*(ti1, ti2: TimeInterval): TimeInterval =
   result.years = carryO + ti1.years + ti2.years
 
 proc `-`*(ti: TimeInterval): TimeInterval =
+  ## Reverses a time interval
+  ## .. code-block:: nim
+  ##
+  ##     let day = -initInterval(hours=24)
+  ##     echo day  # -> (milliseconds: 0, seconds: 0, minutes: 0, hours: 0, days: -1, months: 0, years: 0)
   result = TimeInterval(
     milliseconds: -ti.milliseconds,
     seconds: -ti.seconds,

@@ -12,7 +12,7 @@ IMPLICIT VALUE TYPE NAME INT INT
 
 import typetraits, strutils
 
-template reject(e: expr) =
+template reject(e) =
   static: assert(not compiles(e))
 
 type
@@ -60,4 +60,3 @@ reject s.genericAlgorithm "x"
 reject s.genericAlgorithm 1.0
 reject "str".implicitGeneric
 reject implicitGeneric(10)
-

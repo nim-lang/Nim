@@ -81,27 +81,32 @@ proc getFileSize*(f: AsyncFile): int64 =
   else:
     result = lseek(f.fd.cint, 0, SEEK_END)
 
+proc newAsyncFile*(fd: AsyncFd): AsyncFile =
+  ## Creates `AsyncFile` with a previously opened file descriptor `fd`.
+  new result
+  result.fd = fd
+  register(result.fd)
+
 proc openAsync*(filename: string, mode = fmRead): AsyncFile =
   ## Opens a file specified by the path in ``filename`` using
   ## the specified ``mode`` asynchronously.
-  new result
   when defined(windows) or defined(nimdoc):
     let flags = FILE_FLAG_OVERLAPPED or FILE_ATTRIBUTE_NORMAL
     let desiredAccess = getDesiredAccess(mode)
     let creationDisposition = getCreationDisposition(mode, filename)
     when useWinUnicode:
-      result.fd = createFileW(newWideCString(filename), desiredAccess,
+      let fd = createFileW(newWideCString(filename), desiredAccess,
           FILE_SHARE_READ,
           nil, creationDisposition, flags, 0).AsyncFd
     else:
-      result.fd = createFileA(filename, desiredAccess,
+      let fd = createFileA(filename, desiredAccess,
           FILE_SHARE_READ,
           nil, creationDisposition, flags, 0).AsyncFd
 
-    if result.fd.Handle == INVALID_HANDLE_VALUE:
+    if fd.Handle == INVALID_HANDLE_VALUE:
       raiseOSError(osLastError())
 
-    register(result.fd)
+    result = newAsyncFile(fd)
 
     if mode == fmAppend:
       result.offset = getFileSize(result)
@@ -110,11 +115,11 @@ proc openAsync*(filename: string, mode = fmRead): AsyncFile =
     let flags = getPosixFlags(mode)
     # RW (Owner), RW (Group), R (Other)
     let perm = S_IRUSR or S_IWUSR or S_IRGRP or S_IWGRP or S_IROTH
-    result.fd = open(filename, flags, perm).AsyncFD
-    if result.fd.cint == -1:
+    let fd = open(filename, flags, perm).AsyncFD
+    if fd.cint == -1:
       raiseOSError(osLastError())
 
-    register(result.fd)
+    result = newAsyncFile(fd)
 
 proc readBuffer*(f: AsyncFile, buf: pointer, size: int): Future[int] =
   ## Read ``size`` bytes from the specified file asynchronously starting at
