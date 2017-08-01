@@ -101,7 +101,7 @@ proc random*[T](a: openArray[T]): T =
   ## returns a random element from the openarray `a`.
   result = a[random(a.low..a.len)]
 
-proc randomize*(seed: int) {.benign.} =
+proc randomize*(seed: int64) {.benign.} =
   ## Initializes the random number generator with a specific seed.
   state.a0 = ui(seed shr 16)
   state.a1 = ui(seed and 0xffff)
@@ -123,7 +123,7 @@ when not defined(nimscript):
       proc getMil(t: Time): int {.importcpp: "getTime", nodecl.}
       randomize(getMil times.getTime())
     else:
-      let time = int(times.epochTime() * 1_000_000_000)
+      let time = int64(times.epochTime() * 1_000_000_000)
       randomize(time)
 
 {.pop.}
