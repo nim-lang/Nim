@@ -642,7 +642,7 @@ type
     mInstantiationInfo, mGetTypeInfo, mNGenSym,
     mNimvm, mIntDefine, mStrDefine, mRunnableExamples,
     mException, mBuiltinType, mEnumOrdinal, mEnumLen,
-    mEnumGet
+    mEnumGet, mEnumGetString
 
 # things that we can evaluate safely at compile time, even if not asked for it:
 const
