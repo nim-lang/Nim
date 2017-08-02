@@ -54,7 +54,7 @@ proc finished*[T](future: FutureStream[T]): bool =
   result = future.finished and future.queue.len == 0
 
 proc writable*[T](future: FutureStream[T]): bool =
-  ## Check if a ``FutureStream`` can accepts new data.
+  ## Check if a ``FutureStream`` can accepts new data. 
   result = future.finished
   
 proc write*[T](future: FutureStream[T], value: T): Future[void] =
