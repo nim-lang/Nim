@@ -53,6 +53,10 @@ proc finished*[T](future: FutureStream[T]): bool =
   ## no data waiting to be retrieved.
   result = future.finished and future.queue.len == 0
 
+proc writable*[T](future: FutureStream[T]): bool =
+  ## Check if a ``FutureStream`` can accepts new data. 
+  result = future.finished
+  
 proc write*[T](future: FutureStream[T], value: T): Future[void] =
   ## Writes the specified value inside the specified future stream.
   ##
