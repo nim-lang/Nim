@@ -114,8 +114,11 @@ endif
 ifeq ($(ucpu),ppc)
   mycpu = ppc
 endif
-ifeq ($(ucpu),mips)
-  mycpu = mips
+ifneq (,$(filter $(ucpu), mips mips64))
+  mycpu = $(shell /bin/sh -c '"$(CC)" -dumpmachine | sed "s/-.*//"')
+  ifeq (,$(filter $(mycpu), mips mipsel mips64 mips64el))
+    $(error unknown MIPS target: $(mycpu))
+  endif
 endif
 ifeq ($(ucpu),arm)
   mycpu = arm
