@@ -72,10 +72,16 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, typ: PType) =
     let arraySize = lengthOrd(typ.sons[0])
     var i: TLoc
     getTemp(p, getSysType(tyInt), i)
+    let oldCode = p.s(cpsStmts)
     linefmt(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
             i.r, arraySize.rope)
+    let oldLen = p.s(cpsStmts).len
     genTraverseProc(c, rfmt(nil, "$1[$2]", accessor, i.r), typ.sons[1])
-    lineF(p, cpsStmts, "}$n", [])
+    if p.s(cpsStmts).len == oldLen:
+      # do not emit dummy long loops for faster debug builds:
+      p.s(cpsStmts) = oldCode
+    else:
+      lineF(p, cpsStmts, "}$n", [])
   of tyObject:
     for i in countup(0, sonsLen(typ) - 1):
       var x = typ.sons[i]
@@ -99,10 +105,16 @@ proc genTraverseProcSeq(c: var TTraversalClosure, accessor: Rope, typ: PType) =
   assert typ.kind == tySequence
   var i: TLoc
   getTemp(p, getSysType(tyInt), i)
+  let oldCode = p.s(cpsStmts)
   lineF(p, cpsStmts, "for ($1 = 0; $1 < $2->$3; $1++) {$n",
       [i.r, accessor, rope(if c.p.module.compileToCpp: "len" else: "Sup.len")])
+  let oldLen = p.s(cpsStmts).len
   genTraverseProc(c, "$1->data[$2]" % [accessor, i.r], typ.sons[0])
-  lineF(p, cpsStmts, "}$n", [])
+  if p.s(cpsStmts).len == oldLen:
+    # do not emit dummy long loops for faster debug builds:
+    p.s(cpsStmts) = oldCode
+  else:
+    lineF(p, cpsStmts, "}$n", [])
 
 proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash;
                      reason: TTypeInfoReason): Rope =
