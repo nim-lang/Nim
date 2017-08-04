@@ -572,7 +572,8 @@ else:
     MAP_POPULATE*: cint = 0
 
 when defined(linux) or defined(nimdoc):
-  when defined(alpha) or defined(mips) or defined(parisc) or
+  when defined(alpha) or defined(mips) or defined(mipsel) or
+      defined(mips64) or defined(mips64el) or defined(parisc) or
       defined(sparc) or defined(nimdoc):
     const SO_REUSEPORT* = cint(0x0200)
       ## Multiple binding: load balancing on incoming TCP connections
