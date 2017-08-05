@@ -1,5 +1,7 @@
 discard """
-  action: run
+  output: '''{"columns":[{"t":null},{"t":null}]}
+{"columns":[{"t":null},{"t":null}]}
+'''
 """
 
 ## Tests javascript object generation
@@ -36,3 +38,19 @@ doAssert test.name == "Jorden"
 doAssert knight.age == 19
 doAssert knight.item.price == 50
 doAssert recurse1.next.next.data == 3
+
+# bug #6035
+proc toJson*[T](data: T): cstring {.importc: "JSON.stringify".}
+
+type
+  Column = object
+    t: ref Column
+
+  Test2 = object
+    columns: seq[Column]
+
+var test1 = Test2(columns: @[Column(t: nil), Column(t: nil)])
+let test2 = test1
+
+echo toJSON(test1)
+echo toJSON(test2)

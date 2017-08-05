@@ -810,16 +810,24 @@ proc genAsmOrEmitStmt(p: PProc, n: PNode) =
   genLineDir(p, n)
   p.body.add p.indentLine(nil)
   for i in countup(0, sonsLen(n) - 1):
-    case n.sons[i].kind
+    let it = n[i]
+    case it.kind
     of nkStrLit..nkTripleStrLit:
-      p.body.add(n.sons[i].strVal)
+      p.body.add(it.strVal)
     of nkSym:
-      let v = n.sons[i].sym
-      if p.target == targetPHP and v.kind in {skVar, skLet, skTemp, skConst, skResult, skParam, skForVar}:
-        p.body.add "$"
-      p.body.add mangleName(v, p.target)
+      let v = it.sym
+      # for backwards compatibility we don't deref syms here :-(
+      if v.kind in {skVar, skLet, skTemp, skConst, skResult, skParam, skForVar}:
+        if p.target == targetPHP: p.body.add "$"
+        p.body.add mangleName(v, p.target)
+      else:
+        var r: TCompRes
+        gen(p, it, r)
+        p.body.add(r.rdLoc)
     else:
-      internalError(n.sons[i].info, "jsgen: genAsmOrEmitStmt()")
+      var r: TCompRes
+      gen(p, it, r)
+      p.body.add(r.rdLoc)
   p.body.add tnl
 
 proc genIf(p: PProc, n: PNode, r: var TCompRes) =
@@ -931,6 +939,8 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
       if y.kind == nkCall:
         let tmp = p.getTemp(false)
         lineF(p, "var $1 = $4; $2 = $1[0]; $3 = $1[1];$n", [tmp, a.address, a.res, b.rdLoc])
+      elif b.typ == etyBaseIndex:
+        lineF(p, "$# = $#;$n", [a.res, b.rdLoc])
       else:
         internalError(x.info, "genAsgn")
     else:
@@ -1039,15 +1049,15 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
   var typ = skipTypes(m.sons[0].typ, abstractPtrs)
   if typ.kind == tyArray: first = firstOrd(typ.sons[0])
   else: first = 0
-  if optBoundsCheck in p.options and not isConstExpr(m.sons[1]):
+  if optBoundsCheck in p.options:
     useMagic(p, "chckIndx")
     if p.target == targetPHP:
       if typ.kind != tyString:
-        r.res = "chckIndx($1, $2, count($3))-$2" % [b.res, rope(first), a.res]
+        r.res = "chckIndx($1, $2, count($3)-1)-$2" % [b.res, rope(first), a.res]
       else:
         r.res = "chckIndx($1, $2, strlen($3))-$2" % [b.res, rope(first), a.res]
     else:
-      r.res = "chckIndx($1, $2, $3.length)-$2" % [b.res, rope(first), a.res]
+      r.res = "chckIndx($1, $2, $3.length-1)-$2" % [b.res, rope(first), a.res]
   elif first != 0:
     r.res = "($1)-$2" % [b.res, rope(first)]
   else:
@@ -1240,17 +1250,21 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
   r.kind = resVal
 
 proc genDeref(p: PProc, n: PNode, r: var TCompRes) =
-  if mapType(p, n.sons[0].typ) == etyObject:
-    gen(p, n.sons[0], r)
+  let it = n.sons[0]
+  let t = mapType(p, it.typ)
+  if t == etyObject:
+    gen(p, it, r)
   else:
     var a: TCompRes
-    gen(p, n.sons[0], a)
+    gen(p, it, a)
     r.kind = resExpr
     if a.typ == etyBaseIndex:
       r.res = "$1[$2]" % [a.address, a.res]
-    elif n.sons[0].kind == nkCall:
+    elif it.kind == nkCall:
       let tmp = p.getTemp
       r.res = "($1 = $2, $1[0])[$1[1]]" % [tmp, a.res]
+    elif t == etyBaseIndex:
+      r.res = "$1[0]" % [a.res]
     else:
       internalError(n.info, "genDeref")
 
@@ -1432,7 +1446,7 @@ proc createRecordVarAux(p: PProc, rec: PNode, excludedFieldIDs: IntSet, output: 
 
 proc createObjInitList(p: PProc, typ: PType, excludedFieldIDs: IntSet, output: var Rope) =
   var t = typ
-  if tfFinal notin t.flags or t.sons[0] != nil:
+  if objHasTypeField(t):
     if output.len > 0: output.add(", ")
     addf(output, "m_type: $1" | "'m_type' => $#", [genTypeInfo(p, t)])
   while t != nil:
@@ -1977,10 +1991,19 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
     if i > 1: add(initList, ", ")
     var it = n.sons[i]
     internalAssert it.kind == nkExprColonExpr
-    gen(p, it.sons[1], a)
+    let val = it.sons[1]
+    gen(p, val, a)
     var f = it.sons[0].sym
     if f.loc.r == nil: f.loc.r = mangleName(f, p.target)
     fieldIDs.incl(f.id)
+
+    let typ = val.typ.skipTypes(abstractInst)
+    if (typ.kind in IntegralTypes+{tyCstring, tyRef, tyPtr} and
+          mapType(p, typ) != etyBaseIndex) or needsNoCopy(p, it.sons[1]):
+      discard
+    else:
+      useMagic(p, "nimCopy")
+      a.res = "nimCopy(null, $1, $2)" % [a.rdLoc, genTypeInfo(p, typ)]
     addf(initList, "$#: $#" | "'$#' => $#" , [f.loc.r, a.res])
   let t = skipTypes(n.typ, abstractInst + skipPtrs)
   createObjInitList(p, t, fieldIDs, initList)
