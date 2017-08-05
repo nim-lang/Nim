@@ -9,7 +9,7 @@
 import strutils, db_sqlite, os, osproc, random
 
 var db: DbConn
-const maxRetryCount = 10
+const maxRetryCount = 100
 
 proc internalExec(db: DbConn, q: SqlQuery, args: varargs[string, `$`]) =
   # UGGLY HACCKS
@@ -28,6 +28,7 @@ proc internalExec(db: DbConn, q: SqlQuery, args: varargs[string, `$`]) =
     if retryCount >= maxRetryCount: raise dbe
 
 proc internalgetValue(db: DbConn, q: SqlQuery, args: varargs[string, `$`]): string =
+  # UGGLY HACCKS
   var retryCount = 0
   try:
     result = db.getValue(q, args)
