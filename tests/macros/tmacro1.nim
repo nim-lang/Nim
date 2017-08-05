@@ -2,7 +2,7 @@ import  macros
 
 from uri import `/`
 
-macro test*(a: stmt): stmt {.immediate.} =
+macro test*(a: untyped): untyped =
   var nodes: tuple[a, b: int]
   nodes.a = 4
   nodes[1] = 45
@@ -20,4 +20,3 @@ macro test*(a: stmt): stmt {.immediate.} =
 
 test:
   "hi"
-

@@ -48,7 +48,7 @@ type
       # DragonflyBSD doesn't have `d_reclen` field.
       d_type*: uint8 
     elif defined(linux) or defined(macosx) or defined(freebsd) or
-         defined(netbsd) or defined(openbsd):
+         defined(netbsd) or defined(openbsd) or defined(genode):
       d_reclen*: cshort ## Length of this record. (not POSIX)
       d_type*: int8 ## Type of file; not supported by all filesystem types.
                     ## (not POSIX)
@@ -572,7 +572,8 @@ else:
     MAP_POPULATE*: cint = 0
 
 when defined(linux) or defined(nimdoc):
-  when defined(alpha) or defined(mips) or defined(parisc) or
+  when defined(alpha) or defined(mips) or defined(mipsel) or
+      defined(mips64) or defined(mips64el) or defined(parisc) or
       defined(sparc) or defined(nimdoc):
     const SO_REUSEPORT* = cint(0x0200)
       ## Multiple binding: load balancing on incoming TCP connections

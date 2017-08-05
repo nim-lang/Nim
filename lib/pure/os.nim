@@ -1017,7 +1017,7 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
               y = dir / y
             var k = pcFile
 
-            when defined(linux) or defined(macosx) or defined(bsd):
+            when defined(linux) or defined(macosx) or defined(bsd) or defined(genode):
               if x.d_type != DT_UNKNOWN:
                 if x.d_type == DT_DIR: k = pcDir
                 if x.d_type == DT_LNK:
@@ -1429,7 +1429,7 @@ when defined(nimdoc):
   proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
     ## Returns the `i`-th `command line argument`:idx: given to the application.
     ##
-    ## `i` should be in the range `1..paramCount()`, the `EInvalidIndex`
+    ## `i` should be in the range `1..paramCount()`, the `IndexError`
     ## exception will be raised for invalid values.  Instead of iterating over
     ## `paramCount() <#paramCount>`_ with this proc you can call the
     ## convenience `commandLineParams() <#commandLineParams>`_.
@@ -1467,7 +1467,8 @@ elif defined(windows):
     tags: [ReadIOEffect].} =
     # Docstring in nimdoc block.
     if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLine())
-    return TaintedString(ownArgv[i])
+    if i < ownArgv.len and i >= 0: return TaintedString(ownArgv[i])
+    raise newException(IndexError, "invalid index")
 
 elif not defined(createNimRtl) and
   not(defined(posix) and appType == "lib") and

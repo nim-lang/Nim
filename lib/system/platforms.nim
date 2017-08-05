@@ -24,6 +24,8 @@ type
     amd64,                     ## x86_64 (AMD64); 64 bit x86 compatible CPU
     mips,                      ## Mips based processor
     mipsel,                    ## Little Endian Mips based processor
+    mips64,                    ## 64-bit MIPS processor
+    mips64el,                  ## Little Endian 64-bit MIPS processor
     arm,                       ## ARM based processor
     arm64,                     ## ARM64 based processor
     vm,                        ## Some Virtual machine: Nim's VM or JavaScript
@@ -75,6 +77,8 @@ const
                elif defined(amd64): CpuPlatform.amd64
                elif defined(mips): CpuPlatform.mips
                elif defined(mipsel): CpuPlatform.mipsel
+               elif defined(mips64): CpuPlatform.mips64
+               elif defined(mips64el): CpuPlatform.mips64el
                elif defined(arm): CpuPlatform.arm
                elif defined(arm64): CpuPlatform.arm64
                elif defined(vm): CpuPlatform.vm

@@ -22,7 +22,7 @@ plusExpr = mulExpr (OP8 optInd mulExpr)*
 mulExpr = dollarExpr (OP9 optInd dollarExpr)*
 dollarExpr = primary (OP10 optInd primary)*
 symbol = '`' (KEYW|IDENT|literal|(operator|'('|')'|'['|']'|'{'|'}'|'=')+)+ '`'
-       | IDENT | 'addr' | 'type'
+       | IDENT | KEYW
 exprColonEqExpr = expr (':'|'=' expr)?
 exprList = expr ^+ comma
 dotExpr = expr '.' optInd symbol
@@ -81,7 +81,6 @@ paramList = '(' declColonEquals ^* (comma/semicolon) ')'
 paramListArrow = paramList? ('->' optInd typeDesc)?
 paramListColon = paramList? (':' optInd typeDesc)?
 doBlock = 'do' paramListArrow pragmas? colcom stmt
-doBlocks = doBlock ^* IND{=}
 procExpr = 'proc' paramListColon pragmas? ('=' COMMENT? stmt)?
 distinct = 'distinct' optInd typeDesc
 expr = (ifExpr
@@ -98,10 +97,11 @@ primary = typeKeyw typeDescK
 typeDesc = simpleExpr
 typeDefAux = simpleExpr
            | 'concept' typeClass
-macroColon = ':' stmt? ( IND{=} 'of' exprList ':' stmt
-                       | IND{=} 'elif' expr ':' stmt
-                       | IND{=} 'except' exprList ':' stmt
-                       | IND{=} 'else' ':' stmt )*
+postExprBlocks = ':' stmt? ( IND{=} doBlock
+                           | IND{=} 'of' exprList ':' stmt
+                           | IND{=} 'elif' expr ':' stmt
+                           | IND{=} 'except' exprList ':' stmt
+                           | IND{=} 'else' ':' stmt )*
 exprStmt = simpleExpr
          (( '=' optInd expr colonBody? )
          / ( expr ^+ comma

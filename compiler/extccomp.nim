@@ -53,7 +53,6 @@ type
                          # used on some platforms
     asmStmtFrmt: string, # format of ASM statement
     structStmtFmt: string, # Format for struct statement
-    packedPragma: string,  # Attribute/pragma to make struct packed (1-byte aligned)
     props: TInfoCCProps] # properties of the C compiler
 
 
@@ -86,7 +85,6 @@ compiler gcc:
     pic: "-fPIC",
     asmStmtFrmt: "asm($1);$n",
     structStmtFmt: "$1 $3 $2 ", # struct|union [packed] $name
-    packedPragma: "__attribute__((__packed__))",
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
             hasAttribute})
 
@@ -129,7 +127,6 @@ compiler vcc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$3$n$1 $2",
-    packedPragma: "#pragma pack(1)",
     props: {hasCpp, hasAssume, hasDeclspec})
 
 # Intel C/C++ Compiler
@@ -166,7 +163,6 @@ compiler lcc:
     pic: "",
     asmStmtFrmt: "_asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
-    packedPragma: "", # XXX: not supported yet
     props: {})
 
 # Borland C Compiler
@@ -191,7 +187,6 @@ compiler bcc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
-    packedPragma: "", # XXX: not supported yet
     props: {hasCpp})
 
 # Digital Mars C Compiler
@@ -216,7 +211,6 @@ compiler dmc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$3$n$1 $2",
-    packedPragma: "#pragma pack(1)",
     props: {hasCpp})
 
 # Watcom C Compiler
@@ -241,7 +235,6 @@ compiler wcc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
-    packedPragma: "", # XXX: not supported yet
     props: {hasCpp})
 
 # Tiny C Compiler
@@ -266,7 +259,6 @@ compiler tcc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
-    packedPragma: "", # XXX: not supported yet
     props: {hasSwitchRange, hasComputedGoto})
 
 # Pelles C Compiler
@@ -292,7 +284,6 @@ compiler pcc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
-    packedPragma: "", # XXX: not supported yet
     props: {})
 
 # Your C Compiler
@@ -317,7 +308,6 @@ compiler ucc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
-    packedPragma: "", # XXX: not supported yet
     props: {})
 
 const

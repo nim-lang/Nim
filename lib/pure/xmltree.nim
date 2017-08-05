@@ -338,7 +338,7 @@ proc xmlConstructor(e: NimNode): NimNode {.compileTime.} =
   else:
     result = newCall("newXmlTree", toStrLit(a))
 
-macro `<>`*(x: expr): expr {.immediate.} =
+macro `<>`*(x: untyped): untyped =
   ## Constructor macro for XML. Example usage:
   ##
   ## .. code-block:: nim

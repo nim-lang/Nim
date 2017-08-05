@@ -10,7 +10,7 @@ passed.'''
 """
 
 import strutils
-template expect_fail(x: expr) =
+template expect_fail(x) =
   try:
     discard x
     echo("expected to fail!")

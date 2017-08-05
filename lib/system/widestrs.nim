@@ -15,7 +15,7 @@ when not declared(NimString):
 
 type
   Utf16Char* = distinct int16
-  WideCString* = ref array[0.. 1_000_000, Utf16Char]
+  WideCString* = ref array[ArrayDummySize, Utf16Char]
 {.deprecated: [TUtf16Char: Utf16Char].}
 
 proc len*(w: WideCString): int =

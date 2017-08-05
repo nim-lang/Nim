@@ -152,7 +152,7 @@ proc confTok(L: var TLexer, tok: var TToken; config: ConfigRef) =
     parseDirective(L, tok, config)    # else: give the token to the parser
 
 proc checkSymbol(L: TLexer, tok: TToken) =
-  if tok.tokType notin {tkSymbol..pred(tkIntLit), tkStrLit..tkTripleStrLit}:
+  if tok.tokType notin {tkSymbol..tkInt64Lit, tkStrLit..tkTripleStrLit}:
     lexMessage(L, errIdentifierExpected, tokToStr(tok))
 
 proc parseAssignment(L: var TLexer, tok: var TToken; config: ConfigRef) =

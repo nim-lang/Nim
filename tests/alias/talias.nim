@@ -8,17 +8,17 @@ proc isPartOf*[S, T](a: S, b: T): TAnalysisResult {.
   magic: "IsPartOf", noSideEffect.}
   ## not yet exported properly.
 
-template compileTimeAssert(cond: expr) =
+template compileTimeAssert(cond) =
   when not cond:
     {.compile: "is false: " & astToStr(cond).}
 
-template `<|` (a, b: expr) =
+template `<|` (a, b) =
   compileTimeAssert isPartOf(a, b) == arYes
 
-template `!<|` (a, b: expr) =
+template `!<|` (a, b) =
   compileTimeAssert isPartOf(a, b) == arNo
 
-template `?<|` (a, b: expr) =
+template `?<|` (a, b) =
   compileTimeAssert isPartOf(a, b) == arMaybe
 
 type

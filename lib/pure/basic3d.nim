@@ -116,7 +116,7 @@ proc safeArccos(v:float):float=
   ## due to rounding issues
   return arccos(clamp(v,-1.0,1.0))
 
-template makeBinOpVector(s:expr)=
+template makeBinOpVector(s) =
   proc s*(a,b:Vector3d):Vector3d {.inline,noInit.} =
     vector3d(s(a.x,b.x),s(a.y,b.y),s(a.z,b.z))
   proc s*(a:Vector3d,b:float):Vector3d {.inline,noInit.}  =
@@ -124,7 +124,7 @@ template makeBinOpVector(s:expr)=
   proc s*(a:float,b:Vector3d):Vector3d {.inline,noInit.}  =
     vector3d(s(a,b.x),s(a,b.y),s(a,b.z))
 
-template makeBinOpAssignVector(s:expr)=
+template makeBinOpAssignVector(s) =
   proc s*(a:var Vector3d,b:Vector3d) {.inline.} =
     s(a.x,b.x); s(a.y,b.y); s(a.z,b.z)
   proc s*(a:var Vector3d,b:float) {.inline.} =

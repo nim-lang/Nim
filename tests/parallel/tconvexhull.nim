@@ -20,10 +20,10 @@ proc cmpPoint(a, b: Point): int =
   if result == 0:
     result = cmp(a.y, b.y)
 
-template cross[T](o, a, b: T): expr =
+template cross[T](o, a, b: T): untyped =
   (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x)
 
-template pro(): expr =
+template pro(): untyped =
   while lr1 > 0 and cross(result[lr1 - 1], result[lr1], p[i]) <= 0:
     discard result.pop
     lr1 -= 1
