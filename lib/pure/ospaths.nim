@@ -528,8 +528,15 @@ when declared(getEnv) or defined(nimscript):
     elif getEnv("XDG_CONFIG_DIR"): return string(getEnv("XDG_CONFIG_DIR")) & "/"
     else: return string(getEnv("HOME")) & "/.config/"
 
+  when defined(android):
+    {.pragma: getTempDirEffects, tags: [ReadEnvEffect, ReadIOEffect, WriteDirEffect].}
+  elif defined(windows):
+    {.pragma: getTempDirEffects, tags: [ReadEnvEffect, ReadIOEffect].}
+  else:
+    {.pragma: getTempDirEffects, tags: [ReadIOEffect].}
+
   proc getTempDir*(): string {.rtl, extern: "nos$1",
-    tags: [ReadEnvEffect, ReadIOEffect].} =
+    getTempDirEffects.} =
     ## Returns the temporary directory of the current user for applications to
     ## save temporary files in.
     when defined(tempDir):
@@ -537,9 +544,7 @@ when declared(getEnv) or defined(nimscript):
       return tempDir
     elif defined(windows): return string(getEnv("TEMP")) & "\\"
     elif defined(android):
-      let 
-        homeDir = getHomeDir()
-        tempDir = homeDir / "nimtempfs"
+      let tempDir = getHomeDir() / "nimtempfs"
       try: createDir(tempDir)
       except OSError: discard
       return tempDir
