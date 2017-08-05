@@ -534,10 +534,15 @@ when declared(getEnv) or defined(nimscript):
     ## save temporary files in.
     when defined(tempDir):
       const tempDir {.strdefine.}: string = nil
-      if not tempDir.isNil() and tempDir.len > 0:
-        return tempDir
-    
-    when defined(windows): return string(getEnv("TEMP")) & "\\"
+      return tempDir
+    elif defined(windows): return string(getEnv("TEMP")) & "\\"
+    elif defined(android):
+      let 
+        homeDir = getHomeDir()
+        tempDir = homeDir / "nimtempfs"
+      try: createDir(tempDir)
+      except OSError: discard
+      return tempDir
     else: return "/tmp/"
 
   proc expandTilde*(path: string): string {.
