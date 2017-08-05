@@ -40,7 +40,7 @@ proc main() =
   sync()
 
   for res in cmdResults:
-    echo ^res
+    echo string(^res)
 
 when isMainModule:
   main()
