@@ -41,7 +41,7 @@ script:
   - nimble install jester@#head
   - nimble install niminst
   - nim c --taintMode:on -d:nimCoroutines tests/testament/tester
-  - nim c --tainMode:on -d:nimCoroutines tests/testament/tester_parallel
+  - nim c --tainMode:on -d:nimCoroutines --threads:on tests/testament/tester_parallel
   - tests/testament/tester_parallel
   - ./koch web
   - ./koch csource
