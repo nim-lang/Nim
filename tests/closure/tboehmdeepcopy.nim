@@ -1,6 +1,7 @@
 discard """
   cmd: "nim c --gc:boehm $options $file"
   output: '''meep'''
+  disabled: "windows"
 """
 
 proc callit(it: proc ()) =
