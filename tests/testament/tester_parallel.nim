@@ -3,16 +3,22 @@ from math import nextPowerOfTwo
 
 var work: Channel[string]
 var output: Channel[string]
+var die: Channel[bool]
 
 proc testWorker() =
   var workChunk = work.recv()
-  while workChunk != nil:
+  var (shouldDie, dieMsg) = die.tryRecv()
+  while workChunk != nil and not shouldDie:
     output.send(string(execProcess(command = workChunk)))
+    workChunk = work.recv()
+
+    (shouldDie, dieMsg) = die.tryRecv()
 
 proc main() =
   ## Run testament in parallel, spawning off a new process for each category
   work.open()
   output.open()
+  die.open()
 
   let workerCount =
     if (let numCpus = countProcessors(); numCpus != 0):
@@ -48,6 +54,9 @@ proc main() =
 
   for i in 0 .. <totalJobs:
     echo output.recv()
+  
+  for i in 0 .. workerCount:
+    die.send(true)
 
 
 when isMainModule:
