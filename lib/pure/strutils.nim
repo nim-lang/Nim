@@ -1551,10 +1551,10 @@ proc replaceWord*(s, sub: string, by = ""): string {.noSideEffect,
   # copy the rest:
   add result, substr(s, i)
 
-proc multiReplace*(s: string, replacements: varargs[(string, string)]): string =
+proc multiReplace*(s: string, replacements: varargs[(string, string)]): string {.noSideEffect.} =
   ## Same as replace, but optimized for doing multiple replacements in a single
   ## pass.
-  result = ""
+  result = newStringOfCap(s.len)
   var charsRead = 0
   while charsRead < s.len:
     var noReplacement = true
