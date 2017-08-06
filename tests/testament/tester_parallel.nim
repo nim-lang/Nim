@@ -1,9 +1,20 @@
-import os, osproc, ospaths, strutils, threadpool
+import os, osproc, ospaths, strutils, threadpool, random
 from math import nextPowerOfTwo
+
+var work: Channel[string]
+var output: Channel[string]
+
+proc testWorker() =
+  var workChunk = work.recv()
+  while workChunk != nil:
+    output.send(string(execProcess(command = workChunk)))
 
 proc main() =
   ## Run testament in parallel, spawning off a new process for each category
-  let workerCount = 
+  work.open()
+  output.open()
+
+  let workerCount =
     if (let numCpus = countProcessors(); numCpus != 0):
       numCpus
     else:
@@ -15,32 +26,29 @@ proc main() =
   let testDir = "tests" & DirSep
   let cmdTemplate = "tests/testament/tester --pedantic c $# -d:nimCoroutines"
 
-  # Sequence of commands 
-  var cmds = newSeqOfCap[string](nextPowerOfTwo(110 + AdditionalCategories.len))
+  var totalJobs = 0
 
-  for additional_cat in AdditionalCategories:
-    cmds.add(cmdTemplate.format(additional_cat))
+
+  # Create workers
+  for i in 0 .. <workerCount:
+    spawn testWorker()
 
   for kind, dir in walkDir(testDir):
     assert testDir.startsWith(testDir)
     let cat = dir[testDir.len .. ^1]
     
     if kind == pcDir and cat notin ["testament", "testdata", "nimcache"]:
-      # Spawn worker process for this category
-      cmds.add(cmdTemplate.format(cat))
+      # Send work to worker
+      work.send(cmdTemplate.format(cat))
+      totalJobs.inc
   
-  # Now launch all commands with set # of processes
-  var cmdResults: seq[FlowVar[TaintedString]] = newSeq[FlowVar[TaintedString]](len(cmds))
+  for additional_cat in AdditionalCategories:
+    work.send(cmdTemplate.format(additional_cat))
+    totalJobs.inc
 
-  setMaxPoolSize(workerCount)
+  for i in 0 .. <totalJobs:
+    echo output.recv()
 
-  for i, cmd in cmds:
-    cmdResults[i] = spawn execProcess(command = cmd)
-
-  sync()
-
-  for res in cmdResults:
-    echo string(^res)
 
 when isMainModule:
   main()
