@@ -1,14 +1,14 @@
-import os, osproc, ospaths, strutils, threadpool, random
+import os, osproc, ospaths, strutils, random
 from math import nextPowerOfTwo
 
 var work: Channel[string]
 var output: Channel[string]
 var die: Channel[bool]
 
-proc testWorker() =
+proc testWorker() {.thread.} =
   var workChunk = work.recv()
   var (shouldDie, dieMsg) = die.tryRecv()
-  while workChunk != nil and not shouldDie:
+  while not shouldDie and workChunk != nil:
     output.send(string(execProcess(command = workChunk)))
     workChunk = work.recv()
 
@@ -34,10 +34,11 @@ proc main() =
 
   var totalJobs = 0
 
+  var workerThreads = newSeq[Thread[void]](workerCount)
 
   # Create workers
-  for i in 0 .. <workerCount:
-    spawn testWorker()
+  for i in 0 .. <len(workerThreads):
+    createThread(workerThreads[i], testWorker)
 
   for kind, dir in walkDir(testDir):
     assert testDir.startsWith(testDir)
