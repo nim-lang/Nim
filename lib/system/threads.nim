@@ -396,7 +396,7 @@ template afterThreadRuns() =
   for i in countdown(threadDestructionHandlers.len-1, 0):
     threadDestructionHandlers[i]()
 
-when not defined(boehmgc) and not hasSharedHeap and not defined(gogc) and not defined(gcstack):
+when not defined(boehmgc) and not hasSharedHeap and not defined(gogc) and not defined(gcRegions):
   proc deallocOsPages()
 
 when defined(boehmgc):
@@ -434,7 +434,7 @@ else:
 proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) =
   when defined(boehmgc):
     boehmGC_call_with_stack_base(threadProcWrapDispatch[TArg], thrd)
-  elif not defined(nogc) and not defined(gogc) and not defined(gcstack):
+  elif not defined(nogc) and not defined(gogc) and not defined(gcRegions):
     var p {.volatile.}: proc(a: ptr Thread[TArg]) {.nimcall.} =
       threadProcWrapDispatch[TArg]
     when not hasSharedHeap:
