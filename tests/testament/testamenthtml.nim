@@ -1,8 +1,6 @@
 import strutils
 
 proc htmlQuote*(raw: string): string =
-  if (raw.isNil):
-    return nil
   result = raw
   result = result.replace("&", "&amp;")
   result = result.replace("\"", "&quot;")
