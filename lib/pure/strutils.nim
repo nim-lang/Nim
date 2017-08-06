@@ -1551,6 +1551,23 @@ proc replaceWord*(s, sub: string, by = ""): string {.noSideEffect,
   # copy the rest:
   add result, substr(s, i)
 
+proc multiReplace*(s: string, replacements: varargs[(string, string)]): string =
+  ## Same as replace, but optimized for doing multiple replacements in a single
+  ## pass.
+  result = ""
+  var charsRead = 0
+  while charsRead < s.len:
+    var noReplacement = true
+    for tup in replacements:
+      if s.continuesWith(tup[0], charsRead):
+        add result, tup[1]
+        inc(charsRead, tup[0].len)
+        noReplacement = false
+        break
+    if noReplacement:
+      add result, s[charsRead]
+      inc(charsRead)
+
 proc delete*(s: var string, first, last: int) {.noSideEffect,
   rtl, extern: "nsuDelete".} =
   ## Deletes in `s` the characters at position `first` .. `last`.
@@ -2323,6 +2340,9 @@ when isMainModule:
   doAssert strip("sfoofoofoos", trailing = false, chars = {'s'}) == "foofoofoos"
 
   doAssert "  foo\n  bar".indent(4, "Q") == "QQQQ  foo\nQQQQ  bar"
+
+  doAssert "abba".multiReplace(("a", "b"), ("b", "a")) == "baab"
+  doAssert "Hello World.".multiReplace(("ello", "ELLO"), ("World.", "PEOPLE!")) == "HELLO PEOPLE!"
 
   doAssert isAlphaAscii('r')
   doAssert isAlphaAscii('A')
