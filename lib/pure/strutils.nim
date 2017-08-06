@@ -1554,6 +1554,9 @@ proc replaceWord*(s, sub: string, by = ""): string {.noSideEffect,
 proc multiReplace*(s: string, replacements: varargs[(string, string)]): string {.noSideEffect.} =
   ## Same as replace, but optimized for doing multiple replacements in a single
   ## pass.
+  ##
+  ## The order of the replacements does matter. Earlier replacements are preferred over later
+  ## replacements in the argument list.
   result = newStringOfCap(s.len)
   var charsRead = 0
   while charsRead < s.len:
@@ -2343,6 +2346,7 @@ when isMainModule:
 
   doAssert "abba".multiReplace(("a", "b"), ("b", "a")) == "baab"
   doAssert "Hello World.".multiReplace(("ello", "ELLO"), ("World.", "PEOPLE!")) == "HELLO PEOPLE!"
+  doAssert "aaaa".multiReplace(("a", "aa"), ("aa", "bb")) == "aaaaaaaa"
 
   doAssert isAlphaAscii('r')
   doAssert isAlphaAscii('A')
