@@ -1,12 +1,13 @@
 import strutils
 
 proc htmlQuote*(raw: string): string =
-  result = raw
-  result = result.replace("&", "&amp;")
-  result = result.replace("\"", "&quot;")
-  result = result.replace("'", "&apos;")
-  result = result.replace("<", "&lt;")
-  result = result.replace(">", "&gt;")
+  result = raw.multiReplace(
+    ("&", "&amp;"),
+    ("\"", "&quot;"),
+    ("'", "&apos;"),
+    ("<", "&lt;"),
+    (">", "&gt;")
+  )
 
 const
   html_begin_1* = """
