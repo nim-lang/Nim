@@ -46,6 +46,7 @@ doAssert dataStr == $data
 
 import strutils
 # array test
+
 let arr = ['H','e','l','l','o',' ','W','o','r','l','d','!','\0']
-doAssert $arr == "[H, e, l, l, o,  , W, o, r, l, d, !, ]"
+doAssert $arr == "[H, e, l, l, o,  , W, o, r, l, d, !, \0]"
 doAssert $arr.cstring == "Hello World!"
