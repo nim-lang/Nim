@@ -1568,11 +1568,14 @@ proc multiReplace*(s: string, replacements: varargs[(string, string)]): string {
   var i = 0
   while i < s.len:
     block sIteration:
-      for tup in replacements:
-        if s.continuesWith(tup[0], i):
-          add result, tup[1]
-          inc(i, tup[0].len)
-          break sIteration
+      var fastChk: set[char] = {}
+      for tup in replacements: fastChk.incl(tup[0][0])
+      if s[i] in fastChk:
+        for tup in replacements:
+          if s.continuesWith(tup[0], i):
+            add result, tup[1]
+            inc(i, tup[0].len)
+            break sIteration
       # No matching replacement found
       # copy current character from s
       add result, s[i]
