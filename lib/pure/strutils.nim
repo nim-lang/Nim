@@ -1552,24 +1552,31 @@ proc replaceWord*(s, sub: string, by = ""): string {.noSideEffect,
   add result, substr(s, i)
 
 proc multiReplace*(s: string, replacements: varargs[(string, string)]): string {.noSideEffect.} =
-  ## Same as replace, but optimized for doing multiple replacements in a single
-  ## pass.
+  ## Same as replace, but specialized for doing multiple replacements in a single
+  ## pass through the input string.
+  ##
+  ## Calling replace multiple times after each other is inefficient and result in too many allocations
+  ## follwed by immediate deallocations as portions of the string gets replaced.
+  ## multiReplace performs all replacements in a single pass.
+  ##
+  ## If the resulting string is not longer than the original input string, only a single
+  ## memory allocation is required.
   ##
   ## The order of the replacements does matter. Earlier replacements are preferred over later
   ## replacements in the argument list.
   result = newStringOfCap(s.len)
-  var charsRead = 0
-  while charsRead < s.len:
-    var noReplacement = true
-    for tup in replacements:
-      if s.continuesWith(tup[0], charsRead):
-        add result, tup[1]
-        inc(charsRead, tup[0].len)
-        noReplacement = false
-        break
-    if noReplacement:
-      add result, s[charsRead]
-      inc(charsRead)
+  var i = 0
+  while i < s.len:
+    block sIteration:
+      for tup in replacements:
+        if s.continuesWith(tup[0], i):
+          add result, tup[1]
+          inc(i, tup[0].len)
+          break sIteration
+      # No matching replacement found
+      # copy current character from s
+      add result, s[i]
+      inc(i)
 
 proc delete*(s: var string, first, last: int) {.noSideEffect,
   rtl, extern: "nsuDelete".} =
