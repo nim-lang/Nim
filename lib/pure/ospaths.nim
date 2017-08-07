@@ -548,9 +548,7 @@ when declared(getEnv) or defined(nimscript):
     elif defined(windows): return string(getEnv("TEMP")) & "\\"
     elif defined(android):
       let tempDir = getHomeDir() / "nimtempfs"
-      when declared(os):
-        try: createDir(tempDir)
-        except OSError: discard
+      createDir(tempDir)
       return tempDir
     else: return "/tmp/"
 
