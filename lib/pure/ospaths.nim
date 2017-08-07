@@ -529,7 +529,10 @@ when declared(getEnv) or defined(nimscript):
     else: return string(getEnv("HOME")) & "/.config/"
 
   when defined(android):
-    {.pragma: getTempDirEffects, tags: [ReadEnvEffect, ReadIOEffect, WriteDirEffect].}
+    when declared(os):
+      {.pragma: getTempDirEffects, tags: [ReadEnvEffect, ReadIOEffect, WriteDirEffect].}
+    else:
+      {.pragma: getTempDirEffects, tags: [ReadEnvEffect, ReadIOEffect].}
   elif defined(windows):
     {.pragma: getTempDirEffects, tags: [ReadEnvEffect, ReadIOEffect].}
   else:
@@ -545,8 +548,9 @@ when declared(getEnv) or defined(nimscript):
     elif defined(windows): return string(getEnv("TEMP")) & "\\"
     elif defined(android):
       let tempDir = getHomeDir() / "nimtempfs"
-      try: createDir(tempDir)
-      except OSError: discard
+      when declared(os):
+        try: createDir(tempDir)
+        except OSError: discard
       return tempDir
     else: return "/tmp/"
 
