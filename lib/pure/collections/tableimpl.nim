@@ -85,7 +85,7 @@ template addImpl(enlarge) {.dirty.} =
   rawInsert(t, t.data, key, val, hc, j)
   inc(t.counter)
 
-template maybeRehashPutImpl(enlarge) {.oldimmediate, dirty.} =
+template maybeRehashPutImpl(enlarge) {.dirty.} =
   if mustRehash(t.dataLen, t.counter):
     enlarge(t)
     index = rawGetKnownHC(t, key, hc)
@@ -93,7 +93,7 @@ template maybeRehashPutImpl(enlarge) {.oldimmediate, dirty.} =
   rawInsert(t, t.data, key, val, hc, index)
   inc(t.counter)
 
-template putImpl(enlarge) {.oldimmediate, dirty.} =
+template putImpl(enlarge) {.dirty.} =
   var hc: Hash
   var index = rawGet(t, key, hc)
   if index >= 0: t.data[index].val = val

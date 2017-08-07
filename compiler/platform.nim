@@ -21,8 +21,8 @@ type
                     # conditionals to condsyms (end of module).
     osNone, osDos, osWindows, osOs2, osLinux, osMorphos, osSkyos, osSolaris,
     osIrix, osNetbsd, osFreebsd, osOpenbsd, osDragonfly, osAix, osPalmos, osQnx,
-    osAmiga, osAtari, osNetware, osMacos, osMacosx, osHaiku, osVxworks, osGenode
-    osJS, osNimrodVM, osStandalone
+    osAmiga, osAtari, osNetware, osMacos, osMacosx, osHaiku, osAndroid, osVxworks
+    osGenode, osJS, osNimrodVM, osStandalone
 
 type
   TInfoOSProp* = enum
@@ -143,6 +143,10 @@ const
       objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/",
       scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".",
       props: {ospNeedsPIC, ospPosix, ospLacksThreadVars}),
+     (name: "Android", parDir: "..", dllFrmt: "lib$1.so", altDirSep: "/",
+      objExt: ".o", newLine: "\x0A", pathSep: ":", dirSep: "/",
+      scriptExt: ".sh", curDir: ".", exeExt: "", extSep: ".",
+      props: {ospNeedsPIC, ospPosix}),
      (name: "VxWorks", parDir: "..", dllFrmt: "lib$1.so", altDirSep: "/",
       objExt: ".o", newLine: "\x0A", pathSep: ";", dirSep: "\\",
       scriptExt: ".sh", curDir: ".", exeExt: ".vxe", extSep: ".",
@@ -171,7 +175,8 @@ type
                      # alias conditionals to condsyms (end of module).
     cpuNone, cpuI386, cpuM68k, cpuAlpha, cpuPowerpc, cpuPowerpc64,
     cpuPowerpc64el, cpuSparc, cpuVm, cpuIa64, cpuAmd64, cpuMips, cpuMipsel,
-    cpuArm, cpuArm64, cpuJS, cpuNimrodVM, cpuAVR, cpuMSP430, cpuSparc64
+    cpuArm, cpuArm64, cpuJS, cpuNimrodVM, cpuAVR, cpuMSP430, cpuSparc64,
+    cpuMips64, cpuMips64el
 
 type
   TEndian* = enum
@@ -200,7 +205,9 @@ const
     (name: "nimrodvm", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32),
     (name: "avr", intSize: 16, endian: littleEndian, floatSize: 32, bit: 16),
     (name: "msp430", intSize: 16, endian: littleEndian, floatSize: 32, bit: 16),
-    (name: "sparc64", intSize: 64, endian: bigEndian, floatSize: 64, bit: 64)]
+    (name: "sparc64", intSize: 64, endian: bigEndian, floatSize: 64, bit: 64),
+    (name: "mips64", intSize: 64, endian: bigEndian, floatSize: 64, bit: 64),
+    (name: "mips64el", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64)]
 
 var
   targetCPU*, hostCPU*: TSystemCPU

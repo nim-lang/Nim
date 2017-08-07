@@ -13,7 +13,7 @@
 import
   strutils, options, ast, astalgo, llstream, msgs, platform, os,
   condsyms, idents, renderer, types, extccomp, math, magicsys, nversion,
-  nimsets, syntaxes, times, rodread, idgen, modulegraphs
+  nimsets, syntaxes, times, rodread, idgen, modulegraphs, reorder
 
 type
   TPassContext* = object of RootObj # the pass's context
@@ -202,7 +202,7 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream,
         if graph.stopCompile(): break
         var n = parseTopLevelStmt(p)
         if n.kind == nkEmpty: break
-        if sfNoForward in module.flags:
+        if {sfNoForward, sfReorder} * module.flags != {}:
           # read everything, no streaming possible
           var sl = newNodeI(nkStmtList, n.info)
           sl.add n
@@ -210,6 +210,8 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream,
             var n = parseTopLevelStmt(p)
             if n.kind == nkEmpty: break
             sl.add n
+          if sfReorder in module.flags:
+            sl = reorder sl
           discard processTopLevelStmt(sl, a)
           break
         elif not processTopLevelStmt(n, a): break

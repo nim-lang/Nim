@@ -80,9 +80,10 @@ type
   `nil` {.magic: "Nil".}
 
   expr* {.magic: Expr, deprecated.} ## meta type to denote an expression (for templates)
-    ## **Deprecated** since version 0.15. Use ``untyped`` instead.
+                                    ## **Deprecated** since version 0.15. Use ``untyped`` instead.
   stmt* {.magic: Stmt, deprecated.} ## meta type to denote a statement (for templates)
-    ## **Deprecated** since version 0.15. Use ``typed`` instead.
+                                    ## **Deprecated** since version 0.15. Use ``typed`` instead.
+
   void* {.magic: "VoidType".}   ## meta type to denote the absence of any type
   auto* {.magic: Expr.} ## meta type for automatic type determination
   any* = distinct auto ## meta type for any supported type
@@ -413,7 +414,7 @@ type
     ## is an int type ranging from one to the maximum value
     ## of an int. This type is often useful for documentation and debugging.
 
-  RootObj* {.exportc: "TNimObject", inheritable.} =
+  RootObj* {.compilerProc, inheritable.} =
     object ## the root of Nim's object hierarchy. Objects should
            ## inherit from RootObj or one of its descendants. However,
            ## objects that have no ancestor are allowed.
@@ -442,6 +443,7 @@ type
                                         ## providing an exception message
                                         ## is bad style.
     trace: string
+    up: ref Exception # used for stacking exceptions. Not exported!
 
   SystemError* = object of Exception ## \
     ## Abstract class for exceptions that the runtime system raises.
@@ -1068,7 +1070,7 @@ proc `div`*[T: SomeUnsignedInt](x, y: T): T {.magic: "DivU", noSideEffect.}
   ## ``floor(x/y)``.
   ##
   ## .. code-block:: Nim
-  ##  (7 div 5) == 2
+  ##  (7 div 5) == 1
 
 proc `mod`*[T: SomeUnsignedInt](x, y: T): T {.magic: "ModU", noSideEffect.}
   ## computes the integer modulo operation (remainder).
@@ -1311,7 +1313,7 @@ const
   hostCPU* {.magic: "HostCPU".}: string = ""
     ## a string that describes the host CPU. Possible values:
     ## "i386", "alpha", "powerpc", "powerpc64", "powerpc64el", "sparc",
-    ## "amd64", "mips", "mipsel", "arm", "arm64".
+    ## "amd64", "mips", "mipsel", "arm", "arm64", "mips64", "mips64el".
 
   seqShallowFlag = low(int)
 
@@ -1950,30 +1952,34 @@ iterator countdown*[T](a, b: T, step = 1): T {.inline.} =
       yield res
       dec(res, step)
 
-template countupImpl(incr: untyped) {.oldimmediate, dirty.} =
-  when T is IntLikeForCount:
-    var res = int(a)
-    while res <= int(b):
-      yield T(res)
-      incr
-  else:
-    var res: T = T(a)
-    while res <= b:
-      yield res
-      incr
-
 iterator countup*[S, T](a: S, b: T, step = 1): T {.inline.} =
   ## Counts from ordinal value `a` up to `b` (inclusive) with the given
   ## step count. `S`, `T` may be any ordinal type, `step` may only
   ## be positive. **Note**: This fails to count to ``high(int)`` if T = int for
   ## efficiency reasons.
-  countupImpl:
-    inc(res, step)
+  when T is IntLikeForCount:
+    var res = int(a)
+    while res <= int(b):
+      yield T(res)
+      inc(res, step)
+  else:
+    var res: T = T(a)
+    while res <= b:
+      yield res
+      inc(res, step)
 
 iterator `..`*[S, T](a: S, b: T): T {.inline.} =
   ## An alias for `countup`.
-  countupImpl:
-    inc(res)
+  when T is IntLikeForCount:
+    var res = int(a)
+    while res <= int(b):
+      yield T(res)
+      inc(res)
+  else:
+    var res: T = T(a)
+    while res <= b:
+      yield res
+      inc(res)
 
 iterator `||`*[S, T](a: S, b: T, annotation=""): T {.
   inline, magic: "OmpParFor", sideEffect.} =
@@ -3268,7 +3274,7 @@ when not defined(JS): #and not defined(nimscript):
     proc finished*[T: proc](x: T): bool {.noSideEffect, inline.} =
       ## can be used to determine if a first class iterator has finished.
       {.emit: """
-      `result` = *((NI*) `x`.ClE_0) < 0;
+      `result` = ((NI*) `x`.ClE_0)[1] < 0;
       """.}
 
 elif defined(JS):
@@ -3511,7 +3517,7 @@ proc `*=`*[T: SomeOrdinal|uint|uint64](x: var T, y: T) {.
 
 proc `+=`*[T: float|float32|float64] (x: var T, y: T) {.
   inline, noSideEffect.} =
-  ## Increments in placee a floating point number
+  ## Increments in place a floating point number
   x = x + y
 
 proc `-=`*[T: float|float32|float64] (x: var T, y: T) {.

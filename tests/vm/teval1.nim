@@ -5,7 +5,7 @@ proc testProc: string {.compileTime.} =
   result = result & ""
 
 when true:
-  macro test(n: stmt): stmt {.immediate.} =
+  macro test(n: untyped): untyped =
     result = newNimNode(nnkStmtList)
     echo "#", testProc(), "#"
   test:
@@ -20,5 +20,3 @@ echo "##", x, "##"
 static:
     var i, j: set[int8] = {}
     var k = i + j
-
-

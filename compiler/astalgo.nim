@@ -576,12 +576,6 @@ proc strTableAdd(t: var TStrTable, n: PSym) =
   strTableRawInsert(t.data, n)
   inc(t.counter)
 
-proc reallySameIdent(a, b: string): bool {.inline.} =
-  when defined(nimfix):
-    result = a[0] == b[0]
-  else:
-    result = true
-
 proc strTableIncl*(t: var TStrTable, n: PSym; onConflictKeepOld=false): bool {.discardable.} =
   # returns true if n is already in the string table:
   # It is essential that `n` is written nevertheless!
@@ -596,7 +590,7 @@ proc strTableIncl*(t: var TStrTable, n: PSym; onConflictKeepOld=false): bool {.d
     # and overloading: (var x=@[]; x).mapIt(it).
     # So it is possible the very same sym is added multiple
     # times to the symbol table which we allow here with the 'it == n' check.
-    if it.name.id == n.name.id and reallySameIdent(it.name.s, n.name.s):
+    if it.name.id == n.name.id:
       if it == n: return false
       replaceSlot = h
     h = nextTry(h, high(t.data))

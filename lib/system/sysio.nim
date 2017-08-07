@@ -86,10 +86,10 @@ proc writeBuffer(f: File, buffer: pointer, len: Natural): int =
   checkErr(f)
 
 proc writeBytes(f: File, a: openArray[int8|uint8], start, len: Natural): int =
-  var x = cast[ptr array[0..1000_000_000, int8]](a)
+  var x = cast[ptr array[ArrayDummySize, int8]](a)
   result = writeBuffer(f, addr(x[start]), len)
 proc writeChars(f: File, a: openArray[char], start, len: Natural): int =
-  var x = cast[ptr array[0..1000_000_000, int8]](a)
+  var x = cast[ptr array[ArrayDummySize, int8]](a)
   result = writeBuffer(f, addr(x[start]), len)
 
 proc write(f: File, s: string) =

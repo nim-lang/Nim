@@ -880,6 +880,16 @@ proc generateHeader(p: PProc, typ: PType): Rope =
       #  add(result, name)
       #  add(result, "_Idx")
 
+proc countJsParams(typ: PType): int =
+  for i in countup(1, sonsLen(typ.n) - 1):
+    assert(typ.n.sons[i].kind == nkSym)
+    var param = typ.n.sons[i].sym
+    if isCompileTimeOnly(param.typ): continue
+    if mapType(param.typ) == etyBaseIndex:
+      inc result, 2
+    else:
+      inc result
+
 const
   nodeKindsNeedNoCopy = {nkCharLit..nkInt64Lit, nkStrLit..nkTripleStrLit,
     nkFloatLit..nkFloat64Lit, nkCurly, nkPar, nkObjConstr, nkStringToCString,
@@ -1278,7 +1288,7 @@ proc genArgNoParam(p: PProc, n: PNode, r: var TCompRes) =
   else:
     add(r.res, a.res)
 
-proc genArg(p: PProc, n: PNode, param: PSym, r: var TCompRes) =
+proc genArg(p: PProc, n: PNode, param: PSym, r: var TCompRes; emitted: ptr int = nil) =
   var a: TCompRes
   gen(p, n, a)
   if skipTypes(param.typ, abstractVar).kind in {tyOpenArray, tyVarargs} and
@@ -1288,6 +1298,12 @@ proc genArg(p: PProc, n: PNode, param: PSym, r: var TCompRes) =
     add(r.res, a.address)
     add(r.res, ", ")
     add(r.res, a.res)
+    if emitted != nil: inc emitted[]
+  elif n.typ.kind == tyVar and n.kind in nkCallKinds and mapType(param.typ) == etyBaseIndex:
+    # this fixes bug #5608:
+    let tmp = getTemp(p)
+    add(r.res, "($1 = $2, $1[0]), $1[1]" % [tmp, a.rdLoc])
+    if emitted != nil: inc emitted[]
   else:
     add(r.res, a.res)
 
@@ -1298,6 +1314,7 @@ proc genArgs(p: PProc, n: PNode, r: var TCompRes; start=1) =
   var typ = skipTypes(n.sons[0].typ, abstractInst)
   assert(typ.kind == tyProc)
   assert(sonsLen(typ) == sonsLen(typ.n))
+  var emitted = start-1
 
   for i in countup(start, sonsLen(n) - 1):
     let it = n.sons[i]
@@ -1311,9 +1328,16 @@ proc genArgs(p: PProc, n: PNode, r: var TCompRes; start=1) =
     if paramType.isNil:
       genArgNoParam(p, it, r)
     else:
-      genArg(p, it, paramType.sym, r)
+      genArg(p, it, paramType.sym, r, addr emitted)
+    inc emitted
     hasArgs = true
   add(r.res, ")")
+  when false:
+    # XXX look into this:
+    let jsp = countJsParams(typ)
+    if emitted != jsp and tfVarargs notin typ.flags:
+      localError(n.info, "wrong number of parameters emitted; expected: " & $jsp &
+        " but got: " & $emitted)
   r.kind = resExpr
 
 proc genOtherArg(p: PProc; n: PNode; i: int; typ: PType;
@@ -2316,7 +2340,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkPragma: genPragma(p, n)
   of nkProcDef, nkMethodDef, nkConverterDef:
     var s = n.sons[namePos].sym
-    if sfExportc in s.flags and compilingLib:
+    if {sfExportc, sfCompilerProc} * s.flags == {sfExportc}:
       genSym(p, n.sons[namePos], r)
       r.res = nil
   of nkGotoState, nkState:

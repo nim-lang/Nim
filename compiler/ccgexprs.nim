@@ -744,14 +744,17 @@ proc genTupleElem(p: BProc, e: PNode, d: var TLoc) =
   addf(r, ".Field$1", [rope(i)])
   putIntoDest(p, d, tupType.sons[i], r, a.s)
 
-proc lookupFieldAgain(p: BProc, ty: PType; field: PSym; r: var Rope): PSym =
+proc lookupFieldAgain(p: BProc, ty: PType; field: PSym; r: var Rope;
+                      resTyp: ptr PType = nil): PSym =
   var ty = ty
   assert r != nil
   while ty != nil:
     ty = ty.skipTypes(skipPtrs)
     assert(ty.kind in {tyTuple, tyObject})
     result = lookupInRecord(ty.n, field.name)
-    if result != nil: break
+    if result != nil:
+      if resTyp != nil: resTyp[] = ty
+      break
     if not p.module.compileToCpp: add(r, ".Sup")
     ty = ty.sons[0]
   if result == nil: internalError(field.info, "genCheckedRecordField")
@@ -768,8 +771,9 @@ proc genRecordField(p: BProc, e: PNode, d: var TLoc) =
     addf(r, ".Field$1", [rope(f.position)])
     putIntoDest(p, d, f.typ, r, a.s)
   else:
-    let field = lookupFieldAgain(p, ty, f, r)
-    if field.loc.r == nil: fillObjectFields(p.module, ty)
+    var rtyp: PType
+    let field = lookupFieldAgain(p, ty, f, r, addr rtyp)
+    if field.loc.r == nil and rtyp != nil: fillObjectFields(p.module, rtyp)
     if field.loc.r == nil: internalError(e.info, "genRecordField 3 " & typeToString(ty))
     addf(r, ".$1", [field.loc.r])
     putIntoDest(p, d, field.typ, r, a.s)
@@ -2123,10 +2127,19 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       # See tests/run/tcnstseq3 for an example that would fail otherwise.
       genAsgn(p, n, fastAsgn=p.prc != nil)
   of nkDiscardStmt:
-    if n.sons[0].kind != nkEmpty:
+    let ex = n[0]
+    if ex.kind != nkEmpty:
       genLineDir(p, n)
       var a: TLoc
-      initLocExpr(p, n.sons[0], a)
+      if ex.kind in nkCallKinds and (ex[0].kind != nkSym or
+                                     ex[0].sym.magic == mNone):
+        # bug #6037: do not assign to a temp in C++ mode:
+        incl a.flags, lfSingleUse
+        genCall(p, ex, a)
+        if lfSingleUse notin a.flags:
+          line(p, cpsStmts, a.r & ";" & tnl)
+      else:
+        initLocExpr(p, ex, a)
   of nkAsmStmt: genAsmStmt(p, n)
   of nkTryStmt:
     if p.module.compileToCpp and optNoCppExceptions notin gGlobalOptions:

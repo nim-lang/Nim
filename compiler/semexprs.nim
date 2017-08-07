@@ -47,11 +47,9 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     #raiseRecoverableError("")
     result = errorNode(c, n)
   if result.typ == nil or result.typ == enforceVoidContext:
-    if n.kind != nkStmtList:
-      # we cannot check for 'void' in macros ...
-      localError(n.info, errExprXHasNoType,
-                 renderTree(result, {renderNoComments}))
-      result.typ = errorType(c)
+    localError(n.info, errExprXHasNoType,
+                renderTree(result, {renderNoComments}))
+    result.typ = errorType(c)
   else:
     if efNoProcvarCheck notin flags: semProcvarCheck(c, result)
     if result.typ.kind == tyVar: result = newDeref(result)
@@ -974,7 +972,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
   of skParam:
     markUsed(n.info, s, c.graph.usageSym)
     styleCheckUse(n.info, s)
-    if s.typ.kind == tyStatic and s.typ.n != nil:
+    if s.typ != nil and s.typ.kind == tyStatic and s.typ.n != nil:
       # XXX see the hack in sigmatch.nim ...
       return s.typ.n
     elif sfGenSym in s.flags:
@@ -2187,11 +2185,11 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     if result.typ == nil: result.typ = getSysType(tyUInt32)
   of nkUInt64Lit:
     if result.typ == nil: result.typ = getSysType(tyUInt64)
-  of nkFloatLit:
-    if result.typ == nil: result.typ = getFloatLitType(result)
+  #of nkFloatLit:
+  #  if result.typ == nil: result.typ = getFloatLitType(result)
   of nkFloat32Lit:
     if result.typ == nil: result.typ = getSysType(tyFloat32)
-  of nkFloat64Lit:
+  of nkFloat64Lit, nkFloatLit:
     if result.typ == nil: result.typ = getSysType(tyFloat64)
   of nkFloat128Lit:
     if result.typ == nil: result.typ = getSysType(tyFloat128)

@@ -42,6 +42,8 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     counter = lastOrd(base) + 1
   rawAddSon(result, base)
   let isPure = result.sym != nil and sfPure in result.sym.flags
+  var symbols: TStrTable
+  if isPure: initStrTable(symbols)
   var hasNull = false
   for i in countup(1, sonsLen(n) - 1):
     case n.sons[i].kind
@@ -87,6 +89,8 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     addSon(result.n, newSymNode(e))
     styleCheckDef(e)
     if sfGenSym notin e.flags and not isPure: addDecl(c, e)
+    if isPure and strTableIncl(symbols, e):
+      wrongRedefinition(e.info, e.name.s)
     inc(counter)
   if not hasNull: incl(result.flags, tfNeedsInit)
 
