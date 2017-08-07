@@ -953,23 +953,40 @@ proc genEcho(p: BProc, n: PNode) =
   # this unusal way of implementing it ensures that e.g. ``echo("hallo", 45)``
   # is threadsafe.
   internalAssert n.kind == nkBracket
-  var args: Rope = nil
+  var args = newSeq[tuple[hasvalue,len,str: string]](0)
   var a: TLoc
   for i in countup(0, n.len-1):
     if n.sons[i].skipConv.kind == nkNilLit:
-      add(args, ", \"nil\"")
+      args.add((hasvalue:"0", len: "0", str: "\"\""))
     else:
       initLocExpr(p, n.sons[i], a)
-      addf(args, ", $1? ($1)->data:\"nil\"", [rdLoc(a)])
+      let ptrexpr: string = $rdLoc(a)
+      let len = format("($1)->Sup.len", ptrexpr)
+      let str = format("($1)->data", ptrexpr)
+      args.add((hasvalue: ptrexpr, len: len, str: str))
   if platform.targetOS == osGenode:
     # bypass libc and print directly to the Genode LOG session
     p.module.includeHeader("<base/log.h>")
-    linefmt(p, cpsStmts, """Genode::log(""$1);$n""", args)
+    # separated args
+    var rope: Rope
+    for arg in args:
+      rope.add ", "
+      rope.add arg.str
+    # TODO this is wrong, it does not properly handle '\0' characters, and locking is not done.
+    linefmt(p, cpsStmts, """Genode::log(""$1);$n""", rope)
+    for arg in args:
+      if arg.hasvalue != "0": # if we know statically that there is no string, it can be skipped
+        linefmt(p, cpsStmts, "if($1) Genode::log($2);$n", rope(arg.hasvalue), rope(arg.str))
   else:
     p.module.includeHeader("<stdio.h>")
-    linefmt(p, cpsStmts, "printf($1$2);$n",
-            makeCString(repeat("%s", n.len) & tnl), args)
-    linefmt(p, cpsStmts, "fflush(stdout);$n")
+    #linefmt(p, cpsStmts, "printf($1$2);$n",
+    #        makeCString(repeat("%s", n.len) & tnl), args)
+    linefmt(p, cpsStmts, "flockfile(stdout);$n")
+    for arg in args:
+      if arg.hasvalue != "0": # if we know statically that there is no string, it can be skipped
+        linefmt(p, cpsStmts, "if($1) fwrite($2, 1, $3, stdout);$n", rope(arg.hasvalue), rope(arg.str), rope(arg.len));
+    linefmt(p, cpsStmts, "putchar('\\n'); fflush(stdout);$n")
+    linefmt(p, cpsStmts, "funlockfile(stdout);$n")
 
 proc gcUsage(n: PNode) =
   if gSelectedGC == gcNone: message(n.info, warnGcMem, n.renderTree)
