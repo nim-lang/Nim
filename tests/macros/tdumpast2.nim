@@ -21,7 +21,7 @@ proc dumpit(n: NimNode): string {.compileTime.} =
       add(result, dumpit(n[j]))
   add(result, ")")
 
-macro dumpAST(n: stmt): stmt {.immediate.} =
+macro dumpAST(n): untyped =
   # dump AST as a side-effect and return the inner node
   let n = callsite()
   echo dumpit(n)

@@ -9,33 +9,33 @@ proc e(o: ExplainedConcept): int
 texplain.nim(65, 6) ExplainedConcept: undeclared field: 'foo'
 texplain.nim(65, 6) ExplainedConcept: undeclared field: '.'
 texplain.nim(65, 6) ExplainedConcept: expression '.' cannot be called
-texplain.nim(65, 5) ExplainedConcept: type class predicate failed
+texplain.nim(65, 5) ExplainedConcept: concept predicate failed
 texplain.nim(66, 6) ExplainedConcept: undeclared field: 'bar'
 texplain.nim(66, 6) ExplainedConcept: undeclared field: '.'
 texplain.nim(66, 6) ExplainedConcept: expression '.' cannot be called
-texplain.nim(65, 5) ExplainedConcept: type class predicate failed
+texplain.nim(65, 5) ExplainedConcept: concept predicate failed
 
 texplain.nim(105, 10) Hint: Non-matching candidates for e(10)
 proc e(o: ExplainedConcept): int
 texplain.nim(65, 6) ExplainedConcept: undeclared field: 'foo'
 texplain.nim(65, 6) ExplainedConcept: undeclared field: '.'
 texplain.nim(65, 6) ExplainedConcept: expression '.' cannot be called
-texplain.nim(65, 5) ExplainedConcept: type class predicate failed
+texplain.nim(65, 5) ExplainedConcept: concept predicate failed
 texplain.nim(66, 6) ExplainedConcept: undeclared field: 'bar'
 texplain.nim(66, 6) ExplainedConcept: undeclared field: '.'
 texplain.nim(66, 6) ExplainedConcept: expression '.' cannot be called
-texplain.nim(65, 5) ExplainedConcept: type class predicate failed
+texplain.nim(65, 5) ExplainedConcept: concept predicate failed
 
 texplain.nim(109, 20) Error: type mismatch: got (NonMatchingType)
 but expected one of: 
 proc e(o: ExplainedConcept): int
-texplain.nim(65, 5) ExplainedConcept: type class predicate failed
+texplain.nim(65, 5) ExplainedConcept: concept predicate failed
 proc e(i: int): int
 
 texplain.nim(110, 20) Error: type mismatch: got (NonMatchingType)
 but expected one of: 
 proc r(o: RegularConcept): int
-texplain.nim(69, 5) RegularConcept: type class predicate failed
+texplain.nim(69, 5) RegularConcept: concept predicate failed
 proc r[T](a: SomeNumber; b: T; c: auto)
 proc r(i: string): int
 
@@ -49,12 +49,12 @@ proc f(o: NestedConcept)
 texplain.nim(69, 6) RegularConcept: undeclared field: 'foo'
 texplain.nim(69, 6) RegularConcept: undeclared field: '.'
 texplain.nim(69, 6) RegularConcept: expression '.' cannot be called
-texplain.nim(69, 5) RegularConcept: type class predicate failed
+texplain.nim(69, 5) RegularConcept: concept predicate failed
 texplain.nim(70, 6) RegularConcept: undeclared field: 'bar'
 texplain.nim(70, 6) RegularConcept: undeclared field: '.'
 texplain.nim(70, 6) RegularConcept: expression '.' cannot be called
-texplain.nim(69, 5) RegularConcept: type class predicate failed
-texplain.nim(73, 5) NestedConcept: type class predicate failed
+texplain.nim(69, 5) RegularConcept: concept predicate failed
+texplain.nim(73, 5) NestedConcept: concept predicate failed
 '''
   line: 119
   errormsg: "type mismatch: got (MatchingType)"

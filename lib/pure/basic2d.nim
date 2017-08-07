@@ -116,13 +116,13 @@ proc safeArccos(v:float):float=
   return arccos(clamp(v,-1.0,1.0))
 
 
-template makeBinOpVector(s:expr)=
+template makeBinOpVector(s) =
   ## implements binary operators ``+``, ``-``, ``*`` and ``/`` for vectors
   proc s*(a,b:Vector2d):Vector2d {.inline,noInit.} = vector2d(s(a.x,b.x),s(a.y,b.y))
   proc s*(a:Vector2d,b:float):Vector2d {.inline,noInit.}  = vector2d(s(a.x,b),s(a.y,b))
   proc s*(a:float,b:Vector2d):Vector2d {.inline,noInit.}  = vector2d(s(a,b.x),s(a,b.y))
 
-template makeBinOpAssignVector(s:expr)=
+template makeBinOpAssignVector(s)=
   ## implements inplace binary operators ``+=``, ``-=``, ``/=`` and ``*=`` for vectors
   proc s*(a:var Vector2d,b:Vector2d) {.inline.} = s(a.x,b.x) ; s(a.y,b.y)
   proc s*(a:var Vector2d,b:float) {.inline.} = s(a.x,b) ; s(a.y,b)
@@ -853,5 +853,3 @@ proc degToRad*(deg:float):float {.inline.}=
 proc radToDeg*(rad:float):float {.inline.}=
   ## converts `rad` radians to degrees
   rad * RAD2DEGCONST
-
-

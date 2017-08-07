@@ -545,7 +545,7 @@ proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       "(($4)($1) * ($4)($2))", # MulF64
       "(($4)($1) / ($4)($2))", # DivF64
 
-      "($4)((NU$3)($1) >> (NU$3)($2))", # ShrI
+      "($4)((NU$5)($1) >> (NU$3)($2))", # ShrI
       "($4)((NU$3)($1) << (NU$3)($2))", # ShlI
       "($4)($1 & $2)",      # BitandI
       "($4)($1 | $2)",      # BitorI
@@ -585,16 +585,17 @@ proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       "($1 != $2)"]           # Xor
   var
     a, b: TLoc
-    s: BiggestInt
+    s, k: BiggestInt
   assert(e.sons[1].typ != nil)
   assert(e.sons[2].typ != nil)
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], b)
   # BUGFIX: cannot use result-type here, as it may be a boolean
   s = max(getSize(a.t), getSize(b.t)) * 8
+  k = getSize(a.t) * 8
   putIntoDest(p, d, e.typ,
               binArithTab[op] % [rdLoc(a), rdLoc(b), rope(s),
-                                      getSimpleTypeDesc(p.module, e.typ)])
+                                      getSimpleTypeDesc(p.module, e.typ), rope(k)])
 
 proc genEqProc(p: BProc, e: PNode, d: var TLoc) =
   var a, b: TLoc
@@ -664,7 +665,9 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
       d.s = OnHeap
   else:
     var a: TLoc
-    let typ = skipTypes(e.sons[0].typ, abstractInst)
+    var typ = skipTypes(e.sons[0].typ, abstractInst)
+    if typ.kind in {tyUserTypeClass, tyUserTypeClassInst} and typ.isResolvedUserTypeClass:
+      typ = typ.lastSon
     if typ.kind == tyVar and tfVarIsPtr notin typ.flags and p.module.compileToCpp and e.sons[0].kind == nkHiddenAddr:
       initLocExprSingleUse(p, e[0][0], d)
       return
@@ -741,14 +744,17 @@ proc genTupleElem(p: BProc, e: PNode, d: var TLoc) =
   addf(r, ".Field$1", [rope(i)])
   putIntoDest(p, d, tupType.sons[i], r, a.s)
 
-proc lookupFieldAgain(p: BProc, ty: PType; field: PSym; r: var Rope): PSym =
+proc lookupFieldAgain(p: BProc, ty: PType; field: PSym; r: var Rope;
+                      resTyp: ptr PType = nil): PSym =
   var ty = ty
   assert r != nil
   while ty != nil:
     ty = ty.skipTypes(skipPtrs)
     assert(ty.kind in {tyTuple, tyObject})
     result = lookupInRecord(ty.n, field.name)
-    if result != nil: break
+    if result != nil:
+      if resTyp != nil: resTyp[] = ty
+      break
     if not p.module.compileToCpp: add(r, ".Sup")
     ty = ty.sons[0]
   if result == nil: internalError(field.info, "genCheckedRecordField")
@@ -765,8 +771,9 @@ proc genRecordField(p: BProc, e: PNode, d: var TLoc) =
     addf(r, ".Field$1", [rope(f.position)])
     putIntoDest(p, d, f.typ, r, a.s)
   else:
-    let field = lookupFieldAgain(p, ty, f, r)
-    if field.loc.r == nil: fillObjectFields(p.module, ty)
+    var rtyp: PType
+    let field = lookupFieldAgain(p, ty, f, r, addr rtyp)
+    if field.loc.r == nil and rtyp != nil: fillObjectFields(p.module, rtyp)
     if field.loc.r == nil: internalError(e.info, "genRecordField 3 " & typeToString(ty))
     addf(r, ".$1", [field.loc.r])
     putIntoDest(p, d, field.typ, r, a.s)
@@ -2120,10 +2127,19 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       # See tests/run/tcnstseq3 for an example that would fail otherwise.
       genAsgn(p, n, fastAsgn=p.prc != nil)
   of nkDiscardStmt:
-    if n.sons[0].kind != nkEmpty:
+    let ex = n[0]
+    if ex.kind != nkEmpty:
       genLineDir(p, n)
       var a: TLoc
-      initLocExpr(p, n.sons[0], a)
+      if ex.kind in nkCallKinds and (ex[0].kind != nkSym or
+                                     ex[0].sym.magic == mNone):
+        # bug #6037: do not assign to a temp in C++ mode:
+        incl a.flags, lfSingleUse
+        genCall(p, ex, a)
+        if lfSingleUse notin a.flags:
+          line(p, cpsStmts, a.r & ";" & tnl)
+      else:
+        initLocExpr(p, ex, a)
   of nkAsmStmt: genAsmStmt(p, n)
   of nkTryStmt:
     if p.module.compileToCpp and optNoCppExceptions notin gGlobalOptions:
@@ -2148,8 +2164,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       # are not transformed correctly. We work around this issue (#411) here
       # by ensuring it's no inner proc (owner is a module):
       if prc.skipGenericOwner.kind == skModule and sfCompileTime notin prc.flags:
-        if (optDeadCodeElim notin gGlobalOptions and
-            sfDeadCodeElim notin getModule(prc).flags) or
+        if (not emitLazily(prc)) or
             ({sfExportc, sfCompilerProc} * prc.flags == {sfExportc}) or
             (sfExportc in prc.flags and lfExportLib in prc.loc.flags) or
             (prc.kind == skMethod):

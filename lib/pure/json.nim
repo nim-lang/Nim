@@ -1001,7 +1001,7 @@ proc escapeJson*(s: string; result: var string) =
   result.add("\"")
   for x in runes(s):
     var r = int(x)
-    if r >= 32 and r <= 127:
+    if r >= 32 and r <= 126:
       var c = chr(r)
       case c
       of '"': result.add("\\\"")

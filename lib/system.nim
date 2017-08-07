@@ -80,9 +80,10 @@ type
   `nil` {.magic: "Nil".}
 
   expr* {.magic: Expr, deprecated.} ## meta type to denote an expression (for templates)
-    ## **Deprecated** since version 0.15. Use ``untyped`` instead.
+                                    ## **Deprecated** since version 0.15. Use ``untyped`` instead.
   stmt* {.magic: Stmt, deprecated.} ## meta type to denote a statement (for templates)
-    ## **Deprecated** since version 0.15. Use ``typed`` instead.
+                                    ## **Deprecated** since version 0.15. Use ``typed`` instead.
+
   void* {.magic: "VoidType".}   ## meta type to denote the absence of any type
   auto* {.magic: Expr.} ## meta type for automatic type determination
   any* = distinct auto ## meta type for any supported type
@@ -413,7 +414,7 @@ type
     ## is an int type ranging from one to the maximum value
     ## of an int. This type is often useful for documentation and debugging.
 
-  RootObj* {.exportc: "TNimObject", inheritable.} =
+  RootObj* {.compilerProc, inheritable.} =
     object ## the root of Nim's object hierarchy. Objects should
            ## inherit from RootObj or one of its descendants. However,
            ## objects that have no ancestor are allowed.
@@ -442,6 +443,7 @@ type
                                         ## providing an exception message
                                         ## is bad style.
     trace: string
+    up: ref Exception # used for stacking exceptions. Not exported!
 
   SystemError* = object of Exception ## \
     ## Abstract class for exceptions that the runtime system raises.
@@ -1068,7 +1070,7 @@ proc `div`*[T: SomeUnsignedInt](x, y: T): T {.magic: "DivU", noSideEffect.}
   ## ``floor(x/y)``.
   ##
   ## .. code-block:: Nim
-  ##  (7 div 5) == 2
+  ##  (7 div 5) == 1
 
 proc `mod`*[T: SomeUnsignedInt](x, y: T): T {.magic: "ModU", noSideEffect.}
   ## computes the integer modulo operation (remainder).
@@ -1311,7 +1313,7 @@ const
   hostCPU* {.magic: "HostCPU".}: string = ""
     ## a string that describes the host CPU. Possible values:
     ## "i386", "alpha", "powerpc", "powerpc64", "powerpc64el", "sparc",
-    ## "amd64", "mips", "mipsel", "arm", "arm64".
+    ## "amd64", "mips", "mipsel", "arm", "arm64", "mips64", "mips64el".
 
   seqShallowFlag = low(int)
 
@@ -1895,7 +1897,7 @@ const
   NimMinor*: int = 17
     ## is the minor number of Nim's version.
 
-  NimPatch*: int = 0
+  NimPatch*: int = 1
     ## is the patch number of Nim's version.
 
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
@@ -1950,30 +1952,34 @@ iterator countdown*[T](a, b: T, step = 1): T {.inline.} =
       yield res
       dec(res, step)
 
-template countupImpl(incr: untyped) {.oldimmediate, dirty.} =
-  when T is IntLikeForCount:
-    var res = int(a)
-    while res <= int(b):
-      yield T(res)
-      incr
-  else:
-    var res: T = T(a)
-    while res <= b:
-      yield res
-      incr
-
 iterator countup*[S, T](a: S, b: T, step = 1): T {.inline.} =
   ## Counts from ordinal value `a` up to `b` (inclusive) with the given
   ## step count. `S`, `T` may be any ordinal type, `step` may only
   ## be positive. **Note**: This fails to count to ``high(int)`` if T = int for
   ## efficiency reasons.
-  countupImpl:
-    inc(res, step)
+  when T is IntLikeForCount:
+    var res = int(a)
+    while res <= int(b):
+      yield T(res)
+      inc(res, step)
+  else:
+    var res: T = T(a)
+    while res <= b:
+      yield res
+      inc(res, step)
 
 iterator `..`*[S, T](a: S, b: T): T {.inline.} =
   ## An alias for `countup`.
-  countupImpl:
-    inc(res)
+  when T is IntLikeForCount:
+    var res = int(a)
+    while res <= int(b):
+      yield T(res)
+      inc(res)
+  else:
+    var res: T = T(a)
+    while res <= b:
+      yield res
+      inc(res)
 
 iterator `||`*[S, T](a: S, b: T, annotation=""): T {.
   inline, magic: "OmpParFor", sideEffect.} =
@@ -2449,18 +2455,6 @@ when false:
 # ----------------- GC interface ---------------------------------------------
 
 when not defined(nimscript) and hasAlloc:
-  proc GC_disable*() {.rtl, inl, benign.}
-    ## disables the GC. If called n-times, n calls to `GC_enable` are needed to
-    ## reactivate the GC. Note that in most circumstances one should only disable
-    ## the mark and sweep phase with `GC_disableMarkAndSweep`.
-
-  proc GC_enable*() {.rtl, inl, benign.}
-    ## enables the GC again.
-
-  proc GC_fullCollect*() {.rtl, benign.}
-    ## forces a full garbage collection pass.
-    ## Ordinary code does not need to call this (and should not).
-
   type
     GC_Strategy* = enum ## the strategy the GC should use for the application
       gcThroughput,      ## optimize for throughput
@@ -2470,33 +2464,87 @@ when not defined(nimscript) and hasAlloc:
 
   {.deprecated: [TGC_Strategy: GC_Strategy].}
 
-  proc GC_setStrategy*(strategy: GC_Strategy) {.rtl, deprecated, benign.}
-    ## tells the GC the desired strategy for the application.
-    ## **Deprecated** since version 0.8.14. This has always been a nop.
+  when not defined(JS):
+    proc GC_disable*() {.rtl, inl, benign.}
+      ## disables the GC. If called n-times, n calls to `GC_enable` are needed to
+      ## reactivate the GC. Note that in most circumstances one should only disable
+      ## the mark and sweep phase with `GC_disableMarkAndSweep`.
 
-  proc GC_enableMarkAndSweep*() {.rtl, benign.}
-  proc GC_disableMarkAndSweep*() {.rtl, benign.}
-    ## the current implementation uses a reference counting garbage collector
-    ## with a seldomly run mark and sweep phase to free cycles. The mark and
-    ## sweep phase may take a long time and is not needed if the application
-    ## does not create cycles. Thus the mark and sweep phase can be deactivated
-    ## and activated separately from the rest of the GC.
+    proc GC_enable*() {.rtl, inl, benign.}
+      ## enables the GC again.
 
-  proc GC_getStatistics*(): string {.rtl, benign.}
-    ## returns an informative string about the GC's activity. This may be useful
-    ## for tweaking.
+    proc GC_fullCollect*() {.rtl, benign.}
+      ## forces a full garbage collection pass.
+      ## Ordinary code does not need to call this (and should not).
 
-  proc GC_ref*[T](x: ref T) {.magic: "GCref", benign.}
-  proc GC_ref*[T](x: seq[T]) {.magic: "GCref", benign.}
-  proc GC_ref*(x: string) {.magic: "GCref", benign.}
-    ## marks the object `x` as referenced, so that it will not be freed until
-    ## it is unmarked via `GC_unref`. If called n-times for the same object `x`,
-    ## n calls to `GC_unref` are needed to unmark `x`.
+    proc GC_setStrategy*(strategy: GC_Strategy) {.rtl, deprecated, benign.}
+      ## tells the GC the desired strategy for the application.
+      ## **Deprecated** since version 0.8.14. This has always been a nop.
 
-  proc GC_unref*[T](x: ref T) {.magic: "GCunref", benign.}
-  proc GC_unref*[T](x: seq[T]) {.magic: "GCunref", benign.}
-  proc GC_unref*(x: string) {.magic: "GCunref", benign.}
-    ## see the documentation of `GC_ref`.
+    proc GC_enableMarkAndSweep*() {.rtl, benign.}
+    proc GC_disableMarkAndSweep*() {.rtl, benign.}
+      ## the current implementation uses a reference counting garbage collector
+      ## with a seldomly run mark and sweep phase to free cycles. The mark and
+      ## sweep phase may take a long time and is not needed if the application
+      ## does not create cycles. Thus the mark and sweep phase can be deactivated
+      ## and activated separately from the rest of the GC.
+
+    proc GC_getStatistics*(): string {.rtl, benign.}
+      ## returns an informative string about the GC's activity. This may be useful
+      ## for tweaking.
+
+    proc GC_ref*[T](x: ref T) {.magic: "GCref", benign.}
+    proc GC_ref*[T](x: seq[T]) {.magic: "GCref", benign.}
+    proc GC_ref*(x: string) {.magic: "GCref", benign.}
+      ## marks the object `x` as referenced, so that it will not be freed until
+      ## it is unmarked via `GC_unref`. If called n-times for the same object `x`,
+      ## n calls to `GC_unref` are needed to unmark `x`.
+
+    proc GC_unref*[T](x: ref T) {.magic: "GCunref", benign.}
+    proc GC_unref*[T](x: seq[T]) {.magic: "GCunref", benign.}
+    proc GC_unref*(x: string) {.magic: "GCunref", benign.}
+      ## see the documentation of `GC_ref`.
+
+  else:
+    template GC_disable* =
+      {.warning: "GC_disable is a no-op in JavaScript".}
+
+    template GC_enable* =
+      {.warning: "GC_enable is a no-op in JavaScript".}
+
+    template GC_fullCollect* =
+      {.warning: "GC_fullCollect is a no-op in JavaScript".}
+
+    template GC_setStrategy* =
+      {.warning: "GC_setStrategy is a no-op in JavaScript".}
+
+    template GC_enableMarkAndSweep* =
+      {.warning: "GC_enableMarkAndSweep is a no-op in JavaScript".}
+
+    template GC_disableMarkAndSweep* =
+      {.warning: "GC_disableMarkAndSweep is a no-op in JavaScript".}
+
+    template GC_ref*[T](x: ref T) =
+      {.warning: "GC_ref is a no-op in JavaScript".}
+
+    template GC_ref*[T](x: seq[T]) =
+      {.warning: "GC_ref is a no-op in JavaScript".}
+
+    template GC_ref*(x: string) =
+      {.warning: "GC_ref is a no-op in JavaScript".}
+
+    template GC_unref*[T](x: ref T) =
+      {.warning: "GC_unref is a no-op in JavaScript".}
+
+    template GC_unref*[T](x: seq[T]) =
+      {.warning: "GC_unref is a no-op in JavaScript".}
+
+    template GC_unref*(x: string) =
+      {.warning: "GC_unref is a no-op in JavaScript".}
+
+    template GC_getStatistics*(): string =
+      {.warning: "GC_disableMarkAndSweep is a no-op in JavaScript".}
+      ""
 
 template accumulateResult*(iter: untyped) =
   ## helps to convert an iterator to a proc.
@@ -3226,21 +3274,11 @@ when not defined(JS): #and not defined(nimscript):
     proc finished*[T: proc](x: T): bool {.noSideEffect, inline.} =
       ## can be used to determine if a first class iterator has finished.
       {.emit: """
-      `result` = *((NI*) `x`.ClE_0) < 0;
+      `result` = ((NI*) `x`.ClE_0)[1] < 0;
       """.}
 
 elif defined(JS):
   # Stubs:
-  proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} = discard
-
-  proc GC_disable() = discard
-  proc GC_enable() = discard
-  proc GC_fullCollect() = discard
-  proc GC_setStrategy(strategy: GC_Strategy) = discard
-  proc GC_enableMarkAndSweep() = discard
-  proc GC_disableMarkAndSweep() = discard
-  proc GC_getStatistics(): string = return ""
-
   proc getOccupiedMem(): int = return -1
   proc getFreeMem(): int = return -1
   proc getTotalMem(): int = return -1
@@ -3479,7 +3517,7 @@ proc `*=`*[T: SomeOrdinal|uint|uint64](x: var T, y: T) {.
 
 proc `+=`*[T: float|float32|float64] (x: var T, y: T) {.
   inline, noSideEffect.} =
-  ## Increments in placee a floating point number
+  ## Increments in place a floating point number
   x = x + y
 
 proc `-=`*[T: float|float32|float64] (x: var T, y: T) {.
@@ -3742,7 +3780,8 @@ proc locals*(): RootObj {.magic: "Plugin", noSideEffect.} =
 
 when hasAlloc and not defined(nimscript) and not defined(JS):
   proc deepCopy*[T](x: var T, y: T) {.noSideEffect, magic: "DeepCopy".} =
-    ## performs a deep copy of `x`. This is also used by the code generator
+    ## performs a deep copy of `y` and copies it into `x`.
+    ## This is also used by the code generator
     ## for the implementation of ``spawn``.
     discard
 

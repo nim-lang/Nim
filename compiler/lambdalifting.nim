@@ -142,7 +142,7 @@ proc createStateField(iter: PSym): PSym =
 proc createEnvObj(owner: PSym; info: TLineInfo): PType =
   # YYY meh, just add the state field for every closure for now, it's too
   # hard to figure out if it comes from a closure iterator:
-  result = createObj(owner, info)
+  result = createObj(owner, info, final=false)
   rawAddField(result, createStateField(owner))
 
 proc getIterResult(iter: PSym): PSym =

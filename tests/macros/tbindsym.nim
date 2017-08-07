@@ -11,7 +11,7 @@ type
   TTextKind = enum
     TFoo, TBar
 
-macro test: stmt =
+macro test: untyped =
   var x = @[TFoo, TBar]
   result = newStmtList()
   for i in x:

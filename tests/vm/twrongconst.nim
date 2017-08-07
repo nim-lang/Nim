@@ -4,6 +4,6 @@ discard """
 """
 
 var x: array[100, char]
-template foo : expr = x[42]
+template foo : char = x[42]
 
 const myConst = foo

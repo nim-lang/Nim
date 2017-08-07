@@ -320,9 +320,13 @@ proc rawGetTok(c: var CfgParser, tok: var Token) =
     tok.literal = "="
   of '-':
     inc(c.bufpos)
-    if c.buf[c.bufpos] == '-': inc(c.bufpos)
-    tok.kind = tkDashDash
-    tok.literal = "--"
+    if c.buf[c.bufpos] == '-':
+      inc(c.bufpos)
+      tok.kind = tkDashDash
+      tok.literal = "--"
+    else:
+      dec(c.bufpos)
+      getSymbol(c, tok)
   of ':':
     tok.kind = tkColon
     inc(c.bufpos)
@@ -542,7 +546,6 @@ proc writeConfig*(dict: Config, filename: string) =
   let file = open(filename, fmWrite)
   defer: file.close()
   let fileStream = newFileStream(file)
-  defer: fileStream.close()
   dict.writeConfig(fileStream)
 
 proc getSectionValue*(dict: Config, section, key: string): string =

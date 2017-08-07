@@ -12,6 +12,7 @@
 # ------------------------- Name Mangling --------------------------------
 
 import sighashes
+from lowerings import createObj
 
 proc isKeyword(w: PIdent): bool =
   # Nim and C++ share some keywords
@@ -335,6 +336,7 @@ proc getTypePre(m: BModule, typ: PType; sig: SigHash): Rope =
     if result == nil: result = cacheGetType(m.typeCache, sig)
 
 proc structOrUnion(t: PType): Rope =
+  let t = t.skipTypes({tyAlias})
   (if tfUnion in t.flags: rope("union") else: rope("struct"))
 
 proc getForwardStructFormat(m: BModule): string =
@@ -470,9 +472,17 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
           let a = genRecordFieldsAux(m, k, "$1.$2" % [ae, sname], rectype,
                                      check)
           if a != nil:
-            add(unionBody, "struct {")
+            if tfPacked notin rectype.flags:
+              add(unionBody, "struct {")
+            else:
+              if hasAttribute in CC[cCompiler].props:
+                add(unionBody, "struct __attribute__((__packed__)){" )
+              else:
+                addf(unionBody, "#pragma pack(1)$nstruct{", [])
             add(unionBody, a)
             addf(unionBody, "} $1;$n", [sname])
+            if tfPacked in rectype.flags and hasAttribute notin CC[cCompiler].props:
+              addf(unionBody, "#pragma pack(pop)$n", [])
         else:
           add(unionBody, genRecordFieldsAux(m, k, ae, rectype, check))
       else: internalError("genRecordFieldsAux(record case branch)")
@@ -519,12 +529,16 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
   # declare the record:
   var hasField = false
 
-  var attribute: Rope =
-    if tfPacked in typ.flags: rope(CC[cCompiler].packedPragma)
-    else: nil
+  if tfPacked in typ.flags:
+    if hasAttribute in CC[cCompiler].props:
+      result = structOrUnion(typ) & " __attribute__((__packed__))"
+    else:
+      result = "#pragma pack(1)" & tnl & structOrUnion(typ)
+  else:
+    result = structOrUnion(typ)
 
-  result = ropecg(m, CC[cCompiler].structStmtFmt,
-    [structOrUnion(typ), name, attribute])
+  result.add " "
+  result.add name
 
   if typ.kind == tyObject:
 
@@ -532,7 +546,7 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
       if (typ.sym != nil and sfPure in typ.sym.flags) or tfFinal in typ.flags:
         appcg(m, result, " {$n", [])
       else:
-        appcg(m, result, " {$n#TNimType* m_type;$n", [name, attribute])
+        appcg(m, result, " {$n#TNimType* m_type;$n", [])
         hasField = true
     elif m.compileToCpp:
       appcg(m, result, " : public $1 {$n",
@@ -551,6 +565,8 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
   else:
     add(result, desc)
   add(result, "};" & tnl)
+  if tfPacked in typ.flags and hasAttribute notin CC[cCompiler].props:
+    result.add "#pragma pack(pop)" & tnl
 
 proc getTupleDesc(m: BModule, typ: PType, name: Rope,
                   check: var IntSet): Rope =
@@ -1078,7 +1094,8 @@ proc fakeClosureType(owner: PSym): PType =
   result = newType(tyTuple, owner)
   result.rawAddSon(newType(tyPointer, owner))
   var r = newType(tyRef, owner)
-  r.rawAddSon(newType(tyTuple, owner))
+  let obj = createObj(owner, owner.info, final=false)
+  r.rawAddSon(obj)
   result.rawAddSon(r)
 
 type

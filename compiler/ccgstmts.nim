@@ -39,13 +39,11 @@ proc genVarTuple(p: BProc, n: PNode) =
   var L = sonsLen(n)
 
   # if we have a something that's been captured, use the lowering instead:
-  var useLowering = false
   for i in countup(0, L-3):
     if n[i].kind != nkSym:
-      useLowering = true; break
-  if useLowering:
-    genStmts(p, lowerTupleUnpacking(n, p.prc))
-    return
+      genStmts(p, lowerTupleUnpacking(n, p.prc))
+      return
+
   genLineDir(p, n)
   initLocExpr(p, n.sons[L-1], tup)
   var t = tup.t.skipTypes(abstractInst)
@@ -166,11 +164,11 @@ proc genBreakState(p: BProc, n: PNode) =
   if n.sons[0].kind == nkClosure:
     # XXX this produces quite inefficient code!
     initLocExpr(p, n.sons[0].sons[1], a)
-    lineF(p, cpsStmts, "if (((NI*) $1)[0] < 0) break;$n", [rdLoc(a)])
+    lineF(p, cpsStmts, "if (((NI*) $1)[1] < 0) break;$n", [rdLoc(a)])
   else:
     initLocExpr(p, n.sons[0], a)
-    # the environment is guaranteed to contain the 'state' field at offset 0:
-    lineF(p, cpsStmts, "if ((((NI*) $1.ClE_0)[0]) < 0) break;$n", [rdLoc(a)])
+    # the environment is guaranteed to contain the 'state' field at offset 1:
+    lineF(p, cpsStmts, "if ((((NI*) $1.ClE_0)[1]) < 0) break;$n", [rdLoc(a)])
   #  lineF(p, cpsStmts, "if (($1) < 0) break;$n", [rdLoc(a)])
 
 proc genVarPrototypeAux(m: BModule, sym: PSym)
@@ -182,10 +180,11 @@ proc genGotoVar(p: BProc; value: PNode) =
     lineF(p, cpsStmts, "goto NIMSTATE_$#;$n", [value.intVal.rope])
 
 proc genSingleVar(p: BProc, a: PNode) =
-  var v = a.sons[0].sym
-  if {sfCompileTime, sfGoto} * v.flags != {}:
+  let v = a.sons[0].sym
+  if sfCompileTime in v.flags: return
+  if sfGoto in v.flags:
     # translate 'var state {.goto.} = X' into 'goto LX':
-    if sfGoto in v.flags: genGotoVar(p, a.sons[2])
+    genGotoVar(p, a.sons[2])
     return
   var targetProc = p
   if sfGlobal in v.flags:

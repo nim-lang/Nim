@@ -206,7 +206,7 @@ for any type:
 
   echo "abc".len # is the same as echo len("abc")
   echo "abc".toUpper()
-  echo {'a', 'b', 'c'}.card
+  echo({'a', 'b', 'c'}.card)
   stdout.writeLine("Hallo") # the same as writeLine(stdout, "Hallo")
 
 (Another way to look at the method call syntax is that it provides the missing
@@ -233,15 +233,15 @@ is needed:
 
   type
     Socket* = ref object of RootObj
-      host: int # cannot be accessed from the outside of the module due to missing star
+      h: int # cannot be accessed from the outside of the module due to missing star
 
   proc `host=`*(s: var Socket, value: int) {.inline.} =
     ## setter of host address
-    s.host = value
+    s.h = value
 
   proc host*(s: Socket): int {.inline.} =
     ## getter of host address
-    s.host
+    s.h
 
   var s: Socket
   new s

@@ -51,5 +51,8 @@ proc main() =
 
   var builder = newBuilder()
 
+  # Test {.async.} pragma with do notation: #5995
+  builder.client = newClient("builder") do(client: Client, msg: JsonNode) {.async.}:
+    await onMessage(builder, msg)
 
 main()

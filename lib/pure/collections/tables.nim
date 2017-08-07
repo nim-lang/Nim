@@ -590,8 +590,11 @@ proc enlarge[A, B](t: var OrderedTable[A, B]) =
   swap(t.data, n)
   while h >= 0:
     var nxt = n[h].next
-    if isFilled(n[h].hcode):
-      var j = -1 - rawGetKnownHC(t, n[h].key, n[h].hcode)
+    let eh = n[h].hcode
+    if isFilled(eh):
+      var j: Hash = eh and maxHash(t)
+      while isFilled(t.data[j].hcode):
+        j = nextTry(j, maxHash(t))
       rawInsert(t, t.data, n[h].key, n[h].val, n[h].hcode, j)
     h = nxt
 

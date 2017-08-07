@@ -142,11 +142,54 @@ proc doOperation(p: pointer, op: WalkOp) {.benign.}
 proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) {.benign.}
 # we need the prototype here for debugging purposes
 
+when defined(nimGcRefLeak):
+  const
+    MaxTraceLen = 20 # tracking the last 20 calls is enough
+
+  type
+    GcStackTrace = object
+      lines: array[0..MaxTraceLen-1, cstring]
+      files: array[0..MaxTraceLen-1, cstring]
+
+  proc captureStackTrace(f: PFrame, st: var GcStackTrace) =
+    const
+      firstCalls = 5
+    var
+      it = f
+      i = 0
+      total = 0
+    while it != nil and i <= high(st.lines)-(firstCalls-1):
+      # the (-1) is for the "..." entry
+      st.lines[i] = it.procname
+      st.files[i] = it.filename
+      inc(i)
+      inc(total)
+      it = it.prev
+    var b = it
+    while it != nil:
+      inc(total)
+      it = it.prev
+    for j in 1..total-i-(firstCalls-1):
+      if b != nil: b = b.prev
+    if total != i:
+      st.lines[i] = "..."
+      st.files[i] = "..."
+      inc(i)
+    while b != nil and i <= high(st.lines):
+      st.lines[i] = b.procname
+      st.files[i] = b.filename
+      inc(i)
+      b = b.prev
+
+  var ax: array[10_000, GcStackTrace]
+
 proc nimGCref(p: pointer) {.compilerProc.} =
   # we keep it from being collected by pretending it's not even allocated:
   when false:
     when withBitvectors: excl(gch.allocated, usrToCell(p))
     else: usrToCell(p).refcount = rcBlack
+  when defined(nimGcRefLeak):
+    captureStackTrace(framePtr, ax[gch.additionalRoots.len])
   add(gch.additionalRoots, usrToCell(p))
 
 proc nimGCunref(p: pointer) {.compilerProc.} =
@@ -157,6 +200,8 @@ proc nimGCunref(p: pointer) {.compilerProc.} =
   while i >= 0:
     if d[i] == cell:
       d[i] = d[L]
+      when defined(nimGcRefLeak):
+        ax[i] = ax[L]
       dec gch.additionalRoots.len
       break
     dec(i)
@@ -164,19 +209,17 @@ proc nimGCunref(p: pointer) {.compilerProc.} =
     when withBitvectors: incl(gch.allocated, usrToCell(p))
     else: usrToCell(p).refcount = rcWhite
 
-include gc_common
+when defined(nimGcRefLeak):
+  proc writeLeaks() =
+    for i in 0..gch.additionalRoots.len-1:
+      c_fprintf(stdout, "[Heap] NEW STACK TRACE\n")
+      for ii in 0..MaxTraceLen-1:
+        let line = ax[i].lines[ii]
+        let file = ax[i].files[ii]
+        if isNil(line): break
+        c_fprintf(stdout, "[Heap] %s(%s)\n", file, line)
 
-proc prepareDealloc(cell: PCell) =
-  if cell.typ.finalizer != nil:
-    # the finalizer could invoke something that
-    # allocates memory; this could trigger a garbage
-    # collection. Since we are already collecting we
-    # prevend recursive entering here by a lock.
-    # XXX: we should set the cell's children to nil!
-    inc(gch.recGcLock)
-    (cast[Finalizer](cell.typ.finalizer))(cellToUsr(cell))
-    dec(gch.recGcLock)
-  decTypeSize cell, cell.typ
+include gc_common
 
 proc initGC() =
   when not defined(useNimRtl):
@@ -451,11 +494,13 @@ when not defined(useNimRtl):
     else:
       inc(gch.recGcLock)
   proc GC_enable() =
-    if gch.recGcLock > 0:
-      when hasThreadSupport and hasSharedHeap:
-        atomicDec(gch.recGcLock, 1)
-      else:
-        dec(gch.recGcLock)
+    if gch.recGcLock <= 0:
+      raise newException(AssertionError,
+          "API usage error: GC_enable called but GC is already enabled")
+    when hasThreadSupport and hasSharedHeap:
+      atomicDec(gch.recGcLock, 1)
+    else:
+      dec(gch.recGcLock)
 
   proc GC_setStrategy(strategy: GC_Strategy) = discard
 
@@ -475,7 +520,6 @@ when not defined(useNimRtl):
     release(gch)
 
   proc GC_getStatistics(): string =
-    GC_disable()
     result = "[GC] total memory: " & $getTotalMem() & "\n" &
              "[GC] occupied memory: " & $getOccupiedMem() & "\n" &
              "[GC] collections: " & $gch.stat.collections & "\n" &
@@ -487,6 +531,5 @@ when not defined(useNimRtl):
         result = result & "[GC]   stack " & stack.bottom.repr & "[GC]     max stack size " & $stack.maxStackSize & "\n"
     else:
       result = result & "[GC] max stack size: " & $gch.stat.maxStackSize & "\n"
-    GC_enable()
 
 {.pop.}

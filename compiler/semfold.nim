@@ -594,8 +594,11 @@ proc foldConStrStr(m: PSym, n: PNode): PNode =
 
 proc newSymNodeTypeDesc*(s: PSym; info: TLineInfo): PNode =
   result = newSymNode(s, info)
-  result.typ = newType(tyTypeDesc, s.owner)
-  result.typ.addSonSkipIntLit(s.typ)
+  if s.typ.kind != tyTypeDesc:
+    result.typ = newType(tyTypeDesc, s.owner)
+    result.typ.addSonSkipIntLit(s.typ)
+  else:
+    result.typ = s.typ
 
 proc getConstExpr(m: PSym, n: PNode): PNode =
   result = nil
@@ -634,9 +637,11 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
         result = newSymNodeTypeDesc(s, n.info)
     of skGenericParam:
       if s.typ.kind == tyStatic:
-        if s.typ.n != nil:
+        if s.typ.n != nil and tfUnresolved notin s.typ.flags:
           result = s.typ.n
-          result.typ = s.typ.sons[0]
+          result.typ = s.typ.base
+      elif s.typ.isIntLit:
+        result = s.typ.n
       else:
         result = newSymNodeTypeDesc(s, n.info)
     else: discard
