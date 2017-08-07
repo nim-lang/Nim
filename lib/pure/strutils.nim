@@ -1569,7 +1569,8 @@ proc multiReplace*(s: string, replacements: varargs[(string, string)]): string {
   while i < s.len:
     block sIteration:
       var fastChk: set[char] = {}
-      for tup in replacements: fastChk.incl(tup[0][0])
+      for tup in replacements: fastChk.incl(tup[0][0]) # Include first character of all replcaments
+      # Assume most chars in s are not candidates for any replacement operation
       if s[i] in fastChk:
         for tup in replacements:
           if s.continuesWith(tup[0], i):
