@@ -56,16 +56,12 @@ const
 
         /** @param {Element} elem */
         function executeExpandOnElement(elem) {
-            if (!elem.classList.contains("in")) {
-                elem.classList.add("in");
-            }
+            $(elem).collapse("show");
         }
 
         /** @param {Element} elem */
         function executeCollapseOnElement(elem) {
-            while (elem.classList.contains("in")) {
-                elem.classList.remove("in");
-            }
+            $(elem).collapse("hide");
         }
 
         /**
