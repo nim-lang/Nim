@@ -12,7 +12,7 @@ inf
 -inf
 nan
 nil
-nil'''
+'''
 """
 
 echo($(@[23, 45]))
@@ -40,3 +40,28 @@ var x: seq[string]
 var y: string
 echo(x)
 echo(y)
+
+
+proc stringCompare(): void =
+  var a,b,c,d,e,f,g: string
+  a.add 'a'
+  b.add "bee"
+  c.add 123.456
+  doAssert a == "a"
+  doAssert b == "bee"
+  doAssert c == "123.456"
+
+  var h = ""
+  var i = ""
+  doAssert d == ""
+  doAssert "" == e
+  doAssert f == g
+  doAssert "" == ""
+  doAssert h == ""
+  doAssert "" == h
+  doAssert nil == i
+  doAssert i == nil
+
+  echo f
+
+stringCompare()

@@ -28,9 +28,10 @@ proc cmpStrings(a, b: NimString): int {.inline, compilerProc.} =
 
 proc eqStrings(a, b: NimString): bool {.inline, compilerProc.} =
   if a == b: return true
-  if a == nil or b == nil: return false
-  return a.len == b.len and
-    equalMem(addr(a.data), addr(b.data), a.len)
+  let lena = if a == nil: 0 else: a.len
+  let lenb = if b == nil: 0 else: b.len
+  return lena == lenb and
+    equalMem(addr(a.data), addr(b.data), lena)
 
 when declared(allocAtomic):
   template allocStr(size: untyped): untyped =
@@ -131,7 +132,10 @@ proc hashString(s: string): int {.compilerproc.} =
 
 proc addChar(s: NimString, c: char): NimString =
   # is compilerproc!
-  result = s
+  if s.isNil:
+    result = rawNewString(1)
+  else:
+    result = s
   if result.len >= result.space:
     result.reserved = resize(result.space)
     result = cast[NimString](growObj(result,
@@ -172,7 +176,9 @@ proc addChar(s: NimString, c: char): NimString =
 #   s = rawNewString(0);
 
 proc resizeString(dest: NimString, addlen: int): NimString {.compilerRtl.} =
-  if dest.len + addlen <= dest.space:
+  if dest == nil:
+    result = rawNewString(addlen)
+  elif dest.len + addlen <= dest.space:
     result = dest
   else: # slow path:
     var sp = max(resize(dest.space), dest.len + addlen)
@@ -193,7 +199,9 @@ proc appendChar(dest: NimString, c: char) {.compilerproc, inline.} =
 
 proc setLengthStr(s: NimString, newLen: int): NimString {.compilerRtl.} =
   var n = max(newLen, 0)
-  if n <= s.space:
+  if s == nil:
+    result = rawNewString(newLen)
+  elif n <= s.space:
     result = s
   else:
     result = resizeString(s, n)
