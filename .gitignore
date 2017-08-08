@@ -9,6 +9,10 @@ dnimcache/
 
 *.o
 !/icons/*.o
+*.obj
+*.ilk
+*.pdb
+*.dll
 *.exe
 *.so
 *.dylib
