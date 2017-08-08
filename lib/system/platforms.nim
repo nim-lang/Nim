@@ -35,7 +35,8 @@ type
   OsPlatform* {.pure.} = enum ## the OS this program will run on.
     none, dos, windows, os2, linux, morphos, skyos, solaris,
     irix, netbsd, freebsd, openbsd, aix, palmos, qnx, amiga,
-    atari, netware, macos, macosx, haiku, js, nimVM, standalone
+    atari, netware, macos, macosx, haiku, android, js, nimVM,
+    standalone
 
 const
   targetOS* = when defined(windows): OsPlatform.windows
@@ -58,6 +59,7 @@ const
               elif defined(macosx): OsPlatform.macosx
               elif defined(macos): OsPlatform.macos
               elif defined(haiku): OsPlatform.haiku
+              elif defined(android): OsPlatform.android
               elif defined(js): OsPlatform.js
               elif defined(nimrodVM): OsPlatform.nimVM
               elif defined(standalone): OsPlatform.standalone
