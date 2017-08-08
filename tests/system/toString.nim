@@ -35,7 +35,8 @@ type
 
 var foo1: Foo
 
-doAssert $foo1 == "(a: 0, b: nil)"
+# nil string should be an some point in time equal to the empty string
+doAssert(($foo1)[0..9] == "(a: 0, b: ")
 
 const
   data = @['a','b', '\0', 'c','d']
