@@ -2119,9 +2119,9 @@ proc formatEng*(f: BiggestFloat,
     if p != ' ':
       suffix = " " & p
       exponent = 0 # Exponent replaced by SI prefix
-  if suffix == "" and unit != nil:
+  if suffix == "" and cast[pointer](unit) != nil:
     suffix = " "
-  if unit != nil:
+  if cast[pointer](unit) != nil:
     suffix &= unit
   if exponent != 0:
     result &= "e" & $exponent
