@@ -49,6 +49,8 @@ proc stringCompare(): void =
   c.add 123.456
   doAssert a == "a"
   doAssert b == "bee"
+  b.add g
+  doAssert b == "bee"
   doAssert c == "123.456"
 
   var h = ""

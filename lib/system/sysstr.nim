@@ -189,8 +189,9 @@ proc resizeString(dest: NimString, addlen: int): NimString {.compilerRtl.} =
     # DO NOT UPDATE LEN YET: dest.len = newLen
 
 proc appendString(dest, src: NimString) {.compilerproc, inline.} =
-  copyMem(addr(dest.data[dest.len]), addr(src.data), src.len + 1)
-  inc(dest.len, src.len)
+  if src != nil:
+    copyMem(addr(dest.data[dest.len]), addr(src.data), src.len + 1)
+    inc(dest.len, src.len)
 
 proc appendChar(dest: NimString, c: char) {.compilerproc, inline.} =
   dest.data[dest.len] = c
