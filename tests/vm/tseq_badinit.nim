@@ -28,6 +28,12 @@ template test(typename, default: untyped) =
   const constval = `abc typename`()
   doAssert(constval == `abc typename`())
 
+  proc `arr typename`(): array[4, typename] =
+    for i in 0 .. <2:
+      result[i] = default
+  const constarr = `arr typename`()
+  doAssert(constarr == `arr typename`())
+
 proc even(x: int): bool = x mod 2 == 0
 proc `==`(x, y: MyInt): bool = ord(x) == ord(y)
 proc `$`(x: MyInt): string = $ord(x)
