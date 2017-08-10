@@ -1119,13 +1119,26 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let newLen = regs[rb].intVal.int
       if regs[ra].node.isNil: stackTrace(c, tos, pc, errNilAccess)
       else:
+        # FIXME: this doesn't attempt to solve incomplete
+        # support of tyPtr, tyRef in VM.
+        let typ = regs[ra].node.typ.skipTypes(abstractInst+{tyRange}-{tyTypeDesc})
+        let typeEntry = typ.sons[0].skipTypes(abstractInst+{tyRange}-{tyTypeDesc})
+        let typeKind = case typeEntry.kind
+        of tyUInt..tyUInt64: nkUIntLit
+        of tyRange, tyEnum, tyBool, tyChar, tyInt..tyInt64: nkIntLit
+        of tyFloat..tyFloat128: nkFloatLit
+        of tyString: nkStrLit
+        of tyObject: nkObjConstr
+        of tySequence: nkNilLit
+        of tyProc, tyTuple: nkPar
+        else: nkEmpty
+
         let oldLen = regs[ra].node.len
         setLen(regs[ra].node.sons, newLen)
         if oldLen < newLen:
-          # XXX This is still not entirely correct
-          # set to default value:
+          # TODO: This is still not correct for tyPtr, tyRef default value
           for i in oldLen .. <newLen:
-            regs[ra].node.sons[i] = newNodeI(nkEmpty, c.debug[pc])
+            regs[ra].node.sons[i] = newNodeI(typeKind, c.debug[pc])
     of opcReset:
       internalError(c.debug[pc], "too implement")
     of opcNarrowS:
