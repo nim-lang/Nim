@@ -688,7 +688,7 @@ variable number of arguments:
       result.add(newCall("writeLine", newIdentNode("stdout"), x))
 
   var
-    a: array[0..10, int]
+    a: array[0 .. 10, int]
     x = "some string"
   a[0] = 42
   a[1] = 45
@@ -1014,7 +1014,7 @@ Lifting Procs
       var temp: T
       type outType = type(fname(temp))
       result = newSeq[outType](x.len)
-      for i in 0..<x.len:
+      for i in 0 .. <x.len:
         result[i] = fname(x[i])
 
   liftScalarProc(sqrt)   # make sqrt() work for sequences
@@ -1038,7 +1038,7 @@ Identifier Mangling
 
   macro str2Call(s1, s2): typed =
     result = newNimNode(nnkStmtList)
-    for i in 0..1:
+    for i in 0 .. 1:
       # combines s1, s2 and an integer into an proc identifier
       # that is called in a statement list
       result.add(newCall(!($s1 & $s2 & $i)))

@@ -307,19 +307,19 @@ For integers or other ordinal types value ranges are also possible:
   echo "A number please: "
   let n = parseInt(readLine(stdin))
   case n
-  of 0..2, 4..7: echo "The number is in the set: {0, 1, 2, 4, 5, 6, 7}"
+  of 0 .. 2, 4 .. 7: echo "The number is in the set: {0, 1, 2, 4, 5, 6, 7}"
   of 3, 8: echo "The number is 3 or 8"
 
 However, the above code does not compile: the reason is that you have to cover
 every value that ``n`` may contain, but the code only handles the values
-``0..8``. Since it is not very practical to list every other possible integer
+``0 .. 8``. Since it is not very practical to list every other possible integer
 (though it is possible thanks to the range notation), we fix this by telling
 the compiler that for every other value nothing should be done:
 
 .. code-block:: nim
   ...
   case n
-  of 0..2, 4..7: echo "The number is in the set: {0, 1, 2, 4, 5, 6, 7}"
+  of 0 .. 2, 4 .. 7: echo "The number is in the set: {0, 1, 2, 4, 5, 6, 7}"
   of 3, 8: echo "The number is 3 or 8"
   else: discard
 
@@ -389,20 +389,20 @@ Since counting up occurs so often in programs, Nim also has a `..
 <system.html#...i,S,T>`_ iterator that does the same:
 
 .. code-block:: nim
-  for i in 1..10:
+  for i in 1 .. 10:
     ...
 
-Zero-indexed counting have two shortcuts ``..<`` and ``..^`` to simplify counting to one less than the higher index:
+Zero-indexed counting have two shortcuts ``.. <`` and ``.. ^`` to simplify counting to one less than the higher index:
 
 .. code-block:: nim
-  for i in 0..<10:
-    ...  # 0..9
+  for i in 0 .. <10:
+    ...  # 0 .. 9
 
 or
 
 .. code-block:: nim
   var s = "some string"
-  for i in 0..<s.len:
+  for i in 0 .. <s.len:
     ...
 
 Other useful iterators for collections (like arrays and sequences) are
@@ -550,7 +550,7 @@ an expression is allowed:
 
 .. code-block:: nim
   # computes fac(4) at compile time:
-  const fac4 = (var x = 1; for i in 1..4: x *= i; x)
+  const fac4 = (var x = 1; for i in 1 .. 4: x *= i; x)
 
 
 Procedures
@@ -1127,7 +1127,7 @@ A subrange type is a range of values from an integer or enumeration type
 
 .. code-block:: nim
   type
-    MySubrange = range[0..5]
+    MySubrange = range[0 .. 5]
 
 
 ``MySubrange`` is a subrange of ``int`` which can only hold the values 0
@@ -1136,7 +1136,7 @@ compile-time or runtime error. Assignments from the base type to one of its
 subrange types (and vice versa) are allowed.
 
 The ``system`` module defines the important `Natural <system.html#Natural>`_
-type as ``range[0..high(int)]`` (`high <system.html#high>`_ returns the
+type as ``range[0 .. high(int)]`` (`high <system.html#high>`_ returns the
 maximal value). Other programming languages may suggest the use of unsigned
 integers for natural numbers. This is often **unwise**: you don't want unsigned
 arithmetic (which wraps around) just because the numbers cannot be negative.
@@ -1158,11 +1158,11 @@ Arrays can be constructed using ``[]``:
 .. code-block:: nim
 
   type
-    IntArray = array[0..5, int] # an array that is indexed with 0..5
+    IntArray = array[0 .. 5, int] # an array that is indexed with 0 .. 5
   var
     x: IntArray
   x = [1, 2, 3, 4, 5, 6]
-  for i in low(x)..high(x):
+  for i in low(x) .. high(x):
     echo x[i]
 
 The notation ``x[i]`` is used to access the i-th element of ``x``.
@@ -1183,7 +1183,7 @@ array `a` and `high(a) <system.html#high>`_ the highest valid index.
       north, east, south, west
     BlinkLights = enum
       off, on, slowBlink, mediumBlink, fastBlink
-    LevelSetting = array[north..west, BlinkLights]
+    LevelSetting = array[north .. west, BlinkLights]
   var
     level: LevelSetting
   level[north] = on
@@ -1204,7 +1204,7 @@ subdivided in height levels accessed through their integer index:
 
 .. code-block:: nim
   type
-    LightTower = array[1..10, LevelSetting]
+    LightTower = array[1 .. 10, LevelSetting]
   var
     tower: LightTower
   tower[1][north] = slowBlink
@@ -1223,21 +1223,21 @@ type and instead write it embedded directly as the type of the first dimension:
 
 .. code-block:: nim
   type
-    LightTower = array[1..10, array[north..west, BlinkLights]]
+    LightTower = array[1 .. 10, array[north .. west, BlinkLights]]
 
 It is quite common to have arrays start at zero, so there's a shortcut syntax
 to specify a range from zero to the specified index minus one:
 
 .. code-block:: nim
   type
-    IntArray = array[0..5, int] # an array that is indexed with 0..5
-    QuickArray = array[6, int]  # an array that is indexed with 0..5
+    IntArray = array[0 .. 5, int] # an array that is indexed with 0 .. 5
+    QuickArray = array[6, int]  # an array that is indexed with 0 .. 5
   var
     x: IntArray
     y: QuickArray
   x = [1, 2, 3, 4, 5, 6]
   y = x
-  for i in low(x)..high(x):
+  for i in low(x) .. high(x):
     echo x[i], y[i]
 
 
@@ -1380,8 +1380,8 @@ define operators which accept Slice objects to define ranges.
     a = "Nim is a progamming language"
     b = "Slices are useless."
 
-  echo a[7..12] # --> 'a prog'
-  b[11..^2] = "useful"
+  echo a[7 .. 12] # --> 'a prog'
+  b[11 .. ^2] = "useful"
   echo b # --> 'Slices are useful.'
 
 In the previous example slices are used to modify a part of a string. The
@@ -1401,15 +1401,15 @@ are accepted.
    0         11    17   using indices
   ^19        ^8    ^2   using ^ syntax
 
- where ``b[0..^1]`` is equivalent to ``b[0..b.len-1]`` and ``b[0..<b.len]``, and it can be seen that the ``^1`` provides a short-hand way of specifying the ``b.len-1``
+ where ``b[0 .. ^1]`` is equivalent to ``b[0 .. b.len-1]`` and ``b[0 .. <b.len]``, and it can be seen that the ``^1`` provides a short-hand way of specifying the ``b.len-1``
 
  In the above example, because the string ends in a period, to get the portion of the string that is "useless" and replace it with "useful"
 
- ``b[11..^2]`` is the portion "useless", and
- ``b[11..^2] = "useful"`` replaces the "useless" portion with "useful",
+ ``b[11 .. ^2]`` is the portion "useless", and
+ ``b[11 .. ^2] = "useful"`` replaces the "useless" portion with "useful",
  giving the result "Slices are useful."
 
- Note: alternate ways of writing this are ``b[^8..^2] = "useful"`` or as ``b[11..b.len-2] = "useful"`` or as ``b[11..<b.len-1] = "useful"`` or as ....
+ Note: alternate ways of writing this are ``b[^8 .. ^2] = "useful"`` or as ``b[11 .. b.len-2] = "useful"`` or as ``b[11 .. <b.len-1] = "useful"`` or as ....
 
 Tuples
 ------
@@ -1579,7 +1579,7 @@ with an asterisk (``*``) are exported:
     # allocate a new sequence:
     newSeq(result, len(a))
     # multiply two int sequences:
-    for i in 0..len(a)-1: result[i] = a[i] * b[i]
+    for i in 0 .. len(a)-1: result[i] = a[i] * b[i]
 
   when isMainModule:
     # test the new ``*`` operator for sequences:
