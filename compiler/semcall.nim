@@ -342,12 +342,25 @@ proc semResolvedCall(c: PContext, n: PNode, x: TCandidate): PNode =
   markUsed(n.sons[0].info, finalCallee, c.graph.usageSym)
   styleCheckUse(n.sons[0].info, finalCallee)
   assert finalCallee.ast != nil
+
   if x.hasFauxMatch:
     result = x.call
     result.sons[0] = newSymNode(finalCallee, result.sons[0].info)
     if containsGenericType(result.typ) or x.fauxMatch == tyUnknown:
       result.typ = newTypeS(x.fauxMatch, c)
     return
+  elif x.calleeSym != nil and sfBorrow in x.calleeSym.flags:
+    result = x.call
+    result.sons[0] = newSymNode(x.calleeSym, result.sons[0].info)
+    result.typ = x.callee.sons[0]
+    if skipTypesOrNil(result.typ, ConcreteTypes) != nil:
+      result.typ = PType(idTableGet(x.bindings, x.callee.sons[0]))
+      if result.typ == nil: 
+        result.typ = generateTypeInstance(c, x.bindings, n, x.callee.sons[0])
+      if result.typ == nil:
+        localError(n.info, errCannotInstantiateX, x.callee.sons[0].typeToString)
+    return
+
   let gp = finalCallee.ast.sons[genericParamsPos]
   if gp.kind != nkEmpty:
     if x.calleeSym.kind notin {skMacro, skTemplate}:
@@ -482,6 +495,16 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   else:
     result = explicitGenericInstError(n)
 
+proc borrowSkipTypes(t: PType): PType = 
+  const typesToSkip = {tyVar, tyGenericInst, tyOrdinal, tyAlias, tyInferred,
+      tyStatic, tyGenericParam, tyGenericBody, tyCompositeTypeClass} 
+  result = t 
+  while result != nil:
+    case result.kind:
+      of tyGenericInvocation: result = result.sons[0]
+      of typesToSkip: result = result.lastSon
+      else: break
+
 proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
   # Searchs for the fn in the symbol table. If the parameter lists are suitable
   # for borrowing the sym in the symbol table is returned, else nil.
@@ -492,7 +515,7 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
   call.add(newIdentNode(fn.name, fn.info))
   for i in 1.. <fn.typ.n.len:
     let param = fn.typ.n.sons[i]
-    let t = skipTypes(param.typ, abstractVar-{tyTypeDesc, tyDistinct})
+    let t = borrowSkipTypes(param.typ)
     if t.kind == tyDistinct or param.typ.kind == tyDistinct: hasDistinct = true
     var x: PType
     if param.typ.kind == tyVar:
@@ -505,7 +528,8 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
     var resolved = semOverloadedCall(c, call, call, {fn.kind}, {})
     if resolved != nil:
       result = resolved.sons[0].sym
-      if not compareTypes(result.typ.sons[0], fn.typ.sons[0], dcEqIgnoreDistinct):
+      let retType = borrowSkipTypes(fn.typ.sons[0])
+      if not compareTypes(result.typ.sons[0], retType, dcEqIgnoreDistinct):
         result = nil
       elif result.magic in {mArrPut, mArrGet}:
         # cannot borrow these magics for now
