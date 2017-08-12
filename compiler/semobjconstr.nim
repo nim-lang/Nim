@@ -255,7 +255,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if t.kind != tyObject:
     localError(n.info, errGenerated, "object constructor needs an object type")
     return
-  
+
   # Check if the object is fully initialized by recursively testing each
   # field (if this is a case object, initialized fields in two different
   # branches will be reported as an error):
@@ -279,7 +279,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   for i in 1.. <result.len:
     let field = result[i]
     if nfSem notin field.flags:
-      if not declared(field.sons):
+      if field.kind != nkExprColonExpr:
         localError(n.info, "incorrect object construction syntax")
       let id = considerQuotedIdent(field[0])
       # This node was not processed. There are two possible reasons:
