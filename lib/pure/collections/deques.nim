@@ -33,7 +33,7 @@
 ##     assert deq.peekLast == a
 ##
 ##     while deq.len > 0:  # checking if the deque is empty
-##       echo deq.removeLast()
+##       echo deq.popLast()
 ##
 ## Note: For inter thread communication use
 ## a `Channel <channels.html>`_ instead.

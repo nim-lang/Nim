@@ -656,16 +656,17 @@ proc genNarrow(c: PCtx; n: PNode; dest: TDest) =
   let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
   # uint is uint64 in the VM, we we only need to mask the result for
   # other unsigned types:
-  if t.kind in {tyUInt8..tyUInt32}:
+  if t.kind in {tyUInt8..tyUInt32} or (t.kind == tyUInt and t.size < 8):
     c.gABC(n, opcNarrowU, dest, TRegister(t.size*8))
-  elif t.kind in {tyInt8..tyInt32}:
+  elif t.kind in {tyInt8..tyInt32} or (t.kind == tyInt and t.size < 8):
     c.gABC(n, opcNarrowS, dest, TRegister(t.size*8))
 
 proc genNarrowU(c: PCtx; n: PNode; dest: TDest) =
   let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
   # uint is uint64 in the VM, we we only need to mask the result for
   # other unsigned types:
-  if t.kind in {tyUInt8..tyUInt32, tyInt8..tyInt32}:
+  if t.kind in {tyUInt8..tyUInt32, tyInt8..tyInt32} or
+    (t.kind in {tyUInt, tyInt} and t.size < 8):
     c.gABC(n, opcNarrowU, dest, TRegister(t.size*8))
 
 proc genBinaryABCnarrow(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =

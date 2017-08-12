@@ -42,6 +42,8 @@ from times import epochTime
 
 when defined(ssl):
   import openssl
+else:
+  type SSLAcceptResult = int
 
 when defined(Windows):
   import winlean
@@ -492,7 +494,7 @@ proc getSockName*(socket: Socket): Port =
     raiseOSError(osLastError())
   result = Port(sockets.ntohs(name.sin_port))
 
-template acceptAddrPlain(noClientRet, successRet: int,
+template acceptAddrPlain(noClientRet, successRet: SSLAcceptResult or int,
                          sslImplementation: untyped): untyped =
   assert(client != nil)
   var sockAddress: Sockaddr_in
@@ -549,7 +551,7 @@ proc acceptAddr*(server: Socket, client: var Socket, address: var string) {.
   ##
   ## **Warning:** When using SSL with non-blocking sockets, it is best to use
   ## the acceptAddrSSL procedure as this procedure will most likely block.
-  acceptAddrPlain(-1, -1):
+  acceptAddrPlain(SSLAcceptResult(-1), SSLAcceptResult(-1)):
     when defined(ssl):
       if server.isSSL:
         # We must wrap the client sock in a ssl context.
