@@ -35,7 +35,7 @@ proc computeDeps(n: PNode, declares, uses: var IntSet; topLevel: bool) =
   of procDefs:
     decl(n[0])
     for i in 1..bodyPos: deps(n[i])
-  of nkLetSection, nkVarSection:
+  of nkLetSection, nkVarSection, nkUsingStmt:
     for a in n:
       if a.kind in {nkIdentDefs, nkVarTuple}:
         for j in countup(0, a.len-3): decl(a[j])
@@ -99,4 +99,4 @@ proc reorder*(n: PNode): PNode =
       result.sons[i].flags = result.sons[i].flags - {nfTempMark, nfPermMark}
       result.sons[L - i].flags = result.sons[L - i].flags - {nfTempMark, nfPermMark}
       swap(result.sons[i], result.sons[L - i])
-  echo result
+  #echo result

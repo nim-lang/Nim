@@ -259,6 +259,9 @@ proc nimGCunrefNoCycle(p: pointer) {.compilerProc, inline.} =
     sysAssert(allocInv(gch.region), "end nimGCunrefNoCycle 2")
   sysAssert(allocInv(gch.region), "end nimGCunrefNoCycle 5")
 
+proc nimGCunrefRC1(p: pointer) {.compilerProc, inline.} =
+  decRef(usrToCell(p))
+
 proc asgnRef(dest: PPointer, src: pointer) {.compilerProc, inline.} =
   # the code generator calls this proc!
   gcAssert(not isOnStack(dest), "asgnRef")
