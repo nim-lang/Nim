@@ -539,20 +539,16 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
   # it may be a proc var with a generic alias type, so we skip over them
   var t = n.sons[0].typ.skipTypes({tyGenericInst, tyAlias})
 
-  if n.sons[0].kind == nkSym:
+  if n.sons[0].kind == nkSym and n.sons[0].sym.magic in FakeVarParams:
     # BUGFIX: check for L-Value still needs to be done for the arguments!
     # note sometimes this is eval'ed twice so we check for nkHiddenAddr here:
-    var sym = n.sons[0].sym
-    if sfBorrow in sym.flags and sym.kind in routineKinds:
-      sym = sym.getBody.sym # replace the symbol with borrowed one
-    if sym.magic in FakeVarParams:
-      for i in countup(1, sonsLen(n) - 1):
-        if i < sonsLen(t) and t.sons[i] != nil and
-            skipTypes(t.sons[i], abstractInst-{tyTypeDesc}).kind == tyVar:
-          if isAssignable(c, n.sons[i]) notin {arLValue, arLocalLValue}:
-            if n.sons[i].kind != nkHiddenAddr:
-              localError(n.sons[i].info, errVarForOutParamNeeded)
-      return
+    for i in countup(1, sonsLen(n) - 1):
+      if i < sonsLen(t) and t.sons[i] != nil and
+          skipTypes(t.sons[i], abstractInst-{tyTypeDesc}).kind == tyVar:
+        if isAssignable(c, n.sons[i]) notin {arLValue, arLocalLValue}:
+          if n.sons[i].kind != nkHiddenAddr:
+            localError(n.sons[i].info, errVarForOutParamNeeded)
+    return
   for i in countup(1, sonsLen(n) - 1):
     if n.sons[i].kind == nkHiddenCallConv:
       # we need to recurse explicitly here as converters can create nested
