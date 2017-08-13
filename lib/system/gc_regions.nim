@@ -217,12 +217,15 @@ template computeRemaining(r): untyped =
 
 proc setObstackPtr*(r: var MemRegion; sp: StackPtr) =
   # free everything after 'sp':
-  if sp.current != nil:
+  if sp.current.next != nil:
     deallocAll(r, sp.current.next)
     sp.current.next = nil
-  else:
-    deallocAll(r, r.head)
-    r.head = nil
+    # better leak this memory than be sorry:
+    for i in 0..high(r.freeLists): r.freeLists[i] = nil
+    r.holes = nil
+  #else:
+  #  deallocAll(r, r.head)
+  #  r.head = nil
   r.bump = sp.bump
   r.tail = sp.current
   r.remaining = sp.remaining
@@ -233,17 +236,28 @@ proc deallocAll*() = tlRegion.deallocAll()
 
 proc deallocOsPages(r: var MemRegion) = r.deallocAll()
 
-proc joinRegion*(dest: var MemRegion; src: MemRegion) =
-  # merging is not hard.
-  if dest.head.isNil:
-    dest.head = src.head
-  else:
-    dest.tail.next = src.head
-  dest.tail = src.tail
-  dest.bump = src.bump
-  dest.remaining = src.remaining
-  dest.nextChunkSize = max(dest.nextChunkSize, src.nextChunkSize)
-  inc dest.totalSize, src.totalSize
+template withScratchRegion*(body: untyped) =
+  var scratch: MemRegion
+  let oldRegion = tlRegion
+  tlRegion = scratch
+  try:
+    body
+  finally:
+    tlRegion = oldRegion
+    deallocAll(scratch)
+
+when false:
+  proc joinRegion*(dest: var MemRegion; src: MemRegion) =
+    # merging is not hard.
+    if dest.head.isNil:
+      dest.head = src.head
+    else:
+      dest.tail.next = src.head
+    dest.tail = src.tail
+    dest.bump = src.bump
+    dest.remaining = src.remaining
+    dest.nextChunkSize = max(dest.nextChunkSize, src.nextChunkSize)
+    inc dest.totalSize, src.totalSize
 
 proc isOnHeap*(r: MemRegion; p: pointer): bool =
   # the tail chunk is the largest, so check it first. It's also special
@@ -290,7 +304,7 @@ proc newStr(typ: PNimType, len: int; init: bool): pointer {.compilerRtl.} =
   let size = roundup(addInt(len, GenericSeqSize), MemAlign)
   result = rawNewSeq(tlRegion, typ, size)
   if init: zeroMem(result, size)
-  cast[PGenericSeq](result).len = len
+  cast[PGenericSeq](result).len = 0
   cast[PGenericSeq](result).reserved = len
 
 proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
@@ -307,9 +321,9 @@ proc growObj(regionUnused: var MemRegion; old: pointer, newsize: int): pointer =
                      roundup(newsize, MemAlign))
   let elemSize = if typ.kind == tyString: 1 else: typ.base.size
   let oldsize = cast[PGenericSeq](old).len*elemSize + GenericSeqSize
-  copyMem(result, old, oldsize)
   zeroMem(result +! oldsize, newsize-oldsize)
-  #dealloc(sh.region[], old, roundup(oldsize, MemAlign))
+  copyMem(result, old, oldsize)
+  dealloc(sh.region[], old, roundup(oldsize, MemAlign))
 
 proc growObj(old: pointer, newsize: int): pointer {.rtl.} =
   result = growObj(tlRegion, old, newsize)
