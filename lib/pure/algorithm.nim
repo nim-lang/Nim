@@ -373,11 +373,12 @@ when isMainModule:
     assert arr1.reversed(i, high(arr1)) == arr1.reversed()[0 .. high(arr1) - i]
 
 
-proc rotate_internal[T](arg: var openarray[T]; first, middle, last: int): int =
+proc rotateInternal[T](arg: var openarray[T]; first, middle, last: int): int =
+  ## A port of std::rotate from c++. Ported from `this reference <http://www.cplusplus.com/reference/algorithm/rotate/>`_.
   result = first + last - middle
 
   if first == middle or middle == last:
-     return
+    return
 
   assert first < middle
   assert middle < last
@@ -411,7 +412,7 @@ proc rotate_internal[T](arg: var openarray[T]; first, middle, last: int): int =
     elif next == last:
       next = mMiddle
 
-proc rotated_internal[T](arg: openarray[T]; first, middle, last: int): seq[T] =
+proc rotatedInternal[T](arg: openarray[T]; first, middle, last: int): seq[T] =
   result = newSeq[T](arg.len)
   for i in 0 ..< first:
     result[i] = arg[i]
@@ -426,12 +427,13 @@ proc rotated_internal[T](arg: openarray[T]; first, middle, last: int): seq[T] =
 
 proc rotateLeft*[T](arg: var openarray[T]; slice: Slice[int]; dist: int): int =
   ## Performs a left rotation on a range of elements. If you want to rotate right, use a negative ``dist``.
-  ## Specifically, ``rotate`` rotates the elements at ``slice`` by ``dist`` positions..
+  ## Specifically, ``rotateLeft`` rotates the elements at ``slice`` by ``dist`` positions.
   ## The element at index ``slice.a + dist`` will be at index ``slice.a``.
   ## The element at index ``slice.b`` will be at ``slice.a + dist -1``.
   ## The element at index ``slice.a`` will be at ``slice.b + 1 - dist``.
   ## The element at index ``slice.a + dist - 1`` will be at ``slice.b``.
-  ## Elements outsize of ``slice`` well be left unchanged.
+  #
+  ## Elements outsize of ``slice`` will be left unchanged.
   ## The time complexity is linear to ``slice.b - slice.a + 1``.
   ##
   ## ``slice``
@@ -446,28 +448,28 @@ proc rotateLeft*[T](arg: var openarray[T]; slice: Slice[int]; dist: int): int =
   ##     echo @list  # @[0, 4, 5, 6, 7, 8, 1, 2, 3, 9, 10]
   let sliceLen = slice.b + 1 - slice.a
   let distLeft = ((dist mod sliceLen) + sliceLen) mod sliceLen
-  arg.rotate_internal(slice.a, slice.a+distLeft, slice.b + 1)
+  arg.rotateInternal(slice.a, slice.a+distLeft, slice.b + 1)
 
 proc rotateLeft*[T](arg: var openarray[T]; dist: int): int =
   ## default arguments for slice, so that this procedure operates on the entire
   ## ``arg``, and not just on a part of it.
   let arglen = arg.len
   let distLeft = ((dist mod arglen) + arglen) mod arglen
-  arg.rotate_internal(0, distLeft, arglen)
+  arg.rotateInternal(0, distLeft, arglen)
 
 proc rotatedLeft*[T](arg: openarray[T]; slice: Slice[int], dist: int): seq[T] =
   ## same as ``rotateLeft``, just with the difference that it does
   ## not modify the argument. It creates a new ``seq`` instead
   let sliceLen = slice.b + 1 - slice.a
   let distLeft = ((dist mod sliceLen) + sliceLen) mod sliceLen
-  arg.rotated_internal(slice.a, slice.a+distLeft, slice.b+1)
+  arg.rotatedInternal(slice.a, slice.a+distLeft, slice.b+1)
 
 proc rotatedLeft*[T](arg: openarray[T]; dist: int): seq[T] =
   ## same as ``rotateLeft``, just with the difference that it does
   ## not modify the argument. It creates a new ``seq`` instead
   let arglen = arg.len
   let distLeft = ((dist mod arglen) + arglen) mod arglen
-  arg.rotated_internal(0, distLeft, arg.len)
+  arg.rotatedInternal(0, distLeft, arg.len)
 
 when isMainModule:
   var list     = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
