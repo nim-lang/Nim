@@ -41,6 +41,11 @@ var y: string
 echo(x)
 echo(y)
 
+proc bar(arg: cstring): void =
+  doAssert arg[0] == '\0'
+
+proc baz(arg: openarray[char]): void =
+  doAssert arg.len == 0
 
 proc stringCompare(): void =
   var a,b,c,d,e,f,g: string
@@ -66,5 +71,10 @@ proc stringCompare(): void =
 
   g.setLen(10)
   doAssert g == "\0\0\0\0\0\0\0\0\0\0"
+  doAssert "" != "\0\0\0\0\0\0\0\0\0\0"
+
+  var nilstring: string
+  bar(nilstring)
+  baz(nilstring)
 
 stringCompare()
