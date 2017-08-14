@@ -94,7 +94,7 @@ type
     cmdRun                    # run the project via TCC backend
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
-    gcNone, gcBoehm, gcGo, gcStack, gcMarkAndSweep, gcRefc,
+    gcNone, gcBoehm, gcGo, gcRegions, gcMarkAndSweep, gcRefc,
     gcV2, gcGenerational
 
   IdeCmd* = enum
