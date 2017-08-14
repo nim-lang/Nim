@@ -64,6 +64,7 @@ proc stringCompare(): void =
   doAssert nil == i
   doAssert i == nil
 
-  echo f
+  g.setLen(10)
+  doAssert g == "\0\0\0\0\0\0\0\0\0\0"
 
 stringCompare()

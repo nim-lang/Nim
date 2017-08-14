@@ -47,16 +47,14 @@ else:
     cast[NimString](newObjNoInit(addr(strDesc), size))
 
 proc rawNewStringNoInit(space: int): NimString {.compilerProc.} =
-  var s = space
-  if s < 7: s = 7
+  let s = max(space,7)
   result = allocStrNoInit(sizeof(TGenericSeq) + s + 1)
   result.reserved = s
   when defined(gogc):
     result.elemSize = 1
 
 proc rawNewString(space: int): NimString {.compilerProc.} =
-  var s = space
-  if s < 7: s = 7
+  let s = max(space,7)
   result = allocStr(sizeof(TGenericSeq) + s + 1)
   result.reserved = s
   when defined(gogc):
