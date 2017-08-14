@@ -94,7 +94,7 @@ type
     cmdRun                    # run the project via TCC backend
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
-    gcNone, gcBoehm, gcGo, gcStack, gcMarkAndSweep, gcRefc,
+    gcNone, gcBoehm, gcGo, gcRegions, gcMarkAndSweep, gcRefc,
     gcV2, gcGenerational
 
   IdeCmd* = enum
@@ -185,6 +185,9 @@ var
   implicitIncludes*: seq[string] = @[] # modules that are to be implicitly included
 
 const oKeepVariableNames* = true
+
+template compilingLib*: bool =
+  gGlobalOptions * {optGenGuiApp, optGenDynLib} != {}
 
 proc mainCommandArg*: string =
   ## This is intended for commands like check or parse

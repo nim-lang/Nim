@@ -49,7 +49,7 @@ proc reprStrAux(result: var string, s: cstring; len: int) =
     of '"': add result, "\\\""
     of '\\': add result, "\\\\" # BUGFIX: forgotten
     of '\10': add result, "\\10\"\n\"" # " \n " # better readability
-    of '\128' .. '\255', '\0'..'\9', '\11'..'\31':
+    of '\127' .. '\255', '\0'..'\9', '\11'..'\31':
       add result, "\\" & reprInt(ord(c))
     else:
       result.add(c)
@@ -68,7 +68,7 @@ proc reprChar(x: char): string {.compilerRtl.} =
   case x
   of '"': add result, "\\\""
   of '\\': add result, "\\\\"
-  of '\128' .. '\255', '\0'..'\31': add result, "\\" & reprInt(ord(x))
+  of '\127' .. '\255', '\0'..'\31': add result, "\\" & reprInt(ord(x))
   else: add result, x
   add result, "\'"
 

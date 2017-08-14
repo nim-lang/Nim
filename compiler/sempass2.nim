@@ -69,7 +69,8 @@ proc `==`(a, b: TLockLevel): bool {.borrow.}
 proc max(a, b: TLockLevel): TLockLevel {.borrow.}
 
 proc isLocalVar(a: PEffects, s: PSym): bool =
-  s.kind in {skVar, skResult} and sfGlobal notin s.flags and s.owner == a.owner
+  s.kind in {skVar, skResult} and sfGlobal notin s.flags and
+    s.owner == a.owner and s.typ != nil
 
 proc getLockLevel(t: PType): TLockLevel =
   var t = t
@@ -218,12 +219,11 @@ proc listGcUnsafety(s: PSym; onlyWarning: bool; cycleCheck: var IntSet) =
       message(s.info, msgKind,
         "'$#' is not GC-safe as it calls '$#'" %
         [s.name.s, u.name.s])
-    of skParam:
+    of skParam, skForVar:
       message(s.info, msgKind,
         "'$#' is not GC-safe as it performs an indirect call via '$#'" %
         [s.name.s, u.name.s])
     else:
-      internalAssert u.kind == skUnknown
       message(u.info, msgKind,
         "'$#' is not GC-safe as it performs an indirect call here" % s.name.s)
 

@@ -12,17 +12,17 @@ import strutils
 
 proc c_sprintf(buf, frmt: cstring) {.importc: "sprintf", header: "<stdio.h>", nodecl, varargs.}
 
-proc toStrMaxPrecision*(f: BiggestFloat): string =
+proc toStrMaxPrecision*(f: BiggestFloat, literalPostfix = ""): string =
   if f != f:
     result = "NAN"
   elif f == 0.0:
-    result = "0.0"
+    result = "0.0" & literalPostfix
   elif f == 0.5 * f:
     if f > 0.0: result = "INF"
     else: result = "-INF"
   else:
     var buf: array[0..80, char]
-    c_sprintf(buf, "%#.16e", f)
+    c_sprintf(buf, "%#.16e" & literalPostfix, f)
     result = $buf
 
 proc encodeStr*(s: string, result: var string) =

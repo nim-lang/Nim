@@ -1307,12 +1307,24 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       ensureKind(rkNode)
       if c.callsite != nil: regs[ra].node = c.callsite
       else: stackTrace(c, tos, pc, errFieldXNotFound, "callsite")
-    of opcNLineInfo:
+    of opcNGetFile:
       decodeB(rkNode)
       let n = regs[rb].node
-      createStr regs[ra]
-      regs[ra].node.strVal = n.info.toFileLineCol
-      regs[ra].node.info = c.debug[pc]
+      regs[ra].node = newStrNode(nkStrLit, n.info.toFilename)
+      regs[ra].node.info = n.info
+      regs[ra].node.typ = n.typ
+    of opcNGetLine:
+      decodeB(rkNode)
+      let n = regs[rb].node
+      regs[ra].node = newIntNode(nkIntLit, n.info.line)
+      regs[ra].node.info = n.info
+      regs[ra].node.typ = n.typ
+    of opcNGetColumn:
+      decodeB(rkNode)
+      let n = regs[rb].node
+      regs[ra].node = newIntNode(nkIntLit, n.info.col)
+      regs[ra].node.info = n.info
+      regs[ra].node.typ = n.typ
     of opcEqIdent:
       decodeBC(rkInt)
       if regs[rb].node.kind == nkIdent and regs[rc].node.kind == nkIdent:
@@ -1406,6 +1418,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if dest.kind in {nkStrLit..nkTripleStrLit} and
          regs[rb].kind in {rkNode}:
         dest.strVal = regs[rb].node.strVal
+      elif dest.kind == nkCommentStmt and regs[rb].kind in {rkNode}:
+        dest.comment = regs[rb].node.strVal
       else:
         stackTrace(c, tos, pc, errFieldXNotFound, "strVal")
     of opcNNewNimNode:
@@ -1469,6 +1483,17 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       createStrKeepNode(regs[ra])
       if regs[ra].node.strVal.isNil: regs[ra].node.strVal = newStringOfCap(1000)
       storeAny(regs[ra].node.strVal, typ, regs[rb].regToNode)
+    of opcToNarrowInt:
+      decodeBC(rkInt)
+      let mask = (1'i64 shl rc) - 1 # 0xFF
+      let signbit = 1'i64 shl (rc - 1) # 0x80
+      let toggle = mask - signbit # 0x7F
+      # algorithm: -((i8 and 0xFF) xor 0x7F) + 0x7F
+      # mask off higher bits.
+      # uses two's complement to sign-extend integer.
+      # reajust integer into desired range.
+      regs[ra].intVal = -((regs[rb].intVal and mask) xor toggle) + toggle
+
     inc pc
 
 proc execute(c: PCtx, start: int): PNode =
@@ -1605,6 +1630,13 @@ proc setupMacroParam(x: PNode, typ: PType): TFullReg =
     n.flags.incl nfIsRef
     n.typ = x.typ
     result.node = n
+
+iterator genericParamsInMacroCall*(macroSym: PSym, call: PNode): (PSym, PNode) =
+  let gp = macroSym.ast[genericParamsPos]
+  for i in 0 .. <gp.len:
+    let genericParam = gp[i].sym
+    let posInCall = macroSym.typ.len + i
+    yield (genericParam, call[posInCall])
 
 var evalMacroCounter: int
 

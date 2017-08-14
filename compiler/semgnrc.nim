@@ -34,7 +34,7 @@ type
 
 type
   TSemGenericFlag = enum
-    withinBind, withinTypeDesc, withinMixin
+    withinBind, withinTypeDesc, withinMixin, withinConcept
   TSemGenericFlags = set[TSemGenericFlag]
 
 proc semGenericStmt(c: PContext, n: PNode,
@@ -200,12 +200,13 @@ proc semGenericStmt(c: PContext, n: PNode,
     checkMinSonsLen(n, 1)
     let fn = n.sons[0]
     var s = qualifiedLookUp(c, fn, {})
-    if s == nil and withinMixin notin flags and
+    if  s == nil and
+        {withinMixin, withinConcept}*flags == {} and
         fn.kind in {nkIdent, nkAccQuoted} and
         considerQuotedIdent(fn).id notin ctx.toMixin:
       errorUndeclaredIdentifier(c, n.info, fn.renderTree)
 
-    var first = 0
+    var first = ord(withinConcept in flags)
     var mixinContext = false
     if s != nil:
       incl(s.flags, sfUsed)
@@ -470,4 +471,10 @@ proc semGenericStmt(c: PContext, n: PNode): PNode =
   var ctx: GenericCtx
   ctx.toMixin = initIntset()
   result = semGenericStmt(c, n, {}, ctx)
+  semIdeForTemplateOrGeneric(c, result, ctx.cursorInBody)
+
+proc semConceptBody(c: PContext, n: PNode): PNode =
+  var ctx: GenericCtx
+  ctx.toMixin = initIntset()
+  result = semGenericStmt(c, n, {withinConcept}, ctx)
   semIdeForTemplateOrGeneric(c, result, ctx.cursorInBody)

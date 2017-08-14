@@ -113,6 +113,7 @@ type
     errGenericLambdaNotAllowed,
     errProcHasNoConcreteType,
     errCompilerDoesntSupportTarget,
+    errInOutFlagNotExtern,
     errUser,
     warnCannotOpenFile,
     warnOctalEscape, warnXIsNeverRead, warnXmightNotBeenInit,
@@ -380,6 +381,7 @@ const
                                 "of the generic paramers can be inferred from the expected signature.",
     errProcHasNoConcreteType: "'$1' doesn't have a concrete type, due to unspecified generic parameters.",
     errCompilerDoesntSupportTarget: "The current compiler \'$1\' doesn't support the requested compilation target",
+    errInOutFlagNotExtern: "The `$1` modifier can be used only with imported types",
     errUser: "$1",
     warnCannotOpenFile: "cannot open \'$1\'",
     warnOctalEscape: "octal escape sequences do not exist; leading zero is ignored",
@@ -541,7 +543,7 @@ var
 
 proc toCChar*(c: char): string =
   case c
-  of '\0'..'\x1F', '\x80'..'\xFF': result = '\\' & toOctal(c)
+  of '\0'..'\x1F', '\x7F'..'\xFF': result = '\\' & toOctal(c)
   of '\'', '\"', '\\', '?': result = '\\' & c
   else: result = $(c)
 
@@ -744,7 +746,7 @@ proc toFileLine*(info: TLineInfo): string {.inline.} =
   result = info.toFilename & ":" & $info.line
 
 proc toFileLineCol*(info: TLineInfo): string {.inline.} =
-  result = info.toFilename & "(" & $info.line & "," & $info.col & ")"
+  result = info.toFilename & "(" & $info.line & ", " & $info.col & ")"
 
 proc `$`*(info: TLineInfo): string = toFileLineCol(info)
 

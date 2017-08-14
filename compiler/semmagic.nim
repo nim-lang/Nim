@@ -89,9 +89,9 @@ proc semInstantiationInfo(c: PContext, n: PNode): PNode =
 proc toNode(t: PType, i: TLineInfo): PNode =
   result = newNodeIT(nkType, i, t)
 
-const 
+const
   # these are types that use the bracket syntax for instantiation
-  # they can be subjected to the type traits `genericHead` and 
+  # they can be subjected to the type traits `genericHead` and
   # `Uninstantiated`
   tyUserDefinedGenerics* = {tyGenericInst, tyGenericInvocation,
                             tyUserTypeClassInst}
@@ -109,27 +109,43 @@ proc uninstantiate(t: PType): PType =
     of tyCompositeTypeClass: uninstantiate t.sons[1]
     else: t
 
-proc evalTypeTrait(trait: PNode, operand: PType, context: PSym): PNode =
-  var typ = operand.skipTypes({tyTypeDesc})
+proc evalTypeTrait(traitCall: PNode, operand: PType, context: PSym): PNode =
+  const skippedTypes = {tyTypeDesc, tyAlias}
+  let trait = traitCall[0]
+  internalAssert trait.kind == nkSym
+  var operand = operand.skipTypes(skippedTypes)
+
+  template operand2: PType =
+    traitCall.sons[2].typ.skipTypes({tyTypeDesc})
+
+  template typeWithSonsResult(kind, sons): PNode =
+    newTypeWithSons(context, kind, sons).toNode(traitCall.info)
+
   case trait.sym.name.s
+  of "or", "|":
+    return typeWithSonsResult(tyOr, @[operand, operand2])
+  of "and":
+    return typeWithSonsResult(tyAnd, @[operand, operand2])
+  of "not":
+    return typeWithSonsResult(tyNot, @[operand])
   of "name":
-    result = newStrNode(nkStrLit, typ.typeToString(preferName))
+    result = newStrNode(nkStrLit, operand.typeToString(preferName))
     result.typ = newType(tyString, context)
-    result.info = trait.info
+    result.info = traitCall.info
   of "arity":
-    result = newIntNode(nkIntLit, typ.len - ord(typ.kind==tyProc))
+    result = newIntNode(nkIntLit, operand.len - ord(operand.kind==tyProc))
     result.typ = newType(tyInt, context)
-    result.info = trait.info
+    result.info = traitCall.info
   of "genericHead":
-    var res = uninstantiate(typ)
-    if res == typ and res.kind notin tyMagicGenerics:
-      localError(trait.info,
+    var res = uninstantiate(operand)
+    if res == operand and res.kind notin tyMagicGenerics:
+      localError(traitCall.info,
         "genericHead expects a generic type. The given type was " &
-        typeToString(typ))
-      return newType(tyError, context).toNode(trait.info)
-    result = res.base.toNode(trait.info)
+        typeToString(operand))
+      return newType(tyError, context).toNode(traitCall.info)
+    result = res.base.toNode(traitCall.info)
   of "stripGenericParams":
-    result = uninstantiate(typ).toNode(trait.info)
+    result = uninstantiate(operand).toNode(traitCall.info)
   else:
     internalAssert false
 
@@ -140,7 +156,7 @@ proc semTypeTraits(c: PContext, n: PNode): PNode =
   if t.sonsLen > 0:
     # This is either a type known to sem or a typedesc
     # param to a regular proc (again, known at instantiation)
-    result = evalTypeTrait(n[0], t, getCurrOwner(c))
+    result = evalTypeTrait(n, t, getCurrOwner(c))
   else:
     # a typedesc variable, pass unmodified to evals
     result = n

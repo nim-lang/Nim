@@ -90,7 +90,7 @@ proc evalTemplateArgs(n: PNode, s: PSym; fromHlo: bool): PNode =
 
   result = newNodeI(nkArgList, n.info)
   for i in 1 .. givenRegularParams:
-    result.addSon n.sons[i]
+    result.addSon n[i]
 
   # handle parameters with default values, which were
   # not supplied by the user
@@ -155,5 +155,7 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym; fromHlo=false): PNode =
     #if ctx.instLines: result.info = n.info
     for i in countup(0, safeLen(body) - 1):
       evalTemplateAux(body.sons[i], args, ctx, result)
+  result.flags.incl nfFromTemplate
   result = wrapInComesFrom(n.info, result)
   dec(evalTemplateCounter)
+

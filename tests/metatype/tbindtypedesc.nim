@@ -16,10 +16,10 @@ type
   TBar = tuple
     x, y: int
 
-template accept(e: expr) =
+template accept(e) =
   static: assert(compiles(e))
 
-template reject(e: expr) =
+template reject(e) =
   static: assert(not compiles(e))
 
 proc genericParamRepeated[T: typedesc](a: T, b: T) =

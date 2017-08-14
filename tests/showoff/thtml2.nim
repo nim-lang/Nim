@@ -4,20 +4,20 @@ discard """
 
 import strutils
 
-template html(name: expr, matter: stmt) {.immediate.} =
+template html(name, matter: untyped) =
   proc name(): string =
     result = "<html>"
     matter
     result.add("</html>")
 
-template nestedTag(tag: expr) {.immediate.} =
-  template tag(matter: stmt) {.immediate.} =
+template nestedTag(tag: untyped) =
+  template tag(matter: untyped) =
     result.add("<" & astToStr(tag) & ">")
     matter
     result.add("</" & astToStr(tag) & ">")
 
-template simpleTag(tag: expr) {.immediate.} =
-  template tag(matter: expr) {.immediate.} =
+template simpleTag(tag: untyped) =
+  template tag(matter: untyped) =
     result.add("<$1>$2</$1>" % [astToStr(tag), matter])
 
 nestedTag body

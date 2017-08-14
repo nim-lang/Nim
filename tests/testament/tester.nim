@@ -34,6 +34,7 @@ Options:
   --failing                 only show failing/ignored tests
   --pedantic                return non-zero status code if there are failures
   --targets:"c c++ js objc" run tests for specified targets (default: all)
+  --nim:path                use a particular nim executable (default: compiler/nim)
 """ % resultsFile
 
 type
@@ -211,20 +212,31 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest) =
 proc generatedFile(path, name: string, target: TTarget): string =
   let ext = targetToExt[target]
   result = path / "nimcache" /
-    (if target == targetJS: path.splitPath.tail & "_" else: "compiler_") &
+    (if target == targetJS: "" else: "compiler_") &
     name.changeFileExt(ext)
 
-proc codegenCheck(test: TTest, check: string, given: var TSpec) =
+proc needsCodegenCheck(spec: TSpec): bool =
+  result = spec.maxCodeSize > 0 or spec.ccodeCheck.len > 0
+
+proc codegenCheck(test: TTest, spec: TSpec, expectedMsg: var string,
+                  given: var TSpec) =
   try:
     let (path, name, _) = test.name.splitFile
     let genFile = generatedFile(path, name, test.target)
     let contents = readFile(genFile).string
-    if check[0] == '\\':
-      # little hack to get 'match' support:
-      if not contents.match(check.peg):
+    let check = spec.ccodeCheck
+    if check.len > 0:
+      if check[0] == '\\':
+        # little hack to get 'match' support:
+        if not contents.match(check.peg):
+          given.err = reCodegenFailure
+      elif contents.find(check.peg) < 0:
         given.err = reCodegenFailure
-    elif contents.find(check.peg) < 0:
+      expectedMsg = check
+    if spec.maxCodeSize > 0 and contents.len > spec.maxCodeSize:
       given.err = reCodegenFailure
+      given.msg = "generated code size: " & $contents.len
+      expectedMsg = "max allowed size: " & $spec.maxCodeSize
   except ValueError:
     given.err = reInvalidPeg
     echo getCurrentExceptionMsg()
@@ -247,9 +259,8 @@ proc compilerOutputTests(test: TTest, given: var TSpec, expected: TSpec;
   var expectedmsg: string = ""
   var givenmsg: string = ""
   if given.err == reSuccess:
-    if expected.ccodeCheck.len > 0:
-      codegenCheck(test, expected.ccodeCheck, given)
-      expectedmsg = expected.ccodeCheck
+    if expected.needsCodegenCheck:
+      codegenCheck(test, expected, expectedmsg, given)
       givenmsg = given.msg
     if expected.nimout.len > 0:
       expectedmsg = expected.nimout
@@ -367,7 +378,7 @@ proc testNoSpec(r: var TResults, test: TTest) =
   # does not extract the spec because the file is not supposed to have any
   #let tname = test.name.addFileExt(".nim")
   inc(r.total)
-  let given = callCompiler(cmdTemplate, test.name, test.options, test.target)
+  let given = callCompiler(cmdTemplate(), test.name, test.options, test.target)
   r.addResult(test, "", given.msg, given.err)
   if given.err == reSuccess: inc(r.passed)
 
@@ -376,7 +387,7 @@ proc testC(r: var TResults, test: TTest) =
   let tname = test.name.addFileExt(".c")
   inc(r.total)
   styledEcho "Processing ", fgCyan, extractFilename(tname)
-  var given = callCCompiler(cmdTemplate, test.name & ".c", test.options, test.target)
+  var given = callCCompiler(cmdTemplate(), test.name & ".c", test.options, test.target)
   if given.err != reSuccess:
     r.addResult(test, "", given.msg, given.err)
   elif test.action == actionRun:
@@ -424,6 +435,7 @@ proc main() =
     of "failing": optFailing = true
     of "pedantic": optPedantic = true
     of "targets": targets = parseTargets(p.val.string)
+    of "nim": compilerPrefix = p.val.string
     else: quit Usage
     p.next()
   if p.kind != cmdArgument: quit Usage

@@ -409,20 +409,20 @@ proc preferSpawn*(): bool =
   ## it is not necessary to call this directly; use 'spawnX' instead.
   result = gSomeReady.counter > 0
 
-proc spawn*(call: expr): expr {.magic: "Spawn".}
+proc spawn*(call: typed): void {.magic: "Spawn".}
   ## always spawns a new task, so that the 'call' is never executed on
   ## the calling thread. 'call' has to be proc call 'p(...)' where 'p'
   ## is gcsafe and has a return type that is either 'void' or compatible
   ## with ``FlowVar[T]``.
 
-proc pinnedSpawn*(id: ThreadId; call: expr): expr {.magic: "Spawn".}
+proc pinnedSpawn*(id: ThreadId; call: typed): void {.magic: "Spawn".}
   ## always spawns a new task on the worker thread with ``id``, so that
   ## the 'call' is **always** executed on
   ## the thread. 'call' has to be proc call 'p(...)' where 'p'
   ## is gcsafe and has a return type that is either 'void' or compatible
   ## with ``FlowVar[T]``.
 
-template spawnX*(call: expr): expr =
+template spawnX*(call): void =
   ## spawns a new task if a CPU core is ready, otherwise executes the
   ## call in the calling thread. Usually it is advised to
   ## use 'spawn' in order to not block the producer for an unknown
@@ -431,7 +431,7 @@ template spawnX*(call: expr): expr =
   ## with ``FlowVar[T]``.
   (if preferSpawn(): spawn call else: call)
 
-proc parallel*(body: stmt) {.magic: "Parallel".}
+proc parallel*(body: untyped) {.magic: "Parallel".}
   ## a parallel section can be used to execute a block in parallel. ``body``
   ## has to be in a DSL that is a particular subset of the language. Please
   ## refer to the manual for further information.
@@ -530,6 +530,7 @@ proc nimSpawn4(fn: WorkerProc; data: pointer; id: ThreadId) {.compilerProc.} =
 proc sync*() =
   ## a simple barrier to wait for all spawn'ed tasks. If you need more elaborate
   ## waiting, you have to use an explicit barrier.
+  var toRelease = 0
   while true:
     var allReady = true
     for i in 0 .. <currentPoolSize:
@@ -537,5 +538,9 @@ proc sync*() =
       allReady = allReady and workersData[i].ready
     if allReady: break
     await(gSomeReady)
+    inc toRelease
+
+  for i in 0 ..< toRelease:
+    signal(gSomeReady)
 
 setup()

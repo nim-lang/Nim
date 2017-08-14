@@ -25,7 +25,7 @@ type
     counter, dataLen: int
     lock: Lock
 
-template maxHash(t): expr = t.dataLen-1
+template maxHash(t): untyped = t.dataLen-1
 
 include tableimpl
 

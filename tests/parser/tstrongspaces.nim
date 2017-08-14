@@ -40,9 +40,9 @@ echo $foo
 
 echo (1, 2, 2)
 
-template `&`(a, b: int): expr = a and b
-template `|`(a, b: int): expr = a - b
-template `++`(a, b: int): expr = a + b == 8009
+template `&`(a, b: int): int = a and b
+template `|`(a, b: int): int = a - b
+template `++`(a, b: int): bool = a + b == 8009
 
 when true:
   let b = 66
@@ -62,7 +62,7 @@ when true:
   echo booA == booB
 
 
-template `|`(a, b): expr = (if a.len > 0: a else: b)
+template `|`(a, b): untyped = (if a.len > 0: a else: b)
 
 const
   tester = "tester"
@@ -74,7 +74,7 @@ echo "all"|tester & " " & args
 
 # Test arrow like operators. See also tests/macros/tclosuremacro.nim
 proc `+->`(a, b: int): int = a + b*4
-template `===>`(a, b: int): expr = a - b shr 1
+template `===>`(a, b: int): int = a - b shr 1
 
 echo 3 +-> 2 + 2 and 4
 var arrowed = 3+->2 + 2 and 4  # arrowed = 4

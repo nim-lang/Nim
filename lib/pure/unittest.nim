@@ -13,7 +13,24 @@
 ##
 ## The test status and name is printed after any output or traceback.
 ##
-## Example:
+## Tests can be nested, however failure of a nested test will not mark the
+## parent test as failed. Setup and teardown are inherited. Setup can be
+## overridden locally.
+##
+## Compiled test files return the number of failed test as exit code, while
+## ``nim c -r <testfile.nim>`` exits with 0 or 1
+##
+## Running a single test
+## ---------------------
+##
+## Simply specify the test name as a command line argument.
+##
+## .. code::
+##
+##   nim c -r test "my super awesome test name"
+##
+## Example
+## -------
 ##
 ## .. code:: nim
 ##
@@ -42,16 +59,9 @@
 ##         discard v[4]
 ##
 ##     echo "suite teardown: run once after the tests"
-##
-##
-## Tests can be nested, however failure of a nested test will not mark the
-## parent test as failed. Setup and teardown are inherited. Setup can be
-## overridden locally.
-## Compiled test files return the number of failed test as exit code, while
-## nim c -r <testfile.nim> exits with 0 or 1
 
 import
-  macros, strutils, streams, times
+  macros, strutils, streams, times, sets
 
 when declared(stdout):
   import os
@@ -111,6 +121,7 @@ var
 
   checkpoints {.threadvar.}: seq[string]
   formatters {.threadvar.}: seq[OutputFormatter]
+  testsToRun {.threadvar.}: HashSet[string]
 
 when declared(stdout):
   abortOnError = existsEnv("NIMTEST_ABORT_ON_ERROR")
@@ -290,11 +301,21 @@ method suiteEnded*(formatter: JUnitOutputFormatter) =
   formatter.stream.writeLine("\t</testsuite>")
 
 proc shouldRun(testName: string): bool =
-  result = true
+  if testsToRun.len == 0:
+    return true
 
-proc ensureFormattersInitialized() =
+  result = testName in testsToRun
+
+proc ensureInitialized() =
   if formatters == nil:
     formatters = @[OutputFormatter(defaultConsoleFormatter())]
+
+  if not testsToRun.isValid:
+    testsToRun.init()
+    when declared(os):
+      # Read tests to run from the command line.
+      for i in 1 .. paramCount():
+        testsToRun.incl(paramStr(i))
 
 # These two procs are added as workarounds for
 # https://github.com/nim-lang/Nim/issues/5549
@@ -335,7 +356,7 @@ template suite*(name, body) {.dirty.} =
   ##  [Suite] test suite for addition
   ##    [OK] 2 + 2 = 4
   ##    [OK] (2 + -2) != 4
-  bind formatters, ensureFormattersInitialized, suiteEnded
+  bind formatters, ensureInitialized, suiteEnded
 
   block:
     template setup(setupBody: untyped) {.dirty, used.} =
@@ -348,7 +369,7 @@ template suite*(name, body) {.dirty.} =
 
     let testSuiteName {.used.} = name
 
-    ensureFormattersInitialized()
+    ensureInitialized()
     try:
       for formatter in formatters:
         formatter.suiteStarted(name)
@@ -370,9 +391,9 @@ template test*(name, body) {.dirty.} =
   ## .. code-block::
   ##
   ##  [OK] roses are red
-  bind shouldRun, checkpoints, formatters, ensureFormattersInitialized, testEnded
+  bind shouldRun, checkpoints, formatters, ensureInitialized, testEnded
 
-  ensureFormattersInitialized()
+  ensureInitialized()
 
   if shouldRun(name):
     checkpoints = @[]
@@ -433,14 +454,14 @@ template fail* =
   ##  fail()
   ##
   ## outputs "Checkpoint A" before quitting.
-  bind ensureFormattersInitialized
+  bind ensureInitialized
 
   when declared(testStatusIMPL):
     testStatusIMPL = FAILED
   else:
     programResult += 1
 
-  ensureFormattersInitialized()
+  ensureInitialized()
 
     # var stackTrace: string = nil
   for formatter in formatters:

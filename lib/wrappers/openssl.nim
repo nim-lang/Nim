@@ -26,7 +26,7 @@ when useWinVersion:
   from winlean import SocketHandle
 else:
   const
-    versions = "(|.10|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8)"
+    versions = "(|.38|.39|.41|.43|.10|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8)"
   when defined(macosx):
     const
       DLLSSLName = "libssl" & versions & ".dylib"
@@ -588,13 +588,13 @@ proc md5*(d: ptr cuchar; n: csize; md: ptr cuchar): ptr cuchar{.importc: "MD5".}
 proc md5_Transform*(c: var MD5_CTX; b: ptr cuchar){.importc: "MD5_Transform".}
 {.pop.}
 
-from strutils import toHex,toLower
+from strutils import toHex, toLowerAscii
 
 proc hexStr (buf:cstring): string =
   # turn md5s output into a nice hex str
   result = newStringOfCap(32)
   for i in 0 .. <16:
-    result.add toHex(buf[i].ord, 2).toLower
+    result.add toHex(buf[i].ord, 2).toLowerAscii
 
 proc md5_File* (file: string): string {.raises: [IOError,Exception].} =
   ## Generate MD5 hash for a file. Result is a 32 character

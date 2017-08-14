@@ -9,7 +9,6 @@
 
 # Low level allocator for Nim. Has been designed to support the GC.
 # TODO:
-# - eliminate "used" field
 # - make searching for block O(1)
 {.push profiler:off.}
 

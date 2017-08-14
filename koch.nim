@@ -152,6 +152,10 @@ proc tryExec(cmd: string): bool =
 proc safeRemove(filename: string) =
   if existsFile(filename): removeFile(filename)
 
+proc overwriteFile(source, dest: string) =
+  safeRemove(dest)
+  moveFile(source, dest)
+
 proc copyExe(source, dest: string) =
   safeRemove(dest)
   copyFile(dest=dest, source=source)
@@ -388,48 +392,25 @@ proc clean(args: string) =
 
 # -------------- builds a release ---------------------------------------------
 
-proc patchConfig(lookFor, replaceBy: string) =
-  const
-    cfgFile = "config/nim.cfg"
-  try:
-    let cfg = readFile(cfgFile)
-    let newCfg = cfg.replace(lookFor, replaceBy)
-    if newCfg == cfg:
-      echo "Could not patch 'config/nim.cfg' [Error]"
-      echo "Reason: patch substring not found:"
-      echo lookFor
-    else:
-      writeFile(cfgFile, newCfg)
-  except IOError:
-    quit "Could not access 'config/nim.cfg' [Error]"
-
 proc winReleaseArch(arch: string) =
   doAssert arch in ["32", "64"]
   let cpu = if arch == "32": "i386" else: "amd64"
 
   template withMingw(path, body) =
-    const orig = """#gcc.path = r"$nim\dist\mingw\bin""""
-    let replacePattern = """gcc.path = r"..\mingw$1\bin" # winrelease""" % arch
-    patchConfig(orig, replacePattern)
+    let prevPath = getEnv("PATH")
+    putEnv("PATH", path & PathSep & prevPath)
     try:
       body
     finally:
-      patchConfig(replacePattern, orig)
+      putEnv("PATH", prevPath)
 
   withMingw r"..\mingw" & arch & r"\bin":
     # Rebuilding koch is necessary because it uses its pointer size to
     # determine which mingw link to put in the NSIS installer.
     nimexec "c --out:koch_temp --cpu:$# koch" % cpu
     exec "koch_temp boot -d:release --cpu:$#" % cpu
-    exec "koch_temp nsis -d:release"
     exec "koch_temp zip -d:release"
-
-    when false:
-      # we now disable the NSIS installer as it cannot download from https
-      # and is broken in so many different ways it's not funny anymore:
-      moveFile r"build\nim_$#.exe" % VersionAsString,
-               r"web\upload\download\nim-$#_x$#.exe" % [VersionAsString, arch]
-    moveFile r"build\nim-$#.zip" % VersionAsString,
+    overwriteFile r"build\nim-$#.zip" % VersionAsString,
              r"web\upload\download\nim-$#_x$#.zip" % [VersionAsString, arch]
 
 proc winRelease() =
@@ -438,8 +419,8 @@ proc winRelease() =
     web(gaCode)
     withDir "web/upload/" & VersionAsString:
       exec "7z a -tzip docs-$#.zip *.html" % VersionAsString
-    moveFile "web/upload/$1/docs-$1.zip" % VersionAsString,
-             "web/upload/download/docs-$1.zip" % VersionAsString
+    overwriteFile "web/upload/$1/docs-$1.zip" % VersionAsString,
+                  "web/upload/download/docs-$1.zip" % VersionAsString
   when true:
     csource("-d:release")
   when true:
@@ -488,6 +469,17 @@ proc temp(args: string) =
   exec("nim c " & bootArgs & " compiler" / "nim", 125)
   copyExe(output, finalDest)
   if programArgs.len > 0: exec(finalDest & " " & programArgs)
+
+proc xtemp(cmd: string) =
+  let d = getAppDir()
+  copyExe(d / "bin" / "nim".exe, d / "bin" / "nim_backup".exe)
+  try:
+    withDir(d):
+      temp"-d:debug"
+    copyExe(d / "bin" / "nim_temp".exe, d / "bin" / "nim".exe)
+    exec(cmd)
+  finally:
+    copyExe(d / "bin" / "nim_backup".exe, d / "bin" / "nim".exe)
 
 proc pushCsources() =
   if not dirExists("../csources/.git"):
@@ -564,6 +556,7 @@ of cmdArgument:
   of "testinstall": testUnixInstall()
   of "test", "tests": tests(op.cmdLineRest)
   of "temp": temp(op.cmdLineRest)
+  of "xtemp": xtemp(op.cmdLineRest)
   of "winrelease": winRelease()
   of "wintools": bundleWinTools()
   of "nimble": buildNimble(existsDir(".git"))

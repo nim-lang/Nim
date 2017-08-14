@@ -41,7 +41,10 @@ proc isDefined*(symbol: string): bool =
       result = targetOS in {osLinux, osMorphos, osSkyos, osIrix, osPalmos,
                             osQnx, osAtari, osAix,
                             osHaiku, osVxWorks, osSolaris, osNetbsd,
-                            osFreebsd, osOpenbsd, osDragonfly, osMacosx}
+                            osFreebsd, osOpenbsd, osDragonfly, osMacosx,
+                            osAndroid}
+    of "linux":
+      result = targetOS in {osLinux, osAndroid}
     of "bsd":
       result = targetOS in {osNetbsd, osFreebsd, osOpenbsd, osDragonfly}
     of "emulatedthreadvars":
@@ -103,3 +106,4 @@ proc initDefines*() =
   defineSymbol("nimNewShiftOps")
   defineSymbol("nimDistros")
   defineSymbol("nimHasCppDefine")
+  defineSymbol("nimGenericInOutFlags")

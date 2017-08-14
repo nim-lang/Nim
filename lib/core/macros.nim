@@ -94,8 +94,9 @@ type
     ntyVarargs,
     ntyUnused,
     ntyError,
-    ntyBuiltinTypeClass, ntyConcept, ntyConceptInst, ntyComposite,
-    ntyAnd, ntyOr, ntyNot
+    ntyBuiltinTypeClass, ntyUserTypeClass, ntyUserTypeClassInst,
+    ntyCompositeTypeClass, ntyInferred, ntyAnd, ntyOr, ntyNot,
+    ntyAnything, ntyStatic, ntyFromExpr, ntyFieldAccessor, ntyVoid
 
   TNimTypeKinds* {.deprecated.} = set[NimTypeKind]
   NimSymKind* = enum
@@ -225,7 +226,13 @@ proc `ident=`*(n: NimNode, val: NimIdent) {.magic: "NSetIdent", noSideEffect.}
 proc `strVal=`*(n: NimNode, val: string) {.magic: "NSetStrVal", noSideEffect.}
 
 proc newNimNode*(kind: NimNodeKind,
-                 n: NimNode=nil): NimNode {.magic: "NNewNimNode", noSideEffect.}
+                 lineInfoFrom: NimNode=nil): NimNode
+  {.magic: "NNewNimNode", noSideEffect.}
+  ## Creates a new AST node of the specified kind.
+  ##
+  ## The ``lineInfoFrom`` parameter is used for line information when the
+  ## produced code crashes. You should ensure that it is set to a node that
+  ## you are transforming.
 
 proc copyNimNode*(n: NimNode): NimNode {.magic: "NCopyNimNode", noSideEffect.}
 proc copyNimTree*(n: NimNode): NimNode {.magic: "NCopyNimTree", noSideEffect.}
@@ -249,6 +256,11 @@ proc newStrLitNode*(s: string): NimNode {.compileTime, noSideEffect.} =
   result = newNimNode(nnkStrLit)
   result.strVal = s
 
+proc newCommentStmtNode*(s: string): NimNode {.compileTime, noSideEffect.} =
+  ## creates a comment statement node
+  result = newNimNode(nnkCommentStmt)
+  result.strVal = s
+
 proc newIntLitNode*(i: BiggestInt): NimNode {.compileTime.} =
   ## creates a int literal node from `i`
   result = newNimNode(nnkIntLit)
@@ -268,6 +280,7 @@ proc newIdentNode*(i: string): NimNode {.compileTime.} =
   ## creates an identifier node from `i`
   result = newNimNode(nnkIdent)
   result.ident = !i
+
 
 type
   BindSymRule* = enum    ## specifies how ``bindSym`` behaves
@@ -305,9 +318,29 @@ proc toStrLit*(n: NimNode): NimNode {.compileTime.} =
   ## in a string literal node
   return newStrLitNode(repr(n))
 
-proc lineinfo*(n: NimNode): string {.magic: "NLineInfo", noSideEffect.}
+type
+  LineInfo* = object
+    filename*: string
+    line*,column*: int
+
+proc `$`*(arg: Lineinfo): string =
+  result = arg.filename & "(" & $arg.line & ", " & $arg.column & ")"
+
+#proc lineinfo*(n: NimNode): LineInfo {.magic: "NLineInfo", noSideEffect.}
   ## returns the position the node appears in the original source file
   ## in the form filename(line, col)
+
+proc getLine(arg: NimNode): int {.magic: "NLineInfo", noSideEffect.}
+proc getColumn(arg: NimNode): int {.magic: "NLineInfo", noSideEffect.}
+proc getFile(arg: NimNode): string {.magic: "NLineInfo", noSideEffect.}
+
+proc lineInfoObj*(n: NimNode): LineInfo {.compileTime.} =
+  result.filename = n.getFile
+  result.line = n.getLine
+  result.column = n.getColumn
+
+proc lineInfo*(arg: NimNode): string {.compileTime.} =
+  $arg.lineInfoObj
 
 proc internalParseExpr(s: string): NimNode {.
   magic: "ParseExprToAst", noSideEffect.}
@@ -426,19 +459,111 @@ proc newLit*(c: char): NimNode {.compileTime.} =
   result = newNimNode(nnkCharLit)
   result.intVal = ord(c)
 
-proc newLit*(i: BiggestInt): NimNode {.compileTime.} =
+
+proc newLit*(i: int): NimNode {.compileTime.} =
   ## produces a new integer literal node.
   result = newNimNode(nnkIntLit)
   result.intVal = i
+
+proc newLit*(i: int8): NimNode {.compileTime.} =
+  ## produces a new integer literal node.
+  result = newNimNode(nnkInt8Lit)
+  result.intVal = i
+
+proc newLit*(i: int16): NimNode {.compileTime.} =
+  ## produces a new integer literal node.
+  result = newNimNode(nnkInt16Lit)
+  result.intVal = i
+
+proc newLit*(i: int32): NimNode {.compileTime.} =
+  ## produces a new integer literal node.
+  result = newNimNode(nnkInt32Lit)
+  result.intVal = i
+
+proc newLit*(i: int64): NimNode {.compileTime.} =
+  ## produces a new integer literal node.
+  result = newNimNode(nnkInt64Lit)
+  result.intVal = i
+
+proc newLit*(i: uint): NimNode {.compileTime.} =
+  ## produces a new unsigned integer literal node.
+  result = newNimNode(nnkUIntLit)
+  result.intVal = BiggestInt(i)
+
+proc newLit*(i: uint8): NimNode {.compileTime.} =
+  ## produces a new unsigned integer literal node.
+  result = newNimNode(nnkUInt8Lit)
+  result.intVal = BiggestInt(i)
+
+proc newLit*(i: uint16): NimNode {.compileTime.} =
+  ## produces a new unsigned integer literal node.
+  result = newNimNode(nnkUInt16Lit)
+  result.intVal = BiggestInt(i)
+
+proc newLit*(i: uint32): NimNode {.compileTime.} =
+  ## produces a new unsigned integer literal node.
+  result = newNimNode(nnkUInt32Lit)
+  result.intVal = BiggestInt(i)
+
+proc newLit*(i: uint64): NimNode {.compileTime.} =
+  ## produces a new unsigned integer literal node.
+  result = newNimNode(nnkUInt64Lit)
+  result.intVal = BiggestInt(i)
 
 proc newLit*(b: bool): NimNode {.compileTime.} =
   ## produces a new boolean literal node.
   result = if b: bindSym"true" else: bindSym"false"
 
-proc newLit*(f: BiggestFloat): NimNode {.compileTime.} =
+when false:
+  # the float type is not really a distinct type as described in https://github.com/nim-lang/Nim/issues/5875
+  proc newLit*(f: float): NimNode {.compileTime.} =
+    ## produces a new float literal node.
+    result = newNimNode(nnkFloatLit)
+    result.floatVal = f
+
+proc newLit*(f: float32): NimNode {.compileTime.} =
   ## produces a new float literal node.
-  result = newNimNode(nnkFloatLit)
+  result = newNimNode(nnkFloat32Lit)
   result.floatVal = f
+
+proc newLit*(f: float64): NimNode {.compileTime.} =
+  ## produces a new float literal node.
+  result = newNimNode(nnkFloat64Lit)
+  result.floatVal = f
+
+when compiles(float128):
+  proc newLit*(f: float128): NimNode {.compileTime.} =
+    ## produces a new float literal node.
+    result = newNimNode(nnkFloat128Lit)
+    result.floatVal = f
+
+proc newLit*(arg: object): NimNode {.compileTime.} =
+  result = nnkObjConstr.newTree(arg.type.getTypeInst[1])
+  for a, b in arg.fieldPairs:
+    result.add nnkExprColonExpr.newTree( newIdentNode(a), newLit(b) )
+
+proc newLit*[N,T](arg: array[N,T]): NimNode {.compileTime.} =
+  result = nnkBracket.newTree
+  for x in arg:
+    result.add newLit(x)
+
+proc newLit*[T](arg: seq[T]): NimNode {.compileTime.} =
+  var bracket = nnkBracket.newTree
+  for x in arg:
+    bracket.add newLit(x)
+
+  result = nnkCall.newTree(
+    nnkBracketExpr.newTree(
+      nnkAccQuoted.newTree( bindSym"@" ),
+      getTypeInst( bindSym"T" )
+    ),
+    bracket
+  )
+
+proc newLit*(arg: tuple): NimNode {.compileTime.} =
+  result = nnkPar.newTree
+  for a,b in arg.fieldPairs:
+    result.add nnkExprColonExpr.newTree( newIdentNode(a), newLit(b) )
 
 proc newLit*(s: string): NimNode {.compileTime.} =
   ## produces a new string literal node.
@@ -460,7 +585,8 @@ proc nestList*(theProc: NimIdent,
 proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
   ## Convert the AST `n` to a human-readable tree-like string.
   ##
-  ## See also `repr` and `lispRepr`.
+  ## See also `repr`, `lispRepr`, and `astGenRepr`.
+
   proc traverse(res: var string, level: int, n: NimNode) {.benign.} =
     for i in 0..level-1: res.add "  "
     res.add(($n.kind).substr(3))
@@ -485,7 +611,7 @@ proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
 proc lispRepr*(n: NimNode): string {.compileTime, benign.} =
   ## Convert the AST `n` to a human-readable lisp-like string,
   ##
-  ## See also `repr` and `treeRepr`.
+  ## See also `repr`, `treeRepr`, and `astGenRepr`.
 
   result = ($n.kind).substr(3)
   add(result, "(")
@@ -508,9 +634,96 @@ proc lispRepr*(n: NimNode): string {.compileTime, benign.} =
 
   add(result, ")")
 
+proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
+  ## Convert the AST `n` to the code required to generate that AST. So for example
+  ##
+  ## .. code-block:: nim
+  ##   astGenRepr:
+  ##     echo "Hello world"
+  ##
+  ## Would output:
+  ##
+  ## .. code-block:: nim
+  ##   nnkStmtList.newTree(
+  ##     nnkCommand.newTree(
+  ##       newIdentNode(!"echo"),
+  ##       newLit("Hello world")
+  ##     )
+  ##   )
+  ##
+  ## See also `repr`, `treeRepr`, and `lispRepr`.
+
+  const
+    NodeKinds = {nnkEmpty, nnkNilLit, nnkIdent, nnkSym, nnkNone}
+    LitKinds = {nnkCharLit..nnkInt64Lit, nnkFloatLit..nnkFloat64Lit, nnkStrLit..nnkTripleStrLit}
+
+  proc escape(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect.} =
+    ## Functions copied from strutils
+    proc toHex(x: BiggestInt, len: Positive): string {.noSideEffect, rtl.} =
+      const
+        HexChars = "0123456789ABCDEF"
+      var
+        t = x
+      result = newString(len)
+      for j in countdown(len-1, 0):
+        result[j] = HexChars[t and 0xF]
+        t = t shr 4
+        # handle negative overflow
+        if t == 0 and x < 0: t = -1
+
+    result = newStringOfCap(s.len + s.len shr 2)
+    result.add(prefix)
+    for c in items(s):
+      case c
+      of '\0'..'\31', '\128'..'\255':
+        add(result, "\\x")
+        add(result, toHex(ord(c), 2))
+      of '\\': add(result, "\\\\")
+      of '\'': add(result, "\\'")
+      of '\"': add(result, "\\\"")
+      else: add(result, c)
+    add(result, suffix)
+
+  proc traverse(res: var string, level: int, n: NimNode) {.benign.} =
+    for i in 0..level-1: res.add "  "
+    if n.kind in NodeKinds:
+      res.add("new" & ($n.kind).substr(3) & "Node(")
+    elif n.kind in LitKinds:
+      res.add("newLit(")
+    else:
+      res.add($n.kind)
+
+    case n.kind
+    of nnkEmpty: discard
+    of nnkNilLit: res.add("nil")
+    of nnkCharLit: res.add("'" & $chr(n.intVal) & "'")
+    of nnkIntLit..nnkInt64Lit: res.add($n.intVal)
+    of nnkFloatLit..nnkFloat64Lit: res.add($n.floatVal)
+    of nnkStrLit..nnkTripleStrLit: res.add($n.strVal.escape())
+    of nnkIdent: res.add("!" & ($n.ident).escape())
+    of nnkSym: res.add(($n.symbol).escape())
+    of nnkNone: assert false
+    else:
+      res.add(".newTree(")
+      for j in 0..<n.len:
+        res.add "\n"
+        traverse(res, level + 1, n[j])
+        if j != n.len-1:
+          res.add(",")
+
+      res.add("\n")
+      for i in 0..level-1: res.add "  "
+      res.add(")")
+
+    if n.kind in NodeKinds+LitKinds:
+      res.add(")")
+
+  result = ""
+  traverse(result, 0, n)
+
 macro dumpTree*(s: untyped): untyped = echo s.treeRepr
   ## Accepts a block of nim code and prints the parsed abstract syntax
-  ## tree using the `toTree` function. Printing is done *at compile time*.
+  ## tree using the `treeRepr` function. Printing is done *at compile time*.
   ##
   ## You can use this as a tool to explore the Nim's abstract syntax
   ## tree and to discover what kind of nodes must be created to represent
@@ -518,7 +731,16 @@ macro dumpTree*(s: untyped): untyped = echo s.treeRepr
 
 macro dumpLisp*(s: untyped): untyped = echo s.lispRepr
   ## Accepts a block of nim code and prints the parsed abstract syntax
-  ## tree using the `toLisp` function. Printing is done *at compile time*.
+  ## tree using the `lispRepr` function. Printing is done *at compile time*.
+  ##
+  ## See `dumpTree`.
+
+macro dumpAstGen*(s: untyped): untyped = echo s.astGenRepr
+  ## Accepts a block of nim code and prints the parsed abstract syntax
+  ## tree using the `astGenRepr` function. Printing is done *at compile time*.
+  ##
+  ## You can use this as a tool to write macros quicker by writing example
+  ## outputs and then copying the snippets into the macro for modification.
   ##
   ## See `dumpTree`.
 
@@ -744,6 +966,8 @@ proc `$`*(node: NimNode): string {.compileTime.} =
     result = $node[0]
   of nnkAccQuoted:
     result = $node[0]
+  of nnkCommentStmt:
+    result = node.strVal
   else:
     badNodeKind node.kind, "$"
 

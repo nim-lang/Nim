@@ -6,7 +6,7 @@ x: some string'''
 
 import macros
 
-macro debug(n: varargs[expr]): stmt =
+macro debug(n: varargs[untyped]): untyped =
   # `n` is a Nim AST that contains the whole macro invocation
   # this macro returns a list of statements:
   result = newNimNode(nnkStmtList, n)

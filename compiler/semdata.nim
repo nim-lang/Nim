@@ -40,6 +40,11 @@ type
     bracketExpr*: PNode       # current bracket expression (for ^ support)
     mapping*: TIdTable
 
+  TMatchedConcept* = object
+    candidateType*: PType
+    prev*: ptr TMatchedConcept
+    depth*: int
+
   TInstantiationPair* = object
     genericSym*: PSym
     inst*: PInstantiation
@@ -75,6 +80,7 @@ type
     importTable*: PScope       # scope for all imported symbols
     topLevelScope*: PScope     # scope for all top-level symbols
     p*: PProcCon               # procedure context
+    matchedConcept*: ptr TMatchedConcept # the current concept being matched
     friendModules*: seq[PSym]  # friend modules; may access private data;
                                # this is used so that generic instantiations
                                # can access private object fields
@@ -82,7 +88,6 @@ type
 
     ambiguousSymbols*: IntSet  # ids of all ambiguous symbols (cannot
                                # store this info in the syms themselves!)
-    inTypeClass*: int          # > 0 if we are in a user-defined type class
     inGenericContext*: int     # > 0 if we are in a generic type
     inUnrolledContext*: int    # > 0 if we are unrolling a loop
     compilesContextId*: int    # > 0 if we are in a ``compiles`` magic
@@ -276,6 +281,10 @@ proc makeTypeFromExpr*(c: PContext, n: PNode): PType =
   result = newTypeS(tyFromExpr, c)
   assert n != nil
   result.n = n
+
+proc newTypeWithSons*(owner: PSym, kind: TTypeKind, sons: seq[PType]): PType =
+  result = newType(kind, owner)
+  result.sons = sons
 
 proc newTypeWithSons*(c: PContext, kind: TTypeKind,
                       sons: seq[PType]): PType =

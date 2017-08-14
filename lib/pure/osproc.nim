@@ -762,7 +762,8 @@ elif not defined(useNimRtl):
     var sysCommand: string
     var sysArgsRaw: seq[string]
     if poEvalCommand in options:
-      sysCommand = "/bin/sh"
+      const useShPath {.strdefine.} = "/bin/sh"
+      sysCommand = useShPath
       sysArgsRaw = @[sysCommand, "-c", command]
       assert args.len == 0, "`args` has to be empty when using poEvalCommand."
     else:
@@ -863,18 +864,15 @@ elif not defined(useNimRtl):
       if data.workingDir.len > 0:
         setCurrentDir($data.workingDir)
       var pid: Pid
-      var err: OSErrorCode
 
       if data.optionPoUsePath:
         res = posix_spawnp(pid, data.sysCommand, fops, attr, data.sysArgs, data.sysEnv)
-        if res != 0'i32: err = osLastError()
       else:
         res = posix_spawn(pid, data.sysCommand, fops, attr, data.sysArgs, data.sysEnv)
-        if res != 0'i32: err = osLastError()
 
       discard posix_spawn_file_actions_destroy(fops)
       discard posix_spawnattr_destroy(attr)
-      if res != 0'i32: raiseOSError(err)
+      if res != 0'i32: raiseOSError(OSErrorCode(res))
 
       return pid
   else:

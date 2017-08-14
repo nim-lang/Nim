@@ -516,14 +516,40 @@ when declared(getEnv) or defined(nimscript):
   proc getConfigDir*(): string {.rtl, extern: "nos$1",
     tags: [ReadEnvEffect, ReadIOEffect].} =
     ## Returns the config directory of the current user for applications.
+    ##
+    ## On non-Windows OSs, this proc conforms to the XDG Base Directory
+    ## spec. Thus, this proc returns the value of the XDG_CONFIG_DIR environment
+    ## variable if it is set, and returns the default configuration directory,
+    ## "~/.config/", otherwise.
+    ##
+    ## An OS-dependent trailing slash is always present at the end of the
+    ## returned string; `\\` on Windows and `/` on all other OSs.
     when defined(windows): return string(getEnv("APPDATA")) & "\\"
+    elif getEnv("XDG_CONFIG_DIR"): return string(getEnv("XDG_CONFIG_DIR")) & "/"
     else: return string(getEnv("HOME")) & "/.config/"
 
+  when defined(android):
+    when declared(os):
+      {.pragma: getTempDirEffects, tags: [ReadEnvEffect, ReadIOEffect, WriteDirEffect].}
+    else:
+      {.pragma: getTempDirEffects, tags: [ReadEnvEffect, ReadIOEffect].}
+  elif defined(windows):
+    {.pragma: getTempDirEffects, tags: [ReadEnvEffect, ReadIOEffect].}
+  else:
+    {.pragma: getTempDirEffects, tags: [ReadIOEffect].}
+
   proc getTempDir*(): string {.rtl, extern: "nos$1",
-    tags: [ReadEnvEffect, ReadIOEffect].} =
+    getTempDirEffects.} =
     ## Returns the temporary directory of the current user for applications to
     ## save temporary files in.
-    when defined(windows): return string(getEnv("TEMP")) & "\\"
+    when defined(tempDir):
+      const tempDir {.strdefine.}: string = nil
+      return tempDir
+    elif defined(windows): return string(getEnv("TEMP")) & "\\"
+    elif defined(android):
+      let tempDir = getHomeDir() / "nimtempfs"
+      createDir(tempDir)
+      return tempDir
     else: return "/tmp/"
 
   proc expandTilde*(path: string): string {.
