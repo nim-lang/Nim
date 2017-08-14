@@ -50,24 +50,26 @@ proc baz(arg: openarray[char]): void =
 proc stringCompare(): void =
   var a,b,c,d,e,f,g: string
   a.add 'a'
-  b.add "bee"
-  c.add 123.456
   doAssert a == "a"
+  b.add "bee"
   doAssert b == "bee"
   b.add g
   doAssert b == "bee"
+  c.add 123.456
   doAssert c == "123.456"
+  d.add 123456
+  doAssert d == "123456"
 
   var h = ""
   var i = ""
-  doAssert d == ""
+  doAssert e == ""
   doAssert "" == e
+  doAssert nil == e
+  doAssert e == nil
   doAssert f == g
   doAssert "" == ""
-  doAssert h == ""
-  doAssert "" == h
-  doAssert nil == i
-  doAssert i == nil
+  doAssert "" == nil
+  doAssert nil == ""
 
   g.setLen(10)
   doAssert g == "\0\0\0\0\0\0\0\0\0\0"
@@ -78,3 +80,5 @@ proc stringCompare(): void =
   baz(nilstring)
 
 stringCompare()
+static:
+  stringCompare()
