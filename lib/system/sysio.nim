@@ -85,12 +85,13 @@ proc writeBuffer(f: File, buffer: pointer, len: Natural): int =
   result = c_fwrite(buffer, 1, len, f)
   checkErr(f)
 
+type UnecheckedInt8Array = array[0, int8]
 proc writeBytes(f: File, a: openArray[int8|uint8], start, len: Natural): int =
-  var x = cast[ptr array[ArrayDummySize, int8]](a)
-  result = writeBuffer(f, addr(x[start]), len)
+  var x = cast[ptr UnecheckedInt8Array](a)
+  result = writeBuffer(f, addr(x[int(start)]), len)
 proc writeChars(f: File, a: openArray[char], start, len: Natural): int =
-  var x = cast[ptr array[ArrayDummySize, int8]](a)
-  result = writeBuffer(f, addr(x[start]), len)
+  var x = cast[ptr UnecheckedInt8Array](a)
+  result = writeBuffer(f, addr(x[int(start)]), len)
 
 proc write(f: File, s: string) =
   if writeBuffer(f, cstring(s), s.len) != s.len:
