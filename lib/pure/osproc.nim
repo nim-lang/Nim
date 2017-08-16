@@ -762,7 +762,8 @@ elif not defined(useNimRtl):
     var sysCommand: string
     var sysArgsRaw: seq[string]
     if poEvalCommand in options:
-      sysCommand = "/bin/sh"
+      const useShPath {.strdefine.} = "/bin/sh"
+      sysCommand = useShPath
       sysArgsRaw = @[sysCommand, "-c", command]
       assert args.len == 0, "`args` has to be empty when using poEvalCommand."
     else:

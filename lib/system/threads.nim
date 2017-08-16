@@ -256,8 +256,9 @@ when emulatedThreadVars:
 # we preallocate a fixed size for thread local storage, so that no heap
 # allocations are needed. Currently less than 7K are used on a 64bit machine.
 # We use ``float`` for proper alignment:
+const nimTlsSize {.intdefine.} = 8000
 type
-  ThreadLocalStorage = array[0..1_000, float]
+  ThreadLocalStorage = array[0..(nimTlsSize div sizeof(float)), float]
 
   PGcThread = ptr GcThread
   GcThread {.pure, inheritable.} = object
@@ -323,7 +324,11 @@ when not defined(useNimRtl):
 
   when emulatedThreadVars:
     if nimThreadVarsSize() > sizeof(ThreadLocalStorage):
-      echo "too large thread local storage size requested"
+      echo "too large thread local storage size requested ",
+           "(", nimThreadVarsSize(), "/", sizeof(ThreadLocalStorage), "). ",
+           "Use -d:\"nimTlsSize=", nimThreadVarsSize(),
+           "\" to preallocate sufficient storage."
+
       quit 1
 
   when hasSharedHeap and not defined(boehmgc) and not defined(gogc) and not defined(nogc):
@@ -391,7 +396,7 @@ template afterThreadRuns() =
   for i in countdown(threadDestructionHandlers.len-1, 0):
     threadDestructionHandlers[i]()
 
-when not defined(boehmgc) and not hasSharedHeap and not defined(gogc) and not defined(gcstack):
+when not defined(boehmgc) and not hasSharedHeap and not defined(gogc) and not defined(gcRegions):
   proc deallocOsPages()
 
 when defined(boehmgc):
@@ -429,7 +434,7 @@ else:
 proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) =
   when defined(boehmgc):
     boehmGC_call_with_stack_base(threadProcWrapDispatch[TArg], thrd)
-  elif not defined(nogc) and not defined(gogc) and not defined(gcstack):
+  elif not defined(nogc) and not defined(gogc) and not defined(gcRegions):
     var p {.volatile.}: proc(a: ptr Thread[TArg]) {.nimcall.} =
       threadProcWrapDispatch[TArg]
     when not hasSharedHeap:

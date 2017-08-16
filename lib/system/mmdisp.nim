@@ -16,7 +16,7 @@
 const
   debugGC = false # we wish to debug the GC...
   logGC = false
-  traceGC = defined(smokeCycles) # extensive debugging
+  traceGC = false # extensive debugging
   alwaysCycleGC = defined(smokeCycles)
   alwaysGC = defined(fulldebug) # collect after every memory
                                 # allocation (for debugging)
@@ -543,7 +543,7 @@ elif defined(nogc):
   include "system/cellsets"
 
 else:
-  when not defined(gcStack):
+  when not defined(gcRegions):
     include "system/alloc"
 
     include "system/cellsets"
@@ -551,9 +551,9 @@ else:
       sysAssert(sizeof(Cell) == sizeof(FreeCell), "sizeof FreeCell")
   when compileOption("gc", "v2"):
     include "system/gc2"
-  elif defined(gcStack):
+  elif defined(gcRegions):
     # XXX due to bootstrapping reasons, we cannot use  compileOption("gc", "stack") here
-    include "system/gc_stack"
+    include "system/gc_regions"
   elif defined(gcMarkAndSweep):
     # XXX use 'compileOption' here
     include "system/gc_ms"

@@ -9,7 +9,11 @@ when defined(windows):
   discard
 else:
   let dir1 = getCurrentDir()
-  var process = startProcess("/usr/bin/env", "/usr/bin", ["true"])
+  var process: Process
+  when defined(android):
+    process = startProcess("/system/bin/env", "/system/bin", ["true"])
+  else:
+    process = startProcess("/usr/bin/env", "/usr/bin", ["true"])
   let dir2 = getCurrentDir()
   discard process.waitForExit()
   process.close()

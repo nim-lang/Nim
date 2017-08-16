@@ -1100,9 +1100,9 @@ proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
   if a.s == OnHeap and usesNativeGC():
     # use newObjRC1 as an optimization
     if canFormAcycle(a.t):
-      linefmt(p, cpsStmts, "if ($1) #nimGCunref($1);$n", a.rdLoc)
+      linefmt(p, cpsStmts, "if ($1) { #nimGCunrefRC1($1); $1 = NIM_NIL; }$n", a.rdLoc)
     else:
-      linefmt(p, cpsStmts, "if ($1) #nimGCunrefNoCycle($1);$n", a.rdLoc)
+      linefmt(p, cpsStmts, "if ($1) { #nimGCunrefNoCycle($1); $1 = NIM_NIL; }$n", a.rdLoc)
     b.r = ropecg(p.module, "($1) #newObjRC1($2, $3)", args)
     linefmt(p, cpsStmts, "$1 = $2;$n", a.rdLoc, b.rdLoc)
   else:
@@ -1130,9 +1130,9 @@ proc genNewSeqAux(p: BProc, dest: TLoc, length: Rope) =
   initLoc(call, locExpr, dest.t, OnHeap)
   if dest.s == OnHeap and usesNativeGC():
     if canFormAcycle(dest.t):
-      linefmt(p, cpsStmts, "if ($1) #nimGCunref($1);$n", dest.rdLoc)
+      linefmt(p, cpsStmts, "if ($1) { #nimGCunrefRC1($1); $1 = NIM_NIL; }$n", dest.rdLoc)
     else:
-      linefmt(p, cpsStmts, "if ($1) #nimGCunrefNoCycle($1);$n", dest.rdLoc)
+      linefmt(p, cpsStmts, "if ($1) { #nimGCunrefNoCycle($1); $1 = NIM_NIL; }$n", dest.rdLoc)
     call.r = ropecg(p.module, "($1) #newSeqRC1($2, $3)", args)
     linefmt(p, cpsStmts, "$1 = $2;$n", dest.rdLoc, call.rdLoc)
   else:

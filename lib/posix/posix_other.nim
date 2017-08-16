@@ -215,7 +215,7 @@ type
                            ## For a typed memory object, the length in bytes.
                            ## For other file types, the use of this field is
                            ## unspecified.
-    when defined(macosx):
+    when defined(macosx) or defined(android):
       st_atime*: Time      ## Time of last access.
       st_mtime*: Time      ## Time of last data modification.
       st_ctime*: Time      ## Time of last status change.
