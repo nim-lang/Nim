@@ -445,7 +445,7 @@ proc rotateLeft*[T](arg: var openarray[T]; slice: Slice[int]; dist: int): int =
   ## .. code-block:: nim
   ##     var list     = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
   ##     list.rotateLeft(1 .. 8, 3)
-  ##     echo @list  # @[0, 4, 5, 6, 7, 8, 1, 2, 3, 9, 10]
+  ##     doAssert list == [0, 4, 5, 6, 7, 8, 1, 2, 3, 9, 10]
   let sliceLen = slice.b + 1 - slice.a
   let distLeft = ((dist mod sliceLen) + sliceLen) mod sliceLen
   arg.rotateInternal(slice.a, slice.a+distLeft, slice.b + 1)
