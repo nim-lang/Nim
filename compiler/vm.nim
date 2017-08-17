@@ -1318,9 +1318,25 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let b = regs[rb].node
       stackTrace(c, tos, pc, errUser, a.strVal, if b.kind == nkNilLit: nil else: b)
     of opcNWarning:
-      message(c.debug[pc], warnUser, regs[ra].node.strVal)
+      decodeB(rkNode)
+      let a = regs[ra].node.strVal
+      let b = regs[rb].node
+      let lineinfo =
+        if b.kind == nkNilLit:
+          c.debug[pc]
+        else:
+          b.info
+      message(lineinfo, warnUser, a)
     of opcNHint:
-      message(c.debug[pc], hintUser, regs[ra].node.strVal)
+      decodeB(rkNode)
+      let a = regs[ra].node.strVal
+      let b = regs[rb].node
+      let lineinfo =
+        if b.kind == nkNilLit:
+          c.debug[pc]
+        else:
+          b.info
+      message(lineinfo, hintUser, a)
     of opcParseExprToAst:
       decodeB(rkNode)
       # c.debug[pc].line.int - countLines(regs[rb].strVal) ?
