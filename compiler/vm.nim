@@ -1314,29 +1314,24 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                                      c.debug[pc])[0]
     of opcNError:
       decodeB(rkNode)
-      let a = regs[ra].node
-      let b = regs[rb].node
-      stackTrace(c, tos, pc, errUser, a.strVal, if b.kind == nkNilLit: nil else: b)
-    of opcNWarning:
+      let message = regs[ra].node.strVal
+      let nodeForLineInfo =
+        if regs[rb].node.kind == nkNilLit: nil else: regs[rb].node
+      stackTrace(c, tos, pc, errUser, message, nodeForLineInfo)
+    of opcNWarning, opcNHint:
       decodeB(rkNode)
-      let a = regs[ra].node.strVal
-      let b = regs[rb].node
+      let message = regs[ra].node.strVal
       let lineinfo =
-        if b.kind == nkNilLit:
+        if regs[rb].node.kind == nkNilLit:
           c.debug[pc]
         else:
-          b.info
-      message(lineinfo, warnUser, a)
-    of opcNHint:
-      decodeB(rkNode)
-      let a = regs[ra].node.strVal
-      let b = regs[rb].node
-      let lineinfo =
-        if b.kind == nkNilLit:
-          c.debug[pc]
+          regs[rb].node.info
+      let msgKind =
+        if instr.opcode == opcNWarning:
+          warnUser
         else:
-          b.info
-      message(lineinfo, hintUser, a)
+          hintUser
+      message(lineinfo, msgKind, message)
     of opcParseExprToAst:
       decodeB(rkNode)
       # c.debug[pc].line.int - countLines(regs[rb].strVal) ?
