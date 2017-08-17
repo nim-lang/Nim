@@ -10,7 +10,7 @@
 ## Shared string support for Nim.
 
 type
-  UncheckedCharArray {.unchecked.} = array[0, char]
+  UncheckedCharArray = UncheckedArray[char]
 
 type
   Buffer = ptr object

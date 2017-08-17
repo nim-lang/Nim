@@ -34,7 +34,7 @@ const
 
 type
   PPointer = ptr pointer
-  ByteArray {.unchecked.} = array[0, byte]
+  ByteArray = UncheckedArray[byte]
   PByte = ptr ByteArray
   PString = ptr string
 {.deprecated: [TByteArray: ByteArray].}

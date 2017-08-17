@@ -30,14 +30,12 @@ type
     key: ByteAddress   # start address at bit 0
     bits: array[BitIndex, int] # a bit vector
 
-  UncheckedPageDescArray {.unchecked.} = array[0, PPageDesc]
-  PPageDescArray = ptr UncheckedPageDescArray
+  PPageDescArray = ptr UncheckedArray[PPageDesc]
   CellSet {.final, pure.} = object
     counter, max: int
     head: PPageDesc
     data: PPageDescArray
-  UncheckedCellArray {.unchecked.} = array[0, PCell]
-  PCellArray = ptr UncheckedCellArray
+  PCellArray = ptr UncheckedArray[PCell]
   CellSeq {.final, pure.} = object
     len, cap: int
     d: PCellArray
