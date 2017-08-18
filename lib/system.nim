@@ -268,6 +268,9 @@ type
   seq*{.magic: "Seq".}[T]  ## Generic type to construct sequences.
   set*{.magic: "Set".}[T]  ## Generic type to construct bit sets.
 
+  UncheckedArray* {.unchecked.}[T] = array[0, T]
+    ## Array with no boudns checking
+
 when defined(nimArrIdx):
   # :array|openarray|string|seq|cstring|tuple
   proc `[]`*[I: Ordinal;T](a: T; i: I): T {.
@@ -388,7 +391,6 @@ when not defined(JS):
       when defined(gogc):
         elemSize: int
     PGenericSeq {.exportc.} = ptr TGenericSeq
-    UncheckedArray* {.unchecked.}[T] = array[0, T]
     # len and space without counting the terminating zero:
     NimStringDesc {.compilerproc, final.} = object of TGenericSeq
       data: UncheckedArray[char]
