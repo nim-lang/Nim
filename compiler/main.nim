@@ -77,6 +77,7 @@ proc commandCompileToC(graph: ModuleGraph; cache: IdentCache) =
     let proj = changeFileExt(gProjectFull, "")
     extccomp.callCCompiler(proj)
     extccomp.writeJsonBuildInstructions(proj)
+    writeDepsFile(graph, toGeneratedFile(proj, ""))
 
 proc commandCompileToJS(graph: ModuleGraph; cache: IdentCache) =
   #incl(gGlobalOptions, optSafeCode)
