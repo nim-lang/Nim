@@ -486,9 +486,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         stackTrace(c, tos, pc, errIndexOutOfBounds)
       let idx = regs[rc].intVal.int
       let src = regs[rb].node
-      if src.kind in {nkStrLit..nkTripleStrLit} and idx <% src.strVal.len:
-        regs[ra].node = newNodeI(nkCharLit, c.debug[pc])
-        regs[ra].node.intVal = src.strVal[idx].ord
+      if src.kind in {nkStrLit..nkTripleStrLit}:
+        if idx <% src.strVal.len:
+          regs[ra].node = newNodeI(nkCharLit, c.debug[pc])
+          regs[ra].node.intVal = src.strVal[idx].ord
+        else:
+          stackTrace(c, tos, pc, errIndexOutOfBounds)
       elif src.kind notin {nkEmpty..nkFloat128Lit} and idx <% src.len:
         regs[ra].node = src.sons[idx]
       else:
@@ -508,8 +511,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkNode)
       let idx = regs[rb].intVal.int
       let arr = regs[ra].node
-      if arr.kind in {nkStrLit..nkTripleStrLit} and idx <% arr.strVal.len:
-        arr.strVal[idx] = chr(regs[rc].intVal)
+      if arr.kind in {nkStrLit..nkTripleStrLit}:
+        if idx <% arr.strVal.len:
+          arr.strVal[idx] = chr(regs[rc].intVal)
+        else:
+          stackTrace(c, tos, pc, errIndexOutOfBounds)
       elif idx <% arr.len:
         putIntoNode(arr.sons[idx], regs[rc])
       else:
@@ -625,9 +631,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcLenSeq:
       decodeBImm(rkInt)
       #assert regs[rb].kind == nkBracket
-      # also used by mNLen:
-      # use safeArrLen since opcLenSeq is used for openArray which can be string node in VM
-      regs[ra].intVal = regs[rb].node.safeArrLen - imm
+      let high = (imm and 1) # discard flags
+      if (imm and nimNodeFlag) != 0:
+        # used by mNLen (NimNode.len)
+        regs[ra].intVal = regs[rb].node.safeLen - high
+      else:
+        # safeArrLen also return string node len
+        # used when string is passed as openArray in VM
+        regs[ra].intVal = regs[rb].node.safeArrLen - high
     of opcLenStr:
       decodeBImm(rkInt)
       assert regs[rb].kind == rkNode
