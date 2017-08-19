@@ -486,7 +486,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         stackTrace(c, tos, pc, errIndexOutOfBounds)
       let idx = regs[rc].intVal.int
       let src = regs[rb].node
-      if src.kind notin {nkEmpty..nkNilLit} and idx <% src.len:
+      if src.kind in {nkStrLit..nkTripleStrLit} and idx <% src.strVal.len:
+        regs[ra].node = newNodeI(nkCharLit, c.debug[pc])
+        regs[ra].node.intVal = src.strVal[idx].ord
+      elif src.kind notin {nkEmpty..nkFloat128Lit} and idx <% src.len:
         regs[ra].node = src.sons[idx]
       else:
         stackTrace(c, tos, pc, errIndexOutOfBounds)
