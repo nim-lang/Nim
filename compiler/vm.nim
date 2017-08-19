@@ -507,8 +507,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       # a[b] = c
       decodeBC(rkNode)
       let idx = regs[rb].intVal.int
-      if idx <% regs[ra].node.len:
-        putIntoNode(regs[ra].node.sons[idx], regs[rc])
+      let arr = regs[ra].node
+      if arr.kind in {nkStrLit..nkTripleStrLit} and idx <% arr.strVal.len:
+        arr.strVal[idx] = chr(regs[rc].intVal)
+      elif idx <% arr.len:
+        putIntoNode(arr.sons[idx], regs[rc])
       else:
         stackTrace(c, tos, pc, errIndexOutOfBounds)
     of opcLdObj:
