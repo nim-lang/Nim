@@ -620,7 +620,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBImm(rkInt)
       #assert regs[rb].kind == nkBracket
       # also used by mNLen:
-      regs[ra].intVal = regs[rb].node.safeLen - imm
+      # use safeArrLen since opcLenSeq is used for openArray which can be string node in VM
+      regs[ra].intVal = regs[rb].node.safeArrLen - imm
     of opcLenStr:
       decodeBImm(rkInt)
       assert regs[rb].kind == rkNode
