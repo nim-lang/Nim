@@ -422,7 +422,7 @@ type
 
   RootEffect* {.compilerproc.} = object of RootObj ## \
     ## base effect class; each effect should
-    ## inherit from `TEffect` unless you know what
+    ## inherit from `RootEffect` unless you know what
     ## you doing.
   TimeEffect* = object of RootEffect   ## Time effect.
   IOEffect* = object of RootEffect     ## IO effect.
