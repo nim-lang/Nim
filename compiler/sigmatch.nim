@@ -297,7 +297,9 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1;
         n.sons[i].typ = arg.typ
         n.sons[i].sons[1] = arg
     else:
-      if arg.typ.isNil and arg.kind notin {nkStmtList, nkDo}:
+      if arg.typ.isNil and arg.kind notin {nkStmtList, nkDo, nkElse,
+                                           nkOfBranch, nkElifBranch,
+                                           nkExceptBranch}:
         arg = c.semOperand(c, n.sons[i])
         n.sons[i] = arg
     if arg.typ != nil and arg.typ.kind == tyError: return
