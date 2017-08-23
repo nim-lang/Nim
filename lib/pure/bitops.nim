@@ -119,19 +119,19 @@ proc countSetBits_nim(n: uint64): int {.inline, noSideEffect.} =
   v = (v + (v shr 4'u64) and 0x0F0F0F0F0F0F0F0F'u64)
   result = ((v * 0x0101010101010101'u64) shr 56'u64).int
 
-proc swapEndian_nim*(val: uint16): uint16 {.inline, noSideEffect.} =
+proc swapEndian_nim(val: uint16): uint16 {.inline, noSideEffect.} =
   ## Reverse byte order in integer.
   result =  ((val and 0xFF00'u16) shr  8) or
             ((val and 0x00FF'u16) shl 8)
 
-proc swapEndian_nim*(val: uint32): uint32 {.inline, noSideEffect.} =
+proc swapEndian_nim(val: uint32): uint32 {.inline, noSideEffect.} =
   ## Reverse byte order in integer.
   result =  ((val and 0xFF000000'u32) shr 24) or
             ((val and 0x00FF0000'u32) shr  8) or
             ((val and 0x0000FF00'u32) shl  8) or
             ((val and 0x000000FF'u32) shl 24)
 
-proc swapEndian_nim*(val: uint64): uint64 {.inline, noSideEffect.} =
+proc swapEndian_nim(val: uint64): uint64 {.inline, noSideEffect.} =
   ## Reverse byte order in integer.
   result =  ((val and 0x00000000000000FF'u64) shl 56) or
             ((val and 0x000000000000FF00'u64) shl 40) or
@@ -143,7 +143,7 @@ proc swapEndian_nim*(val: uint64): uint64 {.inline, noSideEffect.} =
             ((val and 0xFF00000000000000'u64) shr 56)
 
 
-template parity_impl[T](value: T): int =
+proc parity_nim[T](value: T): int =
   # formula id from: https://graphics.stanford.edu/%7Eseander/bithacks.html#ParityParallel
   var v = value
   when sizeof(T) == 8:
@@ -270,15 +270,15 @@ proc parityBits*(x: SomeInteger): int {.inline, nosideeffect.} =
   # Can be used a base if creating ASM version.
   # https://stackoverflow.com/questions/21617970/how-to-check-if-value-has-even-parity-of-bits-or-odd
   when nimvm:
-    when sizeof(x) <= 4: result = parity_impl(x.toUint32)
-    else:                result = parity_impl(x.uint64)
+    when sizeof(x) <= 4: result = parity_nim(x.toUint32)
+    else:                result = parity_nim(x.uint64)
   else:
     when useGCC_builtins:
       when sizeof(x) <= 4: result = builtin_parity(cast[cuint](x.toUint32)).int
       else:                result = builtin_parityll(x.uint64).int
     else:
-      when sizeof(x) <= 4: result = parity_impl(x.toUint32)
-      else:                result = parity_impl(x.uint64)
+      when sizeof(x) <= 4: result = parity_nim(x.toUint32)
+      else:                result = parity_nim(x.uint64)
 
 proc firstSetBit*(x: SomeInteger): int {.inline, nosideeffect.} =
   ## Returns the 1-based index of the least significant set bit of x.
@@ -410,55 +410,30 @@ proc swapEndian*[T:SomeInteger](x: T): T {.inline, nosideeffect.} =
       elif sizeof(x) == 4: result = cast[T](swapEndian_nim(x.toUint32))
       else:                result = cast[T](swapEndian_nim(x.uint64))
 
-proc rotateLeftBits*(value: uint8;
-           amount: range[0..8]): uint8 {.inline, noSideEffect.} =
-  ## Left-rotate bits in a 8-bits value.
+template rotateLeft_impl[T](value: T; amount: int; shift: int): T =
+  let amnt = amount and shift
+  (value shl amnt) or (value shr ( (-amnt) and shift))
+
+template rotateRight_impl[T](value: T; amount: int; shift: int): T =
+  let amnt = amount and shift
+  (value shr amnt) or (value shl ( (-amnt) and shift))
+
+proc rotateLeftBits*[T: SomeInteger](value: T;
+           amount: Natural): T {.inline, noSideEffect.} =
+  ## Left-rotate bits in an integer by ``amount``.
   # using this form instead of the one below should handle any value
   # out of range as well as negative values.
   # result = (value shl amount) or (value shr (8 - amount))
   # taken from: https://en.wikipedia.org/wiki/Circular_shift#Implementing_circular_shifts
-  let amount = amount and 7
-  result = (value shl amount) or (value shr ( (-amount) and 7))
+  when sizeof(value) == 1: cast[T](rotateLeft_impl(cast[uint8] (value), amount, 7))
+  elif sizeof(value) == 2: cast[T](rotateLeft_impl(cast[uint16](value), amount, 15))
+  elif sizeof(value) == 4: cast[T](rotateLeft_impl(cast[uint32](value), amount, 31))
+  else:                    cast[T](rotateLeft_impl(cast[uint64](value), amount, 63))
 
-proc rotateLeftBits*(value: uint16;
-           amount: range[0..16]): uint16 {.inline, noSideEffect.} =
-  ## Left-rotate bits in a 16-bits value.
-  let amount = amount and 15
-  result = (value shl amount) or (value shr ( (-amount) and 15))
-
-proc rotateLeftBits*(value: uint32;
-           amount: range[0..32]): uint32 {.inline, noSideEffect.} =
-  ## Left-rotate bits in a 32-bits value.
-  let amount = amount and 31
-  result = (value shl amount) or (value shr ( (-amount) and 31))
-
-proc rotateLeftBits*(value: uint64;
-           amount: range[0..64]): uint64 {.inline, noSideEffect.} =
-  ## Left-rotate bits in a 64-bits value.
-  let amount = amount and 63
-  result = (value shl amount) or (value shr ( (-amount) and 63))
-
-
-proc rotateRightBits*(value: uint8;
-            amount: range[0..8]): uint8 {.inline, noSideEffect.} =
-  ## Right-rotate bits in a 8-bits value.
-  let amount = amount and 7
-  result = (value shr amount) or (value shl ( (-amount) and 7))
-
-proc rotateRightBits*(value: uint16;
-            amount: range[0..16]): uint16 {.inline, noSideEffect.} =
-  ## Right-rotate bits in a 16-bits value.
-  let amount = amount and 15
-  result = (value shr amount) or (value shl ( (-amount) and 15))
-
-proc rotateRightBits*(value: uint32;
-            amount: range[0..32]): uint32 {.inline, noSideEffect.} =
-  ## Right-rotate bits in a 32-bits value.
-  let amount = amount and 31
-  result = (value shr amount) or (value shl ( (-amount) and 31))
-
-proc rotateRightBits*(value: uint64;
-            amount: range[0..64]): uint64 {.inline, noSideEffect.} =
-  ## Right-rotate bits in a 64-bits value.
-  let amount = amount and 63
-  result = (value shr amount) or (value shl ( (-amount) and 63))
+proc rotateRightBits*[T](value: T;
+            amount: Natural): T {.inline, noSideEffect.} =
+  ## Right-rotate bits in an integer by ``amount``.
+  when sizeof(value) == 1: cast[T](rotateRight_impl(cast[uint8](value), amount, 7))
+  elif sizeof(value) == 2: cast[T](rotateRight_impl(cast[uint16](value), amount, 15))
+  elif sizeof(value) == 4: cast[T](rotateRight_impl(cast[uint32](value), amount, 31))
+  else:                    cast[T](rotateRight_impl(cast[uint64](value), amount, 63))
