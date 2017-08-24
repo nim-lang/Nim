@@ -3458,6 +3458,14 @@ proc `[]=`*[T](s: var seq[T], x: Slice[int], b: openArray[T]) =
   else:
     spliceImpl(s, a, L, b)
 
+proc `[]=`*[Idx, T](a: var array[Idx, T], b: T) =
+  ## Sets all values in an array to one value:
+  ##
+  ## .. code-block:: nim
+  ##     var data: array[64, bool]
+  ##     data[] = true
+  for i in 0..a.len-1: a[i] = b
+
 proc slurp*(filename: string): string {.magic: "Slurp".}
   ## This is an alias for `staticRead <#staticRead>`_.
 
