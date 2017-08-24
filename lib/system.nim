@@ -3464,7 +3464,7 @@ proc `[]=`*[Idx, T](a: var array[Idx, T], b: T) =
   ## .. code-block:: nim
   ##     var data: array[64, bool]
   ##     data[] = true
-  for i in 0..<a.len: a[i] = b
+  for i in 0..a.len-1: a[i] = b
 
 proc slurp*(filename: string): string {.magic: "Slurp".}
   ## This is an alias for `staticRead <#staticRead>`_.
