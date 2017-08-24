@@ -130,7 +130,7 @@ Two identifiers are considered equal if the following algorithm returns true:
 .. code-block:: nim
   proc sameIdentifier(a, b: string): bool =
     a[0] == b[0] and
-      a.replace(re"_|–", "").toLower == b.replace(re"_|–", "").toLower
+      a.replace("_", "").toLower == b.replace("_", "").toLower
 
 That means only the first letters are compared in a case sensitive manner. Other
 letters are compared case insensitively and underscores are ignored.
