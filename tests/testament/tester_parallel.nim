@@ -5,14 +5,24 @@ var work: Channel[string]
 var output: Channel[string]
 var die: Channel[bool]
 
-proc testWorker() {.thread.} =
-  var workChunk = work.recv()
-  var (shouldDie, dieMsg) = die.tryRecv()
-  while not shouldDie and workChunk != nil:
-    output.send(string(execProcess(command = workChunk)))
-    workChunk = work.recv()
+proc testWorker(num: int) {.thread.} =
+  var (avail, shouldDie) = die.tryRecv()
 
-    (shouldDie, dieMsg) = die.tryRecv()
+  # Keep doing tryRecv on work and die break if shouldDie, if workChunk is nil,
+  # then just try again
+  var
+    workAvail: bool
+    workChunk: string
+
+  while not shouldDie:
+    (workAvail, workChunk) = work.tryRecv()
+    # Sending does not block
+    if workAvail:
+      output.send(string(execProcess(command = workChunk)))
+
+    (avail, shouldDie) = die.tryRecv()
+
+  output.send("Worker $# dead".format(num))
 
 proc main() =
   ## Run testament in parallel, spawning off a new process for each category
@@ -34,11 +44,11 @@ proc main() =
 
   var totalJobs = 0
 
-  var workerThreads = newSeq[Thread[void]](workerCount)
+  var workerThreads = newSeq[Thread[int]](workerCount)
 
   # Create workers
   for i in 0 .. <len(workerThreads):
-    createThread(workerThreads[i], testWorker)
+    createThread(workerThreads[i], testWorker, i)
 
   for kind, dir in walkDir(testDir):
     assert testDir.startsWith(testDir)
@@ -56,7 +66,9 @@ proc main() =
   for i in 0 .. <totalJobs:
     echo output.recv()
   
-  for i in 0 .. workerCount:
+  work.close()
+
+  for i in 0 .. <workerCount:
     die.send(true)
 
 
