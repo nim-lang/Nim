@@ -345,6 +345,15 @@ proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
   result.flags = {}
   constructLoc(p, result, not needsInit)
 
+proc getIntTemp(p: BProc, result: var TLoc) =
+  inc(p.labels)
+  result.r = "T" & rope(p.labels) & "_"
+  linefmt(p, cpsLocals, "NI $1;$n", result.r)
+  result.k = locTemp
+  result.s = OnStack
+  result.t = getSysType(tyInt)
+  result.flags = {}
+
 proc initGCFrame(p: BProc): Rope =
   if p.gcFrameId > 0: result = "struct {$1} GCFRAME_;$n" % [p.gcFrameType]
 
