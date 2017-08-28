@@ -269,7 +269,7 @@ type
   set*{.magic: "Set".}[T]  ## Generic type to construct bit sets.
 
   UncheckedArray* {.unchecked.}[T] = array[0, T]
-    ## Array with no boudns checking
+    ## Array with no bounds checking
 
 when defined(nimArrIdx):
   # :array|openarray|string|seq|cstring|tuple
