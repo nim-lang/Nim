@@ -939,7 +939,7 @@ proc enlarge[A](t: var CountTable[A]) =
 
 proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   ## puts a (key, value)-pair into `t`.
-  assert val > 0
+  assert val >= 0
   var h = rawGet(t, key)
   if h >= 0:
     t.data[h].val = val
