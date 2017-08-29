@@ -891,6 +891,8 @@ template expectRoutine(node: NimNode) =
 proc name*(someProc: NimNode): NimNode {.compileTime.} =
   someProc.expectRoutine
   result = someProc[0]
+  if result.kind == nnkPostfix:
+    result = result[1]
 proc `name=`*(someProc: NimNode; val: NimNode) {.compileTime.} =
   someProc.expectRoutine
   someProc[0] = val

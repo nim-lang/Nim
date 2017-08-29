@@ -1061,7 +1061,7 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
                            "$1 = ($2) #incrSeqV2(&($1)->Sup, sizeof($3));$n"
                          else:
                            "$1 = ($2) #incrSeqV2($1, sizeof($3));$n"
-  var a, b, dest: TLoc
+  var a, b, dest, tmpL: TLoc
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], b)
   let bt = skipTypes(e.sons[2].typ, {tyVar})
@@ -1072,9 +1072,10 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
   #if bt != b.t:
   #  echo "YES ", e.info, " new: ", typeToString(bt), " old: ", typeToString(b.t)
   initLoc(dest, locExpr, bt, OnHeap)
-  dest.r = rfmt(nil, "$1->data[$1->$2]", rdLoc(a), lenField(p))
+  getIntTemp(p, tmpL)
+  lineCg(p, cpsStmts, "$1 = $2->$3++;$n", tmpL.r, rdLoc(a), lenField(p))
+  dest.r = rfmt(nil, "$1->data[$2]", rdLoc(a), tmpL.r)
   genAssignment(p, dest, b, {needToCopy, afDestIsNil})
-  lineCg(p, cpsStmts, "++$1->$2;$n", rdLoc(a), lenField(p))
   gcUsage(e)
 
 proc genReset(p: BProc, n: PNode) =
@@ -1382,13 +1383,30 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     useStringh(p.module)
     if op == mHigh: unaryExpr(p, e, d, "($1 ? (strlen($1)-1) : -1)")
     else: unaryExpr(p, e, d, "($1 ? strlen($1) : 0)")
-  of tyString, tySequence:
+  of tyString:
     if not p.module.compileToCpp:
       if op == mHigh: unaryExpr(p, e, d, "($1 ? ($1->Sup.len-1) : -1)")
       else: unaryExpr(p, e, d, "($1 ? $1->Sup.len : 0)")
     else:
       if op == mHigh: unaryExpr(p, e, d, "($1 ? ($1->len-1) : -1)")
       else: unaryExpr(p, e, d, "($1 ? $1->len : 0)")
+  of tySequence:
+    var a, tmp: TLoc
+    initLocExpr(p, e[1], a)
+    getIntTemp(p, tmp)
+    var frmt: FormatStr
+    if not p.module.compileToCpp:
+      if op == mHigh:
+        frmt = "$1 = ($2 ? ($2->Sup.len-1) : -1);$n"
+      else:
+        frmt = "$1 = ($2 ? $2->Sup.len : 0);$n"
+    else:
+      if op == mHigh:
+        frmt = "$1 = ($2 ? ($2->len-1) : -1);$n"
+      else:
+        frmt = "$1 = ($2 ? $2->len : 0);$n"
+    lineCg(p, cpsStmts, frmt, tmp.r, rdLoc(a))
+    putIntoDest(p, d, e.typ, tmp.r)
   of tyArray:
     # YYY: length(sideeffect) is optimized away incorrectly?
     if op == mHigh: putIntoDest(p, d, e.typ, rope(lastOrd(typ)))
@@ -1746,11 +1764,23 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mOrd: genOrd(p, e, d)
   of mLengthArray, mHigh, mLengthStr, mLengthSeq, mLengthOpenArray:
     genArrayLen(p, e, d, op)
-  of mXLenStr, mXLenSeq:
+  of mXLenStr:
     if not p.module.compileToCpp:
       unaryExpr(p, e, d, "($1->Sup.len)")
     else:
       unaryExpr(p, e, d, "$1->len")
+  of mXLenSeq:
+    # see 'taddhigh.nim' for why we need to use a temporary here:
+    var a, tmp: TLoc
+    initLocExpr(p, e[1], a)
+    getIntTemp(p, tmp)
+    var frmt: FormatStr
+    if not p.module.compileToCpp:
+      frmt = "$1 = $2->Sup.len;$n"
+    else:
+      frmt = "$1 = $2->len;$n"
+    lineCg(p, cpsStmts, frmt, tmp.r, rdLoc(a))
+    putIntoDest(p, d, e.typ, tmp.r)
   of mGCref: unaryStmt(p, e, d, "#nimGCref($1);$n")
   of mGCunref: unaryStmt(p, e, d, "#nimGCunref($1);$n")
   of mSetLengthStr: genSetLengthStr(p, e, d)

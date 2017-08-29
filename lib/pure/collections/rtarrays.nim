@@ -19,7 +19,7 @@ type
     L: Natural
     spart: seq[T]
     apart: array[ArrayPartSize, T]
-  UncheckedArray* {.unchecked.}[T] = array[0..100_000_000, T]
+  UncheckedArray* {.unchecked.}[T] = array[0, T]
 
 template usesSeqPart(x): untyped = x.L > ArrayPartSize
 
