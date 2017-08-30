@@ -1327,7 +1327,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     
     if n.hasExplicitParams:
       put(g, tkBracketLe, "[")
-      gcomma(g, n)
+      gsemicolon(g, n)
       put(g, tkBracketRi, "]")
   of nkFormalParams:
     put(g, tkParLe, "(")
