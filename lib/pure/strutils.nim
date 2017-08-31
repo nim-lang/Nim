@@ -2297,6 +2297,24 @@ proc removeSuffix*(s: var string, suffix: string) {.
     newLen -= len(suffix)
     s.setLen(newLen)
 
+template cut*(s: string, left = 0, right = 0): string =
+  ## Cuts the specified number of characters from the left or right side of a string.
+  ##
+  ## A call to ``cut`` is transformed to the corresponding string-slicing operation.
+  ##
+  ## .. code-block:: nim
+  ##   assert "Hello World".cut(right = 6) == "Hello"
+  ##   assert "Hello World".cut(left = 6) == "World"
+  ##   assert "Hello World".cut(left = 4, right = 4) == "o W"
+  ##
+  ## is transformed into:
+  ##
+  ## .. code-block:: nim
+  ##   assert "Hello World"[0 .. ^(6 + 1)] == "Hello"
+  ##   assert "Hello World"[6 .. ^1] == "World"
+  ##   assert "Hello World"[4 .. ^(4 + 1)] == "o W"
+  s[left .. ^(right + 1)]
+
 when isMainModule:
   doAssert align("abc", 4) == " abc"
   doAssert align("a", 0) == "a"
@@ -2510,5 +2528,9 @@ bar
     doAssert s.endsWith('f')
     doAssert s.endsWith('a') == false
     doAssert s.endsWith('\0') == false
+
+  doAssert "Hello World".cut(right = 6) == "Hello"
+  doAssert "Hello World".cut(left = 6) == "World"
+  doAssert "Hello World".cut(left = 4, right = 4) == "o W"
 
   #echo("strutils tests passed")
