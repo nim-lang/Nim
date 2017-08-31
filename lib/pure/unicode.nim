@@ -1935,10 +1935,6 @@ iterator split*(s: string, sep: Rune, maxsplit: int = -1): string =
   ##
   splitCommon(s, sep, maxsplit)
 
-template rsplitCommon(s, sep, maxsplit) =
-  ## Common code for rsplit functions
-
-
 when isMainModule:
   let
     someString = "öÑ"
