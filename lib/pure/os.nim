@@ -1184,7 +1184,9 @@ proc createSymlink*(src, dest: string) =
   ## Some OS's (such as Microsoft Windows) restrict the creation
   ## of symlinks to root users (administrators).
   when defined(Windows):
-    let flag = dirExists(src).int32
+    # 2 is the SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE. This allows
+    # anyone with developer mode on to create a link
+    let flag = dirExists(src).int32 or 2
     when useWinUnicode:
       var wSrc = newWideCString(src)
       var wDst = newWideCString(dest)
