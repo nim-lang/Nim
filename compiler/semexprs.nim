@@ -1085,9 +1085,11 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       if ty.n != nil and ty.n.kind == nkRecList:
         let field = lookupInRecord(ty.n, i)
         if field != nil:
-          n.typ = newTypeWithSons(c, tyFieldAccessor, @[ty, field.typ])
-          n.typ.n = copyTree(n)
+          n.typ = makeTypeDesc(c, field.typ)
           return n
+          #n.typ = newTypeWithSons(c, tyFieldAccessor, @[ty, field.typ])
+          #n.typ.n = copyTree(n)
+          #return n
     else:
       tryReadingGenericParam(ty)
       return

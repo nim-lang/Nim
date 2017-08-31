@@ -261,12 +261,18 @@ proc high*[T: Ordinal](x: T): T {.magic: "High", noSideEffect.}
 proc high*[T: Ordinal](x: typeDesc[T]): T {.magic: "High", noSideEffect.}
 proc high*[T](x: openArray[T]): int {.magic: "High", noSideEffect.}
 proc high*[I, T](x: array[I, T]): I {.magic: "High", noSideEffect.}
+proc high*[I, T](x: typeDesc[array[I, T]]): I {.magic: "High", noSideEffect.}
+proc high*(x: cstring): int {.magic: "High", noSideEffect.}
+proc high*(x: string): int {.magic: "High", noSideEffect.}
 
 proc low*[T: Ordinal](x: typeDesc[T]): T {.magic: "Low", noSideEffect.}
 proc low*[T](x: openArray[T]): int {.magic: "Low", noSideEffect.}
 proc low*[I, T](x: array[I, T]): I {.magic: "Low", noSideEffect.}
 proc low*[T](x: T): T {.magic: "Low", noSideEffect.}
-  ## returns the lowest possible index of an array, a sequence, a string or
+proc low*[I, T](x: typeDesc[array[I, T]]): I {.magic: "Low", noSideEffect.}
+proc low*(x: cstring): int {.magic: "Low", noSideEffect.}
+proc low*(x: string): int {.magic: "Low", noSideEffect.}
+## returns the lowest possible index of an array, a sequence, a string or
   ## the lowest possible value of an ordinal value `x`. As a special
   ## semantic rule, `x` may also be a type identifier.
   ##
