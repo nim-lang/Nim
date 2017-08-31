@@ -67,8 +67,8 @@ var targets = {low(TTarget)..high(TTarget)}
 proc normalizeMsg(s: string): string =
   result = newStringOfCap(s.len+1)
   for x in splitLines(s):
+    if result.len > 0: result.add '\L'
     result.add x.strip
-    result.add '\L'
 
 proc callCompiler(cmdTemplate, filename, options: string,
                   target: TTarget): TSpec =
