@@ -2135,3 +2135,7 @@ when isMainModule:
     doAssert s3.split(seps = [':'.Rune, "×".runeAt(0)]) == @["", "this", "is", "an", "example", "", ""]
     doAssert s.split(maxsplit = 4) == @["", "this", "is", "an", "example  "]
     doAssert s.split(' '.Rune, maxsplit = 1) == @["", "this is an example  "]
+
+  block repeatTests:
+    doAssert repeat('c'.Rune, 5) == "ccccc"
+    doAssert repeat("×".runeAt(0), 5) == "×××××"
