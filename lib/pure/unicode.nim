@@ -1525,12 +1525,13 @@ proc strip*(s: string, leading = true, trailing = true,
   runes: openarray[Rune] = spaceRanges): string {.noSideEffect,
   rtl, extern: "nucStrip".} =
   var
-    i = 0
     s_i = 0
     e_i = len(s) - 1
-    l_i: int
-    rune: Rune
   if leading:
+    var
+      i = 0
+      l_i: int
+      rune: Rune
     while i < len(s):
       l_i = i
       fastRuneAt(s, i, rune)
@@ -1539,11 +1540,27 @@ proc strip*(s: string, leading = true, trailing = true,
         s_i = l_i # Go back to where the current rune starts
         break
   if trailing:
-    e_i = i
-    while i < len(s):
-      fastRuneAt(s, i, rune)
+    var
+      i = e_i
+      l_i: int
+      rune: Rune
+    while i >= 0:
+      l_i = i
+      fastRuneAt(s, l_i, rune)
+      var p_i = i - 1
+      while p_i >= 0:
+        var
+          p_i_end = p_i
+          p_rune: Rune
+        fastRuneAt(s, p_i_end, p_rune)
+        if p_i_end < l_i: break
+        i = p_i
+        rune = p_rune
+        dec(p_i)
       if not runes.contains(rune):
-        e_i = i
+        e_i = l_i - 1
+        break
+      dec(i)
   let newLen = e_i - s_i
   result = newStringOfCap(newLen)
   if e_i > s_i:
