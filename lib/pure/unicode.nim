@@ -1502,7 +1502,7 @@ proc capitalize*(s: string): string {.noSideEffect, procvar,
 
   result = $toUpper(rune) & substr(s, i)
 
-proc normalizeUnicode*(s: string): string {.noSideEffect, 
+proc normalizeUnicode*(s: string): string {.noSideEffect,
   rtl, extern: "nucNormalize".} =
   ## Normalizes the string ``s``.
   ##
@@ -1511,16 +1511,15 @@ proc normalizeUnicode*(s: string): string {.noSideEffect,
     underscore = '_'.Rune
   var
     i = 0
-    lastIndex = 0
+    written = 0
     rune: Rune
   result = newString(len(s))
   while i < len(s):
-    lastIndex = i
     fastRuneAt(s, i, rune)
     if rune.isUpper():
       rune = rune.toLower()
     if rune != underscore:
-      rune.fastToUTF8Copy(result, lastIndex)
+      rune.fastToUTF8Copy(result, written)
 
 proc strip*(s: string, leading = true, trailing = true,
   runes: openarray[Rune] = spaceRanges): string {.noSideEffect,
