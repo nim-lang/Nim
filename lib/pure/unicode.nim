@@ -2090,3 +2090,16 @@ when isMainModule:
   doAssert(runeSubStr(s, -100, 100) ==  "Hänsel  ««: 10,00€")
   doAssert(runeSubStr(s, 0, -100) == "")
   doAssert(runeSubStr(s, 100, -100) == "")
+
+  doAssert(strip("  foofoofoo  ") == "foofoofoo", "Actual: " & strip("  foofoofoo  "))
+  doAssert(strip("sfoofoofoos", runes = ['s'.Rune]) == "foofoofoo", "Actual: " & strip("sfoofoofoos", runes = ['s'.Rune]))
+  doAssert(strip("barfoofoofoobar", runes = ['b'.Rune, 'a'.Rune, 'r'.Rune]) == "foofoofoo", "Actual: " & strip("barfoofoofoobar", runes = ['b'.Rune, 'a'.Rune, 'r'.Rune]))
+  doAssert(strip("sfoofoofoos", leading = false, runes = ['s'.Rune]) == "sfoofoofoo", "Actual: " & strip("sfoofoofoos", leading = false, runes = ['s'.Rune]))
+  doAssert(strip("sfoofoofoos", trailing = false, runes = ['s'.Rune]) == "foofoofoos", "Actual: " & strip("sfoofoofoos", trailing = false, runes = ['s'.Rune]))
+
+  doAssert(strip("«TEXT»", runes = ["«".runeAt(0), "»".runeAt(0)]) == "TEXT", "Actual: " & strip("«TEXT»", runes = ["«".runeAt(0), "»".runeAt(0)]))
+  doAssert(strip("copyright©", leading = false, runes = ["©".runeAt(0)]) == "copyright", "Actual: " & strip("copyright©", leading = false, runes = ["©".runeAt(0)]))
+  doAssert(strip("¿Question?", trailing = false, runes = ["¿".runeAt(0)]) == "Question?", "Actual: " & strip("¿Question?", trailing = false, runes = ["¿".runeAt(0)]))
+
+  doAssert(strip("×text×", leading = false, runes = ["×".runeAt(0)]) == "×text", "Actual: " & strip("×text×", leading = false, runes = ["×".runeAt(0)]))
+  doAssert(strip("×text×", trailing = false, runes = ["×".runeAt(0)]) == "text×", "Actual: " & strip("×text×", trailing = false, runes = ["×".runeAt(0)]))
