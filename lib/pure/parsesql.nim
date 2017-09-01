@@ -496,6 +496,7 @@ type
     nkPrimaryKey,
     nkForeignKey,
     nkNotNull,
+    nkNull,
 
     nkStmtList,
     nkDot,
@@ -613,6 +614,9 @@ proc eat(p: var SqlParser, keyw: string) =
   else:
     sqlError(p, keyw.toUpper() & " expected")
 
+proc opt(p: var SqlParser, kind: TokKind) =
+  if p.tok.kind == kind: getTok(p)
+
 proc parseDataType(p: var SqlParser): SqlNode =
   if isKeyw(p, "enum"):
     result = newNode(nkEnumDef)
@@ -705,7 +709,7 @@ proc primary(p: var SqlParser): SqlNode =
       result = newNode(nkCall)
       result.add(a)
       getTok(p)
-      while true:
+      while p.tok.kind != tkParRi:
         result.add(parseExpr(p))
         if p.tok.kind == tkComma: getTok(p)
         else: break
@@ -776,8 +780,18 @@ proc parseConstraint(p: var SqlParser): SqlNode =
   expectIdent(p)
   result.add(newNode(nkIdent, p.tok.literal))
   getTok(p)
-  eat(p, "check")
+  optKeyw(p, "check")
   result.add(parseExpr(p))
+
+proc parseParIdentList(p: var SqlParser, father: SqlNode) =
+  eat(p, tkParLe)
+  while true:
+    expectIdent(p)
+    father.add(newNode(nkIdent, p.tok.literal))
+    getTok(p)
+    if p.tok.kind != tkComma: break
+    getTok(p)
+  eat(p, tkParRi)
 
 proc parseColumnConstraints(p: var SqlParser, result: SqlNode) =
   while true:
@@ -795,6 +809,9 @@ proc parseColumnConstraints(p: var SqlParser, result: SqlNode) =
       getTok(p)
       eat(p, "null")
       result.add(newNode(nkNotNull))
+    elif isKeyw(p, "null"):
+      getTok(p)
+      result.add(newNode(nkNull))
     elif isKeyw(p, "identity"):
       getTok(p)
       result.add(newNode(nkIdentity))
@@ -807,6 +824,7 @@ proc parseColumnConstraints(p: var SqlParser, result: SqlNode) =
     elif isKeyw(p, "constraint"):
       result.add(parseConstraint(p))
     elif isKeyw(p, "unique"):
+      getTok(p)
       result.add(newNode(nkUnique))
     else:
       break
@@ -828,16 +846,6 @@ proc parseIfNotExists(p: var SqlParser, k: SqlNodeKind): SqlNode =
     result = newNode(succ(k))
   else:
     result = newNode(k)
-
-proc parseParIdentList(p: var SqlParser, father: SqlNode) =
-  eat(p, tkParLe)
-  while true:
-    expectIdent(p)
-    father.add(newNode(nkIdent, p.tok.literal))
-    getTok(p)
-    if p.tok.kind != tkComma: break
-    getTok(p)
-  eat(p, tkParRi)
 
 proc parseTableConstraint(p: var SqlParser): SqlNode =
   if isKeyw(p, "primary"):
@@ -866,20 +874,34 @@ proc parseTableConstraint(p: var SqlParser): SqlNode =
   else:
     sqlError(p, "column definition expected")
 
+proc parseUnique(p: var SqlParser): SqlNode =
+  result = parseExpr(p)
+  if result.kind == nkCall: result.kind = nkUnique
+
 proc parseTableDef(p: var SqlParser): SqlNode =
   result = parseIfNotExists(p, nkCreateTable)
   expectIdent(p)
   result.add(newNode(nkIdent, p.tok.literal))
   getTok(p)
   if p.tok.kind == tkParLe:
-    while true:
-      getTok(p)
-      if p.tok.kind == tkIdentifier or p.tok.kind == tkQuotedIdentifier:
+    getTok(p)
+    while p.tok.kind != tkParRi:
+      if isKeyw(p, "constraint"):
+        result.add parseConstraint(p)
+      elif isKeyw(p, "primary") or isKeyw(p, "foreign"):
+        result.add parseTableConstraint(p)
+      elif isKeyw(p, "unique"):
+        result.add parseUnique(p)
+      elif p.tok.kind == tkIdentifier or p.tok.kind == tkQuotedIdentifier:
         result.add(parseColumnDef(p))
       else:
         result.add(parseTableConstraint(p))
       if p.tok.kind != tkComma: break
+      getTok(p)
     eat(p, tkParRi)
+    # skip additional crap after 'create table (...) crap;'
+    while p.tok.kind notin {tkSemicolon, tkEof}:
+      getTok(p)
 
 proc parseTypeDef(p: var SqlParser): SqlNode =
   result = parseIfNotExists(p, nkCreateType)
@@ -1046,7 +1068,7 @@ proc parseSelect(p: var SqlParser): SqlNode =
       getTok(p)
     result.add(n)
 
-proc parseStmt(p: var SqlParser): SqlNode =
+proc parseStmt(p: var SqlParser; parent: SqlNode) =
   if isKeyw(p, "create"):
     getTok(p)
     optKeyw(p, "cached")
@@ -1058,21 +1080,23 @@ proc parseStmt(p: var SqlParser): SqlNode =
     optKeyw(p, "unique")
     optKeyw(p, "hash")
     if isKeyw(p, "table"):
-      result = parseTableDef(p)
+      parent.add parseTableDef(p)
     elif isKeyw(p, "type"):
-      result = parseTypeDef(p)
+      parent.add parseTypeDef(p)
     elif isKeyw(p, "index"):
-      result = parseIndexDef(p)
+      parent.add parseIndexDef(p)
     else:
       sqlError(p, "TABLE expected")
   elif isKeyw(p, "insert"):
-    result = parseInsert(p)
+    parent.add parseInsert(p)
   elif isKeyw(p, "update"):
-    result = parseUpdate(p)
+    parent.add parseUpdate(p)
   elif isKeyw(p, "delete"):
-    result = parseDelete(p)
+    parent.add parseDelete(p)
   elif isKeyw(p, "select"):
-    result = parseSelect(p)
+    parent.add parseSelect(p)
+  elif isKeyw(p, "begin"):
+    getTok(p)
   else:
     sqlError(p, "CREATE expected")
 
@@ -1089,9 +1113,8 @@ proc parse(p: var SqlParser): SqlNode =
   ## Syntax errors raise an `EInvalidSql` exception.
   result = newNode(nkStmtList)
   while p.tok.kind != tkEof:
-    var s = parseStmt(p)
+    parseStmt(p, result)
     eat(p, tkSemicolon)
-    result.add(s)
   if result.len == 1:
     result = result.sons[0]
 
@@ -1147,6 +1170,8 @@ proc ra(n: SqlNode, s: var string, indent: int) =
     rs(n, s, indent)
   of nkNotNull:
     s.add(" not null")
+  of nkNull:
+    s.add(" null")
   of nkDot:
     ra(n.sons[0], s, indent)
     s.add(".")
@@ -1329,6 +1354,10 @@ proc renderSQL*(n: SqlNode): string =
   ## Converts an SQL abstract syntax tree to its string representation.
   result = ""
   ra(n, result, 0)
+
+proc `$`*(n: SqlNode): string =
+  ## an alias for `renderSQL`.
+  renderSQL(n)
 
 when not defined(testing) and isMainModule:
   echo(renderSQL(parseSQL(newStringStream("""

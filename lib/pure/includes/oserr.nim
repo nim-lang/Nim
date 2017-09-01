@@ -9,6 +9,9 @@ when not defined(nimscript):
   proc c_strerror(errnum: cint): cstring {.
     importc: "strerror", header: "<string.h>".}
 
+  when defined(windows):
+    import winlean
+
 proc osErrorMsg*(): string {.rtl, extern: "nos$1", deprecated.} =
   ## Retrieves the operating system's error flag, ``errno``.
   ## On Windows ``GetLastError`` is checked before ``errno``.
