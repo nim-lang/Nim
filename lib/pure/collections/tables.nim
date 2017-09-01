@@ -1315,13 +1315,13 @@ when isMainModule:
     let
       a = {3: 1}.toOrderedTable
       b = {3: 2}.toOrderedTable
-    assert ((a == b) == false)
-    assert ((b == a) == false)
+    assert((a == b) == false)
+    assert((b == a) == false)
 
   block: #6250
     let
       a = {3: 2}.toOrderedTable
       b = {3: 2}.toOrderedTable
-    assert ((a == b) == true)
-    assert ((b == a) == true)    
-   
+    assert((a == b) == true)
+    assert((b == a) == true)
+
