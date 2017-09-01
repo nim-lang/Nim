@@ -1955,6 +1955,92 @@ proc split*(s: string, sep: Rune, maxsplit: int = -1): seq[string] {.noSideEffec
   ## that returns a sequence of substrings.
   accumulateResult(split(s, sep, maxsplit))
 
+proc editDistance*(a, b: string): int {.noSideEffect,
+  rtl, extern: "nucEditDistance".} =
+  ## Returns the unicode-rune edit distance between `a` and `b`.
+  ##
+  ## This uses the `Levenshtein`:idx: distance algorithm with only a linear
+  ## memory overhead.  This implementation is highly optimized!
+  var
+    len_a = a.len
+    len_b = b.len
+  if len_a > len_b:
+    # make ``b`` the longer string
+    return editDistance(b, a)
+  # strip common prefix:
+  var s = 0
+  while s < len_a and a[s] == b[s]:
+    inc(s)
+    dec(len_a)
+    dec(len_b)
+  # strip common suffix:
+  while len_a > 0 and len_b > 0 and a[s + len_a - 1] == b[s + len_b - 1]:
+    dec(len_a)
+    dec(len_b)
+  # trivial cases:
+  if len_a == 0: return len_b
+  if len_b == 0: return len_a
+  # another special case:
+  if len_a == 1:
+    for j in s .. (s + len_b - 1):
+      if a[s] == b[j]: return len_b - 1
+    return len_b
+  # common case
+  inc(len_a)
+  inc(len_b)
+  var half = len_a shr 1
+  # initalize first row:
+  var row: seq[int]
+  newSeq(row, len_b)
+  var e = s + len_b - 1 # end marker
+  for i in 1..len_b - half - 1: row[i] = i
+  row[0] = len_a - half - 1
+  for i in 1 .. len_a - 1:
+    var char1 = a[i + s - 1]
+    var char2p: int
+    var D, x: int
+    var p: int
+    if i >= len_a - half:
+      # skip the upper triangle:
+      var offset = i - len_a + half
+      char2p = offset
+      p = offset
+      var c3 = row[p] + ord(char1 != b[s + char2p])
+      inc(p)
+      inc(char2p)
+      x = row[p] + 1
+      D = x
+      if x > c3: x = c3
+      row[p] = x
+      inc(p)
+    else:
+      p = 1
+      char2p = 0
+      D = i
+      x = i
+    if i <= half + 1:
+      # skip the lower triangle:
+      e = len_b + i - half - 2
+    # main:
+    while p <= e:
+      dec(D)
+      var c3 = D + ord(char1 != b[char2p + s])
+      inc(char2p)
+      inc(x)
+      if x > c3: x = c3
+      D = row[p] + 1
+      if x > D: x = D
+      row[p] = x
+      inc(p)
+    # lower triangle sentinel:
+    if i <= half:
+      dec(D)
+      var c3 = D + ord(char1 != b[char2p + s])
+      inc(x)
+      if x > c3: x = c3
+      row[p] = x
+  result = row[e]
+
 when isMainModule:
   let
     someString = "öÑ"
