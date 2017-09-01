@@ -1831,33 +1831,37 @@ proc lastRune*(s: string; last: int): (Rune, int) =
     result = (r, L+1)
 
 # --------- Private templates for different split separators -----------
-template stringHasSep(s: string, index: int, seps: openarray[Rune]): bool =
-  seps.contains(s.runeAtPos(index))
+proc stringHasSep(s: string, index: int, seps: openarray[Rune]): bool =
+  var rune: Rune
+  fastRuneAt(s, index, rune, false)
+  return seps.contains(rune)
 
-template stringHasSep(s: string, index: int, sep: Rune): bool =
-  s.runeAtPos(index) == sep
+proc stringHasSep(s: string, index: int, sep: Rune): bool =
+  var rune: Rune
+  fastRuneAt(s, index, rune, false)
+  return sep == rune
 
-template splitCommon(s, sep, maxsplit) =
+template splitCommon(s, sep, maxsplit: auto, sepLen: int = -1) =
   ## Common code for split procedures
-  let sLen = s.runeLen
   var
     last = 0
     splits = maxsplit
-  if s.len > 0:
-    while last <= s.len:
+  if len(s) > 0:
+    while last <= len(s):
       var first = last
-      while last < s.len and not stringHasSep(s, last, sep):
-        inc(last, graphemeLen(s, last))
-      if splits == 0: last = s.len
-      yield substr(s, first, last - 1)
+      while last < len(s) and not stringHasSep(s, last, sep):
+        when sep is Rune:
+          inc(last, sepLen)
+        else:
+          inc(last, runeLenAt(s, last))
+      if splits == 0: last = len(s)
+      yield s[first .. (last - 1)]
       if splits == 0: break
       dec(splits)
-      when sep is string:
-        inc(last, len(sep))
-      elif sep is Rune:
-        inc(last, runeLen(sep))
+      when sep is Rune:
+        inc(last, sepLen)
       else:
-        inc(last, graphemeLen(s, last))
+        inc(last, if last < len(s): runeLenAt(s, last) else: 1)
       
 iterator split*(s: string, seps: openarray[Rune] = spaceRanges,
   maxsplit: int = -1): string =
@@ -1937,7 +1941,7 @@ iterator split*(s: string, sep: Rune, maxsplit: int = -1): string =
   ##   ""
   ##   ""
   ##
-  splitCommon(s, sep, maxsplit)
+  splitCommon(s, sep, maxsplit, runeLen(sep))
 
 proc split*(s: string, seps: openarray[Rune] = spaceRanges, maxsplit: int = -1): seq[string] {.
   noSideEffect, rtl, extern: "nucSplitRunes".} =
