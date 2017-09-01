@@ -29,14 +29,6 @@ else:
 import ospaths
 export ospaths
 
-when defined(posix):
-  when NoFakeVars:
-    const pathMax = 5000 # doesn't matter really. The concept of PATH_MAX
-                         # doesn't work anymore on modern OSes.
-  else:
-    var
-      pathMax {.importc: "PATH_MAX", header: "<stdlib.h>".}: cint
-
 proc c_remove(filename: cstring): cint {.
   importc: "remove", header: "<stdio.h>".}
 proc c_rename(oldname, newname: cstring): cint {.
@@ -1388,7 +1380,7 @@ proc moveDir*(source, dest: string) {.tags: [ReadIOEffect, WriteIOEffect].} =
       copyDir(source, dest)
       removeDir(source)
 
-include ospaths
+#include ospaths
 
 proc expandSymlink*(symlinkPath: string): string =
   ## Returns a string representing the path to which the symbolic link points.
