@@ -2238,3 +2238,17 @@ when isMainModule:
     doAssert alignLeft("1232", 6) == "1232  "
     doAssert alignLeft("1232", 6, '#'.Rune) == "1232##"
     doAssert alignLeft("1232", 6, "×".runeAt(0)) == "1232××"
+
+  block editDistanceTests:
+    doAssert(editDistance("", "") == 0, "Actual: " & $ editDistance("", ""))
+    doAssert(editDistance("kitten", "sitting") == 3, "Actual: " & $ editDistance("kitten", "sitting")) # from Wikipedia
+    doAssert(editDistance("flaw", "lawn") == 2, "Actual: " & $ editDistance("flaw", "lawn")) # from Wikipedia
+
+    doAssert(editDistance("привет", "превет") == 1, "Actual: " & $ editDistance("привет", "превет"))
+    doAssert(editDistance("Åge", "Age") == 1, "Actual: " & $ editDistance("Åge", "Age"))
+
+  block runeLenTests:
+    doAssert(runeLen('a'.Rune) == 1, "Actual: " & $ runeLen('a'.Rune))
+
+    doAssert("å".runeLenAt(0) == 2, "Actual: " & $ "å".runeLenAt(0))
+    doAssert("×".runeLenAt(0) == 2, "Actual: " & $ "×".runeLenAt(0))
