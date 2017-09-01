@@ -81,6 +81,7 @@ type
                      # and shrink safely.
     typ: PNimType
     region: ptr MemRegion
+    size: int
 
 var
   tlRegion {.threadVar.}: MemRegion
@@ -178,8 +179,8 @@ proc runFinalizers(c: Chunk) =
 
 proc dealloc(r: var MemRegion; p: pointer; size: int) =
   let it = cast[ptr ObjHeader](p-!sizeof(ObjHeader))
-  if it.typ != nil and it.typ.finalizer != nil:
-    (cast[Finalizer](it.typ.finalizer))(p)
+  #if it.typ != nil and it.typ.finalizer != nil:
+  #  (cast[Finalizer](it.typ.finalizer))(p)
   it.typ = nil
   # it is benefitial to not use the free lists here:
   if r.bump -! size == p:
@@ -281,6 +282,7 @@ proc rawNewSeq(r: var MemRegion, typ: PNimType, size: int): pointer =
   var res = cast[ptr SeqHeader](alloc(r, size + sizeof(SeqHeader)))
   res.typ = typ
   res.region = addr(r)
+  res.size = size + sizeof(SeqHeader) - sizeof(int)
   result = res +! sizeof(SeqHeader)
 
 proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
@@ -317,13 +319,19 @@ proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
 proc growObj(regionUnused: var MemRegion; old: pointer, newsize: int): pointer =
   let sh = cast[ptr SeqHeader](old -! sizeof(SeqHeader))
   let typ = sh.typ
+  sysAssert(typ != nil, "typ is nil?!")
+  sysAssert(sh.region != nil, "region is nil?!")
   result = rawNewSeq(sh.region[], typ,
                      roundup(newsize, MemAlign))
   let elemSize = if typ.kind == tyString: 1 else: typ.base.size
   let oldsize = cast[PGenericSeq](old).len*elemSize + GenericSeqSize
+  let oldcap = roundup(cast[PGenericSeq](old).space*elemSize + GenericSeqSize, MemAlign)
   zeroMem(result +! oldsize, newsize-oldsize)
   copyMem(result, old, oldsize)
-  dealloc(sh.region[], old, roundup(oldsize, MemAlign))
+  if oldcap != sh.size:
+    cprintf("real %ld  computed: %ld kind: %s %ld\n", sh.size, oldcap, typ.name, elemSize)
+  sysAssert(oldcap == sh.size, "growObj")
+  dealloc(sh.region[], sh, oldcap)
 
 proc growObj(old: pointer, newsize: int): pointer {.rtl.} =
   result = growObj(tlRegion, old, newsize)
