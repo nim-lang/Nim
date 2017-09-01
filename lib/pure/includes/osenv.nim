@@ -15,7 +15,7 @@ var
   envComputed {.threadvar.}: bool
   environment {.threadvar.}: seq[string]
 
-when defined(windows):
+when defined(windows) and not defined(nimscript):
   # because we support Windows GUI applications, things get really
   # messy here...
   when useWinUnicode:
@@ -58,7 +58,7 @@ when defined(windows):
 
 else:
   const
-    useNSGetEnviron = defined(macosx) and not defined(ios)
+    useNSGetEnviron = (defined(macosx) and not defined(ios)) or defined(nimscript)
 
   when useNSGetEnviron:
     # From the manual:
@@ -137,7 +137,7 @@ proc putEnv*(key, val: string) {.tags: [WriteEnvEffect].} =
     else:
       add environment, (key & '=' & val)
       indx = high(environment)
-    when defined(windows):
+    when defined(windows) and not defined(nimscript):
       when useWinUnicode:
         var k = newWideCString(key)
         var v = newWideCString(val)
