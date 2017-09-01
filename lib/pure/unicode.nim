@@ -2139,3 +2139,16 @@ when isMainModule:
   block repeatTests:
     doAssert repeat('c'.Rune, 5) == "ccccc"
     doAssert repeat("×".runeAt(0), 5) == "×××××"
+  
+  block alignTests:
+    doAssert align("abc", 4) == " abc"
+    doAssert align("a", 0) == "a"
+    doAssert align("1232", 6) == "  1232"
+    doAssert align("1232", 6, '#'.Rune) == "##1232"
+    doAssert align("1232", 6, "×".runeAt(0)) == "××1232"
+  
+    doAssert alignLeft("abc", 4) == "abc "
+    doAssert alignLeft("a", 0) == "a"
+    doAssert alignLeft("1232", 6) == "1232  "
+    doAssert alignLeft("1232", 6, '#'.Rune) == "1232##"
+    doAssert alignLeft("1232", 6, "×".runeAt(0)) == "1232××"
