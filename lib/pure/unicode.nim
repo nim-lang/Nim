@@ -2120,3 +2120,14 @@ when isMainModule:
 
   doAssert(strip("×text×", leading = false, runes = ["×".runeAt(0)]) == "×text", "Actual: " & strip("×text×", leading = false, runes = ["×".runeAt(0)]))
   doAssert(strip("×text×", trailing = false, runes = ["×".runeAt(0)]) == "text×", "Actual: " & strip("×text×", trailing = false, runes = ["×".runeAt(0)]))
+
+  block splitTests:
+    let s = " this is an example  "
+    let s2 = ":this;is;an:example;;"
+    let s3 = ":this×is×an:example××"
+
+    doAssert s.split() == @["", "this", "is", "an", "example", "", ""]
+    doAssert s2.split(seps = [':'.Rune, ';'.Rune]) == @["", "this", "is", "an", "example", "", ""]
+    doAssert s3.split(seps = [':'.Rune, "×".runeAt(0)]) == @["", "this", "is", "an", "example", "", ""]
+    doAssert s.split(maxsplit = 4) == @["", "this", "is", "an", "example  "]
+    doAssert s.split(' '.Rune, maxsplit = 1) == @["", "this is an example  "]
