@@ -1965,6 +1965,11 @@ when isMainModule:
   doAssert capitalize("foo") == "Foo"
   doAssert capitalize("") == ""
 
+  doAssert(normalizeUnicode("NimProgrammingLanguage") == "nimprogramminglanguage", "Actual: " & normalizeUnicode("NimProgrammingLanguage"))
+  doAssert(normalizeUnicode("Nim_Programming_Language") == "nimprogramminglanguage", "Actual: " & normalizeUnicode("Nim_Programming_Language"))
+  doAssert(normalizeUnicode("Nim_Programming_Language") == "nimprogramminglanguage", "Actual: " & normalizeUnicode("Nim_Programming_Language"))
+  doAssert(normalizeUnicode("Nim_Programming_Language_Α") == "nimprogramminglanguageα", "Actual: " & normalizeUnicode("Nim_Programming_Language_Α"))
+
   doAssert isTitle("Foo")
   doAssert(not isTitle("Foo bar"))
   doAssert(not isTitle("αlpha Βeta"))
