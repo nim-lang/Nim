@@ -1566,18 +1566,6 @@ proc strip*(s: string, leading = true, trailing = true,
   if e_i > s_i:
     result.add s[s_i .. e_i]
 
-proc split*(s: string, seps: openarray[Rune] = spaceRanges, maxsplit: int = -1): seq[string] {.
-  noSideEffect, rtl, extern: "nucSplitRunes".} =
-  ## The same as the `split iterator <#split.i,string,openarray[Rune]>`_, but is a
-  ## proc that returns a sequence of substrings.
-  accumulateResult(split(s, seps, maxsplit))
-
-proc split*(s: string, sep: Rune, maxsplit: int = -1): seq[string] {.noSideEffect,
-  rtl, extern: "nucSplitRune".} =
-  ## The same as the `split iterator <#split.i,string,Rune>`_, but is a proc
-  ## that returns a sequence of substrings.
-  accumulateResult(split(s, sep, maxsplit))
-
 proc repeat*(c: Rune, count: Natural): string {.noSideEffect,
   rtl, extern: "nucRepeatRune".} =
   ## Returns a string of `count` Runes `c`.
@@ -1950,6 +1938,18 @@ iterator split*(s: string, sep: Rune, maxsplit: int = -1): string =
   ##   ""
   ##
   splitCommon(s, sep, maxsplit)
+
+proc split*(s: string, seps: openarray[Rune] = spaceRanges, maxsplit: int = -1): seq[string] {.
+  noSideEffect, rtl, extern: "nucSplitRunes".} =
+  ## The same as the `split iterator <#split.i,string,openarray[Rune]>`_, but is a
+  ## proc that returns a sequence of substrings.
+  accumulateResult(split(s, seps, maxsplit))
+
+proc split*(s: string, sep: Rune, maxsplit: int = -1): seq[string] {.noSideEffect,
+  rtl, extern: "nucSplitRune".} =
+  ## The same as the `split iterator <#split.i,string,Rune>`_, but is a proc
+  ## that returns a sequence of substrings.
+  accumulateResult(split(s, sep, maxsplit))
 
 when isMainModule:
   let
