@@ -141,12 +141,7 @@ proc findExe*(exe: string, followSymlinks: bool = true;
   ## meets the actual file. This behavior can be disabled if desired.
   for ext in extensions:
     result = addFileExt(exe, ext)
-    if existsFile(result):
-      # on Posix ensure we do not yield binaries in the cwd:
-      when defined(posix):
-        if isAbsolute(result): return
-      else:
-        return
+    if existsFile(result): return
   var path = string(getEnv("PATH"))
   for candidate in split(path, PathSep):
     when defined(windows):
