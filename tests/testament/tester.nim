@@ -80,7 +80,6 @@ proc callCompiler(cmdTemplate, filename, options: string,
   let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
                        "options", options, "file", filename.quoteShell,
                        "filedir", filename.getFileDir()])
-  echo(c)
   var p = startProcess(command=c[0], args=c[1.. ^1],
                        options={poStdErrToStdOut, poUsePath})
   let outp = p.outputStream

@@ -77,9 +77,20 @@ iterator chosen(packages: StringTableRef): string =
     yield res
 
 proc addNimblePath(p: string, info: TLineInfo) =
-  if not contains(options.searchPaths, p):
-    message(info, hintPath, p)
-    options.lazyPaths.insert(p, 0)
+  var path = p
+  let nimbleLinks = toSeq(walkPattern(p / "*.nimble-link"))
+  if nimbleLinks.len > 0:
+    # If the user has more than one .nimble-link file then... we just ignore it.
+    # Spec for these files is available in Nimble's readme:
+    # https://github.com/nim-lang/nimble#nimble-link
+    let nimbleLinkLines = readFile(nimbleLinks[0]).splitLines()
+    path = nimbleLinkLines[1]
+    if not path.isAbsolute():
+      path = p / path
+
+  if not contains(options.searchPaths, path):
+    message(info, hintPath, path)
+    options.lazyPaths.insert(path, 0)
 
 proc addPathRec(dir: string, info: TLineInfo) =
   var packages = newStringTable(modeStyleInsensitive)
