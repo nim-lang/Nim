@@ -639,7 +639,7 @@ type
     mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, mNSetStrVal, mNLineInfo,
     mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent, mIdentToStr,
     mNBindSym, mLocals, mNCallSite,
-    mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl,
+    mEqIdent, mEqSym, mEqNimrodNode, mSameNodeType, mGetImpl,
     mNHint, mNWarning, mNError,
     mInstantiationInfo, mGetTypeInfo, mNGenSym,
     mNimvm, mIntDefine, mStrDefine
