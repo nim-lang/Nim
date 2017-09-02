@@ -290,8 +290,8 @@ proc pathSubs*(p, config: string): string =
     "projectpath", options.gProjectPath,
     "projectdir", options.gProjectPath,
     "nimcache", getNimcacheDir()])
-  if '~' in result:
-    result = result.replace("~", home)
+  if "~/" in result:
+    result = result.replace("~/", home & '/')
 
 proc toGeneratedFile*(path, ext: string): string =
   ## converts "/home/a/mymodule.nim", "rod" to "/home/a/nimcache/mymodule.rod"
