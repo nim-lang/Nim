@@ -75,7 +75,7 @@ proc visit(i: int; all, res: PNode; deps: var seq[(IntSet, IntSet)]): bool =
               # trouble:
               for k in oldLen..<res.len:
                 res.sons[k].flags = res.sons[k].flags - {nfPermMark, nfTempMark}
-              res.sons.setLen oldLen
+              if oldLen != res.len: res.sons.setLen oldLen
             break
     n.flags = n.flags + {nfPermMark} - {nfTempMark}
     res.add n
