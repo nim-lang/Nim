@@ -1429,7 +1429,8 @@ when defined(nimdoc):
     ## <#GC_fullCollect>`_.
     ##
     ## The proc ``quit(QuitSuccess)`` is called implicitly when your nim
-    ## program finishes without incident. A raised unhandled exception is
+    ## program finishes without incident for platforms where this is the
+    ## expected behavior. A raised unhandled exception is
     ## equivalent to calling ``quit(QuitFailure)``.
     ##
     ## Note that this is a *runtime* call and using ``quit`` inside a macro won't
