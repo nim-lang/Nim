@@ -648,7 +648,7 @@ proc `==`*[A, B](s, t: OrderedTable[A, B]): bool =
     var nxtt = t.data[ht].next
     var nxts = s.data[hs].next
     if isFilled(t.data[ht].hcode) and isFilled(s.data[hs].hcode):
-      if (s.data[hs].key != t.data[ht].key) and (s.data[hs].val != t.data[ht].val):
+      if (s.data[hs].key != t.data[ht].key) or (s.data[hs].val != t.data[ht].val):
         return false
     ht = nxtt
     hs = nxts
@@ -939,7 +939,7 @@ proc enlarge[A](t: var CountTable[A]) =
 
 proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   ## puts a (key, value)-pair into `t`.
-  assert val > 0
+  assert val >= 0
   var h = rawGet(t, key)
   if h >= 0:
     t.data[h].val = val
@@ -1310,4 +1310,18 @@ when isMainModule:
     assert a == b
     assert a == c
 
+
+  block: #6250
+    let
+      a = {3: 1}.toOrderedTable
+      b = {3: 2}.toOrderedTable
+    assert((a == b) == false)
+    assert((b == a) == false)
+
+  block: #6250
+    let
+      a = {3: 2}.toOrderedTable
+      b = {3: 2}.toOrderedTable
+    assert((a == b) == true)
+    assert((b == a) == true)
 

@@ -5,7 +5,9 @@ lost focus 1
 lost focus 2
 registered handler for UserEvent 1
 registered handler for UserEvent 2
-registered handler for UserEvent 3'''
+registered handler for UserEvent 3
+registered handler for UserEvent 4
+'''
 """
 
 import future
@@ -35,11 +37,14 @@ b.onFocusLost:
 b.onFocusLost do:
   echo "lost focus 2"
 
-b.onUserEvent "UserEvent 1" do:
+b.onUserEvent("UserEvent 1") do:
   discard
 
 b.onUserEvent "UserEvent 2":
   discard
 
-b.onUserEvent("UserEvent 3", () => echo "event 3")
+b.onUserEvent("UserEvent 3"):
+  discard
+
+b.onUserEvent("UserEvent 4", () => echo "event 4")
 

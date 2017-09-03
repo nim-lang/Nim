@@ -38,6 +38,13 @@ when declared(allocAtomic):
 
   template allocStrNoInit(size: untyped): untyped =
     cast[NimString](boehmAllocAtomic(size))
+elif defined(gcRegions):
+  template allocStr(size: untyped): untyped =
+    cast[NimString](newStr(addr(strDesc), size, true))
+
+  template allocStrNoInit(size: untyped): untyped =
+    cast[NimString](newStr(addr(strDesc), size, false))
+
 else:
   template allocStr(size: untyped): untyped =
     cast[NimString](newObj(addr(strDesc), size))
@@ -99,7 +106,7 @@ proc copyString(src: NimString): NimString {.compilerRtl.} =
 
 proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
   if src != nil:
-    when declared(newObjRC1):
+    when declared(newObjRC1) and not defined(gcRegions):
       var s = src.len
       if s < 7: s = 7
       result = cast[NimString](newObjRC1(addr(strDesc), sizeof(TGenericSeq) +
@@ -235,7 +242,7 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
     # we need to decref here, otherwise the GC leaks!
     when not defined(boehmGC) and not defined(nogc) and
          not defined(gcMarkAndSweep) and not defined(gogc) and
-         not defined(gcStack):
+         not defined(gcRegions):
       when false: # compileOption("gc", "v2"):
         for i in newLen..result.len-1:
           let len0 = gch.tempStack.len
