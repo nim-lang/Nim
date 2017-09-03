@@ -93,7 +93,6 @@ proc splitSections(n: PNode): PNode =
     else:
       result.add a
 
-
 proc reorder*(nn: PNode): PNode =
   let n = splitSections(nn)
   result = newNodeI(nkStmtList, n.info)
