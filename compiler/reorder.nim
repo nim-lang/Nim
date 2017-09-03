@@ -80,7 +80,22 @@ proc visit(i: int; all, res: PNode; deps: var seq[(IntSet, IntSet)]): bool =
     n.flags = n.flags + {nfPermMark} - {nfTempMark}
     res.add n
 
-proc reorder*(n: PNode): PNode =
+proc splitSections(n: PNode): PNode =
+  assert n.kind == nkStmtList
+  result = newNodeI(nkStmtList, n.info)
+  for a in n:
+    if a.kind in {nkTypeSection, nkConstSection, nkVarSection,
+        nkLetSection, nkUsingStmt} and a.len > 1:
+          for b in a:
+            var s = newNodeI(a.kind, a.info)
+            s.add b
+            result.add s
+    else:
+      result.add a
+
+
+proc reorder*(nn: PNode): PNode =
+  let n = splitSections(nn)
   result = newNodeI(nkStmtList, n.info)
   var deps = newSeq[(IntSet, IntSet)](n.len)
   for i in 0..<n.len:
