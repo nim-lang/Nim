@@ -44,10 +44,6 @@ type
     typ: PNimType
     nextFinal: ptr ObjHeader # next object with finalizer
 
-  Hole = object # stacks can have holes. Otherwise 'growObj' would be insane.
-    zeroTyp: pointer # overlaid with 'typ' field. Always 'nil'.
-    size: int # size of the free slot
-
   Chunk = ptr BaseChunk
   BaseChunk = object
     next: Chunk
@@ -55,7 +51,15 @@ type
     head, tail: ptr ObjHeader # first and last object in chunk that
                               # has a finalizer attached to it
 
+const
+  MaxSmallObject = 128
+
 type
+  FreeEntry = ptr object
+    next: FreeEntry
+  SizedFreeEntry = ptr object
+    next: SizedFreeEntry
+    size: int
   StackPtr = object
     bump: pointer
     remaining: int
@@ -66,12 +70,21 @@ type
     bump: pointer
     head, tail: Chunk
     nextChunkSize, totalSize: int
-    hole: ptr Hole # we support individual freeing
+    freeLists: array[MaxSmallObject div MemAlign, FreeEntry]
+    holes: SizedFreeEntry
     when hasThreadSupport:
       lock: SysLock
 
+  SeqHeader = object # minor hack ahead: Since we know that seqs
+                     # and strings cannot have finalizers, we use the field
+                     # instead for a 'region' field so that they can grow
+                     # and shrink safely.
+    typ: PNimType
+    region: ptr MemRegion
+
 var
   tlRegion {.threadVar.}: MemRegion
+#  tempStrRegion {.threadVar.}: MemRegion  # not yet used
 
 template withRegion*(r: MemRegion; body: untyped) =
   let oldRegion = tlRegion
@@ -84,6 +97,9 @@ template withRegion*(r: MemRegion; body: untyped) =
 
 template inc(p: pointer, s: int) =
   p = cast[pointer](cast[int](p) +% s)
+
+template dec(p: pointer, s: int) =
+  p = cast[pointer](cast[int](p) -% s)
 
 template `+!`(p: pointer, s: int): pointer =
   cast[pointer](cast[int](p) +% s)
@@ -128,7 +144,22 @@ proc allocSlowPath(r: var MemRegion; size: int) =
   r.tail = fresh
   r.remaining = s - sizeof(BaseChunk)
 
-proc alloc(r: var MemRegion; size: int): pointer {.inline.} =
+proc alloc(r: var MemRegion; size: int): pointer =
+  if size <= MaxSmallObject:
+    var it = r.freeLists[size div MemAlign]
+    if it != nil:
+      r.freeLists[size div MemAlign] = it.next
+      return pointer(it)
+  else:
+    var it = r.holes
+    var prev: SizedFreeEntry = nil
+    while it != nil:
+      if it.size >= size:
+        if prev != nil: prev.next = it.next
+        else: r.holes = it.next
+        return pointer(it)
+      prev = it
+      it = it.next
   if size > r.remaining:
     allocSlowPath(r, size)
   sysAssert(size <= r.remaining, "size <= r.remaining")
@@ -145,12 +176,23 @@ proc runFinalizers(c: Chunk) =
       (cast[Finalizer](it.typ.finalizer))(it+!sizeof(ObjHeader))
     it = it.nextFinal
 
-when false:
-  proc dealloc(r: var MemRegion; p: pointer) =
-    let it = cast[ptr ObjHeader](p-!sizeof(ObjHeader))
-    if it.typ != nil and it.typ.finalizer != nil:
-      (cast[Finalizer](it.typ.finalizer))(p)
-    it.typ = nil
+proc dealloc(r: var MemRegion; p: pointer; size: int) =
+  let it = cast[ptr ObjHeader](p-!sizeof(ObjHeader))
+  if it.typ != nil and it.typ.finalizer != nil:
+    (cast[Finalizer](it.typ.finalizer))(p)
+  it.typ = nil
+  # it is benefitial to not use the free lists here:
+  if r.bump -! size == p:
+    dec r.bump, size
+  elif size <= MaxSmallObject:
+    let it = cast[FreeEntry](p)
+    it.next = r.freeLists[size div MemAlign]
+    r.freeLists[size div MemAlign] = it
+  else:
+    let it = cast[SizedFreeEntry](p)
+    it.size = size
+    it.next = r.holes
+    r.holes = it
 
 proc deallocAll(r: var MemRegion; head: Chunk) =
   var it = head
@@ -175,12 +217,15 @@ template computeRemaining(r): untyped =
 
 proc setObstackPtr*(r: var MemRegion; sp: StackPtr) =
   # free everything after 'sp':
-  if sp.current != nil:
+  if sp.current.next != nil:
     deallocAll(r, sp.current.next)
     sp.current.next = nil
-  else:
-    deallocAll(r, r.head)
-    r.head = nil
+    # better leak this memory than be sorry:
+    for i in 0..high(r.freeLists): r.freeLists[i] = nil
+    r.holes = nil
+  #else:
+  #  deallocAll(r, r.head)
+  #  r.head = nil
   r.bump = sp.bump
   r.tail = sp.current
   r.remaining = sp.remaining
@@ -191,17 +236,28 @@ proc deallocAll*() = tlRegion.deallocAll()
 
 proc deallocOsPages(r: var MemRegion) = r.deallocAll()
 
-proc joinRegion*(dest: var MemRegion; src: MemRegion) =
-  # merging is not hard.
-  if dest.head.isNil:
-    dest.head = src.head
-  else:
-    dest.tail.next = src.head
-  dest.tail = src.tail
-  dest.bump = src.bump
-  dest.remaining = src.remaining
-  dest.nextChunkSize = max(dest.nextChunkSize, src.nextChunkSize)
-  inc dest.totalSize, src.totalSize
+template withScratchRegion*(body: untyped) =
+  var scratch: MemRegion
+  let oldRegion = tlRegion
+  tlRegion = scratch
+  try:
+    body
+  finally:
+    tlRegion = oldRegion
+    deallocAll(scratch)
+
+when false:
+  proc joinRegion*(dest: var MemRegion; src: MemRegion) =
+    # merging is not hard.
+    if dest.head.isNil:
+      dest.head = src.head
+    else:
+      dest.tail.next = src.head
+    dest.tail = src.tail
+    dest.bump = src.bump
+    dest.remaining = src.remaining
+    dest.nextChunkSize = max(dest.nextChunkSize, src.nextChunkSize)
+    inc dest.totalSize, src.totalSize
 
 proc isOnHeap*(r: MemRegion; p: pointer): bool =
   # the tail chunk is the largest, so check it first. It's also special
@@ -213,159 +269,6 @@ proc isOnHeap*(r: MemRegion; p: pointer): bool =
     if it >= p and p <= it+!it.size: return true
     it = it.next
 
-when false:
-  # essential feature for later: copy data over from one region to another
-
-  proc isInteriorPointer(r: MemRegion; p: pointer): pointer =
-    discard " we cannot patch stack pointers anyway!"
-
-  type
-    PointerStackChunk = object
-      next, prev: ptr PointerStackChunk
-      len: int
-      data: array[128, pointer]
-
-  template head(s: PointerStackChunk): untyped = s.prev
-  template tail(s: PointerStackChunk): untyped = s.next
-
-  include chains
-
-  proc push(r: var MemRegion; s: var PointerStackChunk; x: pointer) =
-    if s.len < high(s.data):
-      s.data[s.len] = x
-      inc s.len
-    else:
-      let fresh = cast[ptr PointerStackChunk](alloc(r, sizeof(PointerStackChunk)))
-      fresh.len = 1
-      fresh.data[0] = x
-      fresh.next = nil
-      fresh.prev = nil
-      append(s, fresh)
-
-
-  proc genericDeepCopyAux(dr: var MemRegion; stack: var PointerStackChunk;
-                          dest, src: pointer, mt: PNimType) {.benign.}
-  proc genericDeepCopyAux(dr: var MemRegion; stack: var PointerStackChunk;
-                          dest, src: pointer, n: ptr TNimNode) {.benign.} =
-    var
-      d = cast[ByteAddress](dest)
-      s = cast[ByteAddress](src)
-    case n.kind
-    of nkSlot:
-      genericDeepCopyAux(cast[pointer](d +% n.offset),
-                         cast[pointer](s +% n.offset), n.typ)
-    of nkList:
-      for i in 0..n.len-1:
-        genericDeepCopyAux(dest, src, n.sons[i])
-    of nkCase:
-      var dd = selectBranch(dest, n)
-      var m = selectBranch(src, n)
-      # reset if different branches are in use; note different branches also
-      # imply that's not self-assignment (``x = x``)!
-      if m != dd and dd != nil:
-        genericResetAux(dest, dd)
-      copyMem(cast[pointer](d +% n.offset), cast[pointer](s +% n.offset),
-              n.typ.size)
-      if m != nil:
-        genericDeepCopyAux(dest, src, m)
-    of nkNone: sysAssert(false, "genericDeepCopyAux")
-
-  proc copyDeepString(dr: var MemRegion; stack: var PointerStackChunk; src: NimString): NimString {.inline.} =
-    result = rawNewStringNoInit(dr, src.len)
-    result.len = src.len
-    copyMem(result.data, src.data, src.len + 1)
-
-  proc genericDeepCopyAux(dr: var MemRegion; stack: var PointerStackChunk;
-                          dest, src: pointer, mt: PNimType) =
-    var
-      d = cast[ByteAddress](dest)
-      s = cast[ByteAddress](src)
-    sysAssert(mt != nil, "genericDeepCopyAux 2")
-    case mt.kind
-    of tyString:
-      var x = cast[PPointer](dest)
-      var s2 = cast[PPointer](s)[]
-      if s2 == nil:
-        x[] = nil
-      else:
-        x[] = copyDeepString(cast[NimString](s2))
-    of tySequence:
-      var s2 = cast[PPointer](src)[]
-      var seq = cast[PGenericSeq](s2)
-      var x = cast[PPointer](dest)
-      if s2 == nil:
-        x[] = nil
-        return
-      sysAssert(dest != nil, "genericDeepCopyAux 3")
-      x[] = newSeq(mt, seq.len)
-      var dst = cast[ByteAddress](cast[PPointer](dest)[])
-      for i in 0..seq.len-1:
-        genericDeepCopyAux(dr, stack,
-          cast[pointer](dst +% i*% mt.base.size +% GenericSeqSize),
-          cast[pointer](cast[ByteAddress](s2) +% i *% mt.base.size +%
-                       GenericSeqSize),
-          mt.base)
-    of tyObject:
-      # we need to copy m_type field for tyObject, as it could be empty for
-      # sequence reallocations:
-      var pint = cast[ptr PNimType](dest)
-      pint[] = cast[ptr PNimType](src)[]
-      if mt.base != nil:
-        genericDeepCopyAux(dr, stack, dest, src, mt.base)
-      genericDeepCopyAux(dr, stack, dest, src, mt.node)
-    of tyTuple:
-      genericDeepCopyAux(dr, stack, dest, src, mt.node)
-    of tyArray, tyArrayConstr:
-      for i in 0..(mt.size div mt.base.size)-1:
-        genericDeepCopyAux(dr, stack,
-                           cast[pointer](d +% i*% mt.base.size),
-                           cast[pointer](s +% i*% mt.base.size), mt.base)
-    of tyRef:
-      let s2 = cast[PPointer](src)[]
-      if s2 == nil:
-        cast[PPointer](dest)[] = nil
-      else:
-        # we modify the header of the cell temporarily; instead of the type
-        # field we store a forwarding pointer. XXX This is bad when the cloning
-        # fails due to OOM etc.
-        let x = usrToCell(s2)
-        let forw = cast[int](x.typ)
-        if (forw and 1) == 1:
-          # we stored a forwarding pointer, so let's use that:
-          let z = cast[pointer](forw and not 1)
-          unsureAsgnRef(cast[PPointer](dest), z)
-        else:
-          let realType = x.typ
-          let z = newObj(realType, realType.base.size)
-
-          unsureAsgnRef(cast[PPointer](dest), z)
-          x.typ = cast[PNimType](cast[int](z) or 1)
-          genericDeepCopyAux(dr, stack, z, s2, realType.base)
-          x.typ = realType
-    else:
-      copyMem(dest, src, mt.size)
-
-  proc joinAliveDataFromRegion*(dest: var MemRegion; src: var MemRegion;
-                                root: pointer): pointer =
-    # we mark the alive data and copy only alive data over to 'dest'.
-    # This is O(liveset) but it nicely compacts memory, so it's fine.
-    # We use the 'typ' field as a forwarding pointer. The forwarding
-    # pointers have bit 0 set, so we can disambiguate them.
-    # We allocate a temporary stack in 'src' that we later free:
-    var s: PointerStackChunk
-    s.len = 1
-    s.data[0] = root
-    while s.len > 0:
-      var p: pointer
-      if s.tail == nil:
-        p = s.data[s.len-1]
-        dec s.len
-      else:
-        p = s.tail.data[s.tail.len-1]
-        dec s.tail.len
-        if s.tail.len == 0:
-          unlink(s, s.tail)
-
 proc rawNewObj(r: var MemRegion, typ: PNimType, size: int): pointer =
   var res = cast[ptr ObjHeader](alloc(r, size + sizeof(ObjHeader)))
   res.typ = typ
@@ -373,6 +276,12 @@ proc rawNewObj(r: var MemRegion, typ: PNimType, size: int): pointer =
     res.nextFinal = r.head.head
     r.head.head = res
   result = res +! sizeof(ObjHeader)
+
+proc rawNewSeq(r: var MemRegion, typ: PNimType, size: int): pointer =
+  var res = cast[ptr SeqHeader](alloc(r, size + sizeof(SeqHeader)))
+  res.typ = typ
+  res.region = addr(r)
+  result = res +! sizeof(SeqHeader)
 
 proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
   result = rawNewObj(tlRegion, typ, size)
@@ -384,9 +293,18 @@ proc newObjNoInit(typ: PNimType, size: int): pointer {.compilerRtl.} =
   when defined(memProfiler): nimProfile(size)
 
 proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
-  let size = addInt(mulInt(len, typ.base.size), GenericSeqSize)
-  result = newObj(typ, size)
+  let size = roundup(addInt(mulInt(len, typ.base.size), GenericSeqSize),
+                     MemAlign)
+  result = rawNewSeq(tlRegion, typ, size)
+  zeroMem(result, size)
   cast[PGenericSeq](result).len = len
+  cast[PGenericSeq](result).reserved = len
+
+proc newStr(typ: PNimType, len: int; init: bool): pointer {.compilerRtl.} =
+  let size = roundup(addInt(len, GenericSeqSize), MemAlign)
+  result = rawNewSeq(tlRegion, typ, size)
+  if init: zeroMem(result, size)
+  cast[PGenericSeq](result).len = 0
   cast[PGenericSeq](result).reserved = len
 
 proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
@@ -394,18 +312,18 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   zeroMem(result, size)
 
 proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
-  let size = addInt(mulInt(len, typ.base.size), GenericSeqSize)
-  result = newObj(typ, size)
-  cast[PGenericSeq](result).len = len
-  cast[PGenericSeq](result).reserved = len
+  result = newSeq(typ, len)
 
-proc growObj(region: var MemRegion; old: pointer, newsize: int): pointer =
-  let typ = cast[ptr ObjHeader](old -! sizeof(ObjHeader)).typ
-  result = rawNewObj(region, typ, newsize)
+proc growObj(regionUnused: var MemRegion; old: pointer, newsize: int): pointer =
+  let sh = cast[ptr SeqHeader](old -! sizeof(SeqHeader))
+  let typ = sh.typ
+  result = rawNewSeq(sh.region[], typ,
+                     roundup(newsize, MemAlign))
   let elemSize = if typ.kind == tyString: 1 else: typ.base.size
   let oldsize = cast[PGenericSeq](old).len*elemSize + GenericSeqSize
-  copyMem(result, old, oldsize)
   zeroMem(result +! oldsize, newsize-oldsize)
+  copyMem(result, old, oldsize)
+  dealloc(sh.region[], old, roundup(oldsize, MemAlign))
 
 proc growObj(old: pointer, newsize: int): pointer {.rtl.} =
   result = growObj(tlRegion, old, newsize)

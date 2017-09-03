@@ -18,11 +18,10 @@ when true:
       uoffset_t* = uint32
       FlatBufferBuilder* = object
 
-      uarray* {.unchecked.} [T]  = array [0..0, T]
       Array* [T] = object
           o*: uoffset_t
           len*: int
-          data*: ptr uarray[T]
+          data*: ptr UncheckedArray[T]
 
   proc ca* (fbb: ptr FlatBufferBuilder, T: typedesc, len: int): Array[T] {.noinit.} =
       result.len = len

@@ -1,5 +1,5 @@
 discard """
-  ouptut: '''TBar2
+  output: '''TBar2
 TFoo
 16
 12

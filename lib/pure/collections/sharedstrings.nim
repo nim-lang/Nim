@@ -9,10 +9,8 @@
 
 ## Shared string support for Nim.
 
-const ArrayDummySize = when defined(cpu16): 10_000 else: 100_000_000
-
 type
-  UncheckedCharArray {.unchecked.} = array[0..ArrayDummySize, char]
+  UncheckedCharArray = UncheckedArray[char]
 
 type
   Buffer = ptr object

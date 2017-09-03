@@ -123,10 +123,11 @@ const
 
 proc typeName(typ: PType): Rope =
   let typ = typ.skipTypes(irrelevantForBackend)
-  result = if typ.sym != nil and typ.kind in {tyObject, tyEnum}:
-             typ.sym.name.s.mangle.rope
-           else:
-             ~"TY"
+  result =
+    if typ.sym != nil and typ.kind in {tyObject, tyEnum}:
+      rope($typ.kind & '_' & typ.sym.name.s.mangle)
+    else:
+      rope($typ.kind)
 
 proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
   var t = typ
@@ -798,7 +799,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
         add(m.s[cfsTypes], recdesc)
       elif tfIncompleteStruct notin t.flags: addAbiCheck(m, t, result)
   of tySet:
-    result = getTypeName(m, t.lastSon, hashType t.lastSon) & "_Set"
+    result = $t.kind & '_' & getTypeName(m, t.lastSon, hashType t.lastSon)
     m.typeCache[sig] = result
     if not isImportedType(t):
       let s = int(getSize(t))
