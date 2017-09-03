@@ -119,7 +119,8 @@ proc execProcess*(command: string,
                                                   poUsePath,
                                                   poEvalCommand}): TaintedString {.
                                                   rtl, extern: "nosp$1",
-                                                  tags: [ExecIOEffect, ReadIOEffect].}
+                                                  tags: [ExecIOEffect, ReadIOEffect,
+                                                  RootEffect].}
   ## A convenience procedure that executes ``command`` with ``startProcess``
   ## and returns its output as a string.
   ## WARNING: this function uses poEvalCommand by default for backward compatibility.
@@ -131,7 +132,8 @@ proc execProcess*(command: string,
   ##  # Note: outp may have an interleave of text from the nim compile
   ##  # and any output from mytestfile when it runs
 
-proc execCmd*(command: string): int {.rtl, extern: "nosp$1", tags: [ExecIOEffect].}
+proc execCmd*(command: string): int {.rtl, extern: "nosp$1", tags: [ExecIOEffect,
+  ReadIOEffect, RootEffect].}
   ## Executes ``command`` and returns its error code. Standard input, output,
   ## error streams are inherited from the calling process. This operation
   ## is also often called `system`:idx:.
@@ -145,7 +147,8 @@ proc startProcess*(command: string,
                    args: openArray[string] = [],
                    env: StringTableRef = nil,
                    options: set[ProcessOption] = {poStdErrToStdOut}):
-              Process {.rtl, extern: "nosp$1", tags: [ExecIOEffect, ReadEnvEffect].}
+              Process {.rtl, extern: "nosp$1", tags: [ExecIOEffect, ReadEnvEffect,
+              RootEffect].}
   ## Starts a process. `Command` is the executable file, `workingDir` is the
   ## process's working directory. If ``workingDir == ""`` the current directory
   ## is used. `args` are the command line arguments that are passed to the
@@ -170,7 +173,7 @@ proc startProcess*(command: string,
 
 proc startCmd*(command: string, options: set[ProcessOption] = {
                poStdErrToStdOut, poUsePath}): Process {.
-               tags: [ExecIOEffect, ReadEnvEffect], deprecated.} =
+               tags: [ExecIOEffect, ReadEnvEffect, RootEffect], deprecated.} =
   ## Deprecated - use `startProcess` directly.
   result = startProcess(command=command, options=options + {poEvalCommand})
 
@@ -721,7 +724,7 @@ elif not defined(useNimRtl):
       inc(i)
 
   type StartProcessData = object
-    sysCommand: cstring
+    sysCommand: string
     sysArgs: cstringArray
     sysEnv: cstringArray
     workingDir: cstring
@@ -735,13 +738,13 @@ elif not defined(useNimRtl):
                              not defined(useClone) and not defined(linux)
   when useProcessAuxSpawn:
     proc startProcessAuxSpawn(data: StartProcessData): Pid {.
-      tags: [ExecIOEffect, ReadEnvEffect], gcsafe.}
+      tags: [ExecIOEffect, ReadEnvEffect, ReadDirEffect, RootEffect], gcsafe.}
   else:
     proc startProcessAuxFork(data: StartProcessData): Pid {.
-      tags: [ExecIOEffect, ReadEnvEffect], gcsafe.}
+      tags: [ExecIOEffect, ReadEnvEffect, ReadDirEffect, RootEffect], gcsafe.}
   {.push stacktrace: off, profiler: off.}
   proc startProcessAfterFork(data: ptr StartProcessData) {.
-    tags: [ExecIOEffect, ReadEnvEffect], cdecl, gcsafe.}
+    tags: [ExecIOEffect, ReadEnvEffect, ReadDirEffect, RootEffect], cdecl, gcsafe.}
   {.pop.}
 
   proc startProcess(command: string,
@@ -785,7 +788,7 @@ elif not defined(useNimRtl):
     defer: deallocCStringArray(sysEnv)
 
     var data: StartProcessData
-    data.sysCommand = sysCommand
+    shallowCopy(data.sysCommand, sysCommand)
     data.sysArgs = sysArgs
     data.sysEnv = sysEnv
     data.pStdin = pStdin
@@ -950,11 +953,10 @@ elif not defined(useNimRtl):
     discard fcntl(data.pErrorPipe[writeIdx], F_SETFD, FD_CLOEXEC)
 
     if data.optionPoUsePath:
-      when defined(uClibc):
+      when defined(uClibc) or defined(linux):
         # uClibc environment (OpenWrt included) doesn't have the full execvpe
-        discard execve(data.sysCommand, data.sysArgs, data.sysEnv)
-      elif defined(linux) and not defined(android):
-        discard execvpe(data.sysCommand, data.sysArgs, data.sysEnv)
+        let exe = findExe(data.sysCommand)
+        discard execve(exe, data.sysArgs, data.sysEnv)
       else:
         # MacOSX doesn't have execvpe, so we need workaround.
         # On MacOSX we can arrive here only from fork, so this is safe:
@@ -1265,7 +1267,8 @@ elif not defined(useNimRtl):
 proc execCmdEx*(command: string, options: set[ProcessOption] = {
                 poStdErrToStdOut, poUsePath}): tuple[
                 output: TaintedString,
-                exitCode: int] {.tags: [ExecIOEffect, ReadIOEffect], gcsafe.} =
+                exitCode: int] {.tags:
+                [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
   ## a convenience proc that runs the `command`, grabs all its output and
   ## exit code and returns both.
   ##
