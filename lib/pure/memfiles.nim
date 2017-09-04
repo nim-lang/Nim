@@ -188,7 +188,7 @@ proc open*(filename: string, mode: FileMode = fmRead,
     if low == INVALID_FILE_SIZE:
       fail(osLastError(), "error getting file size")
     else:
-      var fileSize = (int64(hi) shr 32) or low
+      var fileSize = (int64(hi) shl 32) or int64(uint32(low))
       if mappedSize != -1: result.size = min(fileSize, mappedSize).int
       else: result.size = fileSize.int
 
