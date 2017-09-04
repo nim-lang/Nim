@@ -1435,7 +1435,8 @@ when defined(nimdoc):
 
 elif defined(genode):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn,
-    importcpp: "genodeEnv->parent().exit(@)", header: "<base/env.h>".}
+    importcpp: "genodeEnv->parent().exit(@); Genode::sleep_forever()",
+    header: "<base/sleep.h>".}
 
 else:
   proc quit*(errorcode: int = QuitSuccess) {.
