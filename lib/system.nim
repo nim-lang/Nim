@@ -3624,14 +3624,14 @@ template assert*(cond: bool, msg = "") =
   mixin failedAssertImpl
   when compileOption("assertions"):
     {.line.}:
-      if not cond: failedAssertImpl(astToStr(cond) & ' ' & msg)
+      if unlikely(not cond): failedAssertImpl(astToStr(cond) & ' ' & msg)
 
 template doAssert*(cond: bool, msg = "") =
   ## same as `assert` but is always turned on and not affected by the
   ## ``--assertions`` command line switch.
   bind instantiationInfo
   {.line: instantiationInfo().}:
-    if not cond:
+    if unlikely(not cond):
       raiseAssert(astToStr(cond) & ' ' & msg)
 
 iterator items*[T](a: seq[T]): T {.inline.} =
