@@ -150,6 +150,9 @@ proc `==`*(a, b: NimIdent): bool {.magic: "EqIdent", noSideEffect.}
 proc `==`*(a, b: NimNode): bool {.magic: "EqNimrodNode", noSideEffect.}
   ## compares two Nim nodes
 
+proc `==`*(a, b: NimSym): bool {.magic: "EqNimrodNode", noSideEffect.}
+  ## compares two Nim symbols
+
 proc sameType*(a, b: NimNode): bool {.magic: "SameNodeType", noSideEffect.} =
   ## compares two Nim nodes' types. Return true if the types are the same,
   ## eg. true when comparing alias with original type.

@@ -677,11 +677,14 @@ proc getLinkCmd(projectfile, objfiles: string): string =
     exefile = quoteShell(exefile)
     let linkOptions = getLinkOptions() & " " &
                       getConfigVar(cCompiler, ".options.linker")
+    var linkTmpl = getConfigVar(cCompiler, ".linkTmpl")
+    if linkTmpl.len == 0:
+      linkTmpl = CC[cCompiler].linkTmpl
     result = quoteShell(result % ["builddll", builddll,
         "buildgui", buildgui, "options", linkOptions, "objfiles", objfiles,
         "exefile", exefile, "nim", getPrefixDir(), "lib", libpath])
     result.add ' '
-    addf(result, CC[cCompiler].linkTmpl, ["builddll", builddll,
+    addf(result, linkTmpl, ["builddll", builddll,
         "buildgui", buildgui, "options", linkOptions,
         "objfiles", objfiles, "exefile", exefile,
         "nim", quoteShell(getPrefixDir()),

@@ -70,10 +70,16 @@ proc normalizeMsg(s: string): string =
     if result.len > 0: result.add '\L'
     result.add x.strip
 
+proc getFileDir(filename: string): string =
+  result = filename.splitFile().dir
+  if not result.isAbsolute():
+    result = getCurrentDir() / result
+
 proc callCompiler(cmdTemplate, filename, options: string,
                   target: TTarget): TSpec =
   let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
-                       "options", options, "file", filename.quoteShell])
+                       "options", options, "file", filename.quoteShell,
+                       "filedir", filename.getFileDir()])
   var p = startProcess(command=c[0], args=c[1.. ^1],
                        options={poStdErrToStdOut, poUsePath})
   let outp = p.outputStream
@@ -118,7 +124,8 @@ proc callCompiler(cmdTemplate, filename, options: string,
 proc callCCompiler(cmdTemplate, filename, options: string,
                   target: TTarget): TSpec =
   let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
-                       "options", options, "file", filename.quoteShell])
+                       "options", options, "file", filename.quoteShell,
+                       "filedir", filename.getFileDir()])
   var p = startProcess(command="gcc", args=c[5.. ^1],
                        options={poStdErrToStdOut, poUsePath})
   let outp = p.outputStream
