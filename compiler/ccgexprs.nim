@@ -2262,6 +2262,8 @@ proc getNullValueAux(p: BProc; obj, cons: PNode, result: var Rope) =
     localError(cons.info, "cannot create null element for: " & $obj)
 
 proc genConstObjConstr(p: BProc; n: PNode): Rope =
+  if nfIsRef in n.flags:
+    localError(n.info, "invalid type for const: ref " & $n.typ)
   var length = sonsLen(n)
   result = nil
   let t = n.typ.skipTypes(abstractInst)
