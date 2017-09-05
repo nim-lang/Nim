@@ -1957,89 +1957,102 @@ proc split*(s: string, sep: Rune, maxsplit: int = -1): seq[string] {.noSideEffec
 
 proc editDistance*(a, b: string): int {.noSideEffect,
   rtl, extern: "nucEditDistance".} =
-  ## Returns the unicode-rune edit distance between `a` and `b`.
+  ## Returns the unicode-rune edit distance between ``a`` and ``b``.
   ##
   ## This uses the `Levenshtein`:idx: distance algorithm with only a linear
   ## memory overhead.  This implementation is highly optimized!
-  var
-    len_a = a.len
-    len_b = b.len
-  if len_a > len_b:
+  if len(a) > len(b):
     # make ``b`` the longer string
     return editDistance(b, a)
-  # strip common prefix:
-  var s = 0
-  while s < len_a and a[s] == b[s]:
-    inc(s)
-    dec(len_a)
-    dec(len_b)
-  # strip common suffix:
-  while len_a > 0 and len_b > 0 and a[s + len_a - 1] == b[s + len_b - 1]:
-    dec(len_a)
-    dec(len_b)
+  debugEcho "editDistance: a: '" & a & "', b: '" & b & "'"
+  # strip common prefix
+  var
+    i_start = 0 ## The character starting index of the first rune in both strings ``a`` and ``b``
+    i_next_a = 0
+    i_next_b = 0
+    rune_a, rune_b: Rune
+    len_runes_a = 0 ## The number of relevant runes in string ``a``.
+    len_runes_b = 0 ## The number of relevant runes in string ``b``.
+  block commonPrefix:
+    # ``a`` is the shorter string
+    while i_start < len(a):
+      i_next_a = i_start
+      a.fastRuneAt(i_next_a, rune_a, doInc = true)
+      i_next_b = i_start
+      b.fastRuneAt(i_next_b, rune_b, doInc = true)
+      if rune_a != rune_b:
+        inc(len_runes_a)
+        inc(len_runes_b)
+        break
+      i_start = i_next_a
+  debugEcho "editDistance: Stripped common prefix, starting at byte index: " & $ i_start
+  var
+    # we know that we are either at the start of the strings
+    # or that the current value of rune_a is not equal to rune_b
+    # => start search for common suffix after the current rune (``i_next_*``)
+    i_end_a = i_next_a ## The exclusive upper index bound of string ``a``.
+    i_end_b = i_next_b ## The exclusive upper index bound of string ``b``.
+  block commonSuffix:
+    var
+      i_current_a = i_next_a
+      i_current_b = i_next_b
+      add_runes_a = 0
+      add_runes_b = 0
+    while i_current_a < len(a) and i_current_b < len(b):
+      i_next_a = i_current_a
+      a.fastRuneAt(i_next_a, rune_a)
+      i_next_b = i_current_b
+      b.fastRuneAt(i_next_b, rune_b)
+      inc(add_runes_a)
+      inc(add_runes_b)
+      if rune_a != rune_b:
+        i_end_a = i_next_a
+        i_end_b = i_next_b
+        inc(len_runes_a, add_runes_a)
+        inc(len_runes_b, add_runes_b)
+        add_runes_a = 0
+        add_runes_b = 0
+      i_current_a = i_next_a
+      i_current_b = i_next_b
+    if i_current_a >= len(a): # ``a`` exhausted
+      if i_current_b < len(b): # ``b`` not exhausted
+        debugEcho "editDistance: a exhausted, but b not exhausted. No common suffix."
+        i_end_a = i_current_a
+        i_end_b = i_current_b
+        inc(len_runes_a, add_runes_a)
+        inc(len_runes_b, add_runes_b)
+        while true:
+          b.fastRuneAt(i_end_b, rune_b)
+          inc(len_runes_b)
+          if i_end_b >= len(b): break
+    elif i_current_b >= len(b): # ``b`` exhausted and ``a`` not exhausted
+      debugEcho "editDistance: a not exhausted, but b not exhausted. No common suffix."
+      i_end_a = i_current_a
+      i_end_b = i_current_b
+      inc(len_runes_a, add_runes_a)
+      inc(len_runes_b, add_runes_b)
+      while true:
+        a.fastRuneAt(i_end_a, rune_a)
+        inc(len_runes_a)
+        if i_end_a >= len(a): break
+  let
+    len_chars_a = i_end_a - i_start ## The number of relevant bytes in string ``a``.
+    len_chars_b = i_end_b - i_start ## The number of relevant bytes in string ``b``.
+  debugEcho "editDistance: relevant of a: '" & a[i_start .. (i_end_a - 1)] & "' (runes: " & $ len_runes_a & ", bytes: " & $ len_chars_a & ")"
+  debugEcho "editDistance: relevant of b: '" & b[i_start .. (i_end_b - 1)] & "' (runes: " & $ len_runes_b & ", bytes: " & $ len_chars_b & ")"
   # trivial cases:
-  if len_a == 0: return len_b
-  if len_b == 0: return len_a
+  if len_runes_a == 0: return len_runes_b
+  if len_runes_b == 0: return len_runes_a
   # another special case:
-  if len_a == 1:
-    for j in s .. (s + len_b - 1):
-      if a[s] == b[j]: return len_b - 1
-    return len_b
-  # common case
-  inc(len_a)
-  inc(len_b)
-  var half = len_a shr 1
-  # initalize first row:
-  var row: seq[int]
-  newSeq(row, len_b)
-  var e = s + len_b - 1 # end marker
-  for i in 1..len_b - half - 1: row[i] = i
-  row[0] = len_a - half - 1
-  for i in 1 .. len_a - 1:
-    var char1 = a[i + s - 1]
-    var char2p: int
-    var D, x: int
-    var p: int
-    if i >= len_a - half:
-      # skip the upper triangle:
-      var offset = i - len_a + half
-      char2p = offset
-      p = offset
-      var c3 = row[p] + ord(char1 != b[s + char2p])
-      inc(p)
-      inc(char2p)
-      x = row[p] + 1
-      D = x
-      if x > c3: x = c3
-      row[p] = x
-      inc(p)
-    else:
-      p = 1
-      char2p = 0
-      D = i
-      x = i
-    if i <= half + 1:
-      # skip the lower triangle:
-      e = len_b + i - half - 2
-    # main:
-    while p <= e:
-      dec(D)
-      var c3 = D + ord(char1 != b[char2p + s])
-      inc(char2p)
-      inc(x)
-      if x > c3: x = c3
-      D = row[p] + 1
-      if x > D: x = D
-      row[p] = x
-      inc(p)
-    # lower triangle sentinel:
-    if i <= half:
-      dec(D)
-      var c3 = D + ord(char1 != b[char2p + s])
-      inc(x)
-      if x > c3: x = c3
-      row[p] = x
-  result = row[e]
+  if len_runes_a == 1:
+    a.fastRuneAt(i_start, rune_a, doInc = false)
+    var i_current_b = i_start
+    while i_current_b < i_end_b:
+      b.fastRuneAt(i_current_b, rune_b, doInc = true)
+      if rune_a == rune_b: return len_runes_b - 1
+    return len_runes_b
+  # common case:
+  
 
 when isMainModule:
   let
@@ -2240,12 +2253,12 @@ when isMainModule:
     doAssert alignLeft("1232", 6, "×".runeAt(0)) == "1232××"
 
   block editDistanceTests:
-    doAssert(editDistance("", "") == 0, "Actual: " & $ editDistance("", ""))
-    doAssert(editDistance("kitten", "sitting") == 3, "Actual: " & $ editDistance("kitten", "sitting")) # from Wikipedia
-    doAssert(editDistance("flaw", "lawn") == 2, "Actual: " & $ editDistance("flaw", "lawn")) # from Wikipedia
+    doAssert editDistance("", "") == 0
+    doAssert editDistance("kitten", "sitting") == 3 # from Wikipedia
+    doAssert editDistance("flaw", "lawn") == 2 # from Wikipedia
 
-    doAssert(editDistance("привет", "превет") == 1, "Actual: " & $ editDistance("привет", "превет"))
-    doAssert(editDistance("Åge", "Age") == 1, "Actual: " & $ editDistance("Åge", "Age"))
+    doAssert editDistance("привет", "превет") == 1
+    doAssert editDistance("Åge", "Age") == 1
 
   block runeLenTests:
     doAssert(runeLen('a'.Rune) == 1, "Actual: " & $ runeLen('a'.Rune))
