@@ -1992,10 +1992,10 @@ proc editDistance*(a, b: string): int {.noSideEffect,
     # => start search for common suffix after the current rune (``i_next_*``)
     i_end_a = i_next_a ## The exclusive upper index bound of string ``a``.
     i_end_b = i_next_b ## The exclusive upper index bound of string ``b``.
+    i_current_a = i_next_a
+    i_current_b = i_next_b
   block commonSuffix:
     var
-      i_current_a = i_next_a
-      i_current_b = i_next_b
       add_runes_a = 0
       add_runes_b = 0
     while i_current_a < len(a) and i_current_b < len(b):
@@ -2040,19 +2040,86 @@ proc editDistance*(a, b: string): int {.noSideEffect,
     len_chars_b = i_end_b - i_start ## The number of relevant bytes in string ``b``.
   debugEcho "editDistance: relevant of a: '" & a[i_start .. (i_end_a - 1)] & "' (runes: " & $ len_runes_a & ", bytes: " & $ len_chars_a & ")"
   debugEcho "editDistance: relevant of b: '" & b[i_start .. (i_end_b - 1)] & "' (runes: " & $ len_runes_b & ", bytes: " & $ len_chars_b & ")"
-  # trivial cases:
-  if len_runes_a == 0: return len_runes_b
-  if len_runes_b == 0: return len_runes_a
-  # another special case:
-  if len_runes_a == 1:
-    a.fastRuneAt(i_start, rune_a, doInc = false)
-    var i_current_b = i_start
-    while i_current_b < i_end_b:
-      b.fastRuneAt(i_current_b, rune_b, doInc = true)
-      if rune_a == rune_b: return len_runes_b - 1
-    return len_runes_b
+  block specialCases:
+    # trivial cases:
+    if len_runes_a == 0: return len_runes_b
+    if len_runes_b == 0: return len_runes_a
+    # another special case:
+    if len_runes_a == 1:
+      a.fastRuneAt(i_start, rune_a, doInc = false)
+      var i_current_b = i_start
+      while i_current_b < i_end_b:
+        b.fastRuneAt(i_current_b, rune_b, doInc = true)
+        if rune_a == rune_b: return len_runes_b - 1
+      return len_runes_b
   # common case:
-  
+  var
+    len1 = len_runes_a + 1
+    len2 = len_runes_b + 1
+    row: seq[int]
+  let half = len_runes_a div 2
+  newSeq(row, len2)
+  var e = i_start + len2 - 1 # end marker
+  # initialize first row:
+  for i in 1 .. (len2 - half - 1): row[i] = i
+  row[0] = len1 - half - 1
+  i_current_a = i_start
+  for i in 1 .. (len1 - 1):
+    i_next_a = i_current_a
+    a.fastRuneAt(i_next_a, rune_a)
+    var
+      char2p: int
+      D, x: int
+      p: int
+    if i >= (len1 - half):
+      # skip the upper triangle:
+      let offset = i + half - len1
+      debugEcho "editDistance: skip the upper triangle: number of runes to offset: " & $ offset
+      char2p = i_start
+      for j in 0 ..< offset:
+        rune_b = b.runeAt(char2p)
+        inc(char2p, runeLen(rune_b))
+      debugEcho "editDistance: skip the upper triangle: calculated byte offset to: " & $ char2p & ", rune at offset: '" & $ b.runeAt(char2p) & "'"
+      p = offset
+      rune_b = b.runeAt(char2p)
+      var c3 = row[p] + (if rune_a != rune_b: 1 else: 0)
+      inc(char2p, runeLen(rune_b))
+      inc(p)
+      x = row[p] + 1
+      D = x
+      if x > c3: x = c3
+      row[p] = x
+      inc(p)
+    else:
+      p = 1
+      char2p = i_start
+      D = i
+      x = i
+    if i <= (half + 1):
+      # skip the lower triangle:
+      e = len2 + i - half - 2
+    # main:
+    while p <= e:
+      dec(D)
+      rune_b = b.runeAt(char2p)
+      var c3 = D + (if rune_a != rune_b: 1 else: 0)
+      inc(char2p, runeLen(rune_b))
+      inc(x)
+      if x > c3: x = c3
+      D = row[p] + 1
+      if x > D: x = D
+      row[p] = x
+      inc(p)
+    # lower triangle sentinel:
+    if i <= half:
+      dec(D)
+      rune_b = b.runeAt(char2p)
+      var c3 = D + (if rune_a != rune_b: 1 else: 0)
+      inc(x)
+      if x > c3: x = c3
+      row[p] = x
+    i_current_a = i_next_a
+  result = row[e]
 
 when isMainModule:
   let
