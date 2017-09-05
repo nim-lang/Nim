@@ -1,9 +1,67 @@
 
-import intsets, tables, ast, idents, renderer
+import intsets, tables, ast, idents, renderer, algorithm
 
-const
-  nfTempMark = nfTransf
-  nfPermMark = nfNoRewrite
+type
+  DepNode = ref object
+    id, index, lowLink: int
+    onStack: bool
+    kids: seq[DepNode]
+  DepGraph = seq[DepNode]
+
+# to do: rename DepNode and DepGraph with respect to conventions
+proc newDepNode(id: int): DepNode =
+  new(result)
+  result.id = id
+  result.index = -1
+  result.lowLink = -1
+  result.onStack = false
+  result.kids = @[]
+
+proc buildGraph(deps: seq[(IntSet, IntSet)]): DepGraph =
+  result = newSeqOfCap[DepNode](deps.len)
+  for i in 0..<deps.len:
+    result.add newDepNode(i)
+  for i in 0..<deps.len:
+    var n = result[i]
+    let declares = deps[i][0]
+    for j in 0..<deps.len:
+      if i == j: continue
+      let uses = deps[j][1]
+      for d in declares:
+        if uses.contains(d):
+          n.kids.add result[j]
+
+#to do: ident
+proc strongConnect(v: var DepNode, index: var int, s: var seq[DepNode], comps: var seq[seq[DepNode]]) =
+  v.index = index
+  v.lowLink = index
+  inc index
+  s.add v
+  v.onStack = true
+  for w in v.kids.mitems:
+    if w.index < 0:
+      strongConnect(w, index, s, comps)
+      v.lowLink = min(v.lowLink, w.lowLink)
+    elif w.onStack:
+      v.lowLink = min(v.lowLink, w.index)
+  if v.lowLink == v.index:
+    var comp = newSeq[DepNode]()
+    while true:
+      var w = s.pop
+      w.onStack = false
+      comp.add w
+      if w.id == v.id: break
+    comps.add comp.reversed
+
+proc getStrongComponents(g: var DepGraph): seq[seq[DepNode]] =
+  ## Tarjan's strongly connected components algorithm
+  result = newSeq[seq[DepNode]]()
+  var s = newSeq[DepNode]()
+  var index = 0
+  for v in g.mitems:
+    if v.index < 0:
+      strongConnect(v, index, s, result)
+  result.reverse
 
 proc accQuoted(n: PNode): PIdent =
   var id = ""
@@ -55,46 +113,29 @@ proc computeDeps(n: PNode, declares, uses: var IntSet; topLevel: bool) =
   else:
     for i in 0..<safeLen(n): deps(n[i])
 
-proc visit(i: int; all, res: PNode; deps: var seq[(IntSet, IntSet)]): bool =
-  let n = all[i]
-  if nfTempMark in n.flags:
-    # not a DAG!
-    return true
-  if nfPermMark notin n.flags:
-    incl n.flags, nfTempMark
-    var uses = deps[i][1]
-    for j in 0..<all.len:
-      if j != i:
-        let declares = deps[j][0]
-        for d in declares:
-          if uses.contains(d):
-            let oldLen = res.len
-            if visit(j, all, res, deps):
-              result = true
-              # rollback what we did, it turned out to be a dependency that caused
-              # trouble:
-              for k in oldLen..<res.len:
-                res.sons[k].flags = res.sons[k].flags - {nfPermMark, nfTempMark}
-              if oldLen != res.len: res.sons.setLen oldLen
-            break
-    n.flags = n.flags + {nfPermMark} - {nfTempMark}
-    res.add n
-
 proc splitSections(n: PNode): PNode =
   assert n.kind == nkStmtList
   result = newNodeI(nkStmtList, n.info)
   for a in n:
-    if a.kind in {nkTypeSection, nkConstSection, nkVarSection,
-        nkLetSection, nkUsingStmt} and a.len > 1:
+    if a.kind in {nkTypeSection, nkConstSection} and a.len > 1:
           for b in a:
-            var s = newNodeI(a.kind, a.info)
+            var s = newNode(a.kind)
             s.add b
             result.add s
     else:
       result.add a
 
-proc reorder*(nn: PNode): PNode =
-  let n = splitSections(nn)
+proc haveSameKind(n: PNode, dns: seq[DepNode]): bool =
+  result = true
+  let kind = n.sons[dns[0].id].kind
+  for dn in dns:
+    if n.sons[dn.id].kind != kind:
+      return false
+    
+
+proc reorder*(n: PNode): PNode =
+  template node(dn): PNode = n.sons[dn.id]
+  let n = splitSections(n)
   result = newNodeI(nkStmtList, n.info)
   var deps = newSeq[(IntSet, IntSet)](n.len)
   for i in 0..<n.len:
@@ -102,15 +143,37 @@ proc reorder*(nn: PNode): PNode =
     deps[i][1] = initIntSet()
     computeDeps(n[i], deps[i][0], deps[i][1], true)
 
-  for i in 0 .. n.len-1:
-    discard visit(i, n, result, deps)
-  for i in 0..<result.len:
-    result.sons[i].flags = result.sons[i].flags - {nfTempMark, nfPermMark}
-  when false:
-    # reverse the result:
-    let L = result.len-1
-    for i in 0 .. result.len div 2:
-      result.sons[i].flags = result.sons[i].flags - {nfTempMark, nfPermMark}
-      result.sons[L - i].flags = result.sons[L - i].flags - {nfTempMark, nfPermMark}
-      swap(result.sons[i], result.sons[L - i])
-  #echo result
+  var g = buildGraph(deps)
+  let comps = getStrongComponents(g)
+  echo n.len
+  echo comps.len
+  for a in comps:
+    # echo "------------------"
+    # for b in a:
+    #   echo b.id
+    if a.len > 0:
+      echo "**********************************************"
+      for b in a:
+        let uses = deps[b.id][1]
+        let declares = deps[b.id][0]
+        echo "id = " & $b.id
+        echo "uses = " & $uses
+        echo "declares = " & $declares
+        echo n.sons[b.id]
+        echo "-----------------------------------------"
+
+  for c in comps:
+    assert c.len > 0
+    if c.len == 1:
+      result.add node(c[0])
+    else:
+      let fstn = n.sons[c[0].id]
+      let kind = fstn.kind
+      if kind in {nkTypeSection, nkConstSection} and haveSameKind(n, c):
+        var sn = newNode(kind)
+        for dn in c:
+          sn.add node(dn).sons[0]
+        result.add sn
+      else:
+        for dn in c:
+          result.add node(dn)
