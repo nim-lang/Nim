@@ -1175,7 +1175,10 @@ proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
 
 proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   #echo rendertree e, " ", e.isDeepConstExpr
-  if handleConstExpr(p, e, d): return
+  # inheritance in C++ does not allow struct initialization so
+  # we skip this step here:
+  if not p.module.compileToCpp:
+    if handleConstExpr(p, e, d): return
   var tmp: TLoc
   var t = e.typ.skipTypes(abstractInst)
   getTemp(p, t, tmp)
@@ -2266,7 +2269,7 @@ proc getNullValueAux(p: BProc; t: PType; obj, cons: PNode, result: var Rope; cou
 proc getNullValueAuxT(p: BProc; orig, t: PType; obj, cons: PNode, result: var Rope; count: var int) =
   var base = t.sons[0]
   let oldRes = result
-  result.add "{"
+  if not p.module.compileToCpp: result.add "{"
   let oldcount = count
   if base != nil:
     base = skipTypes(base, skipPtrs)
@@ -2277,7 +2280,7 @@ proc getNullValueAuxT(p: BProc; orig, t: PType; obj, cons: PNode, result: var Ro
   getNullValueAux(p, t, obj, cons, result, count)
   # do not emit '{}' as that is not valid C:
   if oldcount == count: result = oldres
-  else: result.add "}"
+  elif not p.module.compileToCpp: result.add "}"
 
 proc genConstObjConstr(p: BProc; n: PNode): Rope =
   result = nil
@@ -2287,7 +2290,8 @@ proc genConstObjConstr(p: BProc; n: PNode): Rope =
   #  addf(result, "{$1}", [genTypeInfo(p.module, t)])
   #  inc count
   getNullValueAuxT(p, t, t, t.n, n, result, count)
-  #result = "{$1}$n" % [result]
+  if p.module.compileToCpp:
+    result = "{$1}$n" % [result]
 
 proc genConstSimpleList(p: BProc, n: PNode): Rope =
   var length = sonsLen(n)
