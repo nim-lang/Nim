@@ -1964,7 +1964,6 @@ proc editDistance*(a, b: string): int {.noSideEffect,
   if len(a) > len(b):
     # make ``b`` the longer string
     return editDistance(b, a)
-  debugEcho "editDistance: a: '" & a & "', b: '" & b & "'"
   # strip common prefix
   var
     i_start = 0 ## The character starting index of the first rune in both strings ``a`` and ``b``
@@ -1985,7 +1984,6 @@ proc editDistance*(a, b: string): int {.noSideEffect,
         inc(len_runes_b)
         break
       i_start = i_next_a
-  debugEcho "editDistance: Stripped common prefix, starting at byte index: " & $ i_start
   var
     # we know that we are either at the start of the strings
     # or that the current value of rune_a is not equal to rune_b
@@ -2016,7 +2014,6 @@ proc editDistance*(a, b: string): int {.noSideEffect,
       i_current_b = i_next_b
     if i_current_a >= len(a): # ``a`` exhausted
       if i_current_b < len(b): # ``b`` not exhausted
-        debugEcho "editDistance: a exhausted, but b not exhausted. No common suffix."
         i_end_a = i_current_a
         i_end_b = i_current_b
         inc(len_runes_a, add_runes_a)
@@ -2026,7 +2023,6 @@ proc editDistance*(a, b: string): int {.noSideEffect,
           inc(len_runes_b)
           if i_end_b >= len(b): break
     elif i_current_b >= len(b): # ``b`` exhausted and ``a`` not exhausted
-      debugEcho "editDistance: a not exhausted, but b not exhausted. No common suffix."
       i_end_a = i_current_a
       i_end_b = i_current_b
       inc(len_runes_a, add_runes_a)
@@ -2035,11 +2031,6 @@ proc editDistance*(a, b: string): int {.noSideEffect,
         a.fastRuneAt(i_end_a, rune_a)
         inc(len_runes_a)
         if i_end_a >= len(a): break
-  let
-    len_chars_a = i_end_a - i_start ## The number of relevant bytes in string ``a``.
-    len_chars_b = i_end_b - i_start ## The number of relevant bytes in string ``b``.
-  debugEcho "editDistance: relevant of a: '" & a[i_start .. (i_end_a - 1)] & "' (runes: " & $ len_runes_a & ", bytes: " & $ len_chars_a & ")"
-  debugEcho "editDistance: relevant of b: '" & b[i_start .. (i_end_b - 1)] & "' (runes: " & $ len_runes_b & ", bytes: " & $ len_chars_b & ")"
   block specialCases:
     # trivial cases:
     if len_runes_a == 0: return len_runes_b
@@ -2074,12 +2065,10 @@ proc editDistance*(a, b: string): int {.noSideEffect,
     if i >= (len1 - half):
       # skip the upper triangle:
       let offset = i + half - len1
-      debugEcho "editDistance: skip the upper triangle: number of runes to offset: " & $ offset
       char2p = i_start
       for j in 0 ..< offset:
         rune_b = b.runeAt(char2p)
         inc(char2p, runeLen(rune_b))
-      debugEcho "editDistance: skip the upper triangle: calculated byte offset to: " & $ char2p & ", rune at offset: '" & $ b.runeAt(char2p) & "'"
       p = offset
       rune_b = b.runeAt(char2p)
       var c3 = row[p] + (if rune_a != rune_b: 1 else: 0)
