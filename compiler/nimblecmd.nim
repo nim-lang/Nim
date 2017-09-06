@@ -15,12 +15,6 @@ proc addPath*(path: string, info: TLineInfo) =
   if not options.searchPaths.contains(path):
     options.searchPaths.insert(path, 0)
 
-proc versionSplitPos(s: string): int =
-  result = s.len-2
-  #while result > 1 and s[result] in {'0'..'9', '.'}: dec result
-  while result > 1 and s[result] != '-': dec result
-  if s[result] != '-': result = s.len
-
 type
   Version = distinct string
 
@@ -63,10 +57,27 @@ proc `<`(ver: Version, ver2: Version): bool =
     else:
       return false
 
+proc getPathVersion*(p: string): tuple[name, version: string] =
+  ## Splits path ``p`` in the format ``/home/user/.nimble/pkgs/package-0.1``
+  ## into ``(/home/user/.nimble/pkgs/package, 0.1)``
+  result.name = ""
+  result.version = ""
+
+  const specialSeparator = "-#"
+  var sepIdx = p.find(specialSeparator)
+  if sepIdx == -1:
+    sepIdx = p.rfind('-')
+
+  if sepIdx == -1:
+    result.name = p
+    return
+
+  result.name = p[0 .. sepIdx - 1]
+  result.version = p.substr(sepIdx + 1)
+
 proc addPackage(packages: StringTableRef, p: string) =
-  let x = versionSplitPos(p)
-  let name = p.substr(0, x-1)
-  let version = newVersion(if x < p.len: p.substr(x+1) else: "")
+  let (name, ver) = getPathVersion(p)
+  let version = newVersion(ver)
   if packages.getOrDefault(name).newVersion < version or
      (not packages.hasKey(name)):
     packages[name] = $version
