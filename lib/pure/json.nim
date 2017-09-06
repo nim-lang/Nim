@@ -997,22 +997,16 @@ proc escapeJson*(s: string; result: var string) =
   ## Converts a string `s` to its JSON representation.
   ## Appends to ``result``.
   result.add("\"")
-  for x in runes(s):
-    var r = int(x)
-    if r <= 127:
-      let c = chr(r)
-      case c
-      of '\L': result.add("\\n")
-      of '\b': result.add("\\b")
-      of '\f': result.add("\\f")
-      of '\t': result.add("\\t")
-      of '\r': result.add("\\r")
-      of '"': result.add("\\\"")
-      of '\\': result.add("\\\\")
-      else: result.add(c)
-    else:
-      let p = result.len
-      fastToUTF8Copy(x, result, p, false)
+  for c in s:
+    case c
+    of '\L': result.add("\\n")
+    of '\b': result.add("\\b")
+    of '\f': result.add("\\f")
+    of '\t': result.add("\\t")
+    of '\r': result.add("\\r")
+    of '"': result.add("\\\"")
+    of '\\': result.add("\\\\")
+    else: result.add(c)
   result.add("\"")
 
 proc escapeJson*(s: string): string =
