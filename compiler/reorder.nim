@@ -75,10 +75,10 @@ proc splitSections(n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   for a in n:
     if a.kind in {nkTypeSection, nkConstSection} and a.len > 1:
-          for b in a:
-            var s = newNode(a.kind)
-            s.add b
-            result.add s
+      for b in a:
+        var s = newNode(a.kind)
+        s.add b
+        result.add s
     else:
       result.add a
 
