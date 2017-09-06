@@ -2329,6 +2329,16 @@ when isMainModule:
     # first string: 4 bytes, second: 6 bytes, but only 3 runes
     doAssert editDistance("aaaa", "×××") == 4
 
+    block veryLongStringEditDistanceTest:
+      const cap = 256
+      var
+        s1 = newStringOfCap(cap)
+        s2 = newStringOfCap(cap)
+      while len(s1) < cap:
+        s1.add 'a'
+      while len(s2) < cap:
+        s2.add 'b'
+      doAssert editDistance(s1, s2) == cap
 
   block runeLenTests:
     doAssert(runeLen('a'.Rune) == 1, "Actual: " & $ runeLen('a'.Rune))
