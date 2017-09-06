@@ -2315,6 +2315,10 @@ when isMainModule:
 
     doAssert editDistance("привет", "превет") == 1
     doAssert editDistance("Åge", "Age") == 1
+    # editDistance, one string is longer in bytes, but shorter in rune length
+    # first string: 4 bytes, second: 6 bytes, but only 3 runes
+    doAssert editDistance("aaaa", "×××") == 4
+
 
   block runeLenTests:
     doAssert(runeLen('a'.Rune) == 1, "Actual: " & $ runeLen('a'.Rune))
