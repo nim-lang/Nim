@@ -1,50 +1,75 @@
 discard """
-output:3
+output:'''0
+1
+2
+3'''
 """
+
+import macros
 {.reorder: on .}
-{.experimental.} # for "using" feature
 
+echo foo(-1)
+echo callWithFoo(0)
+echo(CA+CD)
+echo useTypes(TA(x:TB(x:1)), 2)
+second(0)
+  
+template callWithFoo(arg: untyped): untyped =
+  foo(arg)
+  
+proc first(i: int): void
 
-echo foo(sum)
+proc second(i: int): void =
+  make(first)
+  first(i)
 
-    
-const
-    CA = 0
-    CB = CC
-var
-    a = b
-    c = 0
-    aa : TA
-    bb : TB
-    vfoo = foo(b)
-
-
-var
-    b = c
-    aaa = aa
-    sum = vfoo + a + CD + CA
-
-const
-    CC = 1
-    CD = CB
+proc useTypes(a: TA, d: TD): int =
+  result = a.x.x+d
 
 type
-    TA = object
-        x: TB
-    TC = object
+  TDoubleCyclic = ref object
+    x: TCyclicA
+    y: TCyclicB
 
 type
-    TB = object
-        x: TC
+  TCyclicA = ref object
+    x: TDoubleCyclic
+  
+type
+  TCyclicB = ref object
+    x: TDoubleCyclic
 
-proc foo(x): int =
-    if aaa.x.x == bb.x:
-        result = bar(x)
-    else:
-        result = 0
+const
+  CA = 1
+  CB = CC
 
-proc bar(x): int =
-    result = x+1
+type
+  TA = object
+    x: TB
+  TC = type(CC)
+  TD = type(CA)
 
-using
-    x : int
+const
+  CC = 1
+  CD = CB
+
+type
+  TB = object
+    x: TC
+
+proc foo(x: int): int =
+  result = bar(x)
+
+proc bar(x: int): int =
+  result = x+1
+
+macro make(arg: untyped): untyped =
+  ss &= arg.repr
+  ss &= " "
+  discard
+
+proc first(i: int): void =
+  make(second)
+
+static:
+  var ss: string = ""
