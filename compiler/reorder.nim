@@ -23,10 +23,10 @@ proc buildGraph(deps: seq[(IntSet, IntSet)]): DepGraph =
     result.add newDepNode(i)
   for i in 0..<deps.len:
     var n = result[i]
-    let declares = deps[i][0]
+    let uses = deps[i][1]
     for j in 0..<deps.len:
       if i == j: continue
-      let uses = deps[j][1]
+      let declares = deps[j][0]
       for d in declares:
         if uses.contains(d):
           n.kids.add result[j]
@@ -51,7 +51,7 @@ proc strongConnect(v: var DepNode, index: var int, s: var seq[DepNode], comps: v
       w.onStack = false
       comp.add w
       if w.id == v.id: break
-    comps.add comp.reversed
+    comps.add comp
 
 proc getStrongComponents(g: var DepGraph): seq[seq[DepNode]] =
   ## Tarjan's strongly connected components algorithm
@@ -61,7 +61,6 @@ proc getStrongComponents(g: var DepGraph): seq[seq[DepNode]] =
   for v in g.mitems:
     if v.index < 0:
       strongConnect(v, index, s, result)
-  result.reverse
 
 proc accQuoted(n: PNode): PIdent =
   var id = ""
