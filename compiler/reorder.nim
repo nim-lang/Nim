@@ -1,66 +1,22 @@
 
-import intsets, tables, ast, idents, renderer, algorithm
+import intsets, ast, idents, algorithm
 
 type
-  DepNode = ref object
-    id, index, lowLink: int
+  DepN = ref object
+    pnode: PNode
+    id, idx, lowLink: int
     onStack: bool
-    kids: seq[DepNode]
-  DepGraph = seq[DepNode]
+    kids: seq[DepN]
+  DepG = seq[DepN]
 
-# to do: rename DepNode and DepGraph with respect to conventions
-proc newDepNode(id: int): DepNode =
+proc newDepN(id: int, pnode: PNode): DepN =
   new(result)
   result.id = id
-  result.index = -1
+  result.pnode = pnode
+  result.idx = -1
   result.lowLink = -1
   result.onStack = false
   result.kids = @[]
-
-proc buildGraph(deps: seq[(IntSet, IntSet)]): DepGraph =
-  result = newSeqOfCap[DepNode](deps.len)
-  for i in 0..<deps.len:
-    result.add newDepNode(i)
-  for i in 0..<deps.len:
-    var n = result[i]
-    let uses = deps[i][1]
-    for j in 0..<deps.len:
-      if i == j: continue
-      let declares = deps[j][0]
-      for d in declares:
-        if uses.contains(d):
-          n.kids.add result[j]
-
-#to do: ident
-proc strongConnect(v: var DepNode, index: var int, s: var seq[DepNode], comps: var seq[seq[DepNode]]) =
-  v.index = index
-  v.lowLink = index
-  inc index
-  s.add v
-  v.onStack = true
-  for w in v.kids.mitems:
-    if w.index < 0:
-      strongConnect(w, index, s, comps)
-      v.lowLink = min(v.lowLink, w.lowLink)
-    elif w.onStack:
-      v.lowLink = min(v.lowLink, w.index)
-  if v.lowLink == v.index:
-    var comp = newSeq[DepNode]()
-    while true:
-      var w = s.pop
-      w.onStack = false
-      comp.add w
-      if w.id == v.id: break
-    comps.add comp
-
-proc getStrongComponents(g: var DepGraph): seq[seq[DepNode]] =
-  ## Tarjan's strongly connected components algorithm
-  result = newSeq[seq[DepNode]]()
-  var s = newSeq[DepNode]()
-  var index = 0
-  for v in g.mitems:
-    if v.index < 0:
-      strongConnect(v, index, s, result)
 
 proc accQuoted(n: PNode): PIdent =
   var id = ""
@@ -113,6 +69,8 @@ proc computeDeps(n: PNode, declares, uses: var IntSet; topLevel: bool) =
     for i in 0..<safeLen(n): deps(n[i])
 
 proc splitSections(n: PNode): PNode =
+  # Split typeSections and ConstSections into 
+  # sections that contain only one definition
   assert n.kind == nkStmtList
   result = newNodeI(nkStmtList, n.info)
   for a in n:
@@ -124,16 +82,83 @@ proc splitSections(n: PNode): PNode =
     else:
       result.add a
 
-proc haveSameKind(n: PNode, dns: seq[DepNode]): bool =
+proc haveSameKind(dns: seq[DepN]): bool =
+  # Check if all the nodes in a strongly connected
+  # component have the same kind
   result = true
-  let kind = n.sons[dns[0].id].kind
+  let kind = dns[0].pnode.kind
   for dn in dns:
-    if n.sons[dn.id].kind != kind:
+    if dn.pnode.kind != kind:
       return false
     
+proc mergeSections(comps: seq[seq[DepN]], res: PNode) =
+  # Merges typeSections and ConstSections when they form 
+  # a strong component (ex: circular type definition)
+  for c in comps:
+    assert c.len > 0
+    if c.len == 1:
+      res.add c[0].pnode
+    else:
+      let fstn = c[0].pnode
+      let kind = fstn.kind
+      if kind in {nkTypeSection, nkConstSection} and haveSameKind(c):
+        var sn = newNode(kind)
+        for dn in c:
+          sn.add dn.pnode.sons[0]
+        res.add sn
+      else:
+        for dn in c:
+          res.add dn.pnode
+
+proc buildGraph(n: PNode, deps: seq[(IntSet, IntSet)]): DepG =
+  # Build a dependency graph
+  result = newSeqOfCap[DepN](deps.len)
+  for i in 0..<deps.len:
+    result.add newDepN(i, n.sons[i])
+  for i in 0..<deps.len:
+    var n = result[i]
+    let uses = deps[i][1]
+    for j in 0..<deps.len:
+      if i == j: continue
+      let declares = deps[j][0]
+      for d in declares:
+        if uses.contains(d):
+          n.kids.add result[j]
+
+proc strongConnect(v: var DepN, idx: var int, s: var seq[DepN], 
+                   res: var seq[seq[DepN]]) =
+  # Recursive part of trajan's algorithm
+  v.idx = idx
+  v.lowLink = idx
+  inc idx
+  s.add v
+  v.onStack = true
+  for w in v.kids.mitems:
+    if w.idx < 0:
+      strongConnect(w, idx, s, res)
+      v.lowLink = min(v.lowLink, w.lowLink)
+    elif w.onStack:
+      v.lowLink = min(v.lowLink, w.idx)
+  if v.lowLink == v.idx:
+    var comp = newSeq[DepN]()
+    while true:
+      var w = s.pop
+      w.onStack = false
+      comp.add w
+      if w.id == v.id: break
+    res.add comp
+
+proc getStrongComponents(g: var DepG): seq[seq[DepN]] =
+  ## Tarjan's algorithm. Performs a topological sort 
+  ## and detects strongly connected components.
+  result = newSeq[seq[DepN]]()
+  var s = newSeq[DepN]()
+  var idx = 0
+  for v in g.mitems:
+    if v.idx < 0:
+      strongConnect(v, idx, s, result)
 
 proc reorder*(n: PNode): PNode =
-  template node(dn): PNode = n.sons[dn.id]
   let n = splitSections(n)
   result = newNodeI(nkStmtList, n.info)
   var deps = newSeq[(IntSet, IntSet)](n.len)
@@ -142,37 +167,6 @@ proc reorder*(n: PNode): PNode =
     deps[i][1] = initIntSet()
     computeDeps(n[i], deps[i][0], deps[i][1], true)
 
-  var g = buildGraph(deps)
+  var g = buildGraph(n, deps)
   let comps = getStrongComponents(g)
-  echo n.len
-  echo comps.len
-  for a in comps:
-    # echo "------------------"
-    # for b in a:
-    #   echo b.id
-    if a.len > 0:
-      echo "**********************************************"
-      for b in a:
-        let uses = deps[b.id][1]
-        let declares = deps[b.id][0]
-        echo "id = " & $b.id
-        echo "uses = " & $uses
-        echo "declares = " & $declares
-        echo n.sons[b.id]
-        echo "-----------------------------------------"
-
-  for c in comps:
-    assert c.len > 0
-    if c.len == 1:
-      result.add node(c[0])
-    else:
-      let fstn = n.sons[c[0].id]
-      let kind = fstn.kind
-      if kind in {nkTypeSection, nkConstSection} and haveSameKind(n, c):
-        var sn = newNode(kind)
-        for dn in c:
-          sn.add node(dn).sons[0]
-        result.add sn
-      else:
-        for dn in c:
-          result.add node(dn)
+  mergeSections(comps, result)
