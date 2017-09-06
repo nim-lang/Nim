@@ -2055,6 +2055,9 @@ proc editDistance*(a, b: string): int {.noSideEffect,
   for i in 1 .. (len2 - half - 1): row[i] = i
   row[0] = len1 - half - 1
   i_current_a = i_start
+  var
+    char2p_i = -1
+    char2p_prev: int
   for i in 1 .. (len1 - 1):
     i_next_a = i_current_a
     a.fastRuneAt(i_next_a, rune_a)
@@ -2065,10 +2068,17 @@ proc editDistance*(a, b: string): int {.noSideEffect,
     if i >= (len1 - half):
       # skip the upper triangle:
       let offset = i + half - len1
-      char2p = i_start
-      for j in 0 ..< offset:
-        rune_b = b.runeAt(char2p)
-        inc(char2p, runeLen(rune_b))
+      if char2p_i == i:
+        b.fastRuneAt(char2p_prev, rune_b)
+        char2p = char2p_prev
+        char2p_i = i + 1
+      else:
+        char2p = i_start
+        for j in 0 ..< offset:
+          rune_b = b.runeAt(char2p)
+          inc(char2p, runeLen(rune_b))
+        char2p_i = i + 1
+        char2p_prev = char2p
       p = offset
       rune_b = b.runeAt(char2p)
       var c3 = row[p] + (if rune_a != rune_b: 1 else: 0)
