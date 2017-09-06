@@ -1175,7 +1175,10 @@ proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
 
 proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   #echo rendertree e, " ", e.isDeepConstExpr
-  if handleConstExpr(p, e, d): return
+  # inheritance in C++ does not allow struct initialization so
+  # we skip this step here:
+  if not p.module.compileToCpp:
+    if handleConstExpr(p, e, d): return
   var tmp: TLoc
   var t = e.typ.skipTypes(abstractInst)
   getTemp(p, t, tmp)
@@ -2237,20 +2240,22 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo): Rope =
   else:
     globalError(info, "cannot create null element for: " & $t.kind)
 
-proc getNullValueAux(p: BProc; obj, cons: PNode, result: var Rope) =
+proc getNullValueAux(p: BProc; t: PType; obj, cons: PNode, result: var Rope; count: var int) =
   case obj.kind
   of nkRecList:
-    for i in countup(0, sonsLen(obj) - 1): getNullValueAux(p, obj.sons[i], cons, result)
+    for i in countup(0, sonsLen(obj) - 1):
+      getNullValueAux(p, t, obj.sons[i], cons, result, count)
   of nkRecCase:
-    getNullValueAux(p, obj.sons[0], cons, result)
+    getNullValueAux(p, t, obj.sons[0], cons, result, count)
     for i in countup(1, sonsLen(obj) - 1):
-      getNullValueAux(p, lastSon(obj.sons[i]), cons, result)
+      getNullValueAux(p, t, lastSon(obj.sons[i]), cons, result, count)
   of nkSym:
-    if not result.isNil: result.add ", "
+    if count > 0: result.add ", "
+    inc count
     let field = obj.sym
     for i in 1..<cons.len:
       if cons[i].kind == nkExprColonExpr:
-        if cons[i][0].sym.name == field.name:
+        if cons[i][0].sym.name.id == field.name.id:
           result.add genConstExpr(p, cons[i][1])
           return
       elif i == field.position:
@@ -2261,14 +2266,32 @@ proc getNullValueAux(p: BProc; obj, cons: PNode, result: var Rope) =
   else:
     localError(cons.info, "cannot create null element for: " & $obj)
 
+proc getNullValueAuxT(p: BProc; orig, t: PType; obj, cons: PNode, result: var Rope; count: var int) =
+  var base = t.sons[0]
+  let oldRes = result
+  if not p.module.compileToCpp: result.add "{"
+  let oldcount = count
+  if base != nil:
+    base = skipTypes(base, skipPtrs)
+    getNullValueAuxT(p, orig, base, base.n, cons, result, count)
+  elif not isObjLackingTypeField(t) and not p.module.compileToCpp:
+    addf(result, "$1", [genTypeInfo(p.module, orig)])
+    inc count
+  getNullValueAux(p, t, obj, cons, result, count)
+  # do not emit '{}' as that is not valid C:
+  if oldcount == count: result = oldres
+  elif not p.module.compileToCpp: result.add "}"
+
 proc genConstObjConstr(p: BProc; n: PNode): Rope =
-  var length = sonsLen(n)
   result = nil
   let t = n.typ.skipTypes(abstractInst)
-  if not isObjLackingTypeField(t) and not p.module.compileToCpp:
-    addf(result, "{$1}", [genTypeInfo(p.module, t)])
-  getNullValueAux(p, t.n, n, result)
-  result = "{$1}$n" % [result]
+  var count = 0
+  #if not isObjLackingTypeField(t) and not p.module.compileToCpp:
+  #  addf(result, "{$1}", [genTypeInfo(p.module, t)])
+  #  inc count
+  getNullValueAuxT(p, t, t, t.n, n, result, count)
+  if p.module.compileToCpp:
+    result = "{$1}$n" % [result]
 
 proc genConstSimpleList(p: BProc, n: PNode): Rope =
   var length = sonsLen(n)

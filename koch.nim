@@ -227,6 +227,7 @@ proc bundleWinTools() =
   removeFile("tools/finish".exe)
   buildVccTool()
   nimexec("c -o:bin/nimgrab.exe -d:ssl tools/nimgrab.nim")
+  nimexec("c -o:bin/nimgrep.exe tools/nimgrep.nim")
   when false:
     # not yet a tool worth including
     nimexec(r"c --cc:vcc --app:gui -o:bin\downloader.exe -d:ssl --noNimblePath " &
@@ -234,7 +235,7 @@ proc bundleWinTools() =
 
 proc zip(args: string) =
   bundleNimbleExe()
-  bundleNimsuggest(false)
+  bundleNimsuggest(true)
   bundleWinTools()
   nimexec("cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
        [VersionAsString, compileNimInst])

@@ -566,8 +566,13 @@ proc newNode(k: SqlNodeKind, s: string): SqlNode =
   result.strVal = s
 
 proc len*(n: SqlNode): int =
-  if isNil(n.sons): result = 0
-  else: result = n.sons.len
+  if n.kind in {nkIdent, nkStringLit, nkBitStringLit, nkHexStringLit,
+                nkIntegerLit, nkNumericLit}:
+    result = 0
+  else:
+    result = n.sons.len
+
+proc `[]`*(n: SqlNode; i: int): SqlNode = n.sons[i]
 
 proc add*(father, n: SqlNode) =
   if isNil(father.sons): father.sons = @[]
