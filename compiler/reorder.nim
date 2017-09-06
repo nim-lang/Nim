@@ -80,6 +80,7 @@ proc visit(i: int; all, res: PNode; deps: var seq[(IntSet, IntSet)]): bool =
     n.flags = n.flags + {nfPermMark} - {nfTempMark}
     res.add n
 
+<<<<<<< HEAD
 proc splitSections(n: PNode): PNode =
   assert n.kind == nkStmtList
   result = newNodeI(nkStmtList, n.info)
@@ -95,6 +96,9 @@ proc splitSections(n: PNode): PNode =
 
 proc reorder*(nn: PNode): PNode =
   let n = splitSections(nn)
+=======
+proc reorder*(n: PNode): PNode =
+>>>>>>> parent of faa5bb9... Add sections (type, var, let, const, using) support for reorder pragma
   result = newNodeI(nkStmtList, n.info)
   var deps = newSeq[(IntSet, IntSet)](n.len)
   for i in 0..<n.len:
