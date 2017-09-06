@@ -90,7 +90,7 @@ proc computeDeps(n: PNode, declares, uses: var IntSet; topLevel: bool) =
   template decl(n) =
     if topLevel: addDecl(n, declares)
   case n.kind
-  of procDefs:
+  of procDefs, nkMacroDef, nkTemplateDef:
     decl(n[0])
     for i in 1..bodyPos: deps(n[i])
   of nkLetSection, nkVarSection, nkUsingStmt:
@@ -108,7 +108,7 @@ proc computeDeps(n: PNode, declares, uses: var IntSet; topLevel: bool) =
   of nkAccQuoted: uses.incl accQuoted(n).id
   of nkOpenSymChoice, nkClosedSymChoice:
     uses.incl n.sons[0].sym.name.id
-  of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse:
+  of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse, nkStaticStmt:
     for i in 0..<len(n): computeDeps(n[i], declares, uses, topLevel)
   else:
     for i in 0..<safeLen(n): deps(n[i])
