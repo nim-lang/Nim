@@ -39,47 +39,15 @@ proc toRational*[T:SomeInteger](x: T): Rational[T] =
   result.num = x
   result.den = 1
 
-proc toRationalSub(x: float, n: int): Rational[int] =
-  var
-    a = 0'i64
-    b, c, d = 1'i64
-  result = 0 // 1   # rational 0
-  while b <= n and d <= n:
-    let ac = (a+c)
-    let bd = (b+d)
-    # scale by 1000 so not overflow for high precision
-    let mediant = (ac.float/1000) / (bd.float/1000)
-    if x == mediant:
-      if bd <= n:
-        result.num = ac.int
-        result.den = bd.int
-        return result
-      elif d > b:
-        result.num = c.int
-        result.den = d.int
-        return result
-      else:
-        result.num = a.int
-        result.den = b.int
-        return result
-    elif x > mediant:
-      a = ac
-      b = bd
-    else:
-      c = ac
-      d = bd
-  if (b > n):
-    return initRational(c.int, d.int)
-  return initRational(a.int, b.int)
-
 proc toRational*(x: float, n: int = high(int)): Rational[int] =
+  # David Eppstein / UC Irvine / 8 Aug 1993
+  # With corrections from Arno Formella, May 2008
   ## Calculate the best rational numerator and denominator
   ## that approximates to `x`, where the denominator is
   ## smaller than `n` (default is the largest possible
   ## int to give maximum resolution)
   ##
-  ## The algorithm is based on the Farey sequence named
-  ## after John Farey
+  ## The algorithm is based on the theory of continued fractions
   ##
   ## .. code-block:: Nim
   ##  import math, rationals
@@ -88,13 +56,23 @@ proc toRational*(x: float, n: int = high(int)): Rational[int] =
   ##    let x = toRational(PI, t)
   ##    let newPI = x.num / x.den
   ##    echo x, " ", newPI, " error: ", PI - newPI, "  ", t
-  if x > 1:
-    result = toRationalSub(1.0/x, n)
-    swap(result.num, result.den)
-  elif x == 1.0:
-    result = 1 // 1
-  else:
-    result = toRationalSub(x, n)
+  var
+    m11, m22 = 1
+    m12, m21 = 0
+    ai = x.int
+    x = x
+  while m21.float * ai.float + m22.float <= n.float:
+    swap m12, m11
+    swap m22, m21
+    m11 = m12 * ai + m11
+    m21 = m22 * ai + m21
+    if x == ai.float: #division by zero
+      break
+    if x > 0x7FFFFFFF.float: #representation failure
+      break
+    x = 1.0 / (x - ai.float)
+    ai = x.int
+  result = m11 // m21
 
 proc toFloat*[T](x: Rational[T]): float =
   ## Convert a rational number `x` to a float.
@@ -346,7 +324,13 @@ when isMainModule:
   assert abs(toFloat(y) - 0.4814814814814815) < 1.0e-7
   assert toInt(z) == 0
 
-  assert toRational(0.98765432) == 12345679 // 12500000
+  assert toRational(0.98765432) == 5376864444397469455 // 5444075255396513284
+  assert toRational(PI) == 8566508067901016491 // 2726804208086097199
   assert toRational(0.1, 1000000) == 1 // 10
   assert toRational(0.9, 1000000) == 9 // 10
-  #assert toRational(PI) == 80143857 // 25510582
+  assert toRational(0.0) == 0 // 1
+  assert toRational(-0.25, 10) == 1 // -4
+  assert toRational(3.2, 10) == 16 // 5
+  assert toRational(0.33, 100) == 33 // 100
+  assert toRational(0.22, 50) == 11 // 50
+  assert toRational(10.0) == 10 // 1
