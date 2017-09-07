@@ -543,7 +543,7 @@ var
 
 proc toCChar*(c: char): string =
   case c
-  of '\0'..'\x1F', '\x80'..'\xFF': result = '\\' & toOctal(c)
+  of '\0'..'\x1F', '\x7F'..'\xFF': result = '\\' & toOctal(c)
   of '\'', '\"', '\\', '?': result = '\\' & c
   else: result = $(c)
 
@@ -746,7 +746,7 @@ proc toFileLine*(info: TLineInfo): string {.inline.} =
   result = info.toFilename & ":" & $info.line
 
 proc toFileLineCol*(info: TLineInfo): string {.inline.} =
-  result = info.toFilename & "(" & $info.line & "," & $info.col & ")"
+  result = info.toFilename & "(" & $info.line & ", " & $info.col & ")"
 
 proc `$`*(info: TLineInfo): string = toFileLineCol(info)
 

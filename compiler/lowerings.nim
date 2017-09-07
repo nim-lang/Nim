@@ -109,17 +109,19 @@ proc lowerSwap*(n: PNode; owner: PSym): PNode =
   result.add newFastAsgnStmt(n[1], n[2])
   result.add newFastAsgnStmt(n[2], tempAsNode)
 
-proc createObj*(owner: PSym, info: TLineInfo): PType =
+proc createObj*(owner: PSym, info: TLineInfo; final=true): PType =
   result = newType(tyObject, owner)
-  rawAddSon(result, nil)
-  incl result.flags, tfFinal
+  if final:
+    rawAddSon(result, nil)
+    incl result.flags, tfFinal
+  else:
+    rawAddSon(result, getCompilerProc("RootObj").typ)
   result.n = newNodeI(nkRecList, info)
-  when true:
-    let s = newSym(skType, getIdent("Env_" & info.toFilename),
-                   owner, info)
-    incl s.flags, sfAnon
-    s.typ = result
-    result.sym = s
+  let s = newSym(skType, getIdent("Env_" & info.toFilename),
+                  owner, info)
+  incl s.flags, sfAnon
+  s.typ = result
+  result.sym = s
 
 proc rawAddField*(obj: PType; field: PSym) =
   assert field.kind == skField

@@ -224,12 +224,13 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
       result.add copyTree(c)
   of tyTuple:
     if inst:
-      result = newNodeX(nkTupleTy)
       # only named tuples have a node, unnamed tuples don't
       if t.n.isNil:
+        result = newNodeX(nkPar)
         for subType in t.sons:
           result.add mapTypeToAst(subType, info)
       else:
+        result = newNodeX(nkTupleTy)
         for s in t.n.sons:
           result.add newIdentDefs(s)
     else:

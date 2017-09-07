@@ -408,20 +408,19 @@ macro `{}`*(typ: typedesc, xs: varargs[untyped]): auto =
         kString = quote do:
           when compiles($`k`): $`k` else: "invalid"
         v = x[1]
-      body.add(quote do:
+      body.add quote do:
         when compiles(`a`.`k`):
           `a`.`k` = `v`
         elif compiles(`a`[`k`]):
           `a`[`k`] = `v`
         else:
           `a`[`kString`] = `v`
-      )
+
     else:
       error("Expression `" & $x.toStrLit & "` not allowed in `{}` macro")
 
-  body.add(quote do:
+  body.add quote do:
     return `a`
-  )
 
   result = quote do:
     proc inner(): `typ` {.gensym.} =

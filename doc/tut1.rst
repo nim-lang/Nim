@@ -138,7 +138,7 @@ comments can also be nested.
     ]#
   ]#
 
-You can also use the `discard statement`_ together with *long string
+You can also use the `discard statement <#procedures-discard-statement>`_ together with *long string
 literals* to create block comments:
 
 .. code-block:: nim
@@ -364,8 +364,7 @@ iterator:
     echo i
   # --> Outputs 1 2 3 4 5 6 7 8 9 10 on different lines
 
-The built-in `$ <system.html#$>`_ operator turns an integer (``int``) and many
-other types into a string. The variable ``i`` is implicitly declared by the
+The variable ``i`` is implicitly declared by the
 ``for`` loop and has the type ``int``, because that is what `countup
 <system.html#countup>`_ returns. ``i`` runs through the values 1, 2, .., 10.
 Each value is ``echo``-ed. This code does the same:
@@ -500,10 +499,6 @@ differences:
 
 The ``when`` statement is useful for writing platform specific code, similar to
 the ``#ifdef`` construct in the C programming language.
-
-**Note**: To comment out a large piece of code, it is often better to use a
-``when false:`` statement than to use real comments. This way nesting is
-possible.
 
 
 Statements and indentation
@@ -1491,20 +1486,6 @@ variables! For example:
   echo baddir
   echo badname
   echo badext
-
-Tuple unpacking **only** works in ``var`` or ``let`` blocks. The following code
-won't compile:
-
-.. code-block:: nim
-
-  import os
-
-  var
-    path = "usr/local/nimc.html"
-    dir, name, ext = ""
-
-  (dir, name, ext) = splitFile(path)
-  # --> Error: '(dir, name, ext)' cannot be assigned to
 
 
 Reference and pointer types

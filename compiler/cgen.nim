@@ -47,10 +47,6 @@ proc findPendingModule(m: BModule, s: PSym): BModule =
   var ms = getModule(s)
   result = m.g.modules[ms.position]
 
-proc emitLazily(s: PSym): bool {.inline.} =
-  result = optDeadCodeElim in gGlobalOptions or
-           sfDeadCodeElim in getModule(s).flags
-
 proc initLoc(result: var TLoc, k: TLocKind, typ: PType, s: TStorageLoc) =
   result.k = k
   result.s = s
@@ -142,6 +138,13 @@ proc ropecg(m: BModule, frmt: FormatStr, args: varargs[Rope]): Rope =
 template rfmt(m: BModule, fmt: string, args: varargs[Rope]): untyped =
   ropecg(m, fmt, args)
 
+var indent = "\t".rope
+
+proc indentLine(p: BProc, r: Rope): Rope =
+  result = r
+  for i in countup(0, p.blocks.len-1):
+    prepend(result, indent)
+
 proc appcg(m: BModule, c: var Rope, frmt: FormatStr,
            args: varargs[Rope]) =
   add(c, ropecg(m, frmt, args))
@@ -153,11 +156,6 @@ proc appcg(m: BModule, s: TCFileSection, frmt: FormatStr,
 proc appcg(p: BProc, s: TCProcSection, frmt: FormatStr,
            args: varargs[Rope]) =
   add(p.s(s), ropecg(p.module, frmt, args))
-
-var indent = "\t".rope
-proc indentLine(p: BProc, r: Rope): Rope =
-  result = r
-  for i in countup(0, p.blocks.len-1): prepend(result, indent)
 
 proc line(p: BProc, s: TCProcSection, r: Rope) =
   add(p.s(s), indentLine(p, r))
@@ -211,7 +209,7 @@ proc genLineDir(p: BProc, t: PNode) =
   if ({optStackTrace, optEndb} * p.options == {optStackTrace, optEndb}) and
       (p.prc == nil or sfPure notin p.prc.flags):
     if freshLineInfo(p, tt.info):
-      linefmt(p, cpsStmts, "#endb($1, $2);$n",
+      linefmt(p, cpsStmts, "#endb($1, $2);$N",
               line.rope, makeCString(toFilename(tt.info)))
   elif ({optLineTrace, optStackTrace} * p.options ==
       {optLineTrace, optStackTrace}) and
@@ -347,6 +345,15 @@ proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
   result.flags = {}
   constructLoc(p, result, not needsInit)
 
+proc getIntTemp(p: BProc, result: var TLoc) =
+  inc(p.labels)
+  result.r = "T" & rope(p.labels) & "_"
+  linefmt(p, cpsLocals, "NI $1;$n", result.r)
+  result.k = locTemp
+  result.s = OnStack
+  result.t = getSysType(tyInt)
+  result.flags = {}
+
 proc initGCFrame(p: BProc): Rope =
   if p.gcFrameId > 0: result = "struct {$1} GCFRAME_;$n" % [p.gcFrameType]
 
@@ -387,7 +394,8 @@ proc assignLocalVar(p: BProc, s: PSym) =
   #assert(s.loc.k == locNone) # not yet assigned
   # this need not be fulfilled for inline procs; they are regenerated
   # for each module that uses them!
-  let decl = localVarDecl(p, s) & ";" & tnl
+  let nl = if optLineDir in gOptions: "" else: tnl
+  let decl = localVarDecl(p, s) & ";" & nl
   line(p, cpsLocals, decl)
   localDebugInfo(p, s)
 
@@ -603,18 +611,28 @@ proc generateHeaders(m: BModule) =
       addf(m.s[cfsHeaders], "#include \"$1\"$N", [rope(it)])
     else:
       addf(m.s[cfsHeaders], "#include $1$N", [rope(it)])
+  add(m.s[cfsHeaders], "#undef LANGUAGE_C" & tnl)
+  add(m.s[cfsHeaders], "#undef MIPSEB" & tnl)
+  add(m.s[cfsHeaders], "#undef MIPSEL" & tnl)
+  add(m.s[cfsHeaders], "#undef PPC" & tnl)
+  add(m.s[cfsHeaders], "#undef R3000" & tnl)
+  add(m.s[cfsHeaders], "#undef R4000" & tnl)
+  add(m.s[cfsHeaders], "#undef i386" & tnl)
   add(m.s[cfsHeaders], "#undef linux" & tnl)
+  add(m.s[cfsHeaders], "#undef mips" & tnl)
   add(m.s[cfsHeaders], "#undef near" & tnl)
+  add(m.s[cfsHeaders], "#undef powerpc" & tnl)
+  add(m.s[cfsHeaders], "#undef unix" & tnl)
 
 proc initFrame(p: BProc, procname, filename: Rope): Rope =
   discard cgsym(p.module, "nimFrame")
   if p.maxFrameLen > 0:
     discard cgsym(p.module, "VarSlot")
-    result = rfmt(nil, "\tnimfrs_($1, $2, $3, $4)$N",
+    result = rfmt(nil, "\tnimfrs_($1, $2, $3, $4);$n",
                   procname, filename, p.maxFrameLen.rope,
                   p.blocks[0].frameLen.rope)
   else:
-    result = rfmt(nil, "\tnimfr_($1, $2)$N", procname, filename)
+    result = rfmt(nil, "\tnimfr_($1, $2);$n", procname, filename)
 
 proc deinitFrame(p: BProc): Rope =
   result = rfmt(p.module, "\t#popFrame();$n")
@@ -1294,6 +1312,7 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   if b == nil or passes.skipCodegen(n): return
   var m = BModule(b)
   m.initProc.options = initProcOptions(m)
+  softRnl = if optLineDir in gOptions: noRnl else: rnl
   genStmts(m.initProc, n)
 
 proc finishModule(m: BModule) =

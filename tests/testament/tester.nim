@@ -64,12 +64,22 @@ let
 
 var targets = {low(TTarget)..high(TTarget)}
 
-proc normalizeMsg(s: string): string = s.strip.replace("\C\L", "\L")
+proc normalizeMsg(s: string): string =
+  result = newStringOfCap(s.len+1)
+  for x in splitLines(s):
+    if result.len > 0: result.add '\L'
+    result.add x.strip
+
+proc getFileDir(filename: string): string =
+  result = filename.splitFile().dir
+  if not result.isAbsolute():
+    result = getCurrentDir() / result
 
 proc callCompiler(cmdTemplate, filename, options: string,
                   target: TTarget): TSpec =
   let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
-                       "options", options, "file", filename.quoteShell])
+                       "options", options, "file", filename.quoteShell,
+                       "filedir", filename.getFileDir()])
   var p = startProcess(command=c[0], args=c[1.. ^1],
                        options={poStdErrToStdOut, poUsePath})
   let outp = p.outputStream
@@ -114,7 +124,8 @@ proc callCompiler(cmdTemplate, filename, options: string,
 proc callCCompiler(cmdTemplate, filename, options: string,
                   target: TTarget): TSpec =
   let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
-                       "options", options, "file", filename.quoteShell])
+                       "options", options, "file", filename.quoteShell,
+                       "filedir", filename.getFileDir()])
   var p = startProcess(command="gcc", args=c[5.. ^1],
                        options={poStdErrToStdOut, poUsePath})
   let outp = p.outputStream
@@ -212,20 +223,31 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest) =
 proc generatedFile(path, name: string, target: TTarget): string =
   let ext = targetToExt[target]
   result = path / "nimcache" /
-    (if target == targetJS: path.splitPath.tail & "_" else: "compiler_") &
+    (if target == targetJS: "" else: "compiler_") &
     name.changeFileExt(ext)
 
-proc codegenCheck(test: TTest, check: string, given: var TSpec) =
+proc needsCodegenCheck(spec: TSpec): bool =
+  result = spec.maxCodeSize > 0 or spec.ccodeCheck.len > 0
+
+proc codegenCheck(test: TTest, spec: TSpec, expectedMsg: var string,
+                  given: var TSpec) =
   try:
     let (path, name, _) = test.name.splitFile
     let genFile = generatedFile(path, name, test.target)
     let contents = readFile(genFile).string
-    if check[0] == '\\':
-      # little hack to get 'match' support:
-      if not contents.match(check.peg):
+    let check = spec.ccodeCheck
+    if check.len > 0:
+      if check[0] == '\\':
+        # little hack to get 'match' support:
+        if not contents.match(check.peg):
+          given.err = reCodegenFailure
+      elif contents.find(check.peg) < 0:
         given.err = reCodegenFailure
-    elif contents.find(check.peg) < 0:
+      expectedMsg = check
+    if spec.maxCodeSize > 0 and contents.len > spec.maxCodeSize:
       given.err = reCodegenFailure
+      given.msg = "generated code size: " & $contents.len
+      expectedMsg = "max allowed size: " & $spec.maxCodeSize
   except ValueError:
     given.err = reInvalidPeg
     echo getCurrentExceptionMsg()
@@ -248,9 +270,8 @@ proc compilerOutputTests(test: TTest, given: var TSpec, expected: TSpec;
   var expectedmsg: string = ""
   var givenmsg: string = ""
   if given.err == reSuccess:
-    if expected.ccodeCheck.len > 0:
-      codegenCheck(test, expected.ccodeCheck, given)
-      expectedmsg = expected.ccodeCheck
+    if expected.needsCodegenCheck:
+      codegenCheck(test, expected, expectedmsg, given)
       givenmsg = given.msg
     if expected.nimout.len > 0:
       expectedmsg = expected.nimout

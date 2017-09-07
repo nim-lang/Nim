@@ -104,9 +104,9 @@ proc mapCallConv(cc: TCallingConvention, info: TLineInfo): TABI =
   else:
     globalError(info, "cannot map calling convention to FFI")
 
-template rd(T, p: expr): expr {.immediate.} = (cast[ptr T](p))[]
-template wr(T, p, v: expr) {.immediate.} = (cast[ptr T](p))[] = v
-template `+!`(x, y: expr): expr {.immediate.} =
+template rd(T, p: untyped): untyped = (cast[ptr T](p))[]
+template wr(T, p, v: untyped): untyped = (cast[ptr T](p))[] = v
+template `+!`(x, y: untyped): untyped =
   cast[pointer](cast[ByteAddress](x) + y)
 
 proc packSize(v: PNode, typ: PType): int =
@@ -171,7 +171,7 @@ const maxPackDepth = 20
 var packRecCheck = 0
 
 proc pack(v: PNode, typ: PType, res: pointer) =
-  template awr(T, v: expr) {.immediate, dirty.} =
+  template awr(T, v: untyped): untyped =
     wr(T, res, v)
 
   case typ.kind
@@ -302,7 +302,7 @@ proc canonNodeKind(k: TNodeKind): TNodeKind =
   else: result = k
 
 proc unpack(x: pointer, typ: PType, n: PNode): PNode =
-  template aw(k, v, field: expr) {.immediate, dirty.} =
+  template aw(k, v, field: untyped): untyped =
     if n.isNil:
       result = newNode(k)
       result.typ = typ
@@ -326,9 +326,9 @@ proc unpack(x: pointer, typ: PType, n: PNode): PNode =
       result.kind = nkNilLit
       result.typ = typ
 
-  template awi(kind, v: expr) {.immediate, dirty.} = aw(kind, v, intVal)
-  template awf(kind, v: expr) {.immediate, dirty.} = aw(kind, v, floatVal)
-  template aws(kind, v: expr) {.immediate, dirty.} = aw(kind, v, strVal)
+  template awi(kind, v: untyped): untyped = aw(kind, v, intVal)
+  template awf(kind, v: untyped): untyped = aw(kind, v, floatVal)
+  template aws(kind, v: untyped): untyped = aw(kind, v, strVal)
 
   case typ.kind
   of tyBool: awi(nkIntLit, rd(bool, x).ord)

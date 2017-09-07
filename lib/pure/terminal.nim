@@ -578,7 +578,7 @@ template styledEchoProcessArg(f: File, cmd: TerminalCmd) =
   when cmd == resetStyle:
     resetAttributes(f)
 
-macro styledWriteLine*(f: File, m: varargs[expr]): stmt =
+macro styledWriteLine*(f: File, m: varargs[typed]): untyped =
   ## Similar to ``writeLine``, but treating terminal style arguments specially.
   ## When some argument is ``Style``, ``set[Style]``, ``ForegroundColor``,
   ## ``BackgroundColor`` or ``TerminalCmd`` then it is not sent directly to
@@ -614,15 +614,12 @@ macro styledWriteLine*(f: File, m: varargs[expr]): stmt =
   result.add(newCall(bindSym"write", f, newStrLitNode("\n")))
   if reset: result.add(newCall(bindSym"resetAttributes", f))
 
-macro callStyledEcho(args: varargs[expr]): stmt =
+macro styledEcho*(args: varargs[untyped]): untyped =
+  ## Echoes styles arguments to stdout using ``styledWriteLine``.
   result = newCall(bindSym"styledWriteLine")
   result.add(bindSym"stdout")
-  for arg in children(args[0][1]):
+  for arg in children(args):
     result.add(arg)
-
-template styledEcho*(args: varargs[expr]): expr =
-  ## Echoes styles arguments to stdout using ``styledWriteLine``.
-  callStyledEcho(args)
 
 proc getch*(): char =
   ## Read a single character from the terminal, blocking until it is entered.

@@ -1001,7 +1001,7 @@ proc escapeJson*(s: string; result: var string) =
   result.add("\"")
   for x in runes(s):
     var r = int(x)
-    if r >= 32 and r <= 127:
+    if r >= 32 and r <= 126:
       var c = chr(r)
       case c
       of '"': result.add("\\\"")
@@ -1740,6 +1740,7 @@ macro to*(node: JsonNode, T: typedesc): untyped =
   ##
   ##   * Heterogeneous arrays are not supported.
   ##   * Sets in object variants are not supported.
+  ##   * Not nil annotations are not supported.
   ##
   ## Example:
   ##
@@ -1815,8 +1816,7 @@ when isMainModule:
   doAssert(testJson["e"]["f"].bval)
 
   # make sure UTF-16 decoding works.
-  when not defined(js): # TODO: The following line asserts in JS
-    doAssert(testJson["c"].str == "🎃")
+  doAssert(testJson["c"].str == "🎃")
   doAssert(testJson["d"].str == "æ")
 
   # make sure no memory leek when parsing invalid string

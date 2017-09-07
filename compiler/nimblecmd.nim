@@ -9,63 +9,99 @@
 
 ## Implements some helper procs for Nimble (Nim's package manager) support.
 
-import parseutils, strutils, strtabs, os, options, msgs
+import parseutils, strutils, strtabs, os, options, msgs, sequtils
 
 proc addPath*(path: string, info: TLineInfo) =
   if not options.searchPaths.contains(path):
     options.searchPaths.insert(path, 0)
 
-proc versionSplitPos(s: string): int =
-  result = s.len-2
-  #while result > 1 and s[result] in {'0'..'9', '.'}: dec result
-  while result > 1 and s[result] != '-': dec result
-  if s[result] != '-': result = s.len
+type
+  Version = distinct string
 
-const
-  latest = ""
+proc `$`(ver: Version): string {.borrow.}
 
-proc `<.`(a, b: string): bool =
-  # wether a has a smaller version than b:
-  if a == latest: return true
-  elif b == latest: return false
-  var i = 0
-  var j = 0
-  var verA = 0
-  var verB = 0
-  while true:
-    let ii = parseInt(a, verA, i)
-    let jj = parseInt(b, verB, j)
-    if ii <= 0 or jj <= 0:
-      # if A has no number and B has but A has no number whatsoever ("#head"),
-      # A is preferred:
-      if ii > 0 and jj <= 0 and j == 0: return true
-      if ii <= 0 and jj > 0 and i == 0: return false
-      # if A has no number left, but B has, B is preferred:  0.8 vs 0.8.3
-      return jj > 0
-    if verA < verB: return true
-    elif verA > verB: return false
-    # else: same version number; continue:
-    inc i, ii
-    inc j, jj
-    if a[i] == '.': inc i
-    if b[j] == '.': inc j
+proc newVersion(ver: string): Version =
+  doAssert(ver.len == 0 or ver[0] in {'#', '\0'} + Digits,
+           "Wrong version: " & ver)
+  return Version(ver)
+
+proc isSpecial(ver: Version): bool =
+  return ($ver).len > 0 and ($ver)[0] == '#'
+
+proc `<`(ver: Version, ver2: Version): bool =
+  ## This is synced from Nimble's version module.
+
+  # Handling for special versions such as "#head" or "#branch".
+  if ver.isSpecial or ver2.isSpecial:
+    if ver2.isSpecial and ($ver2).normalize == "#head":
+      return ($ver).normalize != "#head"
+
+    if not ver2.isSpecial:
+      # `#aa111 < 1.1`
+      return ($ver).normalize != "#head"
+
+  # Handling for normal versions such as "0.1.0" or "1.0".
+  var sVer = string(ver).split('.')
+  var sVer2 = string(ver2).split('.')
+  for i in 0..max(sVer.len, sVer2.len)-1:
+    var sVerI = 0
+    if i < sVer.len:
+      discard parseInt(sVer[i], sVerI)
+    var sVerI2 = 0
+    if i < sVer2.len:
+      discard parseInt(sVer2[i], sVerI2)
+    if sVerI < sVerI2:
+      return true
+    elif sVerI == sVerI2:
+      discard
+    else:
+      return false
+
+proc getPathVersion*(p: string): tuple[name, version: string] =
+  ## Splits path ``p`` in the format ``/home/user/.nimble/pkgs/package-0.1``
+  ## into ``(/home/user/.nimble/pkgs/package, 0.1)``
+  result.name = ""
+  result.version = ""
+
+  const specialSeparator = "-#"
+  var sepIdx = p.find(specialSeparator)
+  if sepIdx == -1:
+    sepIdx = p.rfind('-')
+
+  if sepIdx == -1:
+    result.name = p
+    return
+
+  result.name = p[0 .. sepIdx - 1]
+  result.version = p.substr(sepIdx + 1)
 
 proc addPackage(packages: StringTableRef, p: string) =
-  let x = versionSplitPos(p)
-  let name = p.substr(0, x-1)
-  let version = if x < p.len: p.substr(x+1) else: ""
-  if packages.getOrDefault(name) <. version:
-    packages[name] = version
+  let (name, ver) = getPathVersion(p)
+  let version = newVersion(ver)
+  if packages.getOrDefault(name).newVersion < version or
+     (not packages.hasKey(name)):
+    packages[name] = $version
 
 iterator chosen(packages: StringTableRef): string =
   for key, val in pairs(packages):
-    let res = if val == latest: key else: key & '-' & val
+    let res = if val.len == 0: key else: key & '-' & val
     yield res
 
 proc addNimblePath(p: string, info: TLineInfo) =
-  if not contains(options.searchPaths, p):
-    message(info, hintPath, p)
-    options.lazyPaths.insert(p, 0)
+  var path = p
+  let nimbleLinks = toSeq(walkPattern(p / "*.nimble-link"))
+  if nimbleLinks.len > 0:
+    # If the user has more than one .nimble-link file then... we just ignore it.
+    # Spec for these files is available in Nimble's readme:
+    # https://github.com/nim-lang/nimble#nimble-link
+    let nimbleLinkLines = readFile(nimbleLinks[0]).splitLines()
+    path = nimbleLinkLines[1]
+    if not path.isAbsolute():
+      path = p / path
+
+  if not contains(options.searchPaths, path):
+    message(info, hintPath, path)
+    options.lazyPaths.insert(path, 0)
 
 proc addPathRec(dir: string, info: TLineInfo) =
   var packages = newStringTable(modeStyleInsensitive)
@@ -82,7 +118,17 @@ proc nimblePath*(path: string, info: TLineInfo) =
   addNimblePath(path, info)
 
 when isMainModule:
+  proc v(s: string): Version = s.newVersion
+  # #head is special in the sense that it's assumed to always be newest.
+  doAssert v"1.0" < v"#head"
+  doAssert v"1.0" < v"1.1"
+  doAssert v"1.0.1" < v"1.1"
+  doAssert v"1" < v"1.1"
+  doAssert v"#aaaqwe" < v"1.1" # We cannot assume that a branch is newer.
+  doAssert v"#a111" < v"#head"
+
   var rr = newStringTable()
+  addPackage rr, "irc-#a111"
   addPackage rr, "irc-#head"
   addPackage rr, "irc-0.1.0"
   addPackage rr, "irc"
@@ -93,5 +139,6 @@ when isMainModule:
   addPackage rr, "ab-0.1"
   addPackage rr, "justone"
 
-  for p in rr.chosen:
-    echo p
+  doAssert toSeq(rr.chosen) ==
+    @["irc-#head", "another-0.1", "ab-0.1.3", "justone"]
+

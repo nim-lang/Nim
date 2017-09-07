@@ -31,7 +31,7 @@ proc `.=`(x: var T1, f: string{lit}, v: int) =
   echo "assigning ", f, " = ", v
   x.x = v
 
-template `.()`(x: T1, f: string, args: varargs[expr]): string =
+template `.()`(x: T1, f: string, args: varargs[typed]): string =
   echo "call to ", f
   "dot call"
 
@@ -63,4 +63,3 @@ echo tt.c(10)
 
 assert(not compiles(tt.d("x")))
 assert(not compiles(tt.d(1, 2)))
-

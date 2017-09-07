@@ -7,7 +7,7 @@ type
   semistatic[T] =
     static[T] or T
 
-template isStatic*(x): expr =
+template isStatic*(x): bool =
   compiles(static(x))
 
 proc foo(x: semistatic[int]) =

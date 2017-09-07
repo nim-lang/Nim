@@ -2,8 +2,8 @@ type
   Bar[T] = Foo[T, T]
   Baz[T] = proc (x: Foo[T, T])
   
-  GenericAlias[T] = Foo[T]
-  GenericAlias2[T] = Foo[Baz[T]]
+  GenericAlias[T] = Foo[T, T]
+  GenericAlias2[T] = Foo[Baz[T], T]
   
   Concrete1 = Foo[int, float]
   Concrete2 = proc(x: proc(a: Foo[int, float]))
