@@ -1237,6 +1237,14 @@ proc setLen*(s: var string, newlen: Natural) {.
   ##  myS.setLen(3)
   ##  echo myS, " is fantastic!!"
 
+proc clear*[T](s: var seq[T]) {.noSideEffect.} =
+  ## alias for `setLen`(s, 0) that sets the length of any sequence `s` to 0.
+  setLen(s, 0)
+  
+proc clear*(s: var string) {.noSideEffect.} =
+  ## alias for `setLen`(s, 0) that sets the length of any string `s` to 0.
+  setLen(s, 0)
+
 proc newString*(len: Natural): string {.
   magic: "NewString", importc: "mnewString", noSideEffect.}
   ## returns a new string of length ``len`` but with uninitialized
