@@ -1740,6 +1740,7 @@ macro to*(node: JsonNode, T: typedesc): untyped =
   ##
   ##   * Heterogeneous arrays are not supported.
   ##   * Sets in object variants are not supported.
+  ##   * Not nil annotations are not supported.
   ##
   ## Example:
   ##
