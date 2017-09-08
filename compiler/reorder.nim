@@ -7,6 +7,7 @@ type
     id, idx, lowLink: int
     onStack: bool
     kids: seq[DepN]
+    hAQ, hIS, hB, hCmd: int
   DepG = seq[DepN]
 
 proc newDepN(id: int, pnode: PNode): DepN =
@@ -17,6 +18,10 @@ proc newDepN(id: int, pnode: PNode): DepN =
   result.lowLink = -1
   result.onStack = false
   result.kids = @[]
+  result.hAQ = -1
+  result.hIS = -1
+  result.hB = -1
+  result.hCmd = -1
 
 proc accQuoted(n: PNode): PIdent =
   var id = ""
@@ -59,17 +64,13 @@ proc computeDeps(n: PNode, declares, uses: var IntSet; topLevel: bool) =
         decl(a[0])
         for i in 1..<a.len:
           if a[i].kind == nkEnumTy:
+            # declare enum members
             for b in a[i]:
               decl(b)
           else:
             deps(a[i])
   of nkIdent: uses.incl n.ident.id
   of nkSym: uses.incl n.sym.name.id
-  # of nkPtrTy, nkRefTy:
-  #   assert n.len <= 1
-  #   echo n
-  #   if n.len > 0:
-  #     deps(n[0])
   of nkAccQuoted: uses.incl accQuoted(n).id
   of nkOpenSymChoice, nkClosedSymChoice:
     uses.incl n.sons[0].sym.name.id
@@ -79,6 +80,7 @@ proc computeDeps(n: PNode, declares, uses: var IntSet; topLevel: bool) =
     let a = n.sons[0]
     if a.kind == nkExprColonExpr and a.sons[0].kind == nkIdent and 
        a.sons[0].ident.s == "pragma":
+        # user defined pragma
         decl(a.sons[1])
     else:
       for i in 0..<safeLen(n): deps(n[i])
@@ -119,7 +121,6 @@ proc expandIncludes(n: PNode, modulePath: string): PNode =
   result = newNodeI(nkStmtList, n.info)
   for a in n:
     if a.kind == nkIncludeStmt:
-      # echo a
       for b in a:
         let fn = getIncludePath(b, modulePath)
         try:
@@ -135,7 +136,6 @@ proc expandIncludes(n: PNode, modulePath: string): PNode =
     elif a.kind in {nkWhenStmt}:
       var aa = newNodeI(a.kind, a.info)
       for b in a:
-        # echo b
         var bb = newNodeI(b.kind, b.info)
         if bb.kind == nkElifBranch:
           bb.add b.sons[0]
@@ -180,25 +180,19 @@ proc mergeSections(comps: seq[seq[DepN]], res: PNode) =
     else:
       let fstn = c[0].pnode
       let kind = fstn.kind
-      if kind in {nkTypeSection, nkConstSection} and haveSameKind(c):
+      # always return to the original order when we got circular dependencies
+      let cs = c.sortedByIt(it.id) 
+      if kind in {nkTypeSection, nkConstSection} and haveSameKind(cs):
+        # Circular dependency between type or const sections, we just
+        # need to merge them
         var sn = newNode(kind)
-        for dn in c:
+        for dn in cs:
           sn.add dn.pnode.sons[0]
         res.add sn
       else:
-        # echo "OUUUUPs"
-        # echo c.len
-        # if c[0].pnode.kind in procDefs and c.haveSameKind:
-          # We have an unexpected circular dependancy
-          # Keep the original relative order
-          # echo "************************************************************************"
-          let cs = c.sortedByIt(it.id)
-          # for dn in cs:
-          #   echo dn.pnode
-          #   echo dn.pnode.kind
-          #   echo dn.id
-          #   res.add dn.pnode
-          
+          # Problematic circular dependency, we arrange the nodes into
+          # their original relative order and make sure to re-merge 
+          # consecutive type and const sections
           var i = 0
           while i < cs.len:
             if cs[i].pnode.kind in {nkTypeSection, nkConstSection}:
@@ -215,8 +209,10 @@ proc mergeSections(comps: seq[seq[DepN]], res: PNode) =
               inc i
 
 proc hasImportStmt(n: PNode): bool = 
+  # Checks if the node is an import statement or
+  # i it contains one
   case n.kind
-  of nkImportStmt:
+  of nkImportStmt, nkFromStmt, nkImportExceptStmt:
     return true
   of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse, nkStaticStmt:
     for a in n:
@@ -225,7 +221,30 @@ proc hasImportStmt(n: PNode): bool =
   else:
     result = false
 
-const extandedProcDefs = procDefs + {nkMacroDef,  nkTemplateDef}
+proc hasImportStmt(n: DepN): bool =
+  if n.hIS < 0:
+    n.hIS = cast[int](n.pnode.hasImportStmt)
+  result = cast[bool](n.hIS)
+
+proc hasCommand(n: PNode): bool = 
+  # Checks if the node is a command or a call 
+  # or if it contains one
+  case n.kind
+  of nkCommand, nkCall:
+    result = true
+  of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse, 
+      nkStaticStmt, nkLetSection, nkConstSection, nkVarSection,
+      nkIdentDefs:
+        for a in n:
+          if a.hasCommand:
+            return true
+  else:
+    return false
+
+proc hasCommand(n: DepN): bool =
+  if n.hCmd < 0:
+    n.hCmd = cast[int](n.pnode.hasCommand)
+  result = cast[bool](n.hCmd)
 
 proc hasAccQuoted(n: PNode): bool =
   if n.kind == nkAccQuoted:
@@ -234,30 +253,46 @@ proc hasAccQuoted(n: PNode): bool =
     if hasAccQuoted(a):
       return true
 
+const extandedProcDefs = procDefs + {nkMacroDef,  nkTemplateDef}
+
 proc hasAccQuotedDef(n: PNode): bool = 
+  # Checks if the node is a function, macro, template ...
+  # with a quoted name or if it contains one
   case n.kind
   of extandedProcDefs:
     result = n[0].hasAccQuoted
   of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse, nkStaticStmt:
     for a in n:
-      if a.hasAccQuoted:
+      if a.hasAccQuotedDef:
         return true
   else:
     result = false
 
-proc hasBody(n: PNode, shouldHave: bool): bool = 
+proc hasAccQuotedDef(n: DepN): bool =
+  if n.hAQ < 0:
+    n.hAQ = cast[int](n.pnode.hasAccQuotedDef)
+  result = cast[bool](n.hAQ)
+
+proc hasBody(n: PNode): bool = 
+  # Checks if the node is a function, macro, template ...
+  # with a body or if it contains one
   case n.kind
+  of nkCommand, nkCall:
+    result = true
   of extandedProcDefs:
-    if shouldHave:
-      result = n[^1].kind == nkStmtList
-    else:
-      result = n[^1].kind == nkEmpty
+    result = n[^1].kind == nkStmtList
   of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse, nkStaticStmt:
     for a in n:
-      if a.hasBody(shouldHave):
+      if a.hasBody:
         return true
   else:
     result = false
+
+proc hasBody(n: DepN): bool =
+  if n.hB < 0:
+    n.hB = cast[int](n.pnode.hasBody)
+  result = cast[bool](n.hB)
+
 proc intersects(s1, s2: IntSet): bool =
   for a in s1:
     if s2.contains(a):
@@ -269,22 +304,35 @@ proc buildGraph(n: PNode, deps: seq[(IntSet, IntSet)]): DepG =
   for i in 0..<deps.len:
     result.add newDepN(i, n.sons[i])
   for i in 0..<deps.len:
-    var n = result[i]
+    var ni = result[i]
     let uses = deps[i][1]
+    let niHasBody = ni.hasBody
+    let niHasCmd = ni.hasCommand
     for j in 0..<deps.len:
       if i == j: continue
+      var nj = result[j]
       let declares = deps[j][0]
-      if j < i and result[j].pnode.hasImportStmt:
-        n.kids.add result[j]
-      elif j < i and n.pnode.hasBody(true) and result[j].pnode.hasAccQuotedDef:
-        n.kids.add result[j]
-      elif j < i and n.pnode.hasBody(true) and result[j].pnode.hasBody(false) and
+      if j < i and nj.hasCommand and niHasCmd:
+        # Preserve order for commands and calls
+        ni.kids.add nj
+      elif j < i and nj.hasImportStmt:
+        # Every node that comes after an import statement must
+        # depend on that import
+        ni.kids.add nj
+      elif j < i and niHasBody and nj.hasAccQuotedDef:
+        # Every function, macro, template... with a body depends
+        # on precedent function declarations that have quoted names.
+        # That's because it is hard to detect the use of functions 
+        # like "[]=", "[]", "or" ... in their bodies.
+        ni.kids.add nj
+      elif j < i and niHasBody and not nj.hasBody and
         intersects(deps[i][0], declares):
-          n.kids.add result[j]
+          # Keep function declaration before function definition
+          ni.kids.add nj
       else:
         for d in declares:
           if uses.contains(d):
-            n.kids.add result[j]
+            ni.kids.add nj
 
 proc strongConnect(v: var DepN, idx: var int, s: var seq[DepN], 
                    res: var seq[seq[DepN]]) =
