@@ -202,7 +202,8 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream,
         if graph.stopCompile(): break
         var n = parseTopLevelStmt(p)
         if n.kind == nkEmpty: break
-        if {sfNoForward, sfReorder} * module.flags != {}:
+        # if {sfNoForward, sfReorder} * module.flags != {}:
+        if true:
           # read everything, no streaming possible
           var sl = newNodeI(nkStmtList, n.info)
           sl.add n
@@ -210,8 +211,9 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream,
             var n = parseTopLevelStmt(p)
             if n.kind == nkEmpty: break
             sl.add n
-          if sfReorder in module.flags:
-            sl = reorder sl
+          # if sfReorder in module.flags:
+          if true:
+            sl = reorder(sl, module.fileIdx.toFullPath)
           discard processTopLevelStmt(sl, a)
           break
         elif not processTopLevelStmt(n, a): break
