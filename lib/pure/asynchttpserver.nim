@@ -33,6 +33,10 @@
 
 import tables, asyncnet, asyncdispatch, parseutils, uri, strutils
 import httpcore
+from osproc import countProcessors
+
+when compileOption("threads"):
+  import threadpool
 
 export httpcore except parseHeader
 
@@ -54,10 +58,18 @@ type
     hostname*: string ## The hostname of the client that made the request.
     body*: string
 
+  AsyncHttpServerDispatchMethod* = enum
+    so_reuseport, iocp, auto, dispatcher
+
   AsyncHttpServer* = ref object
     socket: AsyncSocket
     reuseAddr: bool
     reusePort: bool
+
+  MTAsyncHttpServer* = ref object
+    reuseAddr: bool
+    numThreads*: int
+    dispatchMethod*: AsyncHttpServerDispatchMethod
 
 {.deprecated: [TRequest: Request, PAsyncHttpServer: AsyncHttpServer,
   THttpCode: HttpCode, THttpVersion: HttpVersion].}
@@ -67,6 +79,30 @@ proc newAsyncHttpServer*(reuseAddr = true, reusePort = false): AsyncHttpServer =
   new result
   result.reuseAddr = reuseAddr
   result.reusePort = reusePort
+
+proc newMTAsyncHttpServer*(reuseAddr = true, numThreads = 0,
+    dispatchMethod = auto): MTAsyncHttpServer =
+  ## Multithreaded Async HTTP server.
+  ## Creates a new ``MTAsyncHttpServer`` instance.
+  ##
+  ## `numThreads`: 0 to match the number of CPU cores (default)
+  ##
+  ## `dispatchMethod`: method to dispatch incoming requests to worker threads:
+  ##
+  ## ============ ==================================
+  ## so_reuseport SO_REUSEPORT, available on Linux
+  ## iocp         IOCP, available on Windows
+  ## dispatcher   pass requests from a dispatcher thread to workers
+  ## auto         use SO_REUSEPORT or IOCP where available or fall back to dispatcher
+  ## ============ ==================================
+  ##
+  ## See `MTAsyncHttpServer.serve` for an usage example.
+  ##
+  ## Currently only so_reuseport is implemented.
+  new result
+  result.reuseAddr = reuseAddr
+  result.numThreads = numThreads
+  result.dispatchMethod = dispatchMethod
 
 proc addHeaders(msg: var string, headers: HttpHeaders) =
   for k, v in headers:
@@ -178,12 +214,7 @@ proc processClient(client: AsyncSocket, address: string,
         except ValueError:
           asyncCheck request.respondError(Http400)
           continue
-      of 1: 
-        try:
-          parseUri(linePart, request.url)
-        except ValueError:
-          asyncCheck request.respondError(Http400) 
-          continue
+      of 1: parseUri(linePart, request.url)
       of 2:
         try:
           request.protocol = parseProtocol(linePart)
@@ -287,6 +318,66 @@ proc serve*(server: AsyncHttpServer, port: Port,
 proc close*(server: AsyncHttpServer) =
   ## Terminates the async http server instance.
   server.socket.close()
+
+proc threaded_http_server(port: Port,
+            callback: proc (request: Request): Future[void] {.closure,gcsafe.}
+            ) {.thread.} =
+  ## Run an AsyncHttpServer in a thread
+  ## Used by MTAsyncHttpServer.serve()
+  var server = newAsyncHttpServer(reusePort=true)
+  waitFor server.serve(port, callback)
+
+when compileOption("threads"):
+  type
+    DispatchMsg = tuple[socket: AsyncSocket, address: string]
+    AsyncSocketChannel = Channel[DispatchMsg]
+
+  proc serve*(server: MTAsyncHttpServer, port: Port,
+              callback: proc (request: Request): Future[void] {.closure,gcsafe.},
+              address = "") {.async.} =
+    ## Starts the process of listening for incoming HTTP connections on the
+    ## specified address and port using multiple threads.
+    ##
+    ## When a request is made by a client the specified callback will be called.
+    ##
+    ## .. code-block::nim
+    ##    var server = newMTAsyncHttpServer()
+    ##    waitFor server.serve(Port(8080), cb)
+    ##    echo "Serving HTTP using ", $server.numThreads, " threads"
+    ##    sync()
+    if server.numThreads == 0:
+      server.numThreads = countProcessors()
+      if server.numThreads == 0:
+        raise newException(OSError, "unable to detect number of CPU cores")
+
+    if server.numThreads != 0:
+      if server.dispatchMethod == AsyncHttpServerDispatchMethod.auto:
+        when defined(Linux):
+          server.dispatchMethod = AsyncHttpServerDispatchMethod.so_reuseport
+        when defined(Windows):
+          server.dispatchMethod = AsyncHttpServerDispatchMethod.iocp
+
+      case server.dispatchMethod:
+      of AsyncHttpServerDispatchMethod.so_reuseport:
+        when not defined(Linux):
+          raise newException(ValueError, "SO_REUSEPORT is not supported on the current platform")
+        else:
+          for n in 1..server.numThreads:
+            spawn threaded_http_server(port, callback)
+
+      of AsyncHttpServerDispatchMethod.iocp:
+        when not defined(Windows):
+          raise newException(ValueError, "IOCP is not supported on the current platform")
+        else:
+          raise newException(ValueError, "IOCP is not implemented yet")
+
+      of AsyncHttpServerDispatchMethod.dispatcher:
+        # Run a thread that accepts new incoming connections and multiple worker
+        # threads that handle existing connections
+        raise newException(ValueError, "Not implemented yet")
+
+      of AsyncHttpServerDispatchMethod.auto:
+        raise newException(ValueError, "Unable to autoselect dispatch method")
 
 when not defined(testing) and isMainModule:
   proc main =
