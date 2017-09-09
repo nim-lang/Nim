@@ -409,6 +409,28 @@ proc recSetFlagIsRef(arg: PNode) =
   for i in 0 ..< arg.safeLen:
     arg.sons[i].recSetFlagIsRef
 
+proc setLenSeq(c: PCtx; node: PNode; newLen: int; info: TLineInfo) =
+  # FIXME: this doesn't attempt to solve incomplete
+  # support of tyPtr, tyRef in VM.
+  let typ = node.typ.skipTypes(abstractInst+{tyRange}-{tyTypeDesc})
+  let typeEntry = typ.sons[0].skipTypes(abstractInst+{tyRange}-{tyTypeDesc})
+  let typeKind = case typeEntry.kind
+  of tyUInt..tyUInt64: nkUIntLit
+  of tyRange, tyEnum, tyBool, tyChar, tyInt..tyInt64: nkIntLit
+  of tyFloat..tyFloat128: nkFloatLit
+  of tyString: nkStrLit
+  of tyObject: nkObjConstr
+  of tySequence: nkNilLit
+  of tyProc, tyTuple: nkPar
+  else: nkEmpty
+
+  let oldLen = node.len
+  setLen(node.sons, newLen)
+  if oldLen < newLen:
+    # TODO: This is still not correct for tyPtr, tyRef default value
+    for i in oldLen .. <newLen:
+      node.sons[i] = newNodeI(typeKind, info)
+
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
   var tos = tos
@@ -1118,14 +1140,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkNode)
       let newLen = regs[rb].intVal.int
       if regs[ra].node.isNil: stackTrace(c, tos, pc, errNilAccess)
-      else:
-        let oldLen = regs[ra].node.len
-        setLen(regs[ra].node.sons, newLen)
-        if oldLen < newLen:
-          # XXX This is still not entirely correct
-          # set to default value:
-          for i in oldLen .. <newLen:
-            regs[ra].node.sons[i] = newNodeI(nkEmpty, c.debug[pc])
+      else: c.setLenSeq(regs[ra].node, newLen, c.debug[pc])
     of opcReset:
       internalError(c.debug[pc], "too implement")
     of opcNarrowS:

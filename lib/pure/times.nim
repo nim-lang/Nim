@@ -222,6 +222,12 @@ proc toSeconds*(time: Time): float {.tags: [], raises: [], benign.}
 proc `-`*(a, b: Time): int64 {.
   rtl, extern: "ntDiffTime", tags: [], raises: [], noSideEffect, benign.}
   ## computes the difference of two calendar times. Result is in seconds.
+  ##
+  ## .. code-block:: nim
+  ##     let a = fromSeconds(1_000_000_000)
+  ##     let b = fromSeconds(1_500_000_000)
+  ##     echo initInterval(seconds=int(b - a))
+  ##     # (milliseconds: 0, seconds: 20, minutes: 53, hours: 0, days: 5787, months: 0, years: 0) 
 
 proc `<`*(a, b: Time): bool {.
   rtl, extern: "ntLtTime", tags: [], raises: [], noSideEffect.} =
@@ -318,6 +324,14 @@ proc `-`*(ti: TimeInterval): TimeInterval =
 
 proc `-`*(ti1, ti2: TimeInterval): TimeInterval =
   ## Subtracts TimeInterval ``ti1`` from ``ti2``.
+  ##
+  ## Time components are compared one-by-one, see output:
+  ##
+  ## .. code-block:: nim
+  ##     let a = fromSeconds(1_000_000_000)
+  ##     let b = fromSeconds(1_500_000_000)
+  ##     echo b.toTimeInterval - a.toTimeInterval
+  ##     # (milliseconds: 0, seconds: -40, minutes: -6, hours: 1, days: -2, months: -2, years: 16)
   result = ti1 + (-ti2)
 
 proc isLeapYear*(year: int): bool =
@@ -1101,6 +1115,16 @@ proc timeToTimeInterval*(t: Time): TimeInterval {.deprecated.} =
 
 proc toTimeInterval*(t: Time): TimeInterval =
   ## Converts a Time to a TimeInterval.
+  ##
+  ## To be used when diffing times.
+  ##
+  ## .. code-block:: nim
+  ##     let a = fromSeconds(1_000_000_000)
+  ##     let b = fromSeconds(1_500_000_000)
+  ##     echo a, " ", b  # real dates
+  ##     echo a.toTimeInterval  # meaningless value, don't use it by itself
+  ##     echo b.toTimeInterval - a.toTimeInterval
+  ##     # (milliseconds: 0, seconds: -40, minutes: -6, hours: 1, days: -2, months: -2, years: 16)
   # Milliseconds not available from Time
   var tInfo = t.getLocalTime()
   initInterval(0, tInfo.second, tInfo.minute, tInfo.hour, tInfo.weekday.ord, tInfo.month.ord, tInfo.year)

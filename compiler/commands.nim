@@ -454,6 +454,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     of "native", "gdb":
       incl(gGlobalOptions, optCDebug)
       gOptions = gOptions + {optLineDir} - {optEndb}
+      defineSymbol("nimTypeNames", nil) # type names are used in gdb pretty printing
       undefSymbol("endb")
     else:
       localError(info, "expected endb|gdb but found " & arg)

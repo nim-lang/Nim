@@ -29,3 +29,17 @@ macro m: typed =
     result.add newCall(bindsym"echo", i)
 
 m()
+
+# bug 4741 & 5013
+proc test() =
+  var s = [("baz", 42), ("bath", 42)]
+  for i in s.mitems:
+    i[1] = 3
+  doAssert(s == [("baz", 3), ("bath", 3)])
+
+static:
+  test()
+  var s = [("baz", 42), ("bath", 42)]
+  for i in s.mitems:
+    i[1] = 3
+  doAssert(s == [("baz", 3), ("bath", 3)])
