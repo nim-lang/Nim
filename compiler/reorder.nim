@@ -1,5 +1,5 @@
 
-import intsets, ast, idents, algorithm, renderer, parser, ospaths, strutils, sequtils
+import intsets, ast, idents, algorithm, renderer, parser, ospaths, strutils, sequtils, msgs
 
 type
   DepN = ref object
@@ -193,6 +193,7 @@ proc mergeSections(comps: seq[seq[DepN]], res: PNode) =
           # Problematic circular dependency, we arrange the nodes into
           # their original relative order and make sure to re-merge 
           # consecutive type and const sections
+          message(cs[0].pnode.info, warnUser, "Circular dependency detected. reorder pragma may not be able to reorder some nodes properely")
           var i = 0
           while i < cs.len:
             if cs[i].pnode.kind in {nkTypeSection, nkConstSection}:
