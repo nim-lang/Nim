@@ -151,6 +151,7 @@ Historically, Nim was a fully `style-insensitive`:idx: language. This meant that
 it was not case-sensitive and underscores were ignored and there was no even a
 distinction between ``foo`` and ``Foo``.
 
+
 String literals
 ---------------
 
