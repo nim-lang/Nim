@@ -83,13 +83,19 @@ proc osErrorMsg*(errorCode: OSErrorCode): string =
         if formatMessageW(0x00000100 or 0x00001000 or 0x00000200,
                         nil, errorCode.int32, 0, addr(msgbuf), 0, nil) != 0'i32:
           result = $msgbuf
+          # strip null character
+          result = result.substr(0, result.len-3)
           if msgbuf != nil: localFree(cast[pointer](msgbuf))
       else:
         var msgbuf: cstring
         if formatMessageA(0x00000100 or 0x00001000 or 0x00000200,
                         nil, errorCode.int32, 0, addr(msgbuf), 0, nil) != 0'i32:
           result = $msgbuf
+          # strip null character
+          result = result.substr(0, result.len-3)
           if msgbuf != nil: localFree(msgbuf)
+    else:
+      result = "Error code not set"
   else:
     if errorCode != OSErrorCode(0'i32):
       result = $c_strerror(errorCode.int32)
@@ -107,7 +113,7 @@ proc raiseOSError*(errorCode: OSErrorCode; additionalInfo = "") {.noinline.} =
   if additionalInfo.len == 0:
     e.msg = osErrorMsg(errorCode)
   else:
-    e.msg = osErrorMsg(errorCode) & "\nAdditional info: " & additionalInfo
+    e.msg = osErrorMsg(errorCode) & " Additional info: " & additionalInfo
   if e.msg == "":
     e.msg = "unknown OS error"
   raise e

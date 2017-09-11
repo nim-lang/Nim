@@ -127,7 +127,7 @@ proc open*(filename: string, mode: FileMode = fmRead,
       rollback()
       if result.fHandle != 0: discard closeHandle(result.fHandle)
       if result.mapHandle != 0: discard closeHandle(result.mapHandle)
-      raiseOSError(errCode)
+      raiseOSError(errCode, msg)
       # return false
       #raise newException(EIO, msg)
 
@@ -194,8 +194,8 @@ proc open*(filename: string, mode: FileMode = fmRead,
 
     result.wasOpened = true
     if not allowRemap and result.fHandle != INVALID_HANDLE_VALUE:
-      if closeHandle(result.fHandle) == 0:
-        result.fHandle = INVALID_HANDLE_VALUE
+      discard closeHandle(result.fHandle)
+      result.fHandle = INVALID_HANDLE_VALUE
 
   else:
     template fail(errCode: OSErrorCode, msg: string) =
@@ -256,11 +256,19 @@ proc close*(f: var MemFile) =
 
   when defined(windows):
     if f.wasOpened:
-      error = unmapViewOfFile(f.mem) == 0
-      lastErr = osLastError()
-      error = (closeHandle(f.mapHandle) == 0) or error
+      if unmapViewOfFile(f.mem) == 0:
+        error = true
+        lastErr = osLastError()
+
+      if closeHandle(f.mapHandle) == 0:
+        error = true
+        lastErr = osLastError()
+
       if f.fHandle != INVALID_HANDLE_VALUE:
-        error = (closeHandle(f.fHandle) == 0) or error
+        if closeHandle(f.fHandle) == 0:
+          error = true
+          lastErr = osLastError()
+
   else:
     error = munmap(f.mem, f.size) != 0
     lastErr = osLastError()
@@ -277,7 +285,7 @@ proc close*(f: var MemFile) =
   else:
     f.handle = -1
 
-  if error: raiseOSError(lastErr)
+  if error: raiseOSError(lastErr, "error closing file")
 
 type MemSlice* = object  ## represent slice of a MemFile for iteration over delimited lines/records
   data*: pointer
