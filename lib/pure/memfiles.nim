@@ -256,16 +256,16 @@ proc close*(f: var MemFile) =
 
   when defined(windows):
     if f.wasOpened:
-      if unmapViewOfFile(f.mem) == 0:
+      if unmapViewOfFile(f.mem) == 0 and not error:
         error = true
         lastErr = osLastError()
 
-      if closeHandle(f.mapHandle) == 0:
+      if closeHandle(f.mapHandle) == 0 and not error:
         error = true
         lastErr = osLastError()
 
       if f.fHandle != INVALID_HANDLE_VALUE:
-        if closeHandle(f.fHandle) == 0:
+        if closeHandle(f.fHandle) == 0 and not error:
           error = true
           lastErr = osLastError()
 
