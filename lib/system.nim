@@ -3401,6 +3401,11 @@ template spliceImpl(s, a, L, b: untyped): untyped =
 when hasAlloc or defined(nimscript):
   proc `[]`*(s: string, x: Slice[int]): string {.inline.} =
     ## slice operation for strings.
+    ## returns the inclusive range [s[x.a], s[x.b]]:
+    ## 
+    ## .. code-block:: nim
+    ##    var s = "abcdef"
+    ##    assert s[1..3] == "bcd" 
     result = s.substr(x.a, x.b)
 
   proc `[]=`*(s: var string, x: Slice[int], b: string) =
@@ -3421,6 +3426,11 @@ when hasAlloc or defined(nimscript):
 
 proc `[]`*[Idx, T](a: array[Idx, T], x: Slice[int]): seq[T] =
   ## slice operation for arrays.
+  ## returns the inclusive range [a[x.a], a[x.b]]:
+  ## 
+  ## .. code-block:: nim
+  ##    var a = [1,2,3,4]
+  ##    assert a[0..2] == @[1,2,3]
   when low(a) < 0:
     {.error: "Slicing for arrays with negative indices is unsupported.".}
   var L = x.b - x.a + 1
@@ -3455,6 +3465,11 @@ proc `[]=`*[Idx, T](a: var array[Idx, T], x: Slice[Idx], b: openArray[T]) =
 
 proc `[]`*[T](s: seq[T], x: Slice[int]): seq[T] =
   ## slice operation for sequences.
+  ## returns the inclusive range [s[x.a], s[x.b]]:
+  ## 
+  ## .. code-block:: nim
+  ##    var s = @[1,2,3,4]
+  ##    assert s[0..2] == @[1,2,3]
   var a = x.a
   var L = x.b - a + 1
   newSeq(result, L)
