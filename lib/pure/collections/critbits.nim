@@ -110,6 +110,42 @@ proc rawInsert[T](c: var CritBitTree[T], key: string): Node[T] =
     wherep[] = inner
   inc c.count
 
+proc exclImpl[T](c: var CritBitTree[T], key: string) : int =
+  var p = c.root
+  var wherep = addr(c.root)
+  var whereq: ptr Node[T] = nil
+  if p == nil: return c.count
+  var dir = 0
+  var q: Node[T]
+  while not p.isLeaf:
+    whereq = wherep
+    q = p
+    let ch = if p.byte < key.len: key[p.byte] else: '\0'
+    dir = (1 + (ch.ord or p.otherBits.ord)) shr 8
+    wherep = addr(p.child[dir])
+    p = wherep[]
+  if p.key == key:
+    # else: not in tree at all
+    if whereq == nil:
+      c.root = nil
+    else:
+      whereq[] = q.child[1 - dir]
+    dec c.count
+
+  return c.count
+
+proc excl*[T](c: var CritBitTree[T], key: string) =
+  ## removes `key` (and its associated value) from the set `c`.
+  ## If the `key` does not exist, nothing happens.
+  discard exclImpl(c, key)
+
+proc missingOrExcl*[T](c: var CritBitTree[T], key: string): bool =
+  ## Returns true iff `c` does not contain the given `key`. If the key
+  ## does exist, c.excl(key) is performed. 
+  let oldCount = c.count 
+  var n = exclImpl(c, key)
+  result = c.count == oldCount
+
 proc containsOrIncl*[T](c: var CritBitTree[T], key: string, val: T): bool =
   ## returns true iff `c` contains the given `key`. If the key does not exist
   ## ``c[key] = val`` is performed.
@@ -170,30 +206,6 @@ proc mget*[T](c: var CritBitTree[T], key: string): var T {.inline, deprecated.} 
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
   ## Use ```[]``` instead.
   get(c, key)
-
-proc excl*[T](c: var CritBitTree[T], key: string) =
-  ## removes `key` (and its associated value) from the set `c`.
-  ## If the `key` does not exist, nothing happens.
-  var p = c.root
-  var wherep = addr(c.root)
-  var whereq: ptr Node[T] = nil
-  if p == nil: return
-  var dir = 0
-  var q: Node[T]
-  while not p.isLeaf:
-    whereq = wherep
-    q = p
-    let ch = if p.byte < key.len: key[p.byte] else: '\0'
-    dir = (1 + (ch.ord or p.otherBits.ord)) shr 8
-    wherep = addr(p.child[dir])
-    p = wherep[]
-  if p.key == key:
-    # else: not in tree at all
-    if whereq == nil:
-      c.root = nil
-    else:
-      whereq[] = q.child[1 - dir]
-    dec c.count
 
 iterator leaves[T](n: Node[T]): Node[T] =
   if n != nil:
@@ -326,10 +338,15 @@ when isMainModule:
   r.incl "def"
   r.incl "definition"
   r.incl "prefix"
+  r.incl "foo"
 
   doAssert r.contains"def"
 
   r.excl "def"
+  assert r.missingOrExcl("foo") == false
+  assert "foo" notin toSeq(r.items)
+
+  assert r.missingOrExcl("foo") == true
 
   assert toSeq(r.items) == @["abc", "definition", "prefix", "xyz"]
 

@@ -169,6 +169,16 @@ proc excl(s: var CellSet, cell: PCell) =
     t.bits[u shr IntShift] = (t.bits[u shr IntShift] and
                               not (1 shl (u and IntMask)))
 
+proc missingOrExcl(s: var CellSet, cell: PCell): bool =
+  var u = cast[ByteAddress](cell)
+  var t = cellSetGet(s, u shr PageShift)
+  result = true
+  if t != nil:
+    result = false
+    u = (u %% PageSize) /% MemAlign
+    t.bits[u shr IntShift] = (t.bits[u shr IntShift] and
+                              not (1 shl (u and IntMask)))
+
 proc containsOrIncl(s: var CellSet, cell: PCell): bool =
   var u = cast[ByteAddress](cell)
   var t = cellSetGet(s, u shr PageShift)
