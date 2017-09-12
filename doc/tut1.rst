@@ -185,9 +185,27 @@ to a storage location:
   var x = "abc" # introduces a new variable `x` and assigns a value to it
   x = "xyz"     # assigns a new value to `x`
 
-``=`` is the *assignment operator*. The assignment operator cannot be
-overloaded, overwritten or forbidden, but this might change in a future version
-of Nim. You can declare multiple variables with a single assignment
+``=`` is the *assignment operator*. The assignment operator can be
+overloaded:
+
+.. code-block::
+  type 
+      Foo* = object
+          i : int
+          j : int
+
+  proc `=`(f: var Foo, g: Foo) =
+      echo "overload called"
+      f.i = g.i
+      f.j = g.j
+
+  var 
+      f = Foo(i: 1, j: 2)  # outputs "overload called"
+      g = Foo(i: 3, j: 4)  # outputs "overload called"
+
+  f = g # outputs "overload called"
+
+You can declare multiple variables with a single assignment
 statement and all the variables will have the same value:
 
 .. code-block::
