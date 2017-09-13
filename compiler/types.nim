@@ -1208,6 +1208,7 @@ proc getReturnType*(s: PSym): PType =
 
 proc getAlign*(typ: PType): BiggestInt =
   typ.computeSizeAlign
+
   result = typ.align
   if result < 0:
     internalError("getAlign: " & $typ.kind)

@@ -265,15 +265,6 @@ proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
       localError(n.info, errInvalidArgForX, opToStr[m])
   result = n
 
-proc semSizeof(c: PContext, n: PNode): PNode =
-  if sonsLen(n) != 2:
-    localError(n.info, errXExpectsTypeOrValue, "sizeof")
-  else:
-    n.sons[1] = semExprWithType(c, n.sons[1], {efDetermineType})
-    #restoreOldStyleType(n.sons[1])
-  n.typ = getSysType(tyInt)
-  result = n
-
 proc isOpImpl(c: PContext, n: PNode, flags: TExprFlags): PNode =
   internalAssert n.sonsLen == 3 and
     n[1].typ != nil and n[1].typ.kind == tyTypeDesc and

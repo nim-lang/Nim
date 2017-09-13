@@ -169,9 +169,22 @@ proc computePackedObjectOffsetsFoldFunction(n: PNode, initialOffset: BiggestInt,
 proc computeSizeAlign(typ: PType): void =
   ## computes and sets ``size`` and ``align`` members of ``typ``
 
-  if typ.size >= 0:
-    # nothing to do, size already computed
+  let hasSize = typ.size >= 0
+  let hasAlign = typ.align >= 0
+
+  if hasSize and hasAlign:
+    # nothing to do, size and align already computed
     return
+
+  # This function can onld calculate both, size and align at the same time.
+  # If one of them is already set this value is stored here and reapplied
+  let revertSize = typ.size
+  let revertAlign = typ.align
+  defer:
+    if hasSize:
+      typ.size = revertSize
+    if hasAlign:
+      typ.align = revertAlign
 
   if typ.size == szIllegalRecursion:
     # we are already computing the size of the type
@@ -253,9 +266,6 @@ proc computeSizeAlign(typ: PType): void =
     typ.align = int16(ptrSize)
 
   of tyCString, tySequence, tyPtr, tyRef, tyVar, tyOpenArray:
-    if tk == tyCString:
-      debug(typ.lastSon)
-
     let base = typ.lastSon
     if base == typ or (base.kind == tyTuple and base.size==szIllegalRecursion):
       typ.size  = szIllegalRecursion

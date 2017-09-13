@@ -257,10 +257,6 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result.info = n.info
     result.typ = n.typ
   of mAlignOf:
-    # let typ = n[1].typ
-    # let align = typ.getAlign
-    # debug typ
-    # echo "evaluating: ", n, " type: ", typ, " value: ", align
     result = newIntNode(nkIntLit, n[1].typ.getAlign)
     result.info = n.info
     result.typ = n.typ
