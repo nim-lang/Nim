@@ -1284,7 +1284,7 @@ else:
         result.add(x[i].convertObject())
     of JObject:
       result = newJObject()
-      asm """for (property in `x`) {
+      asm """for (var property in `x`) {
         if (`x`.hasOwnProperty(property)) {
       """
       var nimProperty: cstring
