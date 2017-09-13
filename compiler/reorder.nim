@@ -43,6 +43,8 @@ proc addDecl(n: PNode; declares: var IntSet) =
     declares.incl n.sym.name.id
   of nkAccQuoted:
     declares.incl accQuoted(n).id
+  of nkEnumFieldDef:
+    addDecl(n[0], declares)
   else: discard
 
 proc computeDeps(n: PNode, declares, uses: var IntSet; topLevel: bool) =
