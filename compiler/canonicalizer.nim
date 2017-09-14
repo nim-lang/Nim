@@ -300,7 +300,7 @@ proc encodeType(w: PRodWriter, t: PType, result: var string) =
   if t.size != - 1:
     add(result, '/')
     encodeVBiggestInt(t.size, result)
-  if t.align != 2:
+  if t.align != - 1:
     add(result, '=')
     encodeVInt(t.align, result)
   encodeLoc(w, t.loc, result)

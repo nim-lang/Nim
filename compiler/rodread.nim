@@ -318,7 +318,7 @@ proc decodeType(r: PRodReader, info: TLineInfo): PType =
     inc(r.pos)
     result.align = decodeVInt(r.s, r.pos).int16
   else:
-    result.align = 2
+    result.align = - 1
 
   if r.s[r.pos] == '\14':
     inc(r.pos)
@@ -1068,7 +1068,7 @@ proc writeType(f: File; t: PType) =
   if t.size != -1:
     f.write('/')
     f.write($t.size)
-  if t.align != 2:
+  if t.align != -1:
     f.write('=')
     f.write($t.align)
   for i in countup(0, sonsLen(t) - 1):

@@ -186,13 +186,15 @@ proc computeSizeAlign(typ: PType): void =
     if hasAlign:
       typ.align = revertAlign
 
-  if typ.size == szIllegalRecursion:
+  if typ.size == szIllegalRecursion or typ.align == szIllegalRecursion:
     # we are already computing the size of the type
     # --> illegal recursion in type
-    typ.align = szIllegalRecursion
     return
 
-  typ.size = szIllegalRecursion # mark as being computed
+  # mark as being computed
+  typ.size  = szIllegalRecursion
+  typ.align = szIllegalRecursion
+
   var maxAlign, sizeAccum, length: BiggestInt
 
   var tk = typ.kind
@@ -395,8 +397,8 @@ proc computeSizeAlign(typ: PType): void =
       typ.size = offset
       typ.align = 1
     else:
-      typ.size  = align(offset, typ.align)
       typ.align = int16(max(align, headerAlign))
+      typ.size  = align(offset, typ.align)
 
   of tyInferred:
     if typ.len > 1:
