@@ -235,6 +235,18 @@ proc semOf(c: PContext, n: PNode): PNode =
   n.typ = getSysType(tyBool)
   result = n
 
+proc semEnumToSet(c: PContext, n: PNode): PNode =
+  n.checkSonsLen 2
+  let t = semTypeNode(c, n[1], prev=nil)
+  internalAssert t.kind == tyEnum
+  if t.n[^1].sym.position > MaxSetElements:
+    localError(n.info, errSetTooBig)
+  else:
+    result = newNodeI(nkCurly, n.info, t.n.len)
+    result.typ = newTypeWithSons(c, tySet, @[t])
+    for i in 0 .. <t.n.len:
+      result.sons[i] = newSymNode(t.n[i].sym)
+
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
   case n[0].sym.magic
@@ -300,4 +312,5 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       result = n
     else:
       result = plugin(c, n)
+  of mEnumToSet: result = semEnumToSet(c, n)
   else: result = n

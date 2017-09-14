@@ -1885,6 +1885,12 @@ proc `$` *[Enum: enum](x: Enum): string {.magic: "EnumToStr", noSideEffect.}
   ## a ``$`` operator for a concrete enumeration is provided, this is
   ## used instead. (In other words: *Overwriting* is possible.)
 
+proc toSet*[Enum: enum](x: typedesc[Enum]): set[Enum] {.
+  magic: "EnumToSet", noSideEffect.} =
+  ## generates a set that contains all the elements in the enum type `x`.
+  ## Holes in the enum are not accounted for.
+  discard
+
 # undocumented:
 proc getRefcount*[T](x: ref T): int {.importc: "getRefcount", noSideEffect.}
 proc getRefcount*(x: string): int {.importc: "getRefcount", noSideEffect.}
