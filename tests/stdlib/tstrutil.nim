@@ -89,9 +89,21 @@ proc testRFind =
   assert "0123456789ABCDEFGAH".rfind({'A'..'C'}, 13) == 12
   assert "0123456789ABCDEFGAH".rfind({'G'..'H'}, 13) == -1
 
+proc testCountLines =
+  proc assertCountLines(s: string) = assert s.countLines == s.splitLines.len
+  assertCountLines("")
+  assertCountLines("\n")
+  assertCountLines("\n\n")
+  assertCountLines("abc")
+  assertCountLines("abc\n123")
+  assertCountLines("abc\n123\n")
+  assertCountLines("\nabc\n123")
+  assertCountLines("\nabc\n123\n")
+
 testDelete()
 testFind()
 testRFind()
+testCountLines()
 
 assert(insertSep($1000_000) == "1_000_000")
 assert(insertSep($232) == "232")

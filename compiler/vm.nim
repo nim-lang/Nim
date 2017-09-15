@@ -508,7 +508,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         stackTrace(c, tos, pc, errIndexOutOfBounds)
       let idx = regs[rc].intVal.int
       let src = regs[rb].node
-      if src.kind notin {nkEmpty..nkNilLit} and idx <% src.len:
+      if src.kind in {nkStrLit..nkTripleStrLit}:
+        if idx <% src.strVal.len:
+          regs[ra].node = newNodeI(nkCharLit, c.debug[pc])
+          regs[ra].node.intVal = src.strVal[idx].ord
+        else:
+          stackTrace(c, tos, pc, errIndexOutOfBounds)
+      elif src.kind notin {nkEmpty..nkFloat128Lit} and idx <% src.len:
         regs[ra].node = src.sons[idx]
       else:
         stackTrace(c, tos, pc, errIndexOutOfBounds)
@@ -526,8 +532,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       # a[b] = c
       decodeBC(rkNode)
       let idx = regs[rb].intVal.int
-      if idx <% regs[ra].node.len:
-        putIntoNode(regs[ra].node.sons[idx], regs[rc])
+      let arr = regs[ra].node
+      if arr.kind in {nkStrLit..nkTripleStrLit}:
+        if idx <% arr.strVal.len:
+          arr.strVal[idx] = chr(regs[rc].intVal)
+        else:
+          stackTrace(c, tos, pc, errIndexOutOfBounds)
+      elif idx <% arr.len:
+        putIntoNode(arr.sons[idx], regs[rc])
       else:
         stackTrace(c, tos, pc, errIndexOutOfBounds)
     of opcLdObj:
@@ -641,8 +653,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcLenSeq:
       decodeBImm(rkInt)
       #assert regs[rb].kind == nkBracket
-      # also used by mNLen:
-      regs[ra].intVal = regs[rb].node.safeLen - imm
+      let high = (imm and 1) # discard flags
+      if (imm and nimNodeFlag) != 0:
+        # used by mNLen (NimNode.len)
+        regs[ra].intVal = regs[rb].node.safeLen - high
+      else:
+        # safeArrLen also return string node len
+        # used when string is passed as openArray in VM
+        regs[ra].intVal = regs[rb].node.safeArrLen - high
     of opcLenStr:
       decodeBImm(rkInt)
       assert regs[rb].kind == rkNode

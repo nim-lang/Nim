@@ -178,7 +178,12 @@ proc processClient(client: AsyncSocket, address: string,
         except ValueError:
           asyncCheck request.respondError(Http400)
           continue
-      of 1: parseUri(linePart, request.url)
+      of 1: 
+        try:
+          parseUri(linePart, request.url)
+        except ValueError:
+          asyncCheck request.respondError(Http400) 
+          continue
       of 2:
         try:
           request.protocol = parseProtocol(linePart)
