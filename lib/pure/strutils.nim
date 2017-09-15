@@ -887,7 +887,7 @@ proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
     n = x
   result = newString(len)
   for j in countdown(len-1, 0):
-    result[j] = HexChars[n and 0xF]
+    result[j] = HexChars[(n and 0xF).int]
     n = n shr 4
     # handle negative overflow
     if n == 0 and x < 0: n = -1

@@ -551,7 +551,6 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
       result = semfold.getConstExpr(c.module, call)
       if result.isNil: result = n
       else: return result
-    result.typ = semfold.getIntervalType(callee.magic, call)
 
   block maybeLabelAsStatic:
     # XXX: temporary work-around needed for tlateboundstatic.

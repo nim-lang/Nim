@@ -38,20 +38,29 @@ proc chckRange(i, a, b: int): int {.inline, compilerproc, benign.}
 proc chckRangeF(x, a, b: float): float {.inline, compilerproc, benign.}
 proc chckNil(p: pointer) {.noinline, compilerproc, benign.}
 
+type
+  GcFrame = ptr GcFrameHeader
+  GcFrameHeader {.compilerproc.} = object
+    len: int
+    prev: ptr GcFrameHeader
+
 var
   framePtr {.threadvar.}: PFrame
   excHandler {.threadvar.}: PSafePoint
     # list of exception handlers
     # a global variable for the root of all try blocks
   currException {.threadvar.}: ref Exception
+  gcFramePtr {.threadvar.}: GcFrame
 
 type
-  FrameState = tuple[framePtr: PFrame, excHandler: PSafePoint, currException: ref Exception]
+  FrameState = tuple[gcFramePtr: GcFrame, framePtr: PFrame,
+                     excHandler: PSafePoint, currException: ref Exception]
 
 proc getFrameState*(): FrameState {.compilerRtl, inl.} =
-  return (framePtr, excHandler, currException)
+  return (gcFramePtr, framePtr, excHandler, currException)
 
 proc setFrameState*(state: FrameState) {.compilerRtl, inl.} =
+  gcFramePtr = state.gcFramePtr
   framePtr = state.framePtr
   excHandler = state.excHandler
   currException = state.currException
@@ -63,6 +72,14 @@ proc popFrame {.compilerRtl, inl.} =
 
 proc setFrame*(s: PFrame) {.compilerRtl, inl.} =
   framePtr = s
+
+proc getGcFrame*(): GcFrame {.compilerRtl, inl.} = gcFramePtr
+proc popGcFrame*() {.compilerRtl, inl.} = gcFramePtr = gcFramePtr.prev
+proc setGcFrame*(s: GcFrame) {.compilerRtl, inl.} = gcFramePtr = s
+proc pushGcFrame*(s: GcFrame) {.compilerRtl, inl.} =
+  s.prev = gcFramePtr
+  zeroMem(cast[pointer](cast[int](s)+%sizeof(GcFrameHeader)), s.len*sizeof(pointer))
+  gcFramePtr = s
 
 proc pushSafePoint(s: PSafePoint) {.compilerRtl, inl.} =
   s.hasRaiseAction = false
