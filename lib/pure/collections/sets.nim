@@ -278,21 +278,15 @@ template default[T](t: typedesc[T]): T =
   var v: T
   v
 
-proc excl*[A](s: var HashSet[A], key: A) =
-  ## Excludes `key` from the set `s`.
-  ##
-  ## This doesn't do anything if `key` is not found in `s`. Example:
-  ##
-  ## .. code-block::
-  ##   var s = toSet([2, 3, 6, 7])
-  ##   s.excl(2)
-  ##   s.excl(2)
-  ##   assert s.len == 3
+proc exclImpl[A](s: var HashSet[A], key: A) : bool {. inline .} =
   assert s.isValid, "The set needs to be initialized."
   var hc: Hash
   var i = rawGet(s, key, hc)
   var msk = high(s.data)
+  result = true
+
   if i >= 0:
+    result = false
     s.data[i].hcode = 0
     s.data[i].key = default(type(s.data[i].key))
     dec(s.counter)
@@ -308,6 +302,30 @@ proc excl*[A](s: var HashSet[A], key: A) =
         r = s.data[i].hcode and msk    # "home" location of key@i
       shallowCopy(s.data[j], s.data[i]) # data[j] will be marked EMPTY next loop
 
+proc missingOrExcl*[A](s: var HashSet[A], key: A): bool =
+  ## Excludes `key` in the set `s` and tells if `key` was removed from `s`.
+  ##
+  ## The difference with regards to the `excl() <#excl,TSet[A],A>`_ proc is
+  ## that this proc returns `true` if `key` was not present in `s`. Example:
+  ##
+  ## .. code-block::
+  ##  var s = toSet([2, 3, 6, 7])
+  ##  assert s.missingOrExcl(4) == true
+  ##  assert s.missingOrExcl(6) == false
+  exclImpl(s, key)
+
+proc excl*[A](s: var HashSet[A], key: A) =
+  ## Excludes `key` from the set `s`.
+  ##
+  ## This doesn't do anything if `key` is not found in `s`. Example:
+  ##
+  ## .. code-block::
+  ##   var s = toSet([2, 3, 6, 7])
+  ##   s.excl(2)
+  ##   s.excl(2)
+  ##   assert s.len == 3
+  discard exclImpl(s, key)
+
 proc excl*[A](s: var HashSet[A], other: HashSet[A]) =
   ## Excludes everything in `other` from `s`.
   ##
@@ -322,7 +340,7 @@ proc excl*[A](s: var HashSet[A], other: HashSet[A]) =
   ##   # --> {1, 3, 5}
   assert s.isValid, "The set `s` needs to be initialized."
   assert other.isValid, "The set `other` needs to be initialized."
-  for item in other: excl(s, item)
+  for item in other: discard exclImpl(s, item)
 
 proc containsOrIncl*[A](s: var HashSet[A], key: A): bool =
   ## Includes `key` in the set `s` and tells if `key` was added to `s`.

@@ -234,6 +234,9 @@ const
   slotSomeTemp* = slotTempUnknown
   relativeJumps* = {opcTJmp, opcFJmp, opcJmp, opcJmpBack}
 
+# flag is used to signal opcSeqLen if node is NimNode.
+const nimNodeFlag* = 16
+
 template opcode*(x: TInstr): TOpcode = TOpcode(x.uint32 and 0xff'u32)
 template regA*(x: TInstr): TRegister = TRegister(x.uint32 shr 8'u32 and 0xff'u32)
 template regB*(x: TInstr): TRegister = TRegister(x.uint32 shr 16'u32 and 0xff'u32)

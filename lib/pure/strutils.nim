@@ -776,7 +776,8 @@ proc countLines*(s: string): int {.noSideEffect,
   ##
   ## In this context, a line is any string seperated by a newline combination.
   ## A line can be an empty string.
-  var i = 1
+  result = 1
+  var i = 0
   while i < s.len:
     case s[i]
     of '\c':
