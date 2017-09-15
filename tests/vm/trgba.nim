@@ -24,12 +24,12 @@ template `A=`*(self: TAggRgba8, val: byte) =
 
 proc ABGR* (val: int| int64): TAggRgba8 =
   var V = val
-  result.R = V and 0xFF
+  result.R = byte(V and 0xFF)
   V = V shr 8
-  result.G = V and 0xFF
+  result.G = byte(V and 0xFF)
   V = V shr 8
-  result.B = V and 0xFF
-  result.A = (V shr 8) and 0xFF
+  result.B = byte(V and 0xFF)
+  result.A = byte((V shr 8) and 0xFF)
 
 const
   c1 = ABGR(0xFF007F7F)
