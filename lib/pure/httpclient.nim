@@ -1245,6 +1245,8 @@ proc downloadFile*(client: HttpClient | AsyncHttpClient,
                    url: string, filename: string): Future[void] {.multisync.} =
   ## Downloads ``url`` and saves it to ``filename``.
   client.getBody = false
+  defer:
+    client.getBody = true
   let resp = await client.get(url)
 
   when client is HttpClient:

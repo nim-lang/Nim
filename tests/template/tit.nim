@@ -1,7 +1,7 @@
 
 # bug #1337
 
-template someIt(a, pred: expr): expr =
+template someIt(a, pred): untyped =
   var it {.inject.} = 0
   pred
 

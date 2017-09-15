@@ -220,7 +220,7 @@ when defineSsl:
       raiseSSLError("Cannot appease SSL.")
 
   template sslLoop(socket: AsyncSocket, flags: set[SocketFlag],
-                   op: expr) =
+                   op: untyped) =
     var opResult {.inject.} = -1.cint
     while opResult < 0:
       # Call the desired operation.
@@ -490,7 +490,7 @@ proc recvLineInto*(socket: AsyncSocket, resString: FutureVar[string],
   # them when the result future is completed.
   # Can we replace the result future with the FutureVar?
 
-  template addNLIfEmpty(): stmt =
+  template addNLIfEmpty(): untyped =
     if resString.mget.len == 0:
       resString.mget.add("\c\L")
 

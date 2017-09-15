@@ -1551,6 +1551,37 @@ proc replaceWord*(s, sub: string, by = ""): string {.noSideEffect,
   # copy the rest:
   add result, substr(s, i)
 
+proc multiReplace*(s: string, replacements: varargs[(string, string)]): string {.noSideEffect.} =
+  ## Same as replace, but specialized for doing multiple replacements in a single
+  ## pass through the input string.
+  ##
+  ## Calling replace multiple times after each other is inefficient and result in too many allocations
+  ## follwed by immediate deallocations as portions of the string gets replaced.
+  ## multiReplace performs all replacements in a single pass.
+  ##
+  ## If the resulting string is not longer than the original input string, only a single
+  ## memory allocation is required.
+  ##
+  ## The order of the replacements does matter. Earlier replacements are preferred over later
+  ## replacements in the argument list.
+  result = newStringOfCap(s.len)
+  var i = 0
+  var fastChk: set[char] = {}
+  for tup in replacements: fastChk.incl(tup[0][0]) # Include first character of all replacements
+  while i < s.len:
+    block sIteration:
+      # Assume most chars in s are not candidates for any replacement operation
+      if s[i] in fastChk:
+        for tup in replacements:
+          if s.continuesWith(tup[0], i):
+            add result, tup[1]
+            inc(i, tup[0].len)
+            break sIteration
+      # No matching replacement found
+      # copy current character from s
+      add result, s[i]
+      inc(i)
+
 proc delete*(s: var string, first, last: int) {.noSideEffect,
   rtl, extern: "nsuDelete".} =
   ## Deletes in `s` the characters at position `first` .. `last`.
@@ -2323,6 +2354,10 @@ when isMainModule:
   doAssert strip("sfoofoofoos", trailing = false, chars = {'s'}) == "foofoofoos"
 
   doAssert "  foo\n  bar".indent(4, "Q") == "QQQQ  foo\nQQQQ  bar"
+
+  doAssert "abba".multiReplace(("a", "b"), ("b", "a")) == "baab"
+  doAssert "Hello World.".multiReplace(("ello", "ELLO"), ("World.", "PEOPLE!")) == "HELLO PEOPLE!"
+  doAssert "aaaa".multiReplace(("a", "aa"), ("aa", "bb")) == "aaaaaaaa"
 
   doAssert isAlphaAscii('r')
   doAssert isAlphaAscii('A')

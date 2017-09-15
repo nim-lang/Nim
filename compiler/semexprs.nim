@@ -47,11 +47,9 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     #raiseRecoverableError("")
     result = errorNode(c, n)
   if result.typ == nil or result.typ == enforceVoidContext:
-    if n.kind != nkStmtList:
-      # we cannot check for 'void' in macros ...
-      localError(n.info, errExprXHasNoType,
-                 renderTree(result, {renderNoComments}))
-      result.typ = errorType(c)
+    localError(n.info, errExprXHasNoType,
+                renderTree(result, {renderNoComments}))
+    result.typ = errorType(c)
   else:
     if efNoProcvarCheck notin flags: semProcvarCheck(c, result)
     if result.typ.kind == tyVar: result = newDeref(result)
@@ -274,41 +272,6 @@ proc semSizeof(c: PContext, n: PNode): PNode =
     n.sons[1] = semExprWithType(c, n.sons[1], {efDetermineType})
     #restoreOldStyleType(n.sons[1])
   n.typ = getSysType(tyInt)
-  result = n
-
-proc semOf(c: PContext, n: PNode): PNode =
-  if sonsLen(n) == 3:
-    n.sons[1] = semExprWithType(c, n.sons[1])
-    n.sons[2] = semExprWithType(c, n.sons[2], {efDetermineType})
-    #restoreOldStyleType(n.sons[1])
-    #restoreOldStyleType(n.sons[2])
-    let a = skipTypes(n.sons[1].typ, abstractPtrs)
-    let b = skipTypes(n.sons[2].typ, abstractPtrs)
-    let x = skipTypes(n.sons[1].typ, abstractPtrs-{tyTypeDesc})
-    let y = skipTypes(n.sons[2].typ, abstractPtrs-{tyTypeDesc})
-
-    if x.kind == tyTypeDesc or y.kind != tyTypeDesc:
-      localError(n.info, errXExpectsObjectTypes, "of")
-    elif b.kind != tyObject or a.kind != tyObject:
-      localError(n.info, errXExpectsObjectTypes, "of")
-    else:
-      let diff = inheritanceDiff(a, b)
-      # | returns: 0 iff `a` == `b`
-      # | returns: -x iff `a` is the x'th direct superclass of `b`
-      # | returns: +x iff `a` is the x'th direct subclass of `b`
-      # | returns: `maxint` iff `a` and `b` are not compatible at all
-      if diff <= 0:
-        # optimize to true:
-        message(n.info, hintConditionAlwaysTrue, renderTree(n))
-        result = newIntNode(nkIntLit, 1)
-        result.info = n.info
-        result.typ = getSysType(tyBool)
-        return result
-      elif diff == high(int):
-        localError(n.info, errXcanNeverBeOfThisSubtype, typeToString(a))
-  else:
-    localError(n.info, errXExpectsTwoArguments, "of")
-  n.typ = getSysType(tyBool)
   result = n
 
 proc isOpImpl(c: PContext, n: PNode, flags: TExprFlags): PNode =
@@ -1121,9 +1084,11 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       if ty.n != nil and ty.n.kind == nkRecList:
         let field = lookupInRecord(ty.n, i)
         if field != nil:
-          n.typ = newTypeWithSons(c, tyFieldAccessor, @[ty, field.typ])
-          n.typ.n = copyTree(n)
+          n.typ = makeTypeDesc(c, field.typ)
           return n
+          #n.typ = newTypeWithSons(c, tyFieldAccessor, @[ty, field.typ])
+          #n.typ.n = copyTree(n)
+          #return n
     else:
       tryReadingGenericParam(ty)
       return
@@ -1490,6 +1455,9 @@ proc semYieldVarResult(c: PContext, n: PNode, restype: PType) =
   var t = skipTypes(restype, {tyGenericInst, tyAlias})
   case t.kind
   of tyVar:
+    if n.sons[0].kind in {nkHiddenStdConv, nkHiddenSubConv}:
+      n.sons[0] = n.sons[0].sons[1]
+
     n.sons[0] = takeImplicitAddr(c, n.sons[0])
   of tyTuple:
     for i in 0.. <t.sonsLen:
@@ -1829,11 +1797,11 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mDefined: result = semDefined(c, setMs(n, s), false)
   of mDefinedInScope: result = semDefined(c, setMs(n, s), true)
   of mCompiles: result = semCompiles(c, setMs(n, s), flags)
-  of mLow: result = semLowHigh(c, setMs(n, s), mLow)
-  of mHigh: result = semLowHigh(c, setMs(n, s), mHigh)
+  #of mLow: result = semLowHigh(c, setMs(n, s), mLow)
+  #of mHigh: result = semLowHigh(c, setMs(n, s), mHigh)
   of mSizeOf: result = semSizeof(c, setMs(n, s))
   of mIs: result = semIs(c, setMs(n, s), flags)
-  of mOf: result = semOf(c, setMs(n, s))
+  #of mOf: result = semOf(c, setMs(n, s))
   of mShallowCopy: result = semShallowCopy(c, n, flags)
   of mExpandToAst: result = semExpandToAst(c, n, s, flags)
   of mQuoteAst: result = semQuoteAst(c, n)
@@ -2207,9 +2175,14 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     message(n.info, warnDeprecated, "bind")
     result = semExpr(c, n.sons[0], flags)
   of nkTypeOfExpr, nkTupleTy, nkTupleClassTy, nkRefTy..nkEnumTy, nkStaticTy:
+    if c.matchedConcept != nil and n.len == 1:
+      let modifier = n.modifierTypeKindOfNode
+      if modifier != tyNone:
+        var baseType = semExpr(c, n[0]).typ.skipTypes({tyTypeDesc})
+        result.typ = c.makeTypeDesc(c.newTypeWithSons(modifier, @[baseType]))
+        return
     var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})
     result.typ = makeTypeDesc(c, typ)
-    #result = symNodeFromType(c, typ, n.info)
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit:
     # check if it is an expression macro:
     checkMinSonsLen(n, 1)

@@ -97,7 +97,7 @@ proc newObj(typ: PNimType, size: int): pointer {.importCompilerProc.}
 proc newSeq(typ: PNimType, len: int): pointer {.importCompilerProc.}
 proc objectInit(dest: pointer, typ: PNimType) {.importCompilerProc.}
 
-template `+!!`(a, b: expr): expr = cast[pointer](cast[ByteAddress](a) + b)
+template `+!!`(a, b): untyped = cast[pointer](cast[ByteAddress](a) + b)
 
 proc getDiscriminant(aa: pointer, n: ptr TNimNode): int =
   assert(n.kind == nkCase)

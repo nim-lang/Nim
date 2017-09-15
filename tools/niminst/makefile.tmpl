@@ -17,6 +17,7 @@ endif
 
 ucpu := $(shell sh -c 'uname -m | tr "[:upper:]" "[:lower:]"')
 uos := $(shell sh -c 'uname | tr "[:upper:]" "[:lower:]"')
+uosname := $(shell sh -c 'uname -o | tr "[:upper:]" "[:lower:]"')
 
 ifeq ($(uos),linux)
   myos = linux
@@ -68,6 +69,11 @@ ifndef uos
   $(error unknown operating system: $(uos))
 endif
 
+ifeq ($(uosname),android)
+  myos = android
+  LINK_FLAGS += -landroid-glob
+endif
+
 ifeq ($(ucpu),i386)
   mycpu = i386
 endif
@@ -114,8 +120,11 @@ endif
 ifeq ($(ucpu),ppc)
   mycpu = ppc
 endif
-ifeq ($(ucpu),mips)
-  mycpu = mips
+ifneq (,$(filter $(ucpu), mips mips64))
+  mycpu = $(shell /bin/sh -c '"$(CC)" -dumpmachine | sed "s/-.*//"')
+  ifeq (,$(filter $(mycpu), mips mipsel mips64 mips64el))
+    $(error unknown MIPS target: $(mycpu))
+  endif
 endif
 ifeq ($(ucpu),arm)
   mycpu = arm

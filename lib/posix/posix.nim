@@ -92,7 +92,7 @@ else:
 # There used to be this name in posix.nim a long time ago, not sure why!
 {.deprecated: [cSIG_HOLD: SIG_HOLD].}
 
-when not defined(macosx):
+when not defined(macosx) and not defined(android):
   proc st_atime*(s: Stat): Time {.inline.} =
     ## Second-granularity time of last access
     result = s.st_atim.tv_sec

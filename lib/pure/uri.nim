@@ -81,7 +81,7 @@ proc parsePath(uri: string, i: var int, result: var Uri) =
   i.inc parseUntil(uri, result.path, {'?', '#'}, i)
 
   # The 'mailto' scheme's PATH actually contains the hostname/username
-  if result.scheme.toLower == "mailto":
+  if cmpIgnoreCase(result.scheme, "mailto") == 0:
     parseAuthority(result.path, result)
     result.path.setLen(0)
 
@@ -215,7 +215,7 @@ proc combine*(base: Uri, reference: Uri): Uri =
   ##   let bar = combine(parseUri("http://example.com/foo/bar/"), parseUri("baz"))
   ##   assert bar.path == "/foo/bar/baz"
 
-  template setAuthority(dest, src: expr): stmt =
+  template setAuthority(dest, src): untyped =
     dest.hostname = src.hostname
     dest.username = src.username
     dest.port = src.port

@@ -84,8 +84,14 @@ within the [doc/koch.rst](doc/koch.rst) file.
 ``bin`` directory to your PATH, you may install Nimble from source by running
 ``koch nimble`` within the root of the cloned repository.
 
+
+## Contributors
+
+This project exists thanks to all the people who contribute. [Read on to find out how to contribute](#contributing).
+<a href="https://github.com/nim-lang/Nim/graphs/contributors"><img src="https://opencollective.com/Nim/contributors.svg?width=890" /></a>
+
 ## Contributing
-[![Contribute to Nim via Gratipay][badge-nim-gratipay]][nim-gratipay]
+[![Backers on Open Collective](https://opencollective.com/nim/backers/badge.svg)](#backers) [![Sponsors on Open Collective](https://opencollective.com/nim/sponsors/badge.svg)](#sponsors) [![Contribute to Nim via Gratipay][badge-nim-gratipay]][nim-gratipay]
 [![Setup a bounty via Bountysource][badge-nim-bountysource]][nim-bountysource]
 [![Donate Bitcoins][badge-nim-bitcoin]][nim-bitcoin]
 
@@ -128,12 +134,38 @@ be a good starting point for an initial contribution to Nim.
 You can also help with the development of Nim by making donations. Donations can be
 made using:
 
+* [Open Collective](https://opencollective.com/nim)
 * [Gratipay][nim-gratipay]
 * [Bountysource][nim-bountysource]
 * [Bitcoin][nim-bitcoin]
 
 If you have any questions feel free to submit a question on the
 [Nim forum][nim-forum], or via IRC on [the \#nim channel][nim-irc].
+
+
+## Backers
+
+Thank you to all our backers! [[Become a backer](https://opencollective.com/Nim#backer)]
+
+<a href="https://opencollective.com/Nim#backers" target="_blank"><img src="https://opencollective.com/Nim/backers.svg?width=890"></a>
+
+
+## Sponsors
+
+Support this project by becoming a sponsor. Your logo will show up here with a link to your website. [[Become a sponsor](https://opencollective.com/Nim#sponsor)]
+
+<a href="https://opencollective.com/Nim/sponsor/0/website" target="_blank"><img src="https://opencollective.com/Nim/sponsor/0/avatar.svg"></a>
+<a href="https://opencollective.com/Nim/sponsor/1/website" target="_blank"><img src="https://opencollective.com/Nim/sponsor/1/avatar.svg"></a>
+<a href="https://opencollective.com/Nim/sponsor/2/website" target="_blank"><img src="https://opencollective.com/Nim/sponsor/2/avatar.svg"></a>
+<a href="https://opencollective.com/Nim/sponsor/3/website" target="_blank"><img src="https://opencollective.com/Nim/sponsor/3/avatar.svg"></a>
+<a href="https://opencollective.com/Nim/sponsor/4/website" target="_blank"><img src="https://opencollective.com/Nim/sponsor/4/avatar.svg"></a>
+<a href="https://opencollective.com/Nim/sponsor/5/website" target="_blank"><img src="https://opencollective.com/Nim/sponsor/5/avatar.svg"></a>
+<a href="https://opencollective.com/Nim/sponsor/6/website" target="_blank"><img src="https://opencollective.com/Nim/sponsor/6/avatar.svg"></a>
+<a href="https://opencollective.com/Nim/sponsor/7/website" target="_blank"><img src="https://opencollective.com/Nim/sponsor/7/avatar.svg"></a>
+<a href="https://opencollective.com/Nim/sponsor/8/website" target="_blank"><img src="https://opencollective.com/Nim/sponsor/8/avatar.svg"></a>
+<a href="https://opencollective.com/Nim/sponsor/9/website" target="_blank"><img src="https://opencollective.com/Nim/sponsor/9/avatar.svg"></a>
+
+You can also see a list of all our sponsors/backers from various payment services on the [sponsors page](https://nim-lang.org/sponsors.html) of our website.
 
 ## License
 The compiler and the standard library are licensed under the MIT license, except

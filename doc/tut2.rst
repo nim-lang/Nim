@@ -218,7 +218,7 @@ So "pure object oriented" code is easy to write:
   import strutils, sequtils
 
   stdout.writeLine("Give a list of numbers (separated by spaces): ")
-  stdout.write(stdin.readLine.split.map(parseInt).max.`$`)
+  stdout.write(stdin.readLine.splitWhitespace.map(parseInt).max.`$`)
   stdout.writeLine(" is the maximum!")
 
 
@@ -233,15 +233,15 @@ is needed:
 
   type
     Socket* = ref object of RootObj
-      host: int # cannot be accessed from the outside of the module due to missing star
+      h: int # cannot be accessed from the outside of the module due to missing star
 
   proc `host=`*(s: var Socket, value: int) {.inline.} =
     ## setter of host address
-    s.host = value
+    s.h = value
 
   proc host*(s: Socket): int {.inline.} =
     ## getter of host address
-    s.host
+    s.h
 
   var s: Socket
   new s
@@ -723,7 +723,7 @@ regular expressions:
 
 .. code-block:: nim
 
-  macro case_token(n: typed): typed =
+  macro case_token(n: varargs[untyped]): typed =
     # creates a lexical analyzer from regular expressions
     # ... (implementation is an exercise for the reader :-)
     discard

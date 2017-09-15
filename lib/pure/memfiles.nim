@@ -123,7 +123,7 @@ proc open*(filename: string, mode: FileMode = fmRead,
     result.size = 0
 
   when defined(windows):
-    template fail(errCode: OSErrorCode, msg: expr) =
+    template fail(errCode: OSErrorCode, msg: untyped) =
       rollback()
       if result.fHandle != 0: discard closeHandle(result.fHandle)
       if result.mapHandle != 0: discard closeHandle(result.mapHandle)
@@ -131,7 +131,7 @@ proc open*(filename: string, mode: FileMode = fmRead,
       # return false
       #raise newException(EIO, msg)
 
-    template callCreateFile(winApiProc, filename: expr): expr =
+    template callCreateFile(winApiProc, filename): untyped =
       winApiProc(
         filename,
         # GENERIC_ALL != (GENERIC_READ or GENERIC_WRITE)
@@ -198,7 +198,7 @@ proc open*(filename: string, mode: FileMode = fmRead,
         result.fHandle = INVALID_HANDLE_VALUE
 
   else:
-    template fail(errCode: OSErrorCode, msg: expr) =
+    template fail(errCode: OSErrorCode, msg: string) =
       rollback()
       if result.handle != -1: discard close(result.handle)
       raiseOSError(errCode)

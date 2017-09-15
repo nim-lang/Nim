@@ -132,7 +132,7 @@ translated into a C array of undetermined size:
 
 .. code-block:: nim
   type
-    ArrayPart{.unchecked.} = array[0..0, int]
+    ArrayPart{.unchecked.} = array[0, int]
     MySeq = object
       len, cap: int
       data: ArrayPart
@@ -145,10 +145,6 @@ Produces roughly this C code:
     NI cap;
     NI data[];
   } MySeq;
-
-The bounds checking done at compile time is not disabled for now, so to access
-``s.data[C]`` (where ``C`` is a constant) the array's index needs to
-include ``C``.
 
 The base type of the unchecked array may not contain any GC'ed memory but this
 is currently not checked.

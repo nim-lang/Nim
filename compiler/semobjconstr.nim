@@ -44,7 +44,9 @@ proc locateFieldInInitExpr(field: PSym, initExpr: PNode): PNode =
   let fieldId = field.name.id
   for i in 1 .. <initExpr.len:
     let assignment = initExpr[i]
-    internalAssert assignment.kind == nkExprColonExpr
+    if assignment.kind != nkExprColonExpr:
+      localError(initExpr.info, "incorrect object construction syntax")
+      continue
 
     if fieldId == considerQuotedIdent(assignment[0]).id:
       return assignment
@@ -278,6 +280,9 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   for i in 1.. <result.len:
     let field = result[i]
     if nfSem notin field.flags:
+      if field.kind != nkExprColonExpr:
+        localError(n.info, "incorrect object construction syntax")
+        continue
       let id = considerQuotedIdent(field[0])
       # This node was not processed. There are two possible reasons:
       # 1) It was shadowed by a field with the same name on the left

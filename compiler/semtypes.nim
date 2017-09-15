@@ -1202,6 +1202,15 @@ proc freshType(res, prev: PType): PType {.inline.} =
   else:
     result = res
 
+template modifierTypeKindOfNode(n: PNode): TTypeKind =
+  case n.kind
+  of nkVarTy: tyVar
+  of nkRefTy: tyRef
+  of nkPtrTy: tyPtr
+  of nkStaticTy: tyStatic
+  of nkTypeOfExpr: tyTypeDesc
+  else: tyNone
+
 proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
   # if n.sonsLen == 0: return newConstraint(c, tyTypeClass)
   if nfBase2 in n.flags:
@@ -1227,13 +1236,7 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
       dummyName: PNode
       dummyType: PType
 
-    let modifier = case param.kind
-      of nkVarTy: tyVar
-      of nkRefTy: tyRef
-      of nkPtrTy: tyPtr
-      of nkStaticTy: tyStatic
-      of nkTypeOfExpr: tyTypeDesc
-      else: tyNone
+    let modifier = param.modifierTypeKindOfNode
 
     if modifier != tyNone:
       dummyName = param[0]
@@ -1509,9 +1512,26 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     dec c.inTypeContext
 
 proc setMagicType(m: PSym, kind: TTypeKind, size: int) =
+  # source : https://en.wikipedia.org/wiki/Data_structure_alignment#x86
   m.typ.kind = kind
-  m.typ.align = size.int16
   m.typ.size = size
+  # this usually works for most basic types
+  # Assuming that since ARM, ARM64  don't support unaligned access
+  # data is aligned to type size
+  m.typ.align = size.int16
+
+  # FIXME: proper support for clongdouble should be added.
+  # long double size can be 8, 10, 12, 16 bytes depending on platform & compiler
+  if targetCPU == cpuI386 and size == 8:
+    #on Linux/BSD i386, double are aligned to 4bytes (except with -malign-double)
+    if kind in {tyFloat64, tyFloat} and
+       targetOS in {osLinux, osAndroid, osNetbsd, osFreebsd, osOpenbsd, osDragonfly}:
+      m.typ.align = 4
+    # on i386, all known compiler, 64bits ints are aligned to 4bytes (except with -malign-double)
+    elif kind in {tyInt, tyUInt, tyInt64, tyUInt64}:
+      m.typ.align = 4
+  else:
+    discard
 
 proc processMagicType(c: PContext, m: PSym) =
   case m.magic

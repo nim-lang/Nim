@@ -293,11 +293,11 @@ proc raiseExceptionAux(e: ref Exception) =
           quitOrDebug()
       else:
         # ugly, but avoids heap allocations :-)
-        template xadd(buf, s, slen: expr) =
+        template xadd(buf, s, slen) =
           if L + slen < high(buf):
             copyMem(addr(buf[L]), cstring(s), slen)
             inc L, slen
-        template add(buf, s: expr) =
+        template add(buf, s) =
           xadd(buf, s, s.len)
         var buf: array[0..2000, char]
         var L = 0
@@ -404,7 +404,8 @@ when not defined(noSignalHandler):
       GC_enable()
     else:
       var msg: cstring
-      template asgn(y: expr) = msg = y
+      template asgn(y) =
+        msg = y
       processSignal(sign, asgn)
       showErrorMessage(msg)
     when defined(endb): dbgAborting = true

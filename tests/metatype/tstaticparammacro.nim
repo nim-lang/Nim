@@ -26,7 +26,7 @@ type
 
 const data: Tconfig = (@["aa", "bb"], @[11, 22])
 
-macro mymacro(data: static[TConfig]): stmt =
+macro mymacro(data: static[TConfig]) =
   echo "letters"
   for s in items(data.letters):
     echo s
@@ -44,10 +44,10 @@ const
   a : Ta = @[(11, 22), (33, 44)]
   b : Tb = (@[55,66], @[77, 88])
 
-macro mA(data: static[Ta]): stmt =
+macro mA(data: static[Ta]) =
   echo "AST a \n", repr(data)
 
-macro mB(data: static[Tb]): stmt =
+macro mB(data: static[Tb]) =
   echo "AST b \n", repr(data)
   echo data.e[0]
 
@@ -57,13 +57,13 @@ mB(b)
 type
   Foo[N: static[int], Z: static[string]] = object
 
-macro staticIntMacro(f: static[int]): stmt = echo f
+macro staticIntMacro(f: static[int]) = echo f
 staticIntMacro 10
 
 var
   x: Foo[20, "Test"]
 
-macro genericMacro[N; Z: static[string]](f: Foo[N, Z], ll = 3, zz = 12): stmt =
+macro genericMacro[N; Z: static[string]](f: Foo[N, Z], ll = 3, zz = 12) =
   echo N, Z
 
 genericMacro x

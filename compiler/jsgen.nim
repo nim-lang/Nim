@@ -2340,7 +2340,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkPragma: genPragma(p, n)
   of nkProcDef, nkMethodDef, nkConverterDef:
     var s = n.sons[namePos].sym
-    if sfExportc in s.flags and compilingLib:
+    if {sfExportc, sfCompilerProc} * s.flags == {sfExportc}:
       genSym(p, n.sons[namePos], r)
       r.res = nil
   of nkGotoState, nkState:

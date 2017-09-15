@@ -45,7 +45,7 @@ const
     wFatal, wDefine, wUndef, wCompile, wLink, wLinksys, wPure, wPush, wPop,
     wBreakpoint, wWatchPoint, wPassl, wPassc, wDeadCodeElim, wDeprecated,
     wFloatchecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
-    wLinearScanEnd, wPatterns, wEffects, wNoForward, wComputedGoto,
+    wLinearScanEnd, wPatterns, wEffects, wNoForward, wReorder, wComputedGoto,
     wInjectStmt, wDeprecated, wExperimental, wThis}
   lambdaPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl,
     wNosideeffect, wSideeffect, wNoreturn, wDynlib, wHeader,
@@ -210,9 +210,9 @@ proc pragmaDeadCodeElim(c: PContext, n: PNode) =
   if isTurnedOn(c, n): incl(c.module.flags, sfDeadCodeElim)
   else: excl(c.module.flags, sfDeadCodeElim)
 
-proc pragmaNoForward(c: PContext, n: PNode) =
-  if isTurnedOn(c, n): incl(c.module.flags, sfNoForward)
-  else: excl(c.module.flags, sfNoForward)
+proc pragmaNoForward(c: PContext, n: PNode; flag=sfNoForward) =
+  if isTurnedOn(c, n): incl(c.module.flags, flag)
+  else: excl(c.module.flags, flag)
 
 proc processCallConv(c: PContext, n: PNode) =
   if (n.kind == nkExprColonExpr) and (n.sons[1].kind == nkIdent):
@@ -726,6 +726,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         incl(sym.flags, sfThread)
       of wDeadCodeElim: pragmaDeadCodeElim(c, it)
       of wNoForward: pragmaNoForward(c, it)
+      of wReorder: pragmaNoForward(c, it, sfReorder)
       of wMagic: processMagic(c, it, sym)
       of wCompileTime:
         noVal(it)

@@ -80,9 +80,10 @@ type
   `nil` {.magic: "Nil".}
 
   expr* {.magic: Expr, deprecated.} ## meta type to denote an expression (for templates)
-    ## **Deprecated** since version 0.15. Use ``untyped`` instead.
+                                    ## **Deprecated** since version 0.15. Use ``untyped`` instead.
   stmt* {.magic: Stmt, deprecated.} ## meta type to denote a statement (for templates)
-    ## **Deprecated** since version 0.15. Use ``typed`` instead.
+                                    ## **Deprecated** since version 0.15. Use ``typed`` instead.
+
   void* {.magic: "VoidType".}   ## meta type to denote the absence of any type
   auto* {.magic: Expr.} ## meta type for automatic type determination
   any* = distinct auto ## meta type for any supported type
@@ -230,31 +231,6 @@ proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
   ## resets an object `obj` to its initial (binary zero) value. This needs to
   ## be called before any possible `object branch transition`:idx:.
 
-# for low and high the return type T may not be correct, but
-# we handle that with compiler magic in semLowHigh()
-proc high*[T](x: T): T {.magic: "High", noSideEffect.}
-  ## returns the highest possible index of an array, a sequence, a string or
-  ## the highest possible value of an ordinal value `x`. As a special
-  ## semantic rule, `x` may also be a type identifier.
-  ## ``high(int)`` is Nim's way of writing `INT_MAX`:idx: or `MAX_INT`:idx:.
-  ##
-  ## .. code-block:: nim
-  ##  var arr = [1,2,3,4,5,6,7]
-  ##  high(arr) #=> 6
-  ##  high(2) #=> 9223372036854775807
-  ##  high(int) #=> 9223372036854775807
-
-proc low*[T](x: T): T {.magic: "Low", noSideEffect.}
-  ## returns the lowest possible index of an array, a sequence, a string or
-  ## the lowest possible value of an ordinal value `x`. As a special
-  ## semantic rule, `x` may also be a type identifier.
-  ##
-  ## .. code-block:: nim
-  ##  var arr = [1,2,3,4,5,6,7]
-  ##  low(arr) #=> 0
-  ##  low(2) #=> -9223372036854775808
-  ##  low(int) #=> -9223372036854775808
-
 type
   range*{.magic: "Range".}[T] ## Generic type to construct range types.
   array*{.magic: "Array".}[I, T]  ## Generic type to construct
@@ -266,6 +242,45 @@ type
   varargs*{.magic: "Varargs".}[T] ## Generic type to construct a varargs type.
   seq*{.magic: "Seq".}[T]  ## Generic type to construct sequences.
   set*{.magic: "Set".}[T]  ## Generic type to construct bit sets.
+
+  UncheckedArray* {.unchecked.}[T] = array[0, T]
+    ## Array with no bounds checking
+
+proc high*[T: Ordinal](x: T): T {.magic: "High", noSideEffect.}
+  ## returns the highest possible index of an array, a sequence, a string or
+  ## the highest possible value of an ordinal value `x`. As a special
+  ## semantic rule, `x` may also be a type identifier.
+  ## ``high(int)`` is Nim's way of writing `INT_MAX`:idx: or `MAX_INT`:idx:.
+  ##
+  ## .. code-block:: nim
+  ##  var arr = [1,2,3,4,5,6,7]
+  ##  high(arr) #=> 6
+  ##  high(2) #=> 9223372036854775807
+  ##  high(int) #=> 9223372036854775807
+
+proc high*[T: Ordinal](x: typeDesc[T]): T {.magic: "High", noSideEffect.}
+proc high*[T](x: openArray[T]): int {.magic: "High", noSideEffect.}
+proc high*[I, T](x: array[I, T]): I {.magic: "High", noSideEffect.}
+proc high*[I, T](x: typeDesc[array[I, T]]): I {.magic: "High", noSideEffect.}
+proc high*(x: cstring): int {.magic: "High", noSideEffect.}
+proc high*(x: string): int {.magic: "High", noSideEffect.}
+
+proc low*[T: Ordinal](x: typeDesc[T]): T {.magic: "Low", noSideEffect.}
+proc low*[T](x: openArray[T]): int {.magic: "Low", noSideEffect.}
+proc low*[I, T](x: array[I, T]): I {.magic: "Low", noSideEffect.}
+proc low*[T](x: T): T {.magic: "Low", noSideEffect.}
+proc low*[I, T](x: typeDesc[array[I, T]]): I {.magic: "Low", noSideEffect.}
+proc low*(x: cstring): int {.magic: "Low", noSideEffect.}
+proc low*(x: string): int {.magic: "Low", noSideEffect.}
+## returns the lowest possible index of an array, a sequence, a string or
+  ## the lowest possible value of an ordinal value `x`. As a special
+  ## semantic rule, `x` may also be a type identifier.
+  ##
+  ## .. code-block:: nim
+  ##  var arr = [1,2,3,4,5,6,7]
+  ##  low(arr) #=> 0
+  ##  low(2) #=> -9223372036854775808
+  ##  low(int) #=> -9223372036854775808
 
 when defined(nimArrIdx):
   # :array|openarray|string|seq|cstring|tuple
@@ -380,8 +395,6 @@ include "system/inclrtl"
 const NoFakeVars* = defined(nimscript) ## true if the backend doesn't support \
   ## "fake variables" like 'var EBADF {.importc.}: cint'.
 
-const ArrayDummySize = when defined(cpu16): 10_000 else: 100_000_000
-
 when not defined(JS):
   type
     TGenericSeq {.compilerproc, pure, inheritable.} = object
@@ -389,10 +402,9 @@ when not defined(JS):
       when defined(gogc):
         elemSize: int
     PGenericSeq {.exportc.} = ptr TGenericSeq
-    UncheckedCharArray {.unchecked.} = array[0..ArrayDummySize, char]
     # len and space without counting the terminating zero:
     NimStringDesc {.compilerproc, final.} = object of TGenericSeq
-      data: UncheckedCharArray
+      data: UncheckedArray[char]
     NimString = ptr NimStringDesc
 
 when not defined(JS) and not defined(nimscript):
@@ -413,7 +425,7 @@ type
     ## is an int type ranging from one to the maximum value
     ## of an int. This type is often useful for documentation and debugging.
 
-  RootObj* {.exportc: "TNimObject", inheritable.} =
+  RootObj* {.compilerProc, inheritable.} =
     object ## the root of Nim's object hierarchy. Objects should
            ## inherit from RootObj or one of its descendants. However,
            ## objects that have no ancestor are allowed.
@@ -421,7 +433,7 @@ type
 
   RootEffect* {.compilerproc.} = object of RootObj ## \
     ## base effect class; each effect should
-    ## inherit from `TEffect` unless you know what
+    ## inherit from `RootEffect` unless you know what
     ## you doing.
   TimeEffect* = object of RootEffect   ## Time effect.
   IOEffect* = object of RootEffect     ## IO effect.
@@ -1174,6 +1186,8 @@ proc `is` *[T, S](x: T, y: S): bool {.magic: "Is", noSideEffect.}
 template `isnot` *(x, y: untyped): untyped = not (x is y)
   ## Negated version of `is`. Equivalent to ``not(x is y)``.
 
+proc `of` *[T, S](x: typeDesc[T], y: typeDesc[S]): bool {.magic: "Of", noSideEffect.}
+proc `of` *[T, S](x: T, y: typeDesc[S]): bool {.magic: "Of", noSideEffect.}
 proc `of` *[T, S](x: T, y: S): bool {.magic: "Of", noSideEffect.}
   ## Checks if `x` has a type of `y`
   ##
@@ -1312,7 +1326,7 @@ const
   hostCPU* {.magic: "HostCPU".}: string = ""
     ## a string that describes the host CPU. Possible values:
     ## "i386", "alpha", "powerpc", "powerpc64", "powerpc64el", "sparc",
-    ## "amd64", "mips", "mipsel", "arm", "arm64".
+    ## "amd64", "mips", "mipsel", "arm", "arm64", "mips64", "mips64el".
 
   seqShallowFlag = low(int)
 
@@ -1599,8 +1613,7 @@ type # these work for most platforms:
   culonglong* {.importc: "unsigned long long", nodecl.} = uint64
     ## This is the same as the type ``unsigned long long`` in *C*.
 
-  cstringArray* {.importc: "char**", nodecl.} = ptr
-    array[0..ArrayDummySize, cstring]
+  cstringArray* {.importc: "char**", nodecl.} = ptr UncheckedArray[cstring]
     ## This is binary compatible to the type ``char**`` in *C*. The array's
     ## high value is large enough to disable bounds checking in practice.
     ## Use `cstringArrayToSeq` to convert it into a ``seq[string]``.
@@ -1951,30 +1964,34 @@ iterator countdown*[T](a, b: T, step = 1): T {.inline.} =
       yield res
       dec(res, step)
 
-template countupImpl(incr: untyped) {.oldimmediate, dirty.} =
-  when T is IntLikeForCount:
-    var res = int(a)
-    while res <= int(b):
-      yield T(res)
-      incr
-  else:
-    var res: T = T(a)
-    while res <= b:
-      yield res
-      incr
-
 iterator countup*[S, T](a: S, b: T, step = 1): T {.inline.} =
   ## Counts from ordinal value `a` up to `b` (inclusive) with the given
   ## step count. `S`, `T` may be any ordinal type, `step` may only
   ## be positive. **Note**: This fails to count to ``high(int)`` if T = int for
   ## efficiency reasons.
-  countupImpl:
-    inc(res, step)
+  when T is IntLikeForCount:
+    var res = int(a)
+    while res <= int(b):
+      yield T(res)
+      inc(res, step)
+  else:
+    var res: T = T(a)
+    while res <= b:
+      yield res
+      inc(res, step)
 
 iterator `..`*[S, T](a: S, b: T): T {.inline.} =
   ## An alias for `countup`.
-  countupImpl:
-    inc(res)
+  when T is IntLikeForCount:
+    var res = int(a)
+    while res <= int(b):
+      yield T(res)
+      inc(res)
+  else:
+    var res: T = T(a)
+    while res <= b:
+      yield res
+      inc(res)
 
 iterator `||`*[S, T](a: S, b: T, annotation=""): T {.
   inline, magic: "OmpParFor", sideEffect.} =
@@ -2551,7 +2568,7 @@ const NimStackTrace = compileOption("stacktrace")
 
 template coroutinesSupportedPlatform(): bool =
   when defined(sparc) or defined(ELATE) or compileOption("gc", "v2") or
-    defined(boehmgc) or defined(gogc) or defined(nogc) or defined(gcStack) or
+    defined(boehmgc) or defined(gogc) or defined(nogc) or defined(gcRegions) or
     defined(gcMarkAndSweep):
     false
   else:
@@ -2752,10 +2769,10 @@ when not defined(JS): #and not defined(nimscript):
   {.push stack_trace: off, profiler:off.}
 
   when hasAlloc:
-    when not defined(gcStack):
+    when not defined(gcRegions):
       proc initGC() {.gcsafe.}
     when not defined(boehmgc) and not defined(useMalloc) and
-        not defined(gogc) and not defined(gcStack):
+        not defined(gogc) and not defined(gcRegions):
       proc initAllocator() {.inline.}
 
     proc initStackBottom() {.inline, compilerproc.} =
@@ -3040,7 +3057,8 @@ when not defined(JS): #and not defined(nimscript):
       ## creates a NULL terminated cstringArray from `a`. The result has to
       ## be freed with `deallocCStringArray` after it's not needed anymore.
       result = cast[cstringArray](alloc0((a.len+1) * sizeof(cstring)))
-      let x = cast[ptr array[0..ArrayDummySize, string]](a)
+
+      let x = cast[ptr UncheckedArray[string]](a)
       for i in 0 .. a.high:
         result[i] = cast[cstring](alloc0(x[i].len+1))
         copyMem(result[i], addr(x[i][0]), x[i].len)
@@ -3269,7 +3287,7 @@ when not defined(JS): #and not defined(nimscript):
     proc finished*[T: proc](x: T): bool {.noSideEffect, inline.} =
       ## can be used to determine if a first class iterator has finished.
       {.emit: """
-      `result` = *((NI*) `x`.ClE_0) < 0;
+      `result` = ((NI*) `x`.ClE_0)[1] < 0;
       """.}
 
 elif defined(JS):
@@ -3752,7 +3770,7 @@ when hasAlloc:
 proc locals*(): RootObj {.magic: "Plugin", noSideEffect.} =
   ## generates a tuple constructor expression listing all the local variables
   ## in the current scope. This is quite fast as it does not rely
-  ## on any debug or runtime information. Note that in constrast to what
+  ## on any debug or runtime information. Note that in contrast to what
   ## the official signature says, the return type is not ``RootObj`` but a
   ## tuple of a structure that depends on the current scope. Example:
   ##
