@@ -957,10 +957,10 @@ proc genEcho(p: BProc, n: PNode) =
   var a: TLoc
   for i in countup(0, n.len-1):
     if n.sons[i].skipConv.kind == nkNilLit:
-      add(args, ", \"nil\"")
+      add(args, ", \"\"")
     else:
       initLocExpr(p, n.sons[i], a)
-      addf(args, ", $1? ($1)->data:\"nil\"", [rdLoc(a)])
+      addf(args, ", $1? ($1)->data:\"\"", [rdLoc(a)])
   if platform.targetOS == osGenode:
     # bypass libc and print directly to the Genode LOG session
     p.module.includeHeader("<base/log.h>")
@@ -1045,7 +1045,7 @@ proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
       if e.sons[i + 2].kind in {nkStrLit..nkTripleStrLit}:
         inc(L, len(e.sons[i + 2].strVal))
       else:
-        addf(lens, "$1->$2 + ", [rdLoc(a), lenField(p)])
+        addf(lens, "($1 ? $1->$2 : 0) + ", [rdLoc(a), lenField(p)])
       add(appends, rfmt(p.module, "#appendString($1, $2);$n",
                         rdLoc(dest), rdLoc(a)))
   linefmt(p, cpsStmts, "$1 = #resizeString($1, $2$3);$n",
@@ -1658,7 +1658,7 @@ proc genConv(p: BProc, e: PNode, d: var TLoc) =
 proc convStrToCStr(p: BProc, n: PNode, d: var TLoc) =
   var a: TLoc
   initLocExpr(p, n.sons[0], a)
-  putIntoDest(p, d, skipTypes(n.typ, abstractVar), "$1->data" % [rdLoc(a)], a.s)
+  putIntoDest(p, d, skipTypes(n.typ, abstractVar), "(NCSTRING)((($1>0)*((NU)($1->data))) | (($1==0)*((NU)(\"\"))))" % [rdLoc(a)], a.s)
 
 proc convCStrToStr(p: BProc, n: PNode, d: var TLoc) =
   var a: TLoc
@@ -1671,16 +1671,14 @@ proc genStrEquals(p: BProc, e: PNode, d: var TLoc) =
   var x: TLoc
   var a = e.sons[1]
   var b = e.sons[2]
-  if (a.kind == nkNilLit) or (b.kind == nkNilLit):
-    binaryExpr(p, e, d, "($1 == $2)")
-  elif (a.kind in {nkStrLit..nkTripleStrLit}) and (a.strVal == ""):
+  if (a.kind in {nkStrLit..nkTripleStrLit}) and (a.strVal == ""):
     initLocExpr(p, e.sons[2], x)
     putIntoDest(p, d, e.typ,
-      rfmt(nil, "(($1) && ($1)->$2 == 0)", rdLoc(x), lenField(p)))
+      rfmt(nil, "(!($1) || ($1)->$2 == 0)", rdLoc(x), lenField(p)))
   elif (b.kind in {nkStrLit..nkTripleStrLit}) and (b.strVal == ""):
     initLocExpr(p, e.sons[1], x)
     putIntoDest(p, d, e.typ,
-      rfmt(nil, "(($1) && ($1)->$2 == 0)", rdLoc(x), lenField(p)))
+      rfmt(nil, "(!($1) || ($1)->$2 == 0)", rdLoc(x), lenField(p)))
   else:
     binaryExpr(p, e, d, "#eqStrings($1, $2)")
 

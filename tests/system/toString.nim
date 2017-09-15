@@ -12,7 +12,7 @@ inf
 -inf
 nan
 nil
-nil'''
+'''
 """
 
 echo($(@[23, 45]))
@@ -40,3 +40,45 @@ var x: seq[string]
 var y: string
 echo(x)
 echo(y)
+
+proc bar(arg: cstring): void =
+  doAssert arg[0] == '\0'
+
+proc baz(arg: openarray[char]): void =
+  doAssert arg.len == 0
+
+proc stringCompare(): void =
+  var a,b,c,d,e,f,g: string
+  a.add 'a'
+  doAssert a == "a"
+  b.add "bee"
+  doAssert b == "bee"
+  b.add g
+  doAssert b == "bee"
+  c.add 123.456
+  doAssert c == "123.456"
+  d.add 123456
+  doAssert d == "123456"
+
+  var h = ""
+  var i = ""
+  doAssert e == ""
+  doAssert "" == e
+  doAssert nil == e
+  doAssert e == nil
+  doAssert f == g
+  doAssert "" == ""
+  doAssert "" == nil
+  doAssert nil == ""
+
+  g.setLen(10)
+  doAssert g == "\0\0\0\0\0\0\0\0\0\0"
+  doAssert "" != "\0\0\0\0\0\0\0\0\0\0"
+
+  var nilstring: string
+  bar(nilstring)
+  baz(nilstring)
+
+stringCompare()
+static:
+  stringCompare()

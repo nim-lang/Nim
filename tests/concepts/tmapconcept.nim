@@ -1,7 +1,7 @@
 discard """
 output: '''10
 10
-nil
+
 1'''
 msg: '''
 K=string V=int
@@ -99,4 +99,3 @@ static:
   ok Table[int, float] is Map
   ok Table[int, string] is Map[SomeNumber, string]
   no JudyArray is Map[string, int]
-
