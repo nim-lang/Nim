@@ -669,7 +669,7 @@ proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
         t = x
       result = newString(len)
       for j in countdown(len-1, 0):
-        result[j] = HexChars[t and 0xF]
+        result[j] = HexChars[int(t and 0xF)]
         t = t shr 4
         # handle negative overflow
         if t == 0 and x < 0: t = -1
