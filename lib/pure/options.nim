@@ -153,70 +153,24 @@ proc `$`*[T]( self: Option[T] ): string =
     "None[" & T.name & "]"
 
 
-when isMainModule:
-  import unittest, sequtils
+template `??`*[T](left: T, right: T): T =
+  ## Returns ``left`` if not nil or ``right`` otherwise.
+  when not compiles(isNil(left)):
+    left
+  else:
+    if not isNil(left): left else: right
 
-  suite "options":
-    # work around a bug in unittest
-    let intNone = none(int)
-    let stringNone = none(string)
+template `??`*[T](left: T, right: Option[T]): Option[T] =
+  ## Returns ``left`` as an option if not nil or ``right`` otherwise.
+  when not compiles(isNil(left)):
+    some(left)
+  else:
+    if not isNil(left): some(left) else: right
 
-    test "example":
-      proc find(haystack: string, needle: char): Option[int] =
-        for i, c in haystack:
-          if c == needle:
-            return some i
+template `??`*[T](left: Option[T], right: T): T =
+  ## Returns the contents of ``left`` if exists and not nil or ``right`` otherwise.
+  if isSome(left): left.get() ?? right else: right
 
-      check("abc".find('c').get() == 2)
-
-      let result = "team".find('i')
-
-      check result == intNone
-      check result.isNone
-
-    test "some":
-      check some(6).get() == 6
-      check some("a").unsafeGet() == "a"
-      check some(6).isSome
-      check some("a").isSome
-
-    test "none":
-      expect UnpackError:
-        discard none(int).get()
-      check(none(int).isNone)
-      check(not none(string).isSome)
-
-    test "equality":
-      check some("a") == some("a")
-      check some(7) != some(6)
-      check some("a") != stringNone
-      check intNone == intNone
-
-      when compiles(some("a") == some(5)):
-        check false
-      when compiles(none(string) == none(int)):
-        check false
-
-    test "get with a default value":
-      check( some("Correct").get("Wrong") == "Correct" )
-      check( stringNone.get("Correct") == "Correct" )
-
-    test "$":
-      check( $(some("Correct")) == "Some(Correct)" )
-      check( $(stringNone) == "None[string]" )
-
-    test "map with a void result":
-      var procRan = 0
-      some(123).map(proc (v: int) = procRan = v)
-      check procRan == 123
-      intNone.map(proc (v: int) = check false)
-
-    test "map":
-      check( some(123).map(proc (v: int): int = v * 2) == some(246) )
-      check( intNone.map(proc (v: int): int = v * 2).isNone )
-
-    test "filter":
-      check( some(123).filter(proc (v: int): bool = v == 123) == some(123) )
-      check( some(456).filter(proc (v: int): bool = v == 123).isNone )
-      check( intNone.filter(proc (v: int): bool = check false).isNone )
-
+template `??`*[T](left: Option[T], right: Option[T]): Option[T] =
+  ## Returns ``left`` if exists and not nil or ``right`` otherwise.
+  if isSome(left): left.get() ?? right else: right
