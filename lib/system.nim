@@ -3887,6 +3887,8 @@ template closureScope*(body: untyped): untyped =
   ##   myClosure() # outputs 3
   (proc() = body)()
 
+  include "system/enums"
+
 {.pop.} #{.push warning[GcMem]: off, warning[Uninit]: off.}
 
 when defined(nimconfig):
