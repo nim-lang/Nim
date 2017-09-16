@@ -8,7 +8,8 @@ block:
   static:
     foo(int)
 
-  # #4412
+# #4412
+block:
   proc default[T](t: typedesc[T]): T {.inline.} = discard
 
   static:
