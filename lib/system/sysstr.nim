@@ -140,9 +140,10 @@ proc addChar(s: NimString, c: char): NimString =
   # is compilerproc!
   result = s
   if result.len >= result.space:
-    result.reserved = resize(result.space)
+    let r = resize(result.space)
     result = cast[NimString](growObj(result,
-      sizeof(TGenericSeq) + result.reserved + 1))
+      sizeof(TGenericSeq) + r + 1))
+    result.reserved = r
   result.data[result.len] = c
   result.data[result.len+1] = '\0'
   inc(result.len)
@@ -218,26 +219,29 @@ proc incrSeq(seq: PGenericSeq, elemSize: int): PGenericSeq {.compilerProc.} =
   #  seq[seq->len-1] = x;
   result = seq
   if result.len >= result.space:
-    result.reserved = resize(result.space)
-    result = cast[PGenericSeq](growObj(result, elemSize * result.reserved +
+    let r = resize(result.space)
+    result = cast[PGenericSeq](growObj(result, elemSize * r +
                                GenericSeqSize))
+    result.reserved = r
   inc(result.len)
 
 proc incrSeqV2(seq: PGenericSeq, elemSize: int): PGenericSeq {.compilerProc.} =
   # incrSeq version 2
   result = seq
   if result.len >= result.space:
-    result.reserved = resize(result.space)
-    result = cast[PGenericSeq](growObj(result, elemSize * result.reserved +
+    let r = resize(result.space)
+    result = cast[PGenericSeq](growObj(result, elemSize * r +
                                GenericSeqSize))
+    result.reserved = r
 
 proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
     compilerRtl.} =
   result = seq
   if result.space < newLen:
-    result.reserved = max(resize(result.space), newLen)
-    result = cast[PGenericSeq](growObj(result, elemSize * result.reserved +
+    let r = max(resize(result.space), newLen)
+    result = cast[PGenericSeq](growObj(result, elemSize * r +
                                GenericSeqSize))
+    result.reserved = r
   elif newLen < result.len:
     # we need to decref here, otherwise the GC leaks!
     when not defined(boehmGC) and not defined(nogc) and
