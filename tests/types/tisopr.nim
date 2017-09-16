@@ -17,10 +17,10 @@ proc IsVoid[T](): string =
 const x = int is int
 echo x, " ", float is float, " ", float is string, " ", IsVoid[void]()
 
-template yes(e: expr): stmt =
+template yes(e): void =
   static: assert e
 
-template no(e: expr): stmt =
+template no(e): void =
   static: assert(not e)
 
 when false:

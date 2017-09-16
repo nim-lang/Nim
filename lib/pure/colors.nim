@@ -19,18 +19,18 @@ type
 proc `==` *(a, b: Color): bool {.borrow.}
   ## compares two colors.
 
-template extract(a: Color, r, g, b: expr) {.immediate.}=
+template extract(a: Color, r, g, b: untyped) =
   var r = a.int shr 16 and 0xff
   var g = a.int shr 8 and 0xff
   var b = a.int and 0xff
 
-template rawRGB(r, g, b: int): expr =
+template rawRGB(r, g, b: int): Color =
   Color(r shl 16 or g shl 8 or b)
 
-template colorOp(op: expr) {.immediate.} =
+template colorOp(op): Color =
   extract(a, ar, ag, ab)
   extract(b, br, bg, bb)
-  result = rawRGB(op(ar, br), op(ag, bg), op(ab, bb))
+  rawRGB(op(ar, br), op(ag, bg), op(ab, bb))
 
 proc satPlus(a, b: int): int {.inline.} =
   result = a +% b
@@ -67,12 +67,12 @@ proc intensity*(a: Color, f: float): Color =
   if b >% 255: b = 255
   result = rawRGB(r, g, b)
 
-template mix*(a, b: Color, fn: expr): expr =
+template mix*(a, b: Color, fn: untyped): untyped =
   ## uses `fn` to mix the colors `a` and `b`. `fn` is invoked for each component
   ## R, G, and B. This is a template because `fn` should be inlined and the
   ## compiler cannot inline proc pointers yet. If `fn`'s result is not in the
   ## range[0..255], it will be saturated to be so.
-  template `><` (x: expr): expr =
+  template `><` (x: untyped): untyped =
     # keep it in the range 0..255
     block:
       var y = x # eval only once

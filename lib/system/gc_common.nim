@@ -351,3 +351,35 @@ else:
 # ----------------------------------------------------------------------------
 # end of non-portable code
 # ----------------------------------------------------------------------------
+
+proc prepareDealloc(cell: PCell) =
+  when declared(useMarkForDebug):
+    when useMarkForDebug:
+      gcAssert(cell notin gch.marked, "Cell still alive!")
+  let t = cell.typ
+  if t.finalizer != nil:
+    # the finalizer could invoke something that
+    # allocates memory; this could trigger a garbage
+    # collection. Since we are already collecting we
+    # prevend recursive entering here by a lock.
+    # XXX: we should set the cell's children to nil!
+    inc(gch.recGcLock)
+    (cast[Finalizer](t.finalizer))(cellToUsr(cell))
+    dec(gch.recGcLock)
+  decTypeSize(cell, t)
+
+proc deallocHeap*(runFinalizers = true; allowGcAfterwards = true) =
+  ## Frees the thread local heap. Runs every finalizer if ``runFinalizers```
+  ## is true. If ``allowGcAfterwards`` is true, a minimal amount of allocation
+  ## happens to ensure the GC can continue to work after the call
+  ## to ``deallocHeap``.
+  if runFinalizers:
+    for x in allObjects(gch.region):
+      if isCell(x):
+        # cast to PCell is correct here:
+        var c = cast[PCell](x)
+        prepareDealloc(c)
+  deallocOsPages(gch.region)
+  zeroMem(addr gch.region, sizeof(gch.region))
+  if allowGcAfterwards:
+    initGC()

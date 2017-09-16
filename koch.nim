@@ -227,14 +227,15 @@ proc bundleWinTools() =
   removeFile("tools/finish".exe)
   buildVccTool()
   nimexec("c -o:bin/nimgrab.exe -d:ssl tools/nimgrab.nim")
+  nimexec("c -o:bin/nimgrep.exe tools/nimgrep.nim")
   when false:
     # not yet a tool worth including
     nimexec(r"c --cc:vcc --app:gui -o:bin\downloader.exe -d:ssl --noNimblePath " &
             r"--path:..\ui tools\downloader.nim")
 
 proc zip(args: string) =
-  bundleNimbleSrc()
-  bundleNimsuggest(false)
+  bundleNimbleExe()
+  bundleNimsuggest(true)
   bundleWinTools()
   nimexec("cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
        [VersionAsString, compileNimInst])
@@ -407,13 +408,15 @@ proc winReleaseArch(arch: string) =
   withMingw r"..\mingw" & arch & r"\bin":
     # Rebuilding koch is necessary because it uses its pointer size to
     # determine which mingw link to put in the NSIS installer.
-    nimexec "c --out:koch_temp --cpu:$# koch" % cpu
-    exec "koch_temp boot -d:release --cpu:$#" % cpu
-    exec "koch_temp zip -d:release"
+    nimexec "c --cpu:$# koch" % cpu
+    exec "koch boot -d:release --cpu:$#" % cpu
+    exec "koch zip -d:release"
     overwriteFile r"build\nim-$#.zip" % VersionAsString,
              r"web\upload\download\nim-$#_x$#.zip" % [VersionAsString, arch]
 
-proc winRelease() =
+proc winRelease*() =
+  # Now used from "tools/winrelease" and not directly supported by koch
+  # anymore!
   # Build -docs file:
   when true:
     web(gaCode)
@@ -530,39 +533,40 @@ proc showHelp() =
   quit(HelpText % [VersionAsString & spaces(44-len(VersionAsString)),
                    CompileDate, CompileTime], QuitSuccess)
 
-var op = initOptParser()
-op.next()
-case op.kind
-of cmdLongOption, cmdShortOption: showHelp()
-of cmdArgument:
-  case normalize(op.key)
-  of "boot": boot(op.cmdLineRest)
-  of "clean": clean(op.cmdLineRest)
-  of "web": web(op.cmdLineRest)
-  of "doc", "docs": web("--onlyDocs " & op.cmdLineRest)
-  of "json2": web("--json2 " & op.cmdLineRest)
-  of "website": website(op.cmdLineRest & gaCode)
-  of "web0":
-    # undocumented command for Araq-the-merciful:
-    web(op.cmdLineRest & gaCode)
-  of "pdf": pdf()
-  of "csource", "csources": csource(op.cmdLineRest)
-  of "zip": zip(op.cmdLineRest)
-  of "xz": xz(op.cmdLineRest)
-  of "nsis": nsis(op.cmdLineRest)
-  of "geninstall": geninstall(op.cmdLineRest)
-  of "distrohelper": geninstall()
-  of "install": install(op.cmdLineRest)
-  of "testinstall": testUnixInstall()
-  of "test", "tests": tests(op.cmdLineRest)
-  of "temp": temp(op.cmdLineRest)
-  of "xtemp": xtemp(op.cmdLineRest)
-  of "winrelease": winRelease()
-  of "wintools": bundleWinTools()
-  of "nimble": buildNimble(existsDir(".git"))
-  of "nimsuggest": bundleNimsuggest(buildExe=true)
-  of "tools": buildTools(existsDir(".git"))
-  of "pushcsource", "pushcsources": pushCsources()
-  of "valgrind": valgrind(op.cmdLineRest)
-  else: showHelp()
-of cmdEnd: showHelp()
+when isMainModule:
+  var op = initOptParser()
+  op.next()
+  case op.kind
+  of cmdLongOption, cmdShortOption: showHelp()
+  of cmdArgument:
+    case normalize(op.key)
+    of "boot": boot(op.cmdLineRest)
+    of "clean": clean(op.cmdLineRest)
+    of "web": web(op.cmdLineRest)
+    of "doc", "docs": web("--onlyDocs " & op.cmdLineRest)
+    of "json2": web("--json2 " & op.cmdLineRest)
+    of "website": website(op.cmdLineRest & gaCode)
+    of "web0":
+      # undocumented command for Araq-the-merciful:
+      web(op.cmdLineRest & gaCode)
+    of "pdf": pdf()
+    of "csource", "csources": csource(op.cmdLineRest)
+    of "zip": zip(op.cmdLineRest)
+    of "xz": xz(op.cmdLineRest)
+    of "nsis": nsis(op.cmdLineRest)
+    of "geninstall": geninstall(op.cmdLineRest)
+    of "distrohelper": geninstall()
+    of "install": install(op.cmdLineRest)
+    of "testinstall": testUnixInstall()
+    of "test", "tests": tests(op.cmdLineRest)
+    of "temp": temp(op.cmdLineRest)
+    of "xtemp": xtemp(op.cmdLineRest)
+    #of "winrelease": winRelease()
+    of "wintools": bundleWinTools()
+    of "nimble": buildNimble(existsDir(".git"))
+    of "nimsuggest": bundleNimsuggest(buildExe=true)
+    of "tools": buildTools(existsDir(".git"))
+    of "pushcsource", "pushcsources": pushCsources()
+    of "valgrind": valgrind(op.cmdLineRest)
+    else: showHelp()
+  of cmdEnd: showHelp()

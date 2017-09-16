@@ -22,3 +22,5 @@ task default, "default target":
   --define: definedefine
   setCommand "c"
 
+# bug #6327
+discard existsEnv("dummy")

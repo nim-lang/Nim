@@ -9,7 +9,6 @@ proc `[]=`*(M: var Matrix; m, n: int; v: M.T) =
   M.data[m * M.N + n] = v
 
 # Adapt the Matrix type to the concept's requirements
-template Rows*(M: type Matrix): expr = M.M
-template Cols*(M: type Matrix): expr = M.N
+template Rows*(M: type Matrix): untyped = M.M
+template Cols*(M: type Matrix): untyped = M.N
 template ValueType*(M: type Matrix): typedesc = M.T
-

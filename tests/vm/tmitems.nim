@@ -7,7 +7,7 @@ discard """
 # bug #3731
 var list {.compileTime.} = newSeq[int]()
 
-macro calc*(): stmt {.immediate.} =
+macro calc*(): typed =
   list.add(1)
   for c in list.mitems:
     c = 13
@@ -19,7 +19,7 @@ calc()
 
 # bug #3859
 import macros
-macro m: stmt =
+macro m: typed =
   var s = newseq[NimNode](3)
   # var s: array[3,NimNode]                 # not working either
   for i in 0..<s.len: s[i] = newLit(3)    # works
@@ -29,3 +29,17 @@ macro m: stmt =
     result.add newCall(bindsym"echo", i)
 
 m()
+
+# bug 4741 & 5013
+proc test() =
+  var s = [("baz", 42), ("bath", 42)]
+  for i in s.mitems:
+    i[1] = 3
+  doAssert(s == [("baz", 3), ("bath", 3)])
+
+static:
+  test()
+  var s = [("baz", 42), ("bath", 42)]
+  for i in s.mitems:
+    i[1] = 3
+  doAssert(s == [("baz", 3), ("bath", 3)])

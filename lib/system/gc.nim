@@ -238,21 +238,6 @@ proc nimGCunref(p: pointer) {.compilerProc.} =
 
 include gc_common
 
-proc prepareDealloc(cell: PCell) =
-  when useMarkForDebug:
-    gcAssert(cell notin gch.marked, "Cell still alive!")
-  let t = cell.typ
-  if t.finalizer != nil:
-    # the finalizer could invoke something that
-    # allocates memory; this could trigger a garbage
-    # collection. Since we are already collecting we
-    # prevend recursive entering here by a lock.
-    # XXX: we should set the cell's children to nil!
-    inc(gch.recGcLock)
-    (cast[Finalizer](t.finalizer))(cellToUsr(cell))
-    dec(gch.recGcLock)
-  decTypeSize(cell, t)
-
 template beforeDealloc(gch: var GcHeap; c: PCell; msg: typed) =
   when false:
     for i in 0..gch.decStack.len-1:
@@ -273,6 +258,9 @@ proc nimGCunrefNoCycle(p: pointer) {.compilerProc, inline.} =
     rtlAddZCT(c)
     sysAssert(allocInv(gch.region), "end nimGCunrefNoCycle 2")
   sysAssert(allocInv(gch.region), "end nimGCunrefNoCycle 5")
+
+proc nimGCunrefRC1(p: pointer) {.compilerProc, inline.} =
+  decRef(usrToCell(p))
 
 proc asgnRef(dest: PPointer, src: pointer) {.compilerProc, inline.} =
   # the code generator calls this proc!
@@ -754,8 +742,8 @@ proc gcMark(gch: var GcHeap, p: pointer) {.inline.} =
 
 #[
   This method is conditionally marked with an attribute so that it gets ignored by the LLVM ASAN
-  (Address SANitizer) intrumentation as it will raise false errors due to the implementation of 
-  garbage collection that is used by Nim. For more information, please see the documentation of 
+  (Address SANitizer) intrumentation as it will raise false errors due to the implementation of
+  garbage collection that is used by Nim. For more information, please see the documentation of
   `CLANG_NO_SANITIZE_ADDRESS` in `lib/nimbase.h`.
  ]#
 proc markStackAndRegisters(gch: var GcHeap) {.noinline, cdecl, codegenDecl: "CLANG_NO_SANITIZE_ADDRESS $# $#$#".} =
@@ -920,11 +908,13 @@ when not defined(useNimRtl):
     else:
       inc(gch.recGcLock)
   proc GC_enable() =
-    if gch.recGcLock > 0:
-      when hasThreadSupport and hasSharedHeap:
-        discard atomicDec(gch.recGcLock, 1)
-      else:
-        dec(gch.recGcLock)
+    if gch.recGcLock <= 0:
+      raise newException(AssertionError,
+          "API usage error: GC_enable called but GC is already enabled")
+    when hasThreadSupport and hasSharedHeap:
+      discard atomicDec(gch.recGcLock, 1)
+    else:
+      dec(gch.recGcLock)
 
   proc GC_setStrategy(strategy: GC_Strategy) =
     discard
@@ -945,7 +935,6 @@ when not defined(useNimRtl):
     release(gch)
 
   proc GC_getStatistics(): string =
-    GC_disable()
     result = "[GC] total memory: " & $(getTotalMem()) & "\n" &
              "[GC] occupied memory: " & $(getOccupiedMem()) & "\n" &
              "[GC] stack scans: " & $gch.stat.stackScans & "\n" &
@@ -961,6 +950,5 @@ when not defined(useNimRtl):
         result = result & "[GC]   stack " & stack.bottom.repr & "[GC]     max stack size " & cast[pointer](stack.maxStackSize).repr & "\n"
     else:
       result = result & "[GC] max stack size: " & $gch.stat.maxStackSize & "\n"
-    GC_enable()
 
 {.pop.} # profiler: off, stackTrace: off

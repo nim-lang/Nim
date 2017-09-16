@@ -386,11 +386,11 @@ proc getNumber(L: var TLexer, result: var TToken) =
   else:
     matchUnderscoreChars(L, result, {'0'..'9'})
     if (L.buf[L.bufpos] == '.') and (L.buf[L.bufpos + 1] in {'0'..'9'}):
-      result.tokType = tkFloat64Lit
+      result.tokType = tkFloatLit
       eatChar(L, result, '.')
       matchUnderscoreChars(L, result, {'0'..'9'})
     if L.buf[L.bufpos] in {'e', 'E'}:
-      result.tokType = tkFloat64Lit
+      result.tokType = tkFloatLit
       eatChar(L, result, 'e')
       if L.buf[L.bufpos] in {'+', '-'}:
         eatChar(L, result)
@@ -516,7 +516,8 @@ proc getNumber(L: var TLexer, result: var TToken) =
         result.fNumber = (cast[PFloat32](addr(xi)))[]
         # note: this code is endian neutral!
         # XXX: Test this on big endian machine!
-      of tkFloat64Lit: result.fNumber = (cast[PFloat64](addr(xi)))[]
+      of tkFloat64Lit, tkFloatLit:
+        result.fNumber = (cast[PFloat64](addr(xi)))[]
       else: internalError(getLineInfo(L), "getNumber")
 
       # Bounds checks. Non decimal literals are allowed to overflow the range of

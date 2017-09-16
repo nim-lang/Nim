@@ -746,7 +746,7 @@ proc toFileLine*(info: TLineInfo): string {.inline.} =
   result = info.toFilename & ":" & $info.line
 
 proc toFileLineCol*(info: TLineInfo): string {.inline.} =
-  result = info.toFilename & "(" & $info.line & "," & $info.col & ")"
+  result = info.toFilename & "(" & $info.line & ", " & $info.col & ")"
 
 proc `$`*(info: TLineInfo): string = toFileLineCol(info)
 

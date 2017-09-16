@@ -499,6 +499,13 @@ proc fillPartialObject(c: PContext; n: PNode; typ: PType) =
   else:
     localError(n.info, "nkDotNode requires 2 children")
 
+proc setVarType(v: PSym, typ: PType) =
+  if v.typ != nil and not sameTypeOrNil(v.typ, typ):
+    localError(v.info, "inconsistent typing for reintroduced symbol '" &
+        v.name.s & "': previous type was: " & typeToString(v.typ) &
+        "; new type is: " & typeToString(typ))
+  v.typ = typ
+
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   var b: PNode
   result = copyNode(n)
@@ -588,7 +595,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           # this is needed for the evaluation pass and for the guard checking:
           v.ast = def
           if sfThread in v.flags: localError(def.info, errThreadvarCannotInit)
-        v.typ = typ
+        setVarType(v, typ)
         b = newNodeI(nkIdentDefs, a.info)
         if importantComments():
           # keep documentation information:
@@ -599,7 +606,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         addToVarSection(c, result, n, b)
       else:
         if def.kind == nkPar: v.ast = def[j]
-        v.typ = tup.sons[j]
+        setVarType(v, tup.sons[j])
         b.sons[j] = newSymNode(v)
       addDefer(c, result, v)
       checkNilable(v)
@@ -633,7 +640,7 @@ proc semConst(c: PContext, n: PNode): PNode =
     if typeAllowed(typ, skConst) != nil and def.kind != nkNilLit:
       localError(a.info, "invalid type for const: " & typeToString(typ))
       continue
-    v.typ = typ
+    setVarType(v, typ)
     v.ast = def               # no need to copy
     if sfGenSym notin v.flags: addInterfaceDecl(c, v)
     var b = newNodeI(nkConstDef, a.info)
@@ -1551,7 +1558,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   popOwner(c)
   if n.sons[patternPos].kind != nkEmpty:
     c.patterns.add(s)
-  if isAnon: result.typ = s.typ
+  if isAnon:
+    n.kind = nkLambda
+    result.typ = s.typ
   if isTopLevel(c) and s.kind != skIterator and
       s.typ.callConv == ccClosure:
     localError(s.info, "'.closure' calling convention for top level routines is invalid")

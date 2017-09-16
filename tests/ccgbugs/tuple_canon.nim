@@ -59,7 +59,7 @@ let
             ((1,1), hiA),
             ((0,1), hiB)]
 
-template odd*(i: int) : expr =
+template odd*(i: int) : untyped =
     (i and 1) != 0
 
 proc vidx(hg: HexGrid; col, row: int; i: HexVtxIndex) : Index =

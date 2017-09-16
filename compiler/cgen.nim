@@ -209,7 +209,7 @@ proc genLineDir(p: BProc, t: PNode) =
   if ({optStackTrace, optEndb} * p.options == {optStackTrace, optEndb}) and
       (p.prc == nil or sfPure notin p.prc.flags):
     if freshLineInfo(p, tt.info):
-      linefmt(p, cpsStmts, "#endb($1, $2);$n",
+      linefmt(p, cpsStmts, "#endb($1, $2);$N",
               line.rope, makeCString(toFilename(tt.info)))
   elif ({optLineTrace, optStackTrace} * p.options ==
       {optLineTrace, optStackTrace}) and
@@ -345,6 +345,15 @@ proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
   result.flags = {}
   constructLoc(p, result, not needsInit)
 
+proc getIntTemp(p: BProc, result: var TLoc) =
+  inc(p.labels)
+  result.r = "T" & rope(p.labels) & "_"
+  linefmt(p, cpsLocals, "NI $1;$n", result.r)
+  result.k = locTemp
+  result.s = OnStack
+  result.t = getSysType(tyInt)
+  result.flags = {}
+
 proc initGCFrame(p: BProc): Rope =
   if p.gcFrameId > 0: result = "struct {$1} GCFRAME_;$n" % [p.gcFrameType]
 
@@ -385,7 +394,8 @@ proc assignLocalVar(p: BProc, s: PSym) =
   #assert(s.loc.k == locNone) # not yet assigned
   # this need not be fulfilled for inline procs; they are regenerated
   # for each module that uses them!
-  let decl = localVarDecl(p, s) & ";" & tnl
+  let nl = if optLineDir in gOptions: "" else: tnl
+  let decl = localVarDecl(p, s) & ";" & nl
   line(p, cpsLocals, decl)
   localDebugInfo(p, s)
 
@@ -618,11 +628,11 @@ proc initFrame(p: BProc, procname, filename: Rope): Rope =
   discard cgsym(p.module, "nimFrame")
   if p.maxFrameLen > 0:
     discard cgsym(p.module, "VarSlot")
-    result = rfmt(nil, "\tnimfrs_($1, $2, $3, $4)$N",
+    result = rfmt(nil, "\tnimfrs_($1, $2, $3, $4);$n",
                   procname, filename, p.maxFrameLen.rope,
                   p.blocks[0].frameLen.rope)
   else:
-    result = rfmt(nil, "\tnimfr_($1, $2)$N", procname, filename)
+    result = rfmt(nil, "\tnimfr_($1, $2);$n", procname, filename)
 
 proc deinitFrame(p: BProc): Rope =
   result = rfmt(p.module, "\t#popFrame();$n")
@@ -1302,6 +1312,7 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   if b == nil or passes.skipCodegen(n): return
   var m = BModule(b)
   m.initProc.options = initProcOptions(m)
+  softRnl = if optLineDir in gOptions: noRnl else: rnl
   genStmts(m.initProc, n)
 
 proc finishModule(m: BModule) =
