@@ -305,6 +305,7 @@ proc `+`*(ti1, ti2: TimeInterval): TimeInterval =
 
 proc `-`*(ti: TimeInterval): TimeInterval =
   ## Reverses a time interval
+  ##
   ## .. code-block:: nim
   ##
   ##     let day = -initInterval(hours=24)
