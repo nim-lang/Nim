@@ -31,8 +31,12 @@ struct Nim::SysThread
 		void entry() override {
 			(_func)(_arg); }
 
-		Thread(Genode::Env &env, Genode::size_t stack_size, Entry func, void *arg)
-		: Genode::Thread(env, "nim-thread", stack_size), _func(func), _arg(arg)
+		Thread(Genode::Env &env, Genode::size_t stack_size, Entry func, void *arg, int affinity)
+		: Genode::Thread(env, "nim-thread", stack_size,
+		                 env.cpu().affinity_space().location_of_index(affinity),
+		                 Genode::Cpu_session::Weight(Genode::Cpu_session::Weight::DEFAULT_WEIGHT-1),
+		                 env.cpu()),
+		  _func(func), _arg(arg)
 		{
 			Genode::Thread::start();
 		}
@@ -40,8 +44,8 @@ struct Nim::SysThread
 
 	Genode::Constructible<Thread> _thread;
 
-	void initThread(Genode::Env *env, Genode::size_t stack_size, Entry func, void *arg) {
-		_thread.construct(*env, stack_size, func, arg); }
+	void initThread(Genode::Env *env, Genode::size_t stack_size, Entry func, void *arg, int aff) {
+		_thread.construct(*env, stack_size, func, arg, aff); }
 
 	void joinThread() {
 		_thread->join(); }

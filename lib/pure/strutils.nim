@@ -776,7 +776,8 @@ proc countLines*(s: string): int {.noSideEffect,
   ##
   ## In this context, a line is any string seperated by a newline combination.
   ## A line can be an empty string.
-  var i = 1
+  result = 1
+  var i = 0
   while i < s.len:
     case s[i]
     of '\c':
@@ -887,7 +888,7 @@ proc toHex*(x: BiggestInt, len: Positive): string {.noSideEffect,
     n = x
   result = newString(len)
   for j in countdown(len-1, 0):
-    result[j] = HexChars[n and 0xF]
+    result[j] = HexChars[int(n and 0xF)]
     n = n shr 4
     # handle negative overflow
     if n == 0 and x < 0: n = -1

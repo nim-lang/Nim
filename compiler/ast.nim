@@ -1006,6 +1006,12 @@ proc safeLen*(n: PNode): int {.inline.} =
   if n.kind in {nkNone..nkNilLit} or isNil(n.sons): result = 0
   else: result = len(n.sons)
 
+proc safeArrLen*(n: PNode): int {.inline.} =
+  ## works for array-like objects (strings passed as openArray in VM).
+  if n.kind in {nkStrLit..nkTripleStrLit}:result = len(n.strVal)
+  elif n.kind in {nkNone..nkFloat128Lit}: result = 0
+  else: result = len(n)
+
 proc add*(father, son: PNode) =
   assert son != nil
   if isNil(father.sons): father.sons = @[]
