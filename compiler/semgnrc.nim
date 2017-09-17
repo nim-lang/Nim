@@ -106,6 +106,10 @@ proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags,
   let ident = considerQuotedIdent(n)
   var s = searchInScopes(c, ident).skipAlias(n)
   if s == nil:
+    s = strTableGet(c.pureEnumFields, ident)
+    if s != nil and contains(c.ambiguousSymbols, s.id):
+      s = nil
+  if s == nil:
     if ident.id notin ctx.toMixin and withinMixin notin flags:
       errorUndeclaredIdentifier(c, n.info, ident.s)
   else:
