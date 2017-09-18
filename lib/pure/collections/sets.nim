@@ -766,23 +766,15 @@ proc incl*[A](s: var HashSet[A], other: OrderedSet[A]) =
   assert other.isValid, "The set `other` needs to be initialized."
   for item in other: incl(s, item)
 
-proc excl*[A](s: var OrderedSet[A], key: A) =
-  ## Excludes `key` from the set `s`.
-  ## This is a O(n) operation.
-  ##
-  ## This doesn't do anything if `key` is not found in `s`. Example:
-  ##
-  ## .. code-block::
-  ##   var s = toSet([2, 3, 6, 7])
-  ##   s.excl(2)
-  ##   s.excl(2)
-  ##   assert s.len == 3
+proc exclImpl[A](s: var OrderedSet[A], key: A) : bool {. inline .} =
   assert s.isValid, "The set needs to be initialized."
   var hc: Hash
   var i = rawGet(s, key, hc)
   var msk = high(s.data)
+  result = true
 
   if i >= 0:
+    result = false
     # Fix ordering
     if s.first == i:
       s.first = s.data[i].next
@@ -809,6 +801,31 @@ proc excl*[A](s: var OrderedSet[A], key: A) =
           return
         r = s.data[i].hcode and msk    # "home" location of key@i
       shallowCopy(s.data[j], s.data[i]) # data[i] will be marked EMPTY next loop
+
+proc missingOrExcl*[A](s: var OrderedSet[A], key: A): bool =
+  ## Excludes `key` in the set `s` and tells if `key` was removed from `s`. Efficiency: O(n).
+  ##
+  ## The difference with regards to the `excl() <#excl,TOrderedSet[A],A>`_ proc is
+  ## that this proc returns `true` if `key` was not present in `s`. Example:
+  ##
+  ## .. code-block::
+  ##  var s = toOrderedSet([2, 3, 6, 7])
+  ##  assert s.missingOrExcl(4) == true
+  ##  assert s.missingOrExcl(6) == false
+  exclImpl(s, key)
+
+
+proc excl*[A](s: var OrderedSet[A], key: A) =
+  ## Excludes `key` from the set `s`. Efficiency: O(n).
+  ##
+  ## This doesn't do anything if `key` is not found in `s`. Example:
+  ##
+  ## .. code-block::
+  ##   var s = toOrderedSet([2, 3, 6, 7])
+  ##   s.excl(2)
+  ##   s.excl(2)
+  ##   assert s.len == 3
+  discard exclImpl(s, key)
 
 proc containsOrIncl*[A](s: var OrderedSet[A], key: A): bool =
   ## Includes `key` in the set `s` and tells if `key` was added to `s`.
@@ -1097,6 +1114,11 @@ when isMainModule and not defined(release):
       var s = rightSize(i)
       if s <= i or mustRehash(s, i):
         echo "performance issue: rightSize() will not elide enlarge() at ", i
+
+    block missingOrExcl:
+      var s = toOrderedSet([2, 3, 6, 7])
+      assert s.missingOrExcl(4) == true
+      assert s.missingOrExcl(6) == false
 
     when not defined(testing):
       echo "Micro tests run successfully."
