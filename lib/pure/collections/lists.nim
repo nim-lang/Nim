@@ -43,6 +43,8 @@ type
 
   SomeLinkedCollection*[T] = SomeLinkedList[T] | SomeLinkedRing[T]
 
+  SomeLinkedNode*[T] = SinglyLinkedNode[T] | DoublyLinkedNode[T]
+
 {.deprecated: [TDoublyLinkedNode: DoublyLinkedNodeObj,
     PDoublyLinkedNode: DoublyLinkedNode,
     TSinglyLinkedNode: SinglyLinkedNodeObj,
@@ -108,7 +110,7 @@ iterator mitems*[T](L: var SomeLinkedRing[T]): var T =
   ## yields every value of `L` so that you can modify it.
   itemsRingImpl()
 
-iterator nodes*[T](L: SomeLinkedList[T]): SinglyLinkedNode[T] =
+iterator nodes*[T](L: SomeLinkedList[T]): SomeLinkedNode[T] =
   ## iterates over every node of `x`. Removing the current node from the
   ## list during traversal is supported.
   var it = L.head
@@ -117,7 +119,7 @@ iterator nodes*[T](L: SomeLinkedList[T]): SinglyLinkedNode[T] =
     yield it
     it = nxt
 
-iterator nodes*[T](L: SomeLinkedRing[T]): SinglyLinkedNode[T] =
+iterator nodes*[T](L: SomeLinkedRing[T]): SomeLinkedNode[T] =
   ## iterates over every node of `x`. Removing the current node from the
   ## list during traversal is supported.
   var it = L.head
@@ -136,7 +138,7 @@ proc `$`*[T](L: SomeLinkedCollection[T]): string =
     result.add($x.value)
   result.add("]")
 
-proc find*[T](L: SomeLinkedCollection[T], value: T): SinglyLinkedNode[T] =
+proc find*[T](L: SomeLinkedCollection[T], value: T): SomeLinkedNode[T] =
   ## searches in the list for a value. Returns nil if the value does not
   ## exist.
   for x in nodes(L):
