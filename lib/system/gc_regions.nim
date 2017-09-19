@@ -43,6 +43,7 @@ type
   ObjHeader = object
     typ: PNimType
     nextFinal: ptr ObjHeader # next object with finalizer
+    size: int
 
   Chunk = ptr BaseChunk
   BaseChunk = object
@@ -282,8 +283,9 @@ proc rawNewSeq(r: var MemRegion, typ: PNimType, size: int): pointer =
   var res = cast[ptr SeqHeader](alloc(r, size + sizeof(SeqHeader)))
   res.typ = typ
   res.region = addr(r)
-  res.size = size + sizeof(SeqHeader) - sizeof(int)
+  res.size = size + sizeof(SeqHeader)# - sizeof(int)
   result = res +! sizeof(SeqHeader)
+  cprintf("allocated A %ld %p\n", res.size, result)
 
 proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
   result = rawNewObj(tlRegion, typ, size)
@@ -301,6 +303,9 @@ proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
   zeroMem(result, size)
   cast[PGenericSeq](result).len = len
   cast[PGenericSeq](result).reserved = len
+  #cprintf("allocated %ld\n", size)
+  cprintf("allocated B %ld %p len: %ld\n", size, result, len)
+
 
 proc newStr(typ: PNimType, len: int; init: bool): pointer {.compilerRtl.} =
   let size = roundup(addInt(len, GenericSeqSize), MemAlign)
@@ -308,6 +313,7 @@ proc newStr(typ: PNimType, len: int; init: bool): pointer {.compilerRtl.} =
   if init: zeroMem(result, size)
   cast[PGenericSeq](result).len = 0
   cast[PGenericSeq](result).reserved = len
+  cprintf("allocated C %ld %p len: %ld\n", size, result, len)
 
 proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   result = rawNewObj(tlRegion, typ, size)
@@ -323,13 +329,22 @@ proc growObj(regionUnused: var MemRegion; old: pointer, newsize: int): pointer =
   sysAssert(sh.region != nil, "region is nil?!")
   result = rawNewSeq(sh.region[], typ,
                      roundup(newsize, MemAlign))
-  let elemSize = if typ.kind == tyString: 1 else: typ.base.size
-  let oldsize = cast[PGenericSeq](old).len*elemSize + GenericSeqSize
-  let oldcap = roundup(cast[PGenericSeq](old).space*elemSize + GenericSeqSize, MemAlign)
+  var oldsize, oldcap: int
+  if typ.kind == tyString:
+    oldsize = cast[PGenericSeq](old).len + GenericSeqSize
+    oldcap = roundup(cast[PGenericSeq](old).space + 1 + GenericSeqSize, MemAlign) + sizeof(SeqHeader)
+  else:
+    let elemSize = typ.base.size
+    oldsize = cast[PGenericSeq](old).len*elemSize + GenericSeqSize
+    oldcap = roundup(cast[PGenericSeq](old).space*elemSize + GenericSeqSize, MemAlign) + sizeof(SeqHeader)
+  #let elemSize = if typ.kind == tyString: 1 else: typ.base.size
+  #let oldsize = cast[PGenericSeq](old).len*elemSize + GenericSeqSize
+  #let oldcap = roundup(cast[PGenericSeq](old).space*elemSize + GenericSeqSize, MemAlign) + sizeof(SeqHeader)
   zeroMem(result +! oldsize, newsize-oldsize)
   copyMem(result, old, oldsize)
   if oldcap != sh.size:
-    cprintf("real %ld  computed: %ld kind: %s %ld\n", sh.size, oldcap, typ.name, elemSize)
+    cprintf("real %p %ld  computed: %ld kind: %s %ld %ld\n", old, sh.size, oldcap, typ.name, cast[PGenericSeq](old).space, cast[PGenericSeq](old).len)
+    quit 1
   sysAssert(oldcap == sh.size, "growObj")
   dealloc(sh.region[], sh, oldcap)
 
