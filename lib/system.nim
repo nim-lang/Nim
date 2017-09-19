@@ -718,7 +718,7 @@ proc len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.
   magic: "LengthOpenArray", noSideEffect.}
 proc len*(x: string): int {.magic: "LengthStr", noSideEffect.}
 proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.}
-proc len*[I, T](x: array[I, T]): int {.magic: "LengthArray", noSideEffect.}
+proc len*(x: (type array)|array): int {.magic: "LengthArray", noSideEffect.}
 proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
   ## returns the length of an array, an openarray, a sequence or a string.
   ## This is roughly the same as ``high(T)-low(T)+1``, but its resulting type is
@@ -1435,7 +1435,8 @@ when defined(nimdoc):
 
 elif defined(genode):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn,
-    importcpp: "genodeEnv->parent().exit(@)", header: "<base/env.h>".}
+    importcpp: "genodeEnv->parent().exit(@); Genode::sleep_forever()",
+    header: "<base/sleep.h>".}
 
 else:
   proc quit*(errorcode: int = QuitSuccess) {.
@@ -1909,7 +1910,7 @@ const
   NimMinor*: int = 17
     ## is the minor number of Nim's version.
 
-  NimPatch*: int = 2
+  NimPatch*: int = 3
     ## is the patch number of Nim's version.
 
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
@@ -3401,6 +3402,11 @@ template spliceImpl(s, a, L, b: untyped): untyped =
 when hasAlloc or defined(nimscript):
   proc `[]`*(s: string, x: Slice[int]): string {.inline.} =
     ## slice operation for strings.
+    ## returns the inclusive range [s[x.a], s[x.b]]:
+    ##
+    ## .. code-block:: nim
+    ##    var s = "abcdef"
+    ##    assert s[1..3] == "bcd"
     result = s.substr(x.a, x.b)
 
   proc `[]=`*(s: var string, x: Slice[int], b: string) =
@@ -3421,6 +3427,11 @@ when hasAlloc or defined(nimscript):
 
 proc `[]`*[Idx, T](a: array[Idx, T], x: Slice[int]): seq[T] =
   ## slice operation for arrays.
+  ## returns the inclusive range [a[x.a], a[x.b]]:
+  ##
+  ## .. code-block:: nim
+  ##    var a = [1,2,3,4]
+  ##    assert a[0..2] == @[1,2,3]
   when low(a) < 0:
     {.error: "Slicing for arrays with negative indices is unsupported.".}
   var L = x.b - x.a + 1
@@ -3455,6 +3466,11 @@ proc `[]=`*[Idx, T](a: var array[Idx, T], x: Slice[Idx], b: openArray[T]) =
 
 proc `[]`*[T](s: seq[T], x: Slice[int]): seq[T] =
   ## slice operation for sequences.
+  ## returns the inclusive range [s[x.a], s[x.b]]:
+  ##
+  ## .. code-block:: nim
+  ##    var s = @[1,2,3,4]
+  ##    assert s[0..2] == @[1,2,3]
   var a = x.a
   var L = x.b - a + 1
   newSeq(result, L)

@@ -516,10 +516,13 @@ proc open*(connection, user, password, database: string): DbConn {.
   ##
   ## See http://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING
   ## for more information.
-  ##
-  ## Note that the connection parameter is not used but exists to maintain
-  ## the nim db api.
-  result = pqsetdbLogin(nil, nil, nil, nil, database, user, password)
+  let
+    colonPos = connection.find(':')
+    host = if colonPos < 0: connection
+           else: substr(connection, 0, colonPos-1)
+    port = if colonPos < 0: ""
+           else: substr(connection, colonPos+1)
+  result = pqsetdbLogin(host, port, nil, nil, database, user, password)
   if pqStatus(result) != CONNECTION_OK: dbError(result) # result = nil
 
 proc setEncoding*(connection: DbConn, encoding: string): bool {.

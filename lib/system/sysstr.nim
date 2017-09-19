@@ -219,9 +219,10 @@ proc incrSeq(seq: PGenericSeq, elemSize: int): PGenericSeq {.compilerProc.} =
   #  seq[seq->len-1] = x;
   result = seq
   if result.len >= result.space:
-    result.reserved = resize(result.space)
-    result = cast[PGenericSeq](growObj(result, elemSize * result.reserved +
+    let r = resize(result.space)
+    result = cast[PGenericSeq](growObj(result, elemSize * r +
                                GenericSeqSize))
+    result.reserved = r
   inc(result.len)
 
 proc incrSeqV2(seq: PGenericSeq, elemSize: int): PGenericSeq {.compilerProc.} =

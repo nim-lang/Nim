@@ -570,8 +570,7 @@ order. The *names* of the fields also have to be identical.
 
 The assignment operator for tuples copies each component.
 The default assignment operator for objects copies each component. Overloading
-of the assignment operator for objects is not possible, but this will change
-in future versions of the compiler.
+of the assignment operator is described in `type-bound-operations-operator`_. 
 
 .. code-block:: nim
 

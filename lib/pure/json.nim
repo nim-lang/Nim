@@ -721,6 +721,16 @@ proc getElems*(n: JsonNode, default: seq[JsonNode] = @[]): seq[JsonNode] =
   if n.isNil or n.kind != JArray: return default
   else: return n.elems
 
+proc add*(father, child: JsonNode) =
+  ## Adds `child` to a JArray node `father`.
+  assert father.kind == JArray
+  father.elems.add(child)
+
+proc add*(obj: JsonNode, key: string, val: JsonNode) =
+  ## Sets a field from a `JObject`.
+  assert obj.kind == JObject
+  obj.fields[key] = val
+
 proc `%`*(s: string): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JString JsonNode`.
   new(result)
@@ -909,16 +919,6 @@ proc contains*(node: JsonNode, val: JsonNode): bool =
 proc existsKey*(node: JsonNode, key: string): bool {.deprecated.} = node.hasKey(key)
   ## Deprecated for `hasKey`
 
-proc add*(father, child: JsonNode) =
-  ## Adds `child` to a JArray node `father`.
-  assert father.kind == JArray
-  father.elems.add(child)
-
-proc add*(obj: JsonNode, key: string, val: JsonNode) =
-  ## Sets a field from a `JObject`.
-  assert obj.kind == JObject
-  obj.fields[key] = val
-
 proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
   ## Sets a field from a `JObject`.
   assert(obj.kind == JObject)
@@ -996,24 +996,17 @@ proc nl(s: var string, ml: bool) =
 proc escapeJson*(s: string; result: var string) =
   ## Converts a string `s` to its JSON representation.
   ## Appends to ``result``.
-  const
-    HexChars = "0123456789ABCDEF"
   result.add("\"")
-  for x in runes(s):
-    var r = int(x)
-    if r >= 32 and r <= 126:
-      var c = chr(r)
-      case c
-      of '"': result.add("\\\"")
-      of '\\': result.add("\\\\")
-      else: result.add(c)
-    else:
-      # toHex inlined for more speed (saves stupid string allocations):
-      result.add("\\u0000")
-      let start = result.len - 4
-      for j in countdown(3, 0):
-        result[j+start] = HexChars[r and 0xF]
-        r = r shr 4
+  for c in s:
+    case c
+    of '\L': result.add("\\n")
+    of '\b': result.add("\\b")
+    of '\f': result.add("\\f")
+    of '\t': result.add("\\t")
+    of '\r': result.add("\\r")
+    of '"': result.add("\\\"")
+    of '\\': result.add("\\\\")
+    else: result.add(c)
   result.add("\"")
 
 proc escapeJson*(s: string): string =
@@ -1284,7 +1277,7 @@ else:
         result.add(x[i].convertObject())
     of JObject:
       result = newJObject()
-      asm """for (property in `x`) {
+      asm """for (var property in `x`) {
         if (`x`.hasOwnProperty(property)) {
       """
       var nimProperty: cstring
@@ -1925,7 +1918,7 @@ when isMainModule:
     var parsed2 = parseFile("tests/testdata/jsontest2.json")
     doAssert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
 
-  doAssert escapeJson("\10FoobarÄ") == "\"\\u000AFoobar\\u00C4\""
+  doAssert escapeJson("\10Foo🎃barÄ") == "\"\\nFoo🎃barÄ\""
 
   # Test with extra data
   when not defined(js):
