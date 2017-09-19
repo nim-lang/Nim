@@ -123,9 +123,9 @@ proc map*[T](self: Option[T], callback: proc (input: T)) =
 
 proc map*[T, R](self: Option[T], callback: proc (input: T): R): Option[R] =
   ## Applies a callback to the value in this Option and returns an option
-  ## containing the new value. If this option is None, None will be returned
+  ## containing the new value. If this option is None, None will be returned.
   if self.has:
-    some[R]( callback(self.val) )
+    some[R](callback(self.val))
   else:
     none(R)
 
@@ -145,13 +145,23 @@ proc `==`*(a, b: Option): bool =
   (a.has and b.has and a.val == b.val) or (not a.has and not b.has)
 
 
-proc `$`*[T]( self: Option[T] ): string =
+proc `$`*[T](self: Option[T]): string =
   ## Returns the contents of this option or `otherwise` if the option is none.
   if self.has:
     "Some(" & $self.val & ")"
   else:
     "None[" & T.name & "]"
 
+proc `>>=`*[T](self: Option[T], callback: proc (input: T): Option[T]): Option[T] =
+  ## (AKA "bind") Applies a callback to the value in this Option and returns an
+  ## option containing the new value. If this option is None, None will be
+  ## returned.  Similar to ``map``, with the difference that the callback
+  ## returns an Option, not a raw value. This allows multiple procs with a
+  ## signature of ``T -> Option[T]`` to be chained together.
+  if self.has:
+    callback(self.val)
+  else:
+    none(T)
 
 when isMainModule:
   import unittest, sequtils
@@ -220,3 +230,12 @@ when isMainModule:
       check( some(456).filter(proc (v: int): bool = v == 123).isNone )
       check( intNone.filter(proc (v: int): bool = check false).isNone )
 
+    test "bind":
+      proc addOneIfNotZero(v: int): Option[int] =
+        if v != 0:
+          result = some(v + 1)
+        else:
+          result = none(int)
+      check( (some(1) >>= addOneIfNotZero) == some(2) )
+      check( (some(0) >>= addOneIfNotZero) == none(int) )
+      check( (some(1) >>= addOneIfNotZero >>= addOneIfNotZero) == some(3) )
