@@ -152,16 +152,16 @@ proc `$`*[T](self: Option[T]): string =
   else:
     "None[" & T.name & "]"
 
-proc `>>=`*[T](self: Option[T], callback: proc (input: T): Option[T]): Option[T] =
+proc `>>=`*[A, B](self: Option[A], callback: proc (input: A): Option[B]): Option[B] =
   ## (AKA "bind") Applies a callback to the value in this Option and returns an
   ## option containing the new value. If this option is None, None will be
   ## returned.  Similar to ``map``, with the difference that the callback
   ## returns an Option, not a raw value. This allows multiple procs with a
-  ## signature of ``T -> Option[T]`` to be chained together.
+  ## signature of ``A -> Option[B]`` (including A = B) to be chained together.
   if self.has:
     callback(self.val)
   else:
-    none(T)
+    none(B)
 
 when isMainModule:
   import unittest, sequtils
@@ -239,3 +239,16 @@ when isMainModule:
       check( (some(1) >>= addOneIfNotZero) == some(2) )
       check( (some(0) >>= addOneIfNotZero) == none(int) )
       check( (some(1) >>= addOneIfNotZero >>= addOneIfNotZero) == some(3) )
+      proc maybeToString(v: int): Option[string] =
+        if v != 0:
+          result = some($v)
+        else:
+          result = none(string)
+      check( (some(1) >>= maybeToString) == some("1") )
+      proc maybeExclaim(v: string): Option[string] =
+        if v != "":
+          result = some v & "!"
+        else:
+          result = none(string)
+      check( (some(1) >>= maybeToString) >>= maybeExclaim == some("1!") )
+      check( (some(0) >>= maybeToString) >>= maybeExclaim == none(string) )
