@@ -1,0 +1,2 @@
+--gc:regions
+--define:nimTypeNames
