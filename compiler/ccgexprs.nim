@@ -203,7 +203,7 @@ proc optAsgnLoc(a: TLoc, t: PType, field: Rope): TLoc =
   assert field != nil
   result.k = locField
   result.storage = if a.storage == OnHeapNew: OnHeap else: a.storage
-  result.t = t
+  result.lode = lodeTyp t
   result.r = rdLoc(a) & "." & field
 
 proc genOptAsgnTuple(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
@@ -407,11 +407,11 @@ proc putLocIntoDest(p: BProc, d: var TLoc, s: TLoc) =
   else:
     d = s # ``d`` is free, so fill it with ``s``
 
-proc putDataIntoDest(p: BProc, d: var TLoc, t: PType, r: Rope) =
+proc putDataIntoDest(p: BProc, d: var TLoc, n: PNode, r: Rope) =
   var a: TLoc
   if d.k != locNone:
     # need to generate an assignment here
-    initLoc(a, locData, t, OnStatic)
+    initLoc(a, locData, n, OnStatic)
     a.r = r
     if lfNoDeepCopy in d.flags: genAssignment(p, d, a, {})
     else: genAssignment(p, d, a, {needToCopy})
@@ -419,14 +419,14 @@ proc putDataIntoDest(p: BProc, d: var TLoc, t: PType, r: Rope) =
     # we cannot call initLoc() here as that would overwrite
     # the flags field!
     d.k = locData
-    d.t = t
+    d.lode = n
     d.r = r
 
-proc putIntoDest(p: BProc, d: var TLoc, t: PType, r: Rope; s=OnUnknown) =
+proc putIntoDest(p: BProc, d: var TLoc, n: PNode, r: Rope; s=OnUnknown) =
   var a: TLoc
   if d.k != locNone:
     # need to generate an assignment here
-    initLoc(a, locExpr, t, s)
+    initLoc(a, locExpr, n, s)
     a.r = r
     if lfNoDeepCopy in d.flags: genAssignment(p, d, a, {})
     else: genAssignment(p, d, a, {needToCopy})
@@ -434,7 +434,7 @@ proc putIntoDest(p: BProc, d: var TLoc, t: PType, r: Rope; s=OnUnknown) =
     # we cannot call initLoc() here as that would overwrite
     # the flags field!
     d.k = locExpr
-    d.t = t
+    d.lode = n
     d.r = r
 
 proc binaryStmt(p: BProc, e: PNode, d: var TLoc, frmt: string) =
@@ -456,7 +456,7 @@ proc binaryExpr(p: BProc, e: PNode, d: var TLoc, frmt: string) =
   assert(e.sons[2].typ != nil)
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], b)
-  putIntoDest(p, d, e.typ, ropecg(p.module, frmt, [rdLoc(a), rdLoc(b)]))
+  putIntoDest(p, d, e, ropecg(p.module, frmt, [rdLoc(a), rdLoc(b)]))
 
 proc binaryExprChar(p: BProc, e: PNode, d: var TLoc, frmt: string) =
   var a, b: TLoc
@@ -464,17 +464,17 @@ proc binaryExprChar(p: BProc, e: PNode, d: var TLoc, frmt: string) =
   assert(e.sons[2].typ != nil)
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], b)
-  putIntoDest(p, d, e.typ, ropecg(p.module, frmt, [a.rdCharLoc, b.rdCharLoc]))
+  putIntoDest(p, d, e, ropecg(p.module, frmt, [a.rdCharLoc, b.rdCharLoc]))
 
 proc unaryExpr(p: BProc, e: PNode, d: var TLoc, frmt: string) =
   var a: TLoc
   initLocExpr(p, e.sons[1], a)
-  putIntoDest(p, d, e.typ, ropecg(p.module, frmt, [rdLoc(a)]))
+  putIntoDest(p, d, e, ropecg(p.module, frmt, [rdLoc(a)]))
 
 proc unaryExprChar(p: BProc, e: PNode, d: var TLoc, frmt: string) =
   var a: TLoc
   initLocExpr(p, e.sons[1], a)
-  putIntoDest(p, d, e.typ, ropecg(p.module, frmt, [rdCharLoc(a)]))
+  putIntoDest(p, d, e, ropecg(p.module, frmt, [rdCharLoc(a)]))
 
 proc binaryArithOverflowRaw(p: BProc, t: PType, a, b: TLoc;
                             frmt: string): Rope =
@@ -514,11 +514,11 @@ proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   let t = e.typ.skipTypes(abstractRange)
   if optOverflowCheck notin p.options:
     let res = opr[m] % [getTypeDesc(p.module, e.typ), rdLoc(a), rdLoc(b)]
-    putIntoDest(p, d, e.typ, res)
+    putIntoDest(p, d, e, res)
   else:
     let res = binaryArithOverflowRaw(p, t, a, b,
                                    if t.kind == tyInt64: prc64[m] else: prc[m])
-    putIntoDest(p, d, e.typ, "($#)($#)" % [getTypeDesc(p.module, e.typ), res])
+    putIntoDest(p, d, e, "($#)($#)" % [getTypeDesc(p.module, e.typ), res])
 
 proc unaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   const
@@ -535,7 +535,7 @@ proc unaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   if optOverflowCheck in p.options:
     linefmt(p, cpsStmts, "if ($1 == $2) #raiseOverflow();$n",
             rdLoc(a), intLiteral(firstOrd(t)))
-  putIntoDest(p, d, e.typ, opr[m] % [rdLoc(a), rope(getSize(t) * 8)])
+  putIntoDest(p, d, e, opr[m] % [rdLoc(a), rope(getSize(t) * 8)])
 
 proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   const
@@ -593,7 +593,7 @@ proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   # BUGFIX: cannot use result-type here, as it may be a boolean
   s = max(getSize(a.t), getSize(b.t)) * 8
   k = getSize(a.t) * 8
-  putIntoDest(p, d, e.typ,
+  putIntoDest(p, d, e,
               binArithTab[op] % [rdLoc(a), rdLoc(b), rope(s),
                                       getSimpleTypeDesc(p.module, e.typ), rope(k)])
 
@@ -604,10 +604,10 @@ proc genEqProc(p: BProc, e: PNode, d: var TLoc) =
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], b)
   if a.t.skipTypes(abstractInst).callConv == ccClosure:
-    putIntoDest(p, d, e.typ,
+    putIntoDest(p, d, e,
       "($1.ClP_0 == $2.ClP_0 && $1.ClE_0 == $2.ClE_0)" % [rdLoc(a), rdLoc(b)])
   else:
-    putIntoDest(p, d, e.typ, "($1 == $2)" % [rdLoc(a), rdLoc(b)])
+    putIntoDest(p, d, e, "($1 == $2)" % [rdLoc(a), rdLoc(b)])
 
 proc genIsNil(p: BProc, e: PNode, d: var TLoc) =
   let t = skipTypes(e.sons[1].typ, abstractRange)
@@ -644,7 +644,7 @@ proc unaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   assert(e.sons[1].typ != nil)
   initLocExpr(p, e.sons[1], a)
   t = skipTypes(e.typ, abstractRange)
-  putIntoDest(p, d, e.typ,
+  putIntoDest(p, d, e,
               unArithTab[op] % [rdLoc(a), rope(getSize(t) * 8),
                 getSimpleTypeDesc(p.module, e.typ)])
 
@@ -684,7 +684,7 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
         d.storage = OnUnknown
         if tfVarIsPtr notin typ.flags and p.module.compileToCpp and
             e.kind == nkHiddenDeref:
-          putIntoDest(p, d, e.typ, rdLoc(a), a.storage)
+          putIntoDest(p, d, e, rdLoc(a), a.storage)
           return
       of tyPtr:
         d.storage = OnUnknown         # BUGFIX!
@@ -693,7 +693,7 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
     elif p.module.compileToCpp:
       if typ.kind == tyVar and tfVarIsPtr notin typ.flags and
            e.kind == nkHiddenDeref:
-        putIntoDest(p, d, e.typ, rdLoc(a), a.storage)
+        putIntoDest(p, d, e, rdLoc(a), a.storage)
         return
     if enforceDeref and mt == ctPtrToArray:
       # we lie about the type for better C interop: 'ptr array[3,T]' is
@@ -701,23 +701,23 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
       # See tmissingderef. So we get rid of the deref instead. The codegen
       # ends up using 'memcpy' for the array assignment,
       # so the '&' and '*' cancel out:
-      putIntoDest(p, d, a.t.sons[0], rdLoc(a), a.storage)
+      putIntoDest(p, d, lodeTyp(a.t.sons[0]), rdLoc(a), a.storage)
     else:
-      putIntoDest(p, d, e.typ, "(*$1)" % [rdLoc(a)], a.storage)
+      putIntoDest(p, d, e, "(*$1)" % [rdLoc(a)], a.storage)
 
 proc genAddr(p: BProc, e: PNode, d: var TLoc) =
   # careful  'addr(myptrToArray)' needs to get the ampersand:
   if e.sons[0].typ.skipTypes(abstractInst).kind in {tyRef, tyPtr}:
     var a: TLoc
     initLocExpr(p, e.sons[0], a)
-    putIntoDest(p, d, e.typ, "&" & a.r, a.storage)
+    putIntoDest(p, d, e, "&" & a.r, a.storage)
     #Message(e.info, warnUser, "HERE NEW &")
   elif mapType(e.sons[0].typ) == ctArray or isCppRef(p, e.sons[0].typ):
     expr(p, e.sons[0], d)
   else:
     var a: TLoc
     initLocExpr(p, e.sons[0], a)
-    putIntoDest(p, d, e.typ, addrLoc(a), a.storage)
+    putIntoDest(p, d, e, addrLoc(a), a.storage)
 
 template inheritLocation(d: var TLoc, a: TLoc) =
   if d.k == locNone: d.storage = if a.storage == OnHeapNew: OnHeap else: a.storage
@@ -742,7 +742,7 @@ proc genTupleElem(p: BProc, e: PNode, d: var TLoc) =
   of nkIntLit..nkUInt64Lit: i = int(e.sons[1].intVal)
   else: internalError(e.info, "genTupleElem")
   addf(r, ".Field$1", [rope(i)])
-  putIntoDest(p, d, tupType.sons[i], r, a.storage)
+  putIntoDest(p, d, e, r, a.storage)
 
 proc lookupFieldAgain(p: BProc, ty: PType; field: PSym; r: var Rope;
                       resTyp: ptr PType = nil): PSym =
@@ -769,14 +769,14 @@ proc genRecordField(p: BProc, e: PNode, d: var TLoc) =
     # we found a unique tuple type which lacks field information
     # so we use Field$i
     addf(r, ".Field$1", [rope(f.position)])
-    putIntoDest(p, d, f.typ, r, a.storage)
+    putIntoDest(p, d, e, r, a.storage)
   else:
     var rtyp: PType
     let field = lookupFieldAgain(p, ty, f, r, addr rtyp)
     if field.loc.r == nil and rtyp != nil: fillObjectFields(p.module, rtyp)
     if field.loc.r == nil: internalError(e.info, "genRecordField 3 " & typeToString(ty))
     addf(r, ".$1", [field.loc.r])
-    putIntoDest(p, d, field.typ, r, a.storage)
+    putIntoDest(p, d, e, r, a.storage)
 
 proc genInExprAux(p: BProc, e: PNode, a, b, d: var TLoc)
 
@@ -791,11 +791,11 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym;
     if op.magic == mNot: it = it.sons[1]
     let disc = it.sons[2].skipConv
     assert(disc.kind == nkSym)
-    initLoc(test, locNone, it.typ, OnStack)
+    initLoc(test, locNone, it, OnStack)
     initLocExpr(p, it.sons[1], u)
     var o = obj
     let d = lookupFieldAgain(p, origTy, disc.sym, o)
-    initLoc(v, locExpr, d.typ, OnUnknown)
+    initLoc(v, locExpr, disc, OnUnknown)
     v.r = o
     v.r.add(".")
     v.r.add(d.loc.r)
@@ -826,11 +826,11 @@ proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
       internalError(e.info, "genCheckedRecordField") # generate the checks:
     genFieldCheck(p, e, r, field, ty)
     add(r, rfmt(nil, ".$1", field.loc.r))
-    putIntoDest(p, d, field.typ, r, a.storage)
+    putIntoDest(p, d, e.sons[0], r, a.storage)
   else:
     genRecordField(p, e.sons[0], d)
 
-proc genArrayElem(p: BProc, x, y: PNode, d: var TLoc) =
+proc genArrayElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   var a, b: TLoc
   initLocExpr(p, x, a)
   initLocExpr(p, y, b)
@@ -852,19 +852,19 @@ proc genArrayElem(p: BProc, x, y: PNode, d: var TLoc) =
       if idx < firstOrd(ty) or idx > lastOrd(ty):
         localError(x.info, errIndexOutOfBounds)
   d.inheritLocation(a)
-  putIntoDest(p, d, elemType(skipTypes(ty, abstractVar)),
+  putIntoDest(p, d, n,
               rfmt(nil, "$1[($2)- $3]", rdLoc(a), rdCharLoc(b), first), a.storage)
 
-proc genCStringElem(p: BProc, x, y: PNode, d: var TLoc) =
+proc genCStringElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   var a, b: TLoc
   initLocExpr(p, x, a)
   initLocExpr(p, y, b)
   var ty = skipTypes(a.t, abstractVarRange)
   inheritLocation(d, a)
-  putIntoDest(p, d, elemType(skipTypes(ty, abstractVar)),
+  putIntoDest(p, d, n,
               rfmt(nil, "$1[$2]", rdLoc(a), rdCharLoc(b)), a.storage)
 
-proc genOpenArrayElem(p: BProc, x, y: PNode, d: var TLoc) =
+proc genOpenArrayElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   var a, b: TLoc
   initLocExpr(p, x, a)
   initLocExpr(p, y, b) # emit range check:
@@ -872,10 +872,10 @@ proc genOpenArrayElem(p: BProc, x, y: PNode, d: var TLoc) =
     linefmt(p, cpsStmts, "if ((NU)($1) >= (NU)($2Len_0)) #raiseIndexError();$n",
             rdLoc(b), rdLoc(a)) # BUGFIX: ``>=`` and not ``>``!
   inheritLocation(d, a)
-  putIntoDest(p, d, elemType(skipTypes(a.t, abstractVar)),
+  putIntoDest(p, d, n,
               rfmt(nil, "$1[$2]", rdLoc(a), rdCharLoc(b)), a.storage)
 
-proc genSeqElem(p: BProc, x, y: PNode, d: var TLoc) =
+proc genSeqElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   var a, b: TLoc
   initLocExpr(p, x, a)
   initLocExpr(p, y, b)
@@ -894,17 +894,17 @@ proc genSeqElem(p: BProc, x, y: PNode, d: var TLoc) =
   if d.k == locNone: d.storage = OnHeap
   if skipTypes(a.t, abstractVar).kind in {tyRef, tyPtr}:
     a.r = rfmt(nil, "(*$1)", a.r)
-  putIntoDest(p, d, elemType(skipTypes(a.t, abstractVar)),
+  putIntoDest(p, d, n,
               rfmt(nil, "$1->data[$2]", rdLoc(a), rdCharLoc(b)), a.storage)
 
 proc genBracketExpr(p: BProc; n: PNode; d: var TLoc) =
   var ty = skipTypes(n.sons[0].typ, abstractVarRange + tyUserTypeClasses)
   if ty.kind in {tyRef, tyPtr}: ty = skipTypes(ty.lastSon, abstractVarRange)
   case ty.kind
-  of tyArray: genArrayElem(p, n.sons[0], n.sons[1], d)
-  of tyOpenArray, tyVarargs: genOpenArrayElem(p, n.sons[0], n.sons[1], d)
-  of tySequence, tyString: genSeqElem(p, n.sons[0], n.sons[1], d)
-  of tyCString: genCStringElem(p, n.sons[0], n.sons[1], d)
+  of tyArray: genArrayElem(p, n, n.sons[0], n.sons[1], d)
+  of tyOpenArray, tyVarargs: genOpenArrayElem(p, n, n.sons[0], n.sons[1], d)
+  of tySequence, tyString: genSeqElem(p, n, n.sons[0], n.sons[1], d)
+  of tyCString: genCStringElem(p, n, n.sons[0], n.sons[1], d)
   of tyTuple: genTupleElem(p, n, d)
   else: internalError(n.info, "expr(nkBracketExpr, " & $ty.kind & ')')
 
@@ -1070,7 +1070,7 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
       getTypeDesc(p.module, bt)])
   #if bt != b.t:
   #  echo "YES ", e.info, " new: ", typeToString(bt), " old: ", typeToString(b.t)
-  initLoc(dest, locExpr, bt, OnHeap)
+  initLoc(dest, locExpr, e.sons[2], OnHeap)
   getIntTemp(p, tmpL)
   lineCg(p, cpsStmts, "$1 = $2->$3++;$n", tmpL.r, rdLoc(a), lenField(p))
   dest.r = rfmt(nil, "$1->data[$2]", rdLoc(a), tmpL.r)
@@ -1087,7 +1087,7 @@ proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
   var sizeExpr = sizeExpr
   let typ = a.t
   var b: TLoc
-  initLoc(b, locExpr, a.t, OnHeapNew)
+  initLoc(b, locExpr, a.lode, OnHeapNew)
   let refType = typ.skipTypes(abstractInst)
   assert refType.kind == tyRef
   let bt = refType.lastSon
@@ -1127,7 +1127,7 @@ proc genNewSeqAux(p: BProc, dest: TLoc, length: Rope) =
   let args = [getTypeDesc(p.module, seqtype),
               genTypeInfo(p.module, seqtype), length]
   var call: TLoc
-  initLoc(call, locExpr, dest.t, OnHeapNew)
+  initLoc(call, locExpr, dest.lode, OnHeapNew)
   if dest.storage in {OnHeap, OnHeapNew} and usesNativeGC():
     if canFormAcycle(dest.t):
       linefmt(p, cpsStmts, "if ($1) { #nimGCunrefRC1($1); $1 = NIM_NIL; }$n", dest.rdLoc)
@@ -1150,7 +1150,7 @@ proc genNewSeqOfCap(p: BProc; e: PNode; d: var TLoc) =
   let seqtype = skipTypes(e.typ, abstractVarRange)
   var a: TLoc
   initLocExpr(p, e.sons[1], a)
-  putIntoDest(p, d, e.typ, ropecg(p.module,
+  putIntoDest(p, d, e, ropecg(p.module,
               "($1)#nimNewSeqOfCap($2, $3)", [
               getTypeDesc(p.module, seqtype),
               genTypeInfo(p.module, seqtype), a.rdLoc]))
@@ -1163,7 +1163,7 @@ proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
     let t = n.typ
     discard getTypeDesc(p.module, t) # so that any fields are initialized
     let id = nodeTableTestOrSet(p.module.dataCache, n, p.module.labels)
-    fillLoc(d, locData, t, p.module.tmpBase & rope(id), OnStatic)
+    fillLoc(d, locData, n, p.module.tmpBase & rope(id), OnStatic)
     if id == p.module.labels:
       # expression not found in the cache:
       inc(p.module.labels)
@@ -1205,7 +1205,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     add(tmp2.r, ".")
     add(tmp2.r, field.loc.r)
     tmp2.k = locTemp
-    tmp2.t = field.loc.t
+    tmp2.lode = it.sons[1]
     tmp2.storage = if isRef: OnHeap else: OnStack
     expr(p, it.sons[1], tmp2)
 
@@ -1214,37 +1214,37 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   else:
     genAssignment(p, d, tmp, {})
 
-proc genSeqConstr(p: BProc, t: PNode, d: var TLoc) =
+proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
   var arr: TLoc
   if d.k == locNone:
-    getTemp(p, t.typ, d)
+    getTemp(p, n.typ, d)
   # generate call to newSeq before adding the elements per hand:
-  genNewSeqAux(p, d, intLiteral(sonsLen(t)))
-  for i in countup(0, sonsLen(t) - 1):
-    initLoc(arr, locExpr, elemType(skipTypes(t.typ, typedescInst)), OnHeap)
+  genNewSeqAux(p, d, intLiteral(sonsLen(n)))
+  for i in countup(0, sonsLen(n) - 1):
+    initLoc(arr, locExpr, n[i], OnHeap)
     arr.r = rfmt(nil, "$1->data[$2]", rdLoc(d), intLiteral(i))
     arr.storage = OnHeap            # we know that sequences are on the heap
-    expr(p, t.sons[i], arr)
-  gcUsage(t)
+    expr(p, n[i], arr)
+  gcUsage(n)
 
-proc genArrToSeq(p: BProc, t: PNode, d: var TLoc) =
+proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
   var elem, a, arr: TLoc
-  if t.sons[1].kind == nkBracket:
-    t.sons[1].typ = t.typ
-    genSeqConstr(p, t.sons[1], d)
+  if n.sons[1].kind == nkBracket:
+    n.sons[1].typ = n.typ
+    genSeqConstr(p, n.sons[1], d)
     return
   if d.k == locNone:
-    getTemp(p, t.typ, d)
+    getTemp(p, n.typ, d)
   # generate call to newSeq before adding the elements per hand:
-  var L = int(lengthOrd(t.sons[1].typ))
+  var L = int(lengthOrd(n.sons[1].typ))
 
   genNewSeqAux(p, d, intLiteral(L))
-  initLocExpr(p, t.sons[1], a)
+  initLocExpr(p, n.sons[1], a)
   for i in countup(0, L - 1):
-    initLoc(elem, locExpr, elemType(skipTypes(t.typ, abstractInst)), OnHeap)
+    initLoc(elem, locExpr, lodeTyp elemType(skipTypes(n.typ, abstractInst)), OnHeap)
     elem.r = rfmt(nil, "$1->data[$2]", rdLoc(d), intLiteral(i))
     elem.storage = OnHeap # we know that sequences are on the heap
-    initLoc(arr, locExpr, elemType(skipTypes(t.sons[1].typ, abstractInst)), a.storage)
+    initLoc(arr, locExpr, lodeTyp elemType(skipTypes(n.sons[1].typ, abstractInst)), a.storage)
     arr.r = rfmt(nil, "$1[$2]", rdLoc(a), intLiteral(i))
     genAssignment(p, elem, arr, {afDestIsNil, needToCopy})
 
@@ -1256,7 +1256,7 @@ proc genNewFinalize(p: BProc, e: PNode) =
   refType = skipTypes(e.sons[1].typ, abstractVarRange)
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], f)
-  initLoc(b, locExpr, a.t, OnHeapNew)
+  initLoc(b, locExpr, a.lode, OnHeapNew)
   ti = genTypeInfo(p.module, refType)
   addf(p.module.s[cfsTypeInit3], "$1->finalizer = (void*)$2;$n", [ti, rdLoc(f)])
   b.r = ropecg(p.module, "($1) #newObj($2, sizeof($3))", [
@@ -1308,7 +1308,7 @@ proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
     r = rfmt(p.module, "(($1) && ($2))", nilCheck, genOfHelper(p, dest, r))
   else:
     r = rfmt(p.module, "($1)", genOfHelper(p, dest, r))
-  putIntoDest(p, d, getSysType(tyBool), r, a.storage)
+  putIntoDest(p, d, x, r, a.storage)
 
 proc genOf(p: BProc, n: PNode, d: var TLoc) =
   genOf(p, n.sons[1], n.sons[2].typ, d)
@@ -1319,53 +1319,53 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
   var t = skipTypes(e.sons[1].typ, abstractVarRange)
   case t.kind
   of tyInt..tyInt64, tyUInt..tyUInt64:
-    putIntoDest(p, d, e.typ,
+    putIntoDest(p, d, e,
                 ropecg(p.module, "#reprInt((NI64)$1)", [rdLoc(a)]), a.storage)
   of tyFloat..tyFloat128:
-    putIntoDest(p, d, e.typ, ropecg(p.module, "#reprFloat($1)", [rdLoc(a)]), a.storage)
+    putIntoDest(p, d, e, ropecg(p.module, "#reprFloat($1)", [rdLoc(a)]), a.storage)
   of tyBool:
-    putIntoDest(p, d, e.typ, ropecg(p.module, "#reprBool($1)", [rdLoc(a)]), a.storage)
+    putIntoDest(p, d, e, ropecg(p.module, "#reprBool($1)", [rdLoc(a)]), a.storage)
   of tyChar:
-    putIntoDest(p, d, e.typ, ropecg(p.module, "#reprChar($1)", [rdLoc(a)]), a.storage)
+    putIntoDest(p, d, e, ropecg(p.module, "#reprChar($1)", [rdLoc(a)]), a.storage)
   of tyEnum, tyOrdinal:
-    putIntoDest(p, d, e.typ,
+    putIntoDest(p, d, e,
                 ropecg(p.module, "#reprEnum((NI)$1, $2)", [
                 rdLoc(a), genTypeInfo(p.module, t)]), a.storage)
   of tyString:
-    putIntoDest(p, d, e.typ, ropecg(p.module, "#reprStr($1)", [rdLoc(a)]), a.storage)
+    putIntoDest(p, d, e, ropecg(p.module, "#reprStr($1)", [rdLoc(a)]), a.storage)
   of tySet:
-    putIntoDest(p, d, e.typ, ropecg(p.module, "#reprSet($1, $2)", [
+    putIntoDest(p, d, e, ropecg(p.module, "#reprSet($1, $2)", [
                 addrLoc(a), genTypeInfo(p.module, t)]), a.storage)
   of tyOpenArray, tyVarargs:
     var b: TLoc
     case a.t.kind
     of tyOpenArray, tyVarargs:
-      putIntoDest(p, b, e.typ, "$1, $1Len_0" % [rdLoc(a)], a.storage)
+      putIntoDest(p, b, e, "$1, $1Len_0" % [rdLoc(a)], a.storage)
     of tyString, tySequence:
-      putIntoDest(p, b, e.typ,
+      putIntoDest(p, b, e,
                   "$1->data, $1->$2" % [rdLoc(a), lenField(p)], a.storage)
     of tyArray:
-      putIntoDest(p, b, e.typ,
+      putIntoDest(p, b, e,
                   "$1, $2" % [rdLoc(a), rope(lengthOrd(a.t))], a.storage)
     else: internalError(e.sons[0].info, "genRepr()")
-    putIntoDest(p, d, e.typ,
+    putIntoDest(p, d, e,
         ropecg(p.module, "#reprOpenArray($1, $2)", [rdLoc(b),
         genTypeInfo(p.module, elemType(t))]), a.storage)
   of tyCString, tyArray, tyRef, tyPtr, tyPointer, tyNil, tySequence:
-    putIntoDest(p, d, e.typ,
+    putIntoDest(p, d, e,
                 ropecg(p.module, "#reprAny($1, $2)", [
                 rdLoc(a), genTypeInfo(p.module, t)]), a.storage)
   of tyEmpty, tyVoid:
     localError(e.info, "'repr' doesn't support 'void' type")
   else:
-    putIntoDest(p, d, e.typ, ropecg(p.module, "#reprAny($1, $2)",
-                                   [addrLoc(a), genTypeInfo(p.module, t)]),
-                                   a.storage)
+    putIntoDest(p, d, e, ropecg(p.module, "#reprAny($1, $2)",
+                              [addrLoc(a), genTypeInfo(p.module, t)]),
+                               a.storage)
   gcUsage(e)
 
 proc genGetTypeInfo(p: BProc, e: PNode, d: var TLoc) =
   let t = e.sons[1].typ
-  putIntoDest(p, d, e.typ, genTypeInfo(p.module, t))
+  putIntoDest(p, d, e, genTypeInfo(p.module, t))
 
 proc genDollar(p: BProc, n: PNode, d: var TLoc, frmt: string) =
   var a: TLoc
@@ -1410,11 +1410,11 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       else:
         frmt = "$1 = ($2 ? $2->len : 0);$n"
     lineCg(p, cpsStmts, frmt, tmp.r, rdLoc(a))
-    putIntoDest(p, d, e.typ, tmp.r)
+    putIntoDest(p, d, e, tmp.r)
   of tyArray:
     # YYY: length(sideeffect) is optimized away incorrectly?
-    if op == mHigh: putIntoDest(p, d, e.typ, rope(lastOrd(typ)))
-    else: putIntoDest(p, d, e.typ, rope(lengthOrd(typ)))
+    if op == mHigh: putIntoDest(p, d, e, rope(lastOrd(typ)))
+    else: putIntoDest(p, d, e, rope(lengthOrd(typ)))
   else: internalError(e.info, "genArrayLen()")
 
 proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
@@ -1472,7 +1472,7 @@ proc fewCmps(s: PNode): bool =
     result = sonsLen(s) <= 8  # 8 seems to be a good value
 
 proc binaryExprIn(p: BProc, e: PNode, a, b, d: var TLoc, frmt: string) =
-  putIntoDest(p, d, e.typ, frmt % [rdLoc(a), rdSetElemLoc(b, a.t)])
+  putIntoDest(p, d, e, frmt % [rdLoc(a), rdSetElemLoc(b, a.t)])
 
 proc genInExprAux(p: BProc, e: PNode, a, b, d: var TLoc) =
   case int(getSize(skipTypes(e.sons[1].typ, abstractVar)))
@@ -1501,7 +1501,7 @@ proc genInOp(p: BProc, e: PNode, d: var TLoc) =
              else:
                e.sons[2]
     initLocExpr(p, ea, a)
-    initLoc(b, locExpr, e.typ, OnUnknown)
+    initLoc(b, locExpr, e, OnUnknown)
     b.r = rope("(")
     var length = sonsLen(e.sons[1])
     for i in countup(0, length - 1):
@@ -1515,7 +1515,7 @@ proc genInOp(p: BProc, e: PNode, d: var TLoc) =
         addf(b.r, "$1 == $2", [rdCharLoc(a), rdCharLoc(x)])
       if i < length - 1: add(b.r, " || ")
     add(b.r, ")")
-    putIntoDest(p, d, e.typ, b.r)
+    putIntoDest(p, d, e, b.r)
   else:
     assert(e.sons[1].typ != nil)
     assert(e.sons[2].typ != nil)
@@ -1600,13 +1600,13 @@ proc genSomeCast(p: BProc, e: PNode, d: var TLoc) =
   initLocExpr(p, e.sons[1], a)
   let etyp = skipTypes(e.typ, abstractRange)
   if etyp.kind in ValueTypes and lfIndirect notin a.flags:
-    putIntoDest(p, d, e.typ, "(*($1*) ($2))" %
+    putIntoDest(p, d, e, "(*($1*) ($2))" %
         [getTypeDesc(p.module, e.typ), addrLoc(a)], a.storage)
   elif etyp.kind == tyProc and etyp.callConv == ccClosure:
-    putIntoDest(p, d, e.typ, "(($1) ($2))" %
+    putIntoDest(p, d, e, "(($1) ($2))" %
         [getClosureType(p.module, etyp, clHalfWithEnv), rdCharLoc(a)], a.storage)
   else:
-    putIntoDest(p, d, e.typ, "(($1) ($2))" %
+    putIntoDest(p, d, e, "(($1) ($2))" %
         [getTypeDesc(p.module, e.typ), rdCharLoc(a)], a.storage)
 
 proc genCast(p: BProc, e: PNode, d: var TLoc) =
@@ -1623,11 +1623,11 @@ proc genCast(p: BProc, e: PNode, d: var TLoc) =
     linefmt(p, cpsLocals, "union { $1 source; $2 dest; } LOC$3;$n",
       getTypeDesc(p.module, e.sons[1].typ), getTypeDesc(p.module, e.typ), lbl)
     tmp.k = locExpr
-    tmp.t = srct
+    tmp.lode = lodeTyp srct
     tmp.storage = OnStack
     tmp.flags = {}
     expr(p, e.sons[1], tmp)
-    putIntoDest(p, d, e.typ, "LOC$#.dest" % [lbl], tmp.storage)
+    putIntoDest(p, d, e, "LOC$#.dest" % [lbl], tmp.storage)
   else:
     # I prefer the shorter cast version for pointer types -> generate less
     # C code; plus it's the right thing to do for closures:
@@ -1640,11 +1640,11 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc, magic: string) =
   if optRangeCheck notin p.options or dest.skipTypes({tyRange}).kind in
                                              {tyUInt..tyUInt64}:
     initLocExpr(p, n.sons[0], a)
-    putIntoDest(p, d, n.typ, "(($1) ($2))" %
+    putIntoDest(p, d, n, "(($1) ($2))" %
         [getTypeDesc(p.module, dest), rdCharLoc(a)], a.storage)
   else:
     initLocExpr(p, n.sons[0], a)
-    putIntoDest(p, d, dest, ropecg(p.module, "(($1)#$5($2, $3, $4))", [
+    putIntoDest(p, d, lodeTyp dest, ropecg(p.module, "(($1)#$5($2, $3, $4))", [
         getTypeDesc(p.module, dest), rdCharLoc(a),
         genLiteral(p, n.sons[1], dest), genLiteral(p, n.sons[2], dest),
         rope(magic)]), a.storage)
@@ -1659,13 +1659,13 @@ proc genConv(p: BProc, e: PNode, d: var TLoc) =
 proc convStrToCStr(p: BProc, n: PNode, d: var TLoc) =
   var a: TLoc
   initLocExpr(p, n.sons[0], a)
-  putIntoDest(p, d, skipTypes(n.typ, abstractVar), "$1->data" % [rdLoc(a)],
+  putIntoDest(p, d, n, "$1->data" % [rdLoc(a)],
               a.storage)
 
 proc convCStrToStr(p: BProc, n: PNode, d: var TLoc) =
   var a: TLoc
   initLocExpr(p, n.sons[0], a)
-  putIntoDest(p, d, skipTypes(n.typ, abstractVar),
+  putIntoDest(p, d, n,
               ropecg(p.module, "#cstrToNimstr($1)", [rdLoc(a)]),
               a.storage)
   gcUsage(n)
@@ -1678,11 +1678,11 @@ proc genStrEquals(p: BProc, e: PNode, d: var TLoc) =
     binaryExpr(p, e, d, "($1 == $2)")
   elif (a.kind in {nkStrLit..nkTripleStrLit}) and (a.strVal == ""):
     initLocExpr(p, e.sons[2], x)
-    putIntoDest(p, d, e.typ,
+    putIntoDest(p, d, e,
       rfmt(nil, "(($1) && ($1)->$2 == 0)", rdLoc(x), lenField(p)))
   elif (b.kind in {nkStrLit..nkTripleStrLit}) and (b.strVal == ""):
     initLocExpr(p, e.sons[1], x)
-    putIntoDest(p, d, e.typ,
+    putIntoDest(p, d, e,
       rfmt(nil, "(($1) && ($1)->$2 == 0)", rdLoc(x), lenField(p)))
   else:
     binaryExpr(p, e, d, "#eqStrings($1, $2)")
@@ -1695,9 +1695,9 @@ proc binaryFloatArith(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
     assert(e.sons[2].typ != nil)
     initLocExpr(p, e.sons[1], a)
     initLocExpr(p, e.sons[2], b)
-    putIntoDest(p, d, e.typ, rfmt(nil, "(($4)($2) $1 ($4)($3))",
-                                  rope(opr[m]), rdLoc(a), rdLoc(b),
-                                  getSimpleTypeDesc(p.module, e[1].typ)))
+    putIntoDest(p, d, e, rfmt(nil, "(($4)($2) $1 ($4)($3))",
+                              rope(opr[m]), rdLoc(a), rdLoc(b),
+                              getSimpleTypeDesc(p.module, e[1].typ)))
     if optNaNCheck in p.options:
       linefmt(p, cpsStmts, "#nanCheck($1);$n", rdLoc(d))
     if optInfCheck in p.options:
@@ -1739,7 +1739,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       let ranged = skipTypes(e.sons[1].typ, {tyGenericInst, tyAlias, tyVar})
       let res = binaryArithOverflowRaw(p, ranged, a, b,
         if underlying.kind == tyInt64: fun64[op] else: fun[op])
-      putIntoDest(p, a, ranged, "($#)($#)" % [
+      putIntoDest(p, a, e.sons[1], "($#)($#)" % [
         getTypeDesc(p.module, ranged), res])
 
   of mConStrStr: genStrConcat(p, e, d)
@@ -1765,7 +1765,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mNewSeqOfCap: genNewSeqOfCap(p, e, d)
   of mSizeOf:
     let t = e.sons[1].typ.skipTypes({tyTypeDesc})
-    putIntoDest(p, d, e.typ, "((NI)sizeof($1))" % [getTypeDesc(p.module, t)])
+    putIntoDest(p, d, e, "((NI)sizeof($1))" % [getTypeDesc(p.module, t)])
   of mChr: genSomeCast(p, e, d)
   of mOrd: genOrd(p, e, d)
   of mLengthArray, mHigh, mLengthStr, mLengthSeq, mLengthOpenArray:
@@ -1786,7 +1786,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     else:
       frmt = "$1 = $2->len;$n"
     lineCg(p, cpsStmts, frmt, tmp.r, rdLoc(a))
-    putIntoDest(p, d, e.typ, tmp.r)
+    putIntoDest(p, d, e, tmp.r)
   of mGCref: unaryStmt(p, e, d, "#nimGCref($1);$n")
   of mGCunref: unaryStmt(p, e, d, "#nimGCunref($1);$n")
   of mSetLengthStr: genSetLengthStr(p, e, d)
@@ -1828,7 +1828,7 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
   var
     a, b, idx: TLoc
   if nfAllConst in e.flags:
-    putIntoDest(p, d, e.typ, genSetNode(p, e))
+    putIntoDest(p, d, e, genSetNode(p, e))
   else:
     if d.k == locNone: getTemp(p, e.typ, d)
     if getSize(e.typ) > 8:
@@ -1875,7 +1875,7 @@ proc genTupleConstr(p: BProc, n: PNode, d: var TLoc) =
     for i in countup(0, sonsLen(n) - 1):
       var it = n.sons[i]
       if it.kind == nkExprColonExpr: it = it.sons[1]
-      initLoc(rec, locExpr, it.typ, d.storage)
+      initLoc(rec, locExpr, it, d.storage)
       rec.r = "$1.Field$2" % [rdLoc(d), rope(i)]
       expr(p, it, rec)
 
@@ -1891,7 +1891,7 @@ proc genClosure(p: BProc, n: PNode, d: var TLoc) =
     var tmp = "CNSTCLOSURE" & rope(p.module.labels)
     addf(p.module.s[cfsData], "static NIM_CONST $1 $2 = $3;$n",
         [getTypeDesc(p.module, n.typ), tmp, genConstExpr(p, n)])
-    putIntoDest(p, d, n.typ, tmp, OnStatic)
+    putIntoDest(p, d, n, tmp, OnStatic)
   else:
     var tmp, a, b: TLoc
     initLocExpr(p, n.sons[0], a)
@@ -1914,7 +1914,7 @@ proc genArrayConstr(p: BProc, n: PNode, d: var TLoc) =
   if not handleConstExpr(p, n, d):
     if d.k == locNone: getTemp(p, n.typ, d)
     for i in countup(0, sonsLen(n) - 1):
-      initLoc(arr, locExpr, elemType(skipTypes(n.typ, abstractInst)), d.storage)
+      initLoc(arr, locExpr, lodeTyp elemType(skipTypes(n.typ, abstractInst)), d.storage)
       arr.r = "$1[$2]" % [rdLoc(d), intLiteral(i)]
       expr(p, n.sons[i], arr)
 
@@ -1952,11 +1952,11 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
       linefmt(p, cpsStmts, "#chckObj($1.m_type, $2);$n",
               r, genTypeInfo(p.module, dest))
   if n.sons[0].typ.kind != tyObject:
-    putIntoDest(p, d, n.typ,
+    putIntoDest(p, d, n,
                 "(($1) ($2))" % [getTypeDesc(p.module, n.typ), rdLoc(a)], a.storage)
   else:
-    putIntoDest(p, d, n.typ, "(*($1*) ($2))" %
-                             [getTypeDesc(p.module, dest), addrLoc(a)], a.storage)
+    putIntoDest(p, d, n, "(*($1*) ($2))" %
+                        [getTypeDesc(p.module, dest), addrLoc(a)], a.storage)
 
 proc downConv(p: BProc, n: PNode, d: var TLoc) =
   if p.module.compileToCpp:
@@ -1988,9 +1988,9 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
         linefmt(p, cpsStmts, "$1 = &$2;$n", rdLoc(d), r)
       else:
         r = "&" & r
-        putIntoDest(p, d, n.typ, r, a.storage)
+        putIntoDest(p, d, n, r, a.storage)
     else:
-      putIntoDest(p, d, n.typ, r, a.storage)
+      putIntoDest(p, d, n, r, a.storage)
 
 proc exprComplexConst(p: BProc, n: PNode, d: var TLoc) =
   let t = n.typ
@@ -2005,9 +2005,9 @@ proc exprComplexConst(p: BProc, n: PNode, d: var TLoc) =
          [getTypeDesc(p.module, t), tmp, genConstExpr(p, n)])
 
   if d.k == locNone:
-    fillLoc(d, locData, t, tmp, OnStatic)
+    fillLoc(d, locData, n, tmp, OnStatic)
   else:
-    putDataIntoDest(p, d, t, tmp)
+    putDataIntoDest(p, d, n, tmp)
     # This fixes bug #4551, but we really need better dataflow
     # analysis to make this 100% safe.
     if t.kind notin {tySequence, tyString}:
@@ -2022,7 +2022,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     of skMethod:
       if {sfDispatcher, sfForward} * sym.flags != {}:
         # we cannot produce code for the dispatcher yet:
-        fillProcLoc(p.module, sym)
+        fillProcLoc(p.module, n)
         genProcPrototype(p.module, sym)
       else:
         genProc(p.module, sym)
@@ -2034,19 +2034,19 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         localError(n.info, "request to generate code for .compileTime proc: " &
            sym.name.s)
       genProc(p.module, sym)
-      if sym.loc.r == nil or sym.loc.t == nil:
+      if sym.loc.r == nil or sym.loc.lode == nil:
         internalError(n.info, "expr: proc not init " & sym.name.s)
       putLocIntoDest(p, d, sym.loc)
     of skConst:
       if isSimpleConst(sym.typ):
-        putIntoDest(p, d, n.typ, genLiteral(p, sym.ast, sym.typ), OnStatic)
+        putIntoDest(p, d, n, genLiteral(p, sym.ast, sym.typ), OnStatic)
       else:
         genComplexConst(p, sym, d)
     of skEnumField:
-      putIntoDest(p, d, n.typ, rope(sym.position))
+      putIntoDest(p, d, n, rope(sym.position))
     of skVar, skForVar, skResult, skLet:
       if {sfGlobal, sfThread} * sym.flags != {}:
-        genVarPrototype(p.module, sym)
+        genVarPrototype(p.module, n)
       if sym.loc.r == nil or sym.loc.t == nil:
         #echo "FAILED FOR PRCO ", p.prc.name.s
         #echo renderTree(p.prc.ast, {renderIds})
@@ -2054,7 +2054,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       if sfThread in sym.flags:
         accessThreadLocalVar(p, sym)
         if emulatedThreadVars():
-          putIntoDest(p, d, sym.loc.t, "NimTV_->" & sym.loc.r)
+          putIntoDest(p, d, sym.loc.lode, "NimTV_->" & sym.loc.r)
         else:
           putLocIntoDest(p, d, sym.loc)
       else:
@@ -2075,12 +2075,12 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     else: internalError(n.info, "expr(" & $sym.kind & "); unknown symbol")
   of nkNilLit:
     if not isEmptyType(n.typ):
-      putIntoDest(p, d, n.typ, genLiteral(p, n))
+      putIntoDest(p, d, n, genLiteral(p, n))
   of nkStrLit..nkTripleStrLit:
-    putDataIntoDest(p, d, n.typ, genLiteral(p, n))
+    putDataIntoDest(p, d, n, genLiteral(p, n))
   of nkIntLit..nkUInt64Lit,
      nkFloatLit..nkFloat128Lit, nkCharLit:
-    putIntoDest(p, d, n.typ, genLiteral(p, n))
+    putIntoDest(p, d, n, genLiteral(p, n))
   of nkCall, nkHiddenCallConv, nkInfix, nkPrefix, nkPostfix, nkCommand,
      nkCallStrLit:
     genLineDir(p, n)
@@ -2100,7 +2100,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         genCall(p, n, d)
   of nkCurly:
     if isDeepConstExpr(n) and n.len != 0:
-      putIntoDest(p, d, n.typ, genSetNode(p, n))
+      putIntoDest(p, d, n, genSetNode(p, n))
     else:
       genSetConstr(p, n, d)
   of nkBracket:
@@ -2141,7 +2141,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkLambdaKinds:
     var sym = n.sons[namePos].sym
     genProc(p.module, sym)
-    if sym.loc.r == nil or sym.loc.t == nil:
+    if sym.loc.r == nil or sym.loc.lode == nil:
       internalError(n.info, "expr: proc not init " & sym.name.s)
     putLocIntoDest(p, d, sym.loc)
   of nkClosure: genClosure(p, n, d)

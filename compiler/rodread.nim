@@ -267,9 +267,10 @@ proc decodeLoc(r: PRodReader, loc: var TLoc, info: TLineInfo) =
       loc.flags = {}
     if r.s[r.pos] == '^':
       inc(r.pos)
-      loc.t = rrGetType(r, decodeVInt(r.s, r.pos), info)
+      loc.lode = decodeNode(r, info)
+      # rrGetType(r, decodeVInt(r.s, r.pos), info)
     else:
-      loc.t = nil
+      loc.lode = nil
     if r.s[r.pos] == '!':
       inc(r.pos)
       loc.r = rope(decodeStr(r.s, r.pos))

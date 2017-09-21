@@ -755,7 +755,7 @@ type
     k*: TLocKind              # kind of location
     storage*: TStorageLoc
     flags*: TLocFlags         # location's flags
-    t*: PType                 # type of location
+    lode*: PNode              # Node where the location came from; can be faked
     r*: Rope                  # rope value of location (code generators)
 
   # ---------------- end of backend information ------------------------------
@@ -1264,9 +1264,8 @@ proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(a.k): a.k = b.k
   if a.storage == low(a.storage): a.storage = b.storage
   a.flags = a.flags + b.flags
-  if a.t == nil: a.t = b.t
+  if a.lode == nil: a.lode = b.lode
   if a.r == nil: a.r = b.r
-  #if a.a == 0: a.a = b.a
 
 proc newSons*(father: PNode, length: int) =
   if isNil(father.sons):

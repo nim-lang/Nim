@@ -181,10 +181,11 @@ proc encodeLoc(w: PRodWriter, loc: TLoc, result: var string) =
   if loc.flags != {}:
     add(result, '$')
     encodeVInt(cast[int32](loc.flags), result)
-  if loc.t != nil:
+  if loc.lode != nil:
     add(result, '^')
-    encodeVInt(cast[int32](loc.t.id), result)
-    pushType(w, loc.t)
+    encodeNode(w, unknownLineInfo(), loc.lode, result)
+    #encodeVInt(cast[int32](loc.t.id), result)
+    #pushType(w, loc.t)
   if loc.r != nil:
     add(result, '!')
     encodeStr($loc.r, result)

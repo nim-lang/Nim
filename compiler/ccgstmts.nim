@@ -48,16 +48,17 @@ proc genVarTuple(p: BProc, n: PNode) =
   initLocExpr(p, n.sons[L-1], tup)
   var t = tup.t.skipTypes(abstractInst)
   for i in countup(0, L-3):
-    var v = n.sons[i].sym
+    let vn = n.sons[i]
+    let v = vn.sym
     if sfCompileTime in v.flags: continue
     if sfGlobal in v.flags:
-      assignGlobalVar(p, v)
+      assignGlobalVar(p, vn)
       genObjectInit(p, cpsInit, v.typ, v.loc, true)
       registerGcRoot(p, v)
     else:
-      assignLocalVar(p, v)
+      assignLocalVar(p, vn)
       initLocalVar(p, v, immediateAsgn=isAssignedImmediately(n[L-1]))
-    initLoc(field, locExpr, t.sons[i], tup.storage)
+    initLoc(field, locExpr, vn, tup.storage)
     if t.kind == tyTuple:
       field.r = "$1.Field$2" % [rdLoc(tup), rope(i)]
     else:
@@ -171,7 +172,7 @@ proc genBreakState(p: BProc, n: PNode) =
     lineF(p, cpsStmts, "if ((((NI*) $1.ClE_0)[1]) < 0) break;$n", [rdLoc(a)])
   #  lineF(p, cpsStmts, "if (($1) < 0) break;$n", [rdLoc(a)])
 
-proc genVarPrototypeAux(m: BModule, sym: PSym)
+proc genVarPrototypeAux(m: BModule, n: PNode)
 
 proc genGotoVar(p: BProc; value: PNode) =
   if value.kind notin {nkCharLit..nkUInt64Lit}:
@@ -180,7 +181,8 @@ proc genGotoVar(p: BProc; value: PNode) =
     lineF(p, cpsStmts, "goto NIMSTATE_$#;$n", [value.intVal.rope])
 
 proc genSingleVar(p: BProc, a: PNode) =
-  let v = a.sons[0].sym
+  let vn = a.sons[0]
+  let v = vn.sym
   if sfCompileTime in v.flags: return
   if sfGoto in v.flags:
     # translate 'var state {.goto.} = X' into 'goto LX':
@@ -195,7 +197,7 @@ proc genSingleVar(p: BProc, a: PNode) =
     if sfPure in v.flags:
       # v.owner.kind != skModule:
       targetProc = p.module.preInitProc
-    assignGlobalVar(targetProc, v)
+    assignGlobalVar(targetProc, vn)
     # XXX: be careful here.
     # Global variables should not be zeromem-ed within loops
     # (see bug #20).
@@ -206,7 +208,7 @@ proc genSingleVar(p: BProc, a: PNode) =
     # Alternative construction using default constructor (which may zeromem):
     # if sfImportc notin v.flags: constructLoc(p.module.preInitProc, v.loc)
     if sfExportc in v.flags and p.module.g.generatedHeader != nil:
-      genVarPrototypeAux(p.module.g.generatedHeader, v)
+      genVarPrototypeAux(p.module.g.generatedHeader, vn)
     registerGcRoot(p, v)
   else:
     let value = a.sons[2]
@@ -217,7 +219,7 @@ proc genSingleVar(p: BProc, a: PNode) =
       # parameterless constructor followed by an assignment operator. So we
       # generate better code here:
       genLineDir(p, a)
-      let decl = localVarDecl(p, v)
+      let decl = localVarDecl(p, vn)
       var tmp: TLoc
       if value.kind in nkCallKinds and value[0].kind == nkSym and
            sfConstructor in value[0].sym.flags:
@@ -233,7 +235,7 @@ proc genSingleVar(p: BProc, a: PNode) =
         initLocExprSingleUse(p, value, tmp)
         lineF(p, cpsStmts, "$# = $#;$n", [decl, tmp.rdLoc])
       return
-    assignLocalVar(p, v)
+    assignLocalVar(p, vn)
     initLocalVar(p, v, imm)
 
   if a.sons[2].kind != nkEmpty:
@@ -513,7 +515,7 @@ proc genParForStmt(p: BProc, t: PNode) =
   preserveBreakIdx:
     let forLoopVar = t.sons[0].sym
     var rangeA, rangeB: TLoc
-    assignLocalVar(p, forLoopVar)
+    assignLocalVar(p, t.sons[0])
     #initLoc(forLoopVar.loc, locLocalVar, forLoopVar.typ, onStack)
     #discard mangleName(forLoopVar)
     let call = t.sons[1]
