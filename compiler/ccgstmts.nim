@@ -57,7 +57,7 @@ proc genVarTuple(p: BProc, n: PNode) =
     else:
       assignLocalVar(p, v)
       initLocalVar(p, v, immediateAsgn=isAssignedImmediately(n[L-1]))
-    initLoc(field, locExpr, t.sons[i], tup.s)
+    initLoc(field, locExpr, t.sons[i], tup.storage)
     if t.kind == tyTuple:
       field.r = "$1.Field$2" % [rdLoc(tup), rope(i)]
     else:

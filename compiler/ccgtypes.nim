@@ -287,7 +287,7 @@ proc fillResult(param: PSym) =
           OnStack)
   if mapReturnType(param.typ) != ctArray and isInvalidReturnType(param.typ):
     incl(param.loc.flags, lfIndirect)
-    param.loc.s = OnUnknown
+    param.loc.storage = OnUnknown
 
 proc typeNameOrLiteral(m: BModule; t: PType, literal: string): Rope =
   if t.sym != nil and sfImportc in t.sym.flags and t.sym.magic == mNone:
@@ -404,7 +404,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
       add(params, getTypeDescWeak(m, param.typ, check))
       add(params, ~"*")
       incl(param.loc.flags, lfIndirect)
-      param.loc.s = OnUnknown
+      param.loc.storage = OnUnknown
     elif weakDep:
       add(params, getTypeDescWeak(m, param.typ, check))
     else:
@@ -417,7 +417,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     var j = 0
     while arr.kind in {tyOpenArray, tyVarargs}:
       # this fixes the 'sort' bug:
-      if param.typ.kind == tyVar: param.loc.s = OnUnknown
+      if param.typ.kind == tyVar: param.loc.storage = OnUnknown
       # need to pass hidden parameter:
       addf(params, ", NI $1Len_$2", [param.loc.r, j.rope])
       inc(j)

@@ -257,9 +257,9 @@ proc decodeLoc(r: PRodReader, loc: var TLoc, info: TLineInfo) =
       loc.k = low(loc.k)
     if r.s[r.pos] == '*':
       inc(r.pos)
-      loc.s = TStorageLoc(decodeVInt(r.s, r.pos))
+      loc.storage = TStorageLoc(decodeVInt(r.s, r.pos))
     else:
-      loc.s = low(loc.s)
+      loc.storage = low(loc.storage)
     if r.s[r.pos] == '$':
       inc(r.pos)
       loc.flags = cast[TLocFlags](int32(decodeVInt(r.s, r.pos)))

@@ -175,9 +175,9 @@ proc encodeLoc(w: PRodWriter, loc: TLoc, result: var string) =
   var oldLen = result.len
   result.add('<')
   if loc.k != low(loc.k): encodeVInt(ord(loc.k), result)
-  if loc.s != low(loc.s):
+  if loc.storage != low(loc.storage):
     add(result, '*')
-    encodeVInt(ord(loc.s), result)
+    encodeVInt(ord(loc.storage), result)
   if loc.flags != {}:
     add(result, '$')
     encodeVInt(cast[int32](loc.flags), result)

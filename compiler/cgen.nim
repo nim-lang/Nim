@@ -49,7 +49,7 @@ proc findPendingModule(m: BModule, s: PSym): BModule =
 
 proc initLoc(result: var TLoc, k: TLocKind, typ: PType, s: TStorageLoc) =
   result.k = k
-  result.s = s
+  result.storage = s
   result.t = typ
   result.r = nil
   result.flags = {}
@@ -59,7 +59,7 @@ proc fillLoc(a: var TLoc, k: TLocKind, typ: PType, r: Rope, s: TStorageLoc) =
   if a.k == locNone:
     a.k = k
     a.t = typ
-    a.s = s
+    a.storage = s
     if a.r == nil: a.r = r
 
 proc isSimpleConst(typ: PType): bool =
@@ -294,7 +294,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
   else:
     if optNilCheck in p.options:
       linefmt(p, cpsStmts, "#chckNil((void*)$1);$n", addrLoc(loc))
-    if loc.s != OnStack:
+    if loc.storage != OnStack:
       linefmt(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
               addrLoc(loc), genTypeInfo(p.module, loc.t))
       # XXX: generated reset procs should not touch the m_type
@@ -341,7 +341,7 @@ proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
   linefmt(p, cpsLocals, "$1 $2;$n", getTypeDesc(p.module, t), result.r)
   result.k = locTemp
   result.t = t
-  result.s = OnStack
+  result.storage = OnStack
   result.flags = {}
   constructLoc(p, result, not needsInit)
 
@@ -350,7 +350,7 @@ proc getIntTemp(p: BProc, result: var TLoc) =
   result.r = "T" & rope(p.labels) & "_"
   linefmt(p, cpsLocals, "NI $1;$n", result.r)
   result.k = locTemp
-  result.s = OnStack
+  result.storage = OnStack
   result.t = getSysType(tyInt)
   result.flags = {}
 
@@ -695,7 +695,7 @@ proc genProcAux(m: BModule, prc: PSym) =
       assignParam(p, res)
       if skipTypes(res.typ, abstractInst).kind == tyArray:
         #incl(res.loc.flags, lfIndirect)
-        res.loc.s = OnUnknown
+        res.loc.storage = OnUnknown
 
   for i in countup(1, sonsLen(prc.typ.n) - 1):
     var param = prc.typ.n.sons[i].sym

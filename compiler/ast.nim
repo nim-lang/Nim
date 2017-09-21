@@ -747,12 +747,13 @@ type
     OnUnknown,                # location is unknown (stack, heap or static)
     OnStatic,                 # in a static section
     OnStack,                  # location is on hardware stack
-    OnHeap                    # location is on heap or global
+    OnHeap,                   # location is on heap or global
                               # (reference counting needed)
+    OnHeapNew                 # location is on the heap and was just new()'ed
   TLocFlags* = set[TLocFlag]
   TLoc* = object
     k*: TLocKind              # kind of location
-    s*: TStorageLoc
+    storage*: TStorageLoc
     flags*: TLocFlags         # location's flags
     t*: PType                 # type of location
     r*: Rope                  # rope value of location (code generators)
@@ -1261,7 +1262,7 @@ proc newType*(kind: TTypeKind, owner: PSym): PType =
 
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(a.k): a.k = b.k
-  if a.s == low(a.s): a.s = b.s
+  if a.storage == low(a.storage): a.storage = b.storage
   a.flags = a.flags + b.flags
   if a.t == nil: a.t = b.t
   if a.r == nil: a.r = b.r
