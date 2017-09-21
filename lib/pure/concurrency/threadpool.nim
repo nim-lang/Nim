@@ -7,281 +7,294 @@
 #    distribution, for details about the copyright.
 #
 
-## Implements Nim's 'spawn'.
+import macros, cpuinfo
 
 when not compileOption("threads"):
-  {.error: "Threadpool requires --threads:on option.".}
-
-import cpuinfo, cpuload, locks
-
-{.push stackTrace:off.}
+  {.error: "ThreadPool requires --threads:on compiler option".}
 
 type
-  Semaphore = object
-    c: Cond
-    L: Lock
-    counter: int
+  ThreadPool* = ref object
+    chanTo: ChannelTo # Tasks are added to this channel
+    chanFrom: ChannelFrom # Results are read from this channel
+    threads: seq[ThreadType]
+    maxThreads: int
 
-proc initSemaphore(cv: var Semaphore) =
-  initCond(cv.c)
-  initLock(cv.L)
+  FlowVarBase = ref object {.inheritable, pure.}
+    tp: ThreadPool
+    idx: int # -1 if was never awaited
 
-proc destroySemaphore(cv: var Semaphore) {.inline.} =
-  deinitCond(cv.c)
-  deinitLock(cv.L)
+  FlowVar*[T] = ref object of FlowVarBase
+    when T isnot void:
+      v: T
 
-proc await(cv: var Semaphore) =
-  acquire(cv.L)
-  while cv.counter <= 0:
-    wait(cv.c, cv.L)
-  dec cv.counter
-  release(cv.L)
+  MsgTo = ref object {.inheritable, pure.}
+    action: proc(m: MsgTo, chanFrom: ChannelFromPtr) {.nimcall.}
+    flowVar: pointer
+    complete: bool
 
-proc signal(cv: var Semaphore) =
-  acquire(cv.L)
-  inc cv.counter
-  release(cv.L)
-  signal(cv.c)
+  MsgFrom = ref object {.inheritable, pure.}
+    writeResult: proc(m: MsgFrom) {.nimcall.}
+    flowVar: pointer
 
-const CacheLineSize = 32 # true for most archs
+  ConcreteMsgFrom[T] = ref object of MsgFrom
+    when T isnot void:
+      v: T
 
-type
-  Barrier {.compilerProc.} = object
-    entered: int
-    cv: Semaphore # Semaphore takes 3 words at least
-    when sizeof(int) < 8:
-      cacheAlign: array[CacheLineSize-4*sizeof(int), byte]
-    left: int
-    cacheAlign2: array[CacheLineSize-sizeof(int), byte]
-    interest: bool ## wether the master is interested in the "all done" event
+  ChannelTo = Channel[MsgTo]
+  ChannelFrom = Channel[MsgFrom]
 
-proc barrierEnter(b: ptr Barrier) {.compilerProc, inline.} =
-  # due to the signaling between threads, it is ensured we are the only
-  # one with access to 'entered' so we don't need 'atomicInc' here:
-  inc b.entered
-  # also we need no 'fence' instructions here as soon 'nimArgsPassingDone'
-  # will be called which already will perform a fence for us.
+  ChannelToPtr = ptr ChannelTo
+  ChannelFromPtr = ptr ChannelFrom
 
-proc barrierLeave(b: ptr Barrier) {.compilerProc, inline.} =
-  atomicInc b.left
-  when not defined(x86): fence()
-  # We may not have seen the final value of b.entered yet,
-  # so we need to check for >= instead of ==.
-  if b.interest and b.left >= b.entered: signal(b.cv)
+  ThreadProcArgs = object
+    chanTo: ChannelToPtr
+    chanFrom: ChannelFromPtr
 
-proc openBarrier(b: ptr Barrier) {.compilerProc, inline.} =
-  b.entered = 0
-  b.left = 0
-  b.interest = false
+  ThreadType = Thread[ThreadProcArgs]
 
-proc closeBarrier(b: ptr Barrier) {.compilerProc.} =
-  fence()
-  if b.left != b.entered:
-    b.cv.initSemaphore()
-    fence()
-    b.interest = true
-    fence()
-    while b.left != b.entered: await(b.cv)
-    destroySemaphore(b.cv)
+template isReadyAux(v: FlowVarBase): bool = v.tp.isNil
 
-{.pop.}
+proc cleanupAux(tp: ThreadPool) =
+  var msg: MsgTo
+  msg.new()
+  msg.complete = true
+  for i in 0 ..< tp.threads.len:
+    tp.chanTo.send(msg)
+  joinThreads(tp.threads)
 
-# ----------------------------------------------------------------------------
+proc sync*(tp: ThreadPool) =
+  if not tp.threads.isNil:
+    tp.cleanupAux()
+    tp.threads.setLen(0)
 
-type
-  foreign* = object ## a region that indicates the pointer comes from a
-                    ## foreign thread heap.
-  AwaitInfo = object
-    cv: Semaphore
-    idx: int
+proc finalize(tp: ThreadPool) =
+  if not tp.threads.isNil:
+    tp.cleanupAux()
+    GC_unref(tp.threads)
+  tp.chanTo.close()
+  tp.chanFrom.close()
 
-  FlowVarBase* = ref FlowVarBaseObj ## untyped base class for 'FlowVar[T]'
-  FlowVarBaseObj = object of RootObj
-    ready, usesSemaphore, awaited: bool
-    cv: Semaphore #\
-    # for 'awaitAny' support
-    ai: ptr AwaitInfo
-    idx: int
-    data: pointer  # we incRef and unref it to keep it alive; note this MUST NOT
-                   # be RootRef here otherwise the wrong GC keeps track of it!
-    owner: pointer # ptr Worker
+proc threadProc(args: ThreadProcArgs) {.thread.} =
+  while true:
+    let m = args.chanTo[].recv()
+    if m.complete:
+      break
+    m.action(m, args.chanFrom)
+  deallocHeap(true, false)
 
-  FlowVarObj[T] = object of FlowVarBaseObj
-    blob: T
-
-  FlowVar*{.compilerProc.}[T] = ref FlowVarObj[T] ## a data flow variable
-
-  ToFreeQueue = object
-    len: int
-    lock: Lock
-    empty: Semaphore
-    data: array[128, pointer]
-
-  WorkerProc = proc (thread, args: pointer) {.nimcall, gcsafe.}
-  Worker = object
-    taskArrived: Semaphore
-    taskStarted: Semaphore #\
-    # task data:
-    f: WorkerProc
-    data: pointer
-    ready: bool # put it here for correct alignment!
-    initialized: bool # whether it has even been initialized
-    shutdown: bool # the pool requests to shut down this worker thread
-    q: ToFreeQueue
-    readyForTask: Semaphore
-
-proc await*(fv: FlowVarBase) =
-  ## waits until the value for the flowVar arrives. Usually it is not necessary
-  ## to call this explicitly.
-  if fv.usesSemaphore and not fv.awaited:
-    fv.awaited = true
-    await(fv.cv)
-    destroySemaphore(fv.cv)
-
-proc selectWorker(w: ptr Worker; fn: WorkerProc; data: pointer): bool =
-  if cas(addr w.ready, true, false):
-    w.data = data
-    w.f = fn
-    signal(w.taskArrived)
-    await(w.taskStarted)
-    result = true
-
-proc cleanFlowVars(w: ptr Worker) =
-  let q = addr(w.q)
-  acquire(q.lock)
-  for i in 0 ..< q.len:
-    GC_unref(cast[RootRef](q.data[i]))
-    #echo "GC_unref"
-  q.len = 0
-  release(q.lock)
-
-proc wakeupWorkerToProcessQueue(w: ptr Worker) =
-  # we have to ensure it's us who wakes up the owning thread.
-  # This is quite horrible code, but it runs so rarely that it doesn't matter:
-  while not cas(addr w.ready, true, false):
-    cpuRelax()
-    discard
-  w.data = nil
-  w.f = proc (w, a: pointer) {.nimcall.} =
-    let w = cast[ptr Worker](w)
-    cleanFlowVars(w)
-    signal(w.q.empty)
-  signal(w.taskArrived)
-
-proc finished(fv: FlowVarBase) =
-  doAssert fv.ai.isNil, "flowVar is still attached to an 'awaitAny'"
-  # we have to protect against the rare cases where the owner of the flowVar
-  # simply disregards the flowVar and yet the "flowVar" has not yet written
-  # anything to it:
-  await(fv)
-  if fv.data.isNil: return
-  let owner = cast[ptr Worker](fv.owner)
-  let q = addr(owner.q)
-  acquire(q.lock)
-  while not (q.len < q.data.len):
-    #echo "EXHAUSTED!"
-    release(q.lock)
-    wakeupWorkerToProcessQueue(owner)
-    await(q.empty)
-    acquire(q.lock)
-  q.data[q.len] = cast[pointer](fv.data)
-  inc q.len
-  release(q.lock)
-  fv.data = nil
-
-proc fvFinalizer[T](fv: FlowVar[T]) = finished(fv)
-
-proc nimCreateFlowVar[T](): FlowVar[T] {.compilerProc.} =
-  new(result, fvFinalizer)
-
-proc nimFlowVarCreateSemaphore(fv: FlowVarBase) {.compilerProc.} =
-  fv.cv.initSemaphore()
-  fv.usesSemaphore = true
-
-proc nimFlowVarSignal(fv: FlowVarBase) {.compilerProc.} =
-  if fv.ai != nil:
-    acquire(fv.ai.cv.L)
-    fv.ai.idx = fv.idx
-    inc fv.ai.cv.counter
-    release(fv.ai.cv.L)
-    signal(fv.ai.cv.c)
-  if fv.usesSemaphore:
-    signal(fv.cv)
-
-proc awaitAndThen*[T](fv: FlowVar[T]; action: proc (x: T) {.closure.}) =
-  ## blocks until the ``fv`` is available and then passes its value
-  ## to ``action``. Note that due to Nim's parameter passing semantics this
-  ## means that ``T`` doesn't need to be copied and so ``awaitAndThen`` can
-  ## sometimes be more efficient than ``^``.
-  await(fv)
-  when T is string or T is seq:
-    action(cast[T](fv.data))
-  elif T is ref:
-    {.error: "'awaitAndThen' not available for FlowVar[ref]".}
+proc startThreads(tp: ThreadPool) =
+  assert(tp.threads.len == 0)
+  if tp.threads.isNil:
+    tp.threads = newSeq[ThreadType](tp.maxThreads)
+    GC_ref(tp.threads)
   else:
-    action(fv.blob)
-  finished(fv)
+    tp.threads.setLen(tp.maxThreads)
 
-proc unsafeRead*[T](fv: FlowVar[ref T]): foreign ptr T =
-  ## blocks until the value is available and then returns this value.
-  await(fv)
-  result = cast[foreign ptr T](fv.data)
+  var args = ThreadProcArgs(chanTo: addr tp.chanTo, chanFrom: addr tp.chanFrom)
+  for i in 0 ..< tp.maxThreads:
+    createThread(tp.threads[i], threadProc, args)
 
-proc `^`*[T](fv: FlowVar[ref T]): ref T =
-  ## blocks until the value is available and then returns this value.
-  await(fv)
-  let src = cast[ref T](fv.data)
-  deepCopy result, src
+proc newThreadPool*(maxThreads: int, maxMessages: int): ThreadPool =
+  result.new(finalize)
+  result.maxThreads = maxThreads
+  result.chanTo.open()#maxMessages)
+  result.chanFrom.open()
 
-proc `^`*[T](fv: FlowVar[T]): T =
-  ## blocks until the value is available and then returns this value.
-  await(fv)
-  when T is string or T is seq:
-    # XXX closures? deepCopy?
-    result = cast[T](fv.data)
+proc newThreadPool*(maxThreads: int): ThreadPool {.inline.} =
+  newThreadPool(maxThreads, maxThreads * 4)
+
+proc newThreadPool*(): ThreadPool {.inline.} =
+  newThreadPool(countProcessors())
+
+proc newSerialThreadPool*(): ThreadPool {.inline.} =
+  newThreadPool(1)
+
+proc dispatchMessage(tp: ThreadPool, m: MsgTo) =
+  if tp.threads.len == 0:
+    tp.startThreads()
+  tp.chanTo.send(m)
+
+proc tryDispatchMessage(tp: ThreadPool, m: MsgTo): bool =
+  if tp.threads.len == 0:
+    tp.startThreads()
+  tp.chanTo.trySend(m)
+
+proc dispatchMessageWithFlowVar[T](tp: ThreadPool, m: MsgTo): FlowVar[T] =
+  result.new()
+  result.tp = tp
+  result.idx = -1
+  GC_ref(result)
+  m.flowVar = cast[pointer](result)
+  tp.dispatchMessage(m)
+
+proc sendBack[T](v: T, c: ChannelFromPtr, flowVar: pointer) {.gcsafe.} =
+  if not flowVar.isNil:
+    var msg: ConcreteMsgFrom[T]
+    msg.new()
+    when T isnot void:
+      msg.v = v
+    msg.writeResult = proc(m: MsgFrom) {.nimcall.} =
+      let m = cast[ConcreteMsgFrom[T]](m)
+      let fv = cast[FlowVar[T]](m.flowVar)
+      fv.tp = nil
+      when T isnot void:
+        fv.v = m.v
+      GC_unref(fv)
+    msg.flowVar = flowVar
+    c[].send(msg)
+
+var i {.compileTime.} = 0
+
+proc spawnAux(tp: NimNode, e: NimNode, withFlowVar: bool, doTry: bool = false): NimNode =
+  let msgTypeName = genSym(nskType, "MsgSub" & $i)
+  inc i
+  let dispatchProcName = genSym(nskProc, "dispatchProc")
+  let msgParamIdent = newIdentNode("m")
+
+  let origProcName = e[0]
+  let procTypParams = origProcName.getTypeInst()[0]
+
+  let msgFields = newNimNode(nnkRecList)
+
+  let theCall = newCall(origProcName)
+
+  let msgObjConstr = newNimNode(nnkObjConstr).add(
+    msgTypeName,
+    newNimNode(nnkExprColonExpr).add(
+      newIdentNode("action"),
+      dispatchProcName
+    )
+  )
+
+  var iParam = 0
+  for i in 1 ..< procTypParams.len:
+    for j in 0 .. procTypParams[i].len - 3:
+      let fieldIdent = newIdentNode($procTypParams[i][j])
+      var fieldType = procTypParams[i][^2]
+      if fieldType.typeKind == ntyOpenArray: # convert openarray to seq
+        fieldType = copyNimTree(fieldType)
+        fieldType[0] = bindSym"seq"
+
+      msgFields.add(newNimNode(nnkIdentDefs).add(fieldIdent, fieldType, newEmptyNode()))
+      theCall.add(newNimNode(nnkDotExpr).add(
+        newNimNode(nnkCast).add(msgTypeName, msgParamIdent),
+        fieldIdent))
+
+      var par = e[iParam + 1]
+      if par.typeKind == ntyOpenArray: # convert openarray to seq
+        par = newCall(bindSym"@", par)
+
+      msgObjConstr.add(newNimNode(nnkExprColonExpr).add(fieldIdent, par))
+      inc iParam
+
+  let msgTypDef = newNimNode(nnkTypeSection).add(newNimNode(nnkTypeDef).add(
+    msgTypeName,
+    newEmptyNode(),
+    newNimNode(nnkRefTy).add(
+      newNimNode(nnkObjectTy).add(
+        newEmptyNode(),
+        newNimNode(nnkOfInherit).add(bindSym"MsgTo"),
+        msgFields
+      )
+    )
+  ))
+
+  let chanFromIdent = newIdentNode("chanFrom")
+
+  let dispatchProc = newProc(dispatchProcName, params = [
+      newEmptyNode(),
+      newNimNode(nnkIdentDefs).add(
+        msgParamIdent,
+        bindSym"MsgTo",
+        newEmptyNode()
+      ),
+      newNimNode(nnkIdentDefs).add(
+        chanFromIdent,
+        bindSym"ChannelFromPtr",
+        newEmptyNode()
+      )
+    ],
+    body = newCall(bindSym"sendBack", theCall, chanFromIdent, newNimNode(nnkDotExpr).add(
+        msgParamIdent, newIdentNode("flowVar")))
+  )
+
+  dispatchProc.addPragma(newIdentNode("gcsafe"))
+
+  var dispatchCall: NimNode
+  if withFlowVar:
+    dispatchCall = newCall(newNimNode(nnkBracketExpr).add(bindSym"dispatchMessageWithFlowVar", procTypParams[0]), tp, msgObjConstr)
+  elif doTry:
+    dispatchCall = newCall(bindSym"tryDispatchMessage", tp, msgObjConstr)
   else:
-    result = fv.blob
+    dispatchCall = newCall(bindSym"dispatchMessage", tp, msgObjConstr)
 
-proc awaitAny*(flowVars: openArray[FlowVarBase]): int =
-  ## awaits any of the given flowVars. Returns the index of one flowVar for
-  ## which a value arrived. A flowVar only supports one call to 'awaitAny' at
-  ## the same time. That means if you await([a,b]) and await([b,c]) the second
-  ## call will only await 'c'. If there is no flowVar left to be able to wait
-  ## on, -1 is returned.
-  ## **Note**: This results in non-deterministic behaviour and so should be
-  ## avoided.
-  var ai: AwaitInfo
-  ai.cv.initSemaphore()
-  var conflicts = 0
-  for i in 0 .. flowVars.high:
-    if cas(addr flowVars[i].ai, nil, addr ai):
-      flowVars[i].idx = i
+  result = newNimNode(nnkStmtList).add(
+    msgTypDef,
+    dispatchProc,
+    dispatchCall
+  )
+
+macro spawn*(tp: ThreadPool, e: typed{nkCall}): untyped =
+  spawnAux(tp, e, getTypeInst(e).typeKind != ntyVoid)
+
+macro spawnFV*(tp: ThreadPool, e: typed{nkCall}): untyped =
+  spawnAux(tp, e, true)
+
+macro trySpawn*(tp: ThreadPool, e: typed{nkCall}): untyped =
+  spawnAux(tp, e, false, true)
+
+template spawnX*(tp: ThreadPool, call: typed) =
+  if not tp.trySpawn(call):
+    call
+
+proc nextMessage(tp: ThreadPool): int =
+  let msg = tp.chanFrom.recv()
+  msg.writeResult(msg)
+  result = cast[FlowVarBase](msg.flowVar).idx
+
+proc tryNextMessage(tp: ThreadPool): bool {.inline.} =
+  let m = tp.chanFrom.tryRecv()
+  result = m.dataAvailable
+  if result:
+    m.msg.writeResult(m.msg)
+
+proc await*(v: FlowVarBase) =
+  while not v.isReadyAux:
+    discard v.tp.nextMessage()
+  v.idx = 0
+
+proc awaitAny*[T](vv: openarray[FlowVar[T]]): int =
+  var foundIncomplete = false
+  var tp: ThreadPool
+  for i, v in vv:
+    if v.isReadyAux:
+      if v.idx == -1:
+        v.idx = 0
+        return i
     else:
-      inc conflicts
-  if conflicts < flowVars.len:
-    await(ai.cv)
-    result = ai.idx
-    for i in 0 .. flowVars.high:
-      discard cas(addr flowVars[i].ai, addr ai, nil)
+      v.idx = i
+      foundIncomplete = true
+      tp = v.tp
+
+  if foundIncomplete:
+    tp.nextMessage()
   else:
-    result = -1
-  destroySemaphore(ai.cv)
+    -1
 
-proc isReady*(fv: FlowVarBase): bool =
-  ## Determines whether the specified ``FlowVarBase``'s value is available.
-  ##
-  ## If ``true`` awaiting ``fv`` will not block.
-  if fv.usesSemaphore and not fv.awaited:
-    acquire(fv.cv.L)
-    result = fv.cv.counter > 0
-    release(fv.cv.L)
-  else:
-    result = true
+proc isReady*(v: FlowVarBase): bool =
+  while not v.isReadyAux:
+    if not v.tp.tryNextMessage():
+      return
+  result = true
 
-proc nimArgsPassingDone(p: pointer) {.compilerProc.} =
-  let w = cast[ptr Worker](p)
-  signal(w.taskStarted)
+proc read*[T](v: FlowVar[T]): T =
+  await(v)
+  result = v.v
 
+proc `^`*[T](fv: FlowVar[T]): T {.inline.} = fv.read()
+
+################################################################################
+# Deprecated spawn
 const
   MaxThreadPoolSize* = 256 ## maximal size of the thread pool. 256 threads
                            ## should be good enough for anybody ;-)
@@ -290,267 +303,50 @@ const
 type
   ThreadId* = range[0..MaxDistinguishedThread-1]
 
-var
-  currentPoolSize: int
-  maxPoolSize = MaxThreadPoolSize
-  minPoolSize = 4
-  gSomeReady : Semaphore
-  readyWorker: ptr Worker
+var gThreadPool {.threadvar.}: ThreadPool
+var gPinnedPools {.threadvar.}: seq[ThreadPool]
 
-# A workaround for recursion deadlock issue
-# https://github.com/nim-lang/Nim/issues/4597
-var
-  numSlavesLock: Lock
-  numSlavesRunning {.guard: numSlavesLock}: int
-  numSlavesWaiting {.guard: numSlavesLock}: int
-  isSlave {.threadvar.}: bool
+proc sharedThreadPool(): ThreadPool =
+  if gThreadPool.isNil:
+    gThreadPool = newThreadPool()
+  result = gThreadPool
 
-numSlavesLock.initLock
-
-gSomeReady.initSemaphore()
-
-proc slave(w: ptr Worker) {.thread.} =
-  isSlave = true
-  while true:
-    when declared(atomicStoreN):
-      atomicStoreN(addr(w.ready), true, ATOMIC_SEQ_CST)
+proc pinnedPool(id: ThreadId): ThreadPool =
+  if gPinnedPools.len <= id:
+    if gPinnedPools.isNil:
+      gPinnedPools = newSeq[ThreadPool](id + 1)
     else:
-      w.ready = true
-    readyWorker = w
-    signal(gSomeReady)
-    await(w.taskArrived)
-    # XXX Somebody needs to look into this (why does this assertion fail
-    # in Visual Studio?)
-    when not defined(vcc): assert(not w.ready)
+      gPinnedPools.setLen(id + 1)
+  if gPinnedPools[id].isNil:
+    gPinnedPools[id] = newSerialThreadPool()
+  result = gPinnedPools[id]
 
-    withLock numSlavesLock:
-      inc numSlavesRunning
+proc preferSpawn*(): bool {.deprecated.} = true
 
-    w.f(w, w.data)
+template spawn*(call: typed): untyped {.deprecated.} =
+  sharedThreadPool().spawn(call)
 
-    withLock numSlavesLock:
-      dec numSlavesRunning
-
-    if w.q.len != 0: w.cleanFlowVars
-    if w.shutdown:
-      w.shutdown = false
-      atomicDec currentPoolSize
-
-proc distinguishedSlave(w: ptr Worker) {.thread.} =
-  while true:
-    when declared(atomicStoreN):
-      atomicStoreN(addr(w.ready), true, ATOMIC_SEQ_CST)
-    else:
-      w.ready = true
-    signal(w.readyForTask)
-    await(w.taskArrived)
-    assert(not w.ready)
-    w.f(w, w.data)
-    if w.q.len != 0: w.cleanFlowVars
-
-var
-  workers: array[MaxThreadPoolSize, Thread[ptr Worker]]
-  workersData: array[MaxThreadPoolSize, Worker]
-
-  distinguished: array[MaxDistinguishedThread, Thread[ptr Worker]]
-  distinguishedData: array[MaxDistinguishedThread, Worker]
-
-when defined(nimPinToCpu):
-  var gCpus: Natural
-
-proc setMinPoolSize*(size: range[1..MaxThreadPoolSize]) =
-  ## sets the minimal thread pool size. The default value of this is 4.
-  minPoolSize = size
-
-proc setMaxPoolSize*(size: range[1..MaxThreadPoolSize]) =
-  ## sets the maximal thread pool size. The default value of this
-  ## is ``MaxThreadPoolSize``.
-  maxPoolSize = size
-  if currentPoolSize > maxPoolSize:
-    for i in maxPoolSize..currentPoolSize-1:
-      let w = addr(workersData[i])
-      w.shutdown = true
-
-when defined(nimRecursiveSpawn):
-  var localThreadId {.threadvar.}: int
-
-proc activateWorkerThread(i: int) {.noinline.} =
-  workersData[i].taskArrived.initSemaphore()
-  workersData[i].taskStarted.initSemaphore()
-  workersData[i].initialized = true
-  workersData[i].q.empty.initSemaphore()
-  initLock(workersData[i].q.lock)
-  createThread(workers[i], slave, addr(workersData[i]))
-  when defined(nimRecursiveSpawn):
-    localThreadId = i+1
-  when defined(nimPinToCpu):
-    if gCpus > 0: pinToCpu(workers[i], i mod gCpus)
-
-proc activateDistinguishedThread(i: int) {.noinline.} =
-  distinguishedData[i].taskArrived.initSemaphore()
-  distinguishedData[i].taskStarted.initSemaphore()
-  distinguishedData[i].initialized = true
-  distinguishedData[i].q.empty.initSemaphore()
-  initLock(distinguishedData[i].q.lock)
-  distinguishedData[i].readyForTask.initSemaphore()
-  createThread(distinguished[i], distinguishedSlave, addr(distinguishedData[i]))
-
-proc setup() =
-  let p = countProcessors()
-  when defined(nimPinToCpu):
-    gCpus = p
-  currentPoolSize = min(p, MaxThreadPoolSize)
-  readyWorker = addr(workersData[0])
-  for i in 0..<currentPoolSize: activateWorkerThread(i)
-
-proc preferSpawn*(): bool =
-  ## Use this proc to determine quickly if a 'spawn' or a direct call is
-  ## preferable. If it returns 'true' a 'spawn' may make sense. In general
-  ## it is not necessary to call this directly; use 'spawnX' instead.
-  result = gSomeReady.counter > 0
-
-proc spawn*(call: typed): void {.magic: "Spawn".}
-  ## always spawns a new task, so that the 'call' is never executed on
-  ## the calling thread. 'call' has to be proc call 'p(...)' where 'p'
-  ## is gcsafe and has a return type that is either 'void' or compatible
-  ## with ``FlowVar[T]``.
-
-proc pinnedSpawn*(id: ThreadId; call: typed): void {.magic: "Spawn".}
+template pinnedSpawn*(id: ThreadId; call: typed): untyped {.deprecated.} =
+  pinnedPool(id).spawn(call)
   ## always spawns a new task on the worker thread with ``id``, so that
   ## the 'call' is **always** executed on
   ## the thread. 'call' has to be proc call 'p(...)' where 'p'
   ## is gcsafe and has a return type that is either 'void' or compatible
   ## with ``FlowVar[T]``.
 
-template spawnX*(call): void =
+template spawnX*(call: typed) {.deprecated.} =
+  sharedThreadPool().spawnX(call)
   ## spawns a new task if a CPU core is ready, otherwise executes the
   ## call in the calling thread. Usually it is advised to
   ## use 'spawn' in order to not block the producer for an unknown
   ## amount of time. 'call' has to be proc call 'p(...)' where 'p'
   ## is gcsafe and has a return type that is either 'void' or compatible
   ## with ``FlowVar[T]``.
-  (if preferSpawn(): spawn call else: call)
 
-proc parallel*(body: untyped) {.magic: "Parallel".}
-  ## a parallel section can be used to execute a block in parallel. ``body``
-  ## has to be in a DSL that is a particular subset of the language. Please
-  ## refer to the manual for further information.
+# proc parallel*(body: untyped) {.magic: "Parallel".}
+#   ## a parallel section can be used to execute a block in parallel. ``body``
+#   ## has to be in a DSL that is a particular subset of the language. Please
+#   ## refer to the manual for further information.
 
-var
-  state: ThreadPoolState
-  stateLock: Lock
-
-initLock stateLock
-
-proc nimSpawn3(fn: WorkerProc; data: pointer) {.compilerProc.} =
-  # implementation of 'spawn' that is used by the code generator.
-  while true:
-    if selectWorker(readyWorker, fn, data): return
-    for i in 0..<currentPoolSize:
-      if selectWorker(addr(workersData[i]), fn, data): return
-
-    # determine what to do, but keep in mind this is expensive too:
-    # state.calls < maxPoolSize: warmup phase
-    # (state.calls and 127) == 0: periodic check
-    if state.calls < maxPoolSize or (state.calls and 127) == 0:
-      # ensure the call to 'advice' is atomic:
-      if tryAcquire(stateLock):
-        if currentPoolSize < minPoolSize:
-          if not workersData[currentPoolSize].initialized:
-            activateWorkerThread(currentPoolSize)
-          let w = addr(workersData[currentPoolSize])
-          atomicInc currentPoolSize
-          if selectWorker(w, fn, data):
-            release(stateLock)
-            return
-
-        case advice(state)
-        of doNothing: discard
-        of doCreateThread:
-          if currentPoolSize < maxPoolSize:
-            if not workersData[currentPoolSize].initialized:
-              activateWorkerThread(currentPoolSize)
-            let w = addr(workersData[currentPoolSize])
-            atomicInc currentPoolSize
-            if selectWorker(w, fn, data):
-              release(stateLock)
-              return
-            # else we didn't succeed but some other thread, so do nothing.
-        of doShutdownThread:
-          if currentPoolSize > minPoolSize:
-            let w = addr(workersData[currentPoolSize-1])
-            w.shutdown = true
-          # we don't free anything here. Too dangerous.
-        release(stateLock)
-      # else the acquire failed, but this means some
-      # other thread succeeded, so we don't need to do anything here.
-    when defined(nimRecursiveSpawn):
-      if localThreadId > 0:
-        # we are a worker thread, so instead of waiting for something which
-        # might as well never happen (see tparallel_quicksort), we run the task
-        # on the current thread instead.
-        var self = addr(workersData[localThreadId-1])
-        fn(self, data)
-        await(self.taskStarted)
-        return
-
-    if isSlave:
-      # Run under lock until `numSlavesWaiting` increment to avoid a
-      # race (otherwise two last threads might start waiting together)
-      withLock numSlavesLock:
-        if numSlavesRunning <= numSlavesWaiting + 1:
-          # All the other slaves are waiting
-          # If we wait now, we-re deadlocked until
-          # an external spawn happens !
-          if currentPoolSize < maxPoolSize:
-            if not workersData[currentPoolSize].initialized:
-              activateWorkerThread(currentPoolSize)
-            let w = addr(workersData[currentPoolSize])
-            atomicInc currentPoolSize
-            if selectWorker(w, fn, data):
-              return
-          else:
-            # There is no place in the pool. We're deadlocked.
-            # echo "Deadlock!"
-            discard
-
-        inc numSlavesWaiting
-
-    await(gSomeReady)
-
-    if isSlave:
-      withLock numSlavesLock:
-        dec numSlavesWaiting
-
-var
-  distinguishedLock: Lock
-
-initLock distinguishedLock
-
-proc nimSpawn4(fn: WorkerProc; data: pointer; id: ThreadId) {.compilerProc.} =
-  acquire(distinguishedLock)
-  if not distinguishedData[id].initialized:
-    activateDistinguishedThread(id)
-  release(distinguishedLock)
-  while true:
-    if selectWorker(addr(distinguishedData[id]), fn, data): break
-    await(distinguishedData[id].readyForTask)
-
-
-proc sync*() =
-  ## a simple barrier to wait for all spawn'ed tasks. If you need more elaborate
-  ## waiting, you have to use an explicit barrier.
-  var toRelease = 0
-  while true:
-    var allReady = true
-    for i in 0 ..< currentPoolSize:
-      if not allReady: break
-      allReady = allReady and workersData[i].ready
-    if allReady: break
-    await(gSomeReady)
-    inc toRelease
-
-  for i in 0 ..< toRelease:
-    signal(gSomeReady)
-
-setup()
+proc sync*() {.deprecated, inline.} =
+  sharedThreadPool().sync()
