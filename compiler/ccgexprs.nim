@@ -157,10 +157,23 @@ proc getStorageLoc(n: PNode): TStorageLoc =
     result = getStorageLoc(n.sons[0])
   else: result = OnUnknown
 
+proc canMove(n: PNode): bool =
+  # for now we're conservative here:
+  if n.kind == nkBracket:
+    # This needs to be kept consistent with 'const' seq code
+    # generation!
+    if not isDeepConstExpr(n) or n.len == 0:
+      if skipTypes(n.typ, abstractVarRange).kind == tySequence:
+        return true
+  result = n.kind in nkCallKinds
+  #if result:
+  #  echo n.info, " optimized ", n
+  #  result = false
+
 proc genRefAssign(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   if dest.storage == OnStack or not usesNativeGC():
     linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
-  elif dest.storage in {OnHeap, OnHeapNew}:
+  elif dest.storage == OnHeap:
     # location is on heap
     # now the writer barrier is inlined for performance:
     #
@@ -202,7 +215,7 @@ proc asgnComplexity(n: PNode): int =
 proc optAsgnLoc(a: TLoc, t: PType, field: Rope): TLoc =
   assert field != nil
   result.k = locField
-  result.storage = if a.storage == OnHeapNew: OnHeap else: a.storage
+  result.storage = a.storage
   result.lode = lodeTyp t
   result.r = rdLoc(a) & "." & field
 
@@ -274,18 +287,18 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   of tyRef:
     genRefAssign(p, dest, src, flags)
   of tySequence:
-    if (needToCopy notin flags and src.storage != OnStatic) or src.storage == OnHeapNew:
+    if (needToCopy notin flags and src.storage != OnStatic) or canMove(src.lode):
       genRefAssign(p, dest, src, flags)
     else:
       linefmt(p, cpsStmts, "#genericSeqAssign($1, $2, $3);$n",
               addrLoc(dest), rdLoc(src), genTypeInfo(p.module, dest.t))
   of tyString:
-    if (needToCopy notin flags and src.storage != OnStatic) or src.storage == OnHeapNew:
+    if (needToCopy notin flags and src.storage != OnStatic) or canMove(src.lode):
       genRefAssign(p, dest, src, flags)
     else:
       if dest.storage == OnStack or not usesNativeGC():
         linefmt(p, cpsStmts, "$1 = #copyString($2);$n", dest.rdLoc, src.rdLoc)
-      elif dest.storage in {OnHeap, OnHeapNew}:
+      elif dest.storage == OnHeap:
         # we use a temporary to care for the dreaded self assignment:
         var tmp: TLoc
         getTemp(p, ty, tmp)
@@ -357,7 +370,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   else: internalError("genAssignment: " & $ty.kind)
 
-  if optMemTracker in p.options and dest.storage in {OnHeap, OnHeapNew, OnUnknown}:
+  if optMemTracker in p.options and dest.storage in {OnHeap, OnUnknown}:
     #writeStackTrace()
     #echo p.currLineInfo, " requesting"
     linefmt(p, cpsStmts, "#memTrackerWrite((void*)$1, $2, $3, $4);$n",
@@ -720,7 +733,7 @@ proc genAddr(p: BProc, e: PNode, d: var TLoc) =
     putIntoDest(p, d, e, addrLoc(a), a.storage)
 
 template inheritLocation(d: var TLoc, a: TLoc) =
-  if d.k == locNone: d.storage = if a.storage == OnHeapNew: OnHeap else: a.storage
+  if d.k == locNone: d.storage = a.storage
 
 proc genRecordFieldAux(p: BProc, e: PNode, d, a: var TLoc) =
   initLocExpr(p, e.sons[0], a)
@@ -1087,7 +1100,7 @@ proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
   var sizeExpr = sizeExpr
   let typ = a.t
   var b: TLoc
-  initLoc(b, locExpr, a.lode, OnHeapNew)
+  initLoc(b, locExpr, a.lode, OnHeap)
   let refType = typ.skipTypes(abstractInst)
   assert refType.kind == tyRef
   let bt = refType.lastSon
@@ -1097,7 +1110,7 @@ proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
   let args = [getTypeDesc(p.module, typ),
               genTypeInfo(p.module, typ),
               sizeExpr]
-  if a.storage in {OnHeap, OnHeapNew} and usesNativeGC():
+  if a.storage == OnHeap and usesNativeGC():
     # use newObjRC1 as an optimization
     if canFormAcycle(a.t):
       linefmt(p, cpsStmts, "if ($1) { #nimGCunrefRC1($1); $1 = NIM_NIL; }$n", a.rdLoc)
@@ -1127,8 +1140,8 @@ proc genNewSeqAux(p: BProc, dest: TLoc, length: Rope) =
   let args = [getTypeDesc(p.module, seqtype),
               genTypeInfo(p.module, seqtype), length]
   var call: TLoc
-  initLoc(call, locExpr, dest.lode, OnHeapNew)
-  if dest.storage in {OnHeap, OnHeapNew} and usesNativeGC():
+  initLoc(call, locExpr, dest.lode, OnHeap)
+  if dest.storage == OnHeap and usesNativeGC():
     if canFormAcycle(dest.t):
       linefmt(p, cpsStmts, "if ($1) { #nimGCunrefRC1($1); $1 = NIM_NIL; }$n", dest.rdLoc)
     else:
@@ -1154,7 +1167,6 @@ proc genNewSeqOfCap(p: BProc; e: PNode; d: var TLoc) =
               "($1)#nimNewSeqOfCap($2, $3)", [
               getTypeDesc(p.module, seqtype),
               genTypeInfo(p.module, seqtype), a.rdLoc]))
-  d.storage = OnHeapNew
   gcUsage(e)
 
 proc genConstExpr(p: BProc, n: PNode): Rope
@@ -1256,7 +1268,7 @@ proc genNewFinalize(p: BProc, e: PNode) =
   refType = skipTypes(e.sons[1].typ, abstractVarRange)
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], f)
-  initLoc(b, locExpr, a.lode, OnHeapNew)
+  initLoc(b, locExpr, a.lode, OnHeap)
   ti = genTypeInfo(p.module, refType)
   addf(p.module.s[cfsTypeInit3], "$1->finalizer = (void*)$2;$n", [ti, rdLoc(f)])
   b.r = ropecg(p.module, "($1) #newObj($2, sizeof($3))", [

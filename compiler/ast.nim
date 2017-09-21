@@ -747,9 +747,8 @@ type
     OnUnknown,                # location is unknown (stack, heap or static)
     OnStatic,                 # in a static section
     OnStack,                  # location is on hardware stack
-    OnHeap,                   # location is on heap or global
+    OnHeap                    # location is on heap or global
                               # (reference counting needed)
-    OnHeapNew                 # location is on the heap and was just new()'ed
   TLocFlags* = set[TLocFlag]
   TLoc* = object
     k*: TLocKind              # kind of location
