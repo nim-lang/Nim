@@ -28,7 +28,7 @@ template createCb(retFutureSym, iteratorNameSym,
                   name, futureVarCompletions: untyped) =
   var nameIterVar = iteratorNameSym
   #{.push stackTrace: off.}
-  proc cb0 {.closure, gcsafe.} =
+  proc cb0 {.closure.} =
     try:
       if not nameIterVar.finished:
         var next = nameIterVar()
