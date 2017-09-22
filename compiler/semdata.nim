@@ -65,7 +65,7 @@ type
     efWantStmt, efAllowStmt, efDetermineType, efExplain,
     efAllowDestructor, efWantValue, efOperand, efNoSemCheck,
     efNoProcvarCheck, efNoEvaluateGeneric, efInCall, efFromHlo,
-  
+
   TExprFlags* = set[TExprFlag]
 
   TTypeAttachedOp* = enum
@@ -112,6 +112,7 @@ type
     semGenerateInstance*: proc (c: PContext, fn: PSym, pt: TIdTable,
                                 info: TLineInfo): PSym
     includedFiles*: IntSet    # used to detect recursive include files
+    pureEnumFields*: TStrTable   # pure enum fields that can be used unambiguously
     userPragmas*: TStrTable
     evalContext*: PEvalContext
     unknownIdents*: IntSet     # ids of all unknown identifiers to prevent
@@ -210,6 +211,7 @@ proc newContext*(graph: ModuleGraph; module: PSym; cache: IdentCache): PContext 
   result.converters = @[]
   result.patterns = @[]
   result.includedFiles = initIntSet()
+  initStrTable(result.pureEnumFields)
   initStrTable(result.userPragmas)
   result.generics = @[]
   result.unknownIdents = initIntSet()

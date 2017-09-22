@@ -60,6 +60,11 @@ proc checkModuleName*(n: PNode; doLocalError=true): int32 =
   else:
     result = fullPath.fileInfoIdx
 
+proc importPureEnumField*(c: PContext; s: PSym) =
+  var check = strTableGet(c.importTable.symbols, s.name)
+  if check == nil:
+    strTableAdd(c.pureEnumFields, s)
+
 proc rawImportSymbol(c: PContext, s: PSym) =
   # This does not handle stubs, because otherwise loading on demand would be
   # pointless in practice. So importing stubs is fine here!
@@ -75,7 +80,7 @@ proc rawImportSymbol(c: PContext, s: PSym) =
   strTableAdd(c.importTable.symbols, s)
   if s.kind == skType:
     var etyp = s.typ
-    if etyp.kind in {tyBool, tyEnum} and sfPure notin s.flags:
+    if etyp.kind in {tyBool, tyEnum}:
       for j in countup(0, sonsLen(etyp.n) - 1):
         var e = etyp.n.sons[j].sym
         if e.kind != skEnumField:
@@ -91,7 +96,10 @@ proc rawImportSymbol(c: PContext, s: PSym) =
             break
           check = nextIdentIter(it, c.importTable.symbols)
         if e != nil:
-          rawImportSymbol(c, e)
+          if sfPure notin s.flags:
+            rawImportSymbol(c, e)
+          else:
+            importPureEnumField(c, e)
   else:
     # rodgen assures that converters and patterns are no stubs
     if s.kind == skConverter: addConverter(c, s)
