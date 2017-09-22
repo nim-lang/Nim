@@ -95,10 +95,7 @@ proc cstrToNimstr(str: cstring): NimString {.compilerRtl.} =
   if str == nil: NimString(nil)
   else: toNimStr(str, str.len)
 
-when defined(nimImmutableStrings):
-  template wasMoved(x: NimString): bool = (x.reserved and seqShallowFlag) != 0
-else:
-  template wasMoved(x: NimString): bool = false
+template wasMoved(x: NimString): bool = (x.reserved and seqShallowFlag) != 0
 
 proc copyString(src: NimString): NimString {.compilerRtl.} =
   if src != nil:
@@ -109,7 +106,7 @@ proc copyString(src: NimString): NimString {.compilerRtl.} =
       result.len = src.len
       copyMem(addr(result.data), addr(src.data), src.len + 1)
       sysAssert((seqShallowFlag and result.reserved) == 0, "copyString")
-      when defined(nimImmutableStrings):
+      when defined(nimShallowStrings):
         if (src.reserved and strlitFlag) != 0:
           result.reserved = (result.reserved and not strlitFlag) or seqShallowFlag
 
@@ -132,7 +129,7 @@ proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
     result.len = src.len
     copyMem(addr(result.data), addr(src.data), src.len + 1)
     sysAssert((seqShallowFlag and result.reserved) == 0, "copyStringRC1")
-    when defined(nimImmutableStrings):
+    when defined(nimShallowStrings):
       if (src.reserved and strlitFlag) != 0:
         result.reserved = (result.reserved and not strlitFlag) or seqShallowFlag
 
