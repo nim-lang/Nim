@@ -631,7 +631,7 @@ type
     mPointer, mEmptySet, mIntSetBaseType, mNil, mExpr, mStmt, mTypeDesc,
     mVoidType, mPNimrodNode, mShared, mGuarded, mLock, mSpawn, mDeepCopy,
     mIsMainModule, mCompileDate, mCompileTime, mProcCall,
-    mCpuEndian, mHostOS, mHostCPU, mAppType,
+    mCpuEndian, mHostOS, mHostCPU, mBuildOS, mBuildCPU, mAppType,
     mNaN, mInf, mNegInf,
     mCompileOption, mCompileOptionArg,
     mNLen, mNChild, mNSetChild, mNAdd, mNAddMultiple, mNDel, mNKind,
