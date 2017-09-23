@@ -409,8 +409,7 @@ when not defined(JS):
 
 when not defined(JS) and not defined(nimscript):
   template space(s: PGenericSeq): int {.dirty.} =
-    s.reserved and not seqShallowFlag
-
+    s.reserved and not (seqShallowFlag or strlitFlag)
   include "system/hti"
 
 type
@@ -1329,6 +1328,9 @@ const
     ## "amd64", "mips", "mipsel", "arm", "arm64", "mips64", "mips64el".
 
   seqShallowFlag = low(int)
+  strlitFlag = 1 shl (sizeof(int)*8 - 2) # later versions of the codegen \
+  # emit this flag
+  # for string literals, it allows for some optimizations.
 
 {.push profiler: off.}
 when defined(nimKnowsNimvm):
@@ -3720,7 +3722,9 @@ proc shallow*(s: var string) {.noSideEffect, inline.} =
   ## purposes.
   when not defined(JS) and not defined(nimscript):
     var s = cast[PGenericSeq](s)
-    s.reserved = s.reserved or seqShallowFlag
+    # string literals cannot become 'shallow':
+    if (s.reserved and strlitFlag) == 0:
+      s.reserved = s.reserved or seqShallowFlag
 
 type
   NimNodeObj = object

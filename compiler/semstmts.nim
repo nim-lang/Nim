@@ -493,6 +493,7 @@ proc fillPartialObject(c: PContext; n: PNode; typ: PType) =
       addSon(obj.n, newSymNode(field))
       n.sons[0] = makeDeref x
       n.sons[1] = newSymNode(field)
+      n.typ = field.typ
     else:
       localError(n.info, "implicit object field construction " &
         "requires a .partial object, but got " & typeToString(obj))

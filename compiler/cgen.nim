@@ -47,20 +47,30 @@ proc findPendingModule(m: BModule, s: PSym): BModule =
   var ms = getModule(s)
   result = m.g.modules[ms.position]
 
-proc initLoc(result: var TLoc, k: TLocKind, typ: PType, s: TStorageLoc) =
+proc initLoc(result: var TLoc, k: TLocKind, lode: PNode, s: TStorageLoc) =
   result.k = k
-  result.s = s
-  result.t = typ
+  result.storage = s
+  result.lode = lode
   result.r = nil
   result.flags = {}
 
-proc fillLoc(a: var TLoc, k: TLocKind, typ: PType, r: Rope, s: TStorageLoc) =
+proc fillLoc(a: var TLoc, k: TLocKind, lode: PNode, r: Rope, s: TStorageLoc) =
   # fills the loc if it is not already initialized
   if a.k == locNone:
     a.k = k
-    a.t = typ
-    a.s = s
+    a.lode = lode
+    a.storage = s
     if a.r == nil: a.r = r
+
+proc t(a: TLoc): PType {.inline.} =
+  if a.lode.kind == nkSym:
+    result = a.lode.sym.typ
+  else:
+    result = a.lode.typ
+
+proc lodeTyp(t: PType): PNode =
+  result = newNode(nkEmpty)
+  result.typ = t
 
 proc isSimpleConst(typ: PType): bool =
   let t = skipTypes(typ, abstractVar)
@@ -286,7 +296,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
   if not isComplexValueType(typ):
     if containsGcRef:
       var nilLoc: TLoc
-      initLoc(nilLoc, locTemp, loc.t, OnStack)
+      initLoc(nilLoc, locTemp, loc.lode, OnStack)
       nilLoc.r = rope("NIM_NIL")
       genRefAssign(p, loc, nilLoc, {afSrcIsNil})
     else:
@@ -294,7 +304,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
   else:
     if optNilCheck in p.options:
       linefmt(p, cpsStmts, "#chckNil((void*)$1);$n", addrLoc(loc))
-    if loc.s != OnStack:
+    if loc.storage != OnStack:
       linefmt(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
               addrLoc(loc), genTypeInfo(p.module, loc.t))
       # XXX: generated reset procs should not touch the m_type
@@ -340,8 +350,8 @@ proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
   result.r = "T" & rope(p.labels) & "_"
   linefmt(p, cpsLocals, "$1 $2;$n", getTypeDesc(p.module, t), result.r)
   result.k = locTemp
-  result.t = t
-  result.s = OnStack
+  result.lode = lodeTyp t
+  result.storage = OnStack
   result.flags = {}
   constructLoc(p, result, not needsInit)
 
@@ -350,8 +360,8 @@ proc getIntTemp(p: BProc, result: var TLoc) =
   result.r = "T" & rope(p.labels) & "_"
   linefmt(p, cpsLocals, "NI $1;$n", result.r)
   result.k = locTemp
-  result.s = OnStack
-  result.t = getSysType(tyInt)
+  result.storage = OnStack
+  result.lode = lodeTyp getSysType(tyInt)
   result.flags = {}
 
 proc initGCFrame(p: BProc): Rope =
@@ -375,9 +385,10 @@ proc localDebugInfo(p: BProc, s: PSym) =
   inc(p.maxFrameLen)
   inc p.blocks[p.blocks.len-1].frameLen
 
-proc localVarDecl(p: BProc; s: PSym): Rope =
+proc localVarDecl(p: BProc; n: PNode): Rope =
+  let s = n.sym
   if s.loc.k == locNone:
-    fillLoc(s.loc, locLocalVar, s.typ, mangleLocalName(p, s), OnStack)
+    fillLoc(s.loc, locLocalVar, n, mangleLocalName(p, s), OnStack)
     if s.kind == skLet: incl(s.loc.flags, lfNoDeepCopy)
   result = getTypeDesc(p.module, s.typ)
   if s.constraint.isNil:
@@ -390,23 +401,24 @@ proc localVarDecl(p: BProc; s: PSym): Rope =
   else:
     result = s.cgDeclFrmt % [result, s.loc.r]
 
-proc assignLocalVar(p: BProc, s: PSym) =
+proc assignLocalVar(p: BProc, n: PNode) =
   #assert(s.loc.k == locNone) # not yet assigned
   # this need not be fulfilled for inline procs; they are regenerated
   # for each module that uses them!
   let nl = if optLineDir in gOptions: "" else: tnl
-  let decl = localVarDecl(p, s) & ";" & nl
+  let decl = localVarDecl(p, n) & ";" & nl
   line(p, cpsLocals, decl)
-  localDebugInfo(p, s)
+  localDebugInfo(p, n.sym)
 
 include ccgthreadvars
 
 proc varInDynamicLib(m: BModule, sym: PSym)
 proc mangleDynLibProc(sym: PSym): Rope
 
-proc assignGlobalVar(p: BProc, s: PSym) =
+proc assignGlobalVar(p: BProc, n: PNode) =
+  let s = n.sym
   if s.loc.k == locNone:
-    fillLoc(s.loc, locGlobalVar, s.typ, mangleName(p.module, s), OnHeap)
+    fillLoc(s.loc, locGlobalVar, n, mangleName(p.module, s), OnHeap)
 
   if lfDynamicLib in s.loc.flags:
     var q = findPendingModule(p.module, s)
@@ -446,9 +458,10 @@ proc assignParam(p: BProc, s: PSym) =
   scopeMangledParam(p, s)
   localDebugInfo(p, s)
 
-proc fillProcLoc(m: BModule; sym: PSym) =
+proc fillProcLoc(m: BModule; n: PNode) =
+  let sym = n.sym
   if sym.loc.k == locNone:
-    fillLoc(sym.loc, locProc, sym.typ, mangleName(m, sym), OnStack)
+    fillLoc(sym.loc, locProc, n, mangleName(m, sym), OnStack)
 
 proc getLabel(p: BProc): TLabel =
   inc(p.labels)
@@ -457,7 +470,7 @@ proc getLabel(p: BProc): TLabel =
 proc fixLabel(p: BProc, labl: TLabel) =
   lineF(p, cpsStmts, "$1: ;$n", [labl])
 
-proc genVarPrototype(m: BModule, sym: PSym)
+proc genVarPrototype(m: BModule, n: PNode)
 proc requestConstImpl(p: BProc, sym: PSym)
 proc genStmts(p: BProc, t: PNode)
 proc expr(p: BProc, n: PNode, d: var TLoc)
@@ -469,11 +482,11 @@ proc genLiteral(p: BProc, n: PNode): Rope
 proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType): Rope
 
 proc initLocExpr(p: BProc, e: PNode, result: var TLoc) =
-  initLoc(result, locNone, e.typ, OnUnknown)
+  initLoc(result, locNone, e, OnUnknown)
   expr(p, e, result)
 
 proc initLocExprSingleUse(p: BProc, e: PNode, result: var TLoc) =
-  initLoc(result, locNone, e.typ, OnUnknown)
+  initLoc(result, locNone, e, OnUnknown)
   result.flags.incl lfSingleUse
   expr(p, e, result)
 
@@ -591,7 +604,7 @@ proc cgsym(m: BModule, name: string): Rope =
   if sym != nil:
     case sym.kind
     of skProc, skMethod, skConverter, skIterator: genProc(m, sym)
-    of skVar, skResult, skLet: genVarPrototype(m, sym)
+    of skVar, skResult, skLet: genVarPrototype(m, newSymNode sym)
     of skType: discard getTypeDesc(m, sym.typ)
     else: internalError("cgsym: " & name & ": " & $sym.kind)
   else:
@@ -645,7 +658,7 @@ proc closureSetup(p: BProc, prc: PSym) =
     internalError(prc.info, "closure generation failed")
   var env = ls.sym
   #echo "created environment: ", env.id, " for ", prc.name.s
-  assignLocalVar(p, env)
+  assignLocalVar(p, ls)
   # generate cast assignment:
   linefmt(p, cpsStmts, "$1 = ($2) ClE_0;$n",
           rdLoc(env.loc), getTypeDesc(p.module, env.typ))
@@ -676,29 +689,30 @@ proc genProcAux(m: BModule, prc: PSym) =
   if sfPure notin prc.flags and prc.typ.sons[0] != nil:
     if resultPos >= prc.ast.len:
       internalError(prc.info, "proc has no result symbol")
-    var res = prc.ast.sons[resultPos].sym # get result symbol
+    let resNode = prc.ast.sons[resultPos]
+    let res = resNode.sym # get result symbol
     if not isInvalidReturnType(prc.typ.sons[0]):
       if sfNoInit in prc.flags: incl(res.flags, sfNoInit)
       if sfNoInit in prc.flags and p.module.compileToCpp and (let val = easyResultAsgn(prc.getBody); val != nil):
-        var decl = localVarDecl(p, res)
+        var decl = localVarDecl(p, resNode)
         var a: TLoc
         initLocExprSingleUse(p, val, a)
         linefmt(p, cpsStmts, "$1 = $2;$n", decl, rdLoc(a))
       else:
         # declare the result symbol:
-        assignLocalVar(p, res)
+        assignLocalVar(p, resNode)
         assert(res.loc.r != nil)
         initLocalVar(p, res, immediateAsgn=false)
       returnStmt = rfmt(nil, "\treturn $1;$n", rdLoc(res.loc))
     else:
-      fillResult(res)
+      fillResult(resNode)
       assignParam(p, res)
       if skipTypes(res.typ, abstractInst).kind == tyArray:
         #incl(res.loc.flags, lfIndirect)
-        res.loc.s = OnUnknown
+        res.loc.storage = OnUnknown
 
   for i in countup(1, sonsLen(prc.typ.n) - 1):
-    var param = prc.typ.n.sons[i].sym
+    let param = prc.typ.n.sons[i].sym
     if param.typ.isCompileTimeOnly: continue
     assignParam(p, param)
   closureSetup(p, prc)
@@ -764,13 +778,13 @@ proc genProcPrototype(m: BModule, sym: PSym) =
 
 proc genProcNoForward(m: BModule, prc: PSym) =
   if lfImportCompilerProc in prc.loc.flags:
-    fillProcLoc(m, prc)
+    fillProcLoc(m, prc.ast[namePos])
     useHeader(m, prc)
     # dependency to a compilerproc:
     discard cgsym(m, prc.name.s)
     return
   if lfNoDecl in prc.loc.flags:
-    fillProcLoc(m, prc)
+    fillProcLoc(m, prc.ast[namePos])
     useHeader(m, prc)
     genProcPrototype(m, prc)
   elif prc.typ.callConv == ccInline:
@@ -779,7 +793,7 @@ proc genProcNoForward(m: BModule, prc: PSym) =
     # a check for ``m.declaredThings``.
     if not containsOrIncl(m.declaredThings, prc.id):
       #if prc.loc.k == locNone:
-      fillProcLoc(m, prc)
+      fillProcLoc(m, prc.ast[namePos])
       #elif {sfExportc, sfImportc} * prc.flags == {}:
       #  # reset name to restore consistency in case of hashing collisions:
       #  echo "resetting ", prc.id, " by ", m.module.name.s
@@ -790,7 +804,7 @@ proc genProcNoForward(m: BModule, prc: PSym) =
       genProcAux(m, prc)
   elif lfDynamicLib in prc.loc.flags:
     var q = findPendingModule(m, prc)
-    fillProcLoc(q, prc)
+    fillProcLoc(q, prc.ast[namePos])
     useHeader(m, prc)
     genProcPrototype(m, prc)
     if q != nil and not containsOrIncl(q.declaredThings, prc.id):
@@ -799,13 +813,13 @@ proc genProcNoForward(m: BModule, prc: PSym) =
       symInDynamicLibPartial(m, prc)
   elif sfImportc notin prc.flags:
     var q = findPendingModule(m, prc)
-    fillProcLoc(q, prc)
+    fillProcLoc(q, prc.ast[namePos])
     useHeader(m, prc)
     genProcPrototype(m, prc)
     if q != nil and not containsOrIncl(q.declaredThings, prc.id):
       genProcAux(q, prc)
   else:
-    fillProcLoc(m, prc)
+    fillProcLoc(m, prc.ast[namePos])
     useHeader(m, prc)
     if sfInfixCall notin prc.flags: genProcPrototype(m, prc)
 
@@ -813,7 +827,7 @@ proc requestConstImpl(p: BProc, sym: PSym) =
   var m = p.module
   useHeader(m, sym)
   if sym.loc.k == locNone:
-    fillLoc(sym.loc, locData, sym.typ, mangleName(p.module, sym), OnStatic)
+    fillLoc(sym.loc, locData, sym.ast, mangleName(p.module, sym), OnStatic)
   if lfNoDecl in sym.loc.flags: return
   # declare implementation:
   var q = findPendingModule(m, sym)
@@ -836,7 +850,7 @@ proc genProc(m: BModule, prc: PSym) =
   if sfBorrow in prc.flags or not isActivated(prc): return
   if sfForward in prc.flags:
     addForwardedProc(m, prc)
-    fillProcLoc(m, prc)
+    fillProcLoc(m, prc.ast[namePos])
   else:
     genProcNoForward(m, prc)
     if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc} and
@@ -846,10 +860,11 @@ proc genProc(m: BModule, prc: PSym) =
         if not containsOrIncl(m.g.generatedHeader.declaredThings, prc.id):
           genProcAux(m.g.generatedHeader, prc)
 
-proc genVarPrototypeAux(m: BModule, sym: PSym) =
+proc genVarPrototypeAux(m: BModule, n: PNode) =
   #assert(sfGlobal in sym.flags)
+  let sym = n.sym
   useHeader(m, sym)
-  fillLoc(sym.loc, locGlobalVar, sym.typ, mangleName(m, sym), OnHeap)
+  fillLoc(sym.loc, locGlobalVar, n, mangleName(m, sym), OnHeap)
   if (lfNoDecl in sym.loc.flags) or containsOrIncl(m.declaredThings, sym.id):
     return
   if sym.owner.id != m.module.id:
@@ -865,8 +880,8 @@ proc genVarPrototypeAux(m: BModule, sym: PSym) =
       if sfVolatile in sym.flags: add(m.s[cfsVars], " volatile")
       addf(m.s[cfsVars], " $1;$n", [sym.loc.r])
 
-proc genVarPrototype(m: BModule, sym: PSym) =
-  genVarPrototypeAux(m, sym)
+proc genVarPrototype(m: BModule, n: PNode) =
+  genVarPrototypeAux(m, n)
 
 proc addIntTypes(result: var Rope) {.inline.} =
   addf(result, "#define NIM_NEW_MANGLING_RULES" & tnl &

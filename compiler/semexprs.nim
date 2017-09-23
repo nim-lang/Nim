@@ -2115,8 +2115,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   if nfSem in n.flags: return
   case n.kind
   of nkIdent, nkAccQuoted:
-    let checks = if efNoEvaluateGeneric in flags: {checkUndeclared}
-                 else: {checkUndeclared, checkModule, checkAmbiguity}
+    let checks = if efNoEvaluateGeneric in flags:
+        {checkUndeclared, checkPureEnumFields}
+      else:
+        {checkUndeclared, checkModule, checkAmbiguity, checkPureEnumFields}
     var s = qualifiedLookUp(c, n, checks)
     if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)
     result = semSym(c, n, s, flags)
