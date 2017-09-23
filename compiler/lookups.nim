@@ -144,8 +144,10 @@ type
 
 proc getSymRepr*(s: PSym): string =
   case s.kind
-  of skProc, skMethod, skConverter, skIterator: result = getProcHeader(s)
-  else: result = s.name.s
+  of skProc, skFunc, skMethod, skConverter, skIterator:
+    result = getProcHeader(s)
+  else:
+    result = s.name.s
 
 proc ensureNoMissingOrUnusedSymbols(scope: PScope) =
   # check if all symbols have been used and defined:

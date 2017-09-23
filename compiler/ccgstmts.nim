@@ -960,7 +960,7 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
       res.add(t.sons[i].strVal)
     of nkSym:
       var sym = t.sons[i].sym
-      if sym.kind in {skProc, skIterator, skMethod}:
+      if sym.kind in {skProc, skFunc, skIterator, skMethod}:
         var a: TLoc
         initLocExpr(p, t.sons[i], a)
         res.add($rdLoc(a))

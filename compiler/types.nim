@@ -1089,7 +1089,7 @@ proc typeAllowedNode(marker: var IntSet, n: PNode, kind: TSymKind,
       of nkNone..nkNilLit:
         discard
       else:
-        if n.kind == nkRecCase and kind in {skProc, skConst}:
+        if n.kind == nkRecCase and kind in {skProc, skFunc, skConst}:
           return n[0].typ
         for i in countup(0, sonsLen(n) - 1):
           let it = n.sons[i]
@@ -1107,7 +1107,7 @@ proc matchType*(a: PType, pattern: openArray[tuple[k:TTypeKind, i:int]],
 
 proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
                     flags: TTypeAllowedFlags = {}): PType =
-  assert(kind in {skVar, skLet, skConst, skProc, skParam, skResult})
+  assert(kind in {skVar, skLet, skConst, skProc, skFunc, skParam, skResult})
   # if we have already checked the type, return true, because we stop the
   # evaluation if something is wrong:
   result = nil
@@ -1116,7 +1116,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   var t = skipTypes(typ, abstractInst-{tyTypeDesc})
   case t.kind
   of tyVar:
-    if kind in {skProc, skConst}: return t
+    if kind in {skProc, skFunc, skConst}: return t
     var t2 = skipTypes(t.sons[0], abstractInst-{tyTypeDesc})
     case t2.kind
     of tyVar:
@@ -1176,7 +1176,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       result = typeAllowedAux(marker, t.sons[i], kind, flags)
       if result != nil: break
   of tyObject, tyTuple:
-    if kind in {skProc, skConst} and
+    if kind in {skProc, skFunc, skConst} and
         t.kind == tyObject and t.sons[0] != nil: return t
     let flags = flags+{taField}
     for i in countup(0, sonsLen(t) - 1):

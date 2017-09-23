@@ -580,7 +580,7 @@ proc process(c: PPassContext, n: PNode): PNode =
     for i in countup(0, sonsLen(n) - 1): discard process(c, n.sons[i])
     #var s = n.sons[namePos].sym
     #addInterfaceSym(w, s)
-  of nkProcDef, nkIteratorDef, nkConverterDef,
+  of nkProcDef, nkFuncDef, nkIteratorDef, nkConverterDef,
       nkTemplateDef, nkMacroDef:
     let s = n.sons[namePos].sym
     if s == nil: internalError(n.info, "rodwrite.process")

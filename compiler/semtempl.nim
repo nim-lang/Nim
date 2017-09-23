@@ -449,6 +449,8 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
         a.sons[2] = semTemplBody(c, a.sons[2])
   of nkProcDef, nkLambdaKinds:
     result = semRoutineInTemplBody(c, n, skProc)
+  of nkFuncDef:
+    result = semRoutineInTemplBody(c, n, skFunc)
   of nkMethodDef:
     result = semRoutineInTemplBody(c, n, skMethod)
   of nkIteratorDef:

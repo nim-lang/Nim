@@ -292,7 +292,7 @@ proc useMagic(p: PProc, name: string) =
   if name.len == 0: return
   var s = magicsys.getCompilerProc(name)
   if s != nil:
-    internalAssert s.kind in {skProc, skMethod, skConverter}
+    internalAssert s.kind in {skProc, skFunc, skMethod, skConverter}
     if not p.g.generatedSyms.containsOrIncl(s.id):
       let code = genProc(p, s)
       add(p.g.constants, code)
@@ -1111,7 +1111,7 @@ template isIndirect(x: PSym): bool =
   ({sfAddrTaken, sfGlobal} * v.flags != {} and
     #(mapType(v.typ) != etyObject) and
     {sfImportc, sfVolatile, sfExportc} * v.flags == {} and
-    v.kind notin {skProc, skConverter, skMethod, skIterator,
+    v.kind notin {skProc, skFunc, skConverter, skMethod, skIterator,
                   skConst, skTemp, skLet} and p.target == targetJS)
 
 proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
@@ -1237,7 +1237,7 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
     else:
       r.res = "$" & s.loc.r
       p.declareGlobal(s.id, r.res)
-  of skProc, skConverter, skMethod:
+  of skProc, skFunc, skConverter, skMethod:
     discard mangleName(s, p.target)
     if p.target == targetPHP and r.kind != resCallee:
       r.res = makeJsString($s.loc.r)
@@ -2338,7 +2338,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
      nkImportStmt, nkImportExceptStmt, nkExportStmt, nkExportExceptStmt,
      nkFromStmt, nkTemplateDef, nkMacroDef: discard
   of nkPragma: genPragma(p, n)
-  of nkProcDef, nkMethodDef, nkConverterDef:
+  of nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef:
     var s = n.sons[namePos].sym
     if {sfExportc, sfCompilerProc} * s.flags == {sfExportc}:
       genSym(p, n.sons[namePos], r)

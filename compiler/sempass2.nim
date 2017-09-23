@@ -835,7 +835,7 @@ proc track(tracked: PEffects, n: PNode) =
     setLen(tracked.locked, oldLocked)
     tracked.currLockLevel = oldLockLevel
   of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,
-      nkMacroDef, nkTemplateDef, nkLambda, nkDo:
+      nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
     discard
   of nkCast, nkHiddenStdConv, nkHiddenSubConv, nkConv:
     if n.len == 2: track(tracked, n.sons[1])
@@ -937,7 +937,7 @@ proc trackProc*(s: PSym, body: PNode) =
   track(t, body)
   if not isEmptyType(s.typ.sons[0]) and
       {tfNeedsInit, tfNotNil} * s.typ.sons[0].flags != {} and
-      s.kind in {skProc, skConverter, skMethod}:
+      s.kind in {skProc, skFunc, skConverter, skMethod}:
     var res = s.ast.sons[resultPos].sym # get result symbol
     if res.id notin t.init:
       message(body.info, warnProveInit, "result")
@@ -979,10 +979,10 @@ proc trackProc*(s: PSym, body: PNode) =
     message(s.info, warnLockLevel,
       "declared lock level is $1, but real lock level is $2" %
         [$s.typ.lockLevel, $t.maxLockLevel])
-  when useWriteTracking: trackWrites(s, body)
+  if s.kind == skFunc: trackWrites(s, body)
 
 proc trackTopLevelStmt*(module: PSym; n: PNode) =
-  if n.kind in {nkPragma, nkMacroDef, nkTemplateDef, nkProcDef,
+  if n.kind in {nkPragma, nkMacroDef, nkTemplateDef, nkProcDef, nkFuncDef,
                 nkTypeSection, nkConverterDef, nkMethodDef, nkIteratorDef}:
     return
   var effects = newNode(nkEffectList, n.info)

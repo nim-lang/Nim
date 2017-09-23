@@ -449,7 +449,7 @@ include semtypes, semtempl, semgnrc, semstmts, semexprs
 proc addCodeForGenerics(c: PContext, n: PNode) =
   for i in countup(c.lastGenericIdx, c.generics.len - 1):
     var prc = c.generics[i].inst.sym
-    if prc.kind in {skProc, skMethod, skConverter} and prc.magic == mNone:
+    if prc.kind in {skProc, skFunc, skMethod, skConverter} and prc.magic == mNone:
       if prc.ast == nil or prc.ast.sons[bodyPos] == nil:
         internalError(prc.info, "no code for " & prc.name.s)
       else:
