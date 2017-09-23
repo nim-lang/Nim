@@ -1604,6 +1604,9 @@ proc semIterator(c: PContext, n: PNode): PNode =
 proc semProc(c: PContext, n: PNode): PNode =
   result = semProcAux(c, n, skProc, procPragmas)
 
+proc semFunc(c: PContext, n: PNode): PNode =
+  result = semProcAux(c, n, skFunc, procPragmas)
+
 proc semMethod(c: PContext, n: PNode): PNode =
   if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "method")
   result = semProcAux(c, n, skMethod, methodPragmas)
