@@ -493,6 +493,7 @@ proc fillPartialObject(c: PContext; n: PNode; typ: PType) =
       addSon(obj.n, newSymNode(field))
       n.sons[0] = makeDeref x
       n.sons[1] = newSymNode(field)
+      n.typ = field.typ
     else:
       localError(n.info, "implicit object field construction " &
         "requires a .partial object, but got " & typeToString(obj))
@@ -1602,6 +1603,9 @@ proc semIterator(c: PContext, n: PNode): PNode =
 
 proc semProc(c: PContext, n: PNode): PNode =
   result = semProcAux(c, n, skProc, procPragmas)
+
+proc semFunc(c: PContext, n: PNode): PNode =
+  result = semProcAux(c, n, skFunc, procPragmas)
 
 proc semMethod(c: PContext, n: PNode): PNode =
   if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "method")

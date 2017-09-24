@@ -282,12 +282,13 @@ proc ccgIntroducedPtr(s: PSym): bool =
     result = (getSize(pt) > platform.floatSize*2) or (optByRef in s.options)
   else: result = false
 
-proc fillResult(param: PSym) =
-  fillLoc(param.loc, locParam, param.typ, ~"Result",
+proc fillResult(param: PNode) =
+  fillLoc(param.sym.loc, locParam, param, ~"Result",
           OnStack)
-  if mapReturnType(param.typ) != ctArray and isInvalidReturnType(param.typ):
-    incl(param.loc.flags, lfIndirect)
-    param.loc.s = OnUnknown
+  let t = param.sym.typ
+  if mapReturnType(t) != ctArray and isInvalidReturnType(t):
+    incl(param.sym.loc.flags, lfIndirect)
+    param.sym.loc.storage = OnUnknown
 
 proc typeNameOrLiteral(m: BModule; t: PType, literal: string): Rope =
   if t.sym != nil and sfImportc in t.sym.flags and t.sym.magic == mNone:
@@ -398,13 +399,13 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     var param = t.n.sons[i].sym
     if isCompileTimeOnly(param.typ): continue
     if params != nil: add(params, ~", ")
-    fillLoc(param.loc, locParam, param.typ, mangleParamName(m, param),
+    fillLoc(param.loc, locParam, t.n.sons[i], mangleParamName(m, param),
             param.paramStorageLoc)
     if ccgIntroducedPtr(param):
       add(params, getTypeDescWeak(m, param.typ, check))
       add(params, ~"*")
       incl(param.loc.flags, lfIndirect)
-      param.loc.s = OnUnknown
+      param.loc.storage = OnUnknown
     elif weakDep:
       add(params, getTypeDescWeak(m, param.typ, check))
     else:
@@ -417,7 +418,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     var j = 0
     while arr.kind in {tyOpenArray, tyVarargs}:
       # this fixes the 'sort' bug:
-      if param.typ.kind == tyVar: param.loc.s = OnUnknown
+      if param.typ.kind == tyVar: param.loc.storage = OnUnknown
       # need to pass hidden parameter:
       addf(params, ", NI $1Len_$2", [param.loc.r, j.rope])
       inc(j)
@@ -496,12 +497,12 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
     let sname = mangleRecFieldName(m, field, rectype)
     let ae = if accessExpr != nil: "$1.$2" % [accessExpr, sname]
              else: sname
-    fillLoc(field.loc, locField, field.typ, ae, OnUnknown)
+    fillLoc(field.loc, locField, n, ae, OnUnknown)
     # for importcpp'ed objects, we only need to set field.loc, but don't
     # have to recurse via 'getTypeDescAux'. And not doing so prevents problems
     # with heavily templatized C++ code:
     if not isImportedCppType(rectype):
-      let fieldType = field.loc.t.skipTypes(abstractInst)
+      let fieldType = field.loc.lode.typ.skipTypes(abstractInst)
       if fieldType.kind == tyArray and tfUncheckedArray in fieldType.flags:
         addf(result, "$1 $2[SEQ_DECL_SIZE];$n",
             [getTypeDescAux(m, fieldType.elemType, check), sname])
@@ -861,7 +862,7 @@ proc genProcHeader(m: BModule, prc: PSym): Rope =
   elif prc.typ.callConv == ccInline:
     result.add "static "
   var check = initIntSet()
-  fillLoc(prc.loc, locProc, prc.typ, mangleName(m, prc), OnUnknown)
+  fillLoc(prc.loc, locProc, prc.ast[namePos], mangleName(m, prc), OnUnknown)
   genProcParams(m, prc.typ, rettype, params, check)
   # careful here! don't access ``prc.ast`` as that could reload large parts of
   # the object graph!

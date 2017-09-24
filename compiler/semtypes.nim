@@ -88,7 +88,9 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       if not isPure: strTableAdd(c.module.tab, e)
     addSon(result.n, newSymNode(e))
     styleCheckDef(e)
-    if sfGenSym notin e.flags and not isPure: addDecl(c, e)
+    if sfGenSym notin e.flags:
+      if not isPure: addDecl(c, e)
+      else: importPureEnumField(c, e)
     if isPure and strTableIncl(symbols, e):
       wrongRedefinition(e.info, e.name.s)
     inc(counter)

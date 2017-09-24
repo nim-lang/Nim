@@ -69,7 +69,7 @@ type
     maxStackCells: int       # max stack cells in ``decStack``
     cycleTableSize: int      # max entries in cycle table
     maxPause: int64          # max measured GC pause in nanoseconds
-  
+
   GcStack {.final, pure.} = object
     when nimCoroutines:
       prev: ptr GcStack
@@ -220,17 +220,6 @@ else:
     x <% rcIncrement
   template `++`(x: expr): stmt = inc(x, rcIncrement)
 
-proc prepareDealloc(cell: PCell) =
-  if cell.typ.finalizer != nil:
-    # the finalizer could invoke something that
-    # allocates memory; this could trigger a garbage
-    # collection. Since we are already collecting we
-    # prevend recursive entering here by a lock.
-    # XXX: we should set the cell's children to nil!
-    inc(gch.recGcLock)
-    (cast[Finalizer](cell.typ.finalizer))(cellToUsr(cell))
-    dec(gch.recGcLock)
-
 proc rtlAddCycleRoot(c: PCell) {.rtl, inl.} =
   # we MUST access gch as a global here, because this crosses DLL boundaries!
   discard
@@ -248,6 +237,9 @@ proc decRef(c: PCell) {.inline.} =
 proc incRef(c: PCell) {.inline.} =
   gcAssert(isAllocatedPtr(gch.region, c), "incRef: interiorPtr")
   c.refcount = c.refcount +% rcIncrement
+
+proc nimGCunrefRC1(p: pointer) {.compilerProc, inline.} =
+  decRef(usrToCell(p))
 
 proc nimGCref(p: pointer) {.compilerProc.} =
   let cell = usrToCell(p)
@@ -665,6 +657,8 @@ proc GC_dumpHeap() =
 
 # ---------------- cycle collector -------------------------------------------
 
+include gc_common
+
 proc freeCyclicCell(gch: var GcHeap, c: PCell) =
   gcAssert(isAllocatedPtr(gch.region, c), "freeCyclicCell: freed pointer?")
 
@@ -858,8 +852,6 @@ proc gcMark(gch: var GcHeap, p: pointer) {.inline.} =
       objStart.refcount = objStart.refcount +% rcIncrement
       add(gch.decStack, objStart)
   sysAssert(allocInv(gch.region), "gcMark end")
-
-include gc_common
 
 proc markStackAndRegisters(gch: var GcHeap) {.noinline, cdecl.} =
   forEachStackSlot(gch, gcMark)

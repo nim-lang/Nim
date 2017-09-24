@@ -574,7 +574,7 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
         optImplicitStatic notin gOptions: return
 
     if callee.magic notin ctfeWhitelist: return
-    if callee.kind notin {skProc, skConverter} or callee.isGenericRoutine:
+    if callee.kind notin {skProc, skFunc, skConverter} or callee.isGenericRoutine:
       return
 
     if n.typ != nil and typeAllowed(n.typ, skConst) != nil: return
@@ -616,10 +616,10 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
     # for typeof support.
     # for ``type(countup(1,3))``, see ``tests/ttoseq``.
     result = semOverloadedCall(c, n, nOrig,
-      {skProc, skMethod, skConverter, skMacro, skTemplate, skIterator}, flags)
+      {skProc, skFunc, skMethod, skConverter, skMacro, skTemplate, skIterator}, flags)
   else:
     result = semOverloadedCall(c, n, nOrig,
-      {skProc, skMethod, skConverter, skMacro, skTemplate}, flags)
+      {skProc, skFunc, skMethod, skConverter, skMacro, skTemplate}, flags)
 
   if result != nil:
     if result.sons[0].kind != nkSym:
@@ -1230,7 +1230,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
             else: nil
     if s != nil:
       case s.kind
-      of skProc, skMethod, skConverter, skIterator:
+      of skProc, skFunc, skMethod, skConverter, skIterator:
         # type parameters: partial generic specialization
         n.sons[0] = semSymGenericInstantiation(c, n.sons[0], s)
         result = explicitGenericInstantiation(c, n, s)
@@ -1398,7 +1398,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
 proc semReturn(c: PContext, n: PNode): PNode =
   result = n
   checkSonsLen(n, 1)
-  if c.p.owner.kind in {skConverter, skMethod, skProc, skMacro} or (
+  if c.p.owner.kind in {skConverter, skMethod, skProc, skFunc, skMacro} or (
      c.p.owner.kind == skIterator and c.p.owner.typ.callConv == ccClosure):
     if n.sons[0].kind != nkEmpty:
       # transform ``return expr`` to ``result = expr; return``
@@ -2115,12 +2115,14 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   if nfSem in n.flags: return
   case n.kind
   of nkIdent, nkAccQuoted:
-    let checks = if efNoEvaluateGeneric in flags: {checkUndeclared}
-                 else: {checkUndeclared, checkModule, checkAmbiguity}
+    let checks = if efNoEvaluateGeneric in flags:
+        {checkUndeclared, checkPureEnumFields}
+      else:
+        {checkUndeclared, checkModule, checkAmbiguity, checkPureEnumFields}
     var s = qualifiedLookUp(c, n, checks)
     if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)
     result = semSym(c, n, s, flags)
-    if s.kind in {skProc, skMethod, skConverter, skIterator}:
+    if s.kind in {skProc, skFunc, skMethod, skConverter, skIterator}:
       #performProcvarCheck(c, n, s)
       result = symChoice(c, n, s, scClosed)
       if result.kind == nkSym:
@@ -2215,7 +2217,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
           errorUseQualifier(c, n.info, s)
         elif s.magic == mNone: result = semDirectOp(c, n, flags)
         else: result = semMagic(c, n, s, flags)
-      of skProc, skMethod, skConverter, skIterator:
+      of skProc, skFunc, skMethod, skConverter, skIterator:
         if s.magic == mNone: result = semDirectOp(c, n, flags)
         else: result = semMagic(c, n, s, flags)
       else:
@@ -2329,6 +2331,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkPragma: pragma(c, c.p.owner, n, stmtPragmas)
   of nkIteratorDef: result = semIterator(c, n)
   of nkProcDef: result = semProc(c, n)
+  of nkFuncDef: result = semFunc(c, n)
   of nkMethodDef: result = semMethod(c, n)
   of nkConverterDef: result = semConverterDef(c, n)
   of nkMacroDef: result = semMacroDef(c, n)

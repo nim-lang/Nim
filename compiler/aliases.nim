@@ -95,7 +95,7 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
   if a.kind == b.kind:
     case a.kind
     of nkSym:
-      const varKinds = {skVar, skTemp, skProc}
+      const varKinds = {skVar, skTemp, skProc, skFunc}
       # same symbol: aliasing:
       if a.sym.id == b.sym.id: result = arYes
       elif a.sym.kind in varKinds or b.sym.kind in varKinds:

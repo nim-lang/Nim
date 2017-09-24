@@ -144,8 +144,10 @@ type
 
 proc getSymRepr*(s: PSym): string =
   case s.kind
-  of skProc, skMethod, skConverter, skIterator: result = getProcHeader(s)
-  else: result = s.name.s
+  of skProc, skFunc, skMethod, skConverter, skIterator:
+    result = getProcHeader(s)
+  else:
+    result = s.name.s
 
 proc ensureNoMissingOrUnusedSymbols(scope: PScope) =
   # check if all symbols have been used and defined:
@@ -286,7 +288,7 @@ proc lookUp*(c: PContext, n: PNode): PSym =
 
 type
   TLookupFlag* = enum
-    checkAmbiguity, checkUndeclared, checkModule
+    checkAmbiguity, checkUndeclared, checkModule, checkPureEnumFields
 
 proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
   const allExceptModule = {low(TSymKind)..high(TSymKind)}-{skModule,skPackage}
@@ -297,6 +299,8 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
       result = searchInScopes(c, ident).skipAlias(n)
     else:
       result = searchInScopes(c, ident, allExceptModule).skipAlias(n)
+    if result == nil and checkPureEnumFields in flags:
+      result = strTableGet(c.pureEnumFields, ident)
     if result == nil and checkUndeclared in flags:
       fixSpelling(n, ident, searchInScopes)
       errorUndeclaredIdentifier(c, n.info, ident.s)

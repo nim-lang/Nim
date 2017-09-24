@@ -221,6 +221,8 @@ type
     nkGotoState,          # used for the state machine (for iterators)
     nkState,              # give a label to a code section (for iterators)
     nkBreakState,         # special break statement for easier code generation
+    nkFuncDef             # a func
+
   TNodeKinds* = set[TNodeKind]
 
 type
@@ -534,6 +536,7 @@ type
     skConst,              # a constant
     skResult,             # special 'result' variable
     skProc,               # a proc
+    skFunc,               # a func
     skMethod,             # a method
     skIterator,           # an iterator
     skConverter,          # a type converter
@@ -552,7 +555,7 @@ type
   TSymKinds* = set[TSymKind]
 
 const
-  routineKinds* = {skProc, skMethod, skIterator,
+  routineKinds* = {skProc, skFunc, skMethod, skIterator,
                    skConverter, skMacro, skTemplate}
   tfIncompleteStruct* = tfVarargs
   tfUncheckedArray* = tfVarargs
@@ -752,9 +755,9 @@ type
   TLocFlags* = set[TLocFlag]
   TLoc* = object
     k*: TLocKind              # kind of location
-    s*: TStorageLoc
+    storage*: TStorageLoc
     flags*: TLocFlags         # location's flags
-    t*: PType                 # type of location
+    lode*: PNode              # Node where the location came from; can be faked
     r*: Rope                  # rope value of location (code generators)
 
   # ---------------- end of backend information ------------------------------
@@ -931,7 +934,7 @@ type
 # the poor naming choices in the standard library.
 
 const
-  OverloadableSyms* = {skProc, skMethod, skIterator,
+  OverloadableSyms* = {skProc, skFunc, skMethod, skIterator,
     skConverter, skModule, skTemplate, skMacro}
 
   GenericTypes*: TTypeKinds = {tyGenericInvocation, tyGenericBody,
@@ -954,7 +957,7 @@ const
                                     tyTuple, tySequence}
   NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr, tySequence,
     tyProc, tyString, tyError}
-  ExportableSymKinds* = {skVar, skConst, skProc, skMethod, skType,
+  ExportableSymKinds* = {skVar, skConst, skProc, skFunc, skMethod, skType,
     skIterator,
     skMacro, skTemplate, skConverter, skEnumField, skLet, skStub, skAlias}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
@@ -978,14 +981,14 @@ const
 
   nkLiterals* = {nkCharLit..nkTripleStrLit}
   nkLambdaKinds* = {nkLambda, nkDo}
-  declarativeDefs* = {nkProcDef, nkMethodDef, nkIteratorDef, nkConverterDef}
+  declarativeDefs* = {nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef}
   procDefs* = nkLambdaKinds + declarativeDefs
 
   nkSymChoices* = {nkClosedSymChoice, nkOpenSymChoice}
   nkStrKinds* = {nkStrLit..nkTripleStrLit}
 
   skLocalVars* = {skVar, skLet, skForVar, skParam, skResult}
-  skProcKinds* = {skProc, skTemplate, skMacro, skIterator,
+  skProcKinds* = {skProc, skFunc, skTemplate, skMacro, skIterator,
                   skMethod, skConverter}
 
 var ggDebug* {.deprecated.}: bool ## convenience switch for trying out things
@@ -1261,11 +1264,10 @@ proc newType*(kind: TTypeKind, owner: PSym): PType =
 
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(a.k): a.k = b.k
-  if a.s == low(a.s): a.s = b.s
+  if a.storage == low(a.storage): a.storage = b.storage
   a.flags = a.flags + b.flags
-  if a.t == nil: a.t = b.t
+  if a.lode == nil: a.lode = b.lode
   if a.r == nil: a.r = b.r
-  #if a.a == 0: a.a = b.a
 
 proc newSons*(father: PNode, length: int) =
   if isNil(father.sons):

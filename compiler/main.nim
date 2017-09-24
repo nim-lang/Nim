@@ -78,6 +78,10 @@ proc commandCompileToC(graph: ModuleGraph; cache: IdentCache) =
     extccomp.callCCompiler(proj)
     extccomp.writeJsonBuildInstructions(proj)
 
+proc commandJsonScript(graph: ModuleGraph; cache: IdentCache) =
+  let proj = changeFileExt(gProjectFull, "")
+  extccomp.runJsonBuildInstructions(proj)
+
 proc commandCompileToJS(graph: ModuleGraph; cache: IdentCache) =
   #incl(gGlobalOptions, optSafeCode)
   setTarget(osJS, cpuJS)
@@ -266,6 +270,9 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
   of "nop", "help":
     # prevent the "success" message:
     gCmd = cmdDump
+  of "jsonscript":
+    gCmd = cmdJsonScript
+    commandJsonScript(graph, cache)
   else:
     rawMessage(errInvalidCommandX, command)
 

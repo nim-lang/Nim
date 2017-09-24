@@ -630,7 +630,7 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
           result = newStrNodeT(lookupSymbol(s.name), n)
       else:
         result = copyTree(s.ast)
-    of {skProc, skMethod}:
+    of {skProc, skFunc, skMethod}:
       result = n
     of skType:
       # XXX gensym'ed symbols can come here and cannot be resolved. This is
@@ -654,7 +654,7 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
   of nkCallKinds:
     if n.sons[0].kind != nkSym: return
     var s = n.sons[0].sym
-    if s.kind != skProc: return
+    if s.kind != skProc and s.kind != skFunc: return
     try:
       case s.magic
       of mNone:

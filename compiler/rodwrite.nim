@@ -175,16 +175,17 @@ proc encodeLoc(w: PRodWriter, loc: TLoc, result: var string) =
   var oldLen = result.len
   result.add('<')
   if loc.k != low(loc.k): encodeVInt(ord(loc.k), result)
-  if loc.s != low(loc.s):
+  if loc.storage != low(loc.storage):
     add(result, '*')
-    encodeVInt(ord(loc.s), result)
+    encodeVInt(ord(loc.storage), result)
   if loc.flags != {}:
     add(result, '$')
     encodeVInt(cast[int32](loc.flags), result)
-  if loc.t != nil:
+  if loc.lode != nil:
     add(result, '^')
-    encodeVInt(cast[int32](loc.t.id), result)
-    pushType(w, loc.t)
+    encodeNode(w, unknownLineInfo(), loc.lode, result)
+    #encodeVInt(cast[int32](loc.t.id), result)
+    #pushType(w, loc.t)
   if loc.r != nil:
     add(result, '!')
     encodeStr($loc.r, result)
@@ -579,7 +580,7 @@ proc process(c: PPassContext, n: PNode): PNode =
     for i in countup(0, sonsLen(n) - 1): discard process(c, n.sons[i])
     #var s = n.sons[namePos].sym
     #addInterfaceSym(w, s)
-  of nkProcDef, nkIteratorDef, nkConverterDef,
+  of nkProcDef, nkFuncDef, nkIteratorDef, nkConverterDef,
       nkTemplateDef, nkMacroDef:
     let s = n.sons[namePos].sym
     if s == nil: internalError(n.info, "rodwrite.process")
