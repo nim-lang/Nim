@@ -193,3 +193,4 @@ let
 - Pragmas now support call syntax, for example: ``{.exportc"myname".}`` and ``{.exportc("myname").}``
 - Custom pragmas are now supported using pragma ``pragma``, please see language manual for details
 
+- Added `countup` and `countdown` iterators for `float`s.
