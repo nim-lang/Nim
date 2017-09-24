@@ -1592,6 +1592,8 @@ proc processMagicType(c: PContext, m: PSym) =
     setMagicType(m, tySet, 0)
   of mSeq:
     setMagicType(m, tySequence, 0)
+  of mOpt:
+    setMagicType(m, tyOpt, 0)
   of mOrdinal:
     setMagicType(m, tyOrdinal, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))

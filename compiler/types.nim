@@ -12,9 +12,6 @@
 import
   intsets, ast, astalgo, trees, msgs, strutils, platform, renderer
 
-proc firstOrd*(t: PType): BiggestInt
-proc lastOrd*(t: PType): BiggestInt
-proc lengthOrd*(t: PType): BiggestInt
 type
   TPreferedDesc* = enum
     preferName, preferDesc, preferExported, preferModuleInfo, preferGenericArg
@@ -70,17 +67,6 @@ const
   typedescPtrs* = abstractPtrs + {tyTypeDesc}
   typedescInst* = abstractInst + {tyTypeDesc}
 
-proc containsObject*(t: PType): bool
-proc containsGarbageCollectedRef*(typ: PType): bool
-proc containsHiddenPointer*(typ: PType): bool
-proc canFormAcycle*(typ: PType): bool
-proc isCompatibleToCString*(a: PType): bool
-proc getOrdValue*(n: PNode): BiggestInt
-proc computeSize*(typ: PType): BiggestInt
-proc getSize*(typ: PType): BiggestInt
-proc isPureObject*(typ: PType): bool
-proc invalidGenericInst*(f: PType): bool
-  # for debugging
 type
   TTypeFieldResult* = enum
     frNone,                   # type has no object type field
@@ -92,16 +78,16 @@ proc analyseObjectWithTypeField*(t: PType): TTypeFieldResult
   # made or intializing of the type field suffices or if there is no type field
   # at all in this type.
 
-proc invalidGenericInst(f: PType): bool =
+proc invalidGenericInst*(f: PType): bool =
   result = f.kind == tyGenericInst and lastSon(f) == nil
 
-proc isPureObject(typ: PType): bool =
+proc isPureObject*(typ: PType): bool =
   var t = typ
   while t.kind == tyObject and t.sons[0] != nil:
     t = t.sons[0].skipTypes(skipPtrs)
   result = t.sym != nil and sfPure in t.sym.flags
 
-proc getOrdValue(n: PNode): BiggestInt =
+proc getOrdValue*(n: PNode): BiggestInt =
   case n.kind
   of nkCharLit..nkUInt64Lit: result = n.intVal
   of nkNilLit: result = 0
@@ -115,14 +101,6 @@ proc isIntLit*(t: PType): bool {.inline.} =
 
 proc isFloatLit*(t: PType): bool {.inline.} =
   result = t.kind == tyFloat and t.n != nil and t.n.kind == nkFloatLit
-
-proc isCompatibleToCString(a: PType): bool =
-  if a.kind == tyArray:
-    if (firstOrd(a.sons[0]) == 0) and
-        (skipTypes(a.sons[0], {tyRange, tyGenericInst, tyAlias}).kind in
-            {tyInt..tyInt64, tyUInt..tyUInt64}) and
-        (a.sons[1].kind == tyChar):
-      result = true
 
 proc getProcHeader*(sym: PSym; prefer: TPreferedDesc = preferName): string =
   result = sym.owner.name.s & '.' & sym.name.s & '('
@@ -252,7 +230,7 @@ proc searchTypeFor(t: PType, predicate: TTypePredicate): bool =
 proc isObjectPredicate(t: PType): bool =
   result = t.kind == tyObject
 
-proc containsObject(t: PType): bool =
+proc containsObject*(t: PType): bool =
   result = searchTypeFor(t, isObjectPredicate)
 
 proc isObjectWithTypeFieldPredicate(t: PType): bool =
@@ -297,7 +275,7 @@ proc isGCRef(t: PType): bool =
   result = t.kind in GcTypeKinds or
     (t.kind == tyProc and t.callConv == ccClosure)
 
-proc containsGarbageCollectedRef(typ: PType): bool =
+proc containsGarbageCollectedRef*(typ: PType): bool =
   # returns true if typ contains a reference, sequence or string (all the
   # things that are garbage-collected)
   result = searchTypeFor(typ, isGCRef)
@@ -312,7 +290,7 @@ proc containsTyRef*(typ: PType): bool =
 proc isHiddenPointer(t: PType): bool =
   result = t.kind in {tyString, tySequence}
 
-proc containsHiddenPointer(typ: PType): bool =
+proc containsHiddenPointer*(typ: PType): bool =
   # returns true if typ contains a string, table or sequence (all the things
   # that need to be copied deeply)
   result = searchTypeFor(typ, isHiddenPointer)
@@ -355,7 +333,7 @@ proc canFormAcycleAux(marker: var IntSet, typ: PType, startId: int): bool =
   of tyProc: result = typ.callConv == ccClosure
   else: discard
 
-proc canFormAcycle(typ: PType): bool =
+proc canFormAcycle*(typ: PType): bool =
   var marker = initIntSet()
   result = canFormAcycleAux(marker, typ, typ.id)
 
@@ -521,7 +499,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   of tyExpr:
     internalAssert t.len == 0
     result = "untyped"
-  of tyFromExpr, tyFieldAccessor:
+  of tyFromExpr:
     result = renderTree(t.n)
   of tyArray:
     if t.sons[0].kind == tyRange:
@@ -532,6 +510,8 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
           typeToString(t.sons[1]) & ']'
   of tySequence:
     result = "seq[" & typeToString(t.sons[0]) & ']'
+  of tyOpt:
+    result = "opt[" & typeToString(t.sons[0]) & ']'
   of tyOrdinal:
     result = "ordinal[" & typeToString(t.sons[0]) & ']'
   of tySet:
@@ -605,7 +585,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     result = typeToStr[t.kind]
   result.addTypeFlags(t)
 
-proc firstOrd(t: PType): BiggestInt =
+proc firstOrd*(t: PType): BiggestInt =
   case t.kind
   of tyBool, tyChar, tySequence, tyOpenArray, tyString, tyVarargs, tyProxy:
     result = 0
@@ -630,7 +610,7 @@ proc firstOrd(t: PType): BiggestInt =
     else:
       assert(t.n.sons[0].kind == nkSym)
       result = t.n.sons[0].sym.position
-  of tyGenericInst, tyDistinct, tyTypeDesc, tyFieldAccessor, tyAlias:
+  of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias:
     result = firstOrd(lastSon(t))
   of tyOrdinal:
     if t.len > 0: result = firstOrd(lastSon(t))
@@ -639,7 +619,7 @@ proc firstOrd(t: PType): BiggestInt =
     internalError("invalid kind for first(" & $t.kind & ')')
     result = 0
 
-proc lastOrd(t: PType): BiggestInt =
+proc lastOrd*(t: PType): BiggestInt =
   case t.kind
   of tyBool: result = 1
   of tyChar: result = 255
@@ -666,7 +646,7 @@ proc lastOrd(t: PType): BiggestInt =
   of tyEnum:
     assert(t.n.sons[sonsLen(t.n) - 1].kind == nkSym)
     result = t.n.sons[sonsLen(t.n) - 1].sym.position
-  of tyGenericInst, tyDistinct, tyTypeDesc, tyFieldAccessor, tyAlias:
+  of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias:
     result = lastOrd(lastSon(t))
   of tyProxy: result = 0
   of tyOrdinal:
@@ -676,7 +656,7 @@ proc lastOrd(t: PType): BiggestInt =
     internalError("invalid kind for last(" & $t.kind & ')')
     result = 0
 
-proc lengthOrd(t: PType): BiggestInt =
+proc lengthOrd*(t: PType): BiggestInt =
   case t.kind
   of tyInt64, tyInt32, tyInt: result = lastOrd(t)
   of tyDistinct: result = lengthOrd(t.sons[0])
@@ -688,6 +668,14 @@ proc lengthOrd(t: PType): BiggestInt =
       result = last
     else:
       result = lastOrd(t) - firstOrd(t) + 1
+
+proc isCompatibleToCString*(a: PType): bool =
+  if a.kind == tyArray:
+    if (firstOrd(a.sons[0]) == 0) and
+        (skipTypes(a.sons[0], {tyRange, tyGenericInst, tyAlias}).kind in
+            {tyInt..tyInt64, tyUInt..tyUInt64}) and
+        (a.sons[1].kind == tyChar):
+      result = true
 
 # -------------- type equality -----------------------------------------------
 
@@ -989,7 +977,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       result = a.sym.position == b.sym.position
   of tyGenericInvocation, tyGenericBody, tySequence,
      tyOpenArray, tySet, tyRef, tyPtr, tyVar,
-     tyArray, tyProc, tyVarargs, tyOrdinal, tyTypeClasses, tyFieldAccessor:
+     tyArray, tyProc, tyVarargs, tyOrdinal, tyTypeClasses, tyOpt:
     cycleCheck()
     if a.kind == tyUserTypeClass and a.n != nil: return a.n == b.n
     result = sameChildrenAux(a, b, c) and sameFlags(a, b)
@@ -1144,7 +1132,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   of tyTypeClasses:
     if not (tfGenericTypeParam in t.flags or taField notin flags): result = t
   of tyGenericBody, tyGenericParam, tyGenericInvocation,
-     tyNone, tyForward, tyFromExpr, tyFieldAccessor:
+     tyNone, tyForward, tyFromExpr:
     result = t
   of tyNil:
     if kind != skConst: result = t
@@ -1160,7 +1148,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   of tyOpenArray, tyVarargs:
     if kind != skParam: result = t
     else: result = typeAllowedAux(marker, t.sons[0], skVar, flags)
-  of tySequence:
+  of tySequence, tyOpt:
     if t.sons[0].kind != tyEmpty:
       result = typeAllowedAux(marker, t.sons[0], skVar, flags+{taHeap})
   of tyArray:
@@ -1359,7 +1347,7 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
   typ.size = result
   typ.align = int16(a)
 
-proc computeSize(typ: PType): BiggestInt =
+proc computeSize*(typ: PType): BiggestInt =
   var a: BiggestInt = 1
   result = computeSizeAux(typ, a)
 
@@ -1368,7 +1356,7 @@ proc getReturnType*(s: PSym): PType =
   assert s.kind in skProcKinds
   result = s.typ.sons[0]
 
-proc getSize(typ: PType): BiggestInt =
+proc getSize*(typ: PType): BiggestInt =
   result = computeSize(typ)
   if result < 0: internalError("getSize: " & $typ.kind)
 

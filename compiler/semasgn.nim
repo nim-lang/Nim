@@ -185,7 +185,7 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case t.kind
   of tyNone, tyEmpty, tyVoid: discard
   of tyPointer, tySet, tyBool, tyChar, tyEnum, tyInt..tyUInt64, tyCString,
-      tyPtr, tyString, tyRef:
+      tyPtr, tyString, tyRef, tyOpt:
     defaultOp(c, t, body, x, y)
   of tyArray, tySequence:
     if tfHasAsgn in t.flags:
@@ -227,7 +227,7 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
      tyTypeDesc, tyGenericInvocation, tyForward:
     internalError(c.info, "assignment requested for type: " & typeToString(t))
   of tyOrdinal, tyRange, tyInferred,
-     tyGenericInst, tyFieldAccessor, tyStatic, tyVar, tyAlias:
+     tyGenericInst, tyStatic, tyVar, tyAlias:
     liftBodyAux(c, lastSon(t), body, x, y)
   of tyUnused, tyUnused0, tyUnused1, tyUnused2: internalError("liftBodyAux")
 

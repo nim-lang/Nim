@@ -404,14 +404,8 @@ type
       # instantiation and prior to this it has the potential to
       # be any type.
 
-    tyFieldAccessor
-      # Expressions such as Type.field (valid in contexts such
-      # as the `is` operator and magics like `high` and `low`).
-      # Could be lifted to a single argument proc returning the
-      # field value.
-      # sons[0]: type of containing object or tuple
-      # sons[1]: field type
-      # .n: nkDotExpr storing the field name
+    tyOpt
+      # Builtin optional type
 
     tyVoid
       # now different from tyEmpty, hurray!
@@ -624,7 +618,7 @@ type
     mSwap, mIsNil, mArrToSeq, mCopyStr, mCopyStrLast,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
     mReset,
-    mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
+    mArray, mOpenArray, mRange, mSet, mSeq, mOpt, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
     mOrdinal,
     mInt, mInt8, mInt16, mInt32, mInt64,

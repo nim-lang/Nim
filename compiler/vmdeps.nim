@@ -250,6 +250,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
       result = mapTypeToBracket("ref", mRef, t, info)
   of tyVar: result = mapTypeToBracket("var", mVar, t, info)
   of tySequence: result = mapTypeToBracket("seq", mSeq, t, info)
+  of tyOpt: result = mapTypeToBracket("opt", mOpt, t, info)
   of tyProc:
     if inst:
       result = newNodeX(nkProcTy)
@@ -304,7 +305,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
   of tyNot: result = mapTypeToBracket("not", mNot, t, info)
   of tyAnything: result = atomicType("anything", mNone)
   of tyInferred: internalAssert false
-  of tyStatic, tyFromExpr, tyFieldAccessor:
+  of tyStatic, tyFromExpr:
     if inst:
       if t.n != nil: result = t.n.copyTree
       else: result = atomicType("void", mVoid)
