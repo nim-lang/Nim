@@ -349,7 +349,7 @@ proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: WalkOp) {.benign.} =
     for i in 0..n.len-1:
       # inlined for speed
       if n.sons[i].kind == nkSlot:
-        if n.sons[i].typ.kind in {tyRef, tyString, tySequence}:
+        if n.sons[i].typ.kind in {tyRef, tyOptAsRef, tyString, tySequence}:
           doOperation(cast[PPointer](d +% n.sons[i].offset)[], op)
         else:
           forAllChildrenAux(cast[pointer](d +% n.sons[i].offset),
@@ -366,7 +366,7 @@ proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) =
   if dest == nil: return # nothing to do
   if ntfNoRefs notin mt.flags:
     case mt.kind
-    of tyRef, tyString, tySequence: # leaf:
+    of tyRef, tyOptAsRef, tyString, tySequence: # leaf:
       doOperation(cast[PPointer](d)[], op)
     of tyObject, tyTuple:
       forAllSlotsAux(dest, mt.node, op)
@@ -379,13 +379,13 @@ proc forAllChildren(cell: PCell, op: WalkOp) =
   gcAssert(cell != nil, "forAllChildren: 1")
   gcAssert(isAllocatedPtr(gch.region, cell), "forAllChildren: 2")
   gcAssert(cell.typ != nil, "forAllChildren: 3")
-  gcAssert cell.typ.kind in {tyRef, tySequence, tyString}, "forAllChildren: 4"
+  gcAssert cell.typ.kind in {tyRef, tyOptAsRef, tySequence, tyString}, "forAllChildren: 4"
   let marker = cell.typ.marker
   if marker != nil:
     marker(cellToUsr(cell), op.int)
   else:
     case cell.typ.kind
-    of tyRef: # common case
+    of tyRef, tyOptAsRef: # common case
       forAllChildrenAux(cellToUsr(cell), cell.typ.base, op)
     of tySequence:
       var d = cast[ByteAddress](cellToUsr(cell))
@@ -461,7 +461,7 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   incTypeSize typ, size
   sysAssert(allocInv(gch.region), "rawNewObj begin")
   acquire(gch)
-  gcAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
+  gcAssert(typ.kind in {tyRef, tyOptAsRef, tyString, tySequence}, "newObj: 1")
   collectCT(gch)
   var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell)))
   #gcAssert typ.kind in {tyString, tySequence} or size >= typ.base.size, "size too small"
@@ -509,7 +509,7 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   incTypeSize typ, size
   sysAssert(allocInv(gch.region), "newObjRC1 begin")
   acquire(gch)
-  gcAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
+  gcAssert(typ.kind in {tyRef, tyOptAsRef, tyString, tySequence}, "newObj: 1")
   collectCT(gch)
   sysAssert(allocInv(gch.region), "newObjRC1 after collectCT")
 

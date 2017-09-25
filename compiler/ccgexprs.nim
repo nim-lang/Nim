@@ -2039,7 +2039,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       else:
         genProc(p.module, sym)
       putLocIntoDest(p, d, sym.loc)
-    of skProc, skConverter, skIterator:
+    of skProc, skConverter, skIterator, skFunc:
       #if sym.kind == skIterator:
       #  echo renderTree(sym.getBody, {renderIds})
       if sfCompileTime in sym.flags:
@@ -2205,7 +2205,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     discard
   of nkPragma: genPragma(p, n)
   of nkPragmaBlock: expr(p, n.lastSon, d)
-  of nkProcDef, nkMethodDef, nkConverterDef:
+  of nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef:
     if n.sons[genericParamsPos].kind == nkEmpty:
       var prc = n.sons[namePos].sym
       # due to a bug/limitation in the lambda lifting, unused inner procs

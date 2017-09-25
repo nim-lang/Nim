@@ -1393,6 +1393,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     of mSet: result = semSet(c, n, prev)
     of mOrdinal: result = semOrdinal(c, n, prev)
     of mSeq: result = semContainer(c, n, tySequence, "seq", prev)
+    of mOpt: result = semContainer(c, n, tyOpt, "opt", prev)
     of mVarargs: result = semVarargs(c, n, prev)
     of mTypeDesc: result = makeTypeDesc(c, semTypeNode(c, n[1], nil))
     of mExpr:
@@ -1592,6 +1593,8 @@ proc processMagicType(c: PContext, m: PSym) =
     setMagicType(m, tySet, 0)
   of mSeq:
     setMagicType(m, tySequence, 0)
+  of mOpt:
+    setMagicType(m, tyOpt, 0)
   of mOrdinal:
     setMagicType(m, tyOrdinal, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))

@@ -387,7 +387,7 @@ proc analyse(c: var AnalysisCtx; n: PNode) =
         addFactNeg(c.guards, canon(n.sons[0]))
     dec c.inLoop
   of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,
-      nkMacroDef, nkTemplateDef, nkConstSection, nkPragma:
+      nkMacroDef, nkTemplateDef, nkConstSection, nkPragma, nkFuncDef:
     discard
   else:
     analyseSons(c, n)

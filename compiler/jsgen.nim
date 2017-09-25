@@ -187,12 +187,12 @@ proc mapType(typ: PType): TJSTypeKind =
   of tyBool: result = etyBool
   of tyFloat..tyFloat128: result = etyFloat
   of tySet: result = etyObject # map a set to a table
-  of tyString, tySequence: result = etySeq
+  of tyString, tySequence, tyOpt: result = etySeq
   of tyObject, tyArray, tyTuple, tyOpenArray, tyVarargs:
     result = etyObject
   of tyNil: result = etyNull
   of tyGenericInst, tyGenericParam, tyGenericBody, tyGenericInvocation,
-     tyNone, tyFromExpr, tyForward, tyEmpty, tyFieldAccessor,
+     tyNone, tyFromExpr, tyForward, tyEmpty,
      tyExpr, tyStmt, tyTypeDesc, tyTypeClasses, tyVoid, tyAlias:
     result = etyNone
   of tyInferred:
@@ -202,7 +202,7 @@ proc mapType(typ: PType): TJSTypeKind =
     else: result = etyNone
   of tyProc: result = etyProc
   of tyCString: result = etyString
-  of tyUnused, tyUnused0, tyUnused1, tyUnused2: internalError("mapType")
+  of tyUnused, tyOptAsRef, tyUnused1, tyUnused2: internalError("mapType")
 
 proc mapType(p: PProc; typ: PType): TJSTypeKind =
   if p.target == targetPHP: result = etyObject
@@ -292,7 +292,7 @@ proc useMagic(p: PProc, name: string) =
   if name.len == 0: return
   var s = magicsys.getCompilerProc(name)
   if s != nil:
-    internalAssert s.kind in {skProc, skMethod, skConverter}
+    internalAssert s.kind in {skProc, skFunc, skMethod, skConverter}
     if not p.g.generatedSyms.containsOrIncl(s.id):
       let code = genProc(p, s)
       add(p.g.constants, code)
@@ -927,7 +927,7 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
 
   # we don't care if it's an etyBaseIndex (global) of a string, it's
   # still a string that needs to be copied properly:
-  if x.typ.skipTypes(abstractInst).kind in {tySequence, tyString}:
+  if x.typ.skipTypes(abstractInst).kind in {tySequence, tyOpt, tyString}:
     xtyp = etySeq
   case xtyp
   of etySeq:
@@ -971,7 +971,7 @@ proc genFastAsgn(p: PProc, n: PNode) =
   # See bug #5933. So we try to be more compatible with the C backend semantics
   # here for 'shallowCopy'. This is an educated guess and might require further
   # changes later:
-  let noCopy = n[0].typ.skipTypes(abstractInst).kind in {tySequence, tyString}
+  let noCopy = n[0].typ.skipTypes(abstractInst).kind in {tySequence, tyOpt, tyString}
   genAsgnAux(p, n.sons[0], n.sons[1], noCopyNeeded=noCopy)
 
 proc genSwap(p: PProc, n: PNode) =
@@ -1111,7 +1111,7 @@ template isIndirect(x: PSym): bool =
   ({sfAddrTaken, sfGlobal} * v.flags != {} and
     #(mapType(v.typ) != etyObject) and
     {sfImportc, sfVolatile, sfExportc} * v.flags == {} and
-    v.kind notin {skProc, skConverter, skMethod, skIterator,
+    v.kind notin {skProc, skFunc, skConverter, skMethod, skIterator,
                   skConst, skTemp, skLet} and p.target == targetJS)
 
 proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
@@ -1237,7 +1237,7 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
     else:
       r.res = "$" & s.loc.r
       p.declareGlobal(s.id, r.res)
-  of skProc, skConverter, skMethod:
+  of skProc, skFunc, skConverter, skMethod:
     discard mangleName(s, p.target)
     if p.target == targetPHP and r.kind != resCallee:
       r.res = makeJsString($s.loc.r)
@@ -1550,7 +1550,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
       result = putToSeq("[null, 0]", indirect)
     else:
       result = putToSeq("null", indirect)
-  of tySequence, tyString, tyCString, tyPointer, tyProc:
+  of tySequence, tyOpt, tyString, tyCString, tyPointer, tyProc:
     result = putToSeq("null", indirect)
   of tyStatic:
     if t.n != nil:
@@ -2338,7 +2338,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
      nkImportStmt, nkImportExceptStmt, nkExportStmt, nkExportExceptStmt,
      nkFromStmt, nkTemplateDef, nkMacroDef: discard
   of nkPragma: genPragma(p, n)
-  of nkProcDef, nkMethodDef, nkConverterDef:
+  of nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef:
     var s = n.sons[namePos].sym
     if {sfExportc, sfCompilerProc} * s.flags == {sfExportc}:
       genSym(p, n.sons[namePos], r)

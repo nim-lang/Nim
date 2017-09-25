@@ -603,7 +603,7 @@ proc cgsym(m: BModule, name: string): Rope =
   var sym = magicsys.getCompilerProc(name)
   if sym != nil:
     case sym.kind
-    of skProc, skMethod, skConverter, skIterator: genProc(m, sym)
+    of skProc, skFunc, skMethod, skConverter, skIterator: genProc(m, sym)
     of skVar, skResult, skLet: genVarPrototype(m, newSymNode sym)
     of skType: discard getTypeDesc(m, sym.typ)
     else: internalError("cgsym: " & name & ": " & $sym.kind)

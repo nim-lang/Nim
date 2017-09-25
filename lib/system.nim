@@ -246,6 +246,9 @@ type
   UncheckedArray* {.unchecked.}[T] = array[0, T]
     ## Array with no bounds checking
 
+when defined(nimHasOpt):
+  type opt*{.magic: "Opt".}[T]
+
 proc high*[T: Ordinal](x: T): T {.magic: "High", noSideEffect.}
   ## returns the highest possible index of an array, a sequence, a string or
   ## the highest possible value of an ordinal value `x`. As a special

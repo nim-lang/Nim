@@ -1234,7 +1234,7 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   s.typ = n.typ
   for i in 1..<params.len:
     if params[i].typ.kind in {tyTypeDesc, tyGenericParam,
-                              tyFromExpr, tyFieldAccessor}+tyTypeClasses:
+                              tyFromExpr}+tyTypeClasses:
       localError(params[i].info, "cannot infer type of parameter: " &
                  params[i].sym.name.s)
     #params[i].sym.owner = s
@@ -1603,6 +1603,9 @@ proc semIterator(c: PContext, n: PNode): PNode =
 
 proc semProc(c: PContext, n: PNode): PNode =
   result = semProcAux(c, n, skProc, procPragmas)
+
+proc semFunc(c: PContext, n: PNode): PNode =
+  result = semProcAux(c, n, skFunc, procPragmas)
 
 proc semMethod(c: PContext, n: PNode): PNode =
   if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "method")
