@@ -226,7 +226,7 @@ when isMainModule:
       check( some(456).filter(proc (v: int): bool = v == 123).isNone )
       check( intNone.filter(proc (v: int): bool = check false).isNone )
 
-    test "bind":
+    test "flatMap":
       proc addOneIfNotZero(v: int): Option[int] =
         if v != 0:
           result = some(v + 1)
