@@ -204,12 +204,12 @@ when isMainModule:
         check false
 
     test "get with a default value":
-      check( some("Correct").get("Wrong") == "Correct" )
-      check( stringNone.get("Correct") == "Correct" )
+      check(some("Correct").get("Wrong") == "Correct")
+      check(stringNone.get("Correct") == "Correct")
 
     test "$":
-      check( $(some("Correct")) == "Some(Correct)" )
-      check( $(stringNone) == "None[string]" )
+      check($(some("Correct")) == "Some(Correct)")
+      check($(stringNone) == "None[string]")
 
     test "map with a void result":
       var procRan = 0
@@ -218,13 +218,13 @@ when isMainModule:
       intNone.map(proc (v: int) = check false)
 
     test "map":
-      check( some(123).map(proc (v: int): int = v * 2) == some(246) )
-      check( intNone.map(proc (v: int): int = v * 2).isNone )
+      check(some(123).map(proc (v: int): int = v * 2) == some(246))
+      check(intNone.map(proc (v: int): int = v * 2).isNone)
 
     test "filter":
-      check( some(123).filter(proc (v: int): bool = v == 123) == some(123) )
-      check( some(456).filter(proc (v: int): bool = v == 123).isNone )
-      check( intNone.filter(proc (v: int): bool = check false).isNone )
+      check(some(123).filter(proc (v: int): bool = v == 123) == some(123))
+      check(some(456).filter(proc (v: int): bool = v == 123).isNone)
+      check(intNone.filter(proc (v: int): bool = check false).isNone)
 
     test "flatMap":
       proc addOneIfNotZero(v: int): Option[int] =
@@ -233,9 +233,9 @@ when isMainModule:
         else:
           result = none(int)
 
-      check( some(1).flatMap(addOneIfNotZero) == some(2) )
-      check( some(0).flatMap(addOneIfNotZero) == none(int) )
-      check( some(1).flatMap(addOneIfNotZero).flatMap(addOneIfNotZero) == some(3) )
+      check(some(1).flatMap(addOneIfNotZero) == some(2))
+      check(some(0).flatMap(addOneIfNotZero) == none(int))
+      check(some(1).flatMap(addOneIfNotZero).flatMap(addOneIfNotZero) == some(3))
 
       proc maybeToString(v: int): Option[string] =
         if v != 0:
@@ -243,7 +243,7 @@ when isMainModule:
         else:
           result = none(string)
 
-      check( some(1).flatMap(maybeToString) == some("1") )
+      check(some(1).flatMap(maybeToString) == some("1"))
 
       proc maybeExclaim(v: string): Option[string] =
         if v != "":
@@ -251,5 +251,5 @@ when isMainModule:
         else:
           result = none(string)
 
-      check( some(1).flatMap(maybeToString).flatMap(maybeExclaim) == some("1!") )
-      check( some(0).flatMap(maybeToString).flatMap(maybeExclaim) == none(string) )
+      check(some(1).flatMap(maybeToString).flatMap(maybeExclaim) == some("1!"))
+      check(some(0).flatMap(maybeToString).flatMap(maybeExclaim) == none(string))
