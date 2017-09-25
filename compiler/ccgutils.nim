@@ -157,7 +157,7 @@ proc getUniqueType*(key: PType): PType =
       else:
         # ugh, we need the canon here:
         result = slowSearch(key, k)
-    of tyUnused, tyUnused0, tyUnused1, tyUnused2: internalError("getUniqueType")
+    of tyUnused, tyOptAsRef, tyUnused1, tyUnused2: internalError("getUniqueType")
 
 proc makeSingleLineCString*(s: string): string =
   result = "\""

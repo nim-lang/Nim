@@ -202,7 +202,7 @@ proc mapType(typ: PType): TJSTypeKind =
     else: result = etyNone
   of tyProc: result = etyProc
   of tyCString: result = etyString
-  of tyUnused, tyUnused0, tyUnused1, tyUnused2: internalError("mapType")
+  of tyUnused, tyOptAsRef, tyUnused1, tyUnused2: internalError("mapType")
 
 proc mapType(p: PProc; typ: PType): TJSTypeKind =
   if p.target == targetPHP: result = etyObject

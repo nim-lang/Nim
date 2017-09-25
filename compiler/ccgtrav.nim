@@ -121,7 +121,8 @@ proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash;
   var c: TTraversalClosure
   var p = newProc(nil, m)
   result = "Marker_" & getTypeName(m, origTyp, sig)
-  let typ = origTyp.skipTypes(abstractInst)
+  var typ = origTyp.skipTypes(abstractInst)
+  if typ.kind == tyOpt: typ = optLowering(typ)
 
   case reason
   of tiNew: c.visitorFrmt = "#nimGCvisit((void*)$1, op);$n"

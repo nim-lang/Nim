@@ -45,8 +45,6 @@ type
 
 proc equalParams*(a, b: PNode): TParamsEquality
   # returns whether the parameter lists of the procs a, b are exactly the same
-proc isOrdinalType*(t: PType): bool
-proc enumHasHoles*(t: PType): bool
 
 const
   # TODO: Remove tyTypeDesc from each abstractX and (where necessary)
@@ -129,7 +127,7 @@ proc elemType*(t: PType): PType =
   else: result = t.lastSon
   assert(result != nil)
 
-proc isOrdinalType(t: PType): bool =
+proc isOrdinalType*(t: PType): bool =
   assert(t != nil)
   const
     # caution: uint, uint64 are no ordinal types!
@@ -137,7 +135,7 @@ proc isOrdinalType(t: PType): bool =
     parentKinds = {tyRange, tyOrdinal, tyGenericInst, tyAlias, tyDistinct}
   t.kind in baseKinds or (t.kind in parentKinds and isOrdinalType(t.sons[0]))
 
-proc enumHasHoles(t: PType): bool =
+proc enumHasHoles*(t: PType): bool =
   var b = t
   while b.kind in {tyRange, tyGenericInst, tyAlias}: b = b.sons[0]
   result = b.kind == tyEnum and tfEnumHasHoles in b.flags
@@ -995,7 +993,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     cycleCheck()
     result = sameTypeAux(a.lastSon, b.lastSon, c)
   of tyNone: result = false
-  of tyUnused, tyUnused0, tyUnused1, tyUnused2: internalError("sameFlags")
+  of tyUnused, tyOptAsRef, tyUnused1, tyUnused2: internalError("sameFlags")
 
 proc sameBackendType*(x, y: PType): bool =
   var c = initSameTypeClosure()
@@ -1176,7 +1174,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     # for now same as error node; we say it's a valid type as it should
     # prevent cascading errors:
     result = nil
-  of tyUnused, tyUnused0, tyUnused1, tyUnused2: internalError("typeAllowedAux")
+  of tyUnused, tyOptAsRef, tyUnused1, tyUnused2: internalError("typeAllowedAux")
 
 proc typeAllowed*(t: PType, kind: TSymKind): PType =
   # returns 'nil' on success and otherwise the part of the type that is
@@ -1186,6 +1184,63 @@ proc typeAllowed*(t: PType, kind: TSymKind): PType =
 
 proc align(address, alignment: BiggestInt): BiggestInt =
   result = (address + (alignment - 1)) and not (alignment - 1)
+
+type
+  OptKind* = enum  ## What to map 'opt T' to internally.
+    oBool      ## opt[T] requires an additional 'bool' field
+    oNil       ## opt[T] has no overhead since 'nil'
+               ## is available
+    oEnum      ## We can use some enum value that is not yet
+               ## used for opt[T]
+    oPtr       ## opt[T] actually introduces a hidden pointer
+               ## in order for the type recursion to work
+
+proc optKind*(typ: PType): OptKind =
+  ## return true iff 'opt[T]' can be mapped to 'T' internally
+  ## because we have a 'nil' value available:
+  assert typ.kind == tyOpt
+  case typ.sons[0].skipTypes(abstractInst).kind
+  of tyRef, tyPtr, tyProc:
+    result = oNil
+  of tyArray, tyObject, tyTuple:
+    result = oPtr
+  of tyBool: result = oEnum
+  of tyEnum:
+    assert(typ.n.sons[0].kind == nkSym)
+    if typ.n.sons[0].sym.position != low(int):
+      result = oEnum
+    else:
+      result = oBool
+  else:
+    result = oBool
+
+proc optLowering*(typ: PType): PType =
+  case optKind(typ)
+  of oNil: result = typ.sons[0]
+  of oPtr:
+    result = newType(tyOptAsRef, typ.owner)
+    result.rawAddSon typ.sons[0]
+  of oBool:
+    result = newType(tyTuple, typ.owner)
+    result.rawAddSon newType(tyBool, typ.owner)
+    result.rawAddSon typ.sons[0]
+  of oEnum:
+    if lastOrd(typ) + 1 < `shl`(BiggestInt(1), 32):
+      result = newType(tyInt32, typ.owner)
+    else:
+      result = newType(tyInt64, typ.owner)
+
+proc optEnumValue*(typ: PType): BiggestInt =
+  assert typ.kind == tyOpt
+  assert optKind(typ) == oEnum
+  let elem = typ.sons[0].skipTypes(abstractInst).kind
+  if elem == tyBool:
+    result = 2
+  else:
+    assert elem == tyEnum
+    assert typ.n.sons[0].sym.position != low(int)
+    result = typ.n.sons[0].sym.position - 1
+
 
 const
   szNonConcreteType* = -3
@@ -1341,6 +1396,14 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
   of tyStatic:
     result = if typ.n != nil: computeSizeAux(typ.lastSon, a)
              else: szUnknownSize
+  of tyOpt:
+    case optKind(typ)
+    of oBool: result = computeSizeAux(lastSon(typ), a) + 1
+    of oEnum:
+      if lastOrd(typ) + 1 < `shl`(BiggestInt(1), 32): result = 4
+      else: result = 8
+    of oNil: result = computeSizeAux(lastSon(typ), a)
+    of oPtr: result = ptrSize
   else:
     #internalError("computeSizeAux()")
     result = szUnknownSize

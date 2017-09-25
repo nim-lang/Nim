@@ -229,7 +229,7 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of tyOrdinal, tyRange, tyInferred,
      tyGenericInst, tyStatic, tyVar, tyAlias:
     liftBodyAux(c, lastSon(t), body, x, y)
-  of tyUnused, tyUnused0, tyUnused1, tyUnused2: internalError("liftBodyAux")
+  of tyUnused, tyOptAsRef, tyUnused1, tyUnused2: internalError("liftBodyAux")
 
 proc newProcType(info: TLineInfo; owner: PSym): PType =
   result = newType(tyProc, owner)
