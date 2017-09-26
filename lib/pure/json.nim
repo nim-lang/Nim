@@ -1203,7 +1203,7 @@ proc parseJson(p: var JsonParser): JsonNode =
     raiseParseErr(p, "{")
 
 when not defined(js):
-  proc parseJson*(s: Stream, filename: string): JsonNode =
+  proc parseJson*(s: Stream, filename: string = ""): JsonNode =
     ## Parses from a stream `s` into a `JsonNode`. `filename` is only needed
     ## for nice error messages.
     ## If `s` contains extra data, it will raise `JsonParsingError`.
