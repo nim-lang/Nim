@@ -979,7 +979,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           let node = regs[rb+i].regToNode
           node.info = c.debug[pc]
           macroCall.add(node)
-        let a = evalTemplate(macroCall, prc, genSymOwner)
+        var a = evalTemplate(macroCall, prc, genSymOwner)
+        if a.kind == nkStmtList and a.len == 1: a = a[0]
         a.recSetFlagIsRef
         ensureKind(rkNode)
         regs[ra].node = a

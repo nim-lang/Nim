@@ -1617,9 +1617,10 @@ proc semExpandToAst(c: PContext, n: PNode): PNode =
   # Preserve the magic symbol in order to be handled in evals.nim
   internalAssert n.sons[0].sym.magic == mExpandToAst
   #n.typ = getSysSym("NimNode").typ # expandedSym.getReturnType
-  n.typ = if getCompilerProc("NimNode") != nil: sysTypeFromName"NimNode"
-          else: sysTypeFromName"PNimrodNode"
-  result = n
+  if n.kind == nkStmtList and n.len == 1: result = n[0]
+  else: result = n
+  result.typ = if getCompilerProc("NimNode") != nil: sysTypeFromName"NimNode"
+               else: sysTypeFromName"PNimrodNode"
 
 proc semExpandToAst(c: PContext, n: PNode, magicSym: PSym,
                     flags: TExprFlags = {}): PNode =
