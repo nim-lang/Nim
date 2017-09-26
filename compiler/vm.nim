@@ -66,7 +66,10 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
     stackTraceAux(c, x.next, x.comesFrom, recursionLimit-1)
     var info = c.debug[pc]
     # we now use the same format as in system/except.nim
-    var s = toFilename(info)
+    var s = substr(toFilename(info), 0)
+    # this 'substr' prevents a strange corruption. XXX This needs to be
+    # investigated eventually but first attempts to fix it broke everything
+    # see the araq-wip-fixed-writebarrier branch.
     var line = toLinenumber(info)
     if line > 0:
       add(s, '(')
