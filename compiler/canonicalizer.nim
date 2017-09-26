@@ -130,7 +130,7 @@ proc hashType(c: var MD5Context, t: PType) =
     c.hashSym body.sym
     for i in countup(1, sonsLen(t) - 2):
       c.hashType t.sons[i]
-  of tyFromExpr, tyFieldAccessor:
+  of tyFromExpr:
     c.hashTree(t.n)
   of tyArray:
     c.hashTree(t.sons[0].n)

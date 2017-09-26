@@ -1234,7 +1234,7 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   s.typ = n.typ
   for i in 1..<params.len:
     if params[i].typ.kind in {tyTypeDesc, tyGenericParam,
-                              tyFromExpr, tyFieldAccessor}+tyTypeClasses:
+                              tyFromExpr}+tyTypeClasses:
       localError(params[i].info, "cannot infer type of parameter: " &
                  params[i].sym.name.s)
     #params[i].sym.owner = s

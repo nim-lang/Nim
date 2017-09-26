@@ -936,7 +936,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
                                      tfExplicit notin aOrig.flags
 
     aOrig = if useTypeLoweringRuleInTypeClass:
-          aOrig.skipTypes({tyTypeDesc, tyFieldAccessor})
+          aOrig.skipTypes({tyTypeDesc})
         else:
           aOrig
 

@@ -1537,6 +1537,8 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
       addSon(result, getNullValue(t.sons[i], info))
   of tySet:
     result = newNodeIT(nkCurly, info, t)
+  of tyOpt:
+    result = newNodeIT(nkNilLit, info, t)
   else:
     globalError(info, "cannot create null element for: " & $t.kind)
 
