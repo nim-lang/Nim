@@ -2868,7 +2868,7 @@ when not defined(JS): #and not defined(nimscript):
         importc: when defined(bcc): "setmode" else: "_setmode",
         header: "<io.h>".}
       var
-        O_BINARY {.importc: "O_BINARY", nodecl.}: cint
+        O_BINARY {.importc: "_O_BINARY", header:"<fcntl.h>".}: cint
 
       # we use binary mode on Windows:
       c_setmode(c_fileno(stdin), O_BINARY)

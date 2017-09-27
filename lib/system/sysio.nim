@@ -15,9 +15,12 @@
 {.push debugger:off .} # the user does not want to trace a part
                        # of the standard library!
 
-
-proc c_fdopen(filehandle: cint, mode: cstring): File {.
-  importc: "fdopen", header: "<stdio.h>".}
+when defined(windows):
+  proc c_fdopen(filehandle: cint, mode: cstring): File {.
+    importc: "_fdopen", header: "<stdio.h>".}
+else:
+  proc c_fdopen(filehandle: cint, mode: cstring): File {.
+    importc: "fdopen", header: "<stdio.h>".}
 proc c_fputs(c: cstring, f: File): cint {.
   importc: "fputs", header: "<stdio.h>", tags: [WriteIOEffect].}
 proc c_fgets(c: cstring, n: cint, f: File): cstring {.
