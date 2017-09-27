@@ -1366,7 +1366,13 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
 proc renderTree(n: PNode, renderFlags: TRenderFlags = {}): string =
   var g: TSrcGen
   initSrcGen(g, renderFlags)
-  gsub(g, n)
+  # do not indent the initial statement list so that
+  # writeFile("file.nim", repr n)
+  # produces working Nim code:
+  if n.kind in {nkStmtList, nkStmtListExpr, nkStmtListType}:
+    gstmts(g, n, emptyContext, doIndent = false)
+  else:
+    gsub(g, n)
   result = g.buf
 
 proc renderModule(n: PNode, filename: string,
