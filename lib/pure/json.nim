@@ -1203,7 +1203,7 @@ proc parseJson(p: var JsonParser): JsonNode =
     raiseParseErr(p, "{")
 
 when not defined(js):
-  proc parseJson*(s: Stream, filename: string): JsonNode =
+  proc parseJson*(s: Stream, filename: string = ""): JsonNode =
     ## Parses from a stream `s` into a `JsonNode`. `filename` is only needed
     ## for nice error messages.
     ## If `s` contains extra data, it will raise `JsonParsingError`.
@@ -1213,11 +1213,6 @@ when not defined(js):
     discard getTok(p) # read first token
     result = p.parseJson()
     eat(p, tkEof) # check if there is no extra data
-
-  proc parseJson*(s: Stream): JsonNode =
-    ## Parses JSON from a stream `s` into a `JsonNode`.
-    ## If `s` contains extra data, it will raise `JsonParsingError`.
-    result = parseJson(s, "input")
 
   proc parseJson*(buffer: string): JsonNode =
     ## Parses JSON from `buffer`.
