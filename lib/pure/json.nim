@@ -769,6 +769,19 @@ proc `%`*[T](elements: openArray[T]): JsonNode =
   result = newJArray()
   for elem in elements: result.add(%elem)
 
+when false:
+  # For 'consistency' we could do this, but that only pushes people further
+  # into that evil comfort zone where they can use Nim without understanding it
+  # causing problems later on.
+  proc `%`*(elements: set[bool]): JsonNode =
+    ## Generic constructor for JSON data. Creates a new `JObject JsonNode`.
+    ## This can only be used with the empty set ``{}`` and is supported
+    ## to prevent the gotcha ``%*{}`` which used to produce an empty
+    ## JSON array.
+    result = newJObject()
+    assert false notin elements, "usage error: only empty sets allowed"
+    assert true notin elements, "usage error: only empty sets allowed"
+
 proc `%`*(o: object): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
   result = newJObject()
@@ -789,27 +802,25 @@ proc `%`*(o: enum): JsonNode =
 proc toJson(x: NimNode): NimNode {.compiletime.} =
   case x.kind
   of nnkBracket: # array
+    if x.len == 0: return newCall(bindSym"newJArray")
     result = newNimNode(nnkBracket)
     for i in 0 .. <x.len:
       result.add(toJson(x[i]))
-
+    result = newCall(bindSym"%", result)
   of nnkTableConstr: # object
+    if x.len == 0: return newCall(bindSym"newJObject")
     result = newNimNode(nnkTableConstr)
     for i in 0 .. <x.len:
       x[i].expectKind nnkExprColonExpr
-      result.add(newNimNode(nnkExprColonExpr).add(x[i][0]).add(toJson(x[i][1])))
-
+      result.add newTree(nnkExprColonExpr, x[i][0], toJson(x[i][1]))
+    result = newCall(bindSym"%", result)
   of nnkCurly: # empty object
-    result = newNimNode(nnkTableConstr)
     x.expectLen(0)
-
+    result = newCall(bindSym"newJObject")
   of nnkNilLit:
-    result = newCall("newJNull")
-
+    result = newCall(bindSym"newJNull")
   else:
-    result = x
-
-  result = prefix(result, "%")
+    result = newCall(bindSym"%", x)
 
 macro `%*`*(x: untyped): untyped =
   ## Convert an expression to a JsonNode directly, without having to specify
@@ -1933,5 +1944,9 @@ when isMainModule:
       doAssert(false)
     except JsonParsingError:
       doAssert getCurrentExceptionMsg().contains(errorMessages[errEofExpected])
+
+  # bug #6438
+  doAssert($ %*[] == "[]")
+  doAssert($ %*{} == "{}")
 
   echo("Tests succeeded!")
