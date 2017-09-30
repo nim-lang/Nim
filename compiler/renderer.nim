@@ -1079,9 +1079,9 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       gsub(g, n.sons[0])
       if n.len > 1:
         if n[1].kind == nkWith:
-          putWithSpace(g, tkWith, " with")
+          putWithSpace(g, tkSymbol, " with")
         else:
-          putWithSpace(g, tkWithout, " without")
+          putWithSpace(g, tkSymbol, " without")
         gcomma(g, n[1])
     else:
       put(g, tkDistinct, "distinct")
