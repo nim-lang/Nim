@@ -1,11 +1,22 @@
 discard """
-  nimout: "compile start\ncompile end"
+  output: '''[Suite] suite with only teardown
+
+[Suite] suite with only setup
+
+[Suite] suite with none
+
+[Suite] suite with both
+
+[Suite] bug #4494
+
+[Suite] bug #5571
+
+[Suite] bug #5784
+
+'''
 """
 
 import unittest, sequtils
-
-static:
-  echo "compile start"
 
 proc doThings(spuds: var int): int =
   spuds = 24
@@ -103,5 +114,9 @@ suite "bug #5571":
       check: line == "a"
     doTest()
 
-static:
-  echo "compile end"
+suite "bug #5784":
+  test "`or` should short circuit":
+    type Obj = ref object
+      field: int
+    var obj: Obj
+    check obj.isNil or obj.field == 0

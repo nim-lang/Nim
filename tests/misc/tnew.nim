@@ -9,7 +9,7 @@ type
     str: string
     le, ri: PNode
 
-  TStressTest = ref array [0..45, array [1..45, TNode]]
+  TStressTest = ref array[0..45, array[1..45, TNode]]
 
 proc finalizer(n: PNode) =
   write(stdout, n.data)
