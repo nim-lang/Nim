@@ -1,5 +1,6 @@
 # test the new time module
 discard """
+  action: "run"
   file: "ttime.nim"
 """
 
@@ -116,10 +117,11 @@ doAssert getDayOfWeek(21, 9, 1970) == dMon
 doAssert getDayOfWeek(1, 1, 2000) == dSat
 doAssert getDayOfWeek(1, 1, 2021) == dFri
 # Julian tests
-doAssert getDayOfWeekJulian(21, 9, 1900) == dFri
-doAssert getDayOfWeekJulian(21, 9, 1970) == dMon
-doAssert getDayOfWeekJulian(1, 1, 2000) == dSat
-doAssert getDayOfWeekJulian(1, 1, 2021) == dFri
+doAssert getDayOfWeekJulian(21, 9, 1900) == dThu
+doAssert getDayOfWeekJulian(21, 9, 1970) == dSun
+doAssert getDayOfWeekJulian(1, 1, 2000) == dFri
+doAssert getDayOfWeekJulian(1, 1, 2021) == dThu
+doAssert getDayOfWeekJulian(1, 3, 2100) == dMon
 
 # toSeconds tests with GM timezone
 let t4L = getGMTime(fromSeconds(876124714))
