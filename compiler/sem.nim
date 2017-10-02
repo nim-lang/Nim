@@ -495,13 +495,15 @@ proc isImportSystemStmt(n: PNode): bool =
   case n.kind
   of nkImportStmt:
     for x in n:
-      let f = checkModuleName(x, false)
+      if x.kind == nkIdent:
+        let f = checkModuleName(x, false)
+        if f == magicsys.systemModule.info.fileIndex:
+          return true
+  of nkImportExceptStmt, nkFromStmt:
+    if n[0].kind == nkIdent:
+      let f = checkModuleName(n[0], false)
       if f == magicsys.systemModule.info.fileIndex:
         return true
-  of nkImportExceptStmt, nkFromStmt:
-    let f = checkModuleName(n[0], false)
-    if f == magicsys.systemModule.info.fileIndex:
-      return true
   else: discard
 
 proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =

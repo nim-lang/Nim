@@ -95,7 +95,8 @@ proc cstrToNimstr(str: cstring): NimString {.compilerRtl.} =
   if str == nil: NimString(nil)
   else: toNimStr(str, str.len)
 
-template wasMoved(x: NimString): bool = (x.reserved and seqShallowFlag) != 0
+template wasMoved(x: NimString): bool = false
+# (x.reserved and seqShallowFlag) != 0
 
 proc copyString(src: NimString): NimString {.compilerRtl.} =
   if src != nil:

@@ -1443,6 +1443,10 @@ elif defined(genode):
     importcpp: "genodeEnv->parent().exit(@); Genode::sleep_forever()",
     header: "<base/sleep.h>".}
 
+elif defined(nodejs):
+  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", 
+    importc: "process.exit", noreturn.}
+
 else:
   proc quit*(errorcode: int = QuitSuccess) {.
     magic: "Exit", importc: "exit", header: "<stdlib.h>", noreturn.}

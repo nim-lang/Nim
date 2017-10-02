@@ -15,9 +15,9 @@ static:
 
 proc checkNode(arg: NimNode; name: string): void {. compileTime .} =
   echo "checking ", name
-  
+
   assertEq arg.lispRepr , "StmtList(DiscardStmt(Empty()))"
-  
+
   node = arg
   nodeArray = [arg]
   nodeSeq[0] = arg
@@ -38,9 +38,9 @@ proc checkNode(arg: NimNode; name: string): void {. compileTime .} =
 static:
   # the root node that is used to generate the Ast
   var stmtList: NimNode
-  
+
   stmtList = newStmtList(nnkDiscardStmt.newTree(newEmptyNode()))
-  
+
   checkNode(stmtList, "direct construction")
 
 
@@ -50,12 +50,12 @@ macro foo(stmtList: untyped): untyped =
 foo:
   discard
 
-  
+
 static:
   stmtList = quote do:
     discard
 
-  checkNode(stmtList, "create with quote")
+  checkNode(newTree(nnkStmtList, stmtList), "create with quote")
 
 
 static:
@@ -64,13 +64,13 @@ static:
     for i in 0 ..< 10:
       discard
 
-  let innerBody = loop[0][2]
+  let innerBody = loop[2]
   innerBody.add newCall(ident"echo", newLit("Hello World"))
 
-  assertEq loop[0][2].lispRepr, innerBody.lispRepr
+  assertEq loop[2].lispRepr, innerBody.lispRepr
 
   echo "OK"
-  
+
 
 static:
   echo "testing creation of comment node"

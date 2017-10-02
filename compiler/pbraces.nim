@@ -906,9 +906,14 @@ proc parseTypeDescKAux(p: var TParser, kind: TNodeKind,
   optInd(p, result)
   if not isOperator(p.tok) and isExprStart(p):
     addSon(result, primary(p, mode))
-  if kind == nkDistinctTy and p.tok.tokType in {tkWith, tkWithout}:
-    let nodeKind = if p.tok.tokType == tkWith: nkWith
-                   else: nkWithout
+  if kind == nkDistinctTy and p.tok.tokType == tkSymbol:
+    var nodeKind: TNodeKind
+    if p.tok.ident.s == "with":
+      nodeKind = nkWith
+    elif p.tok.ident.s == "without":
+      nodeKind = nkWithout
+    else:
+      return result
     getTok(p)
     let list = newNodeP(nodeKind, p)
     result.addSon list

@@ -8,7 +8,7 @@ import
   strutils
 
 type
-  TBuffer = array [0..10, int8]
+  TBuffer = array[0..10, int8]
 
 proc toVarNum(x: int32, b: var TBuffer) =
   # encoding: first bit indicates end of number (0 if at end)

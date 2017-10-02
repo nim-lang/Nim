@@ -526,10 +526,10 @@ when not defined(useNimRtl):
              "[GC] max threshold: " & $gch.stat.maxThreshold & "\n" &
              "[GC] freed objects: " & $gch.stat.freedObjects & "\n"
     when nimCoroutines:
-      result = result & "[GC] number of stacks: " & $gch.stack.len & "\n"
+      result.add "[GC] number of stacks: " & $gch.stack.len & "\n"
       for stack in items(gch.stack):
-        result = result & "[GC]   stack " & stack.bottom.repr & "[GC]     max stack size " & $stack.maxStackSize & "\n"
+        result.add "[GC]   stack " & stack.bottom.repr & "[GC]     max stack size " & $stack.maxStackSize & "\n"
     else:
-      result = result & "[GC] max stack size: " & $gch.stat.maxStackSize & "\n"
+      result.add "[GC] max stack size: " & $gch.stat.maxStackSize & "\n"
 
 {.pop.}

@@ -652,9 +652,10 @@ proc getLinkCmd(projectfile, objfiles: string): string =
   else:
     var linkerExe = getConfigVar(cCompiler, ".linkerexe")
     if len(linkerExe) == 0: linkerExe = cCompiler.getLinkerExe
+    # bug #6452: We must not use ``quoteShell`` here for ``linkerExe``
     if needsExeExt(): linkerExe = addFileExt(linkerExe, "exe")
-    if noAbsolutePaths(): result = quoteShell(linkerExe)
-    else: result = quoteShell(joinPath(ccompilerpath, linkerExe))
+    if noAbsolutePaths(): result = linkerExe
+    else: result = joinPath(ccompilerpath, linkerExe)
     let buildgui = if optGenGuiApp in gGlobalOptions: CC[cCompiler].buildGui
                    else: ""
     var exefile, builddll: string

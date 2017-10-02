@@ -19,7 +19,7 @@ import ast except getstr
 import
   strutils, astalgo, msgs, vmdef, vmgen, nimsets, types, passes,
   parser, vmdeps, idents, trees, renderer, options, transf, parseutils,
-  vmmarshal
+  vmmarshal, gorgeimpl
 
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
@@ -66,7 +66,10 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
     stackTraceAux(c, x.next, x.comesFrom, recursionLimit-1)
     var info = c.debug[pc]
     # we now use the same format as in system/except.nim
-    var s = toFilename(info)
+    var s = substr(toFilename(info), 0)
+    # this 'substr' prevents a strange corruption. XXX This needs to be
+    # investigated eventually but first attempts to fix it broke everything
+    # see the araq-wip-fixed-writebarrier branch.
     var line = toLinenumber(info)
     if line > 0:
       add(s, '(')
@@ -979,7 +982,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           let node = regs[rb+i].regToNode
           node.info = c.debug[pc]
           macroCall.add(node)
-        let a = evalTemplate(macroCall, prc, genSymOwner)
+        var a = evalTemplate(macroCall, prc, genSymOwner)
+        if a.kind == nkStmtList and a.len == 1: a = a[0]
         a.recSetFlagIsRef
         ensureKind(rkNode)
         regs[ra].node = a
