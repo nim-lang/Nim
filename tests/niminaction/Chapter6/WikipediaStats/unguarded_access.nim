@@ -1,3 +1,8 @@
+discard """
+  errormsg: "unguarded access: counter"
+  line: 14
+"""
+
 import threadpool, locks
 
 var counterLock: Lock
