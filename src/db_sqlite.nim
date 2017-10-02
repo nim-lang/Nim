@@ -129,7 +129,8 @@ proc tryExec*(db: DbConn, query: SqlQuery,
   var q = dbFormat(query, args)
   var stmt: sqlite3.Pstmt
   if prepare_v2(db, q, q.len.cint, stmt, nil) == SQLITE_OK:
-    if step(stmt) == SQLITE_DONE:
+    let x = step(stmt)
+    if x in {SQLITE_DONE, SQLITE_ROW}:
       result = finalize(stmt) == SQLITE_OK
 
 proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`])  {.
