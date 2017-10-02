@@ -16,11 +16,11 @@ proc addPath*(path: string, info: TLineInfo) =
     options.searchPaths.insert(path, 0)
 
 type
-  Version = distinct string
+  Version* = distinct string
 
-proc `$`(ver: Version): string {.borrow.}
+proc `$`*(ver: Version): string {.borrow.}
 
-proc newVersion(ver: string): Version =
+proc newVersion*(ver: string): Version =
   doAssert(ver.len == 0 or ver[0] in {'#', '\0'} + Digits,
            "Wrong version: " & ver)
   return Version(ver)
@@ -28,7 +28,7 @@ proc newVersion(ver: string): Version =
 proc isSpecial(ver: Version): bool =
   return ($ver).len > 0 and ($ver)[0] == '#'
 
-proc `<`(ver: Version, ver2: Version): bool =
+proc `<`*(ver: Version, ver2: Version): bool =
   ## This is synced from Nimble's version module.
 
   # Handling for special versions such as "#head" or "#branch".
