@@ -246,6 +246,9 @@ type
   UncheckedArray* {.unchecked.}[T] = array[0, T]
     ## Array with no bounds checking
 
+when defined(nimHasOpt):
+  type opt*{.magic: "Opt".}[T]
+
 proc high*[T: Ordinal](x: T): T {.magic: "High", noSideEffect.}
   ## returns the highest possible index of an array, a sequence, a string or
   ## the highest possible value of an ordinal value `x`. As a special
@@ -409,8 +412,7 @@ when not defined(JS):
 
 when not defined(JS) and not defined(nimscript):
   template space(s: PGenericSeq): int {.dirty.} =
-    s.reserved and not seqShallowFlag
-
+    s.reserved and not (seqShallowFlag or strlitFlag)
   include "system/hti"
 
 type
@@ -718,7 +720,7 @@ proc len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.
   magic: "LengthOpenArray", noSideEffect.}
 proc len*(x: string): int {.magic: "LengthStr", noSideEffect.}
 proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.}
-proc len*[I, T](x: array[I, T]): int {.magic: "LengthArray", noSideEffect.}
+proc len*(x: (type array)|array): int {.magic: "LengthArray", noSideEffect.}
 proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
   ## returns the length of an array, an openarray, a sequence or a string.
   ## This is roughly the same as ``high(T)-low(T)+1``, but its resulting type is
@@ -1329,6 +1331,9 @@ const
     ## "amd64", "mips", "mipsel", "arm", "arm64", "mips64", "mips64el".
 
   seqShallowFlag = low(int)
+  strlitFlag = 1 shl (sizeof(int)*8 - 2) # later versions of the codegen \
+  # emit this flag
+  # for string literals, it allows for some optimizations.
 
 {.push profiler: off.}
 when defined(nimKnowsNimvm):
@@ -1435,7 +1440,12 @@ when defined(nimdoc):
 
 elif defined(genode):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn,
-    importcpp: "genodeEnv->parent().exit(@)", header: "<base/env.h>".}
+    importcpp: "genodeEnv->parent().exit(@); Genode::sleep_forever()",
+    header: "<base/sleep.h>".}
+
+elif defined(nodejs):
+  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", 
+    importc: "process.exit", noreturn.}
 
 else:
   proc quit*(errorcode: int = QuitSuccess) {.
@@ -3402,10 +3412,10 @@ when hasAlloc or defined(nimscript):
   proc `[]`*(s: string, x: Slice[int]): string {.inline.} =
     ## slice operation for strings.
     ## returns the inclusive range [s[x.a], s[x.b]]:
-    ## 
+    ##
     ## .. code-block:: nim
     ##    var s = "abcdef"
-    ##    assert s[1..3] == "bcd" 
+    ##    assert s[1..3] == "bcd"
     result = s.substr(x.a, x.b)
 
   proc `[]=`*(s: var string, x: Slice[int], b: string) =
@@ -3427,7 +3437,7 @@ when hasAlloc or defined(nimscript):
 proc `[]`*[Idx, T](a: array[Idx, T], x: Slice[int]): seq[T] =
   ## slice operation for arrays.
   ## returns the inclusive range [a[x.a], a[x.b]]:
-  ## 
+  ##
   ## .. code-block:: nim
   ##    var a = [1,2,3,4]
   ##    assert a[0..2] == @[1,2,3]
@@ -3466,7 +3476,7 @@ proc `[]=`*[Idx, T](a: var array[Idx, T], x: Slice[Idx], b: openArray[T]) =
 proc `[]`*[T](s: seq[T], x: Slice[int]): seq[T] =
   ## slice operation for sequences.
   ## returns the inclusive range [s[x.a], s[x.b]]:
-  ## 
+  ##
   ## .. code-block:: nim
   ##    var s = @[1,2,3,4]
   ##    assert s[0..2] == @[1,2,3]
@@ -3719,7 +3729,9 @@ proc shallow*(s: var string) {.noSideEffect, inline.} =
   ## purposes.
   when not defined(JS) and not defined(nimscript):
     var s = cast[PGenericSeq](s)
-    s.reserved = s.reserved or seqShallowFlag
+    # string literals cannot become 'shallow':
+    if (s.reserved and strlitFlag) == 0:
+      s.reserved = s.reserved or seqShallowFlag
 
 type
   NimNodeObj = object

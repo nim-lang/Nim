@@ -183,7 +183,7 @@ proc mapType(typ: PType): TCTypeKind =
       of 8: result = ctInt64
       else: internalError("mapType")
   of tyRange: result = mapType(typ.sons[0])
-  of tyPtr, tyVar, tyRef:
+  of tyPtr, tyVar, tyRef, tyOptAsRef:
     var base = skipTypes(typ.lastSon, typedescInst)
     case base.kind
     of tyOpenArray, tyArray, tyVarargs: result = ctPtrToArray
@@ -194,6 +194,13 @@ proc mapType(typ: PType): TCTypeKind =
     else: result = ctPtr
   of tyPointer: result = ctPtr
   of tySequence: result = ctNimSeq
+  of tyOpt:
+    case optKind(typ)
+    of oBool: result = ctStruct
+    of oNil, oPtr: result = ctPtr
+    of oEnum:
+      # The 'nil' value is always negative, so we always use a signed integer
+      result = if getSize(typ.sons[0]) == 8: ctInt64 else: ctInt32
   of tyProc: result = if typ.callConv != ccClosure: ctProc else: ctStruct
   of tyString: result = ctNimStr
   of tyCString: result = ctCString
@@ -282,12 +289,13 @@ proc ccgIntroducedPtr(s: PSym): bool =
     result = (getSize(pt) > platform.floatSize*2) or (optByRef in s.options)
   else: result = false
 
-proc fillResult(param: PSym) =
-  fillLoc(param.loc, locParam, param.typ, ~"Result",
+proc fillResult(param: PNode) =
+  fillLoc(param.sym.loc, locParam, param, ~"Result",
           OnStack)
-  if mapReturnType(param.typ) != ctArray and isInvalidReturnType(param.typ):
-    incl(param.loc.flags, lfIndirect)
-    param.loc.s = OnUnknown
+  let t = param.sym.typ
+  if mapReturnType(t) != ctArray and isInvalidReturnType(t):
+    incl(param.sym.loc.flags, lfIndirect)
+    param.sym.loc.storage = OnUnknown
 
 proc typeNameOrLiteral(m: BModule; t: PType, literal: string): Rope =
   if t.sym != nil and sfImportc in t.sym.flags and t.sym.magic == mNone:
@@ -349,7 +357,7 @@ proc getTypeForward(m: BModule, typ: PType; sig: SigHash): Rope =
   if result != nil: return
   result = getTypePre(m, typ, sig)
   if result != nil: return
-  let concrete = typ.skipTypes(abstractInst)
+  let concrete = typ.skipTypes(abstractInst + {tyOpt})
   case concrete.kind
   of tySequence, tyTuple, tyObject:
     result = getTypeName(m, typ, sig)
@@ -375,6 +383,12 @@ proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet): Rope =
   of tySequence:
     result = getTypeForward(m, t, hashType(t)) & "*"
     pushType(m, t)
+  of tyOpt:
+    if optKind(etB) == oPtr:
+      result = getTypeForward(m, t, hashType(t)) & "*"
+      pushType(m, t)
+    else:
+      result = getTypeDescAux(m, t, check)
   else:
     result = getTypeDescAux(m, t, check)
 
@@ -398,13 +412,13 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     var param = t.n.sons[i].sym
     if isCompileTimeOnly(param.typ): continue
     if params != nil: add(params, ~", ")
-    fillLoc(param.loc, locParam, param.typ, mangleParamName(m, param),
+    fillLoc(param.loc, locParam, t.n.sons[i], mangleParamName(m, param),
             param.paramStorageLoc)
     if ccgIntroducedPtr(param):
       add(params, getTypeDescWeak(m, param.typ, check))
       add(params, ~"*")
       incl(param.loc.flags, lfIndirect)
-      param.loc.s = OnUnknown
+      param.loc.storage = OnUnknown
     elif weakDep:
       add(params, getTypeDescWeak(m, param.typ, check))
     else:
@@ -417,7 +431,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     var j = 0
     while arr.kind in {tyOpenArray, tyVarargs}:
       # this fixes the 'sort' bug:
-      if param.typ.kind == tyVar: param.loc.s = OnUnknown
+      if param.typ.kind == tyVar: param.loc.storage = OnUnknown
       # need to pass hidden parameter:
       addf(params, ", NI $1Len_$2", [param.loc.r, j.rope])
       inc(j)
@@ -496,16 +510,16 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
     let sname = mangleRecFieldName(m, field, rectype)
     let ae = if accessExpr != nil: "$1.$2" % [accessExpr, sname]
              else: sname
-    fillLoc(field.loc, locField, field.typ, ae, OnUnknown)
+    fillLoc(field.loc, locField, n, ae, OnUnknown)
     # for importcpp'ed objects, we only need to set field.loc, but don't
     # have to recurse via 'getTypeDescAux'. And not doing so prevents problems
     # with heavily templatized C++ code:
     if not isImportedCppType(rectype):
-      let fieldType = field.loc.t.skipTypes(abstractInst)
+      let fieldType = field.loc.lode.typ.skipTypes(abstractInst)
       if fieldType.kind == tyArray and tfUncheckedArray in fieldType.flags:
         addf(result, "$1 $2[SEQ_DECL_SIZE];$n",
             [getTypeDescAux(m, fieldType.elemType, check), sname])
-      elif fieldType.kind == tySequence:
+      elif fieldType.kind in {tySequence, tyOpt}:
         # we need to use a weak dependency here for trecursive_table.
         addf(result, "$1 $2;$n", [getTypeDescWeak(m, field.loc.t, check), sname])
       elif field.bitsize != 0:
@@ -624,7 +638,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
     excl(check, t.id)
     return
   case t.kind
-  of tyRef, tyPtr, tyVar:
+  of tyRef, tyOptAsRef, tyPtr, tyVar:
     var star = if t.kind == tyVar and tfVarIsPtr notin origTyp.flags and
                     compileToCpp(m): "&" else: "*"
     var et = origTyp.skipTypes(abstractInst).lastSon
@@ -651,6 +665,21 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
       result = name & "*" & star
       m.typeCache[sig] = result
       pushType(m, et)
+    of tyOpt:
+      if etB.sons[0].kind in {tyObject, tyTuple}:
+        let name = getTypeForward(m, et, hashType et)
+        result = name & "*" & star
+        m.typeCache[sig] = result
+        pushType(m, et)
+      elif optKind(etB) == oBool:
+        let name = getTypeForward(m, et, hashType et)
+        result = name & "*"
+        m.typeCache[sig] = result
+        pushType(m, et)
+      else:
+        # else we have a strong dependency  :-(
+        result = getTypeDescAux(m, et, check) & star
+        m.typeCache[sig] = result
     else:
       # else we have a strong dependency  :-(
       result = getTypeDescAux(m, et, check) & star
@@ -726,6 +755,38 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
       else:
         result = rope("TGenericSeq")
     add(result, "*")
+  of tyOpt:
+    result = cacheGetType(m.typeCache, sig)
+    if result == nil:
+      case optKind(t)
+      of oBool:
+        result = cacheGetType(m.forwTypeCache, sig)
+        if result == nil:
+          result = getTypeName(m, origTyp, sig)
+          addf(m.s[cfsForwardTypes], getForwardStructFormat(m),
+              [structOrUnion(t), result])
+          m.forwTypeCache[sig] = result
+        appcg(m, m.s[cfsSeqTypes], "struct $2 {$n" &
+           "  NIM_BOOL Field0;$n" &
+           "  $1 Field1;$n" &
+           "};$n", [getTypeDescAux(m, t.sons[0], check), result])
+      of oPtr:
+        let et = t.sons[0]
+        if et.kind in {tyTuple, tyObject}:
+          let name = getTypeForward(m, et, hashType et)
+          result = name & "*"
+          pushType(m, et)
+        else:
+          result = getTypeDescAux(m, t.sons[0], check) & "*"
+      of oNil:
+        result = getTypeDescAux(m, t.sons[0], check)
+      of oEnum:
+        result = getTypeName(m, origTyp, sig)
+        if getSize(t.sons[0]) == 8:
+          addf(m.s[cfsTypes], "typedef NI64 $1;$n", [result])
+        else:
+          addf(m.s[cfsTypes], "typedef NI32 $1;$n", [result])
+      m.typeCache[sig] = result
   of tyArray:
     var n: BiggestInt = lengthOrd(t)
     if n <= 0: n = 1   # make an array of at least one element
@@ -861,7 +922,7 @@ proc genProcHeader(m: BModule, prc: PSym): Rope =
   elif prc.typ.callConv == ccInline:
     result.add "static "
   var check = initIntSet()
-  fillLoc(prc.loc, locProc, prc.typ, mangleName(m, prc), OnUnknown)
+  fillLoc(prc.loc, locProc, prc.ast[namePos], mangleName(m, prc), OnUnknown)
   genProcParams(m, prc.typ, rettype, params, check)
   # careful here! don't access ``prc.ast`` as that could reload large parts of
   # the object graph!
@@ -1113,6 +1174,8 @@ proc genDeepCopyProc(m: BModule; s: PSym; result: Rope) =
 proc genTypeInfo(m: BModule, t: PType): Rope =
   let origType = t
   var t = skipTypes(origType, irrelevantForBackend + tyUserTypeClasses)
+  if t.kind == tyOpt:
+    return genTypeInfo(m, optLowering(t))
 
   let sig = hashType(origType)
   result = m.typeInfoMarker.getOrDefault(sig)
@@ -1158,7 +1221,7 @@ proc genTypeInfo(m: BModule, t: PType): Rope =
     else:
       let x = fakeClosureType(t.owner)
       genTupleInfo(m, x, x, result)
-  of tySequence, tyRef:
+  of tySequence, tyRef, tyOptAsRef:
     genTypeInfoAux(m, t, t, result)
     if gSelectedGC >= gcMarkAndSweep:
       let markerProc = genTraverseProc(m, origType, sig, tiNew)

@@ -64,7 +64,7 @@ proc astNeeded*(s: PSym): bool =
   # needs to be stored. The passes manager frees s.sons[codePos] when
   # appropriate to free the procedure body's memory. This is important
   # to keep memory usage down.
-  if (s.kind in {skMethod, skProc}) and
+  if (s.kind in {skMethod, skProc, skFunc}) and
       ({sfCompilerProc, sfCompileTime} * s.flags == {}) and
       (s.typ.callConv != ccInline) and
       (s.ast.sons[genericParamsPos].kind == nkEmpty):

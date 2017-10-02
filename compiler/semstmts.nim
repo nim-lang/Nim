@@ -437,8 +437,6 @@ proc isDiscardUnderscore(v: PSym): bool =
 proc semUsing(c: PContext; n: PNode): PNode =
   result = ast.emptyNode
   if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "using")
-  if not experimentalMode(c):
-    localError(n.info, "use the {.experimental.} pragma to enable 'using'")
   for i in countup(0, sonsLen(n)-1):
     var a = n.sons[i]
     if gCmd == cmdIdeTools: suggestStmt(c, a)
@@ -493,6 +491,7 @@ proc fillPartialObject(c: PContext; n: PNode; typ: PType) =
       addSon(obj.n, newSymNode(field))
       n.sons[0] = makeDeref x
       n.sons[1] = newSymNode(field)
+      n.typ = field.typ
     else:
       localError(n.info, "implicit object field construction " &
         "requires a .partial object, but got " & typeToString(obj))
@@ -1233,7 +1232,7 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   s.typ = n.typ
   for i in 1..<params.len:
     if params[i].typ.kind in {tyTypeDesc, tyGenericParam,
-                              tyFromExpr, tyFieldAccessor}+tyTypeClasses:
+                              tyFromExpr}+tyTypeClasses:
       localError(params[i].info, "cannot infer type of parameter: " &
                  params[i].sym.name.s)
     #params[i].sym.owner = s
@@ -1602,6 +1601,9 @@ proc semIterator(c: PContext, n: PNode): PNode =
 
 proc semProc(c: PContext, n: PNode): PNode =
   result = semProcAux(c, n, skProc, procPragmas)
+
+proc semFunc(c: PContext, n: PNode): PNode =
+  result = semProcAux(c, n, skFunc, procPragmas)
 
 proc semMethod(c: PContext, n: PNode): PNode =
   if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "method")

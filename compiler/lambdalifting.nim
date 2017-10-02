@@ -194,7 +194,7 @@ proc illegalCapture(s: PSym): bool {.inline.} =
       s.kind == skResult
 
 proc isInnerProc(s: PSym): bool =
-  if s.kind in {skProc, skMethod, skConverter, skIterator} and s.magic == mNone:
+  if s.kind in {skProc, skFunc, skMethod, skConverter, skIterator} and s.magic == mNone:
     result = s.skipGenericOwner.kind in routineKinds
 
 proc newAsgnStmt(le, ri: PNode, info: TLineInfo): PNode =
@@ -371,7 +371,8 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
   case n.kind
   of nkSym:
     let s = n.sym
-    if s.kind in {skProc, skMethod, skConverter, skIterator} and s.typ != nil and s.typ.callConv == ccClosure:
+    if s.kind in {skProc, skFunc, skMethod, skConverter, skIterator} and
+        s.typ != nil and s.typ.callConv == ccClosure:
       # this handles the case that the inner proc was declared as
       # .closure but does not actually capture anything:
       addClosureParam(c, s, n.info)
@@ -443,7 +444,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
     discard
   of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef:
     discard
-  of nkLambdaKinds, nkIteratorDef:
+  of nkLambdaKinds, nkIteratorDef, nkFuncDef:
     if n.typ != nil:
       detectCapturedVars(n[namePos], owner, c)
   else:
@@ -730,7 +731,7 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
         # now we know better, so patch it:
         n.sons[0] = x.sons[0]
         n.sons[1] = x.sons[1]
-  of nkLambdaKinds, nkIteratorDef:
+  of nkLambdaKinds, nkIteratorDef, nkFuncDef:
     if n.typ != nil and n[namePos].kind == nkSym:
       let m = newSymNode(n[namePos].sym)
       m.typ = n.typ

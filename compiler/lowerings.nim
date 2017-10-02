@@ -633,7 +633,7 @@ proc wrapProcForSpawn*(owner: PSym; spawnExpr: PNode; retType: PType;
   if fn.kind == nkClosure:
     localError(n.info, "closure in spawn environment is not allowed")
   if not (fn.kind == nkSym and fn.sym.kind in {skProc, skTemplate, skMacro,
-                                               skMethod, skConverter}):
+                                               skFunc, skMethod, skConverter}):
     # for indirect calls we pass the function pointer in the scratchObj
     var argType = n[0].typ.skipTypes(abstractInst)
     var field = newSym(skField, getIdent"fn", owner, n.info)

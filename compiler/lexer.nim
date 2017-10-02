@@ -48,7 +48,7 @@ type
     tkShl, tkShr, tkStatic,
     tkTemplate,
     tkTry, tkTuple, tkType, tkUsing,
-    tkVar, tkWhen, tkWhile, tkWith, tkWithout, tkXor,
+    tkVar, tkWhen, tkWhile, tkXor,
     tkYield, # end of keywords
     tkIntLit, tkInt8Lit, tkInt16Lit, tkInt32Lit, tkInt64Lit,
     tkUIntLit, tkUInt8Lit, tkUInt16Lit, tkUInt32Lit, tkUInt64Lit,
@@ -89,7 +89,7 @@ const
     "shl", "shr", "static",
     "template",
     "try", "tuple", "type", "using",
-    "var", "when", "while", "with", "without", "xor",
+    "var", "when", "while", "xor",
     "yield",
     "tkIntLit", "tkInt8Lit", "tkInt16Lit", "tkInt32Lit", "tkInt64Lit",
     "tkUIntLit", "tkUInt8Lit", "tkUInt16Lit", "tkUInt32Lit", "tkUInt64Lit",

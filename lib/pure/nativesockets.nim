@@ -498,7 +498,7 @@ proc getLocalAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
     # Cannot use INET6_ADDRSTRLEN here, because it's a C define.
     var buf: array[64, char]
     if inet_ntop(name.sin6_family.cint,
-                 addr name, buf.cstring, sizeof(buf).int32).isNil:
+                 addr name.sin6_addr, buf.cstring, sizeof(buf).int32).isNil:
       raiseOSError(osLastError())
     result = ($buf, Port(nativesockets.ntohs(name.sin6_port)))
   else:
@@ -534,7 +534,7 @@ proc getPeerAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
     # Cannot use INET6_ADDRSTRLEN here, because it's a C define.
     var buf: array[64, char]
     if inet_ntop(name.sin6_family.cint,
-                 addr name, buf.cstring, sizeof(buf).int32).isNil:
+                 addr name.sin6_addr, buf.cstring, sizeof(buf).int32).isNil:
       raiseOSError(osLastError())
     result = ($buf, Port(nativesockets.ntohs(name.sin6_port)))
   else:

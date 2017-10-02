@@ -121,7 +121,7 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
     if s.kind == skIterator:
       if c.tooEarly: return n
       else: return liftIterSym(n, getCurrOwner(c))
-    elif s.kind in {skProc, skConverter, skMethod} and not c.tooEarly:
+    elif s.kind in {skProc, skFunc, skConverter, skMethod} and not c.tooEarly:
       # top level .closure procs are still somewhat supported for 'Nake':
       return makeClosure(s, nil, n.info)
   #elif n.sym.kind in {skVar, skLet} and n.sym.typ.callConv == ccClosure:

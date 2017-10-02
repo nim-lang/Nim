@@ -325,7 +325,7 @@ proc complexName(k: TSymKind, n: PNode, baseName: string): string =
   ## section of ``doc/docgen.txt``.
   result = baseName
   case k:
-  of skProc: result.add(defaultParamSeparator)
+  of skProc, skFunc: result.add(defaultParamSeparator)
   of skMacro: result.add(".m" & defaultParamSeparator)
   of skMethod: result.add(".e" & defaultParamSeparator)
   of skIterator: result.add(".i" & defaultParamSeparator)
@@ -341,7 +341,7 @@ proc isCallable(n: PNode): bool =
   ## Returns true if `n` contains a callable node.
   case n.kind
   of nkProcDef, nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef,
-    nkConverterDef: result = true
+    nkConverterDef, nkFuncDef: result = true
   else:
     result = false
 
@@ -533,6 +533,9 @@ proc generateDoc*(d: PDoc, n: PNode) =
   of nkProcDef:
     when useEffectSystem: documentRaises(n)
     genItem(d, n, n.sons[namePos], skProc)
+  of nkFuncDef:
+    when useEffectSystem: documentRaises(n)
+    genItem(d, n, n.sons[namePos], skFunc)
   of nkMethodDef:
     when useEffectSystem: documentRaises(n)
     genItem(d, n, n.sons[namePos], skMethod)
@@ -574,6 +577,9 @@ proc generateJson*(d: PDoc, n: PNode) =
   of nkProcDef:
     when useEffectSystem: documentRaises(n)
     d.add genJsonItem(d, n, n.sons[namePos], skProc)
+  of nkFuncDef:
+    when useEffectSystem: documentRaises(n)
+    d.add genJsonItem(d, n, n.sons[namePos], skFunc)
   of nkMethodDef:
     when useEffectSystem: documentRaises(n)
     d.add genJsonItem(d, n, n.sons[namePos], skMethod)
@@ -604,8 +610,8 @@ proc generateJson*(d: PDoc, n: PNode) =
 
 proc genSection(d: PDoc, kind: TSymKind) =
   const sectionNames: array[skModule..skTemplate, string] = [
-    "Imports", "Types", "Vars", "Lets", "Consts", "Vars", "Procs", "Methods",
-    "Iterators", "Converters", "Macros", "Templates"
+    "Imports", "Types", "Vars", "Lets", "Consts", "Vars", "Procs", "Funcs",
+    "Methods", "Iterators", "Converters", "Macros", "Templates"
   ]
   if d.section[kind] == nil: return
   var title = sectionNames[kind].rope

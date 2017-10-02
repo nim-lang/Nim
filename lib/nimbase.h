@@ -373,11 +373,13 @@ static N_INLINE(NI32, float32ToInt32)(float x) {
 
 #define float64ToInt64(x) ((NI64) (x))
 
+#define NIM_STRLIT_FLAG ((NU)(1) << ((NIM_INTBITS) - 2)) /* This has to be the same as system.strlitFlag! */
+
 #define STRING_LITERAL(name, str, length) \
-  static const struct {                   \
-    TGenericSeq Sup;                      \
-    NIM_CHAR data[(length) + 1];          \
-  } name = {{length, length}, str}
+   static const struct {                   \
+     TGenericSeq Sup;                      \
+     NIM_CHAR data[(length) + 1];          \
+  } name = {{length, (NI) ((NU)length | NIM_STRLIT_FLAG)}, str}
 
 typedef struct TStringDesc* string;
 
