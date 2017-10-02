@@ -16,6 +16,7 @@ addons:
     - libcurl4-openssl-dev
     - libsdl1.2-dev
     - libgc-dev
+    - libsfml-dev
 
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
