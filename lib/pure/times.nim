@@ -77,6 +77,8 @@ when defined(posix) and not defined(JS):
 
   when not defined(freebsd) and not defined(netbsd) and not defined(openbsd):
     var timezone {.importc, header: "<time.h>".}: int
+    proc tzset(): void {.importc, header: "<time.h>".}
+    tzset()
 
 elif defined(windows):
   import winlean
