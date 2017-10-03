@@ -1,6 +1,7 @@
 # test the new time module
 discard """
   file: "ttime.nim"
+  action: "run"
 """
 
 import
