@@ -616,6 +616,8 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
       of mCpuEndian: result = newIntNodeT(ord(CPU[targetCPU].endian), n)
       of mHostOS: result = newStrNodeT(toLowerAscii(platform.OS[targetOS].name), n)
       of mHostCPU: result = newStrNodeT(platform.CPU[targetCPU].name.toLowerAscii, n)
+      of mBuildOS: result = newStrNodeT(toLowerAscii(platform.OS[platform.hostOS].name), n)
+      of mBuildCPU: result = newStrNodeT(platform.CPU[platform.hostCPU].name.toLowerAscii, n)
       of mAppType: result = getAppType(n)
       of mNaN: result = newFloatNodeT(NaN, n)
       of mInf: result = newFloatNodeT(Inf, n)
@@ -628,7 +630,7 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
           result = newStrNodeT(lookupSymbol(s.name), n)
       else:
         result = copyTree(s.ast)
-    of {skProc, skMethod}:
+    of {skProc, skFunc, skMethod}:
       result = n
     of skType:
       # XXX gensym'ed symbols can come here and cannot be resolved. This is
@@ -652,7 +654,7 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
   of nkCallKinds:
     if n.sons[0].kind != nkSym: return
     var s = n.sons[0].sym
-    if s.kind != skProc: return
+    if s.kind != skProc and s.kind != skFunc: return
     try:
       case s.magic
       of mNone:

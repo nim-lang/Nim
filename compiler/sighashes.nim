@@ -201,7 +201,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
   of tyRef, tyPtr, tyGenericBody, tyVar:
     c.hashType t.lastSon, flags
     if tfVarIsPtr in t.flags: c &= ".varisptr"
-  of tyFromExpr, tyFieldAccessor:
+  of tyFromExpr:
     c.hashTree(t.n)
   of tyTuple:
     if t.n != nil and CoType notin flags:

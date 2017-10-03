@@ -248,6 +248,8 @@ proc markWriteOrEscape(w: var W) =
       for p in a.dest:
         if p.kind == skParam and p.owner == w.owner:
           incl(p.flags, sfWrittenTo)
+          if w.owner.kind == skFunc and p.typ.kind != tyVar:
+            localError(a.info, "write access to non-var parameter: " & p.name.s)
 
     if {rootIsResultOrParam, rootIsHeapAccess, markAsEscaping}*a.destInfo != {}:
       var destIsParam = false

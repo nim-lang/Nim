@@ -56,7 +56,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         if d.k == locNone: getTemp(p, typ.sons[0], d)
         assert(d.t != nil)        # generate an assignment to d:
         var list: TLoc
-        initLoc(list, locCall, d.t, OnUnknown)
+        initLoc(list, locCall, d.lode, OnUnknown)
         list.r = pl
         genAssignment(p, d, list, {}) # no need for deep copying
   else:
@@ -241,7 +241,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
       if d.k == locNone: getTemp(p, typ.sons[0], d)
       assert(d.t != nil)        # generate an assignment to d:
       var list: TLoc
-      initLoc(list, locCall, d.t, OnUnknown)
+      initLoc(list, locCall, d.lode, OnUnknown)
       list.r = callPattern % [op.r, pl, pl.addComma, rawProc]
       genAssignment(p, d, list, {}) # no need for deep copying
   else:
@@ -437,7 +437,7 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
         if d.k == locNone: getTemp(p, typ.sons[0], d)
         assert(d.t != nil)        # generate an assignment to d:
         var list: TLoc
-        initLoc(list, locCall, d.t, OnUnknown)
+        initLoc(list, locCall, d.lode, OnUnknown)
         list.r = pl
         genAssignment(p, d, list, {}) # no need for deep copying
     else:
@@ -519,7 +519,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
       if d.k == locNone: getTemp(p, typ.sons[0], d)
       assert(d.t != nil)        # generate an assignment to d:
       var list: TLoc
-      initLoc(list, locCall, nil, OnUnknown)
+      initLoc(list, locCall, ri, OnUnknown)
       list.r = pl
       genAssignment(p, d, list, {}) # no need for deep copying
   else:

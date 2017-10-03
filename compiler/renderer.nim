@@ -1079,9 +1079,9 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       gsub(g, n.sons[0])
       if n.len > 1:
         if n[1].kind == nkWith:
-          putWithSpace(g, tkWith, " with")
+          putWithSpace(g, tkSymbol, " with")
         else:
-          putWithSpace(g, tkWithout, " without")
+          putWithSpace(g, tkSymbol, " without")
         gcomma(g, n[1])
     else:
       put(g, tkDistinct, "distinct")
@@ -1165,6 +1165,9 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkAsmStmt: gasm(g, n)
   of nkProcDef:
     if renderNoProcDefs notin g.flags: putWithSpace(g, tkProc, "proc")
+    gproc(g, n)
+  of nkFuncDef:
+    if renderNoProcDefs notin g.flags: putWithSpace(g, tkFunc, "func")
     gproc(g, n)
   of nkConverterDef:
     if renderNoProcDefs notin g.flags: putWithSpace(g, tkConverter, "converter")
@@ -1324,7 +1327,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
         if p.typ == nil or tfImplicitTypeParam notin p.typ.flags:
           return true
       return false
-    
+
     if n.hasExplicitParams:
       put(g, tkBracketLe, "[")
       gsemicolon(g, n)
@@ -1363,7 +1366,13 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
 proc renderTree(n: PNode, renderFlags: TRenderFlags = {}): string =
   var g: TSrcGen
   initSrcGen(g, renderFlags)
-  gsub(g, n)
+  # do not indent the initial statement list so that
+  # writeFile("file.nim", repr n)
+  # produces working Nim code:
+  if n.kind in {nkStmtList, nkStmtListExpr, nkStmtListType}:
+    gstmts(g, n, emptyContext, doIndent = false)
+  else:
+    gsub(g, n)
   result = g.buf
 
 proc renderModule(n: PNode, filename: string,

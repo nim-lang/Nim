@@ -75,7 +75,8 @@ type
     nnkClosure,
     nnkGotoState,
     nnkState,
-    nnkBreakState
+    nnkBreakState,
+    nnkFuncDef
 
   NimNodeKinds* = set[NimNodeKind]
   NimTypeKind* = enum  # some types are no longer used, see ast.nim
@@ -96,14 +97,14 @@ type
     ntyError,
     ntyBuiltinTypeClass, ntyUserTypeClass, ntyUserTypeClassInst,
     ntyCompositeTypeClass, ntyInferred, ntyAnd, ntyOr, ntyNot,
-    ntyAnything, ntyStatic, ntyFromExpr, ntyFieldAccessor, ntyVoid
+    ntyAnything, ntyStatic, ntyFromExpr, ntyOpt, ntyVoid
 
   TNimTypeKinds* {.deprecated.} = set[NimTypeKind]
   NimSymKind* = enum
     nskUnknown, nskConditional, nskDynLib, nskParam,
     nskGenericParam, nskTemp, nskModule, nskType, nskVar, nskLet,
     nskConst, nskResult,
-    nskProc, nskMethod, nskIterator,
+    nskProc, nskFunc, nskMethod, nskIterator,
     nskConverter, nskMacro, nskTemplate, nskField,
     nskEnumField, nskForVar, nskLabel,
     nskStub
@@ -669,7 +670,7 @@ proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
         t = x
       result = newString(len)
       for j in countdown(len-1, 0):
-        result[j] = HexChars[t and 0xF]
+        result[j] = HexChars[int(t and 0xF)]
         t = t shr 4
         # handle negative overflow
         if t == 0 and x < 0: t = -1
@@ -843,7 +844,8 @@ proc last*(node: NimNode): NimNode {.compileTime.} = node[<node.len]
 
 
 const
-  RoutineNodes* = {nnkProcDef, nnkMethodDef, nnkDo, nnkLambda, nnkIteratorDef, nnkTemplateDef, nnkConverterDef}
+  RoutineNodes* = {nnkProcDef, nnkFuncDef, nnkMethodDef, nnkDo, nnkLambda,
+                   nnkIteratorDef, nnkTemplateDef, nnkConverterDef}
   AtomicNodes* = {nnkNone..nnkNilLit}
   CallNodes* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
     nnkCallStrLit, nnkHiddenCallConv}

@@ -11,6 +11,15 @@
 # Nim's configuration system now uses Nim for scripting. This module provides
 # a few things that are required for this to work.
 
+const
+  buildOS* {.magic: "BuildOS".}: string = ""
+    ## The OS this build is running on. Can be different from ``system.hostOS``
+    ## for cross compilations.
+
+  buildCPU* {.magic: "BuildCPU".}: string = ""
+    ## The CPU this build is running on. Can be different from ``system.hostCPU``
+    ## for cross compilations.
+
 template builtin = discard
 
 # We know the effects better than the compiler:

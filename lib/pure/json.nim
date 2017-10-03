@@ -721,6 +721,16 @@ proc getElems*(n: JsonNode, default: seq[JsonNode] = @[]): seq[JsonNode] =
   if n.isNil or n.kind != JArray: return default
   else: return n.elems
 
+proc add*(father, child: JsonNode) =
+  ## Adds `child` to a JArray node `father`.
+  assert father.kind == JArray
+  father.elems.add(child)
+
+proc add*(obj: JsonNode, key: string, val: JsonNode) =
+  ## Sets a field from a `JObject`.
+  assert obj.kind == JObject
+  obj.fields[key] = val
+
 proc `%`*(s: string): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JString JsonNode`.
   new(result)
@@ -759,6 +769,19 @@ proc `%`*[T](elements: openArray[T]): JsonNode =
   result = newJArray()
   for elem in elements: result.add(%elem)
 
+when false:
+  # For 'consistency' we could do this, but that only pushes people further
+  # into that evil comfort zone where they can use Nim without understanding it
+  # causing problems later on.
+  proc `%`*(elements: set[bool]): JsonNode =
+    ## Generic constructor for JSON data. Creates a new `JObject JsonNode`.
+    ## This can only be used with the empty set ``{}`` and is supported
+    ## to prevent the gotcha ``%*{}`` which used to produce an empty
+    ## JSON array.
+    result = newJObject()
+    assert false notin elements, "usage error: only empty sets allowed"
+    assert true notin elements, "usage error: only empty sets allowed"
+
 proc `%`*(o: object): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
   result = newJObject()
@@ -779,27 +802,25 @@ proc `%`*(o: enum): JsonNode =
 proc toJson(x: NimNode): NimNode {.compiletime.} =
   case x.kind
   of nnkBracket: # array
+    if x.len == 0: return newCall(bindSym"newJArray")
     result = newNimNode(nnkBracket)
     for i in 0 .. <x.len:
       result.add(toJson(x[i]))
-
+    result = newCall(bindSym"%", result)
   of nnkTableConstr: # object
+    if x.len == 0: return newCall(bindSym"newJObject")
     result = newNimNode(nnkTableConstr)
     for i in 0 .. <x.len:
       x[i].expectKind nnkExprColonExpr
-      result.add(newNimNode(nnkExprColonExpr).add(x[i][0]).add(toJson(x[i][1])))
-
+      result.add newTree(nnkExprColonExpr, x[i][0], toJson(x[i][1]))
+    result = newCall(bindSym"%", result)
   of nnkCurly: # empty object
-    result = newNimNode(nnkTableConstr)
     x.expectLen(0)
-
+    result = newCall(bindSym"newJObject")
   of nnkNilLit:
-    result = newCall("newJNull")
-
+    result = newCall(bindSym"newJNull")
   else:
-    result = x
-
-  result = prefix(result, "%")
+    result = newCall(bindSym"%", x)
 
 macro `%*`*(x: untyped): untyped =
   ## Convert an expression to a JsonNode directly, without having to specify
@@ -909,16 +930,6 @@ proc contains*(node: JsonNode, val: JsonNode): bool =
 proc existsKey*(node: JsonNode, key: string): bool {.deprecated.} = node.hasKey(key)
   ## Deprecated for `hasKey`
 
-proc add*(father, child: JsonNode) =
-  ## Adds `child` to a JArray node `father`.
-  assert father.kind == JArray
-  father.elems.add(child)
-
-proc add*(obj: JsonNode, key: string, val: JsonNode) =
-  ## Sets a field from a `JObject`.
-  assert obj.kind == JObject
-  obj.fields[key] = val
-
 proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
   ## Sets a field from a `JObject`.
   assert(obj.kind == JObject)
@@ -996,24 +1007,17 @@ proc nl(s: var string, ml: bool) =
 proc escapeJson*(s: string; result: var string) =
   ## Converts a string `s` to its JSON representation.
   ## Appends to ``result``.
-  const
-    HexChars = "0123456789ABCDEF"
   result.add("\"")
-  for x in runes(s):
-    var r = int(x)
-    if r >= 32 and r <= 126:
-      var c = chr(r)
-      case c
-      of '"': result.add("\\\"")
-      of '\\': result.add("\\\\")
-      else: result.add(c)
-    else:
-      # toHex inlined for more speed (saves stupid string allocations):
-      result.add("\\u0000")
-      let start = result.len - 4
-      for j in countdown(3, 0):
-        result[j+start] = HexChars[r and 0xF]
-        r = r shr 4
+  for c in s:
+    case c
+    of '\L': result.add("\\n")
+    of '\b': result.add("\\b")
+    of '\f': result.add("\\f")
+    of '\t': result.add("\\t")
+    of '\r': result.add("\\r")
+    of '"': result.add("\\\"")
+    of '\\': result.add("\\\\")
+    else: result.add(c)
   result.add("\"")
 
 proc escapeJson*(s: string): string =
@@ -1210,7 +1214,7 @@ proc parseJson(p: var JsonParser): JsonNode =
     raiseParseErr(p, "{")
 
 when not defined(js):
-  proc parseJson*(s: Stream, filename: string): JsonNode =
+  proc parseJson*(s: Stream, filename: string = ""): JsonNode =
     ## Parses from a stream `s` into a `JsonNode`. `filename` is only needed
     ## for nice error messages.
     ## If `s` contains extra data, it will raise `JsonParsingError`.
@@ -1925,7 +1929,7 @@ when isMainModule:
     var parsed2 = parseFile("tests/testdata/jsontest2.json")
     doAssert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
 
-  doAssert escapeJson("\10FoobarÄ") == "\"\\u000AFoobar\\u00C4\""
+  doAssert escapeJson("\10Foo🎃barÄ") == "\"\\nFoo🎃barÄ\""
 
   # Test with extra data
   when not defined(js):
@@ -1940,5 +1944,9 @@ when isMainModule:
       doAssert(false)
     except JsonParsingError:
       doAssert getCurrentExceptionMsg().contains(errorMessages[errEofExpected])
+
+  # bug #6438
+  doAssert($ %*[] == "[]")
+  doAssert($ %*{} == "{}")
 
   echo("Tests succeeded!")

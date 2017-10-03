@@ -15,7 +15,7 @@
 ## A value of type ``Option[T]`` either contains a value `x` (represented as
 ## ``some(x)``) or is empty (``none(T)``).
 ##
-## This can be useful when you have a value that can be present or not.  The
+## This can be useful when you have a value that can be present or not. The
 ## absence of a value is often represented by ``nil``, but it is not always
 ## available, nor is it always a good solution.
 ##
@@ -67,9 +67,7 @@
 ##     assert(false)  # This will not be reached
 ##   except UnpackError:  # Because an exception is raised
 ##     discard
-
 import typetraits
-
 
 type
   Option*[T] = object
@@ -77,7 +75,6 @@ type
     val: T
     has: bool
   UnpackError* = ref object of ValueError
-
 
 proc some*[T](val: T): Option[T] =
   ## Returns a ``Option`` that has this value.
@@ -88,13 +85,11 @@ proc none*(T: typedesc): Option[T] =
   ## Returns a ``Option`` for this type that has no value.
   result.has = false
 
-
 proc isSome*[T](self: Option[T]): bool =
   self.has
 
 proc isNone*[T](self: Option[T]): bool =
   not self.has
-
 
 proc unsafeGet*[T](self: Option[T]): T =
   ## Returns the value of a ``some``. Behavior is undefined for ``none``.
@@ -110,11 +105,10 @@ proc get*[T](self: Option[T]): T =
 
 proc get*[T](self: Option[T], otherwise: T): T =
   ## Returns the contents of this option or `otherwise` if the option is none.
-  if self.isSome:
+  if self.has:
     self.val
   else:
     otherwise
-
 
 proc map*[T](self: Option[T], callback: proc (input: T)) =
   ## Applies a callback to the value in this Option
@@ -123,11 +117,26 @@ proc map*[T](self: Option[T], callback: proc (input: T)) =
 
 proc map*[T, R](self: Option[T], callback: proc (input: T): R): Option[R] =
   ## Applies a callback to the value in this Option and returns an option
-  ## containing the new value. If this option is None, None will be returned
+  ## containing the new value. If this option is None, None will be returned.
   if self.has:
-    some[R]( callback(self.val) )
+    some[R](callback(self.val))
   else:
     none(R)
+
+proc flatten*[A](self: Option[Option[A]]): Option[A] =
+  ## Remove one level of structure in a nested Option.
+  if self.has:
+    self.val
+  else:
+    none(A)
+
+proc flatMap*[A, B](self: Option[A], callback: proc (input: A): Option[B]): Option[B] =
+  ## Applies a callback to the value in this Option and returns an
+  ## option containing the new value. If this option is None, None will be
+  ## returned. Similar to ``map``, with the difference that the callback
+  ## returns an Option, not a raw value. This allows multiple procs with a
+  ## signature of ``A -> Option[B]`` (including A = B) to be chained together.
+  map(self, callback).flatten()
 
 proc filter*[T](self: Option[T], callback: proc (input: T): bool): Option[T] =
   ## Applies a callback to the value in this Option. If the callback returns
@@ -138,20 +147,20 @@ proc filter*[T](self: Option[T], callback: proc (input: T): bool): Option[T] =
   else:
     self
 
-
 proc `==`*(a, b: Option): bool =
   ## Returns ``true`` if both ``Option``s are ``none``,
   ## or if they have equal values
   (a.has and b.has and a.val == b.val) or (not a.has and not b.has)
 
-
-proc `$`*[T]( self: Option[T] ): string =
-  ## Returns the contents of this option or `otherwise` if the option is none.
+proc `$`*[T](self: Option[T]): string =
+  ## Get the string representation of this option. If the option has a value,
+  ## the result will be `Some(x)` where `x` is the string representation of the contained value.
+  ## If the option does not have a value, the result will be `None[T]` where `T` is the name of 
+  ## the type contained in the option.
   if self.has:
     "Some(" & $self.val & ")"
   else:
     "None[" & T.name & "]"
-
 
 when isMainModule:
   import unittest, sequtils
@@ -198,12 +207,12 @@ when isMainModule:
         check false
 
     test "get with a default value":
-      check( some("Correct").get("Wrong") == "Correct" )
-      check( stringNone.get("Correct") == "Correct" )
+      check(some("Correct").get("Wrong") == "Correct")
+      check(stringNone.get("Correct") == "Correct")
 
     test "$":
-      check( $(some("Correct")) == "Some(Correct)" )
-      check( $(stringNone) == "None[string]" )
+      check($(some("Correct")) == "Some(Correct)")
+      check($(stringNone) == "None[string]")
 
     test "map with a void result":
       var procRan = 0
@@ -212,11 +221,38 @@ when isMainModule:
       intNone.map(proc (v: int) = check false)
 
     test "map":
-      check( some(123).map(proc (v: int): int = v * 2) == some(246) )
-      check( intNone.map(proc (v: int): int = v * 2).isNone )
+      check(some(123).map(proc (v: int): int = v * 2) == some(246))
+      check(intNone.map(proc (v: int): int = v * 2).isNone)
 
     test "filter":
-      check( some(123).filter(proc (v: int): bool = v == 123) == some(123) )
-      check( some(456).filter(proc (v: int): bool = v == 123).isNone )
-      check( intNone.filter(proc (v: int): bool = check false).isNone )
+      check(some(123).filter(proc (v: int): bool = v == 123) == some(123))
+      check(some(456).filter(proc (v: int): bool = v == 123).isNone)
+      check(intNone.filter(proc (v: int): bool = check false).isNone)
 
+    test "flatMap":
+      proc addOneIfNotZero(v: int): Option[int] =
+        if v != 0:
+          result = some(v + 1)
+        else:
+          result = none(int)
+
+      check(some(1).flatMap(addOneIfNotZero) == some(2))
+      check(some(0).flatMap(addOneIfNotZero) == none(int))
+      check(some(1).flatMap(addOneIfNotZero).flatMap(addOneIfNotZero) == some(3))
+
+      proc maybeToString(v: int): Option[string] =
+        if v != 0:
+          result = some($v)
+        else:
+          result = none(string)
+
+      check(some(1).flatMap(maybeToString) == some("1"))
+
+      proc maybeExclaim(v: string): Option[string] =
+        if v != "":
+          result = some v & "!"
+        else:
+          result = none(string)
+
+      check(some(1).flatMap(maybeToString).flatMap(maybeExclaim) == some("1!"))
+      check(some(0).flatMap(maybeToString).flatMap(maybeExclaim) == none(string))

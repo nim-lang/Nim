@@ -625,10 +625,10 @@ proc genUnaryABC(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
   c.gABC(n, opc, dest, tmp)
   c.freeTemp(tmp)
 
-proc genUnaryABI(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
+proc genUnaryABI(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode; imm: BiggestInt=0) =
   let tmp = c.genx(n.sons[1])
   if dest < 0: dest = c.getTemp(n.typ)
-  c.gABI(n, opc, dest, tmp, 0)
+  c.gABI(n, opc, dest, tmp, imm)
   c.freeTemp(tmp)
 
 proc genBinaryABC(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
@@ -1021,7 +1021,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.freeTemp(tmp)
   of mSlurp: genUnaryABC(c, n, dest, opcSlurp)
   of mStaticExec: genBinaryABCD(c, n, dest, opcGorge)
-  of mNLen: genUnaryABI(c, n, dest, opcLenSeq)
+  of mNLen: genUnaryABI(c, n, dest, opcLenSeq, nimNodeFlag)
   of mGetImpl: genUnaryABC(c, n, dest, opcGetImpl)
   of mNChild: genBinaryABC(c, n, dest, opcNChild)
   of mNSetChild, mNDel:
@@ -1289,7 +1289,7 @@ proc checkCanEval(c: PCtx; n: PNode) =
   if s.kind in {skVar, skTemp, skLet, skParam, skResult} and
       not s.isOwnedBy(c.prc.sym) and s.owner != c.module and c.mode != emRepl:
     cannotEval(n)
-  elif s.kind in {skProc, skConverter, skMethod,
+  elif s.kind in {skProc, skFunc, skConverter, skMethod,
                   skIterator} and sfForward in s.flags:
     cannotEval(n)
 
@@ -1537,6 +1537,8 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
       addSon(result, getNullValue(t.sons[i], info))
   of tySet:
     result = newNodeIT(nkCurly, info, t)
+  of tyOpt:
+    result = newNodeIT(nkNilLit, info, t)
   else:
     globalError(info, "cannot create null element for: " & $t.kind)
 
@@ -1712,7 +1714,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     case s.kind
     of skVar, skForVar, skTemp, skLet, skParam, skResult:
       genRdVar(c, n, dest, flags)
-    of skProc, skConverter, skMacro, skTemplate, skMethod, skIterator:
+    of skProc, skFunc, skConverter, skMacro, skTemplate, skMethod, skIterator:
       # 'skTemplate' is only allowed for 'getAst' support:
       if procIsCallback(c, s): discard
       elif sfImportc in s.flags: c.importcSym(n.info, s)

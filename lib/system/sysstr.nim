@@ -95,6 +95,9 @@ proc cstrToNimstr(str: cstring): NimString {.compilerRtl.} =
   if str == nil: NimString(nil)
   else: toNimStr(str, str.len)
 
+template wasMoved(x: NimString): bool = false
+# (x.reserved and seqShallowFlag) != 0
+
 proc copyString(src: NimString): NimString {.compilerRtl.} =
   if src != nil:
     if (src.reserved and seqShallowFlag) != 0:
@@ -103,6 +106,16 @@ proc copyString(src: NimString): NimString {.compilerRtl.} =
       result = rawNewStringNoInit(src.len)
       result.len = src.len
       copyMem(addr(result.data), addr(src.data), src.len + 1)
+      sysAssert((seqShallowFlag and result.reserved) == 0, "copyString")
+      when defined(nimShallowStrings):
+        if (src.reserved and strlitFlag) != 0:
+          result.reserved = (result.reserved and not strlitFlag) or seqShallowFlag
+
+proc newOwnedString(src: NimString; n: int): NimString =
+  result = rawNewStringNoInit(n)
+  result.len = n
+  copyMem(addr(result.data), addr(src.data), n)
+  result.data[n] = '\0'
 
 proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
   if src != nil:
@@ -116,6 +129,10 @@ proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
       result = rawNewStringNoInit(src.len)
     result.len = src.len
     copyMem(addr(result.data), addr(src.data), src.len + 1)
+    sysAssert((seqShallowFlag and result.reserved) == 0, "copyStringRC1")
+    when defined(nimShallowStrings):
+      if (src.reserved and strlitFlag) != 0:
+        result.reserved = (result.reserved and not strlitFlag) or seqShallowFlag
 
 proc copyDeepString(src: NimString): NimString {.inline.} =
   if src != nil:
@@ -140,9 +157,12 @@ proc addChar(s: NimString, c: char): NimString =
   # is compilerproc!
   result = s
   if result.len >= result.space:
-    result.reserved = resize(result.space)
+    let r = resize(result.space)
     result = cast[NimString](growObj(result,
-      sizeof(TGenericSeq) + result.reserved + 1))
+      sizeof(TGenericSeq) + r + 1))
+    result.reserved = r
+  elif wasMoved(s):
+    result = newOwnedString(s, s.len)
   result.data[result.len] = c
   result.data[result.len+1] = '\0'
   inc(result.len)
@@ -179,7 +199,7 @@ proc addChar(s: NimString, c: char): NimString =
 #   s = rawNewString(0);
 
 proc resizeString(dest: NimString, addlen: int): NimString {.compilerRtl.} =
-  if dest.len + addlen <= dest.space:
+  if dest.len + addlen <= dest.space and not wasMoved(dest):
     result = dest
   else: # slow path:
     var sp = max(resize(dest.space), dest.len + addlen)
@@ -200,7 +220,9 @@ proc appendChar(dest: NimString, c: char) {.compilerproc, inline.} =
 
 proc setLengthStr(s: NimString, newLen: int): NimString {.compilerRtl.} =
   var n = max(newLen, 0)
-  if n <= s.space:
+  if wasMoved(s):
+    result = newOwnedString(s, n)
+  elif n <= s.space:
     result = s
   else:
     result = resizeString(s, n)
@@ -218,26 +240,29 @@ proc incrSeq(seq: PGenericSeq, elemSize: int): PGenericSeq {.compilerProc.} =
   #  seq[seq->len-1] = x;
   result = seq
   if result.len >= result.space:
-    result.reserved = resize(result.space)
-    result = cast[PGenericSeq](growObj(result, elemSize * result.reserved +
+    let r = resize(result.space)
+    result = cast[PGenericSeq](growObj(result, elemSize * r +
                                GenericSeqSize))
+    result.reserved = r
   inc(result.len)
 
 proc incrSeqV2(seq: PGenericSeq, elemSize: int): PGenericSeq {.compilerProc.} =
   # incrSeq version 2
   result = seq
   if result.len >= result.space:
-    result.reserved = resize(result.space)
-    result = cast[PGenericSeq](growObj(result, elemSize * result.reserved +
+    let r = resize(result.space)
+    result = cast[PGenericSeq](growObj(result, elemSize * r +
                                GenericSeqSize))
+    result.reserved = r
 
 proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
     compilerRtl.} =
   result = seq
   if result.space < newLen:
-    result.reserved = max(resize(result.space), newLen)
-    result = cast[PGenericSeq](growObj(result, elemSize * result.reserved +
+    let r = max(resize(result.space), newLen)
+    result = cast[PGenericSeq](growObj(result, elemSize * r +
                                GenericSeqSize))
+    result.reserved = r
   elif newLen < result.len:
     # we need to decref here, otherwise the GC leaks!
     when not defined(boehmGC) and not defined(nogc) and

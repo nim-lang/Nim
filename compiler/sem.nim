@@ -449,7 +449,7 @@ include semtypes, semtempl, semgnrc, semstmts, semexprs
 proc addCodeForGenerics(c: PContext, n: PNode) =
   for i in countup(c.lastGenericIdx, c.generics.len - 1):
     var prc = c.generics[i].inst.sym
-    if prc.kind in {skProc, skMethod, skConverter} and prc.magic == mNone:
+    if prc.kind in {skProc, skFunc, skMethod, skConverter} and prc.magic == mNone:
       if prc.ast == nil or prc.ast.sons[bodyPos] == nil:
         internalError(prc.info, "no code for " & prc.name.s)
       else:
@@ -495,13 +495,15 @@ proc isImportSystemStmt(n: PNode): bool =
   case n.kind
   of nkImportStmt:
     for x in n:
-      let f = checkModuleName(x, false)
+      if x.kind == nkIdent:
+        let f = checkModuleName(x, false)
+        if f == magicsys.systemModule.info.fileIndex:
+          return true
+  of nkImportExceptStmt, nkFromStmt:
+    if n[0].kind == nkIdent:
+      let f = checkModuleName(n[0], false)
       if f == magicsys.systemModule.info.fileIndex:
         return true
-  of nkImportExceptStmt, nkFromStmt:
-    let f = checkModuleName(n[0], false)
-    if f == magicsys.systemModule.info.fileIndex:
-      return true
   else: discard
 
 proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =

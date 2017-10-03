@@ -221,6 +221,8 @@ type
     nkGotoState,          # used for the state machine (for iterators)
     nkState,              # give a label to a code section (for iterators)
     nkBreakState,         # special break statement for easier code generation
+    nkFuncDef             # a func
+
   TNodeKinds* = set[TNodeKind]
 
 type
@@ -352,7 +354,7 @@ type
     tyInt, tyInt8, tyInt16, tyInt32, tyInt64, # signed integers
     tyFloat, tyFloat32, tyFloat64, tyFloat128,
     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64,
-    tyUnused0, tyUnused1, tyUnused2,
+    tyOptAsRef, tyUnused1, tyUnused2,
     tyVarargs,
     tyUnused,
     tyProxy # used as errornous type (for idetools)
@@ -402,14 +404,8 @@ type
       # instantiation and prior to this it has the potential to
       # be any type.
 
-    tyFieldAccessor
-      # Expressions such as Type.field (valid in contexts such
-      # as the `is` operator and magics like `high` and `low`).
-      # Could be lifted to a single argument proc returning the
-      # field value.
-      # sons[0]: type of containing object or tuple
-      # sons[1]: field type
-      # .n: nkDotExpr storing the field name
+    tyOpt
+      # Builtin optional type
 
     tyVoid
       # now different from tyEmpty, hurray!
@@ -534,6 +530,7 @@ type
     skConst,              # a constant
     skResult,             # special 'result' variable
     skProc,               # a proc
+    skFunc,               # a func
     skMethod,             # a method
     skIterator,           # an iterator
     skConverter,          # a type converter
@@ -552,7 +549,7 @@ type
   TSymKinds* = set[TSymKind]
 
 const
-  routineKinds* = {skProc, skMethod, skIterator,
+  routineKinds* = {skProc, skFunc, skMethod, skIterator,
                    skConverter, skMacro, skTemplate}
   tfIncompleteStruct* = tfVarargs
   tfUncheckedArray* = tfVarargs
@@ -621,7 +618,7 @@ type
     mSwap, mIsNil, mArrToSeq, mCopyStr, mCopyStrLast,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
     mReset,
-    mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
+    mArray, mOpenArray, mRange, mSet, mSeq, mOpt, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
     mOrdinal,
     mInt, mInt8, mInt16, mInt32, mInt64,
@@ -631,7 +628,7 @@ type
     mPointer, mEmptySet, mIntSetBaseType, mNil, mExpr, mStmt, mTypeDesc,
     mVoidType, mPNimrodNode, mShared, mGuarded, mLock, mSpawn, mDeepCopy,
     mIsMainModule, mCompileDate, mCompileTime, mProcCall,
-    mCpuEndian, mHostOS, mHostCPU, mAppType,
+    mCpuEndian, mHostOS, mHostCPU, mBuildOS, mBuildCPU, mAppType,
     mNaN, mInf, mNegInf,
     mCompileOption, mCompileOptionArg,
     mNLen, mNChild, mNSetChild, mNAdd, mNAddMultiple, mNDel, mNKind,
@@ -752,9 +749,9 @@ type
   TLocFlags* = set[TLocFlag]
   TLoc* = object
     k*: TLocKind              # kind of location
-    s*: TStorageLoc
+    storage*: TStorageLoc
     flags*: TLocFlags         # location's flags
-    t*: PType                 # type of location
+    lode*: PNode              # Node where the location came from; can be faked
     r*: Rope                  # rope value of location (code generators)
 
   # ---------------- end of backend information ------------------------------
@@ -931,7 +928,7 @@ type
 # the poor naming choices in the standard library.
 
 const
-  OverloadableSyms* = {skProc, skMethod, skIterator,
+  OverloadableSyms* = {skProc, skFunc, skMethod, skIterator,
     skConverter, skModule, skTemplate, skMacro}
 
   GenericTypes*: TTypeKinds = {tyGenericInvocation, tyGenericBody,
@@ -954,7 +951,7 @@ const
                                     tyTuple, tySequence}
   NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr, tySequence,
     tyProc, tyString, tyError}
-  ExportableSymKinds* = {skVar, skConst, skProc, skMethod, skType,
+  ExportableSymKinds* = {skVar, skConst, skProc, skFunc, skMethod, skType,
     skIterator,
     skMacro, skTemplate, skConverter, skEnumField, skLet, skStub, skAlias}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
@@ -978,14 +975,14 @@ const
 
   nkLiterals* = {nkCharLit..nkTripleStrLit}
   nkLambdaKinds* = {nkLambda, nkDo}
-  declarativeDefs* = {nkProcDef, nkMethodDef, nkIteratorDef, nkConverterDef}
+  declarativeDefs* = {nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef}
   procDefs* = nkLambdaKinds + declarativeDefs
 
   nkSymChoices* = {nkClosedSymChoice, nkOpenSymChoice}
   nkStrKinds* = {nkStrLit..nkTripleStrLit}
 
   skLocalVars* = {skVar, skLet, skForVar, skParam, skResult}
-  skProcKinds* = {skProc, skTemplate, skMacro, skIterator,
+  skProcKinds* = {skProc, skFunc, skTemplate, skMacro, skIterator,
                   skMethod, skConverter}
 
 var ggDebug* {.deprecated.}: bool ## convenience switch for trying out things
@@ -1005,6 +1002,12 @@ proc safeLen*(n: PNode): int {.inline.} =
   ## works even for leaves.
   if n.kind in {nkNone..nkNilLit} or isNil(n.sons): result = 0
   else: result = len(n.sons)
+
+proc safeArrLen*(n: PNode): int {.inline.} =
+  ## works for array-like objects (strings passed as openArray in VM).
+  if n.kind in {nkStrLit..nkTripleStrLit}:result = len(n.strVal)
+  elif n.kind in {nkNone..nkFloat128Lit}: result = 0
+  else: result = len(n)
 
 proc add*(father, son: PNode) =
   assert son != nil
@@ -1255,11 +1258,10 @@ proc newType*(kind: TTypeKind, owner: PSym): PType =
 
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(a.k): a.k = b.k
-  if a.s == low(a.s): a.s = b.s
+  if a.storage == low(a.storage): a.storage = b.storage
   a.flags = a.flags + b.flags
-  if a.t == nil: a.t = b.t
+  if a.lode == nil: a.lode = b.lode
   if a.r == nil: a.r = b.r
-  #if a.a == 0: a.a = b.a
 
 proc newSons*(father: PNode, length: int) =
   if isNil(father.sons):
