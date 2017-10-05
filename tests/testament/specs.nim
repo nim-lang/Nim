@@ -153,7 +153,7 @@ proc parseSpec*(filename: string): TSpec =
       result.msg = e.value
       if result.action != actionRun:
         result.action = actionCompile
-    of "errormsg":
+    of "errormsg", "errmsg":
       result.msg = e.value
       result.action = actionReject
     of "nimout":

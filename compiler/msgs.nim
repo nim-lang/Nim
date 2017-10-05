@@ -498,6 +498,8 @@ type
                                # only 8 bytes.
     line*, col*: int16
     fileIndex*: int32
+    when defined(nimpretty):
+      offsetA*, offsetB*: int
 
   TErrorOutput* = enum
     eStdOut

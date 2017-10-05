@@ -259,6 +259,7 @@ proc testNimInAction(r: var TResults, cat: Category, options: string) =
     "niminaction/Chapter6/WikipediaStats/parallel_counts",
     "niminaction/Chapter6/WikipediaStats/race_condition",
     "niminaction/Chapter6/WikipediaStats/sequential_counts",
+    "niminaction/Chapter6/WikipediaStats/unguarded_access",
     "niminaction/Chapter7/Tweeter/src/tweeter",
     "niminaction/Chapter7/Tweeter/src/createDatabase",
     "niminaction/Chapter7/Tweeter/tests/database_test",
@@ -266,11 +267,6 @@ proc testNimInAction(r: var TResults, cat: Category, options: string) =
     ]
   for testfile in tests:
     test "tests/" & testfile & ".nim", actionCompile
-
-  # TODO: This doesn't work for some reason ;\
-  # let reject = "tests/niminaction/Chapter6/WikipediaStats" &
-  #              "/unguarded_access.nim"
-  # test reject, actionReject
 
   let jsFile = "tests/niminaction/Chapter8/canvas/canvas_test.nim"
   testJS jsFile

@@ -1,3 +1,7 @@
+discard """
+  disabled: "windows"
+"""
+
 import sfml, os
 var window = newRenderWindow(videoMode(800, 600), "SFML works!")
 

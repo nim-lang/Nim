@@ -153,7 +153,10 @@ proc `==`*(a, b: Option): bool =
   (a.has and b.has and a.val == b.val) or (not a.has and not b.has)
 
 proc `$`*[T](self: Option[T]): string =
-  ## Returns the contents of this option or `otherwise` if the option is none.
+  ## Get the string representation of this option. If the option has a value,
+  ## the result will be `Some(x)` where `x` is the string representation of the contained value.
+  ## If the option does not have a value, the result will be `None[T]` where `T` is the name of 
+  ## the type contained in the option.
   if self.has:
     "Some(" & $self.val & ")"
   else:
