@@ -2329,7 +2329,7 @@ proc removePrefix*(s: var string, chars: set[char] = Newlines) {.
   ##     userInput = "\r\n*Hello World!"
   ##     otherInput = "?!?Hello!?!"
   ##   userInput.removePrefix
-  ##   userInput == "Hello World!"
+  ##   userInput == "*Hello World!"
   ##   userInput.removePrefix({'H', '*'})
   ##   userInput == "Hello World!"
   ##   otherInput.removePrefix({'!', '?'})
