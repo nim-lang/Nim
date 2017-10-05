@@ -28,7 +28,7 @@ import
   llstream, lexer, idents, strutils, ast, astalgo, msgs
 
 type
-  TParser*{.final.} = object   # A TParser object represents a file that
+  TParser* = object            # A TParser object represents a file that
                                # is being parsed
     currInd: int               # current indentation level
     firstTok, strongSpaces: bool # Has the first token been read?
