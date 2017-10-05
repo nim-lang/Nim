@@ -49,9 +49,49 @@ proc testRemoveSuffix =
   s.removeSuffix("")
   assert s == "hello\r\n\r\n"
 
+proc testRemovePrefix =
+  var s = "\n\rhello"
+  s.removePrefix
+  assert s == "\rhello"
+  s.removePrefix
+  assert s == "hello"
+  s.removePrefix
+  assert s == "hello"
+
+  s = "\n\nhello"
+  s.removePrefix
+  assert s == "\nhello"
+
+  s = "\rhello"
+  s.removePrefix
+  assert s == "hello"
+
+  s = "hello \n there"
+  s.removePrefix
+  assert s == "hello \n there"
+
+  s = "hello"
+  s.removePrefix("hel")
+  assert s == "lo"
+  s.removePrefix('l')
+  assert s == "o"
+
+  s = "hellos"
+  s.removePrefix({'h','e'})
+  assert s == "ellos"
+  s.removePrefix({'e','o'})
+  assert s == "llos"
+
+  # Contrary to Chomp in other languages
+  # empty string does not change behaviour
+  s = "\r\n\r\nhello"
+  s.removePrefix("")
+  assert s == "\r\n\r\nhello"
+
 proc main() =
   testStrip()
   testRemoveSuffix()
+  testRemovePrefix()
   for p in split("/home/a1:xyz:/usr/bin", {':'}):
     write(stdout, p)
 

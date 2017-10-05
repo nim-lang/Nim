@@ -2271,9 +2271,9 @@ proc format*(formatstr: string, a: varargs[string, `$`]): string {.noSideEffect,
 
 proc removeSuffix*(s: var string, chars: set[char] = Newlines) {.
   rtl, extern: "nsuRemoveSuffixCharSet".} =
-  ## Removes the first matching character from the string (in-place) given a
-  ## set of characters. If the set of characters is only equal to `Newlines`
-  ## then it will remove both the newline and return feed.
+  ## Removes the first matching character from the end of a string (in-place)
+  ## given a set of characters. If the set of characters is only equal to
+  ## `Newlines` then it will remove both the newline and return feed.
   ## .. code-block:: nim
   ##   var
   ##     userInput = "Hello World!\r\n"
@@ -2298,7 +2298,7 @@ proc removeSuffix*(s: var string, chars: set[char] = Newlines) {.
 
 proc removeSuffix*(s: var string, c: char) {.
   rtl, extern: "nsuRemoveSuffixChar".} =
-  ## Removes a single character (in-place) from a string.
+  ## Removes a single character (in-place) from the end of a string.
   ## .. code-block:: nim
   ##   var
   ##     table = "users"
@@ -2318,6 +2318,54 @@ proc removeSuffix*(s: var string, suffix: string) {.
   if s.endsWith(suffix):
     newLen -= len(suffix)
     s.setLen(newLen)
+
+proc removePrefix*(s: var string, chars: set[char] = Newlines) {.
+  rtl, extern: "nsuRemovePrefixCharSet".} =
+  ## Removes the first matching character from the start of a string (in-place)
+  ## given a set of characters. If the set of characters is only equal to
+  ## `Newlines` then it will remove both the newline and return feed.
+  ## .. code-block:: nim
+  ##   var
+  ##     userInput = "\r\n*Hello World!"
+  ##     otherInput = "?!?Hello!?!"
+  ##   userInput.removePrefix
+  ##   userInput == "Hello World!"
+  ##   userInput.removePrefix({'H', '*'})
+  ##   userInput == "Hello World!"
+  ##   otherInput.removePrefix({'!', '?'})
+  ##   otherInput == "!?Hello!?!"
+  if s.len == 0: return
+  var start = 0
+  if chars == Newlines:
+    if s[start] == '\13':
+      start += 1
+    if s[start] == '\10':
+      start += 1
+  else:
+    if s[start] in chars:
+      start += 1
+  s = s[start..s.high]
+
+proc removePrefix*(s: var string, c: char) {.
+  rtl, extern: "nsuRemovePrefixChar".} =
+  ## Removes a single character (in-place) from the start of a string.
+  ## .. code-block:: nim
+  ##   var
+  ##     ident = "pControl"
+  ##   ident.removePrefix('p')
+  ##   ident == "Control"
+  removePrefix(s, chars = {c})
+
+proc removePrefix*(s: var string, prefix: string) {.
+  rtl, extern: "nsuRemovePrefixString".} =
+  ## Remove the first matching prefix (in-place) from a string.
+  ## .. code-block:: nim
+  ##   var
+  ##     answers = "yesyes"
+  ##   answers.removePrefix("yes")
+  ##   answers == "yes"
+  if s.startsWith(prefix):
+    s = s[prefix.len..s.high]
 
 when isMainModule:
   doAssert align("abc", 4) == " abc"
