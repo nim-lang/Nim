@@ -1262,7 +1262,7 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
 
 proc genDeref(p: PProc, n: PNode, r: var TCompRes) =
   let it = n.sons[0]
-  let t = mapType(p, it.typ)
+  let t = mapType(p, it.typ.skipTypes(tyUserTypeClasses))
   if t == etyObject:
     gen(p, it, r)
   else:
