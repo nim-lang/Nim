@@ -275,7 +275,7 @@ proc low*[T](x: T): T {.magic: "Low", noSideEffect.}
 proc low*[I, T](x: typeDesc[array[I, T]]): I {.magic: "Low", noSideEffect.}
 proc low*(x: cstring): int {.magic: "Low", noSideEffect.}
 proc low*(x: string): int {.magic: "Low", noSideEffect.}
-## returns the lowest possible index of an array, a sequence, a string or
+  ## returns the lowest possible index of an array, a sequence, a string or
   ## the lowest possible value of an ordinal value `x`. As a special
   ## semantic rule, `x` may also be a type identifier.
   ##
@@ -1444,7 +1444,7 @@ elif defined(genode):
     header: "<base/sleep.h>".}
 
 elif defined(nodejs):
-  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", 
+  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit",
     importc: "process.exit", noreturn.}
 
 else:
