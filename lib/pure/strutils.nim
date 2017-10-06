@@ -2344,7 +2344,7 @@ proc removePrefix*(s: var string, chars: set[char] = Newlines) {.
   else:
     if s[start] in chars:
       start += 1
-  s = s[start..s.high]
+  if start > 0: s.delete(0, start - 1)
 
 proc removePrefix*(s: var string, c: char) {.
   rtl, extern: "nsuRemovePrefixChar".} =
@@ -2365,7 +2365,7 @@ proc removePrefix*(s: var string, prefix: string) {.
   ##   answers.removePrefix("yes")
   ##   answers == "yes"
   if s.startsWith(prefix):
-    s = s[prefix.len..s.high]
+    s.delete(0, prefix.len - 1)
 
 when isMainModule:
   doAssert align("abc", 4) == " abc"
