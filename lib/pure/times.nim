@@ -1263,14 +1263,28 @@ when not defined(JS):
     # copying is needed anyway to provide reentrancity; thus
     # the conversion is not expensive
 
-  proc toTime(timeInfo: TimeInfo): Time =
-    var cTimeInfo = timeInfo # for C++ we have to make a copy
-    # because the header of mktime is broken in my version of libc
+  proc toEpochday(year, month, day: int): int64 =
+    # Based on http://howardhinnant.github.io/date_algorithms.html
+    var (y, m, d) = (year, month, day)
+    if m <= 2:
+      y.dec
 
-    result = mktime(timeInfoToTM(cTimeInfo))
-    # mktime is defined to interpret the input as local time. As timeInfoToTM
-    # does ignore the timezone, we need to adjust this here.
-    result = Time(TimeImpl(result) - getTimezone() + timeInfo.timezone)
+    let era = (if y >= 0: y else: y-399) div 400;
+    let yoe = y - era * 400
+    let doy = (153 * (m + (if m > 2: -3 else: 9)) + 2) div 5 + d-1; 
+    let doe = yoe * 365 + yoe div 4 - yoe div 100 + doy;         
+    return era * 146097 + doe - 719468;
+
+  proc toTime(timeInfo: TimeInfo): Time =
+    let epochDay = toEpochday(timeInfo.year, ord(timeInfo.month) + 1, timeInfo.monthday)
+    result = Time(epochDay * secondsInDay)
+    result.inc timeInfo.hour * secondsInHour
+    result.inc timeInfo.minute * 60
+    result.inc timeInfo.second
+    # The code above treats `ti` as GM,
+    # so we need to compensate for that here
+    result.inc timeInfo.timezone
+    result.dec int(timeInfo.isDST) * secondsInHour
 
   proc timeInfoToTime(timeInfo: TimeInfo): Time = toTime(timeInfo)
 
