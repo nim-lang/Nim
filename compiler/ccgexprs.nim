@@ -849,7 +849,7 @@ proc genArrayElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   var a, b: TLoc
   initLocExpr(p, x, a)
   initLocExpr(p, y, b)
-  var ty = skipTypes(skipTypes(a.t, abstractVarRange), abstractPtrs)
+  var ty = skipTypes(a.t, abstractVarRange + abstractPtrs + tyUserTypeClasses)
   var first = intLiteral(firstOrd(ty))
   # emit range check:
   if optBoundsCheck in p.options and tfUncheckedArray notin ty.flags:
