@@ -40,7 +40,8 @@ type
     mwRedefinitionOfLabel,
     mwUnknownSubstitution,
     mwUnsupportedLanguage,
-    mwUnsupportedField
+    mwUnsupportedField,
+    mwFailedRendering
 
   MsgHandler* = proc (filename: string, line, col: int, msgKind: MsgKind,
                        arg: string) {.closure.} ## what to do in case of an error
@@ -57,7 +58,8 @@ const
     mwRedefinitionOfLabel: "redefinition of label '$1'",
     mwUnknownSubstitution: "unknown substitution '$1'",
     mwUnsupportedLanguage: "language '$1' not supported",
-    mwUnsupportedField: "field '$1' not supported"
+    mwUnsupportedField: "field '$1' not supported",
+    mwFailedRendering: "unable to render: $1"
   ]
 
 proc rstnodeToRefname*(n: PRstNode): string

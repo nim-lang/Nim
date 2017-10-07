@@ -26,6 +26,9 @@
 import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
   algorithm, parseutils
 
+when not defined(testing):
+  import packages/docutils/rstgen_blockdiag
+
 const
   HtmlExt = "html"
   IndexExt* = ".idx"
@@ -942,6 +945,18 @@ proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
   let (blockStart, blockEnd) = buildLinesHtmlTable(d, params, m.text)
 
   dispA(d.target, result, blockStart, "\\begin{rstpre}\n", [])
+
+  when not defined(testing):
+    if params.langStr == "blockdiag":
+      # blockdiag code blocks are treated as a special case and replaced with
+      # an SVG image if the blockdiag toolset is installed.
+      let b = renderBlockDiag(n)
+      result.add b.svg
+      if b.error != "":
+        d.msgHandler(d.filename, 1, 0, mwFailedRendering, b.error)
+      dispA(d.target, result, blockEnd, "\n\\end{rstpre}\n")
+      return
+
   if params.lang == langNone:
     if len(params.langStr) > 0:
       d.msgHandler(d.filename, 1, 0, mwUnsupportedLanguage, params.langStr)
