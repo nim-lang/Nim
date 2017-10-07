@@ -1369,13 +1369,16 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
     if lhsIsResult:
       n.typ = enforceVoidContext
       if c.p.owner.kind != skMacro and resultTypeIsInferrable(lhs.sym.typ):
-        if cmpTypes(c, lhs.typ, rhs.typ) == isGeneric:
+        var rhsTyp = rhs.typ
+        if rhsTyp.kind in tyUserTypeClasses and rhsTyp.isResolvedUserTypeClass:
+          rhsTyp = rhsTyp.lastSon
+        if cmpTypes(c, lhs.typ, rhsTyp) in {isGeneric, isEqual}:
           internalAssert c.p.resultSym != nil
-          lhs.typ = rhs.typ
-          c.p.resultSym.typ = rhs.typ
-          c.p.owner.typ.sons[0] = rhs.typ
+          lhs.typ = rhsTyp
+          c.p.resultSym.typ = rhsTyp
+          c.p.owner.typ.sons[0] = rhsTyp
         else:
-          typeMismatch(n.info, lhs.typ, rhs.typ)
+          typeMismatch(n.info, lhs.typ, rhsTyp)
 
     n.sons[1] = fitNode(c, le, rhs, n.info)
     if not newDestructors:
