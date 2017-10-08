@@ -134,12 +134,14 @@ compiler icl:
   # Intel compilers try to imitate the native ones (gcc and msvc)
   when defined(windows):
     result = vcc()
+    result.name = "icl"
+    result.compilerExe = "icl"
+    result.linkerExe = "icl"
   else:
     result = gcc()
-
-  result.name = "icl"
-  result.compilerExe = "icl"
-  result.linkerExe = "icl"
+    result.name = "icc"
+    result.compilerExe = "icc"
+    result.linkerExe = "icc"
 
 # Local C Compiler
 compiler lcc:
