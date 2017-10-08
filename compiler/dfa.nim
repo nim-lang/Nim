@@ -345,32 +345,41 @@ proc dfa(code: seq[Instr]) =
   # any further than necessary.
   var w = @[0]
   while w.len > 0:
-    var pc = w.pop()
-    #var undefB: IntSet
-    #assign(undefB, undef)
-
-    #[
-    new := ![I[pc]!](s[pc])
-    if I[pc] = (goto l) then
-      pc' := l
-    else
-      pc' := pc + 1
-      if I[pc] = (if ψ goto l) and new < s[l] then
-        W := W + l
-        s[l] := new
-      end
-    end
-    if new < s[pc] then
-      s[pc'] := new
-      pc := pc'
-    else
-      break
-    end
-    if pc >= code.len: break
-    ]#
-
+    var pc = w[^1]
     # this simulates a single linear control flow execution:
     while true:
+      # according to the paper, it is better to shrink the working set here
+      # in this inner loop:
+      let widx = w.find(pc)
+      if widx >= 0: w.del(widx)
+      # our interpretation ![I!]:
+      var sid = -1
+      case code[pc].kind
+      of goto, fork: discard
+      of use:
+        let sym = code[pc].sym
+        if s[pc].contains(sym.id):
+          localError(code[pc].n.info, "variable read before initialized: " & sym.name.s)
+      of def:
+        sid = code[pc].sym.id
+
+      var pc2: int
+      if code[pc].kind == goto:
+        pc2 = pc + code[pc].dest
+      else:
+        pc2 = pc + 1
+        if code[pc].kind == fork:
+          let l = pc + code[pc].dest
+          if sid >= 0 and s[l].missingOrExcl(sid):
+            w.add l
+
+      if sid >= 0 and s[pc2].missingOrExcl(sid):
+        pc = pc2
+      else:
+        break
+      if pc >= code.len: break
+
+    when false:
       case code[pc].kind
       of use:
         let s = code[pc].sym

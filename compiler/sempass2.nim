@@ -9,7 +9,10 @@
 
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
-  wordrecg, strutils, options, guards, writetracking, dfa
+  wordrecg, strutils, options, guards, writetracking
+
+when defined(useDfa):
+  import dfa
 
 # Second semantic checking pass over the AST. Necessary because the old
 # way had some inherent problems. Performs:
@@ -980,7 +983,7 @@ proc trackProc*(s: PSym, body: PNode) =
       "declared lock level is $1, but real lock level is $2" %
         [$s.typ.lockLevel, $t.maxLockLevel])
   if s.kind == skFunc:
-    dataflowAnalysis(s, body)
+    when defined(dfa): dataflowAnalysis(s, body)
     trackWrites(s, body)
 
 proc trackTopLevelStmt*(module: PSym; n: PNode) =
