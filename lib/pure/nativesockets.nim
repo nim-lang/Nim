@@ -500,7 +500,7 @@ proc getLocalAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
     if inet_ntop(name.sin6_family.cint,
                  addr name.sin6_addr, buf.cstring, sizeof(buf).int32).isNil:
       raiseOSError(osLastError())
-    result = ($buf, Port(nativesockets.ntohs(name.sin6_port)))
+    result = ($buf.cstring, Port(nativesockets.ntohs(name.sin6_port)))
   else:
     raiseOSError(OSErrorCode(-1), "invalid socket family in getLocalAddr")
 
@@ -536,7 +536,7 @@ proc getPeerAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
     if inet_ntop(name.sin6_family.cint,
                  addr name.sin6_addr, buf.cstring, sizeof(buf).int32).isNil:
       raiseOSError(osLastError())
-    result = ($buf, Port(nativesockets.ntohs(name.sin6_port)))
+    result = ($buf.cstring, Port(nativesockets.ntohs(name.sin6_port)))
   else:
     raiseOSError(OSErrorCode(-1), "invalid socket family in getLocalAddr")
 
