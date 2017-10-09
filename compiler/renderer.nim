@@ -306,7 +306,9 @@ proc ulitAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
 
 proc atom(g: TSrcGen; n: PNode): string =
   when defined(nimpretty):
-    if true:
+    if n.info.offsetA <= n.info.offsetB:
+      # for some constructed tokens this can not be the case and we're better
+      # off to not mess with the offset then.
       return substr(g.origContent, n.info.offsetA, n.info.offsetB)
   var f: float32
   case n.kind
