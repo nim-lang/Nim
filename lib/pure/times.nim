@@ -1042,9 +1042,12 @@ proc countYearsAndDays*(daySpan: int): tuple[years: int, days: int] =
   result.years = days div 365
   result.days = days mod 365
 
-proc getDayOfWeek*(day, month, year: int): WeekDay =
+proc getDayOfWeek*(day: range[1..31], month: range[1..12], year: int): WeekDay =
   ## Returns the day of the week enum from day, month and year.
-  # Day & month start from one.
+
+  assert day <= getDaysInMonth((month - 1).Month, year),
+    "Invalid day of month for " & $(month - 1).Month & " " & $year
+
   let
     a = (14 - month) div 12
     y = year - a
@@ -1055,16 +1058,25 @@ proc getDayOfWeek*(day, month, year: int): WeekDay =
   if d == 0: return dSun
   result = (d-1).WeekDay
 
-proc getDayOfWeekJulian*(day, month, year: int): WeekDay =
+proc getDayOfWeekJulian*(day: range[1..31], month: range[1..12], year: int): WeekDay =
   ## Returns the day of the week enum from day, month and year,
   ## according to the Julian calendar.
-  # Day & month start from one.
-  let
-    a = (14 - month) div 12
-    y = year - a
-    m = month + (12*a) - 2
-    d = (5 + day + y + (y div 4) + (31*m) div 12) mod 7
-  result = d.WeekDay
+  # https://en.wikipedia.org/wiki/Zeller%27s_congruence
+
+  assert day <= getDaysInMonth((month - 1).Month, year),
+    "Invalid day of month for " & $(month - 1).Month & " " & $year
+
+  let (m, y) =
+    if month in { 1, 2 }:
+      # .int to strip range type
+      ((month + 12).int, year - 1)
+    else:
+      (month, year)
+
+  let k = y mod 100
+  let j = y div 100
+  let h = (day + (13 * (m + 1)) div 5 + k + k div 4 + 5 + 6 * j) mod 7
+  result = ((h + 5) mod 7).WeekDay
 
 proc timeToTimeInfo*(t: Time): TimeInfo {.deprecated.} =
   ## Converts a Time to TimeInfo.
