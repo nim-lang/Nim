@@ -2357,6 +2357,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     if not n.sons[0].typ.isEmptyType and not implicitlyDiscardable(n.sons[0]):
       localError(n.info, errGenerated, "'defer' takes a 'void' expression")
     #localError(n.info, errGenerated, "'defer' not allowed in this context")
+  of nkGotoState, nkState:
+    if n.len != 1 and n.len != 2: illFormedAst(n)
+    for i in 0 ..< n.len:
+      n.sons[i] = semExpr(c, n.sons[i])
   else:
     localError(n.info, errInvalidExpressionX,
                renderTree(n, {renderNoComments}))
