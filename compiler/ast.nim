@@ -1400,7 +1400,7 @@ proc isGCedMem*(t: PType): bool {.inline.} =
            t.kind == tyProc and t.callConv == ccClosure
 
 proc propagateToOwner*(owner, elem: PType) =
-  const HaveTheirOwnEmpty = {tySequence, tySet, tyPtr, tyRef, tyProc}
+  const HaveTheirOwnEmpty = {tySequence, tyOpt, tySet, tyPtr, tyRef, tyProc}
   owner.flags = owner.flags + (elem.flags * {tfHasMeta})
   if tfNotNil in elem.flags:
     if owner.kind in {tyGenericInst, tyGenericBody, tyGenericInvocation}:
@@ -1418,7 +1418,7 @@ proc propagateToOwner*(owner, elem: PType) =
   if tfHasAsgn in elem.flags:
     let o2 = elem.skipTypes({tyGenericInst, tyAlias})
     if o2.kind in {tyTuple, tyObject, tyArray,
-                   tySequence, tySet, tyDistinct}:
+                   tySequence, tyOpt, tySet, tyDistinct}:
       o2.flags.incl tfHasAsgn
       owner.flags.incl tfHasAsgn
 
