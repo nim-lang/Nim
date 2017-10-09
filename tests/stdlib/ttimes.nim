@@ -32,15 +32,6 @@ t2.checkFormat("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
   " ss t tt y yy yyy yyyy yyyyy z zz zzz",
   "27 27 Mon Monday 4 04 16 16 6 06 1 01 Jan January 29 29 P PM 5 75 975 1975 01975 +0 +00 +00:00")
 
-# FIXME: Fails in UTC
-# when not defined(JS):
-#   when sizeof(Time) == 8:
-#     var t3 = getGMTime(fromSeconds(889067643645)) # Fri  7 Jun 19:20:45 BST 30143
-#     t3.checkFormat("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
-#       " ss t tt y yy yyy yyyy yyyyy z zz zzz",
-#       "7 07 Fri Friday 6 06 18 18 20 20 6 06 Jun June 45 45 P PM 3 43 143 0143 30143 +0 +00 +00:00")
-#     t3.checkFormat(":,[]()-/", ":,[]()-/")
-
 var t4 = getGMTime(fromSeconds(876124714)) # Mon  6 Oct 08:58:34 BST 1997
 t4.checkFormat("M MM MMM MMMM", "10 10 Oct October")
 
