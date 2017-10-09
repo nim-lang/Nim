@@ -21,9 +21,14 @@ proc toStrMaxPrecision*(f: BiggestFloat, literalPostfix = ""): string =
     if f > 0.0: result = "INF"
     else: result = "-INF"
   else:
-    var buf: array[0..80, char]
-    discard c_snprintf(buf.cstring, buf.len.uint, "%#.16e%s", f, literalPostfix.cstring)
-    result = $buf.cstring
+    when defined(nimNoArrayToCstringConversion):
+      result = newString(81)
+      let n = c_snprintf(result.cstring, result.len.uint, "%#.16e%s", f, literalPostfix.cstring)
+      setLen(result, n)
+    else:
+      var buf: array[0..80, char]
+      discard c_snprintf(buf.cstring, buf.len.uint, "%#.16e%s", f, literalPostfix.cstring)
+      result = $buf.cstring
 
 proc encodeStr*(s: string, result: var string) =
   for i in countup(0, len(s) - 1):

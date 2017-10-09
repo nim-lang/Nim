@@ -667,14 +667,6 @@ proc lengthOrd*(t: PType): BiggestInt =
     else:
       result = lastOrd(t) - firstOrd(t) + 1
 
-proc isCompatibleToCString*(a: PType): bool =
-  if a.kind == tyArray:
-    if (firstOrd(a.sons[0]) == 0) and
-        (skipTypes(a.sons[0], {tyRange, tyGenericInst, tyAlias}).kind in
-            {tyInt..tyInt64, tyUInt..tyUInt64}) and
-        (a.sons[1].kind == tyChar):
-      result = true
-
 # -------------- type equality -----------------------------------------------
 
 type

@@ -16,9 +16,14 @@ proc reprInt(x: int64): string {.compilerproc.} = return $x
 proc reprFloat(x: float): string {.compilerproc.} = return $x
 
 proc reprPointer(x: pointer): string {.compilerproc.} =
-  var buf: array[60, char]
-  discard c_sprintf(buf.cstring, "%p", x)
-  result = $buf.cstring
+  when defined(nimNoArrayToCstringConversion):
+    result = newString(60)
+    let n = c_sprintf(addr result[0], "%p", x)
+    setLen(result, n)
+  else:
+    var buf: array[0..59, char]
+    discard c_sprintf(buf, "%p", x)
+    return $buf
 
 proc `$`(x: uint64): string =
   if x == 0:
