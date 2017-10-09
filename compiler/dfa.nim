@@ -26,13 +26,19 @@
 import ast, astalgo, types, intsets, tables, msgs
 
 type
-  InstrKind = enum
-    goto, fork, def, use
-  Instr = object
-    n: PNode
-    case kind: InstrKind
-    of def, use: sym: PSym
-    of goto, fork: dest: int
+  InstrKind* = enum
+    goto, fork, def, use,
+    useWithinCall # this strange special case is used to get more
+                  # move optimizations out of regular code
+                  # XXX This is still overly pessimistic in
+                  # call(let x = foo; bar(x))
+  Instr* = object
+    n*: PNode
+    case kind*: InstrKind
+    of def, use, useWithinCall: sym*: PSym
+    of goto, fork: dest*: int
+
+  ControlFlowGraph* = seq[Instr]
 
   TPosition = distinct int
   TBlock = object
@@ -43,40 +49,42 @@ type
     undef, value, valueOrUndef
 
   Con = object
-    code: seq[Instr]
+    code: ControlFlowGraph
+    inCall: int
     blocks: seq[TBlock]
 
 proc debugInfo(info: TLineInfo): string =
   result = info.toFilename & ":" & $info.line
 
-proc codeListing(c: Con, result: var string, start=0; last = -1) =
+proc codeListing(c: ControlFlowGraph, result: var string, start=0; last = -1) =
   # for debugging purposes
   # first iteration: compute all necessary labels:
   var jumpTargets = initIntSet()
-  let last = if last < 0: c.code.len-1 else: min(last, c.code.len-1)
+  let last = if last < 0: c.len-1 else: min(last, c.len-1)
   for i in start..last:
-    if c.code[i].kind in {goto, fork}:
-      jumpTargets.incl(i+c.code[i].dest)
+    if c[i].kind in {goto, fork}:
+      jumpTargets.incl(i+c[i].dest)
   var i = start
   while i <= last:
     if i in jumpTargets: result.add("L" & $i & ":\n")
     result.add "\t"
-    result.add $c.code[i].kind
+    result.add $c[i].kind
     result.add "\t"
-    case c.code[i].kind
-    of def, use:
-      result.add c.code[i].sym.name.s
+    case c[i].kind
+    of def, use, useWithinCall:
+      result.add c[i].sym.name.s
     of goto, fork:
       result.add "L"
-      result.add c.code[i].dest+i
+      result.add c[i].dest+i
     result.add("\t#")
-    result.add(debugInfo(c.code[i].n.info))
+    result.add(debugInfo(c[i].n.info))
     result.add("\n")
     inc i
   if i in jumpTargets: result.add("L" & $i & ": End\n")
 
 
-proc echoCfg*(c: Con; start=0; last = -1) {.deprecated.} =
+proc echoCfg*(c: ControlFlowGraph; start=0; last = -1) {.deprecated.} =
+  ## echos the ControlFlowGraph for debugging purposes.
   var buf = ""
   codeListing(c, buf, start, last)
   echo buf
@@ -243,7 +251,10 @@ proc genUse(c: var Con; n: PNode) =
                    nkAddr, nkHiddenAddr}:
     n = n[0]
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
-    c.code.add Instr(n: n, kind: use, sym: n.sym)
+    if c.inCall > 0:
+      c.code.add Instr(n: n, kind: useWithinCall, sym: n.sym)
+    else:
+      c.code.add Instr(n: n, kind: use, sym: n.sym)
 
 proc genDef(c: var Con; n: PNode) =
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
@@ -253,10 +264,12 @@ proc genCall(c: var Con; n: PNode) =
   gen(c, n[0])
   var t = n[0].typ
   if t != nil: t = t.skipTypes(abstractInst)
+  inc c.inCall
   for i in 1..<n.len:
     gen(c, n[i])
     if t != nil and i < t.len and t.sons[i].kind == tyVar:
       genDef(c, n[i])
+  dec c.inCall
 
 proc genMagic(c: var Con; n: PNode; m: TMagic) =
   case m
@@ -356,7 +369,7 @@ proc dfa(code: seq[Instr]) =
       var sid = -1
       case code[pc].kind
       of goto, fork: discard
-      of use:
+      of use, useWithinCall:
         let sym = code[pc].sym
         if s[pc].contains(sym.id):
           localError(code[pc].n.info, "variable read before initialized: " & sym.name.s)
@@ -417,5 +430,10 @@ proc dfa(code: seq[Instr]) =
 proc dataflowAnalysis*(s: PSym; body: PNode) =
   var c = Con(code: @[], blocks: @[])
   gen(c, body)
-  echoCfg(c)
+  #echoCfg(c.code)
   dfa(c.code)
+
+proc constructCfg*(s: PSym; body: PNode): ControlFlowGraph =
+  ## constructs a control flow graph for ``body``.
+  var c = Con(code: @[], blocks: @[])
+  shallowCopy(result, c.code)
