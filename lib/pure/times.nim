@@ -83,16 +83,11 @@ when defined(posix) and not defined(JS):
 elif defined(windows):
   import winlean
 
-  when defined(vcc) or defined(bcc) or defined(icl):
-    # newest version of Visual C++ defines time_t to be of 64 bits
-    type TimeImpl {.importc: "time_t", header: "<time.h>".} = int64
-    # visual c's c runtime exposes these under a different name
-    var
-      timezone {.importc: "_timezone", header: "<time.h>".}: int
-  else:
-    type TimeImpl {.importc: "time_t", header: "<time.h>".} = int
-    var
-      timezone {.importc, header: "<time.h>".}: int
+  # newest version of Visual C++ defines time_t to be of 64 bits
+  type TimeImpl {.importc: "time_t", header: "<time.h>".} = int64
+  # visual c's c runtime exposes these under a different name
+  var
+    timezone {.importc: "_timezone", header: "<time.h>".}: int
 
   type
     Time* = distinct TimeImpl

@@ -60,6 +60,8 @@ _nim() {
     '*--nanChecks=off[turn NaN checks off]' \
     '*--infChecks=on[turn Inf checks on]' \
     '*--infChecks=off[turn Inf checks off]' \
+    '*--nilChecks=on[turn nil checks on]' \
+    '*--nilChecks=off[turn nil checks off]' \
     '*--deadCodeElim=on[whole program dead code elimination on]' \
     '*--deadCodeElim=off[whole program dead code elimination off]' \
     '*--opt=none[do not optimize]' \

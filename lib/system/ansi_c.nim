@@ -103,8 +103,12 @@ proc c_sprintf(buf, frmt: cstring): cint {.
   importc: "sprintf", header: "<stdio.h>", varargs, noSideEffect.}
   # we use it only in a way that cannot lead to security issues
 
-proc c_fileno(f: File): cint {.
-  importc: "fileno", header: "<fcntl.h>".}
+when defined(windows):
+  proc c_fileno(f: File): cint {.
+      importc: "_fileno", header: "<stdio.h>".}
+else:
+  proc c_fileno(f: File): cint {.
+      importc: "fileno", header: "<fcntl.h>".}
 
 proc c_malloc(size: csize): pointer {.
   importc: "malloc", header: "<stdlib.h>".}
