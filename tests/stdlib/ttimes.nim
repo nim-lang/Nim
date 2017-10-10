@@ -235,3 +235,9 @@ block dstTest:
     parsedJul = parse("2016-07-01 04:00:00+01:00", "yyyy-MM-dd HH:mm:sszzz")
   doAssert toTime(parsedJan) == fromSeconds(1451962800)
   doAssert toTime(parsedJul) == fromSeconds(1467342000)
+
+block countLeapYears:
+  # 1920, 2004 and 2020 are leap years, and should be counted starting at the following year
+  doAssert countLeapYears(1920) + 1 == countLeapYears(1921)
+  doAssert countLeapYears(2004) + 1 == countLeapYears(2005)
+  doAssert countLeapYears(2020) + 1 == countLeapYears(2021)
