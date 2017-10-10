@@ -39,6 +39,9 @@
 ## x = y where y is read only once
 ## is the same as:  move(x, y)
 ##
+## Actually the more general rule is: The *last* read of ``y``
+## can become a move if ``y`` is the result of a construction.
+##
 ## We also need to keep in mind here that the number of reads is
 ## control flow dependent:
 ## let x = foo()
