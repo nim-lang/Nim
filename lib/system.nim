@@ -1875,7 +1875,7 @@ proc `$` *(x: float): string {.magic: "FloatToStr", noSideEffect.}
 proc `$` *(x: bool): string {.magic: "BoolToStr", noSideEffect.}
   ## The stringify operator for a boolean argument. Returns `x`
   ## converted to the string "false" or "true".
-
+#
 proc `$` *(x: char): string {.magic: "CharToStr", noSideEffect.}
   ## The stringify operator for a character argument. Returns `x`
   ## converted to a string.
@@ -2437,20 +2437,28 @@ proc `$`*[T: tuple|object](x: T): string =
       result.add("...")
   result.add(")")
 
-proc collectionToString[T: set | seq](x: T, b, e: string): string =
-  when x is seq:
-    if x.isNil: return "nil"
-  result = b
+proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
+  result = prefix
   var firstElement = true
   for value in items(x):
-    if not firstElement: result.add(", ")
+    if firstElement:
+      firstElement = false
+    else:
+      result.add(separator)
+
     when compiles(value.isNil):
-      if value.isNil: result.add "nil"
-      else: result.add($value)
+      # this branch should not be necessary
+      if value.isNil:
+        result.add "nil"
+      else:
+        result.add($value)
+    # prevent temporary string allocation
+    elif compiles(result.add(value)):
+      result.add(value)
     else:
       result.add($value)
-    firstElement = false
-  result.add(e)
+
+  result.add(suffix)
 
 proc `$`*[T](x: set[T]): string =
   ## generic ``$`` operator for sets that is lifted from the components
@@ -2458,7 +2466,7 @@ proc `$`*[T](x: set[T]): string =
   ##
   ## .. code-block:: nim
   ##   ${23, 45} == "{23, 45}"
-  collectionToString(x, "{", "}")
+  collectionToString(x, "{", ", ", "}")
 
 proc `$`*[T](x: seq[T]): string =
   ## generic ``$`` operator for seqs that is lifted from the components
@@ -2466,13 +2474,10 @@ proc `$`*[T](x: seq[T]): string =
   ##
   ## .. code-block:: nim
   ##   $(@[23, 45]) == "@[23, 45]"
-  collectionToString(x, "@[", "]")
-
-when false:
-  # causes bootstrapping to fail as we use array of chars and cstring should
-  # match better ...
-  proc `$`*[T, IDX](x: array[IDX, T]): string =
-    collectionToString(x, "[", "]")
+  if x.isNil:
+    "nil"
+  else:
+    collectionToString(x, "@[", ", ", "]")
 
 # ----------------- GC interface ---------------------------------------------
 
@@ -3328,6 +3333,10 @@ elif defined(JS):
   when defined(nimffi):
     include "system/sysio"
 
+
+proc `$`*[T, IDX](x: array[IDX, T]): string =
+  ## generic ``$`` operator for arrays that is lifted from the components
+  collectionToString(x, "[", ", ", "]")
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noReturn.} =
   ## a shorthand for ``echo(errormsg); quit(errorcode)``.

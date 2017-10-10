@@ -1,7 +1,6 @@
 version 1.0 battle plan
 =======================
 
-- disallow conversions from ``array`` to ``cstring``!
 - make 'not nil' the default (produce warnings instead of errors for
   a smooth migration path)
 - case objects needs to be safe and need to support pattern matching

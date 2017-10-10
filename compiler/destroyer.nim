@@ -39,6 +39,9 @@
 ## x = y where y is read only once
 ## is the same as:  move(x, y)
 ##
+## Actually the more general rule is: The *last* read of ``y``
+## can become a move if ``y`` is the result of a construction.
+##
 ## We also need to keep in mind here that the number of reads is
 ## control flow dependent:
 ## let x = foo()
@@ -183,10 +186,67 @@ when false:
     of nkVarSection, nkLetSection: collectVarSection(c, n)
     else: discard
 
+type
+  Con = object
+    owner: PSym
+    g: ControlFlowGraph
+    tmps: PType
+
+proc isHarmlessVar*(s: PSym; c: Con): bool =
+  # 's' is harmless if it used only once and its
+  # definition/usage are not split by any labels:
+  #
+  # let s = foo()
+  # while true:
+  #   a[i] = s
+  #
+  # produces:
+  #
+  # def s
+  # L1:
+  #   use s
+  # goto L1
+  #
+  # let s = foo()
+  # if cond:
+  #   a[i] = s
+  # else:
+  #   a[j] = s
+  #
+  # produces:
+  #
+  # def s
+  # fork L2
+  # use s
+  # goto L3
+  # L2:
+  # use s
+  # L3
+  #
+  # So this analysis is for now overly conservative, but correct.
+  discard
+
+template interestingSym(s: PSym): bool =
+  s.owner == owner and s.kind in InterestingSyms and hasDestructor(s.typ)
+
+proc p(n, parent: PNode; c: var Con) =
+  case n.kind
+  of nkVarSection, nkLetSection:
+    discard "transform; var x = y to  var x; x op y  where op is a move or copy"
+  of nkCallKinds:
+    if n.typ != nil and hasDestructor(n.typ):
+      discard "produce temp creation"
+  of nkAsgn, nkFastAsgn:
+    if n[0].kind == nkSym and interestingSym(n[0].sym):
+      discard "use move or assignment"
+  else:
+    for i in 0..<n.len:
+      p(n[i], n, c)
+
 proc injectDestructorCalls*(owner: PSym; n: PNode;
                             disableExceptions = false): PNode =
   when false:
     var c = Con(t: initTable[int, VarInfo](), owner: owner)
     collectData(c, n)
   var allTemps = createObj(owner, n.info)
-
+  let cfg = constructCfg(owner, n)
