@@ -156,7 +156,10 @@ proc genGotoState(p: BProc, n: PNode) =
   lineF(p, cpsStmts, "switch ($1) {$n", [rdLoc(a)])
   p.beforeRetNeeded = true
   lineF(p, cpsStmts, "case -1: goto BeforeRet_;$n", [])
-  for i in 0 .. lastOrd(n.sons[0].typ):
+  var statesCounter = lastOrd(n.sons[0].typ)
+  if n.len == 2 and n[1].kind == nkIntLit:
+    statesCounter = n[1].intVal
+  for i in 0 .. statesCounter:
     lineF(p, cpsStmts, "case $1: goto STATE$1;$n", [rope(i)])
   lineF(p, cpsStmts, "}$n", [])
 

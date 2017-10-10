@@ -24,7 +24,10 @@ proc cmpStrings(a, b: NimString): int {.inline, compilerProc.} =
   if a == b: return 0
   if a == nil: return -1
   if b == nil: return 1
-  return c_strcmp(a.data, b.data)
+  when defined(nimNoArrayToCstringConversion):
+    return c_strcmp(addr a.data, addr b.data)
+  else:
+    return c_strcmp(a.data, b.data)
 
 proc eqStrings(a, b: NimString): bool {.inline, compilerProc.} =
   if a == b: return true
@@ -320,7 +323,10 @@ proc nimIntToStr(x: int): string {.compilerRtl.} =
 
 proc add*(result: var string; x: float) =
   var buf: array[0..64, char]
-  var n: int = c_sprintf(buf, "%.16g", x)
+  when defined(nimNoArrayToCstringConversion):
+    var n: int = c_sprintf(addr buf, "%.16g", x)
+  else:
+    var n: int = c_sprintf(buf, "%.16g", x)
   var hasDot = false
   for i in 0..n-1:
     if buf[i] == ',':
@@ -342,7 +348,10 @@ proc add*(result: var string; x: float) =
     else:
       result.add "inf"
   else:
-    result.add buf
+    var i = 0
+    while buf[i] != '\0':
+      result.add buf[i]
+      inc i
 
 proc nimFloatToStr(f: float): string {.compilerproc.} =
   result = newStringOfCap(8)
@@ -507,7 +516,10 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   t[ti-2] = ('0'.ord + abs_exponent mod 10).char; abs_exponent = abs_exponent div 10
   t[ti-3] = ('0'.ord + abs_exponent mod 10).char
 
-  number = c_strtod(t, nil)
+  when defined(nimNoArrayToCstringConversion):
+    number = c_strtod(addr t, nil)
+  else:
+    number = c_strtod(t, nil)
 
 proc nimInt64ToStr(x: int64): string {.compilerRtl.} =
   result = newStringOfCap(sizeof(x)*4)

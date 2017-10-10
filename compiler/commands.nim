@@ -251,6 +251,7 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
     result = gOptions * {optNaNCheck, optInfCheck} == {optNaNCheck, optInfCheck}
   of "infchecks": result = contains(gOptions, optInfCheck)
   of "nanchecks": result = contains(gOptions, optNaNCheck)
+  of "nilchecks": result = contains(gOptions, optNilCheck)
   of "objchecks": result = contains(gOptions, optObjCheck)
   of "fieldchecks": result = contains(gOptions, optFieldCheck)
   of "rangechecks": result = contains(gOptions, optRangeCheck)
@@ -473,6 +474,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitch({optNaNCheck, optInfCheck}, arg, pass, info)
   of "infchecks": processOnOffSwitch({optInfCheck}, arg, pass, info)
   of "nanchecks": processOnOffSwitch({optNaNCheck}, arg, pass, info)
+  of "nilchecks": processOnOffSwitch({optNilCheck}, arg, pass, info)
   of "objchecks": processOnOffSwitch({optObjCheck}, arg, pass, info)
   of "fieldchecks": processOnOffSwitch({optFieldCheck}, arg, pass, info)
   of "rangechecks": processOnOffSwitch({optRangeCheck}, arg, pass, info)

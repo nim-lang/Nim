@@ -92,7 +92,7 @@ proc mangleParamName(m: BModule; s: PSym): Rope =
 
 proc mangleLocalName(p: BProc; s: PSym): Rope =
   assert s.kind in skLocalVars+{skTemp}
-  assert sfGlobal notin s.flags
+  #assert sfGlobal notin s.flags
   result = s.loc.r
   if result == nil:
     var key = s.name.s.mangle

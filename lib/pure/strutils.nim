@@ -1890,11 +1890,17 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
       frmtstr[3] = '*'
       frmtstr[4] = floatFormatToChar[format]
       frmtstr[5] = '\0'
-      L = c_sprintf(buf, frmtstr, precision, f)
+      when defined(nimNoArrayToCstringConversion):
+        L = c_sprintf(addr buf, addr frmtstr, precision, f)
+      else:
+        L = c_sprintf(buf, frmtstr, precision, f)
     else:
       frmtstr[1] = floatFormatToChar[format]
       frmtstr[2] = '\0'
-      L = c_sprintf(buf, frmtstr, f)
+      when defined(nimNoArrayToCstringConversion):
+        L = c_sprintf(addr buf, addr frmtstr, f)
+      else:
+        L = c_sprintf(buf, frmtstr, f)
     result = newString(L)
     for i in 0 ..< L:
       # Depending on the locale either dot or comma is produced,
@@ -2169,11 +2175,26 @@ proc addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.
         if idx >% a.high: invalidFormatString()
         add s, a[idx]
       of '{':
-        var j = i+1
-        while formatstr[j] notin {'\0', '}'}: inc(j)
-        var x = findNormalized(substr(formatstr, i+2, j-1), a)
-        if x >= 0 and x < high(a): add s, a[x+1]
-        else: invalidFormatString()
+        var j = i+2
+        var k = 0
+        var negative = formatstr[j] == '-'
+        if negative: inc j
+        var isNumber = 0
+        while formatstr[j] notin {'\0', '}'}:
+          if formatstr[j] in Digits:
+            k = k * 10 + ord(formatstr[j]) - ord('0')
+            if isNumber == 0: isNumber = 1
+          else:
+            isNumber = -1
+          inc(j)
+        if isNumber == 1:
+          let idx = if not negative: k-1 else: a.len-k
+          if idx >% a.high: invalidFormatString()
+          add s, a[idx]
+        else:
+          var x = findNormalized(substr(formatstr, i+2, j-1), a)
+          if x >= 0 and x < high(a): add s, a[x+1]
+          else: invalidFormatString()
         i = j+1
       of 'a'..'z', 'A'..'Z', '\128'..'\255', '_':
         var j = i+1
@@ -2315,6 +2336,7 @@ when isMainModule:
                                                    ["1,0e-11", "1,0e-011"]
 
   doAssert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
+  doAssert "${1}12 ${-1}$2" % ["a", "b"] == "a12 bb"
 
   block: # formatSize tests
     doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB"

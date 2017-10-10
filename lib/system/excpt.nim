@@ -289,8 +289,12 @@ proc raiseExceptionAux(e: ref Exception) =
         add(buf, " [")
         xadd(buf, e.name, e.name.len)
         add(buf, "]\n")
-        unhandled(buf):
-          showErrorMessage(buf)
+        when defined(nimNoArrayToCstringConversion):
+          template tbuf(): untyped = addr buf
+        else:
+          template tbuf(): untyped = buf
+        unhandled(tbuf()):
+          showErrorMessage(tbuf())
           quitOrDebug()
 
 proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
