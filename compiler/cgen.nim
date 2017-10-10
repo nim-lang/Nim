@@ -663,6 +663,13 @@ proc closureSetup(p: BProc, prc: PSym) =
   linefmt(p, cpsStmts, "$1 = ($2) ClE_0;$n",
           rdLoc(env.loc), getTypeDesc(p.module, env.typ))
 
+proc containsResult(n: PNode): bool =
+  if n.kind == nkSym and n.sym.kind == skResult:
+    result = true
+  else:
+    for i in 0..<n.safeLen:
+      if containsResult(n[i]): return true
+
 proc easyResultAsgn(n: PNode): PNode =
   const harmless = {nkConstSection, nkTypeSection, nkEmpty, nkCommentStmt} +
                     declarativeDefs
@@ -672,7 +679,7 @@ proc easyResultAsgn(n: PNode): PNode =
     while i < n.len and n[i].kind in harmless: inc i
     if i < n.len: result = easyResultAsgn(n[i])
   of nkAsgn, nkFastAsgn:
-    if n[0].kind == nkSym and skResult == n[0].sym.kind:
+    if n[0].kind == nkSym and n[0].sym.kind == skResult and not containsResult(n[1]):
       incl n.flags, nfPreventCg
       return n[1]
   of nkReturnStmt:

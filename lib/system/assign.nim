@@ -61,13 +61,17 @@ proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) =
       unsureAsgnRef(x, s2)
       return
     sysAssert(dest != nil, "genericAssignAux 3")
-    unsureAsgnRef(x, newSeq(mt, seq.len))
-    var dst = cast[ByteAddress](cast[PPointer](dest)[])
     if ntfNoRefs in mt.base.flags:
+      var ss = nimNewSeqOfCap(mt, seq.len)
+      cast[PGenericSeq](ss).len = seq.len
+      unsureAsgnRef(x, ss)
+      var dst = cast[ByteAddress](cast[PPointer](dest)[])
       copyMem(cast[pointer](dst +% GenericSeqSize),
               cast[pointer](cast[ByteAddress](s2) +% GenericSeqSize),
               seq.len * mt.base.size)
     else:
+      unsureAsgnRef(x, newSeq(mt, seq.len))
+      var dst = cast[ByteAddress](cast[PPointer](dest)[])
       for i in 0..seq.len-1:
         genericAssignAux(
           cast[pointer](dst +% i*% mt.base.size +% GenericSeqSize),

@@ -1,6 +1,7 @@
 version 1.0 battle plan
 =======================
 
+- disallow conversions from ``array`` to ``cstring``!
 - make 'not nil' the default (produce warnings instead of errors for
   a smooth migration path)
 - case objects needs to be safe and need to support pattern matching
@@ -17,8 +18,6 @@ Not critical for 1.0
 
 - find a solution for the  x.f[T](y)  gotcha
 - implement ``.delegate`` for .experimental
-
-- Destructors need to be refined.
 - annotation support for getType()
 - ``concept`` needs to be refined, a nice name for the feature is not enough.
 - make '--implicitStatic:on' the default; then we can also clean up the
