@@ -50,4 +50,4 @@ import strutils
 
 let arr = ['H','e','l','l','o',' ','W','o','r','l','d','!','\0']
 doAssert $arr == "[H, e, l, l, o,  , W, o, r, l, d, !, \0]"
-doAssert $arr.cstring == "Hello World!"
+doAssert $cstring(unsafeAddr arr) == "Hello World!"
