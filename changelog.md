@@ -5,3 +5,6 @@
 - Removed basic2d/basic3d out of the stdlib and into Nimble packages.
   These packages deprecated however, use the ``glm``, ``arraymancer``, ``neo``
   or another package.
+- Arrays of char cannot be converted to ``cstring`` anymore, pointers to
+  arrays of char can! This means ``$`` for arrays can finally exist
+  in ``system.nim`` and do the right thing.
