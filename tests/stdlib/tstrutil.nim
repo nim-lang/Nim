@@ -52,15 +52,13 @@ proc testRemoveSuffix =
 proc testRemovePrefix =
   var s = "\n\rhello"
   s.removePrefix
-  assert s == "\rhello"
-  s.removePrefix
   assert s == "hello"
   s.removePrefix
   assert s == "hello"
 
   s = "\n\nhello"
   s.removePrefix
-  assert s == "\nhello"
+  assert s == "hello"
 
   s = "\rhello"
   s.removePrefix
@@ -78,9 +76,9 @@ proc testRemovePrefix =
 
   s = "hellos"
   s.removePrefix({'h','e'})
-  assert s == "ellos"
-  s.removePrefix({'e','o'})
   assert s == "llos"
+  s.removePrefix({'l','o'})
+  assert s == "s"
 
   # Contrary to Chomp in other languages
   # empty string does not change behaviour

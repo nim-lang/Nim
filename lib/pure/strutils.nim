@@ -2321,29 +2321,21 @@ proc removeSuffix*(s: var string, suffix: string) {.
 
 proc removePrefix*(s: var string, chars: set[char] = Newlines) {.
   rtl, extern: "nsuRemovePrefixCharSet".} =
-  ## Removes the first matching character from the start of a string (in-place)
-  ## given a set of characters. If the set of characters is only equal to
-  ## `Newlines` then it will remove both the newline and return feed.
+  ## Removes all characters from `chars` from the start of the string `s`
+  ## (in-place).
   ## .. code-block:: nim
-  ##   var
-  ##     userInput = "\r\n*Hello World!"
-  ##     otherInput = "?!?Hello!?!"
+  ##   var userInput = "\r\n*~Hello World!"
   ##   userInput.removePrefix
-  ##   userInput == "*Hello World!"
-  ##   userInput.removePrefix({'H', '*'})
+  ##   userInput == "*~Hello World!"
+  ##   userInput.removePrefix({'~', '*'})
   ##   userInput == "Hello World!"
+  ##
+  ##   var otherInput = "?!?Hello!?!"
   ##   otherInput.removePrefix({'!', '?'})
-  ##   otherInput == "!?Hello!?!"
+  ##   otherInput == "Hello!?!"
   if s.len == 0: return
   var start = 0
-  if chars == Newlines:
-    if s[start] == '\13':
-      start += 1
-    if s[start] == '\10':
-      start += 1
-  else:
-    if s[start] in chars:
-      start += 1
+  while s[start] in chars: start += 1
   if start > 0: s.delete(0, start - 1)
 
 proc removePrefix*(s: var string, c: char) {.
