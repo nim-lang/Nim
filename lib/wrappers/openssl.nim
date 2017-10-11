@@ -590,13 +590,13 @@ proc md5_Transform*(c: var MD5_CTX; b: ptr cuchar){.importc: "MD5_Transform".}
 
 from strutils import toHex, toLowerAscii
 
-proc hexStr (buf:cstring): string =
+proc hexStr(buf: cstring): string =
   # turn md5s output into a nice hex str
   result = newStringOfCap(32)
   for i in 0 .. <16:
     result.add toHex(buf[i].ord, 2).toLowerAscii
 
-proc md5_File* (file: string): string {.raises: [IOError,Exception].} =
+proc md5_File*(file: string): string {.raises: [IOError,Exception].} =
   ## Generate MD5 hash for a file. Result is a 32 character
   # hex string with lowercase characters (like the output
   # of `md5sum`
@@ -611,14 +611,14 @@ proc md5_File* (file: string): string {.raises: [IOError,Exception].} =
   while(let bytes = f.readChars(buf, 0, sz); bytes > 0):
     discard md5_update(ctx, buf[0].addr, bytes)
 
-  discard md5_final( buf[0].addr, ctx )
+  discard md5_final(buf[0].addr, ctx)
   f.close
 
-  result = hexStr(buf)
+  result = hexStr(addr buf)
 
-proc md5_Str*(str:string): string =
-  ##Generate MD5 hash for a string. Result is a 32 character
-  #hex string with lowercase characters
+proc md5_Str*(str: string): string =
+  ## Generate MD5 hash for a string. Result is a 32 character
+  ## hex string with lowercase characters
   var
     ctx: MD5_CTX
     res: array[MD5_DIGEST_LENGTH,char]
@@ -631,5 +631,5 @@ proc md5_Str*(str:string): string =
     discard md5_update(ctx, input[i].addr, L)
     i += L
 
-  discard md5_final(res,ctx)
-  result = hexStr(res)
+  discard md5_final(addr res, ctx)
+  result = hexStr(addr res)

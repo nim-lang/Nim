@@ -1011,7 +1011,10 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkPrefix:
     gsub(g, n, 0)
     if n.len > 1:
-      if n[1].kind == nkPrefix:
+      let opr = if n[0].kind == nkIdent: n[0].ident
+                elif n[0].kind == nkSym: n[0].sym.name
+                else: nil
+      if n[1].kind == nkPrefix or (opr != nil and renderer.isKeyword(opr)):
         put(g, tkSpaces, Space)
       if n.sons[1].kind == nkInfix:
         put(g, tkParLe, "(")
