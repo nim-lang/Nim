@@ -1,5 +1,7 @@
 
-import intsets, ast, idents, algorithm, renderer, parser, ospaths, strutils, sequtils, msgs
+import 
+  intsets, ast, idents, algorithm, renderer, parser, ospaths, strutils, 
+  sequtils, msgs, modulegraphs, syntaxes, options, modulepaths
 
 type
   DepN = ref object
@@ -80,7 +82,7 @@ proc computeDeps(n: PNode, declares, uses: var IntSet; topLevel: bool) =
     for i in 0..<len(n): computeDeps(n[i], declares, uses, topLevel)
   of nkPragma:
     let a = n.sons[0]
-    if a.kind == nkExprColonExpr and a.sons[0].kind == nkIdent and 
+    if a.kind == nkExprColonExpr and a.sons[0].kind == nkIdent and
        a.sons[0].ident.s == "pragma":
         # user defined pragma
         decl(a.sons[1])
@@ -116,41 +118,38 @@ proc hasIncludes(n:PNode): bool =
     if a.kind == nkIncludeStmt:
       return true
 
-proc expandIncludes(n: PNode, modulePath: string): PNode =
+proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: int32;
+                    cache: IdentCache): PNode {.procvar.} =
+  result = syntaxes.parseFile(fileIdx, cache)
+  graph.addDep(s, fileIdx)
+  graph.addIncludeDep(s.position.int32, fileIdx)
+
+proc expandIncludes(graph: ModuleGraph, module: PSym, n: PNode, 
+                    modulePath: string, includedFiles: var IntSet,
+                    cache: IdentCache): PNode =
   # Parses includes and injects them in the current tree
   if not n.hasIncludes:
     return n
   result = newNodeI(nkStmtList, n.info)
   for a in n:
     if a.kind == nkIncludeStmt:
-      for b in a:
-        let fn = getIncludePath(b, modulePath)
-        try:
-          let str = readFile(fn)
-          var cache = newIdentCache()
-          let nn = parseString(str, cache, fn)
-          let nnn = expandIncludes(nn, fn)
-          for bb in nnn:
-            result.add bb
-        except:
-          # echo "failed expanding " & fn
-          result.add a
-    elif a.kind in {nkWhenStmt}:
-      var aa = newNodeI(a.kind, a.info)
-      for b in a:
-        var bb = newNodeI(b.kind, b.info)
-        if bb.kind == nkElifBranch:
-          bb.add b.sons[0]
-          bb.add expandIncludes(b.sons[1], modulePath)
-        else:
-          bb.add expandIncludes(b.sons[0], modulePath)
-        aa.add bb
-      result.add aa
+      for i in 0..<a.len:
+        var f = checkModuleName(a.sons[i])
+        if f != InvalidFileIDX:
+          if containsOrIncl(includedFiles, f):
+            localError(a.info, errRecursiveDependencyX, f.toFilename)
+          else:
+            let nn = includeModule(graph, module, f, cache)
+            let nnn = expandIncludes(graph, module, nn, modulePath, 
+                                      includedFiles, cache)
+            excl(includedFiles, f)
+            for b in nnn:
+              result.add b
     else:
       result.add a
 
 proc splitSections(n: PNode): PNode =
-  # Split typeSections and ConstSections into 
+  # Split typeSections and ConstSections into
   # sections that contain only one definition
   assert n.kind == nkStmtList
   result = newNodeI(nkStmtList, n.info)
@@ -171,9 +170,9 @@ proc haveSameKind(dns: seq[DepN]): bool =
   for dn in dns:
     if dn.pnode.kind != kind:
       return false
-    
+
 proc mergeSections(comps: seq[seq[DepN]], res: PNode) =
-  # Merges typeSections and ConstSections when they form 
+  # Merges typeSections and ConstSections when they form
   # a strong component (ex: circular type definition)
   for c in comps:
     assert c.len > 0
@@ -183,7 +182,7 @@ proc mergeSections(comps: seq[seq[DepN]], res: PNode) =
       let fstn = c[0].pnode
       let kind = fstn.kind
       # always return to the original order when we got circular dependencies
-      let cs = c.sortedByIt(it.id) 
+      let cs = c.sortedByIt(it.id)
       if kind in {nkTypeSection, nkConstSection} and haveSameKind(cs):
         # Circular dependency between type or const sections, we just
         # need to merge them
@@ -193,9 +192,11 @@ proc mergeSections(comps: seq[seq[DepN]], res: PNode) =
         res.add sn
       else:
           # Problematic circular dependency, we arrange the nodes into
-          # their original relative order and make sure to re-merge 
+          # their original relative order and make sure to re-merge
           # consecutive type and const sections
-          message(cs[0].pnode.info, warnUser, "Circular dependency detected. reorder pragma may not be able to reorder some nodes properely")
+          message(cs[0].pnode.info, warnUser, 
+            "Circular dependency detected. reorder pragma may not be able to" &
+            " reorder some nodes properely")
           var i = 0
           while i < cs.len:
             if cs[i].pnode.kind in {nkTypeSection, nkConstSection}:
@@ -211,7 +212,7 @@ proc mergeSections(comps: seq[seq[DepN]], res: PNode) =
               res.add cs[i].pnode
               inc i
 
-proc hasImportStmt(n: PNode): bool = 
+proc hasImportStmt(n: PNode): bool =
   # Checks if the node is an import statement or
   # i it contains one
   case n.kind
@@ -226,16 +227,16 @@ proc hasImportStmt(n: PNode): bool =
 
 proc hasImportStmt(n: DepN): bool =
   if n.hIS < 0:
-    n.hIS = cast[int](n.pnode.hasImportStmt)
-  result = cast[bool](n.hIS)
+    n.hIS = ord(n.pnode.hasImportStmt)
+  result = bool(n.hIS)
 
-proc hasCommand(n: PNode): bool = 
-  # Checks if the node is a command or a call 
+proc hasCommand(n: PNode): bool =
+  # Checks if the node is a command or a call
   # or if it contains one
   case n.kind
   of nkCommand, nkCall:
     result = true
-  of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse, 
+  of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse,
       nkStaticStmt, nkLetSection, nkConstSection, nkVarSection,
       nkIdentDefs:
         for a in n:
@@ -246,8 +247,8 @@ proc hasCommand(n: PNode): bool =
 
 proc hasCommand(n: DepN): bool =
   if n.hCmd < 0:
-    n.hCmd = cast[int](n.pnode.hasCommand)
-  result = cast[bool](n.hCmd)
+    n.hCmd = ord(n.pnode.hasCommand)
+  result = bool(n.hCmd)
 
 proc hasAccQuoted(n: PNode): bool =
   if n.kind == nkAccQuoted:
@@ -258,7 +259,7 @@ proc hasAccQuoted(n: PNode): bool =
 
 const extandedProcDefs = procDefs + {nkMacroDef,  nkTemplateDef}
 
-proc hasAccQuotedDef(n: PNode): bool = 
+proc hasAccQuotedDef(n: PNode): bool =
   # Checks if the node is a function, macro, template ...
   # with a quoted name or if it contains one
   case n.kind
@@ -273,10 +274,10 @@ proc hasAccQuotedDef(n: PNode): bool =
 
 proc hasAccQuotedDef(n: DepN): bool =
   if n.hAQ < 0:
-    n.hAQ = cast[int](n.pnode.hasAccQuotedDef)
-  result = cast[bool](n.hAQ)
+    n.hAQ = ord(n.pnode.hasAccQuotedDef)
+  result = bool(n.hAQ)
 
-proc hasBody(n: PNode): bool = 
+proc hasBody(n: PNode): bool =
   # Checks if the node is a function, macro, template ...
   # with a body or if it contains one
   case n.kind
@@ -293,8 +294,8 @@ proc hasBody(n: PNode): bool =
 
 proc hasBody(n: DepN): bool =
   if n.hB < 0:
-    n.hB = cast[int](n.pnode.hasBody)
-  result = cast[bool](n.hB)
+    n.hB = ord(n.pnode.hasBody)
+  result = bool(n.hB)
 
 proc intersects(s1, s2: IntSet): bool =
   for a in s1:
@@ -325,7 +326,7 @@ proc buildGraph(n: PNode, deps: seq[(IntSet, IntSet)]): DepG =
       elif j < i and niHasBody and nj.hasAccQuotedDef:
         # Every function, macro, template... with a body depends
         # on precedent function declarations that have quoted names.
-        # That's because it is hard to detect the use of functions 
+        # That's because it is hard to detect the use of functions
         # like "[]=", "[]", "or" ... in their bodies.
         ni.kids.add nj
       elif j < i and niHasBody and not nj.hasBody and
@@ -337,7 +338,7 @@ proc buildGraph(n: PNode, deps: seq[(IntSet, IntSet)]): DepG =
           if uses.contains(d):
             ni.kids.add nj
 
-proc strongConnect(v: var DepN, idx: var int, s: var seq[DepN], 
+proc strongConnect(v: var DepN, idx: var int, s: var seq[DepN],
                    res: var seq[seq[DepN]]) =
   # Recursive part of trajan's algorithm
   v.idx = idx
@@ -361,7 +362,7 @@ proc strongConnect(v: var DepN, idx: var int, s: var seq[DepN],
     res.add comp
 
 proc getStrongComponents(g: var DepG): seq[seq[DepN]] =
-  ## Tarjan's algorithm. Performs a topological sort 
+  ## Tarjan's algorithm. Performs a topological sort
   ## and detects strongly connected components.
   result = newSeq[seq[DepN]]()
   var s = newSeq[DepN]()
@@ -374,14 +375,17 @@ proc hasForbiddenPragma(n: PNode): bool =
   # Checks if the tree node has some pragmas that do not
   # play well with reordering, like the push/pop pragma
   for a in n:
-    if a.kind == nkPragma and a[0].kind == nkIdent and 
+    if a.kind == nkPragma and a[0].kind == nkIdent and
         a[0].ident.s == "push":
           return true
 
-proc reorder*(n: PNode, modulePath: string): PNode =
+proc reorder*(graph: ModuleGraph, n: PNode, module: PSym, cache: IdentCache): PNode =
   if n.hasForbiddenPragma:
     return n
-  let n = splitSections(expandIncludes(n, modulePath))
+  var includedFiles = initIntSet()
+  let mpath = module.fileIdx.toFullPath
+  let n = expandIncludes(graph, module, n, mpath, 
+                          includedFiles, cache).splitSections
   result = newNodeI(nkStmtList, n.info)
   var deps = newSeq[(IntSet, IntSet)](n.len)
   for i in 0..<n.len:
