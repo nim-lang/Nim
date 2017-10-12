@@ -70,6 +70,9 @@ proc newTupleAccessRaw*(tup: PNode, i: int): PNode =
   lit.intVal = i
   addSon(result, lit)
 
+proc newTryFinally*(body, final: PNode): PNode =
+  result = newTree(nkTryStmt, body, newTree(nkFinally, final))
+
 proc lowerTupleUnpackingForAsgn*(n: PNode; owner: PSym): PNode =
   let value = n.lastSon
   result = newNodeI(nkStmtList, n.info)
@@ -137,6 +140,14 @@ proc rawIndirectAccess*(a: PNode; field: PSym; info: TLineInfo): PNode =
   result = newNodeI(nkDotExpr, info)
   addSon(result, deref)
   addSon(result, newSymNode(field))
+  result.typ = field.typ
+
+proc rawDirectAccess*(obj, field: PSym): PNode =
+  # returns a.field as a node
+  assert field.kind == skField
+  result = newNodeI(nkDotExpr, field.info)
+  addSon(result, newSymNode obj)
+  addSon(result, newSymNode field)
   result.typ = field.typ
 
 proc lookupInRecord(n: PNode, id: int): PSym =

@@ -1030,7 +1030,7 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
   var c = L.buf[L.bufpos]
   tok.line = L.lineNumber
   tok.col = getColNumber(L, L.bufpos)
-  if c in SymStartChars - {'r', 'R', 'l'}:
+  if c in SymStartChars - {'r', 'R'}:
     getSymbol(L, tok)
   else:
     case c
@@ -1047,12 +1047,6 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
     of ',':
       tok.tokType = tkComma
       inc(L.bufpos)
-    of 'l':
-      # if we parsed exactly one character and its a small L (l), this
-      # is treated as a warning because it may be confused with the number 1
-      if L.buf[L.bufpos+1] notin (SymChars + {'_'}):
-        lexMessage(L, warnSmallLshouldNotBeUsed)
-      getSymbol(L, tok)
     of 'r', 'R':
       if L.buf[L.bufpos + 1] == '\"':
         inc(L.bufpos)

@@ -21,9 +21,7 @@
 import
   intsets, strutils, options, ast, astalgo, trees, treetab, msgs, os,
   idents, renderer, types, passes, semfold, magicsys, cgmeth, rodread,
-  lambdalifting, sempass2, lowerings, lookups
-
-# implementation
+  lambdalifting, sempass2, lowerings, lookups, destroyer
 
 type
   PTransNode* = distinct PNode
@@ -974,6 +972,8 @@ proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
     #result = liftLambdas(prc, result)
     incl(result.flags, nfTransf)
     when useEffectSystem: trackProc(prc, result)
+    if prc.kind == skFunc:
+      result = injectDestructorCalls(prc, result)
     #if prc.name.s == "testbody":
     #  echo renderTree(result)
 

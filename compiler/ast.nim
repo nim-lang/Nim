@@ -871,7 +871,8 @@ type
                               # mean that there is no destructor.
                               # see instantiateDestructor in semdestruct.nim
     deepCopy*: PSym           # overriden 'deepCopy' operation
-    assignment*: PSym         # overriden '=' operator
+    assignment*: PSym         # overriden '=' operation
+    sink*: PSym               # overriden '=sink' operation
     methods*: seq[(int,PSym)] # attached methods
     size*: BiggestInt         # the size of the type in bytes
                               # -1 means that the size is unkwown
@@ -1047,6 +1048,8 @@ proc newNode*(kind: TNodeKind): PNode =
 
 proc newTree*(kind: TNodeKind; children: varargs[PNode]): PNode =
   result = newNode(kind)
+  if children.len > 0:
+    result.info = children[0].info
   result.sons = @children
 
 proc newIntNode*(kind: TNodeKind, intVal: BiggestInt): PNode =
@@ -1290,6 +1293,7 @@ proc assignType*(dest, src: PType) =
   dest.align = src.align
   dest.destructor = src.destructor
   dest.deepCopy = src.deepCopy
+  dest.sink = src.sink
   dest.assignment = src.assignment
   dest.lockLevel = src.lockLevel
   # this fixes 'type TLock = TSysLock':
