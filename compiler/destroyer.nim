@@ -179,28 +179,34 @@ proc genDestroy(t: PType; dest: PNode): PNode =
   assert t.destructor != nil
   result = newTree(nkCall, newSymNode(t.destructor), newTree(nkHiddenAddr, dest))
 
+proc addTopVar(c: var Con; v: PNode) =
+  c.topLevelVars.add newTree(nkIdentDefs, v, emptyNode, emptyNode)
+
+proc p(n: PNode; c: var Con): PNode
+
+template recurse(n, dest) =
+  for i in 0..<n.len:
+    dest.add p(n[i], c)
+
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   if ri.kind in nkCallKinds:
     result = genSink(ri.typ, dest)
+    # watch out and no not transform 'ri' twice if it's a call:
+    let ri2 = copyNode(ri)
+    recurse(ri, ri2)
+    result.add ri2
   elif ri.kind == nkSym and isHarmlessVar(ri.sym, c):
     result = genSink(ri.typ, dest)
+    result.add p(ri, c)
   else:
     result = genCopy(ri.typ, dest)
+    result.add p(ri, c)
 
-proc addTopVar(c: var Con; v: PNode) =
-  c.topLevelVars.add newTree(nkIdentDefs, v, emptyNode)
-
-proc p(n, parent: PNode; c: var Con) =
-  template recurse(n, dest) =
-    let x = dest
-    for i in 0..<n.safeLen:
-      p(n[i], x, c)
-    parent.add x
-
+proc p(n: PNode; c: var Con): PNode =
   case n.kind
   of nkVarSection, nkLetSection:
     discard "transform; var x = y to  var x; x op y  where op is a move or copy"
-    var stmtList = newNodeI(nkStmtList, n.info)
+    result = newNodeI(nkStmtList, n.info)
 
     for i in 0..<n.len:
       let it = n[i]
@@ -208,10 +214,9 @@ proc p(n, parent: PNode; c: var Con) =
       let ri = it[L]
       if it.kind == nkVarTuple and hasDestructor(ri.typ):
         let x = lowerTupleUnpacking(it, c.owner)
-        p(x, stmtList, c)
+        result.add p(x, c)
       elif it.kind == nkIdentDefs and hasDestructor(it[0].typ):
-        it.sons[L] = emptyNode
-        for j in 0..L-1:
+        for j in 0..L-2:
           let v = it[j]
           doAssert v.kind == nkSym
           # move the variable declaration to the top of the frame:
@@ -220,48 +225,45 @@ proc p(n, parent: PNode; c: var Con) =
           c.destroys.add genDestroy(v.typ, v)
           if ri.kind != nkEmpty:
             let r = moveOrCopy(v, ri, c)
-            recurse(ri, r)
-            stmtList.add r
+            result.add r
       else:
         # keep it, but transform 'ri':
         var varSection = copyNode(n)
         var itCopy = copyNode(it)
         for j in 0..L-1:
           itCopy.add it[j]
-        p(ri, itCopy, c)
+        itCopy.add p(ri, c)
         varSection.add itCopy
-        stmtList.add varSection
-    parent.add stmtList
+        result.add varSection
   of nkCallKinds:
     if n.typ != nil and hasDestructor(n.typ):
       discard "produce temp creation"
-      let stmtList = newNodeIT(nkStmtListExpr, n.info, n.typ)
+      result = newNodeIT(nkStmtListExpr, n.info, n.typ)
       let f = newSym(skField, getIdent(":d" & $c.tmpObj.n.len), c.owner, n.info)
+      f.typ = n.typ
       rawAddField c.tmpObj, f
       var m = genSink(n.typ, rawDirectAccess(c.tmp, f))
-      recurse(n, m)
-      stmtList.add m
-      stmtList.add rawDirectAccess(c.tmp, f)
-      parent.add stmtList
+      var call = copyNode(n)
+      recurse(n, call)
+      m.add call
+      result.add m
+      result.add rawDirectAccess(c.tmp, f)
       c.destroys.add genDestroy(n.typ, rawDirectAccess(c.tmp, f))
     else:
-      recurse(n, copyNode(n))
+      result = copyNode(n)
+      recurse(n, result)
   of nkAsgn, nkFastAsgn:
     if n[0].kind == nkSym and interestingSym(n[0].sym):
-      discard "use move or assignment"
-      let ri = n[1]
-      let r = moveOrCopy(n[0], ri, c)
-      # fortunately this skips the nkCall which we do not want to transform
-      # to a temp here!
-      recurse(ri, r)
-      parent.add r
+      result = moveOrCopy(n[0], n[1], c)
     else:
-      recurse(n, copyNode(n))
-  of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,
-      nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
-    parent.add n
+      result = copyNode(n)
+      recurse(n, result)
+  of nkNone..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef,
+      nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
+    result = n
   else:
-    recurse(n, copyNode(n))
+    result = copyNode(n)
+    recurse(n, result)
 
 proc injectDestructorCalls*(owner: PSym; n: PNode): PNode =
   var c: Con
@@ -277,15 +279,15 @@ proc injectDestructorCalls*(owner: PSym; n: PNode): PNode =
   for i in 0..<c.g.len:
     if c.g[i].kind in {goto, fork}:
       c.jumpTargets.incl(i+c.g[i].dest)
-  var stmtList = newNodeI(nkStmtList, n.info)
-  for i in 0..<n.len:
-    p(n[i], stmtList, c)
+  let body = p(n, c)
   if c.tmp.typ.n.len > 0:
     c.addTopVar(newSymNode c.tmp)
   result = newNodeI(nkStmtList, n.info)
   if c.topLevelVars.len > 0:
     result.add c.topLevelVars
   if c.destroys.len > 0:
-    result.add newTryFinally(stmtList, c.destroys)
+    result.add newTryFinally(body, c.destroys)
   else:
-    result.add stmtList
+    result.add body
+
+  echo "transformed into: ", result

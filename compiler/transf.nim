@@ -973,7 +973,7 @@ proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
     incl(result.flags, nfTransf)
     when useEffectSystem: trackProc(prc, result)
     if prc.kind == skFunc:
-      result = injectDestructorCalls(prc, n)
+      result = injectDestructorCalls(prc, result)
     #if prc.name.s == "testbody":
     #  echo renderTree(result)
 

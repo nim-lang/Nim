@@ -100,15 +100,16 @@ proc semProc(c: PContext, n: PNode): PNode
 include semdestruct
 
 proc semDestructorCheck(c: PContext, n: PNode, flags: TExprFlags) {.inline.} =
-  if efAllowDestructor notin flags and
-      n.kind in nkCallKinds+{nkObjConstr,nkBracket}:
-    if instantiateDestructor(c, n.typ) != nil:
-      localError(n.info, warnDestructor)
-  # This still breaks too many things:
-  when false:
-    if efDetermineType notin flags and n.typ.kind == tyTypeDesc and
-        c.p.owner.kind notin {skTemplate, skMacro}:
-      localError(n.info, errGenerated, "value expected, but got a type")
+  when not newDestructors:
+    if efAllowDestructor notin flags and
+        n.kind in nkCallKinds+{nkObjConstr,nkBracket}:
+      if instantiateDestructor(c, n.typ) != nil:
+        localError(n.info, warnDestructor)
+    # This still breaks too many things:
+    when false:
+      if efDetermineType notin flags and n.typ.kind == tyTypeDesc and
+          c.p.owner.kind notin {skTemplate, skMacro}:
+        localError(n.info, errGenerated, "value expected, but got a type")
 
 proc semExprBranch(c: PContext, n: PNode): PNode =
   result = semExpr(c, n)
@@ -116,7 +117,7 @@ proc semExprBranch(c: PContext, n: PNode): PNode =
     # XXX tyGenericInst here?
     semProcvarCheck(c, result)
     if result.typ.kind == tyVar: result = newDeref(result)
-    when not newDestructors: semDestructorCheck(c, result, {})
+    semDestructorCheck(c, result, {})
 
 proc semExprBranchScope(c: PContext, n: PNode): PNode =
   openScope(c)
