@@ -116,7 +116,7 @@ proc semExprBranch(c: PContext, n: PNode): PNode =
     # XXX tyGenericInst here?
     semProcvarCheck(c, result)
     if result.typ.kind == tyVar: result = newDeref(result)
-    semDestructorCheck(c, result, {})
+    when not newDestructors: semDestructorCheck(c, result, {})
 
 proc semExprBranchScope(c: PContext, n: PNode): PNode =
   openScope(c)
@@ -607,7 +607,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         if def.kind == nkPar: v.ast = def[j]
         setVarType(v, tup.sons[j])
         b.sons[j] = newSymNode(v)
-      addDefer(c, result, v)
+      when not newDestructors: addDefer(c, result, v)
       checkNilable(v)
       if sfCompileTime in v.flags: hasCompileTime = true
   if hasCompileTime: vm.setupCompileTimeVar(c.module, c.cache, result)
@@ -1277,8 +1277,9 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
   case s.name.s.normalize
   of "destroy", "=destroy":
     doDestructorStuff(c, s, n)
-    if not experimentalMode(c):
-      localError n.info, "use the {.experimental.} pragma to enable destructors"
+    when not newDestructors:
+      if not experimentalMode(c):
+        localError n.info, "use the {.experimental.} pragma to enable destructors"
     incl(s.flags, sfUsed)
   of "deepcopy", "=deepcopy":
     if s.typ.len == 2 and
