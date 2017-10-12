@@ -100,15 +100,16 @@ proc semProc(c: PContext, n: PNode): PNode
 include semdestruct
 
 proc semDestructorCheck(c: PContext, n: PNode, flags: TExprFlags) {.inline.} =
-  if efAllowDestructor notin flags and
-      n.kind in nkCallKinds+{nkObjConstr,nkBracket}:
-    if instantiateDestructor(c, n.typ) != nil:
-      localError(n.info, warnDestructor)
-  # This still breaks too many things:
-  when false:
-    if efDetermineType notin flags and n.typ.kind == tyTypeDesc and
-        c.p.owner.kind notin {skTemplate, skMacro}:
-      localError(n.info, errGenerated, "value expected, but got a type")
+  when not newDestructors:
+    if efAllowDestructor notin flags and
+        n.kind in nkCallKinds+{nkObjConstr,nkBracket}:
+      if instantiateDestructor(c, n.typ) != nil:
+        localError(n.info, warnDestructor)
+    # This still breaks too many things:
+    when false:
+      if efDetermineType notin flags and n.typ.kind == tyTypeDesc and
+          c.p.owner.kind notin {skTemplate, skMacro}:
+        localError(n.info, errGenerated, "value expected, but got a type")
 
 proc semExprBranch(c: PContext, n: PNode): PNode =
   result = semExpr(c, n)
@@ -399,7 +400,7 @@ proc addToVarSection(c: PContext; result: var PNode; orig, identDefs: PNode) =
   # in order for this transformation to be correct.
   let L = identDefs.len
   let value = identDefs[L-1]
-  if value.typ != nil and tfHasAsgn in value.typ.flags:
+  if value.typ != nil and tfHasAsgn in value.typ.flags and c.p.owner.kind != skFunc:
     # the spec says we need to rewrite 'var x = T()' to 'var x: T; x = T()':
     identDefs.sons[L-1] = emptyNode
     if result.kind != nkStmtList:
@@ -607,7 +608,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         if def.kind == nkPar: v.ast = def[j]
         setVarType(v, tup.sons[j])
         b.sons[j] = newSymNode(v)
-      addDefer(c, result, v)
+      when not newDestructors: addDefer(c, result, v)
       checkNilable(v)
       if sfCompileTime in v.flags: hasCompileTime = true
   if hasCompileTime: vm.setupCompileTimeVar(c.module, c.cache, result)
@@ -1277,8 +1278,9 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
   case s.name.s.normalize
   of "destroy", "=destroy":
     doDestructorStuff(c, s, n)
-    if not experimentalMode(c):
-      localError n.info, "use the {.experimental.} pragma to enable destructors"
+    when not newDestructors:
+      if not experimentalMode(c):
+        localError n.info, "use the {.experimental.} pragma to enable destructors"
     incl(s.flags, sfUsed)
   of "deepcopy", "=deepcopy":
     if s.typ.len == 2 and
@@ -1303,7 +1305,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       localError(n.info, errGenerated,
                  "signature for 'deepCopy' must be proc[T: ptr|ref](x: T): T")
     incl(s.flags, sfUsed)
-  of "=":
+  of "=", "=sink":
     if s.magic == mAsgn: return
     incl(s.flags, sfUsed)
     let t = s.typ
@@ -1321,14 +1323,15 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
           objB = objB.sons[0]
         else: break
       if obj.kind in {tyObject, tyDistinct} and sameType(obj, objB):
-        if obj.assignment.isNil:
-          obj.assignment = s
+        let opr = if s.name.s == "=": addr(obj.assignment) else: addr(obj.sink)
+        if opr[].isNil:
+          opr[] = s
         else:
           localError(n.info, errGenerated,
-                     "cannot bind another '=' to: " & typeToString(obj))
+                     "cannot bind another '" & s.name.s & "' to: " & typeToString(obj))
         return
     localError(n.info, errGenerated,
-               "signature for '=' must be proc[T: object](x: var T; y: T)")
+               "signature for '" & s.name.s & "' must be proc[T: object](x: var T; y: T)")
   else:
     if sfOverriden in s.flags:
       localError(n.info, errGenerated,
