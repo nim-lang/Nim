@@ -14,6 +14,7 @@ const
   hasTinyCBackend* = defined(tinyc)
   useEffectSystem* = true
   useWriteTracking* = false
+  newDestructors* = true
   hasFFI* = defined(useFFI)
   newScopeForIf* = true
   useCaas* = not defined(noCaas)

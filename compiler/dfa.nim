@@ -235,14 +235,14 @@ proc genTry(c: var Con; n: PNode) =
 
 proc genRaise(c: var Con; n: PNode) =
   gen(c, n.sons[0])
-  c.code.add Instr(n: n, kind: goto, dest: high(int))
+  c.code.add Instr(n: n, kind: goto, dest: high(int) - c.code.len)
 
 proc genReturn(c: var Con; n: PNode) =
   if n.sons[0].kind != nkEmpty: gen(c, n.sons[0])
-  c.code.add Instr(n: n, kind: goto, dest: high(int))
+  c.code.add Instr(n: n, kind: goto, dest: high(int) - c.code.len)
 
 const
-  InterestingSyms = {skVar, skResult}
+  InterestingSyms = {skVar, skResult, skLet}
 
 proc genUse(c: var Con; n: PNode) =
   var n = n
@@ -279,7 +279,7 @@ proc genMagic(c: var Con; n: PNode; m: TMagic) =
     for i in 2..<n.len: gen(c, n[i])
   of mExit:
     genCall(c, n)
-    c.code.add Instr(n: n, kind: goto, dest: high(int))
+    c.code.add Instr(n: n, kind: goto, dest: high(int) - c.code.len)
   else:
     genCall(c, n)
 
