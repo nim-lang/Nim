@@ -290,4 +290,4 @@ proc injectDestructorCalls*(owner: PSym; n: PNode): PNode =
   else:
     result.add body
 
-  echo "transformed into: ", result
+  #echo "transformed into: ", result

@@ -1383,7 +1383,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           typeMismatch(n.info, lhs.typ, rhs.typ)
 
     n.sons[1] = fitNode(c, le, rhs, n.info)
-    when not newDestructors:
+    if not newDestructors:
       if tfHasAsgn in lhs.typ.flags and not lhsIsResult and
           mode != noOverloadedAsgn:
         return overloadedAsgn(c, lhs, n.sons[1])

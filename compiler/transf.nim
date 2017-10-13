@@ -43,7 +43,7 @@ type
     inlining: int            # > 0 if we are in inlining context (copy vars)
     nestedProcs: int         # > 0 if we are in a nested proc
     contSyms, breakSyms: seq[PSym]  # to transform 'continue' and 'break'
-    deferDetected, tooEarly: bool
+    deferDetected, tooEarly, needsDestroyPass: bool
   PTransf = ref TTransfContext
 
 proc newTransNode(a: PNode): PTransNode {.inline.} =
@@ -780,7 +780,8 @@ proc transform(c: PTransf, n: PNode): PTransNode =
                   nkBlockStmt, nkBlockExpr}:
       oldDeferAnchor = c.deferAnchor
       c.deferAnchor = n
-
+  if n.typ != nil and tfHasAsgn in n.typ.flags:
+    c.needsDestroyPass = true
   case n.kind
   of nkSym:
     result = transformSym(c, n)
@@ -972,7 +973,7 @@ proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
     #result = liftLambdas(prc, result)
     incl(result.flags, nfTransf)
     when useEffectSystem: trackProc(prc, result)
-    if prc.kind == skFunc:
+    if c.needsDestroyPass and newDestructors:
       result = injectDestructorCalls(prc, result)
     #if prc.name.s == "testbody":
     #  echo renderTree(result)
@@ -989,6 +990,8 @@ proc transformStmt*(module: PSym, n: PNode): PNode =
     when useEffectSystem: trackTopLevelStmt(module, result)
     #if n.info ?? "temp.nim":
     #  echo renderTree(result, {renderIds})
+    if c.needsDestroyPass and newDestructors:
+      result = injectDestructorCalls(module, result)
 
 proc transformExpr*(module: PSym, n: PNode): PNode =
   if nfTransf in n.flags:
@@ -998,3 +1001,5 @@ proc transformExpr*(module: PSym, n: PNode): PNode =
     result = processTransf(c, n, module)
     liftDefer(c, result)
     incl(result.flags, nfTransf)
+    if c.needsDestroyPass and newDestructors:
+      result = injectDestructorCalls(module, result)
