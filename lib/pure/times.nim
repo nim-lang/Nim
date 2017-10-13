@@ -1180,19 +1180,12 @@ when not defined(JS):
     TimeInfoPtr = ptr StructTM
     Clock {.importc: "clock_t".} = distinct int
 
-  when not defined(windows):
-    # This is not ANSI C, but common enough
-    proc timegm(t: StructTM): Time {.
-      importc: "timegm", header: "<time.h>", tags: [].}
-
   proc localtime(timer: ptr Time): TimeInfoPtr {.
     importc: "localtime", header: "<time.h>", tags: [].}
   proc gmtime(timer: ptr Time): TimeInfoPtr {.
     importc: "gmtime", header: "<time.h>", tags: [].}
   proc timec(timer: ptr Time): Time {.
     importc: "time", header: "<time.h>", tags: [].}
-  proc mktime(t: StructTM): Time {.
-    importc: "mktime", header: "<time.h>", tags: [].}
   proc getClock(): Clock {.importc: "clock", header: "<time.h>", tags: [TimeEffect].}
   proc difftime(a, b: Time): float {.importc: "difftime", header: "<time.h>",
     tags: [].}
@@ -1216,20 +1209,6 @@ when not defined(JS):
       isDST: tm.isdst > 0,
       timezone: if local: getTimezone() else: 0
     )
-
-
-  proc timeInfoToTM(t: TimeInfo): StructTM =
-    const
-      weekDays: array[WeekDay, int8] = [1'i8,2'i8,3'i8,4'i8,5'i8,6'i8,0'i8]
-    result.second = t.second
-    result.minute = t.minute
-    result.hour = t.hour
-    result.monthday = t.monthday
-    result.month = ord(t.month)
-    result.year = cint(t.year - 1900)
-    result.weekday = weekDays[t.weekday]
-    result.yearday = t.yearday
-    result.isdst = if t.isDST: 1 else: 0
 
   when not defined(useNimRtl):
     proc `-` (a, b: Time): int64 =
