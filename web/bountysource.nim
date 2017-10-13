@@ -53,7 +53,7 @@ proc processSupporters(supporters: JsonNode) =
   echo("Found ", supporters.elems.len, " named sponsors.")
 
   supporters.elems.sort(
-    (x, y) => cmp(y["alltime_amount"].getFNum, x["alltime_amount"].getFNum)
+    (x, y) => cmp(y["alltime_amount"].getFloat, x["alltime_amount"].getFloat)
   )
 
 
@@ -113,7 +113,7 @@ when isMainModule:
     if url.len > 0 and not url.startsWith("http"):
       url = "http://" & url
 
-    let amount = supporter["monthly_amount"].getFNum()
+    let amount = supporter["monthly_amount"].getFloat()
     # Only show URL when user donated at least $5.
     if amount < 5:
       url = ""
@@ -126,10 +126,10 @@ when isMainModule:
       discard # TODO
 
     let sponsor = Sponsor(name: name, url: url, logo: logo, amount: amount,
-        allTime: supporter["alltime_amount"].getFNum(),
+        allTime: supporter["alltime_amount"].getFloat(),
         since: parse(supporter["created_at"].getStr, "yyyy-MM-dd'T'hh:mm:ss")
       )
-    if supporter["monthly_amount"].getFNum > 0.0:
+    if supporter["monthly_amount"].getFloat > 0.0:
       activeSponsors.add(sponsor)
     else:
       inactiveSponsors.add(sponsor)

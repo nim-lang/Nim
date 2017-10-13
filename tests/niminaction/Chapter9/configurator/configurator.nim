@@ -47,7 +47,7 @@ proc createLoadProc(typeName: NimIdent, identDefs: seq[NimNode]): NimNode =
         `cfgIdent`.`fieldNameIdent` = `objIdent`[`fieldName`].getStr
     of "int":
       body.add quote do:
-        `cfgIdent`.`fieldNameIdent` = `objIdent`[`fieldName`].getNum().int
+        `cfgIdent`.`fieldNameIdent` = `objIdent`[`fieldName`].getInt().int
     else:
       doAssert(false, "Not Implemented")
 
