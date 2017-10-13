@@ -100,7 +100,7 @@ proc semProc(c: PContext, n: PNode): PNode
 include semdestruct
 
 proc semDestructorCheck(c: PContext, n: PNode, flags: TExprFlags) {.inline.} =
-  when not newDestructors:
+  if not newDestructors:
     if efAllowDestructor notin flags and
         n.kind in nkCallKinds+{nkObjConstr,nkBracket}:
       if instantiateDestructor(c, n.typ) != nil:
@@ -400,7 +400,7 @@ proc addToVarSection(c: PContext; result: var PNode; orig, identDefs: PNode) =
   # in order for this transformation to be correct.
   let L = identDefs.len
   let value = identDefs[L-1]
-  if value.typ != nil and tfHasAsgn in value.typ.flags and c.p.owner.kind != skFunc:
+  if value.typ != nil and tfHasAsgn in value.typ.flags and not newDestructors:
     # the spec says we need to rewrite 'var x = T()' to 'var x: T; x = T()':
     identDefs.sons[L-1] = emptyNode
     if result.kind != nkStmtList:
@@ -608,7 +608,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         if def.kind == nkPar: v.ast = def[j]
         setVarType(v, tup.sons[j])
         b.sons[j] = newSymNode(v)
-      when not newDestructors: addDefer(c, result, v)
+      if not newDestructors: addDefer(c, result, v)
       checkNilable(v)
       if sfCompileTime in v.flags: hasCompileTime = true
   if hasCompileTime: vm.setupCompileTimeVar(c.module, c.cache, result)
@@ -1278,9 +1278,8 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
   case s.name.s.normalize
   of "destroy", "=destroy":
     doDestructorStuff(c, s, n)
-    when not newDestructors:
-      if not experimentalMode(c):
-        localError n.info, "use the {.experimental.} pragma to enable destructors"
+    if not newDestructors and not experimentalMode(c):
+      localError n.info, "use the {.experimental.} pragma to enable destructors"
     incl(s.flags, sfUsed)
   of "deepcopy", "=deepcopy":
     if s.typ.len == 2 and

@@ -666,6 +666,10 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(switch, arg, pass, info)
     if config != nil:
       config.cppDefine(arg)
+  of "newruntime":
+    expectNoArg(switch, arg, pass, info)
+    newDestructors = true
+    defineSymbol("nimNewRuntime")
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(switch, arg)
     else: invalidCmdLineOption(pass, switch, info)
