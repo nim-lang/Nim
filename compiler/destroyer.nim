@@ -290,7 +290,7 @@ proc injectDestructorCalls*(owner: PSym; n: PNode): PNode =
   else:
     result.add body
 
-  when false:
+  when defined(nimDebugDestroys):
     echo "------------------------------------"
-    echo owner.name.s, " transformed from: ", n
+    echo owner.name.s, " transformed to: "
     echo result
