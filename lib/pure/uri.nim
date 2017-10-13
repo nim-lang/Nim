@@ -278,7 +278,9 @@ proc `/`*(x: Uri, path: string): Uri =
   result = x
 
   if result.path.len == 0:
-    result.path = path
+    if path[0] != '/':
+      result.path = "/"
+    result.path.add(path)
     return
 
   if result.path[result.path.len-1] == '/':
@@ -476,6 +478,11 @@ when isMainModule:
     let foo = parseUri("http://example.com") / "/baz"
     doAssert foo.path == "/baz"
 
+  # bug found on stream 13/10/17
+  block:
+    let foo = parseUri("http://localhost:9515") / "status"
+    doAssert $foo == "http://localhost:9515/status"
+
   # isAbsolute tests
   block:
     doAssert "www.google.com".parseUri().isAbsolute() == false
@@ -516,3 +523,5 @@ when isMainModule:
     doAssert "https://example.com/about/staff.html".parseUri().isAbsolute == true
     doAssert "https://example.com/about/staff.html?".parseUri().isAbsolute == true
     doAssert "https://example.com/about/staff.html?parameters".parseUri().isAbsolute == true
+
+  echo("All good!")
