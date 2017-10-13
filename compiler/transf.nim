@@ -971,11 +971,11 @@ proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
     result = processTransf(c, result, prc)
     liftDefer(c, result)
     #result = liftLambdas(prc, result)
-    incl(result.flags, nfTransf)
     when useEffectSystem: trackProc(prc, result)
     if c.needsDestroyPass and newDestructors:
       result = injectDestructorCalls(prc, result)
-    #if prc.name.s == "testbody":
+    incl(result.flags, nfTransf)
+      #if prc.name.s == "testbody":
     #  echo renderTree(result)
 
 proc transformStmt*(module: PSym, n: PNode): PNode =
@@ -986,12 +986,12 @@ proc transformStmt*(module: PSym, n: PNode): PNode =
     result = processTransf(c, n, module)
     liftDefer(c, result)
     #result = liftLambdasForTopLevel(module, result)
-    incl(result.flags, nfTransf)
     when useEffectSystem: trackTopLevelStmt(module, result)
     #if n.info ?? "temp.nim":
     #  echo renderTree(result, {renderIds})
     if c.needsDestroyPass and newDestructors:
       result = injectDestructorCalls(module, result)
+    incl(result.flags, nfTransf)
 
 proc transformExpr*(module: PSym, n: PNode): PNode =
   if nfTransf in n.flags:
@@ -1000,6 +1000,6 @@ proc transformExpr*(module: PSym, n: PNode): PNode =
     var c = openTransf(module, "")
     result = processTransf(c, n, module)
     liftDefer(c, result)
-    incl(result.flags, nfTransf)
     if c.needsDestroyPass and newDestructors:
       result = injectDestructorCalls(module, result)
+    incl(result.flags, nfTransf)

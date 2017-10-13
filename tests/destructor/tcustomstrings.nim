@@ -78,11 +78,11 @@ proc create*(lit: string): mystring =
   copyMem(addr result.data[result.len], unsafeAddr lit[0], newLen + 1)
   result.len = newLen
 
-func `&`*(a, b: mystring): mystring =
+proc `&`*(a, b: mystring): mystring =
   result = a
   result.add b
 
-func main(n: int) =
+proc main(n: int) =
   var a: mystring
   let b = create" to append"
   for i in 0..<n:
@@ -91,7 +91,6 @@ func main(n: int) =
     let c = b & create"more here"
     a.add c
     echo cstring(a.data)
-
 
 main(1000)
 echo "after ", allocCount, " ", deallocCount

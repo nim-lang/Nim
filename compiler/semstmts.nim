@@ -400,7 +400,7 @@ proc addToVarSection(c: PContext; result: var PNode; orig, identDefs: PNode) =
   # in order for this transformation to be correct.
   let L = identDefs.len
   let value = identDefs[L-1]
-  if value.typ != nil and tfHasAsgn in value.typ.flags and c.p.owner.kind != skFunc:
+  if value.typ != nil and tfHasAsgn in value.typ.flags and not newDestructors:
     # the spec says we need to rewrite 'var x = T()' to 'var x: T; x = T()':
     identDefs.sons[L-1] = emptyNode
     if result.kind != nkStmtList:
