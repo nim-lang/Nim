@@ -37,15 +37,15 @@
 ## Retrieving the value of a JSON node can then be achieved using one of the
 ## helper procedures, which include:
 ##
-## * ``getNum``
-## * ``getFNum``
+## * ``getInt``
+## * ``getFloat``
 ## * ``getStr``
-## * ``getBVal``
+## * ``getBool``
 ##
 ## To retrieve the value of ``"key"`` you can do the following:
 ##
 ## .. code-block:: Nim
-##   doAssert jsonNode["key"].getFNum() == 3.14
+##   doAssert jsonNode["key"].getFloat() == 3.14
 ##
 ## The ``[]`` operator will raise an exception when the specified field does
 ## not exist. If you wish to avoid this behaviour you can use the ``{}``
@@ -681,14 +681,23 @@ proc getStr*(n: JsonNode, default: string = ""): string =
   if n.isNil or n.kind != JString: return default
   else: return n.str
 
-proc getNum*(n: JsonNode, default: BiggestInt = 0): BiggestInt =
+proc getInt*(n: JsonNode, default: int = 0): int =
   ## Retrieves the int value of a `JInt JsonNode`.
+  ##
+  ## Returns ``default`` if ``n`` is not a ``JInt``, or if ``n`` is nil.
+  if n.isNil or n.kind != JInt: return default
+  else: return int(n.num)
+
+proc getBiggestInt*(n: JsonNode, default: BiggestInt = 0): BiggestInt =
+  ## Retrieves the BiggestInt value of a `JInt JsonNode`.
   ##
   ## Returns ``default`` if ``n`` is not a ``JInt``, or if ``n`` is nil.
   if n.isNil or n.kind != JInt: return default
   else: return n.num
 
-proc getFNum*(n: JsonNode, default: float = 0.0): float =
+{.deprecated: [getNum: getBiggestInt].}
+
+proc getFloat*(n: JsonNode, default: float = 0.0): float =
   ## Retrieves the float value of a `JFloat JsonNode`.
   ##
   ## Returns ``default`` if ``n`` is not a ``JFloat`` or ``JInt``, or if ``n`` is nil.
@@ -698,12 +707,16 @@ proc getFNum*(n: JsonNode, default: float = 0.0): float =
   of JInt: return float(n.num)
   else: return default
 
-proc getBVal*(n: JsonNode, default: bool = false): bool =
+{.deprecated: [getFNum: getFloat].}
+
+proc getBool*(n: JsonNode, default: bool = false): bool =
   ## Retrieves the bool value of a `JBool JsonNode`.
   ##
   ## Returns ``default`` if ``n`` is not a ``JBool``, or if ``n`` is nil.
   if n.isNil or n.kind != JBool: return default
   else: return n.bval
+
+{.deprecated: [getBVal: getBool].}
 
 proc getFields*(n: JsonNode,
     default = initOrderedTable[string, JsonNode](4)):
@@ -1342,7 +1355,7 @@ proc getEnum(node: JsonNode, ast: string, T: typedesc): T =
     # TODO: I shouldn't need this proc.
     proc convert[T](x: BiggestInt): T = T(x)
     verifyJsonKind(node, {JInt}, ast)
-    return convert[T](node.getNum())
+    return convert[T](node.getBiggestInt())
   else:
     verifyJsonKind(node, {JString}, ast)
     return parseEnum[T](node.getStr())
