@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2012 Andreas Rumpf, Anatoly Galiulin
+#        (c) Copyright 2017 Andreas Rumpf, Anatoly Galiulin
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -103,12 +103,18 @@ proc formatFloat(v: SomeNumber, len = 0, prec = 0, sep = '.', fill = ' ',  scien
 # -----------------------------------------------------------------------------
 
 proc parseIntFmt(fmtp: string): tuple[maxLen: int, fillChar: char] =
+  ## Extracts the maxLen and fillChar from an int format string. Examples:
+  ## "5" => maxLen = 5, fillChar = ' '
+  ## "05" => maxLen = 5, fillChar = '0'
   var maxLen = if fmtp == "": 0 else: parseInt(fmtp)
   var minus = fmtp.len > 0 and fmtp[0] == '-'
   var fillChar = if ((minus and fmtp.len > 1) or fmtp.len > 0) and fmtp[if minus: 1 else: 0] == '0': '0' else: ' '
   (maxLen, fillChar)
 
 proc parseFloatFmt(fmtp: string): tuple[maxLen: int, prec: int, fillChar: char] =
+  ## Extracts the maxLen, prec, and fillChar from a float format string. Examples:
+  ## "5.1" => maxLen = 5, prec = 1, fillChar = ' '
+  ## "05.1" => maxLen = 5, prec = 1, fillChar = '0'
   result.fillChar = ' '
   if fmtp == "":
     return
@@ -191,6 +197,7 @@ proc handleFormat(exp: string, fmt: string, nodes: var seq[NimNode]) {.compileTi
 
 macro fmt*(fmt: static[string]): untyped =
   ## String interpolation macro with scala-like format specifiers.
+  ##
   ## Knows about:
   ## * `d` - decimal number formatter
   ## * `x`, `X` - hex number formatter
