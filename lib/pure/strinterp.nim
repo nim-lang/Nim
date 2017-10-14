@@ -24,7 +24,7 @@ proc mkDigit(v: int, lowerCase: bool): string {.inline.} =
 
 proc formatInt(n: SomeNumber, radix = 10, len = 0, fill = ' ', lowerCase = false): string =
   ## Converts ``n`` to string. If ``n`` is `SomeReal`, it casts to `int64`.
-  ## Conversion is done using ``radix``. If result's length is lesser then
+  ## Conversion is done using ``radix``. If result's length is lesser than
   ## ``len``, it aligns result to the right with ``fill`` char.
   ## If ``len`` is negative, the result is aligned to the left.
   ## If `lowerCase` is true, formatted string will be in the lower case.
@@ -90,7 +90,7 @@ proc formatString(s: string, len: int, fill = ' ', trunc = false): string =
 
 proc formatFloat(v: SomeNumber, len = 0, prec = 0, sep = '.', fill = ' ',  scientific = false): string =
   ## Converts ``v`` to string with precision == ``prec``. If result's length
-  ## is lesser then ``len``, it aligns result to the right with ``fill`` char.
+  ## is lesser than ``len``, it aligns result to the right with ``fill`` char.
   ## If ``len`` is negative, the result is aligned to the left.
   let f = if scientific: ffScientific else: if prec == 0: ffDefault else: ffDecimal
   if len > 0 and v < 0 and fill == '0':
