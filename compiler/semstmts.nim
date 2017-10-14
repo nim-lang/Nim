@@ -1277,9 +1277,30 @@ proc maybeAddResult(c: PContext, s: PSym, n: PNode) =
 proc semOverride(c: PContext, s: PSym, n: PNode) =
   case s.name.s.normalize
   of "destroy", "=destroy":
-    doDestructorStuff(c, s, n)
-    if not newDestructors and not experimentalMode(c):
-      localError n.info, "use the {.experimental.} pragma to enable destructors"
+    if newDestructors:
+      let t = s.typ
+      var noError = false
+      if t.len == 2 and t.sons[0] == nil and t.sons[1].kind == tyVar:
+        var obj = t.sons[1].sons[0]
+        while true:
+          incl(obj.flags, tfHasAsgn)
+          if obj.kind == tyGenericBody: obj = obj.lastSon
+          elif obj.kind == tyGenericInvocation: obj = obj.sons[0]
+          else: break
+        if obj.kind in {tyObject, tyDistinct}:
+          if obj.destructor.isNil:
+            obj.destructor = s
+          else:
+            localError(n.info, errGenerated,
+              "cannot bind another '" & s.name.s & "' to: " & typeToString(obj))
+          noError = true
+      if not noError:
+        localError(n.info, errGenerated,
+          "signature for '" & s.name.s & "' must be proc[T: object](x: var T)")
+    else:
+      doDestructorStuff(c, s, n)
+      if not experimentalMode(c):
+        localError n.info, "use the {.experimental.} pragma to enable destructors"
     incl(s.flags, sfUsed)
   of "deepcopy", "=deepcopy":
     if s.typ.len == 2 and

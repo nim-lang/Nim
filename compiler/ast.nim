@@ -1081,7 +1081,7 @@ proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
   result.info = info
   result.options = gOptions
   result.owner = owner
-  result.offset = - 1
+  result.offset = -1
   result.id = getID()
   when debugIds:
     registerId(result)
