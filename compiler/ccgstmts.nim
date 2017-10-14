@@ -141,9 +141,13 @@ template preserveBreakIdx(body: untyped): untyped =
   p.breakIdx = oldBreakIdx
 
 proc genState(p: BProc, n: PNode) =
-  internalAssert n.len == 1 and n.sons[0].kind == nkIntLit
-  let idx = n.sons[0].intVal
-  linefmt(p, cpsStmts, "STATE$1: ;$n", idx.rope)
+  internalAssert n.len == 1
+  let n0 = n[0]
+  if n0.kind == nkIntLit:
+    let idx = n.sons[0].intVal
+    linefmt(p, cpsStmts, "STATE$1: ;$n", idx.rope)
+  elif n0.kind == nkStrLit:
+    linefmt(p, cpsStmts, "$1: ;$n", n0.strVal.rope)
 
 proc genGotoState(p: BProc, n: PNode) =
   # we resist the temptation to translate it into duff's device as it later
@@ -157,10 +161,12 @@ proc genGotoState(p: BProc, n: PNode) =
   p.beforeRetNeeded = true
   lineF(p, cpsStmts, "case -1: goto BeforeRet_;$n", [])
   var statesCounter = lastOrd(n.sons[0].typ)
-  if n.len == 2 and n[1].kind == nkIntLit:
+  if n.len >= 2 and n[1].kind == nkIntLit:
     statesCounter = n[1].intVal
+  let prefix = if n.len == 3 and n[2].kind == nkStrLit: n[2].strVal.rope
+               else: rope"STATE"
   for i in 0 .. statesCounter:
-    lineF(p, cpsStmts, "case $1: goto STATE$1;$n", [rope(i)])
+    lineF(p, cpsStmts, "case $2: goto $1$2;$n", [prefix, rope(i)])
   lineF(p, cpsStmts, "}$n", [])
 
 proc genBreakState(p: BProc, n: PNode) =
