@@ -582,7 +582,10 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
     if n.kind == nkSym and isLocalVar(tracked, n.sym):
       makeVolatile(tracked, n.sym)
   if paramType != nil and paramType.kind == tyProc and tfGcSafe in paramType.flags:
-    if tfGcSafe notin a.typ.flags and not tracked.inEnforcedGcSafe:
+    let argtype = skipTypes(a.typ, abstractInst)
+    # XXX figure out why this can be a non tyProc here. See httpclient.nim for an
+    # example that triggers it.
+    if argtype.kind == tyProc and notGcSafe(argtype) and not tracked.inEnforcedGcSafe:
       localError(n.info, $n & " is not GC safe")
   notNilCheck(tracked, n, paramType)
 
@@ -736,7 +739,7 @@ proc track(tracked: PEffects, n: PNode) =
           if not (a.kind == nkSym and a.sym == tracked.owner):
             markSideEffect(tracked, a)
     if a.kind != nkSym or a.sym.magic != mNBindSym:
-      for i in 1 .. <len(n): trackOperand(tracked, n.sons[i], paramType(op, i))
+      for i in 1 ..< len(n): trackOperand(tracked, n.sons[i], paramType(op, i))
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
       # may not look like an assignment, but it is:
       let arg = n.sons[1]
