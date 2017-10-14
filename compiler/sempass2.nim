@@ -19,18 +19,6 @@ when defined(useDfa):
 #
 # * effect+exception tracking
 # * "usage before definition" checking
-# * checks for invalid usages of compiletime magics (not implemented)
-# * checks for invalid usages of NimNode (not implemented)
-# * later: will do an escape analysis for closures at least
-
-# Predefined effects:
-#   io, time (time dependent), gc (performs GC'ed allocation), exceptions,
-#   side effect (accesses global), store (stores into *type*),
-#   store_unknown (performs some store) --> store(any)|store(x)
-#   load (loads from *type*), recursive (recursive call), unsafe,
-#   endless (has endless loops), --> user effects are defined over *patterns*
-#   --> a TR macro can annotate the proc with user defined annotations
-#   --> the effect system can access these
 
 # ------------------------ exception and tag tracking -------------------------
 
@@ -593,6 +581,9 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
   if paramType != nil and paramType.kind == tyVar:
     if n.kind == nkSym and isLocalVar(tracked, n.sym):
       makeVolatile(tracked, n.sym)
+  if paramType != nil and paramType.kind == tyProc and tfGcSafe in paramType.flags:
+    if tfGcSafe notin a.typ.flags and not tracked.inEnforcedGcSafe:
+      localError(n.info, $n & " is not GC safe")
   notNilCheck(tracked, n, paramType)
 
 proc breaksBlock(n: PNode): bool =
