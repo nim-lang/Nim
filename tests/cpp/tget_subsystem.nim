@@ -21,3 +21,11 @@ proc getSubsystem*[T](): ptr T {.
 
 let input: ptr Input = getSubsystem[Input]()
 
+
+# bug #4910
+
+proc foo() =
+  var ts: array[10, int]
+  for t in mitems(ts):
+     t = 123
+
