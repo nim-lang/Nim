@@ -22,7 +22,7 @@ proc mkDigit(v: int, lowerCase: bool): string {.inline.} =
   else:
     result = $chr(ord(if lowerCase: 'a' else: 'A') + v - 10)
 
-proc intToStr(n: SomeNumber, radix = 10, len = 0, fill = ' ', lowerCase = false): string =
+proc formatInt(n: SomeNumber, radix = 10, len = 0, fill = ' ', lowerCase = false): string =
   ## Converts ``n`` to string. If ``n`` is `SomeReal`, it casts to `int64`.
   ## Conversion is done using ``radix``. If result's length is lesser then
   ## ``len``, it aligns result to the right with ``fill`` char.
@@ -69,7 +69,7 @@ proc intToStr(n: SomeNumber, radix = 10, len = 0, fill = ' ', lowerCase = false)
       prefix[0] = '-'
     result = prefix & result
 
-proc alignStr(s: string, len: int, fill = ' ', trunc = false): string =
+proc formatString(s: string, len: int, fill = ' ', trunc = false): string =
   ## Aligns ``s`` using ``fill`` char to the right if ``len`` is
   ## positive, or to the left, if ``len`` is negative.
   ## If the length of ``s`` is bigger then `abs(len)` and ``trunc`` == true,
@@ -88,15 +88,15 @@ proc alignStr(s: string, len: int, fill = ' ', trunc = false): string =
     else:
       result = s & repeat(fill, fillLength)
 
-proc floatToStr(v: SomeNumber, len = 0, prec = 0, sep = '.', fill = ' ',  scientific = false): string =
+proc formatFloat(v: SomeNumber, len = 0, prec = 0, sep = '.', fill = ' ',  scientific = false): string =
   ## Converts ``v`` to string with precision == ``prec``. If result's length
   ## is lesser then ``len``, it aligns result to the right with ``fill`` char.
   ## If ``len`` is negative, the result is aligned to the left.
   let f = if scientific: ffScientific else: if prec == 0: ffDefault else: ffDecimal
   if len > 0 and v < 0 and fill == '0':
-    result = "-" & alignStr(formatBiggestFloat(-v.BiggestFloat, f, prec, sep), len-1, fill)
+    result = "-" & formatString(formatBiggestFloat(-v.BiggestFloat, f, prec, sep), len-1, fill)
   else:
-    result = alignStr(formatBiggestFloat(v.BiggestFloat, f, prec, sep), len, fill)
+    result = formatString(formatBiggestFloat(v.BiggestFloat, f, prec, sep), len, fill)
 
 # -----------------------------------------------------------------------------
 # nimboost's richstring
@@ -131,7 +131,7 @@ proc parseFloatFmt(fmtp: string): tuple[maxLen: int, prec: int, fillChar: char] 
 
 proc handleIntFormat(exp: string, fmtp: string, radix: int, lowerCase = false): NimNode {.compileTime.} =
   let (maxLen, fillChar) = parseIntFmt(fmtp)
-  result = newCall(bindSym"intToStr", parseExpr(exp), newLit(radix), newLit(maxLen), newLit(fillChar), newLit(lowerCase))
+  result = newCall(bindSym"formatInt", parseExpr(exp), newLit(radix), newLit(maxLen), newLit(fillChar), newLit(lowerCase))
 
 proc handleDFormat(exp: string, fmtp: string): NimNode {.compileTime.} =
   result = handleIntFormat(exp, fmtp, 10)
@@ -141,18 +141,18 @@ proc handleXFormat(exp: string, fmtp: string, lowerCase: bool): NimNode {.compil
 
 proc handleFFormat(exp: string, fmtp: string): NimNode {.compileTime.} =
   var (maxLen, prec, fillChar) = parseFloatFmt(fmtp)
-  result = newCall(bindSym"floatToStr", parseExpr(exp), newLit(maxLen), newLit(prec), newLit('.'), newLit(fillChar), newLit(false))
+  result = newCall(bindSym"formatFloat", parseExpr(exp), newLit(maxLen), newLit(prec), newLit('.'), newLit(fillChar), newLit(false))
 
 proc handleEFormat(exp: string, fmtp: string): NimNode {.compileTime.} =
   var (maxLen, prec, fillChar) = parseFloatFmt(fmtp)
-  result = newCall(bindSym"floatToStr", parseExpr(exp), newLit(maxLen), newLit(prec), newLit('.'), newLit(fillChar), newLit(true))
+  result = newCall(bindSym"formatFloat", parseExpr(exp), newLit(maxLen), newLit(prec), newLit('.'), newLit(fillChar), newLit(true))
 
 proc handleSFormat(exp: string, fmtp: string): NimNode {.compileTime.} =
   var (maxLen, _) = parseIntFmt(fmtp)
   if maxLen == 0:
     result = parseExpr("$(" & exp & ")")
   else:
-    result = newCall(bindSym"alignStr", parseExpr("$(" & exp & ")"), newLit(maxLen), newLit(' '))
+    result = newCall(bindSym"formatString", parseExpr("$(" & exp & ")"), newLit(maxLen), newLit(' '))
 
 proc handleFormat(exp: string, fmt: string, nodes: var seq[NimNode]) {.compileTime} =
   if fmt[1] == '%':
