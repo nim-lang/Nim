@@ -253,7 +253,7 @@ is performed.
   for r in collectLinks(body):
     echo r
 
-In this example both macros are combined seamlessly in order to maximise 
+In this example both macros are combined seamlessly in order to maximise
 efficiency and perform different checks.
 
 .. code-block:: nim
@@ -308,7 +308,7 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
   ## See top level documentation of his module of how ``scanf`` works.
   template matchBind(parser) {.dirty.} =
     var resLen = genSym(nskLet, "resLen")
-    conds.add newLetStmt(resLen, newCall(bindSym(parser), input, results[i], idx))
+    conds.add newLetStmt(resLen, newCall(bindSym(parser), inp, results[i], idx))
     conds.add resLen.notZero
     conds.add resLen
 
@@ -316,7 +316,8 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
   var p = 0
   var idx = genSym(nskVar, "idx")
   var res = genSym(nskVar, "res")
-  result = newTree(nnkStmtListExpr, newVarStmt(idx, newLit 0), newVarStmt(res, newLit false))
+  let inp = genSym(nskLet, "inp")
+  result = newTree(nnkStmtListExpr, newLetStmt(inp, input), newVarStmt(idx, newLit 0), newVarStmt(res, newLit false))
   var conds = newTree(nnkStmtList)
   var fullMatch = false
   while p < pattern.len:
@@ -325,7 +326,7 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
       case pattern[p]
       of '$':
         var resLen = genSym(nskLet, "resLen")
-        conds.add newLetStmt(resLen, newCall(bindSym"skip", input, newLit($pattern[p]), idx))
+        conds.add newLetStmt(resLen, newCall(bindSym"skip", inp, newLit($pattern[p]), idx))
         conds.add resLen.notZero
         conds.add resLen
       of 'w':
@@ -347,7 +348,7 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
           error("no float var given for $f")
         inc i
       of 's':
-        conds.add newCall(bindSym"inc", idx, newCall(bindSym"skipWhitespace", input, idx))
+        conds.add newCall(bindSym"inc", idx, newCall(bindSym"skipWhitespace", inp, idx))
         conds.add newEmptyNode()
         conds.add newEmptyNode()
       of '.':
@@ -364,7 +365,7 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
             token.add pattern[q]
             inc q
           var resLen = genSym(nskLet, "resLen")
-          conds.add newLetStmt(resLen, newCall(bindSym"parseUntil", input, results[i], newLit(token), idx))
+          conds.add newLetStmt(resLen, newCall(bindSym"parseUntil", inp, results[i], newLit(token), idx))
           conds.add newCall(bindSym"!=", resLen, newLit min)
           conds.add resLen
         else:
@@ -386,7 +387,7 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
         let expr = pattern.substr(start, p-1)
         if i < results.len:
           var resLen = genSym(nskLet, "resLen")
-          conds.add newLetStmt(resLen, buildUserCall(expr, input, results[i], idx))
+          conds.add newLetStmt(resLen, buildUserCall(expr, inp, results[i], idx))
           conds.add newCall(bindSym"!=", resLen, newLit 0)
           conds.add resLen
         else:
@@ -406,7 +407,7 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
           else: discard
           inc p
         let expr = pattern.substr(start, p-1)
-        conds.add newCall(bindSym"inc", idx, buildUserCall(expr, input, idx))
+        conds.add newCall(bindSym"inc", idx, buildUserCall(expr, inp, idx))
         conds.add newEmptyNode()
         conds.add newEmptyNode()
       else: error("invalid format string")
@@ -417,13 +418,13 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
         token.add pattern[p]
         inc p
       var resLen = genSym(nskLet, "resLen")
-      conds.add newLetStmt(resLen, newCall(bindSym"skip", input, newLit(token), idx))
+      conds.add newLetStmt(resLen, newCall(bindSym"skip", inp, newLit(token), idx))
       conds.add resLen.notZero
       conds.add resLen
   result.add conditionsToIfChain(conds, idx, res, 0)
   if fullMatch:
     result.add newCall(bindSym"and", res,
-      newCall(bindSym">=", idx, newCall(bindSym"len", input)))
+      newCall(bindSym">=", idx, newCall(bindSym"len", inp)))
   else:
     result.add res
 
@@ -684,3 +685,14 @@ when isMainModule:
           "NimMain c:/users/anwender/projects/nim/lib/system.nim:2613",
           "main c:/users/anwender/projects/nim/lib/system.nim:2620"]
   doAssert parseGDB(gdbOut) == result
+
+  # bug #6487
+  var count = 0
+
+  proc test(): string =
+    inc count
+    result = ",123123"
+
+  var a: int
+  discard scanf(test(), ",$i", a)
+  doAssert count == 1
