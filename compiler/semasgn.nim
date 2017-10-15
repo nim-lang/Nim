@@ -92,13 +92,13 @@ proc newAsgnStmt(le, ri: PNode): PNode =
   result.sons[0] = le
   result.sons[1] = ri
 
-proc newDestructorCall(op: PSym; x: PNode): PNode =
+proc newOpCall(op: PSym; x: PNode): PNode =
   result = newNodeIT(nkCall, x.info, op.typ.sons[0])
   result.add(newSymNode(op))
   result.add x
 
 proc newDeepCopyCall(op: PSym; x, y: PNode): PNode =
-  result = newAsgnStmt(x, newDestructorCall(op, y))
+  result = newAsgnStmt(x, newOpCall(op, y))
 
 proc considerOverloadedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
   case c.kind
@@ -107,7 +107,7 @@ proc considerOverloadedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
     if op != nil:
       markUsed(c.info, op, c.c.graph.usageSym)
       styleCheckUse(c.info, op)
-      body.add newDestructorCall(op, x)
+      body.add newOpCall(op, x)
       result = true
   of attachedAsgn:
     if tfHasAsgn in t.flags:

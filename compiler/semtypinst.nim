@@ -357,11 +357,17 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
         assert newbody.kind in {tyRef, tyPtr}
         assert newbody.lastSon.typeInst == nil
         newbody.lastSon.typeInst = result
-    let asgn = newbody.assignment
-    if asgn != nil and sfFromGeneric notin asgn.flags:
-      # '=' needs to be instantiated for generics when the type is constructed:
-      newbody.assignment = cl.c.instTypeBoundOp(cl.c, asgn, result, cl.info,
-                                                attachedAsgn, 1)
+    template typeBound(field) =
+      let opr = newbody.field
+      if opr != nil and sfFromGeneric notin opr.flags:
+        # '=' needs to be instantiated for generics when the type is constructed:
+        newbody.field = cl.c.instTypeBoundOp(cl.c, opr, result, cl.info,
+                                             attachedAsgn, 1)
+    # we need to produce the destructor first here because generated '='
+    # and '=sink' operators can rely on it:
+    if newDestructors: typeBound(destructor)
+    typeBound(assignment)
+    typeBound(sink)
     let methods = skipTypes(bbody, abstractPtrs).methods
     for col, meth in items(methods):
       # we instantiate the known methods belonging to that type, this causes
