@@ -695,7 +695,9 @@ proc getBiggestInt*(n: JsonNode, default: BiggestInt = 0): BiggestInt =
   if n.isNil or n.kind != JInt: return default
   else: return n.num
 
-{.deprecated: [getNum: getBiggestInt].}
+proc getNum*(n: JsonNode, default: BiggestInt = 0): BiggestInt {.deprecated.} =
+  ## Deprecated - use getInt or getBiggestInt instead
+  getBiggestInt(n, default)
 
 proc getFloat*(n: JsonNode, default: float = 0.0): float =
   ## Retrieves the float value of a `JFloat JsonNode`.
@@ -707,7 +709,9 @@ proc getFloat*(n: JsonNode, default: float = 0.0): float =
   of JInt: return float(n.num)
   else: return default
 
-{.deprecated: [getFNum: getFloat].}
+proc getFNum*(n: JsonNode, default: float = 0.0): float {.deprecated.} =
+  ## Deprecated - use getFloat instead
+  getFloat(n, default)
 
 proc getBool*(n: JsonNode, default: bool = false): bool =
   ## Retrieves the bool value of a `JBool JsonNode`.
@@ -716,7 +720,9 @@ proc getBool*(n: JsonNode, default: bool = false): bool =
   if n.isNil or n.kind != JBool: return default
   else: return n.bval
 
-{.deprecated: [getBVal: getBool].}
+proc getBVal*(n: JsonNode, default: bool = false): bool {.deprecated.} =
+  ## Deprecated - use getBVal instead
+  getBool(n, default)
 
 proc getFields*(n: JsonNode,
     default = initOrderedTable[string, JsonNode](4)):
