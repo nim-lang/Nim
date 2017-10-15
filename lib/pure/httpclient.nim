@@ -883,7 +883,9 @@ proc recvFull(client: HttpClient | AsyncHttpClient, size: int, timeout: int,
       let data = client.socket.recv(sizeToRecv, timeout)
     else:
       let data = await client.socket.recv(sizeToRecv)
-    if data == "": break # We've been disconnected.
+    if data == "":
+      client.close()
+      break # We've been disconnected.
 
     readLen.inc(data.len)
     if keep:
@@ -950,6 +952,7 @@ proc parseBody(client: HttpClient | AsyncHttpClient,
       if length > 0:
         let recvLen = await client.recvFull(length, client.timeout, true)
         if recvLen == 0:
+          client.close()
           httpError("Got disconnected while trying to read body.")
         if recvLen != length:
           httpError("Received length doesn't match expected length. Wanted " &
@@ -962,12 +965,19 @@ proc parseBody(client: HttpClient | AsyncHttpClient,
       if headers.getOrDefault"Connection" == "close" or httpVersion == "1.0":
         while true:
           let recvLen = await client.recvFull(4000, client.timeout, true)
-          if recvLen == 0: break
+          if recvLen == 0:
+            client.close()
+            break
 
   when client is AsyncHttpClient:
     client.bodyStream.complete()
   else:
     client.bodyStream.setPosition(0)
+
+  # If the server will close our connection, then no matter the method of
+  # reading the body, we need to close our socket.
+  if headers.getOrDefault"Connection" == "close":
+    client.close()
 
 proc parseResponse(client: HttpClient | AsyncHttpClient,
                    getBody: bool): Future[Response | AsyncResponse]
@@ -984,7 +994,10 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
       line = await client.socket.recvLine(client.timeout)
     else:
       line = await client.socket.recvLine()
-    if line == "": break # We've been disconnected.
+    if line == "":
+      # We've been disconnected.
+      client.close()
+      break
     if line == "\c\L":
       fullyRead = true
       break
@@ -1033,7 +1046,8 @@ proc newConnection(client: HttpClient | AsyncHttpClient,
                    url: Uri) {.multisync.} =
   if client.currentURL.hostname != url.hostname or
       client.currentURL.scheme != url.scheme or
-      client.currentURL.port != url.port:
+      client.currentURL.port != url.port or
+      (not client.connected):
     let isSsl = url.scheme.toLowerAscii() == "https"
 
     if isSsl and not defined(ssl):

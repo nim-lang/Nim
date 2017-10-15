@@ -278,7 +278,7 @@ proc ccgIntroducedPtr(s: PSym): bool =
   elif tfByCopy in pt.flags: return false
   case pt.kind
   of tyObject:
-    if (optByRef in s.options) or (getSize(pt) > platform.floatSize * 2):
+    if (optByRef in s.options) or (getSize(pt) > platform.floatSize * 3):
       result = true           # requested anyway
     elif (tfFinal in pt.flags) and (pt.sons[0] == nil):
       result = false          # no need, because no subtyping possible
@@ -286,7 +286,7 @@ proc ccgIntroducedPtr(s: PSym): bool =
       result = true           # ordinary objects are always passed by reference,
                               # otherwise casting doesn't work
   of tyTuple:
-    result = (getSize(pt) > platform.floatSize*2) or (optByRef in s.options)
+    result = (getSize(pt) > platform.floatSize*3) or (optByRef in s.options)
   else: result = false
 
 proc fillResult(param: PNode) =

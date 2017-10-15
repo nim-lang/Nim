@@ -87,8 +87,8 @@ when isMainModule:
 
     result = to(node, TestVariant)
     doAssert result.name == node["name"].getStr()
-    doAssert result.age == node["age"].getNum().uint8
-    doAssert result.other == node["other"].getNum()
+    doAssert result.age == node["age"].getInt().uint8
+    doAssert result.other == node["other"].getBiggestInt()
 
   # TODO: Test object variant with set in of branch.
   # TODO: Should we support heterogenous arrays?

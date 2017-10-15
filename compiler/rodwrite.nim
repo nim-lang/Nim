@@ -245,10 +245,14 @@ proc encodeType(w: PRodWriter, t: PType, result: var string) =
     add(result, '\17')
     encodeVInt(t.assignment.id, result)
     pushSym(w, t.assignment)
-  for i, s in items(t.methods):
+  if t.sink != nil:
     add(result, '\18')
-    encodeVInt(i, result)
+    encodeVInt(t.sink.id, result)
+    pushSym(w, t.sink)
+  for i, s in items(t.methods):
     add(result, '\19')
+    encodeVInt(i, result)
+    add(result, '\20')
     encodeVInt(s.id, result)
     pushSym(w, s)
   encodeLoc(w, t.loc, result)
