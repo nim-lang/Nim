@@ -45,6 +45,7 @@ proc newLine(p: var TTmplParser) =
     p.pendingExprLine = false
 
 proc scanPar(p: var TTmplParser, d: int) =
+  # TODO: parse multiline comment and multiline string
   var i = d
   while true:
     case p.x[i]
@@ -57,6 +58,36 @@ proc scanPar(p: var TTmplParser, d: int) =
     of '}': dec(p.curly)
     else: discard
     inc(i)
+
+proc lenString(x: string): int =
+  for i, c in x:
+    if c == '"':
+      return i
+
+proc getStrWithoutDirective(p: TTmplParser): string =
+  var line_start = 0
+  for i, c in p.x:
+    if c == p.nimDirective:
+      line_start = i + 1
+      break
+  result = p.x[line_start..^1]
+
+proc endsWithOpr(x: string): bool =
+  result = false
+  for i, c in x:
+    if c == '\'':
+      return endsWithOpr(x[i + 3..^1])
+    elif c == '"':
+      var len_str = lenString(x[i+1..^1])
+      return endsWithOpr(x[i + len_str + 2..^1])
+    elif c == '#':
+      return
+    elif c in llstream.LineContinuationOprs:
+      result = true
+    elif c == ' ':
+      continue
+    else:
+      result = false
 
 proc withInExpr(p: TTmplParser): bool {.inline.} =
   result = p.par > 0 or p.bracket > 0 or p.curly > 0
@@ -77,7 +108,8 @@ proc parseLine(p: var TTmplParser) =
       inc(j)
 
     scanPar(p, j)
-    p.pendingExprLine = withInExpr(p) or llstream.endsWithOpr(p.x)
+    var p_str_without_directive = getStrWithoutDirective(p)
+    p.pendingExprLine = withInExpr(p) or endsWithOpr(p_str_without_directive)
     case keyw
     of "end":
       if p.indent >= 2:
