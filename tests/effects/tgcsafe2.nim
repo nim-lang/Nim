@@ -1,5 +1,5 @@
 discard """
-  errormsg: ''' (proc (s: string) = res &= &(s, "abc"), nil) is not GC safe'''
+  errormsg: '''type mismatch: got (proc (s: string){.locks: 0.})'''
   line: 11
 """
 #5620

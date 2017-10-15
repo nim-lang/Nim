@@ -239,6 +239,7 @@ proc useVar(a: PEffects, n: PNode) =
         (tfHasGCedMem in s.typ.flags or s.typ.isGCedMem):
       #if warnGcUnsafe in gNotes: warnAboutGcUnsafe(n)
       markGcUnsafe(a, s)
+      markSideEffect(a, s)
     else:
       markSideEffect(a, s)
 
