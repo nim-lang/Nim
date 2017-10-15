@@ -500,6 +500,7 @@ type
     fileIndex*: int32
     when defined(nimpretty):
       offsetA*, offsetB*: int
+      commentOffsetA*, commentOffsetB*: int
 
   TErrorOutput* = enum
     eStdOut
