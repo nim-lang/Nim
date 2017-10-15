@@ -13,14 +13,10 @@ import
   llstream, os, wordrecg, idents, strutils, ast, astalgo, msgs, options,
   renderer, filters
 
-proc filterTmpl*(stdin: PLLStream, filename: string, call: PNode): PLLStream
-  # #! template(subsChar='$', metaChar='#') | standard(version="0.7.2")
-# implementation
-
 type
   TParseState = enum
     psDirective, psTempl
-  TTmplParser{.final.} = object
+  TTmplParser = object
     inp: PLLStream
     state: TParseState
     info: TLineInfo
@@ -61,6 +57,10 @@ proc scanPar(p: var TTmplParser, d: int) =
 proc withInExpr(p: TTmplParser): bool {.inline.} =
   result = p.par > 0 or p.bracket > 0 or p.curly > 0
 
+const
+  LineContinuationOprs = {'+', '-', '*', '/', '\\', '<', '>', '^',
+                          '|', '%', '&', '$', '@', '~', ','}
+
 proc parseLine(p: var TTmplParser) =
   var j = 0
   while p.x[j] == ' ': inc(j)
@@ -77,7 +77,7 @@ proc parseLine(p: var TTmplParser) =
       inc(j)
 
     scanPar(p, j)
-    p.pendingExprLine = withInExpr(p) or llstream.endsWithOpr(p.x)
+    p.pendingExprLine = withInExpr(p) or p.x.endsWith(LineContinuationOprs)
     case keyw
     of "end":
       if p.indent >= 2:
@@ -88,14 +88,14 @@ proc parseLine(p: var TTmplParser) =
       llStreamWrite(p.outp, spaces(p.indent))
       llStreamWrite(p.outp, "#end")
     of "if", "when", "try", "while", "for", "block", "case", "proc", "iterator",
-       "converter", "macro", "template", "method":
+       "converter", "macro", "template", "method", "func":
       llStreamWrite(p.outp, spaces(p.indent))
       llStreamWrite(p.outp, substr(p.x, d))
       inc(p.indent, 2)
     of "elif", "of", "else", "except", "finally":
       llStreamWrite(p.outp, spaces(p.indent - 2))
       llStreamWrite(p.outp, substr(p.x, d))
-    of "wLet", "wVar", "wConst", "wType":
+    of "let", "var", "const", "type":
       llStreamWrite(p.outp, spaces(p.indent))
       llStreamWrite(p.outp, substr(p.x, d))
       if not p.x.contains({':', '='}):
@@ -199,7 +199,7 @@ proc parseLine(p: var TTmplParser) =
           inc(j)
     llStreamWrite(p.outp, "\\n\"")
 
-proc filterTmpl(stdin: PLLStream, filename: string, call: PNode): PLLStream =
+proc filterTmpl*(stdin: PLLStream, filename: string, call: PNode): PLLStream =
   var p: TTmplParser
   p.info = newLineInfo(filename, 0, 0)
   p.outp = llStreamOpen("")

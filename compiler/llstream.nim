@@ -84,7 +84,6 @@ const
   AdditionalLineContinuationOprs = {'#', ':', '='}
 
 proc endsWithOpr*(x: string): bool =
-  # also used by the standard template filter:
   result = x.endsWith(LineContinuationOprs)
 
 proc continueLine(line: string, inTripleString: bool): bool {.inline.} =
