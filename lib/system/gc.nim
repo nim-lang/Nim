@@ -155,14 +155,15 @@ template setColor(c, col) =
   else:
     c.refcount = c.refcount and not colorMask or col
 
-proc writeCell(msg: cstring, c: PCell) =
-  var kind = -1
-  var typName: cstring = "nil"
-  if c.typ != nil:
-    kind = ord(c.typ.kind)
-    when defined(nimTypeNames):
-      if not c.typ.name.isNil:
-        typName = c.typ.name
+when defined(logGC):
+  proc writeCell(msg: cstring, c: PCell) =
+    var kind = -1
+    var typName: cstring = "nil"
+    if c.typ != nil:
+      kind = ord(c.typ.kind)
+      when defined(nimTypeNames):
+        if not c.typ.name.isNil:
+          typName = c.typ.name
 
   when leakDetector:
     c_fprintf(stdout, "[GC] %s: %p %d %s rc=%ld from %s(%ld)\n",
