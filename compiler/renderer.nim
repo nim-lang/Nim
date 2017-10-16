@@ -37,6 +37,7 @@ type
     inGenericParams: bool
     checkAnon: bool        # we're in a context that can contain sfAnon
     inPragma: int
+    pendingNewlineCount: int
     when defined(nimpretty):
       origContent: string
 
@@ -62,9 +63,31 @@ proc renderDefinitionName*(s: PSym, noQuotes = false): string =
   else:
     result = '`' & x & '`'
 
+when not defined(nimpretty):
+  const
+    IndentWidth = 2
+    longIndentWid = IndentWidth * 2
+else:
+  template IndentWidth: untyped = lexer.gIndentationWidth
+  template longIndentWid: untyped = IndentWidth() * 2
+
+proc minmaxLine(n: PNode): (int, int) =
+  case n.kind
+  of nkTripleStrLit:
+    result = (n.info.line.int, n.info.line.int + countLines(n.strVal))
+  of nkCommentStmt:
+    result = (n.info.line.int, n.info.line.int + countLines(n.comment))
+  else:
+    result = (n.info.line.int, n.info.line.int)
+  for i in 0 ..< safeLen(n):
+    let (currMin, currMax) = minmaxLine(n[i])
+    if currMin < result[0]: result[0] = currMin
+    if currMax > result[1]: result[1] = currMax
+
+proc lineDiff(a, b: PNode): int =
+  result = minmaxLine(b)[0] - minmaxLine(a)[1]
+
 const
-  IndentWidth = 2
-  longIndentWid = 4
   MaxLineLen = 80
   LineCommentColumn = 30
 
@@ -90,7 +113,8 @@ proc addTok(g: var TSrcGen, kind: TTokType, s: string) =
 
 proc addPendingNL(g: var TSrcGen) =
   if g.pendingNL >= 0:
-    addTok(g, tkSpaces, "\n" & spaces(g.pendingNL))
+    let newlines = repeat("\n", clamp(g.pendingNewlineCount, 1, 3))
+    addTok(g, tkSpaces, newlines & spaces(g.pendingNL))
     g.lineLen = g.pendingNL
     g.pendingNL = - 1
     g.pendingWhitespace = -1
@@ -114,10 +138,16 @@ proc putNL(g: var TSrcGen) =
 
 proc optNL(g: var TSrcGen, indent: int) =
   g.pendingNL = indent
-  g.lineLen = indent          # BUGFIX
+  g.lineLen = indent
+  g.pendingNewlineCount = 0
 
 proc optNL(g: var TSrcGen) =
   optNL(g, g.indent)
+
+proc optNL(g: var TSrcGen; a, b: PNode) =
+  g.pendingNL = g.indent
+  g.lineLen = g.indent
+  g.pendingNewlineCount = lineDiff(a, b)
 
 proc indentNL(g: var TSrcGen) =
   inc(g.indent, IndentWidth)
@@ -306,10 +336,14 @@ proc ulitAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
 
 proc atom(g: TSrcGen; n: PNode): string =
   when defined(nimpretty):
+    let comment = if n.info.commentOffsetA < n.info.commentOffsetB:
+                    " " & substr(g.origContent, n.info.commentOffsetA, n.info.commentOffsetB)
+                  else:
+                    ""
     if n.info.offsetA <= n.info.offsetB:
       # for some constructed tokens this can not be the case and we're better
       # off to not mess with the offset then.
-      return substr(g.origContent, n.info.offsetA, n.info.offsetB)
+      return substr(g.origContent, n.info.offsetA, n.info.offsetB) & comment
   var f: float32
   case n.kind
   of nkEmpty: result = ""
@@ -577,12 +611,16 @@ proc gstmts(g: var TSrcGen, n: PNode, c: TContext, doIndent=true) =
   if n.kind == nkEmpty: return
   if n.kind in {nkStmtList, nkStmtListExpr, nkStmtListType}:
     if doIndent: indentNL(g)
-    for i in countup(0, sonsLen(n) - 1):
-      optNL(g)
-      if n.sons[i].kind in {nkStmtList, nkStmtListExpr, nkStmtListType}:
-        gstmts(g, n.sons[i], c, doIndent=false)
+    let L = n.len
+    for i in 0 .. L-1:
+      if i > 0:
+        optNL(g, n[i-1], n[i])
       else:
-        gsub(g, n.sons[i])
+        optNL(g)
+      if n[i].kind in {nkStmtList, nkStmtListExpr, nkStmtListType}:
+        gstmts(g, n[i], c, doIndent=false)
+      else:
+        gsub(g, n[i])
       gcoms(g)
     if doIndent: dedent(g)
   else:
@@ -1384,7 +1422,7 @@ proc renderTree*(n: PNode, renderFlags: TRenderFlags = {}): string =
 
 proc `$`*(n: PNode): string = n.renderTree
 
-proc renderModule*(n: PNode, filename: string,
+proc renderModule*(n: PNode, infile, outfile: string,
                    renderFlags: TRenderFlags = {}) =
   var
     f: File
@@ -1392,9 +1430,9 @@ proc renderModule*(n: PNode, filename: string,
   initSrcGen(g, renderFlags)
   when defined(nimpretty):
     try:
-      g.origContent = readFile(filename)
+      g.origContent = readFile(infile)
     except IOError:
-      rawMessage(errCannotOpenFile, filename)
+      rawMessage(errCannotOpenFile, infile)
 
   for i in countup(0, sonsLen(n) - 1):
     gsub(g, n.sons[i])
@@ -1406,11 +1444,11 @@ proc renderModule*(n: PNode, filename: string,
   gcoms(g)
   if optStdout in gGlobalOptions:
     write(stdout, g.buf)
-  elif open(f, filename, fmWrite):
+  elif open(f, outfile, fmWrite):
     write(f, g.buf)
     close(f)
   else:
-    rawMessage(errCannotOpenFile, filename)
+    rawMessage(errCannotOpenFile, outfile)
 
 proc initTokRender*(r: var TSrcGen, n: PNode, renderFlags: TRenderFlags = {}) =
   initSrcGen(r, renderFlags)
