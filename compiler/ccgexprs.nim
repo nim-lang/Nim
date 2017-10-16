@@ -978,9 +978,12 @@ proc genEcho(p: BProc, n: PNode) =
     p.module.includeHeader("<base/log.h>")
     linefmt(p, cpsStmts, """Genode::log(""$1);$n""", args)
   else:
-    var a: TLoc
-    initLocExpr(p, n, a)
-    linefmt(p, cpsStmts, "#echoBinSafe($1, $2);$n", a.rdLoc, n.len.rope)
+    if n.len == 0:
+      linefmt(p, cpsStmts, "#echoBinSafe(NIM_NIL, $1);$n", n.len.rope)
+    else:
+      var a: TLoc
+      initLocExpr(p, n, a)
+      linefmt(p, cpsStmts, "#echoBinSafe($1, $2);$n", a.rdLoc, n.len.rope)
     when false:
       p.module.includeHeader("<stdio.h>")
       linefmt(p, cpsStmts, "printf($1$2);$n",
