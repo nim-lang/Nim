@@ -1025,7 +1025,7 @@ proc countLeapYears*(yearSpan: int): int =
   ## counts the number of leap years up to January 1st of a given year.
   ## Keep in mind that if specified year is a leap year, the leap day
   ## has not happened before January 1st of that year.
-  (((yearSpan - 1) / 4) - ((yearSpan - 1) / 100) + ((yearSpan - 1) / 400)).int
+  (yearSpan - 1) div 4 - (yearSpan - 1) div 100 + (yearSpan - 1) div 400
 
 proc countDays*(yearSpan: int): int =
   ## Returns the number of days spanned by a given number of years.

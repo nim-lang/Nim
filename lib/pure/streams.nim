@@ -224,6 +224,38 @@ proc peekInt64*(s: Stream): int64 =
   ## peeks an int64 from the stream `s`. Raises `EIO` if an error occurred.
   peek(s, result)
 
+proc readUint8*(s: Stream): uint8 =
+  ## reads an uint8 from the stream `s`. Raises `EIO` if an error occurred.
+  read(s, result)
+
+proc peekUint8*(s: Stream): uint8 =
+  ## peeks an uint8 from the stream `s`. Raises `EIO` if an error occurred.
+  peek(s, result)
+
+proc readUint16*(s: Stream): uint16 =
+  ## reads an uint16 from the stream `s`. Raises `EIO` if an error occurred.
+  read(s, result)
+
+proc peekUint16*(s: Stream): uint16 =
+  ## peeks an uint16 from the stream `s`. Raises `EIO` if an error occurred.
+  peek(s, result)
+
+proc readUint32*(s: Stream): uint32 =
+  ## reads an uint32 from the stream `s`. Raises `EIO` if an error occurred.
+  read(s, result)
+
+proc peekUint32*(s: Stream): uint32 =
+  ## peeks an uint32 from the stream `s`. Raises `EIO` if an error occurred.
+  peek(s, result)
+
+proc readUint64*(s: Stream): uint64 =
+  ## reads an uint64 from the stream `s`. Raises `EIO` if an error occurred.
+  read(s, result)
+
+proc peekUint64*(s: Stream): uint64 =
+  ## peeks an uint64 from the stream `s`. Raises `EIO` if an error occurred.
+  peek(s, result)
+
 proc readFloat32*(s: Stream): float32 =
   ## reads a float32 from the stream `s`. Raises `EIO` if an error occurred.
   read(s, result)
