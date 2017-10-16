@@ -965,23 +965,27 @@ proc genEcho(p: BProc, n: PNode) =
   # this unusal way of implementing it ensures that e.g. ``echo("hallo", 45)``
   # is threadsafe.
   internalAssert n.kind == nkBracket
-  var args: Rope = nil
-  var a: TLoc
-  for i in countup(0, n.len-1):
-    if n.sons[i].skipConv.kind == nkNilLit:
-      add(args, ", \"nil\"")
-    else:
-      initLocExpr(p, n.sons[i], a)
-      addf(args, ", $1? ($1)->data:\"nil\"", [rdLoc(a)])
   if platform.targetOS == osGenode:
     # bypass libc and print directly to the Genode LOG session
+    var args: Rope = nil
+    var a: TLoc
+    for i in countup(0, n.len-1):
+      if n.sons[i].skipConv.kind == nkNilLit:
+        add(args, ", \"nil\"")
+      else:
+        initLocExpr(p, n.sons[i], a)
+        addf(args, ", $1? ($1)->data:\"nil\"", [rdLoc(a)])
     p.module.includeHeader("<base/log.h>")
     linefmt(p, cpsStmts, """Genode::log(""$1);$n""", args)
   else:
-    p.module.includeHeader("<stdio.h>")
-    linefmt(p, cpsStmts, "printf($1$2);$n",
-            makeCString(repeat("%s", n.len) & tnl), args)
-    linefmt(p, cpsStmts, "fflush(stdout);$n")
+    var a: TLoc
+    initLocExpr(p, n, a)
+    linefmt(p, cpsStmts, "#echoBinSafe($1, $2);$n", a.rdLoc, n.len.rope)
+    when false:
+      p.module.includeHeader("<stdio.h>")
+      linefmt(p, cpsStmts, "printf($1$2);$n",
+              makeCString(repeat("%s", n.len) & tnl), args)
+      linefmt(p, cpsStmts, "fflush(stdout);$n")
 
 proc gcUsage(n: PNode) =
   if gSelectedGC == gcNone: message(n.info, warnGcMem, n.renderTree)

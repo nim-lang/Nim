@@ -404,4 +404,16 @@ proc setStdIoUnbuffered() =
   when declared(stdin):
     discard c_setvbuf(stdin, nil, IONBF, 0)
 
+when declared(stdout):
+  proc echoBinSafe(args: openArray[string]) {.compilerProc.} =
+    proc flockfile(f: File) {.importc, noDecl.}
+    proc funlockfile(f: File) {.importc, noDecl.}
+    flockfile(stdout)
+    for s in args:
+      discard c_fwrite(s.cstring, s.len, 1, stdout)
+    const linefeed = "\n" # can be 1 or more chars
+    discard c_fwrite(linefeed.cstring, linefeed.len, 1, stdout)
+    discard c_fflush(stdout)
+    funlockfile(stdout)
+
 {.pop.}
