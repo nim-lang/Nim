@@ -396,13 +396,6 @@ typedef struct TStringDesc* string;
 #define GenericSeqSize sizeof(TGenericSeq)
 #define paramCount() cmdCount
 
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__i386__)
-#  ifndef NAN
-static unsigned long nimNaN[2]={0xffffffff, 0x7fffffff};
-#    define NAN (*(double*) nimNaN)
-#  endif
-#endif
-
 #ifndef NAN
 #  define NAN (0.0 / 0.0)
 #endif
