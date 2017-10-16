@@ -42,7 +42,8 @@ proc writeVersion() =
 proc prettyPrint(infile: string) =
   let fileIdx = fileInfoIdx(infile)
   let tree = parseFile(fileIdx, newIdentCache())
-  renderModule(tree, infile, {})
+  let outfile = changeFileExt(infile, ".pretty.nim")
+  renderModule(tree, infile, outfile, {})
 
 proc main =
   var infile: string
@@ -50,7 +51,7 @@ proc main =
   for kind, key, val in getopt():
     case kind
     of cmdArgument:
-      infile = key
+      infile = key.addFileExt(".nim")
     of cmdLongoption, cmdShortOption:
       case normalize(key)
       of "help", "h": writeHelp()
