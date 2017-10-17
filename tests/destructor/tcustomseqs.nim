@@ -5,6 +5,9 @@ discard """
 4
 5
 6
+89
+90
+90
 after 1 1'''
   cmd: '''nim c --newruntime $file'''
 """
@@ -55,18 +58,18 @@ proc `=sink`*[T](a: var myseq[T]; b: myseq[T]) =
   a.cap = b.cap
   a.data = b.data
 
-proc resize[T](s: var seq[T]) =
+proc resize[T](s: var myseq[T]) =
   if s.cap == 0: s.cap = 8
   else: s.cap = (s.cap * 3) shr 1
   if s.data == nil: inc allocCount
   s.data = cast[type(s.data)](realloc(s.data, s.cap * sizeof(T)))
 
-proc reserveSlot[T](x: var seq[T]): ptr T =
+proc reserveSlot[T](x: var myseq[T]): ptr T =
   if x.len >= x.cap: resize(x)
   result = addr(x.data[x.len])
   inc x.len
 
-template add*[T](x: var seq[T]; y: T) =
+template add*[T](x: var myseq[T]; y: T) =
   reserveSlot(x)[] = y
 
 proc shrink*[T](x: var myseq[T]; newLen: int) =
@@ -118,7 +121,9 @@ proc createSeq*[T](elems: varargs[T]): myseq[T] =
 proc len*[T](x: myseq[T]): int {.inline.} = x.len
 
 proc main =
-  let s = createSeq(1, 2, 3, 4, 5, 6)
+  var s = createSeq(1, 2, 3, 4, 5, 6)
+  s.add 89
+  s.grow s.len + 2, 90
   for i in 0 ..< s.len:
     echo s[i]
 
