@@ -363,11 +363,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
         # '=' needs to be instantiated for generics when the type is constructed:
         newbody.field = cl.c.instTypeBoundOp(cl.c, opr, result, cl.info,
                                              attachedAsgn, 1)
-    # we need to produce the destructor first here because generated '='
-    # and '=sink' operators can rely on it:
-    if newDestructors: typeBound(destructor)
-    typeBound(assignment)
-    typeBound(sink)
+    if not newDestructors: typeBound(assignment)
     let methods = skipTypes(bbody, abstractPtrs).methods
     for col, meth in items(methods):
       # we instantiate the known methods belonging to that type, this causes

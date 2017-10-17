@@ -670,6 +670,7 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
     analyseIfAddressTakenInCall(c, result)
     if callee.magic != mNone:
       result = magicsAfterOverloadResolution(c, result, flags)
+    if result.typ != nil: liftTypeBoundOps(c, result.typ)
   if c.matchedConcept == nil:
     result = evalAtCompileTime(c, result)
 
@@ -1390,6 +1391,8 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
       if tfHasAsgn in lhs.typ.flags and not lhsIsResult and
           mode != noOverloadedAsgn:
         return overloadedAsgn(c, lhs, n.sons[1])
+    else:
+      liftTypeBoundOps(c, lhs.typ)
 
     fixAbstractType(c, n)
     asgnToResultVar(c, n, n.sons[0], n.sons[1])

@@ -109,7 +109,7 @@ proc considerOverloadedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
       styleCheckUse(c.info, op)
       body.add newOpCall(op, x)
       result = true
-  of attachedAsgn:
+  of attachedAsgn, attachedSink:
     if tfHasAsgn in t.flags:
       var op: PSym
       if sameType(t, c.asgnForType):
@@ -285,3 +285,13 @@ proc getAsgnOrLiftBody(c: PContext; typ: PType; info: TLineInfo): PSym =
 proc overloadedAsgn(c: PContext; dest, src: PNode): PNode =
   let a = getAsgnOrLiftBody(c, dest.typ, dest.info)
   result = newAsgnCall(c, a, dest, src)
+
+proc liftTypeBoundOps*(c: PContext; typ: PType) =
+  ## In the semantic pass this is called in strategic places
+  ## to ensure we lift assignment, destructors and moves properly.
+  ## Since this is done in the sem* routines generics already have
+  ## been resolved for us and do not complicate the logic any further.
+  ## We have to ensure that the 'tfHasDesctructor' flags bubbles up
+  ## in the generic instantiations though.
+  ## The later 'destroyer' pass depends on it.
+  if not newDestructors or not hasDestructor(typ): return

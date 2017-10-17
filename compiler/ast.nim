@@ -1663,3 +1663,5 @@ when false:
     if n.isNil: return true
     for i in 0 ..< n.safeLen:
       if n[i].containsNil: return true
+
+template hasDestructor*(t: PType): bool = tfHasAsgn in t.flags

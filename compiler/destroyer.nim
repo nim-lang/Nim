@@ -95,8 +95,6 @@ import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   strutils, options, dfa, lowerings
 
-template hasDestructor(t: PType): bool = tfHasAsgn in t.flags
-
 const
   InterestingSyms = {skVar, skResult, skLet}
 
@@ -253,6 +251,7 @@ proc p(n: PNode; c: var Con): PNode =
       result = copyNode(n)
       recurse(n, result)
   of nkAsgn, nkFastAsgn:
+    # XXX if special, call special operator
     if n[0].kind == nkSym and interestingSym(n[0].sym):
       result = moveOrCopy(n[0], n[1], c)
     else:

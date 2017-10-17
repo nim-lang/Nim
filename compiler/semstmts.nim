@@ -553,6 +553,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     # this can only happen for errornous var statements:
     if typ == nil: continue
     typeAllowedCheck(a.info, typ, symkind)
+    liftTypeBoundOps(c, typ)
     var tup = skipTypes(typ, {tyGenericInst, tyAlias})
     if a.kind == nkVarTuple:
       if tup.kind != tyTuple:
