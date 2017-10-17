@@ -1,7 +1,7 @@
 
 import 
   intsets, ast, idents, algorithm, renderer, parser, ospaths, strutils, 
-  sequtils, msgs, modulegraphs, syntaxes, options, modulepaths
+  sequtils, msgs, modulegraphs, syntaxes, options, modulepaths, tables
 
 type
   DepN = ref object
@@ -10,7 +10,12 @@ type
     onStack: bool
     kids: seq[DepN]
     hAQ, hIS, hB, hCmd: int
+    when not defined(release):
+      expls: seq[string]
   DepG = seq[DepN]
+
+when not defined(release):
+  var idNames = newTable[int, string]()
 
 proc newDepN(id: int, pnode: PNode): DepN =
   new(result)
@@ -24,6 +29,8 @@ proc newDepN(id: int, pnode: PNode): DepN =
   result.hIS = -1
   result.hB = -1
   result.hCmd = -1
+  when not defined(release):
+    result.expls = @[]
 
 proc accQuoted(n: PNode): PIdent =
   var id = ""
@@ -41,10 +48,17 @@ proc addDecl(n: PNode; declares: var IntSet) =
   of nkPragmaExpr: addDecl(n[0], declares)
   of nkIdent:
     declares.incl n.ident.id
+    when not defined(release):
+      idNames[n.ident.id] = n.ident.s
   of nkSym:
     declares.incl n.sym.name.id
+    when not defined(release):
+      idNames[n.sym.name.id] = n.sym.name.s
   of nkAccQuoted:
-    declares.incl accQuoted(n).id
+    let a = accQuoted(n)
+    declares.incl a.id
+    when not defined(release):
+      idNames[a.id] = a.s
   of nkEnumFieldDef:
     addDecl(n[0], declares)
   else: discard
@@ -73,6 +87,9 @@ proc computeDeps(n: PNode, declares, uses: var IntSet; topLevel: bool) =
               decl(b)
           else:
             deps(a[i])
+  of nkIdentDefs:
+    for i in 1..<n.len: # avoid members identifiers in object definition
+      deps(n[i])
   of nkIdent: uses.incl n.ident.id
   of nkSym: uses.incl n.sym.name.id
   of nkAccQuoted: uses.incl accQuoted(n).id
@@ -157,6 +174,7 @@ proc splitSections(n: PNode): PNode =
     if a.kind in {nkTypeSection, nkConstSection} and a.len > 1:
       for b in a:
         var s = newNode(a.kind)
+        s.info = b.info
         s.add b
         result.add s
     else:
@@ -194,9 +212,25 @@ proc mergeSections(comps: seq[seq[DepN]], res: PNode) =
           # Problematic circular dependency, we arrange the nodes into
           # their original relative order and make sure to re-merge
           # consecutive type and const sections
-          message(cs[0].pnode.info, warnUser, 
-            "Circular dependency detected. reorder pragma may not be able to" &
-            " reorder some nodes properely")
+          var wmsg = "Circular dependency detected. reorder pragma may not be able to" &
+            " reorder some nodes properely"
+          when not defined(release):
+            wmsg &= ":\n"
+            for i in 0..<cs.len-1:
+                for j in i..<cs.len:
+                  for ci in 0..<cs[i].kids.len:
+                    if cs[i].kids[ci].id == cs[j].id:
+                      wmsg &= "line " & $cs[i].pnode.info.line &
+                        " depends on line " & $cs[j].pnode.info.line &
+                        ": " & cs[i].expls[ci] & "\n"
+            for j in 0..<cs.len-1:
+                for ci in 0..<cs[^1].kids.len:
+                  if cs[^1].kids[ci].id == cs[j].id:
+                    wmsg &= "line " & $cs[^1].pnode.info.line &
+                      " depends on line " & $cs[j].pnode.info.line &
+                      ": " & cs[^1].expls[ci] & "\n"
+          message(cs[0].pnode.info, warnUser, wmsg)
+
           var i = 0
           while i < cs.len:
             if cs[i].pnode.kind in {nkTypeSection, nkConstSection}:
@@ -319,24 +353,36 @@ proc buildGraph(n: PNode, deps: seq[(IntSet, IntSet)]): DepG =
       if j < i and nj.hasCommand and niHasCmd:
         # Preserve order for commands and calls
         ni.kids.add nj
+        when not defined(release):
+          ni.expls.add "both have commands and one comes after the other"
       elif j < i and nj.hasImportStmt:
         # Every node that comes after an import statement must
         # depend on that import
         ni.kids.add nj
+        when not defined(release):
+          ni.expls.add "parent is, or contains, an import statement and child comes after it"
       elif j < i and niHasBody and nj.hasAccQuotedDef:
         # Every function, macro, template... with a body depends
         # on precedent function declarations that have quoted names.
         # That's because it is hard to detect the use of functions
         # like "[]=", "[]", "or" ... in their bodies.
         ni.kids.add nj
+        when not defined(release):
+          ni.expls.add "one declares a quoted identifier and the other has a body and comes after it"
       elif j < i and niHasBody and not nj.hasBody and
         intersects(deps[i][0], declares):
           # Keep function declaration before function definition
           ni.kids.add nj
+          when not defined(release):
+            for dep in deps[i][0]:
+              if dep in declares:
+                ni.expls.add "one declares \"" & idNames[dep] & "\" and the other defines it"
       else:
         for d in declares:
           if uses.contains(d):
             ni.kids.add nj
+            when not defined(release):
+              ni.expls.add "one declares \"" & idNames[d] & "\" and the other uses it"
 
 proc strongConnect(v: var DepN, idx: var int, s: var seq[DepN],
                    res: var seq[seq[DepN]]) =
