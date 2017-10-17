@@ -318,16 +318,9 @@ proc overloadedAsgn(c: PContext; dest, src: PNode): PNode =
 proc liftTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
   ## In the semantic pass this is called in strategic places
   ## to ensure we lift assignment, destructors and moves properly.
-  ## Since this is done in the sem* routines generics already have
-  ## been resolved for us and do not complicate the logic any further.
-  ## We have to ensure that the 'tfHasDesctructor' flags bubbles up
-  ## in the generic instantiations though.
   ## The later 'destroyer' pass depends on it.
   if not newDestructors or not hasDestructor(typ): return
   # we generate the destructor first so that other operators can depend on it:
-  if typ.destructor == nil:
-    liftBody(c, typ, attachedDestructor, info)
-  if typ.assignment == nil:
-    liftBody(c, typ, attachedAsgn, info)
-  if typ.sink == nil:
-    liftBody(c, typ, attachedSink, info)
+  if typ.destructor == nil: liftBody(c, typ, attachedDestructor, info)
+  if typ.assignment == nil: liftBody(c, typ, attachedAsgn, info)
+  if typ.sink == nil: liftBody(c, typ, attachedSink, info)
