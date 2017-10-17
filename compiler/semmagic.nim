@@ -146,8 +146,13 @@ proc evalTypeTrait(traitCall: PNode, operand: PType, context: PSym): PNode =
     result = res.base.toNode(traitCall.info)
   of "stripGenericParams":
     result = uninstantiate(operand).toNode(traitCall.info)
+  of "supportsCopyMem":
+    let complexObj = containsGarbageCollectedRef(operand) or
+                     hasDestructor(operand)
+    result = newIntNodeT(ord(not complexObj), traitCall)
   else:
-    internalAssert false
+    localError(traitCall.info, "unknown trait")
+    result = emptyNode
 
 proc semTypeTraits(c: PContext, n: PNode): PNode =
   checkMinSonsLen(n, 2)
