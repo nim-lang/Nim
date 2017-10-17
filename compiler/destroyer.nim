@@ -76,7 +76,10 @@
 ## inefficiencies. A better strategy is to collect all the temporaries
 ## in a single object that we put into a single try-finally that
 ## surrounds the proc body. This means the code stays quite efficient
-## when compiled to C.
+## when compiled to C. In fact, we do the same for variables, so
+## destructors are called when the proc returns, not at scope exit!
+## This makes certains idioms easier to support. (Taking the slice
+## of a temporary object.)
 ##
 ## foo(bar(X(), Y()))
 ## X and Y get destroyed after bar completes:
@@ -92,105 +95,17 @@ import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   strutils, options, dfa, lowerings
 
-template hasDestructor(t: PType): bool = tfHasAsgn in t.flags
-
-when false:
-  type
-    VarInfo = object
-      hasInitValue: bool
-      addrTaken: bool
-      assigned: int      # we don't care about the 'var' vs 'let'
-                        # distinction; it's an optimization pass
-      read: int
-      scope: int         # the scope the variable is declared in
-
-    Con = object
-      t: Table[int, VarInfo]
-      owner: PSym
-      scope: int
-
-  const
-    InterestingSyms = {skVar, skResult}
-
-  proc collectData(c: var Con; n: PNode)
-
-  proc collectDef(c: var Con; n: PNode; hasInitValue: bool) =
-    if n.kind == nkSym:
-      c.t[n.sym.id] = VarInfo(hasInitValue: hasInitValue,
-                              addrTaken: false, assigned: 0, read: 0,
-                              scope: scope)
-
-  proc collectVarSection(c: var Con; n: PNode) =
-    for a in n:
-      if a.kind == nkCommentStmt: continue
-      if a.kind == nkVarTuple:
-        collectData(c, a.lastSon)
-        for i in 0 .. a.len-3: collectDef(c, a[i], a.lastSon != nil)
-      else:
-        collectData(c, a.lastSon)
-        if a.lastSon.kind != nkEmpty:
-          collectDef(c, a.sons[0], a.lastSon != nil)
-
-  proc collectData(c: var Con; n: PNode) =
-    case n.kind
-    of nkAsgn, nkFastAsgn:
-      if n[0].kind == nkSym and (let s = n[0].sym; s.owner == c.owner and
-                                s.kind in InterestingSyms):
-        inc c.t[s.id].assigned
-      collectData(c, n[1])
-    of nkSym:
-      if (let s = n[0].sym; s.owner == c.owner and
-          s.kind in InterestingSyms):
-        inc c.t[s.id].read
-    of nkAddr, nkHiddenAddr:
-      var n = n[0]
-      while n.kind == nkBracketExpr: n = n[0]
-      if (let s = n[0].sym; s.owner == c.owner and
-          s.kind in InterestingSyms):
-        c.t[s.id].addrTaken = true
-
-    of nkCallKinds:
-      if n.sons[0].kind == nkSym:
-        let s = n.sons[0].sym
-        if s.magic != mNone:
-          genMagic(c, n, s.magic)
-        else:
-          genCall(c, n)
-      else:
-        genCall(c, n)
-    of nkCharLit..nkNilLit, nkIdent: discard
-    of nkDotExpr, nkCheckedFieldExpr, nkBracketExpr,
-        nkDerefExpr, nkHiddenDeref:
-      collectData(c, n[0])
-    of nkIfStmt, nkIfExpr: genIf(c, n)
-    of nkWhenStmt:
-      # This is "when nimvm" node. Chose the first branch.
-      collectData(c, n.sons[0].sons[1])
-    of nkCaseStmt: genCase(c, n)
-    of nkWhileStmt: genWhile(c, n)
-    of nkBlockExpr, nkBlockStmt: genBlock(c, n)
-    of nkReturnStmt: genReturn(c, n)
-    of nkRaiseStmt: genRaise(c, n)
-    of nkBreakStmt: genBreak(c, n)
-    of nkTryStmt: genTry(c, n)
-    of nkStmtList, nkStmtListExpr, nkChckRangeF, nkChckRange64, nkChckRange,
-        nkBracket, nkCurly, nkPar, nkClosure, nkObjConstr:
-      for x in n: collectData(c, x)
-    of nkPragmaBlock: collectData(c, n.lastSon)
-    of nkDiscardStmt: collectData(c, n.sons[0])
-    of nkHiddenStdConv, nkHiddenSubConv, nkConv, nkExprColonExpr, nkExprEqExpr,
-        nkCast:
-      collectData(c, n.sons[1])
-    of nkObjDownConv, nkStringToCString, nkCStringToString:
-      collectData(c, n.sons[0])
-    of nkVarSection, nkLetSection: collectVarSection(c, n)
-    else: discard
+const
+  InterestingSyms = {skVar, skResult, skLet}
 
 type
   Con = object
     owner: PSym
     g: ControlFlowGraph
-    tmps: PType
+    jumpTargets: IntSet
+    tmpObj: PType
+    tmp: PSym
+    destroys, topLevelVars: PNode
 
 proc isHarmlessVar*(s: PSym; c: Con): bool =
   # 's' is harmless if it used only once and its
@@ -224,29 +139,157 @@ proc isHarmlessVar*(s: PSym; c: Con): bool =
   # L3
   #
   # So this analysis is for now overly conservative, but correct.
-  discard
+  var defsite = -1
+  var usages = 0
+  for i in 0..<c.g.len:
+    case c.g[i].kind
+    of def:
+      if c.g[i].sym == s:
+        if defsite < 0: defsite = i
+        else: return false
+    of use:
+      if c.g[i].sym == s:
+        if defsite < 0: return false
+        for j in defsite .. i:
+          # not within the same basic block?
+          if j in c.jumpTargets: return false
+        # if we want to die after the first 'use':
+        if usages > 1: return false
+        inc usages
+    of useWithinCall:
+      if c.g[i].sym == s: return false
+    of goto, fork:
+      discard "we do not perform an abstract interpretation yet"
 
 template interestingSym(s: PSym): bool =
-  s.owner == owner and s.kind in InterestingSyms and hasDestructor(s.typ)
+  s.owner == c.owner and s.kind in InterestingSyms and hasDestructor(s.typ)
 
-proc p(n, parent: PNode; c: var Con) =
+proc genSink(t: PType; dest: PNode): PNode =
+  let op = if t.sink != nil: t.sink else: t.assignment
+  assert op != nil
+  result = newTree(nkCall, newSymNode(op), newTree(nkHiddenAddr, dest))
+
+proc genCopy(t: PType; dest: PNode): PNode =
+  assert t.assignment != nil
+  result = newTree(nkCall, newSymNode(t.assignment), newTree(nkHiddenAddr, dest))
+
+proc genDestroy(t: PType; dest: PNode): PNode =
+  assert t.destructor != nil
+  result = newTree(nkCall, newSymNode(t.destructor), newTree(nkHiddenAddr, dest))
+
+proc addTopVar(c: var Con; v: PNode) =
+  c.topLevelVars.add newTree(nkIdentDefs, v, emptyNode, emptyNode)
+
+proc p(n: PNode; c: var Con): PNode
+
+template recurse(n, dest) =
+  for i in 0..<n.len:
+    dest.add p(n[i], c)
+
+proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
+  if ri.kind in nkCallKinds:
+    result = genSink(ri.typ, dest)
+    # watch out and no not transform 'ri' twice if it's a call:
+    let ri2 = copyNode(ri)
+    recurse(ri, ri2)
+    result.add ri2
+  elif ri.kind == nkSym and isHarmlessVar(ri.sym, c):
+    result = genSink(ri.typ, dest)
+    result.add p(ri, c)
+  else:
+    result = genCopy(ri.typ, dest)
+    result.add p(ri, c)
+
+proc p(n: PNode; c: var Con): PNode =
   case n.kind
   of nkVarSection, nkLetSection:
     discard "transform; var x = y to  var x; x op y  where op is a move or copy"
+    result = newNodeI(nkStmtList, n.info)
+
+    for i in 0..<n.len:
+      let it = n[i]
+      let L = it.len-1
+      let ri = it[L]
+      if it.kind == nkVarTuple and hasDestructor(ri.typ):
+        let x = lowerTupleUnpacking(it, c.owner)
+        result.add p(x, c)
+      elif it.kind == nkIdentDefs and hasDestructor(it[0].typ):
+        for j in 0..L-2:
+          let v = it[j]
+          doAssert v.kind == nkSym
+          # move the variable declaration to the top of the frame:
+          c.addTopVar v
+          # make sure it's destroyed at the end of the proc:
+          c.destroys.add genDestroy(v.typ, v)
+          if ri.kind != nkEmpty:
+            let r = moveOrCopy(v, ri, c)
+            result.add r
+      else:
+        # keep it, but transform 'ri':
+        var varSection = copyNode(n)
+        var itCopy = copyNode(it)
+        for j in 0..L-1:
+          itCopy.add it[j]
+        itCopy.add p(ri, c)
+        varSection.add itCopy
+        result.add varSection
   of nkCallKinds:
     if n.typ != nil and hasDestructor(n.typ):
       discard "produce temp creation"
+      result = newNodeIT(nkStmtListExpr, n.info, n.typ)
+      let f = newSym(skField, getIdent(":d" & $c.tmpObj.n.len), c.owner, n.info)
+      f.typ = n.typ
+      rawAddField c.tmpObj, f
+      var m = genSink(n.typ, rawDirectAccess(c.tmp, f))
+      var call = copyNode(n)
+      recurse(n, call)
+      m.add call
+      result.add m
+      result.add rawDirectAccess(c.tmp, f)
+      c.destroys.add genDestroy(n.typ, rawDirectAccess(c.tmp, f))
+    else:
+      result = copyNode(n)
+      recurse(n, result)
   of nkAsgn, nkFastAsgn:
+    # XXX if special, call special operator
     if n[0].kind == nkSym and interestingSym(n[0].sym):
-      discard "use move or assignment"
+      result = moveOrCopy(n[0], n[1], c)
+    else:
+      result = copyNode(n)
+      recurse(n, result)
+  of nkNone..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef,
+      nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
+    result = n
   else:
-    for i in 0..<n.len:
-      p(n[i], n, c)
+    result = copyNode(n)
+    recurse(n, result)
 
-proc injectDestructorCalls*(owner: PSym; n: PNode;
-                            disableExceptions = false): PNode =
-  when false:
-    var c = Con(t: initTable[int, VarInfo](), owner: owner)
-    collectData(c, n)
-  var allTemps = createObj(owner, n.info)
+proc injectDestructorCalls*(owner: PSym; n: PNode): PNode =
+  var c: Con
+  c.owner = owner
+  c.tmp = newSym(skTemp, getIdent":d", owner, n.info)
+  c.tmpObj = createObj(owner, n.info)
+  c.tmp.typ = c.tmpObj
+  c.destroys = newNodeI(nkStmtList, n.info)
+  c.topLevelVars = newNodeI(nkVarSection, n.info)
   let cfg = constructCfg(owner, n)
+  shallowCopy(c.g, cfg)
+  c.jumpTargets = initIntSet()
+  for i in 0..<c.g.len:
+    if c.g[i].kind in {goto, fork}:
+      c.jumpTargets.incl(i+c.g[i].dest)
+  let body = p(n, c)
+  if c.tmp.typ.n.len > 0:
+    c.addTopVar(newSymNode c.tmp)
+  result = newNodeI(nkStmtList, n.info)
+  if c.topLevelVars.len > 0:
+    result.add c.topLevelVars
+  if c.destroys.len > 0:
+    result.add newTryFinally(body, c.destroys)
+  else:
+    result.add body
+
+  when defined(nimDebugDestroys):
+    echo "------------------------------------"
+    echo owner.name.s, " transformed to: "
+    echo result

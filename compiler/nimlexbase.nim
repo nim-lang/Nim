@@ -123,7 +123,7 @@ proc fillBaseLexer(L: var TBaseLexer, pos: int): int =
     result = pos + 1          # nothing to do
   else:
     fillBuffer(L)
-    L.offsetBase += pos
+    L.offsetBase += pos + 1
     L.bufpos = 0
     result = 0
   L.lineStart = result

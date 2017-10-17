@@ -199,7 +199,7 @@ The rules for compile-time computability are:
    (possibly empty) list of compile-time computable arguments.
 
 
-Constants cannot be of type ``ptr``, ``ref``, ``var`` or ``object``, nor can
+Constants cannot be of type ``ptr``, ``ref`` or ``var``, nor can
 they contain such a type.
 
 

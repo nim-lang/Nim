@@ -670,6 +670,7 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
     analyseIfAddressTakenInCall(c, result)
     if callee.magic != mNone:
       result = magicsAfterOverloadResolution(c, result, flags)
+    if result.typ != nil: liftTypeBoundOps(c, result.typ)
   if c.matchedConcept == nil:
     result = evalAtCompileTime(c, result)
 
@@ -1296,10 +1297,13 @@ proc takeImplicitAddr(c: PContext, n: PNode): PNode =
 proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
   if le.kind == nkHiddenDeref:
     var x = le.sons[0]
-    if x.typ.kind == tyVar and x.kind == nkSym and x.sym.kind == skResult:
-      n.sons[0] = x # 'result[]' --> 'result'
-      n.sons[1] = takeImplicitAddr(c, ri)
-      x.typ.flags.incl tfVarIsPtr
+    if x.typ.kind == tyVar and x.kind == nkSym:
+      if x.sym.kind == skResult:
+        n.sons[0] = x # 'result[]' --> 'result'
+        n.sons[1] = takeImplicitAddr(c, ri)
+      if x.sym.kind != skParam:
+        # XXX This is hacky. See bug #4910.
+        x.typ.flags.incl tfVarIsPtr
       #echo x.info, " setting it for this type ", typeToString(x.typ), " ", n.info
 
 template resultTypeIsInferrable(typ: PType): untyped =
@@ -1383,9 +1387,12 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           typeMismatch(n.info, lhs.typ, rhs.typ)
 
     n.sons[1] = fitNode(c, le, rhs, n.info)
-    if tfHasAsgn in lhs.typ.flags and not lhsIsResult and
-        mode != noOverloadedAsgn:
-      return overloadedAsgn(c, lhs, n.sons[1])
+    if not newDestructors:
+      if tfHasAsgn in lhs.typ.flags and not lhsIsResult and
+          mode != noOverloadedAsgn:
+        return overloadedAsgn(c, lhs, n.sons[1])
+    else:
+      liftTypeBoundOps(c, lhs.typ)
 
     fixAbstractType(c, n)
     asgnToResultVar(c, n, n.sons[0], n.sons[1])

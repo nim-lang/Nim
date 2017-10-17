@@ -184,6 +184,8 @@ when not defined(JS):
   proc pow*(x, y: float32): float32 {.importc: "powf", header: "<math.h>".}
   proc pow*(x, y: float64): float64 {.importc: "pow", header: "<math.h>".}
     ## computes x to power raised of y.
+    ##
+    ## To compute power between integers, use `^` e.g. 2 ^ 6
 
   proc erf*(x: float32): float32 {.importc: "erff", header: "<math.h>".}
   proc erf*(x: float64): float64 {.importc: "erf", header: "<math.h>".}

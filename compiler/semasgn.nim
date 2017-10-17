@@ -92,13 +92,13 @@ proc newAsgnStmt(le, ri: PNode): PNode =
   result.sons[0] = le
   result.sons[1] = ri
 
-proc newDestructorCall(op: PSym; x: PNode): PNode =
+proc newOpCall(op: PSym; x: PNode): PNode =
   result = newNodeIT(nkCall, x.info, op.typ.sons[0])
   result.add(newSymNode(op))
   result.add x
 
 proc newDeepCopyCall(op: PSym; x, y: PNode): PNode =
-  result = newAsgnStmt(x, newDestructorCall(op, y))
+  result = newAsgnStmt(x, newOpCall(op, y))
 
 proc considerOverloadedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
   case c.kind
@@ -107,9 +107,9 @@ proc considerOverloadedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
     if op != nil:
       markUsed(c.info, op, c.c.graph.usageSym)
       styleCheckUse(c.info, op)
-      body.add newDestructorCall(op, x)
+      body.add newOpCall(op, x)
       result = true
-  of attachedAsgn:
+  of attachedAsgn, attachedSink:
     if tfHasAsgn in t.flags:
       var op: PSym
       if sameType(t, c.asgnForType):
@@ -285,3 +285,13 @@ proc getAsgnOrLiftBody(c: PContext; typ: PType; info: TLineInfo): PSym =
 proc overloadedAsgn(c: PContext; dest, src: PNode): PNode =
   let a = getAsgnOrLiftBody(c, dest.typ, dest.info)
   result = newAsgnCall(c, a, dest, src)
+
+proc liftTypeBoundOps*(c: PContext; typ: PType) =
+  ## In the semantic pass this is called in strategic places
+  ## to ensure we lift assignment, destructors and moves properly.
+  ## Since this is done in the sem* routines generics already have
+  ## been resolved for us and do not complicate the logic any further.
+  ## We have to ensure that the 'tfHasDesctructor' flags bubbles up
+  ## in the generic instantiations though.
+  ## The later 'destroyer' pass depends on it.
+  if not newDestructors or not hasDestructor(typ): return

@@ -19,18 +19,6 @@ when defined(useDfa):
 #
 # * effect+exception tracking
 # * "usage before definition" checking
-# * checks for invalid usages of compiletime magics (not implemented)
-# * checks for invalid usages of NimNode (not implemented)
-# * later: will do an escape analysis for closures at least
-
-# Predefined effects:
-#   io, time (time dependent), gc (performs GC'ed allocation), exceptions,
-#   side effect (accesses global), store (stores into *type*),
-#   store_unknown (performs some store) --> store(any)|store(x)
-#   load (loads from *type*), recursive (recursive call), unsafe,
-#   endless (has endless loops), --> user effects are defined over *patterns*
-#   --> a TR macro can annotate the proc with user defined annotations
-#   --> the effect system can access these
 
 # ------------------------ exception and tag tracking -------------------------
 
@@ -251,6 +239,7 @@ proc useVar(a: PEffects, n: PNode) =
         (tfHasGCedMem in s.typ.flags or s.typ.isGCedMem):
       #if warnGcUnsafe in gNotes: warnAboutGcUnsafe(n)
       markGcUnsafe(a, s)
+      markSideEffect(a, s)
     else:
       markSideEffect(a, s)
 
@@ -593,6 +582,12 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
   if paramType != nil and paramType.kind == tyVar:
     if n.kind == nkSym and isLocalVar(tracked, n.sym):
       makeVolatile(tracked, n.sym)
+  if paramType != nil and paramType.kind == tyProc and tfGcSafe in paramType.flags:
+    let argtype = skipTypes(a.typ, abstractInst)
+    # XXX figure out why this can be a non tyProc here. See httpclient.nim for an
+    # example that triggers it.
+    if argtype.kind == tyProc and notGcSafe(argtype) and not tracked.inEnforcedGcSafe:
+      localError(n.info, $n & " is not GC safe")
   notNilCheck(tracked, n, paramType)
 
 proc breaksBlock(n: PNode): bool =
@@ -745,7 +740,7 @@ proc track(tracked: PEffects, n: PNode) =
           if not (a.kind == nkSym and a.sym == tracked.owner):
             markSideEffect(tracked, a)
     if a.kind != nkSym or a.sym.magic != mNBindSym:
-      for i in 1 .. <len(n): trackOperand(tracked, n.sons[i], paramType(op, i))
+      for i in 1 ..< len(n): trackOperand(tracked, n.sons[i], paramType(op, i))
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
       # may not look like an assignment, but it is:
       let arg = n.sons[1]
@@ -982,9 +977,10 @@ proc trackProc*(s: PSym, body: PNode) =
     message(s.info, warnLockLevel,
       "declared lock level is $1, but real lock level is $2" %
         [$s.typ.lockLevel, $t.maxLockLevel])
-  if s.kind == skFunc:
-    when defined(dfa): dataflowAnalysis(s, body)
-    trackWrites(s, body)
+  when false:
+    if s.kind == skFunc:
+      when defined(dfa): dataflowAnalysis(s, body)
+      trackWrites(s, body)
 
 proc trackTopLevelStmt*(module: PSym; n: PNode) =
   if n.kind in {nkPragma, nkMacroDef, nkTemplateDef, nkProcDef, nkFuncDef,

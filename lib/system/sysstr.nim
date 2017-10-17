@@ -338,9 +338,10 @@ proc add*(result: var string; x: float) =
     buf[n] = '.'
     buf[n+1] = '0'
     buf[n+2] = '\0'
-  # On Windows nice numbers like '1.#INF', '-1.#INF' or '1.#NAN' are produced.
+  # On Windows nice numbers like '1.#INF', '-1.#INF' or '1.#NAN'
+  # of '-1.#IND' are produced.
   # We want to get rid of these here:
-  if buf[n-1] in {'n', 'N'}:
+  if buf[n-1] in {'n', 'N', 'D', 'd'}:
     result.add "nan"
   elif buf[n-1] == 'F':
     if buf[0] == '-':

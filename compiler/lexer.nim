@@ -129,6 +129,7 @@ type
     when defined(nimpretty):
       offsetA*, offsetB*: int   # used for pretty printing so that literals
                                 # like 0b01 or  r"\L" are unaffected
+      commentOffsetA*, commentOffsetB*: int
 
   TErrorHandler* = proc (info: TLineInfo; msg: TMsgKind; arg: string)
   TLexer* = object of TBaseLexer
@@ -144,6 +145,10 @@ type
     when defined(nimsuggest):
       previousToken: TLineInfo
 
+when defined(nimpretty):
+  var
+    gIndentationWidth*: int
+
 var gLinesCompiled*: int  # all lines that have been compiled
 
 proc getLineInfo*(L: TLexer, tok: TToken): TLineInfo {.inline.} =
@@ -151,6 +156,8 @@ proc getLineInfo*(L: TLexer, tok: TToken): TLineInfo {.inline.} =
   when defined(nimpretty):
     result.offsetA = tok.offsetA
     result.offsetB = tok.offsetB
+    result.commentOffsetA = tok.commentOffsetA
+    result.commentOffsetB = tok.commentOffsetB
 
 proc isKeyword*(kind: TTokType): bool =
   result = (kind >= tokKeywordLow) and (kind <= tokKeywordHigh)
@@ -198,6 +205,9 @@ proc initToken*(L: var TToken) =
   L.fNumber = 0.0
   L.base = base10
   L.ident = nil
+  when defined(nimpretty):
+    L.commentOffsetA = 0
+    L.commentOffsetB = 0
 
 proc fillToken(L: var TToken) =
   L.tokType = tkInvalid
@@ -208,6 +218,9 @@ proc fillToken(L: var TToken) =
   L.fNumber = 0.0
   L.base = base10
   L.ident = nil
+  when defined(nimpretty):
+    L.commentOffsetA = 0
+    L.commentOffsetB = 0
 
 proc openLexer*(lex: var TLexer, fileIdx: int32, inputstream: PLLStream;
                  cache: IdentCache) =
@@ -996,18 +1009,27 @@ proc skip(L: var TLexer, tok: var TToken) =
     of '#':
       # do not skip documentation comment:
       if buf[pos+1] == '#': break
+      when defined(nimpretty):
+        tok.commentOffsetA = L.offsetBase + pos
       if buf[pos+1] == '[':
         skipMultiLineComment(L, tok, pos+2, false)
         pos = L.bufpos
         buf = L.buf
+        when defined(nimpretty):
+          tok.commentOffsetB = L.offsetBase + pos
       else:
         tokenBegin(tok, pos)
         while buf[pos] notin {CR, LF, nimlexbase.EndOfFile}: inc(pos)
         tokenEndIgnore(tok, pos+1)
+        when defined(nimpretty):
+          tok.commentOffsetB = L.offsetBase + pos + 1
     else:
       break                   # EndOfFile also leaves the loop
   tokenEndPrevious(tok, pos-1)
   L.bufpos = pos
+  when defined(nimpretty):
+    if gIndentationWidth <= 0:
+      gIndentationWidth = tok.indent
 
 proc rawGetTok*(L: var TLexer, tok: var TToken) =
   template atTokenEnd() {.dirty.} =
@@ -1030,7 +1052,7 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
   var c = L.buf[L.bufpos]
   tok.line = L.lineNumber
   tok.col = getColNumber(L, L.bufpos)
-  if c in SymStartChars - {'r', 'R', 'l'}:
+  if c in SymStartChars - {'r', 'R'}:
     getSymbol(L, tok)
   else:
     case c
@@ -1047,12 +1069,6 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
     of ',':
       tok.tokType = tkComma
       inc(L.bufpos)
-    of 'l':
-      # if we parsed exactly one character and its a small L (l), this
-      # is treated as a warning because it may be confused with the number 1
-      if L.buf[L.bufpos+1] notin (SymChars + {'_'}):
-        lexMessage(L, warnSmallLshouldNotBeUsed)
-      getSymbol(L, tok)
     of 'r', 'R':
       if L.buf[L.bufpos + 1] == '\"':
         inc(L.bufpos)

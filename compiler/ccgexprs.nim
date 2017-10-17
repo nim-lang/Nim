@@ -965,23 +965,30 @@ proc genEcho(p: BProc, n: PNode) =
   # this unusal way of implementing it ensures that e.g. ``echo("hallo", 45)``
   # is threadsafe.
   internalAssert n.kind == nkBracket
-  var args: Rope = nil
-  var a: TLoc
-  for i in countup(0, n.len-1):
-    if n.sons[i].skipConv.kind == nkNilLit:
-      add(args, ", \"nil\"")
-    else:
-      initLocExpr(p, n.sons[i], a)
-      addf(args, ", $1? ($1)->data:\"nil\"", [rdLoc(a)])
   if platform.targetOS == osGenode:
     # bypass libc and print directly to the Genode LOG session
+    var args: Rope = nil
+    var a: TLoc
+    for i in countup(0, n.len-1):
+      if n.sons[i].skipConv.kind == nkNilLit:
+        add(args, ", \"nil\"")
+      else:
+        initLocExpr(p, n.sons[i], a)
+        addf(args, ", $1? ($1)->data:\"nil\"", [rdLoc(a)])
     p.module.includeHeader("<base/log.h>")
     linefmt(p, cpsStmts, """Genode::log(""$1);$n""", args)
   else:
-    p.module.includeHeader("<stdio.h>")
-    linefmt(p, cpsStmts, "printf($1$2);$n",
-            makeCString(repeat("%s", n.len) & tnl), args)
-    linefmt(p, cpsStmts, "fflush(stdout);$n")
+    if n.len == 0:
+      linefmt(p, cpsStmts, "#echoBinSafe(NIM_NIL, $1);$n", n.len.rope)
+    else:
+      var a: TLoc
+      initLocExpr(p, n, a)
+      linefmt(p, cpsStmts, "#echoBinSafe($1, $2);$n", a.rdLoc, n.len.rope)
+    when false:
+      p.module.includeHeader("<stdio.h>")
+      linefmt(p, cpsStmts, "printf($1$2);$n",
+              makeCString(repeat("%s", n.len) & tnl), args)
+      linefmt(p, cpsStmts, "fflush(stdout);$n")
 
 proc gcUsage(n: PNode) =
   if gSelectedGC == gcNone: message(n.info, warnGcMem, n.renderTree)
@@ -1248,17 +1255,31 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
   if d.k == locNone:
     getTemp(p, n.typ, d)
   # generate call to newSeq before adding the elements per hand:
-  var L = int(lengthOrd(n.sons[1].typ))
-
+  let L = int(lengthOrd(n.sons[1].typ))
   genNewSeqAux(p, d, intLiteral(L))
   initLocExpr(p, n.sons[1], a)
-  for i in countup(0, L - 1):
+  # bug #5007; do not produce excessive C source code:
+  if L < 10:
+    for i in countup(0, L - 1):
+      initLoc(elem, locExpr, lodeTyp elemType(skipTypes(n.typ, abstractInst)), OnHeap)
+      elem.r = rfmt(nil, "$1->data[$2]", rdLoc(d), intLiteral(i))
+      elem.storage = OnHeap # we know that sequences are on the heap
+      initLoc(arr, locExpr, lodeTyp elemType(skipTypes(n.sons[1].typ, abstractInst)), a.storage)
+      arr.r = rfmt(nil, "$1[$2]", rdLoc(a), intLiteral(i))
+      genAssignment(p, elem, arr, {afDestIsNil, needToCopy})
+  else:
+    var i: TLoc
+    getTemp(p, getSysType(tyInt), i)
+    let oldCode = p.s(cpsStmts)
+    linefmt(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",  i.r, L.rope)
     initLoc(elem, locExpr, lodeTyp elemType(skipTypes(n.typ, abstractInst)), OnHeap)
-    elem.r = rfmt(nil, "$1->data[$2]", rdLoc(d), intLiteral(i))
+    elem.r = rfmt(nil, "$1->data[$2]", rdLoc(d), rdLoc(i))
     elem.storage = OnHeap # we know that sequences are on the heap
     initLoc(arr, locExpr, lodeTyp elemType(skipTypes(n.sons[1].typ, abstractInst)), a.storage)
-    arr.r = rfmt(nil, "$1[$2]", rdLoc(a), intLiteral(i))
+    arr.r = rfmt(nil, "$1[$2]", rdLoc(a), rdLoc(i))
     genAssignment(p, elem, arr, {afDestIsNil, needToCopy})
+    lineF(p, cpsStmts, "}$n", [])
+
 
 proc genNewFinalize(p: BProc, e: PNode) =
   var
