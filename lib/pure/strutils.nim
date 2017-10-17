@@ -2326,36 +2326,33 @@ proc removePrefix*(s: var string, chars: set[char] = Newlines) {.
   ## .. code-block:: nim
   ##   var userInput = "\r\n*~Hello World!"
   ##   userInput.removePrefix
-  ##   userInput == "*~Hello World!"
+  ##   doAssert userInput == "*~Hello World!"
   ##   userInput.removePrefix({'~', '*'})
-  ##   userInput == "Hello World!"
+  ##   doAssert userInput == "Hello World!"
   ##
   ##   var otherInput = "?!?Hello!?!"
   ##   otherInput.removePrefix({'!', '?'})
-  ##   otherInput == "Hello!?!"
-  if s.len == 0: return
+  ##   doAssert otherInput == "Hello!?!"
   var start = 0
-  while s[start] in chars: start += 1
+  while start < s.len and s[start] in chars: start += 1
   if start > 0: s.delete(0, start - 1)
 
 proc removePrefix*(s: var string, c: char) {.
   rtl, extern: "nsuRemovePrefixChar".} =
   ## Removes a single character (in-place) from the start of a string.
   ## .. code-block:: nim
-  ##   var
-  ##     ident = "pControl"
+  ##   var ident = "pControl"
   ##   ident.removePrefix('p')
-  ##   ident == "Control"
+  ##   doAssert ident == "Control"
   removePrefix(s, chars = {c})
 
 proc removePrefix*(s: var string, prefix: string) {.
   rtl, extern: "nsuRemovePrefixString".} =
   ## Remove the first matching prefix (in-place) from a string.
   ## .. code-block:: nim
-  ##   var
-  ##     answers = "yesyes"
+  ##   var answers = "yesyes"
   ##   answers.removePrefix("yes")
-  ##   answers == "yes"
+  ##   doAssert answers == "yes"
   if s.startsWith(prefix):
     s.delete(0, prefix.len - 1)
 

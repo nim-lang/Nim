@@ -80,6 +80,30 @@ proc testRemovePrefix =
   s.removePrefix({'l','o'})
   assert s == "s"
 
+  s = "aeiou"
+  s.removePrefix("")
+  assert s == "aeiou"
+
+  s = ""
+  s.removePrefix("")
+  assert s == ""
+
+  s = "  "
+  s.removePrefix
+  assert s == "  "
+
+  s = "  "
+  s.removePrefix("")
+  assert s == "  "
+
+  s = "    "
+  s.removePrefix(" ")
+  assert s == "   "
+
+  s = "    "
+  s.removePrefix(' ')
+  assert s == ""
+
   # Contrary to Chomp in other languages
   # empty string does not change behaviour
   s = "\r\n\r\nhello"
