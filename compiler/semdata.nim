@@ -70,6 +70,7 @@ type
 
   TTypeAttachedOp* = enum
     attachedAsgn,
+    attachedSink,
     attachedDeepCopy,
     attachedDestructor
 
