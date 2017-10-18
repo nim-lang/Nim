@@ -203,7 +203,7 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       tyPtr, tyString, tyRef, tyOpt:
     defaultOp(c, t, body, x, y)
   of tyArray, tySequence:
-    if tfHasAsgn in t.flags:
+    if {tfHasAsgn, tfUncheckedArray} * t.flags == {tfHasAsgn}:
       if t.kind == tySequence:
         # XXX add 'nil' handling here
         body.add newSeqCall(c.c, x, y)
