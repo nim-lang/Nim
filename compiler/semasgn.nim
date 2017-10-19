@@ -320,6 +320,7 @@ proc liftTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
   ## to ensure we lift assignment, destructors and moves properly.
   ## The later 'destroyer' pass depends on it.
   if not newDestructors or not hasDestructor(typ): return
+  let typ = typ.skipTypes({tyGenericInst, tyAlias})
   # we generate the destructor first so that other operators can depend on it:
   if typ.destructor == nil: liftBody(c, typ, attachedDestructor, info)
   if typ.assignment == nil: liftBody(c, typ, attachedAsgn, info)
