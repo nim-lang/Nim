@@ -1832,7 +1832,8 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
       of LastBlockStmts:
         for j in countup(i + 1, length - 1):
           case n.sons[j].kind
-          of nkPragma, nkCommentStmt, nkNilLit, nkEmpty: discard
+          of nkPragma, nkCommentStmt, nkNilLit, nkEmpty, nkBlockExpr,
+             nkBlockStmt, nkState: discard
           else: localError(n.sons[j].info, errStmtInvalidAfterReturn)
       else: discard
 
