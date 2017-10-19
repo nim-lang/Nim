@@ -4,7 +4,7 @@ foo bar to appendmore here
 foo bar to appendmore here
 foo bar to appendmore here
 foo bar to appendmore here
-after 16 16'''
+after 20 20'''
   cmd: '''nim c --newruntime $file'''
 """
 
@@ -91,6 +91,9 @@ proc main(n: int) =
     let c = b & create"more here"
     a.add c
     echo cstring(a.data)
+
+  var x: array[4, mystring]
+  for i in 0..high(x): x[i] = create"added to array"
 
 main(1000)
 echo "after ", allocCount, " ", deallocCount

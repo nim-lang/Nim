@@ -49,3 +49,6 @@ proc stripGenericParams*(t: typedesc): typedesc {.magic: "TypeTrait".}
   ## This trait is similar to `genericHead`, but instead of producing
   ## error for non-generic types, it will just return them unmodified
 
+proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
+  ## This trait returns true iff the type ``t`` is safe to use for
+  ## `copyMem`:idx:. Other languages name a type like these `blob`:idx:.
