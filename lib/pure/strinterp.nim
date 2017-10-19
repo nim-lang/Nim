@@ -57,14 +57,11 @@ proc formatInt(n: SomeNumber, radix = 10, len = 0, fill = ' ', lowerCase = false
     for i in result.len..<length:
       result.add(fill)
   else:
-    if fill != '0':
-      # The sign must be near the number
-      if s:
-        result = "-" & result
+    # The sign must be near the number
+    if fill != '0' and s:
+      result = "-" & result
     var toFill = length - result.len
-    var prefix = newString(toFill)
-    for idx in 0..<toFill:
-      prefix[idx] = fill
+    var prefix = repeat(fill, toFill)
     if fill == '0' and s:
       prefix[0] = '-'
     result = prefix & result
@@ -288,6 +285,12 @@ when isMainModule:
   check fmt"${12345}%-4d", "12345"
   check fmt"${12345}%08d", "00012345"
   check fmt"${-12345}%08d", "-0012345"
+  check fmt"${0}%0d", "0"
+  check fmt"${0}%02d", "00"
+  check fmt"${-1}%3d", " -1"
+  check fmt"${-1}%03d", "-01"
+  check fmt"${10}", "10"
+  check fmt"${16}%X", "F"
   doAssert(not compiles(fmt"""${"12345"}%d"""))
 
   # Float tests
