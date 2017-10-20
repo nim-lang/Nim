@@ -321,6 +321,34 @@ proc `$`*(u: Uri): string =
     result.add("#")
     result.add(u.anchor)
 
+proc reverseNotation*(hostname: string): string =
+  ## returns the `reverse domain name notation 
+  ## <https://en.wikipedia.org/wiki/Reverse_domain_name_notation>`_. 
+  ## of the given hostname.
+  ## A high performance version of this:
+  ## .. code-block::
+  ##   return hostname.split(".").reversed().join(".")
+  result = ""
+  var
+    pos: int = 0
+    buf: string = ""
+    ch: char
+  while true:
+    ch = hostname[pos]
+    if ch == '.' or pos == hostname.len:
+        if pos < hostname.len:
+            buf.insert ".", 0
+        result.insert(buf,0)
+        buf.setLen 0
+    else:
+        buf.add ch
+    if pos == hostname.len: break
+    pos.inc
+
+proc reverseNotation*(uri: Uri): string =
+  return uri.hostname.reverseNotation
+
+
 when isMainModule:
   block:
     let str = "http://localhost"
@@ -523,5 +551,15 @@ when isMainModule:
     doAssert "https://example.com/about/staff.html".parseUri().isAbsolute == true
     doAssert "https://example.com/about/staff.html?".parseUri().isAbsolute == true
     doAssert "https://example.com/about/staff.html?parameters".parseUri().isAbsolute == true
+
+  block: # reverseNotation tests
+    assert  "foo".reverseNotation == "foo"
+    assert  "foo.baa".reverseNotation == "baa.foo"
+    assert  "foo.baa.baz".reverseNotation == "baz.baa.foo"
+    assert  "".reverseNotation == ""
+    assert  ".".reverseNotation == "."
+    assert  "..".reverseNotation == ".."
+    assert "foo.baa".reverseNotation.reverseNotation == "foo.baa"
+    doAssert "https://example.com/".parseUri().reverseNotation == "com.example"
 
   echo("All good!")
