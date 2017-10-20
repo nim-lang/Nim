@@ -1,22 +1,25 @@
-import strutils
-
-proc htmlQuote*(raw: string): string =
-  result = raw.multiReplace(
-    ("&", "&amp;"),
-    ("\"", "&quot;"),
-    ("'", "&apos;"),
-    ("<", "&lt;"),
-    (">", "&gt;")
-  )
-
-const
-  html_begin_1* = """
+#? stdtmpl(subsChar = '%', metaChar = '#', emit = "outfile.write")
+#import strutils
+#
+#proc htmlQuote(raw: string): string =
+#  result = raw.multiReplace(
+#    ("&", "&amp;"),
+#    ("\"", "&quot;"),
+#    ("'", "&apos;"),
+#    ("<", "&lt;"),
+#    (">", "&gt;")
+#  )
+#
+#proc generateHtmlBegin(outfile: File) =
 <!DOCTYPE html>
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Testament Test Results</title>""" 
-  html_begin_2* = """
+    <title>Testament Test Results</title>
+    <script src="https://ajax.aspnetcdn.com/ajax/jquery/jquery-2.2.0.min.js" integrity="sha384-K+ctZQ+LL8q6tP7I94W+qzQsfRV2a+AfHIi9k8z8l9ggpc8X+Ytst4yBo/hH+8Fk" crossorigin="anonymous"></script>
+    <script src="https://ajax.aspnetcdn.com/ajax/bootstrap/3.3.7/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://ajax.aspnetcdn.com/ajax/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://ajax.aspnetcdn.com/ajax/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous" />
     <script>
         /**
         * Callback function that is executed for each Element in an array.
@@ -137,52 +140,57 @@ const
 </head>
 <body>
     <div class="container">
-        <h1>Testament Test Results <small>Nim Tester</small></h1>"""
-  html_tablist_begin* = """
-        <ul class="nav nav-tabs" role="tablist">"""
-  html_tablistitem_format* = """
-            <li role="presentation" class="$firstTabActiveClass">
-                <a href="#tab-commit-$commitId-machine-$machineId" aria-controls="tab-commit-$commitId-machine-$machineId" role="tab" data-toggle="tab">
-                    $branch#$hash@$machineName
+        <h1>Testament Test Results <small>Nim Tester</small></h1>
+#proc generateHtmlTabListBegin(outfile: File) =
+        <ul class="nav nav-tabs" role="tablist">
+#proc generateHtmlTabListItem(outfile: File, firstTabActiveClass, commitId, 
+#  machineId, branch, hash, machineName: string) =
+            <li role="presentation" class="%firstTabActiveClass">
+                <a href="#tab-commit-%commitId-machine-%machineId" aria-controls="tab-commit-%commitId-machine-%machineId" role="tab" data-toggle="tab">
+                    %branch#%hash@%machineName
                 </a>
-            </li>"""
-  html_tablist_end* = """
-        </ul>"""
-  html_tabcontents_begin* = """
-        <div class="tab-content">"""
-  html_tabpage_begin_format* = """
-            <div id="tab-commit-$commitId-machine-$machineId" class="tab-pane fade$firstTabActiveClass" role="tabpanel">
-                <h2>$branch#$hash@$machineName</h2>
+            </li>
+#proc generateHtmlTabListEnd(outfile: File) =
+        </ul>
+#proc generateHtmlTabContentsBegin(outfile: File) =
+        <div class="tab-content">
+#proc generateHtmlTabPageBegin(oufile: File, firstTabActiveClass, commitId,
+#  machineId, branch, hash, machineName, os, cpu: string, totalCount: int,
+#  successCount: int, successPercentage: string,
+#  ignoredCount: int, ignoredPercentage: string,
+#  failedCount: int, failedPercentage: string) =
+            <div id="tab-commit-%commitId-machine-%machineId" class="tab-pane fade%firstTabActiveClass" role="tabpanel">
+                <h2>%branch#%hash@%machineName</h2>
                 <dl class="dl-horizontal">
                     <dt>Branch</dt>
-                    <dd>$branch</dd>
+                    <dd>%branch</dd>
                     <dt>Commit Hash</dt>
-                    <dd><code>$hash</code></dd>
+                    <dd><code>%hash</code></dd>
                     <dt>Machine Name</dt>
-                    <dd>$machineName</dd>
+                    <dd>%machineName</dd>
                     <dt>OS</dt>
-                    <dd>$os</dd>
+                    <dd>%os</dd>
                     <dt title="CPU Architecture">CPU</dt>
-                    <dd>$cpu</dd>
+                    <dd>%cpu</dd>
                     <dt>All Tests</dt>
                     <dd>
                         <span class="glyphicon glyphicon-th-list"></span>
-                        $totalCount
+                        %totalCount
                     </dd>
                     <dt>Successful Tests</dt>
                     <dd>
                         <span class="glyphicon glyphicon-ok-sign"></span>
-                        $successCount ($successPercentage)
+                        %successCount (%successPercentage)
                     </dd>
                     <dt>Skipped Tests</dt>
                     <dd>
                         <span class="glyphicon glyphicon-question-sign"></span>
-                        $ignoredCount ($ignoredPercentage)
+                        %ignoredCount (%ignoredPercentage)
                     </dd>
                     <dt>Failed Tests</dt>
                     <dd>
                         <span class="glyphicon glyphicon-exclamation-sign"></span>
-                        $failedCount ($failedPercentage)
+                        %failedCount (%failedPercentage)
                     </dd>
                 </dl>
                 <div class="table-responsive">
@@ -191,10 +199,10 @@ const
                             <th class="text-right" style="vertical-align:middle">All Tests</th>
                             <td>
                                 <div class="btn-group">
-                                    <button class="btn btn-default" type="button" onclick="showAll('tab-commit-$commitId-machine-$machineId');">Show All</button>
-                                    <button class="btn btn-default" type="button" onclick="hideAll('tab-commit-$commitId-machine-$machineId');">Hide All</button>
-                                    <button class="btn btn-default" type="button" onclick="expandAll('tab-commit-$commitId-machine-$machineId');">Expand All</button>
-                                    <button class="btn btn-default" type="button" onclick="collapseAll('tab-commit-$commitId-machine-$machineId');">Collapse All</button>
+                                    <button class="btn btn-default" type="button" onclick="showAll('tab-commit-%commitId-machine-%machineId');">Show All</button>
+                                    <button class="btn btn-default" type="button" onclick="hideAll('tab-commit-%commitId-machine-%machineId');">Hide All</button>
+                                    <button class="btn btn-default" type="button" onclick="expandAll('tab-commit-%commitId-machine-%machineId');">Expand All</button>
+                                    <button class="btn btn-default" type="button" onclick="collapseAll('tab-commit-%commitId-machine-%machineId');">Collapse All</button>
                                 </div>
                             </td>
                         </tr>
@@ -202,10 +210,10 @@ const
                             <th class="text-right" style="vertical-align:middle">Successful Tests</th>
                             <td>
                                 <div class="btn-group">
-                                    <button class="btn btn-default" type="button" onclick="showAll('tab-commit-$commitId-machine-$machineId', 'success');">Show All</button>
-                                    <button class="btn btn-default" type="button" onclick="hideAll('tab-commit-$commitId-machine-$machineId', 'success');">Hide All</button>
-                                    <button class="btn btn-default" type="button" onclick="expandAll('tab-commit-$commitId-machine-$machineId', 'success');">Expand All</button>
-                                    <button class="btn btn-default" type="button" onclick="collapseAll('tab-commit-$commitId-machine-$machineId', 'success');">Collapse All</button>
+                                    <button class="btn btn-default" type="button" onclick="showAll('tab-commit-%commitId-machine-%machineId', 'success');">Show All</button>
+                                    <button class="btn btn-default" type="button" onclick="hideAll('tab-commit-%commitId-machine-%machineId', 'success');">Hide All</button>
+                                    <button class="btn btn-default" type="button" onclick="expandAll('tab-commit-%commitId-machine-%machineId', 'success');">Expand All</button>
+                                    <button class="btn btn-default" type="button" onclick="collapseAll('tab-commit-%commitId-machine-%machineId', 'success');">Collapse All</button>
                                 </div>
                             </td>
                         </tr>
@@ -213,10 +221,10 @@ const
                             <th class="text-right" style="vertical-align:middle">Skipped Tests</th>
                             <td>
                                 <div class="btn-group">
-                                    <button class="btn btn-default" type="button" onclick="showAll('tab-commit-$commitId-machine-$machineId', 'info');">Show All</button>
-                                    <button class="btn btn-default" type="button" onclick="hideAll('tab-commit-$commitId-machine-$machineId', 'info');">Hide All</button>
-                                    <button class="btn btn-default" type="button" onclick="expandAll('tab-commit-$commitId-machine-$machineId', 'info');">Expand All</button>
-                                    <button class="btn btn-default" type="button" onclick="collapseAll('tab-commit-$commitId-machine-$machineId', 'info');">Collapse All</button>
+                                    <button class="btn btn-default" type="button" onclick="showAll('tab-commit-%commitId-machine-%machineId', 'info');">Show All</button>
+                                    <button class="btn btn-default" type="button" onclick="hideAll('tab-commit-%commitId-machine-%machineId', 'info');">Hide All</button>
+                                    <button class="btn btn-default" type="button" onclick="expandAll('tab-commit-%commitId-machine-%machineId', 'info');">Expand All</button>
+                                    <button class="btn btn-default" type="button" onclick="collapseAll('tab-commit-%commitId-machine-%machineId', 'info');">Collapse All</button>
                                 </div>
                             </td>
                         </tr>
@@ -224,48 +232,47 @@ const
                             <th class="text-right" style="vertical-align:middle">Failed Tests</th>
                             <td>
                                 <div class="btn-group">
-                                    <button class="btn btn-default" type="button" onclick="showAll('tab-commit-$commitId-machine-$machineId', 'danger');">Show All</button>
-                                    <button class="btn btn-default" type="button" onclick="hideAll('tab-commit-$commitId-machine-$machineId', 'danger');">Hide All</button>
-                                    <button class="btn btn-default" type="button" onclick="expandAll('tab-commit-$commitId-machine-$machineId', 'danger');">Expand All</button>
-                                    <button class="btn btn-default" type="button" onclick="collapseAll('tab-commit-$commitId-machine-$machineId', 'danger');">Collapse All</button>
+                                    <button class="btn btn-default" type="button" onclick="showAll('tab-commit-%commitId-machine-%machineId', 'danger');">Show All</button>
+                                    <button class="btn btn-default" type="button" onclick="hideAll('tab-commit-%commitId-machine-%machineId', 'danger');">Hide All</button>
+                                    <button class="btn btn-default" type="button" onclick="expandAll('tab-commit-%commitId-machine-%machineId', 'danger');">Expand All</button>
+                                    <button class="btn btn-default" type="button" onclick="collapseAll('tab-commit-%commitId-machine-%machineId', 'danger');">Collapse All</button>
                                 </div>
                             </td>
                         </tr>
                     </table>
                 </div>
-                <div class="panel-group">"""
-  html_testresult_panel_format* = """
-                    <div id="panel-testResult-$trId" class="panel panel-$panelCtxClass">
-                        <div class="panel-heading" style="cursor:pointer" data-toggle="collapse" data-target="#panel-body-testResult-$trId" aria-controls="panel-body-testResult-$trId" aria-expanded="false">
+                <div class="panel-group">
+#proc generateHtmlTestresultPanelBegin(outfile: File, trId, name, target, category,
+#  action, resultDescription, timestamp, result, resultSign, 
+#  panelCtxClass, textCtxClass, bgCtxClass: string) =
+                    <div id="panel-testResult-%trId" class="panel panel-%panelCtxClass">
+                        <div class="panel-heading" style="cursor:pointer" data-toggle="collapse" data-target="#panel-body-testResult-%trId" aria-controls="panel-body-testResult-%trId" aria-expanded="false">
                             <div class="row">
                                 <h4 class="col-xs-3 col-sm-1 panel-title">
-                                    <span class="glyphicon glyphicon-$resultSign-sign"></span>
-                                    <strong>$resultDescription</strong>
+                                    <span class="glyphicon glyphicon-%resultSign-sign"></span>
+                                    <strong>%resultDescription</strong>
                                 </h4>
-                                <h4 class="col-xs-1 panel-title"><span class="badge">$target</span></h4>
-                                <h4 class="col-xs-5 col-sm-7 panel-title" title="$name"><code class="text-$textCtxClass">$name</code></h4>
-                                <h4 class="col-xs-3 col-sm-3 panel-title text-right"><span class="badge">$category</span></h4>
+                                <h4 class="col-xs-1 panel-title"><span class="badge">%target</span></h4>
+                                <h4 class="col-xs-5 col-sm-7 panel-title" title="%name"><code class="text-%textCtxClass">%name</code></h4>
+                                <h4 class="col-xs-3 col-sm-3 panel-title text-right"><span class="badge">%category</span></h4>
                             </div>
                         </div>
-                        <div id="panel-body-testResult-$trId" class="panel-body collapse bg-$bgCtxClass">
+                        <div id="panel-body-testResult-%trId" class="panel-body collapse bg-%bgCtxClass">
                             <dl class="dl-horizontal">
                                 <dt>Name</dt>
-                                <dd><code class="text-$textCtxClass">$name</code></dd>
+                                <dd><code class="text-%textCtxClass">%name</code></dd>
                                 <dt>Category</dt>
-                                <dd><span class="badge">$category</span></dd>
+                                <dd><span class="badge">%category</span></dd>
                                 <dt>Timestamp</dt>
-                                <dd>$timestamp</dd>
+                                <dd>%timestamp</dd>
                                 <dt>Nim Action</dt>
-                                <dd><code class="text-$textCtxClass">$action</code></dd>
+                                <dd><code class="text-%textCtxClass">%action</code></dd>
                                 <dt>Nim Backend Target</dt>
-                                <dd><span class="badge">$target</span></dd>
+                                <dd><span class="badge">%target</span></dd>
                                 <dt>Code</dt>
-                                <dd><code class="text-$textCtxClass">$result</code></dd>
+                                <dd><code class="text-%textCtxClass">%result</code></dd>
                             </dl>
-                            $outputDetails
-                        </div>
-                    </div>"""
-  html_testresult_output_format* = """
+#proc generateHtmlTestresultOutputDetails(outfile: File, expected, gotten: string) =
                             <div class="table-responsive">
                                 <table class="table table-condensed">
                                     <thead>
@@ -276,20 +283,23 @@ const
                                     </thead>
                                     <tbody>
                                         <tr>
-                                            <td><pre>$expected</pre></td>
-                                            <td><pre>$gotten</pre></td>
+                                            <td><pre>%expected</pre></td>
+                                            <td><pre>%gotten</pre></td>
                                         </tr>
                                     </tbody>
                                 </table>
-                            </div>"""
-  html_testresult_no_output* = """
-                            <p class="sr-only">No output details</p>"""
-  html_tabpage_end* = """
+                            </div>
+#proc generateHtmlTestresultOutputNone(outfile: File) =
+                            <p class="sr-only">No output details</p>
+#proc generateHtmlTestresultPanelEnd(outfile: File) =
+                        </div>
+                    </div>
+#proc generateHtmlTabPageEnd(oufile: File) =
                 </div>
-            </div>"""
-  html_tabcontents_end* = """
-        </div>"""
-  html_end* = """
+            </div>
+#proc generateHtmlTabContentsEnd(outfile: File) =
+        </div>
+#proc generateHtmlEnd(outfile: File) =
     </div>
 </body>
-</html>"""
+</html>

@@ -9,15 +9,9 @@
 
 ## HTML generator for the tester.
 
-import db_sqlite, cgi, backend, strutils, json, jquery, bootstrap, testamenthtml
+import db_sqlite, cgi, backend, strutils, json
 
-proc generateHtmlBegin(outfile: File) =
-  outfile.writeLine(html_begin_1)
-  outfile.writeLine(jquery_script_cdn_tag)
-  outfile.writeLine(bootstrap_script_cdn_tag)
-  outfile.writeLine(bootstrap_style_cdn_tag)
-  outfile.writeLine(bootstrap_theme_style_cdn_tag)
-  outfile.writeLine(html_begin_2)
+include "testamenthtml.templ"
 
 proc generateTestRunTabListItemPartial(outfile: File, testRunRow: Row, firstRow = false) =
   let
@@ -30,14 +24,14 @@ proc generateTestRunTabListItemPartial(outfile: File, testRunRow: Row, firstRow 
     machineId = testRunRow[3]
     machineName = htmlQuote(testRunRow[4])
 
-  outfile.writeLine(html_tablistitem_format % [
-      "firstTabActiveClass", firstTabActiveClass,
-      "commitId", commitId,
-      "machineId", machineId,
-      "branch", branch,
-      "hash", hash,
-      "machineName", machineName
-    ])
+  outfile.generateHtmlTabListItem(
+      firstTabActiveClass,
+      commitId,
+      machineId,
+      branch,
+      hash,
+      machineName
+    )
 
 proc generateTestResultPanelPartial(outfile: File, testResultRow: Row, onlyFailing = false) =
   let
@@ -75,30 +69,22 @@ proc generateTestResultPanelPartial(outfile: File, testResultRow: Row, onlyFaili
     resultSign = "exclamation"
     resultDescription = "FAIL"
 
-  let outputDetails = if expected.isNilOrWhitespace() and gotten.isNilOrWhitespace():
-                        html_testresult_no_output
-                      else:
-                        html_testresult_output_format % [
-                          "expected", expected.strip().htmlQuote,
-                          "gotten", gotten.strip().htmlQuote
-                        ]
-  outfile.writeLine(html_testresult_panel_format % [
-      "trId", trId,
-      "name", name,
-      "category", category,
-      "target", target,
-      "action", action,
-      "result", result.htmlQuote(),
-      "timestamp", timestamp,
-      "outputDetails", outputDetails,
-      "panelCtxClass", panelCtxClass,
-      "textCtxClass", textCtxClass,
-      "bgCtxClass", bgCtxClass,
-      "resultSign", resultSign,
-      "resultDescription", resultDescription
-  ])
+  outfile.generateHtmlTestresultPanelBegin(
+    trId, name, target, category, action, resultDescription,
+    timestamp, 
+    result, resultSign, 
+    panelCtxClass, textCtxClass, bgCtxClass
+  )
+  if expected.isNilOrWhitespace() and gotten.isNilOrWhitespace():
+    outfile.generateHtmlTestresultOutputNone()
+  else:
+    outfile.generateHtmlTestresultOutputDetails(
+      expected.strip().htmlQuote,
+      gotten.strip().htmlQuote
+    )
+  outfile.generateHtmlTestresultPanelEnd()
 
-proc generateTestResultsPanelGroupParial(outfile: File, db: DbConn, commitid, machineid: string, onlyFailing = false) =
+proc generateTestResultsPanelGroupPartial(outfile: File, db: DbConn, commitid, machineid: string, onlyFailing = false) =
   const testResultsSelect = sql"""
 SELECT [tr].[id]
   , [tr].[name]
@@ -147,27 +133,16 @@ WHERE [tr].[commit] = ?
     failedCount = totalCount - successCount - ignoredCount
     failedPercentage = 100 * (failedCount.toBiggestFloat() / totalCount.toBiggestFloat())
 
-  outfile.writeLine(html_tabpage_begin_format % [
-      "firstTabActiveClass", firstTabActiveClass,
-      "commitId", commitId,
-      "machineId", machineId,
-      "branch", branch,
-      "hash", hash,
-      "machineName", machineName,
-      "os", os,
-      "cpu", cpu,
-      "totalCount", $totalCount,
-      "successCount", $successCount,
-      "successPercentage", formatBiggestFloat(successPercentage, ffDecimal, 2) & "%",
-      "ignoredCount", $ignoredCount,
-      "ignoredPercentage", formatBiggestFloat(ignoredPercentage, ffDecimal, 2) & "%",
-      "failedCount", $failedCount,
-      "failedPercentage", formatBiggestFloat(failedPercentage, ffDecimal, 2) & "%",
-    ])
-
-  generateTestResultsPanelGroupParial(outfile, db, commitId, machineId, onlyFailing)
-  
-  outfile.writeLine(html_tabpage_end)
+  outfile.generateHtmlTabPageBegin(
+    firstTabActiveClass, commitId,
+    machineId, branch, hash, machineName, os, cpu,
+    totalCount,
+    successCount, formatBiggestFloat(successPercentage, ffDecimal, 2) & "%",
+    ignoredCount, formatBiggestFloat(ignoredPercentage, ffDecimal, 2) & "%",
+    failedCount, formatBiggestFloat(failedPercentage, ffDecimal, 2) & "%"
+  )
+  generateTestResultsPanelGroupPartial(outfile, db, commitId, machineId, onlyFailing)
+  outfile.generateHtmlTabPageEnd()
 
 proc generateTestRunsHtmlPartial(outfile: File, db: DbConn, onlyFailing = false) =
   # Select a cross-join of Commits and Machines ensuring that the selected combination
@@ -192,21 +167,21 @@ ORDER BY [c].[id] DESC
   # Iterating the results twice, get entire result set in one go
   var testRunRowSeq = db.getAllRows(testrunSelect)
 
-  outfile.writeLine(html_tablist_begin)
+  outfile.generateHtmlTabListBegin()
   var firstRow = true
   for testRunRow in testRunRowSeq:
     generateTestRunTabListItemPartial(outfile, testRunRow, firstRow)
     if firstRow:
       firstRow = false
-  outfile.writeLine(html_tablist_end)
+  outfile.generateHtmlTabListEnd()
 
-  outfile.writeLine(html_tabcontents_begin)
+  outfile.generateHtmlTabContentsBegin()
   firstRow = true
   for testRunRow in testRunRowSeq:
     generateTestRunTabContentPartial(outfile, db, testRunRow, onlyFailing, firstRow)
     if firstRow:
       firstRow = false
-  outfile.writeLine(html_tabcontents_end)
+  outfile.generateHtmlTabContentsEnd()
 
 proc generateHtml*(filename: string, commit: int; onlyFailing: bool) =
   var db = open(connection="testament.db", user="testament", password="",
@@ -217,7 +192,7 @@ proc generateHtml*(filename: string, commit: int; onlyFailing: bool) =
 
   generateTestRunsHtmlPartial(outfile, db, onlyFailing)
 
-  outfile.writeLine(html_end)
+  outfile.generateHtmlEnd()
   
   outfile.flushFile()
   close(outfile)
