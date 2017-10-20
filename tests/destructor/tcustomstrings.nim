@@ -13,18 +13,16 @@ type
     len, cap: int
     data: ptr UncheckedArray[char]
 
-{.this: self.}
-
 var
   allocCount, deallocCount: int
 
-proc `=destroy`*(self: var mystring) =
-  if data != nil:
-    dealloc(data)
+proc `=destroy`*(s: var mystring) =
+  if s.data != nil:
+    dealloc(s.data)
     inc deallocCount
-    data = nil
-    len = 0
-    cap = 0
+    s.data = nil
+    s.len = 0
+    s.cap = 0
 
 proc `=sink`*(a: var mystring, b: mystring) =
   # we hope this is optimized away for not yet alive objects:
