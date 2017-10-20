@@ -224,7 +224,8 @@ proc complexDisambiguation(a, b: PType): int =
     let x = a.sons[i].sumGeneric
     let y = b.sons[i].sumGeneric
     #if ggDebug:
-    #  echo "came her ", typeToString(a.sons[i]), " ", typeToString(b.sons[i])
+    #echo "came herA ", typeToString(a.sons[i]), " ", x
+    #echo "came herB ", typeToString(b.sons[i]), " ", y
     if x != y:
       if winner == 0:
         if x > y: winner = 1
@@ -297,7 +298,9 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1;
         n.sons[i].typ = arg.typ
         n.sons[i].sons[1] = arg
     else:
-      if arg.typ.isNil and arg.kind notin {nkStmtList, nkDo}:
+      if arg.typ.isNil and arg.kind notin {nkStmtList, nkDo, nkElse,
+                                           nkOfBranch, nkElifBranch,
+                                           nkExceptBranch}:
         arg = c.semOperand(c, n.sons[i])
         n.sons[i] = arg
     if arg.typ != nil and arg.typ.kind == tyError: return
@@ -934,7 +937,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
                                      tfExplicit notin aOrig.flags
 
     aOrig = if useTypeLoweringRuleInTypeClass:
-          aOrig.skipTypes({tyTypeDesc, tyFieldAccessor})
+          aOrig.skipTypes({tyTypeDesc})
         else:
           aOrig
 
@@ -1286,12 +1289,13 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
     of tyString: result = isConvertible
     of tyPtr:
       # ptr[Tag, char] is not convertible to 'cstring' for now:
-      if a.len == 1 and a.sons[0].kind == tyChar: result = isConvertible
-    of tyArray:
-      if (firstOrd(a.sons[0]) == 0) and
-          (skipTypes(a.sons[0], {tyRange}).kind in {tyInt..tyInt64}) and
-          (a.sons[1].kind == tyChar):
-        result = isConvertible
+      if a.len == 1:
+        let pointsTo = a.sons[0].skipTypes(abstractInst)
+        if pointsTo.kind == tyChar: result = isConvertible
+        elif pointsTo.kind == tyArray and firstOrd(pointsTo.sons[0]) == 0 and
+            skipTypes(pointsTo.sons[0], {tyRange}).kind in {tyInt..tyInt64} and
+            pointsTo.sons[1].kind == tyChar:
+          result = isConvertible
     else: discard
 
   of tyEmpty, tyVoid:
@@ -1371,7 +1375,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
     # XXX: This is very hacky. It should be moved back into liftTypeParam
     if x.kind in {tyGenericInst, tyArray} and
        c.calleeSym != nil and
-       c.calleeSym.kind == skProc:
+       c.calleeSym.kind in {skProc, skFunc}:
       let inst = prepareMetatypeForSigmatch(c.c, c.bindings, c.call.info, f)
       return typeRel(c, inst, a)
 
@@ -1547,11 +1551,21 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
           result = isNone
       else:
         if f.sonsLen > 0 and f.sons[0].kind != tyNone:
+          when false:
+            let oldInheritancePenalty = c.inheritancePenalty
           result = typeRel(c, f.lastSon, a, flags + {trDontBind})
           if doBind and result notin {isNone, isGeneric}:
             let concrete = concreteType(c, a)
             if concrete == nil: return isNone
             put(c, f, concrete)
+          when false:
+            # bug #6526
+            if result in {isEqual, isSubtype}:
+              # 'T: Class' is a *better* match than just 'T'
+              # but 'T: Subclass' is even better:
+              c.inheritancePenalty = oldInheritancePenalty - c.inheritancePenalty -
+                                    100 * ord(result == isEqual)
+              result = isGeneric
         else:
           result = isGeneric
 
@@ -1830,7 +1844,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       bothMetaCounter < 100:
     lastBindingsLength = m.bindings.counter
     inc(bothMetaCounter)
-    if arg.kind in {nkProcDef, nkIteratorDef} + nkLambdaKinds:
+    if arg.kind in {nkProcDef, nkFuncDef, nkIteratorDef} + nkLambdaKinds:
       result = c.semInferredLambda(c, m.bindings, arg)
     elif arg.kind != nkSym:
       return nil
@@ -1863,7 +1877,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     else:
       result = implicitConv(nkHiddenStdConv, f, arg, m, c)
   of isInferred, isInferredConvertible:
-    if arg.kind in {nkProcDef, nkIteratorDef} + nkLambdaKinds:
+    if arg.kind in {nkProcDef, nkFuncDef, nkIteratorDef} + nkLambdaKinds:
       result = c.semInferredLambda(c, m.bindings, arg)
     elif arg.kind != nkSym:
       return nil
@@ -1950,7 +1964,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     z.calleeSym = m.calleeSym
     var best = -1
     for i in countup(0, sonsLen(arg) - 1):
-      if arg.sons[i].sym.kind in {skProc, skMethod, skConverter, skIterator}:
+      if arg.sons[i].sym.kind in {skProc, skFunc, skMethod, skConverter, skIterator}:
         copyCandidate(z, m)
         z.callee = arg.sons[i].typ
         if tfUnresolved in z.callee.flags: continue

@@ -21,9 +21,7 @@
 import
   intsets, strutils, options, ast, astalgo, trees, treetab, msgs, os,
   idents, renderer, types, passes, semfold, magicsys, cgmeth, rodread,
-  lambdalifting, sempass2, lowerings, lookups
-
-# implementation
+  lambdalifting, sempass2, lowerings, lookups, destroyer
 
 type
   PTransNode* = distinct PNode
@@ -45,7 +43,7 @@ type
     inlining: int            # > 0 if we are in inlining context (copy vars)
     nestedProcs: int         # > 0 if we are in a nested proc
     contSyms, breakSyms: seq[PSym]  # to transform 'continue' and 'break'
-    deferDetected, tooEarly: bool
+    deferDetected, tooEarly, needsDestroyPass: bool
   PTransf = ref TTransfContext
 
 proc newTransNode(a: PNode): PTransNode {.inline.} =
@@ -121,7 +119,7 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
     if s.kind == skIterator:
       if c.tooEarly: return n
       else: return liftIterSym(n, getCurrOwner(c))
-    elif s.kind in {skProc, skConverter, skMethod} and not c.tooEarly:
+    elif s.kind in {skProc, skFunc, skConverter, skMethod} and not c.tooEarly:
       # top level .closure procs are still somewhat supported for 'Nake':
       return makeClosure(s, nil, n.info)
   #elif n.sym.kind in {skVar, skLet} and n.sym.typ.callConv == ccClosure:
@@ -782,7 +780,8 @@ proc transform(c: PTransf, n: PNode): PTransNode =
                   nkBlockStmt, nkBlockExpr}:
       oldDeferAnchor = c.deferAnchor
       c.deferAnchor = n
-
+  if n.typ != nil and tfHasAsgn in n.typ.flags:
+    c.needsDestroyPass = true
   case n.kind
   of nkSym:
     result = transformSym(c, n)
@@ -972,9 +971,11 @@ proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
     result = processTransf(c, result, prc)
     liftDefer(c, result)
     #result = liftLambdas(prc, result)
-    incl(result.flags, nfTransf)
     when useEffectSystem: trackProc(prc, result)
-    #if prc.name.s == "testbody":
+    if c.needsDestroyPass and newDestructors:
+      result = injectDestructorCalls(prc, result)
+    incl(result.flags, nfTransf)
+      #if prc.name.s == "testbody":
     #  echo renderTree(result)
 
 proc transformStmt*(module: PSym, n: PNode): PNode =
@@ -985,10 +986,12 @@ proc transformStmt*(module: PSym, n: PNode): PNode =
     result = processTransf(c, n, module)
     liftDefer(c, result)
     #result = liftLambdasForTopLevel(module, result)
-    incl(result.flags, nfTransf)
     when useEffectSystem: trackTopLevelStmt(module, result)
     #if n.info ?? "temp.nim":
     #  echo renderTree(result, {renderIds})
+    if c.needsDestroyPass and newDestructors:
+      result = injectDestructorCalls(module, result)
+    incl(result.flags, nfTransf)
 
 proc transformExpr*(module: PSym, n: PNode): PNode =
   if nfTransf in n.flags:
@@ -997,4 +1000,6 @@ proc transformExpr*(module: PSym, n: PNode): PNode =
     var c = openTransf(module, "")
     result = processTransf(c, n, module)
     liftDefer(c, result)
+    if c.needsDestroyPass and newDestructors:
+      result = injectDestructorCalls(module, result)
     incl(result.flags, nfTransf)

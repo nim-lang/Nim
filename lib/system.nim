@@ -231,31 +231,6 @@ proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
   ## resets an object `obj` to its initial (binary zero) value. This needs to
   ## be called before any possible `object branch transition`:idx:.
 
-# for low and high the return type T may not be correct, but
-# we handle that with compiler magic in semLowHigh()
-proc high*[T](x: T): T {.magic: "High", noSideEffect.}
-  ## returns the highest possible index of an array, a sequence, a string or
-  ## the highest possible value of an ordinal value `x`. As a special
-  ## semantic rule, `x` may also be a type identifier.
-  ## ``high(int)`` is Nim's way of writing `INT_MAX`:idx: or `MAX_INT`:idx:.
-  ##
-  ## .. code-block:: nim
-  ##  var arr = [1,2,3,4,5,6,7]
-  ##  high(arr) #=> 6
-  ##  high(2) #=> 9223372036854775807
-  ##  high(int) #=> 9223372036854775807
-
-proc low*[T](x: T): T {.magic: "Low", noSideEffect.}
-  ## returns the lowest possible index of an array, a sequence, a string or
-  ## the lowest possible value of an ordinal value `x`. As a special
-  ## semantic rule, `x` may also be a type identifier.
-  ##
-  ## .. code-block:: nim
-  ##  var arr = [1,2,3,4,5,6,7]
-  ##  low(arr) #=> 0
-  ##  low(2) #=> -9223372036854775808
-  ##  low(int) #=> -9223372036854775808
-
 type
   range*{.magic: "Range".}[T] ## Generic type to construct range types.
   array*{.magic: "Array".}[I, T]  ## Generic type to construct
@@ -268,6 +243,48 @@ type
   seq*{.magic: "Seq".}[T]  ## Generic type to construct sequences.
   set*{.magic: "Set".}[T]  ## Generic type to construct bit sets.
 
+  UncheckedArray* {.unchecked.}[T] = array[0, T]
+    ## Array with no bounds checking
+
+when defined(nimHasOpt):
+  type opt*{.magic: "Opt".}[T]
+
+proc high*[T: Ordinal](x: T): T {.magic: "High", noSideEffect.}
+  ## returns the highest possible index of an array, a sequence, a string or
+  ## the highest possible value of an ordinal value `x`. As a special
+  ## semantic rule, `x` may also be a type identifier.
+  ## ``high(int)`` is Nim's way of writing `INT_MAX`:idx: or `MAX_INT`:idx:.
+  ##
+  ## .. code-block:: nim
+  ##  var arr = [1,2,3,4,5,6,7]
+  ##  high(arr) #=> 6
+  ##  high(2) #=> 9223372036854775807
+  ##  high(int) #=> 9223372036854775807
+
+proc high*[T: Ordinal](x: typeDesc[T]): T {.magic: "High", noSideEffect.}
+proc high*[T](x: openArray[T]): int {.magic: "High", noSideEffect.}
+proc high*[I, T](x: array[I, T]): I {.magic: "High", noSideEffect.}
+proc high*[I, T](x: typeDesc[array[I, T]]): I {.magic: "High", noSideEffect.}
+proc high*(x: cstring): int {.magic: "High", noSideEffect.}
+proc high*(x: string): int {.magic: "High", noSideEffect.}
+
+proc low*[T: Ordinal](x: typeDesc[T]): T {.magic: "Low", noSideEffect.}
+proc low*[T](x: openArray[T]): int {.magic: "Low", noSideEffect.}
+proc low*[I, T](x: array[I, T]): I {.magic: "Low", noSideEffect.}
+proc low*[T](x: T): T {.magic: "Low", noSideEffect.}
+proc low*[I, T](x: typeDesc[array[I, T]]): I {.magic: "Low", noSideEffect.}
+proc low*(x: cstring): int {.magic: "Low", noSideEffect.}
+proc low*(x: string): int {.magic: "Low", noSideEffect.}
+  ## returns the lowest possible index of an array, a sequence, a string or
+  ## the lowest possible value of an ordinal value `x`. As a special
+  ## semantic rule, `x` may also be a type identifier.
+  ##
+  ## .. code-block:: nim
+  ##  var arr = [1,2,3,4,5,6,7]
+  ##  low(arr) #=> 0
+  ##  low(2) #=> -9223372036854775808
+  ##  low(int) #=> -9223372036854775808
+
 when defined(nimArrIdx):
   # :array|openarray|string|seq|cstring|tuple
   proc `[]`*[I: Ordinal;T](a: T; i: I): T {.
@@ -275,6 +292,13 @@ when defined(nimArrIdx):
   proc `[]=`*[I: Ordinal;T,S](a: T; i: I;
     x: S) {.noSideEffect, magic: "ArrPut".}
   proc `=`*[T](dest: var T; src: T) {.noSideEffect, magic: "Asgn".}
+  when defined(nimNewRuntime):
+    template `=destroy`*[T](x: var T) =
+      ## generic `destructor`:idx: implementation that can be overriden.
+      discard
+    template `=sink`*[T](x: var T; y: T) =
+      ## generic `sink`:idx: implementation that can be overriden.
+      shallowCopy(x, y)
 
 type
   Slice*[T] = object ## builtin slice type
@@ -381,8 +405,6 @@ include "system/inclrtl"
 const NoFakeVars* = defined(nimscript) ## true if the backend doesn't support \
   ## "fake variables" like 'var EBADF {.importc.}: cint'.
 
-const ArrayDummySize = when defined(cpu16): 10_000 else: 100_000_000
-
 when not defined(JS):
   type
     TGenericSeq {.compilerproc, pure, inheritable.} = object
@@ -390,16 +412,14 @@ when not defined(JS):
       when defined(gogc):
         elemSize: int
     PGenericSeq {.exportc.} = ptr TGenericSeq
-    UncheckedCharArray {.unchecked.} = array[0..ArrayDummySize, char]
     # len and space without counting the terminating zero:
     NimStringDesc {.compilerproc, final.} = object of TGenericSeq
-      data: UncheckedCharArray
+      data: UncheckedArray[char]
     NimString = ptr NimStringDesc
 
 when not defined(JS) and not defined(nimscript):
   template space(s: PGenericSeq): int {.dirty.} =
-    s.reserved and not seqShallowFlag
-
+    s.reserved and not (seqShallowFlag or strlitFlag)
   include "system/hti"
 
 type
@@ -422,7 +442,7 @@ type
 
   RootEffect* {.compilerproc.} = object of RootObj ## \
     ## base effect class; each effect should
-    ## inherit from `TEffect` unless you know what
+    ## inherit from `RootEffect` unless you know what
     ## you doing.
   TimeEffect* = object of RootEffect   ## Time effect.
   IOEffect* = object of RootEffect     ## IO effect.
@@ -707,7 +727,7 @@ proc len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.
   magic: "LengthOpenArray", noSideEffect.}
 proc len*(x: string): int {.magic: "LengthStr", noSideEffect.}
 proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.}
-proc len*[I, T](x: array[I, T]): int {.magic: "LengthArray", noSideEffect.}
+proc len*(x: (type array)|array): int {.magic: "LengthArray", noSideEffect.}
 proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
   ## returns the length of an array, an openarray, a sequence or a string.
   ## This is roughly the same as ``high(T)-low(T)+1``, but its resulting type is
@@ -1175,6 +1195,8 @@ proc `is` *[T, S](x: T, y: S): bool {.magic: "Is", noSideEffect.}
 template `isnot` *(x, y: untyped): untyped = not (x is y)
   ## Negated version of `is`. Equivalent to ``not(x is y)``.
 
+proc `of` *[T, S](x: typeDesc[T], y: typeDesc[S]): bool {.magic: "Of", noSideEffect.}
+proc `of` *[T, S](x: T, y: typeDesc[S]): bool {.magic: "Of", noSideEffect.}
 proc `of` *[T, S](x: T, y: S): bool {.magic: "Of", noSideEffect.}
   ## Checks if `x` has a type of `y`
   ##
@@ -1316,6 +1338,9 @@ const
     ## "amd64", "mips", "mipsel", "arm", "arm64", "mips64", "mips64el".
 
   seqShallowFlag = low(int)
+  strlitFlag = 1 shl (sizeof(int)*8 - 2) # later versions of the codegen \
+  # emit this flag
+  # for string literals, it allows for some optimizations.
 
 {.push profiler: off.}
 when defined(nimKnowsNimvm):
@@ -1422,7 +1447,12 @@ when defined(nimdoc):
 
 elif defined(genode):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn,
-    importcpp: "genodeEnv->parent().exit(@)", header: "<base/env.h>".}
+    importcpp: "genodeEnv->parent().exit(@); Genode::sleep_forever()",
+    header: "<base/sleep.h>".}
+
+elif defined(nodejs):
+  proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit",
+    importc: "process.exit", noreturn.}
 
 else:
   proc quit*(errorcode: int = QuitSuccess) {.
@@ -1600,8 +1630,7 @@ type # these work for most platforms:
   culonglong* {.importc: "unsigned long long", nodecl.} = uint64
     ## This is the same as the type ``unsigned long long`` in *C*.
 
-  cstringArray* {.importc: "char**", nodecl.} = ptr
-    array[0..ArrayDummySize, cstring]
+  cstringArray* {.importc: "char**", nodecl.} = ptr UncheckedArray[cstring]
     ## This is binary compatible to the type ``char**`` in *C*. The array's
     ## high value is large enough to disable bounds checking in practice.
     ## Use `cstringArrayToSeq` to convert it into a ``seq[string]``.
@@ -1853,7 +1882,7 @@ proc `$` *(x: float): string {.magic: "FloatToStr", noSideEffect.}
 proc `$` *(x: bool): string {.magic: "BoolToStr", noSideEffect.}
   ## The stringify operator for a boolean argument. Returns `x`
   ## converted to the string "false" or "true".
-
+#
 proc `$` *(x: char): string {.magic: "CharToStr", noSideEffect.}
   ## The stringify operator for a character argument. Returns `x`
   ## converted to a string.
@@ -1897,7 +1926,7 @@ const
   NimMinor*: int = 17
     ## is the minor number of Nim's version.
 
-  NimPatch*: int = 1
+  NimPatch*: int = 3
     ## is the patch number of Nim's version.
 
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
@@ -2415,20 +2444,28 @@ proc `$`*[T: tuple|object](x: T): string =
       result.add("...")
   result.add(")")
 
-proc collectionToString[T: set | seq](x: T, b, e: string): string =
-  when x is seq:
-    if x.isNil: return "nil"
-  result = b
+proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
+  result = prefix
   var firstElement = true
   for value in items(x):
-    if not firstElement: result.add(", ")
+    if firstElement:
+      firstElement = false
+    else:
+      result.add(separator)
+
     when compiles(value.isNil):
-      if value.isNil: result.add "nil"
-      else: result.add($value)
+      # this branch should not be necessary
+      if value.isNil:
+        result.add "nil"
+      else:
+        result.add($value)
+    # prevent temporary string allocation
+    elif compiles(result.add(value)):
+      result.add(value)
     else:
       result.add($value)
-    firstElement = false
-  result.add(e)
+
+  result.add(suffix)
 
 proc `$`*[T](x: set[T]): string =
   ## generic ``$`` operator for sets that is lifted from the components
@@ -2436,7 +2473,7 @@ proc `$`*[T](x: set[T]): string =
   ##
   ## .. code-block:: nim
   ##   ${23, 45} == "{23, 45}"
-  collectionToString(x, "{", "}")
+  collectionToString(x, "{", ", ", "}")
 
 proc `$`*[T](x: seq[T]): string =
   ## generic ``$`` operator for seqs that is lifted from the components
@@ -2444,13 +2481,10 @@ proc `$`*[T](x: seq[T]): string =
   ##
   ## .. code-block:: nim
   ##   $(@[23, 45]) == "@[23, 45]"
-  collectionToString(x, "@[", "]")
-
-when false:
-  # causes bootstrapping to fail as we use array of chars and cstring should
-  # match better ...
-  proc `$`*[T, IDX](x: array[IDX, T]): string =
-    collectionToString(x, "[", "]")
+  if x.isNil:
+    "nil"
+  else:
+    collectionToString(x, "@[", ", ", "]")
 
 # ----------------- GC interface ---------------------------------------------
 
@@ -2556,7 +2590,7 @@ const NimStackTrace = compileOption("stacktrace")
 
 template coroutinesSupportedPlatform(): bool =
   when defined(sparc) or defined(ELATE) or compileOption("gc", "v2") or
-    defined(boehmgc) or defined(gogc) or defined(nogc) or defined(gcStack) or
+    defined(boehmgc) or defined(gogc) or defined(nogc) or defined(gcRegions) or
     defined(gcMarkAndSweep):
     false
   else:
@@ -2757,10 +2791,10 @@ when not defined(JS): #and not defined(nimscript):
   {.push stack_trace: off, profiler:off.}
 
   when hasAlloc:
-    when not defined(gcStack):
+    when not defined(gcRegions):
       proc initGC() {.gcsafe.}
     when not defined(boehmgc) and not defined(useMalloc) and
-        not defined(gogc) and not defined(gcStack):
+        not defined(gogc) and not defined(gcRegions):
       proc initAllocator() {.inline.}
 
     proc initStackBottom() {.inline, compilerproc.} =
@@ -2850,7 +2884,7 @@ when not defined(JS): #and not defined(nimscript):
         importc: when defined(bcc): "setmode" else: "_setmode",
         header: "<io.h>".}
       var
-        O_BINARY {.importc: "O_BINARY", nodecl.}: cint
+        O_BINARY {.importc: "_O_BINARY", header:"<fcntl.h>".}: cint
 
       # we use binary mode on Windows:
       c_setmode(c_fileno(stdin), O_BINARY)
@@ -3045,7 +3079,8 @@ when not defined(JS): #and not defined(nimscript):
       ## creates a NULL terminated cstringArray from `a`. The result has to
       ## be freed with `deallocCStringArray` after it's not needed anymore.
       result = cast[cstringArray](alloc0((a.len+1) * sizeof(cstring)))
-      let x = cast[ptr array[0..ArrayDummySize, string]](a)
+
+      let x = cast[ptr UncheckedArray[string]](a)
       for i in 0 .. a.high:
         result[i] = cast[cstring](alloc0(x[i].len+1))
         copyMem(result[i], addr(x[i][0]), x[i].len)
@@ -3306,6 +3341,10 @@ elif defined(JS):
     include "system/sysio"
 
 
+proc `$`*[T, IDX](x: array[IDX, T]): string =
+  ## generic ``$`` operator for arrays that is lifted from the components
+  collectionToString(x, "[", ", ", "]")
+
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noReturn.} =
   ## a shorthand for ``echo(errormsg); quit(errorcode)``.
   echo(errormsg)
@@ -3388,6 +3427,11 @@ template spliceImpl(s, a, L, b: untyped): untyped =
 when hasAlloc or defined(nimscript):
   proc `[]`*(s: string, x: Slice[int]): string {.inline.} =
     ## slice operation for strings.
+    ## returns the inclusive range [s[x.a], s[x.b]]:
+    ##
+    ## .. code-block:: nim
+    ##    var s = "abcdef"
+    ##    assert s[1..3] == "bcd"
     result = s.substr(x.a, x.b)
 
   proc `[]=`*(s: var string, x: Slice[int], b: string) =
@@ -3408,6 +3452,11 @@ when hasAlloc or defined(nimscript):
 
 proc `[]`*[Idx, T](a: array[Idx, T], x: Slice[int]): seq[T] =
   ## slice operation for arrays.
+  ## returns the inclusive range [a[x.a], a[x.b]]:
+  ##
+  ## .. code-block:: nim
+  ##    var a = [1,2,3,4]
+  ##    assert a[0..2] == @[1,2,3]
   when low(a) < 0:
     {.error: "Slicing for arrays with negative indices is unsupported.".}
   var L = x.b - x.a + 1
@@ -3442,6 +3491,11 @@ proc `[]=`*[Idx, T](a: var array[Idx, T], x: Slice[Idx], b: openArray[T]) =
 
 proc `[]`*[T](s: seq[T], x: Slice[int]): seq[T] =
   ## slice operation for sequences.
+  ## returns the inclusive range [s[x.a], s[x.b]]:
+  ##
+  ## .. code-block:: nim
+  ##    var s = @[1,2,3,4]
+  ##    assert s[0..2] == @[1,2,3]
   var a = x.a
   var L = x.b - a + 1
   newSeq(result, L)
@@ -3691,7 +3745,9 @@ proc shallow*(s: var string) {.noSideEffect, inline.} =
   ## purposes.
   when not defined(JS) and not defined(nimscript):
     var s = cast[PGenericSeq](s)
-    s.reserved = s.reserved or seqShallowFlag
+    # string literals cannot become 'shallow':
+    if (s.reserved and strlitFlag) == 0:
+      s.reserved = s.reserved or seqShallowFlag
 
 type
   NimNodeObj = object
@@ -3757,7 +3813,7 @@ when hasAlloc:
 proc locals*(): RootObj {.magic: "Plugin", noSideEffect.} =
   ## generates a tuple constructor expression listing all the local variables
   ## in the current scope. This is quite fast as it does not rely
-  ## on any debug or runtime information. Note that in constrast to what
+  ## on any debug or runtime information. Note that in contrast to what
   ## the official signature says, the return type is not ``RootObj`` but a
   ## tuple of a structure that depends on the current scope. Example:
   ##

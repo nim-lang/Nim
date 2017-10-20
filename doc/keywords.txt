@@ -16,6 +16,6 @@ shl shr static
 template try tuple type
 using
 var
-when while with without
+when while
 xor
 yield

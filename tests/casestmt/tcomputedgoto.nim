@@ -18,7 +18,7 @@ type
     enumA, enumB, enumC, enumD, enumE, enumLast
 
 proc vm() =
-  var instructions: array [0..100, MyEnum]
+  var instructions: array[0..100, MyEnum]
   instructions[2] = enumC
   instructions[3] = enumD
   instructions[4] = enumA

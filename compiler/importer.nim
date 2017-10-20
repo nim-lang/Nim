@@ -11,10 +11,21 @@
 
 import
   intsets, strutils, os, ast, astalgo, msgs, options, idents, rodread, lookups,
-  semdata, passes, renderer
+  semdata, passes, renderer, gorgeimpl
 
 proc evalImport*(c: PContext, n: PNode): PNode
 proc evalFrom*(c: PContext, n: PNode): PNode
+
+proc lookupPackage(pkg, subdir: PNode): string =
+  let sub = if subdir != nil: renderTree(subdir, {renderNoComments}).replace(" ") else: ""
+  case pkg.kind
+  of nkStrLit, nkRStrLit, nkTripleStrLit:
+    result = scriptableImport(pkg.strVal, sub, pkg.info)
+  of nkIdent:
+    result = scriptableImport(pkg.ident.s, sub, pkg.info)
+  else:
+    localError(pkg.info, "package name must be an identifier or string literal")
+    result = ""
 
 proc getModuleName*(n: PNode): string =
   # This returns a short relative module name without the nim extension
@@ -31,16 +42,33 @@ proc getModuleName*(n: PNode): string =
     result = n.ident.s
   of nkSym:
     result = n.sym.name.s
-  of nkInfix, nkPrefix:
-    if n.sons[0].kind == nkIdent and n.sons[0].ident.id == getIdent("as").id:
+  of nkInfix:
+    let n0 = n[0]
+    let n1 = n[1]
+    if n0.kind == nkIdent and n0.ident.id == getIdent("as").id:
       # XXX hack ahead:
       n.kind = nkImportAs
       n.sons[0] = n.sons[1]
       n.sons[1] = n.sons[2]
       n.sons.setLen(2)
       return getModuleName(n.sons[0])
-    # hacky way to implement 'x / y /../ z':
-    result = renderTree(n, {renderNoComments}).replace(" ")
+    if n1.kind == nkPrefix and n1[0].kind == nkIdent and n1[0].ident.s == "$":
+      if n0.kind == nkIdent and n0.ident.s == "/":
+        result = lookupPackage(n1[1], n[2])
+      else:
+        localError(n.info, "only '/' supported with $package notation")
+        result = ""
+    else:
+      # hacky way to implement 'x / y /../ z':
+      result = getModuleName(n1)
+      result.add renderTree(n0, {renderNoComments})
+      result.add getModuleName(n[2])
+  of nkPrefix:
+    if n.sons[0].kind == nkIdent and n.sons[0].ident.s == "$":
+      result = lookupPackage(n[1], nil)
+    else:
+      # hacky way to implement 'x / y /../ z':
+      result = renderTree(n, {renderNoComments}).replace(" ")
   of nkDotExpr:
     result = renderTree(n, {renderNoComments}).replace(".", "/")
   of nkImportAs:
@@ -60,6 +88,11 @@ proc checkModuleName*(n: PNode; doLocalError=true): int32 =
   else:
     result = fullPath.fileInfoIdx
 
+proc importPureEnumField*(c: PContext; s: PSym) =
+  var check = strTableGet(c.importTable.symbols, s.name)
+  if check == nil:
+    strTableAdd(c.pureEnumFields, s)
+
 proc rawImportSymbol(c: PContext, s: PSym) =
   # This does not handle stubs, because otherwise loading on demand would be
   # pointless in practice. So importing stubs is fine here!
@@ -75,7 +108,7 @@ proc rawImportSymbol(c: PContext, s: PSym) =
   strTableAdd(c.importTable.symbols, s)
   if s.kind == skType:
     var etyp = s.typ
-    if etyp.kind in {tyBool, tyEnum} and sfPure notin s.flags:
+    if etyp.kind in {tyBool, tyEnum}:
       for j in countup(0, sonsLen(etyp.n) - 1):
         var e = etyp.n.sons[j].sym
         if e.kind != skEnumField:
@@ -91,7 +124,10 @@ proc rawImportSymbol(c: PContext, s: PSym) =
             break
           check = nextIdentIter(it, c.importTable.symbols)
         if e != nil:
-          rawImportSymbol(c, e)
+          if sfPure notin s.flags:
+            rawImportSymbol(c, e)
+          else:
+            importPureEnumField(c, e)
   else:
     # rodgen assures that converters and patterns are no stubs
     if s.kind == skConverter: addConverter(c, s)
@@ -201,12 +237,14 @@ proc evalImport(c: PContext, n: PNode): PNode =
   for i in countup(0, sonsLen(n) - 1):
     let it = n.sons[i]
     if it.kind == nkInfix and it.len == 3 and it[2].kind == nkBracket:
-      let sep = renderTree(it.sons[0], {renderNoComments})
-      let dir = renderTree(it.sons[1], {renderNoComments})
+      let sep = it[0]
+      let dir = it[1]
+      let a = newNodeI(nkInfix, it.info)
+      a.add sep
+      a.add dir
+      a.add sep # dummy entry, replaced in the loop
       for x in it[2]:
-        let f = renderTree(x, {renderNoComments})
-        let a = newStrNode(nkStrLit, (dir & sep & f).replace(" "))
-        a.info = it.info
+        a.sons[2] = x
         impMod(c, a)
     else:
       impMod(c, it)

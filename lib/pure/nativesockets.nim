@@ -496,11 +496,12 @@ proc getLocalAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
                    addr(namelen)) == -1'i32:
       raiseOSError(osLastError())
     # Cannot use INET6_ADDRSTRLEN here, because it's a C define.
-    var buf: array[64, char]
+    result[0] = newString(64)
     if inet_ntop(name.sin6_family.cint,
-                 addr name, buf.cstring, sizeof(buf).int32).isNil:
+                 addr name.sin6_addr, addr result[0][0], (result[0].len+1).int32).isNil:
       raiseOSError(osLastError())
-    result = ($buf, Port(nativesockets.ntohs(name.sin6_port)))
+    setLen(result[0], result[0].cstring.len)
+    result[1] = Port(nativesockets.ntohs(name.sin6_port))
   else:
     raiseOSError(OSErrorCode(-1), "invalid socket family in getLocalAddr")
 
@@ -532,11 +533,12 @@ proc getPeerAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
                    addr(namelen)) == -1'i32:
       raiseOSError(osLastError())
     # Cannot use INET6_ADDRSTRLEN here, because it's a C define.
-    var buf: array[64, char]
+    result[0] = newString(64)
     if inet_ntop(name.sin6_family.cint,
-                 addr name, buf.cstring, sizeof(buf).int32).isNil:
+                 addr name.sin6_addr, addr result[0][0], (result[0].len+1).int32).isNil:
       raiseOSError(osLastError())
-    result = ($buf, Port(nativesockets.ntohs(name.sin6_port)))
+    setLen(result[0], result[0].cstring.len)
+    result[1] = Port(nativesockets.ntohs(name.sin6_port))
   else:
     raiseOSError(OSErrorCode(-1), "invalid socket family in getLocalAddr")
 

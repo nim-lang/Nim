@@ -185,9 +185,8 @@ to a storage location:
   var x = "abc" # introduces a new variable `x` and assigns a value to it
   x = "xyz"     # assigns a new value to `x`
 
-``=`` is the *assignment operator*. The assignment operator cannot be
-overloaded, overwritten or forbidden, but this might change in a future version
-of Nim. You can declare multiple variables with a single assignment
+``=`` is the *assignment operator*. The assignment operator can be
+overloaded. You can declare multiple variables with a single assignment 
 statement and all the variables will have the same value:
 
 .. code-block::

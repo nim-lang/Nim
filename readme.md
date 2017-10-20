@@ -52,14 +52,14 @@ of ``sh build.sh`` you should substitute ``build.bat`` on x86 Windows or
 ``build64.bat`` on x86_64 Windows):
 
 ```
-$ git clone https://github.com/nim-lang/Nim.git
-$ cd Nim
-$ git clone --depth 1 https://github.com/nim-lang/csources.git
-$ cd csources
-$ sh build.sh
-$ cd ../
-$ bin/nim c koch
-$ ./koch boot -d:release
+git clone https://github.com/nim-lang/Nim.git
+cd Nim
+git clone --depth 1 https://github.com/nim-lang/csources.git
+cd csources
+sh build.sh
+cd ../
+bin/nim c koch
+./koch boot -d:release
 ```
 
 Finally, once you have finished the build steps (on Windows, Mac or Linux) you
@@ -95,7 +95,7 @@ This project exists thanks to all the people who contribute. [Read on to find ou
 [![Setup a bounty via Bountysource][badge-nim-bountysource]][nim-bountysource]
 [![Donate Bitcoins][badge-nim-bitcoin]][nim-bitcoin]
 
-We welcome everyone's contributions to Nim independent of how small or how large
+We welcome everyone's contributions to Nim regardless of how small or how large
 they are. Anything from small spelling fixes to large modules intended to
 be included in the standard library are welcome and appreciated. Before you get
 started contributing, you should familiarize yourself with the repository structure:

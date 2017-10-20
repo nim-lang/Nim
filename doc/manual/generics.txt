@@ -633,6 +633,9 @@ the ``vtptr`` magic produced types bound to ``ptr`` types.
 Symbol lookup in generics
 -------------------------
 
+Open and Closed symbols
+~~~~~~~~~~~~~~~~~~~~~~~
+
 The symbol binding rules in generics are slightly subtle: There are "open" and
 "closed" symbols. A "closed" symbol cannot be re-bound in the instantiation
 context, an "open" symbol can. Per default overloaded symbols are open
@@ -657,6 +660,9 @@ uses the ``==`` operators of the tuple's components. However, the ``==`` for
 the ``Index`` type is defined *after* the ``==`` for tuples; yet the example
 compiles as the instantiation takes the currently defined symbols into account
 too.
+
+Mixin statement
+---------------
 
 A symbol can be forced to be open by a `mixin`:idx: declaration:
 

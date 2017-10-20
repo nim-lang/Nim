@@ -252,7 +252,7 @@ proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) =
   if dest == nil: return # nothing to do
   if ntfNoRefs notin mt.flags:
     case mt.kind
-    of tyRef, tyString, tySequence: # leaf:
+    of tyRef, tyOptAsRef, tyString, tySequence: # leaf:
       doOperation(cast[PPointer](d)[], op)
     of tyObject, tyTuple:
       forAllSlotsAux(dest, mt.node, op)
@@ -264,13 +264,13 @@ proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) =
 proc forAllChildren(cell: PCell, op: WalkOp) =
   gcAssert(cell != nil, "forAllChildren: 1")
   gcAssert(cell.typ != nil, "forAllChildren: 2")
-  gcAssert cell.typ.kind in {tyRef, tySequence, tyString}, "forAllChildren: 3"
+  gcAssert cell.typ.kind in {tyRef, tyOptAsRef, tySequence, tyString}, "forAllChildren: 3"
   let marker = cell.typ.marker
   if marker != nil:
     marker(cellToUsr(cell), op.int)
   else:
     case cell.typ.kind
-    of tyRef: # common case
+    of tyRef, tyOptAsRef: # common case
       forAllChildrenAux(cellToUsr(cell), cell.typ.base, op)
     of tySequence:
       var d = cast[ByteAddress](cellToUsr(cell))
@@ -285,7 +285,7 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   # generates a new object and sets its reference counter to 0
   incTypeSize typ, size
   acquire(gch)
-  gcAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
+  gcAssert(typ.kind in {tyRef, tyOptAsRef, tyString, tySequence}, "newObj: 1")
   collectCT(gch)
   var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell)))
   gcAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
@@ -526,10 +526,10 @@ when not defined(useNimRtl):
              "[GC] max threshold: " & $gch.stat.maxThreshold & "\n" &
              "[GC] freed objects: " & $gch.stat.freedObjects & "\n"
     when nimCoroutines:
-      result = result & "[GC] number of stacks: " & $gch.stack.len & "\n"
+      result.add "[GC] number of stacks: " & $gch.stack.len & "\n"
       for stack in items(gch.stack):
-        result = result & "[GC]   stack " & stack.bottom.repr & "[GC]     max stack size " & $stack.maxStackSize & "\n"
+        result.add "[GC]   stack " & stack.bottom.repr & "[GC]     max stack size " & $stack.maxStackSize & "\n"
     else:
-      result = result & "[GC] max stack size: " & $gch.stat.maxStackSize & "\n"
+      result.add "[GC] max stack size: " & $gch.stat.maxStackSize & "\n"
 
 {.pop.}

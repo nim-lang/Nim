@@ -300,7 +300,7 @@ macro `.()`*[K: string | cstring, V: proc](obj: JsAssoc[K, V],
   result = quote do:
     (`dotOp`(`obj`, `field`))()
   for elem in args:
-    result[0].add elem
+    result.add elem
 
 # Iterators:
 
@@ -408,20 +408,19 @@ macro `{}`*(typ: typedesc, xs: varargs[untyped]): auto =
         kString = quote do:
           when compiles($`k`): $`k` else: "invalid"
         v = x[1]
-      body.add(quote do:
+      body.add quote do:
         when compiles(`a`.`k`):
           `a`.`k` = `v`
         elif compiles(`a`[`k`]):
           `a`[`k`] = `v`
         else:
           `a`[`kString`] = `v`
-      )
+
     else:
       error("Expression `" & $x.toStrLit & "` not allowed in `{}` macro")
 
-  body.add(quote do:
+  body.add quote do:
     return `a`
-  )
 
   result = quote do:
     proc inner(): `typ` {.gensym.} =
@@ -472,7 +471,7 @@ macro bindMethod*(procedure: typed): auto =
     # construct the `this` parameter:
     thisQuote = quote do:
       var `this` {. nodecl, importc .} : `thisType`
-    call = newNimNode(nnkCall).add(rawProc[0], thisQuote[0][0][0][0])
+    call = newNimNode(nnkCall).add(rawProc[0], thisQuote[0][0][0])
   # construct the procedure call inside the method
   if args.len > 2:
     for idx in 2..args.len-1:
@@ -484,6 +483,6 @@ macro bindMethod*(procedure: typed): auto =
       params,
       rawProc[4],
       rawProc[5],
-      newTree(nnkStmtList, thisQuote[0], call)
+      newTree(nnkStmtList, thisQuote, call)
   )
   result = body

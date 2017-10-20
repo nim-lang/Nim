@@ -83,9 +83,9 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
       ""
 
   testSpec c, makeTest("lib/nimrtl.nim",
-    options & " --app:lib -d:createNimRtl", cat)
+    options & " --app:lib -d:createNimRtl --threads:on", cat)
   testSpec c, makeTest("tests/dll/server.nim",
-    options & " --app:lib -d:useNimRtl" & rpath, cat)
+    options & " --app:lib -d:useNimRtl --threads:on" & rpath, cat)
 
 
   when defined(Windows):
@@ -101,7 +101,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     var nimrtlDll = DynlibFormat % "nimrtl"
     safeCopyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
 
-  testSpec r, makeTest("tests/dll/client.nim", options & " -d:useNimRtl" & rpath,
+  testSpec r, makeTest("tests/dll/client.nim", options & " -d:useNimRtl --threads:on" & rpath,
                        cat, actionRun)
 
 proc dllTests(r: var TResults, cat: Category, options: string) =
@@ -237,6 +237,44 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
 
   for testfile in ["strutils", "json", "random", "times", "logging"]:
     test "lib/pure/" & testfile & ".nim"
+
+# ------------------------- nim in action -----------
+
+proc testNimInAction(r: var TResults, cat: Category, options: string) =
+  template test(filename: untyped, action: untyped) =
+    testSpec r, makeTest(filename, options, cat, action)
+
+  template testJS(filename: untyped) =
+    testSpec r, makeTest(filename, options, cat, actionCompile, targetJS)
+
+  template testCPP(filename: untyped) =
+    testSpec r, makeTest(filename, options, cat, actionCompile, targetCPP)
+
+  let tests = [
+    "niminaction/Chapter3/ChatApp/src/server",
+    "niminaction/Chapter3/ChatApp/src/client",
+    "niminaction/Chapter6/WikipediaStats/concurrency_regex",
+    "niminaction/Chapter6/WikipediaStats/concurrency",
+    "niminaction/Chapter6/WikipediaStats/naive",
+    "niminaction/Chapter6/WikipediaStats/parallel_counts",
+    "niminaction/Chapter6/WikipediaStats/race_condition",
+    "niminaction/Chapter6/WikipediaStats/sequential_counts",
+    "niminaction/Chapter6/WikipediaStats/unguarded_access",
+    "niminaction/Chapter7/Tweeter/src/tweeter",
+    "niminaction/Chapter7/Tweeter/src/createDatabase",
+    "niminaction/Chapter7/Tweeter/tests/database_test",
+    "niminaction/Chapter8/sdl/sdl_test",
+    ]
+  for testfile in tests:
+    test "tests/" & testfile & ".nim", actionCompile
+
+  let jsFile = "tests/niminaction/Chapter8/canvas/canvas_test.nim"
+  testJS jsFile
+
+  let cppFile = "tests/niminaction/Chapter8/sfml/sfml_test.nim"
+  testCPP cppFile
+
+
 
 # ------------------------- manyloc -------------------------------------------
 #proc runSpecialTests(r: var TResults, options: string) =
@@ -420,6 +458,8 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
     testNimblePackages(r, cat, pfExtraOnly)
   of "nimble-all":
     testNimblePackages(r, cat, pfAll)
+  of "niminaction":
+    testNimInAction(r, cat, options)
   of "untestable":
     # We can't test it because it depends on a third party.
     discard # TODO: Move untestable tests to someplace else, i.e. nimble repo.

@@ -88,7 +88,9 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       if not isPure: strTableAdd(c.module.tab, e)
     addSon(result.n, newSymNode(e))
     styleCheckDef(e)
-    if sfGenSym notin e.flags and not isPure: addDecl(c, e)
+    if sfGenSym notin e.flags:
+      if not isPure: addDecl(c, e)
+      else: importPureEnumField(c, e)
     if isPure and strTableIncl(symbols, e):
       wrongRedefinition(e.info, e.name.s)
     inc(counter)
@@ -1202,6 +1204,15 @@ proc freshType(res, prev: PType): PType {.inline.} =
   else:
     result = res
 
+template modifierTypeKindOfNode(n: PNode): TTypeKind =
+  case n.kind
+  of nkVarTy: tyVar
+  of nkRefTy: tyRef
+  of nkPtrTy: tyPtr
+  of nkStaticTy: tyStatic
+  of nkTypeOfExpr: tyTypeDesc
+  else: tyNone
+
 proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
   # if n.sonsLen == 0: return newConstraint(c, tyTypeClass)
   if nfBase2 in n.flags:
@@ -1227,13 +1238,7 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
       dummyName: PNode
       dummyType: PType
 
-    let modifier = case param.kind
-      of nkVarTy: tyVar
-      of nkRefTy: tyRef
-      of nkPtrTy: tyPtr
-      of nkStaticTy: tyStatic
-      of nkTypeOfExpr: tyTypeDesc
-      else: tyNone
+    let modifier = param.modifierTypeKindOfNode
 
     if modifier != tyNone:
       dummyName = param[0]
@@ -1388,6 +1393,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     of mSet: result = semSet(c, n, prev)
     of mOrdinal: result = semOrdinal(c, n, prev)
     of mSeq: result = semContainer(c, n, tySequence, "seq", prev)
+    of mOpt: result = semContainer(c, n, tyOpt, "opt", prev)
     of mVarargs: result = semVarargs(c, n, prev)
     of mTypeDesc: result = makeTypeDesc(c, semTypeNode(c, n[1], nil))
     of mExpr:
@@ -1509,9 +1515,26 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     dec c.inTypeContext
 
 proc setMagicType(m: PSym, kind: TTypeKind, size: int) =
+  # source : https://en.wikipedia.org/wiki/Data_structure_alignment#x86
   m.typ.kind = kind
-  m.typ.align = size.int16
   m.typ.size = size
+  # this usually works for most basic types
+  # Assuming that since ARM, ARM64  don't support unaligned access
+  # data is aligned to type size
+  m.typ.align = size.int16
+
+  # FIXME: proper support for clongdouble should be added.
+  # long double size can be 8, 10, 12, 16 bytes depending on platform & compiler
+  if targetCPU == cpuI386 and size == 8:
+    #on Linux/BSD i386, double are aligned to 4bytes (except with -malign-double)
+    if kind in {tyFloat64, tyFloat} and
+       targetOS in {osLinux, osAndroid, osNetbsd, osFreebsd, osOpenbsd, osDragonfly}:
+      m.typ.align = 4
+    # on i386, all known compiler, 64bits ints are aligned to 4bytes (except with -malign-double)
+    elif kind in {tyInt, tyUInt, tyInt64, tyUInt64}:
+      m.typ.align = 4
+  else:
+    discard
 
 proc processMagicType(c: PContext, m: PSym) =
   case m.magic
@@ -1570,6 +1593,8 @@ proc processMagicType(c: PContext, m: PSym) =
     setMagicType(m, tySet, 0)
   of mSeq:
     setMagicType(m, tySequence, 0)
+  of mOpt:
+    setMagicType(m, tyOpt, 0)
   of mOrdinal:
     setMagicType(m, tyOrdinal, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))

@@ -301,13 +301,14 @@ proc pageAddr(p: pointer): PChunk {.inline.} =
   result = cast[PChunk](cast[ByteAddress](p) and not PageMask)
   #sysAssert(Contains(allocator.chunkStarts, pageIndex(result)))
 
-proc writeFreeList(a: MemRegion) =
-  var it = a.freeChunksList
-  c_fprintf(stdout, "freeChunksList: %p\n", it)
-  while it != nil:
-    c_fprintf(stdout, "it: %p, next: %p, prev: %p, size: %ld\n",
-              it, it.next, it.prev, it.size)
-    it = it.next
+when false:
+  proc writeFreeList(a: MemRegion) =
+    var it = a.freeChunksList
+    c_fprintf(stdout, "freeChunksList: %p\n", it)
+    while it != nil:
+      c_fprintf(stdout, "it: %p, next: %p, prev: %p, size: %ld\n",
+                it, it.next, it.prev, it.size)
+      it = it.next
 
 const nimMaxHeap {.intdefine.} = 0
 

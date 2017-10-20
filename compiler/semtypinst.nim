@@ -170,7 +170,7 @@ proc reResolveCallsWithTypedescParams(cl: var TReplTypeVars, n: PNode): PNode =
       if isTypeParam(n[i]): needsFixing = true
     if needsFixing:
       n.sons[0] = newSymNode(n.sons[0].sym.owner)
-      return cl.c.semOverloadedCall(cl.c, n, n, {skProc}, {})
+      return cl.c.semOverloadedCall(cl.c, n, n, {skProc, skFunc}, {})
 
   for i in 0 .. <n.safeLen:
     n.sons[i] = reResolveCallsWithTypedescParams(cl, n[i])
@@ -357,11 +357,16 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
         assert newbody.kind in {tyRef, tyPtr}
         assert newbody.lastSon.typeInst == nil
         newbody.lastSon.typeInst = result
-    let asgn = newbody.assignment
-    if asgn != nil and sfFromGeneric notin asgn.flags:
-      # '=' needs to be instantiated for generics when the type is constructed:
-      newbody.assignment = cl.c.instTypeBoundOp(cl.c, asgn, result, cl.info,
-                                                attachedAsgn, 1)
+    template typeBound(field) =
+      let opr = newbody.field
+      if opr != nil and sfFromGeneric notin opr.flags:
+        # '=' needs to be instantiated for generics when the type is constructed:
+        newbody.field = cl.c.instTypeBoundOp(cl.c, opr, result, cl.info,
+                                             attachedAsgn, 1)
+    if newDestructors:
+      typeBound(destructor)
+      typeBound(sink)
+    typeBound(assignment)
     let methods = skipTypes(bbody, abstractPtrs).methods
     for col, meth in items(methods):
       # we instantiate the known methods belonging to that type, this causes

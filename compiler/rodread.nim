@@ -257,9 +257,9 @@ proc decodeLoc(r: PRodReader, loc: var TLoc, info: TLineInfo) =
       loc.k = low(loc.k)
     if r.s[r.pos] == '*':
       inc(r.pos)
-      loc.s = TStorageLoc(decodeVInt(r.s, r.pos))
+      loc.storage = TStorageLoc(decodeVInt(r.s, r.pos))
     else:
-      loc.s = low(loc.s)
+      loc.storage = low(loc.storage)
     if r.s[r.pos] == '$':
       inc(r.pos)
       loc.flags = cast[TLocFlags](int32(decodeVInt(r.s, r.pos)))
@@ -267,9 +267,10 @@ proc decodeLoc(r: PRodReader, loc: var TLoc, info: TLineInfo) =
       loc.flags = {}
     if r.s[r.pos] == '^':
       inc(r.pos)
-      loc.t = rrGetType(r, decodeVInt(r.s, r.pos), info)
+      loc.lode = decodeNode(r, info)
+      # rrGetType(r, decodeVInt(r.s, r.pos), info)
     else:
-      loc.t = nil
+      loc.lode = nil
     if r.s[r.pos] == '!':
       inc(r.pos)
       loc.r = rope(decodeStr(r.s, r.pos))
@@ -335,10 +336,13 @@ proc decodeType(r: PRodReader, info: TLineInfo): PType =
   if r.s[r.pos] == '\17':
     inc(r.pos)
     result.assignment = rrGetSym(r, decodeVInt(r.s, r.pos), info)
-  while r.s[r.pos] == '\18':
+  if r.s[r.pos] == '\18':
+    inc(r.pos)
+    result.sink = rrGetSym(r, decodeVInt(r.s, r.pos), info)
+  while r.s[r.pos] == '\19':
     inc(r.pos)
     let x = decodeVInt(r.s, r.pos)
-    doAssert r.s[r.pos] == '\19'
+    doAssert r.s[r.pos] == '\20'
     inc(r.pos)
     let y = rrGetSym(r, decodeVInt(r.s, r.pos), info)
     result.methods.safeAdd((x, y))
@@ -588,7 +592,7 @@ proc cmdChangeTriggersRecompilation(old, new: TCommands): bool =
       return false
   of cmdNone, cmdDoc, cmdInterpret, cmdPretty, cmdGenDepend, cmdDump,
       cmdCheck, cmdParse, cmdScan, cmdIdeTools, cmdDef,
-      cmdRst2html, cmdRst2tex, cmdInteractive, cmdRun:
+      cmdRst2html, cmdRst2tex, cmdInteractive, cmdRun, cmdJsonScript:
     discard
   # else: trigger recompilation:
   result = true

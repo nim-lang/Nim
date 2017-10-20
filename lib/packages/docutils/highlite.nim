@@ -58,8 +58,8 @@ const
     "interface", "is", "isnot", "iterator", "let", "macro", "method",
     "mixin", "mod", "nil", "not", "notin", "object", "of", "or", "out", "proc",
     "ptr", "raise", "ref", "return", "shl", "shr", "static",
-    "template", "try", "tuple", "type", "using", "var", "when", "while", "with",
-    "without", "xor", "yield"]
+    "template", "try", "tuple", "type", "using", "var", "when", "while",
+    "xor", "yield"]
 
 proc getSourceLanguage*(name: string): SourceLanguage =
   for i in countup(succ(low(SourceLanguage)), high(SourceLanguage)):

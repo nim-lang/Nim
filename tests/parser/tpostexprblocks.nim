@@ -1,51 +1,59 @@
 discard """
 nimout: '''
 StmtList
-  Ident !"foo"
+  Ident !"foo010"
   Call
-    Ident !"foo"
+    Ident !"foo020"
   Call
-    Ident !"foo"
+    Ident !"foo030"
     Ident !"x"
   Command
-    Ident !"foo"
+    Ident !"foo040"
     Ident !"x"
   Call
-    Ident !"foo"
+    Ident !"foo050"
     StmtList
       DiscardStmt
         Empty
   Call
-    Ident !"foo"
+    Ident !"foo060"
     StmtList
       DiscardStmt
         Empty
   Call
-    Ident !"foo"
+    Ident !"foo070"
     StrLit test
     StmtList
       DiscardStmt
         Empty
   Call
-    Ident !"foo"
+    Ident !"foo080"
     StrLit test
     StmtList
       DiscardStmt
         Empty
   Command
-    Ident !"foo"
+    Ident !"foo090"
     StrLit test
     StmtList
       DiscardStmt
         Empty
   Command
-    Ident !"foo"
-    StrLit test
-    StmtList
-      DiscardStmt
-        Empty
+    Ident !"foo100"
+    Call
+      StrLit test
+      StmtList
+        DiscardStmt
+          Empty
   Command
-    Ident !"foo"
+    Ident !"foo101"
+    Call
+      IntLit 10
+      StmtList
+        DiscardStmt
+          Empty
+  Command
+    Ident !"foo110"
     IntLit 1
     Par
       Infix
@@ -56,18 +64,19 @@ StmtList
       DiscardStmt
         Empty
   Command
-    Ident !"foo"
+    Ident !"foo120"
     IntLit 1
-    Par
-      Infix
-        Ident !"+"
-        IntLit 2
-        IntLit 3
-    StmtList
-      DiscardStmt
-        Empty
+    Call
+      Par
+        Infix
+          Ident !"+"
+          IntLit 2
+          IntLit 3
+      StmtList
+        DiscardStmt
+          Empty
   Call
-    Ident !"foo"
+    Ident !"foo130"
     Do
       Empty
       Empty
@@ -84,7 +93,7 @@ StmtList
         DiscardStmt
           Empty
   Call
-    Ident !"foo"
+    Ident !"foo140"
     Do
       Empty
       Empty
@@ -101,7 +110,7 @@ StmtList
         DiscardStmt
           Empty
   Call
-    Ident !"foo"
+    Ident !"foo150"
     Do
       Empty
       Empty
@@ -118,25 +127,26 @@ StmtList
         DiscardStmt
           Empty
   Command
-    Ident !"foo"
-    Ident !"x"
-    Do
-      Empty
-      Empty
-      Empty
-      FormalParams
+    Ident !"foo160"
+    Call
+      Ident !"x"
+      Do
         Empty
-        IdentDefs
-          Ident !"y"
+        Empty
+        Empty
+        FormalParams
           Empty
-          Empty
-      Empty
-      Empty
-      StmtList
-        DiscardStmt
-          Empty
+          IdentDefs
+            Ident !"y"
+            Empty
+            Empty
+        Empty
+        Empty
+        StmtList
+          DiscardStmt
+            Empty
   Call
-    Ident !"foo"
+    Ident !"foo170"
     StmtList
       DiscardStmt
         Empty
@@ -145,7 +155,7 @@ StmtList
         DiscardStmt
           Empty
   Call
-    Ident !"foo"
+    Ident !"foo180"
     StmtList
       DiscardStmt
         Empty
@@ -157,62 +167,63 @@ StmtList
         DiscardStmt
           Empty
   Command
-    Ident !"foo"
-    Ident !"x"
-    Do
-      Empty
-      Empty
-      Empty
-      FormalParams
+    Ident !"foo190"
+    Call
+      Ident !"x"
+      Do
         Empty
-        IdentDefs
-          Ident !"y"
+        Empty
+        Empty
+        FormalParams
           Empty
-          Empty
-      Empty
-      Empty
-      StmtList
-        DiscardStmt
-          Empty
-    Do
-      Empty
-      Empty
-      Empty
-      FormalParams
-        Ident !"int"
-        IdentDefs
-          Ident !"z"
-          Empty
-          Empty
-      Empty
-      Empty
-      StmtList
-        DiscardStmt
-          Empty
-    Do
-      Empty
-      Empty
-      Empty
-      FormalParams
-        Ident !"int"
-        IdentDefs
-          Ident !"w"
+          IdentDefs
+            Ident !"y"
+            Empty
+            Empty
+        Empty
+        Empty
+        StmtList
+          DiscardStmt
+            Empty
+      Do
+        Empty
+        Empty
+        Empty
+        FormalParams
           Ident !"int"
-          Empty
-      Empty
-      Empty
-      StmtList
-        DiscardStmt
-          Empty
-    StmtList
-      DiscardStmt
+          IdentDefs
+            Ident !"z"
+            Empty
+            Empty
         Empty
-    Else
+        Empty
+        StmtList
+          DiscardStmt
+            Empty
+      Do
+        Empty
+        Empty
+        Empty
+        FormalParams
+          Ident !"int"
+          IdentDefs
+            Ident !"w"
+            Ident !"int"
+            Empty
+        Empty
+        Empty
+        StmtList
+          DiscardStmt
+            Empty
       StmtList
         DiscardStmt
           Empty
+      Else
+        StmtList
+          DiscardStmt
+            Empty
   Call
-    Ident !"foo"
+    Ident !"foo200"
     Ident !"x"
     Call
       Ident !"bar"
@@ -227,33 +238,33 @@ StmtList
     IdentDefs
       Ident !"a"
       Empty
-      Ident !"foo"
+      Ident !"foo210"
   VarSection
     IdentDefs
       Ident !"a"
       Empty
       Call
-        Ident !"foo"
+        Ident !"foo220"
   VarSection
     IdentDefs
       Ident !"a"
       Empty
       Call
-        Ident !"foo"
+        Ident !"foo230"
         Ident !"x"
   VarSection
     IdentDefs
       Ident !"a"
       Empty
       Command
-        Ident !"foo"
+        Ident !"foo240"
         Ident !"x"
   VarSection
     IdentDefs
       Ident !"a"
       Empty
       Call
-        Ident !"foo"
+        Ident !"foo250"
         StmtList
           DiscardStmt
             Empty
@@ -262,7 +273,7 @@ StmtList
       Ident !"a"
       Empty
       Call
-        Ident !"foo"
+        Ident !"foo260"
         StmtList
           DiscardStmt
             Empty
@@ -271,7 +282,7 @@ StmtList
       Ident !"a"
       Empty
       Call
-        Ident !"foo"
+        Ident !"foo270"
         StmtList
           DiscardStmt
             Empty
@@ -284,8 +295,78 @@ StmtList
       Ident !"a"
       Empty
       Command
-        Ident !"foo"
-        Ident !"x"
+        Ident !"foo280"
+        Call
+          Ident !"x"
+          Do
+            Empty
+            Empty
+            Empty
+            FormalParams
+              Empty
+              IdentDefs
+                Ident !"y"
+                Empty
+                Empty
+            Empty
+            Empty
+            StmtList
+              DiscardStmt
+                Empty
+          Else
+            StmtList
+              DiscardStmt
+                Empty
+  Asgn
+    Ident !"a"
+    Ident !"foo290"
+  Asgn
+    Ident !"a"
+    Call
+      Ident !"foo300"
+  Asgn
+    Ident !"a"
+    Call
+      Ident !"foo310"
+      Ident !"x"
+  Asgn
+    Ident !"a"
+    Command
+      Ident !"foo320"
+      Ident !"x"
+  Asgn
+    Ident !"a"
+    Call
+      Ident !"foo330"
+      StmtList
+        DiscardStmt
+          Empty
+  Asgn
+    Ident !"a"
+    Call
+      Ident !"foo340"
+      StmtList
+        DiscardStmt
+          Empty
+  Asgn
+    Ident !"a"
+    Call
+      Ident !"foo350"
+      StmtList
+        DiscardStmt
+          Empty
+      Else
+        StmtList
+          DiscardStmt
+            Empty
+  Asgn
+    Ident !"a"
+    Command
+      Ident !"foo360"
+      Call
+        DotExpr
+          Ident !"x"
+          Ident !"bar"
         Do
           Empty
           Empty
@@ -305,75 +386,18 @@ StmtList
           StmtList
             DiscardStmt
               Empty
-  Asgn
-    Ident !"a"
-    Ident !"foo"
-  Asgn
-    Ident !"a"
+  Command
+    DotExpr
+      Ident !"foo370"
+      Ident !"add"
     Call
-      Ident !"foo"
-  Asgn
-    Ident !"a"
-    Call
-      Ident !"foo"
-      Ident !"x"
-  Asgn
-    Ident !"a"
-    Command
-      Ident !"foo"
-      Ident !"x"
-  Asgn
-    Ident !"a"
-    Call
-      Ident !"foo"
+      Ident !"quote"
       StmtList
         DiscardStmt
           Empty
-  Asgn
-    Ident !"a"
-    Call
-      Ident !"foo"
-      StmtList
-        DiscardStmt
-          Empty
-  Asgn
-    Ident !"a"
-    Call
-      Ident !"foo"
-      StmtList
-        DiscardStmt
-          Empty
-      Else
-        StmtList
-          DiscardStmt
-            Empty
-  Asgn
-    Ident !"a"
-    Command
-      Ident !"foo"
-      Ident !"x"
-      Do
-        Empty
-        Empty
-        Empty
-        FormalParams
-          Empty
-          IdentDefs
-            Ident !"y"
-            Empty
-            Empty
-        Empty
-        Empty
-        StmtList
-          DiscardStmt
-            Empty
-      Else
-        StmtList
-          DiscardStmt
-            Empty
   Call
     DotExpr
-      Ident !"result"
+      Ident !"foo380"
       Ident !"add"
     BracketExpr
       Call
@@ -389,62 +413,65 @@ import macros
 
 dumpTree:
   # simple calls
-  foo
-  foo()
-  foo(x)
-  foo x
+  foo010
+  foo020()
+  foo030(x)
+  foo040 x
 
-  foo:
+  foo050:
     discard
 
-  foo do:
+  foo060 do:
     discard
 
-  foo("test"):
+  foo070("test"):
     discard
 
-  foo("test") do:
+  foo080("test") do:
     discard
 
-  foo "test":
+  foo090 "test":
     discard
 
-  foo "test" do:
+  foo100 "test" do:
+    discard
+
+  foo101 10 do:
     discard
 
   # more complicated calls
-  foo 1, (2+3):
+  foo110 1, (2+3):
     discard
 
-  foo 1, (2+3) do:
+  foo120 1, (2+3) do:
     discard
 
-  foo do (x):
+  foo130 do (x):
     discard
 
-  foo do (x: int):
+  foo140 do (x: int):
     discard
 
-  foo do (x: int) -> int:
+  foo150 do (x: int) -> int:
     discard
 
-  foo x do (y):
+  foo160 x do (y):
     discard
 
   # extra blocks
-  foo:
+  foo170:
     discard
   else:
     discard
 
-  foo do:
+  foo180 do:
     discard
   do:
     discard
   else:
     discard
 
-  foo x do (y):
+  foo190 x do (y):
     discard
   do (z) -> int:
     discard
@@ -456,58 +483,61 @@ dumpTree:
     discard
 
   # call with blocks as a param
-  foo(x, bar do:
+  foo200(x, bar do:
     discard
   else:
     discard
   )
 
   # introduce a variable
-  var a = foo
-  var a = foo()
-  var a = foo(x)
-  var a = foo x
+  var a = foo210
+  var a = foo220()
+  var a = foo230(x)
+  var a = foo240 x
 
-  var a = foo:
+  var a = foo250:
     discard
 
-  var a = foo do:
+  var a = foo260 do:
     discard
 
-  var a = foo do:
+  var a = foo270 do:
     discard
   else:
     discard
 
-  var a = foo x do (y):
+  var a = foo280 x do (y):
     discard
   else:
     discard
 
   # assignments
-  a = foo
-  a = foo()
-  a = foo(x)
-  a = foo x
+  a = foo290
+  a = foo300()
+  a = foo310(x)
+  a = foo320 x
 
-  a = foo:
+  a = foo330:
     discard
 
-  a = foo do:
+  a = foo340 do:
     discard
 
-  a = foo do:
+  a = foo350 do:
     discard
   else:
     discard
 
-  a = foo x do (y):
+  a = foo360 x.bar do (y):
     discard
   else:
+    discard
+
+  foo370.add quote do:
     discard
 
   # some edge cases
-  result.add((quote do:
+  foo380.add((quote do:
     discard
   )[0])
 
