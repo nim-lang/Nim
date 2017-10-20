@@ -78,15 +78,15 @@ proc getModuleName*(n: PNode): string =
     result = ""
 
 proc checkModuleName*(n: PNode; doLocalError=true): int32 =
-  # This returns the full canonical path for a given module import
+  # This returns the path for a given module import
   let modulename = n.getModuleName
-  let fullPath = findModule(modulename, n.info.toFullPath)
-  if fullPath.len == 0:
+  let path = findModule(modulename, n.info.toPath)
+  if path.len == 0:
     if doLocalError:
       localError(n.info, errCannotOpenFile, modulename)
     result = InvalidFileIDX
   else:
-    result = fullPath.fileInfoIdx
+    result = path.fileInfoIdx
 
 proc importPureEnumField*(c: PContext; s: PSym) =
   var check = strTableGet(c.importTable.symbols, s.name)
