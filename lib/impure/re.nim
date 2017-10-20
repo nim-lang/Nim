@@ -92,6 +92,13 @@ proc re*(s: string, flags = {reStudy}): Regex =
     result.e = pcre.study(result.h, options, addr msg)
     if not isNil(msg): raiseInvalidRegex($msg)
 
+proc rex*(s: string, flags = {reStudy, reExtended}): Regex =
+  ## Constructor for extended regular expressions.
+  ##
+  ## The extended means that comments starting with `#` and
+  ## whitespace are ignored.
+  result = re(s, flags)
+
 proc bufSubstr(b: cstring, sPos, ePos: int): string {.inline.} =
   ## Return a Nim string built from a slice of a cstring buffer.
   ## Don't assume cstring is '\0' terminated
