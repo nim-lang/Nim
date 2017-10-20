@@ -5,7 +5,7 @@ discard """
 """
 
 import
-  times, strutils
+  times, os, strutils, unittest
 
 # $ date --date='@2147483647'
 # Tue 19 Jan 03:14:07 GMT 2038
@@ -43,64 +43,62 @@ proc parseTest(s, f, sExpected: string, ydExpected: int) =
   let
     parsed = s.parse(f)
     parsedStr = $getGMTime(toTime(parsed))
-  if parsedStr != sExpected:
-    echo "Parsing failure!"
-    echo "expected: ", sExpected
-    echo "actual  : ", parsedStr
-    doAssert false
-  doAssert(parsed.yearday == ydExpected)
+  check parsedStr == sExpected
+  check(parsed.yearday == ydExpected)
+
 proc parseTestTimeOnly(s, f, sExpected: string) =
-  doAssert(sExpected in $s.parse(f))
+  check(sExpected in $s.parse(f))
 
 # because setting a specific timezone for testing is platform-specific, we use
 # explicit timezone offsets in all tests.
 
-parseTest("Tuesday at 09:04am on Dec 15, 2015 +0",
-    "dddd at hh:mmtt on MMM d, yyyy z", "2015-12-15T09:04:00+00:00", 348)
-# ANSIC       = "Mon Jan _2 15:04:05 2006"
-parseTest("Thu Jan 12 15:04:05 2006 +0", "ddd MMM dd HH:mm:ss yyyy z",
-    "2006-01-12T15:04:05+00:00", 11)
-# UnixDate    = "Mon Jan _2 15:04:05 MST 2006"
-parseTest("Thu Jan 12 15:04:05 2006 +0", "ddd MMM dd HH:mm:ss yyyy z",
-    "2006-01-12T15:04:05+00:00", 11)
-# RubyDate    = "Mon Jan 02 15:04:05 -0700 2006"
-parseTest("Mon Feb 29 15:04:05 -07:00 2016 +0", "ddd MMM dd HH:mm:ss zzz yyyy z",
-    "2016-02-29T15:04:05+00:00", 59) # leap day
-# RFC822      = "02 Jan 06 15:04 MST"
-parseTest("12 Jan 16 15:04 +0", "dd MMM yy HH:mm z",
-    "2016-01-12T15:04:00+00:00", 11)
-# RFC822Z     = "02 Jan 06 15:04 -0700" # RFC822 with numeric zone
-parseTest("01 Mar 16 15:04 -07:00", "dd MMM yy HH:mm zzz",
-    "2016-03-01T22:04:00+00:00", 60) # day after february in leap year
-# RFC850      = "Monday, 02-Jan-06 15:04:05 MST"
-parseTest("Monday, 12-Jan-06 15:04:05 +0", "dddd, dd-MMM-yy HH:mm:ss z",
-    "2006-01-12T15:04:05+00:00", 11)
-# RFC1123     = "Mon, 02 Jan 2006 15:04:05 MST"
-parseTest("Sun, 01 Mar 2015 15:04:05 +0", "ddd, dd MMM yyyy HH:mm:ss z",
-    "2015-03-01T15:04:05+00:00", 59) # day after february in non-leap year
-# RFC1123Z    = "Mon, 02 Jan 2006 15:04:05 -0700" # RFC1123 with numeric zone
-parseTest("Thu, 12 Jan 2006 15:04:05 -07:00", "ddd, dd MMM yyyy HH:mm:ss zzz",
-    "2006-01-12T22:04:05+00:00", 11)
-# RFC3339     = "2006-01-02T15:04:05Z07:00"
-parseTest("2006-01-12T15:04:05Z-07:00", "yyyy-MM-ddTHH:mm:ssZzzz",
-    "2006-01-12T22:04:05+00:00", 11)
-parseTest("2006-01-12T15:04:05Z-07:00", "yyyy-MM-dd'T'HH:mm:ss'Z'zzz",
-    "2006-01-12T22:04:05+00:00", 11)
-# RFC3339Nano = "2006-01-02T15:04:05.999999999Z07:00"
-parseTest("2006-01-12T15:04:05.999999999Z-07:00",
-    "yyyy-MM-ddTHH:mm:ss.999999999Zzzz", "2006-01-12T22:04:05+00:00", 11)
-for tzFormat in ["z", "zz", "zzz"]:
-  # formatting timezone as 'Z' for UTC
-  parseTest("2001-01-12T22:04:05Z", "yyyy-MM-dd'T'HH:mm:ss" & tzFormat,
-      "2001-01-12T22:04:05+00:00", 11)
-# Kitchen     = "3:04PM"
-parseTestTimeOnly("3:04PM", "h:mmtt", "15:04:00")
-#when not defined(testing):
-#  echo "Kitchen: " & $s.parse(f)
-#  var ti = timeToTimeInfo(getTime())
-#  echo "Todays date after decoding: ", ti
-#  var tint = timeToTimeInterval(getTime())
-#  echo "Todays date after decoding to interval: ", tint
+proc runParseTest() =
+  parseTest("Tuesday at 09:04am on Dec 15, 2015 +0",
+      "dddd at hh:mmtt on MMM d, yyyy z", "2015-12-15T09:04:00+00:00", 348)
+  # ANSIC       = "Mon Jan _2 15:04:05 2006"
+  parseTest("Thu Jan 12 15:04:05 2006 +0", "ddd MMM dd HH:mm:ss yyyy z",
+      "2006-01-12T15:04:05+00:00", 11)
+  # UnixDate    = "Mon Jan _2 15:04:05 MST 2006"
+  parseTest("Thu Jan 12 15:04:05 2006 +0", "ddd MMM dd HH:mm:ss yyyy z",
+      "2006-01-12T15:04:05+00:00", 11)
+  # RubyDate    = "Mon Jan 02 15:04:05 -0700 2006"
+  parseTest("Mon Feb 29 15:04:05 -07:00 2016 +0", "ddd MMM dd HH:mm:ss zzz yyyy z",
+      "2016-02-29T15:04:05+00:00", 59) # leap day
+  # RFC822      = "02 Jan 06 15:04 MST"
+  parseTest("12 Jan 16 15:04 +0", "dd MMM yy HH:mm z",
+      "2016-01-12T15:04:00+00:00", 11)
+  # RFC822Z     = "02 Jan 06 15:04 -0700" # RFC822 with numeric zone
+  parseTest("01 Mar 16 15:04 -07:00", "dd MMM yy HH:mm zzz",
+      "2016-03-01T22:04:00+00:00", 60) # day after february in leap year
+  # RFC850      = "Monday, 02-Jan-06 15:04:05 MST"
+  parseTest("Monday, 12-Jan-06 15:04:05 +0", "dddd, dd-MMM-yy HH:mm:ss z",
+      "2006-01-12T15:04:05+00:00", 11)
+  # RFC1123     = "Mon, 02 Jan 2006 15:04:05 MST"
+  parseTest("Sun, 01 Mar 2015 15:04:05 +0", "ddd, dd MMM yyyy HH:mm:ss z",
+      "2015-03-01T15:04:05+00:00", 59) # day after february in non-leap year
+  # RFC1123Z    = "Mon, 02 Jan 2006 15:04:05 -0700" # RFC1123 with numeric zone
+  parseTest("Thu, 12 Jan 2006 15:04:05 -07:00", "ddd, dd MMM yyyy HH:mm:ss zzz",
+      "2006-01-12T22:04:05+00:00", 11)
+  # RFC3339     = "2006-01-02T15:04:05Z07:00"
+  parseTest("2006-01-12T15:04:05Z-07:00", "yyyy-MM-ddTHH:mm:ssZzzz",
+      "2006-01-12T22:04:05+00:00", 11)
+  parseTest("2006-01-12T15:04:05Z-07:00", "yyyy-MM-dd'T'HH:mm:ss'Z'zzz",
+      "2006-01-12T22:04:05+00:00", 11)
+  # RFC3339Nano = "2006-01-02T15:04:05.999999999Z07:00"
+  parseTest("2006-01-12T15:04:05.999999999Z-07:00",
+      "yyyy-MM-ddTHH:mm:ss.999999999Zzzz", "2006-01-12T22:04:05+00:00", 11)
+  for tzFormat in ["z", "zz", "zzz"]:
+    # formatting timezone as 'Z' for UTC
+    parseTest("2001-01-12T22:04:05Z", "yyyy-MM-dd'T'HH:mm:ss" & tzFormat,
+        "2001-01-12T22:04:05+00:00", 11)
+  # Kitchen     = "3:04PM"
+  parseTestTimeOnly("3:04PM", "h:mmtt", "15:04:00")
+  #when not defined(testing):
+  #  echo "Kitchen: " & $s.parse(f)
+  #  var ti = timeToTimeInfo(getTime())
+  #  echo "Todays date after decoding: ", ti
+  #  var tint = timeToTimeInterval(getTime())
+  #  echo "Todays date after decoding to interval: ", tint
 
 # checking dayOfWeek matches known days
 doAssert getDayOfWeek(21, 9, 1900) == dFri
@@ -241,3 +239,31 @@ block countLeapYears:
   doAssert countLeapYears(1920) + 1 == countLeapYears(1921)
   doAssert countLeapYears(2004) + 1 == countLeapYears(2005)
   doAssert countLeapYears(2020) + 1 == countLeapYears(2021)
+
+
+suite "ttimes":
+
+  # Generate tests for multiple timezone files where available
+  # Set the TZ env var for each test
+  when defined(Linux) or defined(macosx):
+    const tz_dir = "/usr/share/zoneinfo"
+    let orig_tz = getEnv("TZ")
+    var tz_cnt = 0
+    for tz_fn in walkFiles(tz_dir & "/*"):
+      if symlinkExists(tz_fn) or tz_fn.endsWith(".tab") or
+          tz_fn.endsWith(".list"):
+        continue
+
+      test "test for " & tz_fn:
+        tz_cnt.inc
+        putEnv("TZ", tz_fn)
+        runParseTest()
+
+    putEnv("TZ", orig_tz)
+    test "enough timezone files tested":
+      check tz_cnt > 10
+
+  else:
+    # not on Linux or macosx: run one parseTest only
+    test "parseTest":
+      runParseTest()
