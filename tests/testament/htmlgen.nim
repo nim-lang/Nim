@@ -11,7 +11,7 @@
 
 import db_sqlite, cgi, backend, strutils, json
 
-include "testamenthtml.templ"
+import "testamenthtml.templ"
 
 proc generateTestRunTabListItemPartial(outfile: File, testRunRow: Row, firstRow = false) =
   let
