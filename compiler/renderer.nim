@@ -37,8 +37,8 @@ type
     inGenericParams: bool
     checkAnon: bool        # we're in a context that can contain sfAnon
     inPragma: int
-    pendingNewlineCount: int
     when defined(nimpretty):
+      pendingNewlineCount: int
       origContent: string
 
 
@@ -71,21 +71,21 @@ else:
   template IndentWidth: untyped = lexer.gIndentationWidth
   template longIndentWid: untyped = IndentWidth() * 2
 
-proc minmaxLine(n: PNode): (int, int) =
-  case n.kind
-  of nkTripleStrLit:
-    result = (n.info.line.int, n.info.line.int + countLines(n.strVal))
-  of nkCommentStmt:
-    result = (n.info.line.int, n.info.line.int + countLines(n.comment))
-  else:
-    result = (n.info.line.int, n.info.line.int)
-  for i in 0 ..< safeLen(n):
-    let (currMin, currMax) = minmaxLine(n[i])
-    if currMin < result[0]: result[0] = currMin
-    if currMax > result[1]: result[1] = currMax
+  proc minmaxLine(n: PNode): (int, int) =
+    case n.kind
+    of nkTripleStrLit:
+      result = (n.info.line.int, n.info.line.int + countLines(n.strVal))
+    of nkCommentStmt:
+      result = (n.info.line.int, n.info.line.int + countLines(n.comment))
+    else:
+      result = (n.info.line.int, n.info.line.int)
+    for i in 0 ..< safeLen(n):
+      let (currMin, currMax) = minmaxLine(n[i])
+      if currMin < result[0]: result[0] = currMin
+      if currMax > result[1]: result[1] = currMax
 
-proc lineDiff(a, b: PNode): int =
-  result = minmaxLine(b)[0] - minmaxLine(a)[1]
+  proc lineDiff(a, b: PNode): int =
+    result = minmaxLine(b)[0] - minmaxLine(a)[1]
 
 const
   MaxLineLen = 80
@@ -113,7 +113,10 @@ proc addTok(g: var TSrcGen, kind: TTokType, s: string) =
 
 proc addPendingNL(g: var TSrcGen) =
   if g.pendingNL >= 0:
-    let newlines = repeat("\n", clamp(g.pendingNewlineCount, 1, 3))
+    when defined(nimpretty):
+      let newlines = repeat("\n", clamp(g.pendingNewlineCount, 1, 3))
+    else:
+      const newlines = "\n"
     addTok(g, tkSpaces, newlines & spaces(g.pendingNL))
     g.lineLen = g.pendingNL
     g.pendingNL = - 1
@@ -139,7 +142,7 @@ proc putNL(g: var TSrcGen) =
 proc optNL(g: var TSrcGen, indent: int) =
   g.pendingNL = indent
   g.lineLen = indent
-  g.pendingNewlineCount = 0
+  when defined(nimpretty): g.pendingNewlineCount = 0
 
 proc optNL(g: var TSrcGen) =
   optNL(g, g.indent)
@@ -147,7 +150,7 @@ proc optNL(g: var TSrcGen) =
 proc optNL(g: var TSrcGen; a, b: PNode) =
   g.pendingNL = g.indent
   g.lineLen = g.indent
-  g.pendingNewlineCount = lineDiff(a, b)
+  when defined(nimpretty): g.pendingNewlineCount = lineDiff(a, b)
 
 proc indentNL(g: var TSrcGen) =
   inc(g.indent, IndentWidth)

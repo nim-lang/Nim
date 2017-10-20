@@ -203,7 +203,7 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       tyPtr, tyString, tyRef, tyOpt:
     defaultOp(c, t, body, x, y)
   of tyArray, tySequence:
-    if tfHasAsgn in t.flags:
+    if {tfHasAsgn, tfUncheckedArray} * t.flags == {tfHasAsgn}:
       if t.kind == tySequence:
         # XXX add 'nil' handling here
         body.add newSeqCall(c.c, x, y)
@@ -287,15 +287,14 @@ proc liftBody(c: PContext; typ: PType; kind: TTypeAttachedOp;
   if kind != attachedDestructor:
     result.typ.addParam src
 
-  # recursion is handled explicitly, but register the type based operation
-  # here in order to keep things robust against runaway recursions:
+  liftBodyAux(a, typ, body, newSymNode(dest).newDeref, newSymNode(src))
+  # recursion is handled explicitly, do not register the type based operation
+  # before 'liftBodyAux':
   case kind
   of attachedAsgn: typ.assignment = result
   of attachedSink: typ.sink = result
   of attachedDeepCopy: typ.deepCopy = result
   of attachedDestructor: typ.destructor = result
-
-  liftBodyAux(a, typ, body, newSymNode(dest).newDeref, newSymNode(src))
 
   var n = newNodeI(nkProcDef, info, bodyPos+1)
   for i in 0 .. < n.len: n.sons[i] = emptyNode
@@ -320,6 +319,7 @@ proc liftTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
   ## to ensure we lift assignment, destructors and moves properly.
   ## The later 'destroyer' pass depends on it.
   if not newDestructors or not hasDestructor(typ): return
+  let typ = typ.skipTypes({tyGenericInst, tyAlias})
   # we generate the destructor first so that other operators can depend on it:
   if typ.destructor == nil: liftBody(c, typ, attachedDestructor, info)
   if typ.assignment == nil: liftBody(c, typ, attachedAsgn, info)
