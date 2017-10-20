@@ -1,7 +1,7 @@
 #? stdtmpl(subsChar = '%', metaChar = '#', emit = "outfile.write")
 #import strutils
 #
-#proc htmlQuote(raw: string): string =
+#proc htmlQuote*(raw: string): string =
 #  result = raw.multiReplace(
 #    ("&", "&amp;"),
 #    ("\"", "&quot;"),
@@ -10,7 +10,8 @@
 #    (">", "&gt;")
 #  )
 #
-#proc generateHtmlBegin(outfile: File) =
+#end proc
+#proc generateHtmlBegin*(outfile: File) =
 <!DOCTYPE html>
 <html>
 <head>
@@ -141,24 +142,29 @@
 <body>
     <div class="container">
         <h1>Testament Test Results <small>Nim Tester</small></h1>
-#proc generateHtmlTabListBegin(outfile: File) =
+#end proc
+#proc generateHtmlTabListBegin*(outfile: File) =
         <ul class="nav nav-tabs" role="tablist">
-#proc generateHtmlTabListItem(outfile: File, firstTabActiveClass, commitId, 
+#end proc
+#proc generateHtmlTabListItem*(outfile: File, firstTabActiveClass, commitId, 
 #  machineId, branch, hash, machineName: string) =
             <li role="presentation" class="%firstTabActiveClass">
                 <a href="#tab-commit-%commitId-machine-%machineId" aria-controls="tab-commit-%commitId-machine-%machineId" role="tab" data-toggle="tab">
                     %branch#%hash@%machineName
                 </a>
             </li>
-#proc generateHtmlTabListEnd(outfile: File) =
+#end proc
+#proc generateHtmlTabListEnd*(outfile: File) =
         </ul>
-#proc generateHtmlTabContentsBegin(outfile: File) =
+#end proc
+#proc generateHtmlTabContentsBegin*(outfile: File) =
         <div class="tab-content">
-#proc generateHtmlTabPageBegin(oufile: File, firstTabActiveClass, commitId,
-#  machineId, branch, hash, machineName, os, cpu: string, totalCount: int,
-#  successCount: int, successPercentage: string,
-#  ignoredCount: int, ignoredPercentage: string,
-#  failedCount: int, failedPercentage: string) =
+#end proc
+#proc generateHtmlTabPageBegin*(outfile: File, firstTabActiveClass, commitId,
+#  machineId, branch, hash, machineName, os, cpu: string, totalCount: BiggestInt,
+#  successCount: BiggestInt, successPercentage: string,
+#  ignoredCount: BiggestInt, ignoredPercentage: string,
+#  failedCount: BiggestInt, failedPercentage: string) =
             <div id="tab-commit-%commitId-machine-%machineId" class="tab-pane fade%firstTabActiveClass" role="tabpanel">
                 <h2>%branch#%hash@%machineName</h2>
                 <dl class="dl-horizontal">
@@ -242,7 +248,8 @@
                     </table>
                 </div>
                 <div class="panel-group">
-#proc generateHtmlTestresultPanelBegin(outfile: File, trId, name, target, category,
+#end proc
+#proc generateHtmlTestresultPanelBegin*(outfile: File, trId, name, target, category,
 #  action, resultDescription, timestamp, result, resultSign, 
 #  panelCtxClass, textCtxClass, bgCtxClass: string) =
                     <div id="panel-testResult-%trId" class="panel panel-%panelCtxClass">
@@ -272,7 +279,8 @@
                                 <dt>Code</dt>
                                 <dd><code class="text-%textCtxClass">%result</code></dd>
                             </dl>
-#proc generateHtmlTestresultOutputDetails(outfile: File, expected, gotten: string) =
+#end proc
+#proc generateHtmlTestresultOutputDetails*(outfile: File, expected, gotten: string) =
                             <div class="table-responsive">
                                 <table class="table table-condensed">
                                     <thead>
@@ -289,17 +297,22 @@
                                     </tbody>
                                 </table>
                             </div>
-#proc generateHtmlTestresultOutputNone(outfile: File) =
+#end proc
+#proc generateHtmlTestresultOutputNone*(outfile: File) =
                             <p class="sr-only">No output details</p>
-#proc generateHtmlTestresultPanelEnd(outfile: File) =
+#end proc
+#proc generateHtmlTestresultPanelEnd*(outfile: File) =
                         </div>
                     </div>
-#proc generateHtmlTabPageEnd(oufile: File) =
+#end proc
+#proc generateHtmlTabPageEnd*(outfile: File) =
                 </div>
             </div>
-#proc generateHtmlTabContentsEnd(outfile: File) =
+#end proc
+#proc generateHtmlTabContentsEnd*(outfile: File) =
         </div>
-#proc generateHtmlEnd(outfile: File) =
+#end proc
+#proc generateHtmlEnd*(outfile: File) =
     </div>
 </body>
 </html>
