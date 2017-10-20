@@ -324,7 +324,7 @@ type PackageFilter = enum
   pfExtraOnly
   pfAll
 
-var nimbleDir = getEnv("NIMBLE_DIR")
+var nimbleDir = getEnv("NIMBLE_DIR").string
 if nimbleDir.len == 0: nimbleDir = getHomeDir() / ".nimble"
 let
   nimbleExe = findExe("nimble")
