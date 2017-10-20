@@ -290,7 +290,7 @@ when isMainModule:
   check fmt"${-1}%3d", " -1"
   check fmt"${-1}%03d", "-01"
   check fmt"${10}", "10"
-  check fmt"${16}%X", "F"
+  check fmt"${16}%X", "10"
   doAssert(not compiles(fmt"""${"12345"}%d"""))
 
   # Float tests
