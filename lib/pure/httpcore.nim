@@ -113,6 +113,9 @@ proc newHttpHeaders*(keyValuePairs:
   new result
   result.table = newTable[string, seq[string]](pairs)
 
+proc `$`*(headers: HttpHeaders): string =
+  return $headers.table
+
 proc clear*(headers: HttpHeaders) =
   headers.table.clear()
 
