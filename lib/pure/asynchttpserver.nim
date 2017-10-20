@@ -58,15 +58,18 @@ type
     socket: AsyncSocket
     reuseAddr: bool
     reusePort: bool
+    maxBody: int ## The maximum content-length that will be read for the body.
 
 {.deprecated: [TRequest: Request, PAsyncHttpServer: AsyncHttpServer,
   THttpCode: HttpCode, THttpVersion: HttpVersion].}
 
-proc newAsyncHttpServer*(reuseAddr = true, reusePort = false): AsyncHttpServer =
+proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
+                         maxBody = 8388608): AsyncHttpServer =
   ## Creates a new ``AsyncHttpServer`` instance.
   new result
   result.reuseAddr = reuseAddr
   result.reusePort = reusePort
+  result.maxBody = maxBody
 
 proc addHeaders(msg: var string, headers: HttpHeaders) =
   for k, v in headers:
@@ -129,7 +132,8 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
 
-proc processRequest(req: FutureVar[Request], client: AsyncSocket,
+proc processRequest(server: AsyncHttpServer, req: FutureVar[Request],
+                    client: AsyncSocket,
                     address: string, lineFut: FutureVar[string],
                     callback: proc (request: Request):
                       Future[void] {.closure, gcsafe.}) {.async.} =
@@ -231,6 +235,9 @@ proc processRequest(req: FutureVar[Request], client: AsyncSocket,
       await request.respond(Http400, "Bad Request. Invalid Content-Length.")
       return
     else:
+      if contentLength > server.maxBody:
+        await request.respondError(Http413)
+        return
       request.body = await client.recv(contentLength)
       if request.body.len != contentLength:
         await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
@@ -259,7 +266,7 @@ proc processRequest(req: FutureVar[Request], client: AsyncSocket,
     request.client.close()
     return
 
-proc processClient(client: AsyncSocket, address: string,
+proc processClient(server: AsyncHttpServer, client: AsyncSocket, address: string,
                    callback: proc (request: Request):
                       Future[void] {.closure, gcsafe.}) {.async.} =
   var request = newFutureVar[Request]("asynchttpserver.processClient")
@@ -269,7 +276,10 @@ proc processClient(client: AsyncSocket, address: string,
   lineFut.mget() = newStringOfCap(80)
 
   while not client.isClosed:
-    await processRequest(request, client, address, lineFut, callback)
+    try:
+      await processRequest(server, request, client, address, lineFut, callback)
+    except:
+      asyncCheck request.mget().respondError(Http500)
 
 proc serve*(server: AsyncHttpServer, port: Port,
             callback: proc (request: Request): Future[void] {.closure,gcsafe.},
@@ -290,7 +300,7 @@ proc serve*(server: AsyncHttpServer, port: Port,
     # TODO: Causes compiler crash.
     #var (address, client) = await server.socket.acceptAddr()
     var fut = await server.socket.acceptAddr()
-    asyncCheck processClient(fut.client, fut.address, callback)
+    asyncCheck processClient(server, fut.client, fut.address, callback)
     #echo(f.isNil)
     #echo(f.repr)
 
