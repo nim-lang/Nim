@@ -165,15 +165,18 @@ template interestingSym(s: PSym): bool =
   s.owner == c.owner and s.kind in InterestingSyms and hasDestructor(s.typ)
 
 proc genSink(t: PType; dest: PNode): PNode =
+  let t = t.skipTypes({tyGenericInst, tyAlias})
   let op = if t.sink != nil: t.sink else: t.assignment
   assert op != nil
   result = newTree(nkCall, newSymNode(op), newTree(nkHiddenAddr, dest))
 
 proc genCopy(t: PType; dest: PNode): PNode =
+  let t = t.skipTypes({tyGenericInst, tyAlias})
   assert t.assignment != nil
   result = newTree(nkCall, newSymNode(t.assignment), newTree(nkHiddenAddr, dest))
 
 proc genDestroy(t: PType; dest: PNode): PNode =
+  let t = t.skipTypes({tyGenericInst, tyAlias})
   assert t.destructor != nil
   result = newTree(nkCall, newSymNode(t.destructor), newTree(nkHiddenAddr, dest))
 
@@ -289,6 +292,7 @@ proc injectDestructorCalls*(owner: PSym; n: PNode): PNode =
     result.add body
 
   when defined(nimDebugDestroys):
-    echo "------------------------------------"
-    echo owner.name.s, " transformed to: "
-    echo result
+    if owner.name.s == "createSeq":
+      echo "------------------------------------"
+      echo owner.name.s, " transformed to: "
+      echo result
