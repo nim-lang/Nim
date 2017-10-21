@@ -141,9 +141,9 @@ type
     years*: int       ## The number of years
 
   Timezone = object
-    getZoned: proc(time: Time): TimeInfo
+    getZoned: proc(self: Timezone, time: Time): TimeInfo {.nimcall, tags: [TimeEffect], raises: [], benign .}
       ## Convert a `Time` to a `TimeInfo` with correct `utcOffset` and `isDst`
-    normalize: proc(ti: TimeInfo): TimeInfo
+    normalize: proc(self: Timezone, ti: TimeInfo): TimeInfo {.nimcall, tags: [TimeEffect], raises: [], benign .}
       # FIXME: add better comment, improve name.
       ## Assumes that `ti` is specified in this timezone, and returns a proper TimeInfo.
       # This includes setting the `utcOffset` and `isDst`, but also other fields like
@@ -155,12 +155,12 @@ type
     TTimeInterval: TimeInterval, TTimeInfo: TimeInfo].}
 
 # Forward declares
-proc getZonedUtc(time: Time): TimeInfo
-proc normalizeUtc(ti: TimeInfo): TimeInfo
-proc getZonedLocal(t: Time): TimeInfo
-proc normalizeLocal(ti: TimeInfo): TimeInfo
+proc getZonedUtc(self: Timezone, time: Time): TimeInfo {.nimcall, tags: [TimeEffect], raises: [], benign .}
+proc normalizeUtc(self: Timezone, ti: TimeInfo): TimeInfo {.nimcall, tags: [TimeEffect], raises: [], benign .}
+proc getZonedLocal(self: Timezone, t: Time): TimeInfo {.nimcall, tags: [TimeEffect], raises: [], benign .}
+proc normalizeLocal(self: Timezone, ti: TimeInfo): TimeInfo {.nimcall, tags: [TimeEffect], raises: [], benign .}
 proc getDayOfYear(monthday: int, month: Month, year: int): int {. used .}
-proc toTime*(timeInfo: TimeInfo): Time {.tags: [TimeEffect], benign.}
+proc toTime*(timeInfo: TimeInfo): Time {.tags: [TimeEffect], raises: [], benign.}
   ## converts a broken-down time structure to
   ## calendar time representation. The function ignores the specified
   ## contents of the structure members `weekday` and `yearday` and recomputes
@@ -202,16 +202,17 @@ proc `==`*(a, b: Time): bool {.
 
 proc inZone*(time: Time, zone: Timezone): TimeInfo =
   # FIXME: add comment
-  result = zone.getZoned(time)
-  result.timezone = zone
+  result = zone.getZoned(zone, time)
   
 proc inZone*(d: TimeInfo, zone: Timezone): TimeInfo =
   # FIXME: add comment  
   if d.timezone != zone:
     result = d.toTime.inZone(zone)
-    result.timezone = zone
   else:
     result = d
+
+proc normalize(d: TimeInfo, zone: Timezone): TimeInfo =
+  result = zone.normalize(zone, d)
 
 proc `==`*(tz1, tz2: Timezone): bool =
   # FIXME: add comment
@@ -219,12 +220,6 @@ proc `==`*(tz1, tz2: Timezone): bool =
 
 const EuropeanWeekdayToUs: array[WeekDay, int8] = [1'i8,2'i8,3'i8,4'i8,5'i8,6'i8,0'i8]
 const UsWeekdayToEuropean = [dSun, dMon, dTue, dWed, dThu, dFri, dSat]
-
-let Utc* = Timezone(getZoned: getZonedUtc, normalize: normalizeUtc, name: "UTC")
-## Represents the UTC timezone.
-
-let Local* = Timezone(getZoned: getZonedLocal, normalize: normalizeLocal, name: "LOCAL")
-## Represents the local timezone.
 
 when defined(JS):
     proc newDate(value: cstring): Time {.importc: "new Date".}
@@ -257,7 +252,6 @@ when defined(JS):
         result.year = t.getUTCFullYear()
         result.weekday = UsWeekdayToEuropean[t.getUTCDay()]
         result.yearday = getDayOfYear(result.monthday, result.month, result.year)
-        result.tz = Utc
 
     proc getZonedLocal(t: Time): TimeInfo =
         result.second = t.getSeconds()
@@ -269,7 +263,6 @@ when defined(JS):
         result.weekday = UsWeekdayToEuropean[t.getDay()]
         result.timezone = t.getTimezoneOffset() # Wrong - includes dst
         result.yearday = getDayOfYear(result.monthday, result.month, result.year)
-        result.tz = Local
     
     proc normalizeLocal(ti: TimeInfo): TimeInfo =
         newDate(ti.format("yyyy-MM-ddTHH:mm:ss")).inZone(Local)
@@ -334,13 +327,14 @@ else:
     result.yearday = t.yearday
     result.isdst = if t.isDst: 1 else: 0
 
-  proc getZonedUtc(time: Time): TimeInfo =
+  proc getZonedUtc(self: Timezone, time: Time): TimeInfo =
     var a = time
     let lt = gmtime(addr(a))
     assert(not lt.isNil)
     result = tmToTimeInfo(lt[])
+    result.timezone = self
 
-  proc getZonedLocal(t: Time): TimeInfo =
+  proc getZonedLocal(self: Timezone, t: Time): TimeInfo =
     var a = t
     let lt = localtime(addr(a))
     assert(not lt.isNil)
@@ -351,16 +345,23 @@ else:
     # include dst, we need to subtract it.
     result.utcOffset = (t - result.toTime + ord(lt.isdst > 0) * 60 * 60).int
     result.isDst = lt.isdst > 0
+    result.timezone = self
 
-  proc normalizeLocal(ti: TimeInfo): TimeInfo =
+  proc normalizeLocal(self: Timezone, ti: TimeInfo): TimeInfo =
     let localTimestamp = mktime(timeInfoToTM(ti))
-    return localTimestamp.inZone(Local)
+    return localTimestamp.inZone(self)
 
-proc normalizeUtc(ti: TimeInfo): TimeInfo =
+proc normalizeUtc(self: Timezone, ti: TimeInfo): TimeInfo =
   var tiUtc = ti
   tiUtc.utcOffset = 0
   tiUtc.isDst = false
-  return ti.toTime.inZone(Utc)
+  return ti.toTime.inZone(self)
+
+let Utc* = Timezone(getZoned: getZonedUtc, normalize: normalizeUtc, name: "UTC")
+## Represents the UTC timezone.
+
+let Local* = Timezone(getZoned: getZonedLocal, normalize: normalizeLocal, name: "LOCAL")
+## Represents the local timezone.
 
 proc getTime*(): Time {.tags: [TimeEffect], benign.}
   ## gets the current calendar time as a UNIX epoch value (number of seconds
@@ -1133,12 +1134,12 @@ proc parse*(value, layout: string): TimeInfo =
         parseToken(info, token, value, j)
         token = ""
 
-    if info.isDst:
-      # No timezone parsed - assume local
-      result = Local.normalize(info)
-    else:
-      # Otherwise convert to local
-      result = info.toTime.inZone(Local)
+  if info.isDst:
+    # No timezone parsed - assume local
+    result = info.normalize(Local)
+  else:
+    # Otherwise convert to local
+    result = info.toTime.inZone(Local)
 
 # Leap year calculations are adapted from:
 # http://www.codeproject.com/Articles/7358/Ultra-fast-Algorithms-for-Working-with-Leap-Years
@@ -1274,7 +1275,7 @@ proc initTimeInfo*(monthday: MonthdayRange, month: Month, year: int,
     minute:  minute,
     second:  second
   )
-  result = zone.normalize(ti)
+  result = ti.normalize(zone)
 
 when not defined(JS):
   proc epochTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].}
