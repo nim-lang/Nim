@@ -1260,8 +1260,8 @@ when not defined(JS):
     result.inc timeInfo.hour * secondsInHour
     result.inc timeInfo.minute * 60
     result.inc timeInfo.second
-    # The code above treats `ti` as GM,
-    # so we need to compensate for that here
+    # The code above ignores the UTC offset of `timeInfo`,
+    # so we need to compensate for that here.
     result.inc timeInfo.timezone
     result.dec int(timeInfo.isDST) * secondsInHour
 
