@@ -117,16 +117,16 @@ doAssert getDayOfWeekJulian(1, 1, 2021) == dFri
 # toSeconds tests with GM timezone
 let t4L = getGMTime(fromSeconds(876124714))
 doAssert toSeconds(toTime(t4L)) == 876124714
-doAssert toSeconds(toTime(t4L)) + t4L.timezone.float == toSeconds(toTime(t4))
+doAssert toSeconds(toTime(t4L)) + t4L.utcOffset.float == toSeconds(toTime(t4))
 
 # adding intervals
 var
-  a1L = toSeconds(toTime(t4L + initInterval(hours = 1))) + t4L.timezone.float
+  a1L = toSeconds(toTime(t4L + initInterval(hours = 1))) + t4L.utcOffset.float
   a1G = toSeconds(toTime(t4)) + 60.0 * 60.0
 doAssert a1L == a1G
 
 # subtracting intervals
-a1L = toSeconds(toTime(t4L - initInterval(hours = 1))) + t4L.timezone.float
+a1L = toSeconds(toTime(t4L - initInterval(hours = 1))) + t4L.utcOffset.float
 a1G = toSeconds(toTime(t4)) - (60.0 * 60.0)
 doAssert a1L == a1G
 
@@ -195,38 +195,12 @@ for tz in [
     (-1800, "+0", "+00", "+00:30"), # half an hour
     (7200, "-2", "-02", "-02:00"), # positive
     (38700, "-10", "-10", "-10:45")]: # positive with three quaters hour
-  let ti = TimeInfo(monthday: 1, timezone: tz[0])
+  let ti = TimeInfo(monthday: 1, utcOffset: tz[0])
   doAssert ti.format("z") == tz[1]
   doAssert ti.format("zz") == tz[2]
   doAssert ti.format("zzz") == tz[3]
 
-block formatDst:
-  var ti = TimeInfo(monthday: 1, isDst: true)
-
-  # BST
-  ti.timezone = 0
-  doAssert ti.format("z") == "+1"
-  doAssert ti.format("zz") == "+01"
-  doAssert ti.format("zzz") == "+01:00"
-
-  # EDT
-  ti.timezone = 5 * 60 * 60 
-  doAssert ti.format("z") == "-4"
-  doAssert ti.format("zz") == "-04"
-  doAssert ti.format("zzz") == "-04:00"
-
 block dstTest:
-  let nonDst = TimeInfo(year: 2015, month: mJan, monthday: 01, yearday: 0,
-      weekday: dThu, hour: 00, minute: 00, second: 00, isDST: false, timezone: 0)
-  var dst = nonDst
-  dst.isDst = true
-  # note that both isDST == true and isDST == false are valid here because
-  # DST is in effect on January 1st in some southern parts of Australia.
-  # FIXME: Fails in UTC
-  # doAssert nonDst.toTime() - dst.toTime() == 3600
-  doAssert nonDst.format("z") == "+0"
-  doAssert dst.format("z") == "+1"
-
   # parsing will set isDST in relation to the local time. We take a date in
   # January and one in July to maximize the probability to hit one date with DST
   # and one without on the local machine. However, this is not guaranteed.
