@@ -13,10 +13,6 @@
 ## We had to de-deprecate this module since too much code relies on it
 ## and many people prefer its API over ``nre``'s.
 ##
-## **Note:** The 're' proc defaults to the **extended regular expression
-## syntax** which lets you use whitespace freely to make your regexes readable.
-## However, this means matching whitespace requires ``\s`` or something similar.
-##
 ## This module is implemented by providing a wrapper around the
 ## `PRCE (Perl-Compatible Regular Expressions) <http://www.pcre.org>`_
 ## C library. This means that your application will depend on the PRCE
@@ -78,7 +74,7 @@ proc finalizeRegEx(x: Regex) =
   if not isNil(x.e):
     pcre.free_substring(cast[cstring](x.e))
 
-proc re*(s: string, flags = {reExtended, reStudy}): Regex =
+proc re*(s: string, flags = {reStudy}): Regex =
   ## Constructor of regular expressions.
   ##
   ## Note that Nim's
@@ -95,6 +91,13 @@ proc re*(s: string, flags = {reExtended, reStudy}): Regex =
         options = pcre.STUDY_JIT_COMPILE
     result.e = pcre.study(result.h, options, addr msg)
     if not isNil(msg): raiseInvalidRegex($msg)
+
+proc rex*(s: string, flags = {reStudy, reExtended}): Regex =
+  ## Constructor for extended regular expressions.
+  ##
+  ## The extended means that comments starting with `#` and
+  ## whitespace are ignored.
+  result = re(s, flags)
 
 proc bufSubstr(b: cstring, sPos, ePos: int): string {.inline.} =
   ## Return a Nim string built from a slice of a cstring buffer.
