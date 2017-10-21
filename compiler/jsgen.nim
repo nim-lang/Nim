@@ -1067,7 +1067,7 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
       else:
         r.res = "chckIndx($1, $2, strlen($3))-$2" % [b.res, rope(first), a.res]
     else:
-      r.res = "chckIndx($1, $2, $3.length-1)-$2" % [b.res, rope(first), a.res]
+      r.res = "chckIndx($1, $2, $3.length+$2-1)-$2" % [b.res, rope(first), a.res]
   elif first != 0:
     r.res = "($1)-$2" % [b.res, rope(first)]
   else:
