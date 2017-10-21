@@ -40,13 +40,12 @@ import
 
 include "system/inclrtl"
 
-type
-  Month* = enum ## represents a month
-    mJan, mFeb, mMar, mApr, mMay, mJun, mJul, mAug, mSep, mOct, mNov, mDec
-  WeekDay* = enum ## represents a weekday
-    dMon, dTue, dWed, dThu, dFri, dSat, dSun
+when defined(JS):
+  type
+    TimeBase = float
+    Time* = distinct TimeBase
 
-when defined(posix) and not defined(JS):
+when defined(posix):
   when defined(linux) and defined(amd64):
     type
       TimeImpl {.importc: "time_t", header: "<time.h>".} = clong
@@ -92,13 +91,12 @@ elif defined(windows):
   type
     Time* = distinct TimeImpl
 
-
-elif defined(JS):
-  type
-    TimeBase = float
-    Time* = distinct TimeBase
-
 type
+  Month* = enum ## represents a month
+    mJan, mFeb, mMar, mApr, mMay, mJun, mJul, mAug, mSep, mOct, mNov, mDec
+  WeekDay* = enum ## represents a weekday
+    dMon, dTue, dWed, dThu, dFri, dSat, dSun
+
   MonthdayRange* = range[1..31]
   HourRange* = range[0..23]
   MinuteRange* = range[0..59]
@@ -122,7 +120,7 @@ type
     isDst*: bool              ## Determines whether DST is in effect.
                               ## Semantically, this adds another negative hour
                               ## offset to the time in addition to the timezone.
-    timezone*: TimeZone       # FIXME: add comment
+    timezone*: Timezone       # FIXME: add comment
     
     utcOffset*: int64         ## The offset of the (non-DST) timezone in seconds
                               ## west of UTC. Note that the sign of this number
@@ -337,32 +335,32 @@ else:
     result.isdst = if t.isDst: 1 else: 0
 
   proc getZonedUtc(time: Time): TimeInfo =
-      var a = time
-      let lt = gmtime(addr(a))
-      assert(not lt.isNil)
-      result = tmToTimeInfo(lt[])
+    var a = time
+    let lt = gmtime(addr(a))
+    assert(not lt.isNil)
+    result = tmToTimeInfo(lt[])
 
   proc getZonedLocal(t: Time): TimeInfo =
-      var a = t
-      let lt = localtime(addr(a))
-      assert(not lt.isNil)
-      result = tmToTimeInfo(lt[])
-      # Since timezone and dst is not set for `result` yet, we can
-      # calculate the utc offset by comparing `result.toTime` with
-      # the original timestamp. Since `result.timezone` should not
-      # include dst, we need to subtract it.
-      result.utcOffset = (t - result.toTime + ord(lt.isdst > 0) * 60 * 60).int
-      result.isDst = lt.isdst > 0
+    var a = t
+    let lt = localtime(addr(a))
+    assert(not lt.isNil)
+    result = tmToTimeInfo(lt[])
+    # Since timezone and dst is not set for `result` yet, we can
+    # calculate the utc offset by comparing `result.toTime` with
+    # the original timestamp. Since `result.timezone` should not
+    # include dst, we need to subtract it.
+    result.utcOffset = (t - result.toTime + ord(lt.isdst > 0) * 60 * 60).int
+    result.isDst = lt.isdst > 0
 
   proc normalizeLocal(ti: TimeInfo): TimeInfo =
-      let localTimestamp = mktime(timeInfoToTM(ti))
-      return localTimestamp.inZone(Local)
+    let localTimestamp = mktime(timeInfoToTM(ti))
+    return localTimestamp.inZone(Local)
 
 proc normalizeUtc(ti: TimeInfo): TimeInfo =
-    var tiUtc = ti
-    tiUtc.utcOffset = 0
-    tiUtc.isDst = false
-    return ti.toTime.inZone(Utc)
+  var tiUtc = ti
+  tiUtc.utcOffset = 0
+  tiUtc.isDst = false
+  return ti.toTime.inZone(Utc)
 
 proc getTime*(): Time {.tags: [TimeEffect], benign.}
   ## gets the current calendar time as a UNIX epoch value (number of seconds
@@ -1265,7 +1263,7 @@ proc toTimeInterval*(t: Time): TimeInterval =
   initInterval(0, tInfo.second, tInfo.minute, tInfo.hour, tInfo.weekday.ord, tInfo.month.ord, tInfo.year)
 
 proc initTimeInfo*(monthday: MonthdayRange, month: Month, year: int,
-                  hour: HourRange, minute: MinuteRange, second: SecondRange, tz: Timezone = Local): TimeInfo =
+                  hour: HourRange, minute: MinuteRange, second: SecondRange, zone: Timezone = Local): TimeInfo =
   # FIXME: add comment
   doAssert monthday <= getDaysInMonth(month, year), "Invalid date: " & $month & " " & $monthday & ", " & $year
   let ti = TimeInfo(
@@ -1276,7 +1274,7 @@ proc initTimeInfo*(monthday: MonthdayRange, month: Month, year: int,
     minute:  minute,
     second:  second
   )
-  result = tz.normalize(ti)
+  result = zone.normalize(ti)
 
 when not defined(JS):
   proc epochTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].}
