@@ -101,6 +101,17 @@ proc parseQuoted(cmd: string; outp: var string; start: int): int =
     i += parseUntil(cmd, outp, seps, i)
   result = i
 
+proc sexpHighlight(s: Suggest): SexpNode =
+  ## Convert Suggest type to SexpNode for ideHighlight for EPC option
+  let sk =
+    if s.symkind == skVar and s.isGlobal:
+      "skGlobalVar"
+    elif s.symKind == skLet and s.isGlobal:
+      "skGlobalLet"
+    else:
+      $s.symkind
+  result = convertSexp([sk, s.line, s.column, s.tokenLen])
+
 proc sexp(s: IdeCmd|TSymKind|PrefixMatch): SexpNode = sexp($s)
 
 proc sexp(s: Suggest): SexpNode =
@@ -251,6 +262,8 @@ proc toEpc(client: Socket; uid: BiggestInt) {.gcsafe.} =
       list.add sexp(res.doc)
     of ideKnown:
       list.add sexp(res.quality == 1)
+    of ideHighlight:
+      list.add sexpHighlight(res)
     else:
       list.add sexp(res)
   returnEpc(client, uid, list)
