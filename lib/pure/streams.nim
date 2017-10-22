@@ -34,6 +34,10 @@
 
 include "system/inclrtl"
 
+when not defined(js):
+  # copyMem is not available for js #5667
+  import endians
+
 proc newEIO(msg: string): ref IOError =
   new(result)
   result.msg = msg
@@ -338,7 +342,102 @@ proc peekLine*(s: Stream): TaintedString =
   defer: setPosition(s, pos)
   result = readLine(s)
 
+
+# copyMem is not available for js #5667
 when not defined(js):
+
+  proc unpackInt*(s: Stream, format: string): int =
+    ## Unpack one or more bytes into an ``int``.
+    ## The format can be "b", "B" or endiannes
+    ## followed by input type: "<I", ">h", "!H"
+    ##
+    ## .. code-block:: nim
+    ##    unpackInt("\x7f\xff", ">h") == 32767
+    ##
+    ## ====== ====================== ====
+    ## symbol endianness             size
+    ## ====== ====================== ====
+    ## =      native
+    ## <      little-endian
+    ## >      big-endian
+    ## !      network (big-endian)
+    ## ====== ====================== ====
+    ##
+    ## ====== ====================== ====
+    ## symbol input type             size
+    ## ====== ====================== ====
+    ## b      char                      1
+    ## B      unsigned char             1
+    ## h      short                     2
+    ## H      unsigned short            2
+    ## i      int                       4
+    ## I      unsigned int              4
+    ## l      long                      4
+    ## L      unsigned long             4
+    ## ==== ==== ====
+    ##
+    case format[0]
+    of 'b':
+      return s.readInt8.int
+
+    of 'B':
+      return s.readUInt8.int
+
+    of '=':
+      case format[1]
+      of 'h':
+        return s.readInt16.int
+      of 'H':
+        return s.readUInt16.int
+      else:
+        discard
+
+    of '<':
+      var result: int
+      case format[1]
+      of 'h':
+        var x = s.readInt16
+        littleEndian16(addr x, addr x)
+        return x.int
+      of 'H':
+        var x = s.readUInt16
+        littleEndian16(addr x, addr x)
+        return x.int
+      of 'i', 'l':
+        var x = s.readInt32
+        littleEndian32(addr x, addr x)
+        return x.int
+      of 'I', 'L':
+        var x = s.readUInt32
+        littleEndian32(addr x, addr x)
+        return x.int
+      else:
+        raise newException(ValueError, "Unexpected formatter '" & format[1] & "'")
+
+    of '>', '!':
+      case format[1]
+      of 'h':
+        var x = s.readInt16
+        bigEndian16(addr x, addr x)
+        return x.int
+      of 'H':
+        var x = s.readUInt16
+        bigEndian16(addr x, addr x)
+        return x.int
+      of 'i', 'l':
+        var x = s.readInt32
+        bigEndian32(addr x, addr x)
+        return x.int
+      of 'I', 'L':
+        var x = s.readUInt32
+        bigEndian32(addr x, addr x)
+        return x.int
+      else:
+        raise newException(ValueError, "Unexpected formatter '" & format[1] & "'")
+
+    else:
+      discard
+
 
   type
     StringStream* = ref StringStreamObj ## a stream that encapsulates a string
