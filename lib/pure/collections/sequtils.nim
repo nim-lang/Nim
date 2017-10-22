@@ -43,6 +43,20 @@ proc concat*[T](seqs: varargs[seq[T]]): seq[T] =
       result[i] = itm
       inc(i)
 
+proc count*[T](list: seq[T], item: T): int =
+  ## Count the occurrences of the item `item` in the sequence `list`.
+  ##
+  ## Example:
+  ##
+  ## .. code-block::
+  ##   let
+  ##     s = @[1, 2, 2, 3, 2, 4, 2]
+  ##     c = count(s, 2)
+  ##   assert c == 4
+  for x in items(list):
+    if x == item:
+      inc result
+
 proc cycle*[T](s: seq[T], n: Natural): seq[T] =
   ## Returns a new sequence with the items of `s` repeated `n` times.
   ##
@@ -673,6 +687,23 @@ when isMainModule:
       s3 = @[6, 7]
       total = concat(s1, s2, s3)
     assert total == @[1, 2, 3, 4, 5, 6, 7]
+
+  block: # count test
+    let
+      s1 = @[1, 2, 3, 2]
+      s2 = @['a', 'b', 'x', 'a']
+      r0 = count(s1, 0)
+      r1 = count(s1, 1)
+      r2 = count(s1, 2)
+      r3 = count(s2, 'y')
+      r4 = count(s2, 'x')
+      r5 = count(s2, 'a')
+    assert r0 == 0
+    assert r1 == 1
+    assert r2 == 2
+    assert r3 == 0
+    assert r4 == 1
+    assert r5 == 2
 
   block: # duplicates test
     let
