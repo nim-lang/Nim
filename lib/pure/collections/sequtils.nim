@@ -13,8 +13,8 @@
 ## were inspired by functional programming languages.
 ##
 ## For functional style programming you may want to pass `anonymous procs
-## <manual.html#anonymous-procs>`_ to procs like ``filter`` to reduce typing.
-## Anonymous procs can use `the special do notation <manual.html#do-notation>`_
+## <manual.html#procedures-anonymous-procs>`_ to procs like ``filter`` to reduce typing.
+## Anonymous procs can use `the special do notation <manual.html#procedures-do-notation>`_
 ## which is more convenient in certain situations.
 
 include "system/inclrtl"
