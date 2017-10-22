@@ -209,17 +209,6 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
     else:
       localError(gTrackPos, "found no symbol at this position " & $gTrackPos)
 
-proc executeEpc(cmd: IdeCmd, args: SexpNode;
-                graph: ModuleGraph; cache: IdentCache) =
-  let
-    file = args[0].getStr
-    line = args[1].getNum
-    column = args[2].getNum
-  var dirtyfile = ""
-  if len(args) > 3:
-    dirtyfile = args[3].getStr(nil)
-  execute(cmd, file, dirtyfile, int(line), int(column), graph, cache)
-
 proc returnEpc(socket: Socket, uid: BiggestInt, s: SexpNode|string,
                return_symbol = "return") =
   let response = $convertSexp([newSSymbol(return_symbol), uid, s])
