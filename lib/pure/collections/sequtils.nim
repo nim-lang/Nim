@@ -43,8 +43,8 @@ proc concat*[T](seqs: varargs[seq[T]]): seq[T] =
       result[i] = itm
       inc(i)
 
-proc count*[T](s: seq[T], x: T): int =
-  ## Count the occurrences of the item `x` in the sequence `s`.
+proc count*[T](list: seq[T], item: T): int =
+  ## Count the occurrences of the item `item` in the sequence `list`.
   ##
   ## Example:
   ##
@@ -53,8 +53,8 @@ proc count*[T](s: seq[T], x: T): int =
   ##     s = @[1, 2, 2, 3, 2, 4, 2]
   ##     c = count(s, 2)
   ##   assert c == 4
-  for itm in items(s):
-    if itm == x:
+  for x in items(list):
+    if x == item:
       inc result
 
 proc cycle*[T](s: seq[T], n: Natural): seq[T] =
