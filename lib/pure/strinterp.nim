@@ -9,7 +9,7 @@
 
 ## This module provides the string interpolation macro ``fmt``.
 
-import parseutils, sequtils, macros, strutils, unicode
+import parseutils, sequtils, macros, strutils, unicode, math
 
 # -----------------------------------------------------------------------------
 # nimboost's formatters
@@ -83,15 +83,20 @@ proc formatString(s: string, len: int, fill = ' '): string =
     else:
       result = s & repeat(fill, fillLength)
 
-proc formatFloat(v: SomeNumber, len = 0, prec = 0, sep = '.', fill = ' ',  scientific = false): string =
+proc formatFloat(v: SomeNumber, len = 0, prec = 0, sep = '.', fill = ' ',  scientific = false, divisor = 0): string =
   ## Converts ``v`` to string with precision == ``prec``. If result's length
   ## is lesser than ``len``, it aligns result to the right with ``fill`` char.
   ## If ``len`` is negative, the result is aligned to the left.
-  let f = if scientific: ffScientific else: if prec == 0: ffDefault else: ffDecimal
-  if len > 0 and v < 0 and fill == '0':
-    result = "-" & formatString(formatBiggestFloat(-v.BiggestFloat, f, prec, sep), len-1, fill)
+  var value = v.BiggestFloat
+  if divisor > 0:
+    value = v.BiggestFloat / pow(2f, divisor.float*10f).BiggestFloat
   else:
-    result = formatString(formatBiggestFloat(v.BiggestFloat, f, prec, sep), len, fill)
+    value = v.BiggestFloat / pow(1000f, -divisor.float).BiggestFloat
+  let f = if scientific: ffScientific else: if prec == 0: ffDefault else: ffDecimal
+  if len > 0 and value < 0 and fill == '0':
+    result = "-" & formatString(formatBiggestFloat(-value, f, prec, sep), len-1, fill)
+  else:
+    result = formatString(formatBiggestFloat(value, f, prec, sep), len, fill)
 
 # -----------------------------------------------------------------------------
 # nimboost's richstring
@@ -106,29 +111,64 @@ proc parseIntFmt(fmtp: string): tuple[maxLen: int, fillChar: char] =
   var fillChar = if ((minus and fmtp.len > 1) or fmtp.len > 0) and fmtp[if minus: 1 else: 0] == '0': '0' else: ' '
   (maxLen, fillChar)
 
-proc parseFloatFmt(fmtp: string): tuple[maxLen: int, prec: int, fillChar: char] =
-  ## Extracts the maxLen, prec, and fillChar from a float format string. Examples:
-  ## "5.1" => maxLen = 5, prec = 1, fillChar = ' '
-  ## "05.1" => maxLen = 5, prec = 1, fillChar = '0'
+proc parseFloatFmt(fmtp: string): tuple[maxLen: int, prec: int, fillChar: char, divisor: int] =
+  ## Extracts the maxLen, prec, fillChar, and divisor from a float format string.
+  ## The divisor by using IEC/ISO standard binary suffixes. Positive divisor
+  ## values correspond to IEC modifiers (base 1024), negative values correspond
+  ## to SI modifiers (base 1000).
+  ## Examples:
+  ## "5.1"  => maxLen = 5, prec = 1, fillChar = ' ', divisor = 0
+  ## "05.1" => maxLen = 5, prec = 1, fillChar = '0', divisor = 0
+  ## "Ki"   => maxLen = 0, prec = 0, fillChar = ' ', divisor = 1
+  ## "Mi"   => maxLen = 0, prec = 0, fillChar = ' ', divisor = 2
+  ## "k"    => maxLen = 0, prec = 0, fillChar = ' ', divisor = -1
+  ## "M"    => maxLen = 0, prec = 0, fillChar = ' ', divisor = -2
   result.fillChar = ' '
+  result.divisor = 0
   if fmtp == "":
     return
+  # Parse sign (for left/right alignment)
   var t = ""
   var minus = 1
   var idx = 0
   idx += fmtp.parseWhile(t, {'-'}, idx)
   if t == "-":
     minus = -1
+  # Parse fillChar
   idx += fmtp.parseWhile(t, {'0'}, idx)
   if t == "0":
     result.fillChar = '0'
+  # Parse maxLen
   idx += fmtp.parseWhile(t, {'0'..'9'}, idx)
   if t != "":
     result.maxLen = minus * parseInt(t)
+  # Parse prec
   idx += fmtp.skipWhile({'.'}, idx)
   idx += fmtp.parseWhile(t, {'0'..'9'}, idx)
   if t != "":
     result.prec = parseInt(t)
+  # Handle size modification suffix
+  let remainder = fmtp[idx..^1]
+  if remainder.len > 0:
+    case remainder
+    of "Ki": result.divisor = 1
+    of "Mi": result.divisor = 2
+    of "Gi": result.divisor = 3
+    of "Ti": result.divisor = 4
+    of "Pi": result.divisor = 5
+    of "Ei": result.divisor = 6
+    of "Zi": result.divisor = 7
+    of "Yi": result.divisor = 8
+    of "k": result.divisor = -1
+    of "M": result.divisor = -2
+    of "G": result.divisor = -3
+    of "T": result.divisor = -4
+    of "P": result.divisor = -5
+    of "E": result.divisor = -6
+    of "Z": result.divisor = -7
+    of "Y": result.divisor = -8
+    else:
+      quit "Illegal float format suffix: " & remainder
 
 proc handleIntFormat(exp: string, fmtp: string, radix: int, lowerCase = false): NimNode {.compileTime.} =
   let (maxLen, fillChar) = parseIntFmt(fmtp)
@@ -141,12 +181,16 @@ proc handleXFormat(exp: string, fmtp: string, lowerCase: bool): NimNode {.compil
   result = handleIntFormat(exp, fmtp, 16, lowerCase)
 
 proc handleFFormat(exp: string, fmtp: string): NimNode {.compileTime.} =
-  var (maxLen, prec, fillChar) = parseFloatFmt(fmtp)
-  result = newCall(bindSym"formatFloat", parseExpr(exp), newLit(maxLen), newLit(prec), newLit('.'), newLit(fillChar), newLit(false))
+  var (maxLen, prec, fillChar, divisor) = parseFloatFmt(fmtp)
+  result = newCall(
+    bindSym"formatFloat", parseExpr(exp), newLit(maxLen), newLit(prec),
+    newLit('.'), newLit(fillChar), newLit(false), newLit(divisor))
 
 proc handleEFormat(exp: string, fmtp: string): NimNode {.compileTime.} =
-  var (maxLen, prec, fillChar) = parseFloatFmt(fmtp)
-  result = newCall(bindSym"formatFloat", parseExpr(exp), newLit(maxLen), newLit(prec), newLit('.'), newLit(fillChar), newLit(true))
+  var (maxLen, prec, fillChar, divisor) = parseFloatFmt(fmtp)
+  result = newCall(
+    bindSym"formatFloat", parseExpr(exp), newLit(maxLen), newLit(prec),
+    newLit('.'), newLit(fillChar), newLit(true), newLit(divisor))
 
 proc handleSFormat(exp: string, fmtp: string): NimNode {.compileTime.} =
   var (maxLen, _) = parseIntFmt(fmtp)
@@ -155,8 +199,9 @@ proc handleSFormat(exp: string, fmtp: string): NimNode {.compileTime.} =
   else:
     result = newCall(bindSym"formatString", parseExpr("$(" & exp & ")"), newLit(maxLen), newLit(' '))
 
-proc handleFormat(exp: string, fmt: string, nodes: var seq[NimNode]) {.compileTime} =
+proc handleFormat(exp: string, fmt: string, nodes: var seq[NimNode]) {.compileTime.} =
   if fmt[1] == '%':
+    # converts a double %% into % after an interpolation expression
     nodes.add(parseExpr("$(" & exp & ")"))
     nodes.add(newLit(fmt[1..^1]))
   else:
@@ -165,10 +210,9 @@ proc handleFormat(exp: string, fmt: string, nodes: var seq[NimNode]) {.compileTi
     var fmtm = ""
     var fmtp = ""
     while idx < fmt.len:
-      if fmt[idx].isAlphaAscii:
-        if fmt[idx] in formats:
-          fmtm = $fmt[idx]
-          fmtp = fmt[1..idx-1]
+      if fmt[idx] in formats:
+        fmtm = $fmt[idx]
+        fmtp = fmt[1..idx-1]
         break
       inc idx
     if fmtm == "":
@@ -271,6 +315,13 @@ when isMainModule:
   check fmt"$s%7s", " string"
   doAssert(not compiles(fmt"$s_works")) # parsed as identifier `s_works`
 
+  # Misc general tests
+  check fmt"$$", "$"
+  check fmt"${0}%%", "0%"
+  check fmt"${0}%%asdf", "0%asdf"
+  check fmt"""\n${"\n"}\n""", "\n\n\n"
+  check fmt"""${"abc"}%ss""", "abcs"
+
   # String tests
   check fmt"""${"abc"}""", "abc"
   check fmt"""${"abc"}%s""", "abc"
@@ -281,7 +332,6 @@ when isMainModule:
   check fmt"""${"abc"}%-4s""", "abc "
   check fmt"""${""}%4s""", "    "
   check fmt"""${""}%-4s""", "    "
-  check fmt"$$", "$"
 
   # Unicode string tests
   check fmt"""${"αβγ"}""", "αβγ"
@@ -335,6 +385,32 @@ when isMainModule:
   check fmt"${123.456}%.2e", "1.23e+02"
   check fmt"${123.456}%.3e", "1.235e+02"
   doAssert(not compiles(fmt"""${"12345"}%e"""))
+
+  # Float size modifier tests
+  check fmt"${1024}%Kif", "1"
+  check fmt"${1024*1024}%Mif", "1"
+  check fmt"${1024*1024*1024}%Gif", "1"
+  check fmt"${1_000}%kf", "1"
+  check fmt"${1_000_000}%Mf", "1"
+  check fmt"${1_000_000_000}%Gf", "1"
+  check fmt"${pow(2f, 10f)}%Kif", "1"
+  check fmt"${pow(2f, 20f)}%Mif", "1"
+  check fmt"${pow(2f, 30f)}%Gif", "1"
+  check fmt"${pow(2f, 40f)}%Tif", "1"
+  check fmt"${pow(2f, 50f)}%Pif", "1"
+  check fmt"${pow(2f, 60f)}%Eif", "1"
+  check fmt"${pow(2f, 70f)}%Zif", "1"
+  check fmt"${pow(2f, 80f)}%Yif", "1"
+  check fmt"${pow(1000f, 1f)}%kf", "1"
+  check fmt"${pow(1000f, 2f)}%Mf", "1"
+  check fmt"${pow(1000f, 3f)}%Gf", "1"
+  check fmt"${pow(1000f, 4f)}%Tf", "1"
+  check fmt"${pow(1000f, 5f)}%Pf", "1"
+  check fmt"${pow(1000f, 6f)}%Ef", "1"
+  check fmt"${pow(1000f, 7f)}%Zf", "1"
+  check fmt"${pow(1000f, 8f)}%Yf", "1"
+  check fmt"${1024}%KifkB", "1kB"
+  check fmt"${1024}%.3Kif", "1.000"
 
   # Hex tests
   check fmt"${0}%x", "0"
