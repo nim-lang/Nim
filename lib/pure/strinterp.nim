@@ -255,6 +255,7 @@ macro fmt*(fmt: static[string]): untyped =
   ##   assert fmt"""${"test"}%-5s""" == "test "
   ##   assert fmt"${1}%.3f" == "1.000"
   ##   assert fmt"Hello, $s!" == "Hello, string!"
+  ##   assert fmt"${2*1024}%.3Kif kB" == "2.000 kB"
 
   proc esc(s: string): string {.inline.} =
     result = newStringOfCap(s.len)
@@ -306,6 +307,7 @@ when isMainModule:
   check fmt"""${"test"}%-5s""", "test "
   check fmt"${1}%.3f", "1.000"
   check fmt"Hello, $s!", "Hello, string!"
+  check fmt"${2*1024}%.3Kif kB", "2.000 kB"
 
   # Tests for identifers without parenthesis
   check fmt"$s works$s", "string worksstring"
