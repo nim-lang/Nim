@@ -660,7 +660,6 @@ template applyIt*(varSeq, op: untyped) =
     varSeq[i] = op
 
 
-
 template newSeqWith*(len: int, init: untyped): untyped =
   ## creates a new sequence, calling `init` to initialize each value. Example:
   ##
@@ -692,57 +691,159 @@ when isMainModule:
     let
       s1 = @[1, 2, 3, 2]
       s2 = @['a', 'b', 'x', 'a']
+      a1 = [1, 2, 3, 2]
+      a2 = ['a', 'b', 'x', 'a']
       r0 = count(s1, 0)
       r1 = count(s1, 1)
       r2 = count(s1, 2)
       r3 = count(s2, 'y')
       r4 = count(s2, 'x')
       r5 = count(s2, 'a')
+      ar0 = count(a1, 0)
+      ar1 = count(a1, 1)
+      ar2 = count(a1, 2)
+      ar3 = count(a2, 'y')
+      ar4 = count(a2, 'x')
+      ar5 = count(a2, 'a')
     assert r0 == 0
     assert r1 == 1
     assert r2 == 2
     assert r3 == 0
     assert r4 == 1
     assert r5 == 2
+    assert ar0 == 0
+    assert ar1 == 1
+    assert ar2 == 2
+    assert ar3 == 0
+    assert ar4 == 1
+    assert ar5 == 2
 
-  block: # duplicates test
+  block: # cycle tests
+    let
+      a = @[1, 2, 3]
+      b: seq[int] = @[]
+      c = [1, 2, 3]
+
+    doAssert a.cycle(3) == @[1, 2, 3, 1, 2, 3, 1, 2, 3]
+    doAssert a.cycle(0) == @[]
+    #doAssert a.cycle(-1) == @[] # will not compile!
+    doAssert b.cycle(3) == @[]
+    doAssert c.cycle(3) == @[1, 2, 3, 1, 2, 3, 1, 2, 3]
+    doAssert c.cycle(0) == @[]
+
+  block: # repeat tests
+    assert repeat(10, 5) == @[10, 10, 10, 10, 10]
+    assert repeat(@[1,2,3], 2) == @[@[1,2,3], @[1,2,3]]
+    assert repeat([1,2,3], 2) == @[[1,2,3], [1,2,3]]
+
+  block: # deduplicates test
     let
       dup1 = @[1, 1, 3, 4, 2, 2, 8, 1, 4]
       dup2 = @["a", "a", "c", "d", "d"]
+      dup3 = [1, 1, 3, 4, 2, 2, 8, 1, 4]
+      dup4 = ["a", "a", "c", "d", "d"]
       unique1 = deduplicate(dup1)
       unique2 = deduplicate(dup2)
+      unique3 = deduplicate(dup3)
+      unique4 = deduplicate(dup4)
     assert unique1 == @[1, 3, 4, 2, 8]
     assert unique2 == @["a", "c", "d"]
+    assert unique3 == @[1, 3, 4, 2, 8]
+    assert unique4 == @["a", "c", "d"]
 
   block: # zip test
     let
       short = @[1, 2, 3]
       long = @[6, 5, 4, 3, 2, 1]
       words = @["one", "two", "three"]
+      ashort = [1, 2, 3]
+      along = [6, 5, 4, 3, 2, 1]
+      awords = ["one", "two", "three"]
       zip1 = zip(short, long)
       zip2 = zip(short, words)
+      zip3 = zip(ashort, along)
+      zip4 = zip(ashort, awords)
+      zip5 = zip(ashort, words)
     assert zip1 == @[(1, 6), (2, 5), (3, 4)]
     assert zip2 == @[(1, "one"), (2, "two"), (3, "three")]
+    assert zip3 == @[(1, 6), (2, 5), (3, 4)]
+    assert zip4 == @[(1, "one"), (2, "two"), (3, "three")]
+    assert zip5 == @[(1, "one"), (2, "two"), (3, "three")]
     assert zip1[2].b == 4
     assert zip2[2].b == "three"
+    assert zip3[2].b == 4
+    assert zip4[2].b == "three"
+    assert zip5[2].b == "three"
+
+  block: # distribute tests
+    let numbers = @[1, 2, 3, 4, 5, 6, 7]
+    doAssert numbers.distribute(3) == @[@[1, 2, 3], @[4, 5], @[6, 7]]
+    doAssert numbers.distribute(6)[0] == @[1, 2]
+    doAssert numbers.distribute(6)[5] == @[7]
+    let a = @[1, 2, 3, 4, 5, 6, 7]
+    doAssert a.distribute(1, true)   == @[@[1, 2, 3, 4, 5, 6, 7]]
+    doAssert a.distribute(1, false)  == @[@[1, 2, 3, 4, 5, 6, 7]]
+    doAssert a.distribute(2, true)   == @[@[1, 2, 3, 4], @[5, 6, 7]]
+    doAssert a.distribute(2, false)  == @[@[1, 2, 3, 4], @[5, 6, 7]]
+    doAssert a.distribute(3, true)   == @[@[1, 2, 3], @[4, 5], @[6, 7]]
+    doAssert a.distribute(3, false)  == @[@[1, 2, 3], @[4, 5, 6], @[7]]
+    doAssert a.distribute(4, true)   == @[@[1, 2], @[3, 4], @[5, 6], @[7]]
+    doAssert a.distribute(4, false)  == @[@[1, 2], @[3, 4], @[5, 6], @[7]]
+    doAssert a.distribute(5, true)   == @[@[1, 2], @[3, 4], @[5], @[6], @[7]]
+    doAssert a.distribute(5, false)  == @[@[1, 2], @[3, 4], @[5, 6], @[7], @[]]
+    doAssert a.distribute(6, true)   == @[@[1, 2], @[3], @[4], @[5], @[6], @[7]]
+    doAssert a.distribute(6, false)  == @[
+      @[1, 2], @[3, 4], @[5, 6], @[7], @[], @[]]
+    doAssert a.distribute(8, false)  == a.distribute(8, true)
+    doAssert a.distribute(90, false) == a.distribute(90, true)
+    var b = @[0]
+    for f in 1 .. 25: b.add(f)
+    doAssert b.distribute(5, true)[4].len == 5
+    doAssert b.distribute(5, false)[4].len == 2
 
   block: # filter proc test
     let
       colors = @["red", "yellow", "black"]
+      acolors = ["red", "yellow", "black"]
       f1 = filter(colors, proc(x: string): bool = x.len < 6)
       f2 = filter(colors) do (x: string) -> bool : x.len > 5
+      f3 = filter(acolors, proc(x: string): bool = x.len < 6)
+      f4 = filter(acolors) do (x: string) -> bool : x.len > 5
     assert f1 == @["red", "black"]
     assert f2 == @["yellow"]
+    assert f3 == @["red", "black"]
+    assert f4 == @["yellow"]
 
   block: # filter iterator test
     let numbers = @[1, 4, 5, 8, 9, 7, 4]
+    let anumbers = [1, 4, 5, 8, 9, 7, 4]
     assert toSeq(filter(numbers, proc (x: int): bool = x mod 2 == 0)) ==
+      @[4, 8, 4]
+    assert toSeq(filter(anumbers, proc (x: int): bool = x mod 2 == 0)) ==
       @[4, 8, 4]
 
   block: # keepIf test
     var floats = @[13.0, 12.5, 5.8, 2.0, 6.1, 9.9, 10.1]
     keepIf(floats, proc(x: float): bool = x > 10)
     assert floats == @[13.0, 12.5, 10.1]
+
+  block: # delete tests
+    let outcome = @[1,1,1,1,1,1,1,1]
+    var dest = @[1,1,1,2,2,2,2,2,2,1,1,1,1,1]
+    dest.delete(3, 8)
+    assert outcome == dest, """\
+    Deleting range 3-9 from [1,1,1,2,2,2,2,2,2,1,1,1,1,1]
+    is [1,1,1,1,1,1,1,1]"""
+
+  block: # insert tests
+    var dest = @[1,1,1,1,1,1,1,1]
+    let
+      src = @[2,2,2,2,2,2]
+      outcome = @[1,1,1,2,2,2,2,2,2,1,1,1,1,1]
+    dest.insert(src, 3)
+    assert dest == outcome, """\
+    Inserting [2,2,2,2,2,2] into [1,1,1,1,1,1,1,1]
+    at 3 is [1,1,1,2,2,2,2,2,2,1,1,1,1,1]"""
 
   block: # filterIt test
     let
@@ -757,37 +858,49 @@ when isMainModule:
     keepItIf(candidates, it.len == 3 and it[0] == 'b')
     assert candidates == @["bar", "baz"]
 
-  block: # any
-    let
-      numbers = @[1, 4, 5, 8, 9, 7, 4]
-      len0seq : seq[int] = @[]
-    assert any(numbers, proc (x: int): bool = return x > 8) == true
-    assert any(numbers, proc (x: int): bool = return x > 9) == false
-    assert any(len0seq, proc (x: int): bool = return true) == false
-
-  block: # anyIt
-    let
-      numbers = @[1, 4, 5, 8, 9, 7, 4]
-      len0seq : seq[int] = @[]
-    assert anyIt(numbers, it > 8) == true
-    assert anyIt(numbers, it > 9) == false
-    assert anyIt(len0seq, true) == false
-
   block: # all
     let
       numbers = @[1, 4, 5, 8, 9, 7, 4]
+      anumbers = [1, 4, 5, 8, 9, 7, 4]
       len0seq : seq[int] = @[]
     assert all(numbers, proc (x: int): bool = return x < 10) == true
     assert all(numbers, proc (x: int): bool = return x < 9) == false
     assert all(len0seq, proc (x: int): bool = return false) == true
+    assert all(anumbers, proc (x: int): bool = return x < 10) == true
+    assert all(anumbers, proc (x: int): bool = return x < 9) == false
 
   block: # allIt
     let
       numbers = @[1, 4, 5, 8, 9, 7, 4]
+      anumbers = [1, 4, 5, 8, 9, 7, 4]
       len0seq : seq[int] = @[]
     assert allIt(numbers, it < 10) == true
     assert allIt(numbers, it < 9) == false
     assert allIt(len0seq, false) == true
+    assert allIt(anumbers, it < 10) == true
+    assert allIt(anumbers, it < 9) == false
+
+  block: # any
+    let
+      numbers = @[1, 4, 5, 8, 9, 7, 4]
+      anumbers = [1, 4, 5, 8, 9, 7, 4]
+      len0seq : seq[int] = @[]
+    assert any(numbers, proc (x: int): bool = return x > 8) == true
+    assert any(numbers, proc (x: int): bool = return x > 9) == false
+    assert any(len0seq, proc (x: int): bool = return true) == false
+    assert any(anumbers, proc (x: int): bool = return x > 8) == true
+    assert any(anumbers, proc (x: int): bool = return x > 9) == false
+
+  block: # anyIt
+    let
+      numbers = @[1, 4, 5, 8, 9, 7, 4]
+      anumbers = [1, 4, 5, 8, 9, 7, 4]
+      len0seq : seq[int] = @[]
+    assert anyIt(numbers, it > 8) == true
+    assert anyIt(numbers, it > 9) == false
+    assert anyIt(len0seq, true) == false
+    assert anyIt(anumbers, it > 8) == true
+    assert anyIt(anumbers, it > 9) == false
 
   block: # toSeq test
     let
@@ -823,24 +936,6 @@ when isMainModule:
     assert multiplication == 495, "Multiplication is (5*(9*(11)))"
     assert concatenation == "nimiscool"
 
-  block: # delete tests
-    let outcome = @[1,1,1,1,1,1,1,1]
-    var dest = @[1,1,1,2,2,2,2,2,2,1,1,1,1,1]
-    dest.delete(3, 8)
-    assert outcome == dest, """\
-    Deleting range 3-9 from [1,1,1,2,2,2,2,2,2,1,1,1,1,1]
-    is [1,1,1,1,1,1,1,1]"""
-
-  block: # insert tests
-    var dest = @[1,1,1,1,1,1,1,1]
-    let
-      src = @[2,2,2,2,2,2]
-      outcome = @[1,1,1,2,2,2,2,2,2,1,1,1,1,1]
-    dest.insert(src, 3)
-    assert dest == outcome, """\
-    Inserting [2,2,2,2,2,2] into [1,1,1,1,1,1,1,1]
-    at 3 is [1,1,1,2,2,2,2,2,2,1,1,1,1,1]"""
-
   block: # mapIt tests
     var
       nums = @[1, 2, 3, 4]
@@ -849,52 +944,12 @@ when isMainModule:
     assert nums[0] + nums[3] == 15
     assert strings[2] == "12"
 
-  block: # distribute tests
-    let numbers = @[1, 2, 3, 4, 5, 6, 7]
-    doAssert numbers.distribute(3) == @[@[1, 2, 3], @[4, 5], @[6, 7]]
-    doAssert numbers.distribute(6)[0] == @[1, 2]
-    doAssert numbers.distribute(6)[5] == @[7]
-    let a = @[1, 2, 3, 4, 5, 6, 7]
-    doAssert a.distribute(1, true)   == @[@[1, 2, 3, 4, 5, 6, 7]]
-    doAssert a.distribute(1, false)  == @[@[1, 2, 3, 4, 5, 6, 7]]
-    doAssert a.distribute(2, true)   == @[@[1, 2, 3, 4], @[5, 6, 7]]
-    doAssert a.distribute(2, false)  == @[@[1, 2, 3, 4], @[5, 6, 7]]
-    doAssert a.distribute(3, true)   == @[@[1, 2, 3], @[4, 5], @[6, 7]]
-    doAssert a.distribute(3, false)  == @[@[1, 2, 3], @[4, 5, 6], @[7]]
-    doAssert a.distribute(4, true)   == @[@[1, 2], @[3, 4], @[5, 6], @[7]]
-    doAssert a.distribute(4, false)  == @[@[1, 2], @[3, 4], @[5, 6], @[7]]
-    doAssert a.distribute(5, true)   == @[@[1, 2], @[3, 4], @[5], @[6], @[7]]
-    doAssert a.distribute(5, false)  == @[@[1, 2], @[3, 4], @[5, 6], @[7], @[]]
-    doAssert a.distribute(6, true)   == @[@[1, 2], @[3], @[4], @[5], @[6], @[7]]
-    doAssert a.distribute(6, false)  == @[
-      @[1, 2], @[3, 4], @[5, 6], @[7], @[], @[]]
-    doAssert a.distribute(8, false)  == a.distribute(8, true)
-    doAssert a.distribute(90, false) == a.distribute(90, true)
-    var b = @[0]
-    for f in 1 .. 25: b.add(f)
-    doAssert b.distribute(5, true)[4].len == 5
-    doAssert b.distribute(5, false)[4].len == 2
-
   block: # newSeqWith tests
     var seq2D = newSeqWith(4, newSeq[bool](2))
     seq2D[0][0] = true
     seq2D[1][0] = true
     seq2D[0][1] = true
     doAssert seq2D == @[@[true, true], @[true, false], @[false, false], @[false, false]]
-
-  block: # cycle tests
-    let
-      a = @[1, 2, 3]
-      b: seq[int] = @[]
-
-    doAssert a.cycle(3) == @[1, 2, 3, 1, 2, 3, 1, 2, 3]
-    doAssert a.cycle(0) == @[]
-    #doAssert a.cycle(-1) == @[] # will not compile!
-    doAssert b.cycle(3) == @[]
-
-  block: # repeat tests
-    assert repeat(10, 5) == @[10, 10, 10, 10, 10]
-    assert repeat(@[1,2,3], 2) == @[@[1,2,3], @[1,2,3]]
 
   when not defined(testing):
     echo "Finished doc tests"
