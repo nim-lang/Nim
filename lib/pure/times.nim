@@ -23,14 +23,14 @@
 ##  sleep(100)   # replace this with something to be timed
 ##  echo "Time taken: ",cpuTime() - t
 ##
-##  echo "My formatted time: ", format(getLocalTime(getTime()), "d MMMM yyyy HH:mm")
+##  echo "My formatted time: ", format(now(), "d MMMM yyyy HH:mm")
 ##  echo "Using predefined formats: ", getClockStr(), " ", getDateStr()
 ##
 ##  echo "epochTime() float value: ", epochTime()
 ##  echo "getTime()   float value: ", toSeconds(getTime())
 ##  echo "cpuTime()   float value: ", cpuTime()
-##  echo "An hour from now      : ", getLocalTime(getTime()) + 1.hours
-##  echo "An hour from (UTC) now: ", getGmTime(getTime()) + initInterval(0,0,0,1)
+##  echo "An hour from now      : ", now() + 1.hours
+##  echo "An hour from (UTC) now: ", getTime().inZone(Utc) + initInterval(0,0,0,1)
 
 {.push debugger:off.} # the user does not want to trace a part
                       # of the standard library!
@@ -45,7 +45,7 @@ when defined(JS):
     TimeBase = float
     Time* = distinct TimeBase
 
-when defined(posix):
+elif defined(posix):
   when defined(linux) and defined(amd64):
     type
       TimeImpl {.importc: "time_t", header: "<time.h>".} = clong
@@ -159,7 +159,7 @@ proc getZonedUtc(self: Timezone, time: Time): TimeInfo {.nimcall, tags: [TimeEff
 proc normalizeUtc(self: Timezone, ti: TimeInfo): TimeInfo {.nimcall, tags: [TimeEffect], raises: [], benign .}
 proc getZonedLocal(self: Timezone, t: Time): TimeInfo {.nimcall, tags: [TimeEffect], raises: [], benign .}
 proc normalizeLocal(self: Timezone, ti: TimeInfo): TimeInfo {.nimcall, tags: [TimeEffect], raises: [], benign .}
-proc getDayOfYear(monthday: int, month: Month, year: int): int {. used .}
+proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int): int {. used .}
 proc toTime*(timeInfo: TimeInfo): Time {.tags: [TimeEffect], raises: [], benign.}
   ## converts a broken-down time structure to
   ## calendar time representation. The function ignores the specified
@@ -200,11 +200,11 @@ proc `==`*(a, b: Time): bool {.
   else:
     result = a - b == 0
 
-proc inZone*(time: Time, zone: Timezone): TimeInfo =
+proc inZone*(time: Time, zone: Timezone): TimeInfo {.tags: [TimeEffect], raises: [], benign.} =
   # FIXME: add comment
   result = zone.getZoned(zone, time)
   
-proc inZone*(d: TimeInfo, zone: Timezone): TimeInfo =
+proc inZone*(d: TimeInfo, zone: Timezone): TimeInfo  {.tags: [TimeEffect], raises: [], benign.} =
   # FIXME: add comment  
   if d.timezone != zone:
     result = d.toTime.inZone(zone)
@@ -368,12 +368,16 @@ proc getTime*(): Time {.tags: [TimeEffect], benign.}
   ## elapsed since 1970) with integer precission. Use epochTime for higher
   ## resolution.
 
-proc getLocalTime*(t: Time): TimeInfo {.tags: [TimeEffect], raises: [], benign.} =
+proc now*(): TimeInfo {.tags: [TimeEffect], benign.} =
+  # TODO: doc comment
+  getTime().inZone(Local)
+
+proc getLocalTime*(t: Time): TimeInfo {.tags: [TimeEffect], raises: [], benign, deprecated.} =
   ## converts the calendar time `t` to broken-time representation,
   ## expressed relative to the user's specified time zone.
   t.inZone(Local)
 
-proc getGMTime*(t: Time): TimeInfo {.tags: [TimeEffect], raises: [], benign.} =
+proc getGMTime*(t: Time): TimeInfo {.tags: [TimeEffect], raises: [], benign, deprecated.} =
   ## converts the calendar time `t` to broken-down time representation,
   ## expressed in Coordinated Universal Time (UTC).
   t.inZone(Utc)
@@ -558,13 +562,13 @@ proc miliseconds*(t: TimeInterval): int {.deprecated.} = t.milliseconds
 
 proc getDateStr*(): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
   ## gets the current date as a string of the format ``YYYY-MM-DD``.
-  var ti = getLocalTime(getTime())
+  var ti = now()
   result = $ti.year & '-' & intToStr(ord(ti.month)+1, 2) &
     '-' & intToStr(ti.monthday, 2)
 
 proc getClockStr*(): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
   ## gets the current clock time as a string of the format ``HH:MM:SS``.
-  var ti = getLocalTime(getTime())
+  var ti = now()
   result = intToStr(ti.hour, 2) & ':' & intToStr(ti.minute, 2) &
     ':' & intToStr(ti.second, 2)
 
@@ -625,24 +629,24 @@ proc years*(y: int): TimeInterval {.inline.} =
 
 proc `+=`*(t: var Time, ti: TimeInterval) =
   ## modifies `t` by adding the interval `ti`
-  t = toTime(getLocalTime(t) + ti)
+  t = toTime(t.inZone(Local) + ti)
 
 proc `+`*(t: Time, ti: TimeInterval): Time =
   ## adds the interval `ti` to Time `t`
   ## by converting to localTime, adding the interval, and converting back
   ##
   ## ``echo getTime() + 1.day``
-  result = toTime(getLocalTime(t) + ti)
+  result = toTime(t.inZone(Local) + ti)
 
 proc `-=`*(t: var Time, ti: TimeInterval) =
   ## modifies `t` by subtracting the interval `ti`
-  t = toTime(getLocalTime(t) - ti)
+  t = toTime(t.inZone(Local) - ti)
 
 proc `-`*(t: Time, ti: TimeInterval): Time =
   ## subtracts the interval `ti` from Time `t`
   ##
   ## ``echo getTime() - 1.day``
-  result = toTime(getLocalTime(t) - ti)
+  result = toTime(t.inZone(Local) - ti)
 
 const
   secondsInMin = 60
@@ -850,7 +854,7 @@ proc `$`*(timeInfo: TimeInfo): string {.tags: [], raises: [], benign.} =
 proc `$`*(time: Time): string {.tags: [TimeEffect], raises: [], benign.} =
   ## converts a `Time` value to a string representation. It will use the local
   ## time zone and use the format ``yyyy-MM-dd'T'HH-mm-sszzz``.
-  $getLocalTime(time)
+  $time.inZone(Local)
 
 {.pop.}
 
@@ -1001,7 +1005,7 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
   of "yy":
     # Assumes current century
     var year = value[j..j+1].parseInt()
-    var thisCen = getLocalTime(getTime()).year div 100
+    var thisCen = now().year div 100
     info.year = thisCen*100 + year
     j += 2
   of "yyyy":
@@ -1055,7 +1059,8 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
     # Ignore the token and move forward in the value string by the same length
     j += token.len
 
-proc parse*(value, layout: string): TimeInfo =
+proc parse*(value, layout: string, zone: Timezone = Local): TimeInfo =
+  # FIXME: Add comment about `zone` paramter
   ## This function parses a date/time string using the standard format
   ## identifiers as listed below. The function defaults information not provided
   ## in the format string from the running program (timezone, month, year, etc).
@@ -1099,7 +1104,7 @@ proc parse*(value, layout: string): TimeInfo =
   var j = 0 # pointer for value string
   var token = ""
   # Assumes current day of month, month and year, but time is reset to 00:00:00. Weekday will be reset after parsing.
-  var info = getLocalTime(getTime())
+  var info = now()
   info.hour = 0
   info.minute = 0
   info.second = 0
@@ -1135,11 +1140,11 @@ proc parse*(value, layout: string): TimeInfo =
         token = ""
 
   if info.isDst:
-    # No timezone parsed - assume local
-    result = info.normalize(Local)
+    # No timezone parsed - assume timezone is `zone`
+    result = info.normalize(zone)
   else:
-    # Otherwise convert to local
-    result = info.toTime.inZone(Local)
+    # Otherwise convert to `zone`
+    result = info.toTime.inZone(zone)
 
 # Leap year calculations are adapted from:
 # http://www.codeproject.com/Articles/7358/Ultra-fast-Algorithms-for-Working-with-Leap-Years
@@ -1170,7 +1175,7 @@ proc countYearsAndDays*(daySpan: int): tuple[years: int, days: int] =
   result.years = days div 365
   result.days = days mod 365
 
-proc getDayOfYear(monthday: int, month: Month, year: int): int =
+proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int): int =
   const daysUntilMonth : array[Month, int] = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
   const daysUntilMonthLeap : array[Month, int] = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
 
@@ -1207,7 +1212,7 @@ proc timeToTimeInfo*(t: Time): TimeInfo {.deprecated.} =
   ## Converts a Time to TimeInfo.
   ##
   ## **Warning:** This procedure is deprecated since version 0.14.0.
-  ## Use ``getLocalTime`` or ``getGMTime`` instead.
+  ## Use ``inZone`` instead.
   let
     secs = t.toSeconds().int
     daysSinceEpoch = secs div secondsInDay
@@ -1238,15 +1243,6 @@ proc timeToTimeInfo*(t: Time): TimeInfo {.deprecated.} =
     s = daySeconds mod secondsInMin
   result = TimeInfo(year: y, yearday: yd, month: m, monthday: md, weekday: wd, hour: h, minute: mi, second: s)
 
-proc timeToTimeInterval*(t: Time): TimeInterval {.deprecated.} =
-  ## Converts a Time to a TimeInterval.
-  ##
-  ## **Warning:** This procedure is deprecated since version 0.14.0.
-  ## Use ``toTimeInterval`` instead.
-  # Milliseconds not available from Time
-  var tInfo = t.getLocalTime()
-  initInterval(0, tInfo.second, tInfo.minute, tInfo.hour, tInfo.weekday.ord, tInfo.month.ord, tInfo.year)
-
 proc toTimeInterval*(t: Time): TimeInterval =
   ## Converts a Time to a TimeInterval.
   ##
@@ -1260,8 +1256,16 @@ proc toTimeInterval*(t: Time): TimeInterval =
   ##     echo b.toTimeInterval - a.toTimeInterval
   ##     # (milliseconds: 0, seconds: -40, minutes: -6, hours: 1, days: -2, months: -2, years: 16)
   # Milliseconds not available from Time
-  var tInfo = t.getLocalTime()
+  var tInfo = t.inZone(Local)
   initInterval(0, tInfo.second, tInfo.minute, tInfo.hour, tInfo.weekday.ord, tInfo.month.ord, tInfo.year)
+
+proc timeToTimeInterval*(t: Time): TimeInterval {.deprecated.} =
+  ## Converts a Time to a TimeInterval.
+  ##
+  ## **Warning:** This procedure is deprecated since version 0.14.0.
+  ## Use ``toTimeInterval`` instead.
+  # Milliseconds not available from Time
+  t.toTimeInterval()
 
 proc initTimeInfo*(monthday: MonthdayRange, month: Month, year: int,
                   hour: HourRange, minute: MinuteRange, second: SecondRange, zone: Timezone = Local): TimeInfo =
@@ -1419,8 +1423,8 @@ elif defined(JS):
 when isMainModule:
   # this is testing non-exported function
   var
-    t4 = getGMTime(fromSeconds(876124714)) # Mon  6 Oct 08:58:34 BST 1997
-    t4L = getLocalTime(fromSeconds(876124714))
+    t4 = fromSeconds(876124714).inZone(Utc) # Mon  6 Oct 08:58:34 BST 1997
+    t4L = fromSeconds(876124714).inZone(Local)
   assert toSeconds(t4, initInterval(seconds=0)) == 0.0
   assert toSeconds(t4L, initInterval(milliseconds=1)) == toSeconds(t4, initInterval(milliseconds=1))
   assert toSeconds(t4L, initInterval(seconds=1)) == toSeconds(t4, initInterval(seconds=1))

@@ -18,7 +18,7 @@ proc checkFormat(t: TimeInfo, format, expected: string) =
     echo "actual  : ", actual
     doAssert false
 
-let t = getGMTime(fromSeconds(2147483647))
+let t = fromSeconds(2147483647).inZone(Utc)
 t.checkFormat("ddd dd MMM hh:mm:ss yyyy", "Tue 19 Jan 03:14:07 2038")
 t.checkFormat("ddd ddMMMhh:mm:ssyyyy", "Tue 19Jan03:14:072038")
 t.checkFormat("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
@@ -27,12 +27,12 @@ t.checkFormat("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
 
 t.checkFormat("yyyyMMddhhmmss", "20380119031407")
 
-let t2 = getGMTime(fromSeconds(160070789)) # Mon 27 Jan 16:06:29 GMT 1975
+let t2 = fromSeconds(160070789).inZone(Utc) # Mon 27 Jan 16:06:29 GMT 1975
 t2.checkFormat("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
   " ss t tt y yy yyy yyyy yyyyy z zz zzz",
   "27 27 Mon Monday 4 04 16 16 6 06 1 01 Jan January 29 29 P PM 5 75 975 1975 01975 +0 +00 +00:00")
 
-var t4 = getGMTime(fromSeconds(876124714)) # Mon  6 Oct 08:58:34 BST 1997
+var t4 = fromSeconds(876124714).inZone(Utc) # Mon  6 Oct 08:58:34 BST 1997
 t4.checkFormat("M MM MMM MMMM", "10 10 Oct October")
 
 # Interval tests
@@ -42,7 +42,7 @@ t4.checkFormat("M MM MMM MMMM", "10 10 Oct October")
 proc parseTest(s, f, sExpected: string, ydExpected: int) =
   let
     parsed = s.parse(f)
-    parsedStr = $getGMTime(toTime(parsed))
+    parsedStr = $toTime(parsed).inZone(Utc)
   if parsedStr != sExpected:
     echo "Parsing failure!"
     echo "expected: ", sExpected
@@ -115,7 +115,7 @@ doAssert getDayOfWeekJulian(1, 1, 2000) == dSat
 doAssert getDayOfWeekJulian(1, 1, 2021) == dFri
 
 # toSeconds tests with GM timezone
-let t4L = getGMTime(fromSeconds(876124714))
+let t4L = fromSeconds(876124714).inZone(Utc)
 doAssert toSeconds(toTime(t4L)) == 876124714
 doAssert toSeconds(toTime(t4L)) + t4L.utcOffset.float == toSeconds(toTime(t4))
 
@@ -174,8 +174,8 @@ doAssert seconds(60 * 60 + 65) == (hours(1) + minutes(1) + seconds(5))
 # also assume that Jan. 1 and Jun. 1 will have differing isDST values.
 let dstT1 = parse("2016-01-01 00:00:00", "yyyy-MM-dd HH:mm:ss")
 let dstT2 = parse("2016-06-01 00:00:00", "yyyy-MM-dd HH:mm:ss")
-doAssert dstT1 == getLocalTime(toTime(dstT1))
-doAssert dstT2 == getLocalTime(toTime(dstT2))
+doAssert dstT1 == toTime(dstT1).inZone(Local)
+doAssert dstT2 == toTime(dstT2).inZone(Utc)
 
 # Comparison between Time objects should be detected by compiler
 # as 'noSideEffect'.
