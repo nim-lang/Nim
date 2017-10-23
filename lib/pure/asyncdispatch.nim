@@ -9,8 +9,9 @@
 
 include "system/inclrtl"
 
-import os, tables, strutils, times, heapqueue, options, asyncstreams
+import os, tables, strutils, times, heapqueue, lists, options, asyncstreams
 import asyncfutures except callSoon
+
 import nativesockets, net, deques
 
 export Port, SocketFlag
@@ -106,36 +107,6 @@ export asyncfutures, asyncstreams
 ## be used to await a procedure returning a ``Future[void]``:
 ## ``await socket.send("foobar")``.
 ##
-## If an awaited future completes with an error, then ``await`` will re-raise
-## this error. To avoid this, you can use the ``yield`` keyword instead of
-## ``await``. The following section shows different ways that you can handle
-## exceptions in async procs.
-##
-## Handling Exceptions
-## ~~~~~~~~~~~~~~~~~~~
-##
-## The most reliable way to handle exceptions is to use ``yield`` on a future
-## then check the future's ``failed`` property. For example:
-##
-##   .. code-block:: Nim
-##     var future = sock.recv(100)
-##     yield future
-##     if future.failed:
-##       # Handle exception
-##
-## The ``async`` procedures also offer limited support for the try statement.
-##
-##    .. code-block:: Nim
-##      try:
-##        let data = await sock.recv(100)
-##        echo("Received ", data)
-##      except:
-##        # Handle exception
-##
-## Unfortunately the semantics of the try statement may not always be correct,
-## and occasionally the compilation may fail altogether.
-## As such it is better to use the former style when possible.
-##
 ## Discarding futures
 ## ------------------
 ##
@@ -157,13 +128,14 @@ export asyncfutures, asyncstreams
 ## * Can't await in a ``except`` body
 ## * Forward declarations for async procs are broken,
 ##   link includes workaround: https://github.com/nim-lang/Nim/issues/3182.
+## * FutureVar[T] needs to be completed manually.
 
 # TODO: Check if yielded future is nil and throw a more meaningful exception
 
 type
   PDispatcherBase = ref object of RootRef
-    timers*: HeapQueue[tuple[finishAt: float, fut: Future[void]]]
-    callbacks*: Deque[proc ()]
+    timers: HeapQueue[tuple[finishAt: float, fut: Future[void]]]
+    callbacks: Deque[proc ()]
 
 proc processTimers(p: PDispatcherBase) {.inline.} =
   #Process just part if timers at a step
@@ -226,6 +198,12 @@ when defined(windows) or defined(nimdoc):
       ovl: PCustomOverlapped
     PostCallbackDataPtr = ptr PostCallbackData
 
+    AsyncEventImpl = object
+      hEvent: Handle
+      hWaiter: Handle
+      pcd: PostCallbackDataPtr
+    AsyncEvent* = ptr AsyncEventImpl
+
     Callback = proc (fd: AsyncFD): bool {.closure,gcsafe.}
   {.deprecated: [TCompletionKey: CompletionKey, TAsyncFD: AsyncFD,
                 TCustomOverlapped: CustomOverlapped, TCompletionData: CompletionData].}
@@ -283,12 +261,12 @@ when defined(windows) or defined(nimdoc):
       raise newException(ValueError,
         "No handles or timers registered in dispatcher.")
 
-    if p.handles.len != 0:
-      let at = p.adjustedTimeout(timeout)
-      var llTimeout =
-        if at == -1: winlean.INFINITE
-        else: at.int32
+    let at = p.adjustedTimeout(timeout)
+    var llTimeout =
+      if at == -1: winlean.INFINITE
+      else: at.int32
 
+    if p.handles.len != 0:
       var lpNumberOfBytesTransferred: Dword
       var lpCompletionKey: ULONG_PTR
       var customOverlapped: PCustomOverlapped
@@ -332,9 +310,9 @@ when defined(windows) or defined(nimdoc):
     # Callback queue processing
     processPendingCallbacks(p)
 
-  var connectExPtr: pointer = nil
-  var acceptExPtr: pointer = nil
-  var getAcceptExSockAddrsPtr: pointer = nil
+  var acceptEx*: WSAPROC_ACCEPTEX
+  var connectEx*: WSAPROC_CONNECTEX
+  var getAcceptExSockAddrs*: WSAPROC_GETACCEPTEXSOCKADDRS
 
   proc initPointer(s: SocketHandle, fun: var pointer, guid: var GUID): bool =
     # Ref: https://github.com/powdahound/twisted/blob/master/twisted/internet/iocpreactor/iocpsupport/winsock_pointers.c
@@ -346,56 +324,19 @@ when defined(windows) or defined(nimdoc):
 
   proc initAll() =
     let dummySock = newNativeSocket()
-    if not initPointer(dummySock, connectExPtr, WSAID_CONNECTEX):
+    if dummySock == INVALID_SOCKET:
       raiseOSError(osLastError())
-    if not initPointer(dummySock, acceptExPtr, WSAID_ACCEPTEX):
+    var fun: pointer = nil
+    if not initPointer(dummySock, fun, WSAID_CONNECTEX):
       raiseOSError(osLastError())
-    if not initPointer(dummySock, getAcceptExSockAddrsPtr, WSAID_GETACCEPTEXSOCKADDRS):
+    connectEx = cast[WSAPROC_CONNECTEX](fun)
+    if not initPointer(dummySock, fun, WSAID_ACCEPTEX):
       raiseOSError(osLastError())
-
-  proc connectEx(s: SocketHandle, name: ptr SockAddr, namelen: cint,
-                  lpSendBuffer: pointer, dwSendDataLength: Dword,
-                  lpdwBytesSent: PDword, lpOverlapped: POVERLAPPED): bool =
-    if connectExPtr.isNil: raise newException(ValueError, "Need to initialise ConnectEx().")
-    let fun =
-      cast[proc (s: SocketHandle, name: ptr SockAddr, namelen: cint,
-         lpSendBuffer: pointer, dwSendDataLength: Dword,
-         lpdwBytesSent: PDword, lpOverlapped: POVERLAPPED): bool {.stdcall,gcsafe.}](connectExPtr)
-
-    result = fun(s, name, namelen, lpSendBuffer, dwSendDataLength, lpdwBytesSent,
-         lpOverlapped)
-
-  proc acceptEx(listenSock, acceptSock: SocketHandle, lpOutputBuffer: pointer,
-                 dwReceiveDataLength, dwLocalAddressLength,
-                 dwRemoteAddressLength: Dword, lpdwBytesReceived: PDword,
-                 lpOverlapped: POVERLAPPED): bool =
-    if acceptExPtr.isNil: raise newException(ValueError, "Need to initialise AcceptEx().")
-    let fun =
-      cast[proc (listenSock, acceptSock: SocketHandle, lpOutputBuffer: pointer,
-                 dwReceiveDataLength, dwLocalAddressLength,
-                 dwRemoteAddressLength: Dword, lpdwBytesReceived: PDword,
-                 lpOverlapped: POVERLAPPED): bool {.stdcall,gcsafe.}](acceptExPtr)
-    result = fun(listenSock, acceptSock, lpOutputBuffer, dwReceiveDataLength,
-        dwLocalAddressLength, dwRemoteAddressLength, lpdwBytesReceived,
-        lpOverlapped)
-
-  proc getAcceptExSockaddrs(lpOutputBuffer: pointer,
-      dwReceiveDataLength, dwLocalAddressLength, dwRemoteAddressLength: Dword,
-      LocalSockaddr: ptr ptr SockAddr, LocalSockaddrLength: LPInt,
-      RemoteSockaddr: ptr ptr SockAddr, RemoteSockaddrLength: LPInt) =
-    if getAcceptExSockAddrsPtr.isNil:
-      raise newException(ValueError, "Need to initialise getAcceptExSockAddrs().")
-
-    let fun =
-      cast[proc (lpOutputBuffer: pointer,
-                 dwReceiveDataLength, dwLocalAddressLength,
-                 dwRemoteAddressLength: Dword, LocalSockaddr: ptr ptr SockAddr,
-                 LocalSockaddrLength: LPInt, RemoteSockaddr: ptr ptr SockAddr,
-                RemoteSockaddrLength: LPInt) {.stdcall,gcsafe.}](getAcceptExSockAddrsPtr)
-
-    fun(lpOutputBuffer, dwReceiveDataLength, dwLocalAddressLength,
-                  dwRemoteAddressLength, LocalSockaddr, LocalSockaddrLength,
-                  RemoteSockaddr, RemoteSockaddrLength)
+    acceptEx = cast[WSAPROC_ACCEPTEX](fun)
+    if not initPointer(dummySock, fun, WSAID_GETACCEPTEXSOCKADDRS):
+      raiseOSError(osLastError())
+    getAcceptExSockAddrs = cast[WSAPROC_GETACCEPTEXSOCKADDRS](fun)
+    close(dummySock)
 
   proc recv*(socket: AsyncFD, size: int,
              flags = {SocketFlag.SafeDisconn}): Future[string] =
@@ -472,7 +413,7 @@ when defined(windows) or defined(nimdoc):
     return retFuture
 
   proc recvInto*(socket: AsyncFD, buf: pointer, size: int,
-                 flags = {SocketFlag.SafeDisconn}): Future[int] =
+                flags = {SocketFlag.SafeDisconn}): Future[int] =
     ## Reads **up to** ``size`` bytes from ``socket`` into ``buf``, which must
     ## at least be of that size. Returned future will complete once all the
     ## data requested is read, a part of the data has been read, or the socket
@@ -506,10 +447,7 @@ when defined(windows) or defined(nimdoc):
       proc (fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
-            if bytesCount == 0 and dataBuf.buf[0] == '\0':
-              retFuture.complete(0)
-            else:
-              retFuture.complete(bytesCount)
+            retFuture.complete(bytesCount)
           else:
             if flags.isDisconnectionError(errcode):
               retFuture.complete(0)
@@ -543,10 +481,10 @@ when defined(windows) or defined(nimdoc):
 
   proc send*(socket: AsyncFD, buf: pointer, size: int,
              flags = {SocketFlag.SafeDisconn}): Future[void] =
-    ## Sends ``size`` bytes from ``buf`` to ``socket``. The returned future will complete once all
-    ## data has been sent.
-    ## **WARNING**: Use it with caution. If ``buf`` refers to GC'ed object, you must use GC_ref/GC_unref calls
-    ## to avoid early freeing of the buffer
+    ## Sends ``size`` bytes from ``buf`` to ``socket``. The returned future
+    ## will complete once all data has been sent.
+    ## **WARNING**: Use it with caution. If ``buf`` refers to GC'ed object,
+    ## you must use GC_ref/GC_unref calls to avoid early freeing of the buffer.
     verifyPresence(socket)
     var retFuture = newFuture[void]("send")
 
@@ -575,6 +513,54 @@ when defined(windows) or defined(nimdoc):
       let err = osLastError()
       if err.int32 != ERROR_IO_PENDING:
         GC_unref(ol)
+        if flags.isDisconnectionError(err):
+          retFuture.complete()
+        else:
+          retFuture.fail(newException(OSError, osErrorMsg(err)))
+    else:
+      retFuture.complete()
+      # We don't deallocate ``ol`` here because even though this completed
+      # immediately poll will still be notified about its completion and it will
+      # free ``ol``.
+    return retFuture
+
+  proc send*(socket: AsyncFD, data: string,
+             flags = {SocketFlag.SafeDisconn}): Future[void] =
+    ## Sends ``data`` to ``socket``. The returned future will complete once all
+    ## data has been sent.
+    verifyPresence(socket)
+    var retFuture = newFuture[void]("send")
+
+    var dataBuf: TWSABuf
+    dataBuf.buf = data
+    GC_ref(data) # we need to protect data until send operation is completed
+                 # or failed.
+    dataBuf.len = data.len.ULONG
+
+    var bytesReceived, lowFlags: Dword
+    var ol = PCustomOverlapped()
+    GC_ref(ol)
+    ol.data = CompletionData(fd: socket, cb:
+      proc (fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+        GC_unref(data) # if operation completed `data` must be released.
+        if not retFuture.finished:
+          if errcode == OSErrorCode(-1):
+            retFuture.complete()
+          else:
+            if flags.isDisconnectionError(errcode):
+              retFuture.complete()
+            else:
+              retFuture.fail(newException(OSError, osErrorMsg(errcode)))
+    )
+
+    let ret = WSASend(socket.SocketHandle, addr dataBuf, 1, addr bytesReceived,
+                      lowFlags, cast[POVERLAPPED](ol), nil)
+    if ret == -1:
+      let err = osLastError()
+      if err.int32 != ERROR_IO_PENDING:
+        GC_unref(ol)
+        GC_unref(data) # if operation failed `data` must be released, because
+                       # completion routine will not be called.
         if flags.isDisconnectionError(err):
           retFuture.complete()
         else:
@@ -793,7 +779,7 @@ when defined(windows) or defined(nimdoc):
                                        cast[pointer](p.ovl))
   {.pop.}
 
-  template registerWaitableEvent(mask) =
+  proc registerWaitableEvent(fd: AsyncFD, cb: Callback; mask: Dword) =
     let p = getGlobalDispatcher()
     var flags = (WT_EXECUTEINWAITTHREAD or WT_EXECUTEONLYONCE).Dword
     var hEvent = wsaCreateEvent()
@@ -843,8 +829,8 @@ when defined(windows) or defined(nimdoc):
                                        cast[pointer](pcd), INFINITE, flags):
               # pcd.ovl will be unrefed in poll()
               let err = osLastError()
-              discard wsaCloseEvent(hEvent)
               deallocShared(cast[pointer](pcd))
+              discard wsaCloseEvent(hEvent)
               raiseOSError(err)
             else:
               # we incref `pcd.ovl` and `protect` callback one more time,
@@ -892,7 +878,7 @@ when defined(windows) or defined(nimdoc):
     ## Be sure your callback ``cb`` returns ``true``, if you want to remove
     ## watch of `read` notifications, and ``false``, if you want to continue
     ## receiving notifies.
-    registerWaitableEvent(FD_READ or FD_ACCEPT or FD_OOB or FD_CLOSE)
+    registerWaitableEvent(fd, cb, FD_READ or FD_ACCEPT or FD_OOB or FD_CLOSE)
 
   proc addWrite*(fd: AsyncFD, cb: Callback) =
     ## Start watching the file descriptor for write availability and then call
@@ -909,34 +895,198 @@ when defined(windows) or defined(nimdoc):
     ## Be sure your callback ``cb`` returns ``true``, if you want to remove
     ## watch of `write` notifications, and ``false``, if you want to continue
     ## receiving notifies.
-    registerWaitableEvent(FD_WRITE or FD_CONNECT or FD_CLOSE)
+    registerWaitableEvent(fd, cb, FD_WRITE or FD_CONNECT or FD_CLOSE)
+
+  template registerWaitableHandle(p, hEvent, flags, pcd, timeout,
+                                  handleCallback) =
+    let handleFD = AsyncFD(hEvent)
+    pcd.ioPort = p.ioPort
+    pcd.handleFd = handleFD
+    var ol = PCustomOverlapped()
+    GC_ref(ol)
+    ol.data.fd = handleFD
+    ol.data.cb = handleCallback
+    # We need to protect our callback environment value, so GC will not free it
+    # accidentally.
+    ol.data.cell = system.protect(rawEnv(ol.data.cb))
+
+    pcd.ovl = ol
+    if not registerWaitForSingleObject(addr(pcd.waitFd), hEvent,
+                                    cast[WAITORTIMERCALLBACK](waitableCallback),
+                                    cast[pointer](pcd), timeout.Dword, flags):
+      let err = osLastError()
+      GC_unref(ol)
+      deallocShared(cast[pointer](pcd))
+      discard closeHandle(hEvent)
+      raiseOSError(err)
+    p.handles.incl(handleFD)
+
+  template closeWaitable(handle: untyped) =
+    let waitFd = pcd.waitFd
+    deallocShared(cast[pointer](pcd))
+    p.handles.excl(fd)
+    if unregisterWait(waitFd) == 0:
+        let err = osLastError()
+        if err.int32 != ERROR_IO_PENDING:
+          discard closeHandle(handle)
+          raiseOSError(err)
+    if closeHandle(handle) == 0:
+      raiseOSError(osLastError())
+
+  proc addTimer*(timeout: int, oneshot: bool, cb: Callback) =
+    ## Registers callback ``cb`` to be called when timer expired.
+    ## ``timeout`` - timeout value in milliseconds.
+    ## ``oneshot`` - `true`, to generate only one timeout event, `false`, to
+    ## generate timeout events periodically.
+
+    doAssert(timeout > 0)
+    let p = getGlobalDispatcher()
+
+    var hEvent = createEvent(nil, 1, 0, nil)
+    if hEvent == INVALID_HANDLE_VALUE:
+      raiseOSError(osLastError())
+
+    var pcd = cast[PostCallbackDataPtr](allocShared0(sizeof(PostCallbackData)))
+    var flags = WT_EXECUTEINWAITTHREAD.Dword
+    if oneshot: flags = flags or WT_EXECUTEONLYONCE
+
+    proc timercb(fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+      let res = cb(fd)
+      if res or oneshot:
+        closeWaitable(hEvent)
+      else:
+        # if callback returned `false`, then it wants to be called again, so
+        # we need to ref and protect `pcd.ovl` again, because it will be
+        # unrefed and disposed in `poll()`.
+        GC_ref(pcd.ovl)
+        pcd.ovl.data.cell = system.protect(rawEnv(pcd.ovl.data.cb))
+
+    registerWaitableHandle(p, hEvent, flags, pcd, timeout, timercb)
+
+  proc addProcess*(pid: int, cb: Callback) =
+    ## Registers callback ``cb`` to be called when process with pid ``pid``
+    ## exited.
+    let p = getGlobalDispatcher()
+    let procFlags = SYNCHRONIZE
+    var hProcess = openProcess(procFlags, 0, pid.Dword)
+    if hProcess == INVALID_HANDLE_VALUE:
+      raiseOSError(osLastError())
+
+    var pcd = cast[PostCallbackDataPtr](allocShared0(sizeof(PostCallbackData)))
+    var flags = WT_EXECUTEINWAITTHREAD.Dword
+
+    proc proccb(fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+      closeWaitable(hProcess)
+      discard cb(fd)
+
+    registerWaitableHandle(p, hProcess, flags, pcd, INFINITE, proccb)
+
+  proc newAsyncEvent*(): AsyncEvent =
+    ## Creates new ``AsyncEvent`` object.
+    ## New ``AsyncEvent`` object is not automatically registered with
+    ## dispatcher like ``AsyncSocket``.
+    var sa = SECURITY_ATTRIBUTES(
+      nLength: sizeof(SECURITY_ATTRIBUTES).cint,
+      bInheritHandle: 1
+    )
+    var event = createEvent(addr(sa), 0'i32, 0'i32, nil)
+    if event == INVALID_HANDLE_VALUE:
+      raiseOSError(osLastError())
+    result = cast[AsyncEvent](allocShared0(sizeof(AsyncEventImpl)))
+    result.hEvent = event
+
+  proc setEvent*(ev: AsyncEvent) =
+    ## Set event ``ev`` to signaled state.
+    if setEvent(ev.hEvent) == 0:
+      raiseOSError(osLastError())
+
+  proc unregister*(ev: AsyncEvent) =
+    ## Unregisters event ``ev``.
+    doAssert(ev.hWaiter != 0, "Event is not registered in the queue!")
+    let p = getGlobalDispatcher()
+    p.handles.excl(AsyncFD(ev.hEvent))
+    if unregisterWait(ev.hWaiter) == 0:
+      let err = osLastError()
+      if err.int32 != ERROR_IO_PENDING:
+        raiseOSError(err)
+    ev.hWaiter = 0
+
+  proc close*(ev: AsyncEvent) =
+    ## Closes event ``ev``.
+    let res = closeHandle(ev.hEvent)
+    deallocShared(cast[pointer](ev))
+    if res == 0:
+      raiseOSError(osLastError())
+
+  proc addEvent*(ev: AsyncEvent, cb: Callback) =
+    ## Registers callback ``cb`` to be called when ``ev`` will be signaled
+    doAssert(ev.hWaiter == 0, "Event is already registered in the queue!")
+
+    let p = getGlobalDispatcher()
+    let hEvent = ev.hEvent
+
+    var pcd = cast[PostCallbackDataPtr](allocShared0(sizeof(PostCallbackData)))
+    var flags = WT_EXECUTEINWAITTHREAD.Dword
+
+    proc eventcb(fd: AsyncFD, bytesCount: Dword, errcode: OSErrorCode) =
+      if ev.hWaiter != 0:
+        if cb(fd):
+          # we need this check to avoid exception, if `unregister(event)` was
+          # called in callback.
+          deallocShared(cast[pointer](pcd))
+          if ev.hWaiter != 0:
+            unregister(ev)
+        else:
+          # if callback returned `false`, then it wants to be called again, so
+          # we need to ref and protect `pcd.ovl` again, because it will be
+          # unrefed and disposed in `poll()`.
+          GC_ref(pcd.ovl)
+          pcd.ovl.data.cell = system.protect(rawEnv(pcd.ovl.data.cb))
+      else:
+        # if ev.hWaiter == 0, then event was unregistered before `poll()` call.
+        deallocShared(cast[pointer](pcd))
+
+    registerWaitableHandle(p, hEvent, flags, pcd, INFINITE, eventcb)
+    ev.hWaiter = pcd.waitFd
 
   initAll()
 else:
   import selectors
   from posix import EINTR, EAGAIN, EINPROGRESS, EWOULDBLOCK, MSG_PEEK,
                     MSG_NOSIGNAL
-
+  const
+    InitCallbackListSize = 4         # initial size of callbacks sequence,
+                                     # associated with file/socket descriptor.
+    InitDelayedCallbackListSize = 64 # initial size of delayed callbacks
+                                     # queue.
   type
     AsyncFD* = distinct cint
     Callback = proc (fd: AsyncFD): bool {.closure,gcsafe.}
 
-    PData* = ref object of RootRef
-      fd: AsyncFD
-      readCBs: seq[Callback]
-      writeCBs: seq[Callback]
+    AsyncData = object
+      readList: seq[Callback]
+      writeList: seq[Callback]
+
+    AsyncEvent* = distinct SelectEvent
 
     PDispatcher* = ref object of PDispatcherBase
-      selector: Selector
+      selector: Selector[AsyncData]
   {.deprecated: [TAsyncFD: AsyncFD, TCallback: Callback].}
 
   proc `==`*(x, y: AsyncFD): bool {.borrow.}
+  proc `==`*(x, y: AsyncEvent): bool {.borrow.}
+
+  template newAsyncData(): AsyncData =
+    AsyncData(
+      readList: newSeqOfCap[Callback](InitCallbackListSize),
+      writeList: newSeqOfCap[Callback](InitCallbackListSize)
+    )
 
   proc newDispatcher*(): PDispatcher =
     new result
-    result.selector = newSelector()
+    result.selector = newSelector[AsyncData]()
     result.timers.newHeapQueue()
-    result.callbacks = initDeque[proc ()](64)
+    result.callbacks = initDeque[proc ()](InitDelayedCallbackListSize)
 
   var gDisp{.threadvar.}: PDispatcher ## Global dispatcher
 
@@ -951,15 +1101,10 @@ else:
       setGlobalDispatcher(newDispatcher())
     result = gDisp
 
-  proc update(fd: AsyncFD, events: set[Event]) =
-    let p = getGlobalDispatcher()
-    assert fd.SocketHandle in p.selector
-    p.selector.update(fd.SocketHandle, events)
-
   proc register*(fd: AsyncFD) =
     let p = getGlobalDispatcher()
-    var data = PData(fd: fd, readCBs: @[], writeCBs: @[])
-    p.selector.register(fd.SocketHandle, {}, data.RootRef)
+    var data = newAsyncData()
+    p.selector.registerHandle(fd.SocketHandle, {}, data)
 
   proc closeSocket*(sock: AsyncFD) =
     let disp = getGlobalDispatcher()
@@ -969,75 +1114,147 @@ else:
   proc unregister*(fd: AsyncFD) =
     getGlobalDispatcher().selector.unregister(fd.SocketHandle)
 
+  proc unregister*(ev: AsyncEvent) =
+    getGlobalDispatcher().selector.unregister(SelectEvent(ev))
+
   proc addRead*(fd: AsyncFD, cb: Callback) =
     let p = getGlobalDispatcher()
-    if fd.SocketHandle notin p.selector:
+    var newEvents = {Event.Read}
+    withData(p.selector, fd.SocketHandle, adata) do:
+      adata.readList.add(cb)
+      newEvents.incl(Event.Read)
+      if len(adata.writeList) != 0: newEvents.incl(Event.Write)
+    do:
       raise newException(ValueError, "File descriptor not registered.")
-    p.selector[fd.SocketHandle].data.PData.readCBs.add(cb)
-    update(fd, p.selector[fd.SocketHandle].events + {EvRead})
+    p.selector.updateHandle(fd.SocketHandle, newEvents)
 
   proc addWrite*(fd: AsyncFD, cb: Callback) =
     let p = getGlobalDispatcher()
-    if fd.SocketHandle notin p.selector:
+    var newEvents = {Event.Write}
+    withData(p.selector, fd.SocketHandle, adata) do:
+      adata.writeList.add(cb)
+      newEvents.incl(Event.Write)
+      if len(adata.readList) != 0: newEvents.incl(Event.Read)
+    do:
       raise newException(ValueError, "File descriptor not registered.")
-    p.selector[fd.SocketHandle].data.PData.writeCBs.add(cb)
-    update(fd, p.selector[fd.SocketHandle].events + {EvWrite})
-
-  template processCallbacks(callbacks: untyped) =
-    # Callback may add items to ``callbacks`` which causes issues if
-    # we are iterating over it at the same time. We therefore
-    # make a copy to iterate over.
-    let currentCBs = callbacks
-    callbacks = @[]
-    # Using another sequence because callbacks themselves can add
-    # other callbacks.
-    var newCBs: seq[Callback] = @[]
-    for cb in currentCBs:
-      if newCBs.len > 0:
-        # A callback has already returned with EAGAIN, don't call any
-        # others until next `poll`.
-        newCBs.add(cb)
-      else:
-        if not cb(data.fd):
-          # Callback wants to be called again.
-          newCBs.add(cb)
-    callbacks = newCBs & callbacks
+    p.selector.updateHandle(fd.SocketHandle, newEvents)
 
   proc hasPendingOperations*(): bool =
     let p = getGlobalDispatcher()
-    p.selector.len != 0 or p.timers.len != 0 or p.callbacks.len != 0
+    not p.selector.isEmpty() or p.timers.len != 0 or p.callbacks.len != 0
+
+  template processBasicCallbacks(ident, rwlist: untyped) =
+    # Process pending descriptor's and AsyncEvent callbacks.
+    # Invoke every callback stored in `rwlist`, until first one
+    # returned `false`, which means callback wants to stay
+    # alive. In such case all remaining callbacks will be added
+    # to `rwlist` again, in the order they have been inserted.
+    #
+    # `rwlist` associated with file descriptor MUST BE emptied before
+    # dispatching callback (See https://github.com/nim-lang/Nim/issues/5128),
+    # or it can be possible to fall into endless cycle.
+    var curList: seq[Callback]
+
+    withData(p.selector, ident, adata) do:
+      shallowCopy(curList, adata.rwlist)
+      adata.rwlist = newSeqOfCap[Callback](InitCallbackListSize)
+
+    let newLength = max(len(curList), InitCallbackListSize)
+    var newList = newSeqOfCap[Callback](newLength)
+
+    for cb in curList:
+      if len(newList) > 0:
+        newList.add(cb)
+      else:
+        if not cb(fd.AsyncFD):
+          newList.add(cb)
+
+    withData(p.selector, ident, adata) do:
+      # descriptor still present in queue.
+      adata.rwlist = newList & adata.rwlist
+      rLength = len(adata.readList)
+      wLength = len(adata.writeList)
+    do:
+      # descriptor was unregistered in callback via `unregister()`.
+      rLength = -1
+      wLength = -1
+
+  template processCustomCallbacks(ident: untyped) =
+    # Process pending custom event callbacks. Custom events are
+    # {Event.Timer, Event.Signal, Event.Process, Event.Vnode}.
+    # There can be only one callback registered with one descriptor,
+    # so there no need to iterate over list.
+    var curList: seq[Callback]
+
+    withData(p.selector, ident, adata) do:
+      shallowCopy(curList, adata.readList)
+      adata.readList = newSeqOfCap[Callback](InitCallbackListSize)
+
+    let newLength = len(curList)
+    var newList = newSeqOfCap[Callback](newLength)
+
+    var cb = curList[0]
+    if not cb(fd.AsyncFD):
+      newList.add(cb)
+
+    withData(p.selector, ident, adata) do:
+      # descriptor still present in queue.
+      adata.readList = newList & adata.readList
+      if len(adata.readList) == 0:
+        # if no callbacks registered with descriptor, unregister it.
+        p.selector.unregister(fd)
+    do:
+      # descriptor was unregistered in callback via `unregister()`.
+      discard
 
   proc poll*(timeout = 500) =
+    var keys: array[64, ReadyKey]
+
     let p = getGlobalDispatcher()
-    if p.selector.len == 0 and p.timers.len == 0 and p.callbacks.len == 0:
+    when ioselSupportedPlatform:
+      let customSet = {Event.Timer, Event.Signal, Event.Process,
+                       Event.Vnode}
+
+    if p.selector.isEmpty() and p.timers.len == 0 and p.callbacks.len == 0:
       raise newException(ValueError,
         "No handles or timers registered in dispatcher.")
 
-    if p.selector.len > 0:
-      for info in p.selector.select(p.adjustedTimeout(timeout)):
-        let data = PData(info.key.data)
-        assert data.fd == info.key.fd.AsyncFD
-        #echo("In poll ", data.fd.cint)
-        # There may be EvError here, but we handle them in callbacks,
-        # so that exceptions can be raised from `send(...)` and
-        # `recv(...)` routines.
+    if not p.selector.isEmpty():
+      var count = p.selector.selectInto(p.adjustedTimeout(timeout), keys)
+      var i = 0
+      while i < count:
+        var custom = false
+        let fd = keys[i].fd
+        let events = keys[i].events
+        var rLength = 0 # len(data.readList) after callback
+        var wLength = 0 # len(data.writeList) after callback
 
-        if EvRead in info.events or info.events == {EvError}:
-          processCallbacks(data.readCBs)
+        if Event.Read in events or events == {Event.Error}:
+          processBasicCallbacks(fd, readList)
 
-        if EvWrite in info.events or info.events == {EvError}:
-          processCallbacks(data.writeCBs)
+        if Event.Write in events or events == {Event.Error}:
+          processBasicCallbacks(fd, writeList)
 
-        if info.key in p.selector:
-          var newEvents: set[Event]
-          if data.readCBs.len != 0: newEvents = {EvRead}
-          if data.writeCBs.len != 0: newEvents = newEvents + {EvWrite}
-          if newEvents != info.key.events:
-            update(data.fd, newEvents)
-        else:
-          # FD no longer a part of the selector. Likely been closed
-          # (e.g. socket disconnected).
-          discard
+        if Event.User in events or events == {Event.Error}:
+          processBasicCallbacks(fd, readList)
+          custom = true
+          if rLength == 0:
+            p.selector.unregister(fd)
+
+        when ioselSupportedPlatform:
+          if (customSet * events) != {}:
+            custom = true
+            processCustomCallbacks(fd)
+
+        # because state `data` can be modified in callback we need to update
+        # descriptor events with currently registered callbacks.
+        if not custom:
+          var newEvents: set[Event] = {}
+          if rLength != -1 and wLength != -1:
+            if rLength > 0: incl(newEvents, Event.Read)
+            if wLength > 0: incl(newEvents, Event.Write)
+            p.selector.updateHandle(SocketHandle(fd), newEvents)
+        inc(i)
 
     # Timer processing.
     processTimers(p)
@@ -1075,7 +1292,7 @@ else:
     return retFuture
 
   proc recvInto*(socket: AsyncFD, buf: pointer, size: int,
-                  flags = {SocketFlag.SafeDisconn}): Future[int] =
+                 flags = {SocketFlag.SafeDisconn}): Future[int] =
     var retFuture = newFuture[int]("recvInto")
 
     proc cb(sock: AsyncFD): bool =
@@ -1108,6 +1325,38 @@ else:
       result = true
       let netSize = size-written
       var d = cast[cstring](buf)
+      let res = send(sock.SocketHandle, addr d[written], netSize.cint,
+                     MSG_NOSIGNAL)
+      if res < 0:
+        let lastError = osLastError()
+        if lastError.int32 notin {EINTR, EWOULDBLOCK, EAGAIN}:
+          if flags.isDisconnectionError(lastError):
+            retFuture.complete()
+          else:
+            retFuture.fail(newException(OSError, osErrorMsg(lastError)))
+        else:
+          result = false # We still want this callback to be called.
+      else:
+        written.inc(res)
+        if res != netSize:
+          result = false # We still have data to send.
+        else:
+          retFuture.complete()
+    # TODO: The following causes crashes.
+    #if not cb(socket):
+    addWrite(socket, cb)
+    return retFuture
+
+  proc send*(socket: AsyncFD, data: string,
+             flags = {SocketFlag.SafeDisconn}): Future[void] =
+    var retFuture = newFuture[void]("send")
+
+    var written = 0
+
+    proc cb(sock: AsyncFD): bool =
+      result = true
+      let netSize = data.len-written
+      var d = data.cstring
       let res = send(sock.SocketHandle, addr d[written], netSize.cint,
                      MSG_NOSIGNAL)
       if res < 0:
@@ -1216,6 +1465,55 @@ else:
     addRead(socket, cb)
     return retFuture
 
+  when ioselSupportedPlatform:
+
+    proc addTimer*(timeout: int, oneshot: bool, cb: Callback) =
+      ## Start watching for timeout expiration, and then call the
+      ## callback ``cb``.
+      ## ``timeout`` - time in milliseconds,
+      ## ``oneshot`` - if ``true`` only one event will be dispatched,
+      ## if ``false`` continuous events every ``timeout`` milliseconds.
+      let p = getGlobalDispatcher()
+      var data = newAsyncData()
+      data.readList.add(cb)
+      p.selector.registerTimer(timeout, oneshot, data)
+
+    proc addSignal*(signal: int, cb: Callback) =
+      ## Start watching signal ``signal``, and when signal appears, call the
+      ## callback ``cb``.
+      let p = getGlobalDispatcher()
+      var data = newAsyncData()
+      data.readList.add(cb)
+      p.selector.registerSignal(signal, data)
+
+    proc addProcess*(pid: int, cb: Callback) =
+      ## Start watching for process exit with pid ``pid``, and then call
+      ## the callback ``cb``.
+      let p = getGlobalDispatcher()
+      var data = newAsyncData()
+      data.readList.add(cb)
+      p.selector.registerProcess(pid, data)
+
+  proc newAsyncEvent*(): AsyncEvent =
+    ## Creates new ``AsyncEvent``.
+    result = AsyncEvent(newSelectEvent())
+
+  proc setEvent*(ev: AsyncEvent) =
+    ## Sets new ``AsyncEvent`` to signaled state.
+    setEvent(SelectEvent(ev))
+
+  proc close*(ev: AsyncEvent) =
+    ## Closes ``AsyncEvent``
+    close(SelectEvent(ev))
+
+  proc addEvent*(ev: AsyncEvent, cb: Callback) =
+    ## Start watching for event ``ev``, and call callback ``cb``, when
+    ## ev will be set to signaled state.
+    let p = getGlobalDispatcher()
+    var data = newAsyncData()
+    data.readList.add(cb)
+    p.selector.registerEvent(SelectEvent(ev), data)
+
 # Common procedures between current and upcoming asyncdispatch
 include includes.asynccommon
 
@@ -1261,27 +1559,6 @@ proc accept*(socket: AsyncFD,
         retFut.complete(future.read.client)
   return retFut
 
-proc send*(socket: AsyncFD, data: string,
-           flags = {SocketFlag.SafeDisconn}): Future[void] =
-  ## Sends ``data`` to ``socket``. The returned future will complete once all
-  ## data has been sent.
-  var retFuture = newFuture[void]("send")
-
-  var copiedData = data
-  GC_ref(copiedData) # we need to protect data until send operation is completed
-               # or failed.
-
-  let sendFut = socket.send(addr copiedData[0], data.len, flags)
-  sendFut.callback =
-    proc () =
-      GC_unref(copiedData)
-      if sendFut.failed:
-        retFuture.fail(sendFut.error)
-      else:
-        retFuture.complete()
-
-  return retFuture
-
 # -- Await Macro
 include asyncmacro
 
@@ -1296,7 +1573,7 @@ proc readAll*(future: FutureStream[string]): Future[string] {.async.} =
     else:
       break
 
-proc recvLine*(socket: AsyncFD): Future[string] {.async, deprecated.} =
+proc recvLine*(socket: AsyncFD): Future[string] {.async.} =
   ## Reads a line of data from ``socket``. Returned future will complete once
   ## a full line is read or an error occurs.
   ##
@@ -1314,10 +1591,8 @@ proc recvLine*(socket: AsyncFD): Future[string] {.async, deprecated.} =
   ##
   ## **Note**: This procedure is mostly used for testing. You likely want to
   ## use ``asyncnet.recvLine`` instead.
-  ##
-  ## **Deprecated since version 0.15.0**: Use ``asyncnet.recvLine()`` instead.
 
-  template addNLIfEmpty(): untyped =
+  template addNLIfEmpty(): typed =
     if result.len == 0:
       result.add("\c\L")
 

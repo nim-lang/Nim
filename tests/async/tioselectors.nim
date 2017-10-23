@@ -2,7 +2,7 @@ discard """
   file: "tioselectors.nim"
   output: "All tests passed!"
 """
-import ioselectors
+import selectors
 
 const hasThreadSupport = compileOption("threads")
 
