@@ -9,7 +9,7 @@
 
 ## This module provides the string interpolation macro ``fmt``.
 
-import parseutils, sequtils, macros, strutils
+import parseutils, sequtils, macros, strutils, unicode
 
 # -----------------------------------------------------------------------------
 # nimboost's formatters
@@ -66,18 +66,16 @@ proc formatInt(n: SomeNumber, radix = 10, len = 0, fill = ' ', lowerCase = false
       prefix[0] = '-'
     result = prefix & result
 
-proc formatString(s: string, len: int, fill = ' ', trunc = false): string =
-  ## Aligns ``s`` using ``fill`` char to the right if ``len`` is
-  ## positive, or to the left, if ``len`` is negative.
-  ## If the length of ``s`` is bigger then `abs(len)` and ``trunc`` == true,
-  ## truncates ``s``
+proc formatString(s: string, len: int, fill = ' '): string =
+  ## Aligns ``s`` using ``fill`` char
+  ## - to the right, if ``len`` is positive,
+  ## - to the left, if ``len`` is negative,
+  ## - or returns ``s`` unaffected, if len is 0.
+  let sRuneLen = if s.validateUtf8 == -1: s.runeLen else: s.len
   if len == 0:
     result = s
-  elif trunc and s.len > abs(len):
-    result = s
-    result.setLen(abs(len))
   else:
-    let fillLength = abs(len) - s.len
+    let fillLength = abs(len) - sRuneLen
     if fillLength <= 0:
       result = s
     elif len > 0:
@@ -265,6 +263,14 @@ when isMainModule:
   check fmt"${1}%.3f", "1.000"
   check fmt"Hello, $s!", "Hello, string!"
 
+  # Tests for identifers without parenthesis
+  check fmt"$s works$s", "string worksstring"
+  check fmt"$s|works$s", "string|worksstring"
+  check fmt"$s.works$s", "string.worksstring"
+  check fmt"$s-works$s", "string-worksstring"
+  check fmt"$s%7s", " string"
+  doAssert(not compiles(fmt"$s_works")) # parsed as identifier `s_works`
+
   # String tests
   check fmt"""${"abc"}""", "abc"
   check fmt"""${"abc"}%s""", "abc"
@@ -275,6 +281,23 @@ when isMainModule:
   check fmt"""${"abc"}%-4s""", "abc "
   check fmt"""${""}%4s""", "    "
   check fmt"""${""}%-4s""", "    "
+  check fmt"$$", "$"
+
+  # Unicode string tests
+  check fmt"""${"αβγ"}""", "αβγ"
+  check fmt"""${"αβγ"}%5s""", "  αβγ"
+  check fmt"""${"αβγ"}%-5s""", "αβγ  "
+  check fmt"""a${"a"}α${"α"}€${"€"}𐍈${"𐍈"}""", "aaαα€€𐍈𐍈"
+  check fmt"""a${"a"}%-2sα${"α"}%-2s€${"€"}%-2s𐍈${"𐍈"}%-2s""", "aa αα €€ 𐍈𐍈 "
+  # Invalid unicode sequences should be handled as plain strings.
+  # Invalid examples taken from: https://stackoverflow.com/a/3886015/1804173
+  let invalidUtf8 = [
+    "\xc3\x28", "\xa0\xa1",
+    "\xe2\x28\xa1", "\xe2\x82\x28",
+    "\xf0\x28\x8c\xbc", "\xf0\x90\x28\xbc", "\xf0\x28\x8c\x28"
+  ]
+  for s in invalidUtf8:
+    check fmt"$s%5s", repeat(" ", 5-s.len) & s
 
   # Int tests
   check fmt"${12345}", "12345"
