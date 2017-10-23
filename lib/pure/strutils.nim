@@ -2296,6 +2296,7 @@ proc removeSuffix*(s: var string, chars: set[char] = Newlines) {.
   ## Removes the first matching character from the string (in-place) given a
   ## set of characters. If the set of characters is only equal to `Newlines`
   ## then it will remove both the newline and return feed.
+  ##
   ## .. code-block:: nim
   ##   var
   ##     userInput = "Hello World!\r\n"
@@ -2321,6 +2322,7 @@ proc removeSuffix*(s: var string, chars: set[char] = Newlines) {.
 proc removeSuffix*(s: var string, c: char) {.
   rtl, extern: "nsuRemoveSuffixChar".} =
   ## Removes a single character (in-place) from a string.
+  ##
   ## .. code-block:: nim
   ##   var
   ##     table = "users"
@@ -2331,6 +2333,7 @@ proc removeSuffix*(s: var string, c: char) {.
 proc removeSuffix*(s: var string, suffix: string) {.
   rtl, extern: "nsuRemoveSuffixString".} =
   ## Remove the first matching suffix (in-place) from a string.
+  ##
   ## .. code-block:: nim
   ##   var
   ##     answers = "yeses"
