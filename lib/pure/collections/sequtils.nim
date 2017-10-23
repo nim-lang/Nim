@@ -43,7 +43,7 @@ proc concat*[T](seqs: varargs[seq[T]]): seq[T] =
       result[i] = itm
       inc(i)
 
-proc count*[T](s: seq[T], x: T): int =
+proc count*[T](s: openArray[T], x: T): int =
   ## Count the occurrences of the item `x` in the sequence `s`.
   ##
   ## Example:
@@ -57,7 +57,7 @@ proc count*[T](s: seq[T], x: T): int =
     if itm == x:
       inc result
 
-proc cycle*[T](s: seq[T], n: Natural): seq[T] =
+proc cycle*[T](s: openArray[T], n: Natural): seq[T] =
   ## Returns a new sequence with the items of `s` repeated `n` times.
   ##
   ## Example:
@@ -89,7 +89,7 @@ proc repeat*[T](x: T, n: Natural): seq[T] =
   for i in 0 .. <n:
     result[i] = x
 
-proc deduplicate*[T](s: seq[T]): seq[T] =
+proc deduplicate*[T](s: openArray[T]): seq[T] =
   ## Returns a new sequence without duplicates.
   ##
   ## .. code-block::
@@ -106,7 +106,7 @@ proc deduplicate*[T](s: seq[T]): seq[T] =
 
 {.deprecated: [distnct: deduplicate].}
 
-proc zip*[S, T](s1: seq[S], s2: seq[T]): seq[tuple[a: S, b: T]] =
+proc zip*[S, T](s1: openArray[S], s2: openArray[T]): seq[tuple[a: S, b: T]] =
   ## Returns a new sequence with a combination of the two input sequences.
   ##
   ## For convenience you can access the returned tuples through the named
@@ -227,7 +227,7 @@ proc map*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
   ## **Deprecated since version 0.12.0:** Use the ``apply`` proc instead.
   for i in 0 .. <s.len: op(s[i])
 
-proc apply*[T](s: var seq[T], op: proc (x: var T) {.closure.})
+proc apply*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
                                                               {.inline.} =
   ## Applies `op` to every item in `s` modifying it directly.
   ##
@@ -246,7 +246,7 @@ proc apply*[T](s: var seq[T], op: proc (x: var T) {.closure.})
   ##
   for i in 0 .. <s.len: op(s[i])
 
-proc apply*[T](s: var seq[T], op: proc (x: T): T {.closure.})
+proc apply*[T](s: var openArray[T], op: proc (x: T): T {.closure.})
                                                               {.inline.} =
   ## Applies `op` to every item in `s` modifying it directly.
   ##
@@ -265,7 +265,7 @@ proc apply*[T](s: var seq[T], op: proc (x: T): T {.closure.})
   ##
   for i in 0 .. <s.len: s[i] = op(s[i])
 
-iterator filter*[T](s: seq[T], pred: proc(x: T): bool {.closure.}): T =
+iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T =
   ## Iterates through a sequence and yields every item that fulfills the
   ## predicate.
   ##
@@ -280,7 +280,7 @@ iterator filter*[T](s: seq[T], pred: proc(x: T): bool {.closure.}): T =
     if pred(s[i]):
       yield s[i]
 
-proc filter*[T](s: seq[T], pred: proc(x: T): bool {.closure.}): seq[T]
+proc filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
                                                                   {.inline.} =
   ## Returns a new sequence with all the items that fulfilled the predicate.
   ##
@@ -407,7 +407,7 @@ template keepItIf*(varSeq: seq, pred: untyped) =
       inc(pos)
   setLen(varSeq, pos)
 
-proc all*[T](s: seq[T], pred: proc(x: T): bool {.closure.}): bool =
+proc all*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
   ## Iterates through a sequence and checks if every item fulfills the
   ## predicate.
   ##
@@ -438,7 +438,7 @@ template allIt*(s, pred: untyped): bool =
       break
   result
 
-proc any*[T](s: seq[T], pred: proc(x: T): bool {.closure.}): bool =
+proc any*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
   ## Iterates through a sequence and checks if some item fulfills the
   ## predicate.
   ##
