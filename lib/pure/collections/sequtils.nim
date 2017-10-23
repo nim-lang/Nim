@@ -43,8 +43,8 @@ proc concat*[T](seqs: varargs[seq[T]]): seq[T] =
       result[i] = itm
       inc(i)
 
-proc count*[T](list: seq[T], item: T): int =
-  ## Count the occurrences of the item `item` in the sequence `list`.
+proc count*[T](s: seq[T], x: T): int =
+  ## Count the occurrences of the item `x` in the sequence `s`.
   ##
   ## Example:
   ##
@@ -53,12 +53,12 @@ proc count*[T](list: seq[T], item: T): int =
   ##     s = @[1, 2, 2, 3, 2, 4, 2]
   ##     c = count(s, 2)
   ##   assert c == 4
-  for x in items(list):
-    if x == item:
+  for itm in items(s):
+    if itm == x:
       inc result
 
-proc cycle*[T](list: seq[T], n: Natural): seq[T] =
-  ## Returns a new sequence with the items of `list` repeated `n` times.
+proc cycle*[T](s: seq[T], n: Natural): seq[T] =
+  ## Returns a new sequence with the items of `s` repeated `n` times.
   ##
   ## Example:
   ##
@@ -68,15 +68,15 @@ proc cycle*[T](list: seq[T], n: Natural): seq[T] =
   ##     s = @[1, 2, 3]
   ##     total = s.cycle(3)
   ##   assert total == @[1, 2, 3, 1, 2, 3, 1, 2, 3]
-  result = newSeq[T](n * list.len)
+  result = newSeq[T](n * s.len)
   var o = 0
   for x in 0 .. <n:
-    for e in list:
+    for e in s:
       result[o] = e
       inc o
 
-proc repeat*[T](item: T, n: Natural): seq[T] =
-  ## Returns a new sequence with the item `item` repeated `n` times.
+proc repeat*[T](x: T, n: Natural): seq[T] =
+  ## Returns a new sequence with the item `x` repeated `n` times.
   ##
   ## Example:
   ##
@@ -87,9 +87,9 @@ proc repeat*[T](item: T, n: Natural): seq[T] =
   ##   assert total == @[5, 5, 5]
   result = newSeq[T](n)
   for i in 0 .. <n:
-    result[i] = item
+    result[i] = x
 
-proc deduplicate*[T](list: seq[T]): seq[T] =
+proc deduplicate*[T](s: seq[T]): seq[T] =
   ## Returns a new sequence without duplicates.
   ##
   ## .. code-block::
@@ -101,12 +101,12 @@ proc deduplicate*[T](list: seq[T]): seq[T] =
   ##   assert unique1 == @[1, 3, 4, 2, 8]
   ##   assert unique2 == @["a", "c", "d"]
   result = @[]
-  for itm in items(list):
+  for itm in items(s):
     if not result.contains(itm): result.add(itm)
 
 {.deprecated: [distnct: deduplicate].}
 
-proc zip*[S, T](list1: seq[S], list2: seq[T]): seq[tuple[a: S, b: T]] =
+proc zip*[S, T](s1: seq[S], s2: seq[T]): seq[tuple[a: S, b: T]] =
   ## Returns a new sequence with a combination of the two input sequences.
   ##
   ## For convenience you can access the returned tuples through the named
@@ -124,13 +124,13 @@ proc zip*[S, T](list1: seq[S], list2: seq[T]): seq[tuple[a: S, b: T]] =
   ##   assert zip2 == @[(1, "one"), (2, "two"), (3, "three")]
   ##   assert zip1[2].b == 4
   ##   assert zip2[2].b == "three"
-  var m = min(list1.len, list2.len)
+  var m = min(s1.len, s2.len)
   newSeq(result, m)
-  for i in 0 .. m-1:
-    result[i] = (list1[i], list2[i])
+  for i in 0 .. <m:
+    result[i] = (s1[i], s2[i])
 
-proc distribute*[T](list: seq[T], num: Positive, spread = true): seq[seq[T]] =
-  ## Splits and distributes a sequence `list` into `num` sub sequences.
+proc distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
+  ## Splits and distributes a sequence `s` into `num` sub sequences.
   ##
   ## Returns a sequence of `num` sequences. For some input values this is the
   ## inverse of the `concat <#concat>`_ proc. The proc will assert in debug
@@ -155,9 +155,9 @@ proc distribute*[T](list: seq[T], num: Positive, spread = true): seq[seq[T]] =
   ##   assert numbers.distribute(3, false)  == @[@[1, 2, 3], @[4, 5, 6], @[7]]
   ##   assert numbers.distribute(6)[0] == @[1, 2]
   ##   assert numbers.distribute(6)[5] == @[7]
-  assert(not list.isNil, "`list` can't be nil")
+  assert(not s.isNil, "`s` can't be nil")
   if num < 2:
-    result = @[list]
+    result = @[s]
     return
 
   let num = int(num) # XXX probably only needed because of .. bug
@@ -165,10 +165,10 @@ proc distribute*[T](list: seq[T], num: Positive, spread = true): seq[seq[T]] =
   # Create the result and calculate the stride size and the remainder if any.
   result = newSeq[seq[T]](num)
   var
-    stride = list.len div num
+    stride = s.len div num
     first = 0
     last = 0
-    extra = list.len mod num
+    extra = s.len mod num
 
   if extra == 0 or spread == false:
     # Use an algorithm which overcounts the stride and minimizes reading limits.
@@ -176,8 +176,8 @@ proc distribute*[T](list: seq[T], num: Positive, spread = true): seq[seq[T]] =
 
     for i in 0 .. <num:
       result[i] = newSeq[T]()
-      for g in first .. <min(list.len, first + stride):
-        result[i].add(list[g])
+      for g in first .. <min(s.len, first + stride):
+        result[i].add(s[g])
       first += stride
 
   else:
@@ -190,13 +190,13 @@ proc distribute*[T](list: seq[T], num: Positive, spread = true): seq[seq[T]] =
 
       result[i] = newSeq[T]()
       for g in first .. <last:
-        result[i].add(list[g])
+        result[i].add(s[g])
       first = last
 
-proc map*[T, S](list: openArray[T], op: proc (x: T): S {.closure.}):
+proc map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
                                                             seq[S]{.inline.} =
   ## Returns a new sequence with the results of `op` applied to every item in
-  ## `list`.
+  ## `s`.
   ##
   ## Since the input is not modified you can use this version of ``map`` to
   ## transform the type of the elements in the input sequence. Example:
@@ -206,13 +206,13 @@ proc map*[T, S](list: openArray[T], op: proc (x: T): S {.closure.}):
   ##     a = @[1, 2, 3, 4]
   ##     b = map(a, proc(x: int): string = $x)
   ##   assert b == @["1", "2", "3", "4"]
-  newSeq(result, list.len)
-  for i in 0 .. <list.len:
-    result[i] = op(list[i])
+  newSeq(result, s.len)
+  for i in 0 .. <s.len:
+    result[i] = op(s[i])
 
-proc map*[T](list: var openArray[T], op: proc (x: var T) {.closure.})
+proc map*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
                                                               {.deprecated.} =
-  ## Applies `op` to every item in `list` modifying it directly.
+  ## Applies `op` to every item in `s` modifying it directly.
   ##
   ## Note that this version of ``map`` requires your input and output types to
   ## be the same, since they are modified in-place. Example:
@@ -225,11 +225,11 @@ proc map*[T](list: var openArray[T], op: proc (x: var T) {.closure.})
   ##   echo repr(a)
   ##   # --> ["142", "242", "342", "442"]
   ## **Deprecated since version 0.12.0:** Use the ``apply`` proc instead.
-  for i in 0 .. <list.len: op(list[i])
+  for i in 0 .. <s.len: op(s[i])
 
-proc apply*[T](list: var seq[T], op: proc (x: var T) {.closure.})
+proc apply*[T](s: var seq[T], op: proc (x: var T) {.closure.})
                                                               {.inline.} =
-  ## Applies `op` to every item in `list` modifying it directly.
+  ## Applies `op` to every item in `s` modifying it directly.
   ##
   ## Note that this requires your input and output types to
   ## be the same, since they are modified in-place.
@@ -244,11 +244,11 @@ proc apply*[T](list: var seq[T], op: proc (x: var T) {.closure.})
   ##   echo repr(a)
   ##   # --> ["142", "242", "342", "442"]
   ##
-  for i in 0 .. <list.len: op(list[i])
+  for i in 0 .. <s.len: op(s[i])
 
-proc apply*[T](list: var seq[T], op: proc (x: T): T {.closure.})
+proc apply*[T](s: var seq[T], op: proc (x: T): T {.closure.})
                                                               {.inline.} =
-  ## Applies `op` to every item in `list` modifying it directly.
+  ## Applies `op` to every item in `s` modifying it directly.
   ##
   ## Note that this requires your input and output types to
   ## be the same, since they are modified in-place.
@@ -263,10 +263,9 @@ proc apply*[T](list: var seq[T], op: proc (x: T): T {.closure.})
   ##   echo repr(a)
   ##   # --> ["142", "242", "342", "442"]
   ##
-  for i in 0 .. <list.len: list[i] = op(list[i])
+  for i in 0 .. <s.len: s[i] = op(s[i])
 
-
-iterator filter*[T](list: seq[T], pred: proc(item: T): bool {.closure.}): T =
+iterator filter*[T](s: seq[T], pred: proc(x: T): bool {.closure.}): T =
   ## Iterates through a sequence and yields every item that fulfills the
   ## predicate.
   ##
@@ -277,11 +276,11 @@ iterator filter*[T](list: seq[T], pred: proc(item: T): bool {.closure.}): T =
   ##   for n in filter(numbers, proc (x: int): bool = x mod 2 == 0):
   ##     echo($n)
   ##   # echoes 4, 8, 4 in separate lines
-  for i in 0 .. <list.len:
-    if pred(list[i]):
-      yield list[i]
+  for i in 0 .. <s.len:
+    if pred(s[i]):
+      yield s[i]
 
-proc filter*[T](list: seq[T], pred: proc(item: T): bool {.closure.}): seq[T]
+proc filter*[T](s: seq[T], pred: proc(x: T): bool {.closure.}): seq[T]
                                                                   {.inline.} =
   ## Returns a new sequence with all the items that fulfilled the predicate.
   ##
@@ -295,11 +294,11 @@ proc filter*[T](list: seq[T], pred: proc(item: T): bool {.closure.}): seq[T]
   ##   assert f1 == @["red", "black"]
   ##   assert f2 == @["yellow"]
   result = newSeq[T]()
-  for i in 0 .. <list.len:
-    if pred(list[i]):
-      result.add(list[i])
+  for i in 0 .. <s.len:
+    if pred(s[i]):
+      result.add(s[i])
 
-proc keepIf*[T](list: var seq[T], pred: proc(item: T): bool {.closure.})
+proc keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
                                                                 {.inline.} =
   ## Keeps the items in the passed sequence if they fulfilled the predicate.
   ## Same as the ``filter`` proc, but modifies the sequence directly.
@@ -311,16 +310,16 @@ proc keepIf*[T](list: var seq[T], pred: proc(item: T): bool {.closure.})
   ##   keepIf(floats, proc(x: float): bool = x > 10)
   ##   assert floats == @[13.0, 12.5, 10.1]
   var pos = 0
-  for i in 0 .. <len(list):
-    if pred(list[i]):
+  for i in 0 .. <len(s):
+    if pred(s[i]):
       if pos != i:
-        shallowCopy(list[pos], list[i])
+        shallowCopy(s[pos], s[i])
       inc(pos)
-  setLen(list, pos)
+  setLen(s, pos)
 
-proc delete*[T](list: var seq[T]; first, last: Natural) =
-  ## Deletes in `list` the items at position `first` .. `last`. This modifies
-  ## `list` itself, it does not return a copy.
+proc delete*[T](s: var seq[T]; first, last: Natural) =
+  ## Deletes in `s` the items at position `first` .. `last`. This modifies
+  ## `s` itself, it does not return a copy.
   ##
   ## Example:
   ##
@@ -332,12 +331,12 @@ proc delete*[T](list: var seq[T]; first, last: Natural) =
 
   var i = first
   var j = last+1
-  var newLen = len(list)-j+i
+  var newLen = len(s)-j+i
   while i < newLen:
-    list[i].shallowCopy(list[j])
+    s[i].shallowCopy(s[j])
     inc(i)
     inc(j)
-  setLen(list, newLen)
+  setLen(s, newLen)
 
 proc insert*[T](dest: var seq[T], src: openArray[T], pos=0) =
   ## Inserts items from `src` into `dest` at position `pos`. This modifies
@@ -369,7 +368,7 @@ proc insert*[T](dest: var seq[T], src: openArray[T], pos=0) =
     inc(j)
 
 
-template filterIt*(list, pred: untyped): untyped =
+template filterIt*(s, pred: untyped): untyped =
   ## Returns a new sequence with all the items that fulfilled the predicate.
   ##
   ## Unlike the `proc` version, the predicate needs to be an expression using
@@ -383,8 +382,8 @@ template filterIt*(list, pred: untyped): untyped =
   ##      notAcceptable = filterIt(temperatures, it > 50 or it < -10)
   ##    assert acceptable == @[-2.0, 24.5, 44.31]
   ##    assert notAcceptable == @[-272.15, 99.9, -113.44]
-  var result = newSeq[type(list[0])]()
-  for it {.inject.} in items(list):
+  var result = newSeq[type(s[0])]()
+  for it {.inject.} in items(s):
     if pred: result.add(it)
   result
 
@@ -408,7 +407,7 @@ template keepItIf*(varSeq: seq, pred: untyped) =
       inc(pos)
   setLen(varSeq, pos)
 
-proc all*[T](list: seq[T], pred: proc(item: T): bool {.closure.}): bool =
+proc all*[T](s: seq[T], pred: proc(x: T): bool {.closure.}): bool =
   ## Iterates through a sequence and checks if every item fulfills the
   ## predicate.
   ##
@@ -418,12 +417,12 @@ proc all*[T](list: seq[T], pred: proc(item: T): bool {.closure.}): bool =
   ##   let numbers = @[1, 4, 5, 8, 9, 7, 4]
   ##   assert all(numbers, proc (x: int): bool = return x < 10) == true
   ##   assert all(numbers, proc (x: int): bool = return x < 9) == false
-  for i in list:
+  for i in s:
     if not pred(i):
       return false
   return true
 
-template allIt*(list, pred: untyped): bool =
+template allIt*(s, pred: untyped): bool =
   ## Checks if every item fulfills the predicate.
   ##
   ## Example:
@@ -433,13 +432,13 @@ template allIt*(list, pred: untyped): bool =
   ##   assert allIt(numbers, it < 10) == true
   ##   assert allIt(numbers, it < 9) == false
   var result = true
-  for it {.inject.} in items(list):
+  for it {.inject.} in items(s):
     if not pred:
       result = false
       break
   result
 
-proc any*[T](list: seq[T], pred: proc(item: T): bool {.closure.}): bool =
+proc any*[T](s: seq[T], pred: proc(x: T): bool {.closure.}): bool =
   ## Iterates through a sequence and checks if some item fulfills the
   ## predicate.
   ##
@@ -449,12 +448,12 @@ proc any*[T](list: seq[T], pred: proc(item: T): bool {.closure.}): bool =
   ##   let numbers = @[1, 4, 5, 8, 9, 7, 4]
   ##   assert any(numbers, proc (x: int): bool = return x > 8) == true
   ##   assert any(numbers, proc (x: int): bool = return x > 9) == false
-  for i in list:
+  for i in s:
     if pred(i):
       return true
   return false
 
-template anyIt*(list, pred: untyped): bool =
+template anyIt*(s, pred: untyped): bool =
   ## Checks if some item fulfills the predicate.
   ##
   ## Example:
@@ -464,7 +463,7 @@ template anyIt*(list, pred: untyped): bool =
   ##   assert anyIt(numbers, it > 8) == true
   ##   assert anyIt(numbers, it > 9) == false
   var result = false
-  for it {.inject.} in items(list):
+  for it {.inject.} in items(s):
     if pred:
       result = true
       break
@@ -595,7 +594,7 @@ template foldr*(sequence, operation: untyped): untyped =
     result = operation
   result
 
-template mapIt*(list, typ, op: untyped): untyped =
+template mapIt*(s, typ, op: untyped): untyped =
   ## Convenience template around the ``map`` proc to reduce typing.
   ##
   ## The template injects the ``it`` variable which you can use directly in an
@@ -611,12 +610,12 @@ template mapIt*(list, typ, op: untyped): untyped =
   ## **Deprecated since version 0.12.0:** Use the ``mapIt(seq1, op)``
   ##   template instead.
   var result: seq[typ] = @[]
-  for it {.inject.} in items(list):
+  for it {.inject.} in items(s):
     result.add(op)
   result
 
 
-template mapIt*(list, op: untyped): untyped =
+template mapIt*(s, op: untyped): untyped =
   ## Convenience template around the ``map`` proc to reduce typing.
   ##
   ## The template injects the ``it`` variable which you can use directly in an
@@ -629,19 +628,19 @@ template mapIt*(list, op: untyped): untyped =
   ##   assert strings == @["4", "8", "12", "16"]
   type outType = type((
     block:
-      var it{.inject.}: type(items(list));
+      var it{.inject.}: type(items(s));
       op))
   var result: seq[outType]
-  when compiles(list.len):
-    let s = list
+  when compiles(s.len):
+    let t = s
     var i = 0
     result = newSeq[outType](s.len)
-    for it {.inject.} in s:
+    for it {.inject.} in t:
       result[i] = op
       i += 1
   else:
     result = @[]
-    for it {.inject.} in list:
+    for it {.inject.} in s:
       result.add(op)
   result
 
@@ -848,6 +847,7 @@ when isMainModule:
       strings = nums.mapIt($(4 * it))
     nums.applyIt(it * 3)
     assert nums[0] + nums[3] == 15
+    assert strings[2] == "12"
 
   block: # distribute tests
     let numbers = @[1, 2, 3, 4, 5, 6, 7]
