@@ -208,7 +208,7 @@ proc newSelectEvent*(): SelectEvent =
   result.rfd = fds[0]
   result.wfd = fds[1]
 
-proc setEvent*(ev: SelectEvent) =
+proc trigger*(ev: SelectEvent) =
   var data: uint64 = 1
   if posix.write(ev.wfd, addr data, sizeof(uint64)) != sizeof(uint64):
     raiseIOSelectorsError(osLastError())

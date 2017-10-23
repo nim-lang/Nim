@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2016 Eugene Kabanov
+#        (c) Copyright 2016 Eugene Kabanov, Dominik Picheta
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -37,15 +37,13 @@ when not defined(android):
       pad* {.importc: "__pad".}: array[0..47, uint8]
 
 type
-  eventFdData {.importc: "eventfd_t",
-                header: "<sys/eventfd.h>", pure, final.} = uint64
-  epoll_data {.importc: "union epoll_data", header: "<sys/epoll.h>",
+  EpollData {.importc: "union epoll_data", header: "<sys/epoll.h>",
                pure, final.} = object
     u64 {.importc: "u64".}: uint64
-  epoll_event {.importc: "struct epoll_event",
+  EpollEvent {.importc: "struct epoll_event",
                 header: "<sys/epoll.h>", pure, final.} = object
     events: uint32 # Epoll events
-    data: epoll_data # User data variable
+    data: EpollData # User data variable
 
 const
   EPOLL_CTL_ADD = 1          # Add a file descriptor to the interface.
@@ -60,9 +58,9 @@ const
 
 proc epoll_create(size: cint): cint
      {.importc: "epoll_create", header: "<sys/epoll.h>".}
-proc epoll_ctl(epfd: cint; op: cint; fd: cint; event: ptr epoll_event): cint
+proc epoll_ctl(epfd: cint; op: cint; fd: cint; event: ptr EpollEvent): cint
      {.importc: "epoll_ctl", header: "<sys/epoll.h>".}
-proc epoll_wait(epfd: cint; events: ptr epoll_event; maxevents: cint;
+proc epoll_wait(epfd: cint; events: ptr EpollEvent; maxevents: cint;
                  timeout: cint): cint
      {.importc: "epoll_wait", header: "<sys/epoll.h>".}
 proc timerfd_create(clock_id: ClockId, flags: cint): cint
@@ -80,26 +78,26 @@ when not defined(android):
 var RLIMIT_NOFILE {.importc: "RLIMIT_NOFILE",
                     header: "<sys/resource.h>".}: cint
 type
-  rlimit {.importc: "struct rlimit",
+  RLimit {.importc: "struct rlimit",
            header: "<sys/resource.h>", pure, final.} = object
     rlim_cur: int
     rlim_max: int
-proc getrlimit(resource: cint, rlp: var rlimit): cint
+proc getrlimit(resource: cint, rlp: var RLimit): cint
      {.importc: "getrlimit",header: "<sys/resource.h>".}
 
 when hasThreadSupport:
   type
     SelectorImpl[T] = object
-      epollFD : cint
-      maxFD : int
+      epollFD: cint
+      maxFD: int
       fds: ptr SharedArray[SelectorKey[T]]
       count: int
     Selector*[T] = ptr SelectorImpl[T]
 else:
   type
     SelectorImpl[T] = object
-      epollFD : cint
-      maxFD : int
+      epollFD: cint
+      maxFD: int
       fds: seq[SelectorKey[T]]
       count: int
     Selector*[T] = ref SelectorImpl[T]
@@ -109,7 +107,8 @@ type
   SelectEvent* = ptr SelectEventImpl
 
 proc newSelector*[T](): Selector[T] =
-  var a = rlimit()
+  # Retrieve the maximum fd count (for current OS) via getrlimit()
+  var a = RLimit()
   if getrlimit(RLIMIT_NOFILE, a) != 0:
     raiseOsError(osLastError())
   var maxFD = int(a.rlim_max)
@@ -152,8 +151,8 @@ proc newSelectEvent*(): SelectEvent =
   result = cast[SelectEvent](allocShared0(sizeof(SelectEventImpl)))
   result.efd = fdci
 
-proc setEvent*(ev: SelectEvent) =
-  var data : uint64 = 1
+proc trigger*(ev: SelectEvent) =
+  var data: uint64 = 1
   if posix.write(ev.efd, addr data, sizeof(uint64)) == -1:
     raiseIOSelectorsError(osLastError())
 
@@ -164,6 +163,8 @@ proc close*(ev: SelectEvent) =
     raiseIOSelectorsError(osLastError())
 
 template checkFd(s, f) =
+  # TODO: I don't see how this can ever happen. You won't be able to create an
+  # FD if there is too many. -- DP
   if f >= s.maxFD:
     raiseIOSelectorsError("Maximum number of descriptors is exhausted!")
 
@@ -171,10 +172,10 @@ proc registerHandle*[T](s: Selector[T], fd: SocketHandle,
                         events: set[Event], data: T) =
   let fdi = int(fd)
   s.checkFd(fdi)
-  doAssert(s.fds[fdi].ident == 0)
+  doAssert(s.fds[fdi].ident == 0, "Descriptor $# already registered" % $fd)
   s.setKey(fdi, events, 0, data)
   if events != {}:
-    var epv = epoll_event(events: EPOLLRDHUP)
+    var epv = EpollEvent(events: EPOLLRDHUP)
     epv.data.u64 = fdi.uint
     if Event.Read in events: epv.events = epv.events or EPOLLIN
     if Event.Write in events: epv.events = epv.events or EPOLLOUT
@@ -189,10 +190,10 @@ proc updateHandle*[T](s: Selector[T], fd: SocketHandle, events: set[Event]) =
   s.checkFd(fdi)
   var pkey = addr(s.fds[fdi])
   doAssert(pkey.ident != 0,
-           "Descriptor [" & $fdi & "] is not registered in the queue!")
+           "Descriptor $# is not registered in the selector!" % $fdi)
   doAssert(pkey.events * maskEvents == {})
   if pkey.events != events:
-    var epv = epoll_event(events: EPOLLRDHUP)
+    var epv = EpollEvent(events: EPOLLRDHUP)
     epv.data.u64 = fdi.uint
 
     if Event.Read in events: epv.events = epv.events or EPOLLIN
@@ -217,24 +218,25 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
   s.checkFd(fdi)
   var pkey = addr(s.fds[fdi])
   doAssert(pkey.ident != 0,
-           "Descriptor [" & $fdi & "] is not registered in the queue!")
+           "Descriptor $# is not registered in the selector!" % $fdi)
   if pkey.events != {}:
     when not defined(android):
       if pkey.events * {Event.Read, Event.Write} != {}:
-        var epv = epoll_event()
+        var epv = EpollEvent()
+        # TODO: Refactor all these EPOLL_CTL_DEL + dec(s.count) into a proc.
         if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) != 0:
           raiseIOSelectorsError(osLastError())
         dec(s.count)
       elif Event.Timer in pkey.events:
         if Event.Finished notin pkey.events:
-          var epv = epoll_event()
+          var epv = EpollEvent()
           if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) != 0:
             raiseIOSelectorsError(osLastError())
           dec(s.count)
         if posix.close(cint(fdi)) != 0:
           raiseIOSelectorsError(osLastError())
       elif Event.Signal in pkey.events:
-        var epv = epoll_event()
+        var epv = EpollEvent()
         if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) != 0:
           raiseIOSelectorsError(osLastError())
         var nmask, omask: Sigset
@@ -247,7 +249,7 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
           raiseIOSelectorsError(osLastError())
       elif Event.Process in pkey.events:
         if Event.Finished notin pkey.events:
-          var epv = epoll_event()
+          var epv = EpollEvent()
           if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) != 0:
             raiseIOSelectorsError(osLastError())
           var nmask, omask: Sigset
@@ -260,13 +262,13 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
           raiseIOSelectorsError(osLastError())
     else:
       if pkey.events * {Event.Read, Event.Write} != {}:
-        var epv = epoll_event()
+        var epv = EpollEvent()
         if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) != 0:
           raiseIOSelectorsError(osLastError())
         dec(s.count)
       elif Event.Timer in pkey.events:
         if Event.Finished notin pkey.events:
-          var epv = epoll_event()
+          var epv = EpollEvent()
           if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) != 0:
             raiseIOSelectorsError(osLastError())
           dec(s.count)
@@ -280,7 +282,7 @@ proc unregister*[T](s: Selector[T], ev: SelectEvent) =
   var pkey = addr(s.fds[fdi])
   doAssert(pkey.ident != 0, "Event is not registered in the queue!")
   doAssert(Event.User in pkey.events)
-  var epv = epoll_event()
+  var epv = EpollEvent()
   if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) != 0:
     raiseIOSelectorsError(osLastError())
   dec(s.count)
@@ -300,7 +302,7 @@ proc registerTimer*[T](s: Selector[T], timeout: int, oneshot: bool,
   doAssert(s.fds[fdi].ident == 0)
 
   var events = {Event.Timer}
-  var epv = epoll_event(events: EPOLLIN or EPOLLRDHUP)
+  var epv = EpollEvent(events: EPOLLIN or EPOLLRDHUP)
   epv.data.u64 = fdi.uint
   if oneshot:
     new_ts.it_interval.tv_sec = 0.Time
@@ -343,7 +345,7 @@ when not defined(android):
     s.checkFd(fdi)
     doAssert(s.fds[fdi].ident == 0)
 
-    var epv = epoll_event(events: EPOLLIN or EPOLLRDHUP)
+    var epv = EpollEvent(events: EPOLLIN or EPOLLRDHUP)
     epv.data.u64 = fdi.uint
     if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint, addr epv) != 0:
       raiseIOSelectorsError(osLastError())
@@ -370,7 +372,7 @@ when not defined(android):
     s.checkFd(fdi)
     doAssert(s.fds[fdi].ident == 0)
 
-    var epv = epoll_event(events: EPOLLIN or EPOLLRDHUP)
+    var epv = EpollEvent(events: EPOLLIN or EPOLLRDHUP)
     epv.data.u64 = fdi.uint
     epv.events = EPOLLIN or EPOLLRDHUP
     if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint, addr epv) != 0:
@@ -383,7 +385,7 @@ proc registerEvent*[T](s: Selector[T], ev: SelectEvent, data: T) =
   let fdi = int(ev.efd)
   doAssert(s.fds[fdi].ident == 0, "Event is already registered in the queue!")
   s.setKey(fdi, {Event.User}, 0, data)
-  var epv = epoll_event(events: EPOLLIN or EPOLLRDHUP)
+  var epv = EpollEvent(events: EPOLLIN or EPOLLRDHUP)
   epv.data.u64 = ev.efd.uint
   if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, ev.efd, addr epv) != 0:
     raiseIOSelectorsError(osLastError())
@@ -392,7 +394,7 @@ proc registerEvent*[T](s: Selector[T], ev: SelectEvent, data: T) =
 proc selectInto*[T](s: Selector[T], timeout: int,
                     results: var openarray[ReadyKey]): int =
   var
-    resTable: array[MAX_EPOLL_EVENTS, epoll_event]
+    resTable: array[MAX_EPOLL_EVENTS, EpollEvent]
     maxres = MAX_EPOLL_EVENTS
     i, k: int
 
@@ -482,7 +484,7 @@ proc selectInto*[T](s: Selector[T], timeout: int,
             rkey.events.incl(Event.User)
 
       if Event.Oneshot in pkey.events:
-        var epv = epoll_event()
+        var epv = EpollEvent()
         if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, cint(fdi), addr epv) != 0:
           raiseIOSelectorsError(osLastError())
         # we will not clear key until it will be unregistered, so

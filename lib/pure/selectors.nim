@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2016 Eugene Kabanov
+#        (c) Copyright 2016 Eugene Kabanov, Dominik Picheta
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -27,7 +27,7 @@
 ##
 ## TODO: ``/dev/poll``, ``event ports`` and filesystem events.
 
-import os
+import os, strutils
 
 const hasThreadSupport = compileOption("threads") and defined(threadsafe)
 
@@ -83,7 +83,7 @@ when defined(nimdoc):
                           data: T) =
     ## Registers file/socket descriptor ``fd`` to selector ``s``
     ## with events set in ``events``. The ``data`` is application-defined
-    ## data, which to be passed when event happens.
+    ## data, which will be passed when an event is triggered.
 
   proc updateHandle*[T](s: Selector[T], fd: SocketHandle, events: set[Event]) =
     ## Update file/socket descriptor ``fd``, registered in selector
@@ -91,31 +91,44 @@ when defined(nimdoc):
 
   proc registerTimer*[T](s: Selector[T], timeout: int, oneshot: bool,
                          data: T): int {.discardable.} =
-    ## Registers timer notification with ``timeout`` in milliseconds
+    ## Registers timer notification with ``timeout`` (in milliseconds)
     ## to selector ``s``.
-    ## If ``oneshot`` is ``true`` timer will be notified only once.
-    ## Set ``oneshot`` to ``false`` if your want periodic notifications.
-    ## The ``data`` is application-defined data, which to be passed, when
-    ## time limit expired.
+    ##
+    ## If ``oneshot`` is ``true``, timer will be notified only once.
+    ##
+    ## Set ``oneshot`` to ``false`` if you want periodic notifications.
+    ##
+    ## The ``data`` is application-defined data, which will be passed, when
+    ## the timer is triggered.
+    ##
+    ## Returns the file descriptor for the registered timer.
 
   proc registerSignal*[T](s: Selector[T], signal: int,
                           data: T): int {.discardable.} =
     ## Registers Unix signal notification with ``signal`` to selector
-    ## ``s``. The ``data`` is application-defined data, which to be
-    ## passed, when signal raises.
+    ## ``s``.
     ##
-    ## This function is not supported for ``Windows``.
+    ## The ``data`` is application-defined data, which will be
+    ## passed when signal raises.
+    ##
+    ## Returns the file descriptor for the registered signal.
+    ##
+    ## **Note:** This function is not supported on ``Windows``.
 
   proc registerProcess*[T](s: Selector[T], pid: int,
                            data: T): int {.discardable.} =
-    ## Registers process id (pid) notification when process has
-    ## exited to selector ``s``.
-    ## The ``data`` is application-defined data, which to be passed, when
+    ## Registers a process id (pid) notification (when process has
+    ## exited) in selector ``s``.
+    ##
+    ## The ``data`` is application-defined data, which will be passed when
     ## process with ``pid`` has exited.
+    ##
+    ## Returns the file descriptor for the registered signal.
 
   proc registerEvent*[T](s: Selector[T], ev: SelectEvent, data: T) =
-    ## Registers selector event ``ev`` to selector ``s``.
-    ## ``data`` application-defined data, which to be passed, when
+    ## Registers selector event ``ev`` in selector ``s``.
+    ##
+    ## The ``data`` is application-defined data, which will be passed when
     ## ``ev`` happens.
 
   proc registerVnode*[T](s: Selector[T], fd: cint, events: set[Event],
@@ -125,40 +138,42 @@ when defined(nimdoc):
     ## ``data`` application-defined data, which to be passed, when
     ## vnode event happens.
     ##
-    ## This function is supported only by BSD and MacOSX.
+    ## **Note:** This function is supported only by BSD and MacOSX.
 
   proc newSelectEvent*(): SelectEvent =
-    ## Creates new event ``SelectEvent``.
+    ## Creates a new user-defined event.
 
-  proc setEvent*(ev: SelectEvent) =
+  proc trigger*(ev: SelectEvent) =
     ## Trigger event ``ev``.
 
   proc close*(ev: SelectEvent) =
-    ## Closes selector event ``ev``.
+    ## Closes user-defined event ``ev``.
 
   proc unregister*[T](s: Selector[T], ev: SelectEvent) =
-    ## Unregisters event ``ev`` from selector ``s``.
+    ## Unregisters user-defined event ``ev`` from selector ``s``.
 
   proc unregister*[T](s: Selector[T], fd: int|SocketHandle|cint) =
     ## Unregisters file/socket descriptor ``fd`` from selector ``s``.
 
   proc selectInto*[T](s: Selector[T], timeout: int,
                       results: var openarray[ReadyKey]): int =
-    ## Process call waiting for events registered in selector ``s``.
-    ## The ``timeout`` argument specifies the minimum number of milliseconds
-    ## the function will be blocked, if no events are not ready. Specifying a
-    ## timeout of ``-1`` causes function to block indefinitely.
+    ## Waits for events registered in selector ``s``.
+    ##
+    ## The ``timeout`` argument specifies the maximum number of milliseconds
+    ## the function will be blocked for if no events are ready. Specifying a
+    ## timeout of ``-1`` causes the function to block indefinitely.
     ## All available events will be stored in ``results`` array.
     ##
-    ## Function returns number of triggered events.
+    ## Returns number of triggered events.
 
   proc select*[T](s: Selector[T], timeout: int): seq[ReadyKey] =
-    ## Process call waiting for events registered in selector ``s``.
-    ## The ``timeout`` argument specifies the minimum number of milliseconds
-    ## the function will be blocked, if no events are not ready. Specifying a
-    ## timeout of -1 causes function to block indefinitely.
+    ## Waits for events registered in selector ``s``.
     ##
-    ## Function returns sequence of triggered events.
+    ## The ``timeout`` argument specifies the maximum number of milliseconds
+    ## the function will be blocked for if no events are ready. Specifying a
+    ## timeout of ``-1`` causes the function to block indefinitely.
+    ##
+    ## Returns a list of triggered events.
 
   proc getData*[T](s: Selector[T], fd: SocketHandle|int): T =
     ## Retrieves application-defined ``data`` associated with descriptor ``fd``.
@@ -170,8 +185,8 @@ when defined(nimdoc):
     ##
     ## Returns ``true``, if data was succesfully updated, ``false`` otherwise.
 
-  template isEmpty*[T](s: Selector[T]): bool =
-    ## Returns ``true``, if there no registered events or descriptors
+  template isEmpty*[T](s: Selector[T]): bool = # TODO: Why is this a template?
+    ## Returns ``true``, if there are no registered events or descriptors
     ## in selector.
 
   template withData*[T](s: Selector[T], fd: SocketHandle|int, value,
@@ -245,17 +260,12 @@ else:
     var err = newException(IOSelectorsException, msg)
     raise err
 
+  from nativesockets import setBlocking, SocketHandle
+  proc setNonBlocking(fd: cint) {.inline.} =
+    setBlocking(fd.SocketHandle, false)
+
   when not defined(windows):
     import posix
-
-    proc setNonBlocking(fd: cint) {.inline.} =
-      var x = fcntl(fd, F_GETFL, 0)
-      if x == -1:
-        raiseIOSelectorsError(osLastError())
-      else:
-        var mode = x or O_NONBLOCK
-        if fcntl(fd, F_SETFL, mode) == -1:
-          raiseIOSelectorsError(osLastError())
 
     template setKey(s, pident, pevents, pparam, pdata: untyped) =
       var skey = addr(s.fds[pident])
@@ -291,3 +301,5 @@ else:
     include ioselects/ioselectors_poll # need to replace it with event ports
   else:
     include ioselects/ioselectors_poll
+
+{.deprecated: [setEvent: trigger].}

@@ -154,7 +154,7 @@ when defined(windows):
     result.rsock = rsock
     result.wsock = wsock
 
-  proc setEvent*(ev: SelectEvent) =
+  proc trigger*(ev: SelectEvent) =
     var data: uint64 = 1
     if winlean.send(ev.wsock, cast[pointer](addr data),
                     cint(sizeof(uint64)), 0) != sizeof(uint64):
@@ -178,7 +178,7 @@ else:
     result.rsock = SocketHandle(fds[0])
     result.wsock = SocketHandle(fds[1])
 
-  proc setEvent*(ev: SelectEvent) =
+  proc trigger*(ev: SelectEvent) =
     var data: uint64 = 1
     if posix.write(cint(ev.wsock), addr data, sizeof(uint64)) != sizeof(uint64):
       raiseIOSelectorsError(osLastError())
