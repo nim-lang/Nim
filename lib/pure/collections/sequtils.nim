@@ -801,6 +801,20 @@ when isMainModule:
     doAssert b.distribute(5, true)[4].len == 5
     doAssert b.distribute(5, false)[4].len == 2
 
+  block: # map test
+    let
+      numbers = @[1, 4, 5, 8, 9, 7, 4]
+      anumbers = [1, 4, 5, 8, 9, 7, 4]
+      m1 = map(numbers, proc(x: int): int = 2*x)
+      m2 = map(anumbers, proc(x: int): int = 2*x)
+    assert m1 == @[2, 8, 10, 16, 18, 14, 8]
+    assert m2 == @[2, 8, 10, 16, 18, 14, 8]
+
+  block: # apply test
+    var a = @["1", "2", "3", "4"]
+    apply(a, proc(x: var string) = x &= "42")
+    assert a == @["142", "242", "342", "442"]
+
   block: # filter proc test
     let
       colors = @["red", "yellow", "black"]
