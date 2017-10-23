@@ -215,6 +215,20 @@ block formatDst:
   doAssert ti.format("zz") == "-04"
   doAssert ti.format("zzz") == "-04:00"
 
+block toTime:
+  proc initTimeInfo(monthday, month, year, hour, minute, second, timezone: int, isDst: bool): TimeInfo =
+    TimeInfo(monthday: monthday, month: (month - 1).Month, year: year,
+      hour: hour, minute: minute, second: second, timezone: timezone, isDst: isDST)
+
+  let stockholm = initTimeInfo(11, 10, 2017, 12, 30, 30, timezone = -3600, isDST = true)
+  doAssert stockholm.toTime == fromSeconds(1507717830)
+  let london = initTimeInfo(01, 06, 1975, 07, 30, 30, timezone = 0, isDST = true)
+  doAssert london.toTime == fromSeconds(170836230)
+  let utcStart = initTimeInfo(01, 01, 1970, 00, 00, 00, timezone = 0, isDST = false)
+  doAssert utcStart.toTime == fromSeconds(0)
+  let utcNegative = initTimeInfo(01, 01, 1950, 00, 00, 00, timezone = 0, isDST = false)
+  doAssert utcNegative.toTime == fromSeconds(-631152000)
+
 block dstTest:
   let nonDst = TimeInfo(year: 2015, month: mJan, monthday: 01, yearday: 0,
       weekday: dThu, hour: 00, minute: 00, second: 00, isDST: false, timezone: 0)
@@ -222,8 +236,7 @@ block dstTest:
   dst.isDst = true
   # note that both isDST == true and isDST == false are valid here because
   # DST is in effect on January 1st in some southern parts of Australia.
-  # FIXME: Fails in UTC
-  # doAssert nonDst.toTime() - dst.toTime() == 3600
+  doAssert nonDst.toTime() - dst.toTime() == 3600
   doAssert nonDst.format("z") == "+0"
   doAssert dst.format("z") == "+1"
 

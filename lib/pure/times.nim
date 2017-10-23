@@ -1180,19 +1180,12 @@ when not defined(JS):
     TimeInfoPtr = ptr StructTM
     Clock {.importc: "clock_t".} = distinct int
 
-  when not defined(windows):
-    # This is not ANSI C, but common enough
-    proc timegm(t: StructTM): Time {.
-      importc: "timegm", header: "<time.h>", tags: [].}
-
   proc localtime(timer: ptr Time): TimeInfoPtr {.
     importc: "localtime", header: "<time.h>", tags: [].}
   proc gmtime(timer: ptr Time): TimeInfoPtr {.
     importc: "gmtime", header: "<time.h>", tags: [].}
   proc timec(timer: ptr Time): Time {.
     importc: "time", header: "<time.h>", tags: [].}
-  proc mktime(t: StructTM): Time {.
-    importc: "mktime", header: "<time.h>", tags: [].}
   proc getClock(): Clock {.importc: "clock", header: "<time.h>", tags: [TimeEffect].}
   proc difftime(a, b: Time): float {.importc: "difftime", header: "<time.h>",
     tags: [].}
@@ -1216,20 +1209,6 @@ when not defined(JS):
       isDST: tm.isdst > 0,
       timezone: if local: getTimezone() else: 0
     )
-
-
-  proc timeInfoToTM(t: TimeInfo): StructTM =
-    const
-      weekDays: array[WeekDay, int8] = [1'i8,2'i8,3'i8,4'i8,5'i8,6'i8,0'i8]
-    result.second = t.second
-    result.minute = t.minute
-    result.hour = t.hour
-    result.monthday = t.monthday
-    result.month = ord(t.month)
-    result.year = cint(t.year - 1900)
-    result.weekday = weekDays[t.weekday]
-    result.yearday = t.yearday
-    result.isdst = if t.isDST: 1 else: 0
 
   when not defined(useNimRtl):
     proc `-` (a, b: Time): int64 =
@@ -1263,14 +1242,28 @@ when not defined(JS):
     # copying is needed anyway to provide reentrancity; thus
     # the conversion is not expensive
 
-  proc toTime(timeInfo: TimeInfo): Time =
-    var cTimeInfo = timeInfo # for C++ we have to make a copy
-    # because the header of mktime is broken in my version of libc
+  proc toEpochday(year, month, day: int): int64 =
+    # Based on http://howardhinnant.github.io/date_algorithms.html
+    var (y, m, d) = (year, month, day)
+    if m <= 2:
+      y.dec
 
-    result = mktime(timeInfoToTM(cTimeInfo))
-    # mktime is defined to interpret the input as local time. As timeInfoToTM
-    # does ignore the timezone, we need to adjust this here.
-    result = Time(TimeImpl(result) - getTimezone() + timeInfo.timezone)
+    let era = (if y >= 0: y else: y-399) div 400;
+    let yoe = y - era * 400
+    let doy = (153 * (m + (if m > 2: -3 else: 9)) + 2) div 5 + d-1; 
+    let doe = yoe * 365 + yoe div 4 - yoe div 100 + doy;         
+    return era * 146097 + doe - 719468;
+
+  proc toTime(timeInfo: TimeInfo): Time =
+    let epochDay = toEpochday(timeInfo.year, ord(timeInfo.month) + 1, timeInfo.monthday)
+    result = Time(epochDay * secondsInDay)
+    result.inc timeInfo.hour * secondsInHour
+    result.inc timeInfo.minute * 60
+    result.inc timeInfo.second
+    # The code above ignores the UTC offset of `timeInfo`,
+    # so we need to compensate for that here.
+    result.inc timeInfo.timezone
+    result.dec int(timeInfo.isDST) * secondsInHour
 
   proc timeInfoToTime(timeInfo: TimeInfo): Time = toTime(timeInfo)
 
