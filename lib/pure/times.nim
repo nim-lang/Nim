@@ -122,7 +122,7 @@ type
                               ## offset to the time in addition to the timezone.
     timezone*: Timezone       # FIXME: add comment
     
-    utcOffset*: int64         ## The offset of the (non-DST) timezone in seconds
+    utcOffset*: int           ## The offset of the (non-DST) timezone in seconds
                               ## west of UTC. Note that the sign of this number
                               ## is the opposite of the one in a formatted
                               ## timezone string like ``+01:00`` (which would be
@@ -146,8 +146,9 @@ type
     normalize: proc(self: Timezone, ti: TimeInfo): TimeInfo {.nimcall, tags: [TimeEffect], raises: [], benign .}
       # FIXME: add better comment, improve name.
       ## Assumes that `ti` is specified in this timezone, and returns a proper TimeInfo.
-      # This includes setting the `utcOffset` and `isDst`, but also other fields like
-      # weekday and yearday. It also resolves ambigues dates, removes leap seconds etc...
+      # This includes setting the `utcOffset` and `isDst` (ignoring the old values),
+      # but also other fields like weekday and yearday.
+      # It also resolves ambigues dates, removes leap seconds etc...
     name*: string
       ## Name of the timezone. Used for checking equality.
 
@@ -214,9 +215,12 @@ proc inZone*(d: TimeInfo, zone: Timezone): TimeInfo  {.tags: [TimeEffect], raise
 proc normalize(d: TimeInfo, zone: Timezone): TimeInfo =
   result = zone.normalize(zone, d)
 
-proc `==`*(tz1, tz2: Timezone): bool =
+proc `==`*(zone1, zone2: Timezone): bool =
   # FIXME: add comment
-  tz1.name == tz2.name
+  zone1.name == zone2.name
+
+proc `$`*(zone: Timezone): string =
+  zone.name
 
 const EuropeanWeekdayToUs: array[WeekDay, int8] = [1'i8,2'i8,3'i8,4'i8,5'i8,6'i8,0'i8]
 const UsWeekdayToEuropean = [dSun, dMon, dTue, dWed, dThu, dFri, dSat]
@@ -325,7 +329,10 @@ else:
     result.year = cint(t.year - 1900)
     result.weekday = EuropeanWeekdayToUs[t.weekday]
     result.yearday = t.yearday
-    result.isdst = if t.isDst: 1 else: 0
+    # `-1` for `isdst` means that it's unknown,
+    # which means that `mktime` will fill in the
+    # value for us, without modifying the time.
+    result.isdst = -1
 
   proc getZonedUtc(self: Timezone, time: Time): TimeInfo =
     var a = time
@@ -339,11 +346,10 @@ else:
     let lt = localtime(addr(a))
     assert(not lt.isNil)
     result = tmToTimeInfo(lt[])
-    # Since timezone and dst is not set for `result` yet, we can
+    # Since timezone is not set for `result` yet, we can
     # calculate the utc offset by comparing `result.toTime` with
-    # the original timestamp. Since `result.timezone` should not
-    # include dst, we need to subtract it.
-    result.utcOffset = (t - result.toTime + ord(lt.isdst > 0) * 60 * 60).int
+    # the original timestamp.
+    result.utcOffset = (t - result.toTime).int
     result.isDst = lt.isdst > 0
     result.timezone = self
 
@@ -1334,14 +1340,27 @@ when not defined(JS):
   proc getTime(): Time =
     timec(nil)
 
-  proc toTime(timeInfo: TimeInfo): Time =
-    var cTimeInfo = timeInfo # for C++ we have to make a copy
-    # because the header of mktime is broken in my version of libc
+  proc toEpochday(year, month, day: int): int64 =
+    # Based on http://howardhinnant.github.io/date_algorithms.html
+    var (y, m, d) = (year, month, day)
+    if m <= 2:
+      y.dec
 
-    result = mktime(timeInfoToTM(cTimeInfo))
-    # mktime is defined to interpret the input as local time. As timeInfoToTM
-    # does ignore the timezone, we need to adjust this here.
-    result = Time(TimeImpl(result) - getTimezone() + timeInfo.utcOffset)
+    let era = (if y >= 0: y else: y-399) div 400
+    let yoe = y - era * 400
+    let doy = (153 * (m + (if m > 2: -3 else: 9)) + 2) div 5 + d-1
+    let doe = yoe * 365 + yoe div 4 - yoe div 100 + doy
+    return era * 146097 + doe - 719468
+
+  proc toTime(timeInfo: TimeInfo): Time =
+    let epochDay = toEpochday(timeInfo.year, ord(timeInfo.month) + 1, timeInfo.monthday)
+    result = Time(epochDay * secondsInDay)
+    result.inc timeInfo.hour * secondsInHour
+    result.inc timeInfo.minute * 60
+    result.inc timeInfo.second
+    # The code above ignores the UTC offset of `timeInfo`,
+    # so we need to compensate for that here.
+    result.inc timeInfo.utcOffset
 
   const
     epochDiff = 116444736000000000'i64

@@ -1,7 +1,8 @@
 # test the new time module
 discard """
   file: "ttimes.nim"
-  action: "run"
+  output: '''[Suite] ttimes
+'''
 """
 
 import
@@ -153,19 +154,19 @@ block countLeapYears:
   doAssert countLeapYears(2004) + 1 == countLeapYears(2005)
   doAssert countLeapYears(2020) + 1 == countLeapYears(2021)
 
-proc parseTest(s, f, sExpected: string, ydExpected: int) =
+template parseTest(s, f, sExpected: string, ydExpected: int) =
   let
-    parsed = s.parse(f)
-    parsedStr = $toTime(parsed).inZone(Utc)
+    parsed = s.parse(f).inZone(Utc)
+    parsedStr = $parsed
   check parsedStr == sExpected
   check(parsed.yearday == ydExpected)
 
-proc parseTestTimeOnly(s, f, sExpected: string) =
+template parseTestTimeOnly(s, f, sExpected: string) =
   check sExpected in $s.parse(f)
 
 # because setting a specific timezone for testing is platform-specific, we use
 # explicit timezone offsets in all tests.
-proc runParseTest() =
+template runParseTest() =
   parseTest("Tuesday at 09:04am on Dec 15, 2015 +0",
       "dddd at hh:mmtt on MMM d, yyyy z", "2015-12-15T09:04:00+00:00", 348)
   # ANSIC       = "Mon Jan _2 15:04:05 2006"
@@ -227,7 +228,6 @@ suite "ttimes":
         continue
 
       test "test for " & tz_fn:
-        checkpoint "timezone: " & tz_fn
         tz_cnt.inc
         putEnv("TZ", tz_fn)
         runParseTest()
