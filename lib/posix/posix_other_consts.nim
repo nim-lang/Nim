@@ -119,6 +119,7 @@ var O_TRUNC* {.importc: "O_TRUNC", header: "<fcntl.h>".}: cint
 var O_APPEND* {.importc: "O_APPEND", header: "<fcntl.h>".}: cint
 var O_DSYNC* {.importc: "O_DSYNC", header: "<fcntl.h>".}: cint
 var O_NONBLOCK* {.importc: "O_NONBLOCK", header: "<fcntl.h>".}: cint
+var O_DIRECT* {.importc: "O_DIRECT", header: "<fcntl.h>".}: cint
 var O_RSYNC* {.importc: "O_RSYNC", header: "<fcntl.h>".}: cint
 var O_SYNC* {.importc: "O_SYNC", header: "<fcntl.h>".}: cint
 var O_ACCMODE* {.importc: "O_ACCMODE", header: "<fcntl.h>".}: cint
