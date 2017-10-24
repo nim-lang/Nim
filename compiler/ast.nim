@@ -1036,9 +1036,9 @@ proc newNode*(kind: TNodeKind): PNode =
   new(result)
   result.kind = kind
   #result.info = UnknownLineInfo() inlined:
-  result.info.fileIndex = int32(- 1)
-  result.info.col = int16(- 1)
-  result.info.line = int16(- 1)
+  result.info.fileIndex = int32(-1)
+  result.info.col = int16(-1)
+  result.info.line = int16(-1)
   when defined(useNodeIds):
     result.id = gNodeId
     if result.id == nodeIdToDebug:
