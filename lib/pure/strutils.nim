@@ -1929,6 +1929,15 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
       # but nothing else is possible:
       if buf[i] in {'.', ','}: result[i] = decimalsep
       else: result[i] = buf[i]
+    when defined(windows):
+      # VS pre 2015 violates the C standard: "The exponent always contains at
+      # least two digits, and only as many more digits as necessary to
+      # represent the exponent." [C11 §7.21.6.1]
+      # The following post-processing fixes this behavior.
+      if result.len > 4 and result[^4] == '+' and result[^3] == '0':
+        result[^3] = result[^2]
+        result[^2] = result[^1]
+        result.setLen(result.len - 1)
 
 proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
                   precision: range[0..32] = 16; decimalSep = '.'): string {.
@@ -2364,6 +2373,7 @@ when isMainModule:
   doAssert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"
   doAssert formatBiggestFloat(0.00000000001, ffScientific, 1, ',') in
                                                    ["1,0e-11", "1,0e-011"]
+  doAssert formatFloat(123.456, ffScientific, precision=0) == "1.234560e+02"
 
   doAssert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
   doAssert "${1}12 ${-1}$2" % ["a", "b"] == "a12 bb"
