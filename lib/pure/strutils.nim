@@ -1412,7 +1412,6 @@ proc find*(s, sub: string, start: Natural = 0, last: Natural = 0): int {.noSideE
     return find(s, sub[0], start, last)
     
   var a {.noinit.}: SkipTable
-  let last = if last==0: s.high else: last
   initSkipTable(a, sub)
   result = find(a, s, sub, start, last)
 
