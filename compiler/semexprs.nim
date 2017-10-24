@@ -664,19 +664,6 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
   of skMacro: result = semMacroExpr(c, result, orig, callee, flags)
   of skTemplate: result = semTemplateExpr(c, result, callee, flags)
   else:
-    when false:
-      if callee.name.s[0] == '=' and result.len > 1:
-        # careful, do not skip tyDistinct here:
-        let t = result[1].typ.skipTypes({tyVar, tyGenericInst, tyAlias, tyInferred})
-
-        proc patchHead(callee: PSym; name: string; field: PSym; result: PNode) =
-          if callee.name.s == name and field != nil:
-            result.sons[0].sym = field
-
-        patchHead(callee, "=destroy", t.destructor, result)
-        patchHead(callee, "=sink", t.sink, result)
-        patchHead(callee, "=", t.assignment, result)
-
     semFinishOperands(c, result)
     activate(c, result)
     fixAbstractType(c, result)
