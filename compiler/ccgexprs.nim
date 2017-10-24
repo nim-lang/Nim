@@ -293,7 +293,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
       linefmt(p, cpsStmts, "#genericSeqAssign($1, $2, $3);$n",
               addrLoc(dest), rdLoc(src), genTypeInfo(p.module, dest.t))
   of tyString:
-    if (needToCopy notin flags and src.storage != OnStatic) or canMove(src.lode):
+    if canMove(src.lode):
       genRefAssign(p, dest, src, flags)
     else:
       if dest.storage == OnStack or not usesNativeGC():
