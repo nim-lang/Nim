@@ -98,15 +98,18 @@ proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
   var a = 0
   if args.len > 0 and not string(formatstr).contains("?"):
     dbError("""parameter substitution expects "?" """)
-  for c in items(string(formatstr)):
-    if c == '?':
-      if args[a] == nil:
-        add(result, "NULL")
+  if args.len == 0:
+    return string(formatstr)
+  else:
+    for c in items(string(formatstr)):
+      if c == '?':
+        if args[a] == nil:
+          add(result, "NULL")
+        else:
+          add(result, dbQuote(args[a]))
+        inc(a)
       else:
-        add(result, dbQuote(args[a]))
-      inc(a)
-    else:
-      add(result, c)
+        add(result, c)
 
 proc tryExec*(db: DbConn, query: SqlQuery,
               args: varargs[string, `$`]): bool {.tags: [ReadDbEffect, WriteDbEffect].} =
