@@ -172,7 +172,7 @@ proc registerHandle*[T](s: Selector[T], fd: SocketHandle,
                         events: set[Event], data: T) =
   let fdi = int(fd)
   s.checkFd(fdi)
-  doAssert(s.fds[fdi].ident == 0, "Descriptor $# already registered" % $fd)
+  doAssert(s.fds[fdi].ident == 0, "Descriptor $# already registered" % $fdi)
   s.setKey(fdi, events, 0, data)
   if events != {}:
     var epv = EpollEvent(events: EPOLLRDHUP)
@@ -507,16 +507,19 @@ proc select*[T](s: Selector[T], timeout: int): seq[ReadyKey] =
 template isEmpty*[T](s: Selector[T]): bool =
   (s.count == 0)
 
-proc getData*[T](s: Selector[T], fd: SocketHandle|int): T =
+proc contains*[T](s: Selector[T], fd: SocketHandle|int): bool {.inline.} =
+  return s.fds[fd].ident != 0
+
+proc getData*[T](s: Selector[T], fd: SocketHandle|int): var T =
   let fdi = int(fd)
   s.checkFd(fdi)
-  if s.fds[fdi].ident != 0:
+  if fdi in s:
     result = s.fds[fdi].data
 
 proc setData*[T](s: Selector[T], fd: SocketHandle|int, data: T): bool =
   let fdi = int(fd)
   s.checkFd(fdi)
-  if s.fds[fdi].ident != 0:
+  if fdi in s:
     s.fds[fdi].data = data
     result = true
 
@@ -525,8 +528,8 @@ template withData*[T](s: Selector[T], fd: SocketHandle|int, value,
   mixin checkFd
   let fdi = int(fd)
   s.checkFd(fdi)
-  if s.fds[fdi].ident != 0:
-    var value = addr(s.fds[fdi].data)
+  if fdi in s:
+    var value = addr(s.getData(fdi))
     body
 
 template withData*[T](s: Selector[T], fd: SocketHandle|int, value, body1,
@@ -534,8 +537,8 @@ template withData*[T](s: Selector[T], fd: SocketHandle|int, value, body1,
   mixin checkFd
   let fdi = int(fd)
   s.checkFd(fdi)
-  if s.fds[fdi].ident != 0:
-    var value = addr(s.fds[fdi].data)
+  if fdi in s:
+    var value = addr(s.getData(fdi))
     body1
   else:
     body2

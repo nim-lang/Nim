@@ -379,6 +379,16 @@ proc flush*[T](s: Selector[T]) = discard
 template isEmpty*[T](s: Selector[T]): bool =
   (s.count == 0)
 
+proc contains*[T](s: Selector[T], fd: SocketHandle|int): bool {.inline.} =
+  s.withSelectLock():
+    result = false
+
+    let fdi = int(fd)
+    for i in 0..<FD_SETSIZE:
+      if s.fds[i].ident == fdi:
+        return true
+      inc(i)
+
 when hasThreadSupport:
   template withSelectLock[T](s: Selector[T], body: untyped) =
     acquire(s.lock)
@@ -391,15 +401,12 @@ else:
   template withSelectLock[T](s: Selector[T], body: untyped) =
     body
 
-proc getData*[T](s: Selector[T], fd: SocketHandle|int): T =
+proc getData*[T](s: Selector[T], fd: SocketHandle|int): var T =
   s.withSelectLock():
     let fdi = int(fd)
-    var i = 0
-    while i < FD_SETSIZE:
+    for i in 0..<FD_SETSIZE:
       if s.fds[i].ident == fdi:
-        result = s.fds[i].data
-        break
-      inc(i)
+        return s.fds[i].data
 
 proc setData*[T](s: Selector[T], fd: SocketHandle|int, data: T): bool =
   s.withSelectLock():

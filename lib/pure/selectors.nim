@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2016 Eugene Kabanov, Dominik Picheta
+#        (c) Copyright 2017 Eugene Kabanov, Dominik Picheta
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -27,7 +27,7 @@
 ##
 ## TODO: ``/dev/poll``, ``event ports`` and filesystem events.
 
-import os, strutils
+import os, strutils, nativesockets
 
 const hasThreadSupport = compileOption("threads") and defined(threadsafe)
 
@@ -77,7 +77,7 @@ when defined(nimdoc):
     ## Creates a new selector
 
   proc close*[T](s: Selector[T]) =
-    ## Closes selector
+    ## Closes the selector.
 
   proc registerHandle*[T](s: Selector[T], fd: SocketHandle, events: set[Event],
                           data: T) =
@@ -175,7 +175,7 @@ when defined(nimdoc):
     ##
     ## Returns a list of triggered events.
 
-  proc getData*[T](s: Selector[T], fd: SocketHandle|int): T =
+  proc getData*[T](s: Selector[T], fd: SocketHandle|int): var T =
     ## Retrieves application-defined ``data`` associated with descriptor ``fd``.
     ## If specified descriptor ``fd`` is not registered, empty/default value
     ## will be returned.
@@ -218,6 +218,9 @@ when defined(nimdoc):
     ##     raise
     ##
 
+  proc contains*[T](s: Selector[T], fd: SocketHandle|int): bool {.inline.} =
+    ## Determines whether selector contains a file descriptor.
+
 else:
   when hasThreadSupport:
     import locks
@@ -259,8 +262,7 @@ else:
       msg.add("Internal Error\n")
     var err = newException(IOSelectorsException, msg)
     raise err
-
-  from nativesockets import setBlocking, SocketHandle
+  
   proc setNonBlocking(fd: cint) {.inline.} =
     setBlocking(fd.SocketHandle, false)
 
@@ -303,3 +305,5 @@ else:
     include ioselects/ioselectors_poll
 
 {.deprecated: [setEvent: trigger].}
+{.deprecated: [register: registerHandle].}
+{.deprecated: [update: updateHandle].}
