@@ -93,7 +93,7 @@
 
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
-  strutils, options, dfa, lowerings
+  strutils, options, dfa, lowerings, rodread
 
 const
   InterestingSyms = {skVar, skResult, skLet}
@@ -164,20 +164,44 @@ proc isHarmlessVar*(s: PSym; c: Con): bool =
 template interestingSym(s: PSym): bool =
   s.owner == c.owner and s.kind in InterestingSyms and hasDestructor(s.typ)
 
+proc patchHead(n: PNode; alreadyPatched: var IntSet) =
+  if n.kind in nkCallKinds and n[0].kind == nkSym and n.len > 1:
+    let s = n[0].sym
+    if sfFromGeneric in s.flags or true:
+      if s.name.s[0] == '=' and not containsOrIncl(alreadyPatched, s.id):
+        patchHead(s.getBody, alreadyPatched)
+      let t = n[1].typ.skipTypes({tyVar, tyGenericInst, tyAlias, tyInferred})
+      template patch(op, field) =
+        if s.name.s == op and field != nil: #and field != s:
+          n.sons[0].sym = field
+      patch "=sink", t.sink
+      patch "=", t.assignment
+      patch "=destroy", t.destructor
+  for x in n:
+    patchHead(x, alreadyPatched)
+
+template patchHead(n: PNode) =
+  when false:
+    var alreadyPatched = initIntSet()
+    patchHead(n, alreadyPatched)
+
 proc genSink(t: PType; dest: PNode): PNode =
   let t = t.skipTypes({tyGenericInst, tyAlias})
   let op = if t.sink != nil: t.sink else: t.assignment
   assert op != nil
+  patchHead op.ast[bodyPos]
   result = newTree(nkCall, newSymNode(op), newTree(nkHiddenAddr, dest))
 
 proc genCopy(t: PType; dest: PNode): PNode =
   let t = t.skipTypes({tyGenericInst, tyAlias})
   assert t.assignment != nil
+  patchHead t.assignment.ast[bodyPos]
   result = newTree(nkCall, newSymNode(t.assignment), newTree(nkHiddenAddr, dest))
 
 proc genDestroy(t: PType; dest: PNode): PNode =
   let t = t.skipTypes({tyGenericInst, tyAlias})
   assert t.destructor != nil
+  patchHead t.destructor.ast[bodyPos]
   result = newTree(nkCall, newSymNode(t.destructor), newTree(nkHiddenAddr, dest))
 
 proc addTopVar(c: var Con; v: PNode) =
