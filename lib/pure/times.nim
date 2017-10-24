@@ -17,8 +17,7 @@
 ## .. code-block:: nim
 ##
 ##  import times, os
-##  var
-##    t = cpuTime()
+##  let t = cpuTime()
 ##
 ##  sleep(100)   # replace this with something to be timed
 ##  echo "Time taken: ",cpuTime() - t
@@ -49,8 +48,8 @@ elif defined(posix):
   when defined(linux) and defined(amd64):
     type
       TimeImpl {.importc: "time_t", header: "<time.h>".} = clong
-      Time* = distinct TimeImpl ## distinct type that represents a time
-                                ## measured as number of seconds since the epoch
+      Time* = distinct TimeImpl ## Distinct type that represents a time
+                                ## measured as number of seconds since the epoch.
 
       Timeval {.importc: "struct timeval",
                 header: "<sys/select.h>".} = object ## struct timeval
@@ -92,9 +91,9 @@ elif defined(windows):
     Time* = distinct TimeImpl
 
 type
-  Month* = enum ## represents a month
+  Month* = enum ## Represents a month.
     mJan, mFeb, mMar, mApr, mMay, mJun, mJul, mAug, mSep, mOct, mNov, mDec
-  WeekDay* = enum ## represents a weekday
+  WeekDay* = enum ## Represents a weekday.
     dMon, dTue, dWed, dThu, dFri, dSat, dSun
 
   MonthdayRange* = range[1..31]
@@ -103,10 +102,16 @@ type
   SecondRange* = range[0..60]
   YeardayRange* = range[0..365]
 
-  TimeInfo* = object of RootObj ## represents a time in different parts
+  TimeInfo* = object of RootObj ## Represents a time in different parts.
+                                ## Although this type can represent leap
+                                ## seconds, they are generally not supported
+                                ## in this module. They are not ignored,
+                                ## but the ``TimeInfo``'s returned by
+                                ## procedures in this module will never have
+                                ## a leap second.
     second*: SecondRange      ## The number of seconds after the minute,
                               ## normally in the range 0 to 59, but can
-                              ## be up to 60 to allow for leap seconds.
+                              ## be up to 60 to allow for a leap second.
     minute*: MinuteRange      ## The number of minutes after the hour,
                               ## in the range 0 to 59.
     hour*: HourRange          ## The number of hours past midnight,
@@ -128,10 +133,8 @@ type
                               ## timezone string like ``+01:00`` (which would be
                               ## parsed into the timezone ``-3600``).
 
-  ## I make some assumptions about the data in here. Either
-  ## everything should be positive or everything negative. Zero is
-  ## fine too. Mixed signs will lead to unexpected results.
-  TimeInterval* = object ## a time interval
+  TimeInterval* = object ## Represents a duration of time. Can be used to add and subtract
+                         ## from a ``TimeInfo`` or ``Time``.
     milliseconds*: int ## The number of milliseconds
     seconds*: int     ## The number of seconds
     minutes*: int     ## The number of minutes
@@ -140,17 +143,18 @@ type
     months*: int      ## The number of months
     years*: int       ## The number of years
 
-  Timezone = object
-    getZoned: proc(self: Timezone, time: Time): TimeInfo {.nimcall, tags: [TimeEffect], raises: [], benign .}
+  Timezone* = object ## Timezone interface for supporting ``TimeInfo``'s of arbritary timezones.
+                     ## The ``times`` module only supplies implementations for the systems local time and UTC.
+    getZoned*: proc(self: Timezone, time: Time):
+        TimeInfo {.nimcall, tags: [TimeEffect], raises: [], benign .}
       ## Convert a `Time` to a `TimeInfo` with correct `utcOffset` and `isDst`
-    normalize: proc(self: Timezone, ti: TimeInfo): TimeInfo {.nimcall, tags: [TimeEffect], raises: [], benign .}
+    normalize*: proc(self: Timezone, ti: TimeInfo): TimeInfo {.nimcall, tags: [TimeEffect], raises: [], benign .}
       # FIXME: add better comment, improve name.
-      ## Assumes that `ti` is specified in this timezone, and returns a proper TimeInfo.
-      # This includes setting the `utcOffset` and `isDst` (ignoring the old values),
+      # Assumes that ``ti`` is specified in this timezone, and returns a proper TimeInfo.
+      # This includes setting the ``utcOffset`` and ``isDst`` (ignoring the old values),
       # but also other fields like weekday and yearday.
       # It also resolves ambigues dates, removes leap seconds etc...
-    name*: string
-      ## Name of the timezone. Used for checking equality.
+    name*: string ## Name of the timezone. Used for checking equality.
 
 {.deprecated: [TMonth: Month, TWeekDay: WeekDay, TTime: Time,
     TTimeInterval: TimeInterval, TTimeInfo: TimeInfo].}
@@ -160,7 +164,7 @@ proc getZonedUtc(self: Timezone, time: Time): TimeInfo {.nimcall, tags: [TimeEff
 proc normalizeUtc(self: Timezone, ti: TimeInfo): TimeInfo {.nimcall, tags: [TimeEffect], raises: [], benign .}
 proc getZonedLocal(self: Timezone, t: Time): TimeInfo {.nimcall, tags: [TimeEffect], raises: [], benign .}
 proc normalizeLocal(self: Timezone, ti: TimeInfo): TimeInfo {.nimcall, tags: [TimeEffect], raises: [], benign .}
-proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int): int {. used .}
+proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int): YeardayRange
 proc toTime*(timeInfo: TimeInfo): Time {.tags: [TimeEffect], raises: [], benign.}
   ## converts a broken-down time structure to
   ## calendar time representation. The function ignores the specified
@@ -370,26 +374,28 @@ let Local* = Timezone(getZoned: getZonedLocal, normalize: normalizeLocal, name: 
 ## Represents the local timezone.
 
 proc getTime*(): Time {.tags: [TimeEffect], benign.}
-  ## gets the current calendar time as a UNIX epoch value (number of seconds
+  ## Gets the current calendar time as a UNIX epoch value (number of seconds
   ## elapsed since 1970) with integer precission. Use epochTime for higher
   ## resolution.
 
 proc now*(): TimeInfo {.tags: [TimeEffect], benign.} =
-  # TODO: doc comment
+  ## Get the current time as a  ``TimeInfo`` in the local timezone.
+  ##
+  ## Shorthand for ``getTime().inZone(Local)``.
   getTime().inZone(Local)
 
 proc getLocalTime*(t: Time): TimeInfo {.tags: [TimeEffect], raises: [], benign, deprecated.} =
-  ## converts the calendar time `t` to broken-time representation,
+  ## Converts the calendar time `t` to broken-time representation,
   ## expressed relative to the user's specified time zone.
   t.inZone(Local)
 
 proc getGMTime*(t: Time): TimeInfo {.tags: [TimeEffect], raises: [], benign, deprecated.} =
-  ## converts the calendar time `t` to broken-down time representation,
+  ## Converts the calendar time `t` to broken-down time representation,
   ## expressed in Coordinated Universal Time (UTC).
   t.inZone(Utc)
 
 proc timeInfoToTime*(timeInfo: TimeInfo): Time {.tags: [TimeEffect], benign, deprecated.} =
-  ## converts a broken-down time structure to
+  ## Converts a broken-down time structure to
   ## calendar time representation. The function ignores the specified
   ## contents of the structure members `weekday` and `yearday` and recomputes
   ## them from the other information in the broken-down time structure.
@@ -549,19 +555,17 @@ proc toSeconds(a: TimeInfo, interval: TimeInterval): float =
   result += newinterv.milliseconds / 1000
 
 proc `+`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
-  ## adds ``interval`` time from TimeInfo ``a``.
-  ##
-  ## **Note:** This has been only briefly tested and it may not be
-  ## very accurate.
+  ## Adds ``interval`` time from TimeInfo ``a``. Components from ``interval`` are added
+  ## in the order of their size, i.e first the ``years`` component, then the ``months``
+  ## component and so on. The returned ``TimeInfo`` will have the same timezone as the input.
   let t = toSeconds(toTime(a))
   let secs = toSeconds(a, interval)
   return fromSeconds(t + secs).inZone(a.timezone)
 
 proc `-`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
-  ## subtracts ``interval`` time from TimeInfo ``a``.
-  ##
-  ## **Note:** This has been only briefly tested, it is inaccurate especially
-  ## when you subtract so much that you reach the Julian calendar.
+  ## Subtract ``interval`` time from TimeInfo ``a``. Components from ``interval`` are subtracted
+  ## in the order of their size, i.e first the ``years`` component, then the ``months``
+  ## component and so on. The returned ``TimeInfo`` will have the same timezone as the input.
   a + (-interval)
 
 proc miliseconds*(t: TimeInterval): int {.deprecated.} = t.milliseconds
@@ -1066,12 +1070,13 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
     j += token.len
 
 proc parse*(value, layout: string, zone: Timezone = Local): TimeInfo =
-  # FIXME: Add comment about `zone` paramter
-  ## This function parses a date/time string using the standard format
-  ## identifiers as listed below. The function defaults information not provided
-  ## in the format string from the running program (timezone, month, year, etc).
-  ## Daylight saving time is only set if no timezone is given and the given date
-  ## lies within the DST period of the current locale.
+  ## This procedure parses a date/time string using the standard format
+  ## identifiers as listed below. The procedure defaults information not provided
+  ## in the format string from the running program (month, year, etc).
+  ##
+  ## The return value will always be in the timezone `zone`. If no UTC offset was
+  ## parsed, then the input will be assumed to be specified in the `zone` timezone
+  ## already, so no timezone conversion will be done in that case.
   ##
   ## ==========  =================================================================================  ================================================
   ## Specifier   Description                                                                        Example
@@ -1181,14 +1186,16 @@ proc countYearsAndDays*(daySpan: int): tuple[years: int, days: int] =
   result.years = days div 365
   result.days = days mod 365
 
-proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int): int =
+proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int): YeardayRange =
+  ## Returns the day of the year.
+  ## Same value as ``initTimeInfo(day, month, year).yearday``.
   const daysUntilMonth : array[Month, int] = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
   const daysUntilMonthLeap : array[Month, int] = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
 
   if isLeapYear(year):
-    daysUntilMonth[month] + monthday - 1
+    result = daysUntilMonth[month] + monthday - 1
   else:
-    daysUntilMonthLeap[month] + monthday - 1
+    result = daysUntilMonthLeap[month] + monthday - 1
 
 proc getDayOfWeek*(day, month, year: int): WeekDay =
   ## Returns the day of the week enum from day, month and year.
@@ -1275,7 +1282,7 @@ proc timeToTimeInterval*(t: Time): TimeInterval {.deprecated.} =
 
 proc initTimeInfo*(monthday: MonthdayRange, month: Month, year: int,
                   hour: HourRange, minute: MinuteRange, second: SecondRange, zone: Timezone = Local): TimeInfo =
-  # FIXME: add comment
+  ## Create a new ``TimeInfo`` in the specified timezone.
   doAssert monthday <= getDaysInMonth(month, year), "Invalid date: " & $month & " " & $monthday & ", " & $year
   let ti = TimeInfo(
     monthday:  monthday,
@@ -1286,6 +1293,13 @@ proc initTimeInfo*(monthday: MonthdayRange, month: Month, year: int,
     second:  second
   )
   result = ti.normalize(zone)
+
+proc initTimeInfo*(monthday: MonthdayRange, month: Month, year: int, zone: Timezone = Local): TimeInfo =
+  ## Create a new ``TimeInfo`` in the specified timezone. The time component will be set to the first
+  ## hour/minute/second of they day (in almost all cases 00:00:00).
+  # TODO: Add a test for this. In Brazil, DST actives on 00:00:00, which means that the first time of
+  # the day is actually 01:00:00.
+  initTimeInfo(monthday, month, year, 0, 0, 0, zone)
 
 when not defined(JS):
   proc epochTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].}
