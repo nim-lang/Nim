@@ -9,7 +9,7 @@
 
 # This module implements Linux epoll().
 
-import posix, times
+import posix, times, epoll
 
 # Maximum number of events that can be returned
 const MAX_EPOLL_EVENTS = 64
@@ -36,33 +36,6 @@ when not defined(android):
       ssi_addr*: uint64
       pad* {.importc: "__pad".}: array[0..47, uint8]
 
-type
-  EpollData {.importc: "union epoll_data", header: "<sys/epoll.h>",
-               pure, final.} = object
-    u64 {.importc: "u64".}: uint64
-  EpollEvent {.importc: "struct epoll_event",
-                header: "<sys/epoll.h>", pure, final.} = object
-    events: uint32 # Epoll events
-    data: EpollData # User data variable
-
-const
-  EPOLL_CTL_ADD = 1          # Add a file descriptor to the interface.
-  EPOLL_CTL_DEL = 2          # Remove a file descriptor from the interface.
-  EPOLL_CTL_MOD = 3          # Change file descriptor epoll_event structure.
-  EPOLLIN = 0x00000001
-  EPOLLOUT = 0x00000004
-  EPOLLERR = 0x00000008
-  EPOLLHUP = 0x00000010
-  EPOLLRDHUP = 0x00002000
-  EPOLLONESHOT = 1 shl 30
-
-proc epoll_create(size: cint): cint
-     {.importc: "epoll_create", header: "<sys/epoll.h>".}
-proc epoll_ctl(epfd: cint; op: cint; fd: cint; event: ptr EpollEvent): cint
-     {.importc: "epoll_ctl", header: "<sys/epoll.h>".}
-proc epoll_wait(epfd: cint; events: ptr EpollEvent; maxevents: cint;
-                 timeout: cint): cint
-     {.importc: "epoll_wait", header: "<sys/epoll.h>".}
 proc timerfd_create(clock_id: ClockId, flags: cint): cint
      {.cdecl, importc: "timerfd_create", header: "<sys/timerfd.h>".}
 proc timerfd_settime(ufd: cint, flags: cint,
