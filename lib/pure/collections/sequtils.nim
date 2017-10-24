@@ -13,8 +13,9 @@
 ## were inspired by functional programming languages.
 ##
 ## For functional style programming you may want to pass `anonymous procs
-## <manual.html#procedures-anonymous-procs>`_ to procs like ``filter`` to reduce typing.
-## Anonymous procs can use `the special do notation <manual.html#procedures-do-notation>`_
+## <manual.html#procedures-anonymous-procs>`_ to procs like ``filter`` to
+## reduce typing. Anonymous procs can use `the special do notation
+## <manual.html#procedures-do-notation>`_
 ## which is more convenient in certain situations.
 
 include "system/inclrtl"
@@ -44,7 +45,7 @@ proc concat*[T](seqs: varargs[seq[T]]): seq[T] =
       inc(i)
 
 proc count*[T](s: openArray[T], x: T): int =
-  ## Count the occurrences of the item `x` in the sequence `s`.
+  ## Returns the number of occurrences of the item `x` in the container `s`.
   ##
   ## Example:
   ##
@@ -58,7 +59,8 @@ proc count*[T](s: openArray[T], x: T): int =
       inc result
 
 proc cycle*[T](s: openArray[T], n: Natural): seq[T] =
-  ## Returns a new sequence with the items of `s` repeated `n` times.
+  ## Returns a new sequence with the items of the container `s` repeated
+  ## `n` times.
   ##
   ## Example:
   ##
@@ -92,6 +94,8 @@ proc repeat*[T](x: T, n: Natural): seq[T] =
 proc deduplicate*[T](s: openArray[T]): seq[T] =
   ## Returns a new sequence without duplicates.
   ##
+  ## Example:
+  ##
   ## .. code-block::
   ##   let
   ##     dup1 = @[1, 1, 3, 4, 2, 2, 8, 1, 4]
@@ -107,11 +111,13 @@ proc deduplicate*[T](s: openArray[T]): seq[T] =
 {.deprecated: [distnct: deduplicate].}
 
 proc zip*[S, T](s1: openArray[S], s2: openArray[T]): seq[tuple[a: S, b: T]] =
-  ## Returns a new sequence with a combination of the two input sequences.
+  ## Returns a new sequence with a combination of the two input containers.
   ##
   ## For convenience you can access the returned tuples through the named
-  ## fields `a` and `b`. If one sequence is shorter, the remaining items in the
-  ## longer sequence are discarded. Example:
+  ## fields `a` and `b`. If one container is shorter, the remaining items in
+  ## the longer container are discarded.
+  ##
+  ## Example:
   ##
   ## .. code-block::
   ##   let
@@ -196,10 +202,12 @@ proc distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
 proc map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
                                                             seq[S]{.inline.} =
   ## Returns a new sequence with the results of `op` applied to every item in
-  ## `s`.
+  ## the container `s`.
   ##
   ## Since the input is not modified you can use this version of ``map`` to
-  ## transform the type of the elements in the input sequence. Example:
+  ## transform the type of the elements in the input container.
+  ##
+  ## Example:
   ##
   ## .. code-block:: nim
   ##   let
@@ -215,7 +223,9 @@ proc map*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
   ## Applies `op` to every item in `s` modifying it directly.
   ##
   ## Note that this version of ``map`` requires your input and output types to
-  ## be the same, since they are modified in-place. Example:
+  ## be the same, since they are modified in-place.
+  ##
+  ## Example:
   ##
   ## .. code-block:: nim
   ##   var a = @["1", "2", "3", "4"]
@@ -234,6 +244,7 @@ proc apply*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
   ## Note that this requires your input and output types to
   ## be the same, since they are modified in-place.
   ## The parameter function takes a ``var T`` type parameter.
+  ##
   ## Example:
   ##
   ## .. code-block:: nim
@@ -253,6 +264,7 @@ proc apply*[T](s: var openArray[T], op: proc (x: T): T {.closure.})
   ## Note that this requires your input and output types to
   ## be the same, since they are modified in-place.
   ## The parameter function takes and returns a ``T`` type variable.
+  ##
   ## Example:
   ##
   ## .. code-block:: nim
@@ -266,7 +278,7 @@ proc apply*[T](s: var openArray[T], op: proc (x: T): T {.closure.})
   for i in 0 .. <s.len: s[i] = op(s[i])
 
 iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T =
-  ## Iterates through a sequence and yields every item that fulfills the
+  ## Iterates through a container and yields every item that fulfills the
   ## predicate.
   ##
   ## Example:
@@ -373,6 +385,7 @@ template filterIt*(s, pred: untyped): untyped =
   ##
   ## Unlike the `proc` version, the predicate needs to be an expression using
   ## the ``it`` variable for testing, like: ``filterIt("abcxyz", it == 'x')``.
+  ##
   ## Example:
   ##
   ## .. code-block::
@@ -392,6 +405,7 @@ template keepItIf*(varSeq: seq, pred: untyped) =
   ##
   ## Unlike the `proc` version, the predicate needs to be an expression using
   ## the ``it`` variable for testing, like: ``keepItIf("abcxyz", it == 'x')``.
+  ##
   ## Example:
   ##
   ## .. code-block::
@@ -408,7 +422,7 @@ template keepItIf*(varSeq: seq, pred: untyped) =
   setLen(varSeq, pos)
 
 proc all*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
-  ## Iterates through a sequence and checks if every item fulfills the
+  ## Iterates through a container and checks if every item fulfills the
   ## predicate.
   ##
   ## Example:
@@ -439,7 +453,7 @@ template allIt*(s, pred: untyped): bool =
   result
 
 proc any*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
-  ## Iterates through a sequence and checks if some item fulfills the
+  ## Iterates through a container and checks if some item fulfills the
   ## predicate.
   ##
   ## Example:
@@ -507,7 +521,9 @@ template foldl*(sequence, operation: untyped): untyped =
   ## variables ``a`` and ``b`` for each step of the fold. Since this is a left
   ## fold, for non associative binary operations like subtraction think that
   ## the sequence of numbers 1, 2 and 3 will be parenthesized as (((1) - 2) -
-  ## 3).  Example:
+  ## 3).
+  ##
+  ## Example:
   ##
   ## .. code-block::
   ##   let
@@ -541,6 +557,7 @@ template foldl*(sequence, operation, first): untyped =
   ## The ``operation`` parameter should be an expression which uses the variables
   ## ``a`` and ``b`` for each step of the fold. The ``first`` parameter is the
   ## start value (the first ``a``) and therefor defines the type of the result.
+  ##
   ## Example:
   ##
   ## .. code-block::
@@ -569,7 +586,9 @@ template foldr*(sequence, operation: untyped): untyped =
   ## variables ``a`` and ``b`` for each step of the fold. Since this is a right
   ## fold, for non associative binary operations like subtraction think that
   ## the sequence of numbers 1, 2 and 3 will be parenthesized as (1 - (2 -
-  ## (3))). Example:
+  ## (3))).
+  ##
+  ## Example:
   ##
   ## .. code-block::
   ##   let
@@ -600,7 +619,9 @@ template mapIt*(s, typ, op: untyped): untyped =
   ## The template injects the ``it`` variable which you can use directly in an
   ## expression. You also need to pass as `typ` the type of the expression,
   ## since the new returned sequence can have a different type than the
-  ## original.  Example:
+  ## original.
+  ##
+  ## Example:
   ##
   ## .. code-block::
   ##   let
@@ -619,7 +640,9 @@ template mapIt*(s, op: untyped): untyped =
   ## Convenience template around the ``map`` proc to reduce typing.
   ##
   ## The template injects the ``it`` variable which you can use directly in an
-  ## expression. Example:
+  ## expression.
+  ##
+  ## Example:
   ##
   ## .. code-block::
   ##   let
@@ -649,7 +672,9 @@ template applyIt*(varSeq, op: untyped) =
   ##
   ## The template injects the ``it`` variable which you can use directly in an
   ## expression. The expression has to return the same type as the sequence you
-  ## are mutating. Example:
+  ## are mutating.
+  ##
+  ## Example:
   ##
   ## .. code-block::
   ##   var nums = @[1, 2, 3, 4]
@@ -661,7 +686,9 @@ template applyIt*(varSeq, op: untyped) =
 
 
 template newSeqWith*(len: int, init: untyped): untyped =
-  ## creates a new sequence, calling `init` to initialize each value. Example:
+  ## creates a new sequence, calling `init` to initialize each value.
+  ##
+  ## Example:
   ##
   ## .. code-block::
   ##   var seq2D = newSeqWith(20, newSeq[bool](10))
