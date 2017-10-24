@@ -1330,18 +1330,35 @@ proc join*[T: not string](a: openArray[T], sep: string = ""): string {.
     add(result, $x)
 
 type
-  SkipTable = array[char, int]
+  SkipTable* = array[char, int]
 
-{.push profiler: off.}
-proc preprocessSub(sub: string, a: var SkipTable) =
-  var m = len(sub)
-  for i in 0..0xff: a[chr(i)] = m+1
-  for i in 0..m-1: a[sub[i]] = m-i
-{.pop.}
+proc initSkipTable(a: var SkipTable, sub: string)
+  {.noSideEffect, rtl, extern: "nsuInitSkipTable".} =
+  ## Preprocess table `a` for `sub`.
+  let m = len(sub)
+  let m1 = m + 1
+  var i = 0
+  while i <= 0xff-7:
+    a[chr(i + 0)] = m1
+    a[chr(i + 1)] = m1
+    a[chr(i + 2)] = m1
+    a[chr(i + 3)] = m1
+    a[chr(i + 4)] = m1
+    a[chr(i + 5)] = m1
+    a[chr(i + 6)] = m1
+    a[chr(i + 7)] = m1
+    i += 8
 
-proc findAux(s, sub: string, start, last: int, a: SkipTable): int =
-  # Fast "quick search" algorithm:
-  var
+  for i in 0..m-1:
+    a[sub[i]] = m-i
+
+proc find*(a: SkipTable, s, sub: string, start: Natural = 0, last: Natural = 0): int
+  {.noSideEffect, rtl, extern: "nsuFindStrA".} =
+  ## Searches for `sub` in `s` inside range `start`..`last` using preprocessed table `a`.
+  ## If `last` is unspecified, it defaults to `s.high`.
+  ##
+  ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
+  let
     m = len(sub)
     n = last + 1
   # search:
@@ -1361,17 +1378,6 @@ when not (defined(js) or defined(nimdoc) or defined(nimscript)):
 else:
   const hasCStringBuiltin = false
 
-proc find*(s, sub: string, start: Natural = 0, last: Natural = 0): int {.noSideEffect,
-  rtl, extern: "nsuFindStr".} =
-  ## Searches for `sub` in `s` inside range `start`..`last`.
-  ## If `last` is unspecified, it defaults to `s.high`.
-  ##
-  ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
-  var a {.noinit.}: SkipTable
-  let last = if last==0: s.high else: last
-  preprocessSub(sub, a)
-  result = findAux(s, sub, start, last, a)
-
 proc find*(s: string, sub: char, start: Natural = 0, last: Natural = 0): int {.noSideEffect,
   rtl, extern: "nsuFindChar".} =
   ## Searches for `sub` in `s` inside range `start`..`last`.
@@ -1390,8 +1396,24 @@ proc find*(s: string, sub: char, start: Natural = 0, last: Natural = 0): int {.n
     else:
       for i in start..last:
         if sub == s[i]: return i
-
   return -1
+
+proc find*(s, sub: string, start: Natural = 0, last: Natural = 0): int {.noSideEffect,
+  rtl, extern: "nsuFindStr".} =
+  ## Searches for `sub` in `s` inside range `start`..`last`.
+  ## If `last` is unspecified, it defaults to `s.high`.
+  ##
+  ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
+  if sub.len > s.len:
+    return -1
+    
+  if sub.len == 1:
+    return find(s, sub[0], start, last)
+    
+  var a {.noinit.}: SkipTable
+  let last = if last==0: s.high else: last
+  initSkipTable(a, sub)
+  result = find(a, s, sub, start, last)
 
 proc find*(s: string, chars: set[char], start: Natural = 0, last: Natural = 0): int {.noSideEffect,
   rtl, extern: "nsuFindCharSet".} =
@@ -1524,11 +1546,11 @@ proc replace*(s, sub: string, by = ""): string {.noSideEffect,
   ## Replaces `sub` in `s` by the string `by`.
   var a {.noinit.}: SkipTable
   result = ""
-  preprocessSub(sub, a)
+  initSkipTable(a, sub)
   let last = s.high
   var i = 0
   while true:
-    var j = findAux(s, sub, i, last, a)
+    var j = find(a, s, sub, i, last)
     if j < 0: break
     add result, substr(s, i, j - 1)
     add result, by
@@ -1558,11 +1580,11 @@ proc replaceWord*(s, sub: string, by = ""): string {.noSideEffect,
   const wordChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\128'..'\255'}
   var a {.noinit.}: SkipTable
   result = ""
-  preprocessSub(sub, a)
+  initSkipTable(a, sub)
   var i = 0
   let last = s.high
   while true:
-    var j = findAux(s, sub, i, last, a)
+    var j = find(a, s, sub, i, last)
     if j < 0: break
     # word boundary?
     if (j == 0 or s[j-1] notin wordChars) and
