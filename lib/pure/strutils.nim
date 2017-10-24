@@ -1332,7 +1332,7 @@ proc join*[T: not string](a: openArray[T], sep: string = ""): string {.
 type
   SkipTable* = array[char, int]
 
-proc initSkipTable(a: var SkipTable, sub: string)
+proc initSkipTable*(a: var SkipTable, sub: string)
   {.noSideEffect, rtl, extern: "nsuInitSkipTable".} =
   ## Preprocess table `a` for `sub`.
   let m = len(sub)
@@ -1359,6 +1359,7 @@ proc find*(a: SkipTable, s, sub: string, start: Natural = 0, last: Natural = 0):
   ##
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
   let
+    last = if last==0: s.high else: last
     m = len(sub)
     n = last + 1
   # search:
