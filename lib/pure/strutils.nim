@@ -138,7 +138,8 @@ proc isAlphaNumeric*(s: string): bool {.noSideEffect, procvar,
 
   result = true
   for c in s:
-    result = c.isAlphaNumeric() and result
+    if not c.isAlphaNumeric():
+      return false
 
 proc isDigit*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nsuIsDigitStr".}=
@@ -153,7 +154,8 @@ proc isDigit*(s: string): bool {.noSideEffect, procvar,
 
   result = true
   for c in s:
-    result = c.isDigit() and result
+    if not c.isDigit():
+      return false
 
 proc isSpaceAscii*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nsuIsSpaceAsciiStr".}=
