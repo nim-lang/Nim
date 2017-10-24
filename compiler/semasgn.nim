@@ -314,24 +314,6 @@ proc overloadedAsgn(c: PContext; dest, src: PNode): PNode =
   let a = getAsgnOrLiftBody(c, dest.typ, dest.info)
   result = newAsgnCall(c, a, dest, src)
 
-proc patchHead(n: PNode; alreadyPatched: var IntSet) =
-  when true:
-    if n.kind in nkCallKinds and n[0].kind == nkSym and n.len > 1:
-      let s = n[0].sym
-      if sfFromGeneric in s.flags:
-        if not containsOrIncl(alreadyPatched, s.id):
-          patchHead(s.getBody, alreadyPatched)
-        let t = n[1].typ.skipTypes({tyVar, tyGenericInst, tyAlias, tyInferred})
-        template patch(op, field) =
-          if s.name.s == op and field != nil and field != s:
-            n.sons[0].sym = field
-
-        patch "=sink", t.sink
-        patch "=", t.assignment
-        patch "=destroy", t.destructor
-    for x in n:
-      patchHead(x, alreadyPatched)
-
 proc liftTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
   ## In the semantic pass this is called in strategic places
   ## to ensure we lift assignment, destructors and moves properly.
@@ -339,20 +321,9 @@ proc liftTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
   if not newDestructors or not hasDestructor(typ): return
   let typ = typ.skipTypes({tyGenericInst, tyAlias})
   # we generate the destructor first so that other operators can depend on it:
-  var changed = false
-  if typ.destructor != nil and typ.destructor.magic == mAsgn:
-    typ.destructor = nil
   if typ.destructor == nil:
     liftBody(c, typ, attachedDestructor, info)
-    changed = true
   if typ.assignment == nil:
     liftBody(c, typ, attachedAsgn, info)
-    changed = true
   if typ.sink == nil:
     liftBody(c, typ, attachedSink, info)
-    changed = true
-  if changed:
-    var alreadyPatched = initIntSet()
-    patchHead(typ.destructor.getBody, alreadyPatched)
-    patchHead(typ.assignment.getBody, alreadyPatched)
-    patchHead(typ.sink.getBody, alreadyPatched)

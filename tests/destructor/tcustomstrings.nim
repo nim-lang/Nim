@@ -8,6 +8,8 @@ after 20 20'''
   cmd: '''nim c --newruntime $file'''
 """
 
+{.this: self.}
+
 type
   mystring = object
     len, cap: int
@@ -46,10 +48,10 @@ proc `=`*(a: var mystring; b: mystring) =
     copyMem(a.data, b.data, a.cap+1)
 
 proc resize(self: var mystring) =
-  if cap == 0: cap = 8
-  else: cap = (cap * 3) shr 1
-  if data == nil: inc allocCount
-  data = cast[type(data)](realloc(data, cap + 1))
+  if self.cap == 0: self.cap = 8
+  else: self.cap = (self.cap * 3) shr 1
+  if self.data == nil: inc allocCount
+  self.data = cast[type(data)](realloc(self.data, self.cap + 1))
 
 proc add*(self: var mystring; c: char) =
   if self.len >= self.cap: resize(self)
