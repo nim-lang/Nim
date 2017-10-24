@@ -296,8 +296,8 @@ when isMainModule:
     if actual != expected:
       let actualLocal {.inject.} = actual
       let expectedLocal {.inject.} = expected
-      stderr.writeLine(fmt"Format error in line ${instantiationInfo(-2).line}: Expected '${expectedLocal}', but got '${actualLocal}'")
-      doAssert actual == expected
+      let msg = fmt"Format error in line ${instantiationInfo(-2).line}: Expected '${expectedLocal}', but got '${actualLocal}'"
+      raise newException(AssertionError, msg)
 
   # Basic tests
   let s = "string"
