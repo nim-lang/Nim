@@ -300,10 +300,10 @@ when defined(nimArrIdx):
     x: S) {.noSideEffect, magic: "ArrPut".}
   proc `=`*[T](dest: var T; src: T) {.noSideEffect, magic: "Asgn".}
   when defined(nimNewRuntime):
-    proc `=destroy`*[T](x: var T) {.inline.} =
+    proc `=destroy`*[T](x: var T) {.inline, magic: "Asgn".} =
       ## generic `destructor`:idx: implementation that can be overriden.
       discard
-    proc `=sink`*[T](x: var T; y: T) {.inline.} =
+    proc `=sink`*[T](x: var T; y: T) {.inline, magic: "Asgn".} =
       ## generic `sink`:idx: implementation that can be overriden.
       shallowCopy(x, y)
 

@@ -19,7 +19,7 @@ var
 proc `=destroy`*[T](x: var opt[T]) =
   if x.data != nil:
     when not supportsCopyMem(T):
-      `=destroy`(x.data)
+      `=destroy`(x.data[])
     dealloc(x.data)
     inc deallocCount
     x.data = nil
@@ -69,11 +69,12 @@ proc createTree(data: float): Tree =
   result.data = data
 
 proc insert(t: var opt[Tree]; newVal: float) =
-  if it ?= t:
-    if it.data > newVal:
-      insert(it.le, newVal)
-    elif it.data < newVal:
-      insert(it.ri, newVal)
+  #if it ?= t:
+  if t.data != nil:
+    if newVal < t.data[].data:
+      insert(t.data[].le, newVal)
+    elif t.data[].data < newVal:
+      insert(t.data[].ri, newVal)
     else:
       discard "already in the tree"
   else:

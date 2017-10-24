@@ -522,14 +522,18 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   else:
     result = n
   result = semStmt(c, result)
-  # BUGFIX: process newly generated generics here, not at the end!
-  if c.lastGenericIdx < c.generics.len:
-    var a = newNodeI(nkStmtList, n.info)
-    addCodeForGenerics(c, a)
-    if sonsLen(a) > 0:
-      # a generic has been added to `a`:
-      if result.kind != nkEmpty: addSon(a, result)
-      result = a
+  when false:
+    # Code generators are lazy now and can deal with undeclared procs, so these
+    # steps are not required anymore and actually harmful for the upcoming
+    # destructor support.
+    # BUGFIX: process newly generated generics here, not at the end!
+    if c.lastGenericIdx < c.generics.len:
+      var a = newNodeI(nkStmtList, n.info)
+      addCodeForGenerics(c, a)
+      if sonsLen(a) > 0:
+        # a generic has been added to `a`:
+        if result.kind != nkEmpty: addSon(a, result)
+        result = a
   result = hloStmt(c, result)
   if gCmd == cmdInteractive and not isEmptyType(result.typ):
     result = buildEchoStmt(c, result)

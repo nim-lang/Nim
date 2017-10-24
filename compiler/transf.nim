@@ -365,16 +365,19 @@ proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode =
       # addr ( nkConv ( deref ( x ) ) ) --> nkConv(x)
       n.sons[0].sons[0] = m.sons[0]
       result = PTransNode(n.sons[0])
+      PNode(result).typ = n.typ
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     var m = n.sons[0].sons[1]
     if m.kind == a or m.kind == b:
       # addr ( nkConv ( deref ( x ) ) ) --> nkConv(x)
       n.sons[0].sons[1] = m.sons[0]
       result = PTransNode(n.sons[0])
+      PNode(result).typ = n.typ
   else:
     if n.sons[0].kind == a or n.sons[0].kind == b:
       # addr ( deref ( x )) --> x
       result = PTransNode(n.sons[0].sons[0])
+      PNode(result).typ = n.typ
 
 proc generateThunk(prc: PNode, dest: PType): PNode =
   ## Converts 'prc' into '(thunk, nil)' so that it's compatible with
