@@ -90,7 +90,52 @@
 
 import
   os, options, strutils, nversion, ast, astalgo, msgs, platform, condsyms,
-  ropes, idents, securehash, idgen, types, rodutils, memfiles, tables
+  ropes, idents, idgen, types, rodutils, memfiles, tables
+
+when defined(useMetroHash64):
+  import metrohash
+
+  type
+    Hash* = MetroHash64Digest
+
+  template parseHash(s: string): untyped = 
+    parseMetroHash64(s)
+
+  template calcHash(s: string): untyped = 
+    metroHash64(s)
+
+  template hashFile(s: string): untyped = 
+    metroHash64File(s)
+
+elif defined(useMetroHash128):
+  import metrohash
+
+  type
+    Hash* = MetroHash128Digest
+
+  template parseHash(s: string): untyped = 
+    parseMetroHash128(s)
+
+  template calcHash(s: string): untyped = 
+    metroHash128(s)
+
+  template hashFile(s: string): untyped = 
+    metroHash128File(s)
+
+else:
+  import securehash
+
+  type
+    Hash* = SecureHash
+
+  template parseHash(s: string): untyped = 
+    parseSecureHash(s)
+
+  template calcHash(s: string): untyped = 
+    secureHash(s)
+
+  template hashFile(s: string): untyped = 
+    secureHashFile(s)
 
 type
   TReasonForRecompile* = enum ## all the reasons that can trigger recompilation
@@ -597,11 +642,11 @@ proc cmdChangeTriggersRecompilation(old, new: TCommands): bool =
   # else: trigger recompilation:
   result = true
 
-proc processRodFile(r: PRodReader, hash: SecureHash) =
+proc processRodFile(r: PRodReader, hash: Hash) =
   var
     w: string
     d: int
-  var inclHash: SecureHash
+  var inclHash: Hash
   while r.s[r.pos] != '\0':
     var section = rdWord(r)
     if r.reason != rrNone:
@@ -609,7 +654,7 @@ proc processRodFile(r: PRodReader, hash: SecureHash) =
     case section
     of "HASH":
       inc(r.pos)              # skip ':'
-      if hash != parseSecureHash(decodeStr(r.s, r.pos)):
+      if hash != parseHash(decodeStr(r.s, r.pos)):
         r.reason = rrHashChange
     of "ID":
       inc(r.pos)              # skip ':'
@@ -658,9 +703,9 @@ proc processRodFile(r: PRodReader, hash: SecureHash) =
       while r.s[r.pos] != ')':
         w = r.files[decodeVInt(r.s, r.pos)].toFullPath
         inc(r.pos)            # skip ' '
-        inclHash = parseSecureHash(decodeStr(r.s, r.pos))
+        inclHash = parseHash(decodeStr(r.s, r.pos))
         if r.reason == rrNone:
-          if not existsFile(w) or (inclHash != secureHashFile(w)):
+          if not existsFile(w) or (inclHash != hashFile(w)):
             r.reason = rrInclDeps
         if r.s[r.pos] == '\x0A':
           inc(r.pos)
@@ -711,7 +756,7 @@ proc startsWith(buf: cstring, token: string, pos = 0): bool =
   while s < token.len and buf[pos+s] == token[s]: inc s
   result = s == token.len
 
-proc newRodReader(modfilename: string, hash: SecureHash,
+proc newRodReader(modfilename: string, hash: Hash,
                   readerIndex: int; cache: IdentCache): PRodReader =
   new(result)
   result.cache = cache
@@ -767,7 +812,7 @@ type
     filename*: string
     reason*: TReasonForRecompile
     rd*: PRodReader
-    hash*: SecureHash
+    hash*: Hash
     hashDone*: bool
 
   TFileModuleMap = seq[TFileModuleRec]
@@ -860,13 +905,13 @@ proc loadMethods(r: PRodReader) =
     r.methods.add(rrGetSym(r, d, unknownLineInfo()))
     if r.s[r.pos] == ' ': inc(r.pos)
 
-proc getHash*(fileIdx: int32): SecureHash =
+proc getHash*(fileIdx: int32): Hash =
   internalAssert fileIdx >= 0 and fileIdx < gMods.len
 
   if gMods[fileIdx].hashDone:
     return gMods[fileIdx].hash
 
-  result = secureHashFile(fileIdx.toFullPath)
+  result = hashFile(fileIdx.toFullPath)
   gMods[fileIdx].hash = result
 
 template growCache*(cache, pos) =
@@ -1084,7 +1129,7 @@ proc writeType(f: File; t: PType) =
   f.write("]\n")
 
 proc viewFile(rodfile: string) =
-  var r = newRodReader(rodfile, secureHash(""), 0, newIdentCache())
+  var r = newRodReader(rodfile, calcHash(""), 0, newIdentCache())
   if r == nil:
     rawMessage(errGenerated, "cannot open file (or maybe wrong version):" &
        rodfile)
