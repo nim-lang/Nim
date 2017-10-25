@@ -8,6 +8,8 @@
 #
 
 ## This module contains helpers for parsing tokens, numbers, identifiers, etc.
+##
+## To unpack raw bytes look at the `streams <streams.html>`_ module.
 
 {.deadCodeElim: on.}
 

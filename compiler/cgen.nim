@@ -1013,10 +1013,9 @@ proc genMainProc(m: BModule) =
     ComponentConstruct =
       "void Libc::Component::construct(Libc::Env &env) {$N" &
       "\tgenodeEnv = &env;$N" &
-      "\tLibc::with_libc([&] () {$n\t" &
+      "\tLibc::with_libc([&] () {$N\t" &
       MainProcs &
       "\t});$N" &
-      "\tenv.parent().exit(0);$N" &
       "}$N$N"
 
   var nimMain, otherMain: FormatStr

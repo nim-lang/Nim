@@ -26,3 +26,5 @@ const
 proc clone*(fn: pointer; child_stack: pointer; flags: cint;
             arg: pointer; ptid: ptr Pid; tls: pointer;
             ctid: ptr Pid): cint {.importc, header: "<sched.h>".}
+
+proc pipe2*(a: array[0..1, cint], flags: cint): cint {.importc, header: "<unistd.h>".}
