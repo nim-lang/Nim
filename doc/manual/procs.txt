@@ -142,10 +142,11 @@ The method call syntax conflicts with explicit generic instantiations:
 parsed as ``(x.p)[T]``.
 
 **Future directions**: ``p[.T.]`` might be introduced as an alternative syntax
-to pass explict types to a generic and then ``x.p[.T.]`` can be parsed as
+to pass explicit types to a generic and then ``x.p[.T.]`` can be parsed as
 ``x.(p[.T.])``.
 
-See also: `Limitations of the method call syntax`_.
+See also: `Limitations of the method call syntax
+<#templates-limitations-of-the-method-call-syntax>`_.
 
 
 Properties
