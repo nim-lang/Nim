@@ -103,6 +103,7 @@ type
       ## variable is set for the non-js target.
     isInSuite: bool
     isInTest: bool
+    testStartTime: float
 
   JUnitOutputFormatter* = ref object of OutputFormatter
     stream: Stream
@@ -149,7 +150,8 @@ proc newConsoleOutputFormatter*(outputLevel: OutputLevel = PRINT_ALL,
                                 colorOutput = true): ConsoleOutputFormatter =
   ConsoleOutputFormatter(
     outputLevel: outputLevel,
-    colorOutput: colorOutput
+    colorOutput: colorOutput,
+    testStartTime: 0.0
   )
 
 proc defaultConsoleFormatter*(): ConsoleOutputFormatter =
@@ -179,6 +181,7 @@ method suiteStarted*(formatter: ConsoleOutputFormatter, suiteName: string) =
 
 method testStarted*(formatter: ConsoleOutputFormatter, testName: string) =
   formatter.isInTest = true
+  formatter.testStartTime = epochTime()
 
 method failureOccurred*(formatter: ConsoleOutputFormatter, checkpoints: seq[string], stackTrace: string) =
   if stackTrace != nil:
@@ -188,12 +191,14 @@ method failureOccurred*(formatter: ConsoleOutputFormatter, checkpoints: seq[stri
     echo prefix, msg
 
 method testEnded*(formatter: ConsoleOutputFormatter, testResult: TestResult) =
+  let time = epochTime() - formatter.testStartTime
+  let timeStr = time.formatFloat(ffDecimal, precision = 8)
   formatter.isInTest = false
 
   if formatter.outputLevel != PRINT_NONE and
      (formatter.outputLevel == PRINT_ALL or testResult.status == FAILED):
     let prefix = if testResult.suiteName != nil: "  " else: ""
-    template rawPrint() = echo(prefix, "[", $testResult.status, "] ", testResult.testName)
+    template rawPrint() = echo(prefix, "[", $testResult.status, "] ", testResult.testName, " (", timeStr, " secs)")
     when not defined(ECMAScript):
       if formatter.colorOutput and not defined(ECMAScript):
         var color = case testResult.status
@@ -201,7 +206,7 @@ method testEnded*(formatter: ConsoleOutputFormatter, testResult: TestResult) =
                     of FAILED: fgRed
                     of SKIPPED: fgYellow
                     else: fgWhite
-        styledEcho styleBright, color, prefix, "[", $testResult.status, "] ", resetStyle, testResult.testName
+        styledEcho styleBright, color, prefix, "[", $testResult.status, "] ", resetStyle, testResult.testName, fgBlue, " (", timeStr, " secs)", resetStyle
       else:
         rawPrint()
     else:
