@@ -18,6 +18,7 @@ the latest release, check out [Nim's website][nim-site].
   is a bridge between Gitter and the IRC channel.
 * [Stack Overflow][nim-stackoverflow] - a popular Q/A site for programming related
   topics that includes posts about Nim.
+* [Github Wiki][nim-wiki] - Misc user-contributed content.
 
 ## Compiling
 The compiler currently officially supports the following platform and
@@ -203,3 +204,4 @@ Copyright © 2006-2017 Andreas Rumpf, all rights reserved.
 [badge-nim-bountysource]: https://img.shields.io/bountysource/team/nim/activity.svg?style=flat-square
 [badge-nim-bitcoin]: https://img.shields.io/badge/bitcoin-1BXfuKM2uvoD6mbx4g5xM3eQhLzkCK77tJ-D69134.svg?style=flat-square
 [pull-request-instructions]: https://help.github.com/articles/using-pull-requests/
+[nim-wiki]: https://github.com/nim-lang/Nim/wiki
