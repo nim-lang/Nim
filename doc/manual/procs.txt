@@ -179,7 +179,7 @@ different; for this a special setter syntax is needed:
 Command invocation syntax
 -------------------------
 
-Routines can be invoked without the ``()`` if the call is syntatically
+Routines can be invoked without the ``()`` if the call is syntactically
 a statement. This command invocation syntax also works for
 expressions, but then only a single argument may follow. This restriction
 means ``echo f 1, f 2`` is parsed as ``echo(f(1), f(2))`` and not as
