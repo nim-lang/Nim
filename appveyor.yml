@@ -1,9 +1,10 @@
 version: '{build}'
 
 cache:
-- x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z
-- sqlite-dll-win64-x64-3160200.zip
-# - i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
+- x86_64-7.2.0-release-win32-seh-rt_v5-rev0.7z
+- sqlite-dll-win64-x64-3210000.zip
+# - i686-7.2.0-release-posix-dwarf-rt_v5-rev0.7z
+# - sqlite-dll-win32-x86-3210000.zip
 
 matrix:
   fast_finish: true
@@ -11,16 +12,16 @@ matrix:
 environment:
   matrix:
     - MINGW_DIR: mingw64
-      MINGW_URL: https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win64/Personal%20Builds/mingw-builds/4.9.2/threads-win32/seh/x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z/download
-      MINGW_ARCHIVE: x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z
-      SQLITE_URL: http://www.sqlite.org/2017/sqlite-dll-win64-x64-3160200.zip
-      SQLITE_ARCHIVE: sqlite-dll-win64-x64-3160200.zip
+      MINGW_URL: https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win64/Personal%20Builds/mingw-builds/7.2.0/threads-win32/seh/x86_64-7.2.0-release-win32-seh-rt_v5-rev0.7z/download
+      MINGW_ARCHIVE: x86_64-7.2.0-release-win32-seh-rt_v5-rev0.7z
+      SQLITE_URL: http://sqlite.org/2017/sqlite-dll-win64-x64-3210000.zip
+      SQLITE_ARCHIVE: sqlite-dll-win64-x64-3210000.zip
       platform: x64
     # - MINGW_DIR: mingw32
-    #   MINGW_URL: https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win32/Personal%20Builds/mingw-builds/4.9.2/threads-win32/dwarf/i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z/download
-    #   MINGW_ARCHIVE: i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
-    #   SQLITE_URL: http://www.sqlite.org/2017/sqlite-dll-win32-x86-3160200.zip
-    #   SQLITE_ARCHIVE: sqlite-dll-win32-x86-3160200.zip
+    #   MINGW_URL: https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win32/Personal%20Builds/mingw-builds/7.2.0/threads-posix/dwarf/i686-7.2.0-release-posix-dwarf-rt_v5-rev0.7z/download
+    #   MINGW_ARCHIVE: i686-7.2.0-release-posix-dwarf-rt_v5-rev0.7z
+    #   SQLITE_URL: http://sqlite.org/2017/sqlite-dll-win32-x86-3210000.zip
+    #   SQLITE_ARCHIVE: sqlite-dll-win32-x86-3210000.zip
     #   platform: x86
 
 install:
@@ -51,7 +52,7 @@ build_script:
   - nimble install sdl1
   - nimble install jester@#head
   - nimble install niminst
-  - nim c --taintMode:on -d:nimCoroutines tests/testament/tester
+  - nim c --taintMode:on -d:nimCoroutines -d:release tests/testament/tester
 
 test_script:
   - tests\testament\tester --pedantic all -d:nimCoroutines
