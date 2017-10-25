@@ -6,12 +6,48 @@
 #    Look at license.txt for more info.
 #    All rights reserved.
 
-import strutils, db_sqlite, os, osproc
+import strutils, db_sqlite, os, osproc, random
 
 var db: DbConn
+const maxRetryCount = 100
+
+proc internalExec(db: DbConn, q: SqlQuery, args: varargs[string, `$`]) =
+  # UGGLY HACCKS
+  var retryCount = 0
+  try:
+    db.exec(q, args)
+  except DbError as dbe:
+    if dbe.msg.contains "database is locked":
+      sleep(random(1000))
+    
+    while retryCount < maxRetryCount:
+      inc(retryCount)
+      if tryExec(db, q, args):
+        break
+    
+    if retryCount >= maxRetryCount: raise dbe
+
+proc internalgetValue(db: DbConn, q: SqlQuery, args: varargs[string, `$`]): string =
+  # UGGLY HACCKS
+  var retryCount = 0
+  try:
+    result = db.getValue(q, args)
+  except DbError as dbe:
+    if dbe.msg.contains "database is locked":
+      sleep(random(1000))
+    
+    while retryCount < maxRetryCount:
+      inc(retryCount)
+      try:
+        result = db.getValue(q, args)
+        return
+      except DbError as dbe2:
+        sleep(random(1000))
+      
+        if retryCount >= maxRetryCount: raise dbe
 
 proc createDb() =
-  db.exec(sql"""
+  db.internalExec(sql"""
     create table if not exists Machine(
       id integer primary key,
       name varchar(100) not null,
@@ -19,14 +55,14 @@ proc createDb() =
       cpu varchar(20) not null
     );""")
 
-  db.exec(sql"""
+  db.internalExec(sql"""
     create table if not exists [Commit](
       id integer primary key,
       hash varchar(256) not null,
       branch varchar(50) not null
     );""")
 
-  db.exec(sql"""
+  db.internalExec(sql"""
     create table if not exists TestResult(
       id integer primary key,
       name varchar(100) not null,
@@ -93,24 +129,24 @@ proc getCommit(db: DbConn): CommitId =
 
 proc writeTestResult*(name, category, target,
                       action, result, expected, given: string) =
-  let id = db.getValue(sql"""select id from TestResult
-                             where name = ? and category = ? and target = ? and
-                                machine = ? and [commit] = ?""",
-                                name, category, target,
-                                thisMachine, thisCommit)
+  let id = db.internalgetValue(sql"""select id from TestResult
+                                     where name = ? and category = ? and target = ? and
+                                     machine = ? and [commit] = ?""",
+                                     name, category, target,
+                                     thisMachine, thisCommit)
   if id.len > 0:
-    db.exec(sql"""update TestResult
-                  set action = ?, result = ?, expected = ?, given = ?
-                  where id = ?""", action, result, expected, given, id)
+    db.internalExec(sql"""update TestResult
+                          set action = ?, result = ?, expected = ?, given = ?
+                          where id = ?""", action, result, expected, given, id)
   else:
-    db.exec(sql"""insert into TestResult(name, category, target,
-                                         action,
-                                         result, expected, given,
-                                         [commit], machine)
-                  values (?,?,?,?,?,?,?,?,?) """, name, category, target,
-                                        action,
-                                        result, expected, given,
-                                        thisCommit, thisMachine)
+    db.internalExec(sql"""insert into TestResult(name, category, target,
+                                                 action,
+                                                 result, expected, given,
+                                                 [commit], machine)
+                          values (?,?,?,?,?,?,?,?,?) """, name, category, target,
+                                                          action, result, expected, 
+                                                          given, thisCommit, 
+                                                          thisMachine)
 
 proc open*() =
   let dbFile = if existsEnv("TRAVIS") or existsEnv("APPVEYOR"): ":memory:" else: "testament.db"
