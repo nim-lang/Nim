@@ -836,16 +836,22 @@ proc `-` *(x: int32): int32 {.magic: "UnaryMinusI", noSideEffect.}
 proc `-` *(x: int64): int64 {.magic: "UnaryMinusI64", noSideEffect.}
   ## Unary `-` operator for an integer. Negates `x`.
 
-proc `not` *(x: int): int {.magic: "BitnotI", noSideEffect.}
-proc `not` *(x: int8): int8 {.magic: "BitnotI", noSideEffect.}
-proc `not` *(x: int16): int16 {.magic: "BitnotI", noSideEffect.}
-proc `not` *(x: int32): int32 {.magic: "BitnotI", noSideEffect.}
+proc `not` *(x: int): int {.magic: "BitnotI", noSideEffect, deprecated.}
+proc `not` *(x: int8): int8 {.magic: "BitnotI", noSideEffect, deprecated.}
+proc `not` *(x: int16): int16 {.magic: "BitnotI", noSideEffect, deprecated.}
+proc `not` *(x: int32): int32 {.magic: "BitnotI", noSideEffect, deprecated.}
+proc `~` *(x: int): int {.magic: "BitnotI", noSideEffect.}
+proc `~` *(x: int8): int8 {.magic: "BitnotI", noSideEffect.}
+proc `~` *(x: int16): int16 {.magic: "BitnotI", noSideEffect.}
+proc `~` *(x: int32): int32 {.magic: "BitnotI", noSideEffect.}
   ## computes the `bitwise complement` of the integer `x`.
 
 when defined(nimnomagic64):
-  proc `not` *(x: int64): int64 {.magic: "BitnotI", noSideEffect.}
+  proc `not` *(x: int64): int64 {.magic: "BitnotI", noSideEffect, deprecated.}
+  proc `~` *(x: int64): int64 {.magic: "BitnotI", noSideEffect.}
 else:
-  proc `not` *(x: int64): int64 {.magic: "BitnotI64", noSideEffect.}
+  proc `not` *(x: int64): int64 {.magic: "BitnotI64", noSideEffect, deprecated.}
+  proc `~` *(x: int64): int64 {.magic: "BitnotI64", noSideEffect.}
 
 proc `+` *(x, y: int): int {.magic: "AddI", noSideEffect.}
 proc `+` *(x, y: int8): int8 {.magic: "AddI", noSideEffect.}
@@ -1048,7 +1054,8 @@ proc `<%` *(x, y: int64): bool {.magic: "LtU64", noSideEffect.}
   ## Returns true iff ``unsigned(x) < unsigned(y)``.
 
 # unsigned integer operations:
-proc `not`*[T: SomeUnsignedInt](x: T): T {.magic: "BitnotI", noSideEffect.}
+proc `not`*[T: SomeUnsignedInt](x: T): T {.magic: "BitnotI", noSideEffect, deprecated.}
+proc `~`*[T: SomeUnsignedInt](x: T): T {.magic: "BitnotI", noSideEffect.}
   ## computes the `bitwise complement` of the integer `x`.
 
 when defined(nimNewShiftOps):
