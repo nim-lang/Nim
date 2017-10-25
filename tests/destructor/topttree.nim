@@ -3,7 +3,11 @@ discard """
 60.0
 90.0
 120.0
-4 4'''
+10.0
+60.0
+90.0
+120.0
+8 8'''
   cmd: '''nim c --newruntime $file'''
 """
 
@@ -18,8 +22,8 @@ var
 
 proc `=destroy`*[T](x: var opt[T]) =
   if x.data != nil:
-    #when not supportsCopyMem(T):
-    `=destroy`(x.data[])
+    when not supportsCopyMem(T):
+      `=destroy`(x.data[])
     dealloc(x.data)
     inc deallocCount
     x.data = nil
@@ -93,6 +97,8 @@ proc main =
   insert t, 10.0
   insert t, 120.0
   write t
+  let copy = t
+  write copy
 
 main()
 echo allocCount, " ", deallocCount
