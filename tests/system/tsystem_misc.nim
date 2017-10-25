@@ -1,0 +1,18 @@
+discard """
+  output:""
+"""
+
+# check high/low implementations
+doAssert high(int) > low(int)
+doAssert high(int8) > low(int8)
+doAssert high(int16) > low(int16)
+doAssert high(int32) > low(int32)
+doAssert high(int64) > low(int64)
+# doAssert high(uint) > low(uint) # FIXME doesn't work
+doAssert high(uint8) > low(uint8)
+doAssert high(uint16) > low(uint16)
+doAssert high(uint32) > low(uint32)
+# doAssert high(uint64) > low(uint64) # FIXME doesn't work
+doAssert high(float) > low(float)
+doAssert high(float32) > low(float32)
+doAssert high(float64) > low(float64)
