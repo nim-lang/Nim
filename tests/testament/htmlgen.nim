@@ -11,155 +11,198 @@
 
 import db_sqlite, cgi, backend, strutils, json
 
-const
-  TableHeader = """<table border="1">
-                      <tr><td>Test</td><td>Category</td><td>Target</td>
-                          <td>Action</td>
-                          <td>Expected</td>
-                          <td>Given</td>
-                          <td>Success</td></tr>"""
-  TableFooter = "</table>"
-  HtmlBegin = """<html>
-    <head>
-      <title>Test results</title>
-      <style type="text/css">
-      <!--""" & slurp("css/boilerplate.css") & "\n" &
-                slurp("css/style.css") &
-      """
-ul#tabs { list-style-type: none; margin: 30px 0 0 0; padding: 0 0 0.3em 0; }
-ul#tabs li { display: inline; }
-ul#tabs li a { color: #42454a; background-color: #dedbde;
-               border: 1px solid #c9c3ba; border-bottom: none;
-               padding: 0.3em; text-decoration: none; }
-ul#tabs li a:hover { background-color: #f1f0ee; }
-ul#tabs li a.selected { color: #000; background-color: #f1f0ee;
-                        font-weight: bold; padding: 0.7em 0.3em 0.38em 0.3em; }
-div.tabContent { border: 1px solid #c9c3ba;
-                 padding: 0.5em; background-color: #f1f0ee; }
-div.tabContent.hide { display: none; }
-      -->
-    </style>
-    <script>
+import "testamenthtml.templ"
 
-    var tabLinks = new Array();
-    var contentDivs = new Array();
+proc generateTestRunTabListItemPartial(outfile: File, testRunRow: Row, firstRow = false) =
+  let
+    # The first tab gets the bootstrap class for a selected tab
+    firstTabActiveClass = if firstRow: "active"
+                          else: ""
+    commitId = testRunRow[0]
+    hash = htmlQuote(testRunRow[1])
+    branch = htmlQuote(testRunRow[2])
+    machineId = testRunRow[3]
+    machineName = htmlQuote(testRunRow[4])
 
-    function init() {
-      // Grab the tab links and content divs from the page
-      var tabListItems = document.getElementById('tabs').childNodes;
-      for (var i = 0; i < tabListItems.length; i++) {
-        if (tabListItems[i].nodeName == "LI") {
-          var tabLink = getFirstChildWithTagName(tabListItems[i], 'A');
-          var id = getHash(tabLink.getAttribute('href'));
-          tabLinks[id] = tabLink;
-          contentDivs[id] = document.getElementById(id);
-        }
-      }
-      // Assign onclick events to the tab links, and
-      // highlight the first tab
-      var i = 0;
-      for (var id in tabLinks) {
-        tabLinks[id].onclick = showTab;
-        tabLinks[id].onfocus = function() { this.blur() };
-        if (i == 0) tabLinks[id].className = 'selected';
-        i++;
-      }
-      // Hide all content divs except the first
-      var i = 0;
-      for (var id in contentDivs) {
-        if (i != 0) contentDivs[id].className = 'tabContent hide';
-        i++;
-      }
-    }
+  outfile.generateHtmlTabListItem(
+      firstTabActiveClass,
+      commitId,
+      machineId,
+      branch,
+      hash,
+      machineName
+    )
 
-    function showTab() {
-      var selectedId = getHash(this.getAttribute('href'));
+proc generateTestResultPanelPartial(outfile: File, testResultRow: Row, onlyFailing = false) =
+  let
+    trId = testResultRow[0]
+    name = testResultRow[1].htmlQuote()
+    category = testResultRow[2].htmlQuote()
+    target = testResultRow[3].htmlQuote()
+    action = testResultRow[4].htmlQuote()
+    result = testResultRow[5]
+    expected = testResultRow[6]
+    gotten = testResultRow[7]
+    timestamp = testResultRow[8]
+  var panelCtxClass, textCtxClass, bgCtxClass, resultSign, resultDescription: string
+  case result
+  of "reSuccess":
+    if onlyFailing:
+      return
+    panelCtxClass = "success"
+    textCtxClass = "success"
+    bgCtxClass = "success"
+    resultSign = "ok"
+    resultDescription = "PASS"
+  of "reIgnored":
+    if onlyFailing:
+      return
+    panelCtxClass = "info"
+    textCtxClass = "info"
+    bgCtxClass = "info"
+    resultSign = "question"
+    resultDescription = "SKIP"
+  else:
+    panelCtxClass = "danger"
+    textCtxClass = "danger"
+    bgCtxClass = "danger"
+    resultSign = "exclamation"
+    resultDescription = "FAIL"
 
-      // Highlight the selected tab, and dim all others.
-      // Also show the selected content div, and hide all others.
-      for (var id in contentDivs) {
-        if (id == selectedId) {
-          tabLinks[id].className = 'selected';
-          contentDivs[id].className = 'tabContent';
-        } else {
-          tabLinks[id].className = '';
-          contentDivs[id].className = 'tabContent hide';
-        }
-      }
-      // Stop the browser following the link
-      return false;
-    }
+  outfile.generateHtmlTestresultPanelBegin(
+    trId, name, target, category, action, resultDescription,
+    timestamp, 
+    result, resultSign, 
+    panelCtxClass, textCtxClass, bgCtxClass
+  )
+  if expected.isNilOrWhitespace() and gotten.isNilOrWhitespace():
+    outfile.generateHtmlTestresultOutputNone()
+  else:
+    outfile.generateHtmlTestresultOutputDetails(
+      expected.strip().htmlQuote,
+      gotten.strip().htmlQuote
+    )
+  outfile.generateHtmlTestresultPanelEnd()
 
-    function getFirstChildWithTagName(element, tagName) {
-      for (var i = 0; i < element.childNodes.length; i++) {
-        if (element.childNodes[i].nodeName == tagName) return element.childNodes[i];
-      }
-    }
-    function getHash(url) {
-      var hashPos = url.lastIndexOf('#');
-      return url.substring(hashPos + 1);
-    }
-    </script>
+proc generateTestResultsPanelGroupPartial(outfile: File, db: DbConn, commitid, machineid: string, onlyFailing = false) =
+  const testResultsSelect = sql"""
+SELECT [tr].[id]
+  , [tr].[name]
+  , [tr].[category]
+  , [tr].[target]
+  , [tr].[action]
+  , [tr].[result]
+  , [tr].[expected]
+  , [tr].[given]
+  , [tr].[created]
+FROM [TestResult] AS [tr]
+WHERE [tr].[commit] = ?
+  AND [tr].[machine] = ?"""
+  for testresultRow in db.rows(testResultsSelect, commitid, machineid):
+    generateTestResultPanelPartial(outfile, testresultRow, onlyFailing)
 
-    </head>
-    <body onload="init()">"""
+proc generateTestRunTabContentPartial(outfile: File, db: DbConn, testRunRow: Row, onlyFailing = false, firstRow = false) =
+  let
+    # The first tab gets the bootstrap classes for a selected and displaying tab content
+    firstTabActiveClass = if firstRow: " in active"
+                          else: ""
+    commitId = testRunRow[0]
+    hash = htmlQuote(testRunRow[1])
+    branch = htmlQuote(testRunRow[2])
+    machineId = testRunRow[3]
+    machineName = htmlQuote(testRunRow[4])
+    os = htmlQuote(testRunRow[5])
+    cpu = htmlQuote(testRunRow[6])
 
-  HtmlEnd = "</body></html>"
+  const
+    totalClause = """
+SELECT COUNT(*)
+FROM [TestResult] AS [tr]
+WHERE [tr].[commit] = ?
+  AND [tr].[machine] = ?"""
+    successClause = totalClause & "\L" & """
+  AND [tr].[result] LIKE 'reSuccess'"""
+    ignoredClause = totalClause & "\L" & """
+  AND [tr].[result] LIKE 'reIgnored'"""
+  let
+    totalCount = db.getValue(sql(totalClause), commitId, machineId).parseBiggestInt()
+    successCount = db.getValue(sql(successClause), commitId, machineId).parseBiggestInt()
+    successPercentage = 100 * (successCount.toBiggestFloat() / totalCount.toBiggestFloat())
+    ignoredCount = db.getValue(sql(ignoredClause), commitId, machineId).parseBiggestInt()
+    ignoredPercentage = 100 * (ignoredCount.toBiggestFloat() / totalCount.toBiggestFloat())
+    failedCount = totalCount - successCount - ignoredCount
+    failedPercentage = 100 * (failedCount.toBiggestFloat() / totalCount.toBiggestFloat())
 
-proc td(s: string): string =
-  result = "<td>" & s.substr(0, 200).xmlEncode & "</td>"
+  outfile.generateHtmlTabPageBegin(
+    firstTabActiveClass, commitId,
+    machineId, branch, hash, machineName, os, cpu,
+    totalCount,
+    successCount, formatBiggestFloat(successPercentage, ffDecimal, 2) & "%",
+    ignoredCount, formatBiggestFloat(ignoredPercentage, ffDecimal, 2) & "%",
+    failedCount, formatBiggestFloat(failedPercentage, ffDecimal, 2) & "%"
+  )
+  generateTestResultsPanelGroupPartial(outfile, db, commitId, machineId, onlyFailing)
+  outfile.generateHtmlTabPageEnd()
+
+proc generateTestRunsHtmlPartial(outfile: File, db: DbConn, onlyFailing = false) =
+  # Select a cross-join of Commits and Machines ensuring that the selected combination
+  # contains testresults
+  const testrunSelect = sql"""
+SELECT [c].[id] AS [CommitId]
+  , [c].[hash] as [Hash]
+  , [c].[branch] As [Branch]
+  , [m].[id] AS [MachineId]
+  , [m].[name] AS [MachineName]
+  , [m].[os] AS [OS]
+  , [m].[cpu] AS [CPU]
+FROM [Commit] AS [c], [Machine] AS [m]
+WHERE (
+    SELECT COUNT(*)
+    FROM [TestResult] AS [tr]
+    WHERE [tr].[commit] = [c].[id]
+      AND [tr].[machine] = [m].[id]
+  ) > 0
+ORDER BY [c].[id] DESC
+"""
+  # Iterating the results twice, get entire result set in one go
+  var testRunRowSeq = db.getAllRows(testrunSelect)
+
+  outfile.generateHtmlTabListBegin()
+  var firstRow = true
+  for testRunRow in testRunRowSeq:
+    generateTestRunTabListItemPartial(outfile, testRunRow, firstRow)
+    if firstRow:
+      firstRow = false
+  outfile.generateHtmlTabListEnd()
+
+  outfile.generateHtmlTabContentsBegin()
+  firstRow = true
+  for testRunRow in testRunRowSeq:
+    generateTestRunTabContentPartial(outfile, db, testRunRow, onlyFailing, firstRow)
+    if firstRow:
+      firstRow = false
+  outfile.generateHtmlTabContentsEnd()
+
+proc generateHtml*(filename: string, commit: int; onlyFailing: bool) =
+  var db = open(connection="testament.db", user="testament", password="",
+                database="testament")
+  var outfile = open(filename, fmWrite)
+
+  outfile.generateHtmlBegin()
+
+  generateTestRunsHtmlPartial(outfile, db, onlyFailing)
+
+  outfile.generateHtmlEnd()
+  
+  outfile.flushFile()
+  close(outfile)
+  close(db)
 
 proc getCommit(db: DbConn, c: int): string =
   var commit = c
   for thisCommit in db.rows(sql"select id from [Commit] order by id desc"):
     if commit == 0: result = thisCommit[0]
     inc commit
-
-proc generateHtml*(filename: string, commit: int; onlyFailing: bool) =
-  const selRow = """select name, category, target, action,
-                           expected, given, result
-                    from TestResult
-                    where [commit] = ? and machine = ?
-                    order by category"""
-  var db = open(connection="testament.db", user="testament", password="",
-                database="testament")
-  # search for proper commit:
-  let lastCommit = db.getCommit(commit)
-
-  var outfile = open(filename, fmWrite)
-  outfile.write(HtmlBegin)
-
-  let commit = db.getValue(sql"select hash from [Commit] where id = ?",
-                            lastCommit)
-  let branch = db.getValue(sql"select branch from [Commit] where id = ?",
-                            lastCommit)
-  outfile.write("<p><b>$# $#</b></p>" % [branch, commit])
-
-  # generate navigation:
-  outfile.write("""<ul id="tabs">""")
-  for m in db.rows(sql"select id, name, os, cpu from Machine order by id"):
-    outfile.writeLine """<li><a href="#$#">$#: $#, $#</a></li>""" % m
-  outfile.write("</ul>")
-
-  for currentMachine in db.rows(sql"select id from Machine order by id"):
-    let m = currentMachine[0]
-    outfile.write("""<div class="tabContent" id="$#">""" % m)
-
-    outfile.write(TableHeader)
-    for row in db.rows(sql(selRow), lastCommit, m):
-      if onlyFailing and row.len > 0 and row[row.high] == "reSuccess":
-        discard
-      else:
-        outfile.write("<tr>")
-        for x in row:
-          outfile.write(x.td)
-        outfile.write("</tr>")
-
-    outfile.write(TableFooter)
-    outfile.write("</div>")
-  outfile.write(HtmlEnd)
-  close(db)
-  close(outfile)
 
 proc generateJson*(filename: string, commit: int) =
   const
@@ -226,3 +269,4 @@ proc generateJson*(filename: string, commit: int) =
   outfile.writeLine "}"
   close(db)
   close(outfile)
+
