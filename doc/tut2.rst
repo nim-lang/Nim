@@ -104,15 +104,14 @@ Example:
 
 .. code-block:: nim
   type
-    Node = ref NodeObj # a traced reference to a NodeObj
-    NodeObj = object
+    Node = ref object  # a reference to an object with the following field:
       le, ri: Node     # left and right subtrees
       sym: ref Sym     # leaves contain a reference to a Sym
 
     Sym = object       # a symbol
       name: string     # the symbol's name
       line: int        # the line the symbol was declared in
-      code: Node      # the symbol's abstract syntax tree
+      code: Node       # the symbol's abstract syntax tree
 
 
 Type conversions
@@ -155,8 +154,7 @@ An example:
       nkAdd,          # an addition
       nkSub,          # a subtraction
       nkIf            # an if statement
-    Node = ref NodeObj
-    NodeObj = object
+    Node = ref object
       case kind: NodeKind  # the ``kind`` field is the discriminator
       of nkInt: intVal: int
       of nkFloat: floatVal: float
@@ -482,11 +480,10 @@ containers:
 
 .. code-block:: nim
   type
-    BinaryTreeObj[T] = object # BinaryTree is a generic type with
-                              # with generic param ``T``
-      le, ri: BinaryTree[T]   # left and right subtrees; may be nil
-      data: T                 # the data stored in a node
-    BinaryTree*[T] = ref BinaryTreeObj[T] # type that is exported
+    BinaryTree*[T] = ref object # BinaryTree is a generic type with
+                                # generic param ``T``
+      le, ri: BinaryTree[T]     # left and right subtrees; may be nil
+      data: T                   # the data stored in a node
 
   proc newNode*[T](data: T): BinaryTree[T] =
     # constructor for a node
