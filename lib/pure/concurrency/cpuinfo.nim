@@ -45,8 +45,31 @@ proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
   ## returns the numer of the processors/cores the machine has.
   ## Returns 0 if it cannot be detected.
   when defined(windows):
-    var x = getEnv("NUMBER_OF_PROCESSORS")
-    if x.len > 0: result = parseInt(x.string)
+    type
+      SYSTEM_INFO_UNION1_STRUCT1 {.final, pure.} = object
+        wProcessorArchitecture: int16
+        wReserved: int16
+      SYSTEM_INFO_UNION1 {.final, union, pure.} = object
+        dwOemId: int32
+        s1: SYSTEM_INFO_UNION1_STRUCT1
+      SYSTEM_INFO {.final, pure.} = object
+        u1: SYSTEM_INFO_UNION1
+        dwPageSize: int32
+        lpMinimumApplicationAddress: pointer
+        lpMaximumApplicationAddress: pointer
+        dwActiveProcessorMask: int32
+        dwNumberOfProcessors: int32
+        dwProcessorType: int32
+        dwAllocationGranularity: int32
+        wProcessorLevel: int16
+        wProcessorRevision: int16
+
+    proc GetSystemInfo(lpSystemInfo: var SYSTEM_INFO) {.stdcall, dynlib: "kernel32", importc: "GetSystemInfo".}
+
+    var
+      si: SYSTEM_INFO
+    GetSystemInfo(si)
+    result = si.dwNumberOfProcessors
   elif defined(macosx) or defined(bsd):
     var
       mib: array[0..3, cint]
