@@ -46,18 +46,12 @@ proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
   ## Returns 0 if it cannot be detected.
   when defined(windows):
     type
-      SYSTEM_INFO_UNION1_STRUCT1 {.final, pure.} = object
-        wProcessorArchitecture: int16
-        wReserved: int16
-      SYSTEM_INFO_UNION1 {.final, union, pure.} = object
-        dwOemId: int32
-        s1: SYSTEM_INFO_UNION1_STRUCT1
       SYSTEM_INFO {.final, pure.} = object
-        u1: SYSTEM_INFO_UNION1
+        u1: int32
         dwPageSize: int32
         lpMinimumApplicationAddress: pointer
         lpMaximumApplicationAddress: pointer
-        dwActiveProcessorMask: int32
+        dwActiveProcessorMask: ptr int32
         dwNumberOfProcessors: int32
         dwProcessorType: int32
         dwAllocationGranularity: int32
