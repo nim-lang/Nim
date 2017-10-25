@@ -617,6 +617,7 @@ when defined(Windows) and not defined(useNimRtl):
     var res: int32
     discard getExitCodeProcess(p.fProcessHandle, res)
     result = res
+    p.exitStatus = res
     discard closeHandle(p.fProcessHandle)
 
   proc peekExitCode(p: Process): int =
@@ -625,6 +626,7 @@ when defined(Windows) and not defined(useNimRtl):
     else:
       var res: int32
       discard getExitCodeProcess(p.fProcessHandle, res)
+      if res == 0: return p.exitStatus
       return res
 
   proc inputStream(p: Process): Stream =
