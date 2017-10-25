@@ -99,7 +99,7 @@ proc allTestResults(): AllTests =
     else:
       for elem in data:
         result.data.add elem
-        let state = elem["result"]
+        let state = elem["result"].str
         if state.contains("reSuccess"): inc result.successCount
         elif state.contains("reIgnored"): inc result.ignoredCount
 
@@ -120,7 +120,7 @@ proc generateTestRunTabContentPartial(outfile: File, allResults: AllTests, testR
     firstTabActiveClass = if firstRow: " in active"
                           else: ""
     commitId = htmlQuote testRunRow["commit"].str
-    hash = htmlQuote(testRunRow["hash"].str)
+    hash = htmlQuote(testRunRow["commit"].str)
     branch = htmlQuote(testRunRow["branch"].str)
     machineId = htmlQuote testRunRow["machine"].str
     machineName = htmlQuote(testRunRow["machine"].str)
@@ -141,15 +141,12 @@ proc generateTestRunTabContentPartial(outfile: File, allResults: AllTests, testR
 proc generateTestRunsHtmlPartial(outfile: File, allResults: AllTests, onlyFailing = false) =
   # Iterating the results twice, get entire result set in one go
   outfile.generateHtmlTabListBegin()
-  var firstRow = true
-  for testRunRow in allResults.data:
-    generateTestRunTabListItemPartial(outfile, testRunRow, firstRow)
-    if firstRow:
-      firstRow = false
+  if allResults.data.len > 0:
+    generateTestRunTabListItemPartial(outfile, allResults.data[0], true)
   outfile.generateHtmlTabListEnd()
 
   outfile.generateHtmlTabContentsBegin()
-  firstRow = true
+  var firstRow = true
   for testRunRow in allResults.data:
     generateTestRunTabContentPartial(outfile, allResults, testRunRow, onlyFailing, firstRow)
     if firstRow:

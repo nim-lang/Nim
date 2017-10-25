@@ -70,5 +70,6 @@ proc open*() =
   thisCommit = getCommit()
 
 proc close*() =
-  results.writeLine("]")
-  close(results)
+  if currentCategory.len > 0:
+    results.writeLine("]")
+    close(results)

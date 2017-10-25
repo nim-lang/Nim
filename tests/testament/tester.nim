@@ -459,13 +459,17 @@ proc main() =
   case action
   of "all":
     let testsDir = "tests" & DirSep
+    let myself = quoteShell(findExe("tests" / "testament" / "tester"))
+    var cmds: seq[string] = @[]
+    let rest = if p.cmdLineRest.string.len > 0: " " & p.cmdLineRest.string else: ""
     for kind, dir in walkDir(testsDir):
       assert testsDir.startsWith(testsDir)
       let cat = dir[testsDir.len .. ^1]
       if kind == pcDir and cat notin ["testament", "testdata", "nimcache"]:
-        processCategory(r, Category(cat), p.cmdLineRest.string)
-    for a in AdditionalCategories:
-      processCategory(r, Category(a), p.cmdLineRest.string)
+        cmds.add(myself & " cat " & cat & rest)
+    for cat in AdditionalCategories:
+      cmds.add(myself & " cat " & cat & rest)
+    quit osproc.execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams})
   of "c", "cat", "category":
     var cat = Category(p.key)
     p.next
