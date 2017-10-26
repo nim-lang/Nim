@@ -99,22 +99,6 @@ doAssert seconds(60 * 60) == hours(1)
 doAssert seconds(60 * 60 * 24) == days(1)
 doAssert seconds(60 * 60 + 65) == (hours(1) + minutes(1) + seconds(5))
 
-# Bug with parse not setting DST properly if the current local DST differs from
-# the date being parsed. Need to test parse dates both in and out of DST. We
-# are testing that be relying on the fact that tranforming a TimeInfo to a Time
-# and back again will correctly set the DST value. With the incorrect parse
-# behavior this will introduce a one hour offset from the named time and the
-# parsed time if the DST value differs between the current time and the date we
-# are parsing.
-#
-# Unfortunately these tests depend on the locale of the system in which they
-# are run. They will not be meaningful when run in a locale without DST. They
-# also assume that Jan. 1 and Jun. 1 will have differing isDST values.
-let dstT1 = parse("2016-01-01 00:00:00", "yyyy-MM-dd HH:mm:ss")
-let dstT2 = parse("2016-06-01 00:00:00", "yyyy-MM-dd HH:mm:ss")
-doAssert dstT1 == toTime(dstT1).inZone(Local)
-doAssert dstT2 == toTime(dstT2).inZone(Local)
-
 # Comparison between Time objects should be detected by compiler
 # as 'noSideEffect'.
 proc cmpTimeNoSideEffect(t1: Time, t2: Time): bool {.noSideEffect.} =
@@ -138,16 +122,6 @@ for tz in [
   doAssert ti.format("zz") == tz[2]
   doAssert ti.format("zzz") == tz[3]
 
-block dstTest:
-  # parsing will set isDST in relation to the local time. We take a date in
-  # January and one in July to maximize the probability to hit one date with DST
-  # and one without on the local machine. However, this is not guaranteed.
-  let
-    parsedJan = parse("2016-01-05 04:00:00+01:00", "yyyy-MM-dd HH:mm:sszzz")
-    parsedJul = parse("2016-07-01 04:00:00+01:00", "yyyy-MM-dd HH:mm:sszzz")
-  doAssert toTime(parsedJan) == fromSeconds(1451962800)
-  doAssert toTime(parsedJul) == fromSeconds(1467342000)
-
 block countLeapYears:
   # 1920, 2004 and 2020 are leap years, and should be counted starting at the following year
   doAssert countLeapYears(1920) + 1 == countLeapYears(1921)
@@ -166,7 +140,7 @@ template parseTestTimeOnly(s, f, sExpected: string) =
 
 # because setting a specific timezone for testing is platform-specific, we use
 # explicit timezone offsets in all tests.
-template runParseTest() =
+template runTimezoneTests() =
   parseTest("Tuesday at 09:04am on Dec 15, 2015 +0",
       "dddd at hh:mmtt on MMM d, yyyy z", "2015-12-15T09:04:00+00:00", 348)
   # ANSIC       = "Mon Jan _2 15:04:05 2006"
@@ -214,6 +188,28 @@ template runParseTest() =
   #  var tint = timeToTimeInterval(getTime())
   #  echo "Todays date after decoding to interval: ", tint
 
+  # Bug with parse not setting DST properly if the current local DST differs from
+  # the date being parsed. Need to test parse dates both in and out of DST. We
+  # are testing that be relying on the fact that tranforming a TimeInfo to a Time
+  # and back again will correctly set the DST value. With the incorrect parse
+  # behavior this will introduce a one hour offset from the named time and the
+  # parsed time if the DST value differs between the current time and the date we
+  # are parsing.
+  let dstT1 = parse("2016-01-01 00:00:00", "yyyy-MM-dd HH:mm:ss")
+  let dstT2 = parse("2016-06-01 00:00:00", "yyyy-MM-dd HH:mm:ss")
+  check dstT1 == toTime(dstT1).inZone(Local)
+  check dstT2 == toTime(dstT2).inZone(Local)
+
+  block dstTest:
+    # parsing will set isDST in relation to the local time. We take a date in
+    # January and one in July to maximize the probability to hit one date with DST
+    # and one without on the local machine. However, this is not guaranteed.
+    let
+      parsedJan = parse("2016-01-05 04:00:00+01:00", "yyyy-MM-dd HH:mm:sszzz")
+      parsedJul = parse("2016-07-01 04:00:00+01:00", "yyyy-MM-dd HH:mm:sszzz")
+    doAssert toTime(parsedJan) == fromSeconds(1451962800)
+    doAssert toTime(parsedJul) == fromSeconds(1467342000)
+
 suite "ttimes":
 
   # Generate tests for multiple timezone files where available
@@ -230,7 +226,7 @@ suite "ttimes":
       test "test for " & tz_fn:
         tz_cnt.inc
         putEnv("TZ", tz_fn)
-        runParseTest()
+        runTimezoneTests()
 
     putEnv("TZ", orig_tz)
     test "enough timezone files tested":
@@ -239,4 +235,4 @@ suite "ttimes":
   else:
     # not on Linux or macosx: run one parseTest only
     test "parseTest":
-      runParseTest()
+      runTimezoneTests()
