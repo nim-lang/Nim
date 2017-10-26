@@ -103,6 +103,7 @@ type
       ## variable is set for the non-js target.
     isInSuite: bool
     isInTest: bool
+    suiteStartTime: float
     testStartTime: float
 
   JUnitOutputFormatter* = ref object of OutputFormatter
@@ -151,6 +152,7 @@ proc newConsoleOutputFormatter*(outputLevel: OutputLevel = PRINT_ALL,
   ConsoleOutputFormatter(
     outputLevel: outputLevel,
     colorOutput: colorOutput,
+    suiteStartTime: 0.0,
     testStartTime: 0.0
   )
 
@@ -178,6 +180,7 @@ method suiteStarted*(formatter: ConsoleOutputFormatter, suiteName: string) =
     else: rawPrint()
   else: rawPrint()
   formatter.isInSuite = true
+  formatter.suiteStartTime = epochTime()
 
 method testStarted*(formatter: ConsoleOutputFormatter, testName: string) =
   formatter.isInTest = true
@@ -213,7 +216,17 @@ method testEnded*(formatter: ConsoleOutputFormatter, testResult: TestResult) =
       rawPrint()
 
 method suiteEnded*(formatter: ConsoleOutputFormatter) =
+  let time = epochTime() - formatter.suiteStartTime
+  let timeStr = time.formatFloat(ffDecimal, precision = 8)
   formatter.isInSuite = false
+  template rawPrint() = echo(alignLeft("[Elapsed time]", 68), "(", timeStr, " secs)")
+  when not defined(ECMAScript):
+    if formatter.colorOutput and not defined(ECMAScript):
+      styledEcho styleBright, fgBlue, alignLeft("[Elapsed time]", 68), resetStyle, fgBlue, "(", timeStr, " secs)", resetStyle
+    else:
+      rawPrint()
+  else:
+    rawPrint()
 
 proc xmlEscape(s: string): string =
   result = newStringOfCap(s.len)
