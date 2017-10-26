@@ -1185,17 +1185,6 @@ proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay =
   # so we must correct for the WeekDay type.
   result = UsWeekdayToEuropean[d]
 
-proc getDayOfWeekJulian*(day, month, year: int): WeekDay =
-  ## Returns the day of the week enum from day, month and year,
-  ## according to the Julian calendar.
-  # Day & month start from one.
-  let
-    a = (14 - month) div 12
-    y = year - a
-    m = month + (12*a) - 2
-    d = (5 + day + y + (y div 4) + (31*m) div 12) mod 7
-  result = d.WeekDay
-
 proc toTimeInterval*(t: Time): TimeInterval =
   ## Converts a Time to a TimeInterval.
   ##
@@ -1309,6 +1298,17 @@ proc timeToTimeInfo*(t: Time): TimeInfo {.deprecated.} =
     mi = (daySeconds mod secondsInHour) div secondsInMin
     s = daySeconds mod secondsInMin
   result = TimeInfo(year: y, yearday: yd, month: m, monthday: md, weekday: wd, hour: h, minute: mi, second: s)
+
+proc getDayOfWeekJulian*(day, month, year: int): WeekDay {.deprecated.} =
+  ## Returns the day of the week enum from day, month and year,
+  ## according to the Julian calendar.
+  # Day & month start from one.
+  let
+    a = (14 - month) div 12
+    y = year - a
+    m = month + (12*a) - 2
+    d = (5 + day + y + (y div 4) + (31*m) div 12) mod 7
+  result = d.WeekDay
 
 when not defined(JS):
   proc epochTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].}
