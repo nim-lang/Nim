@@ -198,7 +198,7 @@ method testEnded*(formatter: ConsoleOutputFormatter, testResult: TestResult) =
   if formatter.outputLevel != PRINT_NONE and
      (formatter.outputLevel == PRINT_ALL or testResult.status == FAILED):
     let prefix = if testResult.suiteName != nil: "  " else: ""
-    template rawPrint() = echo(prefix, "[", $testResult.status, "] ", testResult.testName, " (", timeStr, " secs)")
+    template rawPrint() = echo(prefix, "[", $testResult.status, "] ", alignLeft(testResult.testName, 60), " (", timeStr, " secs)")
     when not defined(ECMAScript):
       if formatter.colorOutput and not defined(ECMAScript):
         var color = case testResult.status
@@ -206,7 +206,7 @@ method testEnded*(formatter: ConsoleOutputFormatter, testResult: TestResult) =
                     of FAILED: fgRed
                     of SKIPPED: fgYellow
                     else: fgWhite
-        styledEcho styleBright, color, prefix, "[", $testResult.status, "] ", resetStyle, testResult.testName, fgBlue, " (", timeStr, " secs)", resetStyle
+        styledEcho styleBright, color, prefix, "[", $testResult.status, "] ", resetStyle, alignLeft(testResult.testName, 60), fgBlue, " (", timeStr, " secs)", resetStyle
       else:
         rawPrint()
     else:
