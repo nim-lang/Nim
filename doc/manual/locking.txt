@@ -2,7 +2,7 @@ Guards and locks
 ================
 
 Apart from ``spawn`` and ``parallel`` Nim also provides all the common low level
-concurrency mechanisms like locks, atomic intristics or condition variables.
+concurrency mechanisms like locks, atomic intrinsics or condition variables.
 
 Nim significantly improves on the safety of these features via additional
 pragmas:
