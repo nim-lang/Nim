@@ -72,11 +72,18 @@ proc raiseEInvalidCsv(filename: string, line, col: int,
                       msg: string) {.noreturn.} =
   var e: ref CsvError
   new(e)
+
+  # Prevent nil errors - these will not be set if file unable to be opened
+  let 
+    filename = if not filename.isNil(): filename else: ""
+    msg = if not msg.isNil(): msg else: ""
+
   e.msg = filename & "(" & $line & ", " & $col & ") Error: " & msg
   raise e
 
 proc error(my: CsvParser, pos: int, msg: string) =
   raiseEInvalidCsv(my.filename, my.lineNumber, getColNumber(my, pos), msg)
+
 
 proc open*(my: var CsvParser, input: Stream, filename: string,
            separator = ',', quote = '"', escape = '\0',
