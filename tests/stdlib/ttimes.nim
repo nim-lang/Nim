@@ -41,11 +41,11 @@ t4.checkFormat("M MM MMM MMMM", "10 10 Oct October")
 (t4 - initInterval(years = 7, minutes = 34, seconds = 24)).checkFormat("yyyy mm ss", "1990 24 10")
 
 # checking dayOfWeek matches known days
-doAssert getDayOfWeek(21, 9, 1900) == dFri
-doAssert getDayOfWeek(1, 1, 1970) == dThu
-doAssert getDayOfWeek(21, 9, 1970) == dMon
-doAssert getDayOfWeek(1, 1, 2000) == dSat
-doAssert getDayOfWeek(1, 1, 2021) == dFri
+doAssert getDayOfWeek(21, mSep, 1900) == dFri
+doAssert getDayOfWeek(01, mJan, 1970) == dThu
+doAssert getDayOfWeek(21, mSep, 1970) == dMon
+doAssert getDayOfWeek(01, mJan, 2000) == dSat
+doAssert getDayOfWeek(01, mJan, 2021) == dFri
 # Julian tests
 doAssert getDayOfWeekJulian(21, 9, 1900) == dFri
 doAssert getDayOfWeekJulian(21, 9, 1970) == dMon
@@ -117,7 +117,7 @@ for tz in [
     (-1800, "+0", "+00", "+00:30"), # half an hour
     (7200, "-2", "-02", "-02:00"), # positive
     (38700, "-10", "-10", "-10:45")]: # positive with three quaters hour
-  let ti = TimeInfo(monthday: 1, utcOffset: tz[0])
+  let ti = TimeInfo(month: mJan, monthday: 1, utcOffset: tz[0])
   doAssert ti.format("z") == tz[1]
   doAssert ti.format("zz") == tz[2]
   doAssert ti.format("zzz") == tz[3]

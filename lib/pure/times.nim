@@ -91,8 +91,10 @@ elif defined(windows):
     Time* = distinct TimeImpl
 
 type
-  Month* = enum ## Represents a month.
-    mJan, mFeb, mMar, mApr, mMay, mJun, mJul, mAug, mSep, mOct, mNov, mDec
+  Month* = enum ## Represents a month. Note that the enum starts at ``1``, so ``ord(month)`` will give
+                ## the month number in the range ``[1..12]``.
+    mJan = 1, mFeb, mMar, mApr, mMay, mJun, mJul, mAug, mSep, mOct, mNov, mDec
+
   WeekDay* = enum ## Represents a weekday.
     dMon, dTue, dWed, dThu, dFri, dSat, dSun
 
@@ -265,7 +267,7 @@ when defined(JS):
         result.minute = t.getUTCMinutes()
         result.hour = t.getUTCHours()
         result.monthday = t.getUTCDate()
-        result.month = Month(t.getUTCMonth())
+        result.month = Month(t.getUTCMonth() + 1)
         result.year = t.getUTCFullYear()
         result.weekday = UsWeekdayToEuropean[t.getUTCDay()]
         result.yearday = getDayOfYear(result.monthday, result.month, result.year)
@@ -275,7 +277,7 @@ when defined(JS):
         result.minute = t.getMinutes()
         result.hour = t.getHours()
         result.monthday = t.getDate()
-        result.month = Month(t.getMonth())
+        result.month = Month(t.getMonth() + 1)
         result.year = t.getFullYear()
         result.weekday = UsWeekdayToEuropean[t.getDay()]
         result.timezone = t.getTimezoneOffset() # Wrong - includes dst
@@ -327,7 +329,7 @@ else:
       minute:int(tm.minute),
       hour: int(tm.hour),
       monthday: int(tm.monthday),
-      month: Month(tm.month),
+      month: Month(tm.month + 1),
       year: tm.year + 1900'i32,
       weekday: UsWeekdayToEuropean[int(tm.weekday)],
       yearday: int(tm.yearday)
@@ -338,7 +340,7 @@ else:
     result.minute = t.minute
     result.hour = t.hour
     result.monthday = t.monthday
-    result.month = ord(t.month)
+    result.month = ord(t.month) - 1
     result.year = cint(t.year - 1900)
     result.weekday = EuropeanWeekdayToUs[t.weekday]
     result.yearday = t.yearday
@@ -552,7 +554,7 @@ proc `-`*(a: TimeInfo, interval: TimeInterval): TimeInfo =
 proc getDateStr*(): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
   ## Gets the current date as a string of the format ``YYYY-MM-DD``.
   var ti = now()
-  result = $ti.year & '-' & intToStr(ord(ti.month)+1, 2) &
+  result = $ti.year & '-' & intToStr(ord(ti.month), 2) &
     '-' & intToStr(ti.monthday, 2)
 
 proc getClockStr*(): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
@@ -675,11 +677,11 @@ proc formatToken(info: TimeInfo, token: string, buf: var string) =
       buf.add('0')
     buf.add($info.minute)
   of "M":
-    buf.add($(int(info.month)+1))
+    buf.add($ord(info.month))
   of "MM":
     if info.month < mOct:
       buf.add('0')
-    buf.add($(int(info.month)+1))
+    buf.add($ord(info.month))
   of "MMM":
     buf.add(($info.month)[0..2])
   of "MMMM":
@@ -906,12 +908,12 @@ proc parseToken(info: var TimeInfo; token, value: string; j: var int) =
     j += 2
   of "M":
     var pd = parseInt(value[j..j+1], sv)
-    info.month = Month(sv-1)
+    info.month = sv.Month
     j += pd
   of "MM":
     var month = value[j..j+1].parseInt()
     j += 2
-    info.month = Month(month-1)
+    info.month = month.Month
   of "MMM":
     case value[j..j+2].toLowerAscii():
     of "jan": info.month =  mJan
@@ -1174,7 +1176,7 @@ proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay =
   ## Returns the day of the week enum from day, month and year.
   ## Equivalent with ``initTimeInfo(day, month, year).weekday``.
   let
-    ordinalMonth = ord(month) + 1
+    ordinalMonth = ord(month)
     a = (14 - ordinalMonth) div 12
     y = year - a
     m = ordinalMonth + (12*a) - 2
@@ -1208,7 +1210,7 @@ proc toTimeInterval*(t: Time): TimeInterval =
   ##     # (milliseconds: 0, seconds: -40, minutes: -6, hours: 1, days: -2, months: -2, years: 16)
   # Milliseconds not available from Time
   var tInfo = t.inZone(Local)
-  initInterval(0, tInfo.second, tInfo.minute, tInfo.hour, tInfo.weekday.ord, tInfo.month.ord, tInfo.year)
+  initInterval(0, tInfo.second, tInfo.minute, tInfo.hour, tInfo.weekday.ord, tInfo.month.ord - 1, tInfo.year)
 
 proc initTimeInfo*(monthday: MonthdayRange, month: Month, year: int,
                   hour: HourRange, minute: MinuteRange, second: SecondRange, zone: Timezone = Local): TimeInfo =
@@ -1374,7 +1376,7 @@ when not defined(JS):
     return era * 146097 + doe - 719468
 
   proc toTime(timeInfo: TimeInfo): Time =
-    let epochDay = toEpochday(timeInfo.year, ord(timeInfo.month) + 1, timeInfo.monthday)
+    let epochDay = toEpochday(timeInfo.year, ord(timeInfo.month), timeInfo.monthday)
     result = Time(epochDay * secondsInDay)
     result.inc timeInfo.hour * secondsInHour
     result.inc timeInfo.minute * 60
