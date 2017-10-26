@@ -280,7 +280,7 @@ proc execProcesses*(cmds: openArray[string],
   ## executes the commands `cmds` in parallel. Creates `n` processes
   ## that execute in parallel. The highest return value of all processes
   ## is returned. Runs `beforeRunEvent` before running each command.
-  when defined(posix):
+  when false:
     # poParentStreams causes problems on Posix, so we simply disable it:
     var options = options - {poParentStreams}
 
