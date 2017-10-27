@@ -1112,19 +1112,46 @@ proc asgnFieldDiscriminant(p: BProc, e: PNode) =
   genDiscriminantCheck(p, a, tmp, dotExpr.sons[0].typ, dotExpr.sons[1].sym)
   genAssignment(p, a, tmp, {})
 
+proc patchAsgnStmtListExpr(father, orig, n: PNode) =
+  case n.kind
+  of nkDerefExpr, nkHiddenDeref:
+    let asgn = copyNode(orig)
+    asgn.add orig[0]
+    asgn.add n
+    father.add asgn
+  of nkStmtList, nkStmtListExpr:
+    for x in n:
+      patchAsgnStmtListExpr(father, orig, x)
+  else:
+    father.add n
+
 proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
   if e.sons[0].kind == nkSym and sfGoto in e.sons[0].sym.flags:
     genLineDir(p, e)
     genGotoVar(p, e.sons[1])
   elif not fieldDiscriminantCheckNeeded(p, e):
+    # this fixes bug #6422 but we really need to change the representation of
+    # arrays in the backend...
+    let le = e[0]
+    let ri = e[1]
+    var needsRepair = false
+    var it = ri
+    while it.kind in {nkStmtList, nkStmtListExpr}:
+      it = it.lastSon
+      needsRepair = true
+    if it.kind in {nkDerefExpr, nkHiddenDeref} and needsRepair:
+      var patchedTree = newNodeI(nkStmtList, e.info)
+      patchAsgnStmtListExpr(patchedTree, e, ri)
+      genStmts(p, patchedTree)
+      return
+
     var a: TLoc
-    if e[0].kind in {nkDerefExpr, nkHiddenDeref}:
-      genDeref(p, e[0], a, enforceDeref=true)
+    if le.kind in {nkDerefExpr, nkHiddenDeref}:
+      genDeref(p, le, a, enforceDeref=true)
     else:
-      initLocExpr(p, e.sons[0], a)
+      initLocExpr(p, le, a)
     if fastAsgn: incl(a.flags, lfNoDeepCopy)
     assert(a.t != nil)
-    let ri = e.sons[1]
     genLineDir(p, ri)
     loadInto(p, e.sons[0], ri, a)
   else:

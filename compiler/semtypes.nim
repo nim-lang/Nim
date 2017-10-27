@@ -1295,8 +1295,7 @@ proc symFromExpectedTypeNode(c: PContext, n: PNode): PSym =
 
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   result = nil
-  when defined(nimsuggest):
-    inc c.inTypeContext
+  inc c.inTypeContext
 
   if gCmd == cmdIdeTools: suggestExpr(c, n)
   case n.kind
@@ -1511,8 +1510,13 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     localError(n.info, errTypeExpected)
     result = newOrPrevType(tyError, prev, c)
   n.typ = result
-  when defined(nimsuggest):
-    dec c.inTypeContext
+  dec c.inTypeContext
+  if c.inTypeContext == 0: instAllTypeBoundOp(c, n.info)
+
+when false:
+  proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
+    result = semTypeNodeInner(c, n, prev)
+    instAllTypeBoundOp(c, n.info)
 
 proc setMagicType(m: PSym, kind: TTypeKind, size: int) =
   # source : https://en.wikipedia.org/wiki/Data_structure_alignment#x86

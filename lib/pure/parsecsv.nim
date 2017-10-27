@@ -72,7 +72,10 @@ proc raiseEInvalidCsv(filename: string, line, col: int,
                       msg: string) {.noreturn.} =
   var e: ref CsvError
   new(e)
-  e.msg = filename & "(" & $line & ", " & $col & ") Error: " & msg
+  if filename.len == 0:
+    e.msg = "Error: " & msg
+  else:
+    e.msg = filename & "(" & $line & ", " & $col & ") Error: " & msg
   raise e
 
 proc error(my: CsvParser, pos: int, msg: string) =
