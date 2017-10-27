@@ -32,27 +32,27 @@ type
 when not defined(release):
   var currentID = 0
 
-var callSoonProc {.threadvar.}: proc (cbproc: proc ()) {.gcsafe.}
+proc getCallSoonProc*(): (proc(cbproc: proc ()) {.gcsafe.}) {.deprecated.} = discard
+proc setCallSoonProc*(p: (proc(cbproc: proc ()) {.gcsafe.})) {.deprecated.} = discard
 
-proc getCallSoonProc*(): (proc(cbproc: proc ()) {.gcsafe.}) =
-  ## Get current implementation of ``callSoon``.
-  return callSoonProc
+var pendingCallbacks {.threadvar.}: seq[CallbackFunc]
 
-proc setCallSoonProc*(p: (proc(cbproc: proc ()) {.gcsafe.})) =
-  ## Change current implementation of ``callSoon``. This is normally called when dispatcher from ``asyncdispatcher`` is initialized.
-  callSoonProc = p
-
-proc callSoon*(cbproc: proc ()) =
+proc callSoon*(cbproc: CallbackFunc) =
   ## Call ``cbproc`` "soon".
   ##
-  ## If async dispatcher is running, ``cbproc`` will be executed during next dispatcher tick.
-  ##
-  ## If async dispatcher is not running, ``cbproc`` will be executed immediately.
-  if callSoonProc.isNil:
-    # Loop not initialized yet. Call the function directly to allow setup code to use futures.
-    cbproc()
-  else:
-    callSoonProc(cbproc)
+  ## The `cbproc` will be executed immediately unless `callSoon`
+  ## is called recursively. In such case `cbproc` will be called
+  ## as soon as currently handled `cbproc` is complete.
+  if pendingCallbacks.isNil:
+      pendingCallbacks = newSeqOfCap[CallbackFunc](8)
+  pendingCallbacks.add(cbproc)
+  if pendingCallbacks.len == 1:
+    var i = 0
+    while i < pendingCallbacks.len:
+      pendingCallbacks[i]()
+      pendingCallbacks[i] = nil # Let the GC do its job
+      inc i
+    pendingCallbacks.setLen(0)
 
 template setupFutureBase(fromProc: string) =
   new(result)
@@ -131,30 +131,29 @@ proc add(callbacks: var CallbackList, function: CallbackFunc) =
     callbacks.next = newNext
     callbacks.function = function
 
+proc completeAux(f: FutureBase) =
+  assert(f.error.isNil)
+  f.finished = true
+  f.callbacks.call()
+
 proc complete*[T](future: Future[T], val: T) =
   ## Completes ``future`` with value ``val``.
   #assert(not future.finished, "Future already finished, cannot finish twice.")
   checkFinished(future)
-  assert(future.error == nil)
   future.value = val
-  future.finished = true
-  future.callbacks.call()
+  future.completeAux()
 
 proc complete*(future: Future[void]) =
   ## Completes a void ``future``.
   #assert(not future.finished, "Future already finished, cannot finish twice.")
   checkFinished(future)
-  assert(future.error == nil)
-  future.finished = true
-  future.callbacks.call()
+  future.completeAux()
 
 proc complete*[T](future: FutureVar[T]) =
   ## Completes a ``FutureVar``.
   template fut: untyped = Future[T](future)
   checkFinished(fut)
-  assert(fut.error == nil)
-  fut.finished = true
-  fut.callbacks.call()
+  fut.completeAux()
 
 proc complete*[T](future: FutureVar[T], val: T) =
   ## Completes a ``FutureVar`` with value ``val``.
@@ -162,10 +161,8 @@ proc complete*[T](future: FutureVar[T], val: T) =
   ## Any previously stored value will be overwritten.
   template fut: untyped = Future[T](future)
   checkFinished(fut)
-  assert(fut.error.isNil())
-  fut.finished = true
   fut.value = val
-  fut.callbacks.call()
+  fut.completeAux()
 
 proc fail*[T](future: Future[T], error: ref Exception) =
   ## Completes ``future`` with ``error``.
