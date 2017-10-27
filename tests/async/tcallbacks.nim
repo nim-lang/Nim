@@ -18,3 +18,5 @@ let f2: Future[int] = newFuture[int]()
 f2.addCallback(proc() = echo 4)
 f2.callback = proc() = echo 5
 f2.complete(10)
+
+processPendingCallbacks()
