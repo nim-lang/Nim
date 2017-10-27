@@ -147,8 +147,9 @@ proc evalTypeTrait(traitCall: PNode, operand: PType, context: PSym): PNode =
   of "stripGenericParams":
     result = uninstantiate(operand).toNode(traitCall.info)
   of "supportsCopyMem":
-    let complexObj = containsGarbageCollectedRef(operand) or
-                     hasDestructor(operand)
+    let t = operand.skipTypes({tyVar, tyGenericInst, tyAlias, tyInferred})
+    let complexObj = containsGarbageCollectedRef(t) or
+                     hasDestructor(t)
     result = newIntNodeT(ord(not complexObj), traitCall)
   else:
     localError(traitCall.info, "unknown trait")
@@ -251,7 +252,11 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result = semTypeOf(c, n.sons[1])
   of mArrGet: result = semArrGet(c, n, flags)
   of mArrPut: result = semArrPut(c, n, flags)
-  of mAsgn: result = semAsgnOpr(c, n)
+  of mAsgn:
+    if n[0].sym.name.s == "=":
+      result = semAsgnOpr(c, n)
+    else:
+      result = n
   of mIsPartOf: result = semIsPartOf(c, n, flags)
   of mTypeTrait: result = semTypeTraits(c, n)
   of mAstToStr:

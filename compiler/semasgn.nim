@@ -268,10 +268,10 @@ proc liftBody(c: PContext; typ: PType; kind: TTypeAttachedOp;
   a.kind = kind
   let body = newNodeI(nkStmtList, info)
   let procname = case kind
-                 of attachedAsgn: getIdent":Asgn"
-                 of attachedSink: getIdent":Sink"
-                 of attachedDeepCopy: getIdent":DeepCopy"
-                 of attachedDestructor: getIdent":Destroy"
+                 of attachedAsgn: getIdent"="
+                 of attachedSink: getIdent"=sink"
+                 of attachedDeepCopy: getIdent"=deepcopy"
+                 of attachedDestructor: getIdent"=destroy"
 
   result = newSym(skProc, procname, typ.owner, info)
   a.fn = result
@@ -319,8 +319,13 @@ proc liftTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
   ## to ensure we lift assignment, destructors and moves properly.
   ## The later 'destroyer' pass depends on it.
   if not newDestructors or not hasDestructor(typ): return
+  # do not produce wrong liftings while we're still instantiating generics:
+  if c.typesWithOps.len > 0: return
   let typ = typ.skipTypes({tyGenericInst, tyAlias})
   # we generate the destructor first so that other operators can depend on it:
-  if typ.destructor == nil: liftBody(c, typ, attachedDestructor, info)
-  if typ.assignment == nil: liftBody(c, typ, attachedAsgn, info)
-  if typ.sink == nil: liftBody(c, typ, attachedSink, info)
+  if typ.destructor == nil:
+    liftBody(c, typ, attachedDestructor, info)
+  if typ.assignment == nil:
+    liftBody(c, typ, attachedAsgn, info)
+  if typ.sink == nil:
+    liftBody(c, typ, attachedSink, info)
