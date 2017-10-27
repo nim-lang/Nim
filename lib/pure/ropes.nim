@@ -131,7 +131,7 @@ proc insertInCache(s: string, tree: Rope): Rope =
       result.left = t
       t.right = nil
 
-proc rope*(s: string = ""): Rope {.rtl, extern: "nro$1Str".} =
+proc rope*(s: string = nil): Rope {.rtl, extern: "nro$1Str".} =
   ## Converts a string to a rope.
   if s.len == 0:
     result = nil
