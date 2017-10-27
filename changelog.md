@@ -14,3 +14,5 @@
   `getBool`, `getFloat`, `getBiggestInt`. Also `getInt` procedure was added.
 - `reExtended` is no longer default for the `re` constructor in the `re`
   module.
+- The overloading rules changed slightly so that constrained generics are
+  preferred over unconstrained generics. (Bug #6526)
