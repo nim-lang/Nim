@@ -8,11 +8,11 @@ nb_failed="0"
 for src in $TESTSUITE_PATH/compile/*.c ; do
   echo $TCC -o /tmp/test.o -c $src 
   $TCC -o /tmp/test.o -c $src >> tcc.log 2>&1
-  if [ "$?" == "0" ] ; then
+  if [ "$?" = "0" ] ; then
      result="PASS"
   else
      result="FAIL"
-     nb_failed=$[ $nb_failed + 1 ]
+     nb_failed=$(( $nb_failed + 1 ))
   fi
   echo "$result: $src"  >> tcc.sum
 done
@@ -20,11 +20,11 @@ done
 for src in $TESTSUITE_PATH/execute/*.c ; do
   echo $TCC $src 
   $TCC $src >> tcc.log 2>&1
-  if [ "$?" == "0" ] ; then
+  if [ "$?" = "0" ] ; then
      result="PASS"
   else
      result="FAIL"
-     nb_failed=$[ $nb_failed + 1 ]
+     nb_failed=$(( $nb_failed + 1 ))
   fi
   echo "$result: $src"  >> tcc.sum
 done
