@@ -787,6 +787,7 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
       s.typ.sym = s             # process pragmas:
       if name.kind == nkPragmaExpr:
         pragma(c, s, name.sons[1], typePragmas)
+        if sfForward in s.flags: strTableAdd(c.graph.forwardedTypes, s)
       # add it here, so that recursive types are possible:
       if sfGenSym notin s.flags: addInterfaceDecl(c, s)
     a.sons[0] = newSymNode(s)

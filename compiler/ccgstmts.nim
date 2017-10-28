@@ -20,7 +20,7 @@ proc registerGcRoot(p: BProc, v: PSym) =
       containsGarbageCollectedRef(v.loc.t):
     # we register a specialized marked proc here; this has the advantage
     # that it works out of the box for thread local storage then :-)
-    let prc = genTraverseProcForGlobal(p.module, v)
+    let prc = genTraverseProcForGlobal(p.module, v, v.info)
     appcg(p.module, p.module.initProc.procSec(cpsInit),
       "#nimRegisterGlobalMarker($1);$n", [prc])
 
@@ -835,7 +835,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
         if orExpr != nil: add(orExpr, "||")
         appcg(p.module, orExpr,
               "#isObj($1.exp->m_type, $2)",
-              [exc, genTypeInfo(p.module, t.sons[i].sons[j].typ)])
+              [exc, genTypeInfo(p.module, t[i][j].typ, t[i][j].info)])
       lineF(p, cpsStmts, "if ($1) ", [orExpr])
       startBlock(p)
       expr(p, t.sons[i].sons[blen-1], d)
@@ -944,7 +944,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
           "#isObj(#getCurrentException()->Sup.m_type, $1)"
           else: "#isObj(#getCurrentException()->m_type, $1)"
         appcg(p.module, orExpr, isObjFormat,
-              [genTypeInfo(p.module, t.sons[i].sons[j].typ)])
+              [genTypeInfo(p.module, t[i][j].typ, t[i][j].info)])
       if i > 1: line(p, cpsStmts, "else ")
       startBlock(p, "if ($1) {$n", [orExpr])
       linefmt(p, cpsStmts, "$1.status = 0;$n", safePoint)
@@ -1062,7 +1062,7 @@ proc genWatchpoint(p: BProc, n: PNode) =
   let typ = skipTypes(n.sons[1].typ, abstractVarRange)
   lineCg(p, cpsStmts, "#dbgRegisterWatchpoint($1, (NCSTRING)$2, $3);$n",
         [a.addrLoc, makeCString(renderTree(n.sons[1])),
-        genTypeInfo(p.module, typ)])
+        genTypeInfo(p.module, typ, n.info)])
 
 proc genPragma(p: BProc, n: PNode) =
   for i in countup(0, sonsLen(n) - 1):
@@ -1092,7 +1092,7 @@ proc genDiscriminantCheck(p: BProc, a, tmp: TLoc, objtype: PType,
                           field: PSym) =
   var t = skipTypes(objtype, abstractVar)
   assert t.kind == tyObject
-  discard genTypeInfo(p.module, t)
+  discard genTypeInfo(p.module, t, a.lode.info)
   var L = lengthOrd(field.typ)
   if not containsOrIncl(p.module.declaredThings, field.id):
     appcg(p.module, cfsVars, "extern $1",

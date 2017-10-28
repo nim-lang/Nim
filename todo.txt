@@ -1,17 +1,21 @@
 version 1.0 battle plan
 =======================
 
-- make 'not nil' the default (produce warnings instead of errors for
-  a smooth migration path)
-- case objects needs to be safe and need to support pattern matching
 - implement a way to forward object type declarations across module
   boundaries; C++ style
+- deprecate unary '<'
+- remove 'mod x' type rule
+- implement x[^1] differently, no compiler magic
 - fix "high priority" bugs
 - try to fix as many compiler crashes as reasonable
 
 
 Not critical for 1.0
 ====================
+
+- make 'not nil' the default (produce warnings instead of errors for
+  a smooth migration path)
+- case objects needs to be safe and need to support pattern matching
 
 - find a solution for the  x.f[T](y)  gotcha
 - implement ``.delegate`` for .experimental
