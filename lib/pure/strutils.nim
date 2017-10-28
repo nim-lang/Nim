@@ -138,7 +138,8 @@ proc isAlphaNumeric*(s: string): bool {.noSideEffect, procvar,
 
   result = true
   for c in s:
-    result = c.isAlphaNumeric() and result
+    if not c.isAlphaNumeric():
+      return false
 
 proc isDigit*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nsuIsDigitStr".}=
@@ -153,7 +154,8 @@ proc isDigit*(s: string): bool {.noSideEffect, procvar,
 
   result = true
   for c in s:
-    result = c.isDigit() and result
+    if not c.isDigit():
+      return false
 
 proc isSpaceAscii*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nsuIsSpaceAsciiStr".}=
@@ -1062,8 +1064,8 @@ proc align*(s: string, count: Natural, padding = ' '): string {.
   ##
   ## `padding` characters (by default spaces) are added before `s` resulting in
   ## right alignment. If ``s.len >= count``, no spaces are added and `s` is
-  ## returned unchanged. If you need to left align a string use the `repeatChar
-  ## proc <#repeatChar>`_. Example:
+  ## returned unchanged. If you need to left align a string use the `alignLeft
+  ## proc <#alignLeft>`_. Example:
   ##
   ## .. code-block:: nim
   ##   assert align("abc", 4) == " abc"
@@ -1075,6 +1077,28 @@ proc align*(s: string, count: Natural, padding = ' '): string {.
     let spaces = count - s.len
     for i in 0..spaces-1: result[i] = padding
     for i in spaces..count-1: result[i] = s[i-spaces]
+  else:
+    result = s
+
+proc alignLeft*(s: string, count: Natural, padding = ' '): string {.noSideEffect.} =
+  ## Left-Aligns a string `s` with `padding`, so that it is of length `count`.
+  ##
+  ## `padding` characters (by default spaces) are added after `s` resulting in
+  ## left alignment. If ``s.len >= count``, no spaces are added and `s` is
+  ## returned unchanged. If you need to right align a string use the `align
+  ## proc <#align>`_. Example:
+  ##
+  ## .. code-block:: nim
+  ##   assert alignLeft("abc", 4) == "abc "
+  ##   assert alignLeft("a", 0) == "a"
+  ##   assert alignLeft("1232", 6) == "1232  "
+  ##   assert alignLeft("1232", 6, '#') == "1232##"
+  if s.len < count:
+    result = newString(count)
+    if s.len > 0:
+      result[0 .. (s.len - 1)] = s
+    for i in s.len ..< count:
+      result[i] = padding
   else:
     result = s
 
@@ -2271,9 +2295,10 @@ proc format*(formatstr: string, a: varargs[string, `$`]): string {.noSideEffect,
 
 proc removeSuffix*(s: var string, chars: set[char] = Newlines) {.
   rtl, extern: "nsuRemoveSuffixCharSet".} =
-  ## Removes the first matching character from the end of a string (in-place)
-  ## given a set of characters. If the set of characters is only equal to
-  ## `Newlines` then it will remove both the newline and return feed.
+  ## Removes the first matching character from the string (in-place) given a
+  ## set of characters. If the set of characters is only equal to `Newlines`
+  ## then it will remove both the newline and return feed.
+  ##
   ## .. code-block:: nim
   ##   var
   ##     userInput = "Hello World!\r\n"
@@ -2309,6 +2334,7 @@ proc removeSuffix*(s: var string, c: char) {.
 proc removeSuffix*(s: var string, suffix: string) {.
   rtl, extern: "nsuRemoveSuffixString".} =
   ## Remove the first matching suffix (in-place) from a string.
+  ##
   ## .. code-block:: nim
   ##   var
   ##     answers = "yeses"
@@ -2361,6 +2387,11 @@ when isMainModule:
   doAssert align("a", 0) == "a"
   doAssert align("1232", 6) == "  1232"
   doAssert align("1232", 6, '#') == "##1232"
+
+  doAssert alignLeft("abc", 4) == "abc "
+  doAssert alignLeft("a", 0) == "a"
+  doAssert alignLeft("1232", 6) == "1232  "
+  doAssert alignLeft("1232", 6, '#') == "1232##"
 
   let
     inp = """ this is a long text --  muchlongerthan10chars and here

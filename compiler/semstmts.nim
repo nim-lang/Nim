@@ -1295,7 +1295,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
             localError(n.info, errGenerated,
               "cannot bind another '" & s.name.s & "' to: " & typeToString(obj))
           noError = true
-      if not noError:
+      if not noError and sfSystemModule notin s.owner.flags:
         localError(n.info, errGenerated,
           "signature for '" & s.name.s & "' must be proc[T: object](x: var T)")
     else:
@@ -1351,8 +1351,9 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
           localError(n.info, errGenerated,
                      "cannot bind another '" & s.name.s & "' to: " & typeToString(obj))
         return
-    localError(n.info, errGenerated,
-               "signature for '" & s.name.s & "' must be proc[T: object](x: var T; y: T)")
+    if sfSystemModule notin s.owner.flags:
+      localError(n.info, errGenerated,
+                "signature for '" & s.name.s & "' must be proc[T: object](x: var T; y: T)")
   else:
     if sfOverriden in s.flags:
       localError(n.info, errGenerated,
@@ -1832,7 +1833,8 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
       of LastBlockStmts:
         for j in countup(i + 1, length - 1):
           case n.sons[j].kind
-          of nkPragma, nkCommentStmt, nkNilLit, nkEmpty: discard
+          of nkPragma, nkCommentStmt, nkNilLit, nkEmpty, nkBlockExpr,
+             nkBlockStmt, nkState: discard
           else: localError(n.sons[j].info, errStmtInvalidAfterReturn)
       else: discard
 

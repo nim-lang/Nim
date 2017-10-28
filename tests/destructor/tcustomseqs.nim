@@ -8,7 +8,14 @@ discard """
 89
 90
 90
-after 1 1'''
+0 0 1
+0 1 2
+0 2 3
+1 0 4
+1 1 5
+1 2 6
+1 3 7
+after 6 6'''
   cmd: '''nim c --newruntime $file'''
 """
 
@@ -126,6 +133,11 @@ proc main =
   s.grow s.len + 2, 90
   for i in 0 ..< s.len:
     echo s[i]
+
+  var nested = createSeq(createSeq(1, 2, 3), createSeq(4, 5, 6, 7))
+  for i in 0 ..< nested.len:
+    for j in 0 ..< nested[i].len:
+      echo i, " ", j, " ", nested[i][j]
 
 main()
 echo "after ", allocCount, " ", deallocCount

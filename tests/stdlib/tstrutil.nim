@@ -126,6 +126,25 @@ proc testDelete =
   delete(s, 0, 0)
   assert s == "1236789ABCDEFG"
 
+
+proc testIsAlphaNumeric =
+  assert isAlphaNumeric("abcdABC1234") == true
+  assert isAlphaNumeric("a") == true
+  assert isAlphaNumeric("abcABC?1234") == false
+  assert isAlphaNumeric("abcABC 1234") == false
+  assert isAlphaNumeric(".") == false
+
+testIsAlphaNumeric()
+
+proc testIsDigit =
+  assert isDigit("1") == true
+  assert isDigit("1234") == true
+  assert isDigit("abcABC?1234") == false
+  assert isDigit(".") == false
+  assert isDigit(":") == false
+
+testIsDigit()
+
 proc testFind =
   assert "0123456789ABCDEFGH".find('A') == 10
   assert "0123456789ABCDEFGH".find('A', 5) == 10

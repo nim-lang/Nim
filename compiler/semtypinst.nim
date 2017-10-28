@@ -77,7 +77,7 @@ type
     topLayer*: TIdTable
     nextLayer*: ptr LayeredIdTable
 
-  TReplTypeVars* {.final.} = object
+  TReplTypeVars* = object
     c*: PContext
     typeMap*: ptr LayeredIdTable # map PType to PType
     symMap*: TIdTable         # map PSym to PSym
@@ -261,6 +261,17 @@ proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
   if not (t.kind in tyMetaTypes or
          (t.kind == tyStatic and t.n == nil)):
     result.flags.excl tfInstClearedFlags
+  when false:
+    if newDestructors:
+      result.assignment = nil
+      #result.destructor = nil
+      result.sink = nil
+
+template typeBound(c, newty, oldty, field, info) =
+  let opr = newty.field
+  if opr != nil and sfFromGeneric notin opr.flags:
+    # '=' needs to be instantiated for generics when the type is constructed:
+    newty.field = c.instTypeBoundOp(c, opr, oldty, info, attachedAsgn, 1)
 
 proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   # tyGenericInvocation[A, tyGenericInvocation[A, B]]
@@ -357,16 +368,10 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
         assert newbody.kind in {tyRef, tyPtr}
         assert newbody.lastSon.typeInst == nil
         newbody.lastSon.typeInst = result
-    template typeBound(field) =
-      let opr = newbody.field
-      if opr != nil and sfFromGeneric notin opr.flags:
-        # '=' needs to be instantiated for generics when the type is constructed:
-        newbody.field = cl.c.instTypeBoundOp(cl.c, opr, result, cl.info,
-                                             attachedAsgn, 1)
     if newDestructors:
-      typeBound(destructor)
-      typeBound(sink)
-    typeBound(assignment)
+      cl.c.typesWithOps.add((newbody, result))
+    else:
+      typeBound(cl.c, newbody, result, assignment, cl.info)
     let methods = skipTypes(bbody, abstractPtrs).methods
     for col, meth in items(methods):
       # we instantiate the known methods belonging to that type, this causes
@@ -533,6 +538,17 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
         skipIntLiteralParams(result)
 
       else: discard
+
+proc instAllTypeBoundOp*(c: PContext, info: TLineInfo) =
+  if not newDestructors: return
+  var i = 0
+  while i < c.typesWithOps.len:
+    let (newty, oldty) = c.typesWithOps[i]
+    typeBound(c, newty, oldty, destructor, info)
+    typeBound(c, newty, oldty, sink, info)
+    typeBound(c, newty, oldty, assignment, info)
+    inc i
+  setLen(c.typesWithOps, 0)
 
 proc initTypeVars*(p: PContext, typeMap: ptr LayeredIdTable, info: TLineInfo;
                    owner: PSym): TReplTypeVars =

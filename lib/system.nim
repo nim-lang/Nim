@@ -285,6 +285,13 @@ proc low*(x: string): int {.magic: "Low", noSideEffect.}
   ##  low(2) #=> -9223372036854775808
   ##  low(int) #=> -9223372036854775808
 
+proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
+  ## use this instead of `=` for a `shallow copy`:idx:. The shallow copy
+  ## only changes the semantics for sequences and strings (and types which
+  ## contain those). Be careful with the changed semantics though! There
+  ## is a reason why the default assignment does a deep copy of sequences
+  ## and strings.
+
 when defined(nimArrIdx):
   # :array|openarray|string|seq|cstring|tuple
   proc `[]`*[I: Ordinal;T](a: T; i: I): T {.
@@ -293,10 +300,10 @@ when defined(nimArrIdx):
     x: S) {.noSideEffect, magic: "ArrPut".}
   proc `=`*[T](dest: var T; src: T) {.noSideEffect, magic: "Asgn".}
   when defined(nimNewRuntime):
-    template `=destroy`*[T](x: var T) =
+    proc `=destroy`*[T](x: var T) {.inline, magic: "Asgn".} =
       ## generic `destructor`:idx: implementation that can be overriden.
       discard
-    template `=sink`*[T](x: var T; y: T) =
+    proc `=sink`*[T](x: var T; y: T) {.inline, magic: "Asgn".} =
       ## generic `sink`:idx: implementation that can be overriden.
       shallowCopy(x, y)
 
@@ -1436,7 +1443,8 @@ when defined(nimdoc):
     ## <#GC_fullCollect>`_.
     ##
     ## The proc ``quit(QuitSuccess)`` is called implicitly when your nim
-    ## program finishes without incident. A raised unhandled exception is
+    ## program finishes without incident for platforms where this is the
+    ## expected behavior. A raised unhandled exception is
     ## equivalent to calling ``quit(QuitFailure)``.
     ##
     ## Note that this is a *runtime* call and using ``quit`` inside a macro won't
@@ -1486,13 +1494,6 @@ proc add *[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
   let xl = x.len
   setLen(x, xl + y.len)
   for i in 0..high(y): x[xl+i] = y[i]
-
-proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
-  ## use this instead of `=` for a `shallow copy`:idx:. The shallow copy
-  ## only changes the semantics for sequences and strings (and types which
-  ## contain those). Be careful with the changed semantics though! There
-  ## is a reason why the default assignment does a deep copy of sequences
-  ## and strings.
 
 proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## deletes the item at index `i` by putting ``x[high(x)]`` into position `i`.

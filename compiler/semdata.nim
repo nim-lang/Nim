@@ -132,6 +132,11 @@ type
     recursiveDep*: string
     suggestionsMade*: bool
     inTypeContext*: int
+    typesWithOps*: seq[(PType, PType)] #\
+      # We need to instantiate the type bound ops lazily after
+      # the generic type has been constructed completely. See
+      # tests/destructor/topttree.nim for an example that
+      # would otherwise fail.
 
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
   result.genericSym = s
@@ -219,6 +224,7 @@ proc newContext*(graph: ModuleGraph; module: PSym; cache: IdentCache): PContext 
   result.cache = cache
   result.graph = graph
   initStrTable(result.signatures)
+  result.typesWithOps = @[]
 
 
 proc inclSym(sq: var TSymSeq, s: PSym) =

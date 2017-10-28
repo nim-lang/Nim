@@ -142,10 +142,11 @@ The method call syntax conflicts with explicit generic instantiations:
 parsed as ``(x.p)[T]``.
 
 **Future directions**: ``p[.T.]`` might be introduced as an alternative syntax
-to pass explict types to a generic and then ``x.p[.T.]`` can be parsed as
+to pass explicit types to a generic and then ``x.p[.T.]`` can be parsed as
 ``x.(p[.T.])``.
 
-See also: `Limitations of the method call syntax`_.
+See also: `Limitations of the method call syntax
+<#templates-limitations-of-the-method-call-syntax>`_.
 
 
 Properties
@@ -178,7 +179,7 @@ different; for this a special setter syntax is needed:
 Command invocation syntax
 -------------------------
 
-Routines can be invoked without the ``()`` if the call is syntatically
+Routines can be invoked without the ``()`` if the call is syntactically
 a statement. This command invocation syntax also works for
 expressions, but then only a single argument may follow. This restriction
 means ``echo f 1, f 2`` is parsed as ``echo(f(1), f(2))`` and not as

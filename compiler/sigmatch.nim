@@ -224,7 +224,8 @@ proc complexDisambiguation(a, b: PType): int =
     let x = a.sons[i].sumGeneric
     let y = b.sons[i].sumGeneric
     #if ggDebug:
-    #  echo "came her ", typeToString(a.sons[i]), " ", typeToString(b.sons[i])
+    #echo "came herA ", typeToString(a.sons[i]), " ", x
+    #echo "came herB ", typeToString(b.sons[i]), " ", y
     if x != y:
       if winner == 0:
         if x > y: winner = 1
@@ -1451,8 +1452,13 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
   of tyOr:
     considerPreviousT:
       result = isNone
+      let oldInheritancePenalty = c.inheritancePenalty
+      var maxInheritance = 0
       for branch in f.sons:
+        c.inheritancePenalty = 0
         let x = typeRel(c, branch, aOrig)
+        maxInheritance = max(maxInheritance, c.inheritancePenalty)
+
         # 'or' implies maximum matching result:
         if x > result: result = x
       if result >= isSubtype:
@@ -1460,6 +1466,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
         bindingRet result
       else:
         result = isNone
+      c.inheritancePenalty = oldInheritancePenalty + maxInheritance
 
   of tyNot:
     considerPreviousT:
@@ -1550,11 +1557,19 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
           result = isNone
       else:
         if f.sonsLen > 0 and f.sons[0].kind != tyNone:
+          let oldInheritancePenalty = c.inheritancePenalty
           result = typeRel(c, f.lastSon, a, flags + {trDontBind})
           if doBind and result notin {isNone, isGeneric}:
             let concrete = concreteType(c, a)
             if concrete == nil: return isNone
             put(c, f, concrete)
+          # bug #6526
+          if result in {isEqual, isSubtype}:
+            # 'T: Class' is a *better* match than just 'T'
+            # but 'T: Subclass' is even better:
+            c.inheritancePenalty = oldInheritancePenalty - c.inheritancePenalty -
+                                  100 * ord(result == isEqual)
+            result = isGeneric
         else:
           result = isGeneric
 
@@ -2288,7 +2303,8 @@ proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
     localError(info, errGenerated, "cannot instantiate '" & dc.name.s & "'")
   else:
     result = c.semGenerateInstance(c, dc, m.bindings, info)
-    assert sfFromGeneric in result.flags
+    if op == attachedDeepCopy:
+      assert sfFromGeneric in result.flags
 
 include suggest
 

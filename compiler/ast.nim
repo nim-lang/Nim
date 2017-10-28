@@ -1036,9 +1036,9 @@ proc newNode*(kind: TNodeKind): PNode =
   new(result)
   result.kind = kind
   #result.info = UnknownLineInfo() inlined:
-  result.info.fileIndex = int32(- 1)
-  result.info.col = int16(- 1)
-  result.info.line = int16(- 1)
+  result.info.fileIndex = int32(-1)
+  result.info.col = int16(-1)
+  result.info.line = int16(-1)
   when defined(useNodeIds):
     result.id = gNodeId
     if result.id == nodeIdToDebug:
@@ -1420,7 +1420,7 @@ proc propagateToOwner*(owner, elem: PType) =
     owner.flags.incl tfHasMeta
 
   if tfHasAsgn in elem.flags:
-    let o2 = elem.skipTypes({tyGenericInst, tyAlias})
+    let o2 = owner.skipTypes({tyGenericInst, tyAlias})
     if o2.kind in {tyTuple, tyObject, tyArray,
                    tySequence, tyOpt, tySet, tyDistinct}:
       o2.flags.incl tfHasAsgn
