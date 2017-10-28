@@ -476,6 +476,7 @@ type
   TFileInfo* = object
     fullPath: string           # This is a canonical full filesystem path
     projPath*: string          # This is relative to the project's root
+    path*: string              # The original path when it was first encountered
     shortName*: string         # short name of the module
     quotedName*: Rope          # cached quoted short name for codegen
                                # purposes
@@ -566,7 +567,8 @@ proc makeCString*(s: string): Rope =
   add(result, rope(res))
 
 
-proc newFileInfo(fullPath, projPath: string): TFileInfo =
+proc newFileInfo(path, fullPath, projPath: string): TFileInfo =
+  result.path = path
   result.fullPath = fullPath
   #shallow(result.fullPath)
   result.projPath = projPath
@@ -606,8 +608,8 @@ proc fileInfoIdx*(filename: string; isKnownFile: var bool): int32 =
   else:
     isKnownFile = false
     result = fileInfos.len.int32
-    fileInfos.add(newFileInfo(canon, if pseudoPath: filename
-                                     else: canon.shortenDir))
+    fileInfos.add(newFileInfo(filename, canon, if pseudoPath: filename
+                                     else: filename.shortenDir))
     filenameToIndexTbl[canon] = result
 
 proc fileInfoIdx*(filename: string): int32 =
@@ -622,10 +624,10 @@ proc newLineInfo*(fileInfoIdx: int32, line, col: int): TLineInfo =
 proc newLineInfo*(filename: string, line, col: int): TLineInfo {.inline.} =
   result = newLineInfo(filename.fileInfoIdx, line, col)
 
-fileInfos.add(newFileInfo("", "command line"))
+fileInfos.add(newFileInfo("", "", "command line"))
 var gCmdLineInfo* = newLineInfo(int32(0), 1, 1)
 
-fileInfos.add(newFileInfo("", "compilation artifact"))
+fileInfos.add(newFileInfo("", "", "compilation artifact"))
 var gCodegenLineInfo* = newLineInfo(int32(1), 1, 1)
 
 proc raiseRecoverableError*(msg: string) {.noinline, noreturn.} =
@@ -713,6 +715,10 @@ proc toFullPath*(fileIdx: int32): string =
   if fileIdx < 0: result = "???"
   else: result = fileInfos[fileIdx].fullPath
 
+proc toPath*(fileIdx: int32): string =
+  if fileIdx < 0: result = "???"
+  else: result = fileInfos[fileIdx].path
+
 proc setDirtyFile*(fileIdx: int32; filename: string) =
   assert fileIdx >= 0
   fileInfos[fileIdx].dirtyFile = filename
@@ -730,6 +736,9 @@ template toFilename*(info: TLineInfo): string =
 
 template toFullPath*(info: TLineInfo): string =
   info.fileIndex.toFullPath
+
+template toPath*(info: TLineInfo): string =
+  info.fileIndex.toPath
 
 proc toMsgFilename*(info: TLineInfo): string =
   if info.fileIndex < 0:
