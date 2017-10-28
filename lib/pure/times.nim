@@ -126,15 +126,13 @@ type
     yearday*: YeardayRange    ## The number of days since January 1,
                               ## in the range 0 to 365.
     isDst*: bool              ## Determines whether DST is in effect.
-                              ## Semantically, this adds another negative hour
-                              ## offset to the time in addition to the timezone.
+                              ## Always false for the JavaScript backend.
     timezone*: Timezone       # FIXME: add comment
     
-    utcOffset*: int           ## The offset of the (non-DST) timezone in seconds
-                              ## west of UTC. Note that the sign of this number
-                              ## is the opposite of the one in a formatted
-                              ## timezone string like ``+01:00`` (which would be
-                              ## parsed into the timezone ``-3600``).
+    utcOffset*: int           ## The offset in seconds west of UTC, including any offset due to DST.
+                              ## Note that the sign of this number is the opposite
+                              ## of the one in a formatted timezone string like ``+01:00``
+                              ## (which would be parsed into the timezone ``-3600``).
 
   TimeInterval* = object ## Represents a duration of time. Can be used to add and subtract
                          ## from a ``TimeInfo`` or ``Time``.
@@ -145,6 +143,9 @@ type
     days*: int        ## The number of days
     months*: int      ## The number of months
     years*: int       ## The number of years
+
+  TimezoneKind* = enum
+    Utc, Local
 
   Timezone* = object ## Timezone interface for supporting ``TimeInfo``'s of arbritary timezones.
                      ## The ``times`` module only supplies implementations for the systems local time and UTC.
@@ -173,11 +174,11 @@ const
   secondsInDay = 60*60*24
   minutesInHour = 60
 
-# Forward declares
-proc getZonedUtc(self: Timezone, time: Time): TimeInfo {.nimcall, tags: [TimeEffect], raises: [], benign .}
-proc normalizeUtc(self: Timezone, ti: TimeInfo): TimeInfo {.nimcall, tags: [TimeEffect], raises: [], benign .}
-proc getZonedLocal(self: Timezone, t: Time): TimeInfo {.nimcall, tags: [TimeEffect], raises: [], benign .}
-proc normalizeLocal(self: Timezone, ti: TimeInfo): TimeInfo {.nimcall, tags: [TimeEffect], raises: [], benign .}
+# Forward declarations
+proc getZonedUtc(self: Timezone, time: Time): TimeInfo {.tags: [TimeEffect], raises: [], benign .}
+proc normalizeUtc(self: Timezone, ti: TimeInfo): TimeInfo {.tags: [TimeEffect], raises: [], benign .}
+proc getZonedLocal(self: Timezone, t: Time): TimeInfo {.tags: [TimeEffect], raises: [], benign .}
+proc normalizeLocal(self: Timezone, ti: TimeInfo): TimeInfo {.tags: [TimeEffect], raises: [], benign .}
 proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int): YeardayRange
 proc toTime*(timeInfo: TimeInfo): Time {.tags: [TimeEffect], raises: [], benign.}
   ## Converts a broken-down time structure to
@@ -222,13 +223,10 @@ proc `==`*(a, b: Time): bool {.
 proc inZone*(time: Time, zone: Timezone): TimeInfo {.tags: [TimeEffect], raises: [], benign.} =
   # FIXME: add comment
   result = zone.getZoned(zone, time)
-  
+
 proc inZone*(d: TimeInfo, zone: Timezone): TimeInfo  {.tags: [TimeEffect], raises: [], benign.} =
   # FIXME: add comment  
-  if d.timezone != zone:
-    result = d.toTime.inZone(zone)
-  else:
-    result = d
+  d.toTime.inZone(zone)
 
 proc normalize(d: TimeInfo, zone: Timezone): TimeInfo =
   result = zone.normalize(zone, d)
@@ -378,9 +376,12 @@ proc normalizeUtc(self: Timezone, ti: TimeInfo): TimeInfo =
   tiUtc.isDst = false
   return ti.toTime.inZone(self)
 
-let Utc* = Timezone(getZoned: getZonedUtc, normalize: normalizeUtc, name: "UTC") ## Represents the UTC timezone.
-
-let Local* = Timezone(getZoned: getZonedLocal, normalize: normalizeLocal, name: "LOCAL") ## Represents the systems local timezone.
+converter toTimezone*(kind: TimezoneKind): Timezone =
+  case kind
+  of Utc:
+    result = Timezone(getZoned: getZonedUtc, normalize: normalizeUtc, name: "UTC")
+  of Local:
+    result = Timezone(getZoned: getZonedLocal, normalize: normalizeLocal, name: "LOCAL")
 
 proc getTime*(): Time {.tags: [TimeEffect], benign.}
   ## Gets the current calendar time as a UNIX epoch value (number of seconds
