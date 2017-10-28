@@ -155,7 +155,7 @@ proc ensureNoMissingOrUnusedSymbols(scope: PScope) =
   var s = initTabIter(it, scope.symbols)
   var missingImpls = 0
   while s != nil:
-    if sfForward in s.flags:
+    if sfForward in s.flags and s.kind != skType:
       # too many 'implementation of X' errors are annoying
       # and slow 'suggest' down:
       if missingImpls == 0:

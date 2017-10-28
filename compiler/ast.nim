@@ -1668,5 +1668,5 @@ template hasDestructor*(t: PType): bool = tfHasAsgn in t.flags
 template incompleteType*(t: PType): bool =
   t.sym != nil and {sfForward, sfNoForward} * t.sym.flags == {sfForward}
 
-template typeCompleted*(t: PType) =
-  incl t.sym.flags, sfNoForward
+template typeCompleted*(s: PSym) =
+  incl s.flags, sfNoForward

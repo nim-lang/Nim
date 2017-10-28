@@ -775,21 +775,52 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
     checkSonsLen(a, 3)
     let name = a.sons[0]
     var s: PSym
-    if name.kind == nkDotExpr:
-      s = qualifiedLookUp(c, name, {checkUndeclared, checkModule})
-      if s.kind != skType or
-         s.typ.skipTypes(abstractPtrs).kind != tyObject or
-         tfPartial notin s.typ.skipTypes(abstractPtrs).flags:
-        localError(name.info, "only .partial objects can be extended")
+    if name.kind == nkDotExpr and a[2].kind == nkObjectTy:
+      let pkgName = considerQuotedIdent(name[0])
+      let typName = considerQuotedIdent(name[1])
+      let pkg = c.graph.packageSyms.strTableGet(pkgName)
+      if pkg.isNil or pkg.kind != skPackage:
+        localError(name.info, "unknown package name: " & pkgName.s)
+      else:
+        let typsym = pkg.tab.strTableGet(typName)
+        if typsym.isNil:
+          s = semIdentDef(c, name[1], skType)
+          s.typ = newTypeS(tyObject, c)
+          s.typ.sym = s
+          s.flags.incl sfForward
+          pkg.tab.strTableAdd s
+          addInterfaceDecl(c, s)
+        elif typsym.kind == skType and sfForward in typsym.flags:
+          s = typsym
+          addInterfaceDecl(c, s)
+        else:
+          localError(name.info, typsym.name.s & " is not a type that can be forwarded")
+          s = typsym
+      when false:
+        s = qualifiedLookUp(c, name, {checkUndeclared, checkModule})
+        if s.kind != skType or
+          s.typ.skipTypes(abstractPtrs).kind != tyObject or
+          tfPartial notin s.typ.skipTypes(abstractPtrs).flags:
+          localError(name.info, "only .partial objects can be extended")
     else:
       s = semIdentDef(c, name, skType)
       s.typ = newTypeS(tyForward, c)
       s.typ.sym = s             # process pragmas:
       if name.kind == nkPragmaExpr:
         pragma(c, s, name.sons[1], typePragmas)
-        if sfForward in s.flags: strTableAdd(c.graph.forwardedTypes, s)
+      if sfForward in s.flags:
+        # check if the symbol already exists:
+        let pkg = c.module.owner
+        if not isTopLevel(c) or pkg.isNil:
+          localError(name.info, "only top level types in a package can be 'forward'")
+        else:
+          let typsym = pkg.tab.strTableGet(s.name)
+          if typsym != nil:
+            typeCompleted(typsym)
+            s = typsym
       # add it here, so that recursive types are possible:
       if sfGenSym notin s.flags: addInterfaceDecl(c, s)
+
     a.sons[0] = newSymNode(s)
 
 proc checkCovariantParamsUsages(genericType: PType) =
