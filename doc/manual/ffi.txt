@@ -206,7 +206,7 @@ strings, because they are precompiled.
 **Note**: Passing variables to the ``dynlib`` pragma will fail at runtime
 because of order of initialization problems.
 
-**Note**: A ``dynlib`` import can be overriden with
+**Note**: A ``dynlib`` import can be overridden with
 the ``--dynlibOverride:name`` command line option. The Compiler User Guide
 contains further information.
 

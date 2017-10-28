@@ -105,7 +105,7 @@ From import statement
 ~~~~~~~~~~~~~~~~~~~~~
 
 After the ``from`` statement a module name follows followed by
-an ``import`` to list the symbols one likes to use without explict
+an ``import`` to list the symbols one likes to use without explicit
 full qualification:
 
 .. code-block:: nim
@@ -123,7 +123,7 @@ in ``module``.
 Export statement
 ~~~~~~~~~~~~~~~~
 
-An ``export`` statement can be used for symbol fowarding so that client
+An ``export`` statement can be used for symbol forwarding so that client
 modules don't need to import a module's dependencies:
 
 .. code-block:: nim

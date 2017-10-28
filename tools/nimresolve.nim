@@ -127,7 +127,9 @@ proc resolve(t: Task) =
 
     when considerNimbleDirs:
       if not t.noNimblePath:
-        if findInNimbleDir(t, getHomeDir() / ".nimble" / "pkgs"): return
+        var nimbleDir = getEnv("NIMBLE_DIR")
+        if nimbleDir.len == 0: nimbleDir = getHomeDir() / ".nimble"
+        if findInNimbleDir(t, nimbleDir / "pkgs"): return
         when not defined(windows):
           if findInNimbleDir(t, "/opt/nimble/pkgs"): return
 

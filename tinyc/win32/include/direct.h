@@ -1,95 +1,68 @@
-/*
- * direct.h
- *
- * Functions for manipulating paths and directories (included from io.h)
- * plus functions for setting the current drive.
- *
- * This file is part of the Mingw32 package.
- *
- * Contributors:
- *  Created by Colin Peters <colin@bird.fu.is.saga-u.ac.jp>
- *
- *  THIS SOFTWARE IS NOT COPYRIGHTED
- *
- *  This source code is offered for use in the public domain. You may
- *  use, modify or distribute it freely.
- *
- *  This code is distributed in the hope that it will be useful but
- *  WITHOUT ANY WARRANTY. ALL WARRANTIES, EXPRESS OR IMPLIED ARE HEREBY
- *  DISCLAIMED. This includes but is not limited to warranties of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- *
- * $Revision: 1.2 $
- * $Author: bellard $
- * $Date: 2005/04/17 13:14:29 $
- *
+/**
+ * This file has no copyright assigned and is placed in the Public Domain.
+ * This file is part of the w64 mingw-runtime package.
+ * No warranty is given; refer to the file DISCLAIMER within this package.
  */
+#ifndef _INC_DIRECT
+#define _INC_DIRECT
 
-#ifndef __STRICT_ANSI__
-
-#ifndef	_DIRECT_H_
-#define	_DIRECT_H_
-
-/* All the headers include this file. */
 #include <_mingw.h>
-
-#define __need_wchar_t
-#ifndef RC_INVOKED
-#include <stddef.h>
-#endif	/* Not RC_INVOKED */
-
 #include <io.h>
 
-#ifndef RC_INVOKED
+#pragma pack(push,_CRT_PACKING)
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
 #ifndef _DISKFREE_T_DEFINED
-/* needed by _getdiskfree (also in dos.h) */
-struct _diskfree_t {
-	unsigned total_clusters;
-	unsigned avail_clusters;
-	unsigned sectors_per_cluster;
-	unsigned bytes_per_sector;
-};
 #define _DISKFREE_T_DEFINED
-#endif  
+  struct _diskfree_t {
+    unsigned total_clusters;
+    unsigned avail_clusters;
+    unsigned sectors_per_cluster;
+    unsigned bytes_per_sector;
+  };
+#endif
 
-/*
- * You really shouldn't be using these. Use the Win32 API functions instead.
- * However, it does make it easier to port older code.
- */
-int	_getdrive (void);
-unsigned long _getdrives(void);
-int	_chdrive (int);
-char*	_getdcwd (int, char*, int);
-unsigned _getdiskfree (unsigned, struct _diskfree_t *);
+  _CRTIMP char *__cdecl _getcwd(char *_DstBuf,int _SizeInBytes);
+  _CRTIMP char *__cdecl _getdcwd(int _Drive,char *_DstBuf,int _SizeInBytes);
+  char *__cdecl _getdcwd_nolock(int _Drive,char *_DstBuf,int _SizeInBytes);
+  _CRTIMP int __cdecl _chdir(const char *_Path);
+  _CRTIMP int __cdecl _mkdir(const char *_Path);
+  _CRTIMP int __cdecl _rmdir(const char *_Path);
+  _CRTIMP int __cdecl _chdrive(int _Drive);
+  _CRTIMP int __cdecl _getdrive(void);
+  _CRTIMP unsigned long __cdecl _getdrives(void);
 
-#ifndef	_NO_OLDNAMES
-# define diskfree_t _diskfree_t
+#ifndef _GETDISKFREE_DEFINED
+#define _GETDISKFREE_DEFINED
+  _CRTIMP unsigned __cdecl _getdiskfree(unsigned _Drive,struct _diskfree_t *_DiskFree);
 #endif
 
 #ifndef _WDIRECT_DEFINED
-/* wide character versions. Also in wchar.h */
-#ifdef __MSVCRT__ 
-int _wchdir(const wchar_t*);
-wchar_t* _wgetcwd(wchar_t*, int);
-wchar_t* _wgetdcwd(int, wchar_t*, int);
-int _wmkdir(const wchar_t*);
-int _wrmdir(const wchar_t*);
-#endif	/* __MSVCRT__ */
 #define _WDIRECT_DEFINED
+  _CRTIMP wchar_t *__cdecl _wgetcwd(wchar_t *_DstBuf,int _SizeInWords);
+  _CRTIMP wchar_t *__cdecl _wgetdcwd(int _Drive,wchar_t *_DstBuf,int _SizeInWords);
+  wchar_t *__cdecl _wgetdcwd_nolock(int _Drive,wchar_t *_DstBuf,int _SizeInWords);
+  _CRTIMP int __cdecl _wchdir(const wchar_t *_Path);
+  _CRTIMP int __cdecl _wmkdir(const wchar_t *_Path);
+  _CRTIMP int __cdecl _wrmdir(const wchar_t *_Path);
 #endif
 
-#ifdef	__cplusplus
+#ifndef	NO_OLDNAMES
+
+#define diskfree_t _diskfree_t
+
+  char *__cdecl getcwd(char *_DstBuf,int _SizeInBytes);
+  int __cdecl chdir(const char *_Path);
+  int __cdecl mkdir(const char *_Path);
+  int __cdecl rmdir(const char *_Path);
+#endif
+
+#ifdef __cplusplus
 }
 #endif
 
-#endif	/* Not RC_INVOKED */
-
-#endif	/* Not _DIRECT_H_ */
-
-#endif	/* Not __STRICT_ANSI__ */
-
+#pragma pack(pop)
+#endif

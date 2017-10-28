@@ -114,7 +114,8 @@ if the literal's value fits this smaller type and such a conversion is less
 expensive than other implicit conversions, so ``myInt16 + 34`` produces
 an ``int16`` result.
 
-For further details, see `Convertible relation`_.
+For further details, see `Convertible relation
+<#type-relations-convertible-relation>`_.
 
 
 Subrange types
