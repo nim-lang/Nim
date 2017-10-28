@@ -15,6 +15,7 @@ import
   condsyms, idents, renderer, types, extccomp, math, magicsys, nversion,
   nimsets, syntaxes, times, rodread, idgen, modulegraphs, reorder
 
+
 type
   TPassContext* = object of RootObj # the pass's context
     fromCache*: bool  # true if created by "openCached"
@@ -211,7 +212,7 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream,
             if n.kind == nkEmpty: break
             sl.add n
           if sfReorder in module.flags:
-            sl = reorder sl
+            sl = reorder(graph, sl, module, cache)
           discard processTopLevelStmt(sl, a)
           break
         elif not processTopLevelStmt(n, a): break
