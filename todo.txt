@@ -1,8 +1,7 @@
 version 1.0 battle plan
 =======================
 
-- make nimresolve part of the Nim compiler and add support for
-  'import staticExec()'
+- make FlowVar compatible to Futures
 - remove 'mod x' type rule
 - implement x[^1] differently, no compiler magic
 - fix "high priority" bugs

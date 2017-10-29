@@ -27,7 +27,7 @@ proc sameMethodDispatcher(a, b: PSym): bool =
       # method collide[T](a: TThing, b: TUnit[T]) is instantiated and not
       # method collide[T](a: TUnit[T], b: TThing)! This means we need to
       # *instantiate* every candidate! However, we don't keep more than 2-3
-      # candidated around so we cannot implement that for now. So in order
+      # candidates around so we cannot implement that for now. So in order
       # to avoid subtle problems, the call remains ambiguous and needs to
       # be disambiguated by the programmer; this way the right generic is
       # instantiated.
