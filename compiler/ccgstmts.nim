@@ -235,7 +235,7 @@ proc genSingleVar(p: BProc, a: PNode) =
         var params: Rope
         let typ = skipTypes(value.sons[0].typ, abstractInst)
         assert(typ.kind == tyProc)
-        for i in 1.. <value.len:
+        for i in 1..<value.len:
           if params != nil: params.add(~", ")
           assert(sonsLen(typ) == sonsLen(typ.n))
           add(params, genOtherArg(p, value, i, typ))
@@ -386,7 +386,7 @@ proc genReturnStmt(p: BProc, t: PNode) =
   lineF(p, cpsStmts, "goto BeforeRet_;$n", [])
 
 proc genGotoForCase(p: BProc; caseStmt: PNode) =
-  for i in 1 .. <caseStmt.len:
+  for i in 1 ..< caseStmt.len:
     startBlock(p)
     let it = caseStmt.sons[i]
     for j in 0 .. it.len-2:
@@ -402,7 +402,7 @@ proc genComputedGoto(p: BProc; n: PNode) =
   # first pass: Generate array of computed labels:
   var casePos = -1
   var arraySize: int
-  for i in 0 .. <n.len:
+  for i in 0 ..< n.len:
     let it = n.sons[i]
     if it.kind == nkCaseStmt:
       if lastSon(it).kind != nkOfBranch:
@@ -432,7 +432,7 @@ proc genComputedGoto(p: BProc; n: PNode) =
   let oldBody = p.blocks[topBlock].sections[cpsStmts]
   p.blocks[topBlock].sections[cpsStmts] = nil
 
-  for j in casePos+1 .. <n.len: genStmts(p, n.sons[j])
+  for j in casePos+1 ..< n.len: genStmts(p, n.sons[j])
   let tailB = p.blocks[topBlock].sections[cpsStmts]
 
   p.blocks[topBlock].sections[cpsStmts] = nil
@@ -447,7 +447,7 @@ proc genComputedGoto(p: BProc; n: PNode) =
   # first goto:
   lineF(p, cpsStmts, "goto *$#[$#];$n", [tmp, a.rdLoc])
 
-  for i in 1 .. <caseStmt.len:
+  for i in 1 ..< caseStmt.len:
     startBlock(p)
     let it = caseStmt.sons[i]
     for j in 0 .. it.len-2:
@@ -457,7 +457,7 @@ proc genComputedGoto(p: BProc; n: PNode) =
       let val = getOrdValue(it.sons[j])
       lineF(p, cpsStmts, "TMP$#_:$n", [intLiteral(val+id+1)])
     genStmts(p, it.lastSon)
-    #for j in casePos+1 .. <n.len: genStmts(p, n.sons[j]) # tailB
+    #for j in casePos+1 ..< n.len: genStmts(p, n.sons[j]) # tailB
     #for j in 0 .. casePos-1: genStmts(p, n.sons[j])  # tailA
     add(p.s(cpsStmts), tailB)
     add(p.s(cpsStmts), tailA)
@@ -744,7 +744,7 @@ proc genOrdinalCase(p: BProc, n: PNode, d: var TLoc) =
   if splitPoint+1 < n.len:
     lineF(p, cpsStmts, "switch ($1) {$n", [rdCharLoc(a)])
     var hasDefault = false
-    for i in splitPoint+1 .. < n.len:
+    for i in splitPoint+1 ..< n.len:
       # bug #4230: avoid false sharing between branches:
       if d.k == locTemp and isEmptyType(n.typ): d.k = locNone
       var branch = n[i]

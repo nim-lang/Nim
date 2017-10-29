@@ -809,7 +809,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
       var chunkStart = 0
       while i < cppName.data.len:
         if cppName.data[i] == '\'':
-          var chunkEnd = <i
+          var chunkEnd = i-1
           var idx, stars: int
           if scanCppGenericSlot(cppName.data, i, idx, stars):
             result.add cppName.data.substr(chunkStart, chunkEnd)

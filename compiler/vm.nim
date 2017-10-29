@@ -322,7 +322,7 @@ proc opConv*(dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType): bool =
       if x <% n.len and (let f = n.sons[x].sym; f.position == x):
         dest.node.strVal = if f.ast.isNil: f.name.s else: f.ast.strVal
       else:
-        for i in 0.. <n.len:
+        for i in 0..<n.len:
           if n.sons[i].kind != nkSym: internalError("opConv for enum")
           let f = n.sons[i].sym
           if f.position == x:
@@ -431,7 +431,7 @@ proc setLenSeq(c: PCtx; node: PNode; newLen: int; info: TLineInfo) =
   setLen(node.sons, newLen)
   if oldLen < newLen:
     # TODO: This is still not correct for tyPtr, tyRef default value
-    for i in oldLen .. <newLen:
+    for i in oldLen ..< newLen:
       node.sons[i] = newNodeI(typeKind, info)
 
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
@@ -1078,7 +1078,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].node = newNodeI(nkBracket, c.debug[pc])
       regs[ra].node.typ = typ
       newSeq(regs[ra].node.sons, count)
-      for i in 0 .. <count:
+      for i in 0 ..< count:
         regs[ra].node.sons[i] = getNullValue(typ.sons[0], c.debug[pc])
     of opcNewStr:
       decodeB(rkNode)
@@ -1213,7 +1213,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       var u = regs[rb].node
       if u.kind notin {nkEmpty..nkNilLit}:
         # XXX can be optimized:
-        for i in 0.. <x.len: u.add(x.sons[i])
+        for i in 0..<x.len: u.add(x.sons[i])
       else:
         stackTrace(c, tos, pc, errGenerated, "cannot add to node kind: " & $u.kind)
       regs[ra].node = u
@@ -1555,7 +1555,7 @@ proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
       if not isEmptyType(sym.typ.sons[0]) or sym.kind == skMacro:
         putIntoReg(tos.slots[0], getNullValue(sym.typ.sons[0], sym.info))
       # XXX We could perform some type checking here.
-      for i in 1.. <sym.typ.len:
+      for i in 1..<sym.typ.len:
         putIntoReg(tos.slots[i], args[i-1])
 
       result = rawExecute(c, start, tos).regToNode
@@ -1637,7 +1637,7 @@ proc evalConstExprAux(module: PSym; cache: IdentCache; prc: PSym, n: PNode,
   when debugEchoCode: c.echoCode start
   var tos = PStackFrame(prc: prc, comesFrom: 0, next: nil)
   newSeq(tos.slots, c.prc.maxSlots)
-  #for i in 0 .. <c.prc.maxSlots: tos.slots[i] = newNode(nkEmpty)
+  #for i in 0 ..< c.prc.maxSlots: tos.slots[i] = newNode(nkEmpty)
   result = rawExecute(c, start, tos).regToNode
   if result.info.line < 0: result.info = n.info
 
@@ -1670,7 +1670,7 @@ proc setupMacroParam(x: PNode, typ: PType): TFullReg =
 
 iterator genericParamsInMacroCall*(macroSym: PSym, call: PNode): (PSym, PNode) =
   let gp = macroSym.ast[genericParamsPos]
-  for i in 0 .. <gp.len:
+  for i in 0 ..< gp.len:
     let genericParam = gp[i].sym
     let posInCall = macroSym.typ.len + i
     yield (genericParam, call[posInCall])
@@ -1688,8 +1688,7 @@ proc evalMacroCall*(module: PSym; cache: IdentCache, n, nOrig: PNode,
   # arity here too:
   if sym.typ.len > n.safeLen and sym.typ.len > 1:
     globalError(n.info, "in call '$#' got $#, but expected $# argument(s)" % [
-        n.renderTree,
-        $ <n.safeLen, $ <sym.typ.len])
+        n.renderTree, $(n.safeLen-1), $(sym.typ.len-1)])
 
   setupGlobalCtx(module, cache)
   var c = globalCtx
@@ -1713,11 +1712,11 @@ proc evalMacroCall*(module: PSym; cache: IdentCache, n, nOrig: PNode,
   tos.slots[0].node = newNodeI(nkEmpty, n.info)
 
   # setup parameters:
-  for i in 1.. <sym.typ.len:
+  for i in 1..<sym.typ.len:
     tos.slots[i] = setupMacroParam(n.sons[i], sym.typ.sons[i])
 
   let gp = sym.ast[genericParamsPos]
-  for i in 0 .. <gp.len:
+  for i in 0 ..< gp.len:
     if sfImmediate notin sym.flags:
       let idx = sym.typ.len + i
       if idx < n.len:
@@ -1732,7 +1731,7 @@ proc evalMacroCall*(module: PSym; cache: IdentCache, n, nOrig: PNode,
       c.callsite = nil
       globalError(n.info, "static[T] or typedesc nor supported for .immediate macros")
   # temporary storage:
-  #for i in L .. <maxSlots: tos.slots[i] = newNode(nkEmpty)
+  #for i in L ..< maxSlots: tos.slots[i] = newNode(nkEmpty)
   result = rawExecute(c, start, tos).regToNode
   if result.info.line < 0: result.info = n.info
   if cyclicTree(result): globalError(n.info, errCyclicTree)

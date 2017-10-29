@@ -652,13 +652,17 @@ proc sizeof*[T](x: T): int {.magic: "SizeOf", noSideEffect.}
 when defined(nimtypedescfixed):
   proc sizeof*(x: typedesc): int {.magic: "SizeOf", noSideEffect.}
 
-proc `<`*[T](x: Ordinal[T]): T {.magic: "UnaryLt", noSideEffect.}
+proc `<`*[T](x: Ordinal[T]): T {.magic: "UnaryLt", noSideEffect, deprecated.}
   ## unary ``<`` that can be used for nice looking excluding ranges:
   ##
   ## .. code-block:: nim
   ##   for i in 0 .. <10: echo i #=> 0 1 2 3 4 5 6 7 8 9
   ##
   ## Semantically this is the same as ``pred``.
+  ##
+  ## **Deprecated since version 0.18.0**. For the common excluding range
+  ## write ``0 ..< 10`` instead of ``0 .. < 10`` (look at the spacing).
+  ## For ``<x`` write ``pred(x)``.
 
 proc succ*[T](x: Ordinal[T], y = 1): T {.magic: "Succ", noSideEffect.}
   ## returns the ``y``-th successor of the value ``x``. ``T`` has to be
@@ -3410,6 +3414,30 @@ proc `/`*(x, y: int): float {.inline, noSideEffect.} =
   ## integer division that results in a float.
   result = toFloat(x) / toFloat(y)
 
+proc `^`*[T](x: int; y: openArray[T]): int {.noSideEffect, magic: "Roof".}
+proc `^`*(x: int): int {.noSideEffect, magic: "Roof".} =
+  ## builtin `roof`:idx: operator that can be used for convenient array access.
+  ## ``a[^x]`` is rewritten to ``a[a.len-x]``. However currently the ``a``
+  ## expression must not have side effects for this to compile. Note that since
+  ## this is a builtin, it automatically works for all kinds of
+  ## overloaded ``[]`` or ``[]=`` accessors.
+  discard
+
+template `..^`*(a, b: untyped): untyped =
+  ## a shortcut for '.. ^' to avoid the common gotcha that a space between
+  ## '..' and '^' is required.
+  a .. ^b
+
+template `..<`*(a, b: untyped): untyped {.dirty.} =
+  ## a shortcut for 'a..pred(b)'.
+  a .. pred(b)
+
+iterator `..<`*[S,T](a: S, b: T): T =
+  var i = T(a)
+  while i < b:
+    yield i
+    inc i
+
 template spliceImpl(s, a, L, b: untyped): untyped =
   # make room for additional elements or cut:
   var shift = b.len - max(0,L)  # ignore negative slice size
@@ -3423,7 +3451,7 @@ template spliceImpl(s, a, L, b: untyped): untyped =
     # cut down:
     setLen(s, newLen)
   # fill the hole:
-  for i in 0 .. <b.len: s[a+i] = b[i]
+  for i in 0 ..< b.len: s[a+i] = b[i]
 
 when hasAlloc or defined(nimscript):
   proc `[]`*(s: string, x: Slice[int]): string {.inline.} =
@@ -3447,7 +3475,7 @@ when hasAlloc or defined(nimscript):
     var a = x.a
     var L = x.b - a + 1
     if L == b.len:
-      for i in 0 .. <L: s[i+a] = b[i]
+      for i in 0..<L: s[i+a] = b[i]
     else:
       spliceImpl(s, a, L, b)
 
@@ -3462,7 +3490,7 @@ proc `[]`*[Idx, T](a: array[Idx, T], x: Slice[int]): seq[T] =
     {.error: "Slicing for arrays with negative indices is unsupported.".}
   var L = x.b - x.a + 1
   result = newSeq[T](L)
-  for i in 0.. <L: result[i] = a[i + x.a]
+  for i in 0..<L: result[i] = a[i + x.a]
 
 proc `[]=`*[Idx, T](a: var array[Idx, T], x: Slice[int], b: openArray[T]) =
   ## slice assignment for arrays.
@@ -3470,7 +3498,7 @@ proc `[]=`*[Idx, T](a: var array[Idx, T], x: Slice[int], b: openArray[T]) =
     {.error: "Slicing for arrays with negative indices is unsupported.".}
   var L = x.b - x.a + 1
   if L == b.len:
-    for i in 0 .. <L: a[i+x.a] = b[i]
+    for i in 0..<L: a[i+x.a] = b[i]
   else:
     sysFatal(RangeError, "different lengths for slice assignment")
 
@@ -3478,14 +3506,14 @@ proc `[]`*[Idx, T](a: array[Idx, T], x: Slice[Idx]): seq[T] =
   ## slice operation for arrays.
   var L = ord(x.b) - ord(x.a) + 1
   newSeq(result, L)
-  for i in 0.. <L:
+  for i in 0..<L:
     result[i] = a[Idx(ord(x.a) + i)]
 
 proc `[]=`*[Idx, T](a: var array[Idx, T], x: Slice[Idx], b: openArray[T]) =
   ## slice assignment for arrays.
   var L = ord(x.b) - ord(x.a) + 1
   if L == b.len:
-    for i in 0 .. <L:
+    for i in 0..<L:
       a[Idx(ord(x.a) + i)] = b[i]
   else:
     sysFatal(RangeError, "different lengths for slice assignment")
@@ -3500,7 +3528,7 @@ proc `[]`*[T](s: seq[T], x: Slice[int]): seq[T] =
   var a = x.a
   var L = x.b - a + 1
   newSeq(result, L)
-  for i in 0.. <L: result[i] = s[i + a]
+  for i in 0 ..< L: result[i] = s[i + a]
 
 proc `[]=`*[T](s: var seq[T], x: Slice[int], b: openArray[T]) =
   ## slice assignment for sequences. If
@@ -3509,7 +3537,7 @@ proc `[]=`*[T](s: var seq[T], x: Slice[int], b: openArray[T]) =
   var a = x.a
   var L = x.b - a + 1
   if L == b.len:
-    for i in 0 .. <L: s[i+a] = b[i]
+    for i in 0 ..< L: s[i+a] = b[i]
   else:
     spliceImpl(s, a, L, b)
 
@@ -3852,31 +3880,6 @@ proc procCall*(x: untyped) {.magic: "ProcCall", compileTime.} =
   ##   # 'someMethod' will be resolved fully statically:
   ##   procCall someMethod(a, b)
   discard
-
-proc `^`*[T](x: int; y: openArray[T]): int {.noSideEffect, magic: "Roof".}
-proc `^`*(x: int): int {.noSideEffect, magic: "Roof".} =
-  ## builtin `roof`:idx: operator that can be used for convenient array access.
-  ## ``a[^x]`` is rewritten to ``a[a.len-x]``. However currently the ``a``
-  ## expression must not have side effects for this to compile. Note that since
-  ## this is a builtin, it automatically works for all kinds of
-  ## overloaded ``[]`` or ``[]=`` accessors.
-  discard
-
-template `..^`*(a, b: untyped): untyped =
-  ## a shortcut for '.. ^' to avoid the common gotcha that a space between
-  ## '..' and '^' is required.
-  a .. ^b
-
-template `..<`*(a, b: untyped): untyped {.dirty.} =
-  ## a shortcut for '.. <' to avoid the common gotcha that a space between
-  ## '..' and '<' is required.
-  a .. <b
-
-iterator `..<`*[S,T](a: S, b: T): T =
-  var i = T(a)
-  while i < b:
-    yield i
-    inc i
 
 proc xlen*(x: string): int {.magic: "XLenStr", noSideEffect.} = discard
 proc xlen*[T](x: seq[T]): int {.magic: "XLenSeq", noSideEffect.} =

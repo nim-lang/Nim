@@ -742,7 +742,7 @@ proc equalParam(a, b: PSym): TParamsEquality =
 proc sameConstraints(a, b: PNode): bool =
   if isNil(a) and isNil(b): return true
   internalAssert a.len == b.len
-  for i in 1 .. <a.len:
+  for i in 1 ..< a.len:
     if not exprStructuralEquivalent(a[i].sym.constraint,
                                     b[i].sym.constraint):
       return false
@@ -1509,7 +1509,7 @@ proc isCompileTimeOnly*(t: PType): bool {.inline.} =
 proc containsCompileTimeOnly*(t: PType): bool =
   if isCompileTimeOnly(t): return true
   if t.sons != nil:
-    for i in 0 .. <t.sonsLen:
+    for i in 0 ..< t.sonsLen:
       if t.sons[i] != nil and isCompileTimeOnly(t.sons[i]):
         return true
   return false

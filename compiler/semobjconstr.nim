@@ -42,7 +42,7 @@ proc mergeInitStatus(existing: var InitStatus, newStatus: InitStatus) =
 proc locateFieldInInitExpr(field: PSym, initExpr: PNode): PNode =
   # Returns the assignment nkExprColonExpr node or nil
   let fieldId = field.name.id
-  for i in 1 .. <initExpr.len:
+  for i in 1 ..< initExpr.len:
     let assignment = initExpr[i]
     if assignment.kind != nkExprColonExpr:
       localError(initExpr.info, "incorrect object construction syntax")
@@ -145,7 +145,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
     internalAssert discriminator.kind == nkSym
     var selectedBranch = -1
 
-    for i in 1 .. <recNode.len:
+    for i in 1 ..< recNode.len:
       let innerRecords = recNode[i]{-1}
       let status = semConstructFields(c, innerRecords, initExpr, flags)
       if status notin {initNone, initUnknown}:
@@ -220,7 +220,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
         else:
           # All bets are off. If any of the branches has a mandatory
           # fields we must produce an error:
-          for i in 1 .. <recNode.len: checkMissingFields recNode[i]
+          for i in 1 ..< recNode.len: checkMissingFields recNode[i]
 
   of nkSym:
     let field = recNode.sym
@@ -277,7 +277,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # Since we were traversing the object fields, it's possible that
   # not all of the fields specified in the constructor was visited.
   # We'll check for such fields here:
-  for i in 1.. <result.len:
+  for i in 1..<result.len:
     let field = result[i]
     if nfSem notin field.flags:
       if field.kind != nkExprColonExpr:
@@ -286,7 +286,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       let id = considerQuotedIdent(field[0])
       # This node was not processed. There are two possible reasons:
       # 1) It was shadowed by a field with the same name on the left
-      for j in 1 .. <i:
+      for j in 1 ..< i:
         let prevId = considerQuotedIdent(result[j][0])
         if prevId.id == id.id:
           localError(field.info, errFieldInitTwice, id.s)

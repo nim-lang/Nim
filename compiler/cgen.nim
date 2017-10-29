@@ -920,7 +920,7 @@ proc getFileHeader(cfile: Cfile): Rope =
 proc genFilenames(m: BModule): Rope =
   discard cgsym(m, "dbgRegisterFilename")
   result = nil
-  for i in 0.. <fileInfos.len:
+  for i in 0..<fileInfos.len:
     result.addf("dbgRegisterFilename($1);$N", [fileInfos[i].projPath.makeCString])
 
 proc genMainProc(m: BModule) =

@@ -3,7 +3,6 @@ version 1.0 battle plan
 
 - make nimresolve part of the Nim compiler and add support for
   'import staticExec()'
-- deprecate unary '<'
 - remove 'mod x' type rule
 - implement x[^1] differently, no compiler magic
 - fix "high priority" bugs
@@ -24,8 +23,6 @@ Not critical for 1.0
   'static[T]' mess in the compiler!
 - ``not`` or ``~`` for the effects system
 - figure out why C++ bootstrapping is so much slower
-- The bitwise 'not' operator cold be renamed to 'bnot' to
-  prevent 'not 4 == 5' from compiling. -> requires 'mixin' annotation for procs!
 - make 'nil' work for 'add':
   - resizeString
   - incrSeq

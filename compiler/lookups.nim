@@ -39,7 +39,7 @@ proc considerQuotedIdent*(n: PNode, origin: PNode = nil): PIdent =
     of 1: result = considerQuotedIdent(n.sons[0], origin)
     else:
       var id = ""
-      for i in 0.. <n.len:
+      for i in 0..<n.len:
         let x = n.sons[i]
         case x.kind
         of nkIdent: id.add(x.ident.s)

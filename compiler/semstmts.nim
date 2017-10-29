@@ -858,7 +858,7 @@ proc checkCovariantParamsUsages(genericType: PType) =
 
     of tyGenericInvocation:
       let targetBody = t[0]
-      for i in 1 .. <t.len:
+      for i in 1 ..< t.len:
         let param = t[i]
         if param.kind == tyGenericParam:
           if tfCovariant in param.flags:
@@ -1005,7 +1005,7 @@ proc checkForMetaFields(n: PNode) =
     of tySequence, tySet, tyArray, tyOpenArray, tyVar, tyPtr, tyRef,
        tyProc, tyGenericInvocation, tyGenericInst, tyAlias:
       let start = ord(t.kind in {tyGenericInvocation, tyGenericInst})
-      for i in start .. <t.sons.len:
+      for i in start ..< t.sons.len:
         checkMeta(t.sons[i])
     else:
       checkMeta(t)
@@ -1131,7 +1131,7 @@ proc addResultNode(c: PContext, n: PNode) =
 
 proc copyExcept(n: PNode, i: int): PNode =
   result = copyNode(n)
-  for j in 0.. <n.len:
+  for j in 0..<n.len:
     if j != i: result.add(n.sons[j])
 
 proc lookupMacro(c: PContext, n: PNode): PSym =
@@ -1145,7 +1145,7 @@ proc semProcAnnotation(c: PContext, prc: PNode;
                        validPragmas: TSpecialWords): PNode =
   var n = prc.sons[pragmasPos]
   if n == nil or n.kind == nkEmpty: return
-  for i in countup(0, <n.len):
+  for i in countup(0, n.len-1):
     var it = n.sons[i]
     var key = if it.kind == nkExprColonExpr: it.sons[0] else: it
     let m = lookupMacro(c, key)
@@ -1296,7 +1296,7 @@ proc activate(c: PContext, n: PNode) =
     of nkLambdaKinds:
       discard semLambda(c, n, {})
     of nkCallKinds:
-      for i in 1 .. <n.len: activate(c, n[i])
+      for i in 1 ..< n.len: activate(c, n[i])
     else:
       discard
 
@@ -1719,7 +1719,7 @@ proc evalInclude(c: PContext, n: PNode): PNode =
         excl(c.includedFiles, f)
 
 proc setLine(n: PNode, info: TLineInfo) =
-  for i in 0 .. <safeLen(n): setLine(n.sons[i], info)
+  for i in 0 ..< safeLen(n): setLine(n.sons[i], info)
   n.info = info
 
 proc semPragmaBlock(c: PContext, n: PNode): PNode =
@@ -1727,7 +1727,7 @@ proc semPragmaBlock(c: PContext, n: PNode): PNode =
   pragma(c, nil, pragmaList, exprPragmas)
   result = semExpr(c, n.sons[1])
   n.sons[1] = result
-  for i in 0 .. <pragmaList.len:
+  for i in 0 ..< pragmaList.len:
     case whichPragma(pragmaList.sons[i])
     of wLine: setLine(result, pragmaList.sons[i].info)
     of wLocks, wGcSafe:

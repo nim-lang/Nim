@@ -575,7 +575,7 @@ proc pragmaLockStmt(c: PContext; it: PNode) =
     if n.kind != nkBracket:
       localError(n.info, errGenerated, "locks pragma takes a list of expressions")
     else:
-      for i in 0 .. <n.len:
+      for i in 0 ..< n.len:
         n.sons[i] = c.semExpr(c, n.sons[i])
 
 proc pragmaLocks(c: PContext, it: PNode): TLockLevel =

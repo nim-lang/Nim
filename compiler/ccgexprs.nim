@@ -228,7 +228,7 @@ proc genOptAsgnTuple(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     else:
       flags
   let t = skipTypes(dest.t, abstractInst).getUniqueType()
-  for i in 0 .. <t.len:
+  for i in 0 ..< t.len:
     let t = t.sons[i]
     let field = "Field$1" % [i.rope]
     genAssignment(p, optAsgnLoc(dest, t, field),
@@ -1218,7 +1218,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     constructLoc(p, tmp)
   discard getTypeDesc(p.module, t)
   let ty = getUniqueType(t)
-  for i in 1 .. <e.len:
+  for i in 1 ..< e.len:
     let it = e.sons[i]
     var tmp2: TLoc
     tmp2.r = r

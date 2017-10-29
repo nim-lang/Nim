@@ -75,7 +75,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule): PNode =
       a = nextOverloadIter(o, c, n)
 
 proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
-  for i in 0 .. < n.len:
+  for i in 0 ..< n.len:
     var a = n.sons[i]
     # If 'a' is an overloaded symbol, we used to use the first symbol
     # as a 'witness' and use the fact that subsequent lookups will yield
@@ -95,7 +95,7 @@ proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
   result = newNodeI(nkEmpty, n.info)
 
 proc semMixinStmt(c: PContext, n: PNode, toMixin: var IntSet): PNode =
-  for i in 0 .. < n.len:
+  for i in 0 ..< n.len:
     toMixin.incl(considerQuotedIdent(n.sons[i]).id)
   result = newNodeI(nkEmpty, n.info)
 
@@ -163,7 +163,7 @@ proc onlyReplaceParams(c: var TemplCtx, n: PNode): PNode =
         result = newSymNode(s, n.info)
         styleCheckUse(n.info, s)
   else:
-    for i in 0 .. <n.safeLen:
+    for i in 0 ..< n.safeLen:
       result.sons[i] = onlyReplaceParams(c, n.sons[i])
 
 proc newGenSym(kind: TSymKind, n: PNode, c: var TemplCtx): PSym =
@@ -301,7 +301,7 @@ proc semPattern(c: PContext, n: PNode): PNode
 
 proc semTemplBodySons(c: var TemplCtx, n: PNode): PNode =
   result = n
-  for i in 0.. < n.len:
+  for i in 0 ..< n.len:
     result.sons[i] = semTemplBody(c, n.sons[i])
 
 proc oprIsRoof(n: PNode): bool =

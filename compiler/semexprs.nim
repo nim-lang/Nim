@@ -436,12 +436,12 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       #addSon(result, fitNode(c, typ, n.sons[i]))
       inc(lastIndex)
     addSonSkipIntLit(result.typ, typ)
-    for i in 0 .. <result.len:
+    for i in 0 ..< result.len:
       result.sons[i] = fitNode(c, typ, result.sons[i], result.sons[i].info)
   result.typ.sons[0] = makeRangeType(c, 0, sonsLen(result) - 1, n.info)
 
 proc fixAbstractType(c: PContext, n: PNode) =
-  for i in 1 .. < n.len:
+  for i in 1 ..< n.len:
     let it = n.sons[i]
     # do not get rid of nkHiddenSubConv for OpenArrays, the codegen needs it:
     if it.kind == nkHiddenSubConv and
@@ -539,7 +539,7 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
     var call = newNodeIT(nkCall, n.info, n.typ)
     call.add(n.sons[0])
     var allConst = true
-    for i in 1 .. < n.len:
+    for i in 1 ..< n.len:
       var a = getConstExpr(c.module, n.sons[i])
       if a == nil:
         allConst = false
@@ -558,7 +558,7 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
     # done until we have a more robust infrastructure for
     # implicit statics.
     if n.len > 1:
-      for i in 1 .. <n.len:
+      for i in 1 ..< n.len:
         # see bug #2113, it's possible that n[i].typ for errornous code:
         if n[i].typ.isNil or n[i].typ.kind != tyStatic or
             tfUnresolved notin n[i].typ.flags:
@@ -580,7 +580,7 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
 
     var call = newNodeIT(nkCall, n.info, n.typ)
     call.add(n.sons[0])
-    for i in 1 .. < n.len:
+    for i in 1 ..< n.len:
       let a = getConstExpr(c.module, n.sons[i])
       if a == nil: return n
       call.add(a)
@@ -654,7 +654,7 @@ proc bracketedMacro(n: PNode): PSym =
       result = nil
 
 proc setGenericParams(c: PContext, n: PNode) =
-  for i in 1 .. <n.len:
+  for i in 1 ..< n.len:
     n[i].typ = semTypeNode(c, n[i], nil)
 
 proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
@@ -1464,7 +1464,7 @@ proc semYieldVarResult(c: PContext, n: PNode, restype: PType) =
 
     n.sons[0] = takeImplicitAddr(c, n.sons[0])
   of tyTuple:
-    for i in 0.. <t.sonsLen:
+    for i in 0..<t.sonsLen:
       var e = skipTypes(t.sons[i], {tyGenericInst, tyAlias})
       if e.kind == tyVar:
         if n.sons[0].kind == nkPar:
@@ -1657,7 +1657,7 @@ proc processQuotations(n: var PNode, op: string,
   elif n.kind == nkAccQuoted and op == "``":
     returnQuote n[0]
 
-  for i in 0 .. <n.safeLen:
+  for i in 0 ..< n.safeLen:
     processQuotations(n.sons[i], op, quotes, ids)
 
 proc semQuoteAst(c: PContext, n: PNode): PNode =
@@ -1825,7 +1825,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     dec c.inParallelStmt
   of mSpawn:
     result = setMs(n, s)
-    for i in 1 .. <n.len:
+    for i in 1 ..< n.len:
       result.sons[i] = semExpr(c, n.sons[i])
     let typ = result[^1].typ
     if not typ.isEmptyType:
@@ -2076,7 +2076,7 @@ proc semBlock(c: PContext, n: PNode): PNode =
 proc semExport(c: PContext, n: PNode): PNode =
   var x = newNodeI(n.kind, n.info)
   #let L = if n.kind == nkExportExceptStmt: L = 1 else: n.len
-  for i in 0.. <n.len:
+  for i in 0..<n.len:
     let a = n.sons[i]
     var o: TOverloadIter
     var s = initOverloadIter(o, c, a)

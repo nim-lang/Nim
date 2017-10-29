@@ -20,3 +20,5 @@
   recursive types can be created across module boundaries. See
   [package level objects](https://nim-lang.org/docs/manual.html#package-level-objects)
   for more information.
+- The **unary** ``<`` is now deprecated, for ``.. <`` use ``..<`` for other usages
+  use the ``pred`` proc.
