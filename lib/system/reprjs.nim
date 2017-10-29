@@ -50,7 +50,7 @@ proc reprChar(x: char): string {.compilerRtl.} =
 
 proc reprStrAux(result: var string, s: cstring, len: int) =
   add(result, "\"")
-  for i in 0 .. <len:
+  for i in 0 ..< len:
     let c = s[i]
     case c
     of '"': add(result, "\\\"")
@@ -149,7 +149,7 @@ proc reprArray(a: pointer, typ: PNimType,
     
   {. emit: "`len` = `a`.length;\n" .}
   var dereffed: pointer = a
-  for i in 0 .. < len:
+  for i in 0 ..< len:
     if i > 0 :
       add(result, ", ")
     # advance pointer and point to element at index
@@ -192,7 +192,7 @@ proc reprRecordAux(result: var string, o: pointer, typ: PNimType, cl: var ReprCl
     reprAux(result, val, typ.node.typ, cl)
   else:
     # if the object has more than one field, sons is not nil and contains the fields.
-    for i in 0 .. <typ.node.len:
+    for i in 0 ..< typ.node.len:
       if first: first = false
       else: add(result, ",\n")
 

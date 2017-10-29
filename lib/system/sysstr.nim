@@ -278,7 +278,7 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
                             GenericSeqSize +% (i*%elemSize)),
                             extGetCellType(result).base, waPush)
           let len1 = gch.tempStack.len
-          for i in len0 .. <len1:
+          for i in len0 ..< len1:
             doDecRef(gch.tempStack.d[i], LocalHeap, MaybeCyclic)
           gch.tempStack.len = len0
       else:

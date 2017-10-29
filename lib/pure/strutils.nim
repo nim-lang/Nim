@@ -1199,7 +1199,7 @@ proc unindent*(s: string, count: Natural, padding: string = " "): string
     var indentCount = 0
     for j in 0..<count.int:
       indentCount.inc
-      if line[j .. j + <padding.len] != padding:
+      if line[j .. j + padding.len-1] != padding:
         indentCount = j
         break
     result.add(line[indentCount*padding.len .. ^1])
@@ -1407,10 +1407,10 @@ proc find*(s, sub: string, start: Natural = 0, last: Natural = 0): int {.noSideE
   ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
   if sub.len > s.len:
     return -1
-    
+
   if sub.len == 1:
     return find(s, sub[0], start, last)
-    
+
   var a {.noinit.}: SkipTable
   initSkipTable(a, sub)
   result = find(a, s, sub, start, last)

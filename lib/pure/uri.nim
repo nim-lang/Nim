@@ -250,7 +250,7 @@ proc combine*(base: Uri, reference: Uri): Uri =
 proc combine*(uris: varargs[Uri]): Uri =
   ## Combines multiple URIs together.
   result = uris[0]
-  for i in 1 .. <uris.len:
+  for i in 1 ..< uris.len:
     result = combine(result, uris[i])
 
 proc isAbsolute*(uri: Uri): bool =

@@ -450,9 +450,9 @@ when false:
           quit 1
 
 proc markGlobals(gch: var GcHeap) =
-  for i in 0 .. < globalMarkersLen: globalMarkers[i]()
+  for i in 0 .. globalMarkersLen-1: globalMarkers[i]()
   let d = gch.additionalRoots.d
-  for i in 0 .. < gch.additionalRoots.len: mark(gch, d[i])
+  for i in 0 .. gch.additionalRoots.len-1: mark(gch, d[i])
 
 proc gcMark(gch: var GcHeap, p: pointer) {.inline.} =
   # the addresses are not as cells on the stack, so turn them to cells:
