@@ -16,3 +16,4 @@
   module.
 - The overloading rules changed slightly so that constrained generics are
   preferred over unconstrained generics. (Bug #6526)
+- Removed libuv out of the stdlib and into Nimble packages.
