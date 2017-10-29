@@ -7,7 +7,7 @@ discard """
 
 # bug #5430
 
-proc random*[T](x: Slice[T]): T =
+proc random*[T](x: Slice[T, T]): T =
   ## For a slice `a .. b` returns a value in the range `a .. b-1`.
   result = int(x.b - x.a) + x.a
 

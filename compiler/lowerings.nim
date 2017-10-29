@@ -463,7 +463,7 @@ proc setupArgsForConcurrency(n: PNode; objType: PType; scratchObj: PSym,
                              varSection, varInit, result: PNode) =
   let formals = n[0].typ.n
   let tmpName = getIdent(genPrefix)
-  for i in 1 .. <n.len:
+  for i in 1 ..< n.len:
     # we pick n's type here, which hopefully is 'tyArray' and not
     # 'tyOpenArray':
     var argType = n[i].typ.skipTypes(abstractInst)
@@ -519,7 +519,7 @@ proc setupArgsForParallelism(n: PNode; objType: PType; scratchObj: PSym;
   let tmpName = getIdent(genPrefix)
   # we need to copy the foreign scratch object fields into local variables
   # for correctness: These are called 'threadLocal' here.
-  for i in 1 .. <n.len:
+  for i in 1 ..< n.len:
     let n = n[i]
     let argType = skipTypes(if i < formals.len: formals[i].typ else: n.typ,
                             abstractInst)

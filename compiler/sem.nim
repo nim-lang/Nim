@@ -122,7 +122,7 @@ proc commonType*(x, y: PType): PType =
     if a.sons[idx].kind == tyEmpty: return y
   elif a.kind == tyTuple and b.kind == tyTuple and a.len == b.len:
     var nt: PType
-    for i in 0.. <a.len:
+    for i in 0..<a.len:
       let aEmpty = isEmptyContainer(a.sons[i])
       let bEmpty = isEmptyContainer(b.sons[i])
       if aEmpty != bEmpty:

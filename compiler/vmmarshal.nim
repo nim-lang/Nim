@@ -78,7 +78,7 @@ proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet) =
       s.add("]")
   of tyTuple:
     s.add("{")
-    for i in 0.. <t.len:
+    for i in 0..<t.len:
       if i > 0: s.add(", ")
       s.add("\"Field" & $i)
       s.add("\": ")
@@ -90,7 +90,7 @@ proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet) =
     s.add("}")
   of tySet:
     s.add("[")
-    for i in 0.. <a.len:
+    for i in 0..<a.len:
       if i > 0: s.add(", ")
       if a[i].kind == nkRange:
         var x = copyNode(a[i][0])

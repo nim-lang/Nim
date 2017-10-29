@@ -16,3 +16,15 @@
   module.
 - The overloading rules changed slightly so that constrained generics are
   preferred over unconstrained generics. (Bug #6526)
+- It is now possible to forward declare object types so that mutually
+  recursive types can be created across module boundaries. See
+  [package level objects](https://nim-lang.org/docs/manual.html#package-level-objects)
+  for more information.
+- The **unary** ``<`` is now deprecated, for ``.. <`` use ``..<`` for other usages
+  use the ``pred`` proc.
+- We changed how array accesses "from backwards" like ``a[^1]`` or ``a[0..^1]`` are
+  implemented. These are now implemented purely in ``system.nim`` without compiler
+  support. ``system.Slice`` now takes 2 generic parameters so that it can
+  take ``BackwardsIndex`` indices. ``BackwardsIndex`` is produced by ``system.^``.
+  This means if you overload ``[]`` or ``[]=`` you need to ensure they also work
+  with ``system.BackwardsIndex`` (if applicable for the accessors).

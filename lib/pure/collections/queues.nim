@@ -198,9 +198,8 @@ when isMainModule:
   assert($q == "[4, 56, 6, 789]")
 
   assert q[0] == q.front and q.front == 4
-  assert q[^1] == q.back and q.back == 789
   q[0] = 42
-  q[^1] = 7
+  q[q.len - 1] = 7
 
   assert 6 in q and 789 notin q
   assert q.find(6) >= 0

@@ -593,7 +593,7 @@ from strutils import toHex, toLowerAscii
 proc hexStr(buf: cstring): string =
   # turn md5s output into a nice hex str
   result = newStringOfCap(32)
-  for i in 0 .. <16:
+  for i in 0 ..< 16:
     result.add toHex(buf[i].ord, 2).toLowerAscii
 
 proc md5_File*(file: string): string {.raises: [IOError,Exception].} =

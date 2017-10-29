@@ -32,7 +32,7 @@ proc at(a, i: PNode, elemType: PType): PNode =
   result.typ = elemType
 
 proc liftBodyTup(c: var TLiftCtx; t: PType; body, x, y: PNode) =
-  for i in 0 .. <t.len:
+  for i in 0 ..< t.len:
     let lit = lowerings.newIntLit(i)
     liftBodyAux(c, t.sons[i], body, x.at(lit, t.sons[i]), y.at(lit, t.sons[i]))
 
@@ -58,7 +58,7 @@ proc liftBodyObj(c: var TLiftCtx; n, body, x, y: PNode) =
     var access = dotField(x, n[0].sym)
     caseStmt.add(access)
     # copy the branches over, but replace the fields with the for loop body:
-    for i in 1 .. <n.len:
+    for i in 1 ..< n.len:
       var branch = copyTree(n[i])
       let L = branch.len
       branch.sons[L-1] = newNodeI(nkStmtList, c.info)
@@ -297,7 +297,7 @@ proc liftBody(c: PContext; typ: PType; kind: TTypeAttachedOp;
   of attachedDestructor: typ.destructor = result
 
   var n = newNodeI(nkProcDef, info, bodyPos+1)
-  for i in 0 .. < n.len: n.sons[i] = emptyNode
+  for i in 0 ..< n.len: n.sons[i] = emptyNode
   n.sons[namePos] = newSymNode(result)
   n.sons[paramsPos] = result.typ.n
   n.sons[bodyPos] = body
