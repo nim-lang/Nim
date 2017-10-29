@@ -96,10 +96,10 @@ This project exists thanks to all the people who contribute. [Read on to find ou
 [![Setup a bounty via Bountysource][badge-nim-bountysource]][nim-bountysource]
 [![Donate Bitcoins][badge-nim-bitcoin]][nim-bitcoin]
 
-We welcome everyone's contributions to Nim regardless of how small or how large
-they are. Anything from small spelling fixes to large modules intended to
-be included in the standard library are welcome and appreciated. Before you get
-started contributing, you should familiarize yourself with the repository structure:
+We welcome all contributions to Nim regardless of how small or large
+they are. Everything from spelling fixes to new modules to be included in the
+standard library are welcomed and appreciated. Before you start contributing,
+you should familiarize yourself with the following repository structure:
 
 * ``bin/``, ``build/`` - these directories are empty, but are used when Nim is built.
 * ``compiler/`` - the compiler source code. Also includes nimfix, and plugins within

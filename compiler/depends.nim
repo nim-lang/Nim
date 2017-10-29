@@ -10,7 +10,7 @@
 # This module implements a dependency file generator.
 
 import
-  os, options, ast, astalgo, msgs, ropes, idents, passes, importer
+  os, options, ast, astalgo, msgs, ropes, idents, passes, modulepaths
 
 from modulegraphs import ModuleGraph
 

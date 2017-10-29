@@ -15,8 +15,8 @@ import
   ast, strutils, strtabs, options, msgs, os, ropes, idents,
   wordrecg, syntaxes, renderer, lexer, packages/docutils/rstast,
   packages/docutils/rst, packages/docutils/rstgen, times,
-  packages/docutils/highlite, importer, sempass2, json, xmltree, cgi,
-  typesrenderer, astalgo
+  packages/docutils/highlite, sempass2, json, xmltree, cgi,
+  typesrenderer, astalgo, modulepaths
 
 type
   TSections = array[TSymKind, Rope]

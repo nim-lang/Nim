@@ -14,7 +14,7 @@
 import
   intsets, os, options, strutils, nversion, ast, astalgo, msgs, platform,
   condsyms, ropes, idents, rodread, passes, importer, idgen,
-  rodutils
+  rodutils, modulepaths
 
 when defined(useMetroHash64):
   import metrohash
