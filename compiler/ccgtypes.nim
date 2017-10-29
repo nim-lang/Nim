@@ -981,7 +981,10 @@ proc genTypeInfoAux(m: BModule, typ, origType: PType, name: Rope;
   if sonsLen(typ) > 0 and typ.lastSon != nil:
     var x = typ.lastSon
     if typ.kind == tyObject: x = x.skipTypes(skipPtrs)
-    base = genTypeInfo(m, x, info)
+    if typ.kind == tyPtr and x.kind == tyObject and incompleteType(x):
+      base = rope("0")
+    else:
+      base = genTypeInfo(m, x, info)
   else:
     base = rope("0")
   genTypeInfoAuxBase(m, typ, origType, name, base, info)

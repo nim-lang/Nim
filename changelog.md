@@ -16,3 +16,7 @@
   module.
 - The overloading rules changed slightly so that constrained generics are
   preferred over unconstrained generics. (Bug #6526)
+- It is now possible to forward declare object types so that mutually
+  recursive types can be created across module boundaries. See
+  [package level objects](https://nim-lang.org/docs/manual.html#package-level-objects)
+  for more information.

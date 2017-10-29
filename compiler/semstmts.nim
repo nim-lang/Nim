@@ -796,12 +796,6 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
         else:
           localError(name.info, typsym.name.s & " is not a type that can be forwarded")
           s = typsym
-      when false:
-        s = qualifiedLookUp(c, name, {checkUndeclared, checkModule})
-        if s.kind != skType or
-          s.typ.skipTypes(abstractPtrs).kind != tyObject or
-          tfPartial notin s.typ.skipTypes(abstractPtrs).flags:
-          localError(name.info, "only .partial objects can be extended")
     else:
       s = semIdentDef(c, name, skType)
       s.typ = newTypeS(tyForward, c)
@@ -812,11 +806,16 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
         # check if the symbol already exists:
         let pkg = c.module.owner
         if not isTopLevel(c) or pkg.isNil:
-          localError(name.info, "only top level types in a package can be 'forward'")
+          localError(name.info, "only top level types in a package can be 'package'")
         else:
           let typsym = pkg.tab.strTableGet(s.name)
           if typsym != nil:
-            typeCompleted(typsym)
+            if sfForward notin typsym.flags or sfNoForward notin typsym.flags:
+              typeCompleted(typsym)
+              typsym.info = s.info
+            else:
+              localError(name.info, "cannot complete type '" & s.name.s & "' twice; " &
+                      "previous type completion was here: " & $typsym.info)
             s = typsym
       # add it here, so that recursive types are possible:
       if sfGenSym notin s.flags: addInterfaceDecl(c, s)
