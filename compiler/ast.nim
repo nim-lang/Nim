@@ -1017,16 +1017,11 @@ proc add*(father, son: PNode) =
 
 type Indexable = PNode | PType
 
-template `[]`*(n: Indexable, i: int): Indexable =
-  n.sons[i]
+template `[]`*(n: Indexable, i: int): Indexable = n.sons[i]
+template `[]=`*(n: Indexable, i: int; x: Indexable) = n.sons[i] = x
 
-template `-|`*(b, s: untyped): untyped =
-  (if b >= 0: b else: s.len + b)
-
-# son access operators with support for negative indices
-template `{}`*(n: Indexable, i: int): untyped = n[i -| n]
-template `{}=`*(n: Indexable, i: int, s: Indexable) =
-  n.sons[i -| n] = s
+template `[]`*(n: Indexable, i: BackwardsIndex): Indexable = n[n.len - i.int]
+template `[]=`*(n: Indexable, i: BackwardsIndex; x: Indexable) = n[n.len - i.int] = x
 
 when defined(useNodeIds):
   const nodeIdToDebug* = -1 # 299750 # 300761 #300863 # 300879

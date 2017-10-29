@@ -3,7 +3,6 @@ version 1.0 battle plan
 
 - make FlowVar compatible to Futures
 - remove 'mod x' type rule
-- implement x[^1] differently, no compiler magic
 - fix "high priority" bugs
 - try to fix as many compiler crashes as reasonable
 

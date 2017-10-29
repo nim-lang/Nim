@@ -1665,7 +1665,7 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
   # We transform the do block into a template with a param for
   # each interpolation. We'll pass this template to getAst.
   var
-    quotedBlock = n{-1}
+    quotedBlock = n[^1]
     op = if n.len == 3: expectString(c, n[1]) else: "``"
     quotes = newSeq[PNode](1)
       # the quotes will be added to a nkCall statement

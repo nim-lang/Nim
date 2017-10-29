@@ -129,13 +129,6 @@ const
   nnkCallKinds* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
                    nnkCallStrLit}
 
-proc `[]`*(n: NimNode, i: int): NimNode {.magic: "NChild", noSideEffect.}
-  ## get `n`'s `i`'th child.
-
-proc `[]=`*(n: NimNode, i: int, child: NimNode) {.magic: "NSetChild",
-  noSideEffect.}
-  ## set `n`'s `i`'th child to `child`.
-
 proc `!`*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect.}
   ## constructs an identifier from the string `s`
 
@@ -161,6 +154,20 @@ proc sameType*(a, b: NimNode): bool {.magic: "SameNodeType", noSideEffect.} =
 
 proc len*(n: NimNode): int {.magic: "NLen", noSideEffect.}
   ## returns the number of children of `n`.
+
+proc `[]`*(n: NimNode, i: int): NimNode {.magic: "NChild", noSideEffect.}
+  ## get `n`'s `i`'th child.
+
+proc `[]`*(n: NimNode, i: BackwardsIndex): NimNode = n[n.len - i.int]
+  ## get `n`'s `i`'th child.
+
+proc `[]=`*(n: NimNode, i: int, child: NimNode) {.magic: "NSetChild",
+  noSideEffect.}
+  ## set `n`'s `i`'th child to `child`.
+
+proc `[]=`*(n: NimNode, i: BackwardsIndex, child: NimNode) =
+  ## set `n`'s `i`'th child to `child`.
+  n[n.len - i.int] = child
 
 proc add*(father, child: NimNode): NimNode {.magic: "NAdd", discardable,
   noSideEffect, locks: 0.}
@@ -1104,7 +1111,7 @@ proc eqIdent*(node: NimNode; s: string): bool {.compileTime.} =
   else:
     result = false
 
-proc hasArgOfName* (params: NimNode; name: string): bool {.compiletime.}=
+proc hasArgOfName*(params: NimNode; name: string): bool {.compiletime.}=
   ## Search nnkFormalParams for an argument.
   assert params.kind == nnkFormalParams
   for i in 1 ..< params.len:

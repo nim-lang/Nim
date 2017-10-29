@@ -823,7 +823,7 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
     a.sons[0] = newSymNode(s)
 
 proc checkCovariantParamsUsages(genericType: PType) =
-  var body = genericType{-1}
+  var body = genericType[^1]
 
   proc traverseSubTypes(t: PType): bool =
     template error(msg) = localError(genericType.sym.info, msg)

@@ -1618,8 +1618,8 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
     var a = n.sons[i]
     if a.kind != nkIdentDefs: illFormedAst(n)
     let L = a.len
-    var def = a{-1}
-    let constraint = a{-2}
+    var def = a[^1]
+    let constraint = a[^2]
     var typ: PType
 
     if constraint.kind != nkEmpty:

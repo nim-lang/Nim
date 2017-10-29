@@ -78,13 +78,13 @@ proc caseBranchMatchesExpr(branch, matched: PNode): bool =
 
 proc pickCaseBranch(caseExpr, matched: PNode): PNode =
   # XXX: Perhaps this proc already exists somewhere
-  let endsWithElse = caseExpr{-1}.kind == nkElse
+  let endsWithElse = caseExpr[^1].kind == nkElse
   for i in 1 .. caseExpr.len - 1 - int(endsWithElse):
     if caseExpr[i].caseBranchMatchesExpr(matched):
       return caseExpr[i]
 
   if endsWithElse:
-    return caseExpr{-1}
+    return caseExpr[^1]
 
 iterator directFieldsInRecList(recList: PNode): PNode =
   # XXX: We can remove this case by making all nkOfBranch nodes
@@ -136,17 +136,20 @@ proc semConstructFields(c: PContext, recNode: PNode,
 
   of nkRecCase:
     template fieldsPresentInBranch(branchIdx: int): string =
-      fieldsPresentInInitExpr(recNode[branchIdx]{-1}, initExpr)
+      let branch = recNode[branchIdx]
+      let fields = branch[branch.len - 1]
+      fieldsPresentInInitExpr(fields, initExpr)
 
     template checkMissingFields(branchNode: PNode) =
-      checkForMissingFields(branchNode{-1}, initExpr)
+      let fields = branchNode[branchNode.len - 1]
+      checkForMissingFields(fields, initExpr)
 
     let discriminator = recNode.sons[0];
     internalAssert discriminator.kind == nkSym
     var selectedBranch = -1
 
     for i in 1 ..< recNode.len:
-      let innerRecords = recNode[i]{-1}
+      let innerRecords = recNode[i][^1]
       let status = semConstructFields(c, innerRecords, initExpr, flags)
       if status notin {initNone, initUnknown}:
         mergeInitStatus(result, status)
@@ -250,7 +253,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var t = semTypeNode(c, n.sons[0], nil)
   result = newNodeIT(nkObjConstr, n.info, t)
   for child in n: result.add child
-  
+
   t = skipTypes(t, {tyGenericInst, tyAlias})
   if t.kind == tyRef: t = skipTypes(t.sons[0], {tyGenericInst, tyAlias})
   if t.kind != tyObject:
