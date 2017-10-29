@@ -164,8 +164,8 @@ proc terminate*[In, Out](a: var ActorPool[In, Out]) =
   ## resources attached to `a`.
   var t: Task[In, Out]
   t.shutdown = true
-  for i in 0.. <a.actors.len: send(a.actors[i].i, t)
-  for i in 0.. <a.actors.len: join(a.actors[i])
+  for i in 0..<a.actors.len: send(a.actors[i].i, t)
+  for i in 0..<a.actors.len: join(a.actors[i])
   when Out isnot void:
     close(a.outputs)
   a.actors = nil
