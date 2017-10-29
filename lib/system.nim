@@ -3531,11 +3531,11 @@ proc `[]`*[Idx, T](a: array[Idx, T]; i: BackwardsIndex): T =
   a[Idx(a.len - int(i) + int low(a))]
 proc `[]`*(s: string; i: BackwardsIndex): char = s[s.len - int(i)]
 
-proc `[]`*[T](s: var seq[T]; i: BackwardsIndex; x: T) =
+proc `[]=`*[T](s: var seq[T]; i: BackwardsIndex; x: T) =
   s[s.len - int(i)] = x
-proc `[]`*[Idx, T](a: var array[Idx, T]; i: BackwardsIndex; x: T) =
+proc `[]=`*[Idx, T](a: var array[Idx, T]; i: BackwardsIndex; x: T) =
   a[Idx(a.len - int(i) + int low(a))] = x
-proc `[]`*(s: var string; i: BackwardsIndex; x: char) =
+proc `[]=`*(s: var string; i: BackwardsIndex; x: char) =
   s[s.len - int(i)] = x
 
 proc slurp*(filename: string): string {.magic: "Slurp".}
