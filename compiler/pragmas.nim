@@ -25,7 +25,7 @@ const
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
     wAsmNoStackFrame, wError, wDiscardable, wNoInit, wDestructor, wCodegenDecl,
     wGensym, wInject, wRaises, wTags, wLocks, wDelegator, wGcSafe,
-    wOverride, wConstructor, wExportNims, wUsed}
+    wOverride, wConstructor, wExportNims, wUsed, wAttr}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas+{wBase}-{wImportCpp}
   templatePragmas* = {wImmediate, wDeprecated, wError, wGensym, wInject, wDirty,
@@ -57,7 +57,7 @@ const
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
     wBorrow, wGcSafe, wExportNims, wPartial, wUsed, wExplain, wPackage}
   fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern,
-    wImportCpp, wImportObjC, wError, wGuard, wBitsize, wUsed}
+    wImportCpp, wImportObjC, wError, wGuard, wBitsize, wUsed, wAttr}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl,
     wMagic, wHeader, wDeprecated, wCompilerproc, wDynlib, wExtern,
     wImportCpp, wImportObjC, wError, wNoInit, wCompileTime, wGlobal,
@@ -551,19 +551,21 @@ proc processPragma(c: PContext, n: PNode, i: int) =
   userPragma.ast = body
   strTableAdd(c.userPragmas, userPragma)
 
-proc pragmaRaisesOrTags(c: PContext, n: PNode) =
-  proc processExc(c: PContext, x: PNode) =
+proc pragmaTypedList(c: PContext, n: PNode) =
+  ## Used in pragmas: raises, tags, attr
+  proc processType(c: PContext, n, x: PNode) =
     var t = skipTypes(c.semTypeNode(c, x, nil), skipPtrs)
     if t.kind != tyObject:
-      localError(x.info, errGenerated, "invalid type for raises/tags list")
+      let pragmaName = $n.sons[0]
+      localError(x.info, errGenerated, "invalid type for " & pragmaName & " list")
     x.typ = t
 
   if n.kind == nkExprColonExpr:
     let it = n.sons[1]
     if it.kind notin {nkCurly, nkBracket}:
-      processExc(c, it)
+      processType(c, n, it)
     else:
-      for e in items(it): processExc(c, e)
+      for e in items(it): processType(c, n, e)
   else:
     invalidPragma(n)
 
@@ -926,7 +928,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         noVal(it)
         if sym == nil: invalidPragma(it)
       of wLine: pragmaLine(c, it)
-      of wRaises, wTags: pragmaRaisesOrTags(c, it)
+      of wRaises, wTags, wAttr: pragmaTypedList(c, it)
       of wLocks:
         if sym == nil: pragmaLockStmt(c, it)
         elif sym.typ == nil: invalidPragma(it)
