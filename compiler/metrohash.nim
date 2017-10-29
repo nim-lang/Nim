@@ -70,8 +70,8 @@ template callFileFunc(f: untyped): untyped =
 
 proc metroHash64Init*(c: var MetroHashContext, seed: uint64 = 0) =
   const 
-    k0: uint64 = 0xD6D018F5'u64
-    k2: uint64 = 0x62992FC1'u64
+    k0 = 0xD6D018F5'u64
+    k2 = 0x62992FC1'u64
 
   c.vseed = (seed + k2) * k0
 
@@ -84,10 +84,10 @@ proc metroHash64Init*(c: var MetroHashContext, seed: uint64 = 0) =
 
 proc metroHash64Update*(c: var MetroHashContext, input: ByteAddress, inputLen: int) =
   const 
-    k0: uint64 = 0xD6D018F5'u64
-    k1: uint64 = 0xA2AA033B'u64
-    k2: uint64 = 0x62992FC1'u64
-    k3: uint64 = 0x30BC5B29'u64
+    k0 = 0xD6D018F5'u64
+    k1 = 0xA2AA033B'u64
+    k2 = 0x62992FC1'u64
+    k3 = 0x30BC5B29'u64
 
   var 
     p = input
@@ -143,10 +143,10 @@ proc metroHash64Update*(c: var MetroHashContext, input: ByteAddress, inputLen: i
 
 proc metroHash64Final*(c: var MetroHashContext, digest: var MetroHash64Digest) =
   const 
-    k0: uint64 = 0xD6D018F5'u64
-    k1: uint64 = 0xA2AA033B'u64
-    k2: uint64 = 0x62992FC1'u64
-    k3: uint64 = 0x30BC5B29'u64
+    k0 = 0xD6D018F5'u64
+    k1 = 0xA2AA033B'u64
+    k2 = 0x62992FC1'u64
+    k3 = 0x30BC5B29'u64
 
   if (c.bytes >= 32):
     c.v[2] ^= rotate_right(((c.v[0] + c.v[3]) * k0) + c.v[1], 37) * k1
@@ -207,10 +207,10 @@ proc metroHash64Update*[T](c: var MetroHashContext, input: T) {.inline.} =
 
 proc metroHash64*(input: ByteAddress, inputLen: int, seed: uint64 = 0): MetroHash64Digest =
   const 
-    k0: uint64 = 0xD6D018F5'u64
-    k1: uint64 = 0xA2AA033B'u64
-    k2: uint64 = 0x62992FC1'u64
-    k3: uint64 = 0x30BC5B29'u64
+    k0 = 0xD6D018F5'u64
+    k1 = 0xA2AA033B'u64
+    k2 = 0x62992FC1'u64
+    k3 = 0x30BC5B29'u64
 
   var 
     p = input
@@ -219,10 +219,10 @@ proc metroHash64*(input: ByteAddress, inputLen: int, seed: uint64 = 0): MetroHas
 
   if inputLen >= 32:
     var
-      v0: uint64 = hash
-      v1: uint64 = hash
-      v2: uint64 = hash
-      v3: uint64 = hash
+      v0 = hash
+      v1 = hash
+      v2 = hash
+      v3 = hash
 
     while p < (e - 32):
       v0 += read_u64(p) * k0
@@ -291,10 +291,10 @@ proc metroHash64*(input: ByteAddress, inputLen: int, seed: uint64 = 0): MetroHas
 
 proc metroHash128Init*(c: var MetroHashContext, seed: uint64 = 0) =
   const 
-    k0: uint64 = 0xC83A91E1'u64
-    k1: uint64 = 0x8648DBDB'u64
-    k2: uint64 = 0x7BDEC03B'u64
-    k3: uint64 = 0x2F5870A5'u64
+    k0 = 0xC83A91E1'u64
+    k1 = 0x8648DBDB'u64
+    k2 = 0x7BDEC03B'u64
+    k3 = 0x2F5870A5'u64
 
   c.v[0] = (seed - k0) * k3
   c.v[1] = (seed + k1) * k2
@@ -305,10 +305,10 @@ proc metroHash128Init*(c: var MetroHashContext, seed: uint64 = 0) =
 
 proc metroHash128Update*(c: var MetroHashContext, input: ByteAddress, inputLen: int) =
   const 
-    k0: uint64 = 0xC83A91E1'u64
-    k1: uint64 = 0x8648DBDB'u64
-    k2: uint64 = 0x7BDEC03B'u64
-    k3: uint64 = 0x2F5870A5'u64
+    k0 = 0xC83A91E1'u64
+    k1 = 0x8648DBDB'u64
+    k2 = 0x7BDEC03B'u64
+    k3 = 0x2F5870A5'u64
 
   var 
     p = input
@@ -366,10 +366,10 @@ proc metroHash128Update*(c: var MetroHashContext, input: ByteAddress, inputLen: 
 
 proc metroHash128Final*(c: var MetroHashContext, digest: var MetroHash128Digest) =
   const 
-    k0: uint64 = 0xC83A91E1'u64
-    k1: uint64 = 0x8648DBDB'u64
-    k2: uint64 = 0x7BDEC03B'u64
-    k3: uint64 = 0x2F5870A5'u64
+    k0 = 0xC83A91E1'u64
+    k1 = 0x8648DBDB'u64
+    k2 = 0x7BDEC03B'u64
+    k3 = 0x2F5870A5'u64
 
   if (c.bytes >= 32):
     c.v[2] ^= (rotate_right(((c.v[0] + c.v[3]) * k0) + c.v[1], 21) * k1)
@@ -431,10 +431,10 @@ proc metroHash128Update*[T](c: var MetroHashContext, input: T) {.inline.} =
 
 proc metroHash128*(input: ByteAddress, inputLen: int, seed: uint64 = 0): MetroHash128Digest =
   const 
-    k0: uint64 = 0xC83A91E1'u64
-    k1: uint64 = 0x8648DBDB'u64
-    k2: uint64 = 0x7BDEC03B'u64
-    k3: uint64 = 0x2F5870A5'u64
+    k0 = 0xC83A91E1'u64
+    k1 = 0x8648DBDB'u64
+    k2 = 0x7BDEC03B'u64
+    k3 = 0x2F5870A5'u64
 
   var 
     p = input
