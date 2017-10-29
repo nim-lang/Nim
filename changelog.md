@@ -2,9 +2,9 @@
 
 ### Changes affecting backwards compatibility
 
-- Removed basic2d/basic3d out of the stdlib and into Nimble packages.
-  These packages deprecated however, use the ``glm``, ``arraymancer``, ``neo``
-  or another package.
+- Moved basic2d/basic3d from the stdlib into separate Nimble packages. These
+  packages are deprecated however: use ``glm``, ``arraymancer``, ``neo`` or
+  another package.
 - Arrays of char cannot be converted to ``cstring`` anymore, pointers to
   arrays of char can! This means ``$`` for arrays can finally exist
   in ``system.nim`` and do the right thing.
@@ -16,3 +16,5 @@
   module.
 - The overloading rules changed slightly so that constrained generics are
   preferred over unconstrained generics. (Bug #6526)
+- Removed wrappers for PDCurses and libuv from the stdlib into separate Nimble
+  packages.
