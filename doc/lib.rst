@@ -533,9 +533,6 @@ Database support
 Network Programming and Internet Protocols
 ------------------------------------------
 
-* `libuv <libuv.html>`_
-  Wrapper for the libuv library used for async I/O programming.
-
 * `joyent_http_parser <joyent_http_parser.html>`_
   Wrapper for the joyent's high-performance HTTP parser.
 
