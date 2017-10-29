@@ -37,7 +37,6 @@ type
                               # in standalone ``except`` and ``finally``
     next*: PProcCon           # used for stacking procedure contexts
     wasForwarded*: bool       # whether the current proc has a separate header
-    bracketExpr*: PNode       # current bracket expression (for ^ support)
     mapping*: TIdTable
 
   TMatchedConcept* = object

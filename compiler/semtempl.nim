@@ -113,13 +113,9 @@ type
     owner: PSym
     cursorInBody: bool # only for nimsuggest
     scopeN: int
-    bracketExpr: PNode
 
 template withBracketExpr(ctx, x, body: untyped) =
-  let old = ctx.bracketExpr
-  ctx.bracketExpr = x
   body
-  ctx.bracketExpr = old
 
 proc getIdentNode(c: var TemplCtx, n: PNode): PNode =
   case n.kind
@@ -303,18 +299,6 @@ proc semTemplBodySons(c: var TemplCtx, n: PNode): PNode =
   result = n
   for i in 0 ..< n.len:
     result.sons[i] = semTemplBody(c, n.sons[i])
-
-proc oprIsRoof(n: PNode): bool =
-  const roof = "^"
-  case n.kind
-  of nkIdent: result = n.ident.s == roof
-  of nkSym: result = n.sym.name.s == roof
-  of nkAccQuoted:
-    if n.len == 1:
-      result = oprIsRoof(n.sons[0])
-  of nkOpenSymChoice, nkClosedSymChoice:
-    result = oprIsRoof(n.sons[0])
-  else: discard
 
 proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   result = n
@@ -506,8 +490,6 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       result = semTemplBodySons(c, n)
   of nkCallKinds-{nkPostfix}:
     result = semTemplBodySons(c, n)
-    if c.bracketExpr != nil and n.len == 2 and oprIsRoof(n.sons[0]):
-      result.add c.bracketExpr
   of nkDotExpr, nkAccQuoted:
     # dotExpr is ambiguous: note that we explicitly allow 'x.TemplateParam',
     # so we use the generic code for nkDotExpr too

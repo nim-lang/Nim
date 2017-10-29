@@ -1189,7 +1189,6 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
      tyCString:
     if n.len != 2: return nil
     n.sons[0] = makeDeref(n.sons[0])
-    c.p.bracketExpr = n.sons[0]
     for i in countup(1, sonsLen(n) - 1):
       n.sons[i] = semExprWithType(c, n.sons[i],
                                   flags*{efInTypeof, efDetermineType})
@@ -1210,7 +1209,6 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
   of tyTuple:
     if n.len != 2: return nil
     n.sons[0] = makeDeref(n.sons[0])
-    c.p.bracketExpr = n.sons[0]
     # [] operator for tuples requires constant expression:
     n.sons[1] = semConstExpr(c, n.sons[1])
     if skipTypes(n.sons[1].typ, {tyGenericInst, tyRange, tyOrdinal, tyAlias}).kind in
@@ -1248,17 +1246,13 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
       of skType:
         result = symNodeFromType(c, semTypeNode(c, n, nil), n.info)
       else:
-        c.p.bracketExpr = n.sons[0]
-    else:
-      c.p.bracketExpr = n.sons[0]
+        discard
 
 proc semArrayAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
-  let oldBracketExpr = c.p.bracketExpr
   result = semSubscript(c, n, flags)
   if result == nil:
     # overloaded [] operator:
     result = semExpr(c, buildOverloadedSubscripts(n, getIdent"[]"))
-  c.p.bracketExpr = oldBracketExpr
 
 proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
   var id = considerQuotedIdent(a[1], a)
@@ -1330,7 +1324,6 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
   of nkBracketExpr:
     # a[i] = x
     # --> `[]=`(a, i, x)
-    let oldBracketExpr = c.p.bracketExpr
     a = semSubscript(c, a, {efLValue})
     if a == nil:
       result = buildOverloadedSubscripts(n.sons[0], getIdent"[]=")
@@ -1340,9 +1333,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
         return n
       else:
         result = semExprNoType(c, result)
-        c.p.bracketExpr = oldBracketExpr
         return result
-    c.p.bracketExpr = oldBracketExpr
   of nkCurlyExpr:
     # a{i} = x -->  `{}=`(a, i, x)
     result = buildOverloadedSubscripts(n.sons[0], getIdent"{}=")

@@ -323,7 +323,7 @@ proc `..`*[T, U](a: T, b: U): Slice[T, U] {.noSideEffect, inline, magic: "DotDot
   result.a = a
   result.b = b
 
-proc `..`*[T](b: T): Slice[T, T] {.noSideEffect, inline, magic: "DotDot".} =
+proc `..`*[T](b: T): Slice[int, T] {.noSideEffect, inline, magic: "DotDot".} =
   ## `slice`:idx: operator that constructs an interval ``[default(T), b]``
   result.b = b
 
