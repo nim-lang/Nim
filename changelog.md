@@ -28,3 +28,6 @@
   take ``BackwardsIndex`` indices. ``BackwardsIndex`` is produced by ``system.^``.
   This means if you overload ``[]`` or ``[]=`` you need to ensure they also work
   with ``system.BackwardsIndex`` (if applicable for the accessors).
+- ``mod`` and bitwise ``and`` do not produce ``range`` subtypes anymore. This
+  turned out to be more harmful than helpful and the language is simpler
+  without this special typing rule.

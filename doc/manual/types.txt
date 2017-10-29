@@ -137,25 +137,6 @@ determined). Assignments from the base type to one of its subrange types
 
 A subrange type has the same size as its base type (``int`` in the example).
 
-Nim requires `interval arithmetic`:idx: for subrange types over a set
-of built-in operators that involve constants: ``x %% 3`` is of
-type ``range[0..2]``. The following built-in operators for integers are
-affected by this rule: ``-``, ``+``, ``*``, ``min``, ``max``, ``succ``,
-``pred``, ``mod``, ``div``, ``%%``, ``and`` (bitwise ``and``).
-
-Bitwise ``and`` only produces a ``range`` if one of its operands is a
-constant *x* so that (x+1) is a power of two.
-(Bitwise ``and`` is then a ``%%`` operation.)
-
-This means that the following code is accepted:
-
-.. code-block:: nim
-  case (x and 3) + 7
-  of 7: echo "A"
-  of 8: echo "B"
-  of 9: echo "C"
-  of 10: echo "D"
-  # note: no ``else`` required as (x and 3) + 7 has the type: range[7..10]
 
 
 Pre-defined floating point types
