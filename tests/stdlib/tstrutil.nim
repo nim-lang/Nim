@@ -13,15 +13,13 @@ proc testStrip() =
 proc testRemoveSuffix =
   var s = "hello\n\r"
   s.removeSuffix
-  assert s == "hello\n"
-  s.removeSuffix
   assert s == "hello"
   s.removeSuffix
   assert s == "hello"
 
   s = "hello\n\n"
   s.removeSuffix
-  assert s == "hello\n"
+  assert s == "hello"
 
   s = "hello\r"
   s.removeSuffix
@@ -41,7 +39,31 @@ proc testRemoveSuffix =
   s.removeSuffix({'s','z'})
   assert s == "hello"
   s.removeSuffix({'l','o'})
-  assert s == "hell"
+  assert s == "he"
+
+  s = "aeiou"
+  s.removeSuffix("")
+  assert s == "aeiou"
+
+  s = ""
+  s.removeSuffix("")
+  assert s == ""
+
+  s = "  "
+  s.removeSuffix
+  assert s == "  "
+
+  s = "  "
+  s.removeSuffix("")
+  assert s == "  "
+
+  s = "    "
+  s.removeSuffix(" ")
+  assert s == "   "
+
+  s = "    "
+  s.removeSuffix(' ')
+  assert s == ""
 
   # Contrary to Chomp in other languages
   # empty string does not change behaviour
