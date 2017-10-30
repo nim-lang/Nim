@@ -39,3 +39,5 @@
 - Added ``typetraits.$`` as an alias for ``typetraits.name``.
 - ``os.getEnv`` now takes an optional ``default`` parameter that tells ``getEnv``
   what to return if the environment variable does not exist.
+- Removed PDCurses wrapper from the stdlib and published it as a separate 
+  Nimble package.
