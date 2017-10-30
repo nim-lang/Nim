@@ -2097,7 +2097,7 @@ proc shouldBeBracketExpr(n: PNode): bool =
     let b = a[0]
     if b.kind in nkSymChoices:
       for i in 0..<b.len:
-        if b[i].sym.magic == mArrGet:
+        if b[i].kind == nkSym and b[i].sym.magic == mArrGet:
           let be = newNodeI(nkBracketExpr, n.info)
           for i in 1..<a.len: be.add(a[i])
           n.sons[0] = be

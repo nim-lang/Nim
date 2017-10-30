@@ -1387,6 +1387,14 @@ proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   result = t
   while result.kind in kinds: result = lastSon(result)
 
+proc skipTypes*(t: PType, kinds: TTypeKinds; maxIters: int): PType =
+  result = t
+  var i = maxIters
+  while result.kind in kinds:
+    result = lastSon(result)
+    dec i
+    if i == 0: return nil
+
 proc skipTypesOrNil*(t: PType, kinds: TTypeKinds): PType =
   ## same as skipTypes but handles 'nil'
   result = t
