@@ -325,8 +325,8 @@ when isMainModule:
   assert abs(toFloat(y) - 0.4814814814814815) < 1.0e-7
   assert toInt(z) == 0
 
-  assert toRational(0.98765432) == 5376864444397469455 // 5444075255396513284
-  assert toRational(PI) == 8566508067901016491 // 2726804208086097199
+  assert $toRational(0.98765432) == "5376864444397469455/5444075255396513284"
+  assert $toRational(PI) == "8566508067901016491/2726804208086097199"
   assert toRational(0.1, 1000000) == 1 // 10
   assert toRational(0.9, 1000000) == 9 // 10
   #assert toRational(PI) == 80143857 // 25510582
