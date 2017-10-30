@@ -34,7 +34,7 @@ proc newDepN(id: int, pnode: PNode): DepN =
 
 proc accQuoted(n: PNode): PIdent =
   var id = ""
-  for i in 0 .. <n.len:
+  for i in 0 ..< n.len:
     let x = n[i]
     case x.kind
     of nkIdent: id.add(x.ident.s)

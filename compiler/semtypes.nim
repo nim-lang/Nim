@@ -515,7 +515,7 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
         # first element is special and will overwrite: branch.sons[i]:
         branch.sons[i] = semCaseBranchSetElem(c, t, r[0], covered)
         # other elements have to be added to ``branch``
-        for j in 1 .. <r.len:
+        for j in 1 ..< r.len:
           branch.add(semCaseBranchSetElem(c, t, r[j], covered))
           # caution! last son of branch must be the actions to execute:
           var L = branch.len
@@ -846,7 +846,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
                                   @[newTypeS(paramType.kind, c)])
       result = addImplicitGeneric(typ)
     else:
-      for i in 0 .. <paramType.len:
+      for i in 0 ..< paramType.len:
         if paramType.sons[i] == paramType:
           globalError(info, errIllegalRecursionInTypeX, typeToString(paramType))
         var lifted = liftingWalk(paramType.sons[i])
@@ -897,7 +897,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       result.shouldHaveMeta
 
   of tyGenericInvocation:
-    for i in 1 .. <paramType.len:
+    for i in 1 ..< paramType.len:
       let lifted = liftingWalk(paramType.sons[i])
       if lifted != nil: paramType.sons[i] = lifted
 
@@ -1146,7 +1146,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
 
     var isConcrete = true
 
-    for i in 1 .. <m.call.len:
+    for i in 1 ..< m.call.len:
       var typ = m.call[i].typ
       if typ.kind == tyTypeDesc and typ.sons[0].kind == tyNone:
         isConcrete = false
@@ -1618,8 +1618,8 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
     var a = n.sons[i]
     if a.kind != nkIdentDefs: illFormedAst(n)
     let L = a.len
-    var def = a{-1}
-    let constraint = a{-2}
+    var def = a[^1]
+    let constraint = a[^2]
     var typ: PType
 
     if constraint.kind != nkEmpty:

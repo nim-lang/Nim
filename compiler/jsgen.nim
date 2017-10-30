@@ -1363,7 +1363,7 @@ proc genPatternCall(p: PProc; n: PNode; pat: string; typ: PType;
     case pat[i]
     of '@':
       var generated = 0
-      for k in j .. < n.len:
+      for k in j ..< n.len:
         if generated > 0: add(r.res, ", ")
         genOtherArg(p, n, k, typ, generated, r)
       inc i
@@ -1528,7 +1528,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
   of tyTuple:
     if p.target == targetJS:
       result = rope("{")
-      for i in 0.. <t.sonsLen:
+      for i in 0..<t.sonsLen:
         if i > 0: add(result, ", ")
         addf(result, "Field$1: $2", [i.rope,
              createVar(p, t.sons[i], false)])
@@ -1536,7 +1536,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
       if indirect: result = "[$1]" % [result]
     else:
       result = rope("array(")
-      for i in 0.. <t.sonsLen:
+      for i in 0..<t.sonsLen:
         if i > 0: add(result, ", ")
         add(result, createVar(p, t.sons[i], false))
       add(result, ")")

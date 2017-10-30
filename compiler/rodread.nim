@@ -795,7 +795,7 @@ proc getReader(moduleId: int): PRodReader =
   # the module ID! We could introduce a mapping ID->PRodReader but I'll leave
   # this for later versions if benchmarking shows the linear search causes
   # problems:
-  for i in 0 .. <gMods.len:
+  for i in 0 ..< gMods.len:
     result = gMods[i].rd
     if result != nil and result.moduleID == moduleId: return result
   return nil
