@@ -2076,6 +2076,9 @@ proc max*[T](x, y: T): T =
   if y <= x: x else: y
 {.pop.}
 
+proc high*(T: typedesc[SomeReal]): T = Inf
+proc low*(T: typedesc[SomeReal]): T = NegInf
+
 proc clamp*[T](x, a, b: T): T =
   ## limits the value ``x`` within the interval [a, b]
   ##
