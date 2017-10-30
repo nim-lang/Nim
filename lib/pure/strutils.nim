@@ -2376,6 +2376,7 @@ proc removePrefix*(s: var string, chars: set[char] = Newlines) {.
   rtl, extern: "nsuRemovePrefixCharSet".} =
   ## Removes all characters from `chars` from the start of the string `s`
   ## (in-place).
+  ##
   ## .. code-block:: nim
   ##   var userInput = "\r\n*~Hello World!"
   ##   userInput.removePrefix
@@ -2392,7 +2393,9 @@ proc removePrefix*(s: var string, chars: set[char] = Newlines) {.
 
 proc removePrefix*(s: var string, c: char) {.
   rtl, extern: "nsuRemovePrefixChar".} =
-  ## Removes a single character (in-place) from the start of a string.
+  ## Removes all occurrences of a single character (in-place) from the start
+  ## of a string.
+  ##
   ## .. code-block:: nim
   ##   var ident = "pControl"
   ##   ident.removePrefix('p')
@@ -2402,6 +2405,7 @@ proc removePrefix*(s: var string, c: char) {.
 proc removePrefix*(s: var string, prefix: string) {.
   rtl, extern: "nsuRemovePrefixString".} =
   ## Remove the first matching prefix (in-place) from a string.
+  ##
   ## .. code-block:: nim
   ##   var answers = "yesyes"
   ##   answers.removePrefix("yes")
