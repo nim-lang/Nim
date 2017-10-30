@@ -31,3 +31,7 @@
 - ``mod`` and bitwise ``and`` do not produce ``range`` subtypes anymore. This
   turned out to be more harmful than helpful and the language is simpler
   without this special typing rule.
+- Added ``algorithm.rotateLeft``.
+- ``rationals.toRational`` now uses an algorithm based on continued fractions.
+  This means its results are more precise and it can run into an infinite loop
+  anymore.
