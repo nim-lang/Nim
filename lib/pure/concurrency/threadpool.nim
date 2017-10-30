@@ -149,7 +149,7 @@ proc selectWorker(w: ptr Worker; fn: WorkerProc; data: pointer): bool =
 proc cleanFlowVars(w: ptr Worker) =
   let q = addr(w.q)
   acquire(q.lock)
-  for i in 0 .. <q.len:
+  for i in 0 ..< q.len:
     GC_unref(cast[RootRef](q.data[i]))
     #echo "GC_unref"
   q.len = 0
@@ -401,7 +401,7 @@ proc setup() =
     gCpus = p
   currentPoolSize = min(p, MaxThreadPoolSize)
   readyWorker = addr(workersData[0])
-  for i in 0.. <currentPoolSize: activateWorkerThread(i)
+  for i in 0..<currentPoolSize: activateWorkerThread(i)
 
 proc preferSpawn*(): bool =
   ## Use this proc to determine quickly if a 'spawn' or a direct call is
@@ -446,7 +446,7 @@ proc nimSpawn3(fn: WorkerProc; data: pointer) {.compilerProc.} =
   # implementation of 'spawn' that is used by the code generator.
   while true:
     if selectWorker(readyWorker, fn, data): return
-    for i in 0.. <currentPoolSize:
+    for i in 0..<currentPoolSize:
       if selectWorker(addr(workersData[i]), fn, data): return
 
     # determine what to do, but keep in mind this is expensive too:
@@ -543,7 +543,7 @@ proc sync*() =
   var toRelease = 0
   while true:
     var allReady = true
-    for i in 0 .. <currentPoolSize:
+    for i in 0 ..< currentPoolSize:
       if not allReady: break
       allReady = allReady and workersData[i].ready
     if allReady: break

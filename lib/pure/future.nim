@@ -22,7 +22,7 @@ proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
 
   case p.kind
   of nnkPar:
-    for i in 0 .. <p.len:
+    for i in 0 ..< p.len:
       let ident = p[i]
       var identDefs = newNimNode(nnkIdentDefs)
       case ident.kind
@@ -77,7 +77,7 @@ macro `=>`*(p, b: untyped): untyped =
         if c[0].kind == nnkIdent and c[0].ident == !"->":
           var procTy = createProcType(c[1], c[2])
           params[0] = procTy[0][0]
-          for i in 1 .. <procTy[0].len:
+          for i in 1 ..< procTy[0].len:
             params.add(procTy[0][i])
         else:
           error("Expected proc type (->) got (" & $c[0].ident & ").")
@@ -96,7 +96,7 @@ macro `=>`*(p, b: untyped): untyped =
     if p[0].kind == nnkIdent and p[0].ident == !"->":
       var procTy = createProcType(p[1], p[2])
       params[0] = procTy[0][0]
-      for i in 1 .. <procTy[0].len:
+      for i in 1 ..< procTy[0].len:
         params.add(procTy[0][i])
     else:
       error("Expected proc type (->) got (" & $p[0].ident & ").")

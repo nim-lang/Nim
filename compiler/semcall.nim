@@ -27,7 +27,7 @@ proc sameMethodDispatcher(a, b: PSym): bool =
       # method collide[T](a: TThing, b: TUnit[T]) is instantiated and not
       # method collide[T](a: TUnit[T], b: TThing)! This means we need to
       # *instantiate* every candidate! However, we don't keep more than 2-3
-      # candidated around so we cannot implement that for now. So in order
+      # candidates around so we cannot implement that for now. So in order
       # to avoid subtle problems, the call remains ambiguous and needs to
       # be disambiguated by the programmer; this way the right generic is
       # instantiated.
@@ -310,7 +310,7 @@ proc instGenericConvertersArg*(c: PContext, a: PNode, x: TCandidate) =
 proc instGenericConvertersSons*(c: PContext, n: PNode, x: TCandidate) =
   assert n.kind in nkCallKinds
   if x.genericConverter:
-    for i in 1 .. <n.len:
+    for i in 1 ..< n.len:
       instGenericConvertersArg(c, n.sons[i], x)
 
 proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode =
@@ -494,7 +494,7 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
   var call = newNodeI(nkCall, fn.info)
   var hasDistinct = false
   call.add(newIdentNode(fn.name, fn.info))
-  for i in 1.. <fn.typ.n.len:
+  for i in 1..<fn.typ.n.len:
     let param = fn.typ.n.sons[i]
     let t = skipTypes(param.typ, abstractVar-{tyTypeDesc, tyDistinct})
     if t.kind == tyDistinct or param.typ.kind == tyDistinct: hasDistinct = true

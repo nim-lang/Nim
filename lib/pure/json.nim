@@ -823,13 +823,13 @@ proc toJson(x: NimNode): NimNode {.compiletime.} =
   of nnkBracket: # array
     if x.len == 0: return newCall(bindSym"newJArray")
     result = newNimNode(nnkBracket)
-    for i in 0 .. <x.len:
+    for i in 0 ..< x.len:
       result.add(toJson(x[i]))
     result = newCall(bindSym"%", result)
   of nnkTableConstr: # object
     if x.len == 0: return newCall(bindSym"newJObject")
     result = newNimNode(nnkTableConstr)
-    for i in 0 .. <x.len:
+    for i in 0 ..< x.len:
       x[i].expectKind nnkExprColonExpr
       result.add newTree(nnkExprColonExpr, x[i][0], toJson(x[i][1]))
     result = newCall(bindSym"%", result)
@@ -1303,7 +1303,7 @@ else:
     case getVarType(x)
     of JArray:
       result = newJArray()
-      for i in 0 .. <x.len:
+      for i in 0 ..< x.len:
         result.add(x[i].convertObject())
     of JObject:
       result = newJObject()
@@ -1449,7 +1449,7 @@ proc processElseBranch(recCaseNode, elseBranch, jsonNode, kindType,
   # We need to build up a list of conditions from each ``of`` branch so that
   # we can then negate it to get ``else``.
   var cond = newIdentNode("false")
-  for i in 1 .. <len(recCaseNode):
+  for i in 1 ..< len(recCaseNode):
     if recCaseNode[i].kind == nnkElse:
       break
 
@@ -1511,7 +1511,7 @@ proc processObjField(field, jsonNode: NimNode): seq[NimNode] =
     exprColonExpr.add(getEnumCall)
 
     # Iterate through each `of` branch.
-    for i in 1 .. <field.len:
+    for i in 1 ..< field.len:
       case field[i].kind
       of nnkOfBranch:
         result.add processOfBranch(field[i], jsonNode, kindType, kindJsonNode)
@@ -1640,7 +1640,7 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
         (
           var list: `typeSym` = @[];
           verifyJsonKind(`jsonNode`, {JArray}, astToStr(`jsonNode`));
-          for `forLoopI` in 0 .. <`jsonNode`.len: list.add(`constructorNode`);
+          for `forLoopI` in 0 ..< `jsonNode`.len: list.add(`constructorNode`);
           list
         )
     of "array":
@@ -1654,7 +1654,7 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
         (
           var list: `typeSym`;
           verifyJsonKind(`jsonNode`, {JArray}, astToStr(`jsonNode`));
-          for `forLoopI` in 0 .. <`jsonNode`.len: list[`forLoopI`] =`constructorNode`;
+          for `forLoopI` in 0 ..< `jsonNode`.len: list[`forLoopI`] =`constructorNode`;
           list
         )
 
@@ -1683,7 +1683,7 @@ proc postProcessValue(value: NimNode): NimNode =
     result = postProcess(value)
   else:
     result = value
-    for i in 0 .. <len(result):
+    for i in 0 ..< len(result):
       result[i] = postProcessValue(result[i])
 
 proc postProcessExprColonExpr(exprColonExpr, resIdent: NimNode): NimNode =

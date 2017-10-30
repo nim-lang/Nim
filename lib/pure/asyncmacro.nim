@@ -61,14 +61,14 @@ proc generateExceptionCheck(futSym,
   else:
     var exceptionChecks: seq[tuple[cond, body: NimNode]] = @[]
     let errorNode = newDotExpr(futSym, newIdentNode("error"))
-    for i in 1 .. <tryStmt.len:
+    for i in 1 ..< tryStmt.len:
       let exceptBranch = tryStmt[i]
       if exceptBranch[0].kind == nnkStmtList:
         exceptionChecks.add((newIdentNode("true"), exceptBranch[0]))
       else:
         var exceptIdentCount = 0
         var ifCond: NimNode
-        for i in 0 .. <exceptBranch.len:
+        for i in 0 ..< exceptBranch.len:
           let child = exceptBranch[i]
           if child.kind == nnkIdent:
             let cond = infix(errorNode, "of", child)
@@ -270,7 +270,7 @@ proc processBody(node, retFutureSym: NimNode,
     return
   else: discard
 
-  for i in 0 .. <result.len:
+  for i in 0 ..< result.len:
     result[i] = processBody(result[i], retFutureSym, subTypeIsVoid,
                             futureVarIdents, nil)
 
@@ -287,7 +287,7 @@ proc getName(node: NimNode): string {.compileTime.} =
 
 proc getFutureVarIdents(params: NimNode): seq[NimNode] {.compileTime.} =
   result = @[]
-  for i in 1 .. <len(params):
+  for i in 1 ..< len(params):
     expectKind(params[i], nnkIdentDefs)
     if params[i][1].kind == nnkBracketExpr and
        ($params[i][1][0].ident).normalize == "futurevar":
@@ -466,7 +466,7 @@ proc stripAwait(node: NimNode): NimNode =
       node[0][0] = emptyNoopSym
   else: discard
 
-  for i in 0 .. <result.len:
+  for i in 0 ..< result.len:
     result[i] = stripAwait(result[i])
 
 proc splitParamType(paramType: NimNode, async: bool): NimNode =
@@ -512,7 +512,7 @@ proc splitProc(prc: NimNode): (NimNode, NimNode) =
   # Retrieve the `T` inside `Future[T]`.
   let returnType = stripReturnType(result[0][3][0])
   result[0][3][0] = splitParamType(returnType, async=false)
-  for i in 1 .. <result[0][3].len:
+  for i in 1 ..< result[0][3].len:
     # Sync proc (0) -> FormalParams (3) -> IdentDefs, the parameter (i) ->
     # parameter type (1).
     result[0][3][i][1] = splitParamType(result[0][3][i][1], async=false)
@@ -521,7 +521,7 @@ proc splitProc(prc: NimNode): (NimNode, NimNode) =
   result[1] = prc.copyNimTree()
   if result[1][3][0].kind == nnkBracketExpr:
     result[1][3][0][1] = splitParamType(result[1][3][0][1], async=true)
-  for i in 1 .. <result[1][3].len:
+  for i in 1 ..< result[1][3].len:
     # Async proc (1) -> FormalParams (3) -> IdentDefs, the parameter (i) ->
     # parameter type (1).
     result[1][3][i][1] = splitParamType(result[1][3][i][1], async=true)

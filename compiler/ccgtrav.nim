@@ -151,8 +151,8 @@ proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash;
   m.s[cfsProcHeaders].addf("$1;$n", [header])
   m.s[cfsProcs].add(generatedProc)
 
-proc genTraverseProcForGlobal(m: BModule, s: PSym): Rope =
-  discard genTypeInfo(m, s.loc.t)
+proc genTraverseProcForGlobal(m: BModule, s: PSym; info: TLineInfo): Rope =
+  discard genTypeInfo(m, s.loc.t, info)
 
   var c: TTraversalClosure
   var p = newProc(nil, m)

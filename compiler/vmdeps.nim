@@ -41,7 +41,7 @@ proc mapTypeToBracketX(name: string; m: TMagic; t: PType; info: TLineInfo;
                        inst=false): PNode =
   result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
   result.add atomicTypeX(name, m, t, info)
-  for i in 0 .. < t.len:
+  for i in 0 ..< t.len:
     if t.sons[i] == nil:
       let void = atomicTypeX("void", mVoid, t, info)
       void.typ = newType(tyVoid, t.owner)
@@ -119,7 +119,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
       result = atomicType("typeDesc", mTypeDesc)
   of tyGenericInvocation:
     result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
-    for i in 0 .. < t.len:
+    for i in 0 ..< t.len:
       result.add mapTypeToAst(t.sons[i], info)
   of tyGenericInst, tyAlias:
     if inst:
@@ -128,7 +128,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
       else:
         result = newNodeX(nkBracketExpr)
         result.add mapTypeToAst(t.lastSon, info)
-        for i in 1 .. < t.len-1:
+        for i in 1 ..< t.len-1:
           result.add mapTypeToAst(t.sons[i], info)
     else:
       result = mapTypeToAstX(t.lastSon, info, inst, allowRecursion)
