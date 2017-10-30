@@ -155,7 +155,7 @@ type
     ##     -  ``"abc".match(re"(?<letter>\w)").captures["letter"] == "a"``
     ##     -  ``"abc".match(re"(\w)\w").captures[-1] == "ab"``
     ##
-    ## ``captureBounds[]: Option[Slice[int, int]]``
+    ## ``captureBounds[]: Option[HSlice[int, int]]``
     ##     gets the bounds of the given capture according to the same rules as
     ##     the above. If the capture is not filled, then ``None`` is returned.
     ##     The bounds are both inclusive.
@@ -167,7 +167,7 @@ type
     ## ``match: string``
     ##     the full text of the match.
     ##
-    ## ``matchBounds: Slice[int, int]``
+    ## ``matchBounds: HSlice[int, int]``
     ##     the bounds of the match, as in ``captureBounds[]``
     ##
     ## ``(captureBounds|captures).toTable``
@@ -182,7 +182,7 @@ type
                      ## Not nil.
     str*: string  ## The string that was matched against.
                   ## Not nil.
-    pcreMatchBounds: seq[Slice[cint, cint]] ## First item is the bounds of the match
+    pcreMatchBounds: seq[HSlice[cint, cint]] ## First item is the bounds of the match
                                             ## Other items are the captures
                                             ## `a` is inclusive start, `b` is exclusive end
 
@@ -251,13 +251,13 @@ proc captureBounds*(pattern: RegexMatch): CaptureBounds = return CaptureBounds(p
 
 proc captures*(pattern: RegexMatch): Captures = return Captures(pattern)
 
-proc `[]`*(pattern: CaptureBounds, i: int): Option[Slice[int, int]] =
+proc `[]`*(pattern: CaptureBounds, i: int): Option[HSlice[int, int]] =
   let pattern = RegexMatch(pattern)
   if pattern.pcreMatchBounds[i + 1].a != -1:
     let bounds = pattern.pcreMatchBounds[i + 1]
     return some(int(bounds.a) .. int(bounds.b-1))
   else:
-    return none(Slice[int, int])
+    return none(HSlice[int, int])
 
 proc `[]`*(pattern: Captures, i: int): string =
   let pattern = RegexMatch(pattern)
@@ -272,10 +272,10 @@ proc `[]`*(pattern: Captures, i: int): string =
 proc match*(pattern: RegexMatch): string =
   return pattern.captures[-1]
 
-proc matchBounds*(pattern: RegexMatch): Slice[int, int] =
+proc matchBounds*(pattern: RegexMatch): HSlice[int, int] =
   return pattern.captureBounds[-1].get
 
-proc `[]`*(pattern: CaptureBounds, name: string): Option[Slice[int, int]] =
+proc `[]`*(pattern: CaptureBounds, name: string): Option[HSlice[int, int]] =
   let pattern = RegexMatch(pattern)
   return pattern.captureBounds[pattern.pattern.captureNameToId.fget(name)]
 
@@ -295,9 +295,9 @@ proc toTable*(pattern: Captures, default: string = nil): Table[string, string] =
   result = initTable[string, string]()
   toTableImpl(nextVal == nil)
 
-proc toTable*(pattern: CaptureBounds, default = none(Slice[int, int])):
-    Table[string, Option[Slice[int, int]]] =
-  result = initTable[string, Option[Slice[int, int]]]()
+proc toTable*(pattern: CaptureBounds, default = none(HSlice[int, int])):
+    Table[string, Option[HSlice[int, int]]] =
+  result = initTable[string, Option[HSlice[int, int]]]()
   toTableImpl(nextVal.isNone)
 
 template itemsImpl(cond: untyped) {.dirty.} =
@@ -309,13 +309,13 @@ template itemsImpl(cond: untyped) {.dirty.} =
     yield nextYieldVal
 
 
-iterator items*(pattern: CaptureBounds, default = none(Slice[int, int])): Option[Slice[int, int]] =
+iterator items*(pattern: CaptureBounds, default = none(HSlice[int, int])): Option[HSlice[int, int]] =
   itemsImpl(nextVal.isNone)
 
 iterator items*(pattern: Captures, default: string = nil): string =
   itemsImpl(nextVal == nil)
 
-proc toSeq*(pattern: CaptureBounds, default = none(Slice[int, int])): seq[Option[Slice[int, int]]] =
+proc toSeq*(pattern: CaptureBounds, default = none(HSlice[int, int])): seq[Option[HSlice[int, int]]] =
   accumulateResult(pattern.items(default))
 
 proc toSeq*(pattern: Captures, default: string = nil): seq[string] =
@@ -462,7 +462,7 @@ proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Opt
   # 1x capture count as slack space for PCRE
   let vecsize = (pattern.captureCount() + 1) * 3
   # div 2 because each element is 2 cints long
-  myResult.pcreMatchBounds = newSeq[Slice[cint, cint]](ceil(vecsize / 2).int)
+  myResult.pcreMatchBounds = newSeq[HSlice[cint, cint]](ceil(vecsize / 2).int)
   myResult.pcreMatchBounds.setLen(vecsize div 3)
 
   let strlen = if endpos == int.high: str.len else: endpos+1

@@ -24,8 +24,9 @@
   use the ``pred`` proc.
 - We changed how array accesses "from backwards" like ``a[^1]`` or ``a[0..^1]`` are
   implemented. These are now implemented purely in ``system.nim`` without compiler
-  support. ``system.Slice`` now takes 2 generic parameters so that it can
-  take ``BackwardsIndex`` indices. ``BackwardsIndex`` is produced by ``system.^``.
+  support. There is a new "heterogenous" slice type ``system.HSlice`` that takes 2
+  generic parameters which can be ``BackwardsIndex`` indices. ``BackwardsIndex`` is
+  produced by ``system.^``.
   This means if you overload ``[]`` or ``[]=`` you need to ensure they also work
   with ``system.BackwardsIndex`` (if applicable for the accessors).
 - ``mod`` and bitwise ``and`` do not produce ``range`` subtypes anymore. This
