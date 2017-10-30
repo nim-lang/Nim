@@ -33,5 +33,5 @@
   without this special typing rule.
 - Added ``algorithm.rotateLeft``.
 - ``rationals.toRational`` now uses an algorithm based on continued fractions.
-  This means its results are more precise and it can run into an infinite loop
+  This means its results are more precise and it can't run into an infinite loop
   anymore.
