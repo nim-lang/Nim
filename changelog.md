@@ -37,3 +37,5 @@
   This means its results are more precise and it can't run into an infinite loop
   anymore.
 - Added ``typetraits.$`` as an alias for ``typetraits.name``.
+- ``os.getEnv`` now takes an optional ``default`` parameter that tells ``getEnv``
+  what to return if the environment variable does not exist.
