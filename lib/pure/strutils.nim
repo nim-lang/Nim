@@ -2326,40 +2326,37 @@ proc format*(formatstr: string, a: varargs[string, `$`]): string {.noSideEffect,
 
 proc removeSuffix*(s: var string, chars: set[char] = Newlines) {.
   rtl, extern: "nsuRemoveSuffixCharSet".} =
-  ## Removes the first matching character from the string (in-place) given a
-  ## set of characters. If the set of characters is only equal to `Newlines`
-  ## then it will remove both the newline and return feed.
+  ## Removes all characters from `chars` from the end of the string `s`
+  ## (in-place).
   ##
   ## .. code-block:: nim
-  ##   var
-  ##     userInput = "Hello World!\r\n"
-  ##     otherInput = "Hello!?!"
+  ##   var userInput = "Hello World!*~\r\n"
   ##   userInput.removeSuffix
-  ##   userInput == "Hello World!"
-  ##   userInput.removeSuffix({'!', '?'})
-  ##   userInput == "Hello World"
+  ##   doAssert userInput == "Hello World!*~"
+  ##   userInput.removeSuffix({'~', '*'})
+  ##   doAssert userInput == "Hello World!"
+  ##
+  ##   var otherInput = "Hello!?!"
   ##   otherInput.removeSuffix({'!', '?'})
-  ##   otherInput == "Hello!?"
+  ##   doAssert otherInput == "Hello"
   if s.len == 0: return
-  var last = len(s) - 1
-  if chars == Newlines:
-    if s[last] == '\10':
-      last -= 1
-    if s[last] == '\13':
-      last -= 1
-  else:
-    if s[last] in chars:
-      last -= 1
+  var last = s.high
+  while last > -1 and s[last] in chars: last -= 1
   s.setLen(last + 1)
 
 proc removeSuffix*(s: var string, c: char) {.
   rtl, extern: "nsuRemoveSuffixChar".} =
-  ## Removes a single character (in-place) from the end of a string.
+  ## Removes all occurrences of a single character (in-place) from the end
+  ## of a string.
+  ##
   ## .. code-block:: nim
-  ##   var
-  ##     table = "users"
+  ##   var table = "users"
   ##   table.removeSuffix('s')
-  ##   table == "user"
+  ##   doAssert table == "user"
+  ##
+  ##   var dots = "Trailing dots......."
+  ##   dots.removeSuffix('.')
+  ##   doAssert dots == "Trailing dots"
   removeSuffix(s, chars = {c})
 
 proc removeSuffix*(s: var string, suffix: string) {.
@@ -2367,10 +2364,9 @@ proc removeSuffix*(s: var string, suffix: string) {.
   ## Remove the first matching suffix (in-place) from a string.
   ##
   ## .. code-block:: nim
-  ##   var
-  ##     answers = "yeses"
+  ##   var answers = "yeses"
   ##   answers.removeSuffix("es")
-  ##   answers == "yes"
+  ##   doAssert answers == "yes"
   var newLen = s.len
   if s.endsWith(suffix):
     newLen -= len(suffix)
@@ -2380,6 +2376,7 @@ proc removePrefix*(s: var string, chars: set[char] = Newlines) {.
   rtl, extern: "nsuRemovePrefixCharSet".} =
   ## Removes all characters from `chars` from the start of the string `s`
   ## (in-place).
+  ##
   ## .. code-block:: nim
   ##   var userInput = "\r\n*~Hello World!"
   ##   userInput.removePrefix
@@ -2396,7 +2393,9 @@ proc removePrefix*(s: var string, chars: set[char] = Newlines) {.
 
 proc removePrefix*(s: var string, c: char) {.
   rtl, extern: "nsuRemovePrefixChar".} =
-  ## Removes a single character (in-place) from the start of a string.
+  ## Removes all occurrences of a single character (in-place) from the start
+  ## of a string.
+  ##
   ## .. code-block:: nim
   ##   var ident = "pControl"
   ##   ident.removePrefix('p')
@@ -2406,6 +2405,7 @@ proc removePrefix*(s: var string, c: char) {.
 proc removePrefix*(s: var string, prefix: string) {.
   rtl, extern: "nsuRemovePrefixString".} =
   ## Remove the first matching prefix (in-place) from a string.
+  ##
   ## .. code-block:: nim
   ##   var answers = "yesyes"
   ##   answers.removePrefix("yes")
