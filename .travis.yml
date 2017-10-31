@@ -20,6 +20,7 @@ addons:
     - libsfml-dev
     - libc6-dbg
     - valgrind
+    - libssl-dev
 
 before_script:
   - git clone --depth 1 https://github.com/nim-lang/csources.git
