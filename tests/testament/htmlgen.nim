@@ -35,7 +35,7 @@ proc generateTestRunTabListItemPartial(outfile: File, testRunRow: JsonNode, firs
 
 proc generateTestResultPanelPartial(outfile: File, testResultRow: JsonNode, onlyFailing = false) =
   let
-    trId = htmlQuote(testResultRow["category"].str & "_" & testResultRow["name"].str)
+    trId = htmlQuote(testResultRow["category"].str & "_" & testResultRow["name"].str).replace(".", "_")
     name = testResultRow["name"].str.htmlQuote()
     category = testResultRow["category"].str.htmlQuote()
     target = testResultRow["target"].str.htmlQuote()
