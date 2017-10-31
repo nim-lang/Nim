@@ -581,7 +581,10 @@ proc getNewLocation(lastURL: string, headers: HttpHeaders): string =
   let r = parseUri(result)
   if r.hostname == "" and r.path != "":
     var parsed = parseUri(lastURL)
-    parsed.path = r.path
+    if r.path.startswith('/'):
+      parsed.path = r.path
+    else:
+      parsed.path = "/" & r.path
     parsed.query = r.query
     parsed.anchor = r.anchor
     result = $parsed
