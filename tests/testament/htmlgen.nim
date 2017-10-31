@@ -43,7 +43,7 @@ proc generateTestResultPanelPartial(outfile: File, testResultRow: JsonNode, only
     result = htmlQuote testResultRow["result"].str
     expected = htmlQuote testResultRow["expected"].str
     gotten = htmlQuote testResultRow["given"].str
-    timestamp = "unknown"
+    timestamp = htmlQuote testResultRow["timestamp"].str
   var panelCtxClass, textCtxClass, bgCtxClass, resultSign, resultDescription: string
   case result
   of "reSuccess":
@@ -124,8 +124,8 @@ proc generateTestRunTabContentPartial(outfile: File, allResults: AllTests, testR
     branch = htmlQuote(testRunRow["branch"].str)
     machineId = htmlQuote testRunRow["machine"].str
     machineName = htmlQuote(testRunRow["machine"].str)
-    os = htmlQuote("unknown_os")
-    cpu = htmlQuote("unknown_cpu")
+    os = htmlQuote(testRunRow["os"].str)
+    cpu = htmlQuote(testRunRow["cpu"].str)
 
   outfile.generateHtmlTabPageBegin(
     firstTabActiveClass, commitId,

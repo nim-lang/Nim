@@ -369,6 +369,7 @@ iterator listPackages(filter: PackageFilter): tuple[name, url: string] =
       yield (name, url)
 
 proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
+  let timestamp = getTime()
   if nimbleExe == "":
     echo("[Warning] - Cannot run nimble tests: Nimble binary not found.")
     return
@@ -387,7 +388,7 @@ proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
         installStatus = waitForExitEx(installProcess)
       installProcess.close
       if installStatus != QuitSuccess:
-        r.addResult(test, "", "", reInstallFailed)
+        r.addResult(test, "", "", reInstallFailed, timestamp)
         continue
 
       let
@@ -396,12 +397,12 @@ proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
         buildStatus = waitForExitEx(buildProcess)
       buildProcess.close
       if buildStatus != QuitSuccess:
-        r.addResult(test, "", "", reBuildFailed)
-      r.addResult(test, "", "", reSuccess)
-    r.addResult(packageFileTest, "", "", reSuccess)
+        r.addResult(test, "", "", reBuildFailed, timestamp)
+      r.addResult(test, "", "", reSuccess, timestamp)
+    r.addResult(packageFileTest, "", "", reSuccess, timestamp)
   except JsonParsingError:
     echo("[Warning] - Cannot run nimble tests: Invalid package file.")
-    r.addResult(packageFileTest, "", "", reBuildFailed)
+    r.addResult(packageFileTest, "", "", reBuildFailed, timestamp)
 
 
 # ----------------------------------------------------------------------------

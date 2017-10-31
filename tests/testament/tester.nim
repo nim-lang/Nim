@@ -156,7 +156,8 @@ proc `$`(x: TResults): string =
             [$x.passed, $x.skipped, $x.total]
 
 proc addResult(r: var TResults, test: TTest,
-               expected, given: string, success: TResultEnum) =
+               expected, given: string, success: TResultEnum,
+               timestamp: Time) =
   let name = test.name.extractFilename & test.options
   let duration = epochTime() - test.startTime
   backend.writeTestResult(name = name,
@@ -165,7 +166,8 @@ proc addResult(r: var TResults, test: TTest,
                           action = $test.action,
                           result = $success,
                           expected = expected,
-                          given = given)
+                          given = given,
+                          timestamp = timestamp)
   r.data.addf("$#\t$#\t$#\t$#", name, expected, given, $success)
   if success == reSuccess:
     styledEcho fgGreen, "PASS: ", fgCyan, name
@@ -197,29 +199,29 @@ proc addResult(r: var TResults, test: TTest,
     discard waitForExit(p)
     close(p)
 
-proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest) =
+proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, timestamp: Time) =
   if strip(expected.msg) notin strip(given.msg):
-    r.addResult(test, expected.msg, given.msg, reMsgsDiffer)
+    r.addResult(test, expected.msg, given.msg, reMsgsDiffer, timestamp)
   elif expected.nimout.len > 0 and expected.nimout.normalizeMsg notin given.nimout.normalizeMsg:
-    r.addResult(test, expected.nimout, given.nimout, reMsgsDiffer)
+    r.addResult(test, expected.nimout, given.nimout, reMsgsDiffer, timestamp)
   elif expected.tfile == "" and extractFilename(expected.file) != extractFilename(given.file) and
       "internal error:" notin expected.msg:
-    r.addResult(test, expected.file, given.file, reFilesDiffer)
+    r.addResult(test, expected.file, given.file, reFilesDiffer, timestamp)
   elif expected.line   != given.line   and expected.line   != 0 or
        expected.column != given.column and expected.column != 0:
     r.addResult(test, $expected.line & ':' & $expected.column,
                       $given.line    & ':' & $given.column,
-                      reLinesDiffer)
+                      reLinesDiffer, timestamp)
   elif expected.tfile != "" and extractFilename(expected.tfile) != extractFilename(given.tfile) and
       "internal error:" notin expected.msg:
-    r.addResult(test, expected.tfile, given.tfile, reFilesDiffer)
+    r.addResult(test, expected.tfile, given.tfile, reFilesDiffer, timestamp)
   elif expected.tline   != given.tline   and expected.tline   != 0 or
        expected.tcolumn != given.tcolumn and expected.tcolumn != 0:
     r.addResult(test, $expected.tline & ':' & $expected.tcolumn,
                       $given.tline    & ':' & $given.tcolumn,
-                      reLinesDiffer)
+                      reLinesDiffer, timestamp)
   else:
-    r.addResult(test, expected.msg, given.msg, reSuccess)
+    r.addResult(test, expected.msg, given.msg, reSuccess, timestamp)
     inc(r.passed)
 
 proc generatedFile(path, name: string, target: TTarget): string =
@@ -268,7 +270,7 @@ proc makeDeterministic(s: string): string =
   result = join(x, "\n")
 
 proc compilerOutputTests(test: TTest, given: var TSpec, expected: TSpec;
-                         r: var TResults) =
+                         r: var TResults, timestamp: Time) =
   var expectedmsg: string = ""
   var givenmsg: string = ""
   if given.err == reSuccess:
@@ -282,7 +284,7 @@ proc compilerOutputTests(test: TTest, given: var TSpec, expected: TSpec;
   else:
     givenmsg = given.nimout.strip
   if given.err == reSuccess: inc(r.passed)
-  r.addResult(test, expectedmsg, givenmsg, given.err)
+  r.addResult(test, expectedmsg, givenmsg, given.err, timestamp)
 
 proc analyzeAndConsolidateOutput(s: string): string =
   result = ""
@@ -300,8 +302,9 @@ proc analyzeAndConsolidateOutput(s: string): string =
 
 proc testSpec(r: var TResults, test: TTest) =
   # major entry point for a single test
+  let timestamp = getTime()
   if test.target notin targets:
-    r.addResult(test, "", "", reIgnored)
+    r.addResult(test, "", "", reIgnored, timestamp)
     inc(r.skipped)
     return
 
@@ -316,7 +319,7 @@ proc testSpec(r: var TResults, test: TTest) =
     expected.action = actionRunNoSpec
 
   if expected.err == reIgnored:
-    r.addResult(test, "", "", reIgnored)
+    r.addResult(test, "", "", reIgnored, timestamp)
     inc(r.skipped)
     return
 
@@ -325,7 +328,7 @@ proc testSpec(r: var TResults, test: TTest) =
     var given = callCompiler(expected.cmd, test.name,
       test.options & " --stdout --hint[Path]:off --hint[Processing]:off",
       test.target)
-    compilerOutputTests(test, given, expected, r)
+    compilerOutputTests(test, given, expected, r, timestamp)
   of actionRun, actionRunNoSpec:
     # In this branch of code "early return" pattern is clearer than deep
     # nested conditionals - the empty rows in between to clarify the "danger"
@@ -333,7 +336,7 @@ proc testSpec(r: var TResults, test: TTest) =
                              test.target)
 
     if given.err != reSuccess:
-      r.addResult(test, "", given.msg, given.err)
+      r.addResult(test, "", given.msg, given.err, timestamp)
       return
 
     let isJsTarget = test.target == targetJS
@@ -345,13 +348,14 @@ proc testSpec(r: var TResults, test: TTest) =
       exeFile = changeFileExt(tname, ExeExt)
 
     if not existsFile(exeFile):
-      r.addResult(test, expected.outp, "executable not found", reExeNotFound)
+      r.addResult(test, expected.outp, "executable not found", reExeNotFound,
+        timestamp)
       return
 
     let nodejs = if isJsTarget: findNodeJs() else: ""
     if isJsTarget and nodejs == "":
       r.addResult(test, expected.outp, "nodejs binary not in PATH",
-                  reExeNotFound)
+                  reExeNotFound, timestamp)
       return
 
     let exeCmd = (if isJsTarget: nodejs & " " else: "") & exeFile
@@ -369,40 +373,43 @@ proc testSpec(r: var TResults, test: TTest) =
       r.addResult(test, "exitcode: " & $expected.exitCode,
                         "exitcode: " & $exitCode & "\n\nOutput:\n" &
                         analyzeAndConsolidateOutput(bufB),
-                        reExitCodesDiffer)
+                        reExitCodesDiffer, timestamp)
       return
 
     if bufB != expectedOut and expected.action != actionRunNoSpec:
       if not (expected.substr and expectedOut in bufB):
         given.err = reOutputsDiffer
-        r.addResult(test, expected.outp, bufB, reOutputsDiffer)
+        r.addResult(test, expected.outp, bufB, reOutputsDiffer, timestamp)
         return
 
-    compilerOutputTests(test, given, expected, r)
+    compilerOutputTests(test, given, expected, r, timestamp)
     return
 
   of actionReject:
     var given = callCompiler(expected.cmd, test.name, test.options,
                              test.target)
-    cmpMsgs(r, expected, given, test)
+    cmpMsgs(r, expected, given, test, timestamp)
     return
 
 proc testNoSpec(r: var TResults, test: TTest) =
   # does not extract the spec because the file is not supposed to have any
   #let tname = test.name.addFileExt(".nim")
+  let timestamp = getTime()
   inc(r.total)
   let given = callCompiler(cmdTemplate(), test.name, test.options, test.target)
-  r.addResult(test, "", given.msg, given.err)
+  r.addResult(test, "", given.msg, given.err, timestamp)
   if given.err == reSuccess: inc(r.passed)
 
 proc testC(r: var TResults, test: TTest) =
   # runs C code. Doesn't support any specs, just goes by exit code.
-  let tname = test.name.addFileExt(".c")
+  let
+    timestamp = getTime()
+    tname = test.name.addFileExt(".c")
   inc(r.total)
   styledEcho "Processing ", fgCyan, extractFilename(tname)
   var given = callCCompiler(cmdTemplate(), test.name & ".c", test.options, test.target)
   if given.err != reSuccess:
-    r.addResult(test, "", given.msg, given.err)
+    r.addResult(test, "", given.msg, given.err, timestamp)
   elif test.action == actionRun:
     let exeFile = changeFileExt(test.name, ExeExt)
     var (_, exitCode) = execCmdEx(exeFile, options = {poStdErrToStdOut, poUsePath})
