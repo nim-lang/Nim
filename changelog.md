@@ -74,3 +74,5 @@ This now needs to be written as:
   var a = -5
   for i in a..b:
     echo i
+- Removed deprecated romans module from the stdlib and published it as separate
+  Nimble package.
