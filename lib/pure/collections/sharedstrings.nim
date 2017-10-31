@@ -55,7 +55,7 @@ proc `[]=`*(s: var SharedString; i: Natural; value: char) =
   if i < s.len: s.buffer.data[i+s.first] = value
   else: raise newException(IndexError, "index out of bounds")
 
-proc `[]`*(s: SharedString; ab: Slice[int]): SharedString =
+proc `[]`*(s: SharedString; ab: HSlice[int, int]): SharedString =
   #incRef(src.buffer)
   if ab.a < s.len:
     result.buffer = s.buffer

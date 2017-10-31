@@ -312,7 +312,7 @@ proc ensureInitialized() =
 
   if not testsToRun.isValid:
     testsToRun.init()
-    when declared(os):
+    when declared(paramCount):
       # Read tests to run from the command line.
       for i in 1 .. paramCount():
         testsToRun.incl(paramStr(i))

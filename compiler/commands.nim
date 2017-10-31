@@ -343,7 +343,9 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     # keep the old name for compat
     if pass in {passCmd2, passPP} and not options.gNoNimblePath:
       expectArg(switch, arg, pass, info)
-      let path = processPath(arg, info, notRelativeToProj=true)
+      var path = processPath(arg, info, notRelativeToProj=true)
+      let nimbleDir = getEnv("NIMBLE_DIR")
+      if nimbleDir.len > 0 and pass == passPP: path = nimbleDir / "pkgs"
       nimblePath(path, info)
   of "nonimblepath", "nobabelpath":
     expectNoArg(switch, arg, pass, info)

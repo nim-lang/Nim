@@ -77,7 +77,7 @@ type
     topLayer*: TIdTable
     nextLayer*: ptr LayeredIdTable
 
-  TReplTypeVars* {.final.} = object
+  TReplTypeVars* = object
     c*: PContext
     typeMap*: ptr LayeredIdTable # map PType to PType
     symMap*: TIdTable         # map PSym to PSym
@@ -133,7 +133,7 @@ proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
   result.typ = t
   if result.kind == nkSym: result.sym = replaceTypeVarsS(cl, n.sym)
   let isCall = result.kind in nkCallKinds
-  for i in 0 .. <n.safeLen:
+  for i in 0 ..< n.safeLen:
     # XXX HACK: ``f(a, b)``, avoid to instantiate `f`
     if isCall and i == 0: result.add(n[i])
     else: result.add(prepareNode(cl, n[i]))
@@ -151,7 +151,7 @@ proc hasGenericArguments*(n: PNode): bool =
            (n.sym.kind == skType and
             n.sym.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} != {})
   else:
-    for i in 0.. <n.safeLen:
+    for i in 0..<n.safeLen:
       if hasGenericArguments(n.sons[i]): return true
     return false
 
@@ -166,13 +166,13 @@ proc reResolveCallsWithTypedescParams(cl: var TReplTypeVars, n: PNode): PNode =
   # overload resolution is executed again (which may trigger generateInstance).
   if n.kind in nkCallKinds and sfFromGeneric in n[0].sym.flags:
     var needsFixing = false
-    for i in 1 .. <n.safeLen:
+    for i in 1 ..< n.safeLen:
       if isTypeParam(n[i]): needsFixing = true
     if needsFixing:
       n.sons[0] = newSymNode(n.sons[0].sym.owner)
       return cl.c.semOverloadedCall(cl.c, n, n, {skProc, skFunc}, {})
 
-  for i in 0 .. <n.safeLen:
+  for i in 0 ..< n.safeLen:
     n.sons[i] = reResolveCallsWithTypedescParams(cl, n[i])
 
   return n
@@ -261,6 +261,17 @@ proc instCopyType*(cl: var TReplTypeVars, t: PType): PType =
   if not (t.kind in tyMetaTypes or
          (t.kind == tyStatic and t.n == nil)):
     result.flags.excl tfInstClearedFlags
+  when false:
+    if newDestructors:
+      result.assignment = nil
+      #result.destructor = nil
+      result.sink = nil
+
+template typeBound(c, newty, oldty, field, info) =
+  let opr = newty.field
+  if opr != nil and sfFromGeneric notin opr.flags:
+    # '=' needs to be instantiated for generics when the type is constructed:
+    newty.field = c.instTypeBoundOp(c, opr, oldty, info, attachedAsgn, 1)
 
 proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   # tyGenericInvocation[A, tyGenericInvocation[A, B]]
@@ -357,16 +368,10 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
         assert newbody.kind in {tyRef, tyPtr}
         assert newbody.lastSon.typeInst == nil
         newbody.lastSon.typeInst = result
-    template typeBound(field) =
-      let opr = newbody.field
-      if opr != nil and sfFromGeneric notin opr.flags:
-        # '=' needs to be instantiated for generics when the type is constructed:
-        newbody.field = cl.c.instTypeBoundOp(cl.c, opr, result, cl.info,
-                                             attachedAsgn, 1)
     if newDestructors:
-      typeBound(destructor)
-      typeBound(sink)
-    typeBound(assignment)
+      cl.c.typesWithOps.add((newbody, result))
+    else:
+      typeBound(cl.c, newbody, result, assignment, cl.info)
     let methods = skipTypes(bbody, abstractPtrs).methods
     for col, meth in items(methods):
       # we instantiate the known methods belonging to that type, this causes
@@ -380,11 +385,11 @@ proc eraseVoidParams*(t: PType) =
   if t.sons[0] != nil and t.sons[0].kind == tyVoid:
     t.sons[0] = nil
 
-  for i in 1 .. <t.sonsLen:
+  for i in 1 ..< t.sonsLen:
     # don't touch any memory unless necessary
     if t.sons[i].kind == tyVoid:
       var pos = i
-      for j in i+1 .. <t.sonsLen:
+      for j in i+1 ..< t.sonsLen:
         if t.sons[j].kind != tyVoid:
           t.sons[pos] = t.sons[j]
           t.n.sons[pos] = t.n.sons[j]
@@ -394,7 +399,7 @@ proc eraseVoidParams*(t: PType) =
       return
 
 proc skipIntLiteralParams*(t: PType) =
-  for i in 0 .. <t.sonsLen:
+  for i in 0 ..< t.sonsLen:
     let p = t.sons[i]
     if p == nil: continue
     let skipped = p.skipIntLit
@@ -495,7 +500,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
     bailout()
     result = instCopyType(cl, t)
     idTablePut(cl.localCache, t, result)
-    for i in 1 .. <result.sonsLen:
+    for i in 1 ..< result.sonsLen:
       result.sons[i] = replaceTypeVarsT(cl, result.sons[i])
     propagateToOwner(result, result.lastSon)
 
@@ -533,6 +538,17 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
         skipIntLiteralParams(result)
 
       else: discard
+
+proc instAllTypeBoundOp*(c: PContext, info: TLineInfo) =
+  if not newDestructors: return
+  var i = 0
+  while i < c.typesWithOps.len:
+    let (newty, oldty) = c.typesWithOps[i]
+    typeBound(c, newty, oldty, destructor, info)
+    typeBound(c, newty, oldty, sink, info)
+    typeBound(c, newty, oldty, assignment, info)
+    inc i
+  setLen(c.typesWithOps, 0)
 
 proc initTypeVars*(p: PContext, typeMap: ptr LayeredIdTable, info: TLineInfo;
                    owner: PSym): TReplTypeVars =

@@ -396,8 +396,13 @@ typedef struct TStringDesc* string;
 #define GenericSeqSize sizeof(TGenericSeq)
 #define paramCount() cmdCount
 
+// NAN definition copied from math.h included in the Windows SDK version 10.0.14393.0
 #ifndef NAN
-#  define NAN (0.0 / 0.0)
+#ifndef _HUGE_ENUF
+#define _HUGE_ENUF  1e+300  // _HUGE_ENUF*_HUGE_ENUF must overflow
+#endif
+#define NAN_INFINITY ((float)(_HUGE_ENUF * _HUGE_ENUF))
+#define NAN ((float)(NAN_INFINITY * 0.0F))
 #endif
 
 #ifndef INF

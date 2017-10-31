@@ -32,7 +32,7 @@ proc at(a, i: PNode, elemType: PType): PNode =
   result.typ = elemType
 
 proc liftBodyTup(c: var TLiftCtx; t: PType; body, x, y: PNode) =
-  for i in 0 .. <t.len:
+  for i in 0 ..< t.len:
     let lit = lowerings.newIntLit(i)
     liftBodyAux(c, t.sons[i], body, x.at(lit, t.sons[i]), y.at(lit, t.sons[i]))
 
@@ -58,7 +58,7 @@ proc liftBodyObj(c: var TLiftCtx; n, body, x, y: PNode) =
     var access = dotField(x, n[0].sym)
     caseStmt.add(access)
     # copy the branches over, but replace the fields with the for loop body:
-    for i in 1 .. <n.len:
+    for i in 1 ..< n.len:
       var branch = copyTree(n[i])
       let L = branch.len
       branch.sons[L-1] = newNodeI(nkStmtList, c.info)
@@ -268,10 +268,10 @@ proc liftBody(c: PContext; typ: PType; kind: TTypeAttachedOp;
   a.kind = kind
   let body = newNodeI(nkStmtList, info)
   let procname = case kind
-                 of attachedAsgn: getIdent":Asgn"
-                 of attachedSink: getIdent":Sink"
-                 of attachedDeepCopy: getIdent":DeepCopy"
-                 of attachedDestructor: getIdent":Destroy"
+                 of attachedAsgn: getIdent"="
+                 of attachedSink: getIdent"=sink"
+                 of attachedDeepCopy: getIdent"=deepcopy"
+                 of attachedDestructor: getIdent"=destroy"
 
   result = newSym(skProc, procname, typ.owner, info)
   a.fn = result
@@ -297,7 +297,7 @@ proc liftBody(c: PContext; typ: PType; kind: TTypeAttachedOp;
   of attachedDestructor: typ.destructor = result
 
   var n = newNodeI(nkProcDef, info, bodyPos+1)
-  for i in 0 .. < n.len: n.sons[i] = emptyNode
+  for i in 0 ..< n.len: n.sons[i] = emptyNode
   n.sons[namePos] = newSymNode(result)
   n.sons[paramsPos] = result.typ.n
   n.sons[bodyPos] = body
@@ -319,8 +319,13 @@ proc liftTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
   ## to ensure we lift assignment, destructors and moves properly.
   ## The later 'destroyer' pass depends on it.
   if not newDestructors or not hasDestructor(typ): return
+  # do not produce wrong liftings while we're still instantiating generics:
+  if c.typesWithOps.len > 0: return
   let typ = typ.skipTypes({tyGenericInst, tyAlias})
   # we generate the destructor first so that other operators can depend on it:
-  if typ.destructor == nil: liftBody(c, typ, attachedDestructor, info)
-  if typ.assignment == nil: liftBody(c, typ, attachedAsgn, info)
-  if typ.sink == nil: liftBody(c, typ, attachedSink, info)
+  if typ.destructor == nil:
+    liftBody(c, typ, attachedDestructor, info)
+  if typ.assignment == nil:
+    liftBody(c, typ, attachedAsgn, info)
+  if typ.sink == nil:
+    liftBody(c, typ, attachedSink, info)

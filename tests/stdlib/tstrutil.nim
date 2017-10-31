@@ -13,15 +13,13 @@ proc testStrip() =
 proc testRemoveSuffix =
   var s = "hello\n\r"
   s.removeSuffix
-  assert s == "hello\n"
-  s.removeSuffix
   assert s == "hello"
   s.removeSuffix
   assert s == "hello"
 
   s = "hello\n\n"
   s.removeSuffix
-  assert s == "hello\n"
+  assert s == "hello"
 
   s = "hello\r"
   s.removeSuffix
@@ -41,7 +39,31 @@ proc testRemoveSuffix =
   s.removeSuffix({'s','z'})
   assert s == "hello"
   s.removeSuffix({'l','o'})
-  assert s == "hell"
+  assert s == "he"
+
+  s = "aeiou"
+  s.removeSuffix("")
+  assert s == "aeiou"
+
+  s = ""
+  s.removeSuffix("")
+  assert s == ""
+
+  s = "  "
+  s.removeSuffix
+  assert s == "  "
+
+  s = "  "
+  s.removeSuffix("")
+  assert s == "  "
+
+  s = "    "
+  s.removeSuffix(" ")
+  assert s == "   "
+
+  s = "    "
+  s.removeSuffix(' ')
+  assert s == ""
 
   # Contrary to Chomp in other languages
   # empty string does not change behaviour
@@ -49,9 +71,71 @@ proc testRemoveSuffix =
   s.removeSuffix("")
   assert s == "hello\r\n\r\n"
 
+proc testRemovePrefix =
+  var s = "\n\rhello"
+  s.removePrefix
+  assert s == "hello"
+  s.removePrefix
+  assert s == "hello"
+
+  s = "\n\nhello"
+  s.removePrefix
+  assert s == "hello"
+
+  s = "\rhello"
+  s.removePrefix
+  assert s == "hello"
+
+  s = "hello \n there"
+  s.removePrefix
+  assert s == "hello \n there"
+
+  s = "hello"
+  s.removePrefix("hel")
+  assert s == "lo"
+  s.removePrefix('l')
+  assert s == "o"
+
+  s = "hellos"
+  s.removePrefix({'h','e'})
+  assert s == "llos"
+  s.removePrefix({'l','o'})
+  assert s == "s"
+
+  s = "aeiou"
+  s.removePrefix("")
+  assert s == "aeiou"
+
+  s = ""
+  s.removePrefix("")
+  assert s == ""
+
+  s = "  "
+  s.removePrefix
+  assert s == "  "
+
+  s = "  "
+  s.removePrefix("")
+  assert s == "  "
+
+  s = "    "
+  s.removePrefix(" ")
+  assert s == "   "
+
+  s = "    "
+  s.removePrefix(' ')
+  assert s == ""
+
+  # Contrary to Chomp in other languages
+  # empty string does not change behaviour
+  s = "\r\n\r\nhello"
+  s.removePrefix("")
+  assert s == "\r\n\r\nhello"
+
 proc main() =
   testStrip()
   testRemoveSuffix()
+  testRemovePrefix()
   for p in split("/home/a1:xyz:/usr/bin", {':'}):
     write(stdout, p)
 
@@ -63,6 +147,25 @@ proc testDelete =
   assert s == "01236789ABCDEFG"
   delete(s, 0, 0)
   assert s == "1236789ABCDEFG"
+
+
+proc testIsAlphaNumeric =
+  assert isAlphaNumeric("abcdABC1234") == true
+  assert isAlphaNumeric("a") == true
+  assert isAlphaNumeric("abcABC?1234") == false
+  assert isAlphaNumeric("abcABC 1234") == false
+  assert isAlphaNumeric(".") == false
+
+testIsAlphaNumeric()
+
+proc testIsDigit =
+  assert isDigit("1") == true
+  assert isDigit("1234") == true
+  assert isDigit("abcABC?1234") == false
+  assert isDigit(".") == false
+  assert isDigit(":") == false
+
+testIsDigit()
 
 proc testFind =
   assert "0123456789ABCDEFGH".find('A') == 10

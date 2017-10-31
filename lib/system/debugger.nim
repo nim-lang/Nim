@@ -127,7 +127,7 @@ proc fileMatches(c, bp: cstring): bool =
 
 proc canonFilename*(filename: cstring): cstring =
   ## returns 'nil' if the filename cannot be found.
-  for i in 0 .. <dbgFilenameLen:
+  for i in 0 .. dbgFilenameLen-1:
     result = dbgFilenames[i]
     if fileMatches(result, filename): return result
   result = nil

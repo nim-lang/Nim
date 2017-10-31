@@ -41,7 +41,7 @@ proc `$`(x: uint64): string =
 
     let half = i div 2
     # Reverse
-    for t in 0 .. < half: swap(result[t], result[i-t-1])
+    for t in 0 .. half-1: swap(result[t], result[i-t-1])
 
 proc reprStrAux(result: var string, s: cstring; len: int) =
   if cast[pointer](s) == nil:

@@ -401,7 +401,7 @@ proc sameConstant*(a, b: PNode): bool =
 
 proc genLiteral(c: PCtx; n: PNode): int =
   # types do not matter here:
-  for i in 0 .. <c.constants.len:
+  for i in 0 ..< c.constants.len:
     if sameConstant(c.constants[i], n): return i
   result = rawGenLiteral(c, n)
 
@@ -430,7 +430,7 @@ proc genCase(c: PCtx; n: PNode; dest: var TDest) =
     c.gen(n.sons[0], tmp)
     # branch tmp, codeIdx
     # fjmp   elseLabel
-    for i in 1 .. <n.len:
+    for i in 1 ..< n.len:
       let it = n.sons[i]
       if it.len == 1:
         # else stmt:
@@ -460,7 +460,7 @@ proc genTry(c: PCtx; n: PNode; dest: var TDest) =
   c.gen(n.sons[0], dest)
   c.clearDest(n, dest)
   c.patch(elsePos)
-  for i in 1 .. <n.len:
+  for i in 1 ..< n.len:
     let it = n.sons[i]
     if it.kind != nkFinally:
       var blen = len(it)
@@ -518,7 +518,7 @@ proc genCall(c: PCtx; n: PNode; dest: var TDest) =
   let x = c.getTempRange(n.len, slotTempUnknown)
   # varargs need 'opcSetType' for the FFI support:
   let fntyp = skipTypes(n.sons[0].typ, abstractInst)
-  for i in 0.. <n.len:
+  for i in 0..<n.len:
     #if i > 0 and i < sonsLen(fntyp):
     #  let paramType = fntyp.n.sons[i]
     #  if paramType.typ.isCompileTimeOnly: continue
@@ -995,7 +995,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     let n = n[1].skipConv
     let x = c.getTempRange(n.len, slotTempUnknown)
     internalAssert n.kind == nkBracket
-    for i in 0.. <n.len:
+    for i in 0..<n.len:
       var r: TRegister = x+i
       c.gen(n.sons[i], r)
     c.gABC(n, opcEcho, x, n.len)
@@ -1645,7 +1645,7 @@ proc genObjConstr(c: PCtx, n: PNode, dest: var TDest) =
     c.gABx(n, opcNew, dest, c.genType(t.sons[0]))
   else:
     c.gABx(n, opcLdNull, dest, c.genType(n.typ))
-  for i in 1.. <n.len:
+  for i in 1..<n.len:
     let it = n.sons[i]
     if it.kind == nkExprColonExpr and it.sons[0].kind == nkSym:
       let idx = genField(it.sons[0])
@@ -1660,7 +1660,7 @@ proc genTupleConstr(c: PCtx, n: PNode, dest: var TDest) =
   if dest < 0: dest = c.getTemp(n.typ)
   c.gABx(n, opcLdNull, dest, c.genType(n.typ))
   # XXX x = (x.old, 22)  produces wrong code ... stupid self assignments
-  for i in 0.. <n.len:
+  for i in 0..<n.len:
     let it = n.sons[i]
     if it.kind == nkExprColonExpr:
       let idx = genField(it.sons[0])
@@ -1796,7 +1796,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     for x in n: gen(c, x)
   of nkStmtListExpr:
     let L = n.len-1
-    for i in 0 .. <L: gen(c, n.sons[i])
+    for i in 0 ..< L: gen(c, n.sons[i])
     gen(c, n.sons[L], dest, flags)
   of nkPragmaBlock:
     gen(c, n.lastSon, dest, flags)
@@ -1882,7 +1882,7 @@ proc genExpr*(c: PCtx; n: PNode, requiresValue = true): int =
 proc genParams(c: PCtx; params: PNode) =
   # res.sym.position is already 0
   c.prc.slots[0] = (inUse: true, kind: slotFixedVar)
-  for i in 1.. <params.len:
+  for i in 1..<params.len:
     c.prc.slots[i] = (inUse: true, kind: slotFixedLet)
   c.prc.maxSlots = max(params.len, 1)
 
@@ -1895,7 +1895,7 @@ proc finalJumpTarget(c: PCtx; pc, diff: int) =
 
 proc genGenericParams(c: PCtx; gp: PNode) =
   var base = c.prc.maxSlots
-  for i in 0.. <gp.len:
+  for i in 0..<gp.len:
     var param = gp.sons[i].sym
     param.position = base + i # XXX: fix this earlier; make it consistent with templates
     c.prc.slots[base + i] = (inUse: true, kind: slotFixedLet)
@@ -1903,7 +1903,7 @@ proc genGenericParams(c: PCtx; gp: PNode) =
 
 proc optimizeJumps(c: PCtx; start: int) =
   const maxIterations = 10
-  for i in start .. <c.code.len:
+  for i in start ..< c.code.len:
     let opc = c.code[i].opcode
     case opc
     of opcTJmp, opcFJmp:

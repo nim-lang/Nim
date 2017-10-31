@@ -136,7 +136,7 @@ proc hashTree(c: var MD5Context, n: PNode) =
   of nkStrLit..nkTripleStrLit:
     c &= n.strVal
   else:
-    for i in 0.. <n.len: hashTree(c, n.sons[i])
+    for i in 0..<n.len: hashTree(c, n.sons[i])
 
 proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
   if t == nil:
@@ -230,14 +230,14 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
         c &= ','
       c.hashType(t.sons[0], flags)
     else:
-      for i in 0.. <t.len: c.hashType(t.sons[i], flags)
+      for i in 0..<t.len: c.hashType(t.sons[i], flags)
     c &= char(t.callConv)
     if CoType notin flags:
       if tfNoSideEffect in t.flags: c &= ".noSideEffect"
       if tfThread in t.flags: c &= ".thread"
     if tfVarargs in t.flags: c &= ".varargs"
   else:
-    for i in 0.. <t.len: c.hashType(t.sons[i], flags)
+    for i in 0..<t.len: c.hashType(t.sons[i], flags)
   if tfNotNil in t.flags and CoType notin flags: c &= "not nil"
 
 when defined(debugSigHashes):

@@ -11,7 +11,7 @@
 
 proc leftAppearsOnRightSide(le, ri: PNode): bool =
   if le != nil:
-    for i in 1 .. <ri.len:
+    for i in 1 ..< ri.len:
       let r = ri[i]
       if isPartOf(le, r) != arNo: return true
 
@@ -364,7 +364,7 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType): Rope =
     of '@':
       if j < ri.len:
         result.add genOtherArg(p, ri, j, typ)
-        for k in j+1 .. < ri.len:
+        for k in j+1 ..< ri.len:
           result.add(~", ")
           result.add genOtherArg(p, ri, k, typ)
       inc i
@@ -377,7 +377,7 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType): Rope =
           result.add(~"(")
           if 1 < ri.len:
             result.add genOtherArg(p, ri, 1, typ)
-          for k in j+1 .. < ri.len:
+          for k in j+1 ..< ri.len:
             result.add(~", ")
             result.add genOtherArg(p, ri, k, typ)
           result.add(~")")

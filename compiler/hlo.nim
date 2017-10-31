@@ -36,7 +36,7 @@ proc applyPatterns(c: PContext, n: PNode): PNode =
   # we apply the last pattern first, so that pattern overriding is possible;
   # however the resulting AST would better not trigger the old rule then
   # anymore ;-)
-  for i in countdown(<c.patterns.len, 0):
+  for i in countdown(c.patterns.len-1, 0):
     let pattern = c.patterns[i]
     if not isNil(pattern):
       let x = applyRule(c, pattern, result)
@@ -75,7 +75,7 @@ proc hlo(c: PContext, n: PNode): PNode =
     result = applyPatterns(c, n)
     if result == n:
       # no optimization applied, try subtrees:
-      for i in 0 .. < safeLen(result):
+      for i in 0 ..< safeLen(result):
         let a = result.sons[i]
         let h = hlo(c, a)
         if h != a: result.sons[i] = h
