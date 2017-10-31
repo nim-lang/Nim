@@ -674,6 +674,36 @@ proc newJArray*(): JsonNode =
   result.kind = JArray
   result.elems = @[]
 
+proc isString*(n: JsonNode): bool =
+  ## Checks if `n` is a `JString JsonNode`.
+  if n.isNil or n.kind != JString: return false
+  else: return true
+
+proc isInt*(n: JsonNode): bool =
+  ## Checks if `n` is a `JInt JsonNode`.
+  if n.isNil or n.kind != JInt: return false
+  else: return true
+
+proc isFloat*(n: JsonNode): bool =
+  ## Checks if `n` is a `JFloat JsonNode`.
+  if n.isNil or n.kind != JFloat: return false
+  else: return true
+
+proc isBool*(n: JsonNode): bool =
+  ## Checks if `n` is a `JBool JsonNode`.
+  if n.isNil or n.kind != JBool: return false
+  else: return true
+
+proc isObject*(n: JsonNode): bool =
+  ## Checks if `n` is a `JObject JsonNode`.
+  if n.isNil or n.kind != JObject: return false
+  else: return true
+
+proc isArray*(n: JsonNode): bool =
+  ## Checks if `n` is a `JArray JsonNode`.
+  if n.isNil or n.kind != JArray: return false
+  else: return true
+
 proc getStr*(n: JsonNode, default: string = ""): string =
   ## Retrieves the string value of a `JString JsonNode`.
   ##
