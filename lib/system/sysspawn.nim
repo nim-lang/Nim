@@ -142,7 +142,7 @@ var
   workersData: array[NumThreads, Worker]
 
 proc setup() =
-  for i in 0.. <NumThreads:
+  for i in 0 ..< NumThreads:
     workersData[i].taskArrived = createCondVar()
     workersData[i].taskStarted = createFastCondVar()
     createThread(workers[i], slave, addr(workersData[i]))
