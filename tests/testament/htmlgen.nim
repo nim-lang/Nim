@@ -43,14 +43,14 @@ proc generateTestResultPanelPartial(outfile: File, testResultRow: JsonNode, only
       testResultRow["category"].str &
       "_" &
       testResultRow["name"].str
-      ).replace(".", "_")
+      ).multiReplace({".": "_", " ": "_", ":": "_"})
     name = testResultRow["name"].str.htmlQuote()
     category = testResultRow["category"].str.htmlQuote()
     target = testResultRow["target"].str.htmlQuote()
     action = testResultRow["action"].str.htmlQuote()
     result = htmlQuote testResultRow["result"].str
-    expected = htmlQuote testResultRow["expected"].str
-    gotten = htmlQuote testResultRow["given"].str
+    expected = testResultRow["expected"].str
+    gotten = testResultRow["given"].str
     timestamp = htmlQuote testResultRow["timestamp"].str
   var panelCtxClass, textCtxClass, bgCtxClass, resultSign, resultDescription: string
   case result
@@ -110,25 +110,25 @@ proc allTestResults(): AllTests =
         let testRunId = elem["testrun"].str
         var
           newTestRun = false
-          testRunAllTest: TestRunAllTests
+          testRun: TestRunAllTests
         if testRunId notin testRunTable:
-          testRunAllTest.data = newJArray()
+          testRun.data = newJArray()
           newTestRun = true
         else:
-          testRunAllTest = testRunTable[testRunId]
-        testRunAllTest.data.add elem
+          testRun = testRunTable[testRunId]
+        testRun.data.add elem
         let state = elem["result"].str
-        if state.contains("reSuccess"): inc testRunAllTest.successCount
-        elif state.contains("reIgnored"): inc testRunAllTest.ignoredCount
-        testRunTable[testRunId] = testRunAllTest
+        if state.contains("reSuccess"): inc testRun.successCount
+        elif state.contains("reIgnored"): inc testRun.ignoredCount
+        testRunTable[testRunId] = testRun
   result.newSeq(testRunTable.len())
   var i = testRunTable.len() - 1
   for id, run in testRunTable:
     var resultRun: TestRunAllTests
-    resultRun.data = run.data
-    resultRun.totalCount = run.data.len
-    resultRun.successPercentage = 100 * (run.successCount.toBiggestFloat() / resultRun.totalCount.toBiggestFloat())
-    resultRun.ignoredPercentage = 100 * (run.ignoredCount.toBiggestFloat() / resultRun.totalCount.toBiggestFloat())
+    resultRun = run
+    resultRun.totalCount = resultRun.data.len()
+    resultRun.successPercentage = 100 * (resultRun.successCount.toBiggestFloat() / resultRun.totalCount.toBiggestFloat())
+    resultRun.ignoredPercentage = 100 * (resultRun.ignoredCount.toBiggestFloat() / resultRun.totalCount.toBiggestFloat())
     resultRun.failedCount = resultRun.totalCount - resultRun.successCount - resultRun.ignoredCount
     resultRun.failedPercentage = 100 * (resultRun.failedCount.toBiggestFloat() / resultRun.totalCount.toBiggestFloat())
     # Reverse order: last in table will be most recent
