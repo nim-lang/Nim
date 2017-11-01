@@ -160,7 +160,8 @@ proc generateTestRunTabContentPartial(outfile: File, allResults: TestRunAllTests
     allResults.totalCount,
     allResults.successCount, formatBiggestFloat(allResults.successPercentage, ffDecimal, 2) & "%",
     allResults.ignoredCount, formatBiggestFloat(allResults.ignoredPercentage, ffDecimal, 2) & "%",
-    allResults.failedCount, formatBiggestFloat(allResults.failedPercentage, ffDecimal, 2) & "%"
+    allResults.failedCount, formatBiggestFloat(allResults.failedPercentage, ffDecimal, 2) & "%",
+    onlyFailing
   )
   generateTestResultsPanelGroupPartial(outfile, allResults.data, onlyFailing)
   outfile.generateHtmlTabPageEnd()

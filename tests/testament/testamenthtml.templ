@@ -165,7 +165,7 @@
 #  totalCount: BiggestInt,
 #  successCount: BiggestInt, successPercentage: string,
 #  ignoredCount: BiggestInt, ignoredPercentage: string,
-#  failedCount: BiggestInt, failedPercentage: string) =
+#  failedCount: BiggestInt, failedPercentage: string, onlyFailing = false) =
             <div id="tab-%testrunid" class="tab-pane fade%firstTabActiveClass" role="tabpanel">
                 <h2>%branch#%hash@%machineName</h2>
                 <dl class="dl-horizontal">
@@ -213,6 +213,7 @@
                                 </div>
                             </td>
                         </tr>
+#  if not onlyFailing:
                         <tr>
                             <th class="text-right" style="vertical-align:middle">Successful Tests</th>
                             <td>
@@ -235,6 +236,7 @@
                                 </div>
                             </td>
                         </tr>
+#  end if
                         <tr>
                             <th class="text-right" style="vertical-align:middle">Failed Tests</th>
                             <td>
