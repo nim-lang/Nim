@@ -16,7 +16,6 @@ import
 
 const
   resultsFile = "testresults.html"
-  jsonFile = "testresults.json"
   Usage = """Usage:
   tester [options] command [arguments]
 
@@ -24,7 +23,7 @@ Command:
   all                         run all tests
   c|category <category>       run all the tests of a certain category
   r|run <test>                run single test file
-  html                        generate $1 from the database
+  html                        generate $1 from the testresults folder
 Arguments:
   arguments are passed to the compiler
 Options:
@@ -32,6 +31,7 @@ Options:
   --failing                 only show failing/ignored tests
   --targets:"c c++ js objc" run tests for specified targets (default: all)
   --nim:path                use a particular nim executable (default: compiler/nim)
+  --testrunid:<id>          use specified test run ID (default: current epoch time)
 """ % resultsFile
 
 type
@@ -455,9 +455,12 @@ proc main() =
     of "pedantic": discard "now always enabled"
     of "targets": targets = parseTargets(p.val.string)
     of "nim": compilerPrefix = p.val.string
+    of "testrunid": backend.thisTestRunId = p.val.string
     else: quit Usage
     p.next()
   if p.kind != cmdArgument: quit Usage
+  if backend.thisTestRunId.isNil():
+    backend.thisTestRunId = $ int(epochTime())
   var action = p.key.string.normalize
   p.next()
   var r = initResults()
@@ -471,9 +474,9 @@ proc main() =
       assert testsDir.startsWith(testsDir)
       let cat = dir[testsDir.len .. ^1]
       if kind == pcDir and cat notin ["testament", "testdata", "nimcache"]:
-        cmds.add(myself & " cat " & cat & rest)
+        cmds.add(myself & " --testrunid:" & quoteShell(backend.thisTestRunId)  & " cat " & cat & rest)
     for cat in AdditionalCategories:
-      cmds.add(myself & " cat " & cat & rest)
+      cmds.add(myself & " --testrunid:" & quoteShell(backend.thisTestRunId) & " cat " & cat & rest)
     quit osproc.execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams})
   of "c", "cat", "category":
     var cat = Category(p.key)

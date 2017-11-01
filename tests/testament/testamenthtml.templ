@@ -146,10 +146,10 @@
 #proc generateHtmlTabListBegin*(outfile: File) =
         <ul class="nav nav-tabs" role="tablist">
 #end proc
-#proc generateHtmlTabListItem*(outfile: File, firstTabActiveClass, commitId, 
-#  machineId, branch, hash, machineName: string) =
+#proc generateHtmlTabListItem*(outfile: File, firstTabActiveClass, testrunid,
+#  commitId, machineId, branch, hash, machineName: string) =
             <li role="presentation" class="%firstTabActiveClass">
-                <a href="#tab-commit-%commitId-machine-%machineId" aria-controls="tab-commit-%commitId-machine-%machineId" role="tab" data-toggle="tab">
+                <a href="#tab-%testrunid" aria-controls="tab-%testrunid" role="tab" data-toggle="tab">
                     %branch#%hash@%machineName
                 </a>
             </li>
@@ -160,12 +160,13 @@
 #proc generateHtmlTabContentsBegin*(outfile: File) =
         <div class="tab-content">
 #end proc
-#proc generateHtmlTabPageBegin*(outfile: File, firstTabActiveClass, commitId,
-#  machineId, branch, hash, machineName, os, cpu: string, totalCount: BiggestInt,
+#proc generateHtmlTabPageBegin*(outfile: File, firstTabActiveClass, testrunid, 
+#  commitId, machineId, branch, hash, machineName, os, cpu: string,
+#  totalCount: BiggestInt,
 #  successCount: BiggestInt, successPercentage: string,
 #  ignoredCount: BiggestInt, ignoredPercentage: string,
 #  failedCount: BiggestInt, failedPercentage: string) =
-            <div id="tab-commit-%commitId-machine-%machineId" class="tab-pane fade%firstTabActiveClass" role="tabpanel">
+            <div id="tab-%testrunid" class="tab-pane fade%firstTabActiveClass" role="tabpanel">
                 <h2>%branch#%hash@%machineName</h2>
                 <dl class="dl-horizontal">
                     <dt>Branch</dt>
@@ -205,10 +206,10 @@
                             <th class="text-right" style="vertical-align:middle">All Tests</th>
                             <td>
                                 <div class="btn-group">
-                                    <button class="btn btn-default" type="button" onclick="showAll('tab-commit-%commitId-machine-%machineId');">Show All</button>
-                                    <button class="btn btn-default" type="button" onclick="hideAll('tab-commit-%commitId-machine-%machineId');">Hide All</button>
-                                    <button class="btn btn-default" type="button" onclick="expandAll('tab-commit-%commitId-machine-%machineId');">Expand All</button>
-                                    <button class="btn btn-default" type="button" onclick="collapseAll('tab-commit-%commitId-machine-%machineId');">Collapse All</button>
+                                    <button class="btn btn-default" type="button" onclick="showAll('tab-%testrunid');">Show All</button>
+                                    <button class="btn btn-default" type="button" onclick="hideAll('tab-%testrunid');">Hide All</button>
+                                    <button class="btn btn-default" type="button" onclick="expandAll('tab-%testrunid');">Expand All</button>
+                                    <button class="btn btn-default" type="button" onclick="collapseAll('tab-%testrunid');">Collapse All</button>
                                 </div>
                             </td>
                         </tr>
@@ -216,10 +217,10 @@
                             <th class="text-right" style="vertical-align:middle">Successful Tests</th>
                             <td>
                                 <div class="btn-group">
-                                    <button class="btn btn-default" type="button" onclick="showAll('tab-commit-%commitId-machine-%machineId', 'success');">Show All</button>
-                                    <button class="btn btn-default" type="button" onclick="hideAll('tab-commit-%commitId-machine-%machineId', 'success');">Hide All</button>
-                                    <button class="btn btn-default" type="button" onclick="expandAll('tab-commit-%commitId-machine-%machineId', 'success');">Expand All</button>
-                                    <button class="btn btn-default" type="button" onclick="collapseAll('tab-commit-%commitId-machine-%machineId', 'success');">Collapse All</button>
+                                    <button class="btn btn-default" type="button" onclick="showAll('tab-%testrunid', 'success');">Show All</button>
+                                    <button class="btn btn-default" type="button" onclick="hideAll('tab-%testrunid', 'success');">Hide All</button>
+                                    <button class="btn btn-default" type="button" onclick="expandAll('tab-%testrunid', 'success');">Expand All</button>
+                                    <button class="btn btn-default" type="button" onclick="collapseAll('tab-%testrunid', 'success');">Collapse All</button>
                                 </div>
                             </td>
                         </tr>
@@ -227,10 +228,10 @@
                             <th class="text-right" style="vertical-align:middle">Skipped Tests</th>
                             <td>
                                 <div class="btn-group">
-                                    <button class="btn btn-default" type="button" onclick="showAll('tab-commit-%commitId-machine-%machineId', 'info');">Show All</button>
-                                    <button class="btn btn-default" type="button" onclick="hideAll('tab-commit-%commitId-machine-%machineId', 'info');">Hide All</button>
-                                    <button class="btn btn-default" type="button" onclick="expandAll('tab-commit-%commitId-machine-%machineId', 'info');">Expand All</button>
-                                    <button class="btn btn-default" type="button" onclick="collapseAll('tab-commit-%commitId-machine-%machineId', 'info');">Collapse All</button>
+                                    <button class="btn btn-default" type="button" onclick="showAll('tab-%testrunid', 'info');">Show All</button>
+                                    <button class="btn btn-default" type="button" onclick="hideAll('tab-%testrunid', 'info');">Hide All</button>
+                                    <button class="btn btn-default" type="button" onclick="expandAll('tab-%testrunid', 'info');">Expand All</button>
+                                    <button class="btn btn-default" type="button" onclick="collapseAll('tab-%testrunid', 'info');">Collapse All</button>
                                 </div>
                             </td>
                         </tr>
@@ -238,10 +239,10 @@
                             <th class="text-right" style="vertical-align:middle">Failed Tests</th>
                             <td>
                                 <div class="btn-group">
-                                    <button class="btn btn-default" type="button" onclick="showAll('tab-commit-%commitId-machine-%machineId', 'danger');">Show All</button>
-                                    <button class="btn btn-default" type="button" onclick="hideAll('tab-commit-%commitId-machine-%machineId', 'danger');">Hide All</button>
-                                    <button class="btn btn-default" type="button" onclick="expandAll('tab-commit-%commitId-machine-%machineId', 'danger');">Expand All</button>
-                                    <button class="btn btn-default" type="button" onclick="collapseAll('tab-commit-%commitId-machine-%machineId', 'danger');">Collapse All</button>
+                                    <button class="btn btn-default" type="button" onclick="showAll('tab-%testrunid', 'danger');">Show All</button>
+                                    <button class="btn btn-default" type="button" onclick="hideAll('tab-%testrunid', 'danger');">Hide All</button>
+                                    <button class="btn btn-default" type="button" onclick="expandAll('tab-%testrunid', 'danger');">Expand All</button>
+                                    <button class="btn btn-default" type="button" onclick="collapseAll('tab-%testrunid', 'danger');">Collapse All</button>
                                 </div>
                             </td>
                         </tr>

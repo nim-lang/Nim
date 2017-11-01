@@ -19,6 +19,7 @@ var
   thisMachine: MachineId
   thisCommit: CommitId
   thisBranch: string
+  thisTestRunId*: string
 
 {.experimental.}
 proc `()`(cmd: string{lit}): string = cmd.execProcess.string.strip
@@ -61,7 +62,8 @@ proc writeTestResult*(name, category, target,
   let jentry = %*{"name": name, "category": category, "target": target,
     "action": action, "result": result, "expected": expected, "given": given,
     "machine": thisMachine.string, "commit": thisCommit.string, "branch": thisBranch,
-    "os": hostOS, "cpu": hostCPU, "timestamp": $timestamp}
+    "os": hostOS, "cpu": hostCPU, "timestamp": $timestamp,
+    "testrun": thisTestRunId}
   if entries > 0:
     results.writeLine(",")
   results.write($jentry)
