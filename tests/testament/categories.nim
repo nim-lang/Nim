@@ -13,8 +13,10 @@
 # included from tester.nim
 # ---------------- ROD file tests ---------------------------------------------
 
+import ospaths
+
 const
-  rodfilesDir = "tests/rodfiles"
+  rodfilesDir = "tests" / "rodfiles"
   nimcacheDir = rodfilesDir / "nimcache"
 
 proc delNimCache() =
@@ -91,7 +93,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
   when defined(Windows):
     # windows looks in the dir of the exe (yay!):
     var nimrtlDll = DynlibFormat % "nimrtl"
-    safeCopyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
+    safeCopyFile("lib" / nimrtlDll, "tests" / "dll" / nimrtlDll)
   else:
     # posix relies on crappy LD_LIBRARY_PATH (ugh!):
     var libpath = getEnv"LD_LIBRARY_PATH".string
@@ -99,7 +101,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     putEnv("LD_LIBRARY_PATH", "tests/dll:" & libpath)
     defer: putEnv("LD_LIBRARY_PATH", libpath)
     var nimrtlDll = DynlibFormat % "nimrtl"
-    safeCopyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
+    safeCopyFile("lib" / nimrtlDll, "tests" / "dll" / nimrtlDll)
 
   testSpec r, makeTest("tests/dll/client.nim", options & " -d:useNimRtl --threads:on" & rpath,
                        cat, actionRun)
@@ -189,7 +191,7 @@ proc threadTests(r: var TResults, cat: Category, options: string) =
     testSpec r, makeTest(filename, options, cat, actionRun)
     testSpec r, makeTest(filename, options & " -d:release", cat, actionRun)
     testSpec r, makeTest(filename, options & " --tlsEmulation:on", cat, actionRun)
-  for t in os.walkFiles("tests/threads/t*.nim"):
+  for t in os.walkFiles("tests"/"threads"/"t*.nim"):
     test(t)
 
 # ------------------------- IO tests ------------------------------------------
@@ -206,7 +208,7 @@ proc asyncTests(r: var TResults, cat: Category, options: string) =
   template test(filename: untyped) =
     testSpec r, makeTest(filename, options, cat)
     testSpec r, makeTest(filename, options & " -d:upcoming", cat)
-  for t in os.walkFiles("tests/async/t*.nim"):
+  for t in os.walkFiles("tests"/"async"/"t*.nim"):
     test(t)
 
 # ------------------------- debugger tests ------------------------------------
@@ -223,7 +225,7 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
     testSpec r, makeTest(filename, options & " -d:nodejs -d:release", cat,
                          actionRun, targetJS)
 
-  for t in os.walkFiles("tests/js/t*.nim"):
+  for t in os.walkFiles("tests"/"js"/"t*.nim"):
     test(t)
   for testfile in ["exception/texceptions", "exception/texcpt1",
                    "exception/texcsub", "exception/tfinally",
