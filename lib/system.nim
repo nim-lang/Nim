@@ -1167,7 +1167,7 @@ proc contains*[T](x: set[T], y: T): bool {.magic: "InSet", noSideEffect.}
   ## is achieved by reversing the parameters for ``contains``; ``in`` then
   ## passes its arguments in reverse order.
 
-proc contains*[T](s: HSlice[T, T], value: T): bool {.noSideEffect, inline.} =
+proc contains*[U, V, W](s: HSlice[U, V], value: W): bool {.noSideEffect, inline.} =
   ## Checks if `value` is within the range of `s`; returns true iff
   ## `value >= s.a and value <= s.b`
   ##
@@ -3527,20 +3527,21 @@ proc `[]=`*[T, U, V](s: var seq[T], x: HSlice[U, V], b: openArray[T]) =
   else:
     spliceImpl(s, a, L, b)
 
-proc `[]`*[T](s: openArray[T]; i: BackwardsIndex): T = s[s.len - int(i)]
-proc `[]`*[Idx, T](a: array[Idx, T]; i: BackwardsIndex): T =
+proc `[]`*[T](s: openArray[T]; i: BackwardsIndex): T {.inline.} = s[s.len - int(i)]
+proc `[]`*[Idx, T](a: array[Idx, T]; i: BackwardsIndex): T {.inline.} =
   a[Idx(a.len - int(i) + int low(a))]
-proc `[]`*(s: string; i: BackwardsIndex): char = s[s.len - int(i)]
+proc `[]`*(s: string; i: BackwardsIndex): char {.inline.} = s[s.len - int(i)]
 
-proc `[]`*[T](s: var openArray[T]; i: BackwardsIndex): var T = s[s.len - int(i)]
-proc `[]`*[Idx, T](a: var array[Idx, T]; i: BackwardsIndex): var T =
+proc `[]`*[T](s: var openArray[T]; i: BackwardsIndex): var T {.inline.} =
+  s[s.len - int(i)]
+proc `[]`*[Idx, T](a: var array[Idx, T]; i: BackwardsIndex): var T {.inline.} =
   a[Idx(a.len - int(i) + int low(a))]
 
-proc `[]=`*[T](s: var openArray[T]; i: BackwardsIndex; x: T) =
+proc `[]=`*[T](s: var openArray[T]; i: BackwardsIndex; x: T) {.inline.} =
   s[s.len - int(i)] = x
-proc `[]=`*[Idx, T](a: var array[Idx, T]; i: BackwardsIndex; x: T) =
+proc `[]=`*[Idx, T](a: var array[Idx, T]; i: BackwardsIndex; x: T) {.inline.} =
   a[Idx(a.len - int(i) + int low(a))] = x
-proc `[]=`*(s: var string; i: BackwardsIndex; x: char) =
+proc `[]=`*(s: var string; i: BackwardsIndex; x: char) {.inline.} =
   s[s.len - int(i)] = x
 
 proc slurp*(filename: string): string {.magic: "Slurp".}
