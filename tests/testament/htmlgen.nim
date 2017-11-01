@@ -102,7 +102,11 @@ type
 proc allTestResults(): AllTests =
   var testRunTable = newOrderedTable[string, TestRunAllTests]()
   for file in os.walkFiles("testresults/*.json"):
-    let data = parseFile(file)
+    var data: JsonNode
+    try: data = parseFile(file)
+    except JsonParsingError:
+      echo "[ERROR] JSON parsing error: ", getCurrentExceptionMsg()
+      continue
     if data.kind != JArray:
       echo "[ERROR] ignoring json file that is not an array: ", file
     else:
