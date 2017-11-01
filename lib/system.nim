@@ -2089,7 +2089,7 @@ proc clamp*[T](x, a, b: T): T =
   if x > b: return b
   return x
 
-proc len*[T: Ordinal](x: HSlice[T, T]): int {.noSideEffect, inline.} =
+proc len*[U: Ordinal; V: Ordinal](x: HSlice[U, V]): int {.noSideEffect, inline.} =
   ## length of ordinal slice, when x.b < x.a returns zero length
   ##
   ## .. code-block:: Nim
