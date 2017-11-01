@@ -158,7 +158,11 @@ proc `$`(x: TResults): string =
 proc addResult(r: var TResults, test: TTest,
                expected, given: string, success: TResultEnum,
                timestamp: Time) =
-  let name = test.name.extractFilename & test.options
+  var name = strip(
+    test.name.extractFilename &
+    " " &
+    test.options.strip(trailing=false)
+    )
   let duration = epochTime() - test.startTime
   backend.writeTestResult(name = name,
                           category = test.cat.string,
