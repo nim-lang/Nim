@@ -54,6 +54,8 @@ testresults
 /testresults.html
 /testresults.json
 testament.db
+test.ini
+test.txt
 /csources
 dist/
 
