@@ -3429,7 +3429,7 @@ template `..^`*(a, b: untyped): untyped =
   ## '..' and '^' is required.
   a .. ^b
 
-template `..<`*(a, b: untyped): untyped {.dirty.} =
+template `..<`*(a, b: untyped): untyped =
   ## a shortcut for 'a..pred(b)'.
   a .. pred(b)
 
