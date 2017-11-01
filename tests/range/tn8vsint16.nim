@@ -1,5 +1,5 @@
 discard """
-  output: '''9'''
+  output: '''-9'''
 """
 
 type
