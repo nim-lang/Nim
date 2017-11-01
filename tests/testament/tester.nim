@@ -30,7 +30,6 @@ Arguments:
 Options:
   --print                   also print results to the console
   --failing                 only show failing/ignored tests
-  --pedantic                return non-zero status code if there are failures
   --targets:"c c++ js objc" run tests for specified targets (default: all)
   --nim:path                use a particular nim executable (default: compiler/nim)
 """ % resultsFile
@@ -439,7 +438,6 @@ proc main() =
   backend.open()
   var optPrintResults = false
   var optFailing = false
-  var optPedantic = false
 
   var p = initOptParser()
   p.next()
@@ -447,7 +445,7 @@ proc main() =
     case p.key.string.normalize
     of "print", "verbose": optPrintResults = true
     of "failing": optFailing = true
-    of "pedantic": optPedantic = true
+    of "pedantic": discard "now always enabled"
     of "targets": targets = parseTargets(p.val.string)
     of "nim": compilerPrefix = p.val.string
     else: quit Usage
@@ -488,11 +486,10 @@ proc main() =
     if action == "html": openDefaultBrowser(resultsFile)
     else: echo r, r.data
   backend.close()
-  if optPedantic:
-    var failed = r.total - r.passed - r.skipped
-    if failed > 0:
-      echo "FAILURE! total: ", r.total, " passed: ", r.passed, " skipped: ", r.skipped
-      quit(QuitFailure)
+  var failed = r.total - r.passed - r.skipped
+  if failed > 0:
+    echo "FAILURE! total: ", r.total, " passed: ", r.passed, " skipped: ", r.skipped
+    quit(QuitFailure)
 
 if paramCount() == 0:
   quit Usage

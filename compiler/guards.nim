@@ -247,7 +247,7 @@ proc canon*(n: PNode): PNode =
   # XXX for now only the new code in 'semparallel' uses this
   if n.safeLen >= 1:
     result = shallowCopy(n)
-    for i in 0 .. < n.len:
+    for i in 0 ..< n.len:
       result.sons[i] = canon(n.sons[i])
   elif n.kind == nkSym and n.sym.kind == skLet and
       n.sym.ast.getMagic in (someEq + someAdd + someMul + someMin +

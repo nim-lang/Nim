@@ -257,7 +257,7 @@ proc allprefixedAux[T](c: CritBitTree[T], key: string; longestMatch: bool): Node
       p = p.child[dir]
       if q.byte < key.len: top = p
     if not longestMatch:
-      for i in 0 .. <key.len:
+      for i in 0 ..< key.len:
         if p.key[i] != key[i]: return
     result = top
 

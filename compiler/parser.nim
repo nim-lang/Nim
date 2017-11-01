@@ -1905,7 +1905,7 @@ proc parseVariable(p: var TParser): PNode =
   #| variable = (varTuple / identColonEquals) colonBody? indAndComment
   if p.tok.tokType == tkParLe: result = parseVarTuple(p)
   else: result = parseIdentColonEquals(p, {withPragma, withDot})
-  result{-1} = postExprBlocks(p, result{-1})
+  result[^1] = postExprBlocks(p, result[^1])
   indAndComment(p, result)
 
 proc parseBind(p: var TParser, k: TNodeKind): PNode =

@@ -263,7 +263,7 @@ proc buildTools(latest: bool) =
   nimexec "c -o:" & nimgrepExe & " tools/nimgrep.nim"
   when defined(windows): buildVccTool()
 
-  nimexec "c -o:" & ("bin/nimresolve".exe) & " tools/nimresolve.nim"
+  #nimexec "c -o:" & ("bin/nimresolve".exe) & " tools/nimresolve.nim"
 
   buildNimble(latest)
 

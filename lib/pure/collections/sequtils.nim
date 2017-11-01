@@ -72,7 +72,7 @@ proc cycle*[T](s: openArray[T], n: Natural): seq[T] =
   ##   assert total == @[1, 2, 3, 1, 2, 3, 1, 2, 3]
   result = newSeq[T](n * s.len)
   var o = 0
-  for x in 0 .. <n:
+  for x in 0 ..< n:
     for e in s:
       result[o] = e
       inc o
@@ -88,7 +88,7 @@ proc repeat*[T](x: T, n: Natural): seq[T] =
   ##     total = repeat(5, 3)
   ##   assert total == @[5, 5, 5]
   result = newSeq[T](n)
-  for i in 0 .. <n:
+  for i in 0 ..< n:
     result[i] = x
 
 proc deduplicate*[T](s: openArray[T]): seq[T] =
@@ -132,7 +132,7 @@ proc zip*[S, T](s1: openArray[S], s2: openArray[T]): seq[tuple[a: S, b: T]] =
   ##   assert zip2[2].b == "three"
   var m = min(s1.len, s2.len)
   newSeq(result, m)
-  for i in 0 .. <m:
+  for i in 0 ..< m:
     result[i] = (s1[i], s2[i])
 
 proc distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
@@ -180,22 +180,22 @@ proc distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
     # Use an algorithm which overcounts the stride and minimizes reading limits.
     if extra > 0: inc(stride)
 
-    for i in 0 .. <num:
+    for i in 0 ..< num:
       result[i] = newSeq[T]()
-      for g in first .. <min(s.len, first + stride):
+      for g in first ..< min(s.len, first + stride):
         result[i].add(s[g])
       first += stride
 
   else:
     # Use an undercounting algorithm which *adds* the remainder each iteration.
-    for i in 0 .. <num:
+    for i in 0 ..< num:
       last = first + stride
       if extra > 0:
         extra -= 1
         inc(last)
 
       result[i] = newSeq[T]()
-      for g in first .. <last:
+      for g in first ..< last:
         result[i].add(s[g])
       first = last
 
@@ -215,7 +215,7 @@ proc map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
   ##     b = map(a, proc(x: int): string = $x)
   ##   assert b == @["1", "2", "3", "4"]
   newSeq(result, s.len)
-  for i in 0 .. <s.len:
+  for i in 0 ..< s.len:
     result[i] = op(s[i])
 
 proc map*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
@@ -235,7 +235,7 @@ proc map*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
   ##   echo repr(a)
   ##   # --> ["142", "242", "342", "442"]
   ## **Deprecated since version 0.12.0:** Use the ``apply`` proc instead.
-  for i in 0 .. <s.len: op(s[i])
+  for i in 0 ..< s.len: op(s[i])
 
 proc apply*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
                                                               {.inline.} =
@@ -255,7 +255,7 @@ proc apply*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
   ##   echo repr(a)
   ##   # --> ["142", "242", "342", "442"]
   ##
-  for i in 0 .. <s.len: op(s[i])
+  for i in 0 ..< s.len: op(s[i])
 
 proc apply*[T](s: var openArray[T], op: proc (x: T): T {.closure.})
                                                               {.inline.} =
@@ -275,7 +275,7 @@ proc apply*[T](s: var openArray[T], op: proc (x: T): T {.closure.})
   ##   echo repr(a)
   ##   # --> ["142", "242", "342", "442"]
   ##
-  for i in 0 .. <s.len: s[i] = op(s[i])
+  for i in 0 ..< s.len: s[i] = op(s[i])
 
 iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T =
   ## Iterates through a container and yields every item that fulfills the
@@ -288,7 +288,7 @@ iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T =
   ##   for n in filter(numbers, proc (x: int): bool = x mod 2 == 0):
   ##     echo($n)
   ##   # echoes 4, 8, 4 in separate lines
-  for i in 0 .. <s.len:
+  for i in 0 ..< s.len:
     if pred(s[i]):
       yield s[i]
 
@@ -306,7 +306,7 @@ proc filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
   ##   assert f1 == @["red", "black"]
   ##   assert f2 == @["yellow"]
   result = newSeq[T]()
-  for i in 0 .. <s.len:
+  for i in 0 ..< s.len:
     if pred(s[i]):
       result.add(s[i])
 
@@ -322,7 +322,7 @@ proc keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
   ##   keepIf(floats, proc(x: float): bool = x > 10)
   ##   assert floats == @[13.0, 12.5, 10.1]
   var pos = 0
-  for i in 0 .. <len(s):
+  for i in 0 ..< len(s):
     if pred(s[i]):
       if pos != i:
         shallowCopy(s[pos], s[i])
@@ -413,7 +413,7 @@ template keepItIf*(varSeq: seq, pred: untyped) =
   ##   keepItIf(candidates, it.len == 3 and it[0] == 'b')
   ##   assert candidates == @["bar", "baz"]
   var pos = 0
-  for i in 0 .. <len(varSeq):
+  for i in 0 ..< len(varSeq):
     let it {.inject.} = varSeq[i]
     if pred:
       if pos != i:
@@ -680,7 +680,7 @@ template applyIt*(varSeq, op: untyped) =
   ##   var nums = @[1, 2, 3, 4]
   ##   nums.applyIt(it * 3)
   ##   assert nums[0] + nums[3] == 15
-  for i in 0 .. <varSeq.len:
+  for i in 0 ..< varSeq.len:
     let it {.inject.} = varSeq[i]
     varSeq[i] = op
 
@@ -700,7 +700,7 @@ template newSeqWith*(len: int, init: untyped): untyped =
   ##   var seqRand = newSeqWith(20, random(10))
   ##   echo seqRand
   var result = newSeq[type(init)](len)
-  for i in 0 .. <len:
+  for i in 0 ..< len:
     result[i] = init
   result
 

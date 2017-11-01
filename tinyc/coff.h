@@ -22,7 +22,7 @@ struct filehdr {
 /*------------------------------------------------------------------------*/
 #define  F_RELFLG   0x01       /* relocation info stripped from file       */
 #define  F_EXEC     0x02       /* file is executable (no unresolved refs)  */
-#define  F_LNNO     0x04       /* line nunbers stripped from file          */
+#define  F_LNNO     0x04       /* line numbers stripped from file          */
 #define  F_LSYMS    0x08       /* local symbols stripped from file         */
 #define  F_GSP10    0x10       /* 34010 version                            */
 #define  F_GSP20    0x20       /* 34020 version                            */
@@ -37,8 +37,8 @@ struct filehdr {
 #define F_BYTE_ORDER (F_LITTLE | F_BIG)
 #define FILHDR  struct filehdr
 
-//#define FILHSZ  sizeof(FILHDR) 
-#define FILHSZ  22                // above rounds to align on 4 bytes which causes problems 
+/* #define FILHSZ  sizeof(FILHDR)  */
+#define FILHSZ  22                /* above rounds to align on 4 bytes which causes problems */
 
 #define COFF_C67_MAGIC 0x00c2
 
@@ -150,7 +150,7 @@ struct scnhdr {
 /*------------------------------------------------------------------------*/
 /* Define constants for names of "special" sections                       */
 /*------------------------------------------------------------------------*/
-//#define _TEXT    ".text"
+/* #define _TEXT    ".text" */
 #define _DATA    ".data"
 #define _BSS     ".bss"
 #define _CINIT   ".cinit"

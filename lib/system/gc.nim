@@ -643,9 +643,9 @@ when useMarkForDebug or useBackupGc:
         forAllChildren(d, waMarkPrecise)
 
   proc markGlobals(gch: var GcHeap) =
-    for i in 0 .. < globalMarkersLen: globalMarkers[i]()
+    for i in 0 .. globalMarkersLen-1: globalMarkers[i]()
     let d = gch.additionalRoots.d
-    for i in 0 .. < gch.additionalRoots.len: markS(gch, d[i])
+    for i in 0 .. gch.additionalRoots.len-1: markS(gch, d[i])
 
 when logGC:
   var
@@ -653,7 +653,7 @@ when logGC:
     cycleCheckALen = 0
 
   proc alreadySeen(c: PCell): bool =
-    for i in 0 .. <cycleCheckALen:
+    for i in 0 .. cycleCheckALen-1:
       if cycleCheckA[i] == c: return true
     if cycleCheckALen == len(cycleCheckA):
       gcAssert(false, "cycle detection overflow")

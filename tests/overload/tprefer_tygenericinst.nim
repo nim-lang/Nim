@@ -4,6 +4,8 @@ This has the highest precedence.
 This has the second-highest precedence.
 This has the lowest precedence.
 baseobj ==
+true
+even better! ==
 true'''
 """
 
@@ -47,6 +49,7 @@ testPred(1)
 type
   BaseObj = ref object of RootObj
   DerivedObj = ref object of BaseObj
+  OtherDerivate = ref object of BaseObj
 
 proc `==`*[T1, T2: BaseObj](a: T1, b: T2): bool =
   echo "baseobj =="
@@ -55,3 +58,11 @@ proc `==`*[T1, T2: BaseObj](a: T1, b: T2): bool =
 let a = DerivedObj()
 let b = DerivedObj()
 echo a == b
+
+proc `==`*[T1, T2: OtherDerivate](a: T1, b: T2): bool =
+  echo "even better! =="
+  return true
+
+let a2 = OtherDerivate()
+let b2 = OtherDerivate()
+echo a2 == b2

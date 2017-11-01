@@ -81,7 +81,7 @@ proc initAnalysisCtx(): AnalysisCtx =
   result.guards = @[]
 
 proc lookupSlot(c: AnalysisCtx; s: PSym): int =
-  for i in 0.. <c.locals.len:
+  for i in 0..<c.locals.len:
     if c.locals[i].v == s or c.locals[i].alias == s: return i
   return -1
 
@@ -94,7 +94,7 @@ proc getSlot(c: var AnalysisCtx; v: PSym): ptr MonotonicVar =
   return addr(c.locals[L])
 
 proc gatherArgs(c: var AnalysisCtx; n: PNode) =
-  for i in 0.. <n.safeLen:
+  for i in 0..<n.safeLen:
     let root = getRoot n[i]
     if root != nil:
       block addRoot:
@@ -119,7 +119,7 @@ proc checkLocal(c: AnalysisCtx; n: PNode) =
     if s >= 0 and c.locals[s].stride != nil:
       localError(n.info, "invalid usage of counter after increment")
   else:
-    for i in 0 .. <n.safeLen: checkLocal(c, n.sons[i])
+    for i in 0 ..< n.safeLen: checkLocal(c, n.sons[i])
 
 template `?`(x): untyped = x.renderTree
 
@@ -180,7 +180,7 @@ proc stride(c: AnalysisCtx; n: PNode): BiggestInt =
     if s >= 0 and c.locals[s].stride != nil:
       result = c.locals[s].stride.intVal
   else:
-    for i in 0 .. <n.safeLen: result += stride(c, n.sons[i])
+    for i in 0 ..< n.safeLen: result += stride(c, n.sons[i])
 
 proc subStride(c: AnalysisCtx; n: PNode): PNode =
   # substitute with stride:
@@ -192,7 +192,7 @@ proc subStride(c: AnalysisCtx; n: PNode): PNode =
       result = n
   elif n.safeLen > 0:
     result = shallowCopy(n)
-    for i in 0 .. <n.len: result.sons[i] = subStride(c, n.sons[i])
+    for i in 0 ..< n.len: result.sons[i] = subStride(c, n.sons[i])
   else:
     result = n
 
@@ -251,7 +251,7 @@ proc checkSlicesAreDisjoint(c: var AnalysisCtx) =
 proc analyse(c: var AnalysisCtx; n: PNode)
 
 proc analyseSons(c: var AnalysisCtx; n: PNode) =
-  for i in 0 .. <safeLen(n): analyse(c, n[i])
+  for i in 0 ..< safeLen(n): analyse(c, n[i])
 
 proc min(a, b: PNode): PNode =
   if a.isNil: result = b
@@ -293,11 +293,11 @@ proc analyseCall(c: var AnalysisCtx; n: PNode; op: PSym) =
 proc analyseCase(c: var AnalysisCtx; n: PNode) =
   analyse(c, n.sons[0])
   let oldFacts = c.guards.len
-  for i in 1.. <n.len:
+  for i in 1..<n.len:
     let branch = n.sons[i]
     setLen(c.guards, oldFacts)
     addCaseBranchFacts(c.guards, n, i)
-    for i in 0 .. <branch.len:
+    for i in 0 ..< branch.len:
       analyse(c, branch.sons[i])
   setLen(c.guards, oldFacts)
 
@@ -307,14 +307,14 @@ proc analyseIf(c: var AnalysisCtx; n: PNode) =
   addFact(c.guards, canon(n.sons[0].sons[0]))
 
   analyse(c, n.sons[0].sons[1])
-  for i in 1.. <n.len:
+  for i in 1..<n.len:
     let branch = n.sons[i]
     setLen(c.guards, oldFacts)
     for j in 0..i-1:
       addFactNeg(c.guards, canon(n.sons[j].sons[0]))
     if branch.len > 1:
       addFact(c.guards, canon(branch.sons[0]))
-    for i in 0 .. <branch.len:
+    for i in 0 ..< branch.len:
       analyse(c, branch.sons[i])
   setLen(c.guards, oldFacts)
 
@@ -407,7 +407,7 @@ proc transformSlices(n: PNode): PNode =
       return result
   if n.safeLen > 0:
     result = shallowCopy(n)
-    for i in 0 .. < n.len:
+    for i in 0 ..< n.len:
       result.sons[i] = transformSlices(n.sons[i])
   else:
     result = n
@@ -415,7 +415,7 @@ proc transformSlices(n: PNode): PNode =
 proc transformSpawn(owner: PSym; n, barrier: PNode): PNode
 proc transformSpawnSons(owner: PSym; n, barrier: PNode): PNode =
   result = shallowCopy(n)
-  for i in 0 .. < n.len:
+  for i in 0 ..< n.len:
     result.sons[i] = transformSpawn(owner, n.sons[i], barrier)
 
 proc transformSpawn(owner: PSym; n, barrier: PNode): PNode =

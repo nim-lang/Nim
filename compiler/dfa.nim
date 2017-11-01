@@ -202,7 +202,7 @@ proc genCase(c: var Con; n: PNode) =
   #  Lend:
   var endings: seq[TPosition] = @[]
   c.gen(n.sons[0])
-  for i in 1 .. <n.len:
+  for i in 1 ..< n.len:
     let it = n.sons[i]
     if it.len == 1:
       c.gen(it.sons[0])
@@ -219,7 +219,7 @@ proc genTry(c: var Con; n: PNode) =
   let elsePos = c.forkI(n)
   c.gen(n.sons[0])
   c.patch(elsePos)
-  for i in 1 .. <n.len:
+  for i in 1 ..< n.len:
     let it = n.sons[i]
     if it.kind != nkFinally:
       var blen = len(it)
