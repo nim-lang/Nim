@@ -14,6 +14,8 @@ dnimcache/
 *.pdb
 *.dll
 *.exe
+*.exp
+*.lib
 *.so
 *.dylib
 *.zip
@@ -48,6 +50,7 @@ xcuserdata/
 /compiler/nimrod.dot
 /reject.json
 /run.json
+testresults
 /testresults.html
 /testresults.json
 testament.db
