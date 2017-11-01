@@ -46,6 +46,17 @@ proc callSoon*(cbproc: CallbackFunc) =
   if pendingCallbacks.isNil:
       pendingCallbacks = newSeqOfCap[CallbackFunc](8)
   pendingCallbacks.add(cbproc)
+
+  # Every callback is added to pendingCallbacks, but in order to avoid recursion
+  # (some callback may result in a call to callSoon again) we start processing
+  # pendingCallbacks only upon the first addition, while still allowing for new
+  # callbacks to be appended to pendingCallbacks due to recursive reentrancy.
+
+  # More to think about. pendingCallbacks may grow as long as how many calls to
+  # callSoon are made during a single future completion cascade. That is unlikely
+  # to cause problems, but could be fixed by shrinking pendingCallbacks upon
+  # reaching some threshold.
+
   if pendingCallbacks.len == 1:
     var i = 0
     while i < pendingCallbacks.len:
