@@ -706,14 +706,14 @@ template newSeqWith*(len: int, init: untyped): untyped =
 
 when not defined(nimscript):
   import macros
-  macro asArray*(values: typed, targetType: typedesc): untyped =
+  macro asArray*(targetType: typedesc, values: typed): untyped =
     ## applies a type conversion to each of the elements in the specified
     ## array literal. Each element is converted to the ``targetType`` type..
     ##
     ## Example:
     ##
     ## .. code-block::
-    ##   let x = asArray([0.1, 1.2, 2.3, 3.4], int)
+    ##   let x = asArray(int, [0.1, 1.2, 2.3, 3.4])
     ##   doAssert x is array[4, int]
     ##
     ## Short notation for:
@@ -1018,7 +1018,7 @@ when isMainModule:
     doAssert seq2D == @[@[true, true], @[true, false], @[false, false], @[false, false]]
 
   when not defined(nimscript): # asArray tests
-    let x = asArray([1.2, 2.3, 3.4, 4.5], int)
+    let x = asArray(int, [1.2, 2.3, 3.4, 4.5])
     doAssert x is array[4, int]
 
   when not defined(testing):
