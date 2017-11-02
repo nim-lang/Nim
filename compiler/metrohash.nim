@@ -20,14 +20,12 @@ type
 
 proc `$`*(d: MetroHash64Digest|MetroHash128Digest): string =
   ## converts a MetroHash128Digest value into its string representation
-  const digits = "0123456789ABCDEF"
   result = ""
-  for i in 0..<d.len:
-    add(result, digits[(d[i] shr 4) and 0xF])
-    add(result, digits[d[i] and 0xF])
+  for i in 0..< d.len:
+    add(result, d[i].toHex)
 
 proc `==`*(d1, d2: MetroHash64Digest|MetroHash128Digest): bool =
-  for i in 0..<d1.len:
+  for i in 0..< d1.len:
     if d1[i] != d2[i]: return false
   return true
 
@@ -89,16 +87,18 @@ proc metroHash64Update*(c: var MetroHashContext, input: ByteAddress, inputLen: i
     k2 = 0x62992FC1'u64
     k3 = 0x30BC5B29'u64
 
+  let
+    e = input + inputLen
+    rem = c.bytes %% 32
+
   var 
     p = input
-    e = input + inputLen
-    rem = c.bytes %% 32'i64
 
   if rem > 0:
     var 
       fill: int
 
-    fill = 32 - rem
+    fill = 32 - rem.int
     if (fill > inputLen):
       fill = inputLen
     copymem(cast[pointer](cast[ByteAddress](addr(c.buffer)) + rem), cast[pointer](p), fill)
@@ -310,16 +310,18 @@ proc metroHash128Update*(c: var MetroHashContext, input: ByteAddress, inputLen: 
     k2 = 0x7BDEC03B'u64
     k3 = 0x2F5870A5'u64
 
+  let
+    e = input + inputLen
+    rem = c.bytes %% 32
+    
   var 
     p = input
-    e = input + inputLen
-    rem = c.bytes %% 32'i64
 
   if rem > 0:
     var 
       fill: int
 
-    fill = 32 - rem
+    fill = 32 - rem.int
     if (fill > inputLen):
       fill = inputLen
 
@@ -526,9 +528,9 @@ proc metroHash128File*(filename: string, seed: uint64 = 0): MetroHash128Digest =
   callFileFunc(metroHash128)
 
 proc parseMetroHash64*(hash: string): MetroHash64Digest =
-  for i in 0.. <result.len:
+  for i in 0..< result.len:
     result[i] = uint8(parseHexInt(hash[i*2] & hash[i*2 + 1]))
 
 proc parseMetroHash128*(hash: string): MetroHash128Digest =
-  for i in 0.. <result.len:
+  for i in 0..< result.len:
     result[i] = uint8(parseHexInt(hash[i*2] & hash[i*2 + 1]))
