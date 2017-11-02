@@ -707,8 +707,8 @@ template newSeqWith*(len: int, init: untyped): untyped =
 when not defined(nimscript):
   import macros
   macro asArray*(values: typed, targetType: typedesc): untyped =
-    ## converts a static array to an array of type ``targetType`` by converting
-    ## each value in the array to the specified type.
+    ## applies a type conversion to each of the elements in the specified
+    ## array literal. Each element is converted to the ``targetType`` type..
     ##
     ## Example:
     ##
