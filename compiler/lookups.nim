@@ -46,7 +46,11 @@ proc considerQuotedIdent*(n: PNode, origin: PNode = nil): PIdent =
         of nkSym: id.add(x.sym.name.s)
         else: handleError(n, origin)
       result = getIdent(id)
-  of nkOpenSymChoice, nkClosedSymChoice: result = n.sons[0].sym.name
+  of nkOpenSymChoice, nkClosedSymChoice:
+    if n[0].kind == nkSym:
+      result = n.sons[0].sym.name
+    else:
+      handleError(n, origin)
   else:
     handleError(n, origin)
 
@@ -379,7 +383,11 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
         result = errorSym(c, n.sons[1])
   of nkClosedSymChoice, nkOpenSymChoice:
     o.mode = oimSymChoice
-    result = n.sons[0].sym
+    if n[0].kind == nkSym:
+      result = n.sons[0].sym
+    else:
+      o.mode = oimDone
+      return nil
     o.symChoiceIndex = 1
     o.inSymChoice = initIntSet()
     incl(o.inSymChoice, result.id)

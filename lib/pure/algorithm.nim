@@ -425,7 +425,7 @@ proc rotatedInternal[T](arg: openarray[T]; first, middle, last: int): seq[T] =
   for i in last ..< arg.len:
     result[i] = arg[i]
 
-proc rotateLeft*[T](arg: var openarray[T]; slice: Slice[int, int]; dist: int): int =
+proc rotateLeft*[T](arg: var openarray[T]; slice: HSlice[int, int]; dist: int): int =
   ## Performs a left rotation on a range of elements. If you want to rotate right, use a negative ``dist``.
   ## Specifically, ``rotateLeft`` rotates the elements at ``slice`` by ``dist`` positions.
   ## The element at index ``slice.a + dist`` will be at index ``slice.a``.
@@ -457,7 +457,7 @@ proc rotateLeft*[T](arg: var openarray[T]; dist: int): int =
   let distLeft = ((dist mod arglen) + arglen) mod arglen
   arg.rotateInternal(0, distLeft, arglen)
 
-proc rotatedLeft*[T](arg: openarray[T]; slice: Slice[int, int], dist: int): seq[T] =
+proc rotatedLeft*[T](arg: openarray[T]; slice: HSlice[int, int], dist: int): seq[T] =
   ## same as ``rotateLeft``, just with the difference that it does
   ## not modify the argument. It creates a new ``seq`` instead
   let sliceLen = slice.b + 1 - slice.a

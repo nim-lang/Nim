@@ -429,7 +429,7 @@ proc toSexp(x: NimNode): NimNode {.compiletime.} =
   case x.kind
   of nnkBracket:
     result = newNimNode(nnkBracket)
-    for i in 0 .. <x.len:
+    for i in 0 ..< x.len:
       result.add(toSexp(x[i]))
 
   else:

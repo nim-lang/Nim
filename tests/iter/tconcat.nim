@@ -9,7 +9,7 @@ discard """
 23'''
 """
 
-proc toIter*[T](s: Slice[T, T]): iterator: T =
+proc toIter*[T](s: Slice[T]): iterator: T =
   iterator it: T {.closure.} =
     for x in s.a..s.b:
       yield x
