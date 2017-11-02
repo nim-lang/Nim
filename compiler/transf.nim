@@ -978,7 +978,7 @@ proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
     liftDefer(c, result)
     #result = liftLambdas(prc, result)
     when useEffectSystem: trackProc(prc, result)
-    liftLocalsIfRequested(prc)
+    result = liftLocalsIfRequested(prc, result)
     if c.needsDestroyPass and newDestructors:
       result = injectDestructorCalls(prc, result)
     incl(result.flags, nfTransf)
