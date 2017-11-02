@@ -12,7 +12,7 @@
 import
   ast, strutils, hashes, options, lexer, astalgo, trees, treetab,
   wordrecg, ropes, msgs, os, condsyms, idents, renderer, types, platform, math,
-  magicsys, parser, nversion, nimsets, semfold, importer,
+  magicsys, parser, nversion, nimsets, semfold, modulepaths, importer,
   procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, nimfix.pretty, semmacrosanity,
@@ -122,7 +122,7 @@ proc commonType*(x, y: PType): PType =
     if a.sons[idx].kind == tyEmpty: return y
   elif a.kind == tyTuple and b.kind == tyTuple and a.len == b.len:
     var nt: PType
-    for i in 0.. <a.len:
+    for i in 0..<a.len:
       let aEmpty = isEmptyContainer(a.sons[i])
       let bEmpty = isEmptyContainer(b.sons[i])
       if aEmpty != bEmpty:
@@ -522,14 +522,18 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   else:
     result = n
   result = semStmt(c, result)
-  # BUGFIX: process newly generated generics here, not at the end!
-  if c.lastGenericIdx < c.generics.len:
-    var a = newNodeI(nkStmtList, n.info)
-    addCodeForGenerics(c, a)
-    if sonsLen(a) > 0:
-      # a generic has been added to `a`:
-      if result.kind != nkEmpty: addSon(a, result)
-      result = a
+  when false:
+    # Code generators are lazy now and can deal with undeclared procs, so these
+    # steps are not required anymore and actually harmful for the upcoming
+    # destructor support.
+    # BUGFIX: process newly generated generics here, not at the end!
+    if c.lastGenericIdx < c.generics.len:
+      var a = newNodeI(nkStmtList, n.info)
+      addCodeForGenerics(c, a)
+      if sonsLen(a) > 0:
+        # a generic has been added to `a`:
+        if result.kind != nkEmpty: addSon(a, result)
+        result = a
   result = hloStmt(c, result)
   if gCmd == cmdInteractive and not isEmptyType(result.typ):
     result = buildEchoStmt(c, result)

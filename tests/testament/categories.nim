@@ -83,9 +83,9 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
       ""
 
   testSpec c, makeTest("lib/nimrtl.nim",
-    options & " --app:lib -d:createNimRtl", cat)
+    options & " --app:lib -d:createNimRtl --threads:on", cat)
   testSpec c, makeTest("tests/dll/server.nim",
-    options & " --app:lib -d:useNimRtl" & rpath, cat)
+    options & " --app:lib -d:useNimRtl --threads:on" & rpath, cat)
 
 
   when defined(Windows):
@@ -101,7 +101,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     var nimrtlDll = DynlibFormat % "nimrtl"
     safeCopyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
 
-  testSpec r, makeTest("tests/dll/client.nim", options & " -d:useNimRtl" & rpath,
+  testSpec r, makeTest("tests/dll/client.nim", options & " -d:useNimRtl --threads:on" & rpath,
                        cat, actionRun)
 
 proc dllTests(r: var TResults, cat: Category, options: string) =
@@ -259,6 +259,7 @@ proc testNimInAction(r: var TResults, cat: Category, options: string) =
     "niminaction/Chapter6/WikipediaStats/parallel_counts",
     "niminaction/Chapter6/WikipediaStats/race_condition",
     "niminaction/Chapter6/WikipediaStats/sequential_counts",
+    "niminaction/Chapter6/WikipediaStats/unguarded_access",
     "niminaction/Chapter7/Tweeter/src/tweeter",
     "niminaction/Chapter7/Tweeter/src/createDatabase",
     "niminaction/Chapter7/Tweeter/tests/database_test",
@@ -266,11 +267,6 @@ proc testNimInAction(r: var TResults, cat: Category, options: string) =
     ]
   for testfile in tests:
     test "tests/" & testfile & ".nim", actionCompile
-
-  # TODO: This doesn't work for some reason ;\
-  # let reject = "tests/niminaction/Chapter6/WikipediaStats" &
-  #              "/unguarded_access.nim"
-  # test reject, actionReject
 
   let jsFile = "tests/niminaction/Chapter8/canvas/canvas_test.nim"
   testJS jsFile
@@ -328,9 +324,10 @@ type PackageFilter = enum
   pfExtraOnly
   pfAll
 
+var nimbleDir = getEnv("NIMBLE_DIR").string
+if nimbleDir.len == 0: nimbleDir = getHomeDir() / ".nimble"
 let
   nimbleExe = findExe("nimble")
-  nimbleDir = getHomeDir() / ".nimble"
   packageDir = nimbleDir / "pkgs"
   packageIndex = nimbleDir / "packages.json"
 

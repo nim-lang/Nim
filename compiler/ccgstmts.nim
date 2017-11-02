@@ -20,7 +20,7 @@ proc registerGcRoot(p: BProc, v: PSym) =
       containsGarbageCollectedRef(v.loc.t):
     # we register a specialized marked proc here; this has the advantage
     # that it works out of the box for thread local storage then :-)
-    let prc = genTraverseProcForGlobal(p.module, v)
+    let prc = genTraverseProcForGlobal(p.module, v, v.info)
     appcg(p.module, p.module.initProc.procSec(cpsInit),
       "#nimRegisterGlobalMarker($1);$n", [prc])
 
@@ -141,9 +141,13 @@ template preserveBreakIdx(body: untyped): untyped =
   p.breakIdx = oldBreakIdx
 
 proc genState(p: BProc, n: PNode) =
-  internalAssert n.len == 1 and n.sons[0].kind == nkIntLit
-  let idx = n.sons[0].intVal
-  linefmt(p, cpsStmts, "STATE$1: ;$n", idx.rope)
+  internalAssert n.len == 1
+  let n0 = n[0]
+  if n0.kind == nkIntLit:
+    let idx = n.sons[0].intVal
+    linefmt(p, cpsStmts, "STATE$1: ;$n", idx.rope)
+  elif n0.kind == nkStrLit:
+    linefmt(p, cpsStmts, "$1: ;$n", n0.strVal.rope)
 
 proc genGotoState(p: BProc, n: PNode) =
   # we resist the temptation to translate it into duff's device as it later
@@ -156,8 +160,13 @@ proc genGotoState(p: BProc, n: PNode) =
   lineF(p, cpsStmts, "switch ($1) {$n", [rdLoc(a)])
   p.beforeRetNeeded = true
   lineF(p, cpsStmts, "case -1: goto BeforeRet_;$n", [])
-  for i in 0 .. lastOrd(n.sons[0].typ):
-    lineF(p, cpsStmts, "case $1: goto STATE$1;$n", [rope(i)])
+  var statesCounter = lastOrd(n.sons[0].typ)
+  if n.len >= 2 and n[1].kind == nkIntLit:
+    statesCounter = n[1].intVal
+  let prefix = if n.len == 3 and n[2].kind == nkStrLit: n[2].strVal.rope
+               else: rope"STATE"
+  for i in 0 .. statesCounter:
+    lineF(p, cpsStmts, "case $2: goto $1$2;$n", [prefix, rope(i)])
   lineF(p, cpsStmts, "}$n", [])
 
 proc genBreakState(p: BProc, n: PNode) =
@@ -226,7 +235,7 @@ proc genSingleVar(p: BProc, a: PNode) =
         var params: Rope
         let typ = skipTypes(value.sons[0].typ, abstractInst)
         assert(typ.kind == tyProc)
-        for i in 1.. <value.len:
+        for i in 1..<value.len:
           if params != nil: params.add(~", ")
           assert(sonsLen(typ) == sonsLen(typ.n))
           add(params, genOtherArg(p, value, i, typ))
@@ -377,7 +386,7 @@ proc genReturnStmt(p: BProc, t: PNode) =
   lineF(p, cpsStmts, "goto BeforeRet_;$n", [])
 
 proc genGotoForCase(p: BProc; caseStmt: PNode) =
-  for i in 1 .. <caseStmt.len:
+  for i in 1 ..< caseStmt.len:
     startBlock(p)
     let it = caseStmt.sons[i]
     for j in 0 .. it.len-2:
@@ -393,7 +402,7 @@ proc genComputedGoto(p: BProc; n: PNode) =
   # first pass: Generate array of computed labels:
   var casePos = -1
   var arraySize: int
-  for i in 0 .. <n.len:
+  for i in 0 ..< n.len:
     let it = n.sons[i]
     if it.kind == nkCaseStmt:
       if lastSon(it).kind != nkOfBranch:
@@ -423,7 +432,7 @@ proc genComputedGoto(p: BProc; n: PNode) =
   let oldBody = p.blocks[topBlock].sections[cpsStmts]
   p.blocks[topBlock].sections[cpsStmts] = nil
 
-  for j in casePos+1 .. <n.len: genStmts(p, n.sons[j])
+  for j in casePos+1 ..< n.len: genStmts(p, n.sons[j])
   let tailB = p.blocks[topBlock].sections[cpsStmts]
 
   p.blocks[topBlock].sections[cpsStmts] = nil
@@ -438,7 +447,7 @@ proc genComputedGoto(p: BProc; n: PNode) =
   # first goto:
   lineF(p, cpsStmts, "goto *$#[$#];$n", [tmp, a.rdLoc])
 
-  for i in 1 .. <caseStmt.len:
+  for i in 1 ..< caseStmt.len:
     startBlock(p)
     let it = caseStmt.sons[i]
     for j in 0 .. it.len-2:
@@ -448,7 +457,7 @@ proc genComputedGoto(p: BProc; n: PNode) =
       let val = getOrdValue(it.sons[j])
       lineF(p, cpsStmts, "TMP$#_:$n", [intLiteral(val+id+1)])
     genStmts(p, it.lastSon)
-    #for j in casePos+1 .. <n.len: genStmts(p, n.sons[j]) # tailB
+    #for j in casePos+1 ..< n.len: genStmts(p, n.sons[j]) # tailB
     #for j in 0 .. casePos-1: genStmts(p, n.sons[j])  # tailA
     add(p.s(cpsStmts), tailB)
     add(p.s(cpsStmts), tailA)
@@ -735,7 +744,7 @@ proc genOrdinalCase(p: BProc, n: PNode, d: var TLoc) =
   if splitPoint+1 < n.len:
     lineF(p, cpsStmts, "switch ($1) {$n", [rdCharLoc(a)])
     var hasDefault = false
-    for i in splitPoint+1 .. < n.len:
+    for i in splitPoint+1 ..< n.len:
       # bug #4230: avoid false sharing between branches:
       if d.k == locTemp and isEmptyType(n.typ): d.k = locNone
       var branch = n[i]
@@ -826,7 +835,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
         if orExpr != nil: add(orExpr, "||")
         appcg(p.module, orExpr,
               "#isObj($1.exp->m_type, $2)",
-              [exc, genTypeInfo(p.module, t.sons[i].sons[j].typ)])
+              [exc, genTypeInfo(p.module, t[i][j].typ, t[i][j].info)])
       lineF(p, cpsStmts, "if ($1) ", [orExpr])
       startBlock(p)
       expr(p, t.sons[i].sons[blen-1], d)
@@ -935,7 +944,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
           "#isObj(#getCurrentException()->Sup.m_type, $1)"
           else: "#isObj(#getCurrentException()->m_type, $1)"
         appcg(p.module, orExpr, isObjFormat,
-              [genTypeInfo(p.module, t.sons[i].sons[j].typ)])
+              [genTypeInfo(p.module, t[i][j].typ, t[i][j].info)])
       if i > 1: line(p, cpsStmts, "else ")
       startBlock(p, "if ($1) {$n", [orExpr])
       linefmt(p, cpsStmts, "$1.status = 0;$n", safePoint)
@@ -1053,7 +1062,7 @@ proc genWatchpoint(p: BProc, n: PNode) =
   let typ = skipTypes(n.sons[1].typ, abstractVarRange)
   lineCg(p, cpsStmts, "#dbgRegisterWatchpoint($1, (NCSTRING)$2, $3);$n",
         [a.addrLoc, makeCString(renderTree(n.sons[1])),
-        genTypeInfo(p.module, typ)])
+        genTypeInfo(p.module, typ, n.info)])
 
 proc genPragma(p: BProc, n: PNode) =
   for i in countup(0, sonsLen(n) - 1):
@@ -1083,7 +1092,7 @@ proc genDiscriminantCheck(p: BProc, a, tmp: TLoc, objtype: PType,
                           field: PSym) =
   var t = skipTypes(objtype, abstractVar)
   assert t.kind == tyObject
-  discard genTypeInfo(p.module, t)
+  discard genTypeInfo(p.module, t, a.lode.info)
   var L = lengthOrd(field.typ)
   if not containsOrIncl(p.module.declaredThings, field.id):
     appcg(p.module, cfsVars, "extern $1",
@@ -1103,19 +1112,46 @@ proc asgnFieldDiscriminant(p: BProc, e: PNode) =
   genDiscriminantCheck(p, a, tmp, dotExpr.sons[0].typ, dotExpr.sons[1].sym)
   genAssignment(p, a, tmp, {})
 
+proc patchAsgnStmtListExpr(father, orig, n: PNode) =
+  case n.kind
+  of nkDerefExpr, nkHiddenDeref:
+    let asgn = copyNode(orig)
+    asgn.add orig[0]
+    asgn.add n
+    father.add asgn
+  of nkStmtList, nkStmtListExpr:
+    for x in n:
+      patchAsgnStmtListExpr(father, orig, x)
+  else:
+    father.add n
+
 proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
   if e.sons[0].kind == nkSym and sfGoto in e.sons[0].sym.flags:
     genLineDir(p, e)
     genGotoVar(p, e.sons[1])
   elif not fieldDiscriminantCheckNeeded(p, e):
+    # this fixes bug #6422 but we really need to change the representation of
+    # arrays in the backend...
+    let le = e[0]
+    let ri = e[1]
+    var needsRepair = false
+    var it = ri
+    while it.kind in {nkStmtList, nkStmtListExpr}:
+      it = it.lastSon
+      needsRepair = true
+    if it.kind in {nkDerefExpr, nkHiddenDeref} and needsRepair:
+      var patchedTree = newNodeI(nkStmtList, e.info)
+      patchAsgnStmtListExpr(patchedTree, e, ri)
+      genStmts(p, patchedTree)
+      return
+
     var a: TLoc
-    if e[0].kind in {nkDerefExpr, nkHiddenDeref}:
-      genDeref(p, e[0], a, enforceDeref=true)
+    if le.kind in {nkDerefExpr, nkHiddenDeref}:
+      genDeref(p, le, a, enforceDeref=true)
     else:
-      initLocExpr(p, e.sons[0], a)
+      initLocExpr(p, le, a)
     if fastAsgn: incl(a.flags, lfNoDeepCopy)
     assert(a.t != nil)
-    let ri = e.sons[1]
     genLineDir(p, ri)
     loadInto(p, e.sons[0], ri, a)
   else:

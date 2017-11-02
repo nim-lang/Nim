@@ -22,7 +22,7 @@ template `B=`*(self: TAggRgba8, val: byte) =
 template `A=`*(self: TAggRgba8, val: byte) =
   self[3] = val
 
-proc ABGR* (val: int| int64): TAggRgba8 =
+proc ABGR*(val: int| int64): TAggRgba8 =
   var V = val
   result.R = byte(V and 0xFF)
   V = V shr 8

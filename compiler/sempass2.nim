@@ -11,23 +11,14 @@ import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   wordrecg, strutils, options, guards, writetracking
 
+when defined(useDfa):
+  import dfa
+
 # Second semantic checking pass over the AST. Necessary because the old
 # way had some inherent problems. Performs:
 #
 # * effect+exception tracking
 # * "usage before definition" checking
-# * checks for invalid usages of compiletime magics (not implemented)
-# * checks for invalid usages of NimNode (not implemented)
-# * later: will do an escape analysis for closures at least
-
-# Predefined effects:
-#   io, time (time dependent), gc (performs GC'ed allocation), exceptions,
-#   side effect (accesses global), store (stores into *type*),
-#   store_unknown (performs some store) --> store(any)|store(x)
-#   load (loads from *type*), recursive (recursive call), unsafe,
-#   endless (has endless loops), --> user effects are defined over *patterns*
-#   --> a TR macro can annotate the proc with user defined annotations
-#   --> the effect system can access these
 
 # ------------------------ exception and tag tracking -------------------------
 
@@ -248,6 +239,7 @@ proc useVar(a: PEffects, n: PNode) =
         (tfHasGCedMem in s.typ.flags or s.typ.isGCedMem):
       #if warnGcUnsafe in gNotes: warnAboutGcUnsafe(n)
       markGcUnsafe(a, s)
+      markSideEffect(a, s)
     else:
       markSideEffect(a, s)
 
@@ -256,7 +248,7 @@ type
   TIntersection = seq[tuple[id, count: int]] # a simple count table
 
 proc addToIntersection(inter: var TIntersection, s: int) =
-  for j in 0.. <inter.len:
+  for j in 0..<inter.len:
     if s == inter[j].id:
       inc inter[j].count
       return
@@ -290,7 +282,7 @@ proc createTag(n: PNode): PNode =
 proc addEffect(a: PEffects, e: PNode, useLineInfo=true) =
   assert e.kind != nkRaiseStmt
   var aa = a.exc
-  for i in a.bottom .. <aa.len:
+  for i in a.bottom ..< aa.len:
     if sameType(aa[i].excType, e.excType):
       if not useLineInfo or gCmd == cmdDoc: return
       elif aa[i].info == e.info: return
@@ -298,7 +290,7 @@ proc addEffect(a: PEffects, e: PNode, useLineInfo=true) =
 
 proc addTag(a: PEffects, e: PNode, useLineInfo=true) =
   var aa = a.tags
-  for i in 0 .. <aa.len:
+  for i in 0 ..< aa.len:
     if sameType(aa[i].typ.skipTypes(skipPtrs), e.typ.skipTypes(skipPtrs)):
       if not useLineInfo or gCmd == cmdDoc: return
       elif aa[i].info == e.info: return
@@ -353,12 +345,12 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
   inc tracked.inTryStmt
   track(tracked, n.sons[0])
   dec tracked.inTryStmt
-  for i in oldState.. <tracked.init.len:
+  for i in oldState..<tracked.init.len:
     addToIntersection(inter, tracked.init[i])
 
   var branches = 1
   var hasFinally = false
-  for i in 1 .. < n.len:
+  for i in 1 ..< n.len:
     let b = n.sons[i]
     let blen = sonsLen(b)
     if b.kind == nkExceptBranch:
@@ -372,7 +364,7 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
 
       setLen(tracked.init, oldState)
       track(tracked, b.sons[blen-1])
-      for i in oldState.. <tracked.init.len:
+      for i in oldState..<tracked.init.len:
         addToIntersection(inter, tracked.init[i])
     else:
       assert b.kind == nkFinally
@@ -428,7 +420,7 @@ proc documentEffect(n, x: PNode, effectType: TSpecialWord, idx: int): PNode =
 
     # warning: hack ahead:
     var effects = newNodeI(nkBracket, n.info, real.len)
-    for i in 0 .. <real.len:
+    for i in 0 ..< real.len:
       var t = typeToString(real[i].typ)
       if t.startsWith("ref "): t = substr(t, 4)
       effects.sons[i] = newIdentNode(getIdent(t), n.info)
@@ -590,6 +582,12 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
   if paramType != nil and paramType.kind == tyVar:
     if n.kind == nkSym and isLocalVar(tracked, n.sym):
       makeVolatile(tracked, n.sym)
+  if paramType != nil and paramType.kind == tyProc and tfGcSafe in paramType.flags:
+    let argtype = skipTypes(a.typ, abstractInst)
+    # XXX figure out why this can be a non tyProc here. See httpclient.nim for an
+    # example that triggers it.
+    if argtype.kind == tyProc and notGcSafe(argtype) and not tracked.inEnforcedGcSafe:
+      localError(n.info, $n & " is not GC safe")
   notNilCheck(tracked, n, paramType)
 
 proc breaksBlock(n: PNode): bool =
@@ -615,16 +613,16 @@ proc trackCase(tracked: PEffects, n: PNode) =
         warnProveField in gNotes
   var inter: TIntersection = @[]
   var toCover = 0
-  for i in 1.. <n.len:
+  for i in 1..<n.len:
     let branch = n.sons[i]
     setLen(tracked.init, oldState)
     if interesting:
       setLen(tracked.guards, oldFacts)
       addCaseBranchFacts(tracked.guards, n, i)
-    for i in 0 .. <branch.len:
+    for i in 0 ..< branch.len:
       track(tracked, branch.sons[i])
     if not breaksBlock(branch.lastSon): inc toCover
-    for i in oldState.. <tracked.init.len:
+    for i in oldState..<tracked.init.len:
       addToIntersection(inter, tracked.init[i])
 
   setLen(tracked.init, oldState)
@@ -644,10 +642,10 @@ proc trackIf(tracked: PEffects, n: PNode) =
   var toCover = 0
   track(tracked, n.sons[0].sons[1])
   if not breaksBlock(n.sons[0].sons[1]): inc toCover
-  for i in oldState.. <tracked.init.len:
+  for i in oldState..<tracked.init.len:
     addToIntersection(inter, tracked.init[i])
 
-  for i in 1.. <n.len:
+  for i in 1..<n.len:
     let branch = n.sons[i]
     setLen(tracked.guards, oldFacts)
     for j in 0..i-1:
@@ -655,10 +653,10 @@ proc trackIf(tracked: PEffects, n: PNode) =
     if branch.len > 1:
       addFact(tracked.guards, branch.sons[0])
     setLen(tracked.init, oldState)
-    for i in 0 .. <branch.len:
+    for i in 0 ..< branch.len:
       track(tracked, branch.sons[i])
     if not breaksBlock(branch.lastSon): inc toCover
-    for i in oldState.. <tracked.init.len:
+    for i in oldState..<tracked.init.len:
       addToIntersection(inter, tracked.init[i])
   setLen(tracked.init, oldState)
   if lastSon(n).len == 1:
@@ -670,7 +668,7 @@ proc trackIf(tracked: PEffects, n: PNode) =
 proc trackBlock(tracked: PEffects, n: PNode) =
   if n.kind in {nkStmtList, nkStmtListExpr}:
     var oldState = -1
-    for i in 0.. <n.len:
+    for i in 0..<n.len:
       if hasSubnodeWith(n.sons[i], nkBreakStmt):
         # block:
         #   x = def
@@ -703,7 +701,7 @@ proc track(tracked: PEffects, n: PNode) =
     n.sons[0].info = n.info
     #throws(tracked.exc, n.sons[0])
     addEffect(tracked, n.sons[0], useLineInfo=false)
-    for i in 0 .. <safeLen(n):
+    for i in 0 ..< safeLen(n):
       track(tracked, n.sons[i])
   of nkCallKinds:
     # p's effects are ours too:
@@ -742,7 +740,7 @@ proc track(tracked: PEffects, n: PNode) =
           if not (a.kind == nkSym and a.sym == tracked.owner):
             markSideEffect(tracked, a)
     if a.kind != nkSym or a.sym.magic != mNBindSym:
-      for i in 1 .. <len(n): trackOperand(tracked, n.sons[i], paramType(op, i))
+      for i in 1 ..< len(n): trackOperand(tracked, n.sons[i], paramType(op, i))
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
       # may not look like an assignment, but it is:
       let arg = n.sons[1]
@@ -754,11 +752,11 @@ proc track(tracked: PEffects, n: PNode) =
           discard
         else:
           message(arg.info, warnProveInit, $arg)
-    for i in 0 .. <safeLen(n):
+    for i in 0 ..< safeLen(n):
       track(tracked, n.sons[i])
   of nkDotExpr:
     guardDotAccess(tracked, n)
-    for i in 0 .. <len(n): track(tracked, n.sons[i])
+    for i in 0 ..< len(n): track(tracked, n.sons[i])
   of nkCheckedFieldExpr:
     track(tracked, n.sons[0])
     if warnProveField in gNotes: checkFieldAccess(tracked.guards, n)
@@ -806,13 +804,13 @@ proc track(tracked: PEffects, n: PNode) =
   of nkForStmt, nkParForStmt:
     # we are very conservative here and assume the loop is never executed:
     let oldState = tracked.init.len
-    for i in 0 .. <len(n):
+    for i in 0 ..< len(n):
       track(tracked, n.sons[i])
     setLen(tracked.init, oldState)
   of nkObjConstr:
     when false: track(tracked, n.sons[0])
     let oldFacts = tracked.guards.len
-    for i in 1 .. <len(n):
+    for i in 1 ..< len(n):
       let x = n.sons[i]
       track(tracked, x)
       if x.sons[0].kind == nkSym and sfDiscriminant in x.sons[0].sym.flags:
@@ -823,7 +821,7 @@ proc track(tracked: PEffects, n: PNode) =
     let oldLocked = tracked.locked.len
     let oldLockLevel = tracked.currLockLevel
     var enforcedGcSafety = false
-    for i in 0 .. <pragmaList.len:
+    for i in 0 ..< pragmaList.len:
       let pragma = whichPragma(pragmaList.sons[i])
       if pragma == wLocks:
         lockLocations(tracked, pragmaList.sons[i])
@@ -842,7 +840,7 @@ proc track(tracked: PEffects, n: PNode) =
   of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
     if n.len == 1: track(tracked, n.sons[0])
   else:
-    for i in 0 .. <safeLen(n): track(tracked, n.sons[i])
+    for i in 0 ..< safeLen(n): track(tracked, n.sons[i])
 
 proc subtypeRelation(spec, real: PNode): bool =
   result = safeInheritanceDiff(real.excType, spec.typ) <= 0
@@ -854,7 +852,7 @@ proc checkRaisesSpec(spec, real: PNode, msg: string, hints: bool;
   var used = initIntSet()
   for r in items(real):
     block search:
-      for s in 0 .. <spec.len:
+      for s in 0 ..< spec.len:
         if effectPredicate(spec[s], r):
           used.incl(s)
           break search
@@ -864,7 +862,7 @@ proc checkRaisesSpec(spec, real: PNode, msg: string, hints: bool;
       popInfoContext()
   # hint about unnecessarily listed exception types:
   if hints:
-    for s in 0 .. <spec.len:
+    for s in 0 ..< spec.len:
       if not used.contains(s):
         message(spec[s].info, hintXDeclaredButNotUsed, renderTree(spec[s]))
 
@@ -979,7 +977,10 @@ proc trackProc*(s: PSym, body: PNode) =
     message(s.info, warnLockLevel,
       "declared lock level is $1, but real lock level is $2" %
         [$s.typ.lockLevel, $t.maxLockLevel])
-  if s.kind == skFunc: trackWrites(s, body)
+  when false:
+    if s.kind == skFunc:
+      when defined(dfa): dataflowAnalysis(s, body)
+      trackWrites(s, body)
 
 proc trackTopLevelStmt*(module: PSym; n: PNode) =
   if n.kind in {nkPragma, nkMacroDef, nkTemplateDef, nkProcDef, nkFuncDef,

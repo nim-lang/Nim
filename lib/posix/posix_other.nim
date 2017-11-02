@@ -146,7 +146,7 @@ type
   Mode* {.importc: "mode_t", header: "<sys/types.h>".} = cint
   Nlink* {.importc: "nlink_t", header: "<sys/types.h>".} = int
   Off* {.importc: "off_t", header: "<sys/types.h>".} = int64
-  Pid* {.importc: "pid_t", header: "<sys/types.h>".} = int
+  Pid* {.importc: "pid_t", header: "<sys/types.h>".} = int32
   Pthread_attr* {.importc: "pthread_attr_t", header: "<sys/types.h>".} = int
   Pthread_barrier* {.importc: "pthread_barrier_t",
                       header: "<sys/types.h>".} = int

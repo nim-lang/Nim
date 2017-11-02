@@ -6,12 +6,8 @@ discard """
 {.this: self.}
 
 type
-  Foo {.partial.} = object
-    a, b: int
-
-type
-  tupcomingfeatures.Foo = object
-    x: int
+  Foo = object
+    a, b, x: int
 
 proc yay(self: Foo) =
   echo a, " ", b, " ", x

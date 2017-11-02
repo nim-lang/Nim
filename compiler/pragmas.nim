@@ -25,7 +25,7 @@ const
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
     wAsmNoStackFrame, wError, wDiscardable, wNoInit, wDestructor, wCodegenDecl,
     wGensym, wInject, wRaises, wTags, wLocks, wDelegator, wGcSafe,
-    wOverride, wConstructor, wExportNims, wUsed}
+    wOverride, wConstructor, wExportNims, wUsed, wLiftLocals}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas+{wBase}-{wImportCpp}
   templatePragmas* = {wImmediate, wDeprecated, wError, wGensym, wInject, wDirty,
@@ -55,7 +55,7 @@ const
     wPure, wHeader, wCompilerproc, wFinal, wSize, wExtern, wShallow,
     wImportCpp, wImportObjC, wError, wIncompleteStruct, wByCopy, wByRef,
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
-    wBorrow, wGcSafe, wExportNims, wPartial, wUsed, wExplain}
+    wBorrow, wGcSafe, wExportNims, wPartial, wUsed, wExplain, wPackage}
   fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern,
     wImportCpp, wImportObjC, wError, wGuard, wBitsize, wUsed}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl,
@@ -69,6 +69,14 @@ const
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideeffect,
                       wThread, wRaises, wLocks, wTags, wGcSafe}
   allRoutinePragmas* = methodPragmas + iteratorPragmas + lambdaPragmas
+
+proc getPragmaVal*(procAst: PNode; name: TSpecialWord): PNode =
+  let p = procAst[pragmasPos]
+  if p.kind == nkEmpty: return nil
+  for it in p:
+    if it.kind == nkExprColonExpr and it[0].kind == nkIdent and
+        it[0].ident.id == ord(name):
+      return it[1]
 
 proc pragma*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords)
 # implementation
@@ -575,7 +583,7 @@ proc pragmaLockStmt(c: PContext; it: PNode) =
     if n.kind != nkBracket:
       localError(n.info, errGenerated, "locks pragma takes a list of expressions")
     else:
-      for i in 0 .. <n.len:
+      for i in 0 ..< n.len:
         n.sons[i] = c.semExpr(c, n.sons[i])
 
 proc pragmaLocks(c: PContext, it: PNode): TLockLevel =
@@ -799,6 +807,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         noVal(it)
         if sym.typ == nil or tfFinal in sym.typ.flags: invalidPragma(it)
         else: incl(sym.typ.flags, tfInheritable)
+      of wPackage:
+        noVal(it)
+        if sym.typ == nil: invalidPragma(it)
+        else: incl(sym.flags, sfForward)
       of wAcyclic:
         noVal(it)
         if sym.typ == nil: invalidPragma(it)
@@ -974,6 +986,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         noVal(it)
         if sym == nil: invalidPragma(it)
         else: sym.flags.incl sfUsed
+      of wLiftLocals: discard
       else: invalidPragma(it)
     else: invalidPragma(it)
 

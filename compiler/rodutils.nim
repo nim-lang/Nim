@@ -10,7 +10,7 @@
 ## Serialization utilities for the compiler.
 import strutils
 
-proc c_sprintf(buf, frmt: cstring) {.importc: "sprintf", header: "<stdio.h>", nodecl, varargs.}
+proc c_snprintf(s: cstring; n:uint; frmt: cstring): cint {.importc: "snprintf", header: "<stdio.h>", nodecl, varargs.}
 
 proc toStrMaxPrecision*(f: BiggestFloat, literalPostfix = ""): string =
   if f != f:
@@ -21,9 +21,14 @@ proc toStrMaxPrecision*(f: BiggestFloat, literalPostfix = ""): string =
     if f > 0.0: result = "INF"
     else: result = "-INF"
   else:
-    var buf: array[0..80, char]
-    c_sprintf(buf, "%#.16e" & literalPostfix, f)
-    result = $buf
+    when defined(nimNoArrayToCstringConversion):
+      result = newString(81)
+      let n = c_snprintf(result.cstring, result.len.uint, "%#.16e%s", f, literalPostfix.cstring)
+      setLen(result, n)
+    else:
+      var buf: array[0..80, char]
+      discard c_snprintf(buf.cstring, buf.len.uint, "%#.16e%s", f, literalPostfix.cstring)
+      result = $buf.cstring
 
 proc encodeStr*(s: string, result: var string) =
   for i in countup(0, len(s) - 1):
@@ -133,4 +138,3 @@ iterator decodeStrArray*(s: cstring): string =
   while s[i] != '\0':
     yield decodeStr(s, i)
     if s[i] == ' ': inc i
-

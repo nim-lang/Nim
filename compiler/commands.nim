@@ -81,15 +81,17 @@ proc writeVersionInfo(pass: TCmdLinePass) =
   if pass == passCmd1:
     msgWriteln(`%`(HelpMessage, [VersionAsString,
                                  platform.OS[platform.hostOS].name,
-                                 CPU[platform.hostCPU].name]))
+                                 CPU[platform.hostCPU].name]),
+               {msgStdout})
 
     const gitHash = gorge("git log -n 1 --format=%H").strip
     when gitHash.len == 40:
-      msgWriteln("git hash: " & gitHash)
+      msgWriteln("git hash: " & gitHash, {msgStdout})
 
     msgWriteln("active boot switches:" & usedRelease & usedAvoidTimeMachine &
       usedTinyC & usedGnuReadline & usedNativeStacktrace & usedNoCaas &
-      usedFFI & usedBoehm & usedMarkAndSweep & usedGenerational & usedGoGC & usedNoGC)
+      usedFFI & usedBoehm & usedMarkAndSweep & usedGenerational & usedGoGC & usedNoGC,
+               {msgStdout})
     msgQuit(0)
 
 var
@@ -249,6 +251,7 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
     result = gOptions * {optNaNCheck, optInfCheck} == {optNaNCheck, optInfCheck}
   of "infchecks": result = contains(gOptions, optInfCheck)
   of "nanchecks": result = contains(gOptions, optNaNCheck)
+  of "nilchecks": result = contains(gOptions, optNilCheck)
   of "objchecks": result = contains(gOptions, optObjCheck)
   of "fieldchecks": result = contains(gOptions, optFieldCheck)
   of "rangechecks": result = contains(gOptions, optRangeCheck)
@@ -340,7 +343,9 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     # keep the old name for compat
     if pass in {passCmd2, passPP} and not options.gNoNimblePath:
       expectArg(switch, arg, pass, info)
-      let path = processPath(arg, info, notRelativeToProj=true)
+      var path = processPath(arg, info, notRelativeToProj=true)
+      let nimbleDir = getEnv("NIMBLE_DIR")
+      if nimbleDir.len > 0 and pass == passPP: path = nimbleDir / "pkgs"
       nimblePath(path, info)
   of "nonimblepath", "nobabelpath":
     expectNoArg(switch, arg, pass, info)
@@ -471,6 +476,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitch({optNaNCheck, optInfCheck}, arg, pass, info)
   of "infchecks": processOnOffSwitch({optInfCheck}, arg, pass, info)
   of "nanchecks": processOnOffSwitch({optNaNCheck}, arg, pass, info)
+  of "nilchecks": processOnOffSwitch({optNilCheck}, arg, pass, info)
   of "objchecks": processOnOffSwitch({optObjCheck}, arg, pass, info)
   of "fieldchecks": processOnOffSwitch({optFieldCheck}, arg, pass, info)
   of "rangechecks": processOnOffSwitch({optRangeCheck}, arg, pass, info)
@@ -662,6 +668,10 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(switch, arg, pass, info)
     if config != nil:
       config.cppDefine(arg)
+  of "newruntime":
+    expectNoArg(switch, arg, pass, info)
+    newDestructors = true
+    defineSymbol("nimNewRuntime")
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(switch, arg)
     else: invalidCmdLineOption(pass, switch, info)

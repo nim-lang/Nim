@@ -487,12 +487,12 @@ proc GC_dumpHeap*(file: File) =
   var spaceIter: ObjectSpaceIter
   when false:
     var d = gch.decStack.d
-    for i in 0 .. < gch.decStack.len:
+    for i in 0 .. gch.decStack.len-1:
       if isAllocatedPtr(gch.region, d[i]):
         c_fprintf(file, "onstack %p\n", d[i])
       else:
         c_fprintf(file, "onstack_invalid %p\n", d[i])
-  for i in 0 .. < globalMarkersLen: globalMarkers[i]()
+  for i in 0 .. globalMarkersLen-1: globalMarkers[i]()
   while true:
     let x = allObjectsAsProc(gch.region, addr spaceIter)
     if spaceIter.state < 0: break
@@ -579,7 +579,7 @@ proc markIncremental(gch: var GcHeap): bool =
   result = true
 
 proc markGlobals(gch: var GcHeap) =
-  for i in 0 .. < globalMarkersLen: globalMarkers[i]()
+  for i in 0 .. globalMarkersLen-1: globalMarkers[i]()
 
 proc doOperation(p: pointer, op: WalkOp) =
   if p == nil: return

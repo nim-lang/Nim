@@ -121,14 +121,14 @@ proc freshGenSyms(n: PNode, owner, orig: PSym, symMap: var TIdTable) =
       idTablePut(symMap, s, x)
       n.sym = x
   else:
-    for i in 0 .. <safeLen(n): freshGenSyms(n.sons[i], owner, orig, symMap)
+    for i in 0 ..< safeLen(n): freshGenSyms(n.sons[i], owner, orig, symMap)
 
 proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind)
 
 proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
   if n.sons[bodyPos].kind != nkEmpty:
     let procParams = result.typ.n
-    for i in 1 .. <procParams.len:
+    for i in 1 ..< procParams.len:
       addDecl(c, procParams[i].sym)
     maybeAddResult(c, result, result.ast)
 
@@ -138,7 +138,7 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
     var symMap: TIdTable
     initIdTable symMap
     if params != nil:
-      for i in 1 .. <params.len:
+      for i in 1 ..< params.len:
         let param = params[i].sym
         if sfGenSym in param.flags:
           idTablePut(symMap, params[i].sym, result.typ.n[param.position+1].sym)
@@ -211,7 +211,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   let originalParams = result.n
   result.n = originalParams.shallowCopy
 
-  for i in 1 .. <result.len:
+  for i in 1 ..< result.len:
     # twrong_field_caching requires these 'resetIdTable' calls:
     if i > 1:
       resetIdTable(cl.symMap)

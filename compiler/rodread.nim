@@ -336,10 +336,13 @@ proc decodeType(r: PRodReader, info: TLineInfo): PType =
   if r.s[r.pos] == '\17':
     inc(r.pos)
     result.assignment = rrGetSym(r, decodeVInt(r.s, r.pos), info)
-  while r.s[r.pos] == '\18':
+  if r.s[r.pos] == '\18':
+    inc(r.pos)
+    result.sink = rrGetSym(r, decodeVInt(r.s, r.pos), info)
+  while r.s[r.pos] == '\19':
     inc(r.pos)
     let x = decodeVInt(r.s, r.pos)
-    doAssert r.s[r.pos] == '\19'
+    doAssert r.s[r.pos] == '\20'
     inc(r.pos)
     let y = rrGetSym(r, decodeVInt(r.s, r.pos), info)
     result.methods.safeAdd((x, y))
@@ -792,7 +795,7 @@ proc getReader(moduleId: int): PRodReader =
   # the module ID! We could introduce a mapping ID->PRodReader but I'll leave
   # this for later versions if benchmarking shows the linear search causes
   # problems:
-  for i in 0 .. <gMods.len:
+  for i in 0 ..< gMods.len:
     result = gMods[i].rd
     if result != nil and result.moduleID == moduleId: return result
   return nil

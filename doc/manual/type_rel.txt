@@ -491,4 +491,4 @@ metatypes ``typed`` and ``typedesc`` are not lazy.
 Varargs matching
 ----------------
 
-See `Varargs`_.
+See `Varargs <#types-varargs>`_.

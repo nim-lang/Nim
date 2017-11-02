@@ -285,7 +285,7 @@ proc runeReverseOffset*(s: string, rev:Positive): (int, int) =
 
 proc runeSubStr*(s: string, pos:int, len:int = int.high): string =
   ## Returns the UTF-8 substring starting at codepoint pos
-  ## with len codepoints. If pos or len is negativ they count from
+  ## with len codepoints. If pos or len is negative they count from
   ## the end of the string. If len is not given it means the longest
   ## possible string.
   ##

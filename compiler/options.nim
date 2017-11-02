@@ -144,6 +144,7 @@ var
   gPreciseStack*: bool = false
   gNoNimblePath* = false
   gExperimentalMode*: bool
+  newDestructors*: bool
 
 proc importantComments*(): bool {.inline.} = gCmd in {cmdDoc, cmdIdeTools}
 proc usesNativeGC*(): bool {.inline.} = gSelectedGC >= gcRefc

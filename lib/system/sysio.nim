@@ -15,9 +15,12 @@
 {.push debugger:off .} # the user does not want to trace a part
                        # of the standard library!
 
-
-proc c_fdopen(filehandle: cint, mode: cstring): File {.
-  importc: "fdopen", header: "<stdio.h>".}
+when defined(windows):
+  proc c_fdopen(filehandle: cint, mode: cstring): File {.
+    importc: "_fdopen", header: "<stdio.h>".}
+else:
+  proc c_fdopen(filehandle: cint, mode: cstring): File {.
+    importc: "fdopen", header: "<stdio.h>".}
 proc c_fputs(c: cstring, f: File): cint {.
   importc: "fputs", header: "<stdio.h>", tags: [WriteIOEffect].}
 proc c_fgets(c: cstring, n: cint, f: File): cstring {.
@@ -400,5 +403,19 @@ proc setStdIoUnbuffered() =
     discard c_setvbuf(stderr, nil, IONBF, 0)
   when declared(stdin):
     discard c_setvbuf(stdin, nil, IONBF, 0)
+
+when declared(stdout):
+  proc echoBinSafe(args: openArray[string]) {.compilerProc.} =
+    when not defined(windows):
+      proc flockfile(f: File) {.importc, noDecl.}
+      proc funlockfile(f: File) {.importc, noDecl.}
+      flockfile(stdout)
+    for s in args:
+      discard c_fwrite(s.cstring, s.len, 1, stdout)
+    const linefeed = "\n" # can be 1 or more chars
+    discard c_fwrite(linefeed.cstring, linefeed.len, 1, stdout)
+    discard c_fflush(stdout)
+    when not defined(windows):
+      funlockfile(stdout)
 
 {.pop.}
