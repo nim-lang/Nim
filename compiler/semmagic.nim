@@ -168,7 +168,9 @@ proc semTypeTraits(c: PContext, n: PNode): PNode =
 proc semOrd(c: PContext, n: PNode): PNode =
   result = n
   let parType = n.sons[1].typ
-  if isOrdinalType(parType) or parType.kind == tySet:
+  if isOrdinalType(parType):
+    discard
+  elif parType.kind == tySet:
     result.typ = makeRangeType(c, firstOrd(parType), lastOrd(parType), n.info)
   else:
     localError(n.info, errOrdinalTypeExpected)

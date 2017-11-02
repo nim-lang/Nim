@@ -210,7 +210,7 @@ proc semGenericStmt(c: PContext, n: PNode,
         considerQuotedIdent(fn).id notin ctx.toMixin:
       errorUndeclaredIdentifier(c, n.info, fn.renderTree)
 
-    var first = ord(withinConcept in flags)
+    var first = int ord(withinConcept in flags)
     var mixinContext = false
     if s != nil:
       incl(s.flags, sfUsed)
