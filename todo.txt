@@ -2,7 +2,6 @@ version 1.0 battle plan
 =======================
 
 - make FlowVar compatible to Futures
-- remove 'mod x' type rule
 - fix "high priority" bugs
 - try to fix as many compiler crashes as reasonable
 

@@ -308,14 +308,12 @@ when defined(nimArrIdx):
       shallowCopy(x, y)
 
 type
-  Slice*[T, U] = object ## builtin slice type
+  HSlice*[T, U] = object ## "heterogenous" slice type
     a*: T        ## the lower bound (inclusive)
     b*: U        ## the upper bound (inclusive)
+  Slice*[T] = HSlice[T, T] ## an alias for ``HSlice[T, T]``
 
-when defined(nimalias):
-  {.deprecated: [TSlice: Slice].}
-
-proc `..`*[T, U](a: T, b: U): Slice[T, U] {.noSideEffect, inline, magic: "DotDot".} =
+proc `..`*[T, U](a: T, b: U): HSlice[T, U] {.noSideEffect, inline, magic: "DotDot".} =
   ## `slice`:idx: operator that constructs an interval ``[a, b]``, both `a`
   ## and `b` are inclusive. Slices can also be used in the set constructor
   ## and in ordinal case statements, but then they are special-cased by the
@@ -323,7 +321,7 @@ proc `..`*[T, U](a: T, b: U): Slice[T, U] {.noSideEffect, inline, magic: "DotDot
   result.a = a
   result.b = b
 
-proc `..`*[T](b: T): Slice[int, T] {.noSideEffect, inline, magic: "DotDot".} =
+proc `..`*[T](b: T): HSlice[int, T] {.noSideEffect, inline, magic: "DotDot".} =
   ## `slice`:idx: operator that constructs an interval ``[default(T), b]``
   result.b = b
 
@@ -1169,7 +1167,7 @@ proc contains*[T](x: set[T], y: T): bool {.magic: "InSet", noSideEffect.}
   ## is achieved by reversing the parameters for ``contains``; ``in`` then
   ## passes its arguments in reverse order.
 
-proc contains*[T](s: Slice[T, T], value: T): bool {.noSideEffect, inline.} =
+proc contains*[U, V, W](s: HSlice[U, V], value: W): bool {.noSideEffect, inline.} =
   ## Checks if `value` is within the range of `s`; returns true iff
   ## `value >= s.a and value <= s.b`
   ##
@@ -2078,6 +2076,9 @@ proc max*[T](x, y: T): T =
   if y <= x: x else: y
 {.pop.}
 
+proc high*(T: typedesc[SomeReal]): T = Inf
+proc low*(T: typedesc[SomeReal]): T = NegInf
+
 proc clamp*[T](x, a, b: T): T =
   ## limits the value ``x`` within the interval [a, b]
   ##
@@ -2088,7 +2089,7 @@ proc clamp*[T](x, a, b: T): T =
   if x > b: return b
   return x
 
-proc len*[T: Ordinal](x: Slice[T, T]): int {.noSideEffect, inline.} =
+proc len*[U: Ordinal; V: Ordinal](x: HSlice[U, V]): int {.noSideEffect, inline.} =
   ## length of ordinal slice, when x.b < x.a returns zero length
   ##
   ## .. code-block:: Nim
@@ -2156,7 +2157,7 @@ iterator items*(E: typedesc[enum]): E =
   for v in low(E)..high(E):
     yield v
 
-iterator items*[T](s: Slice[T, T]): T =
+iterator items*[T](s: HSlice[T, T]): T =
   ## iterates over the slice `s`, yielding each value between `s.a` and `s.b`
   ## (inclusively).
   for x in s.a..s.b:
@@ -2834,7 +2835,7 @@ when not defined(JS): #and not defined(nimscript):
       fmRead,                   ## Open the file for read access only.
       fmWrite,                  ## Open the file for write access only.
                                 ## If the file does not exist, it will be
-                                ## created.
+                                ## created. Existing files will be cleared!
       fmReadWrite,              ## Open the file for read and write access.
                                 ## If the file does not exist, it will be
                                 ## created. Existing files will be cleared!
@@ -3428,7 +3429,7 @@ template `..^`*(a, b: untyped): untyped =
   ## '..' and '^' is required.
   a .. ^b
 
-template `..<`*(a, b: untyped): untyped {.dirty.} =
+template `..<`*(a, b: untyped): untyped =
   ## a shortcut for 'a..pred(b)'.
   a .. pred(b)
 
@@ -3457,7 +3458,7 @@ template `^^`(s, i: untyped): untyped =
   (when i is BackwardsIndex: s.len - int(i) else: int(i))
 
 when hasAlloc or defined(nimscript):
-  proc `[]`*[T, U](s: string, x: Slice[T, U]): string {.inline.} =
+  proc `[]`*[T, U](s: string, x: HSlice[T, U]): string {.inline.} =
     ## slice operation for strings.
     ## returns the inclusive range [s[x.a], s[x.b]]:
     ##
@@ -3466,7 +3467,7 @@ when hasAlloc or defined(nimscript):
     ##    assert s[1..3] == "bcd"
     result = s.substr(s ^^ x.a, s ^^ x.b)
 
-  proc `[]=`*[T, U](s: var string, x: Slice[T, U], b: string) =
+  proc `[]=`*[T, U](s: var string, x: HSlice[T, U], b: string) =
     ## slice assignment for strings. If
     ## ``b.len`` is not exactly the number of elements that are referred to
     ## by `x`, a `splice`:idx: is performed:
@@ -3482,7 +3483,7 @@ when hasAlloc or defined(nimscript):
     else:
       spliceImpl(s, a, L, b)
 
-proc `[]`*[Idx, T, U, V](a: array[Idx, T], x: Slice[U, V]): seq[T] =
+proc `[]`*[Idx, T, U, V](a: array[Idx, T], x: HSlice[U, V]): seq[T] =
   ## slice operation for arrays.
   ## returns the inclusive range [a[x.a], a[x.b]]:
   ##
@@ -3492,18 +3493,18 @@ proc `[]`*[Idx, T, U, V](a: array[Idx, T], x: Slice[U, V]): seq[T] =
   let xa = a ^^ x.a
   let L = (a ^^ x.b) - xa + 1
   result = newSeq[T](L)
-  for i in 0..<L: result[i] = a[Idx(i + xa + int low(a))]
+  for i in 0..<L: result[i] = a[Idx(i + xa)]
 
-proc `[]=`*[Idx, T, U, V](a: var array[Idx, T], x: Slice[U, V], b: openArray[T]) =
+proc `[]=`*[Idx, T, U, V](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]) =
   ## slice assignment for arrays.
   let xa = a ^^ x.a
   let L = (a ^^ x.b) - xa + 1
   if L == b.len:
-    for i in 0..<L: a[Idx(i + xa + int low(a))] = b[i]
+    for i in 0..<L: a[Idx(i + xa)] = b[i]
   else:
     sysFatal(RangeError, "different lengths for slice assignment")
 
-proc `[]`*[T, U, V](s: seq[T], x: Slice[U, V]): seq[T] =
+proc `[]`*[T, U, V](s: openArray[T], x: HSlice[U, V]): seq[T] =
   ## slice operation for sequences.
   ## returns the inclusive range [s[x.a], s[x.b]]:
   ##
@@ -3515,7 +3516,7 @@ proc `[]`*[T, U, V](s: seq[T], x: Slice[U, V]): seq[T] =
   newSeq(result, L)
   for i in 0 ..< L: result[i] = s[i + a]
 
-proc `[]=`*[T, U, V](s: var seq[T], x: Slice[U, V], b: openArray[T]) =
+proc `[]=`*[T, U, V](s: var seq[T], x: HSlice[U, V], b: openArray[T]) =
   ## slice assignment for sequences. If
   ## ``b.len`` is not exactly the number of elements that are referred to
   ## by `x`, a `splice`:idx: is performed.
@@ -3526,16 +3527,21 @@ proc `[]=`*[T, U, V](s: var seq[T], x: Slice[U, V], b: openArray[T]) =
   else:
     spliceImpl(s, a, L, b)
 
-proc `[]`*[T](s: seq[T]; i: BackwardsIndex): T = s[s.len - int(i)]
-proc `[]`*[Idx, T](a: array[Idx, T]; i: BackwardsIndex): T =
+proc `[]`*[T](s: openArray[T]; i: BackwardsIndex): T {.inline.} = s[s.len - int(i)]
+proc `[]`*[Idx, T](a: array[Idx, T]; i: BackwardsIndex): T {.inline.} =
   a[Idx(a.len - int(i) + int low(a))]
-proc `[]`*(s: string; i: BackwardsIndex): char = s[s.len - int(i)]
+proc `[]`*(s: string; i: BackwardsIndex): char {.inline.} = s[s.len - int(i)]
 
-proc `[]`*[T](s: var seq[T]; i: BackwardsIndex; x: T) =
+proc `[]`*[T](s: var openArray[T]; i: BackwardsIndex): var T {.inline.} =
+  s[s.len - int(i)]
+proc `[]`*[Idx, T](a: var array[Idx, T]; i: BackwardsIndex): var T {.inline.} =
+  a[Idx(a.len - int(i) + int low(a))]
+
+proc `[]=`*[T](s: var openArray[T]; i: BackwardsIndex; x: T) {.inline.} =
   s[s.len - int(i)] = x
-proc `[]`*[Idx, T](a: var array[Idx, T]; i: BackwardsIndex; x: T) =
+proc `[]=`*[Idx, T](a: var array[Idx, T]; i: BackwardsIndex; x: T) {.inline.} =
   a[Idx(a.len - int(i) + int low(a))] = x
-proc `[]`*(s: var string; i: BackwardsIndex; x: char) =
+proc `[]=`*(s: var string; i: BackwardsIndex; x: char) {.inline.} =
   s[s.len - int(i)] = x
 
 proc slurp*(filename: string): string {.magic: "Slurp".}

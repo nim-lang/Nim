@@ -67,7 +67,7 @@ proc toNum64(b: TBuffer): int64 =
 
 proc toNum(b: TBuffer): int32 =
   # treat first byte different:
-  result = ze(b[0]) and 63
+  result = int32 ze(b[0]) and 63
   var
     i = 0
     Shift = 6'i32
