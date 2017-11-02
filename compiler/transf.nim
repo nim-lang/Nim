@@ -21,7 +21,7 @@
 import
   intsets, strutils, options, ast, astalgo, trees, treetab, msgs, os,
   idents, renderer, types, passes, semfold, magicsys, cgmeth, rodread,
-  lambdalifting, sempass2, lowerings, lookups, destroyer
+  lambdalifting, sempass2, lowerings, lookups, destroyer, liftlocals
 
 type
   PTransNode* = distinct PNode
@@ -978,6 +978,7 @@ proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
     liftDefer(c, result)
     #result = liftLambdas(prc, result)
     when useEffectSystem: trackProc(prc, result)
+    liftLocalsIfRequested(prc)
     if c.needsDestroyPass and newDestructors:
       result = injectDestructorCalls(prc, result)
     incl(result.flags, nfTransf)

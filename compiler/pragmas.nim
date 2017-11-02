@@ -25,7 +25,7 @@ const
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
     wAsmNoStackFrame, wError, wDiscardable, wNoInit, wDestructor, wCodegenDecl,
     wGensym, wInject, wRaises, wTags, wLocks, wDelegator, wGcSafe,
-    wOverride, wConstructor, wExportNims, wUsed}
+    wOverride, wConstructor, wExportNims, wUsed, wLiftLocals}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas+{wBase}-{wImportCpp}
   templatePragmas* = {wImmediate, wDeprecated, wError, wGensym, wInject, wDirty,
@@ -69,6 +69,14 @@ const
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideeffect,
                       wThread, wRaises, wLocks, wTags, wGcSafe}
   allRoutinePragmas* = methodPragmas + iteratorPragmas + lambdaPragmas
+
+proc getPragmaVal*(procAst: PNode; name: TSpecialWord): PNode =
+  let p = procAst[pragmasPos]
+  if p.kind == nkEmpty: return nil
+  for it in p:
+    if it.kind == nkExprColonExpr and it[0].kind == nkIdent and
+        it[0].ident.id == ord(name):
+      return it[1]
 
 proc pragma*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords)
 # implementation
@@ -978,6 +986,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         noVal(it)
         if sym == nil: invalidPragma(it)
         else: sym.flags.incl sfUsed
+      of wLiftLocals: discard
       else: invalidPragma(it)
     else: invalidPragma(it)
 
