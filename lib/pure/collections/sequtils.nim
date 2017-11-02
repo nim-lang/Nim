@@ -704,31 +704,6 @@ template newSeqWith*(len: int, init: untyped): untyped =
     result[i] = init
   result
 
-when not defined(nimscript):
-  import macros
-  macro asArray*(targetType: typedesc, values: typed): untyped =
-    ## applies a type conversion to each of the elements in the specified
-    ## array literal. Each element is converted to the ``targetType`` type..
-    ##
-    ## Example:
-    ##
-    ## .. code-block::
-    ##   let x = asArray(int, [0.1, 1.2, 2.3, 3.4])
-    ##   doAssert x is array[4, int]
-    ##
-    ## Short notation for:
-    ##
-    ## .. code-block::
-    ##   let x = [(0.1).int, (1.2).int, (2.3).int, (3.4).int]
-    let tNode = getType(targetType)[1]
-    values.expectKind(nnkBracket)
-    result = newNimNode(nnkBracket, lineInfoFrom=values)
-    for i in 0 ..< len(values):
-      var dot = newNimNode(nnkDotExpr, lineInfoFrom=values[i])
-      dot.add newPar(values[i])
-      dot.add tNode
-      result.add dot
-
 when isMainModule:
   import strutils
   block: # concat test
@@ -1016,10 +991,6 @@ when isMainModule:
     seq2D[1][0] = true
     seq2D[0][1] = true
     doAssert seq2D == @[@[true, true], @[true, false], @[false, false], @[false, false]]
-
-  when not defined(nimscript): # asArray tests
-    let x = asArray(int, [1.2, 2.3, 3.4, 4.5])
-    doAssert x is array[4, int]
 
   when not defined(testing):
     echo "Finished doc tests"
