@@ -4,7 +4,8 @@ discard """
 3
 @[(Field0: 1, Field1: 2), (Field0: 3, Field1: 5)]
 2
-@[a, new one, c]'''
+@[a, new one, c]
+@[1, 2, 3]'''
 """
 
 proc foo[T](x, y: T): T = x
@@ -35,3 +36,8 @@ useOpenarray([1, 2, 3])
 var z = @["a", "b", "c"]
 mutOpenarray(z)
 echo z
+
+# bug #6675
+var y: array[1..5, int] = [1,2,3,4,5]
+y[3..5] = [1, 2, 3]
+echo y[3..5]
