@@ -2434,7 +2434,8 @@ when isMainModule:
   doAssert formatBiggestFloat(0.00000000001, ffScientific, 1, ',') in
                                                    ["1,0e-11", "1,0e-011"]
   # bug #6589
-  doAssert formatFloat(123.456, ffScientific, precision=0) == "1.234560e+02"
+  doAssert formatFloat(123.456, ffScientific, precision=0) in
+      ["1.234560e+02", "1.234560e+002"]
 
   doAssert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
   doAssert "${1}12 ${-1}$2" % ["a", "b"] == "a12 bb"

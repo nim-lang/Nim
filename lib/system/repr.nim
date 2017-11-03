@@ -48,7 +48,7 @@ proc reprStrAux(result: var string, s: cstring; len: int) =
     add result, "nil"
     return
   add result, reprPointer(cast[pointer](s)) & "\""
-  for i in 0.. <len:
+  for i in 0 .. pred(len):
     let c = s[i]
     case c
     of '"': add result, "\\\""

@@ -109,3 +109,4 @@ proc initDefines*() =
   defineSymbol("nimGenericInOutFlags")
   when false: defineSymbol("nimHasOpt")
   defineSymbol("nimNoArrayToCstringConversion")
+  defineSymbol("nimNewRoof")
