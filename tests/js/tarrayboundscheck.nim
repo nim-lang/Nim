@@ -1,6 +1,5 @@
 discard """
   output: '''idx out of bounds: -1
-month out of bonds: 0
 Jan
 Feb
 Mar
