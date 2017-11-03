@@ -224,7 +224,7 @@ proc `-`*(a, b: Time): int64 {.
   ##     let a = fromSeconds(1_000_000_000)
   ##     let b = fromSeconds(1_500_000_000)
   ##     echo initInterval(seconds=int(b - a))
-  ##     # (milliseconds: 0, seconds: 20, minutes: 53, hours: 0, days: 5787, months: 0, years: 0) 
+  ##     # (milliseconds: 0, seconds: 20, minutes: 53, hours: 0, days: 5787, months: 0, years: 0)
 
 proc `<`*(a, b: Time): bool {.
   rtl, extern: "ntLtTime", tags: [], raises: [], noSideEffect.} =
@@ -1225,7 +1225,7 @@ when not defined(JS):
     result.minute = t.minute
     result.hour = t.hour
     result.monthday = t.monthday
-    result.month = ord(t.month)
+    result.month = cint(t.month)
     result.year = cint(t.year - 1900)
     result.weekday = weekDays[t.weekday]
     result.yearday = t.yearday

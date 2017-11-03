@@ -182,8 +182,9 @@ proc addField*(obj: PType; s: PSym) =
   field.position = sonsLen(obj.n)
   addSon(obj.n, newSymNode(field))
 
-proc addUniqueField*(obj: PType; s: PSym) =
-  if lookupInRecord(obj.n, s.id) == nil:
+proc addUniqueField*(obj: PType; s: PSym): PSym {.discardable.} =
+  result = lookupInRecord(obj.n, s.id)
+  if result == nil:
     var field = newSym(skField, getIdent(s.name.s & $obj.n.len), s.owner, s.info)
     field.id = -s.id
     let t = skipIntLit(s.typ)
@@ -191,6 +192,7 @@ proc addUniqueField*(obj: PType; s: PSym) =
     assert t.kind != tyStmt
     field.position = sonsLen(obj.n)
     addSon(obj.n, newSymNode(field))
+    result = field
 
 proc newDotExpr(obj, b: PSym): PNode =
   result = newNodeI(nkDotExpr, obj.info)
