@@ -1104,15 +1104,18 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: string,
     if client.proxy.isNil: parseUri(url) else: client.proxy.url
   let requestUrl = parseUri(url)
 
-  let savedProxy = client.proxy # client's proxy may be overwritten.
-
   if requestUrl.scheme == "https" and not client.proxy.isNil:
     when defined(ssl):
-      client.proxy.url = connectionUrl
-      var connectUrl = requestUrl
-      connectUrl.scheme = "http"
-      connectUrl.port = "443"
-      let proxyResp = await requestAux(client, $connectUrl, $HttpConnect)
+      # Pass only host:port for CONNECT
+      var connectUrl = initUri()
+      connectUrl.hostname = requestUrl.hostname
+      connectUrl.port = if requestUrl.port != "": requestUrl.port else: "443"
+
+      await newConnection(client, connectionUrl)
+
+      let proxyHeaderString = generateHeaders(connectUrl, $HttpConnect, newHttpHeaders(), "", client.proxy)
+      await client.socket.send(proxyHeaderString)
+      let proxyResp = await parseResponse(client, false)
 
       if not proxyResp.status.startsWith("200"):
         raise newException(HttpRequestError,
@@ -1142,9 +1145,6 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: string,
   let getBody = httpMethod.toLowerAscii() notin ["head", "connect"] and
                 client.getBody
   result = await parseResponse(client, getBody)
-
-  # Restore the clients proxy in case it was overwritten.
-  client.proxy = savedProxy
 
 proc request*(client: HttpClient | AsyncHttpClient, url: string,
               httpMethod: string, body = "",
