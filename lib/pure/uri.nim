@@ -321,6 +321,31 @@ proc `$`*(u: Uri): string =
     result.add("#")
     result.add(u.anchor)
 
+proc reverse*(uri: Uri): string =
+  ## returns the `reverse domain name notation 
+  ## <https://en.wikipedia.org/wiki/Reverse_domain_name_notation>`_. 
+  ## of the given hostname.
+  ## A high performance version of this:
+  ## .. code-block::
+  ##   return hostname.split(".").reversed().join(".")
+  result = ""
+  var
+    pos: int = 0
+    buf: string = ""
+    ch: char
+  while true:
+    ch = uri.hostname[pos]
+    if ch == '.' or pos == uri.hostname.len:
+        if pos < uri.hostname.len:
+            buf.insert ".", 0
+        result.insert(buf,0)
+        buf.setLen 0
+    else:
+        buf.add ch
+    if pos == uri.hostname.len: break
+    pos.inc
+
+
 when isMainModule:
   block:
     let str = "http://localhost"
@@ -524,4 +549,6 @@ when isMainModule:
     doAssert "https://example.com/about/staff.html?".parseUri().isAbsolute == true
     doAssert "https://example.com/about/staff.html?parameters".parseUri().isAbsolute == true
 
+  block: 
+    assert "//foo.baa.com".parseUri.reverse == "com.baa.foo"
   echo("All good!")
