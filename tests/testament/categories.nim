@@ -245,10 +245,10 @@ proc testNimInAction(r: var TResults, cat: Category, options: string) =
     testSpec r, makeTest(filename, options, cat, action)
 
   template testJS(filename: untyped) =
-    testSpec r, makeTest(filename, options, cat, actionCompile, targetJS)
+    testSpec r, makeTest(filename, options, cat, actionCompile), targetJS
 
   template testCPP(filename: untyped) =
-    testSpec r, makeTest(filename, options, cat, actionCompile, targetCPP)
+    testSpec r, makeTest(filename, options, cat, actionCompile), targetCPP
 
   let tests = [
     "niminaction/Chapter3/ChatApp/src/server",
@@ -420,7 +420,7 @@ proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
   let test = "tests" & DirSep &.? cat.string / test
   let target = if cat.string.normalize == "js": targetJS else: targetC
 
-  if existsFile(test): testSpec r, makeTest(test, options, cat, target = target)
+  if existsFile(test): testSpec r, makeTest(test, options, cat), target
   else: echo "[Warning] - ", test, " test does not exist"
 
 proc processCategory(r: var TResults, cat: Category, options: string) =
