@@ -578,15 +578,15 @@ iterator split*(s: string, seps: set[char] = Whitespace,
   else:
     splitCommon(s, seps, maxsplit, 1)
 
-iterator splitWhitespace*(s: string): string =
+iterator splitWhitespace*(s: string, maxsplit: int = -1): string =
   ## Splits at whitespace.
-  oldSplit(s, Whitespace, -1)
+  oldSplit(s, Whitespace, maxsplit)
 
-proc splitWhitespace*(s: string): seq[string] {.noSideEffect,
+proc splitWhitespace*(s: string, maxsplit: int = -1): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitWhitespace".} =
   ## The same as the `splitWhitespace <#splitWhitespace.i,string>`_
   ## iterator, but is a proc that returns a sequence of substrings.
-  accumulateResult(splitWhitespace(s))
+  accumulateResult(splitWhitespace(s, maxsplit))
 
 iterator split*(s: string, sep: char, maxsplit: int = -1): string =
   ## Splits the string `s` into substrings using a single separator.
@@ -2598,6 +2598,12 @@ bar
   doAssert s.split(maxsplit=4) == @["", "this", "is", "an", "example  "]
   doAssert s.split(' ', maxsplit=1) == @["", "this is an example  "]
   doAssert s.split(" ", maxsplit=4) == @["", "this", "is", "an", "example  "]
+
+  doAssert s.splitWhitespace() == @["this", "is", "an", "example"]
+  doAssert s.splitWhitespace(maxsplit=1) == @["this", "is an example  "]
+  doAssert s.splitWhitespace(maxsplit=2) == @["this", "is", "an example  "]
+  doAssert s.splitWhitespace(maxsplit=3) == @["this", "is", "an", "example  "]
+  doAssert s.splitWhitespace(maxsplit=4) == @["this", "is", "an", "example"]
 
   block: # formatEng tests
     doAssert formatEng(0, 2, trim=false) == "0.00"
