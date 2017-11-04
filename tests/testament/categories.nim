@@ -219,9 +219,9 @@ proc debuggerTests(r: var TResults, cat: Category, options: string) =
 proc jsTests(r: var TResults, cat: Category, options: string) =
   template test(filename: untyped) =
     testSpec r, makeTest(filename, options & " -d:nodejs", cat,
-                         actionRun, targetJS)
+                         actionRun), targetJS
     testSpec r, makeTest(filename, options & " -d:nodejs -d:release", cat,
-                         actionRun, targetJS)
+                         actionRun), targetJS
 
   for t in os.walkFiles("tests/js/t*.nim"):
     test(t)
@@ -387,7 +387,7 @@ proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
         installStatus = waitForExitEx(installProcess)
       installProcess.close
       if installStatus != QuitSuccess:
-        r.addResult(test, "", "", reInstallFailed)
+        r.addResult(test, targetC, "", "", reInstallFailed)
         continue
 
       let
@@ -396,12 +396,12 @@ proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
         buildStatus = waitForExitEx(buildProcess)
       buildProcess.close
       if buildStatus != QuitSuccess:
-        r.addResult(test, "", "", reBuildFailed)
-      r.addResult(test, "", "", reSuccess)
-    r.addResult(packageFileTest, "", "", reSuccess)
+        r.addResult(test, targetC, "", "", reBuildFailed)
+      r.addResult(test, targetC, "", "", reSuccess)
+    r.addResult(packageFileTest, targetC, "", "", reSuccess)
   except JsonParsingError:
     echo("[Warning] - Cannot run nimble tests: Invalid package file.")
-    r.addResult(packageFileTest, "", "", reBuildFailed)
+    r.addResult(packageFileTest, targetC, "", "", reBuildFailed)
 
 
 # ----------------------------------------------------------------------------
