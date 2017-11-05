@@ -39,5 +39,18 @@
 - Added ``typetraits.$`` as an alias for ``typetraits.name``.
 - ``os.getEnv`` now takes an optional ``default`` parameter that tells ``getEnv``
   what to return if the environment variable does not exist.
-- Removed PDCurses wrapper from the stdlib and published it as a separate 
+- Removed PDCurses wrapper from the stdlib and published it as a separate
   Nimble package.
+- The parsing rules of ``if`` expressions were changed so that multiple
+  statements are allowed in the branches. We found few code examples that
+  now fail because of this change, but here is one:
+
+.. code-block:: nim
+
+  t[ti] = if exp_negative: '-' else: '+'; inc(ti)
+
+This now needs to be written as:
+
+.. code-block:: nim
+
+  t[ti] = (if exp_negative: '-' else: '+'); inc(ti)

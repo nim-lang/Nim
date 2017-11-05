@@ -798,7 +798,8 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
   if arg.valid:
     let htmlOut = if isObject:
         "<object data=\"$1\" type=\"image/svg+xml\"$2 >" & content & "</object>"
-        else: "<img src=\"$1\"$2 />"
+      else:
+        "<img src=\"$1\"$2 />"
     dispA(d.target, result, htmlOut, "\\includegraphics$2{$1}",
           [arg, options])
   if len(n) >= 3: renderRstToOut(d, n.sons[2], result)

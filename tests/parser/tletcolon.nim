@@ -32,3 +32,21 @@ let other = x:
     echo "no"
 let outer = y(5):
   echo "yes"
+
+
+# bug #6609
+type
+  TextureInternalFormat = enum RED, RGB, RGBA
+
+const channels = 4
+
+let format =
+    if channels == 1:
+        TextureInternalFormat.RED
+    elif channels == 3:
+        TextureInternalFormat.RGB
+    elif channels == 4:
+        TextureInternalFormat.RGBA
+    else:
+        echo "Texture Format Unknown, assuming RGB"  #This echo causes an error
+        TextureInternalFormat.RGB
