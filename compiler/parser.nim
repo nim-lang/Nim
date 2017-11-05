@@ -72,6 +72,7 @@ proc parseStmtPragma(p: var TParser): PNode
 proc parsePragma(p: var TParser): PNode
 proc postExprBlocks(p: var TParser, x: PNode): PNode
 proc parseExprStmt(p: var TParser): PNode
+proc parseBlock(p: var TParser): PNode
 # implementation
 
 proc getTok(p: var TParser) =
@@ -1084,6 +1085,7 @@ proc parseExpr(p: var TParser): PNode =
   #|       | tryExpr)
   #|       / simpleExpr
   case p.tok.tokType:
+  of tkBlock: result = parseBlock(p)
   of tkIf: result = parseIfExpr(p, nkIfExpr)
   of tkWhen: result = parseIfExpr(p, nkWhenExpr)
   of tkCase: result = parseCase(p)
