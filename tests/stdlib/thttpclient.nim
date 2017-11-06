@@ -2,6 +2,7 @@ discard """
   cmd: "nim c --threads:on -d:ssl $file"
   exitcode: 0
   output: "OK"
+  disabled: "travis"
 """
 
 import strutils

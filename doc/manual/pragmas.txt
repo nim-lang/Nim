@@ -316,7 +316,7 @@ factor.
 immediate pragma
 ----------------
 
-See `Ordinary vs immediate templates`_.
+See `Typed vs untyped parameters`_.
 
 
 compilation option pragmas
