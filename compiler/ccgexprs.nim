@@ -228,7 +228,7 @@ proc genOptAsgnTuple(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     else:
       flags
   let t = skipTypes(dest.t, abstractInst).getUniqueType()
-  for i in 0 .. <t.len:
+  for i in 0 ..< t.len:
     let t = t.sons[i]
     let field = "Field$1" % [i.rope]
     genAssignment(p, optAsgnLoc(dest, t, field),
@@ -270,10 +270,10 @@ proc genGenericAsgn(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
            addrLoc(dest), addrLoc(src), rdLoc(dest))
     else:
       linefmt(p, cpsStmts, "#genericShallowAssign((void*)$1, (void*)$2, $3);$n",
-              addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t))
+              addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t, dest.lode.info))
   else:
     linefmt(p, cpsStmts, "#genericAssign((void*)$1, (void*)$2, $3);$n",
-            addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t))
+            addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t, dest.lode.info))
 
 proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   # This function replaces all other methods for generating
@@ -291,7 +291,8 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
       genRefAssign(p, dest, src, flags)
     else:
       linefmt(p, cpsStmts, "#genericSeqAssign($1, $2, $3);$n",
-              addrLoc(dest), rdLoc(src), genTypeInfo(p.module, dest.t))
+              addrLoc(dest), rdLoc(src),
+              genTypeInfo(p.module, dest.t, dest.lode.info))
   of tyString:
     if (needToCopy notin flags and src.storage != OnStatic) or canMove(src.lode):
       genRefAssign(p, dest, src, flags)
@@ -352,7 +353,8 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     if needsComplexAssignment(dest.t):
       linefmt(p, cpsStmts,     # XXX: is this correct for arrays?
            "#genericAssignOpenArray((void*)$1, (void*)$2, $1Len_0, $3);$n",
-           addrLoc(dest), addrLoc(src), genTypeInfo(p.module, dest.t))
+           addrLoc(dest), addrLoc(src),
+           genTypeInfo(p.module, dest.t, dest.lode.info))
     else:
       useStringh(p.module)
       linefmt(p, cpsStmts,
@@ -393,14 +395,17 @@ proc genDeepCopy(p: BProc; dest, src: TLoc) =
   of tyPtr, tyRef, tyProc, tyTuple, tyObject, tyArray:
     # XXX optimize this
     linefmt(p, cpsStmts, "#genericDeepCopy((void*)$1, (void*)$2, $3);$n",
-            addrLoc(dest), addrLocOrTemp(src), genTypeInfo(p.module, dest.t))
+            addrLoc(dest), addrLocOrTemp(src),
+            genTypeInfo(p.module, dest.t, dest.lode.info))
   of tySequence, tyString:
     linefmt(p, cpsStmts, "#genericSeqDeepCopy($1, $2, $3);$n",
-            addrLoc(dest), rdLoc(src), genTypeInfo(p.module, dest.t))
+            addrLoc(dest), rdLoc(src),
+            genTypeInfo(p.module, dest.t, dest.lode.info))
   of tyOpenArray, tyVarargs:
     linefmt(p, cpsStmts,
          "#genericDeepCopyOpenArray((void*)$1, (void*)$2, $1Len_0, $3);$n",
-         addrLoc(dest), addrLocOrTemp(src), genTypeInfo(p.module, dest.t))
+         addrLoc(dest), addrLocOrTemp(src),
+         genTypeInfo(p.module, dest.t, dest.lode.info))
   of tySet:
     if mapType(ty) == ctArray:
       useStringh(p.module)
@@ -1101,7 +1106,8 @@ proc genReset(p: BProc, n: PNode) =
   var a: TLoc
   initLocExpr(p, n.sons[1], a)
   linefmt(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
-          addrLoc(a), genTypeInfo(p.module, skipTypes(a.t, {tyVar})))
+          addrLoc(a),
+          genTypeInfo(p.module, skipTypes(a.t, {tyVar}), n.info))
 
 proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
   var sizeExpr = sizeExpr
@@ -1115,7 +1121,7 @@ proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
     sizeExpr = "sizeof($1)" %
         [getTypeDesc(p.module, bt)]
   let args = [getTypeDesc(p.module, typ),
-              genTypeInfo(p.module, typ),
+              genTypeInfo(p.module, typ, a.lode.info),
               sizeExpr]
   if a.storage == OnHeap and usesNativeGC():
     # use newObjRC1 as an optimization
@@ -1145,7 +1151,7 @@ proc genNew(p: BProc, e: PNode) =
 proc genNewSeqAux(p: BProc, dest: TLoc, length: Rope) =
   let seqtype = skipTypes(dest.t, abstractVarRange)
   let args = [getTypeDesc(p.module, seqtype),
-              genTypeInfo(p.module, seqtype), length]
+              genTypeInfo(p.module, seqtype, dest.lode.info), length]
   var call: TLoc
   initLoc(call, locExpr, dest.lode, OnHeap)
   if dest.storage == OnHeap and usesNativeGC():
@@ -1173,7 +1179,7 @@ proc genNewSeqOfCap(p: BProc; e: PNode; d: var TLoc) =
   putIntoDest(p, d, e, ropecg(p.module,
               "($1)#nimNewSeqOfCap($2, $3)", [
               getTypeDesc(p.module, seqtype),
-              genTypeInfo(p.module, seqtype), a.rdLoc]))
+              genTypeInfo(p.module, seqtype, e.info), a.rdLoc]))
   gcUsage(e)
 
 proc genConstExpr(p: BProc, n: PNode): Rope
@@ -1212,7 +1218,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     constructLoc(p, tmp)
   discard getTypeDesc(p.module, t)
   let ty = getUniqueType(t)
-  for i in 1 .. <e.len:
+  for i in 1 ..< e.len:
     let it = e.sons[i]
     var tmp2: TLoc
     tmp2.r = r
@@ -1290,7 +1296,7 @@ proc genNewFinalize(p: BProc, e: PNode) =
   initLocExpr(p, e.sons[1], a)
   initLocExpr(p, e.sons[2], f)
   initLoc(b, locExpr, a.lode, OnHeap)
-  ti = genTypeInfo(p.module, refType)
+  ti = genTypeInfo(p.module, refType, e.info)
   addf(p.module.s[cfsTypeInit3], "$1->finalizer = (void*)$2;$n", [ti, rdLoc(f)])
   b.r = ropecg(p.module, "($1) #newObj($2, sizeof($3))", [
       getTypeDesc(p.module, refType),
@@ -1300,10 +1306,10 @@ proc genNewFinalize(p: BProc, e: PNode) =
   genObjectInit(p, cpsStmts, bt, a, false)
   gcUsage(e)
 
-proc genOfHelper(p: BProc; dest: PType; a: Rope): Rope =
+proc genOfHelper(p: BProc; dest: PType; a: Rope; info: TLineInfo): Rope =
   # unfortunately 'genTypeInfo' sets tfObjHasKids as a side effect, so we
   # have to call it here first:
-  let ti = genTypeInfo(p.module, dest)
+  let ti = genTypeInfo(p.module, dest, info)
   if tfFinal in dest.flags or (objHasKidsValid in p.module.flags and
                                tfObjHasKids notin dest.flags):
     result = "$1.m_type == $2" % [a, ti]
@@ -1316,7 +1322,7 @@ proc genOfHelper(p: BProc; dest: PType; a: Rope): Rope =
   when false:
     # former version:
     result = rfmt(p.module, "#isObj($1.m_type, $2)",
-                  a, genTypeInfo(p.module, dest))
+                  a, genTypeInfo(p.module, dest, info))
 
 proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
   var a: TLoc
@@ -1338,9 +1344,9 @@ proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
     globalError(x.info, errGenerated,
       "no 'of' operator available for pure objects")
   if nilCheck != nil:
-    r = rfmt(p.module, "(($1) && ($2))", nilCheck, genOfHelper(p, dest, r))
+    r = rfmt(p.module, "(($1) && ($2))", nilCheck, genOfHelper(p, dest, r, x.info))
   else:
-    r = rfmt(p.module, "($1)", genOfHelper(p, dest, r))
+    r = rfmt(p.module, "($1)", genOfHelper(p, dest, r, x.info))
   putIntoDest(p, d, x, r, a.storage)
 
 proc genOf(p: BProc, n: PNode, d: var TLoc) =
@@ -1363,12 +1369,12 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
   of tyEnum, tyOrdinal:
     putIntoDest(p, d, e,
                 ropecg(p.module, "#reprEnum((NI)$1, $2)", [
-                rdLoc(a), genTypeInfo(p.module, t)]), a.storage)
+                rdLoc(a), genTypeInfo(p.module, t, e.info)]), a.storage)
   of tyString:
     putIntoDest(p, d, e, ropecg(p.module, "#reprStr($1)", [rdLoc(a)]), a.storage)
   of tySet:
     putIntoDest(p, d, e, ropecg(p.module, "#reprSet($1, $2)", [
-                addrLoc(a), genTypeInfo(p.module, t)]), a.storage)
+                addrLoc(a), genTypeInfo(p.module, t, e.info)]), a.storage)
   of tyOpenArray, tyVarargs:
     var b: TLoc
     case a.t.kind
@@ -1383,22 +1389,22 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
     else: internalError(e.sons[0].info, "genRepr()")
     putIntoDest(p, d, e,
         ropecg(p.module, "#reprOpenArray($1, $2)", [rdLoc(b),
-        genTypeInfo(p.module, elemType(t))]), a.storage)
+        genTypeInfo(p.module, elemType(t), e.info)]), a.storage)
   of tyCString, tyArray, tyRef, tyPtr, tyPointer, tyNil, tySequence:
     putIntoDest(p, d, e,
                 ropecg(p.module, "#reprAny($1, $2)", [
-                rdLoc(a), genTypeInfo(p.module, t)]), a.storage)
+                rdLoc(a), genTypeInfo(p.module, t, e.info)]), a.storage)
   of tyEmpty, tyVoid:
     localError(e.info, "'repr' doesn't support 'void' type")
   else:
     putIntoDest(p, d, e, ropecg(p.module, "#reprAny($1, $2)",
-                              [addrLoc(a), genTypeInfo(p.module, t)]),
+                              [addrLoc(a), genTypeInfo(p.module, t, e.info)]),
                                a.storage)
   gcUsage(e)
 
 proc genGetTypeInfo(p: BProc, e: PNode, d: var TLoc) =
   let t = e.sons[1].typ
-  putIntoDest(p, d, e, genTypeInfo(p.module, t))
+  putIntoDest(p, d, e, genTypeInfo(p.module, t, e.info))
 
 proc genDollar(p: BProc, n: PNode, d: var TLoc, frmt: string) =
   var a: TLoc
@@ -1980,10 +1986,10 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
         t = skipTypes(t.sons[0], skipPtrs)
     if nilCheck != nil:
       linefmt(p, cpsStmts, "if ($1) #chckObj($2.m_type, $3);$n",
-              nilCheck, r, genTypeInfo(p.module, dest))
+              nilCheck, r, genTypeInfo(p.module, dest, n.info))
     else:
       linefmt(p, cpsStmts, "#chckObj($1.m_type, $2);$n",
-              r, genTypeInfo(p.module, dest))
+              r, genTypeInfo(p.module, dest, n.info))
   if n.sons[0].typ.kind != tyObject:
     putIntoDest(p, d, n,
                 "(($1) ($2))" % [getTypeDesc(p.module, n.typ), rdLoc(a)], a.storage)
@@ -2266,7 +2272,7 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo): Rope =
       result = rope"{NIM_NIL, NIM_NIL}"
   of tyObject:
     if not isObjLackingTypeField(t) and not p.module.compileToCpp:
-      result = "{{$1}}" % [genTypeInfo(p.module, t)]
+      result = "{{$1}}" % [genTypeInfo(p.module, t, info)]
     else:
       result = rope"{}"
   of tyArray, tyTuple: result = rope"{}"
@@ -2311,7 +2317,7 @@ proc getNullValueAuxT(p: BProc; orig, t: PType; obj, cons: PNode, result: var Ro
     base = skipTypes(base, skipPtrs)
     getNullValueAuxT(p, orig, base, base.n, cons, result, count)
   elif not isObjLackingTypeField(t) and not p.module.compileToCpp:
-    addf(result, "$1", [genTypeInfo(p.module, orig)])
+    addf(result, "$1", [genTypeInfo(p.module, orig, obj.info)])
     inc count
   getNullValueAux(p, t, obj, cons, result, count)
   # do not emit '{}' as that is not valid C:

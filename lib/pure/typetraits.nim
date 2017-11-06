@@ -31,6 +31,10 @@ proc name*(t: typedesc): string {.magic: "TypeTrait".}
   ##   test(@['A','B'])
   ##   # --> type: seq[char], value: @[A, B]
 
+proc `$`*(t: typedesc): string =
+  ## An alias for `name`.
+  name(t)
+
 proc arity*(t: typedesc): int {.magic: "TypeTrait".}
   ## Returns the arity of the given type
 
@@ -52,3 +56,12 @@ proc stripGenericParams*(t: typedesc): typedesc {.magic: "TypeTrait".}
 proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
   ## This trait returns true iff the type ``t`` is safe to use for
   ## `copyMem`:idx:. Other languages name a type like these `blob`:idx:.
+
+
+when isMainModule:
+  # echo type(42)
+  import streams
+  var ss = newStringStream()
+  ss.write($type(42)) # needs `$`
+  ss.setPosition(0)
+  doAssert ss.readAll() == "int"

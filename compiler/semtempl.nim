@@ -75,7 +75,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule): PNode =
       a = nextOverloadIter(o, c, n)
 
 proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
-  for i in 0 .. < n.len:
+  for i in 0 ..< n.len:
     var a = n.sons[i]
     # If 'a' is an overloaded symbol, we used to use the first symbol
     # as a 'witness' and use the fact that subsequent lookups will yield
@@ -95,7 +95,7 @@ proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
   result = newNodeI(nkEmpty, n.info)
 
 proc semMixinStmt(c: PContext, n: PNode, toMixin: var IntSet): PNode =
-  for i in 0 .. < n.len:
+  for i in 0 ..< n.len:
     toMixin.incl(considerQuotedIdent(n.sons[i]).id)
   result = newNodeI(nkEmpty, n.info)
 
@@ -113,13 +113,9 @@ type
     owner: PSym
     cursorInBody: bool # only for nimsuggest
     scopeN: int
-    bracketExpr: PNode
 
 template withBracketExpr(ctx, x, body: untyped) =
-  let old = ctx.bracketExpr
-  ctx.bracketExpr = x
   body
-  ctx.bracketExpr = old
 
 proc getIdentNode(c: var TemplCtx, n: PNode): PNode =
   case n.kind
@@ -163,7 +159,7 @@ proc onlyReplaceParams(c: var TemplCtx, n: PNode): PNode =
         result = newSymNode(s, n.info)
         styleCheckUse(n.info, s)
   else:
-    for i in 0 .. <n.safeLen:
+    for i in 0 ..< n.safeLen:
       result.sons[i] = onlyReplaceParams(c, n.sons[i])
 
 proc newGenSym(kind: TSymKind, n: PNode, c: var TemplCtx): PSym =
@@ -301,20 +297,8 @@ proc semPattern(c: PContext, n: PNode): PNode
 
 proc semTemplBodySons(c: var TemplCtx, n: PNode): PNode =
   result = n
-  for i in 0.. < n.len:
+  for i in 0 ..< n.len:
     result.sons[i] = semTemplBody(c, n.sons[i])
-
-proc oprIsRoof(n: PNode): bool =
-  const roof = "^"
-  case n.kind
-  of nkIdent: result = n.ident.s == roof
-  of nkSym: result = n.sym.name.s == roof
-  of nkAccQuoted:
-    if n.len == 1:
-      result = oprIsRoof(n.sons[0])
-  of nkOpenSymChoice, nkClosedSymChoice:
-    result = oprIsRoof(n.sons[0])
-  else: discard
 
 proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   result = n
@@ -382,7 +366,9 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     n.sons[L-2] = semTemplBody(c, n.sons[L-2])
     for i in countup(0, L - 3):
       addLocalDecl(c, n.sons[i], skForVar)
+    openScope(c)
     n.sons[L-1] = semTemplBody(c, n.sons[L-1])
+    closeScope(c)
     closeScope(c)
   of nkBlockStmt, nkBlockExpr, nkBlockType:
     checkSonsLen(n, 2)
@@ -506,8 +492,6 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       result = semTemplBodySons(c, n)
   of nkCallKinds-{nkPostfix}:
     result = semTemplBodySons(c, n)
-    if c.bracketExpr != nil and n.len == 2 and oprIsRoof(n.sons[0]):
-      result.add c.bracketExpr
   of nkDotExpr, nkAccQuoted:
     # dotExpr is ambiguous: note that we explicitly allow 'x.TemplateParam',
     # so we use the generic code for nkDotExpr too

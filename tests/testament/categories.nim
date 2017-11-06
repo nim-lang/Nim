@@ -324,9 +324,10 @@ type PackageFilter = enum
   pfExtraOnly
   pfAll
 
+var nimbleDir = getEnv("NIMBLE_DIR").string
+if nimbleDir.len == 0: nimbleDir = getHomeDir() / ".nimble"
 let
   nimbleExe = findExe("nimble")
-  nimbleDir = getHomeDir() / ".nimble"
   packageDir = nimbleDir / "pkgs"
   packageIndex = nimbleDir / "packages.json"
 
@@ -417,8 +418,9 @@ proc `&?.`(a, b: string): string =
 
 proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
   let test = "tests" & DirSep &.? cat.string / test
+  let target = if cat.string.normalize == "js": targetJS else: targetC
 
-  if existsFile(test): testSpec r, makeTest(test, options, cat)
+  if existsFile(test): testSpec r, makeTest(test, options, cat, target = target)
   else: echo "[Warning] - ", test, " test does not exist"
 
 proc processCategory(r: var TResults, cat: Category, options: string) =

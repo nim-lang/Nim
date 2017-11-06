@@ -336,6 +336,10 @@ GetWindow
 GetWindowContextHelpId
 GetWindowDC
 GetWindowInfo
+GetWindowLongPtrA
+GetWindowLongPtrW
+SetWindowLongPtrA
+SetWindowLongPtrW
 GetWindowLongA
 GetWindowLongW
 GetWindowModuleFileNameA

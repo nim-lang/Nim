@@ -283,7 +283,7 @@ proc to*[T](data: string): T =
   loadAny(newStringStream(data), toAny(result), tab)
 
 when not defined(testing) and isMainModule:
-  template testit(x: expr) = echo($$to[type(x)]($$x))
+  template testit(x: untyped) = echo($$to[type(x)]($$x))
 
   var x: array[0..4, array[0..4, string]] = [
     ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"],

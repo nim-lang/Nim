@@ -1,8 +1,6 @@
 /* ---------------------------------------------- */
 /* alloca86.S */
 
-#include "../config.h"
-
 .globl alloca
 
 alloca:
@@ -12,13 +10,13 @@ alloca:
     and     $-4,%eax
     jz      p3
 
-#ifdef TCC_TARGET_PE
+#ifdef _WIN32
 p1:
     cmp     $4096,%eax
-    jle     p2
+    jbe     p2
+    test    %eax,-4096(%esp)
     sub     $4096,%esp
     sub     $4096,%eax
-    test    %eax,(%esp)
     jmp p1
 p2:
 #endif

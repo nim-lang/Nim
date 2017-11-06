@@ -280,7 +280,7 @@ proc execProcesses*(cmds: openArray[string],
   ## executes the commands `cmds` in parallel. Creates `n` processes
   ## that execute in parallel. The highest return value of all processes
   ## is returned. Runs `beforeRunEvent` before running each command.
-  when defined(posix):
+  when false:
     # poParentStreams causes problems on Posix, so we simply disable it:
     var options = options - {poParentStreams}
 
@@ -767,7 +767,9 @@ elif not defined(useNimRtl):
     var sysCommand: string
     var sysArgsRaw: seq[string]
     if poEvalCommand in options:
-      const useShPath {.strdefine.} = "/bin/sh"
+      const useShPath {.strdefine.} =
+        when not defined(android): "/bin/sh"
+        else: "/system/bin/sh"
       sysCommand = useShPath
       sysArgsRaw = @[sysCommand, "-c", command]
       assert args.len == 0, "`args` has to be empty when using poEvalCommand."

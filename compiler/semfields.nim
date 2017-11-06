@@ -89,7 +89,7 @@ proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
     access.sons[1] = newSymNode(typ.sons[0].sym, forLoop.info)
     caseStmt.add(semExprWithType(c.c, access))
     # copy the branches over, but replace the fields with the for loop body:
-    for i in 1 .. <typ.len:
+    for i in 1 ..< typ.len:
       var branch = copyTree(typ[i])
       let L = branch.len
       branch.sons[L-1] = newNodeI(nkStmtList, forLoop.info)

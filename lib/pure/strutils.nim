@@ -578,15 +578,46 @@ iterator split*(s: string, seps: set[char] = Whitespace,
   else:
     splitCommon(s, seps, maxsplit, 1)
 
-iterator splitWhitespace*(s: string): string =
-  ## Splits at whitespace.
-  oldSplit(s, Whitespace, -1)
+iterator splitWhitespace*(s: string, maxsplit: int = -1): string =
+  ## Splits the string ``s`` at whitespace stripping leading and trailing
+  ## whitespace if necessary. If ``maxsplit`` is specified and is positive,
+  ## no more than ``maxsplit`` splits is made.
+  ##
+  ## The following code:
+  ##
+  ## .. code-block:: nim
+  ##   let s = "  foo \t bar  baz  "
+  ##   for ms in [-1, 1, 2, 3]:
+  ##     echo "------ maxsplit = ", ms, ":"
+  ##     for item in s.splitWhitespace(maxsplit=ms):
+  ##       echo '"', item, '"'
+  ##
+  ## ...results in:
+  ##
+  ## .. code-block::
+  ##   ------ maxsplit = -1:
+  ##   "foo"
+  ##   "bar"
+  ##   "baz"
+  ##   ------ maxsplit = 1:
+  ##   "foo"
+  ##   "bar  baz  "
+  ##   ------ maxsplit = 2:
+  ##   "foo"
+  ##   "bar"
+  ##   "baz  "
+  ##   ------ maxsplit = 3:
+  ##   "foo"
+  ##   "bar"
+  ##   "baz"
+  ##
+  oldSplit(s, Whitespace, maxsplit)
 
-proc splitWhitespace*(s: string): seq[string] {.noSideEffect,
+proc splitWhitespace*(s: string, maxsplit: int = -1): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitWhitespace".} =
-  ## The same as the `splitWhitespace <#splitWhitespace.i,string>`_
+  ## The same as the `splitWhitespace <#splitWhitespace.i,string,int>`_
   ## iterator, but is a proc that returns a sequence of substrings.
-  accumulateResult(splitWhitespace(s))
+  accumulateResult(splitWhitespace(s, maxsplit))
 
 iterator split*(s: string, sep: char, maxsplit: int = -1): string =
   ## Splits the string `s` into substrings using a single separator.
@@ -671,7 +702,7 @@ iterator rsplit*(s: string, seps: set[char] = Whitespace,
                  maxsplit: int = -1): string =
   ## Splits the string `s` into substrings from the right using a
   ## string separator. Works exactly the same as `split iterator
-  ## <#split.i,string,char>`_ except in reverse order.
+  ## <#split.i,string,char,int>`_ except in reverse order.
   ##
   ## .. code-block:: nim
   ##   for piece in "foo bar".rsplit(WhiteSpace):
@@ -691,7 +722,7 @@ iterator rsplit*(s: string, sep: char,
                  maxsplit: int = -1): string =
   ## Splits the string `s` into substrings from the right using a
   ## string separator. Works exactly the same as `split iterator
-  ## <#split.i,string,char>`_ except in reverse order.
+  ## <#split.i,string,char,int>`_ except in reverse order.
   ##
   ## .. code-block:: nim
   ##   for piece in "foo:bar".rsplit(':'):
@@ -710,7 +741,7 @@ iterator rsplit*(s: string, sep: string, maxsplit: int = -1,
                  keepSeparators: bool = false): string =
   ## Splits the string `s` into substrings from the right using a
   ## string separator. Works exactly the same as `split iterator
-  ## <#split.i,string,string>`_ except in reverse order.
+  ## <#split.i,string,string,int>`_ except in reverse order.
   ##
   ## .. code-block:: nim
   ##   for piece in "foothebar".rsplit("the"):
@@ -791,13 +822,13 @@ proc countLines*(s: string): int {.noSideEffect,
 
 proc split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): seq[string] {.
   noSideEffect, rtl, extern: "nsuSplitCharSet".} =
-  ## The same as the `split iterator <#split.i,string,set[char]>`_, but is a
+  ## The same as the `split iterator <#split.i,string,set[char],int>`_, but is a
   ## proc that returns a sequence of substrings.
   accumulateResult(split(s, seps, maxsplit))
 
 proc split*(s: string, sep: char, maxsplit: int = -1): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitChar".} =
-  ## The same as the `split iterator <#split.i,string,char>`_, but is a proc
+  ## The same as the `split iterator <#split.i,string,char,int>`_, but is a proc
   ## that returns a sequence of substrings.
   accumulateResult(split(s, sep, maxsplit))
 
@@ -806,7 +837,7 @@ proc split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.noSideEff
   ## Splits the string `s` into substrings using a string separator.
   ##
   ## Substrings are separated by the string `sep`. This is a wrapper around the
-  ## `split iterator <#split.i,string,string>`_.
+  ## `split iterator <#split.i,string,string,int>`_.
   doAssert(sep.len > 0)
 
   accumulateResult(split(s, sep, maxsplit))
@@ -814,7 +845,7 @@ proc split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.noSideEff
 proc rsplit*(s: string, seps: set[char] = Whitespace,
              maxsplit: int = -1): seq[string]
              {.noSideEffect, rtl, extern: "nsuRSplitCharSet".} =
-  ## The same as the `rsplit iterator <#rsplit.i,string,set[char]>`_, but is a
+  ## The same as the `rsplit iterator <#rsplit.i,string,set[char],int>`_, but is a
   ## proc that returns a sequence of substrings.
   ##
   ## A possible common use case for `rsplit` is path manipulation,
@@ -836,7 +867,7 @@ proc rsplit*(s: string, seps: set[char] = Whitespace,
 
 proc rsplit*(s: string, sep: char, maxsplit: int = -1): seq[string]
              {.noSideEffect, rtl, extern: "nsuRSplitChar".} =
-  ## The same as the `split iterator <#rsplit.i,string,char>`_, but is a proc
+  ## The same as the `rsplit iterator <#rsplit.i,string,char,int>`_, but is a proc
   ## that returns a sequence of substrings.
   ##
   ## A possible common use case for `rsplit` is path manipulation,
@@ -858,7 +889,7 @@ proc rsplit*(s: string, sep: char, maxsplit: int = -1): seq[string]
 
 proc rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string]
              {.noSideEffect, rtl, extern: "nsuRSplitString".} =
-  ## The same as the `split iterator <#rsplit.i,string,string>`_, but is a proc
+  ## The same as the `rsplit iterator <#rsplit.i,string,string,int>`_, but is a proc
   ## that returns a sequence of substrings.
   ##
   ## A possible common use case for `rsplit` is path manipulation,
@@ -1199,7 +1230,7 @@ proc unindent*(s: string, count: Natural, padding: string = " "): string
     var indentCount = 0
     for j in 0..<count.int:
       indentCount.inc
-      if line[j .. j + <padding.len] != padding:
+      if line[j .. j + padding.len-1] != padding:
         indentCount = j
         break
     result.add(line[indentCount*padding.len .. ^1])
@@ -1330,18 +1361,36 @@ proc join*[T: not string](a: openArray[T], sep: string = ""): string {.
     add(result, $x)
 
 type
-  SkipTable = array[char, int]
+  SkipTable* = array[char, int]
 
-{.push profiler: off.}
-proc preprocessSub(sub: string, a: var SkipTable) =
-  var m = len(sub)
-  for i in 0..0xff: a[chr(i)] = m+1
-  for i in 0..m-1: a[sub[i]] = m-i
-{.pop.}
+proc initSkipTable*(a: var SkipTable, sub: string)
+  {.noSideEffect, rtl, extern: "nsuInitSkipTable".} =
+  ## Preprocess table `a` for `sub`.
+  let m = len(sub)
+  let m1 = m + 1
+  var i = 0
+  while i <= 0xff-7:
+    a[chr(i + 0)] = m1
+    a[chr(i + 1)] = m1
+    a[chr(i + 2)] = m1
+    a[chr(i + 3)] = m1
+    a[chr(i + 4)] = m1
+    a[chr(i + 5)] = m1
+    a[chr(i + 6)] = m1
+    a[chr(i + 7)] = m1
+    i += 8
 
-proc findAux(s, sub: string, start, last: int, a: SkipTable): int =
-  # Fast "quick search" algorithm:
-  var
+  for i in 0..m-1:
+    a[sub[i]] = m-i
+
+proc find*(a: SkipTable, s, sub: string, start: Natural = 0, last: Natural = 0): int
+  {.noSideEffect, rtl, extern: "nsuFindStrA".} =
+  ## Searches for `sub` in `s` inside range `start`..`last` using preprocessed table `a`.
+  ## If `last` is unspecified, it defaults to `s.high`.
+  ##
+  ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
+  let
+    last = if last==0: s.high else: last
     m = len(sub)
     n = last + 1
   # search:
@@ -1361,17 +1410,6 @@ when not (defined(js) or defined(nimdoc) or defined(nimscript)):
 else:
   const hasCStringBuiltin = false
 
-proc find*(s, sub: string, start: Natural = 0, last: Natural = 0): int {.noSideEffect,
-  rtl, extern: "nsuFindStr".} =
-  ## Searches for `sub` in `s` inside range `start`..`last`.
-  ## If `last` is unspecified, it defaults to `s.high`.
-  ##
-  ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
-  var a {.noinit.}: SkipTable
-  let last = if last==0: s.high else: last
-  preprocessSub(sub, a)
-  result = findAux(s, sub, start, last, a)
-
 proc find*(s: string, sub: char, start: Natural = 0, last: Natural = 0): int {.noSideEffect,
   rtl, extern: "nsuFindChar".} =
   ## Searches for `sub` in `s` inside range `start`..`last`.
@@ -1390,8 +1428,23 @@ proc find*(s: string, sub: char, start: Natural = 0, last: Natural = 0): int {.n
     else:
       for i in start..last:
         if sub == s[i]: return i
-
   return -1
+
+proc find*(s, sub: string, start: Natural = 0, last: Natural = 0): int {.noSideEffect,
+  rtl, extern: "nsuFindStr".} =
+  ## Searches for `sub` in `s` inside range `start`..`last`.
+  ## If `last` is unspecified, it defaults to `s.high`.
+  ##
+  ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
+  if sub.len > s.len:
+    return -1
+
+  if sub.len == 1:
+    return find(s, sub[0], start, last)
+
+  var a {.noinit.}: SkipTable
+  initSkipTable(a, sub)
+  result = find(a, s, sub, start, last)
 
 proc find*(s: string, chars: set[char], start: Natural = 0, last: Natural = 0): int {.noSideEffect,
   rtl, extern: "nsuFindCharSet".} =
@@ -1524,11 +1577,11 @@ proc replace*(s, sub: string, by = ""): string {.noSideEffect,
   ## Replaces `sub` in `s` by the string `by`.
   var a {.noinit.}: SkipTable
   result = ""
-  preprocessSub(sub, a)
+  initSkipTable(a, sub)
   let last = s.high
   var i = 0
   while true:
-    var j = findAux(s, sub, i, last, a)
+    var j = find(a, s, sub, i, last)
     if j < 0: break
     add result, substr(s, i, j - 1)
     add result, by
@@ -1558,11 +1611,11 @@ proc replaceWord*(s, sub: string, by = ""): string {.noSideEffect,
   const wordChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\128'..'\255'}
   var a {.noinit.}: SkipTable
   result = ""
-  preprocessSub(sub, a)
+  initSkipTable(a, sub)
   var i = 0
   let last = s.high
   while true:
-    var j = findAux(s, sub, i, last, a)
+    var j = find(a, s, sub, i, last)
     if j < 0: break
     # word boundary?
     if (j == 0 or s[j-1] notin wordChars) and
@@ -1931,6 +1984,15 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
       # but nothing else is possible:
       if buf[i] in {'.', ','}: result[i] = decimalsep
       else: result[i] = buf[i]
+    when defined(vcc):
+      # VS pre 2015 violates the C standard: "The exponent always contains at
+      # least two digits, and only as many more digits as necessary to
+      # represent the exponent." [C11 §7.21.6.1]
+      # The following post-processing fixes this behavior.
+      if result.len > 4 and result[^4] == '+' and result[^3] == '0':
+        result[^3] = result[^2]
+        result[^2] = result[^1]
+        result.setLen(result.len - 1)
 
 proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
                   precision: range[0..32] = 16; decimalSep = '.'): string {.
@@ -2295,41 +2357,37 @@ proc format*(formatstr: string, a: varargs[string, `$`]): string {.noSideEffect,
 
 proc removeSuffix*(s: var string, chars: set[char] = Newlines) {.
   rtl, extern: "nsuRemoveSuffixCharSet".} =
-  ## Removes the first matching character from the string (in-place) given a
-  ## set of characters. If the set of characters is only equal to `Newlines`
-  ## then it will remove both the newline and return feed.
+  ## Removes all characters from `chars` from the end of the string `s`
+  ## (in-place).
   ##
   ## .. code-block:: nim
-  ##   var
-  ##     userInput = "Hello World!\r\n"
-  ##     otherInput = "Hello!?!"
+  ##   var userInput = "Hello World!*~\r\n"
   ##   userInput.removeSuffix
-  ##   userInput == "Hello World!"
-  ##   userInput.removeSuffix({'!', '?'})
-  ##   userInput == "Hello World"
+  ##   doAssert userInput == "Hello World!*~"
+  ##   userInput.removeSuffix({'~', '*'})
+  ##   doAssert userInput == "Hello World!"
+  ##
+  ##   var otherInput = "Hello!?!"
   ##   otherInput.removeSuffix({'!', '?'})
-  ##   otherInput == "Hello!?"
+  ##   doAssert otherInput == "Hello"
   if s.len == 0: return
-  var last = len(s) - 1
-  if chars == Newlines:
-    if s[last] == '\10':
-      last -= 1
-    if s[last] == '\13':
-      last -= 1
-  else:
-    if s[last] in chars:
-      last -= 1
+  var last = s.high
+  while last > -1 and s[last] in chars: last -= 1
   s.setLen(last + 1)
 
 proc removeSuffix*(s: var string, c: char) {.
   rtl, extern: "nsuRemoveSuffixChar".} =
-  ## Removes a single character (in-place) from a string.
+  ## Removes all occurrences of a single character (in-place) from the end
+  ## of a string.
   ##
   ## .. code-block:: nim
-  ##   var
-  ##     table = "users"
+  ##   var table = "users"
   ##   table.removeSuffix('s')
-  ##   table == "user"
+  ##   doAssert table == "user"
+  ##
+  ##   var dots = "Trailing dots......."
+  ##   dots.removeSuffix('.')
+  ##   doAssert dots == "Trailing dots"
   removeSuffix(s, chars = {c})
 
 proc removeSuffix*(s: var string, suffix: string) {.
@@ -2337,14 +2395,54 @@ proc removeSuffix*(s: var string, suffix: string) {.
   ## Remove the first matching suffix (in-place) from a string.
   ##
   ## .. code-block:: nim
-  ##   var
-  ##     answers = "yeses"
+  ##   var answers = "yeses"
   ##   answers.removeSuffix("es")
-  ##   answers == "yes"
+  ##   doAssert answers == "yes"
   var newLen = s.len
   if s.endsWith(suffix):
     newLen -= len(suffix)
     s.setLen(newLen)
+
+proc removePrefix*(s: var string, chars: set[char] = Newlines) {.
+  rtl, extern: "nsuRemovePrefixCharSet".} =
+  ## Removes all characters from `chars` from the start of the string `s`
+  ## (in-place).
+  ##
+  ## .. code-block:: nim
+  ##   var userInput = "\r\n*~Hello World!"
+  ##   userInput.removePrefix
+  ##   doAssert userInput == "*~Hello World!"
+  ##   userInput.removePrefix({'~', '*'})
+  ##   doAssert userInput == "Hello World!"
+  ##
+  ##   var otherInput = "?!?Hello!?!"
+  ##   otherInput.removePrefix({'!', '?'})
+  ##   doAssert otherInput == "Hello!?!"
+  var start = 0
+  while start < s.len and s[start] in chars: start += 1
+  if start > 0: s.delete(0, start - 1)
+
+proc removePrefix*(s: var string, c: char) {.
+  rtl, extern: "nsuRemovePrefixChar".} =
+  ## Removes all occurrences of a single character (in-place) from the start
+  ## of a string.
+  ##
+  ## .. code-block:: nim
+  ##   var ident = "pControl"
+  ##   ident.removePrefix('p')
+  ##   doAssert ident == "Control"
+  removePrefix(s, chars = {c})
+
+proc removePrefix*(s: var string, prefix: string) {.
+  rtl, extern: "nsuRemovePrefixString".} =
+  ## Remove the first matching prefix (in-place) from a string.
+  ##
+  ## .. code-block:: nim
+  ##   var answers = "yesyes"
+  ##   answers.removePrefix("yes")
+  ##   doAssert answers == "yes"
+  if s.startsWith(prefix):
+    s.delete(0, prefix.len - 1)
 
 when isMainModule:
   doAssert align("abc", 4) == " abc"
@@ -2366,6 +2464,9 @@ when isMainModule:
   doAssert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"
   doAssert formatBiggestFloat(0.00000000001, ffScientific, 1, ',') in
                                                    ["1,0e-11", "1,0e-011"]
+  # bug #6589
+  doAssert formatFloat(123.456, ffScientific, precision=0) in
+      ["1.234560e+02", "1.234560e+002"]
 
   doAssert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
   doAssert "${1}12 ${-1}$2" % ["a", "b"] == "a12 bb"
@@ -2528,6 +2629,12 @@ bar
   doAssert s.split(maxsplit=4) == @["", "this", "is", "an", "example  "]
   doAssert s.split(' ', maxsplit=1) == @["", "this is an example  "]
   doAssert s.split(" ", maxsplit=4) == @["", "this", "is", "an", "example  "]
+
+  doAssert s.splitWhitespace() == @["this", "is", "an", "example"]
+  doAssert s.splitWhitespace(maxsplit=1) == @["this", "is an example  "]
+  doAssert s.splitWhitespace(maxsplit=2) == @["this", "is", "an example  "]
+  doAssert s.splitWhitespace(maxsplit=3) == @["this", "is", "an", "example  "]
+  doAssert s.splitWhitespace(maxsplit=4) == @["this", "is", "an", "example"]
 
   block: # formatEng tests
     doAssert formatEng(0, 2, trim=false) == "0.00"

@@ -42,7 +42,7 @@ proc annotateType*(n: PNode, t: PType) =
   of nkObjConstr:
     let x = t.skipTypes(abstractPtrs)
     n.typ = t
-    for i in 1 .. <n.len:
+    for i in 1 ..< n.len:
       var j = i-1
       let field = x.n.ithField(j)
       if field.isNil:
@@ -53,7 +53,7 @@ proc annotateType*(n: PNode, t: PType) =
   of nkPar:
     if x.kind == tyTuple:
       n.typ = t
-      for i in 0 .. <n.len:
+      for i in 0 ..< n.len:
         if i >= x.len: globalError n.info, "invalid field at index " & $i
         else: annotateType(n.sons[i], x.sons[i])
     elif x.kind == tyProc and x.callConv == ccClosure:

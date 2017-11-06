@@ -37,7 +37,6 @@ type
                               # in standalone ``except`` and ``finally``
     next*: PProcCon           # used for stacking procedure contexts
     wasForwarded*: bool       # whether the current proc has a separate header
-    bracketExpr*: PNode       # current bracket expression (for ^ support)
     mapping*: TIdTable
 
   TMatchedConcept* = object
@@ -340,7 +339,7 @@ proc makeNotType*(c: PContext, t1: PType): PType =
 
 proc nMinusOne*(n: PNode): PNode =
   result = newNode(nkCall, n.info, @[
-    newSymNode(getSysMagic("<", mUnaryLt)),
+    newSymNode(getSysMagic("pred", mPred)),
     n])
 
 # Remember to fix the procs below this one when you make changes!
