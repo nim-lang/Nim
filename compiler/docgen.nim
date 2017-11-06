@@ -611,7 +611,6 @@ proc generateJson*(d: PDoc, n: PNode) =
 proc genTagsItem(d: PDoc, n, nameNode: PNode, k: TSymKind): string =
   var
     name = getName(d, nameNode)
-    comm = $genRecComment(d, n)
 
   result = name & "\n"
 
