@@ -461,10 +461,9 @@ proc main() =
   case action
   of "all":
     let testsDir = "tests" & DirSep
-    var myself = quoteShell(findExe("tests" / "testament" / "tester")) &
-      " '--nim:" & compilerPrefix & "'"
+    var myself = quoteShell(findExe("tests" / "testament" / "tester"))
     if targetsStr.len > 0:
-       myself &= " '--targets:" & targetsStr & "'"
+      myself &= " '--targets:" & targetsStr & "'"
     var cmds: seq[string] = @[]
     let rest = if p.cmdLineRest.string.len > 0: " " & p.cmdLineRest.string else: ""
     for kind, dir in walkDir(testsDir):
