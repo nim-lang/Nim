@@ -41,6 +41,14 @@
   what to return if the environment variable does not exist.
 - Removed PDCurses wrapper from the stdlib and published it as a separate
   Nimble package.
+- Bodies of ``for`` loops now get their own scope:
+
+.. code-block:: nim
+  # now compiles:
+  for i in 0..4:
+    let i = i + 1
+    echo i
+
 - The parsing rules of ``if`` expressions were changed so that multiple
   statements are allowed in the branches. We found few code examples that
   now fail because of this change, but here is one:

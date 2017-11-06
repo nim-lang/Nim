@@ -98,6 +98,7 @@ proc resolveDollar(project, source, pkg, subdir: string; info: TLineInfo): strin
 
 proc scriptableImport(pkg, sub: string; info: TLineInfo): string =
   result = resolveDollar(gProjectFull, info.toFullPath(), pkg, sub, info)
+  if result.isNil: result = ""
 
 proc lookupPackage(pkg, subdir: PNode): string =
   let sub = if subdir != nil: renderTree(subdir, {renderNoComments}).replace(" ") else: ""
@@ -166,7 +167,8 @@ proc checkModuleName*(n: PNode; doLocalError=true): int32 =
   let fullPath = findModule(modulename, n.info.toFullPath)
   if fullPath.len == 0:
     if doLocalError:
-      localError(n.info, errCannotOpenFile, modulename)
+      let m = if modulename.len > 0: modulename else: $n
+      localError(n.info, errCannotOpenFile, m)
     result = InvalidFileIDX
   else:
     result = fullPath.fileInfoIdx
