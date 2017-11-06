@@ -199,7 +199,7 @@ macro dump*(x: typed): untyped =
     debugEcho `s`, " = ", `x`
   return r
 
-macro asArray*(targetType: typedesc, values: typed): untyped =
+macro asArray*(targetType: untyped, values: typed): untyped =
   ## applies a type conversion to each of the elements in the specified
   ## array literal. Each element is converted to the ``targetType`` type..
   ##
@@ -213,16 +213,18 @@ macro asArray*(targetType: typedesc, values: typed): untyped =
   ##
   ## .. code-block::
   ##   let x = [(0.1).int, (1.2).int, (2.3).int, (3.4).int]
-  let tNode = getType(targetType)[1]
   values.expectKind(nnkBracket)
   result = newNimNode(nnkBracket, lineInfoFrom=values)
   for i in 0 ..< len(values):
     var call = newNimNode(nnkCall, lineInfoFrom=values[i])
-    call.add tNode
+    call.add targetType
     call.add values[i]
     result.add call
+  echo result.repr()
 
 when isMainModule:
   block: # asArray tests
     let x = asArray(int, [1.2, 2.3, 3.4, 4.5])
     doAssert x is array[4, int]
+    let y = asArray(`$`, [1.2, 2.3, 3.4, 4.5])
+    doAssert y is array[4, string]
