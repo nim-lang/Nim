@@ -469,7 +469,7 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
   ## **Deprecated since version 0.15.0**: use ``HttpClient.request`` instead.
   var r = if proxy == nil: parseUri(url) else: proxy.url
   var hostUrl = if proxy == nil: r else: parseUri(url)
-  var headers = httpMethod.toUpper()
+  var headers = httpMethod.toUpperAscii()
   # TODO: Use generateHeaders further down once it supports proxies.
 
   var s = newSocket()
@@ -713,7 +713,7 @@ proc downloadFile*(url: string, outputFilename: string,
 proc generateHeaders(requestUrl: Uri, httpMethod: string,
                      headers: HttpHeaders, body: string, proxy: Proxy): string =
   # GET
-  result = httpMethod.toUpper()
+  result = httpMethod.toUpperAscii()
   result.add ' '
 
   if proxy.isNil or (not proxy.isNil and requestUrl.scheme == "https"):
@@ -1088,21 +1088,25 @@ proc newConnection(client: HttpClient | AsyncHttpClient,
 
     # If need to CONNECT through proxy
     if url.scheme == "https" and not client.proxy.isNil:
-      # Pass only host:port for CONNECT
-      var connectUrl = initUri()
-      connectUrl.hostname = url.hostname
-      connectUrl.port = if url.port != "": url.port else: "443"
+      when defined(ssl):
+        # Pass only host:port for CONNECT
+        var connectUrl = initUri()
+        connectUrl.hostname = url.hostname
+        connectUrl.port = if url.port != "": url.port else: "443"
 
-      let proxyHeaderString = generateHeaders(connectUrl, $HttpConnect, newHttpHeaders(), "", client.proxy)
-      await client.socket.send(proxyHeaderString)
-      let proxyResp = await parseResponse(client, false)
+        let proxyHeaderString = generateHeaders(connectUrl, $HttpConnect, newHttpHeaders(), "", client.proxy)
+        await client.socket.send(proxyHeaderString)
+        let proxyResp = await parseResponse(client, false)
 
-      if not proxyResp.status.startsWith("200"):
+        if not proxyResp.status.startsWith("200"):
+          raise newException(HttpRequestError,
+                            "The proxy server rejected a CONNECT request, " &
+                            "so a secure connection could not be established.")
+        client.sslContext.wrapConnectedSocket(
+          client.socket, handshakeAsClient, url.hostname)
+      else:
         raise newException(HttpRequestError,
-                           "The proxy server rejected a CONNECT request, " &
-                           "so a secure connection could not be established.")
-      client.sslContext.wrapConnectedSocket(
-        client.socket, handshakeAsClient, url.hostname)
+        "SSL support is not available. Cannot connect over SSL.")
 
     # May be connected through proxy but remember actual URL being accessed
     client.currentURL = url
