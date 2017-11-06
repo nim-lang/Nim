@@ -217,7 +217,7 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
     wantMainModule()
     defineSymbol("nimdoc")
     commandDoc2(graph, cache, true)
-  of "tags":
+  of "ctags":
     wantMainModule()
     gCmd = cmdDoc
     loadConfigs(DocConfig, cache)
