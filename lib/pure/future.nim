@@ -217,10 +217,10 @@ macro asArray*(targetType: typedesc, values: typed): untyped =
   values.expectKind(nnkBracket)
   result = newNimNode(nnkBracket, lineInfoFrom=values)
   for i in 0 ..< len(values):
-    var dot = newNimNode(nnkDotExpr, lineInfoFrom=values[i])
-    dot.add newPar(values[i])
-    dot.add tNode
-    result.add dot
+    var call = newNimNode(nnkCall, lineInfoFrom=values[i])
+    call.add tNode
+    call.add values[i]
+    result.add call
 
 when isMainModule:
   block: # asArray tests
