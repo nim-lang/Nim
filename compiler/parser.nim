@@ -72,6 +72,7 @@ proc parseStmtPragma(p: var TParser): PNode
 proc parsePragma(p: var TParser): PNode
 proc postExprBlocks(p: var TParser, x: PNode): PNode
 proc parseExprStmt(p: var TParser): PNode
+proc parseBlock(p: var TParser): PNode
 # implementation
 
 proc getTok(p: var TParser) =
@@ -1078,12 +1079,14 @@ proc parseTypeDescKAux(p: var TParser, kind: TNodeKind,
     parseSymbolList(p, list)
 
 proc parseExpr(p: var TParser): PNode =
-  #| expr = (ifExpr
+  #| expr = (blockExpr
+  #|       | ifExpr
   #|       | whenExpr
   #|       | caseExpr
   #|       | tryExpr)
   #|       / simpleExpr
   case p.tok.tokType:
+  of tkBlock: result = parseBlock(p)
   of tkIf: result = parseIfExpr(p, nkIfExpr)
   of tkWhen: result = parseIfExpr(p, nkWhenExpr)
   of tkCase: result = parseCase(p)
@@ -1517,6 +1520,7 @@ proc parseFor(p: var TParser): PNode =
 
 proc parseBlock(p: var TParser): PNode =
   #| blockStmt = 'block' symbol? colcom stmt
+  #| blockExpr = 'block' symbol? colcom stmt
   result = newNodeP(nkBlockStmt, p)
   getTokNoInd(p)
   if p.tok.tokType == tkColon: addSon(result, ast.emptyNode)

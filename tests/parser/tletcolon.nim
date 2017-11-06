@@ -4,7 +4,8 @@ discard """
 44 3
 more body code
 yes
-yes'''
+yes
+block expression works'''
 """
 
 template x(body): untyped =
@@ -50,3 +51,11 @@ let format =
     else:
         echo "Texture Format Unknown, assuming RGB"  #This echo causes an error
         TextureInternalFormat.RGB
+
+# Block as expressions #3827
+block:
+  let x = block:
+    var y = 2
+    echo "block expression works"
+    y*y
+  doAssert x == 4
