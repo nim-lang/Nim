@@ -509,7 +509,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
 
   # insert exponent
   t[ti] = 'E'; inc(ti)
-  t[ti] = if exp_negative: '-' else: '+'; inc(ti)
+  t[ti] = (if exp_negative: '-' else: '+'); inc(ti)
   inc(ti, 3)
 
   # insert adjusted exponent
