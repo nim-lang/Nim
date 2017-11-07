@@ -322,7 +322,7 @@ proc `..`*[T, U](a: T, b: U): HSlice[T, U] {.noSideEffect, inline, magic: "DotDo
   result.b = b
 
 proc `..`*[T](b: T): HSlice[int, T] {.noSideEffect, inline, magic: "DotDot".} =
-  ## `slice`:idx: operator that constructs an interval ``[default(T), b]``
+  ## `slice`:idx: operator that constructs an interval ``[default(int), b]``
   result.b = b
 
 when not defined(niminheritable):
@@ -2014,6 +2014,14 @@ when defined(nimNewRoof):
       while res <= b:
         yield res
         inc(res)
+
+  iterator `..`*(a, b: int64): int64 {.inline.} =
+    ## A special version of `..`` for ``int64`` only.
+    var res = a
+    while res <= b:
+      yield res
+      inc(res)
+
 else:
   iterator countup*[S, T](a: S, b: T, step = 1): T {.inline.} =
     ## Counts from ordinal value `a` up to `b` (inclusive) with the given

@@ -62,3 +62,14 @@ This now needs to be written as:
 .. code-block:: nim
 
   t[ti] = (if exp_negative: '-' else: '+'); inc(ti)
+
+- To make Nim even more robust the system iterators ``..`` and ``countup``
+  now only accept a single generic type ``T``. This means the following code
+  doesn't die with an "out of range" error anymore:
+
+.. code-block:: nim
+
+  var b = 5.Natural
+  var a = -5
+  for i in a..b:
+    echo i
