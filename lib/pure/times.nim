@@ -29,7 +29,7 @@
 ##  echo "getTime()   float value: ", toSeconds(getTime())
 ##  echo "cpuTime()   float value: ", cpuTime()
 ##  echo "An hour from now      : ", now() + 1.hours
-##  echo "An hour from (UTC) now: ", getTime().inZone(Utc) + initInterval(0,0,0,1)
+##  echo "An hour from (UTC) now: ", getTime().utc + initInterval(0,0,0,1)
 
 {.push debugger:off.} # the user does not want to trace a part
                       # of the standard library!
@@ -40,26 +40,23 @@ import
 include "system/inclrtl"
 
 when defined(JS):
-  type
-    TimeBase = float
-    Time* = distinct TimeBase
+    type JsDate = object
+    proc newDate(value: cstring): JsDate {.tags: [], raises: [], importc: "new Date".}
+    proc newDate(): JsDate {.importc: "new Date".}
+    proc newDate(value: float): JsDate {.importc: "new Date".}
+    proc Number(js: JsDate): float {.tags: [], raises: [], benign, importc.}
 
 elif defined(posix):
   when defined(linux) and defined(amd64):
     type
-      TimeImpl {.importc: "time_t", header: "<time.h>".} = clong
-      Time* = distinct TimeImpl ## Distinct type that represents a time
-                                ## measured as number of seconds since the epoch.
-
+      CTime {.importc: "time_t", header: "<time.h>".} = distinct clong
       Timeval {.importc: "struct timeval",
                 header: "<sys/select.h>".} = object ## struct timeval
         tv_sec: clong  ## Seconds.
         tv_usec: clong ## Microseconds.
   else:
     type
-      TimeImpl {.importc: "time_t", header: "<time.h>".} = int
-      Time* = distinct TimeImpl ## distinct type that represents a time
-                                ## measured as number of seconds since the epoch
+      CTime {.importc: "time_t", header: "<time.h>".} = distinct int
 
       Timeval {.importc: "struct timeval",
                 header: "<sys/select.h>".} = object ## struct timeval
@@ -82,13 +79,10 @@ elif defined(windows):
   import winlean
 
   # newest version of Visual C++ defines time_t to be of 64 bits
-  type TimeImpl {.importc: "time_t", header: "<time.h>".} = int64
+  type CTime {.importc: "time_t", header: "<time.h>".} = distinct int64
   # visual c's c runtime exposes these under a different name
   var
     timezone {.importc: "_timezone", header: "<time.h>".}: int
-
-  type
-    Time* = distinct TimeImpl
 
 type
   Month* = enum ## Represents a month. Note that the enum starts at ``1``, so ``ord(month)`` will give
@@ -103,6 +97,8 @@ type
   MinuteRange* = range[0..59]
   SecondRange* = range[0..60]
   YeardayRange* = range[0..365]
+
+  Time = distinct int64
 
   DateTime* = object of RootObj ## Represents a time in different parts.
                                 ## Although this type can represent leap
@@ -144,20 +140,15 @@ type
     months*: int      ## The number of months
     years*: int       ## The number of years
 
-  TimezoneKind* = enum
-    Utc, Local
+  ZonedTime = tuple
+    tzTime: Time
+    utcOffset: int
+    isDst: bool
 
   Timezone* = object ## Timezone interface for supporting ``DateTime``'s of arbritary timezones.
                      ## The ``times`` module only supplies implementations for the systems local time and UTC.
-    getZoned*: proc(self: Timezone, time: Time):
-        DateTime {.nimcall, tags: [TimeEffect], raises: [], benign .}
-      ## Convert a `Time` to a `DateTime` with correct `utcOffset` and `isDst`
-    normalize*: proc(self: Timezone, dt: DateTime): DateTime {.nimcall, tags: [TimeEffect], raises: [], benign .}
-      # FIXME: add better comment, improve name.
-      # Assumes that ``dt`` is specified in this timezone, and returns a proper DateTime.
-      # This includes setting the ``utcOffset`` and ``isDst`` (ignoring the old values),
-      # but also other fields like weekday and yearday.
-      # It also resolves ambigues dates, removes leap seconds etc...
+    zoneInfoFromUtc*: proc (time: Time): ZonedTime {.nimcall, tags: [TimeEffect], raises: [], benign .}
+    zoneInfoFromTz*:  proc (tzTime: Time): ZonedTime {.nimcall, tags: [TimeEffect], raises: [], benign .}
     name*: string ## Name of the timezone. Used for checking equality.
 
 {.deprecated: [TMonth: Month, TWeekDay: WeekDay, TTime: Time,
@@ -175,11 +166,13 @@ const
   minutesInHour = 60
 
 # Forward declarations
-proc getZonedUtc(self: Timezone, time: Time): DateTime {.tags: [TimeEffect], raises: [], benign .}
-proc normalizeUtc(self: Timezone, dt: DateTime): DateTime {.tags: [TimeEffect], raises: [], benign .}
-proc getZonedLocal(self: Timezone, time: Time): DateTime {.tags: [TimeEffect], raises: [], benign .}
-proc normalizeLocal(self: Timezone, dt: DateTime): DateTime {.tags: [TimeEffect], raises: [], benign .}
-proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int): YeardayRange
+proc utcZoneInfoFromUtc(time: Time): ZonedTime {.tags: [TimeEffect], raises: [], benign .}
+proc utcZoneInfoFromTz(tzTime: Time): ZonedTime {.tags: [TimeEffect], raises: [], benign .}
+proc localZoneInfoFromUtc(time: Time): ZonedTime {.tags: [TimeEffect], raises: [], benign .}
+proc localZoneInfoFromTz(tzTime: Time): ZonedTime {.tags: [TimeEffect], raises: [], benign .}
+proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int): YeardayRange {.tags: [], raises: [], benign .}
+proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay {.tags: [], raises: [], benign .}
+proc format*(dt: DateTime, f: string): string
 proc toTime*(dt: DateTime): Time {.tags: [TimeEffect], raises: [], benign.}
   ## Converts a broken-down time structure to
   ## calendar time representation. The function ignores the specified
@@ -220,16 +213,65 @@ proc `==`*(a, b: Time): bool {.
   else:
     result = a - b == 0
 
+proc toEpochday(year: int, month: Month, day: MonthdayRange): int64 =
+  # Based on http://howardhinnant.github.io/date_algorithms.html
+  var (y, m, d) = (year, ord(month), day)
+  if m <= 2:
+    y.dec
+
+  let era = (if y >= 0: y else: y-399) div 400
+  let yoe = y - era * 400
+  let doy = (153 * (m + (if m > 2: -3 else: 9)) + 2) div 5 + d-1
+  let doe = yoe * 365 + yoe div 4 - yoe div 100 + doy
+  return era * 146097 + doe - 719468
+
+proc fromEpochday(epochday: int64): tuple[year: int, month: Month, day: int] =
+  # Based on http://howardhinnant.github.io/date_algorithms.html
+  var z = epochday
+  z.inc 719468
+  let era = (if z >= 0: z else: z - 146096) div 146097
+  let doe = z - era * 146097
+  let yoe = (doe - doe div 1460 + doe div 36524 - doe div 146096) div 365
+  let y = yoe + era * 400;
+  let doy = doe - 365 * yoe + yoe div 4 - yoe div 100
+  let mp = (5 * doy + 2) div 153
+  let d = doy - (153 * mp + 2) div 5 + 1
+  let m = mp + (if mp < 10: 3 else: -9)
+  return ((y + ord(m <= 2)).int, m.Month, d.MonthdayRange)
+
+proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
+  let epochday = zt.tzTime.int64 div secondsInDay
+  var rem = zt.tzTime.int64 - epochday * secondsInDay
+  let hour = rem div secondsInHour
+  rem = rem - hour * secondsInHour
+  let minute = rem div secondsInMin
+  rem = rem - minute * secondsInMin
+  let second = rem
+
+  let (y, m, d) = fromEpochday(epochday)
+ 
+  DateTime(
+    year: y,
+    month: m,
+    monthday: d,
+    hour: hour,
+    minute: minute,
+    second: second,
+    weekday: getDayOfWeek(d, m, y),
+    yearday: getDayOfYear(d, m, y),
+    isDst: zt.isDst,
+    timezone: zone,
+    utcOffset: zt.utcOffset
+  )
+
 proc inZone*(time: Time, zone: Timezone): DateTime {.tags: [TimeEffect], raises: [], benign.} =
   # FIXME: add comment
-  result = zone.getZoned(zone, time)
+  let zoneInfo = zone.zoneInfoFromUtc(time)
+  result = initDateTime(zoneInfo, zone)
 
 proc inZone*(dt: DateTime, zone: Timezone): DateTime  {.tags: [TimeEffect], raises: [], benign.} =
   # FIXME: add comment  
   dt.toTime.inZone(zone)
-
-proc normalize(dt: DateTime, zone: Timezone): DateTime =
-  result = zone.normalize(zone, dt)
 
 proc `==`*(zone1, zone2: Timezone): bool =
   # FIXME: add comment
@@ -238,51 +280,27 @@ proc `==`*(zone1, zone2: Timezone): bool =
 proc `$`*(zone: Timezone): string =
   zone.name
 
+proc toTzTime(dt: DateTime): Time =
+  let epochDay = toEpochday(dt.year, dt.month, dt.monthday)
+  result = Time(epochDay * secondsInDay)
+  result.inc dt.hour * secondsInHour
+  result.inc dt.minute * 60
+  result.inc dt.second
+
 when defined(JS):
-    proc newDate(value: cstring): Time {.importc: "new Date".}
-    proc getDay(t: Time): int {.tags: [], raises: [], benign, importcpp.}
-    proc getFullYear(t: Time): int {.tags: [], raises: [], benign, importcpp.}
-    proc getHours(t: Time): int {.tags: [], raises: [], benign, importcpp.}
-    proc getMilliseconds(t: Time): int {.tags: [], raises: [], benign, importcpp.}
-    proc getMinutes(t: Time): int {.tags: [], raises: [], benign, importcpp.}
-    proc getMonth(t: Time): int {.tags: [], raises: [], benign, importcpp.}
-    proc getSeconds(t: Time): int {.tags: [], raises: [], benign, importcpp.}
-    proc getTime(t: Time): int {.tags: [], raises: [], noSideEffect, benign, importcpp.}
-    proc getTimezoneOffset(t: Time): int {.tags: [], raises: [], benign, importcpp.}
-    proc getDate(t: Time): int {.tags: [], raises: [], benign, importcpp.}
-    proc getUTCDate(t: Time): int {.tags: [], raises: [], benign, importcpp.}
-    proc getUTCFullYear(t: Time): int {.tags: [], raises: [], benign, importcpp.}
-    proc getUTCHours(t: Time): int {.tags: [], raises: [], benign, importcpp.}
-    proc getUTCMilliseconds(t: Time): int {.tags: [], raises: [], benign, importcpp.}
-    proc getUTCMinutes(t: Time): int {.tags: [], raises: [], benign, importcpp.}
-    proc getUTCMonth(t: Time): int {.tags: [], raises: [], benign, importcpp.}
-    proc getUTCSeconds(t: Time): int {.tags: [], raises: [], benign, importcpp.}
-    proc getUTCDay(t: Time): int {.tags: [], raises: [], benign, importcpp.}
-    proc getYear(t: Time): int {.tags: [], raises: [], benign, importcpp.}
+    proc localZoneInfoFromUtc(self: Timezone, time: Time): DateTime =
+      let jsDate = newDate(time)
+      let offset = jsDate.getTimezoneOffset() * 60
+      result.tzTime = time - offset
+      result.utcOffset = offset
+      result.isDst = false
 
-    proc getZonedUtc(time: Time): DateTime =
-        result.second = time.getUTCSeconds()
-        result.minute = time.getUTCMinutes()
-        result.hour = time.getUTCHours()
-        result.monthday = time.getUTCDate()
-        result.month = Month(time.getUTCMonth() + 1)
-        result.year = time.getUTCFullYear()
-        result.weekday = UsWeekdayToEuropean[time.getUTCDay()]
-        result.yearday = getDayOfYear(result.monthday, result.month, result.year)
-
-    proc getZonedLocal(time: Time): DateTime =
-        result.second = time.getSeconds()
-        result.minute = time.getMinutes()
-        result.hour = time.getHours()
-        result.monthday = time.getDate()
-        result.month = Month(time.getMonth() + 1)
-        result.year = time.getFullYear()
-        result.weekday = UsWeekdayToEuropean[time.getDay()]
-        result.timezone = time.getTimezoneOffset()
-        result.yearday = getDayOfYear(result.monthday, result.month, result.year)
-    
-    proc normalizeLocal(dt: DateTime): DateTime =
-        newDate(ti.format("yyyy-MM-ddTHH:mm:ss")).inZone(Local)
+    proc localZoneInfoFromTz(self: Timezone, time: Time): DateTime =
+      let dummyDate = newDate(time)
+      let dateStr = $dt.year & "-" & $ord(dt.month) & "-" & $dt.monthday &
+        "T" & $dt.hour & ":" & $dt.minute & ":" & $dt.second
+      let jsDate = newDate(dateStr)
+      result.tzTime = Number(jsDate).int64
 
 else:
   when defined(freebsd) or defined(netbsd) or defined(openbsd) or
@@ -317,71 +335,74 @@ else:
   type
     StructTmPtr = ptr StructTm
 
-  proc gmtime(timer: ptr Time): StructTmPtr {.importc: "gmtime", header: "<time.h>", tags: [].}
-  proc localtime(timer: ptr Time): StructTmPtr {. importc: "localtime", header: "<time.h>", tags: [].}
-  proc mktime(t: StructTm): Time {. importc: "mktime", header: "<time.h>", tags: [].}
+  proc localtime(timer: ptr CTime): StructTmPtr {. importc: "localtime", header: "<time.h>", tags: [].}
 
-  proc tmToDateTime(tm: StructTm): DateTime =
-    DateTime(
-      second: int(tm.second),
-      minute:int(tm.minute),
-      hour: int(tm.hour),
-      monthday: int(tm.monthday),
-      month: Month(tm.month + 1),
-      year: tm.year + 1900'i32,
-      weekday: UsWeekdayToEuropean[int(tm.weekday)],
-      yearday: int(tm.yearday)
-    )
+  proc toTzTime(tm: StructTM): Time =
+    let epochDay = toEpochday(tm.year.int + 1900, tm.month.Month, tm.monthday)
+    result = Time(epochDay * secondsInDay)
+    result.inc tm.hour * secondsInHour
+    result.inc tm.minute * 60
+    result.inc tm.second
 
-  proc dateTimeToTM(dt: DateTime): StructTm =
-    result.second = dt.second
-    result.minute = dt.minute
-    result.hour = dt.hour
-    result.monthday = dt.monthday
-    result.month = ord(dt.month) - 1
-    result.year = cint(dt.year - 1900)
-    result.weekday = EuropeanWeekdayToUs[dt.weekday]
-    result.yearday = dt.yearday
-    # `-1` for `isdst` means that it's unknown,
-    # which means that `mktime` will fill in the
-    # value for us, without modifying the time.
-    result.isdst = -1
+  proc localZoneInfoFromUtc(time: Time): ZonedTime =
+    var a = CTime(time) # TODO: Overflow check? also other places
+    let tm = localtime(addr(a))[]
+    let tzTime = tm.toTzTime
+    result.tzTime = tzTime
+    result.utcOffset = (time - tzTime).int
+    result.isDst = tm.isdst > 0
 
-  proc getZonedUtc(self: Timezone, time: Time): DateTime =
-    var a = time
-    let lt = gmtime(addr(a))
-    assert(not lt.isNil)
-    result = tmToDateTime(lt[])
-    result.timezone = self
+  proc localZoneInfoFromTz(tzTime: Time): ZonedTime  =
+    var tzTimei64 = tzTime.int64
+    let past = tzTimei64 - secondsInDay
+    var a = if past < tzTimei64: CTime(past) else: CTime(tzTime)
+    var tm = localtime(addr(a))
+    let pastOffset = tzTime - tm[].toTzTime
 
-  proc getZonedLocal(self: Timezone, time: Time): DateTime =
-    var a = time
-    let lt = localtime(addr(a))
-    assert(not lt.isNil)
-    result = tmToDateTime(lt[])
-    # Since timezone is not set for `result` yet, we can
-    # calculate the utc offset by comparing `result.toTime` with
-    # the original timestamp.
-    result.utcOffset = (a - result.toTime).int
-    result.isDst = lt.isdst > 0
-    result.timezone = self
+    let future = tzTimei64 + secondsInDay
+    a = if future > tzTimei64: CTime(future) else: CTime(tzTime)
+    tm = localtime(addr(a))
+    let futureOffset = tzTime - tm[].toTzTime
 
-  proc normalizeLocal(self: Timezone, dt: DateTime): DateTime =
-    let localTimestamp = mktime(dateTimeToTM(dt))
-    return localTimestamp.inZone(self)
+    var utcOffset: int
 
-proc normalizeUtc(self: Timezone, dt: DateTime): DateTime =
-  var tiUtc = dt
-  tiUtc.utcOffset = 0
-  tiUtc.isDst = false
-  return dt.toTime.inZone(self)
+    if pastOffset == futureOffset:
+        utcOffset = (tzTimei64 - pastOffset).int
+    else:
+      if pastOffset < futureOffset:
+        tzTimei64 -= secondsInHour
+      tzTimei64 -= pastOffset
+      a = CTime(tzTimei64)
+      utcOffset = (tzTimei64 - localtime(addr(a))[].toTzTime.int64).int
 
-converter toTimezone*(kind: TimezoneKind): Timezone =
-  case kind
-  of Utc:
-    result = Timezone(getZoned: getZonedUtc, normalize: normalizeUtc, name: "UTC")
-  of Local:
-    result = Timezone(getZoned: getZonedLocal, normalize: normalizeLocal, name: "LOCAL")
+    let utcTime = (tzTimei64 - utcOffset).Time
+    return localZoneInfoFromUtc(utcTime)
+
+proc utcZoneInfoFromUtc(time: Time): ZonedTime =
+  result.tzTime = time
+  result.utcOffset = 0
+  result.isDst = false
+
+proc utcZoneInfoFromTz(tzTime: Time): ZonedTime =
+  utcZoneInfoFromUtc(tzTime) # tzTime == time since we are in UTC
+
+proc utc*(): TimeZone =
+  Timezone(zoneInfoFromUtc: utcZoneInfoFromUtc, zoneInfoFromTz: utcZoneInfoFromTz, name: "Etc/UTC")
+
+proc local*(): TimeZone =
+  Timezone(zoneInfoFromUtc: localZoneInfoFromUtc, zoneInfoFromTz: localZoneInfoFromTz, name: "LOCAL")
+
+proc utc*(dt: DateTime): DateTime =
+  dt.inZone(utc())
+
+proc local*(dt: DateTime): DateTime =
+  dt.inZone(local())
+
+proc utc*(t: Time): DateTime =
+  t.inZone(utc())
+
+proc local*(t: Time): DateTime =
+  t.inZone(local())
 
 proc getTime*(): Time {.tags: [TimeEffect], benign.}
   ## Gets the current calendar time as a UNIX epoch value (number of seconds
@@ -391,8 +412,8 @@ proc getTime*(): Time {.tags: [TimeEffect], benign.}
 proc now*(): DateTime {.tags: [TimeEffect], benign.} =
   ## Get the current time as a  ``DateTime`` in the local timezone.
   ##
-  ## Shorthand for ``getTime().inZone(Local)``.
-  getTime().inZone(Local)
+  ## Shorthand for ``getTime().local``.
+  getTime().local
 
 proc fromSeconds*(since1970: float): Time {.tags: [], raises: [], benign.}
   ## Takes a float which contains the number of seconds since the unix epoch and
@@ -621,7 +642,7 @@ proc years*(y: int): TimeInterval {.inline.} =
 
 proc `+=`*(time: var Time, interval: TimeInterval) =
   ## Modifies `time` by adding `interval`.
-  time = toTime(time.inZone(Local) + interval)
+  time = toTime(time.local + interval)
 
 proc `+`*(time: Time, interval: TimeInterval): Time =
   ## Adds `interval` to `time`
@@ -629,17 +650,17 @@ proc `+`*(time: Time, interval: TimeInterval): Time =
   ## adding the interval, and converting back to ``Time``.
   ##
   ## ``echo getTime() + 1.day``
-  result = toTime(time.inZone(Local) + interval)
+  result = toTime(time.local + interval)
 
 proc `-=`*(time: var Time, interval: TimeInterval) =
   ## Modifies `time` by subtracting `interval`.
-  time = toTime(time.inZone(Local) - interval)
+  time = toTime(time.local - interval)
 
 proc `-`*(time: Time, interval: TimeInterval): Time =
   ## Subtracts `interval` from Time `time`.
   ##
   ## ``echo getTime() - 1.day``
-  result = toTime(time.inZone(Local) - interval)
+  result = toTime(time.local - interval)
 
 proc formatToken(dt: DateTime, token: string, buf: var string) =
   ## Helper of the format proc to parse individual tokens.
@@ -762,7 +783,7 @@ proc formatToken(dt: DateTime, token: string, buf: var string) =
     raise newException(ValueError, "Invalid format string: " & token)
 
 
-proc format*(dt: DateTime, f: string): string =
+proc format*(dt: DateTime, f: string): string {.tags: [TimeEffect].}=
   ## This procedure formats `dt` as specified by `f`. The following format
   ## specifiers are available:
   ##
@@ -840,7 +861,7 @@ proc `$`*(dt: DateTime): string {.tags: [], raises: [], benign.} =
 proc `$`*(time: Time): string {.tags: [TimeEffect], raises: [], benign.} =
   ## converts a `Time` value to a string representation. It will use the local
   ## time zone and use the format ``yyyy-MM-dd'T'HH-mm-sszzz``.
-  $time.inZone(Local)
+  $time.local
 
 {.pop.}
 
@@ -1045,7 +1066,7 @@ proc parseToken(dt: var DateTime; token, value: string; j: var int) =
     # Ignore the token and move forward in the value string by the same length
     j += token.len
 
-proc parse*(value, layout: string, zone: Timezone = Local): DateTime =
+proc parse*(value, layout: string, zone: Timezone = local()): DateTime =
   ## This procedure parses a date/time string using the standard format
   ## identifiers as listed below. The procedure defaults information not provided
   ## in the format string from the running program (month, year, etc).
@@ -1091,17 +1112,17 @@ proc parse*(value, layout: string, zone: Timezone = Local): DateTime =
   var j = 0 # pointer for value string
   var token = ""
   # Assumes current day of month, month and year, but time is reset to 00:00:00. Weekday will be reset after parsing.
-  var info = now()
-  info.hour = 0
-  info.minute = 0
-  info.second = 0
-  info.isDst = true # using this is flag for checking whether a timezone has \
+  var dt = now()
+  dt.hour = 0
+  dt.minute = 0
+  dt.second = 0
+  dt.isDst = true # using this is flag for checking whether a timezone has \
       # been read (because DST is always false when a tz is parsed)
   while true:
     case layout[i]
     of ' ', '-', '/', ':', '\'', '\0', '(', ')', '[', ']', ',':
       if token.len > 0:
-        parseToken(info, token, value, j)
+        parseToken(dt, token, value, j)
       # Reset token
       token = ""
       # Break if at end of line
@@ -1123,15 +1144,15 @@ proc parse*(value, layout: string, zone: Timezone = Local): DateTime =
         token.add(layout[i])
         inc(i)
       else:
-        parseToken(info, token, value, j)
+        parseToken(dt, token, value, j)
         token = ""
 
-  if info.isDst:
+  if dt.isDst:
     # No timezone parsed - assume timezone is `zone`
-    result = info.normalize(zone)
+    result = initDateTime(zone.zoneInfoFromTz(dt.toTzTime), zone)
   else:
     # Otherwise convert to `zone`
-    result = info.toTime.inZone(zone)
+    result = dt.toTime.inZone(zone)
 
 # Leap year calculations are adapted from:
 # http://www.codeproject.com/Articles/7358/Ultra-fast-Algorithms-for-Working-with-Leap-Years
@@ -1199,14 +1220,14 @@ proc toTimeInterval*(time: Time): TimeInterval =
   ##     echo b.toTimeInterval - a.toTimeInterval
   ##     # (milliseconds: 0, seconds: -40, minutes: -6, hours: 1, days: -2, months: -2, years: 16)
   # Milliseconds not available from Time
-  var dt = time.inZone(Local)
+  var dt = time.local
   initInterval(0, dt.second, dt.minute, dt.hour, dt.weekday.ord, dt.month.ord - 1, dt.year)
 
 proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
-                  hour: HourRange, minute: MinuteRange, second: SecondRange, zone: Timezone = Local): DateTime =
+                  hour: HourRange, minute: MinuteRange, second: SecondRange, zone: Timezone = local()): DateTime =
   ## Create a new ``DateTime`` in the specified timezone.
   doAssert monthday <= getDaysInMonth(month, year), "Invalid date: " & $month & " " & $monthday & ", " & $year
-  let ti = DateTime(
+  let dt = DateTime(
     monthday:  monthday,
     year:  year,
     month:  month,
@@ -1214,26 +1235,19 @@ proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
     minute:  minute,
     second:  second
   )
-  result = ti.normalize(zone)
-
-proc initDateTime*(monthday: MonthdayRange, month: Month, year: int, zone: Timezone = Local): DateTime =
-  ## Create a new ``DateTime`` in the specified timezone. The time component will be set to the first
-  ## hour/minute/second of they day (in almost all cases 00:00:00).
-  # TODO: Add a test for this. In Brazil, DST actives on 00:00:00, which means that the first time of
-  # the day is actually 01:00:00.
-  initDateTime(monthday, month, year, 0, 0, 0, zone)
+  result = initDateTime(zone.zoneInfoFromTz(dt.toTzTime), zone)
 
 # Deprecated procs
 
 proc getLocalTime*(time: Time): DateTime {.tags: [TimeEffect], raises: [], benign, deprecated.} =
   ## Converts the calendar time `time` to broken-time representation,
   ## expressed relative to the user's specified time zone.
-  time.inZone(Local)
+  time.local
 
 proc getGMTime*(time: Time): DateTime {.tags: [TimeEffect], raises: [], benign, deprecated.} =
   ## Converts the calendar time `time` to broken-down time representation,
   ## expressed in Coordinated Universal Time (UTC).
-  time.inZone(Utc)
+  time.utc
 
 proc getTimezone*(): int {.tags: [TimeEffect], raises: [], benign, deprecated.}
   ## returns the offset of the local (non-DST) timezone in seconds west of UTC.
@@ -1334,11 +1348,11 @@ when not defined(JS):
   type
     Clock {.importc: "clock_t".} = distinct int
 
-  proc timec(timer: ptr Time): Time {.
+  proc timec(timer: ptr CTime): CTime {.
     importc: "time", header: "<time.h>", tags: [].}
 
   proc getClock(): Clock {.importc: "clock", header: "<time.h>", tags: [TimeEffect].}
-  proc difftime(a, b: Time): float {.importc: "difftime", header: "<time.h>",
+  proc difftime(a, b: CTime): float {.importc: "difftime", header: "<time.h>",
     tags: [].}
 
   var
@@ -1346,7 +1360,7 @@ when not defined(JS):
 
   when not defined(useNimRtl):
     proc `-` (a, b: Time): int64 =
-      return toBiggestInt(difftime(a, b))
+      return toBiggestInt(difftime(a.CTime, b.CTime))
 
   proc getStartMilsecs(): int =
     #echo "clocks per sec: ", clocksPerSec, "clock: ", int(getClock())
@@ -1362,22 +1376,10 @@ when not defined(JS):
       #echo "result: ", result
 
   proc getTime(): Time =
-    timec(nil)
-
-  proc toEpochday(year, month, day: int): int64 =
-    # Based on http://howardhinnant.github.io/date_algorithms.html
-    var (y, m, d) = (year, month, day)
-    if m <= 2:
-      y.dec
-
-    let era = (if y >= 0: y else: y-399) div 400
-    let yoe = y - era * 400
-    let doy = (153 * (m + (if m > 2: -3 else: 9)) + 2) div 5 + d-1
-    let doe = yoe * 365 + yoe div 4 - yoe div 100 + doy
-    return era * 146097 + doe - 719468
+    timec(nil).Time
 
   proc toTime(dt: DateTime): Time =
-    let epochDay = toEpochday(dt.year, ord(dt.month), dt.monthday)
+    let epochDay = toEpochday(dt.year, dt.month, dt.monthday)
     result = Time(epochDay * secondsInDay)
     result.inc dt.hour * secondsInHour
     result.inc dt.minute * 60
@@ -1432,17 +1434,11 @@ when not defined(JS):
       result = toFloat(int(getClock())) / toFloat(clocksPerSec)
 
 elif defined(JS):
-  proc newDate(): Time {.importc: "new Date".}
-  proc internGetTime(): Time {.importc: "new Date", tags: [].}
-  proc newDate(value: float): Time {.importc: "new Date".}
-  proc newDate(value: cstring): Time {.importc: "new Date".}
-
   proc getTime(): Time =
-    # Warning: This is something different in JS.
-    return newDate()
+    return Number(newDate()).int64
 
-  proc toTime*(dt: DateTIme): Time =
-    newDate($dt)
+  proc toTime*(dt: DateTime): Time =
+    Number(newDate($dt)).int64
 
   proc `-` (a, b: Time): int64 =
     return a.getTime() - b.getTime()
@@ -1462,19 +1458,19 @@ elif defined(JS):
 
   proc epochTime*(): float {.tags: [TimeEffect].} = newDate().toSeconds()
 
-when isMainModule:
-  # this is testing non-exported function
-  var
-    t4 = fromSeconds(876124714).inZone(Utc) # Mon  6 Oct 08:58:34 BST 1997
-    t4L = fromSeconds(876124714).inZone(Local)
-  assert toSeconds(t4, initInterval(seconds=0)) == 0.0
-  assert toSeconds(t4L, initInterval(milliseconds=1)) == toSeconds(t4, initInterval(milliseconds=1))
-  assert toSeconds(t4L, initInterval(seconds=1)) == toSeconds(t4, initInterval(seconds=1))
-  assert toSeconds(t4L, initInterval(minutes=1)) == toSeconds(t4, initInterval(minutes=1))
-  assert toSeconds(t4L, initInterval(hours=1)) == toSeconds(t4, initInterval(hours=1))
-  assert toSeconds(t4L, initInterval(days=1)) == toSeconds(t4, initInterval(days=1))
-  assert toSeconds(t4L, initInterval(months=1)) == toSeconds(t4, initInterval(months=1))
-  assert toSeconds(t4L, initInterval(years=1)) == toSeconds(t4, initInterval(years=1))
+# when isMainModule:
+#   # this is testing non-exported function
+#   var
+#     t4 = fromSeconds(876124714).utc # Mon  6 Oct 08:58:34 BST 1997
+#     t4L = fromSeconds(876124714).local
+#   assert toSeconds(t4, initInterval(seconds=0)) == 0.0
+#   assert toSeconds(t4L, initInterval(milliseconds=1)) == toSeconds(t4, initInterval(milliseconds=1))
+#   assert toSeconds(t4L, initInterval(seconds=1)) == toSeconds(t4, initInterval(seconds=1))
+#   assert toSeconds(t4L, initInterval(minutes=1)) == toSeconds(t4, initInterval(minutes=1))
+#   assert toSeconds(t4L, initInterval(hours=1)) == toSeconds(t4, initInterval(hours=1))
+#   assert toSeconds(t4L, initInterval(days=1)) == toSeconds(t4, initInterval(days=1))
+#   assert toSeconds(t4L, initInterval(months=1)) == toSeconds(t4, initInterval(months=1))
+#   assert toSeconds(t4L, initInterval(years=1)) == toSeconds(t4, initInterval(years=1))
 
-  # Further tests are in tests/stdlib/ttime.nim
-  # koch test c stdlib
+#   # Further tests are in tests/stdlib/ttime.nim
+#   # koch test c stdlib
