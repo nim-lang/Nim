@@ -2016,14 +2016,14 @@ when defined(nimNewRoof):
         inc(res)
 
   iterator `..`*(a, b: int64): int64 {.inline.} =
-    ## A special version of `..`` for ``int64`` only.
+    ## A special version of ``..`` for ``int64`` only.
     var res = a
     while res <= b:
       yield res
       inc(res)
 
   iterator `..`*(a, b: int32): int32 {.inline.} =
-    ## A special version of `..`` for ``int32`` only.
+    ## A special version of ``..`` for ``int32`` only.
     var res = a
     while res <= b:
       yield res
