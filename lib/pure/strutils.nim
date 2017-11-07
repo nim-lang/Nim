@@ -2007,6 +2007,16 @@ proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
   ## after the decimal point for Nim's ``float`` type.
   ##
   ## If ``precision == 0``, it tries to format it nicely.
+  ##
+  ## Examples:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##    let x = 123.456
+  ##    echo x.formatFloat()                # 123.4560000000000
+  ##    echo x.formatFloat(ffDecimal, 4)    # 123.4560
+  ##    echo x.formatFloat(ffScientific, 2) # 1.23e+02
+  ##
   result = formatBiggestFloat(f, format, precision, decimalSep)
 
 proc trimZeros*(x: var string) {.noSideEffect.} =
