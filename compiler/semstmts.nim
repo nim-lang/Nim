@@ -697,7 +697,9 @@ proc semForVars(c: PContext, n: PNode): PNode =
       if sfGenSym notin v.flags and not isDiscardUnderscore(v):
         addForVarDecl(c, v)
   inc(c.p.nestedLoopCounter)
+  openScope(c)
   n.sons[length-1] = semStmt(c, n.sons[length-1])
+  closeScope(c)
   dec(c.p.nestedLoopCounter)
 
 proc implicitIterator(c: PContext, it: string, arg: PNode): PNode =
