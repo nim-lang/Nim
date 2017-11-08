@@ -39,14 +39,7 @@ import
 
 include "system/inclrtl"
 
-when defined(JS):
-    type JsDate = object
-    proc newDate(value: cstring): JsDate {.tags: [], raises: [], importc: "new Date".}
-    proc newDate(): JsDate {.importc: "new Date".}
-    proc newDate(value: float): JsDate {.importc: "new Date".}
-    proc Number(js: JsDate): float {.tags: [], raises: [], benign, importc.}
-
-elif defined(posix):
+when defined(posix):
   when defined(linux) and defined(amd64):
     type
       CTime {.importc: "time_t", header: "<time.h>".} = distinct clong
@@ -140,7 +133,7 @@ type
     months*: int      ## The number of months
     years*: int       ## The number of years
 
-  ZonedTime = tuple
+  ZonedTime = object
     tzTime: Time
     utcOffset: int
     isDst: bool
@@ -192,26 +185,17 @@ proc `-`*(a, b: Time): int64 {.
 proc `<`*(a, b: Time): bool {.
   rtl, extern: "ntLtTime", tags: [], raises: [], noSideEffect.} =
   ## Returns true iff ``a < b``, that is iff a happened before b.
-  when defined(js):
-    result = TimeBase(a) < TimeBase(b)
-  else:
-    result = a - b < 0
+  result = a - b < 0
 
 proc `<=` * (a, b: Time): bool {.
   rtl, extern: "ntLeTime", tags: [], raises: [], noSideEffect.}=
   ## Returns true iff ``a <= b``.
-  when defined(js):
-    result = TimeBase(a) <= TimeBase(b)
-  else:
-    result = a - b <= 0
+  result = a - b <= 0
 
 proc `==`*(a, b: Time): bool {.
   rtl, extern: "ntEqTime", tags: [], raises: [], noSideEffect.} =
   ## Returns true if ``a == b``, that is if both times represent the same point in time.
-  when defined(js):
-    result = TimeBase(a) == TimeBase(b)
-  else:
-    result = a - b == 0
+  result = a - b == 0
 
 proc toEpochday(year: int, month: Month, day: MonthdayRange): int64 =
   # Based on http://howardhinnant.github.io/date_algorithms.html
@@ -233,7 +217,7 @@ proc fromEpochday(epochday: int64): tuple[year: int, month: Month, day: int] =
   let doe = z - era * 146097
   let yoe = (doe - doe div 1460 + doe div 36524 - doe div 146096) div 365
   let y = yoe + era * 400;
-  let doy = doe - 365 * yoe + yoe div 4 - yoe div 100
+  let doy = doe - (365 * yoe + yoe div 4 - yoe div 100)
   let mp = (5 * doy + 2) div 153
   let d = doy - (153 * mp + 2) div 5 + 1
   let m = mp + (if mp < 10: 3 else: -9)
@@ -284,23 +268,49 @@ proc toTzTime(dt: DateTime): Time =
   let epochDay = toEpochday(dt.year, dt.month, dt.monthday)
   result = Time(epochDay * secondsInDay)
   result.inc dt.hour * secondsInHour
-  result.inc dt.minute * 60
+  result.inc dt.minute * secondsInMin
   result.inc dt.second
 
 when defined(JS):
-    proc localZoneInfoFromUtc(self: Timezone, time: Time): DateTime =
-      let jsDate = newDate(time)
-      let offset = jsDate.getTimezoneOffset() * 60
-      result.tzTime = time - offset
+    type JsDate = object
+    proc newDate(value: cstring): JsDate {.tags: [], raises: [], importc: "new Date".}
+    proc newDate(): JsDate {.importc: "new Date".}
+    proc newDate(value: float): JsDate {.importc: "new Date".}
+    proc getTimezoneOffset(js: JsDate): int {.tags: [], raises: [], benign, importcpp.}
+    proc getDay(js: JsDate): int {.tags: [], raises: [], benign, importcpp.}
+    proc getFullYear(js: JsDate): int {.tags: [], raises: [], benign, importcpp.}
+    proc getHours(js: JsDate): int {.tags: [], raises: [], benign, importcpp.}
+    proc getMilliseconds(js: JsDate): int {.tags: [], raises: [], benign, importcpp.}
+    proc getMinutes(js: JsDate): int {.tags: [], raises: [], benign, importcpp.}
+    proc getMonth(js: JsDate): int {.tags: [], raises: [], benign, importcpp.}
+    proc getSeconds(js: JsDate): int {.tags: [], raises: [], benign, importcpp.}
+    proc getTime(js: JsDate): int {.tags: [], raises: [], noSideEffect, benign, importcpp.}
+    proc getDate(js: JsDate): int {.tags: [], raises: [], benign, importcpp.}
+    proc getUTCDate(js: JsDate): int {.tags: [], raises: [], benign, importcpp.}
+    proc getUTCFullYear(js: JsDate): int {.tags: [], raises: [], benign, importcpp.}
+    proc getUTCHours(js: JsDate): int {.tags: [], raises: [], benign, importcpp.}
+    proc getUTCMilliseconds(js: JsDate): int {.tags: [], raises: [], benign, importcpp.}
+    proc getUTCMinutes(js: JsDate): int {.tags: [], raises: [], benign, importcpp.}
+    proc getUTCMonth(js: JsDate): int {.tags: [], raises: [], benign, importcpp.}
+    proc getUTCSeconds(js: JsDate): int {.tags: [], raises: [], benign, importcpp.}
+    proc getUTCDay(js: JsDate): int {.tags: [], raises: [], benign, importcpp.}
+    proc getYear(js: JsDate): int {.tags: [], raises: [], benign, importcpp.}
+
+    proc localZoneInfoFromUtc(time: Time): ZonedTime =
+      let jsDate = newDate(time.float * 1000)
+      let offset = jsDate.getTimezoneOffset() * secondsInMin
+      result.tzTime = Time(time.int64 - offset)
       result.utcOffset = offset
       result.isDst = false
 
-    proc localZoneInfoFromTz(self: Timezone, time: Time): DateTime =
-      let dummyDate = newDate(time)
-      let dateStr = $dt.year & "-" & $ord(dt.month) & "-" & $dt.monthday &
-        "T" & $dt.hour & ":" & $dt.minute & ":" & $dt.second
+    proc localZoneInfoFromTz(tzTime: Time): ZonedTime =
+      let dummyDate = newDate(tzTime.float * 1000)
+      let dateStr = $dummyDate.getFullYear() & "-" & $(dummyDate.getMonth() + 1) & "-" & $dummyDate.getDate() &
+        "T" & $dummyDate.getHours() & ":" & $dummyDate.getMinutes() & ":" & $dummyDate.getSeconds()
       let jsDate = newDate(dateStr)
-      result.tzTime = Number(jsDate).int64
+      result.tzTime = tzTime
+      result.utcOffset = jsDate.getTimezoneOffset() * secondsInMin
+      result.isDst = false
 
 else:
   when defined(freebsd) or defined(netbsd) or defined(openbsd) or
@@ -338,7 +348,7 @@ else:
   proc localtime(timer: ptr CTime): StructTmPtr {. importc: "localtime", header: "<time.h>", tags: [].}
 
   proc toTzTime(tm: StructTM): Time =
-    let epochDay = toEpochday(tm.year.int + 1900, tm.month.Month, tm.monthday)
+    let epochDay = toEpochday(tm.year.int + 1900, (tm.month + 1).Month, tm.monthday)
     result = Time(epochDay * secondsInDay)
     result.inc tm.hour * secondsInHour
     result.inc tm.minute * 60
@@ -1434,14 +1444,18 @@ when not defined(JS):
       result = toFloat(int(getClock())) / toFloat(clocksPerSec)
 
 elif defined(JS):
+
+  proc toTime(js: JsDate): Time =
+    (js.getTime() div 1000).Time
+
   proc getTime(): Time =
-    return Number(newDate()).int64
+    return newDate().toTime
 
   proc toTime*(dt: DateTime): Time =
-    Number(newDate($dt)).int64
+    newDate($dt).toTime
 
   proc `-` (a, b: Time): int64 =
-    return a.getTime() - b.getTime()
+    a - b
 
   var
     startMilsecs = getTime()
@@ -1450,13 +1464,17 @@ elif defined(JS):
     ## get the milliseconds from the start of the program
     return int(getTime() - startMilsecs)
 
-  proc fromSeconds(since1970: float): Time = result = newDate(since1970 * 1000)
+  proc fromSeconds(since1970: float): Time =
+    newDate(since1970 * 1000).toTime
 
-  proc toSeconds(time: Time): float = result = time.getTime() / 1000
+  proc toSeconds(time: Time): float =
+    newDate(time.float * 1000).getTime() / 1000
 
-  proc getTimezone(): int = result = newDate().getTimezoneOffset() * 60
+  proc getTimezone(): int =
+    newDate().getTimezoneOffset() * 60
 
-  proc epochTime*(): float {.tags: [TimeEffect].} = newDate().toSeconds()
+  proc epochTime*(): float {.tags: [TimeEffect].} =
+    newDate().getTime() / 1000
 
 # when isMainModule:
 #   # this is testing non-exported function
