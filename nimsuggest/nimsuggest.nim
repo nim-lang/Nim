@@ -485,7 +485,6 @@ proc mainCommand(graph: ModuleGraph; cache: IdentCache) =
   registerPass semPass
   gCmd = cmdIdeTools
   incl gGlobalOptions, optCaasEnabled
-  isServing = true
   wantMainModule()
 
   if not fileExists(gProjectFull):
