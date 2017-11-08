@@ -1153,7 +1153,7 @@ proc genInitCode(m: BModule) =
 
   for i, el in pairs(m.extensionLoaders):
     if el != nil:
-      let ex = "N_NIMCALL(void, nimLoadProcs$1)(void) {$2}$N$N" %
+      let ex = "NIM_EXTERNC N_NIMCALL(void, nimLoadProcs$1)(void) {$2}$N$N" %
         [(i.ord - '0'.ord).rope, el]
       add(m.s[cfsInitProc], ex)
 

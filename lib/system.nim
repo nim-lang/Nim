@@ -322,7 +322,7 @@ proc `..`*[T, U](a: T, b: U): HSlice[T, U] {.noSideEffect, inline, magic: "DotDo
   result.b = b
 
 proc `..`*[T](b: T): HSlice[int, T] {.noSideEffect, inline, magic: "DotDot".} =
-  ## `slice`:idx: operator that constructs an interval ``[default(T), b]``
+  ## `slice`:idx: operator that constructs an interval ``[default(int), b]``
   result.b = b
 
 when not defined(niminheritable):
@@ -1985,34 +1985,80 @@ iterator countdown*[T](a, b: T, step = 1): T {.inline.} =
       yield res
       dec(res, step)
 
-iterator countup*[S, T](a: S, b: T, step = 1): T {.inline.} =
-  ## Counts from ordinal value `a` up to `b` (inclusive) with the given
-  ## step count. `S`, `T` may be any ordinal type, `step` may only
-  ## be positive. **Note**: This fails to count to ``high(int)`` if T = int for
-  ## efficiency reasons.
-  when T is IntLikeForCount:
-    var res = int(a)
-    while res <= int(b):
-      yield T(res)
-      inc(res, step)
-  else:
-    var res: T = T(a)
-    while res <= b:
-      yield res
-      inc(res, step)
+when defined(nimNewRoof):
+  iterator countup*[T](a, b: T, step = 1): T {.inline.} =
+    ## Counts from ordinal value `a` up to `b` (inclusive) with the given
+    ## step count. `S`, `T` may be any ordinal type, `step` may only
+    ## be positive. **Note**: This fails to count to ``high(int)`` if T = int for
+    ## efficiency reasons.
+    when T is IntLikeForCount:
+      var res = int(a)
+      while res <= int(b):
+        yield T(res)
+        inc(res, step)
+    else:
+      var res: T = T(a)
+      while res <= b:
+        yield res
+        inc(res, step)
 
-iterator `..`*[S, T](a: S, b: T): T {.inline.} =
-  ## An alias for `countup`.
-  when T is IntLikeForCount:
-    var res = int(a)
-    while res <= int(b):
-      yield T(res)
-      inc(res)
-  else:
-    var res: T = T(a)
+  iterator `..`*[T](a, b: T): T {.inline.} =
+    ## An alias for `countup`.
+    when T is IntLikeForCount:
+      var res = int(a)
+      while res <= int(b):
+        yield T(res)
+        inc(res)
+    else:
+      var res: T = T(a)
+      while res <= b:
+        yield res
+        inc(res)
+
+  iterator `..`*(a, b: int64): int64 {.inline.} =
+    ## A special version of ``..`` for ``int64`` only.
+    var res = a
     while res <= b:
       yield res
       inc(res)
+
+  iterator `..`*(a, b: int32): int32 {.inline.} =
+    ## A special version of ``..`` for ``int32`` only.
+    var res = a
+    while res <= b:
+      yield res
+      inc(res)
+
+else:
+  iterator countup*[S, T](a: S, b: T, step = 1): T {.inline.} =
+    ## Counts from ordinal value `a` up to `b` (inclusive) with the given
+    ## step count. `S`, `T` may be any ordinal type, `step` may only
+    ## be positive. **Note**: This fails to count to ``high(int)`` if T = int for
+    ## efficiency reasons.
+    when T is IntLikeForCount:
+      var res = int(a)
+      while res <= int(b):
+        yield T(res)
+        inc(res, step)
+    else:
+      var res: T = T(a)
+      while res <= b:
+        yield res
+        inc(res, step)
+
+  iterator `..`*[S, T](a: S, b: T): T {.inline.} =
+    ## An alias for `countup`.
+    when T is IntLikeForCount:
+      var res = int(a)
+      while res <= int(b):
+        yield T(res)
+        inc(res)
+    else:
+      var res: T = T(a)
+      while res <= b:
+        yield res
+        inc(res)
+
 
 iterator `||`*[S, T](a: S, b: T, annotation=""): T {.
   inline, magic: "OmpParFor", sideEffect.} =
@@ -3433,11 +3479,18 @@ template `..<`*(a, b: untyped): untyped =
   ## a shortcut for 'a..pred(b)'.
   a .. pred(b)
 
-iterator `..<`*[S,T](a: S, b: T): T =
-  var i = T(a)
-  while i < b:
-    yield i
-    inc i
+when defined(nimNewRoof):
+  iterator `..<`*[T](a, b: T): T =
+    var i = T(a)
+    while i < b:
+      yield i
+      inc i
+else:
+  iterator `..<`*[S, T](a: S, b: T): T =
+    var i = T(a)
+    while i < b:
+      yield i
+      inc i
 
 template spliceImpl(s, a, L, b: untyped): untyped =
   # make room for additional elements or cut:
