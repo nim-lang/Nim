@@ -17,6 +17,7 @@
 ## runtime efficiency.
 
 include "system/inclrtl"
+import streams
 
 {.deadCodeElim: on.}
 
@@ -130,7 +131,7 @@ proc insertInCache(s: string, tree: Rope): Rope =
       result.left = t
       t.right = nil
 
-proc rope*(s: string): Rope {.rtl, extern: "nro$1Str".} =
+proc rope*(s: string = nil): Rope {.rtl, extern: "nro$1Str".} =
   ## Converts a string to a rope.
   if s.len == 0:
     result = nil
@@ -242,10 +243,13 @@ proc write*(f: File, r: Rope) {.rtl, extern: "nro$1".} =
   ## writes a rope to a file.
   for s in leaves(r): write(f, s)
 
+proc write*(s: Stream, r: Rope) {.rtl, extern: "nroWriteStream".} =
+  ## writes a rope to a stream.
+  for rs in leaves(r): write(s, rs)
+
 proc `$`*(r: Rope): string  {.rtl, extern: "nroToString".}=
   ## converts a rope back to a string.
-  result = newString(r.len)
-  setLen(result, 0)
+  result = newStringOfCap(r.len)
   for s in leaves(r): add(result, s)
 
 when false:
