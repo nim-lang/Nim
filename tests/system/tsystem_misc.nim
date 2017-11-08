@@ -16,3 +16,7 @@ doAssert high(uint32) > low(uint32)
 doAssert high(float) > low(float)
 doAssert high(float32) > low(float32)
 doAssert high(float64) > low(float64)
+
+# bug #6710
+var s = @[1]
+s.delete(0)
