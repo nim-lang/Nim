@@ -11,7 +11,7 @@ import
 # $ date --date='@2147483647'
 # Tue 19 Jan 03:14:07 GMT 2038
 
-proc checkFormat(t: TimeInfo, format, expected: string) =
+proc checkFormat(t: DateTime, format, expected: string) =
   let actual = t.format(format)
   if actual != expected:
     echo "Formatting failure!"
@@ -19,7 +19,7 @@ proc checkFormat(t: TimeInfo, format, expected: string) =
     echo "actual  : ", actual
     doAssert false
 
-let t = fromSeconds(2147483647).inZone(Utc)
+let t = fromSeconds(2147483647).utc
 t.checkFormat("ddd dd MMM hh:mm:ss yyyy", "Tue 19 Jan 03:14:07 2038")
 t.checkFormat("ddd ddMMMhh:mm:ssyyyy", "Tue 19Jan03:14:072038")
 t.checkFormat("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
@@ -28,12 +28,12 @@ t.checkFormat("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
 
 t.checkFormat("yyyyMMddhhmmss", "20380119031407")
 
-let t2 = fromSeconds(160070789).inZone(Utc) # Mon 27 Jan 16:06:29 GMT 1975
+let t2 = fromSeconds(160070789).utc # Mon 27 Jan 16:06:29 GMT 1975
 t2.checkFormat("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
   " ss t tt y yy yyy yyyy yyyyy z zz zzz",
   "27 27 Mon Monday 4 04 16 16 6 06 1 01 Jan January 29 29 P PM 5 75 975 1975 01975 +0 +00 +00:00")
 
-var t4 = fromSeconds(876124714).inZone(Utc) # Mon  6 Oct 08:58:34 BST 1997
+var t4 = fromSeconds(876124714).utc # Mon  6 Oct 08:58:34 BST 1997
 t4.checkFormat("M MM MMM MMMM", "10 10 Oct October")
 
 # Interval tests
@@ -46,14 +46,9 @@ doAssert getDayOfWeek(01, mJan, 1970) == dThu
 doAssert getDayOfWeek(21, mSep, 1970) == dMon
 doAssert getDayOfWeek(01, mJan, 2000) == dSat
 doAssert getDayOfWeek(01, mJan, 2021) == dFri
-# Julian tests
-doAssert getDayOfWeekJulian(21, 9, 1900) == dFri
-doAssert getDayOfWeekJulian(21, 9, 1970) == dMon
-doAssert getDayOfWeekJulian(1, 1, 2000) == dSat
-doAssert getDayOfWeekJulian(1, 1, 2021) == dFri
 
 # toSeconds tests with GM timezone
-let t4L = fromSeconds(876124714).inZone(Utc)
+let t4L = fromSeconds(876124714).utc
 doAssert toSeconds(toTime(t4L)) == 876124714
 doAssert toSeconds(toTime(t4L)) + t4L.utcOffset.float == toSeconds(toTime(t4))
 
@@ -117,7 +112,7 @@ for tz in [
     (-1800, "+0", "+00", "+00:30"), # half an hour
     (7200, "-2", "-02", "-02:00"), # positive
     (38700, "-10", "-10", "-10:45")]: # positive with three quaters hour
-  let ti = TimeInfo(month: mJan, monthday: 1, utcOffset: tz[0])
+  let ti = DateTime(month: mJan, monthday: 1, utcOffset: tz[0])
   doAssert ti.format("z") == tz[1]
   doAssert ti.format("zz") == tz[2]
   doAssert ti.format("zzz") == tz[3]
@@ -130,13 +125,17 @@ block countLeapYears:
 
 template parseTest(s, f, sExpected: string, ydExpected: int) =
   let
-    parsed = s.parse(f).inZone(Utc)
+    parsed = s.parse(f, utc())
     parsedStr = $parsed
   check parsedStr == sExpected
+  if parsed.yearday != ydExpected:
+    echo s
+    echo parsed.repr
+    echo parsed.yearday, " exp: ", ydExpected
   check(parsed.yearday == ydExpected)
 
 template parseTestTimeOnly(s, f, sExpected: string) =
-  check sExpected in $s.parse(f)
+  check sExpected in $s.parse(f, utc())
 
 # because setting a specific timezone for testing is platform-specific, we use
 # explicit timezone offsets in all tests.
@@ -197,8 +196,8 @@ template runTimezoneTests() =
   # are parsing.
   let dstT1 = parse("2016-01-01 00:00:00", "yyyy-MM-dd HH:mm:ss")
   let dstT2 = parse("2016-06-01 00:00:00", "yyyy-MM-dd HH:mm:ss")
-  check dstT1 == toTime(dstT1).inZone(Local)
-  check dstT2 == toTime(dstT2).inZone(Local)
+  check dstT1 == toTime(dstT1).local
+  check dstT2 == toTime(dstT2).local
 
   block dstTest:
     # parsing will set isDST in relation to the local time. We take a date in

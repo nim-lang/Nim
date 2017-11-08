@@ -91,7 +91,7 @@ type
   SecondRange* = range[0..60]
   YeardayRange* = range[0..365]
 
-  Time = distinct int64
+  Time* = distinct int64
 
   DateTime* = object of RootObj ## Represents a time in different parts.
                                 ## Although this type can represent leap
@@ -133,7 +133,7 @@ type
     months*: int      ## The number of months
     years*: int       ## The number of years
 
-  ZonedTime = object
+  ZonedTime = object ## Represents zooned instant in time that is not associated with any calendar.
     tzTime: Time
     utcOffset: int
     isDst: bool
@@ -1197,12 +1197,12 @@ proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int): YeardayRan
   ## Returns the day of the year.
   ## Equivalent with ``initDateTime(day, month, year).yearday``.
   const daysUntilMonth : array[Month, int] = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
-  const daysUntilMonthLeap : array[Month, int] = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
+  const daysUntilMonthLeap : array[Month, int] = [0, 31, 60, 90, 120, 151, 181, 212, 243, 273, 304, 334]
 
   if isLeapYear(year):
-    result = daysUntilMonth[month] + monthday - 1
-  else:
     result = daysUntilMonthLeap[month] + monthday - 1
+  else:
+    result = daysUntilMonth[month] + monthday - 1
 
 proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay =
   ## Returns the day of the week enum from day, month and year.
