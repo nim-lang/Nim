@@ -265,6 +265,11 @@ suite "ttimes":
       let diff = parse("19700101-000000", "yyyyMMdd-hhmmss").toTime - parse("19000101-000000", "yyyyMMdd-hhmmss").toTime
       check diff == 2208986872
 
+    test "issue #6465":
+      putEnv("TZ", "Europe/Stockholm")      
+      let dt = parse("2017-03-25 12:00", "yyyy-MM-dd hh:mm")
+      check $(dt + 1.days) == "2017-03-26T12:00:00+02:00"
+
     putEnv("TZ", orig_tz)    
 
   else:

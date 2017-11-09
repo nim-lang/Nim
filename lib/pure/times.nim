@@ -574,9 +574,9 @@ proc `+`*(dt: DateTime, interval: TimeInterval): DateTime =
   ## Adds ``interval`` time from DateTime ``dt``. Components from ``interval`` are added
   ## in the order of their size, i.e first the ``years`` component, then the ``months``
   ## component and so on. The returned ``DateTime`` will have the same timezone as the input.
-  let time = toSeconds(toTime(dt))
+  let tzTime = toSeconds(dt.toTzTime)
   let secs = toSeconds(dt, interval)
-  return fromSeconds(time + secs).inZone(dt.timezone)
+  return initDateTime(dt.timezone.zoneInfoFromTz(fromSeconds(tzTime + secs)), dt.timezone)
 
 proc `-`*(dt: DateTime, interval: TimeInterval): DateTime =
   ## Subtract ``interval`` time from DateTime ``dt``. Components from ``interval`` are subtracted
