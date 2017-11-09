@@ -178,6 +178,151 @@ could as well pass ``logic.o``) we could be passing switches to link any other
 static C library.
 
 
+C++ invocation example
+~~~~~~~~~~~~~~~~~~~~
+
+This example shows calling a C++ compiled dll and nim source, using the
+windows platform.
+
+Create a ``twoStor.hpp`` header file with the following content (and note that
+the EXPORT macro ensures that the generated DLL file exports the StorTwo class):
+
+.. code-block:: cpp
+
+  #ifdef MAKEDLL
+  #  define EXPORT __declspec(dllexport)
+  #else
+  #  define EXPORT __declspec(dllimport)
+  #endif
+
+  class EXPORT StorTwo
+  {
+  public:
+    EXPORT StorTwo(int a, int b);
+
+    void EXPORT setVals(int a, int b);
+    void EXPORT showVals();
+
+    int x, y;
+  };
+
+  StorTwo* EXPORT newStorTwo(int a, int b);
+
+Create a ``twoStor.cpp`` file with the following content:
+
+.. code-block:: cpp
+
+  #include "storTwo.hpp"
+  #include <stdio.h>
+
+  StorTwo* EXPORT newStorTwo(int a, int b)
+  {
+    StorTwo* t = new StorTwo(a, b);
+    return t;
+  }
+
+  EXPORT StorTwo::StorTwo(int a, int b)
+  {
+    this->x = a;
+    this->y = b;
+  }
+
+  void EXPORT StorTwo::setVals(int a, int b)
+  {
+    this->x = a;
+    this->y = b;
+  }
+
+  void EXPORT StorTwo::showVals(void)
+  {
+    printf("Values: %i, %i\n", this->x, this->y);
+  }
+
+  int main(void)
+  {
+    StorTwo t(1,2);
+    t.showVals();
+    t.setVals(23, 42);
+    t.showVals();
+  }
+
+Create a ``testTwoStor.nim`` file with the following content:
+
+
+.. code-block:: cpp
+
+  const
+    # location relative to nimcache directory
+    # if header is not already in the compiler include path
+    hdr = "../storTwo.hpp"
+
+  {.passL: "storTwo.dll".}
+
+  type
+    TwoStor* {.importcpp: "StorTwo", header: hdr.} = object
+      x* {.importc: "x".}: cint
+      y* {.importc: "y".}: cint
+
+  proc constructTwoStor*(a: cint, b: cint): TwoStor {.
+              importcpp: "StorTwo", header: hdr, cdecl, constructor.}
+  proc newTwoStor*(a: cint, b: cint): ptr TwoStor {.
+              importc: "newStorTwo", header: hdr, cdecl.}
+  proc setVals*(this: ptr TwoStor; a: cint; b: cint) {.
+              importcpp: "setVals", header: hdr, cdecl.}
+  proc showVals*(this: ptr TwoStor) {.
+              importcpp: "showVals", header: hdr, cdecl.}
+
+  proc main() =
+    var
+      ts = constructTwoStor(11, 12)  # TwoStor
+      pts = newTwoStor(22,33)        # ptr TwoStor
+    pts.showVals()
+    pts.setVals(1234, 4322)
+    pts.showVals()
+    showVals(addr(ts))
+    # also access the stored values directly
+    echo "pts x,y: ",pts[].x," ",pts[].y
+    echo "ts x,y: ",ts.x," ",ts.y
+  main()
+
+Test that the ``twoStor.cpp`` file runs correctly::
+
+    c:\...> g++ -DMAKEDLL storTwo.cpp -o storTwo.exe
+    c:\...> storTwo.exe
+
+which should display to the console::
+
+    Values: 1, 2
+    Values: 23, 42
+
+Generate the dll file ``twoStor.dll`` as::
+
+    c:\...> g++ -DMAKEDLL storTwo.cpp -shared -o storTwo.dll
+
+Compile and run the Nim ``testStorTwo.nim`` as::
+
+    c:\...> nim cpp -r testStorTwo.nim
+
+which should display to the console::
+
+    Values: 22, 33
+    Values: 1234, 4322
+    Values: 11, 12
+    pts x,y: 1234 4322
+    ts x,y: 11 12
+
+
+Note: the ``testStorTwo.nim`` file contains the ``passL`` pragma to let the Nim compiler
+know it needs to link to the dll file.  An alternative is to pass ``--passL:storTwo.dll``
+via the command-line.
+Without linking to the dll, the linker will throw errors about undefined references.
+
+Note: the Nim command has the ``cpp`` directive for CompileToCpp, but the CompileToC can
+also be used (the .importcpp does not relate to the backend code generation)::
+
+    c:\...> nim c -r -f testStorTwo.nim
+
+
 JavaScript invocation example
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
