@@ -133,7 +133,7 @@ type
     months*: int      ## The number of months
     years*: int       ## The number of years
 
-  ZonedTime = object ## Represents zooned instant in time that is not associated with any calendar.
+  ZonedTime = object ## Represents a zooned instant in time that is not associated with any calendar.
     tzTime: Time
     utcOffset: int
     isDst: bool
@@ -142,17 +142,13 @@ type
                      ## The ``times`` module only supplies implementations for the systems local time and UTC.
     zoneInfoFromUtc*: proc (time: Time): ZonedTime {.nimcall, tags: [TimeEffect], raises: [], benign .}
     zoneInfoFromTz*:  proc (tzTime: Time): ZonedTime {.nimcall, tags: [TimeEffect], raises: [], benign .}
-    name*: string ## Name of the timezone. Used for checking equality.
+    name*: string ## The name of the timezone, f.ex 'Europe/Stockholm' or 'Asia/Seoul'. Used for checking equality.
+    
 
 {.deprecated: [TMonth: Month, TWeekDay: WeekDay, TTime: Time,
     TTimeInterval: TimeInterval, TTimeInfo: DateTime, TimeInfo: DateTime].}
 
 const
-
-  EuropeanWeekdayToUs: array[WeekDay, int8] = [1'i8,2'i8,3'i8,4'i8,5'i8,6'i8,0'i8]
-
-  UsWeekdayToEuropean = [dSun, dMon, dTue, dWed, dThu, dFri, dSat]
-
   secondsInMin = 60
   secondsInHour = 60*60
   secondsInDay = 60*60*24
@@ -347,16 +343,19 @@ else:
 
   proc localtime(timer: ptr CTime): StructTmPtr {. importc: "localtime", header: "<time.h>", tags: [].}
 
-  proc toTzTime(tm: StructTM): Time =
+  proc toTzTime(tm: StructTm): Time =
     let epochDay = toEpochday(tm.year.int + 1900, (tm.month + 1).Month, tm.monthday)
     result = Time(epochDay * secondsInDay)
     result.inc tm.hour * secondsInHour
     result.inc tm.minute * 60
     result.inc tm.second
 
-  proc localZoneInfoFromUtc(time: Time): ZonedTime =
+  proc getStructTm(time: Time | int64): StructTm =
     var a = CTime(time) # TODO: Overflow check? also other places
-    let tm = localtime(addr(a))[]
+    result = localtime(addr(a))[]
+
+  proc localZoneInfoFromUtc(time: Time): ZonedTime =
+    let tm = getStructTm(time)
     let tzTime = tm.toTzTime
     result.tzTime = tzTime
     result.utcOffset = (time - tzTime).int
@@ -365,28 +364,30 @@ else:
   proc localZoneInfoFromTz(tzTime: Time): ZonedTime  =
     var tzTimei64 = tzTime.int64
     let past = tzTimei64 - secondsInDay
-    var a = if past < tzTimei64: CTime(past) else: CTime(tzTime)
-    var tm = localtime(addr(a))
-    let pastOffset = tzTime - tm[].toTzTime
+    var tm = getStructTm(past)
+    let pastOffset = past - tm.toTzTime.int64
 
     let future = tzTimei64 + secondsInDay
-    a = if future > tzTimei64: CTime(future) else: CTime(tzTime)
-    tm = localtime(addr(a))
-    let futureOffset = tzTime - tm[].toTzTime
+    tm = getStructTm(future)
+    let futureOffset = future - tm.toTzTime.int64
 
     var utcOffset: int
-
     if pastOffset == futureOffset:
-        utcOffset = (tzTimei64 - pastOffset).int
+        utcOffset = pastOffset.int
     else:
-      if pastOffset < futureOffset:
+      if pastOffset > futureOffset:
         tzTimei64 -= secondsInHour
-      tzTimei64 -= pastOffset
-      a = CTime(tzTimei64)
-      utcOffset = (tzTimei64 - localtime(addr(a))[].toTzTime.int64).int
 
-    let utcTime = (tzTimei64 - utcOffset).Time
-    return localZoneInfoFromUtc(utcTime)
+      tzTimei64 += pastOffset
+      utcOffset = (tzTimei64 - getStructTm(tzTimei64).toTzTime.int64).int
+
+    # This extra roundtrip is needed to normalize any impossible datetimes
+    # as a result of offset changes (normally due to dst)
+    let utcTime = tzTime.int64 + utcOffset
+    result.tzTime = getStructTm(utcTime).toTzTime
+    result.utcOffset = (utcTime - result.tzTime.int64).int
+    tm = getStructTm(utcTime)
+    result.isDst = tm.isdst > 0
 
 proc utcZoneInfoFromUtc(time: Time): ZonedTime =
   result.tzTime = time
@@ -1215,7 +1216,7 @@ proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay =
     d = (monthday + y + (y div 4) - (y div 100) + (y div 400) + (31*m) div 12) mod 7
   # The value of d is 0 for a Sunday, 1 for a Monday, 2 for a Tuesday, etc.
   # so we must correct for the WeekDay type.
-  result = UsWeekdayToEuropean[d]
+  result = if d == 0: dSun else: WeekDay(d - 1)
 
 proc toTimeInterval*(time: Time): TimeInterval =
   ## Converts a Time to a TimeInterval.

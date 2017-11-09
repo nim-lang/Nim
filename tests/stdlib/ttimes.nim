@@ -123,6 +123,14 @@ block countLeapYears:
   doAssert countLeapYears(2004) + 1 == countLeapYears(2005)
   doAssert countLeapYears(2020) + 1 == countLeapYears(2021)
 
+block timezoneConversion:
+  var l = now()
+  let u = l.utc
+  l = u.local
+
+  doAssert l.timezone == local()
+  doAssert u.timezone == utc()
+
 template parseTest(s, f, sExpected: string, ydExpected: int) =
   let
     parsed = s.parse(f, utc())
@@ -227,9 +235,37 @@ suite "ttimes":
         putEnv("TZ", tz_fn)
         runTimezoneTests()
 
-    putEnv("TZ", orig_tz)
     test "enough timezone files tested":
       check tz_cnt > 10
+
+    test "dst handling":
+      putEnv("TZ", "Europe/Stockholm")
+      let f = "yyyy-MM-dd HH:mm zzz"
+      # # In case of an impossible time, the time is moved to after the impossible time period
+      check initDateTime(26, mMar, 2017, 02, 30, 00).format(f) == "2017-03-26 03:30 +02:00"
+      # # In case of an ambiguous time, the earlier time is choosen
+      check initDateTime(29, mOct, 2017, 02, 00, 00).format(f) == "2017-10-29 02:00 +02:00"
+      # # These are just dates on either side of the dst switch
+      check initDateTime(29, mOct, 2017, 01, 00, 00).format(f) == "2017-10-29 01:00 +02:00"
+      check initDateTime(29, mOct, 2017, 03, 01, 00).format(f) == "2017-10-29 03:01 +01:00"
+
+      check initDateTime(21, mOct, 2017, 01, 00, 00).format(f) == "2017-10-21 01:00 +02:00"
+
+    test "issue #6520":
+      putEnv("TZ", "Europe/Stockholm")
+      var local = fromSeconds(1469275200).local
+      var utc = fromSeconds(1469275200).utc
+
+      let claimedOffset = local.utcOffset
+      local.utcOffset = 0
+      check claimedOffset == utc.toTime - local.toTime
+
+    test "issue #5704":
+      putEnv("TZ", "Asia/Seoul")
+      let diff = parse("19700101-000000", "yyyyMMdd-hhmmss").toTime - parse("19000101-000000", "yyyyMMdd-hhmmss").toTime
+      check diff == 2208986872
+
+    putEnv("TZ", orig_tz)    
 
   else:
     # not on Linux or macosx: run one parseTest only
