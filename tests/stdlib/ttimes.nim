@@ -223,6 +223,8 @@ suite "ttimes":
   # Set the TZ env var for each test
   when defined(Linux) or defined(macosx):
     const tz_dir = "/usr/share/zoneinfo"
+    const f = "yyyy-MM-dd HH:mm zzz"
+    
     let orig_tz = getEnv("TZ")
     var tz_cnt = 0
     for tz_fn in walkFiles(tz_dir & "/*"):
@@ -240,7 +242,6 @@ suite "ttimes":
 
     test "dst handling":
       putEnv("TZ", "Europe/Stockholm")
-      let f = "yyyy-MM-dd HH:mm zzz"
       # # In case of an impossible time, the time is moved to after the impossible time period
       check initDateTime(26, mMar, 2017, 02, 30, 00).format(f) == "2017-03-26 03:30 +02:00"
       # # In case of an ambiguous time, the earlier time is choosen
@@ -270,7 +271,10 @@ suite "ttimes":
       let dt = parse("2017-03-25 12:00", "yyyy-MM-dd hh:mm")
       check $(dt + 1.days) == "2017-03-26T12:00:00+02:00"
 
-    putEnv("TZ", orig_tz)    
+    putEnv("TZ", orig_tz)
+
+    test "datetime before epoch":
+      check $fromSeconds(-2147483648).utc == "1901-12-13T20:45:52+00:00"
 
   else:
     # not on Linux or macosx: run one parseTest only

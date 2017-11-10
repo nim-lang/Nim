@@ -139,10 +139,11 @@ type
     months*: int      ## The number of months
     years*: int       ## The number of years
 
-  ZonedTime = object ## Represents a zooned instant in time that is not associated with any calendar.
-    adjTime: Time ## Time adjusted to a timezone.
-    utcOffset: int
-    isDst: bool
+  ZonedTime* = object ## Represents a zooned instant in time that is not associated with any calendar.
+                      ## This type is only used for implementing timezones.
+    adjTime*: Time ## Time adjusted to a timezone.
+    utcOffset*: int
+    isDst*: bool
 
   Timezone* = object ## Timezone interface for supporting ``DateTime``'s of arbritary timezones.
                      ## The ``times`` module only supplies implementations for the systems local time and UTC.
@@ -226,7 +227,8 @@ proc fromEpochday(epochday: int64): tuple[year: int, month: Month, day: Monthday
   return ((y + ord(m <= 2)).int, m.Month, d.MonthdayRange)
 
 proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
-  let epochday = zt.adjTime.int64 div secondsInDay
+  let adjTime = zt.adjTime.int64
+  let epochday = (if adjTime >= 0: adjTime else: adjTime - (secondsInDay - 1)) div secondsInDay
   var rem = zt.adjTime.int64 - epochday * secondsInDay
   let hour = rem div secondsInHour
   rem = rem - hour * secondsInHour
