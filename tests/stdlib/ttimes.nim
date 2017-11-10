@@ -276,3 +276,9 @@ suite "ttimes":
     # not on Linux or macosx: run one parseTest only
     test "parseTest":
       runTimezoneTests()
+
+  test "isLeapYear":
+    check isLeapYear(2016)
+    check (not isLeapYear(2015))
+    check isLeapYear(2000)
+    check (not isLeapYear(1900))

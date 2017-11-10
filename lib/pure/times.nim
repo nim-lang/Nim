@@ -521,15 +521,7 @@ proc `-`*(ti1, ti2: TimeInterval): TimeInterval =
 
 proc isLeapYear*(year: int): bool =
   ## Returns true if ``year`` is a leap year.
-
-  if year mod 400 == 0:
-    return true
-  elif year mod 100 == 0:
-    return false
-  elif year mod 4 == 0:
-    return true
-  else:
-    return false
+  year mod 4 == 0 and (year mod 100 != 0 or year mod 400 == 0)
 
 proc getDaysInMonth*(month: Month, year: int): int =
   ## Get the number of days in a ``month`` of a ``year``.
