@@ -91,7 +91,13 @@ type
   SecondRange* = range[0..60]
   YeardayRange* = range[0..365]
 
-  Time* = distinct int64
+  TimeImpl = int64
+
+  Time* = distinct TimeImpl ## Represents a point in time.
+                            ## This is currently a `int64` representing
+                            ## seconds since ``1970-01-01T00:00:00Z``, but don't
+                            ## rely on this knowledge because it might change
+                            ## in the future to allow for higher precision.
 
   DateTime* = object of RootObj ## Represents a time in different parts.
                                 ## Although this type can represent leap
@@ -134,14 +140,14 @@ type
     years*: int       ## The number of years
 
   ZonedTime = object ## Represents a zooned instant in time that is not associated with any calendar.
-    tzTime: Time
+    adjTime: Time ## Time adjusted to a timezone.
     utcOffset: int
     isDst: bool
 
   Timezone* = object ## Timezone interface for supporting ``DateTime``'s of arbritary timezones.
                      ## The ``times`` module only supplies implementations for the systems local time and UTC.
     zoneInfoFromUtc*: proc (time: Time): ZonedTime {.nimcall, tags: [TimeEffect], raises: [], benign .}
-    zoneInfoFromTz*:  proc (tzTime: Time): ZonedTime {.nimcall, tags: [TimeEffect], raises: [], benign .}
+    zoneInfoFromTz*:  proc (adjTime: Time): ZonedTime {.nimcall, tags: [TimeEffect], raises: [], benign .}
     name*: string ## The name of the timezone, f.ex 'Europe/Stockholm' or 'Asia/Seoul'. Used for checking equality.
     
 
@@ -156,9 +162,9 @@ const
 
 # Forward declarations
 proc utcZoneInfoFromUtc(time: Time): ZonedTime {.tags: [TimeEffect], raises: [], benign .}
-proc utcZoneInfoFromTz(tzTime: Time): ZonedTime {.tags: [TimeEffect], raises: [], benign .}
+proc utcZoneInfoFromTz(adjTime: Time): ZonedTime {.tags: [TimeEffect], raises: [], benign .}
 proc localZoneInfoFromUtc(time: Time): ZonedTime {.tags: [TimeEffect], raises: [], benign .}
-proc localZoneInfoFromTz(tzTime: Time): ZonedTime {.tags: [TimeEffect], raises: [], benign .}
+proc localZoneInfoFromTz(adjTime: Time): ZonedTime {.tags: [TimeEffect], raises: [], benign .}
 proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int): YeardayRange {.tags: [], raises: [], benign .}
 proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay {.tags: [], raises: [], benign .}
 proc format*(dt: DateTime, f: string): string
@@ -205,7 +211,7 @@ proc toEpochday(year: int, month: Month, day: MonthdayRange): int64 =
   let doe = yoe * 365 + yoe div 4 - yoe div 100 + doy
   return era * 146097 + doe - 719468
 
-proc fromEpochday(epochday: int64): tuple[year: int, month: Month, day: int] =
+proc fromEpochday(epochday: int64): tuple[year: int, month: Month, day: MonthdayRange] =
   # Based on http://howardhinnant.github.io/date_algorithms.html
   var z = epochday
   z.inc 719468
@@ -220,8 +226,8 @@ proc fromEpochday(epochday: int64): tuple[year: int, month: Month, day: int] =
   return ((y + ord(m <= 2)).int, m.Month, d.MonthdayRange)
 
 proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
-  let epochday = zt.tzTime.int64 div secondsInDay
-  var rem = zt.tzTime.int64 - epochday * secondsInDay
+  let epochday = zt.adjTime.int64 div secondsInDay
+  var rem = zt.adjTime.int64 - epochday * secondsInDay
   let hour = rem div secondsInHour
   rem = rem - hour * secondsInHour
   let minute = rem div secondsInMin
@@ -260,7 +266,7 @@ proc `==`*(zone1, zone2: Timezone): bool =
 proc `$`*(zone: Timezone): string =
   zone.name
 
-proc toTzTime(dt: DateTime): Time =
+proc toAdjTime(dt: DateTime): Time =
   let epochDay = toEpochday(dt.year, dt.month, dt.monthday)
   result = Time(epochDay * secondsInDay)
   result.inc dt.hour * secondsInHour
@@ -295,16 +301,16 @@ when defined(JS):
     proc localZoneInfoFromUtc(time: Time): ZonedTime =
       let jsDate = newDate(time.float * 1000)
       let offset = jsDate.getTimezoneOffset() * secondsInMin
-      result.tzTime = Time(time.int64 - offset)
+      result.adjTime = Time(time.int64 - offset)
       result.utcOffset = offset
       result.isDst = false
 
-    proc localZoneInfoFromTz(tzTime: Time): ZonedTime =
-      let dummyDate = newDate(tzTime.float * 1000)
+    proc localZoneInfoFromTz(adjTime: Time): ZonedTime =
+      let dummyDate = newDate(adjTime.float * 1000)
       let dateStr = $dummyDate.getFullYear() & "-" & $(dummyDate.getMonth() + 1) & "-" & $dummyDate.getDate() &
         "T" & $dummyDate.getHours() & ":" & $dummyDate.getMinutes() & ":" & $dummyDate.getSeconds()
       let jsDate = newDate(dateStr)
-      result.tzTime = tzTime
+      result.adjTime = adjTime
       result.utcOffset = jsDate.getTimezoneOffset() * secondsInMin
       result.isDst = false
 
@@ -343,7 +349,7 @@ else:
 
   proc localtime(timer: ptr CTime): StructTmPtr {. importc: "localtime", header: "<time.h>", tags: [].}
 
-  proc toTzTime(tm: StructTm): Time =
+  proc toAdjTime(tm: StructTm): Time =
     let epochDay = toEpochday(tm.year.int + 1900, (tm.month + 1).Month, tm.monthday)
     result = Time(epochDay * secondsInDay)
     result.inc tm.hour * secondsInHour
@@ -356,46 +362,46 @@ else:
 
   proc localZoneInfoFromUtc(time: Time): ZonedTime =
     let tm = getStructTm(time)
-    let tzTime = tm.toTzTime
-    result.tzTime = tzTime
-    result.utcOffset = (time - tzTime).int
+    let adjTime = tm.toAdjTime
+    result.adjTime = adjTime
+    result.utcOffset = (time - adjTime).int
     result.isDst = tm.isdst > 0
 
-  proc localZoneInfoFromTz(tzTime: Time): ZonedTime  =
-    var tzTimei64 = tzTime.int64
-    let past = tzTimei64 - secondsInDay
+  proc localZoneInfoFromTz(adjTime: Time): ZonedTime  =
+    var adjTimei64 = adjTime.int64
+    let past = adjTimei64 - secondsInDay
     var tm = getStructTm(past)
-    let pastOffset = past - tm.toTzTime.int64
+    let pastOffset = past - tm.toAdjTime.int64
 
-    let future = tzTimei64 + secondsInDay
+    let future = adjTimei64 + secondsInDay
     tm = getStructTm(future)
-    let futureOffset = future - tm.toTzTime.int64
+    let futureOffset = future - tm.toAdjTime.int64
 
     var utcOffset: int
     if pastOffset == futureOffset:
         utcOffset = pastOffset.int
     else:
       if pastOffset > futureOffset:
-        tzTimei64 -= secondsInHour
+        adjTimei64 -= secondsInHour
 
-      tzTimei64 += pastOffset
-      utcOffset = (tzTimei64 - getStructTm(tzTimei64).toTzTime.int64).int
+      adjTimei64 += pastOffset
+      utcOffset = (adjTimei64 - getStructTm(adjTimei64).toAdjTime.int64).int
 
     # This extra roundtrip is needed to normalize any impossible datetimes
     # as a result of offset changes (normally due to dst)
-    let utcTime = tzTime.int64 + utcOffset
-    result.tzTime = getStructTm(utcTime).toTzTime
-    result.utcOffset = (utcTime - result.tzTime.int64).int
+    let utcTime = adjTime.int64 + utcOffset
+    result.adjTime = getStructTm(utcTime).toAdjTime
+    result.utcOffset = (utcTime - result.adjTime.int64).int
     tm = getStructTm(utcTime)
     result.isDst = tm.isdst > 0
 
 proc utcZoneInfoFromUtc(time: Time): ZonedTime =
-  result.tzTime = time
+  result.adjTime = time
   result.utcOffset = 0
   result.isDst = false
 
-proc utcZoneInfoFromTz(tzTime: Time): ZonedTime =
-  utcZoneInfoFromUtc(tzTime) # tzTime == time since we are in UTC
+proc utcZoneInfoFromTz(adjTime: Time): ZonedTime =
+  utcZoneInfoFromUtc(adjTime) # adjTime == time since we are in UTC
 
 proc utc*(): TimeZone =
   Timezone(zoneInfoFromUtc: utcZoneInfoFromUtc, zoneInfoFromTz: utcZoneInfoFromTz, name: "Etc/UTC")
@@ -574,9 +580,9 @@ proc `+`*(dt: DateTime, interval: TimeInterval): DateTime =
   ## Adds ``interval`` time from DateTime ``dt``. Components from ``interval`` are added
   ## in the order of their size, i.e first the ``years`` component, then the ``months``
   ## component and so on. The returned ``DateTime`` will have the same timezone as the input.
-  let tzTime = toSeconds(dt.toTzTime)
+  let adjTime = toSeconds(dt.toAdjTime)
   let secs = toSeconds(dt, interval)
-  return initDateTime(dt.timezone.zoneInfoFromTz(fromSeconds(tzTime + secs)), dt.timezone)
+  return initDateTime(dt.timezone.zoneInfoFromTz(fromSeconds(adjTime + secs)), dt.timezone)
 
 proc `-`*(dt: DateTime, interval: TimeInterval): DateTime =
   ## Subtract ``interval`` time from DateTime ``dt``. Components from ``interval`` are subtracted
@@ -1160,7 +1166,7 @@ proc parse*(value, layout: string, zone: Timezone = local()): DateTime =
 
   if dt.isDst:
     # No timezone parsed - assume timezone is `zone`
-    result = initDateTime(zone.zoneInfoFromTz(dt.toTzTime), zone)
+    result = initDateTime(zone.zoneInfoFromTz(dt.toAdjTime), zone)
   else:
     # Otherwise convert to `zone`
     result = dt.toTime.inZone(zone)
@@ -1246,7 +1252,7 @@ proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
     minute:  minute,
     second:  second
   )
-  result = initDateTime(zone.zoneInfoFromTz(dt.toTzTime), zone)
+  result = initDateTime(zone.zoneInfoFromTz(dt.toAdjTime), zone)
 
 # Deprecated procs
 
