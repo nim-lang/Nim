@@ -243,7 +243,7 @@ proc write*(f: File, r: Rope) {.rtl, extern: "nro$1".} =
   ## writes a rope to a file.
   for s in leaves(r): write(f, s)
 
-proc write*(s: Stream, r: Rope) {.rtl, extern: "nro$1".} =
+proc write*(s: Stream, r: Rope) {.rtl, extern: "nroWriteStream".} =
   ## writes a rope to a stream.
   for rs in leaves(r): write(s, rs)
 

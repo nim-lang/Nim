@@ -16,6 +16,7 @@
   module.
 - The overloading rules changed slightly so that constrained generics are
   preferred over unconstrained generics. (Bug #6526)
+- Removed libuv out of the stdlib and into Nimble packages.
 - It is now possible to forward declare object types so that mutually
   recursive types can be created across module boundaries. See
   [package level objects](https://nim-lang.org/docs/manual.html#package-level-objects)
@@ -62,3 +63,14 @@ This now needs to be written as:
 .. code-block:: nim
 
   t[ti] = (if exp_negative: '-' else: '+'); inc(ti)
+
+- To make Nim even more robust the system iterators ``..`` and ``countup``
+  now only accept a single generic type ``T``. This means the following code
+  doesn't die with an "out of range" error anymore:
+
+.. code-block:: nim
+
+  var b = 5.Natural
+  var a = -5
+  for i in a..b:
+    echo i

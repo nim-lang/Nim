@@ -46,3 +46,5 @@ script:
   - tests/testament/tester --pedantic all -d:nimCoroutines
   - ./koch web
   - ./koch csource
+  - ./koch nimsuggest
+#  - nim c -r nimsuggest/tester

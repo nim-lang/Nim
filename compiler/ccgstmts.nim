@@ -165,7 +165,7 @@ proc genGotoState(p: BProc, n: PNode) =
     statesCounter = n[1].intVal
   let prefix = if n.len == 3 and n[2].kind == nkStrLit: n[2].strVal.rope
                else: rope"STATE"
-  for i in 0 .. statesCounter:
+  for i in 0i64 .. statesCounter:
     lineF(p, cpsStmts, "case $2: goto $1$2;$n", [prefix, rope(i)])
   lineF(p, cpsStmts, "}$n", [])
 
