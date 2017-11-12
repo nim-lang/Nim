@@ -94,7 +94,7 @@ type
   TimeImpl = int64
 
   Time* = distinct TimeImpl ## Represents a point in time.
-                            ## This is currently implemented as a `int64` representing
+                            ## This is currently implemented as a ``int64`` representing
                             ## seconds since ``1970-01-01T00:00:00Z``, but don't
                             ## rely on this knowledge because it might change
                             ## in the future to allow for higher precision.
@@ -146,8 +146,8 @@ type
                      ## and are only exported so that ``Timezone`` can be implemented by other modules.
     zoneInfoFromUtc*: proc (time: Time): ZonedTime {.nimcall, tags: [TimeEffect], raises: [], benign .}
     zoneInfoFromTz*:  proc (adjTime: Time): ZonedTime {.nimcall, tags: [TimeEffect], raises: [], benign .}
-    name*: string ## The name of the timezone, f.ex 'Europe/Stockholm' or 'Asia/Seoul'. Used for checking equality.
-
+    name*: string ## The name of the timezone, f.ex 'Europe/Stockholm' or 'Etc/UTC'. Used for checking equality.
+                  ## Se also: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
   ZonedTime* = object ## Represents a zooned instant in time that is not associated with any calendar.
                       ## This type is only used for implementing timezones.
     adjTime*: Time ## Time adjusted to a timezone.
@@ -199,7 +199,7 @@ proc `==`*(a, b: Time): bool {.
 
 proc toEpochday(year: int, month: Month, day: MonthdayRange): int64 =
   # Based on http://howardhinnant.github.io/date_algorithms.html
-  var (y, m, d) = (year, ord(month), day)
+  var (y, m, d) = (year, ord(month), day.int)
   if m <= 2:
     y.dec
 
@@ -269,12 +269,11 @@ proc inZone*(time: Time, zone: Timezone): DateTime {.tags: [TimeEffect], raises:
   result = initDateTime(zoneInfo, zone)
 
 proc inZone*(dt: DateTime, zone: Timezone): DateTime  {.tags: [TimeEffect], raises: [], benign.} =
-  ## Convert ``dt`` into a ``DateTime` using ``zone`` as the timezone.
+  ## Convert ``dt`` into a ``DateTime`` using ``zone`` as the timezone.
   dt.toTime.inZone(zone)
 
 proc `$`*(zone: Timezone): string =
-  ## The name of the timezone in the tz database, e.g "Europe/Stockholm", "Etc/UTC" etc.
-  ## Se also: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+  ## Returns the name of the timezone.
   zone.name
 
 proc `==`*(zone1, zone2: Timezone): bool =
@@ -412,9 +411,9 @@ else:
     # This extra roundtrip is needed to normalize any impossible datetimes
     # as a result of offset changes (normally due to dst)
     let utcTime = adjTime.int64 + utcOffset
-    result.adjTime = getStructTm(utcTime).toAdjTime
-    result.utcOffset = (utcTime - result.adjTime.int64).int
     tm = getStructTm(utcTime)
+    result.adjTime = tm.toAdjTime
+    result.utcOffset = (utcTime - result.adjTime.int64).int
     result.isDst = tm.isdst > 0
 
 proc utcZoneInfoFromUtc(time: Time): ZonedTime =
@@ -433,8 +432,8 @@ proc local*(): TimeZone =
   ## Get the ``Timezone`` implementation for the local timezone.
   ##
   ## .. code-block:: nim
-  ##  assert now().timezone == local()
-  ##  assert local().name == "LOCAL"
+  ##  doAssert now().timezone == local()
+  ##  doAssert local().name == "LOCAL"
   Timezone(zoneInfoFromUtc: localZoneInfoFromUtc, zoneInfoFromTz: localZoneInfoFromTz, name: "LOCAL")
 
 proc utc*(dt: DateTime): DateTime =
@@ -446,11 +445,11 @@ proc local*(dt: DateTime): DateTime =
   dt.inZone(local())
 
 proc utc*(t: Time): DateTime =
-  ## Shorthand for ``dt.inZone(utc())``.  
+  ## Shorthand for ``t.inZone(utc())``.  
   t.inZone(utc())
 
 proc local*(t: Time): DateTime =
-  ## Shorthand for ``dt.inZone(local())``.  
+  ## Shorthand for ``t.inZone(local())``.  
   t.inZone(local())
 
 proc getTime*(): Time {.tags: [TimeEffect], benign.}
@@ -458,11 +457,11 @@ proc getTime*(): Time {.tags: [TimeEffect], benign.}
   ## resolution.
 
 proc toUnix*(t: Time): int64 =
-  ## Convert ``t`` to a unix timestamp (seconds since 1970-01-01T00:00:00Z).
+  ## Convert ``t`` to a unix timestamp (seconds since ``1970-01-01T00:00:00Z``).
   t.int64
 
 proc fromUnix*(unix: int64): Time =
-  ## Convert a unix timestamp (seconds since 1970-01-01T00:00:00Z) to a ``Time``.
+  ## Convert a unix timestamp (seconds since ``1970-01-01T00:00:00Z``) to a ``Time``.
   Time(unix)
 
 proc now*(): DateTime {.tags: [TimeEffect], benign.} =
@@ -540,8 +539,8 @@ proc `-`*(ti1, ti2: TimeInterval): TimeInterval =
   ## Time components are compared one-by-one, see output:
   ##
   ## .. code-block:: nim
-  ##     let a = fromSeconds(1_000_000_000)
-  ##     let b = fromSeconds(1_500_000_000)
+  ##     let a = fromUnix(1_000_000_000)
+  ##     let b = fromUnix(1_500_000_000)
   ##     echo b.toTimeInterval - a.toTimeInterval
   ##     # (milliseconds: 0, seconds: -40, minutes: -6, hours: 1, days: -2, months: -2, years: 16)
   result = ti1 + (-ti2)
