@@ -94,10 +94,12 @@ type
   TimeImpl = int64
 
   Time* = distinct TimeImpl ## Represents a point in time.
-                            ## This is currently a `int64` representing
+                            ## This is currently implemented as a `int64` representing
                             ## seconds since ``1970-01-01T00:00:00Z``, but don't
                             ## rely on this knowledge because it might change
                             ## in the future to allow for higher precision.
+                            ## Use the procs ``toUnix`` and ``fromUnix`` to
+                            ## work with unix timestamps instead.
 
   DateTime* = object of RootObj ## Represents a time in different parts.
                                 ## Although this type can represent leap
@@ -122,8 +124,7 @@ type
                               ## in the range 0 to 365.
     isDst*: bool              ## Determines whether DST is in effect.
                               ## Always false for the JavaScript backend.
-    timezone*: Timezone       # FIXME: add comment
-    
+    timezone*: Timezone       ## The timezone represented as an implementation of ``Timezone``.
     utcOffset*: int           ## The offset in seconds west of UTC, including any offset due to DST.
                               ## Note that the sign of this number is the opposite
                               ## of the one in a formatted timezone string like ``+01:00``
@@ -139,18 +140,19 @@ type
     months*: int      ## The number of months
     years*: int       ## The number of years
 
+  Timezone* = object ## Timezone interface for supporting ``DateTime``'s of arbritary timezones.
+                     ## The ``times`` module only supplies implementations for the systems local time and UTC.
+                     ## The members ``zoneInfoFromUtc`` and ``zoneInfoFromTz`` should not be accessed directly
+                     ## and are only exported so that ``Timezone`` can be implemented by other modules.
+    zoneInfoFromUtc*: proc (time: Time): ZonedTime {.nimcall, tags: [TimeEffect], raises: [], benign .}
+    zoneInfoFromTz*:  proc (adjTime: Time): ZonedTime {.nimcall, tags: [TimeEffect], raises: [], benign .}
+    name*: string ## The name of the timezone, f.ex 'Europe/Stockholm' or 'Asia/Seoul'. Used for checking equality.
+
   ZonedTime* = object ## Represents a zooned instant in time that is not associated with any calendar.
                       ## This type is only used for implementing timezones.
     adjTime*: Time ## Time adjusted to a timezone.
     utcOffset*: int
     isDst*: bool
-
-  Timezone* = object ## Timezone interface for supporting ``DateTime``'s of arbritary timezones.
-                     ## The ``times`` module only supplies implementations for the systems local time and UTC.
-    zoneInfoFromUtc*: proc (time: Time): ZonedTime {.nimcall, tags: [TimeEffect], raises: [], benign .}
-    zoneInfoFromTz*:  proc (adjTime: Time): ZonedTime {.nimcall, tags: [TimeEffect], raises: [], benign .}
-    name*: string ## The name of the timezone, f.ex 'Europe/Stockholm' or 'Asia/Seoul'. Used for checking equality.
-    
 
 {.deprecated: [TMonth: Month, TWeekDay: WeekDay, TTime: Time,
     TTimeInterval: TimeInterval, TTimeInfo: DateTime, TimeInfo: DateTime].}
@@ -169,11 +171,6 @@ proc localZoneInfoFromTz(adjTime: Time): ZonedTime {.tags: [TimeEffect], raises:
 proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int): YeardayRange {.tags: [], raises: [], benign .}
 proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay {.tags: [], raises: [], benign .}
 proc format*(dt: DateTime, f: string): string
-proc toTime*(dt: DateTime): Time {.tags: [TimeEffect], raises: [], benign.}
-  ## Converts a broken-down time structure to
-  ## calendar time representation. The function ignores the specified
-  ## contents of the structure members `weekday` and `yearday` and recomputes
-  ## them from the other information in the broken-down time structure.
 
 proc `-`*(a, b: Time): int64 {.
   rtl, extern: "ntDiffTime", tags: [], raises: [], noSideEffect, benign.}
@@ -226,6 +223,20 @@ proc fromEpochday(epochday: int64): tuple[year: int, month: Month, day: Monthday
   let m = mp + (if mp < 10: 3 else: -9)
   return ((y + ord(m <= 2)).int, m.Month, d.MonthdayRange)
 
+proc toTime*(dt: DateTime): Time {.tags: [TimeEffect], raises: [], benign.} =
+  ## Converts a broken-down time structure to
+  ## calendar time representation. The function ignores the specified
+  ## contents of the structure members `weekday` and `yearday` and recomputes
+  ## them from the other information in the broken-down time structure.
+  let epochDay = toEpochday(dt.year, dt.month, dt.monthday)
+  result = Time(epochDay * secondsInDay)
+  result.inc dt.hour * secondsInHour
+  result.inc dt.minute * 60
+  result.inc dt.second
+  # The code above ignores the UTC offset of `timeInfo`,
+  # so we need to compensate for that here.
+  result.inc dt.utcOffset
+
 proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
   let adjTime = zt.adjTime.int64
   let epochday = (if adjTime >= 0: adjTime else: adjTime - (secondsInDay - 1)) div secondsInDay
@@ -253,20 +264,22 @@ proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
   )
 
 proc inZone*(time: Time, zone: Timezone): DateTime {.tags: [TimeEffect], raises: [], benign.} =
-  # FIXME: add comment
+  ## Break down ``time`` into a ``DateTime`` using ``zone`` as the timezone.
   let zoneInfo = zone.zoneInfoFromUtc(time)
   result = initDateTime(zoneInfo, zone)
 
 proc inZone*(dt: DateTime, zone: Timezone): DateTime  {.tags: [TimeEffect], raises: [], benign.} =
-  # FIXME: add comment  
+  ## Convert ``dt`` into a ``DateTime` using ``zone`` as the timezone.
   dt.toTime.inZone(zone)
 
-proc `==`*(zone1, zone2: Timezone): bool =
-  # FIXME: add comment
-  zone1.name == zone2.name
-
 proc `$`*(zone: Timezone): string =
+  ## The name of the timezone in the tz database, e.g "Europe/Stockholm", "Etc/UTC" etc.
+  ## Se also: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
   zone.name
+
+proc `==`*(zone1, zone2: Timezone): bool =
+  ## Two ``Timezone``'s are considered equal if their name is equal.
+  zone1.name == zone2.name
 
 proc toAdjTime(dt: DateTime): Time =
   let epochDay = toEpochday(dt.year, dt.month, dt.monthday)
@@ -359,7 +372,14 @@ else:
     result.inc tm.second
 
   proc getStructTm(time: Time | int64): StructTm =
-    var a = CTime(time) # TODO: Overflow check? also other places
+    let timei64 = time.int64
+    var a =
+      if timei64 < low(CTime):
+        CTime(low(CTime))
+      elif timei64 > high(CTime):
+        CTime(high(CTime))
+      else:
+        CTime(timei64)
     result = localtime(addr(a))[]
 
   proc localZoneInfoFromUtc(time: Time): ZonedTime =
@@ -406,45 +426,50 @@ proc utcZoneInfoFromTz(adjTime: Time): ZonedTime =
   utcZoneInfoFromUtc(adjTime) # adjTime == time since we are in UTC
 
 proc utc*(): TimeZone =
+  ## Get the ``Timezone`` implementation for the UTC timezone.
   Timezone(zoneInfoFromUtc: utcZoneInfoFromUtc, zoneInfoFromTz: utcZoneInfoFromTz, name: "Etc/UTC")
 
 proc local*(): TimeZone =
+  ## Get the ``Timezone`` implementation for the local timezone.
+  ##
+  ## .. code-block:: nim
+  ##  assert now().timezone == local()
+  ##  assert local().name == "LOCAL"
   Timezone(zoneInfoFromUtc: localZoneInfoFromUtc, zoneInfoFromTz: localZoneInfoFromTz, name: "LOCAL")
 
 proc utc*(dt: DateTime): DateTime =
+  ## Shorthand for ``dt.inZone(utc())``.
   dt.inZone(utc())
 
 proc local*(dt: DateTime): DateTime =
+  ## Shorthand for ``dt.inZone(local())``.
   dt.inZone(local())
 
 proc utc*(t: Time): DateTime =
+  ## Shorthand for ``dt.inZone(utc())``.  
   t.inZone(utc())
 
 proc local*(t: Time): DateTime =
+  ## Shorthand for ``dt.inZone(local())``.  
   t.inZone(local())
 
 proc getTime*(): Time {.tags: [TimeEffect], benign.}
-  ## Gets the current calendar time as a UNIX epoch value (number of seconds
-  ## elapsed since 1970) with integer precission. Use epochTime for higher
+  ## Gets the current time as a ``Time`` with second resolution. Use epochTime for higher
   ## resolution.
+
+proc toUnix*(t: Time): int64 =
+  ## Convert ``t`` to a unix timestamp (seconds since 1970-01-01T00:00:00Z).
+  t.int64
+
+proc fromUnix*(unix: int64): Time =
+  ## Convert a unix timestamp (seconds since 1970-01-01T00:00:00Z) to a ``Time``.
+  Time(unix)
 
 proc now*(): DateTime {.tags: [TimeEffect], benign.} =
   ## Get the current time as a  ``DateTime`` in the local timezone.
   ##
   ## Shorthand for ``getTime().local``.
   getTime().local
-
-proc fromSeconds*(since1970: float): Time {.tags: [], raises: [], benign.}
-  ## Takes a float which contains the number of seconds since the unix epoch and
-  ## returns a time object.
-
-proc fromSeconds*(since1970: int64): Time {.tags: [], raises: [], benign.} =
-  ## Takes an int which contains the number of seconds since the unix epoch and
-  ## returns a time object.
-  fromSeconds(float(since1970))
-
-proc toSeconds*(time: Time): float {.tags: [], raises: [], benign.}
-  ## Returns the time in seconds since the unix epoch.
 
 proc initInterval*(milliseconds, seconds, minutes, hours, days, months,
                    years: int = 0): TimeInterval =
@@ -538,19 +563,18 @@ proc getDaysInYear*(year: int): int =
   ## Get the number of days in a ``year``
   result = 365 + (if isLeapYear(year): 1 else: 0)
 
-proc toSeconds(dt: DateTime, interval: TimeInterval): float =
+proc toUnix(dt: DateTime, interval: TimeInterval): int64 =
   ## Calculates how many seconds the interval is worth by adding up
   ## all the fields.
 
   var anew = dt
   var newinterv = interval
-  result = 0
 
   newinterv.months += interval.years * 12
   var curMonth = anew.month
   if newinterv.months < 0:   # subtracting
     for mth in countDown(-1 * newinterv.months, 1):
-      result -= float(getDaysInMonth(curMonth, anew.year) * 24 * 60 * 60)
+      result -= getDaysInMonth(curMonth, anew.year) * secondsInDay
       if curMonth == mJan:
         curMonth = mDec
         anew.year.dec()
@@ -558,25 +582,25 @@ proc toSeconds(dt: DateTime, interval: TimeInterval): float =
         curMonth.dec()
   else:  # adding
     for mth in 1 .. newinterv.months:
-      result += float(getDaysInMonth(curMonth, anew.year) * 24 * 60 * 60)
+      result += getDaysInMonth(curMonth, anew.year) * secondsInDay
       if curMonth == mDec:
         curMonth = mJan
         anew.year.inc()
       else:
         curMonth.inc()
-  result += float(newinterv.days * 24 * 60 * 60)
-  result += float(newinterv.hours * 60 * 60)
-  result += float(newinterv.minutes * 60)
-  result += float(newinterv.seconds)
-  result += newinterv.milliseconds / 1000
+  result += newinterv.days * secondsInDay
+  result += newinterv.hours * secondsInHour
+  result += newinterv.minutes * secondsInMin
+  result += newinterv.seconds
+  result += newinterv.milliseconds div 1000
 
 proc `+`*(dt: DateTime, interval: TimeInterval): DateTime =
   ## Adds ``interval`` time from DateTime ``dt``. Components from ``interval`` are added
   ## in the order of their size, i.e first the ``years`` component, then the ``months``
   ## component and so on. The returned ``DateTime`` will have the same timezone as the input.
-  let adjTime = toSeconds(dt.toAdjTime)
-  let secs = toSeconds(dt, interval)
-  return initDateTime(dt.timezone.zoneInfoFromTz(fromSeconds(adjTime + secs)), dt.timezone)
+  let adjTime = toUnix(dt.toAdjTime)
+  let secs = toUnix(dt, interval)
+  return initDateTime(dt.timezone.zoneInfoFromTz(fromUnix(adjTime + secs)), dt.timezone)
 
 proc `-`*(dt: DateTime, interval: TimeInterval): DateTime =
   ## Subtract ``interval`` time from DateTime ``dt``. Components from ``interval`` are subtracted
@@ -1250,6 +1274,20 @@ proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
 
 # Deprecated procs
 
+proc fromSeconds*(since1970: float): Time {.tags: [], raises: [], benign, deprecated.} =
+  ## Takes a float which contains the number of seconds since the unix epoch and
+  ## returns a time object.
+  Time(since1970)
+
+proc fromSeconds*(since1970: int64): Time {.tags: [], raises: [], benign, deprecated.} =
+  ## Takes an int which contains the number of seconds since the unix epoch and
+  ## returns a time object.
+  Time(since1970)
+
+proc toSeconds*(time: Time): float {.tags: [], raises: [], benign, deprecated.} =
+  ## Returns the time in seconds since the unix epoch.
+  float(time)
+
 proc getLocalTime*(time: Time): DateTime {.tags: [TimeEffect], raises: [], benign, deprecated.} =
   ## Converts the calendar time `time` to broken-time representation,
   ## expressed relative to the user's specified time zone.
@@ -1325,6 +1363,9 @@ proc timeToTimeInfo*(t: Time): DateTime {.deprecated.} =
     s = daySeconds mod secondsInMin
   result = DateTime(year: y, yearday: yd, month: m, monthday: md, weekday: wd, hour: h, minute: mi, second: s)
 
+proc getDayOfWeek*(day, month, year: int): WeekDay  {.tags: [], raises: [], benign, deprecated.} =
+  getDayOfWeek(day, month.Month, year)
+
 proc getDayOfWeekJulian*(day, month, year: int): WeekDay {.deprecated.} =
   ## Returns the day of the week enum from day, month and year,
   ## according to the Julian calendar.
@@ -1355,7 +1396,29 @@ when not defined(JS):
     ##   doWork()
     ##   echo "CPU time [s] ", cpuTime() - t0
 
-when not defined(JS):
+when defined(JS):
+  proc toTime(js: JsDate): Time =
+    (js.getTime() div 1000).Time
+
+  proc getTime(): Time =
+    return newDate().toTime
+
+  proc `-` (a, b: Time): int64 =
+    a - b
+
+  var startMilsecs = getTime()
+
+  proc getStartMilsecs(): int =
+    ## get the milliseconds from the start of the program
+    return int(getTime() - startMilsecs)
+
+  proc getTimezone(): int =
+    newDate().getTimezoneOffset() * 60
+
+  proc epochTime*(): float {.tags: [TimeEffect].} =
+    newDate().getTime() / 1000
+
+else:
   type
     Clock {.importc: "clock_t".} = distinct int
 
@@ -1389,16 +1452,6 @@ when not defined(JS):
   proc getTime(): Time =
     timec(nil).Time
 
-  proc toTime(dt: DateTime): Time =
-    let epochDay = toEpochday(dt.year, dt.month, dt.monthday)
-    result = Time(epochDay * secondsInDay)
-    result.inc dt.hour * secondsInHour
-    result.inc dt.minute * 60
-    result.inc dt.second
-    # The code above ignores the UTC offset of `timeInfo`,
-    # so we need to compensate for that here.
-    result.inc dt.utcOffset
-
   const
     epochDiff = 116444736000000000'i64
     rateDiff = 10000000'i64 # 100 nsecs
@@ -1421,10 +1474,6 @@ when not defined(JS):
     else:
       return timezone
 
-  proc fromSeconds(since1970: float): Time = Time(since1970)
-
-  proc toSeconds(time: Time): float = float(time)
-
   when not defined(useNimRtl):
     proc epochTime(): float =
       when defined(posix):
@@ -1444,52 +1493,3 @@ when not defined(JS):
     proc cpuTime(): float =
       result = toFloat(int(getClock())) / toFloat(clocksPerSec)
 
-elif defined(JS):
-
-  proc toTime(js: JsDate): Time =
-    (js.getTime() div 1000).Time
-
-  proc getTime(): Time =
-    return newDate().toTime
-
-  proc toTime*(dt: DateTime): Time =
-    newDate($dt).toTime
-
-  proc `-` (a, b: Time): int64 =
-    a - b
-
-  var
-    startMilsecs = getTime()
-
-  proc getStartMilsecs(): int =
-    ## get the milliseconds from the start of the program
-    return int(getTime() - startMilsecs)
-
-  proc fromSeconds(since1970: float): Time =
-    newDate(since1970 * 1000).toTime
-
-  proc toSeconds(time: Time): float =
-    newDate(time.float * 1000).getTime() / 1000
-
-  proc getTimezone(): int =
-    newDate().getTimezoneOffset() * 60
-
-  proc epochTime*(): float {.tags: [TimeEffect].} =
-    newDate().getTime() / 1000
-
-# when isMainModule:
-#   # this is testing non-exported function
-#   var
-#     t4 = fromSeconds(876124714).utc # Mon  6 Oct 08:58:34 BST 1997
-#     t4L = fromSeconds(876124714).local
-#   assert toSeconds(t4, initInterval(seconds=0)) == 0.0
-#   assert toSeconds(t4L, initInterval(milliseconds=1)) == toSeconds(t4, initInterval(milliseconds=1))
-#   assert toSeconds(t4L, initInterval(seconds=1)) == toSeconds(t4, initInterval(seconds=1))
-#   assert toSeconds(t4L, initInterval(minutes=1)) == toSeconds(t4, initInterval(minutes=1))
-#   assert toSeconds(t4L, initInterval(hours=1)) == toSeconds(t4, initInterval(hours=1))
-#   assert toSeconds(t4L, initInterval(days=1)) == toSeconds(t4, initInterval(days=1))
-#   assert toSeconds(t4L, initInterval(months=1)) == toSeconds(t4, initInterval(months=1))
-#   assert toSeconds(t4L, initInterval(years=1)) == toSeconds(t4, initInterval(years=1))
-
-#   # Further tests are in tests/stdlib/ttime.nim
-#   # koch test c stdlib
