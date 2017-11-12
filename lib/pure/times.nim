@@ -1403,8 +1403,8 @@ when defined(JS):
   proc getTime(): Time =
     return newDate().toTime
 
-  proc `-` (a, b: Time): int64 =
-    a - b
+  proc `-`(a, b: Time): int64 =
+    a.toUnix - b.toUnix
 
   var startMilsecs = getTime()
 
