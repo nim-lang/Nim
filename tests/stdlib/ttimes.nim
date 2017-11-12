@@ -19,7 +19,7 @@ proc checkFormat(t: DateTime, format, expected: string) =
     echo "actual  : ", actual
     doAssert false
 
-let t = fromSeconds(2147483647).utc
+let t = fromUnix(2147483647).utc
 t.checkFormat("ddd dd MMM hh:mm:ss yyyy", "Tue 19 Jan 03:14:07 2038")
 t.checkFormat("ddd ddMMMhh:mm:ssyyyy", "Tue 19Jan03:14:072038")
 t.checkFormat("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
@@ -28,12 +28,12 @@ t.checkFormat("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
 
 t.checkFormat("yyyyMMddhhmmss", "20380119031407")
 
-let t2 = fromSeconds(160070789).utc # Mon 27 Jan 16:06:29 GMT 1975
+let t2 = fromUnix(160070789).utc # Mon 27 Jan 16:06:29 GMT 1975
 t2.checkFormat("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
   " ss t tt y yy yyy yyyy yyyyy z zz zzz",
   "27 27 Mon Monday 4 04 16 16 6 06 1 01 Jan January 29 29 P PM 5 75 975 1975 01975 +0 +00 +00:00")
 
-var t4 = fromSeconds(876124714).utc # Mon  6 Oct 08:58:34 BST 1997
+var t4 = fromUnix(876124714).utc # Mon  6 Oct 08:58:34 BST 1997
 t4.checkFormat("M MM MMM MMMM", "10 10 Oct October")
 
 # Interval tests
@@ -47,20 +47,20 @@ doAssert getDayOfWeek(21, mSep, 1970) == dMon
 doAssert getDayOfWeek(01, mJan, 2000) == dSat
 doAssert getDayOfWeek(01, mJan, 2021) == dFri
 
-# toSeconds tests with GM timezone
-let t4L = fromSeconds(876124714).utc
-doAssert toSeconds(toTime(t4L)) == 876124714
-doAssert toSeconds(toTime(t4L)) + t4L.utcOffset.float == toSeconds(toTime(t4))
+# toUnix tests with GM timezone
+let t4L = fromUnix(876124714).utc
+doAssert toUnix(toTime(t4L)) == 876124714
+doAssert toUnix(toTime(t4L)) + t4L.utcOffset == toUnix(toTime(t4))
 
 # adding intervals
 var
-  a1L = toSeconds(toTime(t4L + initInterval(hours = 1))) + t4L.utcOffset.float
-  a1G = toSeconds(toTime(t4)) + 60.0 * 60.0
+  a1L = toUnix(toTime(t4L + initInterval(hours = 1))) + t4L.utcOffset
+  a1G = toUnix(toTime(t4)) + 60 * 60
 doAssert a1L == a1G
 
 # subtracting intervals
-a1L = toSeconds(toTime(t4L - initInterval(hours = 1))) + t4L.utcOffset.float
-a1G = toSeconds(toTime(t4)) - (60.0 * 60.0)
+a1L = toUnix(toTime(t4L - initInterval(hours = 1))) + t4L.utcOffset
+a1G = toUnix(toTime(t4)) - (60 * 60)
 doAssert a1L == a1G
 
 # add/subtract TimeIntervals and Time/TimeInfo
@@ -98,7 +98,7 @@ doAssert seconds(60 * 60 + 65) == (hours(1) + minutes(1) + seconds(5))
 # as 'noSideEffect'.
 proc cmpTimeNoSideEffect(t1: Time, t2: Time): bool {.noSideEffect.} =
   result = t1 == t2
-doAssert cmpTimeNoSideEffect(0.fromSeconds, 0.fromSeconds)
+doAssert cmpTimeNoSideEffect(0.fromUnix, 0.fromUnix)
 # Additionally `==` generic for seq[T] has explicit 'noSideEffect' pragma
 # so we can check above condition by comparing seq[Time] sequences
 let seqA: seq[Time] = @[]
@@ -214,8 +214,8 @@ template runTimezoneTests() =
     let
       parsedJan = parse("2016-01-05 04:00:00+01:00", "yyyy-MM-dd HH:mm:sszzz")
       parsedJul = parse("2016-07-01 04:00:00+01:00", "yyyy-MM-dd HH:mm:sszzz")
-    doAssert toTime(parsedJan) == fromSeconds(1451962800)
-    doAssert toTime(parsedJul) == fromSeconds(1467342000)
+    doAssert toTime(parsedJan) == fromUnix(1451962800)
+    doAssert toTime(parsedJul) == fromUnix(1467342000)
 
 suite "ttimes":
 
@@ -242,20 +242,22 @@ suite "ttimes":
 
     test "dst handling":
       putEnv("TZ", "Europe/Stockholm")
-      # # In case of an impossible time, the time is moved to after the impossible time period
+      # In case of an impossible time, the time is moved to after the impossible time period
       check initDateTime(26, mMar, 2017, 02, 30, 00).format(f) == "2017-03-26 03:30 +02:00"
-      # # In case of an ambiguous time, the earlier time is choosen
+      # In case of an ambiguous time, the earlier time is choosen
       check initDateTime(29, mOct, 2017, 02, 00, 00).format(f) == "2017-10-29 02:00 +02:00"
-      # # These are just dates on either side of the dst switch
+      # These are just dates on either side of the dst switch
       check initDateTime(29, mOct, 2017, 01, 00, 00).format(f) == "2017-10-29 01:00 +02:00"
+      check initDateTime(29, mOct, 2017, 01, 00, 00).isDst
       check initDateTime(29, mOct, 2017, 03, 01, 00).format(f) == "2017-10-29 03:01 +01:00"
-
+      check (not initDateTime(29, mOct, 2017, 03, 01, 00).isDst)
+      
       check initDateTime(21, mOct, 2017, 01, 00, 00).format(f) == "2017-10-21 01:00 +02:00"
 
     test "issue #6520":
       putEnv("TZ", "Europe/Stockholm")
-      var local = fromSeconds(1469275200).local
-      var utc = fromSeconds(1469275200).utc
+      var local = fromUnix(1469275200).local
+      var utc = fromUnix(1469275200).utc
 
       let claimedOffset = local.utcOffset
       local.utcOffset = 0
@@ -274,7 +276,7 @@ suite "ttimes":
     putEnv("TZ", orig_tz)
 
     test "datetime before epoch":
-      check $fromSeconds(-2147483648).utc == "1901-12-13T20:45:52+00:00"
+      check $fromUnix(-2147483648).utc == "1901-12-13T20:45:52+00:00"
 
   else:
     # not on Linux or macosx: run one parseTest only

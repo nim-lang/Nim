@@ -8,9 +8,32 @@ import times
 # Tue 19 Jan 03:14:07 GMT 2038
 
 block yeardayTest:
-  doAssert fromSeconds(2147483647).utc.yearday == 18
+  doAssert fromUnix(2147483647).utc.yearday == 18
 
 block localTime:
   var local = now()
   let utc = local.utc
   doAssert local.toTime.toSeconds == utc.toTime.toSeconds
+
+let a = fromUnix(1_000_000_000)
+let b = fromUnix(1_500_000_000)
+discard a - b
+
+# Because we can't change the timezone JS use a simple static timezone for testing.
+
+proc staticZoneInfoFromUtc(time: Time): ZonedTime =
+  result.utcOffset = -7200
+  result.isDst = false
+  result.adjTime = (time.toSeconds + 7200).Time
+
+proc staticZoneInfoFromTz(adjTime: Time): ZonedTIme =
+  result.utcOffset = -7200
+  result.isDst = false
+  result.adjTime = adjTime
+
+let utcPlus2 = Timezone(zoneInfoFromUtc: staticZoneInfoFromUtc, zoneInfoFromTz: staticZoneInfoFromTz, name: "")
+
+let dt = initDateTime(01, mJan, 2017, 12, 00, 00, utcPlus2)
+doAssert $dt == "2017-01-01T12:00:00+02:00"
+doAssert $dt.utc == "2017-01-01T10:00:00+00:00"
+doAssert $dt.utc.inZone(utcPlus2) == $dt
