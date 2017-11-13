@@ -374,7 +374,7 @@ when defined(endb):
   var
     dbgAborting: bool # whether the debugger wants to abort
 
-when not defined(noSignalHandler):
+when not defined(noSignalHandler) and not defined(useNimRtl):
   proc signalHandler(sign: cint) {.exportc: "signalHandler", noconv.} =
     template processSignal(s, action: untyped) {.dirty.} =
       if s == SIGINT: action("SIGINT: Interrupted by Ctrl-C.\n")
