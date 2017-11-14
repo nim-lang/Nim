@@ -192,13 +192,13 @@ else:
     x <% rcIncrement
   template `++`(x: untyped) = inc(x, rcIncrement)
 
-proc incRef(c: PCell) {.inline.} =
+proc incRef(c: PCell) {.rtl, inl.} =
   gcAssert(isAllocatedPtr(gch.region, c), "incRef: interiorPtr")
   c.refcount = c.refcount +% rcIncrement
   # and not colorMask
   #writeCell("incRef", c)
 
-proc nimGCref(p: pointer) {.compilerProc.} =
+proc nimGCref(p: pointer) {.compilerRtl.} =
   # we keep it from being collected by pretending it's not even allocated:
   add(gch.additionalRoots, usrToCell(p))
   incRef(usrToCell(p))
@@ -218,13 +218,13 @@ proc rtlAddZCT(c: PCell) {.rtl, inl.} =
   when hasThreadSupport and hasSharedHeap:
     releaseSys(HeapLock)
 
-proc decRef(c: PCell) {.inline.} =
+proc decRef(c: PCell) {.rtl, inl.} =
   gcAssert(isAllocatedPtr(gch.region, c), "decRef: interiorPtr")
   gcAssert(c.refcount >=% rcIncrement, "decRef")
   if --c.refcount:
     rtlAddZCT(c)
 
-proc nimGCunref(p: pointer) {.compilerProc.} =
+proc nimGCunref(p: pointer) {.compilerRtl.} =
   let cell = usrToCell(p)
   var L = gch.additionalRoots.len-1
   var i = L
@@ -251,7 +251,7 @@ proc GC_addCycleRoot*[T](p: ref T) {.inline.} =
   ## purposes and need to break cycles manually.
   rtlAddCycleRoot(usrToCell(cast[pointer](p)))
 
-proc nimGCunrefNoCycle(p: pointer) {.compilerProc, inline.} =
+proc nimGCunrefNoCycle(p: pointer) {.compilerRtl, inl.} =
   sysAssert(allocInv(gch.region), "begin nimGCunrefNoCycle")
   var c = usrToCell(p)
   gcAssert(isAllocatedPtr(gch.region, c), "nimGCunrefNoCycle: isAllocatedPtr")
@@ -263,7 +263,7 @@ proc nimGCunrefNoCycle(p: pointer) {.compilerProc, inline.} =
 proc nimGCunrefRC1(p: pointer) {.compilerProc, inline.} =
   decRef(usrToCell(p))
 
-proc asgnRef(dest: PPointer, src: pointer) {.compilerProc, inline.} =
+proc asgnRef(dest: PPointer, src: pointer) {.compilerRtl, inl.} =
   # the code generator calls this proc!
   gcAssert(not isOnStack(dest), "asgnRef")
   # BUGFIX: first incRef then decRef!
@@ -283,7 +283,7 @@ proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerProc, inline.} =
       rtlAddZCT(c)
   dest[] = src
 
-proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerProc.} =
+proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerRtl.} =
   # unsureAsgnRef updates the reference counters only if dest is not on the
   # stack. It is used by the code generator if it cannot decide wether a
   # reference is in the stack or not (this can happen for var parameters).
@@ -442,7 +442,7 @@ proc addNewObjToZCT(res: PCell, gch: var GcHeap) {.inline.} =
     add(gch.zct, res)
 
 {.push stackTrace: off, profiler:off.}
-proc gcInvariant*() =
+proc gcInvariant*() {.rtl.} =
   sysAssert(allocInv(gch.region), "injected")
   when declared(markForDebug):
     markForDebug(gch)
@@ -632,7 +632,7 @@ when useBackupGc:
         if c notin gch.marked: freeCyclicCell(gch, c)
 
 when useMarkForDebug or useBackupGc:
-  proc markS(gch: var GcHeap, c: PCell) =
+  proc markS(gch: var GcHeap, c: PCell) {.rtl.} =
     incl(gch.marked, c)
     gcAssert gch.tempStack.len == 0, "stack not empty!"
     forAllChildren(c, waMarkPrecise)
@@ -661,7 +661,7 @@ when logGC:
     cycleCheckA[cycleCheckALen] = c
     inc cycleCheckALen
 
-  proc debugGraph(s: PCell) =
+  proc debugGraph(s: PCell) {.rtl.} =
     if alreadySeen(s):
       writeCell("child cell (already seen) ", s)
     else:
@@ -818,7 +818,7 @@ proc unmarkStackAndRegisters(gch: var GcHeap) =
     #sysAssert c.typ != nil, "unmarkStackAndRegisters 2"
   gch.decStack.len = 0
 
-proc collectCTBody(gch: var GcHeap) =
+proc collectCTBody(gch: var GcHeap) {.rtl.} =
   when withRealTime:
     let t0 = getticks()
   sysAssert(allocInv(gch.region), "collectCT: begin")
@@ -870,7 +870,7 @@ when withRealTime:
   proc toNano(x: int): Nanos {.inline.} =
     result = x * 1000
 
-  proc GC_setMaxPause*(MaxPauseInUs: int) =
+  proc GC_setMaxPause*(MaxPauseInUs: int) {.rtl.} =
     gch.maxPause = MaxPauseInUs.toNano
 
   proc GC_step(gch: var GcHeap, us: int, strongAdvice: bool) =
@@ -882,7 +882,7 @@ when withRealTime:
       collectCTBody(gch)
     release(gch)
 
-  proc GC_step*(us: int, strongAdvice = false, stackSize = -1) {.noinline.} =
+  proc GC_step*(us: int, strongAdvice = false, stackSize = -1) {.rtl, noinline.} =
     if stackSize >= 0:
       var stackTop {.volatile.}: pointer
       gch.getActiveStack().pos = addr(stackTop)

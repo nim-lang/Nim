@@ -12,7 +12,7 @@ type
     data*: pointer
     owner: ptr GcHeap
 
-proc protect*(x: pointer): ForeignCell =
+proc protect*(x: pointer): ForeignCell {.rtl.} =
   nimGCref(x)
   result.data = x
   result.owner = addr(gch)
@@ -26,7 +26,7 @@ when defined(nimTypeNames):
       it = it.nextType
 
   when defined(nimGcRefLeak):
-    proc oomhandler() =
+    proc oomhandler() {.rtl.} =
       c_fprintf(stdout, "[Heap] ROOTS: #%ld\n", gch.additionalRoots.len)
       writeLeaks()
 
@@ -49,7 +49,7 @@ template incTypeSize(typ, size) =
     inc typ.instances
     inc typ.sizes, size+sizeof(Cell)
 
-proc dispose*(x: ForeignCell) =
+proc dispose*(x: ForeignCell) {.rtl.} =
   when hasThreadSupport:
     # if we own it we can free it directly:
     if x.owner == addr(gch):
@@ -59,7 +59,7 @@ proc dispose*(x: ForeignCell) =
   else:
     nimGCunref(x.data)
 
-proc isNotForeign*(x: ForeignCell): bool =
+proc isNotForeign*(x: ForeignCell): bool {.rtl.} =
   ## returns true if 'x' belongs to the calling thread.
   ## No deep copy has to be performed then.
   x.owner == addr(gch)
@@ -94,10 +94,10 @@ when nimCoroutines:
     stack.next.prev = stack.prev
     dealloc(stack)
 
-  proc remove(stack: ptr GcStack) =
+  proc remove(stack: ptr GcStack) {.rtl.} =
     gch.stack.remove(stack)
 
-  proc find(first: var GcStack, bottom: pointer): ptr GcStack =
+  proc find(first: var GcStack, bottom: pointer): ptr GcStack {.rtl.} =
     ## Find stack struct based on bottom pointer. If `bottom` is nil then main
     ## thread stack is is returned.
     if bottom == nil:
@@ -130,7 +130,7 @@ proc stackSize(stack: ptr GcStack): int {.noinline.} =
   else:
     result = 0
 
-proc stackSize(): int {.noinline.} =
+proc stackSize(): int {.rtl, noinline.} =
   for stack in gch.stack.items():
     result = result + stack.stackSize()
 
@@ -145,7 +145,7 @@ when nimCoroutines:
   proc getActiveStack(gch: var GcHeap): ptr GcStack =
     return gch.activeStack
 
-  proc isActiveStack(stack: ptr GcStack): bool =
+  proc isActiveStack(stack: ptr GcStack): bool {.rtl.} =
     return gch.activeStack == stack
 else:
   # Stack positions do not need to be tracked if coroutines are not used.
@@ -171,7 +171,7 @@ when declared(threadType):
       initGC()
       threadType = ThreadType.ForeignThread
 
-  proc tearDownForeignThreadGc*() {.gcsafe.} =
+  proc tearDownForeignThreadGc*() {.rtl, gcsafe.} =
     ## Call this to tear down the GC, previously initialized by ``setupForeignThreadGc``.
     ## If GC has not been previously initialized, or has already been torn down, the
     ## call does nothing.
@@ -205,7 +205,7 @@ else:
   const stackIncreases = false
 
 {.push stack_trace: off.}
-when nimCoroutines:
+when nimCoroutines and not defined(useNimRtl):
   proc GC_addStack(bottom: pointer) {.cdecl, exportc.} =
     # c_fprintf(stdout, "GC_addStack: %p;\n", bottom)
     var stack = gch.stack.append()
@@ -352,7 +352,7 @@ else:
 # end of non-portable code
 # ----------------------------------------------------------------------------
 
-proc prepareDealloc(cell: PCell) =
+proc prepareDealloc(cell: PCell) {.rtl.} =
   when declared(useMarkForDebug):
     when useMarkForDebug:
       gcAssert(cell notin gch.marked, "Cell still alive!")
@@ -368,7 +368,7 @@ proc prepareDealloc(cell: PCell) =
     dec(gch.recGcLock)
   decTypeSize(cell, t)
 
-proc deallocHeap*(runFinalizers = true; allowGcAfterwards = true) =
+proc deallocHeap*(runFinalizers = true; allowGcAfterwards = true) {.rtl.} =
   ## Frees the thread local heap. Runs every finalizer if ``runFinalizers```
   ## is true. If ``allowGcAfterwards`` is true, a minimal amount of allocation
   ## happens to ensure the GC can continue to work after the call
