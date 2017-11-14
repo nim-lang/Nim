@@ -144,8 +144,8 @@ type
                      ## The ``times`` module only supplies implementations for the systems local time and UTC.
                      ## The members ``zoneInfoFromUtc`` and ``zoneInfoFromTz`` should not be accessed directly
                      ## and are only exported so that ``Timezone`` can be implemented by other modules.
-    zoneInfoFromUtc*: proc (time: Time): ZonedTime {.nimcall, tags: [TimeEffect], raises: [], benign .}
-    zoneInfoFromTz*:  proc (adjTime: Time): ZonedTime {.nimcall, tags: [TimeEffect], raises: [], benign .}
+    zoneInfoFromUtc*: proc (time: Time): ZonedTime {.nimcall, tags: [], raises: [], benign .}
+    zoneInfoFromTz*:  proc (adjTime: Time): ZonedTime {.nimcall, tags: [], raises: [], benign .}
     name*: string ## The name of the timezone, f.ex 'Europe/Stockholm' or 'Etc/UTC'. Used for checking equality.
                   ## Se also: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
   ZonedTime* = object ## Represents a zooned instant in time that is not associated with any calendar.
@@ -164,16 +164,17 @@ const
   minutesInHour = 60
 
 # Forward declarations
-proc utcZoneInfoFromUtc(time: Time): ZonedTime {.tags: [TimeEffect], raises: [], benign .}
-proc utcZoneInfoFromTz(adjTime: Time): ZonedTime {.tags: [TimeEffect], raises: [], benign .}
-proc localZoneInfoFromUtc(time: Time): ZonedTime {.tags: [TimeEffect], raises: [], benign .}
-proc localZoneInfoFromTz(adjTime: Time): ZonedTime {.tags: [TimeEffect], raises: [], benign .}
+proc utcZoneInfoFromUtc(time: Time): ZonedTime {.tags: [], raises: [], benign .}
+proc utcZoneInfoFromTz(adjTime: Time): ZonedTime {.tags: [], raises: [], benign .}
+proc localZoneInfoFromUtc(time: Time): ZonedTime {.tags: [], raises: [], benign .}
+proc localZoneInfoFromTz(adjTime: Time): ZonedTime {.tags: [], raises: [], benign .}
 proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int): YeardayRange {.tags: [], raises: [], benign .}
 proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay {.tags: [], raises: [], benign .}
 proc format*(dt: DateTime, f: string): string
+proc toUnix*(t: Time): int64 {.benign, tags: [], raises: [], noSideEffect.}
 
 proc `-`*(a, b: Time): int64 {.
-  rtl, extern: "ntDiffTime", tags: [], raises: [], noSideEffect, benign.}
+  rtl, extern: "ntDiffTime", tags: [], raises: [], noSideEffect, benign.} =
   ## Computes the difference of two calendar times. Result is in seconds.
   ##
   ## .. code-block:: nim
@@ -181,6 +182,7 @@ proc `-`*(a, b: Time): int64 {.
   ##     let b = fromSeconds(1_500_000_000)
   ##     echo initInterval(seconds=int(b - a))
   ##     # (milliseconds: 0, seconds: 20, minutes: 53, hours: 0, days: 5787, months: 0, years: 0)
+  a.toUnix - b.toUnix
 
 proc `<`*(a, b: Time): bool {.
   rtl, extern: "ntLtTime", tags: [], raises: [], noSideEffect.} =
@@ -223,7 +225,7 @@ proc fromEpochday(epochday: int64): tuple[year: int, month: Month, day: Monthday
   let m = mp + (if mp < 10: 3 else: -9)
   return ((y + ord(m <= 2)).int, m.Month, d.MonthdayRange)
 
-proc toTime*(dt: DateTime): Time {.tags: [TimeEffect], raises: [], benign.} =
+proc toTime*(dt: DateTime): Time {.tags: [], raises: [], benign.} =
   ## Converts a broken-down time structure to
   ## calendar time representation. The function ignores the specified
   ## contents of the structure members `weekday` and `yearday` and recomputes
@@ -263,12 +265,12 @@ proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
     utcOffset: zt.utcOffset
   )
 
-proc inZone*(time: Time, zone: Timezone): DateTime {.tags: [TimeEffect], raises: [], benign.} =
+proc inZone*(time: Time, zone: Timezone): DateTime {.tags: [], raises: [], benign.} =
   ## Break down ``time`` into a ``DateTime`` using ``zone`` as the timezone.
   let zoneInfo = zone.zoneInfoFromUtc(time)
   result = initDateTime(zoneInfo, zone)
 
-proc inZone*(dt: DateTime, zone: Timezone): DateTime  {.tags: [TimeEffect], raises: [], benign.} =
+proc inZone*(dt: DateTime, zone: Timezone): DateTime  {.tags: [], raises: [], benign.} =
   ## Convert ``dt`` into a ``DateTime`` using ``zone`` as the timezone.
   dt.toTime.inZone(zone)
 
@@ -456,11 +458,11 @@ proc getTime*(): Time {.tags: [TimeEffect], benign.}
   ## Gets the current time as a ``Time`` with second resolution. Use epochTime for higher
   ## resolution.
 
-proc toUnix*(t: Time): int64 =
+proc toUnix*(t: Time): int64 {.benign, tags: [], raises: [], noSideEffect.} =
   ## Convert ``t`` to a unix timestamp (seconds since ``1970-01-01T00:00:00Z``).
   t.int64
 
-proc fromUnix*(unix: int64): Time =
+proc fromUnix*(unix: int64): Time {.benign, tags: [], raises: [], noSideEffect.} =
   ## Convert a unix timestamp (seconds since ``1970-01-01T00:00:00Z``) to a ``Time``.
   Time(unix)
 
@@ -817,7 +819,7 @@ proc formatToken(dt: DateTime, token: string, buf: var string) =
     raise newException(ValueError, "Invalid format string: " & token)
 
 
-proc format*(dt: DateTime, f: string): string {.tags: [TimeEffect].}=
+proc format*(dt: DateTime, f: string): string {.tags: [].}=
   ## This procedure formats `dt` as specified by `f`. The following format
   ## specifiers are available:
   ##
@@ -892,7 +894,7 @@ proc `$`*(dt: DateTime): string {.tags: [], raises: [], benign.} =
     result = format(dt, "yyyy-MM-dd'T'HH:mm:sszzz") # todo: optimize this
   except ValueError: assert false # cannot happen because format string is valid
 
-proc `$`*(time: Time): string {.tags: [TimeEffect], raises: [], benign.} =
+proc `$`*(time: Time): string {.tags: [], raises: [], benign.} =
   ## converts a `Time` value to a string representation. It will use the local
   ## time zone and use the format ``yyyy-MM-dd'T'HH-mm-sszzz``.
   $time.local
@@ -1287,12 +1289,12 @@ proc toSeconds*(time: Time): float {.tags: [], raises: [], benign, deprecated.} 
   ## Returns the time in seconds since the unix epoch.
   float(time)
 
-proc getLocalTime*(time: Time): DateTime {.tags: [TimeEffect], raises: [], benign, deprecated.} =
+proc getLocalTime*(time: Time): DateTime {.tags: [], raises: [], benign, deprecated.} =
   ## Converts the calendar time `time` to broken-time representation,
   ## expressed relative to the user's specified time zone.
   time.local
 
-proc getGMTime*(time: Time): DateTime {.tags: [TimeEffect], raises: [], benign, deprecated.} =
+proc getGMTime*(time: Time): DateTime {.tags: [], raises: [], benign, deprecated.} =
   ## Converts the calendar time `time` to broken-down time representation,
   ## expressed in Coordinated Universal Time (UTC).
   time.utc
@@ -1300,7 +1302,7 @@ proc getGMTime*(time: Time): DateTime {.tags: [TimeEffect], raises: [], benign, 
 proc getTimezone*(): int {.tags: [TimeEffect], raises: [], benign, deprecated.}
   ## returns the offset of the local (non-DST) timezone in seconds west of UTC.
 
-proc timeInfoToTime*(dt: DateTime): Time {.tags: [TimeEffect], benign, deprecated.} =
+proc timeInfoToTime*(dt: DateTime): Time {.tags: [], benign, deprecated.} =
   ## Converts a broken-down time structure to
   ## calendar time representation. The function ignores the specified
   ## contents of the structure members `weekday` and `yearday` and recomputes
@@ -1402,9 +1404,6 @@ when defined(JS):
   proc getTime(): Time =
     return newDate().toTime
 
-  proc `-`(a, b: Time): int64 =
-    a.toUnix - b.toUnix
-
   var startMilsecs = getTime()
 
   proc getStartMilsecs(): int =
@@ -1425,15 +1424,9 @@ else:
     importc: "time", header: "<time.h>", tags: [].}
 
   proc getClock(): Clock {.importc: "clock", header: "<time.h>", tags: [TimeEffect].}
-  proc difftime(a, b: CTime): float {.importc: "difftime", header: "<time.h>",
-    tags: [].}
 
   var
     clocksPerSec {.importc: "CLOCKS_PER_SEC", nodecl.}: int
-
-  when not defined(useNimRtl):
-    proc `-` (a, b: Time): int64 =
-      return toBiggestInt(difftime(a.CTime, b.CTime))
 
   proc getStartMilsecs(): int =
     #echo "clocks per sec: ", clocksPerSec, "clock: ", int(getClock())
