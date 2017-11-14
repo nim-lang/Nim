@@ -684,8 +684,8 @@ proc isInt*(n: JsonNode): bool =
   if n.isNil or n.kind != JInt: return false
   else: return true
 
-proc isFloat*(n: JsonNode): bool =
-  ## Checks if `n` is a `JFloat JsonNode`.
+proc isNumber*(n: JsonNode): bool =
+  ## Checks if `n` is either `JInt` or `JFloat JsonNode`.
   if n.isNil or n.kind notin {JFloat, JInt}: return false
   else: return true
 
