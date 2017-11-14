@@ -74,3 +74,7 @@ This now needs to be written as:
   var a = -5
   for i in a..b:
     echo i
+
+- ``formatFloat``/``formatBiggestFloat`` now support formatting floats with zero
+  precision digits. The previous ``precision = 0`` behavior (default formatting)
+  is now available via ``precision = -1``.
