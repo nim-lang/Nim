@@ -7,8 +7,9 @@
 #    distribution, for details about the copyright.
 #
 
-## Plugin support for the Nim compiler. Right now they
-## need to be build with the compiler, no DLL support.
+## Plugin support for the Nim compiler. Right now plugins
+## need to be built with the compiler only: plugins using 
+## DLLs or the FFI will not work.
 
 import ast, semdata, idents
 
