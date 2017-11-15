@@ -450,6 +450,8 @@ proc main() =
   var optPrintResults = false
   var optFailing = false
 
+  var targetsStr = ""
+
   var p = initOptParser()
   p.next()
   while p.kind == cmdLongoption:
@@ -457,7 +459,9 @@ proc main() =
     of "print", "verbose": optPrintResults = true
     of "failing": optFailing = true
     of "pedantic": discard "now always enabled"
-    of "targets": targets = parseTargets(p.val.string)
+    of "targets":
+      targetsStr = p.val.string
+      targets = parseTargets(targetsStr)
     of "nim": compilerPrefix = p.val.string
     of "testrunid": backend.thisTestRunId = p.val.string
     else: quit Usage
@@ -471,7 +475,9 @@ proc main() =
   case action
   of "all":
     let testsDir = "tests" & DirSep
-    let myself = quoteShell(findExe("tests" / "testament" / "tester"))
+    var myself = quoteShell(findExe("tests" / "testament" / "tester"))
+    if targetsStr.len > 0:
+      myself &= " '--targets:" & targetsStr & "'"
     var cmds: seq[string] = @[]
     let rest = if p.cmdLineRest.string.len > 0: " " & p.cmdLineRest.string else: ""
     for kind, dir in walkDir(testsDir):

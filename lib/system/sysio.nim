@@ -192,7 +192,7 @@ proc write(f: File, r: float32) =
 proc write(f: File, r: BiggestFloat) =
   if c_fprintf(f, "%g", r) < 0: checkErr(f)
 
-proc write(f: File, c: char) = discard c_putc(ord(c), f)
+proc write(f: File, c: char) = discard c_putc(cint(c), f)
 proc write(f: File, a: varargs[string, `$`]) =
   for x in items(a): write(f, x)
 

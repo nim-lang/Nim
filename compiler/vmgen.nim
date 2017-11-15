@@ -1773,8 +1773,8 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
   of nkAddr, nkHiddenAddr: genAddrDeref(c, n, dest, opcAddrNode, flags)
   of nkIfStmt, nkIfExpr: genIf(c, n, dest)
   of nkWhenStmt:
-      # This is "when nimvm" node. Chose the first branch.
-      gen(c, n.sons[0].sons[1], dest)
+    # This is "when nimvm" node. Chose the first branch.
+    gen(c, n.sons[0].sons[1], dest)
   of nkCaseStmt: genCase(c, n, dest)
   of nkWhileStmt:
     unused(n, dest)
@@ -1810,7 +1810,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
   of nkVarSection, nkLetSection:
     unused(n, dest)
     genVarSection(c, n)
-  of declarativeDefs:
+  of declarativeDefs, nkMacroDef:
     unused(n, dest)
   of nkLambdaKinds:
     #let s = n.sons[namePos].sym

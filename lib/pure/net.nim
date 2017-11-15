@@ -58,7 +58,7 @@
 ## You can then begin accepting connections using the ``accept`` procedure.
 ##
 ## .. code-block:: Nim
-##   var client = newSocket()
+##   var client = new Socket
 ##   var address = ""
 ##   while true:
 ##     socket.acceptAddr(client, address)

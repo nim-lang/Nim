@@ -138,7 +138,6 @@ determined). Assignments from the base type to one of its subrange types
 A subrange type has the same size as its base type (``int`` in the example).
 
 
-
 Pre-defined floating point types
 --------------------------------
 

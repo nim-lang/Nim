@@ -66,7 +66,7 @@ type
     wWrite, wGensym, wInject, wDirty, wInheritable, wThreadVar, wEmit,
     wAsmNoStackFrame,
     wImplicitStatic, wGlobal, wCodegenDecl, wUnchecked, wGuard, wLocks,
-    wPartial, wExplain,
+    wPartial, wExplain, wLiftLocals,
 
     wAuto, wBool, wCatch, wChar, wClass,
     wConst_cast, wDefault, wDelete, wDouble, wDynamic_cast,
@@ -152,7 +152,7 @@ const
     "computedgoto", "injectstmt", "experimental",
     "write", "gensym", "inject", "dirty", "inheritable", "threadvar", "emit",
     "asmnostackframe", "implicitstatic", "global", "codegendecl", "unchecked",
-    "guard", "locks", "partial", "explain",
+    "guard", "locks", "partial", "explain", "liftlocals",
 
     "auto", "bool", "catch", "char", "class",
     "const_cast", "default", "delete", "double",

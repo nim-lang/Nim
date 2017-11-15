@@ -23,5 +23,5 @@ chk;;skUnknown;;;;Error;;$file;;14;;0;;"complex statement requires indentation";
 chk;;skUnknown;;;;Error;;$file;;12;;0;;"implementation of \'foo\' expected";;0
 chk;;skUnknown;;;;Error;;$file;;17;;0;;"invalid indentation";;0
 chk;;skUnknown;;;;Hint;;$file;;12;;9;;"\'foo\' is declared but not used [XDeclaredButNotUsed]";;0
-chk;;skUnknown;;;;Hint;;$file;;14;;5;;"\'tchk1.main()\' is declared but not used [XDeclaredButNotUsed]";;0
+chk;;skUnknown;;;;Hint;;$file;;14;;5;;"\'tchk1.main()[declared in tchk1.nim(14, 5)]\' is declared but not used [XDeclaredButNotUsed]";;0
 """

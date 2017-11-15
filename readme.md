@@ -127,6 +127,7 @@ However, if you are short on time, you can just run the tests specific to your
 changes by only running the corresponding categories of tests. Travis CI verifies
 that all tests pass before allowing the pull request to be accepted, so only
 running specific tests should be harmless.
+Integration tests should go in ``tests/untestable``.
 
 If you're looking for ways to contribute, please look at our [issue tracker][nim-issues].
 There are always plenty of issues labelled [``Easy``][nim-issues-easy]; these should
