@@ -13,6 +13,8 @@
 
 include "system/inclrtl"
 
+import streams
+
 type
   RuneImpl = int32 # underlying type of Rune
   Rune* = distinct RuneImpl   ## type that can hold any Unicode character
@@ -1602,6 +1604,24 @@ iterator runes*(s: string): Rune =
     fastRuneAt(s, i, result, true)
     yield result
 
+iterator runes*(s: Stream): Rune =
+  ## Iterates over any unicode character of
+  ## the stream ``s`` returning runes. Raises `EIO`
+  ## if an error occurred.
+  var buff = newString(4)
+  var rune: Rune
+  var n = 0
+  while true:
+    let l = peekData(s, addr(buff[0]), buff.len)
+    if l == 0:
+      break
+    if l != buff.len:
+      buff.setLen(l)
+    n = 0
+    fastRuneAt(buff, n, rune, true)
+    discard readData(s, addr(buff[0]), n)
+    yield rune
+
 iterator utf8*(s: string): string =
   ## Iterates over any unicode character of the string ``s`` returning utf8 values
   var o = 0
@@ -1844,3 +1864,20 @@ when isMainModule:
   doAssert(runeSubStr(s, -100, 100) ==  "Hänsel  ««: 10,00€")
   doAssert(runeSubStr(s, 0, -100) == "")
   doAssert(runeSubStr(s, 100, -100) == "")
+
+  var strstream = newStringStream("aΪⒶ弢")
+  var srs: seq[Rune] = @[]
+  for r in runes(strstream):
+    srs.add(r)
+  doAssert(srs == @[
+    Rune(0x0061), Rune(0x03AA),
+    Rune(0x24B6), Rune(0x2F894)])
+  strstream.close()
+
+  strstream = newStringStream("ⒶbⒸ")
+  var sr: Rune
+  for r in runes(strstream):
+    sr = r; break
+  doAssert(sr == Rune(0x24B6))
+  doAssert(strstream.readStr(1) == "b")
+  strstream.close()
