@@ -34,7 +34,7 @@ proc `==`*(a, b: Rune): bool = return int(a) == int(b)
 
 template ones(n: untyped): untyped = ((1 shl n)-1)
 
-proc runeLen*(r: Rune): int {.noSideEffect.} =
+proc size*(r: Rune): int {.noSideEffect.} =
   ## Returns the number of bytes the rune ``r`` takes
   let v = r.int32
   if ord(v) <=% 127: result = 1
@@ -57,10 +57,6 @@ proc runeLen*(s: string): int {.rtl, extern: "nuc$1".} =
     elif ord(s[i]) shr 1 == 0b1111110: inc(i, 6)
     else: inc i
     inc(result)
-
-proc runeLenAt*(s: string, i: Natural): int =
-  ## Returns the number of bytes the rune starting at ``s[i]`` takes
-  runeLen(s[i].Rune)
 
 const replRune = Rune(0xFFFD)
 
@@ -139,6 +135,12 @@ template fastRuneAt*(s: string, i: int, result: untyped, doInc = true) =
   else:
     result = Rune(ord(s[i]))
     when doInc: inc(i)
+
+proc runeLenAt*(s: string, i: Natural): int =
+  ## Returns the number of bytes the rune starting at ``s[i]`` takes
+  var r: Rune
+  s.fastRuneAt(i.int, r, doInc = false)
+  result = r.size()
 
 proc validateUtf8*(s: string): int =
   ## Returns the position of the invalid byte in ``s`` if the string ``s`` does
@@ -1578,7 +1580,7 @@ proc repeat*(c: Rune, count: Natural): string {.noSideEffect,
 
 proc align*(s: string, count: Natural, padding: Rune = ' '.Rune): string {.
   noSideEffect, rtl, extern: "nucAlignString".} =
-  ## Aligns a unicode string `s` with `padding`, so that it has a rune-length 
+  ## Aligns a unicode string `s` with `padding`, so that it has a rune-length
   ## of `count`.
   ##
   ## `padding` characters (by default spaces) are added before `s` resulting in
@@ -1862,7 +1864,7 @@ template splitCommon(s, sep, maxsplit: auto, sepLen: int = -1) =
         inc(last, sepLen)
       else:
         inc(last, if last < len(s): runeLenAt(s, last) else: 1)
-      
+
 iterator split*(s: string, seps: openarray[Rune] = spaceRanges,
   maxsplit: int = -1): string =
   ## Splits the unicode string `s` into substrings using a group of separators.
@@ -1907,7 +1909,7 @@ iterator split*(s: string, seps: openarray[Rune] = spaceRanges,
   ##
   splitCommon(s, seps, maxsplit)
 
-iterator splitWhitespace*(s: string): string = 
+iterator splitWhitespace*(s: string): string =
   ## Splits a unicode string at whitespace runes
   splitCommon(s, spaceRanges, -1)
 
@@ -1941,7 +1943,7 @@ iterator split*(s: string, sep: Rune, maxsplit: int = -1): string =
   ##   ""
   ##   ""
   ##
-  splitCommon(s, sep, maxsplit, runeLen(sep))
+  splitCommon(s, sep, maxsplit, sep.size())
 
 proc split*(s: string, seps: openarray[Rune] = spaceRanges, maxsplit: int = -1): seq[string] {.
   noSideEffect, rtl, extern: "nucSplitRunes".} =
@@ -2076,13 +2078,13 @@ proc editDistance*(a, b: string): int {.noSideEffect,
         char2p = i_start
         for j in 0 ..< offset:
           rune_b = b.runeAt(char2p)
-          inc(char2p, runeLen(rune_b))
+          inc(char2p, rune_b.size())
         char2p_i = i + 1
         char2p_prev = char2p
       p = offset
       rune_b = b.runeAt(char2p)
       var c3 = row[p] + (if rune_a != rune_b: 1 else: 0)
-      inc(char2p, runeLen(rune_b))
+      inc(char2p, rune_b.size())
       inc(p)
       x = row[p] + 1
       D = x
@@ -2102,7 +2104,7 @@ proc editDistance*(a, b: string): int {.noSideEffect,
       dec(D)
       rune_b = b.runeAt(char2p)
       var c3 = D + (if rune_a != rune_b: 1 else: 0)
-      inc(char2p, runeLen(rune_b))
+      inc(char2p, rune_b.size())
       inc(x)
       if x > c3: x = c3
       D = row[p] + 1
@@ -2304,14 +2306,14 @@ when isMainModule:
   block repeatTests:
     doAssert repeat('c'.Rune, 5) == "ccccc"
     doAssert repeat("×".runeAt(0), 5) == "×××××"
-  
+
   block alignTests:
     doAssert align("abc", 4) == " abc"
     doAssert align("a", 0) == "a"
     doAssert align("1232", 6) == "  1232"
     doAssert align("1232", 6, '#'.Rune) == "##1232"
     doAssert align("1232", 6, "×".runeAt(0)) == "××1232"
-  
+
     doAssert alignLeft("abc", 4) == "abc "
     doAssert alignLeft("a", 0) == "a"
     doAssert alignLeft("1232", 6) == "1232  "
@@ -2341,7 +2343,7 @@ when isMainModule:
       doAssert editDistance(s1, s2) == cap
 
   block runeLenTests:
-    doAssert(runeLen('a'.Rune) == 1, "Actual: " & $ runeLen('a'.Rune))
+    doAssert(size('a'.Rune) == 1, "Actual: " & $ size('a'.Rune))
 
     doAssert("å".runeLenAt(0) == 2, "Actual: " & $ "å".runeLenAt(0))
     doAssert("×".runeLenAt(0) == 2, "Actual: " & $ "×".runeLenAt(0))
