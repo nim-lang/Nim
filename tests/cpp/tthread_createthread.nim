@@ -1,4 +1,5 @@
 discard """
+  targets: "cpp"
   cmd: "nim cpp --hints:on --threads:on $options $file"
 """
 
