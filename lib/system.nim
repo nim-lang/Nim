@@ -1518,7 +1518,7 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ##  i.delete(2) #=> @[1, 2, 4, 5]
   template defaultImpl =
     let xl = x.len
-    for j in i..xl-2: shallowCopy(x[j], x[j+1])
+    for j in i.int..xl-2: shallowCopy(x[j], x[j+1])
     setLen(x, xl-1)
 
   when nimvm:
