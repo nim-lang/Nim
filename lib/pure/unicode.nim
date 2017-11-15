@@ -1527,12 +1527,12 @@ proc strip*(s: string, leading = true, trailing = true,
   runes: openarray[Rune] = spaceRanges): string {.noSideEffect,
   rtl, extern: "nucStrip".} =
   var
-    s_i = 0
-    e_i = len(s) - 1
+    s_i = 0 ## starting index into string ``s``
+    e_i = len(s) - 1 ## ending index into ``s``, where the last ``Rune`` starts
   if leading:
     var
       i = 0
-      l_i: int
+      l_i: int ## value of ``s_i`` at the beginning of the iteration
       rune: Rune
     while i < len(s):
       l_i = i
