@@ -102,6 +102,14 @@ collector to not consider objects of this type as part of a cycle:
       left, right: Node
       data: string
 
+Or if we directly use a ref object:
+
+.. code-block:: nim
+  type
+    Node = ref object {.acyclic, final.}
+      left, right: Node
+      data: string
+
 In the example a tree structure is declared with the ``Node`` type. Note that
 the type definition is recursive and the GC has to assume that objects of
 this type may form a cyclic graph. The ``acyclic`` pragma passes the
