@@ -65,7 +65,7 @@ endif
 ifeq ($(uos),haiku)
   myos = haiku
 endif
-ifndef uos
+ifndef myos
   $(error unknown operating system: $(uos))
 endif
 
@@ -141,7 +141,16 @@ endif
 ifeq ($(ucpu),armv6l)
   mycpu = arm
 endif
-ifndef ucpu
+ifeq ($(ucpu),armv7l)
+  mycpu = arm
+endif
+ifeq ($(ucpu),armv7hl)
+  mycpu = arm
+endif
+ifeq ($(ucpu),aarch64)
+  mycpu = arm64
+endif
+ifndef mycpu
   $(error unknown processor: $(ucpu))
 endif
 
