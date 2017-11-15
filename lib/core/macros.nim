@@ -400,7 +400,7 @@ proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.}
   ##
   ## .. code-block:: nim
   ##
-  ##   macro check(ex: expr): stmt =
+  ##   macro check(ex: untyped): typed =
   ##     # this is a simplified version of the check macro from the
   ##     # unittest module.
   ##

@@ -107,6 +107,9 @@ endif
 ifeq ($(ucpu),sun)
   mycpu = sparc
 endif
+ifeq ($(ucpu),ppc64le)
+  mycpu = powerpc64el
+endif
 ifeq ($(ucpu),ppc64)
   mycpu = powerpc64
   ifeq ($(myos),linux)
