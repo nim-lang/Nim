@@ -92,26 +92,6 @@ proc pickIntRange(a, b: PType): PType =
 proc isIntRangeOrLit(t: PType): bool =
   result = isIntRange(t) or isIntLit(t)
 
-proc pickMinInt(n: PNode): BiggestInt =
-  if n.kind in {nkIntLit..nkUInt64Lit}:
-    result = n.intVal
-  elif isIntLit(n.typ):
-    result = n.typ.n.intVal
-  elif isIntRange(n.typ):
-    result = firstOrd(n.typ)
-  else:
-    internalError(n.info, "pickMinInt")
-
-proc pickMaxInt(n: PNode): BiggestInt =
-  if n.kind in {nkIntLit..nkUInt64Lit}:
-    result = n.intVal
-  elif isIntLit(n.typ):
-    result = n.typ.n.intVal
-  elif isIntRange(n.typ):
-    result = lastOrd(n.typ)
-  else:
-    internalError(n.info, "pickMaxInt")
-
 proc makeRange(typ: PType, first, last: BiggestInt): PType =
   let minA = min(first, last)
   let maxA = max(first, last)

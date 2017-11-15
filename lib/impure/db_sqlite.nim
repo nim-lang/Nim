@@ -148,7 +148,7 @@ proc setupQuery(db: DbConn, query: SqlQuery,
   if prepare_v2(db, q, q.len.cint, result, nil) != SQLITE_OK: dbError(db)
 
 proc setRow(stmt: Pstmt, r: var Row, cols: cint) =
-  for col in 0..cols-1:
+  for col in 0'i32..cols-1:
     setLen(r[col], column_bytes(stmt, col)) # set capacity
     setLen(r[col], 0)
     let x = column_text(stmt, col)

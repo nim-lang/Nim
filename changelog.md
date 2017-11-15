@@ -16,6 +16,7 @@
   module.
 - The overloading rules changed slightly so that constrained generics are
   preferred over unconstrained generics. (Bug #6526)
+- Removed libuv out of the stdlib and into Nimble packages.
 - It is now possible to forward declare object types so that mutually
   recursive types can be created across module boundaries. See
   [package level objects](https://nim-lang.org/docs/manual.html#package-level-objects)
@@ -39,5 +40,43 @@
 - Added ``typetraits.$`` as an alias for ``typetraits.name``.
 - ``os.getEnv`` now takes an optional ``default`` parameter that tells ``getEnv``
   what to return if the environment variable does not exist.
-- Removed PDCurses wrapper from the stdlib and published it as a separate 
+- Removed PDCurses wrapper from the stdlib and published it as a separate
+  Nimble package.
+- Bodies of ``for`` loops now get their own scope:
+
+.. code-block:: nim
+  # now compiles:
+  for i in 0..4:
+    let i = i + 1
+    echo i
+
+- The parsing rules of ``if`` expressions were changed so that multiple
+  statements are allowed in the branches. We found few code examples that
+  now fail because of this change, but here is one:
+
+.. code-block:: nim
+
+  t[ti] = if exp_negative: '-' else: '+'; inc(ti)
+
+This now needs to be written as:
+
+.. code-block:: nim
+
+  t[ti] = (if exp_negative: '-' else: '+'); inc(ti)
+
+- To make Nim even more robust the system iterators ``..`` and ``countup``
+  now only accept a single generic type ``T``. This means the following code
+  doesn't die with an "out of range" error anymore:
+
+.. code-block:: nim
+
+  var b = 5.Natural
+  var a = -5
+  for i in a..b:
+    echo i
+
+- ``formatFloat``/``formatBiggestFloat`` now support formatting floats with zero
+  precision digits. The previous ``precision = 0`` behavior (default formatting)
+  is now available via ``precision = -1``.
+- Removed deprecated romans module from the stdlib and published it as separate
   Nimble package.

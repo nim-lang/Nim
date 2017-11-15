@@ -1,3 +1,12 @@
+
+#
+#
+#            Nim's Runtime Library
+#        (c) Copyright 2016 Yuriy Glukhov
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+
 ##[ Heap queue algorithm (a.k.a. priority queue). Ported from Python heapq.
 
 Heaps are arrays for which a[k] <= a[2*k+1] and a[k] <= a[2*k+2] for

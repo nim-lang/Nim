@@ -5,8 +5,7 @@ Example:
 
 .. code-block:: nim
   type # example demonstrating mutually recursive types
-    Node = ref NodeObj # a traced pointer to a NodeObj
-    NodeObj = object
+    Node = ref object  # an object managed by the garbage collector (ref)
       le, ri: Node     # left and right subtrees
       sym: ref Sym     # leaves contain a reference to a Sym
 
