@@ -1593,6 +1593,9 @@ proc align*(s: string, count: Natural, padding: Rune = ' '.Rune): string {.
   ##   assert align("a", 0) == "a"
   ##   assert align("1232", 6) == "  1232"
   ##   assert align("1232", 6, '#') == "##1232"
+  ##   assert align("Åge", 5) == "  Åge"
+  ##   assert align("×", 4, '_'.Rune) == "___×"
+  ##   assert align(" Hello", 9, "×".runeAt(0)) == "××× Hello"
   let sLen = s.runeLen
   if sLen < count:
     let padStr = $padding
@@ -1617,7 +1620,10 @@ proc alignLeft*(s: string, count: Natural, padding = ' '.Rune): string {.
   ##   assert alignLeft("abc", 4) == "abc "
   ##   assert alignLeft("a", 0) == "a"
   ##   assert alignLeft("1232", 6) == "1232  "
-  ##   assert alignLeft("1232", 6, '#') == "1232##"
+  ##   assert alignLeft("1232", 6, '#'.Rune) == "1232##"
+  ##   assert alignLeft("Åge", 5) == "Åge  "
+  ##   assert alignLeft("×", 4, '_'.Rune) == "×___"
+  ##   assert alignLeft("Hello ", 9, "×".runeAt(0)) == "Hello ×××"
   let sLen = s.runeLen
   if sLen < count:
     let padStr = $padding
@@ -2153,10 +2159,20 @@ when isMainModule:
   doAssert capitalize("foo") == "Foo"
   doAssert capitalize("") == ""
 
-  doAssert(normalizeUnicode("NimProgrammingLanguage") == "nimprogramminglanguage", "Actual: " & normalizeUnicode("NimProgrammingLanguage"))
-  doAssert(normalizeUnicode("Nim_Programming_Language") == "nimprogramminglanguage", "Actual: " & normalizeUnicode("Nim_Programming_Language"))
-  doAssert(normalizeUnicode("Nim_Programming_Language") == "nimprogramminglanguage", "Actual: " & normalizeUnicode("Nim_Programming_Language"))
-  doAssert(normalizeUnicode("Nim_Programming_Language_Α") == "nimprogramminglanguageα", "Actual: " & normalizeUnicode("Nim_Programming_Language_Α"))
+  block: ## tests for normalizeUnicode
+    var expect: string
+    expect = "nimprogramminglanguage"
+    doAssert(normalizeUnicode("NimProgrammingLanguage") == expect,
+      "Actual: " & normalizeUnicode("NimProgrammingLanguage"))
+    expect = "nimprogramminglanguage"
+    doAssert(normalizeUnicode("Nim_Programming_Language") == expect,
+      "Actual: " & normalizeUnicode("Nim_Programming_Language"))
+    expect = "nimprogramminglanguage"
+    doAssert(normalizeUnicode("Nim_Programming_Language") == expect,
+      "Actual: " & normalizeUnicode("Nim_Programming_Language"))
+    expect = "nimprogramminglanguageα"
+    doAssert(normalizeUnicode("Nim_Programming_Language_Α") == expect,
+      "Actual: " & normalizeUnicode("Nim_Programming_Language_Α"))
 
   doAssert isTitle("Foo")
   doAssert(not isTitle("Foo bar"))
@@ -2279,18 +2295,23 @@ when isMainModule:
   doAssert(runeSubStr(s, 0, -100) == "")
   doAssert(runeSubStr(s, 100, -100) == "")
 
-  doAssert(strip("  foofoofoo  ") == "foofoofoo", "Actual: " & strip("  foofoofoo  "))
-  doAssert(strip("sfoofoofoos", runes = ['s'.Rune]) == "foofoofoo", "Actual: " & strip("sfoofoofoos", runes = ['s'.Rune]))
-  doAssert(strip("barfoofoofoobar", runes = ['b'.Rune, 'a'.Rune, 'r'.Rune]) == "foofoofoo", "Actual: " & strip("barfoofoofoobar", runes = ['b'.Rune, 'a'.Rune, 'r'.Rune]))
-  doAssert(strip("sfoofoofoos", leading = false, runes = ['s'.Rune]) == "sfoofoofoo", "Actual: " & strip("sfoofoofoos", leading = false, runes = ['s'.Rune]))
-  doAssert(strip("sfoofoofoos", trailing = false, runes = ['s'.Rune]) == "foofoofoos", "Actual: " & strip("sfoofoofoos", trailing = false, runes = ['s'.Rune]))
+  block stripTests:
+    doAssert(strip("  foofoofoo  ") == "foofoofoo")
+    doAssert(strip("sfoofoofoos", runes = ['s'.Rune]) == "foofoofoo")
+    block:
+      let stripTestRunes = ['b'.Rune, 'a'.Rune, 'r'.Rune]
+      doAssert(strip("barfoofoofoobar", runes = stripTestRunes) == "foofoofoo")
+    doAssert(strip("sfoofoofoos", leading = false, runes = ['s'.Rune]) == "sfoofoofoo")
+    doAssert(strip("sfoofoofoos", trailing = false, runes = ['s'.Rune]) == "foofoofoos")
 
-  doAssert(strip("«TEXT»", runes = ["«".runeAt(0), "»".runeAt(0)]) == "TEXT", "Actual: " & strip("«TEXT»", runes = ["«".runeAt(0), "»".runeAt(0)]))
-  doAssert(strip("copyright©", leading = false, runes = ["©".runeAt(0)]) == "copyright", "Actual: " & strip("copyright©", leading = false, runes = ["©".runeAt(0)]))
-  doAssert(strip("¿Question?", trailing = false, runes = ["¿".runeAt(0)]) == "Question?", "Actual: " & strip("¿Question?", trailing = false, runes = ["¿".runeAt(0)]))
+    block:
+      let stripTestRunes = ["«".runeAt(0), "»".runeAt(0)]
+      doAssert(strip("«TEXT»", runes = stripTestRunes) == "TEXT")
+    doAssert(strip("copyright©", leading = false, runes = ["©".runeAt(0)]) == "copyright")
+    doAssert(strip("¿Question?", trailing = false, runes = ["¿".runeAt(0)]) == "Question?")
 
-  doAssert(strip("×text×", leading = false, runes = ["×".runeAt(0)]) == "×text", "Actual: " & strip("×text×", leading = false, runes = ["×".runeAt(0)]))
-  doAssert(strip("×text×", trailing = false, runes = ["×".runeAt(0)]) == "text×", "Actual: " & strip("×text×", trailing = false, runes = ["×".runeAt(0)]))
+    doAssert(strip("×text×", leading = false, runes = ["×".runeAt(0)]) == "×text")
+    doAssert(strip("×text×", trailing = false, runes = ["×".runeAt(0)]) == "text×")
 
   block splitTests:
     let s = " this is an example  "
