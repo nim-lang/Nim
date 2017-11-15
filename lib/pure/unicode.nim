@@ -1610,18 +1610,18 @@ when not defined(nimscript):
     ## Iterates over any unicode character of
     ## the stream ``s`` returning runes. Raises `EIO`
     ## if an error occurred.
-    var buff = newString(4)
+    var buff = newString(4).TaintedString
     var rune: Rune
     var n = 0
     while true:
-      let l = peekData(s, addr(buff[0]), buff.len)
+      let l = peekData(s, addr(string(buff)[0]), string(buff).len)
       if l == 0:
         break
-      if l != buff.len:
-        buff.setLen(l)
+      if l != string(buff).len:
+        string(buff).setLen(l)
       n = 0
-      fastRuneAt(buff, n, rune, true)
-      discard readData(s, addr(buff[0]), n)
+      fastRuneAt(buff.string, n, rune, true)
+      discard readData(s, addr(string(buff)[0]), n)
       yield rune
 
 iterator utf8*(s: string): string =
@@ -1881,5 +1881,5 @@ when isMainModule:
   for r in runes(strstream):
     sr = r; break
   doAssert(sr == Rune(0x24B6))
-  doAssert(strstream.readStr(1) == "b")
+  doAssert(strstream.readStr(1).string == "b")
   strstream.close()
