@@ -78,3 +78,5 @@ This now needs to be written as:
 - ``formatFloat``/``formatBiggestFloat`` now support formatting floats with zero
   precision digits. The previous ``precision = 0`` behavior (default formatting)
   is now available via ``precision = -1``.
+- Removed deprecated romans module from the stdlib and published it as separate
+  Nimble package.

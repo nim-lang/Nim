@@ -1195,14 +1195,15 @@ when defined(nimdoc):
     ## Returns the number of `command line arguments`:idx: given to the
     ## application.
     ##
-    ## If your binary was called without parameters this will return zero.  You
-    ## can later query each individual paramater with `paramStr() <#paramStr>`_
+    ## Unlike `argc`:idx: in C, if your binary was called without parameters this
+    ## will return zero.
+    ## You can query each individual paramater with `paramStr() <#paramStr>`_
     ## or retrieve all of them in one go with `commandLineParams()
     ## <#commandLineParams>`_.
     ##
-    ## **Availability**: On Posix there is no portable way to get the command
-    ## line from a DLL and thus the proc isn't defined in this environment. You
-    ## can test for its availability with `declared() <system.html#declared>`_.
+    ## **Availability**: When generating a dynamic library (see --app:lib) on
+    ## Posix this proc is not defined.
+    ## Test for availability using `declared() <system.html#declared>`_.
     ## Example:
     ##
     ## .. code-block:: nim
@@ -1219,13 +1220,14 @@ when defined(nimdoc):
     ## `paramCount() <#paramCount>`_ with this proc you can call the
     ## convenience `commandLineParams() <#commandLineParams>`_.
     ##
-    ## It is possible to call ``paramStr(0)`` but this will return OS specific
+    ## Similarly to `argv`:idx: in C,
+    ## it is possible to call ``paramStr(0)`` but this will return OS specific
     ## contents (usually the name of the invoked executable). You should avoid
     ## this and call `getAppFilename() <#getAppFilename>`_ instead.
     ##
-    ## **Availability**: On Posix there is no portable way to get the command
-    ## line from a DLL and thus the proc isn't defined in this environment. You
-    ## can test for its availability with `declared() <system.html#declared>`_.
+    ## **Availability**: When generating a dynamic library (see --app:lib) on
+    ## Posix this proc is not defined.
+    ## Test for availability using `declared() <system.html#declared>`_.
     ## Example:
     ##
     ## .. code-block:: nim
