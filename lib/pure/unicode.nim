@@ -13,7 +13,8 @@
 
 include "system/inclrtl"
 
-import streams
+when not defined(nimscript):
+  import streams
 
 type
   RuneImpl = int32 # underlying type of Rune
@@ -1604,23 +1605,24 @@ iterator runes*(s: string): Rune =
     fastRuneAt(s, i, result, true)
     yield result
 
-iterator runes*(s: Stream): Rune =
-  ## Iterates over any unicode character of
-  ## the stream ``s`` returning runes. Raises `EIO`
-  ## if an error occurred.
-  var buff = newString(4)
-  var rune: Rune
-  var n = 0
-  while true:
-    let l = peekData(s, addr(buff[0]), buff.len)
-    if l == 0:
-      break
-    if l != buff.len:
-      buff.setLen(l)
-    n = 0
-    fastRuneAt(buff, n, rune, true)
-    discard readData(s, addr(buff[0]), n)
-    yield rune
+when not defined(nimscript):
+  iterator runes*(s: Stream): Rune =
+    ## Iterates over any unicode character of
+    ## the stream ``s`` returning runes. Raises `EIO`
+    ## if an error occurred.
+    var buff = newString(4)
+    var rune: Rune
+    var n = 0
+    while true:
+      let l = peekData(s, addr(buff[0]), buff.len)
+      if l == 0:
+        break
+      if l != buff.len:
+        buff.setLen(l)
+      n = 0
+      fastRuneAt(buff, n, rune, true)
+      discard readData(s, addr(buff[0]), n)
+      yield rune
 
 iterator utf8*(s: string): string =
   ## Iterates over any unicode character of the string ``s`` returning utf8 values
