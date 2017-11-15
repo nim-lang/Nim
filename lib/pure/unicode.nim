@@ -172,6 +172,15 @@ proc runeAt*(s: string, i: Natural): Rune =
   ## Returns the unicode character in ``s`` at byte index ``i``
   fastRuneAt(s, i, result, false)
 
+proc asRune*(s: static[string]): Rune =
+  ## Compile-time conversion proc for converting string literals to a Rune
+  ## value. Returns the first Rune of the specified string.
+  ##
+  ## Shortcuts code like ``"å".runeAt(0)`` to ``"å".asRune`` and returns a
+  ## compile-time constant.
+  if len(s) == 0: '\0'.Rune
+  else: s.runeAt(0)
+
 template fastToUTF8Copy*(c: Rune, s: var string, pos: int, doInc = true) =
   ## Copies UTF-8 representation of `c` into the preallocated string `s`
   ## starting at position `pos`. If `doInc == true`, `pos` is incremented
@@ -1595,7 +1604,7 @@ proc align*(s: string, count: Natural, padding: Rune = ' '.Rune): string {.
   ##   assert align("1232", 6, '#') == "##1232"
   ##   assert align("Åge", 5) == "  Åge"
   ##   assert align("×", 4, '_'.Rune) == "___×"
-  ##   assert align(" Hello", 9, "×".runeAt(0)) == "××× Hello"
+  ##   assert align(" Hello", 9, "×".asRune) == "××× Hello"
   let sLen = s.runeLen
   if sLen < count:
     let padStr = $padding
@@ -1623,7 +1632,7 @@ proc alignLeft*(s: string, count: Natural, padding = ' '.Rune): string {.
   ##   assert alignLeft("1232", 6, '#'.Rune) == "1232##"
   ##   assert alignLeft("Åge", 5) == "Åge  "
   ##   assert alignLeft("×", 4, '_'.Rune) == "×___"
-  ##   assert alignLeft("Hello ", 9, "×".runeAt(0)) == "Hello ×××"
+  ##   assert alignLeft("Hello ", 9, "×".asRune) == "Hello ×××"
   let sLen = s.runeLen
   if sLen < count:
     let padStr = $padding
@@ -2305,13 +2314,13 @@ when isMainModule:
     doAssert(strip("sfoofoofoos", trailing = false, runes = ['s'.Rune]) == "foofoofoos")
 
     block:
-      let stripTestRunes = ["«".runeAt(0), "»".runeAt(0)]
+      let stripTestRunes = ["«".asRune, "»".asRune]
       doAssert(strip("«TEXT»", runes = stripTestRunes) == "TEXT")
-    doAssert(strip("copyright©", leading = false, runes = ["©".runeAt(0)]) == "copyright")
-    doAssert(strip("¿Question?", trailing = false, runes = ["¿".runeAt(0)]) == "Question?")
+    doAssert(strip("copyright©", leading = false, runes = ["©".asRune]) == "copyright")
+    doAssert(strip("¿Question?", trailing = false, runes = ["¿".asRune]) == "Question?")
 
-    doAssert(strip("×text×", leading = false, runes = ["×".runeAt(0)]) == "×text")
-    doAssert(strip("×text×", trailing = false, runes = ["×".runeAt(0)]) == "text×")
+    doAssert(strip("×text×", leading = false, runes = ["×".asRune]) == "×text")
+    doAssert(strip("×text×", trailing = false, runes = ["×".asRune]) == "text×")
 
   block splitTests:
     let s = " this is an example  "
@@ -2320,26 +2329,26 @@ when isMainModule:
 
     doAssert s.split() == @["", "this", "is", "an", "example", "", ""]
     doAssert s2.split(seps = [':'.Rune, ';'.Rune]) == @["", "this", "is", "an", "example", "", ""]
-    doAssert s3.split(seps = [':'.Rune, "×".runeAt(0)]) == @["", "this", "is", "an", "example", "", ""]
+    doAssert s3.split(seps = [':'.Rune, "×".asRune]) == @["", "this", "is", "an", "example", "", ""]
     doAssert s.split(maxsplit = 4) == @["", "this", "is", "an", "example  "]
     doAssert s.split(' '.Rune, maxsplit = 1) == @["", "this is an example  "]
 
   block repeatTests:
     doAssert repeat('c'.Rune, 5) == "ccccc"
-    doAssert repeat("×".runeAt(0), 5) == "×××××"
+    doAssert repeat("×".asRune, 5) == "×××××"
 
   block alignTests:
     doAssert align("abc", 4) == " abc"
     doAssert align("a", 0) == "a"
     doAssert align("1232", 6) == "  1232"
     doAssert align("1232", 6, '#'.Rune) == "##1232"
-    doAssert align("1232", 6, "×".runeAt(0)) == "××1232"
+    doAssert align("1232", 6, "×".asRune) == "××1232"
 
     doAssert alignLeft("abc", 4) == "abc "
     doAssert alignLeft("a", 0) == "a"
     doAssert alignLeft("1232", 6) == "1232  "
     doAssert alignLeft("1232", 6, '#'.Rune) == "1232##"
-    doAssert alignLeft("1232", 6, "×".runeAt(0)) == "1232××"
+    doAssert alignLeft("1232", 6, "×".asRune) == "1232××"
 
   block editDistanceTests:
     doAssert editDistance("", "") == 0
