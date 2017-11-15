@@ -841,7 +841,7 @@ elif not defined(useNimRtl):
       var attr: Tposix_spawnattr
       var fops: Tposix_spawn_file_actions
 
-      template chck(e: expr) =
+      template chck(e: untyped) =
         if e != 0'i32: raiseOSError(osLastError())
 
       chck posix_spawn_file_actions_init(fops)
