@@ -250,7 +250,7 @@ proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
   let second = rem
 
   let (y, m, d) = fromEpochday(epochday)
- 
+
   DateTime(
     year: y,
     month: m,
@@ -291,7 +291,7 @@ proc toAdjTime(dt: DateTime): Time =
 
 when defined(JS):
     type JsDate = object
-    proc newDate(value: cstring): JsDate {.tags: [], raises: [], importc: "new Date".}
+    proc newDate(year, month, date, hours, minutes, seconds, milliseconds: int): JsDate {.tags: [], raises: [], importc: "new Date".}
     proc newDate(): JsDate {.importc: "new Date".}
     proc newDate(value: float): JsDate {.importc: "new Date".}
     proc getTimezoneOffset(js: JsDate): int {.tags: [], raises: [], benign, importcpp.}
@@ -313,6 +313,7 @@ when defined(JS):
     proc getUTCSeconds(js: JsDate): int {.tags: [], raises: [], benign, importcpp.}
     proc getUTCDay(js: JsDate): int {.tags: [], raises: [], benign, importcpp.}
     proc getYear(js: JsDate): int {.tags: [], raises: [], benign, importcpp.}
+    proc setFullYear(js: JsDate, year: int): void {.tags: [], raises: [], benign, importcpp.}
 
     proc localZoneInfoFromUtc(time: Time): ZonedTime =
       let jsDate = newDate(time.float * 1000)
@@ -322,12 +323,18 @@ when defined(JS):
       result.isDst = false
 
     proc localZoneInfoFromTz(adjTime: Time): ZonedTime =
-      let dummyDate = newDate(adjTime.float * 1000)
-      let dateStr = $dummyDate.getFullYear() & "-" & $(dummyDate.getMonth() + 1) & "-" & $dummyDate.getDate() &
-        "T" & $dummyDate.getHours() & ":" & $dummyDate.getMinutes() & ":" & $dummyDate.getSeconds()
-      let jsDate = newDate(dateStr)
+      let utcDate = newDate(adjTime.float * 1000)
+      let localDate = newDate(utcDate.getUTCFullYear(), utcDate.getUTCMonth(), utcDate.getUTCDate(),
+        utcDate.getUTCHours(), utcDate.getUTCMinutes(), utcDate.getUTCSeconds(), 0)
+
+      # This is as dumb as it looks - JS doesn't support years in the range 0-99 in the constructor
+      # because they are assumed to be 19xx...
+      # Because JS doesn't support timezone history, it doesn't really matter in practice.
+      if utcDate.getUTCFullYear() in 0 .. 99:
+        localDate.setFullYear(utcDate.getUTCFullYear())
+
       result.adjTime = adjTime
-      result.utcOffset = jsDate.getTimezoneOffset() * secondsInMin
+      result.utcOffset = localDate.getTimezoneOffset() * secondsInMin
       result.isDst = false
 
 else:
