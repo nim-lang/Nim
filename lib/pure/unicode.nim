@@ -36,13 +36,13 @@ template ones(n: untyped): untyped = ((1 shl n)-1)
 
 proc size*(r: Rune): int {.noSideEffect.} =
   ## Returns the number of bytes the rune ``r`` takes
-  let v = r.int32
-  if ord(v) <=% 127: result = 1
-  elif ord(v) shr 5 == 0b110: result = 2
-  elif ord(v) shr 4 == 0b1110: result = 3
-  elif ord(v) shr 3 == 0b11110: result = 4
-  elif ord(v) shr 2 == 0b111110: result = 5
-  elif ord(v) shr 1 == 0b1111110: result = 6
+  let v = r.uint32
+  if v <= 0x007F: result = 1
+  elif v <= 0x07FF: result = 2
+  elif v <= 0xFFFF: result = 3
+  elif v <= 0x1FFFFF: result = 4
+  elif v <= 0x3FFFFFF: result = 5
+  elif v <= 0x7FFFFFFF: result = 6
   else: result = 1
 
 proc runeLen*(s: string): int {.rtl, extern: "nuc$1".} =
@@ -138,9 +138,14 @@ template fastRuneAt*(s: string, i: int, result: untyped, doInc = true) =
 
 proc runeLenAt*(s: string, i: Natural): int =
   ## Returns the number of bytes the rune starting at ``s[i]`` takes
-  var r: Rune
-  s.fastRuneAt(i.int, r, doInc = false)
-  result = r.size()
+  let b = ord(s[i])
+  if b <=% 127: result = 1
+  elif b shr 5 == 0b110: result = 2
+  elif b shr 4 == 0b1110: result = 3
+  elif b shr 3 == 0b11110: result = 4
+  elif b shr 2 == 0b111110: result = 5
+  elif b shr 1 == 0b1111110: result = 6
+  else: result = 1
 
 proc validateUtf8*(s: string): int =
   ## Returns the position of the invalid byte in ``s`` if the string ``s`` does
@@ -2138,6 +2143,18 @@ proc editDistance*(a, b: string): int {.noSideEffect,
   result = row[e]
 
 when isMainModule:
+  block runeLenTests:
+    doAssert(size('a'.Rune) == 1, "Actual: " & $ size('a'.Rune))
+
+    doAssert("å".runeLenAt(0) == 2, "Actual: " & $ "å".runeLenAt(0))
+    doAssert("×".runeLenAt(0) == 2, "Actual: " & $ "×".runeLenAt(0))
+
+    # From https://stackoverflow.com/a/6066442
+    doAssert size(0x0021.Rune) == 1 # ! EXCLAMATION MARK (U+0021)
+    doAssert size(0x00B6.Rune) == 2 # ¶ PILCROW SIGN (U+00B6)
+    doAssert size(0x2031.Rune) == 3 # ‱ PER TEN THOUSAND SIGN (U+2031)
+    doAssert size(0x1D161.Rune) == 4 # 𝅘𝅥𝅯 MUSICAL SYMBOL SIXTEENTH NOTE (U+1D161)
+
   let
     someString = "öÑ"
     someRunes = @[runeAt(someString, 0), runeAt(someString, 2)]
@@ -2371,9 +2388,3 @@ when isMainModule:
       while len(s2) < cap:
         s2.add 'b'
       doAssert editDistance(s1, s2) == cap
-
-  block runeLenTests:
-    doAssert(size('a'.Rune) == 1, "Actual: " & $ size('a'.Rune))
-
-    doAssert("å".runeLenAt(0) == 2, "Actual: " & $ "å".runeLenAt(0))
-    doAssert("×".runeLenAt(0) == 2, "Actual: " & $ "×".runeLenAt(0))
