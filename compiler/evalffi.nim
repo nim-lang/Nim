@@ -225,7 +225,7 @@ proc pack(v: PNode, typ: PType, res: pointer) =
       awr(pointer, res +! sizeof(pointer))
   of tyArray:
     let baseSize = typ.sons[1].getSize
-    for i in 0 .. <v.len:
+    for i in 0 ..< v.len:
       pack(v.sons[i], typ.sons[1], res +! i * baseSize)
   of tyObject, tyTuple:
     packObject(v, typ, res)
@@ -291,7 +291,7 @@ proc unpackArray(x: pointer, typ: PType, n: PNode): PNode =
     if result.kind != nkBracket:
       globalError(n.info, "cannot map value from FFI")
   let baseSize = typ.sons[1].getSize
-  for i in 0 .. < result.len:
+  for i in 0 ..< result.len:
     result.sons[i] = unpack(x +! i * baseSize, typ.sons[1], result.sons[i])
 
 proc canonNodeKind(k: TNodeKind): TNodeKind =

@@ -221,6 +221,8 @@ type
     nkGotoState,          # used for the state machine (for iterators)
     nkState,              # give a label to a code section (for iterators)
     nkBreakState,         # special break statement for easier code generation
+    nkFuncDef             # a func
+
   TNodeKinds* = set[TNodeKind]
 
 type
@@ -352,7 +354,7 @@ type
     tyInt, tyInt8, tyInt16, tyInt32, tyInt64, # signed integers
     tyFloat, tyFloat32, tyFloat64, tyFloat128,
     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64,
-    tyUnused0, tyUnused1, tyUnused2,
+    tyOptAsRef, tyUnused1, tyUnused2,
     tyVarargs,
     tyUnused,
     tyProxy # used as errornous type (for idetools)
@@ -402,14 +404,8 @@ type
       # instantiation and prior to this it has the potential to
       # be any type.
 
-    tyFieldAccessor
-      # Expressions such as Type.field (valid in contexts such
-      # as the `is` operator and magics like `high` and `low`).
-      # Could be lifted to a single argument proc returning the
-      # field value.
-      # sons[0]: type of containing object or tuple
-      # sons[1]: field type
-      # .n: nkDotExpr storing the field name
+    tyOpt
+      # Builtin optional type
 
     tyVoid
       # now different from tyEmpty, hurray!
@@ -534,6 +530,7 @@ type
     skConst,              # a constant
     skResult,             # special 'result' variable
     skProc,               # a proc
+    skFunc,               # a func
     skMethod,             # a method
     skIterator,           # an iterator
     skConverter,          # a type converter
@@ -552,7 +549,7 @@ type
   TSymKinds* = set[TSymKind]
 
 const
-  routineKinds* = {skProc, skMethod, skIterator,
+  routineKinds* = {skProc, skFunc, skMethod, skIterator,
                    skConverter, skMacro, skTemplate}
   tfIncompleteStruct* = tfVarargs
   tfUncheckedArray* = tfVarargs
@@ -621,7 +618,7 @@ type
     mSwap, mIsNil, mArrToSeq, mCopyStr, mCopyStrLast,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
     mReset,
-    mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
+    mArray, mOpenArray, mRange, mSet, mSeq, mOpt, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
     mOrdinal,
     mInt, mInt8, mInt16, mInt32, mInt64,
@@ -631,7 +628,7 @@ type
     mPointer, mEmptySet, mIntSetBaseType, mNil, mExpr, mStmt, mTypeDesc,
     mVoidType, mPNimrodNode, mShared, mGuarded, mLock, mSpawn, mDeepCopy,
     mIsMainModule, mCompileDate, mCompileTime, mProcCall,
-    mCpuEndian, mHostOS, mHostCPU, mAppType,
+    mCpuEndian, mHostOS, mHostCPU, mBuildOS, mBuildCPU, mAppType,
     mNaN, mInf, mNegInf,
     mCompileOption, mCompileOptionArg,
     mNLen, mNChild, mNSetChild, mNAdd, mNAddMultiple, mNDel, mNKind,
@@ -747,15 +744,18 @@ type
     OnUnknown,                # location is unknown (stack, heap or static)
     OnStatic,                 # in a static section
     OnStack,                  # location is on hardware stack
+    OnStackShadowDup,         # location is on the stack but also replicated
+                              # on the shadow stack
     OnHeap                    # location is on heap or global
                               # (reference counting needed)
   TLocFlags* = set[TLocFlag]
   TLoc* = object
     k*: TLocKind              # kind of location
-    s*: TStorageLoc
+    storage*: TStorageLoc
     flags*: TLocFlags         # location's flags
-    t*: PType                 # type of location
+    lode*: PNode              # Node where the location came from; can be faked
     r*: Rope                  # rope value of location (code generators)
+    dup*: Rope                # duplicated location for precise stack scans
 
   # ---------------- end of backend information ------------------------------
 
@@ -874,7 +874,8 @@ type
                               # mean that there is no destructor.
                               # see instantiateDestructor in semdestruct.nim
     deepCopy*: PSym           # overriden 'deepCopy' operation
-    assignment*: PSym         # overriden '=' operator
+    assignment*: PSym         # overriden '=' operation
+    sink*: PSym               # overriden '=sink' operation
     methods*: seq[(int,PSym)] # attached methods
     size*: BiggestInt         # the size of the type in bytes
                               # -1 means that the size is unkwown
@@ -931,7 +932,7 @@ type
 # the poor naming choices in the standard library.
 
 const
-  OverloadableSyms* = {skProc, skMethod, skIterator,
+  OverloadableSyms* = {skProc, skFunc, skMethod, skIterator,
     skConverter, skModule, skTemplate, skMacro}
 
   GenericTypes*: TTypeKinds = {tyGenericInvocation, tyGenericBody,
@@ -954,7 +955,7 @@ const
                                     tyTuple, tySequence}
   NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr, tySequence,
     tyProc, tyString, tyError}
-  ExportableSymKinds* = {skVar, skConst, skProc, skMethod, skType,
+  ExportableSymKinds* = {skVar, skConst, skProc, skFunc, skMethod, skType,
     skIterator,
     skMacro, skTemplate, skConverter, skEnumField, skLet, skStub, skAlias}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
@@ -978,14 +979,14 @@ const
 
   nkLiterals* = {nkCharLit..nkTripleStrLit}
   nkLambdaKinds* = {nkLambda, nkDo}
-  declarativeDefs* = {nkProcDef, nkMethodDef, nkIteratorDef, nkConverterDef}
+  declarativeDefs* = {nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef}
   procDefs* = nkLambdaKinds + declarativeDefs
 
   nkSymChoices* = {nkClosedSymChoice, nkOpenSymChoice}
   nkStrKinds* = {nkStrLit..nkTripleStrLit}
 
   skLocalVars* = {skVar, skLet, skForVar, skParam, skResult}
-  skProcKinds* = {skProc, skTemplate, skMacro, skIterator,
+  skProcKinds* = {skProc, skFunc, skTemplate, skMacro, skIterator,
                   skMethod, skConverter}
 
 var ggDebug* {.deprecated.}: bool ## convenience switch for trying out things
@@ -1006,6 +1007,12 @@ proc safeLen*(n: PNode): int {.inline.} =
   if n.kind in {nkNone..nkNilLit} or isNil(n.sons): result = 0
   else: result = len(n.sons)
 
+proc safeArrLen*(n: PNode): int {.inline.} =
+  ## works for array-like objects (strings passed as openArray in VM).
+  if n.kind in {nkStrLit..nkTripleStrLit}:result = len(n.strVal)
+  elif n.kind in {nkNone..nkFloat128Lit}: result = 0
+  else: result = len(n)
+
 proc add*(father, son: PNode) =
   assert son != nil
   if isNil(father.sons): father.sons = @[]
@@ -1013,16 +1020,11 @@ proc add*(father, son: PNode) =
 
 type Indexable = PNode | PType
 
-template `[]`*(n: Indexable, i: int): Indexable =
-  n.sons[i]
+template `[]`*(n: Indexable, i: int): Indexable = n.sons[i]
+template `[]=`*(n: Indexable, i: int; x: Indexable) = n.sons[i] = x
 
-template `-|`*(b, s: untyped): untyped =
-  (if b >= 0: b else: s.len + b)
-
-# son access operators with support for negative indices
-template `{}`*(n: Indexable, i: int): untyped = n[i -| n]
-template `{}=`*(n: Indexable, i: int, s: Indexable) =
-  n.sons[i -| n] = s
+template `[]`*(n: Indexable, i: BackwardsIndex): Indexable = n[n.len - i.int]
+template `[]=`*(n: Indexable, i: BackwardsIndex; x: Indexable) = n[n.len - i.int] = x
 
 when defined(useNodeIds):
   const nodeIdToDebug* = -1 # 299750 # 300761 #300863 # 300879
@@ -1032,9 +1034,9 @@ proc newNode*(kind: TNodeKind): PNode =
   new(result)
   result.kind = kind
   #result.info = UnknownLineInfo() inlined:
-  result.info.fileIndex = int32(- 1)
-  result.info.col = int16(- 1)
-  result.info.line = int16(- 1)
+  result.info.fileIndex = int32(-1)
+  result.info.col = int16(-1)
+  result.info.line = int16(-1)
   when defined(useNodeIds):
     result.id = gNodeId
     if result.id == nodeIdToDebug:
@@ -1044,6 +1046,8 @@ proc newNode*(kind: TNodeKind): PNode =
 
 proc newTree*(kind: TNodeKind; children: varargs[PNode]): PNode =
   result = newNode(kind)
+  if children.len > 0:
+    result.info = children[0].info
   result.sons = @children
 
 proc newIntNode*(kind: TNodeKind, intVal: BiggestInt): PNode =
@@ -1075,7 +1079,7 @@ proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
   result.info = info
   result.options = gOptions
   result.owner = owner
-  result.offset = - 1
+  result.offset = -1
   result.id = getID()
   when debugIds:
     registerId(result)
@@ -1255,11 +1259,10 @@ proc newType*(kind: TTypeKind, owner: PSym): PType =
 
 proc mergeLoc(a: var TLoc, b: TLoc) =
   if a.k == low(a.k): a.k = b.k
-  if a.s == low(a.s): a.s = b.s
+  if a.storage == low(a.storage): a.storage = b.storage
   a.flags = a.flags + b.flags
-  if a.t == nil: a.t = b.t
+  if a.lode == nil: a.lode = b.lode
   if a.r == nil: a.r = b.r
-  #if a.a == 0: a.a = b.a
 
 proc newSons*(father: PNode, length: int) =
   if isNil(father.sons):
@@ -1288,6 +1291,7 @@ proc assignType*(dest, src: PType) =
   dest.align = src.align
   dest.destructor = src.destructor
   dest.deepCopy = src.deepCopy
+  dest.sink = src.sink
   dest.assignment = src.assignment
   dest.lockLevel = src.lockLevel
   # this fixes 'type TLock = TSysLock':
@@ -1386,6 +1390,14 @@ proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   result = t
   while result.kind in kinds: result = lastSon(result)
 
+proc skipTypes*(t: PType, kinds: TTypeKinds; maxIters: int): PType =
+  result = t
+  var i = maxIters
+  while result.kind in kinds:
+    result = lastSon(result)
+    dec i
+    if i == 0: return nil
+
 proc skipTypesOrNil*(t: PType, kinds: TTypeKinds): PType =
   ## same as skipTypes but handles 'nil'
   result = t
@@ -1398,7 +1410,7 @@ proc isGCedMem*(t: PType): bool {.inline.} =
            t.kind == tyProc and t.callConv == ccClosure
 
 proc propagateToOwner*(owner, elem: PType) =
-  const HaveTheirOwnEmpty = {tySequence, tySet, tyPtr, tyRef, tyProc}
+  const HaveTheirOwnEmpty = {tySequence, tyOpt, tySet, tyPtr, tyRef, tyProc}
   owner.flags = owner.flags + (elem.flags * {tfHasMeta})
   if tfNotNil in elem.flags:
     if owner.kind in {tyGenericInst, tyGenericBody, tyGenericInvocation}:
@@ -1414,9 +1426,9 @@ proc propagateToOwner*(owner, elem: PType) =
     owner.flags.incl tfHasMeta
 
   if tfHasAsgn in elem.flags:
-    let o2 = elem.skipTypes({tyGenericInst, tyAlias})
+    let o2 = owner.skipTypes({tyGenericInst, tyAlias})
     if o2.kind in {tyTuple, tyObject, tyArray,
-                   tySequence, tySet, tyDistinct}:
+                   tySequence, tyOpt, tySet, tyDistinct}:
       o2.flags.incl tfHasAsgn
       owner.flags.incl tfHasAsgn
 
@@ -1598,10 +1610,10 @@ proc hasPattern*(s: PSym): bool {.inline.} =
   result = isRoutine(s) and s.ast.sons[patternPos].kind != nkEmpty
 
 iterator items*(n: PNode): PNode =
-  for i in 0.. <n.safeLen: yield n.sons[i]
+  for i in 0..<n.safeLen: yield n.sons[i]
 
 iterator pairs*(n: PNode): tuple[i: int, n: PNode] =
-  for i in 0.. <n.len: yield (i, n.sons[i])
+  for i in 0..<n.len: yield (i, n.sons[i])
 
 proc isAtom*(n: PNode): bool {.inline.} =
   result = n.kind >= nkNone and n.kind <= nkNilLit
@@ -1657,3 +1669,10 @@ when false:
     if n.isNil: return true
     for i in 0 ..< n.safeLen:
       if n[i].containsNil: return true
+
+template hasDestructor*(t: PType): bool = tfHasAsgn in t.flags
+template incompleteType*(t: PType): bool =
+  t.sym != nil and {sfForward, sfNoForward} * t.sym.flags == {sfForward}
+
+template typeCompleted*(s: PSym) =
+  incl s.flags, sfNoForward

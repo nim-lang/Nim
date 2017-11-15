@@ -70,6 +70,9 @@ proc newTupleAccessRaw*(tup: PNode, i: int): PNode =
   lit.intVal = i
   addSon(result, lit)
 
+proc newTryFinally*(body, final: PNode): PNode =
+  result = newTree(nkTryStmt, body, newTree(nkFinally, final))
+
 proc lowerTupleUnpackingForAsgn*(n: PNode; owner: PSym): PNode =
   let value = n.lastSon
   result = newNodeI(nkStmtList, n.info)
@@ -139,6 +142,14 @@ proc rawIndirectAccess*(a: PNode; field: PSym; info: TLineInfo): PNode =
   addSon(result, newSymNode(field))
   result.typ = field.typ
 
+proc rawDirectAccess*(obj, field: PSym): PNode =
+  # returns a.field as a node
+  assert field.kind == skField
+  result = newNodeI(nkDotExpr, field.info)
+  addSon(result, newSymNode obj)
+  addSon(result, newSymNode field)
+  result.typ = field.typ
+
 proc lookupInRecord(n: PNode, id: int): PSym =
   result = nil
   case n.kind
@@ -171,8 +182,9 @@ proc addField*(obj: PType; s: PSym) =
   field.position = sonsLen(obj.n)
   addSon(obj.n, newSymNode(field))
 
-proc addUniqueField*(obj: PType; s: PSym) =
-  if lookupInRecord(obj.n, s.id) == nil:
+proc addUniqueField*(obj: PType; s: PSym): PSym {.discardable.} =
+  result = lookupInRecord(obj.n, s.id)
+  if result == nil:
     var field = newSym(skField, getIdent(s.name.s & $obj.n.len), s.owner, s.info)
     field.id = -s.id
     let t = skipIntLit(s.typ)
@@ -180,6 +192,7 @@ proc addUniqueField*(obj: PType; s: PSym) =
     assert t.kind != tyStmt
     field.position = sonsLen(obj.n)
     addSon(obj.n, newSymNode(field))
+    result = field
 
 proc newDotExpr(obj, b: PSym): PNode =
   result = newNodeI(nkDotExpr, obj.info)
@@ -452,7 +465,7 @@ proc setupArgsForConcurrency(n: PNode; objType: PType; scratchObj: PSym,
                              varSection, varInit, result: PNode) =
   let formals = n[0].typ.n
   let tmpName = getIdent(genPrefix)
-  for i in 1 .. <n.len:
+  for i in 1 ..< n.len:
     # we pick n's type here, which hopefully is 'tyArray' and not
     # 'tyOpenArray':
     var argType = n[i].typ.skipTypes(abstractInst)
@@ -508,7 +521,7 @@ proc setupArgsForParallelism(n: PNode; objType: PType; scratchObj: PSym;
   let tmpName = getIdent(genPrefix)
   # we need to copy the foreign scratch object fields into local variables
   # for correctness: These are called 'threadLocal' here.
-  for i in 1 .. <n.len:
+  for i in 1 ..< n.len:
     let n = n[i]
     let argType = skipTypes(if i < formals.len: formals[i].typ else: n.typ,
                             abstractInst)
@@ -633,7 +646,7 @@ proc wrapProcForSpawn*(owner: PSym; spawnExpr: PNode; retType: PType;
   if fn.kind == nkClosure:
     localError(n.info, "closure in spawn environment is not allowed")
   if not (fn.kind == nkSym and fn.sym.kind in {skProc, skTemplate, skMacro,
-                                               skMethod, skConverter}):
+                                               skFunc, skMethod, skConverter}):
     # for indirect calls we pass the function pointer in the scratchObj
     var argType = n[0].typ.skipTypes(abstractInst)
     var field = newSym(skField, getIdent"fn", owner, n.info)

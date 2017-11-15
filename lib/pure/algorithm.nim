@@ -371,3 +371,126 @@ when isMainModule:
   for i in 0 .. high(arr1):
     assert arr1.reversed(0, i) == arr1.reversed()[high(arr1) - i .. high(arr1)]
     assert arr1.reversed(i, high(arr1)) == arr1.reversed()[0 .. high(arr1) - i]
+
+
+proc rotateInternal[T](arg: var openarray[T]; first, middle, last: int): int =
+  ## A port of std::rotate from c++. Ported from `this reference <http://www.cplusplus.com/reference/algorithm/rotate/>`_.
+  result = first + last - middle
+
+  if first == middle or middle == last:
+    return
+
+  assert first < middle
+  assert middle < last
+
+  # m prefix for mutable
+  var
+    mFirst = first
+    mMiddle = middle
+    next = middle
+
+  swap(arg[mFirst], arg[next])
+  mFirst += 1
+  next  += 1
+  if mFirst == mMiddle:
+    mMiddle = next
+
+  while next != last:
+    swap(arg[mFirst], arg[next])
+    mFirst += 1
+    next += 1
+    if mFirst == mMiddle:
+      mMiddle = next
+
+  next = mMiddle
+  while next != last:
+    swap(arg[mFirst], arg[next])
+    mFirst += 1
+    next += 1
+    if mFirst == mMiddle:
+      mMiddle = next
+    elif next == last:
+      next = mMiddle
+
+proc rotatedInternal[T](arg: openarray[T]; first, middle, last: int): seq[T] =
+  result = newSeq[T](arg.len)
+  for i in 0 ..< first:
+    result[i] = arg[i]
+  let N = last - middle
+  let M = middle - first
+  for i in 0 ..< N:
+    result[first+i] = arg[middle+i]
+  for i in 0 ..< M:
+    result[first+N+i] = arg[first+i]
+  for i in last ..< arg.len:
+    result[i] = arg[i]
+
+proc rotateLeft*[T](arg: var openarray[T]; slice: HSlice[int, int]; dist: int): int =
+  ## Performs a left rotation on a range of elements. If you want to rotate right, use a negative ``dist``.
+  ## Specifically, ``rotateLeft`` rotates the elements at ``slice`` by ``dist`` positions.
+  ## The element at index ``slice.a + dist`` will be at index ``slice.a``.
+  ## The element at index ``slice.b`` will be at ``slice.a + dist -1``.
+  ## The element at index ``slice.a`` will be at ``slice.b + 1 - dist``.
+  ## The element at index ``slice.a + dist - 1`` will be at ``slice.b``.
+  #
+  ## Elements outsize of ``slice`` will be left unchanged.
+  ## The time complexity is linear to ``slice.b - slice.a + 1``.
+  ##
+  ## ``slice``
+  ##   the indices of the element range that should be rotated.
+  ##
+  ## ``dist``
+  ##   the distance in amount of elements that the data should be rotated. Can be negative, can be any number.
+  ##
+  ## .. code-block:: nim
+  ##     var list     = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  ##     list.rotateLeft(1 .. 8, 3)
+  ##     doAssert list == [0, 4, 5, 6, 7, 8, 1, 2, 3, 9, 10]
+  let sliceLen = slice.b + 1 - slice.a
+  let distLeft = ((dist mod sliceLen) + sliceLen) mod sliceLen
+  arg.rotateInternal(slice.a, slice.a+distLeft, slice.b + 1)
+
+proc rotateLeft*[T](arg: var openarray[T]; dist: int): int =
+  ## default arguments for slice, so that this procedure operates on the entire
+  ## ``arg``, and not just on a part of it.
+  let arglen = arg.len
+  let distLeft = ((dist mod arglen) + arglen) mod arglen
+  arg.rotateInternal(0, distLeft, arglen)
+
+proc rotatedLeft*[T](arg: openarray[T]; slice: HSlice[int, int], dist: int): seq[T] =
+  ## same as ``rotateLeft``, just with the difference that it does
+  ## not modify the argument. It creates a new ``seq`` instead
+  let sliceLen = slice.b + 1 - slice.a
+  let distLeft = ((dist mod sliceLen) + sliceLen) mod sliceLen
+  arg.rotatedInternal(slice.a, slice.a+distLeft, slice.b+1)
+
+proc rotatedLeft*[T](arg: openarray[T]; dist: int): seq[T] =
+  ## same as ``rotateLeft``, just with the difference that it does
+  ## not modify the argument. It creates a new ``seq`` instead
+  let arglen = arg.len
+  let distLeft = ((dist mod arglen) + arglen) mod arglen
+  arg.rotatedInternal(0, distLeft, arg.len)
+
+when isMainModule:
+  var list     = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  let list2    = list.rotatedLeft(1 ..< 9, 3)
+  let expected = [0, 4, 5, 6, 7, 8, 1, 2, 3, 9, 10]
+
+  doAssert list.rotateLeft(1 ..< 9, 3) == 6
+  doAssert list  ==  expected
+  doAssert list2 == @expected
+
+  var s0,s1,s2,s3,s4,s5 = "xxxabcdefgxxx"
+
+  doAssert s0.rotateLeft(3 ..< 10, 3) == 7
+  doAssert s0 == "xxxdefgabcxxx"
+  doAssert s1.rotateLeft(3 ..< 10, 2) == 8
+  doAssert s1 == "xxxcdefgabxxx"
+  doAssert s2.rotateLeft(3 ..< 10, 4) == 6
+  doAssert s2 == "xxxefgabcdxxx"
+  doAssert s3.rotateLeft(3 ..< 10, -3) == 6
+  doAssert s3 == "xxxefgabcdxxx"
+  doAssert s4.rotateLeft(3 ..< 10, -10) == 6
+  doAssert s4 == "xxxefgabcdxxx"
+  doAssert s5.rotateLeft(3 ..< 10, 11) == 6
+  doAssert s5 == "xxxefgabcdxxx"

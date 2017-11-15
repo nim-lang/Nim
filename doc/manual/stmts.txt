@@ -199,7 +199,7 @@ The rules for compile-time computability are:
    (possibly empty) list of compile-time computable arguments.
 
 
-Constants cannot be of type ``ptr``, ``ref``, ``var`` or ``object``, nor can
+Constants cannot be of type ``ptr``, ``ref`` or ``var``, nor can
 they contain such a type.
 
 
@@ -547,9 +547,6 @@ Instead of:
 Using statement
 ---------------
 
-**Warning**: The ``using`` statement is experimental and has to be
-explicitly enabled with the `experimental`:idx: pragma or command line option!
-
 The using statement provides syntactic convenience in modules where
 the same parameter names and types are used over and over. Instead of:
 
@@ -563,7 +560,6 @@ name ``c`` should default to type ``Context``, ``n`` should default to
 ``Node`` etc.:
 
 .. code-block:: nim
-  {.experimental.}
   using
     c: Context
     n: Node

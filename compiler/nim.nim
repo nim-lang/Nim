@@ -119,4 +119,6 @@ condsyms.initDefines()
 
 when not defined(selftest):
   handleCmdLine(newIdentCache(), newConfigRef())
+  when declared(GC_setMaxPause):
+    echo GC_getStatistics()
   msgQuit(int8(msgs.gErrorCounter > 0))

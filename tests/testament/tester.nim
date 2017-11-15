@@ -1,7 +1,7 @@
 #
 #
 #            Nim Tester
-#        (c) Copyright 2015 Andreas Rumpf
+#        (c) Copyright 2017 Andreas Rumpf
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -12,7 +12,7 @@
 import
   parseutils, strutils, pegs, os, osproc, streams, parsecfg, json,
   marshal, backend, parseopt, specs, htmlgen, browsers, terminal,
-  algorithm, compiler/nodejs, re, times, sets
+  algorithm, compiler/nodejs, times, sets
 
 const
   resultsFile = "testresults.html"
@@ -24,15 +24,12 @@ Command:
   all                         run all tests
   c|category <category>       run all the tests of a certain category
   r|run <test>                run single test file
-  html [commit]               generate $1 from the database; uses the latest
-                              commit or a specific one (use -1 for the commit
-                              before latest etc)
+  html                        generate $1 from the database
 Arguments:
   arguments are passed to the compiler
 Options:
   --print                   also print results to the console
   --failing                 only show failing/ignored tests
-  --pedantic                return non-zero status code if there are failures
   --targets:"c c++ js objc" run tests for specified targets (default: all)
   --nim:path                use a particular nim executable (default: compiler/nim)
 """ % resultsFile
@@ -70,10 +67,16 @@ proc normalizeMsg(s: string): string =
     if result.len > 0: result.add '\L'
     result.add x.strip
 
+proc getFileDir(filename: string): string =
+  result = filename.splitFile().dir
+  if not result.isAbsolute():
+    result = getCurrentDir() / result
+
 proc callCompiler(cmdTemplate, filename, options: string,
                   target: TTarget): TSpec =
   let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
-                       "options", options, "file", filename.quoteShell])
+                       "options", options, "file", filename.quoteShell,
+                       "filedir", filename.getFileDir()])
   var p = startProcess(command=c[0], args=c[1.. ^1],
                        options={poStdErrToStdOut, poUsePath})
   let outp = p.outputStream
@@ -118,7 +121,8 @@ proc callCompiler(cmdTemplate, filename, options: string,
 proc callCCompiler(cmdTemplate, filename, options: string,
                   target: TTarget): TSpec =
   let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
-                       "options", options, "file", filename.quoteShell])
+                       "options", options, "file", filename.quoteShell,
+                       "filedir", filename.getFileDir()])
   var p = startProcess(command="gcc", args=c[5.. ^1],
                        options={poStdErrToStdOut, poUsePath})
   let outp = p.outputStream
@@ -184,7 +188,12 @@ proc addResult(r: var TResults, test: TTest,
         ("Skipped", "")
       else:
         ("Failed", "Failure: " & $success & "\nExpected:\n" & expected & "\n\n" & "Gotten:\n" & given)
-    var p = startProcess("appveyor", args=["AddTest", test.name.replace("\\", "/") & test.options, "-Framework", "nim-testament", "-FileName", test.cat.string, "-Outcome", outcome, "-ErrorMessage", msg, "-Duration", $(duration*1000).int], options={poStdErrToStdOut, poUsePath, poParentStreams})
+    var p = startProcess("appveyor", args=["AddTest", test.name.replace("\\", "/") & test.options,
+                         "-Framework", "nim-testament", "-FileName",
+                         test.cat.string,
+                         "-Outcome", outcome, "-ErrorMessage", msg,
+                         "-Duration", $(duration*1000).int],
+                         options={poStdErrToStdOut, poUsePath, poParentStreams})
     discard waitForExit(p)
     close(p)
 
@@ -283,7 +292,7 @@ proc analyzeAndConsolidateOutput(s: string): string =
       result = substr(rows[i], pos) & "\n"
       for i in i+1 ..< rows.len:
         result.add rows[i] & "\n"
-        if not (rows[i] =~ re"^[^(]+\(\d+\)\s+"):
+        if not (rows[i] =~ peg"['(']+ '(' \d+ ')' \s+"):
           return
     elif (let pos = find(rows[i], "SIGSEGV: Illegal storage access."); pos != -1):
       result = substr(rows[i], pos)
@@ -429,7 +438,8 @@ proc main() =
   backend.open()
   var optPrintResults = false
   var optFailing = false
-  var optPedantic = false
+
+  var targetsStr = ""
 
   var p = initOptParser()
   p.next()
@@ -437,8 +447,10 @@ proc main() =
     case p.key.string.normalize
     of "print", "verbose": optPrintResults = true
     of "failing": optFailing = true
-    of "pedantic": optPedantic = true
-    of "targets": targets = parseTargets(p.val.string)
+    of "pedantic": discard "now always enabled"
+    of "targets":
+      targetsStr = p.val.string
+      targets = parseTargets(targetsStr)
     of "nim": compilerPrefix = p.val.string
     else: quit Usage
     p.next()
@@ -449,13 +461,19 @@ proc main() =
   case action
   of "all":
     let testsDir = "tests" & DirSep
+    var myself = quoteShell(findExe("tests" / "testament" / "tester"))
+    if targetsStr.len > 0:
+      myself &= " '--targets:" & targetsStr & "'"
+    var cmds: seq[string] = @[]
+    let rest = if p.cmdLineRest.string.len > 0: " " & p.cmdLineRest.string else: ""
     for kind, dir in walkDir(testsDir):
       assert testsDir.startsWith(testsDir)
       let cat = dir[testsDir.len .. ^1]
       if kind == pcDir and cat notin ["testament", "testdata", "nimcache"]:
-        processCategory(r, Category(cat), p.cmdLineRest.string)
-    for a in AdditionalCategories:
-      processCategory(r, Category(a), p.cmdLineRest.string)
+        cmds.add(myself & " cat " & cat & rest)
+    for cat in AdditionalCategories:
+      cmds.add(myself & " cat " & cat & rest)
+    quit osproc.execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams})
   of "c", "cat", "category":
     var cat = Category(p.key)
     p.next
@@ -466,10 +484,7 @@ proc main() =
     var cat = Category(subdir)
     processSingleTest(r, cat, p.cmdLineRest.string, file)
   of "html":
-    var commit = 0
-    discard parseInt(p.cmdLineRest.string, commit)
-    generateHtml(resultsFile, commit, optFailing)
-    generateJson(jsonFile, commit)
+    generateHtml(resultsFile, optFailing)
   else:
     quit Usage
 
@@ -477,11 +492,10 @@ proc main() =
     if action == "html": openDefaultBrowser(resultsFile)
     else: echo r, r.data
   backend.close()
-  if optPedantic:
-    var failed = r.total - r.passed - r.skipped
-    if failed > 0:
-      echo "FAILURE! total: ", r.total, " passed: ", r.passed, " skipped: ", r.skipped
-      quit(QuitFailure)
+  var failed = r.total - r.passed - r.skipped
+  if failed > 0:
+    echo "FAILURE! total: ", r.total, " passed: ", r.passed, " skipped: ", r.skipped
+    quit(QuitFailure)
 
 if paramCount() == 0:
   quit Usage

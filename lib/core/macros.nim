@@ -75,7 +75,8 @@ type
     nnkClosure,
     nnkGotoState,
     nnkState,
-    nnkBreakState
+    nnkBreakState,
+    nnkFuncDef
 
   NimNodeKinds* = set[NimNodeKind]
   NimTypeKind* = enum  # some types are no longer used, see ast.nim
@@ -96,14 +97,14 @@ type
     ntyError,
     ntyBuiltinTypeClass, ntyUserTypeClass, ntyUserTypeClassInst,
     ntyCompositeTypeClass, ntyInferred, ntyAnd, ntyOr, ntyNot,
-    ntyAnything, ntyStatic, ntyFromExpr, ntyFieldAccessor, ntyVoid
+    ntyAnything, ntyStatic, ntyFromExpr, ntyOpt, ntyVoid
 
   TNimTypeKinds* {.deprecated.} = set[NimTypeKind]
   NimSymKind* = enum
     nskUnknown, nskConditional, nskDynLib, nskParam,
     nskGenericParam, nskTemp, nskModule, nskType, nskVar, nskLet,
     nskConst, nskResult,
-    nskProc, nskMethod, nskIterator,
+    nskProc, nskFunc, nskMethod, nskIterator,
     nskConverter, nskMacro, nskTemplate, nskField,
     nskEnumField, nskForVar, nskLabel,
     nskStub
@@ -128,13 +129,6 @@ const
   nnkCallKinds* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
                    nnkCallStrLit}
 
-proc `[]`*(n: NimNode, i: int): NimNode {.magic: "NChild", noSideEffect.}
-  ## get `n`'s `i`'th child.
-
-proc `[]=`*(n: NimNode, i: int, child: NimNode) {.magic: "NSetChild",
-  noSideEffect.}
-  ## set `n`'s `i`'th child to `child`.
-
 proc `!`*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect.}
   ## constructs an identifier from the string `s`
 
@@ -150,6 +144,9 @@ proc `==`*(a, b: NimIdent): bool {.magic: "EqIdent", noSideEffect.}
 proc `==`*(a, b: NimNode): bool {.magic: "EqNimrodNode", noSideEffect.}
   ## compares two Nim nodes
 
+proc `==`*(a, b: NimSym): bool {.magic: "EqNimrodNode", noSideEffect.}
+  ## compares two Nim symbols
+
 proc sameType*(a, b: NimNode): bool {.magic: "SameNodeType", noSideEffect.} =
   ## compares two Nim nodes' types. Return true if the types are the same,
   ## eg. true when comparing alias with original type.
@@ -157,6 +154,20 @@ proc sameType*(a, b: NimNode): bool {.magic: "SameNodeType", noSideEffect.} =
 
 proc len*(n: NimNode): int {.magic: "NLen", noSideEffect.}
   ## returns the number of children of `n`.
+
+proc `[]`*(n: NimNode, i: int): NimNode {.magic: "NChild", noSideEffect.}
+  ## get `n`'s `i`'th child.
+
+proc `[]`*(n: NimNode, i: BackwardsIndex): NimNode = n[n.len - i.int]
+  ## get `n`'s `i`'th child.
+
+proc `[]=`*(n: NimNode, i: int, child: NimNode) {.magic: "NSetChild",
+  noSideEffect.}
+  ## set `n`'s `i`'th child to `child`.
+
+proc `[]=`*(n: NimNode, i: BackwardsIndex, child: NimNode) =
+  ## set `n`'s `i`'th child to `child`.
+  n[n.len - i.int] = child
 
 proc add*(father, child: NimNode): NimNode {.magic: "NAdd", discardable,
   noSideEffect, locks: 0.}
@@ -666,7 +677,7 @@ proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
         t = x
       result = newString(len)
       for j in countdown(len-1, 0):
-        result[j] = HexChars[t and 0xF]
+        result[j] = HexChars[int(t and 0xF)]
         t = t shr 4
         # handle negative overflow
         if t == 0 and x < 0: t = -1
@@ -835,12 +846,13 @@ proc newNilLit*(): NimNode {.compileTime.} =
   ## New nil literal shortcut
   result = newNimNode(nnkNilLit)
 
-proc last*(node: NimNode): NimNode {.compileTime.} = node[<node.len]
+proc last*(node: NimNode): NimNode {.compileTime.} = node[node.len-1]
   ## Return the last item in nodes children. Same as `node[^1]`
 
 
 const
-  RoutineNodes* = {nnkProcDef, nnkMethodDef, nnkDo, nnkLambda, nnkIteratorDef, nnkTemplateDef, nnkConverterDef}
+  RoutineNodes* = {nnkProcDef, nnkFuncDef, nnkMethodDef, nnkDo, nnkLambda,
+                   nnkIteratorDef, nnkTemplateDef, nnkConverterDef}
   AtomicNodes* = {nnkNone..nnkNilLit}
   CallNodes* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
     nnkCallStrLit, nnkHiddenCallConv}
@@ -882,7 +894,7 @@ proc newIfStmt*(branches: varargs[tuple[cond, body: NimNode]]):
 
 proc copyChildrenTo*(src, dest: NimNode) {.compileTime.}=
   ## Copy all children from `src` to `dest`
-  for i in 0 .. < src.len:
+  for i in 0 ..< src.len:
     dest.add src[i].copyNimTree
 
 template expectRoutine(node: NimNode) =
@@ -980,6 +992,11 @@ iterator items*(n: NimNode): NimNode {.inline.} =
   ## Iterates over the children of the NimNode ``n``.
   for i in 0 ..< n.len:
     yield n[i]
+
+iterator pairs*(n: NimNode): (int, NimNode) {.inline.} =
+  ## Iterates over the children of the NimNode ``n`` and its indices.
+  for i in 0 ..< n.len:
+    yield (i, n[i])
 
 iterator children*(n: NimNode): NimNode {.inline.} =
   ## Iterates over the children of the NimNode ``n``.
@@ -1094,10 +1111,10 @@ proc eqIdent*(node: NimNode; s: string): bool {.compileTime.} =
   else:
     result = false
 
-proc hasArgOfName* (params: NimNode; name: string): bool {.compiletime.}=
+proc hasArgOfName*(params: NimNode; name: string): bool {.compiletime.}=
   ## Search nnkFormalParams for an argument.
   assert params.kind == nnkFormalParams
-  for i in 1 .. <params.len:
+  for i in 1 ..< params.len:
     template node: untyped = params[i]
     if name.eqIdent( $ node[0]):
       return true

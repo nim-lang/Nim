@@ -365,7 +365,7 @@ proc replEpc(x: ThreadParams) {.thread.} =
     of "epc-error":
       # an unhandled exception forces down the whole process anyway, so we
       # use 'quit' here instead of 'raise'
-      quit("recieved epc error: " & $messageBuffer)
+      quit("received epc error: " & $messageBuffer)
     else:
       let errMessage = case epcApi
                        of "return", "return-error":
@@ -485,7 +485,6 @@ proc mainCommand(graph: ModuleGraph; cache: IdentCache) =
   registerPass semPass
   gCmd = cmdIdeTools
   incl gGlobalOptions, optCaasEnabled
-  isServing = true
   wantMainModule()
 
   if not fileExists(gProjectFull):

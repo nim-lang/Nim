@@ -15,8 +15,8 @@ import
   ast, strutils, strtabs, options, msgs, os, ropes, idents,
   wordrecg, syntaxes, renderer, lexer, packages/docutils/rstast,
   packages/docutils/rst, packages/docutils/rstgen, times,
-  packages/docutils/highlite, importer, sempass2, json, xmltree, cgi,
-  typesrenderer, astalgo
+  packages/docutils/highlite, sempass2, json, xmltree, cgi,
+  typesrenderer, astalgo, modulepaths
 
 type
   TSections = array[TSymKind, Rope]
@@ -252,7 +252,7 @@ proc getName(d: PDoc, n: PNode, splitAfter = -1): string =
   of nkIdent: result = esc(d.target, n.ident.s, splitAfter)
   of nkAccQuoted:
     result = esc(d.target, "`")
-    for i in 0.. <n.len: result.add(getName(d, n[i], splitAfter))
+    for i in 0..<n.len: result.add(getName(d, n[i], splitAfter))
     result.add esc(d.target, "`")
   of nkOpenSymChoice, nkClosedSymChoice:
     result = getName(d, n[0], splitAfter)
@@ -268,7 +268,7 @@ proc getNameIdent(n: PNode): PIdent =
   of nkIdent: result = n.ident
   of nkAccQuoted:
     var r = ""
-    for i in 0.. <n.len: r.add(getNameIdent(n[i]).s)
+    for i in 0..<n.len: r.add(getNameIdent(n[i]).s)
     result = getIdent(r)
   of nkOpenSymChoice, nkClosedSymChoice:
     result = getNameIdent(n[0])
@@ -283,7 +283,7 @@ proc getRstName(n: PNode): PRstNode =
   of nkIdent: result = newRstNode(rnLeaf, n.ident.s)
   of nkAccQuoted:
     result = getRstName(n.sons[0])
-    for i in 1 .. <n.len: result.text.add(getRstName(n[i]).text)
+    for i in 1 ..< n.len: result.text.add(getRstName(n[i]).text)
   of nkOpenSymChoice, nkClosedSymChoice:
     result = getRstName(n[0])
   else:
@@ -325,7 +325,7 @@ proc complexName(k: TSymKind, n: PNode, baseName: string): string =
   ## section of ``doc/docgen.txt``.
   result = baseName
   case k:
-  of skProc: result.add(defaultParamSeparator)
+  of skProc, skFunc: result.add(defaultParamSeparator)
   of skMacro: result.add(".m" & defaultParamSeparator)
   of skMethod: result.add(".e" & defaultParamSeparator)
   of skIterator: result.add(".i" & defaultParamSeparator)
@@ -341,7 +341,7 @@ proc isCallable(n: PNode): bool =
   ## Returns true if `n` contains a callable node.
   case n.kind
   of nkProcDef, nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef,
-    nkConverterDef: result = true
+    nkConverterDef, nkFuncDef: result = true
   else:
     result = false
 
@@ -533,6 +533,9 @@ proc generateDoc*(d: PDoc, n: PNode) =
   of nkProcDef:
     when useEffectSystem: documentRaises(n)
     genItem(d, n, n.sons[namePos], skProc)
+  of nkFuncDef:
+    when useEffectSystem: documentRaises(n)
+    genItem(d, n, n.sons[namePos], skFunc)
   of nkMethodDef:
     when useEffectSystem: documentRaises(n)
     genItem(d, n, n.sons[namePos], skMethod)
@@ -574,6 +577,9 @@ proc generateJson*(d: PDoc, n: PNode) =
   of nkProcDef:
     when useEffectSystem: documentRaises(n)
     d.add genJsonItem(d, n, n.sons[namePos], skProc)
+  of nkFuncDef:
+    when useEffectSystem: documentRaises(n)
+    d.add genJsonItem(d, n, n.sons[namePos], skFunc)
   of nkMethodDef:
     when useEffectSystem: documentRaises(n)
     d.add genJsonItem(d, n, n.sons[namePos], skMethod)
@@ -604,8 +610,8 @@ proc generateJson*(d: PDoc, n: PNode) =
 
 proc genSection(d: PDoc, kind: TSymKind) =
   const sectionNames: array[skModule..skTemplate, string] = [
-    "Imports", "Types", "Vars", "Lets", "Consts", "Vars", "Procs", "Methods",
-    "Iterators", "Converters", "Macros", "Templates"
+    "Imports", "Types", "Vars", "Lets", "Consts", "Vars", "Procs", "Funcs",
+    "Methods", "Iterators", "Converters", "Macros", "Templates"
   ]
   if d.section[kind] == nil: return
   var title = sectionNames[kind].rope

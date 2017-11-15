@@ -93,7 +93,7 @@ proc random*(max: float): float {.benign.} =
     let u = (0x3FFu64 shl 52u64) or (x shr 12u64)
     result = (cast[float](u) - 1.0) * max
 
-proc random*[T](x: Slice[T]): T =
+proc random*[T](x: HSlice[T, T]): T =
   ## For a slice `a .. b` returns a value in the range `a .. b-1`.
   result = T(random(x.b - x.a)) + x.a
 

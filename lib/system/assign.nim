@@ -61,14 +61,23 @@ proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) =
       unsureAsgnRef(x, s2)
       return
     sysAssert(dest != nil, "genericAssignAux 3")
-    unsureAsgnRef(x, newSeq(mt, seq.len))
-    var dst = cast[ByteAddress](cast[PPointer](dest)[])
-    for i in 0..seq.len-1:
-      genericAssignAux(
-        cast[pointer](dst +% i*% mt.base.size +% GenericSeqSize),
-        cast[pointer](cast[ByteAddress](s2) +% i *% mt.base.size +%
-                     GenericSeqSize),
-        mt.base, shallow)
+    if ntfNoRefs in mt.base.flags:
+      var ss = nimNewSeqOfCap(mt, seq.len)
+      cast[PGenericSeq](ss).len = seq.len
+      unsureAsgnRef(x, ss)
+      var dst = cast[ByteAddress](cast[PPointer](dest)[])
+      copyMem(cast[pointer](dst +% GenericSeqSize),
+              cast[pointer](cast[ByteAddress](s2) +% GenericSeqSize),
+              seq.len * mt.base.size)
+    else:
+      unsureAsgnRef(x, newSeq(mt, seq.len))
+      var dst = cast[ByteAddress](cast[PPointer](dest)[])
+      for i in 0..seq.len-1:
+        genericAssignAux(
+          cast[pointer](dst +% i*% mt.base.size +% GenericSeqSize),
+          cast[pointer](cast[ByteAddress](s2) +% i *% mt.base.size +%
+                      GenericSeqSize),
+          mt.base, shallow)
   of tyObject:
     if mt.base != nil:
       genericAssignAux(dest, src, mt.base, shallow)
@@ -89,6 +98,19 @@ proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) =
                        cast[pointer](s +% i*% mt.base.size), mt.base, shallow)
   of tyRef:
     unsureAsgnRef(cast[PPointer](dest), cast[PPointer](s)[])
+  of tyOptAsRef:
+    let s2 = cast[PPointer](src)[]
+    let d = cast[PPointer](dest)
+    if s2 == nil:
+      unsureAsgnRef(d, s2)
+    else:
+      when declared(usrToCell):
+        let realType = usrToCell(s2).typ
+      else:
+        let realType = if mt.base.kind == tyObject: cast[ptr PNimType](s2)[]
+                       else: mt.base
+      var z = newObj(realType, realType.base.size)
+      genericAssignAux(d, addr z, mt.base, shallow)
   else:
     copyMem(dest, src, mt.size) # copy raw bits
 
@@ -115,6 +137,7 @@ when false:
     of tyPtr: k = "ptr"
     of tyRef: k = "ref"
     of tyVar: k = "var"
+    of tyOptAsRef: k = "optref"
     of tySequence: k = "seq"
     of tyProc: k = "proc"
     of tyPointer: k = "range"
@@ -195,7 +218,7 @@ proc genericReset(dest: pointer, mt: PNimType) =
   var d = cast[ByteAddress](dest)
   sysAssert(mt != nil, "genericReset 2")
   case mt.kind
-  of tyString, tyRef, tySequence:
+  of tyString, tyRef, tyOptAsRef, tySequence:
     unsureAsgnRef(cast[PPointer](dest), nil)
   of tyTuple:
     genericResetAux(dest, mt.node)

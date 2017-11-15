@@ -22,7 +22,8 @@ type
     recurse: bool
 
 proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode)
-proc liftBody(c: PContext; typ: PType; info: TLineInfo): PSym
+proc liftBody(c: PContext; typ: PType; kind: TTypeAttachedOp;
+              info: TLineInfo): PSym {.discardable.}
 
 proc at(a, i: PNode, elemType: PType): PNode =
   result = newNodeI(nkBracketExpr, a.info, 2)
@@ -31,7 +32,7 @@ proc at(a, i: PNode, elemType: PType): PNode =
   result.typ = elemType
 
 proc liftBodyTup(c: var TLiftCtx; t: PType; body, x, y: PNode) =
-  for i in 0 .. <t.len:
+  for i in 0 ..< t.len:
     let lit = lowerings.newIntLit(i)
     liftBodyAux(c, t.sons[i], body, x.at(lit, t.sons[i]), y.at(lit, t.sons[i]))
 
@@ -57,7 +58,7 @@ proc liftBodyObj(c: var TLiftCtx; n, body, x, y: PNode) =
     var access = dotField(x, n[0].sym)
     caseStmt.add(access)
     # copy the branches over, but replace the fields with the for loop body:
-    for i in 1 .. <n.len:
+    for i in 1 ..< n.len:
       var branch = copyTree(n[i])
       let L = branch.len
       branch.sons[L-1] = newNodeI(nkStmtList, c.info)
@@ -92,13 +93,41 @@ proc newAsgnStmt(le, ri: PNode): PNode =
   result.sons[0] = le
   result.sons[1] = ri
 
-proc newDestructorCall(op: PSym; x: PNode): PNode =
+proc newOpCall(op: PSym; x: PNode): PNode =
   result = newNodeIT(nkCall, x.info, op.typ.sons[0])
   result.add(newSymNode(op))
   result.add x
 
+proc destructorCall(c: PContext; op: PSym; x: PNode): PNode =
+  result = newNodeIT(nkCall, x.info, op.typ.sons[0])
+  result.add(newSymNode(op))
+  if newDestructors:
+    result.add genAddr(c, x)
+  else:
+    result.add x
+
 proc newDeepCopyCall(op: PSym; x, y: PNode): PNode =
-  result = newAsgnStmt(x, newDestructorCall(op, y))
+  result = newAsgnStmt(x, newOpCall(op, y))
+
+proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
+                        field: PSym): bool =
+  if tfHasAsgn in t.flags:
+    var op: PSym
+    if sameType(t, c.asgnForType):
+      # generate recursive call:
+      if c.recurse:
+        op = c.fn
+      else:
+        c.recurse = true
+        return false
+    else:
+      op = field
+      if op == nil:
+        op = liftBody(c.c, t, c.kind, c.info)
+    markUsed(c.info, op, c.c.graph.usageSym)
+    styleCheckUse(c.info, op)
+    body.add newAsgnCall(c.c, op, x, y)
+    result = true
 
 proc considerOverloadedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
   case c.kind
@@ -107,26 +136,12 @@ proc considerOverloadedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
     if op != nil:
       markUsed(c.info, op, c.c.graph.usageSym)
       styleCheckUse(c.info, op)
-      body.add newDestructorCall(op, x)
+      body.add destructorCall(c.c, op, x)
       result = true
   of attachedAsgn:
-    if tfHasAsgn in t.flags:
-      var op: PSym
-      if sameType(t, c.asgnForType):
-        # generate recursive call:
-        if c.recurse:
-          op = c.fn
-        else:
-          c.recurse = true
-          return false
-      else:
-        op = t.assignment
-        if op == nil:
-          op = liftBody(c.c, t, c.info)
-      markUsed(c.info, op, c.c.graph.usageSym)
-      styleCheckUse(c.info, op)
-      body.add newAsgnCall(c.c, op, x, y)
-      result = true
+    result = considerAsgnOrSink(c, t, body, x, y, t.assignment)
+  of attachedSink:
+    result = considerAsgnOrSink(c, t, body, x, y, t.sink)
   of attachedDeepCopy:
     let op = t.deepCopy
     if op != nil:
@@ -185,10 +200,10 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case t.kind
   of tyNone, tyEmpty, tyVoid: discard
   of tyPointer, tySet, tyBool, tyChar, tyEnum, tyInt..tyUInt64, tyCString,
-      tyPtr, tyString, tyRef:
+      tyPtr, tyString, tyRef, tyOpt:
     defaultOp(c, t, body, x, y)
   of tyArray, tySequence:
-    if tfHasAsgn in t.flags:
+    if {tfHasAsgn, tfUncheckedArray} * t.flags == {tfHasAsgn}:
       if t.kind == tySequence:
         # XXX add 'nil' handling here
         body.add newSeqCall(c.c, x, y)
@@ -227,9 +242,9 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
      tyTypeDesc, tyGenericInvocation, tyForward:
     internalError(c.info, "assignment requested for type: " & typeToString(t))
   of tyOrdinal, tyRange, tyInferred,
-     tyGenericInst, tyFieldAccessor, tyStatic, tyVar, tyAlias:
+     tyGenericInst, tyStatic, tyVar, tyAlias:
     liftBodyAux(c, lastSon(t), body, x, y)
-  of tyUnused, tyUnused0, tyUnused1, tyUnused2: internalError("liftBodyAux")
+  of tyUnused, tyOptAsRef, tyUnused1, tyUnused2: internalError("liftBodyAux")
 
 proc newProcType(info: TLineInfo; owner: PSym): PType =
   result = newType(tyProc, owner)
@@ -245,12 +260,20 @@ proc addParam(procType: PType; param: PSym) =
   addSon(procType.n, newSymNode(param))
   rawAddSon(procType, param.typ)
 
-proc liftBody(c: PContext; typ: PType; info: TLineInfo): PSym =
+proc liftBody(c: PContext; typ: PType; kind: TTypeAttachedOp;
+              info: TLineInfo): PSym {.discardable.} =
   var a: TLiftCtx
   a.info = info
   a.c = c
+  a.kind = kind
   let body = newNodeI(nkStmtList, info)
-  result = newSym(skProc, getIdent":lifted=", typ.owner, info)
+  let procname = case kind
+                 of attachedAsgn: getIdent"="
+                 of attachedSink: getIdent"=sink"
+                 of attachedDeepCopy: getIdent"=deepcopy"
+                 of attachedDestructor: getIdent"=destroy"
+
+  result = newSym(skProc, procname, typ.owner, info)
   a.fn = result
   a.asgnForType = typ
 
@@ -261,27 +284,48 @@ proc liftBody(c: PContext; typ: PType; info: TLineInfo): PSym =
 
   result.typ = newProcType(info, typ.owner)
   result.typ.addParam dest
-  result.typ.addParam src
+  if kind != attachedDestructor:
+    result.typ.addParam src
 
   liftBodyAux(a, typ, body, newSymNode(dest).newDeref, newSymNode(src))
+  # recursion is handled explicitly, do not register the type based operation
+  # before 'liftBodyAux':
+  case kind
+  of attachedAsgn: typ.assignment = result
+  of attachedSink: typ.sink = result
+  of attachedDeepCopy: typ.deepCopy = result
+  of attachedDestructor: typ.destructor = result
 
   var n = newNodeI(nkProcDef, info, bodyPos+1)
-  for i in 0 .. < n.len: n.sons[i] = emptyNode
+  for i in 0 ..< n.len: n.sons[i] = emptyNode
   n.sons[namePos] = newSymNode(result)
   n.sons[paramsPos] = result.typ.n
   n.sons[bodyPos] = body
   result.ast = n
 
-  # register late as recursion is handled differently
-  typ.assignment = result
-  #echo "Produced this ", n
 
 proc getAsgnOrLiftBody(c: PContext; typ: PType; info: TLineInfo): PSym =
   let t = typ.skipTypes({tyGenericInst, tyVar, tyAlias})
   result = t.assignment
   if result.isNil:
-    result = liftBody(c, t, info)
+    result = liftBody(c, t, attachedAsgn, info)
 
 proc overloadedAsgn(c: PContext; dest, src: PNode): PNode =
   let a = getAsgnOrLiftBody(c, dest.typ, dest.info)
   result = newAsgnCall(c, a, dest, src)
+
+proc liftTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
+  ## In the semantic pass this is called in strategic places
+  ## to ensure we lift assignment, destructors and moves properly.
+  ## The later 'destroyer' pass depends on it.
+  if not newDestructors or not hasDestructor(typ): return
+  # do not produce wrong liftings while we're still instantiating generics:
+  if c.typesWithOps.len > 0: return
+  let typ = typ.skipTypes({tyGenericInst, tyAlias})
+  # we generate the destructor first so that other operators can depend on it:
+  if typ.destructor == nil:
+    liftBody(c, typ, attachedDestructor, info)
+  if typ.assignment == nil:
+    liftBody(c, typ, attachedAsgn, info)
+  if typ.sink == nil:
+    liftBody(c, typ, attachedSink, info)

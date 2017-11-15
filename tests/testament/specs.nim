@@ -12,6 +12,8 @@ import parseutils, strutils, os, osproc, streams, parsecfg
 
 var compilerPrefix* = "compiler" / "nim "
 
+let isTravis = existsEnv("TRAVIS")
+
 proc cmdTemplate*(): string =
   compilerPrefix & "$target --lib:lib --hints:on -d:testing $options $file"
 
@@ -153,7 +155,7 @@ proc parseSpec*(filename: string): TSpec =
       result.msg = e.value
       if result.action != actionRun:
         result.action = actionCompile
-    of "errormsg":
+    of "errormsg", "errmsg":
       result.msg = e.value
       result.action = actionReject
     of "nimout":
@@ -174,6 +176,8 @@ proc parseSpec*(filename: string): TSpec =
         when defined(unix): result.err = reIgnored
       of "posix":
         when defined(posix): result.err = reIgnored
+      of "travis":
+        if isTravis: result.err = reIgnored
       else:
         raise newException(ValueError, "cannot interpret as a bool: " & e.value)
     of "cmd":

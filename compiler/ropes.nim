@@ -228,6 +228,7 @@ proc prepend*(a: var Rope, b: string) = a = b & a
 var
   rnl* = tnl.newRope
   softRnl* = tnl.newRope
+  noRnl* = "".newRope
 
 proc `%`*(frmt: FormatStr, args: openArray[Rope]): Rope =
   var i = 0

@@ -131,8 +131,7 @@ proc incl*(s: var IntSet, key: int) =
     # fall through:
   bitincl(s, key)
 
-proc excl*(s: var IntSet, key: int) =
-  ## excludes `key` from the set `s`.
+proc exclImpl(s: var IntSet, key: int) =
   if s.elems <= s.a.len:
     for i in 0..<s.elems:
       if s.a[i] == key:
@@ -145,6 +144,17 @@ proc excl*(s: var IntSet, key: int) =
       var u = key and TrunkMask
       t.bits[`shr`(u, IntShift)] = t.bits[`shr`(u, IntShift)] and
           not `shl`(1, u and IntMask)
+
+proc excl*(s: var IntSet, key: int) =
+  ## excludes `key` from the set `s`.
+  exclImpl(s, key)
+
+proc missingOrExcl*(s: var IntSet, key: int) : bool =
+  ## returns true if `s` does not contain `key`, otherwise
+  ## `key` is removed from `s` and false is returned.
+  var count = s.elems
+  exclImpl(s, key)
+  result = count == s.elems 
 
 proc containsOrIncl*(s: var IntSet, key: int): bool =
   ## returns true if `s` contains `key`, otherwise `key` is included in `s`
@@ -269,6 +279,17 @@ when isMainModule:
   x.incl(2)
   x.incl(7)
   x.incl(1056)
+
+  x.incl(1044)
+  x.excl(1044) 
+
+  assert x.containsOrIncl(888) == false
+  assert 888 in x
+  assert x.containsOrIncl(888) == true
+
+  assert x.missingOrExcl(888) == false
+  assert 888 notin x
+  assert x.missingOrExcl(888) == true
 
   var xs = toSeq(items(x))
   xs.sort(cmp[int])

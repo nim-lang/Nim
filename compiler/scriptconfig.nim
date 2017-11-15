@@ -79,7 +79,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
     setResult(a, osproc.execCmd getString(a, 0))
 
   cbconf getEnv:
-    setResult(a, os.getEnv(a.getString 0))
+    setResult(a, os.getEnv(a.getString 0, a.getString 1))
   cbconf existsEnv:
     setResult(a, os.existsEnv(a.getString 0))
   cbconf dirExists:

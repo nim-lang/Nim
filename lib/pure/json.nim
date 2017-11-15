@@ -37,15 +37,15 @@
 ## Retrieving the value of a JSON node can then be achieved using one of the
 ## helper procedures, which include:
 ##
-## * ``getNum``
-## * ``getFNum``
+## * ``getInt``
+## * ``getFloat``
 ## * ``getStr``
-## * ``getBVal``
+## * ``getBool``
 ##
 ## To retrieve the value of ``"key"`` you can do the following:
 ##
 ## .. code-block:: Nim
-##   doAssert jsonNode["key"].getFNum() == 3.14
+##   doAssert jsonNode["key"].getFloat() == 3.14
 ##
 ## The ``[]`` operator will raise an exception when the specified field does
 ## not exist. If you wish to avoid this behaviour you can use the ``{}``
@@ -681,14 +681,25 @@ proc getStr*(n: JsonNode, default: string = ""): string =
   if n.isNil or n.kind != JString: return default
   else: return n.str
 
-proc getNum*(n: JsonNode, default: BiggestInt = 0): BiggestInt =
+proc getInt*(n: JsonNode, default: int = 0): int =
   ## Retrieves the int value of a `JInt JsonNode`.
+  ##
+  ## Returns ``default`` if ``n`` is not a ``JInt``, or if ``n`` is nil.
+  if n.isNil or n.kind != JInt: return default
+  else: return int(n.num)
+
+proc getBiggestInt*(n: JsonNode, default: BiggestInt = 0): BiggestInt =
+  ## Retrieves the BiggestInt value of a `JInt JsonNode`.
   ##
   ## Returns ``default`` if ``n`` is not a ``JInt``, or if ``n`` is nil.
   if n.isNil or n.kind != JInt: return default
   else: return n.num
 
-proc getFNum*(n: JsonNode, default: float = 0.0): float =
+proc getNum*(n: JsonNode, default: BiggestInt = 0): BiggestInt {.deprecated.} =
+  ## Deprecated - use getInt or getBiggestInt instead
+  getBiggestInt(n, default)
+
+proc getFloat*(n: JsonNode, default: float = 0.0): float =
   ## Retrieves the float value of a `JFloat JsonNode`.
   ##
   ## Returns ``default`` if ``n`` is not a ``JFloat`` or ``JInt``, or if ``n`` is nil.
@@ -698,12 +709,20 @@ proc getFNum*(n: JsonNode, default: float = 0.0): float =
   of JInt: return float(n.num)
   else: return default
 
-proc getBVal*(n: JsonNode, default: bool = false): bool =
+proc getFNum*(n: JsonNode, default: float = 0.0): float {.deprecated.} =
+  ## Deprecated - use getFloat instead
+  getFloat(n, default)
+
+proc getBool*(n: JsonNode, default: bool = false): bool =
   ## Retrieves the bool value of a `JBool JsonNode`.
   ##
   ## Returns ``default`` if ``n`` is not a ``JBool``, or if ``n`` is nil.
   if n.isNil or n.kind != JBool: return default
   else: return n.bval
+
+proc getBVal*(n: JsonNode, default: bool = false): bool {.deprecated.} =
+  ## Deprecated - use getBVal instead
+  getBool(n, default)
 
 proc getFields*(n: JsonNode,
     default = initOrderedTable[string, JsonNode](4)):
@@ -720,6 +739,16 @@ proc getElems*(n: JsonNode, default: seq[JsonNode] = @[]): seq[JsonNode] =
   ## Returns ``default`` if ``n`` is not a ``JArray``, or if ``n`` is nil.
   if n.isNil or n.kind != JArray: return default
   else: return n.elems
+
+proc add*(father, child: JsonNode) =
+  ## Adds `child` to a JArray node `father`.
+  assert father.kind == JArray
+  father.elems.add(child)
+
+proc add*(obj: JsonNode, key: string, val: JsonNode) =
+  ## Sets a field from a `JObject`.
+  assert obj.kind == JObject
+  obj.fields[key] = val
 
 proc `%`*(s: string): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JString JsonNode`.
@@ -759,6 +788,19 @@ proc `%`*[T](elements: openArray[T]): JsonNode =
   result = newJArray()
   for elem in elements: result.add(%elem)
 
+when false:
+  # For 'consistency' we could do this, but that only pushes people further
+  # into that evil comfort zone where they can use Nim without understanding it
+  # causing problems later on.
+  proc `%`*(elements: set[bool]): JsonNode =
+    ## Generic constructor for JSON data. Creates a new `JObject JsonNode`.
+    ## This can only be used with the empty set ``{}`` and is supported
+    ## to prevent the gotcha ``%*{}`` which used to produce an empty
+    ## JSON array.
+    result = newJObject()
+    assert false notin elements, "usage error: only empty sets allowed"
+    assert true notin elements, "usage error: only empty sets allowed"
+
 proc `%`*(o: object): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
   result = newJObject()
@@ -779,27 +821,25 @@ proc `%`*(o: enum): JsonNode =
 proc toJson(x: NimNode): NimNode {.compiletime.} =
   case x.kind
   of nnkBracket: # array
+    if x.len == 0: return newCall(bindSym"newJArray")
     result = newNimNode(nnkBracket)
-    for i in 0 .. <x.len:
+    for i in 0 ..< x.len:
       result.add(toJson(x[i]))
-
+    result = newCall(bindSym"%", result)
   of nnkTableConstr: # object
+    if x.len == 0: return newCall(bindSym"newJObject")
     result = newNimNode(nnkTableConstr)
-    for i in 0 .. <x.len:
+    for i in 0 ..< x.len:
       x[i].expectKind nnkExprColonExpr
-      result.add(newNimNode(nnkExprColonExpr).add(x[i][0]).add(toJson(x[i][1])))
-
+      result.add newTree(nnkExprColonExpr, x[i][0], toJson(x[i][1]))
+    result = newCall(bindSym"%", result)
   of nnkCurly: # empty object
-    result = newNimNode(nnkTableConstr)
     x.expectLen(0)
-
+    result = newCall(bindSym"newJObject")
   of nnkNilLit:
-    result = newCall("newJNull")
-
+    result = newCall(bindSym"newJNull")
   else:
-    result = x
-
-  result = prefix(result, "%")
+    result = newCall(bindSym"%", x)
 
 macro `%*`*(x: untyped): untyped =
   ## Convert an expression to a JsonNode directly, without having to specify
@@ -909,16 +949,6 @@ proc contains*(node: JsonNode, val: JsonNode): bool =
 proc existsKey*(node: JsonNode, key: string): bool {.deprecated.} = node.hasKey(key)
   ## Deprecated for `hasKey`
 
-proc add*(father, child: JsonNode) =
-  ## Adds `child` to a JArray node `father`.
-  assert father.kind == JArray
-  father.elems.add(child)
-
-proc add*(obj: JsonNode, key: string, val: JsonNode) =
-  ## Sets a field from a `JObject`.
-  assert obj.kind == JObject
-  obj.fields[key] = val
-
 proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
   ## Sets a field from a `JObject`.
   assert(obj.kind == JObject)
@@ -996,24 +1026,17 @@ proc nl(s: var string, ml: bool) =
 proc escapeJson*(s: string; result: var string) =
   ## Converts a string `s` to its JSON representation.
   ## Appends to ``result``.
-  const
-    HexChars = "0123456789ABCDEF"
   result.add("\"")
-  for x in runes(s):
-    var r = int(x)
-    if r >= 32 and r <= 126:
-      var c = chr(r)
-      case c
-      of '"': result.add("\\\"")
-      of '\\': result.add("\\\\")
-      else: result.add(c)
-    else:
-      # toHex inlined for more speed (saves stupid string allocations):
-      result.add("\\u0000")
-      let start = result.len - 4
-      for j in countdown(3, 0):
-        result[j+start] = HexChars[r and 0xF]
-        r = r shr 4
+  for c in s:
+    case c
+    of '\L': result.add("\\n")
+    of '\b': result.add("\\b")
+    of '\f': result.add("\\f")
+    of '\t': result.add("\\t")
+    of '\r': result.add("\\r")
+    of '"': result.add("\\\"")
+    of '\\': result.add("\\\\")
+    else: result.add(c)
   result.add("\"")
 
 proc escapeJson*(s: string): string =
@@ -1210,7 +1233,7 @@ proc parseJson(p: var JsonParser): JsonNode =
     raiseParseErr(p, "{")
 
 when not defined(js):
-  proc parseJson*(s: Stream, filename: string): JsonNode =
+  proc parseJson*(s: Stream, filename: string = ""): JsonNode =
     ## Parses from a stream `s` into a `JsonNode`. `filename` is only needed
     ## for nice error messages.
     ## If `s` contains extra data, it will raise `JsonParsingError`.
@@ -1280,11 +1303,11 @@ else:
     case getVarType(x)
     of JArray:
       result = newJArray()
-      for i in 0 .. <x.len:
+      for i in 0 ..< x.len:
         result.add(x[i].convertObject())
     of JObject:
       result = newJObject()
-      asm """for (property in `x`) {
+      asm """for (var property in `x`) {
         if (`x`.hasOwnProperty(property)) {
       """
       var nimProperty: cstring
@@ -1338,7 +1361,7 @@ proc getEnum(node: JsonNode, ast: string, T: typedesc): T =
     # TODO: I shouldn't need this proc.
     proc convert[T](x: BiggestInt): T = T(x)
     verifyJsonKind(node, {JInt}, ast)
-    return convert[T](node.getNum())
+    return convert[T](node.getBiggestInt())
   else:
     verifyJsonKind(node, {JString}, ast)
     return parseEnum[T](node.getStr())
@@ -1426,7 +1449,7 @@ proc processElseBranch(recCaseNode, elseBranch, jsonNode, kindType,
   # We need to build up a list of conditions from each ``of`` branch so that
   # we can then negate it to get ``else``.
   var cond = newIdentNode("false")
-  for i in 1 .. <len(recCaseNode):
+  for i in 1 ..< len(recCaseNode):
     if recCaseNode[i].kind == nnkElse:
       break
 
@@ -1488,7 +1511,7 @@ proc processObjField(field, jsonNode: NimNode): seq[NimNode] =
     exprColonExpr.add(getEnumCall)
 
     # Iterate through each `of` branch.
-    for i in 1 .. <field.len:
+    for i in 1 ..< field.len:
       case field[i].kind
       of nnkOfBranch:
         result.add processOfBranch(field[i], jsonNode, kindType, kindJsonNode)
@@ -1617,7 +1640,7 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
         (
           var list: `typeSym` = @[];
           verifyJsonKind(`jsonNode`, {JArray}, astToStr(`jsonNode`));
-          for `forLoopI` in 0 .. <`jsonNode`.len: list.add(`constructorNode`);
+          for `forLoopI` in 0 ..< `jsonNode`.len: list.add(`constructorNode`);
           list
         )
     of "array":
@@ -1631,7 +1654,7 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
         (
           var list: `typeSym`;
           verifyJsonKind(`jsonNode`, {JArray}, astToStr(`jsonNode`));
-          for `forLoopI` in 0 .. <`jsonNode`.len: list[`forLoopI`] =`constructorNode`;
+          for `forLoopI` in 0 ..< `jsonNode`.len: list[`forLoopI`] =`constructorNode`;
           list
         )
 
@@ -1660,7 +1683,7 @@ proc postProcessValue(value: NimNode): NimNode =
     result = postProcess(value)
   else:
     result = value
-    for i in 0 .. <len(result):
+    for i in 0 ..< len(result):
       result[i] = postProcessValue(result[i])
 
 proc postProcessExprColonExpr(exprColonExpr, resIdent: NimNode): NimNode =
@@ -1740,6 +1763,7 @@ macro to*(node: JsonNode, T: typedesc): untyped =
   ##
   ##   * Heterogeneous arrays are not supported.
   ##   * Sets in object variants are not supported.
+  ##   * Not nil annotations are not supported.
   ##
   ## Example:
   ##
@@ -1815,8 +1839,7 @@ when isMainModule:
   doAssert(testJson["e"]["f"].bval)
 
   # make sure UTF-16 decoding works.
-  when not defined(js): # TODO: The following line asserts in JS
-    doAssert(testJson["c"].str == "🎃")
+  doAssert(testJson["c"].str == "🎃")
   doAssert(testJson["d"].str == "æ")
 
   # make sure no memory leek when parsing invalid string
@@ -1925,7 +1948,7 @@ when isMainModule:
     var parsed2 = parseFile("tests/testdata/jsontest2.json")
     doAssert(parsed2{"repository", "description"}.str=="IRC Library for Haskell", "Couldn't fetch via multiply nested key using {}")
 
-  doAssert escapeJson("\10FoobarÄ") == "\"\\u000AFoobar\\u00C4\""
+  doAssert escapeJson("\10Foo🎃barÄ") == "\"\\nFoo🎃barÄ\""
 
   # Test with extra data
   when not defined(js):
@@ -1940,5 +1963,9 @@ when isMainModule:
       doAssert(false)
     except JsonParsingError:
       doAssert getCurrentExceptionMsg().contains(errorMessages[errEofExpected])
+
+  # bug #6438
+  doAssert($ %*[] == "[]")
+  doAssert($ %*{} == "{}")
 
   echo("Tests succeeded!")

@@ -130,17 +130,17 @@ Two identifiers are considered equal if the following algorithm returns true:
 .. code-block:: nim
   proc sameIdentifier(a, b: string): bool =
     a[0] == b[0] and
-      a.replace("_", "").toLower == b.replace("_", "").toLower
+      a.replace("_", "").toLowerAscii == b.replace("_", "").toLowerAscii
 
 That means only the first letters are compared in a case sensitive manner. Other
-letters are compared case insensitively and underscores are ignored.
+letters are compared case insensitively within the ASCII range and underscores are ignored.
 
 This rather unorthodox way to do identifier comparisons is called
 `partial case insensitivity`:idx: and has some advantages over the conventional
 case sensitivity:
 
 It allows programmers to mostly use their own preferred
-spelling style, be it humpStyle, snake_style or dash–style and libraries written
+spelling style, be it humpStyle or snake_style, and libraries written
 by different programmers cannot use incompatible conventions.
 A Nim-aware editor or IDE can show the identifiers as preferred.
 Another advantage is that it frees the programmer from remembering

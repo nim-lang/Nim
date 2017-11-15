@@ -8,7 +8,7 @@ import
   strutils
 
 type
-  TBuffer = array [0..10, int8]
+  TBuffer = array[0..10, int8]
 
 proc toVarNum(x: int32, b: var TBuffer) =
   # encoding: first bit indicates end of number (0 if at end)
@@ -67,7 +67,7 @@ proc toNum64(b: TBuffer): int64 =
 
 proc toNum(b: TBuffer): int32 =
   # treat first byte different:
-  result = ze(b[0]) and 63
+  result = int32 ze(b[0]) and 63
   var
     i = 0
     Shift = 6'i32
