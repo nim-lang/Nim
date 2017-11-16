@@ -213,12 +213,20 @@ proc atomicDec*(memLoc: var int, x: int = 1): int =
     result = memLoc
 
 when defined(vcc):
-  proc interlockedCompareExchange64(p: pointer; exchange, comparand: int64): int64
-    {.importc: "_InterlockedCompareExchange64", header: "<intrin.h>".}
-  proc interlockedCompareExchange32(p: pointer; exchange, comparand: int32): int32
-    {.importc: "_InterlockedCompareExchange", header: "<intrin.h>".}
-  proc interlockedCompareExchange8(p: pointer; exchange, comparand: byte): byte
-    {.importc: "_InterlockedCompareExchange64", header: "<intrin.h>".}
+  when defined(cpp):
+    proc interlockedCompareExchange64(p: pointer; exchange, comparand: int64): int64
+      {.importcpp: "_InterlockedCompareExchange64(static_cast<NI64 volatile *>(#), #, #)", header: "<intrin.h>".}
+    proc interlockedCompareExchange32(p: pointer; exchange, comparand: int32): int32
+      {.importcpp: "_InterlockedCompareExchange(static_cast<NI volatile *>(#), #, #)", header: "<intrin.h>".}
+    proc interlockedCompareExchange8(p: pointer; exchange, comparand: byte): byte
+      {.importcpp: "_InterlockedCompareExchange8(static_cast<char volatile *>(#), #, #)", header: "<intrin.h>".}
+  else:
+    proc interlockedCompareExchange64(p: pointer; exchange, comparand: int64): int64
+      {.importc: "_InterlockedCompareExchange64", header: "<intrin.h>".}
+    proc interlockedCompareExchange32(p: pointer; exchange, comparand: int32): int32
+      {.importc: "_InterlockedCompareExchange", header: "<intrin.h>".}
+    proc interlockedCompareExchange8(p: pointer; exchange, comparand: byte): byte
+      {.importc: "_InterlockedCompareExchange8", header: "<intrin.h>".}
 
   proc cas*[T: bool|int|ptr](p: ptr T; oldValue, newValue: T): bool =
     when sizeof(T) == 8:

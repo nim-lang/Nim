@@ -3,7 +3,6 @@ import re
 
 for x in lines("myfile.txt"):
   if x =~ re"(\w+)=(.*)":
-    echo "Key: ", matches[0],
-         " Value: ", matches[1]
+    echo "Key: ", matches[0], " Value: ", matches[1]
 
 

@@ -465,7 +465,7 @@ proc newHiddenAddrTaken(c: PContext, n: PNode): PNode =
     result = newNodeIT(nkHiddenAddr, n.info, makeVarType(c, n.typ))
     addSon(result, n)
     if isAssignable(c, n) notin {arLValue, arLocalLValue}:
-      localError(n.info, errVarForOutParamNeeded)
+      localError(n.info, errVarForOutParamNeededX, $n)
 
 proc analyseIfAddressTaken(c: PContext, n: PNode): PNode =
   result = n
@@ -509,9 +509,10 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
     for i in countup(1, sonsLen(n) - 1):
       if i < sonsLen(t) and t.sons[i] != nil and
           skipTypes(t.sons[i], abstractInst-{tyTypeDesc}).kind == tyVar:
-        if isAssignable(c, n.sons[i]) notin {arLValue, arLocalLValue}:
-          if n.sons[i].kind != nkHiddenAddr:
-            localError(n.sons[i].info, errVarForOutParamNeeded)
+        let it = n[i]
+        if isAssignable(c, it) notin {arLValue, arLocalLValue}:
+          if it.kind != nkHiddenAddr:
+            localError(it.info, errVarForOutParamNeededX, $it)
     return
   for i in countup(1, sonsLen(n) - 1):
     if n.sons[i].kind == nkHiddenCallConv:

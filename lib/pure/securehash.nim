@@ -181,7 +181,7 @@ proc `$`*(self: SecureHash): string =
     result.add(toHex(int(v), 2))
 
 proc parseSecureHash*(hash: string): SecureHash =
-  for i in 0.. <Sha1DigestSize:
+  for i in 0 ..< Sha1DigestSize:
     Sha1Digest(result)[i] = uint8(parseHexInt(hash[i*2] & hash[i*2 + 1]))
 
 proc `==`*(a, b: SecureHash): bool =

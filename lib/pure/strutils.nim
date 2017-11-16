@@ -578,15 +578,46 @@ iterator split*(s: string, seps: set[char] = Whitespace,
   else:
     splitCommon(s, seps, maxsplit, 1)
 
-iterator splitWhitespace*(s: string): string =
-  ## Splits at whitespace.
-  oldSplit(s, Whitespace, -1)
+iterator splitWhitespace*(s: string, maxsplit: int = -1): string =
+  ## Splits the string ``s`` at whitespace stripping leading and trailing
+  ## whitespace if necessary. If ``maxsplit`` is specified and is positive,
+  ## no more than ``maxsplit`` splits is made.
+  ##
+  ## The following code:
+  ##
+  ## .. code-block:: nim
+  ##   let s = "  foo \t bar  baz  "
+  ##   for ms in [-1, 1, 2, 3]:
+  ##     echo "------ maxsplit = ", ms, ":"
+  ##     for item in s.splitWhitespace(maxsplit=ms):
+  ##       echo '"', item, '"'
+  ##
+  ## ...results in:
+  ##
+  ## .. code-block::
+  ##   ------ maxsplit = -1:
+  ##   "foo"
+  ##   "bar"
+  ##   "baz"
+  ##   ------ maxsplit = 1:
+  ##   "foo"
+  ##   "bar  baz  "
+  ##   ------ maxsplit = 2:
+  ##   "foo"
+  ##   "bar"
+  ##   "baz  "
+  ##   ------ maxsplit = 3:
+  ##   "foo"
+  ##   "bar"
+  ##   "baz"
+  ##
+  oldSplit(s, Whitespace, maxsplit)
 
-proc splitWhitespace*(s: string): seq[string] {.noSideEffect,
+proc splitWhitespace*(s: string, maxsplit: int = -1): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitWhitespace".} =
-  ## The same as the `splitWhitespace <#splitWhitespace.i,string>`_
+  ## The same as the `splitWhitespace <#splitWhitespace.i,string,int>`_
   ## iterator, but is a proc that returns a sequence of substrings.
-  accumulateResult(splitWhitespace(s))
+  accumulateResult(splitWhitespace(s, maxsplit))
 
 iterator split*(s: string, sep: char, maxsplit: int = -1): string =
   ## Splits the string `s` into substrings using a single separator.
@@ -671,7 +702,7 @@ iterator rsplit*(s: string, seps: set[char] = Whitespace,
                  maxsplit: int = -1): string =
   ## Splits the string `s` into substrings from the right using a
   ## string separator. Works exactly the same as `split iterator
-  ## <#split.i,string,char>`_ except in reverse order.
+  ## <#split.i,string,char,int>`_ except in reverse order.
   ##
   ## .. code-block:: nim
   ##   for piece in "foo bar".rsplit(WhiteSpace):
@@ -691,7 +722,7 @@ iterator rsplit*(s: string, sep: char,
                  maxsplit: int = -1): string =
   ## Splits the string `s` into substrings from the right using a
   ## string separator. Works exactly the same as `split iterator
-  ## <#split.i,string,char>`_ except in reverse order.
+  ## <#split.i,string,char,int>`_ except in reverse order.
   ##
   ## .. code-block:: nim
   ##   for piece in "foo:bar".rsplit(':'):
@@ -710,7 +741,7 @@ iterator rsplit*(s: string, sep: string, maxsplit: int = -1,
                  keepSeparators: bool = false): string =
   ## Splits the string `s` into substrings from the right using a
   ## string separator. Works exactly the same as `split iterator
-  ## <#split.i,string,string>`_ except in reverse order.
+  ## <#split.i,string,string,int>`_ except in reverse order.
   ##
   ## .. code-block:: nim
   ##   for piece in "foothebar".rsplit("the"):
@@ -791,13 +822,13 @@ proc countLines*(s: string): int {.noSideEffect,
 
 proc split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): seq[string] {.
   noSideEffect, rtl, extern: "nsuSplitCharSet".} =
-  ## The same as the `split iterator <#split.i,string,set[char]>`_, but is a
+  ## The same as the `split iterator <#split.i,string,set[char],int>`_, but is a
   ## proc that returns a sequence of substrings.
   accumulateResult(split(s, seps, maxsplit))
 
 proc split*(s: string, sep: char, maxsplit: int = -1): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitChar".} =
-  ## The same as the `split iterator <#split.i,string,char>`_, but is a proc
+  ## The same as the `split iterator <#split.i,string,char,int>`_, but is a proc
   ## that returns a sequence of substrings.
   accumulateResult(split(s, sep, maxsplit))
 
@@ -806,7 +837,7 @@ proc split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.noSideEff
   ## Splits the string `s` into substrings using a string separator.
   ##
   ## Substrings are separated by the string `sep`. This is a wrapper around the
-  ## `split iterator <#split.i,string,string>`_.
+  ## `split iterator <#split.i,string,string,int>`_.
   doAssert(sep.len > 0)
 
   accumulateResult(split(s, sep, maxsplit))
@@ -814,7 +845,7 @@ proc split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.noSideEff
 proc rsplit*(s: string, seps: set[char] = Whitespace,
              maxsplit: int = -1): seq[string]
              {.noSideEffect, rtl, extern: "nsuRSplitCharSet".} =
-  ## The same as the `rsplit iterator <#rsplit.i,string,set[char]>`_, but is a
+  ## The same as the `rsplit iterator <#rsplit.i,string,set[char],int>`_, but is a
   ## proc that returns a sequence of substrings.
   ##
   ## A possible common use case for `rsplit` is path manipulation,
@@ -836,7 +867,7 @@ proc rsplit*(s: string, seps: set[char] = Whitespace,
 
 proc rsplit*(s: string, sep: char, maxsplit: int = -1): seq[string]
              {.noSideEffect, rtl, extern: "nsuRSplitChar".} =
-  ## The same as the `split iterator <#rsplit.i,string,char>`_, but is a proc
+  ## The same as the `rsplit iterator <#rsplit.i,string,char,int>`_, but is a proc
   ## that returns a sequence of substrings.
   ##
   ## A possible common use case for `rsplit` is path manipulation,
@@ -858,7 +889,7 @@ proc rsplit*(s: string, sep: char, maxsplit: int = -1): seq[string]
 
 proc rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string]
              {.noSideEffect, rtl, extern: "nsuRSplitString".} =
-  ## The same as the `split iterator <#rsplit.i,string,string>`_, but is a proc
+  ## The same as the `rsplit iterator <#rsplit.i,string,string,int>`_, but is a proc
   ## that returns a sequence of substrings.
   ##
   ## A possible common use case for `rsplit` is path manipulation,
@@ -1896,7 +1927,7 @@ type
 {.deprecated: [TFloatFormat: FloatFormatMode].}
 
 proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
-                         precision: range[0..32] = 16;
+                         precision: range[-1..32] = 16;
                          decimalSep = '.'): string {.
                          noSideEffect, rtl, extern: "nsu$1".} =
   ## Converts a floating point value `f` to a string.
@@ -1908,7 +1939,7 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
   ## `precision`'s default value is the maximum number of meaningful digits
   ## after the decimal point for Nim's ``biggestFloat`` type.
   ##
-  ## If ``precision == 0``, it tries to format it nicely.
+  ## If ``precision == -1``, it tries to format it nicely.
   when defined(js):
     var res: cstring
     case format
@@ -1930,7 +1961,7 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
       buf {.noinit.}: array[0..2500, char]
       L: cint
     frmtstr[0] = '%'
-    if precision > 0:
+    if precision >= 0:
       frmtstr[1] = '#'
       frmtstr[2] = '.'
       frmtstr[3] = '*'
@@ -1964,7 +1995,7 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
         result.setLen(result.len - 1)
 
 proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
-                  precision: range[0..32] = 16; decimalSep = '.'): string {.
+                  precision: range[-1..32] = 16; decimalSep = '.'): string {.
                   noSideEffect, rtl, extern: "nsu$1".} =
   ## Converts a floating point value `f` to a string.
   ##
@@ -1975,7 +2006,17 @@ proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
   ## `precision`'s default value is the maximum number of meaningful digits
   ## after the decimal point for Nim's ``float`` type.
   ##
-  ## If ``precision == 0``, it tries to format it nicely.
+  ## If ``precision == -1``, it tries to format it nicely.
+  ##
+  ## Examples:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##    let x = 123.456
+  ##    doAssert x.formatFloat() == "123.4560000000000"
+  ##    doAssert x.formatFloat(ffDecimal, 4) == "123.4560"
+  ##    doAssert x.formatFloat(ffScientific, 2) == "1.23e+02"
+  ##
   result = formatBiggestFloat(f, format, precision, decimalSep)
 
 proc trimZeros*(x: var string) {.noSideEffect.} =
@@ -2430,11 +2471,15 @@ when isMainModule:
     outp = " this is a\nlong text\n--\nmuchlongerthan10chars\nand here\nit goes"
   doAssert wordWrap(inp, 10, false) == outp
 
+  doAssert formatBiggestFloat(1234.567, ffDecimal, -1) == "1234.567000"
+  doAssert formatBiggestFloat(1234.567, ffDecimal, 0) == "1235."
+  doAssert formatBiggestFloat(1234.567, ffDecimal, 1) == "1234.6"
   doAssert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"
   doAssert formatBiggestFloat(0.00000000001, ffScientific, 1, ',') in
                                                    ["1,0e-11", "1,0e-011"]
   # bug #6589
-  doAssert formatFloat(123.456, ffScientific, precision=0) == "1.234560e+02"
+  doAssert formatFloat(123.456, ffScientific, precision = -1) in
+      ["1.234560e+02", "1.234560e+002"]
 
   doAssert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
   doAssert "${1}12 ${-1}$2" % ["a", "b"] == "a12 bb"
@@ -2597,6 +2642,12 @@ bar
   doAssert s.split(maxsplit=4) == @["", "this", "is", "an", "example  "]
   doAssert s.split(' ', maxsplit=1) == @["", "this is an example  "]
   doAssert s.split(" ", maxsplit=4) == @["", "this", "is", "an", "example  "]
+
+  doAssert s.splitWhitespace() == @["this", "is", "an", "example"]
+  doAssert s.splitWhitespace(maxsplit=1) == @["this", "is an example  "]
+  doAssert s.splitWhitespace(maxsplit=2) == @["this", "is", "an example  "]
+  doAssert s.splitWhitespace(maxsplit=3) == @["this", "is", "an", "example  "]
+  doAssert s.splitWhitespace(maxsplit=4) == @["this", "is", "an", "example"]
 
   block: # formatEng tests
     doAssert formatEng(0, 2, trim=false) == "0.00"

@@ -764,7 +764,10 @@ proc semCaptureSym*(s, owner: PSym) =
       var o = owner.skipGenericOwner
       while o.kind != skModule and o != nil:
         if s.owner == o:
-          owner.typ.callConv = ccClosure
+          if owner.typ.callConv in {ccClosure, ccDefault} or owner.kind == skIterator:
+            owner.typ.callConv = ccClosure
+          else:
+            discard "do not produce an error here, but later"
           #echo "computing .closure for ", owner.name.s, " ", owner.info, " because of ", s.name.s
         o = o.skipGenericOwner
     # since the analysis is not entirely correct, we don't set 'tfCapturesEnv'

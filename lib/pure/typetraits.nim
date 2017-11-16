@@ -21,7 +21,7 @@ proc name*(t: typedesc): string {.magic: "TypeTrait".}
   ##
   ##   proc `$`*(T: typedesc): string = name(T)
   ##
-  ##   template test(x): stmt =
+  ##   template test(x): typed =
   ##     echo "type: ", type(x), ", value: ", x
   ##
   ##   test 42
