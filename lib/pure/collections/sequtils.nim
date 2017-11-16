@@ -706,7 +706,7 @@ template newSeqWith*(len: int, init: untyped): untyped =
     result[i] = init
   result
 
-macro asArray*(targetType: untyped, values: typed): untyped =
+macro asArray*(targetType: typedesc, values: typed): untyped =
   ## applies a type conversion to each of the elements in the specified
   ## array literal. Each element is converted to the ``targetType`` type..
   ##
