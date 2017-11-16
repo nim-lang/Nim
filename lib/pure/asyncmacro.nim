@@ -472,27 +472,13 @@ proc stripAwait(node: NimNode): NimNode =
 proc splitParamType(paramType: NimNode, async: bool): NimNode =
   result = paramType
   if paramType.kind == nnkInfix and $paramType[0].ident in ["|", "or"]:
-    let firstType = paramType[1]
-    let firstTypeName = $firstType.ident
-    let secondType = paramType[2]
-    let secondTypeName = $secondType.ident
+    let firstAsync = "async" in ($paramType[1].ident).normalize
+    let secondAsync = "async" in ($paramType[2].ident).normalize
 
-    # Make sure that at least one has the name `async`, otherwise we shouldn't
-    # touch it.
-    if not ("async" in firstTypeName.normalize or
-            "async" in secondTypeName.normalize):
-      return
-
-    if async:
-      if firstTypeName.normalize.startsWith("async"):
-        result = paramType[1]
-      elif secondTypeName.normalize.startsWith("async"):
-        result = paramType[2]
-    else:
-      if not firstTypeName.normalize.startsWith("async"):
-        result = paramType[1]
-      elif not secondTypeName.normalize.startsWith("async"):
-        result = paramType[2]
+    if firstAsync:
+      result = paramType[if async: 1 else: 2]
+    elif secondAsync:
+      result = paramType[if async: 2 else: 1]
 
 proc stripReturnType(returnType: NimNode): NimNode =
   # Strip out the 'Future' from 'Future[T]'.
