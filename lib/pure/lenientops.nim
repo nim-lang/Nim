@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2015 Andreas Rumpf, Dominik Picheta
+#        (c) Copyright 2017 Nim contributors
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
@@ -20,28 +20,46 @@
 ## module. Use with care.
 
 
-proc `+`[I: SomeInteger, F: SomeReal](i: I, f: F): F = F(i) + f
-proc `+`[I: SomeInteger, F: SomeReal](f: F, i: I): F = f + F(i)
+proc `+`[I: SomeInteger, F: SomeReal](i: I, f: F): F {.noSideEffect, inline.} =
+  F(i) + f
+proc `+`[I: SomeInteger, F: SomeReal](f: F, i: I): F {.noSideEffect, inline.} =
+  f + F(i)
 
-proc `-`[I: SomeInteger, F: SomeReal](i: I, f: F): F = F(i) - f
-proc `-`[I: SomeInteger, F: SomeReal](f: F, i: I): F = f - F(i)
+proc `-`[I: SomeInteger, F: SomeReal](i: I, f: F): F {.noSideEffect, inline.} =
+  F(i) - f
+proc `-`[I: SomeInteger, F: SomeReal](f: F, i: I): F {.noSideEffect, inline.} =
+  f - F(i)
 
-proc `*`[I: SomeInteger, F: SomeReal](i: I, f: F): F = F(i) * f
-proc `*`[I: SomeInteger, F: SomeReal](f: F, i: I): F = f * F(i)
+proc `*`[I: SomeInteger, F: SomeReal](i: I, f: F): F {.noSideEffect, inline.} =
+  F(i) * f
+proc `*`[I: SomeInteger, F: SomeReal](f: F, i: I): F {.noSideEffect, inline.} =
+  f * F(i)
 
-proc `/`[I: SomeInteger, F: SomeReal](i: I, f: F): F = F(i) / f
-proc `/`[I: SomeInteger, F: SomeReal](f: F, i: I): F = f / F(i)
+proc `/`[I: SomeInteger, F: SomeReal](i: I, f: F): F {.noSideEffect, inline.} =
+  F(i) / f
+proc `/`[I: SomeInteger, F: SomeReal](f: F, i: I): F {.noSideEffect, inline.} =
+  f / F(i)
 
-proc `<`[I: SomeInteger, F: SomeReal](i: I, f: F): bool = F(i) < f
-proc `<`[I: SomeInteger, F: SomeReal](f: F, i: I): bool = f < F(i)
-proc `<=`[I: SomeInteger, F: SomeReal](i: I, f: F): bool = F(i) <= f
-proc `<=`[I: SomeInteger, F: SomeReal](f: F, i: I): bool = f <= F(i)
-proc `==`[I: SomeInteger, F: SomeReal](i: I, f: F): bool = F(i) == f
-proc `==`[I: SomeInteger, F: SomeReal](f: F, i: I): bool = f == F(i)
-proc `>=`[I: SomeInteger, F: SomeReal](i: I, f: F): bool = F(i) >= f
-proc `>=`[I: SomeInteger, F: SomeReal](f: F, i: I): bool = f >= F(i)
-proc `>`[I: SomeInteger, F: SomeReal](i: I, f: F): bool = F(i) > f
-proc `>`[I: SomeInteger, F: SomeReal](f: F, i: I): bool = f > F(i)
+proc `<`[I: SomeInteger, F: SomeReal](i: I, f: F): bool {.noSideEffect, inline.} =
+  F(i) < f
+proc `<`[I: SomeInteger, F: SomeReal](f: F, i: I): bool {.noSideEffect, inline.} =
+  f < F(i)
+proc `<=`[I: SomeInteger, F: SomeReal](i: I, f: F): bool {.noSideEffect, inline.} =
+  F(i) <= f
+proc `<=`[I: SomeInteger, F: SomeReal](f: F, i: I): bool {.noSideEffect, inline.} =
+  f <= F(i)
+proc `==`[I: SomeInteger, F: SomeReal](i: I, f: F): bool {.noSideEffect, inline.} =
+  F(i) == f
+proc `==`[I: SomeInteger, F: SomeReal](f: F, i: I): bool {.noSideEffect, inline.} =
+  f == F(i)
+proc `>=`[I: SomeInteger, F: SomeReal](i: I, f: F): bool {.noSideEffect, inline.} =
+  F(i) >= f
+proc `>=`[I: SomeInteger, F: SomeReal](f: F, i: I): bool {.noSideEffect, inline.} =
+  f >= F(i)
+proc `>`[I: SomeInteger, F: SomeReal](i: I, f: F): bool {.noSideEffect, inline.} =
+  F(i) > f
+proc `>`[I: SomeInteger, F: SomeReal](f: F, i: I): bool {.noSideEffect, inline.} =
+  f > F(i)
 
 when isMainModule:
 
