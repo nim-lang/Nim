@@ -82,6 +82,8 @@ This now needs to be written as:
   Nimble package.
 - Removed deprecated gentabs module from the stdlib and published it as separate
   Nimble package.
+- Removed deprecated poly and numeric modules from the stdlib and published them 
+  as one separate Nimble package.
 - The ``nim doc`` command is now an alias for ``nim doc2``, the second version of
   the documentation generator. The old version 1 can still be accessed
   via the new ``nim doc0`` command.
