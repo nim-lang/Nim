@@ -83,7 +83,7 @@ proc formatString(s: string, len: int, fill = ' '): string =
     else:
       result = s & repeat(fill, fillLength)
 
-proc formatFloat(v: SomeNumber, len = 0, prec = 0, sep = '.', fill = ' ',  scientific = false, divisor = 0): string =
+proc formatFloat(v: SomeNumber, len: int, prec: int, sep = '.', fill = ' ',  scientific = false, divisor = 0): string =
   ## Converts ``v`` to string with precision == ``prec``. If result's length
   ## is lesser than ``len``, it aligns result to the right with ``fill`` char.
   ## If ``len`` is negative, the result is aligned to the left.
@@ -92,7 +92,7 @@ proc formatFloat(v: SomeNumber, len = 0, prec = 0, sep = '.', fill = ' ',  scien
     value = v.BiggestFloat / pow(2f, divisor.float*10f).BiggestFloat
   elif divisor < 0:
     value = v.BiggestFloat / pow(1000f, -divisor.float).BiggestFloat
-  let f = if scientific: ffScientific else: (if prec == 0: ffDefault else: ffDecimal)
+  let f = if scientific: ffScientific else: (if prec == -1: ffDefault else: ffDecimal)
   if len > 0 and value < 0 and fill == '0':
     result = "-" & formatString(formatBiggestFloat(-value, f, prec, sep), len-1, fill)
   else:
@@ -117,14 +117,17 @@ proc parseFloatFmt(fmtp: string): tuple[maxLen: int, prec: int, fillChar: char, 
   ## values correspond to IEC modifiers (base 1024), negative values correspond
   ## to SI modifiers (base 1000).
   ## Examples:
-  ## "5.1"  => maxLen = 5, prec = 1, fillChar = ' ', divisor = 0
-  ## "05.1" => maxLen = 5, prec = 1, fillChar = '0', divisor = 0
-  ## "Ki"   => maxLen = 0, prec = 0, fillChar = ' ', divisor = 1
-  ## "Mi"   => maxLen = 0, prec = 0, fillChar = ' ', divisor = 2
-  ## "k"    => maxLen = 0, prec = 0, fillChar = ' ', divisor = -1
-  ## "M"    => maxLen = 0, prec = 0, fillChar = ' ', divisor = -2
+  ## "5.1"  => maxLen = 5, prec =  1, fillChar = ' ', divisor =  0
+  ## "5.0"  => maxLen = 5, prec =  0, fillChar = ' ', divisor =  0
+  ## "5"    => maxLen = 5, prec = -1, fillChar = ' ', divisor =  0
+  ## "05.1" => maxLen = 5, prec =  1, fillChar = '0', divisor =  0
+  ## "Ki"   => maxLen = 0, prec = -1, fillChar = ' ', divisor =  1
+  ## "Mi"   => maxLen = 0, prec = -1, fillChar = ' ', divisor =  2
+  ## "k"    => maxLen = 0, prec = -1, fillChar = ' ', divisor = -1
+  ## "M"    => maxLen = 0, prec = -1, fillChar = ' ', divisor = -2
   result.fillChar = ' '
   result.divisor = 0
+  result.prec = -1
   if fmtp == "":
     return
   # Parse sign (for left/right alignment)
@@ -369,14 +372,18 @@ when isMainModule:
   doAssert(not compiles(fmt"""${"12345"}%d"""))
 
   # Float tests
-  check fmt"${123.456}", "123.456"
-  check fmt"${-123.456}", "-123.456"
-  check fmt"${123.456}%f", "123.456"
-  check fmt"${-123.456}%f", "-123.456"
-  check fmt"${123.456}%1f", "123.456" # no truncation
-  check fmt"${123.456}%.1f", "123.5"
-  check fmt"${123.456}%9.4f", " 123.4560"
-  check fmt"${123.456}%-9.4f", "123.4560 "
+  check fmt"${123.456}", "123.456"         # prec=-1 formatting
+  check fmt"${-123.456}", "-123.456"       # prec=-1 formatting
+  check fmt"${123.456}%f", "123.456"       # prec=-1 formatting, same as without suffix
+  check fmt"${-123.456}%f", "-123.456"     # prec=-1 formatting, same as without suffix
+  check fmt"${123.456}%1f", "123.456"      # prec=-1 formatting, no truncation
+  check fmt"${123.456}%.1f", "123.5"       # fixed formatting, rounding
+  check fmt"${123.456}%.0f", "123."        # fixed formatting, zero digits
+  check fmt"${123.456}%9f",   "  123.456"  # prec=-1 formatting, left padded
+  check fmt"${123.456}%-9f",  "123.456  "  # prec=-1 formatting, right padded
+  check fmt"${123.456}%9.4f", " 123.4560"  # fixed formatting, padded
+  check fmt"${123.456}%9.0f", "     123."  # fixed formatting, zero digits, padded
+  check fmt"${123.456}%-9.4f", "123.4560 " # fixed formatting, left padded
   doAssert(not compiles(fmt"""${"12345"}%f"""))
 
   # Float (scientific) tests
