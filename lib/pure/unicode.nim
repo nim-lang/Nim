@@ -34,7 +34,7 @@ proc `==`*(a, b: Rune): bool = return int(a) == int(b)
 
 template ones(n: untyped): untyped = ((1 shl n)-1)
 
-proc size*(r: Rune): int {.noSideEffect.} =
+proc runeLen*(r: Rune): int {.noSideEffect.} =
   ## Returns the number of bytes the rune ``r`` takes
   let v = r.uint32
   if v <= 0x007F: result = 1
@@ -1963,7 +1963,7 @@ iterator split*(s: string, sep: Rune, maxsplit: int = -1): string =
   ##   ""
   ##   ""
   ##
-  splitCommon(s, sep, maxsplit, sep.size())
+  splitCommon(s, sep, maxsplit, sep.runeLen)
 
 proc split*(s: string, seps: openarray[Rune] = spaceRanges, maxsplit: int = -1): seq[string] {.
   noSideEffect, rtl, extern: "nucSplitRunes".} =
@@ -2098,13 +2098,13 @@ proc editDistance*(a, b: string): int {.noSideEffect,
         char2p = i_start
         for j in 0 ..< offset:
           rune_b = b.runeAt(char2p)
-          inc(char2p, rune_b.size())
+          inc(char2p, rune_b.runeLen)
         char2p_i = i + 1
         char2p_prev = char2p
       p = offset
       rune_b = b.runeAt(char2p)
       var c3 = row[p] + (if rune_a != rune_b: 1 else: 0)
-      inc(char2p, rune_b.size())
+      inc(char2p, rune_b.runeLen)
       inc(p)
       x = row[p] + 1
       D = x
@@ -2124,7 +2124,7 @@ proc editDistance*(a, b: string): int {.noSideEffect,
       dec(D)
       rune_b = b.runeAt(char2p)
       var c3 = D + (if rune_a != rune_b: 1 else: 0)
-      inc(char2p, rune_b.size())
+      inc(char2p, rune_b.runeLen)
       inc(x)
       if x > c3: x = c3
       D = row[p] + 1
@@ -2144,16 +2144,16 @@ proc editDistance*(a, b: string): int {.noSideEffect,
 
 when isMainModule:
   block runeLenTests:
-    doAssert(size('a'.Rune) == 1, "Actual: " & $ size('a'.Rune))
+    doAssert(runeLen('a'.Rune) == 1, "Actual: " & $ runeLen('a'.Rune))
 
     doAssert("å".runeLenAt(0) == 2, "Actual: " & $ "å".runeLenAt(0))
     doAssert("×".runeLenAt(0) == 2, "Actual: " & $ "×".runeLenAt(0))
 
     # From https://stackoverflow.com/a/6066442
-    doAssert size(0x0021.Rune) == 1 # ! EXCLAMATION MARK (U+0021)
-    doAssert size(0x00B6.Rune) == 2 # ¶ PILCROW SIGN (U+00B6)
-    doAssert size(0x2031.Rune) == 3 # ‱ PER TEN THOUSAND SIGN (U+2031)
-    doAssert size(0x1D161.Rune) == 4 # 𝅘𝅥𝅯 MUSICAL SYMBOL SIXTEENTH NOTE (U+1D161)
+    doAssert runeLen(0x0021.Rune) == 1 # ! EXCLAMATION MARK (U+0021)
+    doAssert runeLen(0x00B6.Rune) == 2 # ¶ PILCROW SIGN (U+00B6)
+    doAssert runeLen(0x2031.Rune) == 3 # ‱ PER TEN THOUSAND SIGN (U+2031)
+    doAssert runeLen(0x1D161.Rune) == 4 # 𝅘𝅥𝅯 MUSICAL SYMBOL SIXTEENTH NOTE (U+1D161)
 
   let
     someString = "öÑ"
