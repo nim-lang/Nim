@@ -90,9 +90,9 @@ proc formatFloat(v: SomeNumber, len = 0, prec = 0, sep = '.', fill = ' ',  scien
   var value = v.BiggestFloat
   if divisor > 0:
     value = v.BiggestFloat / pow(2f, divisor.float*10f).BiggestFloat
-  else:
+  elif divisor < 0:
     value = v.BiggestFloat / pow(1000f, -divisor.float).BiggestFloat
-  let f = if scientific: ffScientific else: if prec == 0: ffDefault else: ffDecimal
+  let f = if scientific: ffScientific else: (if prec == 0: ffDefault else: ffDecimal)
   if len > 0 and value < 0 and fill == '0':
     result = "-" & formatString(formatBiggestFloat(-value, f, prec, sep), len-1, fill)
   else:
@@ -168,7 +168,7 @@ proc parseFloatFmt(fmtp: string): tuple[maxLen: int, prec: int, fillChar: char, 
     of "Z": result.divisor = -7
     of "Y": result.divisor = -8
     else:
-      quit "Illegal float format suffix: " & remainder
+      raise newException(ValueError, "Illegal float format suffix: " & remainder)
 
 proc handleIntFormat(exp: string, fmtp: string, radix: int, lowerCase = false): NimNode {.compileTime.} =
   let (maxLen, fillChar) = parseIntFmt(fmtp)
