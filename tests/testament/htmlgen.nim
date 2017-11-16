@@ -13,8 +13,7 @@ import cgi, backend, strutils, json, os, tables, times
 
 import "testamenthtml.templ"
 
-proc generateTestResultPanelPartial(outfile: File, testResultRow: JsonNode,
-  onlyFailing = false) =
+proc generateTestResultPanelPartial(outfile: File, testResultRow: JsonNode) =
   let
     trId = htmlQuote(
       testResultRow["category"].str &
@@ -34,16 +33,12 @@ proc generateTestResultPanelPartial(outfile: File, testResultRow: JsonNode,
     resultSign, resultDescription: string
   case result
   of "reSuccess":
-    if onlyFailing:
-      return
     panelCtxClass = "success"
     textCtxClass = "success"
     bgCtxClass = "success"
     resultSign = "ok"
     resultDescription = "PASS"
   of "reIgnored":
-    if onlyFailing:
-      return
     panelCtxClass = "info"
     textCtxClass = "info"
     bgCtxClass = "info"
@@ -75,7 +70,7 @@ type
     totalCount, successCount, ignoredCount, failedCount: int
     successPercentage, ignoredPercentage, failedPercentage: BiggestFloat
 
-proc allTestResults(): AllTests =
+proc allTestResults(onlyFailing = false): AllTests =
   result.data = newJArray()
   for file in os.walkFiles("testresults"/"*.json"):
     var data: JsonNode
@@ -87,11 +82,12 @@ proc allTestResults(): AllTests =
       echo "[ERROR] ignoring json file that is not an array: ", file
     else:
       for elem in data:
-        result.data.add elem
         let state = elem["result"].str
+        inc result.totalCount
         if state.contains("reSuccess"): inc result.successCount
         elif state.contains("reIgnored"): inc result.ignoredCount
-  result.totalCount = result.data.len
+        if not onlyFailing or not(state.contains("reSuccess")):
+          result.data.add elem
   result.successPercentage = 100 *
     (result.successCount.toBiggestFloat / result.totalCount.toBiggestFloat)
   result.ignoredPercentage = 100 *
@@ -101,10 +97,9 @@ proc allTestResults(): AllTests =
   result.failedPercentage = 100 *
     (result.failedCount.toBiggestFloat / result.totalCount.toBiggestFloat)
 
-proc generateTestResultsPanelGroupPartial(outfile: File, allResults: JsonNode,
-  onlyFailing = false) =
+proc generateTestResultsPanelGroupPartial(outfile: File, allResults: JsonNode) =
   for testresultRow in allResults:
-    generateTestResultPanelPartial(outfile, testresultRow, onlyFailing)
+    generateTestResultPanelPartial(outfile, testresultRow)
 
 proc generateAllTestsContent(outfile: File, allResults: AllTests,
   onlyFailing = false) =
@@ -130,7 +125,7 @@ proc generateAllTestsContent(outfile: File, allResults: AllTests,
     formatBiggestFloat(allResults.failedPercentage, ffDecimal, 2) & "%",
     onlyFailing
   )
-  generateTestResultsPanelGroupPartial(outfile, allResults.data, onlyFailing)
+  generateTestResultsPanelGroupPartial(outfile, allResults.data)
   outfile.generateHtmlAllTestsEnd()
 
 proc generateHtml*(filename: string, onlyFailing: bool) =
@@ -141,7 +136,7 @@ proc generateHtml*(filename: string, onlyFailing: bool) =
 
   outfile.generateHtmlBegin()
 
-  generateAllTestsContent(outfile, allTestResults(), onlyFailing)
+  generateAllTestsContent(outfile, allTestResults(onlyFailing), onlyFailing)
 
   outfile.generateHtmlEnd(timestring)
 
