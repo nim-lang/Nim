@@ -44,9 +44,9 @@ script:
   - nimble install niminst
   - nim c --taintMode:on -d:nimCoroutines tests/testament/tester
   - tests/testament/tester --pedantic all -d:nimCoroutines
-  - echo -en 'travis_fold:start:testament-json\\r'
+  - echo -en 'travis_fold:start:testament-json\r'
   - tests/testament/tester json
-  - echo -en 'travis_fold:end:testament-json\\r'
+  - echo -en 'travis_fold:end:testament-json\r'
   - ./koch web
   - ./koch csource
   - ./koch nimsuggest
