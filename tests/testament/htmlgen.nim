@@ -142,3 +142,16 @@ proc generateHtml*(filename: string, onlyFailing: bool) =
 
   outfile.flushFile()
   close(outfile)
+
+proc dumpJsonTestResults*(prettyPrint, onlyFailing: bool) =
+  var
+    outfile = stdout
+    jsonString: string
+
+  let results = allTestResults(onlyFailing)
+  if prettyPrint:
+    jsonString = results.data.pretty()
+  else:
+    jsonString = $ results.data
+
+  outfile.writeLine(jsonString)

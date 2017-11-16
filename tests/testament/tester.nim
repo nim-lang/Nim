@@ -24,6 +24,8 @@ Command:
   c|category <category>       run all the tests of a certain category
   r|run <test>                run single test file
   html                        generate $1 from the testresults folder
+  json                        dump all results from the testresults folder as
+                              a long JSON array (use --print for pretty output)
 Arguments:
   arguments are passed to the compiler
 Options:
@@ -500,12 +502,14 @@ proc main() =
     processSingleTest(r, cat, p.cmdLineRest.string, file)
   of "html":
     generateHtml(resultsFile, optFailing)
+  of "json":
+    dumpJsonTestResults(optPrintResults, optFailing)
   else:
     quit Usage
 
   if optPrintResults:
     if action == "html": openDefaultBrowser(resultsFile)
-    else: echo r, r.data
+    elif action != "json": echo r, r.data
   backend.close()
   var failed = r.total - r.passed - r.skipped
   if failed > 0:
