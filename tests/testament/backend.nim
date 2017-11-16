@@ -19,7 +19,6 @@ var
   thisMachine: MachineId
   thisCommit: CommitId
   thisBranch: string
-  thisTestRunId*: string
 
 {.experimental.}
 proc `()`(cmd: string{lit}): string = cmd.execProcess.string.strip
@@ -55,25 +54,14 @@ proc writeTestResult*(name, category, target,
       results.writeLine("]")
       close(results)
     currentCategory = category
-    let filename = "testresults" / category.addFileExt"json"
-    if fileExists(filename):
-      results = open(filename, fmReadWriteExisting)
-      const bracketCloseLen = "]\n".len()
-      if results.getFileSize() > bracketCloseLen:
-        results.setFilePos(-bracketCloseLen, fspEnd) # Overwrite the ] at the end of the file
-        results.writeLine(",")
-      else:
-        results.writeLine("[")
-    else:
-      results = open(filename, fmWrite)
-      results.writeLine("[")
+    results = open("testresults" / category.addFileExt"json", fmWrite)
+    results.writeLine("[")
     entries = 0
 
   let jentry = %*{"name": name, "category": category, "target": target,
     "action": action, "result": result, "expected": expected, "given": given,
     "machine": thisMachine.string, "commit": thisCommit.string, "branch": thisBranch,
-    "os": hostOS, "cpu": hostCPU, "timestamp": $timestamp,
-    "testrun": thisTestRunId}
+    "os": hostOS, "cpu": hostCPU, "timestamp": $timestamp}
   if entries > 0:
     results.writeLine(",")
   results.write($jentry)

@@ -31,7 +31,6 @@ Options:
   --failing                 only show failing/ignored tests
   --targets:"c c++ js objc" run tests for specified targets (default: all)
   --nim:path                use a particular nim executable (default: compiler/nim)
-  --testrunid:<id>          use specified test run ID (default: current epoch time)
 """ % resultsFile
 
 type
@@ -161,7 +160,7 @@ proc addResult(r: var TResults, test: TTest,
   var name = strip(
     test.name.extractFilename &
     " " &
-    test.options.strip(trailing=false)
+    test.options.strip(trailing=false) # trainling whitespace stripped in outer strip
     )
   let duration = epochTime() - test.startTime
   backend.writeTestResult(name = name,
@@ -463,12 +462,9 @@ proc main() =
       targetsStr = p.val.string
       targets = parseTargets(targetsStr)
     of "nim": compilerPrefix = p.val.string
-    of "testrunid": backend.thisTestRunId = p.val.string
     else: quit Usage
     p.next()
   if p.kind != cmdArgument: quit Usage
-  if backend.thisTestRunId.isNil():
-    backend.thisTestRunId = $ int(epochTime())
   var action = p.key.string.normalize
   p.next()
   var r = initResults()
@@ -484,9 +480,9 @@ proc main() =
       assert testsDir.startsWith(testsDir)
       let cat = dir[testsDir.len .. ^1]
       if kind == pcDir and cat notin ["testament", "testdata", "nimcache"]:
-        cmds.add(myself & " --testrunid:" & quoteShell(backend.thisTestRunId)  & " cat " & cat & rest)
+        cmds.add(myself & " cat " & cat & rest)
     for cat in AdditionalCategories:
-      cmds.add(myself & " --testrunid:" & quoteShell(backend.thisTestRunId) & " cat " & cat & rest)
+      cmds.add(myself & " cat " & cat & rest)
     quit osproc.execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams})
   of "c", "cat", "category":
     var cat = Category(p.key)
