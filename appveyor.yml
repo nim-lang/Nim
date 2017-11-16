@@ -58,4 +58,7 @@ test_script:
 #  - koch csource
 #  - koch zip
 
+after_test:
+  - tests\testament\tester json
+
 deploy: off
