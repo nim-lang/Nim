@@ -85,7 +85,7 @@
 						<int key="IBUITag">2</int>
 						<bool key="IBUIUserInteractionEnabled">NO</bool>
 						<string key="targetRuntimeIdentifier">IBCocoaTouchFramework</string>
-						<string key="IBUIText">Nimrod Crossplatform Calculator</string>
+						<string key="IBUIText">Nim Crossplatform Calculator</string>
 						<object class="NSColor" key="IBUITextColor" id="128895179">
 							<int key="NSColorSpace">1</int>
 							<bytes key="NSRGB">MCAwIDAAA</bytes>

@@ -1511,8 +1511,7 @@ operators perform implicit dereferencing operations for reference types:
 .. code-block:: nim
 
   type
-    Node = ref NodeObj
-    NodeObj = object
+    Node = ref object
       le, ri: Node
       data: int
   var

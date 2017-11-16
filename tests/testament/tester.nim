@@ -43,7 +43,6 @@ type
     name: string
     cat: Category
     options: string
-    target: TTarget
     action: TTestAction
     startTime: float
 
@@ -154,18 +153,19 @@ proc `$`(x: TResults): string =
             "Tests skipped: $2 / $3 <br />\n") %
             [$x.passed, $x.skipped, $x.total]
 
-proc addResult(r: var TResults, test: TTest,
+proc addResult(r: var TResults, test: TTest, target: TTarget,
                expected, given: string, success: TResultEnum,
                timestamp: Time) =
   var name = strip(
     test.name.extractFilename &
+    " " & $target &
     " " &
     test.options.strip(trailing=false) # trainling whitespace stripped in outer strip
     )
   let duration = epochTime() - test.startTime
   backend.writeTestResult(name = name,
                           category = test.cat.string,
-                          target = $test.target,
+                          target = $target,
                           action = $test.action,
                           result = $success,
                           expected = expected,
@@ -202,29 +202,29 @@ proc addResult(r: var TResults, test: TTest,
     discard waitForExit(p)
     close(p)
 
-proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, timestamp: Time) =
+proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, target: TTarget, timestamp: Time) =
   if strip(expected.msg) notin strip(given.msg):
-    r.addResult(test, expected.msg, given.msg, reMsgsDiffer, timestamp)
+    r.addResult(test, target, expected.msg, given.msg, reMsgsDiffer, timestamp)
   elif expected.nimout.len > 0 and expected.nimout.normalizeMsg notin given.nimout.normalizeMsg:
-    r.addResult(test, expected.nimout, given.nimout, reMsgsDiffer, timestamp)
+    r.addResult(test, target, expected.nimout, given.nimout, reMsgsDiffer, timestamp)
   elif expected.tfile == "" and extractFilename(expected.file) != extractFilename(given.file) and
       "internal error:" notin expected.msg:
-    r.addResult(test, expected.file, given.file, reFilesDiffer, timestamp)
+    r.addResult(test, target, expected.file, given.file, reFilesDiffer, timestamp)
   elif expected.line   != given.line   and expected.line   != 0 or
        expected.column != given.column and expected.column != 0:
-    r.addResult(test, $expected.line & ':' & $expected.column,
+    r.addResult(test, target, $expected.line & ':' & $expected.column,
                       $given.line    & ':' & $given.column,
                       reLinesDiffer, timestamp)
   elif expected.tfile != "" and extractFilename(expected.tfile) != extractFilename(given.tfile) and
       "internal error:" notin expected.msg:
-    r.addResult(test, expected.tfile, given.tfile, reFilesDiffer, timestamp)
+    r.addResult(test, target, expected.tfile, given.tfile, reFilesDiffer, timestamp)
   elif expected.tline   != given.tline   and expected.tline   != 0 or
        expected.tcolumn != given.tcolumn and expected.tcolumn != 0:
-    r.addResult(test, $expected.tline & ':' & $expected.tcolumn,
+    r.addResult(test, target, $expected.tline & ':' & $expected.tcolumn,
                       $given.tline    & ':' & $given.tcolumn,
                       reLinesDiffer, timestamp)
   else:
-    r.addResult(test, expected.msg, given.msg, reSuccess, timestamp)
+    r.addResult(test, target, expected.msg, given.msg, reSuccess, timestamp)
     inc(r.passed)
 
 proc generatedFile(path, name: string, target: TTarget): string =
@@ -236,11 +236,11 @@ proc generatedFile(path, name: string, target: TTarget): string =
 proc needsCodegenCheck(spec: TSpec): bool =
   result = spec.maxCodeSize > 0 or spec.ccodeCheck.len > 0
 
-proc codegenCheck(test: TTest, spec: TSpec, expectedMsg: var string,
+proc codegenCheck(test: TTest, target: TTarget, spec: TSpec, expectedMsg: var string,
                   given: var TSpec) =
   try:
     let (path, name, _) = test.name.splitFile
-    let genFile = generatedFile(path, name, test.target)
+    let genFile = generatedFile(path, name, target)
     let contents = readFile(genFile).string
     let check = spec.ccodeCheck
     if check.len > 0:
@@ -272,13 +272,13 @@ proc makeDeterministic(s: string): string =
   sort(x, system.cmp)
   result = join(x, "\n")
 
-proc compilerOutputTests(test: TTest, given: var TSpec, expected: TSpec;
-                         r: var TResults, timestamp: Time) =
+proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
+                         expected: TSpec; r: var TResults, timestamp: Time) =
   var expectedmsg: string = ""
   var givenmsg: string = ""
   if given.err == reSuccess:
     if expected.needsCodegenCheck:
-      codegenCheck(test, expected, expectedmsg, given)
+      codegenCheck(test, target, expected, expectedmsg, given)
       givenmsg = given.msg
     if expected.nimout.len > 0:
       expectedmsg = expected.nimout
@@ -287,7 +287,7 @@ proc compilerOutputTests(test: TTest, given: var TSpec, expected: TSpec;
   else:
     givenmsg = given.nimout.strip
   if given.err == reSuccess: inc(r.passed)
-  r.addResult(test, expectedmsg, givenmsg, given.err, timestamp)
+  r.addResult(test, target, expectedmsg, givenmsg, given.err, timestamp)
 
 proc analyzeAndConsolidateOutput(s: string): string =
   result = ""
@@ -303,14 +303,9 @@ proc analyzeAndConsolidateOutput(s: string): string =
       result = substr(rows[i], pos)
       return
 
-proc testSpec(r: var TResults, test: TTest) =
+proc testSpec(r: var TResults, test: TTest, target = targetC) =
   # major entry point for a single test
   let timestamp = getTime()
-  if test.target notin targets:
-    r.addResult(test, "", "", reIgnored, timestamp)
-    inc(r.skipped)
-    return
-
   let tname = test.name.addFileExt(".nim")
   #echo "TESTING ", tname
   inc(r.total)
@@ -322,85 +317,95 @@ proc testSpec(r: var TResults, test: TTest) =
     expected.action = actionRunNoSpec
 
   if expected.err == reIgnored:
-    r.addResult(test, "", "", reIgnored, timestamp)
+    r.addResult(test, target, "", "", reIgnored, timestamp)
     inc(r.skipped)
     return
 
-  case expected.action
-  of actionCompile:
-    var given = callCompiler(expected.cmd, test.name,
-      test.options & " --stdout --hint[Path]:off --hint[Processing]:off",
-      test.target)
-    compilerOutputTests(test, given, expected, r, timestamp)
-  of actionRun, actionRunNoSpec:
-    # In this branch of code "early return" pattern is clearer than deep
-    # nested conditionals - the empty rows in between to clarify the "danger"
-    var given = callCompiler(expected.cmd, test.name, test.options,
-                             test.target)
+  if expected.targets == {}:
+    expected.targets.incl(target)
 
-    if given.err != reSuccess:
-      r.addResult(test, "", given.msg, given.err, timestamp)
-      return
+  for target in expected.targets:
+    if target notin targets:
+      r.addResult(test, target, "", "", reIgnored, timestamp)
+      inc(r.skipped)
+      continue
 
-    let isJsTarget = test.target == targetJS
-    var exeFile: string
-    if isJsTarget:
-      let (dir, file, _) = splitFile(tname)
-      exeFile = dir / "nimcache" / file & ".js" # *TODO* hardcoded "nimcache"
-    else:
-      exeFile = changeFileExt(tname, ExeExt)
+    case expected.action
+    of actionCompile:
+      var given = callCompiler(expected.cmd, test.name,
+        test.options & " --stdout --hint[Path]:off --hint[Processing]:off",
+        target)
+      compilerOutputTests(test, target, given, expected, r, timestamp)
+    of actionRun, actionRunNoSpec:
+      # In this branch of code "early return" pattern is clearer than deep
+      # nested conditionals - the empty rows in between to clarify the "danger"
+      var given = callCompiler(expected.cmd, test.name, test.options,
+                               target)
 
-    if not existsFile(exeFile):
-      r.addResult(test, expected.outp, "executable not found", reExeNotFound,
-        timestamp)
-      return
+      if given.err != reSuccess:
+        r.addResult(test, target, "", given.msg, given.err, timestamp)
+        continue
 
-    let nodejs = if isJsTarget: findNodeJs() else: ""
-    if isJsTarget and nodejs == "":
-      r.addResult(test, expected.outp, "nodejs binary not in PATH",
-                  reExeNotFound, timestamp)
-      return
+      let isJsTarget = target == targetJS
+      var exeFile: string
+      if isJsTarget:
+        let (dir, file, _) = splitFile(tname)
+        exeFile = dir / "nimcache" / file & ".js" # *TODO* hardcoded "nimcache"
+      else:
+        exeFile = changeFileExt(tname, ExeExt)
 
-    let exeCmd = (if isJsTarget: nodejs & " " else: "") & exeFile
-    var (buf, exitCode) = execCmdEx(exeCmd, options = {poStdErrToStdOut})
+      if not existsFile(exeFile):
+        r.addResult(test, target, expected.outp, "executable not found",
+          reExeNotFound, timestamp)
+        continue
 
-    # Treat all failure codes from nodejs as 1. Older versions of nodejs used
-    # to return other codes, but for us it is sufficient to know that it's not 0.
-    if exitCode != 0: exitCode = 1
+      let nodejs = if isJsTarget: findNodeJs() else: ""
+      if isJsTarget and nodejs == "":
+        r.addResult(test, target, expected.outp, "nodejs binary not in PATH",
+                    reExeNotFound, timestamp)
+        continue
 
-    let bufB = if expected.sortoutput: makeDeterministic(strip(buf.string))
-               else: strip(buf.string)
-    let expectedOut = strip(expected.outp)
+      let exeCmd = (if isJsTarget: nodejs & " " else: "") & exeFile
+      var (buf, exitCode) = execCmdEx(exeCmd, options = {poStdErrToStdOut})
 
-    if exitCode != expected.exitCode:
-      r.addResult(test, "exitcode: " & $expected.exitCode,
-                        "exitcode: " & $exitCode & "\n\nOutput:\n" &
-                        analyzeAndConsolidateOutput(bufB),
-                        reExitCodesDiffer, timestamp)
-      return
+      # Treat all failure codes from nodejs as 1. Older versions of nodejs used
+      # to return other codes, but for us it is sufficient to know that it's not 0.
+      if exitCode != 0: exitCode = 1
 
-    if bufB != expectedOut and expected.action != actionRunNoSpec:
-      if not (expected.substr and expectedOut in bufB):
-        given.err = reOutputsDiffer
-        r.addResult(test, expected.outp, bufB, reOutputsDiffer, timestamp)
-        return
+      let bufB = if expected.sortoutput: makeDeterministic(strip(buf.string))
+                 else: strip(buf.string)
+      let expectedOut = strip(expected.outp)
 
-    compilerOutputTests(test, given, expected, r, timestamp)
-    return
+      if exitCode != expected.exitCode:
+        r.addResult(test, target, "exitcode: " & $expected.exitCode,
+                          "exitcode: " & $exitCode & "\n\nOutput:\n" &
+                          analyzeAndConsolidateOutput(bufB),
+                          reExitCodesDiffer, timestamp)
+        continue
 
-  of actionReject:
-    var given = callCompiler(expected.cmd, test.name, test.options,
-                             test.target)
-    cmpMsgs(r, expected, given, test, timestamp)
-    return
+      if bufB != expectedOut and expected.action != actionRunNoSpec:
+        if not (expected.substr and expectedOut in bufB):
+          given.err = reOutputsDiffer
+          r.addResult(test, target, expected.outp, bufB, reOutputsDiffer,
+            timestamp)
+          continue
 
-proc testNoSpec(r: var TResults, test: TTest) =
+      compilerOutputTests(test, target, given, expected, r, timestamp)
+      continue
+
+    of actionReject:
+      var given = callCompiler(expected.cmd, test.name, test.options,
+                               target)
+      cmpMsgs(r, expected, given, test, target, timestamp)
+      continue
+
+proc testNoSpec(r: var TResults, test: TTest, target = targetC) =
   # does not extract the spec because the file is not supposed to have any
   #let tname = test.name.addFileExt(".nim")
   let timestamp = getTime()
   inc(r.total)
-  let given = callCompiler(cmdTemplate(), test.name, test.options, test.target)
-  r.addResult(test, "", given.msg, given.err, timestamp)
+  let given = callCompiler(cmdTemplate(), test.name, test.options, target)
+  r.addResult(test, target, "", given.msg, given.err, timestamp)
   if given.err == reSuccess: inc(r.passed)
 
 proc testC(r: var TResults, test: TTest) =
@@ -410,9 +415,9 @@ proc testC(r: var TResults, test: TTest) =
     tname = test.name.addFileExt(".c")
   inc(r.total)
   styledEcho "Processing ", fgCyan, extractFilename(tname)
-  var given = callCCompiler(cmdTemplate(), test.name & ".c", test.options, test.target)
+  var given = callCCompiler(cmdTemplate(), test.name & ".c", test.options, targetC)
   if given.err != reSuccess:
-    r.addResult(test, "", given.msg, given.err, timestamp)
+    r.addResult(test, targetC, "", given.msg, given.err, timestamp)
   elif test.action == actionRun:
     let exeFile = changeFileExt(test.name, ExeExt)
     var (_, exitCode) = execCmdEx(exeFile, options = {poStdErrToStdOut, poUsePath})
@@ -420,10 +425,10 @@ proc testC(r: var TResults, test: TTest) =
   if given.err == reSuccess: inc(r.passed)
 
 proc makeTest(test, options: string, cat: Category, action = actionCompile,
-              target = targetC, env: string = ""): TTest =
+              env: string = ""): TTest =
   # start with 'actionCompile', will be overwritten in the spec:
   result = TTest(cat: cat, name: test, options: options,
-                 target: target, action: action, startTime: epochTime())
+                 action: action, startTime: epochTime())
 
 when defined(windows):
   const
