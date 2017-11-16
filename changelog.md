@@ -87,3 +87,5 @@ This now needs to be written as:
 - The ``nim doc`` command is now an alias for ``nim doc2``, the second version of
   the documentation generator. The old version 1 can still be accessed
   via the new ``nim doc0`` command.
+- Added ``system.getStackTraceEntries`` that allows you to access the stack
+  trace in a structured manner without string parsing.
