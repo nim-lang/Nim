@@ -1984,7 +1984,7 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
       # but nothing else is possible:
       if buf[i] in {'.', ','}: result[i] = decimalsep
       else: result[i] = buf[i]
-    when defined(vcc):
+    when defined(windows):
       # VS pre 2015 violates the C standard: "The exponent always contains at
       # least two digits, and only as many more digits as necessary to
       # represent the exponent." [C11 §7.21.6.1]
