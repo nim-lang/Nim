@@ -59,6 +59,9 @@ test_script:
 #  - koch zip
 
 after_test:
-  - tests\testament\tester json
+  - tests\testament\tester html
+
+artifacts:
+  - path: testresults.html
 
 deploy: off
