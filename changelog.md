@@ -2,9 +2,7 @@
 
 ### Changes affecting backwards compatibility
 
-- Removed basic2d/basic3d out of the stdlib and into Nimble packages.
-  These packages deprecated however, use the ``glm``, ``arraymancer``, ``neo``
-  or another package.
+
 - Arrays of char cannot be converted to ``cstring`` anymore, pointers to
   arrays of char can! This means ``$`` for arrays can finally exist
   in ``system.nim`` and do the right thing.
@@ -16,7 +14,6 @@
   module.
 - The overloading rules changed slightly so that constrained generics are
   preferred over unconstrained generics. (Bug #6526)
-- Removed libuv out of the stdlib and into Nimble packages.
 - It is now possible to forward declare object types so that mutually
   recursive types can be created across module boundaries. See
   [package level objects](https://nim-lang.org/docs/manual.html#package-level-objects)
@@ -40,8 +37,6 @@
 - Added ``typetraits.$`` as an alias for ``typetraits.name``.
 - ``os.getEnv`` now takes an optional ``default`` parameter that tells ``getEnv``
   what to return if the environment variable does not exist.
-- Removed PDCurses wrapper from the stdlib and published it as a separate
-  Nimble package.
 - Bodies of ``for`` loops now get their own scope:
 
 .. code-block:: nim
@@ -78,14 +73,19 @@ This now needs to be written as:
 - ``formatFloat``/``formatBiggestFloat`` now support formatting floats with zero
   precision digits. The previous ``precision = 0`` behavior (default formatting)
   is now available via ``precision = -1``.
-- Removed deprecated romans module from the stdlib and published it as separate
-  Nimble package.
-- Removed deprecated gentabs module from the stdlib and published it as separate
-  Nimble package.
-- Removed deprecated poly and numeric modules from the stdlib and published them 
-  as one separate Nimble package.
 - The ``nim doc`` command is now an alias for ``nim doc2``, the second version of
   the documentation generator. The old version 1 can still be accessed
   via the new ``nim doc0`` command.
 - Added ``system.getStackTraceEntries`` that allows you to access the stack
   trace in a structured manner without string parsing.
+- Moved from stdlib into Nimble packages:
+  - [``basic2d``](https://github.com/nim-lang/basic2d)
+    _deprecated: use ``glm``, ``arraymancer``, ``neo``, or another package instead_
+  - [``basic3d``](https://github.com/nim-lang/basic3d) 
+    _deprecated: use ``glm``, ``arraymancer``, ``neo``, or another package instead_
+  - [``gentabs``](https://github.com/lcrees/gentabs)
+  - [``libuv``](https://github.com/lcrees/libuv)
+  - [``numeric``](https://github.com/lcrees/polynumeric)
+  - [``poly``](https://github.com/lcrees/polynumeric)
+  - [``pdcurses``](https://github.com/lcrees/pdcurses)
+  - [``romans``](https://github.com/lcrees/romans)
