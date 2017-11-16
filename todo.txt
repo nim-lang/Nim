@@ -1,7 +1,6 @@
 version 1.0 battle plan
 =======================
 
-- make 'doc2' an alias for 'doc' and introduce 'doc0'
 - make 'break' not leave named blocks
 - make FlowVar compatible to Futures
 - fix "high priority" bugs
