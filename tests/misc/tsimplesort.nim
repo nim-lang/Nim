@@ -118,7 +118,7 @@ proc toTable*[A, B](pairs: openarray[tuple[key: A,
   result = initTable[A, B](nextPowerOfTwo(pairs.len+10))
   for key, val in items(pairs): result[key] = val
 
-template dollarImpl(): stmt =
+template dollarImpl(): typed =
   if t.len == 0:
     result = "{:}"
   else:
@@ -305,5 +305,3 @@ proc countTableTest1 =
 
 countTableTest1()
 echo true
-
-

@@ -656,16 +656,17 @@ proc genNarrow(c: PCtx; n: PNode; dest: TDest) =
   let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
   # uint is uint64 in the VM, we we only need to mask the result for
   # other unsigned types:
-  if t.kind in {tyUInt8..tyUInt32}:
+  if t.kind in {tyUInt8..tyUInt32} or (t.kind == tyUInt and t.size < 8):
     c.gABC(n, opcNarrowU, dest, TRegister(t.size*8))
-  elif t.kind in {tyInt8..tyInt32}:
+  elif t.kind in {tyInt8..tyInt32} or (t.kind == tyInt and t.size < 8):
     c.gABC(n, opcNarrowS, dest, TRegister(t.size*8))
 
 proc genNarrowU(c: PCtx; n: PNode; dest: TDest) =
   let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
   # uint is uint64 in the VM, we we only need to mask the result for
   # other unsigned types:
-  if t.kind in {tyUInt8..tyUInt32, tyInt8..tyInt32}:
+  if t.kind in {tyUInt8..tyUInt32, tyInt8..tyInt32} or
+    (t.kind in {tyUInt, tyInt} and t.size < 8):
     c.gABC(n, opcNarrowU, dest, TRegister(t.size*8))
 
 proc genBinaryABCnarrow(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
@@ -826,7 +827,23 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mSubF64: genBinaryABC(c, n, dest, opcSubFloat)
   of mMulF64: genBinaryABC(c, n, dest, opcMulFloat)
   of mDivF64: genBinaryABC(c, n, dest, opcDivFloat)
-  of mShrI: genBinaryABCnarrowU(c, n, dest, opcShrInt)
+  of mShrI:
+    # the idea here is to narrow type if needed before executing right shift
+    # inlined modified: genNarrowU(c, n, dest)
+    let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
+    # uint is uint64 in the VM, we we only need to mask the result for
+    # other unsigned types:
+    let tmp = c.genx(n.sons[1])
+    if t.kind in {tyUInt8..tyUInt32, tyInt8..tyInt32}:
+      c.gABC(n, opcNarrowU, tmp, TRegister(t.size*8))
+
+    # inlined modified: genBinaryABC(c, n, dest, opcShrInt)
+    let tmp2 = c.genx(n.sons[2])
+    if dest < 0: dest = c.getTemp(n.typ)
+    c.gABC(n, opcShrInt, dest, tmp, tmp2)
+    c.freeTemp(tmp)
+    c.freeTemp(tmp2)
+
   of mShlI: genBinaryABCnarrowU(c, n, dest, opcShlInt)
   of mBitandI: genBinaryABCnarrowU(c, n, dest, opcBitandInt)
   of mBitorI: genBinaryABCnarrowU(c, n, dest, opcBitorInt)
@@ -859,11 +876,25 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mBitnotI:
     genUnaryABC(c, n, dest, opcBitnotInt)
     genNarrowU(c, n, dest)
-  of mZe8ToI, mZe8ToI64, mZe16ToI, mZe16ToI64, mZe32ToI64, mZeIToI64,
-     mToU8, mToU16, mToU32, mToFloat, mToBiggestFloat, mToInt,
+  of mToFloat, mToBiggestFloat, mToInt,
      mToBiggestInt, mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr,
      mFloatToStr, mCStrToStr, mStrToStr, mEnumToStr:
     genConv(c, n, n.sons[1], dest)
+  of mZe8ToI, mZe8ToI64, mZe16ToI, mZe16ToI64, mZe32ToI64, mZeIToI64:
+    #genNarrowU modified
+    let t = skipTypes(n.sons[1].typ, abstractVar-{tyTypeDesc})
+    let tmp = c.genx(n.sons[1])
+    c.gABC(n, opcNarrowU, tmp, TRegister(t.size*8))
+    # assign result to dest register
+    if dest < 0: dest = c.getTemp(n.typ)
+    c.gABC(n, opcAsgnInt, dest, tmp)
+    c.freeTemp(tmp)
+  of mToU8, mToU16, mToU32:
+    let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
+    var tmp = c.genx(n.sons[1])
+    if dest < 0: dest = c.getTemp(n.typ)
+    c.gABC(n, opcToNarrowInt, dest, tmp, TRegister(t.size*8))
+    c.freeTemp(tmp)
   of mEqStr, mEqCString: genBinaryABC(c, n, dest, opcEqStr)
   of mLeStr: genBinaryABC(c, n, dest, opcLeStr)
   of mLtStr: genBinaryABC(c, n, dest, opcLtStr)
@@ -1055,7 +1086,16 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mEqIdent: genBinaryABC(c, n, dest, opcEqIdent)
   of mEqNimrodNode: genBinaryABC(c, n, dest, opcEqNimrodNode)
   of mSameNodeType: genBinaryABC(c, n, dest, opcSameNodeType)
-  of mNLineInfo: genUnaryABC(c, n, dest, opcNLineInfo)
+  of mNLineInfo:
+    case n[0].sym.name.s
+    of "getFile":
+      genUnaryABC(c, n, dest, opcNGetFile)
+    of "getLine":
+      genUnaryABC(c, n, dest, opcNGetLine)
+    of "getColumn":
+      genUnaryABC(c, n, dest, opcNGetColumn)
+    else:
+      internalAssert false
   of mNHint:
     unused(n, dest)
     genUnaryStmt(c, n, opcNHint)

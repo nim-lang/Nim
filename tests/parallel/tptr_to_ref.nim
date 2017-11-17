@@ -14,7 +14,7 @@ type
     processes {.guard: lock.}: array[0..MAX_WORKERS-1, foreign ptr Process]
 
 # Hold a lock for a statement.
-template hold(lock: Lock, body: stmt) =
+template hold(lock: Lock, body: untyped) =
   lock.acquire
   defer: lock.release
   {.locks: [lock].}:

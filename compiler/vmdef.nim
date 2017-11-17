@@ -98,7 +98,7 @@ type
     opcNError,
     opcNWarning,
     opcNHint,
-    opcNLineInfo,
+    opcNGetLine, opcNGetColumn, opcNGetFile,
     opcEqIdent,
     opcStrToIdent,
     opcIdentToStr,
@@ -136,7 +136,8 @@ type
     opcNBindSym,
     opcSetType,   # dest.typ = types[Bx]
     opcTypeTrait,
-    opcMarshalLoad, opcMarshalStore
+    opcMarshalLoad, opcMarshalStore,
+    opcToNarrowInt
 
   TBlock* = object
     label*: PSym

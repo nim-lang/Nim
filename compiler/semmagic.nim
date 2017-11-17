@@ -110,7 +110,7 @@ proc uninstantiate(t: PType): PType =
     else: t
 
 proc evalTypeTrait(traitCall: PNode, operand: PType, context: PSym): PNode =
-  const skippedTypes = {tyTypeDesc}
+  const skippedTypes = {tyTypeDesc, tyAlias}
   let trait = traitCall[0]
   internalAssert trait.kind == nkSym
   var operand = operand.skipTypes(skippedTypes)
@@ -119,7 +119,7 @@ proc evalTypeTrait(traitCall: PNode, operand: PType, context: PSym): PNode =
     traitCall.sons[2].typ.skipTypes({tyTypeDesc})
 
   template typeWithSonsResult(kind, sons): PNode =
-    newTypeWithSons2(kind, context, sons).toNode(traitCall.info)
+    newTypeWithSons(context, kind, sons).toNode(traitCall.info)
 
   case trait.sym.name.s
   of "or", "|":
@@ -200,6 +200,41 @@ proc isStrangeArray(t: PType): bool =
   let t = t.skipTypes(abstractInst)
   result = t.kind == tyArray and t.firstOrd != 0
 
+proc semOf(c: PContext, n: PNode): PNode =
+  if sonsLen(n) == 3:
+    n.sons[1] = semExprWithType(c, n.sons[1])
+    n.sons[2] = semExprWithType(c, n.sons[2], {efDetermineType})
+    #restoreOldStyleType(n.sons[1])
+    #restoreOldStyleType(n.sons[2])
+    let a = skipTypes(n.sons[1].typ, abstractPtrs)
+    let b = skipTypes(n.sons[2].typ, abstractPtrs)
+    let x = skipTypes(n.sons[1].typ, abstractPtrs-{tyTypeDesc})
+    let y = skipTypes(n.sons[2].typ, abstractPtrs-{tyTypeDesc})
+
+    if x.kind == tyTypeDesc or y.kind != tyTypeDesc:
+      localError(n.info, errXExpectsObjectTypes, "of")
+    elif b.kind != tyObject or a.kind != tyObject:
+      localError(n.info, errXExpectsObjectTypes, "of")
+    else:
+      let diff = inheritanceDiff(a, b)
+      # | returns: 0 iff `a` == `b`
+      # | returns: -x iff `a` is the x'th direct superclass of `b`
+      # | returns: +x iff `a` is the x'th direct subclass of `b`
+      # | returns: `maxint` iff `a` and `b` are not compatible at all
+      if diff <= 0:
+        # optimize to true:
+        message(n.info, hintConditionAlwaysTrue, renderTree(n))
+        result = newIntNode(nkIntLit, 1)
+        result.info = n.info
+        result.typ = getSysType(tyBool)
+        return result
+      elif diff == high(int):
+        localError(n.info, errXcanNeverBeOfThisSubtype, typeToString(a))
+  else:
+    localError(n.info, errXExpectsTwoArguments, "of")
+  n.typ = getSysType(tyBool)
+  result = n
+
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
   case n[0].sym.magic
@@ -219,6 +254,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result.typ = getSysType(tyString)
   of mInstantiationInfo: result = semInstantiationInfo(c, n)
   of mOrd: result = semOrd(c, n)
+  of mOf: result = semOf(c, n)
   of mHigh, mLow: result = semLowHigh(c, n, n[0].sym.magic)
   of mShallowCopy: result = semShallowCopy(c, n, flags)
   of mNBindSym: result = semBindSym(c, n)

@@ -455,7 +455,7 @@ template anyIt*(seq1, pred: untyped): bool =
       break
   result
 
-template toSeq*(iter: untyped): untyped {.oldimmediate.} =
+template toSeq*(iter: untyped): untyped =
   ## Transforms any iterator into a sequence.
   ##
   ## Example:

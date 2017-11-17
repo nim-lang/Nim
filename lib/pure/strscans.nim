@@ -187,7 +187,6 @@ overloaded to handle both single characters and sets of character.
   if scanp(content, idx, +( ~{'\L', '\0'} -> entry.add(peekChar($input))), '\L'):
     result.add entry
 
-
 Calling ordinary Nim procs inside the macro is possible:
 
 .. code-block:: nim
@@ -253,6 +252,30 @@ is performed.
 
   for r in collectLinks(body):
     echo r
+
+In this example both macros are combined seamlessly in order to maximise 
+efficiency and perform different checks.
+
+.. code-block:: nim
+
+  iterator parseIps*(soup: string): string =
+    ## ipv4 only!
+    const digits = {'0'..'9'}
+    var a, b, c, d: int
+    var buf = ""
+    var idx = 0
+    while idx < soup.len:
+      if scanp(soup, idx, (`digits`{1,3}, '.', `digits`{1,3}, '.',
+               `digits`{1,3}, '.', `digits`{1,3}) -> buf.add($_)):
+        discard buf.scanf("$i.$i.$i.$i", a, b, c, d)
+        if (a >= 0 and a <= 254) and
+           (b >= 0 and b <= 254) and
+           (c >= 0 and c <= 254) and
+           (d >= 0 and d <= 254):
+          yield buf
+      buf.setLen(0) # need to clear `buf` each time, cause it might contain garbage
+      idx.inc
+
 ]##
 
 

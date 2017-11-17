@@ -16,7 +16,7 @@
 const
   debugGC = false # we wish to debug the GC...
   logGC = false
-  traceGC = defined(smokeCycles) # extensive debugging
+  traceGC = false # extensive debugging
   alwaysCycleGC = defined(smokeCycles)
   alwaysGC = defined(fulldebug) # collect after every memory
                                 # allocation (for debugging)
@@ -34,7 +34,7 @@ const
 
 type
   PPointer = ptr pointer
-  ByteArray = array[0..ArrayDummySize, byte]
+  ByteArray = UncheckedArray[byte]
   PByte = ptr ByteArray
   PString = ptr string
 {.deprecated: [TByteArray: ByteArray].}
@@ -255,12 +255,21 @@ elif defined(gogc):
         next_gc: uint64          # next GC (in heap_alloc time)
         last_gc: uint64          # last GC (in absolute time)
         pause_total_ns: uint64
-        pause_ns: array[256, uint64]
+        pause_ns: array[256, uint64] # circular buffer of recent gc pause lengths
+        pause_end: array[256, uint64] # circular buffer of recent gc end times (nanoseconds since 1970)
         numgc: uint32
+        numforcedgc: uint32      # number of user-forced GCs
+        gc_cpu_fraction: float64 # fraction of CPU time used by GC
         enablegc: cbool
         debuggc: cbool
         # Statistics about allocation size classes.
         by_size: array[goNumSizeClasses, goMStats_inner_struct]
+        # Statistics below here are not exported to MemStats directly.
+        tinyallocs: uint64       # number of tiny allocations that didn't cause actual allocation; not exported to go directly
+        gc_trigger: uint64
+        heap_live: uint64
+        heap_scan: uint64
+        heap_marked: uint64
 
   proc goRuntime_ReadMemStats(a2: ptr goMStats) {.cdecl,
     importc: "runtime_ReadMemStats",
@@ -534,7 +543,7 @@ elif defined(nogc):
   include "system/cellsets"
 
 else:
-  when not defined(gcStack):
+  when not defined(gcRegions):
     include "system/alloc"
 
     include "system/cellsets"
@@ -542,9 +551,9 @@ else:
       sysAssert(sizeof(Cell) == sizeof(FreeCell), "sizeof FreeCell")
   when compileOption("gc", "v2"):
     include "system/gc2"
-  elif defined(gcStack):
+  elif defined(gcRegions):
     # XXX due to bootstrapping reasons, we cannot use  compileOption("gc", "stack") here
-    include "system/gc_stack"
+    include "system/gc_regions"
   elif defined(gcMarkAndSweep):
     # XXX use 'compileOption' here
     include "system/gc_ms"

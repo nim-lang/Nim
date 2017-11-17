@@ -409,6 +409,28 @@ proc recSetFlagIsRef(arg: PNode) =
   for i in 0 ..< arg.safeLen:
     arg.sons[i].recSetFlagIsRef
 
+proc setLenSeq(c: PCtx; node: PNode; newLen: int; info: TLineInfo) =
+  # FIXME: this doesn't attempt to solve incomplete
+  # support of tyPtr, tyRef in VM.
+  let typ = node.typ.skipTypes(abstractInst+{tyRange}-{tyTypeDesc})
+  let typeEntry = typ.sons[0].skipTypes(abstractInst+{tyRange}-{tyTypeDesc})
+  let typeKind = case typeEntry.kind
+  of tyUInt..tyUInt64: nkUIntLit
+  of tyRange, tyEnum, tyBool, tyChar, tyInt..tyInt64: nkIntLit
+  of tyFloat..tyFloat128: nkFloatLit
+  of tyString: nkStrLit
+  of tyObject: nkObjConstr
+  of tySequence: nkNilLit
+  of tyProc, tyTuple: nkPar
+  else: nkEmpty
+
+  let oldLen = node.len
+  setLen(node.sons, newLen)
+  if oldLen < newLen:
+    # TODO: This is still not correct for tyPtr, tyRef default value
+    for i in oldLen .. <newLen:
+      node.sons[i] = newNodeI(typeKind, info)
+
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
   var tos = tos
@@ -1118,14 +1140,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkNode)
       let newLen = regs[rb].intVal.int
       if regs[ra].node.isNil: stackTrace(c, tos, pc, errNilAccess)
-      else:
-        let oldLen = regs[ra].node.len
-        setLen(regs[ra].node.sons, newLen)
-        if oldLen < newLen:
-          # XXX This is still not entirely correct
-          # set to default value:
-          for i in oldLen .. <newLen:
-            regs[ra].node.sons[i] = newNodeI(nkEmpty, c.debug[pc])
+      else: c.setLenSeq(regs[ra].node, newLen, c.debug[pc])
     of opcReset:
       internalError(c.debug[pc], "too implement")
     of opcNarrowS:
@@ -1307,12 +1322,24 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       ensureKind(rkNode)
       if c.callsite != nil: regs[ra].node = c.callsite
       else: stackTrace(c, tos, pc, errFieldXNotFound, "callsite")
-    of opcNLineInfo:
+    of opcNGetFile:
       decodeB(rkNode)
       let n = regs[rb].node
-      createStr regs[ra]
-      regs[ra].node.strVal = n.info.toFileLineCol
-      regs[ra].node.info = c.debug[pc]
+      regs[ra].node = newStrNode(nkStrLit, n.info.toFilename)
+      regs[ra].node.info = n.info
+      regs[ra].node.typ = n.typ
+    of opcNGetLine:
+      decodeB(rkNode)
+      let n = regs[rb].node
+      regs[ra].node = newIntNode(nkIntLit, n.info.line)
+      regs[ra].node.info = n.info
+      regs[ra].node.typ = n.typ
+    of opcNGetColumn:
+      decodeB(rkNode)
+      let n = regs[rb].node
+      regs[ra].node = newIntNode(nkIntLit, n.info.col)
+      regs[ra].node.info = n.info
+      regs[ra].node.typ = n.typ
     of opcEqIdent:
       decodeBC(rkInt)
       if regs[rb].node.kind == nkIdent and regs[rc].node.kind == nkIdent:
@@ -1406,6 +1433,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if dest.kind in {nkStrLit..nkTripleStrLit} and
          regs[rb].kind in {rkNode}:
         dest.strVal = regs[rb].node.strVal
+      elif dest.kind == nkCommentStmt and regs[rb].kind in {rkNode}:
+        dest.comment = regs[rb].node.strVal
       else:
         stackTrace(c, tos, pc, errFieldXNotFound, "strVal")
     of opcNNewNimNode:
@@ -1469,6 +1498,17 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       createStrKeepNode(regs[ra])
       if regs[ra].node.strVal.isNil: regs[ra].node.strVal = newStringOfCap(1000)
       storeAny(regs[ra].node.strVal, typ, regs[rb].regToNode)
+    of opcToNarrowInt:
+      decodeBC(rkInt)
+      let mask = (1'i64 shl rc) - 1 # 0xFF
+      let signbit = 1'i64 shl (rc - 1) # 0x80
+      let toggle = mask - signbit # 0x7F
+      # algorithm: -((i8 and 0xFF) xor 0x7F) + 0x7F
+      # mask off higher bits.
+      # uses two's complement to sign-extend integer.
+      # reajust integer into desired range.
+      regs[ra].intVal = -((regs[rb].intVal and mask) xor toggle) + toggle
+
     inc pc
 
 proc execute(c: PCtx, start: int): PNode =

@@ -539,9 +539,6 @@ Network Programming and Internet Protocols
 * `joyent_http_parser <joyent_http_parser.html>`_
   Wrapper for the joyent's high-performance HTTP parser.
 
-* `libcurl <libcurl.html>`_
-  Wrapper for the libcurl library.
-
 * `openssl <openssl.html>`_
   Wrapper for OpenSSL.
 

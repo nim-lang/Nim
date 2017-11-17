@@ -144,7 +144,7 @@ proc fixNilType(n: PNode) =
   n.typ = nil
 
 proc discardCheck(c: PContext, result: PNode) =
-  if c.inTypeClass > 0: return
+  if c.matchedConcept != nil: return
   if result.typ != nil and result.typ.kind notin {tyStmt, tyVoid}:
     if result.kind == nkNilLit:
       result.typ = nil
@@ -465,6 +465,47 @@ proc hasEmpty(typ: PType): bool =
     for s in typ.sons:
       result = result or hasEmpty(s)
 
+proc makeDeref(n: PNode): PNode =
+  var t = skipTypes(n.typ, {tyGenericInst, tyAlias})
+  if t.kind in tyUserTypeClasses and t.isResolvedUserTypeClass:
+    t = t.lastSon
+  result = n
+  if t.kind == tyVar:
+    result = newNodeIT(nkHiddenDeref, n.info, t.sons[0])
+    addSon(result, n)
+    t = skipTypes(t.sons[0], {tyGenericInst, tyAlias})
+  while t.kind in {tyPtr, tyRef}:
+    var a = result
+    let baseTyp = t.lastSon
+    result = newNodeIT(nkHiddenDeref, n.info, baseTyp)
+    addSon(result, a)
+    t = skipTypes(baseTyp, {tyGenericInst, tyAlias})
+
+proc fillPartialObject(c: PContext; n: PNode; typ: PType) =
+  if n.len == 2:
+    let x = semExprWithType(c, n[0])
+    let y = considerQuotedIdent(n[1])
+    let obj = x.typ.skipTypes(abstractPtrs)
+    if obj.kind == tyObject and tfPartial in obj.flags:
+      let field = newSym(skField, getIdent(y.s), obj.sym, n[1].info)
+      field.typ = skipIntLit(typ)
+      field.position = sonsLen(obj.n)
+      addSon(obj.n, newSymNode(field))
+      n.sons[0] = makeDeref x
+      n.sons[1] = newSymNode(field)
+    else:
+      localError(n.info, "implicit object field construction " &
+        "requires a .partial object, but got " & typeToString(obj))
+  else:
+    localError(n.info, "nkDotNode requires 2 children")
+
+proc setVarType(v: PSym, typ: PType) =
+  if v.typ != nil and not sameTypeOrNil(v.typ, typ):
+    localError(v.info, "inconsistent typing for reintroduced symbol '" &
+        v.name.s & "': previous type was: " & typeToString(v.typ) &
+        "; new type is: " & typeToString(typ))
+  v.typ = typ
+
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   var b: PNode
   result = copyNode(n)
@@ -529,6 +570,11 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       message(a.info, warnEachIdentIsTuple)
 
     for j in countup(0, length-3):
+      if a[j].kind == nkDotExpr:
+        fillPartialObject(c, a[j],
+          if a.kind != nkVarTuple: typ else: tup.sons[j])
+        addToVarSection(c, result, n, a)
+        continue
       var v = semIdentDef(c, a.sons[j], symkind)
       if sfGenSym notin v.flags and not isDiscardUnderscore(v):
         addInterfaceDecl(c, v)
@@ -549,7 +595,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           # this is needed for the evaluation pass and for the guard checking:
           v.ast = def
           if sfThread in v.flags: localError(def.info, errThreadvarCannotInit)
-        v.typ = typ
+        setVarType(v, typ)
         b = newNodeI(nkIdentDefs, a.info)
         if importantComments():
           # keep documentation information:
@@ -560,7 +606,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         addToVarSection(c, result, n, b)
       else:
         if def.kind == nkPar: v.ast = def[j]
-        v.typ = tup.sons[j]
+        setVarType(v, tup.sons[j])
         b.sons[j] = newSymNode(v)
       addDefer(c, result, v)
       checkNilable(v)
@@ -594,7 +640,7 @@ proc semConst(c: PContext, n: PNode): PNode =
     if typeAllowed(typ, skConst) != nil and def.kind != nkNilLit:
       localError(a.info, "invalid type for const: " & typeToString(typ))
       continue
-    v.typ = typ
+    setVarType(v, typ)
     v.ast = def               # no need to copy
     if sfGenSym notin v.flags: addInterfaceDecl(c, v)
     var b = newNodeI(nkConstDef, a.info)
@@ -1092,7 +1138,7 @@ proc semProcAnnotation(c: PContext, prc: PNode;
       x.add(it.sons[1])
     x.add(prc)
     # recursion assures that this works for multiple macro annotations too:
-    result = semStmt(c, x)
+    result = semExpr(c, x)
     # since a proc annotation can set pragmas, we process these here again.
     # This is required for SqueakNim-like export pragmas.
     if result.kind in procDefs and result[namePos].kind == nkSym and
@@ -1512,7 +1558,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   popOwner(c)
   if n.sons[patternPos].kind != nkEmpty:
     c.patterns.add(s)
-  if isAnon: result.typ = s.typ
+  if isAnon:
+    n.kind = nkLambda
+    result.typ = s.typ
   if isTopLevel(c) and s.kind != skIterator and
       s.typ.callConv == ccClosure:
     localError(s.info, "'.closure' calling convention for top level routines is invalid")
@@ -1724,7 +1772,8 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
     else:
       var expr = semExpr(c, n.sons[i], flags)
       n.sons[i] = expr
-      if c.inTypeClass > 0 and expr.typ != nil:
+      if c.matchedConcept != nil and expr.typ != nil and
+         (nfFromTemplate notin n.flags or i != last):
         case expr.typ.kind
         of tyBool:
           if expr.kind == nkInfix and
@@ -1739,7 +1788,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
           let verdict = semConstExpr(c, n[i])
           if verdict.intVal == 0:
-            localError(result.info, "type class predicate failed")
+            localError(result.info, "concept predicate failed")
         of tyUnknown: continue
         else: discard
       if n.sons[i].typ == enforceVoidContext: #or usesResult(n.sons[i]):
@@ -1763,7 +1812,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
   if result.len == 1 and
      # concept bodies should be preserved as a stmt list:
-     c.inTypeClass == 0 and
+     c.matchedConcept == nil and
      # also, don't make life complicated for macros.
      # they will always expect a proper stmtlist:
      nfBlockArg notin n.flags and
