@@ -31,6 +31,7 @@ before_script:
   - cd ..
   - sed -i -e 's,cc = gcc,cc = clang,' config/nim.cfg
   - export PATH=$(pwd)/bin:$PATH
+  - export NIMTEST_NO_ELAPSED_TIME=1
 script:
   - nim c koch
   - ./koch boot

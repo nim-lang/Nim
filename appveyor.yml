@@ -54,6 +54,7 @@ build_script:
   - nim c --taintMode:on -d:nimCoroutines tests/testament/tester
 
 test_script:
+  - set NIMTEST_NO_ELAPSED_TIME=1
   - tests\testament\tester --pedantic all -d:nimCoroutines
 #  - koch csource
 #  - koch zip
