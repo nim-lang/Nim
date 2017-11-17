@@ -2275,7 +2275,13 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo): Rope =
       result = "{{$1}}" % [genTypeInfo(p.module, t, info)]
     else:
       result = rope"{}"
-  of tyArray, tyTuple: result = rope"{}"
+  of tyTuple:
+    result = rope"{"
+    for i in 0 ..< typ.len:
+      if i > 0: result.add ", "
+      result.add getDefaultValue(p, typ.sons[i], info)
+    result.add "}"
+  of tyArray: result = rope"{}"
   of tySet:
     if mapType(t) == ctArray: result = rope"{}"
     else: result = rope"0"
