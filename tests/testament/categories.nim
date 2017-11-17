@@ -218,9 +218,9 @@ proc debuggerTests(r: var TResults, cat: Category, options: string) =
 proc jsTests(r: var TResults, cat: Category, options: string) =
   template test(filename: untyped) =
     testSpec r, makeTest(filename, options & " -d:nodejs", cat,
-                         actionRun, targetJS)
+                         actionRun), targetJS
     testSpec r, makeTest(filename, options & " -d:nodejs -d:release", cat,
-                         actionRun, targetJS)
+                         actionRun), targetJS
 
   for t in os.walkFiles("tests/js/t*.nim"):
     test(t)
@@ -244,10 +244,10 @@ proc testNimInAction(r: var TResults, cat: Category, options: string) =
     testSpec r, makeTest(filename, options, cat, action)
 
   template testJS(filename: untyped) =
-    testSpec r, makeTest(filename, options, cat, actionCompile, targetJS)
+    testSpec r, makeTest(filename, options, cat, actionCompile), targetJS
 
   template testCPP(filename: untyped) =
-    testSpec r, makeTest(filename, options, cat, actionCompile, targetCPP)
+    testSpec r, makeTest(filename, options, cat, actionCompile), targetCPP
 
   let tests = [
     "niminaction/Chapter3/ChatApp/src/server",
@@ -323,9 +323,10 @@ type PackageFilter = enum
   pfExtraOnly
   pfAll
 
+var nimbleDir = getEnv("NIMBLE_DIR").string
+if nimbleDir.len == 0: nimbleDir = getHomeDir() / ".nimble"
 let
   nimbleExe = findExe("nimble")
-  nimbleDir = getHomeDir() / ".nimble"
   packageDir = nimbleDir / "pkgs"
   packageIndex = nimbleDir / "packages.json"
 
@@ -385,7 +386,7 @@ proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
         installStatus = waitForExitEx(installProcess)
       installProcess.close
       if installStatus != QuitSuccess:
-        r.addResult(test, "", "", reInstallFailed)
+        r.addResult(test, targetC, "", "", reInstallFailed)
         continue
 
       let
@@ -394,12 +395,12 @@ proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
         buildStatus = waitForExitEx(buildProcess)
       buildProcess.close
       if buildStatus != QuitSuccess:
-        r.addResult(test, "", "", reBuildFailed)
-      r.addResult(test, "", "", reSuccess)
-    r.addResult(packageFileTest, "", "", reSuccess)
+        r.addResult(test, targetC, "", "", reBuildFailed)
+      r.addResult(test, targetC, "", "", reSuccess)
+    r.addResult(packageFileTest, targetC, "", "", reSuccess)
   except JsonParsingError:
     echo("[Warning] - Cannot run nimble tests: Invalid package file.")
-    r.addResult(packageFileTest, "", "", reBuildFailed)
+    r.addResult(packageFileTest, targetC, "", "", reBuildFailed)
 
 
 # ----------------------------------------------------------------------------
@@ -416,8 +417,9 @@ proc `&?.`(a, b: string): string =
 
 proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
   let test = "tests" & DirSep &.? cat.string / test
+  let target = if cat.string.normalize == "js": targetJS else: targetC
 
-  if existsFile(test): testSpec r, makeTest(test, options, cat)
+  if existsFile(test): testSpec r, makeTest(test, options, cat), target
   else: echo "[Warning] - ", test, " test does not exist"
 
 proc processCategory(r: var TResults, cat: Category, options: string) =

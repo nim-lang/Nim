@@ -18,6 +18,7 @@ the latest release, check out [Nim's website][nim-site].
   is a bridge between Gitter and the IRC channel.
 * [Stack Overflow][nim-stackoverflow] - a popular Q/A site for programming related
   topics that includes posts about Nim.
+* [Github Wiki][nim-wiki] - Misc user-contributed content.
 
 ## Compiling
 The compiler currently officially supports the following platform and
@@ -95,10 +96,10 @@ This project exists thanks to all the people who contribute. [Read on to find ou
 [![Setup a bounty via Bountysource][badge-nim-bountysource]][nim-bountysource]
 [![Donate Bitcoins][badge-nim-bitcoin]][nim-bitcoin]
 
-We welcome everyone's contributions to Nim regardless of how small or how large
-they are. Anything from small spelling fixes to large modules intended to
-be included in the standard library are welcome and appreciated. Before you get
-started contributing, you should familiarize yourself with the repository structure:
+We welcome all contributions to Nim regardless of how small or large
+they are. Everything from spelling fixes to new modules to be included in the
+standard library are welcomed and appreciated. Before you start contributing,
+you should familiarize yourself with the following repository structure:
 
 * ``bin/``, ``build/`` - these directories are empty, but are used when Nim is built.
 * ``compiler/`` - the compiler source code. Also includes nimfix, and plugins within
@@ -126,6 +127,7 @@ However, if you are short on time, you can just run the tests specific to your
 changes by only running the corresponding categories of tests. Travis CI verifies
 that all tests pass before allowing the pull request to be accepted, so only
 running specific tests should be harmless.
+Integration tests should go in ``tests/untestable``.
 
 If you're looking for ways to contribute, please look at our [issue tracker][nim-issues].
 There are always plenty of issues labelled [``Easy``][nim-issues-easy]; these should
@@ -203,3 +205,4 @@ Copyright © 2006-2017 Andreas Rumpf, all rights reserved.
 [badge-nim-bountysource]: https://img.shields.io/bountysource/team/nim/activity.svg?style=flat-square
 [badge-nim-bitcoin]: https://img.shields.io/badge/bitcoin-1BXfuKM2uvoD6mbx4g5xM3eQhLzkCK77tJ-D69134.svg?style=flat-square
 [pull-request-instructions]: https://help.github.com/articles/using-pull-requests/
+[nim-wiki]: https://github.com/nim-lang/Nim/wiki

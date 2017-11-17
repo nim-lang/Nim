@@ -48,7 +48,7 @@ proc validEmailAddress*(s: string): bool {.noSideEffect,
      "aero", "jobs", "museum": return true
   else: return false
 
-proc parseInt*(s: string, value: var int, validRange: Slice[int]) {.
+proc parseInt*(s: string, value: var int, validRange: HSlice[int, int]) {.
   noSideEffect, rtl, extern: "nmatchParseInt".} =
   ## parses `s` into an integer in the range `validRange`. If successful,
   ## `value` is modified to contain the result. Otherwise no exception is

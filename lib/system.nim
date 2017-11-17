@@ -285,6 +285,13 @@ proc low*(x: string): int {.magic: "Low", noSideEffect.}
   ##  low(2) #=> -9223372036854775808
   ##  low(int) #=> -9223372036854775808
 
+proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
+  ## use this instead of `=` for a `shallow copy`:idx:. The shallow copy
+  ## only changes the semantics for sequences and strings (and types which
+  ## contain those). Be careful with the changed semantics though! There
+  ## is a reason why the default assignment does a deep copy of sequences
+  ## and strings.
+
 when defined(nimArrIdx):
   # :array|openarray|string|seq|cstring|tuple
   proc `[]`*[I: Ordinal;T](a: T; i: I): T {.
@@ -293,21 +300,20 @@ when defined(nimArrIdx):
     x: S) {.noSideEffect, magic: "ArrPut".}
   proc `=`*[T](dest: var T; src: T) {.noSideEffect, magic: "Asgn".}
   when defined(nimNewRuntime):
-    template `=destroy`*[T](x: var T) =
+    proc `=destroy`*[T](x: var T) {.inline, magic: "Asgn".} =
       ## generic `destructor`:idx: implementation that can be overriden.
       discard
-    template `=sink`*[T](x: var T; y: T) =
+    proc `=sink`*[T](x: var T; y: T) {.inline, magic: "Asgn".} =
       ## generic `sink`:idx: implementation that can be overriden.
       shallowCopy(x, y)
 
 type
-  Slice*[T] = object ## builtin slice type
-    a*, b*: T        ## the bounds
+  HSlice*[T, U] = object ## "heterogenous" slice type
+    a*: T        ## the lower bound (inclusive)
+    b*: U        ## the upper bound (inclusive)
+  Slice*[T] = HSlice[T, T] ## an alias for ``HSlice[T, T]``
 
-when defined(nimalias):
-  {.deprecated: [TSlice: Slice].}
-
-proc `..`*[T](a, b: T): Slice[T] {.noSideEffect, inline, magic: "DotDot".} =
+proc `..`*[T, U](a: T, b: U): HSlice[T, U] {.noSideEffect, inline, magic: "DotDot".} =
   ## `slice`:idx: operator that constructs an interval ``[a, b]``, both `a`
   ## and `b` are inclusive. Slices can also be used in the set constructor
   ## and in ordinal case statements, but then they are special-cased by the
@@ -315,8 +321,8 @@ proc `..`*[T](a, b: T): Slice[T] {.noSideEffect, inline, magic: "DotDot".} =
   result.a = a
   result.b = b
 
-proc `..`*[T](b: T): Slice[T] {.noSideEffect, inline, magic: "DotDot".} =
-  ## `slice`:idx: operator that constructs an interval ``[default(T), b]``
+proc `..`*[T](b: T): HSlice[int, T] {.noSideEffect, inline, magic: "DotDot".} =
+  ## `slice`:idx: operator that constructs an interval ``[default(int), b]``
   result.b = b
 
 when not defined(niminheritable):
@@ -450,6 +456,13 @@ type
   WriteIOEffect* = object of IOEffect  ## Effect describing a write IO operation.
   ExecIOEffect* = object of IOEffect   ## Effect describing an executing IO operation.
 
+  StackTraceEntry* = object ## In debug mode exceptions store the stack trace that led
+                            ## to them. A StackTraceEntry is a single entry of the
+                            ## stack trace.
+    procname*: cstring  ## name of the proc that is currently executing
+    line*: int          ## line number of the proc that is currently executing
+    filename*: cstring  ## filename of the proc that is currently executing
+
   Exception* {.compilerproc.} = object of RootObj ## \
     ## Base exception class.
     ##
@@ -462,7 +475,10 @@ type
     msg* {.exportc: "message".}: string ## the exception's message. Not
                                         ## providing an exception message
                                         ## is bad style.
-    trace: string
+    when defined(js):
+      trace: string
+    else:
+      trace: seq[StackTraceEntry]
     up: ref Exception # used for stacking exceptions. Not exported!
 
   SystemError* = object of Exception ## \
@@ -645,13 +661,17 @@ proc sizeof*[T](x: T): int {.magic: "SizeOf", noSideEffect.}
 when defined(nimtypedescfixed):
   proc sizeof*(x: typedesc): int {.magic: "SizeOf", noSideEffect.}
 
-proc `<`*[T](x: Ordinal[T]): T {.magic: "UnaryLt", noSideEffect.}
+proc `<`*[T](x: Ordinal[T]): T {.magic: "UnaryLt", noSideEffect, deprecated.}
   ## unary ``<`` that can be used for nice looking excluding ranges:
   ##
   ## .. code-block:: nim
   ##   for i in 0 .. <10: echo i #=> 0 1 2 3 4 5 6 7 8 9
   ##
   ## Semantically this is the same as ``pred``.
+  ##
+  ## **Deprecated since version 0.18.0**. For the common excluding range
+  ## write ``0 ..< 10`` instead of ``0 .. < 10`` (look at the spacing).
+  ## For ``<x`` write ``pred(x)``.
 
 proc succ*[T](x: Ordinal[T], y = 1): T {.magic: "Succ", noSideEffect.}
   ## returns the ``y``-th successor of the value ``x``. ``T`` has to be
@@ -1157,7 +1177,7 @@ proc contains*[T](x: set[T], y: T): bool {.magic: "InSet", noSideEffect.}
   ## is achieved by reversing the parameters for ``contains``; ``in`` then
   ## passes its arguments in reverse order.
 
-proc contains*[T](s: Slice[T], value: T): bool {.noSideEffect, inline.} =
+proc contains*[U, V, W](s: HSlice[U, V], value: W): bool {.noSideEffect, inline.} =
   ## Checks if `value` is within the range of `s`; returns true iff
   ## `value >= s.a and value <= s.b`
   ##
@@ -1436,7 +1456,8 @@ when defined(nimdoc):
     ## <#GC_fullCollect>`_.
     ##
     ## The proc ``quit(QuitSuccess)`` is called implicitly when your nim
-    ## program finishes without incident. A raised unhandled exception is
+    ## program finishes without incident for platforms where this is the
+    ## expected behavior. A raised unhandled exception is
     ## equivalent to calling ``quit(QuitFailure)``.
     ##
     ## Note that this is a *runtime* call and using ``quit`` inside a macro won't
@@ -1487,13 +1508,6 @@ proc add *[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
   setLen(x, xl + y.len)
   for i in 0..high(y): x[xl+i] = y[i]
 
-proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
-  ## use this instead of `=` for a `shallow copy`:idx:. The shallow copy
-  ## only changes the semantics for sequences and strings (and types which
-  ## contain those). Be careful with the changed semantics though! There
-  ## is a reason why the default assignment does a deep copy of sequences
-  ## and strings.
-
 proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## deletes the item at index `i` by putting ``x[high(x)]`` into position `i`.
   ## This is an O(1) operation.
@@ -1514,7 +1528,7 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ##  i.delete(2) #=> @[1, 2, 4, 5]
   template defaultImpl =
     let xl = x.len
-    for j in i..xl-2: shallowCopy(x[j], x[j+1])
+    for j in i.int..xl-2: shallowCopy(x[j], x[j+1])
     setLen(x, xl-1)
 
   when nimvm:
@@ -1981,34 +1995,80 @@ iterator countdown*[T](a, b: T, step = 1): T {.inline.} =
       yield res
       dec(res, step)
 
-iterator countup*[S, T](a: S, b: T, step = 1): T {.inline.} =
-  ## Counts from ordinal value `a` up to `b` (inclusive) with the given
-  ## step count. `S`, `T` may be any ordinal type, `step` may only
-  ## be positive. **Note**: This fails to count to ``high(int)`` if T = int for
-  ## efficiency reasons.
-  when T is IntLikeForCount:
-    var res = int(a)
-    while res <= int(b):
-      yield T(res)
-      inc(res, step)
-  else:
-    var res: T = T(a)
-    while res <= b:
-      yield res
-      inc(res, step)
+when defined(nimNewRoof):
+  iterator countup*[T](a, b: T, step = 1): T {.inline.} =
+    ## Counts from ordinal value `a` up to `b` (inclusive) with the given
+    ## step count. `S`, `T` may be any ordinal type, `step` may only
+    ## be positive. **Note**: This fails to count to ``high(int)`` if T = int for
+    ## efficiency reasons.
+    when T is IntLikeForCount:
+      var res = int(a)
+      while res <= int(b):
+        yield T(res)
+        inc(res, step)
+    else:
+      var res: T = T(a)
+      while res <= b:
+        yield res
+        inc(res, step)
 
-iterator `..`*[S, T](a: S, b: T): T {.inline.} =
-  ## An alias for `countup`.
-  when T is IntLikeForCount:
-    var res = int(a)
-    while res <= int(b):
-      yield T(res)
-      inc(res)
-  else:
-    var res: T = T(a)
+  iterator `..`*[T](a, b: T): T {.inline.} =
+    ## An alias for `countup`.
+    when T is IntLikeForCount:
+      var res = int(a)
+      while res <= int(b):
+        yield T(res)
+        inc(res)
+    else:
+      var res: T = T(a)
+      while res <= b:
+        yield res
+        inc(res)
+
+  iterator `..`*(a, b: int64): int64 {.inline.} =
+    ## A special version of ``..`` for ``int64`` only.
+    var res = a
     while res <= b:
       yield res
       inc(res)
+
+  iterator `..`*(a, b: int32): int32 {.inline.} =
+    ## A special version of ``..`` for ``int32`` only.
+    var res = a
+    while res <= b:
+      yield res
+      inc(res)
+
+else:
+  iterator countup*[S, T](a: S, b: T, step = 1): T {.inline.} =
+    ## Counts from ordinal value `a` up to `b` (inclusive) with the given
+    ## step count. `S`, `T` may be any ordinal type, `step` may only
+    ## be positive. **Note**: This fails to count to ``high(int)`` if T = int for
+    ## efficiency reasons.
+    when T is IntLikeForCount:
+      var res = int(a)
+      while res <= int(b):
+        yield T(res)
+        inc(res, step)
+    else:
+      var res: T = T(a)
+      while res <= b:
+        yield res
+        inc(res, step)
+
+  iterator `..`*[S, T](a: S, b: T): T {.inline.} =
+    ## An alias for `countup`.
+    when T is IntLikeForCount:
+      var res = int(a)
+      while res <= int(b):
+        yield T(res)
+        inc(res)
+    else:
+      var res: T = T(a)
+      while res <= b:
+        yield res
+        inc(res)
+
 
 iterator `||`*[S, T](a: S, b: T, annotation=""): T {.
   inline, magic: "OmpParFor", sideEffect.} =
@@ -2072,6 +2132,9 @@ proc max*[T](x, y: T): T =
   if y <= x: x else: y
 {.pop.}
 
+proc high*(T: typedesc[SomeReal]): T = Inf
+proc low*(T: typedesc[SomeReal]): T = NegInf
+
 proc clamp*[T](x, a, b: T): T =
   ## limits the value ``x`` within the interval [a, b]
   ##
@@ -2082,7 +2145,7 @@ proc clamp*[T](x, a, b: T): T =
   if x > b: return b
   return x
 
-proc len*[T: Ordinal](x: Slice[T]): int {.noSideEffect, inline.} =
+proc len*[U: Ordinal; V: Ordinal](x: HSlice[U, V]): int {.noSideEffect, inline.} =
   ## length of ordinal slice, when x.b < x.a returns zero length
   ##
   ## .. code-block:: Nim
@@ -2150,7 +2213,7 @@ iterator items*(E: typedesc[enum]): E =
   for v in low(E)..high(E):
     yield v
 
-iterator items*[T](s: Slice[T]): T =
+iterator items*[T](s: HSlice[T, T]): T =
   ## iterates over the slice `s`, yielding each value between `s.a` and `s.b`
   ## (inclusively).
   for x in s.a..s.b:
@@ -2710,9 +2773,9 @@ when defined(nimvarargstyped):
     ## pretends to be free of side effects, so that it can be used for debugging
     ## routines marked as `noSideEffect <manual.html#pragmas-nosideeffect-pragma>`_.
 else:
-  proc echo*(x: varargs[expr, `$`]) {.magic: "Echo", tags: [WriteIOEffect],
+  proc echo*(x: varargs[untyped, `$`]) {.magic: "Echo", tags: [WriteIOEffect],
     benign, sideEffect.}
-  proc debugEcho*(x: varargs[expr, `$`]) {.magic: "Echo", noSideEffect,
+  proc debugEcho*(x: varargs[untyped, `$`]) {.magic: "Echo", noSideEffect,
                                              tags: [], raises: [].}
 
 template newException*(exceptn: typedesc, message: string;
@@ -2828,7 +2891,7 @@ when not defined(JS): #and not defined(nimscript):
       fmRead,                   ## Open the file for read access only.
       fmWrite,                  ## Open the file for write access only.
                                 ## If the file does not exist, it will be
-                                ## created.
+                                ## created. Existing files will be cleared!
       fmReadWrite,              ## Open the file for read and write access.
                                 ## If the file does not exist, it will be
                                 ## created. Existing files will be cleared!
@@ -3409,6 +3472,36 @@ proc `/`*(x, y: int): float {.inline, noSideEffect.} =
   ## integer division that results in a float.
   result = toFloat(x) / toFloat(y)
 
+type
+  BackwardsIndex* = distinct int ## type that is constructed by ``^`` for
+                                 ## reversed array accesses.
+
+template `^`*(x: int): BackwardsIndex = BackwardsIndex(x)
+  ## builtin `roof`:idx: operator that can be used for convenient array access.
+  ## ``a[^x]`` is a shortcut for ``a[a.len-x]``.
+
+template `..^`*(a, b: untyped): untyped =
+  ## a shortcut for '.. ^' to avoid the common gotcha that a space between
+  ## '..' and '^' is required.
+  a .. ^b
+
+template `..<`*(a, b: untyped): untyped =
+  ## a shortcut for 'a..pred(b)'.
+  a .. pred(b)
+
+when defined(nimNewRoof):
+  iterator `..<`*[T](a, b: T): T =
+    var i = T(a)
+    while i < b:
+      yield i
+      inc i
+else:
+  iterator `..<`*[S, T](a: S, b: T): T =
+    var i = T(a)
+    while i < b:
+      yield i
+      inc i
+
 template spliceImpl(s, a, L, b: untyped): untyped =
   # make room for additional elements or cut:
   var shift = b.len - max(0,L)  # ignore negative slice size
@@ -3422,19 +3515,22 @@ template spliceImpl(s, a, L, b: untyped): untyped =
     # cut down:
     setLen(s, newLen)
   # fill the hole:
-  for i in 0 .. <b.len: s[a+i] = b[i]
+  for i in 0 ..< b.len: s[a+i] = b[i]
+
+template `^^`(s, i: untyped): untyped =
+  (when i is BackwardsIndex: s.len - int(i) else: int(i))
 
 when hasAlloc or defined(nimscript):
-  proc `[]`*(s: string, x: Slice[int]): string {.inline.} =
+  proc `[]`*[T, U](s: string, x: HSlice[T, U]): string {.inline.} =
     ## slice operation for strings.
     ## returns the inclusive range [s[x.a], s[x.b]]:
     ##
     ## .. code-block:: nim
     ##    var s = "abcdef"
     ##    assert s[1..3] == "bcd"
-    result = s.substr(x.a, x.b)
+    result = s.substr(s ^^ x.a, s ^^ x.b)
 
-  proc `[]=`*(s: var string, x: Slice[int], b: string) =
+  proc `[]=`*[T, U](s: var string, x: HSlice[T, U], b: string) =
     ## slice assignment for strings. If
     ## ``b.len`` is not exactly the number of elements that are referred to
     ## by `x`, a `splice`:idx: is performed:
@@ -3443,74 +3539,75 @@ when hasAlloc or defined(nimscript):
     ##   var s = "abcdef"
     ##   s[1 .. ^2] = "xyz"
     ##   assert s == "axyzf"
-    var a = x.a
-    var L = x.b - a + 1
+    var a = s ^^ x.a
+    var L = (s ^^ x.b) - a + 1
     if L == b.len:
-      for i in 0 .. <L: s[i+a] = b[i]
+      for i in 0..<L: s[i+a] = b[i]
     else:
       spliceImpl(s, a, L, b)
 
-proc `[]`*[Idx, T](a: array[Idx, T], x: Slice[int]): seq[T] =
+proc `[]`*[Idx, T, U, V](a: array[Idx, T], x: HSlice[U, V]): seq[T] =
   ## slice operation for arrays.
   ## returns the inclusive range [a[x.a], a[x.b]]:
   ##
   ## .. code-block:: nim
   ##    var a = [1,2,3,4]
   ##    assert a[0..2] == @[1,2,3]
-  when low(a) < 0:
-    {.error: "Slicing for arrays with negative indices is unsupported.".}
-  var L = x.b - x.a + 1
+  let xa = a ^^ x.a
+  let L = (a ^^ x.b) - xa + 1
   result = newSeq[T](L)
-  for i in 0.. <L: result[i] = a[i + x.a]
+  for i in 0..<L: result[i] = a[Idx(i + xa)]
 
-proc `[]=`*[Idx, T](a: var array[Idx, T], x: Slice[int], b: openArray[T]) =
+proc `[]=`*[Idx, T, U, V](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]) =
   ## slice assignment for arrays.
-  when low(a) < 0:
-    {.error: "Slicing for arrays with negative indices is unsupported.".}
-  var L = x.b - x.a + 1
+  let xa = a ^^ x.a
+  let L = (a ^^ x.b) - xa + 1
   if L == b.len:
-    for i in 0 .. <L: a[i+x.a] = b[i]
+    for i in 0..<L: a[Idx(i + xa)] = b[i]
   else:
     sysFatal(RangeError, "different lengths for slice assignment")
 
-proc `[]`*[Idx, T](a: array[Idx, T], x: Slice[Idx]): seq[T] =
-  ## slice operation for arrays.
-  var L = ord(x.b) - ord(x.a) + 1
-  newSeq(result, L)
-  for i in 0.. <L:
-    result[i] = a[Idx(ord(x.a) + i)]
-
-proc `[]=`*[Idx, T](a: var array[Idx, T], x: Slice[Idx], b: openArray[T]) =
-  ## slice assignment for arrays.
-  var L = ord(x.b) - ord(x.a) + 1
-  if L == b.len:
-    for i in 0 .. <L:
-      a[Idx(ord(x.a) + i)] = b[i]
-  else:
-    sysFatal(RangeError, "different lengths for slice assignment")
-
-proc `[]`*[T](s: seq[T], x: Slice[int]): seq[T] =
+proc `[]`*[T, U, V](s: openArray[T], x: HSlice[U, V]): seq[T] =
   ## slice operation for sequences.
   ## returns the inclusive range [s[x.a], s[x.b]]:
   ##
   ## .. code-block:: nim
   ##    var s = @[1,2,3,4]
   ##    assert s[0..2] == @[1,2,3]
-  var a = x.a
-  var L = x.b - a + 1
+  let a = s ^^ x.a
+  let L = (s ^^ x.b) - a + 1
   newSeq(result, L)
-  for i in 0.. <L: result[i] = s[i + a]
+  for i in 0 ..< L: result[i] = s[i + a]
 
-proc `[]=`*[T](s: var seq[T], x: Slice[int], b: openArray[T]) =
+proc `[]=`*[T, U, V](s: var seq[T], x: HSlice[U, V], b: openArray[T]) =
   ## slice assignment for sequences. If
   ## ``b.len`` is not exactly the number of elements that are referred to
   ## by `x`, a `splice`:idx: is performed.
-  var a = x.a
-  var L = x.b - a + 1
+  let a = s ^^ x.a
+  let L = (s ^^ x.b) - a + 1
   if L == b.len:
-    for i in 0 .. <L: s[i+a] = b[i]
+    for i in 0 ..< L: s[i+a] = b[i]
   else:
     spliceImpl(s, a, L, b)
+
+proc `[]`*[T](s: openArray[T]; i: BackwardsIndex): T {.inline.} =
+  system.`[]`(s, s.len - int(i))
+
+proc `[]`*[Idx, T](a: array[Idx, T]; i: BackwardsIndex): T {.inline.} =
+  a[Idx(a.len - int(i) + int low(a))]
+proc `[]`*(s: string; i: BackwardsIndex): char {.inline.} = s[s.len - int(i)]
+
+proc `[]`*[T](s: var openArray[T]; i: BackwardsIndex): var T {.inline.} =
+  system.`[]`(s, s.len - int(i))
+proc `[]`*[Idx, T](a: var array[Idx, T]; i: BackwardsIndex): var T {.inline.} =
+  a[Idx(a.len - int(i) + int low(a))]
+
+proc `[]=`*[T](s: var openArray[T]; i: BackwardsIndex; x: T) {.inline.} =
+  system.`[]=`(s, s.len - int(i), x)
+proc `[]=`*[Idx, T](a: var array[Idx, T]; i: BackwardsIndex; x: T) {.inline.} =
+  a[Idx(a.len - int(i) + int low(a))] = x
+proc `[]=`*(s: var string; i: BackwardsIndex; x: char) {.inline.} =
+  s[s.len - int(i)] = x
 
 proc slurp*(filename: string): string {.magic: "Slurp".}
   ## This is an alias for `staticRead <#staticRead>`_.
@@ -3619,7 +3716,7 @@ proc instantiationInfo*(index = -1, fullPaths = false): tuple[
   ## .. code-block:: nim
   ##   import strutils
   ##
-  ##   template testException(exception, code: expr): stmt =
+  ##   template testException(exception, code: untyped): typed =
   ##     try:
   ##       let pos = instantiationInfo()
   ##       discard(code)
@@ -3757,11 +3854,11 @@ type
 {.deprecated: [PNimrodNode: NimNode].}
 
 when false:
-  template eval*(blk: stmt): stmt =
+  template eval*(blk: typed): typed =
     ## executes a block of code at compile time just as if it was a macro
     ## optionally, the block can return an AST tree that will replace the
     ## eval expression
-    macro payload: stmt {.gensym.} = blk
+    macro payload: typed {.gensym.} = blk
     payload()
 
 when hasAlloc:
@@ -3851,31 +3948,6 @@ proc procCall*(x: untyped) {.magic: "ProcCall", compileTime.} =
   ##   # 'someMethod' will be resolved fully statically:
   ##   procCall someMethod(a, b)
   discard
-
-proc `^`*[T](x: int; y: openArray[T]): int {.noSideEffect, magic: "Roof".}
-proc `^`*(x: int): int {.noSideEffect, magic: "Roof".} =
-  ## builtin `roof`:idx: operator that can be used for convenient array access.
-  ## ``a[^x]`` is rewritten to ``a[a.len-x]``. However currently the ``a``
-  ## expression must not have side effects for this to compile. Note that since
-  ## this is a builtin, it automatically works for all kinds of
-  ## overloaded ``[]`` or ``[]=`` accessors.
-  discard
-
-template `..^`*(a, b: untyped): untyped =
-  ## a shortcut for '.. ^' to avoid the common gotcha that a space between
-  ## '..' and '^' is required.
-  a .. ^b
-
-template `..<`*(a, b: untyped): untyped {.dirty.} =
-  ## a shortcut for '.. <' to avoid the common gotcha that a space between
-  ## '..' and '<' is required.
-  a .. <b
-
-iterator `..<`*[S,T](a: S, b: T): T =
-  var i = T(a)
-  while i < b:
-    yield i
-    inc i
 
 proc xlen*(x: string): int {.magic: "XLenStr", noSideEffect.} = discard
 proc xlen*[T](x: seq[T]): int {.magic: "XLenSeq", noSideEffect.} =

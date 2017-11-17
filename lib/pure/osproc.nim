@@ -280,7 +280,7 @@ proc execProcesses*(cmds: openArray[string],
   ## executes the commands `cmds` in parallel. Creates `n` processes
   ## that execute in parallel. The highest return value of all processes
   ## is returned. Runs `beforeRunEvent` before running each command.
-  when defined(posix):
+  when false:
     # poParentStreams causes problems on Posix, so we simply disable it:
     var options = options - {poParentStreams}
 
@@ -617,6 +617,7 @@ when defined(Windows) and not defined(useNimRtl):
     var res: int32
     discard getExitCodeProcess(p.fProcessHandle, res)
     result = res
+    p.exitStatus = res
     discard closeHandle(p.fProcessHandle)
 
   proc peekExitCode(p: Process): int =
@@ -625,6 +626,7 @@ when defined(Windows) and not defined(useNimRtl):
     else:
       var res: int32
       discard getExitCodeProcess(p.fProcessHandle, res)
+      if res == 0: return p.exitStatus
       return res
 
   proc inputStream(p: Process): Stream =
@@ -765,7 +767,9 @@ elif not defined(useNimRtl):
     var sysCommand: string
     var sysArgsRaw: seq[string]
     if poEvalCommand in options:
-      const useShPath {.strdefine.} = "/bin/sh"
+      const useShPath {.strdefine.} =
+        when not defined(android): "/bin/sh"
+        else: "/system/bin/sh"
       sysCommand = useShPath
       sysArgsRaw = @[sysCommand, "-c", command]
       assert args.len == 0, "`args` has to be empty when using poEvalCommand."
@@ -837,7 +841,7 @@ elif not defined(useNimRtl):
       var attr: Tposix_spawnattr
       var fops: Tposix_spawn_file_actions
 
-      template chck(e: expr) =
+      template chck(e: untyped) =
         if e != 0'i32: raiseOSError(osLastError())
 
       chck posix_spawn_file_actions_init(fops)

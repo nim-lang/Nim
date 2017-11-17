@@ -563,12 +563,12 @@ macro scanp*(input, idx: typed; pattern: varargs[untyped]): bool =
     of nnkCurlyExpr:
       if it.len == 3 and it[1].kind == nnkIntLit and it[2].kind == nnkIntLit:
         var h = newTree(nnkPar, it[0])
-        for count in 2..it[1].intVal: h.add(it[0])
+        for count in 2i64 .. it[1].intVal: h.add(it[0])
         for count in it[1].intVal .. it[2].intVal-1: h.add(newTree(nnkPrefix, ident"?", it[0]))
         result = atm(h, input, idx, attached)
       elif it.len == 2 and it[1].kind == nnkIntLit:
         var h = newTree(nnkPar, it[0])
-        for count in 2..it[1].intVal: h.add(it[0])
+        for count in 2i64 .. it[1].intVal: h.add(it[0])
         result = atm(h, input, idx, attached)
       else:
         error("invalid pattern")

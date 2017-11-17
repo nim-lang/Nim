@@ -1,11 +1,6 @@
 version 1.0 battle plan
 =======================
 
-- make 'not nil' the default (produce warnings instead of errors for
-  a smooth migration path)
-- case objects needs to be safe and need to support pattern matching
-- implement a way to forward object type declarations across module
-  boundaries; C++ style
 - fix "high priority" bugs
 - try to fix as many compiler crashes as reasonable
 
@@ -13,16 +8,19 @@ version 1.0 battle plan
 Not critical for 1.0
 ====================
 
+- make 'break' not leave named blocks
+- make FlowVar compatible to Futures
+- make 'not nil' the default (produce warnings instead of errors for
+  a smooth migration path)
+- case objects needs to be safe and need to support pattern matching
+
 - find a solution for the  x.f[T](y)  gotcha
 - implement ``.delegate`` for .experimental
 - annotation support for getType()
 - make '--implicitStatic:on' the default; then we can also clean up the
   'static[T]' mess in the compiler!
 - ``not`` or ``~`` for the effects system
-- document and stress test ``.partial`` object declarations
 - figure out why C++ bootstrapping is so much slower
-- The bitwise 'not' operator cold be renamed to 'bnot' to
-  prevent 'not 4 == 5' from compiling. -> requires 'mixin' annotation for procs!
 - make 'nil' work for 'add':
   - resizeString
   - incrSeq

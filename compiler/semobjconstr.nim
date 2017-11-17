@@ -42,7 +42,7 @@ proc mergeInitStatus(existing: var InitStatus, newStatus: InitStatus) =
 proc locateFieldInInitExpr(field: PSym, initExpr: PNode): PNode =
   # Returns the assignment nkExprColonExpr node or nil
   let fieldId = field.name.id
-  for i in 1 .. <initExpr.len:
+  for i in 1 ..< initExpr.len:
     let assignment = initExpr[i]
     if assignment.kind != nkExprColonExpr:
       localError(initExpr.info, "incorrect object construction syntax")
@@ -78,13 +78,13 @@ proc caseBranchMatchesExpr(branch, matched: PNode): bool =
 
 proc pickCaseBranch(caseExpr, matched: PNode): PNode =
   # XXX: Perhaps this proc already exists somewhere
-  let endsWithElse = caseExpr{-1}.kind == nkElse
+  let endsWithElse = caseExpr[^1].kind == nkElse
   for i in 1 .. caseExpr.len - 1 - int(endsWithElse):
     if caseExpr[i].caseBranchMatchesExpr(matched):
       return caseExpr[i]
 
   if endsWithElse:
-    return caseExpr{-1}
+    return caseExpr[^1]
 
 iterator directFieldsInRecList(recList: PNode): PNode =
   # XXX: We can remove this case by making all nkOfBranch nodes
@@ -136,17 +136,20 @@ proc semConstructFields(c: PContext, recNode: PNode,
 
   of nkRecCase:
     template fieldsPresentInBranch(branchIdx: int): string =
-      fieldsPresentInInitExpr(recNode[branchIdx]{-1}, initExpr)
+      let branch = recNode[branchIdx]
+      let fields = branch[branch.len - 1]
+      fieldsPresentInInitExpr(fields, initExpr)
 
     template checkMissingFields(branchNode: PNode) =
-      checkForMissingFields(branchNode{-1}, initExpr)
+      let fields = branchNode[branchNode.len - 1]
+      checkForMissingFields(fields, initExpr)
 
     let discriminator = recNode.sons[0];
     internalAssert discriminator.kind == nkSym
     var selectedBranch = -1
 
-    for i in 1 .. <recNode.len:
-      let innerRecords = recNode[i]{-1}
+    for i in 1 ..< recNode.len:
+      let innerRecords = recNode[i][^1]
       let status = semConstructFields(c, innerRecords, initExpr, flags)
       if status notin {initNone, initUnknown}:
         mergeInitStatus(result, status)
@@ -220,7 +223,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
         else:
           # All bets are off. If any of the branches has a mandatory
           # fields we must produce an error:
-          for i in 1 .. <recNode.len: checkMissingFields recNode[i]
+          for i in 1 ..< recNode.len: checkMissingFields recNode[i]
 
   of nkSym:
     let field = recNode.sym
@@ -250,7 +253,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var t = semTypeNode(c, n.sons[0], nil)
   result = newNodeIT(nkObjConstr, n.info, t)
   for child in n: result.add child
-  
+
   t = skipTypes(t, {tyGenericInst, tyAlias})
   if t.kind == tyRef: t = skipTypes(t.sons[0], {tyGenericInst, tyAlias})
   if t.kind != tyObject:
@@ -277,7 +280,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # Since we were traversing the object fields, it's possible that
   # not all of the fields specified in the constructor was visited.
   # We'll check for such fields here:
-  for i in 1.. <result.len:
+  for i in 1..<result.len:
     let field = result[i]
     if nfSem notin field.flags:
       if field.kind != nkExprColonExpr:
@@ -286,7 +289,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       let id = considerQuotedIdent(field[0])
       # This node was not processed. There are two possible reasons:
       # 1) It was shadowed by a field with the same name on the left
-      for j in 1 .. <i:
+      for j in 1 ..< i:
         let prevId = considerQuotedIdent(result[j][0])
         if prevId.id == id.id:
           localError(field.info, errFieldInitTwice, id.s)

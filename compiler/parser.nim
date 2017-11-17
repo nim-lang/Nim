@@ -72,6 +72,7 @@ proc parseStmtPragma(p: var TParser): PNode
 proc parsePragma(p: var TParser): PNode
 proc postExprBlocks(p: var TParser, x: PNode): PNode
 proc parseExprStmt(p: var TParser): PNode
+proc parseBlock(p: var TParser): PNode
 # implementation
 
 proc getTok(p: var TParser) =
@@ -785,21 +786,58 @@ proc parseIfExpr(p: var TParser, kind: TNodeKind): PNode =
   #|          'else' colcom expr
   #| ifExpr = 'if' condExpr
   #| whenExpr = 'when' condExpr
-  result = newNodeP(kind, p)
-  while true:
-    getTok(p)                 # skip `if`, `elif`
-    var branch = newNodeP(nkElifExpr, p)
+  when true:
+    result = newNodeP(kind, p)
+    while true:
+      getTok(p)                 # skip `if`, `when`, `elif`
+      var branch = newNodeP(nkElifExpr, p)
+      optInd(p, branch)
+      addSon(branch, parseExpr(p))
+      colcom(p, branch)
+      addSon(branch, parseStmt(p))
+      skipComment(p, branch)
+      addSon(result, branch)
+      if p.tok.tokType != tkElif: break # or not sameOrNoInd(p): break
+    if p.tok.tokType == tkElse: # and sameOrNoInd(p):
+      var branch = newNodeP(nkElseExpr, p)
+      eat(p, tkElse)
+      colcom(p, branch)
+      addSon(branch, parseStmt(p))
+      addSon(result, branch)
+  else:
+    var
+      b: PNode
+      wasIndented = false
+    result = newNodeP(kind, p)
+
+    getTok(p)
+    let branch = newNodeP(nkElifExpr, p)
     addSon(branch, parseExpr(p))
     colcom(p, branch)
+    let oldInd = p.currInd
+    if realInd(p):
+      p.currInd = p.tok.indent
+      wasIndented = true
+      echo result.info, " yes ", p.currInd
     addSon(branch, parseExpr(p))
-    optInd(p, branch)
-    addSon(result, branch)
-    if p.tok.tokType != tkElif: break
-  var branch = newNodeP(nkElseExpr, p)
-  eat(p, tkElse)
-  colcom(p, branch)
-  addSon(branch, parseExpr(p))
-  addSon(result, branch)
+    result.add branch
+    while sameInd(p) or not wasIndented:
+      case p.tok.tokType
+      of tkElif:
+        b = newNodeP(nkElifExpr, p)
+        getTok(p)
+        optInd(p, b)
+        addSon(b, parseExpr(p))
+      of tkElse:
+        b = newNodeP(nkElseExpr, p)
+        getTok(p)
+      else: break
+      colcom(p, b)
+      addSon(b, parseStmt(p))
+      addSon(result, b)
+      if b.kind == nkElseExpr: break
+    if wasIndented:
+      p.currInd = oldInd
 
 proc parsePragma(p: var TParser): PNode =
   #| pragma = '{.' optInd (exprColonExpr comma?)* optPar ('.}' | '}')
@@ -1041,12 +1079,14 @@ proc parseTypeDescKAux(p: var TParser, kind: TNodeKind,
     parseSymbolList(p, list)
 
 proc parseExpr(p: var TParser): PNode =
-  #| expr = (ifExpr
+  #| expr = (blockExpr
+  #|       | ifExpr
   #|       | whenExpr
   #|       | caseExpr
   #|       | tryExpr)
   #|       / simpleExpr
   case p.tok.tokType:
+  of tkBlock: result = parseBlock(p)
   of tkIf: result = parseIfExpr(p, nkIfExpr)
   of tkWhen: result = parseIfExpr(p, nkWhenExpr)
   of tkCase: result = parseCase(p)
@@ -1480,6 +1520,7 @@ proc parseFor(p: var TParser): PNode =
 
 proc parseBlock(p: var TParser): PNode =
   #| blockStmt = 'block' symbol? colcom stmt
+  #| blockExpr = 'block' symbol? colcom stmt
   result = newNodeP(nkBlockStmt, p)
   getTokNoInd(p)
   if p.tok.tokType == tkColon: addSon(result, ast.emptyNode)
@@ -1905,7 +1946,7 @@ proc parseVariable(p: var TParser): PNode =
   #| variable = (varTuple / identColonEquals) colonBody? indAndComment
   if p.tok.tokType == tkParLe: result = parseVarTuple(p)
   else: result = parseIdentColonEquals(p, {withPragma, withDot})
-  result{-1} = postExprBlocks(p, result{-1})
+  result[^1] = postExprBlocks(p, result[^1])
   indAndComment(p, result)
 
 proc parseBind(p: var TParser, k: TNodeKind): PNode =
@@ -2036,8 +2077,13 @@ proc parseStmt(p: var TParser): PNode =
         if a.kind != nkEmpty:
           addSon(result, a)
         else:
-          parMessage(p, errExprExpected, p.tok)
-          getTok(p)
+          # This is done to make the new 'if' expressions work better.
+          # XXX Eventually we need to be more strict here.
+          if p.tok.tokType notin {tkElse, tkElif}:
+            parMessage(p, errExprExpected, p.tok)
+            getTok(p)
+          else:
+            break
         if not p.hasProgress and p.tok.tokType == tkEof: break
   else:
     # the case statement is only needed for better error messages:

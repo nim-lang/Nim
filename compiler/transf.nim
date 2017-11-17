@@ -21,7 +21,7 @@
 import
   intsets, strutils, options, ast, astalgo, trees, treetab, msgs, os,
   idents, renderer, types, passes, semfold, magicsys, cgmeth, rodread,
-  lambdalifting, sempass2, lowerings, lookups, destroyer
+  lambdalifting, sempass2, lowerings, lookups, destroyer, liftlocals
 
 type
   PTransNode* = distinct PNode
@@ -231,7 +231,7 @@ proc freshLabels(c: PTransf, n: PNode; symMap: var TIdTable) =
     let x = PSym(idTableGet(symMap, n.sym))
     if x != nil: n.sym = x
   else:
-    for i in 0 .. <safeLen(n): freshLabels(c, n.sons[i], symMap)
+    for i in 0 ..< safeLen(n): freshLabels(c, n.sons[i], symMap)
 
 proc transformBlock(c: PTransf, n: PNode): PTransNode =
   var labl: PSym
@@ -275,7 +275,7 @@ proc transformWhile(c: PTransf; n: PNode): PTransNode =
     var body = newTransNode(n)
     for i in 0..n.len-2:
       body[i] = transform(c, n.sons[i])
-    body[<n.len] = transformLoopBody(c, n.sons[<n.len])
+    body[n.len-1] = transformLoopBody(c, n.sons[n.len-1])
     result[1] = body
     discard c.breakSyms.pop
 
@@ -365,16 +365,22 @@ proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode =
       # addr ( nkConv ( deref ( x ) ) ) --> nkConv(x)
       n.sons[0].sons[0] = m.sons[0]
       result = PTransNode(n.sons[0])
+      if n.typ.kind != tyOpenArray:
+        PNode(result).typ = n.typ
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     var m = n.sons[0].sons[1]
     if m.kind == a or m.kind == b:
       # addr ( nkConv ( deref ( x ) ) ) --> nkConv(x)
       n.sons[0].sons[1] = m.sons[0]
       result = PTransNode(n.sons[0])
+      if n.typ.kind != tyOpenArray:
+        PNode(result).typ = n.typ
   else:
     if n.sons[0].kind == a or n.sons[0].kind == b:
       # addr ( deref ( x )) --> x
       result = PTransNode(n.sons[0].sons[0])
+      if n.typ.kind != tyOpenArray:
+        PNode(result).typ = n.typ
 
 proc generateThunk(prc: PNode, dest: PType): PNode =
   ## Converts 'prc' into '(thunk, nil)' so that it's compatible with
@@ -510,7 +516,7 @@ proc findWrongOwners(c: PTransf, n: PNode) =
       internalError(x.info, "bah " & x.sym.name.s & " " &
         x.sym.owner.name.s & " " & getCurrOwner(c).name.s)
   else:
-    for i in 0 .. <safeLen(n): findWrongOwners(c, n.sons[i])
+    for i in 0 ..< safeLen(n): findWrongOwners(c, n.sons[i])
 
 proc transformFor(c: PTransf, n: PNode): PTransNode =
   # generate access statements for the parameters (unless they are constant)
@@ -640,7 +646,7 @@ proc transformArrayAccess(c: PTransf, n: PNode): PTransNode =
     result = n.PTransNode
   else:
     result = newTransNode(n)
-    for i in 0 .. < n.len:
+    for i in 0 ..< n.len:
       result[i] = transform(c, skipConv(n.sons[i]))
 
 proc getMergeOp(n: PNode): PSym =
@@ -744,7 +750,7 @@ proc dontInlineConstant(orig, cnst: PNode): bool {.inline.} =
 
 proc commonOptimizations*(c: PSym, n: PNode): PNode =
   result = n
-  for i in 0 .. < n.safeLen:
+  for i in 0 ..< n.safeLen:
     result.sons[i] = commonOptimizations(c, n.sons[i])
   var op = getMergeOp(n)
   if (op != nil) and (op.magic != mNone) and (sonsLen(n) >= 3):
@@ -972,6 +978,7 @@ proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
     liftDefer(c, result)
     #result = liftLambdas(prc, result)
     when useEffectSystem: trackProc(prc, result)
+    result = liftLocalsIfRequested(prc, result)
     if c.needsDestroyPass and newDestructors:
       result = injectDestructorCalls(prc, result)
     incl(result.flags, nfTransf)

@@ -39,14 +39,18 @@ proc considerQuotedIdent*(n: PNode, origin: PNode = nil): PIdent =
     of 1: result = considerQuotedIdent(n.sons[0], origin)
     else:
       var id = ""
-      for i in 0.. <n.len:
+      for i in 0..<n.len:
         let x = n.sons[i]
         case x.kind
         of nkIdent: id.add(x.ident.s)
         of nkSym: id.add(x.sym.name.s)
         else: handleError(n, origin)
       result = getIdent(id)
-  of nkOpenSymChoice, nkClosedSymChoice: result = n.sons[0].sym.name
+  of nkOpenSymChoice, nkClosedSymChoice:
+    if n[0].kind == nkSym:
+      result = n.sons[0].sym.name
+    else:
+      handleError(n, origin)
   else:
     handleError(n, origin)
 
@@ -155,7 +159,7 @@ proc ensureNoMissingOrUnusedSymbols(scope: PScope) =
   var s = initTabIter(it, scope.symbols)
   var missingImpls = 0
   while s != nil:
-    if sfForward in s.flags:
+    if sfForward in s.flags and s.kind != skType:
       # too many 'implementation of X' errors are annoying
       # and slow 'suggest' down:
       if missingImpls == 0:
@@ -379,7 +383,11 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
         result = errorSym(c, n.sons[1])
   of nkClosedSymChoice, nkOpenSymChoice:
     o.mode = oimSymChoice
-    result = n.sons[0].sym
+    if n[0].kind == nkSym:
+      result = n.sons[0].sym
+    else:
+      o.mode = oimDone
+      return nil
     o.symChoiceIndex = 1
     o.inSymChoice = initIntSet()
     incl(o.inSymChoice, result.id)

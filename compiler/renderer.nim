@@ -1076,7 +1076,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkAccQuoted:
     put(g, tkAccent, "`")
     if n.len > 0: gsub(g, n.sons[0])
-    for i in 1 .. <n.len:
+    for i in 1 ..< n.len:
       put(g, tkSpaces, Space)
       gsub(g, n.sons[i])
     put(g, tkAccent, "`")

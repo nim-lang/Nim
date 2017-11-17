@@ -47,6 +47,11 @@ template wrap1s_ospaths(op) {.dirty.} =
     setResult(a, op(getString(a, 0)))
   ospathsop op
 
+template wrap2s_ospaths(op) {.dirty.} =
+  proc `op Wrapper`(a: VmArgs) {.nimcall.} =
+    setResult(a, op(getString(a, 0), getString(a, 1)))
+  ospathsop op
+
 template wrap1s_system(op) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
     setResult(a, op(getString(a, 0)))
@@ -96,7 +101,7 @@ proc registerAdditionalOps*(c: PCtx) =
   wrap1f_math(ceil)
   wrap2f_math(fmod)
 
-  wrap1s_ospaths(getEnv)
+  wrap2s_ospaths(getEnv)
   wrap1s_ospaths(existsEnv)
   wrap1s_os(dirExists)
   wrap1s_os(fileExists)

@@ -38,9 +38,7 @@ proc skipAddr(n: PNode): PNode {.inline.} =
 proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
   result = newNodeI(nkBracketExpr, n.info)
   for i in 1..<n.len: result.add(n[i])
-  let oldBracketExpr = c.p.bracketExpr
   result = semSubscript(c, result, flags)
-  c.p.bracketExpr = oldBracketExpr
   if result.isNil:
     let x = copyTree(n)
     x.sons[0] = newIdentNode(getIdent"[]", n.info)
@@ -147,8 +145,9 @@ proc evalTypeTrait(traitCall: PNode, operand: PType, context: PSym): PNode =
   of "stripGenericParams":
     result = uninstantiate(operand).toNode(traitCall.info)
   of "supportsCopyMem":
-    let complexObj = containsGarbageCollectedRef(operand) or
-                     hasDestructor(operand)
+    let t = operand.skipTypes({tyVar, tyGenericInst, tyAlias, tyInferred})
+    let complexObj = containsGarbageCollectedRef(t) or
+                     hasDestructor(t)
     result = newIntNodeT(ord(not complexObj), traitCall)
   else:
     localError(traitCall.info, "unknown trait")
@@ -169,7 +168,9 @@ proc semTypeTraits(c: PContext, n: PNode): PNode =
 proc semOrd(c: PContext, n: PNode): PNode =
   result = n
   let parType = n.sons[1].typ
-  if isOrdinalType(parType) or parType.kind == tySet:
+  if isOrdinalType(parType):
+    discard
+  elif parType.kind == tySet:
     result.typ = makeRangeType(c, firstOrd(parType), lastOrd(parType), n.info)
   else:
     localError(n.info, errOrdinalTypeExpected)
@@ -251,7 +252,11 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result = semTypeOf(c, n.sons[1])
   of mArrGet: result = semArrGet(c, n, flags)
   of mArrPut: result = semArrPut(c, n, flags)
-  of mAsgn: result = semAsgnOpr(c, n)
+  of mAsgn:
+    if n[0].sym.name.s == "=":
+      result = semAsgnOpr(c, n)
+    else:
+      result = n
   of mIsPartOf: result = semIsPartOf(c, n, flags)
   of mTypeTrait: result = semTypeTraits(c, n)
   of mAstToStr:
@@ -269,35 +274,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mDotDot:
     result = n
   of mRoof:
-    let bracketExpr = if n.len == 3: n.sons[2] else: c.p.bracketExpr
-    if bracketExpr.isNil:
-      localError(n.info, "no surrounding array access context for '^'")
-      result = n.sons[1]
-    elif bracketExpr.checkForSideEffects != seNoSideEffect:
-      localError(n.info, "invalid context for '^' as '$#' has side effects" %
-        renderTree(bracketExpr))
-      result = n.sons[1]
-    elif bracketExpr.typ.isStrangeArray:
-      localError(n.info, "invalid context for '^' as len!=high+1 for '$#'" %
-        renderTree(bracketExpr))
-      result = n.sons[1]
-    else:
-      # ^x  is rewritten to: len(a)-x
-      let lenExpr = newNodeI(nkCall, n.info)
-      lenExpr.add newIdentNode(getIdent"len", n.info)
-      lenExpr.add bracketExpr
-      let lenExprB = semExprWithType(c, lenExpr)
-      if lenExprB.typ.isNil or not isOrdinalType(lenExprB.typ):
-        localError(n.info, "'$#' has to be of an ordinal type for '^'" %
-          renderTree(lenExpr))
-        result = n.sons[1]
-      else:
-        result = newNodeIT(nkCall, n.info, getSysType(tyInt))
-        let subi = getSysMagic("-", mSubI)
-        #echo "got ", typeToString(subi.typ)
-        result.add newSymNode(subi, n.info)
-        result.add lenExprB
-        result.add n.sons[1]
+    localError(n.info, "builtin roof operator is not supported anymore")
   of mPlugin:
     let plugin = getPlugin(n[0].sym)
     if plugin.isNil:

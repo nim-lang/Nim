@@ -5,15 +5,16 @@
 
 #include <windows.h>
 
-void HelloWorld (void);
+void hello_func (void);
+__declspec(dllimport) extern const char *hello_data;
 
 int WINAPI WinMain(
-	HINSTANCE hInstance,
-	HINSTANCE hPrevInstance,
-	LPSTR     lpCmdLine,
-	int       nCmdShow)
+    HINSTANCE hInstance,
+    HINSTANCE hPrevInstance,
+    LPSTR     lpCmdLine,
+    int       nCmdShow)
 {
-	HelloWorld();
-	return 0;
+    hello_data = "Hello World!";
+    hello_func();
+    return 0;
 }
-

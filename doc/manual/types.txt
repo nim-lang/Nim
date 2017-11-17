@@ -114,7 +114,8 @@ if the literal's value fits this smaller type and such a conversion is less
 expensive than other implicit conversions, so ``myInt16 + 34`` produces
 an ``int16`` result.
 
-For further details, see `Convertible relation`_.
+For further details, see `Convertible relation
+<#type-relations-convertible-relation>`_.
 
 
 Subrange types
@@ -135,26 +136,6 @@ determined). Assignments from the base type to one of its subrange types
 (and vice versa) are allowed.
 
 A subrange type has the same size as its base type (``int`` in the example).
-
-Nim requires `interval arithmetic`:idx: for subrange types over a set
-of built-in operators that involve constants: ``x %% 3`` is of
-type ``range[0..2]``. The following built-in operators for integers are
-affected by this rule: ``-``, ``+``, ``*``, ``min``, ``max``, ``succ``,
-``pred``, ``mod``, ``div``, ``%%``, ``and`` (bitwise ``and``).
-
-Bitwise ``and`` only produces a ``range`` if one of its operands is a
-constant *x* so that (x+1) is a power of two.
-(Bitwise ``and`` is then a ``%%`` operation.)
-
-This means that the following code is accepted:
-
-.. code-block:: nim
-  case (x and 3) + 7
-  of 7: echo "A"
-  of 8: echo "B"
-  of 9: echo "C"
-  of 10: echo "D"
-  # note: no ``else`` required as (x and 3) + 7 has the type: range[7..10]
 
 
 Pre-defined floating point types
@@ -696,6 +677,44 @@ new value must not lead to a change of the active object branch. For an object
 branch switch ``system.reset`` has to be used. Also, when the fields of a
 particular branch are specified during object construction, the correct value
 for the discriminator must be supplied at compile-time.
+
+Package level objects
+---------------------
+
+Every Nim module resides in a (nimble) package. An object type can be attached
+to the package it resides in. If that is done, the type can be referenced from
+other modules as an `incomplete`:idx: object type. This features allows to
+break up recursive type dependencies accross module boundaries. Incomplete
+object types are always passed ``byref`` and can only be used in pointer like
+contexts (``var/ref/ptr IncompleteObject``) in general since the compiler does
+not yet know the size of the object. To complete an incomplete object
+the ``package`` pragma has to be used. ``package`` implies ``byref``.
+
+As long as a type ``T`` is incomplete ``sizeof(T)`` or "runtime type
+information" for ``T`` is not available.
+
+
+Example:
+
+.. code-block:: nim
+
+  # module A (in an arbitrary package)
+  type
+    Pack.SomeObject = object ## declare as incomplete object of package 'Pack'
+    Triple = object
+      a, b, c: ref SomeObject ## pointers to incomplete objects are allowed
+
+  ## Incomplete objects can be used as parameters:
+  proc myproc(x: SomeObject) = discard
+
+
+.. code-block:: nim
+
+  # module B (in package "Pack")
+  type
+    SomeObject* {.package.} = object ## Use 'package' to complete the object
+      s, t: string
+      x, y: int
 
 
 Set type

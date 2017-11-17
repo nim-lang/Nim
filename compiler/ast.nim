@@ -744,6 +744,8 @@ type
     OnUnknown,                # location is unknown (stack, heap or static)
     OnStatic,                 # in a static section
     OnStack,                  # location is on hardware stack
+    OnStackShadowDup,         # location is on the stack but also replicated
+                              # on the shadow stack
     OnHeap                    # location is on heap or global
                               # (reference counting needed)
   TLocFlags* = set[TLocFlag]
@@ -753,6 +755,7 @@ type
     flags*: TLocFlags         # location's flags
     lode*: PNode              # Node where the location came from; can be faked
     r*: Rope                  # rope value of location (code generators)
+    dup*: Rope                # duplicated location for precise stack scans
 
   # ---------------- end of backend information ------------------------------
 
@@ -1017,16 +1020,11 @@ proc add*(father, son: PNode) =
 
 type Indexable = PNode | PType
 
-template `[]`*(n: Indexable, i: int): Indexable =
-  n.sons[i]
+template `[]`*(n: Indexable, i: int): Indexable = n.sons[i]
+template `[]=`*(n: Indexable, i: int; x: Indexable) = n.sons[i] = x
 
-template `-|`*(b, s: untyped): untyped =
-  (if b >= 0: b else: s.len + b)
-
-# son access operators with support for negative indices
-template `{}`*(n: Indexable, i: int): untyped = n[i -| n]
-template `{}=`*(n: Indexable, i: int, s: Indexable) =
-  n.sons[i -| n] = s
+template `[]`*(n: Indexable, i: BackwardsIndex): Indexable = n[n.len - i.int]
+template `[]=`*(n: Indexable, i: BackwardsIndex; x: Indexable) = n[n.len - i.int] = x
 
 when defined(useNodeIds):
   const nodeIdToDebug* = -1 # 299750 # 300761 #300863 # 300879
@@ -1036,9 +1034,9 @@ proc newNode*(kind: TNodeKind): PNode =
   new(result)
   result.kind = kind
   #result.info = UnknownLineInfo() inlined:
-  result.info.fileIndex = int32(- 1)
-  result.info.col = int16(- 1)
-  result.info.line = int16(- 1)
+  result.info.fileIndex = int32(-1)
+  result.info.col = int16(-1)
+  result.info.line = int16(-1)
   when defined(useNodeIds):
     result.id = gNodeId
     if result.id == nodeIdToDebug:
@@ -1392,6 +1390,14 @@ proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   result = t
   while result.kind in kinds: result = lastSon(result)
 
+proc skipTypes*(t: PType, kinds: TTypeKinds; maxIters: int): PType =
+  result = t
+  var i = maxIters
+  while result.kind in kinds:
+    result = lastSon(result)
+    dec i
+    if i == 0: return nil
+
 proc skipTypesOrNil*(t: PType, kinds: TTypeKinds): PType =
   ## same as skipTypes but handles 'nil'
   result = t
@@ -1604,10 +1610,10 @@ proc hasPattern*(s: PSym): bool {.inline.} =
   result = isRoutine(s) and s.ast.sons[patternPos].kind != nkEmpty
 
 iterator items*(n: PNode): PNode =
-  for i in 0.. <n.safeLen: yield n.sons[i]
+  for i in 0..<n.safeLen: yield n.sons[i]
 
 iterator pairs*(n: PNode): tuple[i: int, n: PNode] =
-  for i in 0.. <n.len: yield (i, n.sons[i])
+  for i in 0..<n.len: yield (i, n.sons[i])
 
 proc isAtom*(n: PNode): bool {.inline.} =
   result = n.kind >= nkNone and n.kind <= nkNilLit
@@ -1665,3 +1671,8 @@ when false:
       if n[i].containsNil: return true
 
 template hasDestructor*(t: PType): bool = tfHasAsgn in t.flags
+template incompleteType*(t: PType): bool =
+  t.sym != nil and {sfForward, sfNoForward} * t.sym.flags == {sfForward}
+
+template typeCompleted*(s: PSym) =
+  incl s.flags, sfNoForward

@@ -262,7 +262,7 @@ proc socket*(domain: Domain = AF_INET, typ: SockType = SOCK_STREAM,
 
   # TODO: Perhaps this should just raise EOS when an error occurs.
   when defined(Windows):
-    result = newTSocket(winlean.socket(ord(domain), ord(typ), ord(protocol)), buffered)
+    result = newTSocket(winlean.socket(cint(domain), cint(typ), cint(protocol)), buffered)
   else:
     result = newTSocket(posix.socket(toInt(domain), toInt(typ), toInt(protocol)), buffered)
 

@@ -409,6 +409,9 @@ Miscellaneous
 * `unittest <unittest.html>`_
   Implements a Unit testing DSL.
 
+* `segfaults <segfaults.html>`_
+  Turns access violations or segfaults into a ``NilAccessError`` exception.
+
 Modules for JS backend
 ---------------------------
 
@@ -532,9 +535,6 @@ Database support
 
 Network Programming and Internet Protocols
 ------------------------------------------
-
-* `libuv <libuv.html>`_
-  Wrapper for the libuv library used for async I/O programming.
 
 * `joyent_http_parser <joyent_http_parser.html>`_
   Wrapper for the joyent's high-performance HTTP parser.

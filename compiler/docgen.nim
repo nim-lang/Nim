@@ -15,8 +15,8 @@ import
   ast, strutils, strtabs, options, msgs, os, ropes, idents,
   wordrecg, syntaxes, renderer, lexer, packages/docutils/rstast,
   packages/docutils/rst, packages/docutils/rstgen, times,
-  packages/docutils/highlite, importer, sempass2, json, xmltree, cgi,
-  typesrenderer, astalgo
+  packages/docutils/highlite, sempass2, json, xmltree, cgi,
+  typesrenderer, astalgo, modulepaths
 
 type
   TSections = array[TSymKind, Rope]
@@ -252,7 +252,7 @@ proc getName(d: PDoc, n: PNode, splitAfter = -1): string =
   of nkIdent: result = esc(d.target, n.ident.s, splitAfter)
   of nkAccQuoted:
     result = esc(d.target, "`")
-    for i in 0.. <n.len: result.add(getName(d, n[i], splitAfter))
+    for i in 0..<n.len: result.add(getName(d, n[i], splitAfter))
     result.add esc(d.target, "`")
   of nkOpenSymChoice, nkClosedSymChoice:
     result = getName(d, n[0], splitAfter)
@@ -268,7 +268,7 @@ proc getNameIdent(n: PNode): PIdent =
   of nkIdent: result = n.ident
   of nkAccQuoted:
     var r = ""
-    for i in 0.. <n.len: r.add(getNameIdent(n[i]).s)
+    for i in 0..<n.len: r.add(getNameIdent(n[i]).s)
     result = getIdent(r)
   of nkOpenSymChoice, nkClosedSymChoice:
     result = getNameIdent(n[0])
@@ -283,7 +283,7 @@ proc getRstName(n: PNode): PRstNode =
   of nkIdent: result = newRstNode(rnLeaf, n.ident.s)
   of nkAccQuoted:
     result = getRstName(n.sons[0])
-    for i in 1 .. <n.len: result.text.add(getRstName(n[i]).text)
+    for i in 1 ..< n.len: result.text.add(getRstName(n[i]).text)
   of nkOpenSymChoice, nkClosedSymChoice:
     result = getRstName(n[0])
   else:
@@ -608,6 +608,52 @@ proc generateJson*(d: PDoc, n: PNode) =
       generateJson(d, lastSon(n.sons[0]))
   else: discard
 
+proc genTagsItem(d: PDoc, n, nameNode: PNode, k: TSymKind): string =
+  var
+    name = getName(d, nameNode)
+
+  result = name & "\n"
+
+proc generateTags*(d: PDoc, n: PNode, r: var Rope) =
+  case n.kind
+  of nkCommentStmt:
+    if n.comment != nil and startsWith(n.comment, "##"):
+      let stripped = n.comment.substr(2).strip
+      r.add stripped
+  of nkProcDef:
+    when useEffectSystem: documentRaises(n)
+    r.add genTagsItem(d, n, n.sons[namePos], skProc)
+  of nkFuncDef:
+    when useEffectSystem: documentRaises(n)
+    r.add genTagsItem(d, n, n.sons[namePos], skFunc)
+  of nkMethodDef:
+    when useEffectSystem: documentRaises(n)
+    r.add genTagsItem(d, n, n.sons[namePos], skMethod)
+  of nkIteratorDef:
+    when useEffectSystem: documentRaises(n)
+    r.add genTagsItem(d, n, n.sons[namePos], skIterator)
+  of nkMacroDef:
+    r.add genTagsItem(d, n, n.sons[namePos], skMacro)
+  of nkTemplateDef:
+    r.add genTagsItem(d, n, n.sons[namePos], skTemplate)
+  of nkConverterDef:
+    when useEffectSystem: documentRaises(n)
+    r.add genTagsItem(d, n, n.sons[namePos], skConverter)
+  of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
+    for i in countup(0, sonsLen(n) - 1):
+      if n.sons[i].kind != nkCommentStmt:
+        # order is always 'type var let const':
+        r.add genTagsItem(d, n.sons[i], n.sons[i].sons[0],
+                succ(skType, ord(n.kind)-ord(nkTypeSection)))
+  of nkStmtList:
+    for i in countup(0, sonsLen(n) - 1):
+      generateTags(d, n.sons[i], r)
+  of nkWhenStmt:
+    # generate documentation for the first branch only:
+    if not checkForFalse(n.sons[0].sons[0]):
+      generateTags(d, lastSon(n.sons[0]), r)
+  else: discard
+
 proc genSection(d: PDoc, kind: TSymKind) =
   const sectionNames: array[skModule..skTemplate, string] = [
     "Imports", "Types", "Vars", "Lets", "Consts", "Vars", "Procs", "Funcs",
@@ -744,6 +790,21 @@ proc commandJson*() =
   else:
     #echo getOutFile(gProjectFull, JsonExt)
     writeRope(content, getOutFile(gProjectFull, JsonExt), useWarning = false)
+
+proc commandTags*() =
+  var ast = parseFile(gProjectMainIdx, newIdentCache())
+  if ast == nil: return
+  var d = newDocumentor(gProjectFull, options.gConfigVars)
+  d.hasToc = true
+  var
+    content: Rope
+  generateTags(d, ast, content)
+
+  if optStdout in gGlobalOptions:
+    writeRope(stdout, content)
+  else:
+    #echo getOutFile(gProjectFull, TagsExt)
+    writeRope(content, getOutFile(gProjectFull, TagsExt), useWarning = false)
 
 proc commandBuildIndex*() =
   var content = mergeIndexes(gProjectFull).rope

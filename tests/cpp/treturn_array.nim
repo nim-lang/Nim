@@ -1,3 +1,6 @@
+discard """
+  targets: "cpp"
+"""
 
 # bug #2259
 type Mat4f* = array[0..15, float]

@@ -37,7 +37,6 @@ type
                               # in standalone ``except`` and ``finally``
     next*: PProcCon           # used for stacking procedure contexts
     wasForwarded*: bool       # whether the current proc has a separate header
-    bracketExpr*: PNode       # current bracket expression (for ^ support)
     mapping*: TIdTable
 
   TMatchedConcept* = object
@@ -132,6 +131,11 @@ type
     recursiveDep*: string
     suggestionsMade*: bool
     inTypeContext*: int
+    typesWithOps*: seq[(PType, PType)] #\
+      # We need to instantiate the type bound ops lazily after
+      # the generic type has been constructed completely. See
+      # tests/destructor/topttree.nim for an example that
+      # would otherwise fail.
 
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
   result.genericSym = s
@@ -219,6 +223,7 @@ proc newContext*(graph: ModuleGraph; module: PSym; cache: IdentCache): PContext 
   result.cache = cache
   result.graph = graph
   initStrTable(result.signatures)
+  result.typesWithOps = @[]
 
 
 proc inclSym(sq: var TSymSeq, s: PSym) =
@@ -334,7 +339,7 @@ proc makeNotType*(c: PContext, t1: PType): PType =
 
 proc nMinusOne*(n: PNode): PNode =
   result = newNode(nkCall, n.info, @[
-    newSymNode(getSysMagic("<", mUnaryLt)),
+    newSymNode(getSysMagic("pred", mPred)),
     n])
 
 # Remember to fix the procs below this one when you make changes!

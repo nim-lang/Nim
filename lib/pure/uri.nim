@@ -250,7 +250,7 @@ proc combine*(base: Uri, reference: Uri): Uri =
 proc combine*(uris: varargs[Uri]): Uri =
   ## Combines multiple URIs together.
   result = uris[0]
-  for i in 1 .. <uris.len:
+  for i in 1 ..< uris.len:
     result = combine(result, uris[i])
 
 proc isAbsolute*(uri: Uri): bool =
@@ -308,11 +308,16 @@ proc `$`*(u: Uri): string =
       result.add(":")
       result.add(u.password)
     result.add("@")
-  result.add(u.hostname)
+  if u.hostname.endswith('/'):
+    result.add(u.hostname[0..^2])
+  else:
+    result.add(u.hostname)
   if u.port.len > 0:
     result.add(":")
     result.add(u.port)
   if u.path.len > 0:
+    if u.hostname.len > 0 and u.path[0] != '/':
+      result.add('/')
     result.add(u.path)
   if u.query.len > 0:
     result.add("?")
@@ -482,6 +487,34 @@ when isMainModule:
   block:
     let foo = parseUri("http://localhost:9515") / "status"
     doAssert $foo == "http://localhost:9515/status"
+
+  # bug #6649 #6652
+  block:
+    var foo = parseUri("http://example.com")
+    foo.hostname = "example.com"
+    foo.path = "baz"
+    doAssert $foo == "http://example.com/baz"
+
+    foo.hostname = "example.com/"
+    foo.path = "baz"
+    doAssert $foo == "http://example.com/baz"
+
+    foo.hostname = "example.com"
+    foo.path = "/baz"
+    doAssert $foo == "http://example.com/baz"
+
+    foo.hostname = "example.com/"
+    foo.path = "/baz"
+    doAssert $foo == "http://example.com/baz"
+
+    foo.hostname = "example.com/"
+    foo.port = "8000"
+    foo.path = "baz"
+    doAssert $foo == "http://example.com:8000/baz"
+
+    foo = parseUri("file:/dir/file")
+    foo.path = "relative"
+    doAssert $foo == "file:relative"
 
   # isAbsolute tests
   block:

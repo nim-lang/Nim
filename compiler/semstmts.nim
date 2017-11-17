@@ -697,7 +697,9 @@ proc semForVars(c: PContext, n: PNode): PNode =
       if sfGenSym notin v.flags and not isDiscardUnderscore(v):
         addForVarDecl(c, v)
   inc(c.p.nestedLoopCounter)
+  openScope(c)
   n.sons[length-1] = semStmt(c, n.sons[length-1])
+  closeScope(c)
   dec(c.p.nestedLoopCounter)
 
 proc implicitIterator(c: PContext, it: string, arg: PNode): PNode =
@@ -775,24 +777,55 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
     checkSonsLen(a, 3)
     let name = a.sons[0]
     var s: PSym
-    if name.kind == nkDotExpr:
-      s = qualifiedLookUp(c, name, {checkUndeclared, checkModule})
-      if s.kind != skType or
-         s.typ.skipTypes(abstractPtrs).kind != tyObject or
-         tfPartial notin s.typ.skipTypes(abstractPtrs).flags:
-        localError(name.info, "only .partial objects can be extended")
+    if name.kind == nkDotExpr and a[2].kind == nkObjectTy:
+      let pkgName = considerQuotedIdent(name[0])
+      let typName = considerQuotedIdent(name[1])
+      let pkg = c.graph.packageSyms.strTableGet(pkgName)
+      if pkg.isNil or pkg.kind != skPackage:
+        localError(name.info, "unknown package name: " & pkgName.s)
+      else:
+        let typsym = pkg.tab.strTableGet(typName)
+        if typsym.isNil:
+          s = semIdentDef(c, name[1], skType)
+          s.typ = newTypeS(tyObject, c)
+          s.typ.sym = s
+          s.flags.incl sfForward
+          pkg.tab.strTableAdd s
+          addInterfaceDecl(c, s)
+        elif typsym.kind == skType and sfForward in typsym.flags:
+          s = typsym
+          addInterfaceDecl(c, s)
+        else:
+          localError(name.info, typsym.name.s & " is not a type that can be forwarded")
+          s = typsym
     else:
       s = semIdentDef(c, name, skType)
       s.typ = newTypeS(tyForward, c)
       s.typ.sym = s             # process pragmas:
       if name.kind == nkPragmaExpr:
         pragma(c, s, name.sons[1], typePragmas)
+      if sfForward in s.flags:
+        # check if the symbol already exists:
+        let pkg = c.module.owner
+        if not isTopLevel(c) or pkg.isNil:
+          localError(name.info, "only top level types in a package can be 'package'")
+        else:
+          let typsym = pkg.tab.strTableGet(s.name)
+          if typsym != nil:
+            if sfForward notin typsym.flags or sfNoForward notin typsym.flags:
+              typeCompleted(typsym)
+              typsym.info = s.info
+            else:
+              localError(name.info, "cannot complete type '" & s.name.s & "' twice; " &
+                      "previous type completion was here: " & $typsym.info)
+            s = typsym
       # add it here, so that recursive types are possible:
       if sfGenSym notin s.flags: addInterfaceDecl(c, s)
+
     a.sons[0] = newSymNode(s)
 
 proc checkCovariantParamsUsages(genericType: PType) =
-  var body = genericType{-1}
+  var body = genericType[^1]
 
   proc traverseSubTypes(t: PType): bool =
     template error(msg) = localError(genericType.sym.info, msg)
@@ -827,7 +860,7 @@ proc checkCovariantParamsUsages(genericType: PType) =
 
     of tyGenericInvocation:
       let targetBody = t[0]
-      for i in 1 .. <t.len:
+      for i in 1 ..< t.len:
         let param = t[i]
         if param.kind == tyGenericParam:
           if tfCovariant in param.flags:
@@ -973,8 +1006,8 @@ proc checkForMetaFields(n: PNode) =
     case t.kind
     of tySequence, tySet, tyArray, tyOpenArray, tyVar, tyPtr, tyRef,
        tyProc, tyGenericInvocation, tyGenericInst, tyAlias:
-      let start = ord(t.kind in {tyGenericInvocation, tyGenericInst})
-      for i in start .. <t.sons.len:
+      let start = int ord(t.kind in {tyGenericInvocation, tyGenericInst})
+      for i in start ..< t.sons.len:
         checkMeta(t.sons[i])
     else:
       checkMeta(t)
@@ -1100,7 +1133,7 @@ proc addResultNode(c: PContext, n: PNode) =
 
 proc copyExcept(n: PNode, i: int): PNode =
   result = copyNode(n)
-  for j in 0.. <n.len:
+  for j in 0..<n.len:
     if j != i: result.add(n.sons[j])
 
 proc lookupMacro(c: PContext, n: PNode): PSym =
@@ -1114,7 +1147,7 @@ proc semProcAnnotation(c: PContext, prc: PNode;
                        validPragmas: TSpecialWords): PNode =
   var n = prc.sons[pragmasPos]
   if n == nil or n.kind == nkEmpty: return
-  for i in countup(0, <n.len):
+  for i in countup(0, n.len-1):
     var it = n.sons[i]
     var key = if it.kind == nkExprColonExpr: it.sons[0] else: it
     let m = lookupMacro(c, key)
@@ -1265,7 +1298,7 @@ proc activate(c: PContext, n: PNode) =
     of nkLambdaKinds:
       discard semLambda(c, n, {})
     of nkCallKinds:
-      for i in 1 .. <n.len: activate(c, n[i])
+      for i in 1 ..< n.len: activate(c, n[i])
     else:
       discard
 
@@ -1295,7 +1328,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
             localError(n.info, errGenerated,
               "cannot bind another '" & s.name.s & "' to: " & typeToString(obj))
           noError = true
-      if not noError:
+      if not noError and sfSystemModule notin s.owner.flags:
         localError(n.info, errGenerated,
           "signature for '" & s.name.s & "' must be proc[T: object](x: var T)")
     else:
@@ -1351,8 +1384,9 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
           localError(n.info, errGenerated,
                      "cannot bind another '" & s.name.s & "' to: " & typeToString(obj))
         return
-    localError(n.info, errGenerated,
-               "signature for '" & s.name.s & "' must be proc[T: object](x: var T; y: T)")
+    if sfSystemModule notin s.owner.flags:
+      localError(n.info, errGenerated,
+                "signature for '" & s.name.s & "' must be proc[T: object](x: var T; y: T)")
   else:
     if sfOverriden in s.flags:
       localError(n.info, errGenerated,
@@ -1687,7 +1721,7 @@ proc evalInclude(c: PContext, n: PNode): PNode =
         excl(c.includedFiles, f)
 
 proc setLine(n: PNode, info: TLineInfo) =
-  for i in 0 .. <safeLen(n): setLine(n.sons[i], info)
+  for i in 0 ..< safeLen(n): setLine(n.sons[i], info)
   n.info = info
 
 proc semPragmaBlock(c: PContext, n: PNode): PNode =
@@ -1695,7 +1729,7 @@ proc semPragmaBlock(c: PContext, n: PNode): PNode =
   pragma(c, nil, pragmaList, exprPragmas)
   result = semExpr(c, n.sons[1])
   n.sons[1] = result
-  for i in 0 .. <pragmaList.len:
+  for i in 0 ..< pragmaList.len:
     case whichPragma(pragmaList.sons[i])
     of wLine: setLine(result, pragmaList.sons[i].info)
     of wLocks, wGcSafe:

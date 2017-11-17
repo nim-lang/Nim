@@ -271,11 +271,11 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
       while (s.kind == tyObject) and (s.sons[0] != nil):
         add(r, ".Sup")
         s = skipTypes(s.sons[0], skipPtrs)
-    linefmt(p, section, "$1.m_type = $2;$n", r, genTypeInfo(p.module, t))
+    linefmt(p, section, "$1.m_type = $2;$n", r, genTypeInfo(p.module, t, a.lode.info))
   of frEmbedded:
     # worst case for performance:
     var r = if takeAddr: addrLoc(a) else: rdLoc(a)
-    linefmt(p, section, "#objectInit($1, $2);$n", r, genTypeInfo(p.module, t))
+    linefmt(p, section, "#objectInit($1, $2);$n", r, genTypeInfo(p.module, t, a.lode.info))
 
 type
   TAssignmentFlag = enum
@@ -306,7 +306,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       linefmt(p, cpsStmts, "#chckNil((void*)$1);$n", addrLoc(loc))
     if loc.storage != OnStack:
       linefmt(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
-              addrLoc(loc), genTypeInfo(p.module, loc.t))
+              addrLoc(loc), genTypeInfo(p.module, loc.t, loc.lode.info))
       # XXX: generated reset procs should not touch the m_type
       # field, so disabling this should be safe:
       genObjectInit(p, cpsStmts, loc.t, loc, true)
@@ -381,7 +381,7 @@ proc localDebugInfo(p: BProc, s: PSym) =
   lineF(p, cpsInit,
        "FR_.s[$1].address = (void*)$3; FR_.s[$1].typ = $4; FR_.s[$1].name = $2;$n",
        [p.maxFrameLen.rope, makeCString(normalize(s.name.s)), a,
-        genTypeInfo(p.module, s.loc.t)])
+        genTypeInfo(p.module, s.loc.t, s.info)])
   inc(p.maxFrameLen)
   inc p.blocks[p.blocks.len-1].frameLen
 
@@ -451,7 +451,7 @@ proc assignGlobalVar(p: BProc, n: PNode) =
     appcg(p.module, p.module.s[cfsDebugInit],
           "#dbgRegisterGlobal($1, &$2, $3);$n",
          [makeCString(normalize(s.owner.name.s & '.' & s.name.s)),
-          s.loc.r, genTypeInfo(p.module, s.typ)])
+          s.loc.r, genTypeInfo(p.module, s.typ, n.info)])
 
 proc assignParam(p: BProc, s: PSym) =
   assert(s.loc.r != nil)
@@ -920,7 +920,7 @@ proc getFileHeader(cfile: Cfile): Rope =
 proc genFilenames(m: BModule): Rope =
   discard cgsym(m, "dbgRegisterFilename")
   result = nil
-  for i in 0.. <fileInfos.len:
+  for i in 0..<fileInfos.len:
     result.addf("dbgRegisterFilename($1);$N", [fileInfos[i].projPath.makeCString])
 
 proc genMainProc(m: BModule) =
@@ -1013,10 +1013,9 @@ proc genMainProc(m: BModule) =
     ComponentConstruct =
       "void Libc::Component::construct(Libc::Env &env) {$N" &
       "\tgenodeEnv = &env;$N" &
-      "\tLibc::with_libc([&] () {$n\t" &
+      "\tLibc::with_libc([&] () {$N\t" &
       MainProcs &
       "\t});$N" &
-      "\tenv.parent().exit(0);$N" &
       "}$N$N"
 
   var nimMain, otherMain: FormatStr
@@ -1154,7 +1153,7 @@ proc genInitCode(m: BModule) =
 
   for i, el in pairs(m.extensionLoaders):
     if el != nil:
-      let ex = "N_NIMCALL(void, nimLoadProcs$1)(void) {$2}$N$N" %
+      let ex = "NIM_EXTERNC N_NIMCALL(void, nimLoadProcs$1)(void) {$2}$N$N" %
         [(i.ord - '0'.ord).rope, el]
       add(m.s[cfsInitProc], ex)
 

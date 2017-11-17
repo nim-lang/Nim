@@ -225,6 +225,7 @@ else:
   when hasThreadSupport:
     import locks
 
+
     type
       SharedArray[T] = UncheckedArray[T]
 
@@ -233,6 +234,7 @@ else:
 
     proc deallocSharedArray[T](sa: ptr SharedArray[T]) =
       deallocShared(cast[pointer](sa))
+
   type
     Event* {.pure.} = enum
       Read, Write, Timer, Signal, Process, Vnode, User, Error, Oneshot,
@@ -262,7 +264,7 @@ else:
       msg.add("Internal Error\n")
     var err = newException(IOSelectorsException, msg)
     raise err
-  
+
   proc setNonBlocking(fd: cint) {.inline.} =
     setBlocking(fd.SocketHandle, false)
 

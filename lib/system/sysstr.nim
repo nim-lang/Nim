@@ -278,7 +278,7 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
                             GenericSeqSize +% (i*%elemSize)),
                             extGetCellType(result).base, waPush)
           let len1 = gch.tempStack.len
-          for i in len0 .. <len1:
+          for i in len0 ..< len1:
             doDecRef(gch.tempStack.d[i], LocalHeap, MaybeCyclic)
           gch.tempStack.len = len0
       else:
@@ -322,37 +322,40 @@ proc nimIntToStr(x: int): string {.compilerRtl.} =
   result.add x
 
 proc add*(result: var string; x: float) =
-  var buf: array[0..64, char]
-  when defined(nimNoArrayToCstringConversion):
-    var n: int = c_sprintf(addr buf, "%.16g", x)
+  when nimvm:
+    result.add $x
   else:
-    var n: int = c_sprintf(buf, "%.16g", x)
-  var hasDot = false
-  for i in 0..n-1:
-    if buf[i] == ',':
-      buf[i] = '.'
-      hasDot = true
-    elif buf[i] in {'a'..'z', 'A'..'Z', '.'}:
-      hasDot = true
-  if not hasDot:
-    buf[n] = '.'
-    buf[n+1] = '0'
-    buf[n+2] = '\0'
-  # On Windows nice numbers like '1.#INF', '-1.#INF' or '1.#NAN'
-  # of '-1.#IND' are produced.
-  # We want to get rid of these here:
-  if buf[n-1] in {'n', 'N', 'D', 'd'}:
-    result.add "nan"
-  elif buf[n-1] == 'F':
-    if buf[0] == '-':
-      result.add "-inf"
+    var buf: array[0..64, char]
+    when defined(nimNoArrayToCstringConversion):
+      var n: int = c_sprintf(addr buf, "%.16g", x)
     else:
-      result.add "inf"
-  else:
-    var i = 0
-    while buf[i] != '\0':
-      result.add buf[i]
-      inc i
+      var n: int = c_sprintf(buf, "%.16g", x)
+    var hasDot = false
+    for i in 0..n-1:
+      if buf[i] == ',':
+        buf[i] = '.'
+        hasDot = true
+      elif buf[i] in {'a'..'z', 'A'..'Z', '.'}:
+        hasDot = true
+    if not hasDot:
+      buf[n] = '.'
+      buf[n+1] = '0'
+      buf[n+2] = '\0'
+    # On Windows nice numbers like '1.#INF', '-1.#INF' or '1.#NAN'
+    # of '-1.#IND' are produced.
+    # We want to get rid of these here:
+    if buf[n-1] in {'n', 'N', 'D', 'd'}:
+      result.add "nan"
+    elif buf[n-1] == 'F':
+      if buf[0] == '-':
+        result.add "-inf"
+      else:
+        result.add "inf"
+    else:
+      var i = 0
+      while buf[i] != '\0':
+        result.add buf[i]
+        inc i
 
 proc nimFloatToStr(f: float): string {.compilerproc.} =
   result = newStringOfCap(8)
@@ -363,9 +366,9 @@ proc c_strtod(buf: cstring, endptr: ptr cstring): float64 {.
 
 const
   IdentChars = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
-  powtens =   [ 1e0,   1e1,  1e2,  1e3,  1e4,  1e5,  1e6,  1e7,  1e8,  1e9,
-                1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19,
-                1e20, 1e21, 1e22]
+  powtens =  [1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9,
+              1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19,
+              1e20, 1e21, 1e22]
 
 proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
                           start = 0): int {.compilerProc.} =
@@ -509,7 +512,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
 
   # insert exponent
   t[ti] = 'E'; inc(ti)
-  t[ti] = if exp_negative: '-' else: '+'; inc(ti)
+  t[ti] = (if exp_negative: '-' else: '+'); inc(ti)
   inc(ti, 3)
 
   # insert adjusted exponent
