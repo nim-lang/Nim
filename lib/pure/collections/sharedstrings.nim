@@ -87,10 +87,10 @@ proc newSharedString*(s: string): SharedString =
   result.len = len
 
 when declared(atomicLoadN):
-  template load(x): expr = atomicLoadN(addr x, ATOMIC_SEQ_CST)
+  template load(x): untyped = atomicLoadN(addr x, ATOMIC_SEQ_CST)
 else:
   # XXX Fixme
-  template load(x): expr = x
+  template load(x): untyped = x
 
 proc add*(s: var SharedString; t: cstring; len: Natural) =
   if len == 0: return

@@ -456,6 +456,13 @@ type
   WriteIOEffect* = object of IOEffect  ## Effect describing a write IO operation.
   ExecIOEffect* = object of IOEffect   ## Effect describing an executing IO operation.
 
+  StackTraceEntry* = object ## In debug mode exceptions store the stack trace that led
+                            ## to them. A StackTraceEntry is a single entry of the
+                            ## stack trace.
+    procname*: cstring  ## name of the proc that is currently executing
+    line*: int          ## line number of the proc that is currently executing
+    filename*: cstring  ## filename of the proc that is currently executing
+
   Exception* {.compilerproc.} = object of RootObj ## \
     ## Base exception class.
     ##
@@ -468,7 +475,10 @@ type
     msg* {.exportc: "message".}: string ## the exception's message. Not
                                         ## providing an exception message
                                         ## is bad style.
-    trace: string
+    when defined(js):
+      trace: string
+    else:
+      trace: seq[StackTraceEntry]
     up: ref Exception # used for stacking exceptions. Not exported!
 
   SystemError* = object of Exception ## \
@@ -2763,9 +2773,9 @@ when defined(nimvarargstyped):
     ## pretends to be free of side effects, so that it can be used for debugging
     ## routines marked as `noSideEffect <manual.html#pragmas-nosideeffect-pragma>`_.
 else:
-  proc echo*(x: varargs[expr, `$`]) {.magic: "Echo", tags: [WriteIOEffect],
+  proc echo*(x: varargs[untyped, `$`]) {.magic: "Echo", tags: [WriteIOEffect],
     benign, sideEffect.}
-  proc debugEcho*(x: varargs[expr, `$`]) {.magic: "Echo", noSideEffect,
+  proc debugEcho*(x: varargs[untyped, `$`]) {.magic: "Echo", noSideEffect,
                                              tags: [], raises: [].}
 
 template newException*(exceptn: typedesc, message: string;
@@ -3706,7 +3716,7 @@ proc instantiationInfo*(index = -1, fullPaths = false): tuple[
   ## .. code-block:: nim
   ##   import strutils
   ##
-  ##   template testException(exception, code: expr): stmt =
+  ##   template testException(exception, code: untyped): typed =
   ##     try:
   ##       let pos = instantiationInfo()
   ##       discard(code)
@@ -3844,11 +3854,11 @@ type
 {.deprecated: [PNimrodNode: NimNode].}
 
 when false:
-  template eval*(blk: stmt): stmt =
+  template eval*(blk: typed): typed =
     ## executes a block of code at compile time just as if it was a macro
     ## optionally, the block can return an AST tree that will replace the
     ## eval expression
-    macro payload: stmt {.gensym.} = blk
+    macro payload: typed {.gensym.} = blk
     payload()
 
 when hasAlloc:

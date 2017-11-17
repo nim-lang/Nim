@@ -42,7 +42,7 @@ function myAdd(x, y: longint): longint; cdecl; external;
 
 procedure TForm1.FormCreate(Sender: TObject);
 begin
-  // we initialize the Nimrod data structures here:
+  // we initialize the Nim data structures here:
   NimMain();
 end;
 

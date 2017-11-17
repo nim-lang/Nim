@@ -473,7 +473,7 @@ proc temp(args: string) =
   # commit.
   let (bootArgs, programArgs) = splitArgs(args)
   let nimexec = findNim()
-  exec(nimexec & " c " & bootArgs & " compiler" / "nim", 125)
+  exec(nimexec & " c -d:debug " & bootArgs & " compiler" / "nim", 125)
   copyExe(output, finalDest)
   if programArgs.len > 0: exec(finalDest & " " & programArgs)
 
@@ -482,7 +482,7 @@ proc xtemp(cmd: string) =
   copyExe(d / "bin" / "nim".exe, d / "bin" / "nim_backup".exe)
   try:
     withDir(d):
-      temp"-d:debug"
+      temp""
     copyExe(d / "bin" / "nim_temp".exe, d / "bin" / "nim".exe)
     exec(cmd)
   finally:
