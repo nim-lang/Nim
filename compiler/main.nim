@@ -186,12 +186,12 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
   of "php":
     gCmd = cmdCompileToPHP
     commandCompileToJS(graph, cache)
-  of "doc":
+  of "doc0":
     wantMainModule()
     gCmd = cmdDoc
     loadConfigs(DocConfig, cache)
     commandDoc()
-  of "doc2":
+  of "doc2", "doc":
     gCmd = cmdDoc
     loadConfigs(DocConfig, cache)
     defineSymbol("nimdoc")

@@ -456,6 +456,13 @@ type
   WriteIOEffect* = object of IOEffect  ## Effect describing a write IO operation.
   ExecIOEffect* = object of IOEffect   ## Effect describing an executing IO operation.
 
+  StackTraceEntry* = object ## In debug mode exceptions store the stack trace that led
+                            ## to them. A StackTraceEntry is a single entry of the
+                            ## stack trace.
+    procname*: cstring  ## name of the proc that is currently executing
+    line*: int          ## line number of the proc that is currently executing
+    filename*: cstring  ## filename of the proc that is currently executing
+
   Exception* {.compilerproc.} = object of RootObj ## \
     ## Base exception class.
     ##
@@ -468,7 +475,10 @@ type
     msg* {.exportc: "message".}: string ## the exception's message. Not
                                         ## providing an exception message
                                         ## is bad style.
-    trace: string
+    when defined(js):
+      trace: string
+    else:
+      trace: seq[StackTraceEntry]
     up: ref Exception # used for stacking exceptions. Not exported!
 
   SystemError* = object of Exception ## \
