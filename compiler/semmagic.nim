@@ -127,7 +127,7 @@ proc evalTypeTrait(traitCall: PNode, operand: PType, context: PSym): PNode =
   of "not":
     return typeWithSonsResult(tyNot, @[operand])
   of "name":
-    result = newStrNode(nkStrLit, operand.typeToString(preferName))
+    result = newStrNode(nkStrLit, operand.typeToString(preferTypeName))
     result.typ = newType(tyString, context)
     result.info = traitCall.info
   of "arity":

@@ -14,7 +14,8 @@ import
 
 type
   TPreferedDesc* = enum
-    preferName, preferDesc, preferExported, preferModuleInfo, preferGenericArg
+    preferName, preferDesc, preferExported, preferModuleInfo, preferGenericArg,
+    preferTypeName
 
 proc typeToString*(typ: PType; prefer: TPreferedDesc = preferName): string
 template `$`*(typ: PType): string = typeToString(typ)
@@ -394,7 +395,7 @@ const
     "and", "or", "not", "any", "static", "TypeFromExpr", "FieldAccessor",
     "void"]
 
-const preferToResolveSymbols = {preferName, preferModuleInfo, preferGenericArg}
+const preferToResolveSymbols = {preferName, preferTypeName, preferModuleInfo, preferGenericArg}
 
 template bindConcreteTypeToUserTypeClass*(tc, concrete: PType) =
   tc.sons.safeAdd concrete
@@ -420,7 +421,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
        sfAnon notin t.sym.flags:
     if t.kind == tyInt and isIntLit(t):
       result = t.sym.name.s & " literal(" & $t.n.intVal & ")"
-    elif prefer == preferName or t.sym.owner.isNil:
+    elif prefer in {preferName, preferTypeName} or t.sym.owner.isNil:
       result = t.sym.name.s
       if t.kind == tyGenericParam and t.sons != nil and t.sonsLen > 0:
         result.add ": "
@@ -518,7 +519,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     result = "openarray[" & typeToString(t.sons[0]) & ']'
   of tyDistinct:
     result = "distinct " & typeToString(t.sons[0],
-      if prefer == preferModuleInfo: preferModuleInfo else: preferName)
+      if prefer == preferModuleInfo: preferModuleInfo else: preferTypeName)
   of tyTuple:
     # we iterate over t.sons here, because t.n may be nil
     if t.n != nil:
@@ -532,7 +533,8 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     elif sonsLen(t) == 0:
       result = "tuple[]"
     else:
-      result = "tuple of ("
+      if prefer == preferTypeName: result = "("
+      else: result = "tuple of ("
       for i in countup(0, sonsLen(t) - 1):
         add(result, typeToString(t.sons[i]))
         if i < sonsLen(t) - 1: add(result, ", ")
