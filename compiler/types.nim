@@ -532,7 +532,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     elif sonsLen(t) == 0:
       result = "tuple[]"
     else:
-      result = "("
+      result = "tuple of ("
       for i in countup(0, sonsLen(t) - 1):
         add(result, typeToString(t.sons[i]))
         if i < sonsLen(t) - 1: add(result, ", ")
