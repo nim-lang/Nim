@@ -13,6 +13,15 @@ import strtabs, times
 
 proc parseCookies*(s: string): StringTableRef =
   ## parses cookies into a string table.
+  ##
+  ## The proc is meant to parse the Cookie header set by a client, not the
+  ## "Set-Cookie" header set by servers.
+  ##
+  ## Example:
+  ##
+  ## .. code-block::Nim
+  ##     doAssert parseCookies("a=1; foo=bar") == {"a": 1, "foo": "bar"}.newStringTable
+
   result = newStringTable(modeCaseInsensitive)
   var i = 0
   while true:
