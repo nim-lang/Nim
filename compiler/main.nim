@@ -78,6 +78,10 @@ proc commandCompileToC(graph: ModuleGraph; cache: IdentCache) =
     extccomp.callCCompiler(proj)
     extccomp.writeJsonBuildInstructions(proj)
 
+proc commandJsonScript(graph: ModuleGraph; cache: IdentCache) =
+  let proj = changeFileExt(gProjectFull, "")
+  extccomp.runJsonBuildInstructions(proj)
+
 proc commandCompileToJS(graph: ModuleGraph; cache: IdentCache) =
   #incl(gGlobalOptions, optSafeCode)
   setTarget(osJS, cpuJS)
@@ -182,12 +186,12 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
   of "php":
     gCmd = cmdCompileToPHP
     commandCompileToJS(graph, cache)
-  of "doc":
+  of "doc0":
     wantMainModule()
     gCmd = cmdDoc
     loadConfigs(DocConfig, cache)
     commandDoc()
-  of "doc2":
+  of "doc2", "doc":
     gCmd = cmdDoc
     loadConfigs(DocConfig, cache)
     defineSymbol("nimdoc")
@@ -213,6 +217,13 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
     wantMainModule()
     defineSymbol("nimdoc")
     commandDoc2(graph, cache, true)
+  of "ctags":
+    wantMainModule()
+    gCmd = cmdDoc
+    loadConfigs(DocConfig, cache)
+    wantMainModule()
+    defineSymbol("nimdoc")
+    commandTags()
   of "buildindex":
     gCmd = cmdDoc
     loadConfigs(DocConfig, cache)
@@ -266,6 +277,9 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
   of "nop", "help":
     # prevent the "success" message:
     gCmd = cmdDump
+  of "jsonscript":
+    gCmd = cmdJsonScript
+    commandJsonScript(graph, cache)
   else:
     rawMessage(errInvalidCommandX, command)
 

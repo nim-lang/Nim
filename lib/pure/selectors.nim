@@ -162,7 +162,7 @@ elif defined(linux):
         return @[]
       raiseOSError(err)
     if evNum == 0: return @[]
-    for i in 0 .. <evNum:
+    for i in 0 ..< evNum:
       let fd = s.events[i].data.fd.SocketHandle
 
       var evSet: set[Event] = {}
@@ -253,7 +253,7 @@ elif defined(macosx) or defined(freebsd) or defined(openbsd) or defined(netbsd):
         return @[]
       raiseOSError(err)
     if evNum == 0: return @[]
-    for i in 0 .. <evNum:
+    for i in 0 ..< evNum:
       let fd = s.events[i].ident.SocketHandle
 
       var evSet: set[Event] = {}

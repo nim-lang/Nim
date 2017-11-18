@@ -307,7 +307,7 @@ proc buildDoc(c: var TConfigData, destPath: string) =
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
   for d in items(c.srcdoc):
-    commands[i] = findNim() & " doc $# --git.url:$# -o:$# --index:on $#" %
+    commands[i] = findNim() & " doc0 $# --git.url:$# -o:$# --index:on $#" %
       [c.nimArgs, gitRepo,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc

@@ -17,7 +17,6 @@ endif
 
 ucpu := $(shell sh -c 'uname -m | tr "[:upper:]" "[:lower:]"')
 uos := $(shell sh -c 'uname | tr "[:upper:]" "[:lower:]"')
-uosname := $(shell sh -c 'uname -o | tr "[:upper:]" "[:lower:]"')
 
 ifeq ($(uos),linux)
   myos = linux
@@ -65,13 +64,8 @@ endif
 ifeq ($(uos),haiku)
   myos = haiku
 endif
-ifndef uos
+ifndef myos
   $(error unknown operating system: $(uos))
-endif
-
-ifeq ($(uosname),android)
-  myos = android
-  LINK_FLAGS += -landroid-glob
 endif
 
 ifeq ($(ucpu),i386)
@@ -107,6 +101,9 @@ endif
 ifeq ($(ucpu),sun)
   mycpu = sparc
 endif
+ifeq ($(ucpu),ppc64le)
+  mycpu = powerpc64el
+endif
 ifeq ($(ucpu),ppc64)
   mycpu = powerpc64
   ifeq ($(myos),linux)
@@ -138,7 +135,16 @@ endif
 ifeq ($(ucpu),armv6l)
   mycpu = arm
 endif
-ifndef ucpu
+ifeq ($(ucpu),armv7l)
+  mycpu = arm
+endif
+ifeq ($(ucpu),armv7hl)
+  mycpu = arm
+endif
+ifeq ($(ucpu),aarch64)
+  mycpu = arm64
+endif
+ifndef mycpu
   $(error unknown processor: $(ucpu))
 endif
 

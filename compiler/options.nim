@@ -91,10 +91,11 @@ type
     cmdRst2html,              # convert a reStructuredText file to HTML
     cmdRst2tex,               # convert a reStructuredText file to TeX
     cmdInteractive,           # start interactive session
-    cmdRun                    # run the project via TCC backend
+    cmdRun,                   # run the project via TCC backend
+    cmdJsonScript             # compile a .json build file
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
-    gcNone, gcBoehm, gcGo, gcStack, gcMarkAndSweep, gcRefc,
+    gcNone, gcBoehm, gcGo, gcRegions, gcMarkAndSweep, gcRefc,
     gcV2, gcGenerational
 
   IdeCmd* = enum
@@ -140,12 +141,14 @@ var
   gEvalExpr* = ""             # expression for idetools --eval
   gLastCmdTime*: float        # when caas is enabled, we measure each command
   gListFullPaths*: bool
-  isServing*: bool = false
+  gPreciseStack*: bool = false
   gNoNimblePath* = false
   gExperimentalMode*: bool
+  newDestructors*: bool
 
 proc importantComments*(): bool {.inline.} = gCmd in {cmdDoc, cmdIdeTools}
 proc usesNativeGC*(): bool {.inline.} = gSelectedGC >= gcRefc
+template preciseStack*(): bool = gPreciseStack
 
 template compilationCachePresent*: untyped =
   {optCaasEnabled, optSymbolFiles} * gGlobalOptions != {}
@@ -159,6 +162,7 @@ const
   RodExt* = "rod"
   HtmlExt* = "html"
   JsonExt* = "json"
+  TagsExt* = "tags"
   TexExt* = "tex"
   IniExt* = "ini"
   DefaultConfig* = "nim.cfg"
@@ -290,8 +294,8 @@ proc pathSubs*(p, config: string): string =
     "projectpath", options.gProjectPath,
     "projectdir", options.gProjectPath,
     "nimcache", getNimcacheDir()])
-  if '~' in result:
-    result = result.replace("~", home)
+  if "~/" in result:
+    result = result.replace("~/", home & '/')
 
 proc toGeneratedFile*(path, ext: string): string =
   ## converts "/home/a/mymodule.nim", "rod" to "/home/a/nimcache/mymodule.rod"

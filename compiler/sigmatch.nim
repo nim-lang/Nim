@@ -55,6 +55,7 @@ type
                              # a distrinct type
     typedescMatched*: bool
     isNoCall*: bool          # misused for generic type instantiations C[T]
+    mutabilityProblem*: uint8 # tyVar mismatch
     inferredTypes: seq[PType] # inferred types during the current signature
                               # matching. they will be reset if the matching
                               # is not successful. may replace the bindings
@@ -66,7 +67,6 @@ type
                               # or when the explain pragma is used. may be
                               # triggered with an idetools command in the
                               # future.
-    mutabilityProblem*: uint8 # tyVar mismatch
     inheritancePenalty: int  # to prefer closest father object type
 
   TTypeRelFlag* = enum
@@ -200,7 +200,7 @@ proc sumGeneric(t: PType): int =
       inc result
     of tyGenericInvocation, tyTuple, tyProc, tyAnd:
       result += ord(t.kind in {tyGenericInvocation, tyAnd})
-      for i in 0 .. <t.len:
+      for i in 0 ..< t.len:
         if t.sons[i] != nil:
           result += t.sons[i].sumGeneric
       break
@@ -220,11 +220,12 @@ proc sumGeneric(t: PType): int =
 proc complexDisambiguation(a, b: PType): int =
   # 'a' matches better if *every* argument matches better or equal than 'b'.
   var winner = 0
-  for i in 1 .. <min(a.len, b.len):
+  for i in 1 ..< min(a.len, b.len):
     let x = a.sons[i].sumGeneric
     let y = b.sons[i].sumGeneric
     #if ggDebug:
-    #  echo "came her ", typeToString(a.sons[i]), " ", typeToString(b.sons[i])
+    #echo "came herA ", typeToString(a.sons[i]), " ", x
+    #echo "came herB ", typeToString(b.sons[i]), " ", y
     if x != y:
       if winner == 0:
         if x > y: winner = 1
@@ -239,8 +240,8 @@ proc complexDisambiguation(a, b: PType): int =
   result = winner
   when false:
     var x, y: int
-    for i in 1 .. <a.len: x += a.sons[i].sumGeneric
-    for i in 1 .. <b.len: y += b.sons[i].sumGeneric
+    for i in 1 ..< a.len: x += a.sons[i].sumGeneric
+    for i in 1 ..< b.len: y += b.sons[i].sumGeneric
     result = x - y
 
 proc writeMatches*(c: TCandidate) =
@@ -275,7 +276,7 @@ proc cmpCandidates*(a, b: TCandidate): int =
 proc argTypeToString(arg: PNode; prefer: TPreferedDesc): string =
   if arg.kind in nkSymChoices:
     result = typeToString(arg[0].typ, prefer)
-    for i in 1 .. <arg.len:
+    for i in 1 ..< arg.len:
       result.add(" | ")
       result.add typeToString(arg[i].typ, prefer)
   elif arg.typ == nil:
@@ -297,7 +298,9 @@ proc describeArgs*(c: PContext, n: PNode, startIdx = 1;
         n.sons[i].typ = arg.typ
         n.sons[i].sons[1] = arg
     else:
-      if arg.typ.isNil and arg.kind notin {nkStmtList, nkDo}:
+      if arg.typ.isNil and arg.kind notin {nkStmtList, nkDo, nkElse,
+                                           nkOfBranch, nkElifBranch,
+                                           nkExceptBranch}:
         arg = c.semOperand(c, n.sons[i])
         n.sons[i] = arg
     if arg.typ != nil and arg.typ.kind == tyError: return
@@ -387,7 +390,16 @@ proc isConvertibleToRange(f, a: PType): bool =
   # be less picky for tyRange, as that it is used for array indexing:
   if f.kind in {tyInt..tyInt64, tyUInt..tyUInt64} and
      a.kind in {tyInt..tyInt64, tyUInt..tyUInt64}:
-    result = true
+    case f.kind
+    of tyInt, tyInt64: result = true
+    of tyInt8: result = a.kind in {tyInt8, tyInt}
+    of tyInt16: result = a.kind in {tyInt8, tyInt16, tyInt}
+    of tyInt32: result = a.kind in {tyInt8, tyInt16, tyInt32, tyInt}
+    of tyUInt, tyUInt64: result = true
+    of tyUInt8: result = a.kind in {tyUInt8, tyUInt}
+    of tyUInt16: result = a.kind in {tyUInt8, tyUInt16, tyUInt}
+    of tyUInt32: result = a.kind in {tyUInt8, tyUInt16, tyUInt32, tyUInt}
+    else: result = false
   elif f.kind in {tyFloat..tyFloat128} and
        a.kind in {tyFloat..tyFloat128}:
     result = true
@@ -578,7 +590,7 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
 
     # Note: We have to do unification for the parameters before the
     # return type!
-    for i in 1 .. <f.sonsLen:
+    for i in 1 ..< f.sonsLen:
       checkParam(f.sons[i], a.sons[i])
 
     if f.sons[0] != nil:
@@ -656,7 +668,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
   var typeParams: seq[(PSym, PType)]
 
   if ff.kind == tyUserTypeClassInst:
-    for i in 1 .. <(ff.len - 1):
+    for i in 1 ..< (ff.len - 1):
       var
         typeParamName = ff.base.sons[i-1].sym.name
         typ = ff.sons[i]
@@ -934,7 +946,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
                                      tfExplicit notin aOrig.flags
 
     aOrig = if useTypeLoweringRuleInTypeClass:
-          aOrig.skipTypes({tyTypeDesc, tyFieldAccessor})
+          aOrig.skipTypes({tyTypeDesc})
         else:
           aOrig
 
@@ -1045,9 +1057,10 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
            else: isNone
 
   of tyUserTypeClass, tyUserTypeClassInst:
-    if c.c.matchedConcept != nil:
+    if c.c.matchedConcept != nil and c.c.matchedConcept.depth <= 4:
       # consider this: 'var g: Node' *within* a concept where 'Node'
       # is a concept too (tgraph)
+      inc c.c.matchedConcept.depth
       let x = typeRel(c, a, f, flags + {trDontBind})
       if x >= isGeneric:
         return isGeneric
@@ -1286,12 +1299,13 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
     of tyString: result = isConvertible
     of tyPtr:
       # ptr[Tag, char] is not convertible to 'cstring' for now:
-      if a.len == 1 and a.sons[0].kind == tyChar: result = isConvertible
-    of tyArray:
-      if (firstOrd(a.sons[0]) == 0) and
-          (skipTypes(a.sons[0], {tyRange}).kind in {tyInt..tyInt64}) and
-          (a.sons[1].kind == tyChar):
-        result = isConvertible
+      if a.len == 1:
+        let pointsTo = a.sons[0].skipTypes(abstractInst)
+        if pointsTo.kind == tyChar: result = isConvertible
+        elif pointsTo.kind == tyArray and firstOrd(pointsTo.sons[0]) == 0 and
+            skipTypes(pointsTo.sons[0], {tyRange}).kind in {tyInt..tyInt64} and
+            pointsTo.sons[1].kind == tyChar:
+          result = isConvertible
     else: discard
 
   of tyEmpty, tyVoid:
@@ -1371,7 +1385,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
     # XXX: This is very hacky. It should be moved back into liftTypeParam
     if x.kind in {tyGenericInst, tyArray} and
        c.calleeSym != nil and
-       c.calleeSym.kind == skProc:
+       c.calleeSym.kind in {skProc, skFunc} and c.call != nil:
       let inst = prepareMetatypeForSigmatch(c.c, c.bindings, c.call.info, f)
       return typeRel(c, inst, a)
 
@@ -1448,8 +1462,13 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
   of tyOr:
     considerPreviousT:
       result = isNone
+      let oldInheritancePenalty = c.inheritancePenalty
+      var maxInheritance = 0
       for branch in f.sons:
+        c.inheritancePenalty = 0
         let x = typeRel(c, branch, aOrig)
+        maxInheritance = max(maxInheritance, c.inheritancePenalty)
+
         # 'or' implies maximum matching result:
         if x > result: result = x
       if result >= isSubtype:
@@ -1457,6 +1476,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
         bindingRet result
       else:
         result = isNone
+      c.inheritancePenalty = oldInheritancePenalty + maxInheritance
 
   of tyNot:
     considerPreviousT:
@@ -1547,11 +1567,19 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
           result = isNone
       else:
         if f.sonsLen > 0 and f.sons[0].kind != tyNone:
+          let oldInheritancePenalty = c.inheritancePenalty
           result = typeRel(c, f.lastSon, a, flags + {trDontBind})
           if doBind and result notin {isNone, isGeneric}:
             let concrete = concreteType(c, a)
             if concrete == nil: return isNone
             put(c, f, concrete)
+          # bug #6526
+          if result in {isEqual, isSubtype}:
+            # 'T: Class' is a *better* match than just 'T'
+            # but 'T: Subclass' is even better:
+            c.inheritancePenalty = oldInheritancePenalty - c.inheritancePenalty -
+                                  100 * ord(result == isEqual)
+            result = isGeneric
         else:
           result = isGeneric
 
@@ -1585,7 +1613,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
           if not exprStructuralEquivalent(f.n, aOrig.n):
             result = isNone
         if result != isNone: put(c, f, aOrig)
-      elif aOrig.n != nil:
+      elif aOrig.n != nil and aOrig.n.typ != nil:
         result = typeRel(c, f.lastSon, aOrig.n.typ)
         if result != isNone:
           var boundType = newTypeWithSons(c.c, tyStatic, @[aOrig.n.typ])
@@ -1830,7 +1858,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       bothMetaCounter < 100:
     lastBindingsLength = m.bindings.counter
     inc(bothMetaCounter)
-    if arg.kind in {nkProcDef, nkIteratorDef} + nkLambdaKinds:
+    if arg.kind in {nkProcDef, nkFuncDef, nkIteratorDef} + nkLambdaKinds:
       result = c.semInferredLambda(c, m.bindings, arg)
     elif arg.kind != nkSym:
       return nil
@@ -1863,7 +1891,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     else:
       result = implicitConv(nkHiddenStdConv, f, arg, m, c)
   of isInferred, isInferredConvertible:
-    if arg.kind in {nkProcDef, nkIteratorDef} + nkLambdaKinds:
+    if arg.kind in {nkProcDef, nkFuncDef, nkIteratorDef} + nkLambdaKinds:
       result = c.semInferredLambda(c, m.bindings, arg)
     elif arg.kind != nkSym:
       return nil
@@ -1950,7 +1978,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     z.calleeSym = m.calleeSym
     var best = -1
     for i in countup(0, sonsLen(arg) - 1):
-      if arg.sons[i].sym.kind in {skProc, skMethod, skConverter, skIterator}:
+      if arg.sons[i].sym.kind in {skProc, skFunc, skMethod, skConverter, skIterator}:
         copyCandidate(z, m)
         z.callee = arg.sons[i].typ
         if tfUnresolved in z.callee.flags: continue
@@ -2215,7 +2243,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
 proc semFinishOperands*(c: PContext, n: PNode) =
   # this needs to be called to ensure that after overloading resolution every
   # argument has been sem'checked:
-  for i in 1 .. <n.len:
+  for i in 1 ..< n.len:
     n.sons[i] = prepareOperand(c, n.sons[i])
 
 proc partialMatch*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
@@ -2285,7 +2313,8 @@ proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
     localError(info, errGenerated, "cannot instantiate '" & dc.name.s & "'")
   else:
     result = c.semGenerateInstance(c, dc, m.bindings, info)
-    assert sfFromGeneric in result.flags
+    if op == attachedDeepCopy:
+      assert sfFromGeneric in result.flags
 
 include suggest
 

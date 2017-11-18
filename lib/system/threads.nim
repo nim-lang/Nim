@@ -127,7 +127,8 @@ elif defined(genode):
   proc initThread(s: var SysThread,
                   stackSize: culonglong,
                   entry: GenodeThreadProc,
-                  arg: pointer) {.
+                  arg: pointer,
+                  affinity: cuint) {.
     importcpp: "#.initThread(genodeEnv, @)".}
 
   proc threadVarAlloc(): ThreadVarSlot = 0
@@ -396,8 +397,8 @@ template afterThreadRuns() =
   for i in countdown(threadDestructionHandlers.len-1, 0):
     threadDestructionHandlers[i]()
 
-when not defined(boehmgc) and not hasSharedHeap and not defined(gogc) and not defined(gcstack):
-  proc deallocOsPages()
+when not defined(boehmgc) and not hasSharedHeap and not defined(gogc) and not defined(gcRegions):
+  proc deallocOsPages() {.rtl.}
 
 when defined(boehmgc):
   type GCStackBaseProc = proc(sb: pointer, t: pointer) {.noconv.}
@@ -434,7 +435,7 @@ else:
 proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) =
   when defined(boehmgc):
     boehmGC_call_with_stack_base(threadProcWrapDispatch[TArg], thrd)
-  elif not defined(nogc) and not defined(gogc) and not defined(gcstack):
+  elif not defined(nogc) and not defined(gogc) and not defined(gcRegions):
     var p {.volatile.}: proc(a: ptr Thread[TArg]) {.nimcall.} =
       threadProcWrapDispatch[TArg]
     when not hasSharedHeap:
@@ -567,6 +568,9 @@ when hostOS == "windows":
     setThreadAffinityMask(t.sys, uint(1 shl cpu))
 
 elif defined(genode):
+  var affinityOffset: cuint = 1
+  # CPU affinity offset for next thread, safe to roll-over
+
   proc createThread*[TArg](t: var Thread[TArg],
                            tp: proc (arg: TArg) {.thread, nimcall.},
                            param: TArg) =
@@ -577,7 +581,8 @@ elif defined(genode):
     when hasSharedHeap: t.stackSize = ThreadStackSize
     t.sys.initThread(
       ThreadStackSize.culonglong,
-      threadProcWrapper[TArg], addr(t))
+      threadProcWrapper[TArg], addr(t), affinityOffset)
+    inc affinityOffset
 
   proc pinToCpu*[Arg](t: var Thread[Arg]; cpu: Natural) =
     {.hint: "cannot change Genode thread CPU affinity after initialization".}

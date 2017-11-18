@@ -88,7 +88,9 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       if not isPure: strTableAdd(c.module.tab, e)
     addSon(result.n, newSymNode(e))
     styleCheckDef(e)
-    if sfGenSym notin e.flags and not isPure: addDecl(c, e)
+    if sfGenSym notin e.flags:
+      if not isPure: addDecl(c, e)
+      else: importPureEnumField(c, e)
     if isPure and strTableIncl(symbols, e):
       wrongRedefinition(e.info, e.name.s)
     inc(counter)
@@ -136,7 +138,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
   if n.len < 1:
     result = newConstraint(c, kind)
   else:
-    let isCall = ord(n.kind in nkCallKinds+{nkBracketExpr})
+    let isCall = int ord(n.kind in nkCallKinds+{nkBracketExpr})
     let n = if n[0].kind == nkBracket: n[0] else: n
     checkMinSonsLen(n, 1)
     var t = semTypeNode(c, n.lastSon, nil)
@@ -513,7 +515,7 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
         # first element is special and will overwrite: branch.sons[i]:
         branch.sons[i] = semCaseBranchSetElem(c, t, r[0], covered)
         # other elements have to be added to ``branch``
-        for j in 1 .. <r.len:
+        for j in 1 ..< r.len:
           branch.add(semCaseBranchSetElem(c, t, r[j], covered))
           # caution! last son of branch must be the actions to execute:
           var L = branch.len
@@ -844,7 +846,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
                                   @[newTypeS(paramType.kind, c)])
       result = addImplicitGeneric(typ)
     else:
-      for i in 0 .. <paramType.len:
+      for i in 0 ..< paramType.len:
         if paramType.sons[i] == paramType:
           globalError(info, errIllegalRecursionInTypeX, typeToString(paramType))
         var lifted = liftingWalk(paramType.sons[i])
@@ -895,7 +897,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       result.shouldHaveMeta
 
   of tyGenericInvocation:
-    for i in 1 .. <paramType.len:
+    for i in 1 ..< paramType.len:
       let lifted = liftingWalk(paramType.sons[i])
       if lifted != nil: paramType.sons[i] = lifted
 
@@ -1144,7 +1146,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
 
     var isConcrete = true
 
-    for i in 1 .. <m.call.len:
+    for i in 1 ..< m.call.len:
       var typ = m.call[i].typ
       if typ.kind == tyTypeDesc and typ.sons[0].kind == tyNone:
         isConcrete = false
@@ -1165,7 +1167,10 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
 
   # special check for generic object with
   # generic/partial specialized parent
-  let tx = result.skipTypes(abstractPtrs)
+  let tx = result.skipTypes(abstractPtrs, 50)
+  if tx.isNil:
+    localError(n.info, "invalid recursion in type '$1'" % typeToString(result[0]))
+    return errorType(c)
   if tx != result and tx.kind == tyObject and tx.sons[0] != nil:
     semObjectTypeForInheritedGenericInst(c, n, tx)
 
@@ -1202,6 +1207,15 @@ proc freshType(res, prev: PType): PType {.inline.} =
   else:
     result = res
 
+template modifierTypeKindOfNode(n: PNode): TTypeKind =
+  case n.kind
+  of nkVarTy: tyVar
+  of nkRefTy: tyRef
+  of nkPtrTy: tyPtr
+  of nkStaticTy: tyStatic
+  of nkTypeOfExpr: tyTypeDesc
+  else: tyNone
+
 proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
   # if n.sonsLen == 0: return newConstraint(c, tyTypeClass)
   if nfBase2 in n.flags:
@@ -1227,13 +1241,7 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
       dummyName: PNode
       dummyType: PType
 
-    let modifier = case param.kind
-      of nkVarTy: tyVar
-      of nkRefTy: tyRef
-      of nkPtrTy: tyPtr
-      of nkStaticTy: tyStatic
-      of nkTypeOfExpr: tyTypeDesc
-      else: tyNone
+    let modifier = param.modifierTypeKindOfNode
 
     if modifier != tyNone:
       dummyName = param[0]
@@ -1290,8 +1298,7 @@ proc symFromExpectedTypeNode(c: PContext, n: PNode): PSym =
 
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   result = nil
-  when defined(nimsuggest):
-    inc c.inTypeContext
+  inc c.inTypeContext
 
   if gCmd == cmdIdeTools: suggestExpr(c, n)
   case n.kind
@@ -1388,6 +1395,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     of mSet: result = semSet(c, n, prev)
     of mOrdinal: result = semOrdinal(c, n, prev)
     of mSeq: result = semContainer(c, n, tySequence, "seq", prev)
+    of mOpt: result = semContainer(c, n, tyOpt, "opt", prev)
     of mVarargs: result = semVarargs(c, n, prev)
     of mTypeDesc: result = makeTypeDesc(c, semTypeNode(c, n[1], nil))
     of mExpr:
@@ -1412,9 +1420,13 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     else: result = semGeneric(c, n, s, prev)
   of nkDotExpr:
     let typeExpr = semExpr(c, n)
-    if typeExpr.typ.kind == tyFromExpr:
-      return typeExpr.typ
-    if typeExpr.typ.kind != tyTypeDesc:
+    if typeExpr.typ.isNil:
+      localError(n.info, "object constructor needs an object type;" &
+          " for named arguments use '=' instead of ':'")
+      result = errorType(c)
+    elif typeExpr.typ.kind == tyFromExpr:
+      result = typeExpr.typ
+    elif typeExpr.typ.kind != tyTypeDesc:
       localError(n.info, errTypeExpected)
       result = errorType(c)
     else:
@@ -1505,13 +1517,35 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     localError(n.info, errTypeExpected)
     result = newOrPrevType(tyError, prev, c)
   n.typ = result
-  when defined(nimsuggest):
-    dec c.inTypeContext
+  dec c.inTypeContext
+  if c.inTypeContext == 0: instAllTypeBoundOp(c, n.info)
+
+when false:
+  proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
+    result = semTypeNodeInner(c, n, prev)
+    instAllTypeBoundOp(c, n.info)
 
 proc setMagicType(m: PSym, kind: TTypeKind, size: int) =
+  # source : https://en.wikipedia.org/wiki/Data_structure_alignment#x86
   m.typ.kind = kind
-  m.typ.align = size.int16
   m.typ.size = size
+  # this usually works for most basic types
+  # Assuming that since ARM, ARM64  don't support unaligned access
+  # data is aligned to type size
+  m.typ.align = size.int16
+
+  # FIXME: proper support for clongdouble should be added.
+  # long double size can be 8, 10, 12, 16 bytes depending on platform & compiler
+  if targetCPU == cpuI386 and size == 8:
+    #on Linux/BSD i386, double are aligned to 4bytes (except with -malign-double)
+    if kind in {tyFloat64, tyFloat} and
+       targetOS in {osLinux, osAndroid, osNetbsd, osFreebsd, osOpenbsd, osDragonfly}:
+      m.typ.align = 4
+    # on i386, all known compiler, 64bits ints are aligned to 4bytes (except with -malign-double)
+    elif kind in {tyInt, tyUInt, tyInt64, tyUInt64}:
+      m.typ.align = 4
+  else:
+    discard
 
 proc processMagicType(c: PContext, m: PSym) =
   case m.magic
@@ -1570,6 +1604,8 @@ proc processMagicType(c: PContext, m: PSym) =
     setMagicType(m, tySet, 0)
   of mSeq:
     setMagicType(m, tySequence, 0)
+  of mOpt:
+    setMagicType(m, tyOpt, 0)
   of mOrdinal:
     setMagicType(m, tyOrdinal, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))
@@ -1589,8 +1625,8 @@ proc semGenericParamList(c: PContext, n: PNode, father: PType = nil): PNode =
     var a = n.sons[i]
     if a.kind != nkIdentDefs: illFormedAst(n)
     let L = a.len
-    var def = a{-1}
-    let constraint = a{-2}
+    var def = a[^1]
+    let constraint = a[^2]
     var typ: PType
 
     if constraint.kind != nkEmpty:

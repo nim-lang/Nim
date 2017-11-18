@@ -1,6 +1,6 @@
 discard """
   line: 24
-  errormsg: "expression expected, but found 'keyword else'"
+  errormsg: "invalid indentation"
 """
 
 import macros
@@ -11,7 +11,7 @@ var x = if 4 != 5:
   else:
     "no"
 
-macro mymacro(n): untyped {.immediate.} =
+macro mymacro(n, b): untyped =
   discard
 
 mymacro:

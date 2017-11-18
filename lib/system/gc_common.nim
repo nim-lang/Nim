@@ -373,12 +373,22 @@ proc deallocHeap*(runFinalizers = true; allowGcAfterwards = true) =
   ## is true. If ``allowGcAfterwards`` is true, a minimal amount of allocation
   ## happens to ensure the GC can continue to work after the call
   ## to ``deallocHeap``.
+  template deallocCell(x) =
+    if isCell(x):
+      # cast to PCell is correct here:
+      prepareDealloc(cast[PCell](x))
+
   if runFinalizers:
-    for x in allObjects(gch.region):
-      if isCell(x):
-        # cast to PCell is correct here:
-        var c = cast[PCell](x)
-        prepareDealloc(c)
+    when not declared(allObjectsAsProc):
+      for x in allObjects(gch.region):
+        deallocCell(x)
+    else:
+      var spaceIter: ObjectSpaceIter
+      while true:
+        let x = allObjectsAsProc(gch.region, addr spaceIter)
+        if spaceIter.state < 0: break
+        deallocCell(x)
+
   deallocOsPages(gch.region)
   zeroMem(addr gch.region, sizeof(gch.region))
   if allowGcAfterwards:

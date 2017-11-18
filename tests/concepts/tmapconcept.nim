@@ -1,7 +1,7 @@
 discard """
 output: '''10
 10
-nil
+
 1'''
 msg: '''
 K=string V=int

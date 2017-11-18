@@ -3,12 +3,12 @@ discard """
   output: '''works 34
 34
 defined
-first impl'''
+3'''
 """
 
 {.reorder: on.}
+{.experimental.}
 
-{.push callconv: stdcall.}
 proc bar(x: T)
 
 proc foo() =
@@ -21,22 +21,24 @@ proc bar(x: T) =
   echo "works ", x
   foo(x)
 
-foo()
-
-type
-  T = int
-
 when defined(testdef):
   proc whendep() = echo "defined"
 else:
   proc whendep() = echo "undefined"
 
-when not declared(goo):
-  proc goo() = echo "first impl"
+foo()
+
+type
+  T = int
+
 
 when not declared(goo):
-  proc goo() = echo "second impl"
+  proc goo(my, omy) = echo my
 
-goo()
+when not declared(goo):
+  proc goo(my, omy) = echo omy
 
-{.pop.}
+using
+  my, omy: int
+
+goo(3, 4)

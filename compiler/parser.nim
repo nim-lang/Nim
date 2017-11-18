@@ -28,7 +28,7 @@ import
   llstream, lexer, idents, strutils, ast, astalgo, msgs
 
 type
-  TParser*{.final.} = object   # A TParser object represents a file that
+  TParser* = object            # A TParser object represents a file that
                                # is being parsed
     currInd: int               # current indentation level
     firstTok, strongSpaces: bool # Has the first token been read?
@@ -72,6 +72,7 @@ proc parseStmtPragma(p: var TParser): PNode
 proc parsePragma(p: var TParser): PNode
 proc postExprBlocks(p: var TParser, x: PNode): PNode
 proc parseExprStmt(p: var TParser): PNode
+proc parseBlock(p: var TParser): PNode
 # implementation
 
 proc getTok(p: var TParser) =
@@ -255,13 +256,6 @@ proc isUnary(p: TParser): bool =
      p.tok.strongSpaceB == 0 and
      p.tok.strongSpaceA > 0:
       result = true
-      # versions prior to 0.13.0 used to do this:
-      when false:
-        if p.strongSpaces:
-          result = true
-        else:
-          parMessage(p, warnDeprecated,
-            "will be parsed as unary operator; inconsistent spacing")
 
 proc checkBinary(p: TParser) {.inline.} =
   ## Check if the current parser token is a binary operator.
@@ -685,6 +679,11 @@ proc namedParams(p: var TParser, callee: PNode,
   # progress guaranteed
   exprColonEqExprListAux(p, endTok, result)
 
+proc commandParam(p: var TParser): PNode =
+  result = parseExpr(p)
+  if p.tok.tokType == tkDo:
+    result = postExprBlocks(p, result)
+
 proc primarySuffix(p: var TParser, r: PNode, baseIndent: int): PNode =
   #| primarySuffix = '(' (exprColonEqExpr comma?)* ')' doBlocks?
   #|       | doBlocks
@@ -695,12 +694,7 @@ proc primarySuffix(p: var TParser, r: PNode, baseIndent: int): PNode =
   result = r
 
   template somePar() =
-    if p.tok.strongSpaceA > 0:
-      if p.strongSpaces:
-        break
-      else:
-        parMessage(p, warnDeprecated,
-          "a [b] will be parsed as command syntax; spacing")
+    if p.tok.strongSpaceA > 0: break
   # progress guaranteed
   while p.tok.indent < 0 or
        (p.tok.tokType == tkDot and p.tok.indent >= baseIndent):
@@ -733,7 +727,7 @@ proc primarySuffix(p: var TParser, r: PNode, baseIndent: int): PNode =
         when true:
           # progress NOT guaranteed
           p.hasProgress = false
-          addSon result, parseExpr(p)
+          addSon result, commandParam(p)
           if not p.hasProgress: break
         else:
           while p.tok.tokType != tkEof:
@@ -792,21 +786,58 @@ proc parseIfExpr(p: var TParser, kind: TNodeKind): PNode =
   #|          'else' colcom expr
   #| ifExpr = 'if' condExpr
   #| whenExpr = 'when' condExpr
-  result = newNodeP(kind, p)
-  while true:
-    getTok(p)                 # skip `if`, `elif`
-    var branch = newNodeP(nkElifExpr, p)
+  when true:
+    result = newNodeP(kind, p)
+    while true:
+      getTok(p)                 # skip `if`, `when`, `elif`
+      var branch = newNodeP(nkElifExpr, p)
+      optInd(p, branch)
+      addSon(branch, parseExpr(p))
+      colcom(p, branch)
+      addSon(branch, parseStmt(p))
+      skipComment(p, branch)
+      addSon(result, branch)
+      if p.tok.tokType != tkElif: break # or not sameOrNoInd(p): break
+    if p.tok.tokType == tkElse: # and sameOrNoInd(p):
+      var branch = newNodeP(nkElseExpr, p)
+      eat(p, tkElse)
+      colcom(p, branch)
+      addSon(branch, parseStmt(p))
+      addSon(result, branch)
+  else:
+    var
+      b: PNode
+      wasIndented = false
+    result = newNodeP(kind, p)
+
+    getTok(p)
+    let branch = newNodeP(nkElifExpr, p)
     addSon(branch, parseExpr(p))
     colcom(p, branch)
+    let oldInd = p.currInd
+    if realInd(p):
+      p.currInd = p.tok.indent
+      wasIndented = true
+      echo result.info, " yes ", p.currInd
     addSon(branch, parseExpr(p))
-    optInd(p, branch)
-    addSon(result, branch)
-    if p.tok.tokType != tkElif: break
-  var branch = newNodeP(nkElseExpr, p)
-  eat(p, tkElse)
-  colcom(p, branch)
-  addSon(branch, parseExpr(p))
-  addSon(result, branch)
+    result.add branch
+    while sameInd(p) or not wasIndented:
+      case p.tok.tokType
+      of tkElif:
+        b = newNodeP(nkElifExpr, p)
+        getTok(p)
+        optInd(p, b)
+        addSon(b, parseExpr(p))
+      of tkElse:
+        b = newNodeP(nkElseExpr, p)
+        getTok(p)
+      else: break
+      colcom(p, b)
+      addSon(b, parseStmt(p))
+      addSon(result, b)
+      if b.kind == nkElseExpr: break
+    if wasIndented:
+      p.currInd = oldInd
 
 proc parsePragma(p: var TParser): PNode =
   #| pragma = '{.' optInd (exprColonExpr comma?)* optPar ('.}' | '}')
@@ -986,7 +1017,7 @@ proc parseDoBlock(p: var TParser; info: TLineInfo): PNode =
   if params.kind != nkEmpty:
     result = newProcNode(nkDo, info, result, params = params, pragmas = pragmas)
 
-proc parseProcExpr(p: var TParser, isExpr: bool): PNode =
+proc parseProcExpr(p: var TParser; isExpr: bool; kind: TNodeKind): PNode =
   #| procExpr = 'proc' paramListColon pragmas? ('=' COMMENT? stmt)?
   # either a proc type or a anonymous proc
   let info = parLineInfo(p)
@@ -997,7 +1028,7 @@ proc parseProcExpr(p: var TParser, isExpr: bool): PNode =
   if p.tok.tokType == tkEquals and isExpr:
     getTok(p)
     skipComment(p, result)
-    result = newProcNode(nkLambda, info, parseStmt(p),
+    result = newProcNode(kind, info, parseStmt(p),
                          params = params,
                          pragmas = pragmas)
   else:
@@ -1009,7 +1040,7 @@ proc parseProcExpr(p: var TParser, isExpr: bool): PNode =
 proc isExprStart(p: TParser): bool =
   case p.tok.tokType
   of tkSymbol, tkAccent, tkOpr, tkNot, tkNil, tkCast, tkIf,
-     tkProc, tkIterator, tkBind, tkAddr,
+     tkProc, tkFunc, tkIterator, tkBind, tkAddr,
      tkParLe, tkBracketLe, tkCurlyLe, tkIntLit..tkCharLit, tkVar, tkRef, tkPtr,
      tkTuple, tkObject, tkType, tkWhen, tkCase, tkOut:
     result = true
@@ -1033,21 +1064,29 @@ proc parseTypeDescKAux(p: var TParser, kind: TNodeKind,
   optInd(p, result)
   if not isOperator(p.tok) and isExprStart(p):
     addSon(result, primary(p, mode))
-  if kind == nkDistinctTy and p.tok.tokType in {tkWith, tkWithout}:
-    let nodeKind = if p.tok.tokType == tkWith: nkWith
-                   else: nkWithout
+  if kind == nkDistinctTy and p.tok.tokType == tkSymbol:
+    # XXX document this feature!
+    var nodeKind: TNodeKind
+    if p.tok.ident.s == "with":
+      nodeKind = nkWith
+    elif p.tok.ident.s == "without":
+      nodeKind = nkWithout
+    else:
+      return result
     getTok(p)
     let list = newNodeP(nodeKind, p)
     result.addSon list
     parseSymbolList(p, list)
 
 proc parseExpr(p: var TParser): PNode =
-  #| expr = (ifExpr
+  #| expr = (blockExpr
+  #|       | ifExpr
   #|       | whenExpr
   #|       | caseExpr
   #|       | tryExpr)
   #|       / simpleExpr
   case p.tok.tokType:
+  of tkBlock: result = parseBlock(p)
   of tkIf: result = parseIfExpr(p, nkIfExpr)
   of tkWhen: result = parseIfExpr(p, nkWhenExpr)
   of tkCase: result = parseCase(p)
@@ -1083,21 +1122,12 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
 
   case p.tok.tokType:
   of tkTuple: result = parseTuple(p, mode == pmTypeDef)
-  of tkProc: result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef})
+  of tkProc: result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef}, nkLambda)
+  of tkFunc: result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef}, nkFuncDef)
   of tkIterator:
-    when false:
-      if mode in {pmTypeDesc, pmTypeDef}:
-        result = parseProcExpr(p, false)
-        result.kind = nkIteratorTy
-      else:
-        # no anon iterators for now:
-        parMessage(p, errExprExpected, p.tok)
-        getTok(p)  # we must consume a token here to prevend endless loops!
-        result = ast.emptyNode
-    else:
-      result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef})
-      if result.kind == nkLambda: result.kind = nkIteratorDef
-      else: result.kind = nkIteratorTy
+    result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef}, nkLambda)
+    if result.kind == nkLambda: result.kind = nkIteratorDef
+    else: result.kind = nkIteratorTy
   of tkEnum:
     if mode == pmTypeDef:
       result = parseEnum(p)
@@ -1253,14 +1283,12 @@ proc parseExprStmt(p: var TParser): PNode =
       while true:
         getTok(p)
         optInd(p, result)
-        var e = parseExpr(p)
-        addSon(result, e)
+        addSon(result, commandParam(p))
         if p.tok.tokType != tkComma: break
     elif p.tok.indent < 0 and isExprStart(p):
       result = newNode(nkCommand, a.info, @[a])
       while true:
-        var e = parseExpr(p)
-        addSon(result, e)
+        addSon(result, commandParam(p))
         if p.tok.tokType != tkComma: break
         getTok(p)
         optInd(p, result)
@@ -1492,6 +1520,7 @@ proc parseFor(p: var TParser): PNode =
 
 proc parseBlock(p: var TParser): PNode =
   #| blockStmt = 'block' symbol? colcom stmt
+  #| blockExpr = 'block' symbol? colcom stmt
   result = newNodeP(nkBlockStmt, p)
   getTokNoInd(p)
   if p.tok.tokType == tkColon: addSon(result, ast.emptyNode)
@@ -1917,7 +1946,7 @@ proc parseVariable(p: var TParser): PNode =
   #| variable = (varTuple / identColonEquals) colonBody? indAndComment
   if p.tok.tokType == tkParLe: result = parseVarTuple(p)
   else: result = parseIdentColonEquals(p, {withPragma, withDot})
-  result{-1} = postExprBlocks(p, result{-1})
+  result[^1] = postExprBlocks(p, result[^1])
   indAndComment(p, result)
 
 proc parseBind(p: var TParser, k: TNodeKind): PNode =
@@ -1997,6 +2026,7 @@ proc complexOrSimpleStmt(p: var TParser): PNode =
   of tkDefer: result = parseStaticOrDefer(p, nkDefer)
   of tkAsm: result = parseAsm(p)
   of tkProc: result = parseRoutine(p, nkProcDef)
+  of tkFunc: result = parseRoutine(p, nkFuncDef)
   of tkMethod: result = parseRoutine(p, nkMethodDef)
   of tkIterator: result = parseRoutine(p, nkIteratorDef)
   of tkMacro: result = parseRoutine(p, nkMacroDef)
@@ -2047,14 +2077,19 @@ proc parseStmt(p: var TParser): PNode =
         if a.kind != nkEmpty:
           addSon(result, a)
         else:
-          parMessage(p, errExprExpected, p.tok)
-          getTok(p)
+          # This is done to make the new 'if' expressions work better.
+          # XXX Eventually we need to be more strict here.
+          if p.tok.tokType notin {tkElse, tkElif}:
+            parMessage(p, errExprExpected, p.tok)
+            getTok(p)
+          else:
+            break
         if not p.hasProgress and p.tok.tokType == tkEof: break
   else:
     # the case statement is only needed for better error messages:
     case p.tok.tokType
-    of tkIf, tkWhile, tkCase, tkTry, tkFor, tkBlock, tkAsm, tkProc, tkIterator,
-       tkMacro, tkType, tkConst, tkWhen, tkVar:
+    of tkIf, tkWhile, tkCase, tkTry, tkFor, tkBlock, tkAsm, tkProc, tkFunc,
+       tkIterator, tkMacro, tkType, tkConst, tkWhen, tkVar:
       parMessage(p, errComplexStmtRequiresInd)
       result = ast.emptyNode
     else:

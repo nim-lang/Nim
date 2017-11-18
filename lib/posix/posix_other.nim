@@ -15,7 +15,7 @@ const
   hasSpawnH = not defined(haiku) # should exist for every Posix system nowadays
   hasAioH = defined(linux)
 
-when defined(linux):
+when defined(linux) and not defined(android):
   # On Linux:
   # timer_{create,delete,settime,gettime},
   # clock_{getcpuclockid, getres, gettime, nanosleep, settime} lives in librt
@@ -46,7 +46,7 @@ type
     d_ino*: Ino  ## File serial number.
     when defined(dragonfly):
       # DragonflyBSD doesn't have `d_reclen` field.
-      d_type*: uint8 
+      d_type*: uint8
     elif defined(linux) or defined(macosx) or defined(freebsd) or
          defined(netbsd) or defined(openbsd) or defined(genode):
       d_reclen*: cshort ## Length of this record. (not POSIX)
@@ -146,7 +146,7 @@ type
   Mode* {.importc: "mode_t", header: "<sys/types.h>".} = cint
   Nlink* {.importc: "nlink_t", header: "<sys/types.h>".} = int
   Off* {.importc: "off_t", header: "<sys/types.h>".} = int64
-  Pid* {.importc: "pid_t", header: "<sys/types.h>".} = int
+  Pid* {.importc: "pid_t", header: "<sys/types.h>".} = int32
   Pthread_attr* {.importc: "pthread_attr_t", header: "<sys/types.h>".} = int
   Pthread_barrier* {.importc: "pthread_barrier_t",
                       header: "<sys/types.h>".} = int
