@@ -1,11 +1,6 @@
 discard """
   exitcode: 0
   output: ""
-  nimout: '''tlenientops.nim(36, 18) template/generic instantiation from here
-lib/pure/lenientops.nim(54, 12) Warning: Equality comparison between int and float should have explicit type conversion. [User]
-tlenientops.nim(37, 20) template/generic instantiation from here
-lib/pure/lenientops.nim(58, 12) Warning: Equality comparison between int and float should have explicit type conversion. [User]
-'''
 """
 
 import lenientops
