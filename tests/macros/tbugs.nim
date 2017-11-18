@@ -26,7 +26,7 @@ iterator test2(f: string): Foo =
   for i in f:
     yield Foo(s: i)
 
-macro test(): stmt =
+macro test(): untyped =
   for i in test2("asdf"):
     echo i.s
 
@@ -39,7 +39,7 @@ import macros
 
 type TType = tuple[s: string]
 
-macro echotest(): stmt =
+macro echotest(): untyped =
   var t: TType
   t.s = ""
   t.s.add("test")
@@ -61,7 +61,7 @@ proc get_data(d: Td) : string {.compileTime.} =
     #result.add("aa")       # B
     #result = result & "aa" # C
 
-macro m(s:static[Td]) : stmt =
+macro m(s:static[Td]) : untyped =
     echo get_data(s)
     echo get_data(s)
     result = newEmptyNode()
@@ -77,7 +77,7 @@ proc nilcheck(): NimNode {.compileTime.} =
   echo(result.isNil) # true
   echo(repr(result)) # nil
 
-macro testnilcheck(): stmt =
+macro testnilcheck(): untyped =
   result = newNimNode(nnkStmtList)
   discard nilcheck()
 
@@ -95,10 +95,10 @@ echo c[0]
 
 # bug #3046
 
-macro sampleMacroInt(i: int): stmt =
+macro sampleMacroInt(i: int): untyped =
   echo i.intVal
 
-macro sampleMacroBool(b: bool): stmt =
+macro sampleMacroBool(b: bool): untyped =
   echo b.boolVal
 
 sampleMacroInt(42)

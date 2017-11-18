@@ -24,6 +24,8 @@ type
     amd64,                     ## x86_64 (AMD64); 64 bit x86 compatible CPU
     mips,                      ## Mips based processor
     mipsel,                    ## Little Endian Mips based processor
+    mips64,                    ## 64-bit MIPS processor
+    mips64el,                  ## Little Endian 64-bit MIPS processor
     arm,                       ## ARM based processor
     arm64,                     ## ARM64 based processor
     vm,                        ## Some Virtual machine: Nim's VM or JavaScript
@@ -33,7 +35,8 @@ type
   OsPlatform* {.pure.} = enum ## the OS this program will run on.
     none, dos, windows, os2, linux, morphos, skyos, solaris,
     irix, netbsd, freebsd, openbsd, aix, palmos, qnx, amiga,
-    atari, netware, macos, macosx, haiku, js, nimVM, standalone
+    atari, netware, macos, macosx, haiku, android, js, nimVM,
+    standalone
 
 const
   targetOS* = when defined(windows): OsPlatform.windows
@@ -56,6 +59,7 @@ const
               elif defined(macosx): OsPlatform.macosx
               elif defined(macos): OsPlatform.macos
               elif defined(haiku): OsPlatform.haiku
+              elif defined(android): OsPlatform.android
               elif defined(js): OsPlatform.js
               elif defined(nimrodVM): OsPlatform.nimVM
               elif defined(standalone): OsPlatform.standalone
@@ -73,6 +77,8 @@ const
                elif defined(amd64): CpuPlatform.amd64
                elif defined(mips): CpuPlatform.mips
                elif defined(mipsel): CpuPlatform.mipsel
+               elif defined(mips64): CpuPlatform.mips64
+               elif defined(mips64el): CpuPlatform.mips64el
                elif defined(arm): CpuPlatform.arm
                elif defined(arm64): CpuPlatform.arm64
                elif defined(vm): CpuPlatform.vm

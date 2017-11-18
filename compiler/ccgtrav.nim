@@ -66,16 +66,22 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, typ: PType) =
 
   var p = c.p
   case typ.kind
-  of tyGenericInst, tyGenericBody, tyTypeDesc, tyAlias, tyDistinct:
+  of tyGenericInst, tyGenericBody, tyTypeDesc, tyAlias, tyDistinct, tyInferred:
     genTraverseProc(c, accessor, lastSon(typ))
   of tyArray:
     let arraySize = lengthOrd(typ.sons[0])
     var i: TLoc
     getTemp(p, getSysType(tyInt), i)
+    let oldCode = p.s(cpsStmts)
     linefmt(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
             i.r, arraySize.rope)
+    let oldLen = p.s(cpsStmts).len
     genTraverseProc(c, rfmt(nil, "$1[$2]", accessor, i.r), typ.sons[1])
-    lineF(p, cpsStmts, "}$n", [])
+    if p.s(cpsStmts).len == oldLen:
+      # do not emit dummy long loops for faster debug builds:
+      p.s(cpsStmts) = oldCode
+    else:
+      lineF(p, cpsStmts, "}$n", [])
   of tyObject:
     for i in countup(0, sonsLen(typ) - 1):
       var x = typ.sons[i]
@@ -99,17 +105,24 @@ proc genTraverseProcSeq(c: var TTraversalClosure, accessor: Rope, typ: PType) =
   assert typ.kind == tySequence
   var i: TLoc
   getTemp(p, getSysType(tyInt), i)
+  let oldCode = p.s(cpsStmts)
   lineF(p, cpsStmts, "for ($1 = 0; $1 < $2->$3; $1++) {$n",
       [i.r, accessor, rope(if c.p.module.compileToCpp: "len" else: "Sup.len")])
+  let oldLen = p.s(cpsStmts).len
   genTraverseProc(c, "$1->data[$2]" % [accessor, i.r], typ.sons[0])
-  lineF(p, cpsStmts, "}$n", [])
+  if p.s(cpsStmts).len == oldLen:
+    # do not emit dummy long loops for faster debug builds:
+    p.s(cpsStmts) = oldCode
+  else:
+    lineF(p, cpsStmts, "}$n", [])
 
 proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash;
                      reason: TTypeInfoReason): Rope =
   var c: TTraversalClosure
   var p = newProc(nil, m)
   result = "Marker_" & getTypeName(m, origTyp, sig)
-  let typ = origTyp.skipTypes(abstractInst)
+  var typ = origTyp.skipTypes(abstractInst)
+  if typ.kind == tyOpt: typ = optLowering(typ)
 
   case reason
   of tiNew: c.visitorFrmt = "#nimGCvisit((void*)$1, op);$n"
@@ -138,8 +151,8 @@ proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash;
   m.s[cfsProcHeaders].addf("$1;$n", [header])
   m.s[cfsProcs].add(generatedProc)
 
-proc genTraverseProcForGlobal(m: BModule, s: PSym): Rope =
-  discard genTypeInfo(m, s.loc.t)
+proc genTraverseProcForGlobal(m: BModule, s: PSym; info: TLineInfo): Rope =
+  discard genTypeInfo(m, s.loc.t, info)
 
   var c: TTraversalClosure
   var p = newProc(nil, m)

@@ -58,7 +58,7 @@
 ## You can then begin accepting connections using the ``accept`` procedure.
 ##
 ## .. code-block:: Nim
-##   var client = newSocket()
+##   var client = new Socket
 ##   var address = ""
 ##   while true:
 ##     socket.acceptAddr(client, address)
@@ -797,7 +797,7 @@ when false: #defineSsl:
     ##
     ## ``AcceptNoClient`` will be returned when no client is currently attempting
     ## to connect.
-    template doHandshake(): stmt =
+    template doHandshake(): untyped =
       when defineSsl:
         if server.isSSL:
           client.setBlocking(false)
@@ -857,13 +857,16 @@ proc close*(socket: Socket) =
         # shutdown i.e not wait for the peers "close notify" alert with a second
         # call to SSLShutdown
         let res = SSLShutdown(socket.sslHandle)
-        SSLFree(socket.sslHandle)
-        socket.sslHandle = nil
         if res == 0:
           discard
         elif res != 1:
           socketError(socket, res)
   finally:
+    when defineSsl:
+      if socket.isSSL and socket.sslHandle != nil:
+        SSLFree(socket.sslHandle)
+        socket.sslHandle = nil
+
     socket.fd.close()
 
 proc toCInt*(opt: SOBool): cint =

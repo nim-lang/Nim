@@ -63,7 +63,7 @@ proc sameTrees(a, b: PNode): bool =
 
 proc inSymChoice(sc, x: PNode): bool =
   if sc.kind == nkClosedSymChoice:
-    for i in 0.. <sc.len:
+    for i in 0..<sc.len:
       if sc.sons[i].sym == x.sym: return true
   elif sc.kind == nkOpenSymChoice:
     # same name suffices for open sym choices!
@@ -83,7 +83,7 @@ proc isPatternParam(c: PPatternContext, p: PNode): bool {.inline.} =
   result = p.kind == nkSym and p.sym.kind == skParam and p.sym.owner == c.owner
 
 proc matchChoice(c: PPatternContext, p, n: PNode): bool =
-  for i in 1 .. <p.len:
+  for i in 1 ..< p.len:
     if matches(c, p.sons[i], n): return true
 
 proc bindOrCheck(c: PPatternContext, param: PSym, n: PNode): bool =
@@ -115,7 +115,7 @@ proc matchNested(c: PPatternContext, p, n: PNode, rpn: bool): bool =
       if rpn: arglist.add(n.sons[0])
     elif n.kind == nkHiddenStdConv and n.sons[1].kind == nkBracket:
       let n = n.sons[1]
-      for i in 0.. <n.len:
+      for i in 0..<n.len:
         if not matchStarAux(c, op, n[i], arglist, rpn): return false
     elif checkTypes(c, p.sons[2].sym, n):
       add(arglist, n)
@@ -186,7 +186,7 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
             # unpack varargs:
             let n = lastSon(n).sons[1]
             arglist = newNodeI(nkArgList, n.info, n.len)
-            for i in 0.. <n.len: arglist.sons[i] = n.sons[i]
+            for i in 0..<n.len: arglist.sons[i] = n.sons[i]
           else:
             arglist = newNodeI(nkArgList, n.info, sonsLen(n) - plen + 1)
             # f(1, 2, 3)
@@ -206,7 +206,7 @@ proc matches(c: PPatternContext, p, n: PNode): bool =
 
 proc matchStmtList(c: PPatternContext, p, n: PNode): PNode =
   proc matchRange(c: PPatternContext, p, n: PNode, i: int): bool =
-    for j in 0 .. <p.len:
+    for j in 0 ..< p.len:
       if not matches(c, p.sons[j], n.sons[i+j]):
         # we need to undo any bindings:
         if not isNil(c.mapping): c.mapping = nil
@@ -229,7 +229,7 @@ proc matchStmtList(c: PPatternContext, p, n: PNode): PNode =
 
 proc aliasAnalysisRequested(params: PNode): bool =
   if params.len >= 2:
-    for i in 1 .. < params.len:
+    for i in 1 ..< params.len:
       let param = params.sons[i].sym
       if whichAlias(param) != aqNone: return true
 
@@ -237,7 +237,7 @@ proc addToArgList(result, n: PNode) =
   if n.typ != nil and n.typ.kind != tyStmt:
     if n.kind != nkArgList: result.add(n)
     else:
-      for i in 0 .. <n.len: result.add(n.sons[i])
+      for i in 0 ..< n.len: result.add(n.sons[i])
 
 proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
   ## returns a tree to semcheck if the rule triggered; nil otherwise
@@ -256,7 +256,7 @@ proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
   var args: PNode
   if requiresAA:
     args = newNodeI(nkArgList, n.info)
-  for i in 1 .. < params.len:
+  for i in 1 ..< params.len:
     let param = params.sons[i].sym
     let x = getLazy(ctx, param)
     # couldn't bind parameter:
@@ -265,7 +265,7 @@ proc applyRule*(c: PContext, s: PSym, n: PNode): PNode =
     if requiresAA: addToArgList(args, x)
   # perform alias analysis here:
   if requiresAA:
-    for i in 1 .. < params.len:
+    for i in 1 ..< params.len:
       var rs = result.sons[i]
       let param = params.sons[i].sym
       case whichAlias(param)

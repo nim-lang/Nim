@@ -25,6 +25,13 @@ when defined(nimTypeNames):
         c_fprintf(stdout, "[Heap] %s: #%ld; bytes: %ld\n", it.name, it.instances, it.sizes)
       it = it.nextType
 
+  when defined(nimGcRefLeak):
+    proc oomhandler() =
+      c_fprintf(stdout, "[Heap] ROOTS: #%ld\n", gch.additionalRoots.len)
+      writeLeaks()
+
+    outOfMemHook = oomhandler
+
 template decTypeSize(cell, t) =
   # XXX this needs to use atomics for multithreaded apps!
   when defined(nimTypeNames):
@@ -344,3 +351,45 @@ else:
 # ----------------------------------------------------------------------------
 # end of non-portable code
 # ----------------------------------------------------------------------------
+
+proc prepareDealloc(cell: PCell) =
+  when declared(useMarkForDebug):
+    when useMarkForDebug:
+      gcAssert(cell notin gch.marked, "Cell still alive!")
+  let t = cell.typ
+  if t.finalizer != nil:
+    # the finalizer could invoke something that
+    # allocates memory; this could trigger a garbage
+    # collection. Since we are already collecting we
+    # prevend recursive entering here by a lock.
+    # XXX: we should set the cell's children to nil!
+    inc(gch.recGcLock)
+    (cast[Finalizer](t.finalizer))(cellToUsr(cell))
+    dec(gch.recGcLock)
+  decTypeSize(cell, t)
+
+proc deallocHeap*(runFinalizers = true; allowGcAfterwards = true) =
+  ## Frees the thread local heap. Runs every finalizer if ``runFinalizers```
+  ## is true. If ``allowGcAfterwards`` is true, a minimal amount of allocation
+  ## happens to ensure the GC can continue to work after the call
+  ## to ``deallocHeap``.
+  template deallocCell(x) =
+    if isCell(x):
+      # cast to PCell is correct here:
+      prepareDealloc(cast[PCell](x))
+
+  if runFinalizers:
+    when not declared(allObjectsAsProc):
+      for x in allObjects(gch.region):
+        deallocCell(x)
+    else:
+      var spaceIter: ObjectSpaceIter
+      while true:
+        let x = allObjectsAsProc(gch.region, addr spaceIter)
+        if spaceIter.state < 0: break
+        deallocCell(x)
+
+  deallocOsPages(gch.region)
+  zeroMem(addr gch.region, sizeof(gch.region))
+  if allowGcAfterwards:
+    initGC()

@@ -11,7 +11,7 @@ static:
   nodeB.strVal = "this is a different comment"
   doAssert nodeA != nodeB
 
-macro test(a: typed, b: typed): expr =
+macro test(a: typed, b: typed): untyped =
   newLit(a == b)
 
 doAssert test(1, 1) == true
@@ -29,10 +29,10 @@ var a, b: int
 doAssert test(a, a) == true
 doAssert test(a, b) == false
 
-macro test2: expr =
+macro test2: untyped =
   newLit(bindSym"Obj" == bindSym"Obj")
 
-macro test3: expr =
+macro test3: untyped =
   newLit(bindSym"Obj" == bindSym"Other")
 
 doAssert test2() == true

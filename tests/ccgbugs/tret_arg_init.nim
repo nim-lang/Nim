@@ -1,7 +1,7 @@
 discard """
-  output: '''nil
-nil
-nil'''
+  output: '''
+
+'''
 """
 
 type Bar = object

@@ -43,6 +43,7 @@ const bsdPlatform = defined(macosx) or defined(freebsd) or
                     defined(dragonfly)
 
 when defined(nimdoc):
+  type SocketHandle = int
   type
     Selector*[T] = ref object
       ## An object which holds descriptors to be checked for read/write status
@@ -208,7 +209,7 @@ else:
     import locks
 
     type
-      SharedArray {.unchecked.}[T] = array[0..100, T]
+      SharedArray[T] = UncheckedArray[T]
 
     proc allocSharedArray[T](nsize: int): ptr SharedArray[T] =
       result = cast[ptr SharedArray[T]](allocShared0(sizeof(T) * nsize))

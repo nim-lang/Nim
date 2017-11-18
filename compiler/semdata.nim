@@ -37,8 +37,12 @@ type
                               # in standalone ``except`` and ``finally``
     next*: PProcCon           # used for stacking procedure contexts
     wasForwarded*: bool       # whether the current proc has a separate header
-    bracketExpr*: PNode       # current bracket expression (for ^ support)
     mapping*: TIdTable
+
+  TMatchedConcept* = object
+    candidateType*: PType
+    prev*: ptr TMatchedConcept
+    depth*: int
 
   TInstantiationPair* = object
     genericSym*: PSym
@@ -60,11 +64,12 @@ type
     efWantStmt, efAllowStmt, efDetermineType, efExplain,
     efAllowDestructor, efWantValue, efOperand, efNoSemCheck,
     efNoProcvarCheck, efNoEvaluateGeneric, efInCall, efFromHlo,
-  
+
   TExprFlags* = set[TExprFlag]
 
   TTypeAttachedOp* = enum
     attachedAsgn,
+    attachedSink,
     attachedDeepCopy,
     attachedDestructor
 
@@ -75,6 +80,7 @@ type
     importTable*: PScope       # scope for all imported symbols
     topLevelScope*: PScope     # scope for all top-level symbols
     p*: PProcCon               # procedure context
+    matchedConcept*: ptr TMatchedConcept # the current concept being matched
     friendModules*: seq[PSym]  # friend modules; may access private data;
                                # this is used so that generic instantiations
                                # can access private object fields
@@ -82,7 +88,6 @@ type
 
     ambiguousSymbols*: IntSet  # ids of all ambiguous symbols (cannot
                                # store this info in the syms themselves!)
-    inTypeClass*: int          # > 0 if we are in a user-defined type class
     inGenericContext*: int     # > 0 if we are in a generic type
     inUnrolledContext*: int    # > 0 if we are unrolling a loop
     compilesContextId*: int    # > 0 if we are in a ``compiles`` magic
@@ -107,6 +112,7 @@ type
     semGenerateInstance*: proc (c: PContext, fn: PSym, pt: TIdTable,
                                 info: TLineInfo): PSym
     includedFiles*: IntSet    # used to detect recursive include files
+    pureEnumFields*: TStrTable   # pure enum fields that can be used unambiguously
     userPragmas*: TStrTable
     evalContext*: PEvalContext
     unknownIdents*: IntSet     # ids of all unknown identifiers to prevent
@@ -125,6 +131,11 @@ type
     recursiveDep*: string
     suggestionsMade*: bool
     inTypeContext*: int
+    typesWithOps*: seq[(PType, PType)] #\
+      # We need to instantiate the type bound ops lazily after
+      # the generic type has been constructed completely. See
+      # tests/destructor/topttree.nim for an example that
+      # would otherwise fail.
 
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
   result.genericSym = s
@@ -205,12 +216,14 @@ proc newContext*(graph: ModuleGraph; module: PSym; cache: IdentCache): PContext 
   result.converters = @[]
   result.patterns = @[]
   result.includedFiles = initIntSet()
+  initStrTable(result.pureEnumFields)
   initStrTable(result.userPragmas)
   result.generics = @[]
   result.unknownIdents = initIntSet()
   result.cache = cache
   result.graph = graph
   initStrTable(result.signatures)
+  result.typesWithOps = @[]
 
 
 proc inclSym(sq: var TSymSeq, s: PSym) =
@@ -277,7 +290,7 @@ proc makeTypeFromExpr*(c: PContext, n: PNode): PType =
   assert n != nil
   result.n = n
 
-proc newTypeWithSons2*(kind: TTypeKind, owner: PSym, sons: seq[PType]): PType =
+proc newTypeWithSons*(owner: PSym, kind: TTypeKind, sons: seq[PType]): PType =
   result = newType(kind, owner)
   result.sons = sons
 
@@ -326,7 +339,7 @@ proc makeNotType*(c: PContext, t1: PType): PType =
 
 proc nMinusOne*(n: PNode): PNode =
   result = newNode(nkCall, n.info, @[
-    newSymNode(getSysMagic("<", mUnaryLt)),
+    newSymNode(getSysMagic("pred", mPred)),
     n])
 
 # Remember to fix the procs below this one when you make changes!
@@ -366,7 +379,7 @@ proc makeRangeType*(c: PContext; first, last: BiggestInt;
   addSonSkipIntLit(result, intType) # basetype of range
 
 proc markIndirect*(c: PContext, s: PSym) {.inline.} =
-  if s.kind in {skProc, skConverter, skMethod, skIterator}:
+  if s.kind in {skProc, skFunc, skConverter, skMethod, skIterator}:
     incl(s.flags, sfAddrTaken)
     # XXX add to 'c' for global analysis
 

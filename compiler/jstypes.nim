@@ -67,9 +67,13 @@ proc genObjectFields(p: PProc, typ: PType, n: PNode): Rope =
         rope(lengthOrd(field.typ)), makeJSString(field.name.s), result]
   else: internalError(n.info, "genObjectFields")
 
+proc objHasTypeField(t: PType): bool {.inline.} =
+  tfInheritable in t.flags or t.sons[0] != nil
+
 proc genObjectInfo(p: PProc, typ: PType, name: Rope) =
+  let kind = if objHasTypeField(typ): tyObject else: tyTuple
   var s = ("var $1 = {size: 0, kind: $2, base: null, node: null, " &
-           "finalizer: null};$n") % [name, rope(ord(typ.kind))]
+           "finalizer: null};$n") % [name, rope(ord(kind))]
   prepend(p.g.typeInfo, s)
   addf(p.g.typeInfo, "var NNI$1 = $2;$n",
        [rope(typ.id), genObjectFields(p, typ, typ.n)])
@@ -80,7 +84,7 @@ proc genObjectInfo(p: PProc, typ: PType, name: Rope) =
 
 proc genTupleFields(p: PProc, typ: PType): Rope =
   var s: Rope = nil
-  for i in 0 .. <typ.len:
+  for i in 0 ..< typ.len:
     if i > 0: add(s, ", " & tnl)
     s.addf("{kind: 1, offset: \"Field$1\", len: 0, " &
            "typ: $2, name: \"Field$1\", sons: null}",

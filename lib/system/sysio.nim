@@ -15,9 +15,12 @@
 {.push debugger:off .} # the user does not want to trace a part
                        # of the standard library!
 
-
-proc c_fdopen(filehandle: cint, mode: cstring): File {.
-  importc: "fdopen", header: "<stdio.h>".}
+when defined(windows):
+  proc c_fdopen(filehandle: cint, mode: cstring): File {.
+    importc: "_fdopen", header: "<stdio.h>".}
+else:
+  proc c_fdopen(filehandle: cint, mode: cstring): File {.
+    importc: "fdopen", header: "<stdio.h>".}
 proc c_fputs(c: cstring, f: File): cint {.
   importc: "fputs", header: "<stdio.h>", tags: [WriteIOEffect].}
 proc c_fgets(c: cstring, n: cint, f: File): cstring {.
@@ -86,11 +89,11 @@ proc writeBuffer(f: File, buffer: pointer, len: Natural): int =
   checkErr(f)
 
 proc writeBytes(f: File, a: openArray[int8|uint8], start, len: Natural): int =
-  var x = cast[ptr array[0..1000_000_000, int8]](a)
-  result = writeBuffer(f, addr(x[start]), len)
+  var x = cast[ptr UncheckedArray[int8]](a)
+  result = writeBuffer(f, addr(x[int(start)]), len)
 proc writeChars(f: File, a: openArray[char], start, len: Natural): int =
-  var x = cast[ptr array[0..1000_000_000, int8]](a)
-  result = writeBuffer(f, addr(x[start]), len)
+  var x = cast[ptr UncheckedArray[int8]](a)
+  result = writeBuffer(f, addr(x[int(start)]), len)
 
 proc write(f: File, s: string) =
   if writeBuffer(f, cstring(s), s.len) != s.len:
@@ -189,7 +192,7 @@ proc write(f: File, r: float32) =
 proc write(f: File, r: BiggestFloat) =
   if c_fprintf(f, "%g", r) < 0: checkErr(f)
 
-proc write(f: File, c: char) = discard c_putc(ord(c), f)
+proc write(f: File, c: char) = discard c_putc(cint(c), f)
 proc write(f: File, a: varargs[string, `$`]) =
   for x in items(a): write(f, x)
 
@@ -400,5 +403,19 @@ proc setStdIoUnbuffered() =
     discard c_setvbuf(stderr, nil, IONBF, 0)
   when declared(stdin):
     discard c_setvbuf(stdin, nil, IONBF, 0)
+
+when declared(stdout):
+  proc echoBinSafe(args: openArray[string]) {.compilerProc.} =
+    when not defined(windows):
+      proc flockfile(f: File) {.importc, noDecl.}
+      proc funlockfile(f: File) {.importc, noDecl.}
+      flockfile(stdout)
+    for s in args:
+      discard c_fwrite(s.cstring, s.len, 1, stdout)
+    const linefeed = "\n" # can be 1 or more chars
+    discard c_fwrite(linefeed.cstring, linefeed.len, 1, stdout)
+    discard c_fflush(stdout)
+    when not defined(windows):
+      funlockfile(stdout)
 
 {.pop.}

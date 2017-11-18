@@ -14,8 +14,8 @@
 
 import dynlib
 
-when defined(vcc):
-  {.passC: "-DWIN32_LEAN_AND_MEAN".}
+
+{.passC: "-DWIN32_LEAN_AND_MEAN".}
 
 const
   useWinUnicode* = not defined(useWinAnsi)
@@ -291,6 +291,14 @@ const
   FILE_ATTRIBUTE_TEMPORARY* = 256'i32
 
   MAX_PATH* = 260
+
+  MOVEFILE_COPY_ALLOWED* = 0x2'i32
+  MOVEFILE_CREATE_HARDLINK* = 0x10'i32
+  MOVEFILE_DELAY_UNTIL_REBOOT* = 0x4'i32
+  MOVEFILE_FAIL_IF_NOT_TRACKABLE* = 0x20'i32
+  MOVEFILE_REPLACE_EXISTING* = 0x1'i32
+  MOVEFILE_WRITE_THROUGH* = 0x8'i32
+
 type
   WIN32_FIND_DATA* {.pure.} = object
     dwFileAttributes*: int32
@@ -342,6 +350,9 @@ when useWinUnicode:
 
   proc moveFileW*(lpExistingFileName, lpNewFileName: WideCString): WINBOOL {.
     importc: "MoveFileW", stdcall, dynlib: "kernel32".}
+  proc moveFileExW*(lpExistingFileName, lpNewFileName: WideCString,
+                    flags: DWORD): WINBOOL {.
+    importc: "MoveFileExW", stdcall, dynlib: "kernel32".}
 
   proc getEnvironmentStringsW*(): WideCString {.
     stdcall, dynlib: "kernel32", importc: "GetEnvironmentStringsW".}
@@ -369,6 +380,9 @@ else:
 
   proc moveFileA*(lpExistingFileName, lpNewFileName: cstring): WINBOOL {.
     importc: "MoveFileA", stdcall, dynlib: "kernel32".}
+  proc moveFileExA*(lpExistingFileName, lpNewFileName: WideCString,
+                    flags: DWORD): WINBOOL {.
+    importc: "MoveFileExA", stdcall, dynlib: "kernel32".}
 
   proc getEnvironmentStringsA*(): cstring {.
     stdcall, dynlib: "kernel32", importc: "GetEnvironmentStringsA".}

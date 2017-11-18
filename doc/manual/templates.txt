@@ -293,7 +293,7 @@ Limitations of the method call syntax
 
 The expression ``x`` in ``x.f`` needs to be semantically checked (that means
 symbol lookup and type checking) before it can be decided that it needs to be
-rewritten to ``f(x)``. Therefore the dot syntax has some limiations when it
+rewritten to ``f(x)``. Therefore the dot syntax has some limitations when it
 is used to invoke templates/macros:
 
 .. code-block:: nim

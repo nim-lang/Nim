@@ -62,7 +62,8 @@
 ##   let body = %*{
 ##       "data": "some text"
 ##   }
-##   echo client.request("http://some.api", httpMethod = HttpPost, body = $body)
+##   let response = client.request("http://some.api", httpMethod = HttpPost, body = $body)
+##   echo response.status
 ##
 ## Progress reporting
 ## ==================
@@ -468,7 +469,7 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
   ## **Deprecated since version 0.15.0**: use ``HttpClient.request`` instead.
   var r = if proxy == nil: parseUri(url) else: proxy.url
   var hostUrl = if proxy == nil: r else: parseUri(url)
-  var headers = httpMethod.toUpper()
+  var headers = httpMethod.toUpperAscii()
   # TODO: Use generateHeaders further down once it supports proxies.
 
   var s = newSocket()
@@ -712,10 +713,10 @@ proc downloadFile*(url: string, outputFilename: string,
 proc generateHeaders(requestUrl: Uri, httpMethod: string,
                      headers: HttpHeaders, body: string, proxy: Proxy): string =
   # GET
-  result = httpMethod.toUpper()
+  result = httpMethod.toUpperAscii()
   result.add ' '
 
-  if proxy.isNil:
+  if proxy.isNil or (not proxy.isNil and requestUrl.scheme == "https"):
     # /path?query
     if requestUrl.path[0] != '/': result.add '/'
     result.add(requestUrl.path)
@@ -882,7 +883,9 @@ proc recvFull(client: HttpClient | AsyncHttpClient, size: int, timeout: int,
       let data = client.socket.recv(sizeToRecv, timeout)
     else:
       let data = await client.socket.recv(sizeToRecv)
-    if data == "": break # We've been disconnected.
+    if data == "":
+      client.close()
+      break # We've been disconnected.
 
     readLen.inc(data.len)
     if keep:
@@ -949,6 +952,7 @@ proc parseBody(client: HttpClient | AsyncHttpClient,
       if length > 0:
         let recvLen = await client.recvFull(length, client.timeout, true)
         if recvLen == 0:
+          client.close()
           httpError("Got disconnected while trying to read body.")
         if recvLen != length:
           httpError("Received length doesn't match expected length. Wanted " &
@@ -961,12 +965,19 @@ proc parseBody(client: HttpClient | AsyncHttpClient,
       if headers.getOrDefault"Connection" == "close" or httpVersion == "1.0":
         while true:
           let recvLen = await client.recvFull(4000, client.timeout, true)
-          if recvLen == 0: break
+          if recvLen == 0:
+            client.close()
+            break
 
   when client is AsyncHttpClient:
     client.bodyStream.complete()
   else:
     client.bodyStream.setPosition(0)
+
+  # If the server will close our connection, then no matter the method of
+  # reading the body, we need to close our socket.
+  if headers.getOrDefault"Connection" == "close":
+    client.close()
 
 proc parseResponse(client: HttpClient | AsyncHttpClient,
                    getBody: bool): Future[Response | AsyncResponse]
@@ -983,7 +994,10 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
       line = await client.socket.recvLine(client.timeout)
     else:
       line = await client.socket.recvLine()
-    if line == "": break # We've been disconnected.
+    if line == "":
+      # We've been disconnected.
+      client.close()
+      break
     if line == "\c\L":
       fullyRead = true
       break
@@ -1032,8 +1046,13 @@ proc newConnection(client: HttpClient | AsyncHttpClient,
                    url: Uri) {.multisync.} =
   if client.currentURL.hostname != url.hostname or
       client.currentURL.scheme != url.scheme or
-      client.currentURL.port != url.port:
-    let isSsl = url.scheme.toLowerAscii() == "https"
+      client.currentURL.port != url.port or
+      (not client.connected):
+    # Connect to proxy if specified
+    let connectionUrl =
+      if client.proxy.isNil: url else: client.proxy.url
+
+    let isSsl = connectionUrl.scheme.toLowerAscii() == "https"
 
     if isSsl and not defined(ssl):
       raise newException(HttpRequestError,
@@ -1041,31 +1060,55 @@ proc newConnection(client: HttpClient | AsyncHttpClient,
 
     if client.connected:
       client.close()
+      client.connected = false
 
     # TODO: I should be able to write 'net.Port' here...
     let port =
-      if url.port == "":
+      if connectionUrl.port == "":
         if isSsl:
           nativesockets.Port(443)
         else:
           nativesockets.Port(80)
-      else: nativesockets.Port(url.port.parseInt)
+      else: nativesockets.Port(connectionUrl.port.parseInt)
 
     when client is HttpClient:
-      client.socket = await net.dial(url.hostname, port)
+      client.socket = await net.dial(connectionUrl.hostname, port)
     elif client is AsyncHttpClient:
-      client.socket = await asyncnet.dial(url.hostname, port)
+      client.socket = await asyncnet.dial(connectionUrl.hostname, port)
     else: {.fatal: "Unsupported client type".}
 
     when defined(ssl):
       if isSsl:
         try:
           client.sslContext.wrapConnectedSocket(
-            client.socket, handshakeAsClient, url.hostname)
+            client.socket, handshakeAsClient, connectionUrl.hostname)
         except:
           client.socket.close()
           raise getCurrentException()
 
+    # If need to CONNECT through proxy
+    if url.scheme == "https" and not client.proxy.isNil:
+      when defined(ssl):
+        # Pass only host:port for CONNECT
+        var connectUrl = initUri()
+        connectUrl.hostname = url.hostname
+        connectUrl.port = if url.port != "": url.port else: "443"
+
+        let proxyHeaderString = generateHeaders(connectUrl, $HttpConnect, newHttpHeaders(), "", client.proxy)
+        await client.socket.send(proxyHeaderString)
+        let proxyResp = await parseResponse(client, false)
+
+        if not proxyResp.status.startsWith("200"):
+          raise newException(HttpRequestError,
+                            "The proxy server rejected a CONNECT request, " &
+                            "so a secure connection could not be established.")
+        client.sslContext.wrapConnectedSocket(
+          client.socket, handshakeAsClient, url.hostname)
+      else:
+        raise newException(HttpRequestError,
+        "SSL support is not available. Cannot connect over SSL.")
+
+    # May be connected through proxy but remember actual URL being accessed
     client.currentURL = url
     client.connected = true
 
@@ -1085,32 +1128,9 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: string,
                 headers: HttpHeaders = nil): Future[Response | AsyncResponse]
                 {.multisync.} =
   # Helper that actually makes the request. Does not handle redirects.
-  let connectionUrl =
-    if client.proxy.isNil: parseUri(url) else: client.proxy.url
   let requestUrl = parseUri(url)
 
-  let savedProxy = client.proxy # client's proxy may be overwritten.
-
-  if requestUrl.scheme == "https" and not client.proxy.isNil:
-    when defined(ssl):
-      client.proxy.url = connectionUrl
-      var connectUrl = requestUrl
-      connectUrl.scheme = "http"
-      connectUrl.port = "443"
-      let proxyResp = await requestAux(client, $connectUrl, $HttpConnect)
-
-      if not proxyResp.status.startsWith("200"):
-        raise newException(HttpRequestError,
-                           "The proxy server rejected a CONNECT request, " &
-                           "so a secure connection could not be established.")
-      client.sslContext.wrapConnectedSocket(
-        client.socket, handshakeAsClient, requestUrl.hostname)
-      client.proxy = nil
-    else:
-      raise newException(HttpRequestError,
-          "SSL support not available. Cannot connect to https site over proxy.")
-  else:
-    await newConnection(client, connectionUrl)
+  await newConnection(client, requestUrl)
 
   let effectiveHeaders = client.headers.override(headers)
 
@@ -1127,9 +1147,6 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: string,
   let getBody = httpMethod.toLowerAscii() notin ["head", "connect"] and
                 client.getBody
   result = await parseResponse(client, getBody)
-
-  # Restore the clients proxy in case it was overwritten.
-  client.proxy = savedProxy
 
 proc request*(client: HttpClient | AsyncHttpClient, url: string,
               httpMethod: string, body = "",
@@ -1244,6 +1261,8 @@ proc downloadFile*(client: HttpClient | AsyncHttpClient,
                    url: string, filename: string): Future[void] {.multisync.} =
   ## Downloads ``url`` and saves it to ``filename``.
   client.getBody = false
+  defer:
+    client.getBody = true
   let resp = await client.get(url)
 
   when client is HttpClient:

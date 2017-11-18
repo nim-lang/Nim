@@ -61,7 +61,7 @@ type
     errBaseTypeMustBeOrdinal, errInheritanceOnlyWithNonFinalObjects,
     errInheritanceOnlyWithEnums, errIllegalRecursionInTypeX,
     errCannotInstantiateX, errExprHasNoAddress, errXStackEscape,
-    errVarForOutParamNeeded,
+    errVarForOutParamNeededX,
     errPureTypeMismatch, errTypeMismatch, errButExpected, errButExpectedX,
     errAmbiguousCallXYZ, errWrongNumberOfArguments,
     errWrongNumberOfArgumentsInCall,
@@ -268,7 +268,7 @@ const
     errCannotInstantiateX: "cannot instantiate: \'$1\'",
     errExprHasNoAddress: "expression has no address",
     errXStackEscape: "address of '$1' may not escape its stack frame",
-    errVarForOutParamNeeded: "for a \'var\' type a variable needs to be passed",
+    errVarForOutParamNeededX: "for a \'var\' type a variable needs to be passed; but '$1' is immutable",
     errPureTypeMismatch: "type mismatch",
     errTypeMismatch: "type mismatch: got (",
     errButExpected: "but expected one of: ",
@@ -498,6 +498,9 @@ type
                                # only 8 bytes.
     line*, col*: int16
     fileIndex*: int32
+    when defined(nimpretty):
+      offsetA*, offsetB*: int
+      commentOffsetA*, commentOffsetB*: int
 
   TErrorOutput* = enum
     eStdOut
@@ -543,7 +546,7 @@ var
 
 proc toCChar*(c: char): string =
   case c
-  of '\0'..'\x1F', '\x80'..'\xFF': result = '\\' & toOctal(c)
+  of '\0'..'\x1F', '\x7F'..'\xFF': result = '\\' & toOctal(c)
   of '\'', '\"', '\\', '?': result = '\\' & c
   else: result = $(c)
 
@@ -746,7 +749,7 @@ proc toFileLine*(info: TLineInfo): string {.inline.} =
   result = info.toFilename & ":" & $info.line
 
 proc toFileLineCol*(info: TLineInfo): string {.inline.} =
-  result = info.toFilename & "(" & $info.line & "," & $info.col & ")"
+  result = info.toFilename & "(" & $info.line & ", " & $info.col & ")"
 
 proc `$`*(info: TLineInfo): string = toFileLineCol(info)
 

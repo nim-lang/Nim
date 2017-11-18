@@ -104,15 +104,14 @@ Example:
 
 .. code-block:: nim
   type
-    Node = ref NodeObj # a traced reference to a NodeObj
-    NodeObj = object
+    Node = ref object  # a reference to an object with the following field:
       le, ri: Node     # left and right subtrees
       sym: ref Sym     # leaves contain a reference to a Sym
 
     Sym = object       # a symbol
       name: string     # the symbol's name
       line: int        # the line the symbol was declared in
-      code: Node      # the symbol's abstract syntax tree
+      code: Node       # the symbol's abstract syntax tree
 
 
 Type conversions
@@ -155,8 +154,7 @@ An example:
       nkAdd,          # an addition
       nkSub,          # a subtraction
       nkIf            # an if statement
-    Node = ref NodeObj
-    NodeObj = object
+    Node = ref object
       case kind: NodeKind  # the ``kind`` field is the discriminator
       of nkInt: intVal: int
       of nkFloat: floatVal: float
@@ -206,7 +204,7 @@ for any type:
 
   echo "abc".len # is the same as echo len("abc")
   echo "abc".toUpper()
-  echo {'a', 'b', 'c'}.card
+  echo({'a', 'b', 'c'}.card)
   stdout.writeLine("Hallo") # the same as writeLine(stdout, "Hallo")
 
 (Another way to look at the method call syntax is that it provides the missing
@@ -218,7 +216,7 @@ So "pure object oriented" code is easy to write:
   import strutils, sequtils
 
   stdout.writeLine("Give a list of numbers (separated by spaces): ")
-  stdout.write(stdin.readLine.split.map(parseInt).max.`$`)
+  stdout.write(stdin.readLine.splitWhitespace.map(parseInt).max.`$`)
   stdout.writeLine(" is the maximum!")
 
 
@@ -233,15 +231,15 @@ is needed:
 
   type
     Socket* = ref object of RootObj
-      host: int # cannot be accessed from the outside of the module due to missing star
+      h: int # cannot be accessed from the outside of the module due to missing star
 
   proc `host=`*(s: var Socket, value: int) {.inline.} =
     ## setter of host address
-    s.host = value
+    s.h = value
 
   proc host*(s: Socket): int {.inline.} =
     ## getter of host address
-    s.host
+    s.h
 
   var s: Socket
   new s
@@ -482,11 +480,10 @@ containers:
 
 .. code-block:: nim
   type
-    BinaryTreeObj[T] = object # BinaryTree is a generic type with
-                              # with generic param ``T``
-      le, ri: BinaryTree[T]   # left and right subtrees; may be nil
-      data: T                 # the data stored in a node
-    BinaryTree*[T] = ref BinaryTreeObj[T] # type that is exported
+    BinaryTree*[T] = ref object # BinaryTree is a generic type with
+                                # generic param ``T``
+      le, ri: BinaryTree[T]     # left and right subtrees; may be nil
+      data: T                   # the data stored in a node
 
   proc newNode*[T](data: T): BinaryTree[T] =
     # constructor for a node
@@ -723,7 +720,7 @@ regular expressions:
 
 .. code-block:: nim
 
-  macro case_token(n: typed): typed =
+  macro case_token(n: varargs[untyped]): typed =
     # creates a lexical analyzer from regular expressions
     # ... (implementation is an exercise for the reader :-)
     discard

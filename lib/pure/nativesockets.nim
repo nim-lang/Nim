@@ -233,7 +233,7 @@ proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
   # OpenBSD doesn't support AI_V4MAPPED and doesn't define the macro AI_V4MAPPED.
   # FreeBSD doesn't support AI_V4MAPPED but defines the macro.
   # https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=198092
-  when not defined(freebsd) and not defined(openbsd) and not defined(netbsd):
+  when not defined(freebsd) and not defined(openbsd) and not defined(netbsd) and not defined(android):
     if domain == AF_INET6:
       hints.ai_flags = AI_V4MAPPED
   var gaiResult = getaddrinfo(address, $port, addr(hints), result)
@@ -496,11 +496,12 @@ proc getLocalAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
                    addr(namelen)) == -1'i32:
       raiseOSError(osLastError())
     # Cannot use INET6_ADDRSTRLEN here, because it's a C define.
-    var buf: array[64, char]
+    result[0] = newString(64)
     if inet_ntop(name.sin6_family.cint,
-                 addr name, buf.cstring, sizeof(buf).int32).isNil:
+                 addr name.sin6_addr, addr result[0][0], (result[0].len+1).int32).isNil:
       raiseOSError(osLastError())
-    result = ($buf, Port(nativesockets.ntohs(name.sin6_port)))
+    setLen(result[0], result[0].cstring.len)
+    result[1] = Port(nativesockets.ntohs(name.sin6_port))
   else:
     raiseOSError(OSErrorCode(-1), "invalid socket family in getLocalAddr")
 
@@ -532,11 +533,12 @@ proc getPeerAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
                    addr(namelen)) == -1'i32:
       raiseOSError(osLastError())
     # Cannot use INET6_ADDRSTRLEN here, because it's a C define.
-    var buf: array[64, char]
+    result[0] = newString(64)
     if inet_ntop(name.sin6_family.cint,
-                 addr name, buf.cstring, sizeof(buf).int32).isNil:
+                 addr name.sin6_addr, addr result[0][0], (result[0].len+1).int32).isNil:
       raiseOSError(osLastError())
-    result = ($buf, Port(nativesockets.ntohs(name.sin6_port)))
+    setLen(result[0], result[0].cstring.len)
+    result[1] = Port(nativesockets.ntohs(name.sin6_port))
   else:
     raiseOSError(OSErrorCode(-1), "invalid socket family in getLocalAddr")
 

@@ -36,7 +36,7 @@ proc rawPushProcCon(c: PContext, owner: PSym) =
   c.p = x
 
 proc rawHandleSelf(c: PContext; owner: PSym) =
-  const callableSymbols = {skProc, skMethod, skConverter, skIterator, skMacro}
+  const callableSymbols = {skProc, skFunc, skMethod, skConverter, skIterator, skMacro}
   if c.selfName != nil and owner.kind in callableSymbols and owner.typ != nil:
     let params = owner.typ.n
     if params.len > 1:
@@ -121,14 +121,14 @@ proc freshGenSyms(n: PNode, owner, orig: PSym, symMap: var TIdTable) =
       idTablePut(symMap, s, x)
       n.sym = x
   else:
-    for i in 0 .. <safeLen(n): freshGenSyms(n.sons[i], owner, orig, symMap)
+    for i in 0 ..< safeLen(n): freshGenSyms(n.sons[i], owner, orig, symMap)
 
 proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind)
 
 proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
   if n.sons[bodyPos].kind != nkEmpty:
     let procParams = result.typ.n
-    for i in 1 .. <procParams.len:
+    for i in 1 ..< procParams.len:
       addDecl(c, procParams[i].sym)
     maybeAddResult(c, result, result.ast)
 
@@ -138,7 +138,7 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
     var symMap: TIdTable
     initIdTable symMap
     if params != nil:
-      for i in 1 .. <params.len:
+      for i in 1 ..< params.len:
         let param = params[i].sym
         if sfGenSym in param.flags:
           idTablePut(symMap, params[i].sym, result.typ.n[param.position+1].sym)
@@ -174,10 +174,14 @@ proc sideEffectsCheck(c: PContext, s: PSym) =
 
 proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
                           allowMetaTypes = false): PType =
-  var cl: TReplTypeVars
+  var
+    typeMap: LayeredIdTable
+    cl: TReplTypeVars
+
   initIdTable(cl.symMap)
-  initIdTable(cl.typeMap)
   initIdTable(cl.localCache)
+  initIdTable(typeMap.topLayer)
+  cl.typeMap = addr(typeMap)
   cl.info = info
   cl.c = c
   cl.allowMetaTypes = allowMetaTypes
@@ -201,12 +205,13 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   #addDecl(c, prc)
 
   pushInfoContext(info)
-  var cl = initTypeVars(c, pt, info, nil)
+  var typeMap = initLayeredTypeMap(pt)
+  var cl = initTypeVars(c, addr(typeMap), info, nil)
   var result = instCopyType(cl, prc.typ)
   let originalParams = result.n
   result.n = originalParams.shallowCopy
 
-  for i in 1 .. <result.len:
+  for i in 1 ..< result.len:
     # twrong_field_caching requires these 'resetIdTable' calls:
     if i > 1:
       resetIdTable(cl.symMap)
@@ -257,8 +262,8 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   # NOTE: for access of private fields within generics from a different module
   # we set the friend module:
   c.friendModules.add(getModule(fn))
-  let oldInTypeClass = c.inTypeClass
-  c.inTypeClass = 0
+  let oldMatchedConcept = c.matchedConcept
+  c.matchedConcept = nil
   let oldScope = c.currentScope
   while not isTopLevel(c): c.currentScope = c.currentScope.parent
   result = copySym(fn, false)
@@ -319,5 +324,5 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   c.currentScope = oldScope
   discard c.friendModules.pop()
   dec(c.instCounter)
-  c.inTypeClass = oldInTypeClass
+  c.matchedConcept = oldMatchedConcept
   if result.kind == skMethod: finishMethod(c, result)

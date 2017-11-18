@@ -93,7 +93,7 @@ proc random*(max: float): float {.benign.} =
     let u = (0x3FFu64 shl 52u64) or (x shr 12u64)
     result = (cast[float](u) - 1.0) * max
 
-proc random*[T](x: Slice[T]): T =
+proc random*[T](x: HSlice[T, T]): T =
   ## For a slice `a .. b` returns a value in the range `a .. b-1`.
   result = T(random(x.b - x.a)) + x.a
 
@@ -101,7 +101,7 @@ proc random*[T](a: openArray[T]): T =
   ## returns a random element from the openarray `a`.
   result = a[random(a.low..a.len)]
 
-proc randomize*(seed: int) {.benign.} =
+proc randomize*(seed: int64) {.benign.} =
   ## Initializes the random number generator with a specific seed.
   state.a0 = ui(seed shr 16)
   state.a1 = ui(seed and 0xffff)
@@ -123,7 +123,8 @@ when not defined(nimscript):
       proc getMil(t: Time): int {.importcpp: "getTime", nodecl.}
       randomize(getMil times.getTime())
     else:
-      randomize(int times.getTime())
+      let time = int64(times.epochTime() * 1_000_000_000)
+      randomize(time)
 
 {.pop.}
 

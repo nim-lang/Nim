@@ -83,9 +83,9 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
       ""
 
   testSpec c, makeTest("lib/nimrtl.nim",
-    options & " --app:lib -d:createNimRtl", cat)
+    options & " --app:lib -d:createNimRtl --threads:on", cat)
   testSpec c, makeTest("tests/dll/server.nim",
-    options & " --app:lib -d:useNimRtl" & rpath, cat)
+    options & " --app:lib -d:useNimRtl --threads:on" & rpath, cat)
 
 
   when defined(Windows):
@@ -101,7 +101,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     var nimrtlDll = DynlibFormat % "nimrtl"
     safeCopyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
 
-  testSpec r, makeTest("tests/dll/client.nim", options & " -d:useNimRtl" & rpath,
+  testSpec r, makeTest("tests/dll/client.nim", options & " -d:useNimRtl --threads:on" & rpath,
                        cat, actionRun)
 
 proc dllTests(r: var TResults, cat: Category, options: string) =
@@ -139,7 +139,7 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
                   " -d:release --gc:markAndSweep", cat, actionRun)
   template test(filename: untyped) =
     testWithoutBoehm filename
-    when not defined(windows):
+    when not defined(windows) and not defined(android):
       # AR: cannot find any boehm.dll on the net, right now, so disabled
       # for windows:
       testSpec r, makeTest("tests/gc" / filename, options &
@@ -219,9 +219,9 @@ proc debuggerTests(r: var TResults, cat: Category, options: string) =
 proc jsTests(r: var TResults, cat: Category, options: string) =
   template test(filename: untyped) =
     testSpec r, makeTest(filename, options & " -d:nodejs", cat,
-                         actionRun, targetJS)
+                         actionRun), targetJS
     testSpec r, makeTest(filename, options & " -d:nodejs -d:release", cat,
-                         actionRun, targetJS)
+                         actionRun), targetJS
 
   for t in os.walkFiles("tests/js/t*.nim"):
     test(t)
@@ -237,6 +237,44 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
 
   for testfile in ["strutils", "json", "random", "times", "logging"]:
     test "lib/pure/" & testfile & ".nim"
+
+# ------------------------- nim in action -----------
+
+proc testNimInAction(r: var TResults, cat: Category, options: string) =
+  template test(filename: untyped, action: untyped) =
+    testSpec r, makeTest(filename, options, cat, action)
+
+  template testJS(filename: untyped) =
+    testSpec r, makeTest(filename, options, cat, actionCompile), targetJS
+
+  template testCPP(filename: untyped) =
+    testSpec r, makeTest(filename, options, cat, actionCompile), targetCPP
+
+  let tests = [
+    "niminaction/Chapter3/ChatApp/src/server",
+    "niminaction/Chapter3/ChatApp/src/client",
+    "niminaction/Chapter6/WikipediaStats/concurrency_regex",
+    "niminaction/Chapter6/WikipediaStats/concurrency",
+    "niminaction/Chapter6/WikipediaStats/naive",
+    "niminaction/Chapter6/WikipediaStats/parallel_counts",
+    "niminaction/Chapter6/WikipediaStats/race_condition",
+    "niminaction/Chapter6/WikipediaStats/sequential_counts",
+    "niminaction/Chapter6/WikipediaStats/unguarded_access",
+    "niminaction/Chapter7/Tweeter/src/tweeter",
+    "niminaction/Chapter7/Tweeter/src/createDatabase",
+    "niminaction/Chapter7/Tweeter/tests/database_test",
+    "niminaction/Chapter8/sdl/sdl_test",
+    ]
+  for testfile in tests:
+    test "tests/" & testfile & ".nim", actionCompile
+
+  let jsFile = "tests/niminaction/Chapter8/canvas/canvas_test.nim"
+  testJS jsFile
+
+  let cppFile = "tests/niminaction/Chapter8/sfml/sfml_test.nim"
+  testCPP cppFile
+
+
 
 # ------------------------- manyloc -------------------------------------------
 #proc runSpecialTests(r: var TResults, options: string) =
@@ -286,9 +324,10 @@ type PackageFilter = enum
   pfExtraOnly
   pfAll
 
+var nimbleDir = getEnv("NIMBLE_DIR").string
+if nimbleDir.len == 0: nimbleDir = getHomeDir() / ".nimble"
 let
   nimbleExe = findExe("nimble")
-  nimbleDir = getHomeDir() / ".nimble"
   packageDir = nimbleDir / "pkgs"
   packageIndex = nimbleDir / "packages.json"
 
@@ -348,7 +387,7 @@ proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
         installStatus = waitForExitEx(installProcess)
       installProcess.close
       if installStatus != QuitSuccess:
-        r.addResult(test, "", "", reInstallFailed)
+        r.addResult(test, targetC, "", "", reInstallFailed)
         continue
 
       let
@@ -357,12 +396,12 @@ proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
         buildStatus = waitForExitEx(buildProcess)
       buildProcess.close
       if buildStatus != QuitSuccess:
-        r.addResult(test, "", "", reBuildFailed)
-      r.addResult(test, "", "", reSuccess)
-    r.addResult(packageFileTest, "", "", reSuccess)
+        r.addResult(test, targetC, "", "", reBuildFailed)
+      r.addResult(test, targetC, "", "", reSuccess)
+    r.addResult(packageFileTest, targetC, "", "", reSuccess)
   except JsonParsingError:
     echo("[Warning] - Cannot run nimble tests: Invalid package file.")
-    r.addResult(packageFileTest, "", "", reBuildFailed)
+    r.addResult(packageFileTest, targetC, "", "", reBuildFailed)
 
 
 # ----------------------------------------------------------------------------
@@ -379,8 +418,9 @@ proc `&?.`(a, b: string): string =
 
 proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
   let test = "tests" & DirSep &.? cat.string / test
+  let target = if cat.string.normalize == "js": targetJS else: targetC
 
-  if existsFile(test): testSpec r, makeTest(test, options, cat)
+  if existsFile(test): testSpec r, makeTest(test, options, cat), target
   else: echo "[Warning] - ", test, " test does not exist"
 
 proc processCategory(r: var TResults, cat: Category, options: string) =
@@ -420,6 +460,8 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
     testNimblePackages(r, cat, pfExtraOnly)
   of "nimble-all":
     testNimblePackages(r, cat, pfAll)
+  of "niminaction":
+    testNimInAction(r, cat, options)
   of "untestable":
     # We can't test it because it depends on a third party.
     discard # TODO: Move untestable tests to someplace else, i.e. nimble repo.

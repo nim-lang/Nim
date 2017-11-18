@@ -16,7 +16,7 @@
 const
   debugGC = false # we wish to debug the GC...
   logGC = false
-  traceGC = defined(smokeCycles) # extensive debugging
+  traceGC = false # extensive debugging
   alwaysCycleGC = defined(smokeCycles)
   alwaysGC = defined(fulldebug) # collect after every memory
                                 # allocation (for debugging)
@@ -34,7 +34,7 @@ const
 
 type
   PPointer = ptr pointer
-  ByteArray = array[0..ArrayDummySize, byte]
+  ByteArray = UncheckedArray[byte]
   PByte = ptr ByteArray
   PString = ptr string
 {.deprecated: [TByteArray: ByteArray].}
@@ -543,7 +543,7 @@ elif defined(nogc):
   include "system/cellsets"
 
 else:
-  when not defined(gcStack):
+  when not defined(gcRegions):
     include "system/alloc"
 
     include "system/cellsets"
@@ -551,9 +551,9 @@ else:
       sysAssert(sizeof(Cell) == sizeof(FreeCell), "sizeof FreeCell")
   when compileOption("gc", "v2"):
     include "system/gc2"
-  elif defined(gcStack):
+  elif defined(gcRegions):
     # XXX due to bootstrapping reasons, we cannot use  compileOption("gc", "stack") here
-    include "system/gc_stack"
+    include "system/gc_regions"
   elif defined(gcMarkAndSweep):
     # XXX use 'compileOption' here
     include "system/gc_ms"
@@ -564,7 +564,11 @@ else:
 
 when not declared(nimNewSeqOfCap):
   proc nimNewSeqOfCap(typ: PNimType, cap: int): pointer {.compilerproc.} =
-    result = newObj(typ, addInt(mulInt(cap, typ.base.size), GenericSeqSize))
+    let s = addInt(mulInt(cap, typ.base.size), GenericSeqSize)
+    when declared(newObjNoInit):
+      result = if ntfNoRefs in typ.base.flags: newObjNoInit(typ, s) else: newObj(typ, s)
+    else:
+      result = newObj(typ, s)
     cast[PGenericSeq](result).len = 0
     cast[PGenericSeq](result).reserved = cap
 

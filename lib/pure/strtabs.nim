@@ -138,6 +138,10 @@ proc hasKey*(t: StringTableRef, key: string): bool {.rtlFunc, extern: "nst$1".} 
   ## returns true iff `key` is in the table `t`.
   result = rawGet(t, key) >= 0
 
+proc contains*(t: StringTableRef, key: string): bool =
+  ## alias of `hasKey` for use with the `in` operator.
+  return hasKey(t, key)
+
 proc rawInsert(t: StringTableRef, data: var KeyValuePairSeq, key, val: string) =
   var h: Hash = myhash(t, key) and high(data)
   while not isNil(data[h].key):

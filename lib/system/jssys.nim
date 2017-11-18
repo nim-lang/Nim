@@ -53,7 +53,7 @@ proc isNimException(): bool {.asmNoStackFrame.} =
   else:
     asm "return `lastJSError`.m_type;"
 
-proc getCurrentException*(): ref Exception =
+proc getCurrentException*(): ref Exception {.compilerRtl, benign.} =
   if isNimException(): result = cast[ref Exception](lastJSError)
 
 proc getCurrentExceptionMsg*(): string =
@@ -157,10 +157,10 @@ proc reraiseException() {.compilerproc, asmNoStackFrame.} =
 
     asm "throw lastJSError;"
 
-proc raiseOverflow {.exportc: "raiseOverflow", noreturn.} =
+proc raiseOverflow {.exportc: "raiseOverflow", noreturn, compilerProc.} =
   raise newException(OverflowError, "over- or underflow")
 
-proc raiseDivByZero {.exportc: "raiseDivByZero", noreturn.} =
+proc raiseDivByZero {.exportc: "raiseDivByZero", noreturn, compilerProc.} =
   raise newException(DivByZeroError, "division by zero")
 
 proc raiseRangeError() {.compilerproc, noreturn.} =
@@ -233,15 +233,24 @@ proc cstrToNimstr(c: cstring): string {.asmNoStackFrame, compilerproc.} =
     if (ch < 128) {
       result[r] = ch;
     }
-    else if((ch > 127) && (ch < 2048)) {
-      result[r] = (ch >> 6) | 192;
-      ++r;
-      result[r] = (ch & 63) | 128;
-    }
     else {
-      result[r] = (ch >> 12) | 224;
-      ++r;
-      result[r] = ((ch >> 6) & 63) | 128;
+      if (ch < 2048) {
+        result[r] = (ch >> 6) | 192;
+      }
+      else {
+        if (ch < 55296 || ch >= 57344) {
+          result[r] = (ch >> 12) | 224;
+        }
+        else {
+            ++i;
+            ch = 65536 + (((ch & 1023) << 10) | (`c`.charCodeAt(i) & 1023));
+            result[r] = (ch >> 18) | 240;
+            ++r;
+            result[r] = ((ch >> 12) & 63) | 128;
+        }
+        ++r;
+        result[r] = ((ch >> 6) & 63) | 128;
+      }
       ++r;
       result[r] = (ch & 63) | 128;
     }
@@ -446,7 +455,7 @@ when defined(kwin):
       print(buf);
     """
 
-elif defined(nodejs):
+elif not defined(nimOldEcho):
   proc ewriteln(x: cstring) = log(x)
 
   proc rawEcho {.compilerproc, asmNoStackFrame.} =

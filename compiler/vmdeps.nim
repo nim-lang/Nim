@@ -7,50 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import ast, types, msgs, os, osproc, streams, options, idents, securehash
-
-proc readOutput(p: Process): (string, int) =
-  result[0] = ""
-  var output = p.outputStream
-  while not output.atEnd:
-    result[0].add(output.readLine)
-    result[0].add("\n")
-  if result[0].len > 0:
-    result[0].setLen(result[0].len - "\n".len)
-  result[1] = p.waitForExit
-
-proc opGorge*(cmd, input, cache: string, info: TLineInfo): (string, int) =
-  let workingDir = parentDir(info.toFullPath)
-  if cache.len > 0:# and optForceFullMake notin gGlobalOptions:
-    let h = secureHash(cmd & "\t" & input & "\t" & cache)
-    let filename = options.toGeneratedFile("gorge_" & $h, "txt")
-    var f: File
-    if open(f, filename):
-      result = (f.readAll, 0)
-      f.close
-      return
-    var readSuccessful = false
-    try:
-      var p = startProcess(cmd, workingDir,
-                           options={poEvalCommand, poStderrToStdout})
-      if input.len != 0:
-        p.inputStream.write(input)
-        p.inputStream.close()
-      result = p.readOutput
-      readSuccessful = true
-      writeFile(filename, result[0])
-    except IOError, OSError:
-      if not readSuccessful: result = ("", -1)
-  else:
-    try:
-      var p = startProcess(cmd, workingDir,
-                           options={poEvalCommand, poStderrToStdout})
-      if input.len != 0:
-        p.inputStream.write(input)
-        p.inputStream.close()
-      result = p.readOutput
-    except IOError, OSError:
-      result = ("", -1)
+import ast, types, msgs, os, streams, options, idents
 
 proc opSlurp*(file: string, info: TLineInfo, module: PSym): string =
   try:
@@ -84,7 +41,7 @@ proc mapTypeToBracketX(name: string; m: TMagic; t: PType; info: TLineInfo;
                        inst=false): PNode =
   result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
   result.add atomicTypeX(name, m, t, info)
-  for i in 0 .. < t.len:
+  for i in 0 ..< t.len:
     if t.sons[i] == nil:
       let void = atomicTypeX("void", mVoid, t, info)
       void.typ = newType(tyVoid, t.owner)
@@ -162,7 +119,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
       result = atomicType("typeDesc", mTypeDesc)
   of tyGenericInvocation:
     result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
-    for i in 0 .. < t.len:
+    for i in 0 ..< t.len:
       result.add mapTypeToAst(t.sons[i], info)
   of tyGenericInst, tyAlias:
     if inst:
@@ -171,7 +128,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
       else:
         result = newNodeX(nkBracketExpr)
         result.add mapTypeToAst(t.lastSon, info)
-        for i in 1 .. < t.len-1:
+        for i in 1 ..< t.len-1:
           result.add mapTypeToAst(t.sons[i], info)
     else:
       result = mapTypeToAstX(t.lastSon, info, inst, allowRecursion)
@@ -224,12 +181,13 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
       result.add copyTree(c)
   of tyTuple:
     if inst:
-      result = newNodeX(nkTupleTy)
       # only named tuples have a node, unnamed tuples don't
       if t.n.isNil:
+        result = newNodeX(nkPar)
         for subType in t.sons:
           result.add mapTypeToAst(subType, info)
       else:
+        result = newNodeX(nkTupleTy)
         for s in t.n.sons:
           result.add newIdentDefs(s)
     else:
@@ -249,6 +207,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
       result = mapTypeToBracket("ref", mRef, t, info)
   of tyVar: result = mapTypeToBracket("var", mVar, t, info)
   of tySequence: result = mapTypeToBracket("seq", mSeq, t, info)
+  of tyOpt: result = mapTypeToBracket("opt", mOpt, t, info)
   of tyProc:
     if inst:
       result = newNodeX(nkProcTy)
@@ -303,7 +262,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
   of tyNot: result = mapTypeToBracket("not", mNot, t, info)
   of tyAnything: result = atomicType("anything", mNone)
   of tyInferred: internalAssert false
-  of tyStatic, tyFromExpr, tyFieldAccessor:
+  of tyStatic, tyFromExpr:
     if inst:
       if t.n != nil: result = t.n.copyTree
       else: result = atomicType("void", mVoid)
@@ -312,7 +271,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
       result.add atomicType("static", mNone)
       if t.n != nil:
         result.add t.n.copyTree
-  of tyUnused, tyUnused0, tyUnused1, tyUnused2: internalError("mapTypeToAstX")
+  of tyUnused, tyOptAsRef, tyUnused1, tyUnused2: internalError("mapTypeToAstX")
 
 proc opMapTypeToAst*(t: PType; info: TLineInfo): PNode =
   result = mapTypeToAstX(t, info, false, true)

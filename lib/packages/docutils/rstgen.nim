@@ -765,7 +765,7 @@ proc renderTocEntries*(d: var RstGenerator, j: var int, lvl: int,
     result.add(tmp)
 
 proc renderImage(d: PDoc, n: PRstNode, result: var string) =
-  template valid(s): expr =
+  template valid(s): bool =
     s.len > 0 and allCharsInSet(s, {'.','/',':','%','_','\\','\128'..'\xFF'} +
                                    Digits + Letters + WhiteSpace)
   let
@@ -798,7 +798,8 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
   if arg.valid:
     let htmlOut = if isObject:
         "<object data=\"$1\" type=\"image/svg+xml\"$2 >" & content & "</object>"
-        else: "<img src=\"$1\"$2 />"
+      else:
+        "<img src=\"$1\"$2 />"
     dispA(d.target, result, htmlOut, "\\includegraphics$2{$1}",
           [arg, options])
   if len(n) >= 3: renderRstToOut(d, n.sons[2], result)
@@ -866,7 +867,7 @@ proc buildLinesHTMLTable(d: PDoc; params: CodeBlockParams, code: string):
   inc d.listingCounter
   let id = $d.listingCounter
   if not params.numberLines:
-    result = (d.config.getOrDefault"doc.listing_start" % id,
+    result = (d.config.getOrDefault"doc.listing_start" % [id, $params.lang],
               d.config.getOrDefault"doc.listing_end" % id)
     return
 
@@ -879,7 +880,7 @@ proc buildLinesHTMLTable(d: PDoc; params: CodeBlockParams, code: string):
     line.inc
     codeLines.dec
   result.beginTable.add("</pre></td><td>" & (
-      d.config.getOrDefault"doc.listing_start" % id))
+      d.config.getOrDefault"doc.listing_start" % [id, $params.lang]))
   result.endTable = (d.config.getOrDefault"doc.listing_end" % id) &
       "</td></tr></tbody></table>" & (
       d.config.getOrDefault"doc.listing_button" % id)
@@ -1194,7 +1195,7 @@ proc defaultConfig*(): StringTableRef =
   ## ``rstToHtml`` to generate the bare minimum HTML.
   result = newStringTable(modeStyleInsensitive)
 
-  template setConfigVar(key, val: expr) =
+  template setConfigVar(key, val) =
     result[key] = val
 
   # If you need to modify these values, it might be worth updating the template

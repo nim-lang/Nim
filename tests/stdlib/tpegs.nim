@@ -149,7 +149,7 @@ proc addChoice(dest: var TPeg, elem: TPeg) =
     else: add(dest, elem)
   else: add(dest, elem)
 
-template multipleOp(k: TPegKind, localOpt: expr) =
+template multipleOp(k: TPegKind, localOpt) =
   result.kind = k
   result.sons = @[]
   for x in items(a):
@@ -350,32 +350,32 @@ proc newNonTerminal*(name: string, line, column: int): PNonTerminal {.
   result.line = line
   result.col = column
 
-template letters*: expr =
+template letters*: TPeg =
   ## expands to ``charset({'A'..'Z', 'a'..'z'})``
   charset({'A'..'Z', 'a'..'z'})
 
-template digits*: expr =
+template digits*: TPeg =
   ## expands to ``charset({'0'..'9'})``
   charset({'0'..'9'})
 
-template whitespace*: expr =
+template whitespace*: TPeg =
   ## expands to ``charset({' ', '\9'..'\13'})``
   charset({' ', '\9'..'\13'})
 
-template identChars*: expr =
+template identChars*: TPeg =
   ## expands to ``charset({'a'..'z', 'A'..'Z', '0'..'9', '_'})``
   charset({'a'..'z', 'A'..'Z', '0'..'9', '_'})
 
-template identStartChars*: expr =
+template identStartChars*: TPeg =
   ## expands to ``charset({'A'..'Z', 'a'..'z', '_'})``
   charset({'a'..'z', 'A'..'Z', '_'})
 
-template ident*: expr =
+template ident*: TPeg =
   ## same as ``[a-zA-Z_][a-zA-z_0-9]*``; standard identifier
   sequence(charset({'a'..'z', 'A'..'Z', '_'}),
            *charset({'a'..'z', 'A'..'Z', '0'..'9', '_'}))
 
-template natural*: expr =
+template natural*: TPeg =
   ## same as ``\d+``
   +digits
 
@@ -534,10 +534,10 @@ proc bounds*(c: TCaptures,
 when not useUnicode:
   type
     Rune = char
-  template fastRuneAt(s, i, ch: expr) =
+  template fastRuneAt(s, i, ch) =
     ch = s[i]
     inc(i)
-  template runeLenAt(s, i: expr): expr = 1
+  template runeLenAt(s, i): untyped = 1
 
   proc isAlpha(a: char): bool {.inline.} = return a in {'a'..'z','A'..'Z'}
   proc isUpper(a: char): bool {.inline.} = return a in {'A'..'Z'}
@@ -847,7 +847,7 @@ proc findAll*(s: string, pattern: TPeg, start = 0): seq[string] {.
   ## If it does not match, @[] is returned.
   accumulateResult(findAll(s, pattern, start))
 
-template `=~`*(s: string, pattern: TPeg): expr =
+template `=~`*(s: string, pattern: TPeg): untyped =
   ## This calls ``match`` with an implicit declared ``matches`` array that
   ## can be used in the scope of the ``=~`` call:
   ##

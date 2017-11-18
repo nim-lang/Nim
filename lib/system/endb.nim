@@ -76,10 +76,10 @@ proc `==`(a, b: StaticStr): bool =
     return true
 
 proc `==`(a: StaticStr, b: cstring): bool =
-  result = c_strcmp(a.data, b) == 0
+  result = c_strcmp(unsafeAddr a.data, b) == 0
 
 proc write(f: File, s: StaticStr) =
-  write(f, cstring(s.data))
+  write(f, cstring(unsafeAddr s.data))
 
 proc listBreakPoints() =
   write(stdout, EndbBeg)
@@ -260,8 +260,8 @@ proc parseBreakpoint(s: cstring, start: int): Breakpoint =
   if result.high == 0: result.high = result.low
   i = scanFilename(s, dbgTemp, i)
   if dbgTemp.len != 0:
-    if not hasExt(dbgTemp.data): add(dbgTemp, ".nim")
-    result.filename = canonFilename(dbgTemp.data.cstring)
+    if not hasExt(addr dbgTemp.data): add(dbgTemp, ".nim")
+    result.filename = canonFilename(addr dbgTemp.data)
     if result.filename.isNil:
       debugOut("[Warning] no breakpoint could be set; unknown filename ")
       return
@@ -292,12 +292,12 @@ proc dbgEvaluate(stream: File, s: cstring, start: int, f: PFrame) =
     i = scanAndAppendWord(s, dbgTemp, i)
     for i in 0 .. getGlobalLen()-1:
       let v = getGlobal(i)
-      if c_strcmp(v.name, dbgTemp.data) == 0:
+      if c_strcmp(v.name, addr dbgTemp.data) == 0:
         writeVariable(stream, v)
   else:
     for i in 0 .. f.len-1:
       let v = getLocal(f, i)
-      if c_strcmp(v.name, dbgTemp.data) == 0:
+      if c_strcmp(v.name, addr dbgTemp.data) == 0:
         writeVariable(stream, v)
 
 proc dbgOut(s: cstring, start: int, currFrame: PFrame) =
@@ -306,7 +306,7 @@ proc dbgOut(s: cstring, start: int, currFrame: PFrame) =
   if dbgTemp.len == 0:
     invalidCommand()
     return
-  var stream = openAppend(dbgTemp.data)
+  var stream = openAppend(addr dbgTemp.data)
   if stream == nil:
     debugOut("[Warning] could not open or create file ")
     return
@@ -320,7 +320,7 @@ proc dbgStackFrame(s: cstring, start: int, currFrame: PFrame) =
     # just write it to stdout:
     listFrame(stdout, currFrame)
   else:
-    var stream = openAppend(dbgTemp.data)
+    var stream = openAppend(addr dbgTemp.data)
     if stream == nil:
       debugOut("[Warning] could not open or create file ")
       return
@@ -369,8 +369,8 @@ proc commandPrompt() =
     if not readLine(stdin, dbgUser): break
     if dbgUser.len == 0: dbgUser.len = oldLen
     # now look what we have to do:
-    var i = scanWord(dbgUser.data, dbgTemp, 0)
-    template `?`(x: expr): expr = dbgTemp == cstring(x)
+    var i = scanWord(addr dbgUser.data, dbgTemp, 0)
+    template `?`(x: untyped): untyped = dbgTemp == cstring(x)
     if ?"s" or ?"step":
       dbgState = dbStepInto
       again = false
@@ -400,13 +400,13 @@ proc commandPrompt() =
         prevState = dbgState
         prevSkipFrame = dbgSkipToFrame
       dbgState = dbSkipCurrent
-      dbgEvaluate(stdout, dbgUser.data, i, dbgFramePtr)
+      dbgEvaluate(stdout, addr dbgUser.data, i, dbgFramePtr)
       dbgState = prevState
       dbgSkipToFrame = prevSkipFrame
     elif ?"o" or ?"out":
-      dbgOut(dbgUser.data, i, dbgFramePtr)
+      dbgOut(addr dbgUser.data, i, dbgFramePtr)
     elif ?"stackframe":
-      dbgStackFrame(dbgUser.data, i, dbgFramePtr)
+      dbgStackFrame(addr dbgUser.data, i, dbgFramePtr)
     elif ?"w" or ?"where":
       dbgShowExecutionPoint()
     elif ?"l" or ?"locals":
@@ -444,16 +444,16 @@ proc commandPrompt() =
     elif ?"bt" or ?"backtrace":
       dbgWriteStackTrace(framePtr)
     elif ?"b" or ?"break":
-      createBreakPoint(dbgUser.data, i)
+      createBreakPoint(addr dbgUser.data, i)
     elif ?"breakpoints":
       listBreakPoints()
     elif ?"toggle":
-      breakpointToggle(dbgUser.data, i)
+      breakpointToggle(addr dbgUser.data, i)
     elif ?"filenames":
       listFilenames()
     elif ?"maxdisplay":
       var parsed: int
-      i = scanNumber(dbgUser.data, parsed, i)
+      i = scanNumber(addr dbgUser.data, parsed, i)
       if dbgUser.data[i-1] in {'0'..'9'}:
         if parsed == 0: maxDisplayRecDepth = -1
         else: maxDisplayRecDepth = parsed

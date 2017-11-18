@@ -77,7 +77,7 @@ proc evalTemplateArgs(n: PNode, s: PSym; fromHlo: bool): PNode =
     # now that we have working untyped parameters.
     genericParams = if sfImmediate in s.flags or fromHlo: 0
                     else: s.ast[genericParamsPos].len
-    expectedRegularParams = <s.typ.len
+    expectedRegularParams = s.typ.len-1
     givenRegularParams = totalParams - genericParams
   if givenRegularParams < 0: givenRegularParams = 0
 
@@ -155,5 +155,7 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym; fromHlo=false): PNode =
     #if ctx.instLines: result.info = n.info
     for i in countup(0, safeLen(body) - 1):
       evalTemplateAux(body.sons[i], args, ctx, result)
+  result.flags.incl nfFromTemplate
   result = wrapInComesFrom(n.info, result)
   dec(evalTemplateCounter)
+
