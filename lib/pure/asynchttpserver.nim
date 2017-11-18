@@ -122,9 +122,12 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
     raise newException(ValueError, "Invalid request protocol. Got: " &
         protocol)
   result.orig = protocol
-  i.inc protocol.parseInt(result.major, i)
-  i.inc # Skip .
-  i.inc protocol.parseInt(result.minor, i)
+  try:
+    i.inc protocol.parseInt(result.major, i)
+    i.inc # Skip .
+    i.inc protocol.parseInt(result.minor, i)
+  except: 
+    raise newException(ValueError, "Invalid major/minor protocol.")
 
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
