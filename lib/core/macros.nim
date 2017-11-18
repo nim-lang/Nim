@@ -237,7 +237,7 @@ proc `ident=`*(n: NimNode, val: NimIdent) {.magic: "NSetIdent", noSideEffect.}
 proc `strVal=`*(n: NimNode, val: string) {.magic: "NSetStrVal", noSideEffect.}
 
 proc newNimNode*(kind: NimNodeKind,
-                 lineInfoFrom: NimNode=nil): NimNode
+                 lineInfoFrom: NimNode = nil): NimNode
   {.magic: "NNewNimNode", noSideEffect.}
   ## Creates a new AST node of the specified kind.
   ##
@@ -470,7 +470,6 @@ proc newLit*(c: char): NimNode {.compileTime.} =
   result = newNimNode(nnkCharLit)
   result.intVal = ord(c)
 
-
 proc newLit*(i: int): NimNode {.compileTime.} =
   ## produces a new integer literal node.
   result = newNimNode(nnkIntLit)
@@ -580,6 +579,11 @@ proc newLit*(s: string): NimNode {.compileTime.} =
   ## produces a new string literal node.
   result = newNimNode(nnkStrLit)
   result.strVal = s
+
+proc isAtomicLit*(n: NimNode): bool =
+  ## returns true if ``n`` is some kind literal like ``0.3`` (a ``float``
+  ## literal) or ``"abc"`` (a ``string`` literal).
+  result = n.kind in {nnkCharLit..nnkNilLit}
 
 proc nestList*(theProc: NimIdent,
                x: NimNode): NimNode {.compileTime.} =

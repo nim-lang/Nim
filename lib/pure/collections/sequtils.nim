@@ -706,27 +706,50 @@ template newSeqWith*(len: int, init: untyped): untyped =
     result[i] = init
   result
 
-macro asArray*(targetType: typedesc, values: typed): untyped =
-  ## applies a type conversion to each of the elements in the specified
-  ## array literal. Each element is converted to the ``targetType`` type..
+proc mapLitsImpl(constructor: NimNode; op: NimNode; nested: bool): NimNode =
+  if isAtomicLit(constructor):
+    result = newNimNode(nnkCall, lineInfoFrom=constructor)
+    result.add op
+    result.add constructor
+  else:
+    result = newNimNode(constructor.kind, lineInfoFrom=constructor)
+    for v in constructor:
+      if nested or isAtomicLit(v):
+        result.add mapLitsImpl(v, op, nested)
+      else:
+        result.add v
+
+macro mapLiterals*(constructor, op: untyped;
+                   nested = true): untyped =
+  ## applies ``op`` to each of the **atomic** literals like ``3``
+  ## or ``"abc"`` in the specified ``constructor`` AST. This can
+  ## be used to map every array element to some target type:
   ##
   ## Example:
   ##
   ## .. code-block::
-  ##   let x = asArray(int, [0.1, 1.2, 2.3, 3.4])
+  ##   let x = mapLiterals([0.1, 1.2, 2.3, 3.4], int)
   ##   doAssert x is array[4, int]
   ##
   ## Short notation for:
   ##
   ## .. code-block::
-  ##   let x = [(0.1).int, (1.2).int, (2.3).int, (3.4).int]
-  values.expectKind(nnkBracket)
-  result = newNimNode(nnkBracket, lineInfoFrom=values)
-  for i in 0 ..< len(values):
-    var call = newNimNode(nnkCall, lineInfoFrom=values[i])
-    call.add targetType
-    call.add values[i]
-    result.add call
+  ##   let x = [int(0.1), int(1.2), int(2.3), int(3.4)]
+  ##
+  ## If ``nested`` is true, the literals are replaced everywhere
+  ## in the ``constructor`` AST, otherwise only the first level
+  ## is considered:
+  ##
+  ## .. code-block::
+  ##   mapLiterals((1, ("abc"), 2), float, nested=false)
+  ##
+  ## Produces::
+  ##
+  ##   (float(1), ("abc"), float(2))
+  ##
+  ## There are no constraints for the ``constructor`` AST, it
+  ## works for nested tuples of arrays of sets etc.
+  result = mapLitsImpl(constructor, op, nested.boolVal)
 
 when isMainModule:
   import strutils
@@ -1016,11 +1039,11 @@ when isMainModule:
     seq2D[0][1] = true
     doAssert seq2D == @[@[true, true], @[true, false], @[false, false], @[false, false]]
 
-  block: # asArray tests
-    let x = asArray(int, [1.2, 2.3, 3.4, 4.5])
+  block: # mapLiterals tests
+    let x = mapLiterals([0.1, 1.2, 2.3, 3.4], int)
     doAssert x is array[4, int]
-    let y = asArray(`$`, [1.2, 2.3, 3.4, 4.5])
-    doAssert y is array[4, string]
+    doAssert mapLiterals((1, ("abc"), 2), float, nested=false) == (float(1), "abc", float(2))
+    doAssert mapLiterals(([1], ("abc"), 2), `$`, nested=true) == (["1"], "abc", "2")
 
   when not defined(testing):
     echo "Finished doc tests"
