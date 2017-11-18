@@ -2025,19 +2025,19 @@ when defined(nimNewRoof):
         yield res
         inc(res)
 
-  iterator `..`*(a, b: int64): int64 {.inline.} =
-    ## A special version of ``..`` for ``int64`` only.
-    var res = a
-    while res <= b:
-      yield res
-      inc(res)
+  template dotdotImpl(t) {.dirty.} =
+    iterator `..`*(a, b: t): t {.inline.} =
+      ## A type specialized version of ``..`` for convenience so that
+      ## mixing integer types work better.
+      var res = a
+      while res <= b:
+        yield res
+        inc(res)
 
-  iterator `..`*(a, b: int32): int32 {.inline.} =
-    ## A special version of ``..`` for ``int32`` only.
-    var res = a
-    while res <= b:
-      yield res
-      inc(res)
+  dotdotImpl(int64)
+  dotdotImpl(int32)
+  dotdotImpl(uint64)
+  dotdotImpl(uint32)
 
 else:
   iterator countup*[S, T](a: S, b: T, step = 1): T {.inline.} =
