@@ -52,7 +52,7 @@ proc isLet(n: PNode): bool =
 
 proc isVar(n: PNode): bool =
   n.kind == nkSym and n.sym.kind in {skResult, skVar} and
-      {sfGlobal, sfAddrTaken} * n.sym.flags == {}
+      {sfAddrTaken} * n.sym.flags == {}
 
 proc isLetLocation(m: PNode, isApprox: bool): bool =
   # consider: 'n[].kind' --> we really need to support 1 deref op even if this
