@@ -113,7 +113,9 @@ type
 
 type
   NimIdent* = object of RootObj
-    ## represents a Nim identifier in the AST
+    ## represents a Nim identifier in the AST. **Note**: This is only
+    ## rarely useful, for identifier construction from a string
+    ## use ``ident"abc"``.
 
   NimSymObj = object # hidden
   NimSym* = ref NimSymObj
@@ -129,7 +131,11 @@ const
   nnkCallKinds* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
                    nnkCallStrLit}
 
-proc `!`*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect.}
+proc `!`*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated.}
+  ## constructs an identifier from the string `s`
+  ## **Deprecated since version 0.18.0**: Use ``toNimIdent`` instead.
+
+proc toNimIdent*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect.}
   ## constructs an identifier from the string `s`
 
 proc `$`*(i: NimIdent): string {.magic: "IdentToStr", noSideEffect.}
@@ -573,7 +579,7 @@ proc newLit*[T](arg: seq[T]): NimNode {.compileTime.} =
 proc newLit*(arg: tuple): NimNode {.compileTime.} =
   result = nnkPar.newTree
   for a,b in arg.fieldPairs:
-    result.add nnkExprColonExpr.newTree( newIdentNode(a), newLit(b) )
+    result.add nnkExprColonExpr.newTree(newIdentNode(a), newLit(b))
 
 proc newLit*(s: string): NimNode {.compileTime.} =
   ## produces a new string literal node.
@@ -897,7 +903,7 @@ proc newIfStmt*(branches: varargs[tuple[cond, body: NimNode]]):
 
 proc newEnum*(name: NimNode, fields: openArray[NimNode],
               public, pure: bool): NimNode {.compileTime.} =
-    
+
   ## Creates a new enum. `name` must be an ident. Fields are allowed to be
   ## either idents or EnumFieldDef
   ##
@@ -910,7 +916,7 @@ proc newEnum*(name: NimNode, fields: openArray[NimNode],
   ##
   ##    # type Colors* = Blue Red
   ##
-    
+
   expectKind name, nnkIdent
   doAssert len(fields) > 0, "Enum must contain at least one field"
   for field in fields:
