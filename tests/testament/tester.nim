@@ -465,7 +465,10 @@ proc main() =
     let testsDir = "tests" & DirSep
     var myself = quoteShell(findExe("tests" / "testament" / "tester"))
     if targetsStr.len > 0:
-      myself &= " '--targets:" & targetsStr & "'"
+      myself &= " " & quoteShell("--targets:" & targetsStr)
+
+    myself &= " " & quoteShell("--nim:" & compilerPrefix)
+
     var cmds: seq[string] = @[]
     let rest = if p.cmdLineRest.string.len > 0: " " & p.cmdLineRest.string else: ""
     for kind, dir in walkDir(testsDir):
