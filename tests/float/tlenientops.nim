@@ -28,8 +28,6 @@ block: # comparison operators
   doAssert 1.float < 2.int
   doAssert 1.int <= 2.float
   doAssert 1.float <= 2.int
-  doAssert 1.int == 1.float
-  doAssert 1.float == 1.int
   doAssert 2.int >= 1.float
   doAssert 2.float >= 1.int
   doAssert 2.int > 1.float

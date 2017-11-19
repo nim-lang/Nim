@@ -64,6 +64,9 @@ Core
 * `cpuinfo <cpuinfo.html>`_
   This module implements procs to determine the number of CPUs / cores.
 
+* `lenientops <lenientops.html>`_
+  Provides binary operators for mixed integer/float expressions for convenience.
+
 
 Collections and algorithms
 --------------------------
@@ -197,9 +200,6 @@ Math libraries
 * `fenv <fenv.html>`_
   Floating-point environment. Handling of floating-point rounding and
   exceptions (overflow, zero-devide, etc.).
-
-* `lenientops <lenientops.html>`_
-  Provides binary operators for mixed integer/float expressions for convenience.
 
 * `basic2d <basic2d.html>`_
   Basic 2d support with vectors, points, matrices and some basic utilities.
