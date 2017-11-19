@@ -1,7 +1,7 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2017 Eugene Kabanov, Dominik Picheta
+#        (c) Copyright 2016 Eugene Kabanov
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
