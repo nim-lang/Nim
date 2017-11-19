@@ -125,9 +125,9 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
     raise newException(ValueError, "Invalid request protocol. Got: " &
         protocol)
   result.orig = protocol
-  i.inc protocol.parseInt(result.major, i)
+  i.inc protocol.parseSaturatedNatural(result.major, i)
   i.inc # Skip .
-  i.inc protocol.parseInt(result.minor, i)
+  i.inc protocol.parseSaturatedNatural(result.minor, i)
 
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
@@ -230,8 +230,7 @@ proc processRequest(server: AsyncHttpServer, req: FutureVar[Request],
   # - Check for Content-length header
   if request.headers.hasKey("Content-Length"):
     var contentLength = 0
-    if parseInt(request.headers["Content-Length"],
-                contentLength) == 0:
+    if parseSaturatedNatural(request.headers["Content-Length"], contentLength) == 0:
       await request.respond(Http400, "Bad Request. Invalid Content-Length.")
       return
     else:
@@ -254,9 +253,9 @@ proc processRequest(server: AsyncHttpServer, req: FutureVar[Request],
 
   # Persistent connections
   if (request.protocol == HttpVer11 and
-      request.headers.getOrDefault("connection").normalize != "close") or
+      cmpIgnoreCase(request.headers.getOrDefault("connection"), "close") != 0) or
      (request.protocol == HttpVer10 and
-      request.headers.getOrDefault("connection").normalize == "keep-alive"):
+      cmpIgnoreCase(request.headers.getOrDefault("connection"), "keep-alive") == 0):
     # In HTTP 1.1 we assume that connection is persistent. Unless connection
     # header states otherwise.
     # In HTTP 1.0 we assume that the connection should not be persistent.
