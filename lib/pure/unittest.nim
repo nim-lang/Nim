@@ -96,6 +96,11 @@ type
       ## Default is true for the non-js target
       ## unless, the environment variable
       ## ``NIMTEST_NO_COLOR`` is set.
+    withElapsedTime: bool
+      ## Have test results printed with a elapsed time.
+      ## Default is false for the non-js target
+      ## unless, the environment variable
+      ## ``NIMTEST_WITH_ELAPSED_TIME`` is set.
     outputLevel: OutputLevel
       ## Set the verbosity of test results.
       ## Default is ``PRINT_ALL``, unless
@@ -103,6 +108,8 @@ type
       ## variable is set for the non-js target.
     isInSuite: bool
     isInTest: bool
+    suiteElapsedTime: float
+    testStartTime: float
 
   JUnitOutputFormatter* = ref object of OutputFormatter
     stream: Stream
@@ -146,10 +153,14 @@ proc addOutputFormatter*(formatter: OutputFormatter) =
     formatters.add(formatter)
 
 proc newConsoleOutputFormatter*(outputLevel: OutputLevel = PRINT_ALL,
-                                colorOutput = true): ConsoleOutputFormatter =
+                                colorOutput = true,
+                                withElapsedTime = false): ConsoleOutputFormatter =
   ConsoleOutputFormatter(
     outputLevel: outputLevel,
-    colorOutput: colorOutput
+    colorOutput: colorOutput,
+    withElapsedTime: withElapsedTime,
+    suiteElapsedTime: 0.0,
+    testStartTime: 0.0
   )
 
 proc defaultConsoleFormatter*(): ConsoleOutputFormatter =
@@ -158,13 +169,14 @@ proc defaultConsoleFormatter*(): ConsoleOutputFormatter =
     # On a terminal this branch is executed
     var envOutLvl = os.getEnv("NIMTEST_OUTPUT_LVL").string
     var colorOutput  = not existsEnv("NIMTEST_NO_COLOR")
+    var withElapsedTime  = existsEnv("NIMTEST_WITH_ELAPSED_TIME")
     var outputLevel = PRINT_ALL
     if envOutLvl.len > 0:
       for opt in countup(low(OutputLevel), high(OutputLevel)):
         if $opt == envOutLvl:
           outputLevel = opt
           break
-    result = newConsoleOutputFormatter(outputLevel, colorOutput)
+    result = newConsoleOutputFormatter(outputLevel, colorOutput, withElapsedTime)
   else:
     result = newConsoleOutputFormatter()
 
@@ -175,10 +187,13 @@ method suiteStarted*(formatter: ConsoleOutputFormatter, suiteName: string) =
       styledEcho styleBright, fgBlue, "\n[Suite] ", resetStyle, suiteName
     else: rawPrint()
   else: rawPrint()
+  formatter.suiteElapsedTime = 0.0
   formatter.isInSuite = true
 
 method testStarted*(formatter: ConsoleOutputFormatter, testName: string) =
   formatter.isInTest = true
+  if formatter.withElapsedTime:
+    formatter.testStartTime = epochTime()
 
 method failureOccurred*(formatter: ConsoleOutputFormatter, checkpoints: seq[string], stackTrace: string) =
   if stackTrace != nil:
@@ -188,12 +203,25 @@ method failureOccurred*(formatter: ConsoleOutputFormatter, checkpoints: seq[stri
     echo prefix, msg
 
 method testEnded*(formatter: ConsoleOutputFormatter, testResult: TestResult) =
+  var
+    time: float
+    timeStr: string
+  if formatter.withElapsedTime:
+    time = epochTime() - formatter.testStartTime
+    formatter.suiteElapsedTime += time
+    timeStr = time.formatFloat(ffDecimal, precision = 8)
+
   formatter.isInTest = false
 
   if formatter.outputLevel != PRINT_NONE and
      (formatter.outputLevel == PRINT_ALL or testResult.status == FAILED):
     let prefix = if testResult.suiteName != nil: "  " else: ""
-    template rawPrint() = echo(prefix, "[", $testResult.status, "] ", testResult.testName)
+    template rawPrint() =
+     if formatter.withElapsedTime: 
+       let strStatus = $testResult.status
+       echo(prefix, "[", strStatus, "] ", alignLeft(testResult.testName, 65 - strStatus.len), " (", timeStr, " secs)") 
+     else:
+       echo(prefix, "[", $testResult.status, "] ", testResult.testName)
     when not defined(ECMAScript):
       if formatter.colorOutput and not defined(ECMAScript):
         var color = case testResult.status
@@ -201,14 +229,34 @@ method testEnded*(formatter: ConsoleOutputFormatter, testResult: TestResult) =
                     of FAILED: fgRed
                     of SKIPPED: fgYellow
                     else: fgWhite
-        styledEcho styleBright, color, prefix, "[", $testResult.status, "] ", resetStyle, testResult.testName
+        if formatter.withElapsedTime:
+          let strStatus = $testResult.status
+          styledEcho styleBright, color, prefix, "[", strStatus, "] ", resetStyle,
+            alignLeft(testResult.testName, 65 - strStatus.len), fgBlue, " (", timeStr, " secs)", resetStyle
+        else:
+          styledEcho styleBright, color, prefix, "[", $testResult.status, "] ", resetStyle, testResult.testName
       else:
         rawPrint()
     else:
       rawPrint()
 
 method suiteEnded*(formatter: ConsoleOutputFormatter) =
+  var
+    timeStr: string
+  if formatter.withElapsedTime:
+    timeStr = formatter.suiteElapsedTime.formatFloat(ffDecimal, precision = 8)
   formatter.isInSuite = false
+  template rawPrint() =
+    if formatter.withElapsedTime: 
+      echo(alignLeft("[Elapsed time]", 70), "(", timeStr, " secs)")
+  when not defined(ECMAScript):
+    if formatter.colorOutput and not defined(ECMAScript):
+      if formatter.withElapsedTime:
+        styledEcho styleBright, fgBlue, alignLeft("[Elapsed time]", 70), "(", timeStr, " secs)", resetStyle
+    else:
+      rawPrint()
+  else:
+    rawPrint()
 
 proc xmlEscape(s: string): string =
   result = newStringOfCap(s.len)
