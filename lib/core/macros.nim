@@ -296,7 +296,7 @@ proc newIdentNode*(i: NimIdent): NimNode {.compileTime.} =
 proc newIdentNode*(i: string): NimNode {.compileTime.} =
   ## creates an identifier node from `i`
   result = newNimNode(nnkIdent)
-  result.ident = !i
+  result.ident = toNimIdent i
 
 
 type
@@ -586,11 +586,6 @@ proc newLit*(s: string): NimNode {.compileTime.} =
   result = newNimNode(nnkStrLit)
   result.strVal = s
 
-proc isAtomicLit*(n: NimNode): bool =
-  ## returns true if ``n`` is some kind literal like ``0.3`` (a ``float``
-  ## literal) or ``"abc"`` (a ``string`` literal).
-  result = n.kind in {nnkCharLit..nnkNilLit}
-
 proc nestList*(theProc: NimIdent,
                x: NimNode): NimNode {.compileTime.} =
   ## nests the list `x` into a tree of call expressions:
@@ -618,7 +613,7 @@ proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
     of nnkCharLit..nnkInt64Lit: res.add(" " & $n.intVal)
     of nnkFloatLit..nnkFloat64Lit: res.add(" " & $n.floatVal)
     of nnkStrLit..nnkTripleStrLit: res.add(" " & $n.strVal)
-    of nnkIdent: res.add(" !\"" & $n.ident & '"')
+    of nnkIdent: res.add(" ident\"" & $n.ident & '"')
     of nnkSym: res.add(" \"" & $n.symbol & '"')
     of nnkNone: assert false
     else:
@@ -643,7 +638,7 @@ proc lispRepr*(n: NimNode): string {.compileTime, benign.} =
   of nnkCharLit..nnkInt64Lit: add(result, $n.intVal)
   of nnkFloatLit..nnkFloat64Lit: add(result, $n.floatVal)
   of nnkStrLit..nnkTripleStrLit: add(result, $n.strVal)
-  of nnkIdent: add(result, "!\"" & $n.ident & '"')
+  of nnkIdent: add(result, "ident\"" & $n.ident & '"')
   of nnkSym: add(result, $n.symbol)
   of nnkNone: assert false
   else:
@@ -667,7 +662,7 @@ proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
   ## .. code-block:: nim
   ##   nnkStmtList.newTree(
   ##     nnkCommand.newTree(
-  ##       newIdentNode(!"echo"),
+  ##       newIdentNode("echo"),
   ##       newLit("Hello world")
   ##     )
   ##   )
@@ -721,7 +716,7 @@ proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
     of nnkIntLit..nnkInt64Lit: res.add($n.intVal)
     of nnkFloatLit..nnkFloat64Lit: res.add($n.floatVal)
     of nnkStrLit..nnkTripleStrLit: res.add($n.strVal.escape())
-    of nnkIdent: res.add("!" & ($n.ident).escape())
+    of nnkIdent: res.add(($n.ident).escape())
     of nnkSym: res.add(($n.symbol).escape())
     of nnkNone: assert false
     else:
@@ -934,7 +929,7 @@ proc newEnum*(name: NimNode, fields: openArray[NimNode],
   if pure:
     let pragmaNode = newNimNode(nnkPragmaExpr).add(
       typeDefArgs[0],
-      add(newNimNode(nnkPragma), newIdentNode(!"pure")))
+      add(newNimNode(nnkPragma), newIdentNode("pure")))
 
     typeDefArgs[0] = pragmaNode
 
@@ -1060,7 +1055,7 @@ template findChild*(n: NimNode; cond: untyped): NimNode {.dirty.} =
   ##
   ## .. code-block:: nim
   ##   var res = findChild(n, it.kind == nnkPostfix and
-  ##                          it.basename.ident == !"foo")
+  ##                          it.basename.ident == toNimIdent"foo")
   block:
     var res: NimNode
     for it in n.children:
@@ -1094,7 +1089,7 @@ proc basename*(a: NimNode): NimNode =
 
 proc `basename=`*(a: NimNode; val: string) {.compileTime.}=
   case a.kind
-  of nnkIdent: macros.`ident=`(a,  !val)
+  of nnkIdent: macros.`ident=`(a, toNimIdent val)
   of nnkPostfix, nnkPrefix: a[1] = ident(val)
   else:
     quit "Do not know how to get basename of (" & treeRepr(a) & ")\n" & repr(a)
@@ -1155,7 +1150,7 @@ proc eqIdent*(node: NimNode; s: string): bool {.compileTime.} =
   ## other ways like ``node.ident`` are much more error-prone, unfortunately.
   case node.kind
   of nnkIdent:
-    result = node.ident == !s
+    result = node.ident == toNimIdent s
   of nnkSym:
     result = eqIdent($node.symbol, s)
   of nnkOpenSymChoice, nnkClosedSymChoice:

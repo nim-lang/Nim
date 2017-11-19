@@ -706,16 +706,17 @@ template newSeqWith*(len: int, init: untyped): untyped =
     result[i] = init
   result
 
-proc mapLitsImpl(constructor: NimNode; op: NimNode; nested: bool): NimNode =
-  if isAtomicLit(constructor):
+proc mapLitsImpl(constructor: NimNode; op: NimNode; nested: bool;
+                 filter = nnkLiterals): NimNode =
+  if constructor.kind in filter:
     result = newNimNode(nnkCall, lineInfoFrom=constructor)
     result.add op
     result.add constructor
   else:
     result = newNimNode(constructor.kind, lineInfoFrom=constructor)
     for v in constructor:
-      if nested or isAtomicLit(v):
-        result.add mapLitsImpl(v, op, nested)
+      if nested or v.kind in filter:
+        result.add mapLitsImpl(v, op, nested, filter)
       else:
         result.add v
 

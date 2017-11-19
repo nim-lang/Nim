@@ -80,7 +80,6 @@ This now needs to be written as:
   trace in a structured manner without string parsing.
 - Added ``sequtils.mapLiterals`` for easier construction of array and tuple
   literals.
-- Added ``macros.isAtomicLit`` predicate.
 - Added ``parseutils.parseSaturatedNatural``.
 - Moved from stdlib into Nimble packages:
   - [``basic2d``](https://github.com/nim-lang/basic2d)
