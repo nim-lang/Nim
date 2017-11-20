@@ -582,12 +582,12 @@ proc toUnix(dt: DateTime, interval: TimeInterval): int64 =
   var curMonth = anew.month
   if newinterv.months < 0:   # subtracting
     for mth in countDown(-1 * newinterv.months, 1):
-      result -= getDaysInMonth(curMonth, anew.year) * secondsInDay
       if curMonth == mJan:
         curMonth = mDec
         anew.year.dec()
       else:
         curMonth.dec()
+      result -= getDaysInMonth(curMonth, anew.year) * secondsInDay      
   else:  # adding
     for mth in 1 .. newinterv.months:
       result += getDaysInMonth(curMonth, anew.year) * secondsInDay

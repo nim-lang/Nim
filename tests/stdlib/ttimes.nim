@@ -288,3 +288,12 @@ suite "ttimes":
     check (not isLeapYear(2015))
     check isLeapYear(2000)
     check (not isLeapYear(1900))
+
+  test "subtract months":
+    var dt = initDateTime(1, mFeb, 2017, 00, 00, 00, utc())
+    check $(dt - 1.months) == "2017-01-01T00:00:00+00:00"
+    dt = initDateTime(15, mMar, 2017, 00, 00, 00, utc())
+    check $(dt - 1.months) == "2017-02-15T00:00:00+00:00"
+    dt = initDateTime(31, mMar, 2017, 00, 00, 00, utc())
+    # This happens due to monthday overflow. It's consistent with Phobos.
+    check $(dt - 1.months) == "2017-03-03T00:00:00+00:00"
