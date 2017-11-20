@@ -1984,7 +1984,7 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
       # but nothing else is possible:
       if buf[i] in {'.', ','}: result[i] = decimalsep
       else: result[i] = buf[i]
-    when defined(vcc):
+    when defined(windows):
       # VS pre 2015 violates the C standard: "The exponent always contains at
       # least two digits, and only as many more digits as necessary to
       # represent the exponent." [C11 §7.21.6.1]
@@ -2478,8 +2478,7 @@ when isMainModule:
   doAssert formatBiggestFloat(0.00000000001, ffScientific, 1, ',') in
                                                    ["1,0e-11", "1,0e-011"]
   # bug #6589
-  doAssert formatFloat(123.456, ffScientific, precision = -1) in
-      ["1.234560e+02", "1.234560e+002"]
+  doAssert formatFloat(123.456, ffScientific, precision = -1) == "1.234560e+02"
 
   doAssert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
   doAssert "${1}12 ${-1}$2" % ["a", "b"] == "a12 bb"

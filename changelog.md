@@ -78,10 +78,13 @@ This now needs to be written as:
   via the new ``nim doc0`` command.
 - Added ``system.getStackTraceEntries`` that allows you to access the stack
   trace in a structured manner without string parsing.
+- Added ``sequtils.mapLiterals`` for easier construction of array and tuple
+  literals.
+- Added ``parseutils.parseSaturatedNatural``.
 - Moved from stdlib into Nimble packages:
   - [``basic2d``](https://github.com/nim-lang/basic2d)
     _deprecated: use ``glm``, ``arraymancer``, ``neo``, or another package instead_
-  - [``basic3d``](https://github.com/nim-lang/basic3d) 
+  - [``basic3d``](https://github.com/nim-lang/basic3d)
     _deprecated: use ``glm``, ``arraymancer``, ``neo``, or another package instead_
   - [``gentabs``](https://github.com/lcrees/gentabs)
   - [``libuv``](https://github.com/lcrees/libuv)

@@ -5,7 +5,8 @@ discard """
 6
 abcdefghijklmnopqrstuvwxyz
 145 23
-3'''
+3
+2'''
 """
 
 import strutils
@@ -122,3 +123,21 @@ var testTry =
     PFooBase(field: 5)
 
 echo(testTry.field)
+
+# bug #6166
+
+proc quo(op: proc (x: int): bool): int =
+  result =
+     if op(3):
+        2
+     else:
+        0
+
+echo(
+  if true:
+     quo do (a: int) -> bool:
+        a mod 2 != 0
+  else:
+     quo do (a: int) -> bool:
+        a mod 3 != 0
+)

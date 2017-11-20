@@ -905,7 +905,7 @@ proc `div` *(x, y: int8): int8 {.magic: "DivI", noSideEffect.}
 proc `div` *(x, y: int16): int16 {.magic: "DivI", noSideEffect.}
 proc `div` *(x, y: int32): int32 {.magic: "DivI", noSideEffect.}
   ## computes the integer division. This is roughly the same as
-  ## ``floor(x/y)``.
+  ## ``trunc(x/y)``.
   ##
   ## .. code-block:: Nim
   ##   1 div 2 == 0
@@ -1107,7 +1107,7 @@ proc `*`*[T: SomeUnsignedInt](x, y: T): T {.magic: "MulU", noSideEffect.}
 
 proc `div`*[T: SomeUnsignedInt](x, y: T): T {.magic: "DivU", noSideEffect.}
   ## computes the integer division. This is roughly the same as
-  ## ``floor(x/y)``.
+  ## ``trunc(x/y)``.
   ##
   ## .. code-block:: Nim
   ##  (7 div 5) == 1
@@ -2025,19 +2025,19 @@ when defined(nimNewRoof):
         yield res
         inc(res)
 
-  iterator `..`*(a, b: int64): int64 {.inline.} =
-    ## A special version of ``..`` for ``int64`` only.
-    var res = a
-    while res <= b:
-      yield res
-      inc(res)
+  template dotdotImpl(t) {.dirty.} =
+    iterator `..`*(a, b: t): t {.inline.} =
+      ## A type specialized version of ``..`` for convenience so that
+      ## mixing integer types work better.
+      var res = a
+      while res <= b:
+        yield res
+        inc(res)
 
-  iterator `..`*(a, b: int32): int32 {.inline.} =
-    ## A special version of ``..`` for ``int32`` only.
-    var res = a
-    while res <= b:
-      yield res
-      inc(res)
+  dotdotImpl(int64)
+  dotdotImpl(int32)
+  dotdotImpl(uint64)
+  dotdotImpl(uint32)
 
 else:
   iterator countup*[S, T](a: S, b: T, step = 1): T {.inline.} =

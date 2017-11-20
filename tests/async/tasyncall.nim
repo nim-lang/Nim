@@ -40,8 +40,7 @@ proc testVarargs(x, y, z: int): seq[int] =
 
   result = waitFor all(a, b, c)
 
-suite "tasyncall":
-  test "testFuturesWithValue":
+block:
     let
       startTime = cpuTime()
       results = testFuturesWithValue(42)
@@ -51,14 +50,14 @@ suite "tasyncall":
     doAssert execTime * 1000 < taskCount * sleepDuration
     doAssert results == expected
 
-  test "testFuturesWithoutValues":
+block:
     let startTime = cpuTime()
     testFuturesWithoutValues()
     let execTime = cpuTime() - startTime
 
     doAssert execTime * 1000 < taskCount * sleepDuration
 
-  test "testVarargs":
+block:
     let
       startTime = cpuTime()
       results = testVarargs(1, 2, 3)
@@ -68,7 +67,7 @@ suite "tasyncall":
     doAssert execTime * 100 < taskCount * sleepDuration
     doAssert results == expected
 
-  test "all on seq[Future]":
+block:
     let
       noIntFuturesFut = all(newSeq[Future[int]]())
       noVoidFuturesFut = all(newSeq[Future[void]]())
