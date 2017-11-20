@@ -603,15 +603,27 @@ proc toUnix(dt: DateTime, interval: TimeInterval): int64 =
   result += newinterv.milliseconds div 1000
 
 proc `+`*(dt: DateTime, interval: TimeInterval): DateTime =
-  ## Adds ``interval`` time from DateTime ``dt``. Components from ``interval`` are added
+  ## Adds ``interval`` to ``dt``. Components from ``interval`` are added
   ## in the order of their size, i.e first the ``years`` component, then the ``months``
   ## component and so on. The returned ``DateTime`` will have the same timezone as the input.
+  ## 
+  ## Note that when adding months, monthday overflow is allowed. This means that if the resulting
+  ## month doesn't have enough days it, the month will be incremented and the monthday will be
+  ## set to the number of days overflowed. So adding one month to `31 October` will result in `31 November`,
+  ## which will overflow and result in `1 December`.
+  ##
+  ##
+  ## .. code-block:: nim
+  ##  let dt = initDateTime(30, mMar, 2017, 00, 00, 00, utc())
+  ##  doAssert $(dt + 1.months) == "2017-04-30T00:00:00+00:00"
+  ##  # This is correct and happens due to monthday overflow.
+  ##  doAssert $(dt - 1.months) == "2017-03-02T00:00:00+00:00"
   let adjTime = toUnix(dt.toAdjTime)
   let secs = toUnix(dt, interval)
   return initDateTime(dt.timezone.zoneInfoFromTz(fromUnix(adjTime + secs)), dt.timezone)
 
 proc `-`*(dt: DateTime, interval: TimeInterval): DateTime =
-  ## Subtract ``interval`` time from DateTime ``dt``. Components from ``interval`` are subtracted
+  ## Subtract ``interval`` from ``dt``. Components from ``interval`` are subtracted
   ## in the order of their size, i.e first the ``years`` component, then the ``months``
   ## component and so on. The returned ``DateTime`` will have the same timezone as the input.
   dt + (-interval)
@@ -1229,8 +1241,8 @@ proc countYearsAndDays*(daySpan: int): tuple[years: int, days: int] =
 proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int): YeardayRange =
   ## Returns the day of the year.
   ## Equivalent with ``initDateTime(day, month, year).yearday``.
-  const daysUntilMonth : array[Month, int] = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
-  const daysUntilMonthLeap : array[Month, int] = [0, 31, 60, 90, 120, 151, 181, 212, 243, 273, 304, 334]
+  const daysUntilMonth: array[Month, int] = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
+  const daysUntilMonthLeap: array[Month, int] = [0, 31, 60, 90, 120, 151, 181, 212, 243, 273, 304, 334]
 
   if isLeapYear(year):
     result = daysUntilMonthLeap[month] + monthday - 1
