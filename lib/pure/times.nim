@@ -1261,10 +1261,10 @@ proc toTimeInterval*(time: Time): TimeInterval =
   ##     echo a, " ", b  # real dates
   ##     echo a.toTimeInterval  # meaningless value, don't use it by itself
   ##     echo b.toTimeInterval - a.toTimeInterval
-  ##     # (milliseconds: 0, seconds: -40, minutes: -6, hours: 1, days: -2, months: -2, years: 16)
+  ##     # (milliseconds: 0, seconds: -40, minutes: -6, hours: 1, days: 5, months: -2, years: 16)
   # Milliseconds not available from Time
   var dt = time.local
-  initInterval(0, dt.second, dt.minute, dt.hour, dt.weekday.ord, dt.month.ord - 1, dt.year)
+  initInterval(0, dt.second, dt.minute, dt.hour, dt.monthday, dt.month.ord - 1, dt.year)
 
 proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
                   hour: HourRange, minute: MinuteRange, second: SecondRange, zone: Timezone = local()): DateTime =
