@@ -152,6 +152,7 @@ proc parseSpec*(filename: string): TSpec =
       result.sortoutput = parseCfgBool(e.value)
     of "exitcode":
       discard parseInt(e.value, result.exitCode)
+      result.action = actionRun
     of "msg":
       result.msg = e.value
       if result.action != actionRun:

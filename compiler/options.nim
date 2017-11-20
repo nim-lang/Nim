@@ -162,6 +162,7 @@ const
   RodExt* = "rod"
   HtmlExt* = "html"
   JsonExt* = "json"
+  TagsExt* = "tags"
   TexExt* = "tex"
   IniExt* = "ini"
   DefaultConfig* = "nim.cfg"

@@ -43,6 +43,7 @@ const bsdPlatform = defined(macosx) or defined(freebsd) or
                     defined(dragonfly)
 
 when defined(nimdoc):
+  type SocketHandle = int
   type
     Selector*[T] = ref object
       ## An object which holds descriptors to be checked for read/write status
