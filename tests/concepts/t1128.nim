@@ -4,8 +4,8 @@ discard """
 
 type
   TFooContainer[T] = object
-  
-  TContainer[T] = generic var c
+
+  TContainer[T] = concept var c
     foo(c, T)
 
 proc foo[T](c: var TFooContainer[T], val: T) =

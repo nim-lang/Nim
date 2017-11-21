@@ -1218,8 +1218,6 @@ template modifierTypeKindOfNode(n: PNode): TTypeKind =
 
 proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
   # if n.sonsLen == 0: return newConstraint(c, tyTypeClass)
-  if nfBase2 in n.flags:
-    message(n.info, warnDeprecated, "use 'concept' instead; 'generic'")
   let
     pragmas = n[1]
     inherited = n[2]
