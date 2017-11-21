@@ -273,10 +273,19 @@ suite "ttimes":
       let dt = parse("2017-03-25 12:00", "yyyy-MM-dd hh:mm")
       check $(dt + 1.days) == "2017-03-26T12:00:00+02:00"
 
-    putEnv("TZ", orig_tz)
-
     test "datetime before epoch":
       check $fromUnix(-2147483648).utc == "1901-12-13T20:45:52+00:00"
+
+    test "adding/subtracting time across dst":
+      putenv("TZ", "Europe/Stockholm")
+
+      let dt1 = initDateTime(26, mMar, 2017, 03, 00, 00)
+      check $(dt1 - 1.seconds) == "2017-03-26T01:59:59+01:00"
+
+      var dt2 = initDateTime(29, mOct, 2017, 02, 59, 59)
+      check  $(dt2 + 1.seconds) == "2017-10-29T02:00:00+01:00"
+
+    putEnv("TZ", orig_tz)
 
   else:
     # not on Linux or macosx: run one parseTest only

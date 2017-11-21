@@ -571,36 +571,39 @@ proc getDaysInYear*(year: int): int =
   ## Get the number of days in a ``year``
   result = 365 + (if isLeapYear(year): 1 else: 0)
 
-proc toUnix(dt: DateTime, interval: TimeInterval): int64 =
-  ## Calculates how many seconds the interval is worth by adding up
-  ## all the fields.
+proc evaluateInterval(dt: DateTime, interval: TimeInterval): tuple[adjDiff, absDiff: int64] =
+  ## Evaluates how many seconds the interval is worth
+  ## in the context of ``dt``.
+  ## The result in split into an adjusted diff and an absolute diff.
 
   var anew = dt
   var newinterv = interval
 
   newinterv.months += interval.years * 12
   var curMonth = anew.month
-  if newinterv.months < 0:   # subtracting
+  # Subtracting
+  if newinterv.months < 0:
     for mth in countDown(-1 * newinterv.months, 1):
       if curMonth == mJan:
         curMonth = mDec
         anew.year.dec()
       else:
         curMonth.dec()
-      result -= getDaysInMonth(curMonth, anew.year) * secondsInDay      
-  else:  # adding
+      result.adjDiff -= getDaysInMonth(curMonth, anew.year) * secondsInDay      
+  # Adding
+  else:
     for mth in 1 .. newinterv.months:
-      result += getDaysInMonth(curMonth, anew.year) * secondsInDay
+      result.adjDiff += getDaysInMonth(curMonth, anew.year) * secondsInDay
       if curMonth == mDec:
         curMonth = mJan
         anew.year.inc()
       else:
         curMonth.inc()
-  result += newinterv.days * secondsInDay
-  result += newinterv.hours * secondsInHour
-  result += newinterv.minutes * secondsInMin
-  result += newinterv.seconds
-  result += newinterv.milliseconds div 1000
+  result.adjDiff += newinterv.days * secondsInDay
+  result.absDiff += newinterv.hours * secondsInHour
+  result.absDiff += newinterv.minutes * secondsInMin
+  result.absDiff += newinterv.seconds
+  result.absDiff += newinterv.milliseconds div 1000
 
 proc `+`*(dt: DateTime, interval: TimeInterval): DateTime =
   ## Adds ``interval`` to ``dt``. Components from ``interval`` are added
@@ -612,15 +615,23 @@ proc `+`*(dt: DateTime, interval: TimeInterval): DateTime =
   ## set to the number of days overflowed. So adding one month to `31 October` will result in `31 November`,
   ## which will overflow and result in `1 December`.
   ##
-  ##
   ## .. code-block:: nim
   ##  let dt = initDateTime(30, mMar, 2017, 00, 00, 00, utc())
   ##  doAssert $(dt + 1.months) == "2017-04-30T00:00:00+00:00"
   ##  # This is correct and happens due to monthday overflow.
   ##  doAssert $(dt - 1.months) == "2017-03-02T00:00:00+00:00"
-  let adjTime = toUnix(dt.toAdjTime)
-  let secs = toUnix(dt, interval)
-  return initDateTime(dt.timezone.zoneInfoFromTz(fromUnix(adjTime + secs)), dt.timezone)
+  let (adjDiff, absDiff) = evaluateInterval(dt, interval)
+
+  if adjDiff.int64 != 0:
+    let zInfo = dt.timezone.zoneInfoFromTz(Time(dt.toAdjTime.int64 + adjDiff))
+
+    if absDiff != 0:
+      let time = Time(zInfo.adjTime.int64 + zInfo.utcOffset + absDiff)
+      result = initDateTime(dt.timezone.zoneInfoFromUtc(time), dt.timezone)
+    else:
+      result = initDateTime(zInfo, dt.timezone)
+  else:
+    result = initDateTime(dt.timezone.zoneInfoFromUtc(Time(dt.toTime.int64 + absDiff)), dt.timezone)
 
 proc `-`*(dt: DateTime, interval: TimeInterval): DateTime =
   ## Subtract ``interval`` from ``dt``. Components from ``interval`` are subtracted
