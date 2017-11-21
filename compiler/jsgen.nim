@@ -376,8 +376,8 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["addInt", "", "addInt($1, $2)", "($1 + $2)"], # AddI
     ["subInt", "", "subInt($1, $2)", "($1 - $2)"], # SubI
     ["mulInt", "", "mulInt($1, $2)", "($1 * $2)"], # MulI
-    ["divInt", "", "divInt($1, $2)", "Math.floor($1 / $2)"], # DivI
-    ["modInt", "", "modInt($1, $2)", "Math.floor($1 % $2)"], # ModI
+    ["divInt", "", "divInt($1, $2)", "Math.trunc($1 / $2)"], # DivI
+    ["modInt", "", "modInt($1, $2)", "Math.trunc($1 % $2)"], # ModI
     ["addInt", "", "addInt($1, $2)", "($1 + $2)"], # Succ
     ["subInt", "", "subInt($1, $2)", "($1 - $2)"], # Pred
     ["", "", "($1 + $2)", "($1 + $2)"], # AddF64
@@ -444,8 +444,8 @@ const # magic checked op; magic unchecked op; checked op; unchecked op
     ["toU32", "toU32", "toU32($1)", "toU32($1)"], # toU32
     ["", "", "$1", "$1"],     # ToFloat
     ["", "", "$1", "$1"],     # ToBiggestFloat
-    ["", "", "Math.floor($1)", "Math.floor($1)"], # ToInt
-    ["", "", "Math.floor($1)", "Math.floor($1)"], # ToBiggestInt
+    ["", "", "Math.trunc($1)", "Math.trunc($1)"], # ToInt
+    ["", "", "Math.trunc($1)", "Math.trunc($1)"], # ToBiggestInt
     ["nimCharToStr", "nimCharToStr", "nimCharToStr($1)", "nimCharToStr($1)"],
     ["nimBoolToStr", "nimBoolToStr", "nimBoolToStr($1)", "nimBoolToStr($1)"],
     ["cstrToNimstr", "cstrToNimstr", "cstrToNimstr(($1)+\"\")", "cstrToNimstr(($1)+\"\")"],

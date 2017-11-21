@@ -3,6 +3,7 @@ discard """
   exitcode: 0
   output: "OK"
   disabled: "travis"
+  disabled: "appveyor"
 """
 
 import strutils
