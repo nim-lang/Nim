@@ -6,7 +6,7 @@
 #    Look at license.txt for more info.
 #    All rights reserved.
 
-import strutils, os, osproc, json
+import strutils, os, osproc, json, times
 
 type
   MachineId* = distinct string
@@ -46,7 +46,8 @@ var
   entries: int
 
 proc writeTestResult*(name, category, target,
-                      action, result, expected, given: string) =
+                      action, result, expected, given: string,
+                      timestamp: Time) =
   createDir("testresults")
   if currentCategory != category:
     if currentCategory.len > 0:
@@ -59,7 +60,8 @@ proc writeTestResult*(name, category, target,
 
   let jentry = %*{"name": name, "category": category, "target": target,
     "action": action, "result": result, "expected": expected, "given": given,
-    "machine": thisMachine.string, "commit": thisCommit.string, "branch": thisBranch}
+    "machine": thisMachine.string, "commit": thisCommit.string, "branch": thisBranch,
+    "os": hostOS, "cpu": hostCPU, "timestamp": $timestamp}
   if entries > 0:
     results.writeLine(",")
   results.write($jentry)
