@@ -74,8 +74,6 @@ proc decodeUrl*(s: string): string =
     inc(j)
   setLen(result, j)
 
-{.deprecated: [URLDecode: decodeUrl, URLEncode: encodeUrl].}
-
 proc addXmlChar(dest: var string, c: char) {.inline.} =
   case c
   of '&': add(dest, "&amp;")
@@ -101,8 +99,7 @@ type
     methodPost,          ## query uses the POST method
     methodGet            ## query uses the GET method
 
-{.deprecated: [TRequestMethod: RequestMethod, ECgi: CgiError,
-  XMLencode: xmlEncode].}
+{.deprecated: [TRequestMethod: RequestMethod, ECgi: CgiError].}
 
 proc cgiError*(msg: string) {.noreturn.} =
   ## raises an ECgi exception with message `msg`.
