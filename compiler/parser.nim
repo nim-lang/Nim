@@ -1140,13 +1140,9 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
     else:
       result = newNodeP(nkObjectTy, p)
       getTok(p)
-  of tkGeneric, tkConcept:
+  of tkConcept:
     if mode == pmTypeDef:
-      let wasGeneric = p.tok.tokType == tkGeneric
       result = parseTypeClass(p)
-      # hack so that it's remembered and can be marked as deprecated in
-      # sem'check:
-      if wasGeneric: result.flags.incl nfBase2
     else:
       parMessage(p, errInvalidToken, p.tok)
   of tkStatic:

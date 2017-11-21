@@ -81,6 +81,8 @@ This now needs to be written as:
 - Added ``sequtils.mapLiterals`` for easier construction of array and tuple
   literals.
 - Added ``parseutils.parseSaturatedNatural``.
+- ``atomic`` and ``generic`` are no longer keywords in Nim. ``generic`` used to be
+  an alias for ``concept``, ``atomic`` was not used for anything.
 - Moved from stdlib into Nimble packages:
   - [``basic2d``](https://github.com/nim-lang/basic2d)
     _deprecated: use ``glm``, ``arraymancer``, ``neo``, or another package instead_

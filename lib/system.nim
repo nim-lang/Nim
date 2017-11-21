@@ -3118,9 +3118,6 @@ when not defined(JS): #and not defined(nimscript):
       ## returns the OS file handle of the file ``f``. This is only useful for
       ## platform specific programming.
 
-    when not defined(nimfix):
-      {.deprecated: [fileHandle: getFileHandle].}
-
   when declared(newSeq):
     proc cstringArrayToSeq*(a: cstringArray, len: Natural): seq[string] =
       ## converts a ``cstringArray`` to a ``seq[string]``. `a` is supposed to be

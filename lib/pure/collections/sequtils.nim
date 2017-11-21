@@ -110,8 +110,6 @@ proc deduplicate*[T](s: openArray[T]): seq[T] =
   for itm in items(s):
     if not result.contains(itm): result.add(itm)
 
-{.deprecated: [distnct: deduplicate].}
-
 proc zip*[S, T](s1: openArray[S], s2: openArray[T]): seq[tuple[a: S, b: T]] =
   ## Returns a new sequence with a combination of the two input containers.
   ##

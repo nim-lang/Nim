@@ -95,7 +95,7 @@ type
   AsyncScgiState* = ref AsyncScgiStateObj
 
 {.deprecated: [EScgi: ScgiError, TScgiState: ScgiState,
-   PAsyncScgiState: AsyncScgiState, scgiError: raiseScgiError].}
+   PAsyncScgiState: AsyncScgiState].}
 
 proc recvBuffer(s: var ScgiState, L: int) =
   if L > s.bufLen:
