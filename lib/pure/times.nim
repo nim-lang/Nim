@@ -1241,8 +1241,8 @@ proc countYearsAndDays*(daySpan: int): tuple[years: int, days: int] =
 proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int): YeardayRange =
   ## Returns the day of the year.
   ## Equivalent with ``initDateTime(day, month, year).yearday``.
-  const daysUntilMonth: array[Month, int] = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
-  const daysUntilMonthLeap: array[Month, int] = [0, 31, 60, 90, 120, 151, 181, 212, 243, 273, 304, 334]
+  const daysUntilMonth:     array[Month, int] = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
+  const daysUntilMonthLeap: array[Month, int] = [0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335]
 
   if isLeapYear(year):
     result = daysUntilMonthLeap[month] + monthday - 1
