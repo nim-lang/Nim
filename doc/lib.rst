@@ -64,6 +64,10 @@ Core
 * `cpuinfo <cpuinfo.html>`_
   This module implements procs to determine the number of CPUs / cores.
 
+* `lenientops <lenientops.html>`_
+  Provides binary operators for mixed integer/float expressions for convenience.
+
+
 
 Collections and algorithms
 --------------------------
@@ -181,6 +185,12 @@ Generic Operating System Services
 * `asyncfile <asyncfile.html>`_
   This module implements asynchronous file reading and writing using
   ``asyncdispatch``.
+
+* `distros <distros.html>`_
+  This module implements the basics for OS distribution ("distro") detection and the OS's native package manager.
+  Its primary purpose is to produce output for Nimble packages, but it also contains the widely used **Distribution** enum
+  that is useful for writing platform specific code.
+
 
 Math libraries
 --------------
@@ -408,6 +418,9 @@ Miscellaneous
 
 * `unittest <unittest.html>`_
   Implements a Unit testing DSL.
+
+* `segfaults <segfaults.html>`_
+  Turns access violations or segfaults into a ``NilAccessError`` exception.
 
 Modules for JS backend
 ---------------------------

@@ -252,6 +252,31 @@ proc parseInt*(s: string, number: var int, start = 0): int {.
   elif result != 0:
     number = int(res)
 
+proc parseSaturatedNatural*(s: string, b: var int, start = 0): int =
+  ## parses a natural number into ``b``. This cannot raise an overflow
+  ## error. Instead of an ``Overflow`` exception ``high(int)`` is returned.
+  ## The number of processed character is returned.
+  ## This is usually what you really want to use instead of `parseInt`:idx:.
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##   var res = 0
+  ##   discard parseSaturatedNatural("848", res)
+  ##   doAssert res == 848
+  var i = start
+  if s[i] == '+': inc(i)
+  if s[i] in {'0'..'9'}:
+    b = 0
+    while s[i] in {'0'..'9'}:
+      let c = ord(s[i]) - ord('0')
+      if b <= (high(int) - c) div 10:
+        b = b * 10 + c
+      else:
+        b = high(int)
+      inc(i)
+      while s[i] == '_': inc(i) # underscores are allowed and ignored
+    result = i - start
+
 # overflowChecks doesn't work with BiggestUInt
 proc rawParseUInt(s: string, b: var BiggestUInt, start = 0): int =
   var
@@ -393,16 +418,43 @@ when isMainModule:
   let input = "$test{}  $this is ${an{  example}}  "
   let expected = @[(ikVar, "test"), (ikStr, "{}  "), (ikVar, "this"),
                    (ikStr, " is "), (ikExpr, "an{  example}"), (ikStr, "  ")]
-  assert toSeq(interpolatedFragments(input)) == expected
+  doAssert toSeq(interpolatedFragments(input)) == expected
 
   var value = 0
   discard parseHex("0x38", value)
-  assert value == 56
+  doAssert value == 56
   discard parseHex("0x34", value)
-  assert value == 56 * 256 + 52
+  doAssert value == 56 * 256 + 52
   value = -1
   discard parseHex("0x38", value)
-  assert value == -200
+  doAssert value == -200
 
+  value = -1
+  doAssert(parseSaturatedNatural("848", value) == 3)
+  doAssert value == 848
+
+  value = -1
+  discard parseSaturatedNatural("84899999999999999999324234243143142342135435342532453", value)
+  doAssert value == high(int)
+
+  value = -1
+  discard parseSaturatedNatural("9223372036854775808", value)
+  doAssert value == high(int)
+
+  value = -1
+  discard parseSaturatedNatural("9223372036854775807", value)
+  doAssert value == high(int)
+
+  value = -1
+  discard parseSaturatedNatural("18446744073709551616", value)
+  doAssert value == high(int)
+
+  value = -1
+  discard parseSaturatedNatural("18446744073709551615", value)
+  doAssert value == high(int)
+
+  value = -1
+  doAssert(parseSaturatedNatural("1_000_000", value) == 9)
+  doAssert value == 1_000_000
 
 {.pop.}

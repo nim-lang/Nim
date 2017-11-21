@@ -138,7 +138,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
   if n.len < 1:
     result = newConstraint(c, kind)
   else:
-    let isCall = ord(n.kind in nkCallKinds+{nkBracketExpr})
+    let isCall = int ord(n.kind in nkCallKinds+{nkBracketExpr})
     let n = if n[0].kind == nkBracket: n[0] else: n
     checkMinSonsLen(n, 1)
     var t = semTypeNode(c, n.lastSon, nil)
@@ -1218,8 +1218,6 @@ template modifierTypeKindOfNode(n: PNode): TTypeKind =
 
 proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
   # if n.sonsLen == 0: return newConstraint(c, tyTypeClass)
-  if nfBase2 in n.flags:
-    message(n.info, warnDeprecated, "use 'concept' instead; 'generic'")
   let
     pragmas = n[1]
     inherited = n[2]
@@ -1420,9 +1418,13 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     else: result = semGeneric(c, n, s, prev)
   of nkDotExpr:
     let typeExpr = semExpr(c, n)
-    if typeExpr.typ.kind == tyFromExpr:
-      return typeExpr.typ
-    if typeExpr.typ.kind != tyTypeDesc:
+    if typeExpr.typ.isNil:
+      localError(n.info, "object constructor needs an object type;" &
+          " for named arguments use '=' instead of ':'")
+      result = errorType(c)
+    elif typeExpr.typ.kind == tyFromExpr:
+      result = typeExpr.typ
+    elif typeExpr.typ.kind != tyTypeDesc:
       localError(n.info, errTypeExpected)
       result = errorType(c)
     else:

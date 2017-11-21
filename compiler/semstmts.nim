@@ -1006,7 +1006,7 @@ proc checkForMetaFields(n: PNode) =
     case t.kind
     of tySequence, tySet, tyArray, tyOpenArray, tyVar, tyPtr, tyRef,
        tyProc, tyGenericInvocation, tyGenericInst, tyAlias:
-      let start = ord(t.kind in {tyGenericInvocation, tyGenericInst})
+      let start = int ord(t.kind in {tyGenericInvocation, tyGenericInst})
       for i in start ..< t.sons.len:
         checkMeta(t.sons[i])
     else:

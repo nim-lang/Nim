@@ -1,7 +1,6 @@
 version 1.0 battle plan
 =======================
 
-- make FlowVar compatible to Futures
 - fix "high priority" bugs
 - try to fix as many compiler crashes as reasonable
 
@@ -9,6 +8,8 @@ version 1.0 battle plan
 Not critical for 1.0
 ====================
 
+- make 'break' not leave named blocks
+- make FlowVar compatible to Futures
 - make 'not nil' the default (produce warnings instead of errors for
   a smooth migration path)
 - case objects needs to be safe and need to support pattern matching

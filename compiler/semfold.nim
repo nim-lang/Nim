@@ -92,26 +92,6 @@ proc pickIntRange(a, b: PType): PType =
 proc isIntRangeOrLit(t: PType): bool =
   result = isIntRange(t) or isIntLit(t)
 
-proc pickMinInt(n: PNode): BiggestInt =
-  if n.kind in {nkIntLit..nkUInt64Lit}:
-    result = n.intVal
-  elif isIntLit(n.typ):
-    result = n.typ.n.intVal
-  elif isIntRange(n.typ):
-    result = firstOrd(n.typ)
-  else:
-    internalError(n.info, "pickMinInt")
-
-proc pickMaxInt(n: PNode): BiggestInt =
-  if n.kind in {nkIntLit..nkUInt64Lit}:
-    result = n.intVal
-  elif isIntLit(n.typ):
-    result = n.typ.n.intVal
-  elif isIntRange(n.typ):
-    result = lastOrd(n.typ)
-  else:
-    internalError(n.info, "pickMaxInt")
-
 proc makeRange(typ: PType, first, last: BiggestInt): PType =
   let minA = min(first, last)
   let maxA = max(first, last)
@@ -626,13 +606,13 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
       if a == nil: return nil
       result.sons[i] = a
     incl(result.flags, nfAllConst)
-  of nkObjConstr:
-    result = copyTree(n)
-    for i in countup(1, sonsLen(n) - 1):
-      var a = getConstExpr(m, n.sons[i].sons[1])
-      if a == nil: return nil
-      result.sons[i].sons[1] = a
-    incl(result.flags, nfAllConst)
+  #of nkObjConstr:
+  #  result = copyTree(n)
+  #  for i in countup(1, sonsLen(n) - 1):
+  #    var a = getConstExpr(m, n.sons[i].sons[1])
+  #    if a == nil: return nil
+  #    result.sons[i].sons[1] = a
+  #  incl(result.flags, nfAllConst)
   of nkPar:
     # tuple constructor
     result = copyTree(n)
