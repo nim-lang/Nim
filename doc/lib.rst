@@ -64,6 +64,11 @@ Core
 * `cpuinfo <cpuinfo.html>`_
   This module implements procs to determine the number of CPUs / cores.
 
+* `lenientops <lenientops.html>`_
+  Provides binary operators for mixed integer/float expressions for convenience.
+
+
+
 Collections and algorithms
 --------------------------
 
