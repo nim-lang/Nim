@@ -6,7 +6,7 @@
 
 CC ??= gcc
 LD ??= gcc
-CFLAGS += $(CPPFLAGS) ?{c.ccompiler.flags}
+CFLAGS += -Ic_code ?{c.ccompiler.flags}
 LDFLAGS += ?{c.linker.flags}
 binDir = ?{firstBinPath(c).toUnix}
 
@@ -165,9 +165,6 @@ endif
 ifeq ($(strip $(oFiles)),)
   $(error no C code generated for: [$(myos): $(mycpu)])
 endif
-
-%.o: %.c
-	$(CC) $(CFLAGS) -Ic_code -c $< -o $@
 
 ?{"$(binDir)/" & toLowerAscii(c.name)}: $(oFiles)
 	@mkdir -p $(binDir)
