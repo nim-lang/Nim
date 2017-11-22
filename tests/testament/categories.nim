@@ -205,7 +205,6 @@ proc ioTests(r: var TResults, cat: Category, options: string) =
 proc asyncTests(r: var TResults, cat: Category, options: string) =
   template test(filename: untyped) =
     testSpec r, makeTest(filename, options, cat)
-    testSpec r, makeTest(filename, options & " -d:upcoming", cat)
   for t in os.walkFiles("tests/async/t*.nim"):
     test(t)
 

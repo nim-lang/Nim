@@ -191,11 +191,12 @@ proc mapType(typ: PType): TJSTypeKind =
   of tyObject, tyArray, tyTuple, tyOpenArray, tyVarargs:
     result = etyObject
   of tyNil: result = etyNull
-  of tyGenericInst, tyGenericParam, tyGenericBody, tyGenericInvocation,
+  of tyGenericParam, tyGenericBody, tyGenericInvocation,
      tyNone, tyFromExpr, tyForward, tyEmpty,
-     tyExpr, tyStmt, tyTypeDesc, tyTypeClasses, tyVoid, tyAlias:
+     tyExpr, tyStmt, tyTypeDesc, tyBuiltInTypeClass, tyCompositeTypeClass,
+     tyAnd, tyOr, tyNot, tyAnything, tyVoid:
     result = etyNone
-  of tyInferred:
+  of tyGenericInst, tyInferred, tyAlias, tyUserTypeClass, tyUserTypeClassInst:
     result = mapType(typ.lastSon)
   of tyStatic:
     if t.n != nil: result = mapType(lastSon t)
@@ -1650,7 +1651,7 @@ proc genNewSeq(p: PProc, n: PNode) =
 
 proc genOrd(p: PProc, n: PNode, r: var TCompRes) =
   case skipTypes(n.sons[1].typ, abstractVar).kind
-  of tyEnum, tyInt..tyInt64, tyChar: gen(p, n.sons[1], r)
+  of tyEnum, tyInt..tyUInt64, tyChar: gen(p, n.sons[1], r)
   of tyBool: unaryExpr(p, n, r, "", "($1 ? 1:0)")
   else: internalError(n.info, "genOrd")
 

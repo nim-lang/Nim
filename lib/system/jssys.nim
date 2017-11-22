@@ -531,13 +531,13 @@ proc mulInt(a, b: int): int {.asmNoStackFrame, compilerproc.} =
 proc divInt(a, b: int): int {.asmNoStackFrame, compilerproc.} =
   when defined(nimphp):
     asm """
-      return floor(`a` / `b`);
+      return trunc(`a` / `b`);
     """
   else:
     asm """
       if (`b` == 0) `raiseDivByZero`();
       if (`b` == -1 && `a` == 2147483647) `raiseOverflow`();
-      return Math.floor(`a` / `b`);
+      return Math.trunc(`a` / `b`);
     """
 
 proc modInt(a, b: int): int {.asmNoStackFrame, compilerproc.} =
@@ -549,7 +549,7 @@ proc modInt(a, b: int): int {.asmNoStackFrame, compilerproc.} =
     asm """
       if (`b` == 0) `raiseDivByZero`();
       if (`b` == -1 && `a` == 2147483647) `raiseOverflow`();
-      return Math.floor(`a` % `b`);
+      return Math.trunc(`a` % `b`);
     """
 
 proc addInt64(a, b: int): int {.asmNoStackFrame, compilerproc.} =
@@ -594,13 +594,13 @@ proc mulInt64(a, b: int): int {.asmNoStackFrame, compilerproc.} =
 proc divInt64(a, b: int): int {.asmNoStackFrame, compilerproc.} =
   when defined(nimphp):
     asm """
-      return floor(`a` / `b`);
+      return trunc(`a` / `b`);
     """
   else:
     asm """
       if (`b` == 0) `raiseDivByZero`();
       if (`b` == -1 && `a` == 9223372036854775807) `raiseOverflow`();
-      return Math.floor(`a` / `b`);
+      return Math.trunc(`a` / `b`);
     """
 
 proc modInt64(a, b: int): int {.asmNoStackFrame, compilerproc.} =
@@ -612,7 +612,7 @@ proc modInt64(a, b: int): int {.asmNoStackFrame, compilerproc.} =
     asm """
       if (`b` == 0) `raiseDivByZero`();
       if (`b` == -1 && `a` == 9223372036854775807) `raiseOverflow`();
-      return Math.floor(`a` % `b`);
+      return Math.trunc(`a` % `b`);
     """
 
 proc negInt(a: int): int {.compilerproc.} =
