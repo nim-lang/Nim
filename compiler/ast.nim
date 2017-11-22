@@ -1448,6 +1448,10 @@ proc rawAddSon*(father, son: PType) =
   add(father.sons, son)
   if not son.isNil: propagateToOwner(father, son)
 
+proc rawAddSonNoPropagationOfTypeFlags*(father, son: PType) =
+  if isNil(father.sons): father.sons = @[]
+  add(father.sons, son)
+
 proc addSonNilAllowed*(father, son: PNode) =
   if isNil(father.sons): father.sons = @[]
   add(father.sons, son)

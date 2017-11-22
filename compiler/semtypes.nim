@@ -296,7 +296,9 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
     base = semTypeNode(c, n.sons[2], nil)
     # ensure we only construct a tyArray when there was no error (bug #3048):
     result = newOrPrevType(tyArray, prev, c)
-    addSonSkipIntLit(result, indx)
+    # bug #6682: Do not propagate initialization requirements etc for the
+    # index type:
+    rawAddSonNoPropagationOfTypeFlags(result, indx)
     addSonSkipIntLit(result, base)
   else:
     localError(n.info, errArrayExpectsTwoTypeParams)
