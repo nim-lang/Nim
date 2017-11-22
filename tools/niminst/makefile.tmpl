@@ -4,8 +4,8 @@
 #           "# Template is in tools/niminst/makefile.tmpl\n" &
 #           "# To regenerate run ``niminst csource`` or ``koch csource``\n"
 
-CC = gcc
-LINKER = gcc
+CC ??= gcc
+LD ??= gcc
 COMP_FLAGS = $(CPPFLAGS) $(CFLAGS) ?{c.ccompiler.flags}
 LINK_FLAGS = $(LDFLAGS) ?{c.linker.flags}
 binDir = ?{firstBinPath(c).toUnix}
@@ -29,7 +29,7 @@ endif
 ifeq ($(uos),freebsd)
   myos= freebsd
   CC = clang
-  LINKER = clang
+  LD = clang
   LINK_FLAGS += -lm
 endif
 ifeq ($(uos),openbsd)
@@ -43,7 +43,7 @@ endif
 ifeq ($(uos),darwin)
   myos = macosx
   CC = clang
-  LINKER = clang
+  LD = clang
   LINK_FLAGS += -ldl -lm
   ifeq ($(HOSTTYPE),x86_64)
     ucpu = amd64
@@ -171,7 +171,7 @@ endif
 
 ?{"$(binDir)/" & toLowerAscii(c.name)}: $(oFiles)
 	@mkdir -p $(binDir)
-	$(LINKER) -o $@ $^ $(LINK_FLAGS)
+	$(LD) -o $@ $^ $(LINK_FLAGS)
 	@echo "SUCCESS"
 
 .PHONY: clean
