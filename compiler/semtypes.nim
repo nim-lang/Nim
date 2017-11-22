@@ -235,7 +235,10 @@ proc semRange(c: PContext, n: PNode, prev: PType): PType =
           n.sons[1].floatVal < 0.0:
         incl(result.flags, tfNeedsInit)
     else:
-      localError(n.sons[0].info, errRangeExpected)
+      if n[1].kind == nkInfix and considerQuotedIdent(n[1][0]).s == "..<":
+        localError(n[0].info, "range types need to be constructed with '..', '..<' is not supported")
+      else:
+        localError(n.sons[0].info, errRangeExpected)
       result = newOrPrevType(tyError, prev, c)
   else:
     localError(n.info, errXExpectsOneTypeParam, "range")
