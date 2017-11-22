@@ -144,7 +144,7 @@ proc newSelectEvent*(): SelectEvent =
   result.rfd = fds[0]
   result.wfd = fds[1]
 
-proc setEvent*(ev: SelectEvent) =
+proc trigger*(ev: SelectEvent) =
   var data: uint64 = 1
   if posix.write(ev.wfd, addr data, sizeof(uint64)) != sizeof(uint64):
     raiseIOSelectorsError(osLastError())
@@ -243,7 +243,7 @@ proc updateHandle*[T](s: Selector[T], fd: SocketHandle,
   s.checkFd(fdi)
   var pkey = addr(s.fds[fdi])
   doAssert(pkey.ident != 0,
-           "Descriptor [" & $fdi & "] is not registered in the queue!")
+           "Descriptor $# is not registered in the queue!" % $fdi)
   doAssert(pkey.events * maskEvents == {})
 
   if pkey.events != events:
@@ -584,16 +584,19 @@ proc select*[T](s: Selector[T], timeout: int): seq[ReadyKey] =
 template isEmpty*[T](s: Selector[T]): bool =
   (s.count == 0)
 
-proc getData*[T](s: Selector[T], fd: SocketHandle|int): T =
+proc contains*[T](s: Selector[T], fd: SocketHandle|int): bool {.inline.} =
+  return s.fds[fd].ident != 0
+
+proc getData*[T](s: Selector[T], fd: SocketHandle|int): var T =
   let fdi = int(fd)
   s.checkFd(fdi)
-  if s.fds[fdi].ident != 0:
+  if fdi in s:
     result = s.fds[fdi].data
 
 proc setData*[T](s: Selector[T], fd: SocketHandle|int, data: T): bool =
   let fdi = int(fd)
   s.checkFd(fdi)
-  if s.fds[fdi].ident != 0:
+  if fdi in s:
     s.fds[fdi].data = data
     result = true
 
@@ -602,8 +605,8 @@ template withData*[T](s: Selector[T], fd: SocketHandle|int, value,
   mixin checkFd
   let fdi = int(fd)
   s.checkFd(fdi)
-  if s.fds[fdi].ident != 0:
-    var value = addr(s.fds[fdi].data)
+  if fdi in s:
+    var value = addr(s.getData(fdi))
     body
 
 template withData*[T](s: Selector[T], fd: SocketHandle|int, value, body1,
@@ -611,8 +614,8 @@ template withData*[T](s: Selector[T], fd: SocketHandle|int, value, body1,
   mixin checkFd
   let fdi = int(fd)
   s.checkFd(fdi)
-  if s.fds[fdi].ident != 0:
-    var value = addr(s.fds[fdi].data)
+  if fdi in s:
+    var value = addr(s.getData(fdi))
     body1
   else:
     body2
