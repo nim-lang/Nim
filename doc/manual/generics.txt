@@ -9,26 +9,26 @@ The following example shows a generic binary tree can be modelled:
 
 .. code-block:: nim
   type
-    BinaryTreeObj[T] = object    # BinaryTreeObj is a generic type with
-                                 # with generic param ``T``
-      le, ri: BinaryTree[T]      # left and right subtrees; may be nil
-      data: T                    # the data stored in a node
-    BinaryTree[T] = ref BinaryTreeObj[T] # a shorthand for notational convenience
+    BinaryTree*[T] = ref object # BinaryTree is a generic type with
+                                # generic param ``T``
+      le, ri: BinaryTree[T]     # left and right subtrees; may be nil
+      data: T                   # the data stored in a node
 
-  proc newNode[T](data: T): BinaryTree[T] = # constructor for a node
+  proc newNode*[T](data: T): BinaryTree[T] =
+    # constructor for a node
     new(result)
     result.data = data
 
-  proc add[T](root: var BinaryTree[T], n: BinaryTree[T]) =
+  proc add*[T](root: var BinaryTree[T], n: BinaryTree[T]) =
+    # insert a node into the tree
     if root == nil:
       root = n
     else:
       var it = root
       while it != nil:
-        var c = cmp(it.data, n.data) # compare the data items; uses
-                                     # the generic ``cmp`` proc that works for
-                                     # any type that has a ``==`` and ``<``
-                                     # operator
+        # compare the data items; uses the generic ``cmp`` proc
+        # that works for any type that has a ``==`` and ``<`` operator
+        var c = cmp(it.data, n.data)
         if c < 0:
           if it.le == nil:
             it.le = n
@@ -40,20 +40,28 @@ The following example shows a generic binary tree can be modelled:
             return
           it = it.ri
 
-  iterator inorder[T](root: BinaryTree[T]): T =
-    # inorder traversal of a binary tree
-    # recursive iterators are not yet implemented, so this does not work in
-    # the current compiler!
-    if root.le != nil: yield inorder(root.le)
-    yield root.data
-    if root.ri != nil: yield inorder(root.ri)
+  proc add*[T](root: var BinaryTree[T], data: T) =
+    # convenience proc:
+    add(root, newNode(data))
+
+  iterator preorder*[T](root: BinaryTree[T]): T =
+    # Preorder traversal of a binary tree.
+    # Since recursive iterators are not yet implemented,
+    # this uses an explicit stack (which is more efficient anyway):
+    var stack: seq[BinaryTree[T]] = @[root]
+    while stack.len > 0:
+      var n = stack.pop()
+      while n != nil:
+        yield n.data
+        add(stack, n.ri)  # push right subtree onto the stack
+        n = n.le          # and follow the left pointer
 
   var
-    root: BinaryTree[string]  # instantiate a BinaryTree with the type string
-  add(root, newNode("hallo")) # instantiates generic procs ``newNode`` and
-  add(root, newNode("world")) # ``add``
-  for str in inorder(root):
-    writeLine(stdout, str)
+    root: BinaryTree[string] # instantiate a BinaryTree with ``string``
+  add(root, newNode("hello")) # instantiates ``newNode`` and ``add``
+  add(root, "world")          # instantiates the second ``add`` proc
+  for str in preorder(root):
+    stdout.writeLine(str)
 
 
 Is operator

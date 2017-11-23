@@ -522,7 +522,8 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
             if r2.kind in {tyPtr, tyRef}:
               r = skipTypes(r2, {tyPtr, tyRef})
           result.sons[i] = r
-          propagateToOwner(result, r)
+          if result.kind != tyArray or i != 0:
+            propagateToOwner(result, r)
       # bug #4677: Do not instantiate effect lists
       result.n = replaceTypeVarsN(cl, result.n, ord(result.kind==tyProc))
       case result.kind

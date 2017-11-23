@@ -1849,8 +1849,8 @@ when isMainModule:
       discard parseJson"""{ invalid"""
     except:
       discard
-  # memory diff should less than 2M
-  doAssert(abs(getOccupiedMem() - startMemory) < 2 * 1024 * 1024)
+  # memory diff should less than 4M
+  doAssert(abs(getOccupiedMem() - startMemory) < 4 * 1024 * 1024)
 
 
   # test `$`

@@ -606,13 +606,13 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
       if a == nil: return nil
       result.sons[i] = a
     incl(result.flags, nfAllConst)
-  of nkObjConstr:
-    result = copyTree(n)
-    for i in countup(1, sonsLen(n) - 1):
-      var a = getConstExpr(m, n.sons[i].sons[1])
-      if a == nil: return nil
-      result.sons[i].sons[1] = a
-    incl(result.flags, nfAllConst)
+  #of nkObjConstr:
+  #  result = copyTree(n)
+  #  for i in countup(1, sonsLen(n) - 1):
+  #    var a = getConstExpr(m, n.sons[i].sons[1])
+  #    if a == nil: return nil
+  #    result.sons[i].sons[1] = a
+  #  incl(result.flags, nfAllConst)
   of nkPar:
     # tuple constructor
     result = copyTree(n)

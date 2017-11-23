@@ -240,6 +240,8 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   resetIdTable(cl.localCache)
   result.sons[0] = replaceTypeVarsT(cl, result.sons[0])
   result.n.sons[0] = originalParams[0].copyTree
+  if result.sons[0] != nil:
+    propagateToOwner(result, result.sons[0])
 
   eraseVoidParams(result)
   skipIntLiteralParams(result)

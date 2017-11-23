@@ -14,6 +14,6 @@ generation switch can be used to fill the database with some basic todo entries
 you can play with.
 
 Compilation is fairly easy despite having the source split in different
-directories. Thanks to the Nim.cfg file, which adds the ../Nim_backend
+directories. Thanks to the nim.cfg file, which adds the ../Nim_backend
 directory as a search path, you can compile and run the example just fine from
 the command line with 'nim c -r nimtodo.nim'.

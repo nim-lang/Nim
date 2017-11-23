@@ -1905,7 +1905,7 @@ type
 {.deprecated: [TFloatFormat: FloatFormatMode].}
 
 proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
-                         precision: range[0..32] = 16;
+                         precision: range[-1..32] = 16;
                          decimalSep = '.'): string {.
                          noSideEffect, rtl, extern: "nsu$1".} =
   ## Converts a floating point value `f` to a string.
@@ -1917,7 +1917,7 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
   ## `precision`'s default value is the maximum number of meaningful digits
   ## after the decimal point for Nim's ``biggestFloat`` type.
   ##
-  ## If ``precision == 0``, it tries to format it nicely.
+  ## If ``precision == -1``, it tries to format it nicely.
   when defined(js):
     var res: cstring
     case format
@@ -1939,7 +1939,7 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
       buf {.noinit.}: array[0..2500, char]
       L: cint
     frmtstr[0] = '%'
-    if precision > 0:
+    if precision >= 0:
       frmtstr[1] = '#'
       frmtstr[2] = '.'
       frmtstr[3] = '*'
@@ -1962,7 +1962,7 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
       # but nothing else is possible:
       if buf[i] in {'.', ','}: result[i] = decimalsep
       else: result[i] = buf[i]
-    when defined(vcc):
+    when defined(windows):
       # VS pre 2015 violates the C standard: "The exponent always contains at
       # least two digits, and only as many more digits as necessary to
       # represent the exponent." [C11 §7.21.6.1]
@@ -1973,7 +1973,7 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
         result.setLen(result.len - 1)
 
 proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
-                  precision: range[0..32] = 16; decimalSep = '.'): string {.
+                  precision: range[-1..32] = 16; decimalSep = '.'): string {.
                   noSideEffect, rtl, extern: "nsu$1".} =
   ## Converts a floating point value `f` to a string.
   ##
@@ -1984,16 +1984,16 @@ proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
   ## `precision`'s default value is the maximum number of meaningful digits
   ## after the decimal point for Nim's ``float`` type.
   ##
-  ## If ``precision == 0``, it tries to format it nicely.
+  ## If ``precision == -1``, it tries to format it nicely.
   ##
   ## Examples:
   ##
   ## .. code-block:: nim
   ##
   ##    let x = 123.456
-  ##    echo x.formatFloat()                # 123.4560000000000
-  ##    echo x.formatFloat(ffDecimal, 4)    # 123.4560
-  ##    echo x.formatFloat(ffScientific, 2) # 1.23e+02
+  ##    doAssert x.formatFloat() == "123.4560000000000"
+  ##    doAssert x.formatFloat(ffDecimal, 4) == "123.4560"
+  ##    doAssert x.formatFloat(ffScientific, 2) == "1.23e+02"
   ##
   result = formatBiggestFloat(f, format, precision, decimalSep)
 
@@ -2444,12 +2444,14 @@ when isMainModule:
     outp = " this is a\nlong text\n--\nmuchlongerthan10chars\nand here\nit goes"
   doAssert wordWrap(inp, 10, false) == outp
 
+  doAssert formatBiggestFloat(1234.567, ffDecimal, -1) == "1234.567000"
+  doAssert formatBiggestFloat(1234.567, ffDecimal, 0) == "1235."
+  doAssert formatBiggestFloat(1234.567, ffDecimal, 1) == "1234.6"
   doAssert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"
   doAssert formatBiggestFloat(0.00000000001, ffScientific, 1, ',') in
                                                    ["1,0e-11", "1,0e-011"]
   # bug #6589
-  doAssert formatFloat(123.456, ffScientific, precision=0) in
-      ["1.234560e+02", "1.234560e+002"]
+  doAssert formatFloat(123.456, ffScientific, precision = -1) == "1.234560e+02"
 
   doAssert "$# $3 $# $#" % ["a", "b", "c"] == "a c b c"
   doAssert "${1}12 ${-1}$2" % ["a", "b"] == "a12 bb"

@@ -95,7 +95,11 @@ compiler llvmGcc:
   result.name = "llvm_gcc"
   result.compilerExe = "llvm-gcc"
   result.cppCompiler = "llvm-g++"
-  result.buildLib = "llvm-ar rcs $libfile $objfiles"
+  when defined(macosx):
+    # OS X has no 'llvm-ar' tool:
+    result.buildLib = "ar rcs $libfile $objfiles"
+  else:
+    result.buildLib = "llvm-ar rcs $libfile $objfiles"
 
 # Clang (LLVM) C/C++ Compiler
 compiler clang:

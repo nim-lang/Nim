@@ -18,8 +18,8 @@ Commands:
   -h, --help  shows this help
 
 List options (optional):
-  -p=+|-      Sorts list by ascending|desdencing priority. Default:desdencing.
-  -m=+|-      Sorts list by ascending|desdencing date. Default:desdencing.
+  -p=+|-      Sorts list by ascending|descending priority. Default:descending.
+  -m=+|-      Sorts list by ascending|descending date. Default:descending.
   -t          Show checked entries. By default they are not shown.
   -z          Hide unchecked entries. By default they are shown.
 
@@ -33,7 +33,7 @@ Examples:
 """
 
 type
-  TCommand = enum     # The possible types of commands
+  Command = enum     # The possible types of commands
     cmdAdd            # The user wants to add a new todo entry.
     cmdCheck          # User wants to check a todo entry.
     cmdUncheck        # User wants to uncheck a todo entry.
@@ -42,30 +42,27 @@ type
     cmdGenerate       # Add random rows to the database, for testing.
     cmdList           # User wants to list contents.
 
-  TParamConfig = object
+  ParamConfig = object
     # Structure containing the parsed options from the commandline.
-    command: TCommand         # Store the type of operation
+    command: Command         # Store the type of operation
     addPriority: int          # Only valid with cmdAdd, stores priority.
     addText: seq[string]      # Only valid with cmdAdd, stores todo text.
     todoId: int64             # The todo id for operations like check or delete.
-    listParams: TPagedParams  # Uses the backend structure directly for params.
+    listParams: PagedParams  # Uses the backend structure directly for params.
 
-
-proc initDefaults(params: var TParamConfig) =
+proc initDefaults(params: var ParamConfig) =
   ## Initialises defaults value in the structure.
   ##
   ## Most importantly we want to have an empty list for addText.
   params.listParams.initDefaults
   params.addText = @[]
 
-
 proc abort(message: string, value: int) =
   # Simple wrapper to abort also displaying the help to the user.
   stdout.write(USAGE)
   quit(message, value)
 
-
-template parseTodoIdAndSetCommand(newCommand: TCommand): stmt =
+template parseTodoIdAndSetCommand(newCommand: Command): untyped =
   ## Helper to parse a big todo identifier into todoId and set command.
   try:
     let numChars = val.parseBiggestInt(newId)
@@ -75,15 +72,13 @@ template parseTodoIdAndSetCommand(newCommand: TCommand): stmt =
   except OverflowError:
     raise newException(ValueError, "Value $1 too big" % val)
 
-
-template verifySingleCommand(actions: stmt): stmt =
+template verifySingleCommand(actions: typed): typed =
   ## Helper to make sure only one command has been specified so far.
   if specifiedCommand:
     abort("Only one command can be specified at a time! (extra:$1)" % [key], 2)
   else:
     actions
     specifiedCommand = true
-
 
 proc parsePlusMinus(val: string, debugText: string): bool =
   ## Helper to process a plus or minus character from the commandline.
@@ -100,11 +95,10 @@ proc parsePlusMinus(val: string, debugText: string): bool =
   else:
     abort("$1 parameter should be + or - but was '$2'." % [debugText, val], 4)
 
-
-proc parseCmdLine(): TParamConfig =
+proc parseCmdLine(): ParamConfig =
   ## Parses the commandline.
   ##
-  ## Returns a TParamConfig structure filled with the proper values or directly
+  ## Returns a ParamConfig structure filled with the proper values or directly
   ## calls quit() with the appropriate error message.
   var
     specifiedCommand = false
@@ -112,15 +106,12 @@ proc parseCmdLine(): TParamConfig =
     p = initOptParser()
     key, val: TaintedString
     newId: BiggestInt
-
   result.initDefaults
-
   try:
     while true:
       next(p)
       key = p.key
       val = p.val
-
       case p.kind
       of cmdArgument:
         if specifiedCommand and cmdAdd == result.command:
@@ -180,16 +171,12 @@ proc parseCmdLine(): TParamConfig =
         break
   except ValueError:
     abort("Invalid integer value '$1' for parameter '$2'." % [val, key], 7)
-
   if not specifiedCommand:
     abort("Didn't specify any command.", 8)
-
   if cmdAdd == result.command and result.addText.len < 1:
     abort("Used the add command, but provided no text/description.", 9)
-
   if usesListParams and cmdList != result.command:
     abort("Used list options, but didn't specify the list command.", 10)
-
 
 proc generateDatabaseRows(conn: DbConn) =
   ## Adds some rows to the database ignoring errors.
@@ -208,19 +195,16 @@ proc generateDatabaseRows(conn: DbConn) =
   discard conn.addTodo(6, "Learn a functional programming language")
   echo("Generated some entries, they were added to your database.")
 
-
-proc listDatabaseContents(conn: DbConn; listParams: TPagedParams) =
+proc listDatabaseContents(conn: DbConn; listParams: PagedParams) =
   ## Dumps the database contents formatted to the standard output.
   ##
   ## Pass the list/filter parameters parsed from the commandline.
   var params = listParams
   params.pageSize = -1
-
   let todos = conn.getPagedTodos(params)
   if todos.len < 1:
     echo("Database empty")
     return
-
   echo("Todo id, is done, priority, last modification date, text:")
   # First detect how long should be our columns for formatting.
   var cols: array[0..2, int]
@@ -228,7 +212,6 @@ proc listDatabaseContents(conn: DbConn; listParams: TPagedParams) =
     cols[0] = max(cols[0], ($todo.getId).len)
     cols[1] = max(cols[1], ($todo.priority).len)
     cols[2] = max(cols[2], ($todo.getModificationDate).len)
-
   # Now dump all the rows using the calculated alignment sizes.
   for todo in todos:
     echo("$1 $2 $3, $4, $5" % [
@@ -238,7 +221,6 @@ proc listDatabaseContents(conn: DbConn; listParams: TPagedParams) =
       ($todo.getModificationDate).align(cols[2]),
       todo.text])
 
-
 proc deleteOneTodo(conn: DbConn; todoId: int64) =
   ## Deletes a single todo entry from the database.
   let numDeleted = conn.deleteTodo(todoId)
@@ -246,7 +228,6 @@ proc deleteOneTodo(conn: DbConn; todoId: int64) =
     echo("Deleted todo id " & $todoId)
   else:
     quit("Couldn't delete todo id " & $todoId, 11)
-
 
 proc deleteAllTodos(conn: DbConn) =
   ## Deletes all the contents from the database.
@@ -256,42 +237,34 @@ proc deleteAllTodos(conn: DbConn) =
   ## ourselfves to the API exported by backend.
   var
     counter: int64
-    params: TPagedParams
-
+    params: PagedParams
   params.initDefaults
   params.pageSize = -1
   params.showUnchecked = true
   params.showChecked = true
-
   let todos = conn.getPagedTodos(params)
   for todo in todos:
     if conn.deleteTodo(todo.getId) > 0:
       counter += 1
     else:
       quit("Couldn't delete todo id " & $todo.getId, 12)
-
   echo("Deleted $1 todo entries from database." % $counter)
-
 
 proc setTodoCheck(conn: DbConn; todoId: int64; value: bool) =
   ## Changes the check state of a todo entry to the specified value.
   let
     newState = if value: "checked" else: "unchecked"
     todo = conn.getTodo(todoId)
-
   if todo == nil:
     quit("Can't modify todo id $1, its not in the database." % $todoId, 13)
-
   if todo[].isDone == value:
     echo("Todo id $1 was already set to $2." % [$todoId, newState])
     return
-
   todo[].isDone = value
   if todo[].save(conn):
     echo("Todo id $1 set to $2." % [$todoId, newState])
   else:
     quit("Error updating todo id $1 to $2." % [$todoId, newState])
-
 
 proc addTodo(conn: DbConn; priority: int; tokens: seq[string]) =
   ## Adds to the database a todo with the specified priority.
@@ -302,17 +275,14 @@ proc addTodo(conn: DbConn; priority: int; tokens: seq[string]) =
   echo("Created todo entry with id:$1 for priority $2 and text '$3'." % [
     $todo.getId, $todo.priority, todo.text])
 
-
 when isMainModule:
   ## Main entry point.
   let
     opt = parseCmdLine()
     dbPath = getConfigDir() / "nimtodo.sqlite3"
-
   if not dbPath.existsFile:
     createDir(getConfigDir())
     echo("No database found at $1, it will be created for you." % dbPath)
-
   let conn = openDatabase(dbPath)
   try:
     case opt.command

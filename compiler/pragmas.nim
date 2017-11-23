@@ -626,7 +626,8 @@ proc deprecatedStmt(c: PContext; pragma: PNode) =
   for n in pragma:
     if n.kind in {nkExprColonExpr, nkExprEqExpr}:
       let dest = qualifiedLookUp(c, n[1], {checkUndeclared})
-      assert dest != nil
+      if dest == nil or dest.kind in routineKinds:
+        localError(n.info, warnUser, "the .deprecated pragma is unreliable for routines")
       let src = considerQuotedIdent(n[0])
       let alias = newSym(skAlias, src, dest, n[0].info)
       incl(alias.flags, sfExported)

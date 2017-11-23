@@ -1385,7 +1385,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
     # XXX: This is very hacky. It should be moved back into liftTypeParam
     if x.kind in {tyGenericInst, tyArray} and
        c.calleeSym != nil and
-       c.calleeSym.kind in {skProc, skFunc}:
+       c.calleeSym.kind in {skProc, skFunc} and c.call != nil:
       let inst = prepareMetatypeForSigmatch(c.c, c.bindings, c.call.info, f)
       return typeRel(c, inst, a)
 
@@ -1613,7 +1613,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
           if not exprStructuralEquivalent(f.n, aOrig.n):
             result = isNone
         if result != isNone: put(c, f, aOrig)
-      elif aOrig.n != nil:
+      elif aOrig.n != nil and aOrig.n.typ != nil:
         result = typeRel(c, f.lastSon, aOrig.n.typ)
         if result != isNone:
           var boundType = newTypeWithSons(c.c, tyStatic, @[aOrig.n.typ])

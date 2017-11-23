@@ -21,11 +21,11 @@ type
   TSpecialWord* = enum
     wInvalid,
 
-    wAddr, wAnd, wAs, wAsm, wAtomic,
+    wAddr, wAnd, wAs, wAsm,
     wBind, wBlock, wBreak, wCase, wCast, wConcept, wConst,
     wContinue, wConverter, wDefer, wDiscard, wDistinct, wDiv, wDo,
     wElif, wElse, wEnd, wEnum, wExcept, wExport,
-    wFinally, wFor, wFrom, wFunc, wGeneric, wIf, wImport, wIn,
+    wFinally, wFor, wFrom, wFunc, wIf, wImport, wIn,
     wInclude, wInterface, wIs, wIsnot, wIterator, wLet,
     wMacro, wMethod, wMixin, wMod, wNil,
     wNot, wNotin, wObject, wOf, wOr, wOut, wProc, wPtr, wRaise, wRef, wReturn,
@@ -103,12 +103,12 @@ const
 
   specialWords*: array[low(TSpecialWord)..high(TSpecialWord), string] = ["",
 
-    "addr", "and", "as", "asm", "atomic",
+    "addr", "and", "as", "asm",
     "bind", "block", "break", "case", "cast",
     "concept", "const", "continue", "converter",
     "defer", "discard", "distinct", "div", "do",
     "elif", "else", "end", "enum", "except", "export",
-    "finally", "for", "from", "func", "generic", "if",
+    "finally", "for", "from", "func", "if",
     "import", "in", "include", "interface", "is", "isnot", "iterator",
     "let",
     "macro", "method", "mixin", "mod", "nil", "not", "notin",

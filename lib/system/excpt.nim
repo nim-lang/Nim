@@ -155,6 +155,52 @@ when not hasThreadSupport:
   var
     tempFrames: array[0..127, PFrame] # should not be alloc'd on stack
 
+const
+  reraisedFromBegin = -10
+  reraisedFromEnd = -100
+
+template reraisedFrom(z): untyped =
+  StackTraceEntry(procname: nil, line: z, filename: nil)
+
+proc auxWriteStackTrace(f: PFrame; s: var seq[StackTraceEntry]) =
+  var
+    it = f
+    i = 0
+  while it != nil:
+    inc(i)
+    it = it.prev
+  var last = i-1
+  if s.isNil:
+    s = newSeq[StackTraceEntry](i)
+  else:
+    last = s.len + i - 1
+    s.setLen(last+1)
+  it = f
+  while it != nil:
+    s[last] = StackTraceEntry(procname: it.procname,
+                              line: it.line,
+                              filename: it.filename)
+    it = it.prev
+    dec last
+
+template addFrameEntry(s, f: untyped) =
+  var oldLen = s.len
+  add(s, f.filename)
+  if f.line > 0:
+    add(s, '(')
+    add(s, $f.line)
+    add(s, ')')
+  for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
+  add(s, f.procname)
+  add(s, "\n")
+
+proc `$`(s: seq[StackTraceEntry]): string =
+  result = newStringOfCap(2000)
+  for i in 0 .. s.len-1:
+    if s[i].line == reraisedFromBegin: result.add "[[reraised from:\n"
+    elif s[i].line == reraisedFromEnd: result.add "]]\n"
+    else: addFrameEntry(result, s[i])
+
 proc auxWriteStackTrace(f: PFrame, s: var string) =
   when hasThreadSupport:
     var
@@ -194,17 +240,9 @@ proc auxWriteStackTrace(f: PFrame, s: var string) =
     if tempFrames[j] == nil:
       add(s, "(")
       add(s, $skipped)
-      add(s, " calls omitted) ...")
+      add(s, " calls omitted) ...\n")
     else:
-      var oldLen = s.len
-      add(s, tempFrames[j].filename)
-      if tempFrames[j].line > 0:
-        add(s, '(')
-        add(s, $tempFrames[j].line)
-        add(s, ')')
-      for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
-      add(s, tempFrames[j].procname)
-    add(s, "\n")
+      addFrameEntry(s, tempFrames[j])
 
 proc stackTraceAvailable*(): bool
 
@@ -221,6 +259,13 @@ when hasSomeStackTrace:
       auxWriteStackTraceWithBacktrace(s)
     else:
       add(s, "No stack traceback available\n")
+
+  proc rawWriteStackTrace(s: var seq[StackTraceEntry]) =
+    when NimStackTrace:
+      auxWriteStackTrace(framePtr, s)
+    else:
+      s = nil
+
   proc stackTraceAvailable(): bool =
     when NimStackTrace:
       if framePtr == nil:
@@ -239,12 +284,6 @@ proc quitOrDebug() {.inline.} =
     quit(1)
   else:
     endbStep() # call the debugger
-
-when false:
-  proc rawRaise*(e: ref Exception) =
-    ## undocumented. Do not use.
-    pushCurrentException(e)
-    c_longjmp(excHandler.context, 1)
 
 var onUnhandledException*: (proc (errorMsg: string) {.
   nimcall.}) ## set this error \
@@ -282,7 +321,7 @@ proc raiseExceptionAux(e: ref Exception) =
       when hasSomeStackTrace:
         var buf = newStringOfCap(2000)
         if isNil(e.trace): rawWriteStackTrace(buf)
-        else: add(buf, e.trace)
+        else: add(buf, $e.trace)
         add(buf, "Error: unhandled exception: ")
         if not isNil(e.msg): add(buf, e.msg)
         add(buf, " [")
@@ -318,12 +357,11 @@ proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
   if e.name.isNil: e.name = ename
   when hasSomeStackTrace:
     if e.trace.isNil:
-      e.trace = ""
       rawWriteStackTrace(e.trace)
     elif framePtr != nil:
-      e.trace.add "[[reraised from:\n"
+      e.trace.add reraisedFrom(reraisedFromBegin)
       auxWriteStackTrace(framePtr, e.trace)
-      e.trace.add "]]\n"
+      e.trace.add reraisedFrom(reraisedFromEnd)
   raiseExceptionAux(e)
 
 proc reraiseException() {.compilerRtl.} =
@@ -349,9 +387,14 @@ proc getStackTrace(): string =
 
 proc getStackTrace(e: ref Exception): string =
   if not isNil(e) and not isNil(e.trace):
-    result = e.trace
+    result = $e.trace
   else:
     result = ""
+
+proc getStackTraceEntries*(e: ref Exception): seq[StackTraceEntry] =
+  ## Returns the attached stack trace to the exception ``e`` as
+  ## a ``seq``. This is not yet available for the JS backend.
+  shallowCopy(result, e.trace)
 
 when defined(nimRequiresNimFrame):
   proc stackOverflow() {.noinline.} =

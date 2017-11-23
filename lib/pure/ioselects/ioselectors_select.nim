@@ -154,7 +154,7 @@ when defined(windows):
     result.rsock = rsock
     result.wsock = wsock
 
-  proc setEvent*(ev: SelectEvent) =
+  proc trigger*(ev: SelectEvent) =
     var data: uint64 = 1
     if winlean.send(ev.wsock, cast[pointer](addr data),
                     cint(sizeof(uint64)), 0) != sizeof(uint64):
@@ -178,7 +178,7 @@ else:
     result.rsock = SocketHandle(fds[0])
     result.wsock = SocketHandle(fds[1])
 
-  proc setEvent*(ev: SelectEvent) =
+  proc trigger*(ev: SelectEvent) =
     var data: uint64 = 1
     if posix.write(cint(ev.wsock), addr data, sizeof(uint64)) != sizeof(uint64):
       raiseIOSelectorsError(osLastError())
@@ -379,6 +379,16 @@ proc flush*[T](s: Selector[T]) = discard
 template isEmpty*[T](s: Selector[T]): bool =
   (s.count == 0)
 
+proc contains*[T](s: Selector[T], fd: SocketHandle|int): bool {.inline.} =
+  s.withSelectLock():
+    result = false
+
+    let fdi = int(fd)
+    for i in 0..<FD_SETSIZE:
+      if s.fds[i].ident == fdi:
+        return true
+      inc(i)
+
 when hasThreadSupport:
   template withSelectLock[T](s: Selector[T], body: untyped) =
     acquire(s.lock)
@@ -391,15 +401,12 @@ else:
   template withSelectLock[T](s: Selector[T], body: untyped) =
     body
 
-proc getData*[T](s: Selector[T], fd: SocketHandle|int): T =
+proc getData*[T](s: Selector[T], fd: SocketHandle|int): var T =
   s.withSelectLock():
     let fdi = int(fd)
-    var i = 0
-    while i < FD_SETSIZE:
+    for i in 0..<FD_SETSIZE:
       if s.fds[i].ident == fdi:
-        result = s.fds[i].data
-        break
-      inc(i)
+        return s.fds[i].data
 
 proc setData*[T](s: Selector[T], fd: SocketHandle|int, data: T): bool =
   s.withSelectLock():

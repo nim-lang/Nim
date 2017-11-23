@@ -518,13 +518,15 @@ proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
     procVarcheck skipConvAndClosure(n)
   #elif n.kind in nkSymChoices:
   #  echo "came here"
+  let paramType = paramType.skipTypesOrNil(abstractInst)
   if paramType != nil and tfNotNil in paramType.flags and
       n.typ != nil and tfNotNil notin n.typ.flags:
     if n.kind == nkAddr:
       # addr(x[]) can't be proven, but addr(x) can:
       if not containsNode(n, {nkDerefExpr, nkHiddenDeref}): return
     elif (n.kind == nkSym and n.sym.kind in routineKinds) or
-         n.kind in procDefs+{nkObjConstr, nkBracket}:
+         (n.kind in procDefs+{nkObjConstr, nkBracket, nkClosure, nkStrLit..nkTripleStrLit}) or
+         (n.kind in nkCallKinds and n[0].kind == nkSym and n[0].sym.magic == mArrToSeq):
       # 'p' is not nil obviously:
       return
     case impliesNotNil(tracked.guards, n)
