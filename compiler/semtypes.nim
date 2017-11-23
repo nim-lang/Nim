@@ -1050,7 +1050,12 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           result.flags.incl tfIterator
           # XXX Would be nice if we could get rid of this
       result.sons[0] = r
+      let oldFlags = result.flags
       propagateToOwner(result, r)
+      if oldFlags != result.flags:
+        # XXX This rather hacky way keeps 'tflatmap' compiling:
+        if tfHasMeta notin oldFlags:
+          result.flags.excl tfHasMeta
       result.n.typ = r
 
   if genericParams != nil and genericParams.len > 0:
