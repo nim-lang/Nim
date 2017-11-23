@@ -1360,7 +1360,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         case n.len
         of 3:
           result = semTypeNode(c, n.sons[1], prev)
-          if result.skipTypes({tyGenericInst, tyAlias}).kind in NilableTypes+GenericTypes and
+          if result.skipTypes({tyGenericInst, tyAlias}).kind in NilableTypes+GenericTypes+{tyForward} and
               n.sons[2].kind == nkNilLit:
             result = freshType(result, prev)
             result.flags.incl(tfNotNil)
