@@ -35,3 +35,24 @@ type
 
 let table = newTable[string, Task]()
 table.del("task")
+
+# bug #6121
+
+import json
+
+type
+
+  foo = object
+    thing: string not nil
+
+  CTS = ref object
+    subs_by_sid: Table[int, foo]
+
+
+proc parse(cts: CTS, jn: JsonNode) =
+
+  let ces = foo(
+    thing: jn.getStr("thing")
+  )
+
+  cts.subs_by_sid[0] = ces
