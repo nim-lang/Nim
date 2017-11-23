@@ -518,6 +518,7 @@ proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
     procVarcheck skipConvAndClosure(n)
   #elif n.kind in nkSymChoices:
   #  echo "came here"
+  let paramType = paramType.skipTypesOrNil(abstractInst)
   if paramType != nil and tfNotNil in paramType.flags and
       n.typ != nil and tfNotNil notin n.typ.flags:
     if n.kind == nkAddr:

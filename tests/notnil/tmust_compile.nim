@@ -24,3 +24,14 @@ var b = Obj() # this doesn't (also doesn't works with additional fields)
 var z = Obj2[int]()
 
 echo "success"
+
+# bug #6555
+
+import tables
+
+type
+  TaskOrNil = ref object
+  Task = TaskOrNil not nil
+
+let table = newTable[string, Task]()
+table.del("task")
