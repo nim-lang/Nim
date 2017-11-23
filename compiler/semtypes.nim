@@ -1050,6 +1050,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           result.flags.incl tfIterator
           # XXX Would be nice if we could get rid of this
       result.sons[0] = r
+      propagateToOwner(result, r)
       result.n.typ = r
 
   if genericParams != nil and genericParams.len > 0:
