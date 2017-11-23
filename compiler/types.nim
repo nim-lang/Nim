@@ -972,7 +972,12 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
      tyArray, tyProc, tyVarargs, tyOrdinal, tyTypeClasses, tyOpt:
     cycleCheck()
     if a.kind == tyUserTypeClass and a.n != nil: return a.n == b.n
-    result = sameChildrenAux(a, b, c) and sameFlags(a, b)
+    result = sameChildrenAux(a, b, c)
+    if result:
+      if IgnoreTupleFields in c.flags:
+        result = a.flags * {tfVarIsPtr} == b.flags * {tfVarIsPtr}
+      else:
+        result = sameFlags(a, b)
     if result and ExactGcSafety in c.flags:
       result = a.flags * {tfThread} == b.flags * {tfThread}
     if result and a.kind == tyProc:
@@ -992,6 +997,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
 proc sameBackendType*(x, y: PType): bool =
   var c = initSameTypeClosure()
   c.flags.incl IgnoreTupleFields
+  c.cmp = dcEqIgnoreDistinct
   result = sameTypeAux(x, y, c)
 
 proc compareTypes*(x, y: PType,

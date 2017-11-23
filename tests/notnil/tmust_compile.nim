@@ -56,3 +56,9 @@ proc parse(cts: CTS, jn: JsonNode) =
   )
 
   cts.subs_by_sid[0] = ces
+
+
+# bug #6489
+
+proc p(x: proc(){.closure.} not nil) = discard
+p(proc(){.closure.} = discard)
