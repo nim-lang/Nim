@@ -262,6 +262,11 @@ when defined(windows) or defined(nimdoc):
       setGlobalDispatcher(newDispatcher())
     result = gDisp
 
+  proc getIoHandler*(disp: PDispatcher): Handle =
+    ## Returns the underlying IO Completion Port handle (Windows) or selector
+    ## (Unix) for the specified dispatcher.
+    return disp.ioPort
+
   proc register*(fd: cint | SocketHandle | AsyncFD): AsyncFD {.discardable.} =
     ## Registers ``fd`` with the dispatcher.
     ##
@@ -1102,6 +1107,9 @@ else:
     if gDisp.isNil:
       setGlobalDispatcher(newDispatcher())
     result = gDisp
+
+  proc getIoHandler*(disp: PDispatcher): Selector[AsyncData] =
+    return disp.selector
 
   proc register*(fd: cint | SocketHandle | AsyncFD): AsyncFD {.discardable.} =
     let p = getGlobalDispatcher()
