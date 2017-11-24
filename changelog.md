@@ -16,6 +16,8 @@
 
 ### Library changes
 
+- The `ReadyKey` type in the selectors module now contains an ``errorCode``
+  field to help distinguish between ``Event.Error`` events.
 - The `AsyncFD` type now reflects the fact that the underlying FD is registered
   in the async dispatcher.
 - The overloading rules changed slightly so that constrained generics are
