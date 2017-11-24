@@ -12,7 +12,8 @@
   `getBool`, `getFloat`, `getBiggestInt`. Also `getInt` procedure was added.
 - `reExtended` is no longer default for the `re` constructor in the `re`
   module.
-
+- `newAsyncSocket` taking an `AsyncFD` now runs `setBlocking(false)` on the
+  fd.
 
 ### Library changes
 
