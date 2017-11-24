@@ -541,6 +541,7 @@ var
   SO_DONTLINGER* {.importc, header: "winsock2.h".}: cint
   SO_EXCLUSIVEADDRUSE* {.importc, header: "winsock2.h".}: cint # disallow local address reuse
   SO_ERROR* {.importc, header: "winsock2.h".}: cint
+  TCP_NODELAY* {.importc, header: "winsock2.h".}: cint
 
 proc `==`*(x, y: SocketHandle): bool {.borrow.}
 
