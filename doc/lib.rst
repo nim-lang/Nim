@@ -431,6 +431,8 @@ Modules for JS backend
 * `jsffi <jsffi.html>`_
   Types and macros for easier interaction with JavaScript.
 
+* `jsdict <jsdict.html>`_
+  Mapping to JavaScript objects and arrays.
 
 Deprecated modules
 ------------------
