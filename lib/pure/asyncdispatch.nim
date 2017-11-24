@@ -281,7 +281,7 @@ when defined(windows) or defined(nimdoc):
     if createIoCompletionPort(fd.Handle, p.ioPort,
                               cast[CompletionKey](fd), 1) == 0:
       raiseOSError(osLastError())
-    p.handles.incl(fd)
+    p.handles.incl(fd.AsyncFD)
     return fd.AsyncFD
 
   proc verifyPresence(fd: AsyncFD) =
