@@ -84,7 +84,7 @@ proc getFileSize*(f: AsyncFile): int64 =
 proc newAsyncFile*(fd: cint | AsyncFd): AsyncFile =
   ## Creates `AsyncFile` with a previously opened file descriptor `fd`.
   new result
-  result.fd = register(result.fd)
+  result.fd = register(fd)
 
 proc openAsync*(filename: string, mode = fmRead): AsyncFile =
   ## Opens a file specified by the path in ``filename`` using
