@@ -431,6 +431,8 @@ Modules for JS backend
 * `jsffi <jsffi.html>`_
   Types and macros for easier interaction with JavaScript.
 
+* `jwebsockets <jwebsockets.html>`_
+  Websockets support for the JS backend.
 
 Deprecated modules
 ------------------
