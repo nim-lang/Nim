@@ -81,11 +81,10 @@ proc getFileSize*(f: AsyncFile): int64 =
   else:
     result = lseek(f.fd.cint, 0, SEEK_END)
 
-proc newAsyncFile*(fd: AsyncFd): AsyncFile =
+proc newAsyncFile*(fd: cint | AsyncFd): AsyncFile =
   ## Creates `AsyncFile` with a previously opened file descriptor `fd`.
   new result
-  result.fd = fd
-  register(result.fd)
+  result.fd = register(result.fd)
 
 proc openAsync*(filename: string, mode = fmRead): AsyncFile =
   ## Opens a file specified by the path in ``filename`` using
@@ -97,16 +96,16 @@ proc openAsync*(filename: string, mode = fmRead): AsyncFile =
     when useWinUnicode:
       let fd = createFileW(newWideCString(filename), desiredAccess,
           FILE_SHARE_READ,
-          nil, creationDisposition, flags, 0).AsyncFd
+          nil, creationDisposition, flags, 0)
     else:
       let fd = createFileA(filename, desiredAccess,
           FILE_SHARE_READ,
-          nil, creationDisposition, flags, 0).AsyncFd
+          nil, creationDisposition, flags, 0)
 
-    if fd.Handle == INVALID_HANDLE_VALUE:
+    if fd == INVALID_HANDLE_VALUE:
       raiseOSError(osLastError())
 
-    result = newAsyncFile(fd)
+    result = newAsyncFile(fd.cint)
 
     if mode == fmAppend:
       result.offset = getFileSize(result)
@@ -115,7 +114,7 @@ proc openAsync*(filename: string, mode = fmRead): AsyncFile =
     let flags = getPosixFlags(mode)
     # RW (Owner), RW (Group), R (Other)
     let perm = S_IRUSR or S_IWUSR or S_IRGRP or S_IWGRP or S_IROTH
-    let fd = open(filename, flags, perm).AsyncFD
+    let fd = open(filename, flags, perm)
     if fd.cint == -1:
       raiseOSError(osLastError())
 

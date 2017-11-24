@@ -12,6 +12,12 @@
   `getBool`, `getFloat`, `getBiggestInt`. Also `getInt` procedure was added.
 - `reExtended` is no longer default for the `re` constructor in the `re`
   module.
+
+
+### Library changes
+
+- The `AsyncFD` type now reflects the fact that the underlying FD is registered
+  in the async dispatcher.
 - The overloading rules changed slightly so that constrained generics are
   preferred over unconstrained generics. (Bug #6526)
 - It is now possible to forward declare object types so that mutually
