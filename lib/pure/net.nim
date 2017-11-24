@@ -753,10 +753,8 @@ proc acceptAddr*(server: Socket, client: var Socket, address: var string,
   ## flag is specified then this error will not be raised and instead
   ## accept will be called again.
   assert(client != nil)
-  var sockAddress: Sockaddr_in
-  var addrLen = sizeof(sockAddress).SockLen
-  var sock = accept(server.fd, cast[ptr SockAddr](addr(sockAddress)),
-                    addr(addrLen))
+  let ret = accept(server.fd)
+  let sock = ret[0]
 
   if sock == osInvalidSocket:
     let err = osLastError()
@@ -764,6 +762,7 @@ proc acceptAddr*(server: Socket, client: var Socket, address: var string,
       acceptAddr(server, client, address, flags)
     raiseOSError(err)
   else:
+    address = ret[1]
     client.fd = sock
     client.isBuffered = server.isBuffered
 
@@ -775,9 +774,6 @@ proc acceptAddr*(server: Socket, client: var Socket, address: var string,
         server.sslContext.wrapSocket(client)
         let ret = SSLAccept(client.sslHandle)
         socketError(client, ret, false)
-
-    # Client socket is set above.
-    address = $inet_ntoa(sockAddress.sin_addr)
 
 when false: #defineSsl:
   proc acceptAddrSSL*(server: Socket, client: var Socket,
