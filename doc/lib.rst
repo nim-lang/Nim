@@ -431,6 +431,8 @@ Modules for JS backend
 * `jsffi <jsffi.html>`_
   Types and macros for easier interaction with JavaScript.
 
+* `localstorage <localstorage.html>`_
+  Wrapper for HTML 5 local storage.
 
 Deprecated modules
 ------------------
