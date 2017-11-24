@@ -217,17 +217,76 @@ proc `callback=`*[T](future: Future[T],
   ## If future has already completed then ``cb`` will be called immediately.
   future.callback = proc () = cb(future)
 
-proc injectStacktrace[T](future: Future[T]) =
-  # TODO: Come up with something better.
-  when not defined(release):
-    var msg = ""
-    msg.add("\n  " & future.fromProc & "'s lead up to read of failed Future:")
-
-    if not future.errorStackTrace.isNil and future.errorStackTrace != "":
-      msg.add("\n" & indent(future.errorStackTrace.strip(), 4))
+proc processEntries(entries: seq[StackTraceEntry]): seq[StackTraceEntry] =
+  proc get(entries: seq[StackTraceEntry], i: int): StackTraceEntry =
+    if i >= entries.len:
+      return StackTraceEntry(procName: "", line: 0, filename: "")
     else:
-      msg.add("\n    Empty or nil stack trace.")
-    future.error.msg.add(msg)
+      return entries[i]
+
+  result = @[]
+  var i = 0
+  while i < entries.len:
+    var entry = entries[i]
+
+    if entry.procName.isNil:
+      # Start of a re-raise traceback which we do not care for.
+      break
+
+    # Detect this pattern:
+    #   (procname: a, line: 393, filename: asyncmacro.nim)
+    #   (procname: cb0, line: 34, filename: asyncmacro.nim)
+    #   (procname: aIter, line: 40, filename: tasync_traceback.nim)
+    let second = get(entries, i+1)
+    let third = get(entries, i+2)
+    let fitsPattern =
+      cmpIgnoreStyle($entry.filename, "asyncmacro.nim") == 0 and
+      cmpIgnoreStyle($second.filename, "asyncmacro.nim") == 0 and
+      cmpIgnoreStyle($second.procName, "cb0") == 0 and
+      cmpIgnoreStyle($third.procName, $entry.procName & "iter") == 0
+
+    if fitsPattern:
+      entry = StackTraceEntry(
+        procName: entry.procName,
+        line: third.line,
+        filename: third.filename
+      )
+      i.inc(2)
+
+    result.add(entry)
+    i.inc
+
+proc injectStacktrace[T](future: Future[T]) =
+  when not defined(release):
+    const header = "Async traceback\n---------------\n"
+
+    let originalMsg = future.error.msg
+    if header in originalMsg:
+      return
+
+    let entries = getStackTraceEntries(future.error).processEntries()
+    future.error.msg = "\n" & header
+
+    # Find longest filename & line number combo for alignment purposes.
+    var longestLeft = 0
+    for entry in entries:
+      let left = $entry.filename & $entry.line
+      if left.len > longestLeft:
+        longestLeft = left.len
+
+    # Format the entries.
+    for entry in entries:
+      let left = "$#($#)" % [$entry.filename, $entry.line]
+      future.error.msg.add("$1$2 $3\n" % [
+        left,
+        spaces(longestLeft - left.len + 2), $entry.procName])
+
+    future.error.msg.add("Exception message: " & originalMsg & "\n")
+    future.error.msg.add("Exception type: ")
+
+    # For debugging purposes TODO...
+    for entry in getStackTraceEntries(future.error):
+      future.error.msg.add "\n" & $entry
 
 proc read*[T](future: Future[T] | FutureVar[T]): T =
   ## Retrieves the value of ``future``. Future must be finished otherwise
