@@ -750,6 +750,32 @@ macro mapLiterals*(constructor, op: untyped;
   ## works for nested tuples of arrays of sets etc.
   result = mapLitsImpl(constructor, op, nested.boolVal)
 
+macro whileNotNil*(node: untyped, code: untyped): untyped =
+  ## useful to loop until a value is nil
+  ## 
+  ## Example:
+  ## 
+  ## ..code-block::
+  ##   var b = @[C(c: 0), nil, C(c: 2)]
+  ##   whileNotNil a in b:
+  ##     echo a.c
+  ## 
+  ## Short notation for:
+  ## 
+  ## .. code-block::
+  ##   var b = @[C(c: 0), nil, C(c: 2)]
+  ##   for a in b:
+  ##     if a.isNil:
+  ##       break
+  ##     echo a.c
+  var element = node[1]
+  var sequence = node[2]
+  result = quote:
+    for `element` in `sequence`:
+      if `element`.isNil:
+        break
+      `code`
+
 when isMainModule:
   import strutils
   block: # concat test
@@ -1043,6 +1069,17 @@ when isMainModule:
     doAssert x is array[4, int]
     doAssert mapLiterals((1, ("abc"), 2), float, nested=false) == (float(1), "abc", float(2))
     doAssert mapLiterals(([1], ("abc"), 2), `$`, nested=true) == (["1"], "abc", "2")
+
+  block: # whileNotNil tests
+    type
+      C = ref object
+        c: int
+
+    var b = @[C(c: 0), nil, C(c: 2)]
+    var x: seq[int] = @[]
+    whileNotNil a in b:
+      x.add(a.c)
+    doAssert x == @[0]
 
   when not defined(testing):
     echo "Finished doc tests"

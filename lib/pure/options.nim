@@ -67,7 +67,7 @@
 ##     assert(false)  # This will not be reached
 ##   except UnpackError:  # Because an exception is raised
 ##     discard
-import typetraits
+import typetraits, macros
 
 type
   Option*[T] = object
@@ -146,6 +146,21 @@ proc filter*[T](self: Option[T], callback: proc (input: T): bool): Option[T] =
     none(T)
   else:
     self
+
+macro whileOption*(node: untyped, code: untyped): untyped =
+  ## useful to loop until a value is none, it automatically unwraps
+  ## 
+  ## var b = @[some(2), none(int), some(8), some(10)]
+  ## whileOption a in b:
+  ##   echo a
+  var element = node[1]
+  var sequence = node[2]
+  result = quote:
+    for elementRaw in `sequence`:
+      if elementRaw.isNone:
+        break
+      let `element` = elementRaw.get()
+      `code`
 
 proc `==`*(a, b: Option): bool =
   ## Returns ``true`` if both ``Option``s are ``none``,
@@ -256,3 +271,11 @@ when isMainModule:
 
       check(some(1).flatMap(maybeToString).flatMap(maybeExclaim) == some("1!"))
       check(some(0).flatMap(maybeToString).flatMap(maybeExclaim) == none(string))
+
+    test "whileOption":
+      var b = @[some(2), none(int), some(8), some(10)]
+      var x: seq[int] = @[]
+      whileOption a in b:
+        x.add(a)
+
+      check(x == @[2])
