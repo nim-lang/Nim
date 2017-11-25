@@ -1,6 +1,13 @@
 discard """
   exitcode: 0
-  output: ""
+  output: '''
+b failure
+Async traceback:
+  tasync_traceback.nim(49) tasync_traceback
+  tasync_traceback.nim(47) a
+  tasync_traceback.nim(44) b
+Exception message: b failure
+Exception type:'''
 """
 import asyncdispatch
 
@@ -40,7 +47,7 @@ proc a(): Future[int] {.async.} =
   return await b()
 
 let aFut = a()
-# try:
-discard waitFor aFut
-# except Exception as exc:
-#   echo exc.msg
+try:
+  discard waitFor aFut
+except Exception as exc:
+  echo exc.msg
