@@ -758,9 +758,12 @@ iterator flatItems*[T](s: openarray[T]): auto {.noSideEffect.}=
   ## .. code-block:
   ##   # A seq of arrays of seqs of arrays
   ##   let numbers = @[[@[[1],[2]], @[[3], [4]]], [@[[5], [6]], @[[7], [8]]], [@[[9], [10]], @[[11], [12]]]]
-  ##   for n in flatitems(s):
-  ##     echo n
-  ##   # echoes 1, 2, 3, ..., 10, 11, 12 in separate lines
+  ##   let check = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+  ##   var i = 0
+  ##   for n in flatitems(numbers):
+  ##     doAssert n == check[i]
+  ##     i += 1
+  ##   # i.e. returns 1, 2, 3, ..., 10, 11, 12
   for item in s:
     when item is array|seq:
       for subitem in flatItems(item):
