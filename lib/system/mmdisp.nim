@@ -343,7 +343,6 @@ elif defined(gogc):
 
   const goFlagNoZero: uint32 = 1 shl 3
   proc goRuntimeMallocGC(size: uint, typ: uint, flag: uint32): pointer {.importc: "runtime_mallocgc", dynlib: goLib.}
-  proc goFree(v: pointer) {.importc: "__go_free", dynlib: goLib.}
 
   proc goSetFinalizer(obj: pointer, f: pointer) {.importc: "set_finalizer", codegenDecl:"$1 $2$3 __asm__ (\"main.Set_finalizer\");\n$1 $2$3", dynlib: goLib.}
 
@@ -376,7 +375,6 @@ elif defined(gogc):
     result = goRuntimeMallocGC(roundup(newsize, sizeof(pointer)).uint, 0.uint, goFlagNoZero)
     copyMem(result, old, oldsize)
     zeroMem(cast[pointer](cast[ByteAddress](result) +% oldsize), newsize - oldsize)
-    goFree(old)
 
   proc nimGCref(p: pointer) {.compilerproc, inline.} = discard
   proc nimGCunref(p: pointer) {.compilerproc, inline.} = discard
