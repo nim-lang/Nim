@@ -750,6 +750,36 @@ macro mapLiterals*(constructor, op: untyped;
   ## works for nested tuples of arrays of sets etc.
   result = mapLitsImpl(constructor, op, nested.boolVal)
 
+iterator flatItems*[T](s: openarray[T]): auto {.noSideEffect.}=
+  ## Iterates over a deep nested arrays or sequences and returns values in order.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:
+  ##   # A seq of arrays of seqs of arrays
+  ##   let numbers = @[[@[[1],[2]], @[[3], [4]]], [@[[5], [6]], @[[7], [8]]], [@[[9], [10]], @[[11], [12]]]]
+  ##   for n in flatitems(s):
+  ##     echo n
+  ##   # echoes 1, 2, 3, ..., 10, 11, 12 in separate lines
+  for item in s:
+    when item is array|seq:
+      for subitem in flatItems(item):
+        yield subitem
+    else:
+      yield item
+
+proc flatten*[T](s: openarray[T]): auto {.noSideEffect.}=
+  ## Transform a deep nested arrays or sequences into a single sequence, keeping the order.
+  ##
+  ## Example:
+  ##
+  ## .. code-block:
+  ##   # A seq of arrays of seqs of arrays
+  ##   let numbers = @[[@[[1],[2]], @[[3], [4]]], [@[[5], [6]], @[[7], [8]]], [@[[9], [10]], @[[11], [12]]]]
+  ##   let flattened = numbers.flatten
+  ##   echo flattened # @[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+  toSeq(flatItems s)
+
 when isMainModule:
   import strutils
   block: # concat test
@@ -1043,6 +1073,23 @@ when isMainModule:
     doAssert x is array[4, int]
     doAssert mapLiterals((1, ("abc"), 2), float, nested=false) == (float(1), "abc", float(2))
     doAssert mapLiterals(([1], ("abc"), 2), `$`, nested=true) == (["1"], "abc", "2")
+
+  block: # flatten and flatItems tests
+    let a1 = [[1,2,3], [4, 5, 6], [7, 8, 9], [10, 11, 12]] # array of array
+    let a2 = @[@[1,2,3], @[4, 5, 6], @[7, 8, 9], @[10, 11, 12]] # seq of seq
+    let a3 = @[[@[[1],[2]], @[[3], [4]]], [@[[5], [6]], @[[7], [8]]], [@[[9], [10]], @[[11], [12]]]] # seq of array of seq of array
+
+    # Check that strings do not decay into openarray[char]
+    let b1 = [["he","ll","o"], ["wo", "rl", "d"]]
+    let b2 = @[@["he","ll","o"], @["wo", "rl", "d"]]
+
+
+    assert a1.flatten == @[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    assert a2.flatten == @[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    assert a3.flatten == @[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+
+    assert b1.flatten == @["he", "ll", "o", "wo", "rl", "d"]
+    assert b2.flatten == @["he", "ll", "o", "wo", "rl", "d"]
 
   when not defined(testing):
     echo "Finished doc tests"
