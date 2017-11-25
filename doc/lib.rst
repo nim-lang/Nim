@@ -431,6 +431,8 @@ Modules for JS backend
 * `jsffi <jsffi.html>`_
   Types and macros for easier interaction with JavaScript.
 
+* `jsstring <jsstring.html>`_
+ + Wrapper for the JavaScript string
 
 Deprecated modules
 ------------------
