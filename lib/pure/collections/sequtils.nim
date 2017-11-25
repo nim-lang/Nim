@@ -777,7 +777,7 @@ proc flatten*[T](s: openarray[T]): auto {.noSideEffect.}=
   ##   # A seq of arrays of seqs of arrays
   ##   let numbers = @[[@[[1],[2]], @[[3], [4]]], [@[[5], [6]], @[[7], [8]]], [@[[9], [10]], @[[11], [12]]]]
   ##   let flattened = numbers.flatten
-  ##   echo flattened # @[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+  ##   doAssert flattened == @[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
   toSeq(flatItems s)
 
 when isMainModule:
@@ -1084,12 +1084,12 @@ when isMainModule:
     let b2 = @[@["he","ll","o"], @["wo", "rl", "d"]]
 
 
-    assert a1.flatten == @[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-    assert a2.flatten == @[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-    assert a3.flatten == @[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    doAssert a1.flatten == @[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    doAssert a2.flatten == @[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    doAssert a3.flatten == @[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
-    assert b1.flatten == @["he", "ll", "o", "wo", "rl", "d"]
-    assert b2.flatten == @["he", "ll", "o", "wo", "rl", "d"]
+    doAssert b1.flatten == @["he", "ll", "o", "wo", "rl", "d"]
+    doAssert b2.flatten == @["he", "ll", "o", "wo", "rl", "d"]
 
   when not defined(testing):
     echo "Finished doc tests"
