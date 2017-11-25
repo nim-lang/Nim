@@ -985,10 +985,10 @@ elif not defined(useNimRtl):
         var tmspec: Timespec
 
         if timeout >= 1000:
-          tmspec.tv_sec = (timeout div 1_000).Time
+          tmspec.tv_sec = (timeout div 1_000).TimeT
           tmspec.tv_nsec = (timeout %% 1_000) * 1_000_000
         else:
-          tmspec.tv_sec = 0.Time
+          tmspec.tv_sec = 0.TimeT
           tmspec.tv_nsec = (timeout * 1_000_000)
 
         try:
@@ -1026,26 +1026,29 @@ elif not defined(useNimRtl):
     const
       hasThreadSupport = compileOption("threads") and not defined(nimscript)
 
+    proc `-`(a, b: TimeT): TimeT {.borrow.}
+    proc `==`(a, b: TimeT): bool {.borrow.}
+
     proc waitForExit(p: Process, timeout: int = -1): int =
       template adjustTimeout(t, s, e: Timespec) =
         var diff: int
         var b: Timespec
         b.tv_sec = e.tv_sec
         b.tv_nsec = e.tv_nsec
-        e.tv_sec = (e.tv_sec - s.tv_sec).Time
+        e.tv_sec = e.tv_sec - s.tv_sec
         if e.tv_nsec >= s.tv_nsec:
           e.tv_nsec -= s.tv_nsec
         else:
-          if e.tv_sec == 0.Time:
+          if e.tv_sec == 0.TimeT:
             raise newException(ValueError, "System time was modified")
           else:
             diff = s.tv_nsec - e.tv_nsec
             e.tv_nsec = 1_000_000_000 - diff
-        t.tv_sec = (t.tv_sec - e.tv_sec).Time
+        t.tv_sec = t.tv_sec - e.tv_sec
         if t.tv_nsec >= e.tv_nsec:
           t.tv_nsec -= e.tv_nsec
         else:
-          t.tv_sec = (int(t.tv_sec) - 1).Time
+          t.tv_sec = (int(t.tv_sec) - 1).TimeT
           diff = e.tv_nsec - t.tv_nsec
           t.tv_nsec = 1_000_000_000 - diff
         s.tv_sec = b.tv_sec
@@ -1080,10 +1083,10 @@ elif not defined(useNimRtl):
             raiseOSError(osLastError())
 
         if timeout >= 1000:
-          tmspec.tv_sec = (timeout div 1_000).Time
+          tmspec.tv_sec = (timeout div 1_000).TimeT
           tmspec.tv_nsec = (timeout %% 1_000) * 1_000_000
         else:
-          tmspec.tv_sec = 0.Time
+          tmspec.tv_sec = 0.TimeT
           tmspec.tv_nsec = (timeout * 1_000_000)
 
         try:

@@ -93,13 +93,13 @@ else:
 {.deprecated: [cSIG_HOLD: SIG_HOLD].}
 
 when not defined(macosx) and not defined(android):
-  proc st_atime*(s: Stat): Time {.inline.} =
+  proc st_atime*(s: Stat): TimeT {.inline.} =
     ## Second-granularity time of last access
     result = s.st_atim.tv_sec
-  proc st_mtime*(s: Stat): Time {.inline.} =
+  proc st_mtime*(s: Stat): TimeT {.inline.} =
     ## Second-granularity time of last data modification.
     result = s.st_mtim.tv_sec
-  proc st_ctime*(s: Stat): Time {.inline.} =
+  proc st_ctime*(s: Stat): TimeT {.inline.} =
     ## Second-granularity time of last status change.
     result = s.st_ctim.tv_sec
 
@@ -609,22 +609,22 @@ proc clock_nanosleep*(a1: ClockId, a2: cint, a3: var Timespec,
 proc clock_settime*(a1: ClockId, a2: var Timespec): cint {.
   importc, header: "<time.h>".}
 
-proc ctime*(a1: var Time): cstring {.importc, header: "<time.h>".}
-proc ctime_r*(a1: var Time, a2: cstring): cstring {.importc, header: "<time.h>".}
-proc difftime*(a1, a2: Time): cdouble {.importc, header: "<time.h>".}
+proc ctime*(a1: var TimeT): cstring {.importc, header: "<time.h>".}
+proc ctime_r*(a1: var TimeT, a2: cstring): cstring {.importc, header: "<time.h>".}
+proc difftime*(a1, a2: TimeT): cdouble {.importc, header: "<time.h>".}
 proc getdate*(a1: cstring): ptr Tm {.importc, header: "<time.h>".}
 
-proc gmtime*(a1: var Time): ptr Tm {.importc, header: "<time.h>".}
-proc gmtime_r*(a1: var Time, a2: var Tm): ptr Tm {.importc, header: "<time.h>".}
-proc localtime*(a1: var Time): ptr Tm {.importc, header: "<time.h>".}
-proc localtime_r*(a1: var Time, a2: var Tm): ptr Tm {.importc, header: "<time.h>".}
-proc mktime*(a1: var Tm): Time  {.importc, header: "<time.h>".}
-proc timegm*(a1: var Tm): Time  {.importc, header: "<time.h>".}
+proc gmtime*(a1: var TimeT): ptr Tm {.importc, header: "<time.h>".}
+proc gmtime_r*(a1: var TimeT, a2: var Tm): ptr Tm {.importc, header: "<time.h>".}
+proc localtime*(a1: var TimeT): ptr Tm {.importc, header: "<time.h>".}
+proc localtime_r*(a1: var TimeT, a2: var Tm): ptr Tm {.importc, header: "<time.h>".}
+proc mktime*(a1: var Tm): TimeT  {.importc, header: "<time.h>".}
+proc timegm*(a1: var Tm): TimeT  {.importc, header: "<time.h>".}
 proc nanosleep*(a1, a2: var Timespec): cint {.importc, header: "<time.h>".}
 proc strftime*(a1: cstring, a2: int, a3: cstring,
            a4: var Tm): int {.importc, header: "<time.h>".}
 proc strptime*(a1, a2: cstring, a3: var Tm): cstring {.importc, header: "<time.h>".}
-proc time*(a1: var Time): Time {.importc, header: "<time.h>".}
+proc time*(a1: var TimeT): TimeT {.importc, header: "<time.h>".}
 proc timer_create*(a1: ClockId, a2: var SigEvent,
                a3: var Timer): cint {.importc, header: "<time.h>".}
 proc timer_delete*(a1: Timer): cint {.importc, header: "<time.h>".}
