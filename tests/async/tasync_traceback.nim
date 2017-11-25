@@ -3,10 +3,36 @@ discard """
   output: '''
 b failure
 Async traceback:
-  tasync_traceback.nim(49) tasync_traceback
-  tasync_traceback.nim(47) a
-  tasync_traceback.nim(44) b
+  tasync_traceback.nim(75) tasync_traceback
+  asyncmacro.nim(393)      a
+  asyncmacro.nim(43)       cb0
+  └─Resumes an async procedure
+  asyncfutures.nim(211)    callback=
+  asyncfutures.nim(190)    addCallback
+  asyncfutures.nim(53)     callSoon
+  asyncmacro.nim(34)       cb0
+  └─Resumes an async procedure
+  asyncmacro.nim(0)        aIter
+  asyncfutures.nim(355)    read
+  tasync_traceback.nim(73) a
+  tasync_traceback.nim(70) b
 Exception message: b failure
+Exception type:
+
+bar failure
+Async traceback:
+  tasync_traceback.nim(91) tasync_traceback
+  asyncdispatch.nim(1204)  waitFor
+  asyncdispatch.nim(1253)  poll
+  └─Processes asynchronous completion events
+  asyncdispatch.nim(181)   processPendingCallbacks
+  └─Executes pending callbacks
+  asyncmacro.nim(34)       cb0
+  └─Resumes an async procedure
+  asyncmacro.nim(0)        fooIter
+  asyncfutures.nim(355)    read
+  tasync_traceback.nim(86) barIter
+Exception message: bar failure
 Exception type:'''
 """
 import asyncdispatch
@@ -51,3 +77,18 @@ try:
   discard waitFor aFut
 except Exception as exc:
   echo exc.msg
+echo()
+
+# From #6803
+proc bar(): Future[string] {.async.} =
+  await sleepAsync(100)
+  if true:
+    raise newException(OSError, "bar failure")
+
+proc foo(): Future[string] {.async.} = return await bar()
+
+try:
+  echo waitFor(foo())
+except Exception as exc:
+  echo exc.msg
+echo()

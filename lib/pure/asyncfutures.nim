@@ -217,6 +217,20 @@ proc `callback=`*[T](future: Future[T],
   ## If future has already completed then ``cb`` will be called immediately.
   future.callback = proc () = cb(future)
 
+proc diff[T](a, b: seq[T]): (int, seq[T]) =
+  ## Iterates through both sequences until the items do not match,
+  ## returns the remainder of `b` after the last item that does not match
+  ## together with the index of the last match.
+  ##
+  ## .. code-block::nim
+  ##   doAssert(diff(@[1,2,42,123], @[1,2,123,678,21]) == (1, @[123,678,21]))
+  var lastIndex = 0
+  for i in 0 .. <min(a.len, b.len):
+    lastIndex = i
+    if a[i] != b[i]:
+      break
+  return (lastIndex, b[lastIndex .. ^1])
+
 proc processEntries(entries: seq[StackTraceEntry]): seq[StackTraceEntry] =
   proc get(entries: seq[StackTraceEntry], i: int): StackTraceEntry =
     if i >= entries.len:
@@ -230,8 +244,21 @@ proc processEntries(entries: seq[StackTraceEntry]): seq[StackTraceEntry] =
     var entry = entries[i]
 
     if entry.procName.isNil:
-      # Start of a re-raise traceback which we do not care for.
-      break
+      # Start of a re-raise traceback which may contain more info.
+      # Find where the re-raised traceback ends.
+      assert entry.line == -10 # Signifies start of re-raise block.
+      var reRaiseEnd = i+1
+      while reRaiseEnd < entries.len and not entries[reRaiseEnd].procName.isNil:
+        reRaiseEnd.inc()
+      assert entries[reRaiseEnd].procName.isNil
+      assert entries[reRaiseEnd].line == -100 # Signifies end of re-raise block.
+      let reRaisedEntries = processEntries(entries[i+1 .. reRaiseEnd-1])
+
+      let (lastIndex, remainder) = diff(result, reRaisedEntries)
+      for i in 0..<remainder.len:
+        result.insert(remainder[i], lastIndex+i)
+      i = reRaiseEnd+1
+      continue
 
     # Detect this pattern:
     #   (procname: a, line: 393, filename: asyncmacro.nim)
@@ -273,14 +300,17 @@ proc getHint(entry: StackTraceEntry): string =
 
 proc injectStacktrace[T](future: Future[T]) =
   when not defined(release):
-    const header = "Async traceback:\n"
+    const header = "\nAsync traceback:\n"
 
-    let originalMsg = future.error.msg
-    if header in originalMsg:
-      return
+    var exceptionMsg = future.error.msg
+    if header in exceptionMsg:
+      # This is messy: extract the original exception message from the msg
+      # containing the async traceback.
+      let start = exceptionMsg.find(header)
+      exceptionMsg = exceptionMsg[0..<start]
 
     let entries = getStackTraceEntries(future.error).processEntries()
-    future.error.msg = originalMsg & "\n" & header
+    var newMsg = exceptionMsg & header
 
     # Find longest filename & line number combo for alignment purposes.
     var longestLeft = 0
@@ -293,7 +323,7 @@ proc injectStacktrace[T](future: Future[T]) =
     # Format the entries.
     for entry in entries:
       let left = "$#($#)" % [$entry.filename, $entry.line]
-      future.error.msg.add("$#$#$# $#\n" % [
+      newMsg.add("$#$#$# $#\n" % [
         indent,
         left,
         spaces(longestLeft - left.len + 2),
@@ -301,14 +331,15 @@ proc injectStacktrace[T](future: Future[T]) =
       ])
       let hint = getHint(entry)
       if hint.len > 0:
-        future.error.msg.add(indent & "└─" & hint & "\n")
+        newMsg.add(indent & "└─" & hint & "\n")
 
-    future.error.msg.add("Exception message: " & originalMsg & "\n")
-    future.error.msg.add("Exception type: ")
+    newMsg.add("Exception message: " & exceptionMsg & "\n")
+    newMsg.add("Exception type:")
 
     # # For debugging purposes
     # for entry in getStackTraceEntries(future.error):
-    #   future.error.msg.add "\n" & $entry
+    #   newMsg.add "\n" & $entry
+    future.error.msg = newMsg
 
 proc read*[T](future: Future[T] | FutureVar[T]): T =
   ## Retrieves the value of ``future``. Future must be finished otherwise
