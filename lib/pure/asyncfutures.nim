@@ -256,16 +256,31 @@ proc processEntries(entries: seq[StackTraceEntry]): seq[StackTraceEntry] =
     result.add(entry)
     i.inc
 
+proc getHint(entry: StackTraceEntry): string =
+  ## We try to provide some hints about stack trace entries that the user
+  ## may not be familiar with, in particular calls inside the stdlib.
+  result = ""
+  case ($entry.procName).normalize()
+  of "cb0":
+    if cmpIgnoreStyle($entry.filename, "asyncmacro.nim") == 0:
+      return "Resumes an async procedure"
+  of "processpendingcallbacks":
+    if cmpIgnoreStyle($entry.filename, "asyncdispatch.nim") == 0:
+      return "Executes pending callbacks"
+  of "poll":
+    if cmpIgnoreStyle($entry.filename, "asyncdispatch.nim") == 0:
+      return "Processes asynchronous completion events"
+
 proc injectStacktrace[T](future: Future[T]) =
   when not defined(release):
-    const header = "Async traceback\n---------------\n"
+    const header = "Async traceback:\n"
 
     let originalMsg = future.error.msg
     if header in originalMsg:
       return
 
     let entries = getStackTraceEntries(future.error).processEntries()
-    future.error.msg = "\n" & header
+    future.error.msg = originalMsg & "\n" & header
 
     # Find longest filename & line number combo for alignment purposes.
     var longestLeft = 0
@@ -274,19 +289,26 @@ proc injectStacktrace[T](future: Future[T]) =
       if left.len > longestLeft:
         longestLeft = left.len
 
+    const indent = "  "
     # Format the entries.
     for entry in entries:
       let left = "$#($#)" % [$entry.filename, $entry.line]
-      future.error.msg.add("$1$2 $3\n" % [
+      future.error.msg.add("$#$#$# $#\n" % [
+        indent,
         left,
-        spaces(longestLeft - left.len + 2), $entry.procName])
+        spaces(longestLeft - left.len + 2),
+        $entry.procName
+      ])
+      let hint = getHint(entry)
+      if hint.len > 0:
+        future.error.msg.add(indent & "└─" & hint & "\n")
 
     future.error.msg.add("Exception message: " & originalMsg & "\n")
     future.error.msg.add("Exception type: ")
 
-    # For debugging purposes TODO...
-    for entry in getStackTraceEntries(future.error):
-      future.error.msg.add "\n" & $entry
+    # # For debugging purposes
+    # for entry in getStackTraceEntries(future.error):
+    #   future.error.msg.add "\n" & $entry
 
 proc read*[T](future: Future[T] | FutureVar[T]): T =
   ## Retrieves the value of ``future``. Future must be finished otherwise
