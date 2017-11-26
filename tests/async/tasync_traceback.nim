@@ -14,7 +14,7 @@ Async traceback:
   asyncmacro.nim(34)       a_continue
   └─Resumes an async procedure
   asyncmacro.nim(0)        aIter
-  asyncfutures.nim(340)    read
+  asyncfutures.nim(341)    read
   asyncmacro.nim(34)       a_continue
   └─Resumes an async procedure
   tasync_traceback.nim(81) aIter
@@ -36,7 +36,7 @@ Async traceback:
   asyncmacro.nim(34)       foo_continue
   └─Resumes an async procedure
   asyncmacro.nim(0)        fooIter
-  asyncfutures.nim(340)    read
+  asyncfutures.nim(341)    read
   asyncmacro.nim(34)       bar_continue
   └─Resumes an async procedure
   tasync_traceback.nim(94) barIter

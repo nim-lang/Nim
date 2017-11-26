@@ -248,9 +248,10 @@ proc mergeEntries(entries: seq[StackTraceEntry]): seq[StackTraceEntry] =
         reRaiseEnd.inc()
       assert entries[reRaiseEnd].procName.isNil
       assert entries[reRaiseEnd].line == -100 # Signifies end of re-raise block.
-      let reRaisedEntries = mergeEntries(entries[i+1 .. reRaiseEnd-1])
+      let reRaisedEntries = entries[i+1 .. reRaiseEnd-1]
 
       let (lastIndex, remainder) = diff(result, reRaisedEntries)
+      # Insert all the entries after lastIndex.
       for i in 0..<remainder.len:
         result.insert(remainder[i], lastIndex+i)
       i = reRaiseEnd+1
