@@ -274,25 +274,43 @@ proc shortenEntries(entries: seq[StackTraceEntry]): seq[StackTraceEntry] =
 
     # Detect this pattern:
     #   (procname: a, line: 393, filename: asyncmacro.nim)
+    #   ...
     #   (procname: a_continue, line: 34, filename: asyncmacro.nim)
+    #   ...
     #   (procname: aIter, line: 40, filename: tasync_traceback.nim)
-    let second = get(entries, i+1)
+    proc searchBackwards(entries: seq[StackTraceEntry],
+                         current: StackTraceEntry): (int, StackTraceEntry) =
+      # Search backwards for the beginning of the pattern.
+      result[0] = 0
+      if not ($current.procName).normalize().endsWith("iter"):
+        return
 
-    let third = get(entries, i+2)
-    let fitsPattern =
-      cmpIgnoreStyle($entry.filename, "asyncmacro.nim") == 0 and
-      cmpIgnoreStyle($second.filename, "asyncmacro.nim") == 0 and
-      ($second.procName).startsWith($entry.procName) and
-      ($second.procName).endsWith("continue") and
-      cmpIgnoreStyle($third.procName, $entry.procName & "iter") == 0
+      # Find (procname: a, line: 393, filename: asyncmacro.nim)
+      let start = entries.len-1
+      var counter = start
+      while counter >= 0:
+        if cmpIgnoreStyle($entries[counter].procName & "iter",
+                          $current.procName) == 0:
+          break
+        counter.dec()
 
-    if fitsPattern:
-      entry = StackTraceEntry(
-        procName: entry.procName,
-        line: third.line,
-        filename: third.filename
+      # Return when no beginning of pattern is found.
+      if counter < 0:
+        return
+
+      result[0] = start - counter
+      result[1] = StackTraceEntry(
+        procName: entries[result[0]].procName,
+        line: current.line,
+        filename: current.filename
       )
-      i.inc(2)
+
+    let (itemsToRemove, newEntry) = searchBackwards(result, entry)
+
+    if itemsToRemove != 0:
+      entry = newEntry
+      # Remove the previous entries.
+      result.setLen(result.len-itemsToRemove)
 
     result.add(entry)
     i.inc
