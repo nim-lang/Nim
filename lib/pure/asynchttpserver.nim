@@ -275,10 +275,7 @@ proc processClient(server: AsyncHttpServer, client: AsyncSocket, address: string
   lineFut.mget() = newStringOfCap(80)
 
   while not client.isClosed:
-    try:
-      await processRequest(server, request, client, address, lineFut, callback)
-    except:
-      asyncCheck request.mget().respondError(Http500)
+    await processRequest(server, request, client, address, lineFut, callback)
 
 proc serve*(server: AsyncHttpServer, port: Port,
             callback: proc (request: Request): Future[void] {.closure,gcsafe.},
