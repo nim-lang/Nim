@@ -1283,6 +1283,78 @@ proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
   )
   result = initDateTime(zone.zoneInfoFromTz(dt.toAdjTime), zone)
 
+when not defined(JS):
+  proc epochTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].}
+    ## gets time after the UNIX epoch (1970) in seconds. It is a float
+    ## because sub-second resolution is likely to be supported (depending
+    ## on the hardware/OS).
+
+  proc cpuTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].}
+    ## gets time spent that the CPU spent to run the current process in
+    ## seconds. This may be more useful for benchmarking than ``epochTime``.
+    ## However, it may measure the real time instead (depending on the OS).
+    ## The value of the result has no meaning.
+    ## To generate useful timing values, take the difference between
+    ## the results of two ``cpuTime`` calls:
+    ##
+    ## .. code-block:: nim
+    ##   var t0 = cpuTime()
+    ##   doWork()
+    ##   echo "CPU time [s] ", cpuTime() - t0
+
+when defined(JS):
+  proc getTime(): Time =
+    (newDate().getTime() div 1000).Time
+
+  proc epochTime*(): float {.tags: [TimeEffect].} =
+    newDate().getTime() / 1000
+
+else:
+  type
+    Clock {.importc: "clock_t".} = distinct int
+
+  proc timec(timer: ptr TimeT): TimeT {.
+    importc: "time", header: "<time.h>", tags: [].}
+
+  proc getClock(): Clock {.importc: "clock", header: "<time.h>", tags: [TimeEffect].}
+
+  var
+    clocksPerSec {.importc: "CLOCKS_PER_SEC", nodecl.}: int
+
+  proc getTime(): Time =
+    timec(nil).Time
+
+  const
+    epochDiff = 116444736000000000'i64
+    rateDiff = 10000000'i64 # 100 nsecs
+
+  proc unixTimeToWinTime*(time: TimeT): int64 =
+    ## converts a UNIX `Time` (``time_t``) to a Windows file time
+    result = int64(time) * rateDiff + epochDiff
+
+  proc winTimeToUnixTime*(time: int64): TimeT =
+    ## converts a Windows time to a UNIX `Time` (``time_t``)
+    result = TimeT((time - epochDiff) div rateDiff)
+
+  when not defined(useNimRtl):
+    proc epochTime(): float =
+      when defined(posix):
+        var a: Timeval
+        posix_gettimeofday(a)
+        result = toFloat(a.tv_sec) + toFloat(a.tv_usec)*0.00_0001
+      elif defined(windows):
+        var f: winlean.FILETIME
+        getSystemTimeAsFileTime(f)
+        var i64 = rdFileTime(f) - epochDiff
+        var secs = i64 div rateDiff
+        var subsecs = i64 mod rateDiff
+        result = toFloat(int(secs)) + toFloat(int(subsecs)) * 0.0000001
+      else:
+        {.error: "unknown OS".}
+
+    proc cpuTime(): float =
+      result = toFloat(int(getClock())) / toFloat(clocksPerSec)
+
 # Deprecated procs
 
 proc fromSeconds*(since1970: float): Time {.tags: [], raises: [], benign, deprecated.} =
@@ -1309,8 +1381,18 @@ proc getGMTime*(time: Time): DateTime {.tags: [], raises: [], benign, deprecated
   ## expressed in Coordinated Universal Time (UTC).
   time.utc
 
-proc getTimezone*(): int {.tags: [TimeEffect], raises: [], benign, deprecated.}
+proc getTimezone*(): int {.tags: [TimeEffect], raises: [], benign, deprecated.} =
   ## returns the offset of the local (non-DST) timezone in seconds west of UTC.
+  when defined(JS):
+    return newDate().getTimezoneOffset() * 60
+  elif defined(freebsd) or defined(netbsd) or defined(openbsd):
+    var a = timec(nil)
+    let lt = localtime(addr(a))
+    # BSD stores in `gmtoff` offset east of UTC in seconds,
+    # but posix systems using west of UTC in seconds
+    return -(lt.gmtoff)
+  else:
+    return timezone
 
 proc timeInfoToTime*(dt: DateTime): Time {.tags: [], benign, deprecated.} =
   ## Converts a broken-down time structure to
@@ -1322,9 +1404,20 @@ proc timeInfoToTime*(dt: DateTime): Time {.tags: [], benign, deprecated.} =
   ## Use ``toTime`` instead.
   dt.toTime  
 
-proc getStartMilsecs*(): int {.deprecated, tags: [TimeEffect], benign.}
-  ## get the milliseconds from the start of the program. **Deprecated since
-  ## version 0.8.10.** Use ``epochTime`` or ``cpuTime`` instead.
+when defined(JS):
+  var startMilsecs = getTime()
+  proc getStartMilsecs*(): int {.deprecated, tags: [TimeEffect], benign.} =
+    ## get the milliseconds from the start of the program. **Deprecated since
+    ## version 0.8.10.** Use ``epochTime`` or ``cpuTime`` instead.
+    when defined(JS):
+      ## get the milliseconds from the start of the program
+      return int(getTime() - startMilsecs)
+else:
+  proc getStartMilsecs*(): int {.deprecated, tags: [TimeEffect], benign.} =
+    when defined(macosx):
+      result = toInt(toFloat(int(getClock())) / (toFloat(clocksPerSec) / 1000.0))
+    else:
+      result = int(getClock()) div (clocksPerSec div 1000)
 
 proc miliseconds*(t: TimeInterval): int {.deprecated.} =
   t.milliseconds
@@ -1387,111 +1480,3 @@ proc getDayOfWeekJulian*(day, month, year: int): WeekDay {.deprecated.} =
     m = month + (12*a) - 2
     d = (5 + day + y + (y div 4) + (31*m) div 12) mod 7
   result = d.WeekDay
-
-when not defined(JS):
-  proc epochTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].}
-    ## gets time after the UNIX epoch (1970) in seconds. It is a float
-    ## because sub-second resolution is likely to be supported (depending
-    ## on the hardware/OS).
-
-  proc cpuTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].}
-    ## gets time spent that the CPU spent to run the current process in
-    ## seconds. This may be more useful for benchmarking than ``epochTime``.
-    ## However, it may measure the real time instead (depending on the OS).
-    ## The value of the result has no meaning.
-    ## To generate useful timing values, take the difference between
-    ## the results of two ``cpuTime`` calls:
-    ##
-    ## .. code-block:: nim
-    ##   var t0 = cpuTime()
-    ##   doWork()
-    ##   echo "CPU time [s] ", cpuTime() - t0
-
-when defined(JS):
-  proc toTime(js: JsDate): Time =
-    (js.getTime() div 1000).Time
-
-  proc getTime(): Time =
-    return newDate().toTime
-
-  var startMilsecs = getTime()
-
-  proc getStartMilsecs(): int =
-    ## get the milliseconds from the start of the program
-    return int(getTime() - startMilsecs)
-
-  proc getTimezone(): int =
-    newDate().getTimezoneOffset() * 60
-
-  proc epochTime*(): float {.tags: [TimeEffect].} =
-    newDate().getTime() / 1000
-
-else:
-  type
-    Clock {.importc: "clock_t".} = distinct int
-
-  proc timec(timer: ptr TimeT): TimeT {.
-    importc: "time", header: "<time.h>", tags: [].}
-
-  proc getClock(): Clock {.importc: "clock", header: "<time.h>", tags: [TimeEffect].}
-
-  var
-    clocksPerSec {.importc: "CLOCKS_PER_SEC", nodecl.}: int
-
-  proc getStartMilsecs(): int =
-    #echo "clocks per sec: ", clocksPerSec, "clock: ", int(getClock())
-    #return getClock() div (clocksPerSec div 1000)
-    when defined(macosx):
-      result = toInt(toFloat(int(getClock())) / (toFloat(clocksPerSec) / 1000.0))
-    else:
-      result = int(getClock()) div (clocksPerSec div 1000)
-    when false:
-      var a: Timeval
-      posix_gettimeofday(a)
-      result = a.tv_sec * 1000'i64 + a.tv_usec div 1000'i64
-      #echo "result: ", result
-
-  proc getTime(): Time =
-    timec(nil).Time
-
-  const
-    epochDiff = 116444736000000000'i64
-    rateDiff = 10000000'i64 # 100 nsecs
-
-  proc unixTimeToWinTime*(time: TimeT): int64 =
-    ## converts a UNIX `Time` (``time_t``) to a Windows file time
-    result = int64(time) * rateDiff + epochDiff
-
-  proc winTimeToUnixTime*(time: int64): TimeT =
-    ## converts a Windows time to a UNIX `Time` (``time_t``)
-    result = TimeT((time - epochDiff) div rateDiff)
-
-  proc getTimezone(): int =
-    when defined(freebsd) or defined(netbsd) or defined(openbsd):
-      var a = timec(nil)
-      let lt = localtime(addr(a))
-      # BSD stores in `gmtoff` offset east of UTC in seconds,
-      # but posix systems using west of UTC in seconds
-      return -(lt.gmtoff)
-    else:
-      return timezone
-
-  when not defined(useNimRtl):
-    proc epochTime(): float =
-      when defined(posix):
-        var a: Timeval
-        posix_gettimeofday(a)
-        result = toFloat(a.tv_sec) + toFloat(a.tv_usec)*0.00_0001
-      elif defined(windows):
-        var f: winlean.FILETIME
-        getSystemTimeAsFileTime(f)
-        var i64 = rdFileTime(f) - epochDiff
-        var secs = i64 div rateDiff
-        var subsecs = i64 mod rateDiff
-        result = toFloat(int(secs)) + toFloat(int(subsecs)) * 0.0000001
-      else:
-        {.error: "unknown OS".}
-
-    proc cpuTime(): float =
-      result = toFloat(int(getClock())) / toFloat(clocksPerSec)
-
