@@ -905,7 +905,7 @@ proc `div` *(x, y: int8): int8 {.magic: "DivI", noSideEffect.}
 proc `div` *(x, y: int16): int16 {.magic: "DivI", noSideEffect.}
 proc `div` *(x, y: int32): int32 {.magic: "DivI", noSideEffect.}
   ## computes the integer division. This is roughly the same as
-  ## ``floor(x/y)``.
+  ## ``trunc(x/y)``.
   ##
   ## .. code-block:: Nim
   ##   1 div 2 == 0
@@ -1107,7 +1107,7 @@ proc `*`*[T: SomeUnsignedInt](x, y: T): T {.magic: "MulU", noSideEffect.}
 
 proc `div`*[T: SomeUnsignedInt](x, y: T): T {.magic: "DivU", noSideEffect.}
   ## computes the integer division. This is roughly the same as
-  ## ``floor(x/y)``.
+  ## ``trunc(x/y)``.
   ##
   ## .. code-block:: Nim
   ##  (7 div 5) == 1
@@ -2025,19 +2025,19 @@ when defined(nimNewRoof):
         yield res
         inc(res)
 
-  iterator `..`*(a, b: int64): int64 {.inline.} =
-    ## A special version of ``..`` for ``int64`` only.
-    var res = a
-    while res <= b:
-      yield res
-      inc(res)
+  template dotdotImpl(t) {.dirty.} =
+    iterator `..`*(a, b: t): t {.inline.} =
+      ## A type specialized version of ``..`` for convenience so that
+      ## mixing integer types work better.
+      var res = a
+      while res <= b:
+        yield res
+        inc(res)
 
-  iterator `..`*(a, b: int32): int32 {.inline.} =
-    ## A special version of ``..`` for ``int32`` only.
-    var res = a
-    while res <= b:
-      yield res
-      inc(res)
+  dotdotImpl(int64)
+  dotdotImpl(int32)
+  dotdotImpl(uint64)
+  dotdotImpl(uint32)
 
 else:
   iterator countup*[S, T](a: S, b: T, step = 1): T {.inline.} =
@@ -3118,9 +3118,6 @@ when not defined(JS): #and not defined(nimscript):
       ## returns the OS file handle of the file ``f``. This is only useful for
       ## platform specific programming.
 
-    when not defined(nimfix):
-      {.deprecated: [fileHandle: getFileHandle].}
-
   when declared(newSeq):
     proc cstringArrayToSeq*(a: cstringArray, len: Natural): seq[string] =
       ## converts a ``cstringArray`` to a ``seq[string]``. `a` is supposed to be
@@ -3995,3 +3992,20 @@ when defined(windows) and appType == "console" and defined(nimSetUtf8CodePage):
   proc setConsoleOutputCP(codepage: cint): cint {.stdcall, dynlib: "kernel32",
     importc: "SetConsoleOutputCP".}
   discard setConsoleOutputCP(65001) # 65001 - utf-8 codepage
+
+
+when defined(nimHasRunnableExamples):
+  proc runnableExamples*(body: untyped) {.magic: "RunnableExamples".}
+    ## A section you should use to mark `runnable example`:idx: code with.
+    ##
+    ## - In normal debug and release builds code within
+    ##   a ``runnableExamples`` section is ignored.
+    ## - The documentation generator is aware of these examples and considers them
+    ##   part of the ``##`` doc comment. As the last step of documentation
+    ##   generation the examples are put into an ``$file_example.nim`` file,
+    ##   compiled and tested. The collected examples are
+    ##   put into their own module to ensure the examples do not refer to
+    ##   non-exported symbols.
+else:
+  template runnableExamples*(body: untyped) =
+    discard

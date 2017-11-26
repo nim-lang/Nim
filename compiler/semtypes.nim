@@ -235,7 +235,10 @@ proc semRange(c: PContext, n: PNode, prev: PType): PType =
           n.sons[1].floatVal < 0.0:
         incl(result.flags, tfNeedsInit)
     else:
-      localError(n.sons[0].info, errRangeExpected)
+      if n[1].kind == nkInfix and considerQuotedIdent(n[1][0]).s == "..<":
+        localError(n[0].info, "range types need to be constructed with '..', '..<' is not supported")
+      else:
+        localError(n.sons[0].info, errRangeExpected)
       result = newOrPrevType(tyError, prev, c)
   else:
     localError(n.info, errXExpectsOneTypeParam, "range")
@@ -293,7 +296,9 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
     base = semTypeNode(c, n.sons[2], nil)
     # ensure we only construct a tyArray when there was no error (bug #3048):
     result = newOrPrevType(tyArray, prev, c)
-    addSonSkipIntLit(result, indx)
+    # bug #6682: Do not propagate initialization requirements etc for the
+    # index type:
+    rawAddSonNoPropagationOfTypeFlags(result, indx)
     addSonSkipIntLit(result, base)
   else:
     localError(n.info, errArrayExpectsTwoTypeParams)
@@ -1045,6 +1050,12 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           result.flags.incl tfIterator
           # XXX Would be nice if we could get rid of this
       result.sons[0] = r
+      let oldFlags = result.flags
+      propagateToOwner(result, r)
+      if oldFlags != result.flags:
+        # XXX This rather hacky way keeps 'tflatmap' compiling:
+        if tfHasMeta notin oldFlags:
+          result.flags.excl tfHasMeta
       result.n.typ = r
 
   if genericParams != nil and genericParams.len > 0:
@@ -1218,8 +1229,6 @@ template modifierTypeKindOfNode(n: PNode): TTypeKind =
 
 proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
   # if n.sonsLen == 0: return newConstraint(c, tyTypeClass)
-  if nfBase2 in n.flags:
-    message(n.info, warnDeprecated, "use 'concept' instead; 'generic'")
   let
     pragmas = n[1]
     inherited = n[2]
@@ -1357,7 +1366,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         case n.len
         of 3:
           result = semTypeNode(c, n.sons[1], prev)
-          if result.skipTypes({tyGenericInst, tyAlias}).kind in NilableTypes+GenericTypes and
+          if result.skipTypes({tyGenericInst, tyAlias}).kind in NilableTypes+GenericTypes+{tyForward} and
               n.sons[2].kind == nkNilLit:
             result = freshType(result, prev)
             result.flags.incl(tfNotNil)

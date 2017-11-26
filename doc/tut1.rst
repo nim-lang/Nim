@@ -1388,27 +1388,31 @@ slice's bounds can hold any value supported by
 their type, but it is the proc using the slice object which defines what values
 are accepted.
 
- To understand some of the different ways of specifying the indices of strings, arrays, sequences, etc.,
- it must be remembered that Nim uses zero-based indices.
+To understand some of the different ways of specifying the indices of
+strings, arrays, sequences, etc., it must be remembered that Nim uses
+zero-based indices.
 
- So the string ``b`` is of length 19, and two different ways of specifying the indices are
+So the string ``b`` is of length 19, and two different ways of specifying the
+indices are
 
- .. code-block:: nim
+.. code-block:: nim
 
   "Slices are useless."
    |          |     |
    0         11    17   using indices
   ^19        ^8    ^2   using ^ syntax
 
- where ``b[0..^1]`` is equivalent to ``b[0..b.len-1]`` and ``b[0..<b.len]``, and it can be seen that the ``^1`` provides a short-hand way of specifying the ``b.len-1``
+where ``b[0..^1]`` is equivalent to ``b[0..b.len-1]`` and ``b[0..<b.len]``, and it
+can be seen that the ``^1`` provides a short-hand way of specifying the ``b.len-1``.
 
- In the above example, because the string ends in a period, to get the portion of the string that is "useless" and replace it with "useful"
+In the above example, because the string ends in a period, to get the portion of the
+string that is "useless" and replace it with "useful".
 
- ``b[11..^2]`` is the portion "useless", and
- ``b[11..^2] = "useful"`` replaces the "useless" portion with "useful",
- giving the result "Slices are useful."
+``b[11..^2]`` is the portion "useless", and ``b[11..^2] = "useful"`` replaces the
+"useless" portion with "useful", giving the result "Slices are useful."
 
- Note: alternate ways of writing this are ``b[^8..^2] = "useful"`` or as ``b[11..b.len-2] = "useful"`` or as ``b[11..<b.len-1] = "useful"`` or as ....
+Note: alternate ways of writing this are ``b[^8..^2] = "useful"`` or
+as ``b[11..b.len-2] = "useful"`` or as ``b[11..<b.len-1] = "useful"``.
 
 Tuples
 ------
@@ -1555,9 +1559,11 @@ listed in the `manual <manual.html#types-procedural-type>`_.
 
 Distinct type
 -------------
-A Distinct type allows for the creation of new type that "does not imply a subtype relationship between it and its base type".
+A Distinct type allows for the creation of new type that "does not imply a
+subtype relationship between it and its base type".
 You must **explicitly** define all behaviour for the distinct type.
-To help with this, both the distinct type and its base type can cast from one type to the other.
+To help with this, both the distinct type and its base type can cast from one
+type to the other.
 Examples are provided in the `manual <manual.html#types-distinct-type>`_.
 
 Modules
@@ -1591,39 +1597,6 @@ This can be used to initialize complex data structures for example.
 Each module has a special magic constant ``isMainModule`` that is true if the
 module is compiled as the main file. This is very useful to embed tests within
 the module as shown by the above example.
-
-Modules that depend on each other are possible, but strongly discouraged,
-because then one module cannot be reused without the other.
-
-The algorithm for compiling modules is:
-
-- Compile the whole module as usual, following import statements recursively.
-- If there is a cycle only import the already parsed symbols (that are
-  exported); if an unknown identifier occurs then abort.
-
-This is best illustrated by an example:
-
-.. code-block:: nim
-  # Module A
-  type
-    T1* = int  # Module A exports the type ``T1``
-  import B     # the compiler starts parsing B
-
-  proc main() =
-    var i = p(3) # works because B has been parsed completely here
-
-  main()
-
-.. code-block:: nim
-  # Module B
-  import A  # A is not parsed here! Only the already known symbols
-            # of A are imported.
-
-  proc p*(x: A.T1): A.T1 =
-    # this works because the compiler has already
-    # added T1 to A's interface symbol table
-    result = x + 1
-
 
 A symbol of a module *can* be *qualified* with the ``module.symbol`` syntax. And if
 a symbol is ambiguous, it *must* be qualified. A symbol is ambiguous
