@@ -225,7 +225,7 @@ proc diff[T](a, b: seq[T]): (int, seq[T]) =
   ## .. code-block::nim
   ##   doAssert(diff(@[1,2,42,123], @[1,2,123,678,21]) == (1, @[123,678,21]))
   var lastIndex = 0
-  for i in 0 .. <min(a.len, b.len):
+  for i in 0..<min(a.len, b.len):
     lastIndex = i
     if a[i] != b[i]:
       break
@@ -255,62 +255,6 @@ proc mergeEntries(entries: seq[StackTraceEntry]): seq[StackTraceEntry] =
         result.insert(remainder[i], lastIndex+i)
       i = reRaiseEnd+1
       continue
-
-    result.add(entry)
-    i.inc
-
-proc shortenEntries(entries: seq[StackTraceEntry]): seq[StackTraceEntry] =
-  ## Analyzes the entries for patterns and processes them.
-  proc get(entries: seq[StackTraceEntry], i: int): StackTraceEntry =
-    if i >= entries.len:
-      return StackTraceEntry(procName: "", line: 0, filename: "")
-    else:
-      return entries[i]
-
-  result = @[]
-  var i = 0
-  while i < entries.len:
-    var entry = entries[i]
-
-    # Detect this pattern:
-    #   (procname: a, line: 393, filename: asyncmacro.nim)
-    #   ...
-    #   (procname: a_continue, line: 34, filename: asyncmacro.nim)
-    #   ...
-    #   (procname: aIter, line: 40, filename: tasync_traceback.nim)
-    proc searchBackwards(entries: seq[StackTraceEntry],
-                         current: StackTraceEntry): (int, StackTraceEntry) =
-      # Search backwards for the beginning of the pattern.
-      result[0] = 0
-      if not ($current.procName).normalize().endsWith("iter"):
-        return
-
-      # Find (procname: a, line: 393, filename: asyncmacro.nim)
-      let start = entries.len-1
-      var counter = start
-      while counter >= 0:
-        if cmpIgnoreStyle($entries[counter].procName & "iter",
-                          $current.procName) == 0:
-          break
-        counter.dec()
-
-      # Return when no beginning of pattern is found.
-      if counter < 0:
-        return
-
-      result[0] = start - counter
-      result[1] = StackTraceEntry(
-        procName: entries[result[0]].procName,
-        line: current.line,
-        filename: current.filename
-      )
-
-    let (itemsToRemove, newEntry) = searchBackwards(result, entry)
-
-    if itemsToRemove != 0:
-      entry = newEntry
-      # Remove the previous entries.
-      result.setLen(result.len-itemsToRemove)
 
     result.add(entry)
     i.inc
@@ -372,11 +316,7 @@ proc injectStacktrace[T](future: Future[T]) =
     var newMsg = exceptionMsg & header
 
     let entries = getStackTraceEntries(future.error).mergeEntries()
-    let shortEntries = entries.shortenEntries()
-    newMsg.add($shortEntries)
-    if entries.len > shortEntries.len:
-      newMsg.add("\nDetailed Async traceback:\n")
-      newMsg.add($entries)
+    newMsg.add($entries)
 
     newMsg.add("Exception message: " & exceptionMsg & "\n")
     newMsg.add("Exception type:")
