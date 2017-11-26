@@ -231,13 +231,9 @@ proc diff[T](a, b: seq[T]): (int, seq[T]) =
       break
   return (lastIndex, b[lastIndex .. ^1])
 
-proc processEntries(entries: seq[StackTraceEntry]): seq[StackTraceEntry] =
-  proc get(entries: seq[StackTraceEntry], i: int): StackTraceEntry =
-    if i >= entries.len:
-      return StackTraceEntry(procName: "", line: 0, filename: "")
-    else:
-      return entries[i]
-
+proc mergeEntries(entries: seq[StackTraceEntry]): seq[StackTraceEntry] =
+  ## Merges stack trace entries containing re-raise entries into one
+  ## continuous stack trace.
   result = @[]
   var i = 0
   while i < entries.len:
@@ -252,7 +248,7 @@ proc processEntries(entries: seq[StackTraceEntry]): seq[StackTraceEntry] =
         reRaiseEnd.inc()
       assert entries[reRaiseEnd].procName.isNil
       assert entries[reRaiseEnd].line == -100 # Signifies end of re-raise block.
-      let reRaisedEntries = processEntries(entries[i+1 .. reRaiseEnd-1])
+      let reRaisedEntries = mergeEntries(entries[i+1 .. reRaiseEnd-1])
 
       let (lastIndex, remainder) = diff(result, reRaisedEntries)
       for i in 0..<remainder.len:
@@ -260,16 +256,34 @@ proc processEntries(entries: seq[StackTraceEntry]): seq[StackTraceEntry] =
       i = reRaiseEnd+1
       continue
 
+    result.add(entry)
+    i.inc
+
+proc shortenEntries(entries: seq[StackTraceEntry]): seq[StackTraceEntry] =
+  ## Analyzes the entries for patterns and processes them.
+  proc get(entries: seq[StackTraceEntry], i: int): StackTraceEntry =
+    if i >= entries.len:
+      return StackTraceEntry(procName: "", line: 0, filename: "")
+    else:
+      return entries[i]
+
+  result = @[]
+  var i = 0
+  while i < entries.len:
+    var entry = entries[i]
+
     # Detect this pattern:
     #   (procname: a, line: 393, filename: asyncmacro.nim)
-    #   (procname: cb0, line: 34, filename: asyncmacro.nim)
+    #   (procname: a_continue, line: 34, filename: asyncmacro.nim)
     #   (procname: aIter, line: 40, filename: tasync_traceback.nim)
     let second = get(entries, i+1)
+
     let third = get(entries, i+2)
     let fitsPattern =
       cmpIgnoreStyle($entry.filename, "asyncmacro.nim") == 0 and
       cmpIgnoreStyle($second.filename, "asyncmacro.nim") == 0 and
-      cmpIgnoreStyle($second.procName, "cb0") == 0 and
+      ($second.procName).startsWith($entry.procName) and
+      ($second.procName).endsWith("continue") and
       cmpIgnoreStyle($third.procName, $entry.procName & "iter") == 0
 
     if fitsPattern:
@@ -287,16 +301,43 @@ proc getHint(entry: StackTraceEntry): string =
   ## We try to provide some hints about stack trace entries that the user
   ## may not be familiar with, in particular calls inside the stdlib.
   result = ""
-  case ($entry.procName).normalize()
-  of "cb0":
-    if cmpIgnoreStyle($entry.filename, "asyncmacro.nim") == 0:
-      return "Resumes an async procedure"
+  let name = ($entry.procName).normalize()
+  case name
   of "processpendingcallbacks":
     if cmpIgnoreStyle($entry.filename, "asyncdispatch.nim") == 0:
       return "Executes pending callbacks"
   of "poll":
     if cmpIgnoreStyle($entry.filename, "asyncdispatch.nim") == 0:
       return "Processes asynchronous completion events"
+
+  if name.endsWith("continue"):
+    if cmpIgnoreStyle($entry.filename, "asyncmacro.nim") == 0:
+      return "Resumes an async procedure"
+
+proc `$`*(entries: seq[StackTraceEntry]): string =
+  result = ""
+  # Find longest filename & line number combo for alignment purposes.
+  var longestLeft = 0
+  for entry in entries:
+    let left = $entry.filename & $entry.line
+    if left.len > longestLeft:
+      longestLeft = left.len
+
+  const indent = 2
+  # Format the entries.
+  for entry in entries:
+    let indentStr = spaces(indent)
+
+    let left = "$#($#)" % [$entry.filename, $entry.line]
+    result.add("$#$#$# $#\n" % [
+      indentStr,
+      left,
+      spaces(longestLeft - left.len + 2),
+      $entry.procName
+    ])
+    let hint = getHint(entry)
+    if hint.len > 0:
+      result.add(indentStr & "└─" & hint & "\n")
 
 proc injectStacktrace[T](future: Future[T]) =
   when not defined(release):
@@ -309,29 +350,15 @@ proc injectStacktrace[T](future: Future[T]) =
       let start = exceptionMsg.find(header)
       exceptionMsg = exceptionMsg[0..<start]
 
-    let entries = getStackTraceEntries(future.error).processEntries()
+
     var newMsg = exceptionMsg & header
 
-    # Find longest filename & line number combo for alignment purposes.
-    var longestLeft = 0
-    for entry in entries:
-      let left = $entry.filename & $entry.line
-      if left.len > longestLeft:
-        longestLeft = left.len
-
-    const indent = "  "
-    # Format the entries.
-    for entry in entries:
-      let left = "$#($#)" % [$entry.filename, $entry.line]
-      newMsg.add("$#$#$# $#\n" % [
-        indent,
-        left,
-        spaces(longestLeft - left.len + 2),
-        $entry.procName
-      ])
-      let hint = getHint(entry)
-      if hint.len > 0:
-        newMsg.add(indent & "└─" & hint & "\n")
+    let entries = getStackTraceEntries(future.error).mergeEntries()
+    let shortEntries = entries.shortenEntries()
+    newMsg.add($shortEntries)
+    if entries.len > shortEntries.len:
+      newMsg.add("\nDetailed Async traceback:\n")
+      newMsg.add($entries)
 
     newMsg.add("Exception message: " & exceptionMsg & "\n")
     newMsg.add("Exception type:")

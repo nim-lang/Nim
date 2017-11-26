@@ -1,5 +1,6 @@
 discard """
   exitcode: 0
+  disabled: "windows"
   output: '''
 b failure
 Async traceback:
