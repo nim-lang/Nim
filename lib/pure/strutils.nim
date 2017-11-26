@@ -1305,14 +1305,13 @@ proc addSep*(dest: var string, sep = ", ", startLen: Natural = 0)
   ## This is often useful for generating some code where the items need to
   ## be *separated* by `sep`. `sep` is only added if `dest` is longer than
   ## `startLen`. The following example creates a string describing
-  ## an array of integers:
-  ##
-  ## .. code-block:: nim
-  ##   var arr = "["
-  ##   for x in items([2, 3, 5, 7, 11]):
-  ##     addSep(arr, startLen=len("["))
-  ##     add(arr, $x)
-  ##   add(arr, "]")
+  ## an array of integers.
+  runnableExamples:
+     var arr = "["
+     for x in items([2, 3, 5, 7, 11]):
+       addSep(arr, startLen=len("["))
+       add(arr, $x)
+     add(arr, "]")
   if dest.len > startLen: add(dest, sep)
 
 proc allCharsInSet*(s: string, theSet: set[char]): bool =
@@ -1730,7 +1729,9 @@ proc insertSep*(s: string, sep = '_', digits = 3): string {.noSideEffect,
   ##
   ## Even though the algorithm works with any string `s`, it is only useful
   ## if `s` contains a number.
-  ## Example: ``insertSep("1000000") == "1_000_000"``
+  runnableExamples:
+    doAssert insertSep("1000000") == "1_000_000"
+
   var L = (s.len-1) div digits + s.len
   result = newString(L)
   var j = 0
@@ -1818,6 +1819,8 @@ proc validIdentifier*(s: string): bool {.noSideEffect,
   ##
   ## A valid identifier starts with a character of the set `IdentStartChars`
   ## and is followed by any number of characters of the set `IdentChars`.
+  runnableExamples:
+    doAssert "abc_def08".validIdentifier
   if s[0] in IdentStartChars:
     for i in 1..s.len-1:
       if s[i] notin IdentChars: return false
@@ -1828,7 +1831,7 @@ proc editDistance*(a, b: string): int {.noSideEffect,
   ## Returns the edit distance between `a` and `b`.
   ##
   ## This uses the `Levenshtein`:idx: distance algorithm with only a linear
-  ## memory overhead.  This implementation is highly optimized!
+  ## memory overhead.
   var len1 = a.len
   var len2 = b.len
   if len1 > len2:
@@ -2007,16 +2010,11 @@ proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
   ## after the decimal point for Nim's ``float`` type.
   ##
   ## If ``precision == -1``, it tries to format it nicely.
-  ##
-  ## Examples:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##    let x = 123.456
-  ##    doAssert x.formatFloat() == "123.4560000000000"
-  ##    doAssert x.formatFloat(ffDecimal, 4) == "123.4560"
-  ##    doAssert x.formatFloat(ffScientific, 2) == "1.23e+02"
-  ##
+  runnableExamples:
+    let x = 123.456
+    doAssert x.formatFloat() == "123.4560000000000"
+    doAssert x.formatFloat(ffDecimal, 4) == "123.4560"
+    doAssert x.formatFloat(ffScientific, 2) == "1.23e+02"
   result = formatBiggestFloat(f, format, precision, decimalSep)
 
 proc trimZeros*(x: var string) {.noSideEffect.} =
@@ -2051,18 +2049,13 @@ proc formatSize*(bytes: int64,
   ##
   ## `includeSpace` can be set to true to include the (SI preferred) space
   ## between the number and the unit (e.g. 1 KiB).
-  ##
-  ## Examples:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##    formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB"
-  ##    formatSize((2.234*1024*1024).int) == "2.234MiB"
-  ##    formatSize(4096, includeSpace=true) == "4 KiB"
-  ##    formatSize(4096, prefix=bpColloquial, includeSpace=true) == "4 kB"
-  ##    formatSize(4096) == "4KiB"
-  ##    formatSize(5_378_934, prefix=bpColloquial, decimalSep=',') == "5,13MB"
-  ##
+  runnableExamples:
+    doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB"
+    doAssert formatSize((2.234*1024*1024).int) == "2.234MiB"
+    doAssert formatSize(4096, includeSpace=true) == "4 KiB"
+    doAssert formatSize(4096, prefix=bpColloquial, includeSpace=true) == "4 kB"
+    doAssert formatSize(4096) == "4KiB"
+    doAssert formatSize(5_378_934, prefix=bpColloquial, decimalSep=',') == "5,13MB"
   const iecPrefixes = ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi", "Yi"]
   const collPrefixes = ["", "k", "M", "G", "T", "P", "E", "Z", "Y"]
   var
@@ -2156,7 +2149,7 @@ proc formatEng*(f: BiggestFloat,
   ##    formatEng(4100, unit="V") == "4.1e3 V"
   ##    formatEng(4100, unit="") == "4.1e3 " # Space with unit=""
   ##
-  ## `decimalSep` is used as the decimal separator
+  ## `decimalSep` is used as the decimal separator.
   var
     absolute: BiggestFloat
     significand: BiggestFloat
@@ -2369,17 +2362,16 @@ proc removeSuffix*(s: var string, chars: set[char] = Newlines) {.
   rtl, extern: "nsuRemoveSuffixCharSet".} =
   ## Removes all characters from `chars` from the end of the string `s`
   ## (in-place).
-  ##
-  ## .. code-block:: nim
-  ##   var userInput = "Hello World!*~\r\n"
-  ##   userInput.removeSuffix
-  ##   doAssert userInput == "Hello World!*~"
-  ##   userInput.removeSuffix({'~', '*'})
-  ##   doAssert userInput == "Hello World!"
-  ##
-  ##   var otherInput = "Hello!?!"
-  ##   otherInput.removeSuffix({'!', '?'})
-  ##   doAssert otherInput == "Hello"
+  runnableExamples:
+     var userInput = "Hello World!*~\r\n"
+     userInput.removeSuffix
+     doAssert userInput == "Hello World!*~"
+     userInput.removeSuffix({'~', '*'})
+     doAssert userInput == "Hello World!"
+
+     var otherInput = "Hello!?!"
+     otherInput.removeSuffix({'!', '?'})
+     doAssert otherInput == "Hello"
   if s.len == 0: return
   var last = s.high
   while last > -1 and s[last] in chars: last -= 1
@@ -2390,24 +2382,23 @@ proc removeSuffix*(s: var string, c: char) {.
   ## Removes all occurrences of a single character (in-place) from the end
   ## of a string.
   ##
-  ## .. code-block:: nim
-  ##   var table = "users"
-  ##   table.removeSuffix('s')
-  ##   doAssert table == "user"
-  ##
-  ##   var dots = "Trailing dots......."
-  ##   dots.removeSuffix('.')
-  ##   doAssert dots == "Trailing dots"
+  runnableExamples:
+     var table = "users"
+     table.removeSuffix('s')
+     doAssert table == "user"
+
+     var dots = "Trailing dots......."
+     dots.removeSuffix('.')
+     doAssert dots == "Trailing dots"
   removeSuffix(s, chars = {c})
 
 proc removeSuffix*(s: var string, suffix: string) {.
   rtl, extern: "nsuRemoveSuffixString".} =
   ## Remove the first matching suffix (in-place) from a string.
-  ##
-  ## .. code-block:: nim
-  ##   var answers = "yeses"
-  ##   answers.removeSuffix("es")
-  ##   doAssert answers == "yes"
+  runnableExamples:
+     var answers = "yeses"
+     answers.removeSuffix("es")
+     doAssert answers == "yes"
   var newLen = s.len
   if s.endsWith(suffix):
     newLen -= len(suffix)
@@ -2418,16 +2409,16 @@ proc removePrefix*(s: var string, chars: set[char] = Newlines) {.
   ## Removes all characters from `chars` from the start of the string `s`
   ## (in-place).
   ##
-  ## .. code-block:: nim
-  ##   var userInput = "\r\n*~Hello World!"
-  ##   userInput.removePrefix
-  ##   doAssert userInput == "*~Hello World!"
-  ##   userInput.removePrefix({'~', '*'})
-  ##   doAssert userInput == "Hello World!"
-  ##
-  ##   var otherInput = "?!?Hello!?!"
-  ##   otherInput.removePrefix({'!', '?'})
-  ##   doAssert otherInput == "Hello!?!"
+  runnableExamples:
+     var userInput = "\r\n*~Hello World!"
+     userInput.removePrefix
+     doAssert userInput == "*~Hello World!"
+     userInput.removePrefix({'~', '*'})
+     doAssert userInput == "Hello World!"
+
+     var otherInput = "?!?Hello!?!"
+     otherInput.removePrefix({'!', '?'})
+     doAssert otherInput == "Hello!?!"
   var start = 0
   while start < s.len and s[start] in chars: start += 1
   if start > 0: s.delete(0, start - 1)
@@ -2437,20 +2428,20 @@ proc removePrefix*(s: var string, c: char) {.
   ## Removes all occurrences of a single character (in-place) from the start
   ## of a string.
   ##
-  ## .. code-block:: nim
-  ##   var ident = "pControl"
-  ##   ident.removePrefix('p')
-  ##   doAssert ident == "Control"
+  runnableExamples:
+     var ident = "pControl"
+     ident.removePrefix('p')
+     doAssert ident == "Control"
   removePrefix(s, chars = {c})
 
 proc removePrefix*(s: var string, prefix: string) {.
   rtl, extern: "nsuRemovePrefixString".} =
   ## Remove the first matching prefix (in-place) from a string.
   ##
-  ## .. code-block:: nim
-  ##   var answers = "yesyes"
-  ##   answers.removePrefix("yes")
-  ##   doAssert answers == "yes"
+  runnableExamples:
+     var answers = "yesyes"
+     answers.removePrefix("yes")
+     doAssert answers == "yes"
   if s.startsWith(prefix):
     s.delete(0, prefix.len - 1)
 

@@ -1854,8 +1854,8 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
         if c.runnableExamples == nil:
           c.runnableExamples = newTree(nkStmtList,
             newTree(nkImportStmt, newStrNode(nkStrLit, expandFilename(inp))))
-        c.runnableExamples.add newTree(nkBlockStmt, emptyNode, n.lastSon)
-      result = n
+        c.runnableExamples.add newTree(nkBlockStmt, emptyNode, copyTree n.lastSon)
+      result = setMs(n, s)
     else:
       result = emptyNode
   else:
