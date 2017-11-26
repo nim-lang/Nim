@@ -119,7 +119,13 @@ when not defined(nimscript):
   proc randomize*() {.benign.} =
     ## Initializes the random number generator with a "random"
     ## number, i.e. a tickcount. Note: Does not work for NimScript.
-    randomize(getTime().toUnix)
+    when defined(JS):
+      # proc getMil(t: Time): int {.importcpp: "getTime", nodecl.}
+      proc timeMillis(): int {.importcpp: "new Date().getTime()", nodecl.}
+      randomize(timeMillis())
+    else:
+      let time = int64(times.epochTime() * 1_000_000_000)
+      randomize(time)
 
 {.pop.}
 
