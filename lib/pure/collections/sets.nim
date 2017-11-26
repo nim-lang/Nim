@@ -46,7 +46,7 @@ template default[T](t: typedesc[T]): T =
   var v: T
   v
 
-proc clear*[A](s: var HashSet[A]) = 
+proc clear*[A](s: var HashSet[A]) =
   ## Clears the HashSet back to an empty state, without shrinking
   ## any of the existing storage. O(n) where n is the size of the hash bucket.
   s.counter = 0
@@ -610,7 +610,7 @@ type
 
 {.deprecated: [TOrderedSet: OrderedSet].}
 
-proc clear*[A](s: var OrderedSet[A]) = 
+proc clear*[A](s: var OrderedSet[A]) =
   ## Clears the OrderedSet back to an empty state, without shrinking
   ## any of the existing storage. O(n) where n is the size of the hash bucket.
   s.counter = 0
@@ -911,13 +911,13 @@ proc `==`*[A](s, t: OrderedSet[A]): bool =
   ## Equality for ordered sets.
   if s.counter != t.counter: return false
   var h = s.first
-  var g = s.first
+  var g = t.first
   var compared = 0
   while h >= 0 and g >= 0:
     var nxh = s.data[h].next
     var nxg = t.data[g].next
-    if isFilled(s.data[h].hcode) and isFilled(s.data[g].hcode):
-      if s.data[h].key == s.data[g].key:
+    if isFilled(s.data[h].hcode) and isFilled(t.data[g].hcode):
+      if s.data[h].key == t.data[g].key:
         inc compared
       else:
         return false
@@ -1119,6 +1119,22 @@ when isMainModule and not defined(release):
       var s = toOrderedSet([2, 3, 6, 7])
       assert s.missingOrExcl(4) == true
       assert s.missingOrExcl(6) == false
+
+    block orderedSetEquality:
+      type pair = tuple[a, b: int]
+
+      var aa = initOrderedSet[pair]()
+      var bb = initOrderedSet[pair]()
+
+      var x = (a:1,b:2)
+      var y = (a:3,b:4)
+
+      aa.incl(x)
+      aa.incl(y)
+
+      bb.incl(x)
+      bb.incl(y)
+      assert aa == bb
 
     when not defined(testing):
       echo "Micro tests run successfully."
