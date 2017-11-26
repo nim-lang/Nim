@@ -3992,3 +3992,20 @@ when defined(windows) and appType == "console" and defined(nimSetUtf8CodePage):
   proc setConsoleOutputCP(codepage: cint): cint {.stdcall, dynlib: "kernel32",
     importc: "SetConsoleOutputCP".}
   discard setConsoleOutputCP(65001) # 65001 - utf-8 codepage
+
+
+when defined(nimHasRunnableExamples):
+  proc runnableExamples*(body: untyped) {.magic: "RunnableExamples".}
+    ## A section you should use to mark `runnable example`:idx: code with.
+    ##
+    ## - In normal debug and release builds code within
+    ##   a ``runnableExamples`` section is ignored.
+    ## - The documentation generator is aware of these examples and considers them
+    ##   part of the ``##`` doc comment. As the last step of documentation
+    ##   generation the examples are put into an ``$file_example.nim`` file,
+    ##   compiled and tested. The collected examples are
+    ##   put into their own module to ensure the examples do not refer to
+    ##   non-exported symbols.
+else:
+  template runnableExamples*(body: untyped) =
+    discard
