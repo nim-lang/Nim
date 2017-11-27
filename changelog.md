@@ -105,3 +105,6 @@ This now needs to be written as:
         :test:
       # shows how the 'if' statement works
       if true: echo "yes"
+- ``strutils.split`` and ``strutils.rsplit`` with an empty string and a
+  separator now returns that empty string.
+  See issue [#4377](https://github.com/nim-lang/Nim/issues/4377).
