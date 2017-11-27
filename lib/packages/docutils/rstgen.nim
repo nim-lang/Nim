@@ -46,7 +46,7 @@ type
     target*: OutputTarget
     config*: StringTableRef
     splitAfter*: int          # split too long entries in the TOC
-    listingCounter: int
+    listingCounter*: int
     tocPart*: seq[TocEntry]
     hasToc*: bool
     theIndex: string # Contents of the index file to be dumped at the end.

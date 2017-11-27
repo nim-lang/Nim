@@ -1847,6 +1847,17 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       analyseIfAddressTakenInCall(c, result)
       if callee.magic != mNone:
         result = magicsAfterOverloadResolution(c, result, flags)
+  of mRunnableExamples:
+    if gCmd == cmdDoc and n.len >= 2 and n.lastSon.kind == nkStmtList:
+      if sfMainModule in c.module.flags:
+        let inp = toFullPath(c.module.info)
+        if c.runnableExamples == nil:
+          c.runnableExamples = newTree(nkStmtList,
+            newTree(nkImportStmt, newStrNode(nkStrLit, expandFilename(inp))))
+        c.runnableExamples.add newTree(nkBlockStmt, emptyNode, copyTree n.lastSon)
+      result = setMs(n, s)
+    else:
+      result = emptyNode
   else:
     result = semDirectOp(c, n, flags)
 
