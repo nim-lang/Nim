@@ -1439,7 +1439,7 @@ const
     ## is the value that should be passed to `quit <#quit>`_ to indicate
     ## failure.
 
-when defined(js):
+when defined(nodejs):
   var programResult* {.importc: "process.exitCode".}: int
   programResult = 0
 else:
