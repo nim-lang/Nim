@@ -1325,6 +1325,7 @@ proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
   ##   tmp.add("cd")
   ##   assert(tmp == "abcd")
 
+
 type
   Endianness* = enum ## is a type describing the endianness of a processor.
     littleEndian, bigEndian
@@ -2507,6 +2508,10 @@ proc `$`*[T: tuple|object](x: T): string =
       result.add("...")
   result.add(")")
 
+proc toStringQuoted*[T](x: T): string
+#proc toStringQuoted*(x: string): string
+#proc toStringQuoted*(x: char): string
+
 proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
   result = prefix
   var firstElement = true
@@ -2526,7 +2531,7 @@ proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
     elif compiles(result.add(value)):
       result.add(value)
     else:
-      result.add($value)
+      result.add(toStringQuoted(value))
 
   result.add(suffix)
 
@@ -2548,6 +2553,16 @@ proc `$`*[T](x: seq[T]): string =
     "nil"
   else:
     collectionToString(x, "@[", ", ", "]")
+
+
+proc toStringQuoted*[T](x: T): string = $x
+
+#proc toStringQuoted*(x: string): string =
+#  "asdf"
+#  result = "\""
+#  result.add("\"")
+
+#proc toStringQuoted*(x: char): string = "'" & x & "'"
 
 # ----------------- GC interface ---------------------------------------------
 
