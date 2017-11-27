@@ -4011,11 +4011,11 @@ else:
   template runnableExamples*(body: untyped) =
     discard
 
-template doAssertException*(exception, code: untyped): typed =
+template doAssertRaises*(exception, code: untyped): typed =
   ## Raises ``AssertionError`` if specified ``code`` does not raise the
   ## specified exception.
   runnableExamples:
-    doAssertException(ValueError):
+    doAssertRaises(ValueError):
       raise newException(ValueError, "Hello World")
 
   try:
@@ -4028,25 +4028,3 @@ template doAssertException*(exception, code: untyped): typed =
     raiseAssert(astToStr(exception) &
                 " wasn't raised, another error was raised instead by:\n"&
                 astToStr(code))
-
-template assertException*(exception, code: untyped): typed =
-  ## Raises ``AssertionError`` if specified ``code`` does not raise the
-  ## specified exception.
-  ##
-  ## Similar to ``assert`` this call can be optimised out by the compiler
-  ## if assertions are turned off.
-  runnableExamples:
-    assertException(IndexError):
-      raise newException(IndexError, "Hello World")
-  when compileOption("assertions"):
-    try:
-      block:
-        code
-      failedAssertImpl(astToStr(exception) & " wasn't raised by:\n" &
-                       astToStr(code))
-    except exception:
-      discard
-    except Exception as exc:
-      failedAssertImpl(astToStr(exception) &
-                       " wasn't raised, another error was raised instead by:\n"&
-                       astToStr(code))
