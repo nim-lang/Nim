@@ -1325,6 +1325,33 @@ proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
   ##   tmp.add("cd")
   ##   assert(tmp == "abcd")
 
+proc addQuoted*[T](x: var string, y: T) =
+  ## Concatenates `x` and `y` in place, using quotes on `y` if it is a string
+  ## or char. This proc should be used when creating string representations
+  ## of collections.
+  ##
+  ## .. code-block:: Nim
+  ##   var tmp = ""
+  ##   tmp.addQuoted(1)
+  ##   tmp.add(", ")
+  ##   tmp.addQuoted("string")
+  ##   tmp.add(", ")
+  ##   tmp.addQuoted('c')
+  ##   assert(tmp == """1, "string", 'c'""")
+  when T is string:
+    x.add("\"")
+    x.add(y)
+    x.add("\"")
+  elif T is char:
+    x.add("'")
+    x.add(y)
+    x.add("'")
+  # prevent temporary string allocation
+  elif compiles(result.add(value)):
+    x.add(y)
+  else:
+    x.add($y)
+
 
 type
   Endianness* = enum ## is a type describing the endianness of a processor.
@@ -2500,17 +2527,13 @@ proc `$`*[T: tuple|object](x: T): string =
     when compiles($value):
       when compiles(value.isNil):
         if value.isNil: result.add "nil"
-        else: result.add($value)
+        else: result.addQuoted(value)
       else:
-        result.add($value)
+        result.addQuoted(value)
       firstElement = false
     else:
       result.add("...")
   result.add(")")
-
-proc toStringQuoted*[T](x: T): string
-#proc toStringQuoted*(x: string): string
-#proc toStringQuoted*(x: char): string
 
 proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
   result = prefix
@@ -2526,12 +2549,9 @@ proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
       if value.isNil:
         result.add "nil"
       else:
-        result.add($value)
-    # prevent temporary string allocation
-    elif compiles(result.add(value)):
-      result.add(value)
+        result.addQuoted(value)
     else:
-      result.add(toStringQuoted(value))
+      result.addQuoted(value)
 
   result.add(suffix)
 
@@ -2553,16 +2573,6 @@ proc `$`*[T](x: seq[T]): string =
     "nil"
   else:
     collectionToString(x, "@[", ", ", "]")
-
-
-proc toStringQuoted*[T](x: T): string = $x
-
-#proc toStringQuoted*(x: string): string =
-#  "asdf"
-#  result = "\""
-#  result.add("\"")
-
-#proc toStringQuoted*(x: char): string = "'" & x & "'"
 
 # ----------------- GC interface ---------------------------------------------
 

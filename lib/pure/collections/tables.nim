@@ -337,9 +337,9 @@ template dollarImpl(): untyped {.dirty.} =
     result = "{"
     for key, val in pairs(t):
       if result.len > 1: result.add(", ")
-      result.add($key)
+      result.addQuoted(key)
       result.add(": ")
-      result.add($val)
+      result.addQuoted(val)
     result.add("}")
 
 proc `$`*[A, B](t: Table[A, B]): string =
