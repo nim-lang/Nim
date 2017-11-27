@@ -700,6 +700,29 @@ elif not defined(useNimRtl):
     tags: [ExecIOEffect, ReadEnvEffect, ReadDirEffect, RootEffect], cdecl, gcsafe.}
   {.pop.}
 
+  proc posixFindExe*(exe: string): string {.
+    tags: [ReadDirEffect, ReadEnvEffect, ReadIOEffect].} =
+    ## Find an executable in PATH. Doesn't search current directory.
+    if "/" in exe:
+      return exe
+
+    let path = string(getEnv("PATH"))
+    var errorDueToPermission = false
+    for candidate in split(path, ":"):
+      let filename = candidate & "/" & exe
+
+      if access(filename, X_OK) == 0:
+        return filename
+
+      if errno == EPERM:
+        errorDueToPermission = true
+
+
+    if errorDueToPermission:
+      raiseOSError(OSErrorCode(EPERM))
+    else:
+      raiseOSError(osLastError())
+
   proc startProcess(command: string,
                  workingDir: string = "",
                  args: openArray[string] = [],
@@ -729,6 +752,9 @@ elif not defined(useNimRtl):
       sysArgsRaw = @[command]
       for arg in args.items:
         sysArgsRaw.add arg
+
+    if poUsePath in options:
+      sysCommand = posixFindExe(sysCommand)
 
     var pid: Pid
 
@@ -907,18 +933,7 @@ elif not defined(useNimRtl):
     discard close(data.pErrorPipe[readIdx])
     discard fcntl(data.pErrorPipe[writeIdx], F_SETFD, FD_CLOEXEC)
 
-    if data.optionPoUsePath:
-      when defined(uClibc) or defined(linux):
-        # uClibc environment (OpenWrt included) doesn't have the full execvpe
-        let exe = findExe(data.sysCommand)
-        discard execve(exe, data.sysArgs, data.sysEnv)
-      else:
-        # MacOSX doesn't have execvpe, so we need workaround.
-        # On MacOSX we can arrive here only from fork, so this is safe:
-        environ = data.sysEnv
-        discard execvp(data.sysCommand, data.sysArgs)
-    else:
-      discard execve(data.sysCommand, data.sysArgs, data.sysEnv)
+    discard execve(data.sysCommand, data.sysArgs, data.sysEnv)
 
     startProcessFail(data)
   {.pop}
