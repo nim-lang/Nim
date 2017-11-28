@@ -23,7 +23,6 @@ new(destructorIsTrivial)
 var
   destructorName = getIdent"destroy_"
   destructorParam = getIdent"this_"
-  destructorPragma = newIdentNode(getIdent"destructor", unknownLineInfo())
 
 proc instantiateDestructor(c: PContext, typ: PType): PType
 
@@ -150,19 +149,19 @@ proc instantiateDestructor(c: PContext, typ: PType): PType =
     let generated = generateDestructor(c, t)
     if generated != nil:
       internalAssert t.sym != nil
-      var i = t.sym.info
-      let fullDef = newNode(nkProcDef, i, @[
-        newIdentNode(destructorName, i),
+      let info = t.sym.info
+      let fullDef = newNode(nkProcDef, info, @[
+        newIdentNode(destructorName, info),
         emptyNode,
         emptyNode,
-        newNode(nkFormalParams, i, @[
+        newNode(nkFormalParams, info, @[
           emptyNode,
-          newNode(nkIdentDefs, i, @[
-            newIdentNode(destructorParam, i),
+          newNode(nkIdentDefs, info, @[
+            newIdentNode(destructorParam, info),
             symNodeFromType(c, makeVarType(c, t), t.sym.info),
             emptyNode]),
           ]),
-        newNode(nkPragma, i, @[destructorPragma]),
+        emptyNode,
         emptyNode,
         generated
         ])
