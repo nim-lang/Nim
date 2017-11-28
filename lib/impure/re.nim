@@ -49,9 +49,6 @@ type
   RegexError* = object of ValueError
     ## is raised if the pattern is no valid regular expression.
 
-{.deprecated: [TRegexFlag: RegexFlag, TRegexDesc: RegexDesc, TRegex: Regex,
-    EInvalidRegEx: RegexError].}
-
 proc raiseInvalidRegex(msg: string) {.noinline, noreturn.} =
   var e: ref RegexError
   new(e)
