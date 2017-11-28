@@ -553,12 +553,24 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonNode =
 proc checkForFalse(n: PNode): bool =
   result = n.kind == nkIdent and cmpIgnoreStyle(n.ident.s, "false") == 0
 
-proc traceDeps(d: PDoc, n: PNode) =
+proc traceDeps(d: PDoc, it: PNode) =
   const k = skModule
-  if d.section[k] != nil: add(d.section[k], ", ")
-  dispA(d.section[k],
-        "<a class=\"reference external\" href=\"$1.html\">$1</a>",
-        "$1", [rope(getModuleName(n))])
+
+  if it.kind == nkInfix and it.len == 3 and it[2].kind == nkBracket:
+    let sep = it[0]
+    let dir = it[1]
+    let a = newNodeI(nkInfix, it.info)
+    a.add sep
+    a.add dir
+    a.add sep # dummy entry, replaced in the loop
+    for x in it[2]:
+      a.sons[2] = x
+      traceDeps(d, a)
+  else:
+    if d.section[k] != nil: add(d.section[k], ", ")
+    dispA(d.section[k],
+          "<a class=\"reference external\" href=\"$1.html\">$1</a>",
+          "$1", [rope(getModuleName(it))])
 
 proc generateDoc*(d: PDoc, n: PNode) =
   case n.kind
