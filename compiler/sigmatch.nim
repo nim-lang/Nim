@@ -640,7 +640,7 @@ proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
   else:
     result = isNone
 
-proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
+proc matchConcept(m: var TCandidate; ff, a: PType): PType =
   var
     c = m.c
     typeClass = ff.skipTypes({tyUserTypeClassInst})
@@ -749,6 +749,67 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
     result = copyType(ff, ff.owner, true)
 
   result.n = checkedBody
+
+  if c.matchedConcept.converterExpr != nil:
+    result.flags.incl tfRetType
+    if result.n[^1].kind != nkReturnStmt:
+      result.n.addSon c.matchedConcept.converterExpr
+
+proc getConceptConvExpr(f: PType): PNode =
+  let body = f.n
+  for i in countdown(<body.len, 0):
+    if body[i].kind == nkReturnStmt:
+      return body[i]
+
+proc conceptConvReplaceParams(convExpr, a: PNode) =
+  for i in 0..<convExpr.len:
+    case convExpr[i].kind
+    of nkCharLit..nkNilLit, nkIdent:
+      discard
+    of nkSym:
+      let sym = convExpr[i].sym
+      if sym.kind == skVar and sym.typ.kind == tyAlias:
+        convExpr.sons[i] = a
+    else:
+      if convExpr[i].sons != nil:
+        conceptConvReplaceParams(convExpr[i], a)
+
+proc conceptConv(m: var TCandidate, f: PType, a: PNode): PNode =
+  var c = m.c
+  # The concept may include conditional code depending on the
+  # matched type. To obtain the converter expr, we need the
+  # "resolved" body of the concept:
+  var resolvedConcept = PType(idTableGet(m.bindings, f))
+  internalAssert resolvedConcept != nil
+
+  # `matchConcept` will ensure that the conv expr appears at
+  # the end of the concept body:
+  var convExpr = copyTree getConceptConvExpr(resolvedConcept)
+  if convExpr == nil:
+    internalAssert false
+    return errorNode(c, a)
+
+  # XXX: What about var: var traversal
+  # we need error message for attempts to call var functions
+  var anonVarSym = newSym(skLet, c.cache.idAnon, getCurrOwner(c), a.info)
+  anonVarSym.flags.incl sfGenSym
+  let anonVar = newSymNode(anonVarSym)
+
+  conceptConvReplaceParams(convExpr, anonVar)
+
+  result = newNode(nkStmtListExpr, a.info, @[
+    newNode(nkLetSection, a.info, @[
+      newNode(nkIdentDefs, a.info, @[
+        anonVar,
+        emptyNode,
+        a
+      ])
+    ]),
+    convExpr[0]
+  ])
+
+  result = c.semExpr(c, result)
+  put(m, f, result.typ)
 
 proc shouldSkipDistinct(rules: PNode, callIdent: PIdent): bool =
   if rules.kind == nkWith:
@@ -1513,11 +1574,12 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
     else:
       considerPreviousT:
         if aOrig == f: return isEqual
-        var matched = matchUserTypeClass(c, f, aOrig)
+        var matched = matchConcept(c, f, aOrig)
         if matched != nil:
-          bindConcreteTypeToUserTypeClass(matched, a)
+          bindConcreteTypeToConcept(matched, a)
           if doBind: put(c, f, matched)
-          result = isGeneric
+          return if tfRetType in matched.flags: isConvertible
+                 else: isGeneric
         else:
           result = isNone
 
@@ -1872,7 +1934,10 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
   case r
   of isConvertible:
     inc(m.convMatches)
-    result = implicitConv(nkHiddenStdConv, f, arg, m, c)
+    if f.kind in tyUserTypeClasses:
+      result = conceptConv(m, f, arg)
+    else:
+      result = implicitConv(nkHiddenStdConv, f, arg, m, c)
   of isIntConv:
     # I'm too lazy to introduce another ``*matches`` field, so we conflate
     # ``isIntConv`` and ``isIntLit`` here:

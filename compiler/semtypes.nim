@@ -1227,7 +1227,7 @@ template modifierTypeKindOfNode(n: PNode): TTypeKind =
   of nkTypeOfExpr: tyTypeDesc
   else: tyNone
 
-proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
+proc semConcept(c: PContext, n: PNode, prev: PType): PType =
   # if n.sonsLen == 0: return newConstraint(c, tyTypeClass)
   let
     pragmas = n[1]
@@ -1490,7 +1490,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkObjectTy: result = semObjectNode(c, n, prev)
   of nkTupleTy: result = semTuple(c, n, prev)
   of nkTupleClassTy: result = newConstraint(c, tyTuple)
-  of nkTypeClassTy: result = semTypeClass(c, n, prev)
+  of nkTypeClassTy: result = semConcept(c, n, prev)
   of nkRefTy: result = semAnyRef(c, n, tyRef, prev)
   of nkPtrTy: result = semAnyRef(c, n, tyPtr, prev)
   of nkVarTy: result = semVarType(c, n, prev)

@@ -1395,7 +1395,16 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
 proc semReturn(c: PContext, n: PNode): PNode =
   result = n
   checkSonsLen(n, 1)
-  if c.p.owner.kind in {skConverter, skMethod, skProc, skFunc, skMacro} or (
+  if c.matchedConcept != nil:
+    if c.matchedConcept.converterExpr == nil:
+      n.flags.incl nfSem
+      c.matchedConcept.converterExpr = n
+    else:
+      if nfSem notin n.flags:
+        localError(n.info, "Only a single return statement is allowed " &
+                           "within a converter concept")
+    return
+  elif c.p.owner.kind in {skConverter, skMethod, skProc, skFunc, skMacro} or (
      c.p.owner.kind == skIterator and c.p.owner.typ.callConv == ccClosure):
     if n.sons[0].kind != nkEmpty:
       # transform ``return expr`` to ``result = expr; return``
