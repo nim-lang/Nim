@@ -25,8 +25,11 @@ proc initData(s: string): Data =
   result = Data(data: s, rc: 1)
   echo s, " created"
 
+proc pointlessWrapper(s: string): Data =
+  result = initData(s)
+
 proc main =
-  var x = initData"test"
+  var x = pointlessWrapper"test"
 
 when isMainModule:
   main()
