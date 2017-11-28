@@ -231,55 +231,81 @@ proc execProcesses*(cmds: openArray[string],
   ## executes the commands `cmds` in parallel. Creates `n` processes
   ## that execute in parallel. The highest return value of all processes
   ## is returned. Runs `beforeRunEvent` before running each command.
-  when false:
-    # poParentStreams causes problems on Posix, so we simply disable it:
-    var options = options - {poParentStreams}
-
+  
   assert n > 0
   if n > 1:
-    var q: seq[Process]
-    newSeq(q, n)
+    var i = 0
+    var q = newSeq[Process](n)
     var m = min(n, cmds.len)
-    for i in 0..m-1:
+
+    when defined(windows):
+      var w: WOHandleArray
+      var wcount = m
+      for c in 0..MAXIMUM_WAIT_OBJECTS - 1:
+        w[c] = 0
+
+    while i < m:
       if beforeRunEvent != nil:
         beforeRunEvent(i)
-      q[i] = startProcess(cmds[i], options=options + {poEvalCommand})
-    when defined(noBusyWaiting):
-      var r = 0
-      for i in m..high(cmds):
-        when defined(debugExecProcesses):
-          var err = ""
-          var outp = outputStream(q[r])
-          while running(q[r]) or not atEnd(outp):
-            err.add(outp.readLine())
-            err.add("\n")
-          echo(err)
-        result = max(waitForExit(q[r]), result)
-        if afterRunEvent != nil: afterRunEvent(r, q[r])
-        if q[r] != nil: close(q[r])
-        if beforeRunEvent != nil:
-          beforeRunEvent(i)
-        q[r] = startProcess(cmds[i], options=options + {poEvalCommand})
-        r = (r + 1) mod n
-    else:
-      var i = m
-      while i <= high(cmds):
-        sleep(50)
-        for r in 0..n-1:
+      q[i] = startProcess(cmds[i], options = options + {poEvalCommand})
+      when defined(windows):
+        w[i] = q[i].fProcessHandle
+      inc(i)
+
+    var ecount = len(cmds)
+    while ecount > 0:
+      when defined(windows):
+        # waiting for all children, get result if any child exits
+        var ret = waitForMultipleObjects(int32(wcount), addr(w), 0'i32,
+                                         INFINITE)
+        if ret == WAIT_TIMEOUT:
+          # must not be happen
+          discard
+        elif ret == WAIT_FAILED:
+          raiseOSError(osLastError())
+      else:
+        var status : cint = 1
+        # waiting for all children, get result if any child exits
+        let res = waitpid(-1, status, 0)
+        if res > 0:
+          for r in 0..m-1:
+            if not isNil(q[r]) and q[r].id == res:
+              # we updating `exitStatus` manually, so `running()` can work.
+              if WIFEXITED(status) or WIFSIGNALED(status):
+                q[r].exitStatus = status
+                break
+        else:
+          let err = osLastError()
+          if err == OSErrorCode(ECHILD):
+            # some child exits, we need to check our childs exit codes
+            discard
+          elif err == OSErrorCode(EINTR):
+            # signal interrupted our syscall, lets repeat it
+            continue
+          else:
+            # all other errors are exceptions
+            raiseOSError(err)
+
+      for r in 0..m-1:
+        if not isNil(q[r]):
           if not running(q[r]):
-            #echo(outputStream(q[r]).readLine())
-            result = max(waitForExit(q[r]), result)
+            result = max(result, q[r].peekExitCode())
             if afterRunEvent != nil: afterRunEvent(r, q[r])
-            if q[r] != nil: close(q[r])
-            if beforeRunEvent != nil:
-              beforeRunEvent(i)
-            q[r] = startProcess(cmds[i], options=options + {poEvalCommand})
-            inc(i)
-            if i > high(cmds): break
-    for j in 0..m-1:
-      result = max(waitForExit(q[j]), result)
-      if afterRunEvent != nil: afterRunEvent(j, q[j])
-      if q[j] != nil: close(q[j])
+            close(q[r])
+            if i < len(cmds):
+              if beforeRunEvent != nil: beforeRunEvent(i)
+              q[r] = startProcess(cmds[i],
+                                  options = options + {poEvalCommand})
+              when defined(windows):
+                w[r] = q[r].fProcessHandle
+              inc(i)
+            else:
+              q[r] = nil
+              when defined(windows):
+                for c in r..MAXIMUM_WAIT_OBJECTS - 2:
+                  w[c] = w[c + 1]
+                dec(wcount)
+            dec(ecount)
   else:
     for i in 0..high(cmds):
       if beforeRunEvent != nil:
@@ -939,19 +965,22 @@ elif not defined(useNimRtl):
     if kill(p.id, SIGCONT) != 0'i32: raiseOsError(osLastError())
 
   proc running(p: Process): bool =
-    var ret : int
-    var status : cint = 1
-    ret = waitpid(p.id, status, WNOHANG)
-    if ret == int(p.id):
-      if isExitStatus(status):
-        p.exitStatus = status
-        return false
-      else:
-        return true
-    elif ret == 0:
-      return true # Can't establish status. Assume running.
-    else:
+    if p.exitStatus != -3:
       return false
+    else:
+      var ret : int
+      var status : cint = 1
+      ret = waitpid(p.id, status, WNOHANG)
+      if ret == int(p.id):
+        if isExitStatus(status):
+          p.exitStatus = status
+          return false
+        else:
+          return true
+      elif ret == 0:
+        return true # Can't establish status. Assume running.
+      else:
+        raiseOSError(osLastError())
 
   proc terminate(p: Process) =
     if kill(p.id, SIGTERM) != 0'i32:
