@@ -94,3 +94,14 @@ This now needs to be written as:
   - [``poly``](https://github.com/lcrees/polynumeric)
   - [``pdcurses``](https://github.com/lcrees/pdcurses)
   - [``romans``](https://github.com/lcrees/romans)
+
+- Added ``system.runnableExamples`` to make examples in Nim's documentation easier
+  to write and test. The examples are tested as the last step of
+  ``nim doc``.
+- Nim's ``rst2html`` command now supports the testing of code snippets via an RST
+  extension that we called ``:test:``::
+
+    .. code-block:: nim
+        :test:
+      # shows how the 'if' statement works
+      if true: echo "yes"

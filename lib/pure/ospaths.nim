@@ -558,3 +558,67 @@ proc expandTilde*(path: string): string {.
     result = getHomeDir() / path.substr(2)
   else:
     result = path
+
+proc quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
+  ## Quote s, so it can be safely passed to Windows API.
+  ## Based on Python's subprocess.list2cmdline
+  ## See http://msdn.microsoft.com/en-us/library/17w5ykft.aspx
+  let needQuote = {' ', '\t'} in s or s.len == 0
+
+  result = ""
+  var backslashBuff = ""
+  if needQuote:
+    result.add("\"")
+
+  for c in s:
+    if c == '\\':
+      backslashBuff.add(c)
+    elif c == '\"':
+      result.add(backslashBuff)
+      result.add(backslashBuff)
+      backslashBuff.setLen(0)
+      result.add("\\\"")
+    else:
+      if backslashBuff.len != 0:
+        result.add(backslashBuff)
+        backslashBuff.setLen(0)
+      result.add(c)
+
+  if needQuote:
+    result.add("\"")
+
+proc quoteShellPosix*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
+  ## Quote ``s``, so it can be safely passed to POSIX shell.
+  ## Based on Python's pipes.quote
+  const safeUnixChars = {'%', '+', '-', '.', '/', '_', ':', '=', '@',
+                         '0'..'9', 'A'..'Z', 'a'..'z'}
+  if s.len == 0:
+    return "''"
+
+  let safe = s.allCharsInSet(safeUnixChars)
+
+  if safe:
+    return s
+  else:
+    return "'" & s.replace("'", "'\"'\"'") & "'"
+
+when defined(windows) or defined(posix):
+  proc quoteShell*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
+    ## Quote ``s``, so it can be safely passed to shell.
+    when defined(windows):
+      return quoteShellWindows(s)
+    else:
+      return quoteShellPosix(s)
+
+when isMainModule:
+  assert quoteShellWindows("aaa") == "aaa"
+  assert quoteShellWindows("aaa\"") == "aaa\\\""
+  assert quoteShellWindows("") == "\"\""
+
+  assert quoteShellPosix("aaa") == "aaa"
+  assert quoteShellPosix("aaa a") == "'aaa a'"
+  assert quoteShellPosix("") == "''"
+  assert quoteShellPosix("a'a") == "'a'\"'\"'a'"
+
+  when defined(posix):
+    assert quoteShell("") == "''"
