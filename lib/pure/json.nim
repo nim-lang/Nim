@@ -1524,6 +1524,27 @@ proc processObjField(field, jsonNode: NimNode): seq[NimNode] =
 
   doAssert result.len > 0
 
+proc processObjFields(obj: NimNode,
+                      jsonNode: NimNode): seq[NimNode] {.compileTime.} =
+  ## Process all the fields of an ``ObjectTy`` and any of its
+  ## parent type's fields (via inheritance).
+  result = @[]
+
+  expectKind(obj[2], nnkRecList)
+  for field in obj[2]:
+    let nodes = processObjField(field, jsonNode)
+    result.add(nodes)
+
+  # process parent type fields
+  case obj[1].kind
+  of nnkBracketExpr:
+    assert $obj[1][0] == "ref"
+    result.add(processObjFields(getType(obj[1][1]), jsonNode))
+  of nnkSym:
+    result.add(processObjFields(getType(obj[1]), jsonNode))
+  else:
+    discard
+
 proc processType(typeName: NimNode, obj: NimNode,
                  jsonNode: NimNode, isRef: bool): NimNode {.compileTime.} =
   ## Process a type such as ``Sym "float"`` or ``ObjectTy ...``.
@@ -1533,7 +1554,7 @@ proc processType(typeName: NimNode, obj: NimNode,
   ## .. code-block::plain
   ##     ObjectTy
   ##       Empty
-  ##       Empty
+  ##       InheritanceInformation
   ##       RecList
   ##         Sym "events"
   case obj.kind
@@ -1543,10 +1564,7 @@ proc processType(typeName: NimNode, obj: NimNode,
     result.add(typeName) # Name of the type to construct.
 
     # Process each object field and add it as an exprColonExpr
-    expectKind(obj[2], nnkRecList)
-    for field in obj[2]:
-      let nodes = processObjField(field, jsonNode)
-      result.add(nodes)
+    result.add(processObjFields(obj, jsonNode))
 
     # Object might be null. So we need to check for that.
     if isRef:
