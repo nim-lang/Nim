@@ -1,7 +1,12 @@
 
 discard """
 output:  '''test created
-test destroyed 0'''
+test destroyed 0
+1
+2
+3
+4
+Pony is dying!'''
   cmd: '''nim c --newruntime $file'''
 """
 
@@ -33,3 +38,22 @@ proc main =
 
 when isMainModule:
   main()
+
+# bug #985
+
+type
+    Pony = object
+        name: string
+
+proc `=destroy`(o: var Pony) =
+  echo "Pony is dying!"
+
+proc getPony: Pony =
+    result.name = "Sparkles"
+
+iterator items(p: Pony): int =
+    for i in 1..4:
+        yield i
+
+for x in getPony():
+    echo x
