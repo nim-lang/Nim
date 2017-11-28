@@ -1439,7 +1439,11 @@ const
     ## is the value that should be passed to `quit <#quit>`_ to indicate
     ## failure.
 
-var programResult* {.exportc: "nim_program_result".}: int
+when defined(nodejs):
+  var programResult* {.importc: "process.exitCode".}: int
+  programResult = 0
+else:
+  var programResult* {.exportc: "nim_program_result".}: int
   ## modify this variable to specify the exit code of the program
   ## under normal circumstances. When the program is terminated
   ## prematurely using ``quit``, this value is ignored.
