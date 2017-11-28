@@ -210,7 +210,7 @@ template recurse(n, dest) =
     dest.add p(n[i], c)
 
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
-  if ri.kind in nkCallKinds:
+  if ri.kind in nkCallKinds+{nkObjConstr}:
     result = genSink(ri.typ, dest)
     # watch out and no not transform 'ri' twice if it's a call:
     let ri2 = copyNode(ri)
@@ -312,7 +312,7 @@ proc injectDestructorCalls*(owner: PSym; n: PNode): PNode =
     result.add body
 
   when defined(nimDebugDestroys):
-    if owner.name.s == "createSeq":
+    if owner.name.s == "main" or true:
       echo "------------------------------------"
       echo owner.name.s, " transformed to: "
       echo result
