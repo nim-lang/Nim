@@ -793,7 +793,7 @@ proc commandRstAux(filename, outExt: string) =
     var outp: string
     if filename.len == 0:
       inc(d.id)
-      outp = getNimcacheDir() / splitFile(d.filename).name & "_snippet_" & $d.id & ".nim"
+      outp = completeGeneratedFilePath(splitFile(d.filename).name & "_snippet_" & $d.id & ".nim")
     elif isAbsolute(filename):
       outp = filename
     else:
