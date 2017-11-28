@@ -23,7 +23,7 @@ const
     wMagic, wNosideeffect, wSideeffect, wNoreturn, wDynlib, wHeader,
     wCompilerproc, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge,
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
-    wAsmNoStackFrame, wError, wDiscardable, wNoInit, wDestructor, wCodegenDecl,
+    wAsmNoStackFrame, wError, wDiscardable, wNoInit, wCodegenDecl,
     wGensym, wInject, wRaises, wTags, wLocks, wDelegator, wGcSafe,
     wOverride, wConstructor, wExportNims, wUsed, wLiftLocals}
   converterPragmas* = procPragmas
@@ -759,10 +759,6 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         incl(sym.loc.flags, lfNoDecl)
         # implies nodecl, because otherwise header would not make sense
         if sym.loc.r == nil: sym.loc.r = rope(sym.name.s)
-      of wDestructor:
-        sym.flags.incl sfOverriden
-        if sym.name.s.normalize != "destroy":
-          localError(n.info, errGenerated, "destructor has to be named 'destroy'")
       of wOverride:
         sym.flags.incl sfOverriden
       of wNosideeffect:

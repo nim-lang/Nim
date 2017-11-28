@@ -502,16 +502,15 @@ template splitCommon(s, sep, maxsplit, sepLen) =
   var last = 0
   var splits = maxsplit
 
-  if len(s) > 0:
-    while last <= len(s):
-      var first = last
-      while last < len(s) and not stringHasSep(s, last, sep):
-        inc(last)
-      if splits == 0: last = len(s)
-      yield substr(s, first, last-1)
-      if splits == 0: break
-      dec(splits)
-      inc(last, sepLen)
+  while last <= len(s):
+    var first = last
+    while last < len(s) and not stringHasSep(s, last, sep):
+      inc(last)
+    if splits == 0: last = len(s)
+    yield substr(s, first, last-1)
+    if splits == 0: break
+    dec(splits)
+    inc(last, sepLen)
 
 template oldSplit(s, seps, maxsplit) =
   var last = 0
@@ -669,30 +668,29 @@ template rsplitCommon(s, sep, maxsplit, sepLen) =
     splits = maxsplit
     startPos = 0
 
-  if len(s) > 0:
-    # go to -1 in order to get separators at the beginning
-    while first >= -1:
-      while first >= 0 and not stringHasSep(s, first, sep):
-        dec(first)
-
-      if splits == 0:
-        # No more splits means set first to the beginning
-        first = -1
-
-      if first == -1:
-        startPos = 0
-      else:
-        startPos = first + sepLen
-
-      yield substr(s, startPos, last)
-
-      if splits == 0:
-        break
-
-      dec(splits)
+  # go to -1 in order to get separators at the beginning
+  while first >= -1:
+    while first >= 0 and not stringHasSep(s, first, sep):
       dec(first)
 
-      last = first
+    if splits == 0:
+      # No more splits means set first to the beginning
+      first = -1
+
+    if first == -1:
+      startPos = 0
+    else:
+      startPos = first + sepLen
+
+    yield substr(s, startPos, last)
+
+    if splits == 0:
+      break
+
+    dec(splits)
+    dec(first)
+
+    last = first
 
 iterator rsplit*(s: string, seps: set[char] = Whitespace,
                  maxsplit: int = -1): string =
@@ -820,12 +818,18 @@ proc split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): seq[st
   noSideEffect, rtl, extern: "nsuSplitCharSet".} =
   ## The same as the `split iterator <#split.i,string,set[char],int>`_, but is a
   ## proc that returns a sequence of substrings.
+  runnableExamples:
+    doAssert "a,b;c".split({',', ';'}) == @["a", "b", "c"]
+    doAssert "".split({' '}) == @[""]
   accumulateResult(split(s, seps, maxsplit))
 
 proc split*(s: string, sep: char, maxsplit: int = -1): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitChar".} =
   ## The same as the `split iterator <#split.i,string,char,int>`_, but is a proc
   ## that returns a sequence of substrings.
+  runnableExamples:
+    doAssert "a,b,c".split(',') == @["a", "b", "c"]
+    doAssert "".split(' ') == @[""]
   accumulateResult(split(s, sep, maxsplit))
 
 proc split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.noSideEffect,
@@ -834,6 +838,13 @@ proc split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.noSideEff
   ##
   ## Substrings are separated by the string `sep`. This is a wrapper around the
   ## `split iterator <#split.i,string,string,int>`_.
+  runnableExamples:
+    doAssert "a,b,c".split(",") == @["a", "b", "c"]
+    doAssert "a man a plan a canal panama".split("a ") == @["", "man ", "plan ", "canal panama"]
+    doAssert "".split("Elon Musk") == @[""]
+    doAssert "a  largely    spaced sentence".split(" ") == @["a", "", "largely", "", "", "", "spaced", "sentence"]
+
+    doAssert "a  largely    spaced sentence".split(" ", maxsplit=1) == @["a", " largely    spaced sentence"]
   doAssert(sep.len > 0)
 
   accumulateResult(split(s, sep, maxsplit))
@@ -902,6 +913,13 @@ proc rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string]
   ## .. code-block:: nim
   ##   @["Root#Object#Method", "Index"]
   ##
+  runnableExamples:
+    doAssert "a  largely    spaced sentence".rsplit(" ", maxsplit=1) == @["a  largely    spaced", "sentence"]
+
+    doAssert "a,b,c".rsplit(",") == @["a", "b", "c"]
+    doAssert "a man a plan a canal panama".rsplit("a ") == @["", "man ", "plan ", "canal panama"]
+    doAssert "".rsplit("Elon Musk") == @[""]
+    doAssert "a  largely    spaced sentence".rsplit(" ") == @["a", "", "largely", "", "", "", "spaced", "sentence"]
   accumulateResult(rsplit(s, sep, maxsplit))
   result.reverse()
 
