@@ -602,14 +602,13 @@ proc quoteShellPosix*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".}
   else:
     return "'" & s.replace("'", "'\"'\"'") & "'"
 
-proc quoteShell*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
-  ## Quote ``s``, so it can be safely passed to shell.
-  when defined(Windows):
-    return quoteShellWindows(s)
-  elif defined(posix):
-    return quoteShellPosix(s)
-  else:
-    {.error:"quoteShell is not supported on your system".}
+when defined(windows) or defined(posix):
+  proc quoteShell*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
+    ## Quote ``s``, so it can be safely passed to shell.
+    when defined(windows):
+      return quoteShellWindows(s)
+    else:
+      return quoteShellPosix(s)
 
 when isMainModule:
   assert quoteShellWindows("aaa") == "aaa"
