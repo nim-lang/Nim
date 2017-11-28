@@ -321,6 +321,8 @@ when not defined(useNimRtl):
       elif not running(p): break
     close(p)
 
+template streamAccess(p) =
+  assert poParentStreams notin p.options, "API usage error: stream access not allowed when you use poParentStreams"
 
 when defined(Windows) and not defined(useNimRtl):
   # We need to implement a handle stream for Windows:
@@ -581,12 +583,15 @@ when defined(Windows) and not defined(useNimRtl):
       return res
 
   proc inputStream(p: Process): Stream =
+    streamAccess(p)
     result = newFileHandleStream(p.inHandle)
 
   proc outputStream(p: Process): Stream =
+    streamAccess(p)
     result = newFileHandleStream(p.outHandle)
 
   proc errorStream(p: Process): Stream =
+    streamAccess(p)
     result = newFileHandleStream(p.errHandle)
 
   proc execCmd(command: string): int =
@@ -1152,16 +1157,19 @@ elif not defined(useNimRtl):
     stream = newFileStream(f)
 
   proc inputStream(p: Process): Stream =
+    streamAccess(p)
     if p.inStream == nil:
       createStream(p.inStream, p.inHandle, fmWrite)
     return p.inStream
 
   proc outputStream(p: Process): Stream =
+    streamAccess(p)
     if p.outStream == nil:
       createStream(p.outStream, p.outHandle, fmRead)
     return p.outStream
 
   proc errorStream(p: Process): Stream =
+    streamAccess(p)
     if p.errStream == nil:
       createStream(p.errStream, p.errHandle, fmRead)
     return p.errStream
