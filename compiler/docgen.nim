@@ -805,7 +805,10 @@ proc commandRstAux(filename, outExt: string) =
     var outp: string
     if filename.len == 0:
       inc(d.id)
-      outp = completeGeneratedFilePath(splitFile(d.filename).name & "_snippet_" & $d.id & ".nim")
+      let nameOnly = splitFile(d.filename).name
+      let subdir = getNimcacheDir() / nameOnly
+      createDir(subdir)
+      outp = subdir / (nameOnly & "_snippet_" & $d.id & ".nim")
     elif isAbsolute(filename):
       outp = filename
     else:
