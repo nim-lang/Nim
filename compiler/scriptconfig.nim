@@ -143,6 +143,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
 
 proc runNimScript*(cache: IdentCache; scriptName: string;
                    freshDefines=true; config: ConfigRef=nil) =
+  rawMessage(hintConf, scriptName)
   passes.gIncludeFile = includeModule
   passes.gImportModule = importModule
   let graph = newModuleGraph(config)
