@@ -22,7 +22,6 @@ type
   TSections = array[TSymKind, Rope]
   TDocumentor = object of rstgen.RstGenerator
     modDesc: Rope           # module description
-    id: int                  # for generating IDs
     toc, section: TSections
     indexValFilename: string
     analytics: string  # Google Analytics javascript, "" if doesn't exist
@@ -109,6 +108,8 @@ proc newDocumentor*(filename: string, config: StringTableRef): PDoc =
   result.id = 100
   result.jArray = newJArray()
   initStrTable result.types
+  result.onTestSnippet = proc (d: var RstGenerator; filename, cmd: string; status: int; content: string) =
+    localError(newLineInfo(d.filename, -1, -1), warnUser, "only 'rst2html' supports the ':test:' attribute")
 
 proc dispA(dest: var Rope, xml, tex: string, args: openArray[Rope]) =
   if gCmd != cmdRst2tex: addf(dest, xml, args)
@@ -274,7 +275,9 @@ proc getAllRunnableExamples(d: PDoc; n: PNode; dest: var Rope) =
       # that the renderer currently produces:
       var i = 0
       var body = n.lastSon
-      if body.len == 1 and body.kind == nkStmtList: body = body.lastSon
+      if body.len == 1 and body.kind == nkStmtList and
+          body.lastSon.kind == nkStmtList:
+        body = body.lastSon
       for b in body:
         if i > 0: dest.add "\n"
         inc i
@@ -785,6 +788,23 @@ proc commandDoc*() =
 proc commandRstAux(filename, outExt: string) =
   var filen = addFileExt(filename, "txt")
   var d = newDocumentor(filen, options.gConfigVars)
+  d.onTestSnippet = proc (d: var RstGenerator; filename, cmd: string;
+                          status: int; content: string) =
+    var outp: string
+    if filename.len == 0:
+      inc(d.id)
+      outp = completeGeneratedFilePath(splitFile(d.filename).name & "_snippet_" & $d.id & ".nim")
+    elif isAbsolute(filename):
+      outp = filename
+    else:
+      # Nim's convention: every path is relative to the file it was written in:
+      outp = splitFile(d.filename).dir / filename
+    writeFile(outp, content)
+    let cmd = cmd % outp
+    rawMessage(hintExecuting, cmd)
+    if execShellCmd(cmd) != status:
+      rawMessage(errExecutionOfProgramFailed, cmd)
+
   d.isPureRst = true
   var rst = parseRst(readFile(filen), filen, 0, 1, d.hasToc,
                      {roSupportRawDirective})

@@ -32,10 +32,6 @@ when defined(nimOldSplit):
 else:
   {.pragma: deprecatedSplit.}
 
-type
-  CharSet* {.deprecated.} = set[char] # for compatibility with Nim
-{.deprecated: [TCharSet: CharSet].}
-
 const
   Whitespace* = {' ', '\t', '\v', '\r', '\l', '\f'}
     ## All the characters that count as whitespace.
@@ -78,40 +74,40 @@ proc isAlphaAscii*(c: char): bool {.noSideEffect, procvar,
   return c in Letters
 
 proc isAlphaNumeric*(c: char): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsAlphaNumericChar".}=
+  rtl, extern: "nsuIsAlphaNumericChar".} =
   ## Checks whether or not `c` is alphanumeric.
   ##
   ## This checks a-z, A-Z, 0-9 ASCII characters only.
-  return c in Letters or c in Digits
+  return c in Letters+Digits
 
 proc isDigit*(c: char): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsDigitChar".}=
+  rtl, extern: "nsuIsDigitChar".} =
   ## Checks whether or not `c` is a number.
   ##
   ## This checks 0-9 ASCII characters only.
   return c in Digits
 
 proc isSpaceAscii*(c: char): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsSpaceAsciiChar".}=
+  rtl, extern: "nsuIsSpaceAsciiChar".} =
   ## Checks whether or not `c` is a whitespace character.
   return c in Whitespace
 
 proc isLowerAscii*(c: char): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsLowerAsciiChar".}=
+  rtl, extern: "nsuIsLowerAsciiChar".} =
   ## Checks whether or not `c` is a lower case character.
   ##
   ## This checks ASCII characters only.
   return c in {'a'..'z'}
 
 proc isUpperAscii*(c: char): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsUpperAsciiChar".}=
+  rtl, extern: "nsuIsUpperAsciiChar".} =
   ## Checks whether or not `c` is an upper case character.
   ##
   ## This checks ASCII characters only.
   return c in {'A'..'Z'}
 
 proc isAlphaAscii*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsAlphaAsciiStr".}=
+  rtl, extern: "nsuIsAlphaAsciiStr".} =
   ## Checks whether or not `s` is alphabetical.
   ##
   ## This checks a-z, A-Z ASCII characters only.
@@ -123,10 +119,10 @@ proc isAlphaAscii*(s: string): bool {.noSideEffect, procvar,
 
   result = true
   for c in s:
-    result = c.isAlphaAscii() and result
+    if not c.isAlphaAscii(): return false
 
 proc isAlphaNumeric*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsAlphaNumericStr".}=
+  rtl, extern: "nsuIsAlphaNumericStr".} =
   ## Checks whether or not `s` is alphanumeric.
   ##
   ## This checks a-z, A-Z, 0-9 ASCII characters only.
@@ -142,7 +138,7 @@ proc isAlphaNumeric*(s: string): bool {.noSideEffect, procvar,
       return false
 
 proc isDigit*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsDigitStr".}=
+  rtl, extern: "nsuIsDigitStr".} =
   ## Checks whether or not `s` is a numeric value.
   ##
   ## This checks 0-9 ASCII characters only.
@@ -158,7 +154,7 @@ proc isDigit*(s: string): bool {.noSideEffect, procvar,
       return false
 
 proc isSpaceAscii*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsSpaceAsciiStr".}=
+  rtl, extern: "nsuIsSpaceAsciiStr".} =
   ## Checks whether or not `s` is completely whitespace.
   ##
   ## Returns true if all characters in `s` are whitespace
@@ -172,7 +168,7 @@ proc isSpaceAscii*(s: string): bool {.noSideEffect, procvar,
       return false
 
 proc isLowerAscii*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsLowerAsciiStr".}=
+  rtl, extern: "nsuIsLowerAsciiStr".} =
   ## Checks whether or not `s` contains all lower case characters.
   ##
   ## This checks ASCII characters only.
@@ -187,7 +183,7 @@ proc isLowerAscii*(s: string): bool {.noSideEffect, procvar,
   true
 
 proc isUpperAscii*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsUpperAsciiStr".}=
+  rtl, extern: "nsuIsUpperAsciiStr".} =
   ## Checks whether or not `s` contains all upper case characters.
   ##
   ## This checks ASCII characters only.
