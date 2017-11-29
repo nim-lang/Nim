@@ -1677,6 +1677,30 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
         (
           if `lenientJsonNode`.isNil: `workaround`[`optionGeneric`]() else: some[`optionGeneric`](`value`)
         )
+    of "table", "orderedtable":
+      let tableKeyType = typeSym[1]
+      if ($tableKeyType).cmpIgnoreStyle("string") != 0:
+        error("JSON doesn't support keys of type " & $tableKeyType)
+      let tableValueType = typeSym[2]
+
+      let forLoopKey = genSym(nskForVar, "key")
+      let indexerNode = createJsonIndexer(jsonNode, forLoopKey)
+      let constructorNode = createConstructor(tableValueType, indexerNode)
+
+      let tableInit =
+        if bracketName == "table":
+          bindSym("initTable")
+        else:
+          bindSym("initOrderedTable")
+
+      # Create a statement expression containing a for loop.
+      result = quote do:
+        (
+          var map = `tableInit`[`tableKeyType`, `tableValueType`]();
+          verifyJsonKind(`jsonNode`, {JObject}, astToStr(`jsonNode`));
+          for `forLoopKey` in keys(`jsonNode`.fields): map[`forLoopKey`] = `constructorNode`;
+          map
+        )
     of "ref":
       # Ref type.
       var typeName = $typeSym[1]
