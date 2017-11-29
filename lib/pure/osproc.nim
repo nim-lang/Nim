@@ -240,8 +240,6 @@ proc execProcesses*(cmds: openArray[string],
     when defined(windows):
       var w: WOHandleArray
       var wcount = m
-      for c in 0..MAXIMUM_WAIT_OBJECTS - 1:
-        w[c] = 0
 
     while i < m:
       if beforeRunEvent != nil:
