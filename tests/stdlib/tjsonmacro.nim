@@ -2,7 +2,7 @@ discard """
   file: "tjsonmacro.nim"
   output: ""
 """
-import json, strutils, options
+import json, strutils, options, tables
 
 when isMainModule:
   # Tests inspired by own use case (with some additional tests).
@@ -315,5 +315,28 @@ when isMainModule:
     doAssert noYearDeser.year.isNone
     doAssert noYearDeser.engine.name == "V8"
 
-  # TODO: Table[T, Y] support.
+  # Table[T, Y] support.
+  block:
+    type
+      Friend = object
+        name: string
+        age: int
+
+      Dynamic = object
+        name: string
+        friends: Table[string, Friend]
+
+    let data = """
+      {"friends": {
+                    "John": {"name": "John", "age": 35},
+                    "Elizabeth": {"name": "Elizabeth", "age": 23}
+                  }, "name": "Dominik"}
+    """
+
+    let dataParsed = parseJson(data)
+    let dataDeser = to(dataParsed, Dynamic)
+    doAssert dataDeser.name == "Dominik"
+    doAssert dataDeser.friends["John"].age == 35
+    doAssert dataDeser.friends["Elizabeth"].age == 23
+
   # TODO: JsonNode support
