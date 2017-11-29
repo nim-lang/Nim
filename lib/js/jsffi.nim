@@ -177,7 +177,7 @@ proc `==`*(x, y: JsRoot): bool {. importcpp: "(# === #)" .}
   ## and not strings or numbers, this is a *comparison of references*.
 
 {. experimental .}
-macro `.`*(obj: JsObject, field: static[cstring]): JsObject =
+macro `.`*(obj: JsObject, field: untyped): JsObject =
   ## Experimental dot accessor (get) for type JsObject.
   ## Returns the value of a property of name `field` from a JsObject `x`.
   ##
@@ -196,14 +196,14 @@ macro `.`*(obj: JsObject, field: static[cstring]): JsObject =
       helper(`obj`)
   else:
     if not mangledNames.hasKey($field):
-      mangledNames[$field] = $mangleJsName(field)
+      mangledNames[$field] = $mangleJsName($field)
     let importString = "#." & mangledNames[$field]
     result = quote do:
       proc helper(o: JsObject): JsObject
         {. importcpp: `importString`, gensym .}
       helper(`obj`)
 
-macro `.=`*(obj: JsObject, field: static[cstring], value: untyped): untyped =
+macro `.=`*(obj: JsObject, field, value: untyped): untyped =
   ## Experimental dot accessor (set) for type JsObject.
   ## Sets the value of a property of name `field` in a JsObject `x` to `value`.
   if validJsName($field):
@@ -214,7 +214,7 @@ macro `.=`*(obj: JsObject, field: static[cstring], value: untyped): untyped =
       helper(`obj`, `value`)
   else:
     if not mangledNames.hasKey($field):
-      mangledNames[$field] = $mangleJsName(field)
+      mangledNames[$field] = $mangleJsName($field)
     let importString = "#." & mangledNames[$field] & " = #"
     result = quote do:
       proc helper(o: JsObject, v: auto)
@@ -222,7 +222,7 @@ macro `.=`*(obj: JsObject, field: static[cstring], value: untyped): untyped =
       helper(`obj`, `value`)
 
 macro `.()`*(obj: JsObject,
-             field: static[cstring],
+             field: untyped,
              args: varargs[JsObject, jsFromAst]): JsObject =
   ## Experimental "method call" operator for type JsObject.
   ## Takes the name of a method of the JavaScript object (`field`) and calls
@@ -245,7 +245,7 @@ macro `.()`*(obj: JsObject,
     importString = "#." & $field & "(@)"
   else:
     if not mangledNames.hasKey($field):
-      mangledNames[$field] = $mangleJsName(field)
+      mangledNames[$field] = $mangleJsName($field)
     importString = "#." & mangledNames[$field] & "(@)"
   result = quote:
     proc helper(o: JsObject): JsObject
@@ -257,7 +257,7 @@ macro `.()`*(obj: JsObject,
     result[1].add args[idx].copyNimTree
 
 macro `.`*[K: string | cstring, V](obj: JsAssoc[K, V],
-                                   field: static[cstring]): V =
+                                   field: untyped): V =
   ## Experimental dot accessor (get) for type JsAssoc.
   ## Returns the value of a property of name `field` from a JsObject `x`.
   var importString: string
@@ -265,7 +265,7 @@ macro `.`*[K: string | cstring, V](obj: JsAssoc[K, V],
     importString = "#." & $field
   else:
     if not mangledNames.hasKey($field):
-      mangledNames[$field] = $mangleJsName(field)
+      mangledNames[$field] = $mangleJsName($field)
     importString = "#." & mangledNames[$field]
   result = quote do:
     proc helper(o: type(`obj`)): `obj`.V
@@ -273,7 +273,7 @@ macro `.`*[K: string | cstring, V](obj: JsAssoc[K, V],
     helper(`obj`)
 
 macro `.=`*[K: string | cstring, V](obj: JsAssoc[K, V],
-                                    field: static[cstring],
+                                    field: untyped,
                                     value: V): untyped =
   ## Experimental dot accessor (set) for type JsAssoc.
   ## Sets the value of a property of name `field` in a JsObject `x` to `value`.
@@ -282,7 +282,7 @@ macro `.=`*[K: string | cstring, V](obj: JsAssoc[K, V],
     importString = "#." & $field & " = #"
   else:
     if not mangledNames.hasKey($field):
-      mangledNames[$field] = $mangleJsName(field)
+      mangledNames[$field] = $mangleJsName($field)
     importString = "#." & mangledNames[$field] & " = #"
   result = quote do:
     proc helper(o: type(`obj`), v: `obj`.V)
@@ -290,7 +290,7 @@ macro `.=`*[K: string | cstring, V](obj: JsAssoc[K, V],
     helper(`obj`, `value`)
 
 macro `.()`*[K: string | cstring, V: proc](obj: JsAssoc[K, V],
-                                           field: static[cstring],
+                                           field: untyped,
                                            args: varargs[untyped]): auto =
   ## Experimental "method call" operator for type JsAssoc.
   ## Takes the name of a method of the JavaScript object (`field`) and calls
