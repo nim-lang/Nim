@@ -1701,6 +1701,10 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
       result = processType(typeSym, obj, jsonNode, false)
   of nnkTupleTy:
     result = processType(typeSym, typeSym, jsonNode, false)
+  of nnkPar:
+    # TODO: The fact that `jsonNode` here works to give a good line number
+    # is weird. Specifying typeSym should work but doesn't.
+    error("Use a named tuple instead of: " & $toStrLit(typeSym), jsonNode)
   else:
     doAssert false, "Unable to create constructor for: " & $typeSym.kind
 
@@ -1828,9 +1832,16 @@ macro to*(node: JsonNode, T: typedesc): untyped =
   expectKind(typeNode, nnkBracketExpr)
   doAssert(($typeNode[0]).normalize == "typedesc")
 
-  result = createConstructor(typeNode[1], node)
+  # Create `temp` variable to store the result in case the user calls this
+  # on `parseJson` (see bug #6604).
+  result = newNimNode(nnkStmtListExpr)
+  let temp = genSym(nskLet, "temp")
+  result.add quote do:
+    let `temp` = `node`
+
+  let constructor = createConstructor(typeNode[1], temp)
   # TODO: Rename postProcessValue and move it (?)
-  result = postProcessValue(result)
+  result.add(postProcessValue(constructor))
 
   # echo(treeRepr(result))
   # echo(toStrLit(result))
