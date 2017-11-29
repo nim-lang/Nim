@@ -3529,7 +3529,10 @@ when hasAlloc or defined(nimscript):
     ## .. code-block:: nim
     ##    var s = "abcdef"
     ##    assert s[1..3] == "bcd"
-    result = s.substr(s ^^ x.a, s ^^ x.b)
+    let a = s ^^ x.a
+    let L = (s ^^ x.b) - a + 1
+    result = newString(L)
+    for i in 0 ..< L: result[i] = s[i + a]
 
   proc `[]=`*[T, U](s: var string, x: HSlice[T, U], b: string) =
     ## slice assignment for strings. If

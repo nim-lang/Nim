@@ -105,3 +105,9 @@ This now needs to be written as:
         :test:
       # shows how the 'if' statement works
       if true: echo "yes"
+- The ``[]`` proc for strings now raises an ``IndexError`` exception when
+  the specified slice is out of bounds. See issue
+  [#6223](https://github.com/nim-lang/Nim/issues/6223) for more details.
+- ``strutils.split`` and ``strutils.rsplit`` with an empty string and a
+  separator now returns that empty string.
+  See issue [#4377](https://github.com/nim-lang/Nim/issues/4377).
