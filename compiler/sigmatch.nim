@@ -643,11 +643,11 @@ proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
 proc matchConcept(m: var TCandidate; ff, a: PType): PType =
   var
     c = m.c
-    typeClass = ff.skipTypes({tyUserTypeClassInst})
-    body = typeClass.n[3]
+    con = ff.skipTypes({tyUserTypeClassInst})
+    body = con.n[3]
     matchedConceptContext: TMatchedConcept
     prevMatchedConcept = c.matchedConcept
-    prevCandidateType = typeClass[0][0]
+    prevCandidateType = con[0][0]
 
   if prevMatchedConcept != nil:
     matchedConceptContext.prev = prevMatchedConcept
@@ -658,11 +658,11 @@ proc matchConcept(m: var TCandidate; ff, a: PType): PType =
 
   openScope(c)
   matchedConceptContext.candidateType = a
-  typeClass[0].sons[0] = a
+  con[0].sons[0] = a
   c.matchedConcept = addr(matchedConceptContext)
   defer:
     c.matchedConcept = prevMatchedConcept
-    typeClass[0].sons[0] = prevCandidateType
+    con[0].sons[0] = prevCandidateType
     closeScope(c)
 
   var typeParams: seq[(PSym, PType)]
@@ -678,7 +678,7 @@ proc matchConcept(m: var TCandidate; ff, a: PType): PType =
       if alreadyBound != nil: typ = alreadyBound
 
       template paramSym(kind): untyped =
-        newSym(kind, typeParamName, typeClass.sym, typeClass.sym.info)
+        newSym(kind, typeParamName, con.sym, con.sym.info)
 
       block addTypeParam:
         for prev in typeParams:
@@ -715,7 +715,7 @@ proc matchConcept(m: var TCandidate; ff, a: PType): PType =
     errorPrefix: string
     flags: TExprFlags = {}
     collectDiagnostics = m.diagnostics != nil or
-                         sfExplain in typeClass.sym.flags
+                         sfExplain in con.sym.flags
 
   if collectDiagnostics:
     oldWriteHook = writelnHook
@@ -724,7 +724,7 @@ proc matchConcept(m: var TCandidate; ff, a: PType): PType =
     diagnostics = @[]
     flags = {efExplain}
     writelnHook = proc (s: string) =
-      if errorPrefix == nil: errorPrefix = typeClass.sym.name.s & ":"
+      if errorPrefix == nil: errorPrefix = con.sym.name.s & ":"
       let msg = s.replace("Error:", errorPrefix)
       if oldWriteHook != nil: oldWriteHook msg
       diagnostics.add msg
@@ -744,7 +744,7 @@ proc matchConcept(m: var TCandidate; ff, a: PType): PType =
     put(m, p[1], p[0].typ)
 
   if ff.kind == tyUserTypeClassInst:
-    result = generateTypeInstance(c, m.bindings, typeClass.sym.info, ff)
+    result = generateTypeInstance(c, m.bindings, con.sym.info, ff)
   else:
     result = copyType(ff, ff.owner, true)
 

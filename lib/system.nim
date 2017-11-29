@@ -285,6 +285,9 @@ proc low*(x: string): int {.magic: "Low", noSideEffect.}
   ##  low(2) #=> -9223372036854775808
   ##  low(int) #=> -9223372036854775808
 
+proc vtptr*(t: typedesc): typedesc {.magic: "TypeTrait".}
+proc vtref*(t: typedesc): typedesc {.magic: "TypeTrait".}
+
 proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
   ## use this instead of `=` for a `shallow copy`:idx:. The shallow copy
   ## only changes the semantics for sequences and strings (and types which
