@@ -1524,26 +1524,34 @@ proc processObjField(field, jsonNode: NimNode): seq[NimNode] =
 
   doAssert result.len > 0
 
-proc processObjFields(obj: NimNode,
-                      jsonNode: NimNode): seq[NimNode] {.compileTime.} =
+proc processFields(obj: NimNode,
+                   jsonNode: NimNode): seq[NimNode] {.compileTime.} =
   ## Process all the fields of an ``ObjectTy`` and any of its
   ## parent type's fields (via inheritance).
   result = @[]
+  case obj.kind
+  of nnkObjectTy:
+    expectKind(obj[2], nnkRecList)
+    for field in obj[2]:
+      let nodes = processObjField(field, jsonNode)
+      result.add(nodes)
 
-  expectKind(obj[2], nnkRecList)
-  for field in obj[2]:
-    let nodes = processObjField(field, jsonNode)
-    result.add(nodes)
-
-  # process parent type fields
-  case obj[1].kind
-  of nnkBracketExpr:
-    assert $obj[1][0] == "ref"
-    result.add(processObjFields(getType(obj[1][1]), jsonNode))
-  of nnkSym:
-    result.add(processObjFields(getType(obj[1]), jsonNode))
+    # process parent type fields
+    case obj[1].kind
+    of nnkBracketExpr:
+      assert $obj[1][0] == "ref"
+      result.add(processFields(getType(obj[1][1]), jsonNode))
+    of nnkSym:
+      result.add(processFields(getType(obj[1]), jsonNode))
+    else:
+      discard
+  of nnkTupleTy:
+    for identDefs in obj:
+      expectKind(identDefs, nnkIdentDefs)
+      let nodes = processObjField(identDefs[0], jsonNode)
+      result.add(nodes)
   else:
-    discard
+    doAssert false, "Unable to process field type: " & $obj.kind
 
 proc processType(typeName: NimNode, obj: NimNode,
                  jsonNode: NimNode, isRef: bool): NimNode {.compileTime.} =
@@ -1558,13 +1566,17 @@ proc processType(typeName: NimNode, obj: NimNode,
   ##       RecList
   ##         Sym "events"
   case obj.kind
-  of nnkObjectTy:
+  of nnkObjectTy, nnkTupleTy:
     # Create object constructor.
-    result = newNimNode(nnkObjConstr)
-    result.add(typeName) # Name of the type to construct.
+    result =
+      if obj.kind == nnkObjectTy: newNimNode(nnkObjConstr)
+      else: newNimNode(nnkPar)
 
-    # Process each object field and add it as an exprColonExpr
-    result.add(processObjFields(obj, jsonNode))
+    if obj.kind == nnkObjectTy:
+      result.add(typeName) # Name of the type to construct.
+
+    # Process each object/tuple field and add it as an exprColonExpr
+    result.add(processFields(obj, jsonNode))
 
     # Object might be null. So we need to check for that.
     if isRef:
@@ -1687,6 +1699,8 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
       result = createConstructor(obj, jsonNode)
     else:
       result = processType(typeSym, obj, jsonNode, false)
+  of nnkTupleTy:
+    result = processType(typeSym, typeSym, jsonNode, false)
   else:
     doAssert false, "Unable to create constructor for: " & $typeSym.kind
 
@@ -1818,6 +1832,7 @@ macro to*(node: JsonNode, T: typedesc): untyped =
   # TODO: Rename postProcessValue and move it (?)
   result = postProcessValue(result)
 
+  # echo(treeRepr(result))
   # echo(toStrLit(result))
 
 when false:
