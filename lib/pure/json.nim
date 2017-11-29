@@ -1346,6 +1346,16 @@ proc createJsonIndexer(jsonNode: NimNode,
     indexNode
   )
 
+proc transformJsonIndexer(jsonNode: NimNode): NimNode =
+  case jsonNode.kind
+  of nnkBracketExpr:
+    result = newNimNode(nnkCurlyExpr)
+  else:
+    result = jsonNode.copy()
+
+  for child in jsonNode:
+    result.add(transformJsonIndexer(child))
+
 template verifyJsonKind(node: JsonNode, kinds: set[JsonNodeKind],
                         ast: string) =
   if node.kind notin kinds:
@@ -1637,6 +1647,10 @@ proc processType(typeName: NimNode, obj: NimNode,
 
   doAssert(not result.isNil(), "processType not initialised.")
 
+import options
+proc workaroundMacroNone[T](): Option[T] =
+  none(T)
+
 proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
   ## Accepts a type description, i.e. "ref Type", "seq[Type]", "Type" etc.
   ##
@@ -1650,6 +1664,19 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
   of nnkBracketExpr:
     var bracketName = ($typeSym[0]).normalize
     case bracketName
+    of "option":
+      # TODO: Would be good to verify that this is Option[T] from
+      # options module I suppose.
+      let lenientJsonNode = transformJsonIndexer(jsonNode)
+
+      let optionGeneric = typeSym[1]
+      let value = createConstructor(typeSym[1], jsonNode)
+      let workaround = bindSym("workaroundMacroNone") # TODO: Nim Bug: This shouldn't be necessary.
+
+      result = quote do:
+        (
+          if `lenientJsonNode`.isNil: `workaround`[`optionGeneric`]() else: some[`optionGeneric`](`value`)
+        )
     of "ref":
       # Ref type.
       var typeName = $typeSym[1]

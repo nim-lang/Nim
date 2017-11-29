@@ -2,7 +2,7 @@ discard """
   file: "tjsonmacro.nim"
   output: ""
 """
-import json, strutils
+import json, strutils, options
 
 when isMainModule:
   # Tests inspired by own use case (with some additional tests).
@@ -296,3 +296,24 @@ when isMainModule:
     doAssert parsed.engine.name == "V8"
 
     doAssert i == 1
+
+  block:
+    # Option[T] support!
+    type
+      Car1 = object # TODO: Codegen bug when `Car`
+        engine: tuple[name: string, capacity: Option[float]]
+        model: string
+        year: Option[int]
+
+    let noYear = """
+      {"engine": {"name": "V8", "capacity": 5.5}, "model": "Skyline"}
+    """
+
+    let noYearParsed = parseJson(noYear)
+    let noYearDeser = to(noYearParsed, Car1)
+    doAssert noYearDeser.engine.capacity == some(5.5)
+    doAssert noYearDeser.year.isNone
+    doAssert noYearDeser.engine.name == "V8"
+
+  # TODO: Table[T, Y] support.
+  # TODO: JsonNode support
