@@ -339,4 +339,21 @@ when isMainModule:
     doAssert dataDeser.friends["John"].age == 35
     doAssert dataDeser.friends["Elizabeth"].age == 23
 
-  # TODO: JsonNode support
+  # JsonNode support
+  block:
+    type
+      Test = object
+        name: string
+        fallback: JsonNode
+
+    let data = """
+      {"name": "FooBar", "fallback": 56.42}
+    """
+
+    let dataParsed = parseJson(data)
+    let dataDeser = to(dataParsed, Test)
+    doAssert dataDeser.name == "FooBar"
+    doAssert dataDeser.fallback.kind == JFloat
+    doAssert dataDeser.fallback.getFloat() == 56.42
+
+  # TODO: Cycles lead to infinite loops.
