@@ -276,3 +276,23 @@ when isMainModule:
     doAssert parsed.animal.fur
     doAssert parsed.animal.legs == 6
     doAssert parsed.color == Red
+
+  block:
+    type
+      Car = object
+        engine: tuple[name: string, capacity: float]
+        model: string
+
+    let j = """
+      {"engine": {"name": "V8", "capacity": 5.5}, "model": "Skyline"}
+    """
+
+    var i = 0
+    proc mulTest: JsonNode =
+      i.inc()
+      return parseJson(j)
+
+    let parsed = mulTest().to(Car)
+    doAssert parsed.engine.name == "V8"
+
+    doAssert i == 1
