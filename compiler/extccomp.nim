@@ -764,8 +764,9 @@ proc callCCompiler*(projectfile: string) =
       add(objfiles, quoteShell(
           addFileExt(objFile, CC[cCompiler].objExt)))
     for x in toCompile:
+      let objFile = if noAbsolutePaths(): x.obj.extractFilename else: x.obj
       add(objfiles, ' ')
-      add(objfiles, quoteShell(x.obj))
+      add(objfiles, quoteShell(objFile))
 
     linkCmd = getLinkCmd(projectfile, objfiles)
     if optCompileOnly notin gGlobalOptions:
