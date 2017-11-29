@@ -260,3 +260,19 @@ when isMainModule:
     let msg = data.to(MsgChallenge)
     doAssert msg.name == "foo"
     doAssert msg.challenge == "bar"
+
+  block:
+    type
+      Color = enum Red, Brown
+      Thing = object
+        animal: tuple[fur: bool, legs: int]
+        color: Color
+
+    var j = parseJson("""
+      {"animal":{"fur":true,"legs":6},"color":"Red"}
+    """)
+
+    let parsed = to(j, Thing)
+    doAssert parsed.animal.fur
+    doAssert parsed.animal.legs == 6
+    doAssert parsed.color == Red
