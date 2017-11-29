@@ -1744,6 +1744,11 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
       let obj = getType(typeSym)
       result = processType(typeSym, obj, jsonNode, false)
   of nnkSym:
+    # Handle JsonNode.
+    if ($typeSym).cmpIgnoreStyle("jsonnode") == 0:
+      return jsonNode
+
+    # Handle all other types.
     let obj = getType(typeSym)
     if obj.kind == nnkBracketExpr:
       # When `Sym "Foo"` turns out to be a `ref object`.
