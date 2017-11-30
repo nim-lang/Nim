@@ -54,7 +54,7 @@ type
   TCProcSections* = array[TCProcSection, Rope] # represents a generated C proc
   BModule* = ref TCGen
   BProc* = ref TCProc
-  TBlock*{.final.} = object
+  TBlock* = object
     id*: int                  # the ID of the label; positive means that it
     label*: Rope              # generated text for the label
                               # nil if label is not used
@@ -64,7 +64,7 @@ type
     nestedExceptStmts*: int16 # how many except statements is it nested into
     frameLen*: int16
 
-  TCProc{.final.} = object    # represents C proc that is currently generated
+  TCProc = object             # represents C proc that is currently generated
     prc*: PSym                # the Nim proc that this C proc belongs to
     beforeRetNeeded*: bool    # true iff 'BeforeRet' label for proc is needed
     threadVarAccessed*: bool  # true if the proc already accessed some threadvar
