@@ -111,3 +111,9 @@ This now needs to be written as:
 - ``strutils.split`` and ``strutils.rsplit`` with an empty string and a
   separator now returns that empty string.
   See issue [#4377](https://github.com/nim-lang/Nim/issues/4377).
+- The experimental overloading of the dot ``.`` operators now take
+  an ``untyped``` parameter as the field name, it used to be
+  a ``static[string]``. You can use ``when defined(nimNewDot)`` to make
+  your code work with both old and new Nim versions.
+  See [special-operators](https://nim-lang.org/docs/manual.html#special-operators)
+  for more information.

@@ -860,6 +860,23 @@ proc getOperator(L: var TLexer, tok: var TToken) =
   if buf[pos] in {CR, LF, nimlexbase.EndOfFile}:
     tok.strongSpaceB = -1
 
+proc newlineFollows*(L: var TLexer): bool =
+  var pos = L.bufpos
+  var buf = L.buf
+  while true:
+    case buf[pos]
+    of ' ', '\t':
+      inc(pos)
+    of CR, LF:
+      result = true
+      break
+    of '#':
+      inc(pos)
+      if buf[pos] == '#': inc(pos)
+      if buf[pos] != '[': return true
+    else:
+      break
+
 proc skipMultiLineComment(L: var TLexer; tok: var TToken; start: int;
                           isDoc: bool) =
   var pos = start
