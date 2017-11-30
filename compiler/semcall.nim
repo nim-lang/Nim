@@ -179,7 +179,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   add(result, ')')
   if candidates != "":
     add(result, "\n" & msgKindToString(errButExpected) & "\n" & candidates)
-  localError(n.info, errGenerated, result)
+  localError(n.info, errGenerated, result & "\nexpression: " & $n)
 
 proc bracketNotFoundError(c: PContext; n: PNode) =
   var errors: CandidateErrors = @[]
@@ -238,6 +238,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
       # leave the op head symbol empty,
       # we are going to try multiple variants
+      errors = nil
       n.sons[0..1] = [nil, n[1], f]
       orig.sons[0..1] = [nil, orig[1], f]
 
@@ -254,6 +255,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         tryOp "."
 
     elif nfDotSetter in n.flags and f.kind == nkIdent and n.len == 3:
+      errors = nil
       # we need to strip away the trailing '=' here:
       let calleeName = newIdentNode(getIdent(f.ident.s[0..f.ident.s.len-2]), n.info)
       let callOp = newIdentNode(getIdent".=", n.info)
