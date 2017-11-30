@@ -117,3 +117,4 @@ This now needs to be written as:
   your code work with both old and new Nim versions.
   See [special-operators](https://nim-lang.org/docs/manual.html#special-operators)
   for more information.
+- Added ``macros.unpackVarargs``.
