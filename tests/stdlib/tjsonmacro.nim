@@ -355,3 +355,29 @@ when isMainModule:
     doAssert dataDeser.name == "FooBar"
     doAssert dataDeser.fallback.kind == JFloat
     doAssert dataDeser.fallback.getFloat() == 56.42
+
+  # int64, float64 etc support.
+  block:
+    type
+      Test1 = object
+        a: int8
+        b: int16
+        c: int32
+        d: int64
+        e: uint8
+        f: uint16
+        g: uint32
+        h: uint64
+        i: float32
+        j: float64
+
+    let data = """
+      {"a": 1, "b": 2, "c": 3, "d": 4, "e": 5, "f": 6, "g": 7,
+       "h": 8, "i": 9.9, "j": 10.10}
+    """
+
+    let dataParsed = parseJson(data)
+    let dataDeser = to(dataParsed, Test1)
+    doAssert dataDeser.a == 1
+    doAssert dataDeser.f == 6
+    doAssert dataDeser.i == 9.9'f32
