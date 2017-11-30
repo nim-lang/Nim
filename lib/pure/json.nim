@@ -1609,24 +1609,13 @@ proc processType(typeName: NimNode, obj: NimNode,
         `getEnumCall`
       )
   of nnkSym:
-    case ($typeName).normalize
-    of "float":
-      result = quote do:
-        (
-          verifyJsonKind(`jsonNode`, {JFloat, JInt}, astToStr(`jsonNode`));
-          if `jsonNode`.kind == JFloat: `jsonNode`.fnum else: `jsonNode`.num.float
-        )
+    let name = ($typeName).normalize
+    case name
     of "string":
       result = quote do:
         (
           verifyJsonKind(`jsonNode`, {JString, JNull}, astToStr(`jsonNode`));
           if `jsonNode`.kind == JNull: nil else: `jsonNode`.str
-        )
-    of "int":
-      result = quote do:
-        (
-          verifyJsonKind(`jsonNode`, {JInt}, astToStr(`jsonNode`));
-          `jsonNode`.num.int
         )
     of "biggestint":
       result = quote do:
@@ -1641,7 +1630,20 @@ proc processType(typeName: NimNode, obj: NimNode,
           `jsonNode`.bval
         )
     else:
-      doAssert false, "Unable to process nnkSym " & $typeName
+      if name.startsWith("int") or name.startsWith("uint"):
+        result = quote do:
+          (
+            verifyJsonKind(`jsonNode`, {JInt}, astToStr(`jsonNode`));
+            `jsonNode`.num.`obj`
+          )
+      elif name.startsWith("float"):
+        result = quote do:
+          (
+            verifyJsonKind(`jsonNode`, {JInt, JFloat}, astToStr(`jsonNode`));
+            if `jsonNode`.kind == JFloat: `jsonNode`.fnum.`obj` else: `jsonNode`.num.`obj`
+          )
+      else:
+        doAssert false, "Unable to process nnkSym " & $typeName
   else:
     doAssert false, "Unable to process type: " & $obj.kind
 
