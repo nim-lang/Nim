@@ -355,5 +355,3 @@ when isMainModule:
     doAssert dataDeser.name == "FooBar"
     doAssert dataDeser.fallback.kind == JFloat
     doAssert dataDeser.fallback.getFloat() == 56.42
-
-  # TODO: Cycles lead to infinite loops.

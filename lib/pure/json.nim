@@ -1651,6 +1651,13 @@ import options
 proc workaroundMacroNone[T](): Option[T] =
   none(T)
 
+proc depth(n: NimNode, current = 0): int =
+  result = 1
+  for child in n:
+    let d = 1 + child.depth(current + 1)
+    if d > result:
+      result = d
+
 proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
   ## Accepts a type description, i.e. "ref Type", "seq[Type]", "Type" etc.
   ##
@@ -1659,6 +1666,9 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
   ## Returns an object constructor node.
   # echo("--createConsuctor-- \n", treeRepr(typeSym))
   # echo()
+
+  if depth(jsonNode) > 150:
+    error("The `to` macro does not support ref objects with cycles.", jsonNode)
 
   case typeSym.kind
   of nnkBracketExpr:
