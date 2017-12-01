@@ -5,7 +5,7 @@ discard """
 '''
   ccodecheck: "'console.log(-1); function fac_\d+(n_\d+)'"
 """
-proc fac(n: int): int {.codegenDecl: "console.log(0); function $2($3)".} =
+proc fac(n: int): int {.codegenDecl: "console.log(-1); function $2($3)".} =
   return n
 
 echo fac(8)
