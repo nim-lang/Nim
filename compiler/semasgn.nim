@@ -7,8 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements lifting for assignments. Later versions of this code
-## will be able to also lift ``=deepCopy`` and ``=destroy``.
+## This module implements lifting for type-bound operations
+## (``=sink``, ``=``, ``=destroy``, ``=deepCopy``).
 
 # included from sem.nim
 
@@ -302,6 +302,7 @@ proc liftBody(c: PContext; typ: PType; kind: TTypeAttachedOp;
   n.sons[paramsPos] = result.typ.n
   n.sons[bodyPos] = body
   result.ast = n
+  incl result.flags, sfFromGeneric
 
 
 proc getAsgnOrLiftBody(c: PContext; typ: PType; info: TLineInfo): PSym =
@@ -319,8 +320,10 @@ proc liftTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
   ## to ensure we lift assignment, destructors and moves properly.
   ## The later 'destroyer' pass depends on it.
   if not newDestructors or not hasDestructor(typ): return
-  # do not produce wrong liftings while we're still instantiating generics:
-  if c.typesWithOps.len > 0: return
+  when false:
+    # do not produce wrong liftings while we're still instantiating generics:
+    # now disabled; breaks topttree.nim!
+    if c.typesWithOps.len > 0: return
   let typ = typ.skipTypes({tyGenericInst, tyAlias})
   # we generate the destructor first so that other operators can depend on it:
   if typ.destructor == nil:
@@ -329,3 +332,6 @@ proc liftTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
     liftBody(c, typ, attachedAsgn, info)
   if typ.sink == nil:
     liftBody(c, typ, attachedSink, info)
+
+#proc patchResolvedTypeBoundOp*(c: PContext; n: PNode): PNode =
+#  if n.kind == nkCall and

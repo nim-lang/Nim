@@ -11,7 +11,8 @@ no params call to a
 no params call to b
 100
 one param call to c with 10
-100'''
+100
+0 4'''
 """
 
 type
@@ -63,3 +64,24 @@ echo tt.c(10)
 
 assert(not compiles(tt.d("x")))
 assert(not compiles(tt.d(1, 2)))
+
+# test simple usage that delegates fields:
+type
+  Other = object
+    a: int
+    b: string
+  MyObject = object
+    nested: Other
+    x, y: int
+
+template `.`(x: MyObject; field: untyped): untyped =
+  x.nested.field
+
+template `.=`(x: MyObject; field, value: untyped) =
+  x.nested.field = value
+
+var m: MyObject
+
+m.a = 4
+m.b = "foo"
+echo m.x, " ", m.a
