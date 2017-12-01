@@ -571,3 +571,11 @@ when not declared(nimNewSeqOfCap):
     cast[PGenericSeq](result).reserved = cap
 
 {.pop.}
+
+when not declared(ForeignCell):
+  type ForeignCell* = object
+    data*: pointer
+
+  proc protect*(x: pointer): ForeignCell = ForeignCell(data: x)
+  proc dispose*(x: ForeignCell) = discard
+  proc isNotForeign*(x: ForeignCell): bool = false
