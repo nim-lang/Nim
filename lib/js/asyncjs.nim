@@ -45,14 +45,16 @@ proc replaceReturn(node: var NimNode) =
 proc generateJsasync(arg: NimNode): NimNode =
   assert arg.kind == nnkProcDef
   result = arg
-  if arg[3][0].kind == nnkEmpty:
-    result[3][0] = nnkBracketExpr.newTree(ident("Future"), ident("void"))
-  var code = result[^1]
+  if arg.params[0].kind == nnkEmpty:
+    result.params[0] = nnkBracketExpr.newTree(ident("Future"), ident("void"))
+  var code = result.body
   replaceReturn(code)
-  result[^1] = nnkStmtList.newTree()
+  result.body = nnkStmtList.newTree()
   var q = quote:
     proc await[T](f: Future[T]): T {.importcpp: "(await #)".}
-  result[^1].add(q)
+  result.body.add(q)
   for child in code:
-    result[^1].add(child)
+    result.body.add(child)
+  result.pragma = quote:
+    {.codegenDecl: "async function $2($3)".}
   # echo repr(result)
