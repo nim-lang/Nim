@@ -477,37 +477,23 @@ proc initInterval*(milliseconds, seconds, minutes, hours, days, months,
   ##     let day = initInterval(hours=24)
   ##     let dt = initDateTime(01, mJan, 2000, 12, 00, 00, utc())
   ##     doAssert $(dt + day) == "2000-01-02T12-00-00+00:00"
-  var carryO = 0
-  result.milliseconds = `mod`(milliseconds, 1000)
-  carryO = `div`(milliseconds, 1000)
-  result.seconds = `mod`(carryO + seconds, 60)
-  carryO = `div`(carryO + seconds, 60)
-  result.minutes = `mod`(carryO + minutes, 60)
-  carryO = `div`(carryO + minutes, 60)
-  result.hours = `mod`(carryO + hours, 24)
-  carryO = `div`(carryO + hours, 24)
-  result.days = carryO + days
-
-  result.months = `mod`(months, 12)
-  carryO = `div`(months, 12)
-  result.years = carryO + years
+  result.milliseconds = milliseconds
+  result.seconds = seconds
+  result.minutes = minutes
+  result.hours = hours
+  result.days = days
+  result.months = months
+  result.years = years
 
 proc `+`*(ti1, ti2: TimeInterval): TimeInterval =
   ## Adds two ``TimeInterval`` objects together.
-  var carryO = 0
-  result.milliseconds = `mod`(ti1.milliseconds + ti2.milliseconds, 1000)
-  carryO = `div`(ti1.milliseconds + ti2.milliseconds, 1000)
-  result.seconds = `mod`(carryO + ti1.seconds + ti2.seconds, 60)
-  carryO = `div`(carryO + ti1.seconds + ti2.seconds, 60)
-  result.minutes = `mod`(carryO + ti1.minutes + ti2.minutes, 60)
-  carryO = `div`(carryO + ti1.minutes + ti2.minutes, 60)
-  result.hours = `mod`(carryO + ti1.hours + ti2.hours, 24)
-  carryO = `div`(carryO + ti1.hours + ti2.hours, 24)
-  result.days = carryO + ti1.days + ti2.days
-
-  result.months = `mod`(ti1.months + ti2.months, 12)
-  carryO = `div`(ti1.months + ti2.months, 12)
-  result.years = carryO + ti1.years + ti2.years
+  result.milliseconds = ti1.milliseconds + ti2.milliseconds
+  result.seconds = ti1.seconds + ti2.seconds
+  result.minutes = ti1.minutes + ti2.minutes
+  result.hours = ti1.hours + ti2.hours
+  result.days = ti1.days + ti2.days
+  result.months = ti1.months + ti2.months
+  result.years = ti1.years + ti2.years
 
 proc `-`*(ti: TimeInterval): TimeInterval =
   ## Reverses a time interval
@@ -515,7 +501,7 @@ proc `-`*(ti: TimeInterval): TimeInterval =
   ## .. code-block:: nim
   ##
   ##     let day = -initInterval(hours=24)
-  ##     echo day  # -> (milliseconds: 0, seconds: 0, minutes: 0, hours: 0, days: -1, months: 0, years: 0)
+  ##     echo day  # -> (milliseconds: 0, seconds: 0, minutes: 0, hours: -24, days: 0, months: 0, years: 0)
   result = TimeInterval(
     milliseconds: -ti.milliseconds,
     seconds: -ti.seconds,
@@ -535,7 +521,7 @@ proc `-`*(ti1, ti2: TimeInterval): TimeInterval =
   ##     let a = fromUnix(1_000_000_000)
   ##     let b = fromUnix(1_500_000_000)
   ##     echo b.toTimeInterval - a.toTimeInterval
-  ##     # (milliseconds: 0, seconds: -40, minutes: -6, hours: 1, days: -2, months: -2, years: 16)
+  ##     # (milliseconds: 0, seconds: -40, minutes: -6, hours: 1, days: 5, months: -2, years: 16)
   result = ti1 + (-ti2)
 
 proc isLeapYear*(year: int): bool =
@@ -652,43 +638,43 @@ proc milliseconds*(ms: int): TimeInterval {.inline.} =
   ## TimeInterval of `ms` milliseconds
   ##
   ## Note: not all time procedures have millisecond resolution
-  initInterval(`mod`(ms,1000), `div`(ms,1000))
+  initInterval(milliseconds = ms)
 
 proc seconds*(s: int): TimeInterval {.inline.} =
   ## TimeInterval of `s` seconds
   ##
   ## ``echo getTime() + 5.second``
-  initInterval(0,`mod`(s,60), `div`(s,60))
+  initInterval(seconds = s)
 
 proc minutes*(m: int): TimeInterval {.inline.} =
   ## TimeInterval of `m` minutes
   ##
   ## ``echo getTime() + 5.minutes``
-  initInterval(0,0,`mod`(m,60), `div`(m,60))
+  initInterval(minutes = m)
 
 proc hours*(h: int): TimeInterval {.inline.} =
   ## TimeInterval of `h` hours
   ##
   ## ``echo getTime() + 2.hours``
-  initInterval(0,0,0,`mod`(h,24),`div`(h,24))
+  initInterval(hours = h)
 
 proc days*(d: int): TimeInterval {.inline.} =
   ## TimeInterval of `d` days
   ##
   ## ``echo getTime() + 2.days``
-  initInterval(0,0,0,0,d)
+  initInterval(days = d)
 
 proc months*(m: int): TimeInterval {.inline.} =
   ## TimeInterval of `m` months
   ##
   ## ``echo getTime() + 2.months``
-  initInterval(0,0,0,0,0,`mod`(m,12),`div`(m,12))
+  initInterval(months = m)
 
 proc years*(y: int): TimeInterval {.inline.} =
   ## TimeInterval of `y` years
   ##
   ## ``echo getTime() + 2.years``
-  initInterval(0,0,0,0,0,0,y)
+  initInterval(years = y)
 
 proc `+=`*(time: var Time, interval: TimeInterval) =
   ## Modifies `time` by adding `interval`.

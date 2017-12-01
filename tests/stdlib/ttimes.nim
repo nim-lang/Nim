@@ -76,23 +76,10 @@ doAssert ti1 == getTime()
 ti1 += 1.days
 doAssert ti1 == getTime() + 1.days
 
-# overflow of TimeIntervals on initalisation
-doAssert initInterval(milliseconds = 25000) == initInterval(seconds = 25)
-doAssert initInterval(seconds = 65) == initInterval(seconds = 5, minutes = 1)
-doAssert initInterval(hours = 25) == initInterval(hours = 1, days = 1)
-doAssert initInterval(months = 13) == initInterval(months = 1, years = 1)
-
 # Bug with adding a day to a Time
 let day = 24.hours
 let tomorrow = getTime() + day
 doAssert tomorrow - getTime() == 60*60*24
-
-doAssert milliseconds(1000 * 60) == minutes(1)
-doAssert milliseconds(1000 * 60 * 60) == hours(1)
-doAssert milliseconds(1000 * 60 * 60 * 24) == days(1)
-doAssert seconds(60 * 60) == hours(1)
-doAssert seconds(60 * 60 * 24) == days(1)
-doAssert seconds(60 * 60 + 65) == (hours(1) + minutes(1) + seconds(5))
 
 # Comparison between Time objects should be detected by compiler
 # as 'noSideEffect'.
