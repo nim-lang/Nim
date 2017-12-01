@@ -1,10 +1,11 @@
 discard """
   output: '''
-declare fac_26003(n_26005)
+-1
 8
 '''
+  ccodecheck: "'console.log(-1); function fac_\d+(n_\d+)'"
 """
-proc fac(n: int): int {.codegenDecl: "console.log('declare $2($3)'); function $2($3)".} =
+proc fac(n: int): int {.codegenDecl: "console.log(0); function $2($3)".} =
   return n
 
 echo fac(8)
