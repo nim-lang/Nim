@@ -1563,6 +1563,9 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
     internalError("createVar: " & $t.kind)
     result = nil
 
+template returnType: untyped =
+  ~""
+
 proc genVarInit(p: PProc, v: PSym, n: PNode) =
   var
     a: TCompRes
@@ -1575,7 +1578,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
   if n.kind == nkEmpty:
     let mname = mangleName(v, p.target)
     lineF(p, varCode & " = $3;$n" | "$$$2 = $3;$n",
-               [~"", mname, createVar(p, v.typ, isIndirect(v))])
+               [returnType, mname, createVar(p, v.typ, isIndirect(v))])
     if v.typ.kind in { tyVar, tyPtr, tyRef } and mapType(p, v.typ) == etyBaseIndex:
       lineF(p, "var $1_Idx = 0;$n", [ mname ])
   else:
@@ -1593,24 +1596,24 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
       if a.typ == etyBaseIndex:
         if targetBaseIndex:
           lineF(p, varCode & " = $3, $2_Idx = $4;$n",
-                   [~"", v.loc.r, a.address, a.res])
+                   [returnType, v.loc.r, a.address, a.res])
         else:
           lineF(p, varCode & " = [$3, $4];$n",
-                   [~"", v.loc.r, a.address, a.res])
+                   [returnType, v.loc.r, a.address, a.res])
       else:
         if targetBaseIndex:
           let tmp = p.getTemp
           lineF(p, "var $1 = $2, $3 = $1[0], $3_Idx = $1[1];$n",
                    [tmp, a.res, v.loc.r])
         else:
-          lineF(p, varCode & " = $3;$n", [~"", v.loc.r, a.res])
+          lineF(p, varCode & " = $3;$n", [returnType, v.loc.r, a.res])
       return
     else:
       s = a.res
     if isIndirect(v):
-      lineF(p, varCode & " = [$3];$n", [~"", v.loc.r, s])
+      lineF(p, varCode & " = [$3];$n", [returnType, v.loc.r, s])
     else:
-      lineF(p, varCode & " = $3;$n" | "$$$2 = $3;$n", [~"", v.loc.r, s])
+      lineF(p, varCode & " = $3;$n" | "$$$2 = $3;$n", [returnType, v.loc.r, s])
 
 proc genVarStmt(p: PProc, n: PNode) =
   for i in countup(0, sonsLen(n) - 1):
@@ -2171,7 +2174,7 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
   var def: Rope
   if not prc.constraint.isNil:
     def = (prc.constraint.strVal & " {$n$#$#$#$#$#") %
-            [ ~"", # return type
+            [ returnType,
               name,
               header,
               optionaLine(p.globals),
