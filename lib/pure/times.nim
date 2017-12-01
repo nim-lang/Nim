@@ -415,6 +415,10 @@ proc utcZoneInfoFromTz(adjTime: Time): ZonedTime =
 
 proc utc*(): TimeZone =
   ## Get the ``Timezone`` implementation for the UTC timezone.
+  ##
+  ## .. code-block:: nim
+  ##  doAssert now().utc.timezone == utc()
+  ##  doAssert utc().name == "Etc/UTC"
   Timezone(zoneInfoFromUtc: utcZoneInfoFromUtc, zoneInfoFromTz: utcZoneInfoFromTz, name: "Etc/UTC")
 
 proc local*(): TimeZone =
@@ -471,8 +475,8 @@ proc initInterval*(milliseconds, seconds, minutes, hours, days, months,
   ## .. code-block:: nim
   ##
   ##     let day = initInterval(hours=24)
-  ##     let tomorrow = getTime() + day
-  ##     echo(tomorrow)
+  ##     let dt = initDateTime(01, mJan, 2000, 12, 00, 00, utc())
+  ##     doAssert $(dt + day) == "2000-01-02T12-00-00+00:00"
   var carryO = 0
   result.milliseconds = `mod`(milliseconds, 1000)
   carryO = `div`(milliseconds, 1000)
