@@ -721,6 +721,8 @@ proc semFor(c: PContext, n: PNode): PNode =
     result.typ = enforceVoidContext
   closeScope(c)
 
+var exceptionID = -1
+
 proc semRaise(c: PContext, n: PNode): PNode =
   result = n
   checkSonsLen(n, 1)
@@ -729,6 +731,20 @@ proc semRaise(c: PContext, n: PNode): PNode =
     var typ = n.sons[0].typ
     if typ.kind != tyRef or typ.lastSon.kind != tyObject:
       localError(n.info, errExprCannotBeRaised)
+    
+    # check if the given object inherits from Exception
+    var base = typ.lastSon
+    while true:
+      if exceptionID == -1:
+        if base.sym.name.s == "Exception":
+          exceptionID = base.id
+          break
+      elif base.id == exceptionID:
+        break
+      if base.lastSon == nil:
+        localError(n.info, errExprIsNoException)
+        return
+      base = base.lastSon
 
 proc addGenericParamListToScope(c: PContext, n: PNode) =
   if n.kind != nkGenericParams: illFormedAst(n)
