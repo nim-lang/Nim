@@ -489,11 +489,6 @@ macro bindMethod*(procedure: typed): auto =
 
 
 
-proc generateJsObject(args: varargs[NimNode]): NimNode
-
-macro jsobject*(args: varargs[untyped]): untyped =
-  generateJsObject(args)
-
 proc generateJsObject(args: varargs[NimNode]): NimNode =
   var properties = @args[0]
 
@@ -510,7 +505,7 @@ proc generateJsObject(args: varargs[NimNode]): NimNode =
   var second = ident("temp")
 
   for property in properties:
-    assert property.kind == nnkExprEqExpr
+    expectKind(property, nnkExprEqExpr)
     first[0][2][2].add(nnkIdentDefs.newTree(
       property[0],
       property[1],
@@ -519,5 +514,7 @@ proc generateJsObject(args: varargs[NimNode]): NimNode =
   result.add(first)
   result.add(second)
 
-  # echo repr(result)
+
+macro jsobject*(args: varargs[untyped]): untyped =
+  generateJsObject(args)
 
