@@ -526,6 +526,9 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
     of cmdEnd: break
     of cmdLongoption, cmdShortOption:
       case p.key.normalize
+      of "help":
+        stdout.writeline(Usage)
+        quit()
       of "port":
         gPort = parseInt(p.val).Port
         gMode = mtcp
