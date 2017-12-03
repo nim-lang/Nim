@@ -181,7 +181,7 @@ elif useICC_builtins:
 
 
 proc countSetBits*(x: SomeInteger): int {.inline, nosideeffect.} =
-  ## Counts the set bits in integer. (also called Hamming weight.)
+  ## Counts the set bits in integer. (also called `Hamming weight`:idx:.)
   # TODO: figure out if ICC support _popcnt32/_popcnt64 on platform without POPCNT.
   # like GCC and MSVC
   when nimvm:
