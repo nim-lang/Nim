@@ -1338,7 +1338,8 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
     if s.magic == mAsgn: return
     incl(s.flags, sfUsed)
     let t = s.typ
-    if t.len == 3 and t.sons[0] == nil and t.sons[1].kind == tyVar:
+    if t.len == 3 and t.sons[1].kind == tyVar and
+      (t.sons[0] == nil or s.kind in {skTemplate,skMacro}):
       var obj = t.sons[1].sons[0]
       while true:
         incl(obj.flags, tfHasAsgn)

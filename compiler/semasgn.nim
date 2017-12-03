@@ -87,6 +87,16 @@ proc newAsgnCall(c: PContext; op: PSym; x, y: PNode): PNode =
   result.add newSymNode(op)
   result.add genAddr(c, x)
   result.add y
+  if op.kind==skTemplate:
+    result = semTemplateExpr(c, result, op)
+    if not result.typ.isNil:
+      localError(op.info, errGenerated,
+                 "signature for '=' must be a statement (not an expression)")
+  elif op.kind==skMacro:
+    result = semMacroExpr(c, result, result, op)
+    if not result.typ.isNil:
+      localError(op.info, errGenerated,
+                 "signature for '=' must be a statement (not an expression)")
 
 proc newAsgnStmt(le, ri: PNode): PNode =
   result = newNodeI(nkAsgn, le.info, 2)

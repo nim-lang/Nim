@@ -541,6 +541,8 @@ proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode =
     for i in countup(0, sonsLen(n) - 1):
       result.sons[i] = semTemplBodyDirty(c, n.sons[i])
 
+proc semOverride(c: PContext, s: PSym, n: PNode)
+
 proc semTemplateDef(c: PContext, n: PNode): PNode =
   var s: PSym
   if isTopLevel(c):
@@ -604,6 +606,7 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     n.sons[bodyPos] = semTemplBody(ctx, n.sons[bodyPos])
   # only parameters are resolved, no type checking is performed
   semIdeForTemplateOrGeneric(c, n.sons[bodyPos], ctx.cursorInBody)
+  if sfOverriden in s.flags or s.name.s[0] == '=': semOverride(c, s, n)
   closeScope(c)
   popOwner(c)
   s.ast = n
