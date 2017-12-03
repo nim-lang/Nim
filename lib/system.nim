@@ -3891,10 +3891,6 @@ proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   ## * replaces any ``"`` by ``\"``
   ## * replaces any other character in the set ``{'\0'..'\31', '\127'..'\255'}``
   ##   by ``\xHH`` where ``HH`` is its hexadecimal value.
-  ## The procedure has been designed so that its output is usable for many
-  ## different common syntaxes. The resulting string is prefixed with
-  ## `prefix` and suffixed with `suffix`. Both may be empty strings.
-  ## **Note**: This is not correct for producing Ansi C code!
   case c
   of '\0'..'\31', '\127'..'\255':
     add(s, "\\x")
