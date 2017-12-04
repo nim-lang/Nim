@@ -489,9 +489,7 @@ macro bindMethod*(procedure: typed): auto =
 
 
 
-proc generateJsObject(args: varargs[NimNode]): NimNode =
-  var properties = @args[0]
-
+proc generateJsObject(properties: NimNode): NimNode =
   var empty = newEmptyNode()
   result = nnkStmtList.newTree()
   var first = nnkTypeSection.newTree(
@@ -513,6 +511,7 @@ proc generateJsObject(args: varargs[NimNode]): NimNode =
 
   result.add(first)
   result.add(second)
+  echo repr(result)
 
 
 macro jsobject*(args: varargs[untyped]): untyped =
