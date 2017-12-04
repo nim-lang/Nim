@@ -486,3 +486,34 @@ macro bindMethod*(procedure: typed): auto =
       newTree(nnkStmtList, thisQuote, call)
   )
   result = body
+
+
+
+proc generateJsObject(properties: NimNode): NimNode =
+  var empty = newEmptyNode()
+  result = nnkStmtList.newTree()
+  var first = nnkTypeSection.newTree(
+    nnkTypeDef.newTree(
+      ident("temp"),
+      empty,
+      nnkObjectTy.newTree(
+        empty,
+        empty,
+        nnkRecList.newTree())))
+  var second = ident("temp")
+
+  for property in properties:
+    expectKind(property, nnkExprEqExpr)
+    first[0][2][2].add(nnkIdentDefs.newTree(
+      property[0],
+      property[1],
+      newEmptyNode()))
+
+  result.add(first)
+  result.add(second)
+  echo repr(result)
+
+
+macro jsobject*(args: varargs[untyped]): untyped =
+  generateJsObject(args)
+
