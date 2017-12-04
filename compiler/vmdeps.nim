@@ -121,22 +121,25 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
     result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
     for i in 0 ..< t.len:
       result.add mapTypeToAst(t.sons[i], info)
-  of tyGenericInst, tyAlias:
+  of tyGenericInst:
     if inst:
       if allowRecursion:
         result = mapTypeToAstR(t.lastSon, info)
       else:
         result = newNodeX(nkBracketExpr)
-        result.add mapTypeToAst(t.lastSon, info)
+        #result.add mapTypeToAst(t.lastSon, info)
+        result.add mapTypeToAst(t[0], info)
         for i in 1 ..< t.len-1:
           result.add mapTypeToAst(t.sons[i], info)
     else:
       result = mapTypeToAstX(t.lastSon, info, inst, allowRecursion)
   of tyGenericBody:
     if inst:
-      result = mapTypeToAstX(t.lastSon, info, inst, true)
+      result = mapTypeToAstR(t.lastSon, info)
     else:
       result = mapTypeToAst(t.lastSon, info)
+  of tyAlias:
+    result = mapTypeToAstX(t.lastSon, info, inst, allowRecursion)
   of tyOrdinal:
     result = mapTypeToAst(t.lastSon, info)
   of tyDistinct:
