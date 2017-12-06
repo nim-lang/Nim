@@ -857,10 +857,13 @@ proc transform(c: PTransf, n: PNode): PTransNode =
     result = PTransNode(n)
     if n.sons[0].kind != nkEmpty:
       result = transformSons(c, n)
-      if isConstExpr(PNode(result).sons[0]):
+      let a = PNode(result).sons[0]
+      if isConstExpr(a):
         # ensure that e.g. discard "some comment" gets optimized away
         # completely:
         result = PTransNode(newNode(nkCommentStmt))
+        if a.kind == nkStrLit:
+          PNode(result).comment = a.strVal
   of nkCommentStmt, nkTemplateDef:
     return n.PTransNode
   of nkConstSection:
