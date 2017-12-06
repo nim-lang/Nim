@@ -11,25 +11,6 @@ type
 
   PromiseJs* {.importcpp: "Promise".} = ref object
 
-proc generateJsasync(arg: NimNode): NimNode
-
-macro async*(arg: untyped): untyped =
-  generateJsasync(arg)
-
-proc newPromise*[T](handler: proc(resolve: proc(response: T))): Future[T] {.importcpp: "(new Promise(#))".}
-
-## can convert cb to async
-## proc a*: Future[bool] =
-##   var promise = newPromise() do (resolve: proc(response: bool)):
-##     call() do (r: cstring):
-##       resolve(len($r) > 0)
-##   return promise
-
-proc jsResolve*[T](a: T): Future[T] {.importcpp: "#".}
-
-proc `$`*[T](future: Future[T]): string =
-  result = "Future"
-
 proc replaceReturn(node: var NimNode) =
   var z = 0
   for s in node:
@@ -52,9 +33,20 @@ proc generateJsasync(arg: NimNode): NimNode =
   result.body = nnkStmtList.newTree()
   var q = quote:
     proc await[T](f: Future[T]): T {.importcpp: "(await #)".}
+    proc jsResolve[T](a: T): Future[T] {.importcpp: "#".}
   result.body.add(q)
   for child in code:
     result.body.add(child)
   result.pragma = quote:
     {.codegenDecl: "async function $2($3)".}
-  # echo repr(result)
+
+macro async*(arg: untyped): untyped =
+  generateJsasync(arg)
+
+proc newPromise*[T](handler: proc(resolve: proc(response: T))): Future[T] {.importcpp: "(new Promise(#))".}
+## can convert cb to async
+## proc a*: Future[bool] =
+##   var promise = newPromise() do (resolve: proc(response: bool)):
+##     call() do (r: cstring):
+##       resolve(len($r) > 0)
+##   return promise
