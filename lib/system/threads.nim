@@ -255,9 +255,9 @@ when emulatedThreadVars:
   proc nimThreadVarsSize(): int {.noconv, importc: "NimThreadVarsSize".}
 
 # we preallocate a fixed size for thread local storage, so that no heap
-# allocations are needed. Currently less than 7K are used on a 64bit machine.
+# allocations are needed. Currently less than 16K are used on a 64bit machine.
 # We use ``float`` for proper alignment:
-const nimTlsSize {.intdefine.} = 8000
+const nimTlsSize {.intdefine.} = 16000
 type
   ThreadLocalStorage = array[0..(nimTlsSize div sizeof(float)), float]
 
