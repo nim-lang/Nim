@@ -8,8 +8,6 @@
 #
 
 # Low level allocator for Nim. Has been designed to support the GC.
-# TODO:
-# - make searching for block O(1)
 {.push profiler:off.}
 
 include osalloc
@@ -19,14 +17,16 @@ template track(op, address, size) =
     memTrackerOp(op, address, size)
 
 # We manage *chunks* of memory. Each chunk is a multiple of the page size.
-# Each chunk starts at an address that is divisible by the page size. Chunks
-# that are bigger than ``ChunkOsReturn`` are returned back to the operating
-# system immediately.
+# Each chunk starts at an address that is divisible by the page size.
 
 const
-  ChunkOsReturn = 256 * PageSize # 1 MB
-  InitialMemoryRequest = ChunkOsReturn div 2 # < ChunkOsReturn!
+  InitialMemoryRequest = 128 * PageSize # 0.5 MB
   SmallChunkSize = PageSize
+  MaxFli = 30
+  MaxLog2Sli = 5
+  MaxSli = 1 shl MaxLog2Sli
+  FliOffset = 6
+  RealFli = MaxFli - FliOffset
 
 type
   PTrunk = ptr Trunk
@@ -99,10 +99,12 @@ type
   MemRegion = object
     minLargeObj, maxLargeObj: int
     freeSmallChunks: array[0..SmallChunkSize div MemAlign-1, PSmallChunk]
+    flBitmap: uint32
+    slBitmap: array[RealFli, uint32]
+    matrix: array[RealFli, array[MaxSli, PBigChunk]]
     llmem: PLLChunk
     currMem, maxMem, freeMem: int # memory sizes (allocated from OS)
     lastSize: int # needed for the case that OS gives us pages linearly
-    freeChunksList: PBigChunk # XXX make this a datastructure with O(1) access
     chunkStarts: IntSet
     root, deleted, last, freeAvlNodes: PAvlNode
     locked, blockChunkSizeIncrease: bool # if locked, we cannot free pages.
@@ -110,7 +112,104 @@ type
     bottomData: AvlNode
     heapLinks: HeapLinks
 
-{.deprecated: [TMemRegion: MemRegion].}
+const
+  fsLookupTable: array[byte, int8] = [
+    -1'i8, 0, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3,
+    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+    5, 5, 5, 5, 5, 5, 5, 5,
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7
+  ]
+
+proc msbit(x: uint32): int {.inline.} =
+  let a = if x <= 0xff_ff:
+            (if x <= 0xff: 0 else: 8)
+          else:
+            (if x <= 0xff_ff_ff: 16 else: 24)
+  result = int(fsLookupTable[byte(x shr a)]) + a
+
+proc lsbit(x: uint32): int {.inline.} =
+  msbit(x and ((not x) + 1))
+
+proc setBit(nr: int; dest: var uint32) {.inline.} =
+  dest = dest or (1u32 shl (nr and 0x1f))
+
+proc clearBit(nr: int; dest: var uint32) {.inline.} =
+  dest = dest and not (1u32 shl (nr and 0x1f))
+
+proc mappingSearch(r, fl, sl: var int) {.inline.} =
+  let t = (1 shl (msbit(uint32 r) - MaxLog2Sli)) - 1
+  r = r + t
+  fl = msbit(uint32 r)
+  sl = (r shr (fl - MaxLog2Sli)) - MaxSli
+  dec fl, FliOffset
+  r = r and not t
+
+# See http://www.gii.upv.es/tlsf/files/papers/tlsf_desc.pdf for details of
+# this algorithm.
+
+proc mappingInsert(r: int): tuple[fl, sl: int] {.inline.} =
+  result.fl = msbit(uint32 r)
+  result.sl = (r shr (result.fl - MaxLog2Sli)) - MaxSli
+  dec result.fl, FliOffset
+
+template mat(): untyped = a.matrix[fl][sl]
+
+proc findSuitableBlock(a: MemRegion; fl, sl: var int): PBigChunk {.inline.} =
+  let tmp = a.slBitmap[fl] and (not 0u32 shl sl)
+  result = nil
+  if tmp != 0:
+    sl = lsbit(tmp)
+    result = mat()
+  else:
+    fl = lsbit(a.flBitmap and (not 0u32 shl (fl + 1)))
+    if fl > 0:
+      sl = lsbit(a.slBitmap[fl])
+      result = mat()
+
+template clearBits(sl, fl) =
+  clearBit(sl, a.slBitmap[fl])
+  if a.slBitmap[fl] == 0u32:
+    # do not forget to cascade:
+    clearBit(fl, a.flBitmap)
+
+proc removeChunkFromMatrix(a: var MemRegion; b: PBigChunk) =
+  let (fl, sl) = mappingInsert(b.size)
+  if b.next != nil: b.next.prev = b.prev
+  if b.prev != nil: b.prev.next = b.next
+  if mat() == b:
+    mat() = b.next
+    if mat() == nil:
+      clearBits(sl, fl)
+  b.prev = nil
+  b.next = nil
+
+proc removeChunkFromMatrix2(a: var MemRegion; b: PBigChunk; fl, sl: int) =
+  mat() = b.next
+  if mat() != nil:
+    mat().prev = nil
+  else:
+    clearBits(sl, fl)
+  b.prev = nil
+  b.next = nil
+
+proc addChunkToMatrix(a: var MemRegion; b: PBigChunk) =
+  let (fl, sl) = mappingInsert(b.size)
+  b.prev = nil
+  b.next = mat()
+  if mat() != nil:
+    mat().prev = b
+  mat() = b
+  setBit(sl, a.slBitmap[fl])
+  setBit(fl, a.flBitmap)
 
 {.push stack_trace: off.}
 proc initAllocator() = discard "nothing to do anymore"
@@ -419,7 +518,7 @@ proc freeBigChunk(a: var MemRegion, c: PBigChunk) =
     if isAccessible(a, ri) and chunkUnused(ri):
       sysAssert(not isSmallChunk(ri), "freeBigChunk 3")
       if not isSmallChunk(ri):
-        listRemove(a.freeChunksList, cast[PBigChunk](ri))
+        removeChunkFromMatrix(a, cast[PBigChunk](ri))
         inc(c.size, ri.size)
         excl(a.chunkStarts, pageIndex(ri))
   when coalescLeft:
@@ -430,49 +529,42 @@ proc freeBigChunk(a: var MemRegion, c: PBigChunk) =
       if isAccessible(a, le) and chunkUnused(le):
         sysAssert(not isSmallChunk(le), "freeBigChunk 5")
         if not isSmallChunk(le):
-          listRemove(a.freeChunksList, cast[PBigChunk](le))
+          removeChunkFromMatrix(a, cast[PBigChunk](le))
           inc(le.size, c.size)
           excl(a.chunkStarts, pageIndex(c))
           c = cast[PBigChunk](le)
 
   incl(a, a.chunkStarts, pageIndex(c))
   updatePrevSize(a, c, c.size)
-  listAdd(a.freeChunksList, c)
+  addChunkToMatrix(a, c)
   # set 'used' to false:
   c.prevSize = c.prevSize and not 1
 
 proc splitChunk(a: var MemRegion, c: PBigChunk, size: int) =
   var rest = cast[PBigChunk](cast[ByteAddress](c) +% size)
-  sysAssert(rest notin a.freeChunksList, "splitChunk")
   rest.size = c.size - size
   track("rest.origSize", addr rest.origSize, sizeof(int))
+  # XXX check if these two nil assignments are dead code given
+  # addChunkToMatrix's implementation:
   rest.next = nil
   rest.prev = nil
-  # size and not used
+  # size and not used:
   rest.prevSize = size
   sysAssert((size and 1) == 0, "splitChunk 2")
   updatePrevSize(a, c, rest.size)
   c.size = size
   incl(a, a.chunkStarts, pageIndex(rest))
-  listAdd(a.freeChunksList, rest)
+  addChunkToMatrix(a, rest)
 
 proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
   # use first fit for now:
   sysAssert((size and PageMask) == 0, "getBigChunk 1")
   sysAssert(size > 0, "getBigChunk 2")
-  result = a.freeChunksList
-  block search:
-    while result != nil:
-      sysAssert chunkUnused(result), "getBigChunk 3"
-      if result.size == size:
-        listRemove(a.freeChunksList, result)
-        break search
-      elif result.size > size:
-        listRemove(a.freeChunksList, result)
-        splitChunk(a, result, size)
-        break search
-      result = result.next
-      sysAssert result != a.freeChunksList, "getBigChunk 4"
+  var size = size # roundup(size, PageSize)
+  var fl, sl: int
+  mappingSearch(size, fl, sl)
+  result = findSuitableBlock(a, fl, sl)
+  if result == nil:
     if size < InitialMemoryRequest:
       result = requestOsChunks(a, InitialMemoryRequest)
       splitChunk(a, result, size)
@@ -481,7 +573,10 @@ proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
       # if we over allocated split the chunk:
       if result.size > size:
         splitChunk(a, result, size)
-
+  else:
+    removeChunkFromMatrix2(a, result, fl, sl)
+    if result.size >= size + PageSize:
+      splitChunk(a, result, size)
   # set 'used' to to true:
   result.prevSize = 1
   track("setUsedToFalse", addr result.origSize, sizeof(int))
@@ -577,9 +672,11 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
     var c = getBigChunk(a, size)
     sysAssert c.prev == nil, "rawAlloc 10"
     sysAssert c.next == nil, "rawAlloc 11"
-    sysAssert c.size == size, "rawAlloc 12"
     result = addr(c.data)
     sysAssert((cast[ByteAddress](result) and (MemAlign-1)) == 0, "rawAlloc 13")
+    #if (cast[ByteAddress](result) and PageMask) != 0:
+    #  cprintf("Address is %p for size %ld\n", result, c.size)
+    sysAssert((cast[ByteAddress](result) and PageMask) == 0, "rawAlloc: Not aligned on a page boundary")
     if a.root == nil: a.root = getBottom(a)
     add(a, a.root, cast[ByteAddress](result), cast[ByteAddress](result)+%size)
   sysAssert(isAccessible(a, result), "rawAlloc 14")
