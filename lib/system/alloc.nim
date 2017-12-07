@@ -23,7 +23,8 @@ const
   InitialMemoryRequest = 128 * PageSize # 0.5 MB
   SmallChunkSize = PageSize
   MaxFli = 30
-  MaxLog2Sli = 5
+  MaxLog2Sli = 5 # 32, this cannot be increased without changing 'uint32'
+                 # everywhere!
   MaxSli = 1 shl MaxLog2Sli
   FliOffset = 6
   RealFli = MaxFli - FliOffset
@@ -146,17 +147,22 @@ proc clearBit(nr: int; dest: var uint32) {.inline.} =
   dest = dest and not (1u32 shl (nr and 0x1f))
 
 proc mappingSearch(r, fl, sl: var int) {.inline.} =
-  let t = (1 shl (msbit(uint32 r) - MaxLog2Sli)) - 1
+  #let t = (1 shl (msbit(uint32 r) - MaxLog2Sli)) - 1
+  # This diverges from the standard TLSF algorithm because we need to ensure
+  # PageSize alignment:
+  let t = roundup((1 shl (msbit(uint32 r) - MaxLog2Sli)), PageSize) - 1
   r = r + t
   fl = msbit(uint32 r)
   sl = (r shr (fl - MaxLog2Sli)) - MaxSli
   dec fl, FliOffset
   r = r and not t
+  sysAssert((r and PageMask) == 0, "mappingSearch: still not aligned")
 
 # See http://www.gii.upv.es/tlsf/files/papers/tlsf_desc.pdf for details of
 # this algorithm.
 
 proc mappingInsert(r: int): tuple[fl, sl: int] {.inline.} =
+  sysAssert((r and PageMask) == 0, "mappingInsert: still not aligned")
   result.fl = msbit(uint32 r)
   result.sl = (r shr (result.fl - MaxLog2Sli)) - MaxSli
   dec result.fl, FliOffset
@@ -468,6 +474,7 @@ proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
     result.prevSize = 0 or (result.prevSize and 1) # unknown
     # but do not overwrite 'used' field
   a.lastSize = size # for next request
+  sysAssert((cast[int](result) and PageMask) == 0, "requestOschunks: unaligned chunk")
 
 proc isAccessible(a: MemRegion, p: pointer): bool {.inline.} =
   result = contains(a.chunkStarts, pageIndex(p))
@@ -551,6 +558,8 @@ proc splitChunk(a: var MemRegion, c: PBigChunk, size: int) =
   # size and not used:
   rest.prevSize = size
   sysAssert((size and 1) == 0, "splitChunk 2")
+  sysAssert((size and PageMask) == 0,
+      "splitChunk: size is not a multiple of the PageSize")
   updatePrevSize(a, c, rest.size)
   c.size = size
   incl(a, a.chunkStarts, pageIndex(rest))
@@ -558,11 +567,11 @@ proc splitChunk(a: var MemRegion, c: PBigChunk, size: int) =
 
 proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
   # use first fit for now:
-  sysAssert((size and PageMask) == 0, "getBigChunk 1")
   sysAssert(size > 0, "getBigChunk 2")
   var size = size # roundup(size, PageSize)
   var fl, sl: int
   mappingSearch(size, fl, sl)
+  sysAssert((size and PageMask) == 0, "getBigChunk: unaligned chunk")
   result = findSuitableBlock(a, fl, sl)
   if result == nil:
     if size < InitialMemoryRequest:
@@ -667,16 +676,14 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
                size == 0, "rawAlloc 21")
     sysAssert(allocInv(a), "rawAlloc: end small size")
   else:
-    size = roundup(requestedSize+bigChunkOverhead(), PageSize)
+    size = requestedSize + bigChunkOverhead() #  roundup(requestedSize+bigChunkOverhead(), PageSize)
     # allocate a large block
     var c = getBigChunk(a, size)
     sysAssert c.prev == nil, "rawAlloc 10"
     sysAssert c.next == nil, "rawAlloc 11"
     result = addr(c.data)
-    sysAssert((cast[ByteAddress](result) and (MemAlign-1)) == 0, "rawAlloc 13")
-    #if (cast[ByteAddress](result) and PageMask) != 0:
-    #  cprintf("Address is %p for size %ld\n", result, c.size)
-    sysAssert((cast[ByteAddress](result) and PageMask) == 0, "rawAlloc: Not aligned on a page boundary")
+    sysAssert((cast[ByteAddress](c) and (MemAlign-1)) == 0, "rawAlloc 13")
+    sysAssert((cast[ByteAddress](c) and PageMask) == 0, "rawAlloc: Not aligned on a page boundary")
     if a.root == nil: a.root = getBottom(a)
     add(a, a.root, cast[ByteAddress](result), cast[ByteAddress](result)+%size)
   sysAssert(isAccessible(a, result), "rawAlloc 14")
