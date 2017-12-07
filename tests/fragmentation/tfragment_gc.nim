@@ -22,6 +22,6 @@ let total = getTotalMem()
 
 echo "occupied ok: ", occ < 60 * 1024 * 1024
 let totalOk = total < 210 * 1024 * 1024
-echo "total ok: ", totalOk
 if not totalOk:
   echo "total peak memory ", formatSize(total)
+echo "total ok: ", totalOk
