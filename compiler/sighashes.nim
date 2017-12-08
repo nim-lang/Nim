@@ -247,6 +247,9 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
       if tfNoSideEffect in t.flags: c &= ".noSideEffect"
       if tfThread in t.flags: c &= ".thread"
     if tfVarargs in t.flags: c &= ".varargs"
+  of tyArray:
+    c &= char(t.kind)
+    for i in 0..<t.len: c.hashType(t.sons[i], flags-{CoIgnoreRange})
   else:
     c &= char(t.kind)
     for i in 0..<t.len: c.hashType(t.sons[i], flags)

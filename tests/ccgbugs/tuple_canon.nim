@@ -98,3 +98,18 @@ proc print(pos: Position) =
 var x = 0.n16
 var y = 0.n16
 print((x, y))
+
+
+# bug #6889
+proc createProgressSetterWithPropSetter[T](setter: proc(v: T)) = discard
+
+type A = distinct array[4, float32]
+type B = distinct array[3, float32]
+
+type Foo[T] = tuple
+    setter: proc(v: T)
+
+proc getFoo[T](): Foo[T] = discard
+
+createProgressSetterWithPropSetter(getFoo[A]().setter)
+createProgressSetterWithPropSetter(getFoo[B]().setter)
