@@ -79,6 +79,7 @@ Advanced options:
                             symbol matching is fuzzy so
                             that --dynlibOverride:lua matches
                             dynlib: "liblua.so.3"
+  --dynlibOverrideAll       makes the dynlib pragma have no effect
   --listCmd                 list the commands used to execute external programs
   --parallelBuild:0|1|...   perform a parallel build
                             value = number of processors (0 for auto-detect)
