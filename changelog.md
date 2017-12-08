@@ -118,3 +118,8 @@ This now needs to be written as:
   See [special-operators](https://nim-lang.org/docs/manual.html#special-operators)
   for more information.
 - Added ``macros.unpackVarargs``.
+- The memory manager now uses a variant of the TLSF algorithm that has much
+  better memory fragmentation behaviour. According
+  to [http://www.gii.upv.es/tlsf/](http://www.gii.upv.es/tlsf/) the maximum
+  fragmentation measured is lower than 25%. As a nice bonus ``alloc`` and
+  ``dealloc`` became O(1) operations.
