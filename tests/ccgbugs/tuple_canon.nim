@@ -85,3 +85,16 @@ proc go() =
     echo "vidx ", $vidx(hg, 1, 2, hiC)
 
 go()
+
+# another sighashes problem: In tuples we have to ignore ranges.
+
+type
+  Position = tuple[x, y: int16]
+  n16 = range[0'i16..high(int16)]
+
+proc print(pos: Position) =
+  echo $pos.x, ",", $pos.y
+
+var x = 0.n16
+var y = 0.n16
+print((x, y))
