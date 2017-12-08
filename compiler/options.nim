@@ -145,6 +145,7 @@ var
   gNoNimblePath* = false
   gExperimentalMode*: bool
   newDestructors*: bool
+  gDynlibOverrideAll*: bool
 
 proc importantComments*(): bool {.inline.} = gCmd in {cmdDoc, cmdIdeTools}
 proc usesNativeGC*(): bool {.inline.} = gSelectedGC >= gcRefc
@@ -427,7 +428,7 @@ proc inclDynlibOverride*(lib: string) =
   gDllOverrides[lib.canonDynlibName] = "true"
 
 proc isDynlibOverride*(lib: string): bool =
-  result = gDllOverrides.hasKey(lib.canonDynlibName)
+  result = gDynlibOverrideAll or gDllOverrides.hasKey(lib.canonDynlibName)
 
 proc binaryStrSearch*(x: openArray[string], y: string): int =
   var a = 0

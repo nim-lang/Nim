@@ -259,7 +259,7 @@ proc incrSeqV2(seq: PGenericSeq, elemSize: int): PGenericSeq {.compilerProc.} =
     result.reserved = r
 
 proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
-    compilerRtl.} =
+    compilerRtl, inl.} =
   result = seq
   if result.space < newLen:
     let r = max(resize(result.space), newLen)
@@ -282,10 +282,11 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
             doDecRef(gch.tempStack.d[i], LocalHeap, MaybeCyclic)
           gch.tempStack.len = len0
       else:
-        for i in newLen..result.len-1:
-          forAllChildrenAux(cast[pointer](cast[ByteAddress](result) +%
-                            GenericSeqSize +% (i*%elemSize)),
-                            extGetCellType(result).base, waZctDecRef)
+        if ntfNoRefs notin extGetCellType(result).base.flags:
+          for i in newLen..result.len-1:
+            forAllChildrenAux(cast[pointer](cast[ByteAddress](result) +%
+                              GenericSeqSize +% (i*%elemSize)),
+                              extGetCellType(result).base, waZctDecRef)
 
     # XXX: zeroing out the memory can still result in crashes if a wiped-out
     # cell is aliased by another pointer (ie proc parameter or a let variable).
