@@ -84,10 +84,10 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
 
   if inst:
     if t.sym != nil:  # if this node has a symbol
-      if allowRecursion:  # getTypeImpl behavior: turn off recursion
-        allowRecursion = false
-      else:  # getTypeInst behavior: return symbol
+      if not allowRecursion:  # getTypeInst behavior: return symbol
         return atomicType(t.sym)
+      #else:  # getTypeImpl behavior: turn off recursion
+      #  allowRecursion = false
 
   case t.kind
   of tyNone: result = atomicType("none", mNone)
