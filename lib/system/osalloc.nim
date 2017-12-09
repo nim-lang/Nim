@@ -166,7 +166,7 @@ elif defined(windows):
     # space heavily, so we now treat Windows as a strange unmap target.
     when reallyOsDealloc:
       if virtualFree(p, 0, MEM_RELEASE) == 0:
-        cprintf "yes, failing!"
+        cprintf "virtualFree failing!"
         quit 1
     #VirtualFree(p, size, MEM_DECOMMIT)
 

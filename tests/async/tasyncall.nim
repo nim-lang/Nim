@@ -40,6 +40,16 @@ proc testVarargs(x, y, z: int): seq[int] =
 
   result = waitFor all(a, b, c)
 
+proc testWithDupes() =
+  var
+    tasks = newSeq[Future[void]](taskCount)
+    fut = futureWithoutValue()
+
+  for i in 0..<taskCount:
+    tasks[i] = fut
+
+  waitFor all(tasks)
+
 block:
     let
       startTime = cpuTime()
@@ -53,6 +63,13 @@ block:
 block:
     let startTime = cpuTime()
     testFuturesWithoutValues()
+    let execTime = cpuTime() - startTime
+
+    doAssert execTime * 1000 < taskCount * sleepDuration
+
+block:
+    let startTime = cpuTime()
+    testWithDupes()
     let execTime = cpuTime() - startTime
 
     doAssert execTime * 1000 < taskCount * sleepDuration
