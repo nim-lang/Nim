@@ -158,21 +158,21 @@ test(Tree):
     left: ref Tree
     right: ref Tree
 test(Concrete):
-  type _ = Generic[int]
+  type _ = seq[int]
 test(Generic[int]):
   type _ = seq[int]
 test(Generic[float]):
   type _ = seq[int]
 test(Concrete2):
-  type _ = Generic2[int,float]
+  type _ = seq[int]
 test(Generic2[int,float]):
   type _ = seq[int]
 test(Alias1):
   type _ = float
 test(Alias2):
-  type _ = Generic[int]
+  type _ = seq[int]
 test(Alias3):
-  type _ = Generic2[int,float]
+  type _ = seq[int]
 test(Vec[4,float32]):
   type _ = object
     arr: array[0..3,float32]
