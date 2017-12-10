@@ -113,8 +113,12 @@ type
   Generic[T] = seq[int]
   Concrete = Generic[int]
 
+  Generic2[T1, T2] = seq[T1]
+  Concrete2 = Generic2[int, float]
+
   Alias1 = float
   Alias2 = Concrete
+  Alias3 = Concrete2
 
   Vec[N: static[int],T] = object
     arr: array[N,T]
@@ -154,15 +158,21 @@ test(Tree):
     left: ref Tree
     right: ref Tree
 test(Concrete):
-  type _ = Generic[int]
+  type _ = seq[int]
 test(Generic[int]):
   type _ = seq[int]
 test(Generic[float]):
   type _ = seq[int]
+test(Concrete2):
+  type _ = seq[int]
+test(Generic2[int,float]):
+  type _ = seq[int]
 test(Alias1):
   type _ = float
 test(Alias2):
-  type _ = Generic[int]
+  type _ = seq[int]
+test(Alias3):
+  type _ = seq[int]
 test(Vec[4,float32]):
   type _ = object
     arr: array[0..3,float32]
