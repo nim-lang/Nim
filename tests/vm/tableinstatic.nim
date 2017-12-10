@@ -2,7 +2,7 @@ discard """
   nimout: '''0
 0
 0
-{hallo: 123, welt: 456}'''
+{"hallo": "123", "welt": "456"}'''
 """
 
 import tables
