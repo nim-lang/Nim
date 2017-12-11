@@ -423,7 +423,8 @@ type
     fpGroupRead,           ## read access for the group
     fpOthersExec,          ## execute access for others
     fpOthersWrite,         ## write access for others
-    fpOthersRead           ## read access for others
+    fpOthersRead,          ## read access for others
+    fpStickyBit
 
 {.deprecated: [TFilePermission: FilePermission].}
 
@@ -447,6 +448,8 @@ proc getFilePermissions*(filename: string): set[FilePermission] {.
     if (a.st_mode and S_IROTH) != 0'i32: result.incl(fpOthersRead)
     if (a.st_mode and S_IWOTH) != 0'i32: result.incl(fpOthersWrite)
     if (a.st_mode and S_IXOTH) != 0'i32: result.incl(fpOthersExec)
+
+    if (a.st_mode and S_ISVTX) != 0'i32: result.incl(fpStickyBit)
   else:
     when useWinUnicode:
       wrapUnary(res, getFileAttributesW, filename)
@@ -455,9 +458,9 @@ proc getFilePermissions*(filename: string): set[FilePermission] {.
     if res == -1'i32: raiseOSError(osLastError())
     if (res and FILE_ATTRIBUTE_READONLY) != 0'i32:
       result = {fpUserExec, fpUserRead, fpGroupExec, fpGroupRead,
-                fpOthersExec, fpOthersRead}
+                fpOthersExec, fpOthersRead, fpStickyBit}
     else:
-      result = {fpUserExec..fpOthersRead}
+      result = {fpUserExec..fpStickyBit}
 
 proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
   rtl, extern: "nos$1", tags: [WriteDirEffect].} =
@@ -477,6 +480,8 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
     if fpOthersRead in permissions: p = p or S_IROTH
     if fpOthersWrite in permissions: p = p or S_IWOTH
     if fpOthersExec in permissions: p = p or S_IXOTH
+
+    if fpStickyBit in permissions: p = p or S_ISVTX
 
     if chmod(filename, p) != 0: raiseOSError(osLastError())
   else:
@@ -1503,9 +1508,10 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
     # Retrieve basic permissions
     if (rawInfo.dwFileAttributes and FILE_ATTRIBUTE_READONLY) != 0'i32:
       formalInfo.permissions = {fpUserExec, fpUserRead, fpGroupExec,
-                                fpGroupRead, fpOthersExec, fpOthersRead}
+                                fpGroupRead, fpOthersExec, fpOthersRead,
+                                fpStickyBit}
     else:
-      result.permissions = {fpUserExec..fpOthersRead}
+      result.permissions = {fpUserExec..fpStickyBit}
 
     # Retrieve basic file kind
     result.kind = pcFile
@@ -1538,6 +1544,8 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
     checkAndIncludeMode(S_IROTH, fpOthersRead)
     checkAndIncludeMode(S_IWOTH, fpOthersWrite)
     checkAndIncludeMode(S_IXOTH, fpOthersExec)
+
+    checkAndIncludeMode(S_ISVTX, fpStickyBit)
 
     formalInfo.kind = pcFile
     if S_ISDIR(rawInfo.st_mode):
