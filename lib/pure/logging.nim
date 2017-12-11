@@ -202,13 +202,17 @@ when not defined(js):
 
   proc countLogLines(logger: RollingFileLogger): int =
     result = 0
-    for line in logger.file.lines():
+    let fp = open(logger.baseName, fmRead)
+    for line in fp.lines():
       result.inc()
+    fp.close()
 
   proc countFiles(filename: string): int =
     # Example: file.log.1
     result = 0
-    let (dir, name, ext) = splitFile(filename)
+    var (dir, name, ext) = splitFile(filename)
+    if dir == "":
+      dir = "."
     for kind, path in walkDir(dir):
       if kind == pcFile:
         let llfn = name & ext & ExtSep
