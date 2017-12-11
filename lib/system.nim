@@ -463,7 +463,7 @@ type
     line*: int          ## line number of the proc that is currently executing
     filename*: cstring  ## filename of the proc that is currently executing
 
-  Exception* {.compilerproc.} = object of RootObj ## \
+  Exception* {.compilerproc, magic: "Exception".} = object of RootObj ## \
     ## Base exception class.
     ##
     ## Each exception has to inherit from `Exception`. See the full `exception
