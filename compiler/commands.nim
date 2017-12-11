@@ -654,6 +654,9 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     gListFullPaths = true
   of "dynliboverride":
     dynlibOverride(switch, arg, pass, info)
+  of "dynliboverrideall":
+    expectNoArg(switch, arg, pass, info)
+    gDynlibOverrideAll = true
   of "cs":
     # only supported for compatibility. Does nothing.
     expectArg(switch, arg, pass, info)

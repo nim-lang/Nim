@@ -53,7 +53,6 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   else:
     if efNoProcvarCheck notin flags: semProcvarCheck(c, result)
     if result.typ.kind == tyVar: result = newDeref(result)
-    semDestructorCheck(c, result, flags)
 
 proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = semExpr(c, n, flags)
@@ -66,7 +65,6 @@ proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     result.typ = errorType(c)
   else:
     semProcvarCheck(c, result)
-    semDestructorCheck(c, result, flags)
 
 proc semSymGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   result = symChoice(c, n, s, scClosed)
@@ -671,6 +669,7 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
     if callee.magic != mNone:
       result = magicsAfterOverloadResolution(c, result, flags)
     if result.typ != nil: liftTypeBoundOps(c, result.typ, n.info)
+    #result = patchResolvedTypeBoundOp(c, result)
   if c.matchedConcept == nil:
     result = evalAtCompileTime(c, result)
 
@@ -1847,6 +1846,18 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       analyseIfAddressTakenInCall(c, result)
       if callee.magic != mNone:
         result = magicsAfterOverloadResolution(c, result, flags)
+  of mRunnableExamples:
+    if gCmd == cmdDoc and n.len >= 2 and n.lastSon.kind == nkStmtList:
+      if n.sons[0].kind == nkIdent:
+        if sfMainModule in c.module.flags:
+          let inp = toFullPath(c.module.info)
+          if c.runnableExamples == nil:
+            c.runnableExamples = newTree(nkStmtList,
+              newTree(nkImportStmt, newStrNode(nkStrLit, expandFilename(inp))))
+          c.runnableExamples.add newTree(nkBlockStmt, emptyNode, copyTree n.lastSon)
+        result = setMs(n, s)
+    else:
+      result = emptyNode
   else:
     result = semDirectOp(c, n, flags)
 

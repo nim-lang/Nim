@@ -59,9 +59,10 @@ export asyncfutures, asyncstreams
 ##
 ##   .. code-block::nim
 ##      var future = socket.recv(100)
-##      future.callback =
+##      future.addCallback(
 ##        proc () =
 ##          echo(future.read)
+##      )
 ##
 ## All asynchronous functions returning a ``Future`` will not block. They
 ## will not however return immediately. An asynchronous function will have

@@ -1,6 +1,7 @@
 discard """
   cmd: "nim cpp $file"
   output: ""
+  targets: "cpp"
 """
 
 block: #5979

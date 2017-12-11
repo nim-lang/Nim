@@ -179,7 +179,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   add(result, ')')
   if candidates != "":
     add(result, "\n" & msgKindToString(errButExpected) & "\n" & candidates)
-  localError(n.info, errGenerated, result)
+  localError(n.info, errGenerated, result & "\nexpression: " & $n)
 
 proc bracketNotFoundError(c: PContext; n: PNode) =
   var errors: CandidateErrors = @[]
@@ -235,12 +235,11 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
     if nfDotField in n.flags:
       internalAssert f.kind == nkIdent and n.sonsLen >= 2
-      let calleeName = newStrNode(nkStrLit, f.ident.s).withInfo(n.info)
 
       # leave the op head symbol empty,
       # we are going to try multiple variants
-      n.sons[0..1] = [nil, n[1], calleeName]
-      orig.sons[0..1] = [nil, orig[1], calleeName]
+      n.sons[0..1] = [nil, n[1], f]
+      orig.sons[0..1] = [nil, orig[1], f]
 
       template tryOp(x) =
         let op = newIdentNode(getIdent(x), n.info)
@@ -255,8 +254,8 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         tryOp "."
 
     elif nfDotSetter in n.flags and f.kind == nkIdent and n.len == 3:
-      let calleeName = newStrNode(nkStrLit,
-        f.ident.s[0..f.ident.s.len-2]).withInfo(n.info)
+      # we need to strip away the trailing '=' here:
+      let calleeName = newIdentNode(getIdent(f.ident.s[0..f.ident.s.len-2]), n.info)
       let callOp = newIdentNode(getIdent".=", n.info)
       n.sons[0..1] = [callOp, n[1], calleeName]
       orig.sons[0..1] = [callOp, orig[1], calleeName]

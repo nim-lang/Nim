@@ -1860,7 +1860,10 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     initLocExpr(p, e.sons[2], b)
     genDeepCopy(p, a, b)
   of mDotDot, mEqCString: genCall(p, e, d)
-  else: internalError(e.info, "genMagicExpr: " & $op)
+  else:
+    when defined(debugMagics):
+      echo p.prc.name.s, " ", p.prc.id, " ", p.prc.flags, " ", p.prc.ast[genericParamsPos].kind
+    internalError(e.info, "genMagicExpr: " & $op)
 
 proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
   # example: { a..b, c, d, e, f..g }

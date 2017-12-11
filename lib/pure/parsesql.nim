@@ -956,6 +956,7 @@ proc parseInsert(p: var SqlParser): SqlNode =
   if p.tok.kind == tkParLe:
     var n = newNode(nkColumnList)
     parseParIdentList(p, n)
+    result.add n
   else:
     result.add(nil)
   if isKeyw(p, "default"):
@@ -1160,7 +1161,7 @@ proc ra(n: SqlNode, s: var string, indent: int) =
     else:
       s.add("\"" & replace(n.strVal, "\"", "\"\"") & "\"")
   of nkStringLit:
-    s.add(escape(n.strVal, "e'", "'"))
+    s.add(escape(n.strVal, "'", "'"))
   of nkBitStringLit:
     s.add("b'" & n.strVal & "'")
   of nkHexStringLit:
@@ -1240,7 +1241,7 @@ proc ra(n: SqlNode, s: var string, indent: int) =
     if n.sons[2].kind == nkDefault:
       s.add("default values")
     else:
-      s.add("\nvalues ")
+      s.add("\n")
       ra(n.sons[2], s, indent)
     s.add(';')
   of nkUpdate:

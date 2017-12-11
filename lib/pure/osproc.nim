@@ -41,6 +41,8 @@ type
                          ## Windows: Named pipes are used so that you can peek
                          ## at the process' output streams.
     poDemon              ## Windows: The program creates no Window.
+                         ## Unix: Start the program as a demon. This is still
+                         ## work in progress!
 
   ProcessObj = object of RootObj
     when defined(windows):
@@ -167,8 +169,7 @@ proc waitForExit*(p: Process, timeout: int = -1): int {.rtl,
   ## On posix, if the process has exited because of a signal, 128 + signal
   ## number will be returned.
 
-
-proc peekExitCode*(p: Process): int {.tags: [].}
+proc peekExitCode*(p: Process): int {.rtl, extern: "nosp$1", tags: [].}
   ## return -1 if the process is still running. Otherwise the process' exit code
   ##
   ## On posix, if the process has exited because of a signal, 128 + signal
@@ -231,55 +232,79 @@ proc execProcesses*(cmds: openArray[string],
   ## executes the commands `cmds` in parallel. Creates `n` processes
   ## that execute in parallel. The highest return value of all processes
   ## is returned. Runs `beforeRunEvent` before running each command.
-  when false:
-    # poParentStreams causes problems on Posix, so we simply disable it:
-    var options = options - {poParentStreams}
 
   assert n > 0
   if n > 1:
-    var q: seq[Process]
-    newSeq(q, n)
+    var i = 0
+    var q = newSeq[Process](n)
     var m = min(n, cmds.len)
-    for i in 0..m-1:
+
+    when defined(windows):
+      var w: WOHandleArray
+      var wcount = m
+
+    while i < m:
       if beforeRunEvent != nil:
         beforeRunEvent(i)
-      q[i] = startProcess(cmds[i], options=options + {poEvalCommand})
-    when defined(noBusyWaiting):
-      var r = 0
-      for i in m..high(cmds):
-        when defined(debugExecProcesses):
-          var err = ""
-          var outp = outputStream(q[r])
-          while running(q[r]) or not atEnd(outp):
-            err.add(outp.readLine())
-            err.add("\n")
-          echo(err)
-        result = max(waitForExit(q[r]), result)
-        if afterRunEvent != nil: afterRunEvent(r, q[r])
-        if q[r] != nil: close(q[r])
-        if beforeRunEvent != nil:
-          beforeRunEvent(i)
-        q[r] = startProcess(cmds[i], options=options + {poEvalCommand})
-        r = (r + 1) mod n
-    else:
-      var i = m
-      while i <= high(cmds):
-        sleep(50)
-        for r in 0..n-1:
+      q[i] = startProcess(cmds[i], options = options + {poEvalCommand})
+      when defined(windows):
+        w[i] = q[i].fProcessHandle
+      inc(i)
+
+    var ecount = len(cmds)
+    while ecount > 0:
+      when defined(windows):
+        # waiting for all children, get result if any child exits
+        var ret = waitForMultipleObjects(int32(wcount), addr(w), 0'i32,
+                                         INFINITE)
+        if ret == WAIT_TIMEOUT:
+          # must not be happen
+          discard
+        elif ret == WAIT_FAILED:
+          raiseOSError(osLastError())
+      else:
+        var status : cint = 1
+        # waiting for all children, get result if any child exits
+        let res = waitpid(-1, status, 0)
+        if res > 0:
+          for r in 0..m-1:
+            if not isNil(q[r]) and q[r].id == res:
+              # we updating `exitStatus` manually, so `running()` can work.
+              if WIFEXITED(status) or WIFSIGNALED(status):
+                q[r].exitStatus = status
+                break
+        else:
+          let err = osLastError()
+          if err == OSErrorCode(ECHILD):
+            # some child exits, we need to check our childs exit codes
+            discard
+          elif err == OSErrorCode(EINTR):
+            # signal interrupted our syscall, lets repeat it
+            continue
+          else:
+            # all other errors are exceptions
+            raiseOSError(err)
+
+      for r in 0..m-1:
+        if not isNil(q[r]):
           if not running(q[r]):
-            #echo(outputStream(q[r]).readLine())
-            result = max(waitForExit(q[r]), result)
+            result = max(result, q[r].peekExitCode())
             if afterRunEvent != nil: afterRunEvent(r, q[r])
-            if q[r] != nil: close(q[r])
-            if beforeRunEvent != nil:
-              beforeRunEvent(i)
-            q[r] = startProcess(cmds[i], options=options + {poEvalCommand})
-            inc(i)
-            if i > high(cmds): break
-    for j in 0..m-1:
-      result = max(waitForExit(q[j]), result)
-      if afterRunEvent != nil: afterRunEvent(j, q[j])
-      if q[j] != nil: close(q[j])
+            close(q[r])
+            if i < len(cmds):
+              if beforeRunEvent != nil: beforeRunEvent(i)
+              q[r] = startProcess(cmds[i],
+                                  options = options + {poEvalCommand})
+              when defined(windows):
+                w[r] = q[r].fProcessHandle
+              inc(i)
+            else:
+              q[r] = nil
+              when defined(windows):
+                for c in r..MAXIMUM_WAIT_OBJECTS - 2:
+                  w[c] = w[c + 1]
+                dec(wcount)
+            dec(ecount)
   else:
     for i in 0..high(cmds):
       if beforeRunEvent != nil:
@@ -321,6 +346,8 @@ when not defined(useNimRtl):
       elif not running(p): break
     close(p)
 
+template streamAccess(p) =
+  assert poParentStreams notin p.options, "API usage error: stream access not allowed when you use poParentStreams"
 
 when defined(Windows) and not defined(useNimRtl):
   # We need to implement a handle stream for Windows:
@@ -581,12 +608,15 @@ when defined(Windows) and not defined(useNimRtl):
       return res
 
   proc inputStream(p: Process): Stream =
+    streamAccess(p)
     result = newFileHandleStream(p.inHandle)
 
   proc outputStream(p: Process): Stream =
+    streamAccess(p)
     result = newFileHandleStream(p.outHandle)
 
   proc errorStream(p: Process): Stream =
+    streamAccess(p)
     result = newFileHandleStream(p.errHandle)
 
   proc execCmd(command: string): int =
@@ -682,9 +712,7 @@ elif not defined(useNimRtl):
     sysEnv: cstringArray
     workingDir: cstring
     pStdin, pStdout, pStderr, pErrorPipe: array[0..1, cint]
-    optionPoUsePath: bool
-    optionPoParentStreams: bool
-    optionPoStdErrToStdOut: bool
+    options: set[ProcessOption]
   {.deprecated: [TStartProcessData: StartProcessData].}
 
   const useProcessAuxSpawn = declared(posix_spawn) and not defined(useFork) and
@@ -749,10 +777,8 @@ elif not defined(useNimRtl):
     data.pStdin = pStdin
     data.pStdout = pStdout
     data.pStderr = pStderr
-    data.optionPoParentStreams = poParentStreams in options
-    data.optionPoUsePath = poUsePath in options
-    data.optionPoStdErrToStdOut = poStdErrToStdOut in options
     data.workingDir = workingDir
+    data.options = options
 
     when useProcessAuxSpawn:
       var currentDir = getCurrentDir()
@@ -801,19 +827,22 @@ elif not defined(useNimRtl):
       var mask: Sigset
       chck sigemptyset(mask)
       chck posix_spawnattr_setsigmask(attr, mask)
-      chck posix_spawnattr_setpgroup(attr, 0'i32)
+      if poDemon in data.options:
+        chck posix_spawnattr_setpgroup(attr, 0'i32)
 
-      chck posix_spawnattr_setflags(attr, POSIX_SPAWN_USEVFORK or
-                                          POSIX_SPAWN_SETSIGMASK or
-                                          POSIX_SPAWN_SETPGROUP)
+      var flags = POSIX_SPAWN_USEVFORK or
+                  POSIX_SPAWN_SETSIGMASK
+      if poDemon in data.options:
+        flags = flags or POSIX_SPAWN_SETPGROUP
+      chck posix_spawnattr_setflags(attr, flags)
 
-      if not data.optionPoParentStreams:
+      if not (poParentStreams in data.options):
         chck posix_spawn_file_actions_addclose(fops, data.pStdin[writeIdx])
         chck posix_spawn_file_actions_adddup2(fops, data.pStdin[readIdx], readIdx)
         chck posix_spawn_file_actions_addclose(fops, data.pStdout[readIdx])
         chck posix_spawn_file_actions_adddup2(fops, data.pStdout[writeIdx], writeIdx)
         chck posix_spawn_file_actions_addclose(fops, data.pStderr[readIdx])
-        if data.optionPoStdErrToStdOut:
+        if (poStdErrToStdOut in data.options):
           chck posix_spawn_file_actions_adddup2(fops, data.pStdout[writeIdx], 2)
         else:
           chck posix_spawn_file_actions_adddup2(fops, data.pStderr[writeIdx], 2)
@@ -823,7 +852,7 @@ elif not defined(useNimRtl):
         setCurrentDir($data.workingDir)
       var pid: Pid
 
-      if data.optionPoUsePath:
+      if (poUsePath in data.options):
         res = posix_spawnp(pid, data.sysCommand, fops, attr, data.sysArgs, data.sysEnv)
       else:
         res = posix_spawn(pid, data.sysCommand, fops, attr, data.sysArgs, data.sysEnv)
@@ -885,7 +914,7 @@ elif not defined(useNimRtl):
     # Warning: no GC here!
     # Or anything that touches global structures - all called nim procs
     # must be marked with stackTrace:off. Inspect C code after making changes.
-    if not data.optionPoParentStreams:
+    if not (poParentStreams in data.options):
       discard close(data.pStdin[writeIdx])
       if dup2(data.pStdin[readIdx], readIdx) < 0:
         startProcessFail(data)
@@ -893,7 +922,7 @@ elif not defined(useNimRtl):
       if dup2(data.pStdout[writeIdx], writeIdx) < 0:
         startProcessFail(data)
       discard close(data.pStderr[readIdx])
-      if data.optionPoStdErrToStdOut:
+      if (poStdErrToStdOut in data.options):
         if dup2(data.pStdout[writeIdx], 2) < 0:
           startProcessFail(data)
       else:
@@ -907,7 +936,7 @@ elif not defined(useNimRtl):
     discard close(data.pErrorPipe[readIdx])
     discard fcntl(data.pErrorPipe[writeIdx], F_SETFD, FD_CLOEXEC)
 
-    if data.optionPoUsePath:
+    if (poUsePath in data.options):
       when defined(uClibc) or defined(linux):
         # uClibc environment (OpenWrt included) doesn't have the full execvpe
         let exe = findExe(data.sysCommand)
@@ -939,19 +968,22 @@ elif not defined(useNimRtl):
     if kill(p.id, SIGCONT) != 0'i32: raiseOsError(osLastError())
 
   proc running(p: Process): bool =
-    var ret : int
-    var status : cint = 1
-    ret = waitpid(p.id, status, WNOHANG)
-    if ret == int(p.id):
-      if isExitStatus(status):
-        p.exitStatus = status
-        return false
-      else:
-        return true
-    elif ret == 0:
-      return true # Can't establish status. Assume running.
-    else:
+    if p.exitStatus != -3:
       return false
+    else:
+      var ret : int
+      var status : cint = 1
+      ret = waitpid(p.id, status, WNOHANG)
+      if ret == int(p.id):
+        if isExitStatus(status):
+          p.exitStatus = status
+          return false
+        else:
+          return true
+      elif ret == 0:
+        return true # Can't establish status. Assume running.
+      else:
+        raiseOSError(osLastError())
 
   proc terminate(p: Process) =
     if kill(p.id, SIGTERM) != 0'i32:
@@ -1152,16 +1184,19 @@ elif not defined(useNimRtl):
     stream = newFileStream(f)
 
   proc inputStream(p: Process): Stream =
+    streamAccess(p)
     if p.inStream == nil:
       createStream(p.inStream, p.inHandle, fmWrite)
     return p.inStream
 
   proc outputStream(p: Process): Stream =
+    streamAccess(p)
     if p.outStream == nil:
       createStream(p.outStream, p.outHandle, fmRead)
     return p.outStream
 
   proc errorStream(p: Process): Stream =
+    streamAccess(p)
     if p.errStream == nil:
       createStream(p.errStream, p.errHandle, fmRead)
     return p.errStream
