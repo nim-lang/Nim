@@ -230,7 +230,7 @@ proc execProcesses*(cmds: openArray[string],
   ## executes the commands `cmds` in parallel. Creates `n` processes
   ## that execute in parallel. The highest return value of all processes
   ## is returned. Runs `beforeRunEvent` before running each command.
-  
+
   assert n > 0
   if n > 1:
     var i = 0
@@ -829,11 +829,9 @@ elif not defined(useNimRtl):
       var mask: Sigset
       chck sigemptyset(mask)
       chck posix_spawnattr_setsigmask(attr, mask)
-      chck posix_spawnattr_setpgroup(attr, 0'i32)
 
       chck posix_spawnattr_setflags(attr, POSIX_SPAWN_USEVFORK or
-                                          POSIX_SPAWN_SETSIGMASK or
-                                          POSIX_SPAWN_SETPGROUP)
+                                          POSIX_SPAWN_SETSIGMASK)
 
       if not data.optionPoParentStreams:
         chck posix_spawn_file_actions_addclose(fops, data.pStdin[writeIdx])
