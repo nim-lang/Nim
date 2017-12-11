@@ -736,7 +736,7 @@ proc semRaise(c: PContext, n: PNode): PNode =
       if base.sym.name.s == "Exception":
         break
       if base.lastSon == nil:
-        localError(n.info, errExprIsNoException)
+        localError(n.info, "raised object of type $1 does not inherit from Exception", [typ.sym.name.s])
         return
       base = base.lastSon
 
