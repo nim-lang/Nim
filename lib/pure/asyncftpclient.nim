@@ -152,7 +152,7 @@ proc connect*(ftp: AsyncFtpClient) {.async.} =
   if ftp.pass != "":
     assertReply(await(ftp.send("PASS " & ftp.pass)), "230")
 
-proc pwd*(ftp: AsyncFtpClient): Future[TaintedString] {.async.} =
+roc pwd*(ftp: AsyncFtpClient): Future[TaintedString] {.async.} =
   ## Returns the current working directory.
   let wd = await ftp.send("PWD")
   assertReply wd, "257"
@@ -230,6 +230,7 @@ proc chmod*(ftp: AsyncFtpClient, path: string,
     of fpOthersExec: otherOctal.inc(1)
     of fpOthersWrite: otherOctal.inc(2)
     of fpOthersRead: otherOctal.inc(4)
+    of fpStickyBit: discard
 
   var perm = $userOctal & $groupOctal & $otherOctal
   assertReply(await(ftp.send("SITE CHMOD " & perm &
