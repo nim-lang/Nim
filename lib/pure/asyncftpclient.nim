@@ -152,7 +152,7 @@ proc connect*(ftp: AsyncFtpClient) {.async.} =
   if ftp.pass != "":
     assertReply(await(ftp.send("PASS " & ftp.pass)), "230")
 
-roc pwd*(ftp: AsyncFtpClient): Future[TaintedString] {.async.} =
+proc pwd*(ftp: AsyncFtpClient): Future[TaintedString] {.async.} =
   ## Returns the current working directory.
   let wd = await ftp.send("PWD")
   assertReply wd, "257"
