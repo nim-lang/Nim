@@ -154,8 +154,10 @@ proc format*(dt: DateTime, f: string): string
 proc toUnix*(t: Time): int64 {.benign, tags: [], raises: [], noSideEffect.}
 
 proc `-`*(a, b: Time): int64 {.
-  rtl, extern: "ntDiffTime", tags: [], raises: [], noSideEffect, benign.} =
+    rtl, extern: "ntDiffTime", tags: [], raises: [], noSideEffect, benign, deprecated.} =
   ## Computes the difference of two calendar times. Result is in seconds.
+  ## This is deprecated because it will need to change when sub second time resolution is implemented.
+  ## Use ``a.toUnix - b.toUnix`` instead.
   ##
   ## .. code-block:: nim
   ##     let a = fromSeconds(1_000_000_000)
@@ -165,19 +167,16 @@ proc `-`*(a, b: Time): int64 {.
   a.toUnix - b.toUnix
 
 proc `<`*(a, b: Time): bool {.
-  rtl, extern: "ntLtTime", tags: [], raises: [], noSideEffect.} =
+    rtl, extern: "ntLtTime", tags: [], raises: [], noSideEffect, borrow.}
   ## Returns true iff ``a < b``, that is iff a happened before b.
-  result = a - b < 0
 
 proc `<=` * (a, b: Time): bool {.
-  rtl, extern: "ntLeTime", tags: [], raises: [], noSideEffect.}=
+    rtl, extern: "ntLeTime", tags: [], raises: [], noSideEffect, borrow.}
   ## Returns true iff ``a <= b``.
-  result = a - b <= 0
 
 proc `==`*(a, b: Time): bool {.
-  rtl, extern: "ntEqTime", tags: [], raises: [], noSideEffect.} =
+    rtl, extern: "ntEqTime", tags: [], raises: [], noSideEffect, borrow.}
   ## Returns true if ``a == b``, that is if both times represent the same point in time.
-  result = a - b == 0
 
 proc toEpochday(year: int, month: Month, day: MonthdayRange): int64 =
   # Based on http://howardhinnant.github.io/date_algorithms.html
@@ -374,7 +373,7 @@ else:
     let tm = getStructTm(time)
     let adjTime = tm.toAdjTime
     result.adjTime = adjTime
-    result.utcOffset = (time - adjTime).int
+    result.utcOffset = (time.toUnix - adjTime.toUnix).int
     result.isDst = tm.isdst > 0
 
   proc localZoneInfoFromTz(adjTime: Time): ZonedTime  =
