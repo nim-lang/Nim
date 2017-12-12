@@ -273,7 +273,6 @@ proc execProcesses*(cmds: openArray[string],
               discard getExitCodeProcess(q[r].fProcessHandle, status)
               q[r].exitFlag = true
               q[r].exitStatus = status
-              discard closeHandle(q[r].fProcessHandle)
               break
       else:
         var status: cint = 1
@@ -313,11 +312,14 @@ proc execProcesses*(cmds: openArray[string],
                 w[r] = q[r].fProcessHandle
               inc(i)
             else:
-              q[r] = nil
               when defined(windows):
-                for c in r..MAXIMUM_WAIT_OBJECTS - 2:
-                  w[c] = w[c + 1]
-                dec(wcount)
+                for k in 0..wcount - 1:
+                  if w[k] == q[r].fProcessHandle:
+                    w[k] = w[wcount - 1]
+                    w[wcount - 1] = 0
+                    dec(wcount)
+                    break
+              q[r] = nil
             dec(ecount)
   else:
     for i in 0..high(cmds):
@@ -574,17 +576,17 @@ when defined(Windows) and not defined(useNimRtl):
             "Requested command not found: '$1'. OS error:" % command)
       else:
         raiseOSError(lastError, command)
-
     result.fProcessHandle = procInfo.hProcess
     result.fThreadHandle = procInfo.hThread
     result.id = procInfo.dwProcessId
     result.exitFlag = false
 
   proc close(p: Process) =
-    if poInteractive in p.options:
+    if poParentStreams notin p.options:
       discard closeHandle(p.inHandle)
       discard closeHandle(p.outHandle)
       discard closeHandle(p.errHandle)
+    discard closeHandle(p.fThreadHandle)
     discard closeHandle(p.fProcessHandle)
 
   proc suspend(p: Process) =
@@ -619,6 +621,7 @@ when defined(Windows) and not defined(useNimRtl):
     if status != STILL_ACTIVE:
       p.exitFlag = true
       p.exitStatus = status
+      discard closeHandle(p.fThreadHandle)
       discard closeHandle(p.fProcessHandle)
       result = status
     else:
@@ -635,6 +638,7 @@ when defined(Windows) and not defined(useNimRtl):
       discard getExitCodeProcess(p.fProcessHandle, status)
       p.exitFlag = true
       p.exitStatus = status
+      discard closeHandle(p.fThreadHandle)
       discard closeHandle(p.fProcessHandle)
       result = status
 
