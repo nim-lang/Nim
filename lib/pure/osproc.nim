@@ -257,6 +257,7 @@ proc execProcesses*(cmds: openArray[string],
 
     var ecount = len(cmds)
     while ecount > 0:
+      var rexit = -1
       when defined(windows):
         # waiting for all children, get result if any child exits
         var ret = waitForMultipleObjects(int32(wcount), addr(w), 0'i32,
@@ -273,6 +274,7 @@ proc execProcesses*(cmds: openArray[string],
               discard getExitCodeProcess(q[r].fProcessHandle, status)
               q[r].exitFlag = true
               q[r].exitStatus = status
+              rexit = r
               break
       else:
         var status: cint = 1
@@ -281,16 +283,21 @@ proc execProcesses*(cmds: openArray[string],
         if res > 0:
           for r in 0..m-1:
             if not isNil(q[r]) and q[r].id == res:
-              # we updating `exitStatus` manually, so `running()` can work.
               if WIFEXITED(status) or WIFSIGNALED(status):
                 q[r].exitFlag = true
                 q[r].exitStatus = status
+                rexit = r
                 break
         else:
           let err = osLastError()
           if err == OSErrorCode(ECHILD):
             # some child exits, we need to check our childs exit codes
-            discard
+            for r in 0..m-1:
+              if (not isNil(q[r])) and (not running(q[r])):
+                q[r].exitFlag = true
+                q[r].exitStatus = status
+                rexit = r
+                break
           elif err == OSErrorCode(EINTR):
             # signal interrupted our syscall, lets repeat it
             continue
@@ -298,29 +305,27 @@ proc execProcesses*(cmds: openArray[string],
             # all other errors are exceptions
             raiseOSError(err)
 
-      for r in 0..m-1:
-        if not isNil(q[r]):
-          if not running(q[r]):
-            result = max(result, q[r].peekExitCode())
-            if afterRunEvent != nil: afterRunEvent(r, q[r])
-            close(q[r])
-            if i < len(cmds):
-              if beforeRunEvent != nil: beforeRunEvent(i)
-              q[r] = startProcess(cmds[i],
+      if rexit >= 0:
+        result = max(result, q[rexit].peekExitCode())
+        if afterRunEvent != nil: afterRunEvent(rexit, q[rexit])
+        close(q[rexit])
+        if i < len(cmds):
+          if beforeRunEvent != nil: beforeRunEvent(i)
+          q[rexit] = startProcess(cmds[i],
                                   options = options + {poEvalCommand})
-              when defined(windows):
-                w[r] = q[r].fProcessHandle
-              inc(i)
-            else:
-              when defined(windows):
-                for k in 0..wcount - 1:
-                  if w[k] == q[r].fProcessHandle:
-                    w[k] = w[wcount - 1]
-                    w[wcount - 1] = 0
-                    dec(wcount)
-                    break
-              q[r] = nil
-            dec(ecount)
+          when defined(windows):
+            w[rexit] = q[rexit].fProcessHandle
+            inc(i)
+        else:
+          when defined(windows):
+            for k in 0..wcount - 1:
+              if w[k] == q[rexit].fProcessHandle:
+                w[k] = w[wcount - 1]
+                w[wcount - 1] = 0
+                dec(wcount)
+                break
+          q[rexit] = nil
+        dec(ecount)
   else:
     for i in 0..high(cmds):
       if beforeRunEvent != nil:
