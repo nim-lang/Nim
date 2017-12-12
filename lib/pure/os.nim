@@ -424,7 +424,10 @@ type
     fpOthersExec,          ## execute access for others
     fpOthersWrite,         ## write access for others
     fpOthersRead,          ## read access for others
-    fpStickyBit
+    fpStickyBit            ## file in that directory can be renamed or
+                           ## deleted only by the owner of the file,
+                           ## by the owner of the directory, or by a
+                           ## privileged process
 
 {.deprecated: [TFilePermission: FilePermission].}
 
