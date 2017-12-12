@@ -41,6 +41,8 @@ type
                          ## Windows: Named pipes are used so that you can peek
                          ## at the process' output streams.
     poDemon              ## Windows: The program creates no Window.
+                         ## Unix: Start the program as a demon. This is still
+                         ## work in progress!
 
   ProcessObj = object of RootObj
     when defined(windows):
@@ -230,7 +232,7 @@ proc execProcesses*(cmds: openArray[string],
   ## executes the commands `cmds` in parallel. Creates `n` processes
   ## that execute in parallel. The highest return value of all processes
   ## is returned. Runs `beforeRunEvent` before running each command.
-  
+
   assert n > 0
   if n > 1:
     var i = 0
@@ -710,9 +712,7 @@ elif not defined(useNimRtl):
     sysEnv: cstringArray
     workingDir: cstring
     pStdin, pStdout, pStderr, pErrorPipe: array[0..1, cint]
-    optionPoUsePath: bool
-    optionPoParentStreams: bool
-    optionPoStdErrToStdOut: bool
+    options: set[ProcessOption]
   {.deprecated: [TStartProcessData: StartProcessData].}
 
   const useProcessAuxSpawn = declared(posix_spawn) and not defined(useFork) and
@@ -777,10 +777,8 @@ elif not defined(useNimRtl):
     data.pStdin = pStdin
     data.pStdout = pStdout
     data.pStderr = pStderr
-    data.optionPoParentStreams = poParentStreams in options
-    data.optionPoUsePath = poUsePath in options
-    data.optionPoStdErrToStdOut = poStdErrToStdOut in options
     data.workingDir = workingDir
+    data.options = options
 
     when useProcessAuxSpawn:
       var currentDir = getCurrentDir()
@@ -829,19 +827,22 @@ elif not defined(useNimRtl):
       var mask: Sigset
       chck sigemptyset(mask)
       chck posix_spawnattr_setsigmask(attr, mask)
-      chck posix_spawnattr_setpgroup(attr, 0'i32)
+      if poDemon in data.options:
+        chck posix_spawnattr_setpgroup(attr, 0'i32)
 
-      chck posix_spawnattr_setflags(attr, POSIX_SPAWN_USEVFORK or
-                                          POSIX_SPAWN_SETSIGMASK or
-                                          POSIX_SPAWN_SETPGROUP)
+      var flags = POSIX_SPAWN_USEVFORK or
+                  POSIX_SPAWN_SETSIGMASK
+      if poDemon in data.options:
+        flags = flags or POSIX_SPAWN_SETPGROUP
+      chck posix_spawnattr_setflags(attr, flags)
 
-      if not data.optionPoParentStreams:
+      if not (poParentStreams in data.options):
         chck posix_spawn_file_actions_addclose(fops, data.pStdin[writeIdx])
         chck posix_spawn_file_actions_adddup2(fops, data.pStdin[readIdx], readIdx)
         chck posix_spawn_file_actions_addclose(fops, data.pStdout[readIdx])
         chck posix_spawn_file_actions_adddup2(fops, data.pStdout[writeIdx], writeIdx)
         chck posix_spawn_file_actions_addclose(fops, data.pStderr[readIdx])
-        if data.optionPoStdErrToStdOut:
+        if (poStdErrToStdOut in data.options):
           chck posix_spawn_file_actions_adddup2(fops, data.pStdout[writeIdx], 2)
         else:
           chck posix_spawn_file_actions_adddup2(fops, data.pStderr[writeIdx], 2)
@@ -851,7 +852,7 @@ elif not defined(useNimRtl):
         setCurrentDir($data.workingDir)
       var pid: Pid
 
-      if data.optionPoUsePath:
+      if (poUsePath in data.options):
         res = posix_spawnp(pid, data.sysCommand, fops, attr, data.sysArgs, data.sysEnv)
       else:
         res = posix_spawn(pid, data.sysCommand, fops, attr, data.sysArgs, data.sysEnv)
@@ -913,7 +914,7 @@ elif not defined(useNimRtl):
     # Warning: no GC here!
     # Or anything that touches global structures - all called nim procs
     # must be marked with stackTrace:off. Inspect C code after making changes.
-    if not data.optionPoParentStreams:
+    if not (poParentStreams in data.options):
       discard close(data.pStdin[writeIdx])
       if dup2(data.pStdin[readIdx], readIdx) < 0:
         startProcessFail(data)
@@ -921,7 +922,7 @@ elif not defined(useNimRtl):
       if dup2(data.pStdout[writeIdx], writeIdx) < 0:
         startProcessFail(data)
       discard close(data.pStderr[readIdx])
-      if data.optionPoStdErrToStdOut:
+      if (poStdErrToStdOut in data.options):
         if dup2(data.pStdout[writeIdx], 2) < 0:
           startProcessFail(data)
       else:
@@ -935,7 +936,7 @@ elif not defined(useNimRtl):
     discard close(data.pErrorPipe[readIdx])
     discard fcntl(data.pErrorPipe[writeIdx], F_SETFD, FD_CLOEXEC)
 
-    if data.optionPoUsePath:
+    if (poUsePath in data.options):
       when defined(uClibc) or defined(linux):
         # uClibc environment (OpenWrt included) doesn't have the full execvpe
         let exe = findExe(data.sysCommand)

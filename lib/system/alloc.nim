@@ -308,6 +308,7 @@ proc llDeallocAll(a: var MemRegion) =
     var next = it.next
     osDeallocPages(it, PageSize)
     it = next
+  a.llmem = nil
 
 proc intSetGet(t: IntSet, key: int): PTrunk =
   var it = t.data[key and high(t.data)]
