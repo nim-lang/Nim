@@ -18,8 +18,8 @@ var fs = newFutureStream[int]()
 
 proc alpha() {.async.} =
   for i in 0 .. 5:
-    await sleepAsync(1000)
     await fs.write(i)
+    await sleepAsync(1000)
 
   echo("Done")
   fs.complete()
