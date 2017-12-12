@@ -241,3 +241,13 @@ block countLeapYears:
   doAssert countLeapYears(1920) + 1 == countLeapYears(1921)
   doAssert countLeapYears(2004) + 1 == countLeapYears(2005)
   doAssert countLeapYears(2020) + 1 == countLeapYears(2021)
+
+block extremeCompares:
+  const hi = Time(Time.high)
+  const lo = Time(Time.low)
+  doAssert lo == lo
+  doAssert hi == hi
+  doAssert lo <  hi
+  doAssert lo <= hi
+  doAssert (not (hi <  lo))
+  doAssert (not (hi <= lo))

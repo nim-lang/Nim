@@ -232,7 +232,7 @@ proc `<`*(a, b: Time): bool {.
   when defined(js):
     result = TimeBase(a) < TimeBase(b)
   else:
-    result = a - b < 0
+    result = TimeImpl(a) < TimeImpl(b)
 
 proc `<=` * (a, b: Time): bool {.
   rtl, extern: "ntLeTime", tags: [], raises: [], noSideEffect.}=
@@ -240,7 +240,7 @@ proc `<=` * (a, b: Time): bool {.
   when defined(js):
     result = TimeBase(a) <= TimeBase(b)
   else:
-    result = a - b <= 0
+    result = TimeImpl(a) <= TimeImpl(b)
 
 proc `==`*(a, b: Time): bool {.
   rtl, extern: "ntEqTime", tags: [], raises: [], noSideEffect.} =
@@ -248,7 +248,7 @@ proc `==`*(a, b: Time): bool {.
   when defined(js):
     result = TimeBase(a) == TimeBase(b)
   else:
-    result = a - b == 0
+    result = TimeImpl(a) == TimeImpl(b)
 
 proc getTimezone*(): int {.tags: [TimeEffect], raises: [], benign.}
   ## returns the offset of the local (non-DST) timezone in seconds west of UTC.
