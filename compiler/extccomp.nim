@@ -795,8 +795,8 @@ proc writeJsonBuildInstructions*(projectfile: string) =
     var pastStart = false
     for it in clist:
       if CfileFlag.Cached in it.flags: continue
-      if pastStart: lit "],\L"
       let compileCmd = getCompileCFileCmd(it)
+      if pastStart: lit "],\L"
       lit "["
       str it.cname
       lit ", "
@@ -838,7 +838,7 @@ proc writeJsonBuildInstructions*(projectfile: string) =
     lit "],\L\"link\":[\L"
     var objfiles = ""
     # XXX add every file here that is to link
-    linkfiles(f, buf, objfiles)
+    linkfiles(f, buf, objfiles, toCompile, externalToLink)
 
     lit "],\L\"linkcmd\": "
     str getLinkCmd(projectfile, objfiles)
