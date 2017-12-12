@@ -308,6 +308,7 @@ proc `[]=`*[A, B](t: var Table[A, B], key: A, val: B) =
 
 proc add*[A, B](t: var Table[A, B], key: A, val: B) =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
+  ## This can introduce duplicate keys into the table!
   addImpl(enlarge)
 
 proc len*[A, B](t: TableRef[A, B]): int =
@@ -430,6 +431,7 @@ proc `[]=`*[A, B](t: TableRef[A, B], key: A, val: B) =
 
 proc add*[A, B](t: TableRef[A, B], key: A, val: B) =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
+  ## This can introduce duplicate keys into the table!
   t[].add(key, val)
 
 proc del*[A, B](t: TableRef[A, B], key: A) =
@@ -604,6 +606,7 @@ proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
 
 proc add*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
+  ## This can introduce duplicate keys into the table!
   addImpl(enlarge)
 
 proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): var B =
@@ -770,6 +773,7 @@ proc `[]=`*[A, B](t: OrderedTableRef[A, B], key: A, val: B) =
 
 proc add*[A, B](t: OrderedTableRef[A, B], key: A, val: B) =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
+  ## This can introduce duplicate keys into the table!
   t[].add(key, val)
 
 proc newOrderedTable*[A, B](initialSize=64): OrderedTableRef[A, B] =
