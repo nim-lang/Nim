@@ -315,7 +315,7 @@ proc execProcesses*(cmds: openArray[string],
                                   options = options + {poEvalCommand})
           when defined(windows):
             w[rexit] = q[rexit].fProcessHandle
-            inc(i)
+          inc(i)
         else:
           when defined(windows):
             for k in 0..wcount - 1:
