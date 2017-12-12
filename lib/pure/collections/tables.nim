@@ -989,9 +989,10 @@ proc inc*[A](t: var CountTable[A], key: A, val = 1) =
 proc smallest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   ## returns the (key,val)-pair with the smallest `val`. Efficiency: O(n)
   assert t.len > 0
-  var minIdx = 0
+  var minIdx = -1
   for h in 1..high(t.data):
-    if t.data[h].val > 0 and t.data[minIdx].val > t.data[h].val: minIdx = h
+    if t.data[h].val > 0 and (minIdx == -1 or t.data[minIdx].val > t.data[h].val):
+      minIdx = h
   result.key = t.data[minIdx].key
   result.val = t.data[minIdx].val
 
@@ -1325,3 +1326,7 @@ when isMainModule:
     assert((a == b) == true)
     assert((b == a) == true)
 
+  block: # CountTable.smallest
+    var t = initCountTable[int]()
+    for v in items([4, 4, 5, 5, 5]): t.inc(v)
+    doAssert t.smallest == (4, 2)
