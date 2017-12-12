@@ -791,42 +791,40 @@ proc writeJsonBuildInstructions*(projectfile: string) =
     else:
       f.write escapeJson(x)
 
-  proc cfiles(f: File; buf: var string; list: CfileList, isExternal: bool) =
-    var i = 0
-    for it in list:
+  proc cfiles(f: File; buf: var string; clist: CfileList, isExternal: bool) =
+    var pastStart = false
+    for it in clist:
       if CfileFlag.Cached in it.flags: continue
+      if pastStart: lit "],\L"
       let compileCmd = getCompileCFileCmd(it)
       lit "["
       str it.cname
       lit ", "
       str compileCmd
-      inc i
-      if i == list.len:
-        lit "]\L"
-      else:
-        lit "],\L"
+      pastStart = true
+    lit "]\L"
 
-  proc linkfiles(f: File; buf, objfiles: var string) =
-    for i, it in externalToLink:
-      let
-        objFile = if noAbsolutePaths(): it.extractFilename else: it
-        objStr = addFileExt(objFile, CC[cCompiler].objExt)
+  proc linkfiles(f: File; buf, objfiles: var string; clist: CfileList;
+                 llist: seq[string]) =
+    var pastStart = false
+    for it in llist:
+      let objfile = if noAbsolutePaths(): it.extractFilename
+                    else: it
+      let objstr = addFileExt(objfile, CC[cCompiler].objExt)
       add(objfiles, ' ')
-      add(objfiles, objStr)
-      str objStr
-      if toCompile.len == 0 and i == externalToLink.high:
-        lit "\L"
-      else:
-        lit ",\L"
-    for i, x in toCompile:
-      let objStr = quoteShell(x.obj)
+      add(objfiles, objstr)
+      if pastStart: lit ",\L"
+      str objstr
+      pastStart = true
+
+    for it in clist:
+      let objstr = quoteShell(it.obj)
       add(objfiles, ' ')
-      add(objfiles, objStr)
-      str objStr
-      if i == toCompile.high:
-        lit "\L"
-      else:
-        lit ",\L"
+      add(objfiles, objstr)
+      if pastStart: lit ",\L"
+      str objstr
+      pastStart = true
+    lit "\L"
 
   var buf = newStringOfCap(50)
 
