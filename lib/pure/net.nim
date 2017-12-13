@@ -413,7 +413,7 @@ proc isIpAddress*(address_str: string): bool {.tags: [].} =
 
 when defineSsl:
   CRYPTO_malloc_init()
-  SslLibraryInit()
+  doAssert SslLibraryInit() == 1
   SslLoadErrorStrings()
   ErrLoadBioStrings()
   OpenSSL_add_all_algorithms()
