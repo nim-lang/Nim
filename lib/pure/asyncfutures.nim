@@ -237,10 +237,10 @@ proc mergeEntries(entries: seq[StackTraceEntry]): seq[StackTraceEntry] =
 
       # either the nested block is new, then we insert it, or we discard it
       # completely. 'diff' is the wrong idea here.
-      var last = result.len
+      var last = result.len-1
       var e = reRaiseEnd-1
       var newBlock = true
-      while last > 0 and e > i+1:
+      while last >= 0 and e >= i+1:
         if result[last] != entries[e]:
           newBlock = false
           break
