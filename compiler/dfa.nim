@@ -382,9 +382,9 @@ proc dfa(code: seq[Instr]) =
       else:
         pc2 = pc + 1
         if code[pc].kind == fork:
-          let l = pc + code[pc].dest
-          if sid >= 0 and s[l].missingOrExcl(sid):
-            w.add l
+          let lidx = pc + code[pc].dest
+          if sid >= 0 and s[lidx].missingOrExcl(sid):
+            w.add lidx
 
       if sid >= 0 and s[pc2].missingOrExcl(sid):
         pc = pc2
