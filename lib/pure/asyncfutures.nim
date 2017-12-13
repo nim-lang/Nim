@@ -217,16 +217,6 @@ proc `callback=`*[T](future: Future[T],
   ## If future has already completed then ``cb`` will be called immediately.
   future.callback = proc () = cb(future)
 
-proc diff[T](a, b: seq[T]; firstB, lastB: int): int =
-  ## Iterates through both sequences until the items do not match,
-  ## returns the remainder of `b[firstB..lastB]` after the last item that does not match
-  ## together with the index of the last match.
-  result = firstB
-  for i in 0..<min(a.len, lastB - firstB + 1):
-    result = i+firstB
-    if a[i] != b[i+firstB]:
-      break
-
 proc mergeEntries(entries: seq[StackTraceEntry]): seq[StackTraceEntry] =
   ## Merges stack trace entries containing re-raise entries into one
   ## continuous stack trace.
@@ -245,10 +235,21 @@ proc mergeEntries(entries: seq[StackTraceEntry]): seq[StackTraceEntry] =
       assert entries[reRaiseEnd].procName.isNil
       assert entries[reRaiseEnd].line == -100 # Signifies end of re-raise block.
 
-      let lastIndex = diff(result, entries, i+1, reRaiseEnd-1)
-      # Insert all the entries after lastIndex.
-      for j in lastIndex..<reRaiseEnd - i - 1:
-        result.insert(entries[j+i+1], j)
+      # either the nested block is new, then we insert it, or we discard it
+      # completely. 'diff' is the wrong idea here.
+      var last = result.len
+      var e = reRaiseEnd-1
+      var newBlock = true
+      while last > 0 and e > i+1:
+        if result[last] != entries[e]:
+          newBlock = false
+          break
+        dec e
+        dec last
+
+      if newBlock:
+        for j in i+1 ..< reRaiseEnd: result.add entries[j]
+
       i = reRaiseEnd+1
       continue
 
