@@ -42,7 +42,8 @@ type
 # Page size of the system; in most cases 4096 bytes. For exotic OS or
 # CPU this needs to be changed:
 const
-  PageShift = when defined(cpu16): 8 else: 12
+  PageShift = when defined(cpu16): 8 else: 12 # \
+    # my tests showed no improvments for using larger page sizes.
   PageSize = 1 shl PageShift
   PageMask = PageSize-1
 
@@ -571,3 +572,11 @@ when not declared(nimNewSeqOfCap):
     cast[PGenericSeq](result).reserved = cap
 
 {.pop.}
+
+when not declared(ForeignCell):
+  type ForeignCell* = object
+    data*: pointer
+
+  proc protect*(x: pointer): ForeignCell = ForeignCell(data: x)
+  proc dispose*(x: ForeignCell) = discard
+  proc isNotForeign*(x: ForeignCell): bool = false

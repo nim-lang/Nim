@@ -59,8 +59,8 @@ proc xmlCheckedTag*(e: NimNode, tag: string, optAttr = "", reqAttr = "",
 
   # copy the attributes; when iterating over them these lists
   # will be modified, so that each attribute is only given one value
-  var req = split(reqAttr)
-  var opt = split(optAttr)
+  var req = splitWhitespace(reqAttr)
+  var opt = splitWhitespace(optAttr)
   result = newNimNode(nnkBracket, e)
   result.add(newStrLitNode("<"))
   result.add(newStrLitNode(tag))

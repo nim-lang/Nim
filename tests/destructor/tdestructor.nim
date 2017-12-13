@@ -20,9 +20,9 @@ myobj destroyed
 ----
 myobj destroyed
 '''
+  cmd: '''nim c --newruntime $file'''
+  disabled: "true"
 """
-
-{.experimental.}
 
 type
   TMyObj = object
@@ -61,7 +61,7 @@ proc `=destroy`(o: var TMyObj) =
   if o.p != nil: dealloc o.p
   echo "myobj destroyed"
 
-proc `=destroy`(o: var TMyGeneric1) =
+proc `=destroy`(o: var TMyGeneric1[int]) =
   echo "mygeneric1 destroyed"
 
 proc `=destroy`[A, B](o: var TMyGeneric2[A, B]) =

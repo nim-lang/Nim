@@ -66,7 +66,7 @@ proc cycle*[T](s: openArray[T], n: Natural): seq[T] =
   ##
   ## Example:
   ##
-  ## .. code-block:
+  ## .. code-block::
   ##
   ##   let
   ##     s = @[1, 2, 3]
@@ -84,7 +84,7 @@ proc repeat*[T](x: T, n: Natural): seq[T] =
   ##
   ## Example:
   ##
-  ## .. code-block:
+  ## .. code-block::
   ##
   ##   let
   ##     total = repeat(5, 3)

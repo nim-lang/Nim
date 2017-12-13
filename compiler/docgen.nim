@@ -22,7 +22,6 @@ type
   TSections = array[TSymKind, Rope]
   TDocumentor = object of rstgen.RstGenerator
     modDesc: Rope           # module description
-    id: int                  # for generating IDs
     toc, section: TSections
     indexValFilename: string
     analytics: string  # Google Analytics javascript, "" if doesn't exist
@@ -109,6 +108,8 @@ proc newDocumentor*(filename: string, config: StringTableRef): PDoc =
   result.id = 100
   result.jArray = newJArray()
   initStrTable result.types
+  result.onTestSnippet = proc (d: var RstGenerator; filename, cmd: string; status: int; content: string) =
+    localError(newLineInfo(d.filename, -1, -1), warnUser, "only 'rst2html' supports the ':test:' attribute")
 
 proc dispA(dest: var Rope, xml, tex: string, args: openArray[Rope]) =
   if gCmd != cmdRst2tex: addf(dest, xml, args)
@@ -274,7 +275,9 @@ proc getAllRunnableExamples(d: PDoc; n: PNode; dest: var Rope) =
       # that the renderer currently produces:
       var i = 0
       var body = n.lastSon
-      if body.len == 1 and body.kind == nkStmtList: body = body.lastSon
+      if body.len == 1 and body.kind == nkStmtList and
+          body.lastSon.kind == nkStmtList:
+        body = body.lastSon
       for b in body:
         if i > 0: dest.add "\n"
         inc i
@@ -550,12 +553,24 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonNode =
 proc checkForFalse(n: PNode): bool =
   result = n.kind == nkIdent and cmpIgnoreStyle(n.ident.s, "false") == 0
 
-proc traceDeps(d: PDoc, n: PNode) =
+proc traceDeps(d: PDoc, it: PNode) =
   const k = skModule
-  if d.section[k] != nil: add(d.section[k], ", ")
-  dispA(d.section[k],
-        "<a class=\"reference external\" href=\"$1.html\">$1</a>",
-        "$1", [rope(getModuleName(n))])
+
+  if it.kind == nkInfix and it.len == 3 and it[2].kind == nkBracket:
+    let sep = it[0]
+    let dir = it[1]
+    let a = newNodeI(nkInfix, it.info)
+    a.add sep
+    a.add dir
+    a.add sep # dummy entry, replaced in the loop
+    for x in it[2]:
+      a.sons[2] = x
+      traceDeps(d, a)
+  else:
+    if d.section[k] != nil: add(d.section[k], ", ")
+    dispA(d.section[k],
+          "<a class=\"reference external\" href=\"$1.html\">$1</a>",
+          "$1", [rope(getModuleName(it))])
 
 proc generateDoc*(d: PDoc, n: PNode) =
   case n.kind
@@ -785,6 +800,26 @@ proc commandDoc*() =
 proc commandRstAux(filename, outExt: string) =
   var filen = addFileExt(filename, "txt")
   var d = newDocumentor(filen, options.gConfigVars)
+  d.onTestSnippet = proc (d: var RstGenerator; filename, cmd: string;
+                          status: int; content: string) =
+    var outp: string
+    if filename.len == 0:
+      inc(d.id)
+      let nameOnly = splitFile(d.filename).name
+      let subdir = getNimcacheDir() / nameOnly
+      createDir(subdir)
+      outp = subdir / (nameOnly & "_snippet_" & $d.id & ".nim")
+    elif isAbsolute(filename):
+      outp = filename
+    else:
+      # Nim's convention: every path is relative to the file it was written in:
+      outp = splitFile(d.filename).dir / filename
+    writeFile(outp, content)
+    let cmd = unescape(cmd) % quoteShell(outp)
+    rawMessage(hintExecuting, cmd)
+    if execShellCmd(cmd) != status:
+      rawMessage(errExecutionOfProgramFailed, cmd)
+
   d.isPureRst = true
   var rst = parseRst(readFile(filen), filen, 0, 1, d.hasToc,
                      {roSupportRawDirective})

@@ -2,14 +2,14 @@ discard """
   output: '''assign
 destroy
 destroy
-destroy Foo: 5
 5
-destroy Foo: 123
-123'''
+123
+destroy Foo: 5
+destroy Foo: 123'''
+  cmd: '''nim c --newruntime $file'''
 """
 
 # bug #2821
-{.experimental.}
 
 type T = object
 

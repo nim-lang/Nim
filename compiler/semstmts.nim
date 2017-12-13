@@ -97,27 +97,12 @@ template semProcvarCheck(c: PContext, n: PNode) =
 
 proc semProc(c: PContext, n: PNode): PNode
 
-include semdestruct
-
-proc semDestructorCheck(c: PContext, n: PNode, flags: TExprFlags) {.inline.} =
-  if not newDestructors:
-    if efAllowDestructor notin flags and
-        n.kind in nkCallKinds+{nkObjConstr,nkBracket}:
-      if instantiateDestructor(c, n.typ) != nil:
-        localError(n.info, warnDestructor)
-    # This still breaks too many things:
-    when false:
-      if efDetermineType notin flags and n.typ.kind == tyTypeDesc and
-          c.p.owner.kind notin {skTemplate, skMacro}:
-        localError(n.info, errGenerated, "value expected, but got a type")
-
 proc semExprBranch(c: PContext, n: PNode): PNode =
   result = semExpr(c, n)
   if result.typ != nil:
     # XXX tyGenericInst here?
     semProcvarCheck(c, result)
     if result.typ.kind == tyVar: result = newDeref(result)
-    semDestructorCheck(c, result, {})
 
 proc semExprBranchScope(c: PContext, n: PNode): PNode =
   openScope(c)
@@ -421,15 +406,6 @@ proc addToVarSection(c: PContext; result: var PNode; orig, identDefs: PNode) =
   else:
     result.add identDefs
 
-proc addDefer(c: PContext; result: var PNode; s: PSym) =
-  let deferDestructorCall = createDestructorCall(c, s)
-  if deferDestructorCall != nil:
-    if result.kind != nkStmtList:
-      let oldResult = result
-      result = newNodeI(nkStmtList, result.info)
-      result.add oldResult
-    result.add deferDestructorCall
-
 proc isDiscardUnderscore(v: PSym): bool =
   if v.name.s == "_":
     v.flags.incl(sfGenSym)
@@ -609,7 +585,6 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         if def.kind == nkPar: v.ast = def[j]
         setVarType(v, tup.sons[j])
         b.sons[j] = newSymNode(v)
-      if not newDestructors: addDefer(c, result, v)
       checkNilable(v)
       if sfCompileTime in v.flags: hasCompileTime = true
   if hasCompileTime: vm.setupCompileTimeVar(c.module, c.cache, result)
@@ -1041,6 +1016,8 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
       checkConstructedType(s.info, s.typ)
       if s.typ.kind in {tyObject, tyTuple} and not s.typ.n.isNil:
         checkForMetaFields(s.typ.n)
+  instAllTypeBoundOp(c, n.info)
+
 
 proc semAllTypeSections(c: PContext; n: PNode): PNode =
   proc gatherStmts(c: PContext; n: PNode; result: PNode) {.nimcall.} =
@@ -1095,9 +1072,11 @@ proc semTypeSection(c: PContext, n: PNode): PNode =
   ## to allow the type definitions in the section to reference each other
   ## without regard for the order of their definitions.
   if sfNoForward notin c.module.flags or nfSem notin n.flags:
+    inc c.inTypeContext
     typeSectionLeftSidePass(c, n)
     typeSectionRightSidePass(c, n)
     typeSectionFinalPass(c, n)
+    dec c.inTypeContext
   result = n
 
 proc semParamList(c: PContext, n, genericParams: PNode, s: PSym) =
@@ -1318,7 +1297,7 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         var obj = t.sons[1].sons[0]
         while true:
           incl(obj.flags, tfHasAsgn)
-          if obj.kind == tyGenericBody: obj = obj.lastSon
+          if obj.kind in {tyGenericBody, tyGenericInst}: obj = obj.lastSon
           elif obj.kind == tyGenericInvocation: obj = obj.sons[0]
           else: break
         if obj.kind in {tyObject, tyDistinct}:
@@ -1331,10 +1310,6 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
       if not noError and sfSystemModule notin s.owner.flags:
         localError(n.info, errGenerated,
           "signature for '" & s.name.s & "' must be proc[T: object](x: var T)")
-    else:
-      doDestructorStuff(c, s, n)
-      if not experimentalMode(c):
-        localError n.info, "use the {.experimental.} pragma to enable destructors"
     incl(s.flags, sfUsed)
   of "deepcopy", "=deepcopy":
     if s.typ.len == 2 and
@@ -1561,8 +1536,11 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   s.options = gOptions
   if sfOverriden in s.flags or s.name.s[0] == '=': semOverride(c, s, n)
   if s.name.s[0] in {'.', '('}:
-    if s.name.s in [".", ".()", ".=", "()"] and not experimentalMode(c):
+    if s.name.s in [".", ".()", ".="] and not experimentalMode(c) and not newDestructors:
       message(n.info, warnDeprecated, "overloaded '.' and '()' operators are now .experimental; " & s.name.s)
+    elif s.name.s == "()" and not experimentalMode(c):
+      message(n.info, warnDeprecated, "overloaded '()' operators are now .experimental; " & s.name.s)
+
   if n.sons[bodyPos].kind != nkEmpty:
     # for DLL generation it is annoying to check for sfImportc!
     if sfBorrow in s.flags:

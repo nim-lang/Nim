@@ -45,8 +45,6 @@ type
   MsgHandler* = proc (filename: string, line, col: int, msgKind: MsgKind,
                        arg: string) {.nimcall.} ## what to do in case of an error
   FindFileHandler* = proc (filename: string): string {.nimcall.}
-{.deprecated: [TRstParseOptions: RstParseOptions, TRstParseOption: RstParseOption,
-              TMsgKind: MsgKind].}
 
 const
   messages: array[MsgKind, string] = [
@@ -127,8 +125,6 @@ type
     bufpos*: int
     line*, col*, baseIndent*: int
     skipPounds*: bool
-{.deprecated: [TTokType: TokType, TToken: Token, TTokenSeq: TokenSeq,
-              TLexer: Lexer].}
 
 proc getThing(L: var Lexer, tok: var Token, s: set[char]) =
   tok.kind = tkWord
@@ -288,10 +284,6 @@ type
     hasToc*: bool
 
   EParseError* = object of ValueError
-{.deprecated: [TLevelMap: LevelMap, TSubstitution: Substitution,
-              TSharedState: SharedState, TRstParser: RstParser,
-              TMsgHandler: MsgHandler, TFindFileHandler: FindFileHandler,
-              TMsgClass: MsgClass].}
 
 proc whichMsgClass*(k: MsgKind): MsgClass =
   ## returns which message class `k` belongs to.
@@ -340,11 +332,6 @@ proc rstMessage(p: RstParser, msgKind: MsgKind) =
   p.s.msgHandler(p.filename, p.line + p.tok[p.idx].line,
                              p.col + p.tok[p.idx].col, msgKind,
                              p.tok[p.idx].symbol)
-
-when false:
-  proc corrupt(p: RstParser) =
-    assert p.indentStack[0] == 0
-    for i in 1 .. high(p.indentStack): assert p.indentStack[i] < 1_000
 
 proc currInd(p: RstParser): int =
   result = p.indentStack[high(p.indentStack)]

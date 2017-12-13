@@ -303,6 +303,8 @@ else:
     include ioselects/ioselectors_select
   elif defined(solaris):
     include ioselects/ioselectors_poll # need to replace it with event ports
+  elif defined(genode):
+    include ioselects/ioselectors_select # TODO: use the native VFS layer
   else:
     include ioselects/ioselectors_poll
 

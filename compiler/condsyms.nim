@@ -111,3 +111,4 @@ proc initDefines*() =
   defineSymbol("nimNoArrayToCstringConversion")
   defineSymbol("nimNewRoof")
   defineSymbol("nimHasRunnableExamples")
+  defineSymbol("nimNewDot")
