@@ -286,68 +286,63 @@ when defined(windows) or defined(nimdoc):
     let p = getGlobalDispatcher()
     p.handles.len != 0 or p.timers.len != 0 or p.callbacks.len != 0
 
-  proc poll*(timeout = 500) =
-    ## Waits for completion events and processes them. Raises ``ValueError``
-    ## if there are no pending operations.
+  proc runOnce(timeout = 500): bool =
     let p = getGlobalDispatcher()
     if p.handles.len == 0 and p.timers.len == 0 and p.callbacks.len == 0:
       raise newException(ValueError,
         "No handles or timers registered in dispatcher.")
 
-    var progress = true
-    var timeout = timeout
-    while progress:
-      progress = false
-      if p.handles.len != 0:
-        let at = p.adjustedTimeout(timeout)
-        timeout = 0
-        var llTimeout =
-          if at == -1: winlean.INFINITE
-          else: at.int32
+    result = false
+    if p.handles.len != 0:
+      let at = p.adjustedTimeout(timeout)
+      var llTimeout =
+        if at == -1: winlean.INFINITE
+        else: at.int32
 
-        var lpNumberOfBytesTransferred: Dword
-        var lpCompletionKey: ULONG_PTR
-        var customOverlapped: PCustomOverlapped
-        let res = getQueuedCompletionStatus(p.ioPort,
-            addr lpNumberOfBytesTransferred, addr lpCompletionKey,
-            cast[ptr POVERLAPPED](addr customOverlapped), llTimeout).bool
-        progress = true
+      var lpNumberOfBytesTransferred: Dword
+      var lpCompletionKey: ULONG_PTR
+      var customOverlapped: PCustomOverlapped
+      let res = getQueuedCompletionStatus(p.ioPort,
+          addr lpNumberOfBytesTransferred, addr lpCompletionKey,
+          cast[ptr POVERLAPPED](addr customOverlapped), llTimeout).bool
+      result = true
 
-        # http://stackoverflow.com/a/12277264/492186
-        # TODO: http://www.serverframework.com/handling-multiple-pending-socket-read-and-write-operations.html
-        if res:
-          # This is useful for ensuring the reliability of the overlapped struct.
+      # http://stackoverflow.com/a/12277264/492186
+      # TODO: http://www.serverframework.com/handling-multiple-pending-socket-read-and-write-operations.html
+      if res:
+        # This is useful for ensuring the reliability of the overlapped struct.
+        assert customOverlapped.data.fd == lpCompletionKey.AsyncFD
+
+        customOverlapped.data.cb(customOverlapped.data.fd,
+            lpNumberOfBytesTransferred, OSErrorCode(-1))
+
+        # If cell.data != nil, then system.protect(rawEnv(cb)) was called,
+        # so we need to dispose our `cb` environment, because it is not needed
+        # anymore.
+        if customOverlapped.data.cell.data != nil:
+          system.dispose(customOverlapped.data.cell)
+
+        GC_unref(customOverlapped)
+      else:
+        let errCode = osLastError()
+        if customOverlapped != nil:
           assert customOverlapped.data.fd == lpCompletionKey.AsyncFD
-
           customOverlapped.data.cb(customOverlapped.data.fd,
-              lpNumberOfBytesTransferred, OSErrorCode(-1))
-
-          # If cell.data != nil, then system.protect(rawEnv(cb)) was called,
-          # so we need to dispose our `cb` environment, because it is not needed
-          # anymore.
+              lpNumberOfBytesTransferred, errCode)
           if customOverlapped.data.cell.data != nil:
             system.dispose(customOverlapped.data.cell)
-
           GC_unref(customOverlapped)
         else:
-          let errCode = osLastError()
-          if customOverlapped != nil:
-            assert customOverlapped.data.fd == lpCompletionKey.AsyncFD
-            customOverlapped.data.cb(customOverlapped.data.fd,
-                lpNumberOfBytesTransferred, errCode)
-            if customOverlapped.data.cell.data != nil:
-              system.dispose(customOverlapped.data.cell)
-            GC_unref(customOverlapped)
-          else:
-            if errCode.int32 == WAIT_TIMEOUT:
-              # Timed out
-              progress = false
-            else: raiseOSError(errCode)
+          if errCode.int32 == WAIT_TIMEOUT:
+            # Timed out
+            result = false
+          else: raiseOSError(errCode)
 
-      # Timer processing.
-      processTimers(p, progress)
-      # Callback queue processing
-      processPendingCallbacks(p, progress)
+    # Timer processing.
+    processTimers(p, result)
+    # Callback queue processing
+    processPendingCallbacks(p, result)
+
 
   var acceptEx: WSAPROC_ACCEPTEX
   var connectEx: WSAPROC_CONNECTEX
@@ -1210,7 +1205,7 @@ else:
       # descriptor was unregistered in callback via `unregister()`.
       discard
 
-  proc poll*(timeout = 500) =
+  proc runOnce(timeout = 500): bool =
     let p = getGlobalDispatcher()
     when ioselSupportedPlatform:
       let customSet = {Event.Timer, Event.Signal, Event.Process,
@@ -1219,55 +1214,52 @@ else:
     if p.selector.isEmpty() and p.timers.len == 0 and p.callbacks.len == 0:
       raise newException(ValueError,
         "No handles or timers registered in dispatcher.")
-    var progress = true
-    var timeout = timeout
-    while progress:
-      progress = false
-      if not p.selector.isEmpty():
-        var keys: array[64, ReadyKey]
-        var count = p.selector.selectInto(p.adjustedTimeout(timeout), keys)
-        timeout = 0
-        for i in 0..<count:
-          var custom = false
-          let fd = keys[i].fd
-          let events = keys[i].events
-          var rLength = 0 # len(data.readList) after callback
-          var wLength = 0 # len(data.writeList) after callback
 
-          if Event.Read in events or events == {Event.Error}:
-            processBasicCallbacks(fd, readList)
-            progress = true
+    result = false
+    if not p.selector.isEmpty():
+      var keys: array[64, ReadyKey]
+      var count = p.selector.selectInto(p.adjustedTimeout(timeout), keys)
+      for i in 0..<count:
+        var custom = false
+        let fd = keys[i].fd
+        let events = keys[i].events
+        var rLength = 0 # len(data.readList) after callback
+        var wLength = 0 # len(data.writeList) after callback
 
-          if Event.Write in events or events == {Event.Error}:
-            processBasicCallbacks(fd, writeList)
-            progress = true
+        if Event.Read in events or events == {Event.Error}:
+          processBasicCallbacks(fd, readList)
+          result = true
 
-          if Event.User in events or events == {Event.Error}:
-            processBasicCallbacks(fd, readList)
+        if Event.Write in events or events == {Event.Error}:
+          processBasicCallbacks(fd, writeList)
+          result = true
+
+        if Event.User in events or events == {Event.Error}:
+          processBasicCallbacks(fd, readList)
+          custom = true
+          if rLength == 0:
+            p.selector.unregister(fd)
+          result = true
+
+        when ioselSupportedPlatform:
+          if (customSet * events) != {}:
             custom = true
-            if rLength == 0:
-              p.selector.unregister(fd)
-            progress = true
+            processCustomCallbacks(fd)
+            result = true
 
-          when ioselSupportedPlatform:
-            if (customSet * events) != {}:
-              custom = true
-              processCustomCallbacks(fd)
-              progress = true
+        # because state `data` can be modified in callback we need to update
+        # descriptor events with currently registered callbacks.
+        if not custom:
+          var newEvents: set[Event] = {}
+          if rLength != -1 and wLength != -1:
+            if rLength > 0: incl(newEvents, Event.Read)
+            if wLength > 0: incl(newEvents, Event.Write)
+            p.selector.updateHandle(SocketHandle(fd), newEvents)
 
-          # because state `data` can be modified in callback we need to update
-          # descriptor events with currently registered callbacks.
-          if not custom:
-            var newEvents: set[Event] = {}
-            if rLength != -1 and wLength != -1:
-              if rLength > 0: incl(newEvents, Event.Read)
-              if wLength > 0: incl(newEvents, Event.Write)
-              p.selector.updateHandle(SocketHandle(fd), newEvents)
-
-      # Timer processing.
-      processTimers(p, progress)
-      # Callback queue processing
-      processPendingCallbacks(p, progress)
+    # Timer processing.
+    processTimers(p, result)
+    # Callback queue processing
+    processPendingCallbacks(p, result)
 
   proc recv*(socket: AsyncFD, size: int,
              flags = {SocketFlag.SafeDisconn}): Future[string] =
@@ -1489,6 +1481,19 @@ else:
     var data = newAsyncData()
     data.readList.add(cb)
     p.selector.registerEvent(SelectEvent(ev), data)
+
+proc drain*(timeout = 500) =
+  ## Waits for completion events and processes them. Raises ``ValueError``
+  ## if there are no pending operations. In contrast to ``poll`` this
+  ## processes as many events as are available.
+  if runOnce(timeout):
+    while runOnce(0): discard
+
+proc poll*(timeout = 500) =
+  ## Waits for completion events and processes them. Raises ``ValueError``
+  ## if there are no pending operations. This runs the underlying OS
+  ## `epoll`:idx: or `kqueue`:idx: primitive only once.
+  discard runOnce()
 
 # Common procedures between current and upcoming asyncdispatch
 include includes.asynccommon
