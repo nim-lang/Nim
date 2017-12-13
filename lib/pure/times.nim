@@ -546,6 +546,10 @@ proc getDaysInYear*(year: int): int =
   ## Get the number of days in a ``year``
   result = 365 + (if isLeapYear(year): 1 else: 0)
 
+proc assertValidDate(monthday: MonthdayRange, month: Month, year: int) {.inline.} =
+  assert monthday <= getDaysInMonth(month, year),
+    $year & "-" & $ord(month) & "-" & $monthday & " is not a valid date"
+
 proc evaluateInterval(dt: DateTime, interval: TimeInterval): tuple[adjDiff, absDiff: int64] =
   ## Evaluates how many seconds the interval is worth
   ## in the context of ``dt``.
@@ -1222,6 +1226,7 @@ proc countYearsAndDays*(daySpan: int): tuple[years: int, days: int] =
 proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int): YeardayRange =
   ## Returns the day of the year.
   ## Equivalent with ``initDateTime(day, month, year).yearday``.
+  assertValidDate monthday, month, year
   const daysUntilMonth:     array[Month, int] = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
   const daysUntilMonthLeap: array[Month, int] = [0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335]
 
@@ -1233,6 +1238,7 @@ proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int): YeardayRan
 proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay =
   ## Returns the day of the week enum from day, month and year.
   ## Equivalent with ``initDateTime(day, month, year).weekday``.
+  assertValidDate monthday, month, year
   # 1970-01-01 is a Thursday, we adjust to the previous Monday
   let days = toEpochday(monthday, month, year) - 3
   let weeks = (if days >= 0: days else: days - 6) div 7
@@ -1260,6 +1266,7 @@ proc toTimeInterval*(time: Time): TimeInterval =
 proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
                    hour: HourRange, minute: MinuteRange, second: SecondRange, zone: Timezone = local()): DateTime =
   ## Create a new ``DateTime`` in the specified timezone.
+  assertValidDate monthday, month, year
   doAssert monthday <= getDaysInMonth(month, year), "Invalid date: " & $month & " " & $monthday & ", " & $year
   let dt = DateTime(
     monthday:  monthday,
