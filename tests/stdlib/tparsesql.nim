@@ -1,438 +1,376 @@
-import unittest
+discard """
+  file: "tparsesql.nim"
+  output: '''select
+  foo
+from
+  table;
+select
+  foo
+from
+  table;
+select
+  foo
+from
+  table
+limit
+  10;
+select
+  foo,
+  bar,
+  baz
+from
+  table
+limit
+  10;
+select
+  foo as bar
+from
+  table;
+select
+  foo as foo_prime,
+  bar as bar_prime,
+  baz as baz_prime
+from
+  table;
+select
+  *
+from
+  table;
+select
+  *
+from
+  table
+where
+  ((a = b) and (c = d));
+select
+  *
+from
+  table
+where
+  (not b);
+select
+  *
+from
+  table
+where
+  (a and (not b));
+select
+  *
+from
+  table
+where
+  (((a = b) and (c = d)) or ((n is null) and (((not b) + 1) = 3)));
+select
+  *
+from
+  table
+having
+  ((a = b) and (c = d));
+select
+  a,
+  b
+from
+  table
+group by
+  a;
+select
+  a,
+  b
+from
+  table
+group by
+  1, 2;
+select
+  t.a
+from
+  t as t;
+select
+  a,
+  b
+from
+  (
+    select
+      *
+    from
+      t
+  );
+select
+  a,
+  b
+from
+  (
+    select
+      *
+    from
+      t
+  ) as foo;
+select
+  a,
+  b
+from
+  (
+    select
+      *
+    from
+      (
+        select
+          *
+        from
+          (
+            select
+              *
+            from
+              (
+                select
+                  *
+                from
+                  inner as inner1
+              ) as inner2
+          ) as inner3
+      ) as inner4
+  ) as inner5;
+select
+  a,
+  b
+from
+  (
+    select
+      *
+    from
+      a
+  ), (
+    select
+      *
+    from
+      b
+  ), (
+    select
+      *
+    from
+      c
+  );
+select
+  *
+from
+  Products
+where
+  (Price BETWEEN (10 AND 20));
+select
+  id
+from
+  a
+join
+  b
+on
+  (a.id == b.id);
+select
+  id
+from
+  a
+join
+  (
+    select
+      id
+    from
+      c
+  ) as b
+on
+  (a.id == b.id);
+select
+  id
+from
+  a
+INNER join
+  b
+on
+  (a.id == b.id);
+select
+  id
+from
+  a
+OUTER join
+  b
+on
+  (a.id == b.id);
+select
+  id
+from
+  a
+CROSS join
+  b
+on
+  (a.id == b.id);
+create type happiness as enum ('happy', 'very happy', 'ecstatic');
+create table holidays(
+  num_weeks int,
+  happiness happiness);
+create index table1_attr1 on table1(attr1);
+select
+  *
+from
+  myTab
+where
+  (col1 = 'happy');
 
-import sequtils
-import strutils
+insert into Customers (CustomerName, ContactName, Address, City, PostalCode, Country)
+values ('Cardinal', 'Tom B. Erichsen', 'Skagen 21', 'Stavanger', '4006', 'Norway');
+insert into TableName default values;
+
+update
+  Customers
+set
+  ContactName = 'Alfred Schmidt', City = 'Frankfurt'
+where
+  (CustomerID = 1);
+delete from table_name;
+delete from table_name;
+select
+  *
+from
+  Customers;
+select
+  *
+from
+  Customers
+where
+  ((((CustomerName LIKE 'L%') OR (CustomerName LIKE 'R%')) OR (CustomerName LIKE 'W%')) AND (Country = 'USA'))
+order by
+  CustomerName;
+
+'''
+"""
+
 import parsesql
 
-proc fold(str: string): string =
-  var
-    lines = str.split("\L")
-    minCount = 1000
-  while lines.len > 0 and lines[0].strip().len == 0:
-    lines.delete(0, 0)
-  while lines.len > 0 and lines[lines.len-1].strip().len == 0:
-    lines.delete(lines.len, lines.len)
-  for line in lines:
-    var count = 0
-    while line[count] == ' ':
-      inc count
-    if minCount > count:
-      minCount = count
-  for i, line in lines:
-    lines[i] = line[minCount..^1]
-  return lines.join("\L")
-
-proc parseCheck(have: string, need: string) =
-  var
-    sql = parseSQL(have)
-    sqlHave = renderSQL(sql, true).strip()
-    sqlNeed = need.fold().strip()
-  var
-    haveLines = sqlHave.split("\L")
-    needLines = sqlNeed.split("\L")
-  for i in 0..<haveLines.len:
-    if haveLines[i] != needLines[i]:
-      echo ""
-      echo " --- have --- "
-      echo sqlHave
-      #echo repr(sql)
-      echo " --- need --- "
-      echo sqlNeed
-      echo " --- lines --- "
-      echo repr haveLines[i]
-      echo repr needLines[i]
-      echo "line: ", i
-      raise newException(Exception, "Two don't equal.")
-
-
-suite "sql":
-
-  test "basic":
-    parseCheck "SELECT foo FROM table;", """
-      SELECT
-        foo
-      FROM
-        table;
-    """
-
-  test "dont require ; at the end":
-    parseCheck "SELECT foo FROM table", """
-      SELECT
-        foo
-      FROM
-        table;
-    """
-
-  test "limit":
-    parseCheck "SELECT foo FROM table limit 10", """
-      SELECT
-        foo
-      FROM
-        table
-      LIMIT
-        10;
-    """
-
-  test "fields":
-    parseCheck "SELECT foo, bar, baz FROM table limit 10", """
-      SELECT
-        foo,
-        bar,
-        baz
-      FROM
-        table
-      LIMIT
-        10;
-    """
-
-  test "as_field":
-    parseCheck "SELECT foo AS bar FROM table", """
-      SELECT
-        foo AS bar
-      FROM
-        table;
-    """
-
-    parseCheck "SELECT foo AS foo_prime, bar AS bar_prime, baz AS baz_prime FROM table", """
-      SELECT
-        foo AS foo_prime,
-        bar AS bar_prime,
-        baz AS baz_prime
-      FROM
-        table;
-    """
-
-  test "select *":
-    parseCheck "SELECT * FROM table", """
-      SELECT
-        *
-      FROM
-        table;
-    """
-    # TODO: COUNT(*)
-    #parseCheck "SELECT COUNT(*) FROM table", """
-    #  SELECT *
-    #  FROM table;
-    #"""
-
-  test "where":
-    parseCheck """
-      SELECT * FROM table
-      WHERE a = b and c = d
-    """, """
-      SELECT
-        *
-      FROM
-        table
-      WHERE
-        ((a = b) and (c = d));
-    """
-
-    parseCheck """
-      SELECT * FROM table
-      WHERE not b
-    """, """
-      SELECT
-        *
-      FROM
-        table
-      WHERE
-        (not b);
-    """
-
-    parseCheck """
-      SELECT
-        *
-      FROM
-        table
-      WHERE
-        a and not b
-    """, """
-      SELECT
-        *
-      FROM
-        table
-      WHERE
-        (a and (not b));
-    """
-
-    parseCheck """
-      SELECT *
-      FROM table
-      WHERE not a and not b
-    """, """
-      SELECT
-        *
-      FROM
-        table
-      WHERE
-        ((not a) and (not b));
-    """
-
-    parseCheck """
-      SELECT * FROM table
-      WHERE a = b and c = d or n is null and not b + 1 = 3
-    """, """
-      SELECT
-        *
-      FROM
-        table
-      WHERE
-        (((a = b) and (c = d)) or ((n is null) and (((not b) + 1) = 3)));
-    """
-
-  test "having":
-    parseCheck """
-      SELECT * FROM table
-      HAVING a = b and c = d
-    """, """
-      SELECT
-        *
-      FROM
-        table
-      HAVING
-        ((a = b) and (c = d));
-    """
-
-  test "group by":
-    parseCheck """
-      SELECT a, b FROM table
-      GROUP BY a
-    """, """
-      SELECT
-        a,
-        b
-      FROM
-        table
-      GROUP BY
-        a;
-    """
-
-    parseCheck """
-      SELECT a, b FROM table
-      GROUP BY 1, 2
-    """, """
-      SELECT
-        a,
-        b
-      FROM
-        table
-      GROUP BY
-        1, 2;
-    """
-
-  test "as table":
-    parseCheck """
-      SELECT t.a FROM t as t
-    """, """
-      SELECT
-        t.a
-      FROM
-        t AS t;
-    """
-
-  test "subselects":
-    parseCheck """
-      SELECT a, b FROM (
-        SELECT * FROM t
-      )
-    """, """
-      SELECT
-        a,
-        b
-      FROM
-        (
-          SELECT
-            *
-          FROM
-            t
-        );
-    """
-
-    parseCheck """
-      SELECT a, b FROM (
-        SELECT * FROM t
-      ) as foo
-    """, """
-      SELECT
-        a,
-        b
-      FROM
-        (
-          SELECT
-            *
-          FROM
-            t
-        ) AS foo;
-    """
-
-    parseCheck """
-      SELECT a, b FROM (
-        SELECT * FROM (
-          SELECT * FROM (
-            SELECT * FROM (
-              SELECT * FROM inner as inner1
-            ) as inner2
-          ) as inner3
-        ) as inner4
-      ) as inner5
-    """, """
-      SELECT
-        a,
-        b
-      FROM
-        (
-          SELECT
-            *
-          FROM
-            (
-              SELECT
-                *
-              FROM
-                (
-                  SELECT
-                    *
-                  FROM
-                    (
-                      SELECT
-                        *
-                      FROM
-                        inner AS inner1
-                    ) AS inner2
-                ) AS inner3
-            ) AS inner4
-        ) AS inner5;
-    """
-
-    parseCheck """
-      SELECT a, b FROM
-        (SELECT * FROM a),
-        (SELECT * FROM b),
-        (SELECT * FROM c)
-    ""","""
-      SELECT
-        a,
-        b
-      FROM
-        (
-          SELECT
-            *
-          FROM
-            a
-        ), (
-          SELECT
-            *
-          FROM
-            b
-        ), (
-          SELECT
-            *
-          FROM
-            c
-        );
-    """
-
-  test "original test":
-    parseCheck """
-      CREATE TYPE happiness AS ENUM ('happy', 'very happy', 'ecstatic');
-      CREATE TABLE holidays (
-         num_weeks int,
-         happiness happiness
-      );
-      CREATE INDEX table1_attr1 ON table1(attr1);
-
-      SELECT * FROM myTab WHERE col1 = 'happy';
-    """, """
-      CREATE TYPE happiness AS ENUM ('happy', 'very happy', 'ecstatic');
-      CREATE TABLE holidays(
-        num_weeks int,
-        happiness happiness);
-      CREATE INDEX table1_attr1 ON table1(attr1);
-      SELECT
-        *
-      FROM
-        myTab
-      WHERE
-        (col1 = 'happy');
-    """
-
-  test "joins":
-    parseCheck """
-      SELECT id FROM a
-      JOIN b
-      ON a.id == b.id
-    """, """
-      SELECT
-        id
-      FROM
-        a
-      JOIN
-        b
-      ON
-        (a.id == b.id);
-    """
-
-    parseCheck """
-      SELECT id FROM a
-      JOIN (SELECT id from c) as b
-      ON a.id == b.id
-    """, """
-      SELECT
-        id
-      FROM
-        a
-      JOIN
-        (
-          SELECT
-            id
-          FROM
-            c
-        ) AS b
-      ON
-        (a.id == b.id);
-    """
-
-    parseCheck """
-      SELECT id FROM a
-      INNER JOIN b
-      ON a.id == b.id
-    """, """
-      SELECT
-        id
-      FROM
-        a
-      INNER JOIN
-        b
-      ON
-        (a.id == b.id);
-    """
-
-    parseCheck """
-      SELECT id FROM a
-      OUTER JOIN b
-      ON a.id == b.id
-    """, """
-      SELECT
-        id
-      FROM
-        a
-      OUTER JOIN
-        b
-      ON
-        (a.id == b.id);
-    """
-
-    parseCheck """
-      SELECT id FROM a
-      CROSS JOIN b
-      ON a.id == b.id
-    """, """
-      SELECT
-        id
-      FROM
-        a
-      CROSS JOIN
-        b
-      ON
-        (a.id == b.id);
-    """
+echo $parseSQL "SELECT foo FROM table;"
+echo $parseSQL "SELECT foo FROM table"
+echo $parseSQL "SELECT foo FROM table limit 10"
+echo $parseSQL "SELECT foo, bar, baz FROM table limit 10"
+echo $parseSQL "SELECT foo AS bar FROM table"
+echo $parseSQL "SELECT foo AS foo_prime, bar AS bar_prime, baz AS baz_prime FROM table"
+echo $parseSQL "SELECT * FROM table"
+#TODO add count(*)
+#echo $parseSQL "SELECT COUNT(*) FROM table"
+echo $parseSQL """
+SELECT * FROM table
+WHERE a = b and c = d
+"""
+echo $parseSQL """
+SELECT * FROM table
+WHERE not b
+"""
+echo $parseSQL """
+SELECT
+  *
+FROM
+  table
+WHERE
+  a and not b
+"""
+echo $parseSQL """
+SELECT * FROM table
+WHERE a = b and c = d or n is null and not b + 1 = 3
+"""
+echo $parseSQL """
+SELECT * FROM table
+HAVING a = b and c = d
+"""
+echo $parseSQL """
+SELECT a, b FROM table
+GROUP BY a
+"""
+echo $parseSQL """
+SELECT a, b FROM table
+GROUP BY 1, 2
+"""
+echo $parseSQL "SELECT t.a FROM t as t"
+echo $parseSQL """
+SELECT a, b FROM (
+  SELECT * FROM t
+)
+"""
+echo $parseSQL """
+SELECT a, b FROM (
+  SELECT * FROM t
+) as foo
+"""
+echo $parseSQL """
+SELECT a, b FROM (
+  SELECT * FROM (
+    SELECT * FROM (
+      SELECT * FROM (
+        SELECT * FROM inner as inner1
+      ) as inner2
+    ) as inner3
+  ) as inner4
+) as inner5
+"""
+echo $parseSQL """
+SELECT a, b FROM
+  (SELECT * FROM a),
+  (SELECT * FROM b),
+  (SELECT * FROM c)
+"""
+echo $parseSQL """
+SELECT * FROM Products
+WHERE Price BETWEEN 10 AND 20;
+"""
+echo $parseSQL """
+SELECT id FROM a
+JOIN b
+ON a.id == b.id
+"""
+echo $parseSQL """
+SELECT id FROM a
+JOIN (SELECT id from c) as b
+ON a.id == b.id
+"""
+echo $parseSQL """
+SELECT id FROM a
+INNER JOIN b
+ON a.id == b.id
+"""
+echo $parseSQL """
+SELECT id FROM a
+OUTER JOIN b
+ON a.id == b.id
+"""
+echo $parseSQL """
+SELECT id FROM a
+CROSS JOIN b
+ON a.id == b.id
+"""
+echo $parseSQL """
+CREATE TYPE happiness AS ENUM ('happy', 'very happy', 'ecstatic');
+CREATE TABLE holidays (
+  num_weeks int,
+  happiness happiness
+);
+CREATE INDEX table1_attr1 ON table1(attr1);
+SELECT * FROM myTab WHERE col1 = 'happy';
+"""
+echo $parseSQL """
+INSERT INTO Customers (CustomerName, ContactName, Address, City, PostalCode, Country)
+VALUES ('Cardinal', 'Tom B. Erichsen', 'Skagen 21', 'Stavanger', '4006', 'Norway');
+"""
+echo $parseSQL """
+INSERT INTO TableName DEFAULT VALUES
+"""
+echo $parseSQL """
+UPDATE Customers
+SET ContactName = 'Alfred Schmidt', City= 'Frankfurt'
+WHERE CustomerID = 1;
+"""
+echo $parseSQL "DELETE FROM table_name;"
+echo $parseSQL "DELETE * FROM table_name;"
+echo $parseSQL """
+--Select all:
+SELECT * FROM Customers;
+"""
+echo $parseSQL """
+SELECT * FROM Customers WHERE (CustomerName LIKE 'L%'
+OR CustomerName LIKE 'R%' /*OR CustomerName LIKE 'S%'
+OR CustomerName LIKE 'T%'*/ OR CustomerName LIKE 'W%')
+AND Country='USA'
+ORDER BY CustomerName;
+"""

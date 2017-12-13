@@ -662,10 +662,12 @@ proc getPrecedence(p: SqlParser): int =
   elif isOpr(p, "=") or isOpr(p, "<") or isOpr(p, ">") or isOpr(p, ">=") or
        isOpr(p, "<=") or isOpr(p, "<>") or isOpr(p, "!=") or isKeyw(p, "is") or
        isKeyw(p, "like"):
-    result = 3
+    result = 4
   elif isKeyw(p, "and"):
-    result = 2
+    result = 3
   elif isKeyw(p, "or"):
+    result = 2
+  elif isKeyw(p, "between"):
     result = 1
   elif p.tok.kind == tkOperator:
     # user-defined operator:
@@ -1015,6 +1017,8 @@ proc parseUpdate(p: var SqlParser): SqlNode =
 
 proc parseDelete(p: var SqlParser): SqlNode =
   getTok(p)
+  if isOpr(p, "*"):
+    getTok(p)
   result = newNode(nkDelete)
   eat(p, "from")
   result.add(primary(p))
@@ -1156,7 +1160,7 @@ proc open(p: var SqlParser, input: Stream, filename: string) =
 
 proc parse(p: var SqlParser): SqlNode =
   ## parses the content of `p`'s input stream and returns the SQL AST.
-  ## Syntax errors raise an `EInvalidSql` exception.
+  ## Syntax errors raise an `SqlParseError` exception.
   result = newNode(nkStmtList)
   while p.tok.kind != tkEof:
     parseStmt(p, result)
@@ -1173,7 +1177,7 @@ proc close(p: var SqlParser) =
 proc parseSQL*(input: Stream, filename: string): SqlNode =
   ## parses the SQL from `input` into an AST and returns the AST.
   ## `filename` is only used for error messages.
-  ## Syntax errors raise an `EInvalidSql` exception.
+  ## Syntax errors raise an `SqlParseError` exception.
   var p: SqlParser
   open(p, input, filename)
   try:
@@ -1184,7 +1188,7 @@ proc parseSQL*(input: Stream, filename: string): SqlNode =
 proc parseSQL*(input: string, filename=""): SqlNode =
   ## parses the SQL from `input` into an AST and returns the AST.
   ## `filename` is only used for error messages.
-  ## Syntax errors raise an `EInvalidSql` exception.
+  ## Syntax errors raise an `SqlParseError` exception.
   parseSQL(newStringStream(input), "")
 
 
@@ -1210,7 +1214,7 @@ proc addKeyw(s: var SqlWriter, thing: string) =
   s.buffer.add(" ")
 
 proc rm(s: var SqlWriter, chars = " \L,") =
-  while s.buffer[^1] in chars:
+  while s.buffer.len > 0 and s.buffer[^1] in chars:
     s.buffer = s.buffer[0..^2]
 
 proc newLine(s: var SqlWriter) =
@@ -1253,6 +1257,7 @@ proc ra(n: SqlNode, s: var SqlWriter) =
     else:
       s.add("\"" & replace(n.strVal, "\"", "\"\"") & "\"")
   of nkStringLit:
+    # TODO add e'' as an option?
     s.add(escape(n.strVal, "'", "'"))
   of nkBitStringLit:
     s.add("b'" & n.strVal & "'")
@@ -1329,23 +1334,25 @@ proc ra(n: SqlNode, s: var SqlWriter) =
     assert n.len == 3
     s.addKeyw("insert into")
     ra(n.sons[0], s)
+    s.add(" ")
     ra(n.sons[1], s)
     if n.sons[2].kind == nkDefault:
       s.addKeyw("default values")
     else:
       s.newLine()
       ra(n.sons[2], s)
+    s.rm(" ")
     s.add(';')
   of nkUpdate:
-    s.addKeyw("update")
-    ra(n.sons[0], s)
-    s.addKeyw("set")
-    var L = n.len
-    for i in 1 .. L-2:
-      if i > 1: s.add(", ")
-      var it = n.sons[i]
-      assert it.kind == nkAsgn
-      ra(it, s)
+    s.innerKeyw("update"):
+      ra(n.sons[0], s)
+    s.innerKeyw("set"):
+      var L = n.len
+      for i in 1 .. L-2:
+        if i > 1: s.add(", ")
+        var it = n.sons[i]
+        assert it.kind == nkAsgn
+        ra(it, s)
     ra(n.sons[L-1], s)
     s.add(';')
   of nkDelete:
@@ -1404,8 +1411,8 @@ proc ra(n: SqlNode, s: var SqlWriter) =
     s.innerKeyw("having"):
       rs(n, s, "", "", ", ")
   of nkOrder:
-    s.addKeyw("order by")
-    rs(n, s, "", "", ", ")
+    s.innerKeyw("order by"):
+      rs(n, s, "", "", ", ")
   of nkJoin:
     var joinType = n.sons[0].strVal
     if joinType == "":
