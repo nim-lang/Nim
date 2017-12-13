@@ -38,11 +38,11 @@ type
 const SIG_HOLD* = cast[SigHandler](2)
 
 type
-  TimeT* {.importc: "time_t", header: "<time.h>".} = distinct clong
+  Time* {.importc: "time_t", header: "<time.h>".} = distinct clong
 
   Timespec* {.importc: "struct timespec",
                header: "<time.h>", final, pure.} = object ## struct timespec
-    tv_sec*: TimeT  ## Seconds.
+    tv_sec*: Time  ## Seconds.
     tv_nsec*: clong  ## Nanoseconds.
 
   Dirent* {.importc: "struct dirent",

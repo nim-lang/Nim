@@ -34,11 +34,11 @@ type
 {.deprecated: [TSocketHandle: SocketHandle].}
 
 type
-  TimeT* {.importc: "time_t", header: "<time.h>".} = distinct int
+  Time* {.importc: "time_t", header: "<time.h>".} = distinct int
 
   Timespec* {.importc: "struct timespec",
                header: "<time.h>", final, pure.} = object ## struct timespec
-    tv_sec*: TimeT  ## Seconds.
+    tv_sec*: Time  ## Seconds.
     tv_nsec*: int  ## Nanoseconds.
 
   Dirent* {.importc: "struct dirent",
@@ -216,9 +216,9 @@ type
                           ## For other file types, the use of this field is
                           ## unspecified.
     when defined(macosx) or defined(android):
-      st_atime*: TimeT    ## Time of last access.
-      st_mtime*: TimeT    ## Time of last data modification.
-      st_ctime*: TimeT    ## Time of last status change.
+      st_atime*: Time     ## Time of last access.
+      st_mtime*: Time     ## Time of last data modification.
+      st_ctime*: Time     ## Time of last status change.
     else:
       st_atim*: Timespec  ## Time of last access.
       st_mtim*: Timespec  ## Time of last data modification.

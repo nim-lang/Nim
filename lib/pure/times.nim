@@ -42,6 +42,8 @@ include "system/inclrtl"
 when defined(posix):
   import posix
 
+  type CTime = posix.Time
+
   proc posix_gettimeofday(tp: var Timeval, unused: pointer = nil) {.
     importc: "gettimeofday", header: "<sys/time.h>".}
 
@@ -53,7 +55,7 @@ elif defined(windows):
   import winlean
 
   # newest version of Visual C++ defines time_t to be of 64 bits
-  type TimeT {.importc: "time_t", header: "<time.h>".} = distinct int64
+  type CTime {.importc: "time_t", header: "<time.h>".} = distinct int64
   # visual c's c runtime exposes these under a different name
   var timezone {.importc: "_timezone", header: "<time.h>".}: int
 
@@ -353,7 +355,7 @@ else:
   type
     StructTmPtr = ptr StructTm
 
-  proc localtime(timer: ptr TimeT): StructTmPtr {. importc: "localtime", header: "<time.h>", tags: [].}
+  proc localtime(timer: ptr CTime): StructTmPtr {. importc: "localtime", header: "<time.h>", tags: [].}
 
   proc toAdjTime(tm: StructTm): Time =
     let epochDay = toEpochday(tm.monthday, (tm.month + 1).Month, tm.year.int + 1900)
@@ -365,12 +367,12 @@ else:
   proc getStructTm(time: Time | int64): StructTm =
     let timei64 = time.int64
     var a =
-      if timei64 < low(TimeT):
-        TimeT(low(TimeT))
-      elif timei64 > high(TimeT):
-        TimeT(high(TimeT))
+      if timei64 < low(CTime):
+        CTime(low(CTime))
+      elif timei64 > high(CTime):
+        CTime(high(CTime))
       else:
-        TimeT(timei64)
+        CTime(timei64)
     result = localtime(addr(a))[]
 
   proc localZoneInfoFromUtc(time: Time): ZonedTime =
@@ -1299,7 +1301,7 @@ else:
   type
     Clock {.importc: "clock_t".} = distinct int
 
-  proc timec(timer: ptr TimeT): TimeT {.
+  proc timec(timer: ptr CTime): CTime {.
     importc: "time", header: "<time.h>", tags: [].}
 
   proc getClock(): Clock {.importc: "clock", header: "<time.h>", tags: [TimeEffect].}
@@ -1314,13 +1316,13 @@ else:
     epochDiff = 116444736000000000'i64
     rateDiff = 10000000'i64 # 100 nsecs
 
-  proc unixTimeToWinTime*(time: TimeT): int64 =
+  proc unixTimeToWinTime*(time: CTime): int64 =
     ## converts a UNIX `Time` (``time_t``) to a Windows file time
     result = int64(time) * rateDiff + epochDiff
 
-  proc winTimeToUnixTime*(time: int64): TimeT =
+  proc winTimeToUnixTime*(time: int64): CTime =
     ## converts a Windows time to a UNIX `Time` (``time_t``)
-    result = TimeT((time - epochDiff) div rateDiff)
+    result = CTime((time - epochDiff) div rateDiff)
 
   when not defined(useNimRtl):
     proc epochTime(): float =

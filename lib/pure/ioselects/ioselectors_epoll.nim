@@ -279,14 +279,14 @@ proc registerTimer*[T](s: Selector[T], timeout: int, oneshot: bool,
   epv.data.u64 = fdi.uint
 
   if oneshot:
-    new_ts.it_interval.tv_sec = TimeT(0)
+    new_ts.it_interval.tv_sec = Time(0)
     new_ts.it_interval.tv_nsec = 0
-    new_ts.it_value.tv_sec = TimeT(timeout div 1_000)
+    new_ts.it_value.tv_sec = Time(timeout div 1_000)
     new_ts.it_value.tv_nsec = (timeout %% 1_000) * 1_000_000
     incl(events, Event.Oneshot)
     epv.events = epv.events or EPOLLONESHOT
   else:
-    new_ts.it_interval.tv_sec = TimeT(timeout div 1000)
+    new_ts.it_interval.tv_sec = Time(timeout div 1000)
     new_ts.it_interval.tv_nsec = (timeout %% 1_000) * 1_000_000
     new_ts.it_value.tv_sec = new_ts.it_interval.tv_sec
     new_ts.it_value.tv_nsec = new_ts.it_interval.tv_nsec

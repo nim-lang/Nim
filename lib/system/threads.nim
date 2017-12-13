@@ -168,11 +168,11 @@ else:
     schedh = "#define _GNU_SOURCE\n#include <sched.h>"
     pthreadh = "#define _GNU_SOURCE\n#include <pthread.h>"
 
-  when not declared(TimeT):
+  when not declared(Time):
     when defined(linux):
-      type TimeT = clong
+      type Time = clong
     else:
-      type TimeT = int
+      type Time = int
 
   when defined(linux) and defined(amd64):
     type
@@ -192,7 +192,7 @@ else:
                      header: "<sys/types.h>".} = object
   type
     Timespec {.importc: "struct timespec", header: "<time.h>".} = object
-      tv_sec: TimeT
+      tv_sec: Time
       tv_nsec: clong
   {.deprecated: [TSysThread: SysThread, Tpthread_attr: PThreadAttr,
                 Ttimespec: Timespec, TThreadVarSlot: ThreadVarSlot].}

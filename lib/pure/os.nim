@@ -173,7 +173,7 @@ proc findExe*(exe: string, followSymlinks: bool = true;
         return x
   result = ""
 
-proc getLastModificationTime*(file: string): Time {.rtl, extern: "nos$1".} =
+proc getLastModificationTime*(file: string): times.Time {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s last modification time.
   when defined(posix):
     var res: Stat
@@ -186,7 +186,7 @@ proc getLastModificationTime*(file: string): Time {.rtl, extern: "nos$1".} =
     result = fromUnix(winTimeToUnixTime(rdFileTime(f.ftLastWriteTime)).int64)
     findClose(h)
 
-proc getLastAccessTime*(file: string): Time {.rtl, extern: "nos$1".} =
+proc getLastAccessTime*(file: string): times.Time {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s last read or write access time.
   when defined(posix):
     var res: Stat
@@ -199,7 +199,7 @@ proc getLastAccessTime*(file: string): Time {.rtl, extern: "nos$1".} =
     result = fromUnix(winTimeToUnixTime(rdFileTime(f.ftLastAccessTime)).int64)
     findClose(h)
 
-proc getCreationTime*(file: string): Time {.rtl, extern: "nos$1".} =
+proc getCreationTime*(file: string): times.Time {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s creation time.
   ##
   ## **Note:** Under POSIX OS's, the returned time may actually be the time at
@@ -1443,7 +1443,7 @@ proc sleep*(milsecs: int) {.rtl, extern: "nos$1", tags: [TimeEffect].} =
     winlean.sleep(int32(milsecs))
   else:
     var a, b: Timespec
-    a.tv_sec = TimeT(milsecs div 1000)
+    a.tv_sec = posix.Time(milsecs div 1000)
     a.tv_nsec = (milsecs mod 1000) * 1000 * 1000
     discard posix.nanosleep(a, b)
 
@@ -1481,9 +1481,9 @@ type
     size*: BiggestInt # Size of file.
     permissions*: set[FilePermission] # File permissions
     linkCount*: BiggestInt # Number of hard links the file object has.
-    lastAccessTime*: Time # Time file was last accessed.
-    lastWriteTime*: Time # Time file was last modified/written to.
-    creationTime*: Time # Time file was created. Not supported on all systems!
+    lastAccessTime*: times.Time # Time file was last accessed.
+    lastWriteTime*: times.Time # Time file was last modified/written to.
+    creationTime*: times.Time # Time file was created. Not supported on all systems!
 
 template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
   ## Transforms the native file info structure into the one nim uses.
