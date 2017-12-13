@@ -1364,7 +1364,7 @@ proc getGMTime*(time: Time): DateTime {.tags: [], raises: [], benign, deprecated
   time.utc
 
 proc getTimezone*(): int {.tags: [TimeEffect], raises: [], benign, deprecated.} =
-  ## returns the offset of the local (non-DST) timezone in seconds west of UTC.
+  ## Returns the offset of the local (non-DST) timezone in seconds west of UTC.
   when defined(JS):
     return newDate().getTimezoneOffset() * 60
   elif defined(freebsd) or defined(netbsd) or defined(openbsd):
@@ -1377,10 +1377,7 @@ proc getTimezone*(): int {.tags: [TimeEffect], raises: [], benign, deprecated.} 
     return timezone
 
 proc timeInfoToTime*(dt: DateTime): Time {.tags: [], benign, deprecated.} =
-  ## Converts a broken-down time structure to
-  ## calendar time representation. The function ignores the specified
-  ## contents of the structure members `weekday` and `yearday` and recomputes
-  ## them from the other information in the broken-down time structure.
+  ## Converts a broken-down time structure to calendar time representation.
   ##
   ## **Warning:** This procedure is deprecated since version 0.14.0.
   ## Use ``toTime`` instead.
