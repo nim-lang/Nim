@@ -145,15 +145,95 @@ const
   secondsInDay = 60*60*24
   minutesInHour = 60
 
+proc fromUnix*(unix: int64): Time {.benign, tags: [], raises: [], noSideEffect.} =
+  ## Convert a unix timestamp (seconds since ``1970-01-01T00:00:00Z``) to a ``Time``.
+  Time(unix)
+
+proc toUnix*(t: Time): int64 {.benign, tags: [], raises: [], noSideEffect.} =
+  ## Convert ``t`` to a unix timestamp (seconds since ``1970-01-01T00:00:00Z``).
+  t.int64
+
+proc isLeapYear*(year: int): bool =
+  ## Returns true if ``year`` is a leap year.
+  year mod 4 == 0 and (year mod 100 != 0 or year mod 400 == 0)
+
+proc getDaysInMonth*(month: Month, year: int): int =
+  ## Get the number of days in a ``month`` of a ``year``.
+  # http://www.dispersiondesign.com/articles/time/number_of_days_in_a_month
+  case month
+  of mFeb: result = if isLeapYear(year): 29 else: 28
+  of mApr, mJun, mSep, mNov: result = 30
+  else: result = 31
+
+proc getDaysInYear*(year: int): int =
+  ## Get the number of days in a ``year``
+  result = 365 + (if isLeapYear(year): 1 else: 0)
+
+proc assertValidDate(monthday: MonthdayRange, month: Month, year: int) {.inline.} =
+  assert monthday <= getDaysInMonth(month, year),
+    $year & "-" & $ord(month) & "-" & $monthday & " is not a valid date"
+
+proc toEpochDay*(monthday: MonthdayRange, month: Month, year: int): int64 =
+  ## Get the epoch day from a year/month/day date.
+  ## The epoch day is the number of days since 1970/01/01 (it might be negative).
+  assertValidDate monthday, month, year  
+  # Based on http://howardhinnant.github.io/date_algorithms.html
+  var (y, m, d) = (year, ord(month), monthday.int)
+  if m <= 2:
+    y.dec
+
+  let era = (if y >= 0: y else: y-399) div 400
+  let yoe = y - era * 400
+  let doy = (153 * (m + (if m > 2: -3 else: 9)) + 2) div 5 + d-1
+  let doe = yoe * 365 + yoe div 4 - yoe div 100 + doy
+  return era * 146097 + doe - 719468
+
+proc fromEpochDay*(epochday: int64): tuple[monthday: MonthdayRange, month: Month, year: int] =
+  ## Get the year/month/day date from a epoch day.
+  ## The epoch day is the number of days since 1970/01/01 (it might be negative).  
+  # Based on http://howardhinnant.github.io/date_algorithms.html
+  var z = epochday
+  z.inc 719468
+  let era = (if z >= 0: z else: z - 146096) div 146097
+  let doe = z - era * 146097
+  let yoe = (doe - doe div 1460 + doe div 36524 - doe div 146096) div 365
+  let y = yoe + era * 400;
+  let doy = doe - (365 * yoe + yoe div 4 - yoe div 100)
+  let mp = (5 * doy + 2) div 153
+  let d = doy - (153 * mp + 2) div 5 + 1
+  let m = mp + (if mp < 10: 3 else: -9)
+  return (d.MonthdayRange, m.Month, (y + ord(m <= 2)).int)
+
+proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int): YeardayRange {.tags: [], raises: [], benign .} =
+  ## Returns the day of the year.
+  ## Equivalent with ``initDateTime(day, month, year).yearday``.
+  assertValidDate monthday, month, year
+  const daysUntilMonth:     array[Month, int] = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
+  const daysUntilMonthLeap: array[Month, int] = [0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335]
+
+  if isLeapYear(year):
+    result = daysUntilMonthLeap[month] + monthday - 1
+  else:
+    result = daysUntilMonth[month] + monthday - 1
+
+proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay {.tags: [], raises: [], benign .} =
+  ## Returns the day of the week enum from day, month and year.
+  ## Equivalent with ``initDateTime(day, month, year).weekday``.
+  assertValidDate monthday, month, year
+  # 1970-01-01 is a Thursday, we adjust to the previous Monday
+  let days = toEpochday(monthday, month, year) - 3
+  let weeks = (if days >= 0: days else: days - 6) div 7
+  let wd = days - weeks * 7
+  # The value of d is 0 for a Sunday, 1 for a Monday, 2 for a Tuesday, etc.
+  # so we must correct for the WeekDay type.
+  result = if wd == 0: dSun else: WeekDay(wd - 1)
+
 # Forward declarations
 proc utcZoneInfoFromUtc(time: Time): ZonedTime {.tags: [], raises: [], benign .}
 proc utcZoneInfoFromTz(adjTime: Time): ZonedTime {.tags: [], raises: [], benign .}
 proc localZoneInfoFromUtc(time: Time): ZonedTime {.tags: [], raises: [], benign .}
 proc localZoneInfoFromTz(adjTime: Time): ZonedTime {.tags: [], raises: [], benign .}
-proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int): YeardayRange {.tags: [], raises: [], benign .}
-proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay {.tags: [], raises: [], benign .}
 proc format*(dt: DateTime, f: string): string
-proc toUnix*(t: Time): int64 {.benign, tags: [], raises: [], noSideEffect.}
 
 proc `-`*(a, b: Time): int64 {.
     rtl, extern: "ntDiffTime", tags: [], raises: [], noSideEffect, benign, deprecated.} =
@@ -179,36 +259,6 @@ proc `<=` * (a, b: Time): bool {.
 proc `==`*(a, b: Time): bool {.
     rtl, extern: "ntEqTime", tags: [], raises: [], noSideEffect, borrow.}
   ## Returns true if ``a == b``, that is if both times represent the same point in time.
-
-proc toEpochDay*(day: MonthdayRange, month: Month, year: int): int64 =
-  ## Get the epoch day from a year/month/day date.
-  ## The epoch day is the number of days since 1970/01/01 (it might be negative).
-  # Based on http://howardhinnant.github.io/date_algorithms.html
-  var (y, m, d) = (year, ord(month), day.int)
-  if m <= 2:
-    y.dec
-
-  let era = (if y >= 0: y else: y-399) div 400
-  let yoe = y - era * 400
-  let doy = (153 * (m + (if m > 2: -3 else: 9)) + 2) div 5 + d-1
-  let doe = yoe * 365 + yoe div 4 - yoe div 100 + doy
-  return era * 146097 + doe - 719468
-
-proc fromEpochDay*(epochday: int64): tuple[day: MonthdayRange, month: Month, year: int] =
-  ## Get the year/month/day date from a epoch day.
-  ## The epoch day is the number of days since 1970/01/01 (it might be negative).  
-  # Based on http://howardhinnant.github.io/date_algorithms.html
-  var z = epochday
-  z.inc 719468
-  let era = (if z >= 0: z else: z - 146096) div 146097
-  let doe = z - era * 146097
-  let yoe = (doe - doe div 1460 + doe div 36524 - doe div 146096) div 365
-  let y = yoe + era * 400;
-  let doy = doe - (365 * yoe + yoe div 4 - yoe div 100)
-  let mp = (5 * doy + 2) div 153
-  let d = doy - (153 * mp + 2) div 5 + 1
-  let m = mp + (if mp < 10: 3 else: -9)
-  return (d.MonthdayRange, m.Month, (y + ord(m <= 2)).int)
 
 proc toTime*(dt: DateTime): Time {.tags: [], raises: [], benign.} =
   ## Converts a broken-down time structure to
@@ -454,14 +504,6 @@ proc getTime*(): Time {.tags: [TimeEffect], benign.}
   ## Gets the current time as a ``Time`` with second resolution. Use epochTime for higher
   ## resolution.
 
-proc toUnix*(t: Time): int64 {.benign, tags: [], raises: [], noSideEffect.} =
-  ## Convert ``t`` to a unix timestamp (seconds since ``1970-01-01T00:00:00Z``).
-  t.int64
-
-proc fromUnix*(unix: int64): Time {.benign, tags: [], raises: [], noSideEffect.} =
-  ## Convert a unix timestamp (seconds since ``1970-01-01T00:00:00Z``) to a ``Time``.
-  Time(unix)
-
 proc now*(): DateTime {.tags: [TimeEffect], benign.} =
   ## Get the current time as a  ``DateTime`` in the local timezone.
   ##
@@ -528,27 +570,6 @@ proc `-`*(ti1, ti2: TimeInterval): TimeInterval =
   ##     echo b.toTimeInterval - a.toTimeInterval
   ##     # (milliseconds: 0, seconds: -40, minutes: -6, hours: 1, days: 5, months: -2, years: 16)
   result = ti1 + (-ti2)
-
-proc isLeapYear*(year: int): bool =
-  ## Returns true if ``year`` is a leap year.
-  year mod 4 == 0 and (year mod 100 != 0 or year mod 400 == 0)
-
-proc getDaysInMonth*(month: Month, year: int): int =
-  ## Get the number of days in a ``month`` of a ``year``.
-
-  # http://www.dispersiondesign.com/articles/time/number_of_days_in_a_month
-  case month
-  of mFeb: result = if isLeapYear(year): 29 else: 28
-  of mApr, mJun, mSep, mNov: result = 30
-  else: result = 31
-
-proc getDaysInYear*(year: int): int =
-  ## Get the number of days in a ``year``
-  result = 365 + (if isLeapYear(year): 1 else: 0)
-
-proc assertValidDate(monthday: MonthdayRange, month: Month, year: int) {.inline.} =
-  assert monthday <= getDaysInMonth(month, year),
-    $year & "-" & $ord(month) & "-" & $monthday & " is not a valid date"
 
 proc evaluateInterval(dt: DateTime, interval: TimeInterval): tuple[adjDiff, absDiff: int64] =
   ## Evaluates how many seconds the interval is worth
@@ -1222,30 +1243,6 @@ proc countYearsAndDays*(daySpan: int): tuple[years: int, days: int] =
   let days = daySpan - countLeapYears(daySpan div 365)
   result.years = days div 365
   result.days = days mod 365
-
-proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int): YeardayRange =
-  ## Returns the day of the year.
-  ## Equivalent with ``initDateTime(day, month, year).yearday``.
-  assertValidDate monthday, month, year
-  const daysUntilMonth:     array[Month, int] = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
-  const daysUntilMonthLeap: array[Month, int] = [0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335]
-
-  if isLeapYear(year):
-    result = daysUntilMonthLeap[month] + monthday - 1
-  else:
-    result = daysUntilMonth[month] + monthday - 1
-
-proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay =
-  ## Returns the day of the week enum from day, month and year.
-  ## Equivalent with ``initDateTime(day, month, year).weekday``.
-  assertValidDate monthday, month, year
-  # 1970-01-01 is a Thursday, we adjust to the previous Monday
-  let days = toEpochday(monthday, month, year) - 3
-  let weeks = (if days >= 0: days else: days - 6) div 7
-  let wd = days - weeks * 7
-  # The value of d is 0 for a Sunday, 1 for a Monday, 2 for a Tuesday, etc.
-  # so we must correct for the WeekDay type.
-  result = if wd == 0: dSun else: WeekDay(wd - 1)
 
 proc toTimeInterval*(time: Time): TimeInterval =
   ## Converts a Time to a TimeInterval.
