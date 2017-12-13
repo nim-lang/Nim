@@ -98,3 +98,7 @@ This now needs to be written as:
 - Added ``system.runnableExamples`` to make examples in Nim's documentation easier
   to write and test. The examples are tested as the last step of
   ``nim doc``.
+
+- The behavior of ``$`` has been changed for all standard library collections. The
+  collection-to-string implementations now perform proper quoting and escaping of
+  strings and chars.

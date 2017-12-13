@@ -3891,6 +3891,10 @@ proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   ## * replaces any ``"`` by ``\"``
   ## * replaces any other character in the set ``{'\0'..'\31', '\127'..'\255'}``
   ##   by ``\xHH`` where ``HH`` is its hexadecimal value.
+  ##
+  ## The procedure has been designed so that its output is usable for many
+  ## different common syntaxes.
+  ## **Note**: This is not correct for producing Ansi C code!
   case c
   of '\0'..'\31', '\127'..'\255':
     add(s, "\\x")
@@ -3905,8 +3909,9 @@ proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
 
 proc addQuoted*[T](s: var string, x: T) =
   ## Appends `x` to string `s` in place, applying quoting and escaping
-  ## if `x` is a string or char. See `addEscapedChar` for the escaping
-  ## scheme.
+  ## if `x` is a string or char. See
+  ## `addEscapedChar <system.html#addEscapedChar>`_
+  ## for the escaping scheme.
   ##
   ## The Nim standard library uses this function on the elements of
   ## collections when producing a string representation of a collection.
