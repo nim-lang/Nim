@@ -676,33 +676,27 @@ proc newJArray*(): JsonNode =
 
 proc isString*(n: JsonNode): bool =
   ## Checks if `n` is a `JString JsonNode`.
-  if n.isNil or n.kind != JString: return false
-  else: return true
+  result = not n.isNil and n.kind == JString
 
 proc isInt*(n: JsonNode): bool =
   ## Checks if `n` is a `JInt JsonNode`.
-  if n.isNil or n.kind != JInt: return false
-  else: return true
+  result = not n.isNil and n.kind == JInt
 
 proc isNumber*(n: JsonNode): bool =
   ## Checks if `n` is either `JInt` or `JFloat JsonNode`.
-  if n.isNil or n.kind notin {JFloat, JInt}: return false
-  else: return true
+  result = not n.isNil and n.kind in {JFloat, JInt}
 
 proc isBool*(n: JsonNode): bool =
   ## Checks if `n` is a `JBool JsonNode`.
-  if n.isNil or n.kind != JBool: return false
-  else: return true
+  result = not n.isNil and n.kind == JBool
 
 proc isObject*(n: JsonNode): bool =
   ## Checks if `n` is a `JObject JsonNode`.
-  if n.isNil or n.kind != JObject: return false
-  else: return true
+  result = not n.isNil and n.kind == JObject
 
 proc isArray*(n: JsonNode): bool =
   ## Checks if `n` is a `JArray JsonNode`.
-  if n.isNil or n.kind != JArray: return false
-  else: return true
+  result = not n.isNil and n.kind == JArray
 
 proc getStr*(n: JsonNode, default: string = ""): string =
   ## Retrieves the string value of a `JString JsonNode`.
@@ -1882,7 +1876,6 @@ when isMainModule:
   # memory diff should less than 2M
   doAssert(abs(getOccupiedMem() - startMemory) < 2 * 1024 * 1024)
 
-
   # test `$`
   let stringified = $testJson
   let parsedAgain = parseJson(stringified)
@@ -1890,6 +1883,20 @@ when isMainModule:
 
   parsedAgain["abc"] = %5
   doAssert parsedAgain["abc"].num == 5
+
+  # test isSometype procs
+  testJson["h"] = %2
+  testJson["g"] = %5.0
+
+  doAssert testJson["e"]["f"].isBool
+  doAssert testJson["b"].isBool == false
+  doAssert testJson{"f"}.isBool == false
+
+  doAssert testJson["d"].isString
+  doAssert testJson["a"].isArray
+  doAssert testJson.isObject
+  doAssert testJson["h"].isNumber
+  doAssert testJson["g"].isNumber
 
   # Bounds checking
   try:
