@@ -134,9 +134,9 @@ type
 
   # https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement
   HtmlElement* = ref object of Element
-    contentEditable*: string
+    contentEditable*: cstring
     isContentEditable*: bool
-    dir*: string
+    dir*: cstring
     offsetHeight*: int
     offsetWidth*: int
     offsetLeft*: int
