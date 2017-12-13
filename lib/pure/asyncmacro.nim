@@ -389,6 +389,8 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
     outerProcBody.add(closureIterator)
 
     # -> createCb(retFuture)
+    # NOTE: The "_continue" suffix is checked for in asyncfutures.nim to produce
+    # friendlier stack traces:
     var cbName = genSym(nskProc, prcName & "_continue")
     var procCb = getAst createCb(retFutureSym, iteratorNameSym,
                          newStrLitNode(prcName),
