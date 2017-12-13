@@ -41,6 +41,8 @@ t4.checkFormat("M MM MMM MMMM", "10 10 Oct October")
 (t4 - initInterval(years = 7, minutes = 34, seconds = 24)).checkFormat("yyyy mm ss", "1990 24 10")
 
 # checking dayOfWeek matches known days
+doAssert getDayOfWeek(01, mJan, 0000) == dSat
+doAssert getDayOfWeek(01, mJan, -0023) == dSat
 doAssert getDayOfWeek(21, mSep, 1900) == dFri
 doAssert getDayOfWeek(01, mJan, 1970) == dThu
 doAssert getDayOfWeek(21, mSep, 1970) == dMon

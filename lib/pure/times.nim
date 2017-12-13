@@ -1189,11 +1189,6 @@ proc parse*(value, layout: string, zone: Timezone = local()): DateTime =
     # Otherwise convert to `zone`
     result = dt.toTime.inZone(zone)
 
-# Leap year calculations are adapted from:
-# http://www.codeproject.com/Articles/7358/Ultra-fast-Algorithms-for-Working-with-Leap-Years
-# The dayOfTheWeek procs are adapated from:
-# http://stason.org/TULARC/society/calendars/2-5-What-day-of-the-week-was-2-August-1953.html
-
 proc countLeapYears*(yearSpan: int): int =
   ## Returns the number of leap years spanned by a given number of years.
   ##
@@ -1232,15 +1227,13 @@ proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int): YeardayRan
 proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay =
   ## Returns the day of the week enum from day, month and year.
   ## Equivalent with ``initDateTime(day, month, year).weekday``.
-  let
-    ordinalMonth = ord(month)
-    a = (14 - ordinalMonth) div 12
-    y = year - a
-    m = ordinalMonth + (12*a) - 2
-    d = (monthday + y + (y div 4) - (y div 100) + (y div 400) + (31*m) div 12) mod 7
+  # 1970-01-01 is a Thursday, we adjust to the previous Monday
+  let days = toEpochday(year, month, monthday) - 3
+  let weeks = (if days >= 0: days else: days - 6) div 7
+  let wd = days - weeks * 7
   # The value of d is 0 for a Sunday, 1 for a Monday, 2 for a Tuesday, etc.
   # so we must correct for the WeekDay type.
-  result = if d == 0: dSun else: WeekDay(d - 1)
+  result = if wd == 0: dSun else: WeekDay(wd - 1)
 
 proc toTimeInterval*(time: Time): TimeInterval =
   ## Converts a Time to a TimeInterval.
