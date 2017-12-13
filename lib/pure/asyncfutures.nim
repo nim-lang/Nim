@@ -1,4 +1,4 @@
-import os, tables, strutils, times, heapqueue, options, deques
+import os, tables, strutils, times, heapqueue, options, deques, cstrutils
 
 # TODO: This shouldn't need to be included, but should ideally be exported.
 type
@@ -217,19 +217,15 @@ proc `callback=`*[T](future: Future[T],
   ## If future has already completed then ``cb`` will be called immediately.
   future.callback = proc () = cb(future)
 
-proc diff[T](a, b: seq[T]): (int, seq[T]) =
+proc diff[T](a, b: seq[T]; firstB, lastB: int): int =
   ## Iterates through both sequences until the items do not match,
-  ## returns the remainder of `b` after the last item that does not match
+  ## returns the remainder of `b[firstB..lastB]` after the last item that does not match
   ## together with the index of the last match.
-  ##
-  ## .. code-block::nim
-  ##   doAssert(diff(@[1,2,42,123], @[1,2,123,678,21]) == (1, @[123,678,21]))
-  var lastIndex = 0
-  for i in 0..<min(a.len, b.len):
-    lastIndex = i
-    if a[i] != b[i]:
+  result = firstB
+  for i in 0..<min(a.len, lastB - firstB + 1):
+    result = i+firstB
+    if a[i] != b[i+firstB]:
       break
-  return (lastIndex, b[lastIndex .. ^1])
 
 proc mergeEntries(entries: seq[StackTraceEntry]): seq[StackTraceEntry] =
   ## Merges stack trace entries containing re-raise entries into one
@@ -248,12 +244,11 @@ proc mergeEntries(entries: seq[StackTraceEntry]): seq[StackTraceEntry] =
         reRaiseEnd.inc()
       assert entries[reRaiseEnd].procName.isNil
       assert entries[reRaiseEnd].line == -100 # Signifies end of re-raise block.
-      let reRaisedEntries = entries[i+1 .. reRaiseEnd-1]
 
-      let (lastIndex, remainder) = diff(result, reRaisedEntries)
+      let lastIndex = diff(result, entries, i+1, reRaiseEnd-1)
       # Insert all the entries after lastIndex.
-      for i in 0..<remainder.len:
-        result.insert(remainder[i], lastIndex+i)
+      for j in lastIndex..<reRaiseEnd - i - 1:
+        result.insert(entries[j+i+1], j)
       i = reRaiseEnd+1
       continue
 
@@ -264,17 +259,15 @@ proc getHint(entry: StackTraceEntry): string =
   ## We try to provide some hints about stack trace entries that the user
   ## may not be familiar with, in particular calls inside the stdlib.
   result = ""
-  let name = ($entry.procName).normalize()
-  case name
-  of "processpendingcallbacks":
-    if cmpIgnoreStyle($entry.filename, "asyncdispatch.nim") == 0:
+  if entry.procname == "processPendingCallbacks":
+    if cmpIgnoreStyle(entry.filename, "asyncdispatch.nim") == 0:
       return "Executes pending callbacks"
-  of "poll":
-    if cmpIgnoreStyle($entry.filename, "asyncdispatch.nim") == 0:
+  elif entry.procname == "poll":
+    if cmpIgnoreStyle(entry.filename, "asyncdispatch.nim") == 0:
       return "Processes asynchronous completion events"
 
-  if name.endsWith("continue"):
-    if cmpIgnoreStyle($entry.filename, "asyncmacro.nim") == 0:
+  if entry.procname.endsWith("_continue"):
+    if cmpIgnoreStyle(entry.filename, "asyncmacro.nim") == 0:
       return "Resumes an async procedure"
 
 proc `$`*(entries: seq[StackTraceEntry]): string =
@@ -286,21 +279,18 @@ proc `$`*(entries: seq[StackTraceEntry]): string =
     if left.len > longestLeft:
       longestLeft = left.len
 
-  const indent = 2
+  const indent = spaces(2)
   # Format the entries.
   for entry in entries:
-    let indentStr = spaces(indent)
-
     let left = "$#($#)" % [$entry.filename, $entry.line]
-    result.add("$#$#$# $#\n" % [
-      indentStr,
+    result.add((indent & "$#$# $#\n") % [
       left,
       spaces(longestLeft - left.len + 2),
       $entry.procName
     ])
     let hint = getHint(entry)
     if hint.len > 0:
-      result.add(indentStr & "└─" & hint & "\n")
+      result.add(indent & "└─" & hint & "\n")
 
 proc injectStacktrace[T](future: Future[T]) =
   when not defined(release):
