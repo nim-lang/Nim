@@ -94,3 +94,32 @@ This now needs to be written as:
   - [``poly``](https://github.com/lcrees/polynumeric)
   - [``pdcurses``](https://github.com/lcrees/pdcurses)
   - [``romans``](https://github.com/lcrees/romans)
+
+- Added ``system.runnableExamples`` to make examples in Nim's documentation easier
+  to write and test. The examples are tested as the last step of
+  ``nim doc``.
+- Nim's ``rst2html`` command now supports the testing of code snippets via an RST
+  extension that we called ``:test:``::
+
+    .. code-block:: nim
+        :test:
+      # shows how the 'if' statement works
+      if true: echo "yes"
+- The ``[]`` proc for strings now raises an ``IndexError`` exception when
+  the specified slice is out of bounds. See issue
+  [#6223](https://github.com/nim-lang/Nim/issues/6223) for more details.
+- ``strutils.split`` and ``strutils.rsplit`` with an empty string and a
+  separator now returns that empty string.
+  See issue [#4377](https://github.com/nim-lang/Nim/issues/4377).
+- The experimental overloading of the dot ``.`` operators now take
+  an ``untyped``` parameter as the field name, it used to be
+  a ``static[string]``. You can use ``when defined(nimNewDot)`` to make
+  your code work with both old and new Nim versions.
+  See [special-operators](https://nim-lang.org/docs/manual.html#special-operators)
+  for more information.
+- Added ``macros.unpackVarargs``.
+- The memory manager now uses a variant of the TLSF algorithm that has much
+  better memory fragmentation behaviour. According
+  to [http://www.gii.upv.es/tlsf/](http://www.gii.upv.es/tlsf/) the maximum
+  fragmentation measured is lower than 25%. As a nice bonus ``alloc`` and
+  ``dealloc`` became O(1) operations.

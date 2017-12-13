@@ -22,7 +22,6 @@ type
   TSections = array[TSymKind, Rope]
   TDocumentor = object of rstgen.RstGenerator
     modDesc: Rope           # module description
-    id: int                  # for generating IDs
     toc, section: TSections
     indexValFilename: string
     analytics: string  # Google Analytics javascript, "" if doesn't exist
@@ -109,6 +108,8 @@ proc newDocumentor*(filename: string, config: StringTableRef): PDoc =
   result.id = 100
   result.jArray = newJArray()
   initStrTable result.types
+  result.onTestSnippet = proc (d: var RstGenerator; filename, cmd: string; status: int; content: string) =
+    localError(newLineInfo(d.filename, -1, -1), warnUser, "only 'rst2html' supports the ':test:' attribute")
 
 proc dispA(dest: var Rope, xml, tex: string, args: openArray[Rope]) =
   if gCmd != cmdRst2tex: addf(dest, xml, args)
@@ -204,10 +205,87 @@ proc getPlainDocstring(n: PNode): string =
   if n.comment != nil and startsWith(n.comment, "##"):
     result = n.comment
   if result.len < 1:
-    if n.kind notin {nkEmpty..nkNilLit}:
-      for i in countup(0, len(n)-1):
-        result = getPlainDocstring(n.sons[i])
-        if result.len > 0: return
+    for i in countup(0, safeLen(n)-1):
+      result = getPlainDocstring(n.sons[i])
+      if result.len > 0: return
+
+proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRenderFlags = {}) =
+  var r: TSrcGen
+  var literal = ""
+  initTokRender(r, n, renderFlags)
+  var kind = tkEof
+  while true:
+    getNextTok(r, kind, literal)
+    case kind
+    of tkEof:
+      break
+    of tkComment:
+      dispA(result, "<span class=\"Comment\">$1</span>", "\\spanComment{$1}",
+            [rope(esc(d.target, literal))])
+    of tokKeywordLow..tokKeywordHigh:
+      dispA(result, "<span class=\"Keyword\">$1</span>", "\\spanKeyword{$1}",
+            [rope(literal)])
+    of tkOpr:
+      dispA(result, "<span class=\"Operator\">$1</span>", "\\spanOperator{$1}",
+            [rope(esc(d.target, literal))])
+    of tkStrLit..tkTripleStrLit:
+      dispA(result, "<span class=\"StringLit\">$1</span>",
+            "\\spanStringLit{$1}", [rope(esc(d.target, literal))])
+    of tkCharLit:
+      dispA(result, "<span class=\"CharLit\">$1</span>", "\\spanCharLit{$1}",
+            [rope(esc(d.target, literal))])
+    of tkIntLit..tkUInt64Lit:
+      dispA(result, "<span class=\"DecNumber\">$1</span>",
+            "\\spanDecNumber{$1}", [rope(esc(d.target, literal))])
+    of tkFloatLit..tkFloat128Lit:
+      dispA(result, "<span class=\"FloatNumber\">$1</span>",
+            "\\spanFloatNumber{$1}", [rope(esc(d.target, literal))])
+    of tkSymbol:
+      dispA(result, "<span class=\"Identifier\">$1</span>",
+            "\\spanIdentifier{$1}", [rope(esc(d.target, literal))])
+    of tkSpaces, tkInvalid:
+      add(result, literal)
+    of tkCurlyDotLe:
+      dispA(result, """<span class="Other pragmabegin">$1</span><div class="pragma">""",
+                    "\\spanOther{$1}",
+                  [rope(esc(d.target, literal))])
+    of tkCurlyDotRi:
+      dispA(result, "</div><span class=\"Other pragmaend\">$1</span>",
+                    "\\spanOther{$1}",
+                  [rope(esc(d.target, literal))])
+    of tkParLe, tkParRi, tkBracketLe, tkBracketRi, tkCurlyLe, tkCurlyRi,
+       tkBracketDotLe, tkBracketDotRi, tkParDotLe,
+       tkParDotRi, tkComma, tkSemiColon, tkColon, tkEquals, tkDot, tkDotDot,
+       tkAccent, tkColonColon,
+       tkGStrLit, tkGTripleStrLit, tkInfixOpr, tkPrefixOpr, tkPostfixOpr:
+      dispA(result, "<span class=\"Other\">$1</span>", "\\spanOther{$1}",
+            [rope(esc(d.target, literal))])
+
+proc getAllRunnableExamples(d: PDoc; n: PNode; dest: var Rope) =
+  case n.kind
+  of nkCallKinds:
+    if n[0].kind == nkSym and n[0].sym.magic == mRunnableExamples and
+        n.len >= 2 and n.lastSon.kind == nkStmtList:
+      dispA(dest, "\n<strong class=\"examples_text\">$1</strong>\n",
+          "\n\\textbf{$1}\n", [rope"Examples:"])
+      inc d.listingCounter
+      let id = $d.listingCounter
+      dest.add(d.config.getOrDefault"doc.listing_start" % [id, "langNim"])
+      # this is a rather hacky way to get rid of the initial indentation
+      # that the renderer currently produces:
+      var i = 0
+      var body = n.lastSon
+      if body.len == 1 and body.kind == nkStmtList and
+          body.lastSon.kind == nkStmtList:
+        body = body.lastSon
+      for b in body:
+        if i > 0: dest.add "\n"
+        inc i
+        nodeToHighlightedHtml(d, b, dest, {})
+      dest.add(d.config.getOrDefault"doc.listing_end" % id)
+  else: discard
+  for i in 0 ..< n.safeLen:
+    getAllRunnableExamples(d, n[i], dest)
 
 when false:
   proc findDocComment(n: PNode): PNode =
@@ -379,11 +457,12 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   let
     name = getName(d, nameNode)
     nameRope = name.rope
-    plainDocstring = getPlainDocstring(n) # call here before genRecComment!
+  var plainDocstring = getPlainDocstring(n) # call here before genRecComment!
   var result: Rope = nil
   var literal, plainName = ""
   var kind = tkEof
   var comm = genRecComment(d, n)  # call this here for the side-effect!
+  getAllRunnableExamples(d, n, comm)
   var r: TSrcGen
   # Obtain the plain rendered string for hyperlink titles.
   initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments,
@@ -395,53 +474,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     plainName.add(literal)
 
   # Render the HTML hyperlink.
-  initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments})
-  while true:
-    getNextTok(r, kind, literal)
-    case kind
-    of tkEof:
-      break
-    of tkComment:
-      dispA(result, "<span class=\"Comment\">$1</span>", "\\spanComment{$1}",
-            [rope(esc(d.target, literal))])
-    of tokKeywordLow..tokKeywordHigh:
-      dispA(result, "<span class=\"Keyword\">$1</span>", "\\spanKeyword{$1}",
-            [rope(literal)])
-    of tkOpr:
-      dispA(result, "<span class=\"Operator\">$1</span>", "\\spanOperator{$1}",
-            [rope(esc(d.target, literal))])
-    of tkStrLit..tkTripleStrLit:
-      dispA(result, "<span class=\"StringLit\">$1</span>",
-            "\\spanStringLit{$1}", [rope(esc(d.target, literal))])
-    of tkCharLit:
-      dispA(result, "<span class=\"CharLit\">$1</span>", "\\spanCharLit{$1}",
-            [rope(esc(d.target, literal))])
-    of tkIntLit..tkUInt64Lit:
-      dispA(result, "<span class=\"DecNumber\">$1</span>",
-            "\\spanDecNumber{$1}", [rope(esc(d.target, literal))])
-    of tkFloatLit..tkFloat128Lit:
-      dispA(result, "<span class=\"FloatNumber\">$1</span>",
-            "\\spanFloatNumber{$1}", [rope(esc(d.target, literal))])
-    of tkSymbol:
-      dispA(result, "<span class=\"Identifier\">$1</span>",
-            "\\spanIdentifier{$1}", [rope(esc(d.target, literal))])
-    of tkSpaces, tkInvalid:
-      add(result, literal)
-    of tkCurlyDotLe:
-      dispA(result, """<span class="Other pragmabegin">$1</span><div class="pragma">""",
-                    "\\spanOther{$1}",
-                  [rope(esc(d.target, literal))])
-    of tkCurlyDotRi:
-      dispA(result, "</div><span class=\"Other pragmaend\">$1</span>",
-                    "\\spanOther{$1}",
-                  [rope(esc(d.target, literal))])
-    of tkParLe, tkParRi, tkBracketLe, tkBracketRi, tkCurlyLe, tkCurlyRi,
-       tkBracketDotLe, tkBracketDotRi, tkParDotLe,
-       tkParDotRi, tkComma, tkSemiColon, tkColon, tkEquals, tkDot, tkDotDot,
-       tkAccent, tkColonColon,
-       tkGStrLit, tkGTripleStrLit, tkInfixOpr, tkPrefixOpr, tkPostfixOpr:
-      dispA(result, "<span class=\"Other\">$1</span>", "\\spanOther{$1}",
-            [rope(esc(d.target, literal))])
+  nodeToHighlightedHtml(d, n, result, {renderNoBody, renderNoComments, renderDocComments})
 
   inc(d.id)
   let
@@ -520,12 +553,24 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonNode =
 proc checkForFalse(n: PNode): bool =
   result = n.kind == nkIdent and cmpIgnoreStyle(n.ident.s, "false") == 0
 
-proc traceDeps(d: PDoc, n: PNode) =
+proc traceDeps(d: PDoc, it: PNode) =
   const k = skModule
-  if d.section[k] != nil: add(d.section[k], ", ")
-  dispA(d.section[k],
-        "<a class=\"reference external\" href=\"$1.html\">$1</a>",
-        "$1", [rope(getModuleName(n))])
+
+  if it.kind == nkInfix and it.len == 3 and it[2].kind == nkBracket:
+    let sep = it[0]
+    let dir = it[1]
+    let a = newNodeI(nkInfix, it.info)
+    a.add sep
+    a.add dir
+    a.add sep # dummy entry, replaced in the loop
+    for x in it[2]:
+      a.sons[2] = x
+      traceDeps(d, a)
+  else:
+    if d.section[k] != nil: add(d.section[k], ", ")
+    dispA(d.section[k],
+          "<a class=\"reference external\" href=\"$1.html\">$1</a>",
+          "$1", [rope(getModuleName(it))])
 
 proc generateDoc*(d: PDoc, n: PNode) =
   case n.kind
@@ -609,10 +654,7 @@ proc generateJson*(d: PDoc, n: PNode) =
   else: discard
 
 proc genTagsItem(d: PDoc, n, nameNode: PNode, k: TSymKind): string =
-  var
-    name = getName(d, nameNode)
-
-  result = name & "\n"
+  result = getName(d, nameNode) & "\n"
 
 proc generateTags*(d: PDoc, n: PNode, r: var Rope) =
   case n.kind
@@ -758,6 +800,26 @@ proc commandDoc*() =
 proc commandRstAux(filename, outExt: string) =
   var filen = addFileExt(filename, "txt")
   var d = newDocumentor(filen, options.gConfigVars)
+  d.onTestSnippet = proc (d: var RstGenerator; filename, cmd: string;
+                          status: int; content: string) =
+    var outp: string
+    if filename.len == 0:
+      inc(d.id)
+      let nameOnly = splitFile(d.filename).name
+      let subdir = getNimcacheDir() / nameOnly
+      createDir(subdir)
+      outp = subdir / (nameOnly & "_snippet_" & $d.id & ".nim")
+    elif isAbsolute(filename):
+      outp = filename
+    else:
+      # Nim's convention: every path is relative to the file it was written in:
+      outp = splitFile(d.filename).dir / filename
+    writeFile(outp, content)
+    let cmd = unescape(cmd) % quoteShell(outp)
+    rawMessage(hintExecuting, cmd)
+    if execShellCmd(cmd) != status:
+      rawMessage(errExecutionOfProgramFailed, cmd)
+
   d.isPureRst = true
   var rst = parseRst(readFile(filen), filen, 0, 1, d.hasToc,
                      {roSupportRawDirective})

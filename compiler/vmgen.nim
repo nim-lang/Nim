@@ -1130,6 +1130,8 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
       # produces a value
     else:
       globalError(n.info, "expandToAst requires a call expression")
+  of mRunnableExamples:
+    discard "just ignore any call to runnableExamples"
   else:
     # mGCref, mGCunref,
     globalError(n.info, "cannot generate code for: " & $m)

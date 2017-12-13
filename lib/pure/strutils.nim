@@ -32,10 +32,6 @@ when defined(nimOldSplit):
 else:
   {.pragma: deprecatedSplit.}
 
-type
-  CharSet* {.deprecated.} = set[char] # for compatibility with Nim
-{.deprecated: [TCharSet: CharSet].}
-
 const
   Whitespace* = {' ', '\t', '\v', '\r', '\l', '\f'}
     ## All the characters that count as whitespace.
@@ -78,40 +74,40 @@ proc isAlphaAscii*(c: char): bool {.noSideEffect, procvar,
   return c in Letters
 
 proc isAlphaNumeric*(c: char): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsAlphaNumericChar".}=
+  rtl, extern: "nsuIsAlphaNumericChar".} =
   ## Checks whether or not `c` is alphanumeric.
   ##
   ## This checks a-z, A-Z, 0-9 ASCII characters only.
-  return c in Letters or c in Digits
+  return c in Letters+Digits
 
 proc isDigit*(c: char): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsDigitChar".}=
+  rtl, extern: "nsuIsDigitChar".} =
   ## Checks whether or not `c` is a number.
   ##
   ## This checks 0-9 ASCII characters only.
   return c in Digits
 
 proc isSpaceAscii*(c: char): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsSpaceAsciiChar".}=
+  rtl, extern: "nsuIsSpaceAsciiChar".} =
   ## Checks whether or not `c` is a whitespace character.
   return c in Whitespace
 
 proc isLowerAscii*(c: char): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsLowerAsciiChar".}=
+  rtl, extern: "nsuIsLowerAsciiChar".} =
   ## Checks whether or not `c` is a lower case character.
   ##
   ## This checks ASCII characters only.
   return c in {'a'..'z'}
 
 proc isUpperAscii*(c: char): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsUpperAsciiChar".}=
+  rtl, extern: "nsuIsUpperAsciiChar".} =
   ## Checks whether or not `c` is an upper case character.
   ##
   ## This checks ASCII characters only.
   return c in {'A'..'Z'}
 
 proc isAlphaAscii*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsAlphaAsciiStr".}=
+  rtl, extern: "nsuIsAlphaAsciiStr".} =
   ## Checks whether or not `s` is alphabetical.
   ##
   ## This checks a-z, A-Z ASCII characters only.
@@ -123,10 +119,10 @@ proc isAlphaAscii*(s: string): bool {.noSideEffect, procvar,
 
   result = true
   for c in s:
-    result = c.isAlphaAscii() and result
+    if not c.isAlphaAscii(): return false
 
 proc isAlphaNumeric*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsAlphaNumericStr".}=
+  rtl, extern: "nsuIsAlphaNumericStr".} =
   ## Checks whether or not `s` is alphanumeric.
   ##
   ## This checks a-z, A-Z, 0-9 ASCII characters only.
@@ -142,7 +138,7 @@ proc isAlphaNumeric*(s: string): bool {.noSideEffect, procvar,
       return false
 
 proc isDigit*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsDigitStr".}=
+  rtl, extern: "nsuIsDigitStr".} =
   ## Checks whether or not `s` is a numeric value.
   ##
   ## This checks 0-9 ASCII characters only.
@@ -158,7 +154,7 @@ proc isDigit*(s: string): bool {.noSideEffect, procvar,
       return false
 
 proc isSpaceAscii*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsSpaceAsciiStr".}=
+  rtl, extern: "nsuIsSpaceAsciiStr".} =
   ## Checks whether or not `s` is completely whitespace.
   ##
   ## Returns true if all characters in `s` are whitespace
@@ -172,7 +168,7 @@ proc isSpaceAscii*(s: string): bool {.noSideEffect, procvar,
       return false
 
 proc isLowerAscii*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsLowerAsciiStr".}=
+  rtl, extern: "nsuIsLowerAsciiStr".} =
   ## Checks whether or not `s` contains all lower case characters.
   ##
   ## This checks ASCII characters only.
@@ -187,7 +183,7 @@ proc isLowerAscii*(s: string): bool {.noSideEffect, procvar,
   true
 
 proc isUpperAscii*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsUpperAsciiStr".}=
+  rtl, extern: "nsuIsUpperAsciiStr".} =
   ## Checks whether or not `s` contains all upper case characters.
   ##
   ## This checks ASCII characters only.
@@ -506,16 +502,15 @@ template splitCommon(s, sep, maxsplit, sepLen) =
   var last = 0
   var splits = maxsplit
 
-  if len(s) > 0:
-    while last <= len(s):
-      var first = last
-      while last < len(s) and not stringHasSep(s, last, sep):
-        inc(last)
-      if splits == 0: last = len(s)
-      yield substr(s, first, last-1)
-      if splits == 0: break
-      dec(splits)
-      inc(last, sepLen)
+  while last <= len(s):
+    var first = last
+    while last < len(s) and not stringHasSep(s, last, sep):
+      inc(last)
+    if splits == 0: last = len(s)
+    yield substr(s, first, last-1)
+    if splits == 0: break
+    dec(splits)
+    inc(last, sepLen)
 
 template oldSplit(s, seps, maxsplit) =
   var last = 0
@@ -673,30 +668,29 @@ template rsplitCommon(s, sep, maxsplit, sepLen) =
     splits = maxsplit
     startPos = 0
 
-  if len(s) > 0:
-    # go to -1 in order to get separators at the beginning
-    while first >= -1:
-      while first >= 0 and not stringHasSep(s, first, sep):
-        dec(first)
-
-      if splits == 0:
-        # No more splits means set first to the beginning
-        first = -1
-
-      if first == -1:
-        startPos = 0
-      else:
-        startPos = first + sepLen
-
-      yield substr(s, startPos, last)
-
-      if splits == 0:
-        break
-
-      dec(splits)
+  # go to -1 in order to get separators at the beginning
+  while first >= -1:
+    while first >= 0 and not stringHasSep(s, first, sep):
       dec(first)
 
-      last = first
+    if splits == 0:
+      # No more splits means set first to the beginning
+      first = -1
+
+    if first == -1:
+      startPos = 0
+    else:
+      startPos = first + sepLen
+
+    yield substr(s, startPos, last)
+
+    if splits == 0:
+      break
+
+    dec(splits)
+    dec(first)
+
+    last = first
 
 iterator rsplit*(s: string, seps: set[char] = Whitespace,
                  maxsplit: int = -1): string =
@@ -824,12 +818,18 @@ proc split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): seq[st
   noSideEffect, rtl, extern: "nsuSplitCharSet".} =
   ## The same as the `split iterator <#split.i,string,set[char],int>`_, but is a
   ## proc that returns a sequence of substrings.
+  runnableExamples:
+    doAssert "a,b;c".split({',', ';'}) == @["a", "b", "c"]
+    doAssert "".split({' '}) == @[""]
   accumulateResult(split(s, seps, maxsplit))
 
 proc split*(s: string, sep: char, maxsplit: int = -1): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitChar".} =
   ## The same as the `split iterator <#split.i,string,char,int>`_, but is a proc
   ## that returns a sequence of substrings.
+  runnableExamples:
+    doAssert "a,b,c".split(',') == @["a", "b", "c"]
+    doAssert "".split(' ') == @[""]
   accumulateResult(split(s, sep, maxsplit))
 
 proc split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.noSideEffect,
@@ -838,6 +838,13 @@ proc split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.noSideEff
   ##
   ## Substrings are separated by the string `sep`. This is a wrapper around the
   ## `split iterator <#split.i,string,string,int>`_.
+  runnableExamples:
+    doAssert "a,b,c".split(",") == @["a", "b", "c"]
+    doAssert "a man a plan a canal panama".split("a ") == @["", "man ", "plan ", "canal panama"]
+    doAssert "".split("Elon Musk") == @[""]
+    doAssert "a  largely    spaced sentence".split(" ") == @["a", "", "largely", "", "", "", "spaced", "sentence"]
+
+    doAssert "a  largely    spaced sentence".split(" ", maxsplit=1) == @["a", " largely    spaced sentence"]
   doAssert(sep.len > 0)
 
   accumulateResult(split(s, sep, maxsplit))
@@ -906,6 +913,13 @@ proc rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string]
   ## .. code-block:: nim
   ##   @["Root#Object#Method", "Index"]
   ##
+  runnableExamples:
+    doAssert "a  largely    spaced sentence".rsplit(" ", maxsplit=1) == @["a  largely    spaced", "sentence"]
+
+    doAssert "a,b,c".rsplit(",") == @["a", "b", "c"]
+    doAssert "a man a plan a canal panama".rsplit("a ") == @["", "man ", "plan ", "canal panama"]
+    doAssert "".rsplit("Elon Musk") == @[""]
+    doAssert "a  largely    spaced sentence".rsplit(" ") == @["a", "", "largely", "", "", "", "spaced", "sentence"]
   accumulateResult(rsplit(s, sep, maxsplit))
   result.reverse()
 
@@ -1305,14 +1319,13 @@ proc addSep*(dest: var string, sep = ", ", startLen: Natural = 0)
   ## This is often useful for generating some code where the items need to
   ## be *separated* by `sep`. `sep` is only added if `dest` is longer than
   ## `startLen`. The following example creates a string describing
-  ## an array of integers:
-  ##
-  ## .. code-block:: nim
-  ##   var arr = "["
-  ##   for x in items([2, 3, 5, 7, 11]):
-  ##     addSep(arr, startLen=len("["))
-  ##     add(arr, $x)
-  ##   add(arr, "]")
+  ## an array of integers.
+  runnableExamples:
+     var arr = "["
+     for x in items([2, 3, 5, 7, 11]):
+       addSep(arr, startLen=len("["))
+       add(arr, $x)
+     add(arr, "]")
   if dest.len > startLen: add(dest, sep)
 
 proc allCharsInSet*(s: string, theSet: set[char]): bool =
@@ -1730,7 +1743,9 @@ proc insertSep*(s: string, sep = '_', digits = 3): string {.noSideEffect,
   ##
   ## Even though the algorithm works with any string `s`, it is only useful
   ## if `s` contains a number.
-  ## Example: ``insertSep("1000000") == "1_000_000"``
+  runnableExamples:
+    doAssert insertSep("1000000") == "1_000_000"
+
   var L = (s.len-1) div digits + s.len
   result = newString(L)
   var j = 0
@@ -1818,6 +1833,8 @@ proc validIdentifier*(s: string): bool {.noSideEffect,
   ##
   ## A valid identifier starts with a character of the set `IdentStartChars`
   ## and is followed by any number of characters of the set `IdentChars`.
+  runnableExamples:
+    doAssert "abc_def08".validIdentifier
   if s[0] in IdentStartChars:
     for i in 1..s.len-1:
       if s[i] notin IdentChars: return false
@@ -1828,7 +1845,7 @@ proc editDistance*(a, b: string): int {.noSideEffect,
   ## Returns the edit distance between `a` and `b`.
   ##
   ## This uses the `Levenshtein`:idx: distance algorithm with only a linear
-  ## memory overhead.  This implementation is highly optimized!
+  ## memory overhead.
   var len1 = a.len
   var len2 = b.len
   if len1 > len2:
@@ -2007,16 +2024,11 @@ proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
   ## after the decimal point for Nim's ``float`` type.
   ##
   ## If ``precision == -1``, it tries to format it nicely.
-  ##
-  ## Examples:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##    let x = 123.456
-  ##    doAssert x.formatFloat() == "123.4560000000000"
-  ##    doAssert x.formatFloat(ffDecimal, 4) == "123.4560"
-  ##    doAssert x.formatFloat(ffScientific, 2) == "1.23e+02"
-  ##
+  runnableExamples:
+    let x = 123.456
+    doAssert x.formatFloat() == "123.4560000000000"
+    doAssert x.formatFloat(ffDecimal, 4) == "123.4560"
+    doAssert x.formatFloat(ffScientific, 2) == "1.23e+02"
   result = formatBiggestFloat(f, format, precision, decimalSep)
 
 proc trimZeros*(x: var string) {.noSideEffect.} =
@@ -2051,18 +2063,13 @@ proc formatSize*(bytes: int64,
   ##
   ## `includeSpace` can be set to true to include the (SI preferred) space
   ## between the number and the unit (e.g. 1 KiB).
-  ##
-  ## Examples:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##    formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB"
-  ##    formatSize((2.234*1024*1024).int) == "2.234MiB"
-  ##    formatSize(4096, includeSpace=true) == "4 KiB"
-  ##    formatSize(4096, prefix=bpColloquial, includeSpace=true) == "4 kB"
-  ##    formatSize(4096) == "4KiB"
-  ##    formatSize(5_378_934, prefix=bpColloquial, decimalSep=',') == "5,13MB"
-  ##
+  runnableExamples:
+    doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB"
+    doAssert formatSize((2.234*1024*1024).int) == "2.234MiB"
+    doAssert formatSize(4096, includeSpace=true) == "4 KiB"
+    doAssert formatSize(4096, prefix=bpColloquial, includeSpace=true) == "4 kB"
+    doAssert formatSize(4096) == "4KiB"
+    doAssert formatSize(5_378_934, prefix=bpColloquial, decimalSep=',') == "5,13MB"
   const iecPrefixes = ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi", "Yi"]
   const collPrefixes = ["", "k", "M", "G", "T", "P", "E", "Z", "Y"]
   var
@@ -2156,7 +2163,7 @@ proc formatEng*(f: BiggestFloat,
   ##    formatEng(4100, unit="V") == "4.1e3 V"
   ##    formatEng(4100, unit="") == "4.1e3 " # Space with unit=""
   ##
-  ## `decimalSep` is used as the decimal separator
+  ## `decimalSep` is used as the decimal separator.
   var
     absolute: BiggestFloat
     significand: BiggestFloat
@@ -2369,17 +2376,16 @@ proc removeSuffix*(s: var string, chars: set[char] = Newlines) {.
   rtl, extern: "nsuRemoveSuffixCharSet".} =
   ## Removes all characters from `chars` from the end of the string `s`
   ## (in-place).
-  ##
-  ## .. code-block:: nim
-  ##   var userInput = "Hello World!*~\r\n"
-  ##   userInput.removeSuffix
-  ##   doAssert userInput == "Hello World!*~"
-  ##   userInput.removeSuffix({'~', '*'})
-  ##   doAssert userInput == "Hello World!"
-  ##
-  ##   var otherInput = "Hello!?!"
-  ##   otherInput.removeSuffix({'!', '?'})
-  ##   doAssert otherInput == "Hello"
+  runnableExamples:
+     var userInput = "Hello World!*~\r\n"
+     userInput.removeSuffix
+     doAssert userInput == "Hello World!*~"
+     userInput.removeSuffix({'~', '*'})
+     doAssert userInput == "Hello World!"
+
+     var otherInput = "Hello!?!"
+     otherInput.removeSuffix({'!', '?'})
+     doAssert otherInput == "Hello"
   if s.len == 0: return
   var last = s.high
   while last > -1 and s[last] in chars: last -= 1
@@ -2390,24 +2396,23 @@ proc removeSuffix*(s: var string, c: char) {.
   ## Removes all occurrences of a single character (in-place) from the end
   ## of a string.
   ##
-  ## .. code-block:: nim
-  ##   var table = "users"
-  ##   table.removeSuffix('s')
-  ##   doAssert table == "user"
-  ##
-  ##   var dots = "Trailing dots......."
-  ##   dots.removeSuffix('.')
-  ##   doAssert dots == "Trailing dots"
+  runnableExamples:
+     var table = "users"
+     table.removeSuffix('s')
+     doAssert table == "user"
+
+     var dots = "Trailing dots......."
+     dots.removeSuffix('.')
+     doAssert dots == "Trailing dots"
   removeSuffix(s, chars = {c})
 
 proc removeSuffix*(s: var string, suffix: string) {.
   rtl, extern: "nsuRemoveSuffixString".} =
   ## Remove the first matching suffix (in-place) from a string.
-  ##
-  ## .. code-block:: nim
-  ##   var answers = "yeses"
-  ##   answers.removeSuffix("es")
-  ##   doAssert answers == "yes"
+  runnableExamples:
+     var answers = "yeses"
+     answers.removeSuffix("es")
+     doAssert answers == "yes"
   var newLen = s.len
   if s.endsWith(suffix):
     newLen -= len(suffix)
@@ -2418,16 +2423,16 @@ proc removePrefix*(s: var string, chars: set[char] = Newlines) {.
   ## Removes all characters from `chars` from the start of the string `s`
   ## (in-place).
   ##
-  ## .. code-block:: nim
-  ##   var userInput = "\r\n*~Hello World!"
-  ##   userInput.removePrefix
-  ##   doAssert userInput == "*~Hello World!"
-  ##   userInput.removePrefix({'~', '*'})
-  ##   doAssert userInput == "Hello World!"
-  ##
-  ##   var otherInput = "?!?Hello!?!"
-  ##   otherInput.removePrefix({'!', '?'})
-  ##   doAssert otherInput == "Hello!?!"
+  runnableExamples:
+     var userInput = "\r\n*~Hello World!"
+     userInput.removePrefix
+     doAssert userInput == "*~Hello World!"
+     userInput.removePrefix({'~', '*'})
+     doAssert userInput == "Hello World!"
+
+     var otherInput = "?!?Hello!?!"
+     otherInput.removePrefix({'!', '?'})
+     doAssert otherInput == "Hello!?!"
   var start = 0
   while start < s.len and s[start] in chars: start += 1
   if start > 0: s.delete(0, start - 1)
@@ -2437,20 +2442,20 @@ proc removePrefix*(s: var string, c: char) {.
   ## Removes all occurrences of a single character (in-place) from the start
   ## of a string.
   ##
-  ## .. code-block:: nim
-  ##   var ident = "pControl"
-  ##   ident.removePrefix('p')
-  ##   doAssert ident == "Control"
+  runnableExamples:
+     var ident = "pControl"
+     ident.removePrefix('p')
+     doAssert ident == "Control"
   removePrefix(s, chars = {c})
 
 proc removePrefix*(s: var string, prefix: string) {.
   rtl, extern: "nsuRemovePrefixString".} =
   ## Remove the first matching prefix (in-place) from a string.
   ##
-  ## .. code-block:: nim
-  ##   var answers = "yesyes"
-  ##   answers.removePrefix("yes")
-  ##   doAssert answers == "yes"
+  runnableExamples:
+     var answers = "yesyes"
+     answers.removePrefix("yes")
+     doAssert answers == "yes"
   if s.startsWith(prefix):
     s.delete(0, prefix.len - 1)
 

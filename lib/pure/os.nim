@@ -630,7 +630,7 @@ proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   ## the process has finished. To execute a program without having a
   ## shell involved, use the `execProcess` proc of the `osproc`
   ## module.
-  when defined(linux):
+  when defined(posix):
     result = c_system(command) shr 8
   else:
     result = c_system(command)

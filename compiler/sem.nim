@@ -570,6 +570,18 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
         result = ast.emptyNode
       #if gCmd == cmdIdeTools: findSuggest(c, n)
 
+proc testExamples(c: PContext) =
+  let inp = toFullPath(c.module.info)
+  let outp = inp.changeFileExt"" & "_examples.nim"
+  renderModule(c.runnableExamples, inp, outp)
+  let backend = if isDefined("js"): "js"
+                elif isDefined("cpp"): "cpp"
+                elif isDefined("objc"): "objc"
+                else: "c"
+  if os.execShellCmd("nim " & backend & " -r " & outp) != 0:
+    quit "[Examples] failed"
+  removeFile(outp)
+
 proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   var c = PContext(context)
   if gCmd == cmdIdeTools and not c.suggestionsMade:
@@ -584,5 +596,6 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
     result.add(c.module.ast)
   popOwner(c)
   popProcCon(c)
+  if c.runnableExamples != nil: testExamples(c)
 
 const semPass* = makePass(myOpen, myOpenCached, myProcess, myClose)

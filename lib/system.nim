@@ -1439,7 +1439,11 @@ const
     ## is the value that should be passed to `quit <#quit>`_ to indicate
     ## failure.
 
-var programResult* {.exportc: "nim_program_result".}: int
+when defined(nodejs):
+  var programResult* {.importc: "process.exitCode".}: int
+  programResult = 0
+else:
+  var programResult* {.exportc: "nim_program_result".}: int
   ## modify this variable to specify the exit code of the program
   ## under normal circumstances. When the program is terminated
   ## prematurely using ``quit``, this value is ignored.
@@ -3525,7 +3529,10 @@ when hasAlloc or defined(nimscript):
     ## .. code-block:: nim
     ##    var s = "abcdef"
     ##    assert s[1..3] == "bcd"
-    result = s.substr(s ^^ x.a, s ^^ x.b)
+    let a = s ^^ x.a
+    let L = (s ^^ x.b) - a + 1
+    result = newString(L)
+    for i in 0 ..< L: result[i] = s[i + a]
 
   proc `[]=`*[T, U](s: var string, x: HSlice[T, U], b: string) =
     ## slice assignment for strings. If
@@ -3752,6 +3759,7 @@ template assert*(cond: bool, msg = "") =
   ## that ``AssertionError`` is hidden from the effect system, so it doesn't
   ## produce ``{.raises: [AssertionError].}``. This exception is only supposed
   ## to be caught by unit testing frameworks.
+  ##
   ## The compiler may not generate any code at all for ``assert`` if it is
   ## advised to do so through the ``-d:release`` or ``--assertions:off``
   ## `command line switches <nimc.html#command-line-switches>`_.
@@ -3992,3 +4000,38 @@ when defined(windows) and appType == "console" and defined(nimSetUtf8CodePage):
   proc setConsoleOutputCP(codepage: cint): cint {.stdcall, dynlib: "kernel32",
     importc: "SetConsoleOutputCP".}
   discard setConsoleOutputCP(65001) # 65001 - utf-8 codepage
+
+
+when defined(nimHasRunnableExamples):
+  proc runnableExamples*(body: untyped) {.magic: "RunnableExamples".}
+    ## A section you should use to mark `runnable example`:idx: code with.
+    ##
+    ## - In normal debug and release builds code within
+    ##   a ``runnableExamples`` section is ignored.
+    ## - The documentation generator is aware of these examples and considers them
+    ##   part of the ``##`` doc comment. As the last step of documentation
+    ##   generation the examples are put into an ``$file_example.nim`` file,
+    ##   compiled and tested. The collected examples are
+    ##   put into their own module to ensure the examples do not refer to
+    ##   non-exported symbols.
+else:
+  template runnableExamples*(body: untyped) =
+    discard
+
+template doAssertRaises*(exception, code: untyped): typed =
+  ## Raises ``AssertionError`` if specified ``code`` does not raise the
+  ## specified exception.
+  runnableExamples:
+    doAssertRaises(ValueError):
+      raise newException(ValueError, "Hello World")
+
+  try:
+    block:
+      code
+    raiseAssert(astToStr(exception) & " wasn't raised by:\n" & astToStr(code))
+  except exception:
+    discard
+  except Exception as exc:
+    raiseAssert(astToStr(exception) &
+                " wasn't raised, another error was raised instead by:\n"&
+                astToStr(code))

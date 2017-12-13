@@ -183,6 +183,7 @@ proc `[]=`*[A, B](t: var SharedTable[A, B], key: A, val: B) =
 
 proc add*[A, B](t: var SharedTable[A, B], key: A, val: B) =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
+  ## This can introduce duplicate keys into the table!
   withLock t:
     addImpl(enlarge)
 
