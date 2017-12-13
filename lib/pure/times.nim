@@ -178,7 +178,9 @@ proc `==`*(a, b: Time): bool {.
     rtl, extern: "ntEqTime", tags: [], raises: [], noSideEffect, borrow.}
   ## Returns true if ``a == b``, that is if both times represent the same point in time.
 
-proc toEpochday(year: int, month: Month, day: MonthdayRange): int64 =
+proc toEpochDay*(day: MonthdayRange, month: Month, year: int): int64 =
+  ## Get the epoch day from a year/month/day date.
+  ## The epoch day is the number of days since 1970/01/01 (it might be negative).
   # Based on http://howardhinnant.github.io/date_algorithms.html
   var (y, m, d) = (year, ord(month), day.int)
   if m <= 2:
@@ -190,7 +192,9 @@ proc toEpochday(year: int, month: Month, day: MonthdayRange): int64 =
   let doe = yoe * 365 + yoe div 4 - yoe div 100 + doy
   return era * 146097 + doe - 719468
 
-proc fromEpochday(epochday: int64): tuple[year: int, month: Month, day: MonthdayRange] =
+proc fromEpochDay*(epochday: int64): tuple[day: MonthdayRange, month: Month, year: int] =
+  ## Get the year/month/day date from a epoch day.
+  ## The epoch day is the number of days since 1970/01/01 (it might be negative).  
   # Based on http://howardhinnant.github.io/date_algorithms.html
   var z = epochday
   z.inc 719468
@@ -202,14 +206,14 @@ proc fromEpochday(epochday: int64): tuple[year: int, month: Month, day: Monthday
   let mp = (5 * doy + 2) div 153
   let d = doy - (153 * mp + 2) div 5 + 1
   let m = mp + (if mp < 10: 3 else: -9)
-  return ((y + ord(m <= 2)).int, m.Month, d.MonthdayRange)
+  return (d.MonthdayRange, m.Month, (y + ord(m <= 2)).int)
 
 proc toTime*(dt: DateTime): Time {.tags: [], raises: [], benign.} =
   ## Converts a broken-down time structure to
   ## calendar time representation. The function ignores the specified
   ## contents of the structure members `weekday` and `yearday` and recomputes
   ## them from the other information in the broken-down time structure.
-  let epochDay = toEpochday(dt.year, dt.month, dt.monthday)
+  let epochDay = toEpochday(dt.monthday, dt.month, dt.year)
   result = Time(epochDay * secondsInDay)
   result.inc dt.hour * secondsInHour
   result.inc dt.minute * 60
@@ -228,7 +232,7 @@ proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
   rem = rem - minute * secondsInMin
   let second = rem
 
-  let (y, m, d) = fromEpochday(epochday)
+  let (d, m, y) = fromEpochday(epochday)
 
   DateTime(
     year: y,
@@ -262,7 +266,7 @@ proc `==`*(zone1, zone2: Timezone): bool =
   zone1.name == zone2.name
 
 proc toAdjTime(dt: DateTime): Time =
-  let epochDay = toEpochday(dt.year, dt.month, dt.monthday)
+  let epochDay = toEpochday(dt.monthday, dt.month, dt.year)
   result = Time(epochDay * secondsInDay)
   result.inc dt.hour * secondsInHour
   result.inc dt.minute * secondsInMin
@@ -352,7 +356,7 @@ else:
   proc localtime(timer: ptr TimeT): StructTmPtr {. importc: "localtime", header: "<time.h>", tags: [].}
 
   proc toAdjTime(tm: StructTm): Time =
-    let epochDay = toEpochday(tm.year.int + 1900, (tm.month + 1).Month, tm.monthday)
+    let epochDay = toEpochday(tm.monthday, (tm.month + 1).Month, tm.year.int + 1900)
     result = Time(epochDay * secondsInDay)
     result.inc tm.hour * secondsInHour
     result.inc tm.minute * 60
@@ -1228,7 +1232,7 @@ proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay =
   ## Returns the day of the week enum from day, month and year.
   ## Equivalent with ``initDateTime(day, month, year).weekday``.
   # 1970-01-01 is a Thursday, we adjust to the previous Monday
-  let days = toEpochday(year, month, monthday) - 3
+  let days = toEpochday(monthday, month, year) - 3
   let weeks = (if days >= 0: days else: days - 6) div 7
   let wd = days - weeks * 7
   # The value of d is 0 for a Sunday, 1 for a Monday, 2 for a Tuesday, etc.
@@ -1252,7 +1256,7 @@ proc toTimeInterval*(time: Time): TimeInterval =
   initInterval(0, dt.second, dt.minute, dt.hour, dt.monthday, dt.month.ord - 1, dt.year)
 
 proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
-                  hour: HourRange, minute: MinuteRange, second: SecondRange, zone: Timezone = local()): DateTime =
+                   hour: HourRange, minute: MinuteRange, second: SecondRange, zone: Timezone = local()): DateTime =
   ## Create a new ``DateTime`` in the specified timezone.
   doAssert monthday <= getDaysInMonth(month, year), "Invalid date: " & $month & " " & $monthday & ", " & $year
   let dt = DateTime(
