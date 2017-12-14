@@ -55,6 +55,13 @@ const
     ";", ":", ",", "(", ")", "[", "]", "."
   ]
 
+  reservedKeywords = @[
+    # statements
+    "select", "from", "where", "group", "limit", "having",
+    # functions
+    "count",
+  ]
+
 proc open(L: var SqlLexer, input: Stream, filename: string) =
   lexbase.open(L, input)
   L.filename = filename
@@ -274,16 +281,16 @@ proc getSymbol(c: var SqlLexer, tok: var Token) =
   c.bufpos = pos
   tok.kind = tkIdentifier
 
-proc getQuotedIdentifier(c: var SqlLexer, tok: var Token) =
+proc getQuotedIdentifier(c: var SqlLexer, tok: var Token, quote='\"') =
   var pos = c.bufpos + 1
   var buf = c.buf
   tok.kind = tkQuotedIdentifier
   while true:
     var ch = buf[pos]
-    if ch == '\"':
-      if buf[pos+1] == '\"':
+    if ch == quote:
+      if buf[pos+1] == quote:
         inc(pos, 2)
-        add(tok.literal, '\"')
+        add(tok.literal, quote)
       else:
         inc(pos)
         break
@@ -442,7 +449,8 @@ proc getTok(c: var SqlLexer, tok: var Token) =
     add(tok.literal, '.')
   of '0'..'9': getNumeric(c, tok)
   of '\'': getString(c, tok, tkStringConstant)
-  of '"': getQuotedIdentifier(c, tok)
+  of '"': getQuotedIdentifier(c, tok, '"')
+  of '`': getQuotedIdentifier(c, tok, '`')
   of lexbase.EndOfFile:
     tok.kind = tkEof
     tok.literal = "[EOF]"
@@ -450,7 +458,7 @@ proc getTok(c: var SqlLexer, tok: var Token) =
      '\128'..'\255':
     getSymbol(c, tok)
   of '+', '-', '*', '/', '<', '>', '=', '~', '!', '@', '#', '%',
-     '^', '&', '|', '`', '?':
+     '^', '&', '|', '?':
     getOperator(c, tok)
   else:
     add(tok.literal, c.buf[c.bufpos])
@@ -504,6 +512,7 @@ type
     nkPrefix,
     nkInfix,
     nkCall,
+    nkPrGroup,
     nkColumnReference,
     nkReferences,
     nkDefault,
@@ -700,7 +709,8 @@ proc identOrLiteral(p: var SqlParser): SqlNode =
     getTok(p)
   of tkParLe:
     getTok(p)
-    result = parseExpr(p)
+    result = newNode(nkPrGroup)
+    result.add(parseExpr(p))
     eat(p, tkParRi)
   else:
     sqlError(p, "expression expected")
@@ -752,7 +762,7 @@ proc lowestExprAux(p: var SqlParser, v: var SqlNode, limit: int): int =
   result = opPred
   while opPred > limit:
     node = newNode(nkInfix)
-    opNode = newNode(nkIdent, p.tok.literal)
+    opNode = newNode(nkIdent, p.tok.literal.toLower())
     getTok(p)
     result = lowestExprAux(p, v2, opPred)
     node.add(opNode)
@@ -1112,7 +1122,8 @@ proc parseSelect(p: var SqlParser): SqlNode =
       join.add(newNode(nkIdent, ""))
       getTok(p)
     else:
-      join.add(parseExpr(p))
+      join.add(newNode(nkIdent, p.tok.literal.toLower()))
+      getTok(p)
       eat(p, "join")
     join.add(parseFromItem(p))
     eat(p, "on")
@@ -1167,8 +1178,6 @@ proc parse(p: var SqlParser): SqlNode =
     if p.tok.kind == tkEof:
       break
     eat(p, tkSemicolon)
-  if result.len == 1:
-    result = result.sons[0]
 
 proc close(p: var SqlParser) =
   ## closes the parser `p`. The associated input stream is closed too.
@@ -1198,48 +1207,43 @@ type
     upperCase: bool
     buffer: string
 
-proc add(s: var SqlWriter, thing: string) =
-  s.buffer.add(thing)
-
 proc add(s: var SqlWriter, thing: char) =
   s.buffer.add(thing)
 
-proc addKeyw(s: var SqlWriter, thing: string) =
-  if s.buffer.len > 0 and s.buffer[^1] notin " ,\L(":
+proc add(s: var SqlWriter, thing: string) =
+  if s.buffer.len > 0 and s.buffer[^1] notin {' ', '\L', '(', '.'}:
     s.buffer.add(" ")
+  s.buffer.add(thing)
+
+proc addKeyw(s: var SqlWriter, thing: string) =
+  var keyw = thing
   if s.upperCase:
-    s.buffer.add(thing.toUpper())
-  else:
-    s.buffer.add(thing)
-  s.buffer.add(" ")
+    keyw = keyw.toUpper()
+  s.add(keyw)
 
-proc rm(s: var SqlWriter, chars = " \L,") =
-  while s.buffer.len > 0 and s.buffer[^1] in chars:
-    s.buffer = s.buffer[0..^2]
-
-proc newLine(s: var SqlWriter) =
-  s.rm(" \L")
-  s.buffer.add("\L")
-  for i in 0..<s.indent:
-    s.buffer.add("  ")
-
-template inner(s: var SqlWriter, body: untyped) =
-  inc s.indent
-  s.newLine()
-  body
-  dec s.indent
-
-template innerKeyw(s: var SqlWriter, keyw: string, body: untyped) =
-  s.newLine()
-  s.addKeyw(keyw)
-  inc s.indent
-  s.newLine()
-  body
-  dec s.indent
+proc addIden(s: var SqlWriter, thing: string) =
+  var iden = thing
+  if iden.toLower() in reservedKeywords:
+    iden = '"' & iden & '"'
+  s.add(iden)
 
 proc ra(n: SqlNode, s: var SqlWriter)
 
 proc rs(n: SqlNode, s: var SqlWriter, prefix = "(", suffix = ")", sep = ", ") =
+  if n.len > 0:
+    s.add(prefix)
+    for i in 0 .. n.len-1:
+      if i > 0: s.add(sep)
+      ra(n.sons[i], s)
+    s.add(suffix)
+
+proc addMulti(s: var SqlWriter, n: SqlNode, sep = ',') =
+  if n.len > 0:
+    for i in 0 .. n.len-1:
+      if i > 0: s.add(sep)
+      ra(n.sons[i], s)
+
+proc addMulti(s: var SqlWriter, n: SqlNode, sep = ',', prefix, suffix: char) =
   if n.len > 0:
     s.add(prefix)
     for i in 0 .. n.len-1:
@@ -1252,12 +1256,11 @@ proc ra(n: SqlNode, s: var SqlWriter) =
   case n.kind
   of nkNone: discard
   of nkIdent:
-    if allCharsInSet(n.strVal, {'\33'..'\127'}):
+    if allCharsInSet(n.strVal, {'\33'..'\127'}) and n.strVal.toLower() notin reservedKeywords:
       s.add(n.strVal)
     else:
       s.add("\"" & replace(n.strVal, "\"", "\"\"") & "\"")
   of nkStringLit:
-    # TODO add e'' as an option?
     s.add(escape(n.strVal, "'", "'"))
   of nkBitStringLit:
     s.add("b'" & n.strVal & "'")
@@ -1277,32 +1280,32 @@ proc ra(n: SqlNode, s: var SqlWriter) =
     s.addKeyw("null")
   of nkDot:
     ra(n.sons[0], s)
-    s.add(".")
+    s.add('.')
     ra(n.sons[1], s)
   of nkDotDot:
     ra(n.sons[0], s)
     s.add(". .")
     ra(n.sons[1], s)
   of nkPrefix:
-    s.add('(')
     ra(n.sons[0], s)
     s.add(' ')
     ra(n.sons[1], s)
-    s.add(')')
   of nkInfix:
-    s.add('(')
     ra(n.sons[1], s)
     s.add(' ')
     ra(n.sons[0], s)
     s.add(' ')
     ra(n.sons[2], s)
-    s.add(')')
   of nkCall, nkColumnReference:
     ra(n.sons[0], s)
     s.add('(')
     for i in 1..n.len-1:
-      if i > 1: s.add(", ")
+      if i > 1: s.add(',')
       ra(n.sons[i], s)
+    s.add(')')
+  of nkPrGroup:
+    s.add('(')
+    s.addMulti(n)
     s.add(')')
   of nkReferences:
     s.addKeyw("references")
@@ -1324,55 +1327,43 @@ proc ra(n: SqlNode, s: var SqlWriter) =
   of nkIdentity:
     s.addKeyw("identity")
   of nkColumnDef:
-    s.add("\n  ")
     rs(n, s, "", "", " ")
   of nkStmtList:
     for i in 0..n.len-1:
       ra(n.sons[i], s)
-      s.add("\n")
+      s.add(';')
   of nkInsert:
     assert n.len == 3
     s.addKeyw("insert into")
     ra(n.sons[0], s)
-    s.add(" ")
+    s.add(' ')
     ra(n.sons[1], s)
     if n.sons[2].kind == nkDefault:
       s.addKeyw("default values")
     else:
-      s.newLine()
       ra(n.sons[2], s)
-    s.rm(" ")
-    s.add(';')
   of nkUpdate:
-    s.innerKeyw("update"):
-      ra(n.sons[0], s)
-    s.innerKeyw("set"):
-      var L = n.len
-      for i in 1 .. L-2:
-        if i > 1: s.add(", ")
-        var it = n.sons[i]
-        assert it.kind == nkAsgn
-        ra(it, s)
+    s.addKeyw("update")
+    ra(n.sons[0], s)
+    s.addKeyw("set")
+    var L = n.len
+    for i in 1 .. L-2:
+      if i > 1: s.add(", ")
+      var it = n.sons[i]
+      assert it.kind == nkAsgn
+      ra(it, s)
     ra(n.sons[L-1], s)
-    s.add(';')
   of nkDelete:
     s.addKeyw("delete from")
     ra(n.sons[0], s)
     ra(n.sons[1], s)
-    s.add(';')
   of nkSelect, nkSelectDistinct:
     s.addKeyw("select")
     if n.kind == nkSelectDistinct:
       s.addKeyw("distinct")
-    s.inner:
-      for son in n.sons[0].sons:
-        ra(son, s)
-        s.add(',')
-        s.newLine()
-      s.rm()
+    s.addMulti(n.sons[0])
     for i in 1 .. n.len-1:
       ra(n.sons[i], s)
-    s.add(';')
   of nkSelectColumns:
     assert(false)
   of nkSelectPair:
@@ -1385,12 +1376,9 @@ proc ra(n: SqlNode, s: var SqlWriter) =
       ra(n.sons[0], s)
     else:
       assert n.sons[0].kind == nkSelect
-      s.add("(")
-      s.inner:
-        ra(n.sons[0], s)
-      s.rm("; \L")
-      s.newLine()
-      s.add(")")
+      s.add('(')
+      ra(n.sons[0], s)
+      s.add(')')
     if n.sons.len == 2:
       s.addKeyw("as")
       ra(n.sons[1], s)
@@ -1399,30 +1387,30 @@ proc ra(n: SqlNode, s: var SqlWriter) =
     s.add(" = ")
     ra(n.sons[1], s)
   of nkFrom:
-    s.innerKeyw("from"):
-      rs(n, s, "", "", ", ")
+    s.addKeyw("from")
+    s.addMulti(n)
   of nkGroup:
-    s.innerKeyw("group by"):
-      rs(n, s, "", "", ", ")
+    s.addKeyw("group by")
+    s.addMulti(n)
   of nkLimit:
-    s.innerKeyw("limit"):
-      rs(n, s, "", "", ", ")
+    s.addKeyw("limit")
+    s.addMulti(n)
   of nkHaving:
-    s.innerKeyw("having"):
-      rs(n, s, "", "", ", ")
+    s.addKeyw("having")
+    s.addMulti(n)
   of nkOrder:
-    s.innerKeyw("order by"):
-      rs(n, s, "", "", ", ")
+    s.addKeyw("order by")
+    s.addMulti(n)
   of nkJoin:
     var joinType = n.sons[0].strVal
     if joinType == "":
       joinType = "join"
     else:
       joinType &= " " & "join"
-    s.innerKeyw(joinType):
-      ra(n.sons[1], s)
-    s.innerKeyw("on"):
-      ra(n.sons[2], s)
+    s.addKeyw(joinType)
+    ra(n.sons[1], s)
+    s.addKeyw("on")
+    ra(n.sons[2], s)
   of nkDesc:
     ra(n.sons[0], s)
     s.addKeyw("desc")
@@ -1438,10 +1426,8 @@ proc ra(n: SqlNode, s: var SqlWriter) =
     s.addKeyw("values")
     rs(n, s)
   of nkWhere:
-    s.newLine()
     s.addKeyw("where")
-    s.inner:
-      ra(n.sons[0], s)
+    ra(n.sons[0], s)
   of nkCreateTable, nkCreateTableIfNotExists:
     s.addKeyw("create table")
     if n.kind == nkCreateTableIfNotExists:
@@ -1449,7 +1435,7 @@ proc ra(n: SqlNode, s: var SqlWriter) =
     ra(n.sons[0], s)
     s.add('(')
     for i in 1..n.len-1:
-      if i > 1: s.add(",")
+      if i > 1: s.add(',')
       ra(n.sons[i], s)
     s.add(");")
   of nkCreateType, nkCreateTypeIfNotExists:
@@ -1459,7 +1445,6 @@ proc ra(n: SqlNode, s: var SqlWriter) =
     ra(n.sons[0], s)
     s.addKeyw("as")
     ra(n.sons[1], s)
-    s.add(';')
   of nkCreateIndex, nkCreateIndexIfNotExists:
     s.addKeyw("create index")
     if n.kind == nkCreateIndexIfNotExists:
