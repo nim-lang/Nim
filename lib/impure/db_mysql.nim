@@ -120,7 +120,6 @@ proc dbQuote*(s: string): string =
   result = "'"
   for c in items(s):
     if c == '\'': add(result, "''")
-    if c == '\\': add(result, "\\\\")
     else: add(result, c)
   add(result, '\'')
 
