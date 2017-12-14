@@ -1226,3 +1226,8 @@ when not defined(booting):
     macro payload: untyped {.gensym.} =
       result = parseStmt(e)
     payload()
+
+macro unpackVarargs*(callee: untyped; args: varargs[untyped]): untyped =
+  result = newCall(callee)
+  for i in 0 ..< args.len:
+    result.add args[i]

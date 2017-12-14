@@ -1346,6 +1346,16 @@ proc createJsonIndexer(jsonNode: NimNode,
     indexNode
   )
 
+proc transformJsonIndexer(jsonNode: NimNode): NimNode =
+  case jsonNode.kind
+  of nnkBracketExpr:
+    result = newNimNode(nnkCurlyExpr)
+  else:
+    result = jsonNode.copy()
+
+  for child in jsonNode:
+    result.add(transformJsonIndexer(child))
+
 template verifyJsonKind(node: JsonNode, kinds: set[JsonNodeKind],
                         ast: string) =
   if node.kind notin kinds:
@@ -1524,6 +1534,35 @@ proc processObjField(field, jsonNode: NimNode): seq[NimNode] =
 
   doAssert result.len > 0
 
+proc processFields(obj: NimNode,
+                   jsonNode: NimNode): seq[NimNode] {.compileTime.} =
+  ## Process all the fields of an ``ObjectTy`` and any of its
+  ## parent type's fields (via inheritance).
+  result = @[]
+  case obj.kind
+  of nnkObjectTy:
+    expectKind(obj[2], nnkRecList)
+    for field in obj[2]:
+      let nodes = processObjField(field, jsonNode)
+      result.add(nodes)
+
+    # process parent type fields
+    case obj[1].kind
+    of nnkBracketExpr:
+      assert $obj[1][0] == "ref"
+      result.add(processFields(getType(obj[1][1]), jsonNode))
+    of nnkSym:
+      result.add(processFields(getType(obj[1]), jsonNode))
+    else:
+      discard
+  of nnkTupleTy:
+    for identDefs in obj:
+      expectKind(identDefs, nnkIdentDefs)
+      let nodes = processObjField(identDefs[0], jsonNode)
+      result.add(nodes)
+  else:
+    doAssert false, "Unable to process field type: " & $obj.kind
+
 proc processType(typeName: NimNode, obj: NimNode,
                  jsonNode: NimNode, isRef: bool): NimNode {.compileTime.} =
   ## Process a type such as ``Sym "float"`` or ``ObjectTy ...``.
@@ -1533,20 +1572,21 @@ proc processType(typeName: NimNode, obj: NimNode,
   ## .. code-block::plain
   ##     ObjectTy
   ##       Empty
-  ##       Empty
+  ##       InheritanceInformation
   ##       RecList
   ##         Sym "events"
   case obj.kind
-  of nnkObjectTy:
+  of nnkObjectTy, nnkTupleTy:
     # Create object constructor.
-    result = newNimNode(nnkObjConstr)
-    result.add(typeName) # Name of the type to construct.
+    result =
+      if obj.kind == nnkObjectTy: newNimNode(nnkObjConstr)
+      else: newNimNode(nnkPar)
 
-    # Process each object field and add it as an exprColonExpr
-    expectKind(obj[2], nnkRecList)
-    for field in obj[2]:
-      let nodes = processObjField(field, jsonNode)
-      result.add(nodes)
+    if obj.kind == nnkObjectTy:
+      result.add(typeName) # Name of the type to construct.
+
+    # Process each object/tuple field and add it as an exprColonExpr
+    result.add(processFields(obj, jsonNode))
 
     # Object might be null. So we need to check for that.
     if isRef:
@@ -1569,24 +1609,13 @@ proc processType(typeName: NimNode, obj: NimNode,
         `getEnumCall`
       )
   of nnkSym:
-    case ($typeName).normalize
-    of "float":
-      result = quote do:
-        (
-          verifyJsonKind(`jsonNode`, {JFloat, JInt}, astToStr(`jsonNode`));
-          if `jsonNode`.kind == JFloat: `jsonNode`.fnum else: `jsonNode`.num.float
-        )
+    let name = ($typeName).normalize
+    case name
     of "string":
       result = quote do:
         (
           verifyJsonKind(`jsonNode`, {JString, JNull}, astToStr(`jsonNode`));
           if `jsonNode`.kind == JNull: nil else: `jsonNode`.str
-        )
-    of "int":
-      result = quote do:
-        (
-          verifyJsonKind(`jsonNode`, {JInt}, astToStr(`jsonNode`));
-          `jsonNode`.num.int
         )
     of "biggestint":
       result = quote do:
@@ -1601,11 +1630,35 @@ proc processType(typeName: NimNode, obj: NimNode,
           `jsonNode`.bval
         )
     else:
-      doAssert false, "Unable to process nnkSym " & $typeName
+      if name.startsWith("int") or name.startsWith("uint"):
+        result = quote do:
+          (
+            verifyJsonKind(`jsonNode`, {JInt}, astToStr(`jsonNode`));
+            `jsonNode`.num.`obj`
+          )
+      elif name.startsWith("float"):
+        result = quote do:
+          (
+            verifyJsonKind(`jsonNode`, {JInt, JFloat}, astToStr(`jsonNode`));
+            if `jsonNode`.kind == JFloat: `jsonNode`.fnum.`obj` else: `jsonNode`.num.`obj`
+          )
+      else:
+        doAssert false, "Unable to process nnkSym " & $typeName
   else:
     doAssert false, "Unable to process type: " & $obj.kind
 
   doAssert(not result.isNil(), "processType not initialised.")
+
+import options
+proc workaroundMacroNone[T](): Option[T] =
+  none(T)
+
+proc depth(n: NimNode, current = 0): int =
+  result = 1
+  for child in n:
+    let d = 1 + child.depth(current + 1)
+    if d > result:
+      result = d
 
 proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
   ## Accepts a type description, i.e. "ref Type", "seq[Type]", "Type" etc.
@@ -1616,10 +1669,50 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
   # echo("--createConsuctor-- \n", treeRepr(typeSym))
   # echo()
 
+  if depth(jsonNode) > 150:
+    error("The `to` macro does not support ref objects with cycles.", jsonNode)
+
   case typeSym.kind
   of nnkBracketExpr:
     var bracketName = ($typeSym[0]).normalize
     case bracketName
+    of "option":
+      # TODO: Would be good to verify that this is Option[T] from
+      # options module I suppose.
+      let lenientJsonNode = transformJsonIndexer(jsonNode)
+
+      let optionGeneric = typeSym[1]
+      let value = createConstructor(typeSym[1], jsonNode)
+      let workaround = bindSym("workaroundMacroNone") # TODO: Nim Bug: This shouldn't be necessary.
+
+      result = quote do:
+        (
+          if `lenientJsonNode`.isNil: `workaround`[`optionGeneric`]() else: some[`optionGeneric`](`value`)
+        )
+    of "table", "orderedtable":
+      let tableKeyType = typeSym[1]
+      if ($tableKeyType).cmpIgnoreStyle("string") != 0:
+        error("JSON doesn't support keys of type " & $tableKeyType)
+      let tableValueType = typeSym[2]
+
+      let forLoopKey = genSym(nskForVar, "key")
+      let indexerNode = createJsonIndexer(jsonNode, forLoopKey)
+      let constructorNode = createConstructor(tableValueType, indexerNode)
+
+      let tableInit =
+        if bracketName == "table":
+          bindSym("initTable")
+        else:
+          bindSym("initOrderedTable")
+
+      # Create a statement expression containing a for loop.
+      result = quote do:
+        (
+          var map = `tableInit`[`tableKeyType`, `tableValueType`]();
+          verifyJsonKind(`jsonNode`, {JObject}, astToStr(`jsonNode`));
+          for `forLoopKey` in keys(`jsonNode`.fields): map[`forLoopKey`] = `constructorNode`;
+          map
+        )
     of "ref":
       # Ref type.
       var typeName = $typeSym[1]
@@ -1663,12 +1756,23 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
       let obj = getType(typeSym)
       result = processType(typeSym, obj, jsonNode, false)
   of nnkSym:
+    # Handle JsonNode.
+    if ($typeSym).cmpIgnoreStyle("jsonnode") == 0:
+      return jsonNode
+
+    # Handle all other types.
     let obj = getType(typeSym)
     if obj.kind == nnkBracketExpr:
       # When `Sym "Foo"` turns out to be a `ref object`.
       result = createConstructor(obj, jsonNode)
     else:
       result = processType(typeSym, obj, jsonNode, false)
+  of nnkTupleTy:
+    result = processType(typeSym, typeSym, jsonNode, false)
+  of nnkPar:
+    # TODO: The fact that `jsonNode` here works to give a good line number
+    # is weird. Specifying typeSym should work but doesn't.
+    error("Use a named tuple instead of: " & $toStrLit(typeSym), jsonNode)
   else:
     doAssert false, "Unable to create constructor for: " & $typeSym.kind
 
@@ -1796,10 +1900,18 @@ macro to*(node: JsonNode, T: typedesc): untyped =
   expectKind(typeNode, nnkBracketExpr)
   doAssert(($typeNode[0]).normalize == "typedesc")
 
-  result = createConstructor(typeNode[1], node)
-  # TODO: Rename postProcessValue and move it (?)
-  result = postProcessValue(result)
+  # Create `temp` variable to store the result in case the user calls this
+  # on `parseJson` (see bug #6604).
+  result = newNimNode(nnkStmtListExpr)
+  let temp = genSym(nskLet, "temp")
+  result.add quote do:
+    let `temp` = `node`
 
+  let constructor = createConstructor(typeNode[1], temp)
+  # TODO: Rename postProcessValue and move it (?)
+  result.add(postProcessValue(constructor))
+
+  # echo(treeRepr(result))
   # echo(toStrLit(result))
 
 when false:

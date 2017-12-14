@@ -826,7 +826,10 @@ proc gident(g: var TSrcGen, n: PNode) =
     t = tkOpr
   put(g, t, s)
   if n.kind == nkSym and (renderIds in g.flags or sfGenSym in n.sym.flags):
-    put(g, tkIntLit, $n.sym.id)
+    when defined(debugMagics):
+      put(g, tkIntLit, $n.sym.id & $n.sym.magic)
+    else:
+      put(g, tkIntLit, $n.sym.id)
 
 proc doParamsAux(g: var TSrcGen, params: PNode) =
   if params.len > 1:

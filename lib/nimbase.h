@@ -70,7 +70,7 @@ __clang__
 #if defined(_MSC_VER)
 #  pragma warning(disable: 4005 4100 4101 4189 4191 4200 4244 4293 4296 4309)
 #  pragma warning(disable: 4310 4365 4456 4477 4514 4574 4611 4668 4702 4706)
-#  pragma warning(disable: 4710 4711 4774 4800 4820 4996 4090)
+#  pragma warning(disable: 4710 4711 4774 4800 4820 4996 4090 4297)
 #endif
 /* ------------------------------------------------------------------------- */
 
@@ -159,6 +159,7 @@ __clang__
 /* ------------------------------------------------------------------- */
 
 #if defined(WIN32) || defined(_WIN32) /* only Windows has this mess... */
+#  define N_LIB_PRIVATE
 #  define N_CDECL(rettype, name) rettype __cdecl name
 #  define N_STDCALL(rettype, name) rettype __stdcall name
 #  define N_SYSCALL(rettype, name) rettype __syscall name
@@ -178,6 +179,7 @@ __clang__
 #  endif
 #  define N_LIB_IMPORT  extern __declspec(dllimport)
 #else
+#  define N_LIB_PRIVATE __attribute__((visibility("hidden")))
 #  if defined(__GNUC__)
 #    define N_CDECL(rettype, name) rettype name
 #    define N_STDCALL(rettype, name) rettype name

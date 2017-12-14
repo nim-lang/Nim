@@ -333,7 +333,7 @@ proc all*[T](futs: varargs[Future[T]]): auto =
     let totalFutures = len(futs)
 
     for fut in futs:
-      fut.callback = proc(f: Future[T]) =
+      fut.addCallback proc (f: Future[T]) =
         inc(completedFutures)
         if not retFuture.finished:
           if f.failed:
@@ -355,7 +355,7 @@ proc all*[T](futs: varargs[Future[T]]): auto =
 
     for i, fut in futs:
       proc setCallback(i: int) =
-        fut.callback = proc(f: Future[T]) =
+        fut.addCallback proc (f: Future[T]) =
           inc(completedFutures)
           if not retFuture.finished:
             if f.failed:

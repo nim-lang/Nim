@@ -167,10 +167,13 @@ template interestingSym(s: PSym): bool =
 proc patchHead(n: PNode) =
   if n.kind in nkCallKinds and n[0].kind == nkSym and n.len > 1:
     let s = n[0].sym
-    if sfFromGeneric in s.flags and s.name.s[0] == '=' and
-        s.name.s in ["=sink", "=", "=destroy"]:
-      excl(s.flags, sfFromGeneric)
-      patchHead(s.getBody)
+    if s.name.s[0] == '=' and s.name.s in ["=sink", "=", "=destroy"]:
+      if sfFromGeneric in s.flags:
+        excl(s.flags, sfFromGeneric)
+        patchHead(s.getBody)
+      if n[1].typ.isNil:
+        # XXX toptree crashes without this workaround. Figure out why.
+        return
       let t = n[1].typ.skipTypes({tyVar, tyGenericInst, tyAlias, tyInferred})
       template patch(op, field) =
         if s.name.s == op and field != nil and field != s:
@@ -181,24 +184,30 @@ proc patchHead(n: PNode) =
   for x in n:
     patchHead(x)
 
+proc patchHead(s: PSym) =
+  if sfFromGeneric in s.flags:
+    patchHead(s.ast[bodyPos])
+
+template genOp(opr, opname) =
+  let op = opr
+  if op == nil:
+    globalError(dest.info, "internal error: '" & opname & "' operator not found for type " & typeToString(t))
+  elif op.ast[genericParamsPos].kind != nkEmpty:
+    globalError(dest.info, "internal error: '" & opname & "' operator is generic")
+  patchHead op
+  result = newTree(nkCall, newSymNode(op), newTree(nkHiddenAddr, dest))
+
 proc genSink(t: PType; dest: PNode): PNode =
   let t = t.skipTypes({tyGenericInst, tyAlias})
-  let op = if t.sink != nil: t.sink else: t.assignment
-  assert op != nil
-  patchHead op.ast[bodyPos]
-  result = newTree(nkCall, newSymNode(op), newTree(nkHiddenAddr, dest))
+  genOp(if t.sink != nil: t.sink else: t.assignment, "=sink")
 
 proc genCopy(t: PType; dest: PNode): PNode =
   let t = t.skipTypes({tyGenericInst, tyAlias})
-  assert t.assignment != nil
-  patchHead t.assignment.ast[bodyPos]
-  result = newTree(nkCall, newSymNode(t.assignment), newTree(nkHiddenAddr, dest))
+  genOp(t.assignment, "=")
 
 proc genDestroy(t: PType; dest: PNode): PNode =
   let t = t.skipTypes({tyGenericInst, tyAlias})
-  assert t.destructor != nil
-  patchHead t.destructor.ast[bodyPos]
-  result = newTree(nkCall, newSymNode(t.destructor), newTree(nkHiddenAddr, dest))
+  genOp(t.destructor, "=destroy")
 
 proc addTopVar(c: var Con; v: PNode) =
   c.topLevelVars.add newTree(nkIdentDefs, v, emptyNode, emptyNode)
@@ -210,7 +219,7 @@ template recurse(n, dest) =
     dest.add p(n[i], c)
 
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
-  if ri.kind in nkCallKinds:
+  if ri.kind in nkCallKinds+{nkObjConstr}:
     result = genSink(ri.typ, dest)
     # watch out and no not transform 'ri' twice if it's a call:
     let ri2 = copyNode(ri)
@@ -287,6 +296,7 @@ proc p(n: PNode; c: var Con): PNode =
     recurse(n, result)
 
 proc injectDestructorCalls*(owner: PSym; n: PNode): PNode =
+  echo "injecting into ", n
   var c: Con
   c.owner = owner
   c.tmp = newSym(skTemp, getIdent":d", owner, n.info)
@@ -312,7 +322,7 @@ proc injectDestructorCalls*(owner: PSym; n: PNode): PNode =
     result.add body
 
   when defined(nimDebugDestroys):
-    if owner.name.s == "createSeq":
+    if owner.name.s == "main" or true:
       echo "------------------------------------"
       echo owner.name.s, " transformed to: "
       echo result

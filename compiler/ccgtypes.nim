@@ -925,6 +925,8 @@ proc genProcHeader(m: BModule, prc: PSym): Rope =
       result.add "N_LIB_EXPORT "
   elif prc.typ.callConv == ccInline:
     result.add "static "
+  elif {sfImportc, sfExportc} * prc.flags == {}:
+    result.add "N_LIB_PRIVATE "
   var check = initIntSet()
   fillLoc(prc.loc, locProc, prc.ast[namePos], mangleName(m, prc), OnUnknown)
   genProcParams(m, prc.typ, rettype, params, check)
@@ -968,8 +970,11 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
     addf(m.s[cfsTypeInit3], "$1.flags = $2;$n", [name, rope(flags)])
   discard cgsym(m, "TNimType")
   if isDefined("nimTypeNames"):
+    var typename = typeToString(origType, preferName)
+    if typename == "ref object" and origType.skipTypes(skipPtrs).sym != nil:
+      typename = "anon ref object from " & $origType.skipTypes(skipPtrs).sym.info
     addf(m.s[cfsTypeInit3], "$1.name = $2;$n",
-        [name, makeCstring typeToString(origType, preferName)])
+        [name, makeCstring typename])
     discard cgsym(m, "nimTypeRoot")
     addf(m.s[cfsTypeInit3], "$1.nextType = nimTypeRoot; nimTypeRoot=&$1;$n",
          [name])

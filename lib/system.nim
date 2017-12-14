@@ -1325,6 +1325,7 @@ proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
   ##   tmp.add("cd")
   ##   assert(tmp == "abcd")
 
+
 type
   Endianness* = enum ## is a type describing the endianness of a processor.
     littleEndian, bigEndian
@@ -1439,7 +1440,11 @@ const
     ## is the value that should be passed to `quit <#quit>`_ to indicate
     ## failure.
 
-var programResult* {.exportc: "nim_program_result".}: int
+when defined(nodejs):
+  var programResult* {.importc: "process.exitCode".}: int
+  programResult = 0
+else:
+  var programResult* {.exportc: "nim_program_result".}: int
   ## modify this variable to specify the exit code of the program
   ## under normal circumstances. When the program is terminated
   ## prematurely using ``quit``, this value is ignored.
@@ -2499,9 +2504,9 @@ proc `$`*[T: tuple|object](x: T): string =
     when compiles($value):
       when compiles(value.isNil):
         if value.isNil: result.add "nil"
-        else: result.add($value)
+        else: result.addQuoted(value)
       else:
-        result.add($value)
+        result.addQuoted(value)
       firstElement = false
     else:
       result.add("...")
@@ -2521,12 +2526,9 @@ proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
       if value.isNil:
         result.add "nil"
       else:
-        result.add($value)
-    # prevent temporary string allocation
-    elif compiles(result.add(value)):
-      result.add(value)
+        result.addQuoted(value)
     else:
-      result.add($value)
+      result.addQuoted(value)
 
   result.add(suffix)
 
@@ -3525,7 +3527,10 @@ when hasAlloc or defined(nimscript):
     ## .. code-block:: nim
     ##    var s = "abcdef"
     ##    assert s[1..3] == "bcd"
-    result = s.substr(s ^^ x.a, s ^^ x.b)
+    let a = s ^^ x.a
+    let L = (s ^^ x.b) - a + 1
+    result = newString(L)
+    for i in 0 ..< L: result[i] = s[i + a]
 
   proc `[]=`*[T, U](s: var string, x: HSlice[T, U], b: string) =
     ## slice assignment for strings. If
@@ -3752,6 +3757,7 @@ template assert*(cond: bool, msg = "") =
   ## that ``AssertionError`` is hidden from the effect system, so it doesn't
   ## produce ``{.raises: [AssertionError].}``. This exception is only supposed
   ## to be caught by unit testing frameworks.
+  ##
   ## The compiler may not generate any code at all for ``assert`` if it is
   ## advised to do so through the ``-d:release`` or ``--assertions:off``
   ## `command line switches <nimc.html#command-line-switches>`_.
@@ -3885,6 +3891,65 @@ proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.
 when declared(initDebugger):
   initDebugger()
 
+proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
+  ## Adds a char to string `s` and applies the following escaping:
+  ##
+  ## * replaces any ``\`` by ``\\``
+  ## * replaces any ``'`` by ``\'``
+  ## * replaces any ``"`` by ``\"``
+  ## * replaces any other character in the set ``{'\0'..'\31', '\127'..'\255'}``
+  ##   by ``\xHH`` where ``HH`` is its hexadecimal value.
+  ##
+  ## The procedure has been designed so that its output is usable for many
+  ## different common syntaxes.
+  ## **Note**: This is not correct for producing Ansi C code!
+  case c
+  of '\0'..'\31', '\127'..'\255':
+    add(s, "\\x")
+    const HexChars = "0123456789ABCDEF"
+    let n = ord(c)
+    s.add(HexChars[int((n and 0xF0) shr 4)])
+    s.add(HexChars[int(n and 0xF)])
+  of '\\': add(s, "\\\\")
+  of '\'': add(s, "\\'")
+  of '\"': add(s, "\\\"")
+  else: add(s, c)
+
+proc addQuoted*[T](s: var string, x: T) =
+  ## Appends `x` to string `s` in place, applying quoting and escaping
+  ## if `x` is a string or char. See
+  ## `addEscapedChar <system.html#addEscapedChar>`_
+  ## for the escaping scheme.
+  ##
+  ## The Nim standard library uses this function on the elements of
+  ## collections when producing a string representation of a collection.
+  ## It is recommended to use this function as well for user-side collections.
+  ## Users may overload `addQuoted` for custom (string-like) types if
+  ## they want to implement a customized element representation.
+  ##
+  ## .. code-block:: Nim
+  ##   var tmp = ""
+  ##   tmp.addQuoted(1)
+  ##   tmp.add(", ")
+  ##   tmp.addQuoted("string")
+  ##   tmp.add(", ")
+  ##   tmp.addQuoted('c')
+  ##   assert(tmp == """1, "string", 'c'""")
+  when T is string:
+    s.add("\"")
+    for c in x:
+      s.addEscapedChar(c)
+    s.add("\"")
+  elif T is char:
+    s.add("'")
+    s.addEscapedChar(x)
+    s.add("'")
+  # prevent temporary string allocation
+  elif compiles(s.add(x)):
+    s.add(x)
+  else:
+    s.add($x)
+
 when hasAlloc:
   # XXX: make these the default (or implement the NilObject optimization)
   proc safeAdd*[T](x: var seq[T], y: T) {.noSideEffect.} =
@@ -3992,3 +4057,38 @@ when defined(windows) and appType == "console" and defined(nimSetUtf8CodePage):
   proc setConsoleOutputCP(codepage: cint): cint {.stdcall, dynlib: "kernel32",
     importc: "SetConsoleOutputCP".}
   discard setConsoleOutputCP(65001) # 65001 - utf-8 codepage
+
+
+when defined(nimHasRunnableExamples):
+  proc runnableExamples*(body: untyped) {.magic: "RunnableExamples".}
+    ## A section you should use to mark `runnable example`:idx: code with.
+    ##
+    ## - In normal debug and release builds code within
+    ##   a ``runnableExamples`` section is ignored.
+    ## - The documentation generator is aware of these examples and considers them
+    ##   part of the ``##`` doc comment. As the last step of documentation
+    ##   generation the examples are put into an ``$file_example.nim`` file,
+    ##   compiled and tested. The collected examples are
+    ##   put into their own module to ensure the examples do not refer to
+    ##   non-exported symbols.
+else:
+  template runnableExamples*(body: untyped) =
+    discard
+
+template doAssertRaises*(exception, code: untyped): typed =
+  ## Raises ``AssertionError`` if specified ``code`` does not raise the
+  ## specified exception.
+  runnableExamples:
+    doAssertRaises(ValueError):
+      raise newException(ValueError, "Hello World")
+
+  try:
+    block:
+      code
+    raiseAssert(astToStr(exception) & " wasn't raised by:\n" & astToStr(code))
+  except exception:
+    discard
+  except Exception as exc:
+    raiseAssert(astToStr(exception) &
+                " wasn't raised, another error was raised instead by:\n"&
+                astToStr(code))

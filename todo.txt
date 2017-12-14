@@ -1,6 +1,9 @@
 version 1.0 battle plan
 =======================
 
+- introduce ``nkStmtListExpr`` for template/macro invokations to produce
+  better stack traces
+- let 'doAssert' analyse the expressions and produce more helpful output
 - fix "high priority" bugs
 - try to fix as many compiler crashes as reasonable
 
@@ -28,7 +31,6 @@ Not critical for 1.0
 - pragmas need 'bindSym' support
 - pragmas need re-work: 'push' is dangerous, 'hasPragma' does not work
   reliably with user-defined pragmas
-- memory manager: add a measure of fragmentation
 - we need a magic thisModule symbol
 - optimize 'genericReset'; 'newException' leads to code bloat
 
@@ -49,7 +51,6 @@ Bugs
 GC
 ==
 
-- use slightly bigger blocks in the allocator
 - resizing of strings/sequences could take into account the memory that
   is allocated
 
