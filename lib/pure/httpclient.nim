@@ -1167,10 +1167,13 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
   var lastURL = url
   for i in 1..client.maxRedirects:
     if result.status.redirection():
-      # we get all sorts of troubles if we don't close the connection
-      # before following a redirect. this is inefficient but i didn't
-      # find a better solution.
-      client.close()
+      if hasKey(result.headers, "Connection"):
+        if result.headers["Connection"] == "close":
+          client.close()
+      if not client.getBody and client.connected:
+        # downloadFile sets client.getBody=false
+        # but we must read the body of redirect responses
+        await parseBody(client, result.headers, result.version)
       let redirectTo = getNewLocation(lastURL, result.headers)
       result = await client.requestAux(redirectTo, httpMethod, body, headers)
       lastURL = redirectTo
@@ -1268,9 +1271,8 @@ proc downloadFile*(client: HttpClient | AsyncHttpClient,
                    url: string, filename: string): Future[void] {.multisync.} =
   ## Downloads ``url`` and saves it to ``filename``.
   client.getBody = false
-# disabled because this causes an abort after an async download
-#  defer:
-#    client.getBody = true
+  defer:
+    client.getBody = true
   let resp = await client.get(url)
 
   when client is HttpClient:
