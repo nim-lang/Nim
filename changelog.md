@@ -128,3 +128,7 @@ This now needs to be written as:
   strings and chars.
 - Removed ``securehash`` stdlib module as it is not secure anymore. The module
   is still available via ``compiler/securehash``.
+- The ``random`` procs in ``random.nim`` have all been deprecated. Instead use
+  the new ``rand`` procs. The module now exports the state of the random
+  number generator as type ``Rand`` so multiple threads can easily use their
+  own random number generators that do not require locking.
