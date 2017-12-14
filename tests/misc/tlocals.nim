@@ -1,5 +1,5 @@
 discard """
-  output: "(x: string here, a: 1)"
+  output: '''(x: "string here", a: 1)'''
 """
 
 proc simple[T](a: T) =

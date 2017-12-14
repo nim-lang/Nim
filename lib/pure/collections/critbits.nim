@@ -141,8 +141,8 @@ proc excl*[T](c: var CritBitTree[T], key: string) =
 
 proc missingOrExcl*[T](c: var CritBitTree[T], key: string): bool =
   ## Returns true iff `c` does not contain the given `key`. If the key
-  ## does exist, c.excl(key) is performed. 
-  let oldCount = c.count 
+  ## does exist, c.excl(key) is performed.
+  let oldCount = c.count
   var n = exclImpl(c, key)
   result = c.count == oldCount
 
@@ -326,7 +326,7 @@ proc `$`*[T](c: CritBitTree[T]): string =
       result.add($key)
       when T isnot void:
         result.add(": ")
-        result.add($val)
+        result.addQuoted(val)
     result.add("}")
 
 when isMainModule:

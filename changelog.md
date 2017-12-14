@@ -123,3 +123,12 @@ This now needs to be written as:
   to [http://www.gii.upv.es/tlsf/](http://www.gii.upv.es/tlsf/) the maximum
   fragmentation measured is lower than 25%. As a nice bonus ``alloc`` and
   ``dealloc`` became O(1) operations.
+- The behavior of ``$`` has been changed for all standard library collections. The
+  collection-to-string implementations now perform proper quoting and escaping of
+  strings and chars.
+- Removed ``securehash`` stdlib module as it is not secure anymore. The module
+  is still available via ``compiler/securehash``.
+- The ``random`` procs in ``random.nim`` have all been deprecated. Instead use
+  the new ``rand`` procs. The module now exports the state of the random
+  number generator as type ``Rand`` so multiple threads can easily use their
+  own random number generators that do not require locking.
