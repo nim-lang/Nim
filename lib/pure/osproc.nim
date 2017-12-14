@@ -1026,112 +1026,112 @@ elif not defined(useNimRtl):
     const
       hasThreadSupport = compileOption("threads") and not defined(nimscript)
 
-  proc waitForExit(p: Process, timeout: int = -1): int =
-      template adjustTimeout(t, s, e: Timespec) =
-        var diff: int
-        var b: Timespec
-        b.tv_sec = e.tv_sec
-        b.tv_nsec = e.tv_nsec
-        e.tv_sec = e.tv_sec - s.tv_sec
-        if e.tv_nsec >= s.tv_nsec:
-          e.tv_nsec -= s.tv_nsec
-        else:
-          if e.tv_sec == posix.Time(0):
-            raise newException(ValueError, "System time was modified")
+    proc waitForExit(p: Process, timeout: int = -1): int =
+        template adjustTimeout(t, s, e: Timespec) =
+          var diff: int
+          var b: Timespec
+          b.tv_sec = e.tv_sec
+          b.tv_nsec = e.tv_nsec
+          e.tv_sec = e.tv_sec - s.tv_sec
+          if e.tv_nsec >= s.tv_nsec:
+            e.tv_nsec -= s.tv_nsec
           else:
-            diff = s.tv_nsec - e.tv_nsec
-            e.tv_nsec = 1_000_000_000 - diff
-        t.tv_sec = t.tv_sec - e.tv_sec
-        if t.tv_nsec >= e.tv_nsec:
-          t.tv_nsec -= e.tv_nsec
-        else:
-          t.tv_sec = t.tv_sec - posix.Time(1)
-          diff = e.tv_nsec - t.tv_nsec
-          t.tv_nsec = 1_000_000_000 - diff
-        s.tv_sec = b.tv_sec
-        s.tv_nsec = b.tv_nsec
+            if e.tv_sec == posix.Time(0):
+              raise newException(ValueError, "System time was modified")
+            else:
+              diff = s.tv_nsec - e.tv_nsec
+              e.tv_nsec = 1_000_000_000 - diff
+          t.tv_sec = t.tv_sec - e.tv_sec
+          if t.tv_nsec >= e.tv_nsec:
+            t.tv_nsec -= e.tv_nsec
+          else:
+            t.tv_sec = t.tv_sec - posix.Time(1)
+            diff = e.tv_nsec - t.tv_nsec
+            t.tv_nsec = 1_000_000_000 - diff
+          s.tv_sec = b.tv_sec
+          s.tv_nsec = b.tv_nsec
 
-      #if waitPid(p.id, p.exitStatus, 0) == int(p.id):
-      # ``waitPid`` fails if the process is not running anymore. But then
-      # ``running`` probably set ``p.exitStatus`` for us. Since ``p.exitStatus`` is
-      # initialized with -3, wrong success exit codes are prevented.
-      if p.exitStatus != -3:
-        return exitStatus(p.exitStatus)
+        #if waitPid(p.id, p.exitStatus, 0) == int(p.id):
+        # ``waitPid`` fails if the process is not running anymore. But then
+        # ``running`` probably set ``p.exitStatus`` for us. Since ``p.exitStatus`` is
+        # initialized with -3, wrong success exit codes are prevented.
+        if p.exitStatus != -3:
+          return exitStatus(p.exitStatus)
 
-      if timeout == -1:
-        var status : cint = 1
-        if waitpid(p.id, status, 0) < 0:
-          raiseOSError(osLastError())
-        p.exitStatus = status
-      else:
-        var nmask, omask: Sigset
-        var sinfo: SigInfo
-        var stspec, enspec, tmspec: Timespec
-
-        discard sigemptyset(nmask)
-        discard sigemptyset(omask)
-        discard sigaddset(nmask, SIGCHLD)
-
-        when hasThreadSupport:
-          if pthread_sigmask(SIG_BLOCK, nmask, omask) == -1:
+        if timeout == -1:
+          var status : cint = 1
+          if waitpid(p.id, status, 0) < 0:
             raiseOSError(osLastError())
+          p.exitStatus = status
         else:
-          if sigprocmask(SIG_BLOCK, nmask, omask) == -1:
-            raiseOSError(osLastError())
+          var nmask, omask: Sigset
+          var sinfo: SigInfo
+          var stspec, enspec, tmspec: Timespec
 
-        if timeout >= 1000:
-          tmspec.tv_sec = posix.Time(timeout div 1_000)
-          tmspec.tv_nsec = (timeout %% 1_000) * 1_000_000
-        else:
-          tmspec.tv_sec = posix.Time(0)
-          tmspec.tv_nsec = (timeout * 1_000_000)
+          discard sigemptyset(nmask)
+          discard sigemptyset(omask)
+          discard sigaddset(nmask, SIGCHLD)
 
-        try:
-          if clock_gettime(CLOCK_REALTIME, stspec) == -1:
-            raiseOSError(osLastError())
-          while true:
-            let res = sigtimedwait(nmask, sinfo, tmspec)
-            if res == SIGCHLD:
-              if sinfo.si_pid == p.id:
-                var status : cint = 1
-                if waitpid(p.id, status, 0) < 0:
-                  raiseOSError(osLastError())
-                p.exitStatus = status
-                break
-              else:
-                # we have SIGCHLD, but not for process we are waiting,
-                # so we need to adjust timeout value and continue
-                if clock_gettime(CLOCK_REALTIME, enspec) == -1:
-                  raiseOSError(osLastError())
-                adjustTimeout(tmspec, stspec, enspec)
-            elif res < 0:
-              let err = osLastError()
-              if err.cint == EINTR:
-                # we have received another signal, so we need to
-                # adjust timeout and continue
-                if clock_gettime(CLOCK_REALTIME, enspec) == -1:
-                  raiseOSError(osLastError())
-                adjustTimeout(tmspec, stspec, enspec)
-              elif err.cint == EAGAIN:
-                # timeout expired, so we trying to kill process
-                if posix.kill(p.id, SIGKILL) == -1:
-                  raiseOSError(osLastError())
-                var status : cint = 1
-                if waitpid(p.id, status, 0) < 0:
-                  raiseOSError(osLastError())
-                p.exitStatus = status
-                break
-              else:
-                raiseOSError(err)
-        finally:
           when hasThreadSupport:
-            if pthread_sigmask(SIG_UNBLOCK, nmask, omask) == -1:
+            if pthread_sigmask(SIG_BLOCK, nmask, omask) == -1:
               raiseOSError(osLastError())
           else:
-            if sigprocmask(SIG_UNBLOCK, nmask, omask) == -1:
+            if sigprocmask(SIG_BLOCK, nmask, omask) == -1:
               raiseOSError(osLastError())
 
-      result = exitStatus(p.exitStatus)
+          if timeout >= 1000:
+            tmspec.tv_sec = posix.Time(timeout div 1_000)
+            tmspec.tv_nsec = (timeout %% 1_000) * 1_000_000
+          else:
+            tmspec.tv_sec = posix.Time(0)
+            tmspec.tv_nsec = (timeout * 1_000_000)
+
+          try:
+            if clock_gettime(CLOCK_REALTIME, stspec) == -1:
+              raiseOSError(osLastError())
+            while true:
+              let res = sigtimedwait(nmask, sinfo, tmspec)
+              if res == SIGCHLD:
+                if sinfo.si_pid == p.id:
+                  var status : cint = 1
+                  if waitpid(p.id, status, 0) < 0:
+                    raiseOSError(osLastError())
+                  p.exitStatus = status
+                  break
+                else:
+                  # we have SIGCHLD, but not for process we are waiting,
+                  # so we need to adjust timeout value and continue
+                  if clock_gettime(CLOCK_REALTIME, enspec) == -1:
+                    raiseOSError(osLastError())
+                  adjustTimeout(tmspec, stspec, enspec)
+              elif res < 0:
+                let err = osLastError()
+                if err.cint == EINTR:
+                  # we have received another signal, so we need to
+                  # adjust timeout and continue
+                  if clock_gettime(CLOCK_REALTIME, enspec) == -1:
+                    raiseOSError(osLastError())
+                  adjustTimeout(tmspec, stspec, enspec)
+                elif err.cint == EAGAIN:
+                  # timeout expired, so we trying to kill process
+                  if posix.kill(p.id, SIGKILL) == -1:
+                    raiseOSError(osLastError())
+                  var status : cint = 1
+                  if waitpid(p.id, status, 0) < 0:
+                    raiseOSError(osLastError())
+                  p.exitStatus = status
+                  break
+                else:
+                  raiseOSError(err)
+          finally:
+            when hasThreadSupport:
+              if pthread_sigmask(SIG_UNBLOCK, nmask, omask) == -1:
+                raiseOSError(osLastError())
+            else:
+              if sigprocmask(SIG_UNBLOCK, nmask, omask) == -1:
+                raiseOSError(osLastError())
+
+        result = exitStatus(p.exitStatus)
 
   proc peekExitCode(p: Process): int =
     var status = cint(0)
