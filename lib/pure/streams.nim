@@ -135,7 +135,7 @@ proc writeData*(s, unused: Stream, buffer: pointer,
   ## to the stream `s`.
   s.writeDataImpl(s, buffer, bufLen)
 
-proc write*[T](s: Stream, x: T) =
+proc write*[T: not seq](s: Stream, x: T) =
   ## generic write procedure. Writes `x` to the stream `s`. Implementation:
   ##
   ## .. code-block:: Nim
@@ -144,6 +144,10 @@ proc write*[T](s: Stream, x: T) =
   var y: T
   shallowCopy(y, x)
   writeData(s, addr(y), sizeof(y))
+
+proc write*(f: File; x: seq) =
+  ## writes the seq `x` to the the stream `s`.
+  if x.len > 0: writeData(f, unsafeAddr x[0], x.len)
 
 proc write*(s: Stream, x: string) =
   ## writes the string `x` to the the stream `s`. No length field or
