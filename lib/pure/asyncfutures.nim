@@ -239,10 +239,10 @@ proc mergeEntries(entries: seq[StackTraceEntry]): seq[StackTraceEntry] =
       # completely. 'diff' is the wrong idea here.
       var last = result.len-1
       var e = reRaiseEnd-1
-      var newBlock = true
+      var newBlock = false
       while last >= 0 and e >= i+1:
         if result[last] != entries[e]:
-          newBlock = false
+          newBlock = true
           break
         dec e
         dec last
@@ -251,10 +251,9 @@ proc mergeEntries(entries: seq[StackTraceEntry]): seq[StackTraceEntry] =
         for j in i+1 ..< reRaiseEnd: result.add entries[j]
 
       i = reRaiseEnd+1
-      continue
-
-    result.add(entry)
-    i.inc
+    else:
+      result.add(entry)
+      i.inc
 
 proc getHint(entry: StackTraceEntry): string =
   ## We try to provide some hints about stack trace entries that the user
