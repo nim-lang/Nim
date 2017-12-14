@@ -723,9 +723,10 @@ proc generateHeaders(requestUrl: Uri, httpMethod: string,
     if requestUrl.query.len > 0:
       result.add("?" & requestUrl.query)
   else:
-    # Remove the 'http://' from the URL for CONNECT requests for TLS connections.
+    # Remove the scheme from the URL for CONNECT requests for TLS connections.
     var modifiedUrl = requestUrl
-    if requestUrl.scheme == "https": modifiedUrl.scheme = ""
+    if httpMethod == $HttpConnect:
+      modifiedUrl.scheme = ""
     result.add($modifiedUrl)
 
   # HTTP/1.1\c\l
@@ -1166,9 +1167,15 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
   var lastURL = url
   for i in 1..client.maxRedirects:
     if result.status.redirection():
+      # we get all sorts of troubles if we don't close the connection
+      # before following a redirect. this is inefficient but i didn't
+      # find a better solution.
+      client.close()
       let redirectTo = getNewLocation(lastURL, result.headers)
-      result = await client.request(redirectTo, httpMethod, body, headers)
+      result = await client.requestAux(redirectTo, httpMethod, body, headers)
       lastURL = redirectTo
+    else:
+      break
 
 
 proc request*(client: HttpClient | AsyncHttpClient, url: string,
@@ -1261,8 +1268,9 @@ proc downloadFile*(client: HttpClient | AsyncHttpClient,
                    url: string, filename: string): Future[void] {.multisync.} =
   ## Downloads ``url`` and saves it to ``filename``.
   client.getBody = false
-  defer:
-    client.getBody = true
+# disabled because this causes an abort after an async download
+#  defer:
+#    client.getBody = true
   let resp = await client.get(url)
 
   when client is HttpClient:
