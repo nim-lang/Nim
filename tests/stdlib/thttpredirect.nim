@@ -15,22 +15,22 @@ const server_address = "http://localhost:9897"
 
 proc test_redirect() =
   var client = newHTTPClient(maxRedirects = 1)
-  let data = client.get(server_address / "redirect/2")
+  let data = client.get(server_address & "/redirect/2")
   echo $data.status
 
 proc test_redirect_1(max_r: int) =
   var client = newHTTPClient(maxRedirects = max_r)
-  let data = client.get(server_address / "redirect-to?url=http://localhost:9897/redirect-to?url=http://nim-lang.org")
+  let data = client.get(server_address & "/redirect-to?url=http://localhost:9897/redirect-to?url=http://nim-lang.org")
   echo $data.status
 
 proc test_redirect_deprecated() =
-  let data = get(server_address / "redirect/2", maxRedirects = 1)
+  let data = get(server_address & "/redirect/2", maxRedirects = 1)
   echo $data.status
 
 proc test_redirect_download() =
   var fname = "localhost.txt"
   var client = newHTTPClient(maxRedirects = 1)
-  client.downloadFile(server_address / "redirect/3", fname)
+  client.downloadFile(server_address & "/redirect/3", fname)
   let fp = open(fname, fmRead)
   echo fp.readAll()
   fp.close()
@@ -39,7 +39,7 @@ proc test_redirect_download() =
 proc test_redirect_download_async() {.async.} =
   var fname = "localhost.txt"
   var client = newAsyncHTTPClient(maxRedirects = 1)
-  await client.downloadFile(server_address / "redirect/2", fname)
+  await client.downloadFile(server_address & "/redirect/2", fname)
   let fp = open(fname, fmRead)
   echo fp.readAll()
   fp.close()
@@ -54,7 +54,7 @@ proc start_server() =
       if tail != "":
         var r = parseInt(tail)
         if r > 0:
-          let redirectUrl = server_address / "redirect/" & $(r - 1)
+          let redirectUrl = server_address & "/redirect/" & $(r - 1)
           let headers =  newHttpHeaders([("Location", redirectUrl)])
           await req.respond(Http302, "redirect to: " & redirectUrl & "\c\L", headers)
         else:
