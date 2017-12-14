@@ -177,7 +177,17 @@ proc processTimers(p: PDispatcherBase; didSomeWork: var bool) {.inline.} =
     dec count
     didSomeWork = true
 
-proc processPendingCallbacks(p: PDispatcherBase; didSomeWork: var bool) =
+proc processPendingCallbacks*(p: PDispatcherBase; didSomeWork: var bool) =
+  ## Process only the event loop's pending callbacks. This is useful if you
+  ## want to process as much work as possible with a single call to
+  ## ``runOnce``:
+  ##
+  ## .. code-block:: nim
+  ##  let disp = getGlobalDispatcher()
+  ##  if runOnce(disp):
+  ##    var keepProcessing = true
+  ##    while keepProcessing:
+  ##      processPendingCallbacks(disp, keepProcessing)
   while p.callbacks.len > 0:
     var cb = p.callbacks.popFirst()
     cb()
@@ -286,8 +296,11 @@ when defined(windows) or defined(nimdoc):
     let p = getGlobalDispatcher()
     p.handles.len != 0 or p.timers.len != 0 or p.callbacks.len != 0
 
-  proc runOnce(timeout = 500): bool =
-    let p = getGlobalDispatcher()
+  proc runOnce*(p: PDispatcher; timeout = 500): bool =
+    ## Waits for completion events and processes them. Raises ``ValueError``
+    ## if there are no pending operations. This runs the underlying OS
+    ## `epoll`:idx: or `kqueue`:idx: primitive only once. It returns true
+    ## if some events could be processed.
     if p.handles.len == 0 and p.timers.len == 0 and p.callbacks.len == 0:
       raise newException(ValueError,
         "No handles or timers registered in dispatcher.")
@@ -1205,8 +1218,11 @@ else:
       # descriptor was unregistered in callback via `unregister()`.
       discard
 
-  proc runOnce(timeout = 500): bool =
-    let p = getGlobalDispatcher()
+  proc runOnce*(p: PDispatcher; timeout = 500): bool =
+    ## Waits for completion events and processes them. Raises ``ValueError``
+    ## if there are no pending operations. This runs the underlying OS
+    ## `epoll`:idx: or `kqueue`:idx: primitive only once. It returns true
+    ## if some events could be processed.
     when ioselSupportedPlatform:
       let customSet = {Event.Timer, Event.Signal, Event.Process,
                        Event.Vnode}
@@ -1486,14 +1502,16 @@ proc drain*(timeout = 500) =
   ## Waits for completion events and processes them. Raises ``ValueError``
   ## if there are no pending operations. In contrast to ``poll`` this
   ## processes as many events as are available.
-  if runOnce(timeout):
-    while runOnce(0): discard
+  let p = getGlobalDispatcher()
+  if runOnce(p, timeout):
+    while runOnce(p, 0): discard
 
 proc poll*(timeout = 500) =
   ## Waits for completion events and processes them. Raises ``ValueError``
   ## if there are no pending operations. This runs the underlying OS
   ## `epoll`:idx: or `kqueue`:idx: primitive only once.
-  discard runOnce()
+  let p = getGlobalDispatcher()
+  discard runOnce(p)
 
 # Common procedures between current and upcoming asyncdispatch
 include includes.asynccommon
