@@ -925,6 +925,8 @@ proc genProcHeader(m: BModule, prc: PSym): Rope =
       result.add "N_LIB_EXPORT "
   elif prc.typ.callConv == ccInline:
     result.add "static "
+  elif {sfImportc, sfExportc} * prc.flags == {}:
+    result.add "N_LIB_PRIVATE "
   var check = initIntSet()
   fillLoc(prc.loc, locProc, prc.ast[namePos], mangleName(m, prc), OnUnknown)
   genProcParams(m, prc.typ, rettype, params, check)
