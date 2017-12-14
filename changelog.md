@@ -126,3 +126,5 @@ This now needs to be written as:
 - The behavior of ``$`` has been changed for all standard library collections. The
   collection-to-string implementations now perform proper quoting and escaping of
   strings and chars.
+- Removed ``securehash`` stdlib module as it is not secure anymore. The module
+  is still available via ``compiler/securehash``.
