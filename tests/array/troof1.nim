@@ -4,7 +4,7 @@ discard """
 3
 @[(Field0: 1, Field1: 2), (Field0: 3, Field1: 5)]
 2
-@[a, new one, c]
+@["a", "new one", "c"]
 @[1, 2, 3]'''
 """
 

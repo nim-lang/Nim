@@ -123,3 +123,6 @@ This now needs to be written as:
   to [http://www.gii.upv.es/tlsf/](http://www.gii.upv.es/tlsf/) the maximum
   fragmentation measured is lower than 25%. As a nice bonus ``alloc`` and
   ``dealloc`` became O(1) operations.
+- The behavior of ``$`` has been changed for all standard library collections. The
+  collection-to-string implementations now perform proper quoting and escaping of
+  strings and chars.
