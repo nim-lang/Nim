@@ -21,7 +21,7 @@ import
 type
   TSystemCC* = enum
     ccNone, ccGcc, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc,
-    ccTcc, ccPcc, ccUcc, ccIcl
+    ccTcc, ccPcc, ccUcc, ccIcl, ccIcc
   TInfoCCProp* = enum         # properties of the C compiler:
     hasSwitchRange,           # CC allows ranges in switch statements (GNU C)
     hasComputedGoto,          # CC has computed goto (GNU C extension)
@@ -135,17 +135,17 @@ compiler vcc:
 
 # Intel C/C++ Compiler
 compiler icl:
-  # Intel compilers try to imitate the native ones (gcc and msvc)
-  when defined(windows):
-    result = vcc()
-    result.name = "icl"
-    result.compilerExe = "icl"
-    result.linkerExe = "icl"
-  else:
-    result = gcc()
-    result.name = "icc"
-    result.compilerExe = "icc"
-    result.linkerExe = "icc"
+  result = vcc()
+  result.name = "icl"
+  result.compilerExe = "icl"
+  result.linkerExe = "icl"
+
+# Intel compilers try to imitate the native ones (gcc and msvc)
+compiler icc:
+  result = gcc()
+  result.name = "icc"
+  result.compilerExe = "icc"
+  result.linkerExe = "icc"
 
 # Local C Compiler
 compiler lcc:
@@ -329,7 +329,8 @@ const
     tcc(),
     pcc(),
     ucc(),
-    icl()]
+    icl(),
+    icc()]
 
   hExt* = ".h"
 
