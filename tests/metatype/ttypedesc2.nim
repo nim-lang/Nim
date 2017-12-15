@@ -1,5 +1,5 @@
 discard """
-  output: "(x: a)"
+  output: '''(x: 'a')'''
 """
 
 type

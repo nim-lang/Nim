@@ -1761,29 +1761,15 @@ proc insertSep*(s: string, sep = '_', digits = 3): string {.noSideEffect,
 
 proc escape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
   rtl, extern: "nsuEscape".} =
-  ## Escapes a string `s`.
+  ## Escapes a string `s`. See `system.addEscapedChar <system.html#addEscapedChar>`_
+  ## for the escaping scheme.
   ##
-  ## This does these operations (at the same time):
-  ## * replaces any ``\`` by ``\\``
-  ## * replaces any ``'`` by ``\'``
-  ## * replaces any ``"`` by ``\"``
-  ## * replaces any other character in the set ``{'\0'..'\31', '\127'..'\255'}``
-  ##   by ``\xHH`` where ``HH`` is its hexadecimal value.
-  ## The procedure has been designed so that its output is usable for many
-  ## different common syntaxes. The resulting string is prefixed with
-  ## `prefix` and suffixed with `suffix`. Both may be empty strings.
-  ## **Note**: This is not correct for producing Ansi C code!
+  ## The resulting string is prefixed with `prefix` and suffixed with `suffix`.
+  ## Both may be empty strings.
   result = newStringOfCap(s.len + s.len shr 2)
   result.add(prefix)
   for c in items(s):
-    case c
-    of '\0'..'\31', '\127'..'\255':
-      add(result, "\\x")
-      add(result, toHex(ord(c), 2))
-    of '\\': add(result, "\\\\")
-    of '\'': add(result, "\\'")
-    of '\"': add(result, "\\\"")
-    else: add(result, c)
+    result.addEscapedChar(c)
   add(result, suffix)
 
 proc unescape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,

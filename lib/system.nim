@@ -1325,6 +1325,7 @@ proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
   ##   tmp.add("cd")
   ##   assert(tmp == "abcd")
 
+
 type
   Endianness* = enum ## is a type describing the endianness of a processor.
     littleEndian, bigEndian
@@ -2503,9 +2504,9 @@ proc `$`*[T: tuple|object](x: T): string =
     when compiles($value):
       when compiles(value.isNil):
         if value.isNil: result.add "nil"
-        else: result.add($value)
+        else: result.addQuoted(value)
       else:
-        result.add($value)
+        result.addQuoted(value)
       firstElement = false
     else:
       result.add("...")
@@ -2525,12 +2526,9 @@ proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
       if value.isNil:
         result.add "nil"
       else:
-        result.add($value)
-    # prevent temporary string allocation
-    elif compiles(result.add(value)):
-      result.add(value)
+        result.addQuoted(value)
     else:
-      result.add($value)
+      result.addQuoted(value)
 
   result.add(suffix)
 
@@ -3892,6 +3890,65 @@ proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.
 
 when declared(initDebugger):
   initDebugger()
+
+proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
+  ## Adds a char to string `s` and applies the following escaping:
+  ##
+  ## * replaces any ``\`` by ``\\``
+  ## * replaces any ``'`` by ``\'``
+  ## * replaces any ``"`` by ``\"``
+  ## * replaces any other character in the set ``{'\0'..'\31', '\127'..'\255'}``
+  ##   by ``\xHH`` where ``HH`` is its hexadecimal value.
+  ##
+  ## The procedure has been designed so that its output is usable for many
+  ## different common syntaxes.
+  ## **Note**: This is not correct for producing Ansi C code!
+  case c
+  of '\0'..'\31', '\127'..'\255':
+    add(s, "\\x")
+    const HexChars = "0123456789ABCDEF"
+    let n = ord(c)
+    s.add(HexChars[int((n and 0xF0) shr 4)])
+    s.add(HexChars[int(n and 0xF)])
+  of '\\': add(s, "\\\\")
+  of '\'': add(s, "\\'")
+  of '\"': add(s, "\\\"")
+  else: add(s, c)
+
+proc addQuoted*[T](s: var string, x: T) =
+  ## Appends `x` to string `s` in place, applying quoting and escaping
+  ## if `x` is a string or char. See
+  ## `addEscapedChar <system.html#addEscapedChar>`_
+  ## for the escaping scheme.
+  ##
+  ## The Nim standard library uses this function on the elements of
+  ## collections when producing a string representation of a collection.
+  ## It is recommended to use this function as well for user-side collections.
+  ## Users may overload `addQuoted` for custom (string-like) types if
+  ## they want to implement a customized element representation.
+  ##
+  ## .. code-block:: Nim
+  ##   var tmp = ""
+  ##   tmp.addQuoted(1)
+  ##   tmp.add(", ")
+  ##   tmp.addQuoted("string")
+  ##   tmp.add(", ")
+  ##   tmp.addQuoted('c')
+  ##   assert(tmp == """1, "string", 'c'""")
+  when T is string:
+    s.add("\"")
+    for c in x:
+      s.addEscapedChar(c)
+    s.add("\"")
+  elif T is char:
+    s.add("'")
+    s.addEscapedChar(x)
+    s.add("'")
+  # prevent temporary string allocation
+  elif compiles(s.add(x)):
+    s.add(x)
+  else:
+    s.add($x)
 
 when hasAlloc:
   # XXX: make these the default (or implement the NilObject optimization)

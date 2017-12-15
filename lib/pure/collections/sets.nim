@@ -406,7 +406,7 @@ template dollarImpl() {.dirty.} =
   result = "{"
   for key in items(s):
     if result.len > 1: result.add(", ")
-    result.add($key)
+    result.addQuoted(key)
   result.add("}")
 
 proc `$`*[A](s: HashSet[A]): string =
