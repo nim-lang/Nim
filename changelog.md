@@ -134,3 +134,5 @@ This now needs to be written as:
   own random number generators that do not require locking.
 - The compiler is now more consistent in its treatment of ambiguous symbols:
   Types that shadow procs and vice versa are marked as ambiguous (bug #6693).
+- ``yield`` (or ``await`` which is mapped to ``yield``) never worked reliably
+  in an array, seq or object constructor and is now prevented at compile-time.
