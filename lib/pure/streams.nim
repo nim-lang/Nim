@@ -147,7 +147,7 @@ proc write*[T: not seq](s: Stream, x: T) =
 
 proc write*(f: File; x: seq) =
   ## writes the seq `x` to the the stream `s`.
-  if x.len > 0: writeData(f, unsafeAddr x[0], x.len)
+  if x.len > 0: writeData(f, unsafeAddr x[0], x.len*sizeof(x[0]))
 
 proc write*(s: Stream, x: string) =
   ## writes the string `x` to the the stream `s`. No length field or
