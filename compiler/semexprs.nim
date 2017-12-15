@@ -2217,10 +2217,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         # XXX think about this more (``set`` procs)
         if n.len == 2:
           result = semConv(c, n)
-        elif n.len == 1:
-          result = semObjConstr(c, n, flags)
         elif contains(c.ambiguousSymbols, s.id):
           errorUseQualifier(c, n.info, s)
+        elif n.len == 1:
+          result = semObjConstr(c, n, flags)
         elif s.magic == mNone: result = semDirectOp(c, n, flags)
         else: result = semMagic(c, n, s, flags)
       of skProc, skFunc, skMethod, skConverter, skIterator:
