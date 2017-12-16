@@ -158,6 +158,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
                expected, given: string, success: TResultEnum) =
   let name = test.name.extractFilename & " " & $target & test.options
   let duration = epochTime() - test.startTime
+  let durationStr = duration.formatFloat(ffDecimal, precision = 8)
   backend.writeTestResult(name = name,
                           category = test.cat.string,
                           target = $target,
@@ -167,7 +168,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
                           given = given)
   r.data.addf("$#\t$#\t$#\t$#", name, expected, given, $success)
   if success == reSuccess:
-    styledEcho fgGreen, "PASS: ", fgCyan, name
+    styledEcho fgGreen, "PASS: ", fgCyan, alignLeft(name, 60), fgBlue, " (", durationStr, " secs)"
   elif success == reIgnored:
     styledEcho styleDim, fgYellow, "SKIP: ", styleBright, fgCyan, name
   else:
