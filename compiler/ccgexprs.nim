@@ -1236,18 +1236,32 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   else:
     genAssignment(p, d, tmp, {})
 
+proc lhsDoesAlias(a, b: PNode): bool =
+  for y in b:
+    if isPartOf(a, y) != arNo: return true
+
 proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
-  var arr: TLoc
-  if d.k == locNone:
+  var arr, tmp: TLoc
+  # bug #668
+  let doesAlias = lhsDoesAlias(d.lode, n)
+  let dest = if doesAlias: addr(tmp) else: addr(d)
+  if doesAlias:
+    getTemp(p, n.typ, tmp)
+  elif d.k == locNone:
     getTemp(p, n.typ, d)
   # generate call to newSeq before adding the elements per hand:
-  genNewSeqAux(p, d, intLiteral(sonsLen(n)))
+  genNewSeqAux(p, dest[], intLiteral(sonsLen(n)))
   for i in countup(0, sonsLen(n) - 1):
     initLoc(arr, locExpr, n[i], OnHeap)
-    arr.r = rfmt(nil, "$1->data[$2]", rdLoc(d), intLiteral(i))
+    arr.r = rfmt(nil, "$1->data[$2]", rdLoc(dest[]), intLiteral(i))
     arr.storage = OnHeap            # we know that sequences are on the heap
     expr(p, n[i], arr)
   gcUsage(n)
+  if doesAlias:
+    if d.k == locNone:
+      d = tmp
+    else:
+      genAssignment(p, d, tmp, {})
 
 proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
   var elem, a, arr: TLoc

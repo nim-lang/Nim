@@ -179,5 +179,11 @@ proc isPartOf*(a, b: PNode): TAnalysisResult =
           result = isPartOf(a[0], b)
           if result == arNo: result = arMaybe
       else: discard
+    of nkObjConstr:
+      result = arNo
+      for i in 1..<b.len:
+        let res = isPartOf(a, b[i][1])
+        if res != arNo:
+          result = res
+          if res == arYes: break
     else: discard
-

@@ -210,7 +210,7 @@ when isMainModule:
     for i, oc in occur:
       if oc < 69:
         doAssert false, "too few occurrences of " & $i
-      elif oc > 130:
+      elif oc > 150:
         doAssert false, "too many occurrences of " & $i
 
     var a = [0, 1]
