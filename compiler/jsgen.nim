@@ -1563,14 +1563,22 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
     internalError("createVar: " & $t.kind)
     result = nil
 
+template returnType: untyped =
+  ~""
+
 proc genVarInit(p: PProc, v: PSym, n: PNode) =
   var
     a: TCompRes
     s: Rope
+    varCode: string
+  if v.constraint.isNil:
+    varCode = "var $2"
+  else:
+    varCode = v.constraint.strVal
   if n.kind == nkEmpty:
     let mname = mangleName(v, p.target)
-    lineF(p, "var $1 = $2;$n" | "$$$1 = $2;$n",
-             [mname, createVar(p, v.typ, isIndirect(v))])
+    lineF(p, varCode & " = $3;$n" | "$$$2 = $3;$n",
+               [returnType, mname, createVar(p, v.typ, isIndirect(v))])
     if v.typ.kind in { tyVar, tyPtr, tyRef } and mapType(p, v.typ) == etyBaseIndex:
       lineF(p, "var $1_Idx = 0;$n", [ mname ])
   else:
@@ -1587,25 +1595,25 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
       let targetBaseIndex = {sfAddrTaken, sfGlobal} * v.flags == {}
       if a.typ == etyBaseIndex:
         if targetBaseIndex:
-          lineF(p, "var $1 = $2, $1_Idx = $3;$n",
-                   [v.loc.r, a.address, a.res])
+          lineF(p, varCode & " = $3, $2_Idx = $4;$n",
+                   [returnType, v.loc.r, a.address, a.res])
         else:
-          lineF(p, "var $1 = [$2, $3];$n",
-                   [v.loc.r, a.address, a.res])
+          lineF(p, varCode & " = [$3, $4];$n",
+                   [returnType, v.loc.r, a.address, a.res])
       else:
         if targetBaseIndex:
           let tmp = p.getTemp
           lineF(p, "var $1 = $2, $3 = $1[0], $3_Idx = $1[1];$n",
                    [tmp, a.res, v.loc.r])
         else:
-          lineF(p, "var $1 = $2;$n", [v.loc.r, a.res])
+          lineF(p, varCode & " = $3;$n", [returnType, v.loc.r, a.res])
       return
     else:
       s = a.res
     if isIndirect(v):
-      lineF(p, "var $1 = [$2];$n", [v.loc.r, s])
+      lineF(p, varCode & " = [$3];$n", [returnType, v.loc.r, s])
     else:
-      lineF(p, "var $1 = $2;$n" | "$$$1 = $2;$n", [v.loc.r, s])
+      lineF(p, varCode & " = $3;$n" | "$$$2 = $3;$n", [returnType, v.loc.r, s])
 
 proc genVarStmt(p: PProc, n: PNode) =
   for i in countup(0, sonsLen(n) - 1):
@@ -2162,8 +2170,22 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
       returnStmt = "return $#;$n" % [a.res]
 
   p.nested: genStmt(p, prc.getBody)
-  let def = "function $#($#) {$n$#$#$#$#$#" %
-            [name, header,
+
+  var def: Rope
+  if not prc.constraint.isNil:
+    def = (prc.constraint.strVal & " {$n$#$#$#$#$#") %
+            [ returnType,
+              name,
+              header,
+              optionaLine(p.globals),
+              optionaLine(p.locals),
+              optionaLine(resultAsgn),
+              optionaLine(genProcBody(p, prc)),
+              optionaLine(p.indentLine(returnStmt))]
+  else:
+    def = "function $#($#) {$n$#$#$#$#$#" %
+            [ name,
+              header,
               optionaLine(p.globals),
               optionaLine(p.locals),
               optionaLine(resultAsgn),
@@ -2230,7 +2252,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   case n.kind
   of nkSym:
     genSym(p, n, r)
-  of nkCharLit..nkUInt32Lit:
+  of nkCharLit..nkUInt64Lit:
     if n.typ.kind == tyBool:
       r.res = if n.intVal == 0: rope"false" else: rope"true"
     else:

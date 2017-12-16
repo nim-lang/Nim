@@ -293,33 +293,33 @@ proc runeSubStr*(s: string, pos:int, len:int = int.high): string =
   if pos < 0:
     let (o, rl) = runeReverseOffset(s, -pos)
     if len >= rl:
-      result = s[o.. s.len-1]
+      result = s.substr(o, s.len-1)
     elif len < 0:
       let e = rl + len
       if e < 0:
         result = ""
       else:
-        result = s[o.. runeOffset(s, e-(rl+pos) , o)-1]
+        result = s.substr(o, runeOffset(s, e-(rl+pos) , o)-1)
     else:
-      result = s[o.. runeOffset(s, len, o)-1]
+      result = s.substr(o, runeOffset(s, len, o)-1)
   else:
     let o = runeOffset(s, pos)
     if o < 0:
       result = ""
     elif len == int.high:
-      result = s[o.. s.len-1]
+      result = s.substr(o, s.len-1)
     elif len < 0:
       let (e, rl) = runeReverseOffset(s, -len)
       discard rl
       if e <= 0:
         result = ""
       else:
-        result = s[o.. e-1]
+        result = s.substr(o, e-1)
     else:
       var e = runeOffset(s, len, o)
       if e < 0:
         e = s.len
-      result = s[o.. e-1]
+      result = s.substr(o, e-1)
 
 const
   alphaRanges = [

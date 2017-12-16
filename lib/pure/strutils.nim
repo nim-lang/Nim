@@ -32,10 +32,6 @@ when defined(nimOldSplit):
 else:
   {.pragma: deprecatedSplit.}
 
-type
-  CharSet* {.deprecated.} = set[char] # for compatibility with Nim
-{.deprecated: [TCharSet: CharSet].}
-
 const
   Whitespace* = {' ', '\t', '\v', '\r', '\l', '\f'}
     ## All the characters that count as whitespace.
@@ -78,40 +74,40 @@ proc isAlphaAscii*(c: char): bool {.noSideEffect, procvar,
   return c in Letters
 
 proc isAlphaNumeric*(c: char): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsAlphaNumericChar".}=
+  rtl, extern: "nsuIsAlphaNumericChar".} =
   ## Checks whether or not `c` is alphanumeric.
   ##
   ## This checks a-z, A-Z, 0-9 ASCII characters only.
-  return c in Letters or c in Digits
+  return c in Letters+Digits
 
 proc isDigit*(c: char): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsDigitChar".}=
+  rtl, extern: "nsuIsDigitChar".} =
   ## Checks whether or not `c` is a number.
   ##
   ## This checks 0-9 ASCII characters only.
   return c in Digits
 
 proc isSpaceAscii*(c: char): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsSpaceAsciiChar".}=
+  rtl, extern: "nsuIsSpaceAsciiChar".} =
   ## Checks whether or not `c` is a whitespace character.
   return c in Whitespace
 
 proc isLowerAscii*(c: char): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsLowerAsciiChar".}=
+  rtl, extern: "nsuIsLowerAsciiChar".} =
   ## Checks whether or not `c` is a lower case character.
   ##
   ## This checks ASCII characters only.
   return c in {'a'..'z'}
 
 proc isUpperAscii*(c: char): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsUpperAsciiChar".}=
+  rtl, extern: "nsuIsUpperAsciiChar".} =
   ## Checks whether or not `c` is an upper case character.
   ##
   ## This checks ASCII characters only.
   return c in {'A'..'Z'}
 
 proc isAlphaAscii*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsAlphaAsciiStr".}=
+  rtl, extern: "nsuIsAlphaAsciiStr".} =
   ## Checks whether or not `s` is alphabetical.
   ##
   ## This checks a-z, A-Z ASCII characters only.
@@ -123,10 +119,10 @@ proc isAlphaAscii*(s: string): bool {.noSideEffect, procvar,
 
   result = true
   for c in s:
-    result = c.isAlphaAscii() and result
+    if not c.isAlphaAscii(): return false
 
 proc isAlphaNumeric*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsAlphaNumericStr".}=
+  rtl, extern: "nsuIsAlphaNumericStr".} =
   ## Checks whether or not `s` is alphanumeric.
   ##
   ## This checks a-z, A-Z, 0-9 ASCII characters only.
@@ -142,7 +138,7 @@ proc isAlphaNumeric*(s: string): bool {.noSideEffect, procvar,
       return false
 
 proc isDigit*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsDigitStr".}=
+  rtl, extern: "nsuIsDigitStr".} =
   ## Checks whether or not `s` is a numeric value.
   ##
   ## This checks 0-9 ASCII characters only.
@@ -158,7 +154,7 @@ proc isDigit*(s: string): bool {.noSideEffect, procvar,
       return false
 
 proc isSpaceAscii*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsSpaceAsciiStr".}=
+  rtl, extern: "nsuIsSpaceAsciiStr".} =
   ## Checks whether or not `s` is completely whitespace.
   ##
   ## Returns true if all characters in `s` are whitespace
@@ -172,7 +168,7 @@ proc isSpaceAscii*(s: string): bool {.noSideEffect, procvar,
       return false
 
 proc isLowerAscii*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsLowerAsciiStr".}=
+  rtl, extern: "nsuIsLowerAsciiStr".} =
   ## Checks whether or not `s` contains all lower case characters.
   ##
   ## This checks ASCII characters only.
@@ -187,7 +183,7 @@ proc isLowerAscii*(s: string): bool {.noSideEffect, procvar,
   true
 
 proc isUpperAscii*(s: string): bool {.noSideEffect, procvar,
-  rtl, extern: "nsuIsUpperAsciiStr".}=
+  rtl, extern: "nsuIsUpperAsciiStr".} =
   ## Checks whether or not `s` contains all upper case characters.
   ##
   ## This checks ASCII characters only.
@@ -506,16 +502,15 @@ template splitCommon(s, sep, maxsplit, sepLen) =
   var last = 0
   var splits = maxsplit
 
-  if len(s) > 0:
-    while last <= len(s):
-      var first = last
-      while last < len(s) and not stringHasSep(s, last, sep):
-        inc(last)
-      if splits == 0: last = len(s)
-      yield substr(s, first, last-1)
-      if splits == 0: break
-      dec(splits)
-      inc(last, sepLen)
+  while last <= len(s):
+    var first = last
+    while last < len(s) and not stringHasSep(s, last, sep):
+      inc(last)
+    if splits == 0: last = len(s)
+    yield substr(s, first, last-1)
+    if splits == 0: break
+    dec(splits)
+    inc(last, sepLen)
 
 template oldSplit(s, seps, maxsplit) =
   var last = 0
@@ -673,30 +668,29 @@ template rsplitCommon(s, sep, maxsplit, sepLen) =
     splits = maxsplit
     startPos = 0
 
-  if len(s) > 0:
-    # go to -1 in order to get separators at the beginning
-    while first >= -1:
-      while first >= 0 and not stringHasSep(s, first, sep):
-        dec(first)
-
-      if splits == 0:
-        # No more splits means set first to the beginning
-        first = -1
-
-      if first == -1:
-        startPos = 0
-      else:
-        startPos = first + sepLen
-
-      yield substr(s, startPos, last)
-
-      if splits == 0:
-        break
-
-      dec(splits)
+  # go to -1 in order to get separators at the beginning
+  while first >= -1:
+    while first >= 0 and not stringHasSep(s, first, sep):
       dec(first)
 
-      last = first
+    if splits == 0:
+      # No more splits means set first to the beginning
+      first = -1
+
+    if first == -1:
+      startPos = 0
+    else:
+      startPos = first + sepLen
+
+    yield substr(s, startPos, last)
+
+    if splits == 0:
+      break
+
+    dec(splits)
+    dec(first)
+
+    last = first
 
 iterator rsplit*(s: string, seps: set[char] = Whitespace,
                  maxsplit: int = -1): string =
@@ -824,12 +818,18 @@ proc split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): seq[st
   noSideEffect, rtl, extern: "nsuSplitCharSet".} =
   ## The same as the `split iterator <#split.i,string,set[char],int>`_, but is a
   ## proc that returns a sequence of substrings.
+  runnableExamples:
+    doAssert "a,b;c".split({',', ';'}) == @["a", "b", "c"]
+    doAssert "".split({' '}) == @[""]
   accumulateResult(split(s, seps, maxsplit))
 
 proc split*(s: string, sep: char, maxsplit: int = -1): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitChar".} =
   ## The same as the `split iterator <#split.i,string,char,int>`_, but is a proc
   ## that returns a sequence of substrings.
+  runnableExamples:
+    doAssert "a,b,c".split(',') == @["a", "b", "c"]
+    doAssert "".split(' ') == @[""]
   accumulateResult(split(s, sep, maxsplit))
 
 proc split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.noSideEffect,
@@ -838,6 +838,13 @@ proc split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.noSideEff
   ##
   ## Substrings are separated by the string `sep`. This is a wrapper around the
   ## `split iterator <#split.i,string,string,int>`_.
+  runnableExamples:
+    doAssert "a,b,c".split(",") == @["a", "b", "c"]
+    doAssert "a man a plan a canal panama".split("a ") == @["", "man ", "plan ", "canal panama"]
+    doAssert "".split("Elon Musk") == @[""]
+    doAssert "a  largely    spaced sentence".split(" ") == @["a", "", "largely", "", "", "", "spaced", "sentence"]
+
+    doAssert "a  largely    spaced sentence".split(" ", maxsplit=1) == @["a", " largely    spaced sentence"]
   doAssert(sep.len > 0)
 
   accumulateResult(split(s, sep, maxsplit))
@@ -906,6 +913,13 @@ proc rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string]
   ## .. code-block:: nim
   ##   @["Root#Object#Method", "Index"]
   ##
+  runnableExamples:
+    doAssert "a  largely    spaced sentence".rsplit(" ", maxsplit=1) == @["a  largely    spaced", "sentence"]
+
+    doAssert "a,b,c".rsplit(",") == @["a", "b", "c"]
+    doAssert "a man a plan a canal panama".rsplit("a ") == @["", "man ", "plan ", "canal panama"]
+    doAssert "".rsplit("Elon Musk") == @[""]
+    doAssert "a  largely    spaced sentence".rsplit(" ") == @["a", "", "largely", "", "", "", "spaced", "sentence"]
   accumulateResult(rsplit(s, sep, maxsplit))
   result.reverse()
 
@@ -1747,29 +1761,15 @@ proc insertSep*(s: string, sep = '_', digits = 3): string {.noSideEffect,
 
 proc escape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
   rtl, extern: "nsuEscape".} =
-  ## Escapes a string `s`.
+  ## Escapes a string `s`. See `system.addEscapedChar <system.html#addEscapedChar>`_
+  ## for the escaping scheme.
   ##
-  ## This does these operations (at the same time):
-  ## * replaces any ``\`` by ``\\``
-  ## * replaces any ``'`` by ``\'``
-  ## * replaces any ``"`` by ``\"``
-  ## * replaces any other character in the set ``{'\0'..'\31', '\127'..'\255'}``
-  ##   by ``\xHH`` where ``HH`` is its hexadecimal value.
-  ## The procedure has been designed so that its output is usable for many
-  ## different common syntaxes. The resulting string is prefixed with
-  ## `prefix` and suffixed with `suffix`. Both may be empty strings.
-  ## **Note**: This is not correct for producing Ansi C code!
+  ## The resulting string is prefixed with `prefix` and suffixed with `suffix`.
+  ## Both may be empty strings.
   result = newStringOfCap(s.len + s.len shr 2)
   result.add(prefix)
   for c in items(s):
-    case c
-    of '\0'..'\31', '\127'..'\255':
-      add(result, "\\x")
-      add(result, toHex(ord(c), 2))
-    of '\\': add(result, "\\\\")
-    of '\'': add(result, "\\'")
-    of '\"': add(result, "\\\"")
-    else: add(result, c)
+    result.addEscapedChar(c)
   add(result, suffix)
 
 proc unescape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,

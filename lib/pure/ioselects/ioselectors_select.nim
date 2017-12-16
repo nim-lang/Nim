@@ -279,8 +279,9 @@ proc updateHandle*[T](s: Selector[T], fd: SocketHandle,
         inc(s.count)
       pkey.events = events
 
-proc unregister*[T](s: Selector[T], fd: SocketHandle) =
+proc unregister*[T](s: Selector[T], fd: SocketHandle|int) =
   s.withSelectLock():
+    let fd = fd.SocketHandle
     var pkey = s.getKey(fd)
     if Event.Read in pkey.events:
       IOFD_CLR(fd, addr s.rSet)
@@ -438,16 +439,17 @@ template withData*[T](s: Selector[T], fd: SocketHandle|int, value,
                       body1, body2: untyped) =
   mixin withSelectLock
   s.withSelectLock():
-    var value: ptr T
-    let fdi = int(fd)
-    var i = 0
-    while i < FD_SETSIZE:
-      if s.fds[i].ident == fdi:
-        value = addr(s.fds[i].data)
-        break
-      inc(i)
-    if i != FD_SETSIZE:
-      body1
-    else:
-      body2
+    block:
+      var value: ptr T
+      let fdi = int(fd)
+      var i = 0
+      while i < FD_SETSIZE:
+        if s.fds[i].ident == fdi:
+          value = addr(s.fds[i].data)
+          break
+        inc(i)
+      if i != FD_SETSIZE:
+        body1
+      else:
+        body2
 

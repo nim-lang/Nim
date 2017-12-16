@@ -34,4 +34,19 @@ proc main() {.async.} =
     doAssert data == "foot\ntest2"
     file.close()
 
+  # Issue #5531
+  block:
+    removeFile(fn)
+    var file = openAsync(fn, fmWrite)
+    await file.write("test2")
+    file.close()
+    file = openAsync(fn, fmWrite)
+    await file.write("test3")
+    file.close()
+    file = openAsync(fn, fmRead)
+    let data = await file.readAll()
+    doAssert data == "test3"
+    file.close()
+
+
 waitFor main()

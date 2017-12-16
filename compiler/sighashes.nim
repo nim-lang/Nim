@@ -87,6 +87,7 @@ type
     CoProc
     CoType
     CoOwnerSig
+    CoIgnoreRange
 
 proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag])
 
@@ -159,14 +160,15 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     return
   else:
     discard
-  c &= char(t.kind)
   case t.kind
   of tyBool, tyChar, tyInt..tyUInt64:
     # no canonicalization for integral types, so that e.g. ``pid_t`` is
     # produced instead of ``NI``:
+    c &= char(t.kind)
     if t.sym != nil and {sfImportc, sfExportc} * t.sym.flags != {}:
       c.hashSym(t.sym)
   of tyObject, tyEnum:
+    c &= char(t.kind)
     if t.typeInst != nil:
       assert t.typeInst.kind == tyGenericInst
       for i in countup(1, sonsLen(t.typeInst) - 2):
@@ -199,26 +201,35 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     if t.len > 0 and t.sons[0] != nil:
       hashType c, t.sons[0], flags
   of tyRef, tyPtr, tyGenericBody, tyVar:
+    c &= char(t.kind)
     c.hashType t.lastSon, flags
     if tfVarIsPtr in t.flags: c &= ".varisptr"
   of tyFromExpr:
+    c &= char(t.kind)
     c.hashTree(t.n)
   of tyTuple:
+    c &= char(t.kind)
     if t.n != nil and CoType notin flags:
       assert(sonsLen(t.n) == sonsLen(t))
       for i in countup(0, sonsLen(t.n) - 1):
         assert(t.n.sons[i].kind == nkSym)
         c &= t.n.sons[i].sym.name.s
         c &= ':'
-        c.hashType(t.sons[i], flags)
+        c.hashType(t.sons[i], flags+{CoIgnoreRange})
         c &= ','
     else:
-      for i in countup(0, sonsLen(t) - 1): c.hashType t.sons[i], flags
-  of tyRange, tyStatic:
-    #if CoType notin flags:
+      for i in countup(0, sonsLen(t) - 1): c.hashType t.sons[i], flags+{CoIgnoreRange}
+  of tyRange:
+    if CoIgnoreRange notin flags:
+      c &= char(t.kind)
+      c.hashTree(t.n)
+    c.hashType(t.sons[0], flags)
+  of tyStatic:
+    c &= char(t.kind)
     c.hashTree(t.n)
     c.hashType(t.sons[0], flags)
   of tyProc:
+    c &= char(t.kind)
     c &= (if tfIterator in t.flags: "iterator " else: "proc ")
     if CoProc in flags and t.n != nil:
       let params = t.n
@@ -236,7 +247,11 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
       if tfNoSideEffect in t.flags: c &= ".noSideEffect"
       if tfThread in t.flags: c &= ".thread"
     if tfVarargs in t.flags: c &= ".varargs"
+  of tyArray:
+    c &= char(t.kind)
+    for i in 0..<t.len: c.hashType(t.sons[i], flags-{CoIgnoreRange})
   else:
+    c &= char(t.kind)
     for i in 0..<t.len: c.hashType(t.sons[i], flags)
   if tfNotNil in t.flags and CoType notin flags: c &= "not nil"
 

@@ -21,7 +21,7 @@ import
 type
   TSystemCC* = enum
     ccNone, ccGcc, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc,
-    ccTcc, ccPcc, ccUcc, ccIcl
+    ccTcc, ccPcc, ccUcc, ccIcl, ccIcc
   TInfoCCProp* = enum         # properties of the C compiler:
     hasSwitchRange,           # CC allows ranges in switch statements (GNU C)
     hasComputedGoto,          # CC has computed goto (GNU C extension)
@@ -135,15 +135,17 @@ compiler vcc:
 
 # Intel C/C++ Compiler
 compiler icl:
-  # Intel compilers try to imitate the native ones (gcc and msvc)
-  when defined(windows):
-    result = vcc()
-  else:
-    result = gcc()
-
+  result = vcc()
   result.name = "icl"
   result.compilerExe = "icl"
   result.linkerExe = "icl"
+
+# Intel compilers try to imitate the native ones (gcc and msvc)
+compiler icc:
+  result = gcc()
+  result.name = "icc"
+  result.compilerExe = "icc"
+  result.linkerExe = "icc"
 
 # Local C Compiler
 compiler lcc:
@@ -327,7 +329,8 @@ const
     tcc(),
     pcc(),
     ucc(),
-    icl()]
+    icl(),
+    icc()]
 
   hExt* = ".h"
 
@@ -728,13 +731,13 @@ proc execCmdsInParallel(cmds: seq[string]; prettyCb: proc (idx: int)) =
   else:
     tryExceptOSErrorMessage("invocation of external compiler program failed."):
       if optListCmd in gGlobalOptions or gVerbosity > 1:
-        res = execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams},
+        res = execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath},
                             gNumberOfProcessors, afterRunEvent=runCb)
       elif gVerbosity == 1:
-        res = execProcesses(cmds, {poStdErrToStdOut, poUsePath, poParentStreams},
+        res = execProcesses(cmds, {poStdErrToStdOut, poUsePath},
                             gNumberOfProcessors, prettyCb, afterRunEvent=runCb)
       else:
-        res = execProcesses(cmds, {poStdErrToStdOut, poUsePath, poParentStreams},
+        res = execProcesses(cmds, {poStdErrToStdOut, poUsePath},
                             gNumberOfProcessors, afterRunEvent=runCb)
   if res != 0:
     if gNumberOfProcessors <= 1:
@@ -764,8 +767,9 @@ proc callCCompiler*(projectfile: string) =
       add(objfiles, quoteShell(
           addFileExt(objFile, CC[cCompiler].objExt)))
     for x in toCompile:
+      let objFile = if noAbsolutePaths(): x.obj.extractFilename else: x.obj
       add(objfiles, ' ')
-      add(objfiles, quoteShell(x.obj))
+      add(objfiles, quoteShell(objFile))
 
     linkCmd = getLinkCmd(projectfile, objfiles)
     if optCompileOnly notin gGlobalOptions:

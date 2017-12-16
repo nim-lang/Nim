@@ -53,7 +53,6 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   else:
     if efNoProcvarCheck notin flags: semProcvarCheck(c, result)
     if result.typ.kind == tyVar: result = newDeref(result)
-    semDestructorCheck(c, result, flags)
 
 proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = semExpr(c, n, flags)
@@ -66,7 +65,6 @@ proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     result.typ = errorType(c)
   else:
     semProcvarCheck(c, result)
-    semDestructorCheck(c, result, flags)
 
 proc semSymGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   result = symChoice(c, n, s, scClosed)
@@ -671,6 +669,7 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
     if callee.magic != mNone:
       result = magicsAfterOverloadResolution(c, result, flags)
     if result.typ != nil: liftTypeBoundOps(c, result.typ, n.info)
+    #result = patchResolvedTypeBoundOp(c, result)
   if c.matchedConcept == nil:
     result = evalAtCompileTime(c, result)
 
@@ -1849,13 +1848,14 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
         result = magicsAfterOverloadResolution(c, result, flags)
   of mRunnableExamples:
     if gCmd == cmdDoc and n.len >= 2 and n.lastSon.kind == nkStmtList:
-      if sfMainModule in c.module.flags:
-        let inp = toFullPath(c.module.info)
-        if c.runnableExamples == nil:
-          c.runnableExamples = newTree(nkStmtList,
-            newTree(nkImportStmt, newStrNode(nkStrLit, expandFilename(inp))))
-        c.runnableExamples.add newTree(nkBlockStmt, emptyNode, copyTree n.lastSon)
-      result = setMs(n, s)
+      if n.sons[0].kind == nkIdent:
+        if sfMainModule in c.module.flags:
+          let inp = toFullPath(c.module.info)
+          if c.runnableExamples == nil:
+            c.runnableExamples = newTree(nkStmtList,
+              newTree(nkImportStmt, newStrNode(nkStrLit, expandFilename(inp))))
+          c.runnableExamples.add newTree(nkBlockStmt, emptyNode, copyTree n.lastSon)
+        result = setMs(n, s)
     else:
       result = emptyNode
   else:
@@ -2123,6 +2123,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkIdent, nkAccQuoted:
     let checks = if efNoEvaluateGeneric in flags:
         {checkUndeclared, checkPureEnumFields}
+      elif efInCall in flags:
+        {checkUndeclared, checkModule, checkPureEnumFields}
       else:
         {checkUndeclared, checkModule, checkAmbiguity, checkPureEnumFields}
     var s = qualifiedLookUp(c, n, checks)
@@ -2217,10 +2219,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         # XXX think about this more (``set`` procs)
         if n.len == 2:
           result = semConv(c, n)
-        elif n.len == 1:
-          result = semObjConstr(c, n, flags)
         elif contains(c.ambiguousSymbols, s.id):
           errorUseQualifier(c, n.info, s)
+        elif n.len == 1:
+          result = semObjConstr(c, n, flags)
         elif s.magic == mNone: result = semDirectOp(c, n, flags)
         else: result = semMagic(c, n, s, flags)
       of skProc, skFunc, skMethod, skConverter, skIterator:
