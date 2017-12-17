@@ -12,7 +12,7 @@
 import
   parseutils, strutils, pegs, os, osproc, streams, parsecfg, json,
   marshal, backend, parseopt, specs, htmlgen, browsers, terminal,
-  algorithm, compiler/nodejs, times, sets
+  algorithm, compiler/nodejs, times, sets, md5
 
 const
   resultsFile = "testresults.html"
@@ -71,8 +71,14 @@ proc getFileDir(filename: string): string =
   if not result.isAbsolute():
     result = getCurrentDir() / result
 
+proc nimcacheDir(filename, options: string): string =
+  ## Give each test a private nimcache dir so they don't clobber each other's.
+  return "nimcache" / (filename & '_' & options.getMD5)
+
 proc callCompiler(cmdTemplate, filename, options: string,
-                  target: TTarget): TSpec =
+                  target: TTarget, extraOptions=""): TSpec =
+  let nimcache = nimcacheDir(filename, options)
+  let options = options & " --nimCache:" & nimcache.quoteShell & extraOptions
   let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
                        "options", options, "file", filename.quoteShell,
                        "filedir", filename.getFileDir()])
@@ -222,9 +228,10 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, target: TTarg
     r.addResult(test, target, expected.msg, given.msg, reSuccess)
     inc(r.passed)
 
-proc generatedFile(path, name: string, target: TTarget): string =
+proc generatedFile(test: TTest, target: TTarget): string =
+  let (_, name, _) = test.name.splitFile
   let ext = targetToExt[target]
-  result = path / "nimcache" /
+  result = nimcacheDir(test.name, test.options) /
     (if target == targetJS: "" else: "compiler_") &
     name.changeFileExt(ext)
 
@@ -234,8 +241,7 @@ proc needsCodegenCheck(spec: TSpec): bool =
 proc codegenCheck(test: TTest, target: TTarget, spec: TSpec, expectedMsg: var string,
                   given: var TSpec) =
   try:
-    let (path, name, _) = test.name.splitFile
-    let genFile = generatedFile(path, name, target)
+    let genFile = generatedFile(test, target)
     let contents = readFile(genFile).string
     let check = spec.ccodeCheck
     if check.len > 0:
@@ -325,9 +331,8 @@ proc testSpec(r: var TResults, test: TTest, target = targetC) =
 
     case expected.action
     of actionCompile:
-      var given = callCompiler(expected.cmd, test.name,
-        test.options & " --stdout --hint[Path]:off --hint[Processing]:off",
-        target)
+      var given = callCompiler(expected.cmd, test.name, test.options, target,
+        extraOptions=" --stdout --hint[Path]:off --hint[Processing]:off")
       compilerOutputTests(test, target, given, expected, r)
     of actionRun, actionRunNoSpec:
       # In this branch of code "early return" pattern is clearer than deep
@@ -342,8 +347,8 @@ proc testSpec(r: var TResults, test: TTest, target = targetC) =
       let isJsTarget = target == targetJS
       var exeFile: string
       if isJsTarget:
-        let (dir, file, _) = splitFile(tname)
-        exeFile = dir / "nimcache" / file & ".js" # *TODO* hardcoded "nimcache"
+        let (_, file, _) = splitFile(tname)
+        exeFile = nimcacheDir(test.name, test.options) / file & ".js"
       else:
         exeFile = changeFileExt(tname, ExeExt)
 
