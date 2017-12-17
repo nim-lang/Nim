@@ -105,6 +105,9 @@ The optional align flag can be one of the following:
 '>'
     Forces the field to be right-aligned within the available space.
 
+'^'
+    Forces the field to be centered within the available space.
+
 Note that unless a minimum field width is defined, the field width
 will always be the same size as the data to fill it, so that the alignment
 option has no meaning in this case.
@@ -167,7 +170,7 @@ The available floating point presentation types are:
                          exponent notation.
 ``G``                    General format. Same as 'g' except switches to 'E'
                          if the number gets to large.
-'' (None)                similar to 'g', except that it prints at least one
+(None)                   similar to 'g', except that it prints at least one
                          digit after the decimal point.
 =================        ====================================================
 
@@ -229,6 +232,8 @@ macro fmt*(pattern: string): untyped =
     check fmt"""{"test":#>5}""", "#test"
     check fmt"""{"test":>5}""", " test"
 
+    check fmt"""{"test":#^7}""", "#test##"
+
     check fmt"""{"test": <5}""", "test "
     check fmt"""{"test":<5}""", "test "
     check fmt"{1f:.3f}", "1.000"
@@ -267,6 +272,7 @@ macro fmt*(pattern: string): untyped =
     check fmt"{-1:03}", "-01"
     check fmt"{10}", "10"
     check fmt"{16:#X}", "0x10"
+    check fmt"{16:^#7X}", " 0x10  "
 
     # Hex tests
     check fmt"{0:x}", "0"
@@ -290,6 +296,7 @@ macro fmt*(pattern: string): untyped =
     check fmt"{123.456:1g}", "123.456"
     check fmt"{123.456:.1f}", "123.5"
     check fmt"{123.456:.0f}", "123."
+    #check fmt"{123.456:.0f}", "123."
     check fmt"{123.456:>9.3f}", "  123.456"
     check fmt"{123.456:9.3f}", "123.456  "
     check fmt"{123.456:>9.4f}", " 123.4560"
@@ -401,6 +408,9 @@ proc alignString*(s: string, minimumWidth: int; align = '<'; fill = ' '): string
       result = s
     elif align == '<':
       result = s & repeat(fill, toFill)
+    elif align == '^':
+      let half = toFill div 2
+      result = repeat(fill, half) & s & repeat(fill, toFill - half)
     else:
       result = repeat(fill, toFill) & s
 
@@ -470,8 +480,12 @@ proc formatInt(n: SomeNumber; radix: int; spec: StandardFormatSpecifier): string
     else:
       result = xx & result
     let toFill = spec.minimumWidth - result.len
-    if toFill > 0:
-      result = repeat(spec.fill, toFill) & result
+    if spec.align == '^':
+      let half = toFill div 2
+      result = repeat(spec.fill, half) & result & repeat(spec.fill, toFill - half)
+    else:
+      if toFill > 0:
+        result = repeat(spec.fill, toFill) & result
 
 proc parseStandardFormatSpecifier*(s: string; start = 0;
                                    ignoreUnknownSuffix = false): StandardFormatSpecifier =
@@ -483,7 +497,7 @@ proc parseStandardFormatSpecifier*(s: string; start = 0;
   ## This is only of interest if you want to write a custom ``format`` proc that
   ## should support the standard format specifiers. If ``ignoreUnknownSuffix`` is true,
   ## an unknown suffix after the ``type`` field is not an error.
-  const alignChars = {'<', '>'}
+  const alignChars = {'<', '>', '^'}
   result.fill = ' '
   result.align = '<'
   var i = start
