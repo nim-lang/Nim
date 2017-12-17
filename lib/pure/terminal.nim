@@ -17,6 +17,12 @@
 ## ``showCursor`` before quitting.
 
 import macros
+from strutils import toLowerAscii
+import colors
+export colors
+
+var
+  trueColorIsSupported = false
 
 when defined(windows):
   import winlean, os
@@ -452,6 +458,7 @@ when not defined(windows):
     # XXX: These better be thread-local
     gFG = 0
     gBG = 0
+    fgSetColor = true
 
 proc setStyle*(f: File, style: set[Style]) =
   ## Sets the terminal style.
@@ -552,6 +559,30 @@ proc setBackgroundColor*(f: File, bg: BackgroundColor, bright=false) =
     if bright: inc(gBG, 60)
     f.write("\e[" & $gBG & 'm')
 
+proc setForegroundColor*(f: File, color: Color) =
+  ## Sets the terminal's foreground true color.
+  when defined(windows):
+    discard
+  else:
+    if trueColorIsSupported:
+      let rgb = extractRGB(color)
+      f.write("\x1b[38;2;" & $rgb.r & ";" & $rgb.g & ";" & $rgb.b & 'm')
+
+proc setBackgroundColor*(f: File, color: Color) =
+  ## Sets the terminal's background true color.
+  when defined(windows):
+    discard
+  else:
+    if trueColorIsSupported:
+      let rgb = extractRGB(color)
+      f.write("\x1b[48;2;" & $rgb.r & ";" & $rgb.g & ";" & $rgb.b & 'm')
+
+proc setTrueColor(f: File, color: Color) =
+  if fgSetColor:
+    setForegroundColor(f, color)
+  else:
+    setBackgroundColor(f, color)
+
 proc isatty*(f: File): bool =
   ## Returns true if `f` is associated with a terminal device.
   when defined(posix):
@@ -565,7 +596,9 @@ proc isatty*(f: File): bool =
 
 type
   TerminalCmd* = enum  ## commands that can be expressed as arguments
-    resetStyle         ## reset attributes
+    resetStyle,        ## reset attributes
+    fgColor,       ## set foreground's true color
+    bgColor        ## set background's true color
 
 template styledEchoProcessArg(f: File, s: string) = write f, s
 template styledEchoProcessArg(f: File, style: Style) = setStyle(f, {style})
@@ -574,9 +607,15 @@ template styledEchoProcessArg(f: File, color: ForegroundColor) =
   setForegroundColor f, color
 template styledEchoProcessArg(f: File, color: BackgroundColor) =
   setBackgroundColor f, color
+template styledEchoProcessArg(f: File, color: Color) =
+  setTrueColor f, color
 template styledEchoProcessArg(f: File, cmd: TerminalCmd) =
   when cmd == resetStyle:
     resetAttributes(f)
+  when cmd == fgColor:
+    fgSetColor = true
+  when cmd == bgColor:
+    fgSetColor = false
 
 macro styledWriteLine*(f: File, m: varargs[typed]): untyped =
   ## Similar to ``writeLine``, but treating terminal style arguments specially.
@@ -662,6 +701,10 @@ template setForegroundColor*(fg: ForegroundColor, bright=false) =
   setForegroundColor(stdout, fg, bright)
 template setBackgroundColor*(bg: BackgroundColor, bright=false) =
   setBackgroundColor(stdout, bg, bright)
+template setForegroundColor*(color: Color) =
+  setForegroundColor(stdout, color)
+template setBackgroundColor*(color: Color) =
+  setBackgroundColor(stdout, color)
 proc resetAttributes*() {.noconv.} =
   ## Resets all attributes on stdout.
   ## It is advisable to register this as a quit proc with
@@ -677,3 +720,5 @@ when not defined(testing) and isMainModule:
   stdout.setForeGroundColor(fgBlue)
   stdout.writeLine("ordinary text")
   stdout.resetAttributes()
+
+trueColorIsSupported = getEnv("COLORTERM").toLowerAscii in ["truecolor", "24bit"]
