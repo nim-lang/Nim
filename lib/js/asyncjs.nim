@@ -6,61 +6,70 @@
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 
-## This Module implements types and macros for writing asynchronous code
-## for the JS backend. It provides tools for interaction with JavaScript async API-s 
+## This module implements types and macros for writing asynchronous code
+## for the JS backend. It provides tools for interaction with JavaScript async API-s
 ## and libraries, writing async procedures in Nim and converting callback-based code
 ## to promises.
 ##
-## The pragma `{.async.}` means a procedure is asynchronous. Such a procedure
-## should always have a `Future[T]` return type or not have a return type at all.
-## A `Future[void]` return type is assumed by default.
-## 
-## This is roughly equivalent to the `async` keyword in the generated JavaScript code.
-## 
-## ..code-block:: nim
+## A Nim procedure is asynchronous when it includes the ``{.async.}`` pragma. It
+## should always have a ``Future[T]`` return type or not have a return type at all.
+## A ``Future[void]`` return type is assumed by default.
+##
+## This is roughly equivalent to the ``async`` keyword in JavaScript code.
+##
+## .. code-block:: nim
 ##  proc loadGame(name: string): Future[Game] {.async.} =
-##    ..
-## 
+##    # code
+##
 ## should be equivalent to
-## 
-## ..code-block:: javascript
+##
+## .. code-block:: javascript
 ##   async function loadGame(name) {
-##     ..
+##     // code
 ##   }
-## 
-## A call to an asynchronous procedure usually needs `await` to wait for
-## the completion of the `Future`.
-## 
-## ..code-block:: nim
+##
+## A call to an asynchronous procedure usually needs ``await`` to wait for
+## the completion of the ``Future``.
+##
+## .. code-block:: nim
 ##   var game = await loadGame(name)
-## 
+##
 ## Often, you might work with callback-based API-s. You can wrap them with
-## asynchronous procedures using promises and `newPromise`:
-## 
-## ..code-block:: nim
+## asynchronous procedures using promises and ``newPromise``:
+##
+## .. code-block:: nim
 ##   proc loadGame(name: string): Future[Game] =
 ##     var promise = newPromise() do (resolve: proc(response: Game)):
 ##       cbBasedLoadGame(name) do (game: Game):
 ##         resolve(game)
-##   return promise
+##     return promise
 ##
-## Forward definitions work properly, you just don't need to add the `{.async.}` pragma:
-## 
-## ..code-block:: nim
+## Forward definitions work properly, you just don't need to add the ``{.async.}`` pragma:
+##
+## .. code-block:: nim
 ##   proc loadGame(name: string): Future[Game]
-## 
+##
+## JavaScript compatibility
+## ~~~~~~~~~~~~~~~~~~~~~~~~~
+##
+## Nim currently generates `async/await` JavaScript code which is supported in modern
+## EcmaScript and most modern versions of browsers, Node.js and Electron.
+## If you need to use this module with older versions of JavaScript, you can
+## use a tool that backports the resulting JavaScript code, as babel.
 
 import jsffi
 import macros
 
-when not defined(js):
-  {.error "asyncjs is only available for javascript"}
+when not defined(js) and not defined(nimdoc) and not defined(nimsuggest):
+  {.fatal: "Module asyncjs is designed to be used with the JavaScript backend.".}
 
 type
   Future*[T] = ref object
     future*: T
+  ## Wraps the return type of an asynchronous procedure.
 
   PromiseJs* {.importcpp: "Promise".} = ref object
+  ## A JavaScript Promise
 
 proc replaceReturn(node: var NimNode) =
   var z = 0
