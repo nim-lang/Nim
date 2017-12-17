@@ -100,10 +100,11 @@ The optional align flag can be one of the following:
 
 '<'
     Forces the field to be left-aligned within the available
-    space (This is the default.)
+    space. (This is the default for strings.)
 
 '>'
     Forces the field to be right-aligned within the available space.
+    (This is the default for numbers.)
 
 '^'
     Forces the field to be centered within the available space.
@@ -273,14 +274,14 @@ macro fmt*(pattern: string): untyped =
     # Int tests
     check fmt"{12345}", "12345"
     check fmt"{ - 12345}", "-12345"
-    check fmt"{12345:6}", "12345 "
+    check fmt"{12345:6}", " 12345"
     check fmt"{12345:>6}", " 12345"
     check fmt"{12345:4}", "12345"
     check fmt"{12345:08}", "00012345"
     check fmt"{-12345:08}", "-0012345"
     check fmt"{0:0}", "0"
     check fmt"{0:02}", "00"
-    check fmt"{-1:3}", "-1 "
+    check fmt"{-1:3}", " -1"
     check fmt"{-1:03}", "-01"
     check fmt"{10}", "10"
     check fmt"{16:#X}", "0x10"
@@ -296,9 +297,9 @@ macro fmt*(pattern: string): untyped =
     check fmt"{-255:X}", "-FF"
     check fmt"{255:x} uNaffeCteD CaSe", "ff uNaffeCteD CaSe"
     check fmt"{255:X} uNaffeCteD CaSe", "FF uNaffeCteD CaSe"
-    check fmt"{255:>4x}", "  ff"
+    check fmt"{255:4x}", "  ff"
     check fmt"{255:04x}", "00ff"
-    check fmt"{-255:>4x}", " -ff"
+    check fmt"{-255:4x}", " -ff"
     check fmt"{-255:04x}", "-0ff"
 
     # Float tests
@@ -313,7 +314,7 @@ macro fmt*(pattern: string): untyped =
     check fmt"{123.456:.0f}", "123."
     #check fmt"{123.456:.0f}", "123."
     check fmt"{123.456:>9.3f}", "  123.456"
-    check fmt"{123.456:9.3f}", "123.456  "
+    check fmt"{123.456:9.3f}", "  123.456"
     check fmt"{123.456:>9.4f}", " 123.4560"
     check fmt"{123.456:>9.0f}", "     123."
     check fmt"{123.456:<9.4f}", "123.4560 "
@@ -410,7 +411,7 @@ proc mkDigit(v: int, typ: char): string {.inline.} =
   else:
     result = $chr(ord(if typ == 'x': 'a' else: 'A') + v - 10)
 
-proc alignString*(s: string, minimumWidth: int; align = '<'; fill = ' '): string =
+proc alignString*(s: string, minimumWidth: int; align = '\0'; fill = ' '): string =
   ## Aligns ``s`` using ``fill`` char.
   ## This is only of interest if you want to write a custom ``format`` proc that
   ## should support the standard format specifiers.
@@ -421,7 +422,7 @@ proc alignString*(s: string, minimumWidth: int; align = '<'; fill = ' '): string
     let toFill = minimumWidth - sRuneLen
     if toFill <= 0:
       result = s
-    elif align == '<':
+    elif align == '<' or align == '\0':
       result = s & repeat(fill, toFill)
     elif align == '^':
       let half = toFill div 2
@@ -512,7 +513,7 @@ proc parseStandardFormatSpecifier*(s: string; start = 0;
   ## an unknown suffix after the ``type`` field is not an error.
   const alignChars = {'<', '>', '^'}
   result.fill = ' '
-  result.align = '<'
+  result.align = '\0'
   result.sign = '-'
   var i = start
   if i + 1 < s.len and s[i+1] in alignChars:
@@ -593,8 +594,10 @@ proc format*(value: SomeReal; specifier: string; res: var string) =
   var f = formatBiggestFloat(value, fmode, spec.precision)
   if value >= 0.0 and spec.sign != '-':
     f = spec.sign & f
+  # the default for numbers is right-alignment:
+  let align = if spec.align == '\0': '>' else: spec.align
   let result = alignString(f, spec.minimumWidth,
-                           spec.align, spec.fill)
+                           align, spec.fill)
   if spec.typ in {'A'..'Z'}:
     res.add toUpperAscii(result)
   else:
