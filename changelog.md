@@ -136,3 +136,6 @@ This now needs to be written as:
   Types that shadow procs and vice versa are marked as ambiguous (bug #6693).
 - ``yield`` (or ``await`` which is mapped to ``yield``) never worked reliably
   in an array, seq or object constructor and is now prevented at compile-time.
+- For string formatting / interpolation a new module
+  called [strformat](https://nim-lang.org/docs/strformat.html) has been added
+  to the stdlib.

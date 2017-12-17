@@ -860,7 +860,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     a: TContext
   if n.comment != nil: pushCom(g, n)
   case n.kind                 # atoms:
-  of nkTripleStrLit: putRawStr(g, tkTripleStrLit, n.strVal)
+  of nkTripleStrLit: put(g, tkTripleStrLit, atom(g, n))
   of nkEmpty: discard
   of nkType: put(g, tkInvalid, atom(g, n))
   of nkSym, nkIdent: gident(g, n)
