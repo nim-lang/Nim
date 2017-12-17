@@ -721,4 +721,7 @@ when not defined(testing) and isMainModule:
   stdout.writeLine("ordinary text")
   stdout.resetAttributes()
 
-trueColorIsSupported = getEnv("COLORTERM").toLowerAscii in ["truecolor", "24bit"]
+when compileOption("taintmode"):
+  trueColorIsSupported = string(getEnv("COLORTERM")).toLowerAscii() in ["truecolor", "24bit"]
+else:
+  trueColorIsSupported = getEnv("COLORTERM").toLowerAscii() in ["truecolor", "24bit"]
