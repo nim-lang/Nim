@@ -2229,7 +2229,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         # XXX think about this more (``set`` procs)
         if n.len == 2:
           result = semConv(c, n)
-        elif contains(c.ambiguousSymbols, s.id):
+        elif contains(c.ambiguousSymbols, s.id) and n.len == 1:
           errorUseQualifier(c, n.info, s)
         elif n.len == 1:
           result = semObjConstr(c, n, flags)
