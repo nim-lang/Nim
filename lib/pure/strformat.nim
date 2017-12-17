@@ -92,7 +92,7 @@ Standard format specifier
 
 The general form of a standard format specifier is::
 
-  [[fill]align][#][0][minimumwidth][.precision][type]
+  [[fill]align][sign][#][0][minimumwidth][.precision][type]
 
 The brackets ([]) indicate an optional element.
 
@@ -115,6 +115,18 @@ option has no meaning in this case.
 The optional 'fill' character defines the character to be used to pad
 the field to the minimum width. The fill character, if present, must be
 followed by an alignment flag.
+
+The 'sign' option is only valid for numeric types, and can be one of the following:
+
+=================        ====================================================
+  Sign                   Meaning
+=================        ====================================================
+``+``                    Indicates that a sign should be used for both
+                         positive as well as negative numbers.
+``-``                    Indicates that a sign should be used only for
+                         negative numbers (this is the default behavior).
+`` `` (space)            Indicates that a leading space should be used on
+                         positive numbers.
 
 If the '#' character is present, integers use the 'alternate form' for formatting.
 This means that binary, octal, and hexadecimal output will be prefixed
@@ -273,6 +285,7 @@ macro fmt*(pattern: string): untyped =
     check fmt"{10}", "10"
     check fmt"{16:#X}", "0x10"
     check fmt"{16:^#7X}", " 0x10  "
+    check fmt"{16:^+#7X}", " +0x10 "
 
     # Hex tests
     check fmt"{0:x}", "0"
@@ -292,6 +305,8 @@ macro fmt*(pattern: string): untyped =
     check fmt"{123.456}", "123.456"
     check fmt"{-123.456}", "-123.456"
     check fmt"{123.456:.3f}", "123.456"
+    check fmt"{123.456:+.3f}", "+123.456"
+    check fmt"{-123.456:+.3f}", "-123.456"
     check fmt"{-123.456:.3f}", "-123.456"
     check fmt"{123.456:1g}", "123.456"
     check fmt"{123.456:.1f}", "123.5"
@@ -417,8 +432,7 @@ proc alignString*(s: string, minimumWidth: int; align = '<'; fill = ' '): string
 type
   StandardFormatSpecifier* = object ## Type that describes "standard format specifiers".
     fill*, align*: char             ## Desired fill and alignment.
-    when false:
-      sign: char                     ## Desired sign.
+    sign*: char                     ## Desired sign.
     alternateForm*: bool            ## Whether to prefix binary, octal and hex numbers
                                     ## with ``0b``, ``0o``, ``0x``.
     padWithZero*: bool              ## Whether to pad with zeros rather than spaces.
@@ -461,24 +475,23 @@ proc formatInt(n: SomeNumber; radix: int; spec: StandardFormatSpecifier): string
       result.add(mkDigit(d.int, spec.typ))
     for idx in 0..<(result.len div 2):
       swap result[idx], result[result.len - idx - 1]
-  let adjustedWid = if negative: spec.minimumWidth - 1 else: spec.minimumWidth
   if spec.padWithZero:
-    let toFill = spec.minimumWidth - result.len - xx.len - ord(negative)
+    let sign = negative or spec.sign != '-'
+    let toFill = spec.minimumWidth - result.len - xx.len - ord(sign)
     if toFill > 0:
       result = repeat('0', toFill) & result
 
+  if negative:
+    result = "-" & xx & result
+  elif spec.sign != '-':
+    result = spec.sign & xx & result
+  else:
+    result = xx & result
+
   if spec.align == '<':
-    if negative:
-      result = "-" & xx & result
-    else:
-      result = xx & result
     for i in result.len..<spec.minimumWidth:
       result.add(spec.fill)
   else:
-    if negative:
-      result = "-" & xx & result
-    else:
-      result = xx & result
     let toFill = spec.minimumWidth - result.len
     if spec.align == '^':
       let half = toFill div 2
@@ -492,7 +505,7 @@ proc parseStandardFormatSpecifier*(s: string; start = 0;
   ## An exported helper proc that parses the "standard format specifiers",
   ## as specified by the grammar::
   ##
-  ##   [[fill]align][#][0][minimumwidth][.precision][type]
+  ##   [[fill]align][sign][#][0][minimumwidth][.precision][type]
   ##
   ## This is only of interest if you want to write a custom ``format`` proc that
   ## should support the standard format specifiers. If ``ignoreUnknownSuffix`` is true,
@@ -500,6 +513,7 @@ proc parseStandardFormatSpecifier*(s: string; start = 0;
   const alignChars = {'<', '>', '^'}
   result.fill = ' '
   result.align = '<'
+  result.sign = '-'
   var i = start
   if i + 1 < s.len and s[i+1] in alignChars:
     result.fill = s[i]
@@ -509,11 +523,9 @@ proc parseStandardFormatSpecifier*(s: string; start = 0;
     result.align = s[i]
     inc i
 
-  when false:
-    # XXX Python inspired 'sign' not yet supported!
-    if i < s.len and s[i] in {'-', '+', ' '}:
-      result.sign = s[i]
-      inc i
+  if i < s.len and s[i] in {'-', '+', ' '}:
+    result.sign = s[i]
+    inc i
 
   if i < s.len and s[i] == '#':
     result.alternateForm = true
@@ -578,12 +590,11 @@ proc format*(value: SomeReal; specifier: string; res: var string) =
       "invalid type in format string for number, expected one " &
       " of 'e', 'E', 'f', 'F', 'g', 'G' but got: " & spec.typ)
 
-  #let result = if spec.minimumWidth > 0 and spec.align == '<' and value < 0 and spec.padWithZero:
-  #  "-" & alignString(formatBiggestFloat(-value, fmode, spec.precision), spec.minimumWidth-1,
-  #                     spec.align, '0')
-  #else:
-  let result = alignString(formatBiggestFloat(value, fmode, spec.precision), spec.minimumWidth,
-                            spec.align, spec.fill)
+  var f = formatBiggestFloat(value, fmode, spec.precision)
+  if value >= 0.0 and spec.sign != '-':
+    f = spec.sign & f
+  let result = alignString(f, spec.minimumWidth,
+                           spec.align, spec.fill)
   if spec.typ in {'A'..'Z'}:
     res.add toUpperAscii(result)
   else:
