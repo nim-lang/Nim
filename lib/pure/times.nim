@@ -109,11 +109,15 @@ type
     timezone*: Timezone       ## The timezone represented as an implementation of ``Timezone``.
     utcOffset*: int           ## The offset in seconds west of UTC, including any offset due to DST.
                               ## Note that the sign of this number is the opposite
-                              ## of the one in a formatted timezone string like ``+01:00``
-                              ## (which would be parsed into the timezone ``-3600``).
+                              ## of the one in a formatted offset string like ``+01:00``
+                              ## (which would be parsed into the UTC offset ``-3600``).
 
   TimeInterval* = object ## Represents a duration of time. Can be used to add and subtract
                          ## from a ``DateTime`` or ``Time``.
+                         ## Note that a ``TimeInterval`` doesn't represent a fixed duration of time,
+                         ## since the duration of some units depend on the context (e.g a year
+                         ## can be either 365 or 366 days long). The non-fixed time units are years,
+                         ## months and days.
     milliseconds*: int ## The number of milliseconds
     seconds*: int     ## The number of seconds
     minutes*: int     ## The number of minutes
@@ -233,7 +237,6 @@ proc utcZoneInfoFromUtc(time: Time): ZonedTime {.tags: [], raises: [], benign .}
 proc utcZoneInfoFromTz(adjTime: Time): ZonedTime {.tags: [], raises: [], benign .}
 proc localZoneInfoFromUtc(time: Time): ZonedTime {.tags: [], raises: [], benign .}
 proc localZoneInfoFromTz(adjTime: Time): ZonedTime {.tags: [], raises: [], benign .}
-proc format*(dt: DateTime, f: string): string
 
 proc `-`*(a, b: Time): int64 {.
     rtl, extern: "ntDiffTime", tags: [], raises: [], noSideEffect, benign, deprecated.} =
@@ -262,9 +265,7 @@ proc `==`*(a, b: Time): bool {.
 
 proc toTime*(dt: DateTime): Time {.tags: [], raises: [], benign.} =
   ## Converts a broken-down time structure to
-  ## calendar time representation. The function ignores the specified
-  ## contents of the structure members `weekday` and `yearday` and recomputes
-  ## them from the other information in the broken-down time structure.
+  ## calendar time representation.
   let epochDay = toEpochday(dt.monthday, dt.month, dt.year)
   result = Time(epochDay * secondsInDay)
   result.inc dt.hour * secondsInHour
