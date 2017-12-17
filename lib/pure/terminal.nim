@@ -23,6 +23,7 @@ export colors
 
 var
   trueColorIsSupported = false
+  fgSetColor = true
 
 when defined(windows):
   import winlean, os
@@ -458,7 +459,6 @@ when not defined(windows):
     # XXX: These better be thread-local
     gFG = 0
     gBG = 0
-    fgSetColor = true
 
 proc setStyle*(f: File, style: set[Style]) =
   ## Sets the terminal style.
