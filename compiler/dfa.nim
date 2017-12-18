@@ -132,7 +132,7 @@ proc gen(c: var Con; n: PNode) # {.noSideEffect.}
 proc genWhile(c: var Con; n: PNode) =
   # L1:
   #   cond, tmp
-  #   fjmp tmp, L2
+  #   fork tmp, L2
   #   body
   #   jmp L1
   # L2:
@@ -168,15 +168,13 @@ proc genIf(c: var Con, n: PNode) =
   var endings: seq[TPosition] = @[]
   for i in countup(0, len(n) - 1):
     var it = n.sons[i]
+    c.gen(it.sons[0])
     if it.len == 2:
-      c.gen(it.sons[0].sons[1])
-      var elsePos = c.forkI(it.sons[0].sons[1])
+      let elsePos = c.forkI(it.sons[1])
       c.gen(it.sons[1])
       if i < sonsLen(n)-1:
         endings.add(c.gotoI(it.sons[1]))
       c.patch(elsePos)
-    else:
-      c.gen(it.sons[0])
   for endPos in endings: c.patch(endPos)
 
 proc genAndOr(c: var Con; n: PNode) =
@@ -337,6 +335,85 @@ proc gen(c: var Con; n: PNode) =
   else: discard
 
 proc dfa(code: seq[Instr]) =
+  var u = newSeq[IntSet](code.len) # usages
+  var d = newSeq[IntSet](code.len) # defs
+  var backrefs = initTable[int, int]()
+  for i in 0..<code.len:
+    u[i] = initIntSet()
+    d[i] = initIntSet()
+    case code[i].kind
+    of use, useWithinCall: u[i].incl(code[i].sym.id)
+    of def: d[i].incl(code[i].sym.id)
+    of fork:
+      let d = i+code[i].dest
+      backrefs.add(d, i)
+    of goto: discard
+
+  var w = @[0]
+  var maxIters = 50
+  var someChange = true
+  while w.len > 0 and maxIters > 0 and someChange:
+    dec maxIters
+    var pc = w.pop() # w[^1]
+    var prevPc = -1
+    # this simulates a single linear control flow execution:
+    while pc < code.len and someChange:
+      # according to the paper, it is better to shrink the working set here
+      # in this inner loop:
+      #let widx = w.find(pc)
+      #if widx >= 0: w.del(widx)
+
+      if prevPc >= 0:
+        someChange = false
+        # merge step and test for changes (we compute the fixpoints here):
+        # 'u' needs to be the union of prevPc, pc
+        # 'd' needs to be the intersection of 'pc'
+        for id in u[prevPc]:
+          if not u[pc].containsOrIncl(id):
+            someChange = true
+        # in (a; b) if ``a`` sets ``v`` so does ``b``. The intersection
+        # is only interesting on merge points:
+        for id in d[prevPc]:
+          if not d[pc].containsOrIncl(id):
+            someChange = true
+        # if this is a merge point, we take the intersection of the 'd' sets:
+        if backrefs.hasKey(pc):
+          var intersect = initIntSet()
+          assign(intersect, d[pc])
+          var first = true
+          for prevPc in backrefs.allValues(pc):
+            for def in d[pc]:
+              if def notin d[prevPc]:
+                excl(intersect, def)
+                someChange = true
+          assign d[pc], intersect
+
+      # our interpretation ![I!]:
+      prevPc = pc
+      case code[pc].kind
+      of goto:
+        # we must leave endless loops eventually:
+        #if someChange:
+        pc = pc + code[pc].dest
+        #else:
+        #  inc pc
+      of fork:
+        # we follow the next instruction but push the dest onto our "work" stack:
+        #if someChange:
+        w.add pc + code[pc].dest
+        inc pc
+      of use, useWithinCall, def:
+        inc pc
+
+  # now check the condition we're interested in:
+  for i in 0..<code.len:
+    case code[i].kind
+    of use, useWithinCall:
+      if code[i].sym.id notin d[i]:
+        localError(code[i].n.info, "usage of an uninitialized variable")
+    else: discard
+
+proc dfaUnused(code: seq[Instr]) =
   # We aggressively push 'undef' values for every 'use v' instruction
   # until they are eliminated via a 'def v' instructions.
   # If we manage to push one 'undef' to a 'use' instruction, we produce
@@ -348,6 +425,7 @@ proc dfa(code: seq[Instr]) =
   var s = newSeq[IntSet](code.len)
   for i in 0..<code.len:
     assign(s[i], undef)
+
 
   # In the original paper, W := {0,...,n} is done. This is wasteful, we
   # have no intention to analyse a program like
