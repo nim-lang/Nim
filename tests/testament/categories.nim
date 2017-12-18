@@ -15,58 +15,52 @@
 
 const
   rodfilesDir = "tests/rodfiles"
-  nimcacheDir = rodfilesDir / "nimcache"
 
-proc delNimCache() =
+proc delNimCache(filename, options: string) =
+  let dir = nimcacheDir(filename, options)
   try:
-    removeDir(nimcacheDir)
+    removeDir(dir)
   except OSError:
-    echo "[Warning] could not delete: ", nimcacheDir
+    echo "[Warning] could not delete: ", dir
 
 proc runRodFiles(r: var TResults, cat: Category, options: string) =
-  template test(filename: untyped) =
+  template test(filename: string, clearCacheFirst=false) =
+    if clearCacheFirst: delNimCache(filename, options)
     testSpec r, makeTest(rodfilesDir / filename, options, cat, actionRun)
 
-  delNimCache()
 
   # test basic recompilation scheme:
-  test "hallo"
+  test "hallo", true
   test "hallo"
   when false:
     # test incremental type information:
     test "hallo2"
-    delNimCache()
 
   # test type converters:
-  test "aconv"
+  test "aconv", true
   test "bconv"
-  delNimCache()
 
   # test G, A, B example from the documentation; test init sections:
-  test "deada"
+  test "deada", true
   test "deada2"
-  delNimCache()
 
   when false:
     # test method generation:
-    test "bmethods"
+    test "bmethods", true
     test "bmethods2"
-    delNimCache()
 
     # test generics:
-    test "tgeneric1"
+    test "tgeneric1", true
     test "tgeneric2"
-    delNimCache()
 
 proc compileRodFiles(r: var TResults, cat: Category, options: string) =
-  template test(filename: untyped) =
+  template test(filename: untyped, clearCacheFirst=true) =
+    if clearCacheFirst: delNimCache(filename, options)
     testSpec r, makeTest(rodfilesDir / filename, options, cat)
 
-  delNimCache()
   # test DLL interfacing:
-  test "gtkex1"
+  test "gtkex1", true
   test "gtkex2"
-  delNimCache()
 
 # --------------------- DLL generation tests ----------------------------------
 
