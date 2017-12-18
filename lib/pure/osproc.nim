@@ -1060,10 +1060,10 @@ elif not defined(useNimRtl):
         var tmspec: Timespec
 
         if timeout >= 1000:
-          tmspec.tv_sec = (timeout div 1_000).Time
+          tmspec.tv_sec = posix.Time(timeout div 1_000)
           tmspec.tv_nsec = (timeout %% 1_000) * 1_000_000
         else:
-          tmspec.tv_sec = 0.Time
+          tmspec.tv_sec = posix.Time(0)
           tmspec.tv_nsec = (timeout * 1_000_000)
 
         try:
