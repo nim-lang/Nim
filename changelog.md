@@ -143,6 +143,3 @@ This now needs to be written as:
 - codegenDecl pragma now works for the JavaScript backend. It returns an empty string for
   function return type placeholders.
 - Asynchronous programming for the JavaScript backend using the `asyncjs` module.
-- For string formatting / interpolation a new module
-  called [strformat](https://nim-lang.org/docs/strformat.html) has been added
-  to the stdlib.
