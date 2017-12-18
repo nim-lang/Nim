@@ -39,36 +39,37 @@
   what to return if the environment variable does not exist.
 - Bodies of ``for`` loops now get their own scope:
 
-.. code-block:: nim
+```nim
   # now compiles:
   for i in 0..4:
     let i = i + 1
     echo i
+```
 
 - The parsing rules of ``if`` expressions were changed so that multiple
   statements are allowed in the branches. We found few code examples that
   now fail because of this change, but here is one:
 
-.. code-block:: nim
-
+```nim
   t[ti] = if exp_negative: '-' else: '+'; inc(ti)
+```
 
 This now needs to be written as:
 
-.. code-block:: nim
-
+```nim
   t[ti] = (if exp_negative: '-' else: '+'); inc(ti)
+```
 
 - To make Nim even more robust the system iterators ``..`` and ``countup``
   now only accept a single generic type ``T``. This means the following code
   doesn't die with an "out of range" error anymore:
 
-.. code-block:: nim
-
+```nim
   var b = 5.Natural
   var a = -5
   for i in a..b:
     echo i
+```
 
 - ``formatFloat``/``formatBiggestFloat`` now support formatting floats with zero
   precision digits. The previous ``precision = 0`` behavior (default formatting)
@@ -136,6 +137,12 @@ This now needs to be written as:
   Types that shadow procs and vice versa are marked as ambiguous (bug #6693).
 - ``yield`` (or ``await`` which is mapped to ``yield``) never worked reliably
   in an array, seq or object constructor and is now prevented at compile-time.
+- For string formatting / interpolation a new module
+  called [strformat](https://nim-lang.org/docs/strformat.html) has been added
+  to the stdlib.
+- codegenDecl pragma now works for the JavaScript backend. It returns an empty string for
+  function return type placeholders.
+- Asynchronous programming for the JavaScript backend using the `asyncjs` module.
 - For string formatting / interpolation a new module
   called [strformat](https://nim-lang.org/docs/strformat.html) has been added
   to the stdlib.
