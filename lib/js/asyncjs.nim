@@ -83,20 +83,46 @@ proc replaceReturn(node: var NimNode) =
       replaceReturn(son)
     inc z
 
+proc isFutureVoid(node: NimNode): bool =
+  result = node.kind == nnkBracketExpr and
+           node[0].kind == nnkIdent and $node[0] == "Future" and
+           node[1].kind == nnkIdent and $node[1] == "void"
+
 proc generateJsasync(arg: NimNode): NimNode =
   assert arg.kind == nnkProcDef
   result = arg
+  var isVoid = false
   if arg.params[0].kind == nnkEmpty:
     result.params[0] = nnkBracketExpr.newTree(ident("Future"), ident("void"))
+    isVoid = true
+  elif isFutureVoid(arg.params[0]):
+    isVoid = true
   var code = result.body
   replaceReturn(code)
   result.body = nnkStmtList.newTree()
-  var q = quote:
+
+  var awaitFunction = quote:
     proc await[T](f: Future[T]): T {.importcpp: "(await #)".}
-    proc jsResolve[T](a: T): Future[T] {.importcpp: "#".}
-  result.body.add(q)
+  result.body.add(awaitFunction)
+
+  var resolve: NimNode
+  var jsResolveNode = ident("jsResolve")
+  if isVoid:
+    resolve = quote:
+      var `jsResolveNode` {.importcpp: "undefined".}: Future[void]
+  else:
+    resolve = quote:
+      proc jsResolve[T](a: T): Future[T] {.importcpp: "#".}
+  result.body.add(resolve)
+
   for child in code:
     result.body.add(child)
+
+  if isVoid:
+    var voidFix = quote:
+      return `jsResolveNode`
+    result.body.add(voidFix)
+
   result.pragma = quote:
     {.codegenDecl: "async function $2($3)".}
 
