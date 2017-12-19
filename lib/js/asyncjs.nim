@@ -92,39 +92,44 @@ proc generateJsasync(arg: NimNode): NimNode =
   assert arg.kind == nnkProcDef
   result = arg
   var isVoid = false
+  var jsResolveNode = ident("jsResolve")
+
   if arg.params[0].kind == nnkEmpty:
     result.params[0] = nnkBracketExpr.newTree(ident("Future"), ident("void"))
     isVoid = true
   elif isFutureVoid(arg.params[0]):
     isVoid = true
+
   var code = result.body
   replaceReturn(code)
   result.body = nnkStmtList.newTree()
 
-  var awaitFunction = quote:
-    proc await[T](f: Future[T]): T {.importcpp: "(await #)".}
-  result.body.add(awaitFunction)
+  if len(code) > 0:
+    var awaitFunction = quote:
+      proc await[T](f: Future[T]): T {.importcpp: "(await #)".}
+    result.body.add(awaitFunction)
 
-  var resolve: NimNode
-  var jsResolveNode = ident("jsResolve")
-  if isVoid:
-    resolve = quote:
-      var `jsResolveNode` {.importcpp: "undefined".}: Future[void]
+    var resolve: NimNode
+    if isVoid:
+      resolve = quote:
+        var `jsResolveNode` {.importcpp: "undefined".}: Future[void]
+    else:
+      resolve = quote:
+        proc jsResolve[T](a: T): Future[T] {.importcpp: "#".}
+    result.body.add(resolve)
   else:
-    resolve = quote:
-      proc jsResolve[T](a: T): Future[T] {.importcpp: "#".}
-  result.body.add(resolve)
-
+    result.body = newEmptyNode()
   for child in code:
     result.body.add(child)
 
-  if isVoid:
+  if len(code) > 0 and isVoid:
     var voidFix = quote:
       return `jsResolveNode`
     result.body.add(voidFix)
 
   result.pragma = quote:
     {.codegenDecl: "async function $2($3)".}
+
 
 macro async*(arg: untyped): untyped =
   ## Macro which converts normal procedures into
