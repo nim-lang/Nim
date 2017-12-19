@@ -433,6 +433,8 @@ Modules for JS backend
 * `jsffi <jsffi.html>`_
   Types and macros for easier interaction with JavaScript.
 
+* `asyncjs <asyncjs.html>`_
+  Types and macros for writing asynchronous procedures in JavaScript.
 
 Deprecated modules
 ------------------
