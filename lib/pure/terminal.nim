@@ -608,8 +608,8 @@ proc isatty*(f: File): bool =
 type
   TerminalCmd* = enum  ## commands that can be expressed as arguments
     resetStyle,        ## reset attributes
-    fgColor,       ## set foreground's true color
-    bgColor        ## set background's true color
+    fgColor,           ## set foreground's true color
+    bgColor            ## set background's true color
 
 template styledEchoProcessArg(f: File, s: string) = write f, s
 template styledEchoProcessArg(f: File, style: Style) = setStyle(f, {style})
