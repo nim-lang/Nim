@@ -135,7 +135,7 @@ proc `$`*[T](L: SomeLinkedCollection[T]): string =
   result = "["
   for x in nodes(L):
     if result.len > 1: result.add(", ")
-    result.add($x.value)
+    result.addQuoted(x.value)
   result.add("]")
 
 proc find*[T](L: SomeLinkedCollection[T], value: T): SomeLinkedNode[T] =

@@ -338,9 +338,9 @@ template dollarImpl(): untyped {.dirty.} =
     result = "{"
     for key, val in pairs(t):
       if result.len > 1: result.add(", ")
-      result.add($key)
+      result.addQuoted(key)
       result.add(": ")
-      result.add($val)
+      result.addQuoted(val)
     result.add("}")
 
 proc `$`*[A, B](t: Table[A, B]): string =
@@ -994,7 +994,7 @@ proc smallest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   ## returns the (key,val)-pair with the smallest `val`. Efficiency: O(n)
   assert t.len > 0
   var minIdx = -1
-  for h in 1..high(t.data):
+  for h in 0..high(t.data):
     if t.data[h].val > 0 and (minIdx == -1 or t.data[minIdx].val > t.data[h].val):
       minIdx = h
   result.key = t.data[minIdx].key
@@ -1332,5 +1332,5 @@ when isMainModule:
 
   block: # CountTable.smallest
     var t = initCountTable[int]()
-    for v in items([4, 4, 5, 5, 5]): t.inc(v)
-    doAssert t.smallest == (4, 2)
+    for v in items([0, 0, 5, 5, 5]): t.inc(v)
+    doAssert t.smallest == (0, 2)

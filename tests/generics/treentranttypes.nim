@@ -1,6 +1,6 @@
 discard """
 output: '''
-(Field0: 10, Field1: (Field0: test, Field1: 1.2))
+(Field0: 10, Field1: (Field0: "test", Field1: 1.2))
 3x3 Matrix [[0.0, 2.0, 3.0], [2.0, 0.0, 5.0], [2.0, 0.0, 5.0]]
 
 2x3 Matrix [[0.0, 2.0, 3.0], [2.0, 0.0, 5.0]]
@@ -43,7 +43,7 @@ type
 
   Matrix*[M: static[int]; N: static[int]; T] =
     Vector[M, Vector[N, T]]
-  
+
 proc arrayTest =
   # every kind of square matrix works just fine
   let mat_good: Matrix[3, 3, float] = [[0.0, 2.0, 3.0],

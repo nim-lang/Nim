@@ -1,5 +1,5 @@
 discard """
-  output: '''(FirstName: James, LastName: Franco)'''
+  output: '''(FirstName: "James", LastName: "Franco")'''
 """
 
 # bug #1547

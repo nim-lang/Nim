@@ -1,6 +1,6 @@
 discard """
   output: '''24
-(bar: bar)
+(bar: "bar")
 1244
 6
 abcdefghijklmnopqrstuvwxyz

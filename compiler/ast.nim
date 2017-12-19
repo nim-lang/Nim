@@ -639,7 +639,8 @@ type
     mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl,
     mNHint, mNWarning, mNError,
     mInstantiationInfo, mGetTypeInfo, mNGenSym,
-    mNimvm, mIntDefine, mStrDefine, mRunnableExamples
+    mNimvm, mIntDefine, mStrDefine, mRunnableExamples,
+    mException
 
 # things that we can evaluate safely at compile time, even if not asked for it:
 const
