@@ -18,12 +18,15 @@
 
 import macros
 from strutils import toLowerAscii
+import tables
 import colors
 export colors
 
 var
   trueColorIsSupported = false
   fgSetColor = true
+  colorsFGCache = initTable[Color, string]()
+  colorsBGCache = initTable[Color, string]()
 
 when defined(windows):
   import winlean, os
@@ -559,23 +562,31 @@ proc setBackgroundColor*(f: File, bg: BackgroundColor, bright=false) =
     if bright: inc(gBG, 60)
     f.write("\e[" & $gBG & 'm')
 
+proc getFGColorStrFromCache(color: Color): string =
+  if colorsFGCache.hasKey(color):
+    result = colorsFGCache[color]
+  else:
+    let rgb = extractRGB(color)
+    result = "\x1b[38;2;" & $rgb.r & ";" & $rgb.g & ";" & $rgb.b & 'm'
+    colorsFGCache[color] = result
+
+proc getBGColorStrFromCache(color: Color): string =
+  if colorsBGCache.hasKey(color):
+    result = colorsBGCache[color]
+  else:
+    let rgb = extractRGB(color)
+    result = "\x1b[48;2;" & $rgb.r & ";" & $rgb.g & ";" & $rgb.b & 'm'
+    colorsBGCache[color] = result
+
 proc setForegroundColor*(f: File, color: Color) =
   ## Sets the terminal's foreground true color.
-  when defined(windows):
-    discard
-  else:
-    if trueColorIsSupported:
-      let rgb = extractRGB(color)
-      f.write("\x1b[38;2;" & $rgb.r & ";" & $rgb.g & ";" & $rgb.b & 'm')
+  if trueColorIsSupported:
+    f.write(getFGColorStrFromCache(color))
 
 proc setBackgroundColor*(f: File, color: Color) =
   ## Sets the terminal's background true color.
-  when defined(windows):
-    discard
-  else:
-    if trueColorIsSupported:
-      let rgb = extractRGB(color)
-      f.write("\x1b[48;2;" & $rgb.r & ";" & $rgb.g & ";" & $rgb.b & 'm')
+  if trueColorIsSupported:
+    f.write(getBGColorStrFromCache(color))
 
 proc setTrueColor(f: File, color: Color) =
   if fgSetColor:
@@ -721,7 +732,13 @@ when not defined(testing) and isMainModule:
   stdout.writeLine("ordinary text")
   stdout.resetAttributes()
 
-when compileOption("taintmode"):
-  trueColorIsSupported = string(getEnv("COLORTERM")).toLowerAscii() in ["truecolor", "24bit"]
+when defined(windows):
+  var mode: DWORD = 0
+  discard getConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), addr(mode))
+  mode = mode or ENABLE_VIRTUAL_TERMINAL_PROCESSING
+  trueColorIsSupported = setConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), mode) != 0
 else:
-  trueColorIsSupported = getEnv("COLORTERM").toLowerAscii() in ["truecolor", "24bit"]
+  when compileOption("taintmode"):
+    trueColorIsSupported = string(getEnv("COLORTERM")).toLowerAscii() in ["truecolor", "24bit"]
+  else:
+    trueColorIsSupported = getEnv("COLORTERM").toLowerAscii() in ["truecolor", "24bit"]
