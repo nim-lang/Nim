@@ -88,7 +88,7 @@ proc generatedTime*(oid: Oid): Time =
   var tmp: int32
   var dummy = oid.time
   bigEndian32(addr(tmp), addr(dummy))
-  result = Time(tmp)
+  result = fromUnix(tmp)
 
 when not defined(testing) and isMainModule:
   let xo = genOid()
