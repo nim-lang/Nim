@@ -105,8 +105,8 @@ proc commonType*(x, y: PType): PType =
   var a = skipTypes(x, {tyGenericInst, tyAlias})
   var b = skipTypes(y, {tyGenericInst, tyAlias})
   result = x
-  if a.kind in {tyExpr, tyNil}: result = y
-  elif b.kind in {tyExpr, tyNil}: result = x
+  if b.kind in {tyExpr, tyNil, tyVoid}: result = x
+  elif a.kind in {tyExpr, tyNil}: result = y
   elif a.kind == tyStmt: result = a
   elif b.kind == tyStmt: result = b
   elif a.kind == tyTypeDesc:

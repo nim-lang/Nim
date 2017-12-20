@@ -172,7 +172,7 @@ proc semIf(c: PContext, n: PNode): PNode =
       it.sons[0] = semExprBranchScope(c, it.sons[0])
       typ = commonType(typ, it.sons[0].typ)
     else: illFormedAst(it)
-  if isEmptyType(typ) or typ.kind == tyNil or not hasElse:
+  if isEmptyType(typ) or typ.kind in {tyNil, tyExpr} or not hasElse:
     for it in n: discardCheck(c, it.lastSon)
     result.kind = nkIfStmt
     # propagate any enforced VoidContext:
@@ -180,7 +180,8 @@ proc semIf(c: PContext, n: PNode): PNode =
   else:
     for it in n:
       let j = it.len-1
-      it.sons[j] = fitNode(c, typ, it.sons[j], it.sons[j].info)
+      if it.sons[j].typ.kind != tyVoid:
+        it.sons[j] = fitNode(c, typ, it.sons[j], it.sons[j].info)
     result.kind = nkIfExpr
     result.typ = typ
 
@@ -237,7 +238,7 @@ proc semCase(c: PContext, n: PNode): PNode =
     else:
       localError(n.info, errNotAllCasesCovered)
   closeScope(c)
-  if isEmptyType(typ) or typ.kind == tyNil or not hasElse:
+  if isEmptyType(typ) or typ.kind in {tyNil, tyExpr} or not hasElse:
     for i in 1..n.len-1: discardCheck(c, n.sons[i].lastSon)
     # propagate any enforced VoidContext:
     if typ == enforceVoidContext:
@@ -246,7 +247,8 @@ proc semCase(c: PContext, n: PNode): PNode =
     for i in 1..n.len-1:
       var it = n.sons[i]
       let j = it.len-1
-      it.sons[j] = fitNode(c, typ, it.sons[j], it.sons[j].info)
+      if it.sons[j].typ.kind != tyVoid:
+        it.sons[j] = fitNode(c, typ, it.sons[j], it.sons[j].info)
     result.typ = typ
 
 proc semTry(c: PContext, n: PNode): PNode =
@@ -724,6 +726,7 @@ proc semFor(c: PContext, n: PNode): PNode =
 proc semRaise(c: PContext, n: PNode): PNode =
   result = n
   checkSonsLen(n, 1)
+  result.typ = PType(kind: tyVoid) # used to detect noreturn branches
   if n.sons[0].kind != nkEmpty:
     n.sons[0] = semExprWithType(c, n.sons[0])
     var typ = n.sons[0].typ
