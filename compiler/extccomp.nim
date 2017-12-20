@@ -781,73 +781,42 @@ proc callCCompiler*(projectfile: string) =
     add(script, tnl)
     generateScript(projectfile, script)
 
-#from json import escapeJson
 import json
 
 proc writeJsonBuildInstructions*(projectfile: string) =
-  template lit(x: untyped) = f.write x
-  template str(x: untyped) =
-    when compiles(escapeJson(x, buf)):
-      buf.setLen 0
-      escapeJson(x, buf)
-      f.write buf
-    else:
-      f.write escapeJson(x)
+  let
+    file = projectfile.splitFile.name
+    jsonFile = toGeneratedFile(file, "json")
+  var f: File
+  if open(f, jsonFile, fmWrite):
+    var
+      objfiles = ""
+      compile = newJArray()
+      link = newJArray()
 
-  proc cfiles(f: File; buf: var string; list: CfileList, isExternal: bool) =
-    var i = 0
-    for it in list:
+    for it in toCompile:
       if CfileFlag.Cached in it.flags: continue
-      let compileCmd = getCompileCFileCmd(it)
-      lit "["
-      str it.cname
-      lit ", "
-      str compileCmd
-      inc i
-      if i == list.len:
-        lit "]\L"
-      else:
-        lit "],\L"
+      compile.add %*[it.cname, getCompileCFileCmd(it)]
 
-  proc linkfiles(f: File; buf, objfiles: var string) =
-    for i, it in externalToLink:
+    for it in externalToLink:
       let
         objFile = if noAbsolutePaths(): it.extractFilename else: it
         objStr = addFileExt(objFile, CC[cCompiler].objExt)
-      add(objfiles, ' ')
-      add(objfiles, objStr)
-      str objStr
-      if toCompile.len == 0 and i == externalToLink.high:
-        lit "\L"
-      else:
-        lit ",\L"
-    for i, x in toCompile:
-      let objStr = quoteShell(x.obj)
-      add(objfiles, ' ')
-      add(objfiles, objStr)
-      str objStr
-      if i == toCompile.high:
-        lit "\L"
-      else:
-        lit ",\L"
+      objfiles.add " "
+      objfiles.add objStr
+      link.add %objStr
+    for it in toCompile:
+      let objStr = quoteShell(it.obj)
+      objfiles.add " "
+      objfiles.add objStr
+      link.add %objStr
 
-  var buf = newStringOfCap(50)
-
-  let file = projectfile.splitFile.name
-  let jsonFile = toGeneratedFile(file, "json")
-
-  var f: File
-  if open(f, jsonFile, fmWrite):
-    lit "{\"compile\":[\L"
-    cfiles(f, buf, toCompile, false)
-    lit "],\L\"link\":[\L"
-    var objfiles = ""
-    # XXX add every file here that is to link
-    linkfiles(f, buf, objfiles)
-
-    lit "],\L\"linkcmd\": "
-    str getLinkCmd(projectfile, objfiles)
-    lit "\L}\L"
+    let js = %*{
+      "compile": compile,
+      "link": link,
+      "linkcmd": getLinkCmd(projectfile, objfiles)
+    }
+    f.write js
     close(f)
 
 proc runJsonBuildInstructions*(projectfile: string) =
