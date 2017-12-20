@@ -291,6 +291,8 @@ when not defined(JS):
     ##  echo fmod(-2.5, 0.3) ## -0.1
 
 else:
+  proc trunc*(x: float32): float32 {.importc: "Math.trunc", nodecl.}
+  proc trunc*(x: float64): float64 {.importc: "Math.trunc", nodecl.}
   proc floor*(x: float32): float32 {.importc: "Math.floor", nodecl.}
   proc floor*(x: float64): float64 {.importc: "Math.floor", nodecl.}
   proc ceil*(x: float32): float32 {.importc: "Math.ceil", nodecl.}
