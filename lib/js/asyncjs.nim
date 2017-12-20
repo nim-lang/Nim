@@ -44,10 +44,10 @@
 ##         resolve(game)
 ##     return promise
 ##
-## Forward definitions work properly, you just don't need to add the ``{.async.}`` pragma:
+## Forward definitions work properly, you just need to always add the ``{.async.}`` pragma:
 ##
 ## .. code-block:: nim
-##   proc loadGame(name: string): Future[Game]
+##   proc loadGame(name: string): Future[Game] {.async.}
 ##
 ## JavaScript compatibility
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~
