@@ -80,7 +80,8 @@ proc commandCompileToC(graph: ModuleGraph; cache: IdentCache) =
     let proj = changeFileExt(gProjectFull, "")
     extccomp.callCCompiler(proj)
     extccomp.writeJsonBuildInstructions(proj)
-    writeDepsFile(graph, toGeneratedFile(proj, ""))
+    if optGenScript in gGlobalOptions:
+      writeDepsFile(graph, toGeneratedFile(proj, ""))
 
 proc commandJsonScript(graph: ModuleGraph; cache: IdentCache) =
   let proj = changeFileExt(gProjectFull, "")
