@@ -107,7 +107,11 @@ proc uninstantiate(t: PType): PType =
     of tyCompositeTypeClass: uninstantiate t.sons[1]
     else: t
 
-proc evalTypeTrait(traitCall: PNode, operand: PType, context: PSym): PNode =
+proc buildVTableType(c: PContext, con: PType): PType =
+  result = errorType(c)
+
+proc evalTypeTrait(c: PContext, traitCall: PNode, operand: PType): PNode =
+  var owner = getCurrOwner(c)
   const skippedTypes = {tyTypeDesc, tyAlias}
   let trait = traitCall[0]
   internalAssert trait.kind == nkSym
@@ -117,7 +121,7 @@ proc evalTypeTrait(traitCall: PNode, operand: PType, context: PSym): PNode =
     traitCall.sons[2].typ.skipTypes({tyTypeDesc})
 
   template typeWithSonsResult(kind, sons): PNode =
-    newTypeWithSons(context, kind, sons).toNode(traitCall.info)
+    newTypeWithSons(owner, kind, sons).toNode(traitCall.info)
 
   case trait.sym.name.s
   of "or", "|":
@@ -128,11 +132,19 @@ proc evalTypeTrait(traitCall: PNode, operand: PType, context: PSym): PNode =
     return typeWithSonsResult(tyNot, @[operand])
   of "name":
     result = newStrNode(nkStrLit, operand.typeToString(preferTypeName))
-    result.typ = newType(tyString, context)
+    result.typ = newType(tyString, owner)
     result.info = traitCall.info
+  of "vtptr", "vtref":
+    debug operand
+    if operand.kind notin tyUserTypeClasses:
+      localError(traitCall.info,
+                 trait.sym.name.s & " must be used with a concept type")
+      return emptyNode
+    let vtableType = buildVTableType(c, operand)
+    result = vtableType.toNode(traitCall.info)
   of "arity":
     result = newIntNode(nkIntLit, operand.len - ord(operand.kind==tyProc))
-    result.typ = newType(tyInt, context)
+    result.typ = newType(tyInt, owner)
     result.info = traitCall.info
   of "genericHead":
     var res = uninstantiate(operand)
@@ -140,7 +152,7 @@ proc evalTypeTrait(traitCall: PNode, operand: PType, context: PSym): PNode =
       localError(traitCall.info,
         "genericHead expects a generic type. The given type was " &
         typeToString(operand))
-      return newType(tyError, context).toNode(traitCall.info)
+      return newType(tyError, owner).toNode(traitCall.info)
     result = res.base.toNode(traitCall.info)
   of "stripGenericParams":
     result = uninstantiate(operand).toNode(traitCall.info)
@@ -160,7 +172,7 @@ proc semTypeTraits(c: PContext, n: PNode): PNode =
   if t.sonsLen > 0:
     # This is either a type known to sem or a typedesc
     # param to a regular proc (again, known at instantiation)
-    result = evalTypeTrait(n, t, getCurrOwner(c))
+    result = evalTypeTrait(c, n, t)
   else:
     # a typedesc variable, pass unmodified to evals
     result = n

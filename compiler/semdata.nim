@@ -42,6 +42,7 @@ type
   TMatchedConcept* = object
     candidateType*: PType
     prev*: ptr TMatchedConcept
+    converterExpr*: PNode
     depth*: int
 
   TInstantiationPair* = object

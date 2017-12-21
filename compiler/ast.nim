@@ -478,6 +478,7 @@ type
                       # concrete type (lastSon becomes the concrete type)
     tfRetType,        # marks return types in proc (used to detect type classes
                       # used as return types for return type inference)
+                      # also marks converter concepts
     tfCapturesEnv,    # whether proc really captures some environment
     tfByCopy,         # pass object/tuple by copy (C backend)
     tfByRef,          # pass object/tuple by reference (C backend)
