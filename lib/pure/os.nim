@@ -820,7 +820,7 @@ iterator walkDirRec*(dir: string, yieldFilter = {pcFile},
                      followFilter = {pcDir}): string {.tags: [ReadDirEffect].} =
   ## Recursively walks over the directory `dir` and yields for each file 
   ## or directory in `dir`.
-  ## The full path for each file is returned.
+  ## The full path for each file or directory is returned.
   ## **Warning**:
   ## Modifying the directory structure while the iterator
   ## is traversing may result in undefined behavior!
