@@ -197,35 +197,68 @@ proc floatVal*(n: NimNode): BiggestFloat {.magic: "NFloatVal", noSideEffect.}
 proc symbol*(n: NimNode): NimSym {.magic: "NSymbol", noSideEffect.}
 proc ident*(n: NimNode): NimIdent {.magic: "NIdent", noSideEffect.}
 
-proc getType*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
-  ## with 'getType' you can access the node's `type`:idx:. A Nim type is
-  ## mapped to a Nim AST too, so it's slightly confusing but it means the same
-  ## API can be used to traverse types. Recursive types are flattened for you
-  ## so there is no danger of infinite recursions during traversal. To
-  ## resolve recursive types, you have to call 'getType' again. To see what
-  ## kind of type it is, call `typeKind` on getType's result.
+proc getType*(n: NimNode): NimNode
+  {.magic: "NGetType", noSideEffect, deprecated.}
+  ## Retrieves the type of the specified node.
+  ##
+  ## **Deprecated since 0.17.0:** Use the ``getTypeImpl`` procedure instead.
 
-proc getType*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
-  ## Returns the Nim type node for given type. This can be used to turn macro
-  ## typedesc parameter into proper NimNode representing type, since typedesc
-  ## are an exception in macro calls - they are not mapped implicitly to
-  ## NimNode like any other arguments.
+proc getType*(n: typedesc): NimNode
+  {.magic: "NGetType", noSideEffect, deprecated.}
+  ## Returns the Nim type node for given type.
+  ##
+  ## **Deprecated since 0.17.0:** Use the ``getTypeImpl`` procedure instead.
 
 proc typeKind*(n: NimNode): NimTypeKind {.magic: "NGetType", noSideEffect.}
   ## Returns the type kind of the node 'n' that should represent a type, that
   ## means the node should have been obtained via `getType`.
 
 proc getTypeInst*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
-  ## Like getType except it includes generic parameters for a specific instance
+  ## Returns the instance name of the specified node's `type`:idx:.
+  ##
+  ## If you would like to get further information about the type, use the
+  ## ``getTypeImpl`` procedure which will return the type's implementation.
 
 proc getTypeInst*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
-  ## Like getType except it includes generic parameters for a specific instance
+  ## Returns the instance name of the specified node's `type`:idx:.
+  ##
+  ## If you would like to get further information about the type, use the
+  ## ``getTypeImpl`` procedure which will return the type's implementation.
 
 proc getTypeImpl*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
-  ## Like getType except it includes generic parameters for the implementation
+  ## Returns the node's `type`:idx:.
+  ##
+  ## A Nim type is
+  ## mapped to a Nim AST too, so it's slightly confusing but it means the same
+  ## API can be used to traverse types. Recursive types are flattened for you
+  ## so there is no danger of infinite recursions during traversal.
+  ##
+  ## To resolve recursive types, you have to call 'getType' again.
+  ##
+  ## To see what kind of type it is, call `typeKind` on getType's result.
+  ##
+  ## Use ``getTypeInst`` instead if you would just like to know the instance
+  ## name of a node.
 
 proc getTypeImpl*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
-  ## Like getType except it includes generic parameters for the implementation
+  ## Returns the Nim type node for the given type.
+  ##
+  ## This can be used to turn a macro
+  ## ``typedesc`` parameter into proper NimNode representing type, since
+  ## ``typedesc`` are an exception in macro calls - they are not mapped
+  ## implicitly to ``NimNode`` like any other arguments.
+  ##
+  ## A Nim type is
+  ## mapped to a Nim AST too, so it's slightly confusing but it means the same
+  ## API can be used to traverse types. Recursive types are flattened for you
+  ## so there is no danger of infinite recursions during traversal.
+  ##
+  ## To resolve recursive types, you have to call 'getType' again.
+  ##
+  ## To see what kind of type it is, call `typeKind` on getType's result.
+  ##
+  ## Use ``getTypeInst`` instead if you would just like to know the instance
+  ## name of a node.
 
 proc strVal*(n: NimNode): string  {.magic: "NStrVal", noSideEffect.}
 
