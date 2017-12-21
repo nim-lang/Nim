@@ -2380,6 +2380,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     if n.len != 1 and n.len != 2: illFormedAst(n)
     for i in 0 ..< n.len:
       n.sons[i] = semExpr(c, n.sons[i])
+  of nkComesFrom: discard "ignore the comes from information for now"
   else:
     localError(n.info, errInvalidExpressionX,
                renderTree(n, {renderNoComments}))
