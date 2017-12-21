@@ -493,7 +493,32 @@ proc initLocExprSingleUse(p: BProc, e: PNode, result: var TLoc) =
 proc lenField(p: BProc): Rope =
   result = rope(if p.module.compileToCpp: "len" else: "Sup.len")
 
-include ccgcalls, "ccgstmts.nim", "ccgexprs.nim"
+include ccgcalls, "ccgstmts.nim"
+
+proc initFrame(p: BProc, procname, filename: Rope): Rope =
+  discard cgsym(p.module, "nimFrame")
+  if p.maxFrameLen > 0:
+    discard cgsym(p.module, "VarSlot")
+    result = rfmt(nil, "\tnimfrs_($1, $2, $3, $4);$n",
+                  procname, filename, p.maxFrameLen.rope,
+                  p.blocks[0].frameLen.rope)
+  else:
+    result = rfmt(nil, "\tnimfr_($1, $2);$n", procname, filename)
+
+proc initFrameNoDebug(p: BProc; frame, procname, filename: Rope; line: int): Rope =
+  discard cgsym(p.module, "nimFrame")
+  addf(p.blocks[0].sections[cpsLocals], "TFrame $1;$n", [frame])
+  result = rfmt(nil, "\t$1.procname = $2; $1.filename = $3; " &
+                      " $1.line = $4; $1.len = -1; nimFrame(&$1);$n",
+                      frame, procname, filename, rope(line))
+
+proc deinitFrameNoDebug(p: BProc; frame: Rope): Rope =
+  result = rfmt(p.module, "\t#popFrameOfAddr(&$1);$n", frame)
+
+proc deinitFrame(p: BProc): Rope =
+  result = rfmt(p.module, "\t#popFrame();$n")
+
+include ccgexprs
 
 # ----------------------------- dynamic library handling -----------------
 # We don't finalize dynamic libs as the OS does this for us.
@@ -600,7 +625,7 @@ proc symInDynamicLibPartial(m: BModule, sym: PSym) =
   sym.typ.sym = nil           # generate a new name
 
 proc cgsym(m: BModule, name: string): Rope =
-  var sym = magicsys.getCompilerProc(name)
+  let sym = magicsys.getCompilerProc(name)
   if sym != nil:
     case sym.kind
     of skProc, skFunc, skMethod, skConverter, skIterator: genProc(m, sym)
@@ -636,19 +661,6 @@ proc generateHeaders(m: BModule) =
   add(m.s[cfsHeaders], "#undef near" & tnl)
   add(m.s[cfsHeaders], "#undef powerpc" & tnl)
   add(m.s[cfsHeaders], "#undef unix" & tnl)
-
-proc initFrame(p: BProc, procname, filename: Rope): Rope =
-  discard cgsym(p.module, "nimFrame")
-  if p.maxFrameLen > 0:
-    discard cgsym(p.module, "VarSlot")
-    result = rfmt(nil, "\tnimfrs_($1, $2, $3, $4);$n",
-                  procname, filename, p.maxFrameLen.rope,
-                  p.blocks[0].frameLen.rope)
-  else:
-    result = rfmt(nil, "\tnimfr_($1, $2);$n", procname, filename)
-
-proc deinitFrame(p: BProc): Rope =
-  result = rfmt(p.module, "\t#popFrame();$n")
 
 proc closureSetup(p: BProc, prc: PSym) =
   if tfCapturesEnv notin prc.typ.flags: return

@@ -564,9 +564,6 @@ proc genBreakStmt(p: BProc, t: PNode) =
   genLineDir(p, t)
   lineF(p, cpsStmts, "goto $1;$n", [label])
 
-proc getRaiseFrmt(p: BProc): string =
-  result = "#raiseException((#Exception*)$1, $2);$n"
-
 proc genRaiseStmt(p: BProc, t: PNode) =
   if p.inExceptBlock > 0:
     # if the current try stmt have a finally block,
@@ -580,7 +577,8 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     var e = rdLoc(a)
     var typ = skipTypes(t.sons[0].typ, abstractPtrs)
     genLineDir(p, t)
-    lineCg(p, cpsStmts, getRaiseFrmt(p), [e, makeCString(typ.sym.name.s)])
+    lineCg(p, cpsStmts, "#raiseException((#Exception*)$1, $2);$n",
+        [e, makeCString(typ.sym.name.s)])
   else:
     genLineDir(p, t)
     # reraise the last exception:

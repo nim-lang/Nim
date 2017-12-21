@@ -21,7 +21,7 @@ type
     nnkInt16Lit, nnkInt32Lit, nnkInt64Lit, nnkUIntLit, nnkUInt8Lit,
     nnkUInt16Lit, nnkUInt32Lit, nnkUInt64Lit, nnkFloatLit,
     nnkFloat32Lit, nnkFloat64Lit, nnkFloat128Lit, nnkStrLit, nnkRStrLit,
-    nnkTripleStrLit, nnkNilLit, nnkMetaNode, nnkDotCall,
+    nnkTripleStrLit, nnkNilLit, nnkComesFrom, nnkDotCall,
     nnkCommand, nnkCall, nnkCallStrLit, nnkInfix,
     nnkPrefix, nnkPostfix, nnkHiddenCallConv,
     nnkExprEqExpr,

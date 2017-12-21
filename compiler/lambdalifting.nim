@@ -723,7 +723,7 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
         result = accessViaEnvParam(n, owner)
       else:
         result = accessViaEnvVar(n, owner, d, c)
-  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit,
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkComesFrom,
      nkTemplateDef, nkTypeSection:
     discard
   of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef:

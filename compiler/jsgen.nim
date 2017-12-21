@@ -2369,6 +2369,8 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkGotoState, nkState:
     internalError(n.info, "first class iterators not implemented")
   of nkPragmaBlock: gen(p, n.lastSon, r)
+  of nkComesFrom:
+    discard "XXX to implement for better stack traces"
   else: internalError(n.info, "gen: unknown node type: " & $n.kind)
 
 var globals: PGlobals

@@ -1982,10 +1982,35 @@ proc genComplexConst(p: BProc, sym: PSym, d: var TLoc) =
   assert((sym.loc.r != nil) and (sym.loc.t != nil))
   putLocIntoDest(p, d, sym.loc)
 
+template genStmtListExprImpl(exprOrStmt) {.dirty.} =
+  #let hasNimFrame = magicsys.getCompilerProc("nimFrame") != nil
+  let hasNimFrame = p.prc != nil and
+      sfSystemModule notin p.module.module.flags and
+      optStackTrace in p.prc.options
+  var frameName: Rope = nil
+  for i in 0 .. n.len - 2:
+    let it = n[i]
+    if it.kind == nkComesFrom:
+      if hasNimFrame and frameName == nil:
+        inc p.labels
+        frameName = "FR" & rope(p.labels) & "_"
+        let theMacro = it[0].sym
+        add p.s(cpsStmts), initFrameNoDebug(p, frameName,
+           makeCString theMacro.name.s,
+           theMacro.info.quotedFilename, it.info.line)
+    else:
+      genStmts(p, it)
+  if n.len > 0: exprOrStmt
+  if frameName != nil:
+    add p.s(cpsStmts), deinitFrameNoDebug(p, frameName)
+
 proc genStmtListExpr(p: BProc, n: PNode, d: var TLoc) =
-  var length = sonsLen(n)
-  for i in countup(0, length - 2): genStmts(p, n.sons[i])
-  if length > 0: expr(p, n.sons[length - 1], d)
+  genStmtListExprImpl:
+    expr(p, n[n.len - 1], d)
+
+proc genStmtList(p: BProc, n: PNode) =
+  genStmtListExprImpl:
+    genStmts(p, n[n.len - 1])
 
 proc upConv(p: BProc, n: PNode, d: var TLoc) =
   var a: TLoc
@@ -2184,8 +2209,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkCheckedFieldExpr: genCheckedRecordField(p, n, d)
   of nkBlockExpr, nkBlockStmt: genBlock(p, n, d)
   of nkStmtListExpr: genStmtListExpr(p, n, d)
-  of nkStmtList:
-    for i in countup(0, sonsLen(n) - 1): genStmts(p, n.sons[i])
+  of nkStmtList: genStmtList(p, n)
   of nkIfExpr, nkIfStmt: genIf(p, n, d)
   of nkWhen:
     # This should be a "when nimvm" node.
