@@ -41,7 +41,9 @@ let str2 = "NN"
 let a = case str1:
   of "Y": true
   of "N": false
-  else: raise newException(ValueError, "Invalid boolean")
+  else: 
+    echo "no good"
+    quit("quiting")
 
 let b = case str2:
   of nil, "": raise newException(ValueError, "Invalid boolean")
@@ -75,5 +77,5 @@ doassert(not compiles(
 doassert(not compiles(
   bb = case str2:
     of "Y": raise newException(ValueError, "Invalid Y")
-    of "N": raise newException(ValueError, "Invalid N")
+    else: raise newException(ValueError, "Invalid N")
 ))

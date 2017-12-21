@@ -165,9 +165,17 @@ proc commonType*(x, y: PType): PType =
         result = newType(k, r.owner)
         result.addSonSkipIntLit(r)
 
+proc endsInNoReturn(n: PNode): bool =
+  # check if expr ends in raise exception or call of noreturn proc
+  var it = n
+  while it.kind in {nkStmtList, nkStmtListExpr}: 
+    it = it.lastSon
+  result = it.kind in nkCallKinds and sfNoReturn in it[0].sym.flags
+  result = result or it.kind == nkRaiseStmt 
+
 proc commonType*(x: PType, y: PNode): PType =
   # ignore exception raising branches in case/if expressions
-  if y.kind == nkRaiseStmt: return x
+  if endsInNoReturn(y): return x
   commonType(x, y.typ)
 
 proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym =

@@ -143,8 +143,8 @@ This now needs to be written as:
 - codegenDecl pragma now works for the JavaScript backend. It returns an empty string for
   function return type placeholders.
 - Asynchronous programming for the JavaScript backend using the `asyncjs` module.
-- Noreturn raising exceptions branches are now skipped during common type deduction 
-  in if and case expressions. The following code snippets now compile:
+- Noreturn proc calls and raising exceptions branches are now skipped during common type 
+  deduction in if and case expressions. The following code snippets now compile:
 ```nim
 import strutils
 let str = "Y"
@@ -159,5 +159,7 @@ let b = case str:
   else: false 
 let c = if str == "Y": true 
   elif str == "N": false 
-  else: raise newException(ValueError, "Invalid boolean")
+  else:
+    echo "invalid bool" 
+    quit("this is the end")
 ```

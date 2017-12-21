@@ -180,7 +180,7 @@ proc semIf(c: PContext, n: PNode): PNode =
   else:
     for it in n:
       let j = it.len-1
-      if it.sons[j].kind != nkRaiseStmt:
+      if not endsInNoReturn(it.sons[j]):
         it.sons[j] = fitNode(c, typ, it.sons[j], it.sons[j].info)
     result.kind = nkIfExpr
     result.typ = typ
@@ -247,7 +247,7 @@ proc semCase(c: PContext, n: PNode): PNode =
     for i in 1..n.len-1:
       var it = n.sons[i]
       let j = it.len-1
-      if it.sons[j].kind != nkRaiseStmt:
+      if not endsInNoReturn(it.sons[j]):
         it.sons[j] = fitNode(c, typ, it.sons[j], it.sons[j].info)
     result.typ = typ
 
