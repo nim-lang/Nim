@@ -20,13 +20,12 @@ import macros
 from strutils import toLowerAscii
 import tables
 import colors
-export colors
 
 var
-  trueColorIsSupported = false
-  fgSetColor = true
-  colorsFGCache = initTable[Color, string]()
-  colorsBGCache = initTable[Color, string]()
+  trueColorIsSupported {.threadvar.}: bool
+  fgSetColor {.threadvar.}: bool
+  colorsFGCache {.threadvar.}: Table[Color, string]
+  colorsBGCache {.threadvar.}: Table[Color, string]
 
 when defined(windows):
   import winlean, os
@@ -43,6 +42,21 @@ when defined(windows):
     BACKGROUND_INTENSITY = 128
     FOREGROUND_RGB = FOREGROUND_RED or FOREGROUND_GREEN or FOREGROUND_BLUE
     BACKGROUND_RGB = BACKGROUND_RED or BACKGROUND_GREEN or BACKGROUND_BLUE
+
+    ENABLE_ECHO_INPUT = 0x0004
+    ENABLE_EXTENDED_FLAGS = 0x0080
+    ENABLE_INSERT_MODE = 0x0020
+    ENABLE_LINE_INPUT = 0x0002
+    ENABLE_MOUSE_INPUT = 0x0010
+    ENABLE_PROCESSED_INPUT = 0x0001
+    ENABLE_QUICK_EDIT_MODE = 0x0040
+    ENABLE_WINDOW_INPUT = 0x0008
+    ENABLE_VIRTUAL_TERMINAL_INPUT = 0x0200
+    ENABLE_PROCESSED_OUTPUT = 0x0001
+    ENABLE_WRAP_AT_EOL_OUTPUT = 0x0002
+    ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
+    DISABLE_NEWLINE_AUTO_RETURN = 0x0008
+    ENABLE_LVB_GRID_WORLDWIDE = 0x0010
 
   type
     SHORT = int16
@@ -133,6 +147,12 @@ when defined(windows):
   proc setConsoleTextAttribute(hConsoleOutput: HANDLE,
                                wAttributes: int16): WINBOOL{.
       stdcall, dynlib: "kernel32", importc: "SetConsoleTextAttribute".}
+
+  proc getConsoleMode(hConsoleHandle: Handle, dwMode: ptr DWORD): WINBOOL{.
+      stdcall, dynlib: "kernel32", importc: "GetConsoleMode".}
+
+  proc setConsoleMode(hConsoleHandle: Handle, dwMode: DWORD): WINBOOL{.
+      stdcall, dynlib: "kernel32", importc: "SetConsoleMode".}
 
   var
     hStdout: Handle # = createFile("CONOUT$", GENERIC_WRITE, 0, nil,
@@ -459,9 +479,8 @@ type
 
 when not defined(windows):
   var
-    # XXX: These better be thread-local
-    gFG = 0
-    gBG = 0
+    gFG {.threadvar.}: int
+    gBG {.threadvar.}: int
 
 proc setStyle*(f: File, style: set[Style]) =
   ## Sets the terminal style.
@@ -732,6 +751,10 @@ when not defined(testing) and isMainModule:
   stdout.writeLine("ordinary text")
   stdout.resetAttributes()
 
+fgSetColor = true
+colorsFGCache = initTable[Color, string]()
+colorsBGCache = initTable[Color, string]()
+
 when defined(windows):
   var mode: DWORD = 0
   discard getConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), addr(mode))
@@ -740,5 +763,5 @@ when defined(windows):
 else:
   when compileOption("taintmode"):
     trueColorIsSupported = string(getEnv("COLORTERM")).toLowerAscii() in ["truecolor", "24bit"]
-  else:
+  when not compileOption("taintmode"):
     trueColorIsSupported = getEnv("COLORTERM").toLowerAscii() in ["truecolor", "24bit"]
