@@ -175,8 +175,17 @@ proc put(g: var TSrcGen, kind: TTokType, s: string) =
 
 proc toNimChar(c: char): string =
   case c
-  of '\0': result = "\\0"
-  of '\x01'..'\x1F', '\x80'..'\xFF': result = "\\x" & strutils.toHex(ord(c), 2)
+  of '\0': result = "\\x00" # not "\\0" to avoid ambiguous cases like "\\012".
+  of '\a': result = "\\a" # \x07
+  of '\b': result = "\\b" # \x08
+  of '\t': result = "\\t" # \x09
+  of '\L': result = "\\L" # \x0A
+  of '\v': result = "\\v" # \x0B
+  of '\f': result = "\\f" # \x0C
+  of '\c': result = "\\c" # \x0D
+  of '\e': result = "\\e" # \x1B
+  of '\x01'..'\x06', '\x0E'..'\x1A', '\x1C'..'\x1F', '\x80'..'\xFF':
+    result = "\\x" & strutils.toHex(ord(c), 2)
   of '\'', '\"', '\\': result = '\\' & c
   else: result = c & ""
 

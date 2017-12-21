@@ -42,7 +42,7 @@ An expression like ``fmt"{key} is {value:arg} {{z}}"`` is transformed into:
   format(key, temp)
   format(" is ", temp)
   format(value, arg, temp)
-  format("{z}", temp)
+  format(" {z}", temp)
   temp
 
 Parts of the string that are enclosed in the curly braces are interpreted
@@ -94,7 +94,7 @@ The general form of a standard format specifier is::
 
   [[fill]align][sign][#][0][minimumwidth][.precision][type]
 
-The brackets ([]) indicate an optional element.
+The square brackets ``[]`` indicate an optional element.
 
 The optional align flag can be one of the following:
 
@@ -126,8 +126,9 @@ The 'sign' option is only valid for numeric types, and can be one of the followi
                          positive as well as negative numbers.
 ``-``                    Indicates that a sign should be used only for
                          negative numbers (this is the default behavior).
-`` `` (space)            Indicates that a leading space should be used on
+(space)                  Indicates that a leading space should be used on
                          positive numbers.
+=================        ====================================================
 
 If the '#' character is present, integers use the 'alternate form' for formatting.
 This means that binary, octal, and hexadecimal output will be prefixed
