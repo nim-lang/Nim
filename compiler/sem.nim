@@ -105,8 +105,8 @@ proc commonType*(x, y: PType): PType =
   var a = skipTypes(x, {tyGenericInst, tyAlias})
   var b = skipTypes(y, {tyGenericInst, tyAlias})
   result = x
-  if b.kind in {tyExpr, tyNil, tyVoid}: result = x
-  elif a.kind in {tyExpr, tyNil}: result = y
+  if a.kind in {tyExpr, tyNil}: result = y
+  elif b.kind in {tyExpr, tyNil}: result = x
   elif a.kind == tyStmt: result = a
   elif b.kind == tyStmt: result = b
   elif a.kind == tyTypeDesc:
@@ -164,6 +164,11 @@ proc commonType*(x, y: PType): PType =
         let r = result
         result = newType(k, r.owner)
         result.addSonSkipIntLit(r)
+
+proc commonType*(x: PType, y: PNode): PType =
+  # ignore exception raising branches in case/if expressions
+  if y.kind == nkRaiseStmt: return x
+  commonType(x, y.typ)
 
 proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym =
   result = newSym(kind, considerQuotedIdent(n), getCurrOwner(c), n.info)
