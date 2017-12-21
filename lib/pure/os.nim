@@ -816,8 +816,8 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
               k = getSymlinkFileKind(y)
             yield (k, y)
 
-iterator walkDirRec*(dir: string, filter = {pcFile}): string {.
-  tags: [ReadDirEffect].} =
+iterator walkDirRec*(dir: string, yieldFilter = {pcFile},
+                     followFilter = {pcDir}): string {.tags: [ReadDirEffect].} =
   ## Recursively walks over the directory `dir` and yields for each file 
   ## or directory in `dir`.
   ## The full path for each file is returned.
@@ -825,10 +825,10 @@ iterator walkDirRec*(dir: string, filter = {pcFile}): string {.
   ## Modifying the directory structure while the iterator
   ## is traversing may result in undefined behavior!
   ##
-  ## Walking is recursive. `filter` controls the behaviour of the iterator:
+  ## Walking is recursive. `filters` controls the behaviour of the iterator:
   ##
   ## ---------------------   ---------------------------------------------
-  ## filter                  meaning
+  ## yieldFilter             meaning
   ## ---------------------   ---------------------------------------------
   ## ``pcFile``              yield real files
   ## ``pcLinkToFile``        yield symbolic links to files
@@ -836,16 +836,24 @@ iterator walkDirRec*(dir: string, filter = {pcFile}): string {.
   ## ``pcLinkToDir``         yield symbolic links to directories
   ## ---------------------   ---------------------------------------------
   ##
+  ## ---------------------   ---------------------------------------------
+  ## followFilter            meaning
+  ## ---------------------   ---------------------------------------------
+  ## ``pcDir``               follow real directories
+  ## ``pcLinkToDir``         follow symbolic links to directories
+  ## ---------------------   ---------------------------------------------
+  ##
   var stack = @[dir]
   while stack.len > 0:
-    for k,p in walkDir(stack.pop()):
+    for k, p in walkDir(stack.pop()):
         case k
         of pcFile, pcLinkToFile:
-          if k in filter:
+          if k in yieldFilter:
             yield p
         of pcDir, pcLinkToDir:
-          stack.add(p)
-          if k in filter:
+          if k in followFilter:
+            stack.add(p)
+          if k in yieldFilter:
              yield p
 
 proc rawRemoveDir(dir: string) =
