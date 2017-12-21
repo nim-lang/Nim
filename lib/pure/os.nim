@@ -846,15 +846,10 @@ iterator walkDirRec*(dir: string, yieldFilter = {pcFile},
   var stack = @[dir]
   while stack.len > 0:
     for k, p in walkDir(stack.pop()):
-        case k
-        of pcFile, pcLinkToFile:
-          if k in yieldFilter:
-            yield p
-        of pcDir, pcLinkToDir:
-          if k in followFilter:
-            stack.add(p)
-          if k in yieldFilter:
-             yield p
+      if k in {pcDir, pcLinkToDir} and k in followFilter:
+        stack.add(p)
+      if k in yieldFilter:
+        yield p
 
 proc rawRemoveDir(dir: string) =
   when defined(windows):
