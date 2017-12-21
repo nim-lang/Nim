@@ -1,4 +1,5 @@
 discard """
+  targets: "js c c++"
   output: '''ok'''
 """
 
