@@ -24,8 +24,8 @@ import colors
 var
   trueColorIsSupported {.threadvar.}: bool
   fgSetColor {.threadvar.}: bool
-  colorsFGCache {.threadvar.}: Table[Color, string]
-  colorsBGCache {.threadvar.}: Table[Color, string]
+  colorsFGCache {.threadvar.}: TableRef[Color, string]
+  colorsBGCache {.threadvar.}: TableRef[Color, string]
 
 when defined(windows):
   import winlean, os
@@ -752,8 +752,8 @@ when not defined(testing) and isMainModule:
   stdout.resetAttributes()
 
 fgSetColor = true
-colorsFGCache = initTable[Color, string]()
-colorsBGCache = initTable[Color, string]()
+colorsFGCache = newTable[Color, string]()
+colorsBGCache = newTable[Color, string]()
 
 when defined(windows):
   var mode: DWORD = 0
