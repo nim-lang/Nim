@@ -481,6 +481,14 @@ when not defined(windows):
   var
     gFG {.threadvar.}: int
     gBG {.threadvar.}: int
+    styleCache {.threadvar.}: TableRef[int, string]
+
+  proc getStyleFromCache(style: int): string =
+    if styleCache.hasKey(style):
+      result = styleCache[style]
+    else:
+      result = "\e[" & $ord(style) & 'm'
+      styleCache[style] = result
 
 proc setStyle*(f: File, style: set[Style]) =
   ## Sets the terminal style.
@@ -495,7 +503,7 @@ proc setStyle*(f: File, style: set[Style]) =
     discard setConsoleTextAttribute(h, old or a)
   else:
     for s in items(style):
-      f.write("\e[" & $ord(s) & 'm')
+      f.write(getStyleFromCache(ord(s)))
 
 proc writeStyled*(txt: string, style: set[Style] = {styleBright}) =
   ## Writes the text `txt` in a given `style` to stdout.
@@ -509,9 +517,9 @@ proc writeStyled*(txt: string, style: set[Style] = {styleBright}) =
     stdout.write(txt)
     stdout.resetAttributes()
     if gFG != 0:
-      stdout.write("\e[" & $ord(gFG) & 'm')
+      stdout.write(getStyleFromCache(gFG))
     if gBG != 0:
-      stdout.write("\e[" & $ord(gBG) & 'm')
+      stdout.write(getStyleFromCache(gBG))
 
 type
   ForegroundColor* = enum  ## terminal's foreground colors
@@ -557,7 +565,7 @@ proc setForegroundColor*(f: File, fg: ForegroundColor, bright=false) =
   else:
     gFG = ord(fg)
     if bright: inc(gFG, 60)
-    f.write("\e[" & $gFG & 'm')
+    f.write(getStyleFromCache(gFG))
 
 proc setBackgroundColor*(f: File, bg: BackgroundColor, bright=false) =
   ## Sets the terminal's background color.
@@ -579,7 +587,7 @@ proc setBackgroundColor*(f: File, bg: BackgroundColor, bright=false) =
   else:
     gBG = ord(bg)
     if bright: inc(gBG, 60)
-    f.write("\e[" & $gBG & 'm')
+    f.write(getStyleFromCache(gBG))
 
 proc getFGColorStrFromCache(color: Color): string =
   if colorsFGCache.hasKey(color):
@@ -750,6 +758,9 @@ when not defined(testing) and isMainModule:
   stdout.setForeGroundColor(fgBlue)
   stdout.writeLine("ordinary text")
   stdout.resetAttributes()
+
+when not defined(windows):
+  styleCache = newTable[int, string]()
 
 fgSetColor = true
 colorsFGCache = newTable[Color, string]()
