@@ -1353,29 +1353,40 @@ else:
 proc fromSeconds*(since1970: float): Time {.tags: [], raises: [], benign, deprecated.} =
   ## Takes a float which contains the number of seconds since the unix epoch and
   ## returns a time object.
+  ## **Warning:** This procedure is deprecated since version 0.18.0.
+  ## Use ``fromUnix`` instead.
   Time(since1970)
 
 proc fromSeconds*(since1970: int64): Time {.tags: [], raises: [], benign, deprecated.} =
   ## Takes an int which contains the number of seconds since the unix epoch and
   ## returns a time object.
+  ## **Warning:** This procedure is deprecated since version 0.18.0.
+  ## Use ``fromUnix`` instead.
   Time(since1970)
 
 proc toSeconds*(time: Time): float {.tags: [], raises: [], benign, deprecated.} =
   ## Returns the time in seconds since the unix epoch.
+  ## **Warning:** This procedure is deprecated since version 0.18.0.
+  ## Use ``toUnix`` instead.
   float(time)
 
 proc getLocalTime*(time: Time): DateTime {.tags: [], raises: [], benign, deprecated.} =
   ## Converts the calendar time `time` to broken-time representation,
   ## expressed relative to the user's specified time zone.
+  ## **Warning:** This procedure is deprecated since version 0.18.0.
+  ## Use ``local`` instead.
   time.local
 
 proc getGMTime*(time: Time): DateTime {.tags: [], raises: [], benign, deprecated.} =
   ## Converts the calendar time `time` to broken-down time representation,
   ## expressed in Coordinated Universal Time (UTC).
+  ## **Warning:** This procedure is deprecated since version 0.18.0.
+  ## Use ``utc`` instead.
   time.utc
 
 proc getTimezone*(): int {.tags: [TimeEffect], raises: [], benign, deprecated.} =
   ## Returns the offset of the local (non-DST) timezone in seconds west of UTC.
+  ## **Warning:** This procedure is deprecated since version 0.18.0.
   when defined(JS):
     return newDate().getTimezoneOffset() * 60
   elif defined(freebsd) or defined(netbsd) or defined(openbsd):
@@ -1458,11 +1469,13 @@ proc timeToTimeInfo*(t: Time): DateTime {.deprecated.} =
   result = DateTime(year: y, yearday: yd, month: m, monthday: md, weekday: wd, hour: h, minute: mi, second: s)
 
 proc getDayOfWeek*(day, month, year: int): WeekDay  {.tags: [], raises: [], benign, deprecated.} =
+  ## **Warning:** This procedure is deprecated since version 0.18.0.  
   getDayOfWeek(day, month.Month, year)
 
 proc getDayOfWeekJulian*(day, month, year: int): WeekDay {.deprecated.} =
   ## Returns the day of the week enum from day, month and year,
   ## according to the Julian calendar.
+  ## **Warning:** This procedure is deprecated since version 0.18.0.
   # Day & month start from one.
   let
     a = (14 - month) div 12
