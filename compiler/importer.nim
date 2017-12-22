@@ -27,7 +27,7 @@ proc rawImportSymbol(c: PContext, s: PSym) =
   # check if we have already a symbol of the same name:
   var check = strTableGet(c.importTable.symbols, s.name)
   if check != nil and check.id != s.id:
-    if s.kind notin OverloadableSyms:
+    if s.kind notin OverloadableSyms or check.kind notin OverloadableSyms:
       # s and check need to be qualified:
       incl(c.ambiguousSymbols, s.id)
       incl(c.ambiguousSymbols, check.id)

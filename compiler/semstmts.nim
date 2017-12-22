@@ -441,9 +441,10 @@ proc hasEmpty(typ: PType): bool =
       result = result or hasEmpty(s)
 
 proc makeDeref(n: PNode): PNode =
-  var t = skipTypes(n.typ, {tyGenericInst, tyAlias})
+  var t = n.typ
   if t.kind in tyUserTypeClasses and t.isResolvedUserTypeClass:
     t = t.lastSon
+  t = skipTypes(t, {tyGenericInst, tyAlias})
   result = n
   if t.kind == tyVar:
     result = newNodeIT(nkHiddenDeref, n.info, t.sons[0])
@@ -729,6 +730,16 @@ proc semRaise(c: PContext, n: PNode): PNode =
     var typ = n.sons[0].typ
     if typ.kind != tyRef or typ.lastSon.kind != tyObject:
       localError(n.info, errExprCannotBeRaised)
+    
+    # check if the given object inherits from Exception
+    var base = typ.lastSon
+    while true:
+      if base.sym.magic == mException:
+        break
+      if base.lastSon == nil:
+        localError(n.info, "raised object of type $1 does not inherit from Exception", [typ.sym.name.s])
+        return
+      base = base.lastSon
 
 proc addGenericParamListToScope(c: PContext, n: PNode) =
   if n.kind != nkGenericParams: illFormedAst(n)

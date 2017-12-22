@@ -455,6 +455,7 @@ type
   LiftingPass = object
     processed: IntSet
     envVars: Table[int, PNode]
+    inContainer: int
 
 proc initLiftingPass(fn: PSym): LiftingPass =
   result.processed = initIntSet()
@@ -597,6 +598,8 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
 
 proc transformYield(n: PNode; owner: PSym; d: DetectionPass;
                     c: var LiftingPass): PNode =
+  if c.inContainer > 0:
+    localError(n.info, "invalid control flow: 'yield' within a constructor")
   let state = getStateField(owner)
   assert state != nil
   assert state.typ != nil
@@ -703,11 +706,14 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
       if not c.processed.containsOrIncl(s.id):
         #if s.name.s == "temp":
         #  echo renderTree(s.getBody, {renderIds})
+        let oldInContainer = c.inContainer
+        c.inContainer = 0
         let body = wrapIterBody(liftCapturedVars(s.getBody, s, d, c), s)
         if c.envvars.getOrDefault(s.id).isNil:
           s.ast.sons[bodyPos] = body
         else:
           s.ast.sons[bodyPos] = newTree(nkStmtList, rawClosureCreation(s, d, c), body)
+        c.inContainer = oldInContainer
       if s.typ.callConv == ccClosure:
         result = symToClosure(n, owner, d, c)
     elif s.id in d.capturedVars:
@@ -717,7 +723,7 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
         result = accessViaEnvParam(n, owner)
       else:
         result = accessViaEnvVar(n, owner, d, c)
-  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit,
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkComesFrom,
      nkTemplateDef, nkTypeSection:
     discard
   of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef:
@@ -733,9 +739,12 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
         n.sons[1] = x.sons[1]
   of nkLambdaKinds, nkIteratorDef, nkFuncDef:
     if n.typ != nil and n[namePos].kind == nkSym:
+      let oldInContainer = c.inContainer
+      c.inContainer = 0
       let m = newSymNode(n[namePos].sym)
       m.typ = n.typ
       result = liftCapturedVars(m, owner, d, c)
+      c.inContainer = oldInContainer
   of nkHiddenStdConv:
     if n.len == 2:
       n.sons[1] = liftCapturedVars(n[1], owner, d, c)
@@ -750,8 +759,12 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
         # special case 'when nimVm' due to bug #3636:
         n.sons[1] = liftCapturedVars(n[1], owner, d, c)
         return
+
+    let inContainer = n.kind in {nkObjConstr, nkBracket}
+    if inContainer: inc c.inContainer
     for i in 0..<n.len:
       n.sons[i] = liftCapturedVars(n[i], owner, d, c)
+    if inContainer: dec c.inContainer
 
 # ------------------ old stuff -------------------------------------------
 

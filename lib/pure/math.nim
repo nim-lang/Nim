@@ -291,6 +291,8 @@ when not defined(JS):
     ##  echo fmod(-2.5, 0.3) ## -0.1
 
 else:
+  proc trunc*(x: float32): float32 {.importc: "Math.trunc", nodecl.}
+  proc trunc*(x: float64): float64 {.importc: "Math.trunc", nodecl.}
   proc floor*(x: float32): float32 {.importc: "Math.floor", nodecl.}
   proc floor*(x: float64): float64 {.importc: "Math.floor", nodecl.}
   proc ceil*(x: float32): float32 {.importc: "Math.ceil", nodecl.}
@@ -349,15 +351,19 @@ proc round*[T: float32|float64](x: T, places: int = 0): T =
     result = round0(x*mult)/mult
 
 when not defined(JS):
-  proc frexp*(x: float32, exponent: var int): float32 {.
+  proc c_frexp*(x: float32, exponent: var int32): float32 {.
     importc: "frexp", header: "<math.h>".}
-  proc frexp*(x: float64, exponent: var int): float64 {.
+  proc c_frexp*(x: float64, exponent: var int32): float64 {.
     importc: "frexp", header: "<math.h>".}
+  proc frexp*[T, U](x: T, exponent: var U): T =
     ## Split a number into mantissa and exponent.
     ## `frexp` calculates the mantissa m (a float greater than or equal to 0.5
     ## and less than 1) and the integer value n such that `x` (the original
     ## float value) equals m * 2**n. frexp stores n in `exponent` and returns
     ## m.
+    var exp: int32
+    result = c_frexp(x, exp)
+    exponent = exp
 else:
   proc frexp*[T: float32|float64](x: T, exponent: var int): T =
     if x == 0.0:
@@ -366,9 +372,14 @@ else:
     elif x < 0.0:
       result = -frexp(-x, exponent)
     else:
-      var ex = floor(log2(x))
-      exponent = round(ex)
+      var ex = trunc(log2(x))
+      exponent = int(ex)
       result = x / pow(2.0, ex)
+      if abs(result) >= 1:
+        inc(exponent)
+        result = result / 2
+      if exponent == 1024 and result == 0.0:
+        result = 0.99999999999999988898
 
 proc splitDecimal*[T: float32|float64](x: T): tuple[intpart: T, floatpart: T] =
   ## Breaks `x` into an integral and a fractional part.

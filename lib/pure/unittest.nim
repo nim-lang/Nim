@@ -21,13 +21,41 @@
 ## ``nim c -r <testfile.nim>`` exits with 0 or 1
 ##
 ## Running a single test
-## ---------------------
+## =====================
 ##
-## Simply specify the test name as a command line argument.
+## Specify the test name as a command line argument.
 ##
 ## .. code::
 ##
-##   nim c -r test "my super awesome test name"
+##   nim c -r test "my test name" "another test"
+##
+## Multiple arguments can be used.
+##
+## Running a single test suite
+## ===========================
+##
+## Specify the suite name delimited by ``"::"``.
+##
+## .. code::
+##
+##   nim c -r test "my test name::"
+##
+## Selecting tests by pattern
+## ==========================
+##
+## A single ``"*"`` can be used for globbing.
+##
+## Delimit the end of a suite name with ``"::"``.
+##
+## Tests matching **any** of the arguments are executed.
+##
+## .. code::
+##
+##   nim c -r test fast_suite::mytest1 fast_suite::mytest2
+##   nim c -r test "fast_suite::mytest*"
+##   nim c -r test "auth*::" "crypto::hashing*"
+##   # Run suites starting with 'bug #' and standalone tests starting with '#'
+##   nim c -r test 'bug #*::' '::#*'
 ##
 ## Example
 ## -------
@@ -121,7 +149,7 @@ var
 
   checkpoints {.threadvar.}: seq[string]
   formatters {.threadvar.}: seq[OutputFormatter]
-  testsToRun {.threadvar.}: HashSet[string]
+  testsFilters {.threadvar.}: HashSet[string]
 
 when declared(stdout):
   abortOnError = existsEnv("NIMTEST_ABORT_ON_ERROR")
@@ -300,22 +328,63 @@ method testEnded*(formatter: JUnitOutputFormatter, testResult: TestResult) =
 method suiteEnded*(formatter: JUnitOutputFormatter) =
   formatter.stream.writeLine("\t</testsuite>")
 
-proc shouldRun(testName: string): bool =
-  if testsToRun.len == 0:
+proc glob(matcher, filter: string): bool =
+  ## Globbing using a single `*`. Empty `filter` matches everything.
+  if filter.len == 0:
     return true
 
-  result = testName in testsToRun
+  if not filter.contains('*'):
+    return matcher == filter
+
+  let beforeAndAfter = filter.split('*', maxsplit=1)
+  if beforeAndAfter.len == 1:
+    # "foo*"
+    return matcher.startswith(beforeAndAfter[0])
+
+  if matcher.len < filter.len - 1:
+    return false  # "12345" should not match "123*345"
+
+  return matcher.startsWith(beforeAndAfter[0]) and matcher.endsWith(beforeAndAfter[1])
+
+proc matchFilter(suiteName, testName, filter: string): bool =
+  if filter == "":
+    return true
+  if testName == filter:
+    # corner case for tests containing "::" in their name
+    return true
+  let suiteAndTestFilters = filter.split("::", maxsplit=1)
+
+  if suiteAndTestFilters.len == 1:
+    # no suite specified
+    let test_f = suiteAndTestFilters[0]
+    return glob(testName, test_f)
+
+  return glob(suiteName, suiteAndTestFilters[0]) and glob(testName, suiteAndTestFilters[1])
+
+when defined(testing): export matchFilter
+
+proc shouldRun(currentSuiteName, testName: string): bool =
+  ## Check if a test should be run by matching suiteName and testName against
+  ## test filters.
+  if testsFilters.len == 0:
+    return true
+
+  for f in testsFilters:
+    if matchFilter(currentSuiteName, testName, f):
+      return true
+
+  return false
 
 proc ensureInitialized() =
   if formatters == nil:
     formatters = @[OutputFormatter(defaultConsoleFormatter())]
 
-  if not testsToRun.isValid:
-    testsToRun.init()
+  if not testsFilters.isValid:
+    testsFilters.init()
     when declared(paramCount):
       # Read tests to run from the command line.
       for i in 1 .. paramCount():
-        testsToRun.incl(paramStr(i))
+        testsFilters.incl(paramStr(i))
 
 # These two procs are added as workarounds for
 # https://github.com/nim-lang/Nim/issues/5549
@@ -395,7 +464,7 @@ template test*(name, body) {.dirty.} =
 
   ensureInitialized()
 
-  if shouldRun(name):
+  if shouldRun(when declared(testSuiteName): testSuiteName else: "", name):
     checkpoints = @[]
     var testStatusIMPL {.inject.} = OK
 

@@ -21,7 +21,7 @@ import
 type
   TSystemCC* = enum
     ccNone, ccGcc, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc,
-    ccTcc, ccPcc, ccUcc, ccIcl
+    ccTcc, ccPcc, ccUcc, ccIcl, ccIcc
   TInfoCCProp* = enum         # properties of the C compiler:
     hasSwitchRange,           # CC allows ranges in switch statements (GNU C)
     hasComputedGoto,          # CC has computed goto (GNU C extension)
@@ -135,15 +135,17 @@ compiler vcc:
 
 # Intel C/C++ Compiler
 compiler icl:
-  # Intel compilers try to imitate the native ones (gcc and msvc)
-  when defined(windows):
-    result = vcc()
-  else:
-    result = gcc()
-
+  result = vcc()
   result.name = "icl"
   result.compilerExe = "icl"
   result.linkerExe = "icl"
+
+# Intel compilers try to imitate the native ones (gcc and msvc)
+compiler icc:
+  result = gcc()
+  result.name = "icc"
+  result.compilerExe = "icc"
+  result.linkerExe = "icc"
 
 # Local C Compiler
 compiler lcc:
@@ -327,7 +329,8 @@ const
     tcc(),
     pcc(),
     ucc(),
-    icl()]
+    icl(),
+    icc()]
 
   hExt* = ".h"
 
@@ -791,42 +794,40 @@ proc writeJsonBuildInstructions*(projectfile: string) =
     else:
       f.write escapeJson(x)
 
-  proc cfiles(f: File; buf: var string; list: CfileList, isExternal: bool) =
-    var i = 0
-    for it in list:
+  proc cfiles(f: File; buf: var string; clist: CfileList, isExternal: bool) =
+    var pastStart = false
+    for it in clist:
       if CfileFlag.Cached in it.flags: continue
       let compileCmd = getCompileCFileCmd(it)
+      if pastStart: lit "],\L"
       lit "["
       str it.cname
       lit ", "
       str compileCmd
-      inc i
-      if i == list.len:
-        lit "]\L"
-      else:
-        lit "],\L"
+      pastStart = true
+    lit "]\L"
 
-  proc linkfiles(f: File; buf, objfiles: var string) =
-    for i, it in externalToLink:
-      let
-        objFile = if noAbsolutePaths(): it.extractFilename else: it
-        objStr = addFileExt(objFile, CC[cCompiler].objExt)
+  proc linkfiles(f: File; buf, objfiles: var string; clist: CfileList;
+                 llist: seq[string]) =
+    var pastStart = false
+    for it in llist:
+      let objfile = if noAbsolutePaths(): it.extractFilename
+                    else: it
+      let objstr = addFileExt(objfile, CC[cCompiler].objExt)
       add(objfiles, ' ')
-      add(objfiles, objStr)
-      str objStr
-      if toCompile.len == 0 and i == externalToLink.high:
-        lit "\L"
-      else:
-        lit ",\L"
-    for i, x in toCompile:
-      let objStr = quoteShell(x.obj)
+      add(objfiles, objstr)
+      if pastStart: lit ",\L"
+      str objstr
+      pastStart = true
+
+    for it in clist:
+      let objstr = quoteShell(it.obj)
       add(objfiles, ' ')
-      add(objfiles, objStr)
-      str objStr
-      if i == toCompile.high:
-        lit "\L"
-      else:
-        lit ",\L"
+      add(objfiles, objstr)
+      if pastStart: lit ",\L"
+      str objstr
+      pastStart = true
+    lit "\L"
 
   var buf = newStringOfCap(50)
 
@@ -840,7 +841,7 @@ proc writeJsonBuildInstructions*(projectfile: string) =
     lit "],\L\"link\":[\L"
     var objfiles = ""
     # XXX add every file here that is to link
-    linkfiles(f, buf, objfiles)
+    linkfiles(f, buf, objfiles, toCompile, externalToLink)
 
     lit "],\L\"linkcmd\": "
     str getLinkCmd(projectfile, objfiles)

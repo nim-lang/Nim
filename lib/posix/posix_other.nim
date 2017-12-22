@@ -9,8 +9,6 @@
 
 {.deadCodeElim:on.}
 
-from times import Time
-
 const
   hasSpawnH = not defined(haiku) # should exist for every Posix system nowadays
   hasAioH = defined(linux)
@@ -36,6 +34,8 @@ type
 {.deprecated: [TSocketHandle: SocketHandle].}
 
 type
+  Time* {.importc: "time_t", header: "<time.h>".} = distinct int
+
   Timespec* {.importc: "struct timespec",
                header: "<time.h>", final, pure.} = object ## struct timespec
     tv_sec*: Time  ## Seconds.
@@ -209,24 +209,24 @@ type
     st_gid*: Gid          ## Group ID of file.
     st_rdev*: Dev         ## Device ID (if file is character or block special).
     st_size*: Off         ## For regular files, the file size in bytes.
-                           ## For symbolic links, the length in bytes of the
-                           ## pathname contained in the symbolic link.
-                           ## For a shared memory object, the length in bytes.
-                           ## For a typed memory object, the length in bytes.
-                           ## For other file types, the use of this field is
-                           ## unspecified.
+                          ## For symbolic links, the length in bytes of the
+                          ## pathname contained in the symbolic link.
+                          ## For a shared memory object, the length in bytes.
+                          ## For a typed memory object, the length in bytes.
+                          ## For other file types, the use of this field is
+                          ## unspecified.
     when defined(macosx) or defined(android):
-      st_atime*: Time      ## Time of last access.
-      st_mtime*: Time      ## Time of last data modification.
-      st_ctime*: Time      ## Time of last status change.
+      st_atime*: Time     ## Time of last access.
+      st_mtime*: Time     ## Time of last data modification.
+      st_ctime*: Time     ## Time of last status change.
     else:
-      st_atim*: Timespec   ## Time of last access.
-      st_mtim*: Timespec   ## Time of last data modification.
-      st_ctim*: Timespec   ## Time of last status change.
-    st_blksize*: Blksize   ## A file system-specific preferred I/O block size
-                           ## for this object. In some file system types, this
-                           ## may vary from file to file.
-    st_blocks*: Blkcnt     ## Number of blocks allocated for this object.
+      st_atim*: Timespec  ## Time of last access.
+      st_mtim*: Timespec  ## Time of last data modification.
+      st_ctim*: Timespec  ## Time of last status change.
+    st_blksize*: Blksize  ## A file system-specific preferred I/O block size
+                          ## for this object. In some file system types, this
+                          ## may vary from file to file.
+    st_blocks*: Blkcnt    ## Number of blocks allocated for this object.
 
 
   Statvfs* {.importc: "struct statvfs", header: "<sys/statvfs.h>",

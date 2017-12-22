@@ -283,7 +283,7 @@ proc yesno(p: var CfgParser, v: string): bool =
   else: quit(errorStr(p, "unknown value; use: yes|no"))
 
 proc incl(s: var seq[string], x: string): int =
-  for i in 0.. <s.len:
+  for i in 0 ..< s.len:
     if cmpIgnoreStyle(s[i], x) == 0: return i
   s.add(x)
   result = s.len-1
