@@ -344,20 +344,20 @@ proc dfa(code: seq[Instr]) =
     case code[i].kind
     of use, useWithinCall: u[i].incl(code[i].sym.id)
     of def: d[i].incl(code[i].sym.id)
-    of fork:
+    of fork, goto:
       let d = i+code[i].dest
       backrefs.add(d, i)
-    of goto: discard
 
   var w = @[0]
   var maxIters = 50
   var someChange = true
-  while w.len > 0 and maxIters > 0 and someChange:
+  var takenGotos = initIntSet()
+  while w.len > 0 and maxIters > 0: # and someChange:
     dec maxIters
     var pc = w.pop() # w[^1]
     var prevPc = -1
     # this simulates a single linear control flow execution:
-    while pc < code.len and someChange:
+    while pc < code.len:
       # according to the paper, it is better to shrink the working set here
       # in this inner loop:
       #let widx = w.find(pc)
@@ -386,17 +386,21 @@ proc dfa(code: seq[Instr]) =
               if def notin d[prevPc]:
                 excl(intersect, def)
                 someChange = true
+                when defined(debugDfa):
+                  echo "Excluding ", pc, " prev ", prevPc
           assign d[pc], intersect
 
       # our interpretation ![I!]:
       prevPc = pc
+      when defined(debugDfa):
+        echo "looking at ", pc
       case code[pc].kind
       of goto:
         # we must leave endless loops eventually:
-        #if someChange:
-        pc = pc + code[pc].dest
-        #else:
-        #  inc pc
+        if not takenGotos.containsOrIncl(pc) or someChange:
+          pc = pc + code[pc].dest
+        else:
+          inc pc
       of fork:
         # we follow the next instruction but push the dest onto our "work" stack:
         #if someChange:
@@ -404,6 +408,10 @@ proc dfa(code: seq[Instr]) =
         inc pc
       of use, useWithinCall, def:
         inc pc
+
+  when defined(useDfa) and defined(debugDfa):
+    for i in 0..<code.len:
+      echo "PC ", i, ": defs: ", d[i], "; uses ", u[i]
 
   # now check the condition we're interested in:
   for i in 0..<code.len:
@@ -508,7 +516,7 @@ proc dfaUnused(code: seq[Instr]) =
 proc dataflowAnalysis*(s: PSym; body: PNode) =
   var c = Con(code: @[], blocks: @[])
   gen(c, body)
-  #echoCfg(c.code)
+  when defined(useDfa) and defined(debugDfa): echoCfg(c.code)
   dfa(c.code)
 
 proc constructCfg*(s: PSym; body: PNode): ControlFlowGraph =
