@@ -337,10 +337,12 @@ proc gen(c: var Con; n: PNode) =
 proc dfa(code: seq[Instr]) =
   var u = newSeq[IntSet](code.len) # usages
   var d = newSeq[IntSet](code.len) # defs
+  var c = newSeq[IntSet](code.len) # consumed
   var backrefs = initTable[int, int]()
   for i in 0..<code.len:
     u[i] = initIntSet()
     d[i] = initIntSet()
+    c[i] = initIntSet()
     case code[i].kind
     of use, useWithinCall: u[i].incl(code[i].sym.id)
     of def: d[i].incl(code[i].sym.id)
@@ -352,6 +354,7 @@ proc dfa(code: seq[Instr]) =
   var maxIters = 50
   var someChange = true
   var takenGotos = initIntSet()
+  var consuming = -1
   while w.len > 0 and maxIters > 0: # and someChange:
     dec maxIters
     var pc = w.pop() # w[^1]
@@ -389,6 +392,10 @@ proc dfa(code: seq[Instr]) =
                 when defined(debugDfa):
                   echo "Excluding ", pc, " prev ", prevPc
           assign d[pc], intersect
+        if consuming >= 0:
+          if not c[pc].containsOrIncl(consuming):
+            someChange = true
+          consuming = -1
 
       # our interpretation ![I!]:
       prevPc = pc
@@ -406,12 +413,21 @@ proc dfa(code: seq[Instr]) =
         #if someChange:
         w.add pc + code[pc].dest
         inc pc
-      of use, useWithinCall, def:
+      of use, useWithinCall:
+        #if not d[prevPc].missingOrExcl():
+        # someChange = true
+        consuming = code[pc].sym.id
+        when defined(debugDfa):
+          echo "consumed: ", consuming
+        inc pc
+      of def:
+        if not d[pc].containsOrIncl(code[pc].sym.id):
+          someChange = true
         inc pc
 
   when defined(useDfa) and defined(debugDfa):
     for i in 0..<code.len:
-      echo "PC ", i, ": defs: ", d[i], "; uses ", u[i]
+      echo "PC ", i, ": defs: ", d[i], "; uses ", u[i], "; consumes ", c[i]
 
   # now check the condition we're interested in:
   for i in 0..<code.len:
@@ -419,6 +435,9 @@ proc dfa(code: seq[Instr]) =
     of use, useWithinCall:
       if code[i].sym.id notin d[i]:
         localError(code[i].n.info, "usage of an uninitialized variable")
+      if code[i].sym.id in c[i]:
+        localError(code[i].n.info, "usage of an already consumed variable")
+
     else: discard
 
 proc dfaUnused(code: seq[Instr]) =
