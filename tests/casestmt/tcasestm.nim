@@ -49,7 +49,7 @@ let b = case str2:
   of nil, "": raise newException(ValueError, "Invalid boolean")
   elif str2[0] == 'Y': true
   elif str2[0] == 'N': false
-  else: false 
+  else: "error".quit
 
 doAssert(a == true)
 doAssert(b == false)
