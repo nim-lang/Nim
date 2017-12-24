@@ -102,10 +102,12 @@ This now needs to be written as:
 - Nim's ``rst2html`` command now supports the testing of code snippets via an RST
   extension that we called ``:test:``::
 
+  ```rst
     .. code-block:: nim
         :test:
       # shows how the 'if' statement works
       if true: echo "yes"
+  ```
 - The ``[]`` proc for strings now raises an ``IndexError`` exception when
   the specified slice is out of bounds. See issue
   [#6223](https://github.com/nim-lang/Nim/issues/6223) for more details.
@@ -130,7 +132,8 @@ This now needs to be written as:
 - The ``random`` procs in ``random.nim`` have all been deprecated. Instead use
   the new ``rand`` procs. The module now exports the state of the random
   number generator as type ``Rand`` so multiple threads can easily use their
-  own random number generators that do not require locking.
+  own random number generators that do not require locking. For more information
+  about this rename see issue [#6934](https://github.com/nim-lang/Nim/issues/6934)
 - The compiler is now more consistent in its treatment of ambiguous symbols:
   Types that shadow procs and vice versa are marked as ambiguous (bug #6693).
 - ``yield`` (or ``await`` which is mapped to ``yield``) never worked reliably

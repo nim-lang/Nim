@@ -1234,7 +1234,7 @@ else:
           processBasicCallbacks(fd, writeList)
           result = true
 
-        if Event.User in events or events == {Event.Error}:
+        if Event.User in events:
           processBasicCallbacks(fd, readList)
           custom = true
           if rLength == 0:
