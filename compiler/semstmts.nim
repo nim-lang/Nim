@@ -1852,8 +1852,8 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
       else:
         n.typ = n.sons[i].typ
         if not isEmptyType(n.typ): n.kind = nkStmtListExpr
-      case n.sons[i].kind
-      of LastBlockStmts:
+      if n.sons[i].kind in LastBlockStmts or
+         n.sons[i].kind in nkCallKinds and n.sons[i][0].kind == nkSym and sfNoReturn in n.sons[i][0].sym.flags:
         for j in countup(i + 1, length - 1):
           case n.sons[j].kind
           of nkPragma, nkCommentStmt, nkNilLit, nkEmpty, nkBlockExpr,

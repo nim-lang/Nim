@@ -49,7 +49,7 @@ let b = case str2:
   of nil, "": raise newException(ValueError, "Invalid boolean")
   elif str2[0] == 'Y': true
   elif str2[0] == 'N': false
-  else: "error".quit
+  else: "error".quit(2)
 
 doAssert(a == true)
 doAssert(b == false)
@@ -78,4 +78,22 @@ doassert(not compiles(
   bb = case str2:
     of "Y": raise newException(ValueError, "Invalid Y")
     else: raise newException(ValueError, "Invalid N")
+))
+
+
+doassert(not compiles(
+  bb = case str2:
+    of "Y":
+      raise newException(ValueError, "Invalid Y")
+      true    
+    else: raise newException(ValueError, "Invalid")
+))
+
+
+doassert(not compiles(
+  bb = case str2:
+    of "Y":
+      "invalid Y".quit(3)
+      true    
+    else: raise newException(ValueError, "Invalid")
 ))
