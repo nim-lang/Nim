@@ -2916,7 +2916,10 @@ when not defined(JS): #and not defined(nimscript):
       elif x > y: result = 1
       else: result = 0
     else:
-      result = int(c_strcmp(x, y))
+      let minlen = min(x.len, y.len)
+      result = int(c_memcmp(x.cstring, y.cstring, minlen.csize))
+      if result == 0:
+        result = x.len - y.len
 
   when defined(nimscript):
     proc readFile*(filename: string): string {.tags: [ReadIOEffect], benign.}
