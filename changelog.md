@@ -144,3 +144,25 @@ This now needs to be written as:
 - codegenDecl pragma now works for the JavaScript backend. It returns an empty string for
   function return type placeholders.
 - Asynchronous programming for the JavaScript backend using the `asyncjs` module.
+- Extra semantic checks for procs with noreturn pragma: return type is not allowed,
+  statements after call to noreturn procs are no longer allowed.
+- Noreturn proc calls and raising exceptions branches are now skipped during common type 
+  deduction in if and case expressions. The following code snippets now compile:
+```nim
+import strutils
+let str = "Y"
+let a = case str:
+  of "Y": true
+  of "N": false
+  else: raise newException(ValueError, "Invalid boolean")
+let b = case str:
+  of nil, "": raise newException(ValueError, "Invalid boolean")
+  elif str.startsWith("Y"): true
+  elif str.startsWith("N"): false
+  else: false 
+let c = if str == "Y": true 
+  elif str == "N": false 
+  else:
+    echo "invalid bool" 
+    quit("this is the end")
+```
