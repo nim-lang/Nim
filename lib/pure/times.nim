@@ -26,7 +26,6 @@
 ##  echo "Using predefined formats: ", getClockStr(), " ", getDateStr()
 ##
 ##  echo "epochTime() float value: ", epochTime()
-##  echo "getTime()   float value: ", toSeconds(getTime())
 ##  echo "cpuTime()   float value: ", cpuTime()
 ##  echo "An hour from now      : ", now() + 1.hours
 ##  echo "An hour from (UTC) now: ", getTime().utc + initInterval(0,0,0,1)
@@ -180,7 +179,7 @@ proc assertValidDate(monthday: MonthdayRange, month: Month, year: int) {.inline.
 proc toEpochDay*(monthday: MonthdayRange, month: Month, year: int): int64 =
   ## Get the epoch day from a year/month/day date.
   ## The epoch day is the number of days since 1970/01/01 (it might be negative).
-  assertValidDate monthday, month, year  
+  assertValidDate monthday, month, year
   # Based on http://howardhinnant.github.io/date_algorithms.html
   var (y, m, d) = (year, ord(month), monthday.int)
   if m <= 2:
@@ -194,7 +193,7 @@ proc toEpochDay*(monthday: MonthdayRange, month: Month, year: int): int64 =
 
 proc fromEpochDay*(epochday: int64): tuple[monthday: MonthdayRange, month: Month, year: int] =
   ## Get the year/month/day date from a epoch day.
-  ## The epoch day is the number of days since 1970/01/01 (it might be negative).  
+  ## The epoch day is the number of days since 1970/01/01 (it might be negative).
   # Based on http://howardhinnant.github.io/date_algorithms.html
   var z = epochday
   z.inc 719468
@@ -494,11 +493,11 @@ proc local*(dt: DateTime): DateTime =
   dt.inZone(local())
 
 proc utc*(t: Time): DateTime =
-  ## Shorthand for ``t.inZone(utc())``.  
+  ## Shorthand for ``t.inZone(utc())``.
   t.inZone(utc())
 
 proc local*(t: Time): DateTime =
-  ## Shorthand for ``t.inZone(local())``.  
+  ## Shorthand for ``t.inZone(local())``.
   t.inZone(local())
 
 proc getTime*(): Time {.tags: [TimeEffect], benign.}
@@ -590,7 +589,7 @@ proc evaluateInterval(dt: DateTime, interval: TimeInterval): tuple[adjDiff, absD
         anew.year.dec()
       else:
         curMonth.dec()
-      result.adjDiff -= getDaysInMonth(curMonth, anew.year) * secondsInDay      
+      result.adjDiff -= getDaysInMonth(curMonth, anew.year) * secondsInDay
   # Adding
   else:
     for mth in 1 .. newinterv.months:
@@ -610,7 +609,7 @@ proc `+`*(dt: DateTime, interval: TimeInterval): DateTime =
   ## Adds ``interval`` to ``dt``. Components from ``interval`` are added
   ## in the order of their size, i.e first the ``years`` component, then the ``months``
   ## component and so on. The returned ``DateTime`` will have the same timezone as the input.
-  ## 
+  ##
   ## Note that when adding months, monthday overflow is allowed. This means that if the resulting
   ## month doesn't have enough days it, the month will be incremented and the monthday will be
   ## set to the number of days overflowed. So adding one month to `31 October` will result in `31 November`,
@@ -1403,7 +1402,7 @@ proc timeInfoToTime*(dt: DateTime): Time {.tags: [], benign, deprecated.} =
   ##
   ## **Warning:** This procedure is deprecated since version 0.14.0.
   ## Use ``toTime`` instead.
-  dt.toTime  
+  dt.toTime
 
 when defined(JS):
   var startMilsecs = getTime()

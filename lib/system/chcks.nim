@@ -63,7 +63,6 @@ proc chckObj(obj, subclass: PNimType) {.compilerproc.} =
   while x != subclass:
     if x == nil:
       sysFatal(ObjectConversionError, "invalid object conversion")
-      break
     x = x.base
 
 proc chckObjAsgn(a, b: PNimType) {.compilerproc, inline.} =

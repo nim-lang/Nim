@@ -1406,8 +1406,8 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkBracketRi, "]")
   of nkTupleClassTy:
     put(g, tkTuple, "tuple")
-  of nkMetaNode_Obsolete:
-    put(g, tkParLe, "(META|")
+  of nkComesFrom:
+    put(g, tkParLe, "(ComesFrom|")
     gsub(g, n, 0)
     put(g, tkParRi, ")")
   of nkGotoState, nkState:

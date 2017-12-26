@@ -36,5 +36,64 @@ var z = case i
 echo z
 #OUT ayyy
 
+let str1 = "Y"
+let str2 = "NN"
+let a = case str1:
+  of "Y": true
+  of "N": false
+  else: 
+    echo "no good"
+    quit("quiting")
+
+let b = case str2:
+  of nil, "": raise newException(ValueError, "Invalid boolean")
+  elif str2[0] == 'Y': true
+  elif str2[0] == 'N': false
+  else: "error".quit(2)
+
+doAssert(a == true)
+doAssert(b == false)
+
+var bb: bool
+doassert(not compiles(
+  bb = case str2:
+    of nil, "": raise newException(ValueError, "Invalid boolean")
+    elif str.startsWith("Y"): true
+    elif str.startsWith("N"): false
+))
+
+doassert(not compiles(
+  bb = case str2:
+    of "Y": true
+    of "N": false
+))
+
+doassert(not compiles(
+  bb = case str2:
+    of "Y": true
+    of "N": raise newException(ValueError, "N not allowed")
+))
+
+doassert(not compiles(
+  bb = case str2:
+    of "Y": raise newException(ValueError, "Invalid Y")
+    else: raise newException(ValueError, "Invalid N")
+))
 
 
+doassert(not compiles(
+  bb = case str2:
+    of "Y":
+      raise newException(ValueError, "Invalid Y")
+      true    
+    else: raise newException(ValueError, "Invalid")
+))
+
+
+doassert(not compiles(
+  bb = case str2:
+    of "Y":
+      "invalid Y".quit(3)
+      true    
+    else: raise newException(ValueError, "Invalid")
+))

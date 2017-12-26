@@ -44,10 +44,10 @@
 ##         resolve(game)
 ##     return promise
 ##
-## Forward definitions work properly, you just don't need to add the ``{.async.}`` pragma:
+## Forward definitions work properly, you just need to always add the ``{.async.}`` pragma:
 ##
 ## .. code-block:: nim
-##   proc loadGame(name: string): Future[Game]
+##   proc loadGame(name: string): Future[Game] {.async.}
 ##
 ## JavaScript compatibility
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -83,22 +83,53 @@ proc replaceReturn(node: var NimNode) =
       replaceReturn(son)
     inc z
 
+proc isFutureVoid(node: NimNode): bool =
+  result = node.kind == nnkBracketExpr and
+           node[0].kind == nnkIdent and $node[0] == "Future" and
+           node[1].kind == nnkIdent and $node[1] == "void"
+
 proc generateJsasync(arg: NimNode): NimNode =
   assert arg.kind == nnkProcDef
   result = arg
+  var isVoid = false
+  var jsResolveNode = ident("jsResolve")
+
   if arg.params[0].kind == nnkEmpty:
     result.params[0] = nnkBracketExpr.newTree(ident("Future"), ident("void"))
+    isVoid = true
+  elif isFutureVoid(arg.params[0]):
+    isVoid = true
+
   var code = result.body
   replaceReturn(code)
   result.body = nnkStmtList.newTree()
-  var q = quote:
-    proc await[T](f: Future[T]): T {.importcpp: "(await #)".}
-    proc jsResolve[T](a: T): Future[T] {.importcpp: "#".}
-  result.body.add(q)
+
+  if len(code) > 0:
+    var awaitFunction = quote:
+      proc await[T](f: Future[T]): T {.importcpp: "(await #)".}
+    result.body.add(awaitFunction)
+
+    var resolve: NimNode
+    if isVoid:
+      resolve = quote:
+        var `jsResolveNode` {.importcpp: "undefined".}: Future[void]
+    else:
+      resolve = quote:
+        proc jsResolve[T](a: T): Future[T] {.importcpp: "#".}
+    result.body.add(resolve)
+  else:
+    result.body = newEmptyNode()
   for child in code:
     result.body.add(child)
+
+  if len(code) > 0 and isVoid:
+    var voidFix = quote:
+      return `jsResolveNode`
+    result.body.add(voidFix)
+
   result.pragma = quote:
     {.codegenDecl: "async function $2($3)".}
+
 
 macro async*(arg: untyped): untyped =
   ## Macro which converts normal procedures into

@@ -102,10 +102,12 @@ This now needs to be written as:
 - Nim's ``rst2html`` command now supports the testing of code snippets via an RST
   extension that we called ``:test:``::
 
+  ```rst
     .. code-block:: nim
         :test:
       # shows how the 'if' statement works
       if true: echo "yes"
+  ```
 - The ``[]`` proc for strings now raises an ``IndexError`` exception when
   the specified slice is out of bounds. See issue
   [#6223](https://github.com/nim-lang/Nim/issues/6223) for more details.
@@ -127,12 +129,11 @@ This now needs to be written as:
 - The behavior of ``$`` has been changed for all standard library collections. The
   collection-to-string implementations now perform proper quoting and escaping of
   strings and chars.
-- Removed ``securehash`` stdlib module as it is not secure anymore. The module
-  is still available via ``compiler/securehash``.
 - The ``random`` procs in ``random.nim`` have all been deprecated. Instead use
   the new ``rand`` procs. The module now exports the state of the random
   number generator as type ``Rand`` so multiple threads can easily use their
-  own random number generators that do not require locking.
+  own random number generators that do not require locking. For more information
+  about this rename see issue [#6934](https://github.com/nim-lang/Nim/issues/6934)
 - The compiler is now more consistent in its treatment of ambiguous symbols:
   Types that shadow procs and vice versa are marked as ambiguous (bug #6693).
 - ``yield`` (or ``await`` which is mapped to ``yield``) never worked reliably
@@ -143,3 +144,25 @@ This now needs to be written as:
 - codegenDecl pragma now works for the JavaScript backend. It returns an empty string for
   function return type placeholders.
 - Asynchronous programming for the JavaScript backend using the `asyncjs` module.
+- Extra semantic checks for procs with noreturn pragma: return type is not allowed,
+  statements after call to noreturn procs are no longer allowed.
+- Noreturn proc calls and raising exceptions branches are now skipped during common type 
+  deduction in if and case expressions. The following code snippets now compile:
+```nim
+import strutils
+let str = "Y"
+let a = case str:
+  of "Y": true
+  of "N": false
+  else: raise newException(ValueError, "Invalid boolean")
+let b = case str:
+  of nil, "": raise newException(ValueError, "Invalid boolean")
+  elif str.startsWith("Y"): true
+  elif str.startsWith("N"): false
+  else: false 
+let c = if str == "Y": true 
+  elif str == "N": false 
+  else:
+    echo "invalid bool" 
+    quit("this is the end")
+```

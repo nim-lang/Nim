@@ -655,5 +655,8 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
       result.typ = n.typ
   of nkBracketExpr: result = foldArrayAccess(m, n)
   of nkDotExpr: result = foldFieldAccess(m, n)
+  of nkStmtListExpr:
+    if n.len == 2 and n[0].kind == nkComesFrom:
+      result = getConstExpr(m, n[1])
   else:
     discard
