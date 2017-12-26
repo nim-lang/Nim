@@ -771,7 +771,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
       of wNoreturn:
         noVal(it)
         incl(sym.flags, sfNoReturn)
-        if sym.ast[paramsPos][0].kind != nkEmpty:
+        if sym.typ[0] != nil:
           localError(sym.ast[paramsPos][0].info, errNoReturnWithReturnTypeNotAllowed)
       of wDynlib:
         processDynLib(c, it, sym)
