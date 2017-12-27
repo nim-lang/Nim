@@ -260,7 +260,13 @@ proc close*(f: var MemFile) =
       lastErr = osLastError()
       error = (closeHandle(f.mapHandle) == 0) or error
       if f.fHandle != INVALID_HANDLE_VALUE:
-        error = (closeHandle(f.fHandle) == 0) or error
+        # From Microsoft doco: "When each process finishes using the file mapping object and has unmapped all views,
+        # it must close the file mapping object's handle and the file on disk by calling CloseHandle."
+        #
+        # Assuming this means the file on disk is closed when the mapping is closed, then ignore ERROR_INVALID_HANDLE
+        # but try to close it nontheless
+        let res = closeHandle(f.fHandle)
+        error = ((res != 0) and (res != ERROR_INVALID_HANDLE)) or error
   else:
     error = munmap(f.mem, f.size) != 0
     lastErr = osLastError()
