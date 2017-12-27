@@ -73,8 +73,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbos copyFile:
     os.copyFile(getString(a, 0), getString(a, 1))
   cbos getLastModificationTime:
-    # depends on Time's implementation!
-    setResult(a, int64(getLastModificationTime(getString(a, 0))))
+    setResult(a, getLastModificationTime(getString(a, 0)).toUnix)
 
   cbos rawExec:
     setResult(a, osproc.execCmd getString(a, 0))
