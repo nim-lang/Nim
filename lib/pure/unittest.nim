@@ -473,6 +473,8 @@ template test*(name, body) {.dirty.} =
 
     try:
       when declared(testSetupIMPLFlag): testSetupIMPL()
+      when declared(testTeardownIMPLFlag):
+        defer: testTeardownIMPL()
       body
 
     except:
@@ -491,7 +493,6 @@ template test*(name, body) {.dirty.} =
       )
       testEnded(testResult)
       checkpoints = @[]
-      when declared(testTeardownIMPLFlag): testTeardownIMPL()
 
 proc checkpoint*(msg: string) =
   ## Set a checkpoint identified by `msg`. Upon test failure all
