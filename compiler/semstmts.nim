@@ -732,7 +732,7 @@ proc semRaise(c: PContext, n: PNode): PNode =
     var typ = n.sons[0].typ
     if typ.kind != tyRef or typ.lastSon.kind != tyObject:
       localError(n.info, errExprCannotBeRaised)
-    
+
     # check if the given object inherits from Exception
     var base = typ.lastSon
     while true:
