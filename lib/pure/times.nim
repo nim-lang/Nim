@@ -1540,7 +1540,8 @@ proc getTimezone*(): int {.tags: [TimeEffect], raises: [], benign, deprecated.} 
   when defined(JS):
     return newDate().getTimezoneOffset() * 60
   elif defined(freebsd) or defined(netbsd) or defined(openbsd):
-    var a = timec(nil)
+    var a: CTime
+    discard time(a)
     let lt = localtime(addr(a))
     # BSD stores in `gmtoff` offset east of UTC in seconds,
     # but posix systems using west of UTC in seconds
