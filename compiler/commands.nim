@@ -611,7 +611,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "skipparentcfg":
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optSkipParentConfigFiles)
-  of "genscript":
+  of "genscript", "gendeps":
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optGenScript)
   of "colors": processOnOffSwitchG({optUseColors}, arg, pass, info)
