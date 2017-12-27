@@ -116,7 +116,7 @@ proc specDefaults*(result: var TSpec) =
   result.maxCodeSize = 0
 
 proc parseTargets*(value: string): set[TTarget] =
-  for v in value.normalize.split:
+  for v in value.normalize.splitWhitespace:
     case v
     of "c": result.incl(targetC)
     of "cpp", "c++": result.incl(targetCpp)
@@ -192,7 +192,7 @@ proc parseSpec*(filename: string): TSpec =
     of "ccodecheck": result.ccodeCheck = e.value
     of "maxcodesize": discard parseInt(e.value, result.maxCodeSize)
     of "target", "targets":
-      for v in e.value.normalize.split:
+      for v in e.value.normalize.splitWhitespace:
         case v
         of "c": result.targets.incl(targetC)
         of "cpp", "c++": result.targets.incl(targetCpp)

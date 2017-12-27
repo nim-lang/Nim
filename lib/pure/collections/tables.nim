@@ -338,9 +338,9 @@ template dollarImpl(): untyped {.dirty.} =
     result = "{"
     for key, val in pairs(t):
       if result.len > 1: result.add(", ")
-      result.add($key)
+      result.addQuoted(key)
       result.add(": ")
-      result.add($val)
+      result.addQuoted(val)
     result.add("}")
 
 proc `$`*[A, B](t: Table[A, B]): string =
@@ -966,9 +966,10 @@ proc initCountTable*[A](initialSize=64): CountTable[A] =
   newSeq(result.data, initialSize)
 
 proc toCountTable*[A](keys: openArray[A]): CountTable[A] =
-  ## creates a new count table with every key in `keys` having a count of 1.
+  ## creates a new count table with every key in `keys` having a count
+  ## of how many times it occurs in `keys`.
   result = initCountTable[A](rightSize(keys.len))
-  for key in items(keys): result[key] = 1
+  for key in items(keys): result.inc key
 
 proc `$`*[A](t: CountTable[A]): string =
   ## The `$` operator for count tables.
@@ -993,9 +994,10 @@ proc inc*[A](t: var CountTable[A], key: A, val = 1) =
 proc smallest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   ## returns the (key,val)-pair with the smallest `val`. Efficiency: O(n)
   assert t.len > 0
-  var minIdx = 0
-  for h in 1..high(t.data):
-    if t.data[h].val > 0 and t.data[minIdx].val > t.data[h].val: minIdx = h
+  var minIdx = -1
+  for h in 0..high(t.data):
+    if t.data[h].val > 0 and (minIdx == -1 or t.data[minIdx].val > t.data[h].val):
+      minIdx = h
   result.key = t.data[minIdx].key
   result.val = t.data[minIdx].val
 
@@ -1329,3 +1331,7 @@ when isMainModule:
     assert((a == b) == true)
     assert((b == a) == true)
 
+  block: # CountTable.smallest
+    var t = initCountTable[int]()
+    for v in items([0, 0, 5, 5, 5]): t.inc(v)
+    doAssert t.smallest == (0, 2)

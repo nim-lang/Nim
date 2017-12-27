@@ -21,7 +21,7 @@ const
 const
   procPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl,
     wMagic, wNosideeffect, wSideeffect, wNoreturn, wDynlib, wHeader,
-    wCompilerproc, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge,
+    wCompilerProc, wCore, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge,
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
     wAsmNoStackFrame, wError, wDiscardable, wNoInit, wCodegenDecl,
     wGensym, wInject, wRaises, wTags, wLocks, wDelegator, wGcSafe,
@@ -31,7 +31,7 @@ const
   templatePragmas* = {wImmediate, wDeprecated, wError, wGensym, wInject, wDirty,
     wDelegator, wExportNims, wUsed}
   macroPragmas* = {FirstCallConv..LastCallConv, wImmediate, wImportc, wExportc,
-    wNodecl, wMagic, wNosideeffect, wCompilerproc, wDeprecated, wExtern,
+    wNodecl, wMagic, wNosideeffect, wCompilerProc, wCore, wDeprecated, wExtern,
     wImportCpp, wImportObjC, wError, wDiscardable, wGensym, wInject, wDelegator,
     wExportNims, wUsed}
   iteratorPragmas* = {FirstCallConv..LastCallConv, wNosideeffect, wSideeffect,
@@ -52,14 +52,14 @@ const
     wDeprecated, wExtern, wThread, wImportCpp, wImportObjC, wAsmNoStackFrame,
     wRaises, wLocks, wTags, wGcSafe}
   typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl,
-    wPure, wHeader, wCompilerproc, wFinal, wSize, wExtern, wShallow,
+    wPure, wHeader, wCompilerProc, wCore, wFinal, wSize, wExtern, wShallow,
     wImportCpp, wImportObjC, wError, wIncompleteStruct, wByCopy, wByRef,
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
     wBorrow, wGcSafe, wExportNims, wPartial, wUsed, wExplain, wPackage}
   fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern,
     wImportCpp, wImportObjC, wError, wGuard, wBitsize, wUsed}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl,
-    wMagic, wHeader, wDeprecated, wCompilerproc, wDynlib, wExtern,
+    wMagic, wHeader, wDeprecated, wCompilerProc, wCore, wDynlib, wExtern,
     wImportCpp, wImportObjC, wError, wNoInit, wCompileTime, wGlobal,
     wGensym, wInject, wCodegenDecl, wGuard, wGoto, wExportNims, wUsed}
   constPragmas* = {wImportc, wExportc, wHeader, wDeprecated, wMagic, wNodecl,
@@ -771,9 +771,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
       of wNoreturn:
         noVal(it)
         incl(sym.flags, sfNoReturn)
+        if sym.typ[0] != nil:
+          localError(sym.ast[paramsPos][0].info, errNoReturnWithReturnTypeNotAllowed)
       of wDynlib:
         processDynLib(c, it, sym)
-      of wCompilerproc:
+      of wCompilerProc, wCore:
         noVal(it)           # compilerproc may not get a string!
         cppDefine(c.graph.config, sym.name.s)
         if sfFromGeneric notin sym.flags: markCompilerProc(sym)

@@ -979,10 +979,10 @@ proc trackProc*(s: PSym, body: PNode) =
     message(s.info, warnLockLevel,
       "declared lock level is $1, but real lock level is $2" %
         [$s.typ.lockLevel, $t.maxLockLevel])
-  when false:
+  when defined(useDfa):
     if s.kind == skFunc:
-      when defined(dfa): dataflowAnalysis(s, body)
-      trackWrites(s, body)
+      dataflowAnalysis(s, body)
+      when false: trackWrites(s, body)
 
 proc trackTopLevelStmt*(module: PSym; n: PNode) =
   if n.kind in {nkPragma, nkMacroDef, nkTemplateDef, nkProcDef, nkFuncDef,

@@ -51,7 +51,7 @@ proc setCookie*(key, value: string, domain = "", path = "",
   if secure: result.add("; Secure")
   if httpOnly: result.add("; HttpOnly")
 
-proc setCookie*(key, value: string, expires: TimeInfo,
+proc setCookie*(key, value: string, expires: DateTime,
                 domain = "", path = "", noName = false,
                 secure = false, httpOnly = false): string =
   ## Creates a command in the format of
@@ -63,9 +63,9 @@ proc setCookie*(key, value: string, expires: TimeInfo,
                    noname, secure, httpOnly)
 
 when isMainModule:
-  var tim = Time(int(getTime()) + 76 * (60 * 60 * 24))
+  var tim = fromUnix(getTime().toUnix + 76 * (60 * 60 * 24))
 
-  let cookie = setCookie("test", "value", tim.getGMTime())
+  let cookie = setCookie("test", "value", tim.utc)
   when not defined(testing):
     echo cookie
   let start = "Set-Cookie: test=value; Expires="

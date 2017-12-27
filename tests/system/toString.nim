@@ -4,12 +4,12 @@ discard """
 
 doAssert "@[23, 45]" == $(@[23, 45])
 doAssert "[32, 45]" == $([32, 45])
-doAssert "@[, foo, bar]" == $(@["", "foo", "bar"])
-doAssert "[, foo, bar]" ==  $(["", "foo", "bar"])
+doAssert """@["", "foo", "bar"]""" == $(@["", "foo", "bar"])
+doAssert """["", "foo", "bar"]""" ==  $(["", "foo", "bar"])
 
 # bug #2395
 let alphaSet: set[char] = {'a'..'c'}
-doAssert "{a, b, c}" == $alphaSet
+doAssert "{'a', 'b', 'c'}" == $alphaSet
 doAssert "2.3242" == $(2.3242)
 doAssert "2.982" == $(2.982)
 doAssert "123912.1" == $(123912.1)
@@ -49,5 +49,5 @@ import strutils
 # array test
 
 let arr = ['H','e','l','l','o',' ','W','o','r','l','d','!','\0']
-doAssert $arr == "[H, e, l, l, o,  , W, o, r, l, d, !, \0]"
+doAssert $arr == "['H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', '!', '\\x00']"
 doAssert $cstring(unsafeAddr arr) == "Hello World!"

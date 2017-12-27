@@ -185,7 +185,7 @@ proc `$`*[T](deq: Deque[T]): string =
   result = "["
   for x in deq:
     if result.len > 1: result.add(", ")
-    result.add($x)
+    result.addQuoted(x)
   result.add("]")
 
 when isMainModule:

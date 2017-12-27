@@ -62,8 +62,8 @@ type
     nkTripleStrLit,       # a triple string literal """
     nkNilLit,             # the nil literal
                           # end of atoms
-    nkMetaNode_Obsolete,  # difficult to explain; represents itself
-                          # (used for macros)
+    nkComesFrom,          # "comes from" template/macro information for
+                          # better stack trace generation
     nkDotCall,            # used to temporarily flag a nkCall node;
                           # this is used
                           # for transforming ``s.len`` to ``len(s)``
@@ -639,7 +639,8 @@ type
     mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl,
     mNHint, mNWarning, mNError,
     mInstantiationInfo, mGetTypeInfo, mNGenSym,
-    mNimvm, mIntDefine, mStrDefine, mRunnableExamples
+    mNimvm, mIntDefine, mStrDefine, mRunnableExamples,
+    mException
 
 # things that we can evaluate safely at compile time, even if not asked for it:
 const

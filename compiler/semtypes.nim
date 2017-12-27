@@ -1620,6 +1620,7 @@ proc processMagicType(c: PContext, m: PSym) =
     rawAddSon(m.typ, newTypeS(tyNone, c))
   of mPNimrodNode:
     incl m.typ.flags, tfTriggersCompileTime
+  of mException: discard
   else: localError(m.info, errTypeExpected)
 
 proc semGenericConstraints(c: PContext, x: PType): PType =

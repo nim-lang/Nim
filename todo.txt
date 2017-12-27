@@ -1,8 +1,6 @@
 version 1.0 battle plan
 =======================
 
-- introduce ``nkStmtListExpr`` for template/macro invokations to produce
-  better stack traces
 - let 'doAssert' analyse the expressions and produce more helpful output
 - fix "high priority" bugs
 - try to fix as many compiler crashes as reasonable
@@ -11,6 +9,8 @@ version 1.0 battle plan
 Not critical for 1.0
 ====================
 
+- introduce ``nkStmtListExpr`` for template/macro invokations to produce
+  better stack traces
 - make 'break' not leave named blocks
 - make FlowVar compatible to Futures
 - make 'not nil' the default (produce warnings instead of errors for

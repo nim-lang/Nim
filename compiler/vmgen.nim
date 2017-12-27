@@ -1847,6 +1847,8 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       globalError(n.info, errGenerated, "VM is not allowed to 'cast'")
   of nkTypeOfExpr:
     genTypeLit(c, n.typ, dest)
+  of nkComesFrom:
+    discard "XXX to implement for better stack traces"
   else:
     globalError(n.info, errGenerated, "cannot generate VM code for " & $n)
 

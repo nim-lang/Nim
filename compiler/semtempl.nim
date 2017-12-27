@@ -331,7 +331,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   of nkMixinStmt:
     if c.scopeN > 0: result = semTemplBodySons(c, n)
     else: result = semMixinStmt(c.c, n, c.toMixin)
-  of nkEmpty, nkSym..nkNilLit:
+  of nkEmpty, nkSym..nkNilLit, nkComesFrom:
     discard
   of nkIfStmt:
     for i in countup(0, sonsLen(n)-1):
@@ -528,7 +528,7 @@ proc semTemplBodyDirty(c: var TemplCtx, n: PNode): PNode =
     result = semTemplBodyDirty(c, n.sons[0])
   of nkBindStmt:
     result = semBindStmt(c.c, n, c.toBind)
-  of nkEmpty, nkSym..nkNilLit:
+  of nkEmpty, nkSym..nkNilLit, nkComesFrom:
     discard
   else:
     # dotExpr is ambiguous: note that we explicitly allow 'x.TemplateParam',

@@ -780,6 +780,19 @@ proc buildEchoStmt(c: PContext, n: PNode): PNode =
 
 proc semExprNoType(c: PContext, n: PNode): PNode =
   result = semExpr(c, n, {efWantStmt})
+  # make an 'if' expression an 'if' statement again for backwards
+  # compatibility (.discardable was a bad idea!); bug #6980
+  var isStmt = false
+  if result.kind == nkIfExpr:
+    isStmt = true
+    for condActionPair in result:
+      let action = condActionPair.lastSon
+      if not implicitlyDiscardable(action) and not
+          endsInNoReturn(action):
+        isStmt = false
+    if isStmt:
+      result.kind = nkIfStmt
+      result.typ = nil
   discardCheck(c, result)
 
 proc isTypeExpr(n: PNode): bool =
@@ -1290,13 +1303,10 @@ proc takeImplicitAddr(c: PContext, n: PNode): PNode =
 proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
   if le.kind == nkHiddenDeref:
     var x = le.sons[0]
-    if x.typ.kind == tyVar and x.kind == nkSym:
-      if x.sym.kind == skResult:
-        n.sons[0] = x # 'result[]' --> 'result'
-        n.sons[1] = takeImplicitAddr(c, ri)
-      if x.sym.kind != skParam:
-        # XXX This is hacky. See bug #4910.
-        x.typ.flags.incl tfVarIsPtr
+    if x.typ.kind == tyVar and x.kind == nkSym and x.sym.kind == skResult:
+      n.sons[0] = x # 'result[]' --> 'result'
+      n.sons[1] = takeImplicitAddr(c, ri)
+      x.typ.flags.incl tfVarIsPtr
       #echo x.info, " setting it for this type ", typeToString(x.typ), " ", n.info
 
 template resultTypeIsInferrable(typ: PType): untyped =
@@ -1368,13 +1378,16 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
     if lhsIsResult:
       n.typ = enforceVoidContext
       if c.p.owner.kind != skMacro and resultTypeIsInferrable(lhs.sym.typ):
-        if cmpTypes(c, lhs.typ, rhs.typ) == isGeneric:
+        var rhsTyp = rhs.typ
+        if rhsTyp.kind in tyUserTypeClasses and rhsTyp.isResolvedUserTypeClass:
+          rhsTyp = rhsTyp.lastSon
+        if cmpTypes(c, lhs.typ, rhsTyp) in {isGeneric, isEqual}:
           internalAssert c.p.resultSym != nil
-          lhs.typ = rhs.typ
-          c.p.resultSym.typ = rhs.typ
-          c.p.owner.typ.sons[0] = rhs.typ
+          lhs.typ = rhsTyp
+          c.p.resultSym.typ = rhsTyp
+          c.p.owner.typ.sons[0] = rhsTyp
         else:
-          typeMismatch(n.info, lhs.typ, rhs.typ)
+          typeMismatch(n.info, lhs.typ, rhsTyp)
 
     n.sons[1] = fitNode(c, le, rhs, n.info)
     if not newDestructors:
@@ -1449,14 +1462,15 @@ proc semYieldVarResult(c: PContext, n: PNode, restype: PType) =
   var t = skipTypes(restype, {tyGenericInst, tyAlias})
   case t.kind
   of tyVar:
+    t.flags.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
     if n.sons[0].kind in {nkHiddenStdConv, nkHiddenSubConv}:
       n.sons[0] = n.sons[0].sons[1]
-
     n.sons[0] = takeImplicitAddr(c, n.sons[0])
   of tyTuple:
     for i in 0..<t.sonsLen:
       var e = skipTypes(t.sons[i], {tyGenericInst, tyAlias})
       if e.kind == tyVar:
+        e.flags.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
         if n.sons[0].kind == nkPar:
           n.sons[0].sons[i] = takeImplicitAddr(c, n.sons[0].sons[i])
         elif n.sons[0].kind in {nkHiddenStdConv, nkHiddenSubConv} and
@@ -1775,6 +1789,13 @@ proc setMs(n: PNode, s: PSym): PNode =
   n.sons[0] = newSymNode(s)
   n.sons[0].info = n.info
 
+proc extractImports(n: PNode; result: PNode) =
+  if n.kind in {nkImportStmt, nkImportExceptStmt, nkFromStmt}:
+    result.add copyTree(n)
+    n.kind = nkEmpty
+    return
+  for i in 0..<n.safeLen: extractImports(n[i], result)
+
 proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   # this is a hotspot in the compiler!
   # DON'T forget to update ast.SpecialSemMagics if you add a magic here!
@@ -1854,6 +1875,9 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
           if c.runnableExamples == nil:
             c.runnableExamples = newTree(nkStmtList,
               newTree(nkImportStmt, newStrNode(nkStrLit, expandFilename(inp))))
+          let imports = newTree(nkStmtList)
+          extractImports(n.lastSon, imports)
+          for imp in imports: c.runnableExamples.add imp
           c.runnableExamples.add newTree(nkBlockStmt, emptyNode, copyTree n.lastSon)
         result = setMs(n, s)
     else:
@@ -2123,6 +2147,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkIdent, nkAccQuoted:
     let checks = if efNoEvaluateGeneric in flags:
         {checkUndeclared, checkPureEnumFields}
+      elif efInCall in flags:
+        {checkUndeclared, checkModule, checkPureEnumFields}
       else:
         {checkUndeclared, checkModule, checkAmbiguity, checkPureEnumFields}
     var s = qualifiedLookUp(c, n, checks)
@@ -2217,10 +2243,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         # XXX think about this more (``set`` procs)
         if n.len == 2:
           result = semConv(c, n)
+        elif contains(c.ambiguousSymbols, s.id) and n.len == 1:
+          errorUseQualifier(c, n.info, s)
         elif n.len == 1:
           result = semObjConstr(c, n, flags)
-        elif contains(c.ambiguousSymbols, s.id):
-          errorUseQualifier(c, n.info, s)
         elif s.magic == mNone: result = semDirectOp(c, n, flags)
         else: result = semMagic(c, n, s, flags)
       of skProc, skFunc, skMethod, skConverter, skIterator:
@@ -2370,6 +2396,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     if n.len != 1 and n.len != 2: illFormedAst(n)
     for i in 0 ..< n.len:
       n.sons[i] = semExpr(c, n.sons[i])
+  of nkComesFrom: discard "ignore the comes from information for now"
   else:
     localError(n.info, errInvalidExpressionX,
                renderTree(n, {renderNoComments}))
