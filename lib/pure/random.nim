@@ -190,7 +190,8 @@ when not defined(nimscript):
   proc randomize*() {.benign.} =
     ## Initializes the random number generator with a "random"
     ## number, i.e. a tickcount. Note: Does not work for NimScript.
-    randomize(times.getTime().int64)
+    let now = times.getTime()
+    randomize(convert(Second, Nanosecond, now.seconds) + now.nanoseconds)
 
 {.pop.}
 

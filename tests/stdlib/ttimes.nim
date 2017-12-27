@@ -300,4 +300,4 @@ suite "ttimes":
   test "duration":
     check initDuration(hours = 48) + initDuration(days = 5) == initDuration(weeks = 1)
     let dt = initDateTime(01, mFeb, 2000, 00, 00, 00, 0, utc()) + 1.milliseconds
-    check dt.hnsecond == convert(Millisecond, Hnsecond, 1)
+    check dt.nanosecond == convert(Millisecond, Nanosecond, 1)

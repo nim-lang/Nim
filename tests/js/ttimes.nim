@@ -39,9 +39,6 @@ block timezoneTests:
   doAssert $dt.utc == "2017-01-01T10:00:00+00:00"
   doAssert $dt.utc.inZone(utcPlus2) == $dt
 
-block truncatedDuration:
-  doAssert initDuration(microseconds = 1023) == initDuration(milliseconds = 1)
-
 doAssert $initDateTime(01, mJan, 1911, 12, 00, 00, utc()) == "1911-01-01T12:00:00+00:00"
 # See #6752
 # doAssert $initDateTime(01, mJan, 1900, 12, 00, 00, utc()) == "0023-01-01T12:00:00+00:00"
