@@ -4,42 +4,56 @@ discard """
   output: '''
 b failure
 Async traceback:
-  tasync_traceback.nim(83) tasync_traceback
-  asyncmacro.nim(393)      a
-  asyncmacro.nim(43)       a_continue
-  └─Resumes an async procedure
-  asyncfutures.nim(211)    callback=
-  asyncfutures.nim(190)    addCallback
-  asyncfutures.nim(53)     callSoon
+  tasync_traceback.nim(97) tasync_traceback
+  asyncmacro.nim(395)      a
   asyncmacro.nim(34)       a_continue
-  └─Resumes an async procedure
-  asyncmacro.nim(0)        aIter
-  asyncfutures.nim(341)    read
-  asyncmacro.nim(34)       a_continue
-  └─Resumes an async procedure
-  tasync_traceback.nim(81) aIter
-  asyncmacro.nim(393)      b
+    ## Resumes an async procedure
+  tasync_traceback.nim(95) aIter
+  asyncmacro.nim(395)      b
   asyncmacro.nim(34)       b_continue
-  └─Resumes an async procedure
-  tasync_traceback.nim(78) bIter
+    ## Resumes an async procedure
+  tasync_traceback.nim(92) bIter
+  #[
+    tasync_traceback.nim(97) tasync_traceback
+    asyncmacro.nim(395)      a
+    asyncmacro.nim(43)       a_continue
+      ## Resumes an async procedure
+    asyncfutures.nim(211)    callback=
+    asyncfutures.nim(190)    addCallback
+    asyncfutures.nim(53)     callSoon
+    asyncmacro.nim(34)       a_continue
+      ## Resumes an async procedure
+    asyncmacro.nim(0)        aIter
+    asyncfutures.nim(304)    read
+  ]#
 Exception message: b failure
 Exception type:
 
 bar failure
 Async traceback:
-  tasync_traceback.nim(99) tasync_traceback
-  asyncdispatch.nim(1204)  waitFor
-  asyncdispatch.nim(1253)  poll
-  └─Processes asynchronous completion events
-  asyncdispatch.nim(181)   processPendingCallbacks
-  └─Executes pending callbacks
-  asyncmacro.nim(34)       foo_continue
-  └─Resumes an async procedure
-  asyncmacro.nim(0)        fooIter
-  asyncfutures.nim(341)    read
-  asyncmacro.nim(34)       bar_continue
-  └─Resumes an async procedure
-  tasync_traceback.nim(94) barIter
+  tasync_traceback.nim(113) tasync_traceback
+  asyncdispatch.nim(1492)   waitFor
+  asyncdispatch.nim(1496)   poll
+    ## Processes asynchronous completion events
+  asyncdispatch.nim(1262)   runOnce
+  asyncdispatch.nim(183)    processPendingCallbacks
+    ## Executes pending callbacks
+  asyncmacro.nim(34)        bar_continue
+    ## Resumes an async procedure
+  tasync_traceback.nim(108) barIter
+  #[
+    tasync_traceback.nim(113) tasync_traceback
+    asyncdispatch.nim(1492)   waitFor
+    asyncdispatch.nim(1496)   poll
+      ## Processes asynchronous completion events
+    asyncdispatch.nim(1262)   runOnce
+    asyncdispatch.nim(183)    processPendingCallbacks
+      ## Executes pending callbacks
+    asyncmacro.nim(34)        foo_continue
+      ## Resumes an async procedure
+    asyncmacro.nim(0)         fooIter
+    asyncfutures.nim(304)     read
+  ]#
 Exception message: bar failure
 Exception type:'''
 """

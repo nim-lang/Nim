@@ -217,44 +217,6 @@ proc `callback=`*[T](future: Future[T],
   ## If future has already completed then ``cb`` will be called immediately.
   future.callback = proc () = cb(future)
 
-proc mergeEntries(entries: seq[StackTraceEntry]): seq[StackTraceEntry] =
-  ## Merges stack trace entries containing re-raise entries into one
-  ## continuous stack trace.
-  result = @[]
-  var i = 0
-  while i < entries.len:
-    var entry = entries[i]
-
-    if entry.procName.isNil:
-      # Start of a re-raise traceback which may contain more info.
-      # Find where the re-raised traceback ends.
-      assert entry.line == -10 # Signifies start of re-raise block.
-      var reRaiseEnd = i+1
-      while reRaiseEnd < entries.len and not entries[reRaiseEnd].procName.isNil:
-        reRaiseEnd.inc()
-      assert entries[reRaiseEnd].procName.isNil
-      assert entries[reRaiseEnd].line == -100 # Signifies end of re-raise block.
-
-      # either the nested block is new, then we insert it, or we discard it
-      # completely. 'diff' is the wrong idea here.
-      var last = result.len-1
-      var e = reRaiseEnd-1
-      var newBlock = false
-      while last >= 0 and e >= i+1:
-        if result[last] != entries[e]:
-          newBlock = true
-          break
-        dec e
-        dec last
-
-      if newBlock:
-        for j in i+1 ..< reRaiseEnd: result.add entries[j]
-
-      i = reRaiseEnd+1
-    else:
-      result.add(entry)
-      i.inc
-
 proc getHint(entry: StackTraceEntry): string =
   ## We try to provide some hints about stack trace entries that the user
   ## may not be familiar with, in particular calls inside the stdlib.
@@ -275,22 +237,33 @@ proc `$`*(entries: seq[StackTraceEntry]): string =
   # Find longest filename & line number combo for alignment purposes.
   var longestLeft = 0
   for entry in entries:
+    if entry.procName.isNil: continue
+
     let left = $entry.filename & $entry.line
     if left.len > longestLeft:
       longestLeft = left.len
 
-  const indent = spaces(2)
+  var indent = 2
   # Format the entries.
   for entry in entries:
+    if entry.procName.isNil:
+      if entry.line == -10:
+        result.add(spaces(indent) & "#[\n")
+        indent.inc(2)
+      else:
+        indent.dec(2)
+        result.add(spaces(indent)& "]#\n")
+      continue
+
     let left = "$#($#)" % [$entry.filename, $entry.line]
-    result.add((indent & "$#$# $#\n") % [
+    result.add((spaces(indent) & "$#$# $#\n") % [
       left,
       spaces(longestLeft - left.len + 2),
       $entry.procName
     ])
     let hint = getHint(entry)
     if hint.len > 0:
-      result.add(indent & "└─" & hint & "\n")
+      result.add(spaces(indent+2) & "## " & hint & "\n")
 
 proc injectStacktrace[T](future: Future[T]) =
   when not defined(release):
@@ -306,7 +279,7 @@ proc injectStacktrace[T](future: Future[T]) =
 
     var newMsg = exceptionMsg & header
 
-    let entries = getStackTraceEntries(future.error).mergeEntries()
+    let entries = getStackTraceEntries(future.error)
     newMsg.add($entries)
 
     newMsg.add("Exception message: " & exceptionMsg & "\n")
