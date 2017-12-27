@@ -41,7 +41,8 @@ These integer types are pre-defined:
 ``int``
   the generic signed integer type; its size is platform dependent and has the
   same size as a pointer. This type should be used in general. An integer
-  literal that has no type suffix is of this type.
+  literal that has no type suffix is of this type if it is in the range
+  ``low(int32)..high(int32)`` otherwise the literal's type is ``int64``.
 
 intXX
   additional signed integer types of XX bits use this naming scheme
