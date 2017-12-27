@@ -968,7 +968,7 @@ proc initCountTable*[A](initialSize=64): CountTable[A] =
 proc toCountTable*[A](keys: openArray[A]): CountTable[A] =
   ## creates a new count table with every key in `keys` having a count of 1.
   result = initCountTable[A](rightSize(keys.len))
-  for key in items(keys): result[key] = 1
+  for key in items(keys): result.inc key
 
 proc `$`*[A](t: CountTable[A]): string =
   ## The `$` operator for count tables.
