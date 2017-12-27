@@ -24,10 +24,10 @@ proc cmpStrings(a, b: NimString): int {.inline, compilerProc.} =
   if a == b: return 0
   if a == nil: return -1
   if b == nil: return 1
-  when defined(nimNoArrayToCstringConversion):
-    return c_strcmp(addr a.data, addr b.data)
-  else:
-    return c_strcmp(a.data, b.data)
+  let minlen = min(a.len, b.len)
+  result = c_memcmp(addr a.data, addr b.data, minlen.csize)
+  if result == 0:
+    result = a.len - b.len
 
 proc eqStrings(a, b: NimString): bool {.inline, compilerProc.} =
   if a == b: return true
