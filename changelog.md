@@ -146,7 +146,7 @@ This now needs to be written as:
 - Asynchronous programming for the JavaScript backend using the `asyncjs` module.
 - Extra semantic checks for procs with noreturn pragma: return type is not allowed,
   statements after call to noreturn procs are no longer allowed.
-- Noreturn proc calls and raising exceptions branches are now skipped during common type 
+- Noreturn proc calls and raising exceptions branches are now skipped during common type
   deduction in if and case expressions. The following code snippets now compile:
 ```nim
 import strutils
@@ -159,10 +159,29 @@ let b = case str:
   of nil, "": raise newException(ValueError, "Invalid boolean")
   elif str.startsWith("Y"): true
   elif str.startsWith("N"): false
-  else: false 
-let c = if str == "Y": true 
-  elif str == "N": false 
+  else: false
+let c = if str == "Y": true
+  elif str == "N": false
   else:
-    echo "invalid bool" 
+    echo "invalid bool"
     quit("this is the end")
+```
+- Proc [toCountTable](https://nim-lang.org/docs/tables.html#toCountTable,openArray[A]) now produces a `CountTable` with values correspoding to the number of occurrences of the key in the input. It used to produce a table with all values set to `1`.
+
+Counting occurrences in a sequence used to be:
+
+```nim
+let mySeq = @[1, 2, 1, 3, 1, 4]
+var myCounter = initCountTable[int]()
+
+for item in mySeq:
+  myCounter.inc item
+```
+
+Now, you can simply do:
+
+```nim
+let
+  mySeq = @[1, 2, 1, 3, 1, 4]
+  myCounter = mySeq.toCountTable()
 ```
