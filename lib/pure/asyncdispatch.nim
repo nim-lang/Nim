@@ -1493,7 +1493,7 @@ proc poll*(timeout = 500) =
   ## Waits for completion events and processes them. Raises ``ValueError``
   ## if there are no pending operations. This runs the underlying OS
   ## `epoll`:idx: or `kqueue`:idx: primitive only once.
-  discard runOnce()
+  discard runOnce(timeout)
 
 # Common procedures between current and upcoming asyncdispatch
 include includes.asynccommon
