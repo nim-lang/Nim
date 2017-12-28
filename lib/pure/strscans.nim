@@ -342,25 +342,25 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
         if i < results.len or getType(results[i]).typeKind != ntyInt:
           matchBind "parseBin"
         else:
-          error("no int var given for $d")
+          error("no int var given for $b")
         inc i
       of 'o':
         if i < results.len or getType(results[i]).typeKind != ntyInt:
           matchBind "parseOct"
         else:
-          error("no int var given for $d")
+          error("no int var given for $o")
         inc i
       of 'i':
         if i < results.len or getType(results[i]).typeKind != ntyInt:
           matchBind "parseInt"
         else:
-          error("no int var given for $d")
+          error("no int var given for $i")
         inc i
       of 'h':
         if i < results.len or getType(results[i]).typeKind != ntyInt:
           matchBind "parseHex"
         else:
-          error("no int var given for $d")
+          error("no int var given for $h")
         inc i
       of 'f':
         if i < results.len or getType(results[i]).typeKind != ntyFloat:
