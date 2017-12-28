@@ -191,7 +191,7 @@ when not defined(nimscript):
     ## Initializes the random number generator with a "random"
     ## number, i.e. a tickcount. Note: Does not work for NimScript.
     let now = times.getTime()
-    randomize(convert(Second, Nanosecond, now.seconds) + now.nanoseconds)
+    randomize(convert(Second, Nanosecond, now.toUnix) + now.nanoseconds)
 
 {.pop.}
 

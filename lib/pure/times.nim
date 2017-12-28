@@ -95,9 +95,15 @@ type
   YeardayRange* = range[0..365]
   NanosecondRange* = range[0..999_999_999]
 
-  Time* = object ## Represents a point in time.
-    seconds*: int64
-    nanoseconds*: NanosecondRange
+  TimeImpl = object
+    seconds: int64
+    nanoseconds: NanosecondRange
+
+  DurationImpl = object
+    seconds: int64
+    nanoseconds: NanosecondRange
+
+  Time* = TimeImpl ## Represents a point in time.
     
   DateTime* = object of RootObj ## Represents a time in different parts.
                                 ## Although this type can represent leap
@@ -143,12 +149,10 @@ type
     months*: int      ## The number of months
     years*: int       ## The number of years
 
-  Duration* = object ## Represents a fixed duration of time.
-                     ## Uses the same time resolution as ``Time``.
-                     ## This type should be prefered over ``TimeInterval`` unless
-                     ## non-static time units is needed.
-    seconds*: int64
-    nanoseconds*: NanosecondRange
+  Duration* = DurationImpl ## Represents a fixed duration of time.
+                           ## Uses the same time resolution as ``Time``.
+                           ## This type should be prefered over ``TimeInterval`` unless
+                           ## non-static time units is needed.
 
   DurationUnit* = enum ## Different units used for durations.
     Week, Day, Hour, Minute, Second, Millisecond, Microsecond, Nanosecond
@@ -200,6 +204,11 @@ proc initTime*(seconds: int64, nanoseconds: int): Time =
   result.seconds = seconds
   result.nanoseconds = nanoseconds
 
+proc nanoseconds*(time: Time): NanosecondRange =
+  ## Get the fractional part of a ``Time`` as the number
+  ## of nanoseconds of the second.
+  time.nanoseconds
+
 proc initDuration*(weeks, days, hours, minutes, seconds,
                    milliseconds, microseconds, nanoseconds: int64 = 0): Duration =
   result.seconds = convert(Week, Second, weeks) +
@@ -243,8 +252,8 @@ proc `$`*(dur: Duration): string =
       parts.add $quantity & " " & unitStrings[unit] & "s"
 
   for unit in Millisecond .. Nanosecond:
-    let quantity = convert(Second, unit, remNs)
-    remNs = remNs mod convert(unit, Second, 1)
+    let quantity = convert(Nanosecond, unit, remNs)
+    remNs = remNs mod convert(unit, Nanosecond, 1)
 
     if quantity == 1:
       parts.add $quantity & " " & unitStrings[unit]
@@ -715,7 +724,8 @@ proc getTime*(): Time {.tags: [TimeEffect], benign.} =
     getSystemTimeAsFileTime(f)
     let nanos = (rdFileTime(f) - epochDiff) * 100
     let seconds = convert(Nanosecond, Second, nanos)
-    result = initTime(seconds, nanos mod convert(Second, Nanosecond, 1))
+    let nanos = nanos mod convert(Second, Nanosecond, 1).int
+    result = initTime(seconds, nanos)
 
 proc now*(): DateTime {.tags: [TimeEffect], benign.} =
   ## Get the current time as a  ``DateTime`` in the local timezone.
