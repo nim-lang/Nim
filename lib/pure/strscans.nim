@@ -31,7 +31,10 @@ As can be seen from the examples, strings are matched verbatim except for
 substrings starting with ``$``. These constructions are available:
 
 =================   ========================================================
-``$i``              Matches an integer. This uses ``parseutils.parseInt``.
+``$b``              Matches an decimal integer. This uses ``parseutils.parseBin``.
+``$o``              Matches an octal integer. This uses ``parseutils.parseOct``.
+``$i``              Matches an decimal integer. This uses ``parseutils.parseInt``.
+``$h``              Matches an hex integer. This uses ``parseutils.parseHex``.
 ``$f``              Matches a floating pointer number. Uses ``parseFloat``.
 ``$w``              Matches an ASCII identifier: ``[A-Z-a-z_][A-Za-z_0-9]*``.
 ``$s``              Skips optional whitespace.
@@ -335,9 +338,27 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
         else:
           error("no string var given for $w")
         inc i
+      of 'b':
+        if i < results.len or getType(results[i]).typeKind != ntyInt:
+          matchBind "parseBin"
+        else:
+          error("no int var given for $d")
+        inc i
+      of 'o':
+        if i < results.len or getType(results[i]).typeKind != ntyInt:
+          matchBind "parseOct"
+        else:
+          error("no int var given for $d")
+        inc i
       of 'i':
         if i < results.len or getType(results[i]).typeKind != ntyInt:
           matchBind "parseInt"
+        else:
+          error("no int var given for $d")
+        inc i
+      of 'h':
+        if i < results.len or getType(results[i]).typeKind != ntyInt:
+          matchBind "parseHex"
         else:
           error("no int var given for $d")
         inc i
@@ -644,6 +665,14 @@ when isMainModule:
   doAssert val == "xyz"
   doAssert intval == 89
   doAssert floatVal == 33.25
+
+  var binval: int
+  var octval: int
+  var hexval: int
+  doAssert scanf("0b0101 0o1234 0xabcd", "$b$s$o$s$h", binval, octval, hexval)
+  doAssert binval == 0b0101
+  doAssert octval == 0o1234
+  doAssert hexval == 0xabcd
 
   let xx = scanf("$abc", "$$$i", intval)
   doAssert xx == false
