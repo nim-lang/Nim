@@ -92,4 +92,10 @@ proc deinitSharedList*[A](t: var SharedList[A]) =
   clear(t)
   deinitLock t.lock
 
+proc initSharedList*[A](): SharedList[A] {.deprecated.} =
+  # This is not posix compliant, may introduce undefined behavior. Use `init` instead.
+  initLock result.lock
+  result.head = nil
+  result.tail = nil
+
 {.pop.}
