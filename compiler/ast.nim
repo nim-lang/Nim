@@ -269,7 +269,8 @@ type
                       # language; for interfacing with Objective C
     sfDiscardable,    # returned value may be discarded implicitly
     sfOverriden,      # proc is overriden
-    sfGenSym          # symbol is 'gensym'ed; do not add to symbol table
+    sfGenSym          # symbol is 'gensym'ed; do not add to symbol table,
+    sfCustomPragma    # symbol is custom pragma template
 
   TSymFlags* = set[TSymFlag]
 
@@ -640,6 +641,7 @@ type
     mNHint, mNWarning, mNError,
     mInstantiationInfo, mGetTypeInfo, mNGenSym,
     mNimvm, mIntDefine, mStrDefine, mRunnableExamples,
+    mCustomPragma,
     mException
 
 # things that we can evaluate safely at compile time, even if not asked for it:
