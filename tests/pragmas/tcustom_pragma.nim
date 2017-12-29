@@ -2,7 +2,6 @@ import macros
  
 block:
   template myAttr() {.pragma.}
-  template notValidAttr() {.used.} = discard 
 
   proc myProc():int {.myAttr.} = 2
   const myAttrIdx = myProc.hasCustomPragma(myAttr)
