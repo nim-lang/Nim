@@ -269,7 +269,7 @@ type
                       # language; for interfacing with Objective C
     sfDiscardable,    # returned value may be discarded implicitly
     sfOverriden,      # proc is overriden
-    sfGenSym          # symbol is 'gensym'ed; do not add to symbol table,
+    sfGenSym,         # symbol is 'gensym'ed; do not add to symbol table,
     sfCustomPragma    # symbol is custom pragma template
 
   TSymFlags* = set[TSymFlag]
