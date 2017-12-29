@@ -29,7 +29,7 @@ const
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas+{wBase}-{wImportCpp}
   templatePragmas* = {wImmediate, wDeprecated, wError, wGensym, wInject, wDirty,
-    wDelegator, wExportNims, wUsed}
+    wDelegator, wExportNims, wUsed, wPragma}
   macroPragmas* = {FirstCallConv..LastCallConv, wImmediate, wImportc, wExportc,
     wNodecl, wMagic, wNosideeffect, wCompilerproc, wDeprecated, wExtern,
     wImportCpp, wImportObjC, wError, wDiscardable, wGensym, wInject, wDelegator,
@@ -655,12 +655,32 @@ proc pragmaGuard(c: PContext; it: PNode; kind: TSymKind): PSym =
   else:
     result = qualifiedLookUp(c, n, {checkUndeclared})
 
+proc semCustomPragma(c: PContext, n: PNode): PNode =
+  assert(n.kind in {nkIdent, nkExprColonExpr})
+  result = newNodeI(nkCall, n.info)
+  if n.kind == nkIdent:
+    result.add n
+  elif n.kind == nkExprColonExpr:
+    result.sons = n.sons
+
+  result = c.semOverloadedCall(c, result, n, {skTemplate}, {})
+  if sfCustomPragma notin result[0].sym.flags:
+    invalidPragma(n)
+
+  if n.kind == nkIdent:
+    result = result[0]
+  elif n.kind == nkExprColonExpr:
+    result.kind = n.kind
+  
 proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
                   validPragmas: TSpecialWords): bool =
   var it = n.sons[i]
   var key = if it.kind == nkExprColonExpr: it.sons[0] else: it
   if key.kind == nkBracketExpr:
     processNote(c, it)
+    return
+  elif key.kind == nkDotExpr:
+    n.sons[i] = semCustomPragma(c, it)
     return
   let ident = considerQuotedIdent(key)
   var userPragma = strTableGet(c.userPragmas, ident)
@@ -864,8 +884,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         result = true
       of wPop: processPop(c, it)
       of wPragma:
-        processPragma(c, n, i)
-        result = true
+        if not sym.isNil and sym.kind == skTemplate:
+          sym.flags.incl sfCustomPragma
+        else:
+          processPragma(c, n, i)
+          result = true
       of wDiscardable:
         noVal(it)
         if sym != nil: incl(sym.flags, sfDiscardable)
@@ -987,7 +1010,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         else: sym.flags.incl sfUsed
       of wLiftLocals: discard
       else: invalidPragma(it)
-    else: invalidPragma(it)
+    else: 
+      n.sons[i] = semCustomPragma(c, it)
+
 
 proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
                       validPragmas: TSpecialWords) =
