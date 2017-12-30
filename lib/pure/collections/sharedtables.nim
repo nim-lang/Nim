@@ -210,7 +210,8 @@ proc deinitSharedTable*[A, B](t: var SharedTable[A, B]) =
   deinitLock t.lock
 
 proc initSharedTable*[A, B](initialSize=64): SharedTable[A, B] {.deprecated.} =
-  # This is not posix compliant, may introduce undefined behavior. Use `init` instead.
+  ## Deprecated. Use `init` instead.
+  ## This is not posix compliant, may introduce undefined behavior.
   assert isPowerOfTwo(initialSize)
   result.counter = 0
   result.dataLen = initialSize
