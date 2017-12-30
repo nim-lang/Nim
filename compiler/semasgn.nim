@@ -261,7 +261,7 @@ proc addParam(procType: PType; param: PSym) =
   rawAddSon(procType, param.typ)
 
 proc liftBody(c: PContext; typ: PType; kind: TTypeAttachedOp;
-              info: TLineInfo): PSym {.discardable.} =
+              info: TLineInfo): PSym =
   var a: TLiftCtx
   a.info = info
   a.c = c

@@ -1425,11 +1425,7 @@ proc semProcBody(c: PContext, n: PNode): PNode =
   openScope(c)
   result = semExpr(c, n)
   if c.p.resultSym != nil and not isEmptyType(result.typ):
-    # transform ``expr`` to ``result = expr``, but not if the expr is already
-    # ``result``:
-    if result.kind == nkSym and result.sym == c.p.resultSym:
-      discard
-    elif result.kind == nkNilLit:
+    if result.kind == nkNilLit:
       # or ImplicitlyDiscardable(result):
       # new semantic: 'result = x' triggers the void context
       result.typ = nil

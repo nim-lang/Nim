@@ -111,6 +111,8 @@ This now needs to be written as:
 - The ``[]`` proc for strings now raises an ``IndexError`` exception when
   the specified slice is out of bounds. See issue
   [#6223](https://github.com/nim-lang/Nim/issues/6223) for more details.
+  You can use ``substr(str, start, finish)`` to get the old behaviour back,
+  see [this commit](https://github.com/nim-lang/nimbot/commit/98cc031a27ea89947daa7f0bb536bcf86462941f) for an example.
 - ``strutils.split`` and ``strutils.rsplit`` with an empty string and a
   separator now returns that empty string.
   See issue [#4377](https://github.com/nim-lang/Nim/issues/4377).
