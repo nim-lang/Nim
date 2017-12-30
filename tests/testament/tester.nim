@@ -290,20 +290,6 @@ proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
   if given.err == reSuccess: inc(r.passed)
   r.addResult(test, target, expectedmsg, givenmsg, given.err)
 
-proc analyzeAndConsolidateOutput(s: string): string =
-  result = ""
-  let rows = s.splitLines
-  for i in 0 ..< rows.len:
-    if (let pos = find(rows[i], "Traceback (most recent call last)"); pos != -1):
-      result = substr(rows[i], pos) & "\n"
-      for i in i+1 ..< rows.len:
-        result.add rows[i] & "\n"
-        if not (rows[i] =~ peg"['(']+ '(' \d+ ')' \s+"):
-          return
-    elif (let pos = find(rows[i], "SIGSEGV: Illegal storage access."); pos != -1):
-      result = substr(rows[i], pos)
-      return
-
 proc testSpec(r: var TResults, test: TTest, target = targetC) =
   let tname = test.name.addFileExt(".nim")
   #echo "TESTING ", tname
@@ -376,8 +362,7 @@ proc testSpec(r: var TResults, test: TTest, target = targetC) =
       if exitCode != expected.exitCode:
         r.addResult(test, target, "exitcode: " & $expected.exitCode,
                           "exitcode: " & $exitCode & "\n\nOutput:\n" &
-                          analyzeAndConsolidateOutput(bufB),
-                          reExitCodesDiffer)
+                          bufB, reExitCodesDiffer)
         continue
 
       if bufB != expectedOut and expected.action != actionRunNoSpec:
