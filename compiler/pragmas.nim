@@ -659,19 +659,29 @@ proc semCustomPragma(c: PContext, n: PNode): PNode =
   assert(n.kind in {nkIdent, nkExprColonExpr})
   result = newNodeI(nkCall, n.info)
   if n.kind == nkIdent:
-    result.add n
-  elif n.kind == nkExprColonExpr:
-    result.sons = n.sons
+    result.add n 
+  elif n.kind == nkExprColonExpr and n[1].kind == nkBracket:
+    # pragma: [arg1, arg2] -> pragma(arg1, arg2)
+    result.add n[0]
+    result.sons &= n[1].sons
+  else:
+    result.sons = n.sons # pragma: arg -> pragma(arg)
 
-  result = c.semOverloadedCall(c, result, n, {skTemplate}, {})
+  result = c.semOverloadedCall(c, result, result, {skTemplate}, {})
   if sfCustomPragma notin result[0].sym.flags:
     invalidPragma(n)
 
   if n.kind == nkIdent:
     result = result[0]
-  elif n.kind == nkExprColonExpr:
+  elif n.kind == nkExprColonExpr and n[1].kind == nkBracket:
+    # pragma(arg1, arg2) -> pragma: [arg1 , arg2]
     result.kind = n.kind
-  
+    n[1].sons = result.sons[1..^1]
+    result.sons.setLen(2)
+    result[1] = n[1]
+  else:
+    result.kind = n.kind # pragma(arg) -> pragma: arg
+
 proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
                   validPragmas: TSpecialWords): bool =
   var it = n.sons[i]
