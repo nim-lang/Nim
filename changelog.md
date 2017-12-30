@@ -187,3 +187,6 @@ let
   mySeq = @[1, 2, 1, 3, 1, 4]
   myCounter = mySeq.toCountTable()
 ```
+
+- Added support for casting between integers of same bitsize in VM (compile time and nimscript).
+  This allow to among other things to reinterpret signed integers as unsigned.
