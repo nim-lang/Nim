@@ -133,7 +133,7 @@ proc initGC() =
     init(gch.additionalRoots)
     init(gch.greyStack)
     when hasThreadSupport:
-      gch.toDispose = initSharedList[pointer]()
+      init(gch.toDispose)
 
 # Which color to use for new objects is tricky: When we're marking,
 # they have to be *white* so that everything is marked that is only
