@@ -42,9 +42,10 @@ install:
   - cd ..
   - set COMMIT_RANGE="FETCH_HEAD...%APPVEYOR_PULL_REQUEST_HEAD_COMMIT%"
   - echo %COMMIT_RANGE%
+  - echo %APPVEYOR_REPO_COMMIT%
 #  - git diff --name-only %COMMIT_RANGE%
-  - git diff --name-only %APPVEYOR_PULL_REQUEST_HEAD_COMMIT%
-  - git diff --name-only %APPVEYOR_PULL_REQUEST_HEAD_COMMIT% | grep -vE "(\.md$)|(\.txt$)(\.rst)|(^(doc|icons|web|))/"
+  - git diff --name-only %APPVEYOR_REPO_COMMIT%
+  - git diff --name-only %APPVEYOR_REPO_COMMIT% | grep -vE "(\.md$)|(\.txt$)(\.rst)|(^(doc|icons|web|))/"
 
 build_script:
   - bin\nim c koch
