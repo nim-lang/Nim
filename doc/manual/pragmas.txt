@@ -6,7 +6,7 @@ commands without introducing a massive number of new keywords. Pragmas are
 processed on the fly during semantic checking. Pragmas are enclosed in the
 special ``{.`` and ``.}`` curly brackets. Pragmas are also often used as a
 first implementation to play with a language feature before a nicer syntax
-to access the feature becomes available.
+to access the feature becomes available. 
 
 
 deprecated pragma
@@ -1087,3 +1087,56 @@ In the above example, providing the -d flag causes the symbol
 ``FooBar`` to be overwritten at compile time, printing out 42. If the
 ``-d:FooBar=42`` were to be omitted, the default value of 5 would be
 used.
+
+
+User custom pragmas 
+-------------------
+it is possible to define custom typed pragmas. Custom pragmas do not effect 
+code generation, but their presence can be detected by user macros.
+You can treat  hold
+Custom pragma can are defined using ``pragma`` keyword:
+
+.. code-block:: nim
+  type
+    template primary_key {.pragma.}
+    template foreign_key(t: typedesc) {.pragma.}
+    template serialization_key(key: static[string], def) {.pragma.}
+
+Consider the styled Object Relation Mapping (ORM) example:
+
+.. code-block:: nim
+  const tableSpace {.strdefine.}= "dev" # used to switch between dev,test and prod environmnts 
+
+  type UserProfile {.dbTableName: "profiles", dbTableSpace: tableSpace.} = object
+    name {.dbPrimaryKey: "n".}: string
+    user_id {.dbForeignKey: User.}: int
+
+
+    Student = object
+      id {.primary_key.}: int
+      name: string
+      {.foreign_key().}
+      {.ignore.}
+
+
+Common macros and templates get expanded immediately
+They can be useful for 
+Ignore use 
+
+It is possible to define
+Areas where you can find custom pragmas are expected 
+
+Better auto serialization/deserialization control:
+.. code-block:: nim
+  type MyObj = object
+    a {.dontSerialize.}: int
+    b {.defaultDeserialize: 5.}: int
+    c {.serializationKey: "_c".}: string
+
+Adopting type for gui inspector in a game engine:
+.. code-block:: nim
+  type MyComponent = object
+    position {.editable, animatable.}: Vector3
+    alpha {.editRange: [0.0..1.0], animatable.}: float32
+
+
