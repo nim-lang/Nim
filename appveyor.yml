@@ -59,7 +59,7 @@ test_script:
 #  - tests\testament\tester --pedantic all -d:nimCoroutines
 #  - koch csource
 #  - koch zip
-  - ./koch web
+  - koch web
 #  - nim c -r nimsuggest/tester
   - ( ! grep -F '.. code-block' -l -r --include '*.html' --exclude contributing.html --exclude docgen.html --exclude tut2.html )
   - ( ! grep -F '..code-block' -l -r --include '*.html' --exclude contributing.html --exclude docgen.html --exclude tut2.html )
