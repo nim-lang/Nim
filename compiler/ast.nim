@@ -1223,6 +1223,11 @@ proc addSon*(father, son: PNode) =
   if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
 
+proc addSonsOf*(dest, source: PNode) =
+  assert source != nil
+  if isNil(dest.sons) or dest.len == 0: dest.sons = source.sons
+  else: add(dest.sons, source.sons)
+
 var emptyParams = newNode(nkFormalParams)
 emptyParams.addSon(emptyNode)
 
@@ -1522,6 +1527,14 @@ proc copyTree*(src: PNode): PNode =
     newSeq(result.sons, sonsLen(src))
     for i in countup(0, sonsLen(src) - 1):
       result.sons[i] = copyTree(src.sons[i])
+
+proc copySonsOf*(dest, source: PNode, idx = 0..high(int)) = 
+  # copy sons from dest to source, subset of source sons can be copied
+  let len = min(source.len, idx.len)
+  if dest.sons.isNil: newSeq(dest.sons, len)
+  else: dest.sons.setLen(len)
+  for i in 0..<len:
+    dest.sons[i] = source.sons[i + idx.a]
 
 proc hasSonWith*(n: PNode, kind: TNodeKind): bool =
   for i in countup(0, sonsLen(n) - 1):

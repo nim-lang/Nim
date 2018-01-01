@@ -663,9 +663,9 @@ proc semCustomPragma(c: PContext, n: PNode): PNode =
   elif n.kind == nkExprColonExpr and n[1].kind == nkBracket:
     # pragma: [arg1, arg2] -> pragma(arg1, arg2)
     result.add n[0]
-    result.sons &= n[1].sons
+    result.addSonsOf(n[1])
   else:
-    result.sons = n.sons # pragma: arg -> pragma(arg)
+    result.addSonsOf(n) # pragma: arg -> pragma(arg)
 
   result = c.semOverloadedCall(c, result, result, {skTemplate}, {})
   if sfCustomPragma notin result[0].sym.flags:
@@ -676,8 +676,8 @@ proc semCustomPragma(c: PContext, n: PNode): PNode =
   elif n.kind == nkExprColonExpr and n[1].kind == nkBracket:
     # pragma(arg1, arg2) -> pragma: [arg1 , arg2]
     result.kind = n.kind
-    n[1].sons = result.sons[1..^1]
-    result.sons.setLen(2)
+    copySonsOf(n[1], result, 1..result.len-1)
+    result.newSons(2)
     result[1] = n[1]
   else:
     result.kind = n.kind # pragma(arg) -> pragma: arg
