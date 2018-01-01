@@ -46,6 +46,7 @@ install:
   - echo %APPVEYOR_REPO_COMMIT%
 #  - git diff --name-only %COMMIT_RANGE%
   - dir
+  - git diff --name-only
   - git diff --name-only %APPVEYOR_REPO_COMMIT%
   - git diff --name-only %APPVEYOR_REPO_COMMIT% | grep -vE "(\.md$)|(\.txt$)(\.rst)|(^(doc|icons|web|))/"
 
