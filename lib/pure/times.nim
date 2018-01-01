@@ -931,7 +931,10 @@ proc `$`*(time: Time): string {.tags: [], raises: [], benign.} =
 
 {.pop.}
 
-proc parseToken(dt: var DateTime; token, value: string; j: var int) =
+type ParseTokenKind = enum 
+  ptUnknown, ptDate, ptTime, ptTimeZone
+
+proc parseToken(dt: var DateTime; token, value: string; j: var int): ParseTokenKind =
   ## Helper of the parse proc to parse individual tokens.
   var sv: int
   case token
@@ -939,9 +942,11 @@ proc parseToken(dt: var DateTime; token, value: string; j: var int) =
     var pd = parseInt(value[j..j+1], sv)
     dt.monthday = sv
     j += pd
+    result = ptDate
   of "dd":
     dt.monthday = value[j..j+1].parseInt()
     j += 2
+    result = ptDate
   of "ddd":
     case value[j..j+2].toLowerAscii()
     of "sun": dt.weekday = dSun
@@ -955,6 +960,7 @@ proc parseToken(dt: var DateTime; token, value: string; j: var int) =
       raise newException(ValueError,
         "Couldn't parse day of week (ddd), got: " & value[j..j+2])
     j += 3
+    result = ptDate
   of "dddd":
     if value.len >= j+6 and value[j..j+5].cmpIgnoreCase("sunday") == 0:
       dt.weekday = dSun
@@ -980,28 +986,35 @@ proc parseToken(dt: var DateTime; token, value: string; j: var int) =
     else:
       raise newException(ValueError,
         "Couldn't parse day of week (dddd), got: " & value)
+    result = ptDate
   of "h", "H":
     var pd = parseInt(value[j..j+1], sv)
     dt.hour = sv
     j += pd
+    result = ptTime
   of "hh", "HH":
     dt.hour = value[j..j+1].parseInt()
     j += 2
+    result = ptTime
   of "m":
     var pd = parseInt(value[j..j+1], sv)
     dt.minute = sv
     j += pd
+    result = ptTime
   of "mm":
     dt.minute = value[j..j+1].parseInt()
     j += 2
+    result = ptTime
   of "M":
     var pd = parseInt(value[j..j+1], sv)
     dt.month = sv.Month
     j += pd
+    result = ptDate
   of "MM":
     var month = value[j..j+1].parseInt()
     j += 2
     dt.month = month.Month
+    result = ptDate
   of "MMM":
     case value[j..j+2].toLowerAscii():
     of "jan": dt.month =  mJan
@@ -1020,6 +1033,7 @@ proc parseToken(dt: var DateTime; token, value: string; j: var int) =
       raise newException(ValueError,
         "Couldn't parse month (MMM), got: " & value)
     j += 3
+    result = ptDate
   of "MMMM":
     if value.len >= j+7 and value[j..j+6].cmpIgnoreCase("january") == 0:
       dt.month =  mJan
@@ -1060,32 +1074,38 @@ proc parseToken(dt: var DateTime; token, value: string; j: var int) =
     else:
       raise newException(ValueError,
         "Couldn't parse month (MMMM), got: " & value)
+    result = ptDate
   of "s":
     var pd = parseInt(value[j..j+1], sv)
     dt.second = sv
     j += pd
+    result = ptTime
   of "ss":
     dt.second = value[j..j+1].parseInt()
     j += 2
+    result = ptTime
   of "t":
     if value[j] == 'P' and dt.hour > 0 and dt.hour < 12:
       dt.hour += 12
     j += 1
+    result = ptTime
   of "tt":
     if value[j..j+1] == "PM" and dt.hour > 0 and dt.hour < 12:
       dt.hour += 12
     j += 2
+    result = ptTime
   of "yy":
     # Assumes current century
     var year = value[j..j+1].parseInt()
     var thisCen = now().year div 100
     dt.year = thisCen*100 + year
     j += 2
+    result = ptDate
   of "yyyy":
     dt.year = value[j..j+3].parseInt()
     j += 4
+    result = ptDate
   of "z":
-    dt.isDst = false
     if value[j] == '+':
       dt.utcOffset = 0 - parseInt($value[j+1]) * secondsInHour
     elif value[j] == '-':
@@ -1098,8 +1118,8 @@ proc parseToken(dt: var DateTime; token, value: string; j: var int) =
       raise newException(ValueError,
         "Couldn't parse timezone offset (z), got: " & value[j])
     j += 2
+    result = ptTimeZone
   of "zz":
-    dt.isDst = false
     if value[j] == '+':
       dt.utcOffset = 0 - value[j+1..j+2].parseInt() * secondsInHour
     elif value[j] == '-':
@@ -1112,8 +1132,8 @@ proc parseToken(dt: var DateTime; token, value: string; j: var int) =
       raise newException(ValueError,
         "Couldn't parse timezone offset (zz), got: " & value[j])
     j += 3
+    result = ptTimeZone
   of "zzz":
-    dt.isDst = false
     var factor = 0
     if value[j] == '+': factor = -1
     elif value[j] == '-': factor = 1
@@ -1128,6 +1148,7 @@ proc parseToken(dt: var DateTime; token, value: string; j: var int) =
     j += 4
     dt.utcOffset += factor * value[j..j+1].parseInt() * 60
     j += 2
+    result = ptTimeZone
   else:
     # Ignore the token and move forward in the value string by the same length
     j += token.len
@@ -1174,21 +1195,17 @@ proc parse*(value, layout: string, zone: Timezone = local()): DateTime =
   ## inserted without quoting them: ``:`` ``-`` ``(`` ``)`` ``/`` ``[`` ``]``
   ## ``,``. However you don't need to necessarily separate format specifiers, a
   ## unambiguous format string like ``yyyyMMddhhmmss`` is valid too.
-  var i = 0 # pointer for format string
-  var j = 0 # pointer for value string
-  var token = ""
-  # Assumes current day of month, month and year, but time is reset to 00:00:00. Weekday will be reset after parsing.
-  var dt = now()
-  dt.hour = 0
-  dt.minute = 0
-  dt.second = 0
-  dt.isDst = true # using this is flag for checking whether a timezone has \
-      # been read (because DST is always false when a tz is parsed)
+  var 
+    i = 0 # pointer for format string
+    j = 0 # pointer for value string
+    token = ""
+    found_tokens: set[ParseTokenKind]
+
   while true:
     case layout[i]
     of ' ', '-', '/', ':', '\'', '\0', '(', ')', '[', ']', ',':
       if token.len > 0:
-        parseToken(dt, token, value, j)
+        found_tokens.incl parseToken(result, token, value, j)
       # Reset token
       token = ""
       # Break if at end of line
@@ -1210,15 +1227,25 @@ proc parse*(value, layout: string, zone: Timezone = local()): DateTime =
         token.add(layout[i])
         inc(i)
       else:
-        parseToken(dt, token, value, j)
+        found_tokens.incl parseToken(result, token, value, j)
         token = ""
 
-  if dt.isDst:
-    # No timezone parsed - assume timezone is `zone`
-    result = initDateTime(zone.zoneInfoFromTz(dt.toAdjTime), zone)
-  else:
-    # Otherwise convert to `zone`
-    result = dt.toTime.inZone(zone)
+  if ptTime in found_tokens:
+    if ptDate notin found_tokens:
+      # Assumes current day of month, month and year
+      let dtnow = now()
+      result.monthday = dtnow.monthday
+      result.month = dtnow.month
+      result.year = dtnow.year
+      result.weekday = dtnow.weekday
+      result.yearday = dtnow.yearday
+
+    if ptTimeZone notin found_tokens:
+      # No timezone parsed - assume timezone is `zone`
+      result = initDateTime(zone.zoneInfoFromTz(result.toAdjTime), zone)
+    else:
+      # Otherwise convert to `zone`
+      result = result.toTime.inZone(zone)
 
 proc countLeapYears*(yearSpan: int): int =
   ## Returns the number of leap years spanned by a given number of years.
