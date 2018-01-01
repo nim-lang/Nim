@@ -37,6 +37,7 @@ install:
   - IF "%PLATFORM%" == "x64" ( copy %CD%\DIST\sqlite3.dll %CD%\BIN\sqlite3_64.dll ) ELSE ( copy %CD%\DIST\sqlite3.dll %CD%\BIN\sqlite3_32.dll )
   - IF "%PLATFORM%" == "x64" ( copy %CD%\DIST\PCRE\pcre.redist.8.33.0.1\build\native\bin\v100\x64\Release\dynamic\utf8\pcre8.dll %CD%\bin\pcre64.dll ) ELSE ( copy %CD%\DIST\PCRE\pcre.redist.8.33.0.1\build\native\bin\v100\Win32\Release\dynamic\utf8\pcre8.dll %CD%\bin\pcre32.dll )
   - git clone --depth 1 https://github.com/nim-lang/csources
+  - dir
   - cd csources
   - IF "%PLATFORM%" == "x64" ( build64.bat ) else ( build.bat )
   - cd ..
@@ -44,6 +45,7 @@ install:
   - echo %COMMIT_RANGE%
   - echo %APPVEYOR_REPO_COMMIT%
 #  - git diff --name-only %COMMIT_RANGE%
+  - dir
   - git diff --name-only %APPVEYOR_REPO_COMMIT%
   - git diff --name-only %APPVEYOR_REPO_COMMIT% | grep -vE "(\.md$)|(\.txt$)(\.rst)|(^(doc|icons|web|))/"
 
