@@ -42,6 +42,7 @@ install:
   - cd ..
   - set COMMIT_RANGE="FETCH_HEAD...%APPVEYOR_PULL_REQUEST_HEAD_COMMIT%"
   - echo %COMMIT_RANGE%
+  - git diff --name-only %COMMIT_RANGE% | grep -vE '(\.md$)|(\.txt$)(\.rst)|(^(doc|icons|web|))/'
 
 build_script:
   - bin\nim c koch
