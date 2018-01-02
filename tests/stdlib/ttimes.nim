@@ -37,8 +37,8 @@ var t4 = fromUnix(876124714).utc # Mon  6 Oct 08:58:34 BST 1997
 t4.checkFormat("M MM MMM MMMM", "10 10 Oct October")
 
 # Interval tests
-(t4 - initInterval(years = 2)).checkFormat("yyyy", "1995")
-(t4 - initInterval(years = 7, minutes = 34, seconds = 24)).checkFormat("yyyy mm ss", "1990 24 10")
+(t4 - initTimeInterval(years = 2)).checkFormat("yyyy", "1995")
+(t4 - initTimeInterval(years = 7, minutes = 34, seconds = 24)).checkFormat("yyyy mm ss", "1990 24 10")
 
 # checking dayOfWeek matches known days
 doAssert getDayOfWeek(01, mJan, 0000) == dSat
@@ -56,12 +56,12 @@ doAssert toUnix(toTime(t4L)) + t4L.utcOffset == toUnix(toTime(t4))
 
 # adding intervals
 var
-  a1L = toUnix(toTime(t4L + initInterval(hours = 1))) + t4L.utcOffset
+  a1L = toUnix(toTime(t4L + initTimeInterval(hours = 1))) + t4L.utcOffset
   a1G = toUnix(toTime(t4)) + 60 * 60
 doAssert a1L == a1G
 
 # subtracting intervals
-a1L = toUnix(toTime(t4L - initInterval(hours = 1))) + t4L.utcOffset
+a1L = toUnix(toTime(t4L - initTimeInterval(hours = 1))) + t4L.utcOffset
 a1G = toUnix(toTime(t4)) - (60 * 60)
 doAssert a1L == a1G
 
@@ -71,9 +71,9 @@ doAssert now - 1.seconds == now - 3.seconds + 2.seconds
 doAssert now + 65.seconds == now + 1.minutes + 5.seconds
 doAssert now + 60.minutes == now + 1.hours
 doAssert now + 24.hours == now + 1.days
-doAssert now + initInterval(months = 13) == now + initInterval(years = 1) + initInterval(months = 1)
-var ti1 = now + initInterval(years = 1)
-ti1 -= initInterval(years = 1)
+doAssert now + initTimeInterval(months = 13) == now + initTimeInterval(years = 1) + initTimeInterval(months = 1)
+var ti1 = now + initTimeInterval(years = 1)
+ti1 -= initTimeInterval(years = 1)
 doAssert ti1 == now
 ti1 += 1.days
 doAssert ti1 == now + 1.days
@@ -81,7 +81,7 @@ doAssert ti1 == now + 1.days
 # Bug with adding a day to a Time
 let day = 24.hours
 let tomorrow = now + day
-doAssert tomorrow - now == 1.days
+doAssert tomorrow - now == initDuration(days = 1)
 
 # Comparison between Time objects should be detected by compiler
 # as 'noSideEffect'.
@@ -248,19 +248,19 @@ suite "ttimes":
       var local = fromUnix(1469275200).local
       var utc = fromUnix(1469275200).utc
 
-      let claimedOffset = local.utcOffset.seconds
+      let claimedOffset = initDuration(seconds = local.utcOffset)
       local.utcOffset = 0
       check claimedOffset == utc.toTime - local.toTime
 
     test "issue #5704":
       putEnv("TZ", "Asia/Seoul")
       let diff = parse("19700101-000000", "yyyyMMdd-hhmmss").toTime - parse("19000101-000000", "yyyyMMdd-hhmmss").toTime
-      check diff == 2208986872.seconds
+      check diff == initDuration(seconds = 2208986872)
 
     test "issue #6465":
       putEnv("TZ", "Europe/Stockholm")      
       let dt = parse("2017-03-25 12:00", "yyyy-MM-dd hh:mm")
-      check $(dt + initInterval(days = 1)) == "2017-03-26T12:00:00+02:00"
+      check $(dt + initTimeInterval(days = 1)) == "2017-03-26T12:00:00+02:00"
       check $(dt + initDuration(days = 1)) == "2017-03-26T13:00:00+02:00"      
 
     test "datetime before epoch":
@@ -290,14 +290,22 @@ suite "ttimes":
 
   test "subtract months":
     var dt = initDateTime(1, mFeb, 2017, 00, 00, 00, utc())
-    check $(dt - initInterval(months = 1)) == "2017-01-01T00:00:00+00:00"
+    check $(dt - initTimeInterval(months = 1)) == "2017-01-01T00:00:00+00:00"
     dt = initDateTime(15, mMar, 2017, 00, 00, 00, utc())
-    check $(dt - initInterval(months = 1)) == "2017-02-15T00:00:00+00:00"
+    check $(dt - initTimeInterval(months = 1)) == "2017-02-15T00:00:00+00:00"
     dt = initDateTime(31, mMar, 2017, 00, 00, 00, utc())
     # This happens due to monthday overflow. It's consistent with Phobos.
-    check $(dt - initInterval(months = 1)) == "2017-03-03T00:00:00+00:00"
+    check $(dt - initTimeInterval(months = 1)) == "2017-03-03T00:00:00+00:00"
 
   test "duration":
-    check initDuration(hours = 48) + initDuration(days = 5) == initDuration(weeks = 1)
-    let dt = initDateTime(01, mFeb, 2000, 00, 00, 00, 0, utc()) + 1.milliseconds
+    let d = initDuration
+    check d(hours = 48) + d(days = 5) == d(weeks = 1)
+    let dt = initDateTime(01, mFeb, 2000, 00, 00, 00, 0, utc()) + d(milliseconds = 1)
     check dt.nanosecond == convert(Millisecond, Nanosecond, 1)
+    check d(seconds = 1, milliseconds = 500) * 2 == d(seconds = 3)
+    check d(seconds = 3) div 2 == d(seconds = 1, milliseconds = 500)
+    check d(milliseconds = 1001).seconds == 1
+    check d(seconds = 1, milliseconds = 500) - d(milliseconds = 1250) ==
+      d(milliseconds = 250)
+    check d(seconds = 1, milliseconds = 1) < d(seconds = 1, milliseconds = 2)
+    check d(seconds = 1) <= d(seconds = 1)
