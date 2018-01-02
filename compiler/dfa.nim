@@ -337,10 +337,12 @@ proc gen(c: var Con; n: PNode) =
 proc dfa(code: seq[Instr]) =
   var u = newSeq[IntSet](code.len) # usages
   var d = newSeq[IntSet](code.len) # defs
+  var c = newSeq[IntSet](code.len) # consumed
   var backrefs = initTable[int, int]()
   for i in 0..<code.len:
     u[i] = initIntSet()
     d[i] = initIntSet()
+    c[i] = initIntSet()
     case code[i].kind
     of use, useWithinCall: u[i].incl(code[i].sym.id)
     of def: d[i].incl(code[i].sym.id)
@@ -352,17 +354,13 @@ proc dfa(code: seq[Instr]) =
   var maxIters = 50
   var someChange = true
   var takenGotos = initIntSet()
+  var consuming = -1
   while w.len > 0 and maxIters > 0: # and someChange:
     dec maxIters
     var pc = w.pop() # w[^1]
     var prevPc = -1
     # this simulates a single linear control flow execution:
     while pc < code.len:
-      # according to the paper, it is better to shrink the working set here
-      # in this inner loop:
-      #let widx = w.find(pc)
-      #if widx >= 0: w.del(widx)
-
       if prevPc >= 0:
         someChange = false
         # merge step and test for changes (we compute the fixpoints here):
@@ -389,11 +387,13 @@ proc dfa(code: seq[Instr]) =
                 when defined(debugDfa):
                   echo "Excluding ", pc, " prev ", prevPc
           assign d[pc], intersect
+      if consuming >= 0:
+        if not c[pc].containsOrIncl(consuming):
+          someChange = true
+        consuming = -1
 
       # our interpretation ![I!]:
       prevPc = pc
-      when defined(debugDfa):
-        echo "looking at ", pc
       case code[pc].kind
       of goto:
         # we must leave endless loops eventually:
@@ -406,112 +406,31 @@ proc dfa(code: seq[Instr]) =
         #if someChange:
         w.add pc + code[pc].dest
         inc pc
-      of use, useWithinCall, def:
+      of use, useWithinCall:
+        #if not d[prevPc].missingOrExcl():
+        # someChange = true
+        consuming = code[pc].sym.id
+        inc pc
+      of def:
+        if not d[pc].containsOrIncl(code[pc].sym.id):
+          someChange = true
         inc pc
 
   when defined(useDfa) and defined(debugDfa):
     for i in 0..<code.len:
-      echo "PC ", i, ": defs: ", d[i], "; uses ", u[i]
+      echo "PC ", i, ": defs: ", d[i], "; uses ", u[i], "; consumes ", c[i]
 
   # now check the condition we're interested in:
   for i in 0..<code.len:
     case code[i].kind
     of use, useWithinCall:
-      if code[i].sym.id notin d[i]:
-        localError(code[i].n.info, "usage of an uninitialized variable")
+      let s = code[i].sym
+      if s.id notin d[i]:
+        localError(code[i].n.info, "usage of uninitialized variable: " & s.name.s)
+      if s.id in c[i]:
+        localError(code[i].n.info, "usage of an already consumed variable: " & s.name.s)
+
     else: discard
-
-proc dfaUnused(code: seq[Instr]) =
-  # We aggressively push 'undef' values for every 'use v' instruction
-  # until they are eliminated via a 'def v' instructions.
-  # If we manage to push one 'undef' to a 'use' instruction, we produce
-  # an error:
-  var undef = initIntSet()
-  for i in 0..<code.len:
-    if code[i].kind == use: undef.incl(code[i].sym.id)
-
-  var s = newSeq[IntSet](code.len)
-  for i in 0..<code.len:
-    assign(s[i], undef)
-
-
-  # In the original paper, W := {0,...,n} is done. This is wasteful, we
-  # have no intention to analyse a program like
-  #
-  # return 3
-  # echo a + b
-  #
-  # any further than necessary.
-  var w = @[0]
-  while w.len > 0:
-    var pc = w[^1]
-    # this simulates a single linear control flow execution:
-    while true:
-      # according to the paper, it is better to shrink the working set here
-      # in this inner loop:
-      let widx = w.find(pc)
-      if widx >= 0: w.del(widx)
-      # our interpretation ![I!]:
-      var sid = -1
-      case code[pc].kind
-      of goto, fork: discard
-      of use, useWithinCall:
-        let sym = code[pc].sym
-        if s[pc].contains(sym.id):
-          localError(code[pc].n.info, "variable read before initialized: " & sym.name.s)
-      of def:
-        sid = code[pc].sym.id
-
-      var pc2: int
-      if code[pc].kind == goto:
-        pc2 = pc + code[pc].dest
-      else:
-        pc2 = pc + 1
-        if code[pc].kind == fork:
-          let lidx = pc + code[pc].dest
-          if sid >= 0 and s[lidx].missingOrExcl(sid):
-            w.add lidx
-
-      if sid >= 0 and s[pc2].missingOrExcl(sid):
-        pc = pc2
-      else:
-        break
-      if pc >= code.len: break
-
-    when false:
-      case code[pc].kind
-      of use:
-        let s = code[pc].sym
-        if undefB.contains(s.id):
-          localError(code[pc].n.info, "variable read before initialized: " & s.name.s)
-          break
-        inc pc
-      of def:
-        let s = code[pc].sym
-        # exclude 'undef' for s for this path through the graph.
-        if not undefB.missingOrExcl(s.id):
-          inc pc
-        else:
-          break
-        #undefB.excl s.id
-        #inc pc
-        when false:
-          let prev = bindings.getOrDefault(s.id)
-          if prev != value:
-            # well now it has a value and we made progress, so
-            bindings[s.id] = value
-            inc pc
-          else:
-            break
-      of fork:
-        let diff = code[pc].dest
-        # we follow pc + 1 and remember the label for later:
-        w.add pc+diff
-        inc pc
-      of goto:
-        let diff = code[pc].dest
-        pc = pc + diff
-      if pc >= code.len: break
 
 proc dataflowAnalysis*(s: PSym; body: PNode) =
   var c = Con(code: @[], blocks: @[])

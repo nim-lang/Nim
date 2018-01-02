@@ -1642,41 +1642,40 @@ elif not defined(useNimRtl):
 proc fromSeconds*(since1970: float): Time {.tags: [], raises: [], benign, deprecated.} =
   ## Takes a float which contains the number of seconds since the unix epoch and
   ## returns a time object.
-  ## **Warning:** This procedure is deprecated since version 0.18.0.
-  ## Use ``fromUnix`` instead.
+  ## **Deprecated since v0.18.0:** use ``fromUnix`` instead
   let nanos = ((since1970 - since1970.int64.float) * convert(Second, Nanosecond, 1).float).int
   initTime(since1970.int64, nanos)
 
 proc fromSeconds*(since1970: int64): Time {.tags: [], raises: [], benign, deprecated.} =
   ## Takes an int which contains the number of seconds since the unix epoch and
   ## returns a time object.
-  ## **Warning:** This procedure is deprecated since version 0.18.0.
-  ## Use ``fromUnix`` instead.
+  ## **Deprecated since v0.18.0:** use ``fromUnix`` instead
   fromUnix(since1970)
 
 proc toSeconds*(time: Time): float {.tags: [], raises: [], benign, deprecated.} =
   ## Returns the time in seconds since the unix epoch.
-  ## **Warning:** This procedure is deprecated since version 0.18.0.
-  ## Use ``toUnix`` instead.
+  ## **Deprecated since v0.18.0:** use ``fromUnix`` instead
   time.seconds.float + time.nanoseconds / convert(Second, Nanosecond, 1)
 
 proc getLocalTime*(time: Time): DateTime {.tags: [], raises: [], benign, deprecated.} =
   ## Converts the calendar time `time` to broken-time representation,
   ## expressed relative to the user's specified time zone.
-  ## **Warning:** This procedure is deprecated since version 0.18.0.
-  ## Use ``local`` instead.
+  ##
+  ## **Deprecated since v0.18.0:** use ``local`` instead
   time.local
 
 proc getGMTime*(time: Time): DateTime {.tags: [], raises: [], benign, deprecated.} =
   ## Converts the calendar time `time` to broken-down time representation,
-  ## expressed in Coordinated Universal Time (UTC).
-  ## **Warning:** This procedure is deprecated since version 0.18.0.
-  ## Use ``utc`` instead.
+  ## expressed in Coordinated Universal Time (UTC). 
+  ##
+  ## **Deprecated since v0.18.0:** use ``utc`` instead
   time.utc
 
 proc getTimezone*(): int {.tags: [TimeEffect], raises: [], benign, deprecated.} =
   ## Returns the offset of the local (non-DST) timezone in seconds west of UTC.
-  ## **Warning:** This procedure is deprecated since version 0.18.0.
+  ##
+  ## **Deprecated since v0.18.0:** use ``now().utcOffset`` to get the current
+  ## utc offset (including DST).
   when defined(JS):
     return newDate().getTimezoneOffset() * 60
   elif defined(freebsd) or defined(netbsd) or defined(openbsd):

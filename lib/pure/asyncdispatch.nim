@@ -1487,13 +1487,13 @@ proc drain*(timeout = 500) =
   ## if there are no pending operations. In contrast to ``poll`` this
   ## processes as many events as are available.
   if runOnce(timeout):
-    while runOnce(0): discard
+    while hasPendingOperations() and runOnce(0): discard
 
 proc poll*(timeout = 500) =
   ## Waits for completion events and processes them. Raises ``ValueError``
   ## if there are no pending operations. This runs the underlying OS
   ## `epoll`:idx: or `kqueue`:idx: primitive only once.
-  discard runOnce()
+  discard runOnce(timeout)
 
 # Common procedures between current and upcoming asyncdispatch
 include includes.asynccommon

@@ -445,13 +445,14 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
 
   if result != nil and result.kind == skStub: loadStub(result)
 
-proc pickSym*(c: PContext, n: PNode; kind: TSymKind;
+proc pickSym*(c: PContext, n: PNode; kinds: set[TSymKind];
               flags: TSymFlags = {}): PSym =
   var o: TOverloadIter
   var a = initOverloadIter(o, c, n)
   while a != nil:
-    if a.kind == kind and flags <= a.flags:
-      return a
+    if a.kind in kinds and flags <= a.flags:
+      if result == nil: result = a
+      else: return nil # ambiguous
     a = nextOverloadIter(o, c, n)
 
 proc isInfixAs*(n: PNode): bool =
