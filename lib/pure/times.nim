@@ -1245,7 +1245,9 @@ proc parse*(value, layout: string, zone: Timezone = local()): DateTime =
       result = initDateTime(zone.zoneInfoFromTz(result.toAdjTime), zone)
     else:
       # Otherwise convert to `zone`
-      result = result.toTime.inZone(zone)
+      result = result.toTime.inZone(zone)   
+  elif ptDate in found_tokens:
+    result.timezone = zone
 
 proc countLeapYears*(yearSpan: int): int =
   ## Returns the number of leap years spanned by a given number of years.
