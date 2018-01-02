@@ -1092,33 +1092,36 @@ used.
 User custom pragmas 
 -------------------
 it is possible to define custom typed pragmas. Custom pragmas do not effect 
-code generation, but their presence can be detected by user macros.
-You can treat  hold
-Custom pragma can are defined using ``pragma`` keyword:
+code generation directly, but their presence can be detected by macros.
+Custom pragma are defined using ``pragma`` keyword:
 
 .. code-block:: nim
+  template dbTable(name: string, table_space: string = nil) {.pragma.}
+  template dbKey(name: string = nil, primary_key: bool = false) {.pragma.}
+  template dbForeignKey(t: typedesc) {.pragma.}
+  template dbIgnore {.pragma.}
+
+Consider stylized example of possible Object Relation Mapping (ORM) implementation:
+
+.. code-block:: nim
+  const tblspace {.strdefine.} = "dev" # switch for dev, test and prod environments 
+
   type
-    template primary_key {.pragma.}
-    template foreign_key(t: typedesc) {.pragma.}
-    template serialization_key(key: static[string], def) {.pragma.}
+    User {.dbTable: ["users", tblspace].} = object
+      id {.dbKey: [primary_key = true].}: int
+      name {.dbKey: "full_name".}: string
+      is_cached {.dbIgnore.}: bool
+      age: int
 
-Consider the styled Object Relation Mapping (ORM) example:
-
-.. code-block:: nim
-  const tableSpace {.strdefine.}= "dev" # used to switch between dev,test and prod environmnts 
-
-  type UserProfile {.dbTableName: "profiles", dbTableSpace: tableSpace.} = object
-    name {.dbPrimaryKey: "n".}: string
-    user_id {.dbForeignKey: User.}: int
-
-
-    Student = object
-      id {.primary_key.}: int
-      name: string
-      {.foreign_key().}
-      {.ignore.}
+    UserProfile {.dbTable: ["profiles", tblspace].} = object
+      id {.dbKey: [primary_key = true].}: int
+      user_id {.dbForeignKey: User.}: int
+      read_access: bool
+      write_access: bool
+      admin_acess: bool
 
 
+Use 
 Common macros and templates get expanded immediately
 They can be useful for 
 Ignore use 
