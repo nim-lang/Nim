@@ -759,9 +759,9 @@ proc getTime*(): Time {.tags: [TimeEffect], benign.} =
   elif defined(windows):
     var f: FILETIME
     getSystemTimeAsFileTime(f)
-    let nanos = (rdFileTime(f) - epochDiff) * 100
-    let seconds = convert(Nanosecond, Second, nanos)
-    let nanos = nanos mod convert(Second, Nanosecond, 1).int
+    let nanosSinceEpoch = (rdFileTime(f) - epochDiff) * 100
+    let seconds = convert(Nanosecond, Second, nanosSinceEpoch)
+    let nanos = (nanosSinceEpoch mod convert(Second, Nanosecond, 1)).int
     result = initTime(seconds, nanos)
 
 proc now*(): DateTime {.tags: [TimeEffect], benign.} =
