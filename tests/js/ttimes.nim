@@ -17,7 +17,7 @@ block localTime:
 
 let a = fromUnix(1_000_000_000)
 let b = fromUnix(1_500_000_000)
-doAssert b - a == 500_000_000.seconds
+doAssert b - a == initDuration(seconds = 500_000_000)
 
 # Because we can't change the timezone JS uses, we define a simple static timezone for testing.
 
