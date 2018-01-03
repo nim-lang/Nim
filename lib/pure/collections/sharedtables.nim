@@ -105,10 +105,13 @@ template withValue*[A, B](t: var SharedTable[A, B], key: A,
 
 proc hasKey*[A, B](t: var SharedTable[A, B], key: A): bool =
   ## returns true iff `key` is in the table `t`.
-  withLock t:
+  acquire(t.lock)
+  try:
     var hc: Hash
     var index = rawGet(t, key, hc)
     result = index >= 0
+  finally:
+    release(t.lock)
 
 proc contains*[A, B](t: var SharedTable[A, B], key: A): bool =
   ## alias of `hasKey` for use with the `in` operator.
