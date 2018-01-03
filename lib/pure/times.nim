@@ -1605,26 +1605,17 @@ when not defined(JS):
       ##   echo "CPU time [s] ", cpuTime() - t0
       result = toFloat(int(getClock())) / toFloat(clocksPerSec)
 
-# Deprecated procs
-
-proc initInterval*(seconds, minutes, hours, days, months,
-                   years: int = 0): TimeInterval {.deprecated.} =
-  ## **Warning:** This procedure is deprecated since version 0.18.0.
-  ## Use `initTimeInterval` instead.                   
-  initTimeInterval(0, 0, 0, seconds, minutes, hours, days, 0, months, years)
-
 when defined(JS):
-  proc epochTime*(): float {.tags: [TimeEffect], deprecated.} =
+  proc epochTime*(): float {.tags: [TimeEffect].} =
     newDate().getTime() / 1000
 
 elif not defined(useNimRtl):
-  proc epochTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect], deprecated.} =
+  proc epochTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].} =
     ## gets time after the UNIX epoch (1970) in seconds. It is a float
     ## because sub-second resolution is likely to be supported (depending
     ## on the hardware/OS).
-    ## **Warning:** This procedure is deprecated since version 0.18.0.
     ##
-    ## Sub second resolution is now supported in the time types.
+    ## ``getTime`` should generally be prefered over this proc.
     when defined(posix):
       var a: Timeval
       gettimeofday(a)
@@ -1638,6 +1629,14 @@ elif not defined(useNimRtl):
       result = toFloat(int(secs)) + toFloat(int(subsecs)) * 0.0000001
     else:
       {.error: "unknown OS".}
+
+# Deprecated procs
+
+proc initInterval*(seconds, minutes, hours, days, months,
+                   years: int = 0): TimeInterval {.deprecated.} =
+  ## **Warning:** This procedure is deprecated since version 0.18.0.
+  ## Use `initTimeInterval` instead.                   
+  initTimeInterval(0, 0, 0, seconds, minutes, hours, days, 0, months, years)
 
 proc fromSeconds*(since1970: float): Time {.tags: [], raises: [], benign, deprecated.} =
   ## Takes a float which contains the number of seconds since the unix epoch and
