@@ -28,7 +28,8 @@ block: # A bit more advanced case
       a {.serializationKey: "asdf", defaultValue: 5.} : int
       b {.custom_pragma.defaultValue: "hello".} : int
       field: Subfield
-      d {.alternativeKey: ["df", 5].}: float
+      d {.alternativeKey: ("df", 5).}: float
+      e {.alternativeKey: (V = 5).}: seq[bool] 
 
   var s: MySerializable
 

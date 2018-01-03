@@ -660,8 +660,8 @@ proc semCustomPragma(c: PContext, n: PNode): PNode =
   result = newNodeI(nkCall, n.info)
   if n.kind == nkIdent:
     result.add n 
-  elif n.kind == nkExprColonExpr and n[1].kind == nkBracket:
-    # pragma: [arg1, arg2] -> pragma(arg1, arg2)
+  elif n.kind == nkExprColonExpr and n[1].kind == nkPar:
+    # pragma: (arg1, arg2) -> pragma(arg1, arg2)
     result.add n[0]
     result.addSonsOf(n[1])
   else:
@@ -673,8 +673,8 @@ proc semCustomPragma(c: PContext, n: PNode): PNode =
 
   if n.kind == nkIdent:
     result = result[0]
-  elif n.kind == nkExprColonExpr and n[1].kind == nkBracket:
-    # pragma(arg1, arg2) -> pragma: [arg1 , arg2]
+  elif n.kind == nkExprColonExpr and n[1].kind == nkPar:
+    # pragma(arg1, arg2) -> pragma: (arg1 , arg2)
     result.kind = n.kind
     copySonsOf(n[1], result, 1..result.len-1)
     result.newSons(2)
