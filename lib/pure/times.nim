@@ -703,18 +703,17 @@ else:
 
   proc getStructTm(unix: int64): StructTm =
     # XXX: This proc is an incorrect mess. Need to rethink this.
-    when sizeof(CTime) == 4:
-      const lowCTime = low(CTime).CTime
-      const highCTime = high(CTime).CTime
+
+    # This is dumb, but it's nontrivial to find the minimum and maximum legal arguments of `localtime`
+    # (hint: it's not `low(CTime)` and `high(CTime)`), so we just pick some known safe values.
+    when not defined(windows):
+      const lowCTime = low(int32).CTime
+      const highCTime = high(int32).CTime
     else:
-      # Because the `year` field in `StructTm` is an int32,
-      # we can't use `low(CTime)` as that can't be represented
-      # by `StructTm`.
-      const lowCTime = convert(Day, Second,
-        toEpochDay(01, mJan, low(int32))).CTime
-      const highCTime = convert(Day, Second,
-        toEpochDay(31, mDec, high(int32))).CTime
-    
+      # Windows doesn't support negative unix timestamps in `localtime`.
+      const lowCTime = 0.CTime
+      const highCTime = high(int32).CTime
+
     var a =
       if unix < lowCTime.int64:
         lowCTime
