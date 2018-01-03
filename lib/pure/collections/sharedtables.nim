@@ -103,6 +103,17 @@ template withValue*[A, B](t: var SharedTable[A, B], key: A,
   finally:
     release(t.lock)
 
+proc hasKey*[A, B](t: var SharedTable[A, B], key: A): bool =
+  ## returns true iff `key` is in the table `t`.
+  withLock t:
+    var hc: Hash
+    var index = rawGet(t, key, hc)
+    result = index >= 0
+
+proc contains*[A, B](t: var SharedTable[A, B], key: A): bool =
+  ## alias of `hasKey` for use with the `in` operator.
+  return hasKey[A, B](t, key)
+
 proc mget*[A, B](t: var SharedTable[A, B], key: A): var B =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
