@@ -87,6 +87,8 @@ proc osErrorMsg*(errorCode: OSErrorCode): string =
                         nil, errorCode.int32, 0, addr(msgbuf), 0, nil) != 0'i32:
           result = $msgbuf
           if msgbuf != nil: localFree(msgbuf)
+    else:
+      result = "Error code not set\n"
   else:
     if errorCode != OSErrorCode(0'i32):
       result = $c_strerror(errorCode.int32)
