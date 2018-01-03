@@ -230,7 +230,7 @@ proc getDayOfWeek*(epochday: int64): WeekDay {.tags: [], raises: [], benign .} =
     
 proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay {.tags: [], raises: [], benign .} =
   ## Returns the day of the week enum from day, month and year.
-  ## Equivalent with ``initDateTime(day, month, year).weekday``.
+  ## Equivalent to ``initDateTime(day, month, year).weekday``.
   assertValidDate monthday, month, year
   getDayOfWeek(toEpochday(monthday, month, year))
 
