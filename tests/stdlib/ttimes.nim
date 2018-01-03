@@ -311,3 +311,6 @@ suite "ttimes":
       d(milliseconds = 250)
     check d(seconds = 1, milliseconds = 1) < d(seconds = 1, milliseconds = 2)
     check d(seconds = 1) <= d(seconds = 1)
+    check d(seconds = 0) - d(milliseconds = 1500) == d(milliseconds = -1500)
+    check d(milliseconds = -1500) == d(seconds = -1, milliseconds = -500)
+    check d(seconds = -1, milliseconds = 500) == d(milliseconds = -500)
