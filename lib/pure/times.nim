@@ -9,11 +9,10 @@
 
 
 ## This module contains routines and types for dealing with time using a proleptic Gregorian calendar.
-## This module is available for the `JavaScript target
-## <backends.html#the-javascript-target>`_.
+## It's is available for the `JavaScript target <backends.html#the-javascript-target>`_.
 ##
-## The module uses nanosecond time resolution, but the precision of ``getTime()`` on the platform and backend
-## (JS is limited to millisecond precision).
+## The types uses nanosecond time resolution, but the underlying resolution used by ``getTime()``
+## depends on the platform and backend (JS is limited to millisecond precision).
 ##
 ## Examples:
 ##
@@ -204,7 +203,7 @@ proc convert*[T: SomeInteger](unitFrom, unitTo: DurationUnit, quantity: T): T {.
   else:
     ((unitWeights[unitFrom] div unitWeights[unitTo]) * quantity).T
 
-proc initTime*(seconds: int64, nanoseconds: int): Time =
+proc initTime*(seconds: int64, nanoseconds: NanosecondRange): Time =
   result.seconds = seconds
   result.nanoseconds = nanoseconds
 
@@ -213,8 +212,8 @@ proc nanoseconds*(time: Time): NanosecondRange =
   ## of nanoseconds of the second.
   time.nanoseconds
 
-proc initDuration*(weeks, days, hours, minutes, seconds,
-                   milliseconds, microseconds, nanoseconds: int64 = 0): Duration =
+proc initDuration*(nanoseconds, microseconds, milliseconds,
+                   seconds, minutes, hours, days, weeks: int64 = 0): Duration =
   result.seconds = convert(Week, Second, weeks) +
     convert(Day, Second, days) +
     convert(Minute, Second, minutes) +
@@ -252,14 +251,14 @@ const DurationZero* = initDuration() ## Zero value for durations. Useful for com
                                      ## .. code-block:: nim
                                      ## 
                                      ##   doAssert initDuration(seconds = 1) > DurationZero
-                                     ##   doAssert 0.seconds == DurationZero
+                                     ##   doAssert initDuration(seconds = 0) == DurationZero
 
 proc `$`*(dur: Duration): string =
   ## Human friendly string representation of ``dur``.
   runnableExamples:
-    doAssert $(2.seconds) == "2 seconds"
-    doAssert $(1.weeks + 2.days) == "1 week and 2 days"
-    doAssert $(1.hours + 2.minutes + 3.seconds) == "1 hour, 2 minutes, and 3 seconds"
+    doAssert $initDuration(seconds = 2) == "2 seconds"
+    doAssert $initDuration(weeks = 1, days = 2) == "1 week and 2 days"
+    doAssert $initDuration(hours = 1, minutes = 2, seconds = 3) == "1 hour, 2 minutes, and 3 seconds"
 
   var parts = newSeq[string]()
   var remS = dur.seconds
@@ -323,7 +322,7 @@ proc getDaysInYear*(year: int): int =
 
 proc assertValidDate(monthday: MonthdayRange, month: Month, year: int) {.inline.} =
   assert monthday <= getDaysInMonth(month, year),
-    $year & "-" & $ord(month) & "-" & $monthday & " is not a valid date"
+    $year & "-" & intToStr(ord(month), 2) & "-" & $monthday & " is not a valid date"
 
 proc toEpochDay*(monthday: MonthdayRange, month: Month, year: int): int64 =
   ## Get the epoch day from a year/month/day date.
@@ -414,12 +413,23 @@ template eqImpl(a: Duration|Time, b: Duration|Time): bool =
   a.seconds == b.seconds and a.nanoseconds == b.nanoseconds
 
 proc `+`*(a, b: Duration): Duration {.operator.} =
+  ## Add two durations together.
+  runnableExamples:
+    doAssert initDuration(seconds = 1) + initDuration(days = 1) ==
+      initDuration(seconds = 1, days = 1)
   addImpl[Duration](a, b)
 
 proc `-`*(a, b: Duration): Duration {.operator.} =
+  ## Subtract a duration from another.
+  runnableExamples:
+    doAssert initDuration(seconds = 1, days = 1) - initDuration(seconds = 1) ==
+      initDuration(days = 1)
   subImpl[Duration](a, b)
   
 proc `-`*(a: Duration): Duration {.operator.} =
+  ## Reverse a duration.
+  runnableExamples:
+    doAssert -initDuration(seconds = 1) == initDuration(seconds = -1)
   normalize[Duration](-a.seconds, -a.nanoseconds)
   
 proc `<`*(a, b: Duration): bool {.operator.} =
@@ -431,21 +441,25 @@ proc `<=`*(a, b: Duration): bool {.operator.} =
 proc `==`*(a, b: Duration): bool {.operator.} =
   eqImpl(a, b)
 
-proc `*`*(a: SomeInteger, b: Duration): Duration {.operator} =
+proc `*`*(a: int64, b: Duration): Duration {.operator} =
+  ## Increase a duration by some scalar.
+  runnableExamples:
+    doAssert 5 * initDuration(seconds = 1) == initDuration(seconds = 5)
   normalize[Duration](a * b.seconds, a * b.nanoseconds)
 
-proc `*`*(b: Duration, a: SomeInteger): Duration {.operator} =
+proc `*`*(b: Duration, a: int64): Duration {.operator} =
+  ## Increase a duration by some scalar.
+  runnableExamples:
+    doAssert 5 * initDuration(seconds = 1) == initDuration(seconds = 5)
   a * b
 
-proc `div`*(a: Duration, b: SomeInteger): Duration {.operator} =
+proc `div`*(a: Duration, b: int64): Duration {.operator} =
+  ## Integer division for durations.
+  runnableExamples:
+    doAssert initDuration(seconds = 3) div 2 == initDuration(milliseconds = 1500)
+    doAssert initDuration(nanoseconds = 3) div 2 == initDuration(nanoseconds = 1)
   let carryOver = convert(Second, Nanosecond, a.seconds mod b)
   normalize[Duration](a.seconds div b, (a.nanoseconds + carryOver) div b)
-
-proc `+=`*(a: var Time, b: Duration) {.operator.} =
-  a = addImpl[Time](a, b)
-
-proc `-=`*(a: var Time, b: Duration) {.operator.} =
-  a = subImpl[Time](a, b)
 
 proc `-`*(a, b: Time): Duration {.operator, extern: "ntDiffTime".} =
   ## Computes the duration between two points in time.
@@ -453,11 +467,23 @@ proc `-`*(a, b: Time): Duration {.operator, extern: "ntDiffTime".} =
 
 proc `+`*(a: Time, b: Duration): Time {.operator, extern: "ntAddTime".} =
   ## Add a duration of time to a ``Time``.
+  runnableExamples:
+    doAssert (fromUnix(0) + initDuration(seconds = 1)) == fromUnix(1)
   addImpl[Time](a, b)
 
 proc `-`*(a: Time, b: Duration): Time {.operator, extern: "ntSubTime".} =
   ## Subtracts a duration of time from a ``Time``.
+  runnableExamples:
+    doAssert (fromUnix(0) - initDuration(seconds = 1)) == fromUnix(-1)
   subImpl[Time](a, b)
+
+proc `+=`*(a: var Time, b: Duration) {.operator.} =
+  ## Modify ``a`` in place by subtracting ``b``.
+  a = addImpl[Time](a, b)
+
+proc `-=`*(a: var Time, b: Duration) {.operator.} =
+  ## Modify ``a`` in place by adding ``b``.
+  a = subImpl[Time](a, b)
 
 proc `<`*(a, b: Time): bool {.operator, extern: "ntLtTime".} =
   ## Returns true iff ``a < b``, that is iff a happened before b.
@@ -478,9 +504,11 @@ proc low*(typ: typedesc[Time]): Time =
   initTime(low(int64), 0)
 
 proc high*(typ: typedesc[Duration]): Duration =
+  ## Get the longest representable duration.  
   initDuration(seconds = high(int64), nanoseconds = high(NanosecondRange))
 
 proc low*(typ: typedesc[Duration]): Duration =
+  ## Get the longest representable duration of negative direction.
   initDuration(seconds = low(int64))
 
 proc toTime*(dt: DateTime): Time {.tags: [], raises: [], benign.} =
@@ -495,6 +523,10 @@ proc toTime*(dt: DateTime): Time {.tags: [], raises: [], benign.} =
   # so we need to compensate for that here.
   seconds.inc dt.utcOffset
   result = initTime(seconds, dt.nanosecond)
+
+proc `-`*(dt1, dt2: DateTime): Duration =
+  ## Compute the duration between ``dt1`` and ``dt2``.
+  dt1.toTime - dt2.toTime
 
 proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
   let s = zt.adjTime.seconds
@@ -708,18 +740,16 @@ proc utcZoneInfoFromTz(adjTime: Time): ZonedTime =
 
 proc utc*(): TimeZone =
   ## Get the ``Timezone`` implementation for the UTC timezone.
-  ##
-  ## .. code-block:: nim
-  ##  doAssert now().utc.timezone == utc()
-  ##  doAssert utc().name == "Etc/UTC"
+  runnableExamples:
+    doAssert now().utc.timezone == utc()
+    doAssert utc().name == "Etc/UTC"
   Timezone(zoneInfoFromUtc: utcZoneInfoFromUtc, zoneInfoFromTz: utcZoneInfoFromTz, name: "Etc/UTC")
 
 proc local*(): TimeZone =
   ## Get the ``Timezone`` implementation for the local timezone.
-  ##
-  ## .. code-block:: nim
-  ##  doAssert now().timezone == local()
-  ##  doAssert local().name == "LOCAL"
+  runnableExamples:
+   doAssert now().timezone == local()
+   doAssert local().name == "LOCAL"
   Timezone(zoneInfoFromUtc: localZoneInfoFromUtc, zoneInfoFromTz: localZoneInfoFromTz, name: "LOCAL")
 
 proc utc*(dt: DateTime): DateTime =
@@ -739,8 +769,7 @@ proc local*(t: Time): DateTime =
   t.inZone(local())
 
 proc getTime*(): Time {.tags: [TimeEffect], benign.} =
-  ## Gets the current time as a ``Time`` with second resolution. Use epochTime for higher
-  ## resolution.
+  ## Gets the current time as a ``Time`` with nanosecond resolution.
   when defined(JS):
     let millis = newDate().getTime()
     let seconds = convert(Millisecond, Second, millis)
@@ -779,9 +808,9 @@ proc initTimeInterval*(nanoseconds, microseconds, milliseconds,
   ## ``seconds``, ``minutes``, ``hours``, ``days``, ``months``, and ``years``.
   ##
   runnableExamples:
-    let day = initInterval(hours=24)
+    let day = initTimeInterval(hours=24)
     let dt = initDateTime(01, mJan, 2000, 12, 00, 00, utc())
-    doAssert $(dt + day) == "2000-01-02T12-00-00+00:00"
+    doAssert $(dt + day) == "2000-01-02T12:00:00+00:00"
   result.nanoseconds = nanoseconds
   result.microseconds = microseconds
   result.milliseconds = milliseconds
@@ -865,65 +894,64 @@ proc `$`*(m: Month): string =
       "November", "December"]
   return lookup[m]
 
-proc nanoseconds*(nanoseconds: int): TimeInterval {.inline.} =
-  ## TimeInterval of `hnseconds` hectonanoseconds
-  initTimeInterval(nanoseconds = nanoseconds)
+proc nanoseconds*(nanos: int): TimeInterval {.inline.} =
+  ## TimeInterval of ``nanos`` nanoseconds.
+  initTimeInterval(nanoseconds = nanos)
 
 proc microseconds*(micros: int): TimeInterval {.inline.} =
-  ## TimeInterval of `micros` microseconds
+  ## TimeInterval of ``micros`` microseconds.
   initTimeInterval(microseconds = micros)
 
 proc milliseconds*(ms: int): TimeInterval {.inline.} =
-  ## TimeInterval of `ms` milliseconds
+  ## TimeInterval of ``ms`` milliseconds.
   initTimeInterval(milliseconds = ms)
 
 proc seconds*(s: int): TimeInterval {.inline.} =
-  ## TimeInterval of `s` seconds
+  ## TimeInterval of ``s`` seconds.
   ##
   ## ``echo getTime() + 5.second``
   initTimeInterval(seconds = s)
 
 proc minutes*(m: int): TimeInterval {.inline.} =
-  ## TimeInterval of `m` minutes
+  ## TimeInterval of ``m`` minutes.
   ##
   ## ``echo getTime() + 5.minutes``
   initTimeInterval(minutes = m)
 
 proc hours*(h: int): TimeInterval {.inline.} =
-  ## TimeInterval of `h` hours
+  ## TimeInterval of ``h`` hours.
   ##
   ## ``echo getTime() + 2.hours``
   initTimeInterval(hours = h)
 
 proc days*(d: int): TimeInterval {.inline.} =
-  ## TimeInterval of `d` days
+  ## TimeInterval of ``d`` days.
   ##
   ## ``echo getTime() + 2.days``
   initTimeInterval(days = d)
 
 proc weeks*(w: int): TimeInterval {.inline.} =
-  ## TimeInterval of `w` wekks
+  ## TimeInterval of ``w`` weeks.
   ##
   ## ``echo getTime() + 2.weeks``
   initTimeInterval(weeks = w)
 
 proc months*(m: int): TimeInterval {.inline.} =
-  ## TimeInterval of `m` months
+  ## TimeInterval of ``m`` months.
   ##
   ## ``echo getTime() + 2.months``
   initTimeInterval(months = m)
 
 proc years*(y: int): TimeInterval {.inline.} =
-  ## TimeInterval of `y` years
+  ## TimeInterval of ``y`` years.
   ##
   ## ``echo getTime() + 2.years``
   initTimeInterval(years = y)
 
 proc evaluateInterval(dt: DateTime, interval: TimeInterval): tuple[adjDur, absDur: Duration] =
-  ## Evaluates how many hnseconds the interval is worth
+  ## Evaluates how many nanoseconds the interval is worth
   ## in the context of ``dt``.
-  ## The result in split into an adjusted diff and an absolute diff,
-  ## both in hectonanosecond resolution.
+  ## The result in split into an adjusted diff and an absolute diff.
   var months = interval.years * 12 + interval.months
   var curYear = dt.year
   var curMonth = dt.month
@@ -948,9 +976,16 @@ proc evaluateInterval(dt: DateTime, interval: TimeInterval): tuple[adjDur, absDu
       else:
         curMonth.inc()
 
-  result.adjDur = result.adjDur + initDuration(days = interval.days)
-  result.absDur = initDuration(seconds = interval.seconds,
-    minutes = interval.minutes, hours = interval.hours)
+  result.adjDur = result.adjDur + initDuration(
+    days = interval.days,
+    weeks = interval.weeks)
+  result.absDur = initDuration(
+    nanoseconds = interval.nanoseconds,
+    microseconds = interval.microseconds,
+    milliseconds = interval.milliseconds,
+    seconds = interval.seconds,
+    minutes = interval.minutes,
+    hours = interval.hours)
 
 proc `+`*(dt: DateTime, interval: TimeInterval): DateTime =
   ## Adds ``interval`` to ``dt``. Components from ``interval`` are added
@@ -964,9 +999,9 @@ proc `+`*(dt: DateTime, interval: TimeInterval): DateTime =
   ##
   runnableExamples:
     let dt = initDateTime(30, mMar, 2017, 00, 00, 00, utc())
-    doAssert $(dt + initInterval(months = 1)) == "2017-04-30T00:00:00+00:00"
+    doAssert $(dt + 1.months) == "2017-04-30T00:00:00+00:00"
     # This is correct and happens due to monthday overflow.
-    doAssert $(dt - initInterval(months = 1)) == "2017-03-02T00:00:00+00:00"
+    doAssert $(dt - 1.months) == "2017-03-02T00:00:00+00:00"
   let (adjDur, absDur) = evaluateInterval(dt, interval)
 
   if adjDur != DurationZero:
@@ -1553,7 +1588,6 @@ proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
                    nanosecond: NanosecondRange, zone: Timezone = local()): DateTime =
   ## Create a new ``DateTime`` in the specified timezone.
   assertValidDate monthday, month, year
-  doAssert monthday <= getDaysInMonth(month, year), "Invalid date: " & $month & " " & $monthday & ", " & $year
   let dt = DateTime(
     monthday:  monthday,
     year:  year,
@@ -1568,6 +1602,7 @@ proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
 proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
                    hour: HourRange, minute: MinuteRange, second: SecondRange,
                    zone: Timezone = local()): DateTime =
+  ## Create a new ``DateTime`` in the specified timezone.  
   initDateTime(monthday, month, year, hour, minute, second, 0, zone)
 
 when not defined(JS):
@@ -1641,6 +1676,7 @@ proc initInterval*(seconds, minutes, hours, days, months,
 proc fromSeconds*(since1970: float): Time {.tags: [], raises: [], benign, deprecated.} =
   ## Takes a float which contains the number of seconds since the unix epoch and
   ## returns a time object.
+  ##
   ## **Deprecated since v0.18.0:** use ``fromUnix`` instead
   let nanos = ((since1970 - since1970.int64.float) * convert(Second, Nanosecond, 1).float).int
   initTime(since1970.int64, nanos)
@@ -1648,11 +1684,13 @@ proc fromSeconds*(since1970: float): Time {.tags: [], raises: [], benign, deprec
 proc fromSeconds*(since1970: int64): Time {.tags: [], raises: [], benign, deprecated.} =
   ## Takes an int which contains the number of seconds since the unix epoch and
   ## returns a time object.
+  ##
   ## **Deprecated since v0.18.0:** use ``fromUnix`` instead
   fromUnix(since1970)
 
 proc toSeconds*(time: Time): float {.tags: [], raises: [], benign, deprecated.} =
   ## Returns the time in seconds since the unix epoch.
+  ##
   ## **Deprecated since v0.18.0:** use ``fromUnix`` instead
   time.seconds.float + time.nanoseconds / convert(Second, Nanosecond, 1)
 

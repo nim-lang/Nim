@@ -66,16 +66,18 @@ a1G = toUnix(toTime(t4)) - (60 * 60)
 doAssert a1L == a1G
 
 # add/subtract TimeIntervals and Time/TimeInfo
-let now = getTime()
+let now = getTime().utc
+doAssert now + convert(Second, Nanosecond, 1).nanoseconds == now + 1.seconds
+doAssert now + 1.weeks == now + 7.days
 doAssert now - 1.seconds == now - 3.seconds + 2.seconds
 doAssert now + 65.seconds == now + 1.minutes + 5.seconds
 doAssert now + 60.minutes == now + 1.hours
 doAssert now + 24.hours == now + 1.days
-doAssert now + initTimeInterval(months = 13) == now + initTimeInterval(years = 1) + initTimeInterval(months = 1)
-var ti1 = now + initTimeInterval(years = 1)
-ti1 -= initTimeInterval(years = 1)
+doAssert now + 13.months == now + 1.years + 1.months
+var ti1 = now + 1.years
+ti1 = ti1 - 1.years
 doAssert ti1 == now
-ti1 += 1.days
+ti1 = ti1 + 1.days
 doAssert ti1 == now + 1.days
 
 # Bug with adding a day to a Time
