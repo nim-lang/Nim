@@ -18,14 +18,34 @@
 
 import macros
 from strutils import toLowerAscii
-import tables
 import colors
+
+const
+  hasThreadSupport = compileOption("threads")
+
+when hasThreadSupport:
+  import sharedtables
+
+  var
+    colorsFGCache: SharedTable[Color, string]
+    colorsBGCache: SharedTable[Color, string]
+  when not defined(windows):
+    var
+      styleCache: SharedTable[int, string]
+
+else:
+  import tables
+
+  var
+    colorsFGCache: Table[Color, string]
+    colorsBGCache: Table[Color, string]
+  when not defined(windows):
+    var
+      styleCache: Table[int, string]
 
 var
   trueColorIsSupported {.threadvar.}: bool
   fgSetColor {.threadvar.}: bool
-  colorsFGCache {.threadvar.}: TableRef[Color, string]
-  colorsBGCache {.threadvar.}: TableRef[Color, string]
 
 when defined(windows):
   import winlean, os
@@ -481,11 +501,19 @@ when not defined(windows):
   var
     gFG {.threadvar.}: int
     gBG {.threadvar.}: int
-    styleCache {.threadvar.}: TableRef[int, string]
 
   proc getStyleFromCache(style: int): string =
-    if styleCache.hasKey(style):
-      result = styleCache[style]
+    when hasThreadSupport:
+      var
+        s: string
+      styleCache.withKey(style) do (k: int, v: var string, pairExists: var bool):
+        if pairExists:
+          s = v
+        else:
+          pairExists = false
+          s = "\e[" & $ord(style) & 'm'
+          v = s
+      result = s
     else:
       result = "\e[" & $ord(style) & 'm'
       styleCache[style] = result
@@ -590,20 +618,48 @@ proc setBackgroundColor*(f: File, bg: BackgroundColor, bright=false) =
     f.write(getStyleFromCache(gBG))
 
 proc getFGColorStrFromCache(color: Color): string =
-  if colorsFGCache.hasKey(color):
-    result = colorsFGCache[color]
+  when hasThreadSupport:
+    var
+      s: string
+
+    colorsFGCache.withKey(color) do (c: Color, v: var string, pairExists: var bool):
+      if pairExists:
+        s = v
+      else:
+        let rgb = extractRGB(color)
+        pairExists = false
+        s = "\x1b[38;2;" & $rgb.r & ";" & $rgb.g & ";" & $rgb.b & 'm'
+        v = s
+    result = s
   else:
-    let rgb = extractRGB(color)
-    result = "\x1b[38;2;" & $rgb.r & ";" & $rgb.g & ";" & $rgb.b & 'm'
-    colorsFGCache[color] = result
+    if colorsFGCache.hasKey(color):
+      result = colorsFGCache[color]
+    else:
+      let rgb = extractRGB(color)
+      result = "\x1b[38;2;" & $rgb.r & ";" & $rgb.g & ";" & $rgb.b & 'm'
+      colorsFGCache[color] = result
 
 proc getBGColorStrFromCache(color: Color): string =
-  if colorsBGCache.hasKey(color):
-    result = colorsBGCache[color]
+  when hasThreadSupport:
+    var
+      s: string
+
+    colorsBGCache.withKey(color) do (c: Color, v: var string, pairExists: var bool):
+      if pairExists:
+        s = v
+      else:
+        let rgb = extractRGB(color)
+        pairExists = false
+        s = "\x1b[48;2;" & $rgb.r & ";" & $rgb.g & ";" & $rgb.b & 'm'
+        v = s
+    result = s
   else:
-    let rgb = extractRGB(color)
-    result = "\x1b[48;2;" & $rgb.r & ";" & $rgb.g & ";" & $rgb.b & 'm'
-    colorsBGCache[color] = result
+    if colorsBGCache.hasKey(color):
+      result = colorsBGCache[color]
+    else:
+      let rgb = extractRGB(color)
+      result = "\x1b[48;2;" & $rgb.r & ";" & $rgb.g & ";" & $rgb.b & 'm'
+      colorsFGCache[color] = result
 
 proc setForegroundColor*(f: File, color: Color) =
   ## Sets the terminal's foreground true color.
@@ -759,12 +815,7 @@ when not defined(testing) and isMainModule:
   stdout.writeLine("ordinary text")
   stdout.resetAttributes()
 
-when not defined(windows):
-  styleCache = newTable[int, string]()
-
 fgSetColor = true
-colorsFGCache = newTable[Color, string]()
-colorsBGCache = newTable[Color, string]()
 
 when defined(windows):
   var mode: DWORD = 0
@@ -776,3 +827,14 @@ else:
     trueColorIsSupported = string(getEnv("COLORTERM")).toLowerAscii() in ["truecolor", "24bit"]
   when not compileOption("taintmode"):
     trueColorIsSupported = getEnv("COLORTERM").toLowerAscii() in ["truecolor", "24bit"]
+
+when hasThreadSupport:
+  colorsFGCache.init
+  colorsBGCache.init
+  when not defined(windows):
+    styleCache.init
+else:
+  colorsFGCache = initTable[Color, string]()
+  colorsBGCache = initTable[Color, string]()
+  when not defined(windows):
+    styleCache = initTable[int, string]()
