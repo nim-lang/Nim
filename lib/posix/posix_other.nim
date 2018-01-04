@@ -34,7 +34,7 @@ type
 {.deprecated: [TSocketHandle: SocketHandle].}
 
 type
-  Time* {.importc: "time_t", header: "<time.h>".} = distinct int
+  Time* {.importc: "time_t", header: "<time.h>".} = distinct clong
 
   Timespec* {.importc: "struct timespec",
                header: "<time.h>", final, pure.} = object ## struct timespec

@@ -213,7 +213,8 @@ block clearCountTableTest:
   assert t.len() == 0
 
 block withKeyTest:
-  var t = initSharedTable[int, int]()
+  var t: SharedTable[int, int]
+  t.init()
   t.withKey(1) do (k: int, v: var int, pairExists: var bool):
     assert(v == 0)
     pairExists = true
