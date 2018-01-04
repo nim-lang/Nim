@@ -400,11 +400,11 @@ typedef struct TStringDesc* string;
 
 // NAN definition copied from math.h included in the Windows SDK version 10.0.14393.0
 #ifndef NAN
-#ifndef _HUGE_ENUF
-#define _HUGE_ENUF  1e+300  // _HUGE_ENUF*_HUGE_ENUF must overflow
-#endif
-#define NAN_INFINITY ((float)(_HUGE_ENUF * _HUGE_ENUF))
-#define NAN ((float)(NAN_INFINITY * 0.0F))
+#  ifndef _HUGE_ENUF
+#    define _HUGE_ENUF  1e+300  // _HUGE_ENUF*_HUGE_ENUF must overflow
+#  endif
+#  define NAN_INFINITY ((float)(_HUGE_ENUF * _HUGE_ENUF))
+#  define NAN ((float)(NAN_INFINITY * 0.0F))
 #endif
 
 #ifndef INF
@@ -482,7 +482,6 @@ static inline void GCGuard (void *ptr) { asm volatile ("" :: "X" (ptr)); }
    On disagreement, your C compiler will say something like:
    "error: 'Nim_and_C_compiler_disagree_on_target_architecture' declared as an array with a negative size" */
 typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8 ? 1 : -1];
-#endif
 
 #ifdef  __cplusplus
 #  define NIM_EXTERNC extern "C"
@@ -509,3 +508,5 @@ extern Libc::Env *genodeEnv;
 /* Compile with -d:checkAbi and a sufficiently C11:ish compiler to enable */
 #define NIM_CHECK_SIZE(typ, sz) \
   _Static_assert(sizeof(typ) == sz, "Nim & C disagree on type size")
+
+#endif /* NIMBASE_H */
