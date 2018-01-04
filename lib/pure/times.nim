@@ -176,7 +176,7 @@ proc assertValidDate(monthday: MonthdayRange, month: Month, year: int) {.inline.
   assert monthday <= getDaysInMonth(month, year),
     $year & "-" & $ord(month) & "-" & $monthday & " is not a valid date"
 
-proc toEpochDay*(monthday: MonthdayRange, month: Month, year: int): int64 =
+proc toEpochDay(monthday: MonthdayRange, month: Month, year: int): int64 =
   ## Get the epoch day from a year/month/day date.
   ## The epoch day is the number of days since 1970/01/01 (it might be negative).
   assertValidDate monthday, month, year
@@ -191,7 +191,7 @@ proc toEpochDay*(monthday: MonthdayRange, month: Month, year: int): int64 =
   let doe = yoe * 365 + yoe div 4 - yoe div 100 + doy
   return era * 146097 + doe - 719468
 
-proc fromEpochDay*(epochday: int64): tuple[monthday: MonthdayRange, month: Month, year: int] =
+proc fromEpochDay(epochday: int64): tuple[monthday: MonthdayRange, month: Month, year: int] =
   ## Get the year/month/day date from a epoch day.
   ## The epoch day is the number of days since 1970/01/01 (it might be negative).
   # Based on http://howardhinnant.github.io/date_algorithms.html
@@ -1352,29 +1352,42 @@ else:
 proc fromSeconds*(since1970: float): Time {.tags: [], raises: [], benign, deprecated.} =
   ## Takes a float which contains the number of seconds since the unix epoch and
   ## returns a time object.
+  ##
+  ## **Deprecated since v0.18.0:** use ``fromUnix`` instead
   Time(since1970)
 
 proc fromSeconds*(since1970: int64): Time {.tags: [], raises: [], benign, deprecated.} =
   ## Takes an int which contains the number of seconds since the unix epoch and
   ## returns a time object.
+  ##
+  ## **Deprecated since v0.18.0:** use ``fromUnix`` instead
   Time(since1970)
 
 proc toSeconds*(time: Time): float {.tags: [], raises: [], benign, deprecated.} =
   ## Returns the time in seconds since the unix epoch.
+  ##
+  ## **Deprecated since v0.18.0:** use ``toUnix`` instead
   float(time)
 
 proc getLocalTime*(time: Time): DateTime {.tags: [], raises: [], benign, deprecated.} =
   ## Converts the calendar time `time` to broken-time representation,
   ## expressed relative to the user's specified time zone.
+  ##
+  ## **Deprecated since v0.18.0:** use ``local`` instead
   time.local
 
 proc getGMTime*(time: Time): DateTime {.tags: [], raises: [], benign, deprecated.} =
   ## Converts the calendar time `time` to broken-down time representation,
-  ## expressed in Coordinated Universal Time (UTC).
+  ## expressed in Coordinated Universal Time (UTC). 
+  ##
+  ## **Deprecated since v0.18.0:** use ``utc`` instead
   time.utc
 
 proc getTimezone*(): int {.tags: [TimeEffect], raises: [], benign, deprecated.} =
   ## Returns the offset of the local (non-DST) timezone in seconds west of UTC.
+  ##
+  ## **Deprecated since v0.18.0:** use ``now().utcOffset`` to get the current
+  ## utc offset (including DST).
   when defined(JS):
     return newDate().getTimezoneOffset() * 60
   elif defined(freebsd) or defined(netbsd) or defined(openbsd):

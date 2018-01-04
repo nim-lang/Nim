@@ -1258,7 +1258,7 @@ proc resetModule*(m: BModule) =
 
   # indicate that this is now cached module
   # the cache will be invalidated by nullifying gModules
-  m.fromCache = true
+  #m.fromCache = true
   m.g = nil
 
   # we keep only the "merge info" information for the module
@@ -1390,7 +1390,7 @@ proc writeModule(m: BModule, pending: bool) =
   # generate code for the init statements of the module:
   let cfile = getCFile(m)
 
-  if not m.fromCache or optForceFullMake in gGlobalOptions:
+  if m.rd == nil or optForceFullMake in gGlobalOptions:
     genInitCode(m)
     finishTypeDescriptions(m)
     if sfMainModule in m.module.flags:
@@ -1465,10 +1465,10 @@ proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
   if g.generatedHeader != nil: finishModule(g.generatedHeader)
   while g.forwardedProcsCounter > 0:
     for m in cgenModules(g):
-      if not m.fromCache:
+      if m.rd == nil:
         finishModule(m)
   for m in cgenModules(g):
-    if m.fromCache:
+    if m.rd != nil:
       m.updateCachedModule
     else:
       m.writeModule(pending=true)

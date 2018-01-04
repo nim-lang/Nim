@@ -233,7 +233,7 @@ proc initGC() =
       init(gch.allocated)
       init(gch.marked)
     when hasThreadSupport:
-      gch.toDispose = initSharedList[pointer]()
+      init(gch.toDispose)
 
 proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: WalkOp) {.benign.} =
   var d = cast[ByteAddress](dest)

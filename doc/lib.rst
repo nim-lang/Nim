@@ -92,6 +92,10 @@ Collections and algorithms
 * `sequtils <sequtils.html>`_
   This module implements operations for the built-in seq type
   which were inspired by functional programming languages.
+* `sharedtables <sharedtables.html>`_
+  Nim shared hash table support. Contains shared tables.
+* `sharedlist <sharedlist.html>`_
+  Nim shared linked list support. Contains shared singly linked list.
 
 
 String handling
