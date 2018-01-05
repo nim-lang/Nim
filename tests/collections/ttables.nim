@@ -235,6 +235,8 @@ block withKeyTest:
     assert(false, "KeyError expected")
   except KeyError:
     discard
+  t[2] = 2
+  assert(t.hasKey(2))
 
 block takeTest:
   var t = initTable[string, int]()
