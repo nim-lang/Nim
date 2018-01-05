@@ -1204,7 +1204,11 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     if handleConstExpr(p, e, d): return
   var tmp: TLoc
   var t = e.typ.skipTypes(abstractInst)
-  getTemp(p, t, tmp)
+  let noTemp = d.k in {locTemp,locLocalVar,locGlobalVar,locParam,locField}
+  if noTemp: # avoid generating temporary if not necessary
+    tmp = d
+  else:
+    getTemp(p, t, tmp)
   let isRef = t.kind == tyRef
   var r = rdLoc(tmp)
   if isRef:
@@ -1235,7 +1239,8 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   if d.k == locNone:
     d = tmp
   else:
-    genAssignment(p, d, tmp, {})
+    if not noTemp:
+      genAssignment(p, d, tmp, {})
 
 proc lhsDoesAlias(a, b: PNode): bool =
   for y in b:
