@@ -302,11 +302,12 @@ proc compileExample(r: var TResults, pattern, options: string, cat: Category) =
     testNoSpec r, makeTest(test, options, cat)
 
 proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
+  var contents: TaintedString
   for test in os.walkFiles(pattern):
     let name = extractFilename(test)
     if name notin disabledFiles:
-      let contents = readFile(test).string
-      if contents.contains("when isMainModule"):
+      readFile(test, result=contents)
+      if contents.string.contains("when isMainModule"):
         testSpec r, makeTest(test, options, cat, actionRunNoSpec)
       else:
         testNoSpec r, makeTest(test, options, cat, actionCompile)

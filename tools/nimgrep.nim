@@ -129,9 +129,11 @@ proc processFile(pattern; filename: string) =
       stdout.flushFile()
       filenameShown = true
 
-  var buffer: string
+  # Reuse the same buffer for all files.
+  # Change to threadvar if this ever becomes multi-threaded.
+  var buffer {.global.}: string
   try:
-    buffer = system.readFile(filename)
+    system.readFile(filename, result=buffer)
   except IOError:
     echo "cannot open file: ", filename
     return

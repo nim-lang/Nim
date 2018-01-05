@@ -3035,12 +3035,14 @@ when not defined(JS): #and not defined(nimscript):
       ## current file position is not at the beginning of the file.
 
     proc readFile*(filename: string): TaintedString {.tags: [ReadIOEffect], benign.}
-      ## Opens a file named `filename` for reading.
+      ## Reads all data from the file named `filename`, handling opening
+      ## and closing the file for you.
       ##
-      ## Then calls `readAll <#readAll>`_ and closes the file afterwards.
       ## Returns the string.  Raises an IO exception in case of an error. If
       ## you need to call this inside a compile time macro you can use
-      ## `staticRead <#staticRead>`_.
+      ## `staticRead <#staticRead>`_. If you will be calling this in a loop,
+      ## prefer using the overload that with an out parameter and reused the
+      ## string buffer.
 
     proc writeFile*(filename, content: string) {.tags: [WriteIOEffect], benign.}
       ## Opens a file named `filename` for writing. Then writes the

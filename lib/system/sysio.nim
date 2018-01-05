@@ -196,10 +196,9 @@ proc write(f: File, c: char) = discard c_putc(cint(c), f)
 proc write(f: File, a: varargs[string, `$`]) =
   for x in items(a): write(f, x)
 
-proc readAllBuffer(file: File): string =
+proc readAllBuffer(file: File, result: var string) =
   # This proc is for File we want to read but don't know how many
   # bytes we need to read before the buffer is empty.
-  result = ""
   var buffer = newString(BufSize)
   while true:
     var bytesRead = readBuffer(file, addr(buffer[0]), BufSize)
@@ -223,10 +222,9 @@ proc endOfFile(f: File): bool =
   return c < 0'i32
   #result = c_feof(f) != 0
 
-proc readAllFile(file: File, len: int): string =
+proc readAllFile(file: File, len: int, result: var string) =
   # We acquire the filesize beforehand and hope it doesn't change.
   # Speeds things up.
-  result = newString(len)
   let bytes = readBuffer(file, addr(result[0]), len)
   if endOfFile(file):
     if bytes < len:
@@ -234,23 +232,32 @@ proc readAllFile(file: File, len: int): string =
   else:
     # We read all the bytes but did not reach the EOF
     # Try to read it as a buffer
-    result.add(readAllBuffer(file))
+    readAllBuffer(file, result)
 
-proc readAllFile(file: File): string =
-  var len = rawFileSize(file)
-  result = readAllFile(file, len)
-
-proc readAll(file: File): TaintedString =
+proc readAll*(file: File, result: var TaintedString) =
+  ## Reads all data from the stream `file` into `result` which may be nil.
+  ##
+  ## Raises an IO exception in case of an error. It is an error if the
+  ## current file position is not at the beginning of the file.
   # Separate handling needed because we need to buffer when we
   # don't know the overall length of the File.
   when declared(stdin):
     let len = if file != stdin: rawFileSize(file) else: -1
   else:
     let len = rawFileSize(file)
-  if len > 0:
-    result = readAllFile(file, len).TaintedString
+
+  let clampedLen = max(len, 0)
+  if result.string.isNil:
+    result = TaintedString(newString(clampedLen))
   else:
-    result = readAllBuffer(file).TaintedString
+    result.string.setLen(clampedLen)
+
+  if len > 0:
+    readAllFile(file, len, result.string)
+  else:
+    readAllBuffer(file, result.string)
+
+proc readAll(file: File): TaintedString = readAll(file, result)
 
 proc writeLn[Ty](f: File, x: varargs[Ty, `$`]) =
   for i in items(x):
@@ -376,15 +383,29 @@ proc getFileSize(f: File): int64 =
   result = getFilePos(f)
   setFilePos(f, oldPos)
 
-proc readFile(filename: string): TaintedString =
+proc readFile*(filename: string, result: var TaintedString) =
+  ## Reads all data from the file named `filename` into `result` (which
+  ## may be nil), handling opening and closing the file for you.
+  ##
+  ## Raises an IO exception in case of an error. This overload is more
+  ## efficient that returning when reading many files in a loop, since
+  ## it is able to reuse the string buffer.
+  ##
+  ## ..code-block::
+  ##   var contents: string
+  ##   for file in listOfFiles:
+  ##     file.readFile(result=contents)
+  ##     use(contents)
   var f: File
   if open(f, filename):
     try:
-      result = readAll(f).TaintedString
+      readAll(f, result)
     finally:
       close(f)
   else:
-    sysFatal(IOError, "cannot open: ", filename)
+    raise newException(IOError, "cannot open: " & filename)
+
+proc readFile(filename: string): TaintedString = readFile(filename, result)
 
 proc writeFile(filename, content: string) =
   var f: File
