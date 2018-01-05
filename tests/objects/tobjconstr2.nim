@@ -1,3 +1,8 @@
+discard """
+  output: '''42
+Foo'''
+"""
+
 type TFoo{.exportc.} = object
  x:int
 
