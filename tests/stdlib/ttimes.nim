@@ -314,3 +314,15 @@ suite "ttimes":
     check d(seconds = 0) - d(milliseconds = 1500) == d(milliseconds = -1500)
     check d(milliseconds = -1500) == d(seconds = -1, milliseconds = -500)
     check d(seconds = -1, milliseconds = 500) == d(milliseconds = -500)
+
+  test "large/small dates":
+    discard initDateTime(1, mJan, -35_000, 12, 00, 00, utc())
+    # with local tz
+    discard initDateTime(1, mJan, -35_000, 12, 00, 00)
+    discard initDateTime(1, mJan,  35_000, 12, 00, 00)
+    # with duration/timeinterval
+    let dt = initDateTime(1, mJan,  35_000, 12, 00, 00, utc()) +
+      initDuration(seconds = 1)
+    check dt.second == 1
+    let dt2 = dt + 35_001.years
+    check $dt2 == "0001-01-01T12:00:01+00:00"

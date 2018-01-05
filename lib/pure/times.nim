@@ -700,46 +700,53 @@ else:
     result.inc tm.hour * secondsInHour
     result.inc tm.minute * 60
     result.inc tm.second
+  
+  when not defined(windows):
+    # Trick to find the real size of time_t
+    proc sizeof(typ: typedesc[posix.Time]): int =
+      {.emit: [result, " = sizeof(time_t);"].}
 
-  proc getStructTm(unix: int64): StructTm =
-    # XXX: This proc is an incorrect mess. Need to rethink this.
+  proc getLocalOffsetAndDst(unix: int64): tuple[offset: int, dst: bool] =
+    var lowCTime, highCTime: int64
 
     # This is dumb, but it's nontrivial to find the minimum and maximum legal arguments of `localtime`
     # (hint: it's not `low(CTime)` and `high(CTime)`), so we just pick some known safe values.
+    # This doesn't really matter unless somebody needs timezone calculations for years
+    # outside of the 30_000 BC to 30_000 AD range, which seems unlikely.
     when not defined(windows):
-      const lowCTime = low(int32).CTime
-      const highCTime = high(int32).CTime
-    else:
-      # Windows doesn't support negative unix timestamps in `localtime`.
-      const lowCTime = 0.CTime
-      const highCTime = high(int32).CTime
-
-    var a =
-      if unix < lowCTime.int64:
-        lowCTime
-      elif unix > highCTime.int64:
-        highCTime
+      if sizeof(posix.Time) == 4:
+        lowCTime = low(int32)
+        highCTime = high(int32)
       else:
-        unix.CTime
-    
-    result = localtime(addr(a))[]
+        lowCTime = -1008875779200'i64 # 30_000 BC
+        highCTime = 884541340800'i64 # 30_000 AD
+    else:
+      # XXX: Windows doesn't support negative unix timestamps in `localtime`.
+      #      Need to use WINAPI to implement `localZoneInfoFromUtc` and `localZoneInfoFromTz`
+      #      specificly for windows to fix this.
+      lowCTime = 0
+      highCTime = 884541340800 # 30_000 AD
+
+    if unix notin lowCTime..highCTime:
+      return (0, false)
+
+    var a = unix.CTime
+    let tm = localtime(addr(a))[]
+    return ((unix - tm.toAdjUnix).int, tm.isdst > 0)
 
   proc localZoneInfoFromUtc(time: Time): ZonedTime =
-    let tm = getStructTm(time.seconds)
-    let adjUnix = tm.toAdjUnix
-    result.adjTime = initTime(adjUnix, time.nanoseconds)
-    result.utcOffset = (time.seconds - adjUnix).int
-    result.isDst = tm.isdst > 0
+    let (offset, dst) = getLocalOffsetAndDst(time.seconds)
+    result.adjTime = time - initDuration(seconds = offset)
+    result.utcOffset = offset
+    result.isDst = dst
 
   proc localZoneInfoFromTz(adjTime: Time): ZonedTime  =
     var adjUnix = adjTime.seconds
     let past = adjUnix - secondsInDay
-    var tm = getStructTm(past)
-    let pastOffset = past - tm.toAdjUnix
+    let (pastOffset, _) = getLocalOffsetAndDst(past)
 
     let future = adjUnix + secondsInDay
-    tm = getStructTm(future)
-    let futureOffset = future - tm.toAdjUnix
+    let (futureOffset, _) = getLocalOffsetAndDst(future)
 
     var utcOffset: int
     if pastOffset == futureOffset:
@@ -749,16 +756,15 @@ else:
         adjUnix -= secondsInHour
 
       adjUnix += pastOffset
-      utcOffset = (adjUnix - getStructTm(adjUnix).toAdjUnix).int
+      utcOffset = getLocalOffsetAndDst(adjUnix).offset
 
     # This extra roundtrip is needed to normalize any impossible datetimes
     # as a result of offset changes (normally due to dst)
-    let utcTime = adjTime.seconds + utcOffset
-    tm = getStructTm(utcTime)
-    let finalUnix = tm.toAdjUnix
-    result.adjTime = initTime(finalUnix, adjTime.nanoseconds)
-    result.utcOffset = (utcTime - finalUnix).int
-    result.isDst = tm.isdst > 0
+    let utcUnix = adjTime.seconds + utcOffset
+    let (finalOffset, dst) = getLocalOffsetAndDst(utcUnix)
+    result.adjTime = initTime(utcUnix - finalOffset, adjTime.nanoseconds)
+    result.utcOffset = finalOffset
+    result.isDst = dst
 
 proc utcZoneInfoFromUtc(time: Time): ZonedTime =
   result.adjTime = time
