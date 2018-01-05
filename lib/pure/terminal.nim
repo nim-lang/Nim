@@ -634,7 +634,10 @@ proc getch*(): char =
       doAssert(readConsoleInput(fd, addr(keyEvent), 1, addr(numRead)) != 0)
       if numRead == 0 or keyEvent.eventType != 1 or keyEvent.bKeyDown == 0:
         continue
-      return char(keyEvent.uChar)
+      if keyEvent.uChar == 0:
+        return char(keyEvent.wVirtualKeyCode)
+      else:
+        return char(keyEvent.uChar)
   else:
     let fd = getFileHandle(stdin)
     var oldMode: Termios
