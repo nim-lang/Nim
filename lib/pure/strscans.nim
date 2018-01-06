@@ -31,10 +31,10 @@ As can be seen from the examples, strings are matched verbatim except for
 substrings starting with ``$``. These constructions are available:
 
 =================   ========================================================
-``$b``              Matches an decimal integer. This uses ``parseutils.parseBin``.
+``$b``              Matches a binary integer. This uses ``parseutils.parseBin``.
 ``$o``              Matches an octal integer. This uses ``parseutils.parseOct``.
-``$i``              Matches an decimal integer. This uses ``parseutils.parseInt``.
-``$h``              Matches an hex integer. This uses ``parseutils.parseHex``.
+``$i``              Matches a decimal integer. This uses ``parseutils.parseInt``.
+``$h``              Matches a hex integer. This uses ``parseutils.parseHex``.
 ``$f``              Matches a floating pointer number. Uses ``parseFloat``.
 ``$w``              Matches an ASCII identifier: ``[A-Z-a-z_][A-Za-z_0-9]*``.
 ``$s``              Skips optional whitespace.
