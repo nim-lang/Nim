@@ -269,7 +269,7 @@ type
                       # language; for interfacing with Objective C
     sfDiscardable,    # returned value may be discarded implicitly
     sfOverriden,      # proc is overriden
-    sfGenSym         # symbol is 'gensym'ed; do not add to symbol table,
+    sfGenSym          # symbol is 'gensym'ed; do not add to symbol table,
 
   TSymFlags* = set[TSymFlag]
 
@@ -1527,14 +1527,6 @@ proc copyTree*(src: PNode): PNode =
     newSeq(result.sons, sonsLen(src))
     for i in countup(0, sonsLen(src) - 1):
       result.sons[i] = copyTree(src.sons[i])
-
-proc copySonsOf*(dest, source: PNode, idx = 0..high(int)) = 
-  # copy sons from dest to source, subset of source sons can be copied
-  let len = min(source.len, idx.len)
-  if dest.sons.isNil: newSeq(dest.sons, len)
-  else: dest.sons.setLen(len)
-  for i in 0..<len:
-    dest.sons[i] = source.sons[i + idx.a]
 
 proc hasSonWith*(n: PNode, kind: TNodeKind): bool =
   for i in countup(0, sonsLen(n) - 1):
