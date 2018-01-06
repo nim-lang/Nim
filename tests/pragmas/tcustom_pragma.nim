@@ -25,11 +25,11 @@ block: # A bit more advanced case
       c {.serializationKey: "cc".}: float
 
     MySerializable = object
-      a {.serializationKey: "asdf", defaultValue: 5.} : int
-      b {.custom_pragma.defaultValue: "hello".} : int
+      a {.serializationKey "asdf", defaultValue: 5.} : int
+      b {.custom_pragma.defaultValue"hello".} : int
       field: Subfield
-      d {.alternativeKey: ("df", 5).}: float
-      e {.alternativeKey: (V = 5).}: seq[bool] 
+      d {.alternativeKey("df", 5).}: float
+      e {.alternativeKey(V = 5).}: seq[bool] 
 
   var s: MySerializable
 

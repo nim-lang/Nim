@@ -6,7 +6,7 @@ commands without introducing a massive number of new keywords. Pragmas are
 processed on the fly during semantic checking. Pragmas are enclosed in the
 special ``{.`` and ``.}`` curly brackets. Pragmas are also often used as a
 first implementation to play with a language feature before a nicer syntax
-to access the feature becomes available. 
+to access the feature becomes available.
 
 
 deprecated pragma
@@ -1106,14 +1106,14 @@ Consider stylized example of possible Object Relation Mapping (ORM) implementati
   const tblspace {.strdefine.} = "dev" # switch for dev, test and prod environments 
 
   type
-    User {.dbTable: ("users", tblspace).} = object
-      id {.dbKey: (primary_key = true).}: int
-      name {.dbKey: "full_name".}: string
+    User {.dbTable("users", tblspace).} = object
+      id {.dbKey(primary_key = true).}: int
+      name {.dbKey"full_name".}: string
       is_cached {.dbIgnore.}: bool
       age: int
 
-    UserProfile {.dbTable: ("profiles", tblspace).} = object
-      id {.dbKey: (primary_key = true).}: int
+    UserProfile {.dbTable("profiles", tblspace).} = object
+      id {.dbKey(primary_key = true).}: int
       user_id {.dbForeignKey: User.}: int
       read_access: bool
       write_access: bool
@@ -1121,8 +1121,8 @@ Consider stylized example of possible Object Relation Mapping (ORM) implementati
 
 In this example custom pragmas are used to describe how Nim objects are 
 mapped to the schema of the relational database. Custom pragmas can have 
-zero, one or more arguments. In order to pass multiple arguments enclose
-them in parentheses `()`. All arguments are typed and follow standard 
+zero or more arguments. In order to pass multiple arguments use one of 
+template call syntaxes. All arguments are typed and follow standard 
 overload resolution rules for templates. Therefore, it is possible to have 
 default values for arguments, pass by name, varargs, etc. 
 

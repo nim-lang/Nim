@@ -653,8 +653,8 @@ proc identOrLiteral(p: var TParser, mode: TPrimaryMode): PNode =
     result = newNodeP(nkNilLit, p)
     getTok(p)
   of tkParLe:
-    # () constructor or call in pragma
-    if mode in {pmTypeDesc, pmTypeDef} or p.inPragma > 0:
+    # () constructor
+    if mode in {pmTypeDesc, pmTypeDef}:
       result = exprColonEqExprList(p, nkPar, tkParRi)
     else:
       result = parsePar(p)
