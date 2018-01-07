@@ -9,9 +9,9 @@
 
 type
   Allocator* {.inheritable.} = ptr object
-    alloc*: proc (size: int; alignment: int): pointer {.nimcall.}
-    dealloc*: proc (p: pointer; size: int) {.nimcall.}
-    realloc*: proc (p: pointer; oldSize, newSize: int): pointer {.nimcall.}
+    alloc*: proc (a: Allocator; size: int; alignment: int): pointer {.nimcall.}
+    dealloc*: proc (a: Allocator; p: pointer; size: int) {.nimcall.}
+    realloc*: proc (a: Allocator; p: pointer; oldSize, newSize: int): pointer {.nimcall.}
 
 var
   currentAllocator {.threadvar.}: Allocator
@@ -24,12 +24,12 @@ proc setCurrentAllocator*(a: Allocator) =
 
 proc alloc*(size: int; alignment = 8): pointer =
   let a = getCurrentAllocator()
-  result = a.alloc(size, alignment)
+  result = a.alloc(a, size, alignment)
 
 proc dealloc*(p: pointer; size: int) =
   let a = getCurrentAllocator()
-  a.dealloc(p, size)
+  a.dealloc(a, p, size)
 
 proc realloc*(p: pointer; oldSize, newSize: int): pointer =
   let a = getCurrentAllocator()
-  result = a.realloc(p, oldSize, newSize)
+  result = a.realloc(a, p, oldSize, newSize)
