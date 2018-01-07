@@ -166,8 +166,27 @@ let c = if str == "Y": true
     echo "invalid bool" 
     quit("this is the end")
 ```
+- Proc [toCountTable](https://nim-lang.org/docs/tables.html#toCountTable,openArray[A]) now produces a `CountTable` with values correspoding to the number of occurrences of the key in the input. It used to produce a table with all values set to `1`.
+
+Counting occurrences in a sequence used to be:
+
+```nim
+let mySeq = @[1, 2, 1, 3, 1, 4]
+var myCounter = initCountTable[int]()
+
+for item in mySeq:
+  myCounter.inc item
+```
+
+Now, you can simply do:
+
+```nim
+let
+  mySeq = @[1, 2, 1, 3, 1, 4]
+  myCounter = mySeq.toCountTable()
+```
 
 - Added support for casting between integers of same bitsize in VM (compile time and nimscript).
   This allow to among other things to reinterpret signed integers as unsigned.
 - Pragmas now support call syntax, for example: ``{.exportc"myname".}`` and ``{.exportc("myname").}``
-- Custom pragmas are now supported using pragma ``pragma``, please language manual for details
+- Custom pragmas are now supported using pragma ``pragma``, please see language manual for details
