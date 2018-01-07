@@ -111,6 +111,8 @@ This now needs to be written as:
 - The ``[]`` proc for strings now raises an ``IndexError`` exception when
   the specified slice is out of bounds. See issue
   [#6223](https://github.com/nim-lang/Nim/issues/6223) for more details.
+  You can use ``substr(str, start, finish)`` to get the old behaviour back,
+  see [this commit](https://github.com/nim-lang/nimbot/commit/98cc031a27ea89947daa7f0bb536bcf86462941f) for an example.
 - ``strutils.split`` and ``strutils.rsplit`` with an empty string and a
   separator now returns that empty string.
   See issue [#4377](https://github.com/nim-lang/Nim/issues/4377).
@@ -146,7 +148,7 @@ This now needs to be written as:
 - Asynchronous programming for the JavaScript backend using the `asyncjs` module.
 - Extra semantic checks for procs with noreturn pragma: return type is not allowed,
   statements after call to noreturn procs are no longer allowed.
-- Noreturn proc calls and raising exceptions branches are now skipped during common type 
+- Noreturn proc calls and raising exceptions branches are now skipped during common type
   deduction in if and case expressions. The following code snippets now compile:
 ```nim
 import strutils
@@ -159,11 +161,11 @@ let b = case str:
   of nil, "": raise newException(ValueError, "Invalid boolean")
   elif str.startsWith("Y"): true
   elif str.startsWith("N"): false
-  else: false 
-let c = if str == "Y": true 
-  elif str == "N": false 
+  else: false
+let c = if str == "Y": true
+  elif str == "N": false
   else:
-    echo "invalid bool" 
+    echo "invalid bool"
     quit("this is the end")
 ```
 - Proc [toCountTable](https://nim-lang.org/docs/tables.html#toCountTable,openArray[A]) now produces a `CountTable` with values correspoding to the number of occurrences of the key in the input. It used to produce a table with all values set to `1`.
@@ -190,3 +192,4 @@ let
   This allow to among other things to reinterpret signed integers as unsigned.
 - Pragmas now support call syntax, for example: ``{.exportc"myname".}`` and ``{.exportc("myname").}``
 - Custom pragmas are now supported using pragma ``pragma``, please see language manual for details
+

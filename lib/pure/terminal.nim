@@ -634,7 +634,10 @@ proc getch*(): char =
       doAssert(readConsoleInput(fd, addr(keyEvent), 1, addr(numRead)) != 0)
       if numRead == 0 or keyEvent.eventType != 1 or keyEvent.bKeyDown == 0:
         continue
-      return char(keyEvent.uChar)
+      if keyEvent.uChar == 0:
+        return char(keyEvent.wVirtualKeyCode)
+      else:
+        return char(keyEvent.uChar)
   else:
     let fd = getFileHandle(stdin)
     var oldMode: Termios
@@ -650,10 +653,10 @@ template setCursorPos*(x, y: int) = setCursorPos(stdout, x, y)
 template setCursorXPos*(x: int)   = setCursorXPos(stdout, x)
 when defined(windows):
   template setCursorYPos(x: int)  = setCursorYPos(stdout, x)
-template cursorUp*(count=1)       = cursorUp(stdout, f)
-template cursorDown*(count=1)     = cursorDown(stdout, f)
-template cursorForward*(count=1)  = cursorForward(stdout, f)
-template cursorBackward*(count=1) = cursorBackward(stdout, f)
+template cursorUp*(count=1)       = cursorUp(stdout, count)
+template cursorDown*(count=1)     = cursorDown(stdout, count)
+template cursorForward*(count=1)  = cursorForward(stdout, count)
+template cursorBackward*(count=1) = cursorBackward(stdout, count)
 template eraseLine*()             = eraseLine(stdout)
 template eraseScreen*()           = eraseScreen(stdout)
 template setStyle*(style: set[Style]) =

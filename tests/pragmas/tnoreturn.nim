@@ -5,6 +5,10 @@ ccodeCheck: "\\i @'__attribute__((noreturn))' .*"
 proc noret1*(i: int) {.noreturn.} = 
   echo i
 
+
+proc noret2*(i: int): void {.noreturn.} = 
+  echo i
+
 var p {.used.}: proc(i: int): int
 doAssert(not compiles(
   p = proc(i: int): int {.noreturn.} = i # noreturn lambda returns int

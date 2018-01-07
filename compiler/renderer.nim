@@ -719,6 +719,7 @@ proc gcase(g: var TSrcGen, n: PNode) =
   var c: TContext
   initContext(c)
   var length = sonsLen(n)
+  if length == 0: return
   var last = if n.sons[length-1].kind == nkElse: -2 else: -1
   if longMode(g, n, 0, last): incl(c.flags, rfLongMode)
   putWithSpace(g, tkCase, "case")

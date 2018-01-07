@@ -296,7 +296,8 @@ proc p(n: PNode; c: var Con): PNode =
     recurse(n, result)
 
 proc injectDestructorCalls*(owner: PSym; n: PNode): PNode =
-  echo "injecting into ", n
+  when defined(nimDebugDestroys):
+    echo "injecting into ", n
   var c: Con
   c.owner = owner
   c.tmp = newSym(skTemp, getIdent":d", owner, n.info)

@@ -39,7 +39,7 @@ proc toRational*[T:SomeInteger](x: T): Rational[T] =
   result.num = x
   result.den = 1
 
-proc toRational*(x: float, n: int = high(int32)): Rational[int] =
+proc toRational*(x: float, n: int = high(int) shr (sizeof(int) div 2 * 8)): Rational[int] =
   ## Calculates the best rational numerator and denominator
   ## that approximates to `x`, where the denominator is
   ## smaller than `n` (default is the largest possible
@@ -323,8 +323,13 @@ when isMainModule:
   assert abs(toFloat(y) - 0.4814814814814815) < 1.0e-7
   assert toInt(z) == 0
 
-  assert toRational(0.98765432) == 2111111029 // 2137499919
-  assert toRational(PI) == 817696623 // 260280919
+  when sizeof(int) == 8:
+    assert toRational(0.98765432) == 2111111029 // 2137499919
+    assert toRational(PI) == 817696623 // 260280919
+  when sizeof(int) == 4:
+    assert toRational(0.98765432) == 80 // 81
+    assert toRational(PI) == 355 // 113
+
   assert toRational(0.1) == 1 // 10
   assert toRational(0.9) == 9 // 10
 

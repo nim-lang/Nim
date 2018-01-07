@@ -192,19 +192,29 @@ proc del*[A, B](t: var SharedTable[A, B], key: A) =
   withLock t:
     delImpl()
 
-proc initSharedTable*[A, B](initialSize=64): SharedTable[A, B] =
+proc init*[A, B](t: var SharedTable[A, B], initialSize=64) =
   ## creates a new hash table that is empty.
   ##
   ## `initialSize` needs to be a power of two. If you need to accept runtime
   ## values for this you could use the ``nextPowerOfTwo`` proc from the
   ## `math <math.html>`_ module or the ``rightSize`` proc from this module.
   assert isPowerOfTwo(initialSize)
-  result.counter = 0
-  result.dataLen = initialSize
-  result.data = cast[KeyValuePairSeq[A, B]](allocShared0(
+  t.counter = 0
+  t.dataLen = initialSize
+  t.data = cast[KeyValuePairSeq[A, B]](allocShared0(
                                       sizeof(KeyValuePair[A, B]) * initialSize))
-  initLock result.lock
+  initLock t.lock
 
 proc deinitSharedTable*[A, B](t: var SharedTable[A, B]) =
   deallocShared(t.data)
   deinitLock t.lock
+
+proc initSharedTable*[A, B](initialSize=64): SharedTable[A, B] {.deprecated.} =
+  ## Deprecated. Use `init` instead.
+  ## This is not posix compliant, may introduce undefined behavior.
+  assert isPowerOfTwo(initialSize)
+  result.counter = 0
+  result.dataLen = initialSize
+  result.data = cast[KeyValuePairSeq[A, B]](allocShared0(
+                                     sizeof(KeyValuePair[A, B]) * initialSize))
+  initLock result.lock

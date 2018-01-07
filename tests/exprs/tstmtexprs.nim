@@ -141,3 +141,13 @@ echo(
      quo do (a: int) -> bool:
         a mod 3 != 0
 )
+
+# bug #6980
+
+proc fooBool: bool {.discardable.} =
+  true
+
+if true:
+  fooBool()
+else:
+  raise newException(ValueError, "argh")

@@ -253,7 +253,7 @@ compiler tcc:
     compilerExe: "tcc",
     cppCompiler: "",
     compileTmpl: "-c $options $include -o $objfile $file",
-    buildGui: "UNAVAILABLE!",
+    buildGui: "-Wl,-subsystem=gui",
     buildDll: " -shared",
     buildLib: "", # XXX: not supported yet
     linkerExe: "tcc",
