@@ -166,5 +166,8 @@ let c = if str == "Y": true
     echo "invalid bool" 
     quit("this is the end")
 ```
+
+- Added support for casting between integers of same bitsize in VM (compile time and nimscript).
+  This allow to among other things to reinterpret signed integers as unsigned.
 - Pragmas now support call syntax, for example: ``{.exportc"myname".}`` and ``{.exportc("myname").}``
 - Custom pragmas are now supported using pragma ``pragma``, please language manual for details
