@@ -96,7 +96,7 @@ proc writeIntSet(a: IntSet, s: var string) =
   s.add('}')
 
 proc genMergeInfo*(m: BModule): Rope =
-  if optSymbolFiles notin gGlobalOptions: return nil
+  if not compilationCachePresent: return nil
   var s = "/*\tNIM_merge_INFO:"
   s.add(tnl)
   s.add("typeCache:{")

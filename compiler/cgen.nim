@@ -1336,7 +1336,6 @@ proc getCFile(m: BModule): string =
 
 proc myOpenCached(graph: ModuleGraph; module: PSym, rd: PRodReader): PPassContext =
   injectG(graph.config)
-  assert optSymbolFiles in gGlobalOptions
   var m = newModule(g, module)
   readMergeInfo(getCFile(m), m)
   result = m
