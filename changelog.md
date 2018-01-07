@@ -166,3 +166,5 @@ let c = if str == "Y": true
     echo "invalid bool" 
     quit("this is the end")
 ```
+- Pragmas now support call syntax, for example: ``{.exportc"myname".}`` and ``{.exportc("myname").}``
+- Custom pragmas are now supported using pragma ``pragma``, please language manual for details
