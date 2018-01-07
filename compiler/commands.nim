@@ -261,7 +261,7 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
   of "assertions", "a": result = contains(gOptions, optAssert)
   of "deadcodeelim": result = contains(gGlobalOptions, optDeadCodeElim)
   of "run", "r": result = contains(gGlobalOptions, optRun)
-  of "symbolfiles": result = contains(gGlobalOptions, optSymbolFiles)
+  of "symbolfiles": result = gSymbolFiles != disabledSf
   of "genscript": result = contains(gGlobalOptions, optGenScript)
   of "threads": result = contains(gGlobalOptions, optThreads)
   of "taintmode": result = contains(gGlobalOptions, optTaintMode)
@@ -598,7 +598,12 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectNoArg(switch, arg, pass, info)
     helpOnError(pass)
   of "symbolfiles":
-    processOnOffSwitchG({optSymbolFiles}, arg, pass, info)
+    case arg.normalize
+    of "on": gSymbolFiles = enabledSf
+    of "off": gSymbolFiles = disabledSf
+    of "writeonly": gSymbolFiles = writeOnlySf
+    of "readonly": gSymbolFiles = readOnlySf
+    else: localError(info, errOnOrOffExpectedButXFound, arg)
   of "skipcfg":
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optSkipConfigFile)
