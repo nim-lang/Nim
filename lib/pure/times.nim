@@ -349,7 +349,7 @@ proc assertValidDate(monthday: MonthdayRange, month: Month, year: int) {.inline.
   assert monthday <= getDaysInMonth(month, year),
     $year & "-" & intToStr(ord(month), 2) & "-" & $monthday & " is not a valid date"
 
-proc toEpochDay*(monthday: MonthdayRange, month: Month, year: int): int64 =
+proc toEpochDay(monthday: MonthdayRange, month: Month, year: int): int64 =
   ## Get the epoch day from a year/month/day date.
   ## The epoch day is the number of days since 1970/01/01 (it might be negative).
   assertValidDate monthday, month, year
@@ -364,7 +364,7 @@ proc toEpochDay*(monthday: MonthdayRange, month: Month, year: int): int64 =
   let doe = yoe * 365 + yoe div 4 - yoe div 100 + doy
   return era * 146097 + doe - 719468
 
-proc fromEpochDay*(epochday: int64): tuple[monthday: MonthdayRange, month: Month, year: int] =
+proc fromEpochDay(epochday: int64): tuple[monthday: MonthdayRange, month: Month, year: int] =
   ## Get the year/month/day date from a epoch day.
   ## The epoch day is the number of days since 1970/01/01 (it might be negative).
   # Based on http://howardhinnant.github.io/date_algorithms.html

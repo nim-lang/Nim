@@ -87,6 +87,23 @@ proc parseOct*(s: string, number: var int, start = 0): int  {.
     inc(i)
   if foundDigit: result = i-start
 
+proc parseBin*(s: string, number: var int, start = 0): int  {.
+  rtl, extern: "npuParseBin", noSideEffect.} =
+  ## parses an binary number and stores its value in ``number``. Returns
+  ## the number of the parsed characters or 0 in case of an error.
+  var i = start
+  var foundDigit = false
+  if s[i] == '0' and (s[i+1] == 'b' or s[i+1] == 'B'): inc(i, 2)
+  while true:
+    case s[i]
+    of '_': discard
+    of '0'..'1':
+      number = number shl 1 or (ord(s[i]) - ord('0'))
+      foundDigit = true
+    else: break
+    inc(i)
+  if foundDigit: result = i-start
+
 proc parseIdent*(s: string, ident: var string, start = 0): int =
   ## parses an identifier and stores it in ``ident``. Returns
   ## the number of the parsed characters or 0 in case of an error.
