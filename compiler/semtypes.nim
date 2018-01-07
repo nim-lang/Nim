@@ -1618,6 +1618,11 @@ proc processMagicType(c: PContext, m: PSym) =
   of mPNimrodNode:
     incl m.typ.flags, tfTriggersCompileTime
   of mException: discard
+  of mBuiltinType:
+    case m.name.s
+    of "lent": setMagicType(m, tyLent, ptrSize)
+    of "sink": setMagicType(m, tySink, 0)
+    else: localError(m.info, errTypeExpected)
   else: localError(m.info, errTypeExpected)
 
 proc semGenericConstraints(c: PContext, x: PType): PType =

@@ -354,7 +354,7 @@ type
     tyInt, tyInt8, tyInt16, tyInt32, tyInt64, # signed integers
     tyFloat, tyFloat32, tyFloat64, tyFloat128,
     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64,
-    tyOptAsRef, tyUnused1, tyUnused2,
+    tyOptAsRef, tySink, tyLent,
     tyVarargs,
     tyUnused,
     tyProxy # used as errornous type (for idetools)
@@ -640,7 +640,7 @@ type
     mNHint, mNWarning, mNError,
     mInstantiationInfo, mGetTypeInfo, mNGenSym,
     mNimvm, mIntDefine, mStrDefine, mRunnableExamples,
-    mException
+    mException, mBultinType
 
 # things that we can evaluate safely at compile time, even if not asked for it:
 const

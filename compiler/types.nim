@@ -988,11 +988,11 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     result = sameTypeOrNilAux(a.sons[0], b.sons[0], c) and
         sameValue(a.n.sons[0], b.n.sons[0]) and
         sameValue(a.n.sons[1], b.n.sons[1])
-  of tyGenericInst, tyAlias, tyInferred:
+  of tyGenericInst, tyAlias, tyInferred, tyLent, tySink:
     cycleCheck()
     result = sameTypeAux(a.lastSon, b.lastSon, c)
   of tyNone: result = false
-  of tyUnused, tyOptAsRef, tyUnused1, tyUnused2: internalError("sameFlags")
+  of tyUnused, tyOptAsRef: internalError("sameFlags")
 
 proc sameBackendType*(x, y: PType): bool =
   var c = initSameTypeClosure()
