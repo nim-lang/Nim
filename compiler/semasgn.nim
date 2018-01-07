@@ -242,9 +242,9 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
      tyTypeDesc, tyGenericInvocation, tyForward:
     internalError(c.info, "assignment requested for type: " & typeToString(t))
   of tyOrdinal, tyRange, tyInferred,
-     tyGenericInst, tyStatic, tyVar, tyAlias:
+     tyGenericInst, tyStatic, tyVar, tyLent, tyAlias, tySink:
     liftBodyAux(c, lastSon(t), body, x, y)
-  of tyUnused, tyOptAsRef, tyUnused1, tyUnused2: internalError("liftBodyAux")
+  of tyUnused, tyOptAsRef: internalError("liftBodyAux")
 
 proc newProcType(info: TLineInfo; owner: PSym): PType =
   result = newType(tyProc, owner)
@@ -306,7 +306,7 @@ proc liftBody(c: PContext; typ: PType; kind: TTypeAttachedOp;
 
 
 proc getAsgnOrLiftBody(c: PContext; typ: PType; info: TLineInfo): PSym =
-  let t = typ.skipTypes({tyGenericInst, tyVar, tyAlias})
+  let t = typ.skipTypes({tyGenericInst, tyVar, tyLent, tyAlias, tySink})
   result = t.assignment
   if result.isNil:
     result = liftBody(c, t, attachedAsgn, info)

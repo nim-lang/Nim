@@ -1288,7 +1288,7 @@ proc whichAsgnOpc(n: PNode): TOpcode =
     opcAsgnStr
   of tyFloat..tyFloat128:
     opcAsgnFloat
-  of tyRef, tyNil, tyVar:
+  of tyRef, tyNil, tyVar, tyLent:
     opcAsgnRef
   else:
     opcAsgnComplex
@@ -1481,7 +1481,7 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
       cannotEval(n)
 
 template needsRegLoad(): untyped =
-  gfAddrOf notin flags and fitsRegister(n.typ.skipTypes({tyVar}))
+  gfAddrOf notin flags and fitsRegister(n.typ.skipTypes({tyVar, tyLent}))
 
 proc genArrAccess2(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
                    flags: TGenFlags) =
@@ -1553,7 +1553,7 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
     result = newNodeIT(nkFloatLit, info, t)
   of tyCString, tyString:
     result = newNodeIT(nkStrLit, info, t)
-  of tyVar, tyPointer, tyPtr, tySequence, tyExpr,
+  of tyVar, tyLent, tyPointer, tyPtr, tySequence, tyExpr,
      tyStmt, tyTypeDesc, tyStatic, tyRef, tyNil:
     result = newNodeIT(nkNilLit, info, t)
   of tyProc:

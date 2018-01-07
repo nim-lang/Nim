@@ -325,8 +325,8 @@ proc lsub(g: TSrcGen; n: PNode): int
 proc litAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
   proc skip(t: PType): PType =
     result = t
-    while result.kind in {tyGenericInst, tyRange, tyVar, tyDistinct,
-                          tyOrdinal, tyAlias}:
+    while result.kind in {tyGenericInst, tyRange, tyVar, tyLent, tyDistinct,
+                          tyOrdinal, tyAlias, tySink}:
       result = lastSon(result)
   if n.typ != nil and n.typ.skip.kind in {tyBool, tyEnum}:
     let enumfields = n.typ.skip.n

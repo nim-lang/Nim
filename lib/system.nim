@@ -249,7 +249,7 @@ type
 when defined(nimHasOpt):
   type opt*{.magic: "Opt".}[T]
 
-when defined(nimHasSink):
+when defined(nimNewRuntime):
   type sink*{.magic: "BuiltinType".}[T]
   type lent*{.magic: "BuiltinType".}[T]
 
