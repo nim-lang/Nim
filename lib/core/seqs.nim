@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import allocators
+import allocators, typetraits
 
 ## Default seq implementation used by Nim's core.
 type
