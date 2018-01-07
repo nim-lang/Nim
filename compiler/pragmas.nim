@@ -530,10 +530,11 @@ proc pragmaLine(c: PContext, n: PNode) =
     n.sons[1] = c.semConstExpr(c, n.sons[1])
     let a = n.sons[1]
     if a.kind == nkPar:
+      # unpack the tuple
       var x = a.sons[0]
       var y = a.sons[1]
-      if x.kind in nkPragmaCallKinds: x = x.sons[1]
-      if y.kind in nkPragmaCallKinds: y = y.sons[1]
+      if x.kind == nkExprColonExpr: x = x.sons[1]
+      if y.kind == nkExprColonExpr: y = y.sons[1]
       if x.kind != nkStrLit:
         localError(n.info, errStringLiteralExpected)
       elif y.kind != nkIntLit:
