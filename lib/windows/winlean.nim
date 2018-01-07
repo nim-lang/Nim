@@ -111,6 +111,7 @@ const
   WAIT_TIMEOUT* = 0x00000102'i32
   WAIT_FAILED* = 0xFFFFFFFF'i32
   INFINITE* = -1'i32
+  STILL_ACTIVE* = 0x00000103'i32
 
   STD_INPUT_HANDLE* = -10'i32
   STD_OUTPUT_HANDLE* = -11'i32
@@ -541,6 +542,7 @@ var
   SO_DONTLINGER* {.importc, header: "winsock2.h".}: cint
   SO_EXCLUSIVEADDRUSE* {.importc, header: "winsock2.h".}: cint # disallow local address reuse
   SO_ERROR* {.importc, header: "winsock2.h".}: cint
+  TCP_NODELAY* {.importc, header: "winsock2.h".}: cint
 
 proc `==`*(x, y: SocketHandle): bool {.borrow.}
 

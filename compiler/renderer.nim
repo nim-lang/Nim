@@ -38,6 +38,7 @@ type
     checkAnon: bool        # we're in a context that can contain sfAnon
     inPragma: int
     when defined(nimpretty):
+      pendingNewlineCount: int
       origContent: string
 
 
@@ -62,9 +63,31 @@ proc renderDefinitionName*(s: PSym, noQuotes = false): string =
   else:
     result = '`' & x & '`'
 
+when not defined(nimpretty):
+  const
+    IndentWidth = 2
+    longIndentWid = IndentWidth * 2
+else:
+  template IndentWidth: untyped = lexer.gIndentationWidth
+  template longIndentWid: untyped = IndentWidth() * 2
+
+  proc minmaxLine(n: PNode): (int, int) =
+    case n.kind
+    of nkTripleStrLit:
+      result = (n.info.line.int, n.info.line.int + countLines(n.strVal))
+    of nkCommentStmt:
+      result = (n.info.line.int, n.info.line.int + countLines(n.comment))
+    else:
+      result = (n.info.line.int, n.info.line.int)
+    for i in 0 ..< safeLen(n):
+      let (currMin, currMax) = minmaxLine(n[i])
+      if currMin < result[0]: result[0] = currMin
+      if currMax > result[1]: result[1] = currMax
+
+  proc lineDiff(a, b: PNode): int =
+    result = minmaxLine(b)[0] - minmaxLine(a)[1]
+
 const
-  IndentWidth = 2
-  longIndentWid = 4
   MaxLineLen = 80
   LineCommentColumn = 30
 
@@ -90,7 +113,11 @@ proc addTok(g: var TSrcGen, kind: TTokType, s: string) =
 
 proc addPendingNL(g: var TSrcGen) =
   if g.pendingNL >= 0:
-    addTok(g, tkSpaces, "\n" & spaces(g.pendingNL))
+    when defined(nimpretty):
+      let newlines = repeat("\n", clamp(g.pendingNewlineCount, 1, 3))
+    else:
+      const newlines = "\n"
+    addTok(g, tkSpaces, newlines & spaces(g.pendingNL))
     g.lineLen = g.pendingNL
     g.pendingNL = - 1
     g.pendingWhitespace = -1
@@ -114,10 +141,16 @@ proc putNL(g: var TSrcGen) =
 
 proc optNL(g: var TSrcGen, indent: int) =
   g.pendingNL = indent
-  g.lineLen = indent          # BUGFIX
+  g.lineLen = indent
+  when defined(nimpretty): g.pendingNewlineCount = 0
 
 proc optNL(g: var TSrcGen) =
   optNL(g, g.indent)
+
+proc optNL(g: var TSrcGen; a, b: PNode) =
+  g.pendingNL = g.indent
+  g.lineLen = g.indent
+  when defined(nimpretty): g.pendingNewlineCount = lineDiff(a, b)
 
 proc indentNL(g: var TSrcGen) =
   inc(g.indent, IndentWidth)
@@ -142,8 +175,17 @@ proc put(g: var TSrcGen, kind: TTokType, s: string) =
 
 proc toNimChar(c: char): string =
   case c
-  of '\0': result = "\\0"
-  of '\x01'..'\x1F', '\x80'..'\xFF': result = "\\x" & strutils.toHex(ord(c), 2)
+  of '\0': result = "\\x00" # not "\\0" to avoid ambiguous cases like "\\012".
+  of '\a': result = "\\a" # \x07
+  of '\b': result = "\\b" # \x08
+  of '\t': result = "\\t" # \x09
+  of '\L': result = "\\L" # \x0A
+  of '\v': result = "\\v" # \x0B
+  of '\f': result = "\\f" # \x0C
+  of '\c': result = "\\c" # \x0D
+  of '\e': result = "\\e" # \x1B
+  of '\x01'..'\x06', '\x0E'..'\x1A', '\x1C'..'\x1F', '\x80'..'\xFF':
+    result = "\\x" & strutils.toHex(ord(c), 2)
   of '\'', '\"', '\\': result = '\\' & c
   else: result = c & ""
 
@@ -306,10 +348,14 @@ proc ulitAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
 
 proc atom(g: TSrcGen; n: PNode): string =
   when defined(nimpretty):
+    let comment = if n.info.commentOffsetA < n.info.commentOffsetB:
+                    " " & substr(g.origContent, n.info.commentOffsetA, n.info.commentOffsetB)
+                  else:
+                    ""
     if n.info.offsetA <= n.info.offsetB:
       # for some constructed tokens this can not be the case and we're better
       # off to not mess with the offset then.
-      return substr(g.origContent, n.info.offsetA, n.info.offsetB)
+      return substr(g.origContent, n.info.offsetA, n.info.offsetB) & comment
   var f: float32
   case n.kind
   of nkEmpty: result = ""
@@ -577,12 +623,16 @@ proc gstmts(g: var TSrcGen, n: PNode, c: TContext, doIndent=true) =
   if n.kind == nkEmpty: return
   if n.kind in {nkStmtList, nkStmtListExpr, nkStmtListType}:
     if doIndent: indentNL(g)
-    for i in countup(0, sonsLen(n) - 1):
-      optNL(g)
-      if n.sons[i].kind in {nkStmtList, nkStmtListExpr, nkStmtListType}:
-        gstmts(g, n.sons[i], c, doIndent=false)
+    let L = n.len
+    for i in 0 .. L-1:
+      if i > 0:
+        optNL(g, n[i-1], n[i])
       else:
-        gsub(g, n.sons[i])
+        optNL(g)
+      if n[i].kind in {nkStmtList, nkStmtListExpr, nkStmtListType}:
+        gstmts(g, n[i], c, doIndent=false)
+      else:
+        gsub(g, n[i])
       gcoms(g)
     if doIndent: dedent(g)
   else:
@@ -669,6 +719,7 @@ proc gcase(g: var TSrcGen, n: PNode) =
   var c: TContext
   initContext(c)
   var length = sonsLen(n)
+  if length == 0: return
   var last = if n.sons[length-1].kind == nkElse: -2 else: -1
   if longMode(g, n, 0, last): incl(c.flags, rfLongMode)
   putWithSpace(g, tkCase, "case")
@@ -785,7 +836,10 @@ proc gident(g: var TSrcGen, n: PNode) =
     t = tkOpr
   put(g, t, s)
   if n.kind == nkSym and (renderIds in g.flags or sfGenSym in n.sym.flags):
-    put(g, tkIntLit, $n.sym.id)
+    when defined(debugMagics):
+      put(g, tkIntLit, $n.sym.id & $n.sym.magic)
+    else:
+      put(g, tkIntLit, $n.sym.id)
 
 proc doParamsAux(g: var TSrcGen, params: PNode) =
   if params.len > 1:
@@ -816,7 +870,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     a: TContext
   if n.comment != nil: pushCom(g, n)
   case n.kind                 # atoms:
-  of nkTripleStrLit: putRawStr(g, tkTripleStrLit, n.strVal)
+  of nkTripleStrLit: put(g, tkTripleStrLit, atom(g, n))
   of nkEmpty: discard
   of nkType: put(g, tkInvalid, atom(g, n))
   of nkSym, nkIdent: gident(g, n)
@@ -1035,7 +1089,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkAccQuoted:
     put(g, tkAccent, "`")
     if n.len > 0: gsub(g, n.sons[0])
-    for i in 1 .. <n.len:
+    for i in 1 ..< n.len:
       put(g, tkSpaces, Space)
       gsub(g, n.sons[i])
     put(g, tkAccent, "`")
@@ -1353,8 +1407,8 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkBracketRi, "]")
   of nkTupleClassTy:
     put(g, tkTuple, "tuple")
-  of nkMetaNode_Obsolete:
-    put(g, tkParLe, "(META|")
+  of nkComesFrom:
+    put(g, tkParLe, "(ComesFrom|")
     gsub(g, n, 0)
     put(g, tkParRi, ")")
   of nkGotoState, nkState:
@@ -1384,7 +1438,7 @@ proc renderTree*(n: PNode, renderFlags: TRenderFlags = {}): string =
 
 proc `$`*(n: PNode): string = n.renderTree
 
-proc renderModule*(n: PNode, filename: string,
+proc renderModule*(n: PNode, infile, outfile: string,
                    renderFlags: TRenderFlags = {}) =
   var
     f: File
@@ -1392,9 +1446,9 @@ proc renderModule*(n: PNode, filename: string,
   initSrcGen(g, renderFlags)
   when defined(nimpretty):
     try:
-      g.origContent = readFile(filename)
+      g.origContent = readFile(infile)
     except IOError:
-      rawMessage(errCannotOpenFile, filename)
+      rawMessage(errCannotOpenFile, infile)
 
   for i in countup(0, sonsLen(n) - 1):
     gsub(g, n.sons[i])
@@ -1406,11 +1460,11 @@ proc renderModule*(n: PNode, filename: string,
   gcoms(g)
   if optStdout in gGlobalOptions:
     write(stdout, g.buf)
-  elif open(f, filename, fmWrite):
+  elif open(f, outfile, fmWrite):
     write(f, g.buf)
     close(f)
   else:
-    rawMessage(errCannotOpenFile, filename)
+    rawMessage(errCannotOpenFile, outfile)
 
 proc initTokRender*(r: var TSrcGen, n: PNode, renderFlags: TRenderFlags = {}) =
   initSrcGen(r, renderFlags)

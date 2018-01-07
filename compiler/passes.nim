@@ -15,9 +15,10 @@ import
   condsyms, idents, renderer, types, extccomp, math, magicsys, nversion,
   nimsets, syntaxes, times, rodread, idgen, modulegraphs, reorder
 
+
 type
   TPassContext* = object of RootObj # the pass's context
-    fromCache*: bool  # true if created by "openCached"
+    rd*: PRodReader  # != nil if created by "openCached"
 
   PPassContext* = ref TPassContext
 
@@ -117,7 +118,7 @@ proc openPassesCached(g: ModuleGraph; a: var TPassContextArray, module: PSym,
     if not isNil(gPasses[i].openCached):
       a[i] = gPasses[i].openCached(g, module, rd)
       if a[i] != nil:
-        a[i].fromCache = true
+        a[i].rd = rd
     else:
       a[i] = nil
 
@@ -211,7 +212,7 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream,
             if n.kind == nkEmpty: break
             sl.add n
           if sfReorder in module.flags:
-            sl = reorder sl
+            sl = reorder(graph, sl, module, cache)
           discard processTopLevelStmt(sl, a)
           break
         elif not processTopLevelStmt(n, a): break

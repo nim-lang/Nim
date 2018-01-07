@@ -257,10 +257,13 @@ proc close*(f: var MemFile) =
   when defined(windows):
     if f.wasOpened:
       error = unmapViewOfFile(f.mem) == 0
-      lastErr = osLastError()
-      error = (closeHandle(f.mapHandle) == 0) or error
-      if f.fHandle != INVALID_HANDLE_VALUE:
-        error = (closeHandle(f.fHandle) == 0) or error
+      if not error:
+        error = closeHandle(f.mapHandle) == 0
+        if not error and f.fHandle != INVALID_HANDLE_VALUE:
+          discard closeHandle(f.fHandle)
+          f.fHandle = INVALID_HANDLE_VALUE
+      if error:
+        lastErr = osLastError()
   else:
     error = munmap(f.mem, f.size) != 0
     lastErr = osLastError()

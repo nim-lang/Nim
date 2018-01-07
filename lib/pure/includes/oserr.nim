@@ -56,9 +56,6 @@ proc raiseOSError*(msg: string = "") {.noinline, rtl, extern: "nos$1",
     raise newException(OSError, msg)
 {.pop.}
 
-when not defined(nimfix):
-  {.deprecated: [osError: raiseOSError].}
-
 proc `==`*(err1, err2: OSErrorCode): bool {.borrow.}
 proc `$`*(err: OSErrorCode): string {.borrow.}
 

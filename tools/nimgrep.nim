@@ -45,6 +45,9 @@ type
   TOptions = set[TOption]
   TConfirmEnum = enum
     ceAbort, ceYes, ceAll, ceNo, ceNone
+  Pattern = Regex | Peg
+
+using pattern: Pattern
 
 var
   filenames: seq[string] = @[]
@@ -118,7 +121,7 @@ proc highlight(s, match, repl: string, t: tuple[first, last: int],
     stdout.write("\n")
     stdout.flushFile()
 
-proc processFile(filename: string) =
+proc processFile(pattern; filename: string) =
   var filenameShown = false
   template beforeHighlight =
     if not filenameShown and optVerbose notin options:
@@ -135,17 +138,7 @@ proc processFile(filename: string) =
   if optVerbose in options:
     stdout.writeLine(filename)
     stdout.flushFile()
-  var pegp: Peg
-  var rep: Regex
   var result: string
-
-  if optRegex in options:
-    if {optIgnoreCase, optIgnoreStyle} * options != {}:
-      rep = re(pattern, {reExtended, reIgnoreCase})
-    else:
-      rep = re(pattern)
-  else:
-    pegp = peg(pattern)
 
   if optReplace in options:
     result = newStringOfCap(buffer.len)
@@ -156,11 +149,7 @@ proc processFile(filename: string) =
   for j in 0..high(matches): matches[j] = ""
   var reallyReplace = true
   while i < buffer.len:
-    var t: tuple[first, last: int]
-    if optRegex notin options:
-      t = findBounds(buffer, pegp, matches, i)
-    else:
-      t = findBounds(buffer, rep, matches, i)
+    let t = findBounds(buffer, pattern, matches, i)
     if t.first < 0: break
     inc(line, countLines(buffer, i, t.first-1))
 
@@ -170,11 +159,7 @@ proc processFile(filename: string) =
     if optReplace notin options:
       highlight(buffer, wholeMatch, "", t, line, showRepl=false)
     else:
-      var r: string
-      if optRegex notin options:
-        r = replace(wholeMatch, pegp, replacement % matches)
-      else:
-        r = replace(wholeMatch, rep, replacement % matches)
+      let r = replace(wholeMatch, pattern, replacement % matches)
       if optConfirm in options:
         highlight(buffer, wholeMatch, r, t, line, showRepl=true)
         case confirm()
@@ -246,17 +231,17 @@ proc styleInsensitive(s: string): string =
         addx()
     else: addx()
 
-proc walker(dir: string) =
+proc walker(pattern; dir: string) =
   for kind, path in walkDir(dir):
     case kind
     of pcFile:
       if extensions.len == 0 or path.hasRightExt(extensions):
-        processFile(path)
+        processFile(pattern, path)
     of pcDir:
       if optRecursive in options:
-        walker(path)
+        walker(pattern, path)
     else: discard
-  if existsFile(dir): processFile(dir)
+  if existsFile(dir): processFile(pattern, dir)
 
 proc writeHelp() =
   stdout.write(Usage)
@@ -332,11 +317,18 @@ else:
       pattern = "\\y " & pattern
     elif optIgnoreCase in options:
       pattern = "\\i " & pattern
+    let pegp = peg(pattern)
+    for f in items(filenames):
+      walker(pegp, f)
   else:
+    var reflags = {reStudy, reExtended}
     if optIgnoreStyle in options:
       pattern = styleInsensitive(pattern)
     if optWord in options:
       pattern = r"\b (:?" & pattern & r") \b"
-  for f in items(filenames):
-    walker(f)
+    if {optIgnoreCase, optIgnoreStyle} * options != {}:
+      reflags.incl reIgnoreCase
+    let rep = re(pattern, reflags)
+    for f in items(filenames):
+      walker(rep, f)
 

@@ -64,6 +64,8 @@ type
 
   des_key_schedule* = array[1..16, des_ks_struct]
 
+  pem_password_cb* = proc(buf: cstring, size, rwflag: cint, userdata: pointer): cint {.cdecl.}
+
 {.deprecated: [PSSL: SslPtr, PSSL_CTX: SslCtx, PBIO: BIO].}
 
 const
@@ -432,6 +434,12 @@ proc ErrClearError*(){.cdecl, dynlib: DLLUtilName, importc: "ERR_clear_error".}
 proc ErrFreeStrings*(){.cdecl, dynlib: DLLUtilName, importc: "ERR_free_strings".}
 proc ErrRemoveState*(pid: cInt){.cdecl, dynlib: DLLUtilName, importc: "ERR_remove_state".}
 
+proc PEM_read_bio_RSA_PUBKEY*(bp: BIO, x: ptr PRSA, pw: pem_password_cb, u: pointer): PRSA {.cdecl,
+    dynlib: DLLSSLName, importc.}
+
+proc RSA_verify*(kind: cint, origMsg: pointer, origMsgLen: cuint, signature: pointer,
+    signatureLen: cuint, rsa: PRSA): cint {.cdecl, dynlib: DLLSSLName, importc.}
+
 when true:
   discard
 else:
@@ -593,7 +601,7 @@ from strutils import toHex, toLowerAscii
 proc hexStr(buf: cstring): string =
   # turn md5s output into a nice hex str
   result = newStringOfCap(32)
-  for i in 0 .. <16:
+  for i in 0 ..< 16:
     result.add toHex(buf[i].ord, 2).toLowerAscii
 
 proc md5_File*(file: string): string {.raises: [IOError,Exception].} =

@@ -48,7 +48,6 @@ type                          # please make sure we have under 32 options
     optGenScript,             # generate a script file to compile the *.c files
     optGenMapping,            # generate a mapping file
     optRun,                   # run the compiled project
-    optSymbolFiles,           # use symbol files for speeding up compilation
     optCaasEnabled            # compiler-as-a-service is running
     optSkipConfigFile,        # skip the general config file
     optSkipProjConfigFile,    # skip the project's config file
@@ -141,16 +140,25 @@ var
   gEvalExpr* = ""             # expression for idetools --eval
   gLastCmdTime*: float        # when caas is enabled, we measure each command
   gListFullPaths*: bool
-  isServing*: bool = false
+  gPreciseStack*: bool = false
   gNoNimblePath* = false
   gExperimentalMode*: bool
   newDestructors*: bool
+  gDynlibOverrideAll*: bool
+
+type
+  SymbolFilesOption* = enum
+    disabledSf, enabledSf, writeOnlySf, readOnlySf
+
+var gSymbolFiles*: SymbolFilesOption
 
 proc importantComments*(): bool {.inline.} = gCmd in {cmdDoc, cmdIdeTools}
 proc usesNativeGC*(): bool {.inline.} = gSelectedGC >= gcRefc
+template preciseStack*(): bool = gPreciseStack
 
 template compilationCachePresent*: untyped =
-  {optCaasEnabled, optSymbolFiles} * gGlobalOptions != {}
+  gSymbolFiles in {enabledSf, writeOnlySf}
+#  {optCaasEnabled, optSymbolFiles} * gGlobalOptions != {}
 
 template optPreserveOrigSource*: untyped =
   optEmbedOrigSrc in gGlobalOptions
@@ -161,6 +169,7 @@ const
   RodExt* = "rod"
   HtmlExt* = "html"
   JsonExt* = "json"
+  TagsExt* = "tags"
   TexExt* = "tex"
   IniExt* = "ini"
   DefaultConfig* = "nim.cfg"
@@ -425,7 +434,7 @@ proc inclDynlibOverride*(lib: string) =
   gDllOverrides[lib.canonDynlibName] = "true"
 
 proc isDynlibOverride*(lib: string): bool =
-  result = gDllOverrides.hasKey(lib.canonDynlibName)
+  result = gDynlibOverrideAll or gDllOverrides.hasKey(lib.canonDynlibName)
 
 proc binaryStrSearch*(x: openArray[string], y: string): int =
   var a = 0

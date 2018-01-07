@@ -12,7 +12,7 @@
 import
   ast, strutils, hashes, options, lexer, astalgo, trees, treetab,
   wordrecg, ropes, msgs, os, condsyms, idents, renderer, types, platform, math,
-  magicsys, parser, nversion, nimsets, semfold, importer,
+  magicsys, parser, nversion, nimsets, semfold, modulepaths, importer,
   procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, nimfix.pretty, semmacrosanity,
@@ -74,7 +74,7 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
     localError(arg.info, errExprXHasNoType,
                renderTree(arg, {renderNoComments}))
     # error correction:
-    result = copyNode(arg)
+    result = copyTree(arg)
     result.typ = formal
   else:
     result = indexTypesMatch(c, formal, arg.typ, arg)
@@ -122,7 +122,7 @@ proc commonType*(x, y: PType): PType =
     if a.sons[idx].kind == tyEmpty: return y
   elif a.kind == tyTuple and b.kind == tyTuple and a.len == b.len:
     var nt: PType
-    for i in 0.. <a.len:
+    for i in 0..<a.len:
       let aEmpty = isEmptyContainer(a.sons[i])
       let bEmpty = isEmptyContainer(b.sons[i])
       if aEmpty != bEmpty:
@@ -164,6 +164,19 @@ proc commonType*(x, y: PType): PType =
         let r = result
         result = newType(k, r.owner)
         result.addSonSkipIntLit(r)
+
+proc endsInNoReturn(n: PNode): bool =
+  # check if expr ends in raise exception or call of noreturn proc
+  var it = n
+  while it.kind in {nkStmtList, nkStmtListExpr} and it.len > 0:
+    it = it.lastSon
+  result = it.kind == nkRaiseStmt or
+    it.kind in nkCallKinds and it[0].kind == nkSym and sfNoReturn in it[0].sym.flags
+
+proc commonType*(x: PType, y: PNode): PType =
+  # ignore exception raising branches in case/if expressions
+  if endsInNoReturn(y): return x
+  commonType(x, y.typ)
 
 proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym =
   result = newSym(kind, considerQuotedIdent(n), getCurrOwner(c), n.info)
@@ -423,7 +436,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   result = evalMacroCall(c.module, c.cache, n, nOrig, sym)
   if efNoSemCheck notin flags:
     result = semAfterMacroCall(c, n, result, sym, flags)
-  result = wrapInComesFrom(nOrig.info, result)
+  result = wrapInComesFrom(nOrig.info, sym, result)
   popInfoContext()
 
 proc forceBool(c: PContext, n: PNode): PNode =
@@ -488,6 +501,8 @@ proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
 
 proc myOpenCached(graph: ModuleGraph; module: PSym; rd: PRodReader): PPassContext =
   result = myOpen(graph, module, rd.cache)
+
+proc replayMethodDefs(graph: ModuleGraph; rd: PRodReader) =
   for m in items(rd.methods): methodDef(graph, m, true)
 
 proc isImportSystemStmt(n: PNode): bool =
@@ -522,14 +537,18 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   else:
     result = n
   result = semStmt(c, result)
-  # BUGFIX: process newly generated generics here, not at the end!
-  if c.lastGenericIdx < c.generics.len:
-    var a = newNodeI(nkStmtList, n.info)
-    addCodeForGenerics(c, a)
-    if sonsLen(a) > 0:
-      # a generic has been added to `a`:
-      if result.kind != nkEmpty: addSon(a, result)
-      result = a
+  when false:
+    # Code generators are lazy now and can deal with undeclared procs, so these
+    # steps are not required anymore and actually harmful for the upcoming
+    # destructor support.
+    # BUGFIX: process newly generated generics here, not at the end!
+    if c.lastGenericIdx < c.generics.len:
+      var a = newNodeI(nkStmtList, n.info)
+      addCodeForGenerics(c, a)
+      if sonsLen(a) > 0:
+        # a generic has been added to `a`:
+        if result.kind != nkEmpty: addSon(a, result)
+        result = a
   result = hloStmt(c, result)
   if gCmd == cmdInteractive and not isEmptyType(result.typ):
     result = buildEchoStmt(c, result)
@@ -566,6 +585,18 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
         result = ast.emptyNode
       #if gCmd == cmdIdeTools: findSuggest(c, n)
 
+proc testExamples(c: PContext) =
+  let inp = toFullPath(c.module.info)
+  let outp = inp.changeFileExt"" & "_examples.nim"
+  renderModule(c.runnableExamples, inp, outp)
+  let backend = if isDefined("js"): "js"
+                elif isDefined("cpp"): "cpp"
+                elif isDefined("objc"): "objc"
+                else: "c"
+  if os.execShellCmd("nim " & backend & " -r " & outp) != 0:
+    quit "[Examples] failed"
+  removeFile(outp)
+
 proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   var c = PContext(context)
   if gCmd == cmdIdeTools and not c.suggestionsMade:
@@ -578,7 +609,10 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   addCodeForGenerics(c, result)
   if c.module.ast != nil:
     result.add(c.module.ast)
+  if c.rd != nil:
+    replayMethodDefs(graph, c.rd)
   popOwner(c)
   popProcCon(c)
+  if c.runnableExamples != nil: testExamples(c)
 
 const semPass* = makePass(myOpen, myOpenCached, myProcess, myClose)

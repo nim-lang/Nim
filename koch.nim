@@ -260,10 +260,10 @@ proc buildTools(latest: bool) =
       " nimsuggest/nimsuggest.nim"
 
   let nimgrepExe = "bin/nimgrep".exe
-  nimexec "c -o:" & nimgrepExe & " tools/nimgrep.nim"
+  nimexec "c -d:release -o:" & nimgrepExe & " tools/nimgrep.nim"
   when defined(windows): buildVccTool()
 
-  nimexec "c -o:" & ("bin/nimresolve".exe) & " tools/nimresolve.nim"
+  #nimexec "c -o:" & ("bin/nimresolve".exe) & " tools/nimresolve.nim"
 
   buildNimble(latest)
 
@@ -441,7 +441,7 @@ template `|`(a, b): string = (if a.len > 0: a else: b)
 proc tests(args: string) =
   # we compile the tester with taintMode:on to have a basic
   # taint mode test :-)
-  nimexec "cc --taintMode:on tests/testament/tester"
+  nimexec "cc --taintMode:on --opt:speed tests/testament/tester"
   # Since tests take a long time (on my machine), and we want to defy Murhpys
   # law - lets make sure the compiler really is freshly compiled!
   nimexec "c --lib:lib -d:release --opt:speed compiler/nim.nim"
@@ -472,7 +472,8 @@ proc temp(args: string) =
   # 125 is the magic number to tell git bisect to skip the current
   # commit.
   let (bootArgs, programArgs) = splitArgs(args)
-  exec("nim c " & bootArgs & " compiler" / "nim", 125)
+  let nimexec = findNim()
+  exec(nimexec & " c -d:debug " & bootArgs & " compiler" / "nim", 125)
   copyExe(output, finalDest)
   if programArgs.len > 0: exec(finalDest & " " & programArgs)
 
@@ -481,7 +482,7 @@ proc xtemp(cmd: string) =
   copyExe(d / "bin" / "nim".exe, d / "bin" / "nim_backup".exe)
   try:
     withDir(d):
-      temp"-d:debug"
+      temp""
     copyExe(d / "bin" / "nim_temp".exe, d / "bin" / "nim".exe)
     exec(cmd)
   finally:

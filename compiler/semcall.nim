@@ -27,7 +27,7 @@ proc sameMethodDispatcher(a, b: PSym): bool =
       # method collide[T](a: TThing, b: TUnit[T]) is instantiated and not
       # method collide[T](a: TUnit[T], b: TThing)! This means we need to
       # *instantiate* every candidate! However, we don't keep more than 2-3
-      # candidated around so we cannot implement that for now. So in order
+      # candidates around so we cannot implement that for now. So in order
       # to avoid subtle problems, the call remains ambiguous and needs to
       # be disambiguated by the programmer; this way the right generic is
       # instantiated.
@@ -90,6 +90,10 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
     if c.currentScope.symbols.counter == counterInitial or syms != nil:
       matches(c, n, orig, z)
       if z.state == csMatch:
+        #if sym.name.s == "==" and (n.info ?? "temp3"):
+        #  echo typeToString(sym.typ)
+        #  writeMatches(z)
+
         # little hack so that iterators are preferred over everything else:
         if sym.kind == skIterator: inc(z.exactMatches, 200)
         case best.state
@@ -175,7 +179,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   add(result, ')')
   if candidates != "":
     add(result, "\n" & msgKindToString(errButExpected) & "\n" & candidates)
-  localError(n.info, errGenerated, result)
+  localError(n.info, errGenerated, result & "\nexpression: " & $n)
 
 proc bracketNotFoundError(c: PContext; n: PNode) =
   var errors: CandidateErrors = @[]
@@ -231,12 +235,11 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
     if nfDotField in n.flags:
       internalAssert f.kind == nkIdent and n.sonsLen >= 2
-      let calleeName = newStrNode(nkStrLit, f.ident.s).withInfo(n.info)
 
       # leave the op head symbol empty,
       # we are going to try multiple variants
-      n.sons[0..1] = [nil, n[1], calleeName]
-      orig.sons[0..1] = [nil, orig[1], calleeName]
+      n.sons[0..1] = [nil, n[1], f]
+      orig.sons[0..1] = [nil, orig[1], f]
 
       template tryOp(x) =
         let op = newIdentNode(getIdent(x), n.info)
@@ -251,8 +254,8 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         tryOp "."
 
     elif nfDotSetter in n.flags and f.kind == nkIdent and n.len == 3:
-      let calleeName = newStrNode(nkStrLit,
-        f.ident.s[0..f.ident.s.len-2]).withInfo(n.info)
+      # we need to strip away the trailing '=' here:
+      let calleeName = newIdentNode(getIdent(f.ident.s[0..f.ident.s.len-2]), n.info)
       let callOp = newIdentNode(getIdent".=", n.info)
       n.sons[0..1] = [callOp, n[1], calleeName]
       orig.sons[0..1] = [callOp, orig[1], calleeName]
@@ -306,7 +309,7 @@ proc instGenericConvertersArg*(c: PContext, a: PNode, x: TCandidate) =
 proc instGenericConvertersSons*(c: PContext, n: PNode, x: TCandidate) =
   assert n.kind in nkCallKinds
   if x.genericConverter:
-    for i in 1 .. <n.len:
+    for i in 1 ..< n.len:
       instGenericConvertersArg(c, n.sons[i], x)
 
 proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode =
@@ -490,7 +493,7 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
   var call = newNodeI(nkCall, fn.info)
   var hasDistinct = false
   call.add(newIdentNode(fn.name, fn.info))
-  for i in 1.. <fn.typ.n.len:
+  for i in 1..<fn.typ.n.len:
     let param = fn.typ.n.sons[i]
     let t = skipTypes(param.typ, abstractVar-{tyTypeDesc, tyDistinct})
     if t.kind == tyDistinct or param.typ.kind == tyDistinct: hasDistinct = true

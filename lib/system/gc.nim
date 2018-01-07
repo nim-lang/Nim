@@ -155,14 +155,15 @@ template setColor(c, col) =
   else:
     c.refcount = c.refcount and not colorMask or col
 
-proc writeCell(msg: cstring, c: PCell) =
-  var kind = -1
-  var typName: cstring = "nil"
-  if c.typ != nil:
-    kind = ord(c.typ.kind)
-    when defined(nimTypeNames):
-      if not c.typ.name.isNil:
-        typName = c.typ.name
+when defined(logGC):
+  proc writeCell(msg: cstring, c: PCell) =
+    var kind = -1
+    var typName: cstring = "nil"
+    if c.typ != nil:
+      kind = ord(c.typ.kind)
+      when defined(nimTypeNames):
+        if not c.typ.name.isNil:
+          typName = c.typ.name
 
   when leakDetector:
     c_fprintf(stdout, "[GC] %s: %p %d %s rc=%ld from %s(%ld)\n",
@@ -317,7 +318,7 @@ proc initGC() =
       init(gch.marked)
       init(gch.additionalRoots)
     when hasThreadSupport:
-      gch.toDispose = initSharedList[pointer]()
+      init(gch.toDispose)
 
 when useMarkForDebug or useBackupGc:
   type
@@ -642,9 +643,9 @@ when useMarkForDebug or useBackupGc:
         forAllChildren(d, waMarkPrecise)
 
   proc markGlobals(gch: var GcHeap) =
-    for i in 0 .. < globalMarkersLen: globalMarkers[i]()
+    for i in 0 .. globalMarkersLen-1: globalMarkers[i]()
     let d = gch.additionalRoots.d
-    for i in 0 .. < gch.additionalRoots.len: markS(gch, d[i])
+    for i in 0 .. gch.additionalRoots.len-1: markS(gch, d[i])
 
 when logGC:
   var
@@ -652,7 +653,7 @@ when logGC:
     cycleCheckALen = 0
 
   proc alreadySeen(c: PCell): bool =
-    for i in 0 .. <cycleCheckALen:
+    for i in 0 .. cycleCheckALen-1:
       if cycleCheckA[i] == c: return true
     if cycleCheckALen == len(cycleCheckA):
       gcAssert(false, "cycle detection overflow")

@@ -26,7 +26,8 @@ type
     errAtPopWithoutPush, errEmptyAsm, errInvalidIndentation,
     errExceptionExpected, errExceptionAlreadyHandled,
     errYieldNotAllowedHere, errYieldNotAllowedInTryStmt,
-    errInvalidNumberOfYieldExpr, errCannotReturnExpr, errAttemptToRedefine,
+    errInvalidNumberOfYieldExpr, errCannotReturnExpr, 
+    errNoReturnWithReturnTypeNotAllowed, errAttemptToRedefine,
     errStmtInvalidAfterReturn, errStmtExpected, errInvalidLabel,
     errInvalidCmdLineOption, errCmdLineArgExpected, errCmdLineNoArgExpected,
     errInvalidVarSubstitution, errUnknownVar, errUnknownCcompiler,
@@ -61,7 +62,7 @@ type
     errBaseTypeMustBeOrdinal, errInheritanceOnlyWithNonFinalObjects,
     errInheritanceOnlyWithEnums, errIllegalRecursionInTypeX,
     errCannotInstantiateX, errExprHasNoAddress, errXStackEscape,
-    errVarForOutParamNeeded,
+    errVarForOutParamNeededX,
     errPureTypeMismatch, errTypeMismatch, errButExpected, errButExpectedX,
     errAmbiguousCallXYZ, errWrongNumberOfArguments,
     errWrongNumberOfArgumentsInCall,
@@ -179,8 +180,9 @@ const
     errYieldNotAllowedInTryStmt: "'yield' cannot be used within 'try' in a non-inlined iterator",
     errInvalidNumberOfYieldExpr: "invalid number of \'yield\' expressions",
     errCannotReturnExpr: "current routine cannot return an expression",
+    errNoReturnWithReturnTypeNotAllowed: "routines with NoReturn pragma are not allowed to have return type",
     errAttemptToRedefine: "redefinition of \'$1\'",
-    errStmtInvalidAfterReturn: "statement not allowed after \'return\', \'break\', \'raise\' or \'continue'",
+    errStmtInvalidAfterReturn: "statement not allowed after \'return\', \'break\', \'raise\', \'continue\' or proc call with noreturn pragma",
     errStmtExpected: "statement expected",
     errInvalidLabel: "\'$1\' is no label",
     errInvalidCmdLineOption: "invalid command line option: \'$1\'",
@@ -268,7 +270,7 @@ const
     errCannotInstantiateX: "cannot instantiate: \'$1\'",
     errExprHasNoAddress: "expression has no address",
     errXStackEscape: "address of '$1' may not escape its stack frame",
-    errVarForOutParamNeeded: "for a \'var\' type a variable needs to be passed",
+    errVarForOutParamNeededX: "for a \'var\' type a variable needs to be passed; but '$1' is immutable",
     errPureTypeMismatch: "type mismatch",
     errTypeMismatch: "type mismatch: got (",
     errButExpected: "but expected one of: ",
@@ -500,6 +502,7 @@ type
     fileIndex*: int32
     when defined(nimpretty):
       offsetA*, offsetB*: int
+      commentOffsetA*, commentOffsetB*: int
 
   TErrorOutput* = enum
     eStdOut

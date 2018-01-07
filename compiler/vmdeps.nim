@@ -41,7 +41,7 @@ proc mapTypeToBracketX(name: string; m: TMagic; t: PType; info: TLineInfo;
                        inst=false): PNode =
   result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
   result.add atomicTypeX(name, m, t, info)
-  for i in 0 .. < t.len:
+  for i in 0 ..< t.len:
     if t.sons[i] == nil:
       let void = atomicTypeX("void", mVoid, t, info)
       void.typ = newType(tyVoid, t.owner)
@@ -84,10 +84,10 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
 
   if inst:
     if t.sym != nil:  # if this node has a symbol
-      if allowRecursion:  # getTypeImpl behavior: turn off recursion
-        allowRecursion = false
-      else:  # getTypeInst behavior: return symbol
+      if not allowRecursion:  # getTypeInst behavior: return symbol
         return atomicType(t.sym)
+      #else:  # getTypeImpl behavior: turn off recursion
+      #  allowRecursion = false
 
   case t.kind
   of tyNone: result = atomicType("none", mNone)
@@ -119,24 +119,27 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
       result = atomicType("typeDesc", mTypeDesc)
   of tyGenericInvocation:
     result = newNodeIT(nkBracketExpr, if t.n.isNil: info else: t.n.info, t)
-    for i in 0 .. < t.len:
+    for i in 0 ..< t.len:
       result.add mapTypeToAst(t.sons[i], info)
-  of tyGenericInst, tyAlias:
+  of tyGenericInst:
     if inst:
       if allowRecursion:
         result = mapTypeToAstR(t.lastSon, info)
       else:
         result = newNodeX(nkBracketExpr)
-        result.add mapTypeToAst(t.lastSon, info)
-        for i in 1 .. < t.len-1:
+        #result.add mapTypeToAst(t.lastSon, info)
+        result.add mapTypeToAst(t[0], info)
+        for i in 1 ..< t.len-1:
           result.add mapTypeToAst(t.sons[i], info)
     else:
       result = mapTypeToAstX(t.lastSon, info, inst, allowRecursion)
   of tyGenericBody:
     if inst:
-      result = mapTypeToAstX(t.lastSon, info, inst, true)
+      result = mapTypeToAstR(t.lastSon, info)
     else:
       result = mapTypeToAst(t.lastSon, info)
+  of tyAlias:
+    result = mapTypeToAstX(t.lastSon, info, inst, allowRecursion)
   of tyOrdinal:
     result = mapTypeToAst(t.lastSon, info)
   of tyDistinct:

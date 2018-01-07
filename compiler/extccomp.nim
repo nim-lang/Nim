@@ -21,7 +21,7 @@ import
 type
   TSystemCC* = enum
     ccNone, ccGcc, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc,
-    ccTcc, ccPcc, ccUcc, ccIcl
+    ccTcc, ccPcc, ccUcc, ccIcl, ccIcc
   TInfoCCProp* = enum         # properties of the C compiler:
     hasSwitchRange,           # CC allows ranges in switch statements (GNU C)
     hasComputedGoto,          # CC has computed goto (GNU C extension)
@@ -95,7 +95,11 @@ compiler llvmGcc:
   result.name = "llvm_gcc"
   result.compilerExe = "llvm-gcc"
   result.cppCompiler = "llvm-g++"
-  result.buildLib = "llvm-ar rcs $libfile $objfiles"
+  when defined(macosx):
+    # OS X has no 'llvm-ar' tool:
+    result.buildLib = "ar rcs $libfile $objfiles"
+  else:
+    result.buildLib = "llvm-ar rcs $libfile $objfiles"
 
 # Clang (LLVM) C/C++ Compiler
 compiler clang:
@@ -131,15 +135,17 @@ compiler vcc:
 
 # Intel C/C++ Compiler
 compiler icl:
-  # Intel compilers try to imitate the native ones (gcc and msvc)
-  when defined(windows):
-    result = vcc()
-  else:
-    result = gcc()
-
+  result = vcc()
   result.name = "icl"
   result.compilerExe = "icl"
   result.linkerExe = "icl"
+
+# Intel compilers try to imitate the native ones (gcc and msvc)
+compiler icc:
+  result = gcc()
+  result.name = "icc"
+  result.compilerExe = "icc"
+  result.linkerExe = "icc"
 
 # Local C Compiler
 compiler lcc:
@@ -247,7 +253,7 @@ compiler tcc:
     compilerExe: "tcc",
     cppCompiler: "",
     compileTmpl: "-c $options $include -o $objfile $file",
-    buildGui: "UNAVAILABLE!",
+    buildGui: "-Wl,-subsystem=gui",
     buildDll: " -shared",
     buildLib: "", # XXX: not supported yet
     linkerExe: "tcc",
@@ -323,7 +329,8 @@ const
     tcc(),
     pcc(),
     ucc(),
-    icl()]
+    icl(),
+    icc()]
 
   hExt* = ".h"
 
@@ -724,13 +731,13 @@ proc execCmdsInParallel(cmds: seq[string]; prettyCb: proc (idx: int)) =
   else:
     tryExceptOSErrorMessage("invocation of external compiler program failed."):
       if optListCmd in gGlobalOptions or gVerbosity > 1:
-        res = execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams},
+        res = execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath},
                             gNumberOfProcessors, afterRunEvent=runCb)
       elif gVerbosity == 1:
-        res = execProcesses(cmds, {poStdErrToStdOut, poUsePath, poParentStreams},
+        res = execProcesses(cmds, {poStdErrToStdOut, poUsePath},
                             gNumberOfProcessors, prettyCb, afterRunEvent=runCb)
       else:
-        res = execProcesses(cmds, {poStdErrToStdOut, poUsePath, poParentStreams},
+        res = execProcesses(cmds, {poStdErrToStdOut, poUsePath},
                             gNumberOfProcessors, afterRunEvent=runCb)
   if res != 0:
     if gNumberOfProcessors <= 1:
@@ -760,8 +767,9 @@ proc callCCompiler*(projectfile: string) =
       add(objfiles, quoteShell(
           addFileExt(objFile, CC[cCompiler].objExt)))
     for x in toCompile:
+      let objFile = if noAbsolutePaths(): x.obj.extractFilename else: x.obj
       add(objfiles, ' ')
-      add(objfiles, quoteShell(x.obj))
+      add(objfiles, quoteShell(objFile))
 
     linkCmd = getLinkCmd(projectfile, objfiles)
     if optCompileOnly notin gGlobalOptions:
@@ -786,42 +794,40 @@ proc writeJsonBuildInstructions*(projectfile: string) =
     else:
       f.write escapeJson(x)
 
-  proc cfiles(f: File; buf: var string; list: CfileList, isExternal: bool) =
-    var i = 0
-    for it in list:
+  proc cfiles(f: File; buf: var string; clist: CfileList, isExternal: bool) =
+    var pastStart = false
+    for it in clist:
       if CfileFlag.Cached in it.flags: continue
       let compileCmd = getCompileCFileCmd(it)
+      if pastStart: lit "],\L"
       lit "["
       str it.cname
       lit ", "
       str compileCmd
-      inc i
-      if i == list.len:
-        lit "]\L"
-      else:
-        lit "],\L"
+      pastStart = true
+    lit "]\L"
 
-  proc linkfiles(f: File; buf, objfiles: var string) =
-    for i, it in externalToLink:
-      let
-        objFile = if noAbsolutePaths(): it.extractFilename else: it
-        objStr = addFileExt(objFile, CC[cCompiler].objExt)
+  proc linkfiles(f: File; buf, objfiles: var string; clist: CfileList;
+                 llist: seq[string]) =
+    var pastStart = false
+    for it in llist:
+      let objfile = if noAbsolutePaths(): it.extractFilename
+                    else: it
+      let objstr = addFileExt(objfile, CC[cCompiler].objExt)
       add(objfiles, ' ')
-      add(objfiles, objStr)
-      str objStr
-      if toCompile.len == 0 and i == externalToLink.high:
-        lit "\L"
-      else:
-        lit ",\L"
-    for i, x in toCompile:
-      let objStr = quoteShell(x.obj)
+      add(objfiles, objstr)
+      if pastStart: lit ",\L"
+      str objstr
+      pastStart = true
+
+    for it in clist:
+      let objstr = quoteShell(it.obj)
       add(objfiles, ' ')
-      add(objfiles, objStr)
-      str objStr
-      if i == toCompile.high:
-        lit "\L"
-      else:
-        lit ",\L"
+      add(objfiles, objstr)
+      if pastStart: lit ",\L"
+      str objstr
+      pastStart = true
+    lit "\L"
 
   var buf = newStringOfCap(50)
 
@@ -835,7 +841,7 @@ proc writeJsonBuildInstructions*(projectfile: string) =
     lit "],\L\"link\":[\L"
     var objfiles = ""
     # XXX add every file here that is to link
-    linkfiles(f, buf, objfiles)
+    linkfiles(f, buf, objfiles, toCompile, externalToLink)
 
     lit "],\L\"linkcmd\": "
     str getLinkCmd(projectfile, objfiles)

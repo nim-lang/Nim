@@ -15,58 +15,52 @@
 
 const
   rodfilesDir = "tests/rodfiles"
-  nimcacheDir = rodfilesDir / "nimcache"
 
-proc delNimCache() =
+proc delNimCache(filename, options: string) =
+  let dir = nimcacheDir(filename, options)
   try:
-    removeDir(nimcacheDir)
+    removeDir(dir)
   except OSError:
-    echo "[Warning] could not delete: ", nimcacheDir
+    echo "[Warning] could not delete: ", dir
 
 proc runRodFiles(r: var TResults, cat: Category, options: string) =
-  template test(filename: untyped) =
+  template test(filename: string, clearCacheFirst=false) =
+    if clearCacheFirst: delNimCache(filename, options)
     testSpec r, makeTest(rodfilesDir / filename, options, cat, actionRun)
 
-  delNimCache()
 
   # test basic recompilation scheme:
-  test "hallo"
+  test "hallo", true
   test "hallo"
   when false:
     # test incremental type information:
     test "hallo2"
-    delNimCache()
 
   # test type converters:
-  test "aconv"
+  test "aconv", true
   test "bconv"
-  delNimCache()
 
   # test G, A, B example from the documentation; test init sections:
-  test "deada"
+  test "deada", true
   test "deada2"
-  delNimCache()
 
   when false:
     # test method generation:
-    test "bmethods"
+    test "bmethods", true
     test "bmethods2"
-    delNimCache()
 
     # test generics:
-    test "tgeneric1"
+    test "tgeneric1", true
     test "tgeneric2"
-    delNimCache()
 
 proc compileRodFiles(r: var TResults, cat: Category, options: string) =
-  template test(filename: untyped) =
+  template test(filename: untyped, clearCacheFirst=true) =
+    if clearCacheFirst: delNimCache(filename, options)
     testSpec r, makeTest(rodfilesDir / filename, options, cat)
 
-  delNimCache()
   # test DLL interfacing:
-  test "gtkex1"
+  test "gtkex1", true
   test "gtkex2"
-  delNimCache()
 
 # --------------------- DLL generation tests ----------------------------------
 
@@ -83,9 +77,9 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
       ""
 
   testSpec c, makeTest("lib/nimrtl.nim",
-    options & " --app:lib -d:createNimRtl", cat)
+    options & " --app:lib -d:createNimRtl --threads:on", cat)
   testSpec c, makeTest("tests/dll/server.nim",
-    options & " --app:lib -d:useNimRtl" & rpath, cat)
+    options & " --app:lib -d:useNimRtl --threads:on" & rpath, cat)
 
 
   when defined(Windows):
@@ -101,7 +95,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     var nimrtlDll = DynlibFormat % "nimrtl"
     safeCopyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
 
-  testSpec r, makeTest("tests/dll/client.nim", options & " -d:useNimRtl" & rpath,
+  testSpec r, makeTest("tests/dll/client.nim", options & " -d:useNimRtl --threads:on" & rpath,
                        cat, actionRun)
 
 proc dllTests(r: var TResults, cat: Category, options: string) =
@@ -205,7 +199,6 @@ proc ioTests(r: var TResults, cat: Category, options: string) =
 proc asyncTests(r: var TResults, cat: Category, options: string) =
   template test(filename: untyped) =
     testSpec r, makeTest(filename, options, cat)
-    testSpec r, makeTest(filename, options & " -d:upcoming", cat)
   for t in os.walkFiles("tests/async/t*.nim"):
     test(t)
 
@@ -219,9 +212,9 @@ proc debuggerTests(r: var TResults, cat: Category, options: string) =
 proc jsTests(r: var TResults, cat: Category, options: string) =
   template test(filename: untyped) =
     testSpec r, makeTest(filename, options & " -d:nodejs", cat,
-                         actionRun, targetJS)
+                         actionRun), targetJS
     testSpec r, makeTest(filename, options & " -d:nodejs -d:release", cat,
-                         actionRun, targetJS)
+                         actionRun), targetJS
 
   for t in os.walkFiles("tests/js/t*.nim"):
     test(t)
@@ -245,10 +238,10 @@ proc testNimInAction(r: var TResults, cat: Category, options: string) =
     testSpec r, makeTest(filename, options, cat, action)
 
   template testJS(filename: untyped) =
-    testSpec r, makeTest(filename, options, cat, actionCompile, targetJS)
+    testSpec r, makeTest(filename, options, cat, actionCompile), targetJS
 
   template testCPP(filename: untyped) =
-    testSpec r, makeTest(filename, options, cat, actionCompile, targetCPP)
+    testSpec r, makeTest(filename, options, cat, actionCompile), targetCPP
 
   let tests = [
     "niminaction/Chapter3/ChatApp/src/server",
@@ -324,9 +317,10 @@ type PackageFilter = enum
   pfExtraOnly
   pfAll
 
+var nimbleDir = getEnv("NIMBLE_DIR").string
+if nimbleDir.len == 0: nimbleDir = getHomeDir() / ".nimble"
 let
   nimbleExe = findExe("nimble")
-  nimbleDir = getHomeDir() / ".nimble"
   packageDir = nimbleDir / "pkgs"
   packageIndex = nimbleDir / "packages.json"
 
@@ -386,7 +380,7 @@ proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
         installStatus = waitForExitEx(installProcess)
       installProcess.close
       if installStatus != QuitSuccess:
-        r.addResult(test, "", "", reInstallFailed)
+        r.addResult(test, targetC, "", "", reInstallFailed)
         continue
 
       let
@@ -395,12 +389,12 @@ proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
         buildStatus = waitForExitEx(buildProcess)
       buildProcess.close
       if buildStatus != QuitSuccess:
-        r.addResult(test, "", "", reBuildFailed)
-      r.addResult(test, "", "", reSuccess)
-    r.addResult(packageFileTest, "", "", reSuccess)
+        r.addResult(test, targetC, "", "", reBuildFailed)
+      r.addResult(test, targetC, "", "", reSuccess)
+    r.addResult(packageFileTest, targetC, "", "", reSuccess)
   except JsonParsingError:
     echo("[Warning] - Cannot run nimble tests: Invalid package file.")
-    r.addResult(packageFileTest, "", "", reBuildFailed)
+    r.addResult(packageFileTest, targetC, "", "", reBuildFailed)
 
 
 # ----------------------------------------------------------------------------
@@ -417,8 +411,9 @@ proc `&?.`(a, b: string): string =
 
 proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
   let test = "tests" & DirSep &.? cat.string / test
+  let target = if cat.string.normalize == "js": targetJS else: targetC
 
-  if existsFile(test): testSpec r, makeTest(test, options, cat)
+  if existsFile(test): testSpec r, makeTest(test, options, cat), target
   else: echo "[Warning] - ", test, " test does not exist"
 
 proc processCategory(r: var TResults, cat: Category, options: string) =

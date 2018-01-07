@@ -1,6 +1,8 @@
 discard """
-  output: '''(foo: 38, other: string here)
-43'''
+  output: '''(foo: 38, other: "string here")
+43
+100
+90'''
 """
 
 type
@@ -17,3 +19,17 @@ proc my(f: Foo) =
 var g: Foo
 new(g)
 my(g)
+
+type
+  FooTask {.partial.} = ref object of RootObj
+
+proc foo(t: FooTask) {.liftLocals: t.} =
+  var x = 90
+  if true:
+    var x = 10
+    while x < 100:
+      inc x
+    echo x
+  echo x
+
+foo(FooTask())

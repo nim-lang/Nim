@@ -13,10 +13,6 @@
 ## We had to de-deprecate this module since too much code relies on it
 ## and many people prefer its API over ``nre``'s.
 ##
-## **Note:** The 're' proc defaults to the **extended regular expression
-## syntax** which lets you use whitespace freely to make your regexes readable.
-## However, this means matching whitespace requires ``\s`` or something similar.
-##
 ## This module is implemented by providing a wrapper around the
 ## `PRCE (Perl-Compatible Regular Expressions) <http://www.pcre.org>`_
 ## C library. This means that your application will depend on the PRCE
@@ -53,9 +49,6 @@ type
   RegexError* = object of ValueError
     ## is raised if the pattern is no valid regular expression.
 
-{.deprecated: [TRegexFlag: RegexFlag, TRegexDesc: RegexDesc, TRegex: Regex,
-    EInvalidRegEx: RegexError].}
-
 proc raiseInvalidRegex(msg: string) {.noinline, noreturn.} =
   var e: ref RegexError
   new(e)
@@ -78,7 +71,7 @@ proc finalizeRegEx(x: Regex) =
   if not isNil(x.e):
     pcre.free_substring(cast[cstring](x.e))
 
-proc re*(s: string, flags = {reExtended, reStudy}): Regex =
+proc re*(s: string, flags = {reStudy}): Regex =
   ## Constructor of regular expressions.
   ##
   ## Note that Nim's
@@ -95,6 +88,13 @@ proc re*(s: string, flags = {reExtended, reStudy}): Regex =
         options = pcre.STUDY_JIT_COMPILE
     result.e = pcre.study(result.h, options, addr msg)
     if not isNil(msg): raiseInvalidRegex($msg)
+
+proc rex*(s: string, flags = {reStudy, reExtended}): Regex =
+  ## Constructor for extended regular expressions.
+  ##
+  ## The extended means that comments starting with `#` and
+  ## whitespace are ignored.
+  result = re(s, flags)
 
 proc bufSubstr(b: cstring, sPos, ePos: int): string {.inline.} =
   ## Return a Nim string built from a slice of a cstring buffer.
@@ -467,8 +467,8 @@ proc replacef*(s: string, sub: Regex, by: string): string =
     prev = match.last + 1
   add(result, substr(s, prev))
 
-proc parallelReplace*(s: string, subs: openArray[
-                      tuple[pattern: Regex, repl: string]]): string =
+proc multiReplace*(s: string, subs: openArray[
+                   tuple[pattern: Regex, repl: string]]): string =
   ## Returns a modified copy of ``s`` with the substitutions in ``subs``
   ## applied in parallel.
   result = ""
@@ -487,13 +487,20 @@ proc parallelReplace*(s: string, subs: openArray[
   # copy the rest:
   add(result, substr(s, i))
 
+proc parallelReplace*(s: string, subs: openArray[
+                      tuple[pattern: Regex, repl: string]]): string {.deprecated.} =
+  ## Returns a modified copy of ``s`` with the substitutions in ``subs``
+  ## applied in parallel.
+  ## **Deprecated since version 0.18.0**: Use ``multiReplace`` instead.
+  result = multiReplace(s, subs)
+
 proc transformFile*(infile, outfile: string,
                     subs: openArray[tuple[pattern: Regex, repl: string]]) =
   ## reads in the file ``infile``, performs a parallel replacement (calls
   ## ``parallelReplace``) and writes back to ``outfile``. Raises ``IOError`` if an
   ## error occurs. This is supposed to be used for quick scripting.
   var x = readFile(infile).string
-  writeFile(outfile, x.parallelReplace(subs))
+  writeFile(outfile, x.multiReplace(subs))
 
 iterator split*(s: string, sep: Regex): string =
   ## Splits the string ``s`` into substrings.
@@ -576,12 +583,12 @@ const ## common regular expressions
     ## describes an URL
 
 when isMainModule:
-  doAssert match("(a b c)", re"\( .* \)")
+  doAssert match("(a b c)", rex"\( .* \)")
   doAssert match("WHiLe", re("while", {reIgnoreCase}))
 
   doAssert "0158787".match(re"\d+")
   doAssert "ABC 0232".match(re"\w+\s+\d+")
-  doAssert "ABC".match(re"\d+ | \w+")
+  doAssert "ABC".match(rex"\d+ | \w+")
 
   {.push warnings:off.}
   doAssert matchLen("key", re(reIdentifier)) == 3

@@ -185,7 +185,7 @@ proc `$`*[T](deq: Deque[T]): string =
   result = "["
   for x in deq:
     if result.len > 1: result.add(", ")
-    result.add($x)
+    result.addQuoted(x)
   result.add("]")
 
 when isMainModule:
@@ -207,9 +207,9 @@ when isMainModule:
   assert($deq == "[4, 56, 6, 789]")
 
   assert deq[0] == deq.peekFirst and deq.peekFirst == 4
-  assert deq[^1] == deq.peekLast and deq.peekLast == 789
+  #assert deq[^1] == deq.peekLast and deq.peekLast == 789
   deq[0] = 42
-  deq[^1] = 7
+  deq[deq.len - 1] = 7
 
   assert 6 in deq and 789 notin deq
   assert deq.find(6) >= 0

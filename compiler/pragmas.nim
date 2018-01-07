@@ -21,17 +21,17 @@ const
 const
   procPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl,
     wMagic, wNosideeffect, wSideeffect, wNoreturn, wDynlib, wHeader,
-    wCompilerproc, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge,
+    wCompilerProc, wCore, wProcVar, wDeprecated, wVarargs, wCompileTime, wMerge,
     wBorrow, wExtern, wImportCompilerProc, wThread, wImportCpp, wImportObjC,
-    wAsmNoStackFrame, wError, wDiscardable, wNoInit, wDestructor, wCodegenDecl,
+    wAsmNoStackFrame, wError, wDiscardable, wNoInit, wCodegenDecl,
     wGensym, wInject, wRaises, wTags, wLocks, wDelegator, wGcSafe,
-    wOverride, wConstructor, wExportNims, wUsed}
+    wOverride, wConstructor, wExportNims, wUsed, wLiftLocals}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas+{wBase}-{wImportCpp}
   templatePragmas* = {wImmediate, wDeprecated, wError, wGensym, wInject, wDirty,
     wDelegator, wExportNims, wUsed}
   macroPragmas* = {FirstCallConv..LastCallConv, wImmediate, wImportc, wExportc,
-    wNodecl, wMagic, wNosideeffect, wCompilerproc, wDeprecated, wExtern,
+    wNodecl, wMagic, wNosideeffect, wCompilerProc, wCore, wDeprecated, wExtern,
     wImportCpp, wImportObjC, wError, wDiscardable, wGensym, wInject, wDelegator,
     wExportNims, wUsed}
   iteratorPragmas* = {FirstCallConv..LastCallConv, wNosideeffect, wSideeffect,
@@ -52,14 +52,14 @@ const
     wDeprecated, wExtern, wThread, wImportCpp, wImportObjC, wAsmNoStackFrame,
     wRaises, wLocks, wTags, wGcSafe}
   typePragmas* = {wImportc, wExportc, wDeprecated, wMagic, wAcyclic, wNodecl,
-    wPure, wHeader, wCompilerproc, wFinal, wSize, wExtern, wShallow,
+    wPure, wHeader, wCompilerProc, wCore, wFinal, wSize, wExtern, wShallow,
     wImportCpp, wImportObjC, wError, wIncompleteStruct, wByCopy, wByRef,
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
-    wBorrow, wGcSafe, wExportNims, wPartial, wUsed, wExplain}
+    wBorrow, wGcSafe, wExportNims, wPartial, wUsed, wExplain, wPackage}
   fieldPragmas* = {wImportc, wExportc, wDeprecated, wExtern,
     wImportCpp, wImportObjC, wError, wGuard, wBitsize, wUsed}
   varPragmas* = {wImportc, wExportc, wVolatile, wRegister, wThreadVar, wNodecl,
-    wMagic, wHeader, wDeprecated, wCompilerproc, wDynlib, wExtern,
+    wMagic, wHeader, wDeprecated, wCompilerProc, wCore, wDynlib, wExtern,
     wImportCpp, wImportObjC, wError, wNoInit, wCompileTime, wGlobal,
     wGensym, wInject, wCodegenDecl, wGuard, wGoto, wExportNims, wUsed}
   constPragmas* = {wImportc, wExportc, wHeader, wDeprecated, wMagic, wNodecl,
@@ -69,6 +69,14 @@ const
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideeffect,
                       wThread, wRaises, wLocks, wTags, wGcSafe}
   allRoutinePragmas* = methodPragmas + iteratorPragmas + lambdaPragmas
+
+proc getPragmaVal*(procAst: PNode; name: TSpecialWord): PNode =
+  let p = procAst[pragmasPos]
+  if p.kind == nkEmpty: return nil
+  for it in p:
+    if it.kind == nkExprColonExpr and it[0].kind == nkIdent and
+        it[0].ident.id == ord(name):
+      return it[1]
 
 proc pragma*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords)
 # implementation
@@ -575,7 +583,7 @@ proc pragmaLockStmt(c: PContext; it: PNode) =
     if n.kind != nkBracket:
       localError(n.info, errGenerated, "locks pragma takes a list of expressions")
     else:
-      for i in 0 .. <n.len:
+      for i in 0 ..< n.len:
         n.sons[i] = c.semExpr(c, n.sons[i])
 
 proc pragmaLocks(c: PContext, it: PNode): TLockLevel =
@@ -618,7 +626,8 @@ proc deprecatedStmt(c: PContext; pragma: PNode) =
   for n in pragma:
     if n.kind in {nkExprColonExpr, nkExprEqExpr}:
       let dest = qualifiedLookUp(c, n[1], {checkUndeclared})
-      assert dest != nil
+      if dest == nil or dest.kind in routineKinds:
+        localError(n.info, warnUser, "the .deprecated pragma is unreliable for routines")
       let src = considerQuotedIdent(n[0])
       let alias = newSym(skAlias, src, dest, n[0].info)
       incl(alias.flags, sfExported)
@@ -750,10 +759,6 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         incl(sym.loc.flags, lfNoDecl)
         # implies nodecl, because otherwise header would not make sense
         if sym.loc.r == nil: sym.loc.r = rope(sym.name.s)
-      of wDestructor:
-        sym.flags.incl sfOverriden
-        if sym.name.s.normalize != "destroy":
-          localError(n.info, errGenerated, "destructor has to be named 'destroy'")
       of wOverride:
         sym.flags.incl sfOverriden
       of wNosideeffect:
@@ -766,9 +771,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
       of wNoreturn:
         noVal(it)
         incl(sym.flags, sfNoReturn)
+        if sym.typ[0] != nil:
+          localError(sym.ast[paramsPos][0].info, errNoReturnWithReturnTypeNotAllowed)
       of wDynlib:
         processDynLib(c, it, sym)
-      of wCompilerproc:
+      of wCompilerProc, wCore:
         noVal(it)           # compilerproc may not get a string!
         cppDefine(c.graph.config, sym.name.s)
         if sfFromGeneric notin sym.flags: markCompilerProc(sym)
@@ -799,6 +806,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         noVal(it)
         if sym.typ == nil or tfFinal in sym.typ.flags: invalidPragma(it)
         else: incl(sym.typ.flags, tfInheritable)
+      of wPackage:
+        noVal(it)
+        if sym.typ == nil: invalidPragma(it)
+        else: incl(sym.flags, sfForward)
       of wAcyclic:
         noVal(it)
         if sym.typ == nil: invalidPragma(it)
@@ -974,6 +985,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         noVal(it)
         if sym == nil: invalidPragma(it)
         else: sym.flags.incl sfUsed
+      of wLiftLocals: discard
       else: invalidPragma(it)
     else: invalidPragma(it)
 

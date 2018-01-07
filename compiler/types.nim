@@ -14,7 +14,8 @@ import
 
 type
   TPreferedDesc* = enum
-    preferName, preferDesc, preferExported, preferModuleInfo, preferGenericArg
+    preferName, preferDesc, preferExported, preferModuleInfo, preferGenericArg,
+    preferTypeName
 
 proc typeToString*(typ: PType; prefer: TPreferedDesc = preferName): string
 template `$`*(typ: PType): string = typeToString(typ)
@@ -394,7 +395,7 @@ const
     "and", "or", "not", "any", "static", "TypeFromExpr", "FieldAccessor",
     "void"]
 
-const preferToResolveSymbols = {preferName, preferModuleInfo, preferGenericArg}
+const preferToResolveSymbols = {preferName, preferTypeName, preferModuleInfo, preferGenericArg}
 
 template bindConcreteTypeToUserTypeClass*(tc, concrete: PType) =
   tc.sons.safeAdd concrete
@@ -420,7 +421,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
        sfAnon notin t.sym.flags:
     if t.kind == tyInt and isIntLit(t):
       result = t.sym.name.s & " literal(" & $t.n.intVal & ")"
-    elif prefer == preferName or t.sym.owner.isNil:
+    elif prefer in {preferName, preferTypeName} or t.sym.owner.isNil:
       result = t.sym.name.s
       if t.kind == tyGenericParam and t.sons != nil and t.sonsLen > 0:
         result.add ": "
@@ -518,7 +519,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     result = "openarray[" & typeToString(t.sons[0]) & ']'
   of tyDistinct:
     result = "distinct " & typeToString(t.sons[0],
-      if prefer == preferModuleInfo: preferModuleInfo else: preferName)
+      if prefer == preferModuleInfo: preferModuleInfo else: preferTypeName)
   of tyTuple:
     # we iterate over t.sons here, because t.n may be nil
     if t.n != nil:
@@ -532,7 +533,8 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     elif sonsLen(t) == 0:
       result = "tuple[]"
     else:
-      result = "("
+      if prefer == preferTypeName: result = "("
+      else: result = "tuple of ("
       for i in countup(0, sonsLen(t) - 1):
         add(result, typeToString(t.sons[i]))
         if i < sonsLen(t) - 1: add(result, ", ")
@@ -742,7 +744,7 @@ proc equalParam(a, b: PSym): TParamsEquality =
 proc sameConstraints(a, b: PNode): bool =
   if isNil(a) and isNil(b): return true
   internalAssert a.len == b.len
-  for i in 1 .. <a.len:
+  for i in 1 ..< a.len:
     if not exprStructuralEquivalent(a[i].sym.constraint,
                                     b[i].sym.constraint):
       return false
@@ -970,7 +972,12 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
      tyArray, tyProc, tyVarargs, tyOrdinal, tyTypeClasses, tyOpt:
     cycleCheck()
     if a.kind == tyUserTypeClass and a.n != nil: return a.n == b.n
-    result = sameChildrenAux(a, b, c) and sameFlags(a, b)
+    result = sameChildrenAux(a, b, c)
+    if result:
+      if IgnoreTupleFields in c.flags:
+        result = a.flags * {tfVarIsPtr} == b.flags * {tfVarIsPtr}
+      else:
+        result = sameFlags(a, b)
     if result and ExactGcSafety in c.flags:
       result = a.flags * {tfThread} == b.flags * {tfThread}
     if result and a.kind == tyProc:
@@ -990,6 +997,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
 proc sameBackendType*(x, y: PType): bool =
   var c = initSameTypeClosure()
   c.flags.incl IgnoreTupleFields
+  c.cmp = dcEqIgnoreDistinct
   result = sameTypeAux(x, y, c)
 
 proc compareTypes*(x, y: PType,
@@ -1509,7 +1517,7 @@ proc isCompileTimeOnly*(t: PType): bool {.inline.} =
 proc containsCompileTimeOnly*(t: PType): bool =
   if isCompileTimeOnly(t): return true
   if t.sons != nil:
-    for i in 0 .. <t.sonsLen:
+    for i in 0 ..< t.sonsLen:
       if t.sons[i] != nil and isCompileTimeOnly(t.sons[i]):
         return true
   return false
