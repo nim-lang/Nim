@@ -1223,11 +1223,6 @@ proc addSon*(father, son: PNode) =
   if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
 
-proc addSonsOf*(dest, source: PNode) =
-  assert source != nil
-  if isNil(dest.sons) or dest.len == 0: dest.sons = source.sons
-  else: add(dest.sons, source.sons)
-
 var emptyParams = newNode(nkFormalParams)
 emptyParams.addSon(emptyNode)
 

@@ -17,7 +17,7 @@ import
 const
   FirstCallConv* = wNimcall
   LastCallConv* = wNoconv
-  nkPragmaCallKinds = {nkExprColonExpr, nkCall, nkCommand, nkCallStrLit}
+  nkPragmaCallKinds = {nkExprColonExpr, nkCall, nkCallStrLit}
 
 const
   procPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl,
@@ -657,14 +657,13 @@ proc pragmaGuard(c: PContext; it: PNode; kind: TSymKind): PSym =
     result = qualifiedLookUp(c, n, {checkUndeclared})
 
 proc semCustomPragma(c: PContext, n: PNode): PNode =
-  assert(n.kind in nkPragmaCallKinds)
-  result = newNodeI(nkCall, n.info)
+  assert(n.kind in nkPragmaCallKinds + {nkIdent})
+  
   if n.kind == nkIdent:
     result = newTree(nkCall, n)
   elif n.kind == nkExprColonExpr:
     # pragma: arg -> pragma(arg)
-    result = newNodeI(nkCall, n.info)
-    result.addSonsOf(n) # pragma: arg -> pragma(arg)
+    result = newTree(nkCall, n[0], n[1])
   else:
     result = n
 

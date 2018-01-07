@@ -25,7 +25,7 @@ block: # A bit more advanced case
       c {.serializationKey: "cc".}: float
 
     MySerializable = object
-      a {.serializationKey "asdf", defaultValue: 5.} : int
+      a {.serializationKey"asdf", defaultValue: 5.} : int
       b {.custom_pragma.defaultValue"hello".} : int
       field: Subfield
       d {.alternativeKey("df", 5).}: float

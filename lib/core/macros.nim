@@ -130,6 +130,7 @@ const
   nnkLiterals* = {nnkCharLit..nnkNilLit}
   nnkCallKinds* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
                    nnkCallStrLit}
+  nnkPragmaCallKinds = {nnkExprColonExpr, nnkCall, nnkCallStrLit}
 
 proc `!`*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated.}
   ## constructs an identifier from the string `s`
@@ -1243,7 +1244,7 @@ macro hasCustomPragma*(n: typed, cp: typed{nkSym}): untyped =
   let pragmaNode = customPragmaNode(n)
   for p in pragmaNode:
     if (p.kind == nnkSym and p == cp) or
-        (p.kind == nnkExprColonExpr and p.len > 0 and p[0].kind == nnkSym and p[0] == cp):
+        (p.kind in nnkPragmaCallKinds and p.len > 0 and p[0].kind == nnkSym and p[0] == cp):
       return newLit(true)
   return newLit(false)
 
@@ -1259,7 +1260,7 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
   ##   assert(o.myField.customPragmaNode(serializationKey) == "mf")
   let pragmaNode = customPragmaNode(n)
   for p in pragmaNode:
-    if p.kind == nnkExprColonExpr and p.len > 0 and p[0].kind == nnkSym and p[0] == cp:
+    if p.kind in nnkPragmaCallKinds and p.len > 0 and p[0].kind == nnkSym and p[0] == cp:
       return p[1]
   return newEmptyNode()
   
