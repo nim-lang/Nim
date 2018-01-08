@@ -1089,8 +1089,8 @@ In the above example, providing the -d flag causes the symbol
 used.
 
 
-User custom pragmas 
--------------------
+Custom annotations 
+------------------
 It is possible to define custom typed pragmas. Custom pragmas do not effect 
 code generation directly, but their presence can be detected by macros.
 Custom pragmas are defined using pragma ``pragma``:
@@ -1101,7 +1101,9 @@ Custom pragmas are defined using pragma ``pragma``:
   template dbForeignKey(t: typedesc) {.pragma.}
   template dbIgnore {.pragma.}
 
+
 Consider stylized example of possible Object Relation Mapping (ORM) implementation:
+
 .. code-block:: nim
   const tblspace {.strdefine.} = "dev" # switch for dev, test and prod environments 
 
@@ -1136,17 +1138,19 @@ documentation for details. These macros are no magic, they don't do anything
 you cannot do yourself by walking AST object representation.
 
 More examples with custom pragmas:
-- Better serialization/deserialization control:
-.. code-block:: nim
-  type MyObj = object
-    a {.dontSerialize.}: int
-    b {.defaultDeserialize: 5.}: int
-    c {.serializationKey: "_c".}: string
+  - Better serialization/deserialization control:
 
-- Adopting type for gui inspector in a game engine:
-.. code-block:: nim
-  type MyComponent = object
-    position {.editable, animatable.}: Vector3
-    alpha {.editRange: [0.0..1.0], animatable.}: float32
+  .. code-block:: nim
+    type MyObj = object
+      a {.dontSerialize.}: int
+      b {.defaultDeserialize: 5.}: int
+      c {.serializationKey: "_c".}: string
+
+  - Adopting type for gui inspector in a game engine:
+
+  .. code-block:: nim
+    type MyComponent = object
+      position {.editable, animatable.}: Vector3
+      alpha {.editRange: [0.0..1.0], animatable.}: float32
 
 
