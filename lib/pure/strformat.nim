@@ -224,7 +224,7 @@ template callFormatOption(res, arg, option) {.dirty.} =
   else:
     res.add format(arg, option)
 
-macro fmt*(pattern: string): untyped =
+macro fmt*(pattern: string{lit}): untyped =
   ## For a specification of the ``fmt`` macro, see the module level documentation.
   runnableExamples:
     template check(actual, expected: string) =
@@ -332,7 +332,7 @@ macro fmt*(pattern: string): untyped =
     # works:
     import times
 
-    var nullTime: TimeInfo
+    var nullTime: DateTime
     check fmt"{nullTime:yyyy-mm-dd}", "0000-00-00"
 
     # Unicode string tests
@@ -609,7 +609,6 @@ proc format*(value: string; specifier: string; res: var string) =
   ## sense to call this directly, but it is required to exist
   ## by the ``fmt`` macro.
   let spec = parseStandardFormatSpecifier(specifier)
-  var fmode = ffDefault
   case spec.typ
   of 's', '\0': discard
   else:
