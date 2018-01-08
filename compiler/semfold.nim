@@ -408,7 +408,7 @@ proc getArrayConstr(m: PSym, n: PNode): PNode =
 
 proc foldArrayAccess(m: PSym, n: PNode): PNode =
   var x = getConstExpr(m, n.sons[0])
-  if x == nil or x.typ.skipTypes({tyGenericInst, tyAlias}).kind == tyTypeDesc:
+  if x == nil or x.typ.skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyTypeDesc:
     return
 
   var y = getConstExpr(m, n.sons[1])

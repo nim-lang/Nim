@@ -149,7 +149,7 @@ proc getStorageLoc(n: PNode): TStorageLoc =
     else: result = OnUnknown
   of nkDerefExpr, nkHiddenDeref:
     case n.sons[0].typ.kind
-    of tyVar: result = OnUnknown
+    of tyVar, tyLent: result = OnUnknown
     of tyPtr: result = OnStack
     of tyRef: result = OnHeap
     else: internalError(n.info, "getStorageLoc")
@@ -368,7 +368,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     else:
       linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   of tyPtr, tyPointer, tyChar, tyBool, tyEnum, tyCString,
-     tyInt..tyUInt64, tyRange, tyVar:
+     tyInt..tyUInt64, tyRange, tyVar, tyLent:
     linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   else: internalError("genAssignment: " & $ty.kind)
 
@@ -1707,7 +1707,7 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc, magic: string) =
         rope(magic)]), a.storage)
 
 proc genConv(p: BProc, e: PNode, d: var TLoc) =
-  let destType = e.typ.skipTypes({tyVar, tyGenericInst, tyAlias})
+  let destType = e.typ.skipTypes({tyVar, tyGenericInst, tyAlias, tySink})
   if sameBackendType(destType, e.sons[1].typ):
     expr(p, e.sons[1], d)
   else:
@@ -1783,7 +1783,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
                                                "$# = #subInt64($#, $#);$n"]
     const fun: array[mInc..mDec, string] = ["$# = #addInt($#, $#);$n",
                                              "$# = #subInt($#, $#);$n"]
-    let underlying = skipTypes(e.sons[1].typ, {tyGenericInst, tyAlias, tyVar, tyRange})
+    let underlying = skipTypes(e.sons[1].typ, {tyGenericInst, tyAlias, tySink, tyVar, tyRange})
     if optOverflowCheck notin p.options or underlying.kind in {tyUInt..tyUInt64}:
       binaryStmt(p, e, d, opr[op])
     else:
@@ -1793,7 +1793,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       initLocExpr(p, e.sons[1], a)
       initLocExpr(p, e.sons[2], b)
 
-      let ranged = skipTypes(e.sons[1].typ, {tyGenericInst, tyAlias, tyVar})
+      let ranged = skipTypes(e.sons[1].typ, {tyGenericInst, tyAlias, tySink, tyVar, tyLent})
       let res = binaryArithOverflowRaw(p, ranged, a, b,
         if underlying.kind == tyInt64: fun64[op] else: fun[op])
       putIntoDest(p, a, e.sons[1], "($#)($#)" % [
@@ -2021,9 +2021,9 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
     var r = rdLoc(a)
     var nilCheck: Rope = nil
     var t = skipTypes(a.t, abstractInst)
-    while t.kind in {tyVar, tyPtr, tyRef}:
-      if t.kind != tyVar: nilCheck = r
-      if t.kind != tyVar or not p.module.compileToCpp:
+    while t.kind in {tyVar, tyLent, tyPtr, tyRef}:
+      if t.kind notin {tyVar, tyLent}: nilCheck = r
+      if t.kind notin {tyVar, tyLent} or not p.module.compileToCpp:
         r = "(*$1)" % [r]
       t = skipTypes(t.lastSon, abstractInst)
     if not p.module.compileToCpp:
@@ -2056,7 +2056,7 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
     var a: TLoc
     initLocExpr(p, arg, a)
     var r = rdLoc(a)
-    let isRef = skipTypes(arg.typ, abstractInst).kind in {tyRef, tyPtr, tyVar}
+    let isRef = skipTypes(arg.typ, abstractInst).kind in {tyRef, tyPtr, tyVar, tyLent}
     if isRef:
       add(r, "->Sup")
     else:
@@ -2068,7 +2068,7 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
       # (see bug #837). However sometimes using a temporary is not correct:
       # init(TFigure(my)) # where it is passed to a 'var TFigure'. We test
       # this by ensuring the destination is also a pointer:
-      if d.k == locNone and skipTypes(n.typ, abstractInst).kind in {tyRef, tyPtr, tyVar}:
+      if d.k == locNone and skipTypes(n.typ, abstractInst).kind in {tyRef, tyPtr, tyVar, tyLent}:
         getTemp(p, n.typ, d)
         linefmt(p, cpsStmts, "$1 = &$2;$n", rdLoc(d), r)
       else:
@@ -2307,7 +2307,7 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo): Rope =
   of tyBool: result = rope"NIM_FALSE"
   of tyEnum, tyChar, tyInt..tyInt64, tyUInt..tyUInt64: result = rope"0"
   of tyFloat..tyFloat128: result = rope"0.0"
-  of tyCString, tyString, tyVar, tyPointer, tyPtr, tySequence, tyExpr,
+  of tyCString, tyString, tyVar, tyLent, tyPointer, tyPtr, tySequence, tyExpr,
      tyStmt, tyTypeDesc, tyStatic, tyRef, tyNil:
     result = rope"NIM_NIL"
   of tyProc:

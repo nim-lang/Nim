@@ -325,8 +325,8 @@ proc lsub(g: TSrcGen; n: PNode): int
 proc litAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
   proc skip(t: PType): PType =
     result = t
-    while result.kind in {tyGenericInst, tyRange, tyVar, tyDistinct,
-                          tyOrdinal, tyAlias}:
+    while result.kind in {tyGenericInst, tyRange, tyVar, tyLent, tyDistinct,
+                          tyOrdinal, tyAlias, tySink}:
       result = lastSon(result)
   if n.typ != nil and n.typ.skip.kind in {tyBool, tyEnum}:
     let enumfields = n.typ.skip.n
@@ -898,6 +898,14 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       put(g, tkBracketLe, "[")
       gcomma(g, n, 2)
       put(g, tkBracketRi, "]")
+    elif n.len > 1 and n.lastSon.kind == nkStmtList:
+      gsub(g, n[0])
+      if n.len > 2:
+        put(g, tkParLe, "(")
+        gcomma(g, n, 1, -2)
+        put(g, tkParRi, ")")
+      put(g, tkColon, ":")
+      gsub(g, n, n.len-1)
     else:
       if sonsLen(n) >= 1: gsub(g, n.sons[0])
       put(g, tkParLe, "(")

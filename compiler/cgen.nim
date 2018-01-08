@@ -1336,7 +1336,6 @@ proc getCFile(m: BModule): string =
 
 proc myOpenCached(graph: ModuleGraph; module: PSym, rd: PRodReader): PPassContext =
   injectG(graph.config)
-  assert optSymbolFiles in gGlobalOptions
   var m = newModule(g, module)
   readMergeInfo(getCFile(m), m)
   result = m
@@ -1443,6 +1442,10 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   result = n
   if b == nil or passes.skipCodegen(n): return
   var m = BModule(b)
+  # if the module is cached, we don't regenerate the main proc
+  # nor the dispatchers? But if the dispatchers changed?
+  # XXX emit the dispatchers into its own .c file?
+  if b.rd != nil: return
   if n != nil:
     m.initProc.options = initProcOptions(m)
     genStmts(m.initProc, n)
