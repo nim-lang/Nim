@@ -1876,17 +1876,16 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
         result = magicsAfterOverloadResolution(c, result, flags)
   of mRunnableExamples:
     if gCmd == cmdDoc and n.len >= 2 and n.lastSon.kind == nkStmtList:
-      if n.sons[0].kind == nkIdent:
-        if sfMainModule in c.module.flags:
-          let inp = toFullPath(c.module.info)
-          if c.runnableExamples == nil:
-            c.runnableExamples = newTree(nkStmtList,
-              newTree(nkImportStmt, newStrNode(nkStrLit, expandFilename(inp))))
-          let imports = newTree(nkStmtList)
-          extractImports(n.lastSon, imports)
-          for imp in imports: c.runnableExamples.add imp
-          c.runnableExamples.add newTree(nkBlockStmt, emptyNode, copyTree n.lastSon)
-        result = setMs(n, s)
+      if sfMainModule in c.module.flags:
+        let inp = toFullPath(c.module.info)
+        if c.runnableExamples == nil:
+          c.runnableExamples = newTree(nkStmtList,
+            newTree(nkImportStmt, newStrNode(nkStrLit, expandFilename(inp))))
+        let imports = newTree(nkStmtList)
+        extractImports(n.lastSon, imports)
+        for imp in imports: c.runnableExamples.add imp
+        c.runnableExamples.add newTree(nkBlockStmt, emptyNode, copyTree n.lastSon)
+      result = setMs(n, s)
     else:
       result = emptyNode
   else:
