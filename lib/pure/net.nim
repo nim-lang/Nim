@@ -1135,11 +1135,11 @@ proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
   ##
   ## When 0 is returned the socket's connection has been closed.
   ##
-  ## This function will throw an EOS exception when an error occurs. A value
+  ## This function will throw an OSError exception when an error occurs. A value
   ## lower than 0 is never returned.
   ##
   ## A timeout may be specified in milliseconds, if enough data is not received
-  ## within the time specified an ETimeout exception will be raised.
+  ## within the time specified an TimeoutError exception will be raised.
   ##
   ## **Note**: ``data`` must be initialised.
   ##

@@ -861,12 +861,11 @@ proc loadMethods(r: PRodReader) =
     if r.s[r.pos] == ' ': inc(r.pos)
 
 proc getHash*(fileIdx: int32): SecureHash =
-  internalAssert fileIdx >= 0 and fileIdx < gMods.len
-
-  if gMods[fileIdx].hashDone:
+  if fileIdx <% gMods.len and gMods[fileIdx].hashDone:
     return gMods[fileIdx].hash
 
   result = secureHashFile(fileIdx.toFullPath)
+  if fileIdx >= gMods.len: setLen(gMods, fileIdx+1)
   gMods[fileIdx].hash = result
 
 template growCache*(cache, pos) =
@@ -912,7 +911,7 @@ proc checkDep(fileIdx: int32; cache: IdentCache): TReasonForRecompile =
 
 proc handleSymbolFile*(module: PSym; cache: IdentCache): PRodReader =
   let fileIdx = module.fileIdx
-  if optSymbolFiles notin gGlobalOptions:
+  if gSymbolFiles in {disabledSf, writeOnlySf}:
     module.id = getID()
     return nil
   idgen.loadMaxIds(options.gProjectPath / options.gProjectName)

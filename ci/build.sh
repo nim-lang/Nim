@@ -6,7 +6,7 @@ cd csources
 sh build.sh
 cd ..
 # Add Nim to the PATH
-export PATH=$(pwd)/bin:$PATH
+export PATH=$(pwd)/bin${PATH:+:$PATH}
 # Bootstrap.
 nim -v
 nim c koch

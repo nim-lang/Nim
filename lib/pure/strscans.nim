@@ -31,7 +31,10 @@ As can be seen from the examples, strings are matched verbatim except for
 substrings starting with ``$``. These constructions are available:
 
 =================   ========================================================
-``$i``              Matches an integer. This uses ``parseutils.parseInt``.
+``$b``              Matches a binary integer. This uses ``parseutils.parseBin``.
+``$o``              Matches an octal integer. This uses ``parseutils.parseOct``.
+``$i``              Matches a decimal integer. This uses ``parseutils.parseInt``.
+``$h``              Matches a hex integer. This uses ``parseutils.parseHex``.
 ``$f``              Matches a floating pointer number. Uses ``parseFloat``.
 ``$w``              Matches an ASCII identifier: ``[A-Z-a-z_][A-Za-z_0-9]*``.
 ``$s``              Skips optional whitespace.
@@ -330,19 +333,37 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
         conds.add resLen.notZero
         conds.add resLen
       of 'w':
-        if i < results.len or getType(results[i]).typeKind != ntyString:
+        if i < results.len and getType(results[i]).typeKind == ntyString:
           matchBind "parseIdent"
         else:
           error("no string var given for $w")
         inc i
+      of 'b':
+        if i < results.len and getType(results[i]).typeKind == ntyInt:
+          matchBind "parseBin"
+        else:
+          error("no int var given for $b")
+        inc i
+      of 'o':
+        if i < results.len and getType(results[i]).typeKind == ntyInt:
+          matchBind "parseOct"
+        else:
+          error("no int var given for $o")
+        inc i
       of 'i':
-        if i < results.len or getType(results[i]).typeKind != ntyInt:
+        if i < results.len and getType(results[i]).typeKind == ntyInt:
           matchBind "parseInt"
         else:
-          error("no int var given for $d")
+          error("no int var given for $i")
+        inc i
+      of 'h':
+        if i < results.len and getType(results[i]).typeKind == ntyInt:
+          matchBind "parseHex"
+        else:
+          error("no int var given for $h")
         inc i
       of 'f':
-        if i < results.len or getType(results[i]).typeKind != ntyFloat:
+        if i < results.len and getType(results[i]).typeKind == ntyFloat:
           matchBind "parseFloat"
         else:
           error("no float var given for $f")
@@ -357,7 +378,7 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
         else:
           error("invalid format string")
       of '*', '+':
-        if i < results.len or getType(results[i]).typeKind != ntyString:
+        if i < results.len and getType(results[i]).typeKind == ntyString:
           var min = ord(pattern[p] == '+')
           var q=p+1
           var token = ""
@@ -441,7 +462,7 @@ template success*(x: int): bool = x != 0
 template nxt*(input: string; idx, step: int = 1) = inc(idx, step)
 
 macro scanp*(input, idx: typed; pattern: varargs[untyped]): bool =
-  ## See top level documentation of his module of how ``scanp`` works.
+  ## ``scanp`` is currently undocumented.
   type StmtTriple = tuple[init, cond, action: NimNode]
 
   template interf(x): untyped = bindSym(x, brForceOpen)
@@ -644,6 +665,14 @@ when isMainModule:
   doAssert val == "xyz"
   doAssert intval == 89
   doAssert floatVal == 33.25
+
+  var binval: int
+  var octval: int
+  var hexval: int
+  doAssert scanf("0b0101 0o1234 0xabcd", "$b$s$o$s$h", binval, octval, hexval)
+  doAssert binval == 0b0101
+  doAssert octval == 0o1234
+  doAssert hexval == 0xabcd
 
   let xx = scanf("$abc", "$$$i", intval)
   doAssert xx == false

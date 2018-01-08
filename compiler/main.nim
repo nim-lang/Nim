@@ -21,7 +21,7 @@ import
 from magicsys import systemModule, resetSysTypes
 
 proc rodPass =
-  if optSymbolFiles in gGlobalOptions:
+  if gSymbolFiles in {enabledSf, writeOnlySf}:
     registerPass(rodwritePass)
 
 proc codegenPass =
