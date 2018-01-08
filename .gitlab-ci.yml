@@ -8,7 +8,7 @@ stages:
 
 .linux_set_path: &linux_set_path_def
   before_script:
-    - export PATH=$(pwd)/bin:$PATH
+    - export PATH=$(pwd)/bin${PATH:+:$PATH}
   tags:
     - linux
 
