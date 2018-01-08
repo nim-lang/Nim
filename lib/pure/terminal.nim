@@ -391,12 +391,11 @@ proc eraseLine*(f: File) =
     origin.X = 0'i16
     if setConsoleCursorPosition(h, origin) == 0:
       raiseOSError(osLastError())
-    var ht: DWORD = scrbuf.dwSize.Y - origin.Y
     var wt: DWORD = scrbuf.dwSize.X - origin.X
-    if fillConsoleOutputCharacter(h, ' ', ht*wt,
+    if fillConsoleOutputCharacter(h, ' ', wt,
                                   origin, addr(numwrote)) == 0:
       raiseOSError(osLastError())
-    if fillConsoleOutputAttribute(h, scrbuf.wAttributes, ht * wt,
+    if fillConsoleOutputAttribute(h, scrbuf.wAttributes, wt,
                                   scrbuf.dwCursorPosition, addr(numwrote)) == 0:
       raiseOSError(osLastError())
   else:
