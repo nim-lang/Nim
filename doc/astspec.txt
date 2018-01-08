@@ -918,7 +918,7 @@ This is equivalent to ``var``, but with ``nnkLetSection`` rather than
 Concrete syntax:
 
 .. code-block:: nim
-  let v = 3
+  let a = 3
 
 AST:
 
