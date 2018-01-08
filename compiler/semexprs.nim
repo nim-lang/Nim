@@ -181,9 +181,18 @@ proc semConv(c: PContext, n: PNode): PNode =
   result = newNodeI(nkConv, n.info)
   var targetType = semTypeNode(c, n.sons[0], nil).skipTypes({tyTypeDesc})
   maybeLiftType(targetType, c, n[0].info)
-  result.addSon copyTree(n.sons[0])
-  var op = semExprWithType(c, n.sons[1])
 
+  if targetType.kind in {tySink, tyLent}:
+    let baseType = semTypeNode(c, n.sons[1], nil).skipTypes({tyTypeDesc})
+    let t = newTypeS(targetType.kind, c)
+    t.rawAddSonNoPropagationOfTypeFlags baseType
+    result = newNodeI(nkType, n.info)
+    result.typ = makeTypeDesc(c, t)
+    return
+
+  result.addSon copyTree(n.sons[0])
+
+  var op = semExprWithType(c, n.sons[1])
   if targetType.isMetaType:
     let final = inferWithMetatype(c, targetType, op, true)
     result.addSon final
@@ -191,6 +200,8 @@ proc semConv(c: PContext, n: PNode): PNode =
     return
 
   result.typ = targetType
+  # XXX op is overwritten later on, this is likely added too early
+  # here or needs to be overwritten too then.
   addSon(result, op)
 
   if not isSymChoice(op):

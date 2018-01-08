@@ -581,6 +581,8 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     if len(prag) != 0: add(result, "{." & prag & ".}")
   of tyVarargs:
     result = typeToStr[t.kind] % typeToString(t.sons[0])
+  of tySink:
+    result = "sink " & typeToString(t.sons[0])
   else:
     result = typeToStr[t.kind]
   result.addTypeFlags(t)
