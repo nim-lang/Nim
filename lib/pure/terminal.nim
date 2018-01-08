@@ -788,7 +788,7 @@ when not defined(testing) and isMainModule:
   stdout.writeLine("ordinary text")
   stdout.resetAttributes()
 
-proc IsTrueColorSupported*(): bool =
+proc isTrueColorSupported*(): bool =
   ## Returns true if a terminal supports true color.
   return trueColorIsSupported
 
