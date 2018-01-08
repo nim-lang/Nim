@@ -9,7 +9,7 @@
 
 type
   Allocator* {.inheritable.} = ptr object
-    alloc*: proc (a: Allocator; size: int; alignment: int): pointer {.nimcall.}
+    alloc*: proc (a: Allocator; size: int; alignment: int = 8): pointer {.nimcall.}
     dealloc*: proc (a: Allocator; p: pointer; size: int) {.nimcall.}
     realloc*: proc (a: Allocator; p: pointer; oldSize, newSize: int): pointer {.nimcall.}
 
@@ -22,7 +22,7 @@ proc getCurrentAllocator*(): Allocator =
 proc setCurrentAllocator*(a: Allocator) =
   currentAllocator = a
 
-proc alloc*(size: int; alignment = 8): pointer =
+proc alloc*(size: int; alignment: int = 8): pointer =
   let a = getCurrentAllocator()
   result = a.alloc(a, size, alignment)
 
