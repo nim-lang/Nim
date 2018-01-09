@@ -1093,7 +1093,7 @@ Custom annotations
 ------------------
 It is possible to define custom typed pragmas. Custom pragmas do not effect 
 code generation directly, but their presence can be detected by macros.
-Custom pragmas are defined using pragma ``pragma``:
+Custom pragmas are defined using templates annotated with pragma ``pragma``:
 
 .. code-block:: nim
   template dbTable(name: string, table_space: string = nil) {.pragma.}

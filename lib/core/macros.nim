@@ -1236,9 +1236,10 @@ macro hasCustomPragma*(n: typed, cp: typed{nkSym}): untyped =
   ## has custom pragma `cp`.
   ##
   ## .. code-block:: nim
-  ##   template myAttr() = discard
-  ##   type MyObj = object
-  ##     myField {.myAttr.}: int
+  ##   template myAttr() {.pragma.}
+  ##   type 
+  ##     MyObj = object
+  ##       myField {.myAttr.}: int
   ##   var o: MyObj
   ##   assert(o.myField.hasCustomPragma(myAttr) == 0)
   let pragmaNode = customPragmaNode(n)
@@ -1253,17 +1254,17 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
   ## to be `nnkDotExpr`.
   ##
   ## .. code-block:: nim
-  ##   template serializationKey(key: string) = discard
+  ##   template serializationKey(key: string) {.pragma.}
   ##   type MyObj = object
   ##     myField {.serializationKey: "mf".}: int
   ##   var o: MyObj
-  ##   assert(o.myField.customPragmaNode(serializationKey) == "mf")
+  ##   assert(o.myField.getCustomPragmaVal(serializationKey) == "mf")
   let pragmaNode = customPragmaNode(n)
   for p in pragmaNode:
     if p.kind in nnkPragmaCallKinds and p.len > 0 and p[0].kind == nnkSym and p[0] == cp:
       return p[1]
   return newEmptyNode()
-  
+
 
 when not defined(booting):
   template emit*(e: static[string]): untyped {.deprecated.} =
