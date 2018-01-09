@@ -723,9 +723,10 @@ proc generateHeaders(requestUrl: Uri, httpMethod: string,
     if requestUrl.query.len > 0:
       result.add("?" & requestUrl.query)
   else:
-    # Remove the 'http://' from the URL for CONNECT requests for TLS connections.
+    # Remove the scheme from the URL for CONNECT requests for TLS connections.
     var modifiedUrl = requestUrl
-    if requestUrl.scheme == "https": modifiedUrl.scheme = ""
+    if httpMethod == $HttpConnect:
+      modifiedUrl.scheme = ""
     result.add($modifiedUrl)
 
   # HTTP/1.1\c\l
@@ -1166,9 +1167,18 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
   var lastURL = url
   for i in 1..client.maxRedirects:
     if result.status.redirection():
+      if hasKey(result.headers, "Connection"):
+        if result.headers["Connection"] == "close":
+          client.close()
+      if not client.getBody and client.connected:
+        # downloadFile sets client.getBody=false
+        # but we must read the body of redirect responses
+        await parseBody(client, result.headers, result.version)
       let redirectTo = getNewLocation(lastURL, result.headers)
-      result = await client.request(redirectTo, httpMethod, body, headers)
+      result = await client.requestAux(redirectTo, httpMethod, body, headers)
       lastURL = redirectTo
+    else:
+      break
 
 
 proc request*(client: HttpClient | AsyncHttpClient, url: string,
