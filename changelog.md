@@ -215,3 +215,4 @@ setForegroundColor colRed
 setBackgroundColor colGreen
 styledEcho "Red on Green.", resetStyle
 ```
+

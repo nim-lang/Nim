@@ -305,6 +305,7 @@ const
   sfEscapes* = sfProcvar              # param escapes
   sfBase* = sfDiscriminant
   sfIsSelf* = sfOverriden             # param is 'self'
+  sfCustomPragma* = sfRegister        # symbol is custom pragma template
 
 const
   # getting ready for the future expr/stmt merge
