@@ -1255,8 +1255,9 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
   ##
   ## .. code-block:: nim
   ##   template serializationKey(key: string) {.pragma.}
-  ##   type MyObj = object
-  ##     myField {.serializationKey: "mf".}: int
+  ##   type 
+  ##     MyObj = object
+  ##       myField {.serializationKey: "mf".}: int
   ##   var o: MyObj
   ##   assert(o.myField.getCustomPragmaVal(serializationKey) == "mf")
   let pragmaNode = customPragmaNode(n)
