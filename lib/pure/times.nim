@@ -74,21 +74,34 @@ type
 
   TimeImpl = int64
 
-  Time* = distinct TimeImpl ## Represents a point in time.
-                            ## This is currently implemented as a ``int64`` representing
-                            ## seconds since ``1970-01-01T00:00:00Z``, but don't
-                            ## rely on this knowledge because it might change
-                            ## in the future to allow for higher precision.
-                            ## Use the procs ``toUnix`` and ``fromUnix`` to
-                            ## work with unix timestamps instead.
+  Time* = distinct TimeImpl   ## Represents a point in time.
+                              ## This is currently implemented as a ``int64`` representing
+                              ## seconds since ``1970-01-01T00:00:00Z``, but don't
+                              ## rely on this knowledge because it might change
+                              ## in the future to allow for higher precision.
+                              ## Use the procs ``toUnix`` and ``fromUnix`` to
+                              ## work with unix timestamps instead.
 
-  DateTime* = object of RootObj ## Represents a time in different parts.
-                                ## Although this type can represent leap
-                                ## seconds, they are generally not supported
-                                ## in this module. They are not ignored,
-                                ## but the ``DateTime``'s returned by
-                                ## procedures in this module will never have
-                                ## a leap second.
+  EpochDate* = distinct int32 ## Represents a day in time.
+                              ## This is currently implemented as a ``int22`` representing
+                              ## number of datys since ``1970-01-01``, can be negative.
+                              ## Don't rely on this knowledge because it might change
+                              ## in the future. Use the procs ``toEpochDate`` and 
+                              ## ``fromEpochDate`` to work with this type instead.
+
+  Date* = object of RootObj   ## Represents a date in parts
+    monthday*: MonthdayRange  ## The day of the month, in the range 1 to 31.
+    month*: Month             ## The current month.
+    year*: int                ## The current year, using astronomical year numbering
+                              ## (meaning that before year 1 is year 0, then year -1 and so on).
+
+  DateTime* = object of Date  ## Represents a time in different parts.
+                              ## Although this type can represent leap
+                              ## seconds, they are generally not supported
+                              ## in this module. They are not ignored,
+                              ## but the ``DateTime``'s returned by
+                              ## procedures in this module will never have
+                              ## a leap second.
     second*: SecondRange      ## The number of seconds after the minute,
                               ## normally in the range 0 to 59, but can
                               ## be up to 60 to allow for a leap second.
@@ -96,13 +109,6 @@ type
                               ## in the range 0 to 59.
     hour*: HourRange          ## The number of hours past midnight,
                               ## in the range 0 to 23.
-    monthday*: MonthdayRange  ## The day of the month, in the range 1 to 31.
-    month*: Month             ## The current month.
-    year*: int                ## The current year, using astronomical year numbering
-                              ## (meaning that before year 1 is year 0, then year -1 and so on).
-    weekday*: WeekDay         ## The current day of the week.
-    yearday*: YeardayRange    ## The number of days since January 1,
-                              ## in the range 0 to 365.
     isDst*: bool              ## Determines whether DST is in effect.
                               ## Always false for the JavaScript backend.
     timezone*: Timezone       ## The timezone represented as an implementation of ``Timezone``.
@@ -172,16 +178,19 @@ proc getDaysInYear*(year: int): int =
   ## Get the number of days in a ``year``
   result = 365 + (if isLeapYear(year): 1 else: 0)
 
-proc assertValidDate(monthday: MonthdayRange, month: Month, year: int) {.inline.} =
-  assert monthday <= getDaysInMonth(month, year),
-    $year & "-" & $ord(month) & "-" & $monthday & " is not a valid date"
+proc assertValidDate(d: Date) {.inline.} =
+  assert d.monthday <= getDaysInMonth(d.month, d.year),
+    $d.year & "-" & $ord(d.month) & "-" & $d.monthday & " is not a valid date"
 
-proc toEpochDay(monthday: MonthdayRange, month: Month, year: int): int64 =
-  ## Get the epoch day from a year/month/day date.
-  ## The epoch day is the number of days since 1970/01/01 (it might be negative).
-  assertValidDate monthday, month, year
+
+proc toEpochDate*(epoch_days: int32): EpochDate =
+  epoch_days.EpochDate
+
+proc toEpochDate*(d: Date): EpochDate =
+  ## Get the epoch date from a year/month/day date.
+  assertValidDate d
   # Based on http://howardhinnant.github.io/date_algorithms.html
-  var (y, m, d) = (year, ord(month), monthday.int)
+  var (y, m, d) = (d.year, ord(d.month), d.monthday.int)
   if m <= 2:
     y.dec
 
@@ -189,13 +198,13 @@ proc toEpochDay(monthday: MonthdayRange, month: Month, year: int): int64 =
   let yoe = y - era * 400
   let doy = (153 * (m + (if m > 2: -3 else: 9)) + 2) div 5 + d-1
   let doe = yoe * 365 + yoe div 4 - yoe div 100 + doy
-  return era * 146097 + doe - 719468
+  EpochDate(era * 146097 + doe - 719468)
 
-proc fromEpochDay(epochday: int64): tuple[monthday: MonthdayRange, month: Month, year: int] =
+
+proc fromEpochDate*(epochdate: EpochDate): Date =
   ## Get the year/month/day date from a epoch day.
-  ## The epoch day is the number of days since 1970/01/01 (it might be negative).
   # Based on http://howardhinnant.github.io/date_algorithms.html
-  var z = epochday
+  var z = epochdate.int32
   z.inc 719468
   let era = (if z >= 0: z else: z - 146096) div 146097
   let doe = z - era * 146097
@@ -205,31 +214,35 @@ proc fromEpochDay(epochday: int64): tuple[monthday: MonthdayRange, month: Month,
   let mp = (5 * doy + 2) div 153
   let d = doy - (153 * mp + 2) div 5 + 1
   let m = mp + (if mp < 10: 3 else: -9)
-  return (d.MonthdayRange, m.Month, (y + ord(m <= 2)).int)
+  Date(monthday: d.MonthdayRange, month: m.Month, year: (y + ord(m <= 2)).int)
 
-proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int): YeardayRange {.tags: [], raises: [], benign .} =
-  ## Returns the day of the year.
-  ## Equivalent with ``initDateTime(day, month, year).yearday``.
-  assertValidDate monthday, month, year
+proc yearday*(d: Date): YeardayRange {.tags: [], raises: [], benign .} =
+  ## Returns the day of the year since January 1,
+  ## in the range 0 to 365.
+  assertValidDate d
   const daysUntilMonth:     array[Month, int] = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
   const daysUntilMonthLeap: array[Month, int] = [0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335]
 
-  if isLeapYear(year):
-    result = daysUntilMonthLeap[month] + monthday - 1
+  if isLeapYear(d.year):
+    result = daysUntilMonthLeap[d.month] + d.monthday - 1
   else:
-    result = daysUntilMonth[month] + monthday - 1
+    result = daysUntilMonth[d.month] + d.monthday - 1
 
-proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay {.tags: [], raises: [], benign .} =
-  ## Returns the day of the week enum from day, month and year.
-  ## Equivalent with ``initDateTime(day, month, year).weekday``.
-  assertValidDate monthday, month, year
+proc weekday*(epochdate: EpochDate): WeekDay {.tags: [], raises: [], benign .} =
+  ## Returns the day of the week enum from epoch date  
   # 1970-01-01 is a Thursday, we adjust to the previous Monday
-  let days = toEpochday(monthday, month, year) - 3
+  let days = epochdate.int32 - 3
   let weeks = (if days >= 0: days else: days - 6) div 7
   let wd = days - weeks * 7
   # The value of d is 0 for a Sunday, 1 for a Monday, 2 for a Tuesday, etc.
   # so we must correct for the WeekDay type.
   result = if wd == 0: dSun else: WeekDay(wd - 1)
+
+proc weekday*(d: Date): WeekDay {.tags: [], raises: [], benign .} =
+  ## Returns the day of the week enum from day, month and year date.
+  ## Equivalent with ``initDateTime(day, month, year).weekday``.
+  assertValidDate d
+  weekday(toEpochDate(d))
 
 # Forward declarations
 proc utcZoneInfoFromUtc(time: Time): ZonedTime {.tags: [], raises: [], benign .}
@@ -265,8 +278,8 @@ proc `==`*(a, b: Time): bool {.
 proc toTime*(dt: DateTime): Time {.tags: [], raises: [], benign.} =
   ## Converts a broken-down time structure to
   ## calendar time representation.
-  let epochDay = toEpochday(dt.monthday, dt.month, dt.year)
-  result = Time(epochDay * secondsInDay)
+  let epochDate = toEpochDate(dt)
+  result = Time(epochDate.int * secondsInDay)
   result.inc dt.hour * secondsInHour
   result.inc dt.minute * 60
   result.inc dt.second
@@ -276,25 +289,23 @@ proc toTime*(dt: DateTime): Time {.tags: [], raises: [], benign.} =
 
 proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
   let adjTime = zt.adjTime.int64
-  let epochday = (if adjTime >= 0: adjTime else: adjTime - (secondsInDay - 1)) div secondsInDay
-  var rem = zt.adjTime.int64 - epochday * secondsInDay
+  let epochdate = (if adjTime >= 0: adjTime else: adjTime - (secondsInDay - 1)) div secondsInDay
+  var rem = zt.adjTime.int64 - epochdate * secondsInDay
   let hour = rem div secondsInHour
   rem = rem - hour * secondsInHour
   let minute = rem div secondsInMin
   rem = rem - minute * secondsInMin
   let second = rem
 
-  let (d, m, y) = fromEpochday(epochday)
+  let date = fromEpochDate(epochdate.EpochDate)
 
   DateTime(
-    year: y,
-    month: m,
-    monthday: d,
+    year: date.year,
+    month: date.month,
+    monthday: date.monthday,
     hour: hour,
     minute: minute,
     second: second,
-    weekday: getDayOfWeek(d, m, y),
-    yearday: getDayOfYear(d, m, y),
     isDst: zt.isDst,
     timezone: zone,
     utcOffset: zt.utcOffset
@@ -318,8 +329,8 @@ proc `==`*(zone1, zone2: Timezone): bool =
   zone1.name == zone2.name
 
 proc toAdjTime(dt: DateTime): Time =
-  let epochDay = toEpochday(dt.monthday, dt.month, dt.year)
-  result = Time(epochDay * secondsInDay)
+  let epochDate = toEpochDate(dt)
+  result = Time(epochDate.int * secondsInDay)
   result.inc dt.hour * secondsInHour
   result.inc dt.minute * secondsInMin
   result.inc dt.second
@@ -407,9 +418,12 @@ else:
 
   proc localtime(timer: ptr CTime): StructTmPtr {. importc: "localtime", header: "<time.h>", tags: [].}
 
+  proc toAdjDate(tm: StructTm): Date = 
+    Date(monthday: tm.monthday, month: (tm.month + 1).Month, year: tm.year.int + 1900)
+
   proc toAdjTime(tm: StructTm): Time =
-    let epochDay = toEpochday(tm.monthday, (tm.month + 1).Month, tm.year.int + 1900)
-    result = Time(epochDay * secondsInDay)
+    let epochDay = toEpochDate(toAdjDate(tm))
+    result = Time(epochDay.int * secondsInDay)
     result.inc tm.hour * secondsInHour
     result.inc tm.minute * 60
     result.inc tm.second
@@ -917,6 +931,13 @@ proc format*(dt: DateTime, f: string): string {.tags: [].}=
 
     inc(i)
 
+proc `$`*(d: Date): string {.tags: [], raises: [], benign.} =
+  ## Converts a `Date` object to a string representation.
+  ## It uses the format ``yyyy-MM-dd``.
+  try:
+    result = formatDate(d, "yyyy-MM-dd") 
+  except ValueError: assert false # cannot happen because format string is valid
+    
 proc `$`*(dt: DateTime): string {.tags: [], raises: [], benign.} =
   ## Converts a `DateTime` object to a string representation.
   ## It uses the format ``yyyy-MM-dd'T'HH-mm-sszzz``.
