@@ -186,7 +186,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     let a = n.sym
     let b = getGenSym(c, a)
     if b != a: n.sym = b
-  of nkEmpty, succ(nkSym)..nkNilLit:
+  of nkEmpty, succ(nkSym)..nkNilLit, nkComesFrom:
     # see tests/compile/tgensymgeneric.nim:
     # We need to open the gensym'ed symbol again so that the instantiation
     # creates a fresh copy; but this is wrong the very first reason for gensym
@@ -210,7 +210,7 @@ proc semGenericStmt(c: PContext, n: PNode,
         considerQuotedIdent(fn).id notin ctx.toMixin:
       errorUndeclaredIdentifier(c, n.info, fn.renderTree)
 
-    var first = ord(withinConcept in flags)
+    var first = int ord(withinConcept in flags)
     var mixinContext = false
     if s != nil:
       incl(s.flags, sfUsed)

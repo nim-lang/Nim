@@ -25,10 +25,10 @@ proc skipStmtList(node: NimNode): NimNode {.compileTime.} =
     result = node[0]
 
 template createCb(retFutureSym, iteratorNameSym,
-                  name, futureVarCompletions: untyped) =
+                  strName, identName, futureVarCompletions: untyped) =
   var nameIterVar = iteratorNameSym
   #{.push stackTrace: off.}
-  proc cb0 {.closure.} =
+  proc identName {.closure.} =
     try:
       if not nameIterVar.finished:
         var next = nameIterVar()
@@ -36,11 +36,11 @@ template createCb(retFutureSym, iteratorNameSym,
           if not retFutureSym.finished:
             let msg = "Async procedure ($1) yielded `nil`, are you await'ing a " &
                     "`nil` Future?"
-            raise newException(AssertionError, msg % name)
+            raise newException(AssertionError, msg % strName)
         else:
           {.gcsafe.}:
             {.push hint[ConvFromXtoItselfNotNeeded]: off.}
-            next.callback = (proc() {.closure, gcsafe.})(cb0)
+            next.callback = (proc() {.closure, gcsafe.})(identName)
             {.pop.}
     except:
       futureVarCompletions
@@ -52,7 +52,7 @@ template createCb(retFutureSym, iteratorNameSym,
       else:
         retFutureSym.fail(getCurrentException())
 
-  cb0()
+  identName()
   #{.pop.}
 proc generateExceptionCheck(futSym,
     tryStmt, rootReceiver, fromNode: NimNode): NimNode {.compileTime.} =
@@ -389,9 +389,12 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
     outerProcBody.add(closureIterator)
 
     # -> createCb(retFuture)
-    #var cbName = newIdentNode("cb")
+    # NOTE: The "_continue" suffix is checked for in asyncfutures.nim to produce
+    # friendlier stack traces:
+    var cbName = genSym(nskProc, prcName & "_continue")
     var procCb = getAst createCb(retFutureSym, iteratorNameSym,
                          newStrLitNode(prcName),
+                         cbName,
                          createFutureVarCompletions(futureVarIdents, nil))
     outerProcBody.add procCb
 
@@ -472,27 +475,13 @@ proc stripAwait(node: NimNode): NimNode =
 proc splitParamType(paramType: NimNode, async: bool): NimNode =
   result = paramType
   if paramType.kind == nnkInfix and $paramType[0].ident in ["|", "or"]:
-    let firstType = paramType[1]
-    let firstTypeName = $firstType.ident
-    let secondType = paramType[2]
-    let secondTypeName = $secondType.ident
+    let firstAsync = "async" in ($paramType[1].ident).normalize
+    let secondAsync = "async" in ($paramType[2].ident).normalize
 
-    # Make sure that at least one has the name `async`, otherwise we shouldn't
-    # touch it.
-    if not ("async" in firstTypeName.normalize or
-            "async" in secondTypeName.normalize):
-      return
-
-    if async:
-      if firstTypeName.normalize.startsWith("async"):
-        result = paramType[1]
-      elif secondTypeName.normalize.startsWith("async"):
-        result = paramType[2]
-    else:
-      if not firstTypeName.normalize.startsWith("async"):
-        result = paramType[1]
-      elif not secondTypeName.normalize.startsWith("async"):
-        result = paramType[2]
+    if firstAsync:
+      result = paramType[if async: 1 else: 2]
+    elif secondAsync:
+      result = paramType[if async: 2 else: 1]
 
 proc stripReturnType(returnType: NimNode): NimNode =
   # Strip out the 'Future' from 'Future[T]'.

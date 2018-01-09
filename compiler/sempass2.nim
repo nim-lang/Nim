@@ -518,13 +518,15 @@ proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
     procVarcheck skipConvAndClosure(n)
   #elif n.kind in nkSymChoices:
   #  echo "came here"
+  let paramType = paramType.skipTypesOrNil(abstractInst)
   if paramType != nil and tfNotNil in paramType.flags and
       n.typ != nil and tfNotNil notin n.typ.flags:
     if n.kind == nkAddr:
       # addr(x[]) can't be proven, but addr(x) can:
       if not containsNode(n, {nkDerefExpr, nkHiddenDeref}): return
     elif (n.kind == nkSym and n.sym.kind in routineKinds) or
-         n.kind in procDefs+{nkObjConstr, nkBracket}:
+         (n.kind in procDefs+{nkObjConstr, nkBracket, nkClosure, nkStrLit..nkTripleStrLit}) or
+         (n.kind in nkCallKinds and n[0].kind == nkSym and n[0].sym.magic == mArrToSeq):
       # 'p' is not nil obviously:
       return
     case impliesNotNil(tracked.guards, n)
@@ -977,10 +979,10 @@ proc trackProc*(s: PSym, body: PNode) =
     message(s.info, warnLockLevel,
       "declared lock level is $1, but real lock level is $2" %
         [$s.typ.lockLevel, $t.maxLockLevel])
-  when false:
+  when defined(useDfa):
     if s.kind == skFunc:
-      when defined(dfa): dataflowAnalysis(s, body)
-      trackWrites(s, body)
+      dataflowAnalysis(s, body)
+      when false: trackWrites(s, body)
 
 proc trackTopLevelStmt*(module: PSym; n: PNode) =
   if n.kind in {nkPragma, nkMacroDef, nkTemplateDef, nkProcDef, nkFuncDef,

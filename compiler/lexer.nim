@@ -33,13 +33,13 @@ type
   TTokType* = enum
     tkInvalid, tkEof,         # order is important here!
     tkSymbol, # keywords:
-    tkAddr, tkAnd, tkAs, tkAsm, tkAtomic,
+    tkAddr, tkAnd, tkAs, tkAsm,
     tkBind, tkBlock, tkBreak, tkCase, tkCast,
     tkConcept, tkConst, tkContinue, tkConverter,
     tkDefer, tkDiscard, tkDistinct, tkDiv, tkDo,
     tkElif, tkElse, tkEnd, tkEnum, tkExcept, tkExport,
     tkFinally, tkFor, tkFrom, tkFunc,
-    tkGeneric, tkIf, tkImport, tkIn, tkInclude, tkInterface,
+    tkIf, tkImport, tkIn, tkInclude, tkInterface,
     tkIs, tkIsnot, tkIterator,
     tkLet,
     tkMacro, tkMethod, tkMixin, tkMod, tkNil, tkNot, tkNotin,
@@ -75,12 +75,12 @@ const
   tokKeywordHigh* = pred(tkIntLit)
   TokTypeToStr*: array[TTokType, string] = ["tkInvalid", "[EOF]",
     "tkSymbol",
-    "addr", "and", "as", "asm", "atomic",
+    "addr", "and", "as", "asm",
     "bind", "block", "break", "case", "cast",
     "concept", "const", "continue", "converter",
     "defer", "discard", "distinct", "div", "do",
     "elif", "else", "end", "enum", "except", "export",
-    "finally", "for", "from", "func", "generic", "if",
+    "finally", "for", "from", "func", "if",
     "import", "in", "include", "interface", "is", "isnot", "iterator",
     "let",
     "macro", "method", "mixin", "mod",
@@ -859,6 +859,23 @@ proc getOperator(L: var TLexer, tok: var TToken) =
     inc tok.strongSpaceB
   if buf[pos] in {CR, LF, nimlexbase.EndOfFile}:
     tok.strongSpaceB = -1
+
+proc newlineFollows*(L: var TLexer): bool =
+  var pos = L.bufpos
+  var buf = L.buf
+  while true:
+    case buf[pos]
+    of ' ', '\t':
+      inc(pos)
+    of CR, LF:
+      result = true
+      break
+    of '#':
+      inc(pos)
+      if buf[pos] == '#': inc(pos)
+      if buf[pos] != '[': return true
+    else:
+      break
 
 proc skipMultiLineComment(L: var TLexer; tok: var TToken; start: int;
                           isDoc: bool) =

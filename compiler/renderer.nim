@@ -175,8 +175,17 @@ proc put(g: var TSrcGen, kind: TTokType, s: string) =
 
 proc toNimChar(c: char): string =
   case c
-  of '\0': result = "\\0"
-  of '\x01'..'\x1F', '\x80'..'\xFF': result = "\\x" & strutils.toHex(ord(c), 2)
+  of '\0': result = "\\x00" # not "\\0" to avoid ambiguous cases like "\\012".
+  of '\a': result = "\\a" # \x07
+  of '\b': result = "\\b" # \x08
+  of '\t': result = "\\t" # \x09
+  of '\L': result = "\\L" # \x0A
+  of '\v': result = "\\v" # \x0B
+  of '\f': result = "\\f" # \x0C
+  of '\c': result = "\\c" # \x0D
+  of '\e': result = "\\e" # \x1B
+  of '\x01'..'\x06', '\x0E'..'\x1A', '\x1C'..'\x1F', '\x80'..'\xFF':
+    result = "\\x" & strutils.toHex(ord(c), 2)
   of '\'', '\"', '\\': result = '\\' & c
   else: result = c & ""
 
@@ -316,8 +325,8 @@ proc lsub(g: TSrcGen; n: PNode): int
 proc litAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
   proc skip(t: PType): PType =
     result = t
-    while result.kind in {tyGenericInst, tyRange, tyVar, tyDistinct,
-                          tyOrdinal, tyAlias}:
+    while result.kind in {tyGenericInst, tyRange, tyVar, tyLent, tyDistinct,
+                          tyOrdinal, tyAlias, tySink}:
       result = lastSon(result)
   if n.typ != nil and n.typ.skip.kind in {tyBool, tyEnum}:
     let enumfields = n.typ.skip.n
@@ -710,6 +719,7 @@ proc gcase(g: var TSrcGen, n: PNode) =
   var c: TContext
   initContext(c)
   var length = sonsLen(n)
+  if length == 0: return
   var last = if n.sons[length-1].kind == nkElse: -2 else: -1
   if longMode(g, n, 0, last): incl(c.flags, rfLongMode)
   putWithSpace(g, tkCase, "case")
@@ -826,7 +836,10 @@ proc gident(g: var TSrcGen, n: PNode) =
     t = tkOpr
   put(g, t, s)
   if n.kind == nkSym and (renderIds in g.flags or sfGenSym in n.sym.flags):
-    put(g, tkIntLit, $n.sym.id)
+    when defined(debugMagics):
+      put(g, tkIntLit, $n.sym.id & $n.sym.magic)
+    else:
+      put(g, tkIntLit, $n.sym.id)
 
 proc doParamsAux(g: var TSrcGen, params: PNode) =
   if params.len > 1:
@@ -857,7 +870,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     a: TContext
   if n.comment != nil: pushCom(g, n)
   case n.kind                 # atoms:
-  of nkTripleStrLit: putRawStr(g, tkTripleStrLit, n.strVal)
+  of nkTripleStrLit: put(g, tkTripleStrLit, atom(g, n))
   of nkEmpty: discard
   of nkType: put(g, tkInvalid, atom(g, n))
   of nkSym, nkIdent: gident(g, n)
@@ -885,6 +898,14 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       put(g, tkBracketLe, "[")
       gcomma(g, n, 2)
       put(g, tkBracketRi, "]")
+    elif n.len > 1 and n.lastSon.kind == nkStmtList:
+      gsub(g, n[0])
+      if n.len > 2:
+        put(g, tkParLe, "(")
+        gcomma(g, n, 1, -2)
+        put(g, tkParRi, ")")
+      put(g, tkColon, ":")
+      gsub(g, n, n.len-1)
     else:
       if sonsLen(n) >= 1: gsub(g, n.sons[0])
       put(g, tkParLe, "(")
@@ -1394,8 +1415,8 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkBracketRi, "]")
   of nkTupleClassTy:
     put(g, tkTuple, "tuple")
-  of nkMetaNode_Obsolete:
-    put(g, tkParLe, "(META|")
+  of nkComesFrom:
+    put(g, tkParLe, "(ComesFrom|")
     gsub(g, n, 0)
     put(g, tkParRi, ")")
   of nkGotoState, nkState:

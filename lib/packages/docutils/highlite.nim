@@ -31,14 +31,12 @@ type
     state: TokenClass
 
   SourceLanguage* = enum
-    langNone, langNim, langNimrod, langCpp, langCsharp, langC, langJava,
+    langNone, langNim, langCpp, langCsharp, langC, langJava,
     langYaml
-{.deprecated: [TSourceLanguage: SourceLanguage, TTokenClass: TokenClass,
-              TGeneralTokenizer: GeneralTokenizer].}
 
 const
   sourceLanguageToStr*: array[SourceLanguage, string] = ["none",
-    "Nim", "Nimrod", "C++", "C#", "C", "Java", "Yaml"]
+    "Nim", "C++", "C#", "C", "Java", "Yaml"]
   tokenClassToStr*: array[TokenClass, string] = ["Eof", "None", "Whitespace",
     "DecNumber", "BinNumber", "HexNumber", "OctNumber", "FloatNumber",
     "Identifier", "Keyword", "StringLit", "LongStringLit", "CharLit",
@@ -49,12 +47,12 @@ const
 
   # The following list comes from doc/keywords.txt, make sure it is
   # synchronized with this array by running the module itself as a test case.
-  nimKeywords = ["addr", "and", "as", "asm", "atomic", "bind", "block",
+  nimKeywords = ["addr", "and", "as", "asm", "bind", "block",
     "break", "case", "cast", "concept", "const", "continue", "converter",
     "defer", "discard", "distinct", "div", "do",
     "elif", "else", "end", "enum", "except", "export",
     "finally", "for", "from", "func",
-    "generic", "if", "import", "in", "include",
+    "if", "import", "in", "include",
     "interface", "is", "isnot", "iterator", "let", "macro", "method",
     "mixin", "mod", "nil", "not", "notin", "object", "of", "or", "out", "proc",
     "ptr", "raise", "ref", "return", "shl", "shr", "static",
@@ -398,7 +396,6 @@ type
   TokenizerFlag = enum
     hasPreprocessor, hasNestedComments
   TokenizerFlags = set[TokenizerFlag]
-{.deprecated: [TTokenizerFlag: TokenizerFlag, TTokenizerFlags: TokenizerFlags].}
 
 proc clikeNextToken(g: var GeneralTokenizer, keywords: openArray[string],
                     flags: TokenizerFlags) =
@@ -888,7 +885,7 @@ proc yamlNextToken(g: var GeneralTokenizer) =
 proc getNextToken*(g: var GeneralTokenizer, lang: SourceLanguage) =
   case lang
   of langNone: assert false
-  of langNim, langNimrod: nimNextToken(g)
+  of langNim: nimNextToken(g)
   of langCpp: cppNextToken(g)
   of langCsharp: csharpNextToken(g)
   of langC: cNextToken(g)
@@ -901,12 +898,11 @@ when isMainModule:
   for filename in ["doc/keywords.txt", "../../../doc/keywords.txt"]:
     try:
       let input = string(readFile(filename))
-      keywords = input.split()
+      keywords = input.splitWhitespace()
       break
     except:
       echo filename, " not found"
   doAssert(not keywords.isNil, "Couldn't read any keywords.txt file!")
-  doAssert keywords.len == nimKeywords.len, "No matching lengths"
-  for i in 0..keywords.len-1:
-    #echo keywords[i], " == ", nimKeywords[i]
+  for i in 0..min(keywords.len, nimKeywords.len)-1:
     doAssert keywords[i] == nimKeywords[i], "Unexpected keyword"
+  doAssert keywords.len == nimKeywords.len, "No matching lengths"

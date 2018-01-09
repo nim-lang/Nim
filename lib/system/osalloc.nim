@@ -78,17 +78,7 @@ when defined(emscripten):
     munmap(mmapDescr.realPointer, mmapDescr.realSize)
 
 elif defined(genode):
-
-  proc osAllocPages(size: int): pointer {.
-   importcpp: "genodeEnv->rm().attach(genodeEnv->ram().alloc(@))".}
-
-  proc osTryAllocPages(size: int): pointer =
-    {.emit: """try {""".}
-    result = osAllocPages size
-    {.emit: """} catch (...) { }""".}
-
-  proc osDeallocPages(p: pointer, size: int) {.
-    importcpp: "genodeEnv->rm().detach(#)".}
+  include genodealloc # osAllocPages, osTryAllocPages, osDeallocPages
 
 elif defined(posix):
   const
@@ -166,7 +156,7 @@ elif defined(windows):
     # space heavily, so we now treat Windows as a strange unmap target.
     when reallyOsDealloc:
       if virtualFree(p, 0, MEM_RELEASE) == 0:
-        cprintf "yes, failing!"
+        cprintf "virtualFree failing!"
         quit 1
     #VirtualFree(p, size, MEM_DECOMMIT)
 

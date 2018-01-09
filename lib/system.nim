@@ -249,6 +249,10 @@ type
 when defined(nimHasOpt):
   type opt*{.magic: "Opt".}[T]
 
+when defined(nimNewRuntime):
+  type sink*{.magic: "BuiltinType".}[T]
+  type lent*{.magic: "BuiltinType".}[T]
+
 proc high*[T: Ordinal](x: T): T {.magic: "High", noSideEffect.}
   ## returns the highest possible index of an array, a sequence, a string or
   ## the highest possible value of an ordinal value `x`. As a special
@@ -322,7 +326,7 @@ proc `..`*[T, U](a: T, b: U): HSlice[T, U] {.noSideEffect, inline, magic: "DotDo
   result.b = b
 
 proc `..`*[T](b: T): HSlice[int, T] {.noSideEffect, inline, magic: "DotDot".} =
-  ## `slice`:idx: operator that constructs an interval ``[default(T), b]``
+  ## `slice`:idx: operator that constructs an interval ``[default(int), b]``
   result.b = b
 
 when not defined(niminheritable):
@@ -456,7 +460,14 @@ type
   WriteIOEffect* = object of IOEffect  ## Effect describing a write IO operation.
   ExecIOEffect* = object of IOEffect   ## Effect describing an executing IO operation.
 
-  Exception* {.compilerproc.} = object of RootObj ## \
+  StackTraceEntry* = object ## In debug mode exceptions store the stack trace that led
+                            ## to them. A StackTraceEntry is a single entry of the
+                            ## stack trace.
+    procname*: cstring  ## name of the proc that is currently executing
+    line*: int          ## line number of the proc that is currently executing
+    filename*: cstring  ## filename of the proc that is currently executing
+
+  Exception* {.compilerproc, magic: "Exception".} = object of RootObj ## \
     ## Base exception class.
     ##
     ## Each exception has to inherit from `Exception`. See the full `exception
@@ -468,7 +479,10 @@ type
     msg* {.exportc: "message".}: string ## the exception's message. Not
                                         ## providing an exception message
                                         ## is bad style.
-    trace: string
+    when defined(js):
+      trace: string
+    else:
+      trace: seq[StackTraceEntry]
     up: ref Exception # used for stacking exceptions. Not exported!
 
   SystemError* = object of Exception ## \
@@ -733,6 +747,18 @@ proc newSeqOfCap*[T](cap: Natural): seq[T] {.
   ## ``cap``.
   discard
 
+when not defined(JS):
+  proc newSeqUninitialized*[T: SomeNumber](len: Natural): seq[T] =
+    ## creates a new sequence of type ``seq[T]`` with length ``len``.
+    ##
+    ## Only available for numbers types. Note that the sequence will be
+    ## uninitialized. After the creation of the sequence you should assign
+    ## entries to the sequence instead of adding them.
+
+    result = newSeqOfCap[T](len)
+    var s = cast[PGenericSeq](result)
+    s.len = len
+
 proc len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.
   magic: "LengthOpenArray", noSideEffect.}
 proc len*(x: string): int {.magic: "LengthStr", noSideEffect.}
@@ -895,7 +921,7 @@ proc `div` *(x, y: int8): int8 {.magic: "DivI", noSideEffect.}
 proc `div` *(x, y: int16): int16 {.magic: "DivI", noSideEffect.}
 proc `div` *(x, y: int32): int32 {.magic: "DivI", noSideEffect.}
   ## computes the integer division. This is roughly the same as
-  ## ``floor(x/y)``.
+  ## ``trunc(x/y)``.
   ##
   ## .. code-block:: Nim
   ##   1 div 2 == 0
@@ -1097,7 +1123,7 @@ proc `*`*[T: SomeUnsignedInt](x, y: T): T {.magic: "MulU", noSideEffect.}
 
 proc `div`*[T: SomeUnsignedInt](x, y: T): T {.magic: "DivU", noSideEffect.}
   ## computes the integer division. This is roughly the same as
-  ## ``floor(x/y)``.
+  ## ``trunc(x/y)``.
   ##
   ## .. code-block:: Nim
   ##  (7 div 5) == 1
@@ -1315,6 +1341,7 @@ proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
   ##   tmp.add("cd")
   ##   assert(tmp == "abcd")
 
+
 type
   Endianness* = enum ## is a type describing the endianness of a processor.
     littleEndian, bigEndian
@@ -1429,7 +1456,11 @@ const
     ## is the value that should be passed to `quit <#quit>`_ to indicate
     ## failure.
 
-var programResult* {.exportc: "nim_program_result".}: int
+when defined(nodejs):
+  var programResult* {.importc: "process.exitCode".}: int
+  programResult = 0
+else:
+  var programResult* {.exportc: "nim_program_result".}: int
   ## modify this variable to specify the exit code of the program
   ## under normal circumstances. When the program is terminated
   ## prematurely using ``quit``, this value is ignored.
@@ -1518,7 +1549,7 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ##  i.delete(2) #=> @[1, 2, 4, 5]
   template defaultImpl =
     let xl = x.len
-    for j in i..xl-2: shallowCopy(x[j], x[j+1])
+    for j in i.int..xl-2: shallowCopy(x[j], x[j+1])
     setLen(x, xl-1)
 
   when nimvm:
@@ -1985,34 +2016,80 @@ iterator countdown*[T](a, b: T, step = 1): T {.inline.} =
       yield res
       dec(res, step)
 
-iterator countup*[S, T](a: S, b: T, step = 1): T {.inline.} =
-  ## Counts from ordinal value `a` up to `b` (inclusive) with the given
-  ## step count. `S`, `T` may be any ordinal type, `step` may only
-  ## be positive. **Note**: This fails to count to ``high(int)`` if T = int for
-  ## efficiency reasons.
-  when T is IntLikeForCount:
-    var res = int(a)
-    while res <= int(b):
-      yield T(res)
-      inc(res, step)
-  else:
-    var res: T = T(a)
-    while res <= b:
-      yield res
-      inc(res, step)
+when defined(nimNewRoof):
+  iterator countup*[T](a, b: T, step = 1): T {.inline.} =
+    ## Counts from ordinal value `a` up to `b` (inclusive) with the given
+    ## step count. `S`, `T` may be any ordinal type, `step` may only
+    ## be positive. **Note**: This fails to count to ``high(int)`` if T = int for
+    ## efficiency reasons.
+    when T is IntLikeForCount:
+      var res = int(a)
+      while res <= int(b):
+        yield T(res)
+        inc(res, step)
+    else:
+      var res: T = T(a)
+      while res <= b:
+        yield res
+        inc(res, step)
 
-iterator `..`*[S, T](a: S, b: T): T {.inline.} =
-  ## An alias for `countup`.
-  when T is IntLikeForCount:
-    var res = int(a)
-    while res <= int(b):
-      yield T(res)
-      inc(res)
-  else:
-    var res: T = T(a)
-    while res <= b:
-      yield res
-      inc(res)
+  iterator `..`*[T](a, b: T): T {.inline.} =
+    ## An alias for `countup`.
+    when T is IntLikeForCount:
+      var res = int(a)
+      while res <= int(b):
+        yield T(res)
+        inc(res)
+    else:
+      var res: T = T(a)
+      while res <= b:
+        yield res
+        inc(res)
+
+  template dotdotImpl(t) {.dirty.} =
+    iterator `..`*(a, b: t): t {.inline.} =
+      ## A type specialized version of ``..`` for convenience so that
+      ## mixing integer types work better.
+      var res = a
+      while res <= b:
+        yield res
+        inc(res)
+
+  dotdotImpl(int64)
+  dotdotImpl(int32)
+  dotdotImpl(uint64)
+  dotdotImpl(uint32)
+
+else:
+  iterator countup*[S, T](a: S, b: T, step = 1): T {.inline.} =
+    ## Counts from ordinal value `a` up to `b` (inclusive) with the given
+    ## step count. `S`, `T` may be any ordinal type, `step` may only
+    ## be positive. **Note**: This fails to count to ``high(int)`` if T = int for
+    ## efficiency reasons.
+    when T is IntLikeForCount:
+      var res = int(a)
+      while res <= int(b):
+        yield T(res)
+        inc(res, step)
+    else:
+      var res: T = T(a)
+      while res <= b:
+        yield res
+        inc(res, step)
+
+  iterator `..`*[S, T](a: S, b: T): T {.inline.} =
+    ## An alias for `countup`.
+    when T is IntLikeForCount:
+      var res = int(a)
+      while res <= int(b):
+        yield T(res)
+        inc(res)
+    else:
+      var res: T = T(a)
+      while res <= b:
+        yield res
+        inc(res)
+
 
 iterator `||`*[S, T](a: S, b: T, annotation=""): T {.
   inline, magic: "OmpParFor", sideEffect.} =
@@ -2443,9 +2520,9 @@ proc `$`*[T: tuple|object](x: T): string =
     when compiles($value):
       when compiles(value.isNil):
         if value.isNil: result.add "nil"
-        else: result.add($value)
+        else: result.addQuoted(value)
       else:
-        result.add($value)
+        result.addQuoted(value)
       firstElement = false
     else:
       result.add("...")
@@ -2465,12 +2542,9 @@ proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
       if value.isNil:
         result.add "nil"
       else:
-        result.add($value)
-    # prevent temporary string allocation
-    elif compiles(result.add(value)):
-      result.add(value)
+        result.addQuoted(value)
     else:
-      result.add($value)
+      result.addQuoted(value)
 
   result.add(suffix)
 
@@ -2717,9 +2791,9 @@ when defined(nimvarargstyped):
     ## pretends to be free of side effects, so that it can be used for debugging
     ## routines marked as `noSideEffect <manual.html#pragmas-nosideeffect-pragma>`_.
 else:
-  proc echo*(x: varargs[expr, `$`]) {.magic: "Echo", tags: [WriteIOEffect],
+  proc echo*(x: varargs[untyped, `$`]) {.magic: "Echo", tags: [WriteIOEffect],
     benign, sideEffect.}
-  proc debugEcho*(x: varargs[expr, `$`]) {.magic: "Echo", noSideEffect,
+  proc debugEcho*(x: varargs[untyped, `$`]) {.magic: "Echo", noSideEffect,
                                              tags: [], raises: [].}
 
 template newException*(exceptn: typedesc, message: string;
@@ -2858,7 +2932,10 @@ when not defined(JS): #and not defined(nimscript):
       elif x > y: result = 1
       else: result = 0
     else:
-      result = int(c_strcmp(x, y))
+      let minlen = min(x.len, y.len)
+      result = int(c_memcmp(x.cstring, y.cstring, minlen.csize))
+      if result == 0:
+        result = x.len - y.len
 
   when defined(nimscript):
     proc readFile*(filename: string): string {.tags: [ReadIOEffect], benign.}
@@ -3061,9 +3138,6 @@ when not defined(JS): #and not defined(nimscript):
     proc getFileHandle*(f: File): FileHandle
       ## returns the OS file handle of the file ``f``. This is only useful for
       ## platform specific programming.
-
-    when not defined(nimfix):
-      {.deprecated: [fileHandle: getFileHandle].}
 
   when declared(newSeq):
     proc cstringArrayToSeq*(a: cstringArray, len: Natural): seq[string] =
@@ -3433,11 +3507,18 @@ template `..<`*(a, b: untyped): untyped =
   ## a shortcut for 'a..pred(b)'.
   a .. pred(b)
 
-iterator `..<`*[S,T](a: S, b: T): T =
-  var i = T(a)
-  while i < b:
-    yield i
-    inc i
+when defined(nimNewRoof):
+  iterator `..<`*[T](a, b: T): T =
+    var i = T(a)
+    while i < b:
+      yield i
+      inc i
+else:
+  iterator `..<`*[S, T](a: S, b: T): T =
+    var i = T(a)
+    while i < b:
+      yield i
+      inc i
 
 template spliceImpl(s, a, L, b: untyped): untyped =
   # make room for additional elements or cut:
@@ -3465,7 +3546,10 @@ when hasAlloc or defined(nimscript):
     ## .. code-block:: nim
     ##    var s = "abcdef"
     ##    assert s[1..3] == "bcd"
-    result = s.substr(s ^^ x.a, s ^^ x.b)
+    let a = s ^^ x.a
+    let L = (s ^^ x.b) - a + 1
+    result = newString(L)
+    for i in 0 ..< L: result[i] = s[i + a]
 
   proc `[]=`*[T, U](s: var string, x: HSlice[T, U], b: string) =
     ## slice assignment for strings. If
@@ -3653,7 +3737,7 @@ proc instantiationInfo*(index = -1, fullPaths = false): tuple[
   ## .. code-block:: nim
   ##   import strutils
   ##
-  ##   template testException(exception, code: expr): stmt =
+  ##   template testException(exception, code: untyped): typed =
   ##     try:
   ##       let pos = instantiationInfo()
   ##       discard(code)
@@ -3692,6 +3776,7 @@ template assert*(cond: bool, msg = "") =
   ## that ``AssertionError`` is hidden from the effect system, so it doesn't
   ## produce ``{.raises: [AssertionError].}``. This exception is only supposed
   ## to be caught by unit testing frameworks.
+  ##
   ## The compiler may not generate any code at all for ``assert`` if it is
   ## advised to do so through the ``-d:release`` or ``--assertions:off``
   ## `command line switches <nimc.html#command-line-switches>`_.
@@ -3791,11 +3876,11 @@ type
 {.deprecated: [PNimrodNode: NimNode].}
 
 when false:
-  template eval*(blk: stmt): stmt =
+  template eval*(blk: typed): typed =
     ## executes a block of code at compile time just as if it was a macro
     ## optionally, the block can return an AST tree that will replace the
     ## eval expression
-    macro payload: stmt {.gensym.} = blk
+    macro payload: typed {.gensym.} = blk
     payload()
 
 when hasAlloc:
@@ -3824,6 +3909,65 @@ proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.
 
 when declared(initDebugger):
   initDebugger()
+
+proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
+  ## Adds a char to string `s` and applies the following escaping:
+  ##
+  ## * replaces any ``\`` by ``\\``
+  ## * replaces any ``'`` by ``\'``
+  ## * replaces any ``"`` by ``\"``
+  ## * replaces any other character in the set ``{'\0'..'\31', '\127'..'\255'}``
+  ##   by ``\xHH`` where ``HH`` is its hexadecimal value.
+  ##
+  ## The procedure has been designed so that its output is usable for many
+  ## different common syntaxes.
+  ## **Note**: This is not correct for producing Ansi C code!
+  case c
+  of '\0'..'\31', '\127'..'\255':
+    add(s, "\\x")
+    const HexChars = "0123456789ABCDEF"
+    let n = ord(c)
+    s.add(HexChars[int((n and 0xF0) shr 4)])
+    s.add(HexChars[int(n and 0xF)])
+  of '\\': add(s, "\\\\")
+  of '\'': add(s, "\\'")
+  of '\"': add(s, "\\\"")
+  else: add(s, c)
+
+proc addQuoted*[T](s: var string, x: T) =
+  ## Appends `x` to string `s` in place, applying quoting and escaping
+  ## if `x` is a string or char. See
+  ## `addEscapedChar <system.html#addEscapedChar>`_
+  ## for the escaping scheme.
+  ##
+  ## The Nim standard library uses this function on the elements of
+  ## collections when producing a string representation of a collection.
+  ## It is recommended to use this function as well for user-side collections.
+  ## Users may overload `addQuoted` for custom (string-like) types if
+  ## they want to implement a customized element representation.
+  ##
+  ## .. code-block:: Nim
+  ##   var tmp = ""
+  ##   tmp.addQuoted(1)
+  ##   tmp.add(", ")
+  ##   tmp.addQuoted("string")
+  ##   tmp.add(", ")
+  ##   tmp.addQuoted('c')
+  ##   assert(tmp == """1, "string", 'c'""")
+  when T is string:
+    s.add("\"")
+    for c in x:
+      s.addEscapedChar(c)
+    s.add("\"")
+  elif T is char:
+    s.add("'")
+    s.addEscapedChar(x)
+    s.add("'")
+  # prevent temporary string allocation
+  elif compiles(s.add(x)):
+    s.add(x)
+  else:
+    s.add($x)
 
 when hasAlloc:
   # XXX: make these the default (or implement the NilObject optimization)
@@ -3932,3 +4076,38 @@ when defined(windows) and appType == "console" and defined(nimSetUtf8CodePage):
   proc setConsoleOutputCP(codepage: cint): cint {.stdcall, dynlib: "kernel32",
     importc: "SetConsoleOutputCP".}
   discard setConsoleOutputCP(65001) # 65001 - utf-8 codepage
+
+
+when defined(nimHasRunnableExamples):
+  proc runnableExamples*(body: untyped) {.magic: "RunnableExamples".}
+    ## A section you should use to mark `runnable example`:idx: code with.
+    ##
+    ## - In normal debug and release builds code within
+    ##   a ``runnableExamples`` section is ignored.
+    ## - The documentation generator is aware of these examples and considers them
+    ##   part of the ``##`` doc comment. As the last step of documentation
+    ##   generation the examples are put into an ``$file_example.nim`` file,
+    ##   compiled and tested. The collected examples are
+    ##   put into their own module to ensure the examples do not refer to
+    ##   non-exported symbols.
+else:
+  template runnableExamples*(body: untyped) =
+    discard
+
+template doAssertRaises*(exception, code: untyped): typed =
+  ## Raises ``AssertionError`` if specified ``code`` does not raise the
+  ## specified exception.
+  runnableExamples:
+    doAssertRaises(ValueError):
+      raise newException(ValueError, "Hello World")
+
+  try:
+    block:
+      code
+    raiseAssert(astToStr(exception) & " wasn't raised by:\n" & astToStr(code))
+  except exception:
+    discard
+  except Exception as exc:
+    raiseAssert(astToStr(exception) &
+                " wasn't raised, another error was raised instead by:\n"&
+                astToStr(code))

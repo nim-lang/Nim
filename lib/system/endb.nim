@@ -370,7 +370,7 @@ proc commandPrompt() =
     if dbgUser.len == 0: dbgUser.len = oldLen
     # now look what we have to do:
     var i = scanWord(addr dbgUser.data, dbgTemp, 0)
-    template `?`(x: expr): expr = dbgTemp == cstring(x)
+    template `?`(x: untyped): untyped = dbgTemp == cstring(x)
     if ?"s" or ?"step":
       dbgState = dbStepInto
       again = false

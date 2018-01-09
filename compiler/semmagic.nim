@@ -108,7 +108,7 @@ proc uninstantiate(t: PType): PType =
     else: t
 
 proc evalTypeTrait(traitCall: PNode, operand: PType, context: PSym): PNode =
-  const skippedTypes = {tyTypeDesc, tyAlias}
+  const skippedTypes = {tyTypeDesc, tyAlias, tySink}
   let trait = traitCall[0]
   internalAssert trait.kind == nkSym
   var operand = operand.skipTypes(skippedTypes)
@@ -127,7 +127,7 @@ proc evalTypeTrait(traitCall: PNode, operand: PType, context: PSym): PNode =
   of "not":
     return typeWithSonsResult(tyNot, @[operand])
   of "name":
-    result = newStrNode(nkStrLit, operand.typeToString(preferName))
+    result = newStrNode(nkStrLit, operand.typeToString(preferTypeName))
     result.typ = newType(tyString, context)
     result.info = traitCall.info
   of "arity":
@@ -145,7 +145,7 @@ proc evalTypeTrait(traitCall: PNode, operand: PType, context: PSym): PNode =
   of "stripGenericParams":
     result = uninstantiate(operand).toNode(traitCall.info)
   of "supportsCopyMem":
-    let t = operand.skipTypes({tyVar, tyGenericInst, tyAlias, tyInferred})
+    let t = operand.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink, tyInferred})
     let complexObj = containsGarbageCollectedRef(t) or
                      hasDestructor(t)
     result = newIntNodeT(ord(not complexObj), traitCall)

@@ -173,33 +173,33 @@ proc findExe*(exe: string, followSymlinks: bool = true;
         return x
   result = ""
 
-proc getLastModificationTime*(file: string): Time {.rtl, extern: "nos$1".} =
+proc getLastModificationTime*(file: string): times.Time {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s last modification time.
   when defined(posix):
     var res: Stat
     if stat(file, res) < 0'i32: raiseOSError(osLastError())
-    return res.st_mtime
+    return fromUnix(res.st_mtime.int64)
   else:
     var f: WIN32_FIND_DATA
     var h = findFirstFile(file, f)
     if h == -1'i32: raiseOSError(osLastError())
-    result = winTimeToUnixTime(rdFileTime(f.ftLastWriteTime))
+    result = fromUnix(winTimeToUnixTime(rdFileTime(f.ftLastWriteTime)).int64)
     findClose(h)
 
-proc getLastAccessTime*(file: string): Time {.rtl, extern: "nos$1".} =
+proc getLastAccessTime*(file: string): times.Time {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s last read or write access time.
   when defined(posix):
     var res: Stat
     if stat(file, res) < 0'i32: raiseOSError(osLastError())
-    return res.st_atime
+    return fromUnix(res.st_atime.int64)
   else:
     var f: WIN32_FIND_DATA
     var h = findFirstFile(file, f)
     if h == -1'i32: raiseOSError(osLastError())
-    result = winTimeToUnixTime(rdFileTime(f.ftLastAccessTime))
+    result = fromUnix(winTimeToUnixTime(rdFileTime(f.ftLastAccessTime)).int64)
     findClose(h)
 
-proc getCreationTime*(file: string): Time {.rtl, extern: "nos$1".} =
+proc getCreationTime*(file: string): times.Time {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s creation time.
   ##
   ## **Note:** Under POSIX OS's, the returned time may actually be the time at
@@ -208,12 +208,12 @@ proc getCreationTime*(file: string): Time {.rtl, extern: "nos$1".} =
   when defined(posix):
     var res: Stat
     if stat(file, res) < 0'i32: raiseOSError(osLastError())
-    return res.st_ctime
+    return fromUnix(res.st_ctime.int64)
   else:
     var f: WIN32_FIND_DATA
     var h = findFirstFile(file, f)
     if h == -1'i32: raiseOSError(osLastError())
-    result = winTimeToUnixTime(rdFileTime(f.ftCreationTime))
+    result = fromUnix(winTimeToUnixTime(rdFileTime(f.ftCreationTime)).int64)
     findClose(h)
 
 proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1".} =
@@ -630,7 +630,7 @@ proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   ## the process has finished. To execute a program without having a
   ## shell involved, use the `execProcess` proc of the `osproc`
   ## module.
-  when defined(linux):
+  when defined(posix):
     result = c_system(command) shr 8
   else:
     result = c_system(command)
@@ -816,32 +816,40 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
               k = getSymlinkFileKind(y)
             yield (k, y)
 
-iterator walkDirRec*(dir: string, filter={pcFile, pcDir}): string {.
-  tags: [ReadDirEffect].} =
-  ## Recursively walks over the directory `dir` and yields for each file in `dir`.
-  ## The full path for each file is returned. Directories are not returned.
+iterator walkDirRec*(dir: string, yieldFilter = {pcFile},
+                     followFilter = {pcDir}): string {.tags: [ReadDirEffect].} =
+  ## Recursively walks over the directory `dir` and yields for each file 
+  ## or directory in `dir`.
+  ## The full path for each file or directory is returned.
   ## **Warning**:
   ## Modifying the directory structure while the iterator
   ## is traversing may result in undefined behavior!
   ##
-  ## Walking is recursive. `filter` controls the behaviour of the iterator:
+  ## Walking is recursive. `filters` controls the behaviour of the iterator:
   ##
   ## ---------------------   ---------------------------------------------
-  ## filter                  meaning
+  ## yieldFilter             meaning
   ## ---------------------   ---------------------------------------------
   ## ``pcFile``              yield real files
   ## ``pcLinkToFile``        yield symbolic links to files
+  ## ``pcDir``               yield real directories
+  ## ``pcLinkToDir``         yield symbolic links to directories
+  ## ---------------------   ---------------------------------------------
+  ##
+  ## ---------------------   ---------------------------------------------
+  ## followFilter            meaning
+  ## ---------------------   ---------------------------------------------
   ## ``pcDir``               follow real directories
   ## ``pcLinkToDir``         follow symbolic links to directories
   ## ---------------------   ---------------------------------------------
   ##
   var stack = @[dir]
   while stack.len > 0:
-    for k,p in walkDir(stack.pop()):
-      if k in filter:
-        case k
-        of pcFile, pcLinkToFile: yield p
-        of pcDir, pcLinkToDir: stack.add(p)
+    for k, p in walkDir(stack.pop()):
+      if k in {pcDir, pcLinkToDir} and k in followFilter:
+        stack.add(p)
+      if k in yieldFilter:
+        yield p
 
 proc rawRemoveDir(dir: string) =
   when defined(windows):
@@ -1195,14 +1203,15 @@ when defined(nimdoc):
     ## Returns the number of `command line arguments`:idx: given to the
     ## application.
     ##
-    ## If your binary was called without parameters this will return zero.  You
-    ## can later query each individual paramater with `paramStr() <#paramStr>`_
+    ## Unlike `argc`:idx: in C, if your binary was called without parameters this
+    ## will return zero.
+    ## You can query each individual paramater with `paramStr() <#paramStr>`_
     ## or retrieve all of them in one go with `commandLineParams()
     ## <#commandLineParams>`_.
     ##
-    ## **Availability**: On Posix there is no portable way to get the command
-    ## line from a DLL and thus the proc isn't defined in this environment. You
-    ## can test for its availability with `declared() <system.html#declared>`_.
+    ## **Availability**: When generating a dynamic library (see --app:lib) on
+    ## Posix this proc is not defined.
+    ## Test for availability using `declared() <system.html#declared>`_.
     ## Example:
     ##
     ## .. code-block:: nim
@@ -1219,13 +1228,14 @@ when defined(nimdoc):
     ## `paramCount() <#paramCount>`_ with this proc you can call the
     ## convenience `commandLineParams() <#commandLineParams>`_.
     ##
-    ## It is possible to call ``paramStr(0)`` but this will return OS specific
+    ## Similarly to `argv`:idx: in C,
+    ## it is possible to call ``paramStr(0)`` but this will return OS specific
     ## contents (usually the name of the invoked executable). You should avoid
     ## this and call `getAppFilename() <#getAppFilename>`_ instead.
     ##
-    ## **Availability**: On Posix there is no portable way to get the command
-    ## line from a DLL and thus the proc isn't defined in this environment. You
-    ## can test for its availability with `declared() <system.html#declared>`_.
+    ## **Availability**: When generating a dynamic library (see --app:lib) on
+    ## Posix this proc is not defined.
+    ## Test for availability using `declared() <system.html#declared>`_.
     ## Example:
     ##
     ## .. code-block:: nim
@@ -1441,7 +1451,7 @@ proc sleep*(milsecs: int) {.rtl, extern: "nos$1", tags: [TimeEffect].} =
     winlean.sleep(int32(milsecs))
   else:
     var a, b: Timespec
-    a.tv_sec = Time(milsecs div 1000)
+    a.tv_sec = posix.Time(milsecs div 1000)
     a.tv_nsec = (milsecs mod 1000) * 1000 * 1000
     discard posix.nanosleep(a, b)
 
@@ -1479,16 +1489,17 @@ type
     size*: BiggestInt # Size of file.
     permissions*: set[FilePermission] # File permissions
     linkCount*: BiggestInt # Number of hard links the file object has.
-    lastAccessTime*: Time # Time file was last accessed.
-    lastWriteTime*: Time # Time file was last modified/written to.
-    creationTime*: Time # Time file was created. Not supported on all systems!
+    lastAccessTime*: times.Time # Time file was last accessed.
+    lastWriteTime*: times.Time # Time file was last modified/written to.
+    creationTime*: times.Time # Time file was created. Not supported on all systems!
 
 template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
   ## Transforms the native file info structure into the one nim uses.
   ## 'rawInfo' is either a 'TBY_HANDLE_FILE_INFORMATION' structure on Windows,
   ## or a 'Stat' structure on posix
   when defined(Windows):
-    template toTime(e: FILETIME): untyped {.gensym.} = winTimeToUnixTime(rdFileTime(e)) # local templates default to bind semantics
+    template toTime(e: FILETIME): untyped {.gensym.} =
+      fromUnix(winTimeToUnixTime(rdFileTime(e)).int64) # local templates default to bind semantics
     template merge(a, b): untyped = a or (b shl 32)
     formalInfo.id.device = rawInfo.dwVolumeSerialNumber
     formalInfo.id.file = merge(rawInfo.nFileIndexLow, rawInfo.nFileIndexHigh)
@@ -1520,9 +1531,9 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
     formalInfo.id = (rawInfo.st_dev, rawInfo.st_ino)
     formalInfo.size = rawInfo.st_size
     formalInfo.linkCount = rawInfo.st_Nlink.BiggestInt
-    formalInfo.lastAccessTime = rawInfo.st_atime
-    formalInfo.lastWriteTime = rawInfo.st_mtime
-    formalInfo.creationTime = rawInfo.st_ctime
+    formalInfo.lastAccessTime = fromUnix(rawInfo.st_atime.int64)
+    formalInfo.lastWriteTime = fromUnix(rawInfo.st_mtime.int64)
+    formalInfo.creationTime = fromUnix(rawInfo.st_ctime.int64)
 
     result.permissions = {}
     checkAndIncludeMode(S_IRUSR, fpUserRead)

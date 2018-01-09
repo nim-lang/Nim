@@ -53,8 +53,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
 # implementation
 
 const
-  HelpMessage = "Nim Compiler Version $1 (" & CompileDate & ") [$2: $3]\n" &
-      "Copyright (c) 2006-" & CompileDate.substr(0, 3) & " by Andreas Rumpf\n"
+  HelpMessage = "Nim Compiler Version $1 [$2: $3]\n" &
+      "Copyright (c) 2006-2017 by Andreas Rumpf\n"
 
 const
   Usage = slurp"../doc/basicopt.txt".replace("//", "")
@@ -261,7 +261,7 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
   of "assertions", "a": result = contains(gOptions, optAssert)
   of "deadcodeelim": result = contains(gGlobalOptions, optDeadCodeElim)
   of "run", "r": result = contains(gGlobalOptions, optRun)
-  of "symbolfiles": result = contains(gGlobalOptions, optSymbolFiles)
+  of "symbolfiles": result = gSymbolFiles != disabledSf
   of "genscript": result = contains(gGlobalOptions, optGenScript)
   of "threads": result = contains(gGlobalOptions, optThreads)
   of "taintmode": result = contains(gGlobalOptions, optTaintMode)
@@ -598,7 +598,12 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectNoArg(switch, arg, pass, info)
     helpOnError(pass)
   of "symbolfiles":
-    processOnOffSwitchG({optSymbolFiles}, arg, pass, info)
+    case arg.normalize
+    of "on": gSymbolFiles = enabledSf
+    of "off": gSymbolFiles = disabledSf
+    of "writeonly": gSymbolFiles = writeOnlySf
+    of "readonly": gSymbolFiles = readOnlySf
+    else: localError(info, errOnOrOffExpectedButXFound, arg)
   of "skipcfg":
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optSkipConfigFile)
@@ -611,7 +616,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "skipparentcfg":
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optSkipParentConfigFiles)
-  of "genscript":
+  of "genscript", "gendeps":
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optGenScript)
   of "colors": processOnOffSwitchG({optUseColors}, arg, pass, info)
@@ -654,6 +659,9 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     gListFullPaths = true
   of "dynliboverride":
     dynlibOverride(switch, arg, pass, info)
+  of "dynliboverrideall":
+    expectNoArg(switch, arg, pass, info)
+    gDynlibOverrideAll = true
   of "cs":
     # only supported for compatibility. Does nothing.
     expectArg(switch, arg, pass, info)

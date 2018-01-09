@@ -485,7 +485,7 @@ proc writeformat(o: var Writer; b: bool; fmt: Format) =
   else:
     raise newException(FormatError, "Boolean values must of one of the following types: s,b,o,x,X,d,n")
 
-proc writeformat(o: var Writer; ary: openarray[any]; fmt: Format) =
+proc writeformat(o: var Writer; ary: openarray[system.any]; fmt: Format) =
   ## Write array `ary` according to format `fmt` using output object
   ## `o` and output function `add`.
   if ary.len == 0: return

@@ -7,8 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements lifting for assignments. Later versions of this code
-## will be able to also lift ``=deepCopy`` and ``=destroy``.
+## This module implements lifting for type-bound operations
+## (``=sink``, ``=``, ``=destroy``, ``=deepCopy``).
 
 # included from sem.nim
 
@@ -242,9 +242,9 @@ proc liftBodyAux(c: var TLiftCtx; t: PType; body, x, y: PNode) =
      tyTypeDesc, tyGenericInvocation, tyForward:
     internalError(c.info, "assignment requested for type: " & typeToString(t))
   of tyOrdinal, tyRange, tyInferred,
-     tyGenericInst, tyStatic, tyVar, tyAlias:
+     tyGenericInst, tyStatic, tyVar, tyLent, tyAlias, tySink:
     liftBodyAux(c, lastSon(t), body, x, y)
-  of tyUnused, tyOptAsRef, tyUnused1, tyUnused2: internalError("liftBodyAux")
+  of tyUnused, tyOptAsRef: internalError("liftBodyAux")
 
 proc newProcType(info: TLineInfo; owner: PSym): PType =
   result = newType(tyProc, owner)
@@ -261,7 +261,7 @@ proc addParam(procType: PType; param: PSym) =
   rawAddSon(procType, param.typ)
 
 proc liftBody(c: PContext; typ: PType; kind: TTypeAttachedOp;
-              info: TLineInfo): PSym {.discardable.} =
+              info: TLineInfo): PSym =
   var a: TLiftCtx
   a.info = info
   a.c = c
@@ -302,10 +302,11 @@ proc liftBody(c: PContext; typ: PType; kind: TTypeAttachedOp;
   n.sons[paramsPos] = result.typ.n
   n.sons[bodyPos] = body
   result.ast = n
+  incl result.flags, sfFromGeneric
 
 
 proc getAsgnOrLiftBody(c: PContext; typ: PType; info: TLineInfo): PSym =
-  let t = typ.skipTypes({tyGenericInst, tyVar, tyAlias})
+  let t = typ.skipTypes({tyGenericInst, tyVar, tyLent, tyAlias, tySink})
   result = t.assignment
   if result.isNil:
     result = liftBody(c, t, attachedAsgn, info)
@@ -319,8 +320,10 @@ proc liftTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
   ## to ensure we lift assignment, destructors and moves properly.
   ## The later 'destroyer' pass depends on it.
   if not newDestructors or not hasDestructor(typ): return
-  # do not produce wrong liftings while we're still instantiating generics:
-  if c.typesWithOps.len > 0: return
+  when false:
+    # do not produce wrong liftings while we're still instantiating generics:
+    # now disabled; breaks topttree.nim!
+    if c.typesWithOps.len > 0: return
   let typ = typ.skipTypes({tyGenericInst, tyAlias})
   # we generate the destructor first so that other operators can depend on it:
   if typ.destructor == nil:
@@ -329,3 +332,6 @@ proc liftTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
     liftBody(c, typ, attachedAsgn, info)
   if typ.sink == nil:
     liftBody(c, typ, attachedSink, info)
+
+#proc patchResolvedTypeBoundOp*(c: PContext; n: PNode): PNode =
+#  if n.kind == nkCall and

@@ -165,7 +165,7 @@ proc genGotoState(p: BProc, n: PNode) =
     statesCounter = n[1].intVal
   let prefix = if n.len == 3 and n[2].kind == nkStrLit: n[2].strVal.rope
                else: rope"STATE"
-  for i in 0 .. statesCounter:
+  for i in 0i64 .. statesCounter:
     lineF(p, cpsStmts, "case $2: goto $1$2;$n", [prefix, rope(i)])
   lineF(p, cpsStmts, "}$n", [])
 
@@ -564,9 +564,6 @@ proc genBreakStmt(p: BProc, t: PNode) =
   genLineDir(p, t)
   lineF(p, cpsStmts, "goto $1;$n", [label])
 
-proc getRaiseFrmt(p: BProc): string =
-  result = "#raiseException((#Exception*)$1, $2);$n"
-
 proc genRaiseStmt(p: BProc, t: PNode) =
   if p.inExceptBlock > 0:
     # if the current try stmt have a finally block,
@@ -580,7 +577,8 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     var e = rdLoc(a)
     var typ = skipTypes(t.sons[0].typ, abstractPtrs)
     genLineDir(p, t)
-    lineCg(p, cpsStmts, getRaiseFrmt(p), [e, makeCString(typ.sym.name.s)])
+    lineCg(p, cpsStmts, "#raiseException((#Exception*)$1, $2);$n",
+        [e, makeCString(typ.sym.name.s)])
   else:
     genLineDir(p, t)
     # reraise the last exception:

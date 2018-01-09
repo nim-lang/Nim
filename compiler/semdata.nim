@@ -136,6 +136,7 @@ type
       # the generic type has been constructed completely. See
       # tests/destructor/topttree.nim for an example that
       # would otherwise fail.
+    runnableExamples*: PNode
 
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
   result.genericSym = s
@@ -258,19 +259,19 @@ proc makePtrType*(c: PContext, baseType: PType): PType =
 proc makeTypeWithModifier*(c: PContext,
                            modifier: TTypeKind,
                            baseType: PType): PType =
-  assert modifier in {tyVar, tyPtr, tyRef, tyStatic, tyTypeDesc}
+  assert modifier in {tyVar, tyLent, tyPtr, tyRef, tyStatic, tyTypeDesc}
 
-  if modifier in {tyVar, tyTypeDesc} and baseType.kind == modifier:
+  if modifier in {tyVar, tyLent, tyTypeDesc} and baseType.kind == modifier:
     result = baseType
   else:
     result = newTypeS(modifier, c)
     addSonSkipIntLit(result, baseType.assertNotNil)
 
-proc makeVarType*(c: PContext, baseType: PType): PType =
-  if baseType.kind == tyVar:
+proc makeVarType*(c: PContext, baseType: PType; kind = tyVar): PType =
+  if baseType.kind == kind:
     result = baseType
   else:
-    result = newTypeS(tyVar, c)
+    result = newTypeS(kind, c)
     addSonSkipIntLit(result, baseType.assertNotNil)
 
 proc makeTypeDesc*(c: PContext, typ: PType): PType =

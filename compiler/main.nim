@@ -16,12 +16,12 @@ import
   cgen, jsgen, json, nversion,
   platform, nimconf, importer, passaux, depends, vm, vmdef, types, idgen,
   docgen2, service, parser, modules, ccgutils, sigmatch, ropes,
-  modulegraphs
+  modulegraphs, tables
 
 from magicsys import systemModule, resetSysTypes
 
 proc rodPass =
-  if optSymbolFiles in gGlobalOptions:
+  if gSymbolFiles in {enabledSf, writeOnlySf}:
     registerPass(rodwritePass)
 
 proc codegenPass =
@@ -36,6 +36,9 @@ proc writeDepsFile(g: ModuleGraph; project: string) =
   for m in g.modules:
     if m != nil:
       f.writeLine(toFullPath(m.position.int32))
+  for k in g.inclToMod.keys:
+    if g.getModule(k).isNil:  # don't repeat includes which are also modules
+      f.writeLine(k.toFullPath)
   f.close()
 
 proc commandGenDepend(graph: ModuleGraph; cache: IdentCache) =
@@ -77,6 +80,8 @@ proc commandCompileToC(graph: ModuleGraph; cache: IdentCache) =
     let proj = changeFileExt(gProjectFull, "")
     extccomp.callCCompiler(proj)
     extccomp.writeJsonBuildInstructions(proj)
+    if optGenScript in gGlobalOptions:
+      writeDepsFile(graph, toGeneratedFile(proj, ""))
 
 proc commandJsonScript(graph: ModuleGraph; cache: IdentCache) =
   let proj = changeFileExt(gProjectFull, "")
@@ -186,12 +191,12 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
   of "php":
     gCmd = cmdCompileToPHP
     commandCompileToJS(graph, cache)
-  of "doc":
+  of "doc0":
     wantMainModule()
     gCmd = cmdDoc
     loadConfigs(DocConfig, cache)
     commandDoc()
-  of "doc2":
+  of "doc2", "doc":
     gCmd = cmdDoc
     loadConfigs(DocConfig, cache)
     defineSymbol("nimdoc")
@@ -217,6 +222,13 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
     wantMainModule()
     defineSymbol("nimdoc")
     commandDoc2(graph, cache, true)
+  of "ctags":
+    wantMainModule()
+    gCmd = cmdDoc
+    loadConfigs(DocConfig, cache)
+    wantMainModule()
+    defineSymbol("nimdoc")
+    commandTags()
   of "buildindex":
     gCmd = cmdDoc
     loadConfigs(DocConfig, cache)

@@ -42,7 +42,8 @@ type
 # Page size of the system; in most cases 4096 bytes. For exotic OS or
 # CPU this needs to be changed:
 const
-  PageShift = when defined(cpu16): 8 else: 12
+  PageShift = when defined(cpu16): 8 else: 12 # \
+    # my tests showed no improvments for using larger page sizes.
   PageSize = 1 shl PageShift
   PageMask = PageSize-1
 
@@ -108,7 +109,6 @@ when defined(boehmgc):
       if result == nil: raiseOutOfMem()
     proc alloc0(size: Natural): pointer =
       result = alloc(size)
-      zeroMem(result, size)
     proc realloc(p: pointer, newsize: Natural): pointer =
       result = boehmRealloc(p, newsize)
       if result == nil: raiseOutOfMem()
@@ -118,8 +118,7 @@ when defined(boehmgc):
       result = boehmAlloc(size)
       if result == nil: raiseOutOfMem()
     proc allocShared0(size: Natural): pointer =
-      result = alloc(size)
-      zeroMem(result, size)
+      result = allocShared(size)
     proc reallocShared(p: pointer, newsize: Natural): pointer =
       result = boehmRealloc(p, newsize)
       if result == nil: raiseOutOfMem()
@@ -343,7 +342,6 @@ elif defined(gogc):
 
   const goFlagNoZero: uint32 = 1 shl 3
   proc goRuntimeMallocGC(size: uint, typ: uint, flag: uint32): pointer {.importc: "runtime_mallocgc", dynlib: goLib.}
-  proc goFree(v: pointer) {.importc: "__go_free", dynlib: goLib.}
 
   proc goSetFinalizer(obj: pointer, f: pointer) {.importc: "set_finalizer", codegenDecl:"$1 $2$3 __asm__ (\"main.Set_finalizer\");\n$1 $2$3", dynlib: goLib.}
 
@@ -376,7 +374,6 @@ elif defined(gogc):
     result = goRuntimeMallocGC(roundup(newsize, sizeof(pointer)).uint, 0.uint, goFlagNoZero)
     copyMem(result, old, oldsize)
     zeroMem(cast[pointer](cast[ByteAddress](result) +% oldsize), newsize - oldsize)
-    goFree(old)
 
   proc nimGCref(p: pointer) {.compilerproc, inline.} = discard
   proc nimGCunref(p: pointer) {.compilerproc, inline.} = discard
@@ -573,3 +570,11 @@ when not declared(nimNewSeqOfCap):
     cast[PGenericSeq](result).reserved = cap
 
 {.pop.}
+
+when not declared(ForeignCell):
+  type ForeignCell* = object
+    data*: pointer
+
+  proc protect*(x: pointer): ForeignCell = ForeignCell(data: x)
+  proc dispose*(x: ForeignCell) = discard
+  proc isNotForeign*(x: ForeignCell): bool = false

@@ -58,7 +58,7 @@
 ## You can then begin accepting connections using the ``accept`` procedure.
 ##
 ## .. code-block:: Nim
-##   var client = newSocket()
+##   var client = new Socket
 ##   var address = ""
 ##   while true:
 ##     socket.acceptAddr(client, address)
@@ -145,7 +145,7 @@ type
 
   SOBool* = enum ## Boolean socket options.
     OptAcceptConn, OptBroadcast, OptDebug, OptDontRoute, OptKeepAlive,
-    OptOOBInline, OptReuseAddr, OptReusePort
+    OptOOBInline, OptReuseAddr, OptReusePort, OptNoDelay
 
   ReadLineResult* = enum ## result for readLineAsync
     ReadFullLine, ReadPartialLine, ReadDisconnected, ReadNone
@@ -869,6 +869,11 @@ proc close*(socket: Socket) =
 
     socket.fd.close()
 
+when defined(posix):
+  from posix import TCP_NODELAY
+else:
+  from winlean import TCP_NODELAY
+
 proc toCInt*(opt: SOBool): cint =
   ## Converts a ``SOBool`` into its Socket Option cint representation.
   case opt
@@ -880,6 +885,7 @@ proc toCInt*(opt: SOBool): cint =
   of OptOOBInline: SO_OOBINLINE
   of OptReuseAddr: SO_REUSEADDR
   of OptReusePort: SO_REUSEPORT
+  of OptNoDelay: TCP_NODELAY
 
 proc getSockOpt*(socket: Socket, opt: SOBool, level = SOL_SOCKET): bool {.
   tags: [ReadIOEffect].} =
@@ -902,6 +908,12 @@ proc getPeerAddr*(socket: Socket): (string, Port) =
 proc setSockOpt*(socket: Socket, opt: SOBool, value: bool, level = SOL_SOCKET) {.
   tags: [WriteIOEffect].} =
   ## Sets option ``opt`` to a boolean value specified by ``value``.
+  ##
+  ## .. code-block:: Nim
+  ##   var socket = newSocket()
+  ##   socket.setSockOpt(OptReusePort, true)
+  ##   socket.setSockOpt(OptNoDelay, true, level=IPPROTO_TCP.toInt)
+  ##
   var valuei = cint(if value: 1 else: 0)
   setSockOptInt(socket.fd, cint(level), toCInt(opt), valuei)
 
@@ -1123,11 +1135,11 @@ proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
   ##
   ## When 0 is returned the socket's connection has been closed.
   ##
-  ## This function will throw an EOS exception when an error occurs. A value
+  ## This function will throw an OSError exception when an error occurs. A value
   ## lower than 0 is never returned.
   ##
   ## A timeout may be specified in milliseconds, if enough data is not received
-  ## within the time specified an ETimeout exception will be raised.
+  ## within the time specified an TimeoutError exception will be raised.
   ##
   ## **Note**: ``data`` must be initialised.
   ##

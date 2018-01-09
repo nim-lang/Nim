@@ -1,7 +1,7 @@
 version 1.0 battle plan
 =======================
 
-- make FlowVar compatible to Futures
+- let 'doAssert' analyse the expressions and produce more helpful output
 - fix "high priority" bugs
 - try to fix as many compiler crashes as reasonable
 
@@ -9,6 +9,10 @@ version 1.0 battle plan
 Not critical for 1.0
 ====================
 
+- introduce ``nkStmtListExpr`` for template/macro invokations to produce
+  better stack traces
+- make 'break' not leave named blocks
+- make FlowVar compatible to Futures
 - make 'not nil' the default (produce warnings instead of errors for
   a smooth migration path)
 - case objects needs to be safe and need to support pattern matching
@@ -27,7 +31,6 @@ Not critical for 1.0
 - pragmas need 'bindSym' support
 - pragmas need re-work: 'push' is dangerous, 'hasPragma' does not work
   reliably with user-defined pragmas
-- memory manager: add a measure of fragmentation
 - we need a magic thisModule symbol
 - optimize 'genericReset'; 'newException' leads to code bloat
 
@@ -48,7 +51,6 @@ Bugs
 GC
 ==
 
-- use slightly bigger blocks in the allocator
 - resizing of strings/sequences could take into account the memory that
   is allocated
 

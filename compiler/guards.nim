@@ -52,7 +52,7 @@ proc isLet(n: PNode): bool =
 
 proc isVar(n: PNode): bool =
   n.kind == nkSym and n.sym.kind in {skResult, skVar} and
-      {sfGlobal, sfAddrTaken} * n.sym.flags == {}
+      {sfAddrTaken} * n.sym.flags == {}
 
 proc isLetLocation(m: PNode, isApprox: bool): bool =
   # consider: 'n[].kind' --> we really need to support 1 deref op even if this
@@ -768,8 +768,10 @@ macro `=~`(x: PNode, pat: untyped): bool =
 
   var conds = newTree(nnkBracket)
   m(x, pat, conds)
-  result = nestList(!"and", conds)
-
+  when declared(macros.toNimIdent):
+    result = nestList(toNimIdent"and", conds)
+  else:
+    result = nestList(!"and", conds)
 
 proc isMinusOne(n: PNode): bool =
   n.kind in {nkCharLit..nkUInt64Lit} and n.intVal == -1

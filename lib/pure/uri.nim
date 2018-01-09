@@ -47,6 +47,49 @@ proc add*(url: var Url, a: Url) {.deprecated.} =
   url = url / a
 {.pop.}
 
+proc encodeUrl*(s: string): string =
+  ## Encodes a value to be HTTP safe: This means that characters in the set
+  ## ``{'A'..'Z', 'a'..'z', '0'..'9', '_'}`` are carried over to the result,
+  ## a space is converted to ``'+'`` and every other character is encoded as
+  ## ``'%xx'`` where ``xx`` denotes its hexadecimal value.
+  result = newStringOfCap(s.len + s.len shr 2) # assume 12% non-alnum-chars
+  for i in 0..s.len-1:
+    case s[i]
+    of 'a'..'z', 'A'..'Z', '0'..'9', '_': add(result, s[i])
+    of ' ': add(result, '+')
+    else:
+      add(result, '%')
+      add(result, toHex(ord(s[i]), 2))
+      
+proc decodeUrl*(s: string): string =
+  ## Decodes a value from its HTTP representation: This means that a ``'+'``
+  ## is converted to a space, ``'%xx'`` (where ``xx`` denotes a hexadecimal
+  ## value) is converted to the character with ordinal number ``xx``, and
+  ## and every other character is carried over.
+  proc handleHexChar(c: char, x: var int) {.inline.} =
+    case c
+    of '0'..'9': x = (x shl 4) or (ord(c) - ord('0'))
+    of 'a'..'f': x = (x shl 4) or (ord(c) - ord('a') + 10)
+    of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
+    else: assert(false)
+    
+  result = newString(s.len)
+  var i = 0
+  var j = 0
+  while i < s.len:
+    case s[i]
+    of '%':
+      var x = 0
+      handleHexChar(s[i+1], x)
+      handleHexChar(s[i+2], x)
+      inc(i, 2)
+      result[j] = chr(x)
+    of '+': result[j] = ' '
+    else: result[j] = s[i]
+    inc(i)
+    inc(j)
+  setLen(result, j)
+
 proc parseAuthority(authority: string, result: var Uri) =
   var i = 0
   var inPort = false
@@ -308,11 +351,16 @@ proc `$`*(u: Uri): string =
       result.add(":")
       result.add(u.password)
     result.add("@")
-  result.add(u.hostname)
+  if u.hostname.endswith('/'):
+    result.add(u.hostname[0..^2])
+  else:
+    result.add(u.hostname)
   if u.port.len > 0:
     result.add(":")
     result.add(u.port)
   if u.path.len > 0:
+    if u.hostname.len > 0 and u.path[0] != '/':
+      result.add('/')
     result.add(u.path)
   if u.query.len > 0:
     result.add("?")
@@ -322,6 +370,11 @@ proc `$`*(u: Uri): string =
     result.add(u.anchor)
 
 when isMainModule:
+  block:
+    const test1 = "abc\L+def xyz"
+    doAssert encodeUrl(test1) == "abc%0A%2Bdef+xyz"
+    doAssert decodeUrl(encodeUrl(test1)) == test1
+    
   block:
     let str = "http://localhost"
     let test = parseUri(str)
@@ -482,6 +535,34 @@ when isMainModule:
   block:
     let foo = parseUri("http://localhost:9515") / "status"
     doAssert $foo == "http://localhost:9515/status"
+
+  # bug #6649 #6652
+  block:
+    var foo = parseUri("http://example.com")
+    foo.hostname = "example.com"
+    foo.path = "baz"
+    doAssert $foo == "http://example.com/baz"
+
+    foo.hostname = "example.com/"
+    foo.path = "baz"
+    doAssert $foo == "http://example.com/baz"
+
+    foo.hostname = "example.com"
+    foo.path = "/baz"
+    doAssert $foo == "http://example.com/baz"
+
+    foo.hostname = "example.com/"
+    foo.path = "/baz"
+    doAssert $foo == "http://example.com/baz"
+
+    foo.hostname = "example.com/"
+    foo.port = "8000"
+    foo.path = "baz"
+    doAssert $foo == "http://example.com:8000/baz"
+
+    foo = parseUri("file:/dir/file")
+    foo.path = "relative"
+    doAssert $foo == "file:relative"
 
   # isAbsolute tests
   block:

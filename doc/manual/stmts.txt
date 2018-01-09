@@ -296,6 +296,10 @@ empty ``discard`` statement should be used.
 For non ordinal types it is not possible to list every possible value and so
 these always require an ``else`` part.
 
+As case statements perform compile-time exhaustiveness checks, the value in 
+every ``of`` branch must be known at compile time. This fact is also exploited
+to generate more performant code.
+
 As a special semantic extension, an expression in an ``of`` branch of a case
 statement may evaluate to a set or array constructor; the set or array is then
 expanded into a list of its elements:

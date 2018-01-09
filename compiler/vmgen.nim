@@ -30,7 +30,7 @@
 import
   strutils, ast, astalgo, types, msgs, renderer, vmdef,
   trees, intsets, rodread, magicsys, options, lowerings
-
+import platform
 from os import splitFile
 
 when hasFFI:
@@ -761,6 +761,49 @@ proc genCard(c: PCtx; n: PNode; dest: var TDest) =
   c.gABC(n, opcCard, dest, tmp)
   c.freeTemp(tmp)
 
+proc genIntCast(c: PCtx; n: PNode; dest: var TDest) =
+  const allowedIntegers = {tyInt..tyInt64, tyUInt..tyUInt64, tyChar}
+  var signedIntegers = {tyInt8..tyInt32}
+  var unsignedIntegers = {tyUInt8..tyUInt32, tyChar}
+  let src = n.sons[1].typ.skipTypes(abstractRange)#.kind
+  let dst = n.sons[0].typ.skipTypes(abstractRange)#.kind
+  let src_size = src.getSize
+
+  if platform.intSize < 8:
+    signedIntegers.incl(tyInt)
+    unsignedIntegers.incl(tyUInt)
+  if src_size == dst.getSize and src.kind in allowedIntegers and
+                                 dst.kind in allowedIntegers:
+    let tmp = c.genx(n.sons[1])
+    var tmp2 = c.getTemp(n.sons[1].typ)
+    let tmp3 = c.getTemp(n.sons[1].typ)
+    if dest < 0: dest = c.getTemp(n[0].typ)
+    proc mkIntLit(ival: int): int =
+      result = genLiteral(c, newIntTypeNode(nkIntLit, ival, getSysType(tyInt)))
+    if src.kind in unsignedIntegers and dst.kind in signedIntegers:
+      # cast unsigned to signed integer of same size
+      # signedVal = (unsignedVal xor offset) -% offset
+      let offset = 1 shl (src_size * 8 - 1)
+      c.gABx(n, opcLdConst, tmp2, mkIntLit(offset))
+      c.gABC(n, opcBitxorInt, tmp3, tmp, tmp2)
+      c.gABC(n, opcSubInt, dest, tmp3, tmp2)
+    elif src.kind in signedIntegers and dst.kind in unsignedIntegers:
+      # cast signed to unsigned integer of same size
+      # unsignedVal = (offset +% signedVal +% 1) and offset
+      let offset = (1 shl (src_size * 8))  - 1
+      c.gABx(n, opcLdConst, tmp2, mkIntLit(offset))
+      c.gABx(n, opcLdConst, dest, mkIntLit(offset+1))
+      c.gABC(n, opcAddu, tmp3, tmp, dest)
+      c.gABC(n, opcNarrowU, tmp3, TRegister(src_size*8))
+      c.gABC(n, opcBitandInt, dest, tmp3, tmp2)
+    else:
+      c.gABC(n, opcAsgnInt, dest, tmp)
+    c.freeTemp(tmp)
+    c.freeTemp(tmp2)
+    c.freeTemp(tmp3)
+  else:
+    globalError(n.info, errGenerated, "VM is only allowed to 'cast' between integers of same size")
+
 proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   case m
   of mAnd: c.genAndOr(n, opcFJmp, dest)
@@ -1130,6 +1173,8 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
       # produces a value
     else:
       globalError(n.info, "expandToAst requires a call expression")
+  of mRunnableExamples:
+    discard "just ignore any call to runnableExamples"
   else:
     # mGCref, mGCunref,
     globalError(n.info, "cannot generate code for: " & $m)
@@ -1243,7 +1288,7 @@ proc whichAsgnOpc(n: PNode): TOpcode =
     opcAsgnStr
   of tyFloat..tyFloat128:
     opcAsgnFloat
-  of tyRef, tyNil, tyVar:
+  of tyRef, tyNil, tyVar, tyLent:
     opcAsgnRef
   else:
     opcAsgnComplex
@@ -1436,7 +1481,7 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
       cannotEval(n)
 
 template needsRegLoad(): untyped =
-  gfAddrOf notin flags and fitsRegister(n.typ.skipTypes({tyVar}))
+  gfAddrOf notin flags and fitsRegister(n.typ.skipTypes({tyVar, tyLent}))
 
 proc genArrAccess2(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
                    flags: TGenFlags) =
@@ -1508,7 +1553,7 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
     result = newNodeIT(nkFloatLit, info, t)
   of tyCString, tyString:
     result = newNodeIT(nkStrLit, info, t)
-  of tyVar, tyPointer, tyPtr, tySequence, tyExpr,
+  of tyVar, tyLent, tyPointer, tyPtr, tySequence, tyExpr,
      tyStmt, tyTypeDesc, tyStatic, tyRef, tyNil:
     result = newNodeIT(nkNilLit, info, t)
   of tyProc:
@@ -1773,8 +1818,8 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
   of nkAddr, nkHiddenAddr: genAddrDeref(c, n, dest, opcAddrNode, flags)
   of nkIfStmt, nkIfExpr: genIf(c, n, dest)
   of nkWhenStmt:
-      # This is "when nimvm" node. Chose the first branch.
-      gen(c, n.sons[0].sons[1], dest)
+    # This is "when nimvm" node. Chose the first branch.
+    gen(c, n.sons[0].sons[1], dest)
   of nkCaseStmt: genCase(c, n, dest)
   of nkWhileStmt:
     unused(n, dest)
@@ -1810,7 +1855,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
   of nkVarSection, nkLetSection:
     unused(n, dest)
     genVarSection(c, n)
-  of declarativeDefs:
+  of declarativeDefs, nkMacroDef:
     unused(n, dest)
   of nkLambdaKinds:
     #let s = n.sons[namePos].sym
@@ -1842,9 +1887,11 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     if allowCast in c.features:
       genConv(c, n, n.sons[1], dest, opcCast)
     else:
-      globalError(n.info, errGenerated, "VM is not allowed to 'cast'")
+      genIntCast(c, n, dest)
   of nkTypeOfExpr:
     genTypeLit(c, n.typ, dest)
+  of nkComesFrom:
+    discard "XXX to implement for better stack traces"
   else:
     globalError(n.info, errGenerated, "cannot generate VM code for " & $n)
 
