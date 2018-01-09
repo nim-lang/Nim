@@ -354,7 +354,7 @@ type
     tyInt, tyInt8, tyInt16, tyInt32, tyInt64, # signed integers
     tyFloat, tyFloat32, tyFloat64, tyFloat128,
     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64,
-    tyOptAsRef, tyUnused1, tyUnused2,
+    tyOptAsRef, tySink, tyLent,
     tyVarargs,
     tyUnused,
     tyProxy # used as errornous type (for idetools)
@@ -640,7 +640,7 @@ type
     mNHint, mNWarning, mNError,
     mInstantiationInfo, mGetTypeInfo, mNGenSym,
     mNimvm, mIntDefine, mStrDefine, mRunnableExamples,
-    mException
+    mException, mBuiltinType
 
 # things that we can evaluate safely at compile time, even if not asked for it:
 const
@@ -940,13 +940,13 @@ const
     tyGenericParam}
 
   StructuralEquivTypes*: TTypeKinds = {tyNil, tyTuple, tyArray,
-    tySet, tyRange, tyPtr, tyRef, tyVar, tySequence, tyProc, tyOpenArray,
+    tySet, tyRange, tyPtr, tyRef, tyVar, tyLent, tySequence, tyProc, tyOpenArray,
     tyVarargs}
 
   ConcreteTypes*: TTypeKinds = { # types of the expr that may occur in::
                                  # var x = expr
     tyBool, tyChar, tyEnum, tyArray, tyObject,
-    tySet, tyTuple, tyRange, tyPtr, tyRef, tyVar, tySequence, tyProc,
+    tySet, tyTuple, tyRange, tyPtr, tyRef, tyVar, tyLent, tySequence, tyProc,
     tyPointer,
     tyOpenArray, tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128,
     tyUInt..tyUInt64}
@@ -1427,7 +1427,7 @@ proc propagateToOwner*(owner, elem: PType) =
     owner.flags.incl tfHasMeta
 
   if tfHasAsgn in elem.flags:
-    let o2 = owner.skipTypes({tyGenericInst, tyAlias})
+    let o2 = owner.skipTypes({tyGenericInst, tyAlias, tySink})
     if o2.kind in {tyTuple, tyObject, tyArray,
                    tySequence, tyOpt, tySet, tyDistinct}:
       o2.flags.incl tfHasAsgn
@@ -1435,7 +1435,7 @@ proc propagateToOwner*(owner, elem: PType) =
 
   if owner.kind notin {tyProc, tyGenericInst, tyGenericBody,
                        tyGenericInvocation, tyPtr}:
-    let elemB = elem.skipTypes({tyGenericInst, tyAlias})
+    let elemB = elem.skipTypes({tyGenericInst, tyAlias, tySink})
     if elemB.isGCedMem or tfHasGCedMem in elemB.flags:
       # for simplicity, we propagate this flag even to generics. We then
       # ensure this doesn't bite us in sempass2.

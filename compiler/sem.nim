@@ -102,8 +102,8 @@ proc commonType*(x, y: PType): PType =
   # if expressions, etc.:
   if x == nil: return x
   if y == nil: return y
-  var a = skipTypes(x, {tyGenericInst, tyAlias})
-  var b = skipTypes(y, {tyGenericInst, tyAlias})
+  var a = skipTypes(x, {tyGenericInst, tyAlias, tySink})
+  var b = skipTypes(y, {tyGenericInst, tyAlias, tySink})
   result = x
   if a.kind in {tyExpr, tyNil}: result = y
   elif b.kind in {tyExpr, tyNil}: result = x

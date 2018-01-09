@@ -102,7 +102,7 @@ proc semExprBranch(c: PContext, n: PNode): PNode =
   if result.typ != nil:
     # XXX tyGenericInst here?
     semProcvarCheck(c, result)
-    if result.typ.kind == tyVar: result = newDeref(result)
+    if result.typ.kind in {tyVar, tyLent}: result = newDeref(result)
 
 proc semExprBranchScope(c: PContext, n: PNode): PNode =
   openScope(c)
@@ -446,18 +446,18 @@ proc makeDeref(n: PNode): PNode =
   var t = n.typ
   if t.kind in tyUserTypeClasses and t.isResolvedUserTypeClass:
     t = t.lastSon
-  t = skipTypes(t, {tyGenericInst, tyAlias})
+  t = skipTypes(t, {tyGenericInst, tyAlias, tySink})
   result = n
-  if t.kind == tyVar:
+  if t.kind in {tyVar, tyLent}:
     result = newNodeIT(nkHiddenDeref, n.info, t.sons[0])
     addSon(result, n)
-    t = skipTypes(t.sons[0], {tyGenericInst, tyAlias})
+    t = skipTypes(t.sons[0], {tyGenericInst, tyAlias, tySink})
   while t.kind in {tyPtr, tyRef}:
     var a = result
     let baseTyp = t.lastSon
     result = newNodeIT(nkHiddenDeref, n.info, baseTyp)
     addSon(result, a)
-    t = skipTypes(baseTyp, {tyGenericInst, tyAlias})
+    t = skipTypes(baseTyp, {tyGenericInst, tyAlias, tySink})
 
 proc fillPartialObject(c: PContext; n: PNode; typ: PType) =
   if n.len == 2:
@@ -533,7 +533,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     if typ == nil: continue
     typeAllowedCheck(a.info, typ, symkind)
     liftTypeBoundOps(c, typ, a.info)
-    var tup = skipTypes(typ, {tyGenericInst, tyAlias})
+    var tup = skipTypes(typ, {tyGenericInst, tyAlias, tySink})
     if a.kind == nkVarTuple:
       if tup.kind != tyTuple:
         localError(a.info, errXExpected, "tuple")
@@ -649,7 +649,7 @@ proc semForVars(c: PContext, n: PNode): PNode =
   result = n
   var length = sonsLen(n)
   let iterBase = n.sons[length-2].typ
-  var iter = skipTypes(iterBase, {tyGenericInst, tyAlias})
+  var iter = skipTypes(iterBase, {tyGenericInst, tyAlias, tySink})
   # length == 3 means that there is one for loop variable
   # and thus no tuple unpacking:
   if iter.kind != tyTuple or length == 3:
@@ -683,7 +683,7 @@ proc semForVars(c: PContext, n: PNode): PNode =
 proc implicitIterator(c: PContext, it: string, arg: PNode): PNode =
   result = newNodeI(nkCall, arg.info)
   result.add(newIdentNode(it.getIdent, arg.info))
-  if arg.typ != nil and arg.typ.kind == tyVar:
+  if arg.typ != nil and arg.typ.kind in {tyVar, tyLent}:
     result.add newDeref(arg)
   else:
     result.add arg
@@ -739,7 +739,9 @@ proc semRaise(c: PContext, n: PNode): PNode =
       if base.sym.magic == mException:
         break
       if base.lastSon == nil:
-        localError(n.info, "raised object of type $1 does not inherit from Exception", [typ.sym.name.s])
+        localError(n.info,
+          "raised object of type $1 does not inherit from Exception",
+          [typeToString(typ)])
         return
       base = base.lastSon
 
@@ -878,11 +880,11 @@ proc checkCovariantParamsUsages(genericType: PType) =
       for fieldType in t.sons:
         subresult traverseSubTypes(fieldType)
 
-    of tyPtr, tyRef, tyVar:
+    of tyPtr, tyRef, tyVar, tyLent:
       if t.base.kind == tyGenericParam: return true
       return traverseSubTypes(t.base)
 
-    of tyDistinct, tyAlias:
+    of tyDistinct, tyAlias, tySink:
       return traverseSubTypes(t.lastSon)
 
     of tyGenericInst:
@@ -992,8 +994,8 @@ proc checkForMetaFields(n: PNode) =
   of nkSym:
     let t = n.sym.typ
     case t.kind
-    of tySequence, tySet, tyArray, tyOpenArray, tyVar, tyPtr, tyRef,
-       tyProc, tyGenericInvocation, tyGenericInst, tyAlias:
+    of tySequence, tySet, tyArray, tyOpenArray, tyVar, tyLent, tyPtr, tyRef,
+       tyProc, tyGenericInvocation, tyGenericInst, tyAlias, tySink:
       let start = int ord(t.kind in {tyGenericInvocation, tyGenericInst})
       for i in start ..< t.sons.len:
         checkMeta(t.sons[i])
@@ -1018,7 +1020,7 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
         # type aliases are hard:
         var t = semTypeNode(c, x, nil)
         assert t != nil
-        if s.typ != nil and s.typ.kind != tyAlias:
+        if s.typ != nil and s.typ.kind notin {tyAlias, tySink}:
           if t.kind in {tyProc, tyGenericInst} and not t.isMetaType:
             assignType(s.typ, t)
             s.typ.id = t.id
@@ -1413,9 +1415,9 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
     for col in countup(1, sonsLen(tt)-1):
       let t = tt.sons[col]
       if t != nil and t.kind == tyGenericInvocation:
-        var x = skipTypes(t.sons[0], {tyVar, tyPtr, tyRef, tyGenericInst,
+        var x = skipTypes(t.sons[0], {tyVar, tyLent, tyPtr, tyRef, tyGenericInst,
                                       tyGenericInvocation, tyGenericBody,
-                                      tyAlias})
+                                      tyAlias, tySink})
         if x.kind == tyObject and t.len-1 == n.sons[genericParamsPos].len:
           foundObj = true
           x.methods.safeAdd((col,s))

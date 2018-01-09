@@ -174,7 +174,7 @@ proc patchHead(n: PNode) =
       if n[1].typ.isNil:
         # XXX toptree crashes without this workaround. Figure out why.
         return
-      let t = n[1].typ.skipTypes({tyVar, tyGenericInst, tyAlias, tyInferred})
+      let t = n[1].typ.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink, tyInferred})
       template patch(op, field) =
         if s.name.s == op and field != nil and field != s:
           n.sons[0].sym = field
@@ -198,15 +198,15 @@ template genOp(opr, opname) =
   result = newTree(nkCall, newSymNode(op), newTree(nkHiddenAddr, dest))
 
 proc genSink(t: PType; dest: PNode): PNode =
-  let t = t.skipTypes({tyGenericInst, tyAlias})
+  let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
   genOp(if t.sink != nil: t.sink else: t.assignment, "=sink")
 
 proc genCopy(t: PType; dest: PNode): PNode =
-  let t = t.skipTypes({tyGenericInst, tyAlias})
+  let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
   genOp(t.assignment, "=")
 
 proc genDestroy(t: PType; dest: PNode): PNode =
-  let t = t.skipTypes({tyGenericInst, tyAlias})
+  let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
   genOp(t.destructor, "=destroy")
 
 proc addTopVar(c: var Con; v: PNode) =

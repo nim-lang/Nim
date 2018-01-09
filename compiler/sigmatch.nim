@@ -180,7 +180,8 @@ proc sumGeneric(t: PType): int =
   while true:
     case t.kind
     of tyGenericInst, tyArray, tyRef, tyPtr, tyDistinct,
-        tyOpenArray, tyVarargs, tySet, tyRange, tySequence, tyGenericBody:
+        tyOpenArray, tyVarargs, tySet, tyRange, tySequence, tyGenericBody,
+        tyLent:
       t = t.lastSon
       inc result
     of tyOr:
@@ -207,7 +208,7 @@ proc sumGeneric(t: PType): int =
     of tyStatic:
       return t.sons[0].sumGeneric + 1
     of tyGenericParam, tyExpr, tyStmt: break
-    of tyAlias: t = t.lastSon
+    of tyAlias, tySink: t = t.lastSon
     of tyBool, tyChar, tyEnum, tyObject, tyPointer,
         tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128,
         tyUInt..tyUInt64, tyCompositeTypeClass:
@@ -464,7 +465,7 @@ proc skipToObject(t: PType; skipped: var SkippedPtr): PType =
       inc ptrs
       skipped = skippedPtr
       r = r.lastSon
-    of tyGenericBody, tyGenericInst, tyAlias:
+    of tyGenericBody, tyGenericInst, tyAlias, tySink:
       r = r.lastSon
     else:
       break
@@ -524,7 +525,7 @@ proc allowsNil(f: PType): TTypeRelation {.inline.} =
   result = if tfNotNil notin f.flags: isSubtype else: isNone
 
 proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
-  result = f.kind != a.kind and (f.kind == tyVar or a.kind == tyVar)
+  result = f.kind != a.kind and (f.kind in {tyVar, tyLent} or a.kind in {tyVar, tyLent})
 
 proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   ## For example we have:
@@ -889,7 +890,7 @@ proc inferStaticsInRange(c: var TCandidate,
     doInferStatic(lowerBound, upperBound.intVal + 1 - lengthOrd(concrete))
 
 template subtypeCheck() =
-  if result <= isSubrange and f.lastSon.skipTypes(abstractInst).kind in {tyRef, tyPtr, tyVar}:
+  if result <= isSubrange and f.lastSon.skipTypes(abstractInst).kind in {tyRef, tyPtr, tyVar, tyLent}:
     result = isNone
 
 proc isCovariantPtr(c: var TCandidate, f, a: PType): bool =
@@ -897,7 +898,7 @@ proc isCovariantPtr(c: var TCandidate, f, a: PType): bool =
   assert f.kind == a.kind
 
   template baseTypesCheck(lhs, rhs: PType): bool =
-    lhs.kind notin {tyPtr, tyRef, tyVar} and
+    lhs.kind notin {tyPtr, tyRef, tyVar, tyLent} and
       typeRel(c, lhs, rhs, {trNoCovariance}) == isSubtype
 
   case f.kind
@@ -983,17 +984,17 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
   template doBind: bool = trDontBind notin flags
 
   # var and static arguments match regular modifier-free types
-  var a = aOrig.skipTypes({tyStatic, tyVar}).maybeSkipDistinct(c.calleeSym)
+  var a = aOrig.skipTypes({tyStatic, tyVar, tyLent}).maybeSkipDistinct(c.calleeSym)
   # XXX: Theoretically, maybeSkipDistinct could be called before we even
   # start the param matching process. This could be done in `prepareOperand`
   # for example, but unfortunately `prepareOperand` is not called in certain
   # situation when nkDotExpr are rotated to nkDotCalls
 
-  if aOrig.kind == tyAlias:
+  if aOrig.kind in {tyAlias, tySink}:
     return typeRel(c, f, lastSon(aOrig))
 
   if a.kind == tyGenericInst and
-      skipTypes(f, {tyVar}).kind notin {
+      skipTypes(f, {tyVar, tyLent}).kind notin {
         tyGenericBody, tyGenericInvocation,
         tyGenericInst, tyGenericParam} + tyTypeClasses:
     return typeRel(c, f, lastSon(a))
@@ -1105,8 +1106,8 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
   of tyFloat32:  result = handleFloatRange(f, a)
   of tyFloat64:  result = handleFloatRange(f, a)
   of tyFloat128: result = handleFloatRange(f, a)
-  of tyVar:
-    if aOrig.kind == tyVar: result = typeRel(c, f.base, aOrig.base)
+  of tyVar, tyLent:
+    if aOrig.kind == f.kind: result = typeRel(c, f.base, aOrig.base)
     else: result = typeRel(c, f.base, aOrig, flags + {trNoCovariance})
     subtypeCheck()
   of tyArray:
@@ -1311,7 +1312,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
   of tyEmpty, tyVoid:
     if a.kind == f.kind: result = isEqual
 
-  of tyAlias:
+  of tyAlias, tySink:
     result = typeRel(c, lastSon(f), a)
 
   of tyGenericInst:
@@ -1497,7 +1498,7 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
     considerPreviousT:
       let targetKind = f.sons[0].kind
       let effectiveArgType = a.skipTypes({tyRange, tyGenericInst,
-                                          tyBuiltInTypeClass, tyAlias})
+                                          tyBuiltInTypeClass, tyAlias, tySink})
       let typeClassMatches = targetKind == effectiveArgType.kind and
                              not effectiveArgType.isEmptyContainer
       if typeClassMatches or
@@ -2068,7 +2069,8 @@ proc prepareNamedParam(a: PNode) =
 proc arrayConstr(c: PContext, n: PNode): PType =
   result = newTypeS(tyArray, c)
   rawAddSon(result, makeRangeType(c, 0, 0, n.info))
-  addSonSkipIntLit(result, skipTypes(n.typ, {tyGenericInst, tyVar, tyOrdinal}))
+  addSonSkipIntLit(result, skipTypes(n.typ,
+      {tyGenericInst, tyVar, tyLent, tyOrdinal}))
 
 proc arrayConstr(c: PContext, info: TLineInfo): PType =
   result = newTypeS(tyArray, c)
