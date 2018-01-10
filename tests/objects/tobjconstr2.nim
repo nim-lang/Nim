@@ -53,3 +53,5 @@ type NamedGraphic = object of Graphic2
 
 var ngr = NamedGraphic(kind: Koo, radius: 6.9, name: "Foo")
 echo ngr.name
+
+GC_fullCollect()

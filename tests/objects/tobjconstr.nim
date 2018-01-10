@@ -78,3 +78,5 @@ when true:
   echo b                  # (y: 678, x: 123)
   b=B(y: b.x, x: b.y)
   echo b                  # (y: 123, x: 678)
+
+GC_fullCollect()
