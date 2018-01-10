@@ -4111,3 +4111,20 @@ template doAssertRaises*(exception, code: untyped): typed =
     raiseAssert(astToStr(exception) &
                 " wasn't raised, another error was raised instead by:\n"&
                 astToStr(code))
+
+when defined(cpp) and appType != "lib":
+  proc setTerminate(handler: proc() {.noconv.})
+    {.importc: "std::set_terminate", header: "<exception>".}
+  setTerminate do:
+    # Remove ourself as a handler, reinstalling the default handler.
+    setTerminate(nil)
+
+    # Use the "Lippencott" pattern to capture the current exception.
+    # If it isn't a nim exception let the default handler handle it.
+    try:
+      raise
+    except Exception as ex:
+      let trace = ex.getStackTrace()
+      stderr.write trace & "Error: unhandled exception: " & ex.msg &
+                   " [" & $ex.name & "]\n"
+      quit 1
