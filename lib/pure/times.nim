@@ -705,38 +705,13 @@ else:
     result.inc tm.minute * 60
     result.inc tm.second
   
-  when not defined(windows):
-    # Trick to find the real size of time_t
-    proc sizeof(typ: typedesc[posix.Time]): int =
-      {.emit: [result, " = sizeof(time_t);"].}
-
   proc getLocalOffsetAndDst(unix: int64): tuple[offset: int, dst: bool] =
-    var lowCTime, highCTime: int64
-
-    # This is dumb, but it's nontrivial to find the minimum and maximum legal arguments of `localtime`
-    # (hint: it's not `low(CTime)` and `high(CTime)`), so we just pick some known safe values.
-    # This doesn't really matter unless somebody needs timezone calculations for years
-    # outside of the 30_000 BC to 30_000 AD range, which seems unlikely.
-    when not defined(windows):
-      if sizeof(posix.Time) == 4:
-        lowCTime = low(int32)
-        highCTime = high(int32)
-      else:
-        lowCTime = -1008875779200'i64 # 30_000 BC
-        highCTime = 884541340800'i64 # 30_000 AD
-    else:
-      # XXX: Windows doesn't support negative unix timestamps in `localtime`.
-      #      Need to use WINAPI to implement `localZoneInfoFromUtc` and `localZoneInfoFromTz`
-      #      specificly for windows to fix this.
-      lowCTime = 0
-      highCTime = 884541340800 # 30_000 AD
-
-    if unix notin lowCTime..highCTime:
-      return (0, false)
-
     var a = unix.CTime
-    let tm = localtime(addr(a))[]
+    let tmPtr = localtime(addr(a))
+    if not tmPtr.isNil:
+      let tm = tmPtr[]
     return ((unix - tm.toAdjUnix).int, tm.isdst > 0)
+    return (0, false)
 
   proc localZoneInfoFromUtc(time: Time): ZonedTime =
     let (offset, dst) = getLocalOffsetAndDst(time.seconds)
