@@ -163,7 +163,7 @@ type
                            ## non-static time units is needed.
 
   TimeUnit* = enum ## Different units of time.
-    Week, Day, Hour, Minute, Second, Millisecond, Microsecond, Nanosecond
+    Nanosecond, Microsecond, Millisecond, Second, Minute, Hour, Day, Week
 
   Timezone* = object ## Timezone interface for supporting ``DateTime``'s of arbritary timezones.
                      ## The ``times`` module only supplies implementations for the systems local time and UTC.
@@ -194,9 +194,14 @@ const
   epochDiff = 116444736000000000'i64
 
 const unitWeights: array[TimeUnit, int64] = [
-  7 * secondsInDay * 1e9.int64, secondsInDay * 1e9.int64,
-  secondsInHour * 1e9.int64, secondsInMin * 1e9.int64,
-  1e9.int64, 1_000_000, 1000, 1
+  1'i64,
+  1000,
+  1_000_000,
+  1e9.int64,
+  secondsInMin * 1e9.int64,
+  secondsInHour * 1e9.int64,
+  secondsInDay * 1e9.int64,
+  7 * secondsInDay * 1e9.int64,
 ]
 
 proc convert*[T: SomeInteger](unitFrom, unitTo: TimeUnit, quantity: T): T {.inline.} =
@@ -205,7 +210,7 @@ proc convert*[T: SomeInteger](unitFrom, unitTo: TimeUnit, quantity: T): T {.inli
     doAssert convert(Day, Hour, 2) == 48
     doAssert convert(Day, Week, 13) == 1 # Truncated
     doAssert convert(Second, Millisecond, -1) == -1000
-  if unitFrom > unitTo:
+  if unitFrom < unitTo:
     (quantity div (unitWeights[unitTo] div unitWeights[unitFrom])).T
   else:
     ((unitWeights[unitFrom] div unitWeights[unitTo]) * quantity).T
@@ -323,10 +328,10 @@ proc `$`*(dur: Duration): string =
     remS.inc 1
 
   const unitStrings: array[TimeUnit, string] = [
-    "week", "day", "hour", "minute", "second", "millisecond", "microsecond", "hnsecond" 
+    "nanoseconds", "microsecond", "millisecond", "second", "minute", "hour", "day", "week"
   ]
 
-  for unit in Week .. Second:
+  for unit in countdown(Week, Second):
     let quantity = convert(Second, unit, remS)
     remS = remS mod convert(unit, Second, 1)
 
@@ -335,7 +340,7 @@ proc `$`*(dur: Duration): string =
     elif quantity != 0:
       parts.add $quantity & " " & unitStrings[unit] & "s"
 
-  for unit in Millisecond .. Nanosecond:
+  for unit in countdown(Millisecond, Nanosecond):
     let quantity = convert(Nanosecond, unit, remNs)
     remNs = remNs mod convert(unit, Nanosecond, 1)
 
