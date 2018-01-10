@@ -218,7 +218,7 @@ suite "ttimes":
     
     let orig_tz = getEnv("TZ")
     var tz_cnt = 0
-    for tz_fn in walkFiles(tz_dir & "/*"):
+    for tz_fn in walkFiles(tz_dir & "/**/*"):
       if symlinkExists(tz_fn) or tz_fn.endsWith(".tab") or
           tz_fn.endsWith(".list"):
         continue
