@@ -406,6 +406,7 @@ proc setStdIoUnbuffered() =
 
 when declared(stdout):
   proc echoBinSafe(args: openArray[string]) {.compilerProc.} =
+    # flockfile deadlock some versions of Android 5.x.x
     when not defined(windows) and not defined(android):
       proc flockfile(f: File) {.importc, noDecl.}
       proc funlockfile(f: File) {.importc, noDecl.}
