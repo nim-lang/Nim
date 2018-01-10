@@ -55,6 +55,10 @@ when defined(JS):
     system.`- `(a, b)
   proc `-`(a, b: int): int =
     system.`- `(a, b)
+  proc inc(a: var int, b: int) =
+    system.inc(a, b)
+  proc inc(a: var int64, b: int) =
+    system.inc(a, b)
   {.pop.}
 
 when defined(posix):

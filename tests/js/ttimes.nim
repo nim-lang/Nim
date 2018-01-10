@@ -40,5 +40,4 @@ block timezoneTests:
   doAssert $dt.utc.inZone(utcPlus2) == $dt
 
 doAssert $initDateTime(01, mJan, 1911, 12, 00, 00, utc()) == "1911-01-01T12:00:00+00:00"
-# See #6752
-# doAssert $initDateTime(01, mJan, 1900, 12, 00, 00, utc()) == "0023-01-01T12:00:00+00:00"
+doAssert $initDateTime(01, mJan, 0023, 12, 00, 00, utc()) == "0023-01-01T12:00:00+00:00"
