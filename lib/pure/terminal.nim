@@ -40,8 +40,10 @@ var
 const
   fgPrefix = "\x1b[38;2;"
   bgPrefix = "\x1b[48;2;"
+
 when not defined(windows):
-  stylePrefix = "\e["
+  const
+    stylePrefix = "\e["
 
 when defined(windows):
   import winlean, os
