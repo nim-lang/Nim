@@ -38,9 +38,10 @@ var
   fgSetColor {.threadvar.}: bool
 
 const
-  stylePrefix = "\e["
   fgPrefix = "\x1b[38;2;"
   bgPrefix = "\x1b[48;2;"
+when not defined(windows):
+  stylePrefix = "\e["
 
 when defined(windows):
   import winlean, os
@@ -58,20 +59,7 @@ when defined(windows):
     FOREGROUND_RGB = FOREGROUND_RED or FOREGROUND_GREEN or FOREGROUND_BLUE
     BACKGROUND_RGB = BACKGROUND_RED or BACKGROUND_GREEN or BACKGROUND_BLUE
 
-    ENABLE_ECHO_INPUT = 0x0004
-    ENABLE_EXTENDED_FLAGS = 0x0080
-    ENABLE_INSERT_MODE = 0x0020
-    ENABLE_LINE_INPUT = 0x0002
-    ENABLE_MOUSE_INPUT = 0x0010
-    ENABLE_PROCESSED_INPUT = 0x0001
-    ENABLE_QUICK_EDIT_MODE = 0x0040
-    ENABLE_WINDOW_INPUT = 0x0008
-    ENABLE_VIRTUAL_TERMINAL_INPUT = 0x0200
-    ENABLE_PROCESSED_OUTPUT = 0x0001
-    ENABLE_WRAP_AT_EOL_OUTPUT = 0x0002
     ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
-    DISABLE_NEWLINE_AUTO_RETURN = 0x0008
-    ENABLE_LVB_GRID_WORLDWIDE = 0x0010
 
   type
     SHORT = int16
@@ -793,19 +781,41 @@ proc isTrueColorSupported*(): bool =
 
 proc enableTrueColor*() =
   ## Enable true color.
-  trueColorIsEnabled = true
+  when defined(windows):
+    var mode: DWORD = 0
+    if getConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), addr(mode)) != 0:
+      mode = mode or ENABLE_VIRTUAL_TERMINAL_PROCESSING
+      if setConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), mode) != 0:
+        trueColorIsEnabled = true
+      else:
+        trueColorIsEnabled = false
+  else:
+    trueColorIsEnabled = true
 
 proc disableTrueColor*() =
   ## Disable true color.
-  trueColorIsEnabled = false
+  when defined(windows):
+    var mode: DWORD = 0
+    if getConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), addr(mode)) != 0:
+      mode = mode and not ENABLE_VIRTUAL_TERMINAL_PROCESSING
+      discard setConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), mode)
+      trueColorIsEnabled = false
+  else:
+    trueColorIsEnabled = false
 
 fgSetColor = true
 
 when defined(windows):
-  var mode: DWORD = 0
-  discard getConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), addr(mode))
-  mode = mode or ENABLE_VIRTUAL_TERMINAL_PROCESSING
-  trueColorIsSupported = setConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), mode) != 0
+  var
+    ver: OSVERSIONINFO
+  ver.dwOSVersionInfoSize = sizeof(ver).DWORD
+  let res = when useWinUnicode: getVersionExW(ver.addr) else: getVersionExA(ver.addr)
+  if res == 0:
+    trueColorIsSupported = false
+  else:
+    trueColorIsSupported = ver.dwMajorVersion > 10 or 
+      (ver.dwMajorVersion == 10 and (ver.dwMinorVersion > 0 or 
+      (ver.dwMinorVersion == 0 and ver.dwBuildNumber >= 10586)))
 else:
   when compileOption("taintmode"):
     trueColorIsSupported = string(getEnv("COLORTERM")).toLowerAscii() in ["truecolor", "24bit"]
@@ -817,6 +827,3 @@ when not hasThreadSupport:
   colorsBGCache = initTable[Color, string]()
   when not defined(windows):
     styleCache = initTable[int, string]()
-
-if trueColorIsSupported:
-  trueColorIsEnabled = true
