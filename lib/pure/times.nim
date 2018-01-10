@@ -704,13 +704,13 @@ else:
     result.inc tm.hour * secondsInHour
     result.inc tm.minute * 60
     result.inc tm.second
-  
+
   proc getLocalOffsetAndDst(unix: int64): tuple[offset: int, dst: bool] =
     var a = unix.CTime
     let tmPtr = localtime(addr(a))
     if not tmPtr.isNil:
       let tm = tmPtr[]
-    return ((unix - tm.toAdjUnix).int, tm.isdst > 0)
+      return ((unix - tm.toAdjUnix).int, tm.isdst > 0)
     return (0, false)
 
   proc localZoneInfoFromUtc(time: Time): ZonedTime =
