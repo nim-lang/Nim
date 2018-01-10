@@ -123,7 +123,8 @@ var
   gOptions*: TOptions = {optObjCheck, optFieldCheck, optRangeCheck,
                          optBoundsCheck, optOverflowCheck, optAssert, optWarns,
                          optHints, optStackTrace, optLineTrace,
-                         optPatterns, optNilCheck}
+                         optPatterns} # , optNilCheck}
+       # XXX add optNilCheck when csources can bootstrap with it set in nim.cfg
   gGlobalOptions*: TGlobalOptions = {optThreadAnalysis}
   gExitcode*: int8
   gCmd*: TCommands = cmdNone  # the command
