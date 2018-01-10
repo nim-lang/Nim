@@ -190,3 +190,6 @@ let
 
 - Added support for casting between integers of same bitsize in VM (compile time and nimscript).
   This allow to among other things to reinterpret signed integers as unsigned.
+- Pragmas now support call syntax, for example: ``{.exportc"myname".}`` and ``{.exportc("myname").}``
+- Custom pragmas are now supported using pragma ``pragma``, please see language manual for details
+
