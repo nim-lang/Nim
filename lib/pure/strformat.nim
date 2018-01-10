@@ -221,8 +221,10 @@ template callFormat(res, arg) {.dirty.} =
 template callFormatOption(res, arg, option) {.dirty.} =
   when compiles(format(arg, option, res)):
     format(arg, option, res)
-  else:
+  elif compiles(format(arg, option)):
     res.add format(arg, option)
+  else:
+    format($arg, option, res)
 
 macro fmt*(pattern: string{lit}): untyped =
   ## For a specification of the ``fmt`` macro, see the module level documentation.
