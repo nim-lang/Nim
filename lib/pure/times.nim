@@ -247,25 +247,56 @@ proc initDuration*(nanoseconds, microseconds, milliseconds,
   # Nanoseconds might be negative so we must normalize.
   result = normalize[Duration](seconds, nanoseconds)
 
-proc weeks*(dur: Duration): int64 =
+proc weeks*(dur: Duration): int64 {.inline.} =
   ## Number of whole weeks represented by the duration.
   convert(Second, Week, dur.seconds)
 
-proc days*(dur: Duration): int64 =
+proc days*(dur: Duration): int64 {.inline.} =
   ## Number of whole days represented by the duration.
   convert(Second, Day, dur.seconds)
   
-proc minutes*(dur: Duration): int64 =
+proc minutes*(dur: Duration): int64 {.inline.} =
   ## Number of whole minutes represented by the duration.
   convert(Second, Minute, dur.seconds)
 
-proc hours*(dur: Duration): int64 =
+proc hours*(dur: Duration): int64 {.inline.} =
   ## Number of whole hours represented by the duration.
   convert(Second, Hour, dur.seconds)
 
-proc seconds*(dur: Duration): int64 =
+proc seconds*(dur: Duration): int64 {.inline.} =
   ## Number of whole seconds represented by the duration.
   dur.seconds
+
+proc milliseconds*(dur: Duration): int {.inline.} =
+  ## Number of whole milliseconds represented by the **fractional**
+  ## part of the duration.
+  runnableExamples:
+    let dur = initDuration(seconds = 1, milliseconds = 1)
+    doAssert dur.milliseconds == 1
+  convert(Nanosecond, Millisecond, dur.nanoseconds)
+
+proc microseconds*(dur: Duration): int {.inline.} =
+  ## Number of whole microseconds represented by the **fractional**
+  ## part of the duration.
+  runnableExamples:
+    let dur = initDuration(seconds = 1, microseconds = 1)
+    doAssert dur.microseconds == 1
+  convert(Nanosecond, Microsecond, dur.nanoseconds)
+
+proc nanoseconds*(dur: Duration): int {.inline.} =
+  ## Number of whole nanoseconds represented by the **fractional**
+  ## part of the duration.
+  runnableExamples:
+    let dur = initDuration(seconds = 1, nanoseconds = 1)
+    doAssert dur.nanoseconds == 1
+  dur.nanoseconds
+
+proc fractional*(dur: Duration): Duration {.inline.} =
+  ## The fractional part of duration, as a duration.
+  runnableExamples:
+    let dur = initDuration(seconds = 1, nanoseconds = 5)
+    doAssert dur.fractional == initDuration(nanoseconds = 5)
+  initDuration(nanoseconds = dur.nanoseconds)
 
 const DurationZero* = initDuration() ## Zero value for durations. Useful for comparisons.
                                      ##
