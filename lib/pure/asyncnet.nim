@@ -277,6 +277,7 @@ template readInto(buf: pointer, size: int, socket: AsyncSocket,
                   flags: set[SocketFlag]): int =
   ## Reads **up to** ``size`` bytes from ``socket`` into ``buf``. Note that
   ## this is a template and not a proc.
+  assert(not socket.closed, "Cannot `recv` on a closed socket")
   var res = 0
   if socket.isSsl:
     when defineSsl:
@@ -403,6 +404,7 @@ proc send*(socket: AsyncSocket, buf: pointer, size: int,
   ## Sends ``size`` bytes from ``buf`` to ``socket``. The returned future will complete once all
   ## data has been sent.
   assert socket != nil
+  assert(not socket.closed, "Cannot `send` on a closed socket")
   if socket.isSsl:
     when defineSsl:
       sslLoop(socket, flags,
