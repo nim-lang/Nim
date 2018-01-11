@@ -675,7 +675,7 @@ template walkCommon(pattern: string, filter) =
         if findNextFile(res, f) == 0'i32:
           let errCode = getLastError()
           if errCode == ERROR_NO_MORE_FILES: break
-          else: raiseOSError(errCode, "findNextFile failed")
+          else: raiseOSError(errCode.OSErrorCode, "findNextFile failed")
   else: # here we use glob
     var
       f: Glob
@@ -785,10 +785,10 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
             let xx = if relative: extractFilename(getFilename(f))
                      else: dir / extractFilename(getFilename(f))
             yield (k, xx)
-          if findNextFile(res, f) == 0'i32:
+          if findNextFile(h, f) == 0'i32:
             let errCode = getLastError()
             if errCode == ERROR_NO_MORE_FILES: break
-            else: raiseOSError(errCode, "findNextFile failed")
+            else: raiseOSError(errCode.OSErrorCode, "findNextFile failed")
     else:
       var d = opendir(dir)
       if d != nil:
