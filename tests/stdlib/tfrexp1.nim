@@ -22,7 +22,7 @@ proc frexp_test(lo, hi, step: float64) =
     doAssert(abs(rslt - x) < eps)
 
     when manualTest:
-      echo fmt("x: {x:10.3f} exp: {exp:4d} frac: {frac:24.20f} check: {$(abs(rslt - x) < eps):-5s} {rslt: 9.3f}")
+      echo %("x: {x:10.3f} exp: {exp:4d} frac: {frac:24.20f} check: {$(abs(rslt - x) < eps):-5s} {rslt: 9.3f}")
     x += step
 
 when manualTest:
