@@ -785,7 +785,7 @@ proc isTrueColorSupported*(): bool =
   ## Returns true if a terminal supports true color.
   return trueColorIsSupported
 
-proc enableTrueColor*() =
+proc enableTrueColors*() =
   ## Enable true color.
   when defined(windows):
     if trueColorIsSupported:
@@ -802,7 +802,7 @@ proc enableTrueColor*() =
   else:
     trueColorIsEnabled = true
 
-proc disableTrueColor*() =
+proc disableTrueColors*() =
   ## Disable true color.
   when defined(windows):
     if trueColorIsSupported:

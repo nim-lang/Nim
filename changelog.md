@@ -206,7 +206,7 @@ var
   bg = colBlue
   int = 1.0
 
-enableTrueColor()
+enableTrueColors()
 
 for i in 1..15:
   styledEcho bgColor, bg, fgColor, fg, Nim, resetStyle
