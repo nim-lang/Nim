@@ -148,7 +148,7 @@ var
 
 type
   SymbolFilesOption* = enum
-    disabledSf, enabledSf, writeOnlySf, readOnlySf
+    disabledSf, enabledSf, writeOnlySf, readOnlySf, v2Sf
 
 var gSymbolFiles*: SymbolFilesOption
 
