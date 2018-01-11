@@ -406,7 +406,8 @@ proc setStdIoUnbuffered() =
 
 when declared(stdout):
   proc echoBinSafe(args: openArray[string]) {.compilerProc.} =
-    when not defined(windows):
+    # flockfile deadlocks some versions of Android 5.x.x
+    when not defined(windows) and not defined(android):
       proc flockfile(f: File) {.importc, noDecl.}
       proc funlockfile(f: File) {.importc, noDecl.}
       flockfile(stdout)
@@ -415,7 +416,7 @@ when declared(stdout):
     const linefeed = "\n" # can be 1 or more chars
     discard c_fwrite(linefeed.cstring, linefeed.len, 1, stdout)
     discard c_fflush(stdout)
-    when not defined(windows):
+    when not defined(windows) and not defined(android):
       funlockfile(stdout)
 
 {.pop.}

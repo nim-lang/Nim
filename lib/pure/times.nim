@@ -129,8 +129,8 @@ type
                      ## The ``times`` module only supplies implementations for the systems local time and UTC.
                      ## The members ``zoneInfoFromUtc`` and ``zoneInfoFromTz`` should not be accessed directly
                      ## and are only exported so that ``Timezone`` can be implemented by other modules.
-    zoneInfoFromUtc*: proc (time: Time): ZonedTime {.nimcall, tags: [], raises: [], benign .}
-    zoneInfoFromTz*:  proc (adjTime: Time): ZonedTime {.nimcall, tags: [], raises: [], benign .}
+    zoneInfoFromUtc*: proc (time: Time): ZonedTime {.tags: [], raises: [], benign.}
+    zoneInfoFromTz*:  proc (adjTime: Time): ZonedTime {.tags: [], raises: [], benign.}
     name*: string ## The name of the timezone, f.ex 'Europe/Stockholm' or 'Etc/UTC'. Used for checking equality.
                   ## Se also: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
   ZonedTime* = object ## Represents a zooned instant in time that is not associated with any calendar.
