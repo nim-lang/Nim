@@ -784,24 +784,26 @@ proc isTrueColorSupported*(): bool =
 proc enableTrueColor*() =
   ## Enable true color.
   when defined(windows):
-    var mode: DWORD = 0
-    if getConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), addr(mode)) != 0:
-      mode = mode or ENABLE_VIRTUAL_TERMINAL_PROCESSING
-      if setConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), mode) != 0:
-        trueColorIsEnabled = true
-      else:
-        trueColorIsEnabled = false
+    if trueColorIsSupported:
+      var mode: DWORD = 0
+      if getConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), addr(mode)) != 0:
+        mode = mode or ENABLE_VIRTUAL_TERMINAL_PROCESSING
+        if setConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), mode) != 0:
+          trueColorIsEnabled = true
+        else:
+          trueColorIsEnabled = false
   else:
     trueColorIsEnabled = true
 
 proc disableTrueColor*() =
   ## Disable true color.
   when defined(windows):
-    var mode: DWORD = 0
-    if getConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), addr(mode)) != 0:
-      mode = mode and not ENABLE_VIRTUAL_TERMINAL_PROCESSING
-      discard setConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), mode)
-      trueColorIsEnabled = false
+    if trueColorIsSupported:
+      var mode: DWORD = 0
+      if getConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), addr(mode)) != 0:
+        mode = mode and not ENABLE_VIRTUAL_TERMINAL_PROCESSING
+        discard setConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), mode)
+        trueColorIsEnabled = false
   else:
     trueColorIsEnabled = false
 
