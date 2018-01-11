@@ -1,6 +1,7 @@
 discard """
   exitcode: 0
   disabled: "windows"
+  output: "Matched"
 """
 import asyncdispatch
 
