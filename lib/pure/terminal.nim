@@ -37,6 +37,10 @@ var
   trueColorIsEnabled {.threadvar.}: bool
   fgSetColor {.threadvar.}: bool
 
+when defined(windows):
+  var
+    terminalIsNonStandard {.threadvar.}: bool
+
 const
   fgPrefix = "\x1b[38;2;"
   bgPrefix = "\x1b[48;2;"
@@ -785,13 +789,16 @@ proc enableTrueColor*() =
   ## Enable true color.
   when defined(windows):
     if trueColorIsSupported:
-      var mode: DWORD = 0
-      if getConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), addr(mode)) != 0:
-        mode = mode or ENABLE_VIRTUAL_TERMINAL_PROCESSING
-        if setConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), mode) != 0:
-          trueColorIsEnabled = true
-        else:
-          trueColorIsEnabled = false
+      if not terminalIsNonStandard:
+        var mode: DWORD = 0
+        if getConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), addr(mode)) != 0:
+          mode = mode or ENABLE_VIRTUAL_TERMINAL_PROCESSING
+          if setConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), mode) != 0:
+            trueColorIsEnabled = true
+          else:
+            trueColorIsEnabled = false
+      else:
+        trueColorIsEnabled = true
   else:
     trueColorIsEnabled = true
 
@@ -799,17 +806,19 @@ proc disableTrueColor*() =
   ## Disable true color.
   when defined(windows):
     if trueColorIsSupported:
-      var mode: DWORD = 0
-      if getConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), addr(mode)) != 0:
-        mode = mode and not ENABLE_VIRTUAL_TERMINAL_PROCESSING
-        discard setConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), mode)
-        trueColorIsEnabled = false
+      if not terminalIsNonStandard:
+        var mode: DWORD = 0
+        if getConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), addr(mode)) != 0:
+          mode = mode and not ENABLE_VIRTUAL_TERMINAL_PROCESSING
+          discard setConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), mode)
+      trueColorIsEnabled = false
   else:
     trueColorIsEnabled = false
 
 fgSetColor = true
 
 when defined(windows):
+  import os
   var
     ver: OSVERSIONINFO
   ver.dwOSVersionInfoSize = sizeof(ver).DWORD
@@ -820,6 +829,9 @@ when defined(windows):
     trueColorIsSupported = ver.dwMajorVersion > 10 or 
       (ver.dwMajorVersion == 10 and (ver.dwMinorVersion > 0 or 
       (ver.dwMinorVersion == 0 and ver.dwBuildNumber >= 10586)))
+  if not trueColorIsSupported:
+    trueColorIsSupported = (getEnv("ANSICON_DEF").len > 0)
+    terminalIsNonStandard = trueColorIsSupported
 else:
   when compileOption("taintmode"):
     trueColorIsSupported = string(getEnv("COLORTERM")).toLowerAscii() in ["truecolor", "24bit"]
