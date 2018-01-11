@@ -405,7 +405,7 @@ type
 # EventTarget "methods"
 proc addEventListener*(et: EventTarget, ev: cstring, cb: proc(ev: Event), useCapture: bool = false)
 proc addEventListener*(et: EventTarget, ev: cstring, cb: proc(ev: Event), options: AddEventListenerOptions)
-
+proc removeEventListener*(et: EventTarget, ev: cstring, cb: proc(ev: Event), useCapture: bool = false)
 
 # Window "methods"
 proc alert*(w: Window, msg: cstring)
@@ -507,6 +507,7 @@ proc replace*(loc: Location, s: cstring)
 proc back*(h: History)
 proc forward*(h: History)
 proc go*(h: History, pagesToJump: int)
+proc pushState*(h: History, stateObject, title, url: cstring)
 
 # Navigator "methods"
 proc javaEnabled*(h: Navigator): bool
