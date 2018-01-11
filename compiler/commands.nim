@@ -603,6 +603,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     of "off": gSymbolFiles = disabledSf
     of "writeonly": gSymbolFiles = writeOnlySf
     of "readonly": gSymbolFiles = readOnlySf
+    of "v2": gSymbolFiles = v2Sf
     else: localError(info, errOnOrOffExpectedButXFound, arg)
   of "skipcfg":
     expectNoArg(switch, arg, pass, info)

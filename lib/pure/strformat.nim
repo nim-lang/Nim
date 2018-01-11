@@ -15,27 +15,27 @@ Examples:
 
 .. code-block:: nim
 
-    doAssert fmt"""{"abc":>4}""" == " abc"
-    doAssert fmt"""{"abc":<4}""" == "abc "
+    doAssert %"""{"abc":>4}""" == " abc"
+    doAssert %"""{"abc":<4}""" == "abc "
 
-    doAssert fmt"{-12345:08}" == "-0012345"
-    doAssert fmt"{-1:3}" == " -1"
-    doAssert fmt"{-1:03}" == "-01"
-    doAssert fmt"{16:#X}" == "0x10"
+    doAssert %"{-12345:08}" == "-0012345"
+    doAssert %"{-1:3}" == " -1"
+    doAssert %"{-1:03}" == "-01"
+    doAssert %"{16:#X}" == "0x10"
 
-    doAssert fmt"{123.456}" == "123.456"
-    doAssert fmt"{123.456:>9.3f}" == "  123.456"
-    doAssert fmt"{123.456:9.3f}" == "  123.456"
-    doAssert fmt"{123.456:9.4f}" == " 123.4560"
-    doAssert fmt"{123.456:>9.0f}" == "     123."
-    doAssert fmt"{123.456:<9.4f}" == "123.4560 "
+    doAssert %"{123.456}" == "123.456"
+    doAssert %"{123.456:>9.3f}" == "  123.456"
+    doAssert %"{123.456:9.3f}" == "  123.456"
+    doAssert %"{123.456:9.4f}" == " 123.4560"
+    doAssert %"{123.456:>9.0f}" == "     123."
+    doAssert %"{123.456:<9.4f}" == "123.4560 "
 
-    doAssert fmt"{123.456:e}" == "1.234560e+02"
-    doAssert fmt"{123.456:>13e}" == " 1.234560e+02"
-    doAssert fmt"{123.456:13e}" == " 1.234560e+02"
+    doAssert %"{123.456:e}" == "1.234560e+02"
+    doAssert %"{123.456:>13e}" == " 1.234560e+02"
+    doAssert %"{123.456:13e}" == " 1.234560e+02"
 
 
-An expression like ``fmt"{key} is {value:arg} {{z}}"`` is transformed into:
+An expression like ``%"{key} is {value:arg} {{z}}"`` is transformed into:
 
 .. code-block:: nim
   var temp = newStringOfCap(educatedCapGuess)
@@ -48,13 +48,13 @@ An expression like ``fmt"{key} is {value:arg} {{z}}"`` is transformed into:
 Parts of the string that are enclosed in the curly braces are interpreted
 as Nim code, to escape an ``{`` or ``}`` double it.
 
-``fmt`` delegates most of the work to an open overloaded set
+``%`` delegates most of the work to an open overloaded set
 of ``format`` procs. The required signature for a type ``T`` that supports
 formatting is usually ``proc format(x: T; result: var string)`` for efficiency
 but can also be ``proc format(x: T): string``. ``add`` and ``$`` procs are
 used as the fallback implementation.
 
-This is the concrete lookup algorithm that ``fmt`` uses:
+This is the concrete lookup algorithm that ``%`` uses:
 
 .. code-block:: nim
 
@@ -69,7 +69,7 @@ This is the concrete lookup algorithm that ``fmt`` uses:
 
 
 The subexpression after the colon
-(``arg`` in ``fmt"{key} is {value:arg} {{z}}"``) is an optional argument
+(``arg`` in ``%"{key} is {value:arg} {{z}}"``) is an optional argument
 passed to ``format``.
 
 If an optional argument is present the following lookup algorithm is used:
@@ -226,8 +226,8 @@ template callFormatOption(res, arg, option) {.dirty.} =
   else:
     format($arg, option, res)
 
-macro fmt*(pattern: string{lit}): untyped =
-  ## For a specification of the ``fmt`` macro, see the module level documentation.
+macro `%`*(pattern: string{lit}): untyped =
+  ## For a specification of the ``%`` macro, see the module level documentation.
   runnableExamples:
     template check(actual, expected: string) =
       doAssert actual == expected
@@ -236,113 +236,113 @@ macro fmt*(pattern: string{lit}): untyped =
 
     # Basic tests
     let s = "string"
-    check fmt"{0} {s}", "0 string"
-    check fmt"{s[0..2].toUpperAscii}", "STR"
-    check fmt"{-10:04}", "-010"
-    check fmt"{-10:<04}", "-010"
-    check fmt"{-10:>04}", "-010"
-    check fmt"0x{10:02X}", "0x0A"
+    check %"{0} {s}", "0 string"
+    check %"{s[0..2].toUpperAscii}", "STR"
+    check %"{-10:04}", "-010"
+    check %"{-10:<04}", "-010"
+    check %"{-10:>04}", "-010"
+    check %"0x{10:02X}", "0x0A"
 
-    check fmt"{10:#04X}", "0x0A"
+    check %"{10:#04X}", "0x0A"
 
-    check fmt"""{"test":#>5}""", "#test"
-    check fmt"""{"test":>5}""", " test"
+    check %"""{"test":#>5}""", "#test"
+    check %"""{"test":>5}""", " test"
 
-    check fmt"""{"test":#^7}""", "#test##"
+    check %"""{"test":#^7}""", "#test##"
 
-    check fmt"""{"test": <5}""", "test "
-    check fmt"""{"test":<5}""", "test "
-    check fmt"{1f:.3f}", "1.000"
-    check fmt"Hello, {s}!", "Hello, string!"
+    check %"""{"test": <5}""", "test "
+    check %"""{"test":<5}""", "test "
+    check %"{1f:.3f}", "1.000"
+    check %"Hello, {s}!", "Hello, string!"
 
     # Tests for identifers without parenthesis
-    check fmt"{s} works{s}", "string worksstring"
-    check fmt"{s:>7}", " string"
-    doAssert(not compiles(fmt"{s_works}")) # parsed as identifier `s_works`
+    check %"{s} works{s}", "string worksstring"
+    check %"{s:>7}", " string"
+    doAssert(not compiles(%"{s_works}")) # parsed as identifier `s_works`
 
     # Misc general tests
-    check fmt"{{}}", "{}"
-    check fmt"{0}%", "0%"
-    check fmt"{0}%asdf", "0%asdf"
-    check fmt("\n{\"\\n\"}\n"), "\n\n\n"
-    check fmt"""{"abc"}s""", "abcs"
+    check %"{{}}", "{}"
+    check %"{0}%", "0%"
+    check %"{0}%asdf", "0%asdf"
+    check %("\n{\"\\n\"}\n"), "\n\n\n"
+    check %"""{"abc"}s""", "abcs"
 
     # String tests
-    check fmt"""{"abc"}""", "abc"
-    check fmt"""{"abc":>4}""", " abc"
-    check fmt"""{"abc":<4}""", "abc "
-    check fmt"""{"":>4}""", "    "
-    check fmt"""{"":<4}""", "    "
+    check %"""{"abc"}""", "abc"
+    check %"""{"abc":>4}""", " abc"
+    check %"""{"abc":<4}""", "abc "
+    check %"""{"":>4}""", "    "
+    check %"""{"":<4}""", "    "
 
     # Int tests
-    check fmt"{12345}", "12345"
-    check fmt"{ - 12345}", "-12345"
-    check fmt"{12345:6}", " 12345"
-    check fmt"{12345:>6}", " 12345"
-    check fmt"{12345:4}", "12345"
-    check fmt"{12345:08}", "00012345"
-    check fmt"{-12345:08}", "-0012345"
-    check fmt"{0:0}", "0"
-    check fmt"{0:02}", "00"
-    check fmt"{-1:3}", " -1"
-    check fmt"{-1:03}", "-01"
-    check fmt"{10}", "10"
-    check fmt"{16:#X}", "0x10"
-    check fmt"{16:^#7X}", " 0x10  "
-    check fmt"{16:^+#7X}", " +0x10 "
+    check %"{12345}", "12345"
+    check %"{ - 12345}", "-12345"
+    check %"{12345:6}", " 12345"
+    check %"{12345:>6}", " 12345"
+    check %"{12345:4}", "12345"
+    check %"{12345:08}", "00012345"
+    check %"{-12345:08}", "-0012345"
+    check %"{0:0}", "0"
+    check %"{0:02}", "00"
+    check %"{-1:3}", " -1"
+    check %"{-1:03}", "-01"
+    check %"{10}", "10"
+    check %"{16:#X}", "0x10"
+    check %"{16:^#7X}", " 0x10  "
+    check %"{16:^+#7X}", " +0x10 "
 
     # Hex tests
-    check fmt"{0:x}", "0"
-    check fmt"{-0:x}", "0"
-    check fmt"{255:x}", "ff"
-    check fmt"{255:X}", "FF"
-    check fmt"{-255:x}", "-ff"
-    check fmt"{-255:X}", "-FF"
-    check fmt"{255:x} uNaffeCteD CaSe", "ff uNaffeCteD CaSe"
-    check fmt"{255:X} uNaffeCteD CaSe", "FF uNaffeCteD CaSe"
-    check fmt"{255:4x}", "  ff"
-    check fmt"{255:04x}", "00ff"
-    check fmt"{-255:4x}", " -ff"
-    check fmt"{-255:04x}", "-0ff"
+    check %"{0:x}", "0"
+    check %"{-0:x}", "0"
+    check %"{255:x}", "ff"
+    check %"{255:X}", "FF"
+    check %"{-255:x}", "-ff"
+    check %"{-255:X}", "-FF"
+    check %"{255:x} uNaffeCteD CaSe", "ff uNaffeCteD CaSe"
+    check %"{255:X} uNaffeCteD CaSe", "FF uNaffeCteD CaSe"
+    check %"{255:4x}", "  ff"
+    check %"{255:04x}", "00ff"
+    check %"{-255:4x}", " -ff"
+    check %"{-255:04x}", "-0ff"
 
     # Float tests
-    check fmt"{123.456}", "123.456"
-    check fmt"{-123.456}", "-123.456"
-    check fmt"{123.456:.3f}", "123.456"
-    check fmt"{123.456:+.3f}", "+123.456"
-    check fmt"{-123.456:+.3f}", "-123.456"
-    check fmt"{-123.456:.3f}", "-123.456"
-    check fmt"{123.456:1g}", "123.456"
-    check fmt"{123.456:.1f}", "123.5"
-    check fmt"{123.456:.0f}", "123."
-    #check fmt"{123.456:.0f}", "123."
-    check fmt"{123.456:>9.3f}", "  123.456"
-    check fmt"{123.456:9.3f}", "  123.456"
-    check fmt"{123.456:>9.4f}", " 123.4560"
-    check fmt"{123.456:>9.0f}", "     123."
-    check fmt"{123.456:<9.4f}", "123.4560 "
+    check %"{123.456}", "123.456"
+    check %"{-123.456}", "-123.456"
+    check %"{123.456:.3f}", "123.456"
+    check %"{123.456:+.3f}", "+123.456"
+    check %"{-123.456:+.3f}", "-123.456"
+    check %"{-123.456:.3f}", "-123.456"
+    check %"{123.456:1g}", "123.456"
+    check %"{123.456:.1f}", "123.5"
+    check %"{123.456:.0f}", "123."
+    #check %"{123.456:.0f}", "123."
+    check %"{123.456:>9.3f}", "  123.456"
+    check %"{123.456:9.3f}", "  123.456"
+    check %"{123.456:>9.4f}", " 123.4560"
+    check %"{123.456:>9.0f}", "     123."
+    check %"{123.456:<9.4f}", "123.4560 "
 
     # Float (scientific) tests
-    check fmt"{123.456:e}", "1.234560e+02"
-    check fmt"{123.456:>13e}", " 1.234560e+02"
-    check fmt"{123.456:<13e}", "1.234560e+02 "
-    check fmt"{123.456:.1e}", "1.2e+02"
-    check fmt"{123.456:.2e}", "1.23e+02"
-    check fmt"{123.456:.3e}", "1.235e+02"
+    check %"{123.456:e}", "1.234560e+02"
+    check %"{123.456:>13e}", " 1.234560e+02"
+    check %"{123.456:<13e}", "1.234560e+02 "
+    check %"{123.456:.1e}", "1.2e+02"
+    check %"{123.456:.2e}", "1.23e+02"
+    check %"{123.456:.3e}", "1.235e+02"
 
     # Note: times.format adheres to the format protocol. Test that this
     # works:
     import times
 
     var nullTime: DateTime
-    check fmt"{nullTime:yyyy-mm-dd}", "0000-00-00"
+    check %"{nullTime:yyyy-mm-dd}", "0000-00-00"
 
     # Unicode string tests
-    check fmt"""{"αβγ"}""", "αβγ"
-    check fmt"""{"αβγ":>5}""", "  αβγ"
-    check fmt"""{"αβγ":<5}""", "αβγ  "
-    check fmt"""a{"a"}α{"α"}€{"€"}𐍈{"𐍈"}""", "aaαα€€𐍈𐍈"
-    check fmt"""a{"a":2}α{"α":2}€{"€":2}𐍈{"𐍈":2}""", "aa αα €€ 𐍈𐍈 "
+    check %"""{"αβγ"}""", "αβγ"
+    check %"""{"αβγ":>5}""", "  αβγ"
+    check %"""{"αβγ":<5}""", "αβγ  "
+    check %"""a{"a"}α{"α"}€{"€"}𐍈{"𐍈"}""", "aaαα€€𐍈𐍈"
+    check %"""a{"a":2}α{"α":2}€{"€":2}𐍈{"𐍈":2}""", "aa αα €€ 𐍈𐍈 "
     # Invalid unicode sequences should be handled as plain strings.
     # Invalid examples taken from: https://stackoverflow.com/a/3886015/1804173
     let invalidUtf8 = [
@@ -351,10 +351,10 @@ macro fmt*(pattern: string{lit}): untyped =
       "\xf0\x28\x8c\xbc", "\xf0\x90\x28\xbc", "\xf0\x28\x8c\x28"
     ]
     for s in invalidUtf8:
-      check fmt"{s:>5}", repeat(" ", 5-s.len) & s
+      check %"{s:>5}", repeat(" ", 5-s.len) & s
 
   if pattern.kind notin {nnkStrLit..nnkTripleStrLit}:
-    error "fmt only works with string literals", pattern
+    error "% only works with string literals", pattern
   let f = pattern.strVal
   var i = 0
   let res = genSym(nskVar, "fmtRes")
@@ -560,7 +560,7 @@ proc parseStandardFormatSpecifier*(s: string; start = 0;
 proc format*(value: SomeInteger; specifier: string; res: var string) =
   ## Standard format implementation for ``SomeInteger``. It makes little
   ## sense to call this directly, but it is required to exist
-  ## by the ``fmt`` macro.
+  ## by the ``%`` macro.
   let spec = parseStandardFormatSpecifier(specifier)
   var radix = 10
   case spec.typ
@@ -577,7 +577,7 @@ proc format*(value: SomeInteger; specifier: string; res: var string) =
 proc format*(value: SomeReal; specifier: string; res: var string) =
   ## Standard format implementation for ``SomeReal``. It makes little
   ## sense to call this directly, but it is required to exist
-  ## by the ``fmt`` macro.
+  ## by the ``%`` macro.
   let spec = parseStandardFormatSpecifier(specifier)
 
   var fmode = ffDefault
@@ -609,7 +609,7 @@ proc format*(value: SomeReal; specifier: string; res: var string) =
 proc format*(value: string; specifier: string; res: var string) =
   ## Standard format implementation for ``string``. It makes little
   ## sense to call this directly, but it is required to exist
-  ## by the ``fmt`` macro.
+  ## by the ``%`` macro.
   let spec = parseStandardFormatSpecifier(specifier)
   case spec.typ
   of 's', '\0': discard
