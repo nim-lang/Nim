@@ -32,6 +32,12 @@ template createCb(retFutureSym, iteratorNameSym,
     try:
       if not nameIterVar.finished:
         var next = nameIterVar()
+        # Continue while the yielded future is already finished.
+        while (not next.isNil) and next.finished:
+          next = nameIterVar()
+          if nameIterVar.finished:
+            break
+
         if next == nil:
           if not retFutureSym.finished:
             let msg = "Async procedure ($1) yielded `nil`, are you await'ing a " &
