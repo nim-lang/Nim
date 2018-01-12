@@ -16,7 +16,8 @@
 ## Similarly, if you hide the cursor, make sure to unhide it with
 ## ``showCursor`` before quitting.
 
-import macros, strformat
+import macros
+import strformat except `%`
 from strutils import toLowerAscii
 import colors
 
@@ -313,7 +314,7 @@ proc setCursorPos*(f: File, x, y: int) =
     let h = conHandle(f)
     setCursorPos(h, x, y)
   else:
-    f.write(%"{stylePrefix}{y};{x}f")
+    f.write(fmt"{stylePrefix}{y};{x}f")
 
 proc setCursorXPos*(f: File, x: int) =
   ## Sets the terminal's cursor to the x position.
@@ -328,7 +329,7 @@ proc setCursorXPos*(f: File, x: int) =
     if setConsoleCursorPosition(h, origin) == 0:
       raiseOSError(osLastError())
   else:
-    f.write(%"{stylePrefix}{x}G")
+    f.write(fmt"{stylePrefix}{x}G")
 
 when defined(windows):
   proc setCursorYPos*(f: File, y: int) =
@@ -365,7 +366,7 @@ proc cursorDown*(f: File, count=1) =
     inc(p.y, count)
     setCursorPos(h, p.x, p.y)
   else:
-    f.write(%"{stylePrefix}{count}B")
+    f.write(fmt"{stylePrefix}{count}B")
 
 proc cursorForward*(f: File, count=1) =
   ## Moves the cursor forward by `count` columns.
@@ -492,12 +493,12 @@ when not defined(windows):
 
   proc getStyleStr(style: int): string =
     when hasThreadSupport:
-      result = %"{stylePrefix}{style}m"
+      result = fmt"{stylePrefix}{style}m"
     else:
       if styleCache.hasKey(style):
         result = styleCache[style]
       else:
-        result = %"{stylePrefix}{style}m"
+        result = fmt"{stylePrefix}{style}m"
         styleCache[style] = result
 
 proc setStyle*(f: File, style: set[Style]) =
@@ -603,25 +604,25 @@ proc setBackgroundColor*(f: File, bg: BackgroundColor, bright=false) =
 proc getFGColorStr(color: Color): string =
   when hasThreadSupport:
     let rgb = extractRGB(color)
-    result = %"{fgPrefix}{rgb.r};{rgb.g};{rgb.b}m"
+    result = fmt"{fgPrefix}{rgb.r};{rgb.g};{rgb.b}m"
   else:
     if colorsFGCache.hasKey(color):
       result = colorsFGCache[color]
     else:
       let rgb = extractRGB(color)
-      result = %"{fgPrefix}{rgb.r};{rgb.g};{rgb.b}m"
+      result = fmt"{fgPrefix}{rgb.r};{rgb.g};{rgb.b}m"
       colorsFGCache[color] = result
 
 proc getBGColorStr(color: Color): string =
   when hasThreadSupport:
     let rgb = extractRGB(color)
-    result = %"{bgPrefix}{rgb.r};{rgb.g};{rgb.b}m"
+    result = fmt"{bgPrefix}{rgb.r};{rgb.g};{rgb.b}m"
   else:
     if colorsBGCache.hasKey(color):
       result = colorsBGCache[color]
     else:
       let rgb = extractRGB(color)
-      result = %"{bgPrefix}{rgb.r};{rgb.g};{rgb.b}m"
+      result = fmt"{bgPrefix}{rgb.r};{rgb.g};{rgb.b}m"
       colorsFGCache[color] = result
 
 proc setForegroundColor*(f: File, color: Color) =
