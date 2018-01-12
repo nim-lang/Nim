@@ -226,7 +226,7 @@ template callFormatOption(res, arg, option) {.dirty.} =
   else:
     format($arg, option, res)
 
-macro `%`*(pattern: string{lit}): untyped =
+macro `%`*(pattern: string): untyped =
   ## For a specification of the ``%`` macro, see the module level documentation.
   runnableExamples:
     template check(actual, expected: string) =
@@ -406,6 +406,18 @@ macro `%`*(pattern: string{lit}): untyped =
   result.add res
   when defined(debugFmtDsl):
     echo repr result
+
+template fmt*(pattern: string): untyped =
+  ## An alias for ``%``. Helps to avoid conflicts with ``json``'s ``%`` operator.
+  ## **Examples:**
+  ##
+  ## .. code-block:: nim
+  ##  import json
+  ##  import strformat except `%`
+  ##
+  ##  let example = "oh, look no conflicts anymore"
+  ##  echo fmt"{example}"
+  %pattern
 
 proc mkDigit(v: int, typ: char): string {.inline.} =
   assert(v < 26)
@@ -618,3 +630,8 @@ proc format*(value: string; specifier: string; res: var string) =
       "invalid type in format string for string, expected 's', but got " &
       spec.typ)
   res.add alignString(value, spec.minimumWidth, spec.align, spec.fill)
+
+when isMainModule:
+  import json
+
+  doAssert fmt"{'a'} {'b'}" == "a b"
