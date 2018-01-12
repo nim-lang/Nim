@@ -163,7 +163,10 @@ type
                            ## non-static time units is needed.
 
   TimeUnit* = enum ## Different units of time.
-    Nanosecond, Microsecond, Millisecond, Second, Minute, Hour, Day, Week
+    Nanoseconds, Microseconds, Milliseconds, Seconds, Minutes, Hours, Days, Weeks, Months, Years
+
+  FixedTimeUnit* = range[Nanoseconds..Weeks] ## Subrange of ``TimeUnit`` that only includes units of fixed duration.
+                                             ## These are the units that can be represented by a ``Duration``.
 
   Timezone* = object ## Timezone interface for supporting ``DateTime``'s of arbritary timezones.
                      ## The ``times`` module only supplies implementations for the systems local time and UTC.
@@ -193,7 +196,7 @@ const
   # and 1970/01/01 (unix epoch).
   epochDiff = 116444736000000000'i64
 
-const unitWeights: array[TimeUnit, int64] = [
+const unitWeights: array[FixedTimeUnit, int64] = [
   1'i64,
   1000,
   1_000_000,
@@ -204,12 +207,12 @@ const unitWeights: array[TimeUnit, int64] = [
   7 * secondsInDay * 1e9.int64,
 ]
 
-proc convert*[T: SomeInteger](unitFrom, unitTo: TimeUnit, quantity: T): T {.inline.} =
+proc convert*[T: SomeInteger](unitFrom, unitTo: FixedTimeUnit, quantity: T): T {.inline.} =
   ## Convert a quantity of some duration unit to another duration unit.
   runnableExamples:
-    doAssert convert(Day, Hour, 2) == 48
-    doAssert convert(Day, Week, 13) == 1 # Truncated
-    doAssert convert(Second, Millisecond, -1) == -1000
+    doAssert convert(Days, Hours, 2) == 48
+    doAssert convert(Days, Weeks, 13) == 1 # Truncated
+    doAssert convert(Seconds, Milliseconds, -1) == -1000
   if unitFrom < unitTo:
     (quantity div (unitWeights[unitTo] div unitWeights[unitFrom])).T
   else:
@@ -219,10 +222,10 @@ proc normalize[T: Duration|Time](seconds, nanoseconds: int64): T =
   ## Normalize a (seconds, nanoseconds) pair and return it as either
   ## a ``Duration`` or ``Time``. A normalized ``Duration|Time`` has a
   ## positive nanosecond part in the range ``NanosecondRange``.
-  result.seconds = seconds + convert(Nanosecond, Second, nanoseconds)
-  var nanoseconds = nanoseconds mod convert(Second, Nanosecond, 1)
+  result.seconds = seconds + convert(Nanoseconds, Seconds, nanoseconds)
+  var nanoseconds = nanoseconds mod convert(Seconds, Nanoseconds, 1)
   if nanoseconds < 0:
-    nanoseconds += convert(Second, Nanosecond, 1)
+    nanoseconds += convert(Seconds, Nanoseconds, 1)
     result.seconds -= 1
   result.nanoseconds = nanoseconds.int
 
@@ -238,35 +241,35 @@ proc nanoseconds*(time: Time): NanosecondRange =
 
 proc initDuration*(nanoseconds, microseconds, milliseconds,
                    seconds, minutes, hours, days, weeks: int64 = 0): Duration =
-  let seconds = convert(Week, Second, weeks) +
-    convert(Day, Second, days) +
-    convert(Minute, Second, minutes) +
-    convert(Hour, Second, hours) +
-    convert(Second, Second, seconds) +
-    convert(Millisecond, Second, milliseconds) +
-    convert(Microsecond, Second, microseconds) +
-    convert(Nanosecond, Second, nanoseconds)
-  let nanoseconds = (convert(Millisecond, Nanosecond, milliseconds mod 1000) +
-    convert(Microsecond, Nanosecond, microseconds mod 1_000_000) +
+  let seconds = convert(Weeks, Seconds, weeks) +
+    convert(Days, Seconds, days) +
+    convert(Minutes, Seconds, minutes) +
+    convert(Hours, Seconds, hours) +
+    convert(Seconds, Seconds, seconds) +
+    convert(Milliseconds, Seconds, milliseconds) +
+    convert(Microseconds, Seconds, microseconds) +
+    convert(Nanoseconds, Seconds, nanoseconds)
+  let nanoseconds = (convert(Milliseconds, Nanoseconds, milliseconds mod 1000) +
+    convert(Microseconds, Nanoseconds, microseconds mod 1_000_000) +
     nanoseconds mod 1_000_000_000).int
   # Nanoseconds might be negative so we must normalize.
   result = normalize[Duration](seconds, nanoseconds)
 
 proc weeks*(dur: Duration): int64 {.inline.} =
   ## Number of whole weeks represented by the duration.
-  convert(Second, Week, dur.seconds)
+  convert(Seconds, Weeks, dur.seconds)
 
 proc days*(dur: Duration): int64 {.inline.} =
   ## Number of whole days represented by the duration.
-  convert(Second, Day, dur.seconds)
+  convert(Seconds, Days, dur.seconds)
   
 proc minutes*(dur: Duration): int64 {.inline.} =
   ## Number of whole minutes represented by the duration.
-  convert(Second, Minute, dur.seconds)
+  convert(Seconds, Minutes, dur.seconds)
 
 proc hours*(dur: Duration): int64 {.inline.} =
   ## Number of whole hours represented by the duration.
-  convert(Second, Hour, dur.seconds)
+  convert(Seconds, Hours, dur.seconds)
 
 proc seconds*(dur: Duration): int64 {.inline.} =
   ## Number of whole seconds represented by the duration.
@@ -278,7 +281,7 @@ proc milliseconds*(dur: Duration): int {.inline.} =
   runnableExamples:
     let dur = initDuration(seconds = 1, milliseconds = 1)
     doAssert dur.milliseconds == 1
-  convert(Nanosecond, Millisecond, dur.nanoseconds)
+  convert(Nanoseconds, Milliseconds, dur.nanoseconds)
 
 proc microseconds*(dur: Duration): int {.inline.} =
   ## Number of whole microseconds represented by the **fractional**
@@ -286,7 +289,7 @@ proc microseconds*(dur: Duration): int {.inline.} =
   runnableExamples:
     let dur = initDuration(seconds = 1, microseconds = 1)
     doAssert dur.microseconds == 1
-  convert(Nanosecond, Microsecond, dur.nanoseconds)
+  convert(Nanoseconds, Microseconds, dur.nanoseconds)
 
 proc nanoseconds*(dur: Duration): int {.inline.} =
   ## Number of whole nanoseconds represented by the **fractional**
@@ -324,25 +327,25 @@ proc `$`*(dur: Duration): string =
   # Normally ``nanoseconds`` should always be positive, but
   # that makes no sense when printing.
   if remS < 0:
-    remNs -= convert(Second, Nanosecond, 1)
+    remNs -= convert(Seconds, Nanoseconds, 1)
     remS.inc 1
 
-  const unitStrings: array[TimeUnit, string] = [
+  const unitStrings: array[FixedTimeUnit, string] = [
     "nanoseconds", "microsecond", "millisecond", "second", "minute", "hour", "day", "week"
   ]
 
-  for unit in countdown(Week, Second):
-    let quantity = convert(Second, unit, remS)
-    remS = remS mod convert(unit, Second, 1)
+  for unit in countdown(Weeks, Seconds):
+    let quantity = convert(Seconds, unit, remS)
+    remS = remS mod convert(unit, Seconds, 1)
 
     if quantity.abs == 1:
       parts.add $quantity & " " & unitStrings[unit]
     elif quantity != 0:
       parts.add $quantity & " " & unitStrings[unit] & "s"
 
-  for unit in countdown(Millisecond, Nanosecond):
-    let quantity = convert(Nanosecond, unit, remNs)
-    remNs = remNs mod convert(unit, Nanosecond, 1)
+  for unit in countdown(Milliseconds, Nanoseconds):
+    let quantity = convert(Nanoseconds, unit, remNs)
+    remNs = remNs mod convert(unit, Nanoseconds, 1)
 
     if quantity.abs == 1:
       parts.add $quantity & " " & unitStrings[unit]
@@ -523,7 +526,7 @@ proc `div`*(a: Duration, b: int64): Duration {.operator} =
   runnableExamples:
     doAssert initDuration(seconds = 3) div 2 == initDuration(milliseconds = 1500)
     doAssert initDuration(nanoseconds = 3) div 2 == initDuration(nanoseconds = 1)
-  let carryOver = convert(Second, Nanosecond, a.seconds mod b)
+  let carryOver = convert(Seconds, Nanoseconds, a.seconds mod b)
   normalize[Duration](a.seconds div b, (a.nanoseconds + carryOver) div b)
 
 proc `-`*(a, b: Time): Duration {.operator, extern: "ntDiffTime".} =
@@ -823,15 +826,15 @@ proc getTime*(): Time {.tags: [TimeEffect], benign.} =
   ## Gets the current time as a ``Time`` with nanosecond resolution.
   when defined(JS):
     let millis = newDate().getTime()
-    let seconds = convert(Millisecond, Second, millis)
-    let nanos = convert(Millisecond, Nanosecond,
-      millis mod convert(Second, Millisecond, 1).int)
+    let seconds = convert(Milliseconds, Seconds, millis)
+    let nanos = convert(Milliseconds, Nanoseconds,
+      millis mod convert(Seconds, Milliseconds, 1).int)
     result = initTime(seconds, nanos)
   # I'm not entirely certain if freebsd needs to use `gettimeofday`.
   elif defined(macosx) or defined(freebsd):
     var a: Timeval
     gettimeofday(a)
-    result = initTime(a.tv_sec.int64, convert(Microsecond, Nanosecond, a.tv_usec.int))
+    result = initTime(a.tv_sec.int64, convert(Microseconds, Nanoseconds, a.tv_usec.int))
   elif defined(posix):
     var ts: Timespec
     discard clock_gettime(CLOCK_REALTIME, ts)
@@ -840,8 +843,8 @@ proc getTime*(): Time {.tags: [TimeEffect], benign.} =
     var f: FILETIME
     getSystemTimeAsFileTime(f)
     let nanosSinceEpoch = (rdFileTime(f) - epochDiff) * 100
-    let seconds = convert(Nanosecond, Second, nanosSinceEpoch)
-    let nanos = (nanosSinceEpoch mod convert(Second, Nanosecond, 1)).int
+    let seconds = convert(Nanoseconds, Seconds, nanosSinceEpoch)
+    let nanos = (nanosSinceEpoch mod convert(Seconds, Nanoseconds, 1)).int
     result = initTime(seconds, nanos)
 
 proc now*(): DateTime {.tags: [TimeEffect], benign.} =
@@ -1728,7 +1731,7 @@ proc fromSeconds*(since1970: float): Time {.tags: [], raises: [], benign, deprec
   ## returns a time object.
   ##
   ## **Deprecated since v0.18.0:** use ``fromUnix`` instead
-  let nanos = ((since1970 - since1970.int64.float) * convert(Second, Nanosecond, 1).float).int
+  let nanos = ((since1970 - since1970.int64.float) * convert(Seconds, Nanoseconds, 1).float).int
   initTime(since1970.int64, nanos)
 
 proc fromSeconds*(since1970: int64): Time {.tags: [], raises: [], benign, deprecated.} =
@@ -1742,7 +1745,7 @@ proc toSeconds*(time: Time): float {.tags: [], raises: [], benign, deprecated.} 
   ## Returns the time in seconds since the unix epoch.
   ##
   ## **Deprecated since v0.18.0:** use ``fromUnix`` instead
-  time.seconds.float + time.nanoseconds / convert(Second, Nanosecond, 1)
+  time.seconds.float + time.nanoseconds / convert(Seconds, Nanoseconds, 1)
 
 proc getLocalTime*(time: Time): DateTime {.tags: [], raises: [], benign, deprecated.} =
   ## Converts the calendar time `time` to broken-time representation,
@@ -1788,8 +1791,8 @@ when defined(JS):
     ## get the milliseconds from the start of the program. **Deprecated since
     ## version 0.8.10.** Use ``epochTime`` or ``cpuTime`` instead.
     let dur = getTime() - start
-    result = (convert(Second, Millisecond, dur.seconds) +
-      convert(Nanosecond, Millisecond, dur.nanoseconds)).int
+    result = (convert(Seconds, Milliseconds, dur.seconds) +
+      convert(Nanoseconds, Milliseconds, dur.nanoseconds)).int
 else:
   proc getStartMilsecs*(): int {.deprecated, tags: [TimeEffect], benign.} =
     when defined(macosx):

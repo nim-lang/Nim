@@ -67,7 +67,7 @@ doAssert a1L == a1G
 
 # add/subtract TimeIntervals and Time/TimeInfo
 let now = getTime().utc
-doAssert now + convert(Second, Nanosecond, 1).nanoseconds == now + 1.seconds
+doAssert now + convert(Seconds, Nanoseconds, 1).nanoseconds == now + 1.seconds
 doAssert now + 1.weeks == now + 7.days
 doAssert now - 1.seconds == now - 3.seconds + 2.seconds
 doAssert now + 65.seconds == now + 1.minutes + 5.seconds
@@ -303,7 +303,7 @@ suite "ttimes":
     let d = initDuration
     check d(hours = 48) + d(days = 5) == d(weeks = 1)
     let dt = initDateTime(01, mFeb, 2000, 00, 00, 00, 0, utc()) + d(milliseconds = 1)
-    check dt.nanosecond == convert(Millisecond, Nanosecond, 1)
+    check dt.nanosecond == convert(Milliseconds, Nanoseconds, 1)
     check d(seconds = 1, milliseconds = 500) * 2 == d(seconds = 3)
     check d(seconds = 3) div 2 == d(seconds = 1, milliseconds = 500)
     check d(milliseconds = 1001).seconds == 1
