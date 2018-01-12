@@ -226,6 +226,67 @@ template callFormatOption(res, arg, option) {.dirty.} =
   else:
     format($arg, option, res)
 
+proc impl(pattern: NimNode, shouldUnescape: bool): NimNode =
+  template makeStrLit(): NimNode =
+    if shouldUnescape:
+      newLit(unescape(strlit, prefix="", suffix=""))
+    else:
+      newLit(strlit)
+
+  if pattern.kind notin {nnkStrLit..nnkTripleStrLit}:
+    error "% only works with string literals", pattern
+  let f = pattern.strVal
+  var i = 0
+  let res = genSym(nskVar, "fmtRes")
+  result = newNimNode(nnkStmtListExpr, lineInfoFrom=pattern)
+  result.add newVarStmt(res, newCall(bindSym"newStringOfCap", newLit(f.len + count(f, '{')*10)))
+  var strlit = ""
+  while i < f.len:
+    if f[i] == '{':
+      inc i
+      if f[i] == '{':
+        inc i
+        strlit.add '{'
+      else:
+        if strlit.len > 0:
+          result.add newCall(bindSym"add", res, makeStrLit())
+          strlit = ""
+
+        var subexpr = ""
+        while i < f.len and f[i] != '}' and f[i] != ':':
+          subexpr.add f[i]
+          inc i
+        let x = parseExpr(subexpr)
+
+        if f[i] == ':':
+          inc i
+          var options = ""
+          while i < f.len and f[i] != '}':
+            options.add f[i]
+            inc i
+          result.add getAst(callFormatOption(res, x, newLit(options)))
+        else:
+          result.add getAst(callFormat(res, x))
+        if f[i] == '}':
+          inc i
+        else:
+          doAssert false, "invalid format string: missing '}'"
+    elif f[i] == '}':
+      if f[i+1] == '}':
+        strlit.add '}'
+        inc i, 2
+      else:
+        doAssert false, "invalid format string: '}' instead of '}}'"
+        inc i
+    else:
+      strlit.add f[i]
+      inc i
+  if strlit.len > 0:
+    result.add newCall(bindSym"add", res, makeStrLit())
+  result.add res
+  when defined(debugFmtDsl):
+    echo repr result
+
 macro `%`*(pattern: string): untyped =
   ## For a specification of the ``%`` macro, see the module level documentation.
   runnableExamples:
@@ -352,62 +413,10 @@ macro `%`*(pattern: string): untyped =
     ]
     for s in invalidUtf8:
       check %"{s:>5}", repeat(" ", 5-s.len) & s
+  impl(pattern, shouldUnescape=false)
 
-  if pattern.kind notin {nnkStrLit..nnkTripleStrLit}:
-    error "% only works with string literals", pattern
-  let f = pattern.strVal
-  var i = 0
-  let res = genSym(nskVar, "fmtRes")
-  result = newNimNode(nnkStmtListExpr, lineInfoFrom=pattern)
-  result.add newVarStmt(res, newCall(bindSym"newStringOfCap", newLit(f.len + count(f, '{')*10)))
-  var strlit = ""
-  while i < f.len:
-    if f[i] == '{':
-      inc i
-      if f[i] == '{':
-        inc i
-        strlit.add '{'
-      else:
-        if strlit.len > 0:
-          result.add newCall(bindSym"add", res, newLit(strlit))
-          strlit = ""
 
-        var subexpr = ""
-        while i < f.len and f[i] != '}' and f[i] != ':':
-          subexpr.add f[i]
-          inc i
-        let x = parseExpr(subexpr)
-
-        if f[i] == ':':
-          inc i
-          var options = ""
-          while i < f.len and f[i] != '}':
-            options.add f[i]
-            inc i
-          result.add getAst(callFormatOption(res, x, newLit(options)))
-        else:
-          result.add getAst(callFormat(res, x))
-        if f[i] == '}':
-          inc i
-        else:
-          doAssert false, "invalid format string: missing '}'"
-    elif f[i] == '}':
-      if f[i+1] == '}':
-        strlit.add '}'
-        inc i, 2
-      else:
-        doAssert false, "invalid format string: '}' instead of '}}'"
-        inc i
-    else:
-      strlit.add f[i]
-      inc i
-  if strlit.len > 0:
-    result.add newCall(bindSym"add", res, newLit(strlit))
-  result.add res
-  when defined(debugFmtDsl):
-    echo repr result
-
-template fmt*(pattern: string): untyped =
+macro fmt*(pattern: string): untyped =
   ## An alias for ``%``. Helps to avoid conflicts with ``json``'s ``%`` operator.
   ## **Examples:**
   ##
@@ -417,7 +426,7 @@ template fmt*(pattern: string): untyped =
   ##
   ##  let example = "oh, look no conflicts anymore"
   ##  echo fmt"{example}"
-  %pattern
+  impl(pattern, shouldUnescape=true)
 
 proc mkDigit(v: int, typ: char): string {.inline.} =
   assert(v < 26)
@@ -635,3 +644,4 @@ when isMainModule:
   import json
 
   doAssert fmt"{'a'} {'b'}" == "a b"
+  doAssert fmt"{'a'}\n{'b'}" == "a\nb"

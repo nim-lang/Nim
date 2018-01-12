@@ -622,6 +622,7 @@ proc handleDecChars(L: var TLexer, xi: var int) =
     inc(L.bufpos)
 
 proc getEscapedChar(L: var TLexer, tok: var TToken) =
+  # If this changes, strutils.unescape() should also be updated.
   inc(L.bufpos)               # skip '\'
   case L.buf[L.bufpos]
   of 'n', 'N':
