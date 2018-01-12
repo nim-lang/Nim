@@ -256,6 +256,10 @@ proc impl(pattern: NimNode, shouldUnescape: bool): NimNode =
         while i < f.len and f[i] != '}' and f[i] != ':':
           subexpr.add f[i]
           inc i
+        if i == f.len:
+          error("invalid format string: missing ':' or '}'\n" &
+                "If you want to include '\"', use fmt\"\"\"strings\"\"\"",
+                pattern)
         let x = parseExpr(subexpr)
 
         if f[i] == ':':
@@ -645,3 +649,6 @@ when isMainModule:
 
   doAssert fmt"{'a'} {'b'}" == "a b"
   doAssert fmt"{'a'}\n{'b'}" == "a\nb"
+  doAssert fmt"""{"a"}\n{'b'}""" == "a\nb"
+  when false: # toggle to test error message
+    doAssert fmt"{"a"}\n{'b'}" == "a\nb"
