@@ -1774,13 +1774,14 @@ proc escape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
 
 proc unescape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
   rtl, extern: "nsuUnescape".} =
-  ## Unescapes a string `s`.
+  ## Unescapes a string `s` using nim's string escape rules.
   ##
   ## This complements `escape <#escape>`_ as it performs the opposite
   ## operations.
   ##
-  ## If `s` does not begin with ``prefix`` and end with ``suffix`` a
-  ## ValueError exception will be raised.
+  ## If `s` does not begin with ``prefix`` and end with ``suffix``, or if
+  ## s contains an invalid escape sequence a ValueError exception will be
+  ## raised.
   result = newStringOfCap(s.len)
   var i = prefix.len
   if not s.startsWith(prefix):
@@ -1791,19 +1792,48 @@ proc unescape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
     case s[i]
     of '\\':
       case s[i+1]:
-      of 'x':
-        inc i, 2
-        var c: int
-        i += parseutils.parseHex(s, c, i, maxLen=2)
-        result.add(chr(c))
-        dec i, 2
+      of 'n', 'N':
+        result.add("\n")
+      of 'r', 'R', 'c', 'C':
+        result.add('\c')
+      of 'l', 'L':
+        result.add('\l')
+      of 'f', 'F':
+        result.add('\f')
+      of 'e', 'E':
+        result.add('\e')
+      of 'a', 'A':
+        result.add('\a')
+      of 'b', 'B':
+        result.add('\b')
+      of 'v', 'V':
+        result.add('\v')
+      of 't', 'T':
+        result.add('\t')
       of '\\':
         result.add('\\')
       of '\'':
         result.add('\'')
       of '\"':
         result.add('\"')
-      else: result.add("\\" & s[i+1])
+      of 'x', 'X':
+        inc i, 2
+        var c: int
+        i += parseutils.parseHex(s, c, i, maxLen=2)
+        result.add(chr(c))
+        dec i, 2
+      of '0'..'9':
+        inc i, 1
+        var c: int
+        i += parseutils.parseInt(s, c, i)
+        if c > 255:
+          raise newException(ValueError, "Invalid escape sequence: \\" & $c)
+        result.add(chr(c))
+        dec i, 1
+      of 'u', 'U':
+        discard # TODO is this a real thing?? #7068
+      else:
+        raise newException(ValueError, "Invalid escape sequence: \\" & prefix)
       inc(i)
     of '\0': break
     else:
