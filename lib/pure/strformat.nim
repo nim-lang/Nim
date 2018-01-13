@@ -417,6 +417,7 @@ template fmt*(pattern: string): untyped =
   ##
   ##  let example = "oh, look no conflicts anymore"
   ##  echo fmt"{example}"
+  bind `%`
   %pattern
 
 proc mkDigit(v: int, typ: char): string {.inline.} =

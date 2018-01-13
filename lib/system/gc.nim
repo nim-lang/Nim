@@ -639,6 +639,7 @@ when useMarkForDebug or useBackupGc:
     while gch.tempStack.len > 0:
       dec gch.tempStack.len
       var d = gch.tempStack.d[gch.tempStack.len]
+      gcAssert isAllocatedPtr(gch.region, d), "markS: foreign heap root detected!"
       if not containsOrIncl(gch.marked, d):
         forAllChildren(d, waMarkPrecise)
 
