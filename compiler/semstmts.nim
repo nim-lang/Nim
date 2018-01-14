@@ -1143,7 +1143,7 @@ proc semProcAnnotation(c: PContext, prc: PNode;
   if n == nil or n.kind == nkEmpty: return
   for i in countup(0, n.len-1):
     var it = n.sons[i]
-    var key = if it.kind in nkPragmaCallKinds and it.len > 1: it.sons[0] else: it
+    var key = if it.kind in nkPragmaCallKinds and it.len >= 1: it.sons[0] else: it
     let m = lookupMacro(c, key)
     if m == nil:
       if key.kind == nkIdent and key.ident.id == ord(wDelegator):
