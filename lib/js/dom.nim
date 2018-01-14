@@ -507,7 +507,7 @@ proc replace*(loc: Location, s: cstring)
 proc back*(h: History)
 proc forward*(h: History)
 proc go*(h: History, pagesToJump: int)
-proc pushState*(h: History, stateObject, title, url: cstring)
+proc pushState*[T](h: History, stateObject: T, title, url: cstring)
 
 # Navigator "methods"
 proc javaEnabled*(h: Navigator): bool
