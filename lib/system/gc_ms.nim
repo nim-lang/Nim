@@ -40,8 +40,6 @@ type
     # A ref type can have a finalizer that is called before the object's
     # storage is freed.
 
-  GlobalMarkerProc = proc () {.nimcall, benign.}
-
   GcStat = object
     collections: int         # number of performed full collections
     maxThreshold: int        # max threshold that has been set
@@ -75,9 +73,9 @@ type
     stat: GcStat
     when hasThreadSupport:
       toDispose: SharedList[pointer]
+    isMainThread: bool
     additionalRoots: CellSeq # dummy roots for GC_ref/unref
-{.deprecated: [TWalkOp: WalkOp, TFinalizer: Finalizer, TGcStat: GcStat,
-              TGlobalMarkerProc: GlobalMarkerProc, TGcHeap: GcHeap].}
+
 var
   gch {.rtlThreadVar.}: GcHeap
 
@@ -118,18 +116,6 @@ proc unsureAsgnRef(dest: PPointer, src: pointer) {.inline.} =
 
 proc internRefcount(p: pointer): int {.exportc: "getRefcount".} =
   result = 0
-
-var
-  globalMarkersLen: int
-  globalMarkers: array[0.. 7_000, GlobalMarkerProc]
-
-proc nimRegisterGlobalMarker(markerProc: GlobalMarkerProc) {.compilerProc.} =
-  if globalMarkersLen <= high(globalMarkers):
-    globalMarkers[globalMarkersLen] = markerProc
-    inc globalMarkersLen
-  else:
-    echo "[GC] cannot register global variable; too many global variables"
-    quit 1
 
 # this that has to equals zero, otherwise we have to round up UnitsPerPage:
 when BitsPerPage mod (sizeof(int)*8) != 0:
@@ -234,6 +220,7 @@ proc initGC() =
       init(gch.marked)
     when hasThreadSupport:
       init(gch.toDispose)
+    gch.isMainThread = true
 
 proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: WalkOp) {.benign.} =
   var d = cast[ByteAddress](dest)
@@ -450,7 +437,9 @@ when false:
           quit 1
 
 proc markGlobals(gch: var GcHeap) =
-  for i in 0 .. globalMarkersLen-1: globalMarkers[i]()
+  if gch.isMainThread:
+    for i in 0 .. globalMarkersLen-1: globalMarkers[i]()
+  for i in 0 .. threadLocalMarkersLen-1: threadLocalMarkers[i]()
   let d = gch.additionalRoots.d
   for i in 0 .. gch.additionalRoots.len-1: mark(gch, d[i])
 
