@@ -31,6 +31,11 @@ block: # A bit more advanced case
       d {.alternativeKey("df", 5).}: float
       e {.alternativeKey(V = 5).}: seq[bool] 
 
+
+  proc myproc(x: int, s: string) {.alternativeKey(V = 5), serializationKey"myprocSS".} = 
+    echo x, s
+
+
   var s: MySerializable
 
   const aDefVal = s.a.getCustomPragmaVal(defaultValue)
@@ -41,3 +46,8 @@ block: # A bit more advanced case
 
   const cSerKey = getCustomPragmaVal(s.field.c, serializationKey)
   static: assert(cSerKey == "cc")
+
+  const procSerKey = getCustomPragmaVal(myproc, serializationKey)
+  static: assert(procSerKey == "myprocSS")
+
+  static: assert(hasCustomPragma(myproc, alternativeKey))
