@@ -577,8 +577,12 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     var e = rdLoc(a)
     var typ = skipTypes(t.sons[0].typ, abstractPtrs)
     genLineDir(p, t)
-    lineCg(p, cpsStmts, "#raiseException((#Exception*)$1, $2);$n",
-        [e, makeCString(typ.sym.name.s)])
+    if p.module.compileToCpp and optNoCppExceptions notin gGlobalOptions and
+      sfCompileToCpp in typ.sym.flags:
+      lineF(p, cpsStmts, "throw $1;$n", [e])
+    else:      
+      lineCg(p, cpsStmts, "#raiseException((#Exception*)$1, $2);$n",
+          [e, makeCString(typ.sym.name.s)])
   else:
     genLineDir(p, t)
     # reraise the last exception:
