@@ -205,9 +205,9 @@ proc start =
   writeLine(stdout, GC_getStatistics())
   write(stdout, "finished\n")
 
-#fatherAsGlobal.t.data = @["ha", "lets", "stress", "it"]
-#var tg = buildTree()
-#buildBTree(fatherAsGlobal)
+fatherAsGlobal.t.data = @["ha", "lets", "stress", "it"]
+var tg = buildTree()
+buildBTree(fatherAsGlobal)
 
 var thr: array[8, Thread[void]]
 for i in low(thr)..high(thr):
