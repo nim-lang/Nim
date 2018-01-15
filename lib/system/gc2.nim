@@ -104,6 +104,7 @@ type
     pDumpHeapFile: pointer # File that is used for GC_dumpHeap
     when hasThreadSupport:
       toDispose: SharedList[pointer]
+    isMainThread: bool
 
 var
   gch {.rtlThreadVar.}: GcHeap
@@ -134,6 +135,7 @@ proc initGC() =
     init(gch.greyStack)
     when hasThreadSupport:
       init(gch.toDispose)
+    gch.isMainThread = true
 
 # Which color to use for new objects is tricky: When we're marking,
 # they have to be *white* so that everything is marked that is only
@@ -283,20 +285,6 @@ proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerProc.} =
     markAsEscaped(s)
     if not isOnStack(dest): markGrey(s)
   dest[] = src
-
-type
-  GlobalMarkerProc = proc () {.nimcall, benign.}
-var
-  globalMarkersLen: int
-  globalMarkers: array[0.. 7_000, GlobalMarkerProc]
-
-proc nimRegisterGlobalMarker(markerProc: GlobalMarkerProc) {.compilerProc.} =
-  if globalMarkersLen <= high(globalMarkers):
-    globalMarkers[globalMarkersLen] = markerProc
-    inc globalMarkersLen
-  else:
-    echo "[GC] cannot register global variable; too many global variables"
-    quit 1
 
 proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: WalkOp) {.benign.} =
   var d = cast[ByteAddress](dest)
@@ -492,7 +480,9 @@ proc GC_dumpHeap*(file: File) =
         c_fprintf(file, "onstack %p\n", d[i])
       else:
         c_fprintf(file, "onstack_invalid %p\n", d[i])
-  for i in 0 .. globalMarkersLen-1: globalMarkers[i]()
+  if gch.isMainThread:
+    for i in 0 .. globalMarkersLen-1: globalMarkers[i]()
+  for i in 0 .. threadLocalMarkersLen-1: threadLocalMarkers[i]()
   while true:
     let x = allObjectsAsProc(gch.region, addr spaceIter)
     if spaceIter.state < 0: break
@@ -579,7 +569,9 @@ proc markIncremental(gch: var GcHeap): bool =
   result = true
 
 proc markGlobals(gch: var GcHeap) =
-  for i in 0 .. globalMarkersLen-1: globalMarkers[i]()
+  if gch.isMainThread:
+    for i in 0 .. globalMarkersLen-1: globalMarkers[i]()
+  for i in 0 .. threadLocalMarkersLen-1: threadLocalMarkers[i]()
 
 proc doOperation(p: pointer, op: WalkOp) =
   if p == nil: return
