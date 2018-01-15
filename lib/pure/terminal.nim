@@ -17,7 +17,7 @@
 ## ``showCursor`` before quitting.
 
 import macros
-import strformat except `%`
+import strformat
 from strutils import toLowerAscii
 import colors
 
