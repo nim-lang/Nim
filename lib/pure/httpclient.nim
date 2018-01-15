@@ -923,8 +923,14 @@ proc parseChunks(client: HttpClient | AsyncHttpClient): Future[void]
     if chunkSize <= 0:
       discard await recvFull(client, 2, client.timeout, false) # Skip \c\L
       break
-    discard await recvFull(client, chunkSize, client.timeout, true)
-    discard await recvFull(client, 2, client.timeout, false) # Skip \c\L
+    var bytesRead = await recvFull(client, chunkSize, client.timeout, true)
+    if bytesRead != chunkSize:
+      httpError("Server terminated connection prematurely")
+
+    bytesRead = await recvFull(client, 2, client.timeout, false) # Skip \c\L
+    if bytesRead != 2:
+      httpError("Server terminated connection prematurely")
+
     # Trailer headers will only be sent if the request specifies that we want
     # them: http://tools.ietf.org/html/rfc2616#section-3.6.1
 
@@ -965,7 +971,7 @@ proc parseBody(client: HttpClient | AsyncHttpClient,
       if headers.getOrDefault"Connection" == "close" or httpVersion == "1.0":
         while true:
           let recvLen = await client.recvFull(4000, client.timeout, true)
-          if recvLen == 0:
+          if recvLen != 4000:
             client.close()
             break
 

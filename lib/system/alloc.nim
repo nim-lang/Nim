@@ -813,13 +813,13 @@ proc alloc0(allocator: var MemRegion, size: Natural): pointer =
   zeroMem(result, size)
 
 proc dealloc(allocator: var MemRegion, p: pointer) =
-  sysAssert(p != nil, "dealloc 0")
+  sysAssert(p != nil, "dealloc: p is nil")
   var x = cast[pointer](cast[ByteAddress](p) -% sizeof(FreeCell))
-  sysAssert(x != nil, "dealloc 1")
+  sysAssert(x != nil, "dealloc: x is nil")
   sysAssert(isAccessible(allocator, x), "is not accessible")
-  sysAssert(cast[ptr FreeCell](x).zeroField == 1, "dealloc 2")
+  sysAssert(cast[ptr FreeCell](x).zeroField == 1, "dealloc: object header corrupted")
   rawDealloc(allocator, x)
-  sysAssert(not isAllocatedPtr(allocator, x), "dealloc 3")
+  sysAssert(not isAllocatedPtr(allocator, x), "dealloc: object still accessible")
   track("dealloc", p, 0)
 
 proc realloc(allocator: var MemRegion, p: pointer, newsize: Natural): pointer =
