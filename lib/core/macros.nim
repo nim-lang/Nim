@@ -130,6 +130,7 @@ const
   nnkLiterals* = {nnkCharLit..nnkNilLit}
   nnkCallKinds* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
                    nnkCallStrLit}
+  nnkPragmaCallKinds = {nnkExprColonExpr, nnkCall, nnkCallStrLit}
 
 proc `!`*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated.}
   ## constructs an identifier from the string `s`
@@ -1212,6 +1213,59 @@ macro expandMacros*(body: typed): untyped =
 
   result = getAst(inner(body))
   echo result.toStrLit
+
+proc customPragmaNode(n: NimNode): NimNode =
+  expectKind(n, {nnkSym, nnkDotExpr})
+  if n.kind == nnkSym:
+    let sym = n.symbol.getImpl()
+    sym.expectRoutine()
+    result = sym.pragma
+  elif n.kind == nnkDotExpr:
+    let typDef = getImpl(getTypeInst(n[0]).symbol)
+    typDef.expectKind(nnkTypeDef)
+    typDef[2].expectKind(nnkObjectTy)
+    let recList = typDef[2][2]
+    for identDefs in recList:
+      for i in 0 .. identDefs.len - 3:
+        if identDefs[i].kind == nnkPragmaExpr and 
+           identDefs[i][0].kind == nnkIdent and $identDefs[i][0] == $n[1]:
+          return identDefs[i][1]
+
+macro hasCustomPragma*(n: typed, cp: typed{nkSym}): untyped =
+  ## Expands to `true` if expression `n` which is expected to be `nnkDotExpr`
+  ## has custom pragma `cp`.
+  ##
+  ## .. code-block:: nim
+  ##   template myAttr() {.pragma.}
+  ##   type 
+  ##     MyObj = object
+  ##       myField {.myAttr.}: int
+  ##   var o: MyObj
+  ##   assert(o.myField.hasCustomPragma(myAttr) == 0)
+  let pragmaNode = customPragmaNode(n)
+  for p in pragmaNode:
+    if (p.kind == nnkSym and p == cp) or
+        (p.kind in nnkPragmaCallKinds and p.len > 0 and p[0].kind == nnkSym and p[0] == cp):
+      return newLit(true)
+  return newLit(false)
+
+macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
+  ## Expands to value of custom pragma `cp` of expression `n` which is expected
+  ## to be `nnkDotExpr`.
+  ##
+  ## .. code-block:: nim
+  ##   template serializationKey(key: string) {.pragma.}
+  ##   type 
+  ##     MyObj = object
+  ##       myField {.serializationKey: "mf".}: int
+  ##   var o: MyObj
+  ##   assert(o.myField.getCustomPragmaVal(serializationKey) == "mf")
+  let pragmaNode = customPragmaNode(n)
+  for p in pragmaNode:
+    if p.kind in nnkPragmaCallKinds and p.len > 0 and p[0].kind == nnkSym and p[0] == cp:
+      return p[1]
+  return newEmptyNode()
+
 
 when not defined(booting):
   template emit*(e: static[string]): untyped {.deprecated.} =

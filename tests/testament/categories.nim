@@ -17,11 +17,12 @@ const
   rodfilesDir = "tests/rodfiles"
 
 proc delNimCache(filename, options: string) =
-  let dir = nimcacheDir(filename, options)
-  try:
-    removeDir(dir)
-  except OSError:
-    echo "[Warning] could not delete: ", dir
+  for target in low(TTarget)..high(TTarget):
+    let dir = nimcacheDir(filename, options, target)
+    try:
+      removeDir(dir)
+    except OSError:
+      echo "[Warning] could not delete: ", dir
 
 proc runRodFiles(r: var TResults, cat: Category, options: string) =
   template test(filename: string, clearCacheFirst=false) =
@@ -147,7 +148,7 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   test "gcbench"
   test "gcleak"
   test "gcleak2"
-  test "gctest"
+  testWithoutBoehm "gctest"
   testWithNone "gctest"
   test "gcleak3"
   test "gcleak4"

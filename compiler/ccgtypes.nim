@@ -496,7 +496,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
               if hasAttribute in CC[cCompiler].props:
                 add(unionBody, "struct __attribute__((__packed__)){" )
               else:
-                addf(unionBody, "#pragma pack(1)$nstruct{", [])
+                addf(unionBody, "#pragma pack(push, 1)$nstruct{", [])
             add(unionBody, a)
             addf(unionBody, "} $1;$n", [sname])
             if tfPacked in rectype.flags and hasAttribute notin CC[cCompiler].props:
@@ -551,7 +551,7 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
     if hasAttribute in CC[cCompiler].props:
       result = structOrUnion(typ) & " __attribute__((__packed__))"
     else:
-      result = "#pragma pack(1)" & tnl & structOrUnion(typ)
+      result = "#pragma pack(push, 1)" & tnl & structOrUnion(typ)
   else:
     result = structOrUnion(typ)
 

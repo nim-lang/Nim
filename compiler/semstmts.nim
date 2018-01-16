@@ -1153,6 +1153,9 @@ proc semProcAnnotation(c: PContext, prc: PNode;
         else:
           localError(prc.info, errOnlyACallOpCanBeDelegator)
       continue
+    elif sfCustomPragma in m.flags:
+      continue # semantic check for custom pragma happens later in semProcAux
+      
     # we transform ``proc p {.m, rest.}`` into ``m(do: proc p {.rest.})`` and
     # let the semantic checker deal with it:
     var x = newNodeI(nkCall, n.info)
