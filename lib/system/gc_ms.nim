@@ -73,7 +73,7 @@ type
     stat: GcStat
     when hasThreadSupport:
       toDispose: SharedList[pointer]
-    isMainThread: bool
+    gcThreadId: int
     additionalRoots: CellSeq # dummy roots for GC_ref/unref
 
 var
@@ -220,7 +220,8 @@ proc initGC() =
       init(gch.marked)
     when hasThreadSupport:
       init(gch.toDispose)
-    gch.isMainThread = true
+    gch.gcThreadId = atomicInc(gHeapidGenerator) - 1
+    gcAssert(gch.gcThreadId >= 0, "invalid computed thread ID")
 
 proc forAllSlotsAux(dest: pointer, n: ptr TNimNode, op: WalkOp) {.benign.} =
   var d = cast[ByteAddress](dest)
@@ -394,13 +395,7 @@ proc doOperation(p: pointer, op: WalkOp) =
   var c: PCell = usrToCell(p)
   gcAssert(c != nil, "doOperation: 1")
   case op
-  of waMarkGlobal:
-    when hasThreadSupport:
-      # could point to a cell which we don't own and don't want to touch/trace
-      if isAllocatedPtr(gch.region, c):
-        mark(gch, c)
-    else:
-      mark(gch, c)
+  of waMarkGlobal: mark(gch, c)
   of waMarkPrecise: add(gch.tempStack, c)
 
 proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} =
@@ -437,7 +432,7 @@ when false:
           quit 1
 
 proc markGlobals(gch: var GcHeap) =
-  if gch.isMainThread:
+  if gch.gcThreadId == 0:
     for i in 0 .. globalMarkersLen-1: globalMarkers[i]()
   for i in 0 .. threadLocalMarkersLen-1: threadLocalMarkers[i]()
   let d = gch.additionalRoots.d

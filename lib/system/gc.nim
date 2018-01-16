@@ -92,7 +92,7 @@ type
     additionalRoots: CellSeq # dummy roots for GC_ref/unref
     when hasThreadSupport:
       toDispose: SharedList[pointer]
-    isMainThread: bool
+    gcThreadId: int
 
 var
   gch {.rtlThreadVar.}: GcHeap
@@ -159,12 +159,12 @@ when defined(logGC):
         if not c.typ.name.isNil:
           typName = c.typ.name
 
-  when leakDetector:
-    c_fprintf(stdout, "[GC] %s: %p %d %s rc=%ld from %s(%ld)\n",
-              msg, c, kind, typName, c.refcount shr rcShift, c.filename, c.line)
-  else:
-    c_fprintf(stdout, "[GC] %s: %p %d %s rc=%ld; color=%ld\n",
-              msg, c, kind, typName, c.refcount shr rcShift, c.color)
+    when leakDetector:
+      c_fprintf(stdout, "[GC] %s: %p %d %s rc=%ld from %s(%ld)\n",
+                msg, c, kind, typName, c.refcount shr rcShift, c.filename, c.line)
+    else:
+      c_fprintf(stdout, "[GC] %s: %p %d %s rc=%ld; thread=%ld\n",
+                msg, c, kind, typName, c.refcount shr rcShift, gch.gcThreadId)
 
 template gcTrace(cell, state: untyped) =
   when traceGC: traceCell(cell, state)
@@ -312,7 +312,8 @@ proc initGC() =
     init(gch.additionalRoots)
     when hasThreadSupport:
       init(gch.toDispose)
-    gch.isMainThread = true
+    gch.gcThreadId = atomicInc(gHeapidGenerator) - 1
+    gcAssert(gch.gcThreadId >= 0, "invalid computed thread ID")
 
 proc cellsetReset(s: var CellSet) =
   deinit(s)
@@ -459,7 +460,7 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   release(gch)
   when useCellIds:
     inc gch.idGenerator
-    res.id = gch.idGenerator
+    res.id = gch.idGenerator * 1000_000 + gch.gcThreadId
   result = cellToUsr(res)
   sysAssert(allocInv(gch.region), "rawNewObj end")
 
@@ -506,7 +507,7 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   release(gch)
   when useCellIds:
     inc gch.idGenerator
-    res.id = gch.idGenerator
+    res.id = gch.idGenerator * 1000_000 + gch.gcThreadId
   result = cellToUsr(res)
   zeroMem(result, size)
   sysAssert(allocInv(gch.region), "newObjRC1 end")
@@ -576,7 +577,7 @@ proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
   release(gch)
   when useCellIds:
     inc gch.idGenerator
-    res.id = gch.idGenerator
+    res.id = gch.idGenerator * 1000_000 + gch.gcThreadId
   result = cellToUsr(res)
   sysAssert(allocInv(gch.region), "growObj end")
   when defined(memProfiler): nimProfile(newsize-oldsize)
@@ -621,7 +622,7 @@ proc markS(gch: var GcHeap, c: PCell) =
       forAllChildren(d, waMarkPrecise)
 
 proc markGlobals(gch: var GcHeap) =
-  if gch.isMainThread:
+  if gch.gcThreadId == 0:
     for i in 0 .. globalMarkersLen-1: globalMarkers[i]()
   for i in 0 .. threadLocalMarkersLen-1: threadLocalMarkers[i]()
   let d = gch.additionalRoots.d
@@ -669,13 +670,7 @@ proc doOperation(p: pointer, op: WalkOp) =
   of waPush:
     add(gch.tempStack, c)
   of waMarkGlobal:
-    when hasThreadSupport:
-      # could point to a cell which we don't own and don't want to touch/trace
-      # XXX: This should not be required anymore!
-      if isAllocatedPtr(gch.region, c):
-        markS(gch, c)
-    else:
-      markS(gch, c)
+    markS(gch, c)
   of waMarkPrecise:
     add(gch.tempStack, c)
   #of waDebug: debugGraph(c)
