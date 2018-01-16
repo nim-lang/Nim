@@ -917,63 +917,7 @@ proc formatToken(dt: DateTime, token: string, buf: var string) {.inline.} =
     formatTime(dt, token, buf)
 
 
-proc format*(d: Date, f: string): string {.tags: [].} =
-  ## This procedure formats `dt as specified by `f`. The following format
-  ## specifiers are available:
-  ##
-  ## ==========  =================================================================================  ================================================
-  ## Specifier   Description                                                                        Example
-  ## ==========  =================================================================================  ================================================
-  ##    d        Numeric value of the day of the month, it will be one or two digits long.          ``1/04/2012 -> 1``, ``21/04/2012 -> 21``
-  ##    dd       Same as above, but always two digits.                                              ``1/04/2012 -> 01``, ``21/04/2012 -> 21``
-  ##    ddd      Three letter string which indicates the day of the week.                           ``Saturday -> Sat``, ``Monday -> Mon``
-  ##    dddd     Full string for the day of the week.                                               ``Saturday -> Saturday``, ``Monday -> Monday``
-  ##    M        The month in one digit if possible.                                                ``September -> 9``, ``December -> 12``
-  ##    MM       The month in two digits always. 0 is prepended.                                    ``September -> 09``, ``December -> 12``
-  ##    MMM      Abbreviated three-letter form of the month.                                        ``September -> Sep``, ``December -> Dec``
-  ##    MMMM     Full month string, properly capitalized.                                           ``September -> September``
-  ##    y(yyyy)  This displays the year to different digits. You most likely only want 2 or 4 'y's
-  ##    yy       Displays the year to two digits.                                                   ``2012 -> 12``
-  ##    yyyy     Displays the year to four digits.                                                  ``2012 -> 2012``
-  ## ==========  =================================================================================  ================================================
-  ##
-  ## Other strings can be inserted by putting them in ``''``. For example
-  ## ``yyyy'->'MM`` will give ``2017->12``.  The following characters can be
-  ## inserted without quoting them: ``:`` ``-`` ``(`` ``)`` ``/`` ``[`` ``]``
-  ## ``,``. However you don't need to necessarily separate format specifiers, a
-  ## unambiguous format string like ``yyyyMMddhh`` is valid too.
-
-  result = ""
-  var i = 0
-  var currentF = ""
-  while true:
-    case f[i]
-    of ' ', '-', '/', ':', '\'', '\0', '(', ')', '[', ']', ',':
-      
-      formatDate(d, currentF, result)
-
-      currentF = ""
-      if f[i] == '\0': break
-
-      if f[i] == '\'':
-        inc(i) # Skip '
-        while f[i] != '\'' and f.len-1 > i:
-          result.add(f[i])
-          inc(i)
-      else: result.add(f[i])
-
-    else:
-      # Check if the letter being added matches previous accumulated buffer.
-      if currentF.len < 1 or currentF[high(currentF)] == f[i]:
-        currentF.add(f[i])
-      else:
-        formatDate(d, currentF, result)
-        dec(i) # Move position back to re-process the character separately.
-        currentF = ""
-
-    inc(i)
-
-proc format*(dt: DateTime, f: string): string {.tags: [].} =
+proc format*(dt: DateTime|Date, f: string): string {.tags: [].} =
   ## This procedure formats `dt` as specified by `f`. The following format
   ## specifiers are available:
   ##
@@ -1019,7 +963,8 @@ proc format*(dt: DateTime, f: string): string {.tags: [].} =
     case f[i]
     of ' ', '-', '/', ':', '\'', '\0', '(', ')', '[', ']', ',':
       
-      formatToken(dt, currentF, result)
+      when dt is Date: formatDate(dt)
+      else: formatToken(dt, currentF, result)
 
       currentF = ""
       if f[i] == '\0': break
@@ -1036,7 +981,9 @@ proc format*(dt: DateTime, f: string): string {.tags: [].} =
       if currentF.len < 1 or currentF[high(currentF)] == f[i]:
         currentF.add(f[i])
       else:
-        formatToken(dt, currentF, result)
+        when dt is Date: formatDate(dt)
+        else:  formatToken(dt, currentF, result)
+  
         dec(i) # Move position back to re-process the character separately.
         currentF = ""
 
@@ -1348,6 +1295,9 @@ proc parseDate*(value, layout: string): Date =
       else:
         found_tokens.incl parseDate(result, token, value, j)
         token = ""
+
+  if parsedDateComplete * found_tokens != parsedDateComplete:
+    raise newException(ValueError, "invalid or incomplete date:" value)
 
 
 proc parse*(value, layout: string, zone: Timezone = local()): DateTime =
