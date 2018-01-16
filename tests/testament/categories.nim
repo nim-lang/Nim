@@ -167,9 +167,9 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
 
 proc longGCTests(r: var TResults, cat: Category, options: string) =
   when defined(windows):
-    let cOptions = "gcc -ldl -DWIN"
+    let cOptions = "-ldl -DWIN"
   else:
-    let cOptions = "gcc -ldl"
+    let cOptions = "-ldl"
 
   var c = initResults()
   # According to ioTests, this should compile the file
