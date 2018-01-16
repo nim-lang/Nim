@@ -922,7 +922,7 @@ proc runJsonBuildInstructions*(projectfile: string) =
 
 proc genMappingFiles(list: CFileList): Rope =
   for it in list:
-    addf(result, "--file:\"$1\"$N", [rope(it.cname)])
+    addf(result, "--file:r\"$1\"$N", [rope(it.cname)])
 
 proc writeMapping*(gSymbolMapping: Rope) =
   if optGenMapping notin gGlobalOptions: return

@@ -9,24 +9,6 @@
 
 import ast, types, msgs, os, streams, options, idents
 
-when defined(useMetroHash64):
-  import metrohash
-
-  template doHash(s: string): untyped = 
-    metroHash64(s)
-
-elif defined(useMetroHash128):
-  import metrohash
-
-  template doHash(s: string): untyped = 
-    metroHash128(s)
-
-else:
-  import securehash
-
-  template doHash(s: string): untyped = 
-    securehash(s)
-
 proc opSlurp*(file: string, info: TLineInfo, module: PSym): string =
   try:
     var filename = parentDir(info.toFullPath) / file
