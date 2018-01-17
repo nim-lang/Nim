@@ -10,16 +10,17 @@
 ## This module defines compile-time reflection procs for
 ## working with types
 
-proc name*(t: typedesc): string {.magic: "TypeTrait".}
+proc name*(t: typedesc): string =
   ## Returns the name of the given type.
+  ##
+  ## As of Nim v0.18.0 this is just an alias for `$` which is defined in
+  ## the system module.
   ##
   ## Example:
   ##
   ## .. code-block::
   ##
   ##   import typetraits
-  ##
-  ##   proc `$`*(T: typedesc): string = name(T)
   ##
   ##   template test(x): typed =
   ##     echo "type: ", type(x), ", value: ", x
@@ -30,10 +31,7 @@ proc name*(t: typedesc): string {.magic: "TypeTrait".}
   ##   # --> type: string, value: Foo
   ##   test(@['A','B'])
   ##   # --> type: seq[char], value: @[A, B]
-
-proc `$`*(t: typedesc): string =
-  ## An alias for `name`.
-  name(t)
+  return $(t)
 
 proc arity*(t: typedesc): int {.magic: "TypeTrait".} =
   ## Returns the arity of the given type. This is the number of "type" components or
