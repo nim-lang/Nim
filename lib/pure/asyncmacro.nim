@@ -117,8 +117,22 @@ template useVar(result: var NimNode, futureVarNode: NimNode, valueReceiver,
   ##                   future's value.
   ##
   ##    rootReceiver: ??? TODO
-  # -> yield future<x>
-  result.add newNimNode(nnkYieldStmt, fromNode).add(futureVarNode)
+  # -> if not future<x>.finished: yield future<x>
+  result.add nnkIfStmt.newTree(
+    nnkElifBranch.newTree(
+      nnkPrefix.newTree(
+        newIdentNode("not"),
+        nnkDotExpr.newTree(
+          futureVarNode,
+          newIdentNode("finished")
+        )
+      ),
+      nnkStmtList.newTree(
+        newNimNode(nnkYieldStmt, fromNode).add(futureVarNode)
+      )
+    )
+  )
+
   # -> future<x>.read
   valueReceiver = newDotExpr(futureVarNode, newIdentNode("read"))
   result.add generateExceptionCheck(futureVarNode, tryStmt, rootReceiver,
