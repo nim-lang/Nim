@@ -81,10 +81,11 @@ proc getFileSize*(f: AsyncFile): int64 =
   else:
     result = lseek(f.fd.cint, 0, SEEK_END)
 
-proc newAsyncFile*(fd: cint | AsyncFd): AsyncFile =
+proc newAsyncFile*(fd: AsyncFd): AsyncFile =
   ## Creates `AsyncFile` with a previously opened file descriptor `fd`.
   new result
-  result.fd = register(fd)
+  result.fd = fd
+  register(fd)
 
 proc openAsync*(filename: string, mode = fmRead): AsyncFile =
   ## Opens a file specified by the path in ``filename`` using
@@ -105,7 +106,7 @@ proc openAsync*(filename: string, mode = fmRead): AsyncFile =
     if fd == INVALID_HANDLE_VALUE:
       raiseOSError(osLastError())
 
-    result = newAsyncFile(fd.cint)
+    result = newAsyncFile(fd.AsyncFd)
 
     if mode == fmAppend:
       result.offset = getFileSize(result)
@@ -115,10 +116,10 @@ proc openAsync*(filename: string, mode = fmRead): AsyncFile =
     # RW (Owner), RW (Group), R (Other)
     let perm = S_IRUSR or S_IWUSR or S_IRGRP or S_IWGRP or S_IROTH
     let fd = open(filename, flags, perm)
-    if fd.cint == -1:
+    if fd == -1:
       raiseOSError(osLastError())
 
-    result = newAsyncFile(fd)
+    result = newAsyncFile(fd.AsyncFd)
 
 proc readBuffer*(f: AsyncFile, buf: pointer, size: int): Future[int] =
   ## Read ``size`` bytes from the specified file asynchronously starting at

@@ -14,13 +14,8 @@
   module.
 - `newAsyncSocket` taking an `AsyncFD` now runs `setBlocking(false)` on the
   fd.
-
-### Library changes
-
 - The `ReadyKey` type in the selectors module now contains an ``errorCode``
   field to help distinguish between ``Event.Error`` events.
-- The `AsyncFD` type now reflects the fact that the underlying FD is registered
-  in the async dispatcher.
 - Implemented an `accept` proc that works on a `SocketHandle` in
   ``nativesockets``.
 - Implemented ``getIoHandler`` proc in the ``asyncdispatch`` module that allows

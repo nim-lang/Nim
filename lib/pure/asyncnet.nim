@@ -146,8 +146,6 @@ proc newAsyncSocket*(fd: AsyncFD, domain: Domain = AF_INET,
   ## **Note**: This procedure will **NOT** register ``fd`` with the global
   ## async dispatcher. You need to do this manually. If you have used
   ## ``newAsyncNativeSocket`` to create ``fd`` then it's already registered.
-  ## The reason for this is that the ``AsyncFD`` type is a special type for an
-  ## FD that signifies that its been registered.
   assert fd != osInvalidSocket.AsyncFD
   new(result)
   result.fd = fd.SocketHandle

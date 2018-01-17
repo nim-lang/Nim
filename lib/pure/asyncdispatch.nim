@@ -222,7 +222,7 @@ when defined(windows) or defined(nimdoc):
 
     PCustomOverlapped* = ref CustomOverlapped
 
-    AsyncFD* = distinct int ## An FD that is registered in the dispatcher.
+    AsyncFD* = distinct int
 
     PostCallbackData = object
       ioPort: Handle
@@ -270,22 +270,14 @@ when defined(windows) or defined(nimdoc):
     ## (Unix) for the specified dispatcher.
     return disp.ioPort
 
-  proc register*(fd: cint | SocketHandle | AsyncFD): AsyncFD {.discardable.} =
+  proc register*(fd: AsyncFD) =
     ## Registers ``fd`` with the dispatcher.
-    ##
-    ## By convention, an ``AsyncFD`` is said to be already registered in the
-    ## dispatcher. This procedure will raise an exception if ``fd`` has already
-    ## been registered, but only if the type of the ``fd`` isn't ``AsyncFD``.
     let p = getGlobalDispatcher()
-    when fd is AsyncFD:
-      if fd in p.handles:
-        return
 
     if createIoCompletionPort(fd.Handle, p.ioPort,
                               cast[CompletionKey](fd), 1) == 0:
       raiseOSError(osLastError())
-    p.handles.incl(fd.AsyncFD)
-    return fd.AsyncFD
+    p.handles.incl(fd)
 
   proc verifyPresence(fd: AsyncFD) =
     ## Ensures that file descriptor has been registered with the dispatcher.
@@ -771,8 +763,8 @@ when defined(windows) or defined(nimdoc):
     ## Unregisters ``fd``.
     getGlobalDispatcher().handles.excl(fd)
 
-  proc contains*(disp: PDispatcher, fd: AsyncFd | SocketHandle): bool =
-    return fd.SocketHandle in disp.handles
+  proc contains*(disp: PDispatcher, fd: AsyncFD): bool =
+    return fd in disp.handles
 
   {.push stackTrace:off.}
   proc waitableCallback(param: pointer,
@@ -994,7 +986,7 @@ when defined(windows) or defined(nimdoc):
   proc newAsyncEvent*(): AsyncEvent =
     ## Creates a new thread-safe ``AsyncEvent`` object.
     ##
-    ## New ``AsyncEvent`` object is not automatically registered with             # TODO: Why? -- DP
+    ## New ``AsyncEvent`` object is not automatically registered with
     ## dispatcher like ``AsyncSocket``.
     var sa = SECURITY_ATTRIBUTES(
       nLength: sizeof(SECURITY_ATTRIBUTES).cint,
@@ -1115,14 +1107,10 @@ else:
   proc getIoHandler*(disp: PDispatcher): Selector[AsyncData] =
     return disp.selector
 
-  proc register*(fd: cint | SocketHandle | AsyncFD): AsyncFD {.discardable.} =
+  proc register*(fd: AsyncFD) =
     let p = getGlobalDispatcher()
-    when fd is AsyncFD:
-      if fd.SocketHandle in p.selector:
-        return
     var data = newAsyncData()
     p.selector.registerHandle(fd.SocketHandle, {}, data)
-    return fd.AsyncFD
 
   proc closeSocket*(sock: AsyncFD) =
     let disp = getGlobalDispatcher()
@@ -1135,7 +1123,7 @@ else:
   proc unregister*(ev: AsyncEvent) =
     getGlobalDispatcher().selector.unregister(SelectEvent(ev))
   
-  proc contains*(disp: PDispatcher, fd: AsyncFd | SocketHandle): bool =
+  proc contains*(disp: PDispatcher, fd: AsyncFd): bool =
     return fd.SocketHandle in disp.selector
 
   proc addRead*(fd: AsyncFD, cb: Callback) =
