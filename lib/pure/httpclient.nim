@@ -1263,21 +1263,30 @@ proc postContent*(client: HttpClient | AsyncHttpClient, url: string,
   else:
     return await resp.bodyStream.readAll()
 
-proc downloadFile*(client: HttpClient | AsyncHttpClient,
-                   url: string, filename: string): Future[void] {.multisync.} =
+proc downloadFile*(client: HttpClient, url: string, filename: string) =
   ## Downloads ``url`` and saves it to ``filename``.
   client.getBody = false
   defer:
     client.getBody = true
-  let resp = await client.get(url)
+  let resp = client.get(url)
 
-  when client is HttpClient:
-    client.bodyStream = newFileStream(filename, fmWrite)
-    if client.bodyStream.isNil:
-      fileError("Unable to open file")
-    parseBody(client, resp.headers, resp.version)
-    client.bodyStream.close()
-  else:
+  client.bodyStream = newFileStream(filename, fmWrite)
+  if client.bodyStream.isNil:
+    fileError("Unable to open file")
+  parseBody(client, resp.headers, resp.version)
+  client.bodyStream.close()
+
+  if resp.code.is4xx or resp.code.is5xx:
+    raise newException(HttpRequestError, resp.status)
+
+proc downloadFile*(client: AsyncHttpClient, url: string,
+                   filename: string): Future[void] =
+  proc downloadFileEx(client: AsyncHttpClient,
+                      url, filename: string): Future[void] {.async.} =
+    ## Downloads ``url`` and saves it to ``filename``.
+    client.getBody = false
+    let resp = await client.get(url)
+
     client.bodyStream = newFutureStream[string]("downloadFile")
     var file = openAsync(filename, fmWrite)
     # Let `parseBody` write response data into client.bodyStream in the
@@ -1288,5 +1297,15 @@ proc downloadFile*(client: HttpClient | AsyncHttpClient,
     await file.writeFromStream(client.bodyStream)
     file.close()
 
-  if resp.code.is4xx or resp.code.is5xx:
-    raise newException(HttpRequestError, resp.status)
+    if resp.code.is4xx or resp.code.is5xx:
+      raise newException(HttpRequestError, resp.status)
+
+  result = newFuture[void]("downloadFile")
+  try:
+    result = downloadFileEx(client, url, filename)
+  except Exception as exc:
+    result.fail(exc)
+  finally:
+    result.addCallback(
+      proc () = client.getBody = true
+    )
