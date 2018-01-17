@@ -764,12 +764,9 @@ dereferencing operations for reference types:
   # no need to write n[].data; in fact n[].data is highly discouraged!
 
 Automatic dereferencing is also performed for the first argument of a routine
-call. But currently this feature has to be only enabled
-via ``{.experimental.}``:
+call:
 
 .. code-block:: nim
-  {.experimental.}
-
   proc depth(x: NodeObj): int = ...
 
   var
