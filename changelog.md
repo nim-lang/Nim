@@ -53,36 +53,37 @@
   what to return if the environment variable does not exist.
 - Bodies of ``for`` loops now get their own scope:
 
-.. code-block:: nim
+```nim
   # now compiles:
   for i in 0..4:
     let i = i + 1
     echo i
+```
 
 - The parsing rules of ``if`` expressions were changed so that multiple
   statements are allowed in the branches. We found few code examples that
   now fail because of this change, but here is one:
 
-.. code-block:: nim
-
+```nim
   t[ti] = if exp_negative: '-' else: '+'; inc(ti)
+```
 
 This now needs to be written as:
 
-.. code-block:: nim
-
+```nim
   t[ti] = (if exp_negative: '-' else: '+'); inc(ti)
+```
 
 - To make Nim even more robust the system iterators ``..`` and ``countup``
   now only accept a single generic type ``T``. This means the following code
   doesn't die with an "out of range" error anymore:
 
-.. code-block:: nim
-
+```nim
   var b = 5.Natural
   var a = -5
   for i in a..b:
     echo i
+```
 
 - ``formatFloat``/``formatBiggestFloat`` now support formatting floats with zero
   precision digits. The previous ``precision = 0`` behavior (default formatting)
@@ -115,13 +116,17 @@ This now needs to be written as:
 - Nim's ``rst2html`` command now supports the testing of code snippets via an RST
   extension that we called ``:test:``::
 
+  ```rst
     .. code-block:: nim
         :test:
       # shows how the 'if' statement works
       if true: echo "yes"
+  ```
 - The ``[]`` proc for strings now raises an ``IndexError`` exception when
   the specified slice is out of bounds. See issue
   [#6223](https://github.com/nim-lang/Nim/issues/6223) for more details.
+  You can use ``substr(str, start, finish)`` to get the old behaviour back,
+  see [this commit](https://github.com/nim-lang/nimbot/commit/98cc031a27ea89947daa7f0bb536bcf86462941f) for an example.
 - ``strutils.split`` and ``strutils.rsplit`` with an empty string and a
   separator now returns that empty string.
   See issue [#4377](https://github.com/nim-lang/Nim/issues/4377).
@@ -137,3 +142,68 @@ This now needs to be written as:
   to [http://www.gii.upv.es/tlsf/](http://www.gii.upv.es/tlsf/) the maximum
   fragmentation measured is lower than 25%. As a nice bonus ``alloc`` and
   ``dealloc`` became O(1) operations.
+- The behavior of ``$`` has been changed for all standard library collections. The
+  collection-to-string implementations now perform proper quoting and escaping of
+  strings and chars.
+- The ``random`` procs in ``random.nim`` have all been deprecated. Instead use
+  the new ``rand`` procs. The module now exports the state of the random
+  number generator as type ``Rand`` so multiple threads can easily use their
+  own random number generators that do not require locking. For more information
+  about this rename see issue [#6934](https://github.com/nim-lang/Nim/issues/6934)
+- The compiler is now more consistent in its treatment of ambiguous symbols:
+  Types that shadow procs and vice versa are marked as ambiguous (bug #6693).
+- ``yield`` (or ``await`` which is mapped to ``yield``) never worked reliably
+  in an array, seq or object constructor and is now prevented at compile-time.
+- For string formatting / interpolation a new module
+  called [strformat](https://nim-lang.org/docs/strformat.html) has been added
+  to the stdlib.
+- codegenDecl pragma now works for the JavaScript backend. It returns an empty string for
+  function return type placeholders.
+- Asynchronous programming for the JavaScript backend using the `asyncjs` module.
+- Extra semantic checks for procs with noreturn pragma: return type is not allowed,
+  statements after call to noreturn procs are no longer allowed.
+- Noreturn proc calls and raising exceptions branches are now skipped during common type
+  deduction in if and case expressions. The following code snippets now compile:
+```nim
+import strutils
+let str = "Y"
+let a = case str:
+  of "Y": true
+  of "N": false
+  else: raise newException(ValueError, "Invalid boolean")
+let b = case str:
+  of nil, "": raise newException(ValueError, "Invalid boolean")
+  elif str.startsWith("Y"): true
+  elif str.startsWith("N"): false
+  else: false
+let c = if str == "Y": true
+  elif str == "N": false
+  else:
+    echo "invalid bool"
+    quit("this is the end")
+```
+- Proc [toCountTable](https://nim-lang.org/docs/tables.html#toCountTable,openArray[A]) now produces a `CountTable` with values correspoding to the number of occurrences of the key in the input. It used to produce a table with all values set to `1`.
+
+Counting occurrences in a sequence used to be:
+
+```nim
+let mySeq = @[1, 2, 1, 3, 1, 4]
+var myCounter = initCountTable[int]()
+
+for item in mySeq:
+  myCounter.inc item
+```
+
+Now, you can simply do:
+
+```nim
+let
+  mySeq = @[1, 2, 1, 3, 1, 4]
+  myCounter = mySeq.toCountTable()
+```
+
+- Added support for casting between integers of same bitsize in VM (compile time and nimscript).
+  This allow to among other things to reinterpret signed integers as unsigned.
+- Pragmas now support call syntax, for example: ``{.exportc"myname".}`` and ``{.exportc("myname").}``
+- Custom pragmas are now supported using pragma ``pragma``, please see language manual for details
+

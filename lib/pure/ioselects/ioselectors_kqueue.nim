@@ -452,10 +452,10 @@ proc selectInto*[T](s: Selector[T], timeout: int,
 
   if timeout != -1:
     if timeout >= 1000:
-      tv.tv_sec = (timeout div 1_000).Time
+      tv.tv_sec = posix.Time(timeout div 1_000)
       tv.tv_nsec = (timeout %% 1_000) * 1_000_000
     else:
-      tv.tv_sec = 0.Time
+      tv.tv_sec = posix.Time(0)
       tv.tv_nsec = timeout * 1_000_000
   else:
     ptv = nil

@@ -51,17 +51,17 @@ const
   # TODO: Remove tyTypeDesc from each abstractX and (where necessary)
   # replace with typedescX
   abstractPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyDistinct, tyOrdinal,
-                   tyTypeDesc, tyAlias, tyInferred}
+                   tyTypeDesc, tyAlias, tyInferred, tySink, tyLent}
   abstractVar* = {tyVar, tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc,
-                  tyAlias, tyInferred}
+                  tyAlias, tyInferred, tySink, tyLent}
   abstractRange* = {tyGenericInst, tyRange, tyDistinct, tyOrdinal, tyTypeDesc,
-                    tyAlias, tyInferred}
+                    tyAlias, tyInferred, tySink}
   abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
-                       tyTypeDesc, tyAlias, tyInferred}
+                       tyTypeDesc, tyAlias, tyInferred, tySink}
   abstractInst* = {tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias,
-                   tyInferred}
+                   tyInferred, tySink}
   skipPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyTypeDesc, tyAlias,
-               tyInferred}
+               tyInferred, tySink, tyLent}
   # typedescX is used if we're sure tyTypeDesc should be included (or skipped)
   typedescPtrs* = abstractPtrs + {tyTypeDesc}
   typedescInst* = abstractInst + {tyTypeDesc}
@@ -388,8 +388,8 @@ const
     "int", "int8", "int16", "int32", "int64",
     "float", "float32", "float64", "float128",
     "uint", "uint8", "uint16", "uint32", "uint64",
-    "unused0", "unused1",
-    "unused2", "varargs[$1]", "unused", "Error Type",
+    "opt", "sink",
+    "lent", "varargs[$1]", "unused", "Error Type",
     "BuiltInTypeClass", "UserTypeClass",
     "UserTypeClassInst", "CompositeTypeClass", "inferred",
     "and", "or", "not", "any", "static", "TypeFromExpr", "FieldAccessor",
@@ -539,7 +539,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         add(result, typeToString(t.sons[i]))
         if i < sonsLen(t) - 1: add(result, ", ")
       add(result, ')')
-  of tyPtr, tyRef, tyVar:
+  of tyPtr, tyRef, tyVar, tyLent:
     result = typeToStr[t.kind]
     if t.len >= 2:
       setLen(result, result.len-1)
@@ -581,6 +581,8 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     if len(prag) != 0: add(result, "{." & prag & ".}")
   of tyVarargs:
     result = typeToStr[t.kind] % typeToString(t.sons[0])
+  of tySink:
+    result = "sink " & typeToString(t.sons[0])
   else:
     result = typeToStr[t.kind]
   result.addTypeFlags(t)
@@ -968,7 +970,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     if result and ExactGenericParams in c.flags:
       result = a.sym.position == b.sym.position
   of tyGenericInvocation, tyGenericBody, tySequence,
-     tyOpenArray, tySet, tyRef, tyPtr, tyVar,
+     tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyLent, tySink,
      tyArray, tyProc, tyVarargs, tyOrdinal, tyTypeClasses, tyOpt:
     cycleCheck()
     if a.kind == tyUserTypeClass and a.n != nil: return a.n == b.n
@@ -992,7 +994,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     cycleCheck()
     result = sameTypeAux(a.lastSon, b.lastSon, c)
   of tyNone: result = false
-  of tyUnused, tyOptAsRef, tyUnused1, tyUnused2: internalError("sameFlags")
+  of tyUnused, tyOptAsRef: internalError("sameFlags")
 
 proc sameBackendType*(x, y: PType): bool =
   var c = initSameTypeClosure()
@@ -1101,11 +1103,11 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   if containsOrIncl(marker, typ.id): return
   var t = skipTypes(typ, abstractInst-{tyTypeDesc})
   case t.kind
-  of tyVar:
+  of tyVar, tyLent:
     if kind in {skProc, skFunc, skConst}: return t
     var t2 = skipTypes(t.sons[0], abstractInst-{tyTypeDesc})
     case t2.kind
-    of tyVar:
+    of tyVar, tyLent:
       if taHeap notin flags: result = t2 # ``var var`` is illegal on the heap
     of tyOpenArray:
       if kind != skParam: result = t
@@ -1143,7 +1145,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   of tyRange:
     if skipTypes(t.sons[0], abstractInst-{tyTypeDesc}).kind notin
         {tyChar, tyEnum, tyInt..tyFloat128, tyUInt8..tyUInt32}: result = t
-  of tyOpenArray, tyVarargs:
+  of tyOpenArray, tyVarargs, tySink:
     if kind != skParam: result = t
     else: result = typeAllowedAux(marker, t.sons[0], skVar, flags)
   of tySequence, tyOpt:
@@ -1174,7 +1176,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     # for now same as error node; we say it's a valid type as it should
     # prevent cascading errors:
     result = nil
-  of tyUnused, tyOptAsRef, tyUnused1, tyUnused2: internalError("typeAllowedAux")
+  of tyUnused, tyOptAsRef: internalError("typeAllowedAux")
 
 proc typeAllowed*(t: PType, kind: TSymKind): PType =
   # returns 'nil' on success and otherwise the part of the type that is
@@ -1322,7 +1324,7 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
     if typ.callConv == ccClosure: result = 2 * ptrSize
     else: result = ptrSize
     a = ptrSize
-  of tyNil, tyCString, tyString, tySequence, tyPtr, tyRef, tyVar, tyOpenArray:
+  of tyNil, tyCString, tyString, tySequence, tyPtr, tyRef, tyVar, tyLent, tyOpenArray:
     let base = typ.lastSon
     if base == typ or (base.kind == tyTuple and base.size==szIllegalRecursion):
       result = szIllegalRecursion

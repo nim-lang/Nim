@@ -30,7 +30,7 @@ before_script:
   - sh build.sh
   - cd ..
   - sed -i -e 's,cc = gcc,cc = clang,' config/nim.cfg
-  - export PATH=$(pwd)/bin:$PATH
+  - export PATH=$(pwd)/bin${PATH:+:$PATH}
 script:
   - nim c koch
   - ./koch boot
@@ -48,3 +48,5 @@ script:
   - ./koch csource
   - ./koch nimsuggest
 #  - nim c -r nimsuggest/tester
+  - ( ! grep -F '.. code-block' -l -r --include '*.html' --exclude contributing.html --exclude docgen.html --exclude tut2.html )
+  - ( ! grep -F '..code-block' -l -r --include '*.html' --exclude contributing.html --exclude docgen.html --exclude tut2.html )

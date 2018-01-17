@@ -1,6 +1,6 @@
 discard """
   output: '''24
-(bar: bar)
+(bar: "bar")
 1244
 6
 abcdefghijklmnopqrstuvwxyz
@@ -141,3 +141,13 @@ echo(
      quo do (a: int) -> bool:
         a mod 3 != 0
 )
+
+# bug #6980
+
+proc fooBool: bool {.discardable.} =
+  true
+
+if true:
+  fooBool()
+else:
+  raise newException(ValueError, "argh")

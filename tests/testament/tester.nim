@@ -12,7 +12,7 @@
 import
   parseutils, strutils, pegs, os, osproc, streams, parsecfg, json,
   marshal, backend, parseopt, specs, htmlgen, browsers, terminal,
-  algorithm, compiler/nodejs, times, sets
+  algorithm, compiler/nodejs, times, sets, md5
 
 const
   resultsFile = "testresults.html"
@@ -71,8 +71,15 @@ proc getFileDir(filename: string): string =
   if not result.isAbsolute():
     result = getCurrentDir() / result
 
+proc nimcacheDir(filename, options: string, target: TTarget): string =
+  ## Give each test a private nimcache dir so they don't clobber each other's.
+  let hashInput = options & $target
+  return "nimcache" / (filename & '_' & hashInput.getMD5)
+
 proc callCompiler(cmdTemplate, filename, options: string,
-                  target: TTarget): TSpec =
+                  target: TTarget, extraOptions=""): TSpec =
+  let nimcache = nimcacheDir(filename, options, target)
+  let options = options & " --nimCache:" & nimcache.quoteShell & extraOptions
   let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
                        "options", options, "file", filename.quoteShell,
                        "filedir", filename.getFileDir()])
@@ -158,6 +165,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
                expected, given: string, success: TResultEnum) =
   let name = test.name.extractFilename & " " & $target & test.options
   let duration = epochTime() - test.startTime
+  let durationStr = duration.formatFloat(ffDecimal, precision = 8)
   backend.writeTestResult(name = name,
                           category = test.cat.string,
                           target = $target,
@@ -167,7 +175,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
                           given = given)
   r.data.addf("$#\t$#\t$#\t$#", name, expected, given, $success)
   if success == reSuccess:
-    styledEcho fgGreen, "PASS: ", fgCyan, name
+    styledEcho fgGreen, "PASS: ", fgCyan, alignLeft(name, 60), fgBlue, " (", durationStr, " secs)"
   elif success == reIgnored:
     styledEcho styleDim, fgYellow, "SKIP: ", styleBright, fgCyan, name
   else:
@@ -221,9 +229,10 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, target: TTarg
     r.addResult(test, target, expected.msg, given.msg, reSuccess)
     inc(r.passed)
 
-proc generatedFile(path, name: string, target: TTarget): string =
+proc generatedFile(test: TTest, target: TTarget): string =
+  let (_, name, _) = test.name.splitFile
   let ext = targetToExt[target]
-  result = path / "nimcache" /
+  result = nimcacheDir(test.name, test.options, target) /
     (if target == targetJS: "" else: "compiler_") &
     name.changeFileExt(ext)
 
@@ -233,8 +242,7 @@ proc needsCodegenCheck(spec: TSpec): bool =
 proc codegenCheck(test: TTest, target: TTarget, spec: TSpec, expectedMsg: var string,
                   given: var TSpec) =
   try:
-    let (path, name, _) = test.name.splitFile
-    let genFile = generatedFile(path, name, target)
+    let genFile = generatedFile(test, target)
     let contents = readFile(genFile).string
     let check = spec.ccodeCheck
     if check.len > 0:
@@ -283,20 +291,6 @@ proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
   if given.err == reSuccess: inc(r.passed)
   r.addResult(test, target, expectedmsg, givenmsg, given.err)
 
-proc analyzeAndConsolidateOutput(s: string): string =
-  result = ""
-  let rows = s.splitLines
-  for i in 0 ..< rows.len:
-    if (let pos = find(rows[i], "Traceback (most recent call last)"); pos != -1):
-      result = substr(rows[i], pos) & "\n"
-      for i in i+1 ..< rows.len:
-        result.add rows[i] & "\n"
-        if not (rows[i] =~ peg"['(']+ '(' \d+ ')' \s+"):
-          return
-    elif (let pos = find(rows[i], "SIGSEGV: Illegal storage access."); pos != -1):
-      result = substr(rows[i], pos)
-      return
-
 proc testSpec(r: var TResults, test: TTest, target = targetC) =
   let tname = test.name.addFileExt(".nim")
   #echo "TESTING ", tname
@@ -324,9 +318,8 @@ proc testSpec(r: var TResults, test: TTest, target = targetC) =
 
     case expected.action
     of actionCompile:
-      var given = callCompiler(expected.cmd, test.name,
-        test.options & " --stdout --hint[Path]:off --hint[Processing]:off",
-        target)
+      var given = callCompiler(expected.cmd, test.name, test.options, target,
+        extraOptions=" --stdout --hint[Path]:off --hint[Processing]:off")
       compilerOutputTests(test, target, given, expected, r)
     of actionRun, actionRunNoSpec:
       # In this branch of code "early return" pattern is clearer than deep
@@ -341,8 +334,8 @@ proc testSpec(r: var TResults, test: TTest, target = targetC) =
       let isJsTarget = target == targetJS
       var exeFile: string
       if isJsTarget:
-        let (dir, file, _) = splitFile(tname)
-        exeFile = dir / "nimcache" / file & ".js" # *TODO* hardcoded "nimcache"
+        let (_, file, _) = splitFile(tname)
+        exeFile = nimcacheDir(test.name, test.options, target) / file & ".js"
       else:
         exeFile = changeFileExt(tname, ExeExt)
 
@@ -370,8 +363,7 @@ proc testSpec(r: var TResults, test: TTest, target = targetC) =
       if exitCode != expected.exitCode:
         r.addResult(test, target, "exitcode: " & $expected.exitCode,
                           "exitcode: " & $exitCode & "\n\nOutput:\n" &
-                          analyzeAndConsolidateOutput(bufB),
-                          reExitCodesDiffer)
+                          bufB, reExitCodesDiffer)
         continue
 
       if bufB != expectedOut and expected.action != actionRunNoSpec:

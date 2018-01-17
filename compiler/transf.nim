@@ -93,7 +93,7 @@ proc getCurrOwner(c: PTransf): PSym =
 
 proc newTemp(c: PTransf, typ: PType, info: TLineInfo): PNode =
   let r = newSym(skTemp, getIdent(genPrefix), getCurrOwner(c), info)
-  r.typ = typ #skipTypes(typ, {tyGenericInst, tyAlias})
+  r.typ = typ #skipTypes(typ, {tyGenericInst, tyAlias, tySink})
   incl(r.flags, sfFromGeneric)
   let owner = getCurrOwner(c)
   if owner.isIterator and not c.tooEarly:
@@ -331,7 +331,7 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
   # c.transCon.forStmt.len == 3 means that there is one for loop variable
   # and thus no tuple unpacking:
   if e.typ.isNil: return result # can happen in nimsuggest for unknown reasons
-  if skipTypes(e.typ, {tyGenericInst, tyAlias}).kind == tyTuple and
+  if skipTypes(e.typ, {tyGenericInst, tyAlias, tySink}).kind == tyTuple and
       c.transCon.forStmt.len != 3:
     e = skipConv(e)
     if e.kind == nkPar:
@@ -506,7 +506,7 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
       if putArgInto(arg.sons[i], formal) != paDirectMapping: return
     result = paDirectMapping
   else:
-    if skipTypes(formal, abstractInst).kind == tyVar: result = paVarAsgn
+    if skipTypes(formal, abstractInst).kind in {tyVar, tyLent}: result = paVarAsgn
     else: result = paFastAsgn
 
 proc findWrongOwners(c: PTransf, n: PNode) =
@@ -791,7 +791,7 @@ proc transform(c: PTransf, n: PNode): PTransNode =
   case n.kind
   of nkSym:
     result = transformSym(c, n)
-  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit:
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkComesFrom:
     # nothing to be done for leaves:
     result = PTransNode(n)
   of nkBracketExpr: result = transformArrayAccess(c, n)
@@ -914,7 +914,7 @@ proc processTransf(c: PTransf, n: PNode, owner: PSym): PNode =
   # Note: For interactive mode we cannot call 'passes.skipCodegen' and skip
   # this step! We have to rely that the semantic pass transforms too errornous
   # nodes into an empty node.
-  if c.fromCache or nfTransf in n.flags: return n
+  if c.rd != nil or nfTransf in n.flags: return n
   pushTransCon(c, newTransCon(owner))
   result = PNode(transform(c, n))
   popTransCon(c)

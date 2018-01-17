@@ -74,7 +74,7 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
     localError(arg.info, errExprXHasNoType,
                renderTree(arg, {renderNoComments}))
     # error correction:
-    result = copyNode(arg)
+    result = copyTree(arg)
     result.typ = formal
   else:
     result = indexTypesMatch(c, formal, arg.typ, arg)
@@ -102,8 +102,8 @@ proc commonType*(x, y: PType): PType =
   # if expressions, etc.:
   if x == nil: return x
   if y == nil: return y
-  var a = skipTypes(x, {tyGenericInst, tyAlias})
-  var b = skipTypes(y, {tyGenericInst, tyAlias})
+  var a = skipTypes(x, {tyGenericInst, tyAlias, tySink})
+  var b = skipTypes(y, {tyGenericInst, tyAlias, tySink})
   result = x
   if a.kind in {tyExpr, tyNil}: result = y
   elif b.kind in {tyExpr, tyNil}: result = x
@@ -164,6 +164,19 @@ proc commonType*(x, y: PType): PType =
         let r = result
         result = newType(k, r.owner)
         result.addSonSkipIntLit(r)
+
+proc endsInNoReturn(n: PNode): bool =
+  # check if expr ends in raise exception or call of noreturn proc
+  var it = n
+  while it.kind in {nkStmtList, nkStmtListExpr} and it.len > 0:
+    it = it.lastSon
+  result = it.kind == nkRaiseStmt or
+    it.kind in nkCallKinds and it[0].kind == nkSym and sfNoReturn in it[0].sym.flags
+
+proc commonType*(x: PType, y: PNode): PType =
+  # ignore exception raising branches in case/if expressions
+  if endsInNoReturn(y): return x
+  commonType(x, y.typ)
 
 proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym =
   result = newSym(kind, considerQuotedIdent(n), getCurrOwner(c), n.info)
@@ -423,7 +436,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   result = evalMacroCall(c.module, c.cache, n, nOrig, sym)
   if efNoSemCheck notin flags:
     result = semAfterMacroCall(c, n, result, sym, flags)
-  result = wrapInComesFrom(nOrig.info, result)
+  result = wrapInComesFrom(nOrig.info, sym, result)
   popInfoContext()
 
 proc forceBool(c: PContext, n: PNode): PNode =
@@ -488,6 +501,8 @@ proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
 
 proc myOpenCached(graph: ModuleGraph; module: PSym; rd: PRodReader): PPassContext =
   result = myOpen(graph, module, rd.cache)
+
+proc replayMethodDefs(graph: ModuleGraph; rd: PRodReader) =
   for m in items(rd.methods): methodDef(graph, m, true)
 
 proc isImportSystemStmt(n: PNode): bool =
@@ -594,6 +609,8 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   addCodeForGenerics(c, result)
   if c.module.ast != nil:
     result.add(c.module.ast)
+  if c.rd != nil:
+    replayMethodDefs(graph, c.rd)
   popOwner(c)
   popProcCon(c)
   if c.runnableExamples != nil: testExamples(c)

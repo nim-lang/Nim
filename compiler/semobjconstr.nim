@@ -39,13 +39,19 @@ proc mergeInitStatus(existing: var InitStatus, newStatus: InitStatus) =
   of initUnknown:
     discard
 
+proc invalidObjConstr(n: PNode) =
+  if n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.s[0] == ':':
+    localError(n.info, "incorrect object construction syntax; use a space after the colon")
+  else:
+    localError(n.info, "incorrect object construction syntax")
+
 proc locateFieldInInitExpr(field: PSym, initExpr: PNode): PNode =
   # Returns the assignment nkExprColonExpr node or nil
   let fieldId = field.name.id
   for i in 1 ..< initExpr.len:
     let assignment = initExpr[i]
     if assignment.kind != nkExprColonExpr:
-      localError(initExpr.info, "incorrect object construction syntax")
+      invalidObjConstr(assignment)
       continue
 
     if fieldId == considerQuotedIdent(assignment[0]).id:
@@ -254,8 +260,8 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = newNodeIT(nkObjConstr, n.info, t)
   for child in n: result.add child
 
-  t = skipTypes(t, {tyGenericInst, tyAlias})
-  if t.kind == tyRef: t = skipTypes(t.sons[0], {tyGenericInst, tyAlias})
+  t = skipTypes(t, {tyGenericInst, tyAlias, tySink})
+  if t.kind == tyRef: t = skipTypes(t.sons[0], {tyGenericInst, tyAlias, tySink})
   if t.kind != tyObject:
     localError(n.info, errGenerated, "object constructor needs an object type")
     return
@@ -284,7 +290,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
     let field = result[i]
     if nfSem notin field.flags:
       if field.kind != nkExprColonExpr:
-        localError(n.info, "incorrect object construction syntax")
+        invalidObjConstr(field)
         continue
       let id = considerQuotedIdent(field[0])
       # This node was not processed. There are two possible reasons:

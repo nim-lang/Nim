@@ -408,7 +408,7 @@ proc getArrayConstr(m: PSym, n: PNode): PNode =
 
 proc foldArrayAccess(m: PSym, n: PNode): PNode =
   var x = getConstExpr(m, n.sons[0])
-  if x == nil or x.typ.skipTypes({tyGenericInst, tyAlias}).kind == tyTypeDesc:
+  if x == nil or x.typ.skipTypes({tyGenericInst, tyAlias, tySink}).kind == tyTypeDesc:
     return
 
   var y = getConstExpr(m, n.sons[1])
@@ -655,5 +655,8 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
       result.typ = n.typ
   of nkBracketExpr: result = foldArrayAccess(m, n)
   of nkDotExpr: result = foldFieldAccess(m, n)
+  of nkStmtListExpr:
+    if n.len == 2 and n[0].kind == nkComesFrom:
+      result = getConstExpr(m, n[1])
   else:
     discard

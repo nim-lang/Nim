@@ -92,6 +92,10 @@ Collections and algorithms
 * `sequtils <sequtils.html>`_
   This module implements operations for the built-in seq type
   which were inspired by functional programming languages.
+* `sharedtables <sharedtables.html>`_
+  Nim shared hash table support. Contains shared tables.
+* `sharedlist <sharedlist.html>`_
+  Nim shared linked list support. Contains shared singly linked list.
 
 
 String handling
@@ -101,6 +105,10 @@ String handling
   This module contains common string handling operations like changing
   case of a string, splitting a string into substrings, searching for
   substrings, replacing substrings.
+
+* `strformat <strformat.html>`_
+  Macro based standard string interpolation / formatting. Inpired by
+  Python's ```f``-strings.
 
 * `strmisc <strmisc.html>`_
   This module contains uncommon string handling operations that do not
@@ -379,6 +387,7 @@ Cryptography and Hashing
 * `securehash <securehash.html>`_
   This module implements a sha1 encoder and decoder.
 
+
 Multimedia support
 ------------------
 
@@ -431,6 +440,8 @@ Modules for JS backend
 * `jsffi <jsffi.html>`_
   Types and macros for easier interaction with JavaScript.
 
+* `asyncjs <asyncjs.html>`_
+  Types and macros for writing asynchronous procedures in JavaScript.
 
 Deprecated modules
 ------------------

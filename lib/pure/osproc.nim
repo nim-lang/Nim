@@ -47,6 +47,7 @@ type
   ProcessObj = object of RootObj
     when defined(windows):
       fProcessHandle: Handle
+      fThreadHandle: Handle
       inHandle, outHandle, errHandle: FileHandle
       id: Handle
     else:
@@ -54,6 +55,7 @@ type
       inStream, outStream, errStream: Stream
       id: Pid
     exitStatus: cint
+    exitFlag: bool
     options: set[ProcessOption]
 
   Process* = ref ProcessObj ## represents an operating system process
@@ -237,11 +239,13 @@ proc execProcesses*(cmds: openArray[string],
   if n > 1:
     var i = 0
     var q = newSeq[Process](n)
-    var m = min(n, cmds.len)
 
     when defined(windows):
       var w: WOHandleArray
+      var m = min(min(n, MAXIMUM_WAIT_OBJECTS), cmds.len)
       var wcount = m
+    else:
+      var m = min(n, cmds.len)
 
     while i < m:
       if beforeRunEvent != nil:
@@ -253,6 +257,7 @@ proc execProcesses*(cmds: openArray[string],
 
     var ecount = len(cmds)
     while ecount > 0:
+      var rexit = -1
       when defined(windows):
         # waiting for all children, get result if any child exits
         var ret = waitForMultipleObjects(int32(wcount), addr(w), 0'i32,
@@ -262,22 +267,37 @@ proc execProcesses*(cmds: openArray[string],
           discard
         elif ret == WAIT_FAILED:
           raiseOSError(osLastError())
+        else:
+          var status: int32
+          for r in 0..m-1:
+            if not isNil(q[r]) and q[r].fProcessHandle == w[ret]:
+              discard getExitCodeProcess(q[r].fProcessHandle, status)
+              q[r].exitFlag = true
+              q[r].exitStatus = status
+              rexit = r
+              break
       else:
-        var status : cint = 1
+        var status: cint = 1
         # waiting for all children, get result if any child exits
         let res = waitpid(-1, status, 0)
         if res > 0:
           for r in 0..m-1:
             if not isNil(q[r]) and q[r].id == res:
-              # we updating `exitStatus` manually, so `running()` can work.
               if WIFEXITED(status) or WIFSIGNALED(status):
+                q[r].exitFlag = true
                 q[r].exitStatus = status
+                rexit = r
                 break
         else:
           let err = osLastError()
           if err == OSErrorCode(ECHILD):
             # some child exits, we need to check our childs exit codes
-            discard
+            for r in 0..m-1:
+              if (not isNil(q[r])) and (not running(q[r])):
+                q[r].exitFlag = true
+                q[r].exitStatus = status
+                rexit = r
+                break
           elif err == OSErrorCode(EINTR):
             # signal interrupted our syscall, lets repeat it
             continue
@@ -285,26 +305,27 @@ proc execProcesses*(cmds: openArray[string],
             # all other errors are exceptions
             raiseOSError(err)
 
-      for r in 0..m-1:
-        if not isNil(q[r]):
-          if not running(q[r]):
-            result = max(result, q[r].peekExitCode())
-            if afterRunEvent != nil: afterRunEvent(r, q[r])
-            close(q[r])
-            if i < len(cmds):
-              if beforeRunEvent != nil: beforeRunEvent(i)
-              q[r] = startProcess(cmds[i],
+      if rexit >= 0:
+        result = max(result, q[rexit].peekExitCode())
+        if afterRunEvent != nil: afterRunEvent(rexit, q[rexit])
+        close(q[rexit])
+        if i < len(cmds):
+          if beforeRunEvent != nil: beforeRunEvent(i)
+          q[rexit] = startProcess(cmds[i],
                                   options = options + {poEvalCommand})
-              when defined(windows):
-                w[r] = q[r].fProcessHandle
-              inc(i)
-            else:
-              q[r] = nil
-              when defined(windows):
-                for c in r..MAXIMUM_WAIT_OBJECTS - 2:
-                  w[c] = w[c + 1]
+          when defined(windows):
+            w[rexit] = q[rexit].fProcessHandle
+          inc(i)
+        else:
+          when defined(windows):
+            for k in 0..wcount - 1:
+              if w[k] == q[rexit].fProcessHandle:
+                w[k] = w[wcount - 1]
+                w[wcount - 1] = 0
                 dec(wcount)
-            dec(ecount)
+                break
+          q[rexit] = nil
+        dec(ecount)
   else:
     for i in 0..high(cmds):
       if beforeRunEvent != nil:
@@ -491,6 +512,7 @@ when defined(Windows) and not defined(useNimRtl):
       hi, ho, he: Handle
     new(result)
     result.options = options
+    result.exitFlag = true
     si.cb = sizeof(si).cint
     if poParentStreams notin options:
       si.dwFlags = STARTF_USESTDHANDLES # STARTF_USESHOWWINDOW or
@@ -559,28 +581,31 @@ when defined(Windows) and not defined(useNimRtl):
             "Requested command not found: '$1'. OS error:" % command)
       else:
         raiseOSError(lastError, command)
-    # Close the handle now so anyone waiting is woken:
-    discard closeHandle(procInfo.hThread)
     result.fProcessHandle = procInfo.hProcess
+    result.fThreadHandle = procInfo.hThread
     result.id = procInfo.dwProcessId
+    result.exitFlag = false
 
   proc close(p: Process) =
-    if poInteractive in p.options:
-      # somehow this is not always required on Windows:
+    if poParentStreams notin p.options:
       discard closeHandle(p.inHandle)
       discard closeHandle(p.outHandle)
       discard closeHandle(p.errHandle)
-      #discard closeHandle(p.FProcessHandle)
+    discard closeHandle(p.fThreadHandle)
+    discard closeHandle(p.fProcessHandle)
 
   proc suspend(p: Process) =
-    discard suspendThread(p.fProcessHandle)
+    discard suspendThread(p.fThreadHandle)
 
   proc resume(p: Process) =
-    discard resumeThread(p.fProcessHandle)
+    discard resumeThread(p.fThreadHandle)
 
   proc running(p: Process): bool =
-    var x = waitForSingleObject(p.fProcessHandle, 50)
-    return x == WAIT_TIMEOUT
+    if p.exitFlag:
+      return false
+    else:
+      var x = waitForSingleObject(p.fProcessHandle, 0)
+      return x == WAIT_TIMEOUT
 
   proc terminate(p: Process) =
     if running(p):
@@ -590,22 +615,37 @@ when defined(Windows) and not defined(useNimRtl):
     terminate(p)
 
   proc waitForExit(p: Process, timeout: int = -1): int =
-    discard waitForSingleObject(p.fProcessHandle, timeout.int32)
+    if p.exitFlag:
+      return p.exitStatus
 
-    var res: int32
-    discard getExitCodeProcess(p.fProcessHandle, res)
-    result = res
-    p.exitStatus = res
-    discard closeHandle(p.fProcessHandle)
+    let res = waitForSingleObject(p.fProcessHandle, timeout.int32)
+    if res == WAIT_TIMEOUT:
+      terminate(p)
+    var status: int32
+    discard getExitCodeProcess(p.fProcessHandle, status)
+    if status != STILL_ACTIVE:
+      p.exitFlag = true
+      p.exitStatus = status
+      discard closeHandle(p.fThreadHandle)
+      discard closeHandle(p.fProcessHandle)
+      result = status
+    else:
+      result = -1
 
   proc peekExitCode(p: Process): int =
-    var b = waitForSingleObject(p.fProcessHandle, 50) == WAIT_TIMEOUT
-    if b: result = -1
-    else:
-      var res: int32
-      discard getExitCodeProcess(p.fProcessHandle, res)
-      if res == 0: return p.exitStatus
-      return res
+    if p.exitFlag:
+      return p.exitStatus
+
+    result = -1
+    var b = waitForSingleObject(p.fProcessHandle, 0) == WAIT_TIMEOUT
+    if not b:
+      var status: int32
+      discard getExitCodeProcess(p.fProcessHandle, status)
+      p.exitFlag = true
+      p.exitStatus = status
+      discard closeHandle(p.fThreadHandle)
+      discard closeHandle(p.fProcessHandle)
+      result = status
 
   proc inputStream(p: Process): Stream =
     streamAccess(p)
@@ -737,7 +777,8 @@ elif not defined(useNimRtl):
       pStdin, pStdout, pStderr: array[0..1, cint]
     new(result)
     result.options = options
-    result.exitStatus = -3 # for ``waitForExit``
+    result.exitFlag = true
+
     if poParentStreams notin options:
       if pipe(pStdin) != 0'i32 or pipe(pStdout) != 0'i32 or
          pipe(pStderr) != 0'i32:
@@ -792,6 +833,7 @@ elif not defined(useNimRtl):
     if poEchoCmd in options:
       echo(command, " ", join(args, " "))
     result.id = pid
+    result.exitFlag = false
 
     if poParentStreams in options:
       # does not make much sense, but better than nothing:
@@ -968,14 +1010,14 @@ elif not defined(useNimRtl):
     if kill(p.id, SIGCONT) != 0'i32: raiseOsError(osLastError())
 
   proc running(p: Process): bool =
-    if p.exitStatus != -3:
+    if p.exitFlag:
       return false
     else:
-      var ret : int
-      var status : cint = 1
-      ret = waitpid(p.id, status, WNOHANG)
+      var status: cint = 1
+      let ret = waitpid(p.id, status, WNOHANG)
       if ret == int(p.id):
         if isExitStatus(status):
+          p.exitFlag = true
           p.exitStatus = status
           return false
         else:
@@ -998,13 +1040,14 @@ elif not defined(useNimRtl):
     import kqueue, times
 
     proc waitForExit(p: Process, timeout: int = -1): int =
-      if p.exitStatus != -3:
+      if p.exitFlag:
         return exitStatus(p.exitStatus)
 
       if timeout == -1:
-        var status : cint = 1
+        var status: cint = 1
         if waitpid(p.id, status, 0) < 0:
           raiseOSError(osLastError())
+        p.exitFlag = true
         p.exitStatus = status
       else:
         var kqFD = kqueue()
@@ -1017,15 +1060,15 @@ elif not defined(useNimRtl):
         var tmspec: Timespec
 
         if timeout >= 1000:
-          tmspec.tv_sec = (timeout div 1_000).Time
+          tmspec.tv_sec = posix.Time(timeout div 1_000)
           tmspec.tv_nsec = (timeout %% 1_000) * 1_000_000
         else:
-          tmspec.tv_sec = 0.Time
+          tmspec.tv_sec = posix.Time(0)
           tmspec.tv_nsec = (timeout * 1_000_000)
 
         try:
           while true:
-            var status : cint = 1
+            var status: cint = 1
             var count = kevent(kqFD, addr(kevIn), 1, addr(kevOut), 1,
                                addr(tmspec))
             if count < 0:
@@ -1038,12 +1081,14 @@ elif not defined(useNimRtl):
                 raiseOSError(osLastError())
               if waitpid(p.id, status, 0) < 0:
                 raiseOSError(osLastError())
+              p.exitFlag = true
               p.exitStatus = status
               break
             else:
               if kevOut.ident == p.id.uint and kevOut.filter == EVFILT_PROC:
                 if waitpid(p.id, status, 0) < 0:
                   raiseOSError(osLastError())
+                p.exitFlag = true
                 p.exitStatus = status
                 break
               else:
@@ -1064,36 +1109,33 @@ elif not defined(useNimRtl):
         var b: Timespec
         b.tv_sec = e.tv_sec
         b.tv_nsec = e.tv_nsec
-        e.tv_sec = (e.tv_sec - s.tv_sec).Time
+        e.tv_sec = e.tv_sec - s.tv_sec
         if e.tv_nsec >= s.tv_nsec:
           e.tv_nsec -= s.tv_nsec
         else:
-          if e.tv_sec == 0.Time:
+          if e.tv_sec == posix.Time(0):
             raise newException(ValueError, "System time was modified")
           else:
             diff = s.tv_nsec - e.tv_nsec
             e.tv_nsec = 1_000_000_000 - diff
-        t.tv_sec = (t.tv_sec - e.tv_sec).Time
+        t.tv_sec = t.tv_sec - e.tv_sec
         if t.tv_nsec >= e.tv_nsec:
           t.tv_nsec -= e.tv_nsec
         else:
-          t.tv_sec = (int(t.tv_sec) - 1).Time
+          t.tv_sec = t.tv_sec - posix.Time(1)
           diff = e.tv_nsec - t.tv_nsec
           t.tv_nsec = 1_000_000_000 - diff
         s.tv_sec = b.tv_sec
         s.tv_nsec = b.tv_nsec
 
-      #if waitPid(p.id, p.exitStatus, 0) == int(p.id):
-      # ``waitPid`` fails if the process is not running anymore. But then
-      # ``running`` probably set ``p.exitStatus`` for us. Since ``p.exitStatus`` is
-      # initialized with -3, wrong success exit codes are prevented.
-      if p.exitStatus != -3:
+      if p.exitFlag:
         return exitStatus(p.exitStatus)
 
       if timeout == -1:
-        var status : cint = 1
+        var status: cint = 1
         if waitpid(p.id, status, 0) < 0:
           raiseOSError(osLastError())
+        p.exitFlag = true
         p.exitStatus = status
       else:
         var nmask, omask: Sigset
@@ -1112,10 +1154,10 @@ elif not defined(useNimRtl):
             raiseOSError(osLastError())
 
         if timeout >= 1000:
-          tmspec.tv_sec = (timeout div 1_000).Time
+          tmspec.tv_sec = posix.Time(timeout div 1_000)
           tmspec.tv_nsec = (timeout %% 1_000) * 1_000_000
         else:
-          tmspec.tv_sec = 0.Time
+          tmspec.tv_sec = posix.Time(0)
           tmspec.tv_nsec = (timeout * 1_000_000)
 
         try:
@@ -1125,9 +1167,10 @@ elif not defined(useNimRtl):
             let res = sigtimedwait(nmask, sinfo, tmspec)
             if res == SIGCHLD:
               if sinfo.si_pid == p.id:
-                var status : cint = 1
+                var status: cint = 1
                 if waitpid(p.id, status, 0) < 0:
                   raiseOSError(osLastError())
+                p.exitFlag = true
                 p.exitStatus = status
                 break
               else:
@@ -1148,9 +1191,10 @@ elif not defined(useNimRtl):
                 # timeout expired, so we trying to kill process
                 if posix.kill(p.id, SIGKILL) == -1:
                   raiseOSError(osLastError())
-                var status : cint = 1
+                var status: cint = 1
                 if waitpid(p.id, status, 0) < 0:
                   raiseOSError(osLastError())
+                p.exitFlag = true
                 p.exitStatus = status
                 break
               else:
@@ -1168,12 +1212,13 @@ elif not defined(useNimRtl):
   proc peekExitCode(p: Process): int =
     var status = cint(0)
     result = -1
-    if p.exitStatus != -3:
+    if p.exitFlag:
       return exitStatus(p.exitStatus)
 
     var ret = waitpid(p.id, status, WNOHANG)
     if ret > 0:
       if isExitStatus(status):
+        p.exitFlag = true
         p.exitStatus = status
         result = exitStatus(status)
 

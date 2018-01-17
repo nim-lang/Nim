@@ -277,15 +277,16 @@ proc registerTimer*[T](s: Selector[T], timeout: int, oneshot: bool,
   var events = {Event.Timer}
   var epv = EpollEvent(events: EPOLLIN or EPOLLRDHUP)
   epv.data.u64 = fdi.uint
+
   if oneshot:
-    new_ts.it_interval.tv_sec = 0.Time
+    new_ts.it_interval.tv_sec = posix.Time(0)
     new_ts.it_interval.tv_nsec = 0
-    new_ts.it_value.tv_sec = (timeout div 1_000).Time
+    new_ts.it_value.tv_sec = posix.Time(timeout div 1_000)
     new_ts.it_value.tv_nsec = (timeout %% 1_000) * 1_000_000
     incl(events, Event.Oneshot)
     epv.events = epv.events or EPOLLONESHOT
   else:
-    new_ts.it_interval.tv_sec = (timeout div 1000).Time
+    new_ts.it_interval.tv_sec = posix.Time(timeout div 1000)
     new_ts.it_interval.tv_nsec = (timeout %% 1_000) * 1_000_000
     new_ts.it_value.tv_sec = new_ts.it_interval.tv_sec
     new_ts.it_value.tv_nsec = new_ts.it_interval.tv_nsec

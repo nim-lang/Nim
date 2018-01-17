@@ -15,58 +15,53 @@
 
 const
   rodfilesDir = "tests/rodfiles"
-  nimcacheDir = rodfilesDir / "nimcache"
 
-proc delNimCache() =
-  try:
-    removeDir(nimcacheDir)
-  except OSError:
-    echo "[Warning] could not delete: ", nimcacheDir
+proc delNimCache(filename, options: string) =
+  for target in low(TTarget)..high(TTarget):
+    let dir = nimcacheDir(filename, options, target)
+    try:
+      removeDir(dir)
+    except OSError:
+      echo "[Warning] could not delete: ", dir
 
 proc runRodFiles(r: var TResults, cat: Category, options: string) =
-  template test(filename: untyped) =
+  template test(filename: string, clearCacheFirst=false) =
+    if clearCacheFirst: delNimCache(filename, options)
     testSpec r, makeTest(rodfilesDir / filename, options, cat, actionRun)
 
-  delNimCache()
 
   # test basic recompilation scheme:
-  test "hallo"
+  test "hallo", true
   test "hallo"
   when false:
     # test incremental type information:
     test "hallo2"
-    delNimCache()
 
   # test type converters:
-  test "aconv"
+  test "aconv", true
   test "bconv"
-  delNimCache()
 
   # test G, A, B example from the documentation; test init sections:
-  test "deada"
+  test "deada", true
   test "deada2"
-  delNimCache()
 
   when false:
     # test method generation:
-    test "bmethods"
+    test "bmethods", true
     test "bmethods2"
-    delNimCache()
 
     # test generics:
-    test "tgeneric1"
+    test "tgeneric1", true
     test "tgeneric2"
-    delNimCache()
 
 proc compileRodFiles(r: var TResults, cat: Category, options: string) =
-  template test(filename: untyped) =
+  template test(filename: untyped, clearCacheFirst=true) =
+    if clearCacheFirst: delNimCache(filename, options)
     testSpec r, makeTest(rodfilesDir / filename, options, cat)
 
-  delNimCache()
   # test DLL interfacing:
-  test "gtkex1"
+  test "gtkex1", true
   test "gtkex2"
-  delNimCache()
 
 # --------------------- DLL generation tests ----------------------------------
 
@@ -96,7 +91,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     # posix relies on crappy LD_LIBRARY_PATH (ugh!):
     var libpath = getEnv"LD_LIBRARY_PATH".string
     # Temporarily add the lib directory to LD_LIBRARY_PATH:
-    putEnv("LD_LIBRARY_PATH", "tests/dll:" & libpath)
+    putEnv("LD_LIBRARY_PATH", "tests/dll" & (if libpath.len > 0: ":" & libpath else: ""))
     defer: putEnv("LD_LIBRARY_PATH", libpath)
     var nimrtlDll = DynlibFormat % "nimrtl"
     safeCopyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
@@ -153,7 +148,7 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   test "gcbench"
   test "gcleak"
   test "gcleak2"
-  test "gctest"
+  testWithoutBoehm "gctest"
   testWithNone "gctest"
   test "gcleak3"
   test "gcleak4"

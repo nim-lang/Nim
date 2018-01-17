@@ -32,7 +32,7 @@
 ##   import parsecsv
 ##   import os
 ##   # Prepare a file
-##   var csv_content = """One,Two,Three,Four
+##   var content = """One,Two,Three,Four
 ##   1,2,3,4
 ##   10,20,30,40
 ##   100,200,300,400

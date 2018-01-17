@@ -21,8 +21,12 @@ proc registerGcRoot(p: BProc, v: PSym) =
     # we register a specialized marked proc here; this has the advantage
     # that it works out of the box for thread local storage then :-)
     let prc = genTraverseProcForGlobal(p.module, v, v.info)
-    appcg(p.module, p.module.initProc.procSec(cpsInit),
-      "#nimRegisterGlobalMarker($1);$n", [prc])
+    if sfThread in v.flags:
+      appcg(p.module, p.module.initProc.procSec(cpsInit),
+        "#nimRegisterThreadLocalMarker($1);$n", [prc])
+    else:
+      appcg(p.module, p.module.initProc.procSec(cpsInit),
+        "#nimRegisterGlobalMarker($1);$n", [prc])
 
 proc isAssignedImmediately(n: PNode): bool {.inline.} =
   if n.kind == nkEmpty: return false
@@ -564,9 +568,6 @@ proc genBreakStmt(p: BProc, t: PNode) =
   genLineDir(p, t)
   lineF(p, cpsStmts, "goto $1;$n", [label])
 
-proc getRaiseFrmt(p: BProc): string =
-  result = "#raiseException((#Exception*)$1, $2);$n"
-
 proc genRaiseStmt(p: BProc, t: PNode) =
   if p.inExceptBlock > 0:
     # if the current try stmt have a finally block,
@@ -580,7 +581,8 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     var e = rdLoc(a)
     var typ = skipTypes(t.sons[0].typ, abstractPtrs)
     genLineDir(p, t)
-    lineCg(p, cpsStmts, getRaiseFrmt(p), [e, makeCString(typ.sym.name.s)])
+    lineCg(p, cpsStmts, "#raiseException((#Exception*)$1, $2);$n",
+        [e, makeCString(typ.sym.name.s)])
   else:
     genLineDir(p, t)
     # reraise the last exception:
