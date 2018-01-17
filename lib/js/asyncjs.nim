@@ -139,3 +139,7 @@ macro async*(arg: untyped): untyped =
 proc newPromise*[T](handler: proc(resolve: proc(response: T))): Future[T] {.importcpp: "(new Promise(#))".}
   ## A helper for wrapping callback-based functions
   ## into promises and async procedures
+
+proc newPromise*(handler: proc(resolve: proc())): Future[void] {.importcpp: "(new Promise(#))".}
+  ## A helper for wrapping callback-based functions
+  ## into promises and async procedures
