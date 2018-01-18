@@ -17,6 +17,38 @@
 ## ``showCursor`` before quitting.
 
 import macros
+import strformat
+from strutils import toLowerAscii
+import colors
+
+const
+  hasThreadSupport = compileOption("threads")
+
+when not hasThreadSupport:
+  import tables
+  var
+    colorsFGCache: Table[Color, string]
+    colorsBGCache: Table[Color, string]
+  when not defined(windows):
+    var
+      styleCache: Table[int, string]
+
+var
+  trueColorIsSupported {.threadvar.}: bool
+  trueColorIsEnabled {.threadvar.}: bool
+  fgSetColor {.threadvar.}: bool
+
+when defined(windows):
+  var
+    terminalIsNonStandard {.threadvar.}: bool
+
+const
+  fgPrefix = "\x1b[38;2;"
+  bgPrefix = "\x1b[48;2;"
+
+when not defined(windows):
+  const
+    stylePrefix = "\e["
 
 when defined(windows):
   import winlean, os
@@ -33,6 +65,8 @@ when defined(windows):
     BACKGROUND_INTENSITY = 128
     FOREGROUND_RGB = FOREGROUND_RED or FOREGROUND_GREEN or FOREGROUND_BLUE
     BACKGROUND_RGB = BACKGROUND_RED or BACKGROUND_GREEN or BACKGROUND_BLUE
+
+    ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
 
   type
     SHORT = int16
@@ -123,6 +157,12 @@ when defined(windows):
   proc setConsoleTextAttribute(hConsoleOutput: HANDLE,
                                wAttributes: int16): WINBOOL{.
       stdcall, dynlib: "kernel32", importc: "SetConsoleTextAttribute".}
+
+  proc getConsoleMode(hConsoleHandle: Handle, dwMode: ptr DWORD): WINBOOL{.
+      stdcall, dynlib: "kernel32", importc: "GetConsoleMode".}
+
+  proc setConsoleMode(hConsoleHandle: Handle, dwMode: DWORD): WINBOOL{.
+      stdcall, dynlib: "kernel32", importc: "SetConsoleMode".}
 
   var
     hStdout: Handle # = createFile("CONOUT$", GENERIC_WRITE, 0, nil,
@@ -274,7 +314,7 @@ proc setCursorPos*(f: File, x, y: int) =
     let h = conHandle(f)
     setCursorPos(h, x, y)
   else:
-    f.write("\e[" & $y & ';' & $x & 'f')
+    f.write(fmt"{stylePrefix}{y};{x}f")
 
 proc setCursorXPos*(f: File, x: int) =
   ## Sets the terminal's cursor to the x position.
@@ -289,7 +329,7 @@ proc setCursorXPos*(f: File, x: int) =
     if setConsoleCursorPosition(h, origin) == 0:
       raiseOSError(osLastError())
   else:
-    f.write("\e[" & $x & 'G')
+    f.write(fmt"{stylePrefix}{x}G")
 
 when defined(windows):
   proc setCursorYPos*(f: File, y: int) =
@@ -326,7 +366,7 @@ proc cursorDown*(f: File, count=1) =
     inc(p.y, count)
     setCursorPos(h, p.x, p.y)
   else:
-    f.write("\e[" & $count & 'B')
+    f.write(fmt"{stylePrefix}{count}B")
 
 proc cursorForward*(f: File, count=1) =
   ## Moves the cursor forward by `count` columns.
@@ -336,7 +376,7 @@ proc cursorForward*(f: File, count=1) =
     inc(p.x, count)
     setCursorPos(h, p.x, p.y)
   else:
-    f.write("\e[" & $count & 'C')
+    f.write("{stylePrefix}{count}C")
 
 proc cursorBackward*(f: File, count=1) =
   ## Moves the cursor backward by `count` columns.
@@ -346,7 +386,7 @@ proc cursorBackward*(f: File, count=1) =
     dec(p.x, count)
     setCursorPos(h, p.x, p.y)
   else:
-    f.write("\e[" & $count & 'D')
+    f.write("{stylePrefix}{count}D")
 
 when true:
   discard
@@ -448,9 +488,18 @@ type
 
 when not defined(windows):
   var
-    # XXX: These better be thread-local
-    gFG = 0
-    gBG = 0
+    gFG {.threadvar.}: int
+    gBG {.threadvar.}: int
+
+  proc getStyleStr(style: int): string =
+    when hasThreadSupport:
+      result = fmt"{stylePrefix}{style}m"
+    else:
+      if styleCache.hasKey(style):
+        result = styleCache[style]
+      else:
+        result = fmt"{stylePrefix}{style}m"
+        styleCache[style] = result
 
 proc setStyle*(f: File, style: set[Style]) =
   ## Sets the terminal style.
@@ -465,7 +514,7 @@ proc setStyle*(f: File, style: set[Style]) =
     discard setConsoleTextAttribute(h, old or a)
   else:
     for s in items(style):
-      f.write("\e[" & $ord(s) & 'm')
+      f.write(getStyleStr(ord(s)))
 
 proc writeStyled*(txt: string, style: set[Style] = {styleBright}) =
   ## Writes the text `txt` in a given `style` to stdout.
@@ -479,9 +528,9 @@ proc writeStyled*(txt: string, style: set[Style] = {styleBright}) =
     stdout.write(txt)
     stdout.resetAttributes()
     if gFG != 0:
-      stdout.write("\e[" & $ord(gFG) & 'm')
+      stdout.write(getStyleStr(gFG))
     if gBG != 0:
-      stdout.write("\e[" & $ord(gBG) & 'm')
+      stdout.write(getStyleStr(gBG))
 
 type
   ForegroundColor* = enum  ## terminal's foreground colors
@@ -527,7 +576,7 @@ proc setForegroundColor*(f: File, fg: ForegroundColor, bright=false) =
   else:
     gFG = ord(fg)
     if bright: inc(gFG, 60)
-    f.write("\e[" & $gFG & 'm')
+    f.write(getStyleStr(gFG))
 
 proc setBackgroundColor*(f: File, bg: BackgroundColor, bright=false) =
   ## Sets the terminal's background color.
@@ -549,7 +598,48 @@ proc setBackgroundColor*(f: File, bg: BackgroundColor, bright=false) =
   else:
     gBG = ord(bg)
     if bright: inc(gBG, 60)
-    f.write("\e[" & $gBG & 'm')
+    f.write(getStyleStr(gBG))
+
+
+proc getFGColorStr(color: Color): string =
+  when hasThreadSupport:
+    let rgb = extractRGB(color)
+    result = fmt"{fgPrefix}{rgb.r};{rgb.g};{rgb.b}m"
+  else:
+    if colorsFGCache.hasKey(color):
+      result = colorsFGCache[color]
+    else:
+      let rgb = extractRGB(color)
+      result = fmt"{fgPrefix}{rgb.r};{rgb.g};{rgb.b}m"
+      colorsFGCache[color] = result
+
+proc getBGColorStr(color: Color): string =
+  when hasThreadSupport:
+    let rgb = extractRGB(color)
+    result = fmt"{bgPrefix}{rgb.r};{rgb.g};{rgb.b}m"
+  else:
+    if colorsBGCache.hasKey(color):
+      result = colorsBGCache[color]
+    else:
+      let rgb = extractRGB(color)
+      result = fmt"{bgPrefix}{rgb.r};{rgb.g};{rgb.b}m"
+      colorsFGCache[color] = result
+
+proc setForegroundColor*(f: File, color: Color) =
+  ## Sets the terminal's foreground true color.
+  if trueColorIsEnabled:
+    f.write(getFGColorStr(color))
+
+proc setBackgroundColor*(f: File, color: Color) =
+  ## Sets the terminal's background true color.
+  if trueColorIsEnabled:
+    f.write(getBGColorStr(color))
+
+proc setTrueColor(f: File, color: Color) =
+  if fgSetColor:
+    setForegroundColor(f, color)
+  else:
+    setBackgroundColor(f, color)
 
 proc isatty*(f: File): bool =
   ## Returns true if `f` is associated with a terminal device.
@@ -564,7 +654,9 @@ proc isatty*(f: File): bool =
 
 type
   TerminalCmd* = enum  ## commands that can be expressed as arguments
-    resetStyle         ## reset attributes
+    resetStyle,        ## reset attributes
+    fgColor,           ## set foreground's true color
+    bgColor            ## set background's true color
 
 template styledEchoProcessArg(f: File, s: string) = write f, s
 template styledEchoProcessArg(f: File, style: Style) = setStyle(f, {style})
@@ -573,9 +665,15 @@ template styledEchoProcessArg(f: File, color: ForegroundColor) =
   setForegroundColor f, color
 template styledEchoProcessArg(f: File, color: BackgroundColor) =
   setBackgroundColor f, color
+template styledEchoProcessArg(f: File, color: Color) =
+  setTrueColor f, color
 template styledEchoProcessArg(f: File, cmd: TerminalCmd) =
   when cmd == resetStyle:
     resetAttributes(f)
+  when cmd == fgColor:
+    fgSetColor = true
+  when cmd == bgColor:
+    fgSetColor = false
 
 macro styledWriteLine*(f: File, m: varargs[typed]): untyped =
   ## Similar to ``writeLine``, but treating terminal style arguments specially.
@@ -664,6 +762,10 @@ template setForegroundColor*(fg: ForegroundColor, bright=false) =
   setForegroundColor(stdout, fg, bright)
 template setBackgroundColor*(bg: BackgroundColor, bright=false) =
   setBackgroundColor(stdout, bg, bright)
+template setForegroundColor*(color: Color) =
+  setForegroundColor(stdout, color)
+template setBackgroundColor*(color: Color) =
+  setBackgroundColor(stdout, color)
 proc resetAttributes*() {.noconv.} =
   ## Resets all attributes on stdout.
   ## It is advisable to register this as a quit proc with
@@ -679,3 +781,64 @@ when not defined(testing) and isMainModule:
   stdout.setForeGroundColor(fgBlue)
   stdout.writeLine("ordinary text")
   stdout.resetAttributes()
+
+proc isTrueColorSupported*(): bool =
+  ## Returns true if a terminal supports true color.
+  return trueColorIsSupported
+
+proc enableTrueColors*() =
+  ## Enable true color.
+  when defined(windows):
+    if trueColorIsSupported:
+      if not terminalIsNonStandard:
+        var mode: DWORD = 0
+        if getConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), addr(mode)) != 0:
+          mode = mode or ENABLE_VIRTUAL_TERMINAL_PROCESSING
+          if setConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), mode) != 0:
+            trueColorIsEnabled = true
+          else:
+            trueColorIsEnabled = false
+      else:
+        trueColorIsEnabled = true
+  else:
+    trueColorIsEnabled = true
+
+proc disableTrueColors*() =
+  ## Disable true color.
+  when defined(windows):
+    if trueColorIsSupported:
+      if not terminalIsNonStandard:
+        var mode: DWORD = 0
+        if getConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), addr(mode)) != 0:
+          mode = mode and not ENABLE_VIRTUAL_TERMINAL_PROCESSING
+          discard setConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), mode)
+      trueColorIsEnabled = false
+  else:
+    trueColorIsEnabled = false
+
+when defined(windows):
+  import os
+  var
+    ver: OSVERSIONINFO
+  ver.dwOSVersionInfoSize = sizeof(ver).DWORD
+  let res = when useWinUnicode: getVersionExW(ver.addr) else: getVersionExA(ver.addr)
+  if res == 0:
+    trueColorIsSupported = false
+  else:
+    trueColorIsSupported = ver.dwMajorVersion > 10 or 
+      (ver.dwMajorVersion == 10 and (ver.dwMinorVersion > 0 or 
+      (ver.dwMinorVersion == 0 and ver.dwBuildNumber >= 10586)))
+  if not trueColorIsSupported:
+    trueColorIsSupported = (getEnv("ANSICON_DEF").len > 0)
+    terminalIsNonStandard = trueColorIsSupported
+else:
+  when compileOption("taintmode"):
+    trueColorIsSupported = string(getEnv("COLORTERM")).toLowerAscii() in ["truecolor", "24bit"]
+  when not compileOption("taintmode"):
+    trueColorIsSupported = getEnv("COLORTERM").toLowerAscii() in ["truecolor", "24bit"]
+
+when not hasThreadSupport:
+  colorsFGCache = initTable[Color, string]()
+  colorsBGCache = initTable[Color, string]()
+  when not defined(windows):
+    styleCache = initTable[int, string]()
