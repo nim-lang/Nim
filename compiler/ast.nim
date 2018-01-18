@@ -979,6 +979,7 @@ const
   nkIdentKinds* = {nkIdent, nkSym, nkAccQuoted, nkOpenSymChoice,
                    nkClosedSymChoice}
 
+  nkPragmaCallKinds* = {nkExprColonExpr, nkCall, nkCallStrLit}
   nkLiterals* = {nkCharLit..nkTripleStrLit}
   nkLambdaKinds* = {nkLambda, nkDo}
   declarativeDefs* = {nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef}
