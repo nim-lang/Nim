@@ -1143,7 +1143,7 @@ proc semProcAnnotation(c: PContext, prc: PNode;
   if n == nil or n.kind == nkEmpty: return
   for i in countup(0, n.len-1):
     var it = n.sons[i]
-    var key = if it.kind == nkExprColonExpr: it.sons[0] else: it
+    var key = if it.kind in nkPragmaCallKinds and it.len >= 1: it.sons[0] else: it
     let m = lookupMacro(c, key)
     if m == nil:
       if key.kind == nkIdent and key.ident.id == ord(wDelegator):
@@ -1164,10 +1164,12 @@ proc semProcAnnotation(c: PContext, prc: PNode;
     if prc[pragmasPos].kind != nkEmpty and prc[pragmasPos].len == 0:
       prc.sons[pragmasPos] = emptyNode
 
-    if it.kind == nkExprColonExpr:
-      # pass pragma argument to the macro too:
-      x.add(it.sons[1])
+    if it.kind in nkPragmaCallKinds and it.len > 1:
+      # pass pragma arguments to the macro too:
+      for i in 1..<it.len:
+        x.add(it.sons[i])
     x.add(prc)
+    
     # recursion assures that this works for multiple macro annotations too:
     result = semExpr(c, x)
     # since a proc annotation can set pragmas, we process these here again.

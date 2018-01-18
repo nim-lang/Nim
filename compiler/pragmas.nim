@@ -17,7 +17,6 @@ import
 const
   FirstCallConv* = wNimcall
   LastCallConv* = wNoconv
-  nkPragmaCallKinds = {nkExprColonExpr, nkCall, nkCallStrLit}
 
 const
   procPragmas* = {FirstCallConv..LastCallConv, wImportc, wExportc, wNodecl,
