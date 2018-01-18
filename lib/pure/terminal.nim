@@ -27,20 +27,16 @@ const
 when not hasThreadSupport:
   import tables
   var
-    colorsFGCache: Table[Color, string]
-    colorsBGCache: Table[Color, string]
+    colorsFGCache = initTable[Color, string]()
+    colorsBGCache = initTable[Color, string]()
   when not defined(windows):
     var
-      styleCache: Table[int, string]
+      styleCache = initTable[int, string]()
 
 var
-  trueColorIsSupported {.threadvar.}: bool
-  trueColorIsEnabled {.threadvar.}: bool
-  fgSetColor {.threadvar.}: bool
-
-when defined(windows):
-  var
-    terminalIsNonStandard {.threadvar.}: bool
+  trueColorIsSupported: bool
+  trueColorIsEnabled: bool
+  fgSetColor: bool
 
 const
   fgPrefix = "\x1b[38;2;"
@@ -749,7 +745,7 @@ template showCursor*() = showCursor(stdout)
 template setCursorPos*(x, y: int) = setCursorPos(stdout, x, y)
 template setCursorXPos*(x: int)   = setCursorXPos(stdout, x)
 when defined(windows):
-  template setCursorYPos(x: int)  = setCursorYPos(stdout, x)
+  template setCursorYPos*(x: int)  = setCursorYPos(stdout, x)
 template cursorUp*(count=1)       = cursorUp(stdout, count)
 template cursorDown*(count=1)     = cursorDown(stdout, count)
 template cursorForward*(count=1)  = cursorForward(stdout, count)
@@ -786,11 +782,27 @@ proc isTrueColorSupported*(): bool =
   ## Returns true if a terminal supports true color.
   return trueColorIsSupported
 
+when defined(windows):
+  import os
+
 proc enableTrueColors*() =
   ## Enable true color.
   when defined(windows):
+    var
+      ver: OSVERSIONINFO
+    ver.dwOSVersionInfoSize = sizeof(ver).DWORD
+    let res = getVersionExW(addr ver)
+    if res == 0:
+      trueColorIsSupported = false
+    else:
+      trueColorIsSupported = ver.dwMajorVersion > 10 or
+        (ver.dwMajorVersion == 10 and (ver.dwMinorVersion > 0 or
+        (ver.dwMinorVersion == 0 and ver.dwBuildNumber >= 10586)))
+    if not trueColorIsSupported:
+      trueColorIsSupported = getEnv("ANSICON_DEF").len > 0
+
     if trueColorIsSupported:
-      if not terminalIsNonStandard:
+      if getEnv("ANSICON_DEF").len == 0:
         var mode: DWORD = 0
         if getConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), addr(mode)) != 0:
           mode = mode or ENABLE_VIRTUAL_TERMINAL_PROCESSING
@@ -801,13 +813,14 @@ proc enableTrueColors*() =
       else:
         trueColorIsEnabled = true
   else:
-    trueColorIsEnabled = true
+    trueColorIsSupported = string(getEnv("COLORTERM")).toLowerAscii() in ["truecolor", "24bit"]
+    trueColorIsEnabled = trueColorIsSupported
 
 proc disableTrueColors*() =
   ## Disable true color.
   when defined(windows):
     if trueColorIsSupported:
-      if not terminalIsNonStandard:
+      if getEnv("ANSICON_DEF").len == 0:
         var mode: DWORD = 0
         if getConsoleMode(getStdHandle(STD_OUTPUT_HANDLE), addr(mode)) != 0:
           mode = mode and not ENABLE_VIRTUAL_TERMINAL_PROCESSING
@@ -815,30 +828,3 @@ proc disableTrueColors*() =
       trueColorIsEnabled = false
   else:
     trueColorIsEnabled = false
-
-when defined(windows):
-  import os
-  var
-    ver: OSVERSIONINFO
-  ver.dwOSVersionInfoSize = sizeof(ver).DWORD
-  let res = when useWinUnicode: getVersionExW(ver.addr) else: getVersionExA(ver.addr)
-  if res == 0:
-    trueColorIsSupported = false
-  else:
-    trueColorIsSupported = ver.dwMajorVersion > 10 or 
-      (ver.dwMajorVersion == 10 and (ver.dwMinorVersion > 0 or 
-      (ver.dwMinorVersion == 0 and ver.dwBuildNumber >= 10586)))
-  if not trueColorIsSupported:
-    trueColorIsSupported = (getEnv("ANSICON_DEF").len > 0)
-    terminalIsNonStandard = trueColorIsSupported
-else:
-  when compileOption("taintmode"):
-    trueColorIsSupported = string(getEnv("COLORTERM")).toLowerAscii() in ["truecolor", "24bit"]
-  when not compileOption("taintmode"):
-    trueColorIsSupported = getEnv("COLORTERM").toLowerAscii() in ["truecolor", "24bit"]
-
-when not hasThreadSupport:
-  colorsFGCache = initTable[Color, string]()
-  colorsBGCache = initTable[Color, string]()
-  when not defined(windows):
-    styleCache = initTable[int, string]()
