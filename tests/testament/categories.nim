@@ -148,7 +148,7 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   test "gcbench"
   test "gcleak"
   test "gcleak2"
-  test "gctest"
+  testWithoutBoehm "gctest"
   testWithNone "gctest"
   test "gcleak3"
   test "gcleak4"
@@ -226,7 +226,8 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
                    "actiontable/tactiontable", "method/tmultim1",
                    "method/tmultim3", "method/tmultim4",
                    "varres/tvarres0", "varres/tvarres3", "varres/tvarres4",
-                   "varres/tvartup", "misc/tints", "misc/tunsignedinc"]:
+                   "varres/tvartup", "misc/tints", "misc/tunsignedinc",
+                   "async/tjsandnativeasync"]:
     test "tests/" & testfile & ".nim"
 
   for testfile in ["strutils", "json", "random", "times", "logging"]:

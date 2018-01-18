@@ -104,7 +104,7 @@ type
     pDumpHeapFile: pointer # File that is used for GC_dumpHeap
     when hasThreadSupport:
       toDispose: SharedList[pointer]
-    isMainThread: bool
+    gcThreadId: int
 
 var
   gch {.rtlThreadVar.}: GcHeap
@@ -119,23 +119,6 @@ template acquire(gch: GcHeap) =
 template release(gch: GcHeap) =
   when hasThreadSupport and hasSharedHeap:
     releaseSys(HeapLock)
-
-proc initGC() =
-  when not defined(useNimRtl):
-    gch.red = (1-gch.black)
-    gch.cycleThreshold = InitialCycleThreshold
-    gch.stat.stackScans = 0
-    gch.stat.completedCollections = 0
-    gch.stat.maxThreshold = 0
-    gch.stat.maxStackSize = 0
-    gch.stat.maxStackCells = 0
-    gch.stat.cycleTableSize = 0
-    # init the rt
-    init(gch.additionalRoots)
-    init(gch.greyStack)
-    when hasThreadSupport:
-      init(gch.toDispose)
-    gch.isMainThread = true
 
 # Which color to use for new objects is tricky: When we're marking,
 # they have to be *white* so that everything is marked that is only
@@ -342,6 +325,24 @@ proc gcInvariant*() =
 
 include gc_common
 
+proc initGC() =
+  when not defined(useNimRtl):
+    gch.red = (1-gch.black)
+    gch.cycleThreshold = InitialCycleThreshold
+    gch.stat.stackScans = 0
+    gch.stat.completedCollections = 0
+    gch.stat.maxThreshold = 0
+    gch.stat.maxStackSize = 0
+    gch.stat.maxStackCells = 0
+    gch.stat.cycleTableSize = 0
+    # init the rt
+    init(gch.additionalRoots)
+    init(gch.greyStack)
+    when hasThreadSupport:
+      init(gch.toDispose)
+    gch.gcThreadId = atomicInc(gHeapidGenerator) - 1
+    gcAssert(gch.gcThreadId >= 0, "invalid computed thread ID")
+
 proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   # generates a new object and sets its reference counter to 0
   sysAssert(allocInv(gch.region), "rawNewObj begin")
@@ -480,7 +481,7 @@ proc GC_dumpHeap*(file: File) =
         c_fprintf(file, "onstack %p\n", d[i])
       else:
         c_fprintf(file, "onstack_invalid %p\n", d[i])
-  if gch.isMainThread:
+  if gch.gcThreadId == 0:
     for i in 0 .. globalMarkersLen-1: globalMarkers[i]()
   for i in 0 .. threadLocalMarkersLen-1: threadLocalMarkers[i]()
   while true:
@@ -569,7 +570,7 @@ proc markIncremental(gch: var GcHeap): bool =
   result = true
 
 proc markGlobals(gch: var GcHeap) =
-  if gch.isMainThread:
+  if gch.gcThreadId == 0:
     for i in 0 .. globalMarkersLen-1: globalMarkers[i]()
   for i in 0 .. threadLocalMarkersLen-1: threadLocalMarkers[i]()
 
@@ -591,22 +592,14 @@ proc doOperation(p: pointer, op: WalkOp) =
         markRoot(gch, c)
       else:
         dumpRoot(gch, c)
-    when hasThreadSupport:
-      # could point to a cell which we don't own and don't want to touch/trace
-      if isAllocatedPtr(gch.region, c): handleRoot()
-    else:
-      #gcAssert(isAllocatedPtr(gch.region, c), "doOperation: waMarkGlobal")
-      if not isAllocatedPtr(gch.region, c):
-        c_fprintf(stdout, "[GC] not allocated anymore: MarkGlobal %p\n", c)
-        #GC_dumpHeap()
-        sysAssert(false, "wtf")
-      handleRoot()
+    handleRoot()
     discard allocInv(gch.region)
   of waMarkGrey:
-    if not isAllocatedPtr(gch.region, c):
-      c_fprintf(stdout, "[GC] not allocated anymore: MarkGrey %p\n", c)
-      #GC_dumpHeap()
-      sysAssert(false, "wtf")
+    when false:
+      if not isAllocatedPtr(gch.region, c):
+        c_fprintf(stdout, "[GC] not allocated anymore: MarkGrey %p\n", c)
+        #GC_dumpHeap()
+        sysAssert(false, "wtf")
     if c.color == 1-gch.black:
       c.setColor(rcGrey)
       add(gch.greyStack, c)

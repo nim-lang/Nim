@@ -401,6 +401,7 @@ var
   globalMarkers: array[0.. 3499, GlobalMarkerProc]
   threadLocalMarkersLen: int
   threadLocalMarkers: array[0.. 3499, GlobalMarkerProc]
+  gHeapidGenerator: int
 
 proc nimRegisterGlobalMarker(markerProc: GlobalMarkerProc) {.compilerProc.} =
   if globalMarkersLen <= high(globalMarkers):
