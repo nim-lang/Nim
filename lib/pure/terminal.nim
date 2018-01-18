@@ -816,8 +816,6 @@ proc disableTrueColors*() =
   else:
     trueColorIsEnabled = false
 
-fgSetColor = true
-
 when defined(windows):
   import os
   var
