@@ -689,7 +689,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
     add(a, a.root, cast[ByteAddress](result), cast[ByteAddress](result)+%size)
   sysAssert(isAccessible(a, result), "rawAlloc 14")
   sysAssert(allocInv(a), "rawAlloc: end")
-  when logAlloc: cprintf("rawAlloc: %ld %p\n", requestedSize, result)
+  when logAlloc: cprintf("var pointer_%p = alloc(%ld)\n", result, requestedSize)
 
 proc rawAlloc0(a: var MemRegion, requestedSize: int): pointer =
   result = rawAlloc(a, requestedSize)
@@ -737,7 +737,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
     del(a, a.root, cast[int](addr(c.data)))
     freeBigChunk(a, c)
   sysAssert(allocInv(a), "rawDealloc: end")
-  when logAlloc: cprintf("rawDealloc: %p\n", p)
+  when logAlloc: cprintf("dealloc(pointer_%p)\n", p)
 
 proc isAllocatedPtr(a: MemRegion, p: pointer): bool =
   if isAccessible(a, p):
