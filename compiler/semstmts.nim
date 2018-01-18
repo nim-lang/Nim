@@ -1155,7 +1155,7 @@ proc semProcAnnotation(c: PContext, prc: PNode;
       continue
     elif sfCustomPragma in m.flags:
       continue # semantic check for custom pragma happens later in semProcAux
-      
+
     # we transform ``proc p {.m, rest.}`` into ``m(do: proc p {.rest.})`` and
     # let the semantic checker deal with it:
     var x = newNodeI(nkCall, n.info)
@@ -1632,6 +1632,10 @@ proc semIterator(c: PContext, n: PNode): PNode =
     n[namePos].sym.owner = getCurrOwner(c)
     n[namePos].sym.kind = skIterator
   result = semProcAux(c, n, skIterator, iteratorPragmas)
+  # bug #7093: if after a macro transformation we don't have an
+  # nkIteratorDef aynmore, return. The iterator then might have been
+  # sem'checked already. (Or not, if the macro skips it.)
+  if result.kind != nkIteratorDef: return
   var s = result.sons[namePos].sym
   var t = s.typ
   if t.sons[0] == nil and s.typ.callConv != ccClosure:
@@ -1664,6 +1668,10 @@ proc semMethod(c: PContext, n: PNode): PNode =
   result = semProcAux(c, n, skMethod, methodPragmas)
   # macros can transform converters to nothing:
   if namePos >= result.safeLen: return result
+  # bug #7093: if after a macro transformation we don't have an
+  # nkIteratorDef aynmore, return. The iterator then might have been
+  # sem'checked already. (Or not, if the macro skips it.)
+  if result.kind != nkMethodDef: return
   var s = result.sons[namePos].sym
   # we need to fix the 'auto' return type for the dispatcher here (see tautonotgeneric
   # test case):
@@ -1682,6 +1690,10 @@ proc semConverterDef(c: PContext, n: PNode): PNode =
   result = semProcAux(c, n, skConverter, converterPragmas)
   # macros can transform converters to nothing:
   if namePos >= result.safeLen: return result
+  # bug #7093: if after a macro transformation we don't have an
+  # nkIteratorDef aynmore, return. The iterator then might have been
+  # sem'checked already. (Or not, if the macro skips it.)
+  if result.kind != nkConverterDef: return
   var s = result.sons[namePos].sym
   var t = s.typ
   if t.sons[0] == nil: localError(n.info, errXNeedsReturnType, "converter")
@@ -1693,6 +1705,10 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
   result = semProcAux(c, n, skMacro, macroPragmas)
   # macros can transform macros to nothing:
   if namePos >= result.safeLen: return result
+  # bug #7093: if after a macro transformation we don't have an
+  # nkIteratorDef aynmore, return. The iterator then might have been
+  # sem'checked already. (Or not, if the macro skips it.)
+  if result.kind != nkMacroDef: return
   var s = result.sons[namePos].sym
   var t = s.typ
   var allUntyped = true
