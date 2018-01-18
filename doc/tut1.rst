@@ -1426,7 +1426,7 @@ define operators which accept Slice objects to define ranges.
 
   var
     a = "Nim is a progamming language"
-    b = "Slices are useless."
+    b = "Slices are useful."
 
   echo a[7..12] # --> 'a prog'
   b[11..^2] = "useful"
