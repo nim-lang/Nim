@@ -219,17 +219,20 @@ proc getDayOfYear*(monthday: MonthdayRange, month: Month, year: int): YeardayRan
   else:
     result = daysUntilMonth[month] + monthday - 1
 
-proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay {.tags: [], raises: [], benign .} =
-  ## Returns the day of the week enum from day, month and year.
-  ## Equivalent with ``initDateTime(day, month, year).weekday``.
-  assertValidDate monthday, month, year
-  # 1970-01-01 is a Thursday, we adjust to the previous Monday
-  let days = toEpochday(monthday, month, year) - 3
+proc getDayOfWeek*(epochday: int64): WeekDay {.tags: [], raises: [], benign .} =
+  ## Returns the day of the week enum from epoch day
+  let days = epochday - 3
   let weeks = (if days >= 0: days else: days - 6) div 7
   let wd = days - weeks * 7
   # The value of d is 0 for a Sunday, 1 for a Monday, 2 for a Tuesday, etc.
   # so we must correct for the WeekDay type.
   result = if wd == 0: dSun else: WeekDay(wd - 1)
+    
+proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay {.tags: [], raises: [], benign .} =
+  ## Returns the day of the week enum from day, month and year.
+  ## Equivalent to ``initDateTime(day, month, year).weekday``.
+  assertValidDate monthday, month, year
+  getDayOfWeek(toEpochday(monthday, month, year))
 
 # Forward declarations
 proc utcZoneInfoFromUtc(time: Time): ZonedTime {.tags: [], raises: [], benign .}
@@ -293,7 +296,7 @@ proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
     hour: hour,
     minute: minute,
     second: second,
-    weekday: getDayOfWeek(d, m, y),
+    weekday: getDayOfWeek(epochday),
     yearday: getDayOfYear(d, m, y),
     isDst: zt.isDst,
     timezone: zone,
@@ -1463,7 +1466,7 @@ proc timeToTimeInfo*(t: Time): DateTime {.deprecated.} =
     m = mon  # month is zero indexed enum
     md = days
     # NB: month is zero indexed but dayOfWeek expects 1 indexed.
-    wd = getDayOfWeek(days, mon, y).Weekday
+    wd = getDayOfWeek(daysSinceEpoch).Weekday
     h = daySeconds div secondsInHour + 1
     mi = (daySeconds mod secondsInHour) div secondsInMin
     s = daySeconds mod secondsInMin
