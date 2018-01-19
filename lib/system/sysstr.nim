@@ -25,9 +25,12 @@ proc cmpStrings(a, b: NimString): int {.inline, compilerProc.} =
   if a == nil: return -1
   if b == nil: return 1
   let minlen = min(a.len, b.len)
-  result = c_memcmp(addr a.data, addr b.data, minlen.csize)
-  if result == 0:
-    result = a.len - b.len
+  if minlen > 0:
+    result = c_memcmp(addr a.data, addr b.data, minlen.csize)
+    if result == 0:
+      result = a.len - b.len
+  else:
+    result = 0
 
 proc eqStrings(a, b: NimString): bool {.inline, compilerProc.} =
   if a == b: return true
