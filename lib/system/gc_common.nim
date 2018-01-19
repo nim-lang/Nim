@@ -67,7 +67,7 @@ template decTypeSize(cell, t) =
       let size = addInt(mulInt(len, base), GenericSeqSize)
       dec t.sizes, size+sizeof(Cell)
     else:
-      dec t.sizes, t.size+sizeof(Cell)
+      dec t.sizes, t.base.size+sizeof(Cell)
     dec t.instances
 
 template incTypeSize(typ, size) =
