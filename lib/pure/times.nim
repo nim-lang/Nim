@@ -963,8 +963,8 @@ proc format*(dt: DateTime|Date, f: string): string {.tags: [].} =
     case f[i]
     of ' ', '-', '/', ':', '\'', '\0', '(', ')', '[', ']', ',':
       
-      when dt is Date: formatDate(dt)
-      else: formatToken(dt, currentF, result)
+      when dt is DateTime: formatToken(dt, currentF, result)
+      else: formatDate(dt, currentF, result)
 
       currentF = ""
       if f[i] == '\0': break
@@ -981,8 +981,8 @@ proc format*(dt: DateTime|Date, f: string): string {.tags: [].} =
       if currentF.len < 1 or currentF[high(currentF)] == f[i]:
         currentF.add(f[i])
       else:
-        when dt is Date: formatDate(dt)
-        else:  formatToken(dt, currentF, result)
+        when dt is DateTime: formatToken(dt, currentF, result)
+        else: formatDate(dt, currentF, result)
   
         dec(i) # Move position back to re-process the character separately.
         currentF = ""
@@ -1297,7 +1297,7 @@ proc parseDate*(value, layout: string): Date =
         token = ""
 
   if parsedDateComplete * found_tokens != parsedDateComplete:
-    raise newException(ValueError, "invalid or incomplete date:" value)
+    raise newException(ValueError, "invalid or incomplete date: " & value)
 
 
 proc parse*(value, layout: string, zone: Timezone = local()): DateTime =
