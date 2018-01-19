@@ -75,6 +75,9 @@ type
       toDispose: SharedList[pointer]
     gcThreadId: int
     additionalRoots: CellSeq # dummy roots for GC_ref/unref
+    when defined(nimTracing):
+      tracing: bool
+      indentation: int
 
 var
   gch {.rtlThreadVar.}: GcHeap
@@ -380,6 +383,13 @@ proc mark(gch: var GcHeap, c: PCell) =
         forAllChildren(d, waMarkPrecise)
   else:
     # XXX no 'if c.refCount != rcBlack' here?
+    when defined(nimTracing):
+      if gch.tracing:
+        for i in 1..gch.indentation: c_fprintf(stdout, " ")
+        c_fprintf(stdout, "start marking %p of type %s ((\n",
+                  c, c.typ.name)
+        inc gch.indentation, 2
+
     c.refCount = rcBlack
     gcAssert gch.tempStack.len == 0, "stack not empty!"
     forAllChildren(c, waMarkPrecise)
@@ -390,13 +400,24 @@ proc mark(gch: var GcHeap, c: PCell) =
         d.refCount = rcBlack
         forAllChildren(d, waMarkPrecise)
 
+    when defined(nimTracing):
+      if gch.tracing:
+        dec gch.indentation, 2
+        for i in 1..gch.indentation: c_fprintf(stdout, " ")
+        c_fprintf(stdout, "finished marking %p of type %s))\n",
+                  c, c.typ.name)
+
 proc doOperation(p: pointer, op: WalkOp) =
   if p == nil: return
   var c: PCell = usrToCell(p)
   gcAssert(c != nil, "doOperation: 1")
   case op
   of waMarkGlobal: mark(gch, c)
-  of waMarkPrecise: add(gch.tempStack, c)
+  of waMarkPrecise:
+    when defined(nimTracing):
+      if c.refcount == rcWhite: mark(gch, c)
+    else:
+      add(gch.tempStack, c)
 
 proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} =
   doOperation(d, WalkOp(op))
@@ -433,8 +454,17 @@ when false:
 
 proc markGlobals(gch: var GcHeap) =
   if gch.gcThreadId == 0:
+    when defined(nimTracing):
+      if gch.tracing:
+        c_fprintf(stdout, "------- globals marking phase:\n")
     for i in 0 .. globalMarkersLen-1: globalMarkers[i]()
+  when defined(nimTracing):
+    if gch.tracing:
+      c_fprintf(stdout, "------- thread locals marking phase:\n")
   for i in 0 .. threadLocalMarkersLen-1: threadLocalMarkers[i]()
+  when defined(nimTracing):
+    if gch.tracing:
+      c_fprintf(stdout, "------- additional roots marking phase:\n")
   let d = gch.additionalRoots.d
   for i in 0 .. gch.additionalRoots.len-1: mark(gch, d[i])
 
@@ -454,6 +484,9 @@ proc markStackAndRegisters(gch: var GcHeap) {.noinline, cdecl.} =
 proc collectCTBody(gch: var GcHeap) =
   when not nimCoroutines:
     gch.stat.maxStackSize = max(gch.stat.maxStackSize, stackSize())
+  when defined(nimTracing):
+    if gch.tracing:
+      c_fprintf(stdout, "------- stack marking phase:\n")
   prepareForInteriorPointerChecking(gch.region)
   markStackAndRegisters(gch)
   markGlobals(gch)
@@ -494,6 +527,10 @@ when not defined(useNimRtl):
   proc GC_disableMarkAndSweep() =
     gch.cycleThreshold = high(gch.cycleThreshold)-1
     # set to the max value to suppress the cycle detector
+
+  when defined(nimTracing):
+    proc GC_logTrace*() =
+      gch.tracing = true
 
   proc GC_fullCollect() =
     acquire(gch)
