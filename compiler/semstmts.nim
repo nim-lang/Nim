@@ -1169,7 +1169,7 @@ proc semProcAnnotation(c: PContext, prc: PNode;
       for i in 1..<it.len:
         x.add(it.sons[i])
     x.add(prc)
-    
+
     # recursion assures that this works for multiple macro annotations too:
     result = semExpr(c, x)
     # since a proc annotation can set pragmas, we process these here again.
@@ -1637,7 +1637,7 @@ proc semIterator(c: PContext, n: PNode): PNode =
   # bug #7093: if after a macro transformation we don't have an
   # nkIteratorDef aynmore, return. The iterator then might have been
   # sem'checked already. (Or not, if the macro skips it.)
-  if result.kind != nkIteratorDef: return
+  if result.kind != n.kind: return
   var s = result.sons[namePos].sym
   var t = s.typ
   if t.sons[0] == nil and s.typ.callConv != ccClosure:
