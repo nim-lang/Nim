@@ -41,13 +41,13 @@ t4.checkFormat("M MM MMM MMMM", "10 10 Oct October")
 (t4 - initInterval(years = 7, minutes = 34, seconds = 24)).checkFormat("yyyy mm ss", "1990 24 10")
 
 # checking dayOfWeek matches known days
-doAssert date(01, mJan, 0000).weekday == dSat
-doAssert date(01, mJan, -0023).weekday == dSat
-doAssert date(21, mSep, 1900).weekday == dFri
-doAssert date(01, mJan, 1970).weekday == dThu
-doAssert date(21, mSep, 1970).weekday == dMon
-doAssert date(01, mJan, 2000).weekday == dSat
-doAssert date(01, mJan, 2021).weekday == dFri
+doAssert initDate(01, mJan, 0000).weekday == dSat
+doAssert initDate(01, mJan, -0023).weekday == dSat
+doAssert initDate(21, mSep, 1900).weekday == dFri
+doAssert initDate(01, mJan, 1970).weekday == dThu
+doAssert initDate(21, mSep, 1970).weekday == dMon
+doAssert initDate(01, mJan, 2000).weekday == dSat
+doAssert initDate(01, mJan, 2021).weekday == dFri
 
 # toUnix tests with GM timezone
 let t4L = fromUnix(876124714).utc

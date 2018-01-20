@@ -321,7 +321,7 @@ proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
   rem = rem - minute * secondsInMin
   let second = rem
 
-  let date = date(epochdate.EpochDate)
+  let date = fromEpochDate(epochdate.EpochDate)
 
   DateTime(
     year: date.year,
@@ -547,7 +547,7 @@ proc now*(): DateTime {.tags: [TimeEffect], benign.} =
   ## Shorthand for ``getTime().local``.
   getTime().local
 
-proc date*(): Date {.tags: [TimeEffect], benign.}
+proc nowDate*(): Date {.tags: [TimeEffect], benign.}
   ## Gets the current date as a ``Date``
 
 proc initInterval*(milliseconds, seconds, minutes, hours, days, months,
@@ -654,7 +654,7 @@ proc `+`*(d: Date, interval: TimeInterval): Date =
     year = d.year + interval.years
     month = ord(d.month) + interval.months
     day = d.monthday + interval.days + seconds div secondsInDay
-  date(toEpochDate(day, month, year))
+  fromEpochDate(toEpochDate(day, month, year))
 
 proc `+`*(dt: DateTime, interval: TimeInterval): DateTime =
   ## Adds ``interval`` to ``dt``. Components from ``interval`` are added
@@ -692,7 +692,7 @@ proc `-`*(dt: DateTime, interval: TimeInterval): DateTime =
 
 proc getDateStr*(): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
   ## Gets the current date as a string of the format ``YYYY-MM-DD``.
-  let d = date()
+  let d = nowDate()
   result = $d.year & '-' & intToStr(ord(d.month), 2) &
     '-' & intToStr(d.monthday, 2)
 
@@ -1129,7 +1129,7 @@ proc parseDate(dt: var Date; token, value: string; j: var int): ParseTokenKind =
   of "yy":
     # Assumes current century
     let year = value[j..j+1].parseInt()
-    let thisCen = date().year div 100
+    let thisCen = nowDate().year div 100
     dt.year = thisCen*100 + year
     j += 2
     result = ptYear    
@@ -1377,7 +1377,7 @@ proc parse*(value, layout: string, zone: Timezone = local()): DateTime =
 
   if parsedDateComplete * found_tokens != parsedDateComplete:
       # Assumes current day of month, month and year
-    let dt = date()
+    let dt = nowDate()
     result.monthday = dt.monthday
     result.month = dt.month
     result.year = dt.year
@@ -1390,9 +1390,9 @@ proc parse*(value, layout: string, zone: Timezone = local()): DateTime =
     result = result.toTime.inZone(zone)
 
 
-proc date*: Date = 
+proc nowDate*: Date = 
   ## Gets the current date as `Date` object
-  date(getTime().toEpochDate())
+  getTime().toEpochDate().fromEpochDate()
 
 proc countLeapYears*(yearSpan: int): int =
   ## Returns the number of leap years spanned by a given number of years.
@@ -1643,7 +1643,7 @@ proc timeToTimeInfo*(t: Time): DateTime {.deprecated.} =
   result = DateTime(year: y, month: mon, monthday: days, hour: h, minute: mi, second: s)
 
 proc getDayOfWeek*(day, month, year: int): WeekDay {.tags: [], raises: [], benign, deprecated.} =
-  weekday(date(day, month.Month, year))
+  weekday(initDate(day, month.Month, year))
 
 proc getDayOfWeekJulian*(day, month, year: int): WeekDay {.deprecated.} =
   ## Returns the day of the week enum from day, month and year,
