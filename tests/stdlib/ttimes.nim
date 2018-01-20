@@ -11,7 +11,7 @@ import
 # $ date --date='@2147483647'
 # Tue 19 Jan 03:14:07 GMT 2038
 
-proc checkFormat(t: DateTime, format, expected: string) =
+proc checkFormat(t: DateTime|Date, format, expected: string) =
   let actual = t.format(format)
   if actual != expected:
     echo "Formatting failure!"
@@ -35,6 +35,17 @@ t2.checkFormat("d dd ddd dddd h hh H HH m mm M MM MMM MMMM s" &
 
 var t4 = fromUnix(876124714).utc # Mon  6 Oct 08:58:34 BST 1997
 t4.checkFormat("M MM MMM MMMM", "10 10 Oct October")
+
+let d1 = initDate(28, mFeb, 2020)
+d1.checkFormat("yyyy-MM-dd", "2020-02-28")
+
+let d2 = initDate(29, mFeb, 2020)
+d2.checkFormat("yy-MMM-dd ddd", "20-Feb-29 Sat")
+
+let d3 = initDate(01, mMar, 2020)
+d3.checkFormat("yyyy-MMMM-dd dddd", "2020-March-01 Sunday")
+
+doAssert($d3 == "2020-03-01")
 
 # Interval tests
 (t4 - initInterval(years = 2)).checkFormat("yyyy", "1995")
