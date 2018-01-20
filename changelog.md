@@ -212,9 +212,11 @@ for i in 1..15:
   styledEcho bgColor, bg, fgColor, fg, Nim, resetStyle
   int -= 0.01
   fg = intensity(fg, int)
-  
+
 setForegroundColor colRed
 setBackgroundColor colGreen
 styledEcho "Red on Green.", resetStyle
 ```
-
+- If you use ``--dynlibOverride:ssl`` with OpenSSL 1.0.x, you now have to
+  define ``openssl10`` symbol (``-d:openssl10``). By default OpenSSL 1.1.x is
+  assumed.
