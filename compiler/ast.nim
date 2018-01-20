@@ -305,6 +305,7 @@ const
   sfEscapes* = sfProcvar              # param escapes
   sfBase* = sfDiscriminant
   sfIsSelf* = sfOverriden             # param is 'self'
+  sfCustomPragma* = sfRegister        # symbol is custom pragma template
 
 const
   # getting ready for the future expr/stmt merge
@@ -978,6 +979,7 @@ const
   nkIdentKinds* = {nkIdent, nkSym, nkAccQuoted, nkOpenSymChoice,
                    nkClosedSymChoice}
 
+  nkPragmaCallKinds* = {nkExprColonExpr, nkCall, nkCallStrLit}
   nkLiterals* = {nkCharLit..nkTripleStrLit}
   nkLambdaKinds* = {nkLambda, nkDo}
   declarativeDefs* = {nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef}

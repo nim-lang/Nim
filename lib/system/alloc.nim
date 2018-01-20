@@ -689,7 +689,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
     add(a, a.root, cast[ByteAddress](result), cast[ByteAddress](result)+%size)
   sysAssert(isAccessible(a, result), "rawAlloc 14")
   sysAssert(allocInv(a), "rawAlloc: end")
-  when logAlloc: cprintf("rawAlloc: %ld %p\n", requestedSize, result)
+  when logAlloc: cprintf("var pointer_%p = alloc(%ld)\n", result, requestedSize)
 
 proc rawAlloc0(a: var MemRegion, requestedSize: int): pointer =
   result = rawAlloc(a, requestedSize)
@@ -737,7 +737,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
     del(a, a.root, cast[int](addr(c.data)))
     freeBigChunk(a, c)
   sysAssert(allocInv(a), "rawDealloc: end")
-  when logAlloc: cprintf("rawDealloc: %p\n", p)
+  when logAlloc: cprintf("dealloc(pointer_%p)\n", p)
 
 proc isAllocatedPtr(a: MemRegion, p: pointer): bool =
   if isAccessible(a, p):
@@ -813,13 +813,13 @@ proc alloc0(allocator: var MemRegion, size: Natural): pointer =
   zeroMem(result, size)
 
 proc dealloc(allocator: var MemRegion, p: pointer) =
-  sysAssert(p != nil, "dealloc 0")
+  sysAssert(p != nil, "dealloc: p is nil")
   var x = cast[pointer](cast[ByteAddress](p) -% sizeof(FreeCell))
-  sysAssert(x != nil, "dealloc 1")
+  sysAssert(x != nil, "dealloc: x is nil")
   sysAssert(isAccessible(allocator, x), "is not accessible")
-  sysAssert(cast[ptr FreeCell](x).zeroField == 1, "dealloc 2")
+  sysAssert(cast[ptr FreeCell](x).zeroField == 1, "dealloc: object header corrupted")
   rawDealloc(allocator, x)
-  sysAssert(not isAllocatedPtr(allocator, x), "dealloc 3")
+  sysAssert(not isAllocatedPtr(allocator, x), "dealloc: object still accessible")
   track("dealloc", p, 0)
 
 proc realloc(allocator: var MemRegion, p: pointer, newsize: Natural): pointer =

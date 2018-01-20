@@ -1143,7 +1143,7 @@ proc semProcAnnotation(c: PContext, prc: PNode;
   if n == nil or n.kind == nkEmpty: return
   for i in countup(0, n.len-1):
     var it = n.sons[i]
-    var key = if it.kind == nkExprColonExpr: it.sons[0] else: it
+    var key = if it.kind in nkPragmaCallKinds and it.len >= 1: it.sons[0] else: it
     let m = lookupMacro(c, key)
     if m == nil:
       if key.kind == nkIdent and key.ident.id == ord(wDelegator):
@@ -1153,6 +1153,9 @@ proc semProcAnnotation(c: PContext, prc: PNode;
         else:
           localError(prc.info, errOnlyACallOpCanBeDelegator)
       continue
+    elif sfCustomPragma in m.flags:
+      continue # semantic check for custom pragma happens later in semProcAux
+
     # we transform ``proc p {.m, rest.}`` into ``m(do: proc p {.rest.})`` and
     # let the semantic checker deal with it:
     var x = newNodeI(nkCall, n.info)
@@ -1161,10 +1164,12 @@ proc semProcAnnotation(c: PContext, prc: PNode;
     if prc[pragmasPos].kind != nkEmpty and prc[pragmasPos].len == 0:
       prc.sons[pragmasPos] = emptyNode
 
-    if it.kind == nkExprColonExpr:
-      # pass pragma argument to the macro too:
-      x.add(it.sons[1])
+    if it.kind in nkPragmaCallKinds and it.len > 1:
+      # pass pragma arguments to the macro too:
+      for i in 1..<it.len:
+        x.add(it.sons[i])
     x.add(prc)
+
     # recursion assures that this works for multiple macro annotations too:
     result = semExpr(c, x)
     # since a proc annotation can set pragmas, we process these here again.
@@ -1629,6 +1634,10 @@ proc semIterator(c: PContext, n: PNode): PNode =
     n[namePos].sym.owner = getCurrOwner(c)
     n[namePos].sym.kind = skIterator
   result = semProcAux(c, n, skIterator, iteratorPragmas)
+  # bug #7093: if after a macro transformation we don't have an
+  # nkIteratorDef aynmore, return. The iterator then might have been
+  # sem'checked already. (Or not, if the macro skips it.)
+  if result.kind != n.kind: return
   var s = result.sons[namePos].sym
   var t = s.typ
   if t.sons[0] == nil and s.typ.callConv != ccClosure:
@@ -1661,6 +1670,10 @@ proc semMethod(c: PContext, n: PNode): PNode =
   result = semProcAux(c, n, skMethod, methodPragmas)
   # macros can transform converters to nothing:
   if namePos >= result.safeLen: return result
+  # bug #7093: if after a macro transformation we don't have an
+  # nkIteratorDef aynmore, return. The iterator then might have been
+  # sem'checked already. (Or not, if the macro skips it.)
+  if result.kind != nkMethodDef: return
   var s = result.sons[namePos].sym
   # we need to fix the 'auto' return type for the dispatcher here (see tautonotgeneric
   # test case):
@@ -1679,6 +1692,10 @@ proc semConverterDef(c: PContext, n: PNode): PNode =
   result = semProcAux(c, n, skConverter, converterPragmas)
   # macros can transform converters to nothing:
   if namePos >= result.safeLen: return result
+  # bug #7093: if after a macro transformation we don't have an
+  # nkIteratorDef aynmore, return. The iterator then might have been
+  # sem'checked already. (Or not, if the macro skips it.)
+  if result.kind != nkConverterDef: return
   var s = result.sons[namePos].sym
   var t = s.typ
   if t.sons[0] == nil: localError(n.info, errXNeedsReturnType, "converter")
@@ -1690,6 +1707,10 @@ proc semMacroDef(c: PContext, n: PNode): PNode =
   result = semProcAux(c, n, skMacro, macroPragmas)
   # macros can transform macros to nothing:
   if namePos >= result.safeLen: return result
+  # bug #7093: if after a macro transformation we don't have an
+  # nkIteratorDef aynmore, return. The iterator then might have been
+  # sem'checked already. (Or not, if the macro skips it.)
+  if result.kind != nkMacroDef: return
   var s = result.sons[namePos].sym
   var t = s.typ
   var allUntyped = true

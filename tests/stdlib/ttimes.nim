@@ -281,6 +281,30 @@ suite "ttimes":
     test "parseTest":
       runTimezoneTests()
 
+  test "dynamic timezone":
+    proc staticOffset(offset: int): Timezone =
+      proc zoneInfoFromTz(adjTime: Time): ZonedTime =
+          result.isDst = false
+          result.utcOffset = offset
+          result.adjTime = adjTime
+
+      proc zoneInfoFromUtc(time: Time): ZonedTime =
+          result.isDst = false
+          result.utcOffset = offset
+          result.adjTime = fromUnix(time.toUnix - offset)
+
+      result.name = ""
+      result.zoneInfoFromTz = zoneInfoFromTz
+      result.zoneInfoFromUtc = zoneInfoFromUtc
+
+    let tz = staticOffset(-9000)
+    let dt = initDateTime(1, mJan, 2000, 12, 00, 00, tz)
+    check dt.utcOffset == -9000
+    check dt.isDst == false
+    check $dt == "2000-01-01T12:00:00+02:30"
+    check $dt.utc == "2000-01-01T09:30:00+00:00"
+    check $dt.utc.inZone(tz) == $dt
+
   test "isLeapYear":
     check isLeapYear(2016)
     check (not isLeapYear(2015))

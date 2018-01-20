@@ -190,3 +190,33 @@ let
 
 - Added support for casting between integers of same bitsize in VM (compile time and nimscript).
   This allow to among other things to reinterpret signed integers as unsigned.
+
+- Pragmas now support call syntax, for example: ``{.exportc"myname".}`` and ``{.exportc("myname").}``
+- Custom pragmas are now supported using pragma ``pragma``, please see language manual for details
+
+- Added True Color support for some terminals
+  Example:
+```nim
+import colors, terminal
+
+const Nim = "Efficient and expressive programming."
+
+var
+  fg = colYellow
+  bg = colBlue
+  int = 1.0
+
+enableTrueColors()
+
+for i in 1..15:
+  styledEcho bgColor, bg, fgColor, fg, Nim, resetStyle
+  int -= 0.01
+  fg = intensity(fg, int)
+
+setForegroundColor colRed
+setBackgroundColor colGreen
+styledEcho "Red on Green.", resetStyle
+```
+- If you use ``--dynlibOverride:ssl`` with OpenSSL 1.0.x, you now have to
+  define ``openssl10`` symbol (``-d:openssl10``). By default OpenSSL 1.1.x is
+  assumed.

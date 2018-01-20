@@ -25,9 +25,12 @@ proc cmpStrings(a, b: NimString): int {.inline, compilerProc.} =
   if a == nil: return -1
   if b == nil: return 1
   let minlen = min(a.len, b.len)
-  result = c_memcmp(addr a.data, addr b.data, minlen.csize)
-  if result == 0:
-    result = a.len - b.len
+  if minlen > 0:
+    result = c_memcmp(addr a.data, addr b.data, minlen.csize)
+    if result == 0:
+      result = a.len - b.len
+  else:
+    result = 0
 
 proc eqStrings(a, b: NimString): bool {.inline, compilerProc.} =
   if a == b: return true
@@ -386,8 +389,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
     kdigits, fdigits = 0
     exponent: int
     integer: uint64
-    fraction: uint64
-    frac_exponent= 0
+    frac_exponent = 0
     exp_sign = 1
     first_digit = -1
     has_sign = false
@@ -480,7 +482,8 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
 
   # if integer is representable in 53 bits:  fast path
   # max fast path integer is  1<<53 - 1 or  8999999999999999 (16 digits)
-  if kdigits + fdigits <= 16 and first_digit <= 8:
+  let digits = kdigits + fdigits
+  if digits <= 15 or (digits <= 16 and first_digit <= 8):
     # max float power of ten with set bits above the 53th bit is 10^22
     if abs_exponent <= 22:
       if exp_negative:
@@ -504,6 +507,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   result = i - start
   i = start
   # re-parse without error checking, any error should be handled by the code above.
+  if s[i] == '.': i.inc
   while s[i] in {'0'..'9','+','-'}:
     if ti < maxlen:
       t[ti] = s[i]; inc(ti)

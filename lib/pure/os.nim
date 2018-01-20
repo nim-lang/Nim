@@ -672,7 +672,10 @@ template walkCommon(pattern: string, filter) =
           if dotPos < 0 or idx >= ff.len or ff[idx] == '.' or
               pattern[dotPos+1] == '*':
             yield splitFile(pattern).dir / extractFilename(ff)
-        if findNextFile(res, f) == 0'i32: break
+        if findNextFile(res, f) == 0'i32:
+          let errCode = getLastError()
+          if errCode == ERROR_NO_MORE_FILES: break
+          else: raiseOSError(errCode.OSErrorCode)
   else: # here we use glob
     var
       f: Glob
@@ -782,7 +785,10 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
             let xx = if relative: extractFilename(getFilename(f))
                      else: dir / extractFilename(getFilename(f))
             yield (k, xx)
-          if findNextFile(h, f) == 0'i32: break
+          if findNextFile(h, f) == 0'i32:
+            let errCode = getLastError()
+            if errCode == ERROR_NO_MORE_FILES: break
+            else: raiseOSError(errCode.OSErrorCode)
     else:
       var d = opendir(dir)
       if d != nil:

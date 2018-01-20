@@ -1202,18 +1202,30 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   # we skip this step here:
   if not p.module.compileToCpp:
     if handleConstExpr(p, e, d): return
-  var tmp: TLoc
   var t = e.typ.skipTypes(abstractInst)
-  getTemp(p, t, tmp)
   let isRef = t.kind == tyRef
-  var r = rdLoc(tmp)
-  if isRef:
-    rawGenNew(p, tmp, nil)
-    t = t.lastSon.skipTypes(abstractInst)
-    r = "(*$1)" % [r]
-    gcUsage(e)
+
+  # check if we need to construct the object in a temporary
+  var useTemp =
+        isRef or
+        (d.k notin {locTemp,locLocalVar,locGlobalVar,locParam,locField}) or
+        (isPartOf(d.lode, e) != arNo)
+
+  var tmp: TLoc
+  var r: Rope
+  if useTemp:
+    getTemp(p, t, tmp)
+    r = rdLoc(tmp)
+    if isRef:
+      rawGenNew(p, tmp, nil)
+      t = t.lastSon.skipTypes(abstractInst)
+      r = "(*$1)" % [r]
+      gcUsage(e)
+    else:
+      constructLoc(p, tmp)
   else:
-    constructLoc(p, tmp)
+    resetLoc(p, d)
+    r = rdLoc(d)
   discard getTypeDesc(p.module, t)
   let ty = getUniqueType(t)
   for i in 1 ..< e.len:
@@ -1227,15 +1239,19 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
       genFieldCheck(p, it.sons[2], r, field)
     add(tmp2.r, ".")
     add(tmp2.r, field.loc.r)
-    tmp2.k = locTemp
+    if useTemp:
+      tmp2.k = locTemp
+      tmp2.storage = if isRef: OnHeap else: OnStack
+    else:
+      tmp2.k = d.k
+      tmp2.storage = if isRef: OnHeap else: d.storage
     tmp2.lode = it.sons[1]
-    tmp2.storage = if isRef: OnHeap else: OnStack
     expr(p, it.sons[1], tmp2)
-
-  if d.k == locNone:
-    d = tmp
-  else:
-    genAssignment(p, d, tmp, {})
+  if useTemp:
+    if d.k == locNone:
+      d = tmp
+    else:
+      genAssignment(p, d, tmp, {})
 
 proc lhsDoesAlias(a, b: PNode): bool =
   for y in b:

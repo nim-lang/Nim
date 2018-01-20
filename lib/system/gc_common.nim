@@ -18,12 +18,38 @@ proc protect*(x: pointer): ForeignCell =
   result.owner = addr(gch)
 
 when defined(nimTypeNames):
+  type InstancesInfo = array[400, (cstring, int, int)]
+  proc sortInstances(a: var InstancesInfo; n: int) =
+    # we use shellsort here; fast and simple
+    var h = 1
+    while true:
+      h = 3 * h + 1
+      if h > n: break
+    while true:
+      h = h div 3
+      for i in countup(h, n - 1):
+        var v = a[i]
+        var j = i
+        while a[j - h][2] < v[2]:
+          a[j] = a[j - h]
+          j = j - h
+          if j < h: break
+        a[j] = v
+      if h == 1: break
+
   proc dumpNumberOfInstances* =
+    var a: InstancesInfo
+    var n = 0
     var it = nimTypeRoot
     while it != nil:
-      if it.instances > 0:
-        c_fprintf(stdout, "[Heap] %s: #%ld; bytes: %ld\n", it.name, it.instances, it.sizes)
+      if it.instances > 0 and n < a.len:
+        a[n] = (it.name, it.instances, it.sizes)
+        inc n
       it = it.nextType
+    sortInstances(a, n)
+    for i in 0 .. n-1:
+      c_fprintf(stdout, "[Heap] %s: #%ld; bytes: %ld\n", a[i][0], a[i][1], a[i][2])
+
 
   when defined(nimGcRefLeak):
     proc oomhandler() =
@@ -41,7 +67,7 @@ template decTypeSize(cell, t) =
       let size = addInt(mulInt(len, base), GenericSeqSize)
       dec t.sizes, size+sizeof(Cell)
     else:
-      dec t.sizes, t.size+sizeof(Cell)
+      dec t.sizes, t.base.size+sizeof(Cell)
     dec t.instances
 
 template incTypeSize(typ, size) =
@@ -393,3 +419,28 @@ proc deallocHeap*(runFinalizers = true; allowGcAfterwards = true) =
   zeroMem(addr gch.region, sizeof(gch.region))
   if allowGcAfterwards:
     initGC()
+
+type
+  GlobalMarkerProc = proc () {.nimcall, benign.}
+var
+  globalMarkersLen: int
+  globalMarkers: array[0.. 3499, GlobalMarkerProc]
+  threadLocalMarkersLen: int
+  threadLocalMarkers: array[0.. 3499, GlobalMarkerProc]
+  gHeapidGenerator: int
+
+proc nimRegisterGlobalMarker(markerProc: GlobalMarkerProc) {.compilerProc.} =
+  if globalMarkersLen <= high(globalMarkers):
+    globalMarkers[globalMarkersLen] = markerProc
+    inc globalMarkersLen
+  else:
+    echo "[GC] cannot register global variable; too many global variables"
+    quit 1
+
+proc nimRegisterThreadLocalMarker(markerProc: GlobalMarkerProc) {.compilerProc.} =
+  if threadLocalMarkersLen <= high(threadLocalMarkers):
+    threadLocalMarkers[threadLocalMarkersLen] = markerProc
+    inc threadLocalMarkersLen
+  else:
+    echo "[GC] cannot register thread local variable; too many thread local variables"
+    quit 1
