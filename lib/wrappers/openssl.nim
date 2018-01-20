@@ -12,7 +12,9 @@
 ## When OpenSSL is dynamically linked, the wrapper provides partial forward and backward
 ## compatibility for OpenSSL versions above and below 1.1.0
 ##
-## OpenSSL can be also statically linked using dynlibOverride:ssl for OpenSSL >= 1.1.0
+## OpenSSL can also be statically linked using ``--dynlibOverride:ssl`` for OpenSSL >= 1.1.0.
+## If you want to statically link against OpenSSL 1.0.x, you now have to
+## define the ``openssl10`` symbol via ``-d:openssl10``.
 ##
 ## Build and test examples:
 ##
