@@ -185,18 +185,18 @@ proc assertValidDate(d: Date) {.inline.} =
 proc toEpochDate*(time: Time): EpochDate =
   EpochDate(time.int64 div secondsInDay)
 
-proc toEpochDate*(epoch_days: int32): EpochDate =
-  epoch_days.EpochDate
+proc toEpochDate*(epochDays: int32): EpochDate =
+  epochDays.EpochDate
 
-proc toEpochDate(year, month, day: int): EpochDate =
-  ## Get the epoch date from a year/month/day combination
+proc toEpochDate(day, month, year: int): EpochDate =
+  ## Get the epoch date from a day/month/year combination
   ## Note that numbers can be positive and negative
-  ## as well as outside of valid month, monthday range. 
+  ## as well as outside of valid month, monthday ranges. 
   ## Example: 2012-(-2)-32 is treated as 2011-12-02
   ## This feature is used for efficient interval calculation
 
   # Based on http://howardhinnant.github.io/date_algorithms.html
-  var (y, m, d) = (year, month, day)
+  var (d, m, y) = (day, month, year)
   while m <= 2:
     y.dec
     m.inc 12
@@ -209,9 +209,9 @@ proc toEpochDate(year, month, day: int): EpochDate =
 
 proc toEpochDate*(d: Date): EpochDate =
   assertValidDate d
-  toEpochDate(d.year, d.month.int, d.monthday.int)
+  toEpochDate(d.monthday.int, d.month.int, d.year)
 
-proc date*(epochdate: EpochDate): Date =
+proc fromEpochDate*(epochdate: EpochDate): Date =
   ## Get the year/month/day date from a epoch day.
   # Based on http://howardhinnant.github.io/date_algorithms.html
   var z = epochdate.int32
@@ -229,7 +229,6 @@ proc date*(epochdate: EpochDate): Date =
 proc yearday*(d: Date): YeardayRange {.tags: [], raises: [], benign .} =
   ## Returns the day of the year since January 1,
   ## in the range 0 to 365.
-  assertValidDate d
   const daysUntilMonth:     array[Month, int] = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
   const daysUntilMonthLeap: array[Month, int] = [0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335]
 
@@ -655,7 +654,7 @@ proc `+`*(d: Date, interval: TimeInterval): Date =
     year = d.year + interval.years
     month = ord(d.month) + interval.months
     day = d.monthday + interval.days + seconds div secondsInDay
-  date(toEpochDate(year, month, day))
+  date(toEpochDate(day, month, year))
 
 proc `+`*(dt: DateTime, interval: TimeInterval): DateTime =
   ## Adds ``interval`` to ``dt``. Components from ``interval`` are added
@@ -1390,11 +1389,6 @@ proc parse*(value, layout: string, zone: Timezone = local()): DateTime =
     # Otherwise convert to `zone`
     result = result.toTime.inZone(zone)
 
-proc date*(s: string): Date = 
-  ## Parse `s` date string using ISO format
-  runnableExamples:
-    date"2019-03-21"
-  parseDate(s, "yyyy-mm-dd")
 
 proc date*: Date = 
   ## Gets the current date as `Date` object
@@ -1440,7 +1434,7 @@ proc toTimeInterval*(time: Time): TimeInterval =
   var dt = time.local
   initInterval(0, dt.second, dt.minute, dt.hour, dt.monthday, dt.month.ord - 1, dt.year)
 
-proc date*(monthday: MonthdayRange, month: Month, year: int): Date =
+proc initDate*(monthday: MonthdayRange, month: Month, year: int): Date =
   ## Create a new ``Date``
   result = Date(monthday: monthday, month: month, year: year)
   assertValidDate result
