@@ -211,7 +211,7 @@ proc toEpochDate*(d: Date): EpochDate =
   assertValidDate d
   toEpochDate(d.monthday.int, d.month.int, d.year)
 
-proc fromEpochDate*(epochdate: EpochDate): Date =
+proc toDate*(epochdate: EpochDate): Date =
   ## Get the year/month/day date from a epoch day.
   # Based on http://howardhinnant.github.io/date_algorithms.html
   var z = epochdate.int32
@@ -321,7 +321,7 @@ proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
   rem = rem - minute * secondsInMin
   let second = rem
 
-  let date = fromEpochDate(epochdate.EpochDate)
+  let date = toDate(epochdate.EpochDate)
 
   DateTime(
     year: date.year,
@@ -654,7 +654,7 @@ proc `+`*(d: Date, interval: TimeInterval): Date =
     year = d.year + interval.years
     month = ord(d.month) + interval.months
     day = d.monthday + interval.days + seconds div secondsInDay
-  fromEpochDate(toEpochDate(day, month, year))
+  toEpochDate(day, month, year).toDate()
 
 proc `+`*(dt: DateTime, interval: TimeInterval): DateTime =
   ## Adds ``interval`` to ``dt``. Components from ``interval`` are added
@@ -1378,9 +1378,12 @@ proc parse*(value, layout: string, zone: Timezone = local()): DateTime =
   if parsedDateComplete * found_tokens != parsedDateComplete:
       # Assumes current day of month, month and year
     let dt = nowDate()
-    result.monthday = dt.monthday
-    result.month = dt.month
-    result.year = dt.year
+    if ptMonthDay notin found_tokens:
+      result.monthday = dt.monthday
+    if ptMonth notin found_tokens:
+      result.month = dt.month
+    if ptYear notin found_tokens:
+      result.year = dt.year
 
   if ptTimeZone notin found_tokens:
     # No timezone parsed - assume timezone is `zone`
@@ -1392,7 +1395,7 @@ proc parse*(value, layout: string, zone: Timezone = local()): DateTime =
 
 proc nowDate*: Date = 
   ## Gets the current date as `Date` object
-  getTime().toEpochDate().fromEpochDate()
+  getTime().toEpochDate().toDate()
 
 proc countLeapYears*(yearSpan: int): int =
   ## Returns the number of leap years spanned by a given number of years.
