@@ -183,7 +183,8 @@ proc assertValidDate(d: Date) {.inline.} =
     $d.year & "-" & $ord(d.month) & "-" & $d.monthday & " is not a valid date"
 
 proc toEpochDate*(time: Time): EpochDate =
-  EpochDate(time.int64 div secondsInDay)
+  let t = time.int64 
+  EpochDate((if t >= 0: t else: t - (secondsInDay - 1)) div secondsInDay)
 
 proc toEpochDate*(epochDays: int32): EpochDate =
   epochDays.EpochDate
@@ -296,7 +297,6 @@ proc `<=` * (a, b: EpochDate): bool {.borrow.}
 proc `==`*(a, b: EpochDate): bool {.borrow.}
   ## Returns true if ``a == b``, that is if both dates represent the same day in time.
 
-
 proc toTime*(date: EpochDate): Time {.tags: [], raises: [], benign.} =
   Time(date.int * secondsInDay)
 
@@ -312,9 +312,9 @@ proc toTime*(dt: DateTime): Time {.tags: [], raises: [], benign.} =
   result.inc dt.utcOffset
 
 proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
-  let adjTime = zt.adjTime.int64
-  let epochdate = (if adjTime >= 0: adjTime else: adjTime - (secondsInDay - 1)) div secondsInDay
-  var rem = zt.adjTime.int64 - epochdate * secondsInDay
+  let adjTime = zt.adjTime
+  let epochdate = toEpochDate(adjTime)
+  var rem = zt.adjTime.int64 - epochdate.int64 * secondsInDay
   let hour = rem div secondsInHour
   rem = rem - hour * secondsInHour
   let minute = rem div secondsInMin
@@ -547,9 +547,6 @@ proc now*(): DateTime {.tags: [TimeEffect], benign.} =
   ## Shorthand for ``getTime().local``.
   getTime().local
 
-proc nowDate*(): Date {.tags: [TimeEffect], benign.}
-  ## Gets the current date as a ``Date``
-
 proc initInterval*(milliseconds, seconds, minutes, hours, days, months,
                    years: int = 0): TimeInterval =
   ## Creates a new ``TimeInterval``.
@@ -692,7 +689,7 @@ proc `-`*(dt: DateTime, interval: TimeInterval): DateTime =
 
 proc getDateStr*(): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
   ## Gets the current date as a string of the format ``YYYY-MM-DD``.
-  let d = nowDate()
+  let d = now()
   result = $d.year & '-' & intToStr(ord(d.month), 2) &
     '-' & intToStr(d.monthday, 2)
 
@@ -1129,7 +1126,7 @@ proc parseDate(dt: var Date; token, value: string; j: var int): ParseTokenKind =
   of "yy":
     # Assumes current century
     let year = value[j..j+1].parseInt()
-    let thisCen = nowDate().year div 100
+    let thisCen = getTime().toEpochDate.toDate.year div 100
     dt.year = thisCen*100 + year
     j += 2
     result = ptYear    
@@ -1377,7 +1374,7 @@ proc parse*(value, layout: string, zone: Timezone = local()): DateTime =
 
   if parsedDateComplete * found_tokens != parsedDateComplete:
       # Assumes current day of month, month and year
-    let dt = nowDate()
+    let dt = now()
     if ptMonthDay notin found_tokens:
       result.monthday = dt.monthday
     if ptMonth notin found_tokens:
@@ -1391,11 +1388,6 @@ proc parse*(value, layout: string, zone: Timezone = local()): DateTime =
   else:
     # Otherwise convert to `zone`
     result = result.toTime.inZone(zone)
-
-
-proc nowDate*: Date = 
-  ## Gets the current date as `Date` object
-  getTime().toEpochDate().toDate()
 
 proc countLeapYears*(yearSpan: int): int =
   ## Returns the number of leap years spanned by a given number of years.
