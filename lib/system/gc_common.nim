@@ -38,6 +38,11 @@ when defined(nimTypeNames):
       if h == 1: break
 
   proc dumpNumberOfInstances* =
+    # also add the allocated strings to the list of known types:
+    if strDesc.nextType == nil:
+      strDesc.nextType = nimTypeRoot
+      strDesc.name = "string"
+      nimTypeRoot = addr strDesc
     var a: InstancesInfo
     var n = 0
     var it = nimTypeRoot
