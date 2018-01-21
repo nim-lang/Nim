@@ -414,7 +414,7 @@ proc genDeepCopy(p: BProc; dest, src: TLoc) =
     else:
       linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   of tyPointer, tyChar, tyBool, tyEnum, tyCString,
-     tyInt..tyUInt64, tyRange, tyVar:
+     tyInt..tyUInt64, tyRange, tyVar, tyLent:
     linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
   else: internalError("genDeepCopy: " & $ty.kind)
 
@@ -699,7 +699,7 @@ proc genDeref(p: BProc, e: PNode, d: var TLoc; enforceDeref=false) =
       case typ.kind
       of tyRef:
         d.storage = OnHeap
-      of tyVar:
+      of tyVar, tyLent:
         d.storage = OnUnknown
         if tfVarIsPtr notin typ.flags and p.module.compileToCpp and
             e.kind == nkHiddenDeref:
@@ -1359,9 +1359,9 @@ proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
   var r = rdLoc(a)
   var nilCheck: Rope = nil
   var t = skipTypes(a.t, abstractInst)
-  while t.kind in {tyVar, tyPtr, tyRef}:
-    if t.kind != tyVar: nilCheck = r
-    if t.kind != tyVar or not p.module.compileToCpp:
+  while t.kind in {tyVar, tyLent, tyPtr, tyRef}:
+    if t.kind notin {tyVar, tyLent}: nilCheck = r
+    if t.kind notin {tyVar, tyLent} or not p.module.compileToCpp:
       r = rfmt(nil, "(*$1)", r)
     t = skipTypes(t.lastSon, typedescInst)
   if not p.module.compileToCpp:
@@ -1723,7 +1723,7 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc, magic: string) =
         rope(magic)]), a.storage)
 
 proc genConv(p: BProc, e: PNode, d: var TLoc) =
-  let destType = e.typ.skipTypes({tyVar, tyGenericInst, tyAlias, tySink})
+  let destType = e.typ.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink})
   if sameBackendType(destType, e.sons[1].typ):
     expr(p, e.sons[1], d)
   else:
@@ -1799,7 +1799,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
                                                "$# = #subInt64($#, $#);$n"]
     const fun: array[mInc..mDec, string] = ["$# = #addInt($#, $#);$n",
                                              "$# = #subInt($#, $#);$n"]
-    let underlying = skipTypes(e.sons[1].typ, {tyGenericInst, tyAlias, tySink, tyVar, tyRange})
+    let underlying = skipTypes(e.sons[1].typ, {tyGenericInst, tyAlias, tySink, tyVar, tyLent, tyRange})
     if optOverflowCheck notin p.options or underlying.kind in {tyUInt..tyUInt64}:
       binaryStmt(p, e, d, opr[op])
     else:
