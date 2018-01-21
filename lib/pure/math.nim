@@ -295,12 +295,16 @@ when not defined(JS):
       ## .. code-block:: nim
       ##  echo trunc(PI) # 3.0
 
-  proc fmod*(x, y: float32): float32 {.importc: "fmodf", header: "<math.h>".}
-  proc fmod*(x, y: float64): float64 {.importc: "fmod", header: "<math.h>".}
+  proc fmod*(x, y: float32): float32 {.deprecated, importc: "fmodf", header: "<math.h>".}
+  proc fmod*(x, y: float64): float64 {.deprecated, importc: "fmod", header: "<math.h>".}
     ## Computes the remainder of `x` divided by `y`
     ##
     ## .. code-block:: nim
     ##  echo fmod(-2.5, 0.3) ## -0.1
+
+  proc `mod`*(x, y: float32): float32 {.importc: "fmodf", header: "<math.h>".}
+  proc `mod`*(x, y: float64): float64 {.importc: "fmod", header: "<math.h>".}
+    ## Computes the modulo operation for float operators. 
 
 else:
   proc trunc*(x: float32): float32 {.importc: "Math.trunc", nodecl.}
@@ -346,6 +350,10 @@ else:
   proc tanh*[T: float32|float64](x: T): T =
     var y = exp(2.0*x)
     return (y-1.0)/(y+1.0)
+
+  proc `mod`*(x, y: float32): float32 {.importcpp: "# % #".}
+  proc `mod`*(x, y: float64): float64 {.importcpp: "# % #".}
+  ## Computes the modulo operation for float operators.
 
 proc round*[T: float32|float64](x: T, places: int = 0): T =
   ## Round a floating point number.
@@ -425,15 +433,6 @@ proc sgn*[T: SomeNumber](x: T): int {.inline.} =
   ## positive numbers and `Inf`, and 0 for positive zero, negative zero and
   ## `NaN`.
   ord(T(0) < x) - ord(x < T(0))
-
-proc `mod`*[T: float32|float64](x, y: T): T =
-  ## Computes the modulo operation for float operators. Equivalent
-  ## to ``x - y * floor(x/y)``. Note that the remainder will always
-  ## have the same sign as the divisor.
-  ##
-  ## .. code-block:: nim
-  ##  echo (4.0 mod -3.1) # -2.2
-  result = if y == 0.0: x else: x - y * (x/y).floor
 
 {.pop.}
 {.pop.}
