@@ -571,6 +571,7 @@ Closure iterators have other restrictions than inline iterators:
 3. ``return`` is allowed in a closure iterator (but rarely useful) and ends
    iteration.
 4. Neither inline nor closure iterators can be recursive.
+5. Closure iterators are not supported by the js backend.
 
 Iterators that are neither marked ``{.closure.}`` nor ``{.inline.}`` explicitly
 default to being inline, but this may change in future versions of the
