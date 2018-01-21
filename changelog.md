@@ -220,3 +220,6 @@ styledEcho "Red on Green.", resetStyle
 - If you use ``--dynlibOverride:ssl`` with OpenSSL 1.0.x, you now have to
   define ``openssl10`` symbol (``-d:openssl10``). By default OpenSSL 1.1.x is
   assumed.
+
+- ``writeStackTrace`` is now proclaimed to have no IO effect (even though it does)
+  so that it is more useful for debugging purposes.
