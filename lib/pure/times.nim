@@ -321,7 +321,7 @@ proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
   rem = rem - minute * secondsInMin
   let second = rem
 
-  let date = toDate(epochdate.EpochDate)
+  let date = toDate(epochdate)
 
   DateTime(
     year: date.year,
