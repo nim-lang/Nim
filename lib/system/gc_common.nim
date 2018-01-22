@@ -38,11 +38,16 @@ when defined(nimTypeNames):
       if h == 1: break
 
   proc dumpNumberOfInstances* =
+    # also add the allocated strings to the list of known types:
+    if strDesc.nextType == nil:
+      strDesc.nextType = nimTypeRoot
+      strDesc.name = "string"
+      nimTypeRoot = addr strDesc
     var a: InstancesInfo
     var n = 0
     var it = nimTypeRoot
     while it != nil:
-      if it.instances > 0 and n < a.len:
+      if (it.instances > 0 or it.sizes != 0) and n < a.len:
         a[n] = (it.name, it.instances, it.sizes)
         inc n
       it = it.nextType
@@ -62,9 +67,9 @@ template decTypeSize(cell, t) =
   # XXX this needs to use atomics for multithreaded apps!
   when defined(nimTypeNames):
     if t.kind in {tyString, tySequence}:
-      let len = cast[PGenericSeq](cellToUsr(cell)).len
-      let base = if t.kind == tyString: 1 else: t.base.size
-      let size = addInt(mulInt(len, base), GenericSeqSize)
+      let cap = cast[PGenericSeq](cellToUsr(cell)).space
+      let size = if t.kind == tyString: cap+1+GenericSeqSize
+                 else: addInt(mulInt(cap, t.base.size), GenericSeqSize)
       dec t.sizes, size+sizeof(Cell)
     else:
       dec t.sizes, t.base.size+sizeof(Cell)
