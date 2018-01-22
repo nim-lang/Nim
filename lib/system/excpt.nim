@@ -386,9 +386,9 @@ proc writeStackTrace() =
   when hasSomeStackTrace:
     var s = ""
     rawWriteStackTrace(s)
-    cast[proc (s: string) {.noSideEffect, tags: [], nimcall.}](showErrorMessage)(s)
+    cast[proc (s: cstring) {.noSideEffect, tags: [], nimcall.}](showErrorMessage)(s)
   else:
-    cast[proc (s: string) {.noSideEffect, tags: [], nimcall.}](showErrorMessage)("No stack traceback available\n")
+    cast[proc (s: cstring) {.noSideEffect, tags: [], nimcall.}](showErrorMessage)("No stack traceback available\n")
 
 proc getStackTrace(): string =
   when hasSomeStackTrace:
