@@ -46,15 +46,17 @@ when defined(nimTypeNames):
     var a: InstancesInfo
     var n = 0
     var it = nimTypeRoot
+    var totalAllocated = 0
     while it != nil:
       if (it.instances > 0 or it.sizes != 0) and n < a.len:
         a[n] = (it.name, it.instances, it.sizes)
         inc n
+      inc totalAllocated, it.sizes
       it = it.nextType
     sortInstances(a, n)
     for i in 0 .. n-1:
       c_fprintf(stdout, "[Heap] %s: #%ld; bytes: %ld\n", a[i][0], a[i][1], a[i][2])
-
+    c_fprintf(stdout, "[Heap] total number of bytes: %ld\n", totalAllocated)
 
   when defined(nimGcRefLeak):
     proc oomhandler() =
