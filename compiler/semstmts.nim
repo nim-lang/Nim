@@ -277,8 +277,12 @@ proc semTry(c: PContext, n: PNode): PNode =
     openScope(c)
     if a.kind == nkExceptBranch:
 
-      if a[0].isInfixAs():
-        # support ``except Exception as ex``
+      if a.len == 2 and a[0].kind == nkBracket:
+        # rewrite ``except [a, b, c]: body`` -> ```except a, b, c: body```
+        a.sons[0..0] = a[0].sons
+      
+      if a.len == 2 and a[0].isInfixAs():
+        # support ``except Exception as ex: body``
         a[0][1] = semExceptBranchType(a[0][1])
 
         let symbol = newSymG(skLet, a[0][2], c)
@@ -288,11 +292,7 @@ proc semTry(c: PContext, n: PNode): PNode =
         a[0][2] = newSymNode(symbol, a[0][2].info)
 
       else:
-
-        if a.len == 2 and a[0].kind == nkBracket:
-          # rewrite ``except [a, b, c]`` -> ```except a, b, c```
-          a.sons[0..0] = a[0].sons
-
+        # support ``except KeyError, ValueError, ... : body``
         for j in 0..a.len-2:
           a[j] = semExceptBranchType(a[j])
      
