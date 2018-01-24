@@ -267,8 +267,8 @@ proc semTry(c: PContext, n: PNode): PNode =
   checkMinSonsLen(n, 2)
 
   var typ = commonTypeBegin
-  n.sons[0] = semExprBranchScope(c, n.sons[0])
-  typ = commonType(typ, n.sons[0].typ)
+  n[0] = semExprBranchScope(c, n[0])
+  typ = commonType(typ, n[0].typ)
 
   var last = sonsLen(n) - 1
   for i in countup(1, last):
