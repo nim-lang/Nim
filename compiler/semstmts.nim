@@ -272,9 +272,8 @@ proc semTry(c: PContext, n: PNode): PNode =
 
   var last = sonsLen(n) - 1
   for i in countup(1, last):
-    var a = n.sons[i]
+    let a = n.sons[i]
     checkMinSonsLen(a, 1)
-    var length = sonsLen(a)
     openScope(c)
     if a.kind == nkExceptBranch:
 
@@ -290,7 +289,7 @@ proc semTry(c: PContext, n: PNode): PNode =
 
       else:
 
-        if length == 2 and a[0].kind == nkBracket:
+        if a.len == 2 and a[0].kind == nkBracket:
           # rewrite ``except [a, b, c]`` -> ```except a, b, c```
           a.sons[0..0] = a[0].sons
 
@@ -301,8 +300,8 @@ proc semTry(c: PContext, n: PNode): PNode =
       illFormedAst(n)
 
     # last child of an nkExcept/nkFinally branch is a statement:
-    a.sons[length-1] = semExprBranchScope(c, a.sons[length-1])
-    if a.kind != nkFinally: typ = commonType(typ, a.sons[length-1])
+    a[^1] = semExprBranchScope(c, a[^1])
+    if a.kind != nkFinally: typ = commonType(typ, a[^1])
     else: dec last
     closeScope(c)
 
