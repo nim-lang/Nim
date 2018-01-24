@@ -223,3 +223,6 @@ styledEcho "Red on Green.", resetStyle
 
 - ``writeStackTrace`` is now proclaimed to have no IO effect (even though it does)
   so that it is more useful for debugging purposes.
+- ``\n`` is now only the single line feed character like in most
+  other programming languages. The new platform specific newline escape sequence is
+  written as ``\p``. This change only affects the Windows platform.
