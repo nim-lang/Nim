@@ -288,14 +288,15 @@ proc semTry(c: PContext, n: PNode): PNode =
         # Overwrite symbol in AST with the symbol in the symbol table.
         a[0][2] = newSymNode(symbol, a[0][2].info)
 
-      elif length == 2 and a[0].kind == nkBracket:
-        # support ``except [a, b, c]``
-        for j in 0..<a[0].len:
-          a[0][j] = semExceptBranchType(a[0][j])
-      elif length == 2:
-        # usual `except Exception`
-        a[0] = semExceptBranchType(a[0])
+      else:
 
+        if length == 2 and a[0].kind == nkBracket:
+          # rewrite ``except [a, b, c]`` -> ```except a, b, c```
+          a.sons[0..0] = a[0].sons
+
+        for j in 0..a.len-2:
+          a[j] = semExceptBranchType(a[j])
+     
     elif a.kind != nkFinally:
       illFormedAst(n)
 
