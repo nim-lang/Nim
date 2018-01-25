@@ -1344,6 +1344,9 @@ proc genArgs(p: PProc, n: PNode, r: var TCompRes; start=1) =
 
 proc genOtherArg(p: PProc; n: PNode; i: int; typ: PType;
                  generated: var int; r: var TCompRes) =
+  if i >= n.len:
+    globalError(n.info, "wrong importcpp pattern; expected parameter at position " & $i &
+        " but got only: " & $(n.len-1))
   let it = n[i]
   var paramType: PNode = nil
   if i < sonsLen(typ):
