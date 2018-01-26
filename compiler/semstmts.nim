@@ -531,6 +531,10 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
 
     # this can only happen for errornous var statements:
     if typ == nil: continue
+    if c.matchedConcept == nil and a.sons[length-1].kind == nkEmpty and
+          typ.isMetaType:
+      localError(a.info, errTIsNotAConcreteType, typ.typeToString)
+
     typeAllowedCheck(a.info, typ, symkind)
     liftTypeBoundOps(c, typ, a.info)
     var tup = skipTypes(typ, {tyGenericInst, tyAlias, tySink})
