@@ -229,6 +229,24 @@ assert "/1/2/3".rfind('0') == -1
 assert(toHex(100i16, 32) == "00000000000000000000000000000064")
 assert(toHex(-100i16, 32) == "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF9C")
 
+assert "".parseHexStr == ""
+assert "00Ff80".parseHexStr == "\0\xFF\x80"
+try:
+  discard "00Ff8".parseHexStr
+  assert false, "Should raise ValueError"
+except ValueError:
+  discard
+
+try:
+  discard "0k".parseHexStr
+  assert false, "Should raise ValueError"
+except ValueError:
+  discard
+
+assert "".toHex == ""
+assert "\x00\xFF\x80".toHex == "00FF80"
+assert "0123456789abcdef".parseHexStr.toHex == "0123456789ABCDEF"
+
 assert(' '.repeat(8)== "        ")
 assert(" ".repeat(8) == "        ")
 assert(spaces(8) == "        ")
