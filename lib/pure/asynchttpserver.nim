@@ -68,7 +68,7 @@ proc newAsyncHttpServer*(reuseAddr = true, reusePort = false): AsyncHttpServer =
   result.reuseAddr = reuseAddr
   result.reusePort = reusePort
 
-proc addHeaders(msg: var string, headers: HttpHeaders) =
+template addHeaders(msg: var string, headers: HttpHeaders) =
   for k, v in headers:
     msg.add(k & ": " & v & "\c\L")
 
@@ -129,6 +129,19 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
 
+proc parseUppercaseMethod(name: string): HttpMethod =
+  result = case name
+  of "HEAD": HttpHead
+  of "GET": HttpGet
+  of "POST": HttpPost
+  of "PUT": HttpPut
+  of "DELETE": HttpDelete
+  of "TRACE": HttpTrace
+  of "OPTIONS": HttpOptions
+  of "CONNECT": HttpConnect
+  of "PATCH": HttpPatch
+  else: raise newException(ValueError, "Unknown HTTP method")
+
 proc processClient(client: AsyncSocket, address: string,
                    callback: proc (request: Request):
                       Future[void] {.closure, gcsafe.}) {.async.} =
@@ -173,8 +186,7 @@ proc processClient(client: AsyncSocket, address: string,
       case i
       of 0:
         try:
-          # TODO: this is likely slow.
-          request.reqMethod = parseEnum[HttpMethod]("http" & linePart)
+          request.reqMethod = parseUppercaseMethod(linePart)
         except ValueError:
           asyncCheck request.respondError(Http400)
           continue
