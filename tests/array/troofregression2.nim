@@ -11,10 +11,8 @@ fjpmholcibdgeakn
 '''
 """
 
-import strutils, sequtils
+import strutils, sequtils, typetraits, os
 # bug #6989
-
-import typetraits
 
 type Dist = distinct int
 
@@ -63,8 +61,8 @@ echo testStr[testStr.len - 8 .. testStr.len - 1] & "__" & testStr[0 .. testStr.l
 
 
 
-const
-  instructions = readFile("./inputs/16.txt").split(',')
+var
+  instructions = readFile(getAppDir() / "troofregression2.txt").split(',')
   programs = "abcdefghijklmnop"
 
 proc dance(dancers: string): string =
