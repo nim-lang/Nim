@@ -130,7 +130,7 @@ proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
 
 proc parseUppercaseMethod(name: string): HttpMethod =
-  case name
+  result = case name
   of "HEAD": HttpHead
   of "GET": HttpGet
   of "POST": HttpPost
