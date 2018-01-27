@@ -30,7 +30,12 @@ proc newIntNodeT(intVal: BiggestInt, n: PNode): PNode =
   case skipTypes(n.typ, abstractVarRange).kind
   of tyInt:
     result = newIntNode(nkIntLit, intVal)
-    result.typ = getIntLitType(result)
+    # See bug #6989. 'pred' et al only produce an int literal type if the
+    # original type was 'int', not a distinct int etc.
+    if n.typ.kind == tyInt:
+      result.typ = getIntLitType(result)
+    else:
+      result.typ = n.typ
     # hrm, this is not correct: 1 + high(int) shouldn't produce tyInt64 ...
     #setIntLitType(result)
   of tyChar:
