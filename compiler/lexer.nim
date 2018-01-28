@@ -755,7 +755,7 @@ proc getString(L: var TLexer, tok: var TToken, rawMode: bool) =
         tokenEndIgnore(tok, pos)
         pos = handleCRLF(L, pos)
         buf = L.buf
-        add(tok.literal, tnl)
+        add(tok.literal, "\n")
       of nimlexbase.EndOfFile:
         tokenEndIgnore(tok, pos)
         var line2 = L.lineNumber
