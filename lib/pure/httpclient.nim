@@ -132,14 +132,14 @@ type
     version*: string
     status*: string
     headers*: HttpHeaders
-    body: string
-    bodyStream*: Stream
+    bodyStorage: string
+    parseBodyCB: proc (onData: proc (data: string), onComplete: proc ())
 
   AsyncResponse* = ref object
     version*: string
     status*: string
     headers*: HttpHeaders
-    body: string
+    bodyStorage: string
     bodyStream*: FutureStream[string]
 
 proc code*(response: Response | AsyncResponse): HttpCode
@@ -175,26 +175,38 @@ proc lastModified*(response: Response | AsyncResponse): DateTime =
   var lastModifiedHeader = response.headers.getOrDefault("last-modified")
   result = parse(lastModifiedHeader, "dd, dd MMM yyyy HH:mm:ss Z")
 
+proc bodyStream*(response: Response, onData: proc (data: string),
+                 onComplete: proc () = proc () = discard) =
+  ## Allows a response's body to be read in a streaming manner.
+  ##
+  ## The specified callback ``onData`` is called for every chunk of data that
+  ## is read. Once all data has been read the ``onComplete`` callback is called.
+  response.parseBodyCB(onData, onComplete)
+
 proc body*(response: Response): string =
   ## Retrieves the specified response's body.
   ##
   ## The response's body stream is read synchronously.
-  if response.body.isNil():
-    response.body = response.bodyStream.readAll()
-  return response.body
+  if response.bodyStorage.isNil():
+    response.bodyStorage = ""
+    response.bodyStream(
+      proc (data: string) =
+        response.bodyStorage.add(data)
+    )
+  return response.bodyStorage
 
 proc `body=`*(response: Response, value: string) {.deprecated.} =
   ## Setter for backward compatibility.
   ##
   ## **This is deprecated and should not be used**.
-  response.body = value
+  response.bodyStorage = value
 
 proc body*(response: AsyncResponse): Future[string] {.async.} =
   ## Reads the response's body and caches it. The read is performed only
   ## once.
-  if response.body.isNil:
-    response.body = await readAll(response.bodyStream)
-  return response.body
+  if response.bodyStorage.isNil:
+    response.bodyStorage = await readAll(response.bodyStream)
+  return response.bodyStorage
 
 type
   Proxy* = ref object
@@ -808,8 +820,9 @@ type
     when SocketType is AsyncSocket:
       bodyStream: FutureStream[string]
     else:
-      bodyStream: Stream
-    getBody: bool ## When `false`, the body is never read in requestAux.
+      onData: proc (data: string)
+      onComplete: proc ()
+    requestPending: bool
 
 type
   HttpClient* = HttpClientBase[Socket]
@@ -839,8 +852,6 @@ proc newHttpClient*(userAgent = defUserAgent,
   result.proxy = proxy
   result.timeout = timeout
   result.onProgressChanged = nil
-  result.bodyStream = newStringStream()
-  result.getBody = true
   when defined(ssl):
     result.sslContext = contextOrDefault(sslContext)
 
@@ -872,7 +883,6 @@ proc newAsyncHttpClient*(userAgent = defUserAgent,
   result.timeout = -1 # TODO
   result.onProgressChanged = nil
   result.bodyStream = newFutureStream[string]("newAsyncHttpClient")
-  result.getBody = true
   when defined(ssl):
     result.sslContext = contextOrDefault(sslContext)
 
@@ -914,7 +924,10 @@ proc recvFull(client: HttpClient | AsyncHttpClient, size: int, timeout: int,
 
     readLen.inc(data.len)
     if keep:
-      await client.bodyStream.write(data)
+      when client is AsyncHttpClient:
+        await client.bodyStream.write(data)
+      else:
+        client.onData(data)
 
     await reportProgress(client, data.len)
 
@@ -1003,7 +1016,8 @@ proc parseBody(client: HttpClient | AsyncHttpClient,
   when client is AsyncHttpClient:
     client.bodyStream.complete()
   else:
-    client.bodyStream.setPosition(0)
+    client.onComplete()
+  client.requestPending = false
 
   # If the server will close our connection, then no matter the method of
   # reading the body, we need to close our socket.
@@ -1067,11 +1081,18 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
 
   if getBody:
     when client is HttpClient:
-      client.bodyStream = newStringStream()
+      let res = result
+      result.parseBodyCB =
+        proc (onData: proc (data: string), onComplete: proc ()) =
+          client.onData = onData
+          client.onComplete = onComplete
+          parseBody(client, res.headers, res.version)
     else:
       client.bodyStream = newFutureStream[string]("parseResponse")
-    await parseBody(client, result.headers, result.version)
-    result.bodyStream = client.bodyStream
+      asyncCheck parseBody(client, result.headers, result.version)
+      result.bodyStream = client.bodyStream
+  else:
+    client.requestPending = false
 
 proc newConnection(client: HttpClient | AsyncHttpClient,
                    url: Uri) {.multisync.} =
@@ -1159,6 +1180,10 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: string,
                 headers: HttpHeaders = nil): Future[Response | AsyncResponse]
                 {.multisync.} =
   # Helper that actually makes the request. Does not handle redirects.
+  if client.requestPending:
+    httpError("Another request is currently pending. Did you forget to read a "&
+              "previous request's body?")
+  client.requestPending = true
   let requestUrl = parseUri(url)
 
   await newConnection(client, requestUrl)
@@ -1175,8 +1200,7 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: string,
   if body != "":
     await client.socket.send(body)
 
-  let getBody = httpMethod.toLowerAscii() notin ["head", "connect"] and
-                client.getBody
+  let getBody = httpMethod.toLowerAscii() notin ["head", "connect"]
   result = await parseResponse(client, getBody)
 
 proc request*(client: HttpClient | AsyncHttpClient, url: string,
@@ -1186,7 +1210,7 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
   ## Connects to the hostname specified by the URL and performs a request
   ## using the custom method string specified by ``httpMethod``.
   ##
-  ## Connection will kept alive. Further requests on the same ``client`` to
+  ## Connection will be kept alive. Further requests on the same ``client`` to
   ## the same hostname will not require a new connection to be made. The
   ## connection can be closed by using the ``close`` procedure.
   ##
@@ -1197,8 +1221,11 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
   var lastURL = url
   for i in 1..client.maxRedirects:
     if result.status.redirection():
+      # Make sure the body has been read...
+      discard await result.body()
+
       let redirectTo = getNewLocation(lastURL, result.headers)
-      result = await client.request(redirectTo, httpMethod, body, headers)
+      result = await client.requestAux(redirectTo, httpMethod, body, headers)
       lastURL = redirectTo
 
 
@@ -1238,7 +1265,7 @@ proc getContent*(client: HttpClient | AsyncHttpClient,
   if resp.code.is4xx or resp.code.is5xx:
     raise newException(HttpRequestError, resp.status)
   else:
-    return await resp.bodyStream.readAll()
+    return await resp.body
 
 proc post*(client: HttpClient | AsyncHttpClient, url: string, body = "",
            multipart: MultipartData = nil): Future[Response | AsyncResponse]
@@ -1286,51 +1313,37 @@ proc postContent*(client: HttpClient | AsyncHttpClient, url: string,
   if resp.code.is4xx or resp.code.is5xx:
     raise newException(HttpRequestError, resp.status)
   else:
-    return await resp.bodyStream.readAll()
+    return await resp.body
 
 proc downloadFile*(client: HttpClient, url: string, filename: string) =
   ## Downloads ``url`` and saves it to ``filename``.
-  client.getBody = false
-  defer:
-    client.getBody = true
   let resp = client.get(url)
 
-  client.bodyStream = newFileStream(filename, fmWrite)
-  if client.bodyStream.isNil:
+  let file = newFileStream(filename, fmWrite)
+  if file.isNil:
     fileError("Unable to open file")
-  parseBody(client, resp.headers, resp.version)
-  client.bodyStream.close()
+
+  resp.bodyStream(
+    proc (data: string) =
+      file.write(data),
+    proc () =
+      file.close()
+  )
 
   if resp.code.is4xx or resp.code.is5xx:
     raise newException(HttpRequestError, resp.status)
 
 proc downloadFile*(client: AsyncHttpClient, url: string,
-                   filename: string): Future[void] =
-  proc downloadFileEx(client: AsyncHttpClient,
-                      url, filename: string): Future[void] {.async.} =
-    ## Downloads ``url`` and saves it to ``filename``.
-    client.getBody = false
-    let resp = await client.get(url)
+                   filename: string) {.async.} =
+  ## Downloads ``url`` and saves it to ``filename``.
+  let resp = await client.get(url)
 
-    client.bodyStream = newFutureStream[string]("downloadFile")
-    var file = openAsync(filename, fmWrite)
-    # Let `parseBody` write response data into client.bodyStream in the
-    # background.
-    asyncCheck parseBody(client, resp.headers, resp.version)
-    # The `writeFromStream` proc will complete once all the data in the
-    # `bodyStream` has been written to the file.
-    await file.writeFromStream(client.bodyStream)
-    file.close()
+  if resp.code.is4xx or resp.code.is5xx:
+    raise newException(HttpRequestError, resp.status)
 
-    if resp.code.is4xx or resp.code.is5xx:
-      raise newException(HttpRequestError, resp.status)
+  var file = openAsync(filename, fmWrite)
 
-  result = newFuture[void]("downloadFile")
-  try:
-    result = downloadFileEx(client, url, filename)
-  except Exception as exc:
-    result.fail(exc)
-  finally:
-    result.addCallback(
-      proc () = client.getBody = true
-    )
+  # The `writeFromStream` proc will complete once all the data in the
+  # `bodyStream` has been written to the file.
+  await file.writeFromStream(client.bodyStream)
+  file.close()

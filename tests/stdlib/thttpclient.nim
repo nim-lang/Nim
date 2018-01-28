@@ -9,12 +9,11 @@ discard """
 import strutils
 from net import TimeoutError
 
-import nativesockets, os, httpclient, asyncdispatch
+import nativesockets, os, httpclient, asyncdispatch, md5
 
-const manualTests = false
+const enableManualTests = defined(manualTests)
 
-proc asyncTest() {.async.} =
-  var client = newAsyncHttpClient()
+proc test(client: HttpClient | AsyncHttpClient) {.multisync.} =
   var resp = await client.request("http://example.com/")
   doAssert(resp.code.is2xx)
   var body = await resp.body
@@ -25,9 +24,16 @@ proc asyncTest() {.async.} =
   doAssert(resp.code.is4xx)
   doAssert(resp.code == Http404)
   doAssert(resp.status == Http404)
+  discard await resp.body # Read body. TODO: this may prove too much of PITA.
 
   resp = await client.request("https://google.com/")
   doAssert(resp.code.is2xx or resp.code.is3xx)
+  discard await resp.body # Make sure body is read.
+
+  # Tests redirection
+  resp = await client.request("https://github.com/StevenBlack/hosts/blob/master/hosts?raw=true")
+  doAssert(resp.code.is2xx)
+  discard await resp.body # Make sure body is read.
 
   # getContent
   try:
@@ -38,8 +44,7 @@ proc asyncTest() {.async.} =
   except:
     doAssert(false, "HttpRequestError should have been raised")
 
-
-  when false:
+  when enableManualTests:
     # w3.org now blocks travis, so disabled:
     # Multipart test.
     var data = newMultipartData()
@@ -50,77 +55,28 @@ proc asyncTest() {.async.} =
     doAssert(resp.code.is2xx)
 
   # onProgressChanged
-  when manualTests:
-    proc onProgressChanged(total, progress, speed: BiggestInt) {.async.} =
-      echo("Downloaded ", progress, " of ", total)
-      echo("Current rate: ", speed div 1000, "kb/s")
+  when enableManualTests:
+    when client is HttpClient:
+      proc onProgressChanged(total, progress, speed: BiggestInt) =
+        echo("Downloaded ", progress, " of ", total)
+        echo("Current rate: ", speed div 1000, "kb/s")
+    else:
+      proc onProgressChanged(total, progress, speed: BiggestInt) {.async.} =
+        echo("Downloaded ", progress, " of ", total)
+        echo("Current rate: ", speed div 1000, "kb/s")
     client.onProgressChanged = onProgressChanged
     await client.downloadFile("http://speedtest-ams2.digitalocean.com/100mb.test",
                               "100mb.test")
 
+    doAssert getMD5(readFile("100mb.test")) == "121aca26d3e239628204aad290e34e3e"
+
   client.close()
 
   # Proxy test
-  #when manualTests:
+  #when enableManualTests:
   #  client = newAsyncHttpClient(proxy = newProxy("http://51.254.106.76:80/"))
   #  var resp = await client.request("https://github.com")
   #  echo resp
-
-proc syncTest() =
-  var client = newHttpClient()
-  var resp = client.request("http://example.com/")
-  doAssert(resp.code.is2xx)
-  doAssert("<title>Example Domain</title>" in resp.body)
-
-  resp = client.request("http://example.com/404")
-  doAssert(resp.code.is4xx)
-  doAssert(resp.code == Http404)
-  doAssert(resp.status == Http404)
-
-  resp = client.request("https://google.com/")
-  doAssert(resp.code.is2xx or resp.code.is3xx)
-
-  # getContent
-  try:
-    discard client.getContent("https://google.com/404")
-    doAssert(false, "HttpRequestError should have been raised")
-  except HttpRequestError:
-    discard
-  except:
-    doAssert(false, "HttpRequestError should have been raised")
-
-  when false:
-    # w3.org now blocks travis, so disabled:
-    # Multipart test.
-    var data = newMultipartData()
-    data["output"] = "soap12"
-    data["uploaded_file"] = ("test.html", "text/html",
-      "<html><head></head><body><p>test</p></body></html>")
-    resp = client.post("http://validator.w3.org/check", multipart=data)
-    doAssert(resp.code.is2xx)
-
-  # onProgressChanged
-  when manualTests:
-    proc onProgressChanged(total, progress, speed: BiggestInt) =
-      echo("Downloaded ", progress, " of ", total)
-      echo("Current rate: ", speed div 1000, "kb/s")
-    client.onProgressChanged = onProgressChanged
-    client.downloadFile("http://speedtest-ams2.digitalocean.com/100mb.test",
-                        "100mb.test")
-
-  client.close()
-
-  when false:
-    # Disabled for now because it causes troubles with AppVeyor
-    # Timeout test.
-    client = newHttpClient(timeout = 1)
-    try:
-      resp = client.request("http://example.com/")
-      doAssert false, "TimeoutError should have been raised."
-    except TimeoutError:
-      discard
-    except:
-      doAssert false, "TimeoutError should have been raised."
 
 proc makeIPv6HttpServer(hostname: string, port: Port): AsyncFD =
   let fd = newNativeSocket(AF_INET6)
@@ -154,8 +110,14 @@ proc ipv6Test() =
   serverFd.closeSocket()
   client.close()
 
-syncTest()
-waitFor(asyncTest())
-ipv6Test()
+when isMainModule:
+  echo("Synchronous tests")
+  var syncClient = newHttpClient()
+  syncClient.test()
+  echo("Async tests")
+  var asyncClient = newAsyncHttpClient()
+  waitFor(asyncClient.test())
+
+  ipv6Test()
 
 echo "OK"
