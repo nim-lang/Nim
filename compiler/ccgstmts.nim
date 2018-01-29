@@ -568,7 +568,7 @@ proc genRaiseStmt(p: BProc, t: PNode) =
   if p.inExceptBlock > 0:
     # if the current try stmt have a finally block,
     # we must execute it before reraising
-    var finallyBlock = p.nestedTryStmts[p.nestedTryStmts.len - 1].lastSon
+    let finallyBlock = p.nestedTryStmts[p.nestedTryStmts.len - 1].lastSon
     if finallyBlock.kind == nkFinally:
       genSimpleBlock(p, finallyBlock.sons[0])
   if t.sons[0].kind != nkEmpty:
@@ -577,8 +577,7 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     var e = rdLoc(a)
     var typ = skipTypes(t.sons[0].typ, abstractPtrs)
     genLineDir(p, t)
-    if p.module.compileToCpp and optNoCppExceptions notin gGlobalOptions and
-      sfCompileToCpp in typ.sym.flags:
+    if isImportedExceptionType(typ):
       lineF(p, cpsStmts, "throw $1;$n", [e])
     else:      
       lineCg(p, cpsStmts, "#raiseException((#Exception*)$1, $2);$n",
@@ -812,7 +811,12 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   startBlock(p, "try {$n")
   expr(p, t.sons[0], d)
   let length = sonsLen(t)
-  endBlock(p, ropecg(p.module, "} catch (NimException& $1) {$n", [exc]))
+  endBlock(p)
+
+  var 
+    cppExcept: Rope
+    nimExcept = ropecg(p.module, "catch (NimException& $1) {$n", [exc])
+
   if optStackTrace in p.options:
     linefmt(p, cpsStmts, "#setFrame((TFrame*)&FR_);$n")
   inc p.inExceptBlock

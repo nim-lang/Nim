@@ -251,6 +251,30 @@ proc semCase(c: PContext, n: PNode): PNode =
         it.sons[j] = fitNode(c, typ, it.sons[j], it.sons[j].info)
     result.typ = typ
 
+proc isImportedExceptionType*(t: PType): bool =
+  assert(t != nil)
+  if optNoCppExceptions in gGlobalOptions:
+    return false
+  
+  let base = t.skipTypes(GenericTypes + {tyAlias, tyPtr, tyVar})
+    # allow to raise/catch imported exceptions by ptr and by cpp ref
+   
+  if base.sym != nil and sfCompileToCpp in base.sym.flags:
+    result = true
+
+proc isExceptionType(t: PType): bool =
+  # check if given is object and it inherits from Exception
+
+  if t.kind != tyObject:
+    return false
+
+  var base = t.lastSon
+  while base != nil:
+    if base.sym.magic == mException:
+      return true
+    base = base.lastSon
+  return false
+
 proc semTry(c: PContext, n: PNode): PNode =
   result = n
   inc c.p.inTryStmt
