@@ -187,12 +187,12 @@ proc toSockType*(protocol: Protocol): SockType =
 proc newNativeSocket*(domain: Domain = AF_INET,
                       sockType: SockType = SOCK_STREAM,
                       protocol: Protocol = IPPROTO_TCP): SocketHandle =
-  ## Creates a new socket; returns `InvalidSocket` if an error occurs.
+  ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
   socket(toInt(domain), toInt(sockType), toInt(protocol))
 
 proc newNativeSocket*(domain: cint, sockType: cint,
                       protocol: cint): SocketHandle =
-  ## Creates a new socket; returns `InvalidSocket` if an error occurs.
+  ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
   ##
   ## Use this overload if one of the enums specified above does
   ## not contain what you need.
@@ -665,6 +665,19 @@ proc selectWrite*(writefds: var seq[SocketHandle],
     result = int(select(cint(m+1), nil, addr(wr), nil, nil))
 
   pruneSocketSet(writefds, (wr))
+
+proc accept*(fd: SocketHandle): (SocketHandle, string) =
+  ## Accepts a new client connection.
+  ##
+  ## Returns (osInvalidSocket, "") if an error occurred.
+  var sockAddress: Sockaddr_in
+  var addrLen = sizeof(sockAddress).SockLen
+  var sock = accept(fd, cast[ptr SockAddr](addr(sockAddress)),
+                    addr(addrLen))
+  if sock == osInvalidSocket:
+    return (osInvalidSocket, "")
+  else:
+    return (sock, $inet_ntoa(sockAddress.sin_addr))
 
 when defined(Windows):
   var wsa: WSAData

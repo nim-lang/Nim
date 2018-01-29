@@ -46,15 +46,17 @@ when defined(nimTypeNames):
     var a: InstancesInfo
     var n = 0
     var it = nimTypeRoot
+    var totalAllocated = 0
     while it != nil:
-      if it.instances > 0 and n < a.len:
+      if (it.instances > 0 or it.sizes != 0) and n < a.len:
         a[n] = (it.name, it.instances, it.sizes)
         inc n
+      inc totalAllocated, it.sizes
       it = it.nextType
     sortInstances(a, n)
     for i in 0 .. n-1:
       c_fprintf(stdout, "[Heap] %s: #%ld; bytes: %ld\n", a[i][0], a[i][1], a[i][2])
-
+    c_fprintf(stdout, "[Heap] total number of bytes: %ld\n", totalAllocated)
 
   when defined(nimGcRefLeak):
     proc oomhandler() =
@@ -67,9 +69,9 @@ template decTypeSize(cell, t) =
   # XXX this needs to use atomics for multithreaded apps!
   when defined(nimTypeNames):
     if t.kind in {tyString, tySequence}:
-      let len = cast[PGenericSeq](cellToUsr(cell)).len
-      let base = if t.kind == tyString: 1 else: t.base.size
-      let size = addInt(mulInt(len, base), GenericSeqSize)
+      let cap = cast[PGenericSeq](cellToUsr(cell)).space
+      let size = if t.kind == tyString: cap+1+GenericSeqSize
+                 else: addInt(mulInt(cap, t.base.size), GenericSeqSize)
       dec t.sizes, size+sizeof(Cell)
     else:
       dec t.sizes, t.base.size+sizeof(Cell)

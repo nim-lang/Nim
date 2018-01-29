@@ -114,6 +114,7 @@ proc cppDefine*(c: ConfigRef; define: string) =
 
 var
   gIdeCmd*: IdeCmd
+  gOldNewlines*: bool
 
 const
   ChecksOptions* = {optObjCheck, optFieldCheck, optRangeCheck, optNilCheck,
