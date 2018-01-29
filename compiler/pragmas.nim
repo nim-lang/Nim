@@ -658,7 +658,7 @@ proc pragmaGuard(c: PContext; it: PNode; kind: TSymKind): PSym =
 
 proc semCustomPragma(c: PContext, n: PNode): PNode =
   assert(n.kind in nkPragmaCallKinds + {nkIdent})
-  
+
   if n.kind == nkIdent:
     result = newTree(nkCall, n)
   elif n.kind == nkExprColonExpr:
@@ -667,14 +667,15 @@ proc semCustomPragma(c: PContext, n: PNode): PNode =
   else:
     result = n
 
-  result = c.semOverloadedCall(c, result, n, {skTemplate}, {})
-  if sfCustomPragma notin result[0].sym.flags:
+  let r = c.semOverloadedCall(c, result, n, {skTemplate}, {})
+  if r.isNil or sfCustomPragma notin r[0].sym.flags:
     invalidPragma(n)
-
-  if n.kind == nkIdent:
-    result = result[0]
-  elif n.kind == nkExprColonExpr:
-    result.kind = n.kind # pragma(arg) -> pragma: arg
+  else:
+    result = r
+    if n.kind == nkIdent:
+      result = result[0]
+    elif n.kind == nkExprColonExpr:
+      result.kind = n.kind # pragma(arg) -> pragma: arg
 
 proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
                   validPragmas: TSpecialWords): bool =
@@ -1016,7 +1017,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
         else: sym.flags.incl sfUsed
       of wLiftLocals: discard
       else: invalidPragma(it)
-    else: 
+    else:
       n.sons[i] = semCustomPragma(c, it)
 
 
