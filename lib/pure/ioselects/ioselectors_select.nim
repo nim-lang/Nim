@@ -229,7 +229,7 @@ proc delKey[T](s: Selector[T], fd: SocketHandle) =
   doAssert(i < FD_SETSIZE,
            "Descriptor [" & $int(fd) & "] is not registered in the queue!")
 
-proc registerHandle*[T](s: Selector[T], fd: SocketHandle,
+proc registerHandle*[T](s: Selector[T], fd: int | SocketHandle,
                         events: set[Event], data: T) =
   when not defined(windows):
     let fdi = int(fd)
@@ -255,7 +255,7 @@ proc registerEvent*[T](s: Selector[T], ev: SelectEvent, data: T) =
     IOFD_SET(ev.rsock, addr s.rSet)
     inc(s.count)
 
-proc updateHandle*[T](s: Selector[T], fd: SocketHandle,
+proc updateHandle*[T](s: Selector[T], fd: int | SocketHandle,
                       events: set[Event]) =
   let maskEvents = {Event.Timer, Event.Signal, Event.Process, Event.Vnode,
                     Event.User, Event.Oneshot, Event.Error}
@@ -453,3 +453,6 @@ template withData*[T](s: Selector[T], fd: SocketHandle|int, value,
       else:
         body2
 
+
+proc getFd*[T](s: Selector[T]): int =
+  return -1

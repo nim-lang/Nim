@@ -12,6 +12,15 @@
   `getBool`, `getFloat`, `getBiggestInt`. Also `getInt` procedure was added.
 - `reExtended` is no longer default for the `re` constructor in the `re`
   module.
+- `newAsyncSocket` taking an `AsyncFD` now runs `setBlocking(false)` on the
+  fd.
+- The `ReadyKey` type in the selectors module now contains an ``errorCode``
+  field to help distinguish between ``Event.Error`` events.
+- Implemented an `accept` proc that works on a `SocketHandle` in
+  ``nativesockets``.
+- Implemented ``getIoHandler`` proc in the ``asyncdispatch`` module that allows
+  you to retrieve the underlying IO Completion Port or ``Selector[AsyncData]``
+  object in the specified dispatcher.
 - The overloading rules changed slightly so that constrained generics are
   preferred over unconstrained generics. (Bug #6526)
 - It is now possible to forward declare object types so that mutually
@@ -223,3 +232,6 @@ styledEcho "Red on Green.", resetStyle
 
 - ``writeStackTrace`` is now proclaimed to have no IO effect (even though it does)
   so that it is more useful for debugging purposes.
+- ``\n`` is now only the single line feed character like in most
+  other programming languages. The new platform specific newline escape sequence is
+  written as ``\p``. This change only affects the Windows platform.

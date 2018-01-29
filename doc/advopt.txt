@@ -63,6 +63,7 @@ Advanced options:
   --memTracker:on|off       turn memory tracker on|off
   --excessiveStackTrace:on|off
                             stack traces use full file paths
+  --oldNewlines:on|off      turn on|off the old behaviour of "\n"
   --skipCfg                 do not read the general configuration file
   --skipUserCfg             do not read the user's configuration file
   --skipParentCfg           do not read the parent dirs' configuration files
