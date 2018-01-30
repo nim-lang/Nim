@@ -444,6 +444,10 @@ proc strip*(s: string, leading = true, trailing = true,
   ##
   ## If `leading` is true, leading `chars` are stripped.
   ## If `trailing` is true, trailing `chars` are stripped.
+  ##
+  ## `chars` are only stripped when those are at the beginning
+  ## or ending of `s`. Use `replace <#replace,string,string>`_
+  ## to strip a character at any position.
   var
     first = 0
     last = len(s)-1
