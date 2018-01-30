@@ -251,40 +251,19 @@ proc semCase(c: PContext, n: PNode): PNode =
         it.sons[j] = fitNode(c, typ, it.sons[j], it.sons[j].info)
     result.typ = typ
 
-proc isImportedExceptionType*(t: PType): bool =
-  assert(t != nil)
-  if optNoCppExceptions in gGlobalOptions:
-    return false
-  
-  let base = t.skipTypes(GenericTypes + {tyAlias, tyPtr, tyVar})
-    # allow to raise/catch imported exceptions by ptr and by cpp ref
-   
-  if base.sym != nil and sfCompileToCpp in base.sym.flags:
-    result = true
-
-proc isExceptionType(t: PType): bool =
-  # check if given is object and it inherits from Exception
-  assert(t != nil)
-  if t.kind != tyObject:
-    return false
-
-  var base = t.lastSon
-  while base != nil:
-    if base.sym.magic == mException:
-      return true
-    base = base.lastSon
-  return false
-
 proc semTry(c: PContext, n: PNode): PNode =
 
   var check = initIntSet()
-  proc semExceptBranchType(typeNode: PNode): PNode =
+  proc semExceptBranchType(typeNode: PNode): tuple[n: PNode, is_imported: bool] =
     let typ = semTypeNode(c, typeNode, nil).toObject()
-    if typ.kind != tyObject:
-      localError(typeNode.info, errExprCannotBeRaised)
+    if isImportedException(typ):
+      result.is_imported = true
+    elif not isException(typ):
+      localError(typeNode.info, errExprCannotBeRaised)   
+
     if containsOrIncl(check, typ.id):
-        localError(typeNode.info, errExceptionAlreadyHandled)
-    result = newNodeIT(nkType, typeNode.info, typ)
+      localError(typeNode.info, errExceptionAlreadyHandled)
+    result.n = newNodeIT(nkType, typeNode.info, typ)
 
   result = n
   inc c.p.inTryStmt
@@ -307,18 +286,26 @@ proc semTry(c: PContext, n: PNode): PNode =
       
       if a.len == 2 and a[0].isInfixAs():
         # support ``except Exception as ex: body``
-        a[0][1] = semExceptBranchType(a[0][1])
+        var is_imported: bool
+        (a[0][1], is_imported) = semExceptBranchType(a[0][1])
 
         let symbol = newSymG(skLet, a[0][2], c)
-        symbol.typ = a[0][1].typ.toRef()
+        symbol.typ = if is_imported: a[0][1].typ
+                     else: a[0][1].typ.toRef()
         addDecl(c, symbol)
         # Overwrite symbol in AST with the symbol in the symbol table.
         a[0][2] = newSymNode(symbol, a[0][2].info)
 
       else:
         # support ``except KeyError, ValueError, ... : body``
+        var is_native, is_imported, tmp: bool
         for j in 0..a.len-2:
-          a[j] = semExceptBranchType(a[j])
+          (a[j], tmp) = semExceptBranchType(a[j])
+          if tmp: is_imported = true
+          else: is_native = true
+
+        if is_native and is_imported:
+          local_error(a[0].info, "Mix of imported and native exception types are not allowed in one except branch")
      
     elif a.kind != nkFinally:
       illFormedAst(n)
@@ -743,18 +730,22 @@ proc semFor(c: PContext, n: PNode): PNode =
 proc semRaise(c: PContext, n: PNode): PNode =
   result = n
   checkSonsLen(n, 1)
-  if n.sons[0].kind != nkEmpty:
-    n.sons[0] = semExprWithType(c, n.sons[0])
-    let typ = n.sons[0].typ
+  if n.sons[0].kind == nkEmpty:
+    return
 
-    if isImportedExceptionType(typ):
-      return
-   
-    if typ.kind != tyRef or not isExceptionType(typ.lastSon):
-      localError(n.info, "raised object of type $1 does not inherit from Exception",
-                         [typeToString(typ)])
+  n.sons[0] = semExprWithType(c, n.sons[0])
+  let typ = n.sons[0].typ
 
-    
+  if isImportedException(typ):
+    return
+  
+  if typ.kind != tyRef or typ.lastSon.kind != tyObject:
+    localError(n.info, errExprCannotBeRaised)
+
+  if not isException(typ.lastSon):
+    localError(n.info, "raised object of type $1 does not inherit from Exception",
+                       [typeToString(typ)])
+
 
 proc addGenericParamListToScope(c: PContext, n: PNode) =
   if n.kind != nkGenericParams: illFormedAst(n)

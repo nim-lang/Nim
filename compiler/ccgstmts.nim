@@ -581,7 +581,7 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     var e = rdLoc(a)
     var typ = skipTypes(t.sons[0].typ, abstractPtrs)
     genLineDir(p, t)
-    if isImportedExceptionType(typ):
+    if isImportedException(typ):
       lineF(p, cpsStmts, "throw $1;$n", [e])
     else:      
       lineCg(p, cpsStmts, "#raiseException((#Exception*)$1, $2);$n",
