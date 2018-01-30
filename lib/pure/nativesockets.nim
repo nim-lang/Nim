@@ -184,19 +184,39 @@ proc toSockType*(protocol: Protocol): SockType =
   of IPPROTO_IP, IPPROTO_IPV6, IPPROTO_RAW, IPPROTO_ICMP:
     SOCK_RAW
 
-proc newNativeSocket*(domain: Domain = AF_INET,
+proc createNativeSocket*(domain: Domain = AF_INET,
                       sockType: SockType = SOCK_STREAM,
                       protocol: Protocol = IPPROTO_TCP): SocketHandle =
   ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
   socket(toInt(domain), toInt(sockType), toInt(protocol))
 
-proc newNativeSocket*(domain: cint, sockType: cint,
+proc createNativeSocket*(domain: cint, sockType: cint,
                       protocol: cint): SocketHandle =
   ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
   ##
   ## Use this overload if one of the enums specified above does
   ## not contain what you need.
   socket(domain, sockType, protocol)
+
+proc newNativeSocket*(domain: Domain = AF_INET,
+                      sockType: SockType = SOCK_STREAM,
+                      protocol: Protocol = IPPROTO_TCP): SocketHandle
+                      {.deprecated.} =
+  ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
+  ##
+  ## **Deprecated since v0.18.0:** Use ``createNativeSocket`` instead.
+  createNativeSocket(domain, sockType, protocol)
+
+proc newNativeSocket*(domain: cint, sockType: cint,
+                      protocol: cint): SocketHandle
+                      {.deprecated.} =
+  ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
+  ##
+  ## Use this overload if one of the enums specified above does
+  ## not contain what you need.
+  ##
+  ## **Deprecated since v0.18.0:** Use ``createNativeSocket`` instead.
+  createNativeSocket(domain, sockType, protocol)
 
 proc close*(socket: SocketHandle) =
   ## closes a socket.

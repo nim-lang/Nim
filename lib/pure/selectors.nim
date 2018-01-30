@@ -315,6 +315,21 @@ else:
   else:
     include ioselects/ioselectors_poll
 
-{.deprecated: [setEvent: trigger].}
-{.deprecated: [register: registerHandle].}
-{.deprecated: [update: updateHandle].}
+proc register*[T](s: Selector[T], fd: int | SocketHandle,
+                  events: set[Event], data: T) {.deprecated.} =
+  ## **Deprecated since v0.18.0:** Use ``registerHandle`` instead.
+  s.registerHandle(fd, events, data)
+
+proc setEvent*(ev: SelectEvent) {.deprecated.} =
+  ## Trigger event ``ev``.
+  ##
+  ## **Deprecated since v0.18.0:** Use ``trigger`` instead.
+  ev.trigger()
+
+proc update*[T](s: Selector[T], fd: int | SocketHandle,
+                events: set[Event]) {.deprecated.} =
+  ## Update file/socket descriptor ``fd``, registered in selector
+  ## ``s`` with new events set ``event``.
+  ##
+  ## **Deprecated since v0.18.0:** Use ``updateHandle`` instead.
+  s.updateHandle()

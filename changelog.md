@@ -235,3 +235,7 @@ styledEcho "Red on Green.", resetStyle
 - ``\n`` is now only the single line feed character like in most
   other programming languages. The new platform specific newline escape sequence is
   written as ``\p``. This change only affects the Windows platform.
+- ``newAsyncNativeSocket`` is now named ``createAsyncNativeSocket``
+  and it no longer raises an OS error but returns an ``osInvalidSocket`` when
+  creation fails.
+- ``newNativeSocket`` is now named ``createNativeSocket``.
