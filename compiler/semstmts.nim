@@ -264,7 +264,7 @@ proc isImportedExceptionType*(t: PType): bool =
 
 proc isExceptionType(t: PType): bool =
   # check if given is object and it inherits from Exception
-
+  assert(t != nil)
   if t.kind != tyObject:
     return false
 
@@ -753,26 +753,16 @@ proc semRaise(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 1)
   if n.sons[0].kind != nkEmpty:
     n.sons[0] = semExprWithType(c, n.sons[0])
-    var typ = n.sons[0].typ
+    let typ = n.sons[0].typ
 
-    if optNoCppExceptions notin gGlobalOptions and typ.sym != nil and
-       sfCompileToCpp in typ.sym.flags:
-        return
+    if isImportedExceptionType(typ):
+      return
+   
+    if typ.kind != tyRef or not isExceptionType(typ.lastSon):
+      localError(n.info, "raised object of type $1 does not inherit from Exception",
+                         [typeToString(typ)])
 
-    if typ.kind != tyRef or typ.lastSon.kind != tyObject:
-      localError(n.info, errExprCannotBeRaised)
-
-    # check if the given object inherits from Exception
-    var base = typ.lastSon
-    while true:
-      if base.sym.magic == mException:
-        break
-      if base.lastSon == nil:
-        localError(n.info,
-          "raised object of type $1 does not inherit from Exception",
-          [typeToString(typ)])
-        return
-      base = base.lastSon
+    
 
 proc addGenericParamListToScope(c: PContext, n: PNode) =
   if n.kind != nkGenericParams: illFormedAst(n)
