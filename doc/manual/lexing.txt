@@ -163,9 +163,10 @@ contain the following `escape sequences`:idx:\ :
 ==================         ===================================================
   Escape sequence          Meaning
 ==================         ===================================================
-  ``\n``                   `newline`:idx:
+  ``\p``                   platform specific newline: CRLF on Windows,
+                           LF on Unix
   ``\r``, ``\c``           `carriage return`:idx:
-  ``\l``                   `line feed`:idx:
+  ``\n``, ``\l``           `line feed`:idx: (often called `newline`:idx:)
   ``\f``                   `form feed`:idx:
   ``\t``                   `tabulator`:idx:
   ``\v``                   `vertical tabulator`:idx:
@@ -261,7 +262,8 @@ Character literals
 ------------------
 
 Character literals are enclosed in single quotes ``''`` and can contain the
-same escape sequences as strings - with one exception: `newline`:idx: (``\n``)
+same escape sequences as strings - with one exception: the platform
+dependent `newline`:idx: (``\p``)
 is not allowed as it may be wider than one character (often it is the pair
 CR/LF for example).  Here are the valid `escape sequences`:idx: for character
 literals:
@@ -270,7 +272,7 @@ literals:
   Escape sequence          Meaning
 ==================         ===================================================
   ``\r``, ``\c``           `carriage return`:idx:
-  ``\l``                   `line feed`:idx:
+  ``\n``, ``\l``           `line feed`:idx:
   ``\f``                   `form feed`:idx:
   ``\t``                   `tabulator`:idx:
   ``\v``                   `vertical tabulator`:idx:

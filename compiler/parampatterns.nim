@@ -222,7 +222,10 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
     elif compareTypes(n.typ, n.sons[1].typ, dcEqIgnoreDistinct):
       # types that are equal modulo distinction preserve l-value:
       result = isAssignable(owner, n.sons[1], isUnsafeAddr)
-  of nkHiddenDeref, nkDerefExpr, nkHiddenAddr:
+  of nkHiddenDeref:
+    if n[0].typ.kind == tyLent: result = arDiscriminant
+    else: result = arLValue
+  of nkDerefExpr, nkHiddenAddr:
     result = arLValue
   of nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
     result = isAssignable(owner, n.sons[0], isUnsafeAddr)

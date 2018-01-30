@@ -471,6 +471,16 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitch({optMemTracker}, arg, pass, info)
     if optMemTracker in gOptions: defineSymbol("memtracker")
     else: undefSymbol("memtracker")
+  of "oldnewlines":
+    case arg.normalize
+    of "on":
+      options.gOldNewlines = true
+      defineSymbol("nimOldNewlines")
+    of "off":
+      options.gOldNewlines = false
+      undefSymbol("nimOldNewlines")
+    else:
+      localError(info, errOnOrOffExpectedButXFound, arg)
   of "checks", "x": processOnOffSwitch(ChecksOptions, arg, pass, info)
   of "floatchecks":
     processOnOffSwitch({optNaNCheck, optInfCheck}, arg, pass, info)
@@ -603,6 +613,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     of "off": gSymbolFiles = disabledSf
     of "writeonly": gSymbolFiles = writeOnlySf
     of "readonly": gSymbolFiles = readOnlySf
+    of "v2": gSymbolFiles = v2Sf
     else: localError(info, errOnOrOffExpectedButXFound, arg)
   of "skipcfg":
     expectNoArg(switch, arg, pass, info)

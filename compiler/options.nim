@@ -114,6 +114,7 @@ proc cppDefine*(c: ConfigRef; define: string) =
 
 var
   gIdeCmd*: IdeCmd
+  gOldNewlines*: bool
 
 const
   ChecksOptions* = {optObjCheck, optFieldCheck, optRangeCheck, optNilCheck,
@@ -148,7 +149,7 @@ var
 
 type
   SymbolFilesOption* = enum
-    disabledSf, enabledSf, writeOnlySf, readOnlySf
+    disabledSf, enabledSf, writeOnlySf, readOnlySf, v2Sf
 
 var gSymbolFiles*: SymbolFilesOption
 

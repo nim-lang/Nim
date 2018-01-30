@@ -92,7 +92,7 @@ This project exists thanks to all the people who contribute. [Read on to find ou
 <a href="https://github.com/nim-lang/Nim/graphs/contributors"><img src="https://opencollective.com/Nim/contributors.svg?width=890" /></a>
 
 ## Contributing
-[![Backers on Open Collective](https://opencollective.com/nim/backers/badge.svg)](#backers) [![Sponsors on Open Collective](https://opencollective.com/nim/sponsors/badge.svg)](#sponsors) [![Contribute to Nim via Gratipay][badge-nim-gratipay]][nim-gratipay]
+[![Backers on Open Collective](https://opencollective.com/nim/backers/badge.svg)](#backers) [![Sponsors on Open Collective](https://opencollective.com/nim/sponsors/badge.svg)](#sponsors)
 [![Setup a bounty via Bountysource][badge-nim-bountysource]][nim-bountysource]
 [![Donate Bitcoins][badge-nim-bitcoin]][nim-bitcoin]
 
@@ -137,7 +137,6 @@ You can also help with the development of Nim by making donations. Donations can
 made using:
 
 * [Open Collective](https://opencollective.com/nim)
-* [Gratipay][nim-gratipay]
 * [Bountysource][nim-bountysource]
 * [Bitcoin][nim-bitcoin]
 
@@ -189,7 +188,6 @@ Copyright © 2006-2017 Andreas Rumpf, all rights reserved.
 [nim-stackoverflow]: https://stackoverflow.com/questions/tagged/nim
 [nim-stackoverflow-newest]: https://stackoverflow.com/questions/tagged/nim?sort=newest&pageSize=15
 [nim-gitter]: https://gitter.im/nim-lang/Nim
-[nim-gratipay]: https://gratipay.com/nim/
 [nim-bountysource]: https://www.bountysource.com/teams/nim
 [nim-bitcoin]: https://blockchain.info/address/1BXfuKM2uvoD6mbx4g5xM3eQhLzkCK77tJ
 [nimble-repo]: https://github.com/nim-lang/nimble
@@ -201,7 +199,6 @@ Copyright © 2006-2017 Andreas Rumpf, all rights reserved.
 [badge-nim-forum-gethelp]: https://img.shields.io/badge/Forum-get%20help-4eb899.svg?style=flat-square
 [badge-nim-twitter]: https://img.shields.io/twitter/follow/nim_lang.svg?style=social
 [badge-nim-stackoverflow]: https://img.shields.io/badge/stackoverflow-nim_tag-yellow.svg?style=flat-square
-[badge-nim-gratipay]: https://img.shields.io/gratipay/team/nim.svg?style=flat-square
 [badge-nim-bountysource]: https://img.shields.io/bountysource/team/nim/activity.svg?style=flat-square
 [badge-nim-bitcoin]: https://img.shields.io/badge/bitcoin-1BXfuKM2uvoD6mbx4g5xM3eQhLzkCK77tJ-D69134.svg?style=flat-square
 [pull-request-instructions]: https://help.github.com/articles/using-pull-requests/

@@ -951,7 +951,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     else:
       result = semMacroExpr(c, n, n, s, flags)
   of skTemplate:
-    if efNoEvaluateGeneric in flags and s.ast[genericParamsPos].len > 0 or 
+    if efNoEvaluateGeneric in flags and s.ast[genericParamsPos].len > 0 or
        sfCustomPragma in sym.flags:
       markUsed(n.info, s, c.graph.usageSym)
       styleCheckUse(n.info, s)
@@ -1296,7 +1296,7 @@ proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
     #fixAbstractType(c, result)
     #analyseIfAddressTakenInCall(c, result)
 
-proc takeImplicitAddr(c: PContext, n: PNode): PNode =
+proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode =
   case n.kind
   of nkHiddenAddr, nkAddr: return n
   of nkHiddenDeref, nkDerefExpr: return n.sons[0]
@@ -1307,7 +1307,7 @@ proc takeImplicitAddr(c: PContext, n: PNode): PNode =
   if valid != arLValue:
     if valid == arLocalLValue:
       localError(n.info, errXStackEscape, renderTree(n, {renderNoComments}))
-    else:
+    elif not isLent:
       localError(n.info, errExprHasNoAddress)
   result = newNodeIT(nkHiddenAddr, n.info, makePtrType(c, n.typ))
   result.add(n)
@@ -1315,9 +1315,9 @@ proc takeImplicitAddr(c: PContext, n: PNode): PNode =
 proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
   if le.kind == nkHiddenDeref:
     var x = le.sons[0]
-    if x.typ.kind == tyVar and x.kind == nkSym and x.sym.kind == skResult:
+    if x.typ.kind in {tyVar, tyLent} and x.kind == nkSym and x.sym.kind == skResult:
       n.sons[0] = x # 'result[]' --> 'result'
-      n.sons[1] = takeImplicitAddr(c, ri)
+      n.sons[1] = takeImplicitAddr(c, ri, x.typ.kind == tyLent)
       x.typ.flags.incl tfVarIsPtr
       #echo x.info, " setting it for this type ", typeToString(x.typ), " ", n.info
 
@@ -1473,18 +1473,18 @@ proc semYieldVarResult(c: PContext, n: PNode, restype: PType) =
     if t.kind == tyVar: t.flags.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
     if n.sons[0].kind in {nkHiddenStdConv, nkHiddenSubConv}:
       n.sons[0] = n.sons[0].sons[1]
-    n.sons[0] = takeImplicitAddr(c, n.sons[0])
+    n.sons[0] = takeImplicitAddr(c, n.sons[0], t.kind == tyLent)
   of tyTuple:
     for i in 0..<t.sonsLen:
       var e = skipTypes(t.sons[i], {tyGenericInst, tyAlias, tySink})
       if e.kind in {tyVar, tyLent}:
         if e.kind == tyVar: e.flags.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
         if n.sons[0].kind == nkPar:
-          n.sons[0].sons[i] = takeImplicitAddr(c, n.sons[0].sons[i])
+          n.sons[0].sons[i] = takeImplicitAddr(c, n.sons[0].sons[i], e.kind == tyLent)
         elif n.sons[0].kind in {nkHiddenStdConv, nkHiddenSubConv} and
              n.sons[0].sons[1].kind == nkPar:
           var a = n.sons[0].sons[1]
-          a.sons[i] = takeImplicitAddr(c, a.sons[i])
+          a.sons[i] = takeImplicitAddr(c, a.sons[i], false)
         else:
           localError(n.sons[0].info, errXExpected, "tuple constructor")
   else: discard

@@ -625,7 +625,15 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
   inc(L.bufpos)               # skip '\'
   case L.buf[L.bufpos]
   of 'n', 'N':
-    if tok.tokType == tkCharLit: lexMessage(L, errNnotAllowedInCharacter)
+    if gOldNewlines:
+      if tok.tokType == tkCharLit: lexMessage(L, errNnotAllowedInCharacter)
+      add(tok.literal, tnl)
+    else:
+      add(tok.literal, '\L')
+    inc(L.bufpos)
+  of 'p', 'P':
+    if tok.tokType == tkCharLit:
+      lexMessage(L, errGenerated, "\\p not allowed in character literal")
     add(tok.literal, tnl)
     inc(L.bufpos)
   of 'r', 'R', 'c', 'C':
@@ -747,7 +755,7 @@ proc getString(L: var TLexer, tok: var TToken, rawMode: bool) =
         tokenEndIgnore(tok, pos)
         pos = handleCRLF(L, pos)
         buf = L.buf
-        add(tok.literal, tnl)
+        add(tok.literal, "\n")
       of nimlexbase.EndOfFile:
         tokenEndIgnore(tok, pos)
         var line2 = L.lineNumber

@@ -318,7 +318,7 @@ type
   Slice*[T] = HSlice[T, T] ## an alias for ``HSlice[T, T]``
 
 proc `..`*[T, U](a: T, b: U): HSlice[T, U] {.noSideEffect, inline, magic: "DotDot".} =
-  ## `slice`:idx: operator that constructs an interval ``[a, b]``, both `a`
+  ## binary `slice`:idx: operator that constructs an interval ``[a, b]``, both `a`
   ## and `b` are inclusive. Slices can also be used in the set constructor
   ## and in ordinal case statements, but then they are special-cased by the
   ## compiler.
@@ -326,7 +326,7 @@ proc `..`*[T, U](a: T, b: U): HSlice[T, U] {.noSideEffect, inline, magic: "DotDo
   result.b = b
 
 proc `..`*[T](b: T): HSlice[int, T] {.noSideEffect, inline, magic: "DotDot".} =
-  ## `slice`:idx: operator that constructs an interval ``[default(int), b]``
+  ## unary `slice`:idx: operator that constructs an interval ``[default(int), b]``
   result.b = b
 
 when not defined(niminheritable):
@@ -677,12 +677,12 @@ proc `<`*[T](x: Ordinal[T]): T {.magic: "UnaryLt", noSideEffect, deprecated.}
   ## write ``0 ..< 10`` instead of ``0 .. < 10`` (look at the spacing).
   ## For ``<x`` write ``pred(x)``.
 
-proc succ*[T](x: Ordinal[T], y = 1): T {.magic: "Succ", noSideEffect.}
+proc succ*[T: Ordinal](x: T, y = 1): T {.magic: "Succ", noSideEffect.}
   ## returns the ``y``-th successor of the value ``x``. ``T`` has to be
   ## an ordinal type. If such a value does not exist, ``EOutOfRange`` is raised
   ## or a compile time error occurs.
 
-proc pred*[T](x: Ordinal[T], y = 1): T {.magic: "Pred", noSideEffect.}
+proc pred*[T: Ordinal](x: T, y = 1): T {.magic: "Pred", noSideEffect.}
   ## returns the ``y``-th predecessor of the value ``x``. ``T`` has to be
   ## an ordinal type. If such a value does not exist, ``EOutOfRange`` is raised
   ## or a compile time error occurs.
@@ -3211,9 +3211,10 @@ when not defined(JS): #and not defined(nimscript):
       ## allows you to override the behaviour of your application when CTRL+C
       ## is pressed. Only one such hook is supported.
 
-    proc writeStackTrace*() {.tags: [WriteIOEffect], gcsafe.}
+    proc writeStackTrace*() {.tags: [], gcsafe.}
       ## writes the current stack trace to ``stderr``. This is only works
-      ## for debug builds.
+      ## for debug builds. Since it's usually used for debugging, this
+      ## is proclaimed to have no IO effect!
     when hostOS != "standalone":
       proc getStackTrace*(): string {.gcsafe.}
         ## gets the current stack trace. This only works for debug builds.
@@ -3504,8 +3505,8 @@ template `..^`*(a, b: untyped): untyped =
   a .. ^b
 
 template `..<`*(a, b: untyped): untyped =
-  ## a shortcut for 'a..pred(b)'.
-  a .. pred(b)
+  ## a shortcut for 'a .. (when b is BackwardsIndex: succ(b) else: pred(b))'.
+  a .. (when b is BackwardsIndex: succ(b) else: pred(b))
 
 when defined(nimNewRoof):
   iterator `..<`*[T](a, b: T): T =
