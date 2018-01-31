@@ -13,15 +13,42 @@
 
 import
   intsets, os, options, strutils, nversion, ast, astalgo, msgs, platform,
-  condsyms, ropes, idents, securehash, rodread, passes, idgen,
+  condsyms, ropes, idents, rodread, passes, importer, idgen,
   rodutils, modulepaths
 
+when defined(useMetroHash64):
+  import metrohash
+
+  type
+    Hash* = MetroHash64Digest
+
+  template hashFile(s: string): untyped = 
+    metroHash64(s)
+
+elif defined(useMetroHash128):
+  import metrohash
+
+  type
+    Hash* = MetroHash128Digest
+
+  template hashFile(s: string): untyped = 
+    metroHash128File(s)
+
+else:
+  import securehash
+
+  type
+    Hash* = SecureHash
+
+  template hashFile(s: string): untyped = 
+    secureHashFile(s)
+    
 from modulegraphs import ModuleGraph
 
 type
   TRodWriter = object of TPassContext
     module: PSym
-    hash: SecureHash
+    hash: Hash
     options: TOptions
     defines: string
     inclDeps: string
@@ -57,7 +84,7 @@ proc fileIdx(w: PRodWriter, filename: string): int =
 template filename*(w: PRodWriter): string =
   w.module.filename
 
-proc newRodWriter(hash: SecureHash, module: PSym; cache: IdentCache): PRodWriter =
+proc newRodWriter(hash: Hash, module: PSym; cache: IdentCache): PRodWriter =
   new(result)
   result.sstack = @[]
   result.tstack = @[]
@@ -93,7 +120,7 @@ proc addInclDep(w: PRodWriter, dep: string; info: TLineInfo) =
   let resolved = dep.findModule(info.toFullPath)
   encodeVInt(fileIdx(w, resolved), w.inclDeps)
   add(w.inclDeps, " ")
-  encodeStr($secureHashFile(resolved), w.inclDeps)
+  encodeStr($hashFile(resolved), w.inclDeps)
   add(w.inclDeps, rodNL)
 
 proc pushType(w: PRodWriter, t: PType) =

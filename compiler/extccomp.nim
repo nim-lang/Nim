@@ -14,8 +14,52 @@
 
 import
   ropes, os, strutils, osproc, platform, condsyms, options, msgs,
-  securehash, streams
+  streams
 
+when defined(useMetroHash64):
+  import metrohash
+
+  type
+    hashType = MetroHash64Digest
+
+  template doHash(s: string): untyped = 
+    metroHash64(s)
+
+  template doHashFile(s: string): untyped = 
+    metroHash64File(s)
+
+  template parseHash(s: string): untyped = 
+    parseMetroHash64(s)
+
+elif defined(useMetroHash128):
+  import metrohash
+
+  type
+    hashType = MetroHash128Digest
+
+  template doHash(s: string): untyped = 
+    metroHash128(s)
+
+  template doHashFile(s: string): untyped = 
+    metroHash128File(s)
+
+  template parseHash(s: string): untyped = 
+    parseMetroHash128(s)
+
+else:
+  import securehash
+
+  type
+    hashType = SecureHash
+
+  template doHash(s: string): untyped = 
+    securehash(s)
+
+  template doHashFile(s: string): untyped = 
+    secureHashFile(s)
+
+  template parseHash(s: string): untyped = 
+    parseSecureHash(s)
 #from debuginfo import writeDebugInfo
 
 type
@@ -594,9 +638,9 @@ proc getCompileCFileCmd*(cfile: Cfile): string =
     "nim", quoteShell(getPrefixDir()),
     "lib", quoteShell(libpath)])
 
-proc footprint(cfile: Cfile): SecureHash =
-  result = secureHash(
-    $secureHashFile(cfile.cname) &
+proc footprint(cfile: Cfile): hashType =
+  result = doHash(
+    $doHashFile(cfile.cname) &
     platform.OS[targetOS].name &
     platform.CPU[targetCPU].name &
     extccomp.CC[extccomp.cCompiler].name &
@@ -610,7 +654,7 @@ proc externalFileChanged(cfile: Cfile): bool =
   var currentHash = footprint(cfile)
   var f: File
   if open(f, hashFile, fmRead):
-    let oldHash = parseSecureHash(f.readLine())
+    let oldHash = parseHash(f.readLine())
     close(f)
     result = oldHash != currentHash
   else:
