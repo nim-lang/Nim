@@ -18,6 +18,7 @@ const
   newScopeForIf* = true
   useCaas* = not defined(noCaas)
   noTimeMachine* = defined(avoidTimeMachine) and defined(macosx)
+  copyrightYear* = "2018"
 
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
