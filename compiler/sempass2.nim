@@ -747,7 +747,7 @@ proc track(tracked: PEffects, n: PNode) =
       # may not look like an assignment, but it is:
       let arg = n.sons[1]
       initVarViaNew(tracked, arg)
-      if {tfNeedsInit} * arg.typ.lastSon.flags != {}:
+      if arg.typ.len != 0 and {tfNeedsInit} * arg.typ.lastSon.flags != {}:
         if a.sym.magic == mNewSeq and n[2].kind in {nkCharLit..nkUInt64Lit} and
             n[2].intVal == 0:
           # var s: seq[notnil];  newSeq(s, 0)  is a special case!

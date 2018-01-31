@@ -3025,9 +3025,9 @@ when not defined(JS): #and not defined(nimscript):
     proc endOfFile*(f: File): bool {.tags: [], benign.}
       ## Returns true iff `f` is at the end.
 
-    proc readChar*(f: File): char {.tags: [ReadIOEffect], deprecated.}
-      ## Reads a single character from the stream `f`. **Deprecated** since
-      ## version 0.16.2. Use some variant of ``readBuffer`` instead.
+    proc readChar*(f: File): char {.tags: [ReadIOEffect].}
+      ## Reads a single character from the stream `f`. Should not be used in
+      ## performance sensitive code.
 
     proc flushFile*(f: File) {.tags: [WriteIOEffect].}
       ## Flushes `f`'s buffer.
