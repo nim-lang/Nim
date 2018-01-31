@@ -2284,11 +2284,17 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     r.kind = resExpr
   of nkFloatLit..nkFloat64Lit:
     let f = n.floatVal
-    if f != f: r.res = rope"NaN"
-    elif f == 0.0: r.res = rope"0.0"
-    elif f == 0.5 * f:
-      if f > 0.0: r.res = rope"Infinity"
-      else: r.res = rope"-Infinity"
+    case classify(f)
+    of fcNaN:
+      r.res = rope"NaN"
+    of fcNegZero:
+      r.res = rope"-0.0"
+    of fcZero:
+      r.res = rope"0.0"
+    of fcInf:
+      r.res = rope"Infinity"
+    of fcNegInf:
+      r.res = rope"-Infinity"
     else: r.res = rope(f.toStrMaxPrecision)
     r.kind = resExpr
   of nkCallKinds:
