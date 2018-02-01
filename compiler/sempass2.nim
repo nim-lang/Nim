@@ -593,17 +593,14 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
   notNilCheck(tracked, n, paramType)
 
 proc breaksBlock(n: PNode): bool =
-  case n.kind
-  of nkStmtList, nkStmtListExpr:
-    for c in n:
-      if breaksBlock(c): return true
-  of nkBreakStmt, nkReturnStmt, nkRaiseStmt:
-    return true
-  of nkCallKinds:
-    if n.sons[0].kind == nkSym and sfNoReturn in n.sons[0].sym.flags:
-      return true
-  else:
-    discard
+  # sematic check doesn't allow statements after raise, break, return or
+  # call to noreturn proc, so it is safe to check just the last statements
+  var it = n
+  while it.kind in {nkStmtList, nkStmtListExpr} and it.len > 0:
+    it = it.lastSon
+
+  result = it.kind in {nkBreakStmt, nkReturnStmt, nkRaiseStmt} or
+    it.kind in nkCallKinds and it[0].kind == nkSym and sfNoReturn in it[0].sym.flags
 
 proc trackCase(tracked: PEffects, n: PNode) =
   track(tracked, n.sons[0])
