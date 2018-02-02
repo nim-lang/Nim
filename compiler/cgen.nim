@@ -11,7 +11,7 @@
 
 import
   ast, astalgo, hashes, trees, platform, magicsys, extccomp, options, intsets,
-  nversion, nimsets, msgs, securehash, bitsets, idents, types,
+  nversion, nimsets, msgs, sha1, bitsets, idents, types,
   ccgutils, os, ropes, math, passes, rodread, wordrecg, treetab, cgmeth,
   condsyms, rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases,
   lowerings, semparallel, tables, sets, ndi

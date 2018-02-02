@@ -15,7 +15,7 @@ when haveZipLib:
 
 import
   os, osproc, strutils, parseopt, parsecfg, strtabs, streams, debcreation,
-  securehash
+  sha1
 
 const
   maxOS = 20 # max number of OSes
