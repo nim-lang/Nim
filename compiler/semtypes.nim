@@ -455,13 +455,15 @@ proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
     result = semIdentVis(c, kind, n, allowed)
   if gCmd == cmdPretty: styleCheckDef(n.info, result)
 
-proc checkForOverlap(c: PContext, t: PNode, currentEx, branchIndex: int) =
-  let ex = t[branchIndex][currentEx].skipConv
-  for i in countup(1, branchIndex):
-    for j in countup(0, sonsLen(t.sons[i]) - 2):
-      if i == branchIndex and j == currentEx: break
-      if overlap(t.sons[i].sons[j].skipConv, ex):
-        localError(ex.info, errDuplicateCaseLabel)
+proc checkForOverlap(seenCases: var seq[PNode], n: PNode,
+                     addToSeen: bool = true) =
+  let a = n.skipConv
+  for b in seenCases:
+    if overlap(a, b.skipConv):
+      localError(a.info, errDuplicateCaseLabel)
+
+  if addToSeen:
+    seenCases.add(n)
 
 proc semBranchRange(c: PContext, t, a, b: PNode, covered: var BiggestInt): PNode =
   checkMinSonsLen(t, 1)
@@ -494,14 +496,15 @@ proc semCaseBranchSetElem(c: PContext, t, b: PNode,
     inc(covered)
 
 proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
-                   covered: var BiggestInt) =
-
-  for i in countup(0, sonsLen(branch) - 2):
+                   seenCases: var seq[PNode], covered: var BiggestInt) =
+  for i in 0..sonsLen(branch) - 2:
     var b = branch.sons[i]
     if b.kind == nkRange:
       branch.sons[i] = b
+      checkForOverlap(seenCases, branch.sons[i])
     elif isRange(b):
       branch.sons[i] = semCaseBranchRange(c, t, b, covered)
+      checkForOverlap(seenCases, branch.sons[i])
     else:
       # constant sets and arrays are allowed:
       var r = semConstExpr(c, b)
@@ -513,16 +516,28 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
         checkMinSonsLen(t, 1)
         branch.sons[i] = skipConv(fitNode(c, t.sons[0].typ, r, r.info))
         inc(covered)
+        checkForOverlap(seenCases, branch.sons[i])
       else:
+        # duplicates inside sets are ignored, so elements in sets
+        # are not added to ``seenCases`` until after they are all checked
+        let isArr = r.kind == nkBracket
+        var localSeen = newSeq[PNode]()
+
         # first element is special and will overwrite: branch.sons[i]:
         branch.sons[i] = semCaseBranchSetElem(c, t, r[0], covered)
+        checkForOverlap(seenCases, branch.sons[i], addToSeen=isArr)
+        localSeen.add branch.sons[i]
+
         # other elements have to be added to ``branch``
         for j in 1 ..< r.len:
           branch.add(semCaseBranchSetElem(c, t, r[j], covered))
+          checkForOverlap(seenCases, branch.sons[^1], addToSeen=isArr)
+          localSeen.add branch.sons[^1]
           # caution! last son of branch must be the actions to execute:
-          var L = branch.len
-          swap(branch.sons[L-2], branch.sons[L-1])
-    checkForOverlap(c, t, i, branchIndex)
+          swap(branch.sons[^2], branch.sons[^1])
+
+        if not isArr:
+          seenCases.add localSeen
 
 proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
                       father: PNode, rectype: PType)
@@ -545,13 +560,14 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
   elif lengthOrd(typ) > 0x00007FFF:
     localError(n.info, errLenXinvalid, a.sons[0].sym.name.s)
   var chckCovered = true
+  var seenCases = newSeq[PNode]()
   for i in countup(1, sonsLen(n) - 1):
     var b = copyTree(n.sons[i])
     addSon(a, b)
     case n.sons[i].kind
     of nkOfBranch:
       checkMinSonsLen(b, 2)
-      semCaseBranch(c, a, b, i, covered)
+      semCaseBranch(c, a, b, i, seenCases, covered)
     of nkElse:
       chckCovered = false
       checkSonsLen(b, 1)
