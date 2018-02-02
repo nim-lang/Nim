@@ -67,7 +67,7 @@ proc innerHash(state: var Sha1State, w: var Sha1Buffer) =
   var round = 0
 
   template rot(value, bits: uint32): uint32 =
-    (value shl bits) or (value shr (32 - bits))
+    (value shl bits) or (value shr (32u32 - bits))
 
   template sha1(fun, val: uint32) =
     let t = rot(a, 5) + fun + e + val + w[round]
