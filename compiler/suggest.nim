@@ -33,6 +33,7 @@
 # included from sigmatch.nim
 
 import algorithm, prefixmatches
+from wordrecg import wDeprecated
 
 when defined(nimsuggest):
   import passes, tables # importer
@@ -479,12 +480,23 @@ proc suggestSym*(info: TLineInfo; s: PSym; usageSym: var PSym; isDecl=true) {.in
         isDecl:
       suggestResult(symToSuggest(s, isLocal=false, ideOutline, info, 100, PrefixMatch.None, false, 0))
 
+proc warnAboutDeprecated(info: TLineInfo; s: PSym) =
+  if s.kind in routineKinds:
+    let n = s.ast[pragmasPos]
+    if n.kind != nkEmpty:
+      for it in n:
+        if whichPragma(it) == wDeprecated and it.safeLen == 2 and
+            it[1].kind in {nkStrLit..nkTripleStrLit}:
+          message(info, warnDeprecated, it[1].strVal & "; " & s.name.s)
+          return
+  message(info, warnDeprecated, s.name.s)
+
 proc markUsed(info: TLineInfo; s: PSym; usageSym: var PSym) =
   incl(s.flags, sfUsed)
   if s.kind == skEnumField and s.owner != nil:
     incl(s.owner.flags, sfUsed)
   if {sfDeprecated, sfError} * s.flags != {}:
-    if sfDeprecated in s.flags: message(info, warnDeprecated, s.name.s)
+    if sfDeprecated in s.flags: warnAboutDeprecated(info, s)
     if sfError in s.flags: localError(info, errWrongSymbolX, s.name.s)
   when defined(nimsuggest):
     suggestSym(info, s, usageSym, false)

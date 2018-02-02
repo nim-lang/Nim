@@ -3769,7 +3769,6 @@ proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
   # by ``assert``.
   type Hide = proc (msg: string) {.noinline, raises: [], noSideEffect,
                                     tags: [].}
-  {.deprecated: [THide: Hide].}
   Hide(raiseAssert)(msg)
 
 template assert*(cond: bool, msg = "") =

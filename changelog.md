@@ -238,3 +238,12 @@ styledEcho "Red on Green.", resetStyle
 - Type inference for generic type parameters involving numeric types is now symetric. See
   [Generic type inference for numeric types](https://nim-lang.org/docs/manual.html#generics-generic-type-inference-fornumeric-types)
   for more information.
+- The ``deprecated`` pragma now supports a user-definable warning message for procs.
+
+```nim
+
+proc bar {.deprecated: "use foo instead".} =
+  return
+
+bar()
+```
