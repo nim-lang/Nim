@@ -48,10 +48,14 @@ when not declared(c_fwrite):
 proc c_fread(buf: pointer, size, n: csize, f: File): csize {.
   importc: "fread", header: "<stdio.h>", tags: [ReadIOEffect].}
 when defined(windows):
-  proc c_fseek(f: File, offset: int64, whence: cint): cint {.
-    importc: "_fseeki64", header: "<stdio.h>", tags: [].}
-  proc c_ftell(f: File): int64 {.
-    importc: "_ftelli64", header: "<stdio.h>", tags: [].}
+  proc lseeki(f: cint, offset: int64, whence: cint): int64 {.
+    importc: "_lseeki64", header: "<io.h>", tags: [].}
+  proc telli(f: cint): int64 {.
+    importc: "_telli64", header: "<io.h>", tags: [].}
+  proc c_fseek(f: File, offset: int64, whence: cint): cint = 
+    if lseeki(c_fileno(f), offset, whence) == -1:
+      result = -1
+  proc c_ftell(f: File): int64 = telli(c_fileno(f))
 else:
   proc c_fseek(f: File, offset: int64, whence: cint): cint {.
     importc: "fseeko", header: "<stdio.h>", tags: [].}
