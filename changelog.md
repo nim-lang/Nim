@@ -235,3 +235,6 @@ styledEcho "Red on Green.", resetStyle
 - ``\n`` is now only the single line feed character like in most
   other programming languages. The new platform specific newline escape sequence is
   written as ``\p``. This change only affects the Windows platform.
+- Type inference for generic type parameters involving numeric types is now symetric. See
+  [Generic type inference for numeric types](https://nim-lang.org/docs/manual.html#generics-generic-type-inference-fornumeric-types)
+  for more information.
