@@ -1,9 +1,5 @@
 discard """
-  disabled: "true"
 """
-
-# disabled: relied on undocumented overloading rules. Too much work
-# to make this sane.
 
 import macros, strUtils
 

@@ -1859,22 +1859,22 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
 
   var r = typeRel(m, f, a)
 
-  when false:
-    # This special typing rule for macros and templates is not documented
-    # anywhere and breaks symmetry.
-    if r != isNone and m.calleeSym != nil and
-      m.calleeSym.kind in {skMacro, skTemplate}:
-      # XXX: duplicating this is ugly, but we cannot (!) move this
-      # directly into typeRel using return-like templates
-      incMatches(m, r)
-      if f.kind == tyStmt:
-        return arg
-      elif f.kind == tyTypeDesc:
-        return arg
-      elif f.kind == tyStatic:
-        return arg.typ.n
-      else:
-        return argSemantized # argOrig
+  # This special typing rule for macros and templates is not documented
+  # anywhere and breaks symmetry. It's hard to get rid of though, my
+  # custom seqs example fails to compile without this:
+  if r != isNone and m.calleeSym != nil and
+    m.calleeSym.kind in {skMacro, skTemplate}:
+    # XXX: duplicating this is ugly, but we cannot (!) move this
+    # directly into typeRel using return-like templates
+    incMatches(m, r)
+    if f.kind == tyStmt:
+      return arg
+    elif f.kind == tyTypeDesc:
+      return arg
+    elif f.kind == tyStatic:
+      return arg.typ.n
+    else:
+      return argSemantized # argOrig
 
   # If r == isBothMetaConvertible then we rerun typeRel.
   # bothMetaCounter is for safety to avoid any infinite loop,
