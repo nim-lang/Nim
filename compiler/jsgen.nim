@@ -31,7 +31,7 @@ implements the required case distinction.
 
 import
   ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp, options,
-  nversion, nimsets, msgs, securehash, bitsets, idents, types, os,
+  nversion, nimsets, msgs, sha1, bitsets, idents, types, os,
   times, ropes, math, passes, ccgutils, wordrecg, renderer, rodread, rodutils,
   intsets, cgmeth, lowerings
 
@@ -2284,11 +2284,17 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     r.kind = resExpr
   of nkFloatLit..nkFloat64Lit:
     let f = n.floatVal
-    if f != f: r.res = rope"NaN"
-    elif f == 0.0: r.res = rope"0.0"
-    elif f == 0.5 * f:
-      if f > 0.0: r.res = rope"Infinity"
-      else: r.res = rope"-Infinity"
+    case classify(f)
+    of fcNaN:
+      r.res = rope"NaN"
+    of fcNegZero:
+      r.res = rope"-0.0"
+    of fcZero:
+      r.res = rope"0.0"
+    of fcInf:
+      r.res = rope"Infinity"
+    of fcNegInf:
+      r.res = rope"-Infinity"
     else: r.res = rope(f.toStrMaxPrecision)
     r.kind = resExpr
   of nkCallKinds:

@@ -13,7 +13,7 @@
 
 import
   intsets, os, options, strutils, nversion, ast, astalgo, msgs, platform,
-  condsyms, ropes, idents, securehash, rodread, passes, idgen,
+  condsyms, ropes, idents, sha1, rodread, passes, idgen,
   rodutils, modulepaths
 
 from modulegraphs import ModuleGraph

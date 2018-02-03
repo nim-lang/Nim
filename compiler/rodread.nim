@@ -90,7 +90,7 @@
 
 import
   os, options, strutils, nversion, ast, astalgo, msgs, platform, condsyms,
-  ropes, idents, securehash, idgen, types, rodutils, memfiles, tables
+  ropes, idents, sha1, idgen, types, rodutils, memfiles, tables
 
 type
   TReasonForRecompile* = enum ## all the reasons that can trigger recompilation

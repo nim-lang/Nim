@@ -14,7 +14,7 @@
 
 import
   ropes, os, strutils, osproc, platform, condsyms, options, msgs,
-  securehash, streams
+  sha1, streams
 
 #from debuginfo import writeDebugInfo
 
