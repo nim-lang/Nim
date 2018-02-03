@@ -31,7 +31,7 @@ implements the required case distinction.
 
 import
   ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp, options,
-  nversion, nimsets, msgs, securehash, bitsets, idents, types, os,
+  nversion, nimsets, msgs, sha1, bitsets, idents, types, os,
   times, ropes, math, passes, ccgutils, wordrecg, renderer, rodread, rodutils,
   intsets, cgmeth, lowerings
 
