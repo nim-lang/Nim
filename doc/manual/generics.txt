@@ -63,7 +63,7 @@ The following example shows a generic binary tree can be modelled:
   for str in preorder(root):
     stdout.writeLine(str)
 
-The ``T`` is called a `generic type parameter `:idx:.
+The ``T`` is called a `generic type parameter`:idx:.
 
 
 Is operator
