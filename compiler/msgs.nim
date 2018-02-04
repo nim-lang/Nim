@@ -26,7 +26,7 @@ type
     errAtPopWithoutPush, errEmptyAsm, errInvalidIndentation,
     errExceptionExpected, errExceptionAlreadyHandled,
     errYieldNotAllowedHere, errYieldNotAllowedInTryStmt,
-    errInvalidNumberOfYieldExpr, errCannotReturnExpr, 
+    errInvalidNumberOfYieldExpr, errCannotReturnExpr,
     errNoReturnWithReturnTypeNotAllowed, errAttemptToRedefine,
     errStmtInvalidAfterReturn, errStmtExpected, errInvalidLabel,
     errInvalidCmdLineOption, errCmdLineArgExpected, errCmdLineNoArgExpected,
@@ -1025,6 +1025,9 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
   handleError(msg, eh, s)
 
 proc fatal*(info: TLineInfo, msg: TMsgKind, arg = "") =
+  # this fixes bug #7080 so that it is at least obvious 'fatal'
+  # was executed.
+  errorOutputs = {eStdOut, eStdErr}
   liMessage(info, msg, arg, doAbort)
 
 proc globalError*(info: TLineInfo, msg: TMsgKind, arg = "") =
