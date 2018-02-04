@@ -106,6 +106,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
         errors.safeAdd(CandidateError(
           sym: sym,
           unmatchedVarParam: int z.mutabilityProblem,
+          firstMismatch: z.firstMismatch,
           diagnostics: z.diagnostics))
     else:
       # Symbol table has been modified. Restart and pre-calculate all syms
@@ -154,7 +155,20 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
     else:
       add(candidates, err.sym.getProcHeader(prefer))
     add(candidates, "\n")
-    if err.unmatchedVarParam != 0 and err.unmatchedVarParam < n.len:
+    if err.firstMismatch != 0 and n.len > 2:
+      add(candidates, "first type mismatch at position: " & $err.firstMismatch &
+        "\nrequired type: ")
+      if err.firstMismatch < err.sym.typ.len:
+        candidates.add typeToString(err.sym.typ.sons[err.firstMismatch])
+      else:
+        candidates.add "none"
+      if err.firstMismatch < n.len:
+        candidates.add "\nbut expression '"
+        candidates.add renderTree(n[err.firstMismatch])
+        candidates.add "' is of type: "
+        candidates.add typeToString(n[err.firstMismatch].typ)
+      candidates.add "\n"
+    elif err.unmatchedVarParam != 0 and err.unmatchedVarParam < n.len:
       add(candidates, "for a 'var' type a variable needs to be passed, but '" &
                       renderTree(n[err.unmatchedVarParam]) & "' is immutable\n")
     for diag in err.diagnostics:
@@ -189,7 +203,7 @@ proc bracketNotFoundError(c: PContext; n: PNode) =
   while symx != nil:
     if symx.kind in routineKinds:
       errors.add(CandidateError(sym: symx,
-                                unmatchedVarParam: 0,
+                                unmatchedVarParam: 0, firstMismatch: 0,
                                 diagnostics: nil))
     symx = nextOverloadIter(o, c, headSymbol)
   if errors.len == 0:
