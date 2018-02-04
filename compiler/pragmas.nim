@@ -810,7 +810,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
       of wExplain:
         sym.flags.incl sfExplain
       of wDeprecated:
-        if it.kind in nkPragmaCallKinds: deprecatedStmt(c, it)
+        if sym != nil and sym.kind in routineKinds:
+          if it.kind in nkPragmaCallKinds: discard getStrLitNode(c, it)
+          incl(sym.flags, sfDeprecated)
+        elif it.kind in nkPragmaCallKinds: deprecatedStmt(c, it)
         elif sym != nil: incl(sym.flags, sfDeprecated)
         else: incl(c.module.flags, sfDeprecated)
       of wVarargs:
