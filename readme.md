@@ -95,6 +95,7 @@ This project exists thanks to all the people who contribute. [Read on to find ou
 [![Backers on Open Collective](https://opencollective.com/nim/backers/badge.svg)](#backers) [![Sponsors on Open Collective](https://opencollective.com/nim/sponsors/badge.svg)](#sponsors)
 [![Setup a bounty via Bountysource][badge-nim-bountysource]][nim-bountysource]
 [![Donate Bitcoins][badge-nim-bitcoin]][nim-bitcoin]
+[![Open Source Helpers](https://www.codetriage.com/nim-lang/nim/badges/users.svg)](https://www.codetriage.com/nim-lang/nim)
 
 We welcome all contributions to Nim regardless of how small or large
 they are. Everything from spelling fixes to new modules to be included in the
