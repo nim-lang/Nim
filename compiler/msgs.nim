@@ -370,7 +370,7 @@ const
     errXhasSideEffects: "\'$1\' can have side effects",
     errIteratorExpected: "iterator within for loop context expected",
     errLetNeedsInit: "'let' symbol requires an initialization",
-    errThreadvarCannotInit: "a thread var cannot be initialized explicitly",
+    errThreadvarCannotInit: "a thread var cannot be initialized explicitly; this would only run for the main thread",
     errWrongSymbolX: "usage of \'$1\' is a user-defined error",
     errIllegalCaptureX: "illegal capture '$1'",
     errXCannotBeClosure: "'$1' cannot have 'closure' calling convention",
