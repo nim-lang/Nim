@@ -815,12 +815,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   startBlock(p, "try {$n")
   expr(p, t.sons[0], d)
   let length = sonsLen(t)
-  endBlock(p)
-
-  var 
-    cppExcept: Rope
-    nimExcept = ropecg(p.module, "catch (NimException& $1) {$n", [exc])
-
+  endBlock(p, ropecg(p.module, "} catch (NimException& $1) {$n", [exc]))
   if optStackTrace in p.options:
     linefmt(p, cpsStmts, "#setFrame((TFrame*)&FR_);$n")
   inc p.inExceptBlock
