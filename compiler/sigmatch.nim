@@ -24,7 +24,7 @@ type
 
   CandidateError* = object
     sym*: PSym
-    unmatchedVarParam*: int
+    unmatchedVarParam*, firstMismatch*: int
     diagnostics*: seq[string]
 
   CandidateErrors* = seq[CandidateError]
@@ -67,7 +67,9 @@ type
                               # or when the explain pragma is used. may be
                               # triggered with an idetools command in the
                               # future.
-    inheritancePenalty: int  # to prefer closest father object type
+    inheritancePenalty: int   # to prefer closest father object type
+    firstMismatch*: int       # position of the first type mismatch for
+                              # better error messages
 
   TTypeRelFlag* = enum
     trDontBind
@@ -2249,6 +2251,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
                                     n.sons[a], nOrig.sons[a])
           if arg == nil:
             m.state = csNoMatch
+            m.firstMismatch = f
             return
           if m.baseTypeMatch:
             #assert(container == nil)
@@ -2303,6 +2306,7 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
         else:
           # no default value
           m.state = csNoMatch
+          m.firstMismatch = f
           break
       else:
         # use default value:
