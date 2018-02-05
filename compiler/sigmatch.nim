@@ -1124,7 +1124,12 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
           fRange = prev
       let ff = f.sons[1].skipTypes({tyTypeDesc})
       let aa = a.sons[1].skipTypes({tyTypeDesc})
-      result = typeRel(c, ff, aa)
+      
+      if f.sons[0].kind != tyGenericParam and aa.kind == tyEmpty:
+        result = isGeneric  
+      else:
+        result = typeRel(c, ff, aa)
+     
       if result < isGeneric:
         if nimEnableCovariance and
            trNoCovariance notin flags and
