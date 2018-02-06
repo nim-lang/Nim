@@ -247,3 +247,5 @@ proc bar {.deprecated: "use foo instead".} =
 
 bar()
 ```
+
+- The ``securehash`` module is now deprecated. Instead import ``std / sha1``.
