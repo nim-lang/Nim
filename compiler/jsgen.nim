@@ -1574,9 +1574,10 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
   var
     a: TCompRes
     s: Rope
-    varCode: string
+    varCode: string = ""
   if v.constraint.isNil:
-    varCode = "var $2"
+    if p.target != targetPHP:
+      varCode = "var $2"
   else:
     varCode = v.constraint.strVal
   if n.kind == nkEmpty:
