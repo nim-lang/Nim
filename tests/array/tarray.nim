@@ -38,11 +38,11 @@ var found: array[0..filesToCreate.high, bool]
 
 echo found.len
 
-# make sure empty arrays compile (bug #6853)
+# make sure empty arrays are assignable (bug #6853)
 const arr1: array[0, int] = []
-let arr2: array[0, string] = []
+const arr2 = []
+let arr3: array[0, string] = []
 
 doAssert(arr1.len == 0)
 doAssert(arr2.len == 0)
- 
-
+doAssert(arr3.len == 0)
