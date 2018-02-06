@@ -914,7 +914,7 @@ proc parseIdentColonEquals(p: var TParser, flags: TDeclaredIdentFlags): PNode =
     optInd(p, result)
     addSon(result, parseTypeDesc(p))
   else:
-    addSon(result, ast.emptyNode)
+    addSon(result, newNodeP(nkEmpty, p))
     if p.tok.tokType != tkEquals and withBothOptional notin flags:
       parMessage(p, errColonOrEqualsExpected, p.tok)
   if p.tok.tokType == tkEquals:
@@ -922,7 +922,7 @@ proc parseIdentColonEquals(p: var TParser, flags: TDeclaredIdentFlags): PNode =
     optInd(p, result)
     addSon(result, parseExpr(p))
   else:
-    addSon(result, ast.emptyNode)
+    addSon(result, newNodeP(nkEmpty, p))
 
 proc parseTuple(p: var TParser, indentAllowed = false): PNode =
   #| inlTupleDecl = 'tuple'
