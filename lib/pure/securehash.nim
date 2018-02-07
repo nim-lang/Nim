@@ -3,4 +3,4 @@
 ## This module is a deprecated alias for the ``sha1`` module.
 {.deprecated.}
 
-include sha1
+include "../std/sha1"

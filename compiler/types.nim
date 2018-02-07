@@ -1058,11 +1058,12 @@ proc commonSuperclass*(a, b: PType): PType =
     y = y.sons[0]
 
 type
-  TTypeAllowedFlag = enum
+  TTypeAllowedFlag* = enum
     taField,
-    taHeap
+    taHeap,
+    taConcept
 
-  TTypeAllowedFlags = set[TTypeAllowedFlag]
+  TTypeAllowedFlags* = set[TTypeAllowedFlag]
 
 proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
                     flags: TTypeAllowedFlags = {}): PType
@@ -1130,7 +1131,10 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   of tyVoid:
     if taField notin flags: result = t
   of tyTypeClasses:
-    if not (tfGenericTypeParam in t.flags or taField notin flags): result = t
+    if tfGenericTypeParam in t.flags or taConcept in flags: #or taField notin flags:
+      discard
+    elif kind notin {skParam, skResult}:
+      result = t
   of tyGenericBody, tyGenericParam, tyGenericInvocation,
      tyNone, tyForward, tyFromExpr:
     result = t
@@ -1178,11 +1182,11 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     result = nil
   of tyUnused, tyOptAsRef: internalError("typeAllowedAux")
 
-proc typeAllowed*(t: PType, kind: TSymKind): PType =
+proc typeAllowed*(t: PType, kind: TSymKind; flags: TTypeAllowedFlags = {}): PType =
   # returns 'nil' on success and otherwise the part of the type that is
   # wrong!
   var marker = initIntSet()
-  result = typeAllowedAux(marker, t, kind, {})
+  result = typeAllowedAux(marker, t, kind, flags)
 
 proc align(address, alignment: BiggestInt): BiggestInt =
   result = (address + (alignment - 1)) and not (alignment - 1)
