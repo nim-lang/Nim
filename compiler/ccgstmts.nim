@@ -815,12 +815,15 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   startBlock(p, "try {$n")
   expr(p, t.sons[0], d)
   let length = sonsLen(t)
-  endBlock(p, ropecg(p.module, "} catch (NimException& $1) {$n", [exc]))
+  endBlock(p)
+  
+  , ropecg(p.module, "} catch (NimException& $1) {$n", [exc]))
   if optStackTrace in p.options:
     linefmt(p, cpsStmts, "#setFrame((TFrame*)&FR_);$n")
   inc p.inExceptBlock
   var i = 1
   var catchAllPresent = false
+  var imported_branches: seq[PNode] = @[]
   while (i < length) and (t.sons[i].kind == nkExceptBranch):
     # bug #4230: avoid false sharing between branches:
     if d.k == locTemp and isEmptyType(t.typ): d.k = locNone
