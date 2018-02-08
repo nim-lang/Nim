@@ -1955,13 +1955,13 @@ const
     ## that you cannot compare a floating point value to this value
     ## and expect a reasonable result - use the `classify` procedure
     ## in the module ``math`` for checking for NaN.
-  NimMajor*: int = 0
+  NimMajor* {.intdefine.}: int = 0
     ## is the major number of Nim's version.
 
-  NimMinor*: int = 17
+  NimMinor* {.intdefine.}: int = 17
     ## is the minor number of Nim's version.
 
-  NimPatch*: int = 3
+  NimPatch* {.intdefine.}: int = 3
     ## is the patch number of Nim's version.
 
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
@@ -3769,7 +3769,6 @@ proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
   # by ``assert``.
   type Hide = proc (msg: string) {.noinline, raises: [], noSideEffect,
                                     tags: [].}
-  {.deprecated: [THide: Hide].}
   Hide(raiseAssert)(msg)
 
 template assert*(cond: bool, msg = "") =
