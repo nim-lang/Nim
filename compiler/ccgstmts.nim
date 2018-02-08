@@ -845,14 +845,14 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
       endBlock(p)
 
     elif t[i].len == 2:
-      startBlock(p, "catch ($1&) {$n", getTypeDesc(p.module, t[i][0].typ))
+      startBlock(p, "catch ($1*) {$n", getTypeDesc(p.module, t[i][0].typ))
       genExceptBranchBody(t[i][^1])
       endBlock(p)
 
     else:
       # cpp can't catch multiple types in one statement so we need a label and goto
       let label = getLabel(p)    
-      labeled_branches.add (label, t[i][^1])
+      labeled_branches.add((label, t[i][^1]))
       for j in 0..t[i].len-2:
         assert(t[i][j].kind == nkType)
         linefmt(p, cpsStmts, "catch ($1*) {goto $2;}$n",
