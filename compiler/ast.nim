@@ -1669,7 +1669,7 @@ proc findUnresolvedStatic*(n: PNode): PNode =
 
   
 proc isException*(t: PType): bool =
-  # check if `y` is object and it inherits from Exception
+  # check if `y` is object type and it inherits from Exception
   assert(t != nil)
 
   if t.kind != tyObject:

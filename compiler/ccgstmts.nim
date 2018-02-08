@@ -803,54 +803,55 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   #      }
   #  }
   #  finallyPart();
+  template genExceptBranchBody(body: PNode) {.dirty.} =
+    if optStackTrace in p.options:
+      linefmt(p, cpsStmts, "#setFrame((TFrame*)&FR_);$n") 
+    expr(p, body, d)
+    linefmt(p, cpsStmts, "#popCurrentException();$n")
+
   if not isEmptyType(t.typ) and d.k == locNone:
     getTemp(p, t.typ, d)
   genLineDir(p, t)
-  let exc = getTempName(p.module)
   if getCompilerProc("Exception") != nil:
     discard cgsym(p.module, "Exception")
   else:
     discard cgsym(p.module, "E_Base")
+  
+  let exc = getTempName(p.module)
   add(p.nestedTryStmts, t)
   startBlock(p, "try {$n")
   expr(p, t.sons[0], d)
-  let length = sonsLen(t)
-  endBlock(p)
-  
-  , ropecg(p.module, "} catch (NimException& $1) {$n", [exc]))
-  if optStackTrace in p.options:
-    linefmt(p, cpsStmts, "#setFrame((TFrame*)&FR_);$n")
+  endBlock(p, ropecg(p.module, "} catch (NimException& $1) {$n", [exc]))
   inc p.inExceptBlock
   var i = 1
-  var catchAllPresent = false
   var imported_branches: seq[PNode] = @[]
-  while (i < length) and (t.sons[i].kind == nkExceptBranch):
+  var catch_all_branch: PNode
+  for i in 0..<t.len:
+    # generate only Nim native exception handlers for now
+    if t[i].kind != nkExceptBranch: break
     # bug #4230: avoid false sharing between branches:
     if d.k == locTemp and isEmptyType(t.typ): d.k = locNone
-    let blen = sonsLen(t.sons[i])
-    if i > 1: addf(p.s(cpsStmts), "else ", [])
-    if blen == 1:
-      # general except section:
-      catchAllPresent = true
-      startBlock(p)
-      expr(p, t.sons[i].sons[0], d)
-      linefmt(p, cpsStmts, "#popCurrentException();$n")
-      endBlock(p)
+    if t[i].len == 1:
+      # general except catch all section
+      catch_all_branch = t[i]
+    elif t[i][0].isInfixAs() and isImportedException(t[i][0][1].typ) or
+         isImportedException(t[i][0].typ):
+      imported_branches.add t[i]
     else:
       var orExpr: Rope = nil
-      for j in countup(0, blen - 2):
-        assert(t.sons[i].sons[j].kind == nkType)
+      for j in 0..t[i].len - 2:
+        assert(t[i][j].kind == nkType)
         if orExpr != nil: add(orExpr, "||")
         appcg(p.module, orExpr,
               "#isObj($1.exp->m_type, $2)",
               [exc, genTypeInfo(p.module, t[i][j].typ, t[i][j].info)])
       lineF(p, cpsStmts, "if ($1) ", [orExpr])
       startBlock(p)
-      expr(p, t.sons[i].sons[blen-1], d)
-      linefmt(p, cpsStmts, "#popCurrentException();$n")
+      genExceptBranchBody(t[i][^1])
       endBlock(p)
-    inc(i)
 
+  if i > 1: addf(p.s(cpsStmts), "else ", [])
+  
   # reraise the exception if there was no catch all
   # and none of the handlers matched
   if not catchAllPresent:
