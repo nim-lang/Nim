@@ -31,6 +31,10 @@ reject:
     case k
     of [A, A]: discard
 
+reject:
+    case k
+    of {A, A..A}: discard
+
 var i = 2
 case i
 of { 1, 1 }: doAssert(false)
@@ -41,5 +45,3 @@ case i
 of { 10..30, 15..25, 5..15, 25..35 }: discard
 else: discard
 
-case k
-of {A, A..A}: discard

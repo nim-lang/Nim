@@ -206,7 +206,6 @@ proc semCase(c: PContext, n: PNode): PNode =
   else:
     localError(n.info, errSelectorMustBeOfCertainTypes)
     return
-  var seenCases = newSeq[PNode]()
   for i in countup(1, sonsLen(n) - 1):
     var x = n.sons[i]
     when defined(nimsuggest):
@@ -215,7 +214,7 @@ proc semCase(c: PContext, n: PNode): PNode =
     case x.kind
     of nkOfBranch:
       checkMinSonsLen(x, 2)
-      semCaseBranch(c, n, x, i, seenCases, covered)
+      semCaseBranch(c, n, x, i, covered)
       var last = sonsLen(x)-1
       x.sons[last] = semExprBranchScope(c, x.sons[last])
       typ = commonType(typ, x.sons[last])

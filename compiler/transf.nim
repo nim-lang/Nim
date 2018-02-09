@@ -21,7 +21,7 @@
 import
   intsets, strutils, options, ast, astalgo, trees, treetab, msgs, os,
   idents, renderer, types, passes, semfold, magicsys, cgmeth, rodread,
-  lambdalifting, sempass2, lowerings, lookups, destroyer, liftlocals, nimsets
+  lambdalifting, sempass2, lowerings, lookups, destroyer, liftlocals
 
 type
   PTransNode* = distinct PNode
@@ -610,62 +610,13 @@ proc transformFor(c: PTransf, n: PNode): PTransNode =
   popTransCon(c)
   # echo "transformed: ", stmtList.PNode.renderTree
 
-proc deduplicateOfBranch(n: PNode) =
-  ## Sets are allowed to contain duplicates, which means that
-  ## tkOfBranch can contain duplicates. They are removed here.
-  var unique = newSeq[PNode]()
-
-  for son in n.sons[0..^2]:
-    let v = son.skipConv
-    var add = true
-
-    if v.kind == nkRange:
-      var i = 0
-      while i < unique.len:
-        let u = unique[i]
-
-        if u.kind == nkRange:
-          # v is within u - don't add v
-          if u[0].intVal <= v[0].intVal and v[1].intVal <= u[1].intVal:
-            add = false
-            break
-          # u is within v - remove u
-          elif v[0].intVal <= u[0].intVal and u[1].intVal <= v[1].intVal:
-            unique.del(i)
-            i.dec
-          # partial overlap where u is before v
-          elif u[0].intVal <= v[0].intVal and
-              v[0].intVal <= u[1].intVal and u[1].intVal < v[1].intVal:
-            v[0].intVal = u[1].intVal.succ
-          # partial overlap where v is before u
-          elif v[0].intVal < u[0].intVal and u[0].intVal <= v[1].intVal and
-              v[1].intVal <= u[1].intVal:
-            v[1].intVal = u[0].intVal.pred
-        elif overlap(v, u.skipConv):
-          unique.del(i)
-          i.dec
-        i.inc
-    else:
-      for u in unique:
-        if overlap(v, u.skipConv):
-          add = false
-          break
-
-    if add:
-      unique.add son
-  n.sons[0..^2] = unique
-
 proc transformCase(c: PTransf, n: PNode): PTransNode =
   # removes `elif` branches of a case stmt
   # adds ``else: nil`` if needed for the code generator
   result = newTransNode(nkCaseStmt, n, 0)
-  let typ = skipTypes(n.sons[0].typ, abstractVarRange)
   var ifs = PTransNode(nil)
   for i in 0 .. sonsLen(n)-1:
     var it = n.sons[i]
-    if it.kind == nkOfBranch and typ.kind in {tyInt..tyInt64, tyChar,
-        tyEnum, tyUInt..tyUInt64}:
-      deduplicateOfBranch(it)
     var e = transform(c, it)
     case it.kind
     of nkElifBranch:
@@ -682,7 +633,8 @@ proc transformCase(c: PTransf, n: PNode): PTransNode =
     elseBranch[0] = ifs
     result.add(elseBranch)
   elif result.PNode.lastSon.kind != nkElse and not (
-      typ.kind in {tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32}):
+      skipTypes(n.sons[0].typ, abstractVarRange).kind in
+        {tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32}):
     # fix a stupid code gen bug by normalizing:
     var elseBranch = newTransNode(nkElse, n.info, 1)
     elseBranch[0] = newTransNode(nkNilLit, n.info, 0)
