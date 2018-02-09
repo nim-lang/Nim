@@ -33,8 +33,8 @@ when useWinVersion:
       DLLUtilName* = "(libcrypto-1_1-x64|libeay64).dll"
   else:
     const
-      DLLSSLName* = "(libssl-1_1-x32|ssleay32|libssl32).dll"
-      DLLUtilName* =  "(libcrypto-1_1-x32|libeay32).dll"
+      DLLSSLName* = "(libssl-1_1|ssleay32|libssl32).dll"
+      DLLUtilName* =  "(libcrypto-1_1|libeay32).dll"
 
   from winlean import SocketHandle
 else:
