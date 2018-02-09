@@ -29,12 +29,12 @@ const useWinVersion = defined(Windows) or defined(nimdoc)
 when useWinVersion:
   when not defined(nimOldDlls) and defined(cpu64):
     const
-      DLLSSLName = "(ssleay64|libssl64).dll"
-      DLLUtilName = "libeay64.dll"
+      DLLSSLName* = "(libssl-1_1-x64|ssleay64|libssl64).dll"
+      DLLUtilName* = "(libcrypto-1_1-x64|libeay64).dll"
   else:
     const
-      DLLSSLName = "(ssleay32|libssl32).dll"
-      DLLUtilName = "libeay32.dll"
+      DLLSSLName* = "(libssl-1_1-x32|ssleay32|libssl32).dll"
+      DLLUtilName* =  "(libcrypto-1_1-x32|libeay32).dll"
 
   from winlean import SocketHandle
 else:
@@ -42,12 +42,12 @@ else:
 
   when defined(macosx):
     const
-      DLLSSLName = "libssl" & versions & ".dylib"
-      DLLUtilName = "libcrypto" & versions & ".dylib"
+      DLLSSLName* = "libssl" & versions & ".dylib"
+      DLLUtilName* = "libcrypto" & versions & ".dylib"
   else:
     const
-      DLLSSLName = "libssl.so" & versions
-      DLLUtilName = "libcrypto.so" & versions
+      DLLSSLName* = "libssl.so" & versions
+      DLLUtilName* = "libcrypto.so" & versions
   from posix import SocketHandle
 
 import dynlib
