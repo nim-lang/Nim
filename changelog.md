@@ -12,6 +12,15 @@
   `getBool`, `getFloat`, `getBiggestInt`. Also `getInt` procedure was added.
 - `reExtended` is no longer default for the `re` constructor in the `re`
   module.
+- `newAsyncSocket` taking an `AsyncFD` now runs `setBlocking(false)` on the
+  fd.
+- The `ReadyKey` type in the selectors module now contains an ``errorCode``
+  field to help distinguish between ``Event.Error`` events.
+- Implemented an `accept` proc that works on a `SocketHandle` in
+  ``nativesockets``.
+- Implemented ``getIoHandler`` proc in the ``asyncdispatch`` module that allows
+  you to retrieve the underlying IO Completion Port or ``Selector[AsyncData]``
+  object in the specified dispatcher.
 - The overloading rules changed slightly so that constrained generics are
   preferred over unconstrained generics. (Bug #6526)
 - It is now possible to forward declare object types so that mutually
@@ -226,3 +235,17 @@ styledEcho "Red on Green.", resetStyle
 - ``\n`` is now only the single line feed character like in most
   other programming languages. The new platform specific newline escape sequence is
   written as ``\p``. This change only affects the Windows platform.
+- Type inference for generic type parameters involving numeric types is now symetric. See
+  [Generic type inference for numeric types](https://nim-lang.org/docs/manual.html#generics-generic-type-inference-fornumeric-types)
+  for more information.
+- The ``deprecated`` pragma now supports a user-definable warning message for procs.
+
+```nim
+
+proc bar {.deprecated: "use foo instead".} =
+  return
+
+bar()
+```
+
+- The ``securehash`` module is now deprecated. Instead import ``std / sha1``.

@@ -150,9 +150,12 @@ proc discardCheck(c: PContext, result: PNode) =
         while n.kind in skipForDiscardable: n = n.lastSon
         var s = "expression '" & $n & "' is of type '" &
             result.typ.typeToString & "' and has to be discarded"
+        if result.info.line != n.info.line or
+           result.info.fileIndex != n.info.fileIndex:
+          s.add "; start of expression here: " & $result.info
         if result.typ.kind == tyProc:
           s.add "; for a function call use ()"
-        localError(n.info,  s)
+        localError(n.info, s)
 
 proc semIf(c: PContext, n: PNode): PNode =
   result = n
@@ -531,7 +534,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
 
     # this can only happen for errornous var statements:
     if typ == nil: continue
-    typeAllowedCheck(a.info, typ, symkind)
+    typeAllowedCheck(a.info, typ, symkind, if c.matchedConcept != nil: {taConcept} else: {})
     liftTypeBoundOps(c, typ, a.info)
     var tup = skipTypes(typ, {tyGenericInst, tyAlias, tySink})
     if a.kind == nkVarTuple:

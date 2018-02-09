@@ -178,9 +178,8 @@ proc parseUri*(uri: string, result: var Uri) =
     i.inc(2) # Skip //
     var authority = ""
     i.inc parseUntil(uri, authority, {'/', '?', '#'}, i)
-    if authority == "":
-      raise newException(ValueError, "Expected authority got nothing.")
-    parseAuthority(authority, result)
+    if authority.len > 0:
+      parseAuthority(authority, result)
   else:
     result.opaque = true
 
@@ -465,6 +464,15 @@ when isMainModule:
     doAssert test.hostname == "github.com"
     doAssert test.port == "dom96"
     doAssert test.path == "/packages"
+    
+  block:
+    let str = "file:///foo/bar/baz.txt"
+    let test = parseUri(str)
+    doAssert test.scheme == "file"
+    doAssert test.username == ""
+    doAssert test.hostname == ""
+    doAssert test.port == ""
+    doAssert test.path == "/foo/bar/baz.txt"
 
   # Remove dot segments tests
   block:

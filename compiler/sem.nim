@@ -215,12 +215,17 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
 proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
                         allowed: TSymFlags): PSym
 
-proc typeAllowedCheck(info: TLineInfo; typ: PType; kind: TSymKind) =
-  let t = typeAllowed(typ, kind)
+proc typeAllowedCheck(info: TLineInfo; typ: PType; kind: TSymKind;
+                      flags: TTypeAllowedFlags = {}) =
+  let t = typeAllowed(typ, kind, flags)
   if t != nil:
-    if t == typ: localError(info, "invalid type: '" & typeToString(typ) & "'")
-    else: localError(info, "invalid type: '" & typeToString(t) &
-                           "' in this context: '" & typeToString(typ) & "'")
+    if t == typ:
+      localError(info, "invalid type: '" & typeToString(typ) &
+        "' for " & substr($kind, 2).toLowerAscii)
+    else:
+      localError(info, "invalid type: '" & typeToString(t) &
+        "' in this context: '" & typeToString(typ) &
+        "' for " & substr($kind, 2).toLowerAscii)
 
 proc paramsTypeCheck(c: PContext, typ: PType) {.inline.} =
   typeAllowedCheck(typ.n.info, typ, skProc)

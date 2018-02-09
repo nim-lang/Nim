@@ -225,6 +225,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mDivF64:
     if getFloat(b) == 0.0:
       if getFloat(a) == 0.0: result = newFloatNodeT(NaN, n)
+      elif getFloat(b).classify == fcNegZero: result = newFloatNodeT(-Inf, n)
       else: result = newFloatNodeT(Inf, n)
     else:
       result = newFloatNodeT(getFloat(a) / getFloat(b), n)

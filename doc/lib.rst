@@ -384,7 +384,7 @@ Cryptography and Hashing
 * `base64 <base64.html>`_
   This module implements a base64 encoder and decoder.
 
-* `securehash <securehash.html>`_
+* `sha1 <sha1.html>`_
   This module implements a sha1 encoder and decoder.
 
 

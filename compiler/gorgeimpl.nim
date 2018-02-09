@@ -9,7 +9,7 @@
 
 ## Module that implements ``gorge`` for the compiler.
 
-import msgs, securehash, os, osproc, streams, strutils, options
+import msgs, std / sha1, os, osproc, streams, strutils, options
 
 proc readOutput(p: Process): (string, int) =
   result[0] = ""
