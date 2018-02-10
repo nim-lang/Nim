@@ -1,5 +1,5 @@
 discard """
-  errormsg: "type mismatch: got (int literal(5), b: bool)"
+  errormsg: "type mismatch: got <int literal(5), b: bool>"
   line: 10
 """
 

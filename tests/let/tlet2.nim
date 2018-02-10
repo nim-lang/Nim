@@ -1,6 +1,6 @@
 discard """
   line: "13"
-  errormsg: "type mismatch: got (int literal(8), int literal(5), int, int)"
+  errormsg: "type mismatch: got <int literal(8), int literal(5), int, int>"
 """
 
 proc divmod(a, b: int, res, remainder: var int) =
