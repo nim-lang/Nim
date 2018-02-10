@@ -1,5 +1,4 @@
 discard """
-  targets: "c cpp"
   file: "tfinally2.nim"
   output: '''A
 B
