@@ -288,7 +288,9 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
     var indxB = indx
     if indxB.kind in {tyGenericInst, tyAlias, tySink}: indxB = lastSon(indxB)
     if indxB.kind notin {tyGenericParam, tyStatic, tyFromExpr}:
-      if not isOrdinalType(indxB):
+      if indxB.skipTypes({tyRange}).kind in {tyUInt, tyUInt64}:
+        discard
+      elif not isOrdinalType(indxB):
         localError(n.sons[1].info, errOrdinalTypeExpected)
       elif enumHasHoles(indxB):
         localError(n.sons[1].info, errEnumXHasHoles,
