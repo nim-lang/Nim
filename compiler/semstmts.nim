@@ -737,16 +737,10 @@ proc semRaise(c: PContext, n: PNode): PNode =
       localError(n.info, errExprCannotBeRaised)
 
     # check if the given object inherits from Exception
-    var base = typ.lastSon
-    while true:
-      if base.sym.magic == mException:
-        break
-      if base.lastSon == nil:
-        localError(n.info,
-          "raised object of type $1 does not inherit from Exception",
-          [typeToString(typ)])
-        return
-      base = base.lastSon
+    if not typ.lastSon.isException():
+        localError(n.info, "raised object of type $1 does not inherit from Exception",
+                           [typeToString(typ)])
+
 
 proc addGenericParamListToScope(c: PContext, n: PNode) =
   if n.kind != nkGenericParams: illFormedAst(n)

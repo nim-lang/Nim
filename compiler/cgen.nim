@@ -260,6 +260,10 @@ proc rdCharLoc(a: TLoc): Rope =
 
 proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
                    takeAddr: bool) =
+  if p.module.compileToCpp and t.isException:
+    # init vtable in Exception object for polymorphic exceptions
+    linefmt(p, section, "new ($1) $2;$n", rdLoc(a), getTypeDesc(p.module, t))
+
   case analyseObjectWithTypeField(t)
   of frNone:
     discard

@@ -569,6 +569,8 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
     elif m.compileToCpp:
       appcg(m, result, " : public $1 {$n",
                       [getTypeDescAux(m, typ.sons[0].skipTypes(skipPtrs), check)])
+      if typ.isException:
+        appcg(m, result, "virtual void raise() {throw this;}$n") # required for polymorphic exceptions
       hasField = true
     else:
       appcg(m, result, " {$n  $1 Sup;$n",

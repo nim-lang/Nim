@@ -788,15 +788,18 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   #      myDiv(4, 9);
   #   } catch (NimExceptionType1&) {
   #      body
+  #      goto LA_END
   #   } catch (NimExceptionType2&) {
   #      finallyPart()
   #      raise
+  #      goto LA_END
   #   } catch (NimExceptionType3&) {goto LA1;}
   #   } catch (NimExceptionType4&) {goto LA1;}
   #   } catch (NimExceptionType5&) {goto LA2;}
   #   } catch (NimExceptionType6&) {goto LA2;}
   #   catch(...) {
   #     // general handler
+  #     goto LA_END
   #   }
   #   {LA1:
   #      labeled_branch_body_LA1
@@ -816,6 +819,8 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
       linefmt(p, cpsStmts, "#setFrame((TFrame*)&FR_);$n") 
     expr(p, body, d)
     linefmt(p, cpsStmts, "#popCurrentException();$n")
+    linefmt(p, cpsStmts, "goto $1;$n", end_label)
+    
 
   if not isEmptyType(t.typ) and d.k == locNone:
     getTemp(p, t.typ, d)
@@ -827,6 +832,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   expr(p, t[0], d)
   endBlock(p, ropecg(p.module, "}"))
 
+  let end_label = getLabel(p)
   var catchAllPresent = false
   var labeled_branches: seq[tuple[label: Rope, body: PNode]] = @[] # generated after labels discovered
 
@@ -865,16 +871,13 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
     line(p, cpsStmts, ~"throw;$n")
     endBlock(p)
 
-  if labeled_branches.len > 0:
-    # generate labeled branches bodies
-    let end_label = getLabel(p)
-    for label, body in labeled_branches.items():
-      startBlock(p)
-      fixLabel(p, label)
-      genExceptBranchBody(body)
-      linefmt(p, cpsStmts, "goto $1;$n", end_label)
-      endBlock(p)
-    fixLabel(p, end_label)
+  # generate labeled branches bodies
+  for label, body in labeled_branches.items():
+    startBlock(p)
+    fixLabel(p, label)
+    genExceptBranchBody(body)
+    endBlock(p)
+  fixLabel(p, end_label)
 
   dec p.inExceptBlock
   discard pop(p.nestedTryStmts)
