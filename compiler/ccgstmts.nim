@@ -788,18 +788,18 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   #      myDiv(4, 9);
   #   } catch (NimExceptionType1&) {
   #      body
-  #      goto LA_END
+  #      goto LA_END;
   #   } catch (NimExceptionType2&) {
   #      finallyPart()
-  #      raise
-  #      goto LA_END
+  #      raise;
+  #      goto LA_END;
   #   } catch (NimExceptionType3&) {goto LA1;}
   #   } catch (NimExceptionType4&) {goto LA1;}
   #   } catch (NimExceptionType5&) {goto LA2;}
   #   } catch (NimExceptionType6&) {goto LA2;}
   #   catch(...) {
   #     // general handler
-  #     goto LA_END
+  #     goto LA_END;
   #   }
   #   {LA1:
   #      labeled_branch_body_LA1
@@ -808,7 +808,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   #   {LA2:
   #      labeled_branch_body_LA2
   #      finallyPart()
-  #      raise
+  #      raise;
   #      goto LA_END;
   #   }
   #   LA_END:  
