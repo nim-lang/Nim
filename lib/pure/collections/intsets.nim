@@ -328,11 +328,15 @@ proc `<=`*(s1, s2: IntSet): bool =
 
 proc `<`*(s1, s2: IntSet): bool =
   ## Returns true iff `s1` is proper subset of `s2`.
-  return s1 <= s2 and len(s1) != len(s2)
+  if s2.elems < 35 and s1.elems > s2.elems:
+    return false
+  return s1 <= s2 and not (s2 <= s1)
 
 proc `==`*(s1, s2: IntSet): bool =
   ## Returns true if both `s` and `t` have the same members and set size.
-  return s1 <= s2 and len(s1) == len(s2)
+  if s2.elems < 35 and s1.elems != s2.elems:
+    return false
+  return s1 <= s2 and s2 <= s1
 
 template dollarImpl(): untyped =
   result = "{"
