@@ -299,10 +299,6 @@ proc `-`*(s1, s2: IntSet): IntSet {.inline.} =
   ## Alias for `difference(s1, s2) <#difference>`_.
   result = difference(s1, s2)
 
-proc `-+-`*(s1, s2: IntSet): IntSet {.inline.} =
-  ## Alias for `symmetricDifference(s1, s2) <#symmetricDifference>`_.
-  result = symmetricDifference(s1, s2)
-
 proc disjoint*(s1, s2: IntSet): bool =
   ## Returns true iff the sets `s1` and `s2` have no items in common.
   for item in s1:
