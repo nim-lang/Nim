@@ -9,6 +9,8 @@ true
 1
 0
 it should stop now
+18446744073709551615
+4294967295
 '''
 """
 
@@ -31,3 +33,11 @@ for i in countdown(count, 0):
   if i == 0:
     echo "it should stop now"
     stop_me = true
+
+# bug #3985
+const
+  HIGHEST_64BIT_UINT = 0xFFFFFFFFFFFFFFFF'u
+  HIGHEST_32BIT_UINT = 0xFFFFFFFF'u
+
+echo($HIGHEST_64BIT_UINT)
+echo($HIGHEST_32BIT_UINT)

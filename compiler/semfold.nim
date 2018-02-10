@@ -375,7 +375,12 @@ proc getAppType(n: PNode): PNode =
     result = newStrNodeT("console", n)
 
 proc rangeCheck(n: PNode, value: BiggestInt) =
-  if value < firstOrd(n.typ) or value > lastOrd(n.typ):
+  var err = false
+  if n.typ.skipTypes({tyRange}).kind in {tyUInt..tyUInt64}:
+    err = value <% firstOrd(n.typ) or value >% lastOrd(n.typ, fixedUnsigned=true)
+  else:
+    err = value < firstOrd(n.typ) or value > lastOrd(n.typ)
+  if err:
     localError(n.info, errGenerated, "cannot convert " & $value &
                                      " to " & typeToString(n.typ))
 

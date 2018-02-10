@@ -621,7 +621,7 @@ proc firstOrd*(t: PType): BiggestInt =
     internalError("invalid kind for first(" & $t.kind & ')')
     result = 0
 
-proc lastOrd*(t: PType): BiggestInt =
+proc lastOrd*(t: PType; fixedUnsigned = false): BiggestInt =
   case t.kind
   of tyBool: result = 1
   of tyChar: result = 255
@@ -640,11 +640,14 @@ proc lastOrd*(t: PType): BiggestInt =
   of tyInt64: result = 0x7FFFFFFFFFFFFFFF'i64
   of tyUInt:
     if platform.intSize == 4: result = 0xFFFFFFFF
+    elif fixedUnsigned: result = 0xFFFFFFFFFFFFFFFF'i64
     else: result = 0x7FFFFFFFFFFFFFFF'i64
   of tyUInt8: result = 0xFF
   of tyUInt16: result = 0xFFFF
   of tyUInt32: result = 0xFFFFFFFF
-  of tyUInt64: result = 0x7FFFFFFFFFFFFFFF'i64
+  of tyUInt64:
+    if fixedUnsigned: result = 0xFFFFFFFFFFFFFFFF'i64
+    else: result = 0x7FFFFFFFFFFFFFFF'i64
   of tyEnum:
     assert(t.n.sons[sonsLen(t.n) - 1].kind == nkSym)
     result = t.n.sons[sonsLen(t.n) - 1].sym.position
