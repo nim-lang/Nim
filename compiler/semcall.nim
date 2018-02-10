@@ -156,14 +156,14 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       add(candidates, err.sym.getProcHeader(prefer))
     add(candidates, "\n")
     if err.firstMismatch != 0 and n.len > 2:
-      add(candidates, "first type mismatch at position: " & $err.firstMismatch &
-        "\nrequired type: ")
+      add(candidates, "  first type mismatch at position: " & $err.firstMismatch &
+        "\n  required type: ")
       if err.firstMismatch < err.sym.typ.len:
         candidates.add typeToString(err.sym.typ.sons[err.firstMismatch])
       else:
         candidates.add "none"
       if err.firstMismatch < n.len:
-        candidates.add "\nbut expression '"
+        candidates.add "\n  but expression '"
         candidates.add renderTree(n[err.firstMismatch])
         candidates.add "' is of type: "
         candidates.add typeToString(n[err.firstMismatch].typ)
@@ -190,7 +190,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   let (prefer, candidates) = presentFailedCandidates(c, n, errors)
   var result = msgKindToString(errTypeMismatch)
   add(result, describeArgs(c, n, 1, prefer))
-  add(result, ')')
+  add(result, '>')
   if candidates != "":
     add(result, "\n" & msgKindToString(errButExpected) & "\n" & candidates)
   localError(n.info, errGenerated, result & "\nexpression: " & $n)

@@ -1620,7 +1620,7 @@ proc typeMismatch*(info: TLineInfo, formal, actual: PType) =
     let desc = typeToString(formal, preferDesc)
     let x = if named == desc: named else: named & " = " & desc
     var msg = msgKindToString(errTypeMismatch) &
-              typeToString(actual) & ") " &
+              typeToString(actual) & "> " &
               msgKindToString(errButExpectedX) % [x]
 
     if formal.kind == tyProc and actual.kind == tyProc:
