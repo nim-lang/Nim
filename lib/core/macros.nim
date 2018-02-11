@@ -214,19 +214,54 @@ proc getType*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
 
 proc typeKind*(n: NimNode): NimTypeKind {.magic: "NGetType", noSideEffect.}
   ## Returns the type kind of the node 'n' that should represent a type, that
-  ## means the node should have been obtained via `getType`.
+  ## means the node should have been obtained via ``getType``.
 
 proc getTypeInst*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
-  ## Like getType except it includes generic parameters for a specific instance
+  ## Returns the `type`:idx: of a node in a form matching the way the
+  ## type instance was declared in the code.
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   import macros
+  ##   type
+  ##     Vec[N: static[int], T] = object
+  ##       arr: array[N, T]
+  ##     Vec4[T] = Vec[4, T]
+  ##     Vec4f = Vec4[float32]
+  ##   var a: Vec4f
+  ##   var b: Vec4[float32]
+  ##   var c: Vec[4, float32]
+  ##   macro dumpTypeInst(x: typed): untyped =
+  ##     echo x.getTypeInst.repr
+  ##   dumpTypeInst a  # Vec4f
+  ##   dumpTypeInst b  # Vec4[float32]
+  ##   dumpTypeInst c  # Vec[4, float32]
 
 proc getTypeInst*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
-  ## Like getType except it includes generic parameters for a specific instance
+  ## Version of ``getTypeInst`` which takes a ``typedesc``.
 
 proc getTypeImpl*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
-  ## Like getType except it includes generic parameters for the implementation
+  ## Returns the `type`:idx: of a node in a form matching the implementation
+  ## of the type.  Any intermediate aliases are expanded to arrive at the final
+  ## type implementation.  You can instead use ``getImpl`` on a symbol if you
+  ## want to find the intermediate aliases.
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   # use same setup from getTypeInst example above
+  ##   macro dumpTypeImpl(x: typed): untyped =
+  ##     echo x.getTypeImpl.repr
+  ##   dumpTypeImpl a
+  ##   dumpTypeImpl b
+  ##   dumpTypeImpl c
+  ##   # all the above return
+  ##   #   object
+  ##   #     arr: array[0 .. 3, float32]
 
 proc getTypeImpl*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
-  ## Like getType except it includes generic parameters for the implementation
+  ## Version of ``getTypeImpl`` which takes a ``typedesc``.
 
 proc strVal*(n: NimNode): string  {.magic: "NStrVal", noSideEffect.}
 
