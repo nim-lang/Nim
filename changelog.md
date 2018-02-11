@@ -249,3 +249,5 @@ bar()
 ```
 
 - The ``securehash`` module is now deprecated. Instead import ``std / sha1``.
+- ``db_mysql`` module: ``DbConn`` is now a ``distinct`` type that doesn't expose the
+  details of the underlying ``PMySQL`` type.

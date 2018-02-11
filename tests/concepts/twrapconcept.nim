@@ -1,5 +1,5 @@
 discard """
-  errormsg: "type mismatch: got (string)"
+  errormsg: "type mismatch: got <string>"
   line: 21
   nimout: "twrapconcept.nim(11, 5) Foo: concept predicate failed"
 """
@@ -9,7 +9,7 @@ discard """
 type
   Foo = concept foo
     foo.get is int
-  
+
   FooWrap[F: Foo] = object
     foo: F
 

@@ -1,38 +1,38 @@
 discard """
-errormsg: "type mismatch: got (Bar[system.int])"
+errormsg: "type mismatch: got <Bar[system.int]>"
 nimout: '''
-t3330.nim(63, 4) Error: type mismatch: got (Bar[system.int])
+t3330.nim(63, 4) Error: type mismatch: got <Bar[system.int]>
 but expected one of:
 proc test(foo: Foo[int])
 t3330.nim(48, 8) Hint: Non-matching candidates for add(k, string, T)
 proc add(x: var string; y: string)
-first type mismatch at position: 1
-required type: var string
-but expression 'k' is of type: Alias
+  first type mismatch at position: 1
+  required type: var string
+  but expression 'k' is of type: Alias
 proc add(x: var string; y: char)
-first type mismatch at position: 1
-required type: var string
-but expression 'k' is of type: Alias
+  first type mismatch at position: 1
+  required type: var string
+  but expression 'k' is of type: Alias
 proc add(result: var string; x: int64)
-first type mismatch at position: 1
-required type: var string
-but expression 'k' is of type: Alias
+  first type mismatch at position: 1
+  required type: var string
+  but expression 'k' is of type: Alias
 proc add(result: var string; x: float)
-first type mismatch at position: 1
-required type: var string
-but expression 'k' is of type: Alias
+  first type mismatch at position: 1
+  required type: var string
+  but expression 'k' is of type: Alias
 proc add(x: var string; y: cstring)
-first type mismatch at position: 1
-required type: var string
-but expression 'k' is of type: Alias
+  first type mismatch at position: 1
+  required type: var string
+  but expression 'k' is of type: Alias
 proc add[T](x: var seq[T]; y: openArray[T])
-first type mismatch at position: 1
-required type: var seq[T]
-but expression 'k' is of type: Alias
+  first type mismatch at position: 1
+  required type: var seq[T]
+  but expression 'k' is of type: Alias
 proc add[T](x: var seq[T]; y: T)
-first type mismatch at position: 1
-required type: var seq[T]
-but expression 'k' is of type: Alias
+  first type mismatch at position: 1
+  required type: var seq[T]
+  but expression 'k' is of type: Alias
 
 t3330.nim(48, 8) template/generic instantiation from here
 t3330.nim(55, 6) Foo: 'bar.value' cannot be assigned to

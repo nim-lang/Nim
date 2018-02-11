@@ -272,7 +272,7 @@ const
     errXStackEscape: "address of '$1' may not escape its stack frame",
     errVarForOutParamNeededX: "for a \'var\' type a variable needs to be passed; but '$1' is immutable",
     errPureTypeMismatch: "type mismatch",
-    errTypeMismatch: "type mismatch: got (",
+    errTypeMismatch: "type mismatch: got <",
     errButExpected: "but expected one of: ",
     errButExpectedX: "but expected \'$1\'",
     errAmbiguousCallXYZ: "ambiguous call; both $1 and $2 match for: $3",

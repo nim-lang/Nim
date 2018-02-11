@@ -124,6 +124,15 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
     else:
       break
 
+proc effectProblem(f, a: PType; result: var string) =
+  if f.kind == tyProc and a.kind == tyProc:
+    if tfThread in f.flags and tfThread notin a.flags:
+      result.add "\n  This expression is not GC-safe. Annotate the " &
+          "proc with {.gcsafe.} to get extended error information."
+    elif tfNoSideEffect in f.flags and tfNoSideEffect notin a.flags:
+      result.add "\n  This expression can have side effects. Annotate the " &
+          "proc with {.noSideEffect.} to get extended error information."
+
 proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
                             (TPreferedDesc, string) =
   var prefer = preferName
@@ -156,17 +165,22 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       add(candidates, err.sym.getProcHeader(prefer))
     add(candidates, "\n")
     if err.firstMismatch != 0 and n.len > 2:
-      add(candidates, "first type mismatch at position: " & $err.firstMismatch &
-        "\nrequired type: ")
+      add(candidates, "  first type mismatch at position: " & $err.firstMismatch &
+        "\n  required type: ")
+      var wanted, got: PType = nil
       if err.firstMismatch < err.sym.typ.len:
-        candidates.add typeToString(err.sym.typ.sons[err.firstMismatch])
+        wanted = err.sym.typ.sons[err.firstMismatch]
+        candidates.add typeToString(wanted)
       else:
         candidates.add "none"
       if err.firstMismatch < n.len:
-        candidates.add "\nbut expression '"
+        candidates.add "\n  but expression '"
         candidates.add renderTree(n[err.firstMismatch])
         candidates.add "' is of type: "
-        candidates.add typeToString(n[err.firstMismatch].typ)
+        got = n[err.firstMismatch].typ
+        candidates.add typeToString(got)
+      if wanted != nil and got != nil:
+        effectProblem(wanted, got, candidates)
       candidates.add "\n"
     elif err.unmatchedVarParam != 0 and err.unmatchedVarParam < n.len:
       add(candidates, "for a 'var' type a variable needs to be passed, but '" &
@@ -190,7 +204,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   let (prefer, candidates) = presentFailedCandidates(c, n, errors)
   var result = msgKindToString(errTypeMismatch)
   add(result, describeArgs(c, n, 1, prefer))
-  add(result, ')')
+  add(result, '>')
   if candidates != "":
     add(result, "\n" & msgKindToString(errButExpected) & "\n" & candidates)
   localError(n.info, errGenerated, result & "\nexpression: " & $n)

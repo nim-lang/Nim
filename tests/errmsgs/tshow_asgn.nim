@@ -1,5 +1,5 @@
 discard """
-  errormsg: "type mismatch: got (int) but expected 'cshort = int16'"
+  errormsg: "type mismatch: got <int> but expected 'cshort = int16'"
   line: 12
   column: 10
   file: "tshow_asgn.nim"

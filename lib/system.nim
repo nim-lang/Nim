@@ -2005,7 +2005,13 @@ iterator countdown*[T](a, b: T, step = 1): T {.inline.} =
   ## step count. `T` may be any ordinal type, `step` may only
   ## be positive. **Note**: This fails to count to ``low(int)`` if T = int for
   ## efficiency reasons.
-  when T is IntLikeForCount:
+  when T is (uint|uint64):
+    var res = a
+    while res >= b:
+      yield res
+      if res == b: break
+      dec(res, step)
+  elif T is IntLikeForCount:
     var res = int(a)
     while res >= int(b):
       yield T(res)

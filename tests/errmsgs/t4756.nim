@@ -1,5 +1,5 @@
 discard """
-errormsg: "type mismatch: got (string, arr: seq[empty])"
+errormsg: "type mismatch: got <string, arr: seq[empty]>"
 line: 15
 """
 
