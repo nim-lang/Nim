@@ -308,7 +308,7 @@ proc disjoint*(s1, s2: IntSet): bool =
 
 proc len*(s: IntSet): int {.inline.} =
   ## Returns the number of keys in `s`.
-  if s.elems < 35:
+  if s.elems < s.a.len:
     result = s.elems
   else:
     result = 0
@@ -328,13 +328,13 @@ proc `<=`*(s1, s2: IntSet): bool =
 
 proc `<`*(s1, s2: IntSet): bool =
   ## Returns true iff `s1` is proper subset of `s2`.
-  if s2.elems < 35 and s1.elems > s2.elems:
+  if s2.elems < s2.a.len and s1.elems > s2.elems:
     return false
   return s1 <= s2 and not (s2 <= s1)
 
 proc `==`*(s1, s2: IntSet): bool =
   ## Returns true if both `s` and `t` have the same members and set size.
-  if s2.elems < 35 and s1.elems != s2.elems:
+  if s2.elems < s2.a.len and s1.elems != s2.elems:
     return false
   return s1 <= s2 and s2 <= s1
 
