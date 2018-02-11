@@ -726,6 +726,7 @@ proc genProcAux(m: BModule, prc: PSym) =
     else:
       fillResult(resNode)
       assignParam(p, res)
+      resetLoc(p, res.loc)
       if skipTypes(res.typ, abstractInst).kind == tyArray:
         #incl(res.loc.flags, lfIndirect)
         res.loc.storage = OnUnknown
