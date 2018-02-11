@@ -98,16 +98,10 @@ type
   YeardayRange* = range[0..365]
   NanosecondRange* = range[0..999_999_999]
 
-  TimeImpl = object
+  Time* = object ## Represents a point in time.
     seconds: int64
     nanoseconds: NanosecondRange
 
-  DurationImpl = object
-    seconds: int64
-    nanoseconds: NanosecondRange
-
-  Time* = TimeImpl ## Represents a point in time.
-    
   DateTime* = object of RootObj ## Represents a time in different parts.
                                 ## Although this type can represent leap
                                 ## seconds, they are generally not supported
@@ -157,11 +151,13 @@ type
     months*: int       ## The number of months
     years*: int        ## The number of years
 
-  Duration* = DurationImpl ## Represents a fixed duration of time.
-                           ## Uses the same time resolution as ``Time``.
-                           ## This type should be prefered over ``TimeInterval`` unless
-                           ## non-static time units is needed.
-
+  Duration* = object ## Represents a fixed duration of time.
+                     ## Uses the same time resolution as ``Time``.
+                     ## This type should be prefered over ``TimeInterval`` unless
+                     ## non-static time units is needed.
+    seconds: int64
+    nanoseconds: NanosecondRange                     
+                           
   TimeUnit* = enum ## Different units of time.
     Nanoseconds, Microseconds, Milliseconds, Seconds, Minutes, Hours, Days, Weeks, Months, Years
 
