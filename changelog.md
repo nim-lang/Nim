@@ -251,3 +251,12 @@ bar()
 - The ``securehash`` module is now deprecated. Instead import ``std / sha1``.
 - ``db_mysql`` module: ``DbConn`` is now a ``distinct`` type that doesn't expose the
   details of the underlying ``PMySQL`` type.
+- Standard library modules can now also be imported via the ``std`` pseudo-directory.
+  This is useful in order to distinguish between standard library and nimble package
+  imports:
+
+```nim
+
+import std / [strutils, os, osproc]
+import someNimblePackage / [strutils, os]
+```

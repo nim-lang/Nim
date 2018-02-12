@@ -274,9 +274,10 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
 
 proc processPath(path: string, info: TLineInfo,
                  notRelativeToProj = false): string =
-  let p = if notRelativeToProj or os.isAbsolute(path) or
-              '$' in path:
+  let p = if os.isAbsolute(path) or '$' in path:
             path
+          elif notRelativeToProj:
+            getCurrentDir() / path
           else:
             options.gProjectPath / path
   try:
