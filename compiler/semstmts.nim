@@ -17,7 +17,7 @@ proc semDiscard(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 1)
   if n.sons[0].kind != nkEmpty:
     n.sons[0] = semExprWithType(c, n.sons[0])
-    if isEmptyType(n.sons[0].typ) or n.sons[0].typ.kind == tyNone:
+    if isEmptyType(n.sons[0].typ) or n.sons[0].typ.kind == tyNone or n.sons[0].kind == nkTypeOfExpr:
       localError(n.info, errInvalidDiscard)
 
 proc semBreakOrContinue(c: PContext, n: PNode): PNode =

@@ -425,19 +425,19 @@ proc toHtmlTag(s: string): HtmlTag =
 
 
 proc htmlTag*(n: XmlNode): HtmlTag =
-  ## gets `n`'s tag as a ``HtmlTag``.
+  ## Gets `n`'s tag as a ``HtmlTag``.
   if n.clientData == 0:
     n.clientData = toHtmlTag(n.tag).ord
   result = HtmlTag(n.clientData)
 
 proc htmlTag*(s: string): HtmlTag =
-  ## converts `s` to a ``HtmlTag``. If `s` is no HTML tag, ``tagUnknown`` is
+  ## Converts `s` to a ``HtmlTag``. If `s` is no HTML tag, ``tagUnknown`` is
   ## returned.
   let s = if allLower(s): s else: toLowerAscii(s)
   result = toHtmlTag(s)
 
 proc entityToUtf8*(entity: string): string =
-  ## converts an HTML entity name like ``&Uuml;`` to its UTF-8 equivalent.
+  ## Converts an HTML entity name like ``&Uuml;`` to its UTF-8 equivalent.
   ## "" is returned if the entity name is unknown. The HTML parser
   ## already converts entities to UTF-8.
   for name, val in items(Entities):
@@ -565,7 +565,7 @@ proc parse(x: var XmlParser, errors: var seq[string]): XmlNode =
 
 proc parseHtml*(s: Stream, filename: string,
                 errors: var seq[string]): XmlNode =
-  ## parses the XML from stream `s` and returns a ``PXmlNode``. Every
+  ## Parses the XML from stream `s` and returns a ``XmlNode``. Every
   ## occurred parsing error is added to the `errors` sequence.
   var x: XmlParser
   open(x, s, filename, {reportComments, reportWhitespace})
@@ -588,14 +588,19 @@ proc parseHtml*(s: Stream, filename: string,
     result = result[0]
 
 proc parseHtml*(s: Stream): XmlNode =
-  ## parses the XTML from stream `s` and returns a ``PXmlNode``. All parsing
+  ## Parses the HTML from stream `s` and returns a ``XmlNode``. All parsing
   ## errors are ignored.
   var errors: seq[string] = @[]
   result = parseHtml(s, "unknown_html_doc", errors)
 
+proc parseHtml*(html: string): XmlNode =
+  ## Parses the HTML from string ``html`` and returns a ``XmlNode``. All parsing
+  ## errors are ignored.
+  parseHtml(newStringStream(html))
+
 proc loadHtml*(path: string, errors: var seq[string]): XmlNode =
   ## Loads and parses HTML from file specified by ``path``, and returns
-  ## a ``PXmlNode``.  Every occurred parsing error is added to
+  ## a ``XmlNode``. Every occurred parsing error is added to
   ## the `errors` sequence.
   var s = newFileStream(path, fmRead)
   if s == nil: raise newException(IOError, "Unable to read file: " & path)
@@ -603,7 +608,7 @@ proc loadHtml*(path: string, errors: var seq[string]): XmlNode =
 
 proc loadHtml*(path: string): XmlNode =
   ## Loads and parses HTML from file specified by ``path``, and returns
-  ## a ``PXmlNode``. All parsing errors are ignored.
+  ## a ``XmlNode``. All parsing errors are ignored.
   var errors: seq[string] = @[]
   result = loadHtml(path, errors)
 

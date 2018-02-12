@@ -1896,7 +1896,7 @@ macro to*(node: JsonNode, T: typedesc): untyped =
   ##     doAssert data.person.age == 21
   ##     doAssert data.list == @[1, 2, 3, 4]
 
-  let typeNode = getType(T)
+  let typeNode = getTypeInst(T)
   expectKind(typeNode, nnkBracketExpr)
   doAssert(($typeNode[0]).normalize == "typedesc")
 
