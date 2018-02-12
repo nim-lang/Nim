@@ -569,7 +569,7 @@ proc genBreakStmt(p: BProc, t: PNode) =
   lineF(p, cpsStmts, "goto $1;$n", [label])
 
 proc genRaiseStmt(p: BProc, t: PNode) =
-  if p.inExceptBlock > 0:
+  if p.inExceptBlock > 0 and p.inExceptBlock == p.nestedTryStmts.len:
     # if the current try stmt have a finally block,
     # we must execute it before reraising
     var finallyBlock = p.nestedTryStmts[p.nestedTryStmts.len - 1].lastSon
