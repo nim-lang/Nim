@@ -1657,6 +1657,20 @@ proc toObject*(typ: PType): PType =
   if result.kind == tyRef:
     result = result.lastSon
 
+proc isException*(t: PType): bool =
+  # check if `y` is object type and it inherits from Exception
+  assert(t != nil)
+
+  if t.kind != tyObject: 
+    return false
+
+  var base = t
+  while base != nil:
+    if base.sym.magic == mException:
+      return true
+    base = base.lastSon
+  return false
+
 proc findUnresolvedStatic*(n: PNode): PNode =
   if n.kind == nkSym and n.typ.kind == tyStatic and n.typ.n == nil:
     return n

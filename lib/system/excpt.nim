@@ -320,7 +320,7 @@ proc raiseExceptionAux(e: ref Exception) =
       quitOrDebug()
     else:
       pushCurrentException(e)
-      {.emit: "throw NimException(`e`, `e`->name);".}
+      {.emit: "`e`->raise();".}
   else:
     if excHandler != nil:
       if not excHandler.hasRaiseAction or excHandler.raiseAction(e):
