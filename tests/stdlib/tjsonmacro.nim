@@ -381,3 +381,10 @@ when isMainModule:
     doAssert dataDeser.a == 1
     doAssert dataDeser.f == 6
     doAssert dataDeser.i == 9.9'f32
+  
+  # deserialize directly into a table
+  block:
+    let s = """{"a": 1, "b": 2}"""
+    let t = parseJson(s).to(Table[string, int])
+    doAssert t["a"] == 1
+    doAssert t["b"] == 2
