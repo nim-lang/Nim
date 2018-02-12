@@ -569,7 +569,7 @@ proc genBreakStmt(p: BProc, t: PNode) =
   lineF(p, cpsStmts, "goto $1;$n", [label])
 
 proc genRaiseStmt(p: BProc, t: PNode) =
-  if p.inExceptBlock > 0:
+  if p.inExceptBlock > 0 and p.inExceptBlock == p.nestedTryStmts.len:
     # if the current try stmt have a finally block,
     # we must execute it before reraising
     let finallyBlock = p.nestedTryStmts[p.nestedTryStmts.len - 1].lastSon
@@ -782,95 +782,111 @@ proc genCase(p: BProc, t: PNode, d: var TLoc) =
     else:
       genOrdinalCase(p, t, d)
 
+
 proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   # code to generate:
-  #
-  # XXX: There should be a standard dispatch algorithm
-  # that's used both here and with multi-methods
   #
   #   try
   #   {
   #      myDiv(4, 9);
-  #   } catch (NimException& exp) {
-  #      if (isObj(exp, EIO) {
-  #        ...
-  #      } else if (isObj(exp, ESystem) {
-  #        ...
-  #        finallyPart()
-  #        raise;
-  #      } else {
-  #        // general handler
-  #      }
-  #  }
-  #  finallyPart();
+  #   } catch (NimExceptionType1&) {
+  #      body
+  #      goto LA_END;
+  #   } catch (NimExceptionType2&) {
+  #      finallyPart()
+  #      raise;
+  #      goto LA_END;
+  #   } catch (NimExceptionType3&) {goto LA1;}
+  #   } catch (NimExceptionType4&) {goto LA1;}
+  #   } catch (NimExceptionType5&) {goto LA2;}
+  #   } catch (NimExceptionType6&) {goto LA2;}
+  #   catch(...) {
+  #     // general handler
+  #     goto LA_END;
+  #   }
+  #   {LA1:
+  #      labeled_branch_body_LA1
+  #      goto LA_END;
+  #   }
+  #   {LA2:
+  #      labeled_branch_body_LA2
+  #      finallyPart()
+  #      raise;
+  #      goto LA_END;
+  #   }
+  #   LA_END:  
+  #   finallyPart();
+ 
   template genExceptBranchBody(body: PNode) {.dirty.} =
     if optStackTrace in p.options:
       linefmt(p, cpsStmts, "#setFrame((TFrame*)&FR_);$n") 
     expr(p, body, d)
     linefmt(p, cpsStmts, "#popCurrentException();$n")
+    linefmt(p, cpsStmts, "goto $1;$n", end_label)
+    
 
   if not isEmptyType(t.typ) and d.k == locNone:
     getTemp(p, t.typ, d)
   genLineDir(p, t)
-  if getCompilerProc("Exception") != nil:
-    discard cgsym(p.module, "Exception")
-  else:
-    discard cgsym(p.module, "E_Base")
-  
-  let exc = getTempName(p.module)
+
+  discard cgsym(p.module, "Exception")
   add(p.nestedTryStmts, t)
   startBlock(p, "try {$n")
-  expr(p, t.sons[0], d)
-  endBlock(p, ropecg(p.module, "} catch (NimException& $1) {$n", [exc]))
+  expr(p, t[0], d)
+  endBlock(p, ropecg(p.module, "}"))
+
+  let end_label = getLabel(p)
+  var catchAllPresent = false
+  var labeled_branches: seq[tuple[label: Rope, body: PNode]] = @[] # generated after labels discovered
+
   inc p.inExceptBlock
-  var i = 1
-  var imported_branches: seq[PNode] = @[]
-  var catch_all_branch: PNode
-  for i in 0..<t.len:
-    # generate only Nim native exception handlers for now
+  for i in 1..<t.len:
     if t[i].kind != nkExceptBranch: break
+
     # bug #4230: avoid false sharing between branches:
     if d.k == locTemp and isEmptyType(t.typ): d.k = locNone
+
     if t[i].len == 1:
-      # general except catch all section
-      catch_all_branch = t[i]
-    elif t[i][0].isInfixAs() and isImportedException(t[i][0][1].typ) or
-         isImportedException(t[i][0].typ):
-      imported_branches.add t[i]
-    else:
-      var orExpr: Rope = nil
-      for j in 0..t[i].len - 2:
-        assert(t[i][j].kind == nkType)
-        if orExpr != nil: add(orExpr, "||")
-        appcg(p.module, orExpr,
-              "#isObj($1.exp->m_type, $2)",
-              [exc, genTypeInfo(p.module, t[i][j].typ, t[i][j].info)])
-      lineF(p, cpsStmts, "if ($1) ", [orExpr])
-      startBlock(p)
+      # general except section:
+      catchAllPresent = true
+      startBlock(p, "catch (...) {$n")
+      genExceptBranchBody(t[i][0])
+      endBlock(p)
+
+    elif t[i].len == 2:
+      startBlock(p, "catch ($1*) {$n", getTypeDesc(p.module, t[i][0].typ))
       genExceptBranchBody(t[i][^1])
       endBlock(p)
 
-  if i > 1: addf(p.s(cpsStmts), "else ", [])
-  
-  # reraise the exception if there was no catch all
-  # and none of the handlers matched
-  if not catchAllPresent:
-    if i > 1: lineF(p, cpsStmts, "else ", [])
-    startBlock(p)
-    var finallyBlock = t.lastSon
-    if finallyBlock.kind == nkFinally:
-      #expr(p, finallyBlock.sons[0], d)
-      genStmts(p, finallyBlock.sons[0])
+    else:
+      # cpp can't catch multiple types in one statement so we need a label and goto
+      let label = getLabel(p)    
+      labeled_branches.add((label, t[i][^1]))
+      for j in 0..t[i].len-2:
+        assert(t[i][j].kind == nkType)
+        linefmt(p, cpsStmts, "catch ($1*) {goto $2;}$n",
+                           [getTypeDesc(p.module, t[i][j].typ), label])
 
+  if not catchAllPresent and t[^1].kind == nkFinally:
+    # finally requires catch all presence
+    startBlock(p, "catch (...) {$n")
+    genSimpleBlock(p, t[^1][0])
     line(p, cpsStmts, ~"throw;$n")
     endBlock(p)
 
-  lineF(p, cpsStmts, "}$n", []) # end of catch block
-  dec p.inExceptBlock
+  # generate labeled branches bodies
+  for label, body in labeled_branches.items():
+    startBlock(p)
+    fixLabel(p, label)
+    genExceptBranchBody(body)
+    endBlock(p)
+  fixLabel(p, end_label)
 
+  dec p.inExceptBlock
   discard pop(p.nestedTryStmts)
-  if (i < length) and (t.sons[i].kind == nkFinally):
-    genSimpleBlock(p, t.sons[i].sons[0])
+
+  if t[^1].kind == nkFinally:
+    genSimpleBlock(p, t[^1][0])
 
 proc genTry(p: BProc, t: PNode, d: var TLoc) =
   # code to generate:

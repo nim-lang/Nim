@@ -63,6 +63,8 @@ The following example shows a generic binary tree can be modelled:
   for str in preorder(root):
     stdout.writeLine(str)
 
+The ``T`` is called a `generic type parameter`:idx:.
+
 
 Is operator
 -----------
@@ -314,7 +316,7 @@ The concept types can be parametric just like the regular generic types:
 
 .. code-block:: nim
   ### matrixalgo.nim
-  
+
   import typetraits
 
   type
@@ -360,7 +362,7 @@ The concept types can be parametric just like the regular generic types:
   template Rows*(M: type Matrix): expr = M.M
   template Cols*(M: type Matrix): expr = M.N
   template ValueType*(M: type Matrix): typedesc = M.T
-  
+
   -------------
   ### usage.nim
 
@@ -582,60 +584,61 @@ the concept body:
   proc log(format: static[string], varargs[distinct StringRef])
 
 
-VTable types
-------------
+..
+  VTable types
+  ------------
 
-Concepts allow Nim to define a great number of algorithms, using only
-static polymorphism and without erasing any type information or sacrificing
-any execution speed. But when polymorphic collections of objects are required,
-the user must use one of the provided type erasure techniques - either common
-base types or VTable types.
+  Concepts allow Nim to define a great number of algorithms, using only
+  static polymorphism and without erasing any type information or sacrificing
+  any execution speed. But when polymorphic collections of objects are required,
+  the user must use one of the provided type erasure techniques - either common
+  base types or VTable types.
 
-VTable types are represented as "fat pointers" storing a reference to an
-object together with a reference to a table of procs implementing a set of
-required operations (the so called vtable).
+  VTable types are represented as "fat pointers" storing a reference to an
+  object together with a reference to a table of procs implementing a set of
+  required operations (the so called vtable).
 
-In contrast to other programming languages, the vtable in Nim is stored
-externally to the object, allowing you to create multiple different vtable
-views for the same object. Thus, the polymorphism in Nim is unbounded -
-any type can implement an unlimited number of protocols or interfaces not
-originally envisioned by the type's author.
+  In contrast to other programming languages, the vtable in Nim is stored
+  externally to the object, allowing you to create multiple different vtable
+  views for the same object. Thus, the polymorphism in Nim is unbounded -
+  any type can implement an unlimited number of protocols or interfaces not
+  originally envisioned by the type's author.
 
-Any concept type can be turned into a VTable type by using the ``vtref``
-or the ``vtptr`` compiler magics. Under the hood, these magics generate
-a converter type class, which converts the regular instances of the matching
-types to the corresponding VTable type.
+  Any concept type can be turned into a VTable type by using the ``vtref``
+  or the ``vtptr`` compiler magics. Under the hood, these magics generate
+  a converter type class, which converts the regular instances of the matching
+  types to the corresponding VTable type.
 
-.. code-block:: nim
-  type
-    IntEnumerable = vtref Enumerable[int]
+  .. code-block:: nim
+    type
+      IntEnumerable = vtref Enumerable[int]
 
-    MyObject = object
-      enumerables: seq[IntEnumerable]
-      streams: seq[OutputStream.vtref]
+      MyObject = object
+        enumerables: seq[IntEnumerable]
+        streams: seq[OutputStream.vtref]
 
-  proc addEnumerable(o: var MyObject, e: IntEnumerable) =
-    o.enumerables.add e
+    proc addEnumerable(o: var MyObject, e: IntEnumerable) =
+      o.enumerables.add e
 
-  proc addStream(o: var MyObject, e: OutputStream.vtref) =
-    o.streams.add e
+    proc addStream(o: var MyObject, e: OutputStream.vtref) =
+      o.streams.add e
 
-The procs that will be included in the vtable are derived from the concept
-body and include all proc calls for which all param types were specified as
-concrete types. All such calls should include exactly one param of the type
-matched against the concept (not necessarily in the first position), which
-will be considered the value bound to the vtable.
+  The procs that will be included in the vtable are derived from the concept
+  body and include all proc calls for which all param types were specified as
+  concrete types. All such calls should include exactly one param of the type
+  matched against the concept (not necessarily in the first position), which
+  will be considered the value bound to the vtable.
 
-Overloads will be created for all captured procs, accepting the vtable type
-in the position of the captured underlying object.
+  Overloads will be created for all captured procs, accepting the vtable type
+  in the position of the captured underlying object.
 
-Under these rules, it's possible to obtain a vtable type for a concept with
-unbound type parameters or one instantiated with metatypes (type classes),
-but it will include a smaller number of captured procs. A completely empty
-vtable will be reported as an error.
+  Under these rules, it's possible to obtain a vtable type for a concept with
+  unbound type parameters or one instantiated with metatypes (type classes),
+  but it will include a smaller number of captured procs. A completely empty
+  vtable will be reported as an error.
 
-The ``vtref`` magic produces types which can be bound to ``ref`` types and
-the ``vtptr`` magic produced types bound to ``ptr`` types.
+  The ``vtref`` magic produces types which can be bound to ``ref`` types and
+  the ``vtptr`` magic produced types bound to ``ptr`` types.
 
 
 Symbol lookup in generics
@@ -709,3 +712,30 @@ definition):
 
 But a ``bind`` is rarely useful because symbol binding from the definition
 scope is the default.
+
+
+Generic type inference for numeric types
+----------------------------------------
+
+A `numeric`:idx: type is any signed, unsigned integer type, floating point
+type or a subrange thereof. Let ``maxNumericType(T1, T2)`` be the "greater"
+type of ``T1`` and ``T2``, that is the type that uses more bits. For
+example ``maxNumericType(int32, int64) == int64``. ``maxNumericType`` is only
+defined for numeric types of the same class (signed, unsigned, floating point).
+``maxNumericType`` strips away subranges,
+``maxNumericType(subrangeof(int16), int8)`` produces ``int16`` not its
+subrange. The definition ``maxNumericType`` is extended to take a variable
+number of arguments in the obvious way;
+``maxNumericType(x, y, z) == maxNumericType(maxNumericType(x, y), z)``.
+
+A generic type parameter ``T`` that is bound to multiple numeric types ``N1``,
+``N2``, ``N3``, ... during type checking is inferred to
+be ``maxNumericType(N1, N2, N3, ...)``. This special type inference rule ensures
+that the builtin arithmetic operators can be written in an intuitive way:
+
+.. code-block:: nim
+  proc `@`[T: int|int16|int32](x, y: T): T
+
+  4'i32 @ 6'i64 # inferred to be of type ``int64``
+
+  4'i64 @ 6'i32 # inferred to be of type ``int64``

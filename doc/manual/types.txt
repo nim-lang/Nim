@@ -181,11 +181,11 @@ Nim exceptions: `FloatInvalidOpError`:idx:, `FloatDivByZeroError`:idx:,
 and `FloatInexactError`:idx:.
 These exceptions inherit from the `FloatingPointError`:idx: base class.
 
-Nim provides the pragmas `NaNChecks`:idx: and `InfChecks`:idx: to control
+Nim provides the pragmas `nanChecks`:idx: and `infChecks`:idx: to control
 whether the IEEE exceptions are ignored or trap a Nim exception:
 
 .. code-block:: nim
-  {.NanChecks: on, InfChecks: on.}
+  {.nanChecks: on, infChecks: on.}
   var a = 1.0
   var b = 0.0
   echo b / b # raises FloatInvalidOpError
@@ -195,7 +195,7 @@ In the current implementation ``FloatDivByZeroError`` and ``FloatInexactError``
 are never raised. ``FloatOverflowError`` is raised instead of
 ``FloatDivByZeroError``.
 There is also a `floatChecks`:idx: pragma that is a short-cut for the
-combination of ``NaNChecks`` and ``InfChecks`` pragmas. ``floatChecks`` are
+combination of ``nanChecks`` and ``infChecks`` pragmas. ``floatChecks`` are
 turned off as default.
 
 The only operations that are affected by the ``floatChecks`` pragma are

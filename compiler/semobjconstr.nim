@@ -260,6 +260,10 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = newNodeIT(nkObjConstr, n.info, t)
   for child in n: result.add child
 
+  if t == nil:
+    localError(n.info, errGenerated, "object constructor needs an object type")
+    return
+
   t = skipTypes(t, {tyGenericInst, tyAlias, tySink})
   if t.kind == tyRef: t = skipTypes(t.sons[0], {tyGenericInst, tyAlias, tySink})
   if t.kind != tyObject:

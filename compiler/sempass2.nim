@@ -593,17 +593,14 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType) =
   notNilCheck(tracked, n, paramType)
 
 proc breaksBlock(n: PNode): bool =
-  case n.kind
-  of nkStmtList, nkStmtListExpr:
-    for c in n:
-      if breaksBlock(c): return true
-  of nkBreakStmt, nkReturnStmt, nkRaiseStmt:
-    return true
-  of nkCallKinds:
-    if n.sons[0].kind == nkSym and sfNoReturn in n.sons[0].sym.flags:
-      return true
-  else:
-    discard
+  # sematic check doesn't allow statements after raise, break, return or
+  # call to noreturn proc, so it is safe to check just the last statements
+  var it = n
+  while it.kind in {nkStmtList, nkStmtListExpr} and it.len > 0:
+    it = it.lastSon
+
+  result = it.kind in {nkBreakStmt, nkReturnStmt, nkRaiseStmt} or
+    it.kind in nkCallKinds and it[0].kind == nkSym and sfNoReturn in it[0].sym.flags
 
 proc trackCase(tracked: PEffects, n: PNode) =
   track(tracked, n.sons[0])
@@ -747,7 +744,7 @@ proc track(tracked: PEffects, n: PNode) =
       # may not look like an assignment, but it is:
       let arg = n.sons[1]
       initVarViaNew(tracked, arg)
-      if {tfNeedsInit} * arg.typ.lastSon.flags != {}:
+      if arg.typ.len != 0 and {tfNeedsInit} * arg.typ.lastSon.flags != {}:
         if a.sym.magic == mNewSeq and n[2].kind in {nkCharLit..nkUInt64Lit} and
             n[2].intVal == 0:
           # var s: seq[notnil];  newSeq(s, 0)  is a special case!

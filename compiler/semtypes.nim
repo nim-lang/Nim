@@ -288,7 +288,9 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
     var indxB = indx
     if indxB.kind in {tyGenericInst, tyAlias, tySink}: indxB = lastSon(indxB)
     if indxB.kind notin {tyGenericParam, tyStatic, tyFromExpr}:
-      if not isOrdinalType(indxB):
+      if indxB.skipTypes({tyRange}).kind in {tyUInt, tyUInt64}:
+        discard
+      elif not isOrdinalType(indxB):
         localError(n.sons[1].info, errOrdinalTypeExpected)
       elif enumHasHoles(indxB):
         localError(n.sons[1].info, errEnumXHasHoles,
@@ -1147,8 +1149,8 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
 
     if m.state != csMatch:
       let err = "cannot instantiate " & typeToString(t) & "\n" &
-                "got: (" & describeArgs(c, n) & ")\n" &
-                "but expected: (" & describeArgs(c, t.n, 0) & ")"
+                "got: <" & describeArgs(c, n) & ">\n" &
+                "but expected: <" & describeArgs(c, t.n, 0) & ">"
       localError(n.info, errGenerated, err)
       return newOrPrevType(tyError, prev, c)
 

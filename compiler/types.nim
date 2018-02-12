@@ -621,7 +621,7 @@ proc firstOrd*(t: PType): BiggestInt =
     internalError("invalid kind for first(" & $t.kind & ')')
     result = 0
 
-proc lastOrd*(t: PType): BiggestInt =
+proc lastOrd*(t: PType; fixedUnsigned = false): BiggestInt =
   case t.kind
   of tyBool: result = 1
   of tyChar: result = 255
@@ -640,11 +640,14 @@ proc lastOrd*(t: PType): BiggestInt =
   of tyInt64: result = 0x7FFFFFFFFFFFFFFF'i64
   of tyUInt:
     if platform.intSize == 4: result = 0xFFFFFFFF
+    elif fixedUnsigned: result = 0xFFFFFFFFFFFFFFFF'i64
     else: result = 0x7FFFFFFFFFFFFFFF'i64
   of tyUInt8: result = 0xFF
   of tyUInt16: result = 0xFFFF
   of tyUInt32: result = 0xFFFFFFFF
-  of tyUInt64: result = 0x7FFFFFFFFFFFFFFF'i64
+  of tyUInt64:
+    if fixedUnsigned: result = 0xFFFFFFFFFFFFFFFF'i64
+    else: result = 0x7FFFFFFFFFFFFFFF'i64
   of tyEnum:
     assert(t.n.sons[sonsLen(t.n) - 1].kind == nkSym)
     result = t.n.sons[sonsLen(t.n) - 1].sym.position
@@ -1058,11 +1061,12 @@ proc commonSuperclass*(a, b: PType): PType =
     y = y.sons[0]
 
 type
-  TTypeAllowedFlag = enum
+  TTypeAllowedFlag* = enum
     taField,
-    taHeap
+    taHeap,
+    taConcept
 
-  TTypeAllowedFlags = set[TTypeAllowedFlag]
+  TTypeAllowedFlags* = set[TTypeAllowedFlag]
 
 proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
                     flags: TTypeAllowedFlags = {}): PType
@@ -1130,7 +1134,10 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   of tyVoid:
     if taField notin flags: result = t
   of tyTypeClasses:
-    if not (tfGenericTypeParam in t.flags or taField notin flags): result = t
+    if tfGenericTypeParam in t.flags or taConcept in flags: #or taField notin flags:
+      discard
+    elif kind notin {skParam, skResult}:
+      result = t
   of tyGenericBody, tyGenericParam, tyGenericInvocation,
      tyNone, tyForward, tyFromExpr:
     result = t
@@ -1178,11 +1185,11 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     result = nil
   of tyUnused, tyOptAsRef: internalError("typeAllowedAux")
 
-proc typeAllowed*(t: PType, kind: TSymKind): PType =
+proc typeAllowed*(t: PType, kind: TSymKind; flags: TTypeAllowedFlags = {}): PType =
   # returns 'nil' on success and otherwise the part of the type that is
   # wrong!
   var marker = initIntSet()
-  result = typeAllowedAux(marker, t, kind, {})
+  result = typeAllowedAux(marker, t, kind, flags)
 
 proc align(address, alignment: BiggestInt): BiggestInt =
   result = (address + (alignment - 1)) and not (alignment - 1)
@@ -1616,7 +1623,7 @@ proc typeMismatch*(info: TLineInfo, formal, actual: PType) =
     let desc = typeToString(formal, preferDesc)
     let x = if named == desc: named else: named & " = " & desc
     var msg = msgKindToString(errTypeMismatch) &
-              typeToString(actual) & ") " &
+              typeToString(actual) & "> " &
               msgKindToString(errButExpectedX) % [x]
 
     if formal.kind == tyProc and actual.kind == tyProc:

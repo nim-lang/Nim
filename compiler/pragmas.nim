@@ -657,15 +657,16 @@ proc pragmaGuard(c: PContext; it: PNode; kind: TSymKind): PSym =
     result = qualifiedLookUp(c, n, {checkUndeclared})
 
 proc semCustomPragma(c: PContext, n: PNode): PNode =
-  assert(n.kind in nkPragmaCallKinds + {nkIdent})
-
   if n.kind == nkIdent:
     result = newTree(nkCall, n)
   elif n.kind == nkExprColonExpr:
     # pragma: arg -> pragma(arg)
     result = newTree(nkCall, n[0], n[1])
-  else:
+  elif n.kind in nkPragmaCallKinds + {nkIdent}:
     result = n
+  else:
+    invalidPragma(n)
+    return n
 
   let r = c.semOverloadedCall(c, result, n, {skTemplate}, {})
   if r.isNil or sfCustomPragma notin r[0].sym.flags:
@@ -810,7 +811,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
       of wExplain:
         sym.flags.incl sfExplain
       of wDeprecated:
-        if it.kind in nkPragmaCallKinds: deprecatedStmt(c, it)
+        if sym != nil and sym.kind in routineKinds:
+          if it.kind in nkPragmaCallKinds: discard getStrLitNode(c, it)
+          incl(sym.flags, sfDeprecated)
+        elif it.kind in nkPragmaCallKinds: deprecatedStmt(c, it)
         elif sym != nil: incl(sym.flags, sfDeprecated)
         else: incl(c.module.flags, sfDeprecated)
       of wVarargs:

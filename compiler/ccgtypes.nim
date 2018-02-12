@@ -569,6 +569,8 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
     elif m.compileToCpp:
       appcg(m, result, " : public $1 {$n",
                       [getTypeDescAux(m, typ.sons[0].skipTypes(skipPtrs), check)])
+      if typ.isException:
+        appcg(m, result, "virtual void raise() {throw this;}$n") # required for polymorphic exceptions
       hasField = true
     else:
       appcg(m, result, " {$n  $1 Sup;$n",
@@ -970,7 +972,8 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
     addf(m.s[cfsTypeInit3], "$1.flags = $2;$n", [name, rope(flags)])
   discard cgsym(m, "TNimType")
   if isDefined("nimTypeNames"):
-    var typename = typeToString(origType, preferName)
+    var typename = typeToString(if origType.typeInst != nil: origType.typeInst
+                                else: origType, preferName)
     if typename == "ref object" and origType.skipTypes(skipPtrs).sym != nil:
       typename = "anon ref object from " & $origType.skipTypes(skipPtrs).sym.info
     addf(m.s[cfsTypeInit3], "$1.name = $2;$n",

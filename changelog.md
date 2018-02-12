@@ -235,3 +235,28 @@ styledEcho "Red on Green.", resetStyle
 - ``\n`` is now only the single line feed character like in most
   other programming languages. The new platform specific newline escape sequence is
   written as ``\p``. This change only affects the Windows platform.
+- Type inference for generic type parameters involving numeric types is now symetric. See
+  [Generic type inference for numeric types](https://nim-lang.org/docs/manual.html#generics-generic-type-inference-fornumeric-types)
+  for more information.
+- The ``deprecated`` pragma now supports a user-definable warning message for procs.
+
+```nim
+
+proc bar {.deprecated: "use foo instead".} =
+  return
+
+bar()
+```
+
+- The ``securehash`` module is now deprecated. Instead import ``std / sha1``.
+- ``db_mysql`` module: ``DbConn`` is now a ``distinct`` type that doesn't expose the
+  details of the underlying ``PMySQL`` type.
+- Standard library modules can now also be imported via the ``std`` pseudo-directory.
+  This is useful in order to distinguish between standard library and nimble package
+  imports:
+
+```nim
+
+import std / [strutils, os, osproc]
+import someNimblePackage / [strutils, os]
+```
