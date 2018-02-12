@@ -225,6 +225,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mDivF64:
     if getFloat(b) == 0.0:
       if getFloat(a) == 0.0: result = newFloatNodeT(NaN, n)
+      elif getFloat(b).classify == fcNegZero: result = newFloatNodeT(-Inf, n)
       else: result = newFloatNodeT(Inf, n)
     else:
       result = newFloatNodeT(getFloat(a) / getFloat(b), n)
@@ -374,7 +375,12 @@ proc getAppType(n: PNode): PNode =
     result = newStrNodeT("console", n)
 
 proc rangeCheck(n: PNode, value: BiggestInt) =
-  if value < firstOrd(n.typ) or value > lastOrd(n.typ):
+  var err = false
+  if n.typ.skipTypes({tyRange}).kind in {tyUInt..tyUInt64}:
+    err = value <% firstOrd(n.typ) or value >% lastOrd(n.typ, fixedUnsigned=true)
+  else:
+    err = value < firstOrd(n.typ) or value > lastOrd(n.typ)
+  if err:
     localError(n.info, errGenerated, "cannot convert " & $value &
                                      " to " & typeToString(n.typ))
 

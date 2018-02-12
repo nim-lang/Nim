@@ -106,6 +106,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
         errors.safeAdd(CandidateError(
           sym: sym,
           unmatchedVarParam: int z.mutabilityProblem,
+          firstMismatch: z.firstMismatch,
           diagnostics: z.diagnostics))
     else:
       # Symbol table has been modified. Restart and pre-calculate all syms
@@ -122,6 +123,15 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
       nextSymIndex += 1
     else:
       break
+
+proc effectProblem(f, a: PType; result: var string) =
+  if f.kind == tyProc and a.kind == tyProc:
+    if tfThread in f.flags and tfThread notin a.flags:
+      result.add "\n  This expression is not GC-safe. Annotate the " &
+          "proc with {.gcsafe.} to get extended error information."
+    elif tfNoSideEffect in f.flags and tfNoSideEffect notin a.flags:
+      result.add "\n  This expression can have side effects. Annotate the " &
+          "proc with {.noSideEffect.} to get extended error information."
 
 proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
                             (TPreferedDesc, string) =
@@ -154,7 +164,25 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
     else:
       add(candidates, err.sym.getProcHeader(prefer))
     add(candidates, "\n")
-    if err.unmatchedVarParam != 0 and err.unmatchedVarParam < n.len:
+    if err.firstMismatch != 0 and n.len > 2:
+      add(candidates, "  first type mismatch at position: " & $err.firstMismatch &
+        "\n  required type: ")
+      var wanted, got: PType = nil
+      if err.firstMismatch < err.sym.typ.len:
+        wanted = err.sym.typ.sons[err.firstMismatch]
+        candidates.add typeToString(wanted)
+      else:
+        candidates.add "none"
+      if err.firstMismatch < n.len:
+        candidates.add "\n  but expression '"
+        candidates.add renderTree(n[err.firstMismatch])
+        candidates.add "' is of type: "
+        got = n[err.firstMismatch].typ
+        candidates.add typeToString(got)
+      if wanted != nil and got != nil:
+        effectProblem(wanted, got, candidates)
+      candidates.add "\n"
+    elif err.unmatchedVarParam != 0 and err.unmatchedVarParam < n.len:
       add(candidates, "for a 'var' type a variable needs to be passed, but '" &
                       renderTree(n[err.unmatchedVarParam]) & "' is immutable\n")
     for diag in err.diagnostics:
@@ -176,7 +204,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   let (prefer, candidates) = presentFailedCandidates(c, n, errors)
   var result = msgKindToString(errTypeMismatch)
   add(result, describeArgs(c, n, 1, prefer))
-  add(result, ')')
+  add(result, '>')
   if candidates != "":
     add(result, "\n" & msgKindToString(errButExpected) & "\n" & candidates)
   localError(n.info, errGenerated, result & "\nexpression: " & $n)
@@ -189,7 +217,7 @@ proc bracketNotFoundError(c: PContext; n: PNode) =
   while symx != nil:
     if symx.kind in routineKinds:
       errors.add(CandidateError(sym: symx,
-                                unmatchedVarParam: 0,
+                                unmatchedVarParam: 0, firstMismatch: 0,
                                 diagnostics: nil))
     symx = nextOverloadIter(o, c, headSymbol)
   if errors.len == 0:
@@ -263,9 +291,9 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
     if overloadsState == csEmpty and result.state == csEmpty:
       if nfDotField in n.flags and nfExplicitCall notin n.flags:
-        localError(n.info, errUndeclaredField, considerQuotedIdent(f).s)
+        localError(n.info, errUndeclaredField, considerQuotedIdent(f, n).s)
       else:
-        localError(n.info, errUndeclaredRoutine, considerQuotedIdent(f).s)
+        localError(n.info, errUndeclaredRoutine, considerQuotedIdent(f, n).s)
       return
     elif result.state != csMatch:
       if nfExprCall in n.flags:

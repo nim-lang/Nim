@@ -10,7 +10,7 @@
 ## Implements the module handling, including the caching of modules.
 
 import
-  ast, astalgo, magicsys, securehash, rodread, msgs, cgendata, sigmatch, options,
+  ast, astalgo, magicsys, std / sha1, rodread, msgs, cgendata, sigmatch, options,
   idents, os, lexer, idgen, passes, syntaxes, llstream, modulegraphs
 
 when false:

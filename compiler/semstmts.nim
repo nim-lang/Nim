@@ -17,7 +17,7 @@ proc semDiscard(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 1)
   if n.sons[0].kind != nkEmpty:
     n.sons[0] = semExprWithType(c, n.sons[0])
-    if isEmptyType(n.sons[0].typ) or n.sons[0].typ.kind == tyNone:
+    if isEmptyType(n.sons[0].typ) or n.sons[0].typ.kind == tyNone or n.sons[0].kind == nkTypeOfExpr:
       localError(n.info, errInvalidDiscard)
 
 proc semBreakOrContinue(c: PContext, n: PNode): PNode =
@@ -150,9 +150,12 @@ proc discardCheck(c: PContext, result: PNode) =
         while n.kind in skipForDiscardable: n = n.lastSon
         var s = "expression '" & $n & "' is of type '" &
             result.typ.typeToString & "' and has to be discarded"
+        if result.info.line != n.info.line or
+           result.info.fileIndex != n.info.fileIndex:
+          s.add "; start of expression here: " & $result.info
         if result.typ.kind == tyProc:
           s.add "; for a function call use ()"
-        localError(n.info,  s)
+        localError(n.info, s)
 
 proc semIf(c: PContext, n: PNode): PNode =
   result = n
@@ -531,7 +534,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
 
     # this can only happen for errornous var statements:
     if typ == nil: continue
-    typeAllowedCheck(a.info, typ, symkind)
+    typeAllowedCheck(a.info, typ, symkind, if c.matchedConcept != nil: {taConcept} else: {})
     liftTypeBoundOps(c, typ, a.info)
     var tup = skipTypes(typ, {tyGenericInst, tyAlias, tySink})
     if a.kind == nkVarTuple:
@@ -734,16 +737,10 @@ proc semRaise(c: PContext, n: PNode): PNode =
       localError(n.info, errExprCannotBeRaised)
 
     # check if the given object inherits from Exception
-    var base = typ.lastSon
-    while true:
-      if base.sym.magic == mException:
-        break
-      if base.lastSon == nil:
-        localError(n.info,
-          "raised object of type $1 does not inherit from Exception",
-          [typeToString(typ)])
-        return
-      base = base.lastSon
+    if not typ.lastSon.isException():
+        localError(n.info, "raised object of type $1 does not inherit from Exception",
+                           [typeToString(typ)])
+
 
 proc addGenericParamListToScope(c: PContext, n: PNode) =
   if n.kind != nkGenericParams: illFormedAst(n)

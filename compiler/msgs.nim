@@ -26,7 +26,7 @@ type
     errAtPopWithoutPush, errEmptyAsm, errInvalidIndentation,
     errExceptionExpected, errExceptionAlreadyHandled,
     errYieldNotAllowedHere, errYieldNotAllowedInTryStmt,
-    errInvalidNumberOfYieldExpr, errCannotReturnExpr, 
+    errInvalidNumberOfYieldExpr, errCannotReturnExpr,
     errNoReturnWithReturnTypeNotAllowed, errAttemptToRedefine,
     errStmtInvalidAfterReturn, errStmtExpected, errInvalidLabel,
     errInvalidCmdLineOption, errCmdLineArgExpected, errCmdLineNoArgExpected,
@@ -272,7 +272,7 @@ const
     errXStackEscape: "address of '$1' may not escape its stack frame",
     errVarForOutParamNeededX: "for a \'var\' type a variable needs to be passed; but '$1' is immutable",
     errPureTypeMismatch: "type mismatch",
-    errTypeMismatch: "type mismatch: got (",
+    errTypeMismatch: "type mismatch: got <",
     errButExpected: "but expected one of: ",
     errButExpectedX: "but expected \'$1\'",
     errAmbiguousCallXYZ: "ambiguous call; both $1 and $2 match for: $3",
@@ -370,7 +370,7 @@ const
     errXhasSideEffects: "\'$1\' can have side effects",
     errIteratorExpected: "iterator within for loop context expected",
     errLetNeedsInit: "'let' symbol requires an initialization",
-    errThreadvarCannotInit: "a thread var cannot be initialized explicitly",
+    errThreadvarCannotInit: "a thread var cannot be initialized explicitly; this would only run for the main thread",
     errWrongSymbolX: "usage of \'$1\' is a user-defined error",
     errIllegalCaptureX: "illegal capture '$1'",
     errXCannotBeClosure: "'$1' cannot have 'closure' calling convention",
@@ -1025,6 +1025,9 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
   handleError(msg, eh, s)
 
 proc fatal*(info: TLineInfo, msg: TMsgKind, arg = "") =
+  # this fixes bug #7080 so that it is at least obvious 'fatal'
+  # was executed.
+  errorOutputs = {eStdOut, eStdErr}
   liMessage(info, msg, arg, doAbort)
 
 proc globalError*(info: TLineInfo, msg: TMsgKind, arg = "") =

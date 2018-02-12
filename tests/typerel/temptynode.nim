@@ -1,6 +1,6 @@
 discard """
   line: 16
-  errormsg: "type mismatch: got (void)"
+  errormsg: "type mismatch: got <void>"
 """
 
 # bug #950

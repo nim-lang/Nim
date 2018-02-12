@@ -1,7 +1,7 @@
 discard """
   file: "ttypenoval.nim"
   line: 38
-  errormsg: "type mismatch: got (type int) but expected 'int'"
+  errormsg: "type mismatch: got <type int> but expected 'int'"
 """
 
 # A min-heap.

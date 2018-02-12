@@ -735,7 +735,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
             hasErrorType = true
             break
         if not hasErrorType:
-          add(msg, ")\n" & msgKindToString(errButExpected) & "\n" &
+          add(msg, ">\n" & msgKindToString(errButExpected) & "\n" &
               typeToString(n.sons[0].typ))
           localError(n.info, errGenerated, msg)
         return errorNode(c, n)

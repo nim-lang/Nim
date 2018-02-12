@@ -1,5 +1,5 @@
 discard """
-errormsg: "type mismatch: got (proc [*missing parameters*](x: int) | proc (x: string){.gcsafe, locks: 0.})"
+errormsg: "type mismatch: got <proc [*missing parameters*](x: int) | proc (x: string){.gcsafe, locks: 0.}>"
 line: 19
 """
 

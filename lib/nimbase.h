@@ -274,13 +274,6 @@ __clang__
 #  endif
 #  define NIM_BOOL bool
 #  define NIM_NIL 0
-struct NimException
-{
-  NimException(struct Exception* exp, const char* msg): exp(exp), msg(msg) {}
-
-  struct Exception* exp;
-  const char* msg;
-};
 #else
 #  ifdef bool
 #    define NIM_BOOL bool
