@@ -1671,31 +1671,6 @@ proc isException*(t: PType): bool =
     base = base.lastSon
   return false
 
-proc findUnresolvedStatic*(n: PNode): PNode =
-  if n.kind == nkSym and n.typ.kind == tyStatic and n.typ.n == nil:
-    return n
-
-  for son in n:
-    let n = son.findUnresolvedStatic
-    if n != nil: return n
-
-  return nil
-
-  
-proc isException*(t: PType): bool =
-  # check if `y` is object type and it inherits from Exception
-  assert(t != nil)
-
-  if t.kind != tyObject:
-    return false
-
-  var base = t.lastSon
-  while base != nil:
-    if base.sym.magic == mException:
-      return true
-    base = base.lastSon
-  return false
-
 proc isImportedException*(t: PType): bool =
   assert(t != nil)
   if optNoCppExceptions in gGlobalOptions:
@@ -1706,6 +1681,17 @@ proc isImportedException*(t: PType): bool =
     
   if base.sym != nil and sfCompileToCpp in base.sym.flags:
     result = true
+
+proc findUnresolvedStatic*(n: PNode): PNode =
+  if n.kind == nkSym and n.typ.kind == tyStatic and n.typ.n == nil:
+    return n
+
+  for son in n:
+    let n = son.findUnresolvedStatic
+    if n != nil: return n
+
+  return nil
+
     
 when false:
   proc containsNil*(n: PNode): bool =

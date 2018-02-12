@@ -257,8 +257,9 @@ proc semCase(c: PContext, n: PNode): PNode =
 proc semTry(c: PContext, n: PNode): PNode =
 
   var check = initIntSet()
-  proc semExceptBranchType(typeNode: PNode): tuple[n: PNode, is_imported: bool] =
+  template semExceptBranchType(typeNode: PNode): tuple[n: PNode, is_imported: bool]=
     let typ = semTypeNode(c, typeNode, nil).toObject()
+    var result: tuple[n: PNode, is_imported: bool]
     if isImportedException(typ):
       result.is_imported = true
     elif not isException(typ):
@@ -267,6 +268,7 @@ proc semTry(c: PContext, n: PNode): PNode =
     if containsOrIncl(check, typ.id):
       localError(typeNode.info, errExceptionAlreadyHandled)
     result.n = newNodeIT(nkType, typeNode.info, typ)
+    result
 
   result = n
   inc c.p.inTryStmt
