@@ -263,16 +263,17 @@ proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect.} =
 proc callsite*(): NimNode {.magic: "NCallSite", benign.}
   ## returns the AST of the invocation expression that invoked this macro.
 
-when nimvm:
-  proc error*(msg: string, n: NimNode = nil) {.magic: "NError", benign.}
-    ## writes an error message at compile time
+proc error*(msg: string, n: NimNode = nil) {.magic: "NError", benign.}
+  ## writes an error message at compile time
 
-  proc warning*(msg: string, n: NimNode = nil) {.magic: "NWarning", benign.}
-    ## writes a warning message at compile time
+proc warning*(msg: string, n: NimNode = nil) {.magic: "NWarning", benign.}
+  ## writes a warning message at compile time
 
-  proc hint*(msg: string, n: NimNode = nil) {.magic: "NHint", benign.}
-    ## writes a hint message at compile time
-else:
+proc hint*(msg: string, n: NimNode = nil) {.magic: "NHint", benign.}
+  ## writes a hint message at compile time
+
+#[
+when not nimvm:
   macro error*(msg: static[string]): untyped =
     ## writes an error message at compile time
     error(msg, callsite())
@@ -284,6 +285,7 @@ else:
   macro hint*(msg: static[string]): untyped =
     ## writes a hint message at compile time
     hint(msg, callsite())
+]#
 
 proc newStrLitNode*(s: string): NimNode {.compileTime, noSideEffect.} =
   ## creates a string literal node from `s`

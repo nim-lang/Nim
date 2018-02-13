@@ -1312,26 +1312,26 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].node.strVal = opGorge(regs[rb].node.strVal,
                                      regs[rc].node.strVal, regs[rd].node.strVal,
                                      c.debug[pc])[0]
-    of opcNError:
-      decodeB(rkNode)
-      let message = regs[ra].node.strVal
-      let nodeForLineInfo =
-        if regs[rb].node.kind == nkNilLit: nil else: regs[rb].node
-      stackTrace(c, tos, pc, errUser, message, nodeForLineInfo)
-    of opcNWarning, opcNHint:
-      decodeB(rkNode)
-      let message = regs[ra].node.strVal
-      let lineinfo =
-        if regs[rb].node.kind == nkNilLit:
-          c.debug[pc]
-        else:
-          regs[rb].node.info
-      let msgKind =
+    of opcNError, opcNWarning, opcNHint:
+      let message: string = regs[instr.regA].node.strVal
+      var nodeForLineInfo: PNode = regs[instr.regB].node
+      debug(nodeForLineInfo)
+      if nodeForLineInfo.kind == nkNilLit:
+        nodeForLineInfo = nil
+
+      if instr.opcode == opcNError:
+        stackTrace(c, tos, pc, errUser, message, nodeForLineInfo)
+      else:
+        let lineinfo =
+          if nodeForLineInfo == nil:
+            c.debug[pc]
+          else:
+            nodeForLineInfo.info
+
         if instr.opcode == opcNWarning:
-          warnUser
+          message(lineinfo, warnUser, message)
         else:
-          hintUser
-      message(lineinfo, msgKind, message)
+          message(lineinfo, hintUser, message)
     of opcParseExprToAst:
       decodeB(rkNode)
       # c.debug[pc].line.int - countLines(regs[rb].strVal) ?
