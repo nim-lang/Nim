@@ -17,7 +17,7 @@ proc semDiscard(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 1)
   if n.sons[0].kind != nkEmpty:
     n.sons[0] = semExprWithType(c, n.sons[0])
-    if isEmptyType(n.sons[0].typ) or n.sons[0].typ.kind == tyNone:
+    if isEmptyType(n.sons[0].typ) or n.sons[0].typ.kind == tyNone or n.sons[0].kind == nkTypeOfExpr:
       localError(n.info, errInvalidDiscard)
 
 proc semBreakOrContinue(c: PContext, n: PNode): PNode =
@@ -737,16 +737,10 @@ proc semRaise(c: PContext, n: PNode): PNode =
       localError(n.info, errExprCannotBeRaised)
 
     # check if the given object inherits from Exception
-    var base = typ.lastSon
-    while true:
-      if base.sym.magic == mException:
-        break
-      if base.lastSon == nil:
-        localError(n.info,
-          "raised object of type $1 does not inherit from Exception",
-          [typeToString(typ)])
-        return
-      base = base.lastSon
+    if not typ.lastSon.isException():
+        localError(n.info, "raised object of type $1 does not inherit from Exception",
+                           [typeToString(typ)])
+
 
 proc addGenericParamListToScope(c: PContext, n: PNode) =
   if n.kind != nkGenericParams: illFormedAst(n)

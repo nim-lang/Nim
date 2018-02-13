@@ -32,7 +32,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         if d.k == locNone: getTemp(p, typ.sons[0], d, needsInit=true)
         elif d.k notin {locTemp} and not hasNoInit(ri):
           # reset before pass as 'result' var:
-          resetLoc(p, d)
+          discard "resetLoc(p, d)"
         add(pl, addrLoc(d))
         add(pl, ~");$n")
         line(p, cpsStmts, pl)
@@ -228,7 +228,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
           getTemp(p, typ.sons[0], d, needsInit=true)
         elif d.k notin {locTemp} and not hasNoInit(ri):
           # reset before pass as 'result' var:
-          resetLoc(p, d)
+          discard "resetLoc(p, d)"
         add(pl, addrLoc(d))
         genCallPattern()
       else:

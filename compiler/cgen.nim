@@ -260,6 +260,11 @@ proc rdCharLoc(a: TLoc): Rope =
 
 proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
                    takeAddr: bool) =
+  if p.module.compileToCpp and t.isException:
+    # init vtable in Exception object for polymorphic exceptions
+    includeHeader(p.module, "<new>")
+    linefmt(p, section, "new ($1) $2;$n", rdLoc(a), getTypeDesc(p.module, t))
+
   case analyseObjectWithTypeField(t)
   of frNone:
     discard
@@ -726,6 +731,7 @@ proc genProcAux(m: BModule, prc: PSym) =
     else:
       fillResult(resNode)
       assignParam(p, res)
+      resetLoc(p, res.loc)
       if skipTypes(res.typ, abstractInst).kind == tyArray:
         #incl(res.loc.flags, lfIndirect)
         res.loc.storage = OnUnknown

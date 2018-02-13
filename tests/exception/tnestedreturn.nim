@@ -1,4 +1,5 @@
 discard """
+  targets: "c cpp"
   file: "tnestedreturn.nim"
   output: "A\nB\nC\n"
 """

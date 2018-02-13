@@ -1648,4 +1648,8 @@ proc waitFor*[T](fut: Future[T]): T =
 
   fut.read
 
-{.deprecated: [setEvent: trigger].}
+proc setEvent*(ev: AsyncEvent) {.deprecated.} =
+  ## Set event ``ev`` to signaled state.
+  ##
+  ## **Deprecated since v0.18.0:** Use ``trigger`` instead.
+  ev.trigger()
