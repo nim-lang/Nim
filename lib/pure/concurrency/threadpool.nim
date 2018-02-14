@@ -27,8 +27,8 @@ type
     when T isnot void:
       v: T
 
-  MsgTo = ref object {.inheritable, pure.}
-    action: proc(m: MsgTo, chanFrom: ChannelFromPtr) {.nimcall.}
+  MsgTo = object
+    action: proc(flowVar: pointer, chanFrom: ChannelFromPtr)
     flowVar: pointer
     complete: bool
 
@@ -56,7 +56,6 @@ template isReadyAux(v: FlowVarBase): bool = v.tp.isNil
 
 proc cleanupAux(tp: ThreadPool) =
   var msg: MsgTo
-  msg.new()
   msg.complete = true
   for i in 0 ..< tp.threads.len:
     tp.chanTo.send(msg)
@@ -79,7 +78,7 @@ proc threadProc(args: ThreadProcArgs) {.thread.} =
     let m = args.chanTo[].recv()
     if m.complete:
       break
-    m.action(m, args.chanFrom)
+    m.action(m.flowVar, args.chanFrom)
   deallocHeap(true, false)
 
 proc startThreads(tp: ThreadPool) =
@@ -119,13 +118,11 @@ proc tryDispatchMessage(tp: ThreadPool, m: MsgTo): bool =
     tp.startThreads()
   tp.chanTo.trySend(m)
 
-proc dispatchMessageWithFlowVar[T](tp: ThreadPool, m: MsgTo): FlowVar[T] =
+proc newFlowVar[T](tp: ThreadPool): FlowVar[T] =
   result.new()
   result.tp = tp
   result.idx = -1
   GC_ref(result)
-  m.flowVar = cast[pointer](result)
-  tp.dispatchMessage(m)
 
 proc sendBack[T](v: T, c: ChannelFromPtr, flowVar: pointer) {.gcsafe.} =
   if not flowVar.isNil:
@@ -143,105 +140,68 @@ proc sendBack[T](v: T, c: ChannelFromPtr, flowVar: pointer) {.gcsafe.} =
     msg.flowVar = flowVar
     c[].send(msg)
 
-var i {.compileTime.} = 0
+macro partial(e: typed{nkCall}): untyped =
+  let par = newNimNode(nnkPar)
+  proc skipHidden(n: NimNode): NimNode =
+    result = n
+    while result.kind in {nnkHiddenStdConv}:
+      result = result[^1]
 
-proc spawnAux(tp: NimNode, e: NimNode, withFlowVar: bool, doTry: bool = false): NimNode =
-  let msgTypeName = genSym(nskType, "MsgSub" & $i)
-  inc i
-  let dispatchProcName = genSym(nskProc, "dispatchProc")
-  let msgParamIdent = newIdentNode("m")
+  for i in 1 ..< e.len: par.add(skipHidden(e[i]))
+  par.add(newLit(0))
 
-  let origProcName = e[0]
-  let procTypParams = origProcName.getTypeInst()[0]
+  let argsIdent = newIdentNode("args")
 
-  let msgFields = newNimNode(nnkRecList)
+  let transformedCall = newCall(e[0])
+  for i in 1 ..< e.len:
+    transformedCall.add(newNimNode(nnkBracketExpr).add(argsIdent, newLit(i - 1)))
 
-  let theCall = newCall(origProcName)
+  let resultProc = newProc(params = [newIdentNode("auto")], body = transformedCall, procType = nnkLambda)
 
-  let msgObjConstr = newNimNode(nnkObjConstr).add(
-    msgTypeName,
-    newNimNode(nnkExprColonExpr).add(
-      newIdentNode("action"),
-      dispatchProcName
-    )
-  )
+  let wrapperIdent = newIdentNode("tmpWrapper")
 
-  var iParam = 0
-  for i in 1 ..< procTypParams.len:
-    for j in 0 .. procTypParams[i].len - 3:
-      let fieldIdent = newIdentNode($procTypParams[i][j])
-      var fieldType = procTypParams[i][^2]
-      if fieldType.typeKind == ntyOpenArray: # convert openarray to seq
-        fieldType = copyNimTree(fieldType)
-        fieldType[0] = bindSym"seq"
-
-      msgFields.add(newNimNode(nnkIdentDefs).add(fieldIdent, fieldType, newEmptyNode()))
-      theCall.add(newNimNode(nnkDotExpr).add(
-        newNimNode(nnkCast).add(msgTypeName, msgParamIdent),
-        fieldIdent))
-
-      var par = e[iParam + 1]
-      if par.typeKind == ntyOpenArray: # convert openarray to seq
-        par = newCall(bindSym"@", par)
-
-      msgObjConstr.add(newNimNode(nnkExprColonExpr).add(fieldIdent, par))
-      inc iParam
-
-  let msgTypDef = newNimNode(nnkTypeSection).add(newNimNode(nnkTypeDef).add(
-    msgTypeName,
-    newEmptyNode(),
-    newNimNode(nnkRefTy).add(
-      newNimNode(nnkObjectTy).add(
-        newEmptyNode(),
-        newNimNode(nnkOfInherit).add(bindSym"MsgTo"),
-        msgFields
-      )
-    )
-  ))
-
-  let chanFromIdent = newIdentNode("chanFrom")
-
-  let dispatchProc = newProc(dispatchProcName, params = [
-      newEmptyNode(),
-      newNimNode(nnkIdentDefs).add(
-        msgParamIdent,
-        bindSym"MsgTo",
-        newEmptyNode()
-      ),
-      newNimNode(nnkIdentDefs).add(
-        chanFromIdent,
-        bindSym"ChannelFromPtr",
-        newEmptyNode()
-      )
-    ],
-    body = newCall(bindSym"sendBack", theCall, chanFromIdent, newNimNode(nnkDotExpr).add(
-        msgParamIdent, newIdentNode("flowVar")))
-  )
-
-  dispatchProc.addPragma(newIdentNode("gcsafe"))
-
-  var dispatchCall: NimNode
-  if withFlowVar:
-    dispatchCall = newCall(newNimNode(nnkBracketExpr).add(bindSym"dispatchMessageWithFlowVar", procTypParams[0]), tp, msgObjConstr)
-  elif doTry:
-    dispatchCall = newCall(bindSym"tryDispatchMessage", tp, msgObjConstr)
-  else:
-    dispatchCall = newCall(bindSym"dispatchMessage", tp, msgObjConstr)
+  let wrapperProc = newProc(wrapperIdent, params = [newIdentNode("auto"), newIdentDefs(argsIdent, newIdentNode("any"))], body = resultProc)
 
   result = newNimNode(nnkStmtList).add(
-    msgTypDef,
-    dispatchProc,
-    dispatchCall
-  )
+    wrapperProc,
+    newCall(wrapperIdent, par))
 
-macro spawn*(tp: ThreadPool, e: typed{nkCall}): untyped =
-  spawnAux(tp, e, getTypeInst(e).typeKind != ntyVoid)
+  echo repr result
 
-macro spawnFV*(tp: ThreadPool, e: typed{nkCall}): untyped =
-  spawnAux(tp, e, true)
+template spawnFV*(tp: ThreadPool, e: typed{nkCall}): auto =
+  when compiles(e isnot void):
+    type RetType = type(e)
+  else:
+    type RetType = void
 
-macro trySpawn*(tp: ThreadPool, e: typed{nkCall}): untyped =
-  spawnAux(tp, e, false, true)
+  var m: MsgTo
+  let pe = partial(e)
+  m.action = proc(flowVar: pointer, chanFrom: ChannelFromPtr) =
+    sendBack(pe(), chanFrom, flowVar)
+  let fv = newFlowVar[RetType](tp)
+  m.flowVar = cast[pointer](fv)
+  mixin dispatchMessage
+  tp.dispatchMessage(m)
+  fv
+
+template spawn*(tp: ThreadPool, e: typed{nkCall}): untyped =
+  when compiles(e isnot void):
+    spawnFV(tp, e)
+  else:
+    var m: MsgTo
+    let pe = partial(e)
+    m.action = proc(flowVar: pointer, chanFrom: ChannelFromPtr) =
+      pe()
+    mixin dispatchMessage
+    tp.dispatchMessage(m)
+
+template trySpawn*(tp: ThreadPool, e: typed{nkCall}): bool =
+  var m: MsgTo
+  let pe = partial(e)
+  m.action = proc(flowVar: pointer, chanFrom: ChannelFromPtr) =
+    pe()
+  mixin tryDispatchMessage
+  tp.tryDispatchMessage(m)
 
 template spawnX*(tp: ThreadPool, call: typed) =
   if not tp.trySpawn(call):
