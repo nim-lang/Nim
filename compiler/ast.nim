@@ -1661,7 +1661,7 @@ proc isException*(t: PType): bool =
   # check if `y` is object type and it inherits from Exception
   assert(t != nil)
 
-  if t.kind != tyObject: 
+  if t.kind != tyObject:
     return false
 
   var base = t

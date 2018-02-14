@@ -1467,7 +1467,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           "request to create a NimNode of invalid kind")
       let cc = regs[rc].node
 
-      regs[ra].node = newNodeI(TNodeKind(int(k)),
+      let x = newNodeI(TNodeKind(int(k)),
         if cc.kind != nkNilLit:
           cc.info
         elif c.comesFromHeuristic.line > -1:
@@ -1476,7 +1476,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           c.callsite[1].info
         else:
           c.debug[pc])
-      regs[ra].node.flags.incl nfIsRef
+      x.flags.incl nfIsRef
+      # prevent crashes in the compiler resulting from wrong macros:
+      if x.kind == nkIdent: x.ident = getIdent""
+      regs[ra].node = x
     of opcNCopyNimNode:
       decodeB(rkNode)
       regs[ra].node = copyNode(regs[rb].node)
