@@ -401,10 +401,7 @@ proc trackPragmaStmt(tracked: PEffects, n: PNode) =
 
 proc effectSpec(n: PNode, effectType: TSpecialWord): PNode =
   for i in countup(0, sonsLen(n) - 1):
-    let it = n.sons[i]
-    if it.kind == nkPragma:
-      result = effectSpec(it, effectType)
-      if result != nil: return
+    var it = n.sons[i]
     if it.kind == nkExprColonExpr and whichPragma(it) == effectType:
       result = it.sons[1]
       if result.kind notin {nkCurly, nkBracket}:
