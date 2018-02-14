@@ -1315,7 +1315,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNError, opcNWarning, opcNHint:
       let message: string = regs[instr.regA].node.strVal
       var nodeForLineInfo: PNode = regs[instr.regB].node
-      debug(nodeForLineInfo)
       if nodeForLineInfo.kind == nkNilLit:
         nodeForLineInfo = nil
 

@@ -272,21 +272,6 @@ proc warning*(msg: string, n: NimNode = nil) {.magic: "NWarning", benign.}
 proc hint*(msg: string, n: NimNode = nil) {.magic: "NHint", benign.}
   ## writes a hint message at compile time
 
-#[
-when not nimvm:
-  macro error*(msg: static[string]): untyped =
-    ## writes an error message at compile time
-    error(msg, callsite())
-
-  macro warning*(msg: static[string]): untyped =
-    ## writes a warning message at compile time
-    warning(msg, callsite())
-
-  macro hint*(msg: static[string]): untyped =
-    ## writes a hint message at compile time
-    hint(msg, callsite())
-]#
-
 proc newStrLitNode*(s: string): NimNode {.compileTime, noSideEffect.} =
   ## creates a string literal node from `s`
   result = newNimNode(nnkStrLit)
