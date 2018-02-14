@@ -701,7 +701,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       
       pragma(c, sym, userPragma.ast, validPragmas)
       n.sons[i..i] = userPragma.ast.sons
-      i.inc userPragma.ast.len
+      i.inc(userPragma.ast.len - 1)
       dec c.instCounter
   else:
     var k = whichKeyword(ident)
