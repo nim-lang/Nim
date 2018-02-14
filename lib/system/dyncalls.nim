@@ -24,15 +24,6 @@ proc rawWrite(f: File, s: string) =
   # we cannot throw an exception here!
   discard c_fwrite(cstring(s), 1, s.len, f)
 
-proc nimLoadLibraryError(path: string) =
-  # carefully written to avoid memory allocation:
-  stderr.rawWrite("could not load: ")
-  stderr.rawWrite(path)
-  stderr.rawWrite("\n")
-  when not defined(nimDebugDlOpen) and not defined(windows):
-    stderr.rawWrite("compile with -d:nimDebugDlOpen for more information\n")
-  quit(1)
-
 proc procAddrError(name: cstring) {.noinline.} =
   # carefully written to avoid memory allocation:
   stderr.rawWrite("could not import: ")
@@ -85,6 +76,15 @@ when defined(posix):
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     result = dlsym(lib, name)
     if result == nil: procAddrError(name)
+
+  proc nimLoadLibraryError(path: string) =
+    # carefully written to avoid memory allocation:
+    stderr.rawWrite("could not load: ")
+    stderr.rawWrite(path)
+    stderr.rawWrite("\n")
+    when not defined(nimDebugDlOpen):
+      stderr.rawWrite("compile with -d:nimDebugDlOpen for more information\n")
+    quit(1)
 
 elif defined(windows) or defined(dos):
   #
@@ -149,6 +149,19 @@ elif defined(windows) or defined(dos):
       if result != nil: return
     procAddrError(name)
 
+  proc MessageBoxA(hWnd: cint, lpText, lpCaption: cstring, uType: int): int32 {.
+    header: "<windows.h>", nodecl.}
+
+  proc nimLoadLibraryError(path: string) =
+    when defined(guiapp):
+      discard MessageBoxA(0, msg, "could not load: " & path, 0)
+    else:
+      # carefully written to avoid memory allocation:
+      stderr.rawWrite("could not load: ")
+      stderr.rawWrite(path)
+      stderr.rawWrite("\n")
+    quit(1)
+
 elif defined(genode):
 
   proc nimUnloadLibrary(lib: LibHandle) {.
@@ -159,6 +172,9 @@ elif defined(genode):
 
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr {.
     error: "nimGetProcAddr not implemented".}
+
+  proc nimLoadLibraryError(path: string) = {.
+    error: "nimLoadLibraryError not implemented".}
 
 else:
   {.error: "no implementation for dyncalls".}
