@@ -11,7 +11,7 @@
 
 import
   ast, astalgo, magicsys, std / sha1, rodread, msgs, cgendata, sigmatch, options,
-  idents, os, lexer, idgen, passes, syntaxes, llstream, modulegraphs
+  idents, os, lexer, idgen, passes, syntaxes, llstream, modulegraphs, rod
 
 when false:
   type
@@ -125,7 +125,7 @@ proc newModule(graph: ModuleGraph; fileIdx: int32): PSym =
   # We cannot call ``newSym`` here, because we have to circumvent the ID
   # mechanism, which we do in order to assign each module a persistent ID.
   new(result)
-  result.id = - 1             # for better error checking
+  result.id = -1             # for better error checking
   result.kind = skModule
   let filename = fileIdx.toFullPath
   result.name = getIdent(splitFile(filename).name)
@@ -175,7 +175,7 @@ proc compileModule*(graph: ModuleGraph; fileIdx: int32; cache: IdentCache, flags
         internalError("handleSymbolFile should have set the module's ID")
         return
     else:
-      result.id = getID()
+      result.id = getModuleId(toFullPath(fileIdx))
     discard processModule(graph, result,
       if sfMainModule in flags and gProjectIsStdin: stdin.llStreamOpen else: nil,
       rd, cache)

@@ -567,7 +567,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       add(result, typeToString(t.sons[i]))
       if i < sonsLen(t) - 1: add(result, ", ")
     add(result, ')')
-    if t.sons[0] != nil: add(result, ": " & typeToString(t.sons[0]))
+    if t.len > 0 and t.sons[0] != nil: add(result, ": " & typeToString(t.sons[0]))
     var prag = if t.callConv == ccDefault: "" else: CallingConvToStr[t.callConv]
     if tfNoSideEffect in t.flags:
       addSep(prag)
