@@ -14,6 +14,7 @@ import ast, idgen
 when not defined(nimSymbolfiles):
   template setupModuleCache* = discard
   template storeNode*(module: PSym; n: PNode) = discard
+  template loadNode*(module: PSym; index: var int): PNode = discard
 
   template getModuleId*(fullpath: string): int = getID()
 
