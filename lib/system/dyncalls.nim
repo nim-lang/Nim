@@ -149,14 +149,15 @@ elif defined(windows) or defined(dos):
       if result != nil: return
     procAddrError(name)
 
-  proc MessageBoxA(hWnd: cint, lpText, lpCaption: cstring, uType: int): int32 {.
-    header: "<windows.h>", nodecl.}
-
   proc nimLoadLibraryError(path: string) =
+    # carefully written to avoid memory allocation:
     when defined(guiapp):
-      discard MessageBoxA(0, msg, "could not load: " & path, 0)
+      const prefix = "could not load: "
+      var msg: array[1000, char]
+      copyMem(msg[0].addr, prefix.cstring, prefix.len)
+      copyMem(msg[prefix.len].addr, path.cstring, min(path.len + 1, 1000 - prefix.len))
+      discard MessageBoxA(0, msg[0].addr, nil, 0)
     else:
-      # carefully written to avoid memory allocation:
       stderr.rawWrite("could not load: ")
       stderr.rawWrite(path)
       stderr.rawWrite("\n")
