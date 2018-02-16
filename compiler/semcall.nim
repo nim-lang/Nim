@@ -133,6 +133,11 @@ proc effectProblem(f, a: PType; result: var string) =
       result.add "\n  This expression can have side effects. Annotate the " &
           "proc with {.noSideEffect.} to get extended error information."
 
+proc renderNotLValue(n: PNode): string =
+  result = $n
+  if n.kind in {nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv} and n.len == 2:
+    result = typeToString(n.typ.skipTypes(abstractVar)) & "(" & result & ")"
+
 proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
                             (TPreferedDesc, string) =
   var prefer = preferName
@@ -184,7 +189,8 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       candidates.add "\n"
     elif err.unmatchedVarParam != 0 and err.unmatchedVarParam < n.len:
       add(candidates, "for a 'var' type a variable needs to be passed, but '" &
-                      renderTree(n[err.unmatchedVarParam]) & "' is immutable\n")
+                      renderNotLValue(n[err.unmatchedVarParam]) &
+                      "' is immutable\n")
     for diag in err.diagnostics:
       add(candidates, diag & "\n")
 
