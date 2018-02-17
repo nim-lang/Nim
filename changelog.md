@@ -257,6 +257,8 @@ bar()
 - The ``securehash`` module is now deprecated. Instead import ``std / sha1``.
 - ``db_mysql`` module: ``DbConn`` is now a ``distinct`` type that doesn't expose the
   details of the underlying ``PMySQL`` type.
+- ``strtabs.getOrDefault`` now returns ``nil`` instead of ``""``. See
+  [#4265](https://github.com/nim-lang/Nim/issues/4265) for more info.
 - Standard library modules can now also be imported via the ``std`` pseudo-directory.
   This is useful in order to distinguish between standard library and nimble package
   imports:
