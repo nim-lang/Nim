@@ -41,11 +41,11 @@ proc main() {.async.} =
     await file.write("test2")
     file.close()
     file = openAsync(fn, fmWrite)
-    await file.write("test3")
+    await file.write("t3")
     file.close()
     file = openAsync(fn, fmRead)
     let data = await file.readAll()
-    doAssert data == "test3"
+    doAssert data == "t3"
     file.close()
 
 
