@@ -105,6 +105,7 @@ This now needs to be written as:
   - [``pdcurses``](https://github.com/lcrees/pdcurses)
   - [``romans``](https://github.com/lcrees/romans)
   - [``libsvm``](https://github.com/nim-lang/libsvm_legacy)
+  - [``joyent_http_parser``](https://github.com/nim-lang/joyent_http_parser)
 
 - Added ``system.runnableExamples`` to make examples in Nim's documentation easier
   to write and test. The examples are tested as the last step of

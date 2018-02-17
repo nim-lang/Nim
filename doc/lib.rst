@@ -557,19 +557,8 @@ Database support
 Network Programming and Internet Protocols
 ------------------------------------------
 
-* `joyent_http_parser <joyent_http_parser.html>`_
-  Wrapper for the joyent's high-performance HTTP parser.
-
 * `openssl <openssl.html>`_
   Wrapper for OpenSSL.
-
-
-
-Scientific computing
---------------------
-
-* `libsvm <libsvm.html>`_
-  Low level wrapper for `lib svm <http://www.csie.ntu.edu.tw/~cjlin/libsvm/>`_.
 
 
 Nimble
