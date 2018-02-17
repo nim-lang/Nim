@@ -129,7 +129,7 @@ proc mget*(t: StringTableRef, key: string): var string {.deprecated.} =
   ## ``KeyError`` exception is raised. Use ```[]``` instead.
   get(t, key)
 
-proc getOrDefault*(t: StringTableRef; key: string, default: string = nil): string =
+proc getOrDefault*(t: StringTableRef; key: string, default: string = ""): string =
   var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
   else: result = default
