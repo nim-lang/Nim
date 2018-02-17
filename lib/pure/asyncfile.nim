@@ -50,22 +50,21 @@ when defined(windows) or defined(nimdoc):
     case mode
     of fmRead, fmReadWriteExisting:
       OPEN_EXISTING
-    of fmAppend, fmReadWrite, fmWrite:
-      if fileExists(filename):
-        OPEN_EXISTING
-      else:
-        CREATE_NEW
+    of fmReadWrite, fmWrite:
+      CREATE_ALWAYS
+    of fmAppend:
+      OPEN_ALWAYS
 else:
   proc getPosixFlags(mode: FileMode): cint =
     case mode
     of fmRead:
       result = O_RDONLY
     of fmWrite:
-      result = O_WRONLY or O_CREAT
+      result = O_WRONLY or O_CREAT or O_TRUNC
     of fmAppend:
       result = O_WRONLY or O_CREAT or O_APPEND
     of fmReadWrite:
-      result = O_RDWR or O_CREAT
+      result = O_RDWR or O_CREAT or O_TRUNC
     of fmReadWriteExisting:
       result = O_RDWR
     result = result or O_NONBLOCK
