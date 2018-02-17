@@ -16,7 +16,7 @@ import
   cgen, jsgen, json, nversion,
   platform, nimconf, importer, passaux, depends, vm, vmdef, types, idgen,
   docgen2, service, parser, modules, ccgutils, sigmatch, ropes,
-  modulegraphs, tables
+  modulegraphs, tables, rod
 
 from magicsys import systemModule, resetSysTypes
 
@@ -157,6 +157,7 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
   when SimulateCaasMemReset:
     gGlobalOptions.incl(optCaasEnabled)
 
+  setupModuleCache()
   # In "nim serve" scenario, each command must reset the registered passes
   clearPasses()
   gLastCmdTime = epochTime()

@@ -474,7 +474,7 @@ proc newHiddenAddrTaken(c: PContext, n: PNode): PNode =
     result = newNodeIT(nkHiddenAddr, n.info, makeVarType(c, n.typ))
     addSon(result, n)
     if isAssignable(c, n) notin {arLValue, arLocalLValue}:
-      localError(n.info, errVarForOutParamNeededX, $n)
+      localError(n.info, errVarForOutParamNeededX, renderNotLValue(n))
 
 proc analyseIfAddressTaken(c: PContext, n: PNode): PNode =
   result = n

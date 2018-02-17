@@ -67,6 +67,8 @@ proc decodeStr*(s: cstring, pos: var int): string =
 const
   chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
+{.push overflowChecks: off.}
+
 # since negative numbers require a leading '-' they use up 1 byte. Thus we
 # subtract/add `vintDelta` here to save space for small negative numbers
 # which are common in ROD files:
@@ -130,6 +132,8 @@ proc decodeVInt*(s: cstring, pos: var int): int =
 
 proc decodeVBiggestInt*(s: cstring, pos: var int): BiggestInt =
   decodeIntImpl()
+
+{.pop.}
 
 iterator decodeVIntArray*(s: cstring): int =
   var i = 0

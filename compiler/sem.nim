@@ -16,7 +16,7 @@ import
   procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, nimfix.pretty, semmacrosanity,
-  semparallel, lowerings, pluginsupport, plugins.active
+  semparallel, lowerings, pluginsupport, plugins.active, rod
 
 from modulegraphs import ModuleGraph
 
@@ -589,6 +589,7 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
       else:
         result = ast.emptyNode
       #if gCmd == cmdIdeTools: findSuggest(c, n)
+  rod.storeNode(c.module, result)
 
 proc testExamples(c: PContext) =
   let inp = toFullPath(c.module.info)
