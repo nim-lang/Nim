@@ -48,6 +48,8 @@
 - For string inputs, ``strutils.isUpperAscii`` and ``strutils.isLowerAscii`` now
   require a second mandatory parameter ``skipNonAlpha``.
 
+- ``osLastError`` is now marked with ``sideEffect``
+
 #### Breaking changes in the compiler
 
 - The undocumented ``#? braces`` parsing mode was removed.
