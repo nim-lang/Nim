@@ -216,49 +216,50 @@ proc typeKind*(n: NimNode): NimTypeKind {.magic: "NGetType", noSideEffect.}
   ## Returns the type kind of the node 'n' that should represent a type, that
   ## means the node should have been obtained via ``getType``.
 
-proc getTypeInst*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
+proc getTypeInst*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.} =
   ## Returns the `type`:idx: of a node in a form matching the way the
   ## type instance was declared in the code.
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##   import macros
-  ##   type
-  ##     Vec[N: static[int], T] = object
-  ##       arr: array[N, T]
-  ##     Vec4[T] = Vec[4, T]
-  ##     Vec4f = Vec4[float32]
-  ##   var a: Vec4f
-  ##   var b: Vec4[float32]
-  ##   var c: Vec[4, float32]
-  ##   macro dumpTypeInst(x: typed): untyped =
-  ##     echo x.getTypeInst.repr
-  ##   dumpTypeInst a  # Vec4f
-  ##   dumpTypeInst b  # Vec4[float32]
-  ##   dumpTypeInst c  # Vec[4, float32]
+  runnableExamples:
+    type
+      Vec[N: static[int], T] = object
+        arr: array[N, T]
+      Vec4[T] = Vec[4, T]
+      Vec4f = Vec4[float32]
+    var a: Vec4f
+    var b: Vec4[float32]
+    var c: Vec[4, float32]
+    macro dumpTypeInst(x: typed): untyped =
+      newLit(x.getTypeInst.repr)
+    assert(dumpTypeInst(a) == "Vec4f")
+    assert(dumpTypeInst(b) == "Vec4[float32]")
+    assert(dumpTypeInst(c) == "Vec[4, float32]")
 
 proc getTypeInst*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
   ## Version of ``getTypeInst`` which takes a ``typedesc``.
 
-proc getTypeImpl*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
+proc getTypeImpl*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.} =
   ## Returns the `type`:idx: of a node in a form matching the implementation
   ## of the type.  Any intermediate aliases are expanded to arrive at the final
   ## type implementation.  You can instead use ``getImpl`` on a symbol if you
   ## want to find the intermediate aliases.
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##   # use same setup from getTypeInst example above
-  ##   macro dumpTypeImpl(x: typed): untyped =
-  ##     echo x.getTypeImpl.repr
-  ##   dumpTypeImpl a
-  ##   dumpTypeImpl b
-  ##   dumpTypeImpl c
-  ##   # all the above return
-  ##   #   object
-  ##   #     arr: array[0 .. 3, float32]
+  runnableExamples:
+    type
+      Vec[N: static[int], T] = object
+        arr: array[N, T]
+      Vec4[T] = Vec[4, T]
+      Vec4f = Vec4[float32]
+    var a: Vec4f
+    var b: Vec4[float32]
+    var c: Vec[4, float32]
+    macro dumpTypeImpl(x: typed): untyped =
+      newLit(x.getTypeImpl.repr)
+    let t = """
+object
+  arr: array[0 .. 3, float32]
+"""
+    assert(dumpTypeImpl(a) == t)
+    assert(dumpTypeImpl(b) == t)
+    assert(dumpTypeImpl(c) == t)
 
 proc getTypeImpl*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
   ## Version of ``getTypeImpl`` which takes a ``typedesc``.
