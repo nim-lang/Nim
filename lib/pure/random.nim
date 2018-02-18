@@ -201,7 +201,25 @@ when not defined(nimscript):
 {.pop.}
 
 when isMainModule:
-  proc main =
+  import stats
+
+  template testGenerator(n, name, code) =
+    rs.clear()
+    echo(n, " times ", name)
+    for i in 1 .. n:
+      let x = code
+      rs.push(x)
+    echo("avg ", rs.mean, ", stddev ", rs.standardDeviation,
+         ", min ", rs.min, ", max ", rs.max)
+
+  proc testGen(N = 2000) =
+    var rs: RunningStat
+    testGenerator(N, "rand int", rand(1))
+    testGenerator(N, "rand float", rand(1.0))
+    testGenerator(N, "rand Slice[int]", rand(0..1))
+    testGenerator(N, "rand Slice[float]", rand(0.0..1.0))
+
+  proc test =
     var occur: array[1000, int]
 
     var x = 8234
@@ -222,4 +240,5 @@ when isMainModule:
     doAssert rand(0) == 0
     doAssert rand("a") == 'a'
 
-  main()
+  testGen()
+  test()
