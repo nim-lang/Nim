@@ -933,39 +933,35 @@ proc `$`*(time: Time): string {.tags: [], raises: [], benign.} =
 
 proc parseToken(dt: var DateTime; token, value: string; j: var int) =
   ## Helper of the parse proc to parse individual tokens.
+
+  # Overwrite system.`[]` to raise a ValueError on index out of bounds.
+  proc `[]`[T, U](s: string, x: HSlice[T, U]): string =
+    if x.a >= s.len or x.b >= s.len:
+      raise newException(ValueError, "Value is missing required tokens, got: " &
+                         s)
+    return system.`[]`(s, x)
+
   var sv: int
   case token
   of "d":
-    if value.len >= j+1:
-      var pd = parseInt(value[j..j+1], sv)
-      dt.monthday = sv
-      j += pd
-    else:
-      raise newException(ValueError,
-        "Couldn't parse day of month (d), got: " & value)
+    var pd = parseInt(value[j..j+1], sv)
+    dt.monthday = sv
+    j += pd
   of "dd":
-    if value.len >= j+1:
-      dt.monthday = value[j..j+1].parseInt()
-    else:
-      raise newException(ValueError,
-        "Couldn't parse day of month (dd), got: " & value)
+    dt.monthday = value[j..j+1].parseInt()
     j += 2
   of "ddd":
-    if value.len >= j+2:
-      case value[j..j+2].toLowerAscii()
-      of "sun": dt.weekday = dSun
-      of "mon": dt.weekday = dMon
-      of "tue": dt.weekday = dTue
-      of "wed": dt.weekday = dWed
-      of "thu": dt.weekday = dThu
-      of "fri": dt.weekday = dFri
-      of "sat": dt.weekday = dSat
-      else:
-        raise newException(ValueError,
-        "Couldn't parse day of week (ddd), got: " & value[j..j+2])
+    case value[j..j+2].toLowerAscii()
+    of "sun": dt.weekday = dSun
+    of "mon": dt.weekday = dMon
+    of "tue": dt.weekday = dTue
+    of "wed": dt.weekday = dWed
+    of "thu": dt.weekday = dThu
+    of "fri": dt.weekday = dFri
+    of "sat": dt.weekday = dSat
     else:
-        raise newException(ValueError,
-        "Couldn't parse day of week (ddd), got: " & value)
+      raise newException(ValueError,
+        "Couldn't parse day of week (ddd), got: " & value[j..j+2])
     j += 3
   of "dddd":
     if value.len >= j+6 and value[j..j+5].cmpIgnoreCase("sunday") == 0:
@@ -993,69 +989,41 @@ proc parseToken(dt: var DateTime; token, value: string; j: var int) =
       raise newException(ValueError,
         "Couldn't parse day of week (dddd), got: " & value)
   of "h", "H":
-    if value.len >= j+1:
-      var pd = parseInt(value[j..j+1], sv)
-      dt.hour = sv
-      j += pd
-    else:
-      raise newException(ValueError,
-        "Couldn't parse hour (h), got: " & value)
+    var pd = parseInt(value[j..j+1], sv)
+    dt.hour = sv
+    j += pd
   of "hh", "HH":
-    if value.len >= j+1:
-      dt.hour = value[j..j+1].parseInt()
-    else:
-      raise newException(ValueError,
-        "Couldn't parse hour (hh), got: " & value)
+    dt.hour = value[j..j+1].parseInt()
     j += 2
   of "m":
-    if value.len >= j+1:
-      var pd = parseInt(value[j..j+1], sv)
-      dt.minute = sv
-      j += pd
-    else:
-      raise newException(ValueError,
-        "Couldn't parse minute (m), got: " & value)
+    var pd = parseInt(value[j..j+1], sv)
+    dt.minute = sv
+    j += pd
   of "mm":
-    if value.len >= j+1:
-      dt.minute = value[j..j+1].parseInt()
-    else:
-      raise newException(ValueError,
-        "Couldn't parse minute (mm), got: " & value)
+    dt.minute = value[j..j+1].parseInt()
     j += 2
   of "M":
-    if value.len >= j+1:
-      var pd = parseInt(value[j..j+1], sv)
-      dt.month = sv.Month
-      j += pd
-    else:
-      raise newException(ValueError,
-        "Couldn't parse month (M), got: " & value)
+    var pd = parseInt(value[j..j+1], sv)
+    dt.month = sv.Month
+    j += pd
   of "MM":
-    if value.len >= j+1:
-      var month = value[j..j+1].parseInt()
-      j += 2
-      dt.month = month.Month
-    else:
-      raise newException(ValueError,
-        "Couldn't parse month (MM), got: " & value)
+    var month = value[j..j+1].parseInt()
+    j += 2
+    dt.month = month.Month
   of "MMM":
-    if value.len >= j+2:
-      case value[j..j+2].toLowerAscii():
-      of "jan": dt.month =  mJan
-      of "feb": dt.month =  mFeb
-      of "mar": dt.month =  mMar
-      of "apr": dt.month =  mApr
-      of "may": dt.month =  mMay
-      of "jun": dt.month =  mJun
-      of "jul": dt.month =  mJul
-      of "aug": dt.month =  mAug
-      of "sep": dt.month =  mSep
-      of "oct": dt.month =  mOct
-      of "nov": dt.month =  mNov
-      of "dec": dt.month =  mDec
-      else:
-        raise newException(ValueError,
-          "Couldn't parse month (MMM), got: " & value)
+    case value[j..j+2].toLowerAscii():
+    of "jan": dt.month =  mJan
+    of "feb": dt.month =  mFeb
+    of "mar": dt.month =  mMar
+    of "apr": dt.month =  mApr
+    of "may": dt.month =  mMay
+    of "jun": dt.month =  mJun
+    of "jul": dt.month =  mJul
+    of "aug": dt.month =  mAug
+    of "sep": dt.month =  mSep
+    of "oct": dt.month =  mOct
+    of "nov": dt.month =  mNov
+    of "dec": dt.month =  mDec
     else:
       raise newException(ValueError,
         "Couldn't parse month (MMM), got: " & value)
@@ -1101,63 +1069,35 @@ proc parseToken(dt: var DateTime; token, value: string; j: var int) =
       raise newException(ValueError,
         "Couldn't parse month (MMMM), got: " & value)
   of "s":
-    if value.len >= j+1:
-      var pd = parseInt(value[j..j+1], sv)
-      dt.second = sv
-      j += pd
-    else:
-      raise newException(ValueError,
-        "Couldn't parse second (s), got: " & value)
+    var pd = parseInt(value[j..j+1], sv)
+    dt.second = sv
+    j += pd
   of "ss":
-    if value.len >= j+1:
-      dt.second = value[j..j+1].parseInt()
-    else:
-      raise newException(ValueError,
-        "Couldn't parse second (ss), got: " & value)
+    dt.second = value[j..j+1].parseInt()
     j += 2
   of "t":
     if value[j] == 'P' and dt.hour > 0 and dt.hour < 12:
       dt.hour += 12
     j += 1
   of "tt":
-    if value.len >= j+1:
-      if value[j..j+1] == "PM" and dt.hour > 0 and dt.hour < 12:
-        dt.hour += 12
-    else:
-      raise newException(ValueError,
-        "Couldn't parse hour (tt), got: " & value)
+    if value[j..j+1] == "PM" and dt.hour > 0 and dt.hour < 12:
+      dt.hour += 12
     j += 2
   of "yy":
     # Assumes current century
-    if value.len >= j+1:
-      var year = value[j..j+1].parseInt()
-      var thisCen = now().year div 100
-      dt.year = thisCen*100 + year
-    else:
-      raise newException(ValueError,
-        "Couldn't parse year (yy), got: " & value)
+    var year = value[j..j+1].parseInt()
+    var thisCen = now().year div 100
+    dt.year = thisCen*100 + year
     j += 2
   of "yyyy":
-    if value.len >= j+3:
-      dt.year = value[j..j+3].parseInt()
-    else:
-      raise newException(ValueError,
-        "Couldn't parse year (yyyy), got: " & value)
+    dt.year = value[j..j+3].parseInt()
     j += 4
   of "z":
     dt.isDst = false
     if value[j] == '+':
-      if value.len >= j+1:
-        dt.utcOffset = 0 - parseInt($value[j+1]) * secondsInHour
-      else:
-        raise newException(ValueError,
-          "Couldn't parse timezone offset (z), got: " & value)
+      dt.utcOffset = 0 - parseInt($value[j+1]) * secondsInHour
     elif value[j] == '-':
-      if value.len >= j+1:
-        dt.utcOffset = parseInt($value[j+1]) * secondsInHour
-      else:
-        raise newException(ValueError,
-          "Couldn't parse timezone offset (z), got: " & value)
+      dt.utcOffset = parseInt($value[j+1]) * secondsInHour
     elif value[j] == 'Z':
       dt.utcOffset = 0
       j += 1
@@ -1169,17 +1109,9 @@ proc parseToken(dt: var DateTime; token, value: string; j: var int) =
   of "zz":
     dt.isDst = false
     if value[j] == '+':
-      if value.len >= j+2:
-        dt.utcOffset = 0 - value[j+1..j+2].parseInt() * secondsInHour
-      else:
-        raise newException(ValueError,
-          "Couldn't parse timezone offset (zz), got: " & value)
+      dt.utcOffset = 0 - value[j+1..j+2].parseInt() * secondsInHour
     elif value[j] == '-':
-      if value.len >= j+2:
-        dt.utcOffset = value[j+1..j+2].parseInt() * secondsInHour
-      else:
-        raise newException(ValueError,
-          "Couldn't parse timezone offset (zz), got: " & value)
+      dt.utcOffset = value[j+1..j+2].parseInt() * secondsInHour
     elif value[j] == 'Z':
       dt.utcOffset = 0
       j += 1
@@ -1200,14 +1132,10 @@ proc parseToken(dt: var DateTime; token, value: string; j: var int) =
     else:
       raise newException(ValueError,
         "Couldn't parse timezone offset (zzz), got: " & value[j])
-    if value.len >= j+5:
-      dt.utcOffset = factor * value[j+1..j+2].parseInt() * secondsInHour
-      j += 4
-      dt.utcOffset += factor * value[j..j+1].parseInt() * 60
-      j += 2
-    else:
-      raise newException(ValueError,
-        "Couldn't parse timezone offset (zzz), got: " & value)
+    dt.utcOffset = factor * value[j+1..j+2].parseInt() * secondsInHour
+    j += 4
+    dt.utcOffset += factor * value[j..j+1].parseInt() * 60
+    j += 2
   else:
     # Ignore the token and move forward in the value string by the same length
     j += token.len
