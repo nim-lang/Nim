@@ -499,8 +499,11 @@ proc sgn*[T: SomeNumber](x: T): int {.inline.} =
 {.pop.}
 
 proc `^`*[T](x: T, y: Natural): T =
-  ## Computes ``x`` to the power ``y`. ``x`` must be non-negative, use
-  ## `pow <#pow,float,float>` for negative exponents.
+  ## Computes ``x`` to the power of ``y``.
+  ##
+  ## ``x`` must be non-negative, use
+  ## `pow <#pow,float,float>`_ or `this <#^,float,int>`_ `^` overload for
+  ## negative exponents.
   when compiles(y >= T(0)):
     assert y >= T(0)
   else:
@@ -515,6 +518,13 @@ proc `^`*[T](x: T, y: Natural): T =
     if y == 0:
       break
     x *= x
+
+proc `^`*(x: float, y: int): float =
+  ## Computes ``x`` to the power of ``y``
+  return pow(x, y.float)
+
+proc `^`*(x: float, y: float): float =
+  return pow(x, y)
 
 proc gcd*[T](x, y: T): T =
   ## Computes the greatest common (positive) divisor of ``x`` and ``y``.
@@ -682,3 +692,22 @@ when isMainModule:
 
     doAssert floorMod(8.0, -3.0) ==~ -1.0
     doAssert floorMod(-8.5, 3.0) ==~ 0.5
+    doAssert sgn(1'i8) == 1
+    doAssert sgn(1'i16) == 1
+    doAssert sgn(1'i32) == 1
+    doAssert sgn(1'i64) == 1
+    doAssert sgn(1'u8) == 1
+    doAssert sgn(1'u16) == 1
+    doAssert sgn(1'u32) == 1
+    doAssert sgn(1'u64) == 1
+    doAssert sgn(-12342.8844'f32) == -1
+    doAssert sgn(123.9834'f64) == 1
+    doAssert sgn(0'i32) == 0
+    doAssert sgn(0'f32) == 0
+    doAssert sgn(NegInf) == -1
+    doAssert sgn(Inf) == 1
+    doAssert sgn(NaN) == 0
+
+  block:
+    doAssert 5 * 10 ^ -9 ==~ 5e-9
+    doAssert 5.543 * 10 ^ -9 ==~ 5.543e-9
