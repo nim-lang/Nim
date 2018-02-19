@@ -936,24 +936,36 @@ proc parseToken(dt: var DateTime; token, value: string; j: var int) =
   var sv: int
   case token
   of "d":
-    var pd = parseInt(value[j..j+1], sv)
-    dt.monthday = sv
-    j += pd
-  of "dd":
-    dt.monthday = value[j..j+1].parseInt()
-    j += 2
-  of "ddd":
-    case value[j..j+2].toLowerAscii()
-    of "sun": dt.weekday = dSun
-    of "mon": dt.weekday = dMon
-    of "tue": dt.weekday = dTue
-    of "wed": dt.weekday = dWed
-    of "thu": dt.weekday = dThu
-    of "fri": dt.weekday = dFri
-    of "sat": dt.weekday = dSat
+    if value.len >= j+1:
+      var pd = parseInt(value[j..j+1], sv)
+      dt.monthday = sv
+      j += pd
     else:
       raise newException(ValueError,
+        "Couldn't parse day of month (d), got: " & value)
+  of "dd":
+    if value.len >= j+1:
+      dt.monthday = value[j..j+1].parseInt()
+    else:
+      raise newException(ValueError,
+        "Couldn't parse day of month (dd), got: " & value)
+    j += 2
+  of "ddd":
+    if value.len >= j+2:
+      case value[j..j+2].toLowerAscii()
+      of "sun": dt.weekday = dSun
+      of "mon": dt.weekday = dMon
+      of "tue": dt.weekday = dTue
+      of "wed": dt.weekday = dWed
+      of "thu": dt.weekday = dThu
+      of "fri": dt.weekday = dFri
+      of "sat": dt.weekday = dSat
+      else:
+        raise newException(ValueError,
         "Couldn't parse day of week (ddd), got: " & value[j..j+2])
+    else:
+        raise newException(ValueError,
+        "Couldn't parse day of week (ddd), got: " & value)
     j += 3
   of "dddd":
     if value.len >= j+6 and value[j..j+5].cmpIgnoreCase("sunday") == 0:
