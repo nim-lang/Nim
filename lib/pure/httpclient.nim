@@ -166,14 +166,14 @@ proc contentLength*(response: Response | AsyncResponse): int =
 proc lastModified*(response: Response | AsyncResponse): DateTime =
   ## Retrieves the specified response's last modified time.
   ## This is effectively the value of the "last-modified" header.
-  ## If the response's does not have a corresponding value
-  ## then "01 Jan 0000 00:00:00" will be returned.
   ##
+  ## Raises a ``ValueError`` if the response does not have a
+  ## corresponding "last-modified".
   var lastModifiedHeader = response.headers.getOrDefault("last-modified")
   try:
-    result = parse(lastModifiedHeader, "ddd, dd MMM yyyy HH:mm:ss Z")
+    result = parse(lastModifiedHeader, "dd, dd MMM yyyy HH:mm:ss Z")
   except ValueError:
-    result = initDatetime(1, mJan, 0, 0, 0, 0)
+    raise
 
 proc body*(response: Response): string =
   ## Retrieves the specified response's body.
