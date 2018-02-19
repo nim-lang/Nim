@@ -183,7 +183,7 @@ when not defined(JS):
 
   proc pow*(x, y: float32): float32 {.importc: "powf", header: "<math.h>".}
   proc pow*(x, y: float64): float64 {.importc: "pow", header: "<math.h>".}
-    ## computes x to power raised of y.
+    ## Computes x to the power of y.
     ##
     ## To compute power between integers, use `^` e.g. 2 ^ 6
 
@@ -426,13 +426,8 @@ proc `mod`*[T: float32|float64](x, y: T): T =
 {.pop.}
 {.pop.}
 
-proc `^`*[T](x: T, y: Natural): T =
-  ## Computes ``x`` to the power ``y`. ``x`` must be non-negative, use
-  ## `pow <#pow,float,float>` for negative exponents.
-  when compiles(y >= T(0)):
-    assert y >= T(0)
-  else:
-    assert T(y) >= T(0)
+proc `^`*[T: SomeInteger](x: T, y: Natural): T =
+  ## Computes ``x`` to the power of ``y`. ``y`` must be non-negative.
   var (x, y) = (x, y)
   result = 1
 
@@ -443,6 +438,14 @@ proc `^`*[T](x: T, y: Natural): T =
     if y == 0:
       break
     x *= x
+
+proc `^`*[T: SomeReal](x: T, y: int): T {.inline.} =
+  ## Computes ``x`` to the power of ``y`.
+  pow(x, y.T)
+
+proc `^`*[T: SomeReal](x, y: T): T {.inline.} =
+  ## Computes ``x`` to the power of ``y`.
+  pow(x, y)
 
 proc gcd*[T](x, y: T): T =
   ## Computes the greatest common divisor of ``x`` and ``y``.
