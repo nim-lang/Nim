@@ -150,6 +150,31 @@ proc code*(response: Response | AsyncResponse): HttpCode
   ## corresponding ``HttpCode``.
   return response.status[0 .. 2].parseInt.HttpCode
 
+proc contentType*(response: Response | AsyncResponse): string =
+  ## Retrieves the specified response's content type.
+  ##
+  ## This is effectively the value of the "Content-Type" header.
+  response.headers.getOrDefault("content-type")
+
+proc contentLength*(response: Response | AsyncResponse): int =
+  ## Retrieves the specified response's content length.
+  ##
+  ## This is effectively the value of the "Content-Length" header.
+  ##
+  ## A ``ValueError`` exception will be raised if the value is not an integer.
+  var contentLengthHeader = response.headers.getOrDefault("Content-Length")
+  return contentLengthHeader.parseInt()
+
+proc lastModified*(response: Response | AsyncResponse): DateTime =
+  ## Retrieves the specified response's last modified time.
+  ##
+  ## This is effectively the value of the "Last-Modified" header.
+  ##
+  ## Raises a ``ValueError`` if the parsing fails or the value is not a correctly
+  ## formatted time.
+  var lastModifiedHeader = response.headers.getOrDefault("last-modified")
+  result = parse(lastModifiedHeader, "dd, dd MMM yyyy HH:mm:ss Z")
+
 proc body*(response: Response): string =
   ## Retrieves the specified response's body.
   ##
