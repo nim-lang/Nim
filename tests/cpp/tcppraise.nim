@@ -19,6 +19,18 @@ echo "baz"
 
 # bug 7232
 try:
-  discard
+ discard
 except KeyError, ValueError:
   echo "except handler" # should not be invoked
+
+
+#bug 7239
+try:
+  try:
+    raise newException(ValueError, "asdf")
+  except KeyError, ValueError:
+    echo "except handler" # should not be invoked
+    raise
+except:
+  echo "caught"
+
