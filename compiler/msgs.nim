@@ -491,6 +491,7 @@ type
     dirtyfile: string          # the file that is actually read into memory
                                # and parsed; usually 'nil' but is used
                                # for 'nimsuggest'
+    hash*: string              # the checksum of the file
 
   TLineInfo* = object          # This is designed to be as small as possible,
                                # because it is used
@@ -718,6 +719,14 @@ proc toFullPath*(fileIdx: int32): string =
 proc setDirtyFile*(fileIdx: int32; filename: string) =
   assert fileIdx >= 0
   fileInfos[fileIdx].dirtyFile = filename
+
+proc setHash*(fileIdx: int32; hash: string) =
+  assert fileIdx >= 0
+  shallowCopy(fileInfos[fileIdx].hash, hash)
+
+proc getHash*(fileIdx: int32): string =
+  assert fileIdx >= 0
+  shallowCopy(result, fileInfos[fileIdx].hash)
 
 proc toFullPathConsiderDirty*(fileIdx: int32): string =
   if fileIdx < 0:

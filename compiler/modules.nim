@@ -177,7 +177,7 @@ proc compileModule*(graph: ModuleGraph; fileIdx: int32; cache: IdentCache, flags
           return
       else:
         discard
-    result.id = getModuleId(toFullPath(fileIdx))
+    result.id = getModuleId(fileIdx, toFullPath(fileIdx))
     discard processModule(graph, result,
       if sfMainModule in flags and gProjectIsStdin: stdin.llStreamOpen else: nil,
       rd, cache)

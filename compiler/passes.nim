@@ -194,6 +194,8 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream,
     while doContinue:
       let n = loadNode(module, stmtIndex)
       if n == nil or graph.stopCompile(): break
+      #if n.kind == nkImportStmt:
+      #  echo "yes and it's ", n
       inc stmtIndex
       var m = n
       for i in 0..<gPassesLen:

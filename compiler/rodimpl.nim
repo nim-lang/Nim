@@ -12,9 +12,40 @@
 import strutils, os, intsets, tables, ropes, db_sqlite, msgs, options, types,
   renderer, rodutils, std / sha1, idents, astalgo, magicsys
 
+## Todo:
+## - Implement the 'import' replay logic so that the codegen runs over
+##   dependent modules.
+## - Test multi methods.
+## - Implement the limited VM support based on sets.
+## - Depencency computation should use signature hashes in order to
+##   avoid recompiling dependent modules.
+
 var db: DbConn
 
-proc getModuleId*(fullpath: string): int =
+proc hashFileCached(fileIdx: int32; fullpath: string): string =
+  result = msgs.getHash(fileIdx)
+  if result.len == 0:
+    result = $secureHashFile(fullpath)
+    msgs.setHash(fileIdx, result)
+
+proc needsRecompile(fileIdx: int32; fullpath: string; cycleCheck: var IntSet): bool =
+  let root = db.getRow(sql"select id, fullhash from filenames where fullpath = ?",
+    fullpath)
+  if root[0].len == 0: return true
+  if root[1] != hashFileCached(fileIdx, fullpath):
+    return true
+  # cycle detection: assume "not changed" is correct.
+  if cycleCheck.containsOrIncl(fileIdx):
+    return false
+  # check dependencies (recursively):
+  for row in db.fastRows(sql"select fullpath from filenames where id in (select dependency from deps where module = ?)",
+                         root[0]):
+    let dep = row[0]
+    if needsRecompile(dep.fileInfoIdx, dep, cycleCheck):
+      return true
+  return false
+
+proc getModuleId*(fileIdx: int32; fullpath: string): int =
   if gSymbolFiles != v2Sf: return getID()
   let module = db.getRow(
     sql"select id, fullHash from modules where fullpath = ?", fullpath)
@@ -28,13 +59,15 @@ proc getModuleId*(fullpath: string): int =
       # not changed, so use the cached AST (even if it might be wrong
       # due to its dependencies):
       doAssert(result != 0)
-      result = -result
-    else:
-      db.exec(sql"update modules set fullHash = ? where id = ?", currentFullhash, module[0])
-      db.exec(sql"delete from types where module = ?", module[0])
-      db.exec(sql"delete from syms where module = ?", module[0])
-      db.exec(sql"delete from toplevelstmts where module = ?", module[0])
-      db.exec(sql"delete from statics where module = ?", module[0])
+      var cycleCheck = initIntSet()
+      if not needsRecompile(fileIdx, fullpath, cycleCheck):
+        return -result
+    db.exec(sql"update modules set fullHash = ? where id = ?", currentFullhash, module[0])
+    db.exec(sql"delete from deps where module = ?", module[0])
+    db.exec(sql"delete from types where module = ?", module[0])
+    db.exec(sql"delete from syms where module = ?", module[0])
+    db.exec(sql"delete from toplevelstmts where module = ?", module[0])
+    db.exec(sql"delete from statics where module = ?", module[0])
 
 type
   TRodWriter = object
@@ -74,15 +107,23 @@ proc pushSym(w: PRodWriter, s: PSym) =
   if not containsOrIncl(w.smarks, s.id):
     w.sstack.add(s)
 
-proc toDbFileId(fullpath: string): int =
-  let id = db.getValue(sql"select id from filenames where fullpath = ?",
+proc toDbFileId(fileIdx: int32): int =
+  if fileIdx == -1: return -1
+  let fullpath = fileIdx.toFullPath
+  let row = db.getRow(sql"select id, fullhash from filenames where fullpath = ?",
     fullpath)
+  let id = row[0]
+  let fullhash = hashFileCached(fileIdx, fullpath)
   if id.len == 0:
-    result = int db.insertID(sql"insert into filenames(fullpath) values (?)", fullpath)
+    result = int db.insertID(sql"insert into filenames(fullpath, fullhash) values (?, ?)",
+      fullpath, fullhash)
   else:
+    if row[1] != fullhash:
+      db.exec(sql"update filenames set fullhash = ? where fullpath = ?", fullhash, fullpath)
     result = parseInt(id)
 
 proc fromDbFileId(dbId: int): int32 =
+  if dbId == -1: return -1
   let fullpath = db.getValue(sql"select fullpath from filenames where id = ?", dbId)
   doAssert fullpath.len > 0, "cannot find file name for DB ID " & $dbId
   result = fileInfoIdx(fullpath)
@@ -104,7 +145,7 @@ proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode,
     result.add(',')
     encodeVInt(n.info.line, result)
     result.add(',')
-    encodeVInt(toDbFileId(n.info.toFullPath), result)
+    encodeVInt(toDbFileId(n.info.fileIndex), result)
   elif fInfo.line != n.info.line:
     result.add('?')
     encodeVInt(n.info.col, result)
@@ -282,7 +323,7 @@ proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
   result.add(',')
   if s.info.line != -1'i16: encodeVInt(s.info.line, result)
   result.add(',')
-  encodeVInt(toDbFileId(s.info.toFullPath), result)
+  encodeVInt(toDbFileId(s.info.fileIndex), result)
   if s.owner != nil:
     result.add('*')
     encodeVInt(s.owner.id, result)
@@ -764,15 +805,28 @@ proc loadModuleSymTab(r; module: PSym) =
     magicsys.systemModule = module
 
 proc loadNode*(module: PSym; index: var int): PNode =
+  assert gSymbolFiles == v2Sf
   if index == 0:
     loadModuleSymTab(gr, module)
     index = parseInt db.getValue(
       sql"select min(id) from toplevelstmts where module = ?", abs module.id)
   var b = BlobReader(pos: 0)
-  b.s = db.getValue(sql"select data from toplevelstmts where id = ?", index)
-  if b.s.len == 0: return nil # end marker
+  b.s = db.getValue(sql"select data from toplevelstmts where id = ? and module = ?",
+                    index, abs module.id)
+  if b.s.len == 0:
+    db.exec(sql"insert into controlblock(idgen) values (?)", gFrontEndId)
+    return nil # end marker
   gr.module = module
   result = decodeNode(gr, b, module.info)
+
+proc addModuleDep*(module, fileIdx: int32; isIncludeFile: bool) =
+  if gSymbolFiles != v2Sf: return
+
+  let a = toDbFileId(module)
+  let b = toDbFileId(fileIdx)
+
+  db.exec(sql"insert into deps(module, dependency, isIncludeFile) values (?, ?, ?)",
+    a, b, ord(isIncludeFile))
 
 # --------------- Database model ---------------------------------------------
 
@@ -786,7 +840,8 @@ proc createDb() =
   db.exec(sql"""
     create table if not exists filenames(
       id integer primary key,
-      fullpath varchar(8000) not null
+      fullpath varchar(8000) not null,
+      fullHash varchar(256) not null
     );
   """)
   db.exec sql"create index if not exists FilenameIx on filenames(fullpath);"
@@ -801,6 +856,17 @@ proc createDb() =
       created timestamp not null default (DATETIME('now'))
     );""")
   db.exec(sql"""create unique index if not exists SymNameIx on modules(fullpath);""")
+
+  db.exec(sql"""
+    create table if not exists deps(
+      id integer primary key,
+      module integer not null,
+      dependency integer not null,
+      isIncludeFile integer not null,
+      foreign key (module) references filenames(id),
+      foreign key (dependency) references filenames(id)
+    );""")
+  db.exec(sql"""create index if not exists DepsIx on deps(module);""")
 
   db.exec(sql"""
     create table if not exists types(
@@ -865,5 +931,6 @@ proc setupModuleCache* =
   db.exec(sql"pragma journal_mode=off")
   db.exec(sql"pragma SYNCHRONOUS=off")
   db.exec(sql"pragma LOCKING_MODE=exclusive")
-  idgen.setId(parseInt db.getValue(
-    sql"select max(idgen) from controlblock"))
+  let lastId = db.getValue(sql"select max(idgen) from controlblock")
+  if lastId.len > 0:
+    idgen.setId(parseInt lastId)

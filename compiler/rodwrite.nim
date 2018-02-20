@@ -642,7 +642,7 @@ proc process(c: PPassContext, n: PNode): PNode =
 
 proc myOpen(g: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
   if module.id < 0: internalError("rodwrite: module ID not set")
-  var w = newRodWriter(module.fileIdx.getHash, module, cache)
+  var w = newRodWriter(rodread.getHash module.fileIdx, module, cache)
   rawAddInterfaceSym(w, module)
   result = w
 
