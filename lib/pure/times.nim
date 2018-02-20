@@ -933,6 +933,14 @@ proc `$`*(time: Time): string {.tags: [], raises: [], benign.} =
 
 proc parseToken(dt: var DateTime; token, value: string; j: var int) =
   ## Helper of the parse proc to parse individual tokens.
+
+  # Overwrite system.`[]` to raise a ValueError on index out of bounds.
+  proc `[]`[T, U](s: string, x: HSlice[T, U]): string =
+    if x.a >= s.len or x.b >= s.len:
+      raise newException(ValueError, "Value is missing required tokens, got: " &
+                         s)
+    return system.`[]`(s, x)
+
   var sv: int
   case token
   of "d":

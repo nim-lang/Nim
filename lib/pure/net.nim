@@ -64,6 +64,9 @@
 ##     socket.acceptAddr(client, address)
 ##     echo("Client connected from: ", address)
 ##
+## **Note:** The ``client`` variable is initialised with ``new Socket`` **not**
+## ``newSocket()``. The difference is that the latter creates a new file
+## descriptor.
 
 {.deadCodeElim: on.}
 import nativesockets, os, strutils, parseutils, times, sets, options
@@ -753,6 +756,8 @@ proc acceptAddr*(server: Socket, client: var Socket, address: var string,
   ## flag is specified then this error will not be raised and instead
   ## accept will be called again.
   assert(client != nil)
+  assert client.fd.int <= 0, "Client socket needs to be initialised with " &
+                             "`new`, not `newSocket`."
   let ret = accept(server.fd)
   let sock = ret[0]
 
