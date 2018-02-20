@@ -3,7 +3,9 @@ discard """
   output: '''foo
 bar
 Need odd and >= 3 digits##
-baz'''
+baz
+caught
+'''
 """
 
 # bug #1888
