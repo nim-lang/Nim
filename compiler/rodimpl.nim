@@ -7,10 +7,10 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements the canonalization for the various caching mechanisms.
+## This module implements the new compilation cache.
 
 import strutils, os, intsets, tables, ropes, db_sqlite, msgs, options, types,
-  renderer, rodutils, std / sha1, idents
+  renderer, rodutils, std / sha1, idents, astalgo, magicsys
 
 var db: DbConn
 
@@ -20,7 +20,7 @@ proc getModuleId*(fullpath: string): int =
     sql"select id, fullHash from modules where fullpath = ?", fullpath)
   let currentFullhash = $secureHashFile(fullpath)
   if module[0].len == 0:
-    result = int db.insertID(sql"insert into modules(fullpath, interfHash, fullHash) values (?, ?)",
+    result = int db.insertID(sql"insert into modules(fullpath, interfHash, fullHash) values (?, ?, ?)",
       fullpath, "", currentFullhash)
   else:
     result = parseInt(module[0])
@@ -74,6 +74,19 @@ proc pushSym(w: PRodWriter, s: PSym) =
   if not containsOrIncl(w.smarks, s.id):
     w.sstack.add(s)
 
+proc toDbFileId(fullpath: string): int =
+  let id = db.getValue(sql"select id from filenames where fullpath = ?",
+    fullpath)
+  if id.len == 0:
+    result = int db.insertID(sql"insert into filenames(fullpath) values (?)", fullpath)
+  else:
+    result = parseInt(id)
+
+proc fromDbFileId(dbId: int): int32 =
+  let fullpath = db.getValue(sql"select fullpath from filenames where id = ?", dbId)
+  doAssert fullpath.len > 0, "cannot find file name for DB ID " & $dbId
+  result = fileInfoIdx(fullpath)
+
 proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode,
                 result: var string) =
   if n == nil:
@@ -91,7 +104,7 @@ proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode,
     result.add(',')
     encodeVInt(n.info.line, result)
     result.add(',')
-    encodeVInt(n.info.fileIndex, result)
+    encodeVInt(toDbFileId(n.info.toFullPath), result)
   elif fInfo.line != n.info.line:
     result.add('?')
     encodeVInt(n.info.col, result)
@@ -269,7 +282,7 @@ proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
   result.add(',')
   if s.info.line != -1'i16: encodeVInt(s.info.line, result)
   result.add(',')
-  encodeVInt(s.info.fileIndex, result)
+  encodeVInt(toDbFileId(s.info.toFullPath), result)
   if s.owner != nil:
     result.add('*')
     encodeVInt(s.owner.id, result)
@@ -331,8 +344,8 @@ proc storeSym(w: PRodWriter; s: PSym) =
   encodeSym(w, s, buf)
   # XXX only store the name for exported symbols in order to speed up lookup
   # times once we enable the skStub logic.
-  db.exec(sql"insert into syms(nimid, module, name, data) values (?, ?, ?, ?)",
-    s.id, abs(w.module.id), s.name.s, buf)
+  db.exec(sql"insert into syms(nimid, module, name, data, exported) values (?, ?, ?, ?, ?)",
+    s.id, abs(w.module.id), s.name.s, buf, ord(sfExported in s.flags))
 
 proc storeType(w: PRodWriter; t: PType) =
   var buf = newStringOfCap(160)
@@ -410,7 +423,7 @@ proc decodeLineInfo(r; b; info: var TLineInfo) =
       else: info.line = int16(decodeVInt(b.s, b.pos))
       if b.s[b.pos] == ',':
         inc(b.pos)
-        info.fileIndex = int32(decodeVInt(b.s, b.pos))
+        info.fileIndex = fromDbFileId(decodeVInt(b.s, b.pos))
 
 proc skipNode(b) =
   assert b.s[b.pos] == '('
@@ -569,7 +582,7 @@ proc loadType(r; id: int; info: TLineInfo): PType =
     inc(b.pos)
     result.size = decodeVInt(b.s, b.pos)
   else:
-    result.size = - 1
+    result.size = -1
   if b.s[b.pos] == '=':
     inc(b.pos)
     result.align = decodeVInt(b.s, b.pos).int16
@@ -642,25 +655,21 @@ proc decodeInstantiations(r; b; info: TLineInfo;
       ii.compilesId = decodeVInt(b.s, b.pos)
     s.safeAdd ii
 
-proc loadSym(r; id: int; info: TLineInfo): PSym =
-  var
-    id: int
-    ident: PIdent
-  result = r.syms.getOrDefault(id)
-  if result != nil: return result
-  var b = loadBlob(sql"select data from syms where nimid = ?", id)
+proc loadSymFromBlob(r; b; info: TLineInfo): PSym =
   if b.s[b.pos] == '{':
     inc(b.pos)
     if b.s[b.pos] == '}':
       inc(b.pos)
       return                  # nil sym
   var k = TSymKind(decodeVInt(b.s, b.pos))
+  var id: int
   if b.s[b.pos] == '+':
     inc(b.pos)
     id = decodeVInt(b.s, b.pos)
     setId(id)
   else:
     internalError(info, "decodeSym: no id")
+  var ident: PIdent
   if b.s[b.pos] == '&':
     inc(b.pos)
     ident = r.cache.getIdent(decodeStr(b.s, b.pos))
@@ -729,9 +738,34 @@ proc loadSym(r; id: int; info: TLineInfo): PSym =
     #  result.ast = decodeNodeLazyBody(b, result.info, result)
     #else:
     result.ast = decodeNode(r, b, result.info)
+  if sfCompilerProc in result.flags:
+    registerCompilerProc(result)
+
+proc loadSym(r; id: int; info: TLineInfo): PSym =
+  result = r.syms.getOrDefault(id)
+  if result != nil: return result
+  var b = loadBlob(sql"select data from syms where nimid = ?", id)
+  result = loadSymFromBlob(r, b, info)
+  doAssert id == result.id, "symbol ID is not consistent!"
+
+proc loadModuleSymTab(r; module: PSym) =
+  ## goal: fill  module.tab
+  gr.syms[module.id] = module
+  for row in db.fastRows(sql"select nimid, data from syms where module = ? and exported = 1", abs(module.id)):
+    let id = parseInt(row[0])
+    var s = r.syms.getOrDefault(id)
+    if s == nil:
+      var b = BlobReader(pos: 0)
+      shallowCopy(b.s, row[1])
+      s = loadSymFromBlob(r, b, module.info)
+    assert s != nil
+    strTableAdd(module.tab, s)
+  if sfSystemModule in module.flags:
+    magicsys.systemModule = module
 
 proc loadNode*(module: PSym; index: var int): PNode =
   if index == 0:
+    loadModuleSymTab(gr, module)
     index = parseInt db.getValue(
       sql"select min(id) from toplevelstmts where module = ?", abs module.id)
   var b = BlobReader(pos: 0)
@@ -748,6 +782,14 @@ proc createDb() =
       idgen integer not null
     );
   """)
+
+  db.exec(sql"""
+    create table if not exists filenames(
+      id integer primary key,
+      fullpath varchar(8000) not null
+    );
+  """)
+  db.exec sql"create index if not exists FilenameIx on filenames(fullpath);"
 
   db.exec(sql"""
     create table if not exists modules(
@@ -779,6 +821,7 @@ proc createDb() =
       module integer not null,
       name varchar(256) not null,
       data blob not null,
+      exported int not null,
       foreign key (module) references module(id)
     );
   """)
@@ -797,7 +840,6 @@ proc createDb() =
     );
   """)
   db.exec sql"create index TopLevelStmtByModuleIdx on toplevelstmts(module);"
-
 
   db.exec(sql"""
     create table if not exists statics(

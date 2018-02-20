@@ -621,4 +621,5 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   popProcCon(c)
   if c.runnableExamples != nil: testExamples(c)
 
-const semPass* = makePass(myOpen, myOpenCached, myProcess, myClose)
+const semPass* = makePass(myOpen, myOpenCached, myProcess, myClose,
+                          isFrontend = true)
