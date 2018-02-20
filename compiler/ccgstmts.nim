@@ -833,7 +833,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
       for j in 0..t[i].len-2:
         assert(t[i][j].kind == nkType)
         startBlock(p, "catch ($1*) {$n", getTypeDesc(p.module, t[i][j].typ))
-        genExceptBranchBody(t[i][^1])  # exception handler body will duplicated for very type handler 
+        genExceptBranchBody(t[i][^1])  # exception handler body will duplicated for every type
         endBlock(p)
 
   if not catchAllPresent and t[^1].kind == nkFinally:
