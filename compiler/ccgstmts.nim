@@ -786,6 +786,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   #   try
   #   {
   #      myDiv(4, 9);
+  #      goto LA_END;
   #   } catch (NimExceptionType1&) {
   #      body
   #      goto LA_END;
@@ -826,13 +827,14 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
     getTemp(p, t.typ, d)
   genLineDir(p, t)
 
+  let end_label = getLabel(p)
   discard cgsym(p.module, "Exception")
   add(p.nestedTryStmts, t)
   startBlock(p, "try {$n")
   expr(p, t[0], d)
-  endBlock(p, ropecg(p.module, "}"))
+  linefmt(p, cpsStmts, "goto $1;$n", [end_label])
+  endBlock(p)
 
-  let end_label = getLabel(p)
   var catchAllPresent = false
   var labeled_branches: seq[tuple[label: Rope, body: PNode]] = @[] # generated after labels discovered
 

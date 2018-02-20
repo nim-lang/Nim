@@ -15,3 +15,10 @@ try:
 except ValueError:
   echo getCurrentExceptionMsg(), "##"
 echo "baz"
+
+
+# bug 7232
+try:
+  discard
+except KeyError, ValueError:
+  echo "except handler" # should not be invoked
