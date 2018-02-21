@@ -230,9 +230,9 @@ proc getTypeInst*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.} =
     var c: Vec[4, float32]
     macro dumpTypeInst(x: typed): untyped =
       newLit(x.getTypeInst.repr)
-    assert(dumpTypeInst(a) == "Vec4f")
-    assert(dumpTypeInst(b) == "Vec4[float32]")
-    assert(dumpTypeInst(c) == "Vec[4, float32]")
+    doAssert(dumpTypeInst(a) == "Vec4f")
+    doAssert(dumpTypeInst(b) == "Vec4[float32]")
+    doAssert(dumpTypeInst(c) == "Vec[4, float32]")
 
 proc getTypeInst*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
   ## Version of ``getTypeInst`` which takes a ``typedesc``.
@@ -257,9 +257,9 @@ proc getTypeImpl*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.} =
 object
   arr: array[0 .. 3, float32]
 """
-    assert(dumpTypeImpl(a) == t)
-    assert(dumpTypeImpl(b) == t)
-    assert(dumpTypeImpl(c) == t)
+    doAssert(dumpTypeImpl(a) == t)
+    doAssert(dumpTypeImpl(b) == t)
+    doAssert(dumpTypeImpl(c) == t)
 
 proc getTypeImpl*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
   ## Version of ``getTypeImpl`` which takes a ``typedesc``.
