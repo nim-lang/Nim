@@ -20,6 +20,8 @@ when not defined(nimSymbolfiles):
 
   template addModuleDep*(module, fileIdx: int32; isIncludeFile: bool) = discard
 
+  template storeRemaining*(module: PSym) = discard
+
 else:
   include rodimpl
 
