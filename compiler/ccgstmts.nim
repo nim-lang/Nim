@@ -788,30 +788,13 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   #      myDiv(4, 9);
   #   } catch (NimExceptionType1&) {
   #      body
-  #      goto LA_END;
   #   } catch (NimExceptionType2&) {
   #      finallyPart()
   #      raise;
-  #      goto LA_END;
-  #   } catch (NimExceptionType3&) {goto LA1;}
-  #   } catch (NimExceptionType4&) {goto LA1;}
-  #   } catch (NimExceptionType5&) {goto LA2;}
-  #   } catch (NimExceptionType6&) {goto LA2;}
+  #   }
   #   catch(...) {
-  #     // general handler
-  #     goto LA_END;
+  #     general_handler_body
   #   }
-  #   {LA1:
-  #      labeled_branch_body_LA1
-  #      goto LA_END;
-  #   }
-  #   {LA2:
-  #      labeled_branch_body_LA2
-  #      finallyPart()
-  #      raise;
-  #      goto LA_END;
-  #   }
-  #   LA_END:  
   #   finallyPart();
  
   template genExceptBranchBody(body: PNode) {.dirty.} =
@@ -819,22 +802,19 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
       linefmt(p, cpsStmts, "#setFrame((TFrame*)&FR_);$n") 
     expr(p, body, d)
     linefmt(p, cpsStmts, "#popCurrentException();$n")
-    linefmt(p, cpsStmts, "goto $1;$n", end_label)
     
-
   if not isEmptyType(t.typ) and d.k == locNone:
     getTemp(p, t.typ, d)
   genLineDir(p, t)
 
+  let end_label = getLabel(p)
   discard cgsym(p.module, "Exception")
   add(p.nestedTryStmts, t)
   startBlock(p, "try {$n")
   expr(p, t[0], d)
-  endBlock(p, ropecg(p.module, "}"))
+  endBlock(p)
 
-  let end_label = getLabel(p)
   var catchAllPresent = false
-  var labeled_branches: seq[tuple[label: Rope, body: PNode]] = @[] # generated after labels discovered
 
   inc p.inExceptBlock
   for i in 1..<t.len:
@@ -849,20 +829,12 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
       startBlock(p, "catch (...) {$n")
       genExceptBranchBody(t[i][0])
       endBlock(p)
-
-    elif t[i].len == 2:
-      startBlock(p, "catch ($1*) {$n", getTypeDesc(p.module, t[i][0].typ))
-      genExceptBranchBody(t[i][^1])
-      endBlock(p)
-
     else:
-      # cpp can't catch multiple types in one statement so we need a label and goto
-      let label = getLabel(p)    
-      labeled_branches.add((label, t[i][^1]))
       for j in 0..t[i].len-2:
         assert(t[i][j].kind == nkType)
-        linefmt(p, cpsStmts, "catch ($1*) {goto $2;}$n",
-                           [getTypeDesc(p.module, t[i][j].typ), label])
+        startBlock(p, "catch ($1*) {$n", getTypeDesc(p.module, t[i][j].typ))
+        genExceptBranchBody(t[i][^1])  # exception handler body will duplicated for every type
+        endBlock(p)
 
   if not catchAllPresent and t[^1].kind == nkFinally:
     # finally requires catch all presence
@@ -870,14 +842,6 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
     genSimpleBlock(p, t[^1][0])
     line(p, cpsStmts, ~"throw;$n")
     endBlock(p)
-
-  # generate labeled branches bodies
-  for label, body in labeled_branches.items():
-    startBlock(p)
-    fixLabel(p, label)
-    genExceptBranchBody(body)
-    endBlock(p)
-  fixLabel(p, end_label)
 
   dec p.inExceptBlock
   discard pop(p.nestedTryStmts)
