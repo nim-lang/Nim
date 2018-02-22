@@ -372,7 +372,7 @@ proc cursorForward*(f: File, count=1) =
     inc(p.x, count)
     setCursorPos(h, p.x, p.y)
   else:
-    f.write("{stylePrefix}{count}C")
+    f.write(fmt"{stylePrefix}{count}C")
 
 proc cursorBackward*(f: File, count=1) =
   ## Moves the cursor backward by `count` columns.
@@ -382,7 +382,7 @@ proc cursorBackward*(f: File, count=1) =
     dec(p.x, count)
     setCursorPos(h, p.x, p.y)
   else:
-    f.write("{stylePrefix}{count}D")
+    f.write(fmt"{stylePrefix}{count}D")
 
 when true:
   discard
