@@ -713,29 +713,3 @@ definition):
 But a ``bind`` is rarely useful because symbol binding from the definition
 scope is the default.
 
-
-Generic type inference for numeric types
-----------------------------------------
-
-A `numeric`:idx: type is any signed, unsigned integer type, floating point
-type or a subrange thereof. Let ``maxNumericType(T1, T2)`` be the "greater"
-type of ``T1`` and ``T2``, that is the type that uses more bits. For
-example ``maxNumericType(int32, int64) == int64``. ``maxNumericType`` is only
-defined for numeric types of the same class (signed, unsigned, floating point).
-``maxNumericType`` strips away subranges,
-``maxNumericType(subrangeof(int16), int8)`` produces ``int16`` not its
-subrange. The definition ``maxNumericType`` is extended to take a variable
-number of arguments in the obvious way;
-``maxNumericType(x, y, z) == maxNumericType(maxNumericType(x, y), z)``.
-
-A generic type parameter ``T`` that is bound to multiple numeric types ``N1``,
-``N2``, ``N3``, ... during type checking is inferred to
-be ``maxNumericType(N1, N2, N3, ...)``. This special type inference rule ensures
-that the builtin arithmetic operators can be written in an intuitive way:
-
-.. code-block:: nim
-  proc `@`[T: int|int16|int32](x, y: T): T
-
-  4'i32 @ 6'i64 # inferred to be of type ``int64``
-
-  4'i64 @ 6'i32 # inferred to be of type ``int64``
