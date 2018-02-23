@@ -7,13 +7,13 @@
 #    distribution, for details about the copyright.
 #
 
-# This module implements the passes functionality. A pass must implement the
-# `TPass` interface.
+## This module implements the passes functionality. A pass must implement the
+## `TPass` interface.
 
 import
   strutils, options, ast, astalgo, llstream, msgs, platform, os,
   condsyms, idents, renderer, types, extccomp, math, magicsys, nversion,
-  nimsets, syntaxes, times, rodread, idgen, modulegraphs, reorder
+  nimsets, syntaxes, times, rodread, idgen, modulegraphs, reorder, rod
 
 
 type
@@ -29,7 +29,8 @@ type
   TPassProcess* = proc (p: PPassContext, topLevelStmt: PNode): PNode {.nimcall.}
 
   TPass* = tuple[open: TPassOpen, openCached: TPassOpenCached,
-                 process: TPassProcess, close: TPassClose]
+                 process: TPassProcess, close: TPassClose,
+                 isFrontend: bool]
 
   TPassData* = tuple[input: PNode, closeOutput: PNode]
   TPasses* = openArray[TPass]
@@ -41,11 +42,13 @@ type
 proc makePass*(open: TPassOpen = nil,
                openCached: TPassOpenCached = nil,
                process: TPassProcess = nil,
-               close: TPassClose = nil): TPass =
+               close: TPassClose = nil,
+               isFrontend = false): TPass =
   result.open = open
   result.openCached = openCached
   result.close = close
   result.process = process
+  result.isFrontend = isFrontend
 
 # the semantic checker needs these:
 var
@@ -178,7 +181,36 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream,
     a: TPassContextArray
     s: PLLStream
     fileIdx = module.fileIdx
-  if rd == nil:
+  if module.id < 0:
+    # new module caching mechanism:
+    for i in 0..<gPassesLen:
+      if not isNil(gPasses[i].open) and not gPasses[i].isFrontend:
+        a[i] = gPasses[i].open(graph, module, cache)
+      else:
+        a[i] = nil
+
+    var stmtIndex = 0
+    var doContinue = true
+    while doContinue:
+      let n = loadNode(module, stmtIndex)
+      if n == nil or graph.stopCompile(): break
+      #if n.kind == nkImportStmt:
+      #  echo "yes and it's ", n
+      inc stmtIndex
+      var m = n
+      for i in 0..<gPassesLen:
+        if not isNil(gPasses[i].process) and not gPasses[i].isFrontend:
+          m = gPasses[i].process(a[i], m)
+          if isNil(m):
+            doContinue = false
+            break
+
+    var m: PNode = nil
+    for i in 0..<gPassesLen:
+      if not isNil(gPasses[i].close) and not gPasses[i].isFrontend:
+        m = gPasses[i].close(graph, a[i], m)
+      a[i] = nil
+  elif rd == nil:
     openPasses(graph, a, module, cache)
     if stream == nil:
       let filename = fileIdx.toFullPathConsiderDirty

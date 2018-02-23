@@ -131,6 +131,10 @@ template parseTest(s, f, sExpected: string, ydExpected: int) =
     echo parsed.yearday, " exp: ", ydExpected
   check(parsed.yearday == ydExpected)
 
+template parseTestExcp(s, f: string) =
+  expect ValueError:
+    let parsed = s.parse(f)
+
 template parseTestTimeOnly(s, f, sExpected: string) =
   check sExpected in $s.parse(f, utc())
 
@@ -280,6 +284,51 @@ suite "ttimes":
     # not on Linux or macosx: run one parseTest only
     test "parseTest":
       runTimezoneTests()
+
+  test "incorrect inputs: empty string":
+    parseTestExcp("", "yyyy-MM-dd")
+
+  test "incorrect inputs: year":
+    parseTestExcp("20-02-19", "yyyy-MM-dd")
+
+  test "incorrect inputs: month number":
+    parseTestExcp("2018-2-19", "yyyy-MM-dd")
+
+  test "incorrect inputs: month name":
+    parseTestExcp("2018-Fe", "yyyy-MMM-dd")
+
+  test "incorrect inputs: day":
+    parseTestExcp("2018-02-1", "yyyy-MM-dd")
+
+  test "incorrect inputs: day of week":
+    parseTestExcp("2018-Feb-Mo", "yyyy-MMM-ddd")
+
+  test "incorrect inputs: hour":
+    parseTestExcp("2018-02-19 1:30", "yyyy-MM-dd hh:mm")
+
+  test "incorrect inputs: minute":
+    parseTestExcp("2018-02-19 16:3", "yyyy-MM-dd hh:mm")
+
+  test "incorrect inputs: second":
+    parseTestExcp("2018-02-19 16:30:0", "yyyy-MM-dd hh:mm:ss")
+
+  test "incorrect inputs: timezone (z)":
+    parseTestExcp("2018-02-19 16:30:00 ", "yyyy-MM-dd hh:mm:ss z")
+
+  test "incorrect inputs: timezone (zz) 1":
+    parseTestExcp("2018-02-19 16:30:00 ", "yyyy-MM-dd hh:mm:ss zz")
+
+  test "incorrect inputs: timezone (zz) 2":
+    parseTestExcp("2018-02-19 16:30:00 +1", "yyyy-MM-dd hh:mm:ss zz")
+
+  test "incorrect inputs: timezone (zzz) 1":
+    parseTestExcp("2018-02-19 16:30:00 ", "yyyy-MM-dd hh:mm:ss zzz")
+
+  test "incorrect inputs: timezone (zzz) 2":
+    parseTestExcp("2018-02-19 16:30:00 +01:", "yyyy-MM-dd hh:mm:ss zzz")
+
+  test "incorrect inputs: timezone (zzz) 3":
+    parseTestExcp("2018-02-19 16:30:00 +01:0", "yyyy-MM-dd hh:mm:ss zzz")
 
   test "dynamic timezone":
     proc staticOffset(offset: int): Timezone =

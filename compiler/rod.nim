@@ -14,9 +14,11 @@ import ast, idgen
 when not defined(nimSymbolfiles):
   template setupModuleCache* = discard
   template storeNode*(module: PSym; n: PNode) = discard
-  template loadNode*(module: PSym; index: var int): PNode = discard
+  template loadNode*(module: PSym; index: var int): PNode = PNode(nil)
 
-  template getModuleId*(fullpath: string): int = getID()
+  template getModuleId*(fileIdx: int32; fullpath: string): int = getID()
+
+  template addModuleDep*(module, fileIdx: int32; isIncludeFile: bool) = discard
 
 else:
   include rodimpl

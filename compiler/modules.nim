@@ -169,13 +169,15 @@ proc compileModule*(graph: ModuleGraph; fileIdx: int32; cache: IdentCache, flags
     if sfMainModule in result.flags:
       gMainPackageId = result.owner.id
 
-    if gCmd in {cmdCompileToC, cmdCompileToCpp, cmdCheck, cmdIdeTools}:
-      rd = handleSymbolFile(result, cache)
-      if result.id < 0:
-        internalError("handleSymbolFile should have set the module's ID")
-        return
-    else:
-      result.id = getModuleId(toFullPath(fileIdx))
+    when false:
+      if gCmd in {cmdCompileToC, cmdCompileToCpp, cmdCheck, cmdIdeTools}:
+        rd = handleSymbolFile(result, cache)
+        if result.id < 0:
+          internalError("handleSymbolFile should have set the module's ID")
+          return
+      else:
+        discard
+    result.id = getModuleId(fileIdx, toFullPath(fileIdx))
     discard processModule(graph, result,
       if sfMainModule in flags and gProjectIsStdin: stdin.llStreamOpen else: nil,
       rd, cache)
