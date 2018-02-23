@@ -212,8 +212,8 @@ proc readHeaderRow*(my: var CsvParser) =
   if present:
     my.headers = my.row
 
-proc rowEntry*(my: var CsvParser, entry: string): string =
-  ## Reads a specified `entry` from the current row.
+proc rowEntry*(my: var CsvParser, entry: string): var string =
+  ## Acceses a specified `entry` from the current row.
   ##
   ## Assumes that `readHeaderRow <#readHeaderRow.CsvParser>`_ has already been
   ## called.
