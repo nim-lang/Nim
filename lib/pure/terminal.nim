@@ -768,6 +768,43 @@ proc resetAttributes*() {.noconv.} =
   ## ``system.addQuitProc(resetAttributes)``.
   resetAttributes(stdout)
 
+proc restoreOnInterrupt() {.noconv.} =
+  ## called in `getPassword` if readLine is interrupted by SIGINT to remove the
+  ## typed characters and restore the terminal to default settings.
+  # erase line, to remove the password
+  stdout.eraseLine()
+  # restore default terminal settings
+  stdout.showCursor()
+  stdout.resetAttributes()
+  stdout.write("\n")
+  if stackTraceAvailable() == true:
+    writeStackTrace()
+  quit("SIGINT: Interrupted by Ctrl-C")
+
+proc getPassword*(prompt = ""): string =
+  ## Reads a password from stdin without showing any characters. Provides
+  ## handling of backspaces and unicode. Characters are inserted as hidden text,
+  ## which is removed after user input is done or on SIGINT. `prompt` allows
+  ## for a custom password prompt.
+  # write prompt without newline character
+  stdout.write(prompt)
+  # set style to hidden and hide cursor
+  stdout.setStyle({styleHidden})
+  stdout.hideCursor()
+  # set hook to clear password if Ctrl-C called
+  setControlCHook(restoreOnInterrupt)
+  result = stdin.readLine()
+  unsetControlCHook()
+  # readline put us 1 line down
+  stdout.cursorUp()
+  # erase line, to remove the password
+  stdout.eraseLine()
+  # restore default terminal settings
+  stdout.showCursor()
+  stdout.resetAttributes()
+  # rewrite the prompt to make it look like it was there all along
+  stdout.write(prompt & "\n")
+
 when not defined(testing) and isMainModule:
   #system.addQuitProc(resetAttributes)
   write(stdout, "never mind")
