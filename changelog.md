@@ -241,9 +241,6 @@ styledEcho "Red on Green.", resetStyle
   and it no longer raises an OS error but returns an ``osInvalidSocket`` when
   creation fails.
 - ``newNativeSocket`` is now named ``createNativeSocket``.
-- Type inference for generic type parameters involving numeric types is now symetric. See
-  [Generic type inference for numeric types](https://nim-lang.org/docs/manual.html#generics-generic-type-inference-fornumeric-types)
-  for more information.
 - The ``deprecated`` pragma now supports a user-definable warning message for procs.
 
 ```nim
