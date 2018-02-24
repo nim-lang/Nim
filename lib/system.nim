@@ -3216,8 +3216,10 @@ when not defined(JS): #and not defined(nimscript):
     proc setControlCHook*(hook: proc () {.noconv.} not nil)
       ## allows you to override the behaviour of your application when CTRL+C
       ## is pressed. Only one such hook is supported.
-    proc unsetControlCHook*()
-      ## reverts a call to setControlCHook
+
+    when not defined(useNimRtl):
+      proc unsetControlCHook*()
+        ## reverts a call to setControlCHook
 
     proc writeStackTrace*() {.tags: [], gcsafe.}
       ## writes the current stack trace to ``stderr``. This is only works
