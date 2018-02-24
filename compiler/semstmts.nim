@@ -254,13 +254,13 @@ proc semCase(c: PContext, n: PNode): PNode =
 proc semTry(c: PContext, n: PNode): PNode =
 
   var check = initIntSet()
-  proc semExceptBranchType(typeNode: PNode): PNode =
+  template semExceptBranchType(typeNode: PNode): PNode =
     let typ = semTypeNode(c, typeNode, nil).toObject()
     if typ.kind != tyObject:
       localError(typeNode.info, errExprCannotBeRaised)
     if containsOrIncl(check, typ.id):
-        localError(typeNode.info, errExceptionAlreadyHandled)
-    result = newNodeIT(nkType, typeNode.info, typ)
+      localError(typeNode.info, errExceptionAlreadyHandled)
+    newNodeIT(nkType, typeNode.info, typ)
 
   result = n
   inc c.p.inTryStmt
