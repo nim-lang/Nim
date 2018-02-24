@@ -781,7 +781,7 @@ proc restoreOnInterrupt() {.noconv.} =
     writeStackTrace()
   quit("SIGINT: Interrupted by Ctrl-C")
 
-proc getPassword*(prompt = ""): string =
+proc getPassword*(prompt = ""): TaintedString =
   ## Reads a password from stdin without showing any characters. Provides
   ## handling of backspaces and unicode. Characters are inserted as hidden text,
   ## which is removed after user input is done or on SIGINT. `prompt` allows
