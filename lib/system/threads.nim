@@ -257,7 +257,7 @@ when emulatedThreadVars:
 # we preallocate a fixed size for thread local storage, so that no heap
 # allocations are needed. Currently less than 16K are used on a 64bit machine.
 # We use ``float`` for proper alignment:
-const nimTlsSize {.intdefine.} = 16032
+const nimTlsSize {.intdefine.} = 16192
 type
   ThreadLocalStorage = array[0..(nimTlsSize div sizeof(float)), float]
 
