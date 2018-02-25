@@ -22,9 +22,8 @@ template track(op, address, size) =
 const
   InitialMemoryRequest = 128 * PageSize # 0.5 MB
   SmallChunkSize = PageSize
-  MaxFli = 30
-  MaxLog2Sli = 5 # 32, this cannot be increased without changing 'uint32'
-                 # everywhere!
+  MaxFli = 40    # 1 TB
+  MaxLog2Sli = 5 # 32; Not particularly tuned for many giant allocations
   MaxSli = 1 shl MaxLog2Sli
   FliOffset = 6
   RealFli = MaxFli - FliOffset
@@ -100,8 +99,8 @@ type
   MemRegion = object
     minLargeObj, maxLargeObj: int
     freeSmallChunks: array[0..SmallChunkSize div MemAlign-1, PSmallChunk]
-    flBitmap: uint32
-    slBitmap: array[RealFli, uint32]
+    flBitmap: uint64
+    slBitmap: array[RealFli, uint64]
     matrix: array[RealFli, array[MaxSli, PBigChunk]]
     llmem: PLLChunk
     currMem, maxMem, freeMem, occ: int # memory sizes (allocated from OS)
@@ -130,29 +129,35 @@ const
     7, 7, 7, 7, 7, 7, 7, 7
   ]
 
-proc msbit(x: uint32): int {.inline.} =
-  let a = if x <= 0xff_ff:
-            (if x <= 0xff: 0 else: 8)
+proc msbit(x: uint64): int {.inline.} =
+  let a = if x <= 0xff_ff_ff_ffu64:
+            if x <= 0xff_ffu64:
+              (if x <= 0xffu64: 0 else: 8)
+            else:
+              (if x <= 0xff_ff_ffu64: 16 else: 24)
           else:
-            (if x <= 0xff_ff_ff: 16 else: 24)
+            if x <= 0xff_ff_ff_ff_ff_ffu64:
+              (if x <= 0xff_ff_ff_ff_ffu64: 32 else: 40)
+            else:
+              (if x <= 0xff_ff_ff_ff_ff_ff_ffu64: 48 else: 56)
   result = int(fsLookupTable[byte(x shr a)]) + a
 
-proc lsbit(x: uint32): int {.inline.} =
+proc lsbit(x: uint64): int {.inline.} =
   msbit(x and ((not x) + 1))
 
-proc setBit(nr: int; dest: var uint32) {.inline.} =
-  dest = dest or (1u32 shl (nr and 0x1f))
+proc setBit(nr: int; dest: var uint64) {.inline.} =
+  dest = dest or (1u64 shl (nr and 0x1f))
 
-proc clearBit(nr: int; dest: var uint32) {.inline.} =
-  dest = dest and not (1u32 shl (nr and 0x1f))
+proc clearBit(nr: int; dest: var uint64) {.inline.} =
+  dest = dest and not (1u64 shl (nr and 0x1f))
 
 proc mappingSearch(r, fl, sl: var int) {.inline.} =
-  #let t = (1 shl (msbit(uint32 r) - MaxLog2Sli)) - 1
+  #let t = (1 shl (msbit(uint64 r) - MaxLog2Sli)) - 1
   # This diverges from the standard TLSF algorithm because we need to ensure
   # PageSize alignment:
-  let t = roundup((1 shl (msbit(uint32 r) - MaxLog2Sli)), PageSize) - 1
+  let t = roundup((1 shl (msbit(uint64 r) - MaxLog2Sli)), PageSize) - 1
   r = r + t
-  fl = msbit(uint32 r)
+  fl = msbit(uint64 r)
   sl = (r shr (fl - MaxLog2Sli)) - MaxSli
   dec fl, FliOffset
   r = r and not t
@@ -163,27 +168,27 @@ proc mappingSearch(r, fl, sl: var int) {.inline.} =
 
 proc mappingInsert(r: int): tuple[fl, sl: int] {.inline.} =
   sysAssert((r and PageMask) == 0, "mappingInsert: still not aligned")
-  result.fl = msbit(uint32 r)
+  result.fl = msbit(uint64 r)
   result.sl = (r shr (result.fl - MaxLog2Sli)) - MaxSli
   dec result.fl, FliOffset
 
 template mat(): untyped = a.matrix[fl][sl]
 
 proc findSuitableBlock(a: MemRegion; fl, sl: var int): PBigChunk {.inline.} =
-  let tmp = a.slBitmap[fl] and (not 0u32 shl sl)
+  let tmp = a.slBitmap[fl] and (not 0u64 shl sl)
   result = nil
   if tmp != 0:
     sl = lsbit(tmp)
     result = mat()
   else:
-    fl = lsbit(a.flBitmap and (not 0u32 shl (fl + 1)))
+    fl = lsbit(a.flBitmap and (not 0u64 shl (fl + 1)))
     if fl > 0:
       sl = lsbit(a.slBitmap[fl])
       result = mat()
 
 template clearBits(sl, fl) =
   clearBit(sl, a.slBitmap[fl])
-  if a.slBitmap[fl] == 0u32:
+  if a.slBitmap[fl] == 0u64:
     # do not forget to cascade:
     clearBit(fl, a.flBitmap)
 
@@ -798,7 +803,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
     c.freeList = f
     when overwriteFree:
       # set to 0xff to check for usage after free bugs:
-      c_memset(cast[pointer](cast[int](p) +% sizeof(FreeCell)), -1'i32,
+      c_memset(cast[pointer](cast[int](p) +% sizeof(FreeCell)), -1'i64,
                s -% sizeof(FreeCell))
     # check if it is not in the freeSmallChunks[s] list:
     if c.free < s:
@@ -815,7 +820,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
                s == 0, "rawDealloc 2")
   else:
     # set to 0xff to check for usage after free bugs:
-    when overwriteFree: c_memset(p, -1'i32, c.size -% bigChunkOverhead())
+    when overwriteFree: c_memset(p, -1'i64, c.size -% bigChunkOverhead())
     # free big chunk
     var c = cast[PBigChunk](c)
     dec a.occ, c.size
