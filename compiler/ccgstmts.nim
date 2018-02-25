@@ -189,8 +189,6 @@ proc genBreakState(p: BProc, n: PNode) =
     lineF(p, cpsStmts, "if ((((NI*) $1.ClE_0)[1]) < 0) break;$n", [rdLoc(a)])
   #  lineF(p, cpsStmts, "if (($1) < 0) break;$n", [rdLoc(a)])
 
-proc genVarPrototypeAux(m: BModule, n: PNode)
-
 proc genGotoVar(p: BProc; value: PNode) =
   if value.kind notin {nkCharLit..nkUInt64Lit}:
     localError(value.info, "'goto' target must be a literal value")
@@ -225,7 +223,7 @@ proc genSingleVar(p: BProc, a: PNode) =
     # Alternative construction using default constructor (which may zeromem):
     # if sfImportc notin v.flags: constructLoc(p.module.preInitProc, v.loc)
     if sfExportc in v.flags and p.module.g.generatedHeader != nil:
-      genVarPrototypeAux(p.module.g.generatedHeader, vn)
+      genVarPrototype(p.module.g.generatedHeader, vn)
     registerGcRoot(p, v)
   else:
     let value = a.sons[2]
