@@ -549,15 +549,13 @@ proc pragmaLine(c: PContext, n: PNode) =
     n.info = getInfoContext(-1)
 
 proc processPragma(c: PContext, n: PNode, i: int) =
-  var it = n.sons[i]
+  let it = n[i]
   if it.kind notin nkPragmaCallKinds and it.len == 2: invalidPragma(n)
-  elif it.sons[0].kind != nkIdent: invalidPragma(n)
-  elif it.sons[1].kind != nkIdent: invalidPragma(n)
+  elif it[0].kind != nkIdent: invalidPragma(n)
+  elif it[1].kind != nkIdent: invalidPragma(n)
 
-  var userPragma = newSym(skTemplate, it.sons[1].ident, nil, it.info)
-  var body = newNodeI(nkPragma, n.info)
-  for j in i+1 .. sonsLen(n)-1: addSon(body, n.sons[j])
-  userPragma.ast = body
+  var userPragma = newSym(skTemplate, it[1].ident, nil, it.info)
+  userPragma.ast = newNode(nkPragma, n.info, n.sons[i+1..^1])
   strTableAdd(c.userPragmas, userPragma)
 
 proc pragmaRaisesOrTags(c: PContext, n: PNode) =
@@ -691,18 +689,15 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
   let ident = considerQuotedIdent(key)
   var userPragma = strTableGet(c.userPragmas, ident)
   if userPragma != nil:
-    if userPragma.ast.len == 0:
-      delete(n.sons, i)
-      dec i
-    else:
-      inc c.instCounter
-      if c.instCounter > 100:
-        globalError(it.info, errRecursiveDependencyX, userPragma.name.s)
-      
-      pragma(c, sym, userPragma.ast, validPragmas)
-      n.sons[i..i] = userPragma.ast.sons
-      i.inc(userPragma.ast.len - 1)
-      dec c.instCounter
+    # number of pragmas increase/decrease with user pragma expansion
+    inc c.instCounter
+    if c.instCounter > 100:
+      globalError(it.info, errRecursiveDependencyX, userPragma.name.s)
+    
+    pragma(c, sym, userPragma.ast, validPragmas)
+    n.sons[i..i] = userPragma.ast.sons # expand user pragma with its content
+    i.inc(userPragma.ast.len - 1) # inc by -1 is ok, user pragmas was empty
+    dec c.instCounter
   else:
     var k = whichKeyword(ident)
     if k in validPragmas:
