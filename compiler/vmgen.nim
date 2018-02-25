@@ -1767,13 +1767,6 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     of skConst:
       let constVal = if s.ast != nil: s.ast else: s.typ.n
       gen(c, constVal, dest)
-    of skEnumField:
-      if dest < 0: dest = c.getTemp(n.typ)
-      if s.position >= low(int16) and s.position <= high(int16):
-        c.gABx(n, opcLdImmInt, dest, s.position)
-      else:
-        var lit = genLiteral(c, newIntNode(nkIntLit, s.position))
-        c.gABx(n, opcLdConst, dest, lit)
     of skType:
       genTypeLit(c, s.typ, dest)
     of skGenericParam:
