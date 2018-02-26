@@ -766,6 +766,7 @@ proc callCCompiler*(projectfile: string) =
       add(objfiles, ' ')
       add(objfiles, quoteShell(
           addFileExt(objFile, CC[cCompiler].objExt)))
+
     for x in toCompile:
       let objFile = if noAbsolutePaths(): x.obj.extractFilename else: x.obj
       add(objfiles, ' ')
@@ -773,7 +774,21 @@ proc callCCompiler*(projectfile: string) =
 
     linkCmd = getLinkCmd(projectfile, objfiles)
     if optCompileOnly notin gGlobalOptions:
-      execLinkCmd(linkCmd)
+      when defined(windows):
+        let isCmdFileUsed = cCompiler == ccGcc and linkCmd.len > 32_767
+        let cmdFile = projectfile & "_linker_cmd.txt"
+        if isCmdFileUsed:
+          let gccExeIdx = linkCmd.find("-o")
+          let gccExe = linkCmd[0 ..< gccExeIdx]
+          let cmdFileData = escape(linkCmd[gccExeIdx..^1], "", "")
+          writeFile(cmdFile, cmdFileData)
+          linkCmd = gccExe & " @" & cmdFile
+        
+        execLinkCmd(linkCmd)
+        if isCmdFileUsed:
+          discard tryRemoveFile(cmdFile)
+      else:
+        execLinkCmd(linkCmd)
   else:
     linkCmd = ""
   if optGenScript in gGlobalOptions:
