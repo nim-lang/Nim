@@ -342,12 +342,12 @@ proc writeFloatToBuffer(buf: var array[64, char]; value: BiggestFloat): int =
   # of '-1.#IND' are produced.
   # We want to get rid of these here:
   if buf[n-1] in {'n', 'N', 'D', 'd'}:
-    return c_sprintf(buf[0].addr, "nan");
+    return c_sprintf(buf[0].addr, "nan")
   elif buf[n-1] == 'F':
     if buf[0] == '-':
-      return c_sprintf(buf[0].addr, "-inf");
+      return c_sprintf(buf[0].addr, "-inf")
     else:
-      return c_sprintf(buf[0].addr, "inf");
+      return c_sprintf(buf[0].addr, "inf")
   else:
     return n
 

@@ -202,12 +202,12 @@ proc write(f: File, b: bool) =
 
 proc write(f: File, r: float32) =
   var buffer: array[64, char]
-  discard writeFloatTobuffer(buffer, r);
+  discard writeFloatToBuffer(buffer, r)
   if c_fprintf(f, "%s", buffer[0].addr) < 0: checkErr(f)
 
 proc write(f: File, r: BiggestFloat) =
   var buffer: array[64, char]
-  discard writeFloatTobuffer(buffer, r);
+  discard writeFloatToBuffer(buffer, r)
   if c_fprintf(f, "%s", buffer[0].addr) < 0: checkErr(f)
 
 proc write(f: File, c: char) = discard c_putc(cint(c), f)
