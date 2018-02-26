@@ -3951,13 +3951,13 @@ proc `[]=`*[T, U, V](s: var seq[T], x: HSlice[U, V], b: openArray[T]) =
     spliceImpl(s, a, L, b)
 
 template `[]`*(s: untyped; i: BackwardsIndex): untyped =
-  ## Default behavior for the backwards index, so that when your type
-  ## supports `len` and the index operator, `BackwardsIndex` will work, too.
+  ## Default support for `BackwardsIndex`. The `BackwardsIndex` is
+  ## resolved with `^^` to a normal `int`.
   s[s ^^ i]
 
 template `[]=`*(s: untyped; i: BackwardsIndex; x: untyped): untyped =
-  ## Default behavior for the backwards index, so that when your type
-  ## supports `len` and the index operator, `BackwardsIndex` will work, too.
+  ## Default support for `BackwardsIndex`. The `BackwardsIndex` is
+  ## resolved with `^^` to a normal `int`.
   s[s ^^ i] = x
 
 proc slurp*(filename: string): string {.magic: "Slurp".}
