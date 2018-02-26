@@ -351,14 +351,20 @@ proc writeFloatToBuffer(buf: var array[64, char]; value: BiggestFloat): int =
   else:
     return n
 
+proc add*(result: var string, buf: cstring; buflen: int) =
+  # no nimvm support needed, so it doesn't need to be fast here either
+  let oldLen = result.len
+  let newLen = oldLen + buflen
+  result.setLen newLen
+  copyMem(result[oldLen].addr, buf, buflen)
+
 proc add*(result: var string; x: BiggestFloat) =
   when nimvm:
     result.add $x
   else:
     var buffer: array[64, char]
-    let n = result.len
-    result.setLen n+writeFloatTobuffer(buffer, x)
-    c_sprintf(result[n].addr, buffer[0].addr)
+    let n = writeFloatToBuffer(buffer, x)
+    result.add(cstring(buffer[0].addr), n)
 
 proc nimFloatToStr(f: float): string {.compilerproc.} =
   result = newStringOfCap(8)

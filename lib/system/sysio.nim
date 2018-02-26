@@ -201,14 +201,20 @@ proc write(f: File, b: bool) =
   else: write(f, "false")
 
 proc write(f: File, r: float32) =
-  var buffer: array[64, char]
-  discard writeFloatToBuffer(buffer, r)
-  if c_fprintf(f, "%s", buffer[0].addr) < 0: checkErr(f)
+  when defined(nimscript):
+    write(f, $r)
+  else:
+    var buffer: array[64, char]
+    discard writeFloatToBuffer(buffer, r)
+    if c_fprintf(f, "%s", buffer[0].addr) < 0: checkErr(f)
 
 proc write(f: File, r: BiggestFloat) =
-  var buffer: array[64, char]
-  discard writeFloatToBuffer(buffer, r)
-  if c_fprintf(f, "%s", buffer[0].addr) < 0: checkErr(f)
+  when defined(nimscript):
+    write(f, $r)
+  else:
+    var buffer: array[64, char]
+    discard writeFloatToBuffer(buffer, r)
+    if c_fprintf(f, "%s", buffer[0].addr) < 0: checkErr(f)
 
 proc write(f: File, c: char) = discard c_putc(cint(c), f)
 proc write(f: File, a: varargs[string, `$`]) =
