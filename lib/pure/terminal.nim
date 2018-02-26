@@ -747,7 +747,7 @@ when defined(windows):
     ## Reads a `password` from stdin without printing it. `password` must not
     ## be ``nil``! Returns ``false`` if the end of the file has been reached,
     ## ``true`` otherwise.
-    password.setLen(0)
+    password.string.setLen(0)
     stdout.write(prompt)
     while true:
       let c = getch()
@@ -759,11 +759,11 @@ when defined(windows):
         var i = 0
         var x = 1
         while i < password.len:
-          x = runeLenAt(password, i)
+          x = runeLenAt(password.string, i)
           inc i, x
-        password.setLen(max(password.len - x, 0))
+        password.string.setLen(max(password.len - x, 0))
       else:
-        password.add(toUTF8(c.Rune))
+        password.string.add(toUTF8(c.Rune))
     stdout.write "\n"
 
 else:
@@ -771,7 +771,7 @@ else:
 
   proc readPasswordFromStdin*(prompt: string, password: var TaintedString):
                             bool {.tags: [ReadIOEffect, WriteIOEffect].} =
-    password.setLen(0)
+    password.string.setLen(0)
     let fd = stdin.getFileHandle()
     var cur, old: Termios
     discard fd.tcgetattr(cur.addr)
