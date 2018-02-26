@@ -325,41 +325,40 @@ proc nimIntToStr(x: int): string {.compilerRtl.} =
   result = newStringOfCap(sizeof(x)*4)
   result.add x
 
-proc add*(result: var string; x: float) =
+
+proc writeFloatToBuffer(buf: var array[64, char]; value: BiggestFloat): int =
+  ## returns the amount of bytes written to buffer not counting the '\0' terminating character.
+  var n: int = c_sprintf(buf[0].addr, "%.16g", value)
+  var hasDot = false
+  for i in 0..n-1:
+    if buf[i] == ',':
+      buf[i] = '.'
+      hasDot = true
+    elif buf[i] in {'a'..'z', 'A'..'Z', '.'}:
+      hasDot = true
+  if not hasDot:
+    return n + c_sprintf(buf[n].addr, ".0")
+  # On Windows nice numbers like '1.#INF', '-1.#INF' or '1.#NAN'
+  # of '-1.#IND' are produced.
+  # We want to get rid of these here:
+  if buf[n-1] in {'n', 'N', 'D', 'd'}:
+    return c_sprintf(buf[0].addr, "nan");
+  elif buf[n-1] == 'F':
+    if buf[0] == '-':
+      return c_sprintf(buf[0].addr, "-inf");
+    else:
+      return c_sprintf(buf[0].addr, "inf");
+  else:
+    return n
+
+proc add*(result: var string; x: BiggestFloat) =
   when nimvm:
     result.add $x
   else:
-    var buf: array[0..64, char]
-    when defined(nimNoArrayToCstringConversion):
-      var n: int = c_sprintf(addr buf, "%.16g", x)
-    else:
-      var n: int = c_sprintf(buf, "%.16g", x)
-    var hasDot = false
-    for i in 0..n-1:
-      if buf[i] == ',':
-        buf[i] = '.'
-        hasDot = true
-      elif buf[i] in {'a'..'z', 'A'..'Z', '.'}:
-        hasDot = true
-    if not hasDot:
-      buf[n] = '.'
-      buf[n+1] = '0'
-      buf[n+2] = '\0'
-    # On Windows nice numbers like '1.#INF', '-1.#INF' or '1.#NAN'
-    # of '-1.#IND' are produced.
-    # We want to get rid of these here:
-    if buf[n-1] in {'n', 'N', 'D', 'd'}:
-      result.add "nan"
-    elif buf[n-1] == 'F':
-      if buf[0] == '-':
-        result.add "-inf"
-      else:
-        result.add "inf"
-    else:
-      var i = 0
-      while buf[i] != '\0':
-        result.add buf[i]
-        inc i
+    var buffer: array[64, char]
+    let n = result.len
+    result.setLen n+writeFloatTobuffer(buffer, x)
+    c_sprintf(result[n].addr, buffer[0].addr)
 
 proc nimFloatToStr(f: float): string {.compilerproc.} =
   result = newStringOfCap(8)
