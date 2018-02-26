@@ -400,8 +400,9 @@ proc storeNode*(module: PSym; n: PNode) =
   w.module = module
   var buf = newStringOfCap(160)
   encodeNode(w, module.info, n, buf)
-  db.exec(sql"insert into toplevelstmts(module, data) values (?, ?)",
-    abs(module.id), buf)
+  db.exec(sql"insert into toplevelstmts(module, position, data) values (?, ?, ?)",
+    abs(module.id), module.offset, buf)
+  inc module.offset
   var i = 0
   while true:
     if i > 10_000:
@@ -812,14 +813,14 @@ proc loadModuleSymTab(r; module: PSym) =
   if sfSystemModule in module.flags:
     magicsys.systemModule = module
 
-proc loadNode*(module: PSym; index: var int): PNode =
+proc loadNode*(module: PSym; index: int): PNode =
   assert gSymbolFiles == v2Sf
   if index == 0:
     loadModuleSymTab(gr, module)
-    index = parseInt db.getValue(
-      sql"select min(id) from toplevelstmts where module = ?", abs module.id)
+    #index = parseInt db.getValue(
+    #  sql"select min(id) from toplevelstmts where module = ?", abs module.id)
   var b = BlobReader(pos: 0)
-  b.s = db.getValue(sql"select data from toplevelstmts where id = ? and module = ?",
+  b.s = db.getValue(sql"select data from toplevelstmts where position = ? and module = ?",
                     index, abs module.id)
   if b.s.len == 0:
     db.exec(sql"insert into controlblock(idgen) values (?)", gFrontEndId)
@@ -908,12 +909,14 @@ proc createDb() =
   db.exec(sql"""
     create table if not exists toplevelstmts(
       id integer primary key,
+      position integer not null,
       module integer not null,
       data blob not null,
       foreign key (module) references module(id)
     );
   """)
   db.exec sql"create index TopLevelStmtByModuleIdx on toplevelstmts(module);"
+  db.exec sql"create index TopLevelStmtByPositionIdx on toplevelstmts(position);"
 
   db.exec(sql"""
     create table if not exists statics(
