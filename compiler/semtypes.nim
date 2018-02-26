@@ -497,8 +497,8 @@ proc semCaseBranchSetElem(c: PContext, t, b: PNode,
 
 proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
                    covered: var BiggestInt) =
-
-  for i in countup(0, sonsLen(branch) - 2):
+  let lastIndex = sonsLen(branch) - 2
+  for i in 0..lastIndex:
     var b = branch.sons[i]
     if b.kind == nkRange:
       branch.sons[i] = b
@@ -516,14 +516,21 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
         branch.sons[i] = skipConv(fitNode(c, t.sons[0].typ, r, r.info))
         inc(covered)
       else:
+        if r.kind == nkCurly:
+          r = r.deduplicate
+
         # first element is special and will overwrite: branch.sons[i]:
         branch.sons[i] = semCaseBranchSetElem(c, t, r[0], covered)
+
         # other elements have to be added to ``branch``
         for j in 1 ..< r.len:
           branch.add(semCaseBranchSetElem(c, t, r[j], covered))
           # caution! last son of branch must be the actions to execute:
-          var L = branch.len
-          swap(branch.sons[L-2], branch.sons[L-1])
+          swap(branch.sons[^2], branch.sons[^1])
+    checkForOverlap(c, t, i, branchIndex)
+
+  # Elements added above needs to be checked for overlaps.
+  for i in lastIndex.succ..(sonsLen(branch) - 2):
     checkForOverlap(c, t, i, branchIndex)
 
 proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
