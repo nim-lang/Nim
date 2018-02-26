@@ -775,7 +775,7 @@ proc callCCompiler*(projectfile: string) =
     linkCmd = getLinkCmd(projectfile, objfiles)
     if optCompileOnly notin gGlobalOptions:
       when defined(windows):
-        let isCmdFileUsed = cCompiler == ccGcc and linkCmd.len > 32_767
+        let isCmdFileUsed = cCompiler == ccGcc and linkCmd.len >= 32_767
         let cmdFile = projectfile & "_linker_cmd.txt"
         if isCmdFileUsed:
           let gccExeIdx = linkCmd.find("-o")
