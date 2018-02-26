@@ -507,7 +507,7 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
       port = net.Port(443)
     else:
       raise newException(HttpRequestError,
-                "SSL support is not available. Cannot connect over SSL.")
+                "SSL support is not available. Cannot connect over SSL. Compile with -d:ssl to enable.")
   if r.port != "":
     port = net.Port(r.port.parseInt)
 
@@ -540,7 +540,8 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
                            "so a secure connection could not be established.")
       sslContext.wrapConnectedSocket(s, handshakeAsClient, hostUrl.hostname)
     else:
-      raise newException(HttpRequestError, "SSL support not available. Cannot connect via proxy over SSL")
+      raise newException(HttpRequestError, "SSL support not available. Cannot " &
+                         "connect via proxy over SSL. Compile with -d:ssl to enable.")
   else:
     if timeout == -1:
       s.connect(r.hostname, port)
@@ -1087,7 +1088,7 @@ proc newConnection(client: HttpClient | AsyncHttpClient,
 
     if isSsl and not defined(ssl):
       raise newException(HttpRequestError,
-        "SSL support is not available. Cannot connect over SSL.")
+        "SSL support is not available. Cannot connect over SSL. Compile with -d:ssl to enable.")
 
     if client.connected:
       client.close()
@@ -1137,7 +1138,7 @@ proc newConnection(client: HttpClient | AsyncHttpClient,
           client.socket, handshakeAsClient, url.hostname)
       else:
         raise newException(HttpRequestError,
-        "SSL support is not available. Cannot connect over SSL.")
+        "SSL support is not available. Cannot connect over SSL. Compile with -d:ssl to enable.")
 
     # May be connected through proxy but remember actual URL being accessed
     client.currentURL = url

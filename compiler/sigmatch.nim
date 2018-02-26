@@ -915,24 +915,25 @@ proc isCovariantPtr(c: var TCandidate, f, a: PType): bool =
   else:
     return false
 
-proc maxNumericType(prev, candidate: PType): PType =
-  let c = candidate.skipTypes({tyRange})
-  template greater(s) =
-    if c.kind in s: result = c
-  case prev.kind
-  of tyInt: greater({tyInt64})
-  of tyInt8: greater({tyInt, tyInt16, tyInt32, tyInt64})
-  of tyInt16: greater({tyInt, tyInt32, tyInt64})
-  of tyInt32: greater({tyInt64})
+when false:
+  proc maxNumericType(prev, candidate: PType): PType =
+    let c = candidate.skipTypes({tyRange})
+    template greater(s) =
+      if c.kind in s: result = c
+    case prev.kind
+    of tyInt: greater({tyInt64})
+    of tyInt8: greater({tyInt, tyInt16, tyInt32, tyInt64})
+    of tyInt16: greater({tyInt, tyInt32, tyInt64})
+    of tyInt32: greater({tyInt64})
 
-  of tyUInt: greater({tyUInt64})
-  of tyUInt8: greater({tyUInt, tyUInt16, tyUInt32, tyUInt64})
-  of tyUInt16: greater({tyUInt, tyUInt32, tyUInt64})
-  of tyUInt32: greater({tyUInt64})
+    of tyUInt: greater({tyUInt64})
+    of tyUInt8: greater({tyUInt, tyUInt16, tyUInt32, tyUInt64})
+    of tyUInt16: greater({tyUInt, tyUInt32, tyUInt64})
+    of tyUInt32: greater({tyUInt64})
 
-  of tyFloat32: greater({tyFloat64, tyFloat128})
-  of tyFloat64: greater({tyFloat128})
-  else: discard
+    of tyFloat32: greater({tyFloat64, tyFloat128})
+    of tyFloat64: greater({tyFloat128})
+    else: discard
 
 proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
                  flags: TTypeRelFlags = {}): TTypeRelation =
@@ -1145,12 +1146,12 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
           fRange = prev
       let ff = f.sons[1].skipTypes({tyTypeDesc})
       let aa = a.sons[1].skipTypes({tyTypeDesc})
-      
+
       if f.sons[0].kind != tyGenericParam and aa.kind == tyEmpty:
-        result = isGeneric  
+        result = isGeneric
       else:
         result = typeRel(c, ff, aa)
-     
+
       if result < isGeneric:
         if nimEnableCovariance and
            trNoCovariance notin flags and
@@ -1631,13 +1632,15 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
       # Special type binding rule for numeric types.
       # See section "Generic type inference for numeric types" of the
       # manual for further details:
-      let rebinding = maxNumericType(x.skipTypes({tyRange}), a)
-      if rebinding != nil:
-        put(c, f, rebinding)
-        result = isGeneric
-      else:
-        result = typeRel(c, x, a) # check if it fits
-        if result > isGeneric: result = isGeneric
+      when false:
+        let rebinding = maxNumericType(x.skipTypes({tyRange}), a)
+        if rebinding != nil:
+          put(c, f, rebinding)
+          result = isGeneric
+        else:
+          discard
+      result = typeRel(c, x, a) # check if it fits
+      if result > isGeneric: result = isGeneric
   of tyStatic:
     let prev = PType(idTableGet(c.bindings, f))
     if prev == nil:
