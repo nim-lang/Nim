@@ -783,7 +783,7 @@ else:
     stdout.write "\n"
     discard fd.tcsetattr(TCSADRAIN, old.addr)
 
-proc readPasswordFromStdin*(prompt: string): TaintedString =
+proc readPasswordFromStdin*(prompt = "password: "): TaintedString =
   ## Reads a password from stdin without printing it.
   result = TaintedString("")
   discard readPasswordFromStdin(prompt, result)
