@@ -174,9 +174,6 @@ elif defined(genode):
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr {.
     error: "nimGetProcAddr not implemented".}
 
-  proc nimLoadLibraryError(path: string) = {.
-    error: "nimLoadLibraryError not implemented".}
-
 else:
   {.error: "no implementation for dyncalls".}
 
