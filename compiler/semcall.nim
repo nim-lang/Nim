@@ -189,7 +189,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
         if cond: candidates.add typeToString(got)
       if wanted != nil and got != nil:
         effectProblem(wanted, got, candidates)
-      candidates.add "\n"
+      if cond: candidates.add "\n"
     elif err.unmatchedVarParam != 0 and err.unmatchedVarParam < n.len:
       add(candidates, "for a 'var' type a variable needs to be passed, but '" &
                       renderNotLValue(n[err.unmatchedVarParam]) &
