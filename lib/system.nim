@@ -3854,11 +3854,14 @@ template `^^`*(s: untyped; i: BackwardsIndex): int =
 
 template `^^`*[Idx, T](a: array[Idx, T], i: BackwardsIndex): int =
   ## Converter template specialized for the array type.
-  int(a.low) + a.len - int(i)
+  a.len - int(i) + int low(a)
+
+template `^^`*[Idx, T](a: array[Idx, T], i: Idx): int =
+  ## The default conversion from an idex type to an int is `int(i)`.
+  int(i)
 
 template `^^`*(s: untyped; i: int): int =
-  ## No operation in case the index is not a backwards index. For
-  ## generic programming only.
+  ## Do no conversion at all, when the input is already an integer.
   i
 
 template `[]`*(s: string; i: int): char = arrGet(s, i)
