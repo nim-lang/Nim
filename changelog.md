@@ -160,7 +160,7 @@ proc enumToString*(enums: openArray[enum]): string =
 
 - Added `system.default`.
 
-- Added `sequtils.items` for closure iterators, allows closure iterators 
+- Added `sequtils.items` for closure iterators, allows closure iterators
   to be used by the the mapIt, filterIt, allIt, anyIt, etc.
 
 
@@ -223,7 +223,6 @@ proc enumToString*(enums: openArray[enum]): string =
 
 - Hash sets and tables are initialized by default. The explicit `initHashSet`,
   `initTable`, etc. are not needed anymore.
-
 
 ### Tool changes
 
