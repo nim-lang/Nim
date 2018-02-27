@@ -1,5 +1,6 @@
 discard """
   file: "tunhandledexc.nim"
+  targets: "c cpp"
   outputsub: "Error: unhandled exception: bla [ESomeOtherErr]"
   exitcode: "1"
 """
