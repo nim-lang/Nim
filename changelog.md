@@ -33,9 +33,9 @@
   implemented. These are now implemented purely in ``system.nim`` without compiler
   support. There is a new "heterogenous" slice type ``system.HSlice`` that takes 2
   generic parameters which can be ``BackwardsIndex`` indices. ``BackwardsIndex`` is
-  produced by ``system.^``.  Using the ``BackwardsIndex`` on arrays
-  that are not accessed by integer types (for example enums or characters)
-  does no longer work.
+  produced by ``system.^``.
+  This means if you overload ``[]`` or ``[]=`` you need to ensure they also work
+  with ``system.BackwardsIndex`` (if applicable for the accessors).
 - ``mod`` and bitwise ``and`` do not produce ``range`` subtypes anymore. This
   turned out to be more harmful than helpful and the language is simpler
   without this special typing rule.
