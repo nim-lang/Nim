@@ -711,7 +711,19 @@ template tryExceptOSErrorMessage(errorPrefix: string = "", body: untyped): typed
 
 proc execLinkCmd(linkCmd: string) =
   tryExceptOSErrorMessage("invocation of external linker program failed."):
-    execExternalProgram(linkCmd,
+    when defined(windows):
+      # workaround for windows command line arguments limit (32_767)
+      const cmdFile = "cc_linker_cmd"
+      let ccExeIdx = linkCmd.find(" ")
+      let ccExe = linkCmd[0 ..< ccExeIdx]
+      let cmdFileData = escape(linkCmd[ccExeIdx .. ^1], "", "")
+      writeFile(cmdFile, cmdFileData)
+      var linkCmd = ccExe & " @" & cmdFile
+      execExternalProgram(linkCmd,
+        if optListCmd in gGlobalOptions or gVerbosity > 1: hintExecuting else: hintLinking)
+      discard tryRemoveFile(cmdFile)
+    else:
+      execExternalProgram(linkCmd,
       if optListCmd in gGlobalOptions or gVerbosity > 1: hintExecuting else: hintLinking)
 
 proc execCmdsInParallel(cmds: seq[string]; prettyCb: proc (idx: int)) =
@@ -774,20 +786,6 @@ proc callCCompiler*(projectfile: string) =
 
     linkCmd = getLinkCmd(projectfile, objfiles)
     if optCompileOnly notin gGlobalOptions:
-      when defined(windows):
-        let isCmdFileUsed = cCompiler == ccGcc and linkCmd.len >= 32_767
-        let cmdFile = projectfile & "_linker_cmd.txt"
-        if isCmdFileUsed:
-          let gccExeIdx = linkCmd.find("-o")
-          let gccExe = linkCmd[0 ..< gccExeIdx]
-          let cmdFileData = escape(linkCmd[gccExeIdx..^1], "", "")
-          writeFile(cmdFile, cmdFileData)
-          linkCmd = gccExe & " @" & cmdFile
-        
-        execLinkCmd(linkCmd)
-        if isCmdFileUsed:
-          discard tryRemoveFile(cmdFile)
-      else:
         execLinkCmd(linkCmd)
   else:
     linkCmd = ""
