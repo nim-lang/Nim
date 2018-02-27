@@ -835,7 +835,10 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
     else:
       for j in 0..t[i].len-2:
         assert(t[i][j].kind == nkType)
-        startBlock(p, "catch ($1*) {$n", getTypeDesc(p.module, t[i][j].typ))
+        if t[i][j].isInfixAs():
+          startBlock(p, "catch ($1* $2) {$n", getTypeDesc(p.module, t[i][j][1].typ), rope($t[i][j][2]))
+        else: 
+          startBlock(p, "catch ($1*) {$n", getTypeDesc(p.module, t[i][j].typ))
         genExceptBranchBody(t[i][^1])  # exception handler body will duplicated for every type
         endBlock(p)
 
