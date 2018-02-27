@@ -4117,3 +4117,17 @@ template doAssertRaises*(exception, code: untyped): typed =
     raiseAssert(astToStr(exception) &
                 " wasn't raised, another error was raised instead by:\n"&
                 astToStr(code))
+
+when defined(cpp) and appType != "lib" and not defined(js) and
+    not defined(nimscript) and hostOS != "standalone":
+  proc setTerminate(handler: proc() {.noconv.})
+    {.importc: "std::set_terminate", header: "<exception>".}
+  setTerminate proc() {.noconv.} =
+    # Remove ourself as a handler, reinstalling the default handler.
+    setTerminate(nil)
+
+    let ex = getCurrentException()
+    let trace = ex.getStackTrace()
+    stderr.write trace & "Error: unhandled exception: " & ex.msg &
+                 " [" & $ex.name & "]\n"
+    quit 1

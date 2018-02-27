@@ -2,6 +2,7 @@ discard """
   file: "tunhandledexc.nim"
   outputsub: "Error: unhandled exception: bla [ESomeOtherErr]"
   exitcode: "1"
+  targets: "c cpp"
 """
 type
   ESomething = object of Exception
