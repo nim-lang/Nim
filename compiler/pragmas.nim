@@ -549,15 +549,13 @@ proc pragmaLine(c: PContext, n: PNode) =
     n.info = getInfoContext(-1)
 
 proc processPragma(c: PContext, n: PNode, i: int) =
-  var it = n.sons[i]
+  let it = n[i]
   if it.kind notin nkPragmaCallKinds and it.len == 2: invalidPragma(n)
-  elif it.sons[0].kind != nkIdent: invalidPragma(n)
-  elif it.sons[1].kind != nkIdent: invalidPragma(n)
+  elif it[0].kind != nkIdent: invalidPragma(n)
+  elif it[1].kind != nkIdent: invalidPragma(n)
 
-  var userPragma = newSym(skTemplate, it.sons[1].ident, nil, it.info)
-  var body = newNodeI(nkPragma, n.info)
-  for j in i+1 .. sonsLen(n)-1: addSon(body, n.sons[j])
-  userPragma.ast = body
+  var userPragma = newSym(skTemplate, it[1].ident, nil, it.info)
+  userPragma.ast = newNode(nkPragma, n.info, n.sons[i+1..^1])
   strTableAdd(c.userPragmas, userPragma)
 
 proc pragmaRaisesOrTags(c: PContext, n: PNode) =
@@ -678,7 +676,7 @@ proc semCustomPragma(c: PContext, n: PNode): PNode =
     elif n.kind == nkExprColonExpr:
       result.kind = n.kind # pragma(arg) -> pragma: arg
 
-proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
+proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
                   validPragmas: TSpecialWords): bool =
   var it = n.sons[i]
   var key = if it.kind in nkPragmaCallKinds and it.len > 1: it.sons[0] else: it
@@ -691,13 +689,14 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: int,
   let ident = considerQuotedIdent(key)
   var userPragma = strTableGet(c.userPragmas, ident)
   if userPragma != nil:
+    # number of pragmas increase/decrease with user pragma expansion
     inc c.instCounter
     if c.instCounter > 100:
       globalError(it.info, errRecursiveDependencyX, userPragma.name.s)
+    
     pragma(c, sym, userPragma.ast, validPragmas)
-    # ensure the pragma is also remember for generic instantiations in other
-    # modules:
-    n.sons[i] = userPragma.ast
+    n.sons[i..i] = userPragma.ast.sons # expand user pragma with its content
+    i.inc(userPragma.ast.len - 1) # inc by -1 is ok, user pragmas was empty
     dec c.instCounter
   else:
     var k = whichKeyword(ident)
@@ -1032,9 +1031,11 @@ proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
       let o = it.otherPragmas
       if not o.isNil:
         pushInfoContext(n.info)
-        for i in countup(0, sonsLen(o) - 1):
+        var i = 0
+        while i < o.len():
           if singlePragma(c, sym, o, i, validPragmas):
             internalError(n.info, "implicitPragmas")
+          inc i
         popInfoContext()
 
     if lfExportLib in sym.loc.flags and sfExportc notin sym.flags:
@@ -1059,9 +1060,10 @@ proc hasPragma*(n: PNode, pragma: TSpecialWord): bool =
 
 proc pragmaRec(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
   if n == nil: return
-  for i in countup(0, sonsLen(n) - 1):
-    if n.sons[i].kind == nkPragma: pragmaRec(c, sym, n.sons[i], validPragmas)
-    elif singlePragma(c, sym, n, i, validPragmas): break
+  var i = 0
+  while i < n.len():
+    if singlePragma(c, sym, n, i, validPragmas): break
+    inc i
 
 proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords) =
   if n == nil: return

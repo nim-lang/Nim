@@ -29,6 +29,8 @@ const
   FliOffset = 6
   RealFli = MaxFli - FliOffset
 
+  HugeChunkSize = int high(int32) - 1 # 2 GB, depends on TLSF's impl
+
 type
   PTrunk = ptr Trunk
   Trunk = object
@@ -593,6 +595,26 @@ proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
   incl(a, a.chunkStarts, pageIndex(result))
   dec(a.freeMem, size)
 
+proc getHugeChunk(a: var MemRegion; size: int): PBigChunk =
+  result = cast[PBigChunk](osAllocPages(size))
+  incCurrMem(a, size)
+  # XXX add this to the heap links. But also remove it from it later.
+  when false: a.addHeapLink(result, size)
+  sysAssert((cast[ByteAddress](result) and PageMask) == 0, "getHugeChunk")
+  result.next = nil
+  result.prev = nil
+  result.size = size
+  # set 'used' to to true:
+  result.prevSize = 1
+  incl(a, a.chunkStarts, pageIndex(result))
+
+proc freeHugeChunk(a: var MemRegion; c: PBigChunk) =
+  let size = c.size
+  sysAssert(size >= HugeChunkSize, "freeHugeChunk: invalid size")
+  excl(a.chunkStarts, pageIndex(c))
+  decCurrMem(a, size)
+  osDeallocPages(c, size)
+
 proc getSmallChunk(a: var MemRegion): PSmallChunk =
   var res = getBigChunk(a, PageSize)
   sysAssert res.prev == nil, "getSmallChunk 1"
@@ -759,7 +781,8 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
   else:
     size = requestedSize + bigChunkOverhead() #  roundup(requestedSize+bigChunkOverhead(), PageSize)
     # allocate a large block
-    var c = getBigChunk(a, size)
+    var c = if size >= HugeChunkSize: getHugeChunk(a, size)
+            else: getBigChunk(a, size)
     sysAssert c.prev == nil, "rawAlloc 10"
     sysAssert c.next == nil, "rawAlloc 11"
     result = addr(c.data)
@@ -823,7 +846,8 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
     sysAssert a.occ >= 0, "rawDealloc: negative occupied memory (case B)"
     a.deleted = getBottom(a)
     del(a, a.root, cast[int](addr(c.data)))
-    freeBigChunk(a, c)
+    if c.size >= HugeChunkSize: freeHugeChunk(a, c)
+    else: freeBigChunk(a, c)
   sysAssert(allocInv(a), "rawDealloc: end")
   when logAlloc: cprintf("dealloc(pointer_%p)\n", p)
 

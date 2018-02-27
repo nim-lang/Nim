@@ -15,6 +15,8 @@ import strutils, os, intsets, tables, ropes, db_sqlite, msgs, options, types,
 ## Todo:
 ## - Implement the 'import' replay logic so that the codegen runs over
 ##   dependent modules.
+## - Make conditional symbols and the configuration part of a module's
+##   dependencies.
 ## - Test multi methods.
 ## - Implement the limited VM support based on sets.
 ## - Depencency computation should use signature hashes in order to
@@ -49,7 +51,7 @@ proc getModuleId*(fileIdx: int32; fullpath: string): int =
   if gSymbolFiles != v2Sf: return getID()
   let module = db.getRow(
     sql"select id, fullHash from modules where fullpath = ?", fullpath)
-  let currentFullhash = $secureHashFile(fullpath)
+  let currentFullhash = hashFileCached(fileIdx, fullpath)
   if module[0].len == 0:
     result = int db.insertID(sql"insert into modules(fullpath, interfHash, fullHash) values (?, ?, ?)",
       fullpath, "", currentFullhash)
@@ -75,12 +77,13 @@ type
     sstack: seq[PSym]          # a stack of symbols to process
     tstack: seq[PType]         # a stack of types to process
     tmarks, smarks: IntSet
+    forwardedSyms: seq[PSym]
 
   PRodWriter = var TRodWriter
 
 proc initRodWriter(module: PSym): TRodWriter =
   result = TRodWriter(module: module, sstack: @[], tstack: @[],
-    tmarks: initIntSet(), smarks: initIntSet())
+    tmarks: initIntSet(), smarks: initIntSet(), forwardedSyms: @[])
 
 when false:
   proc getDefines(): string =
@@ -88,13 +91,6 @@ when false:
     for d in definedSymbolNames():
       if result.len != 0: add(result, " ")
       add(result, d)
-
-  proc addInclDep(w: PRodWriter, dep: string; info: TLineInfo) =
-    let resolved = dep.findModule(info.toFullPath)
-    encodeVInt(fileIdx(w, resolved), w.inclDeps)
-    add(w.inclDeps, " ")
-    encodeStr($secureHashFile(resolved), w.inclDeps)
-    add(w.inclDeps, rodNL)
 
 const
   rodNL = "\L"
@@ -381,6 +377,9 @@ proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
     encodeNode(w, s.info, s.ast, result)
 
 proc storeSym(w: PRodWriter; s: PSym) =
+  if sfForward in s.flags and s.kind != skModule:
+    w.forwardedSyms.add s
+    return
   var buf = newStringOfCap(160)
   encodeSym(w, s, buf)
   # XXX only store the name for exported symbols in order to speed up lookup
@@ -401,8 +400,9 @@ proc storeNode*(module: PSym; n: PNode) =
   w.module = module
   var buf = newStringOfCap(160)
   encodeNode(w, module.info, n, buf)
-  db.exec(sql"insert into toplevelstmts(module, data) values (?, ?)",
-    abs(module.id), buf)
+  db.exec(sql"insert into toplevelstmts(module, position, data) values (?, ?, ?)",
+    abs(module.id), module.offset, buf)
+  inc module.offset
   var i = 0
   while true:
     if i > 10_000:
@@ -420,6 +420,14 @@ proc storeNode*(module: PSym; n: PNode) =
     else:
       break
     inc i
+
+proc storeRemaining*(module: PSym) =
+  if gSymbolFiles != v2Sf: return
+  w.module = module
+  for s in w.forwardedSyms:
+    assert sfForward notin s.flags
+    storeSym(w, s)
+  w.forwardedSyms.setLen 0
 
 # ---------------- decoder -----------------------------------
 type
@@ -781,6 +789,7 @@ proc loadSymFromBlob(r; b; info: TLineInfo): PSym =
     result.ast = decodeNode(r, b, result.info)
   if sfCompilerProc in result.flags:
     registerCompilerProc(result)
+    #echo "loading ", result.name.s
 
 proc loadSym(r; id: int; info: TLineInfo): PSym =
   result = r.syms.getOrDefault(id)
@@ -804,14 +813,14 @@ proc loadModuleSymTab(r; module: PSym) =
   if sfSystemModule in module.flags:
     magicsys.systemModule = module
 
-proc loadNode*(module: PSym; index: var int): PNode =
+proc loadNode*(module: PSym; index: int): PNode =
   assert gSymbolFiles == v2Sf
   if index == 0:
     loadModuleSymTab(gr, module)
-    index = parseInt db.getValue(
-      sql"select min(id) from toplevelstmts where module = ?", abs module.id)
+    #index = parseInt db.getValue(
+    #  sql"select min(id) from toplevelstmts where module = ?", abs module.id)
   var b = BlobReader(pos: 0)
-  b.s = db.getValue(sql"select data from toplevelstmts where id = ? and module = ?",
+  b.s = db.getValue(sql"select data from toplevelstmts where position = ? and module = ?",
                     index, abs module.id)
   if b.s.len == 0:
     db.exec(sql"insert into controlblock(idgen) values (?)", gFrontEndId)
@@ -900,12 +909,14 @@ proc createDb() =
   db.exec(sql"""
     create table if not exists toplevelstmts(
       id integer primary key,
+      position integer not null,
       module integer not null,
       data blob not null,
       foreign key (module) references module(id)
     );
   """)
   db.exec sql"create index TopLevelStmtByModuleIdx on toplevelstmts(module);"
+  db.exec sql"create index TopLevelStmtByPositionIdx on toplevelstmts(position);"
 
   db.exec(sql"""
     create table if not exists statics(

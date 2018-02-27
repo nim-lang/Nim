@@ -1917,7 +1917,7 @@ proc `$` *(x: float): string {.magic: "FloatToStr", noSideEffect.}
 proc `$` *(x: bool): string {.magic: "BoolToStr", noSideEffect.}
   ## The stringify operator for a boolean argument. Returns `x`
   ## converted to the string "false" or "true".
-#
+
 proc `$` *(x: char): string {.magic: "CharToStr", noSideEffect.}
   ## The stringify operator for a character argument. Returns `x`
   ## converted to a string.

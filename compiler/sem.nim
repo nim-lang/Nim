@@ -619,6 +619,7 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
     replayMethodDefs(graph, c.rd)
   popOwner(c)
   popProcCon(c)
+  storeRemaining(c.module)
   if c.runnableExamples != nil: testExamples(c)
 
 const semPass* = makePass(myOpen, myOpenCached, myProcess, myClose,
