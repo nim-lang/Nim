@@ -215,6 +215,8 @@ styledEcho "Red on Green.", resetStyle
 - ``db_mysql`` module: ``DbConn`` is now a ``distinct`` type that doesn't expose the
   details of the underlying ``PMySQL`` type.
 
+- ``parseopt2`` is now deprecated, use ``parseopt`` instead.
+
 ### Language additions
 
 - It is now possible to forward declare object types so that mutually
