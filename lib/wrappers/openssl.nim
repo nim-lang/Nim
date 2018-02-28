@@ -26,6 +26,8 @@
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 
+from ospaths import getEnv
+
 const useWinVersion = defined(Windows) or defined(nimdoc)
 
 # To force openSSL version use -d:sslVersion=1.0.0
@@ -374,6 +376,22 @@ proc SSL_CTX_use_PrivateKey_file*(ctx: SslCtx,
 proc SSL_CTX_check_private_key*(ctx: SslCtx): cint{.cdecl, dynlib: DLLSSLName,
     importc.}
 
+when getEnv("NIM_SSL_CERT_VALIDATION") != "insecure":
+  proc SSL_get_peer_certificate*(ssl: SslCtx): PX509{.cdecl, dynlib: DLLSSLName,
+      importc.}
+
+  proc X509_get_subject_name*(a: PX509): PX509_NAME{.cdecl, dynlib: DLLSSLName, importc.}
+
+  proc X509_get_issuer_name*(a: PX509): PX509_NAME{.cdecl, dynlib: DLLUtilName, importc.}
+
+  proc X509_NAME_oneline*(a: PX509_NAME, buf: cstring, size: cint): cstring {.
+    cdecl, dynlib:DLLSSLName, importc.}
+
+  proc X509_NAME_get_text_by_NID*(subject:cstring, NID: cint, buf: cstring, size: cint): cint{.
+    cdecl, dynlib:DLLSSLName, importc.}
+
+  proc X509_check_host*(cert: PX509, name: cstring, namelen: cint, flags:cuint, peername: cstring): cint {.cdecl, dynlib: DLLSSLName, importc.}
+
 proc SSL_CTX_get_ex_new_index*(argl: clong, argp: pointer, new_func: pointer, dup_func: pointer, free_func: pointer): cint {.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_CTX_set_ex_data*(ssl: SslCtx, idx: cint, arg: pointer): cint {.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_CTX_get_ex_data*(ssl: SslCtx, idx: cint): pointer {.cdecl, dynlib: DLLSSLName, importc.}
@@ -694,7 +712,7 @@ proc md5_Transform*(c: var MD5_CTX; b: ptr cuchar){.importc: "MD5_Transform".}
 from strutils import toHex, toLowerAscii
 
 proc hexStr(buf: cstring): string =
-  # turn md5s output into a nice hex str
+  # turn md5s output into a nice hex string
   result = newStringOfCap(32)
   for i in 0 ..< 16:
     result.add toHex(buf[i].ord, 2).toLowerAscii

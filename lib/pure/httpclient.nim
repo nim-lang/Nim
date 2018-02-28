@@ -106,6 +106,14 @@
 ## You will also have to compile with ``ssl`` defined like so:
 ## ``nim c -d:ssl ...``.
 ##
+## Certificate validation is NOT performed by default.
+## This will change in future.
+##
+## A set of directories and files from the `ssl_certs <ssl_certs.html>`_
+## module are scanned to locate CA certificates.
+##
+## See `newContext <net.html#newContext>`_ to tweak or disable certificate validation.
+##
 ## Timeouts
 ## ========
 ##
@@ -407,9 +415,9 @@ proc parseResponse(s: Socket, getBody: bool, timeout: int): Response =
 
 when not defined(ssl):
   type SSLContext = ref object
-var defaultSslContext {.threadvar.}: SSLContext
 
 proc getDefaultSSL(): SSLContext =
+  # initialize a thread-local default context if/when needed
   result = defaultSslContext
   when defined(ssl):
     if result == nil:
@@ -637,6 +645,7 @@ proc newHttpClient*(userAgent = defUserAgent,
   ## default is 5.
   ##
   ## ``sslContext`` specifies the SSL context to use for HTTPS requests.
+  ## See `SSL/TLS support <##ssl-tls-support>`_
   ##
   ## ``proxy`` specifies an HTTP proxy to use for this HTTP client's
   ## connections.

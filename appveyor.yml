@@ -33,6 +33,7 @@ install:
   - cd ..
 
 build_script:
+  - openssl version -d
   - bin\nim c koch
   - koch runCI
 
