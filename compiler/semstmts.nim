@@ -679,7 +679,7 @@ proc semForVars(c: PContext, n: PNode): PNode =
         addForVarDecl(c, v)
   inc(c.p.nestedLoopCounter)
   openScope(c)
-  n.sons[length-1] = semStmt(c, n.sons[length-1])
+  n.sons[length-1] = semExprBranch(c, n.sons[length-1])
   closeScope(c)
   dec(c.p.nestedLoopCounter)
 
@@ -732,8 +732,18 @@ proc semFor(c: PContext, n: PNode): PNode =
   else:
     result = semForVars(c, n)
   # propagate any enforced VoidContext:
-  if n.sons[length-1].typ == enforceVoidContext:
-    result.typ = enforceVoidContext
+  let bodyType = n.sons[length-1].typ
+  if bodyType == enforceVoidContext or isEmptyType(bodyType):
+    result.typ = bodyType
+  else:
+    # if the body of a for loop is of type 'T', the
+    # loop's type is 'iterator (): T'
+    proc createForLoopExpr(c: PContext; t: PType; info: TLineInfo): PType {.nimcall.} =
+      result = newType(tyGenericInvocation, c.module)
+      addSonSkipIntLit(result, magicsys.getCompilerProc("ForLoopExpr").typ)
+      addSonSkipIntLit(result, t)
+      result = instGenericContainer(c, info, result, allowMetaTypes = false)
+    result.typ = createForLoopExpr(c, bodyType, result.info)
   closeScope(c)
 
 proc semRaise(c: PContext, n: PNode): PNode =

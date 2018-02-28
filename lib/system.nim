@@ -4131,3 +4131,6 @@ when defined(cpp) and appType != "lib" and not defined(js) and
     stderr.write trace & "Error: unhandled exception: " & ex.msg &
                  " [" & $ex.name & "]\n"
     quit 1
+
+type
+  ForLoopExpr*{.compilerProc.}[T] = object ## the type of a 'for' loop expression

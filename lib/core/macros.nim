@@ -902,7 +902,7 @@ proc newIfStmt*(branches: varargs[tuple[cond, body: NimNode]]):
   ##
   result = newNimNode(nnkIfStmt)
   for i in branches:
-    result.add(newNimNode(nnkElifBranch).add(i.cond, i.body))
+    result.add(newTree(nnkElifBranch, i.cond, i.body))
 
 proc newEnum*(name: NimNode, fields: openArray[NimNode],
               public, pure: bool): NimNode {.compileTime.} =
@@ -1227,7 +1227,7 @@ proc customPragmaNode(n: NimNode): NimNode =
     let recList = typDef[2][2]
     for identDefs in recList:
       for i in 0 .. identDefs.len - 3:
-        if identDefs[i].kind == nnkPragmaExpr and 
+        if identDefs[i].kind == nnkPragmaExpr and
            identDefs[i][0].kind == nnkIdent and $identDefs[i][0] == $n[1]:
           return identDefs[i][1]
 
@@ -1237,7 +1237,7 @@ macro hasCustomPragma*(n: typed, cp: typed{nkSym}): untyped =
   ##
   ## .. code-block:: nim
   ##   template myAttr() {.pragma.}
-  ##   type 
+  ##   type
   ##     MyObj = object
   ##       myField {.myAttr.}: int
   ##   var o: MyObj
@@ -1255,7 +1255,7 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
   ##
   ## .. code-block:: nim
   ##   template serializationKey(key: string) {.pragma.}
-  ##   type 
+  ##   type
   ##     MyObj = object
   ##       myField {.serializationKey: "mf".}: int
   ##   var o: MyObj
