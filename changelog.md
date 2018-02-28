@@ -263,3 +263,6 @@ bar()
 import std / [strutils, os, osproc]
 import someNimblePackage / [strutils, os]
 ```
+
+- The ``readPasswordFromStdin`` proc has been moved from the ``rdstdin``
+  to the ``terminal`` module, thus it does not depend on linenoise anymore.

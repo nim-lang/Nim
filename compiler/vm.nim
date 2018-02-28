@@ -779,9 +779,21 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].intVal = ord(regs[rb].intVal <% regs[rc].intVal)
     of opcEqRef:
       decodeBC(rkInt)
-      regs[ra].intVal = ord((regs[rb].node.kind == nkNilLit and
-                             regs[rc].node.kind == nkNilLit) or
-                             regs[rb].node == regs[rc].node)
+      if regs[rb].kind == rkNodeAddr:
+        if regs[rc].kind == rkNodeAddr:
+          regs[ra].intVal = ord(regs[rb].nodeAddr == regs[rc].nodeAddr)
+        else:
+          assert regs[rc].kind == rkNode
+          # we know these cannot be equal
+          regs[ra].intVal = ord(false)
+      elif regs[rc].kind == rkNodeAddr:
+        assert regs[rb].kind == rkNode
+        # we know these cannot be equal
+        regs[ra].intVal = ord(false)
+      else:
+        regs[ra].intVal = ord((regs[rb].node.kind == nkNilLit and
+                              regs[rc].node.kind == nkNilLit) or
+                              regs[rb].node == regs[rc].node)
     of opcEqNimrodNode:
       decodeBC(rkInt)
       regs[ra].intVal =

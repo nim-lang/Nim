@@ -727,10 +727,7 @@ proc getch*(): char =
       doAssert(readConsoleInput(fd, addr(keyEvent), 1, addr(numRead)) != 0)
       if numRead == 0 or keyEvent.eventType != 1 or keyEvent.bKeyDown == 0:
         continue
-      if keyEvent.uChar == 0:
-        return char(keyEvent.wVirtualKeyCode)
-      else:
-        return char(keyEvent.uChar)
+      return char(keyEvent.uChar)
   else:
     let fd = getFileHandle(stdin)
     var oldMode: Termios
@@ -738,6 +735,56 @@ proc getch*(): char =
     fd.setRaw()
     result = stdin.readChar()
     discard fd.tcsetattr(TCSADRAIN, addr oldMode)
+
+when defined(windows):
+  from unicode import toUTF8, Rune, runeLenAt
+
+  proc readPasswordFromStdin*(prompt: string, password: var TaintedString):
+                              bool {.tags: [ReadIOEffect, WriteIOEffect].} =
+    ## Reads a `password` from stdin without printing it. `password` must not
+    ## be ``nil``! Returns ``false`` if the end of the file has been reached,
+    ## ``true`` otherwise.
+    password.string.setLen(0)
+    stdout.write(prompt)
+    while true:
+      let c = getch()
+      case c.char
+      of '\r', chr(0xA):
+        break
+      of '\b':
+        # ensure we delete the whole UTF-8 character:
+        var i = 0
+        var x = 1
+        while i < password.len:
+          x = runeLenAt(password.string, i)
+          inc i, x
+        password.string.setLen(max(password.len - x, 0))
+      else:
+        password.string.add(toUTF8(c.Rune))
+    stdout.write "\n"
+
+else:
+  import termios
+
+  proc readPasswordFromStdin*(prompt: string, password: var TaintedString):
+                            bool {.tags: [ReadIOEffect, WriteIOEffect].} =
+    password.string.setLen(0)
+    let fd = stdin.getFileHandle()
+    var cur, old: Termios
+    discard fd.tcgetattr(cur.addr)
+    old = cur
+    cur.c_lflag = cur.c_lflag and not Cflag(ECHO)
+    discard fd.tcsetattr(TCSADRAIN, cur.addr)
+    stdout.write prompt
+    result = stdin.readLine(password)
+    stdout.write "\n"
+    discard fd.tcsetattr(TCSADRAIN, old.addr)
+
+proc readPasswordFromStdin*(prompt = "password: "): TaintedString =
+  ## Reads a password from stdin without printing it.
+  result = TaintedString("")
+  discard readPasswordFromStdin(prompt, result)
+
 
 # Wrappers assuming output to stdout:
 template hideCursor*() = hideCursor(stdout)
