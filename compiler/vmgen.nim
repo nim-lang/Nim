@@ -1288,7 +1288,7 @@ proc whichAsgnOpc(n: PNode): TOpcode =
     opcAsgnStr
   of tyFloat..tyFloat128:
     opcAsgnFloat
-  of tyRef, tyNil, tyVar, tyLent:
+  of tyRef, tyNil, tyVar, tyLent, tyPtr:
     opcAsgnRef
   else:
     opcAsgnComplex
