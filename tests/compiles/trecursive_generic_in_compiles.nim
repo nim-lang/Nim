@@ -96,7 +96,7 @@ proc foldLeft*[T,U](xs: List[T], z: U, f: (U, T) -> U): U =
 suite "unittest compilation error":
 
   test "issue 3313":
-    let lst = lc[$x | (x <- 'a'..'z'), string].asList
+    let lst = lc($x | (x <- 'a'..'z'), string).asList
 
     let lstCopy = lst.dup
     check: lstCopy == lst
