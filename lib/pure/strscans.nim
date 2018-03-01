@@ -131,7 +131,7 @@ to use prefix instead of postfix operators.
 ``E{n,m}``       From ``n`` up to ``m`` times ``E``
 ``~Ε``           Not predicate
 ``a ^* b``       Shortcut for ``?(a *(b a))``. Usually used for separators.
-``a ^* b``       Shortcut for ``?(a +(b a))``. Usually used for separators.
+``a ^+ b``       Shortcut for ``(a *(b a))``. Usually used for separators.
 ``'a'``          Matches a single character
 ``{'a'..'b'}``   Matches a character set
 ``"s"``          Matches a string
@@ -565,7 +565,7 @@ macro scanp*(input, idx: typed; pattern: varargs[untyped]): bool =
         result = atm(getAst(tmp(it[1], it[2])), input, idx, attached)
 
       elif it.kind == nnkInfix and it[0].eqIdent"^+":
-        # a ^* b  is rewritten to:  (a +(b a))?
+        # a ^+ b  is rewritten to:  (a *(b a))
         template tmp(a, b): untyped = (a, *(b, a))
         result = atm(getAst(tmp(it[1], it[2])), input, idx, attached)
       elif it.kind == nnkCommand and it.len == 2 and it[0].eqIdent"pred":
