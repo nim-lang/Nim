@@ -1513,7 +1513,7 @@ proc poll*(timeout = 500) =
 # Common procedures between current and upcoming asyncdispatch
 include includes.asynccommon
 
-proc sleepAsync*(ms: int): Future[void] =
+proc sleepAsync*(ms: int | float): Future[void] =
   ## Suspends the execution of the current async procedure for the next
   ## ``ms`` milliseconds.
   var retFuture = newFuture[void]("sleepAsync")

@@ -3428,10 +3428,10 @@ elif defined(JS):
   when defined(nimffi):
     include "system/sysio"
 
-
-proc `$`*[T, IDX](x: array[IDX, T]): string =
-  ## generic ``$`` operator for arrays that is lifted from the components
-  collectionToString(x, "[", ", ", "]")
+when not defined(nimNoArrayToString):
+  proc `$`*[T, IDX](x: array[IDX, T]): string =
+    ## generic ``$`` operator for arrays that is lifted from the components
+    collectionToString(x, "[", ", ", "]")
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noReturn.} =
   ## a shorthand for ``echo(errormsg); quit(errorcode)``.
