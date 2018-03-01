@@ -1,4 +1,4 @@
-## v0.18.0 - dd/mm/yyyy
+## v0.18.0 - 01/03/2018
 
 ### Changes affecting backwards compatibility
 
@@ -16,7 +16,9 @@
 
 - Arrays of char cannot be converted to ``cstring`` anymore, pointers to
   arrays of char can! This means ``$`` for arrays can finally exist
-  in ``system.nim`` and do the right thing.
+  in ``system.nim`` and do the right thing. This means ``$myArrayOfChar`` changed
+  its behaviour! Compile with ``-d:nimNoArrayToString`` to see where to fix your
+  code.
 
 - `reExtended` is no longer default for the `re` constructor in the `re`
   module.
