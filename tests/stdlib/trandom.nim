@@ -40,13 +40,15 @@ proc testRandInt =
   var freqs: array[count, int]
   for i in 1 .. n:
     freqs[rand(count-1)].inc
-  doAssert isRandom(freqs, n)
+  if not isRandom(freqs, n):
+    echo "failed randomInt"
 
 proc testRandFloat =
   var freqs: array[count, int]
   for i in 1 .. n:
     freqs[int(rand(1.0) * float(count))].inc
-  doAssert isRandom(freqs, n)
+  if not isRandom(freqs, n):
+    echo "failed randFloat"
 
 proc testShuffle =
   var freqs: array[120, int]
@@ -54,7 +56,8 @@ proc testShuffle =
     var a = [0, 1, 2, 3, 4]
     shuffle(a)
     freqs[rank(a)].inc
-  doAssert isRandom(freqs, n)
+  if not isRandom(freqs, n):
+    echo "failed shuffle"
 
 testRandInt()
 testRandFloat()
