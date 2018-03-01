@@ -42,7 +42,7 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
            s.kind == skType and s.typ != nil and s.typ.kind == tyGenericParam:
         handleParam actual.sons[s.owner.typ.len + s.position - 1]
       else:
-        internalAssert sfGenSym in s.flags
+        internalAssert sfGenSym in s.flags or s.kind == skType
         var x = PSym(idTableGet(c.mapping, s))
         if x == nil:
           x = copySym(s, false)
@@ -77,7 +77,7 @@ proc evalTemplateArgs(n: PNode, s: PSym; fromHlo: bool): PNode =
     # now that we have working untyped parameters.
     genericParams = if sfImmediate in s.flags or fromHlo: 0
                     else: s.ast[genericParamsPos].len
-    expectedRegularParams = <s.typ.len
+    expectedRegularParams = s.typ.len-1
     givenRegularParams = totalParams - genericParams
   if givenRegularParams < 0: givenRegularParams = 0
 
@@ -109,7 +109,7 @@ proc evalTemplateArgs(n: PNode, s: PSym; fromHlo: bool): PNode =
 var evalTemplateCounter* = 0
   # to prevent endless recursion in templates instantiation
 
-proc wrapInComesFrom*(info: TLineInfo; res: PNode): PNode =
+proc wrapInComesFrom*(info: TLineInfo; sym: PSym; res: PNode): PNode =
   when true:
     result = res
     result.info = info
@@ -124,8 +124,12 @@ proc wrapInComesFrom*(info: TLineInfo; res: PNode): PNode =
           if x[i].kind in nkCallKinds:
             x.sons[i].info = info
   else:
-    result = newNodeI(nkPar, info)
+    result = newNodeI(nkStmtListExpr, info)
+    var d = newNodeI(nkComesFrom, info)
+    d.add newSymNode(sym, info)
+    result.add d
     result.add res
+    result.typ = res.typ
 
 proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym; fromHlo=false): PNode =
   inc(evalTemplateCounter)
@@ -156,6 +160,6 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym; fromHlo=false): PNode =
     for i in countup(0, safeLen(body) - 1):
       evalTemplateAux(body.sons[i], args, ctx, result)
   result.flags.incl nfFromTemplate
-  result = wrapInComesFrom(n.info, result)
+  result = wrapInComesFrom(n.info, tmpl, result)
   dec(evalTemplateCounter)
 

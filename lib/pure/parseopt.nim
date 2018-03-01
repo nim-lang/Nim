@@ -94,6 +94,24 @@ when declared(os.paramCount):
     result.key = TaintedString""
     result.val = TaintedString""
 
+  proc initOptParser*(cmdline: seq[string]): OptParser =
+    ## inits the option parser. If ``cmdline.len == 0``, the real command line
+    ## (as provided by the ``OS`` module) is taken.
+    result.pos = 0
+    result.inShortState = false
+    result.cmd = ""
+    if cmdline.len != 0:
+      for i in 0..<cmdline.len:
+        result.cmd.add quote(cmdline[i])
+        result.cmd.add ' '
+    else:
+      for i in countup(1, paramCount()):
+        result.cmd.add quote(paramStr(i).string)
+        result.cmd.add ' '
+    result.kind = cmdEnd
+    result.key = TaintedString""
+    result.val = TaintedString""
+
 proc handleShortOption(p: var OptParser) =
   var i = p.pos
   p.kind = cmdShortOption

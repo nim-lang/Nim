@@ -29,21 +29,8 @@
 ##    writeLine(stdout, "your password: " & myData["password"])
 ##    writeLine(stdout, "</body></html>")
 
-import strutils, os, strtabs, cookies
-
-proc encodeUrl*(s: string): string =
-  ## Encodes a value to be HTTP safe: This means that characters in the set
-  ## ``{'A'..'Z', 'a'..'z', '0'..'9', '_'}`` are carried over to the result,
-  ## a space is converted to ``'+'`` and every other character is encoded as
-  ## ``'%xx'`` where ``xx`` denotes its hexadecimal value.
-  result = newStringOfCap(s.len + s.len shr 2) # assume 12% non-alnum-chars
-  for i in 0..s.len-1:
-    case s[i]
-    of 'a'..'z', 'A'..'Z', '0'..'9', '_': add(result, s[i])
-    of ' ': add(result, '+')
-    else:
-      add(result, '%')
-      add(result, toHex(ord(s[i]), 2))
+import strutils, os, strtabs, cookies, uri
+export uri.encodeUrl, uri.decodeUrl
 
 proc handleHexChar(c: char, x: var int) {.inline.} =
   case c
@@ -51,30 +38,6 @@ proc handleHexChar(c: char, x: var int) {.inline.} =
   of 'a'..'f': x = (x shl 4) or (ord(c) - ord('a') + 10)
   of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
   else: assert(false)
-
-proc decodeUrl*(s: string): string =
-  ## Decodes a value from its HTTP representation: This means that a ``'+'``
-  ## is converted to a space, ``'%xx'`` (where ``xx`` denotes a hexadecimal
-  ## value) is converted to the character with ordinal number ``xx``, and
-  ## and every other character is carried over.
-  result = newString(s.len)
-  var i = 0
-  var j = 0
-  while i < s.len:
-    case s[i]
-    of '%':
-      var x = 0
-      handleHexChar(s[i+1], x)
-      handleHexChar(s[i+2], x)
-      inc(i, 2)
-      result[j] = chr(x)
-    of '+': result[j] = ' '
-    else: result[j] = s[i]
-    inc(i)
-    inc(j)
-  setLen(result, j)
-
-{.deprecated: [URLDecode: decodeUrl, URLEncode: encodeUrl].}
 
 proc addXmlChar(dest: var string, c: char) {.inline.} =
   case c
@@ -101,8 +64,7 @@ type
     methodPost,          ## query uses the POST method
     methodGet            ## query uses the GET method
 
-{.deprecated: [TRequestMethod: RequestMethod, ECgi: CgiError,
-  XMLencode: xmlEncode].}
+{.deprecated: [TRequestMethod: RequestMethod, ECgi: CgiError].}
 
 proc cgiError*(msg: string) {.noreturn.} =
   ## raises an ECgi exception with message `msg`.
@@ -393,8 +355,3 @@ proc existsCookie*(name: string): bool =
   ## Checks if a cookie of `name` exists.
   if gcookies == nil: gcookies = parseCookies(getHttpCookie())
   result = hasKey(gcookies, name)
-
-when isMainModule:
-  const test1 = "abc\L+def xyz"
-  assert encodeUrl(test1) == "abc%0A%2Bdef+xyz"
-  assert decodeUrl(encodeUrl(test1)) == test1

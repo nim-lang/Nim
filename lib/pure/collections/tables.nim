@@ -308,6 +308,7 @@ proc `[]=`*[A, B](t: var Table[A, B], key: A, val: B) =
 
 proc add*[A, B](t: var Table[A, B], key: A, val: B) =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
+  ## This can introduce duplicate keys into the table!
   addImpl(enlarge)
 
 proc len*[A, B](t: TableRef[A, B]): int =
@@ -337,9 +338,9 @@ template dollarImpl(): untyped {.dirty.} =
     result = "{"
     for key, val in pairs(t):
       if result.len > 1: result.add(", ")
-      result.add($key)
+      result.addQuoted(key)
       result.add(": ")
-      result.add($val)
+      result.addQuoted(val)
     result.add("}")
 
 proc `$`*[A, B](t: Table[A, B]): string =
@@ -430,6 +431,7 @@ proc `[]=`*[A, B](t: TableRef[A, B], key: A, val: B) =
 
 proc add*[A, B](t: TableRef[A, B], key: A, val: B) =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
+  ## This can introduce duplicate keys into the table!
   t[].add(key, val)
 
 proc del*[A, B](t: TableRef[A, B], key: A) =
@@ -604,6 +606,7 @@ proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
 
 proc add*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
+  ## This can introduce duplicate keys into the table!
   addImpl(enlarge)
 
 proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): var B =
@@ -770,6 +773,7 @@ proc `[]=`*[A, B](t: OrderedTableRef[A, B], key: A, val: B) =
 
 proc add*[A, B](t: OrderedTableRef[A, B], key: A, val: B) =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
+  ## This can introduce duplicate keys into the table!
   t[].add(key, val)
 
 proc newOrderedTable*[A, B](initialSize=64): OrderedTableRef[A, B] =
@@ -951,30 +955,6 @@ proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
     #t.data[h].key = key
     #t.data[h].val = val
 
-proc initCountTable*[A](initialSize=64): CountTable[A] =
-  ## creates a new count table that is empty.
-  ##
-  ## `initialSize` needs to be a power of two. If you need to accept runtime
-  ## values for this you could use the ``nextPowerOfTwo`` proc from the
-  ## `math <math.html>`_ module or the ``rightSize`` proc in this module.
-  assert isPowerOfTwo(initialSize)
-  result.counter = 0
-  newSeq(result.data, initialSize)
-
-proc toCountTable*[A](keys: openArray[A]): CountTable[A] =
-  ## creates a new count table with every key in `keys` having a count of 1.
-  result = initCountTable[A](rightSize(keys.len))
-  for key in items(keys): result[key] = 1
-
-proc `$`*[A](t: CountTable[A]): string =
-  ## The `$` operator for count tables.
-  dollarImpl()
-
-proc `==`*[A](s, t: CountTable[A]): bool =
-  ## The `==` operator for count tables. Returns ``true`` iff both tables
-  ## contain the same keys with the same count. Insert order does not matter.
-  equalsImpl(s, t)
-
 proc inc*[A](t: var CountTable[A], key: A, val = 1) =
   ## increments `t[key]` by `val`.
   var index = rawGet(t, key)
@@ -986,12 +966,38 @@ proc inc*[A](t: var CountTable[A], key: A, val = 1) =
     rawInsert(t, t.data, key, val)
     inc(t.counter)
 
+proc initCountTable*[A](initialSize=64): CountTable[A] =
+  ## creates a new count table that is empty.
+  ##
+  ## `initialSize` needs to be a power of two. If you need to accept runtime
+  ## values for this you could use the ``nextPowerOfTwo`` proc from the
+  ## `math <math.html>`_ module or the ``rightSize`` proc in this module.
+  assert isPowerOfTwo(initialSize)
+  result.counter = 0
+  newSeq(result.data, initialSize)
+
+proc toCountTable*[A](keys: openArray[A]): CountTable[A] =
+  ## creates a new count table with every key in `keys` having a count
+  ## of how many times it occurs in `keys`.
+  result = initCountTable[A](rightSize(keys.len))
+  for key in items(keys): result.inc(key)
+
+proc `$`*[A](t: CountTable[A]): string =
+  ## The `$` operator for count tables.
+  dollarImpl()
+
+proc `==`*[A](s, t: CountTable[A]): bool =
+  ## The `==` operator for count tables. Returns ``true`` iff both tables
+  ## contain the same keys with the same count. Insert order does not matter.
+  equalsImpl(s, t)
+
 proc smallest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   ## returns the (key,val)-pair with the smallest `val`. Efficiency: O(n)
   assert t.len > 0
-  var minIdx = 0
-  for h in 1..high(t.data):
-    if t.data[h].val > 0 and t.data[minIdx].val > t.data[h].val: minIdx = h
+  var minIdx = -1
+  for h in 0..high(t.data):
+    if t.data[h].val > 0 and (minIdx == -1 or t.data[minIdx].val > t.data[h].val):
+      minIdx = h
   result.key = t.data[minIdx].key
   result.val = t.data[minIdx].val
 
@@ -1082,6 +1088,10 @@ proc `[]=`*[A](t: CountTableRef[A], key: A, val: int) =
   assert val > 0
   t[][key] = val
 
+proc inc*[A](t: CountTableRef[A], key: A, val = 1) =
+  ## increments `t[key]` by `val`.
+  t[].inc(key, val)
+
 proc newCountTable*[A](initialSize=64): CountTableRef[A] =
   ## creates a new count table that is empty.
   ##
@@ -1092,9 +1102,10 @@ proc newCountTable*[A](initialSize=64): CountTableRef[A] =
   result[] = initCountTable[A](initialSize)
 
 proc newCountTable*[A](keys: openArray[A]): CountTableRef[A] =
-  ## creates a new count table with every key in `keys` having a count of 1.
+  ## creates a new count table with every key in `keys` having a count
+  ## of how many times it occurs in `keys`.
   result = newCountTable[A](rightSize(keys.len))
-  for key in items(keys): result[key] = 1
+  for key in items(keys): result.inc(key)
 
 proc `$`*[A](t: CountTableRef[A]): string =
   ## The `$` operator for count tables.
@@ -1107,10 +1118,6 @@ proc `==`*[A](s, t: CountTableRef[A]): bool =
   if isNil(s): result = isNil(t)
   elif isNil(t): result = false
   else: result = s[] == t[]
-
-proc inc*[A](t: CountTableRef[A], key: A, val = 1) =
-  ## increments `t[key]` by `val`.
-  t[].inc(key, val)
 
 proc smallest*[A](t: CountTableRef[A]): (A, int) =
   ## returns the (key,val)-pair with the smallest `val`. Efficiency: O(n)
@@ -1310,7 +1317,6 @@ when isMainModule:
     assert a == b
     assert a == c
 
-
   block: #6250
     let
       a = {3: 1}.toOrderedTable
@@ -1325,3 +1331,6 @@ when isMainModule:
     assert((a == b) == true)
     assert((b == a) == true)
 
+  block: # CountTable.smallest
+    let t = toCountTable([0, 0, 5, 5, 5])
+    doAssert t.smallest == (0, 2)

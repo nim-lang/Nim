@@ -1,8 +1,9 @@
 discard """
-  output: '''@[1, 2, 3, 4]'''
+  errormsg: "invalid control flow: 'yield' within a constructor"
+  line: 16
 """
 
-# bug #5314
+# bug #5314, bug #6626
 
 import asyncdispatch
 

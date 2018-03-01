@@ -16,11 +16,11 @@ import
 proc getPragmaStmt*(n: PNode, w: TSpecialWord): PNode =
   case n.kind
   of nkStmtList:
-    for i in 0 .. < n.len:
+    for i in 0 ..< n.len:
       result = getPragmaStmt(n[i], w)
       if result != nil: break
   of nkPragma:
-    for i in 0 .. < n.len:
+    for i in 0 ..< n.len:
       if whichPragma(n[i]) == w: return n[i]
   else: discard
 
@@ -100,7 +100,7 @@ proc getUniqueType*(key: PType): PType =
       if result == nil:
         gCanonicalTypes[k] = key
         result = key
-    of tyTypeDesc, tyTypeClasses, tyGenericParam, tyFromExpr, tyFieldAccessor:
+    of tyTypeDesc, tyTypeClasses, tyGenericParam, tyFromExpr:
       if key.isResolvedUserTypeClass:
         return getUniqueType(lastSon(key))
       if key.sym != nil:
@@ -110,13 +110,13 @@ proc getUniqueType*(key: PType): PType =
     of tyDistinct:
       if key.deepCopy != nil: result = key
       else: result = getUniqueType(lastSon(key))
-    of tyGenericInst, tyOrdinal, tyStatic, tyAlias, tyInferred:
+    of tyGenericInst, tyOrdinal, tyStatic, tyAlias, tySink, tyInferred:
       result = getUniqueType(lastSon(key))
       #let obj = lastSon(key)
       #if obj.sym != nil and obj.sym.name.s == "TOption":
       #  echo "for ", typeToString(key), " I returned "
       #  debug result
-    of tyPtr, tyRef, tyVar:
+    of tyPtr, tyRef, tyVar, tyLent:
       let elemType = lastSon(key)
       if elemType.kind in {tyBool, tyChar, tyInt..tyUInt64}:
         # no canonicalization for integral types, so that e.g. ``ptr pid_t`` is
@@ -126,7 +126,7 @@ proc getUniqueType*(key: PType): PType =
         result = slowSearch(key, k)
     of tyGenericInvocation, tyGenericBody,
        tyOpenArray, tyArray, tySet, tyRange, tyTuple,
-       tySequence, tyForward, tyVarargs, tyProxy:
+       tySequence, tyForward, tyVarargs, tyProxy, tyOpt:
       # we have to do a slow linear search because types may need
       # to be compared by their structure:
       result = slowSearch(key, k)
@@ -157,7 +157,7 @@ proc getUniqueType*(key: PType): PType =
       else:
         # ugh, we need the canon here:
         result = slowSearch(key, k)
-    of tyUnused, tyUnused0, tyUnused1, tyUnused2: internalError("getUniqueType")
+    of tyUnused, tyOptAsRef, tyUnused1, tyUnused2: internalError("getUniqueType")
 
 proc makeSingleLineCString*(s: string): string =
   result = "\""

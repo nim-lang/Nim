@@ -26,7 +26,8 @@ type
     errAtPopWithoutPush, errEmptyAsm, errInvalidIndentation,
     errExceptionExpected, errExceptionAlreadyHandled,
     errYieldNotAllowedHere, errYieldNotAllowedInTryStmt,
-    errInvalidNumberOfYieldExpr, errCannotReturnExpr, errAttemptToRedefine,
+    errInvalidNumberOfYieldExpr, errCannotReturnExpr,
+    errNoReturnWithReturnTypeNotAllowed, errAttemptToRedefine,
     errStmtInvalidAfterReturn, errStmtExpected, errInvalidLabel,
     errInvalidCmdLineOption, errCmdLineArgExpected, errCmdLineNoArgExpected,
     errInvalidVarSubstitution, errUnknownVar, errUnknownCcompiler,
@@ -61,7 +62,7 @@ type
     errBaseTypeMustBeOrdinal, errInheritanceOnlyWithNonFinalObjects,
     errInheritanceOnlyWithEnums, errIllegalRecursionInTypeX,
     errCannotInstantiateX, errExprHasNoAddress, errXStackEscape,
-    errVarForOutParamNeeded,
+    errVarForOutParamNeededX,
     errPureTypeMismatch, errTypeMismatch, errButExpected, errButExpectedX,
     errAmbiguousCallXYZ, errWrongNumberOfArguments,
     errWrongNumberOfArgumentsInCall,
@@ -179,8 +180,9 @@ const
     errYieldNotAllowedInTryStmt: "'yield' cannot be used within 'try' in a non-inlined iterator",
     errInvalidNumberOfYieldExpr: "invalid number of \'yield\' expressions",
     errCannotReturnExpr: "current routine cannot return an expression",
+    errNoReturnWithReturnTypeNotAllowed: "routines with NoReturn pragma are not allowed to have return type",
     errAttemptToRedefine: "redefinition of \'$1\'",
-    errStmtInvalidAfterReturn: "statement not allowed after \'return\', \'break\', \'raise\' or \'continue'",
+    errStmtInvalidAfterReturn: "statement not allowed after \'return\', \'break\', \'raise\', \'continue\' or proc call with noreturn pragma",
     errStmtExpected: "statement expected",
     errInvalidLabel: "\'$1\' is no label",
     errInvalidCmdLineOption: "invalid command line option: \'$1\'",
@@ -268,9 +270,9 @@ const
     errCannotInstantiateX: "cannot instantiate: \'$1\'",
     errExprHasNoAddress: "expression has no address",
     errXStackEscape: "address of '$1' may not escape its stack frame",
-    errVarForOutParamNeeded: "for a \'var\' type a variable needs to be passed",
+    errVarForOutParamNeededX: "for a \'var\' type a variable needs to be passed; but '$1' is immutable",
     errPureTypeMismatch: "type mismatch",
-    errTypeMismatch: "type mismatch: got (",
+    errTypeMismatch: "type mismatch: got <",
     errButExpected: "but expected one of: ",
     errButExpectedX: "but expected \'$1\'",
     errAmbiguousCallXYZ: "ambiguous call; both $1 and $2 match for: $3",
@@ -368,7 +370,7 @@ const
     errXhasSideEffects: "\'$1\' can have side effects",
     errIteratorExpected: "iterator within for loop context expected",
     errLetNeedsInit: "'let' symbol requires an initialization",
-    errThreadvarCannotInit: "a thread var cannot be initialized explicitly",
+    errThreadvarCannotInit: "a thread var cannot be initialized explicitly; this would only run for the main thread",
     errWrongSymbolX: "usage of \'$1\' is a user-defined error",
     errIllegalCaptureX: "illegal capture '$1'",
     errXCannotBeClosure: "'$1' cannot have 'closure' calling convention",
@@ -489,6 +491,7 @@ type
     dirtyfile: string          # the file that is actually read into memory
                                # and parsed; usually 'nil' but is used
                                # for 'nimsuggest'
+    hash*: string              # the checksum of the file
 
   TLineInfo* = object          # This is designed to be as small as possible,
                                # because it is used
@@ -498,6 +501,9 @@ type
                                # only 8 bytes.
     line*, col*: int16
     fileIndex*: int32
+    when defined(nimpretty):
+      offsetA*, offsetB*: int
+      commentOffsetA*, commentOffsetB*: int
 
   TErrorOutput* = enum
     eStdOut
@@ -713,6 +719,14 @@ proc toFullPath*(fileIdx: int32): string =
 proc setDirtyFile*(fileIdx: int32; filename: string) =
   assert fileIdx >= 0
   fileInfos[fileIdx].dirtyFile = filename
+
+proc setHash*(fileIdx: int32; hash: string) =
+  assert fileIdx >= 0
+  shallowCopy(fileInfos[fileIdx].hash, hash)
+
+proc getHash*(fileIdx: int32): string =
+  assert fileIdx >= 0
+  shallowCopy(result, fileInfos[fileIdx].hash)
 
 proc toFullPathConsiderDirty*(fileIdx: int32): string =
   if fileIdx < 0:
@@ -1020,6 +1034,9 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
   handleError(msg, eh, s)
 
 proc fatal*(info: TLineInfo, msg: TMsgKind, arg = "") =
+  # this fixes bug #7080 so that it is at least obvious 'fatal'
+  # was executed.
+  errorOutputs = {eStdOut, eStdErr}
   liMessage(info, msg, arg, doAbort)
 
 proc globalError*(info: TLineInfo, msg: TMsgKind, arg = "") =

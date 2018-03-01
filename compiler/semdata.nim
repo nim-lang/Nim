@@ -37,7 +37,6 @@ type
                               # in standalone ``except`` and ``finally``
     next*: PProcCon           # used for stacking procedure contexts
     wasForwarded*: bool       # whether the current proc has a separate header
-    bracketExpr*: PNode       # current bracket expression (for ^ support)
     mapping*: TIdTable
 
   TMatchedConcept* = object
@@ -65,11 +64,12 @@ type
     efWantStmt, efAllowStmt, efDetermineType, efExplain,
     efAllowDestructor, efWantValue, efOperand, efNoSemCheck,
     efNoProcvarCheck, efNoEvaluateGeneric, efInCall, efFromHlo,
-  
+
   TExprFlags* = set[TExprFlag]
 
   TTypeAttachedOp* = enum
     attachedAsgn,
+    attachedSink,
     attachedDeepCopy,
     attachedDestructor
 
@@ -112,6 +112,7 @@ type
     semGenerateInstance*: proc (c: PContext, fn: PSym, pt: TIdTable,
                                 info: TLineInfo): PSym
     includedFiles*: IntSet    # used to detect recursive include files
+    pureEnumFields*: TStrTable   # pure enum fields that can be used unambiguously
     userPragmas*: TStrTable
     evalContext*: PEvalContext
     unknownIdents*: IntSet     # ids of all unknown identifiers to prevent
@@ -130,6 +131,12 @@ type
     recursiveDep*: string
     suggestionsMade*: bool
     inTypeContext*: int
+    typesWithOps*: seq[(PType, PType)] #\
+      # We need to instantiate the type bound ops lazily after
+      # the generic type has been constructed completely. See
+      # tests/destructor/topttree.nim for an example that
+      # would otherwise fail.
+    runnableExamples*: PNode
 
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
   result.genericSym = s
@@ -210,12 +217,14 @@ proc newContext*(graph: ModuleGraph; module: PSym; cache: IdentCache): PContext 
   result.converters = @[]
   result.patterns = @[]
   result.includedFiles = initIntSet()
+  initStrTable(result.pureEnumFields)
   initStrTable(result.userPragmas)
   result.generics = @[]
   result.unknownIdents = initIntSet()
   result.cache = cache
   result.graph = graph
   initStrTable(result.signatures)
+  result.typesWithOps = @[]
 
 
 proc inclSym(sq: var TSymSeq, s: PSym) =
@@ -250,19 +259,19 @@ proc makePtrType*(c: PContext, baseType: PType): PType =
 proc makeTypeWithModifier*(c: PContext,
                            modifier: TTypeKind,
                            baseType: PType): PType =
-  assert modifier in {tyVar, tyPtr, tyRef, tyStatic, tyTypeDesc}
+  assert modifier in {tyVar, tyLent, tyPtr, tyRef, tyStatic, tyTypeDesc}
 
-  if modifier in {tyVar, tyTypeDesc} and baseType.kind == modifier:
+  if modifier in {tyVar, tyLent, tyTypeDesc} and baseType.kind == modifier:
     result = baseType
   else:
     result = newTypeS(modifier, c)
     addSonSkipIntLit(result, baseType.assertNotNil)
 
-proc makeVarType*(c: PContext, baseType: PType): PType =
-  if baseType.kind == tyVar:
+proc makeVarType*(c: PContext, baseType: PType; kind = tyVar): PType =
+  if baseType.kind == kind:
     result = baseType
   else:
-    result = newTypeS(tyVar, c)
+    result = newTypeS(kind, c)
     addSonSkipIntLit(result, baseType.assertNotNil)
 
 proc makeTypeDesc*(c: PContext, typ: PType): PType =
@@ -331,7 +340,7 @@ proc makeNotType*(c: PContext, t1: PType): PType =
 
 proc nMinusOne*(n: PNode): PNode =
   result = newNode(nkCall, n.info, @[
-    newSymNode(getSysMagic("<", mUnaryLt)),
+    newSymNode(getSysMagic("pred", mPred)),
     n])
 
 # Remember to fix the procs below this one when you make changes!
@@ -371,7 +380,7 @@ proc makeRangeType*(c: PContext; first, last: BiggestInt;
   addSonSkipIntLit(result, intType) # basetype of range
 
 proc markIndirect*(c: PContext, s: PSym) {.inline.} =
-  if s.kind in {skProc, skConverter, skMethod, skIterator}:
+  if s.kind in {skProc, skFunc, skConverter, skMethod, skIterator}:
     incl(s.flags, sfAddrTaken)
     # XXX add to 'c' for global analysis
 

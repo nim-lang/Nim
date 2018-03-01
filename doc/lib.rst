@@ -64,6 +64,10 @@ Core
 * `cpuinfo <cpuinfo.html>`_
   This module implements procs to determine the number of CPUs / cores.
 
+* `lenientops <lenientops.html>`_
+  Provides binary operators for mixed integer/float expressions for convenience.
+
+
 
 Collections and algorithms
 --------------------------
@@ -88,6 +92,10 @@ Collections and algorithms
 * `sequtils <sequtils.html>`_
   This module implements operations for the built-in seq type
   which were inspired by functional programming languages.
+* `sharedtables <sharedtables.html>`_
+  Nim shared hash table support. Contains shared tables.
+* `sharedlist <sharedlist.html>`_
+  Nim shared linked list support. Contains shared singly linked list.
 
 
 String handling
@@ -97,6 +105,10 @@ String handling
   This module contains common string handling operations like changing
   case of a string, splitting a string into substrings, searching for
   substrings, replacing substrings.
+
+* `strformat <strformat.html>`_
+  Macro based standard string interpolation / formatting. Inpired by
+  Python's ```f``-strings.
 
 * `strmisc <strmisc.html>`_
   This module contains uncommon string handling operations that do not
@@ -181,6 +193,12 @@ Generic Operating System Services
 * `asyncfile <asyncfile.html>`_
   This module implements asynchronous file reading and writing using
   ``asyncdispatch``.
+
+* `distros <distros.html>`_
+  This module implements the basics for OS distribution ("distro") detection and the OS's native package manager.
+  Its primary purpose is to produce output for Nimble packages, but it also contains the widely used **Distribution** enum
+  that is useful for writing platform specific code.
+
 
 Math libraries
 --------------
@@ -366,8 +384,9 @@ Cryptography and Hashing
 * `base64 <base64.html>`_
   This module implements a base64 encoder and decoder.
 
-* `securehash <securehash.html>`_
+* `sha1 <sha1.html>`_
   This module implements a sha1 encoder and decoder.
+
 
 Multimedia support
 ------------------
@@ -409,6 +428,9 @@ Miscellaneous
 * `unittest <unittest.html>`_
   Implements a Unit testing DSL.
 
+* `segfaults <segfaults.html>`_
+  Turns access violations or segfaults into a ``NilAccessError`` exception.
+
 Modules for JS backend
 ---------------------------
 
@@ -418,6 +440,8 @@ Modules for JS backend
 * `jsffi <jsffi.html>`_
   Types and macros for easier interaction with JavaScript.
 
+* `asyncjs <asyncjs.html>`_
+  Types and macros for writing asynchronous procedures in JavaScript.
 
 Deprecated modules
 ------------------
@@ -533,22 +557,8 @@ Database support
 Network Programming and Internet Protocols
 ------------------------------------------
 
-* `libuv <libuv.html>`_
-  Wrapper for the libuv library used for async I/O programming.
-
-* `joyent_http_parser <joyent_http_parser.html>`_
-  Wrapper for the joyent's high-performance HTTP parser.
-
 * `openssl <openssl.html>`_
   Wrapper for OpenSSL.
-
-
-
-Scientific computing
---------------------
-
-* `libsvm <libsvm.html>`_
-  Low level wrapper for `lib svm <http://www.csie.ntu.edu.tw/~cjlin/libsvm/>`_.
 
 
 Nimble

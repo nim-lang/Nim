@@ -21,7 +21,7 @@ macro debug(n: varargs[untyped]): untyped =
     add(result, newCall("writeLine", newIdentNode("stdout"), n[i]))
 
 var
-  a: array [0..10, int]
+  a: array[0..10, int]
   x = "some string"
 a[0] = 42
 a[1] = 45

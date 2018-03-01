@@ -184,19 +184,39 @@ proc toSockType*(protocol: Protocol): SockType =
   of IPPROTO_IP, IPPROTO_IPV6, IPPROTO_RAW, IPPROTO_ICMP:
     SOCK_RAW
 
-proc newNativeSocket*(domain: Domain = AF_INET,
+proc createNativeSocket*(domain: Domain = AF_INET,
                       sockType: SockType = SOCK_STREAM,
                       protocol: Protocol = IPPROTO_TCP): SocketHandle =
-  ## Creates a new socket; returns `InvalidSocket` if an error occurs.
+  ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
   socket(toInt(domain), toInt(sockType), toInt(protocol))
 
-proc newNativeSocket*(domain: cint, sockType: cint,
+proc createNativeSocket*(domain: cint, sockType: cint,
                       protocol: cint): SocketHandle =
-  ## Creates a new socket; returns `InvalidSocket` if an error occurs.
+  ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
   ##
   ## Use this overload if one of the enums specified above does
   ## not contain what you need.
   socket(domain, sockType, protocol)
+
+proc newNativeSocket*(domain: Domain = AF_INET,
+                      sockType: SockType = SOCK_STREAM,
+                      protocol: Protocol = IPPROTO_TCP): SocketHandle
+                      {.deprecated.} =
+  ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
+  ##
+  ## **Deprecated since v0.18.0:** Use ``createNativeSocket`` instead.
+  createNativeSocket(domain, sockType, protocol)
+
+proc newNativeSocket*(domain: cint, sockType: cint,
+                      protocol: cint): SocketHandle
+                      {.deprecated.} =
+  ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
+  ##
+  ## Use this overload if one of the enums specified above does
+  ## not contain what you need.
+  ##
+  ## **Deprecated since v0.18.0:** Use ``createNativeSocket`` instead.
+  createNativeSocket(domain, sockType, protocol)
 
 proc close*(socket: SocketHandle) =
   ## closes a socket.
@@ -496,11 +516,12 @@ proc getLocalAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
                    addr(namelen)) == -1'i32:
       raiseOSError(osLastError())
     # Cannot use INET6_ADDRSTRLEN here, because it's a C define.
-    var buf: array[64, char]
+    result[0] = newString(64)
     if inet_ntop(name.sin6_family.cint,
-                 addr name, buf.cstring, sizeof(buf).int32).isNil:
+                 addr name.sin6_addr, addr result[0][0], (result[0].len+1).int32).isNil:
       raiseOSError(osLastError())
-    result = ($buf, Port(nativesockets.ntohs(name.sin6_port)))
+    setLen(result[0], result[0].cstring.len)
+    result[1] = Port(nativesockets.ntohs(name.sin6_port))
   else:
     raiseOSError(OSErrorCode(-1), "invalid socket family in getLocalAddr")
 
@@ -532,11 +553,12 @@ proc getPeerAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
                    addr(namelen)) == -1'i32:
       raiseOSError(osLastError())
     # Cannot use INET6_ADDRSTRLEN here, because it's a C define.
-    var buf: array[64, char]
+    result[0] = newString(64)
     if inet_ntop(name.sin6_family.cint,
-                 addr name, buf.cstring, sizeof(buf).int32).isNil:
+                 addr name.sin6_addr, addr result[0][0], (result[0].len+1).int32).isNil:
       raiseOSError(osLastError())
-    result = ($buf, Port(nativesockets.ntohs(name.sin6_port)))
+    setLen(result[0], result[0].cstring.len)
+    result[1] = Port(nativesockets.ntohs(name.sin6_port))
   else:
     raiseOSError(OSErrorCode(-1), "invalid socket family in getLocalAddr")
 
@@ -663,6 +685,19 @@ proc selectWrite*(writefds: var seq[SocketHandle],
     result = int(select(cint(m+1), nil, addr(wr), nil, nil))
 
   pruneSocketSet(writefds, (wr))
+
+proc accept*(fd: SocketHandle): (SocketHandle, string) =
+  ## Accepts a new client connection.
+  ##
+  ## Returns (osInvalidSocket, "") if an error occurred.
+  var sockAddress: Sockaddr_in
+  var addrLen = sizeof(sockAddress).SockLen
+  var sock = accept(fd, cast[ptr SockAddr](addr(sockAddress)),
+                    addr(addrLen))
+  if sock == osInvalidSocket:
+    return (osInvalidSocket, "")
+  else:
+    return (sock, $inet_ntoa(sockAddress.sin_addr))
 
 when defined(Windows):
   var wsa: WSAData

@@ -62,6 +62,21 @@ type
     tyUInt16,
     tyUInt32,
     tyUInt64,
+    tyOptAsRef, tyUnused1, tyUnused2,
+    tyVarargsHidden,
+    tyUnusedHidden,
+    tyProxyHidden,
+    tyBuiltInTypeClassHidden,
+    tyUserTypeClassHidden,
+    tyUserTypeClassInstHidden,
+    tyCompositeTypeClassHidden,
+    tyInferredHidden,
+    tyAndHidden, tyOrHidden, tyNotHidden,
+    tyAnythingHidden,
+    tyStaticHidden,
+    tyFromExprHidden,
+    tyOpt,
+    tyVoidHidden
 
   TNimNodeKind = enum nkNone, nkSlot, nkList, nkCase
   TNimNode {.codegenType.} = object

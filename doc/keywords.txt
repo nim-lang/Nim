@@ -1,10 +1,9 @@
-addr and as asm atomic
+addr and as asm
 bind block break
 case cast concept const continue converter
 defer discard distinct div do
 elif else end enum except export
 finally for from func
-generic
 if import in include interface is isnot iterator
 let
 macro method mixin mod
@@ -16,6 +15,6 @@ shl shr static
 template try tuple type
 using
 var
-when while with without
+when while
 xor
 yield

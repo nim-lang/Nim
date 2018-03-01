@@ -32,7 +32,7 @@ proc downloadMingw(): DownloadResult =
   let curl = findExe"curl"
   var cmd: string
   if curl.len > 0:
-    cmd = curl & " --out " & "dist" / mingw & " " & url
+    cmd = quoteShell(curl) & " --out " & "dist" / mingw & " " & url
   elif fileExists"bin/nimgrab.exe":
     cmd = "bin/nimgrab.exe " & url & " dist" / mingw
   if cmd.len > 0:
@@ -91,16 +91,25 @@ when defined(windows):
     except IOError:
       echo "Could not access 'config/nim.cfg' [Error]"
 
-  proc addToPathEnv*(e: string) =
-    var p: string
+  proc tryGetUnicodeValue(path, key: string; handle: HKEY): string =
     try:
-      p = getUnicodeValue(r"Environment", "Path", HKEY_CURRENT_USER)
-    except OSError:
-      p = getUnicodeValue(
+      result = getUnicodeValue(path, key, handle)
+    except:
+      result = ""
+
+  proc addToPathEnv*(e: string) =
+    var p = tryGetUnicodeValue(r"Environment", "Path", HKEY_CURRENT_USER)
+    if p.len == 0:
+      p = tryGetUnicodeValue(
         r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment",
         "Path", HKEY_LOCAL_MACHINE)
     let x = if e.contains(Whitespace): "\"" & e & "\"" else: e
-    setUnicodeValue(r"Environment", "Path", p & ";" & x, HKEY_CURRENT_USER)
+    if p.len > 0:
+      p.add ";"
+      p.add x
+    else:
+      p = x
+    setUnicodeValue(r"Environment", "Path", p, HKEY_CURRENT_USER)
 
   proc createShortcut(src, dest: string; icon = "") =
     var cmd = "bin\\makelink.exe \"" & src & "\" \"\" \"" & dest &

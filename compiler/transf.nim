@@ -21,9 +21,7 @@
 import
   intsets, strutils, options, ast, astalgo, trees, treetab, msgs, os,
   idents, renderer, types, passes, semfold, magicsys, cgmeth, rodread,
-  lambdalifting, sempass2, lowerings, lookups
-
-# implementation
+  lambdalifting, sempass2, lowerings, lookups, destroyer, liftlocals
 
 type
   PTransNode* = distinct PNode
@@ -45,7 +43,7 @@ type
     inlining: int            # > 0 if we are in inlining context (copy vars)
     nestedProcs: int         # > 0 if we are in a nested proc
     contSyms, breakSyms: seq[PSym]  # to transform 'continue' and 'break'
-    deferDetected, tooEarly: bool
+    deferDetected, tooEarly, needsDestroyPass: bool
   PTransf = ref TTransfContext
 
 proc newTransNode(a: PNode): PTransNode {.inline.} =
@@ -95,7 +93,7 @@ proc getCurrOwner(c: PTransf): PSym =
 
 proc newTemp(c: PTransf, typ: PType, info: TLineInfo): PNode =
   let r = newSym(skTemp, getIdent(genPrefix), getCurrOwner(c), info)
-  r.typ = typ #skipTypes(typ, {tyGenericInst, tyAlias})
+  r.typ = typ #skipTypes(typ, {tyGenericInst, tyAlias, tySink})
   incl(r.flags, sfFromGeneric)
   let owner = getCurrOwner(c)
   if owner.isIterator and not c.tooEarly:
@@ -121,7 +119,7 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
     if s.kind == skIterator:
       if c.tooEarly: return n
       else: return liftIterSym(n, getCurrOwner(c))
-    elif s.kind in {skProc, skConverter, skMethod} and not c.tooEarly:
+    elif s.kind in {skProc, skFunc, skConverter, skMethod} and not c.tooEarly:
       # top level .closure procs are still somewhat supported for 'Nake':
       return makeClosure(s, nil, n.info)
   #elif n.sym.kind in {skVar, skLet} and n.sym.typ.callConv == ccClosure:
@@ -233,7 +231,7 @@ proc freshLabels(c: PTransf, n: PNode; symMap: var TIdTable) =
     let x = PSym(idTableGet(symMap, n.sym))
     if x != nil: n.sym = x
   else:
-    for i in 0 .. <safeLen(n): freshLabels(c, n.sons[i], symMap)
+    for i in 0 ..< safeLen(n): freshLabels(c, n.sons[i], symMap)
 
 proc transformBlock(c: PTransf, n: PNode): PTransNode =
   var labl: PSym
@@ -277,7 +275,7 @@ proc transformWhile(c: PTransf; n: PNode): PTransNode =
     var body = newTransNode(n)
     for i in 0..n.len-2:
       body[i] = transform(c, n.sons[i])
-    body[<n.len] = transformLoopBody(c, n.sons[<n.len])
+    body[n.len-1] = transformLoopBody(c, n.sons[n.len-1])
     result[1] = body
     discard c.breakSyms.pop
 
@@ -333,7 +331,7 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
   # c.transCon.forStmt.len == 3 means that there is one for loop variable
   # and thus no tuple unpacking:
   if e.typ.isNil: return result # can happen in nimsuggest for unknown reasons
-  if skipTypes(e.typ, {tyGenericInst, tyAlias}).kind == tyTuple and
+  if skipTypes(e.typ, {tyGenericInst, tyAlias, tySink}).kind == tyTuple and
       c.transCon.forStmt.len != 3:
     e = skipConv(e)
     if e.kind == nkPar:
@@ -367,16 +365,22 @@ proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode =
       # addr ( nkConv ( deref ( x ) ) ) --> nkConv(x)
       n.sons[0].sons[0] = m.sons[0]
       result = PTransNode(n.sons[0])
+      if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
+        PNode(result).typ = n.typ
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     var m = n.sons[0].sons[1]
     if m.kind == a or m.kind == b:
       # addr ( nkConv ( deref ( x ) ) ) --> nkConv(x)
       n.sons[0].sons[1] = m.sons[0]
       result = PTransNode(n.sons[0])
+      if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
+        PNode(result).typ = n.typ
   else:
     if n.sons[0].kind == a or n.sons[0].kind == b:
       # addr ( deref ( x )) --> x
       result = PTransNode(n.sons[0].sons[0])
+      if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
+        PNode(result).typ = n.typ
 
 proc generateThunk(prc: PNode, dest: PType): PNode =
   ## Converts 'prc' into '(thunk, nil)' so that it's compatible with
@@ -502,7 +506,7 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
       if putArgInto(arg.sons[i], formal) != paDirectMapping: return
     result = paDirectMapping
   else:
-    if skipTypes(formal, abstractInst).kind == tyVar: result = paVarAsgn
+    if skipTypes(formal, abstractInst).kind in {tyVar, tyLent}: result = paVarAsgn
     else: result = paFastAsgn
 
 proc findWrongOwners(c: PTransf, n: PNode) =
@@ -512,7 +516,7 @@ proc findWrongOwners(c: PTransf, n: PNode) =
       internalError(x.info, "bah " & x.sym.name.s & " " &
         x.sym.owner.name.s & " " & getCurrOwner(c).name.s)
   else:
-    for i in 0 .. <safeLen(n): findWrongOwners(c, n.sons[i])
+    for i in 0 ..< safeLen(n): findWrongOwners(c, n.sons[i])
 
 proc transformFor(c: PTransf, n: PNode): PTransNode =
   # generate access statements for the parameters (unless they are constant)
@@ -642,7 +646,7 @@ proc transformArrayAccess(c: PTransf, n: PNode): PTransNode =
     result = n.PTransNode
   else:
     result = newTransNode(n)
-    for i in 0 .. < n.len:
+    for i in 0 ..< n.len:
       result[i] = transform(c, skipConv(n.sons[i]))
 
 proc getMergeOp(n: PNode): PSym =
@@ -689,7 +693,7 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
           inc(j)
       add(result, a.PTransNode)
     if len(result) == 2: result = result[1]
-  elif magic in {mNBindSym, mTypeOf}:
+  elif magic in {mNBindSym, mTypeOf, mRunnableExamples}:
     # for bindSym(myconst) we MUST NOT perform constant folding:
     result = n.PTransNode
   elif magic == mProcCall:
@@ -712,7 +716,7 @@ proc transformExceptBranch(c: PTransf, n: PNode): PTransNode =
   result = transformSons(c, n)
   if n[0].isInfixAs():
     let excTypeNode = n[0][1]
-    let actions = newTransNode(nkStmtList, n[1].info, 2)
+    let actions = newTransNode(nkStmtListExpr, n[1], 2)
     # Generating `let exc = (excType)(getCurrentException())`
     # -> getCurrentException()
     let excCall = PTransNode(callCodegenProc("getCurrentException", ast.emptyNode))
@@ -746,7 +750,7 @@ proc dontInlineConstant(orig, cnst: PNode): bool {.inline.} =
 
 proc commonOptimizations*(c: PSym, n: PNode): PNode =
   result = n
-  for i in 0 .. < n.safeLen:
+  for i in 0 ..< n.safeLen:
     result.sons[i] = commonOptimizations(c, n.sons[i])
   var op = getMergeOp(n)
   if (op != nil) and (op.magic != mNone) and (sonsLen(n) >= 3):
@@ -782,11 +786,12 @@ proc transform(c: PTransf, n: PNode): PTransNode =
                   nkBlockStmt, nkBlockExpr}:
       oldDeferAnchor = c.deferAnchor
       c.deferAnchor = n
-
+  if n.typ != nil and tfHasAsgn in n.typ.flags:
+    c.needsDestroyPass = true
   case n.kind
   of nkSym:
     result = transformSym(c, n)
-  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit:
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkComesFrom:
     # nothing to be done for leaves:
     result = PTransNode(n)
   of nkBracketExpr: result = transformArrayAccess(c, n)
@@ -909,7 +914,7 @@ proc processTransf(c: PTransf, n: PNode, owner: PSym): PNode =
   # Note: For interactive mode we cannot call 'passes.skipCodegen' and skip
   # this step! We have to rely that the semantic pass transforms too errornous
   # nodes into an empty node.
-  if c.fromCache or nfTransf in n.flags: return n
+  if c.rd != nil or nfTransf in n.flags: return n
   pushTransCon(c, newTransCon(owner))
   result = PNode(transform(c, n))
   popTransCon(c)
@@ -972,9 +977,12 @@ proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
     result = processTransf(c, result, prc)
     liftDefer(c, result)
     #result = liftLambdas(prc, result)
-    incl(result.flags, nfTransf)
     when useEffectSystem: trackProc(prc, result)
-    #if prc.name.s == "testbody":
+    result = liftLocalsIfRequested(prc, result)
+    if c.needsDestroyPass and newDestructors:
+      result = injectDestructorCalls(prc, result)
+    incl(result.flags, nfTransf)
+      #if prc.name.s == "testbody":
     #  echo renderTree(result)
 
 proc transformStmt*(module: PSym, n: PNode): PNode =
@@ -985,10 +993,12 @@ proc transformStmt*(module: PSym, n: PNode): PNode =
     result = processTransf(c, n, module)
     liftDefer(c, result)
     #result = liftLambdasForTopLevel(module, result)
-    incl(result.flags, nfTransf)
     when useEffectSystem: trackTopLevelStmt(module, result)
     #if n.info ?? "temp.nim":
     #  echo renderTree(result, {renderIds})
+    if c.needsDestroyPass and newDestructors:
+      result = injectDestructorCalls(module, result)
+    incl(result.flags, nfTransf)
 
 proc transformExpr*(module: PSym, n: PNode): PNode =
   if nfTransf in n.flags:
@@ -997,4 +1007,6 @@ proc transformExpr*(module: PSym, n: PNode): PNode =
     var c = openTransf(module, "")
     result = processTransf(c, n, module)
     liftDefer(c, result)
+    if c.needsDestroyPass and newDestructors:
+      result = injectDestructorCalls(module, result)
     incl(result.flags, nfTransf)

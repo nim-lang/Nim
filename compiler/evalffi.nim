@@ -86,10 +86,10 @@ proc mapType(t: ast.PType): ptr libffi.TType =
     else: result = nil
   of tyFloat, tyFloat64: result = addr libffi.type_double
   of tyFloat32: result = addr libffi.type_float
-  of tyVar, tyPointer, tyPtr, tyRef, tyCString, tySequence, tyString, tyExpr,
+  of tyVar, tyLent, tyPointer, tyPtr, tyRef, tyCString, tySequence, tyString, tyExpr,
      tyStmt, tyTypeDesc, tyProc, tyArray, tyStatic, tyNil:
     result = addr libffi.type_pointer
-  of tyDistinct, tyAlias:
+  of tyDistinct, tyAlias, tySink:
     result = mapType(t.sons[0])
   else:
     result = nil
@@ -112,12 +112,12 @@ template `+!`(x, y: untyped): untyped =
 proc packSize(v: PNode, typ: PType): int =
   ## computes the size of the blob
   case typ.kind
-  of tyPtr, tyRef, tyVar:
+  of tyPtr, tyRef, tyVar, tyLent:
     if v.kind in {nkNilLit, nkPtrLit}:
       result = sizeof(pointer)
     else:
       result = sizeof(pointer) + packSize(v.sons[0], typ.lastSon)
-  of tyDistinct, tyGenericInst, tyAlias:
+  of tyDistinct, tyGenericInst, tyAlias, tySink:
     result = packSize(v, typ.sons[0])
   of tyArray:
     # consider: ptr array[0..1000_000, int] which is common for interfacing;
@@ -209,7 +209,7 @@ proc pack(v: PNode, typ: PType, res: pointer) =
       awr(cstring, cstring(v.strVal))
     else:
       globalError(v.info, "cannot map pointer/proc value to FFI")
-  of tyPtr, tyRef, tyVar:
+  of tyPtr, tyRef, tyVar, tyLent:
     if v.kind == nkNilLit:
       # nothing to do since the memory is 0 initialized anyway
       discard
@@ -225,13 +225,13 @@ proc pack(v: PNode, typ: PType, res: pointer) =
       awr(pointer, res +! sizeof(pointer))
   of tyArray:
     let baseSize = typ.sons[1].getSize
-    for i in 0 .. <v.len:
+    for i in 0 ..< v.len:
       pack(v.sons[i], typ.sons[1], res +! i * baseSize)
   of tyObject, tyTuple:
     packObject(v, typ, res)
   of tyNil:
     discard
-  of tyDistinct, tyGenericInst, tyAlias:
+  of tyDistinct, tyGenericInst, tyAlias, tySink:
     pack(v, typ.sons[0], res)
   else:
     globalError(v.info, "cannot map value to FFI " & typeToString(v.typ))
@@ -291,7 +291,7 @@ proc unpackArray(x: pointer, typ: PType, n: PNode): PNode =
     if result.kind != nkBracket:
       globalError(n.info, "cannot map value from FFI")
   let baseSize = typ.sons[1].getSize
-  for i in 0 .. < result.len:
+  for i in 0 ..< result.len:
     result.sons[i] = unpack(x +! i * baseSize, typ.sons[1], result.sons[i])
 
 proc canonNodeKind(k: TNodeKind): TNodeKind =
@@ -364,7 +364,7 @@ proc unpack(x: pointer, typ: PType, n: PNode): PNode =
       result = n
     else:
       awi(nkPtrLit, cast[ByteAddress](p))
-  of tyPtr, tyRef, tyVar:
+  of tyPtr, tyRef, tyVar, tyLent:
     let p = rd(pointer, x)
     if p.isNil:
       setNil()
@@ -388,14 +388,14 @@ proc unpack(x: pointer, typ: PType, n: PNode): PNode =
       aws(nkStrLit, $p)
   of tyNil:
     setNil()
-  of tyDistinct, tyGenericInst, tyAlias:
+  of tyDistinct, tyGenericInst, tyAlias, tySink:
     result = unpack(x, typ.lastSon, n)
   else:
     # XXX what to do with 'array' here?
     globalError(n.info, "cannot map value from FFI " & typeToString(typ))
 
 proc fficast*(x: PNode, destTyp: PType): PNode =
-  if x.kind == nkPtrLit and x.typ.kind in {tyPtr, tyRef, tyVar, tyPointer,
+  if x.kind == nkPtrLit and x.typ.kind in {tyPtr, tyRef, tyVar, tyLent, tyPointer,
                                            tyProc, tyCString, tyString,
                                            tySequence}:
     result = newNodeIT(x.kind, x.info, destTyp)

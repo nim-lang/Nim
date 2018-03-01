@@ -66,7 +66,8 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, typ: PType) =
 
   var p = c.p
   case typ.kind
-  of tyGenericInst, tyGenericBody, tyTypeDesc, tyAlias, tyDistinct:
+  of tyGenericInst, tyGenericBody, tyTypeDesc, tyAlias, tyDistinct, tyInferred,
+     tySink:
     genTraverseProc(c, accessor, lastSon(typ))
   of tyArray:
     let arraySize = lengthOrd(typ.sons[0])
@@ -121,7 +122,8 @@ proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash;
   var c: TTraversalClosure
   var p = newProc(nil, m)
   result = "Marker_" & getTypeName(m, origTyp, sig)
-  let typ = origTyp.skipTypes(abstractInst)
+  var typ = origTyp.skipTypes(abstractInst)
+  if typ.kind == tyOpt: typ = optLowering(typ)
 
   case reason
   of tiNew: c.visitorFrmt = "#nimGCvisit((void*)$1, op);$n"
@@ -150,8 +152,8 @@ proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash;
   m.s[cfsProcHeaders].addf("$1;$n", [header])
   m.s[cfsProcs].add(generatedProc)
 
-proc genTraverseProcForGlobal(m: BModule, s: PSym): Rope =
-  discard genTypeInfo(m, s.loc.t)
+proc genTraverseProcForGlobal(m: BModule, s: PSym; info: TLineInfo): Rope =
+  discard genTypeInfo(m, s.loc.t, info)
 
   var c: TTraversalClosure
   var p = newProc(nil, m)

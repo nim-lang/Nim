@@ -58,12 +58,15 @@
 ## You can then begin accepting connections using the ``accept`` procedure.
 ##
 ## .. code-block:: Nim
-##   var client = newSocket()
+##   var client = new Socket
 ##   var address = ""
 ##   while true:
 ##     socket.acceptAddr(client, address)
 ##     echo("Client connected from: ", address)
 ##
+## **Note:** The ``client`` variable is initialised with ``new Socket`` **not**
+## ``newSocket()``. The difference is that the latter creates a new file
+## descriptor.
 
 {.deadCodeElim: on.}
 import nativesockets, os, strutils, parseutils, times, sets, options
@@ -145,7 +148,7 @@ type
 
   SOBool* = enum ## Boolean socket options.
     OptAcceptConn, OptBroadcast, OptDebug, OptDontRoute, OptKeepAlive,
-    OptOOBInline, OptReuseAddr, OptReusePort
+    OptOOBInline, OptReuseAddr, OptReusePort, OptNoDelay
 
   ReadLineResult* = enum ## result for readLineAsync
     ReadFullLine, ReadPartialLine, ReadDisconnected, ReadNone
@@ -221,7 +224,7 @@ proc newSocket*(domain, sockType, protocol: cint, buffered = true): Socket =
   ## Creates a new socket.
   ##
   ## If an error occurs EOS will be raised.
-  let fd = newNativeSocket(domain, sockType, protocol)
+  let fd = createNativeSocket(domain, sockType, protocol)
   if fd == osInvalidSocket:
     raiseOSError(osLastError())
   result = newSocket(fd, domain.Domain, sockType.SockType, protocol.Protocol,
@@ -232,7 +235,7 @@ proc newSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
   ## Creates a new socket.
   ##
   ## If an error occurs EOS will be raised.
-  let fd = newNativeSocket(domain, sockType, protocol)
+  let fd = createNativeSocket(domain, sockType, protocol)
   if fd == osInvalidSocket:
     raiseOSError(osLastError())
   result = newSocket(fd, domain, sockType, protocol, buffered)
@@ -413,7 +416,7 @@ proc isIpAddress*(address_str: string): bool {.tags: [].} =
 
 when defineSsl:
   CRYPTO_malloc_init()
-  SslLibraryInit()
+  doAssert SslLibraryInit() == 1
   SslLoadErrorStrings()
   ErrLoadBioStrings()
   OpenSSL_add_all_algorithms()
@@ -427,8 +430,14 @@ when defineSsl:
       raise newException(SSLError, "No error reported.")
     if err == -1:
       raiseOSError(osLastError())
-    var errStr = ErrErrorString(err, nil)
-    raise newException(SSLError, $errStr)
+    var errStr = $ErrErrorString(err, nil)
+    case err
+    of 336032814, 336032784:
+      errStr = "Please upgrade your OpenSSL library, it does not support the " &
+               "necessary protocols. OpenSSL error is: " & errStr
+    else:
+      discard
+    raise newException(SSLError, errStr)
 
   proc getExtraData*(ctx: SSLContext, index: int): RootRef =
     ## Retrieves arbitrary data stored inside SSLContext.
@@ -753,10 +762,10 @@ proc acceptAddr*(server: Socket, client: var Socket, address: var string,
   ## flag is specified then this error will not be raised and instead
   ## accept will be called again.
   assert(client != nil)
-  var sockAddress: Sockaddr_in
-  var addrLen = sizeof(sockAddress).SockLen
-  var sock = accept(server.fd, cast[ptr SockAddr](addr(sockAddress)),
-                    addr(addrLen))
+  assert client.fd.int <= 0, "Client socket needs to be initialised with " &
+                             "`new`, not `newSocket`."
+  let ret = accept(server.fd)
+  let sock = ret[0]
 
   if sock == osInvalidSocket:
     let err = osLastError()
@@ -764,6 +773,7 @@ proc acceptAddr*(server: Socket, client: var Socket, address: var string,
       acceptAddr(server, client, address, flags)
     raiseOSError(err)
   else:
+    address = ret[1]
     client.fd = sock
     client.isBuffered = server.isBuffered
 
@@ -775,9 +785,6 @@ proc acceptAddr*(server: Socket, client: var Socket, address: var string,
         server.sslContext.wrapSocket(client)
         let ret = SSLAccept(client.sslHandle)
         socketError(client, ret, false)
-
-    # Client socket is set above.
-    address = $inet_ntoa(sockAddress.sin_addr)
 
 when false: #defineSsl:
   proc acceptAddrSSL*(server: Socket, client: var Socket,
@@ -857,14 +864,23 @@ proc close*(socket: Socket) =
         # shutdown i.e not wait for the peers "close notify" alert with a second
         # call to SSLShutdown
         let res = SSLShutdown(socket.sslHandle)
-        SSLFree(socket.sslHandle)
-        socket.sslHandle = nil
         if res == 0:
           discard
         elif res != 1:
           socketError(socket, res)
   finally:
+    when defineSsl:
+      if socket.isSSL and socket.sslHandle != nil:
+        SSLFree(socket.sslHandle)
+        socket.sslHandle = nil
+
     socket.fd.close()
+    socket.fd = osInvalidSocket
+
+when defined(posix):
+  from posix import TCP_NODELAY
+else:
+  from winlean import TCP_NODELAY
 
 proc toCInt*(opt: SOBool): cint =
   ## Converts a ``SOBool`` into its Socket Option cint representation.
@@ -877,6 +893,7 @@ proc toCInt*(opt: SOBool): cint =
   of OptOOBInline: SO_OOBINLINE
   of OptReuseAddr: SO_REUSEADDR
   of OptReusePort: SO_REUSEPORT
+  of OptNoDelay: TCP_NODELAY
 
 proc getSockOpt*(socket: Socket, opt: SOBool, level = SOL_SOCKET): bool {.
   tags: [ReadIOEffect].} =
@@ -899,6 +916,12 @@ proc getPeerAddr*(socket: Socket): (string, Port) =
 proc setSockOpt*(socket: Socket, opt: SOBool, value: bool, level = SOL_SOCKET) {.
   tags: [WriteIOEffect].} =
   ## Sets option ``opt`` to a boolean value specified by ``value``.
+  ##
+  ## .. code-block:: Nim
+  ##   var socket = newSocket()
+  ##   socket.setSockOpt(OptReusePort, true)
+  ##   socket.setSockOpt(OptNoDelay, true, level=IPPROTO_TCP.toInt)
+  ##
   var valuei = cint(if value: 1 else: 0)
   setSockOptInt(socket.fd, cint(level), toCInt(opt), valuei)
 
@@ -990,15 +1013,25 @@ proc select(readfd: Socket, timeout = 500): int =
   var fds = @[readfd.fd]
   result = select(fds, timeout)
 
+proc isClosed(socket: Socket): bool =
+  socket.fd == osInvalidSocket
+
+proc uniRecv(socket: Socket, buffer: pointer, size, flags: cint): int =
+  ## Handles SSL and non-ssl recv in a nice package.
+  ##
+  ## In particular handles the case where socket has been closed properly
+  ## for both SSL and non-ssl.
+  result = 0
+  assert(not socket.isClosed, "Cannot `recv` on a closed socket")
+  when defineSsl:
+    if socket.isSsl:
+      return SSLRead(socket.sslHandle, buffer, size)
+
+  return recv(socket.fd, buffer, size, flags)
+
 proc readIntoBuf(socket: Socket, flags: int32): int =
   result = 0
-  when defineSsl:
-    if socket.isSSL:
-      result = SSLRead(socket.sslHandle, addr(socket.buffer), int(socket.buffer.high))
-    else:
-      result = recv(socket.fd, addr(socket.buffer), cint(socket.buffer.high), flags)
-  else:
-    result = recv(socket.fd, addr(socket.buffer), cint(socket.buffer.high), flags)
+  result = uniRecv(socket, addr(socket.buffer), socket.buffer.high, flags)
   if result < 0:
     # Save it in case it gets reset (the Nim codegen occasionally may call
     # Win API functions which reset it).
@@ -1044,16 +1077,16 @@ proc recv*(socket: Socket, data: pointer, size: int): int {.tags: [ReadIOEffect]
   else:
     when defineSsl:
       if socket.isSSL:
-        if socket.sslHasPeekChar:
+        if socket.sslHasPeekChar: # TODO: Merge this peek char mess into uniRecv
           copyMem(data, addr(socket.sslPeekChar), 1)
           socket.sslHasPeekChar = false
           if size-1 > 0:
             var d = cast[cstring](data)
-            result = SSLRead(socket.sslHandle, addr(d[1]), size-1) + 1
+            result = uniRecv(socket, addr(d[1]), cint(size-1), 0'i32) + 1
           else:
             result = 1
         else:
-          result = SSLRead(socket.sslHandle, data, size)
+          result = uniRecv(socket, data, size.cint, 0'i32)
       else:
         result = recv(socket.fd, data, size.cint, 0'i32)
     else:
@@ -1120,17 +1153,21 @@ proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
   ##
   ## When 0 is returned the socket's connection has been closed.
   ##
-  ## This function will throw an EOS exception when an error occurs. A value
+  ## This function will throw an OSError exception when an error occurs. A value
   ## lower than 0 is never returned.
   ##
   ## A timeout may be specified in milliseconds, if enough data is not received
-  ## within the time specified an ETimeout exception will be raised.
+  ## within the time specified an TimeoutError exception will be raised.
   ##
   ## **Note**: ``data`` must be initialised.
   ##
   ## **Warning**: Only the ``SafeDisconn`` flag is currently supported.
   data.setLen(size)
-  result = recv(socket, cstring(data), size, timeout)
+  result =
+    if timeout == -1:
+      recv(socket, cstring(data), size)
+    else:
+      recv(socket, cstring(data), size, timeout)
   if result < 0:
     data.setLen(0)
     let lastError = getSocketError(socket)
@@ -1167,7 +1204,7 @@ proc peekChar(socket: Socket, c: var char): int {.tags: [ReadIOEffect].} =
     when defineSsl:
       if socket.isSSL:
         if not socket.sslHasPeekChar:
-          result = SSLRead(socket.sslHandle, addr(socket.sslPeekChar), 1)
+          result = uniRecv(socket, addr(socket.sslPeekChar), 1, 0'i32)
           socket.sslHasPeekChar = true
 
         c = socket.sslPeekChar
@@ -1301,6 +1338,7 @@ proc send*(socket: Socket, data: pointer, size: int): int {.
   ##
   ## **Note**: This is a low-level version of ``send``. You likely should use
   ## the version below.
+  assert(not socket.isClosed, "Cannot `send` on a closed socket")
   when defineSsl:
     if socket.isSSL:
       return SSLWrite(socket.sslHandle, cast[cstring](data), size)
@@ -1345,6 +1383,7 @@ proc sendTo*(socket: Socket, address: string, port: Port, data: pointer,
   ## which is defined below.
   ##
   ## **Note:** This proc is not available for SSL sockets.
+  assert(not socket.isClosed, "Cannot `sendTo` on a closed socket")
   var aiList = getAddrInfo(address, port, af)
 
   # try all possibilities:
@@ -1516,7 +1555,7 @@ proc dial*(address: string, port: Port,
     domain = domainOpt.unsafeGet()
     lastFd = fdPerDomain[ord(domain)]
     if lastFd == osInvalidSocket:
-      lastFd = newNativeSocket(domain, sockType, protocol)
+      lastFd = createNativeSocket(domain, sockType, protocol)
       if lastFd == osInvalidSocket:
         # we always raise if socket creation failed, because it means a
         # network system problem (e.g. not enough FDs), and not an unreachable

@@ -16,11 +16,11 @@ proc addPath*(path: string, info: TLineInfo) =
     options.searchPaths.insert(path, 0)
 
 type
-  Version = distinct string
+  Version* = distinct string
 
-proc `$`(ver: Version): string {.borrow.}
+proc `$`*(ver: Version): string {.borrow.}
 
-proc newVersion(ver: string): Version =
+proc newVersion*(ver: string): Version =
   doAssert(ver.len == 0 or ver[0] in {'#', '\0'} + Digits,
            "Wrong version: " & ver)
   return Version(ver)
@@ -28,7 +28,11 @@ proc newVersion(ver: string): Version =
 proc isSpecial(ver: Version): bool =
   return ($ver).len > 0 and ($ver)[0] == '#'
 
-proc `<`(ver: Version, ver2: Version): bool =
+proc isValidVersion(v: string): bool =
+  if v.len > 0:
+    if v[0] in {'#'} + Digits: return true
+
+proc `<`*(ver: Version, ver2: Version): bool =
   ## This is synced from Nimble's version module.
 
   # Handling for special versions such as "#head" or "#branch".
@@ -72,15 +76,23 @@ proc getPathVersion*(p: string): tuple[name, version: string] =
     result.name = p
     return
 
+  for i in sepIdx..<p.len:
+    if p[i] in {DirSep, AltSep}:
+      result.name = p
+      return
+
   result.name = p[0 .. sepIdx - 1]
   result.version = p.substr(sepIdx + 1)
 
-proc addPackage(packages: StringTableRef, p: string) =
+proc addPackage(packages: StringTableRef, p: string; info: TLineInfo) =
   let (name, ver) = getPathVersion(p)
-  let version = newVersion(ver)
-  if packages.getOrDefault(name).newVersion < version or
-     (not packages.hasKey(name)):
-    packages[name] = $version
+  if isValidVersion(ver):
+    let version = newVersion(ver)
+    if packages.getOrDefault(name).newVersion < version or
+      (not packages.hasKey(name)):
+      packages[name] = $version
+  else:
+    localError(info, "invalid package name: " & p)
 
 iterator chosen(packages: StringTableRef): string =
   for key, val in pairs(packages):
@@ -109,7 +121,7 @@ proc addPathRec(dir: string, info: TLineInfo) =
   if dir[pos] in {DirSep, AltSep}: inc(pos)
   for k,p in os.walkDir(dir):
     if k == pcDir and p[pos] != '.':
-      addPackage(packages, p)
+      addPackage(packages, p, info)
   for p in packages.chosen:
     addNimblePath(p, info)
 

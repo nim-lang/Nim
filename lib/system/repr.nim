@@ -16,34 +16,39 @@ proc reprInt(x: int64): string {.compilerproc.} = return $x
 proc reprFloat(x: float): string {.compilerproc.} = return $x
 
 proc reprPointer(x: pointer): string {.compilerproc.} =
-  var buf: array[0..59, char]
-  discard c_sprintf(buf, "%p", x)
-  return $buf
+  when defined(nimNoArrayToCstringConversion):
+    result = newString(60)
+    let n = c_sprintf(addr result[0], "%p", x)
+    setLen(result, n)
+  else:
+    var buf: array[0..59, char]
+    discard c_sprintf(buf, "%p", x)
+    return $buf
 
 proc `$`(x: uint64): string =
   if x == 0:
     result = "0"
   else:
-    var buf: array[60, char]
+    result = newString(60)
     var i = 0
     var n = x
     while n != 0:
       let nn = n div 10'u64
-      buf[i] = char(n - 10'u64 * nn + ord('0'))
+      result[i] = char(n - 10'u64 * nn + ord('0'))
       inc i
       n = nn
+    result.setLen i
 
     let half = i div 2
     # Reverse
-    for t in 0 .. < half: swap(buf[t], buf[i-t-1])
-    result = $buf
+    for t in 0 .. half-1: swap(result[t], result[i-t-1])
 
 proc reprStrAux(result: var string, s: cstring; len: int) =
   if cast[pointer](s) == nil:
     add result, "nil"
     return
   add result, reprPointer(cast[pointer](s)) & "\""
-  for i in 0.. <len:
+  for i in 0 .. pred(len):
     let c = s[i]
     case c
     of '"': add result, "\\\""

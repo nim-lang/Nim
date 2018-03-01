@@ -127,7 +127,8 @@ elif defined(genode):
   proc initThread(s: var SysThread,
                   stackSize: culonglong,
                   entry: GenodeThreadProc,
-                  arg: pointer) {.
+                  arg: pointer,
+                  affinity: cuint) {.
     importcpp: "#.initThread(genodeEnv, @)".}
 
   proc threadVarAlloc(): ThreadVarSlot = 0
@@ -254,9 +255,9 @@ when emulatedThreadVars:
   proc nimThreadVarsSize(): int {.noconv, importc: "NimThreadVarsSize".}
 
 # we preallocate a fixed size for thread local storage, so that no heap
-# allocations are needed. Currently less than 7K are used on a 64bit machine.
+# allocations are needed. Currently less than 16K are used on a 64bit machine.
 # We use ``float`` for proper alignment:
-const nimTlsSize {.intdefine.} = 8000
+const nimTlsSize {.intdefine.} = 16000
 type
   ThreadLocalStorage = array[0..(nimTlsSize div sizeof(float)), float]
 
@@ -397,7 +398,7 @@ template afterThreadRuns() =
     threadDestructionHandlers[i]()
 
 when not defined(boehmgc) and not hasSharedHeap and not defined(gogc) and not defined(gcRegions):
-  proc deallocOsPages()
+  proc deallocOsPages() {.rtl.}
 
 when defined(boehmgc):
   type GCStackBaseProc = proc(sb: pointer, t: pointer) {.noconv.}
@@ -567,6 +568,9 @@ when hostOS == "windows":
     setThreadAffinityMask(t.sys, uint(1 shl cpu))
 
 elif defined(genode):
+  var affinityOffset: cuint = 1
+  # CPU affinity offset for next thread, safe to roll-over
+
   proc createThread*[TArg](t: var Thread[TArg],
                            tp: proc (arg: TArg) {.thread, nimcall.},
                            param: TArg) =
@@ -577,7 +581,8 @@ elif defined(genode):
     when hasSharedHeap: t.stackSize = ThreadStackSize
     t.sys.initThread(
       ThreadStackSize.culonglong,
-      threadProcWrapper[TArg], addr(t))
+      threadProcWrapper[TArg], addr(t), affinityOffset)
+    inc affinityOffset
 
   proc pinToCpu*[Arg](t: var Thread[Arg]; cpu: Natural) =
     {.hint: "cannot change Genode thread CPU affinity after initialization".}

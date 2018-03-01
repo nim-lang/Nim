@@ -190,11 +190,11 @@ proc interestingVar(s: PSym): bool {.inline.} =
 
 proc illegalCapture(s: PSym): bool {.inline.} =
   result = skipTypes(s.typ, abstractInst).kind in
-                   {tyVar, tyOpenArray, tyVarargs} or
+                   {tyVar, tyOpenArray, tyVarargs, tyLent} or
       s.kind == skResult
 
 proc isInnerProc(s: PSym): bool =
-  if s.kind in {skProc, skMethod, skConverter, skIterator} and s.magic == mNone:
+  if s.kind in {skProc, skFunc, skMethod, skConverter, skIterator} and s.magic == mNone:
     result = s.skipGenericOwner.kind in routineKinds
 
 proc newAsgnStmt(le, ri: PNode, info: TLineInfo): PNode =
@@ -371,7 +371,8 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
   case n.kind
   of nkSym:
     let s = n.sym
-    if s.kind in {skProc, skMethod, skConverter, skIterator} and s.typ != nil and s.typ.callConv == ccClosure:
+    if s.kind in {skProc, skFunc, skMethod, skConverter, skIterator} and
+        s.typ != nil and s.typ.callConv == ccClosure:
       # this handles the case that the inner proc was declared as
       # .closure but does not actually capture anything:
       addClosureParam(c, s, n.info)
@@ -443,7 +444,7 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
     discard
   of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef:
     discard
-  of nkLambdaKinds, nkIteratorDef:
+  of nkLambdaKinds, nkIteratorDef, nkFuncDef:
     if n.typ != nil:
       detectCapturedVars(n[namePos], owner, c)
   else:
@@ -454,6 +455,7 @@ type
   LiftingPass = object
     processed: IntSet
     envVars: Table[int, PNode]
+    inContainer: int
 
 proc initLiftingPass(fn: PSym): LiftingPass =
   result.processed = initIntSet()
@@ -596,6 +598,8 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
 
 proc transformYield(n: PNode; owner: PSym; d: DetectionPass;
                     c: var LiftingPass): PNode =
+  if c.inContainer > 0:
+    localError(n.info, "invalid control flow: 'yield' within a constructor")
   let state = getStateField(owner)
   assert state != nil
   assert state.typ != nil
@@ -702,11 +706,14 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
       if not c.processed.containsOrIncl(s.id):
         #if s.name.s == "temp":
         #  echo renderTree(s.getBody, {renderIds})
+        let oldInContainer = c.inContainer
+        c.inContainer = 0
         let body = wrapIterBody(liftCapturedVars(s.getBody, s, d, c), s)
         if c.envvars.getOrDefault(s.id).isNil:
           s.ast.sons[bodyPos] = body
         else:
           s.ast.sons[bodyPos] = newTree(nkStmtList, rawClosureCreation(s, d, c), body)
+        c.inContainer = oldInContainer
       if s.typ.callConv == ccClosure:
         result = symToClosure(n, owner, d, c)
     elif s.id in d.capturedVars:
@@ -716,7 +723,7 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
         result = accessViaEnvParam(n, owner)
       else:
         result = accessViaEnvVar(n, owner, d, c)
-  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit,
+  of nkEmpty..pred(nkSym), succ(nkSym)..nkNilLit, nkComesFrom,
      nkTemplateDef, nkTypeSection:
     discard
   of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef:
@@ -730,11 +737,14 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
         # now we know better, so patch it:
         n.sons[0] = x.sons[0]
         n.sons[1] = x.sons[1]
-  of nkLambdaKinds, nkIteratorDef:
+  of nkLambdaKinds, nkIteratorDef, nkFuncDef:
     if n.typ != nil and n[namePos].kind == nkSym:
+      let oldInContainer = c.inContainer
+      c.inContainer = 0
       let m = newSymNode(n[namePos].sym)
       m.typ = n.typ
       result = liftCapturedVars(m, owner, d, c)
+      c.inContainer = oldInContainer
   of nkHiddenStdConv:
     if n.len == 2:
       n.sons[1] = liftCapturedVars(n[1], owner, d, c)
@@ -749,8 +759,12 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
         # special case 'when nimVm' due to bug #3636:
         n.sons[1] = liftCapturedVars(n[1], owner, d, c)
         return
+
+    let inContainer = n.kind in {nkObjConstr, nkBracket}
+    if inContainer: inc c.inContainer
     for i in 0..<n.len:
       n.sons[i] = liftCapturedVars(n[i], owner, d, c)
+    if inContainer: dec c.inContainer
 
 # ------------------ old stuff -------------------------------------------
 
@@ -763,7 +777,10 @@ proc semCaptureSym*(s, owner: PSym) =
       var o = owner.skipGenericOwner
       while o.kind != skModule and o != nil:
         if s.owner == o:
-          owner.typ.callConv = ccClosure
+          if owner.typ.callConv in {ccClosure, ccDefault} or owner.kind == skIterator:
+            owner.typ.callConv = ccClosure
+          else:
+            discard "do not produce an error here, but later"
           #echo "computing .closure for ", owner.name.s, " ", owner.info, " because of ", s.name.s
         o = o.skipGenericOwner
     # since the analysis is not entirely correct, we don't set 'tfCapturesEnv'

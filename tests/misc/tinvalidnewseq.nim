@@ -1,7 +1,7 @@
 discard """
   file: "tinvalidnewseq.nim"
   line: 15
-  errormsg: "type mismatch: got (array[0..6, string], int literal(7))"
+  errormsg: "type mismatch: got <array[0..6, string], int literal(7)>"
 """
 import re, strutils
 

@@ -14,8 +14,8 @@
 
 import dynlib
 
-when defined(vcc):
-  {.passC: "-DWIN32_LEAN_AND_MEAN".}
+
+{.passC: "-DWIN32_LEAN_AND_MEAN".}
 
 const
   useWinUnicode* = not defined(useWinAnsi)
@@ -111,6 +111,7 @@ const
   WAIT_TIMEOUT* = 0x00000102'i32
   WAIT_FAILED* = 0xFFFFFFFF'i32
   INFINITE* = -1'i32
+  STILL_ACTIVE* = 0x00000103'i32
 
   STD_INPUT_HANDLE* = -10'i32
   STD_OUTPUT_HANDLE* = -11'i32
@@ -541,6 +542,7 @@ var
   SO_DONTLINGER* {.importc, header: "winsock2.h".}: cint
   SO_EXCLUSIVEADDRUSE* {.importc, header: "winsock2.h".}: cint # disallow local address reuse
   SO_ERROR* {.importc, header: "winsock2.h".}: cint
+  TCP_NODELAY* {.importc, header: "winsock2.h".}: cint
 
 proc `==`*(x, y: SocketHandle): bool {.borrow.}
 
@@ -664,6 +666,7 @@ const
   CREATE_ALWAYS* = 2'i32
   CREATE_NEW* = 1'i32
   OPEN_EXISTING* = 3'i32
+  OPEN_ALWAYS* = 4'i32
   FILE_BEGIN* = 0'i32
   INVALID_SET_FILE_POINTER* = -1'i32
   NO_ERROR* = 0'i32
@@ -684,6 +687,7 @@ const
   ERROR_FILE_NOT_FOUND* = 2
   ERROR_PATH_NOT_FOUND* = 3
   ERROR_ACCESS_DENIED* = 5
+  ERROR_NO_MORE_FILES* = 18
   ERROR_HANDLE_EOF* = 38
   ERROR_BAD_ARGUMENTS* = 165
 

@@ -1,11 +1,7 @@
 version 1.0 battle plan
 =======================
 
-- make 'not nil' the default (produce warnings instead of errors for
-  a smooth migration path)
-- case objects needs to be safe and need to support pattern matching
-- implement a way to forward object type declarations across module
-  boundaries; C++ style
+- let 'doAssert' analyse the expressions and produce more helpful output
 - fix "high priority" bugs
 - try to fix as many compiler crashes as reasonable
 
@@ -13,21 +9,21 @@ version 1.0 battle plan
 Not critical for 1.0
 ====================
 
-- get GC:v2 stable: nim c --gc:v2 -r -d:useSysAssert -d:useGcAssert -d:smokeCycles -d:useRealtimeGc tests/gc/gctest
+- introduce ``nkStmtListExpr`` for template/macro invokations to produce
+  better stack traces
+- make 'break' not leave named blocks
+- make FlowVar compatible to Futures
+- make 'not nil' the default (produce warnings instead of errors for
+  a smooth migration path)
+- case objects needs to be safe and need to support pattern matching
 
 - find a solution for the  x.f[T](y)  gotcha
 - implement ``.delegate`` for .experimental
-
-- Destructors need to be refined.
 - annotation support for getType()
-- ``concept`` needs to be refined, a nice name for the feature is not enough.
 - make '--implicitStatic:on' the default; then we can also clean up the
   'static[T]' mess in the compiler!
 - ``not`` or ``~`` for the effects system
-- document and stress test ``.partial`` object declarations
 - figure out why C++ bootstrapping is so much slower
-- The bitwise 'not' operator cold be renamed to 'bnot' to
-  prevent 'not 4 == 5' from compiling. -> requires 'mixin' annotation for procs!
 - make 'nil' work for 'add':
   - resizeString
   - incrSeq
@@ -35,7 +31,6 @@ Not critical for 1.0
 - pragmas need 'bindSym' support
 - pragmas need re-work: 'push' is dangerous, 'hasPragma' does not work
   reliably with user-defined pragmas
-- memory manager: add a measure of fragmentation
 - we need a magic thisModule symbol
 - optimize 'genericReset'; 'newException' leads to code bloat
 
@@ -56,7 +51,6 @@ Bugs
 GC
 ==
 
-- use slightly bigger blocks in the allocator
 - resizing of strings/sequences could take into account the memory that
   is allocated
 

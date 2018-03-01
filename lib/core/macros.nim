@@ -21,7 +21,7 @@ type
     nnkInt16Lit, nnkInt32Lit, nnkInt64Lit, nnkUIntLit, nnkUInt8Lit,
     nnkUInt16Lit, nnkUInt32Lit, nnkUInt64Lit, nnkFloatLit,
     nnkFloat32Lit, nnkFloat64Lit, nnkFloat128Lit, nnkStrLit, nnkRStrLit,
-    nnkTripleStrLit, nnkNilLit, nnkMetaNode, nnkDotCall,
+    nnkTripleStrLit, nnkNilLit, nnkComesFrom, nnkDotCall,
     nnkCommand, nnkCall, nnkCallStrLit, nnkInfix,
     nnkPrefix, nnkPostfix, nnkHiddenCallConv,
     nnkExprEqExpr,
@@ -75,7 +75,8 @@ type
     nnkClosure,
     nnkGotoState,
     nnkState,
-    nnkBreakState
+    nnkBreakState,
+    nnkFuncDef
 
   NimNodeKinds* = set[NimNodeKind]
   NimTypeKind* = enum  # some types are no longer used, see ast.nim
@@ -96,14 +97,14 @@ type
     ntyError,
     ntyBuiltinTypeClass, ntyUserTypeClass, ntyUserTypeClassInst,
     ntyCompositeTypeClass, ntyInferred, ntyAnd, ntyOr, ntyNot,
-    ntyAnything, ntyStatic, ntyFromExpr, ntyFieldAccessor, ntyVoid
+    ntyAnything, ntyStatic, ntyFromExpr, ntyOpt, ntyVoid
 
   TNimTypeKinds* {.deprecated.} = set[NimTypeKind]
   NimSymKind* = enum
     nskUnknown, nskConditional, nskDynLib, nskParam,
     nskGenericParam, nskTemp, nskModule, nskType, nskVar, nskLet,
     nskConst, nskResult,
-    nskProc, nskMethod, nskIterator,
+    nskProc, nskFunc, nskMethod, nskIterator,
     nskConverter, nskMacro, nskTemplate, nskField,
     nskEnumField, nskForVar, nskLabel,
     nskStub
@@ -112,7 +113,9 @@ type
 
 type
   NimIdent* = object of RootObj
-    ## represents a Nim identifier in the AST
+    ## represents a Nim identifier in the AST. **Note**: This is only
+    ## rarely useful, for identifier construction from a string
+    ## use ``ident"abc"``.
 
   NimSymObj = object # hidden
   NimSym* = ref NimSymObj
@@ -127,15 +130,13 @@ const
   nnkLiterals* = {nnkCharLit..nnkNilLit}
   nnkCallKinds* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
                    nnkCallStrLit}
+  nnkPragmaCallKinds = {nnkExprColonExpr, nnkCall, nnkCallStrLit}
 
-proc `[]`*(n: NimNode, i: int): NimNode {.magic: "NChild", noSideEffect.}
-  ## get `n`'s `i`'th child.
+proc `!`*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated.}
+  ## constructs an identifier from the string `s`
+  ## **Deprecated since version 0.18.0**: Use ``toNimIdent`` instead.
 
-proc `[]=`*(n: NimNode, i: int, child: NimNode) {.magic: "NSetChild",
-  noSideEffect.}
-  ## set `n`'s `i`'th child to `child`.
-
-proc `!`*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect.}
+proc toNimIdent*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect.}
   ## constructs an identifier from the string `s`
 
 proc `$`*(i: NimIdent): string {.magic: "IdentToStr", noSideEffect.}
@@ -160,6 +161,20 @@ proc sameType*(a, b: NimNode): bool {.magic: "SameNodeType", noSideEffect.} =
 
 proc len*(n: NimNode): int {.magic: "NLen", noSideEffect.}
   ## returns the number of children of `n`.
+
+proc `[]`*(n: NimNode, i: int): NimNode {.magic: "NChild", noSideEffect.}
+  ## get `n`'s `i`'th child.
+
+proc `[]`*(n: NimNode, i: BackwardsIndex): NimNode = n[n.len - i.int]
+  ## get `n`'s `i`'th child.
+
+proc `[]=`*(n: NimNode, i: int, child: NimNode) {.magic: "NSetChild",
+  noSideEffect.}
+  ## set `n`'s `i`'th child to `child`.
+
+proc `[]=`*(n: NimNode, i: BackwardsIndex, child: NimNode) =
+  ## set `n`'s `i`'th child to `child`.
+  n[n.len - i.int] = child
 
 proc add*(father, child: NimNode): NimNode {.magic: "NAdd", discardable,
   noSideEffect, locks: 0.}
@@ -229,7 +244,7 @@ proc `ident=`*(n: NimNode, val: NimIdent) {.magic: "NSetIdent", noSideEffect.}
 proc `strVal=`*(n: NimNode, val: string) {.magic: "NSetStrVal", noSideEffect.}
 
 proc newNimNode*(kind: NimNodeKind,
-                 lineInfoFrom: NimNode=nil): NimNode
+                 lineInfoFrom: NimNode = nil): NimNode
   {.magic: "NNewNimNode", noSideEffect.}
   ## Creates a new AST node of the specified kind.
   ##
@@ -282,7 +297,7 @@ proc newIdentNode*(i: NimIdent): NimNode {.compileTime.} =
 proc newIdentNode*(i: string): NimNode {.compileTime.} =
   ## creates an identifier node from `i`
   result = newNimNode(nnkIdent)
-  result.ident = !i
+  result.ident = toNimIdent i
 
 
 type
@@ -392,7 +407,7 @@ proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.}
   ##
   ## .. code-block:: nim
   ##
-  ##   macro check(ex: expr): stmt =
+  ##   macro check(ex: untyped): typed =
   ##     # this is a simplified version of the check macro from the
   ##     # unittest module.
   ##
@@ -426,6 +441,13 @@ proc expectLen*(n: NimNode, len: int) {.compileTime.} =
   ## compilation aborts with an error message. This is useful for writing
   ## macros that check its number of arguments.
   if n.len != len: error("macro expects a node with " & $len & " children", n)
+
+proc expectLen*(n: NimNode, min, max: int) {.compileTime.} =
+  ## checks that `n` has a number of children in the range ``min..max``.
+  ## If this is not the case, compilation aborts with an error message.
+  ## This is useful for writing macros that check its number of arguments.
+  if n.len < min or n.len > max:
+    error("macro expects a node with " & $min & ".." & $max " children", n)
 
 proc newTree*(kind: NimNodeKind,
               children: varargs[NimNode]): NimNode {.compileTime.} =
@@ -461,7 +483,6 @@ proc newLit*(c: char): NimNode {.compileTime.} =
   ## produces a new character literal node.
   result = newNimNode(nnkCharLit)
   result.intVal = ord(c)
-
 
 proc newLit*(i: int): NimNode {.compileTime.} =
   ## produces a new integer literal node.
@@ -566,7 +587,7 @@ proc newLit*[T](arg: seq[T]): NimNode {.compileTime.} =
 proc newLit*(arg: tuple): NimNode {.compileTime.} =
   result = nnkPar.newTree
   for a,b in arg.fieldPairs:
-    result.add nnkExprColonExpr.newTree( newIdentNode(a), newLit(b) )
+    result.add nnkExprColonExpr.newTree(newIdentNode(a), newLit(b))
 
 proc newLit*(s: string): NimNode {.compileTime.} =
   ## produces a new string literal node.
@@ -600,7 +621,7 @@ proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
     of nnkCharLit..nnkInt64Lit: res.add(" " & $n.intVal)
     of nnkFloatLit..nnkFloat64Lit: res.add(" " & $n.floatVal)
     of nnkStrLit..nnkTripleStrLit: res.add(" " & $n.strVal)
-    of nnkIdent: res.add(" !\"" & $n.ident & '"')
+    of nnkIdent: res.add(" ident\"" & $n.ident & '"')
     of nnkSym: res.add(" \"" & $n.symbol & '"')
     of nnkNone: assert false
     else:
@@ -625,7 +646,7 @@ proc lispRepr*(n: NimNode): string {.compileTime, benign.} =
   of nnkCharLit..nnkInt64Lit: add(result, $n.intVal)
   of nnkFloatLit..nnkFloat64Lit: add(result, $n.floatVal)
   of nnkStrLit..nnkTripleStrLit: add(result, $n.strVal)
-  of nnkIdent: add(result, "!\"" & $n.ident & '"')
+  of nnkIdent: add(result, "ident\"" & $n.ident & '"')
   of nnkSym: add(result, $n.symbol)
   of nnkNone: assert false
   else:
@@ -649,7 +670,7 @@ proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
   ## .. code-block:: nim
   ##   nnkStmtList.newTree(
   ##     nnkCommand.newTree(
-  ##       newIdentNode(!"echo"),
+  ##       newIdentNode("echo"),
   ##       newLit("Hello world")
   ##     )
   ##   )
@@ -669,7 +690,7 @@ proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
         t = x
       result = newString(len)
       for j in countdown(len-1, 0):
-        result[j] = HexChars[t and 0xF]
+        result[j] = HexChars[int(t and 0xF)]
         t = t shr 4
         # handle negative overflow
         if t == 0 and x < 0: t = -1
@@ -703,7 +724,7 @@ proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
     of nnkIntLit..nnkInt64Lit: res.add($n.intVal)
     of nnkFloatLit..nnkFloat64Lit: res.add($n.floatVal)
     of nnkStrLit..nnkTripleStrLit: res.add($n.strVal.escape())
-    of nnkIdent: res.add("!" & ($n.ident).escape())
+    of nnkIdent: res.add(($n.ident).escape())
     of nnkSym: res.add(($n.symbol).escape())
     of nnkNone: assert false
     else:
@@ -838,12 +859,13 @@ proc newNilLit*(): NimNode {.compileTime.} =
   ## New nil literal shortcut
   result = newNimNode(nnkNilLit)
 
-proc last*(node: NimNode): NimNode {.compileTime.} = node[<node.len]
+proc last*(node: NimNode): NimNode {.compileTime.} = node[node.len-1]
   ## Return the last item in nodes children. Same as `node[^1]`
 
 
 const
-  RoutineNodes* = {nnkProcDef, nnkMethodDef, nnkDo, nnkLambda, nnkIteratorDef, nnkTemplateDef, nnkConverterDef}
+  RoutineNodes* = {nnkProcDef, nnkFuncDef, nnkMethodDef, nnkDo, nnkLambda,
+                   nnkIteratorDef, nnkTemplateDef, nnkConverterDef}
   AtomicNodes* = {nnkNone..nnkNilLit}
   CallNodes* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
     nnkCallStrLit, nnkHiddenCallConv}
@@ -882,10 +904,52 @@ proc newIfStmt*(branches: varargs[tuple[cond, body: NimNode]]):
   for i in branches:
     result.add(newNimNode(nnkElifBranch).add(i.cond, i.body))
 
+proc newEnum*(name: NimNode, fields: openArray[NimNode],
+              public, pure: bool): NimNode {.compileTime.} =
+
+  ## Creates a new enum. `name` must be an ident. Fields are allowed to be
+  ## either idents or EnumFieldDef
+  ##
+  ## .. code-block:: nim
+  ##
+  ##    newEnum(
+  ##      name    = ident("Colors"),
+  ##      fields  = [ident("Blue"), ident("Red")],
+  ##      public  = true, pure = false)
+  ##
+  ##    # type Colors* = Blue Red
+  ##
+
+  expectKind name, nnkIdent
+  doAssert len(fields) > 0, "Enum must contain at least one field"
+  for field in fields:
+    expectKind field, {nnkIdent, nnkEnumFieldDef}
+
+  let enumBody = newNimNode(nnkEnumTy).add(newEmptyNode()).add(fields)
+  var typeDefArgs = [name, newEmptyNode(), enumBody]
+
+  if public:
+    let postNode = newNimNode(nnkPostfix).add(
+      newIdentNode("*"), typeDefArgs[0])
+
+    typeDefArgs[0] = postNode
+
+  if pure:
+    let pragmaNode = newNimNode(nnkPragmaExpr).add(
+      typeDefArgs[0],
+      add(newNimNode(nnkPragma), newIdentNode("pure")))
+
+    typeDefArgs[0] = pragmaNode
+
+  let
+    typeDef   = add(newNimNode(nnkTypeDef), typeDefArgs)
+    typeSect  = add(newNimNode(nnkTypeSection), typeDef)
+
+  return typeSect
 
 proc copyChildrenTo*(src, dest: NimNode) {.compileTime.}=
   ## Copy all children from `src` to `dest`
-  for i in 0 .. < src.len:
+  for i in 0 ..< src.len:
     dest.add src[i].copyNimTree
 
 template expectRoutine(node: NimNode) =
@@ -984,6 +1048,11 @@ iterator items*(n: NimNode): NimNode {.inline.} =
   for i in 0 ..< n.len:
     yield n[i]
 
+iterator pairs*(n: NimNode): (int, NimNode) {.inline.} =
+  ## Iterates over the children of the NimNode ``n`` and its indices.
+  for i in 0 ..< n.len:
+    yield (i, n[i])
+
 iterator children*(n: NimNode): NimNode {.inline.} =
   ## Iterates over the children of the NimNode ``n``.
   for i in 0 ..< n.len:
@@ -994,7 +1063,7 @@ template findChild*(n: NimNode; cond: untyped): NimNode {.dirty.} =
   ##
   ## .. code-block:: nim
   ##   var res = findChild(n, it.kind == nnkPostfix and
-  ##                          it.basename.ident == !"foo")
+  ##                          it.basename.ident == toNimIdent"foo")
   block:
     var res: NimNode
     for it in n.children:
@@ -1028,7 +1097,7 @@ proc basename*(a: NimNode): NimNode =
 
 proc `basename=`*(a: NimNode; val: string) {.compileTime.}=
   case a.kind
-  of nnkIdent: macros.`ident=`(a,  !val)
+  of nnkIdent: macros.`ident=`(a, toNimIdent val)
   of nnkPostfix, nnkPrefix: a[1] = ident(val)
   else:
     quit "Do not know how to get basename of (" & treeRepr(a) & ")\n" & repr(a)
@@ -1089,7 +1158,7 @@ proc eqIdent*(node: NimNode; s: string): bool {.compileTime.} =
   ## other ways like ``node.ident`` are much more error-prone, unfortunately.
   case node.kind
   of nnkIdent:
-    result = node.ident == !s
+    result = node.ident == toNimIdent s
   of nnkSym:
     result = eqIdent($node.symbol, s)
   of nnkOpenSymChoice, nnkClosedSymChoice:
@@ -1097,10 +1166,10 @@ proc eqIdent*(node: NimNode; s: string): bool {.compileTime.} =
   else:
     result = false
 
-proc hasArgOfName* (params: NimNode; name: string): bool {.compiletime.}=
+proc hasArgOfName*(params: NimNode; name: string): bool {.compiletime.}=
   ## Search nnkFormalParams for an argument.
   assert params.kind == nnkFormalParams
-  for i in 1 .. <params.len:
+  for i in 1 ..< params.len:
     template node: untyped = params[i]
     if name.eqIdent( $ node[0]):
       return true
@@ -1145,6 +1214,59 @@ macro expandMacros*(body: typed): untyped =
   result = getAst(inner(body))
   echo result.toStrLit
 
+proc customPragmaNode(n: NimNode): NimNode =
+  expectKind(n, {nnkSym, nnkDotExpr})
+  if n.kind == nnkSym:
+    let sym = n.symbol.getImpl()
+    sym.expectRoutine()
+    result = sym.pragma
+  elif n.kind == nnkDotExpr:
+    let typDef = getImpl(getTypeInst(n[0]).symbol)
+    typDef.expectKind(nnkTypeDef)
+    typDef[2].expectKind(nnkObjectTy)
+    let recList = typDef[2][2]
+    for identDefs in recList:
+      for i in 0 .. identDefs.len - 3:
+        if identDefs[i].kind == nnkPragmaExpr and 
+           identDefs[i][0].kind == nnkIdent and $identDefs[i][0] == $n[1]:
+          return identDefs[i][1]
+
+macro hasCustomPragma*(n: typed, cp: typed{nkSym}): untyped =
+  ## Expands to `true` if expression `n` which is expected to be `nnkDotExpr`
+  ## has custom pragma `cp`.
+  ##
+  ## .. code-block:: nim
+  ##   template myAttr() {.pragma.}
+  ##   type 
+  ##     MyObj = object
+  ##       myField {.myAttr.}: int
+  ##   var o: MyObj
+  ##   assert(o.myField.hasCustomPragma(myAttr) == 0)
+  let pragmaNode = customPragmaNode(n)
+  for p in pragmaNode:
+    if (p.kind == nnkSym and p == cp) or
+        (p.kind in nnkPragmaCallKinds and p.len > 0 and p[0].kind == nnkSym and p[0] == cp):
+      return newLit(true)
+  return newLit(false)
+
+macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
+  ## Expands to value of custom pragma `cp` of expression `n` which is expected
+  ## to be `nnkDotExpr`.
+  ##
+  ## .. code-block:: nim
+  ##   template serializationKey(key: string) {.pragma.}
+  ##   type 
+  ##     MyObj = object
+  ##       myField {.serializationKey: "mf".}: int
+  ##   var o: MyObj
+  ##   assert(o.myField.getCustomPragmaVal(serializationKey) == "mf")
+  let pragmaNode = customPragmaNode(n)
+  for p in pragmaNode:
+    if p.kind in nnkPragmaCallKinds and p.len > 0 and p[0].kind == nnkSym and p[0] == cp:
+      return p[1]
+  return newEmptyNode()
+
+
 when not defined(booting):
   template emit*(e: static[string]): untyped {.deprecated.} =
     ## accepts a single string argument and treats it as nim code
@@ -1158,3 +1280,8 @@ when not defined(booting):
     macro payload: untyped {.gensym.} =
       result = parseStmt(e)
     payload()
+
+macro unpackVarargs*(callee: untyped; args: varargs[untyped]): untyped =
+  result = newCall(callee)
+  for i in 0 ..< args.len:
+    result.add args[i]

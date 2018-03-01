@@ -14,14 +14,14 @@
 
 import
   ropes, os, strutils, osproc, platform, condsyms, options, msgs,
-  securehash, streams
+  std / sha1, streams
 
 #from debuginfo import writeDebugInfo
 
 type
   TSystemCC* = enum
     ccNone, ccGcc, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc,
-    ccTcc, ccPcc, ccUcc, ccIcl
+    ccTcc, ccPcc, ccUcc, ccIcl, ccIcc
   TInfoCCProp* = enum         # properties of the C compiler:
     hasSwitchRange,           # CC allows ranges in switch statements (GNU C)
     hasComputedGoto,          # CC has computed goto (GNU C extension)
@@ -95,7 +95,11 @@ compiler llvmGcc:
   result.name = "llvm_gcc"
   result.compilerExe = "llvm-gcc"
   result.cppCompiler = "llvm-g++"
-  result.buildLib = "llvm-ar rcs $libfile $objfiles"
+  when defined(macosx):
+    # OS X has no 'llvm-ar' tool:
+    result.buildLib = "ar rcs $libfile $objfiles"
+  else:
+    result.buildLib = "llvm-ar rcs $libfile $objfiles"
 
 # Clang (LLVM) C/C++ Compiler
 compiler clang:
@@ -131,15 +135,17 @@ compiler vcc:
 
 # Intel C/C++ Compiler
 compiler icl:
-  # Intel compilers try to imitate the native ones (gcc and msvc)
-  when defined(windows):
-    result = vcc()
-  else:
-    result = gcc()
-
+  result = vcc()
   result.name = "icl"
   result.compilerExe = "icl"
   result.linkerExe = "icl"
+
+# Intel compilers try to imitate the native ones (gcc and msvc)
+compiler icc:
+  result = gcc()
+  result.name = "icc"
+  result.compilerExe = "icc"
+  result.linkerExe = "icc"
 
 # Local C Compiler
 compiler lcc:
@@ -247,7 +253,7 @@ compiler tcc:
     compilerExe: "tcc",
     cppCompiler: "",
     compileTmpl: "-c $options $include -o $objfile $file",
-    buildGui: "UNAVAILABLE!",
+    buildGui: "-Wl,-subsystem=gui",
     buildDll: " -shared",
     buildLib: "", # XXX: not supported yet
     linkerExe: "tcc",
@@ -323,7 +329,8 @@ const
     tcc(),
     pcc(),
     ucc(),
-    icl()]
+    icl(),
+    icc()]
 
   hExt* = ".h"
 
@@ -652,9 +659,10 @@ proc getLinkCmd(projectfile, objfiles: string): string =
   else:
     var linkerExe = getConfigVar(cCompiler, ".linkerexe")
     if len(linkerExe) == 0: linkerExe = cCompiler.getLinkerExe
+    # bug #6452: We must not use ``quoteShell`` here for ``linkerExe``
     if needsExeExt(): linkerExe = addFileExt(linkerExe, "exe")
-    if noAbsolutePaths(): result = quoteShell(linkerExe)
-    else: result = quoteShell(joinPath(ccompilerpath, linkerExe))
+    if noAbsolutePaths(): result = linkerExe
+    else: result = joinPath(ccompilerpath, linkerExe)
     let buildgui = if optGenGuiApp in gGlobalOptions: CC[cCompiler].buildGui
                    else: ""
     var exefile, builddll: string
@@ -701,6 +709,40 @@ template tryExceptOSErrorMessage(errorPrefix: string = "", body: untyped): typed
       rawMessage(errExecutionOfProgramFailed, ose.msg & " " & $ose.errorCode)
     raise
 
+proc execLinkCmd(linkCmd: string) =
+  tryExceptOSErrorMessage("invocation of external linker program failed."):
+    execExternalProgram(linkCmd,
+      if optListCmd in gGlobalOptions or gVerbosity > 1: hintExecuting else: hintLinking)
+
+proc execCmdsInParallel(cmds: seq[string]; prettyCb: proc (idx: int)) =
+  let runCb = proc (idx: int, p: Process) =
+    let exitCode = p.peekExitCode
+    if exitCode != 0:
+      rawMessage(errGenerated, "execution of an external compiler program '" &
+        cmds[idx] & "' failed with exit code: " & $exitCode & "\n\n" &
+        p.outputStream.readAll.strip)
+  if gNumberOfProcessors == 0: gNumberOfProcessors = countProcessors()
+  var res = 0
+  if gNumberOfProcessors <= 1:
+    for i in countup(0, high(cmds)):
+      tryExceptOSErrorMessage("invocation of external compiler program failed."):
+        res = execWithEcho(cmds[i])
+      if res != 0: rawMessage(errExecutionOfProgramFailed, cmds[i])
+  else:
+    tryExceptOSErrorMessage("invocation of external compiler program failed."):
+      if optListCmd in gGlobalOptions or gVerbosity > 1:
+        res = execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath},
+                            gNumberOfProcessors, afterRunEvent=runCb)
+      elif gVerbosity == 1:
+        res = execProcesses(cmds, {poStdErrToStdOut, poUsePath},
+                            gNumberOfProcessors, prettyCb, afterRunEvent=runCb)
+      else:
+        res = execProcesses(cmds, {poStdErrToStdOut, poUsePath},
+                            gNumberOfProcessors, afterRunEvent=runCb)
+  if res != 0:
+    if gNumberOfProcessors <= 1:
+      rawMessage(errExecutionOfProgramFailed, cmds.join())
+
 proc callCCompiler*(projectfile: string) =
   var
     linkCmd: string
@@ -713,35 +755,9 @@ proc callCCompiler*(projectfile: string) =
   var prettyCmds: TStringSeq = @[]
   let prettyCb = proc (idx: int) =
     echo prettyCmds[idx]
-  let runCb = proc (idx: int, p: Process) =
-    let exitCode = p.peekExitCode
-    if exitCode != 0:
-      rawMessage(errGenerated, "execution of an external compiler program '" &
-        cmds[idx] & "' failed with exit code: " & $exitCode & "\n\n" &
-        p.outputStream.readAll.strip)
   compileCFile(toCompile, script, cmds, prettyCmds)
   if optCompileOnly notin gGlobalOptions:
-    if gNumberOfProcessors == 0: gNumberOfProcessors = countProcessors()
-    var res = 0
-    if gNumberOfProcessors <= 1:
-      for i in countup(0, high(cmds)):
-        tryExceptOSErrorMessage("invocation of external compiler program failed."):
-          res = execWithEcho(cmds[i])
-        if res != 0: rawMessage(errExecutionOfProgramFailed, cmds[i])
-    else:
-      tryExceptOSErrorMessage("invocation of external compiler program failed."):
-        if optListCmd in gGlobalOptions or gVerbosity > 1:
-          res = execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams},
-                              gNumberOfProcessors, afterRunEvent=runCb)
-        elif gVerbosity == 1:
-          res = execProcesses(cmds, {poStdErrToStdOut, poUsePath, poParentStreams},
-                              gNumberOfProcessors, prettyCb, afterRunEvent=runCb)
-        else:
-          res = execProcesses(cmds, {poStdErrToStdOut, poUsePath, poParentStreams},
-                              gNumberOfProcessors, afterRunEvent=runCb)
-    if res != 0:
-      if gNumberOfProcessors <= 1:
-        rawMessage(errExecutionOfProgramFailed, cmds.join())
+    execCmdsInParallel(cmds, prettyCb)
   if optNoLinking notin gGlobalOptions:
     # call the linker:
     var objfiles = ""
@@ -751,14 +767,13 @@ proc callCCompiler*(projectfile: string) =
       add(objfiles, quoteShell(
           addFileExt(objFile, CC[cCompiler].objExt)))
     for x in toCompile:
+      let objFile = if noAbsolutePaths(): x.obj.extractFilename else: x.obj
       add(objfiles, ' ')
-      add(objfiles, quoteShell(x.obj))
+      add(objfiles, quoteShell(objFile))
 
     linkCmd = getLinkCmd(projectfile, objfiles)
     if optCompileOnly notin gGlobalOptions:
-      tryExceptOSErrorMessage("invocation of external linker program failed."):
-        execExternalProgram(linkCmd,
-          if optListCmd in gGlobalOptions or gVerbosity > 1: hintExecuting else: hintLinking)
+      execLinkCmd(linkCmd)
   else:
     linkCmd = ""
   if optGenScript in gGlobalOptions:
@@ -766,7 +781,8 @@ proc callCCompiler*(projectfile: string) =
     add(script, tnl)
     generateScript(projectfile, script)
 
-from json import escapeJson
+#from json import escapeJson
+import json
 
 proc writeJsonBuildInstructions*(projectfile: string) =
   template lit(x: untyped) = f.write x
@@ -778,42 +794,40 @@ proc writeJsonBuildInstructions*(projectfile: string) =
     else:
       f.write escapeJson(x)
 
-  proc cfiles(f: File; buf: var string; list: CfileList, isExternal: bool) =
-    var i = 0
-    for it in list:
+  proc cfiles(f: File; buf: var string; clist: CfileList, isExternal: bool) =
+    var pastStart = false
+    for it in clist:
       if CfileFlag.Cached in it.flags: continue
       let compileCmd = getCompileCFileCmd(it)
+      if pastStart: lit "],\L"
       lit "["
       str it.cname
       lit ", "
       str compileCmd
-      inc i
-      if i == list.len:
-        lit "]\L"
-      else:
-        lit "],\L"
+      pastStart = true
+    lit "]\L"
 
-  proc linkfiles(f: File; buf, objfiles: var string) =
-    for i, it in externalToLink:
-      let
-        objFile = if noAbsolutePaths(): it.extractFilename else: it
-        objStr = addFileExt(objFile, CC[cCompiler].objExt)
+  proc linkfiles(f: File; buf, objfiles: var string; clist: CfileList;
+                 llist: seq[string]) =
+    var pastStart = false
+    for it in llist:
+      let objfile = if noAbsolutePaths(): it.extractFilename
+                    else: it
+      let objstr = addFileExt(objfile, CC[cCompiler].objExt)
       add(objfiles, ' ')
-      add(objfiles, objStr)
-      str objStr
-      if toCompile.len == 0 and i == externalToLink.high:
-        lit "\L"
-      else:
-        lit ",\L"
-    for i, x in toCompile:
-      let objStr = quoteShell(x.obj)
+      add(objfiles, objstr)
+      if pastStart: lit ",\L"
+      str objstr
+      pastStart = true
+
+    for it in clist:
+      let objstr = quoteShell(it.obj)
       add(objfiles, ' ')
-      add(objfiles, objStr)
-      str objStr
-      if i == toCompile.high:
-        lit "\L"
-      else:
-        lit ",\L"
+      add(objfiles, objstr)
+      if pastStart: lit ",\L"
+      str objstr
+      pastStart = true
+    lit "\L"
 
   var buf = newStringOfCap(50)
 
@@ -827,12 +841,40 @@ proc writeJsonBuildInstructions*(projectfile: string) =
     lit "],\L\"link\":[\L"
     var objfiles = ""
     # XXX add every file here that is to link
-    linkfiles(f, buf, objfiles)
+    linkfiles(f, buf, objfiles, toCompile, externalToLink)
 
     lit "],\L\"linkcmd\": "
     str getLinkCmd(projectfile, objfiles)
     lit "\L}\L"
     close(f)
+
+proc runJsonBuildInstructions*(projectfile: string) =
+  let file = projectfile.splitFile.name
+  let jsonFile = toGeneratedFile(file, "json")
+  try:
+    let data = json.parseFile(jsonFile)
+    let toCompile = data["compile"]
+    doAssert toCompile.kind == JArray
+    var cmds: TStringSeq = @[]
+    var prettyCmds: TStringSeq = @[]
+    for c in toCompile:
+      doAssert c.kind == JArray
+      doAssert c.len >= 2
+
+      add(cmds, c[1].getStr)
+      let (_, name, _) = splitFile(c[0].getStr)
+      add(prettyCmds, "CC: " & name)
+
+    let prettyCb = proc (idx: int) =
+      echo prettyCmds[idx]
+    execCmdsInParallel(cmds, prettyCb)
+
+    let linkCmd = data["linkcmd"]
+    doAssert linkCmd.kind == JString
+    execLinkCmd(linkCmd.getStr)
+  except:
+    echo getCurrentException().getStackTrace()
+    quit "error evaluating JSON file: " & jsonFile
 
 proc genMappingFiles(list: CFileList): Rope =
   for it in list:

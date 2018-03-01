@@ -7,7 +7,8 @@ Advanced commands:
   //rst2html                convert a reStructuredText file to HTML
   //rst2tex                 convert a reStructuredText file to TeX
   //jsondoc                 extract the documentation to a json file
-  //jsondoc2                extract documentation to a json file (uses doc2)
+  //jsondoc2                extract the documentation to a json file (uses doc2)
+  //ctags                   create a tags file
   //buildIndex              build an index for the whole documentation
   //run                     run the project (with Tiny C backend; buggy!)
   //genDepend               generate a DOT file containing the
@@ -36,6 +37,7 @@ Advanced options:
   --noMain                  do not generate a main procedure
   --genScript               generate a compile script (in the 'nimcache'
                             subdirectory named 'compile_$project$scriptext')
+  --genDeps                 generate a '.deps' file containing the dependencies
   --os:SYMBOL               set the target operating system (cross-compilation)
   --cpu:SYMBOL              set the target processor (cross-compilation)
   --debuginfo               enables debug information
@@ -61,6 +63,7 @@ Advanced options:
   --memTracker:on|off       turn memory tracker on|off
   --excessiveStackTrace:on|off
                             stack traces use full file paths
+  --oldNewlines:on|off      turn on|off the old behaviour of "\n"
   --skipCfg                 do not read the general configuration file
   --skipUserCfg             do not read the user's configuration file
   --skipParentCfg           do not read the parent dirs' configuration files
@@ -78,6 +81,7 @@ Advanced options:
                             symbol matching is fuzzy so
                             that --dynlibOverride:lua matches
                             dynlib: "liblua.so.3"
+  --dynlibOverrideAll       makes the dynlib pragma have no effect
   --listCmd                 list the commands used to execute external programs
   --parallelBuild:0|1|...   perform a parallel build
                             value = number of processors (0 for auto-detect)

@@ -609,11 +609,12 @@ proc clock_nanosleep*(a1: ClockId, a2: cint, a3: var Timespec,
 proc clock_settime*(a1: ClockId, a2: var Timespec): cint {.
   importc, header: "<time.h>".}
 
+proc `==`*(a, b: Time): bool {.borrow.}
+proc `-`*(a, b: Time): Time {.borrow.}
 proc ctime*(a1: var Time): cstring {.importc, header: "<time.h>".}
 proc ctime_r*(a1: var Time, a2: cstring): cstring {.importc, header: "<time.h>".}
 proc difftime*(a1, a2: Time): cdouble {.importc, header: "<time.h>".}
 proc getdate*(a1: cstring): ptr Tm {.importc, header: "<time.h>".}
-
 proc gmtime*(a1: var Time): ptr Tm {.importc, header: "<time.h>".}
 proc gmtime_r*(a1: var Time, a2: var Tm): ptr Tm {.importc, header: "<time.h>".}
 proc localtime*(a1: var Time): ptr Tm {.importc, header: "<time.h>".}

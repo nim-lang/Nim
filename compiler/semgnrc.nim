@@ -61,7 +61,7 @@ proc semGenericStmtSymbol(c: PContext, n: PNode, s: PSym,
   of skUnknown:
     # Introduced in this pass! Leave it as an identifier.
     result = n
-  of skProc, skMethod, skIterator, skConverter, skModule:
+  of skProc, skFunc, skMethod, skIterator, skConverter, skModule:
     result = symChoice(c, n, s, scOpen)
   of skTemplate:
     if macroToExpandSym(s):
@@ -105,6 +105,10 @@ proc lookup(c: PContext, n: PNode, flags: TSemGenericFlags,
   result = n
   let ident = considerQuotedIdent(n)
   var s = searchInScopes(c, ident).skipAlias(n)
+  if s == nil:
+    s = strTableGet(c.pureEnumFields, ident)
+    if s != nil and contains(c.ambiguousSymbols, s.id):
+      s = nil
   if s == nil:
     if ident.id notin ctx.toMixin and withinMixin notin flags:
       errorUndeclaredIdentifier(c, n.info, ident.s)
@@ -182,7 +186,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     let a = n.sym
     let b = getGenSym(c, a)
     if b != a: n.sym = b
-  of nkEmpty, succ(nkSym)..nkNilLit:
+  of nkEmpty, succ(nkSym)..nkNilLit, nkComesFrom:
     # see tests/compile/tgensymgeneric.nim:
     # We need to open the gensym'ed symbol again so that the instantiation
     # creates a fresh copy; but this is wrong the very first reason for gensym
@@ -206,7 +210,7 @@ proc semGenericStmt(c: PContext, n: PNode,
         considerQuotedIdent(fn).id notin ctx.toMixin:
       errorUndeclaredIdentifier(c, n.info, fn.renderTree)
 
-    var first = ord(withinConcept in flags)
+    var first = int ord(withinConcept in flags)
     var mixinContext = false
     if s != nil:
       incl(s.flags, sfUsed)
@@ -239,7 +243,7 @@ proc semGenericStmt(c: PContext, n: PNode,
       of skUnknown, skParam:
         # Leave it as an identifier.
         discard
-      of skProc, skMethod, skIterator, skConverter, skModule:
+      of skProc, skFunc, skMethod, skIterator, skConverter, skModule:
         result.sons[0] = sc
         # do not check of 's.magic==mRoof' here because it might be some
         # other '^' but after overload resolution the proper one:
@@ -331,7 +335,9 @@ proc semGenericStmt(c: PContext, n: PNode,
     n.sons[L - 2] = semGenericStmt(c, n.sons[L-2], flags, ctx)
     for i in countup(0, L - 3):
       addTempDecl(c, n.sons[i], skForVar)
+    openScope(c)
     n.sons[L - 1] = semGenericStmt(c, n.sons[L-1], flags, ctx)
+    closeScope(c)
     closeScope(c)
   of nkBlockStmt, nkBlockExpr, nkBlockType:
     checkSonsLen(n, 2)
@@ -433,7 +439,7 @@ proc semGenericStmt(c: PContext, n: PNode,
       for j in countup(0, L-3):
         addTempDecl(c, getIdentNode(a.sons[j]), skParam)
   of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef, nkTemplateDef,
-     nkIteratorDef, nkLambdaKinds:
+     nkFuncDef, nkIteratorDef, nkLambdaKinds:
     checkSonsLen(n, bodyPos + 1)
     if n.sons[namePos].kind != nkEmpty:
       addTempDecl(c, getIdentNode(n.sons[0]), skProc)

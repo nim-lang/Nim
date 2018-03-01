@@ -33,6 +33,7 @@
 # included from sigmatch.nim
 
 import algorithm, prefixmatches
+from wordrecg import wDeprecated
 
 when defined(nimsuggest):
   import passes, tables # importer
@@ -240,7 +241,7 @@ proc suggestField(c: PContext, s: PSym; f: PNode; info: TLineInfo; outputs: var 
 
 proc getQuality(s: PSym): range[0..100] =
   if s.typ != nil and s.typ.len > 1:
-    var exp = s.typ.sons[1].skipTypes({tyGenericInst, tyVar, tyAlias})
+    var exp = s.typ.sons[1].skipTypes({tyGenericInst, tyVar, tyLent, tyAlias, tySink})
     if exp.kind == tyVarargs: exp = elemType(exp)
     if exp.kind in {tyExpr, tyStmt, tyGenericParam, tyAnything}: return 50
   return 100
@@ -309,7 +310,7 @@ proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} =
     let m = s.getModule()
     if m != nil and sfSystemModule in m.flags:
       if s.kind == skType: return
-      var exp = s.typ.sons[1].skipTypes({tyGenericInst, tyVar, tyAlias})
+      var exp = s.typ.sons[1].skipTypes({tyGenericInst, tyVar, tyLent, tyAlias, tySink})
       if exp.kind == tyVarargs: exp = elemType(exp)
       if exp.kind in {tyExpr, tyStmt, tyGenericParam, tyAnything}: return
     result = sigmatch.argtypeMatches(c, s.typ.sons[1], firstArg)
@@ -378,8 +379,8 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
       t = t.sons[0]
     suggestOperations(c, n, field, typ, outputs)
   else:
-    let orig = typ # skipTypes(typ, {tyGenericInst, tyAlias})
-    typ = skipTypes(typ, {tyGenericInst, tyVar, tyPtr, tyRef, tyAlias})
+    let orig = typ # skipTypes(typ, {tyGenericInst, tyAlias, tySink})
+    typ = skipTypes(typ, {tyGenericInst, tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink})
     if typ.kind == tyObject:
       var t = typ
       while true:
@@ -479,12 +480,23 @@ proc suggestSym*(info: TLineInfo; s: PSym; usageSym: var PSym; isDecl=true) {.in
         isDecl:
       suggestResult(symToSuggest(s, isLocal=false, ideOutline, info, 100, PrefixMatch.None, false, 0))
 
+proc warnAboutDeprecated(info: TLineInfo; s: PSym) =
+  if s.kind in routineKinds:
+    let n = s.ast[pragmasPos]
+    if n.kind != nkEmpty:
+      for it in n:
+        if whichPragma(it) == wDeprecated and it.safeLen == 2 and
+            it[1].kind in {nkStrLit..nkTripleStrLit}:
+          message(info, warnDeprecated, it[1].strVal & "; " & s.name.s)
+          return
+  message(info, warnDeprecated, s.name.s)
+
 proc markUsed(info: TLineInfo; s: PSym; usageSym: var PSym) =
   incl(s.flags, sfUsed)
   if s.kind == skEnumField and s.owner != nil:
     incl(s.owner.flags, sfUsed)
   if {sfDeprecated, sfError} * s.flags != {}:
-    if sfDeprecated in s.flags: message(info, warnDeprecated, s.name.s)
+    if sfDeprecated in s.flags: warnAboutDeprecated(info, s)
     if sfError in s.flags: localError(info, errWrongSymbolX, s.name.s)
   when defined(nimsuggest):
     suggestSym(info, s, usageSym, false)

@@ -17,6 +17,7 @@
 ## 2. long option - ``--foo:bar``, ``--foo=bar`` or ``--foo``
 ## 3. argument - everything else
 
+{.deprecated.}
 {.push debugger: off.}
 
 include "system/inclrtl"
@@ -35,7 +36,7 @@ type
     cmd: seq[string]
     pos: int
     remainingShortOptions: string
-    kind*: CmdLineKind        ## the dected command line token
+    kind*: CmdLineKind        ## the detected command line token
     key*, val*: TaintedString ## key and value pair; ``key`` is the option
                               ## or the argument, ``value`` is not "" if
                               ## the option was given a value

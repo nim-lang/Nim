@@ -31,7 +31,7 @@ type ConcretePointOfFloat = object
 type ConcretePoint[Value] = object
   x, y: Value
 
-type AbstractPointOfFloat = generic p
+type AbstractPointOfFloat = concept p
   p.x is float and p.y is float
 
 let p1 = ConcretePointOfFloat(x: 0, y: 0)
@@ -89,10 +89,10 @@ type
   B = object
 
 proc size(self: B): int =
-  return -1  
+  return -1
 
 proc size(self: A): int =
-  return 0  
+  return 0
 
 let b = B()
 echo b is A
