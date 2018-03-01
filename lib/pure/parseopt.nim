@@ -78,7 +78,7 @@ when declared(os.paramCount):
   # we cannot provide this for NimRtl creation on Posix, because we can't
   # access the command line arguments then!
 
-  proc initOptParser*(cmdline = ""): OptParser {.rtl, extern: "npo$1String".} =
+  proc initOptParser*(cmdline = ""): OptParser =
     ## inits the option parser. If ``cmdline == ""``, the real command line
     ## (as provided by the ``OS`` module) is taken.
     result.pos = 0
@@ -94,23 +94,23 @@ when declared(os.paramCount):
     result.key = TaintedString""
     result.val = TaintedString""
 
-proc initOptParser*(cmdline: seq[string]): OptParser {.rtl, extern: "npo$1Seq".} =
-  ## inits the option parser. If ``cmdline.len == 0``, the real command line
-  ## (as provided by the ``OS`` module) is taken.
-  result.pos = 0
-  result.inShortState = false
-  result.cmd = ""
-  if cmdline.len != 0:
-    for i in 0..<cmdline.len:
-      result.cmd.add quote(cmdline[i])
-      result.cmd.add ' '
-  else:
-    for i in countup(1, paramCount()):
-      result.cmd.add quote(paramStr(i).string)
-      result.cmd.add ' '
-  result.kind = cmdEnd
-  result.key = TaintedString""
-  result.val = TaintedString""
+  proc initOptParser*(cmdline: seq[string]): OptParser =
+    ## inits the option parser. If ``cmdline.len == 0``, the real command line
+    ## (as provided by the ``OS`` module) is taken.
+    result.pos = 0
+    result.inShortState = false
+    result.cmd = ""
+    if cmdline.len != 0:
+      for i in 0..<cmdline.len:
+        result.cmd.add quote(cmdline[i])
+        result.cmd.add ' '
+    else:
+      for i in countup(1, paramCount()):
+        result.cmd.add quote(paramStr(i).string)
+        result.cmd.add ' '
+    result.kind = cmdEnd
+    result.key = TaintedString""
+    result.val = TaintedString""
 
 proc handleShortOption(p: var OptParser) =
   var i = p.pos
