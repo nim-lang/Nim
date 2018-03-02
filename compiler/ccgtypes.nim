@@ -619,7 +619,7 @@ proc scanCppGenericSlot(pat: string, cursor, outIdx, outStars: var int): bool =
 proc resolveStarsInCppType(typ: PType, idx, stars: int): PType =
   # Make sure the index refers to one of the generic params of the type.
   # XXX: we should catch this earlier and report it as a semantic error.
-  if idx < 1 or idx >= typ.len - 1:
+  if idx >= typ.len:
     internalError "invalid apostrophe type parameter index"
 
   result = typ.sons[idx]
