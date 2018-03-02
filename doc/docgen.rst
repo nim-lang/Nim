@@ -121,10 +121,10 @@ looking at the AST (Abstract Syntax Tree) prior to semantic checking, as the
 JSON
 ----
 
-Generation of JSON documents is done via the ``jsondoc`` command. This command
-takes in a .nim file, and outputs a .json file with the same base filename.
-Note that this tool is built off of the ``doc`` command, and therefore is
-performed before semantic checking.
+Generation of JSON documents is done via the ``jsondoc`` and ``jsondoc2``
+commands. This command takes in a .nim file, and outputs a .json file with the
+same base filename. Note that this tool is built off of the coresponding
+``doc``/``doc2`` command, and contains the same information.
 
 The ``jsondoc`` command::
   nim jsondoc sample
@@ -142,6 +142,27 @@ Output::
     }
   ]
 
+The ``jsondoc2`` command::
+  nim jsondoc2 sample
+
+Output::
+  {
+    "orig": "docgen_sample.nim",
+    "nimble": "",
+    "entries": [
+      {
+        "name": "helloWorld",
+        "type": "skProc",
+        "line": 5,
+        "col": 0,
+        "description": "Takes an integer and outputs as many &quot;hello world!&quot;s",
+        "code": "proc helloWorld(times: int) {.raises: [], tags: [].}"
+      }
+    ]
+  }
+
+Note that the ``jsondoc2`` command outputs it's JSON without pretty-printing it,
+while ``jsondoc`` outputs pretty-printed JSON.
 
 Related Options
 ===============
