@@ -1,3 +1,12 @@
+## Next version
+
+### Bugfixes
+
+- The `importcpp` pragma now allows importing the listed fields of generic
+  C++ types. Support for numeric parameters have also been added through
+  the use of `static[T]` types.
+  (#6415)
+
 ## v0.18.0 - 01/03/2018
 
 ### Changes affecting backwards compatibility
