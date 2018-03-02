@@ -34,7 +34,7 @@ proc downloadMingw(): DownloadResult =
   if curl.len > 0:
     cmd = quoteShell(curl) & " --out " & "dist" / mingw & " " & url
   elif fileExists"bin/nimgrab.exe":
-    cmd = "bin/nimgrab.exe " & url & " dist" / mingw
+    cmd = r"bin\nimgrab.exe " & url & " dist" / mingw
   if cmd.len > 0:
     if execShellCmd(cmd) != 0:
       echo "download failed! ", cmd
