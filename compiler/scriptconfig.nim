@@ -83,6 +83,8 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
     setResult(a, os.getEnv(a.getString 0, a.getString 1))
   cbconf existsEnv:
     setResult(a, os.existsEnv(a.getString 0))
+  cbconf putEnv:
+    os.putEnv(a.getString 0, a.getString 1)
   cbconf dirExists:
     setResult(a, os.dirExists(a.getString 0))
   cbconf fileExists:
