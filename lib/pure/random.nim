@@ -129,10 +129,12 @@ proc rand*(max: int): int {.benign.} =
   rand(state, max)
 
 proc rand*(r: var Rand; max: float): float {.benign.} =
-  ## Returns a random number in the range 0..max. The sequence of
+  ## Returns a random number in the range 0..<max. The sequence of
   ## random number is always the same, unless `randomize` is called
   ## which initializes the random number generator with a "random"
   ## number, i.e. a tickcount.
+  ##
+  ## **Warning**: This `rand` proc returns an exclusive upper bound.
   let x = next(r)
   when defined(JS):
     result = (float(x) / float(high(uint32))) * max
@@ -141,10 +143,12 @@ proc rand*(r: var Rand; max: float): float {.benign.} =
     result = (cast[float](u) - 1.0) * max
 
 proc rand*(max: float): float {.benign.} =
-  ## Returns a random number in the range 0..max. The sequence of
+  ## Returns a random number in the range 0..<max. The sequence of
   ## random number is always the same, unless `randomize` is called
   ## which initializes the random number generator with a "random"
   ## number, i.e. a tickcount.
+  ##
+  ## **Warning**: This `rand` proc returns an exclusive upper bound.
   rand(state, max)
 
 proc rand*[T](r: var Rand; x: HSlice[T, T]): T =
@@ -162,7 +166,6 @@ proc rand*[T](r: var Rand; a: openArray[T]): T =
 proc rand*[T](a: openArray[T]): T =
   ## returns a random element from the openarray `a`.
   result = a[rand(a.low..a.high)]
-
 
 proc initRand*(seed: int64): Rand =
   ## Creates a new ``Rand`` state from ``seed``.
