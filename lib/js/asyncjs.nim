@@ -129,8 +129,13 @@ proc generateJsasync(arg: NimNode): NimNode =
       return `jsResolve`
     result.body.add(voidFix)
 
-  result.pragma = quote:
+  let asyncPragma = quote:
     {.codegenDecl: "async function $2($3)".}
+  if arg.pragma.kind == nnkEmpty:
+    result.pragma = asyncPragma
+  else:
+    result.pragma = arg.pragma
+    result.pragma.add(asyncPragma[0])  
 
 
 macro async*(arg: untyped): untyped =
