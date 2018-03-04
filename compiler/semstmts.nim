@@ -257,18 +257,19 @@ proc semCase(c: PContext, n: PNode): PNode =
 proc semTry(c: PContext, n: PNode): PNode =
 
   var check = initIntSet()
-  template semExceptBranchType(typeNode: PNode): tuple[n: PNode, is_imported: bool]=
+  template semExceptBranchType(typeNode: PNode): bool =
+    # returns true if exception type is imported type
     let typ = semTypeNode(c, typeNode, nil).toObject()
-    var result: tuple[n: PNode, is_imported: bool]
+    var is_imported = false
     if isImportedException(typ):
-      result.is_imported = true
+      is_imported = true
     elif not isException(typ):
       localError(typeNode.info, errExprCannotBeRaised)   
 
     if containsOrIncl(check, typ.id):
       localError(typeNode.info, errExceptionAlreadyHandled)
-    result.n = newNodeIT(nkType, typeNode.info, typ)
-    result
+    typeNode = newNodeIT(nkType, typeNode.info, typ)
+    is_imported
 
   result = n
   inc c.p.inTryStmt
@@ -291,9 +292,7 @@ proc semTry(c: PContext, n: PNode): PNode =
       
       if a.len == 2 and a[0].isInfixAs():
         # support ``except Exception as ex: body``
-        var is_imported: bool
-        (a[0][1], is_imported) = semExceptBranchType(a[0][1])
-
+        let is_imported = semExceptBranchType(a[0][1])
         let symbol = newSymG(skLet, a[0][2], c)
         symbol.typ = if is_imported: a[0][1].typ
                      else: a[0][1].typ.toRef()
@@ -303,14 +302,14 @@ proc semTry(c: PContext, n: PNode): PNode =
 
       else:
         # support ``except KeyError, ValueError, ... : body``
-        var is_native, is_imported, tmp: bool
+        var is_native, is_imported: bool
         for j in 0..a.len-2:
-          (a[j], tmp) = semExceptBranchType(a[j])
+          let tmp = semExceptBranchType(a[j])
           if tmp: is_imported = true
           else: is_native = true
 
         if is_native and is_imported:
-          local_error(a[0].info, "Mix of imported and native exception types are not allowed in one except branch")
+          local_error(a[0].info, "Mix of imported and native exception types is not allowed in one except branch")
      
     elif a.kind != nkFinally:
       illFormedAst(n)

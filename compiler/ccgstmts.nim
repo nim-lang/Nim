@@ -804,7 +804,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
     if optStackTrace in p.options:
       linefmt(p, cpsStmts, "#setFrame((TFrame*)&FR_);$n") 
     expr(p, body, d)
-    linefmt(p, cpsStmts, "#popCurrentException();$n")
+
     
   if not isEmptyType(t.typ) and d.k == locNone:
     getTemp(p, t.typ, d)
@@ -834,11 +834,12 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
       endBlock(p)
     else:
       for j in 0..t[i].len-2:
-        assert(t[i][j].kind == nkType)
         if t[i][j].isInfixAs():
-          startBlock(p, "catch ($1* $2) {$n", getTypeDesc(p.module, t[i][j][1].typ), rope($t[i][j][2]))
-        else: 
-          startBlock(p, "catch ($1*) {$n", getTypeDesc(p.module, t[i][j].typ))
+          startBlock(p, "catch ($1 $2) {$n", getTypeDesc(p.module, t[i][j][1].typ), rope($t[i][j][2]))
+        elif isImportedException(t[i][j].typ):
+          startBlock(p, "catch ($1) {$n", getTypeDesc(p.module, t[i][j].typ))
+        else:
+          startBlock(p, "catch ($1&) {$n", getTypeDesc(p.module, t[i][j].typ))
         genExceptBranchBody(t[i][^1])  # exception handler body will duplicated for every type
         endBlock(p)
 
