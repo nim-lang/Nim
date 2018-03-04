@@ -502,7 +502,7 @@ template toSeq*(iter: untyped): untyped =
     var result = newSeq[type(iter)](iter.len)
     for x in iter:
       result[i] = x
-      inc it
+      inc i
     shallow(result)
     result
   else:
