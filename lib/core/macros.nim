@@ -99,7 +99,6 @@ type
     ntyCompositeTypeClass, ntyInferred, ntyAnd, ntyOr, ntyNot,
     ntyAnything, ntyStatic, ntyFromExpr, ntyOpt, ntyVoid
 
-  TNimTypeKinds* {.deprecated.} = set[NimTypeKind]
   NimSymKind* = enum
     nskUnknown, nskConditional, nskDynLib, nskParam,
     nskGenericParam, nskTemp, nskModule, nskType, nskVar, nskLet,
@@ -108,8 +107,6 @@ type
     nskConverter, nskMacro, nskTemplate, nskField,
     nskEnumField, nskForVar, nskLabel,
     nskStub
-
-  TNimSymKinds* {.deprecated.} = set[NimSymKind]
 
 type
   NimIdent* = object of RootObj
@@ -131,10 +128,6 @@ const
   nnkCallKinds* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
                    nnkCallStrLit}
   nnkPragmaCallKinds = {nnkExprColonExpr, nnkCall, nnkCallStrLit}
-
-proc `!`*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated.}
-  ## constructs an identifier from the string `s`
-  ## **Deprecated since version 0.18.0**: Use ``toNimIdent`` instead.
 
 proc toNimIdent*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect.}
   ## constructs an identifier from the string `s`
@@ -768,13 +761,6 @@ macro dumpAstGen*(s: untyped): untyped = echo s.astGenRepr
   ##
   ## See `dumpTree`.
 
-macro dumpTreeImm*(s: untyped): untyped {.deprecated.} = echo s.treeRepr
-  ## Deprecated.
-
-macro dumpLispImm*(s: untyped): untyped {.deprecated.} = echo s.lispRepr
-  ## Deprecated.
-
-
 proc newEmptyNode*(): NimNode {.compileTime, noSideEffect.} =
   ## Create a new empty node
   result = newNimNode(nnkEmpty)
@@ -1266,20 +1252,6 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
       return p[1]
   return newEmptyNode()
 
-
-when not defined(booting):
-  template emit*(e: static[string]): untyped {.deprecated.} =
-    ## accepts a single string argument and treats it as nim code
-    ## that should be inserted verbatim in the program
-    ## Example:
-    ##
-    ## .. code-block:: nim
-    ##   emit("echo " & '"' & "hello world".toUpper & '"')
-    ##
-    ## Deprecated since version 0.15 since it's so rarely useful.
-    macro payload: untyped {.gensym.} =
-      result = parseStmt(e)
-    payload()
 
 macro unpackVarargs*(callee: untyped; args: varargs[untyped]): untyped =
   result = newCall(callee)
