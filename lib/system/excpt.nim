@@ -339,6 +339,8 @@ proc raiseExceptionAux(e: ref Exception) =
     else:
       pushCurrentException(e)
       raise_counter.inc
+      if raise_counter == 0:
+        raise_counter.inc # skip zero at overflow
       e.raise_id = raise_counter
       {.emit: "`e`->raise();".}
   else:
