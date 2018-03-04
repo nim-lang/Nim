@@ -32,9 +32,11 @@ type
     cmdShortOption            ## a short option ``-c`` detected
   OptParser* =
       object of RootObj ## this object implements the command line parser
-    cmd: string
-    pos: int
+    cmd*: string              #  cmd,pos exported so caller can catch "--" as..
+    pos*: int                 # ..empty key or subcmd cmdArg & handle specially
     inShortState: bool
+    shortNoArg: string
+    longNoArg: seq[string]
     kind*: CmdLineKind        ## the dected command line token
     key*, val*: TaintedString ## key and value pair; ``key`` is the option
                               ## or the argument, ``value`` is not "" if
@@ -78,11 +80,14 @@ when declared(os.paramCount):
   # we cannot provide this for NimRtl creation on Posix, because we can't
   # access the command line arguments then!
 
-  proc initOptParser*(cmdline = ""): OptParser =
+  proc initOptParser*(cmdline = "",
+                      shortNoArg="", longNoArg: seq[string] = @[]): OptParser =
     ## inits the option parser. If ``cmdline == ""``, the real command line
     ## (as provided by the ``OS`` module) is taken.
     result.pos = 0
     result.inShortState = false
+    result.shortNoArg = shortNoArg
+    result.longNoArg = longNoArg
     if cmdline != "":
       result.cmd = cmdline
     else:
@@ -94,15 +99,18 @@ when declared(os.paramCount):
     result.key = TaintedString""
     result.val = TaintedString""
 
-  proc initOptParser*(cmdline: seq[string]): OptParser =
+  proc initOptParser*(cmdline: seq[TaintedString],
+                      shortNoArg="", longNoArg: seq[string] = @[]): OptParser =
     ## inits the option parser. If ``cmdline.len == 0``, the real command line
     ## (as provided by the ``OS`` module) is taken.
     result.pos = 0
     result.inShortState = false
+    result.shortNoArg = shortNoArg
+    result.longNoArg = longNoArg
     result.cmd = ""
     if cmdline.len != 0:
       for i in 0..<cmdline.len:
-        result.cmd.add quote(cmdline[i])
+        result.cmd.add quote(cmdline[i].string)
         result.cmd.add ' '
     else:
       for i in countup(1, paramCount()):
@@ -121,8 +129,9 @@ proc handleShortOption(p: var OptParser) =
   while p.cmd[i] in {'\x09', ' '}:
     inc(i)
     p.inShortState = false
-  if p.cmd[i] in {':', '='}:
-    inc(i)
+  if p.cmd[i] in {':', '='} or len(p.shortNoArg) > 0 and p.key.string[0] notin p.shortNoArg:
+    if p.cmd[i] in {':', '='}:
+      inc(i)
     p.inShortState = false
     while p.cmd[i] in {'\x09', ' '}: inc(i)
     i = parseWord(p.cmd, i, p.val.string)
@@ -146,12 +155,13 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
   of '-':
     inc(i)
     if p.cmd[i] == '-':
-      p.kind = cmdLongoption
+      p.kind = cmdLongOption
       inc(i)
       i = parseWord(p.cmd, i, p.key.string, {'\0', ' ', '\x09', ':', '='})
       while p.cmd[i] in {'\x09', ' '}: inc(i)
-      if p.cmd[i] in {':', '='}:
-        inc(i)
+      if p.cmd[i] in {':', '='} or len(p.longNoArg) > 0 and p.key.string notin p.longNoArg:
+        if p.cmd[i] in {':', '='}:
+          inc(i)
         while p.cmd[i] in {'\x09', ' '}: inc(i)
         p.pos = parseWord(p.cmd, i, p.val.string)
       else:
@@ -192,7 +202,9 @@ iterator getopt*(p: var OptParser): tuple[kind: CmdLineKind, key, val: TaintedSt
     yield (p.kind, p.key, p.val)
 
 when declared(initOptParser):
-  iterator getopt*(): tuple[kind: CmdLineKind, key, val: TaintedString] =
+  iterator getopt*(cmdline: seq[TaintedString] = commandLineParams(),
+                   shortNoArg="", longNoArg: seq[string] = @[]):
+             tuple[kind: CmdLineKind, key, val: TaintedString] =
     ## This is an convenience iterator for iterating over the command line arguments.
     ## This create a new OptParser object.
     ## See above for a more detailed example
@@ -202,7 +214,7 @@ when declared(initOptParser):
     ##     # this will iterate over all arguments passed to the cmdline.
     ##     continue
     ##
-    var p = initOptParser()
+    var p = initOptParser(cmdline, shortNoArg=shortNoArg, longNoArg=longNoArg)
     while true:
       next(p)
       if p.kind == cmdEnd: break
