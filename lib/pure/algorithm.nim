@@ -443,7 +443,7 @@ proc rotateLeft*[T](arg: var openarray[T]; slice: HSlice[int, int]; dist: int): 
   ##   the distance in amount of elements that the data should be rotated. Can be negative, can be any number.
   ##
   ## .. code-block:: nim
-  ##     var list     = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  ##     var list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
   ##     list.rotateLeft(1 .. 8, 3)
   ##     doAssert list == [0, 4, 5, 6, 7, 8, 1, 2, 3, 9, 10]
   let sliceLen = slice.b + 1 - slice.a
@@ -472,12 +472,12 @@ proc rotatedLeft*[T](arg: openarray[T]; dist: int): seq[T] =
   arg.rotatedInternal(0, distLeft, arg.len)
 
 when isMainModule:
-  var list     = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-  let list2    = list.rotatedLeft(1 ..< 9, 3)
+  var list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  let list2 = list.rotatedLeft(1 ..< 9, 3)
   let expected = [0, 4, 5, 6, 7, 8, 1, 2, 3, 9, 10]
 
   doAssert list.rotateLeft(1 ..< 9, 3) == 6
-  doAssert list  ==  expected
+  doAssert list == expected
   doAssert list2 == @expected
 
   var s0,s1,s2,s3,s4,s5 = "xxxabcdefgxxx"

@@ -30,7 +30,7 @@ proc cmpStrings(a, b: NimString): int {.inline, compilerProc.} =
     if result == 0:
       result = a.len - b.len
   else:
-    result = 0
+    result = a.len - b.len
 
 proc eqStrings(a, b: NimString): bool {.inline, compilerProc.} =
   if a == b: return true

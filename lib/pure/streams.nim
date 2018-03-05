@@ -447,9 +447,19 @@ when not defined(js):
     ## creates a new stream from the file named `filename` with the mode `mode`.
     ## If the file cannot be opened, nil is returned. See the `system
     ## <system.html>`_ module for a list of available FileMode enums.
+    ## **This function returns nil in case of failure. To prevent unexpected
+    ## behavior and ensure proper error handling, use openFileStream instead.**
     var f: File
     if open(f, filename, mode, bufSize): result = newFileStream(f)
 
+  proc openFileStream*(filename: string, mode: FileMode = fmRead, bufSize: int = -1): FileStream =
+    ## creates a new stream from the file named `filename` with the mode `mode`.
+    ## If the file cannot be opened, an IO exception is raised.
+    var f: File
+    if open(f, filename, mode, bufSize):
+      return newFileStream(f)
+    else:
+      raise newEIO("cannot open file")
 
 when true:
   discard
