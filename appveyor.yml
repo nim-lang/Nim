@@ -38,25 +38,38 @@ install:
   - IF "%PLATFORM%" == "x64" ( copy %CD%\DIST\sqlite3.dll %CD%\BIN\sqlite3_64.dll ) ELSE ( copy %CD%\DIST\sqlite3.dll %CD%\BIN\sqlite3_32.dll )
   - IF "%PLATFORM%" == "x64" ( copy %CD%\DIST\PCRE\pcre.redist.8.33.0.1\build\native\bin\v100\x64\Release\dynamic\utf8\pcre8.dll %CD%\bin\pcre64.dll ) ELSE ( copy %CD%\DIST\PCRE\pcre.redist.8.33.0.1\build\native\bin\v100\Win32\Release\dynamic\utf8\pcre8.dll %CD%\bin\pcre32.dll )
   - git clone --depth 1 https://github.com/nim-lang/csources
+  - dir
   - cd csources
   - IF "%PLATFORM%" == "x64" ( build64.bat ) else ( build.bat )
   - cd ..
+  - set COMMIT_RANGE="FETCH_HEAD...%APPVEYOR_PULL_REQUEST_HEAD_COMMIT%"
+  - echo %COMMIT_RANGE%
+  - echo %APPVEYOR_REPO_COMMIT%
+#  - git diff --name-only %COMMIT_RANGE%
+  - dir
+  - git diff --name-only
+#  - git diff --name-only %APPVEYOR_REPO_COMMIT%
+#  - git diff --name-only %APPVEYOR_REPO_COMMIT% | grep -vE "(\.md$)|(\.txt$)(\.rst)|(^(doc|icons|web|))/"
 
 build_script:
   - bin\nim c koch
   - koch boot -d:release
-  - koch nimble
-  - nim e tests/test_nimscript.nims
-  - nimble install zip -y
-  - nimble install opengl
-  - nimble install sdl1
-  - nimble install jester@#head
-  - nimble install niminst
-  - nim c --taintMode:on -d:nimCoroutines tests/testament/tester
+#  - koch nimble
+#  - nim e tests/test_nimscript.nims
+#  - nimble install zip -y
+#  - nimble install opengl
+#  - nimble install sdl1
+#  - nimble install jester@#head
+#  - nimble install niminst
+#  - nim c --taintMode:on -d:nimCoroutines tests/testament/tester
 
 test_script:
-  - tests\testament\tester --pedantic all -d:nimCoroutines
+#  - tests\testament\tester --pedantic all -d:nimCoroutines
 #  - koch csource
 #  - koch zip
+  - koch web
+#  - nim c -r nimsuggest/tester
+  - ( ! grep -F '.. code-block' -l -r --include '*.html' --exclude contributing.html --exclude docgen.html --exclude tut2.html )
+  - ( ! grep -F '..code-block' -l -r --include '*.html' --exclude contributing.html --exclude docgen.html --exclude tut2.html )
 
 deploy: off
