@@ -131,12 +131,8 @@ proc generateJsasync(arg: NimNode): NimNode =
 
   let asyncPragma = quote:
     {.codegenDecl: "async function $2($3)".}
-  if arg.pragma.kind == nnkEmpty:
-    result.pragma = asyncPragma
-  else:
-    result.pragma = arg.pragma
-    result.pragma.add(asyncPragma[0])  
 
+  result.addPragma(asyncPragma[0])
 
 macro async*(arg: untyped): untyped =
   ## Macro which converts normal procedures into
