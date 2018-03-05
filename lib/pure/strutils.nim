@@ -440,10 +440,12 @@ proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
 proc strip*(s: string, leading = true, trailing = true,
             chars: set[char] = Whitespace): string
   {.noSideEffect, rtl, extern: "nsuStrip".} =
-  ## Strips `chars` from `s` and returns the resulting string.
+  ## Strips leading or trailing `chars` from `s` and returns
+  ## the resulting string.
   ##
   ## If `leading` is true, leading `chars` are stripped.
   ## If `trailing` is true, trailing `chars` are stripped.
+  ## If both are false, the string is returned unchanged.
   var
     first = 0
     last = len(s)-1
