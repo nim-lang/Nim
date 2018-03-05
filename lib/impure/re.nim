@@ -7,11 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Regular expression support for Nim. This module still has some
-## obscure bugs and limitations,
-## consider using the ``nre`` or ``pegs`` modules instead.
-## We had to de-deprecate this module since too much code relies on it
-## and many people prefer its API over ``nre``'s.
+## Regular expression support for Nim.
 ##
 ## This module is implemented by providing a wrapper around the
 ## `PRCE (Perl-Compatible Regular Expressions) <http://www.pcre.org>`_
