@@ -114,6 +114,10 @@ proc existsEnv*(key: string): bool {.tags: [ReadIOEffect].} =
   ## Checks for the existence of an environment variable named `key`.
   builtin
 
+proc putEnv*(key, val: string) {.tags: [WriteIOEffect].} =
+  ## Sets the value of the environment variable named key to val.
+  builtin
+  
 proc fileExists*(filename: string): bool {.tags: [ReadIOEffect].} =
   ## Checks if the file exists.
   builtin
