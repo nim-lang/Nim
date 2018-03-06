@@ -2376,7 +2376,14 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkMacroDef: result = semMacroDef(c, n)
   of nkTemplateDef: result = semTemplateDef(c, n)
   of nkImportStmt:
-    if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "import")
+    # this particular way allows 'import' in a 'compiles' context so that
+    # template canImport(x): bool =
+    #   compiles:
+    #     import x
+    #
+    # works:
+    if c.currentScope.depthLevel > 2 + c.compilesContextId:
+      localError(n.info, errXOnlyAtModuleScope, "import")
     result = evalImport(c, n)
   of nkImportExceptStmt:
     if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "import")
