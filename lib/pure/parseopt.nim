@@ -11,16 +11,16 @@
 ## It supports one convenience iterator over all command line options and some
 ## lower-level features.
 ##
-## Supported syntax with default empty ``shortNoArg``/``longNoArg``:
+## Supported syntax with default empty ``shortNoVal``/``longNoVal``:
 ##
 ## 1. short options - ``-abcd``, where a, b, c, d are names
 ## 2. long option - ``--foo:bar``, ``--foo=bar`` or ``--foo``
 ## 3. argument - everything else
 ##
-## When ``shortNoArg``/``longNoArg`` are non-empty then the ':' and '=' above
+## When ``shortNoVal``/``longNoVal`` are non-empty then the ':' and '=' above
 ## are still accepted, but become optional.  Note that these option key sets
 ## must be updated along with the set of option keys taking no value, but
-## option keys which take values need no special updates.
+## keys which do take values need no special updates as their set evolves.
 ##
 ## When option values begin with ':' or '=' they need to be doubled up (as in
 ## ``--delim::``) or alternated (as in ``--delim=:``).
@@ -47,8 +47,8 @@ type
     cmd*: string              #  cmd,pos exported so caller can catch "--" as..
     pos*: int                 # ..empty key or subcmd cmdArg & handle specially
     inShortState: bool
-    shortNoArg: set[char]
-    longNoArg: seq[string]
+    shortNoVal: set[char]
+    longNoVal: seq[string]
     kind*: CmdLineKind        ## the dected command line token
     key*, val*: TaintedString ## key and value pair; ``key`` is the option
                               ## or the argument, ``value`` is not "" if
@@ -92,14 +92,14 @@ when declared(os.paramCount):
   # we cannot provide this for NimRtl creation on Posix, because we can't
   # access the command line arguments then!
 
-  proc initOptParser*(cmdline = "", shortNoArg: set[char]={},
-                      longNoArg: seq[string] = @[]): OptParser =
+  proc initOptParser*(cmdline = "", shortNoVal: set[char]={},
+                      longNoVal: seq[string] = @[]): OptParser =
     ## inits the option parser. If ``cmdline == ""``, the real command line
     ## (as provided by the ``OS`` module) is taken.
     result.pos = 0
     result.inShortState = false
-    result.shortNoArg = shortNoArg
-    result.longNoArg = longNoArg
+    result.shortNoVal = shortNoVal
+    result.longNoVal = longNoVal
     if cmdline != "":
       result.cmd = cmdline
     else:
@@ -111,14 +111,14 @@ when declared(os.paramCount):
     result.key = TaintedString""
     result.val = TaintedString""
 
-  proc initOptParser*(cmdline: seq[TaintedString], shortNoArg: set[char]={},
-                      longNoArg: seq[string] = @[]): OptParser =
+  proc initOptParser*(cmdline: seq[TaintedString], shortNoVal: set[char]={},
+                      longNoVal: seq[string] = @[]): OptParser =
     ## inits the option parser. If ``cmdline.len == 0``, the real command line
     ## (as provided by the ``OS`` module) is taken.
     result.pos = 0
     result.inShortState = false
-    result.shortNoArg = shortNoArg
-    result.longNoArg = longNoArg
+    result.shortNoVal = shortNoVal
+    result.longNoVal = longNoVal
     result.cmd = ""
     if cmdline.len != 0:
       for i in 0..<cmdline.len:
@@ -141,7 +141,7 @@ proc handleShortOption(p: var OptParser) =
   while p.cmd[i] in {'\x09', ' '}:
     inc(i)
     p.inShortState = false
-  if p.cmd[i] in {':', '='} or card(p.shortNoArg) > 0 and p.key.string[0] notin p.shortNoArg:
+  if p.cmd[i] in {':', '='} or card(p.shortNoVal) > 0 and p.key.string[0] notin p.shortNoVal:
     if p.cmd[i] in {':', '='}:
       inc(i)
     p.inShortState = false
@@ -171,7 +171,7 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
       inc(i)
       i = parseWord(p.cmd, i, p.key.string, {'\0', ' ', '\x09', ':', '='})
       while p.cmd[i] in {'\x09', ' '}: inc(i)
-      if p.cmd[i] in {':', '='} or len(p.longNoArg) > 0 and p.key.string notin p.longNoArg:
+      if p.cmd[i] in {':', '='} or len(p.longNoVal) > 0 and p.key.string notin p.longNoVal:
         if p.cmd[i] in {':', '='}:
           inc(i)
         while p.cmd[i] in {'\x09', ' '}: inc(i)
@@ -215,7 +215,7 @@ iterator getopt*(p: var OptParser): tuple[kind: CmdLineKind, key, val: TaintedSt
 
 when declared(initOptParser):
   iterator getopt*(cmdline: seq[TaintedString] = commandLineParams(),
-                   shortNoArg: set[char]={}, longNoArg: seq[string] = @[]):
+                   shortNoVal: set[char]={}, longNoVal: seq[string] = @[]):
              tuple[kind: CmdLineKind, key, val: TaintedString] =
     ## This is an convenience iterator for iterating over the command line arguments.
     ## This create a new OptParser object.
@@ -226,7 +226,7 @@ when declared(initOptParser):
     ##     # this will iterate over all arguments passed to the cmdline.
     ##     continue
     ##
-    var p = initOptParser(cmdline, shortNoArg=shortNoArg, longNoArg=longNoArg)
+    var p = initOptParser(cmdline, shortNoVal=shortNoVal, longNoVal=longNoVal)
     while true:
       next(p)
       if p.kind == cmdEnd: break
