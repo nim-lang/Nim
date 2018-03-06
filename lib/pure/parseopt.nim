@@ -11,11 +11,23 @@
 ## It supports one convenience iterator over all command line options and some
 ## lower-level features.
 ##
-## Supported syntax:
+## Supported syntax with default empty ``shortNoArg``/``longNoArg``:
 ##
 ## 1. short options - ``-abcd``, where a, b, c, d are names
 ## 2. long option - ``--foo:bar``, ``--foo=bar`` or ``--foo``
 ## 3. argument - everything else
+##
+## When ``shortNoArg``/``longNoArg`` are non-empty then the ':' and '=' above
+## are still accepted, but become optional.  Note that these option key sets
+## must be updated along with the set of option keys taking no value, but
+## option keys which take values need no special updates.
+##
+## When option values begin with ':' or '=' they need to be doubled up (as in
+## ``--delim::``) or alternated (as in ``--delim=:``).
+##
+## The common ``--`` non-option argument delimiter appears as an empty string
+## long option key.  ``OptParser.cmd``, ``OptParser.pos``, and
+## ``os.parseCmdLine`` may be used to complete parsing in that case.
 
 {.push debugger: off.}
 
