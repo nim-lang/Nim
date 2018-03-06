@@ -24,15 +24,6 @@ proc rawWrite(f: File, s: string) =
   # we cannot throw an exception here!
   discard c_fwrite(cstring(s), 1, s.len, f)
 
-proc nimLoadLibraryError(path: string) =
-  # carefully written to avoid memory allocation:
-  stderr.rawWrite("could not load: ")
-  stderr.rawWrite(path)
-  stderr.rawWrite("\n")
-  when not defined(nimDebugDlOpen) and not defined(windows):
-    stderr.rawWrite("compile with -d:nimDebugDlOpen for more information\n")
-  quit(1)
-
 proc procAddrError(name: cstring) {.noinline.} =
   # carefully written to avoid memory allocation:
   stderr.rawWrite("could not import: ")
@@ -85,6 +76,15 @@ when defined(posix):
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     result = dlsym(lib, name)
     if result == nil: procAddrError(name)
+
+  proc nimLoadLibraryError(path: string) =
+    # carefully written to avoid memory allocation:
+    stderr.rawWrite("could not load: ")
+    stderr.rawWrite(path)
+    stderr.rawWrite("\n")
+    when not defined(nimDebugDlOpen):
+      stderr.rawWrite("compile with -d:nimDebugDlOpen for more information\n")
+    quit(1)
 
 elif defined(windows) or defined(dos):
   #
@@ -148,6 +148,20 @@ elif defined(windows) or defined(dos):
         result = getProcAddress(cast[THINSTANCE](lib), decorated)
       if result != nil: return
     procAddrError(name)
+
+  proc nimLoadLibraryError(path: string) =
+    # carefully written to avoid memory allocation:
+    when defined(guiapp):
+      const prefix = "could not load: "
+      var msg: array[1000, char]
+      copyMem(msg[0].addr, prefix.cstring, prefix.len)
+      copyMem(msg[prefix.len].addr, path.cstring, min(path.len + 1, 1000 - prefix.len))
+      discard MessageBoxA(0, msg[0].addr, nil, 0)
+    else:
+      stderr.rawWrite("could not load: ")
+      stderr.rawWrite(path)
+      stderr.rawWrite("\n")
+    quit(1)
 
 elif defined(genode):
 
