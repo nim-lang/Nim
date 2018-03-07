@@ -440,10 +440,12 @@ proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
 proc strip*(s: string, leading = true, trailing = true,
             chars: set[char] = Whitespace): string
   {.noSideEffect, rtl, extern: "nsuStrip".} =
-  ## Strips `chars` from `s` and returns the resulting string.
+  ## Strips leading or trailing `chars` from `s` and returns
+  ## the resulting string.
   ##
   ## If `leading` is true, leading `chars` are stripped.
   ## If `trailing` is true, trailing `chars` are stripped.
+  ## If both are false, the string is returned unchanged.
   var
     first = 0
     last = len(s)-1
@@ -2295,7 +2297,7 @@ proc addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.
       case formatstr[i+1] # again we use the fact that strings
                           # are zero-terminated here
       of '#':
-        if num >% a.high: invalidFormatString()
+        if num > a.high: invalidFormatString()
         add s, a[num]
         inc i, 2
         inc num
@@ -2311,7 +2313,7 @@ proc addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.
           j = j * 10 + ord(formatstr[i]) - ord('0')
           inc(i)
         let idx = if not negative: j-1 else: a.len-j
-        if idx >% a.high: invalidFormatString()
+        if idx < 0 or idx > a.high: invalidFormatString()
         add s, a[idx]
       of '{':
         var j = i+2
@@ -2328,7 +2330,7 @@ proc addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.
           inc(j)
         if isNumber == 1:
           let idx = if not negative: k-1 else: a.len-k
-          if idx >% a.high: invalidFormatString()
+          if idx < 0 or idx > a.high: invalidFormatString()
           add s, a[idx]
         else:
           var x = findNormalized(substr(formatstr, i+2, j-1), a)
