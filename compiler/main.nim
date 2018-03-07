@@ -210,14 +210,14 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
     gCmd = cmdRst2tex
     loadConfigs(DocTexConfig, cache)
     commandRst2TeX()
-  of "jsondoc":
+  of "jsondoc0":
     wantMainModule()
     gCmd = cmdDoc
     loadConfigs(DocConfig, cache)
     wantMainModule()
     defineSymbol("nimdoc")
     commandJson()
-  of "jsondoc2":
+  of "jsondoc2", "jsondoc":
     gCmd = cmdDoc
     loadConfigs(DocConfig, cache)
     wantMainModule()
