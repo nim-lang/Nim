@@ -129,8 +129,7 @@ proc popCurrentExceptionEx(id: uint) {.compilerRtl, inl.} =
     if cur == nil: 
       showErrorMessage("popCurrentExceptionEx() exception was not found in the exception stack. Aborting...")
       quitOrDebug()
-    cur.up = prev
- 
+    prev.up = cur.up  
 
 # some platforms have native support for stack traces:
 const

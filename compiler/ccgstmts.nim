@@ -577,7 +577,7 @@ proc genRaiseStmt(p: BProc, t: PNode) =
       genSimpleBlock(p, finallyBlock.sons[0])
   if t.sons[0].kind != nkEmpty:
     var a: TLoc
-    initLocExpr(p, t.sons[0], a)
+    initLocExprSingleUse(p, t.sons[0], a)
     var e = rdLoc(a)
     var typ = skipTypes(t.sons[0].typ, abstractPtrs)
     genLineDir(p, t)
@@ -835,7 +835,9 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
     else:
       for j in 0..t[i].len-2:
         if t[i][j].isInfixAs():
-          startBlock(p, "catch ($1 $2) {$n", getTypeDesc(p.module, t[i][j][1].typ), rope($t[i][j][2]))
+          let v = rope($t[i][j][2])
+          fillLoc(t[i][j][2].sym.loc, locTemp, t[i][j][2], v, OnUnknown)
+          startBlock(p, "catch ($1 $2) {$n", getTypeDesc(p.module, t[i][j][1].typ), v)
         elif isImportedException(t[i][j].typ):
           startBlock(p, "catch ($1) {$n", getTypeDesc(p.module, t[i][j].typ))
         else:

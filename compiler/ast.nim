@@ -1676,8 +1676,7 @@ proc isImportedException*(t: PType): bool =
   if optNoCppExceptions in gGlobalOptions:
     return false
   
-  let base = t.skipTypes(GenericTypes + {tyAlias, tyPtr, tyVar})
-    # allow to raise/catch imported exceptions by ptr and by cpp native ref
+  let base = t.skipTypes({tyAlias, tyPtr, tyDistinct, tyGenericInst})
     
   if base.sym != nil and sfCompileToCpp in base.sym.flags:
     result = true
