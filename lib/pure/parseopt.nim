@@ -96,10 +96,11 @@ when declared(os.paramCount):
                       longNoVal: seq[string] = @[]): OptParser =
     ## inits the option parser. If ``cmdline == ""``, the real command line
     ## (as provided by the ``OS`` module) is taken.  If ``shortNoVal`` is
-    ## provided command users need not delimit short option keys and values
-    ## with a ':' or '='.  If ``longNoVal`` is provided command users need not
-    ## delimit long option keys and values with a ':' or '=' (though they still
-    ## need a space).
+    ## provided command users do not need to delimit short option keys and
+    ## values with a ':' or '='.  If ``longNoVal`` is provided command users do
+    ## not need to delimit long option keys and values with a ':' or '='
+    ## (though they still need at least a space).  In both cases, ':' or '='
+    ## may still be used if desired.  They just become optional.
     result.pos = 0
     result.inShortState = false
     result.shortNoVal = shortNoVal
