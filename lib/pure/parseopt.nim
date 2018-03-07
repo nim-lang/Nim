@@ -95,7 +95,11 @@ when declared(os.paramCount):
   proc initOptParser*(cmdline = "", shortNoVal: set[char]={},
                       longNoVal: seq[string] = @[]): OptParser =
     ## inits the option parser. If ``cmdline == ""``, the real command line
-    ## (as provided by the ``OS`` module) is taken.
+    ## (as provided by the ``OS`` module) is taken.  If ``shortNoVal`` is
+    ## provided command users need not delimit short option keys and values
+    ## with a ':' or '='.  If ``longNoVal`` is provided command users need not
+    ## delimit long option keys and values with a ':' or '=' (though they still
+    ## need a space).
     result.pos = 0
     result.inShortState = false
     result.shortNoVal = shortNoVal
@@ -114,7 +118,8 @@ when declared(os.paramCount):
   proc initOptParser*(cmdline: seq[TaintedString], shortNoVal: set[char]={},
                       longNoVal: seq[string] = @[]): OptParser =
     ## inits the option parser. If ``cmdline.len == 0``, the real command line
-    ## (as provided by the ``OS`` module) is taken.
+    ## (as provided by the ``OS`` module) is taken. ``shortNoVal`` and
+    ## ``longNoVal`` behavior is the same as for ``initOptParser(string,...)``.
     result.pos = 0
     result.inShortState = false
     result.shortNoVal = shortNoVal
@@ -194,7 +199,7 @@ iterator getopt*(p: var OptParser): tuple[kind: CmdLineKind, key, val: TaintedSt
   ## Example:
   ##
   ## .. code-block:: nim
-  ##   var p = initOptParser("--left --debug:3 -l=4 -r:2")
+  ##   var p = initOptParser("--left --debug:3 -l -r:2")
   ##   for kind, key, val in p.getopt():
   ##     case kind
   ##     of cmdArgument:
@@ -217,14 +222,25 @@ when declared(initOptParser):
   iterator getopt*(cmdline: seq[TaintedString] = commandLineParams(),
                    shortNoVal: set[char]={}, longNoVal: seq[string] = @[]):
              tuple[kind: CmdLineKind, key, val: TaintedString] =
-    ## This is an convenience iterator for iterating over the command line arguments.
-    ## This create a new OptParser object.
-    ## See above for a more detailed example
+    ## This is an convenience iterator for iterating over command line arguments.
+    ## This creates a new OptParser.  See the above ``getopt(var OptParser)``
+    ## example for using default empty ``NoVal`` parameters.  This example is
+    ## for the same option keys as that example but here option key-value
+    ## separators become optional for command users:
     ##
     ## .. code-block:: nim
-    ##   for kind, key, val in getopt():
-    ##     # this will iterate over all arguments passed to the cmdline.
-    ##     continue
+    ##   for kind, key, val in getopt(shortNoVal = { 'l' },
+    ##                                longNoVal = @[ "left" ]):
+    ##     case kind
+    ##     of cmdArgument:
+    ##       filename = key
+    ##     of cmdLongOption, cmdShortOption:
+    ##       case key
+    ##       of "help", "h": writeHelp()
+    ##       of "version", "v": writeVersion()
+    ##     of cmdEnd: assert(false) # cannot happen
+    ##   if filename == "":
+    ##     writeHelp()
     ##
     var p = initOptParser(cmdline, shortNoVal=shortNoVal, longNoVal=longNoVal)
     while true:
