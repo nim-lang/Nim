@@ -14,11 +14,11 @@
 ## and many people prefer its API over ``nre``'s.
 ##
 ## This module is implemented by providing a wrapper around the
-## `PRCE (Perl-Compatible Regular Expressions) <http://www.pcre.org>`_
-## C library. This means that your application will depend on the PRCE
+## `PCRE (Perl-Compatible Regular Expressions) <http://www.pcre.org>`_
+## C library. This means that your application will depend on the PCRE
 ## library's licence when using this module, which should not be a problem
 ## though.
-## PRCE's licence follows:
+## PCRE's licence follows:
 ##
 ## .. include:: ../../doc/regexprs.txt
 ##
