@@ -84,8 +84,8 @@ Document Types
 HTML
 ----
 
-Generation of HTML documents is done via both the ``doc`` command. This command
-take either a single .nim file, outputting a single .html file with the same
+Generation of HTML documents is done via the ``doc`` command. This command
+takes either a single .nim file, outputting a single .html file with the same
 base filename, or multiple .nim files, outputting multiple .html files and,
 optionally, an index file.
 
@@ -99,8 +99,8 @@ Partial Output::
 
 The full output can be seen here: `docgen_sample2.html <docgen_sample2.html>`_.
 
-The previous ``doc`` command, now renamed ``doc0`` runs before semantic checking
-which means it lacks some of the things ``doc`` will output.
+The older version of the ``doc`` command, now renamed ``doc0`` runs before
+semantic checking which means it lacks some of the things ``doc`` will output.
 
 The ``doc0`` command::
   nim doc0 sample
