@@ -240,7 +240,7 @@ proc add*(m: PMessageArea, msg: ScChat) =
   of CPriv, CSystem: mmm.color = Green
   of CError: mmm.color = Red
 
-  mmm.lines = countLines(mmm.text)+1
+  mmm.lines = countLines(mmm.text)
 
   m.messages.add mmm
   update m

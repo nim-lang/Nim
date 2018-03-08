@@ -1,8 +1,9 @@
 discard """
+  cmd: "nim c --threads:on $file"
   output: '''true'''
 """
 
-import hashes, tables
+import hashes, tables, sharedtables
 
 const
   data = {
@@ -47,7 +48,7 @@ block tableTest1:
     for y in 0..1:
       assert t[(x,y)] == $x & $y
   assert($t ==
-    "{(x: 0, y: 1): 01, (x: 0, y: 0): 00, (x: 1, y: 0): 10, (x: 1, y: 1): 11}")
+    "{(x: 0, y: 1): \"01\", (x: 0, y: 0): \"00\", (x: 1, y: 0): \"10\", (x: 1, y: 1): \"11\"}")
 
 block tableTest2:
   var t = initTable[string, float]()
@@ -210,6 +211,45 @@ block clearCountTableTest:
   assert t.len() != 0
   t.clear()
   assert t.len() == 0
+
+block withKeyTest:
+  var t: SharedTable[int, int]
+  t.init()
+  t.withKey(1) do (k: int, v: var int, pairExists: var bool):
+    assert(v == 0)
+    pairExists = true
+    v = 42
+  assert(t.mget(1) == 42)
+  t.withKey(1) do (k: int, v: var int, pairExists: var bool):
+    assert(v == 42)
+    pairExists = false
+  try:
+    discard t.mget(1)
+    assert(false, "KeyError expected")
+  except KeyError:
+    discard
+  t.withKey(2) do (k: int, v: var int, pairExists: var bool):
+    pairExists = false
+  try:
+    discard t.mget(2)
+    assert(false, "KeyError expected")
+  except KeyError:
+    discard
+
+block takeTest:
+  var t = initTable[string, int]()
+  t["key"] = 123
+
+  var val = 0
+  assert(t.take("key", val))
+  assert(val == 123)
+
+  val = -1
+  assert(not t.take("key", val))
+  assert(val == -1)
+
+  assert(not t.take("otherkey", val))
+  assert(val == -1)
 
 proc orderedTableSortTest() =
   var t = initOrderedTable[string, int](2)

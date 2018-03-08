@@ -113,6 +113,9 @@ proc newHttpHeaders*(keyValuePairs:
   new result
   result.table = newTable[string, seq[string]](pairs)
 
+proc `$`*(headers: HttpHeaders): string =
+  return $headers.table
+
 proc clear*(headers: HttpHeaders) =
   headers.table.clear()
 
@@ -285,7 +288,7 @@ proc `$`*(code: HttpCode): string =
 proc `==`*(a, b: HttpCode): bool {.borrow.}
 
 proc `==`*(rawCode: string, code: HttpCode): bool =
-  return rawCode.toLower() == ($code).toLower()
+  return cmpIgnoreCase(rawCode, $code) == 0
 
 proc is2xx*(code: HttpCode): bool =
   ## Determines whether ``code`` is a 2xx HTTP status code.
@@ -304,7 +307,7 @@ proc is5xx*(code: HttpCode): bool =
   return code.int in {500 .. 599}
 
 proc `$`*(httpMethod: HttpMethod): string =
-  return (system.`$`(httpMethod))[4 .. ^1].toUpper()
+  return (system.`$`(httpMethod))[4 .. ^1].toUpperAscii()
 
 when isMainModule:
   var test = newHttpHeaders()

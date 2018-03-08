@@ -29,150 +29,17 @@ else:
 import ospaths
 export ospaths
 
-when defined(posix):
-  when NoFakeVars:
-    const pathMax = 5000 # doesn't matter really. The concept of PATH_MAX
-                         # doesn't work anymore on modern OSes.
-  else:
-    var
-      pathMax {.importc: "PATH_MAX", header: "<stdlib.h>".}: cint
-
 proc c_remove(filename: cstring): cint {.
   importc: "remove", header: "<stdio.h>".}
 proc c_rename(oldname, newname: cstring): cint {.
   importc: "rename", header: "<stdio.h>".}
 proc c_system(cmd: cstring): cint {.
   importc: "system", header: "<stdlib.h>".}
-proc c_strerror(errnum: cint): cstring {.
-  importc: "strerror", header: "<string.h>".}
 proc c_strlen(a: cstring): cint {.
   importc: "strlen", header: "<string.h>", noSideEffect.}
-proc c_getenv(env: cstring): cstring {.
-  importc: "getenv", header: "<stdlib.h>".}
-proc c_putenv(env: cstring): cint {.
-  importc: "putenv", header: "<stdlib.h>".}
 proc c_free(p: pointer) {.
   importc: "free", header: "<stdlib.h>".}
 
-var errno {.importc, header: "<errno.h>".}: cint
-
-proc osErrorMsg*(): string {.rtl, extern: "nos$1", deprecated.} =
-  ## Retrieves the operating system's error flag, ``errno``.
-  ## On Windows ``GetLastError`` is checked before ``errno``.
-  ## Returns "" if no error occurred.
-  ##
-  ## **Deprecated since version 0.9.4**: use the other ``osErrorMsg`` proc.
-
-  result = ""
-  when defined(Windows):
-    var err = getLastError()
-    if err != 0'i32:
-      when useWinUnicode:
-        var msgbuf: WideCString
-        if formatMessageW(0x00000100 or 0x00001000 or 0x00000200 or 0x000000FF,
-                          nil, err, 0, addr(msgbuf), 0, nil) != 0'i32:
-          result = $msgbuf
-          if msgbuf != nil: localFree(cast[pointer](msgbuf))
-      else:
-        var msgbuf: cstring
-        if formatMessageA(0x00000100 or 0x00001000 or 0x00000200 or 0x000000FF,
-                          nil, err, 0, addr(msgbuf), 0, nil) != 0'i32:
-          result = $msgbuf
-          if msgbuf != nil: localFree(msgbuf)
-  if errno != 0'i32:
-    result = $os.c_strerror(errno)
-
-{.push warning[deprecated]: off.}
-proc raiseOSError*(msg: string = "") {.noinline, rtl, extern: "nos$1",
-                                       deprecated.} =
-  ## raises an OSError exception with the given message ``msg``.
-  ## If ``msg == ""``, the operating system's error flag
-  ## (``errno``) is converted to a readable error message. On Windows
-  ## ``GetLastError`` is checked before ``errno``.
-  ## If no error flag is set, the message ``unknown OS error`` is used.
-  ##
-  ## **Deprecated since version 0.9.4**: use the other ``raiseOSError`` proc.
-  if len(msg) == 0:
-    var m = osErrorMsg()
-    raise newException(OSError, if m.len > 0: m else: "unknown OS error")
-  else:
-    raise newException(OSError, msg)
-{.pop.}
-
-when not defined(nimfix):
-  {.deprecated: [osError: raiseOSError].}
-
-proc `==`*(err1, err2: OSErrorCode): bool {.borrow.}
-proc `$`*(err: OSErrorCode): string {.borrow.}
-
-proc osErrorMsg*(errorCode: OSErrorCode): string =
-  ## Converts an OS error code into a human readable string.
-  ##
-  ## The error code can be retrieved using the ``osLastError`` proc.
-  ##
-  ## If conversion fails, or ``errorCode`` is ``0`` then ``""`` will be
-  ## returned.
-  ##
-  ## On Windows, the ``-d:useWinAnsi`` compilation flag can be used to
-  ## make this procedure use the non-unicode Win API calls to retrieve the
-  ## message.
-  result = ""
-  when defined(Windows):
-    if errorCode != OSErrorCode(0'i32):
-      when useWinUnicode:
-        var msgbuf: WideCString
-        if formatMessageW(0x00000100 or 0x00001000 or 0x00000200,
-                        nil, errorCode.int32, 0, addr(msgbuf), 0, nil) != 0'i32:
-          result = $msgbuf
-          if msgbuf != nil: localFree(cast[pointer](msgbuf))
-      else:
-        var msgbuf: cstring
-        if formatMessageA(0x00000100 or 0x00001000 or 0x00000200,
-                        nil, errorCode.int32, 0, addr(msgbuf), 0, nil) != 0'i32:
-          result = $msgbuf
-          if msgbuf != nil: localFree(msgbuf)
-  else:
-    if errorCode != OSErrorCode(0'i32):
-      result = $os.c_strerror(errorCode.int32)
-
-proc raiseOSError*(errorCode: OSErrorCode; additionalInfo = "") {.noinline.} =
-  ## Raises an ``OSError`` exception. The ``errorCode`` will determine the
-  ## message, ``osErrorMsg`` will be used to get this message.
-  ##
-  ## The error code can be retrieved using the ``osLastError`` proc.
-  ##
-  ## If the error code is ``0`` or an error message could not be retrieved,
-  ## the message ``unknown OS error`` will be used.
-  var e: ref OSError; new(e)
-  e.errorCode = errorCode.int32
-  if additionalInfo.len == 0:
-    e.msg = osErrorMsg(errorCode)
-  else:
-    e.msg = osErrorMsg(errorCode) & "\nAdditional info: " & additionalInfo
-  if e.msg == "":
-    e.msg = "unknown OS error"
-  raise e
-
-{.push stackTrace:off.}
-proc osLastError*(): OSErrorCode =
-  ## Retrieves the last operating system error code.
-  ##
-  ## This procedure is useful in the event when an OS call fails. In that case
-  ## this procedure will return the error code describing the reason why the
-  ## OS call failed. The ``OSErrorMsg`` procedure can then be used to convert
-  ## this code into a string.
-  ##
-  ## **Warning**:
-  ## The behaviour of this procedure varies between Windows and POSIX systems.
-  ## On Windows some OS calls can reset the error code to ``0`` causing this
-  ## procedure to return ``0``. It is therefore advised to call this procedure
-  ## immediately after an OS call fails. On POSIX systems this is not a problem.
-
-  when defined(windows):
-    result = OSErrorCode(getLastError())
-  else:
-    result = OSErrorCode(errno)
-{.pop.}
 
 when defined(windows):
   when useWinUnicode:
@@ -252,33 +119,92 @@ proc dirExists*(dir: string): bool {.inline.} =
   ## Synonym for existsDir
   existsDir(dir)
 
-proc getLastModificationTime*(file: string): Time {.rtl, extern: "nos$1".} =
+when not defined(windows):
+  proc checkSymlink(path: string): bool =
+    var rawInfo: Stat
+    if lstat(path, rawInfo) < 0'i32: result = false
+    else: result = S_ISLNK(rawInfo.st_mode)
+
+const
+  ExeExts* = when defined(windows): ["exe", "cmd", "bat"] else: [""] ## \
+    ## platform specific file extension for executables. On Windows
+    ## ``["exe", "cmd", "bat"]``, on Posix ``[""]``.
+
+proc findExe*(exe: string, followSymlinks: bool = true;
+              extensions: openarray[string]=ExeExts): string {.
+  tags: [ReadDirEffect, ReadEnvEffect, ReadIOEffect].} =
+  ## Searches for `exe` in the current working directory and then
+  ## in directories listed in the ``PATH`` environment variable.
+  ## Returns "" if the `exe` cannot be found. `exe`
+  ## is added the `ExeExts <#ExeExts>`_ file extensions if it has none.
+  ## If the system supports symlinks it also resolves them until it
+  ## meets the actual file. This behavior can be disabled if desired.
+  template checkCurrentDir() =
+    for ext in extensions:
+      result = addFileExt(exe, ext)
+      if existsFile(result): return
+  when defined(posix):
+    if '/' in exe: checkCurrentDir()
+  else:
+    checkCurrentDir()
+  let path = string(getEnv("PATH"))
+  for candidate in split(path, PathSep):
+    when defined(windows):
+      var x = (if candidate[0] == '"' and candidate[^1] == '"':
+                substr(candidate, 1, candidate.len-2) else: candidate) /
+              exe
+    else:
+      var x = expandTilde(candidate) / exe
+    for ext in extensions:
+      var x = addFileExt(x, ext)
+      if existsFile(x):
+        when not defined(windows):
+          while followSymlinks: # doubles as if here
+            if x.checkSymlink:
+              var r = newString(256)
+              var len = readlink(x, r, 256)
+              if len < 0:
+                raiseOSError(osLastError())
+              if len > 256:
+                r = newString(len+1)
+                len = readlink(x, r, len)
+              setLen(r, len)
+              if isAbsolute(r):
+                x = r
+              else:
+                x = parentDir(x) / r
+            else:
+              break
+        return x
+  result = ""
+
+proc getLastModificationTime*(file: string): times.Time {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s last modification time.
   when defined(posix):
     var res: Stat
     if stat(file, res) < 0'i32: raiseOSError(osLastError())
-    return res.st_mtime
+    return fromUnix(res.st_mtime.int64)
   else:
     var f: WIN32_FIND_DATA
     var h = findFirstFile(file, f)
     if h == -1'i32: raiseOSError(osLastError())
-    result = winTimeToUnixTime(rdFileTime(f.ftLastWriteTime))
+    result = fromUnix(winTimeToUnixTime(rdFileTime(f.ftLastWriteTime)).int64)
     findClose(h)
 
-proc getLastAccessTime*(file: string): Time {.rtl, extern: "nos$1".} =
+proc getLastAccessTime*(file: string): times.Time {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s last read or write access time.
   when defined(posix):
     var res: Stat
     if stat(file, res) < 0'i32: raiseOSError(osLastError())
-    return res.st_atime
+    return fromUnix(res.st_atime.int64)
   else:
     var f: WIN32_FIND_DATA
     var h = findFirstFile(file, f)
     if h == -1'i32: raiseOSError(osLastError())
-    result = winTimeToUnixTime(rdFileTime(f.ftLastAccessTime))
+    result = fromUnix(winTimeToUnixTime(rdFileTime(f.ftLastAccessTime)).int64)
     findClose(h)
 
-proc getCreationTime*(file: string): Time {.rtl, extern: "nos$1".} =
+proc getCreationTime*(file: string): times.Time {.rtl, extern: "nos$1".} =
   ## Returns the `file`'s creation time.
   ##
   ## **Note:** Under POSIX OS's, the returned time may actually be the time at
@@ -287,12 +213,12 @@ proc getCreationTime*(file: string): Time {.rtl, extern: "nos$1".} =
   when defined(posix):
     var res: Stat
     if stat(file, res) < 0'i32: raiseOSError(osLastError())
-    return res.st_ctime
+    return fromUnix(res.st_ctime.int64)
   else:
     var f: WIN32_FIND_DATA
     var h = findFirstFile(file, f)
     if h == -1'i32: raiseOSError(osLastError())
-    result = winTimeToUnixTime(rdFileTime(f.ftCreationTime))
+    result = fromUnix(winTimeToUnixTime(rdFileTime(f.ftCreationTime)).int64)
     findClose(h)
 
 proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1".} =
@@ -617,20 +543,6 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
     flushFile(d)
     close(d)
 
-proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
-  tags: [ReadIOEffect, WriteIOEffect].} =
-  ## Moves a file from `source` to `dest`. If this fails, `OSError` is raised.
-  when defined(Windows):
-    when useWinUnicode:
-      let s = newWideCString(source)
-      let d = newWideCString(dest)
-      if moveFileW(s, d) == 0'i32: raiseOSError(osLastError())
-    else:
-      if moveFileA(source, dest) == 0'i32: raiseOSError(osLastError())
-  else:
-    if c_rename(source, dest) != 0'i32:
-      raiseOSError(osLastError(), $strerror(errno))
-
 when not declared(ENOENT) and not defined(Windows):
   when NoFakeVars:
     const ENOENT = cint(2) # 2 on most systems including Solaris
@@ -647,24 +559,71 @@ when defined(Windows):
     template setFileAttributes(file, attrs: untyped): untyped =
       setFileAttributesA(file, attrs)
 
-proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect].} =
-  ## Removes the `file`. If this fails, `OSError` is raised. This does not fail
+proc tryRemoveFile*(file: string): bool {.rtl, extern: "nos$1", tags: [WriteDirEffect].} =
+  ## Removes the `file`. If this fails, returns `false`. This does not fail
   ## if the file never existed in the first place.
   ## On Windows, ignores the read-only attribute.
+  result = true
   when defined(Windows):
     when useWinUnicode:
       let f = newWideCString(file)
     else:
       let f = file
     if deleteFile(f) == 0:
-      if getLastError() == ERROR_ACCESS_DENIED:
-        if setFileAttributes(f, FILE_ATTRIBUTE_NORMAL) == 0:
-          raiseOSError(osLastError())
-        if deleteFile(f) == 0:
-          raiseOSError(osLastError())
+      result = false
+      let err = getLastError()
+      if err == ERROR_FILE_NOT_FOUND or err == ERROR_PATH_NOT_FOUND:
+        result = true
+      elif err == ERROR_ACCESS_DENIED and
+         setFileAttributes(f, FILE_ATTRIBUTE_NORMAL) != 0 and
+         deleteFile(f) != 0:
+        result = true
   else:
     if c_remove(file) != 0'i32 and errno != ENOENT:
+      result = false
+
+proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect].} =
+  ## Removes the `file`. If this fails, `OSError` is raised. This does not fail
+  ## if the file never existed in the first place.
+  ## On Windows, ignores the read-only attribute.
+  if not tryRemoveFile(file):
+    when defined(Windows):
+      raiseOSError(osLastError())
+    else:
       raiseOSError(osLastError(), $strerror(errno))
+
+proc tryMoveFSObject(source, dest: string): bool =
+  ## Moves a file or directory from `source` to `dest`. Returns false in case
+  ## of `EXDEV` error. In case of other errors `OSError` is raised. Returns
+  ## true in case of success.
+  when defined(Windows):
+    when useWinUnicode:
+      let s = newWideCString(source)
+      let d = newWideCString(dest)
+      if moveFileExW(s, d, MOVEFILE_COPY_ALLOWED) == 0'i32: raiseOSError(osLastError())
+    else:
+      if moveFileExA(source, dest, MOVEFILE_COPY_ALLOWED) == 0'i32: raiseOSError(osLastError())
+  else:
+    if c_rename(source, dest) != 0'i32:
+      let err = osLastError()
+      if err == EXDEV.OSErrorCode:
+        return false
+      else:
+        raiseOSError(err, $strerror(errno))
+  return true
+
+proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
+  tags: [ReadIOEffect, WriteIOEffect].} =
+  ## Moves a file from `source` to `dest`. If this fails, `OSError` is raised.
+  if not tryMoveFSObject(source, dest):
+    when not defined(windows):
+      # Fallback to copy & del
+      copyFile(source, dest)
+      try:
+        removeFile(source)
+      except:
+        discard tryRemoveFile(dest)
+        raise
 
 proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   tags: [ExecIOEffect].} =
@@ -676,151 +635,10 @@ proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   ## the process has finished. To execute a program without having a
   ## shell involved, use the `execProcess` proc of the `osproc`
   ## module.
-  when defined(linux):
+  when defined(posix):
     result = c_system(command) shr 8
   else:
     result = c_system(command)
-
-# Environment handling cannot be put into RTL, because the ``envPairs``
-# iterator depends on ``environment``.
-
-var
-  envComputed {.threadvar.}: bool
-  environment {.threadvar.}: seq[string]
-
-when defined(windows):
-  # because we support Windows GUI applications, things get really
-  # messy here...
-  when useWinUnicode:
-    when defined(cpp):
-      proc strEnd(cstr: WideCString, c = 0'i32): WideCString {.
-        importcpp: "(NI16*)wcschr((const wchar_t *)#, #)", header: "<string.h>".}
-    else:
-      proc strEnd(cstr: WideCString, c = 0'i32): WideCString {.
-        importc: "wcschr", header: "<string.h>".}
-  else:
-    proc strEnd(cstr: cstring, c = 0'i32): cstring {.
-      importc: "strchr", header: "<string.h>".}
-
-  proc getEnvVarsC() =
-    if not envComputed:
-      environment = @[]
-      when useWinUnicode:
-        var
-          env = getEnvironmentStringsW()
-          e = env
-        if e == nil: return # an error occurred
-        while true:
-          var eend = strEnd(e)
-          add(environment, $e)
-          e = cast[WideCString](cast[ByteAddress](eend)+2)
-          if eend[1].int == 0: break
-        discard freeEnvironmentStringsW(env)
-      else:
-        var
-          env = getEnvironmentStringsA()
-          e = env
-        if e == nil: return # an error occurred
-        while true:
-          var eend = strEnd(e)
-          add(environment, $e)
-          e = cast[cstring](cast[ByteAddress](eend)+1)
-          if eend[1] == '\0': break
-        discard freeEnvironmentStringsA(env)
-      envComputed = true
-
-else:
-  const
-    useNSGetEnviron = defined(macosx) and not defined(ios)
-
-  when useNSGetEnviron:
-    # From the manual:
-    # Shared libraries and bundles don't have direct access to environ,
-    # which is only available to the loader ld(1) when a complete program
-    # is being linked.
-    # The environment routines can still be used, but if direct access to
-    # environ is needed, the _NSGetEnviron() routine, defined in
-    # <crt_externs.h>, can be used to retrieve the address of environ
-    # at runtime.
-    proc NSGetEnviron(): ptr cstringArray {.
-      importc: "_NSGetEnviron", header: "<crt_externs.h>".}
-  else:
-    var gEnv {.importc: "environ".}: cstringArray
-
-  proc getEnvVarsC() =
-    # retrieves the variables of char** env of C's main proc
-    if not envComputed:
-      environment = @[]
-      when useNSGetEnviron:
-        var gEnv = NSGetEnviron()[]
-      var i = 0
-      while true:
-        if gEnv[i] == nil: break
-        add environment, $gEnv[i]
-        inc(i)
-      envComputed = true
-
-proc findEnvVar(key: string): int =
-  getEnvVarsC()
-  var temp = key & '='
-  for i in 0..high(environment):
-    if startsWith(environment[i], temp): return i
-  return -1
-
-proc getEnv*(key: string): TaintedString {.tags: [ReadEnvEffect].} =
-  ## Returns the value of the `environment variable`:idx: named `key`.
-  ##
-  ## If the variable does not exist, "" is returned. To distinguish
-  ## whether a variable exists or it's value is just "", call
-  ## `existsEnv(key)`.
-  var i = findEnvVar(key)
-  if i >= 0:
-    return TaintedString(substr(environment[i], find(environment[i], '=')+1))
-  else:
-    var env = c_getenv(key)
-    if env == nil: return TaintedString("")
-    result = TaintedString($env)
-
-proc existsEnv*(key: string): bool {.tags: [ReadEnvEffect].} =
-  ## Checks whether the environment variable named `key` exists.
-  ## Returns true if it exists, false otherwise.
-  if c_getenv(key) != nil: return true
-  else: return findEnvVar(key) >= 0
-
-proc putEnv*(key, val: string) {.tags: [WriteEnvEffect].} =
-  ## Sets the value of the `environment variable`:idx: named `key` to `val`.
-  ## If an error occurs, `EInvalidEnvVar` is raised.
-
-  # Note: by storing the string in the environment sequence,
-  # we guarantee that we don't free the memory before the program
-  # ends (this is needed for POSIX compliance). It is also needed so that
-  # the process itself may access its modified environment variables!
-  var indx = findEnvVar(key)
-  if indx >= 0:
-    environment[indx] = key & '=' & val
-  else:
-    add environment, (key & '=' & val)
-    indx = high(environment)
-  when defined(unix):
-    if c_putenv(environment[indx]) != 0'i32:
-      raiseOSError(osLastError())
-  else:
-    when useWinUnicode:
-      var k = newWideCString(key)
-      var v = newWideCString(val)
-      if setEnvironmentVariableW(k, v) == 0'i32: raiseOSError(osLastError())
-    else:
-      if setEnvironmentVariableA(key, val) == 0'i32: raiseOSError(osLastError())
-
-iterator envPairs*(): tuple[key, value: TaintedString] {.tags: [ReadEnvEffect].} =
-  ## Iterate over all `environments variables`:idx:. In the first component
-  ## of the tuple is the name of the current variable stored, in the second
-  ## its value.
-  getEnvVarsC()
-  for i in 0..high(environment):
-    var p = find(environment[i], '=')
-    yield (TaintedString(substr(environment[i], 0, p-1)),
-           TaintedString(substr(environment[i], p+1)))
 
 # Templates for filtering directories and files
 when defined(windows):
@@ -859,7 +677,10 @@ template walkCommon(pattern: string, filter) =
           if dotPos < 0 or idx >= ff.len or ff[idx] == '.' or
               pattern[dotPos+1] == '*':
             yield splitFile(pattern).dir / extractFilename(ff)
-        if findNextFile(res, f) == 0'i32: break
+        if findNextFile(res, f) == 0'i32:
+          let errCode = getLastError()
+          if errCode == ERROR_NO_MORE_FILES: break
+          else: raiseOSError(errCode.OSErrorCode)
   else: # here we use glob
     var
       f: Glob
@@ -969,7 +790,10 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
             let xx = if relative: extractFilename(getFilename(f))
                      else: dir / extractFilename(getFilename(f))
             yield (k, xx)
-          if findNextFile(h, f) == 0'i32: break
+          if findNextFile(h, f) == 0'i32:
+            let errCode = getLastError()
+            if errCode == ERROR_NO_MORE_FILES: break
+            else: raiseOSError(errCode.OSErrorCode)
     else:
       var d = opendir(dir)
       if d != nil:
@@ -977,14 +801,17 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
         while true:
           var x = readdir(d)
           if x == nil: break
-          var y = $x.d_name
+          when defined(nimNoArrayToCstringConversion):
+            var y = $cstring(addr x.d_name)
+          else:
+            var y = $x.d_name.cstring
           if y != "." and y != "..":
             var s: Stat
             if not relative:
               y = dir / y
             var k = pcFile
 
-            when defined(linux) or defined(macosx) or defined(bsd):
+            when defined(linux) or defined(macosx) or defined(bsd) or defined(genode):
               if x.d_type != DT_UNKNOWN:
                 if x.d_type == DT_DIR: k = pcDir
                 if x.d_type == DT_LNK:
@@ -1000,32 +827,40 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
               k = getSymlinkFileKind(y)
             yield (k, y)
 
-iterator walkDirRec*(dir: string, filter={pcFile, pcDir}): string {.
-  tags: [ReadDirEffect].} =
-  ## Recursively walks over the directory `dir` and yields for each file in `dir`.
-  ## The full path for each file is returned. Directories are not returned.
+iterator walkDirRec*(dir: string, yieldFilter = {pcFile},
+                     followFilter = {pcDir}): string {.tags: [ReadDirEffect].} =
+  ## Recursively walks over the directory `dir` and yields for each file
+  ## or directory in `dir`.
+  ## The full path for each file or directory is returned.
   ## **Warning**:
   ## Modifying the directory structure while the iterator
   ## is traversing may result in undefined behavior!
   ##
-  ## Walking is recursive. `filter` controls the behaviour of the iterator:
+  ## Walking is recursive. `filters` controls the behaviour of the iterator:
   ##
   ## ---------------------   ---------------------------------------------
-  ## filter                  meaning
+  ## yieldFilter             meaning
   ## ---------------------   ---------------------------------------------
   ## ``pcFile``              yield real files
   ## ``pcLinkToFile``        yield symbolic links to files
+  ## ``pcDir``               yield real directories
+  ## ``pcLinkToDir``         yield symbolic links to directories
+  ## ---------------------   ---------------------------------------------
+  ##
+  ## ---------------------   ---------------------------------------------
+  ## followFilter            meaning
+  ## ---------------------   ---------------------------------------------
   ## ``pcDir``               follow real directories
   ## ``pcLinkToDir``         follow symbolic links to directories
   ## ---------------------   ---------------------------------------------
   ##
   var stack = @[dir]
   while stack.len > 0:
-    for k,p in walkDir(stack.pop()):
-      if k in filter:
-        case k
-        of pcFile, pcLinkToFile: yield p
-        of pcDir, pcLinkToDir: stack.add(p)
+    for k, p in walkDir(stack.pop()):
+      if k in {pcDir, pcLinkToDir} and k in followFilter:
+        stack.add(p)
+      if k in yieldFilter:
+        yield p
 
 proc rawRemoveDir(dir: string) =
   when defined(windows):
@@ -1067,7 +902,7 @@ proc rawCreateDir(dir: string): bool =
       result = false
     else:
       raiseOSError(osLastError())
-  elif defined(unix):
+  elif defined(posix):
     let res = mkdir(dir, 0o777)
     if res == 0'i32:
       result = true
@@ -1151,7 +986,9 @@ proc createSymlink*(src, dest: string) =
   ## Some OS's (such as Microsoft Windows) restrict the creation
   ## of symlinks to root users (administrators).
   when defined(Windows):
-    let flag = dirExists(src).int32
+    # 2 is the SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE. This allows
+    # anyone with developer mode on to create a link
+    let flag = dirExists(src).int32 or 2
     when useWinUnicode:
       var wSrc = newWideCString(src)
       var wDst = newWideCString(dest)
@@ -1345,7 +1182,15 @@ proc exclFilePermissions*(filename: string,
   ##   setFilePermissions(filename, getFilePermissions(filename)-permissions)
   setFilePermissions(filename, getFilePermissions(filename)-permissions)
 
-include ospaths
+proc moveDir*(source, dest: string) {.tags: [ReadIOEffect, WriteIOEffect].} =
+  ## Moves a directory from `source` to `dest`. If this fails, `OSError` is raised.
+  if not tryMoveFSObject(source, dest):
+    when not defined(windows):
+      # Fallback to copy & del
+      copyDir(source, dest)
+      removeDir(source)
+
+#include ospaths
 
 proc expandSymlink*(symlinkPath: string): string =
   ## Returns a string representing the path to which the symbolic link points.
@@ -1369,14 +1214,15 @@ when defined(nimdoc):
     ## Returns the number of `command line arguments`:idx: given to the
     ## application.
     ##
-    ## If your binary was called without parameters this will return zero.  You
-    ## can later query each individual paramater with `paramStr() <#paramStr>`_
+    ## Unlike `argc`:idx: in C, if your binary was called without parameters this
+    ## will return zero.
+    ## You can query each individual paramater with `paramStr() <#paramStr>`_
     ## or retrieve all of them in one go with `commandLineParams()
     ## <#commandLineParams>`_.
     ##
-    ## **Availability**: On Posix there is no portable way to get the command
-    ## line from a DLL and thus the proc isn't defined in this environment. You
-    ## can test for its availability with `declared() <system.html#declared>`_.
+    ## **Availability**: When generating a dynamic library (see --app:lib) on
+    ## Posix this proc is not defined.
+    ## Test for availability using `declared() <system.html#declared>`_.
     ## Example:
     ##
     ## .. code-block:: nim
@@ -1388,18 +1234,19 @@ when defined(nimdoc):
   proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
     ## Returns the `i`-th `command line argument`:idx: given to the application.
     ##
-    ## `i` should be in the range `1..paramCount()`, the `EInvalidIndex`
+    ## `i` should be in the range `1..paramCount()`, the `IndexError`
     ## exception will be raised for invalid values.  Instead of iterating over
     ## `paramCount() <#paramCount>`_ with this proc you can call the
     ## convenience `commandLineParams() <#commandLineParams>`_.
     ##
-    ## It is possible to call ``paramStr(0)`` but this will return OS specific
+    ## Similarly to `argv`:idx: in C,
+    ## it is possible to call ``paramStr(0)`` but this will return OS specific
     ## contents (usually the name of the invoked executable). You should avoid
     ## this and call `getAppFilename() <#getAppFilename>`_ instead.
     ##
-    ## **Availability**: On Posix there is no portable way to get the command
-    ## line from a DLL and thus the proc isn't defined in this environment. You
-    ## can test for its availability with `declared() <system.html#declared>`_.
+    ## **Availability**: When generating a dynamic library (see --app:lib) on
+    ## Posix this proc is not defined.
+    ## Test for availability using `declared() <system.html#declared>`_.
     ## Example:
     ##
     ## .. code-block:: nim
@@ -1426,9 +1273,12 @@ elif defined(windows):
     tags: [ReadIOEffect].} =
     # Docstring in nimdoc block.
     if isNil(ownArgv): ownArgv = parseCmdLine($getCommandLine())
-    return TaintedString(ownArgv[i])
+    if i < ownArgv.len and i >= 0: return TaintedString(ownArgv[i])
+    raise newException(IndexError, "invalid index")
 
-elif not defined(createNimRtl) and not(defined(posix) and appType == "lib"):
+elif not defined(createNimRtl) and
+  not(defined(posix) and appType == "lib") and
+  not defined(genode):
   # On Posix, there is no portable way to get the command line from a DLL.
   var
     cmdCount {.importc: "cmdCount".}: cint
@@ -1464,7 +1314,7 @@ when declared(paramCount) or defined(nimdoc):
     for i in 1..paramCount():
       result.add(paramStr(i))
 
-when defined(freebsd):
+when defined(freebsd) or defined(dragonfly):
   proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr csize,
               newp: pointer, newplen: csize): cint
        {.importc: "sysctl",header: """#include <sys/types.h>
@@ -1472,8 +1322,12 @@ when defined(freebsd):
   const
     CTL_KERN = 1
     KERN_PROC = 14
-    KERN_PROC_PATHNAME = 12
     MAX_PATH = 1024
+
+  when defined(freebsd):
+    const KERN_PROC_PATHNAME = 12
+  else:
+    const KERN_PROC_PATHNAME = 9
 
   proc getApplFreebsd(): string =
     var pathLength = csize(MAX_PATH)
@@ -1578,7 +1432,9 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
       result = getApplAux("/proc/self/exe")
     elif defined(solaris):
       result = getApplAux("/proc/" & $getpid() & "/path/a.out")
-    elif defined(freebsd):
+    elif defined(genode):
+      raiseOSError("POSIX command line not supported")
+    elif defined(freebsd) or defined(dragonfly):
       result = getApplFreebsd()
     # little heuristic that may work on other POSIX-like systems:
     if result.len == 0:
@@ -1606,13 +1462,14 @@ proc sleep*(milsecs: int) {.rtl, extern: "nos$1", tags: [TimeEffect].} =
     winlean.sleep(int32(milsecs))
   else:
     var a, b: Timespec
-    a.tv_sec = Time(milsecs div 1000)
+    a.tv_sec = posix.Time(milsecs div 1000)
     a.tv_nsec = (milsecs mod 1000) * 1000 * 1000
     discard posix.nanosleep(a, b)
 
 proc getFileSize*(file: string): BiggestInt {.rtl, extern: "nos$1",
   tags: [ReadIOEffect].} =
-  ## returns the file size of `file`. Can raise ``OSError``.
+  ## returns the file size of `file` (in bytes). An ``OSError`` exception is
+  ## raised in case of an error.
   when defined(windows):
     var a: WIN32_FIND_DATA
     var resA = findFirstFile(file, a)
@@ -1643,16 +1500,17 @@ type
     size*: BiggestInt # Size of file.
     permissions*: set[FilePermission] # File permissions
     linkCount*: BiggestInt # Number of hard links the file object has.
-    lastAccessTime*: Time # Time file was last accessed.
-    lastWriteTime*: Time # Time file was last modified/written to.
-    creationTime*: Time # Time file was created. Not supported on all systems!
+    lastAccessTime*: times.Time # Time file was last accessed.
+    lastWriteTime*: times.Time # Time file was last modified/written to.
+    creationTime*: times.Time # Time file was created. Not supported on all systems!
 
 template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
   ## Transforms the native file info structure into the one nim uses.
   ## 'rawInfo' is either a 'TBY_HANDLE_FILE_INFORMATION' structure on Windows,
   ## or a 'Stat' structure on posix
   when defined(Windows):
-    template toTime(e: FILETIME): untyped {.gensym.} = winTimeToUnixTime(rdFileTime(e)) # local templates default to bind semantics
+    template toTime(e: FILETIME): untyped {.gensym.} =
+      fromUnix(winTimeToUnixTime(rdFileTime(e)).int64) # local templates default to bind semantics
     template merge(a, b): untyped = a or (b shl 32)
     formalInfo.id.device = rawInfo.dwVolumeSerialNumber
     formalInfo.id.file = merge(rawInfo.nFileIndexLow, rawInfo.nFileIndexHigh)
@@ -1683,10 +1541,10 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
         formalInfo.permissions.incl(formalMode)
     formalInfo.id = (rawInfo.st_dev, rawInfo.st_ino)
     formalInfo.size = rawInfo.st_size
-    formalInfo.linkCount = rawInfo.st_Nlink
-    formalInfo.lastAccessTime = rawInfo.st_atime
-    formalInfo.lastWriteTime = rawInfo.st_mtime
-    formalInfo.creationTime = rawInfo.st_ctime
+    formalInfo.linkCount = rawInfo.st_Nlink.BiggestInt
+    formalInfo.lastAccessTime = fromUnix(rawInfo.st_atime.int64)
+    formalInfo.lastWriteTime = fromUnix(rawInfo.st_mtime.int64)
+    formalInfo.creationTime = fromUnix(rawInfo.st_ctime.int64)
 
     result.permissions = {}
     checkAndIncludeMode(S_IRUSR, fpUserRead)

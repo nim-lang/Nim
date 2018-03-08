@@ -23,6 +23,30 @@ __clang__
 #ifndef NIMBASE_H
 #define NIMBASE_H
 
+/*------------ declaring a custom attribute to support using LLVM's Address Sanitizer ------------ */
+
+/*
+   This definition exists to provide support for using the LLVM ASAN (Address SANitizer) tooling with Nim. This
+   should only be used to mark implementations of the GC system that raise false flags with the ASAN tooling, or
+   for functions that are hot and need to be disabled for performance reasons. Based on the official ASAN
+   documentation, both the clang and gcc compilers are supported. In addition to that, a check is performed to
+   verify that the necessary attribute is supported by the compiler.
+
+   To flag a proc as ignored, append the following code pragma to the proc declaration:
+      {.codegenDecl: "CLANG_NO_SANITIZE_ADDRESS $# $#$#".}
+
+   For further information, please refer to the official documentation:
+     https://github.com/google/sanitizers/wiki/AddressSanitizer
+ */
+#define CLANG_NO_SANITIZE_ADDRESS
+#if defined(__clang__)
+#  if __has_attribute(no_sanitize_address)
+#    undef CLANG_NO_SANITIZE_ADDRESS
+#    define CLANG_NO_SANITIZE_ADDRESS __attribute__((no_sanitize_address))
+#  endif
+#endif
+
+
 /* ------------ ignore typical warnings in Nim-generated files ------------- */
 #if defined(__GNUC__) || defined(__clang__)
 #  pragma GCC diagnostic ignored "-Wpragmas"
@@ -39,12 +63,14 @@ __clang__
 #  pragma GCC diagnostic ignored "-Wswitch-bool"
 #  pragma GCC diagnostic ignored "-Wmacro-redefined"
 #  pragma GCC diagnostic ignored "-Wincompatible-pointer-types-discards-qualifiers"
+#  pragma GCC diagnostic ignored "-Wpointer-bool-conversion"
+#  pragma GCC diagnostic ignored "-Wconstant-conversion"
 #endif
 
 #if defined(_MSC_VER)
 #  pragma warning(disable: 4005 4100 4101 4189 4191 4200 4244 4293 4296 4309)
 #  pragma warning(disable: 4310 4365 4456 4477 4514 4574 4611 4668 4702 4706)
-#  pragma warning(disable: 4710 4711 4774 4800 4820 4996 4090)
+#  pragma warning(disable: 4710 4711 4774 4800 4809 4820 4996 4090 4297)
 #endif
 /* ------------------------------------------------------------------------- */
 
@@ -95,7 +121,7 @@ __clang__
   NIM_THREADVAR declaration based on
   http://stackoverflow.com/questions/18298280/how-to-declare-a-variable-as-thread-local-portably
 */
-#if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
 #  define NIM_THREADVAR _Thread_local
 #elif defined _WIN32 && ( \
        defined _MSC_VER || \
@@ -133,6 +159,7 @@ __clang__
 /* ------------------------------------------------------------------- */
 
 #if defined(WIN32) || defined(_WIN32) /* only Windows has this mess... */
+#  define N_LIB_PRIVATE
 #  define N_CDECL(rettype, name) rettype __cdecl name
 #  define N_STDCALL(rettype, name) rettype __stdcall name
 #  define N_SYSCALL(rettype, name) rettype __syscall name
@@ -152,6 +179,7 @@ __clang__
 #  endif
 #  define N_LIB_IMPORT  extern __declspec(dllimport)
 #else
+#  define N_LIB_PRIVATE __attribute__((visibility("hidden")))
 #  if defined(__GNUC__)
 #    define N_CDECL(rettype, name) rettype name
 #    define N_STDCALL(rettype, name) rettype name
@@ -246,13 +274,6 @@ __clang__
 #  endif
 #  define NIM_BOOL bool
 #  define NIM_NIL 0
-struct NimException
-{
-  NimException(struct Exception* exp, const char* msg): exp(exp), msg(msg) {}
-
-  struct Exception* exp;
-  const char* msg;
-};
 #else
 #  ifdef bool
 #    define NIM_BOOL bool
@@ -347,11 +368,13 @@ static N_INLINE(NI32, float32ToInt32)(float x) {
 
 #define float64ToInt64(x) ((NI64) (x))
 
+#define NIM_STRLIT_FLAG ((NU)(1) << ((NIM_INTBITS) - 2)) /* This has to be the same as system.strlitFlag! */
+
 #define STRING_LITERAL(name, str, length) \
-  static const struct {                   \
-    TGenericSeq Sup;                      \
-    NIM_CHAR data[(length) + 1];          \
-  } name = {{length, length}, str}
+   static const struct {                   \
+     TGenericSeq Sup;                      \
+     NIM_CHAR data[(length) + 1];          \
+  } name = {{length, (NI) ((NU)length | NIM_STRLIT_FLAG)}, str}
 
 typedef struct TStringDesc* string;
 
@@ -368,15 +391,13 @@ typedef struct TStringDesc* string;
 #define GenericSeqSize sizeof(TGenericSeq)
 #define paramCount() cmdCount
 
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__i386__)
-#  ifndef NAN
-static unsigned long nimNaN[2]={0xffffffff, 0x7fffffff};
-#    define NAN (*(double*) nimNaN)
-#  endif
-#endif
-
+// NAN definition copied from math.h included in the Windows SDK version 10.0.14393.0
 #ifndef NAN
-#  define NAN (0.0 / 0.0)
+#  ifndef _HUGE_ENUF
+#    define _HUGE_ENUF  1e+300  // _HUGE_ENUF*_HUGE_ENUF must overflow
+#  endif
+#  define NAN_INFINITY ((float)(_HUGE_ENUF * _HUGE_ENUF))
+#  define NAN ((float)(NAN_INFINITY * 0.0F))
 #endif
 
 #ifndef INF
@@ -454,7 +475,6 @@ static inline void GCGuard (void *ptr) { asm volatile ("" :: "X" (ptr)); }
    On disagreement, your C compiler will say something like:
    "error: 'Nim_and_C_compiler_disagree_on_target_architecture' declared as an array with a negative size" */
 typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8 ? 1 : -1];
-#endif
 
 #ifdef  __cplusplus
 #  define NIM_EXTERNC extern "C"
@@ -473,6 +493,13 @@ typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == siz
 #  include <sys/types.h>
 #endif
 
+#if defined(__GENODE__)
+#include <libc/component.h>
+extern Libc::Env *genodeEnv;
+#endif
+
 /* Compile with -d:checkAbi and a sufficiently C11:ish compiler to enable */
 #define NIM_CHECK_SIZE(typ, sz) \
   _Static_assert(sizeof(typ) == sz, "Nim & C disagree on type size")
+
+#endif /* NIMBASE_H */

@@ -52,7 +52,7 @@ proc isLet(n: PNode): bool =
 
 proc isVar(n: PNode): bool =
   n.kind == nkSym and n.sym.kind in {skResult, skVar} and
-      {sfGlobal, sfAddrTaken} * n.sym.flags == {}
+      {sfAddrTaken} * n.sym.flags == {}
 
 proc isLetLocation(m: PNode, isApprox: bool): bool =
   # consider: 'n[].kind' --> we really need to support 1 deref op even if this
@@ -247,7 +247,7 @@ proc canon*(n: PNode): PNode =
   # XXX for now only the new code in 'semparallel' uses this
   if n.safeLen >= 1:
     result = shallowCopy(n)
-    for i in 0 .. < n.len:
+    for i in 0 ..< n.len:
       result.sons[i] = canon(n.sons[i])
   elif n.kind == nkSym and n.sym.kind == skLet and
       n.sym.ast.getMagic in (someEq + someAdd + someMul + someMin +
@@ -758,17 +758,20 @@ macro `=~`(x: PNode, pat: untyped): bool =
     of nnkIdent:
       let c = newTree(nnkStmtListExpr, newLetStmt(pat, x))
       conds.add c
-      if ($pat)[^1] == 'c': c.add(getAst(isVal(pat)))
+      # XXX why is this 'isVal(pat)' and not 'isVal(x)'?
+      if ($pat)[^1] == 'c': c.add(getAst(isVal(x)))
       else: c.add bindSym"true"
     of nnkIntLit:
-      conds.add(getAst(isIntVal(pat.intVal)))
+      conds.add(getAst(isIntVal(x, pat.intVal)))
     else:
       error("invalid pattern")
 
   var conds = newTree(nnkBracket)
   m(x, pat, conds)
-  result = nestList(!"and", conds)
-
+  when declared(macros.toNimIdent):
+    result = nestList(toNimIdent"and", conds)
+  else:
+    result = nestList(!"and", conds)
 
 proc isMinusOne(n: PNode): bool =
   n.kind in {nkCharLit..nkUInt64Lit} and n.intVal == -1

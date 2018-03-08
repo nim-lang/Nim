@@ -41,7 +41,8 @@ These integer types are pre-defined:
 ``int``
   the generic signed integer type; its size is platform dependent and has the
   same size as a pointer. This type should be used in general. An integer
-  literal that has no type suffix is of this type.
+  literal that has no type suffix is of this type if it is in the range
+  ``low(int32)..high(int32)`` otherwise the literal's type is ``int64``.
 
 intXX
   additional signed integer types of XX bits use this naming scheme
@@ -114,7 +115,8 @@ if the literal's value fits this smaller type and such a conversion is less
 expensive than other implicit conversions, so ``myInt16 + 34`` produces
 an ``int16`` result.
 
-For further details, see `Convertible relation`_.
+For further details, see `Convertible relation
+<#type-relations-convertible-relation>`_.
 
 
 Subrange types
@@ -135,26 +137,6 @@ determined). Assignments from the base type to one of its subrange types
 (and vice versa) are allowed.
 
 A subrange type has the same size as its base type (``int`` in the example).
-
-Nim requires `interval arithmetic`:idx: for subrange types over a set
-of built-in operators that involve constants: ``x %% 3`` is of
-type ``range[0..2]``. The following built-in operators for integers are
-affected by this rule: ``-``, ``+``, ``*``, ``min``, ``max``, ``succ``,
-``pred``, ``mod``, ``div``, ``%%``, ``and`` (bitwise ``and``).
-
-Bitwise ``and`` only produces a ``range`` if one of its operands is a
-constant *x* so that (x+1) is a number of two.
-(Bitwise ``and`` is then a ``%%`` operation.)
-
-This means that the following code is accepted:
-
-.. code-block:: nim
-  case (x and 3) + 7
-  of 7: echo "A"
-  of 8: echo "B"
-  of 9: echo "C"
-  of 10: echo "D"
-  # note: no ``else`` required as (x and 3) + 7 has the type: range[7..10]
 
 
 Pre-defined floating point types
@@ -199,11 +181,11 @@ Nim exceptions: `FloatInvalidOpError`:idx:, `FloatDivByZeroError`:idx:,
 and `FloatInexactError`:idx:.
 These exceptions inherit from the `FloatingPointError`:idx: base class.
 
-Nim provides the pragmas `NaNChecks`:idx: and `InfChecks`:idx: to control
+Nim provides the pragmas `nanChecks`:idx: and `infChecks`:idx: to control
 whether the IEEE exceptions are ignored or trap a Nim exception:
 
 .. code-block:: nim
-  {.NanChecks: on, InfChecks: on.}
+  {.nanChecks: on, infChecks: on.}
   var a = 1.0
   var b = 0.0
   echo b / b # raises FloatInvalidOpError
@@ -213,7 +195,7 @@ In the current implementation ``FloatDivByZeroError`` and ``FloatInexactError``
 are never raised. ``FloatOverflowError`` is raised instead of
 ``FloatDivByZeroError``.
 There is also a `floatChecks`:idx: pragma that is a short-cut for the
-combination of ``NaNChecks`` and ``InfChecks`` pragmas. ``floatChecks`` are
+combination of ``nanChecks`` and ``infChecks`` pragmas. ``floatChecks`` are
 turned off as default.
 
 The only operations that are affected by the ``floatChecks`` pragma are
@@ -570,8 +552,7 @@ order. The *names* of the fields also have to be identical.
 
 The assignment operator for tuples copies each component.
 The default assignment operator for objects copies each component. Overloading
-of the assignment operator for objects is not possible, but this will change
-in future versions of the compiler.
+of the assignment operator is described in `type-bound-operations-operator`_.
 
 .. code-block:: nim
 
@@ -694,7 +675,47 @@ the ``case`` statement: The branches in a ``case`` section may be indented too.
 In the example the ``kind`` field is called the `discriminator`:idx:\: For
 safety its address cannot be taken and assignments to it are restricted: The
 new value must not lead to a change of the active object branch. For an object
-branch switch ``system.reset`` has to be used.
+branch switch ``system.reset`` has to be used. Also, when the fields of a
+particular branch are specified during object construction, the correct value
+for the discriminator must be supplied at compile-time.
+
+Package level objects
+---------------------
+
+Every Nim module resides in a (nimble) package. An object type can be attached
+to the package it resides in. If that is done, the type can be referenced from
+other modules as an `incomplete`:idx: object type. This features allows to
+break up recursive type dependencies accross module boundaries. Incomplete
+object types are always passed ``byref`` and can only be used in pointer like
+contexts (``var/ref/ptr IncompleteObject``) in general since the compiler does
+not yet know the size of the object. To complete an incomplete object
+the ``package`` pragma has to be used. ``package`` implies ``byref``.
+
+As long as a type ``T`` is incomplete ``sizeof(T)`` or "runtime type
+information" for ``T`` is not available.
+
+
+Example:
+
+.. code-block:: nim
+
+  # module A (in an arbitrary package)
+  type
+    Pack.SomeObject = object ## declare as incomplete object of package 'Pack'
+    Triple = object
+      a, b, c: ref SomeObject ## pointers to incomplete objects are allowed
+
+  ## Incomplete objects can be used as parameters:
+  proc myproc(x: SomeObject) = discard
+
+
+.. code-block:: nim
+
+  # module B (in package "Pack")
+  type
+    SomeObject* {.package.} = object ## Use 'package' to complete the object
+      s, t: string
+      x, y: int
 
 
 Set type
@@ -904,8 +925,8 @@ not compatible to ``pointer`` to prevent the following from compiling:
 Future directions:
 
 * Memory regions might become available for  ``string`` and ``seq`` too.
-* Builtin regions like ``private``, ``global`` and ``local`` will
-  prove very useful for the upcoming OpenCL target.
+* Builtin regions like ``private``, ``global`` and ``local`` might be
+  useful for an OpenCL target.
 * Builtin "regions" can model ``lent`` and ``unique`` pointers.
 * An assignment operator can be attached to a region so that proper write
   barriers can be generated. This would imply that the GC can be implemented
@@ -1002,16 +1023,6 @@ Nim supports these `calling conventions`:idx:\:
     improve speed.
 
 Most calling conventions exist only for the Windows 32-bit platform.
-
-Assigning/passing a procedure to a procedural variable is only allowed if one
-of the following conditions hold:
-1) The procedure that is accessed resides in the current module.
-2) The procedure is marked with the ``procvar`` pragma (see `procvar pragma <#pragmas-procvar-pragma>`_).
-3) The procedure has a calling convention that differs from ``nimcall``.
-4) The procedure is anonymous.
-
-The rules' purpose is to prevent the case that extending a non-``procvar``
-procedure with default parameters breaks client code.
 
 The default calling convention is ``nimcall``, unless it is an inner proc (a
 proc inside of a proc). For an inner proc an analysis is performed whether it

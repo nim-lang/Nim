@@ -41,30 +41,26 @@ Options:
 Possible Commands:
   boot [options]           bootstraps with given command line options
   distrohelper [bindir]    helper for distro packagers
-  geninstall               generate ./install.sh; Unix only!
-  testinstall              test tar.xz package; Unix only! Only for devs!
-  clean                    cleans Nim project; removes generated files
-  web [options]            generates the website and the full documentation
-  website [options]        generates only the website
-  csource [options]        builds the C sources for installation
-  pdf                      builds the PDF documentation
-  zip                      builds the installation ZIP package
-  xz                       builds the installation XZ package
-  nsis [options]           builds the NSIS Setup installer (for Windows)
-  tests [options]          run the testsuite
-  temp options             creates a temporary compiler for testing
-  winrelease               creates a release (for coredevs only)
-  nimble                   builds the Nimble tool
   tools                    builds Nim related tools
-  pushcsource              push generated C sources to its repo! Only for devs!
+  nimble                   builds the Nimble tool
 Boot options:
   -d:release               produce a release version of the compiler
-  -d:tinyc                 include the Tiny C backend (not supported on Windows)
   -d:useLinenoise          use the linenoise library for interactive mode
                            (not needed on Windows)
-  -d:nativeStacktrace      use native stack traces (only for Mac OS X or Linux)
-  -d:noCaas                build Nim without CAAS support
   -d:avoidTimeMachine      only for Mac OS X, excludes nimcache dir from backups
+
+Commands for core developers:
+  web [options]            generates the website and the full documentation
+  website [options]        generates only the website
+  csource -d:release       builds the C sources for installation
+  pdf                      builds the PDF documentation
+  zip                      builds the installation zip package
+  xz                       builds the installation tar.xz package
+  testinstall              test tar.xz package; Unix only!
+  tests [options]          run the testsuite
+  temp options             creates a temporary compiler for testing
+  winrelease               creates a Windows release
+  pushcsource              push generated C sources to its repo
 Web options:
   --googleAnalytics:UA-... add the given google analytics code to the docs. To
                            build the official docs, use UA-48159761-1
@@ -101,7 +97,7 @@ proc exec(cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
     if not absolute.isAbsolute:
       absolute = getCurrentDir() / absolute
     echo("Adding to $PATH: ", absolute)
-    putEnv("PATH", prevPath & PathSep & absolute)
+    putEnv("PATH", (if prevPath.len > 0: prevPath & PathSep else: "") & absolute)
   echo(cmd)
   if execShellCmd(cmd) != 0: quit("FAILURE", errorcode)
   putEnv("PATH", prevPath)
@@ -156,6 +152,10 @@ proc tryExec(cmd: string): bool =
 proc safeRemove(filename: string) =
   if existsFile(filename): removeFile(filename)
 
+proc overwriteFile(source, dest: string) =
+  safeRemove(dest)
+  moveFile(source, dest)
+
 proc copyExe(source, dest: string) =
   safeRemove(dest)
   copyFile(dest=dest, source=source)
@@ -182,7 +182,7 @@ proc bundleNimbleExe() =
   bundleNimbleSrc()
   # now compile Nimble and copy it to $nim/bin for the installer.ini
   # to pick it up:
-  nimexec("c dist/nimble/src/nimble.nim")
+  nimexec("c -d:release dist/nimble/src/nimble.nim")
   copyExe("dist/nimble/src/nimble".exe, "bin/nimble".exe)
 
 proc buildNimble(latest: bool) =
@@ -209,29 +209,33 @@ proc buildNimble(latest: bool) =
       else:
         exec("git checkout -f stable")
       exec("git pull")
-  nimexec("c --noNimblePath -p:compiler " & installDir / "src/nimble.nim")
+  nimexec("c --noNimblePath -p:compiler -d:release " & installDir / "src/nimble.nim")
   copyExe(installDir / "src/nimble".exe, "bin/nimble".exe)
 
 proc bundleNimsuggest(buildExe: bool) =
   if buildExe:
-    nimexec("c --noNimblePath -d:release -p:compiler tools/nimsuggest/nimsuggest.nim")
-    copyExe("tools/nimsuggest/nimsuggest".exe, "bin/nimsuggest".exe)
-    removeFile("tools/nimsuggest/nimsuggest".exe)
+    nimexec("c --noNimblePath -d:release -p:compiler nimsuggest/nimsuggest.nim")
+    copyExe("nimsuggest/nimsuggest".exe, "bin/nimsuggest".exe)
+    removeFile("nimsuggest/nimsuggest".exe)
+
+proc buildVccTool() =
+  nimexec("c -o:bin/vccexe.exe tools/vccenv/vccexe")
 
 proc bundleWinTools() =
   nimexec("c tools/finish.nim")
   copyExe("tools/finish".exe, "finish".exe)
   removeFile("tools/finish".exe)
-  nimexec("c -o:bin/vccexe.exe tools/vccenv/vccexe")
+  buildVccTool()
   nimexec("c -o:bin/nimgrab.exe -d:ssl tools/nimgrab.nim")
+  nimexec("c -o:bin/nimgrep.exe tools/nimgrep.nim")
   when false:
     # not yet a tool worth including
     nimexec(r"c --cc:vcc --app:gui -o:bin\downloader.exe -d:ssl --noNimblePath " &
             r"--path:..\ui tools\downloader.nim")
 
 proc zip(args: string) =
-  bundleNimbleSrc()
-  bundleNimsuggest(false)
+  bundleNimbleExe()
+  bundleNimsuggest(true)
   bundleWinTools()
   nimexec("cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
        [VersionAsString, compileNimInst])
@@ -253,10 +257,14 @@ proc buildTool(toolname, args: string) =
 proc buildTools(latest: bool) =
   let nimsugExe = "bin/nimsuggest".exe
   nimexec "c --noNimblePath -p:compiler -d:release -o:" & nimsugExe &
-      " tools/nimsuggest/nimsuggest.nim"
+      " nimsuggest/nimsuggest.nim"
 
   let nimgrepExe = "bin/nimgrep".exe
-  nimexec "c -o:" & nimgrepExe & " tools/nimgrep.nim"
+  nimexec "c -d:release -o:" & nimgrepExe & " tools/nimgrep.nim"
+  when defined(windows): buildVccTool()
+
+  #nimexec "c -o:" & ("bin/nimresolve".exe) & " tools/nimresolve.nim"
+
   buildNimble(latest)
 
 proc nsis(args: string) =
@@ -388,58 +396,37 @@ proc clean(args: string) =
 
 # -------------- builds a release ---------------------------------------------
 
-proc patchConfig(lookFor, replaceBy: string) =
-  const
-    cfgFile = "config/nim.cfg"
-  try:
-    let cfg = readFile(cfgFile)
-    let newCfg = cfg.replace(lookFor, replaceBy)
-    if newCfg == cfg:
-      echo "Could not patch 'config/nim.cfg' [Error]"
-      echo "Reason: patch substring not found:"
-      echo lookFor
-    else:
-      writeFile(cfgFile, newCfg)
-  except IOError:
-    quit "Could not access 'config/nim.cfg' [Error]"
-
 proc winReleaseArch(arch: string) =
   doAssert arch in ["32", "64"]
   let cpu = if arch == "32": "i386" else: "amd64"
 
   template withMingw(path, body) =
-    const orig = """#gcc.path = r"$nim\dist\mingw\bin""""
-    let replacePattern = """gcc.path = r"..\mingw$1\bin" # winrelease""" % arch
-    patchConfig(orig, replacePattern)
+    let prevPath = getEnv("PATH")
+    putEnv("PATH", (if path.len > 0: path & PathSep else: "") & prevPath)
     try:
       body
     finally:
-      patchConfig(replacePattern, orig)
+      putEnv("PATH", prevPath)
 
   withMingw r"..\mingw" & arch & r"\bin":
     # Rebuilding koch is necessary because it uses its pointer size to
     # determine which mingw link to put in the NSIS installer.
-    nimexec "c --out:koch_temp --cpu:$# koch" % cpu
-    exec "koch_temp boot -d:release --cpu:$#" % cpu
-    exec "koch_temp nsis -d:release"
-    exec "koch_temp zip -d:release"
-
-    when false:
-      # we now disable the NSIS installer as it cannot download from https
-      # and is broken in so many different ways it's not funny anymore:
-      moveFile r"build\nim_$#.exe" % VersionAsString,
-               r"web\upload\download\nim-$#_x$#.exe" % [VersionAsString, arch]
-    moveFile r"build\nim-$#.zip" % VersionAsString,
+    nimexec "c --cpu:$# koch" % cpu
+    exec "koch boot -d:release --cpu:$#" % cpu
+    exec "koch zip -d:release"
+    overwriteFile r"build\nim-$#.zip" % VersionAsString,
              r"web\upload\download\nim-$#_x$#.zip" % [VersionAsString, arch]
 
-proc winRelease() =
+proc winRelease*() =
+  # Now used from "tools/winrelease" and not directly supported by koch
+  # anymore!
   # Build -docs file:
   when true:
     web(gaCode)
     withDir "web/upload/" & VersionAsString:
       exec "7z a -tzip docs-$#.zip *.html" % VersionAsString
-    moveFile "web/upload/$1/docs-$1.zip" % VersionAsString,
-             "web/upload/download/docs-$1.zip" % VersionAsString
+    overwriteFile "web/upload/$1/docs-$1.zip" % VersionAsString,
+                  "web/upload/download/docs-$1.zip" % VersionAsString
   when true:
     csource("-d:release")
   when true:
@@ -454,7 +441,7 @@ template `|`(a, b): string = (if a.len > 0: a else: b)
 proc tests(args: string) =
   # we compile the tester with taintMode:on to have a basic
   # taint mode test :-)
-  nimexec "cc --taintMode:on tests/testament/tester"
+  nimexec "cc --taintMode:on --opt:speed tests/testament/tester"
   # Since tests take a long time (on my machine), and we want to defy Murhpys
   # law - lets make sure the compiler really is freshly compiled!
   nimexec "c --lib:lib -d:release --opt:speed compiler/nim.nim"
@@ -485,9 +472,21 @@ proc temp(args: string) =
   # 125 is the magic number to tell git bisect to skip the current
   # commit.
   let (bootArgs, programArgs) = splitArgs(args)
-  exec("nim c " & bootArgs & " compiler" / "nim", 125)
+  let nimexec = findNim()
+  exec(nimexec & " c -d:debug " & bootArgs & " compiler" / "nim", 125)
   copyExe(output, finalDest)
   if programArgs.len > 0: exec(finalDest & " " & programArgs)
+
+proc xtemp(cmd: string) =
+  let d = getAppDir()
+  copyExe(d / "bin" / "nim".exe, d / "bin" / "nim_backup".exe)
+  try:
+    withDir(d):
+      temp""
+    copyExe(d / "bin" / "nim_temp".exe, d / "bin" / "nim".exe)
+    exec(cmd)
+  finally:
+    copyExe(d / "bin" / "nim_backup".exe, d / "bin" / "nim".exe)
 
 proc pushCsources() =
   if not dirExists("../csources/.git"):
@@ -512,41 +511,66 @@ proc pushCsources() =
   finally:
     setCurrentDir(cwd)
 
+proc valgrind(cmd: string) =
+  # somewhat hacky: '=' sign means "pass to valgrind" else "pass to Nim"
+  let args = parseCmdLine(cmd)
+  var nimcmd = ""
+  var valcmd = ""
+  for i, a in args:
+    if i == args.len-1:
+      # last element is the filename:
+      valcmd.add ' '
+      valcmd.add changeFileExt(a, ExeExt)
+      nimcmd.add ' '
+      nimcmd.add a
+    elif '=' in a:
+      valcmd.add ' '
+      valcmd.add a
+    else:
+      nimcmd.add ' '
+      nimcmd.add a
+  exec("nim c" & nimcmd)
+  let supp = getAppDir() / "tools" / "nimgrind.supp"
+  exec("valgrind --suppressions=" & supp & valcmd)
+
 proc showHelp() =
   quit(HelpText % [VersionAsString & spaces(44-len(VersionAsString)),
                    CompileDate, CompileTime], QuitSuccess)
 
-var op = initOptParser()
-op.next()
-case op.kind
-of cmdLongOption, cmdShortOption: showHelp()
-of cmdArgument:
-  case normalize(op.key)
-  of "boot": boot(op.cmdLineRest)
-  of "clean": clean(op.cmdLineRest)
-  of "web": web(op.cmdLineRest)
-  of "doc", "docs": web("--onlyDocs " & op.cmdLineRest)
-  of "json2": web("--json2 " & op.cmdLineRest)
-  of "website": website(op.cmdLineRest & gaCode)
-  of "web0":
-    # undocumented command for Araq-the-merciful:
-    web(op.cmdLineRest & gaCode)
-  of "pdf": pdf()
-  of "csource", "csources": csource(op.cmdLineRest)
-  of "zip": zip(op.cmdLineRest)
-  of "xz": xz(op.cmdLineRest)
-  of "nsis": nsis(op.cmdLineRest)
-  of "geninstall": geninstall(op.cmdLineRest)
-  of "distrohelper": geninstall()
-  of "install": install(op.cmdLineRest)
-  of "testinstall": testUnixInstall()
-  of "test", "tests": tests(op.cmdLineRest)
-  of "temp": temp(op.cmdLineRest)
-  of "winrelease": winRelease()
-  of "wintools": bundleWinTools()
-  of "nimble": buildNimble(existsDir(".git"))
-  of "nimsuggest": bundleNimsuggest(buildExe=true)
-  of "tools": buildTools(existsDir(".git"))
-  of "pushcsource", "pushcsources": pushCsources()
-  else: showHelp()
-of cmdEnd: showHelp()
+when isMainModule:
+  var op = initOptParser()
+  op.next()
+  case op.kind
+  of cmdLongOption, cmdShortOption: showHelp()
+  of cmdArgument:
+    case normalize(op.key)
+    of "boot": boot(op.cmdLineRest)
+    of "clean": clean(op.cmdLineRest)
+    of "web": web(op.cmdLineRest)
+    of "doc", "docs": web("--onlyDocs " & op.cmdLineRest)
+    of "json2": web("--json2 " & op.cmdLineRest)
+    of "website": website(op.cmdLineRest & gaCode)
+    of "web0":
+      # undocumented command for Araq-the-merciful:
+      web(op.cmdLineRest & gaCode)
+    of "pdf": pdf()
+    of "csource", "csources": csource(op.cmdLineRest)
+    of "zip": zip(op.cmdLineRest)
+    of "xz": xz(op.cmdLineRest)
+    of "nsis": nsis(op.cmdLineRest)
+    of "geninstall": geninstall(op.cmdLineRest)
+    of "distrohelper": geninstall()
+    of "install": install(op.cmdLineRest)
+    of "testinstall": testUnixInstall()
+    of "test", "tests": tests(op.cmdLineRest)
+    of "temp": temp(op.cmdLineRest)
+    of "xtemp": xtemp(op.cmdLineRest)
+    #of "winrelease": winRelease()
+    of "wintools": bundleWinTools()
+    of "nimble": buildNimble(existsDir(".git"))
+    of "nimsuggest": bundleNimsuggest(buildExe=true)
+    of "tools": buildTools(existsDir(".git"))
+    of "pushcsource", "pushcsources": pushCsources()
+    of "valgrind": valgrind(op.cmdLineRest)
+    else: showHelp()
+  of cmdEnd: showHelp()

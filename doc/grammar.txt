@@ -10,7 +10,7 @@ operator =  OP0 | OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9
 prefixOperator = operator
 optInd = COMMENT?
 optPar = (IND{>} | IND{=})?
-simpleExpr = arrowExpr (OP0 optInd arrowExpr)*
+simpleExpr = arrowExpr (OP0 optInd arrowExpr)* pragma?
 arrowExpr = assignExpr (OP1 optInd assignExpr)*
 assignExpr = orExpr (OP2 optInd orExpr)*
 orExpr = andExpr (OP3 optInd andExpr)*
@@ -22,9 +22,7 @@ plusExpr = mulExpr (OP8 optInd mulExpr)*
 mulExpr = dollarExpr (OP9 optInd dollarExpr)*
 dollarExpr = primary (OP10 optInd primary)*
 symbol = '`' (KEYW|IDENT|literal|(operator|'('|')'|'['|']'|'{'|'}'|'=')+)+ '`'
-       | IDENT | 'addr' | 'type'
-indexExpr = expr
-indexExprList = indexExpr ^+ comma
+       | IDENT | KEYW
 exprColonEqExpr = expr (':'|'=' expr)?
 exprList = expr ^+ comma
 dotExpr = expr '.' optInd symbol
@@ -83,10 +81,10 @@ paramList = '(' declColonEquals ^* (comma/semicolon) ')'
 paramListArrow = paramList? ('->' optInd typeDesc)?
 paramListColon = paramList? (':' optInd typeDesc)?
 doBlock = 'do' paramListArrow pragmas? colcom stmt
-doBlocks = doBlock ^* IND{=}
 procExpr = 'proc' paramListColon pragmas? ('=' COMMENT? stmt)?
 distinct = 'distinct' optInd typeDesc
-expr = (ifExpr
+expr = (blockExpr
+      | ifExpr
       | whenExpr
       | caseExpr
       | tryExpr)
@@ -100,12 +98,13 @@ primary = typeKeyw typeDescK
 typeDesc = simpleExpr
 typeDefAux = simpleExpr
            | 'concept' typeClass
-macroColon = ':' stmt? ( IND{=} 'of' exprList ':' stmt
-                       | IND{=} 'elif' expr ':' stmt
-                       | IND{=} 'except' exprList ':' stmt
-                       | IND{=} 'else' ':' stmt )*
+postExprBlocks = ':' stmt? ( IND{=} doBlock
+                           | IND{=} 'of' exprList ':' stmt
+                           | IND{=} 'elif' expr ':' stmt
+                           | IND{=} 'except' exprList ':' stmt
+                           | IND{=} 'else' ':' stmt )*
 exprStmt = simpleExpr
-         (( '=' optInd expr )
+         (( '=' optInd expr colonBody? )
          / ( expr ^+ comma
              doBlocks
               / macroColon
@@ -143,6 +142,7 @@ tryExpr = 'try' colcom stmt &(optInd 'except'|'finally')
 exceptBlock = 'except' colcom stmt
 forStmt = 'for' (identWithPragma ^+ comma) 'in' expr colcom stmt
 blockStmt = 'block' symbol? colcom stmt
+blockExpr = 'block' symbol? colcom stmt
 staticStmt = 'static' colcom stmt
 deferStmt = 'defer' colcom stmt
 asmStmt = 'asm' pragma? (STR_LIT | RSTR_LIT | TRIPLE_STR_LIT)
@@ -176,7 +176,8 @@ typeClass = typeClassParam ^* ',' (pragma)? ('of' typeDesc ^* ',')?
 typeDef = identWithPragmaDot genericParamList? '=' optInd typeDefAux
             indAndComment?
 varTuple = '(' optInd identWithPragma ^+ comma optPar ')' '=' optInd expr
-variable = (varTuple / identColonEquals) indAndComment
+colonBody = colcom stmt doBlocks?
+variable = (varTuple / identColonEquals) colonBody? indAndComment
 bindStmt = 'bind' optInd qualifiedIdent ^+ comma
 mixinStmt = 'mixin' optInd qualifiedIdent ^+ comma
 pragmaStmt = pragma (':' COMMENT? stmt)?
@@ -194,7 +195,7 @@ complexOrSimpleStmt = (ifStmt | whenStmt | whileStmt
                     | 'converter' routine
                     | 'type' section(typeDef)
                     | 'const' section(constant)
-                    | ('let' | 'var') section(variable)
+                    | ('let' | 'var' | 'using') section(variable)
                     | bindStmt | mixinStmt)
                     / simpleStmt
 stmt = (IND{>} complexOrSimpleStmt^+(IND{=} / ';') DED)

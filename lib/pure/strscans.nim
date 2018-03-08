@@ -31,7 +31,10 @@ As can be seen from the examples, strings are matched verbatim except for
 substrings starting with ``$``. These constructions are available:
 
 =================   ========================================================
-``$i``              Matches an integer. This uses ``parseutils.parseInt``.
+``$b``              Matches a binary integer. This uses ``parseutils.parseBin``.
+``$o``              Matches an octal integer. This uses ``parseutils.parseOct``.
+``$i``              Matches a decimal integer. This uses ``parseutils.parseInt``.
+``$h``              Matches a hex integer. This uses ``parseutils.parseHex``.
 ``$f``              Matches a floating pointer number. Uses ``parseFloat``.
 ``$w``              Matches an ASCII identifier: ``[A-Z-a-z_][A-Za-z_0-9]*``.
 ``$s``              Skips optional whitespace.
@@ -187,7 +190,6 @@ overloaded to handle both single characters and sets of character.
   if scanp(content, idx, +( ~{'\L', '\0'} -> entry.add(peekChar($input))), '\L'):
     result.add entry
 
-
 Calling ordinary Nim procs inside the macro is possible:
 
 .. code-block:: nim
@@ -253,6 +255,30 @@ is performed.
 
   for r in collectLinks(body):
     echo r
+
+In this example both macros are combined seamlessly in order to maximise
+efficiency and perform different checks.
+
+.. code-block:: nim
+
+  iterator parseIps*(soup: string): string =
+    ## ipv4 only!
+    const digits = {'0'..'9'}
+    var a, b, c, d: int
+    var buf = ""
+    var idx = 0
+    while idx < soup.len:
+      if scanp(soup, idx, (`digits`{1,3}, '.', `digits`{1,3}, '.',
+               `digits`{1,3}, '.', `digits`{1,3}) -> buf.add($_)):
+        discard buf.scanf("$i.$i.$i.$i", a, b, c, d)
+        if (a >= 0 and a <= 254) and
+           (b >= 0 and b <= 254) and
+           (c >= 0 and c <= 254) and
+           (d >= 0 and d <= 254):
+          yield buf
+      buf.setLen(0) # need to clear `buf` each time, cause it might contain garbage
+      idx.inc
+
 ]##
 
 
@@ -285,7 +311,7 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
   ## See top level documentation of his module of how ``scanf`` works.
   template matchBind(parser) {.dirty.} =
     var resLen = genSym(nskLet, "resLen")
-    conds.add newLetStmt(resLen, newCall(bindSym(parser), input, results[i], idx))
+    conds.add newLetStmt(resLen, newCall(bindSym(parser), inp, results[i], idx))
     conds.add resLen.notZero
     conds.add resLen
 
@@ -293,7 +319,8 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
   var p = 0
   var idx = genSym(nskVar, "idx")
   var res = genSym(nskVar, "res")
-  result = newTree(nnkStmtListExpr, newVarStmt(idx, newLit 0), newVarStmt(res, newLit false))
+  let inp = genSym(nskLet, "inp")
+  result = newTree(nnkStmtListExpr, newLetStmt(inp, input), newVarStmt(idx, newLit 0), newVarStmt(res, newLit false))
   var conds = newTree(nnkStmtList)
   var fullMatch = false
   while p < pattern.len:
@@ -302,29 +329,47 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
       case pattern[p]
       of '$':
         var resLen = genSym(nskLet, "resLen")
-        conds.add newLetStmt(resLen, newCall(bindSym"skip", input, newLit($pattern[p]), idx))
+        conds.add newLetStmt(resLen, newCall(bindSym"skip", inp, newLit($pattern[p]), idx))
         conds.add resLen.notZero
         conds.add resLen
       of 'w':
-        if i < results.len or getType(results[i]).typeKind != ntyString:
+        if i < results.len and getType(results[i]).typeKind == ntyString:
           matchBind "parseIdent"
         else:
           error("no string var given for $w")
         inc i
+      of 'b':
+        if i < results.len and getType(results[i]).typeKind == ntyInt:
+          matchBind "parseBin"
+        else:
+          error("no int var given for $b")
+        inc i
+      of 'o':
+        if i < results.len and getType(results[i]).typeKind == ntyInt:
+          matchBind "parseOct"
+        else:
+          error("no int var given for $o")
+        inc i
       of 'i':
-        if i < results.len or getType(results[i]).typeKind != ntyInt:
+        if i < results.len and getType(results[i]).typeKind == ntyInt:
           matchBind "parseInt"
         else:
-          error("no int var given for $d")
+          error("no int var given for $i")
+        inc i
+      of 'h':
+        if i < results.len and getType(results[i]).typeKind == ntyInt:
+          matchBind "parseHex"
+        else:
+          error("no int var given for $h")
         inc i
       of 'f':
-        if i < results.len or getType(results[i]).typeKind != ntyFloat:
+        if i < results.len and getType(results[i]).typeKind == ntyFloat:
           matchBind "parseFloat"
         else:
           error("no float var given for $f")
         inc i
       of 's':
-        conds.add newCall(bindSym"inc", idx, newCall(bindSym"skipWhitespace", input, idx))
+        conds.add newCall(bindSym"inc", idx, newCall(bindSym"skipWhitespace", inp, idx))
         conds.add newEmptyNode()
         conds.add newEmptyNode()
       of '.':
@@ -333,7 +378,7 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
         else:
           error("invalid format string")
       of '*', '+':
-        if i < results.len or getType(results[i]).typeKind != ntyString:
+        if i < results.len and getType(results[i]).typeKind == ntyString:
           var min = ord(pattern[p] == '+')
           var q=p+1
           var token = ""
@@ -341,7 +386,7 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
             token.add pattern[q]
             inc q
           var resLen = genSym(nskLet, "resLen")
-          conds.add newLetStmt(resLen, newCall(bindSym"parseUntil", input, results[i], newLit(token), idx))
+          conds.add newLetStmt(resLen, newCall(bindSym"parseUntil", inp, results[i], newLit(token), idx))
           conds.add newCall(bindSym"!=", resLen, newLit min)
           conds.add resLen
         else:
@@ -363,7 +408,7 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
         let expr = pattern.substr(start, p-1)
         if i < results.len:
           var resLen = genSym(nskLet, "resLen")
-          conds.add newLetStmt(resLen, buildUserCall(expr, input, results[i], idx))
+          conds.add newLetStmt(resLen, buildUserCall(expr, inp, results[i], idx))
           conds.add newCall(bindSym"!=", resLen, newLit 0)
           conds.add resLen
         else:
@@ -383,7 +428,7 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
           else: discard
           inc p
         let expr = pattern.substr(start, p-1)
-        conds.add newCall(bindSym"inc", idx, buildUserCall(expr, input, idx))
+        conds.add newCall(bindSym"inc", idx, buildUserCall(expr, inp, idx))
         conds.add newEmptyNode()
         conds.add newEmptyNode()
       else: error("invalid format string")
@@ -394,13 +439,13 @@ macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): b
         token.add pattern[p]
         inc p
       var resLen = genSym(nskLet, "resLen")
-      conds.add newLetStmt(resLen, newCall(bindSym"skip", input, newLit(token), idx))
+      conds.add newLetStmt(resLen, newCall(bindSym"skip", inp, newLit(token), idx))
       conds.add resLen.notZero
       conds.add resLen
   result.add conditionsToIfChain(conds, idx, res, 0)
   if fullMatch:
     result.add newCall(bindSym"and", res,
-      newCall(bindSym">=", idx, newCall(bindSym"len", input)))
+      newCall(bindSym">=", idx, newCall(bindSym"len", inp)))
   else:
     result.add res
 
@@ -417,7 +462,7 @@ template success*(x: int): bool = x != 0
 template nxt*(input: string; idx, step: int = 1) = inc(idx, step)
 
 macro scanp*(input, idx: typed; pattern: varargs[untyped]): bool =
-  ## See top level documentation of his module of how ``scanp`` works.
+  ## ``scanp`` is currently undocumented.
   type StmtTriple = tuple[init, cond, action: NimNode]
 
   template interf(x): untyped = bindSym(x, brForceOpen)
@@ -539,12 +584,12 @@ macro scanp*(input, idx: typed; pattern: varargs[untyped]): bool =
     of nnkCurlyExpr:
       if it.len == 3 and it[1].kind == nnkIntLit and it[2].kind == nnkIntLit:
         var h = newTree(nnkPar, it[0])
-        for count in 2..it[1].intVal: h.add(it[0])
+        for count in 2i64 .. it[1].intVal: h.add(it[0])
         for count in it[1].intVal .. it[2].intVal-1: h.add(newTree(nnkPrefix, ident"?", it[0]))
         result = atm(h, input, idx, attached)
       elif it.len == 2 and it[1].kind == nnkIntLit:
         var h = newTree(nnkPar, it[0])
-        for count in 2..it[1].intVal: h.add(it[0])
+        for count in 2i64 .. it[1].intVal: h.add(it[0])
         result = atm(h, input, idx, attached)
       else:
         error("invalid pattern")
@@ -621,6 +666,14 @@ when isMainModule:
   doAssert intval == 89
   doAssert floatVal == 33.25
 
+  var binval: int
+  var octval: int
+  var hexval: int
+  doAssert scanf("0b0101 0o1234 0xabcd", "$b$s$o$s$h", binval, octval, hexval)
+  doAssert binval == 0b0101
+  doAssert octval == 0o1234
+  doAssert hexval == 0xabcd
+
   let xx = scanf("$abc", "$$$i", intval)
   doAssert xx == false
 
@@ -661,3 +714,14 @@ when isMainModule:
           "NimMain c:/users/anwender/projects/nim/lib/system.nim:2613",
           "main c:/users/anwender/projects/nim/lib/system.nim:2620"]
   doAssert parseGDB(gdbOut) == result
+
+  # bug #6487
+  var count = 0
+
+  proc test(): string =
+    inc count
+    result = ",123123"
+
+  var a: int
+  discard scanf(test(), ",$i", a)
+  doAssert count == 1

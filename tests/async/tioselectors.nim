@@ -2,7 +2,7 @@ discard """
   file: "tioselectors.nim"
   output: "All tests passed!"
 """
-import ioselectors
+import selectors
 
 const hasThreadSupport = compileOption("threads")
 
@@ -45,11 +45,11 @@ when not defined(windows):
     var aiList = getAddrInfo("0.0.0.0", Port(13337))
     if bindAddr(server_socket, aiList.ai_addr,
                 aiList.ai_addrlen.Socklen) < 0'i32:
-      dealloc(aiList)
+      freeAddrInfo(aiList)
       raiseOSError(osLastError())
     if server_socket.listen() == -1:
       raiseOSError(osLastError())
-    dealloc(aiList)
+    freeAddrInfo(aiList)
 
     aiList = getAddrInfo("127.0.0.1", Port(13337))
     discard posix.connect(client_socket, aiList.ai_addr,
@@ -58,7 +58,7 @@ when not defined(windows):
     registerHandle(selector, server_socket, {Event.Read}, 0)
     registerHandle(selector, client_socket, {Event.Write}, 0)
 
-    dealloc(aiList)
+    freeAddrInfo(aiList)
     discard selector.select(100)
 
     var sockAddress: SockAddr
@@ -497,19 +497,24 @@ else:
     var aiList = getAddrInfo("0.0.0.0", Port(13337))
     if bindAddr(server_socket, aiList.ai_addr,
                 aiList.ai_addrlen.Socklen) < 0'i32:
-      dealloc(aiList)
+      freeAddrInfo(aiList)
       raiseOSError(osLastError())
     discard server_socket.listen()
-    dealloc(aiList)
+    freeAddrInfo(aiList)
 
     aiList = getAddrInfo("127.0.0.1", Port(13337))
     discard connect(client_socket, aiList.ai_addr,
                     aiList.ai_addrlen.Socklen)
-    dealloc(aiList)
+    freeAddrInfo(aiList)
     # for some reason Windows select doesn't return both
     # descriptors from first call, so we need to make 2 calls
-    discard selector.select(100)
-    var rcm = selector.select(100)
+    var n = 0
+    var rcm = selector.select(1000)
+    while n < 10 and len(rcm) < 2:
+      sleep(1000)
+      rcm = selector.select(1000)
+      inc(n)
+
     assert(len(rcm) == 2)
 
     var sockAddress = SockAddr()
@@ -526,7 +531,7 @@ else:
 
     selector.updateHandle(client_socket, {Event.Read})
 
-    var rc2 = selector.select(100)
+    var rc2 = selector.select(1000)
     assert(len(rc2) == 1)
 
     var read_count = recv(server2_socket, addr buffer[0], 128, 0)
@@ -574,9 +579,9 @@ else:
     var event = newSelectEvent()
     selector.registerEvent(event, 1)
     discard selector.select(0)
-    event.setEvent()
+    event.trigger()
     var rc1 = selector.select(0)
-    event.setEvent()
+    event.trigger()
     var rc2 = selector.select(0)
     var rc3 = selector.select(0)
     assert(len(rc1) == 1 and len(rc2) == 1 and len(rc3) == 0)
@@ -595,7 +600,7 @@ else:
     proc event_wait_thread(event: SelectEvent) {.thread.} =
       var selector = newSelector[int]()
       selector.registerEvent(event, 1)
-      var rc = selector.select(500)
+      var rc = selector.select(1500)
       if len(rc) == 1:
         inc(counter)
       selector.unregister(event)
@@ -606,7 +611,7 @@ else:
       var event = newSelectEvent()
       for i in 0..high(thr):
         createThread(thr[i], event_wait_thread, event)
-      event.setEvent()
+      event.trigger()
       joinThreads(thr)
       assert(counter == 1)
       result = true

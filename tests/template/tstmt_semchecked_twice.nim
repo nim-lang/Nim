@@ -13,7 +13,7 @@ type
     Vector2[T] = T
     Pixels=int
 
-template use*(fb: int, st: stmt) : stmt =
+template use*(fb: int, st: untyped): untyped =
     echo "a ", $fb
     st
     echo "a ", $fb

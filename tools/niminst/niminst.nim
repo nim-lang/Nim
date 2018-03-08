@@ -15,7 +15,7 @@ when haveZipLib:
 
 import
   os, osproc, strutils, parseopt, parsecfg, strtabs, streams, debcreation,
-  securehash
+  std / sha1
 
 const
   maxOS = 20 # max number of OSes
@@ -283,7 +283,7 @@ proc yesno(p: var CfgParser, v: string): bool =
   else: quit(errorStr(p, "unknown value; use: yes|no"))
 
 proc incl(s: var seq[string], x: string): int =
-  for i in 0.. <s.len:
+  for i in 0 ..< s.len:
     if cmpIgnoreStyle(s[i], x) == 0: return i
   s.add(x)
   result = s.len-1
@@ -679,11 +679,14 @@ RunProgram="tools\downloader.exe"
           if execShellCmd("7z a -sfx7zS2.sfx -t7z $1.exe $1" % proj) != 0:
             echo("External program failed (7z)")
       else:
-        if execShellCmd("XZ_OPT=-9 gtar Jcf $1.tar.xz $1 --exclude=.DS_Store" %
+        if execShellCmd("gtar cf $1.tar $1 --exclude=.DS_Store" %
                         proj) != 0:
           # try old 'tar' without --exclude feature:
-          if execShellCmd("XZ_OPT=-9 tar Jcf $1.tar.xz $1" % proj) != 0:
+          if execShellCmd("tar cf $1.tar $1" % proj) != 0:
             echo("External program failed")
+
+        if execShellCmd("xz -9f $1.tar" % proj) != 0:
+          echo("External program failed")
     finally:
       setCurrentDir(oldDir)
 

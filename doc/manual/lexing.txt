@@ -130,18 +130,17 @@ Two identifiers are considered equal if the following algorithm returns true:
 .. code-block:: nim
   proc sameIdentifier(a, b: string): bool =
     a[0] == b[0] and
-      a.replace(re"_|–", "").toLower == b.replace(re"_|–", "").toLower
+      a.replace("_", "").toLowerAscii == b.replace("_", "").toLowerAscii
 
 That means only the first letters are compared in a case sensitive manner. Other
-letters are compared case insensitively and underscores and en-dash (Unicode
-point U+2013) are ignored.
+letters are compared case insensitively within the ASCII range and underscores are ignored.
 
 This rather unorthodox way to do identifier comparisons is called
 `partial case insensitivity`:idx: and has some advantages over the conventional
 case sensitivity:
 
 It allows programmers to mostly use their own preferred
-spelling style, be it humpStyle, snake_style or dash–style and libraries written
+spelling style, be it humpStyle or snake_style, and libraries written
 by different programmers cannot use incompatible conventions.
 A Nim-aware editor or IDE can show the identifiers as preferred.
 Another advantage is that it frees the programmer from remembering
@@ -164,9 +163,10 @@ contain the following `escape sequences`:idx:\ :
 ==================         ===================================================
   Escape sequence          Meaning
 ==================         ===================================================
-  ``\n``                   `newline`:idx:
+  ``\p``                   platform specific newline: CRLF on Windows,
+                           LF on Unix
   ``\r``, ``\c``           `carriage return`:idx:
-  ``\l``                   `line feed`:idx:
+  ``\n``, ``\l``           `line feed`:idx: (often called `newline`:idx:)
   ``\f``                   `form feed`:idx:
   ``\t``                   `tabulator`:idx:
   ``\v``                   `vertical tabulator`:idx:
@@ -262,7 +262,8 @@ Character literals
 ------------------
 
 Character literals are enclosed in single quotes ``''`` and can contain the
-same escape sequences as strings - with one exception: `newline`:idx: (``\n``)
+same escape sequences as strings - with one exception: the platform
+dependent `newline`:idx: (``\p``)
 is not allowed as it may be wider than one character (often it is the pair
 CR/LF for example).  Here are the valid `escape sequences`:idx: for character
 literals:
@@ -271,7 +272,7 @@ literals:
   Escape sequence          Meaning
 ==================         ===================================================
   ``\r``, ``\c``           `carriage return`:idx:
-  ``\l``                   `line feed`:idx:
+  ``\n``, ``\l``           `line feed`:idx:
   ``\f``                   `form feed`:idx:
   ``\t``                   `tabulator`:idx:
   ``\v``                   `vertical tabulator`:idx:

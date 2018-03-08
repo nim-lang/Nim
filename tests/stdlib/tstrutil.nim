@@ -13,15 +13,13 @@ proc testStrip() =
 proc testRemoveSuffix =
   var s = "hello\n\r"
   s.removeSuffix
-  assert s == "hello\n"
-  s.removeSuffix
   assert s == "hello"
   s.removeSuffix
   assert s == "hello"
 
   s = "hello\n\n"
   s.removeSuffix
-  assert s == "hello\n"
+  assert s == "hello"
 
   s = "hello\r"
   s.removeSuffix
@@ -41,7 +39,31 @@ proc testRemoveSuffix =
   s.removeSuffix({'s','z'})
   assert s == "hello"
   s.removeSuffix({'l','o'})
-  assert s == "hell"
+  assert s == "he"
+
+  s = "aeiou"
+  s.removeSuffix("")
+  assert s == "aeiou"
+
+  s = ""
+  s.removeSuffix("")
+  assert s == ""
+
+  s = "  "
+  s.removeSuffix
+  assert s == "  "
+
+  s = "  "
+  s.removeSuffix("")
+  assert s == "  "
+
+  s = "    "
+  s.removeSuffix(" ")
+  assert s == "   "
+
+  s = "    "
+  s.removeSuffix(' ')
+  assert s == ""
 
   # Contrary to Chomp in other languages
   # empty string does not change behaviour
@@ -49,9 +71,71 @@ proc testRemoveSuffix =
   s.removeSuffix("")
   assert s == "hello\r\n\r\n"
 
+proc testRemovePrefix =
+  var s = "\n\rhello"
+  s.removePrefix
+  assert s == "hello"
+  s.removePrefix
+  assert s == "hello"
+
+  s = "\n\nhello"
+  s.removePrefix
+  assert s == "hello"
+
+  s = "\rhello"
+  s.removePrefix
+  assert s == "hello"
+
+  s = "hello \n there"
+  s.removePrefix
+  assert s == "hello \n there"
+
+  s = "hello"
+  s.removePrefix("hel")
+  assert s == "lo"
+  s.removePrefix('l')
+  assert s == "o"
+
+  s = "hellos"
+  s.removePrefix({'h','e'})
+  assert s == "llos"
+  s.removePrefix({'l','o'})
+  assert s == "s"
+
+  s = "aeiou"
+  s.removePrefix("")
+  assert s == "aeiou"
+
+  s = ""
+  s.removePrefix("")
+  assert s == ""
+
+  s = "  "
+  s.removePrefix
+  assert s == "  "
+
+  s = "  "
+  s.removePrefix("")
+  assert s == "  "
+
+  s = "    "
+  s.removePrefix(" ")
+  assert s == "   "
+
+  s = "    "
+  s.removePrefix(' ')
+  assert s == ""
+
+  # Contrary to Chomp in other languages
+  # empty string does not change behaviour
+  s = "\r\n\r\nhello"
+  s.removePrefix("")
+  assert s == "\r\n\r\nhello"
+
 proc main() =
   testStrip()
   testRemoveSuffix()
+  testRemovePrefix()
   for p in split("/home/a1:xyz:/usr/bin", {':'}):
     write(stdout, p)
 
@@ -63,6 +147,25 @@ proc testDelete =
   assert s == "01236789ABCDEFG"
   delete(s, 0, 0)
   assert s == "1236789ABCDEFG"
+
+
+proc testIsAlphaNumeric =
+  assert isAlphaNumeric("abcdABC1234") == true
+  assert isAlphaNumeric("a") == true
+  assert isAlphaNumeric("abcABC?1234") == false
+  assert isAlphaNumeric("abcABC 1234") == false
+  assert isAlphaNumeric(".") == false
+
+testIsAlphaNumeric()
+
+proc testIsDigit =
+  assert isDigit("1") == true
+  assert isDigit("1234") == true
+  assert isDigit("abcABC?1234") == false
+  assert isDigit(".") == false
+  assert isDigit(":") == false
+
+testIsDigit()
 
 proc testFind =
   assert "0123456789ABCDEFGH".find('A') == 10
@@ -89,9 +192,21 @@ proc testRFind =
   assert "0123456789ABCDEFGAH".rfind({'A'..'C'}, 13) == 12
   assert "0123456789ABCDEFGAH".rfind({'G'..'H'}, 13) == -1
 
+proc testCountLines =
+  proc assertCountLines(s: string) = assert s.countLines == s.splitLines.len
+  assertCountLines("")
+  assertCountLines("\n")
+  assertCountLines("\n\n")
+  assertCountLines("abc")
+  assertCountLines("abc\n123")
+  assertCountLines("abc\n123\n")
+  assertCountLines("\nabc\n123")
+  assertCountLines("\nabc\n123\n")
+
 testDelete()
 testFind()
 testRFind()
+testCountLines()
 
 assert(insertSep($1000_000) == "1_000_000")
 assert(insertSep($232) == "232")
@@ -113,6 +228,24 @@ assert "/1/2/3".rfind('0') == -1
 
 assert(toHex(100i16, 32) == "00000000000000000000000000000064")
 assert(toHex(-100i16, 32) == "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF9C")
+
+assert "".parseHexStr == ""
+assert "00Ff80".parseHexStr == "\0\xFF\x80"
+try:
+  discard "00Ff8".parseHexStr
+  assert false, "Should raise ValueError"
+except ValueError:
+  discard
+
+try:
+  discard "0k".parseHexStr
+  assert false, "Should raise ValueError"
+except ValueError:
+  discard
+
+assert "".toHex == ""
+assert "\x00\xFF\x80".toHex == "00FF80"
+assert "0123456789abcdef".parseHexStr.toHex == "0123456789ABCDEF"
 
 assert(' '.repeat(8)== "        ")
 assert(" ".repeat(8) == "        ")

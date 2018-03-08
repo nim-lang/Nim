@@ -13,10 +13,6 @@
 ##
 ## Tested on these OSes: Linux, Windows, OSX
 
-type
-  NilAccessError* = object of SystemError ## \
-    ## Raised on dereferences of ``nil`` pointers.
-
 # do allocate memory upfront:
 var se: ref NilAccessError
 new(se)
@@ -72,7 +68,7 @@ else:
   var SEGV_MAPERR {.importc, header: "<signal.h>".}: cint
 
   {.push stackTrace: off.}
-  proc segfaultHandler(sig: cint, y: var SigInfo, z: pointer) {.noconv.} =
+  proc segfaultHandler(sig: cint, y: ptr SigInfo, z: pointer) {.noconv.} =
     if y.si_code == SEGV_MAPERR:
       {.gcsafe.}:
         raise se

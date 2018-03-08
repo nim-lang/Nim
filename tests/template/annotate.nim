@@ -1,7 +1,7 @@
 import macros, parseutils
 
 # Generate tags
-macro make(names: openarray[expr]): stmt {.immediate.} =
+macro make(names: untyped{nkBracket}): untyped =
     result = newStmtList()
 
     for i in 0 .. names.len-1:

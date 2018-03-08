@@ -151,6 +151,11 @@ proc complement*(a: PNode): PNode =
   for i in countup(0, high(x)): x[i] = not x[i]
   result = toTreeSet(x, a.typ, a.info)
 
+proc deduplicate*(a: PNode): PNode =
+  var x: TBitSet
+  toBitSet(a, x)
+  result = toTreeSet(x, a.typ, a.info)
+
 proc cardSet(s: PNode): BiggestInt =
   # here we can do better than converting it into a compact set
   # we just count the elements directly

@@ -3,7 +3,8 @@ discard """
 
 [0.0, 0.0, 0.0, 0.0]
 
-5050'''
+5050
+123'''
 """
 
 template mathPerComponent(op: untyped): untyped =
@@ -47,3 +48,25 @@ proc main2() =
   echo s
 
 main2()
+
+# bug #5467
+import macros
+
+converter int2string(x: int): string = $x
+
+template wrap(body: typed): untyped =
+  body
+
+macro makeProc(): typed =
+  # Make a template tree
+  result = quote do:
+    proc someProc* =
+      wrap do:
+        let x = 123
+        # Implicit conversion here
+        let s: string = x
+        echo s
+
+makeProc()
+
+someProc()

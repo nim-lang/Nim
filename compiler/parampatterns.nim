@@ -122,7 +122,7 @@ proc semNodeKindConstraints*(p: PNode): PNode =
   result.strVal = newStringOfCap(10)
   result.strVal.add(chr(aqNone.ord))
   if p.len >= 2:
-    for i in 1.. <p.len:
+    for i in 1..<p.len:
       compileConstraints(p.sons[i], result.strVal)
     if result.strVal.len > MaxStackSize-1:
       internalError(p.info, "parameter pattern too complex")
@@ -152,7 +152,7 @@ proc checkForSideEffects*(n: PNode): TSideEffectAnalysis =
       # indirect call: assume side effect:
       return seSideEffect
     # we need to check n[0] too: (FwithSideEffectButReturnsProcWithout)(args)
-    for i in 0 .. <n.len:
+    for i in 0 ..< n.len:
       let ret = checkForSideEffects(n.sons[i])
       if ret == seSideEffect: return ret
       elif ret == seUnknown and result == seNoSideEffect:
@@ -163,7 +163,7 @@ proc checkForSideEffects*(n: PNode): TSideEffectAnalysis =
   else:
     # assume no side effect:
     result = seNoSideEffect
-    for i in 0 .. <n.len:
+    for i in 0 ..< n.len:
       let ret = checkForSideEffects(n.sons[i])
       if ret == seSideEffect: return ret
       elif ret == seUnknown and result == seNoSideEffect:
@@ -222,7 +222,10 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
     elif compareTypes(n.typ, n.sons[1].typ, dcEqIgnoreDistinct):
       # types that are equal modulo distinction preserve l-value:
       result = isAssignable(owner, n.sons[1], isUnsafeAddr)
-  of nkHiddenDeref, nkDerefExpr, nkHiddenAddr:
+  of nkHiddenDeref:
+    if n[0].typ.kind == tyLent: result = arDiscriminant
+    else: result = arLValue
+  of nkDerefExpr, nkHiddenAddr:
     result = arLValue
   of nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
     result = isAssignable(owner, n.sons[0], isUnsafeAddr)
@@ -235,6 +238,13 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
   of nkStmtList, nkStmtListExpr:
     if n.typ != nil:
       result = isAssignable(owner, n.lastSon, isUnsafeAddr)
+  of nkVarTy:
+    # XXX: The fact that this is here is a bit of a hack.
+    # The goal is to allow the use of checks such as "foo(var T)"
+    # within concepts. Semantically, it's not correct to say that
+    # nkVarTy denotes an lvalue, but the example above is the only
+    # possible code which will get us here
+    result = arLValue
   else:
     discard
 

@@ -9,8 +9,14 @@
 
 import parseutils, strutils, os, osproc, streams, parsecfg
 
-const
-  cmdTemplate* = r"compiler" / "nim $target --lib:lib --hints:on -d:testing $options $file"
+
+var compilerPrefix* = "compiler" / "nim "
+
+let isTravis = existsEnv("TRAVIS")
+let isAppVeyor = existsEnv("APPVEYOR")
+
+proc cmdTemplate*(): string =
+  compilerPrefix & "$target --lib:lib --hints:on -d:testing $options $file"
 
 type
   TTestAction* = enum
@@ -49,6 +55,7 @@ type
     exitCode*: int
     msg*: string
     ccodeCheck*: string
+    maxCodeSize*: int
     err*: TResultEnum
     substr*, sortoutput*: bool
     targets*: set[TTarget]
@@ -100,15 +107,16 @@ proc specDefaults*(result: var TSpec) =
   result.outp = ""
   result.nimout = ""
   result.ccodeCheck = ""
-  result.cmd = cmdTemplate
+  result.cmd = cmdTemplate()
   result.line = 0
   result.column = 0
   result.tfile = ""
   result.tline = 0
   result.tcolumn = 0
+  result.maxCodeSize = 0
 
 proc parseTargets*(value: string): set[TTarget] =
-  for v in value.normalize.split:
+  for v in value.normalize.splitWhitespace:
     case v
     of "c": result.incl(targetC)
     of "cpp", "c++": result.incl(targetCpp)
@@ -144,11 +152,12 @@ proc parseSpec*(filename: string): TSpec =
       result.sortoutput = parseCfgBool(e.value)
     of "exitcode":
       discard parseInt(e.value, result.exitCode)
+      result.action = actionRun
     of "msg":
       result.msg = e.value
       if result.action != actionRun:
         result.action = actionCompile
-    of "errormsg":
+    of "errormsg", "errmsg":
       result.msg = e.value
       result.action = actionReject
     of "nimout":
@@ -169,16 +178,21 @@ proc parseSpec*(filename: string): TSpec =
         when defined(unix): result.err = reIgnored
       of "posix":
         when defined(posix): result.err = reIgnored
+      of "travis":
+        if isTravis: result.err = reIgnored
+      of "appveyor":
+        if isAppVeyor: result.err = reIgnored
       else:
         raise newException(ValueError, "cannot interpret as a bool: " & e.value)
     of "cmd":
       if e.value.startsWith("nim "):
-        result.cmd = "compiler" / e.value
+        result.cmd = compilerPrefix & e.value[4..^1]
       else:
         result.cmd = e.value
     of "ccodecheck": result.ccodeCheck = e.value
+    of "maxcodesize": discard parseInt(e.value, result.maxCodeSize)
     of "target", "targets":
-      for v in e.value.normalize.split:
+      for v in e.value.normalize.splitWhitespace:
         case v
         of "c": result.targets.incl(targetC)
         of "cpp", "c++": result.targets.incl(targetCpp)

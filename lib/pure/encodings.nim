@@ -277,16 +277,21 @@ else:
 
   var errno {.importc, header: "<errno.h>".}: cint
 
+  when defined(freebsd) or defined(netbsd):
+    {.pragma: importIconv, cdecl, header: "<iconv.h>".}
+  else:
+    {.pragma: importIconv, cdecl, dynlib: iconvDll.}
+
   proc iconvOpen(tocode, fromcode: cstring): EncodingConverter {.
-    importc: "iconv_open", cdecl, dynlib: iconvDll.}
+    importc: "iconv_open", importIconv.}
   proc iconvClose(c: EncodingConverter) {.
-    importc: "iconv_close", cdecl, dynlib: iconvDll.}
+    importc: "iconv_close", importIconv.}
   proc iconv(c: EncodingConverter, inbuf: var cstring, inbytesLeft: var int,
              outbuf: var cstring, outbytesLeft: var int): int {.
-    importc: "iconv", cdecl, dynlib: iconvDll.}
+    importc: "iconv", importIconv.}
   proc iconv(c: EncodingConverter, inbuf: pointer, inbytesLeft: pointer,
              outbuf: var cstring, outbytesLeft: var int): int {.
-    importc: "iconv", cdecl, dynlib: iconvDll.}
+    importc: "iconv", importIconv.}
 
 proc getCurrentEncoding*(): string =
   ## retrieves the current encoding. On Unix, always "UTF-8" is returned.

@@ -140,9 +140,16 @@ proc newAsyncSocket*(fd: AsyncFD, domain: Domain = AF_INET,
     sockType: SockType = SOCK_STREAM,
     protocol: Protocol = IPPROTO_TCP, buffered = true): AsyncSocket =
   ## Creates a new ``AsyncSocket`` based on the supplied params.
+  ##
+  ## The supplied ``fd``'s non-blocking state will be enabled implicitly.
+  ##
+  ## **Note**: This procedure will **NOT** register ``fd`` with the global
+  ## async dispatcher. You need to do this manually. If you have used
+  ## ``newAsyncNativeSocket`` to create ``fd`` then it's already registered.
   assert fd != osInvalidSocket.AsyncFD
   new(result)
   result.fd = fd.SocketHandle
+  fd.SocketHandle.setBlocking(false)
   result.isBuffered = buffered
   result.domain = domain
   result.sockType = sockType
@@ -156,8 +163,10 @@ proc newAsyncSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
   ##
   ## This procedure will also create a brand new file descriptor for
   ## this socket.
-  result = newAsyncSocket(newAsyncNativeSocket(domain, sockType, protocol),
-                          domain, sockType, protocol, buffered)
+  let fd = createAsyncNativeSocket(domain, sockType, protocol)
+  if fd.SocketHandle == osInvalidSocket:
+    raiseOSError(osLastError())
+  result = newAsyncSocket(fd, domain, sockType, protocol, buffered)
 
 proc newAsyncSocket*(domain, sockType, protocol: cint,
     buffered = true): AsyncSocket =
@@ -165,8 +174,10 @@ proc newAsyncSocket*(domain, sockType, protocol: cint,
   ##
   ## This procedure will also create a brand new file descriptor for
   ## this socket.
-  result = newAsyncSocket(newAsyncNativeSocket(domain, sockType, protocol),
-                          Domain(domain), SockType(sockType),
+  let fd = createAsyncNativeSocket(domain, sockType, protocol)
+  if fd.SocketHandle == osInvalidSocket:
+    raiseOSError(osLastError())
+  result = newAsyncSocket(fd, Domain(domain), SockType(sockType),
                           Protocol(protocol), buffered)
 
 when defineSsl:
@@ -220,7 +231,7 @@ when defineSsl:
       raiseSSLError("Cannot appease SSL.")
 
   template sslLoop(socket: AsyncSocket, flags: set[SocketFlag],
-                   op: expr) =
+                   op: untyped) =
     var opResult {.inject.} = -1.cint
     while opResult < 0:
       # Call the desired operation.
@@ -244,6 +255,17 @@ when defineSsl:
           else:
             raiseSSLError("Socket has been disconnected")
 
+proc dial*(address: string, port: Port, protocol = IPPROTO_TCP,
+           buffered = true): Future[AsyncSocket] {.async.} =
+  ## Establishes connection to the specified ``address``:``port`` pair via the
+  ## specified protocol. The procedure iterates through possible
+  ## resolutions of the ``address`` until it succeeds, meaning that it
+  ## seamlessly works with both IPv4 and IPv6.
+  ## Returns AsyncSocket ready to send or receive data.
+  let asyncFd = await asyncdispatch.dial(address, port, protocol)
+  let sockType = protocol.toSockType()
+  let domain = getSockDomain(asyncFd.SocketHandle)
+  result = newAsyncSocket(asyncFd, domain, sockType, protocol, buffered)
 
 proc connect*(socket: AsyncSocket, address: string, port: Port) {.async.} =
   ## Connects ``socket`` to server at ``address:port``.
@@ -266,6 +288,7 @@ template readInto(buf: pointer, size: int, socket: AsyncSocket,
                   flags: set[SocketFlag]): int =
   ## Reads **up to** ``size`` bytes from ``socket`` into ``buf``. Note that
   ## this is a template and not a proc.
+  assert(not socket.closed, "Cannot `recv` on a closed socket")
   var res = 0
   if socket.isSsl:
     when defineSsl:
@@ -392,6 +415,7 @@ proc send*(socket: AsyncSocket, buf: pointer, size: int,
   ## Sends ``size`` bytes from ``buf`` to ``socket``. The returned future will complete once all
   ## data has been sent.
   assert socket != nil
+  assert(not socket.closed, "Cannot `send` on a closed socket")
   if socket.isSsl:
     when defineSsl:
       sslLoop(socket, flags,
@@ -464,8 +488,7 @@ proc recvLineInto*(socket: AsyncSocket, resString: FutureVar[string],
   ## The partial line **will be lost**.
   ##
   ## The ``maxLength`` parameter determines the maximum amount of characters
-  ## that can be read before a ``ValueError`` is raised. This prevents Denial
-  ## of Service (DOS) attacks.
+  ## that can be read. ``resString`` will be truncated after that.
   ##
   ## **Warning**: The ``Peek`` flag is not yet implemented.
   ##
@@ -480,7 +503,7 @@ proc recvLineInto*(socket: AsyncSocket, resString: FutureVar[string],
   # them when the result future is completed.
   # Can we replace the result future with the FutureVar?
 
-  template addNLIfEmpty(): stmt =
+  template addNLIfEmpty(): untyped =
     if resString.mget.len == 0:
       resString.mget.add("\c\L")
 
@@ -519,22 +542,17 @@ proc recvLineInto*(socket: AsyncSocket, resString: FutureVar[string],
       socket.currPos.inc()
 
       # Verify that this isn't a DOS attack: #3847.
-      if resString.mget.len > maxLength:
-        let msg = "recvLine received more than the specified `maxLength` " &
-                  "allowed."
-        raise newException(ValueError, msg)
+      if resString.mget.len > maxLength: break
   else:
     var c = ""
     while true:
-      let recvFut = recv(socket, 1, flags)
-      c = recvFut.read()
+      c = await recv(socket, 1, flags)
       if c.len == 0:
         resString.mget.setLen(0)
         resString.complete()
         return
       if c == "\r":
-        let recvFut = recv(socket, 1, flags) # Skip \L
-        c = recvFut.read()
+        c = await recv(socket, 1, flags) # Skip \L
         assert c == "\L"
         addNLIfEmpty()
         resString.complete()
@@ -546,10 +564,7 @@ proc recvLineInto*(socket: AsyncSocket, resString: FutureVar[string],
       resString.mget.add c
 
       # Verify that this isn't a DOS attack: #3847.
-      if resString.mget.len > maxLength:
-        let msg = "recvLine received more than the specified `maxLength` " &
-                  "allowed."
-        raise newException(ValueError, msg)
+      if resString.mget.len > maxLength: break
   resString.complete()
 
 proc recvLine*(socket: AsyncSocket,
@@ -569,8 +584,7 @@ proc recvLine*(socket: AsyncSocket,
   ## The partial line **will be lost**.
   ##
   ## The ``maxLength`` parameter determines the maximum amount of characters
-  ## that can be read before a ``ValueError`` is raised. This prevents Denial
-  ## of Service (DOS) attacks.
+  ## that can be read. The result is truncated after that.
   ##
   ## **Warning**: The ``Peek`` flag is not yet implemented.
   ##
@@ -644,9 +658,12 @@ when defineSsl:
     sslSetBio(socket.sslHandle, socket.bioIn, socket.bioOut)
 
   proc wrapConnectedSocket*(ctx: SslContext, socket: AsyncSocket,
-                            handshake: SslHandshakeType) =
+                            handshake: SslHandshakeType,
+                            hostname: string = nil) =
     ## Wraps a connected socket in an SSL context. This function effectively
     ## turns ``socket`` into an SSL socket.
+    ## ``hostname`` should be specified so that the client knows which hostname
+    ## the server certificate should be validated against.
     ##
     ## This should be called on a connected socket, and will perform
     ## an SSL handshake immediately.
@@ -657,6 +674,10 @@ when defineSsl:
 
     case handshake
     of handshakeAsClient:
+      if not hostname.isNil and not isIpAddress(hostname):
+        # Set the SNI address for this connection. This call can fail if
+        # we're not using TLSv1+.
+        discard SSL_set_tlsext_host_name(socket.sslHandle, hostname)
       sslSetConnectState(socket.sslHandle)
     of handshakeAsServer:
       sslSetAcceptState(socket.sslHandle)

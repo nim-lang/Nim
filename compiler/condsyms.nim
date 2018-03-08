@@ -41,9 +41,12 @@ proc isDefined*(symbol: string): bool =
       result = targetOS in {osLinux, osMorphos, osSkyos, osIrix, osPalmos,
                             osQnx, osAtari, osAix,
                             osHaiku, osVxWorks, osSolaris, osNetbsd,
-                            osFreebsd, osOpenbsd, osMacosx}
+                            osFreebsd, osOpenbsd, osDragonfly, osMacosx,
+                            osAndroid}
+    of "linux":
+      result = targetOS in {osLinux, osAndroid}
     of "bsd":
-      result = targetOS in {osNetbsd, osFreebsd, osOpenbsd}
+      result = targetOS in {osNetbsd, osFreebsd, osOpenbsd, osDragonfly}
     of "emulatedthreadvars":
       result = platform.OS[targetOS].props.contains(ospLacksThreadVars)
     of "msdos": result = targetOS == osDos
@@ -57,7 +60,8 @@ proc isDefined*(symbol: string): bool =
     of "cpu32": result = CPU[targetCPU].bit == 32
     of "cpu64": result = CPU[targetCPU].bit == 64
     of "nimrawsetjmp":
-      result = targetOS in {osSolaris, osNetbsd, osFreebsd, osOpenbsd, osMacosx}
+      result = targetOS in {osSolaris, osNetbsd, osFreebsd, osOpenbsd,
+                            osDragonfly, osMacosx}
     else: discard
 
 proc isDefined*(symbol: PIdent): bool = isDefined(symbol.s)
@@ -102,3 +106,10 @@ proc initDefines*() =
   defineSymbol("nimNewShiftOps")
   defineSymbol("nimDistros")
   defineSymbol("nimHasCppDefine")
+  defineSymbol("nimGenericInOutFlags")
+  when false: defineSymbol("nimHasOpt")
+  defineSymbol("nimNoArrayToCstringConversion")
+  defineSymbol("nimNewRoof")
+  defineSymbol("nimHasRunnableExamples")
+  defineSymbol("nimNewDot")
+  defineSymbol("nimHasNilChecks")

@@ -53,8 +53,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
 # implementation
 
 const
-  HelpMessage = "Nim Compiler Version $1 (" & CompileDate & ") [$2: $3]\n" &
-      "Copyright (c) 2006-" & CompileDate.substr(0, 3) & " by Andreas Rumpf\n"
+  HelpMessage = "Nim Compiler Version $1 [$2: $3]\n" &
+      "Copyright (c) 2006-" & copyrightYear & " by Andreas Rumpf\n"
 
 const
   Usage = slurp"../doc/basicopt.txt".replace("//", "")
@@ -81,15 +81,17 @@ proc writeVersionInfo(pass: TCmdLinePass) =
   if pass == passCmd1:
     msgWriteln(`%`(HelpMessage, [VersionAsString,
                                  platform.OS[platform.hostOS].name,
-                                 CPU[platform.hostCPU].name]))
+                                 CPU[platform.hostCPU].name]),
+               {msgStdout})
 
     const gitHash = gorge("git log -n 1 --format=%H").strip
     when gitHash.len == 40:
-      msgWriteln("git hash: " & gitHash)
+      msgWriteln("git hash: " & gitHash, {msgStdout})
 
     msgWriteln("active boot switches:" & usedRelease & usedAvoidTimeMachine &
       usedTinyC & usedGnuReadline & usedNativeStacktrace & usedNoCaas &
-      usedFFI & usedBoehm & usedMarkAndSweep & usedGenerational & usedGoGC & usedNoGC)
+      usedFFI & usedBoehm & usedMarkAndSweep & usedGenerational & usedGoGC & usedNoGC,
+               {msgStdout})
     msgQuit(0)
 
 var
@@ -207,7 +209,7 @@ proc testCompileOptionArg*(switch, arg: string, info: TLineInfo): bool =
     of "generational": result = gSelectedGC == gcGenerational
     of "go":           result = gSelectedGC == gcGo
     of "none":         result = gSelectedGC == gcNone
-    of "stack":        result = gSelectedGC == gcStack
+    of "stack", "regions": result = gSelectedGC == gcRegions
     else: localError(info, errNoneBoehmRefcExpectedButXFound, arg)
   of "opt":
     case arg.normalize
@@ -249,6 +251,7 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
     result = gOptions * {optNaNCheck, optInfCheck} == {optNaNCheck, optInfCheck}
   of "infchecks": result = contains(gOptions, optInfCheck)
   of "nanchecks": result = contains(gOptions, optNaNCheck)
+  of "nilchecks": result = contains(gOptions, optNilCheck)
   of "objchecks": result = contains(gOptions, optObjCheck)
   of "fieldchecks": result = contains(gOptions, optFieldCheck)
   of "rangechecks": result = contains(gOptions, optRangeCheck)
@@ -258,7 +261,7 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
   of "assertions", "a": result = contains(gOptions, optAssert)
   of "deadcodeelim": result = contains(gGlobalOptions, optDeadCodeElim)
   of "run", "r": result = contains(gGlobalOptions, optRun)
-  of "symbolfiles": result = contains(gGlobalOptions, optSymbolFiles)
+  of "symbolfiles": result = gSymbolFiles != disabledSf
   of "genscript": result = contains(gGlobalOptions, optGenScript)
   of "threads": result = contains(gGlobalOptions, optThreads)
   of "taintmode": result = contains(gGlobalOptions, optTaintMode)
@@ -271,13 +274,27 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
 
 proc processPath(path: string, info: TLineInfo,
                  notRelativeToProj = false): string =
-  let p = if notRelativeToProj or os.isAbsolute(path) or
-              '$' in path or path[0] == '.':
+  let p = if os.isAbsolute(path) or '$' in path:
             path
+          elif notRelativeToProj:
+            getCurrentDir() / path
           else:
             options.gProjectPath / path
   try:
     result = pathSubs(p, info.toFullPath().splitFile().dir)
+  except ValueError:
+    localError(info, "invalid path: " & p)
+    result = p
+
+proc processCfgPath(path: string, info: TLineInfo): string =
+  let path = if path[0] == '"': strutils.unescape(path) else: path
+  let basedir = info.toFullPath().splitFile().dir
+  let p = if os.isAbsolute(path) or '$' in path:
+            path
+          else:
+            basedir / path
+  try:
+    result = pathSubs(p, basedir)
   except ValueError:
     localError(info, "invalid path: " & p)
     result = p
@@ -322,12 +339,14 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   case switch.normalize
   of "path", "p":
     expectArg(switch, arg, pass, info)
-    addPath(processPath(arg, info), info)
+    addPath(if pass == passPP: processCfgPath(arg, info) else: processPath(arg, info), info)
   of "nimblepath", "babelpath":
     # keep the old name for compat
     if pass in {passCmd2, passPP} and not options.gNoNimblePath:
       expectArg(switch, arg, pass, info)
-      let path = processPath(arg, info, notRelativeToProj=true)
+      var path = processPath(arg, info, notRelativeToProj=true)
+      let nimbleDir = getEnv("NIMBLE_DIR")
+      if nimbleDir.len > 0 and pass == passPP: path = nimbleDir / "pkgs"
       nimblePath(path, info)
   of "nonimblepath", "nobabelpath":
     expectNoArg(switch, arg, pass, info)
@@ -335,10 +354,10 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "excludepath":
     expectArg(switch, arg, pass, info)
     let path = processPath(arg, info)
-    
+
     options.searchPaths.keepItIf( cmpPaths(it, path) != 0 )
     options.lazyPaths.keepItIf( cmpPaths(it, path) != 0 )
-    
+
     if (len(path) > 0) and (path[len(path) - 1] == DirSep):
       let strippedPath = path[0 .. (len(path) - 2)]
       options.searchPaths.keepItIf( cmpPaths(it, strippedPath) != 0 )
@@ -416,9 +435,9 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     of "none":
       gSelectedGC = gcNone
       defineSymbol("nogc")
-    of "stack":
-      gSelectedGC= gcStack
-      defineSymbol("gcstack")
+    of "stack", "regions":
+      gSelectedGC= gcRegions
+      defineSymbol("gcregions")
     else: localError(info, errNoneBoehmRefcExpectedButXFound, arg)
   of "warnings", "w":
     if processOnOffSwitchOrList({optWarns}, arg, pass, info): listWarnings()
@@ -441,6 +460,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     of "native", "gdb":
       incl(gGlobalOptions, optCDebug)
       gOptions = gOptions + {optLineDir} - {optEndb}
+      defineSymbol("nimTypeNames", nil) # type names are used in gdb pretty printing
       undefSymbol("endb")
     else:
       localError(info, "expected endb|gdb but found " & arg)
@@ -452,11 +472,22 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitch({optMemTracker}, arg, pass, info)
     if optMemTracker in gOptions: defineSymbol("memtracker")
     else: undefSymbol("memtracker")
+  of "oldnewlines":
+    case arg.normalize
+    of "on":
+      options.gOldNewlines = true
+      defineSymbol("nimOldNewlines")
+    of "off":
+      options.gOldNewlines = false
+      undefSymbol("nimOldNewlines")
+    else:
+      localError(info, errOnOrOffExpectedButXFound, arg)
   of "checks", "x": processOnOffSwitch(ChecksOptions, arg, pass, info)
   of "floatchecks":
     processOnOffSwitch({optNaNCheck, optInfCheck}, arg, pass, info)
   of "infchecks": processOnOffSwitch({optInfCheck}, arg, pass, info)
   of "nanchecks": processOnOffSwitch({optNaNCheck}, arg, pass, info)
+  of "nilchecks": processOnOffSwitch({optNilCheck}, arg, pass, info)
   of "objchecks": processOnOffSwitch({optObjCheck}, arg, pass, info)
   of "fieldchecks": processOnOffSwitch({optFieldCheck}, arg, pass, info)
   of "rangechecks": processOnOffSwitch({optRangeCheck}, arg, pass, info)
@@ -465,8 +496,6 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "linedir": processOnOffSwitch({optLineDir}, arg, pass, info)
   of "assertions", "a": processOnOffSwitch({optAssert}, arg, pass, info)
   of "deadcodeelim": processOnOffSwitchG({optDeadCodeElim}, arg, pass, info)
-  of "reportconceptfailures":
-    processOnOffSwitchG({optReportConceptFailures}, arg, pass, info)
   of "threads":
     processOnOffSwitchG({optThreads}, arg, pass, info)
     #if optThreads in gGlobalOptions: incl(gNotes, warnGcUnsafe)
@@ -580,7 +609,13 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectNoArg(switch, arg, pass, info)
     helpOnError(pass)
   of "symbolfiles":
-    processOnOffSwitchG({optSymbolFiles}, arg, pass, info)
+    case arg.normalize
+    of "on": gSymbolFiles = enabledSf
+    of "off": gSymbolFiles = disabledSf
+    of "writeonly": gSymbolFiles = writeOnlySf
+    of "readonly": gSymbolFiles = readOnlySf
+    of "v2": gSymbolFiles = v2Sf
+    else: localError(info, errOnOrOffExpectedButXFound, arg)
   of "skipcfg":
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optSkipConfigFile)
@@ -593,7 +628,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "skipparentcfg":
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optSkipParentConfigFiles)
-  of "genscript":
+  of "genscript", "gendeps":
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optGenScript)
   of "colors": processOnOffSwitchG({optUseColors}, arg, pass, info)
@@ -636,6 +671,9 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     gListFullPaths = true
   of "dynliboverride":
     dynlibOverride(switch, arg, pass, info)
+  of "dynliboverrideall":
+    expectNoArg(switch, arg, pass, info)
+    gDynlibOverrideAll = true
   of "cs":
     # only supported for compatibility. Does nothing.
     expectArg(switch, arg, pass, info)
@@ -650,6 +688,10 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(switch, arg, pass, info)
     if config != nil:
       config.cppDefine(arg)
+  of "newruntime":
+    expectNoArg(switch, arg, pass, info)
+    newDestructors = true
+    defineSymbol("nimNewRuntime")
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(switch, arg)
     else: invalidCmdLineOption(pass, switch, info)

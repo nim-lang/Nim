@@ -7,6 +7,7 @@ exec "gcc -v"
 import ospaths
 
 --forceBuild
+--path: "../friends"
 
 warning("uninit", off)
 hint("processing", off)
@@ -20,4 +21,13 @@ task listDirs, "lists every subdirectory":
 task default, "default target":
   --define: definedefine
   setCommand "c"
+
+# bug #6327
+doAssert(existsEnv("dummy") == false)
+
+# issue #7283
+putEnv("dummy", "myval")
+doAssert(existsEnv("dummy") == true)
+doAssert(getEnv("dummy") == "myval")
+
 

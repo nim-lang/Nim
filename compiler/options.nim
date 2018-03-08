@@ -18,6 +18,7 @@ const
   newScopeForIf* = true
   useCaas* = not defined(noCaas)
   noTimeMachine* = defined(avoidTimeMachine) and defined(macosx)
+  copyrightYear* = "2018"
 
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
@@ -41,7 +42,6 @@ type                          # please make sure we have under 32 options
   TGlobalOption* = enum       # **keep binary compatible**
     gloptNone, optForceFullMake, optDeadCodeElim,
     optListCmd, optCompileOnly, optNoLinking,
-    optReportConceptFailures, # report 'compiles' or 'concept' matching failures
     optCDebug,                # turn on debugging information
     optGenDynLib,             # generate a dynamic library
     optGenStaticLib,          # generate a static library
@@ -49,7 +49,6 @@ type                          # please make sure we have under 32 options
     optGenScript,             # generate a script file to compile the *.c files
     optGenMapping,            # generate a mapping file
     optRun,                   # run the compiled project
-    optSymbolFiles,           # use symbol files for speeding up compilation
     optCaasEnabled            # compiler-as-a-service is running
     optSkipConfigFile,        # skip the general config file
     optSkipProjConfigFile,    # skip the project's config file
@@ -73,8 +72,8 @@ type                          # please make sure we have under 32 options
   TGlobalOptions* = set[TGlobalOption]
 
 const
-  harmlessOptions* = {optForceFullMake, optNoLinking, optReportConceptFailures,
-    optRun, optUseColors, optStdout}
+  harmlessOptions* = {optForceFullMake, optNoLinking, optRun,
+                      optUseColors, optStdout}
 
 type
   TCommands* = enum           # Nim's commands
@@ -92,15 +91,16 @@ type
     cmdRst2html,              # convert a reStructuredText file to HTML
     cmdRst2tex,               # convert a reStructuredText file to TeX
     cmdInteractive,           # start interactive session
-    cmdRun                    # run the project via TCC backend
+    cmdRun,                   # run the project via TCC backend
+    cmdJsonScript             # compile a .json build file
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
-    gcNone, gcBoehm, gcGo, gcStack, gcMarkAndSweep, gcRefc,
+    gcNone, gcBoehm, gcGo, gcRegions, gcMarkAndSweep, gcRefc,
     gcV2, gcGenerational
 
   IdeCmd* = enum
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideMod,
-    ideHighlight, ideOutline, ideKnown
+    ideHighlight, ideOutline, ideKnown, ideMsg
 
   ConfigRef* = ref object ## eventually all global configuration should be moved here
     cppDefines*: HashSet[string]
@@ -115,6 +115,7 @@ proc cppDefine*(c: ConfigRef; define: string) =
 
 var
   gIdeCmd*: IdeCmd
+  gOldNewlines*: bool
 
 const
   ChecksOptions* = {optObjCheck, optFieldCheck, optRangeCheck, optNilCheck,
@@ -141,15 +142,25 @@ var
   gEvalExpr* = ""             # expression for idetools --eval
   gLastCmdTime*: float        # when caas is enabled, we measure each command
   gListFullPaths*: bool
-  isServing*: bool = false
+  gPreciseStack*: bool = false
   gNoNimblePath* = false
   gExperimentalMode*: bool
+  newDestructors*: bool
+  gDynlibOverrideAll*: bool
+
+type
+  SymbolFilesOption* = enum
+    disabledSf, enabledSf, writeOnlySf, readOnlySf, v2Sf
+
+var gSymbolFiles*: SymbolFilesOption
 
 proc importantComments*(): bool {.inline.} = gCmd in {cmdDoc, cmdIdeTools}
 proc usesNativeGC*(): bool {.inline.} = gSelectedGC >= gcRefc
+template preciseStack*(): bool = gPreciseStack
 
 template compilationCachePresent*: untyped =
-  {optCaasEnabled, optSymbolFiles} * gGlobalOptions != {}
+  gSymbolFiles in {enabledSf, writeOnlySf}
+#  {optCaasEnabled, optSymbolFiles} * gGlobalOptions != {}
 
 template optPreserveOrigSource*: untyped =
   optEmbedOrigSrc in gGlobalOptions
@@ -160,6 +171,7 @@ const
   RodExt* = "rod"
   HtmlExt* = "html"
   JsonExt* = "json"
+  TagsExt* = "tags"
   TexExt* = "tex"
   IniExt* = "ini"
   DefaultConfig* = "nim.cfg"
@@ -186,6 +198,9 @@ var
   implicitIncludes*: seq[string] = @[] # modules that are to be implicitly included
 
 const oKeepVariableNames* = true
+
+template compilingLib*: bool =
+  gGlobalOptions * {optGenGuiApp, optGenDynLib} != {}
 
 proc mainCommandArg*: string =
   ## This is intended for commands like check or parse
@@ -288,8 +303,8 @@ proc pathSubs*(p, config: string): string =
     "projectpath", options.gProjectPath,
     "projectdir", options.gProjectPath,
     "nimcache", getNimcacheDir()])
-  if '~' in result:
-    result = result.replace("~", home)
+  if "~/" in result:
+    result = result.replace("~/", home & '/')
 
 proc toGeneratedFile*(path, ext: string): string =
   ## converts "/home/a/mymodule.nim", "rod" to "/home/a/nimcache/mymodule.rod"
@@ -349,7 +364,7 @@ proc rawFindFile2(f: string): string =
       # bring to front
       for j in countDown(i,1):
         swap(lazyPaths[j], lazyPaths[j-1])
-      
+
       return result.canonicalizePath
   result = ""
 
@@ -392,6 +407,23 @@ proc findModule*(modulename, currentModule: string): string =
     result = findFile(m)
   patchModule()
 
+proc findProjectNimFile*(pkg: string): string =
+  const extensions = [".nims", ".cfg", ".nimcfg", ".nimble"]
+  var candidates: seq[string] = @[]
+  for k, f in os.walkDir(pkg, relative=true):
+    if k == pcFile and f != "config.nims":
+      let (_, name, ext) = splitFile(f)
+      if ext in extensions:
+        let x = changeFileExt(pkg / name, ".nim")
+        if fileExists(x):
+          candidates.add x
+  for c in candidates:
+    # nim-foo foo  or  foo  nfoo
+    if (pkg in c) or (c in pkg): return c
+  if candidates.len >= 1:
+    return candidates[0]
+  return ""
+
 proc canonDynlibName(s: string): string =
   let start = if s.startsWith("lib"): 3 else: 0
   let ende = strutils.find(s, {'(', ')', '.'})
@@ -404,7 +436,7 @@ proc inclDynlibOverride*(lib: string) =
   gDllOverrides[lib.canonDynlibName] = "true"
 
 proc isDynlibOverride*(lib: string): bool =
-  result = gDllOverrides.hasKey(lib.canonDynlibName)
+  result = gDynlibOverrideAll or gDllOverrides.hasKey(lib.canonDynlibName)
 
 proc binaryStrSearch*(x: openArray[string], y: string): int =
   var a = 0
@@ -420,11 +452,6 @@ proc binaryStrSearch*(x: openArray[string], y: string): int =
       return mid
   result = - 1
 
-template nimdbg*: untyped = c.module.fileIdx == gProjectMainIdx
-template cnimdbg*: untyped = p.module.module.fileIdx == gProjectMainIdx
-template pnimdbg*: untyped = p.lex.fileIdx == gProjectMainIdx
-template lnimdbg*: untyped = L.fileIdx == gProjectMainIdx
-
 proc parseIdeCmd*(s: string): IdeCmd =
   case s:
   of "sug": ideSug
@@ -437,6 +464,7 @@ proc parseIdeCmd*(s: string): IdeCmd =
   of "highlight": ideHighlight
   of "outline": ideOutline
   of "known": ideKnown
+  of "msg": ideMsg
   else: ideNone
 
 proc `$`*(c: IdeCmd): string =
@@ -452,3 +480,4 @@ proc `$`*(c: IdeCmd): string =
   of ideHighlight: "highlight"
   of ideOutline: "outline"
   of ideKnown: "known"
+  of ideMsg: "msg"

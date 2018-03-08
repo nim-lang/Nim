@@ -15,9 +15,12 @@
 {.push debugger:off .} # the user does not want to trace a part
                        # of the standard library!
 
-
-proc c_fdopen(filehandle: cint, mode: cstring): File {.
-  importc: "fdopen", header: "<stdio.h>".}
+when defined(windows):
+  proc c_fdopen(filehandle: cint, mode: cstring): File {.
+    importc: "_fdopen", header: "<stdio.h>".}
+else:
+  proc c_fdopen(filehandle: cint, mode: cstring): File {.
+    importc: "fdopen", header: "<stdio.h>".}
 proc c_fputs(c: cstring, f: File): cint {.
   importc: "fputs", header: "<stdio.h>", tags: [WriteIOEffect].}
 proc c_fgets(c: cstring, n: cint, f: File): cstring {.
@@ -44,10 +47,22 @@ when not declared(c_fwrite):
 # C routine that is used here:
 proc c_fread(buf: pointer, size, n: csize, f: File): csize {.
   importc: "fread", header: "<stdio.h>", tags: [ReadIOEffect].}
-proc c_fseek(f: File, offset: clong, whence: cint): cint {.
-  importc: "fseek", header: "<stdio.h>", tags: [].}
-proc c_ftell(f: File): clong {.
-  importc: "ftell", header: "<stdio.h>", tags: [].}
+when defined(windows):
+  when not defined(amd64):
+    proc c_fseek(f: File, offset: int64, whence: cint): cint {.
+      importc: "fseek", header: "<stdio.h>", tags: [].}
+    proc c_ftell(f: File): int64 {.
+      importc: "ftell", header: "<stdio.h>", tags: [].}
+  else:
+    proc c_fseek(f: File, offset: int64, whence: cint): cint {.
+      importc: "_fseeki64", header: "<stdio.h>", tags: [].}
+    proc c_ftell(f: File): int64 {.
+      importc: "_ftelli64", header: "<stdio.h>", tags: [].}
+else:
+  proc c_fseek(f: File, offset: int64, whence: cint): cint {.
+    importc: "fseeko", header: "<stdio.h>", tags: [].}
+  proc c_ftell(f: File): int64 {.
+    importc: "ftello", header: "<stdio.h>", tags: [].}
 proc c_ferror(f: File): cint {.
   importc: "ferror", header: "<stdio.h>", tags: [].}
 proc c_setvbuf(f: File, buf: pointer, mode: cint, size: csize): cint {.
@@ -86,11 +101,11 @@ proc writeBuffer(f: File, buffer: pointer, len: Natural): int =
   checkErr(f)
 
 proc writeBytes(f: File, a: openArray[int8|uint8], start, len: Natural): int =
-  var x = cast[ptr array[0..1000_000_000, int8]](a)
-  result = writeBuffer(f, addr(x[start]), len)
+  var x = cast[ptr UncheckedArray[int8]](a)
+  result = writeBuffer(f, addr(x[int(start)]), len)
 proc writeChars(f: File, a: openArray[char], start, len: Natural): int =
-  var x = cast[ptr array[0..1000_000_000, int8]](a)
-  result = writeBuffer(f, addr(x[start]), len)
+  var x = cast[ptr UncheckedArray[int8]](a)
+  result = writeBuffer(f, addr(x[int(start)]), len)
 
 proc write(f: File, s: string) =
   if writeBuffer(f, cstring(s), s.len) != s.len:
@@ -189,7 +204,7 @@ proc write(f: File, r: float32) =
 proc write(f: File, r: BiggestFloat) =
   if c_fprintf(f, "%g", r) < 0: checkErr(f)
 
-proc write(f: File, c: char) = discard c_putc(ord(c), f)
+proc write(f: File, c: char) = discard c_putc(cint(c), f)
 proc write(f: File, a: varargs[string, `$`]) =
   for x in items(a): write(f, x)
 
@@ -207,12 +222,12 @@ proc readAllBuffer(file: File): string =
       result.add(buffer)
       break
 
-proc rawFileSize(file: File): int =
+proc rawFileSize(file: File): int64 =
   # this does not raise an error opposed to `getFileSize`
   var oldPos = c_ftell(file)
   discard c_fseek(file, 0, 2) # seek the end of the file
   result = c_ftell(file)
-  discard c_fseek(file, clong(oldPos), 0)
+  discard c_fseek(file, oldPos, 0)
 
 proc endOfFile(f: File): bool =
   var c = c_fgetc(f)
@@ -220,7 +235,7 @@ proc endOfFile(f: File): bool =
   return c < 0'i32
   #result = c_feof(f) != 0
 
-proc readAllFile(file: File, len: int): string =
+proc readAllFile(file: File, len: int64): string =
   # We acquire the filesize beforehand and hope it doesn't change.
   # Speeds things up.
   result = newString(len)
@@ -360,7 +375,7 @@ proc open(f: var File, filehandle: FileHandle, mode: FileMode): bool =
   result = f != nil
 
 proc setFilePos(f: File, pos: int64, relativeTo: FileSeekPos = fspSet) =
-  if c_fseek(f, clong(pos), cint(relativeTo)) != 0:
+  if c_fseek(f, pos, cint(relativeTo)) != 0:
     raiseEIO("cannot set file position")
 
 proc getFilePos(f: File): int64 =
@@ -400,5 +415,20 @@ proc setStdIoUnbuffered() =
     discard c_setvbuf(stderr, nil, IONBF, 0)
   when declared(stdin):
     discard c_setvbuf(stdin, nil, IONBF, 0)
+
+when declared(stdout):
+  proc echoBinSafe(args: openArray[string]) {.compilerProc.} =
+    # flockfile deadlocks some versions of Android 5.x.x
+    when not defined(windows) and not defined(android):
+      proc flockfile(f: File) {.importc, noDecl.}
+      proc funlockfile(f: File) {.importc, noDecl.}
+      flockfile(stdout)
+    for s in args:
+      discard c_fwrite(s.cstring, s.len, 1, stdout)
+    const linefeed = "\n" # can be 1 or more chars
+    discard c_fwrite(linefeed.cstring, linefeed.len, 1, stdout)
+    discard c_fflush(stdout)
+    when not defined(windows) and not defined(android):
+      funlockfile(stdout)
 
 {.pop.}

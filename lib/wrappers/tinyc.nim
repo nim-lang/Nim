@@ -20,16 +20,12 @@ proc openCCState*(): PccState {.importc: "tcc_new", cdecl.}
 proc closeCCState*(s: PccState) {.importc: "tcc_delete", cdecl.}
   ## free a TCC compilation context
 
-proc enableDebug*(s: PccState) {.importc: "tcc_enable_debug", cdecl.}
-  ## add debug information in the generated code
-
 proc setErrorFunc*(s: PccState, errorOpaque: pointer, errorFun: ErrorFunc) {.
   cdecl, importc: "tcc_set_error_func".}
   ## set error/warning display callback
 
-proc setWarning*(s: PccState, warningName: cstring, value: int) {.cdecl,
-  importc: "tcc_set_warning".}
-  ## set/reset a warning
+proc setOptions*(s: PccState, options: cstring) {.cdecl, importc: "tcc_set_options".}
+  ## set a options
 
 # preprocessor
 
@@ -40,7 +36,6 @@ proc addIncludePath*(s: PccState, pathname: cstring) {.cdecl,
 proc addSysincludePath*(s: PccState, pathname: cstring) {.cdecl,
   importc: "tcc_add_sysinclude_path".}
   ## add in system include path
-
 
 proc defineSymbol*(s: PccState, sym, value: cstring) {.cdecl,
   importc: "tcc_define_symbol".}
@@ -65,16 +60,12 @@ proc compileString*(s: PccState, buf: cstring): cint {.cdecl,
 
 
 const
-  OutputMemory*: cint = 0 ## output will be ran in memory (no
+  OutputMemory*: cint = 1 ## output will be ran in memory (no
                           ## output file) (default)
-  OutputExe*: cint = 1 ## executable file
-  OutputDll*: cint = 2 ## dynamic library
-  OutputObj*: cint = 3 ## object file
-  OutputPreprocess*: cint = 4 ## preprocessed file (used internally)
-
-  OutputFormatElf*: cint = 0 ## default output format: ELF
-  OutputFormatBinary*: cint = 1 ## binary image output
-  OutputFormatCoff*: cint = 2 ## COFF
+  OutputExe*: cint = 2 ## executable file
+  OutputDll*: cint = 3 ## dynamic library
+  OutputObj*: cint = 4 ## object file
+  OutputPreprocess*: cint = 5 ## preprocessed file (used internally)
 
 proc setOutputType*(s: PCCState, outputType: cint): cint {.cdecl,
   importc: "tcc_set_output_type".}

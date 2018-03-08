@@ -2,7 +2,7 @@
 var
   lastId = 0
 
-template genId*: expr =
+template genId*: int =
   bind lastId
   inc(lastId)
   lastId

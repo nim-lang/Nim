@@ -33,7 +33,7 @@
 ##     assert deq.peekLast == a
 ##
 ##     while deq.len > 0:  # checking if the deque is empty
-##       echo deq.removeLast()
+##       echo deq.popLast()
 ##
 ## Note: For inter thread communication use
 ## a `Channel <channels.html>`_ instead.
@@ -80,7 +80,7 @@ proc `[]`*[T](deq: Deque[T], i: Natural) : T {.inline.} =
   ## Access the i-th element of `deq` by order from first to last.
   ## deq[0] is the first, deq[^1] is the last.
   xBoundsCheck(deq, i)
-  return deq.data[(deq.first + i) and deq.mask]
+  return deq.data[(deq.head + i) and deq.mask]
 
 proc `[]`*[T](deq: var Deque[T], i: Natural): var T {.inline.} =
   ## Access the i-th element of `deq` and returns a mutable
@@ -185,7 +185,7 @@ proc `$`*[T](deq: Deque[T]): string =
   result = "["
   for x in deq:
     if result.len > 1: result.add(", ")
-    result.add($x)
+    result.addQuoted(x)
   result.add("]")
 
 when isMainModule:
@@ -207,9 +207,9 @@ when isMainModule:
   assert($deq == "[4, 56, 6, 789]")
 
   assert deq[0] == deq.peekFirst and deq.peekFirst == 4
-  assert deq[^1] == deq.peekLast and deq.peekLast == 789
+  #assert deq[^1] == deq.peekLast and deq.peekLast == 789
   deq[0] = 42
-  deq[^1] = 7
+  deq[deq.len - 1] = 7
 
   assert 6 in deq and 789 notin deq
   assert deq.find(6) >= 0

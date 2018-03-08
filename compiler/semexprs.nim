@@ -16,7 +16,7 @@ proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
   styleCheckUse(n.info, s)
   pushInfoContext(n.info)
   result = evalTemplate(n, s, getCurrOwner(c), efFromHlo in flags)
-  if efNoSemCheck notin flags: result = semAfterMacroCall(c, result, s, flags)
+  if efNoSemCheck notin flags: result = semAfterMacroCall(c, n, result, s, flags)
   popInfoContext()
 
 proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
@@ -30,7 +30,9 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   #  result = errorNode(c, n)
   if result.typ != nil:
     # XXX tyGenericInst here?
-    if result.typ.kind == tyVar: result = newDeref(result)
+    if result.typ.kind == tyProc and tfUnresolved in result.typ.flags:
+      localError(n.info, errProcHasNoConcreteType, n.renderTree)
+    if result.typ.kind in {tyVar, tyLent}: result = newDeref(result)
   elif {efWantStmt, efAllowStmt} * flags != {}:
     result.typ = newTypeS(tyVoid, c)
   else:
@@ -45,14 +47,12 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     #raiseRecoverableError("")
     result = errorNode(c, n)
   if result.typ == nil or result.typ == enforceVoidContext:
-    # we cannot check for 'void' in macros ...
     localError(n.info, errExprXHasNoType,
-               renderTree(result, {renderNoComments}))
+                renderTree(result, {renderNoComments}))
     result.typ = errorType(c)
   else:
     if efNoProcvarCheck notin flags: semProcvarCheck(c, result)
-    if result.typ.kind == tyVar: result = newDeref(result)
-    semDestructorCheck(c, result, flags)
+    if result.typ.kind in {tyVar, tyLent}: result = newDeref(result)
 
 proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = semExpr(c, n, flags)
@@ -65,7 +65,6 @@ proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     result.typ = errorType(c)
   else:
     semProcvarCheck(c, result)
-    semDestructorCheck(c, result, flags)
 
 proc semSymGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   result = symChoice(c, n, s, scClosed)
@@ -103,7 +102,10 @@ proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
       result = convNotNeedeed
     return
   var d = skipTypes(castDest, abstractVar)
-  var s = skipTypes(src, abstractVar-{tyTypeDesc})
+  var s = src
+  if s.kind in tyUserTypeClasses and s.isResolvedUserTypeClass:
+    s = s.lastSon
+  s = skipTypes(s, abstractVar-{tyTypeDesc})
   var pointers = 0
   while (d != nil) and (d.kind in {tyPtr, tyRef}) and (d.kind == s.kind):
     d = d.lastSon
@@ -134,6 +136,7 @@ proc isCastable(dst, src: PType): bool =
   #  castableTypeKinds = {tyInt, tyPtr, tyRef, tyCstring, tyString,
   #                       tySequence, tyPointer, tyNil, tyOpenArray,
   #                       tyProc, tySet, tyEnum, tyBool, tyChar}
+  let src = src.skipTypes(tyUserTypeClasses)
   if skipTypes(dst, abstractInst-{tyOpenArray}).kind == tyOpenArray:
     return false
   if skipTypes(src, abstractInst-{tyTypeDesc}).kind == tyTypeDesc:
@@ -148,6 +151,8 @@ proc isCastable(dst, src: PType): bool =
     result = false
   elif typeAllowed(dst, skParam) != nil:
     result = false
+  elif dst.kind == tyProc and dst.callConv == ccClosure:
+    result = src.kind == tyProc and src.callConv == ccClosure
   else:
     result = (dstSize >= srcSize) or
         (skipTypes(dst, abstractInst).kind in IntegralTypes) or
@@ -176,9 +181,18 @@ proc semConv(c: PContext, n: PNode): PNode =
   result = newNodeI(nkConv, n.info)
   var targetType = semTypeNode(c, n.sons[0], nil).skipTypes({tyTypeDesc})
   maybeLiftType(targetType, c, n[0].info)
-  result.addSon copyTree(n.sons[0])
-  var op = semExprWithType(c, n.sons[1])
 
+  if targetType.kind in {tySink, tyLent}:
+    let baseType = semTypeNode(c, n.sons[1], nil).skipTypes({tyTypeDesc})
+    let t = newTypeS(targetType.kind, c)
+    t.rawAddSonNoPropagationOfTypeFlags baseType
+    result = newNodeI(nkType, n.info)
+    result.typ = makeTypeDesc(c, t)
+    return
+
+  result.addSon copyTree(n.sons[0])
+
+  var op = semExprWithType(c, n.sons[1])
   if targetType.isMetaType:
     let final = inferWithMetatype(c, targetType, op, true)
     result.addSon final
@@ -186,6 +200,8 @@ proc semConv(c: PContext, n: PNode): PNode =
     return
 
   result.typ = targetType
+  # XXX op is overwritten later on, this is likely added too early
+  # here or needs to be overwritten too then.
   addSon(result, op)
 
   if not isSymChoice(op):
@@ -218,13 +234,19 @@ proc semConv(c: PContext, n: PNode): PNode =
 proc semCast(c: PContext, n: PNode): PNode =
   ## Semantically analyze a casting ("cast[type](param)")
   checkSonsLen(n, 2)
+  let targetType = semTypeNode(c, n.sons[0], nil)
+  let castedExpr = semExprWithType(c, n.sons[1])
+  if tfHasMeta in targetType.flags:
+    localError(n.sons[0].info, errCastToANonConcreteType, $targetType)
+  if not isCastable(targetType, castedExpr.typ):
+    let tar = $targetType
+    let alt = typeToString(targetType, preferDesc)
+    let msg = if tar != alt: tar & "=" & alt else: tar
+    localError(n.info, errExprCannotBeCastToX, msg)
   result = newNodeI(nkCast, n.info)
-  result.typ = semTypeNode(c, n.sons[0], nil)
+  result.typ = targetType
   addSon(result, copyTree(n.sons[0]))
-  addSon(result, semExprWithType(c, n.sons[1]))
-  if not isCastable(result.typ, result.sons[1].typ):
-    localError(result.info, errExprCannotBeCastToX,
-               typeToString(result.typ))
+  addSon(result, castedExpr)
 
 proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
   const
@@ -233,8 +255,7 @@ proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
     localError(n.info, errXExpectsTypeOrValue, opToStr[m])
   else:
     n.sons[1] = semExprWithType(c, n.sons[1], {efDetermineType})
-    var typ = skipTypes(n.sons[1].typ, abstractVarRange +
-                                       {tyTypeDesc, tyFieldAccessor})
+    var typ = skipTypes(n.sons[1].typ, abstractVarRange + {tyTypeDesc})
     case typ.kind
     of tySequence, tyString, tyCString, tyOpenArray, tyVarargs:
       n.typ = getSysType(tyInt)
@@ -242,7 +263,7 @@ proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
       n.typ = typ.sons[0] # indextype
     of tyInt..tyInt64, tyChar, tyBool, tyEnum, tyUInt8, tyUInt16, tyUInt32:
       # do not skip the range!
-      n.typ = n.sons[1].typ.skipTypes(abstractVar + {tyFieldAccessor})
+      n.typ = n.sons[1].typ.skipTypes(abstractVar)
     of tyGenericParam:
       # prepare this for resolving in semtypinst:
       # we must use copyTree here in order to avoid creating a cycle
@@ -261,47 +282,12 @@ proc semSizeof(c: PContext, n: PNode): PNode =
   n.typ = getSysType(tyInt)
   result = n
 
-proc semOf(c: PContext, n: PNode): PNode =
-  if sonsLen(n) == 3:
-    n.sons[1] = semExprWithType(c, n.sons[1])
-    n.sons[2] = semExprWithType(c, n.sons[2], {efDetermineType})
-    #restoreOldStyleType(n.sons[1])
-    #restoreOldStyleType(n.sons[2])
-    let a = skipTypes(n.sons[1].typ, abstractPtrs)
-    let b = skipTypes(n.sons[2].typ, abstractPtrs)
-    let x = skipTypes(n.sons[1].typ, abstractPtrs-{tyTypeDesc})
-    let y = skipTypes(n.sons[2].typ, abstractPtrs-{tyTypeDesc})
-
-    if x.kind == tyTypeDesc or y.kind != tyTypeDesc:
-      localError(n.info, errXExpectsObjectTypes, "of")
-    elif b.kind != tyObject or a.kind != tyObject:
-      localError(n.info, errXExpectsObjectTypes, "of")
-    else:
-      let diff = inheritanceDiff(a, b)
-      # | returns: 0 iff `a` == `b`
-      # | returns: -x iff `a` is the x'th direct superclass of `b`
-      # | returns: +x iff `a` is the x'th direct subclass of `b`
-      # | returns: `maxint` iff `a` and `b` are not compatible at all
-      if diff <= 0:
-        # optimize to true:
-        message(n.info, hintConditionAlwaysTrue, renderTree(n))
-        result = newIntNode(nkIntLit, 1)
-        result.info = n.info
-        result.typ = getSysType(tyBool)
-        return result
-      elif diff == high(int):
-        localError(n.info, errXcanNeverBeOfThisSubtype, typeToString(a))
-  else:
-    localError(n.info, errXExpectsTwoArguments, "of")
-  n.typ = getSysType(tyBool)
-  result = n
-
-proc isOpImpl(c: PContext, n: PNode): PNode =
+proc isOpImpl(c: PContext, n: PNode, flags: TExprFlags): PNode =
   internalAssert n.sonsLen == 3 and
     n[1].typ != nil and n[1].typ.kind == tyTypeDesc and
     n[2].kind in {nkStrLit..nkTripleStrLit, nkType}
 
-  let t1 = n[1].typ.skipTypes({tyTypeDesc, tyFieldAccessor})
+  let t1 = n[1].typ.skipTypes({tyTypeDesc})
 
   if n[2].kind in {nkStrLit..nkTripleStrLit}:
     case n[2].strVal.normalize
@@ -313,16 +299,18 @@ proc isOpImpl(c: PContext, n: PNode): PNode =
     else:
       result = newIntNode(nkIntLit, 0)
   else:
-    var t2 = n[2].typ.skipTypes({tyTypeDesc})
+    var rhsOrigType = n[2].typ
+    var t2 = rhsOrigType.skipTypes({tyTypeDesc})
     maybeLiftType(t2, c, n.info)
     var m: TCandidate
     initCandidate(c, m, t2)
+    if efExplain in flags: m.diagnostics = @[]
     let match = typeRel(m, t2, t1) >= isSubtype # isNone
     result = newIntNode(nkIntLit, ord(match))
 
   result.typ = n.typ
 
-proc semIs(c: PContext, n: PNode): PNode =
+proc semIs(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if sonsLen(n) != 3:
     localError(n.info, errXExpectsTwoArguments, "is")
 
@@ -342,7 +330,7 @@ proc semIs(c: PContext, n: PNode): PNode =
     return
 
   # BUGFIX: don't evaluate this too early: ``T is void``
-  if not n[1].typ.base.containsGenericType: result = isOpImpl(c, n)
+  if not n[1].typ.base.containsGenericType: result = isOpImpl(c, n, flags)
 
 proc semOpAux(c: PContext, n: PNode) =
   const flags = {efDetermineType}
@@ -350,7 +338,7 @@ proc semOpAux(c: PContext, n: PNode) =
     var a = n.sons[i]
     if a.kind == nkExprEqExpr and sonsLen(a) == 2:
       var info = a.sons[0].info
-      a.sons[0] = newIdentNode(considerQuotedIdent(a.sons[0]), info)
+      a.sons[0] = newIdentNode(considerQuotedIdent(a.sons[0], a), info)
       a.sons[1] = semExprWithType(c, a.sons[1], flags)
       a.typ = a.sons[1].typ
     else:
@@ -373,7 +361,7 @@ proc changeType(n: PNode, newType: PType, check: bool) =
     for i in countup(0, sonsLen(n) - 1):
       changeType(n.sons[i], elemType(newType), check)
   of nkPar:
-    let tup = newType.skipTypes({tyGenericInst, tyAlias})
+    let tup = newType.skipTypes({tyGenericInst, tyAlias, tySink})
     if tup.kind != tyTuple:
       if tup.kind == tyObject: return
       globalError(n.info, "no tuple type for constructor")
@@ -416,7 +404,7 @@ proc arrayConstrType(c: PContext, n: PNode): PType =
   if sonsLen(n) == 0:
     rawAddSon(typ, newTypeS(tyEmpty, c)) # needs an empty basetype!
   else:
-    var t = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar, tyOrdinal, tyAlias})
+    var t = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
     addSonSkipIntLit(typ, t)
   typ.sons[0] = makeRangeType(c, 0, sonsLen(n) - 1, n.info)
   result = typ
@@ -440,7 +428,7 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
     let yy = semExprWithType(c, x)
     var typ = yy.typ
     addSon(result, yy)
-    #var typ = skipTypes(result.sons[0].typ, {tyGenericInst, tyVar, tyOrdinal})
+    #var typ = skipTypes(result.sons[0].typ, {tyGenericInst, tyVar, tyLent, tyOrdinal})
     for i in countup(1, sonsLen(n) - 1):
       x = n.sons[i]
       if x.kind == nkExprColonExpr and sonsLen(x) == 2:
@@ -457,12 +445,12 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       #addSon(result, fitNode(c, typ, n.sons[i]))
       inc(lastIndex)
     addSonSkipIntLit(result.typ, typ)
-    for i in 0 .. <result.len:
+    for i in 0 ..< result.len:
       result.sons[i] = fitNode(c, typ, result.sons[i], result.sons[i].info)
   result.typ.sons[0] = makeRangeType(c, 0, sonsLen(result) - 1, n.info)
 
 proc fixAbstractType(c: PContext, n: PNode) =
-  for i in 1 .. < n.len:
+  for i in 1 ..< n.len:
     let it = n.sons[i]
     # do not get rid of nkHiddenSubConv for OpenArrays, the codegen needs it:
     if it.kind == nkHiddenSubConv and
@@ -486,7 +474,7 @@ proc newHiddenAddrTaken(c: PContext, n: PNode): PNode =
     result = newNodeIT(nkHiddenAddr, n.info, makeVarType(c, n.typ))
     addSon(result, n)
     if isAssignable(c, n) notin {arLValue, arLocalLValue}:
-      localError(n.info, errVarForOutParamNeeded)
+      localError(n.info, errVarForOutParamNeededX, renderNotLValue(n))
 
 proc analyseIfAddressTaken(c: PContext, n: PNode): PNode =
   result = n
@@ -494,7 +482,7 @@ proc analyseIfAddressTaken(c: PContext, n: PNode): PNode =
   of nkSym:
     # n.sym.typ can be nil in 'check' mode ...
     if n.sym.typ != nil and
-        skipTypes(n.sym.typ, abstractInst-{tyTypeDesc}).kind != tyVar:
+        skipTypes(n.sym.typ, abstractInst-{tyTypeDesc}).kind notin {tyVar, tyLent}:
       incl(n.sym.flags, sfAddrTaken)
       result = newHiddenAddrTaken(c, n)
   of nkDotExpr:
@@ -502,12 +490,12 @@ proc analyseIfAddressTaken(c: PContext, n: PNode): PNode =
     if n.sons[1].kind != nkSym:
       internalError(n.info, "analyseIfAddressTaken")
       return
-    if skipTypes(n.sons[1].sym.typ, abstractInst-{tyTypeDesc}).kind != tyVar:
+    if skipTypes(n.sons[1].sym.typ, abstractInst-{tyTypeDesc}).kind notin {tyVar, tyLent}:
       incl(n.sons[1].sym.flags, sfAddrTaken)
       result = newHiddenAddrTaken(c, n)
   of nkBracketExpr:
     checkMinSonsLen(n, 1)
-    if skipTypes(n.sons[0].typ, abstractInst-{tyTypeDesc}).kind != tyVar:
+    if skipTypes(n.sons[0].typ, abstractInst-{tyTypeDesc}).kind notin {tyVar, tyLent}:
       if n.sons[0].kind == nkSym: incl(n.sons[0].sym.flags, sfAddrTaken)
       result = newHiddenAddrTaken(c, n)
   else:
@@ -522,7 +510,7 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
 
   # get the real type of the callee
   # it may be a proc var with a generic alias type, so we skip over them
-  var t = n.sons[0].typ.skipTypes({tyGenericInst, tyAlias})
+  var t = n.sons[0].typ.skipTypes({tyGenericInst, tyAlias, tySink})
 
   if n.sons[0].kind == nkSym and n.sons[0].sym.magic in FakeVarParams:
     # BUGFIX: check for L-Value still needs to be done for the arguments!
@@ -530,9 +518,10 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
     for i in countup(1, sonsLen(n) - 1):
       if i < sonsLen(t) and t.sons[i] != nil and
           skipTypes(t.sons[i], abstractInst-{tyTypeDesc}).kind == tyVar:
-        if isAssignable(c, n.sons[i]) notin {arLValue, arLocalLValue}:
-          if n.sons[i].kind != nkHiddenAddr:
-            localError(n.sons[i].info, errVarForOutParamNeeded)
+        let it = n[i]
+        if isAssignable(c, it) notin {arLValue, arLocalLValue}:
+          if it.kind != nkHiddenAddr:
+            localError(it.info, errVarForOutParamNeededX, $it)
     return
   for i in countup(1, sonsLen(n) - 1):
     if n.sons[i].kind == nkHiddenCallConv:
@@ -560,7 +549,7 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
     var call = newNodeIT(nkCall, n.info, n.typ)
     call.add(n.sons[0])
     var allConst = true
-    for i in 1 .. < n.len:
+    for i in 1 ..< n.len:
       var a = getConstExpr(c.module, n.sons[i])
       if a == nil:
         allConst = false
@@ -571,7 +560,6 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
       result = semfold.getConstExpr(c.module, call)
       if result.isNil: result = n
       else: return result
-    result.typ = semfold.getIntervalType(callee.magic, call)
 
   block maybeLabelAsStatic:
     # XXX: temporary work-around needed for tlateboundstatic.
@@ -579,7 +567,7 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
     # done until we have a more robust infrastructure for
     # implicit statics.
     if n.len > 1:
-      for i in 1 .. <n.len:
+      for i in 1 ..< n.len:
         # see bug #2113, it's possible that n[i].typ for errornous code:
         if n[i].typ.isNil or n[i].typ.kind != tyStatic or
             tfUnresolved notin n[i].typ.flags:
@@ -594,14 +582,14 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
         optImplicitStatic notin gOptions: return
 
     if callee.magic notin ctfeWhitelist: return
-    if callee.kind notin {skProc, skConverter} or callee.isGenericRoutine:
+    if callee.kind notin {skProc, skFunc, skConverter} or callee.isGenericRoutine:
       return
 
     if n.typ != nil and typeAllowed(n.typ, skConst) != nil: return
 
     var call = newNodeIT(nkCall, n.info, n.typ)
     call.add(n.sons[0])
-    for i in 1 .. < n.len:
+    for i in 1 ..< n.len:
       let a = getConstExpr(c.module, n.sons[i])
       if a == nil: return n
       call.add(a)
@@ -620,6 +608,7 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
 
 proc semStaticExpr(c: PContext, n: PNode): PNode =
   let a = semExpr(c, n.sons[0])
+  if a.findUnresolvedStatic != nil: return a
   result = evalStaticExpr(c.module, c.cache, a, c.p.owner)
   if result.isNil:
     localError(n.info, errCannotInterpretNodeX, renderTree(n))
@@ -635,10 +624,10 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
     # for typeof support.
     # for ``type(countup(1,3))``, see ``tests/ttoseq``.
     result = semOverloadedCall(c, n, nOrig,
-      {skProc, skMethod, skConverter, skMacro, skTemplate, skIterator})
+      {skProc, skFunc, skMethod, skConverter, skMacro, skTemplate, skIterator}, flags)
   else:
     result = semOverloadedCall(c, n, nOrig,
-      {skProc, skMethod, skConverter, skMacro, skTemplate})
+      {skProc, skFunc, skMethod, skConverter, skMacro, skTemplate}, flags)
 
   if result != nil:
     if result.sons[0].kind != nkSym:
@@ -673,27 +662,9 @@ proc bracketedMacro(n: PNode): PSym =
     if result.kind notin {skMacro, skTemplate}:
       result = nil
 
-proc semBracketedMacro(c: PContext; outer, inner: PNode; s: PSym;
-                       flags: TExprFlags): PNode =
-  # We received untransformed bracket expression coming from macroOrTmpl[].
-  # Transform it to macro or template call, where first come normal
-  # arguments, next come generic template arguments.
-  var sons = newSeq[PNode]()
-  sons.add inner.sons[0]
-  # Normal arguments:
-  for i in 1..<outer.len:
-    sons.add outer.sons[i]
-  # Generic template arguments from bracket expression:
-  for i in 1..<inner.len:
-    sons.add inner.sons[i]
-  shallowCopy(outer.sons, sons)
-  # FIXME: Shouldn't we check sfImmediate and call semDirectOp?
-  # However passing to semDirectOp doesn't work here.
-  case s.kind
-  of skMacro: result = semMacroExpr(c, outer, outer, s, flags)
-  of skTemplate: result = semTemplateExpr(c, outer, s, flags)
-  else: assert(false)
-  return
+proc setGenericParams(c: PContext, n: PNode) =
+  for i in 1 ..< n.len:
+    n[i].typ = semTypeNode(c, n[i], nil)
 
 proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
   result = n
@@ -708,7 +679,9 @@ proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
     analyseIfAddressTakenInCall(c, result)
     if callee.magic != mNone:
       result = magicsAfterOverloadResolution(c, result, flags)
-  if c.inTypeClass == 0:
+    if result.typ != nil: liftTypeBoundOps(c, result.typ, n.info)
+    #result = patchResolvedTypeBoundOp(c, result)
+  if c.matchedConcept == nil:
     result = evalAtCompileTime(c, result)
 
 proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
@@ -730,12 +703,13 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   else:
     n.sons[0] = semExpr(c, n.sons[0], {efInCall})
     let t = n.sons[0].typ
-    if t != nil and t.kind == tyVar:
+    if t != nil and t.kind in {tyVar, tyLent}:
       n.sons[0] = newDeref(n.sons[0])
     elif n.sons[0].kind == nkBracketExpr:
       let s = bracketedMacro(n.sons[0])
       if s != nil:
-        return semBracketedMacro(c, n, n.sons[0], s, flags)
+        setGenericParams(c, n[0])
+        return semDirectOp(c, n, flags)
 
   let nOrig = n.copyTree
   semOpAux(c, n)
@@ -746,7 +720,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # This is a proc variable, apply normal overload resolution
     let m = resolveIndirectCall(c, n, nOrig, t)
     if m.state != csMatch:
-      if c.compilesContextId > 0:
+      if errorOutputs == {}:
         # speed up error generation:
         globalError(n.info, errTypeMismatch, "")
         return emptyNode
@@ -761,7 +735,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
             hasErrorType = true
             break
         if not hasErrorType:
-          add(msg, ")\n" & msgKindToString(errButExpected) & "\n" &
+          add(msg, ">\n" & msgKindToString(errButExpected) & "\n" &
               typeToString(n.sons[0].typ))
           localError(n.info, errGenerated, msg)
         return errorNode(c, n)
@@ -817,6 +791,19 @@ proc buildEchoStmt(c: PContext, n: PNode): PNode =
 
 proc semExprNoType(c: PContext, n: PNode): PNode =
   result = semExpr(c, n, {efWantStmt})
+  # make an 'if' expression an 'if' statement again for backwards
+  # compatibility (.discardable was a bad idea!); bug #6980
+  var isStmt = false
+  if result.kind == nkIfExpr:
+    isStmt = true
+    for condActionPair in result:
+      let action = condActionPair.lastSon
+      if not implicitlyDiscardable(action) and not
+          endsInNoReturn(action):
+        isStmt = false
+    if isStmt:
+      result.kind = nkIfStmt
+      result.typ = nil
   discardCheck(c, result)
 
 proc isTypeExpr(n: PNode): bool =
@@ -887,40 +874,48 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
     if r.sym.name.id == field.id: result = r.sym
   else: illFormedAst(n)
 
-proc makeDeref(n: PNode): PNode =
-  var t = skipTypes(n.typ, {tyGenericInst, tyAlias})
-  result = n
-  if t.kind == tyVar:
-    result = newNodeIT(nkHiddenDeref, n.info, t.sons[0])
-    addSon(result, n)
-    t = skipTypes(t.sons[0], {tyGenericInst, tyAlias})
-  while t.kind in {tyPtr, tyRef}:
-    var a = result
-    let baseTyp = t.lastSon
-    result = newNodeIT(nkHiddenDeref, n.info, baseTyp)
-    addSon(result, a)
-    t = skipTypes(baseTyp, {tyGenericInst, tyAlias})
-
 const
   tyTypeParamsHolders = {tyGenericInst, tyCompositeTypeClass}
-  tyDotOpTransparent = {tyVar, tyPtr, tyRef, tyAlias}
+  tyDotOpTransparent = {tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink}
 
 proc readTypeParameter(c: PContext, typ: PType,
                        paramName: PIdent, info: TLineInfo): PNode =
-  let ty = if typ.kind == tyGenericInst: typ.skipGenericAlias
-           else: (internalAssert(typ.kind == tyCompositeTypeClass);
-                  typ.sons[1].skipGenericAlias)
-  let tbody = ty.sons[0]
-  for s in countup(0, tbody.len-2):
-    let tParam = tbody.sons[s]
-    if tParam.sym.name.id == paramName.id:
-      let rawTyp = ty.sons[s + 1]
-      if rawTyp.kind == tyStatic:
-        return rawTyp.n
+  if typ.kind in {tyUserTypeClass, tyUserTypeClassInst}:
+    for statement in typ.n:
+      case statement.kind
+      of nkTypeSection:
+        for def in statement:
+          if def[0].sym.name.id == paramName.id:
+            # XXX: Instead of lifting the section type to a typedesc
+            # here, we could try doing it earlier in semTypeSection.
+            # This seems semantically correct and then we'll be able
+            # to return the section symbol directly here
+            let foundType = makeTypeDesc(c, def[2].typ)
+            return newSymNode(copySym(def[0].sym).linkTo(foundType), info)
+
+      of nkConstSection:
+        for def in statement:
+          if def[0].sym.name.id == paramName.id:
+            return def[2]
+
       else:
-        let foundTyp = makeTypeDesc(c, rawTyp)
-        return newSymNode(copySym(tParam.sym).linkTo(foundTyp), info)
-  #echo "came here: returned nil"
+        discard
+
+  if typ.kind != tyUserTypeClass:
+    let ty = if typ.kind == tyCompositeTypeClass: typ.sons[1].skipGenericAlias
+             else: typ.skipGenericAlias
+    let tbody = ty.sons[0]
+    for s in countup(0, tbody.len-2):
+      let tParam = tbody.sons[s]
+      if tParam.sym.name.id == paramName.id:
+        let rawTyp = ty.sons[s + 1]
+        if rawTyp.kind == tyStatic:
+          return rawTyp.n
+        else:
+          let foundTyp = makeTypeDesc(c, rawTyp)
+          return newSymNode(copySym(tParam.sym).linkTo(foundTyp), info)
+
+  return nil
 
 proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
   let s = getGenSym(c, sym)
@@ -956,7 +951,8 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     else:
       result = semMacroExpr(c, n, n, s, flags)
   of skTemplate:
-    if efNoEvaluateGeneric in flags and s.ast[genericParamsPos].len > 0:
+    if efNoEvaluateGeneric in flags and s.ast[genericParamsPos].len > 0 or
+       sfCustomPragma in sym.flags:
       markUsed(n.info, s, c.graph.usageSym)
       styleCheckUse(n.info, s)
       result = newSymNode(s, n.info)
@@ -965,7 +961,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
   of skParam:
     markUsed(n.info, s, c.graph.usageSym)
     styleCheckUse(n.info, s)
-    if s.typ.kind == tyStatic and s.typ.n != nil:
+    if s.typ != nil and s.typ.kind == tyStatic and s.typ.n != nil:
       # XXX see the hack in sigmatch.nim ...
       return s.typ.n
     elif sfGenSym in s.flags:
@@ -1014,8 +1010,8 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     while p != nil and p.selfSym == nil:
       p = p.next
     if p != nil and p.selfSym != nil:
-      var ty = skipTypes(p.selfSym.typ, {tyGenericInst, tyVar, tyPtr, tyRef,
-                                         tyAlias})
+      var ty = skipTypes(p.selfSym.typ, {tyGenericInst, tyVar, tyLent, tyPtr, tyRef,
+                                         tyAlias, tySink})
       while tfBorrowDot in ty.flags: ty = ty.skipTypes({tyDistinct})
       var check: PNode = nil
       if ty.kind == tyObject:
@@ -1054,7 +1050,9 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # here at all!
   #if isSymChoice(n.sons[1]): return
   when defined(nimsuggest):
-    if gCmd == cmdIdeTools: suggestExpr(c, n)
+    if gCmd == cmdIdeTools:
+      suggestExpr(c, n)
+      if exactEquals(gTrackPos, n[1].info): suggestExprNoCheck(c, n)
 
   var s = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared, checkModule})
   if s != nil:
@@ -1069,10 +1067,27 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
   n.sons[0] = semExprWithType(c, n.sons[0], flags+{efDetermineType})
   #restoreOldStyleType(n.sons[0])
-  var i = considerQuotedIdent(n.sons[1])
+  var i = considerQuotedIdent(n.sons[1], n)
   var ty = n.sons[0].typ
   var f: PSym = nil
   result = nil
+
+  template tryReadingGenericParam(t: PType) =
+    case t.kind
+    of tyTypeParamsHolders:
+      return readTypeParameter(c, t, i, n.info)
+    of tyUserTypeClasses:
+      if t.isResolvedUserTypeClass:
+        return readTypeParameter(c, t, i, n.info)
+      else:
+        n.typ = makeTypeFromExpr(c, copyTree(n))
+        return n
+    of tyGenericParam:
+      n.typ = makeTypeFromExpr(c, copyTree(n))
+      return n
+    else:
+      discard
+
   if isTypeExpr(n.sons[0]) or (ty.kind == tyTypeDesc and ty.base.kind != tyNone):
     if ty.kind == tyTypeDesc: ty = ty.base
     ty = ty.skipTypes(tyDotOpTransparent)
@@ -1090,24 +1105,22 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
         markUsed(n.info, f, c.graph.usageSym)
         styleCheckUse(n.info, f)
         return
-    of tyTypeParamsHolders:
-      return readTypeParameter(c, ty, i, n.info)
     of tyObject, tyTuple:
       if ty.n != nil and ty.n.kind == nkRecList:
         let field = lookupInRecord(ty.n, i)
         if field != nil:
-          n.typ = newTypeWithSons(c, tyFieldAccessor, @[ty, field.typ])
-          n.typ.n = copyTree(n)
+          n.typ = makeTypeDesc(c, field.typ)
           return n
     else:
-      # echo "TYPE FIELD ACCESS"
-      # debug ty
+      tryReadingGenericParam(ty)
       return
     # XXX: This is probably not relevant any more
     # reset to prevent 'nil' bug: see "tests/reject/tenumitems.nim":
     ty = n.sons[0].typ
     return nil
-  ty = skipTypes(ty, {tyGenericInst, tyVar, tyPtr, tyRef, tyAlias})
+  if ty.kind in tyUserTypeClasses and ty.isResolvedUserTypeClass:
+    ty = ty.lastSon
+  ty = skipTypes(ty, {tyGenericInst, tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink})
   while tfBorrowDot in ty.flags: ty = ty.skipTypes({tyDistinct})
   var check: PNode = nil
   if ty.kind == tyObject:
@@ -1144,8 +1157,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # we didn't find any field, let's look for a generic param
   if result == nil:
     let t = n.sons[0].typ.skipTypes(tyDotOpTransparent)
-    if t.kind in tyTypeParamsHolders:
-      result = readTypeParameter(c, t, i, n.info)
+    tryReadingGenericParam(t)
 
 proc dotTransformation(c: PContext, n: PNode): PNode =
   if isSymChoice(n.sons[1]):
@@ -1153,7 +1165,7 @@ proc dotTransformation(c: PContext, n: PNode): PNode =
     addSon(result, n.sons[1])
     addSon(result, copyTree(n[0]))
   else:
-    var i = considerQuotedIdent(n.sons[1])
+    var i = considerQuotedIdent(n.sons[1], n)
     result = newNodeI(nkDotCall, n.info)
     result.flags.incl nfDotField
     addSon(result, newIdentNode(i, n[1].info))
@@ -1175,7 +1187,7 @@ proc semDeref(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 1)
   n.sons[0] = semExprWithType(c, n.sons[0])
   result = n
-  var t = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar, tyAlias})
+  var t = skipTypes(n.sons[0].typ, {tyGenericInst, tyVar, tyLent, tyAlias, tySink})
   case t.kind
   of tyRef, tyPtr: n.typ = t.lastSon
   else: result = nil
@@ -1195,13 +1207,12 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
   n.sons[0] = semExprWithType(c, n.sons[0],
                               {efNoProcvarCheck, efNoEvaluateGeneric})
   let arr = skipTypes(n.sons[0].typ, {tyGenericInst,
-                                      tyVar, tyPtr, tyRef, tyAlias})
+                                      tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink})
   case arr.kind
   of tyArray, tyOpenArray, tyVarargs, tySequence, tyString,
      tyCString:
     if n.len != 2: return nil
     n.sons[0] = makeDeref(n.sons[0])
-    c.p.bracketExpr = n.sons[0]
     for i in countup(1, sonsLen(n) - 1):
       n.sons[i] = semExprWithType(c, n.sons[i],
                                   flags*{efInTypeof, efDetermineType})
@@ -1220,26 +1231,25 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
     result.typ = makeTypeDesc(c, semTypeNode(c, n, nil))
     #result = symNodeFromType(c, semTypeNode(c, n, nil), n.info)
   of tyTuple:
-    checkSonsLen(n, 2)
+    if n.len != 2: return nil
     n.sons[0] = makeDeref(n.sons[0])
-    c.p.bracketExpr = n.sons[0]
     # [] operator for tuples requires constant expression:
     n.sons[1] = semConstExpr(c, n.sons[1])
-    if skipTypes(n.sons[1].typ, {tyGenericInst, tyRange, tyOrdinal, tyAlias}).kind in
+    if skipTypes(n.sons[1].typ, {tyGenericInst, tyRange, tyOrdinal, tyAlias, tySink}).kind in
         {tyInt..tyInt64}:
       var idx = getOrdValue(n.sons[1])
       if idx >= 0 and idx < sonsLen(arr): n.typ = arr.sons[int(idx)]
       else: localError(n.info, errInvalidIndexValueForTuple)
+      result = n
     else:
-      localError(n.info, errIndexTypesDoNotMatch)
-    result = n
+      result = nil
   else:
     let s = if n.sons[0].kind == nkSym: n.sons[0].sym
             elif n[0].kind in nkSymChoices: n.sons[0][0].sym
             else: nil
     if s != nil:
       case s.kind
-      of skProc, skMethod, skConverter, skIterator:
+      of skProc, skFunc, skMethod, skConverter, skIterator:
         # type parameters: partial generic specialization
         n.sons[0] = semSymGenericInstantiation(c, n.sons[0], s)
         result = explicitGenericInstantiation(c, n, s)
@@ -1260,20 +1270,16 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
       of skType:
         result = symNodeFromType(c, semTypeNode(c, n, nil), n.info)
       else:
-        c.p.bracketExpr = n.sons[0]
-    else:
-      c.p.bracketExpr = n.sons[0]
+        discard
 
 proc semArrayAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
-  let oldBracketExpr = c.p.bracketExpr
   result = semSubscript(c, n, flags)
   if result == nil:
     # overloaded [] operator:
     result = semExpr(c, buildOverloadedSubscripts(n, getIdent"[]"))
-  c.p.bracketExpr = oldBracketExpr
 
 proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
-  var id = considerQuotedIdent(a[1])
+  var id = considerQuotedIdent(a[1], a)
   var setterId = newIdentNode(getIdent(id.s & '='), n.info)
   # a[0] is already checked for semantics, that does ``builtinFieldAccess``
   # this is ugly. XXX Semantic checking should use the ``nfSem`` flag for
@@ -1290,7 +1296,7 @@ proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
     #fixAbstractType(c, result)
     #analyseIfAddressTakenInCall(c, result)
 
-proc takeImplicitAddr(c: PContext, n: PNode): PNode =
+proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode =
   case n.kind
   of nkHiddenAddr, nkAddr: return n
   of nkHiddenDeref, nkDerefExpr: return n.sons[0]
@@ -1301,7 +1307,7 @@ proc takeImplicitAddr(c: PContext, n: PNode): PNode =
   if valid != arLValue:
     if valid == arLocalLValue:
       localError(n.info, errXStackEscape, renderTree(n, {renderNoComments}))
-    else:
+    elif not isLent:
       localError(n.info, errExprHasNoAddress)
   result = newNodeIT(nkHiddenAddr, n.info, makePtrType(c, n.typ))
   result.add(n)
@@ -1309,9 +1315,9 @@ proc takeImplicitAddr(c: PContext, n: PNode): PNode =
 proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
   if le.kind == nkHiddenDeref:
     var x = le.sons[0]
-    if x.typ.kind == tyVar and x.kind == nkSym and x.sym.kind == skResult:
+    if x.typ.kind in {tyVar, tyLent} and x.kind == nkSym and x.sym.kind == skResult:
       n.sons[0] = x # 'result[]' --> 'result'
-      n.sons[1] = takeImplicitAddr(c, ri)
+      n.sons[1] = takeImplicitAddr(c, ri, x.typ.kind == tyLent)
       x.typ.flags.incl tfVarIsPtr
       #echo x.info, " setting it for this type ", typeToString(x.typ), " ", n.info
 
@@ -1339,7 +1345,6 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
   of nkBracketExpr:
     # a[i] = x
     # --> `[]=`(a, i, x)
-    let oldBracketExpr = c.p.bracketExpr
     a = semSubscript(c, a, {efLValue})
     if a == nil:
       result = buildOverloadedSubscripts(n.sons[0], getIdent"[]=")
@@ -1349,9 +1354,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
         return n
       else:
         result = semExprNoType(c, result)
-        c.p.bracketExpr = oldBracketExpr
         return result
-    c.p.bracketExpr = oldBracketExpr
   of nkCurlyExpr:
     # a{i} = x -->  `{}=`(a, i, x)
     result = buildOverloadedSubscripts(n.sons[0], getIdent"{}=")
@@ -1371,7 +1374,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
   # a = b # both are vars, means: a[] = b[]
   # a = b # b no 'var T' means: a = addr(b)
   var le = a.typ
-  if (skipTypes(le, {tyGenericInst, tyAlias}).kind != tyVar and
+  if (skipTypes(le, {tyGenericInst, tyAlias, tySink}).kind != tyVar and
         isAssignable(c, a) == arNone) or
       skipTypes(le, abstractVar).kind in {tyOpenArray, tyVarargs}:
     # Direct assignment to a discriminant is allowed!
@@ -1387,18 +1390,24 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
     if lhsIsResult:
       n.typ = enforceVoidContext
       if c.p.owner.kind != skMacro and resultTypeIsInferrable(lhs.sym.typ):
-        if cmpTypes(c, lhs.typ, rhs.typ) == isGeneric:
+        var rhsTyp = rhs.typ
+        if rhsTyp.kind in tyUserTypeClasses and rhsTyp.isResolvedUserTypeClass:
+          rhsTyp = rhsTyp.lastSon
+        if cmpTypes(c, lhs.typ, rhsTyp) in {isGeneric, isEqual}:
           internalAssert c.p.resultSym != nil
-          lhs.typ = rhs.typ
-          c.p.resultSym.typ = rhs.typ
-          c.p.owner.typ.sons[0] = rhs.typ
+          lhs.typ = rhsTyp
+          c.p.resultSym.typ = rhsTyp
+          c.p.owner.typ.sons[0] = rhsTyp
         else:
-          typeMismatch(n.info, lhs.typ, rhs.typ)
+          typeMismatch(n.info, lhs.typ, rhsTyp)
 
     n.sons[1] = fitNode(c, le, rhs, n.info)
-    if tfHasAsgn in lhs.typ.flags and not lhsIsResult and
-        mode != noOverloadedAsgn:
-      return overloadedAsgn(c, lhs, n.sons[1])
+    if not newDestructors:
+      if tfHasAsgn in lhs.typ.flags and not lhsIsResult and
+          mode != noOverloadedAsgn:
+        return overloadedAsgn(c, lhs, n.sons[1])
+    else:
+      liftTypeBoundOps(c, lhs.typ, lhs.info)
 
     fixAbstractType(c, n)
     asgnToResultVar(c, n, n.sons[0], n.sons[1])
@@ -1407,7 +1416,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
 proc semReturn(c: PContext, n: PNode): PNode =
   result = n
   checkSonsLen(n, 1)
-  if c.p.owner.kind in {skConverter, skMethod, skProc, skMacro} or (
+  if c.p.owner.kind in {skConverter, skMethod, skProc, skFunc, skMacro} or (
      c.p.owner.kind == skIterator and c.p.owner.typ.callConv == ccClosure):
     if n.sons[0].kind != nkEmpty:
       # transform ``return expr`` to ``result = expr; return``
@@ -1426,14 +1435,9 @@ proc semReturn(c: PContext, n: PNode): PNode =
 
 proc semProcBody(c: PContext, n: PNode): PNode =
   openScope(c)
-
   result = semExpr(c, n)
   if c.p.resultSym != nil and not isEmptyType(result.typ):
-    # transform ``expr`` to ``result = expr``, but not if the expr is already
-    # ``result``:
-    if result.kind == nkSym and result.sym == c.p.resultSym:
-      discard
-    elif result.kind == nkNilLit:
+    if result.kind == nkNilLit:
       # or ImplicitlyDiscardable(result):
       # new semantic: 'result = x' triggers the void context
       result.typ = nil
@@ -1463,20 +1467,24 @@ proc semProcBody(c: PContext, n: PNode): PNode =
   closeScope(c)
 
 proc semYieldVarResult(c: PContext, n: PNode, restype: PType) =
-  var t = skipTypes(restype, {tyGenericInst, tyAlias})
+  var t = skipTypes(restype, {tyGenericInst, tyAlias, tySink})
   case t.kind
-  of tyVar:
-    n.sons[0] = takeImplicitAddr(c, n.sons[0])
+  of tyVar, tyLent:
+    if t.kind == tyVar: t.flags.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
+    if n.sons[0].kind in {nkHiddenStdConv, nkHiddenSubConv}:
+      n.sons[0] = n.sons[0].sons[1]
+    n.sons[0] = takeImplicitAddr(c, n.sons[0], t.kind == tyLent)
   of tyTuple:
-    for i in 0.. <t.sonsLen:
-      var e = skipTypes(t.sons[i], {tyGenericInst, tyAlias})
-      if e.kind == tyVar:
+    for i in 0..<t.sonsLen:
+      var e = skipTypes(t.sons[i], {tyGenericInst, tyAlias, tySink})
+      if e.kind in {tyVar, tyLent}:
+        if e.kind == tyVar: e.flags.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
         if n.sons[0].kind == nkPar:
-          n.sons[0].sons[i] = takeImplicitAddr(c, n.sons[0].sons[i])
+          n.sons[0].sons[i] = takeImplicitAddr(c, n.sons[0].sons[i], e.kind == tyLent)
         elif n.sons[0].kind in {nkHiddenStdConv, nkHiddenSubConv} and
              n.sons[0].sons[1].kind == nkPar:
           var a = n.sons[0].sons[1]
-          a.sons[i] = takeImplicitAddr(c, a.sons[i])
+          a.sons[i] = takeImplicitAddr(c, a.sons[i], false)
         else:
           localError(n.sons[0].info, errXExpected, "tuple constructor")
   else: discard
@@ -1523,7 +1531,7 @@ proc lookUpForDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
     checkSonsLen(n, 2)
     var m = lookUpForDefined(c, n.sons[0], onlyCurrentScope)
     if m != nil and m.kind == skModule:
-      let ident = considerQuotedIdent(n[1])
+      let ident = considerQuotedIdent(n[1], n)
       if m == c.module:
         result = strTableGet(c.topLevelScope.symbols, ident)
       else:
@@ -1542,7 +1550,7 @@ proc semDefined(c: PContext, n: PNode, onlyCurrentScope: bool): PNode =
   checkSonsLen(n, 2)
   # we replace this node by a 'true' or 'false' node:
   result = newIntNode(nkIntLit, 0)
-  if not onlyCurrentScope and considerQuotedIdent(n[0]).s == "defined":
+  if not onlyCurrentScope and considerQuotedIdent(n[0], n).s == "defined":
     if n.sons[1].kind != nkIdent:
       localError(n.info, "obsolete usage of 'defined', use 'declared' instead")
     elif condsyms.isDefined(n.sons[1].ident):
@@ -1587,23 +1595,51 @@ proc newAnonSym(c: PContext; kind: TSymKind, info: TLineInfo): PSym =
 
 proc semExpandToAst(c: PContext, n: PNode): PNode =
   let macroCall = n[1]
-  let expandedSym = expectMacroOrTemplateCall(c, macroCall)
-  if expandedSym.kind == skError: return n
 
-  macroCall.sons[0] = newSymNode(expandedSym, macroCall.info)
-  markUsed(n.info, expandedSym, c.graph.usageSym)
-  styleCheckUse(n.info, expandedSym)
+  when false:
+    let expandedSym = expectMacroOrTemplateCall(c, macroCall)
+    if expandedSym.kind == skError: return n
 
-  for i in countup(1, macroCall.len-1):
-    #if macroCall.sons[0].typ.sons[i].kind != tyExpr:
-    macroCall.sons[i] = semExprWithType(c, macroCall[i], {})
+    macroCall.sons[0] = newSymNode(expandedSym, macroCall.info)
+    markUsed(n.info, expandedSym, c.graph.usageSym)
+    styleCheckUse(n.info, expandedSym)
 
+  if isCallExpr(macroCall):
+    for i in countup(1, macroCall.len-1):
+      #if macroCall.sons[0].typ.sons[i].kind != tyExpr:
+      macroCall.sons[i] = semExprWithType(c, macroCall[i], {})
+    # performing overloading resolution here produces too serious regressions:
+    let headSymbol = macroCall[0]
+    var cands = 0
+    var cand: PSym = nil
+    var o: TOverloadIter
+    var symx = initOverloadIter(o, c, headSymbol)
+    while symx != nil:
+      if symx.kind in {skTemplate, skMacro} and symx.typ.len == macroCall.len:
+        cand = symx
+        inc cands
+      symx = nextOverloadIter(o, c, headSymbol)
+    if cands == 0:
+      localError(n.info, "expected a template that takes " & $(macroCall.len-1) & " arguments")
+    elif cands >= 2:
+      localError(n.info, "ambiguous symbol in 'getAst' context: " & $macroCall)
+    else:
+      let info = macroCall.sons[0].info
+      macroCall.sons[0] = newSymNode(cand, info)
+      markUsed(info, cand, c.graph.usageSym)
+      styleCheckUse(info, cand)
+
+    # we just perform overloading resolution here:
+    #n.sons[1] = semOverloadedCall(c, macroCall, macroCall, {skTemplate, skMacro})
+  else:
+    localError(n.info, "getAst takes a call, but got " & n.renderTree)
   # Preserve the magic symbol in order to be handled in evals.nim
   internalAssert n.sons[0].sym.magic == mExpandToAst
   #n.typ = getSysSym("NimNode").typ # expandedSym.getReturnType
-  n.typ = if getCompilerProc("NimNode") != nil: sysTypeFromName"NimNode"
-          else: sysTypeFromName"PNimrodNode"
-  result = n
+  if n.kind == nkStmtList and n.len == 1: result = n[0]
+  else: result = n
+  result.typ = if getCompilerProc("NimNode") != nil: sysTypeFromName"NimNode"
+               else: sysTypeFromName"PNimrodNode"
 
 proc semExpandToAst(c: PContext, n: PNode, magicSym: PSym,
                     flags: TExprFlags = {}): PNode =
@@ -1633,7 +1669,7 @@ proc processQuotations(n: var PNode, op: string,
   elif n.kind == nkAccQuoted and op == "``":
     returnQuote n[0]
 
-  for i in 0 .. <n.safeLen:
+  for i in 0 ..< n.safeLen:
     processQuotations(n.sons[i], op, quotes, ids)
 
 proc semQuoteAst(c: PContext, n: PNode): PNode =
@@ -1641,7 +1677,7 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
   # We transform the do block into a template with a param for
   # each interpolation. We'll pass this template to getAst.
   var
-    doBlk = n{-1}
+    quotedBlock = n[^1]
     op = if n.len == 3: expectString(c, n[1]) else: "``"
     quotes = newSeq[PNode](1)
       # the quotes will be added to a nkCall statement
@@ -1649,20 +1685,23 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
     ids = newSeq[PNode]()
       # this will store the generated param names
 
-  if doBlk.kind != nkDo:
+  if quotedBlock.kind != nkStmtList:
     localError(n.info, errXExpected, "block")
 
-  processQuotations(doBlk.sons[bodyPos], op, quotes, ids)
+  processQuotations(quotedBlock, op, quotes, ids)
 
-  doBlk.sons[namePos] = newAnonSym(c, skTemplate, n.info).newSymNode
+  var dummyTemplate = newProcNode(
+    nkTemplateDef, quotedBlock.info, quotedBlock,
+    name = newAnonSym(c, skTemplate, n.info).newSymNode)
+
   if ids.len > 0:
-    doBlk.sons[paramsPos] = newNodeI(nkFormalParams, n.info)
-    doBlk[paramsPos].add getSysSym("typed").newSymNode # return type
+    dummyTemplate.sons[paramsPos] = newNodeI(nkFormalParams, n.info)
+    dummyTemplate[paramsPos].add getSysSym("typed").newSymNode # return type
     ids.add getSysSym("untyped").newSymNode # params type
     ids.add emptyNode # no default value
-    doBlk[paramsPos].add newNode(nkIdentDefs, n.info, ids)
+    dummyTemplate[paramsPos].add newNode(nkIdentDefs, n.info, ids)
 
-  var tmpl = semTemplateDef(c, doBlk)
+  var tmpl = semTemplateDef(c, dummyTemplate)
   quotes[0] = tmpl[namePos]
   result = newNode(nkCall, n.info, @[
     getMagicSym(mExpandToAst).newSymNode,
@@ -1685,7 +1724,7 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   let oldOwnerLen = len(c.graph.owners)
   let oldGenerics = c.generics
   let oldErrorOutputs = errorOutputs
-  errorOutputs = {}
+  if efExplain notin flags: errorOutputs = {}
   let oldContextLen = msgs.getInfoContextLen()
 
   let oldInGenericContext = c.inGenericContext
@@ -1698,8 +1737,7 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     result = semExpr(c, n, flags)
     if msgs.gErrorCounter != oldErrorCount: result = nil
   except ERecoverableError:
-    if optReportConceptFailures in gGlobalOptions:
-      err = getCurrentExceptionMsg()
+    discard
   # undo symbol table changes (as far as it's possible):
   c.compilesContextId = oldCompilesId
   c.generics = oldGenerics
@@ -1713,8 +1751,6 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   errorOutputs = oldErrorOutputs
   msgs.gErrorCounter = oldErrorCount
   msgs.gErrorMax = oldErrorMax
-  if optReportConceptFailures in gGlobalOptions and not err.isNil:
-    localError(n.info, err)
 
 proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # we replace this node by a 'true' or 'false' node:
@@ -1761,6 +1797,13 @@ proc setMs(n: PNode, s: PSym): PNode =
   n.sons[0] = newSymNode(s)
   n.sons[0].info = n.info
 
+proc extractImports(n: PNode; result: PNode) =
+  if n.kind in {nkImportStmt, nkImportExceptStmt, nkFromStmt}:
+    result.add copyTree(n)
+    n.kind = nkEmpty
+    return
+  for i in 0..<n.safeLen: extractImports(n[i], result)
+
 proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   # this is a hotspot in the compiler!
   # DON'T forget to update ast.SpecialSemMagics if you add a magic here!
@@ -1778,11 +1821,11 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mDefined: result = semDefined(c, setMs(n, s), false)
   of mDefinedInScope: result = semDefined(c, setMs(n, s), true)
   of mCompiles: result = semCompiles(c, setMs(n, s), flags)
-  of mLow: result = semLowHigh(c, setMs(n, s), mLow)
-  of mHigh: result = semLowHigh(c, setMs(n, s), mHigh)
+  #of mLow: result = semLowHigh(c, setMs(n, s), mLow)
+  #of mHigh: result = semLowHigh(c, setMs(n, s), mHigh)
   of mSizeOf: result = semSizeof(c, setMs(n, s))
-  of mIs: result = semIs(c, setMs(n, s))
-  of mOf: result = semOf(c, setMs(n, s))
+  of mIs: result = semIs(c, setMs(n, s), flags)
+  #of mOf: result = semOf(c, setMs(n, s))
   of mShallowCopy: result = semShallowCopy(c, n, flags)
   of mExpandToAst: result = semExpandToAst(c, n, s, flags)
   of mQuoteAst: result = semQuoteAst(c, n)
@@ -1801,7 +1844,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     dec c.inParallelStmt
   of mSpawn:
     result = setMs(n, s)
-    for i in 1 .. <n.len:
+    for i in 1 ..< n.len:
       result.sons[i] = semExpr(c, n.sons[i])
     let typ = result[^1].typ
     if not typ.isEmptyType:
@@ -1832,6 +1875,20 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       analyseIfAddressTakenInCall(c, result)
       if callee.magic != mNone:
         result = magicsAfterOverloadResolution(c, result, flags)
+  of mRunnableExamples:
+    if gCmd == cmdDoc and n.len >= 2 and n.lastSon.kind == nkStmtList:
+      if sfMainModule in c.module.flags:
+        let inp = toFullPath(c.module.info)
+        if c.runnableExamples == nil:
+          c.runnableExamples = newTree(nkStmtList,
+            newTree(nkImportStmt, newStrNode(nkStrLit, expandFilename(inp))))
+        let imports = newTree(nkStmtList)
+        extractImports(n.lastSon, imports)
+        for imp in imports: c.runnableExamples.add imp
+        c.runnableExamples.add newTree(nkBlockStmt, emptyNode, copyTree n.lastSon)
+      result = setMs(n, s)
+    else:
+      result = emptyNode
   else:
     result = semDirectOp(c, n, flags)
 
@@ -1910,17 +1967,17 @@ proc semSetConstr(c: PContext, n: PNode): PNode =
         n.sons[i].sons[2] = semExprWithType(c, n.sons[i].sons[2])
         if typ == nil:
           typ = skipTypes(n.sons[i].sons[1].typ,
-                          {tyGenericInst, tyVar, tyOrdinal, tyAlias})
+                          {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
         n.sons[i].typ = n.sons[i].sons[2].typ # range node needs type too
       elif n.sons[i].kind == nkRange:
         # already semchecked
         if typ == nil:
           typ = skipTypes(n.sons[i].sons[0].typ,
-                          {tyGenericInst, tyVar, tyOrdinal, tyAlias})
+                          {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
       else:
         n.sons[i] = semExprWithType(c, n.sons[i])
         if typ == nil:
-          typ = skipTypes(n.sons[i].typ, {tyGenericInst, tyVar, tyOrdinal, tyAlias})
+          typ = skipTypes(n.sons[i].typ, {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
     if not isOrdinalType(typ):
       localError(n.info, errOrdinalTypeExpected)
       typ = makeRangeType(c, 0, MaxSetElements-1, n.info)
@@ -2028,75 +2085,7 @@ proc isTupleType(n: PNode): bool =
       return false
   return true
 
-proc checkInitialized(n: PNode, ids: IntSet, info: TLineInfo) =
-  case n.kind
-  of nkRecList:
-    for i in countup(0, sonsLen(n) - 1):
-      checkInitialized(n.sons[i], ids, info)
-  of nkRecCase:
-    if (n.sons[0].kind != nkSym): internalError(info, "checkInitialized")
-    checkInitialized(n.sons[0], ids, info)
-    when false:
-      # XXX we cannot check here, as we don't know the branch!
-      for i in countup(1, sonsLen(n) - 1):
-        case n.sons[i].kind
-        of nkOfBranch, nkElse: checkInitialized(lastSon(n.sons[i]), ids, info)
-        else: internalError(info, "checkInitialized")
-  of nkSym:
-    if {tfNotNil, tfNeedsInit} * n.sym.typ.flags != {} and
-        n.sym.name.id notin ids:
-      message(info, errGenerated, "field not initialized: " & n.sym.name.s)
-  else: internalError(info, "checkInitialized")
-
-proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
-  var t = semTypeNode(c, n.sons[0], nil)
-  result = n
-  result.typ = t
-  result.kind = nkObjConstr
-  t = skipTypes(t, {tyGenericInst, tyAlias})
-  if t.kind == tyRef: t = skipTypes(t.sons[0], {tyGenericInst, tyAlias})
-  if t.kind != tyObject:
-    localError(n.info, errGenerated, "object constructor needs an object type")
-    return
-  var objType = t
-  var ids = initIntSet()
-  for i in 1.. <n.len:
-    let it = n.sons[i]
-    if it.kind != nkExprColonExpr:
-      localError(n.info, errNamedExprExpected)
-      break
-    let id = considerQuotedIdent(it.sons[0])
-
-    if containsOrIncl(ids, id.id):
-      localError(it.info, errFieldInitTwice, id.s)
-    var e = semExprWithType(c, it.sons[1], flags*{efAllowDestructor})
-    var
-      check: PNode = nil
-      f: PSym
-    t = objType
-    while true:
-      check = nil
-      f = lookupInRecordAndBuildCheck(c, it, t.n, id, check)
-      if f != nil: break
-      if t.sons[0] == nil: break
-      t = skipTypes(t.sons[0], skipPtrs)
-    if f != nil and fieldVisible(c, f):
-      it.sons[0] = newSymNode(f)
-      e = fitNode(c, f.typ, e, it.info)
-      # small hack here in a nkObjConstr the ``nkExprColonExpr`` node can have
-      # 3 children the last being the field check
-      if check != nil:
-        check.sons[0] = it.sons[0]
-        it.add(check)
-    else:
-      localError(it.info, errUndeclaredFieldX, id.s)
-    it.sons[1] = e
-    # XXX object field name check for 'case objects' if the kind is static?
-  if tfNeedsInit in objType.flags:
-    while true:
-      checkInitialized(objType.n, ids, n.info)
-      if objType.sons[0] == nil: break
-      objType = skipTypes(objType.sons[0], skipPtrs)
+include semobjconstr
 
 proc semBlock(c: PContext, n: PNode): PNode =
   result = n
@@ -2120,7 +2109,7 @@ proc semBlock(c: PContext, n: PNode): PNode =
 proc semExport(c: PContext, n: PNode): PNode =
   var x = newNodeI(n.kind, n.info)
   #let L = if n.kind == nkExportExceptStmt: L = 1 else: n.len
-  for i in 0.. <n.len:
+  for i in 0..<n.len:
     let a = n.sons[i]
     var o: TOverloadIter
     var s = initOverloadIter(o, c, a)
@@ -2151,15 +2140,11 @@ proc shouldBeBracketExpr(n: PNode): bool =
     let b = a[0]
     if b.kind in nkSymChoices:
       for i in 0..<b.len:
-        if b[i].sym.magic == mArrGet:
+        if b[i].kind == nkSym and b[i].sym.magic == mArrGet:
           let be = newNodeI(nkBracketExpr, n.info)
           for i in 1..<a.len: be.add(a[i])
           n.sons[0] = be
           return true
-
-proc setGenericParams(c: PContext, n: PNode) =
-  for i in 1 .. <n.len:
-    n[i].typ = semTypeNode(c, n[i], nil)
 
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = n
@@ -2167,12 +2152,16 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   if nfSem in n.flags: return
   case n.kind
   of nkIdent, nkAccQuoted:
-    let checks = if efNoEvaluateGeneric in flags: {checkUndeclared}
-                 else: {checkUndeclared, checkModule, checkAmbiguity}
+    let checks = if efNoEvaluateGeneric in flags:
+        {checkUndeclared, checkPureEnumFields}
+      elif efInCall in flags:
+        {checkUndeclared, checkModule, checkPureEnumFields}
+      else:
+        {checkUndeclared, checkModule, checkAmbiguity, checkPureEnumFields}
     var s = qualifiedLookUp(c, n, checks)
-    if c.inTypeClass == 0: semCaptureSym(s, c.p.owner)
+    if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)
     result = semSym(c, n, s, flags)
-    if s.kind in {skProc, skMethod, skConverter, skIterator}:
+    if s.kind in {skProc, skFunc, skMethod, skConverter, skIterator}:
       #performProcvarCheck(c, n, s)
       result = symChoice(c, n, s, scClosed)
       if result.kind == nkSym:
@@ -2207,11 +2196,11 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     if result.typ == nil: result.typ = getSysType(tyUInt32)
   of nkUInt64Lit:
     if result.typ == nil: result.typ = getSysType(tyUInt64)
-  of nkFloatLit:
-    if result.typ == nil: result.typ = getFloatLitType(result)
+  #of nkFloatLit:
+  #  if result.typ == nil: result.typ = getFloatLitType(result)
   of nkFloat32Lit:
     if result.typ == nil: result.typ = getSysType(tyFloat32)
-  of nkFloat64Lit:
+  of nkFloat64Lit, nkFloatLit:
     if result.typ == nil: result.typ = getSysType(tyFloat64)
   of nkFloat128Lit:
     if result.typ == nil: result.typ = getSysType(tyFloat128)
@@ -2228,12 +2217,19 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     message(n.info, warnDeprecated, "bind")
     result = semExpr(c, n.sons[0], flags)
   of nkTypeOfExpr, nkTupleTy, nkTupleClassTy, nkRefTy..nkEnumTy, nkStaticTy:
+    if c.matchedConcept != nil and n.len == 1:
+      let modifier = n.modifierTypeKindOfNode
+      if modifier != tyNone:
+        var baseType = semExpr(c, n[0]).typ.skipTypes({tyTypeDesc})
+        result.typ = c.makeTypeDesc(c.newTypeWithSons(modifier, @[baseType]))
+        return
     var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})
     result.typ = makeTypeDesc(c, typ)
-    #result = symNodeFromType(c, typ, n.info)
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit:
     # check if it is an expression macro:
     checkMinSonsLen(n, 1)
+    #when defined(nimsuggest):
+    #  if gIdeCmd == ideCon and gTrackPos == n.info: suggestExprNoCheck(c, n)
     let mode = if nfDotField in n.flags: {} else: {checkUndeclared}
     var s = qualifiedLookUp(c, n.sons[0], mode)
     if s != nil:
@@ -2254,13 +2250,13 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         # XXX think about this more (``set`` procs)
         if n.len == 2:
           result = semConv(c, n)
+        elif contains(c.ambiguousSymbols, s.id) and n.len == 1:
+          errorUseQualifier(c, n.info, s)
         elif n.len == 1:
           result = semObjConstr(c, n, flags)
-        elif contains(c.ambiguousSymbols, s.id):
-          errorUseQualifier(c, n.info, s)
         elif s.magic == mNone: result = semDirectOp(c, n, flags)
         else: result = semMagic(c, n, s, flags)
-      of skProc, skMethod, skConverter, skIterator:
+      of skProc, skFunc, skMethod, skConverter, skIterator:
         if s.magic == mNone: result = semDirectOp(c, n, flags)
         else: result = semMagic(c, n, s, flags)
       else:
@@ -2292,8 +2288,20 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkCurlyExpr:
     result = semExpr(c, buildOverloadedSubscripts(n, getIdent"{}"), flags)
   of nkPragmaExpr:
-    # which pragmas are allowed for expressions? `likely`, `unlikely`
-    internalError(n.info, "semExpr() to implement") # XXX: to implement
+    var
+      expr = n[0]
+      pragma = n[1]
+      pragmaName = considerQuotedIdent(pragma[0])
+      flags = flags
+
+    case whichKeyword(pragmaName)
+    of wExplain:
+      flags.incl efExplain
+    else:
+      # what other pragmas are allowed for expressions? `likely`, `unlikely`
+      invalidPragma(n)
+
+    result = semExpr(c, n[0], flags)
   of nkPar:
     case checkPar(n)
     of paNone: result = errorNode(c, n)
@@ -2310,8 +2318,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkCurly: result = semSetConstr(c, n)
   of nkBracket: result = semArrayConstr(c, n, flags)
   of nkObjConstr: result = semObjConstr(c, n, flags)
-  of nkLambda: result = semLambda(c, n, flags)
-  of nkDo: result = semDo(c, n, flags)
+  of nkLambdaKinds: result = semLambda(c, n, flags)
   of nkDerefExpr: result = semDeref(c, n)
   of nkAddr:
     result = n
@@ -2324,12 +2331,16 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkIfExpr, nkIfStmt: result = semIf(c, n)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv, nkHiddenCallConv:
     checkSonsLen(n, 2)
+    considerGenSyms(c, n)
   of nkStringToCString, nkCStringToString, nkObjDownConv, nkObjUpConv:
     checkSonsLen(n, 1)
+    considerGenSyms(c, n)
   of nkChckRangeF, nkChckRange64, nkChckRange:
     checkSonsLen(n, 3)
+    considerGenSyms(c, n)
   of nkCheckedFieldExpr:
     checkMinSonsLen(n, 2)
+    considerGenSyms(c, n)
   of nkTableConstr:
     result = semTableConstr(c, n)
   of nkClosedSymChoice, nkOpenSymChoice:
@@ -2359,12 +2370,20 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkPragma: pragma(c, c.p.owner, n, stmtPragmas)
   of nkIteratorDef: result = semIterator(c, n)
   of nkProcDef: result = semProc(c, n)
+  of nkFuncDef: result = semFunc(c, n)
   of nkMethodDef: result = semMethod(c, n)
   of nkConverterDef: result = semConverterDef(c, n)
   of nkMacroDef: result = semMacroDef(c, n)
   of nkTemplateDef: result = semTemplateDef(c, n)
   of nkImportStmt:
-    if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "import")
+    # this particular way allows 'import' in a 'compiles' context so that
+    # template canImport(x): bool =
+    #   compiles:
+    #     import x
+    #
+    # works:
+    if c.currentScope.depthLevel > 2 + c.compilesContextId:
+      localError(n.info, errXOnlyAtModuleScope, "import")
     result = evalImport(c, n)
   of nkImportExceptStmt:
     if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "import")
@@ -2387,6 +2406,11 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     if not n.sons[0].typ.isEmptyType and not implicitlyDiscardable(n.sons[0]):
       localError(n.info, errGenerated, "'defer' takes a 'void' expression")
     #localError(n.info, errGenerated, "'defer' not allowed in this context")
+  of nkGotoState, nkState:
+    if n.len != 1 and n.len != 2: illFormedAst(n)
+    for i in 0 ..< n.len:
+      n.sons[i] = semExpr(c, n.sons[i])
+  of nkComesFrom: discard "ignore the comes from information for now"
   else:
     localError(n.info, errInvalidExpressionX,
                renderTree(n, {renderNoComments}))

@@ -24,7 +24,13 @@ proc cmpStrings(a, b: NimString): int {.inline, compilerProc.} =
   if a == b: return 0
   if a == nil: return -1
   if b == nil: return 1
-  return c_strcmp(a.data, b.data)
+  let minlen = min(a.len, b.len)
+  if minlen > 0:
+    result = c_memcmp(addr a.data, addr b.data, minlen.csize)
+    if result == 0:
+      result = a.len - b.len
+  else:
+    result = a.len - b.len
 
 proc eqStrings(a, b: NimString): bool {.inline, compilerProc.} =
   if a == b: return true
@@ -38,6 +44,13 @@ when declared(allocAtomic):
 
   template allocStrNoInit(size: untyped): untyped =
     cast[NimString](boehmAllocAtomic(size))
+elif defined(gcRegions):
+  template allocStr(size: untyped): untyped =
+    cast[NimString](newStr(addr(strDesc), size, true))
+
+  template allocStrNoInit(size: untyped): untyped =
+    cast[NimString](newStr(addr(strDesc), size, false))
+
 else:
   template allocStr(size: untyped): untyped =
     cast[NimString](newObj(addr(strDesc), size))
@@ -88,6 +101,9 @@ proc cstrToNimstr(str: cstring): NimString {.compilerRtl.} =
   if str == nil: NimString(nil)
   else: toNimStr(str, str.len)
 
+template wasMoved(x: NimString): bool = false
+# (x.reserved and seqShallowFlag) != 0
+
 proc copyString(src: NimString): NimString {.compilerRtl.} =
   if src != nil:
     if (src.reserved and seqShallowFlag) != 0:
@@ -96,10 +112,20 @@ proc copyString(src: NimString): NimString {.compilerRtl.} =
       result = rawNewStringNoInit(src.len)
       result.len = src.len
       copyMem(addr(result.data), addr(src.data), src.len + 1)
+      sysAssert((seqShallowFlag and result.reserved) == 0, "copyString")
+      when defined(nimShallowStrings):
+        if (src.reserved and strlitFlag) != 0:
+          result.reserved = (result.reserved and not strlitFlag) or seqShallowFlag
+
+proc newOwnedString(src: NimString; n: int): NimString =
+  result = rawNewStringNoInit(n)
+  result.len = n
+  copyMem(addr(result.data), addr(src.data), n)
+  result.data[n] = '\0'
 
 proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
   if src != nil:
-    when declared(newObjRC1):
+    when declared(newObjRC1) and not defined(gcRegions):
       var s = src.len
       if s < 7: s = 7
       result = cast[NimString](newObjRC1(addr(strDesc), sizeof(TGenericSeq) +
@@ -109,6 +135,10 @@ proc copyStringRC1(src: NimString): NimString {.compilerRtl.} =
       result = rawNewStringNoInit(src.len)
     result.len = src.len
     copyMem(addr(result.data), addr(src.data), src.len + 1)
+    sysAssert((seqShallowFlag and result.reserved) == 0, "copyStringRC1")
+    when defined(nimShallowStrings):
+      if (src.reserved and strlitFlag) != 0:
+        result.reserved = (result.reserved and not strlitFlag) or seqShallowFlag
 
 proc copyDeepString(src: NimString): NimString {.inline.} =
   if src != nil:
@@ -133,9 +163,12 @@ proc addChar(s: NimString, c: char): NimString =
   # is compilerproc!
   result = s
   if result.len >= result.space:
-    result.reserved = resize(result.space)
+    let r = resize(result.space)
     result = cast[NimString](growObj(result,
-      sizeof(TGenericSeq) + result.reserved + 1))
+      sizeof(TGenericSeq) + r + 1))
+    result.reserved = r
+  elif wasMoved(s):
+    result = newOwnedString(s, s.len)
   result.data[result.len] = c
   result.data[result.len+1] = '\0'
   inc(result.len)
@@ -172,7 +205,7 @@ proc addChar(s: NimString, c: char): NimString =
 #   s = rawNewString(0);
 
 proc resizeString(dest: NimString, addlen: int): NimString {.compilerRtl.} =
-  if dest.len + addlen <= dest.space:
+  if dest.len + addlen <= dest.space and not wasMoved(dest):
     result = dest
   else: # slow path:
     var sp = max(resize(dest.space), dest.len + addlen)
@@ -193,7 +226,9 @@ proc appendChar(dest: NimString, c: char) {.compilerproc, inline.} =
 
 proc setLengthStr(s: NimString, newLen: int): NimString {.compilerRtl.} =
   var n = max(newLen, 0)
-  if n <= s.space:
+  if wasMoved(s):
+    result = newOwnedString(s, n)
+  elif n <= s.space:
     result = s
   else:
     result = resizeString(s, n)
@@ -211,31 +246,34 @@ proc incrSeq(seq: PGenericSeq, elemSize: int): PGenericSeq {.compilerProc.} =
   #  seq[seq->len-1] = x;
   result = seq
   if result.len >= result.space:
-    result.reserved = resize(result.space)
-    result = cast[PGenericSeq](growObj(result, elemSize * result.reserved +
+    let r = resize(result.space)
+    result = cast[PGenericSeq](growObj(result, elemSize * r +
                                GenericSeqSize))
+    result.reserved = r
   inc(result.len)
 
 proc incrSeqV2(seq: PGenericSeq, elemSize: int): PGenericSeq {.compilerProc.} =
   # incrSeq version 2
   result = seq
   if result.len >= result.space:
-    result.reserved = resize(result.space)
-    result = cast[PGenericSeq](growObj(result, elemSize * result.reserved +
+    let r = resize(result.space)
+    result = cast[PGenericSeq](growObj(result, elemSize * r +
                                GenericSeqSize))
+    result.reserved = r
 
 proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
-    compilerRtl.} =
+    compilerRtl, inl.} =
   result = seq
   if result.space < newLen:
-    result.reserved = max(resize(result.space), newLen)
-    result = cast[PGenericSeq](growObj(result, elemSize * result.reserved +
+    let r = max(resize(result.space), newLen)
+    result = cast[PGenericSeq](growObj(result, elemSize * r +
                                GenericSeqSize))
+    result.reserved = r
   elif newLen < result.len:
     # we need to decref here, otherwise the GC leaks!
     when not defined(boehmGC) and not defined(nogc) and
          not defined(gcMarkAndSweep) and not defined(gogc) and
-         not defined(gcStack):
+         not defined(gcRegions):
       when false: # compileOption("gc", "v2"):
         for i in newLen..result.len-1:
           let len0 = gch.tempStack.len
@@ -243,14 +281,15 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
                             GenericSeqSize +% (i*%elemSize)),
                             extGetCellType(result).base, waPush)
           let len1 = gch.tempStack.len
-          for i in len0 .. <len1:
+          for i in len0 ..< len1:
             doDecRef(gch.tempStack.d[i], LocalHeap, MaybeCyclic)
           gch.tempStack.len = len0
       else:
-        for i in newLen..result.len-1:
-          forAllChildrenAux(cast[pointer](cast[ByteAddress](result) +%
-                            GenericSeqSize +% (i*%elemSize)),
-                            extGetCellType(result).base, waZctDecRef)
+        if ntfNoRefs notin extGetCellType(result).base.flags:
+          for i in newLen..result.len-1:
+            forAllChildrenAux(cast[pointer](cast[ByteAddress](result) +%
+                              GenericSeqSize +% (i*%elemSize)),
+                              extGetCellType(result).base, waZctDecRef)
 
     # XXX: zeroing out the memory can still result in crashes if a wiped-out
     # cell is aliased by another pointer (ie proc parameter or a let variable).
@@ -287,30 +326,40 @@ proc nimIntToStr(x: int): string {.compilerRtl.} =
   result.add x
 
 proc add*(result: var string; x: float) =
-  var buf: array[0..64, char]
-  var n: int = c_sprintf(buf, "%.16g", x)
-  var hasDot = false
-  for i in 0..n-1:
-    if buf[i] == ',':
-      buf[i] = '.'
-      hasDot = true
-    elif buf[i] in {'a'..'z', 'A'..'Z', '.'}:
-      hasDot = true
-  if not hasDot:
-    buf[n] = '.'
-    buf[n+1] = '0'
-    buf[n+2] = '\0'
-  # On Windows nice numbers like '1.#INF', '-1.#INF' or '1.#NAN' are produced.
-  # We want to get rid of these here:
-  if buf[n-1] in {'n', 'N'}:
-    result.add "nan"
-  elif buf[n-1] == 'F':
-    if buf[0] == '-':
-      result.add "-inf"
-    else:
-      result.add "inf"
+  when nimvm:
+    result.add $x
   else:
-    result.add buf
+    var buf: array[0..64, char]
+    when defined(nimNoArrayToCstringConversion):
+      var n: int = c_sprintf(addr buf, "%.16g", x)
+    else:
+      var n: int = c_sprintf(buf, "%.16g", x)
+    var hasDot = false
+    for i in 0..n-1:
+      if buf[i] == ',':
+        buf[i] = '.'
+        hasDot = true
+      elif buf[i] in {'a'..'z', 'A'..'Z', '.'}:
+        hasDot = true
+    if not hasDot:
+      buf[n] = '.'
+      buf[n+1] = '0'
+      buf[n+2] = '\0'
+    # On Windows nice numbers like '1.#INF', '-1.#INF' or '1.#NAN'
+    # of '-1.#IND' are produced.
+    # We want to get rid of these here:
+    if buf[n-1] in {'n', 'N', 'D', 'd'}:
+      result.add "nan"
+    elif buf[n-1] == 'F':
+      if buf[0] == '-':
+        result.add "-inf"
+      else:
+        result.add "inf"
+    else:
+      var i = 0
+      while buf[i] != '\0':
+        result.add buf[i]
+        inc i
 
 proc nimFloatToStr(f: float): string {.compilerproc.} =
   result = newStringOfCap(8)
@@ -321,9 +370,9 @@ proc c_strtod(buf: cstring, endptr: ptr cstring): float64 {.
 
 const
   IdentChars = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
-  powtens =   [ 1e0,   1e1,  1e2,  1e3,  1e4,  1e5,  1e6,  1e7,  1e8,  1e9,
-                1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19,
-                1e20, 1e21, 1e22]
+  powtens =  [1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9,
+              1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19,
+              1e20, 1e21, 1e22]
 
 proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
                           start = 0): int {.compilerProc.} =
@@ -340,8 +389,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
     kdigits, fdigits = 0
     exponent: int
     integer: uint64
-    fraction: uint64
-    frac_exponent= 0
+    frac_exponent = 0
     exp_sign = 1
     first_digit = -1
     has_sign = false
@@ -434,7 +482,8 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
 
   # if integer is representable in 53 bits:  fast path
   # max fast path integer is  1<<53 - 1 or  8999999999999999 (16 digits)
-  if kdigits + fdigits <= 16 and first_digit <= 8:
+  let digits = kdigits + fdigits
+  if digits <= 15 or (digits <= 16 and first_digit <= 8):
     # max float power of ten with set bits above the 53th bit is 10^22
     if abs_exponent <= 22:
       if exp_negative:
@@ -458,6 +507,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   result = i - start
   i = start
   # re-parse without error checking, any error should be handled by the code above.
+  if s[i] == '.': i.inc
   while s[i] in {'0'..'9','+','-'}:
     if ti < maxlen:
       t[ti] = s[i]; inc(ti)
@@ -467,7 +517,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
 
   # insert exponent
   t[ti] = 'E'; inc(ti)
-  t[ti] = if exp_negative: '-' else: '+'; inc(ti)
+  t[ti] = (if exp_negative: '-' else: '+'); inc(ti)
   inc(ti, 3)
 
   # insert adjusted exponent
@@ -475,7 +525,10 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   t[ti-2] = ('0'.ord + abs_exponent mod 10).char; abs_exponent = abs_exponent div 10
   t[ti-3] = ('0'.ord + abs_exponent mod 10).char
 
-  number = c_strtod(t, nil)
+  when defined(nimNoArrayToCstringConversion):
+    number = c_strtod(addr t, nil)
+  else:
+    number = c_strtod(t, nil)
 
 proc nimInt64ToStr(x: int64): string {.compilerRtl.} =
   result = newStringOfCap(sizeof(x)*4)

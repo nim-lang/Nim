@@ -41,6 +41,7 @@ proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
     of nkCharLit..nkUInt64Lit: result = a.intVal == b.intVal
     of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
+    of nkCommentStmt: result = a.comment == b.comment
     of nkEmpty, nkNilLit, nkType: result = true
     else:
       if sonsLen(a) == sonsLen(b):
@@ -96,12 +97,12 @@ proc isDeepConstExpr*(n: PNode): bool =
     result = true
   of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv:
     result = isDeepConstExpr(n.sons[1])
-  of nkCurly, nkBracket, nkPar, nkObjConstr, nkClosure:
-    for i in ord(n.kind == nkObjConstr) .. <n.len:
+  of nkCurly, nkBracket, nkPar, nkObjConstr, nkClosure, nkRange:
+    for i in ord(n.kind == nkObjConstr) ..< n.len:
       if not isDeepConstExpr(n.sons[i]): return false
     if n.typ.isNil: result = true
     else:
-      let t = n.typ.skipTypes({tyGenericInst, tyDistinct, tyAlias})
+      let t = n.typ.skipTypes({tyGenericInst, tyDistinct, tyAlias, tySink})
       if t.kind in {tyRef, tyPtr}: return false
       if t.kind != tyObject or not isCaseObj(t.n):
         result = true
@@ -109,13 +110,15 @@ proc isDeepConstExpr*(n: PNode): bool =
 
 proc isRange*(n: PNode): bool {.inline.} =
   if n.kind in nkCallKinds:
-    if n[0].kind == nkIdent and n[0].ident.id == ord(wDotDot) or
-        n[0].kind in {nkClosedSymChoice, nkOpenSymChoice} and
-        n[0][1].sym.name.id == ord(wDotDot):
+    let callee = n[0]
+    if (callee.kind == nkIdent and callee.ident.id == ord(wDotDot)) or
+       (callee.kind == nkSym and callee.sym.name.id == ord(wDotDot)) or
+       (callee.kind in {nkClosedSymChoice, nkOpenSymChoice} and
+        callee[1].sym.name.id == ord(wDotDot)):
       result = true
 
 proc whichPragma*(n: PNode): TSpecialWord =
-  let key = if n.kind == nkExprColonExpr: n.sons[0] else: n
+  let key = if n.kind in nkPragmaCallKinds and n.len > 0: n.sons[0] else: n
   if key.kind == nkIdent: result = whichKeyword(key.ident)
 
 proc unnestStmts(n, result: PNode) =

@@ -184,6 +184,8 @@ when not defined(JS):
   proc pow*(x, y: float32): float32 {.importc: "powf", header: "<math.h>".}
   proc pow*(x, y: float64): float64 {.importc: "pow", header: "<math.h>".}
     ## computes x to power raised of y.
+    ##
+    ## To compute power between integers, use `^` e.g. 2 ^ 6
 
   proc erf*(x: float32): float32 {.importc: "erff", header: "<math.h>".}
   proc erf*(x: float64): float64 {.importc: "erf", header: "<math.h>".}
@@ -235,7 +237,7 @@ when not defined(JS):
         x = x and (not (1'u64 shl (64'u64-12'u64-e) - 1'u64))
 
       result = cast[float64](x)
-    
+
     proc truncImpl(f: float32): float32 =
       const
         mask : uint32 = 0xFF
@@ -255,7 +257,7 @@ when not defined(JS):
         x = x and (not (1'u32 shl (32'u32-9'u32-e) - 1'u32))
 
       result = cast[float32](x)
-      
+
     proc trunc*(x: float64): float64 =
       if classify(x) in {fcZero, fcNegZero, fcNan, fcInf, fcNegInf}: return x
       result = truncImpl(x)
@@ -289,6 +291,8 @@ when not defined(JS):
     ##  echo fmod(-2.5, 0.3) ## -0.1
 
 else:
+  proc trunc*(x: float32): float32 {.importc: "Math.trunc", nodecl.}
+  proc trunc*(x: float64): float64 {.importc: "Math.trunc", nodecl.}
   proc floor*(x: float32): float32 {.importc: "Math.floor", nodecl.}
   proc floor*(x: float64): float64 {.importc: "Math.floor", nodecl.}
   proc ceil*(x: float32): float32 {.importc: "Math.ceil", nodecl.}
@@ -347,15 +351,19 @@ proc round*[T: float32|float64](x: T, places: int = 0): T =
     result = round0(x*mult)/mult
 
 when not defined(JS):
-  proc frexp*(x: float32, exponent: var int): float32 {.
+  proc c_frexp*(x: float32, exponent: var int32): float32 {.
     importc: "frexp", header: "<math.h>".}
-  proc frexp*(x: float64, exponent: var int): float64 {.
+  proc c_frexp*(x: float64, exponent: var int32): float64 {.
     importc: "frexp", header: "<math.h>".}
+  proc frexp*[T, U](x: T, exponent: var U): T =
     ## Split a number into mantissa and exponent.
     ## `frexp` calculates the mantissa m (a float greater than or equal to 0.5
     ## and less than 1) and the integer value n such that `x` (the original
     ## float value) equals m * 2**n. frexp stores n in `exponent` and returns
     ## m.
+    var exp: int32
+    result = c_frexp(x, exp)
+    exponent = exp
 else:
   proc frexp*[T: float32|float64](x: T, exponent: var int): T =
     if x == 0.0:
@@ -364,9 +372,14 @@ else:
     elif x < 0.0:
       result = -frexp(-x, exponent)
     else:
-      var ex = floor(log2(x))
-      exponent = round(ex)
+      var ex = trunc(log2(x))
+      exponent = int(ex)
       result = x / pow(2.0, ex)
+      if abs(result) >= 1:
+        inc(exponent)
+        result = result / 2
+      if exponent == 1024 and result == 0.0:
+        result = 0.99999999999999988898
 
 proc splitDecimal*[T: float32|float64](x: T): tuple[intpart: T, floatpart: T] =
   ## Breaks `x` into an integral and a fractional part.
@@ -395,6 +408,12 @@ proc radToDeg*[T: float32|float64](d: T): T {.inline.} =
   ## Convert from radians to degrees
   result = T(d) / RadPerDeg
 
+proc sgn*[T: SomeNumber](x: T): int {.inline.} =
+  ## Sign function. Returns -1 for negative numbers and `NegInf`, 1 for
+  ## positive numbers and `Inf`, and 0 for positive zero, negative zero and
+  ## `NaN`.
+  ord(T(0) < x) - ord(x < T(0))
+
 proc `mod`*[T: float32|float64](x, y: T): T =
   ## Computes the modulo operation for float operators. Equivalent
   ## to ``x - y * floor(x/y)``. Note that the remainder will always
@@ -407,10 +426,13 @@ proc `mod`*[T: float32|float64](x, y: T): T =
 {.pop.}
 {.pop.}
 
-proc `^`*[T](x, y: T): T =
+proc `^`*[T](x: T, y: Natural): T =
   ## Computes ``x`` to the power ``y`. ``x`` must be non-negative, use
   ## `pow <#pow,float,float>` for negative exponents.
-  assert y >= T(0)
+  when compiles(y >= T(0)):
+    assert y >= T(0)
+  else:
+    assert T(y) >= T(0)
   var (x, y) = (x, y)
   result = 1
 
@@ -447,6 +469,7 @@ when isMainModule and not defined(JS):
   assert(lgamma(1.0) == 0.0) # ln(1.0) == 0.0
   assert(erf(6.0) > erf(5.0))
   assert(erfc(6.0) < erfc(5.0))
+
 when isMainModule:
   # Function for approximate comparison of floats
   proc `==~`(x, y: float): bool = (abs(x-y) < 1e-9)
@@ -509,3 +532,21 @@ when isMainModule:
     doAssert(classify(trunc(-1e1000000'f32)) == fcNegInf)
     doAssert(classify(trunc(f_nan.float32)) == fcNan)
     doAssert(classify(trunc(0.0'f32)) == fcZero)
+
+  block: # sgn() tests
+    assert sgn(1'i8) == 1
+    assert sgn(1'i16) == 1
+    assert sgn(1'i32) == 1
+    assert sgn(1'i64) == 1
+    assert sgn(1'u8) == 1
+    assert sgn(1'u16) == 1
+    assert sgn(1'u32) == 1
+    assert sgn(1'u64) == 1
+    assert sgn(-12342.8844'f32) == -1
+    assert sgn(123.9834'f64) == 1
+    assert sgn(0'i32) == 0
+    assert sgn(0'f32) == 0
+    assert sgn(NegInf) == -1
+    assert sgn(Inf) == 1
+    assert sgn(NaN) == 0
+

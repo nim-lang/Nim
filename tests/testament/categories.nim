@@ -15,58 +15,53 @@
 
 const
   rodfilesDir = "tests/rodfiles"
-  nimcacheDir = rodfilesDir / "nimcache"
 
-proc delNimCache() =
-  try:
-    removeDir(nimcacheDir)
-  except OSError:
-    echo "[Warning] could not delete: ", nimcacheDir
+proc delNimCache(filename, options: string) =
+  for target in low(TTarget)..high(TTarget):
+    let dir = nimcacheDir(filename, options, target)
+    try:
+      removeDir(dir)
+    except OSError:
+      echo "[Warning] could not delete: ", dir
 
 proc runRodFiles(r: var TResults, cat: Category, options: string) =
-  template test(filename: untyped) =
+  template test(filename: string, clearCacheFirst=false) =
+    if clearCacheFirst: delNimCache(filename, options)
     testSpec r, makeTest(rodfilesDir / filename, options, cat, actionRun)
 
-  delNimCache()
 
   # test basic recompilation scheme:
-  test "hallo"
+  test "hallo", true
   test "hallo"
   when false:
     # test incremental type information:
     test "hallo2"
-    delNimCache()
 
   # test type converters:
-  test "aconv"
+  test "aconv", true
   test "bconv"
-  delNimCache()
 
   # test G, A, B example from the documentation; test init sections:
-  test "deada"
+  test "deada", true
   test "deada2"
-  delNimCache()
 
   when false:
     # test method generation:
-    test "bmethods"
+    test "bmethods", true
     test "bmethods2"
-    delNimCache()
 
     # test generics:
-    test "tgeneric1"
+    test "tgeneric1", true
     test "tgeneric2"
-    delNimCache()
 
 proc compileRodFiles(r: var TResults, cat: Category, options: string) =
-  template test(filename: untyped) =
+  template test(filename: untyped, clearCacheFirst=true) =
+    if clearCacheFirst: delNimCache(filename, options)
     testSpec r, makeTest(rodfilesDir / filename, options, cat)
 
-  delNimCache()
   # test DLL interfacing:
-  test "gtkex1"
+  test "gtkex1", true
   test "gtkex2"
-  delNimCache()
 
 # --------------------- DLL generation tests ----------------------------------
 
@@ -83,9 +78,9 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
       ""
 
   testSpec c, makeTest("lib/nimrtl.nim",
-    options & " --app:lib -d:createNimRtl", cat)
+    options & " --app:lib -d:createNimRtl --threads:on", cat)
   testSpec c, makeTest("tests/dll/server.nim",
-    options & " --app:lib -d:useNimRtl" & rpath, cat)
+    options & " --app:lib -d:useNimRtl --threads:on" & rpath, cat)
 
 
   when defined(Windows):
@@ -96,12 +91,12 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     # posix relies on crappy LD_LIBRARY_PATH (ugh!):
     var libpath = getEnv"LD_LIBRARY_PATH".string
     # Temporarily add the lib directory to LD_LIBRARY_PATH:
-    putEnv("LD_LIBRARY_PATH", "tests/dll:" & libpath)
+    putEnv("LD_LIBRARY_PATH", "tests/dll" & (if libpath.len > 0: ":" & libpath else: ""))
     defer: putEnv("LD_LIBRARY_PATH", libpath)
     var nimrtlDll = DynlibFormat % "nimrtl"
     safeCopyFile("lib" / nimrtlDll, "tests/dll" / nimrtlDll)
 
-  testSpec r, makeTest("tests/dll/client.nim", options & " -d:useNimRtl" & rpath,
+  testSpec r, makeTest("tests/dll/client.nim", options & " -d:useNimRtl --threads:on" & rpath,
                        cat, actionRun)
 
 proc dllTests(r: var TResults, cat: Category, options: string) =
@@ -139,7 +134,7 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
                   " -d:release --gc:markAndSweep", cat, actionRun)
   template test(filename: untyped) =
     testWithoutBoehm filename
-    when not defined(windows):
+    when not defined(windows) and not defined(android):
       # AR: cannot find any boehm.dll on the net, right now, so disabled
       # for windows:
       testSpec r, makeTest("tests/gc" / filename, options &
@@ -153,7 +148,7 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   test "gcbench"
   test "gcleak"
   test "gcleak2"
-  test "gctest"
+  testWithoutBoehm "gctest"
   testWithNone "gctest"
   test "gcleak3"
   test "gcleak4"
@@ -172,9 +167,9 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
 
 proc longGCTests(r: var TResults, cat: Category, options: string) =
   when defined(windows):
-    let cOptions = "gcc -ldl -DWIN"
+    let cOptions = "-ldl -DWIN"
   else:
-    let cOptions = "gcc -ldl"
+    let cOptions = "-ldl"
 
   var c = initResults()
   # According to ioTests, this should compile the file
@@ -186,25 +181,11 @@ proc longGCTests(r: var TResults, cat: Category, options: string) =
 
 proc threadTests(r: var TResults, cat: Category, options: string) =
   template test(filename: untyped) =
-    testSpec r, makeTest("tests/threads" / filename, options, cat, actionRun)
-    testSpec r, makeTest("tests/threads" / filename, options &
-      " -d:release", cat, actionRun)
-    testSpec r, makeTest("tests/threads" / filename, options &
-      " --tlsEmulation:on", cat, actionRun)
-
-  test "tactors"
-  test "tactors2"
-  test "threadex"
-  # deactivated because output capturing still causes problems sometimes:
-  #test "trecursive_actor"
-  #test "threadring"
-  #test "tthreadanalysis"
-  #test "tthreadsort"
-  test "tthreadanalysis2"
-  #test "tthreadanalysis3"
-  test "tthreadheapviolation1"
-  test "tonthreadcreation"
-  test "tracy_allocator"
+    testSpec r, makeTest(filename, options, cat, actionRun)
+    testSpec r, makeTest(filename, options & " -d:release", cat, actionRun)
+    testSpec r, makeTest(filename, options & " --tlsEmulation:on", cat, actionRun)
+  for t in os.walkFiles("tests/threads/t*.nim"):
+    test(t)
 
 # ------------------------- IO tests ------------------------------------------
 
@@ -219,7 +200,6 @@ proc ioTests(r: var TResults, cat: Category, options: string) =
 proc asyncTests(r: var TResults, cat: Category, options: string) =
   template test(filename: untyped) =
     testSpec r, makeTest(filename, options, cat)
-    testSpec r, makeTest(filename, options & " -d:upcoming", cat)
   for t in os.walkFiles("tests/async/t*.nim"):
     test(t)
 
@@ -233,9 +213,9 @@ proc debuggerTests(r: var TResults, cat: Category, options: string) =
 proc jsTests(r: var TResults, cat: Category, options: string) =
   template test(filename: untyped) =
     testSpec r, makeTest(filename, options & " -d:nodejs", cat,
-                         actionRun, targetJS)
+                         actionRun), targetJS
     testSpec r, makeTest(filename, options & " -d:nodejs -d:release", cat,
-                         actionRun, targetJS)
+                         actionRun), targetJS
 
   for t in os.walkFiles("tests/js/t*.nim"):
     test(t)
@@ -246,11 +226,50 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
                    "actiontable/tactiontable", "method/tmultim1",
                    "method/tmultim3", "method/tmultim4",
                    "varres/tvarres0", "varres/tvarres3", "varres/tvarres4",
-                   "varres/tvartup", "misc/tints", "misc/tunsignedinc"]:
+                   "varres/tvartup", "misc/tints", "misc/tunsignedinc",
+                   "async/tjsandnativeasync"]:
     test "tests/" & testfile & ".nim"
 
   for testfile in ["strutils", "json", "random", "times", "logging"]:
     test "lib/pure/" & testfile & ".nim"
+
+# ------------------------- nim in action -----------
+
+proc testNimInAction(r: var TResults, cat: Category, options: string) =
+  template test(filename: untyped, action: untyped) =
+    testSpec r, makeTest(filename, options, cat, action)
+
+  template testJS(filename: untyped) =
+    testSpec r, makeTest(filename, options, cat, actionCompile), targetJS
+
+  template testCPP(filename: untyped) =
+    testSpec r, makeTest(filename, options, cat, actionCompile), targetCPP
+
+  let tests = [
+    "niminaction/Chapter3/ChatApp/src/server",
+    "niminaction/Chapter3/ChatApp/src/client",
+    "niminaction/Chapter6/WikipediaStats/concurrency_regex",
+    "niminaction/Chapter6/WikipediaStats/concurrency",
+    "niminaction/Chapter6/WikipediaStats/naive",
+    "niminaction/Chapter6/WikipediaStats/parallel_counts",
+    "niminaction/Chapter6/WikipediaStats/race_condition",
+    "niminaction/Chapter6/WikipediaStats/sequential_counts",
+    "niminaction/Chapter6/WikipediaStats/unguarded_access",
+    "niminaction/Chapter7/Tweeter/src/tweeter",
+    "niminaction/Chapter7/Tweeter/src/createDatabase",
+    "niminaction/Chapter7/Tweeter/tests/database_test",
+    "niminaction/Chapter8/sdl/sdl_test",
+    ]
+  for testfile in tests:
+    test "tests/" & testfile & ".nim", actionCompile
+
+  let jsFile = "tests/niminaction/Chapter8/canvas/canvas_test.nim"
+  testJS jsFile
+
+  let cppFile = "tests/niminaction/Chapter8/sfml/sfml_test.nim"
+  testCPP cppFile
+
+
 
 # ------------------------- manyloc -------------------------------------------
 #proc runSpecialTests(r: var TResults, options: string) =
@@ -300,9 +319,10 @@ type PackageFilter = enum
   pfExtraOnly
   pfAll
 
+var nimbleDir = getEnv("NIMBLE_DIR").string
+if nimbleDir.len == 0: nimbleDir = getHomeDir() / ".nimble"
 let
   nimbleExe = findExe("nimble")
-  nimbleDir = getHomeDir() / ".nimble"
   packageDir = nimbleDir / "pkgs"
   packageIndex = nimbleDir / "packages.json"
 
@@ -362,7 +382,7 @@ proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
         installStatus = waitForExitEx(installProcess)
       installProcess.close
       if installStatus != QuitSuccess:
-        r.addResult(test, "", "", reInstallFailed)
+        r.addResult(test, targetC, "", "", reInstallFailed)
         continue
 
       let
@@ -371,12 +391,12 @@ proc testNimblePackages(r: var TResults, cat: Category, filter: PackageFilter) =
         buildStatus = waitForExitEx(buildProcess)
       buildProcess.close
       if buildStatus != QuitSuccess:
-        r.addResult(test, "", "", reBuildFailed)
-      r.addResult(test, "", "", reSuccess)
-    r.addResult(packageFileTest, "", "", reSuccess)
+        r.addResult(test, targetC, "", "", reBuildFailed)
+      r.addResult(test, targetC, "", "", reSuccess)
+    r.addResult(packageFileTest, targetC, "", "", reSuccess)
   except JsonParsingError:
     echo("[Warning] - Cannot run nimble tests: Invalid package file.")
-    r.addResult(packageFileTest, "", "", reBuildFailed)
+    r.addResult(packageFileTest, targetC, "", "", reBuildFailed)
 
 
 # ----------------------------------------------------------------------------
@@ -393,15 +413,17 @@ proc `&?.`(a, b: string): string =
 
 proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
   let test = "tests" & DirSep &.? cat.string / test
+  let target = if cat.string.normalize == "js": targetJS else: targetC
 
-  if existsFile(test): testSpec r, makeTest(test, options, cat)
+  if existsFile(test): testSpec r, makeTest(test, options, cat), target
   else: echo "[Warning] - ", test, " test does not exist"
 
 proc processCategory(r: var TResults, cat: Category, options: string) =
   case cat.string.normalize
   of "rodfiles":
-    when false: compileRodFiles(r, cat, options)
-    runRodFiles(r, cat, options)
+    when false:
+      compileRodFiles(r, cat, options)
+      runRodFiles(r, cat, options)
   of "js":
     # XXX JS doesn't need to be special anymore
     jsTests(r, cat, options)
@@ -434,6 +456,8 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
     testNimblePackages(r, cat, pfExtraOnly)
   of "nimble-all":
     testNimblePackages(r, cat, pfAll)
+  of "niminaction":
+    testNimInAction(r, cat, options)
   of "untestable":
     # We can't test it because it depends on a third party.
     discard # TODO: Move untestable tests to someplace else, i.e. nimble repo.

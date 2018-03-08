@@ -61,7 +61,7 @@ proc testGetFileInfo =
   block:
     let
       testFile = open(getAppFilename())
-      testHandle = fileHandle(testFile)
+      testHandle = getFileHandle(testFile)
     try:
       discard getFileInfo(testFile)
       #echo("Handle : Valid File : Success")

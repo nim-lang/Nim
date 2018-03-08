@@ -46,7 +46,7 @@ type
     target*: OutputTarget
     config*: StringTableRef
     splitAfter*: int          # split too long entries in the TOC
-    listingCounter: int
+    listingCounter*: int
     tocPart*: seq[TocEntry]
     hasToc*: bool
     theIndex: string # Contents of the index file to be dumped at the end.
@@ -61,6 +61,9 @@ type
     seenIndexTerms: Table[string, int] ## \
     ## Keeps count of same text index terms to generate different identifiers
     ## for hyperlinks. See renderIndexTerm proc for details.
+    id*: int               ## A counter useful for generating IDs.
+    onTestSnippet*: proc (d: var RstGenerator; filename, cmd: string; status: int;
+                          content: string)
 
   PDoc = var RstGenerator ## Alias to type less.
 
@@ -69,8 +72,9 @@ type
     startLine: int ## The starting line of the code block, by default 1.
     langStr: string ## Input string used to specify the language.
     lang: SourceLanguage ## Type of highlighting, by default none.
-{.deprecated: [TRstGenerator: RstGenerator, TTocEntry: TocEntry,
-              TOutputTarget: OutputTarget, TMetaEnum: MetaEnum].}
+    filename: string
+    testCmd: string
+    status: int
 
 proc init(p: var CodeBlockParams) =
   ## Default initialisation of CodeBlockParams to sane values.
@@ -133,6 +137,7 @@ proc initRstGenerator*(g: var RstGenerator, target: OutputTarget,
   g.options = options
   g.findFile = findFile
   g.currentSection = ""
+  g.id = 0
   let fileParts = filename.splitFile
   if fileParts.ext == ".nim":
     g.currentSection = "Module " & fileParts.name
@@ -368,7 +373,6 @@ type
     ##
     ## The value indexed by this IndexEntry is a sequence with the real index
     ## entries found in the ``.idx`` file.
-{.deprecated: [TIndexEntry: IndexEntry, TIndexedDocs: IndexedDocs].}
 
 proc cmp(a, b: IndexEntry): int =
   ## Sorts two ``IndexEntry`` first by `keyword` field, then by `link`.
@@ -765,7 +769,7 @@ proc renderTocEntries*(d: var RstGenerator, j: var int, lvl: int,
     result.add(tmp)
 
 proc renderImage(d: PDoc, n: PRstNode, result: var string) =
-  template valid(s): expr =
+  template valid(s): bool =
     s.len > 0 and allCharsInSet(s, {'.','/',':','%','_','\\','\128'..'\xFF'} +
                                    Digits + Letters + WhiteSpace)
   let
@@ -798,7 +802,8 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
   if arg.valid:
     let htmlOut = if isObject:
         "<object data=\"$1\" type=\"image/svg+xml\"$2 >" & content & "</object>"
-        else: "<img src=\"$1\"$2 />"
+      else:
+        "<img src=\"$1\"$2 />"
     dispA(d.target, result, htmlOut, "\\includegraphics$2{$1}",
           [arg, options])
   if len(n) >= 3: renderRstToOut(d, n.sons[2], result)
@@ -822,13 +827,20 @@ proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
     var number: int
     if parseInt(n.getFieldValue, number) > 0:
       params.startLine = number
-  of "file":
+  of "file", "filename":
     # The ``file`` option is a Nim extension to the official spec, it acts
     # like it would for other directives like ``raw`` or ``cvs-table``. This
     # field is dealt with in ``rst.nim`` which replaces the existing block with
     # the referenced file, so we only need to ignore it here to avoid incorrect
     # warning messages.
-    discard
+    params.filename = n.getFieldValue.strip
+  of "test":
+    params.testCmd = n.getFieldValue.strip
+    if params.testCmd.len == 0: params.testCmd = "nim c -r $1"
+  of "status":
+    var status: int
+    if parseInt(n.getFieldValue, status) > 0:
+      params.status = status
   of "default-language":
     params.langStr = n.getFieldValue.strip
     params.lang = params.langStr.getSourceLanguage
@@ -866,11 +878,11 @@ proc buildLinesHTMLTable(d: PDoc; params: CodeBlockParams, code: string):
   inc d.listingCounter
   let id = $d.listingCounter
   if not params.numberLines:
-    result = (d.config.getOrDefault"doc.listing_start" % id,
+    result = (d.config.getOrDefault"doc.listing_start" % [id, $params.lang],
               d.config.getOrDefault"doc.listing_end" % id)
     return
 
-  var codeLines = 1 + code.strip.countLines
+  var codeLines = code.strip.countLines
   assert codeLines > 0
   result.beginTable = """<table class="line-nums-table"><tbody><tr><td class="blob-line-nums"><pre class="line-nums">"""
   var line = params.startLine
@@ -879,7 +891,7 @@ proc buildLinesHTMLTable(d: PDoc; params: CodeBlockParams, code: string):
     line.inc
     codeLines.dec
   result.beginTable.add("</pre></td><td>" & (
-      d.config.getOrDefault"doc.listing_start" % id))
+      d.config.getOrDefault"doc.listing_start" % [id, $params.lang]))
   result.endTable = (d.config.getOrDefault"doc.listing_end" % id) &
       "</td></tr></tbody></table>" & (
       d.config.getOrDefault"doc.listing_button" % id)
@@ -899,6 +911,9 @@ proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
   var params = d.parseCodeBlockParams(n)
   var m = n.sons[2].sons[0]
   assert m.kind == rnLeaf
+
+  if params.testCmd.len > 0 and d.onTestSnippet != nil:
+    d.onTestSnippet(d, params.filename, params.testCmd, params.status, m.text)
 
   let (blockStart, blockEnd) = buildLinesHTMLTable(d, params, m.text)
 
@@ -1194,7 +1209,7 @@ proc defaultConfig*(): StringTableRef =
   ## ``rstToHtml`` to generate the bare minimum HTML.
   result = newStringTable(modeStyleInsensitive)
 
-  template setConfigVar(key, val: expr) =
+  template setConfigVar(key, val) =
     result[key] = val
 
   # If you need to modify these values, it might be worth updating the template

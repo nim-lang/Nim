@@ -157,7 +157,7 @@ compilation fails. This exit code tells ``git bisect`` to skip the
 current commit.::
 
   git bisect start bad-commit good-commit
-  git bisect ./koch -r c test-source.nim
+  git bisect run ./koch temp -r c test-source.nim
 
 The compiler's architecture
 ===========================

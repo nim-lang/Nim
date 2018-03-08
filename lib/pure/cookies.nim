@@ -13,6 +13,15 @@ import strtabs, times
 
 proc parseCookies*(s: string): StringTableRef =
   ## parses cookies into a string table.
+  ##
+  ## The proc is meant to parse the Cookie header set by a client, not the
+  ## "Set-Cookie" header set by servers.
+  ##
+  ## Example:
+  ##
+  ## .. code-block::Nim
+  ##     doAssert parseCookies("a=1; foo=bar") == {"a": 1, "foo": "bar"}.newStringTable
+
   result = newStringTable(modeCaseInsensitive)
   var i = 0
   while true:
@@ -39,10 +48,10 @@ proc setCookie*(key, value: string, domain = "", path = "",
   if domain != "": result.add("; Domain=" & domain)
   if path != "": result.add("; Path=" & path)
   if expires != "": result.add("; Expires=" & expires)
-  if secure: result.add("; secure")
+  if secure: result.add("; Secure")
   if httpOnly: result.add("; HttpOnly")
 
-proc setCookie*(key, value: string, expires: TimeInfo,
+proc setCookie*(key, value: string, expires: DateTime,
                 domain = "", path = "", noName = false,
                 secure = false, httpOnly = false): string =
   ## Creates a command in the format of
@@ -50,13 +59,13 @@ proc setCookie*(key, value: string, expires: TimeInfo,
   ##
   ## **Note:** UTC is assumed as the timezone for ``expires``.
   return setCookie(key, value, domain, path,
-                   format(expires, "ddd',' dd MMM yyyy HH:mm:ss 'UTC'"),
+                   format(expires, "ddd',' dd MMM yyyy HH:mm:ss 'GMT'"),
                    noname, secure, httpOnly)
 
 when isMainModule:
-  var tim = Time(int(getTime()) + 76 * (60 * 60 * 24))
+  var tim = fromUnix(getTime().toUnix + 76 * (60 * 60 * 24))
 
-  let cookie = setCookie("test", "value", tim.getGMTime())
+  let cookie = setCookie("test", "value", tim.utc)
   when not defined(testing):
     echo cookie
   let start = "Set-Cookie: test=value; Expires="

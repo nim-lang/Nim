@@ -24,6 +24,7 @@ environment:
     #   platform: x86
 
 install:
+  - ps: Install-Product node 8 # node 8 or later is required to test js async stuff
   - MKDIR %CD%\DIST
   - MKDIR %CD%\DIST\PCRE
   - nuget install pcre -Verbosity quiet -Version 8.33.0.1 -OutputDirectory %CD%\DIST\PCRE
@@ -43,7 +44,6 @@ install:
 
 build_script:
   - bin\nim c koch
-  - koch boot
   - koch boot -d:release
   - koch nimble
   - nim e tests/test_nimscript.nims
@@ -56,7 +56,7 @@ build_script:
 
 test_script:
   - tests\testament\tester --pedantic all -d:nimCoroutines
-  - koch csource
-  - koch zip
+#  - koch csource
+#  - koch zip
 
 deploy: off

@@ -1,24 +1,16 @@
 discard """
   file: "tenumhole.nim"
-  output: "my value A1my value Bconc2valueCabc4abc"
+  output: "first0second32third64"
 """
 
-const
-  strValB = "my value B"
+type Holed = enum
+  hFirst = (0,"first")
+  hSecond = (32,"second")
+  hThird = (64,"third")
+  
+var x = @[0,32,64] # This is just to avoid the compiler inlining the value of the enum
 
-type
-  TMyEnum = enum
-    valueA = (1, "my value A"),
-    valueB = strValB & "conc",
-    valueC,
-    valueD = (4, "abc")
-
-# test the new "proc body can be an expr" feature:
-proc getValue: TMyEnum = valueD
-
-# trick the optimizer with a variable:
-var x = getValue()
-echo valueA, ord(valueA), valueB, ord(valueB), valueC, valueD, ord(valueD), x
+echo Holed(x[0]),ord Holed(x[0]),Holed(x[1]),ord Holed(x[1]),Holed(x[2]),ord Holed(x[2])
 
 
 

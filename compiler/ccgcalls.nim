@@ -11,7 +11,7 @@
 
 proc leftAppearsOnRightSide(le, ri: PNode): bool =
   if le != nil:
-    for i in 1 .. <ri.len:
+    for i in 1 ..< ri.len:
       let r = ri[i]
       if isPartOf(le, r) != arNo: return true
 
@@ -32,7 +32,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         if d.k == locNone: getTemp(p, typ.sons[0], d, needsInit=true)
         elif d.k notin {locTemp} and not hasNoInit(ri):
           # reset before pass as 'result' var:
-          resetLoc(p, d)
+          discard "resetLoc(p, d)"
         add(pl, addrLoc(d))
         add(pl, ~");$n")
         line(p, cpsStmts, pl)
@@ -56,7 +56,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         if d.k == locNone: getTemp(p, typ.sons[0], d)
         assert(d.t != nil)        # generate an assignment to d:
         var list: TLoc
-        initLoc(list, locCall, d.t, OnUnknown)
+        initLoc(list, locCall, d.lode, OnUnknown)
         list.r = pl
         genAssignment(p, d, list, {}) # no need for deep copying
   else:
@@ -71,7 +71,7 @@ proc isInCurrentFrame(p: BProc, n: PNode): bool =
     if n.sym.kind in {skVar, skResult, skTemp, skLet} and p.prc != nil:
       result = p.prc.id == n.sym.owner.id
   of nkDotExpr, nkBracketExpr:
-    if skipTypes(n.sons[0].typ, abstractInst).kind notin {tyVar,tyPtr,tyRef}:
+    if skipTypes(n.sons[0].typ, abstractInst).kind notin {tyVar,tyLent,tyPtr,tyRef}:
       result = isInCurrentFrame(p, n.sons[0])
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     result = isInCurrentFrame(p, n.sons[1])
@@ -228,7 +228,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
           getTemp(p, typ.sons[0], d, needsInit=true)
         elif d.k notin {locTemp} and not hasNoInit(ri):
           # reset before pass as 'result' var:
-          resetLoc(p, d)
+          discard "resetLoc(p, d)"
         add(pl, addrLoc(d))
         genCallPattern()
       else:
@@ -241,7 +241,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
       if d.k == locNone: getTemp(p, typ.sons[0], d)
       assert(d.t != nil)        # generate an assignment to d:
       var list: TLoc
-      initLoc(list, locCall, d.t, OnUnknown)
+      initLoc(list, locCall, d.lode, OnUnknown)
       list.r = callPattern % [op.r, pl, pl.addComma, rawProc]
       genAssignment(p, d, list, {}) # no need for deep copying
   else:
@@ -331,7 +331,7 @@ proc genThisArg(p: BProc; ri: PNode; i: int; typ: PType): Rope =
   # skip the deref:
   var ri = ri[i]
   while ri.kind == nkObjDownConv: ri = ri[0]
-  let t = typ.sons[i].skipTypes({tyGenericInst, tyAlias})
+  let t = typ.sons[i].skipTypes({tyGenericInst, tyAlias, tySink})
   if t.kind == tyVar:
     let x = if ri.kind == nkHiddenAddr: ri[0] else: ri
     if x.typ.kind == tyPtr:
@@ -364,7 +364,7 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType): Rope =
     of '@':
       if j < ri.len:
         result.add genOtherArg(p, ri, j, typ)
-        for k in j+1 .. < ri.len:
+        for k in j+1 ..< ri.len:
           result.add(~", ")
           result.add genOtherArg(p, ri, k, typ)
       inc i
@@ -377,7 +377,7 @@ proc genPatternCall(p: BProc; ri: PNode; pat: string; typ: PType): Rope =
           result.add(~"(")
           if 1 < ri.len:
             result.add genOtherArg(p, ri, 1, typ)
-          for k in j+1 .. < ri.len:
+          for k in j+1 ..< ri.len:
             result.add(~", ")
             result.add genOtherArg(p, ri, k, typ)
           result.add(~")")
@@ -437,7 +437,7 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
         if d.k == locNone: getTemp(p, typ.sons[0], d)
         assert(d.t != nil)        # generate an assignment to d:
         var list: TLoc
-        initLoc(list, locCall, d.t, OnUnknown)
+        initLoc(list, locCall, d.lode, OnUnknown)
         list.r = pl
         genAssignment(p, d, list, {}) # no need for deep copying
     else:
@@ -519,7 +519,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
       if d.k == locNone: getTemp(p, typ.sons[0], d)
       assert(d.t != nil)        # generate an assignment to d:
       var list: TLoc
-      initLoc(list, locCall, nil, OnUnknown)
+      initLoc(list, locCall, ri, OnUnknown)
       list.r = pl
       genAssignment(p, d, list, {}) # no need for deep copying
   else:
@@ -527,7 +527,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
     line(p, cpsStmts, pl)
 
 proc genCall(p: BProc, e: PNode, d: var TLoc) =
-  if e.sons[0].typ.skipTypes({tyGenericInst, tyAlias}).callConv == ccClosure:
+  if e.sons[0].typ.skipTypes({tyGenericInst, tyAlias, tySink}).callConv == ccClosure:
     genClosureCall(p, nil, e, d)
   elif e.sons[0].kind == nkSym and sfInfixCall in e.sons[0].sym.flags:
     genInfixCall(p, nil, e, d)
@@ -538,7 +538,7 @@ proc genCall(p: BProc, e: PNode, d: var TLoc) =
   postStmtActions(p)
 
 proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
-  if ri.sons[0].typ.skipTypes({tyGenericInst, tyAlias}).callConv == ccClosure:
+  if ri.sons[0].typ.skipTypes({tyGenericInst, tyAlias, tySink}).callConv == ccClosure:
     genClosureCall(p, le, ri, d)
   elif ri.sons[0].kind == nkSym and sfInfixCall in ri.sons[0].sym.flags:
     genInfixCall(p, le, ri, d)

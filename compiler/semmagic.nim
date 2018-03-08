@@ -24,7 +24,7 @@ proc semTypeOf(c: PContext; n: PNode): PNode =
   result = newNodeI(nkTypeOfExpr, n.info)
   let typExpr = semExprWithType(c, n, {efInTypeof})
   result.add typExpr
-  result.typ = makeTypeDesc(c, typExpr.typ.skipTypes({tyTypeDesc}))
+  result.typ = makeTypeDesc(c, typExpr.typ)
 
 type
   SemAsgnMode = enum asgnNormal, noOverloadedSubscript, noOverloadedAsgn
@@ -38,9 +38,7 @@ proc skipAddr(n: PNode): PNode {.inline.} =
 proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
   result = newNodeI(nkBracketExpr, n.info)
   for i in 1..<n.len: result.add(n[i])
-  let oldBracketExpr = c.p.bracketExpr
   result = semSubscript(c, result, flags)
-  c.p.bracketExpr = oldBracketExpr
   if result.isNil:
     let x = copyTree(n)
     x.sons[0] = newIdentNode(getIdent"[]", n.info)
@@ -86,19 +84,74 @@ proc semInstantiationInfo(c: PContext, n: PNode): PNode =
   result.add(filename)
   result.add(line)
 
-proc evalTypeTrait(trait: PNode, operand: PType, context: PSym): PNode =
-  let typ = operand.skipTypes({tyTypeDesc})
-  case trait.sym.name.s.normalize
+proc toNode(t: PType, i: TLineInfo): PNode =
+  result = newNodeIT(nkType, i, t)
+
+const
+  # these are types that use the bracket syntax for instantiation
+  # they can be subjected to the type traits `genericHead` and
+  # `Uninstantiated`
+  tyUserDefinedGenerics* = {tyGenericInst, tyGenericInvocation,
+                            tyUserTypeClassInst}
+
+  tyMagicGenerics* = {tySet, tySequence, tyArray, tyOpenArray}
+
+  tyGenericLike* = tyUserDefinedGenerics +
+                   tyMagicGenerics +
+                   {tyCompositeTypeClass}
+
+proc uninstantiate(t: PType): PType =
+  result = case t.kind
+    of tyMagicGenerics: t
+    of tyUserDefinedGenerics: t.base
+    of tyCompositeTypeClass: uninstantiate t.sons[1]
+    else: t
+
+proc evalTypeTrait(traitCall: PNode, operand: PType, context: PSym): PNode =
+  const skippedTypes = {tyTypeDesc, tyAlias, tySink}
+  let trait = traitCall[0]
+  internalAssert trait.kind == nkSym
+  var operand = operand.skipTypes(skippedTypes)
+
+  template operand2: PType =
+    traitCall.sons[2].typ.skipTypes({tyTypeDesc})
+
+  template typeWithSonsResult(kind, sons): PNode =
+    newTypeWithSons(context, kind, sons).toNode(traitCall.info)
+
+  case trait.sym.name.s
+  of "or", "|":
+    return typeWithSonsResult(tyOr, @[operand, operand2])
+  of "and":
+    return typeWithSonsResult(tyAnd, @[operand, operand2])
+  of "not":
+    return typeWithSonsResult(tyNot, @[operand])
   of "name":
-    result = newStrNode(nkStrLit, typ.typeToString(preferName))
+    result = newStrNode(nkStrLit, operand.typeToString(preferTypeName))
     result.typ = newType(tyString, context)
-    result.info = trait.info
+    result.info = traitCall.info
   of "arity":
-    result = newIntNode(nkIntLit, typ.len - ord(typ.kind==tyProc))
+    result = newIntNode(nkIntLit, operand.len - ord(operand.kind==tyProc))
     result.typ = newType(tyInt, context)
-    result.info = trait.info
+    result.info = traitCall.info
+  of "genericHead":
+    var res = uninstantiate(operand)
+    if res == operand and res.kind notin tyMagicGenerics:
+      localError(traitCall.info,
+        "genericHead expects a generic type. The given type was " &
+        typeToString(operand))
+      return newType(tyError, context).toNode(traitCall.info)
+    result = res.base.toNode(traitCall.info)
+  of "stripGenericParams":
+    result = uninstantiate(operand).toNode(traitCall.info)
+  of "supportsCopyMem":
+    let t = operand.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink, tyInferred})
+    let complexObj = containsGarbageCollectedRef(t) or
+                     hasDestructor(t)
+    result = newIntNodeT(ord(not complexObj), traitCall)
   else:
-    internalAssert false
+    localError(traitCall.info, "unknown trait")
+    result = emptyNode
 
 proc semTypeTraits(c: PContext, n: PNode): PNode =
   checkMinSonsLen(n, 2)
@@ -107,7 +160,7 @@ proc semTypeTraits(c: PContext, n: PNode): PNode =
   if t.sonsLen > 0:
     # This is either a type known to sem or a typedesc
     # param to a regular proc (again, known at instantiation)
-    result = evalTypeTrait(n[0], t, getCurrOwner(c))
+    result = evalTypeTrait(n, t, getCurrOwner(c))
   else:
     # a typedesc variable, pass unmodified to evals
     result = n
@@ -115,7 +168,9 @@ proc semTypeTraits(c: PContext, n: PNode): PNode =
 proc semOrd(c: PContext, n: PNode): PNode =
   result = n
   let parType = n.sons[1].typ
-  if isOrdinalType(parType) or parType.kind == tySet:
+  if isOrdinalType(parType):
+    discard
+  elif parType.kind == tySet:
     result.typ = makeRangeType(c, firstOrd(parType), lastOrd(parType), n.info)
   else:
     localError(n.info, errOrdinalTypeExpected)
@@ -151,6 +206,41 @@ proc isStrangeArray(t: PType): bool =
   let t = t.skipTypes(abstractInst)
   result = t.kind == tyArray and t.firstOrd != 0
 
+proc semOf(c: PContext, n: PNode): PNode =
+  if sonsLen(n) == 3:
+    n.sons[1] = semExprWithType(c, n.sons[1])
+    n.sons[2] = semExprWithType(c, n.sons[2], {efDetermineType})
+    #restoreOldStyleType(n.sons[1])
+    #restoreOldStyleType(n.sons[2])
+    let a = skipTypes(n.sons[1].typ, abstractPtrs)
+    let b = skipTypes(n.sons[2].typ, abstractPtrs)
+    let x = skipTypes(n.sons[1].typ, abstractPtrs-{tyTypeDesc})
+    let y = skipTypes(n.sons[2].typ, abstractPtrs-{tyTypeDesc})
+
+    if x.kind == tyTypeDesc or y.kind != tyTypeDesc:
+      localError(n.info, errXExpectsObjectTypes, "of")
+    elif b.kind != tyObject or a.kind != tyObject:
+      localError(n.info, errXExpectsObjectTypes, "of")
+    else:
+      let diff = inheritanceDiff(a, b)
+      # | returns: 0 iff `a` == `b`
+      # | returns: -x iff `a` is the x'th direct superclass of `b`
+      # | returns: +x iff `a` is the x'th direct subclass of `b`
+      # | returns: `maxint` iff `a` and `b` are not compatible at all
+      if diff <= 0:
+        # optimize to true:
+        message(n.info, hintConditionAlwaysTrue, renderTree(n))
+        result = newIntNode(nkIntLit, 1)
+        result.info = n.info
+        result.typ = getSysType(tyBool)
+        return result
+      elif diff == high(int):
+        localError(n.info, errXcanNeverBeOfThisSubtype, typeToString(a))
+  else:
+    localError(n.info, errXExpectsTwoArguments, "of")
+  n.typ = getSysType(tyBool)
+  result = n
+
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
   case n[0].sym.magic
@@ -162,7 +252,11 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result = semTypeOf(c, n.sons[1])
   of mArrGet: result = semArrGet(c, n, flags)
   of mArrPut: result = semArrPut(c, n, flags)
-  of mAsgn: result = semAsgnOpr(c, n)
+  of mAsgn:
+    if n[0].sym.name.s == "=":
+      result = semAsgnOpr(c, n)
+    else:
+      result = n
   of mIsPartOf: result = semIsPartOf(c, n, flags)
   of mTypeTrait: result = semTypeTraits(c, n)
   of mAstToStr:
@@ -170,6 +264,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result.typ = getSysType(tyString)
   of mInstantiationInfo: result = semInstantiationInfo(c, n)
   of mOrd: result = semOrd(c, n)
+  of mOf: result = semOf(c, n)
   of mHigh, mLow: result = semLowHigh(c, n, n[0].sym.magic)
   of mShallowCopy: result = semShallowCopy(c, n, flags)
   of mNBindSym: result = semBindSym(c, n)
@@ -179,35 +274,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mDotDot:
     result = n
   of mRoof:
-    let bracketExpr = if n.len == 3: n.sons[2] else: c.p.bracketExpr
-    if bracketExpr.isNil:
-      localError(n.info, "no surrounding array access context for '^'")
-      result = n.sons[1]
-    elif bracketExpr.checkForSideEffects != seNoSideEffect:
-      localError(n.info, "invalid context for '^' as '$#' has side effects" %
-        renderTree(bracketExpr))
-      result = n.sons[1]
-    elif bracketExpr.typ.isStrangeArray:
-      localError(n.info, "invalid context for '^' as len!=high+1 for '$#'" %
-        renderTree(bracketExpr))
-      result = n.sons[1]
-    else:
-      # ^x  is rewritten to: len(a)-x
-      let lenExpr = newNodeI(nkCall, n.info)
-      lenExpr.add newIdentNode(getIdent"len", n.info)
-      lenExpr.add bracketExpr
-      let lenExprB = semExprWithType(c, lenExpr)
-      if lenExprB.typ.isNil or not isOrdinalType(lenExprB.typ):
-        localError(n.info, "'$#' has to be of an ordinal type for '^'" %
-          renderTree(lenExpr))
-        result = n.sons[1]
-      else:
-        result = newNodeIT(nkCall, n.info, getSysType(tyInt))
-        let subi = getSysMagic("-", mSubI)
-        #echo "got ", typeToString(subi.typ)
-        result.add newSymNode(subi, n.info)
-        result.add lenExprB
-        result.add n.sons[1]
+    localError(n.info, "builtin roof operator is not supported anymore")
   of mPlugin:
     let plugin = getPlugin(n[0].sym)
     if plugin.isNil:

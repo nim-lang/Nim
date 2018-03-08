@@ -18,7 +18,8 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-#include "coff.h"
+
+#include "tcc.h"
 
 #define MAXNSCNS 255		/* MAXIMUM NUMBER OF SECTIONS         */
 #define MAX_STR_TABLE 1000000
@@ -37,7 +38,7 @@ int EndAddress[MAX_FUNCS];
 int LastLineNo[MAX_FUNCS];
 int FuncEntries[MAX_FUNCS];
 
-BOOL OutputTheSection(Section * sect);
+int OutputTheSection(Section * sect);
 short int GetCoffFlags(const char *s);
 void SortSymbolTable(void);
 Section *FindSection(TCCState * s1, const char *sname);
@@ -73,7 +74,7 @@ typedef struct {
     unsigned short dummy4;
 } AUXEF;
 
-int tcc_output_coff(TCCState *s1, FILE *f)
+ST_FUNC int tcc_output_coff(TCCState *s1, FILE *f)
 {
     Section *tcc_sect;
     SCNHDR *coff_sec;
@@ -532,7 +533,7 @@ int tcc_output_coff(TCCState *s1, FILE *f)
 	    } else {
 		if (pCoff_str_table - Coff_str_table + strlen(name) >
 		    MAX_STR_TABLE - 1)
-		    error("String table too large");
+		    tcc_error("String table too large");
 
 		csym._n._n_n._n_zeroes = 0;
 		csym._n._n_n._n_offset =
@@ -562,11 +563,7 @@ int tcc_output_coff(TCCState *s1, FILE *f)
 		}
 
 		if (k >= nFuncs) {
-		    char s[256];
-
-		    sprintf(s, "debug info can't find function: %s", name);
-
-		    error(s);
+		    tcc_error("debug info can't find function: %s", name);
 		}
 		// put a Function Name
 
@@ -733,13 +730,7 @@ void SortSymbolTable(void)
 		    }
 
 		    if (k >= nFuncs) {
-			char s[256];
-
-			sprintf(s,
-				"debug (sort) info can't find function: %s",
-				name2);
-
-			error(s);
+                        tcc_error("debug (sort) info can't find function: %s", name2);
 		    }
 
 		    if (strcmp(AssociatedFile[k], name) == 0) {
@@ -766,7 +757,7 @@ void SortSymbolTable(void)
     }
 
     if (n != nb_syms)
-	error("Internal Compiler error, debug info");
+	tcc_error("Internal Compiler error, debug info");
 
     // copy it all back
 
@@ -823,14 +814,14 @@ int FindCoffSymbolIndex(const char *func_name)
     return n;			// total number of symbols
 }
 
-BOOL OutputTheSection(Section * sect)
+int OutputTheSection(Section * sect)
 {
     const char *s = sect->name;
 
     if (!strcmp(s, ".text"))
-	return true;
+	return 1;
     else if (!strcmp(s, ".data"))
-	return true;
+	return 1;
     else
 	return 0;
 }
@@ -863,11 +854,11 @@ Section *FindSection(TCCState * s1, const char *sname)
 	    return s;
     }
 
-    error("could not find section %s", sname);
+    tcc_error("could not find section %s", sname);
     return 0;
 }
 
-int tcc_load_coff(TCCState * s1, int fd)
+ST_FUNC int tcc_load_coff(TCCState * s1, int fd)
 {
 // tktk TokenSym *ts;
 
@@ -881,39 +872,39 @@ int tcc_load_coff(TCCState * s1, int fd)
 
     f = fdopen(fd, "rb");
     if (!f) {
-	error("Unable to open .out file for input");
+	tcc_error("Unable to open .out file for input");
     }
 
     if (fread(&file_hdr, FILHSZ, 1, f) != 1)
-	error("error reading .out file for input");
+	tcc_error("error reading .out file for input");
 
     if (fread(&o_filehdr, sizeof(o_filehdr), 1, f) != 1)
-	error("error reading .out file for input");
+	tcc_error("error reading .out file for input");
 
     // first read the string table
 
     if (fseek(f, file_hdr.f_symptr + file_hdr.f_nsyms * SYMESZ, SEEK_SET))
-	error("error reading .out file for input");
+	tcc_error("error reading .out file for input");
 
     if (fread(&str_size, sizeof(int), 1, f) != 1)
-	error("error reading .out file for input");
+	tcc_error("error reading .out file for input");
 
 
     Coff_str_table = (char *) tcc_malloc(str_size);
 
     if (fread(Coff_str_table, str_size - 4, 1, f) != 1)
-	error("error reading .out file for input");
+	tcc_error("error reading .out file for input");
 
     // read/process all the symbols
 
     // seek back to symbols
 
     if (fseek(f, file_hdr.f_symptr, SEEK_SET))
-	error("error reading .out file for input");
+	tcc_error("error reading .out file for input");
 
     for (i = 0; i < file_hdr.f_nsyms; i++) {
 	if (fread(&csym, SYMESZ, 1, f) != 1)
-	    error("error reading .out file for input");
+	    tcc_error("error reading .out file for input");
 
 	if (csym._n._n_n._n_zeroes == 0) {
 	    name = Coff_str_table + csym._n._n_n._n_offset - 4;
@@ -942,13 +933,13 @@ int tcc_load_coff(TCCState * s1, int fd)
 	    if (name[0] == '_' && strcmp(name, "_main") != 0)
 		name++;
 
-	    tcc_add_symbol(s1, name, (void*)csym.n_value);
+	    tcc_add_symbol(s1, name, (void*)(uintptr_t)csym.n_value);
 	}
 	// skip any aux records
 
 	if (csym.n_numaux == 1) {
 	    if (fread(&csym, SYMESZ, 1, f) != 1)
-		error("error reading .out file for input");
+		tcc_error("error reading .out file for input");
 	    i++;
 	}
     }

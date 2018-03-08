@@ -67,6 +67,27 @@ proc debug*(n: PSym) {.deprecated.}
 proc debug*(n: PType) {.deprecated.}
 proc debug*(n: PNode) {.deprecated.}
 
+template mdbg*: bool {.dirty.} =
+  when compiles(c.module):
+    c.module.fileIdx == gProjectMainIdx
+  elif compiles(c.c.module):
+    c.c.module.fileIdx == gProjectMainIdx
+  elif compiles(m.c.module):
+    m.c.module.fileIdx == gProjectMainIdx
+  elif compiles(cl.c.module):
+    cl.c.module.fileIdx == gProjectMainIdx
+  elif compiles(p):
+    when compiles(p.lex):
+      p.lex.fileIdx == gProjectMainIdx
+    else:
+      p.module.module.fileIdx == gProjectMainIdx
+  elif compiles(m.module.fileIdx):
+    m.module.fileIdx == gProjectMainIdx
+  elif compiles(L.fileIdx):
+    L.fileIdx == gProjectMainIdx
+  else:
+    error()
+
 # --------------------------- ident tables ----------------------------------
 proc idTableGet*(t: TIdTable, key: PIdObj): RootRef
 proc idTableGet*(t: TIdTable, key: int): RootRef
@@ -198,7 +219,7 @@ proc rspaces(x: int): Rope =
 
 proc toYamlChar(c: char): string =
   case c
-  of '\0'..'\x1F', '\x80'..'\xFF': result = "\\u" & strutils.toHex(ord(c), 4)
+  of '\0'..'\x1F', '\x7F'..'\xFF': result = "\\u" & strutils.toHex(ord(c), 4)
   of '\'', '\"', '\\': result = '\\' & c
   else: result = $c
 
@@ -386,6 +407,8 @@ proc debugTree(n: PNode, indent: int, maxRecDepth: int;
     var istr = rspaces(indent + 2)
     result = "{$N$1\"kind\": $2" %
              [istr, makeYamlString($n.kind)]
+    when defined(useNodeIds):
+      addf(result, ",$N$1\"id\": $2", [istr, rope(n.id)])
     addf(result, ",$N$1\"info\": $2", [istr, lineInfoToStr(n.info)])
     if maxRecDepth != 0:
       addf(result, ",$N$1\"flags\": $2", [istr, rope($n.flags)])
@@ -553,12 +576,6 @@ proc strTableAdd(t: var TStrTable, n: PSym) =
   strTableRawInsert(t.data, n)
   inc(t.counter)
 
-proc reallySameIdent(a, b: string): bool {.inline.} =
-  when defined(nimfix):
-    result = a[0] == b[0]
-  else:
-    result = true
-
 proc strTableIncl*(t: var TStrTable, n: PSym; onConflictKeepOld=false): bool {.discardable.} =
   # returns true if n is already in the string table:
   # It is essential that `n` is written nevertheless!
@@ -573,7 +590,7 @@ proc strTableIncl*(t: var TStrTable, n: PSym; onConflictKeepOld=false): bool {.d
     # and overloading: (var x=@[]; x).mapIt(it).
     # So it is possible the very same sym is added multiple
     # times to the symbol table which we allow here with the 'it == n' check.
-    if it.name.id == n.name.id and reallySameIdent(it.name.s, n.name.s):
+    if it.name.id == n.name.id:
       if it == n: return false
       replaceSlot = h
     h = nextTry(h, high(t.data))

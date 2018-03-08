@@ -13,8 +13,8 @@
 
 import
   intsets, os, options, strutils, nversion, ast, astalgo, msgs, platform,
-  condsyms, ropes, idents, securehash, rodread, passes, importer, idgen,
-  rodutils
+  condsyms, ropes, idents, std / sha1, rodread, passes, idgen,
+  rodutils, modulepaths
 
 from modulegraphs import ModuleGraph
 
@@ -175,16 +175,17 @@ proc encodeLoc(w: PRodWriter, loc: TLoc, result: var string) =
   var oldLen = result.len
   result.add('<')
   if loc.k != low(loc.k): encodeVInt(ord(loc.k), result)
-  if loc.s != low(loc.s):
+  if loc.storage != low(loc.storage):
     add(result, '*')
-    encodeVInt(ord(loc.s), result)
+    encodeVInt(ord(loc.storage), result)
   if loc.flags != {}:
     add(result, '$')
     encodeVInt(cast[int32](loc.flags), result)
-  if loc.t != nil:
+  if loc.lode != nil:
     add(result, '^')
-    encodeVInt(cast[int32](loc.t.id), result)
-    pushType(w, loc.t)
+    encodeNode(w, unknownLineInfo(), loc.lode, result)
+    #encodeVInt(cast[int32](loc.t.id), result)
+    #pushType(w, loc.t)
   if loc.r != nil:
     add(result, '!')
     encodeStr($loc.r, result)
@@ -244,10 +245,14 @@ proc encodeType(w: PRodWriter, t: PType, result: var string) =
     add(result, '\17')
     encodeVInt(t.assignment.id, result)
     pushSym(w, t.assignment)
-  for i, s in items(t.methods):
+  if t.sink != nil:
     add(result, '\18')
-    encodeVInt(i, result)
+    encodeVInt(t.sink.id, result)
+    pushSym(w, t.sink)
+  for i, s in items(t.methods):
     add(result, '\19')
+    encodeVInt(i, result)
+    add(result, '\20')
     encodeVInt(s.id, result)
     pushSym(w, s)
   encodeLoc(w, t.loc, result)
@@ -385,9 +390,9 @@ proc symStack(w: PRodWriter): int =
       inc result
     elif iiTableGet(w.index.tab, s.id) == InvalidKey:
       var m = getModule(s)
-      if m == nil and s.kind != skPackage and sfGenSym notin s.flags:
-        internalError("symStack: module nil: " & s.name.s)
-      if s.kind == skPackage or {sfFromGeneric, sfGenSym} * s.flags != {} or m.id == w.module.id:
+      #if m == nil and s.kind != skPackage and sfGenSym notin s.flags:
+      #  internalError("symStack: module nil: " & s.name.s & " " & $s.kind & " ID " & $s.id)
+      if m == nil or s.kind == skPackage or {sfFromGeneric, sfGenSym} * s.flags != {} or m.id == w.module.id:
         # put definition in here
         var L = w.data.len
         addToIndex(w.index, s.id, L)
@@ -406,7 +411,7 @@ proc symStack(w: PRodWriter): int =
           add(w.compilerProcs, ' ')
           encodeVInt(s.id, w.compilerProcs)
           add(w.compilerProcs, rodNL)
-        if s.kind == skConverter or hasPattern(s):
+        if s.kind == skConverter or (s.ast != nil and hasPattern(s)):
           if w.converters.len != 0: add(w.converters, ' ')
           encodeVInt(s.id, w.converters)
         if s.kind == skMethod and sfDispatcher notin s.flags:
@@ -579,7 +584,7 @@ proc process(c: PPassContext, n: PNode): PNode =
     for i in countup(0, sonsLen(n) - 1): discard process(c, n.sons[i])
     #var s = n.sons[namePos].sym
     #addInterfaceSym(w, s)
-  of nkProcDef, nkIteratorDef, nkConverterDef,
+  of nkProcDef, nkFuncDef, nkIteratorDef, nkConverterDef,
       nkTemplateDef, nkMacroDef:
     let s = n.sons[namePos].sym
     if s == nil: internalError(n.info, "rodwrite.process")
@@ -637,7 +642,7 @@ proc process(c: PPassContext, n: PNode): PNode =
 
 proc myOpen(g: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
   if module.id < 0: internalError("rodwrite: module ID not set")
-  var w = newRodWriter(module.fileIdx.getHash, module, cache)
+  var w = newRodWriter(rodread.getHash module.fileIdx, module, cache)
   rawAddInterfaceSym(w, module)
   result = w
 

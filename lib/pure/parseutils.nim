@@ -8,6 +8,8 @@
 #
 
 ## This module contains helpers for parsing tokens, numbers, identifiers, etc.
+##
+## To unpack raw bytes look at the `streams <streams.html>`_ module.
 
 {.deadCodeElim: on.}
 
@@ -80,6 +82,23 @@ proc parseOct*(s: string, number: var int, start = 0): int  {.
     of '_': discard
     of '0'..'7':
       number = number shl 3 or (ord(s[i]) - ord('0'))
+      foundDigit = true
+    else: break
+    inc(i)
+  if foundDigit: result = i-start
+
+proc parseBin*(s: string, number: var int, start = 0): int  {.
+  rtl, extern: "npuParseBin", noSideEffect.} =
+  ## parses an binary number and stores its value in ``number``. Returns
+  ## the number of the parsed characters or 0 in case of an error.
+  var i = start
+  var foundDigit = false
+  if s[i] == '0' and (s[i+1] == 'b' or s[i+1] == 'B'): inc(i, 2)
+  while true:
+    case s[i]
+    of '_': discard
+    of '0'..'1':
+      number = number shl 1 or (ord(s[i]) - ord('0'))
       foundDigit = true
     else: break
     inc(i)
@@ -201,7 +220,7 @@ proc parseWhile*(s: string, token: var string, validChars: set[char],
 
 proc captureBetween*(s: string, first: char, second = '\0', start = 0): string =
   ## Finds the first occurrence of ``first``, then returns everything from there
-  ## up to ``second``(if ``second`` is '\0', then ``first`` is used).
+  ## up to ``second`` (if ``second`` is '\0', then ``first`` is used).
   var i = skipUntil(s, first, start)+1+start
   result = ""
   discard s.parseUntil(result, if second == '\0': first else: second, i)
@@ -249,6 +268,31 @@ proc parseInt*(s: string, number: var int, start = 0): int {.
     raise newException(OverflowError, "overflow")
   elif result != 0:
     number = int(res)
+
+proc parseSaturatedNatural*(s: string, b: var int, start = 0): int =
+  ## parses a natural number into ``b``. This cannot raise an overflow
+  ## error. Instead of an ``Overflow`` exception ``high(int)`` is returned.
+  ## The number of processed character is returned.
+  ## This is usually what you really want to use instead of `parseInt`:idx:.
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##   var res = 0
+  ##   discard parseSaturatedNatural("848", res)
+  ##   doAssert res == 848
+  var i = start
+  if s[i] == '+': inc(i)
+  if s[i] in {'0'..'9'}:
+    b = 0
+    while s[i] in {'0'..'9'}:
+      let c = ord(s[i]) - ord('0')
+      if b <= (high(int) - c) div 10:
+        b = b * 10 + c
+      else:
+        b = high(int)
+      inc(i)
+      while s[i] == '_': inc(i) # underscores are allowed and ignored
+    result = i - start
 
 # overflowChecks doesn't work with BiggestUInt
 proc rawParseUInt(s: string, b: var BiggestUInt, start = 0): int =
@@ -391,16 +435,43 @@ when isMainModule:
   let input = "$test{}  $this is ${an{  example}}  "
   let expected = @[(ikVar, "test"), (ikStr, "{}  "), (ikVar, "this"),
                    (ikStr, " is "), (ikExpr, "an{  example}"), (ikStr, "  ")]
-  assert toSeq(interpolatedFragments(input)) == expected
+  doAssert toSeq(interpolatedFragments(input)) == expected
 
   var value = 0
   discard parseHex("0x38", value)
-  assert value == 56
+  doAssert value == 56
   discard parseHex("0x34", value)
-  assert value == 56 * 256 + 52
+  doAssert value == 56 * 256 + 52
   value = -1
   discard parseHex("0x38", value)
-  assert value == -200
+  doAssert value == -200
 
+  value = -1
+  doAssert(parseSaturatedNatural("848", value) == 3)
+  doAssert value == 848
+
+  value = -1
+  discard parseSaturatedNatural("84899999999999999999324234243143142342135435342532453", value)
+  doAssert value == high(int)
+
+  value = -1
+  discard parseSaturatedNatural("9223372036854775808", value)
+  doAssert value == high(int)
+
+  value = -1
+  discard parseSaturatedNatural("9223372036854775807", value)
+  doAssert value == high(int)
+
+  value = -1
+  discard parseSaturatedNatural("18446744073709551616", value)
+  doAssert value == high(int)
+
+  value = -1
+  discard parseSaturatedNatural("18446744073709551615", value)
+  doAssert value == high(int)
+
+  value = -1
+  doAssert(parseSaturatedNatural("1_000_000", value) == 9)
+  doAssert value == 1_000_000
 
 {.pop.}

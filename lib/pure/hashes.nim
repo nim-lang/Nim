@@ -39,7 +39,7 @@
 ##    result = !$h
 
 import
-  strutils, etcpriv
+  strutils
 
 type
   Hash* = int ## a hash value; hash tables using these values should
@@ -139,9 +139,14 @@ proc hash*(x: cstring): Hash =
   ## efficient hashing of null-terminated strings
   var h: Hash = 0
   var i = 0
-  while x[i] != 0.char:
-    h = h !& ord(x[i])
-    inc i
+  when defined(js):
+    while i < x.len:
+      h = h !& ord(x[i])
+      inc i
+  else:
+    while x[i] != 0.char:
+      h = h !& ord(x[i])
+      inc i
   result = !$h
 
 proc hash*(sBuf: string, sPos, ePos: int): Hash =
@@ -163,8 +168,6 @@ proc hashIgnoreStyle*(x: string): Hash =
     var c = x[i]
     if c == '_':
       inc(i)
-    elif isMagicIdentSeparatorRune(cstring(x), i):
-      inc(i, magicIdentSeparatorRuneByteWidth)
     else:
       if c in {'A'..'Z'}:
         c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()
@@ -185,8 +188,6 @@ proc hashIgnoreStyle*(sBuf: string, sPos, ePos: int): Hash =
     var c = sBuf[i]
     if c == '_':
       inc(i)
-    elif isMagicIdentSeparatorRune(cstring(sBuf), i):
-      inc(i, magicIdentSeparatorRuneByteWidth)
     else:
       if c in {'A'..'Z'}:
         c = chr(ord(c) + (ord('a') - ord('A'))) # toLower()

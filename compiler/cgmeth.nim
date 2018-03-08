@@ -68,7 +68,7 @@ proc sameMethodBucket(a, b: PSym): MethodResult =
     while true:
       aa = skipTypes(aa, {tyGenericInst, tyAlias})
       bb = skipTypes(bb, {tyGenericInst, tyAlias})
-      if aa.kind == bb.kind and aa.kind in {tyVar, tyPtr, tyRef}:
+      if aa.kind == bb.kind and aa.kind in {tyVar, tyPtr, tyRef, tyLent}:
         aa = aa.lastSon
         bb = bb.lastSon
       else:
@@ -229,9 +229,16 @@ proc genDispatcher(methods: TSymSeq, relevantCols: IntSet): PSym =
   var base = lastSon(methods[0].ast).sym
   result = base
   var paramLen = sonsLen(base.typ)
+  var nilchecks = newNodeI(nkStmtList, base.info)
   var disp = newNodeI(nkIfStmt, base.info)
   var ands = getSysSym("and")
   var iss = getSysSym("of")
+  for col in countup(1, paramLen - 1):
+    if contains(relevantCols, col):
+      let param = base.typ.n.sons[col].sym
+      if param.typ.skipTypes(abstractInst).kind in {tyRef, tyPtr}:
+        addSon(nilchecks, newTree(nkCall,
+            newSymNode(getCompilerProc"chckNilDisp"), newSymNode(param)))
   for meth in countup(0, high(methods)):
     var curr = methods[meth]      # generate condition:
     var cond: PNode = nil
@@ -239,7 +246,8 @@ proc genDispatcher(methods: TSymSeq, relevantCols: IntSet): PSym =
       if contains(relevantCols, col):
         var isn = newNodeIT(nkCall, base.info, getSysType(tyBool))
         addSon(isn, newSymNode(iss))
-        addSon(isn, newSymNode(base.typ.n.sons[col].sym))
+        let param = base.typ.n.sons[col].sym
+        addSon(isn, newSymNode(param))
         addSon(isn, newNodeIT(nkType, base.info, curr.typ.sons[col]))
         if cond != nil:
           var a = newNodeIT(nkCall, base.info, getSysType(tyBool))
@@ -249,13 +257,14 @@ proc genDispatcher(methods: TSymSeq, relevantCols: IntSet): PSym =
           cond = a
         else:
           cond = isn
-    var call = newNodeI(nkCall, base.info)
+    let retTyp = base.typ.sons[0]
+    let call = newNodeIT(nkCall, base.info, retTyp)
     addSon(call, newSymNode(curr))
     for col in countup(1, paramLen - 1):
       addSon(call, genConv(newSymNode(base.typ.n.sons[col].sym),
                            curr.typ.sons[col], false))
     var ret: PNode
-    if base.typ.sons[0] != nil:
+    if retTyp != nil:
       var a = newNodeI(nkFastAsgn, base.info)
       addSon(a, newSymNode(base.ast.sons[resultPos].sym))
       addSon(a, call)
@@ -270,7 +279,8 @@ proc genDispatcher(methods: TSymSeq, relevantCols: IntSet): PSym =
       addSon(disp, a)
     else:
       disp = ret
-  result.ast.sons[bodyPos] = disp
+  nilchecks.add disp
+  result.ast.sons[bodyPos] = nilchecks
 
 proc generateMethodDispatchers*(g: ModuleGraph): PNode =
   result = newNode(nkStmtList)

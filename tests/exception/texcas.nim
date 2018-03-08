@@ -1,4 +1,5 @@
 discard """
+  targets: "c cpp"
   output: '''Hello
 Hello
   '''
@@ -21,5 +22,13 @@ proc test2() =
   testTemplate(Exception)
   doAssert(not declared(foobar))
 
+
+proc testTryAsExpr(i: int) =
+  let x = try: i    
+  except ValueError as ex:
+    echo(ex.msg)
+    -1
+
 test[Exception]()
 test2()
+testTryAsExpr(5)

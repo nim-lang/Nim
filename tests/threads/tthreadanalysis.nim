@@ -1,4 +1,5 @@
 discard """
+  disabled: yes
   outputsub: "101"
   errormsg: "'threadFunc' is not GC-safe"
   line: 39
@@ -8,7 +9,7 @@ discard """
 import os
 
 var
-  thr: array [0..5, Thread[tuple[a, b: int]]]
+  thr: array[0..5, Thread[tuple[a, b: int]]]
 
 proc doNothing() = discard
 

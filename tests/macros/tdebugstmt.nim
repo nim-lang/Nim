@@ -6,7 +6,7 @@ x: some string'''
 
 import macros
 
-macro debug(n: varargs[expr]): stmt =
+macro debug(n: varargs[untyped]): untyped =
   # `n` is a Nim AST that contains the whole macro invocation
   # this macro returns a list of statements:
   result = newNimNode(nnkStmtList, n)
@@ -21,7 +21,7 @@ macro debug(n: varargs[expr]): stmt =
     add(result, newCall("writeLine", newIdentNode("stdout"), n[i]))
 
 var
-  a: array [0..10, int]
+  a: array[0..10, int]
   x = "some string"
 a[0] = 42
 a[1] = 45

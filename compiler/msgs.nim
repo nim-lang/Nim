@@ -26,7 +26,8 @@ type
     errAtPopWithoutPush, errEmptyAsm, errInvalidIndentation,
     errExceptionExpected, errExceptionAlreadyHandled,
     errYieldNotAllowedHere, errYieldNotAllowedInTryStmt,
-    errInvalidNumberOfYieldExpr, errCannotReturnExpr, errAttemptToRedefine,
+    errInvalidNumberOfYieldExpr, errCannotReturnExpr,
+    errNoReturnWithReturnTypeNotAllowed, errAttemptToRedefine,
     errStmtInvalidAfterReturn, errStmtExpected, errInvalidLabel,
     errInvalidCmdLineOption, errCmdLineArgExpected, errCmdLineNoArgExpected,
     errInvalidVarSubstitution, errUnknownVar, errUnknownCcompiler,
@@ -61,9 +62,11 @@ type
     errBaseTypeMustBeOrdinal, errInheritanceOnlyWithNonFinalObjects,
     errInheritanceOnlyWithEnums, errIllegalRecursionInTypeX,
     errCannotInstantiateX, errExprHasNoAddress, errXStackEscape,
-    errVarForOutParamNeeded,
+    errVarForOutParamNeededX,
     errPureTypeMismatch, errTypeMismatch, errButExpected, errButExpectedX,
     errAmbiguousCallXYZ, errWrongNumberOfArguments,
+    errWrongNumberOfArgumentsInCall,
+    errMissingGenericParamsForTemplate,
     errXCannotBePassedToProcVar,
     errXCannotBeInParamDecl, errPragmaOnlyInHeaderOfProcX, errImplOfXNotAllowed,
     errImplOfXexpected, errNoSymbolToBorrowFromFound, errDiscardValueX,
@@ -89,6 +92,7 @@ type
     errMainModuleMustBeSpecified,
     errXExpected,
     errTIsNotAConcreteType,
+    errCastToANonConcreteType,
     errInvalidSectionStart, errGridTableNotImplemented, errGeneralParseError,
     errNewSectionExpected, errWhitespaceExpected, errXisNoValidIndexFile,
     errCannotRenderX, errVarVarTypeNotAllowed, errInstantiateXExplicitly,
@@ -106,8 +110,11 @@ type
     errXCannotBeClosure, errXMustBeCompileTime,
     errCannotInferTypeOfTheLiteral,
     errCannotInferReturnType,
+    errCannotInferStaticParam,
     errGenericLambdaNotAllowed,
+    errProcHasNoConcreteType,
     errCompilerDoesntSupportTarget,
+    errInOutFlagNotExtern,
     errUser,
     warnCannotOpenFile,
     warnOctalEscape, warnXIsNeverRead, warnXmightNotBeenInit,
@@ -128,7 +135,7 @@ type
     hintConditionAlwaysTrue, hintName, hintPattern,
     hintExecuting, hintLinking, hintDependency,
     hintSource, hintStackTrace, hintGCStats,
-    hintUser
+    hintUser, hintUserRaw
 
 const
   MsgKindToStr*: array[TMsgKind, string] = [
@@ -173,8 +180,9 @@ const
     errYieldNotAllowedInTryStmt: "'yield' cannot be used within 'try' in a non-inlined iterator",
     errInvalidNumberOfYieldExpr: "invalid number of \'yield\' expressions",
     errCannotReturnExpr: "current routine cannot return an expression",
+    errNoReturnWithReturnTypeNotAllowed: "routines with NoReturn pragma are not allowed to have return type",
     errAttemptToRedefine: "redefinition of \'$1\'",
-    errStmtInvalidAfterReturn: "statement not allowed after \'return\', \'break\', \'raise\' or \'continue'",
+    errStmtInvalidAfterReturn: "statement not allowed after \'return\', \'break\', \'raise\', \'continue\' or proc call with noreturn pragma",
     errStmtExpected: "statement expected",
     errInvalidLabel: "\'$1\' is no label",
     errInvalidCmdLineOption: "invalid command line option: \'$1\'",
@@ -262,13 +270,15 @@ const
     errCannotInstantiateX: "cannot instantiate: \'$1\'",
     errExprHasNoAddress: "expression has no address",
     errXStackEscape: "address of '$1' may not escape its stack frame",
-    errVarForOutParamNeeded: "for a \'var\' type a variable needs to be passed",
+    errVarForOutParamNeededX: "for a \'var\' type a variable needs to be passed; but '$1' is immutable",
     errPureTypeMismatch: "type mismatch",
-    errTypeMismatch: "type mismatch: got (",
+    errTypeMismatch: "type mismatch: got <",
     errButExpected: "but expected one of: ",
     errButExpectedX: "but expected \'$1\'",
     errAmbiguousCallXYZ: "ambiguous call; both $1 and $2 match for: $3",
     errWrongNumberOfArguments: "wrong number of arguments",
+    errWrongNumberOfArgumentsInCall: "wrong number of arguments in call to '$1'",
+    errMissingGenericParamsForTemplate: "'$1' has unspecified generic parameters",
     errXCannotBePassedToProcVar: "\'$1\' cannot be passed to a procvar",
     errXCannotBeInParamDecl: "$1 cannot be declared in parameter declaration",
     errPragmaOnlyInHeaderOfProcX: "pragmas are only allowed in the header of a proc; redefinition of $1",
@@ -326,6 +336,7 @@ const
     errMainModuleMustBeSpecified: "please, specify a main module in the project configuration file",
     errXExpected: "\'$1\' expected",
     errTIsNotAConcreteType: "\'$1\' is not a concrete type.",
+    errCastToANonConcreteType: "cannot cast to a non concrete type: \'$1\'",
     errInvalidSectionStart: "invalid section start",
     errGridTableNotImplemented: "grid table is not implemented",
     errGeneralParseError: "general parse error",
@@ -359,17 +370,20 @@ const
     errXhasSideEffects: "\'$1\' can have side effects",
     errIteratorExpected: "iterator within for loop context expected",
     errLetNeedsInit: "'let' symbol requires an initialization",
-    errThreadvarCannotInit: "a thread var cannot be initialized explicitly",
+    errThreadvarCannotInit: "a thread var cannot be initialized explicitly; this would only run for the main thread",
     errWrongSymbolX: "usage of \'$1\' is a user-defined error",
     errIllegalCaptureX: "illegal capture '$1'",
     errXCannotBeClosure: "'$1' cannot have 'closure' calling convention",
     errXMustBeCompileTime: "'$1' can only be used in compile-time context",
     errCannotInferTypeOfTheLiteral: "cannot infer the type of the $1",
     errCannotInferReturnType: "cannot infer the return type of the proc",
+    errCannotInferStaticParam: "cannot infer the value of the static param `$1`",
     errGenericLambdaNotAllowed: "A nested proc can have generic parameters only when " &
                                 "it is used as an operand to another routine and the types " &
                                 "of the generic paramers can be inferred from the expected signature.",
+    errProcHasNoConcreteType: "'$1' doesn't have a concrete type, due to unspecified generic parameters.",
     errCompilerDoesntSupportTarget: "The current compiler \'$1\' doesn't support the requested compilation target",
+    errInOutFlagNotExtern: "The `$1` modifier can be used only with imported types",
     errUser: "$1",
     warnCannotOpenFile: "cannot open \'$1\'",
     warnOctalEscape: "octal escape sequences do not exist; leading zero is ignored",
@@ -424,10 +438,11 @@ const
     hintSource: "$1",
     hintStackTrace: "$1",
     hintGCStats: "$1",
-    hintUser: "$1"]
+    hintUser: "$1",
+    hintUserRaw: "$1"]
 
 const
-  WarningsToStr*: array[0..30, string] = ["CannotOpenFile", "OctalEscape",
+  WarningsToStr* = ["CannotOpenFile", "OctalEscape",
     "XIsNeverRead", "XmightNotBeenInit",
     "Deprecated", "ConfigDeprecated",
     "SmallLshouldNotBeUsed", "UnknownMagic",
@@ -439,12 +454,12 @@ const
     "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
     "GcMem", "Destructor", "LockLevel", "ResultShadowed", "User"]
 
-  HintsToStr*: array[0..22, string] = ["Success", "SuccessX", "LineTooLong",
+  HintsToStr* = ["Success", "SuccessX", "LineTooLong",
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
     "Path", "CondTrue", "Name", "Pattern", "Exec", "Link", "Dependency",
     "Source", "StackTrace", "GCStats",
-    "User"]
+    "User", "UserRaw"]
 
 const
   fatalMin* = errUnknown
@@ -476,6 +491,7 @@ type
     dirtyfile: string          # the file that is actually read into memory
                                # and parsed; usually 'nil' but is used
                                # for 'nimsuggest'
+    hash*: string              # the checksum of the file
 
   TLineInfo* = object          # This is designed to be as small as possible,
                                # because it is used
@@ -485,11 +501,13 @@ type
                                # only 8 bytes.
     line*, col*: int16
     fileIndex*: int32
+    when defined(nimpretty):
+      offsetA*, offsetB*: int
+      commentOffsetA*, commentOffsetB*: int
 
   TErrorOutput* = enum
     eStdOut
     eStdErr
-    eInMemory
 
   TErrorOutputs* = set[TErrorOutput]
 
@@ -531,8 +549,8 @@ var
 
 proc toCChar*(c: char): string =
   case c
-  of '\0'..'\x1F', '\x80'..'\xFF': result = '\\' & toOctal(c)
-  of '\'', '\"', '\\': result = '\\' & c
+  of '\0'..'\x1F', '\x7F'..'\xFF': result = '\\' & toOctal(c)
+  of '\'', '\"', '\\', '?': result = '\\' & c
   else: result = $(c)
 
 proc makeCString*(s: string): Rope =
@@ -631,12 +649,23 @@ proc unknownLineInfo*(): TLineInfo =
   result.col = int16(-1)
   result.fileIndex = -1
 
+type
+  Severity* {.pure.} = enum ## VS Code only supports these three
+    Hint, Warning, Error
+
 var
   msgContext: seq[TLineInfo] = @[]
   lastError = unknownLineInfo()
 
   errorOutputs* = {eStdOut, eStdErr}
   writelnHook*: proc (output: string) {.closure.}
+  structuredErrorHook*: proc (info: TLineInfo; msg: string; severity: Severity) {.closure.}
+
+proc concat(strings: openarray[string]): string =
+  var totalLen = 0
+  for s in strings: totalLen += s.len
+  result = newStringOfCap totalLen
+  for s in strings: result.add s
 
 proc suggestWriteln*(s: string) =
   if eStdOut in errorOutputs:
@@ -691,6 +720,14 @@ proc setDirtyFile*(fileIdx: int32; filename: string) =
   assert fileIdx >= 0
   fileInfos[fileIdx].dirtyFile = filename
 
+proc setHash*(fileIdx: int32; hash: string) =
+  assert fileIdx >= 0
+  shallowCopy(fileInfos[fileIdx].hash, hash)
+
+proc getHash*(fileIdx: int32): string =
+  assert fileIdx >= 0
+  shallowCopy(result, fileInfos[fileIdx].hash)
+
 proc toFullPathConsiderDirty*(fileIdx: int32): string =
   if fileIdx < 0:
     result = "???"
@@ -723,7 +760,7 @@ proc toFileLine*(info: TLineInfo): string {.inline.} =
   result = info.toFilename & ":" & $info.line
 
 proc toFileLineCol*(info: TLineInfo): string {.inline.} =
-  result = info.toFilename & "(" & $info.line & "," & $info.col & ")"
+  result = info.toFilename & "(" & $info.line & ", " & $info.col & ")"
 
 proc `$`*(info: TLineInfo): string = toFileLineCol(info)
 
@@ -731,7 +768,11 @@ proc `??`* (info: TLineInfo, filename: string): bool =
   # only for debugging purposes
   result = filename in info.toFilename
 
+const trackPosInvalidFileIdx* = -2 # special marker so that no suggestions
+                                   # are produced within comments and string literals
 var gTrackPos*: TLineInfo
+var gTrackPosAttached*: bool ## whether the tracking position was attached to some
+                             ## close token.
 
 type
   MsgFlag* = enum  ## flags altering msgWriteln behavior
@@ -745,6 +786,8 @@ proc msgWriteln*(s: string, flags: MsgFlags = {}) =
   ## is present, then it is used to output message rather than stderr/stdout.
   ## This behavior can be altered by given optional flags.
 
+  ## This is used for 'nim dump' etc. where we don't have nimsuggest
+  ## support.
   #if gCmd == cmdIdeTools and optCDebug notin gGlobalOptions: return
 
   if not isNil(writelnHook) and msgSkipHook notin flags:
@@ -785,10 +828,7 @@ macro callStyledWriteLineStderr(args: varargs[typed]): untyped =
     result.add(arg)
 
 template callWritelnHook(args: varargs[string, `$`]) =
-  var s = ""
-  for arg in args:
-    s.add arg
-  writelnHook s
+  writelnHook concat(args)
 
 template styledMsgWriteln*(args: varargs[typed]) =
   if not isNil(writelnHook):
@@ -821,6 +861,12 @@ proc getMessageStr(msg: TMsgKind, arg: string): string =
 type
   TErrorHandling = enum doNothing, doAbort, doRaise
 
+proc log*(s: string) {.procvar.} =
+  var f: File
+  if open(f, getHomeDir() / "nimsuggest.log", fmAppend):
+    f.writeLine(s)
+    close(f)
+
 proc quit(msg: TMsgKind) =
   if defined(debug) or msg == errInternal or hintStackTrace in gNotes:
     if stackTraceAvailable() and isNil(writelnHook):
@@ -830,12 +876,6 @@ proc quit(msg: TMsgKind) =
           "To create a stacktrace, rerun compilation with ./koch temp " &
           options.command & " <file>")
   quit 1
-
-proc log*(s: string) {.procvar.} =
-  var f: File
-  if open(f, "nimsuggest.log", fmAppend):
-    f.writeLine(s)
-    close(f)
 
 proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
   if msg >= fatalMin and msg <= fatalMax:
@@ -854,16 +894,23 @@ proc handleError(msg: TMsgKind, eh: TErrorHandling, s: string) =
 proc `==`*(a, b: TLineInfo): bool =
   result = a.line == b.line and a.fileIndex == b.fileIndex
 
+proc exactEquals*(a, b: TLineInfo): bool =
+  result = a.fileIndex == b.fileIndex and a.line == b.line and a.col == b.col
+
 proc writeContext(lastinfo: TLineInfo) =
   var info = lastinfo
   for i in countup(0, len(msgContext) - 1):
     if msgContext[i] != lastinfo and msgContext[i] != info:
-      styledMsgWriteln(styleBright,
-                       PosFormat % [toMsgFilename(msgContext[i]),
-                                    coordToStr(msgContext[i].line),
-                                    coordToStr(msgContext[i].col+1)],
-                       resetStyle,
-                       getMessageStr(errInstantiationFrom, ""))
+      if structuredErrorHook != nil:
+        structuredErrorHook(msgContext[i], getMessageStr(errInstantiationFrom, ""),
+                            Severity.Error)
+      else:
+        styledMsgWriteln(styleBright,
+                         PosFormat % [toMsgFilename(msgContext[i]),
+                                      coordToStr(msgContext[i].line),
+                                      coordToStr(msgContext[i].col+1)],
+                         resetStyle,
+                         getMessageStr(errInstantiationFrom, ""))
     info = msgContext[i]
 
 proc ignoreMsgBecauseOfIdeTools(msg: TMsgKind): bool =
@@ -873,13 +920,16 @@ proc rawMessage*(msg: TMsgKind, args: openArray[string]) =
   var
     title: string
     color: ForegroundColor
-    kind:  string
+    kind: string
+    sev: Severity
   case msg
   of errMin..errMax:
+    sev = Severity.Error
     writeContext(unknownLineInfo())
     title = ErrorTitle
     color = ErrorColor
   of warnMin..warnMax:
+    sev = Severity.Warning
     if optWarns notin gOptions: return
     if msg notin gNotes: return
     writeContext(unknownLineInfo())
@@ -888,13 +938,18 @@ proc rawMessage*(msg: TMsgKind, args: openArray[string]) =
     kind = WarningsToStr[ord(msg) - ord(warnMin)]
     inc(gWarnCounter)
   of hintMin..hintMax:
+    sev = Severity.Hint
     if optHints notin gOptions: return
     if msg notin gNotes: return
     title = HintTitle
     color = HintColor
-    kind = HintsToStr[ord(msg) - ord(hintMin)]
+    if msg != hintUserRaw: kind = HintsToStr[ord(msg) - ord(hintMin)]
     inc(gHintCounter)
-  let s = `%`(msgKindToString(msg), args)
+  let s = msgKindToString(msg) % args
+
+  if structuredErrorHook != nil:
+    structuredErrorHook(unknownLineInfo(), s & (if kind != nil: KindFormat % kind else: ""), sev)
+
   if not ignoreMsgBecauseOfIdeTools(msg):
     if kind != nil:
       styledMsgWriteln(color, title, resetStyle, s,
@@ -932,8 +987,10 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
     color: ForegroundColor
     kind:  string
     ignoreMsg = false
+    sev: Severity
   case msg
   of errMin..errMax:
+    sev = Severity.Error
     writeContext(info)
     title = ErrorTitle
     color = ErrorColor
@@ -942,6 +999,7 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
     #ignoreMsg = lastError == info and eh != doAbort
     lastError = info
   of warnMin..warnMax:
+    sev = Severity.Warning
     ignoreMsg = optWarns notin gOptions or msg notin gNotes
     if not ignoreMsg: writeContext(info)
     title = WarningTitle
@@ -949,10 +1007,11 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
     kind = WarningsToStr[ord(msg) - ord(warnMin)]
     inc(gWarnCounter)
   of hintMin..hintMax:
+    sev = Severity.Hint
     ignoreMsg = optHints notin gOptions or msg notin gNotes
     title = HintTitle
     color = HintColor
-    kind = HintsToStr[ord(msg) - ord(hintMin)]
+    if msg != hintUserRaw: kind = HintsToStr[ord(msg) - ord(hintMin)]
     inc(gHintCounter)
   # NOTE: currently line info line numbers start with 1,
   # but column numbers start with 0, however most editors expect
@@ -960,17 +1019,24 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
   let x = PosFormat % [toMsgFilename(info), coordToStr(info.line),
                        coordToStr(info.col+1)]
   let s = getMessageStr(msg, arg)
-  if not ignoreMsg and not ignoreMsgBecauseOfIdeTools(msg):
-    if kind != nil:
-      styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s,
-                       KindColor, `%`(KindFormat, kind))
-    else:
-      styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s)
-    if msg in errMin..errMax and hintSource in gNotes:
-      info.writeSurroundingSrc
+
+  if not ignoreMsg:
+    if structuredErrorHook != nil:
+      structuredErrorHook(info, s & (if kind != nil: KindFormat % kind else: ""), sev)
+    if not ignoreMsgBecauseOfIdeTools(msg):
+      if kind != nil:
+        styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s,
+                         KindColor, `%`(KindFormat, kind))
+      else:
+        styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s)
+      if msg in errMin..errMax and hintSource in gNotes:
+        info.writeSurroundingSrc
   handleError(msg, eh, s)
 
 proc fatal*(info: TLineInfo, msg: TMsgKind, arg = "") =
+  # this fixes bug #7080 so that it is at least obvious 'fatal'
+  # was executed.
+  errorOutputs = {eStdOut, eStdErr}
   liMessage(info, msg, arg, doAbort)
 
 proc globalError*(info: TLineInfo, msg: TMsgKind, arg = "") =
@@ -992,12 +1058,12 @@ proc message*(info: TLineInfo, msg: TMsgKind, arg = "") =
   liMessage(info, msg, arg, doNothing)
 
 proc internalError*(info: TLineInfo, errMsg: string) =
-  if gCmd == cmdIdeTools: return
+  if gCmd == cmdIdeTools and structuredErrorHook.isNil: return
   writeContext(info)
   liMessage(info, errInternal, errMsg, doAbort)
 
 proc internalError*(errMsg: string) =
-  if gCmd == cmdIdeTools: return
+  if gCmd == cmdIdeTools and structuredErrorHook.isNil: return
   writeContext(unknownLineInfo())
   rawMessage(errInternal, errMsg)
 

@@ -5,7 +5,7 @@ To enable thread support the ``--threads:on`` command line switch needs to
 be used. The ``system`` module then contains several threading primitives.
 See the `threads <threads.html>`_ and `channels <channels.html>`_ modules
 for the low level thread API. There are also high level parallelism constructs
-available. See `spawn`_ for further details.
+available. See `spawn <#parallel-spawn>`_ for further details.
 
 Nim's memory model for threads is quite different than that of other common
 programming languages (C, Pascal, Java): Each thread has its own (garbage
@@ -39,7 +39,7 @@ directly or indirectly through a call to a GC unsafe proc.
 The `gcsafe`:idx: annotation can be used to mark a proc to be gcsafe,
 otherwise this property is inferred by the compiler. Note that ``noSideEffect``
 implies ``gcsafe``. The only way to create a thread is via ``spawn`` or
-``createThead``. ``spawn`` is usually the preferable method. Either way
+``createThread``. ``spawn`` is usually the preferable method. Either way
 the invoked proc must not use ``var`` parameters nor must any of its parameters
 contain a ``ref`` or ``closure`` type. This enforces
 the *no heap sharing restriction*.

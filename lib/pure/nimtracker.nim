@@ -23,12 +23,6 @@ var
 
 const insertQuery = "INSERT INTO tracking(op, address, size, file, line) values (?, ?, ?, ?, ?)"
 
-when compileOption("threads"):
-  onThreadCreation do():
-    if prepare_v2(dbHandle, insertQuery,
-        insertQuery.len, insertStmt, nil) != SQLITE_OK:
-      quit "could not bind query to insertStmt " & $sqlite3.errmsg(dbHandle)
-
 template sbind(x: int; value) =
   when value is cstring:
     let ret = insertStmt.bindText(x, value, value.len.int32, SQLITE_TRANSIENT)
@@ -41,6 +35,10 @@ template sbind(x: int; value) =
 
 when defined(memTracker):
   proc logEntries(log: TrackLog) {.nimcall, locks: 0, tags: [], gcsafe.} =
+    if insertStmt.isNil:
+      if prepare_v2(dbHandle, insertQuery,
+          insertQuery.len, insertStmt, nil) != SQLITE_OK:
+        quit "could not bind query to insertStmt " & $sqlite3.errmsg(dbHandle)
     for i in 0..log.count-1:
       var success = false
       let e = log.data[i]

@@ -1,10 +1,8 @@
 discard """
   file: "tmemfiles2.nim"
-  disabled: true
   output: '''Full read size: 20
 Half read size: 10 Data: Hello'''
 """
-# doesn't work on windows. fmReadWrite doesn't create a file.
 import memfiles, os
 var
   mm, mm_full, mm_half: MemFile
@@ -18,7 +16,7 @@ mm = memfiles.open(fn, mode = fmReadWrite, newFileSize = 20)
 mm.close()
 
 # read, change
-mm_full = memfiles.open(fn, mode = fmWrite, mappedSize = -1)
+mm_full = memfiles.open(fn, mode = fmWrite, mappedSize = -1, allowRemap = true)
 echo "Full read size: ",mm_full.size
 p = mm_full.mapMem(fmReadWrite, 20, 0)
 var p2 = cast[cstring](p)

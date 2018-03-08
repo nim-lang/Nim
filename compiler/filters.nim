@@ -13,14 +13,6 @@ import
   llstream, os, wordrecg, idents, strutils, ast, astalgo, msgs, options,
   renderer
 
-proc filterReplace*(stdin: PLLStream, filename: string, call: PNode): PLLStream
-proc filterStrip*(stdin: PLLStream, filename: string, call: PNode): PLLStream
-  # helpers to retrieve arguments:
-proc charArg*(n: PNode, name: string, pos: int, default: char): char
-proc strArg*(n: PNode, name: string, pos: int, default: string): string
-proc boolArg*(n: PNode, name: string, pos: int, default: bool): bool
-# implementation
-
 proc invalidPragma(n: PNode) =
   localError(n.info, errXNotAllowedHere, renderTree(n, {renderNoComments}))
 
@@ -35,26 +27,26 @@ proc getArg(n: PNode, name: string, pos: int): PNode =
     elif i == pos:
       return n.sons[i]
 
-proc charArg(n: PNode, name: string, pos: int, default: char): char =
+proc charArg*(n: PNode, name: string, pos: int, default: char): char =
   var x = getArg(n, name, pos)
   if x == nil: result = default
   elif x.kind == nkCharLit: result = chr(int(x.intVal))
   else: invalidPragma(n)
 
-proc strArg(n: PNode, name: string, pos: int, default: string): string =
+proc strArg*(n: PNode, name: string, pos: int, default: string): string =
   var x = getArg(n, name, pos)
   if x == nil: result = default
   elif x.kind in {nkStrLit..nkTripleStrLit}: result = x.strVal
   else: invalidPragma(n)
 
-proc boolArg(n: PNode, name: string, pos: int, default: bool): bool =
+proc boolArg*(n: PNode, name: string, pos: int, default: bool): bool =
   var x = getArg(n, name, pos)
   if x == nil: result = default
   elif x.kind == nkIdent and cmpIgnoreStyle(x.ident.s, "true") == 0: result = true
   elif x.kind == nkIdent and cmpIgnoreStyle(x.ident.s, "false") == 0: result = false
   else: invalidPragma(n)
 
-proc filterStrip(stdin: PLLStream, filename: string, call: PNode): PLLStream =
+proc filterStrip*(stdin: PLLStream, filename: string, call: PNode): PLLStream =
   var pattern = strArg(call, "startswith", 1, "")
   var leading = boolArg(call, "leading", 2, true)
   var trailing = boolArg(call, "trailing", 3, true)
@@ -68,7 +60,7 @@ proc filterStrip(stdin: PLLStream, filename: string, call: PNode): PLLStream =
       llStreamWriteln(result, line)
   llStreamClose(stdin)
 
-proc filterReplace(stdin: PLLStream, filename: string, call: PNode): PLLStream =
+proc filterReplace*(stdin: PLLStream, filename: string, call: PNode): PLLStream =
   var sub = strArg(call, "sub", 1, "")
   if len(sub) == 0: invalidPragma(call)
   var by = strArg(call, "by", 2, "")

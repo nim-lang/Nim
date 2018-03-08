@@ -11,6 +11,15 @@
 # Nim's configuration system now uses Nim for scripting. This module provides
 # a few things that are required for this to work.
 
+const
+  buildOS* {.magic: "BuildOS".}: string = ""
+    ## The OS this build is running on. Can be different from ``system.hostOS``
+    ## for cross compilations.
+
+  buildCPU* {.magic: "BuildCPU".}: string = ""
+    ## The CPU this build is running on. Can be different from ``system.hostCPU``
+    ## for cross compilations.
+
 template builtin = discard
 
 # We know the effects better than the compiler:
@@ -97,7 +106,7 @@ proc cmpic*(a, b: string): int =
   ## Compares `a` and `b` ignoring case.
   cmpIgnoreCase(a, b)
 
-proc getEnv*(key: string): string {.tags: [ReadIOEffect].} =
+proc getEnv*(key: string; default = ""): string {.tags: [ReadIOEffect].} =
   ## Retrieves the environment variable of name `key`.
   builtin
 
@@ -105,6 +114,10 @@ proc existsEnv*(key: string): bool {.tags: [ReadIOEffect].} =
   ## Checks for the existence of an environment variable named `key`.
   builtin
 
+proc putEnv*(key, val: string) {.tags: [WriteIOEffect].} =
+  ## Sets the value of the environment variable named key to val.
+  builtin
+  
 proc fileExists*(filename: string): bool {.tags: [ReadIOEffect].} =
   ## Checks if the file exists.
   builtin

@@ -70,13 +70,16 @@ proc newTupleAccessRaw*(tup: PNode, i: int): PNode =
   lit.intVal = i
   addSon(result, lit)
 
+proc newTryFinally*(body, final: PNode): PNode =
+  result = newTree(nkTryStmt, body, newTree(nkFinally, final))
+
 proc lowerTupleUnpackingForAsgn*(n: PNode; owner: PSym): PNode =
   let value = n.lastSon
   result = newNodeI(nkStmtList, n.info)
 
-  var temp = newSym(skTemp, getIdent(genPrefix), owner, value.info)
+  var temp = newSym(skLet, getIdent("_"), owner, value.info)
   var v = newNodeI(nkLetSection, value.info)
-  let tempAsNode = newIdentNode(getIdent(genPrefix & $temp.id), value.info)
+  let tempAsNode = newSymNode(temp) #newIdentNode(getIdent(genPrefix & $temp.id), value.info)
 
   var vpart = newNodeI(nkIdentDefs, tempAsNode.info, 3)
   vpart.sons[0] = tempAsNode
@@ -109,17 +112,19 @@ proc lowerSwap*(n: PNode; owner: PSym): PNode =
   result.add newFastAsgnStmt(n[1], n[2])
   result.add newFastAsgnStmt(n[2], tempAsNode)
 
-proc createObj*(owner: PSym, info: TLineInfo): PType =
+proc createObj*(owner: PSym, info: TLineInfo; final=true): PType =
   result = newType(tyObject, owner)
-  rawAddSon(result, nil)
-  incl result.flags, tfFinal
+  if final:
+    rawAddSon(result, nil)
+    incl result.flags, tfFinal
+  else:
+    rawAddSon(result, getCompilerProc("RootObj").typ)
   result.n = newNodeI(nkRecList, info)
-  when true:
-    let s = newSym(skType, getIdent("Env_" & info.toFilename & "_" & $info.line),
-                   owner, info)
-    incl s.flags, sfAnon
-    s.typ = result
-    result.sym = s
+  let s = newSym(skType, getIdent("Env_" & info.toFilename),
+                  owner, info)
+  incl s.flags, sfAnon
+  s.typ = result
+  result.sym = s
 
 proc rawAddField*(obj: PType; field: PSym) =
   assert field.kind == skField
@@ -137,35 +142,90 @@ proc rawIndirectAccess*(a: PNode; field: PSym; info: TLineInfo): PNode =
   addSon(result, newSymNode(field))
   result.typ = field.typ
 
+proc rawDirectAccess*(obj, field: PSym): PNode =
+  # returns a.field as a node
+  assert field.kind == skField
+  result = newNodeI(nkDotExpr, field.info)
+  addSon(result, newSymNode obj)
+  addSon(result, newSymNode field)
+  result.typ = field.typ
+
+proc lookupInRecord(n: PNode, id: int): PSym =
+  result = nil
+  case n.kind
+  of nkRecList:
+    for i in countup(0, sonsLen(n) - 1):
+      result = lookupInRecord(n.sons[i], id)
+      if result != nil: return
+  of nkRecCase:
+    if n.sons[0].kind != nkSym: return
+    result = lookupInRecord(n.sons[0], id)
+    if result != nil: return
+    for i in countup(1, sonsLen(n) - 1):
+      case n.sons[i].kind
+      of nkOfBranch, nkElse:
+        result = lookupInRecord(lastSon(n.sons[i]), id)
+        if result != nil: return
+      else: discard
+  of nkSym:
+    if n.sym.id == -abs(id): result = n.sym
+  else: discard
+
 proc addField*(obj: PType; s: PSym) =
   # because of 'gensym' support, we have to mangle the name with its ID.
   # This is hacky but the clean solution is much more complex than it looks.
-  var field = newSym(skField, getIdent(s.name.s & $s.id), s.owner, s.info)
+  var field = newSym(skField, getIdent(s.name.s & $obj.n.len), s.owner, s.info)
+  field.id = -s.id
   let t = skipIntLit(s.typ)
   field.typ = t
   assert t.kind != tyStmt
   field.position = sonsLen(obj.n)
   addSon(obj.n, newSymNode(field))
 
-proc addUniqueField*(obj: PType; s: PSym) =
-  let fieldName = getIdent(s.name.s & $s.id)
-  if lookupInRecord(obj.n, fieldName) == nil:
-    var field = newSym(skField, fieldName, s.owner, s.info)
+proc addUniqueField*(obj: PType; s: PSym): PSym {.discardable.} =
+  result = lookupInRecord(obj.n, s.id)
+  if result == nil:
+    var field = newSym(skField, getIdent(s.name.s & $obj.n.len), s.owner, s.info)
+    field.id = -s.id
     let t = skipIntLit(s.typ)
     field.typ = t
     assert t.kind != tyStmt
     field.position = sonsLen(obj.n)
     addSon(obj.n, newSymNode(field))
+    result = field
 
 proc newDotExpr(obj, b: PSym): PNode =
   result = newNodeI(nkDotExpr, obj.info)
-  let field = getSymFromList(obj.typ.n, getIdent(b.name.s & $b.id))
+  let field = lookupInRecord(obj.typ.n, b.id)
   assert field != nil, b.name.s
   addSon(result, newSymNode(obj))
   addSon(result, newSymNode(field))
   result.typ = field.typ
 
-proc indirectAccess*(a: PNode, b: string, info: TLineInfo): PNode =
+proc indirectAccess*(a: PNode, b: int, info: TLineInfo): PNode =
+  # returns a[].b as a node
+  var deref = newNodeI(nkHiddenDeref, info)
+  deref.typ = a.typ.skipTypes(abstractInst).sons[0]
+  var t = deref.typ.skipTypes(abstractInst)
+  var field: PSym
+  while true:
+    assert t.kind == tyObject
+    field = lookupInRecord(t.n, b)
+    if field != nil: break
+    t = t.sons[0]
+    if t == nil: break
+    t = t.skipTypes(skipPtrs)
+  #if field == nil:
+  #  echo "FIELD ", b
+  #  debug deref.typ
+  internalAssert field != nil
+  addSon(deref, a)
+  result = newNodeI(nkDotExpr, info)
+  addSon(result, deref)
+  addSon(result, newSymNode(field))
+  result.typ = field.typ
+
+proc indirectAccess(a: PNode, b: string, info: TLineInfo): PNode =
   # returns a[].b as a node
   var deref = newNodeI(nkHiddenDeref, info)
   deref.typ = a.typ.skipTypes(abstractInst).sons[0]
@@ -191,11 +251,10 @@ proc indirectAccess*(a: PNode, b: string, info: TLineInfo): PNode =
 
 proc getFieldFromObj*(t: PType; v: PSym): PSym =
   assert v.kind != skField
-  let fieldName = getIdent(v.name.s & $v.id)
   var t = t
   while true:
     assert t.kind == tyObject
-    result = getSymFromList(t.n, fieldName)
+    result = lookupInRecord(t.n, v.id)
     if result != nil: break
     t = t.sons[0]
     if t == nil: break
@@ -203,7 +262,7 @@ proc getFieldFromObj*(t: PType; v: PSym): PSym =
 
 proc indirectAccess*(a: PNode, b: PSym, info: TLineInfo): PNode =
   # returns a[].b as a node
-  result = indirectAccess(a, b.name.s & $b.id, info)
+  result = indirectAccess(a, b.id, info)
 
 proc indirectAccess*(a, b: PSym, info: TLineInfo): PNode =
   result = indirectAccess(newSymNode(a), b, info)
@@ -271,7 +330,7 @@ proc typeNeedsNoDeepCopy(t: PType): bool =
   # note that seq[T] is fine, but 'var seq[T]' is not, so we need to skip 'var'
   # for the stricter check and likewise we can skip 'seq' for a less
   # strict check:
-  if t.kind in {tyVar, tySequence}: t = t.sons[0]
+  if t.kind in {tyVar, tyLent, tySequence}: t = t.lastSon
   result = not containsGarbageCollectedRef(t)
 
 proc addLocalVar(varSection, varInit: PNode; owner: PSym; typ: PType;
@@ -406,11 +465,11 @@ proc setupArgsForConcurrency(n: PNode; objType: PType; scratchObj: PSym,
                              varSection, varInit, result: PNode) =
   let formals = n[0].typ.n
   let tmpName = getIdent(genPrefix)
-  for i in 1 .. <n.len:
+  for i in 1 ..< n.len:
     # we pick n's type here, which hopefully is 'tyArray' and not
     # 'tyOpenArray':
     var argType = n[i].typ.skipTypes(abstractInst)
-    if i < formals.len and formals[i].typ.kind == tyVar:
+    if i < formals.len and formals[i].typ.kind in {tyVar, tyLent}:
       localError(n[i].info, "'spawn'ed function cannot have a 'var' parameter")
     #elif containsTyRef(argType):
     #  localError(n[i].info, "'spawn'ed function cannot refer to 'ref'/closure")
@@ -462,7 +521,7 @@ proc setupArgsForParallelism(n: PNode; objType: PType; scratchObj: PSym;
   let tmpName = getIdent(genPrefix)
   # we need to copy the foreign scratch object fields into local variables
   # for correctness: These are called 'threadLocal' here.
-  for i in 1 .. <n.len:
+  for i in 1 ..< n.len:
     let n = n[i]
     let argType = skipTypes(if i < formals.len: formals[i].typ else: n.typ,
                             abstractInst)
@@ -587,7 +646,7 @@ proc wrapProcForSpawn*(owner: PSym; spawnExpr: PNode; retType: PType;
   if fn.kind == nkClosure:
     localError(n.info, "closure in spawn environment is not allowed")
   if not (fn.kind == nkSym and fn.sym.kind in {skProc, skTemplate, skMacro,
-                                               skMethod, skConverter}):
+                                               skFunc, skMethod, skConverter}):
     # for indirect calls we pass the function pointer in the scratchObj
     var argType = n[0].typ.skipTypes(abstractInst)
     var field = newSym(skField, getIdent"fn", owner, n.info)

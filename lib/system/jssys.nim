@@ -53,7 +53,7 @@ proc isNimException(): bool {.asmNoStackFrame.} =
   else:
     asm "return `lastJSError`.m_type;"
 
-proc getCurrentException*(): ref Exception =
+proc getCurrentException*(): ref Exception {.compilerRtl, benign.} =
   if isNimException(): result = cast[ref Exception](lastJSError)
 
 proc getCurrentExceptionMsg*(): string =
@@ -157,10 +157,10 @@ proc reraiseException() {.compilerproc, asmNoStackFrame.} =
 
     asm "throw lastJSError;"
 
-proc raiseOverflow {.exportc: "raiseOverflow", noreturn.} =
+proc raiseOverflow {.exportc: "raiseOverflow", noreturn, compilerProc.} =
   raise newException(OverflowError, "over- or underflow")
 
-proc raiseDivByZero {.exportc: "raiseDivByZero", noreturn.} =
+proc raiseDivByZero {.exportc: "raiseDivByZero", noreturn, compilerProc.} =
   raise newException(DivByZeroError, "division by zero")
 
 proc raiseRangeError() {.compilerproc, noreturn.} =
@@ -172,7 +172,7 @@ proc raiseIndexError() {.compilerproc, noreturn.} =
 proc raiseFieldError(f: string) {.compilerproc, noreturn.} =
   raise newException(FieldError, f & " is not accessible")
 
-proc SetConstr() {.varargs, asmNoStackFrame, compilerproc.} =
+proc setConstr() {.varargs, asmNoStackFrame, compilerproc.} =
   when defined(nimphp):
     asm """
       $args = func_get_args();
@@ -233,15 +233,24 @@ proc cstrToNimstr(c: cstring): string {.asmNoStackFrame, compilerproc.} =
     if (ch < 128) {
       result[r] = ch;
     }
-    else if((ch > 127) && (ch < 2048)) {
-      result[r] = (ch >> 6) | 192;
-      ++r;
-      result[r] = (ch & 63) | 128;
-    }
     else {
-      result[r] = (ch >> 12) | 224;
-      ++r;
-      result[r] = ((ch >> 6) & 63) | 128;
+      if (ch < 2048) {
+        result[r] = (ch >> 6) | 192;
+      }
+      else {
+        if (ch < 55296 || ch >= 57344) {
+          result[r] = (ch >> 12) | 224;
+        }
+        else {
+            ++i;
+            ch = 65536 + (((ch & 1023) << 10) | (`c`.charCodeAt(i) & 1023));
+            result[r] = (ch >> 18) | 240;
+            ++r;
+            result[r] = ((ch >> 12) & 63) | 128;
+        }
+        ++r;
+        result[r] = ((ch >> 6) & 63) | 128;
+      }
       ++r;
       result[r] = (ch & 63) | 128;
     }
@@ -446,7 +455,7 @@ when defined(kwin):
       print(buf);
     """
 
-elif defined(nodejs):
+elif not defined(nimOldEcho):
   proc ewriteln(x: cstring) = log(x)
 
   proc rawEcho {.compilerproc, asmNoStackFrame.} =
@@ -522,13 +531,13 @@ proc mulInt(a, b: int): int {.asmNoStackFrame, compilerproc.} =
 proc divInt(a, b: int): int {.asmNoStackFrame, compilerproc.} =
   when defined(nimphp):
     asm """
-      return floor(`a` / `b`);
+      return trunc(`a` / `b`);
     """
   else:
     asm """
       if (`b` == 0) `raiseDivByZero`();
       if (`b` == -1 && `a` == 2147483647) `raiseOverflow`();
-      return Math.floor(`a` / `b`);
+      return Math.trunc(`a` / `b`);
     """
 
 proc modInt(a, b: int): int {.asmNoStackFrame, compilerproc.} =
@@ -540,7 +549,7 @@ proc modInt(a, b: int): int {.asmNoStackFrame, compilerproc.} =
     asm """
       if (`b` == 0) `raiseDivByZero`();
       if (`b` == -1 && `a` == 2147483647) `raiseOverflow`();
-      return Math.floor(`a` % `b`);
+      return Math.trunc(`a` % `b`);
     """
 
 proc addInt64(a, b: int): int {.asmNoStackFrame, compilerproc.} =
@@ -585,13 +594,13 @@ proc mulInt64(a, b: int): int {.asmNoStackFrame, compilerproc.} =
 proc divInt64(a, b: int): int {.asmNoStackFrame, compilerproc.} =
   when defined(nimphp):
     asm """
-      return floor(`a` / `b`);
+      return trunc(`a` / `b`);
     """
   else:
     asm """
       if (`b` == 0) `raiseDivByZero`();
       if (`b` == -1 && `a` == 9223372036854775807) `raiseOverflow`();
-      return Math.floor(`a` / `b`);
+      return Math.trunc(`a` / `b`);
     """
 
 proc modInt64(a, b: int): int {.asmNoStackFrame, compilerproc.} =
@@ -603,7 +612,7 @@ proc modInt64(a, b: int): int {.asmNoStackFrame, compilerproc.} =
     asm """
       if (`b` == 0) `raiseDivByZero`();
       if (`b` == -1 && `a` == 9223372036854775807) `raiseOverflow`();
-      return Math.floor(`a` % `b`);
+      return Math.trunc(`a` % `b`);
     """
 
 proc negInt(a: int): int {.compilerproc.} =
@@ -641,6 +650,10 @@ proc toU32*(a: int64): int32 {.asmNoStackFrame, compilerproc.} =
 
 proc nimMin(a, b: int): int {.compilerproc.} = return if a <= b: a else: b
 proc nimMax(a, b: int): int {.compilerproc.} = return if a >= b: a else: b
+
+proc chckNilDisp(p: pointer) {.compilerproc.} =
+  if p == nil:
+    sysFatal(NilAccessError, "cannot dispatch; dispatcher is nil")
 
 type NimString = string # hack for hti.nim
 include "system/hti"

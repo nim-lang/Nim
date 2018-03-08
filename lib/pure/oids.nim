@@ -69,10 +69,9 @@ var
 proc genOid*(): Oid =
   ## generates a new OID.
   proc rand(): cint {.importc: "rand", header: "<stdlib.h>", nodecl.}
-  proc gettime(dummy: ptr cint): cint {.importc: "time", header: "<time.h>".}
   proc srand(seed: cint) {.importc: "srand", header: "<stdlib.h>", nodecl.}
 
-  var t = gettime(nil)
+  var t = getTime().int32
 
   var i = int32(atomicInc(incr))
 
@@ -89,7 +88,7 @@ proc generatedTime*(oid: Oid): Time =
   var tmp: int32
   var dummy = oid.time
   bigEndian32(addr(tmp), addr(dummy))
-  result = Time(tmp)
+  result = fromUnix(tmp)
 
 when not defined(testing) and isMainModule:
   let xo = genOid()

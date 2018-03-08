@@ -461,8 +461,8 @@ Documentation Comments
 ----------------------
 
 Double-hash (``##``) comments in the code actually have their own format,
-but the comments do not yet show up in the AST, which will only show that
-a comment exists, not what it contains. Single-hash (``#``) comments are ignored.
+using ``strVal`` to get and set the comment text. Single-hash (``#``) 
+comments are ignored.
 
 Concrete syntax:
 
@@ -918,7 +918,7 @@ This is equivalent to ``var``, but with ``nnkLetSection`` rather than
 Concrete syntax:
 
 .. code-block:: nim
-  let v = 3
+  let a = 3
 
 AST:
 

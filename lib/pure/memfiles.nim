@@ -83,7 +83,8 @@ proc unmapMem*(f: var MemFile, p: pointer, size: int) =
 
 
 proc open*(filename: string, mode: FileMode = fmRead,
-           mappedSize = -1, offset = 0, newFileSize = -1): MemFile =
+           mappedSize = -1, offset = 0, newFileSize = -1,
+           allowRemap = false): MemFile =
   ## opens a memory mapped file. If this fails, ``EOS`` is raised.
   ##
   ## ``newFileSize`` can only be set if the file does not exist and is opened
@@ -94,6 +95,9 @@ proc open*(filename: string, mode: FileMode = fmRead,
   ##
   ## ``offset`` must be multiples of the PAGE SIZE of your OS
   ## (usually 4K or 8K but is unique to your OS)
+  ##
+  ## ``allowRemap`` only needs to be true if you want to call ``mapMem`` on
+  ## the resulting MemFile; else file handles are not kept open.
   ##
   ## Example:
   ##
@@ -119,7 +123,7 @@ proc open*(filename: string, mode: FileMode = fmRead,
     result.size = 0
 
   when defined(windows):
-    template fail(errCode: OSErrorCode, msg: expr) =
+    template fail(errCode: OSErrorCode, msg: untyped) =
       rollback()
       if result.fHandle != 0: discard closeHandle(result.fHandle)
       if result.mapHandle != 0: discard closeHandle(result.mapHandle)
@@ -127,7 +131,7 @@ proc open*(filename: string, mode: FileMode = fmRead,
       # return false
       #raise newException(EIO, msg)
 
-    template callCreateFile(winApiProc, filename: expr): expr =
+    template callCreateFile(winApiProc, filename): untyped =
       winApiProc(
         filename,
         # GENERIC_ALL != (GENERIC_READ or GENERIC_WRITE)
@@ -184,16 +188,19 @@ proc open*(filename: string, mode: FileMode = fmRead,
     if low == INVALID_FILE_SIZE:
       fail(osLastError(), "error getting file size")
     else:
-      var fileSize = (int64(hi) shr 32) or low
+      var fileSize = (int64(hi) shl 32) or int64(uint32(low))
       if mappedSize != -1: result.size = min(fileSize, mappedSize).int
       else: result.size = fileSize.int
 
     result.wasOpened = true
+    if not allowRemap and result.fHandle != INVALID_HANDLE_VALUE:
+      if closeHandle(result.fHandle) == 0:
+        result.fHandle = INVALID_HANDLE_VALUE
 
   else:
-    template fail(errCode: OSErrorCode, msg: expr) =
+    template fail(errCode: OSErrorCode, msg: string) =
       rollback()
-      if result.handle != 0: discard close(result.handle)
+      if result.handle != -1: discard close(result.handle)
       raiseOSError(errCode)
 
     var flags = if readonly: O_RDONLY else: O_RDWR
@@ -236,6 +243,10 @@ proc open*(filename: string, mode: FileMode = fmRead,
     if result.mem == cast[pointer](MAP_FAILED):
       fail(osLastError(), "file mapping failed")
 
+    if not allowRemap and result.handle != -1:
+      if close(result.handle) == 0:
+        result.handle = -1
+
 proc close*(f: var MemFile) =
   ## closes the memory mapped file `f`. All changes are written back to the
   ## file system, if `f` was opened with write access.
@@ -244,15 +255,19 @@ proc close*(f: var MemFile) =
   var lastErr: OSErrorCode
 
   when defined(windows):
-    if f.fHandle != INVALID_HANDLE_VALUE and f.wasOpened:
+    if f.wasOpened:
       error = unmapViewOfFile(f.mem) == 0
-      lastErr = osLastError()
-      error = (closeHandle(f.mapHandle) == 0) or error
-      error = (closeHandle(f.fHandle) == 0) or error
+      if not error:
+        error = closeHandle(f.mapHandle) == 0
+        if not error and f.fHandle != INVALID_HANDLE_VALUE:
+          discard closeHandle(f.fHandle)
+          f.fHandle = INVALID_HANDLE_VALUE
+      if error:
+        lastErr = osLastError()
   else:
-    if f.handle != 0:
-      error = munmap(f.mem, f.size) != 0
-      lastErr = osLastError()
+    error = munmap(f.mem, f.size) != 0
+    lastErr = osLastError()
+    if f.handle != -1:
       error = (close(f.handle) != 0) or error
 
   f.size = 0
@@ -263,7 +278,7 @@ proc close*(f: var MemFile) =
     f.mapHandle = 0
     f.wasOpened = false
   else:
-    f.handle = 0
+    f.handle = -1
 
   if error: raiseOSError(lastErr)
 

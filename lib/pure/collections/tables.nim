@@ -269,6 +269,18 @@ proc del*[A, B](t: var Table[A, B], key: A) =
   ## deletes `key` from hash table `t`.
   delImpl()
 
+proc take*[A, B](t: var Table[A, B], key: A, val: var B): bool =
+  ## Deletes the ``key`` from the table.
+  ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
+  ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
+  ## unchanged.
+  var hc: Hash
+  var index = rawGet(t, key, hc)
+  result = index >= 0
+  if result:
+    shallowCopy(val, t.data[index].val)
+    delImplIdx(t, index)
+
 proc enlarge[A, B](t: var Table[A, B]) =
   var n: KeyValuePairSeq[A, B]
   newSeq(n, len(t.data) * growthFactor)
@@ -296,6 +308,7 @@ proc `[]=`*[A, B](t: var Table[A, B], key: A, val: B) =
 
 proc add*[A, B](t: var Table[A, B], key: A, val: B) =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
+  ## This can introduce duplicate keys into the table!
   addImpl(enlarge)
 
 proc len*[A, B](t: TableRef[A, B]): int =
@@ -325,9 +338,9 @@ template dollarImpl(): untyped {.dirty.} =
     result = "{"
     for key, val in pairs(t):
       if result.len > 1: result.add(", ")
-      result.add($key)
+      result.addQuoted(key)
       result.add(": ")
-      result.add($val)
+      result.addQuoted(val)
     result.add("}")
 
 proc `$`*[A, B](t: Table[A, B]): string =
@@ -418,11 +431,19 @@ proc `[]=`*[A, B](t: TableRef[A, B], key: A, val: B) =
 
 proc add*[A, B](t: TableRef[A, B], key: A, val: B) =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
+  ## This can introduce duplicate keys into the table!
   t[].add(key, val)
 
 proc del*[A, B](t: TableRef[A, B], key: A) =
   ## deletes `key` from hash table `t`.
   t[].del(key)
+
+proc take*[A, B](t: TableRef[A, B], key: A, val: var B): bool =
+  ## Deletes the ``key`` from the table.
+  ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
+  ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
+  ## unchanged.
+  result = t[].take(key, val)
 
 proc newTable*[A, B](initialSize=64): TableRef[A, B] =
   new(result)
@@ -571,8 +592,11 @@ proc enlarge[A, B](t: var OrderedTable[A, B]) =
   swap(t.data, n)
   while h >= 0:
     var nxt = n[h].next
-    if isFilled(n[h].hcode):
-      var j = -1 - rawGetKnownHC(t, n[h].key, n[h].hcode)
+    let eh = n[h].hcode
+    if isFilled(eh):
+      var j: Hash = eh and maxHash(t)
+      while isFilled(t.data[j].hcode):
+        j = nextTry(j, maxHash(t))
       rawInsert(t, t.data, n[h].key, n[h].val, n[h].hcode, j)
     h = nxt
 
@@ -582,6 +606,7 @@ proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
 
 proc add*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
+  ## This can introduce duplicate keys into the table!
   addImpl(enlarge)
 
 proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): var B =
@@ -618,11 +643,19 @@ proc `$`*[A, B](t: OrderedTable[A, B]): string =
 proc `==`*[A, B](s, t: OrderedTable[A, B]): bool =
   ## The `==` operator for ordered hash tables. Returns true iff both the
   ## content and the order are equal.
-  if s.counter == t.counter:
-    forAllOrderedPairs:
-      if s.data[h] != t.data[h]: return false
-    result = true
-  else: result = false
+  if s.counter != t.counter:
+    return false
+  var ht = t.first
+  var hs = s.first
+  while ht >= 0 and hs >= 0:
+    var nxtt = t.data[ht].next
+    var nxts = s.data[hs].next
+    if isFilled(t.data[ht].hcode) and isFilled(s.data[hs].hcode):
+      if (s.data[hs].key != t.data[ht].key) or (s.data[hs].val != t.data[ht].val):
+        return false
+    ht = nxtt
+    hs = nxts
+  return true
 
 proc sort*[A, B](t: var OrderedTable[A, B],
                  cmp: proc (x,y: (A, B)): int) =
@@ -740,6 +773,7 @@ proc `[]=`*[A, B](t: OrderedTableRef[A, B], key: A, val: B) =
 
 proc add*[A, B](t: OrderedTableRef[A, B], key: A, val: B) =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
+  ## This can introduce duplicate keys into the table!
   t[].add(key, val)
 
 proc newOrderedTable*[A, B](initialSize=64): OrderedTableRef[A, B] =
@@ -754,7 +788,7 @@ proc newOrderedTable*[A, B](initialSize=64): OrderedTableRef[A, B] =
 proc newOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTableRef[A, B] =
   ## creates a new ordered hash table that contains the given `pairs`.
   result = newOrderedTable[A, B](rightSize(pairs.len))
-  for key, val in items(pairs): result[key] = val
+  for key, val in items(pairs): result.add(key, val)
 
 proc `$`*[A, B](t: OrderedTableRef[A, B]): string =
   ## The `$` operator for ordered hash tables.
@@ -777,7 +811,7 @@ proc sort*[A, B](t: OrderedTableRef[A, B],
   t[].sort(cmp)
 
 proc del*[A, B](t: var OrderedTable[A, B], key: A) =
-  ## deletes `key` from ordered hash table `t`. O(n) comlexity.
+  ## deletes `key` from ordered hash table `t`. O(n) complexity.
   var n: OrderedKeyValuePairSeq[A, B]
   newSeq(n, len(t.data))
   var h = t.first
@@ -796,7 +830,7 @@ proc del*[A, B](t: var OrderedTable[A, B], key: A) =
     h = nxt
 
 proc del*[A, B](t: var OrderedTableRef[A, B], key: A) =
-  ## deletes `key` from ordered hash table `t`. O(n) comlexity.
+  ## deletes `key` from ordered hash table `t`. O(n) complexity.
   t[].del(key)
 
 # ------------------------------ count tables -------------------------------
@@ -821,7 +855,7 @@ proc clear*[A](t: CountTableRef[A]) =
 proc clear*[A](t: var CountTable[A]) =
   ## Resets the table so that it is empty.
   clearImpl()
-  
+
 iterator pairs*[A](t: CountTable[A]): (A, int) =
   ## iterates over any (key, value) pair in the table `t`.
   for h in 0..high(t.data):
@@ -909,7 +943,7 @@ proc enlarge[A](t: var CountTable[A]) =
 
 proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   ## puts a (key, value)-pair into `t`.
-  assert val > 0
+  assert val >= 0
   var h = rawGet(t, key)
   if h >= 0:
     t.data[h].val = val
@@ -920,30 +954,6 @@ proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
     #h = -1 - h
     #t.data[h].key = key
     #t.data[h].val = val
-
-proc initCountTable*[A](initialSize=64): CountTable[A] =
-  ## creates a new count table that is empty.
-  ##
-  ## `initialSize` needs to be a power of two. If you need to accept runtime
-  ## values for this you could use the ``nextPowerOfTwo`` proc from the
-  ## `math <math.html>`_ module or the ``rightSize`` proc in this module.
-  assert isPowerOfTwo(initialSize)
-  result.counter = 0
-  newSeq(result.data, initialSize)
-
-proc toCountTable*[A](keys: openArray[A]): CountTable[A] =
-  ## creates a new count table with every key in `keys` having a count of 1.
-  result = initCountTable[A](rightSize(keys.len))
-  for key in items(keys): result[key] = 1
-
-proc `$`*[A](t: CountTable[A]): string =
-  ## The `$` operator for count tables.
-  dollarImpl()
-
-proc `==`*[A](s, t: CountTable[A]): bool =
-  ## The `==` operator for count tables. Returns ``true`` iff both tables
-  ## contain the same keys with the same count. Insert order does not matter.
-  equalsImpl(s, t)
 
 proc inc*[A](t: var CountTable[A], key: A, val = 1) =
   ## increments `t[key]` by `val`.
@@ -956,12 +966,38 @@ proc inc*[A](t: var CountTable[A], key: A, val = 1) =
     rawInsert(t, t.data, key, val)
     inc(t.counter)
 
+proc initCountTable*[A](initialSize=64): CountTable[A] =
+  ## creates a new count table that is empty.
+  ##
+  ## `initialSize` needs to be a power of two. If you need to accept runtime
+  ## values for this you could use the ``nextPowerOfTwo`` proc from the
+  ## `math <math.html>`_ module or the ``rightSize`` proc in this module.
+  assert isPowerOfTwo(initialSize)
+  result.counter = 0
+  newSeq(result.data, initialSize)
+
+proc toCountTable*[A](keys: openArray[A]): CountTable[A] =
+  ## creates a new count table with every key in `keys` having a count
+  ## of how many times it occurs in `keys`.
+  result = initCountTable[A](rightSize(keys.len))
+  for key in items(keys): result.inc(key)
+
+proc `$`*[A](t: CountTable[A]): string =
+  ## The `$` operator for count tables.
+  dollarImpl()
+
+proc `==`*[A](s, t: CountTable[A]): bool =
+  ## The `==` operator for count tables. Returns ``true`` iff both tables
+  ## contain the same keys with the same count. Insert order does not matter.
+  equalsImpl(s, t)
+
 proc smallest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   ## returns the (key,val)-pair with the smallest `val`. Efficiency: O(n)
   assert t.len > 0
-  var minIdx = 0
-  for h in 1..high(t.data):
-    if t.data[h].val > 0 and t.data[minIdx].val > t.data[h].val: minIdx = h
+  var minIdx = -1
+  for h in 0..high(t.data):
+    if t.data[h].val > 0 and (minIdx == -1 or t.data[minIdx].val > t.data[h].val):
+      minIdx = h
   result.key = t.data[minIdx].key
   result.val = t.data[minIdx].val
 
@@ -1052,6 +1088,10 @@ proc `[]=`*[A](t: CountTableRef[A], key: A, val: int) =
   assert val > 0
   t[][key] = val
 
+proc inc*[A](t: CountTableRef[A], key: A, val = 1) =
+  ## increments `t[key]` by `val`.
+  t[].inc(key, val)
+
 proc newCountTable*[A](initialSize=64): CountTableRef[A] =
   ## creates a new count table that is empty.
   ##
@@ -1062,9 +1102,10 @@ proc newCountTable*[A](initialSize=64): CountTableRef[A] =
   result[] = initCountTable[A](initialSize)
 
 proc newCountTable*[A](keys: openArray[A]): CountTableRef[A] =
-  ## creates a new count table with every key in `keys` having a count of 1.
+  ## creates a new count table with every key in `keys` having a count
+  ## of how many times it occurs in `keys`.
   result = newCountTable[A](rightSize(keys.len))
-  for key in items(keys): result[key] = 1
+  for key in items(keys): result.inc(key)
 
 proc `$`*[A](t: CountTableRef[A]): string =
   ## The `$` operator for count tables.
@@ -1077,10 +1118,6 @@ proc `==`*[A](s, t: CountTableRef[A]): bool =
   if isNil(s): result = isNil(t)
   elif isNil(t): result = false
   else: result = s[] == t[]
-
-proc inc*[A](t: CountTableRef[A], key: A, val = 1) =
-  ## increments `t[key]` by `val`.
-  t[].inc(key, val)
 
 proc smallest*[A](t: CountTableRef[A]): (A, int) =
   ## returns the (key,val)-pair with the smallest `val`. Efficiency: O(n)
@@ -1233,11 +1270,67 @@ when isMainModule:
     t.inc(testKey,3)
     doAssert 3 == t.getOrDefault(testKey)
 
-  # Clear tests
-  var clearTable = newTable[int, string]()
-  clearTable[42] = "asd"
-  clearTable[123123] = "piuyqwb "
-  doAssert clearTable[42] == "asd"
-  clearTable.clear()
-  doAssert(not clearTable.hasKey(123123))
-  doAssert clearTable.getOrDefault(42) == nil
+  block:
+    # Clear tests
+    var clearTable = newTable[int, string]()
+    clearTable[42] = "asd"
+    clearTable[123123] = "piuyqwb "
+    doAssert clearTable[42] == "asd"
+    clearTable.clear()
+    doAssert(not clearTable.hasKey(123123))
+    doAssert clearTable.getOrDefault(42) == nil
+
+  block: #5482
+    var a = [("wrong?","foo"), ("wrong?", "foo2")].newOrderedTable()
+    var b = newOrderedTable[string, string](initialSize=2)
+    b.add("wrong?", "foo")
+    b.add("wrong?", "foo2")
+    assert a == b
+
+  block: #5482
+    var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()
+    var b = newOrderedTable[string, string](initialSize=2)
+    b.add("wrong?", "foo")
+    b.add("wrong?", "foo2")
+    assert a == b
+
+  block: #5487
+    var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()
+    var b = newOrderedTable[string, string]() # notice, default size!
+    b.add("wrong?", "foo")
+    b.add("wrong?", "foo2")
+    assert a == b
+
+  block: #5487
+    var a = [("wrong?","foo"), ("wrong?", "foo2")].newOrderedTable()
+    var b = newOrderedTable[string, string]()  # notice, default size!
+    b.add("wrong?", "foo")
+    b.add("wrong?", "foo2")
+    assert a == b
+
+  block:
+    var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()
+    var b = [("wrong?","foo"), ("wrong?", "foo2")].newOrderedTable()
+    var c = newOrderedTable[string, string]() # notice, default size!
+    c.add("wrong?", "foo")
+    c.add("wrong?", "foo2")
+    assert a == b
+    assert a == c
+
+  block: #6250
+    let
+      a = {3: 1}.toOrderedTable
+      b = {3: 2}.toOrderedTable
+    assert((a == b) == false)
+    assert((b == a) == false)
+
+  block: #6250
+    let
+      a = {3: 2}.toOrderedTable
+      b = {3: 2}.toOrderedTable
+    assert((a == b) == true)
+    assert((b == a) == true)
+
+  block: # CountTable.smallest
+    let t = toCountTable([0, 0, 5, 5, 5])
+    doAssert t.smallest == (0, 2)

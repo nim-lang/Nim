@@ -12,7 +12,7 @@ type
     chars: set[char]]
 
 const
-  things: array [0..1, TComplexRecord] = [
+  things: array[0..1, TComplexRecord] = [
     (s: "hi", x: 69, y: 45, z: 0.0, chars: {'a', 'b', 'c'}),
     (s: "hi", x: 69, y: 45, z: 1.0, chars: {})]
   otherThings = [  # the same

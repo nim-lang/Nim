@@ -73,15 +73,18 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbos copyFile:
     os.copyFile(getString(a, 0), getString(a, 1))
   cbos getLastModificationTime:
-    setResult(a, toSeconds(getLastModificationTime(getString(a, 0))))
+    # depends on Time's implementation!
+    setResult(a, int64(getLastModificationTime(getString(a, 0))))
 
   cbos rawExec:
     setResult(a, osproc.execCmd getString(a, 0))
 
   cbconf getEnv:
-    setResult(a, os.getEnv(a.getString 0))
+    setResult(a, os.getEnv(a.getString 0, a.getString 1))
   cbconf existsEnv:
     setResult(a, os.existsEnv(a.getString 0))
+  cbconf putEnv:
+    os.putEnv(a.getString 0, a.getString 1)
   cbconf dirExists:
     setResult(a, os.dirExists(a.getString 0))
   cbconf fileExists:
@@ -143,6 +146,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
 
 proc runNimScript*(cache: IdentCache; scriptName: string;
                    freshDefines=true; config: ConfigRef=nil) =
+  rawMessage(hintConf, scriptName)
   passes.gIncludeFile = includeModule
   passes.gImportModule = importModule
   let graph = newModuleGraph(config)
