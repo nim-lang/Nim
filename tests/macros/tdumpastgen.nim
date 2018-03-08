@@ -2,12 +2,12 @@ discard """
 msg: '''nnkStmtList.newTree(
   nnkVarSection.newTree(
     nnkIdentDefs.newTree(
-      newIdentNode(!"x"),
+      newIdentNode("x"),
       newEmptyNode(),
       nnkCall.newTree(
         nnkDotExpr.newTree(
-          newIdentNode(!"foo"),
-          newIdentNode(!"create")
+          newIdentNode("foo"),
+          newIdentNode("create")
         ),
         newLit(56)
       )
