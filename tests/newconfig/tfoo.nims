@@ -23,4 +23,11 @@ task default, "default target":
   setCommand "c"
 
 # bug #6327
-discard existsEnv("dummy")
+doAssert(existsEnv("dummy") == false)
+
+# issue #7283
+putEnv("dummy", "myval")
+doAssert(existsEnv("dummy") == true)
+doAssert(getEnv("dummy") == "myval")
+
+
