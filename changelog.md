@@ -22,6 +22,9 @@
 
 ### Tool changes
 
+- ``jsondoc2`` has been renamed ``jsondoc``, similar to how ``doc2`` was renamed
+  ``doc``. The old ``jsondoc`` can still be invoked with ``jsondoc0``.
+
 ### Compiler changes
 
 ### Bugfixes

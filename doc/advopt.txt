@@ -7,7 +7,6 @@ Advanced commands:
   //rst2html                convert a reStructuredText file to HTML
   //rst2tex                 convert a reStructuredText file to TeX
   //jsondoc                 extract the documentation to a json file
-  //jsondoc2                extract the documentation to a json file (uses doc2)
   //ctags                   create a tags file
   //buildIndex              build an index for the whole documentation
   //run                     run the project (with Tiny C backend; buggy!)
