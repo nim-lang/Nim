@@ -632,16 +632,18 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
     else:
       typ = semTypeNode(c, n.sons[length-2], nil)
       propagateToOwner(rectype, typ)
-    let rec = rectype.sym
+    var fieldOwner = if c.inGenericContext > 0: c.getCurrOwner
+                     else: rectype.sym
     for i in countup(0, sonsLen(n)-3):
       var f = semIdentWithPragma(c, skField, n.sons[i], {sfExported})
       suggestSym(n.sons[i].info, f, c.graph.usageSym)
       f.typ = typ
       f.position = pos
-      if (rec != nil) and ({sfImportc, sfExportc} * rec.flags != {}) and
-          (f.loc.r == nil):
+      if fieldOwner != nil and
+         {sfImportc, sfExportc} * fieldOwner.flags != {} and
+         f.loc.r == nil:
         f.loc.r = rope(f.name.s)
-        f.flags = f.flags + ({sfImportc, sfExportc} * rec.flags)
+        f.flags = f.flags + ({sfImportc, sfExportc} * fieldOwner.flags)
       inc(pos)
       if containsOrIncl(check, f.name.id):
         localError(n.sons[i].info, errAttemptToRedefine, f.name.s)
