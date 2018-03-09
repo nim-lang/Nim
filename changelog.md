@@ -22,6 +22,14 @@
 
 ### Tool changes
 
+- ``jsondoc2`` has been renamed ``jsondoc``, similar to how ``doc2`` was renamed
+  ``doc``. The old ``jsondoc`` can still be invoked with ``jsondoc0``.
+
 ### Compiler changes
 
 ### Bugfixes
+
+- The `importcpp` pragma now allows importing the listed fields of generic
+  C++ types. Support for numeric parameters have also been added through
+  the use of `static[T]` types.
+  (#6415)
