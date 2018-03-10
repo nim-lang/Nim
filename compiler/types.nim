@@ -1136,6 +1136,8 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   of tyTypeClasses:
     if tfGenericTypeParam in t.flags or taConcept in flags: #or taField notin flags:
       discard
+    elif t.isResolvedUserTypeClass:
+      result = typeAllowedAux(marker, t.lastSon, kind, flags)
     elif kind notin {skParam, skResult}:
       result = t
   of tyGenericBody, tyGenericParam, tyGenericInvocation,
