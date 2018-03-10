@@ -1516,8 +1516,8 @@ having the same field types.
 
 Tuples can be *unpacked* during variable assignment (and only then!). This can
 be handy to assign directly the fields of the tuples to individually named
-variables. An example of this is the `splitFile <os.html#splitFile>`_ proc
-from the `os module <os.html>`_ which returns the directory, name and
+variables. An example of this is the `splitFile <ospaths.html#splitFile>`_ proc
+from the `ospaths module <ospaths.html>`_ which returns the directory, name and
 extension of a path at the same time. For tuple unpacking to work you must
 use parentheses around the values you want to assign the unpacking to,
 otherwise you will be assigning the same value to all the individual
@@ -1526,7 +1526,7 @@ variables! For example:
 .. code-block:: nim
     :test: "nim c $1"
 
-  import os
+  import ospaths
 
   let
     path = "usr/local/nimc.html"
