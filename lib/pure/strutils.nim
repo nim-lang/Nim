@@ -1250,7 +1250,7 @@ proc wordWrap*(s: string, maxLineWidth = 80,
     if len(word) > spaceLeft:
       if splitLongWords and len(word) > maxLineWidth:
         result.add(substr(word, 0, spaceLeft-1))
-        var w = spaceLeft+1
+        var w = spaceLeft
         var wordLeft = len(word) - spaceLeft
         while wordLeft > 0:
           result.add(newLine)
@@ -2513,6 +2513,11 @@ when isMainModule:
                it goes"""
     outp = " this is a\nlong text\n--\nmuchlongerthan10chars\nand here\nit goes"
   doAssert wordWrap(inp, 10, false) == outp
+
+  let
+    longInp = """ThisIsOneVeryLongStringWhichWeWillSplitIntoEightSeparatePartsNow"""
+    longOutp = "ThisIsOn\neVeryLon\ngStringW\nhichWeWi\nllSplitI\nntoEight\nSeparate\nPartsNow"
+  doAssert wordWrap(longInp, 8, true) == longOutp
 
   doAssert formatBiggestFloat(1234.567, ffDecimal, -1) == "1234.567000"
   doAssert formatBiggestFloat(1234.567, ffDecimal, 0) == "1235."

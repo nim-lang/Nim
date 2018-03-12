@@ -10,7 +10,7 @@ _nim()
 
  if [ $COMP_CWORD -eq 1 ] ; then
    # first item - suggest commands
-   kw="compile c doc doc2 compileToC cc compileToCpp cpp compileToOC objc js e rst2html rst2tex jsondoc jsondoc2 buildIndex genDepend dump check"
+   kw="compile c doc compileToC cc compileToCpp cpp compileToOC objc js e rst2html rst2tex jsondoc buildIndex genDepend dump check"
    COMPREPLY=( $( compgen -W "${kw}" -- $cur ) )
    return 0
  fi

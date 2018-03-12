@@ -255,69 +255,61 @@ proc semCase(c: PContext, n: PNode): PNode =
     result.typ = typ
 
 proc semTry(c: PContext, n: PNode): PNode =
+
+  var check = initIntSet()
+  template semExceptBranchType(typeNode: PNode): PNode =
+    let typ = semTypeNode(c, typeNode, nil).toObject()
+    if typ.kind != tyObject:
+      localError(typeNode.info, errExprCannotBeRaised)
+    if containsOrIncl(check, typ.id):
+      localError(typeNode.info, errExceptionAlreadyHandled)
+    newNodeIT(nkType, typeNode.info, typ)
+
   result = n
   inc c.p.inTryStmt
   checkMinSonsLen(n, 2)
 
   var typ = commonTypeBegin
-  n.sons[0] = semExprBranchScope(c, n.sons[0])
-  typ = commonType(typ, n.sons[0].typ)
+  n[0] = semExprBranchScope(c, n[0])
+  typ = commonType(typ, n[0].typ)
 
-  var check = initIntSet()
   var last = sonsLen(n) - 1
   for i in countup(1, last):
-    var a = n.sons[i]
+    let a = n.sons[i]
     checkMinSonsLen(a, 1)
-    var length = sonsLen(a)
     openScope(c)
     if a.kind == nkExceptBranch:
-      # so that ``except [a, b, c]`` is supported:
-      if length == 2 and a.sons[0].kind == nkBracket:
-        a.sons[0..0] = a.sons[0].sons
-        length = a.sonsLen
 
-      # Iterate through each exception type in the except branch.
-      for j in countup(0, length-2):
-        var typeNode = a.sons[j] # e.g. `Exception`
-        var symbolNode: PNode = nil # e.g. `foobar`
-        # Handle the case where the `Exception as foobar` syntax is used.
-        if typeNode.isInfixAs():
-          typeNode = a.sons[j].sons[1]
-          symbolNode = a.sons[j].sons[2]
+      if a.len == 2 and a[0].kind == nkBracket:
+        # rewrite ``except [a, b, c]: body`` -> ```except a, b, c: body```
+        a.sons[0..0] = a[0].sons
+      
+      if a.len == 2 and a[0].isInfixAs():
+        # support ``except Exception as ex: body``
+        a[0][1] = semExceptBranchType(a[0][1])
 
-        # Resolve the type ident into a PType.
-        var typ = semTypeNode(c, typeNode, nil).toObject()
-        if typ.kind != tyObject:
-          localError(a.sons[j].info, errExprCannotBeRaised)
+        let symbol = newSymG(skLet, a[0][2], c)
+        symbol.typ = a[0][1].typ.toRef()
+        addDecl(c, symbol)
+        # Overwrite symbol in AST with the symbol in the symbol table.
+        a[0][2] = newSymNode(symbol, a[0][2].info)
 
-        let newTypeNode = newNodeI(nkType, typeNode.info)
-        newTypeNode.typ = typ
-        if symbolNode.isNil:
-          a.sons[j] = newTypeNode
-        else:
-          a.sons[j].sons[1] = newTypeNode
-          # Add the exception ident to the symbol table.
-          let symbol = newSymG(skLet, symbolNode, c)
-          symbol.typ = typ.toRef()
-          addDecl(c, symbol)
-          # Overwrite symbol in AST with the symbol in the symbol table.
-          let symNode = newNodeI(nkSym, typeNode.info)
-          symNode.sym = symbol
-          a.sons[j].sons[2] = symNode
-
-        if containsOrIncl(check, typ.id):
-          localError(a.sons[j].info, errExceptionAlreadyHandled)
+      else:
+        # support ``except KeyError, ValueError, ... : body``
+        for j in 0..a.len-2:
+          a[j] = semExceptBranchType(a[j])
+     
     elif a.kind != nkFinally:
       illFormedAst(n)
 
     # last child of an nkExcept/nkFinally branch is a statement:
-    a.sons[length-1] = semExprBranchScope(c, a.sons[length-1])
-    if a.kind != nkFinally: typ = commonType(typ, a.sons[length-1].typ)
+    a[^1] = semExprBranchScope(c, a[^1])
+    if a.kind != nkFinally: typ = commonType(typ, a[^1])
     else: dec last
     closeScope(c)
 
   dec c.p.inTryStmt
-  if isEmptyType(typ) or typ.kind == tyNil:
+  if isEmptyType(typ) or typ.kind in {tyNil, tyExpr}:
     discardCheck(c, n.sons[0])
     for i in 1..n.len-1: discardCheck(c, n.sons[i].lastSon)
     if typ == enforceVoidContext:
