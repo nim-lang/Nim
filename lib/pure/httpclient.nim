@@ -622,7 +622,7 @@ proc get*(url: string, extraHeaders = "", maxRedirects = 5,
   ## | An optional timeout can be specified in milliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
   ##
-  ## ## **Deprecated since version 0.15.0**: use ``HttpClient.get`` instead.
+  ## **Deprecated since version 0.15.0**: use ``HttpClient.get`` instead.
   result = request(url, httpGET, extraHeaders, "", sslContext, timeout,
                    userAgent, proxy)
   var lastURL = url
