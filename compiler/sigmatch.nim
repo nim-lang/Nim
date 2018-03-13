@@ -1242,7 +1242,9 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
         if result < isGeneric: result = isNone
     elif a.kind == tyGenericParam:
       result = isGeneric
-  of tyForward: internalError("forward type in typeRel()")
+  of tyForward:
+    #internalError("forward type in typeRel()")
+    result = isNone
   of tyNil:
     if a.kind == f.kind: result = isEqual
   of tyTuple:
