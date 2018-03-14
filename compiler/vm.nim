@@ -53,6 +53,8 @@ type
                               # XXX 'break' should perform cleanup actions
                               # What does the C backend do for it?
 
+let defaultIdent = getIdent""
+
 proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
   if x != nil:
     if recursionLimit == 0:
@@ -1490,7 +1492,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           c.debug[pc])
       x.flags.incl nfIsRef
       # prevent crashes in the compiler resulting from wrong macros:
-      if x.kind == nkIdent: x.ident = getIdent""
+      if x.kind == nkIdent: x.ident = defaultIdent
       regs[ra].node = x
     of opcNCopyNimNode:
       decodeB(rkNode)
