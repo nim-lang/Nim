@@ -1103,9 +1103,14 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if ty.kind == tyTypeDesc:
     if ty.base.kind == tyNone:
       # This is a still unresolved typedesc parameter.
-      # All bets are off and we must return tyFromExpr
-      n.typ = makeTypeFromExpr(c, n.copyTree)
-      return n
+      # If this is a regular proc, then all bets are off and we must return
+      # tyFromExpr, but when this happen in a macro this is not a built-in
+      # field access and we leave the compiler to compile a normal call:
+      if getCurrOwner(c).kind != skMacro:
+        n.typ = makeTypeFromExpr(c, n.copyTree)
+        return n
+      else:
+        return nil
     else:
       ty = ty.base
       argIsType = true
