@@ -880,6 +880,9 @@ const
 
 proc readTypeParameter(c: PContext, typ: PType,
                        paramName: PIdent, info: TLineInfo): PNode =
+  # Note: This function will return emptyNode when attempting to read
+  # a static type parameter that is not yet resolved (e.g. this may
+  # happen in proc signatures such as `proc(x: T): array[T.sizeParam, U]`
   if typ.kind in {tyUserTypeClass, tyUserTypeClassInst}:
     for statement in typ.n:
       case statement.kind
@@ -910,7 +913,10 @@ proc readTypeParameter(c: PContext, typ: PType,
       if tParam.sym.name.id == paramName.id:
         let rawTyp = ty.sons[s + 1]
         if rawTyp.kind == tyStatic:
-          return rawTyp.n
+          if rawTyp.n != nil:
+            return rawTyp.n
+          else:
+            return emptyNode
         else:
           let foundTyp = makeTypeDesc(c, rawTyp)
           return newSymNode(copySym(tParam.sym).linkTo(foundTyp), info)
@@ -1075,21 +1081,38 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   template tryReadingGenericParam(t: PType) =
     case t.kind
     of tyTypeParamsHolders:
-      return readTypeParameter(c, t, i, n.info)
+      result = readTypeParameter(c, t, i, n.info)
+      if result == emptyNode:
+        result = n
+        n.typ = makeTypeFromExpr(c, n.copyTree)
+      return
     of tyUserTypeClasses:
       if t.isResolvedUserTypeClass:
         return readTypeParameter(c, t, i, n.info)
       else:
         n.typ = makeTypeFromExpr(c, copyTree(n))
         return n
-    of tyGenericParam:
+    of tyGenericParam, tyAnything:
       n.typ = makeTypeFromExpr(c, copyTree(n))
       return n
     else:
       discard
 
-  if isTypeExpr(n.sons[0]) or (ty.kind == tyTypeDesc and ty.base.kind != tyNone):
-    if ty.kind == tyTypeDesc: ty = ty.base
+  var argIsType = false
+
+  if ty.kind == tyTypeDesc:
+    if ty.base.kind == tyNone:
+      # This is a still unresolved typedesc parameter.
+      # All bets are off and we must return tyFromExpr
+      n.typ = makeTypeFromExpr(c, n.copyTree)
+      return n
+    else:
+      ty = ty.base
+      argIsType = true
+  else:
+    argIsType = isTypeExpr(n.sons[0])
+
+  if argIsType:
     ty = ty.skipTypes(tyDotOpTransparent)
     case ty.kind
     of tyEnum:
