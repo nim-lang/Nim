@@ -1774,7 +1774,7 @@ when not defined(nimscript):
     proc createU*(T: typedesc, size = 1.Positive): ptr T {.inline, benign.} =
       ## allocates a new memory block with at least ``T.sizeof * size``
       ## bytes. The block has to be freed with ``resize(block, 0)`` or
-      ## ``free(block)``. The block is not initialized, so reading
+      ## ``dealloc(block)``. The block is not initialized, so reading
       ## from it before writing to it is undefined behaviour!
       ## The allocated memory belongs to its allocating thread!
       ## Use `createSharedU` to allocate from a shared heap.
@@ -1789,7 +1789,7 @@ when not defined(nimscript):
     proc create*(T: typedesc, size = 1.Positive): ptr T {.inline, benign.} =
       ## allocates a new memory block with at least ``T.sizeof * size``
       ## bytes. The block has to be freed with ``resize(block, 0)`` or
-      ## ``free(block)``. The block is initialized with all bytes
+      ## ``dealloc(block)``. The block is initialized with all bytes
       ## containing zero, so it is somewhat safer than ``createU``.
       ## The allocated memory belongs to its allocating thread!
       ## Use `createShared` to allocate from a shared heap.
@@ -1807,7 +1807,7 @@ when not defined(nimscript):
       ## grows or shrinks a given memory block. If p is **nil** then a new
       ## memory block is returned. In either way the block has at least
       ## ``T.sizeof * newSize`` bytes. If ``newSize == 0`` and p is not
-      ## **nil** ``resize`` calls ``free(p)``. In other cases the block
+      ## **nil** ``resize`` calls ``dealloc(p)``. In other cases the block
       ## has to be freed with ``free``. The allocated memory belongs to
       ## its allocating thread!
       ## Use `resizeShared` to reallocate from a shared heap.
