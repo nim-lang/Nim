@@ -31,9 +31,9 @@ implements the required case distinction.
 
 import
   ast, astalgo, strutils, hashes, trees, platform, magicsys, extccomp, options,
-  nversion, nimsets, msgs, std / sha1, bitsets, idents, types, os,
+  nversion, nimsets, msgs, std / sha1, bitsets, idents, types, os, tables,
   times, ropes, math, passes, ccgutils, wordrecg, renderer, rodread, rodutils,
-  intsets, cgmeth, lowerings
+  intsets, cgmeth, lowerings, sighashes
 
 from modulegraphs import ModuleGraph
 
@@ -43,6 +43,7 @@ type
   TJSGen = object of TPassContext
     module: PSym
     target: TTarget
+    sigConflicts: CountTable[SigHash]
 
   BModule = ref TJSGen
   TJSTypeKind = enum       # necessary JS "types"
@@ -210,7 +211,7 @@ proc mapType(p: PProc; typ: PType): TJSTypeKind =
   if p.target == targetPHP: result = etyObject
   else: result = mapType(typ)
 
-proc mangleName(s: PSym; target: TTarget): Rope =
+proc mangleName(m: BModule, s: PSym): Rope =
   proc validJsName(name: string): bool =
     result = true
     const reservedWords = ["abstract", "await", "boolean", "break", "byte",
@@ -235,7 +236,7 @@ proc mangleName(s: PSym; target: TTarget): Rope =
   if result == nil:
     if s.kind == skField and s.name.s.validJsName:
       result = rope(s.name.s)
-    elif target == targetJS or s.kind == skTemp:
+    elif m.target == targetJS or s.kind == skTemp:
       result = rope(mangle(s.name.s))
     else:
       var x = newStringOfCap(s.name.s.len)
@@ -254,8 +255,13 @@ proc mangleName(s: PSym; target: TTarget): Rope =
         inc i
       result = rope(x)
     if s.name.s != "this" and s.kind != skField:
-      add(result, "_")
-      add(result, rope(s.id))
+      if optHotReloading in gOptions:
+        # When hot reloading is enabled, we must ensure that the names
+        # of functions and types will be preserved across rebuilds:
+        add(result, idOrSig(s, m.module.name.s, m.sigConflicts))
+      else:
+        add(result, "_")
+        add(result, rope(s.id))
     s.loc.r = result
 
 proc escapeJSString(s: string): string =
@@ -821,7 +827,7 @@ proc genAsmOrEmitStmt(p: PProc, n: PNode) =
       # for backwards compatibility we don't deref syms here :-(
       if v.kind in {skVar, skLet, skTemp, skConst, skResult, skParam, skForVar}:
         if p.target == targetPHP: p.body.add "$"
-        p.body.add mangleName(v, p.target)
+        p.body.add mangleName(p.module, v)
       else:
         var r: TCompRes
         gen(p, it, r)
@@ -862,7 +868,7 @@ proc generateHeader(p: PProc, typ: PType): Rope =
     var param = typ.n.sons[i].sym
     if isCompileTimeOnly(param.typ): continue
     if result != nil: add(result, ", ")
-    var name = mangleName(param, p.target)
+    var name = mangleName(p.module, param)
     if p.target == targetJS:
       add(result, name)
       if mapType(param.typ) == etyBaseIndex:
@@ -1012,7 +1018,7 @@ proc genFieldAddr(p: PProc, n: PNode, r: var TCompRes) =
   else:
     if b.sons[1].kind != nkSym: internalError(b.sons[1].info, "genFieldAddr")
     var f = b.sons[1].sym
-    if f.loc.r == nil: f.loc.r = mangleName(f, p.target)
+    if f.loc.r == nil: f.loc.r = mangleName(p.module, f)
     r.res = makeJSString($f.loc.r)
   internalAssert a.typ != etyBaseIndex
   r.address = a.res
@@ -1028,7 +1034,7 @@ proc genFieldAccess(p: PProc, n: PNode, r: var TCompRes) =
   else:
     if n.sons[1].kind != nkSym: internalError(n.sons[1].info, "genFieldAccess")
     var f = n.sons[1].sym
-    if f.loc.r == nil: f.loc.r = mangleName(f, p.target)
+    if f.loc.r == nil: f.loc.r = mangleName(p.module, f)
     if p.target == targetJS:
       r.res = "$1.$2" % [r.res, f.loc.r]
     else:
@@ -1240,7 +1246,7 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
       r.res = "$" & s.loc.r
       p.declareGlobal(s.id, r.res)
   of skProc, skFunc, skConverter, skMethod:
-    discard mangleName(s, p.target)
+    discard mangleName(p.module, s)
     if p.target == targetPHP and r.kind != resCallee:
       r.res = makeJsString($s.loc.r)
     else:
@@ -1396,7 +1402,7 @@ proc genPatternCall(p: PProc; n: PNode; pat: string; typ: PType;
 proc genInfixCall(p: PProc, n: PNode, r: var TCompRes) =
   # don't call '$' here for efficiency:
   let f = n[0].sym
-  if f.loc.r == nil: f.loc.r = mangleName(f, p.target)
+  if f.loc.r == nil: f.loc.r = mangleName(p.module, f)
   if sfInfixCall in f.flags:
     let pat = n.sons[0].sym.loc.r.data
     internalAssert pat != nil
@@ -1467,9 +1473,9 @@ proc createRecordVarAux(p: PProc, rec: PNode, excludedFieldIDs: IntSet, output: 
     if rec.sym.id notin excludedFieldIDs:
       if output.len > 0: output.add(", ")
       if p.target == targetJS:
-        output.addf("$#: ", [mangleName(rec.sym, p.target)])
+        output.addf("$#: ", [mangleName(p.module, rec.sym)])
       else:
-        output.addf("'$#' => ", [mangleName(rec.sym, p.target)])
+        output.addf("'$#' => ", [mangleName(p.module, rec.sym)])
       output.add(createVar(p, rec.sym.typ, false))
   else: internalError(rec.info, "createRecordVarAux")
 
@@ -1575,18 +1581,25 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     a: TCompRes
     s: Rope
     varCode: string
+    varName = mangleName(p.module, v)
+    useReloadingGuard = sfGlobal in v.flags and optHotReloading in gOptions
+
   if v.constraint.isNil:
-    varCode = "var $2"
+    if useReloadingGuard:
+      lineF(p, "var $1;$n", varName)
+      lineF(p, "if ($1 === undefined) {$n", varName)
+      varCode = $varName
+    else:
+      varCode = "var $2"
   else:
     varCode = v.constraint.strVal
+
   if n.kind == nkEmpty:
-    let mname = mangleName(v, p.target)
     lineF(p, varCode & " = $3;$n" | "$$$2 = $3;$n",
-               [returnType, mname, createVar(p, v.typ, isIndirect(v))])
+               [returnType, varName, createVar(p, v.typ, isIndirect(v))])
     if v.typ.kind in {tyVar, tyPtr, tyLent, tyRef} and mapType(p, v.typ) == etyBaseIndex:
-      lineF(p, "var $1_Idx = 0;$n", [ mname ])
+      lineF(p, "var $1_Idx = 0;$n", [varName])
   else:
-    discard mangleName(v, p.target)
     gen(p, n, a)
     case mapType(p, v.typ)
     of etyObject, etySeq:
@@ -1618,6 +1631,9 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
       lineF(p, varCode & " = [$3];$n", [returnType, v.loc.r, s])
     else:
       lineF(p, varCode & " = $3;$n" | "$$$2 = $3;$n", [returnType, v.loc.r, s])
+
+  if useReloadingGuard:
+    lineF(p, "}$n")
 
 proc genVarStmt(p: PProc, n: PNode) =
   for i in countup(0, sonsLen(n) - 1):
@@ -2031,7 +2047,7 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
     let val = it.sons[1]
     gen(p, val, a)
     var f = it.sons[0].sym
-    if f.loc.r == nil: f.loc.r = mangleName(f, p.target)
+    if f.loc.r == nil: f.loc.r = mangleName(p.module, f)
     fieldIDs.incl(f.id)
 
     let typ = val.typ.skipTypes(abstractInst)
@@ -2158,11 +2174,11 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
   p.up = oldProc
   var returnStmt: Rope = nil
   var resultAsgn: Rope = nil
-  let name = mangleName(prc, p.target)
+  var name = mangleName(p.module, prc)
   let header = generateHeader(p, prc.typ)
   if prc.typ.sons[0] != nil and sfPure notin prc.flags:
     resultSym = prc.ast.sons[resultPos].sym
-    let mname = mangleName(resultSym, p.target)
+    let mname = mangleName(p.module, resultSym)
     let resVar = createVar(p, resultSym.typ, isIndirect(resultSym))
     resultAsgn = p.indentLine(("var $# = $#;$n" | "$$$# = $#;$n") % [mname, resVar])
     if resultSym.typ.kind in {tyVar, tyPtr, tyLent, tyRef} and
@@ -2188,6 +2204,18 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
               optionaLine(genProcBody(p, prc)),
               optionaLine(p.indentLine(returnStmt))]
   else:
+    result = ~tnl
+
+    if optHotReloading in gOptions:
+      # Here, we introduce thunks that create the equivalent of a jump table
+      # for all global functions, because references to them may be stored
+      # in JavaScript variables. The added indirection ensures that such
+      # references will end up calling the reloaded code.
+      var thunkName = name
+      name = name & "IMLP"
+      result.add("function $#() { return $#.apply(this, arguments); }$n" %
+                 [thunkName, name])
+
     def = "function $#($#) {$n$#$#$#$#$#" %
             [ name,
               header,
@@ -2198,7 +2226,6 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
               optionaLine(p.indentLine(returnStmt))]
 
   dec p.extraIndent
-  result = ~tnl
   result.add p.indentLine(def)
   result.add p.indentLine(~"}$n")
 
@@ -2332,7 +2359,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkEmpty: discard
   of nkLambdaKinds:
     let s = n.sons[namePos].sym
-    discard mangleName(s, p.target)
+    discard mangleName(p.module, s)
     r.res = s.loc.r
     if lfNoDecl in s.loc.flags or s.magic != mNone: discard
     elif not p.g.generatedSyms.containsOrIncl(s.id):
@@ -2389,6 +2416,7 @@ var globals: PGlobals
 proc newModule(module: PSym): BModule =
   new(result)
   result.module = module
+  result.sigConflicts = initCountTable[SigHash]()
   if globals == nil:
     globals = newGlobals()
 
