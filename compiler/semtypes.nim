@@ -257,7 +257,8 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
       if e.sym.ast != nil:
         return semArrayIndex(c, e.sym.ast)
       if not isOrdinalType(e.typ.lastSon):
-        localError(n[1].info, errOrdinalTypeExpected)
+        let info = if n.safeLen > 1: n[1].info else: n.info
+        localError(info, errOrdinalTypeExpected)
       result = makeRangeWithStaticExpr(c, e)
       if c.inGenericContext > 0: result.flags.incl tfUnresolved
     elif e.kind in nkCallKinds and hasGenericArguments(e):
