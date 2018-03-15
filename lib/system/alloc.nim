@@ -29,7 +29,8 @@ const
   FliOffset = 6
   RealFli = MaxFli - FliOffset
 
-  HugeChunkSize = int high(int32) - 1 # 2 GB, depends on TLSF's impl
+  MaxBigChunkSize = 1 shl MaxFli - 1 shl RealFli # avoid Fli overflow
+  HugeChunkSize = MaxBigChunkSize + 1
 
 type
   PTrunk = ptr Trunk
@@ -154,10 +155,11 @@ proc mappingSearch(r, fl, sl: var int) {.inline.} =
   # PageSize alignment:
   let t = roundup((1 shl (msbit(uint32 r) - MaxLog2Sli)), PageSize) - 1
   r = r + t
+  r = r and not t
+  r = min(r, MaxBigChunkSize)
   fl = msbit(uint32 r)
   sl = (r shr (fl - MaxLog2Sli)) - MaxSli
   dec fl, FliOffset
-  r = r and not t
   sysAssert((r and PageMask) == 0, "mappingSearch: still not aligned")
 
 # See http://www.gii.upv.es/tlsf/files/papers/tlsf_desc.pdf for details of
@@ -527,7 +529,7 @@ proc freeBigChunk(a: var MemRegion, c: PBigChunk) =
     sysAssert((cast[ByteAddress](ri) and PageMask) == 0, "freeBigChunk 2")
     if isAccessible(a, ri) and chunkUnused(ri):
       sysAssert(not isSmallChunk(ri), "freeBigChunk 3")
-      if not isSmallChunk(ri):
+      if not isSmallChunk(ri) and c.size + ri.size <= MaxBigChunkSize:
         removeChunkFromMatrix(a, cast[PBigChunk](ri))
         inc(c.size, ri.size)
         excl(a.chunkStarts, pageIndex(ri))
@@ -538,7 +540,7 @@ proc freeBigChunk(a: var MemRegion, c: PBigChunk) =
       sysAssert((cast[ByteAddress](le) and PageMask) == 0, "freeBigChunk 4")
       if isAccessible(a, le) and chunkUnused(le):
         sysAssert(not isSmallChunk(le), "freeBigChunk 5")
-        if not isSmallChunk(le):
+        if not isSmallChunk(le) and c.size + le.size <= MaxBigChunkSize:
           removeChunkFromMatrix(a, cast[PBigChunk](le))
           inc(le.size, c.size)
           excl(a.chunkStarts, pageIndex(c))
