@@ -481,6 +481,10 @@ type
     sin6_flowinfo*: int32 # unsigned
     sin6_addr*: In6_addr
 
+  Sockaddr_storage* {.importc: "SOCKADDR_STORAGE",
+                      header: "winsock2.h".} = object
+    ss_family*: int16
+
   Servent* = object
     s_name*: cstring
     s_aliases*: cstringArray

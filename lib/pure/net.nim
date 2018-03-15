@@ -414,7 +414,7 @@ proc isIpAddress*(address_str: string): bool {.tags: [].} =
     return false
   return true
 
-proc toSockAddr*(address: IpAddress, port: Port, sa: var SockAddr, sl: var Socklen) =
+proc toSockAddr*(address: IpAddress, port: Port, sa: var Sockaddr_storage, sl: var Socklen) =
   ## Converts `IpAddress` and `Port` to `SockAddr` and `Socklen`
   let port = htons(uint16(port))
   case address.family
@@ -431,18 +431,18 @@ proc toSockAddr*(address: IpAddress, port: Port, sa: var SockAddr, sl: var Sockl
     s.sin6_port = port
     copyMem(addr s.sin6_addr, unsafeAddr address.address_v6[0], sizeof(s.sin6_addr))
 
-proc fromSockAddr*(sa: SockAddr, sl: Socklen, address: var IpAddress, port: var Port) =
+proc fromSockAddr*(sa: Sockaddr_storage, sl: Socklen, address: var IpAddress, port: var Port) =
   ## Converts `SockAddr` and `Socklen` to `IpAddress` and `Port`. Raises
   ## `ObjectConversionError` in case of invalid `sa` and `sl` arguments.
-  if sa.sa_family.int == AF_INET.int and sl == sizeof(Sockaddr_in).Socklen:
+  if sa.ss_family.int == AF_INET.int and sl == sizeof(Sockaddr_in).Socklen:
     address = IpAddress(family: IpAddressFamily.IPv4)
     let s = cast[ptr Sockaddr_in](unsafeAddr sa)
-    copyMem(addr address.address_v4, addr s.sin_addr, sizeof(address.address_v4))
+    copyMem(addr address.address_v4[0], addr s.sin_addr, sizeof(address.address_v4))
     port = ntohs(s.sin_port).Port
-  elif sa.sa_family.int == AF_INET6.int and sl == sizeof(Sockaddr_in6).Socklen:
+  elif sa.ss_family.int == AF_INET6.int and sl == sizeof(Sockaddr_in6).Socklen:
     address = IpAddress(family: IpAddressFamily.IPv6)
     let s = cast[ptr Sockaddr_in6](unsafeAddr sa)
-    copyMem(addr address.address_v6, addr s.sin6_addr, sizeof(address.address_v6))
+    copyMem(addr address.address_v6[0], addr s.sin6_addr, sizeof(address.address_v6))
     port = ntohs(s.sin6_port).Port
   else:
     raise newException(ObjectConversionError, "Unexpected SockAddr/Socklen")
