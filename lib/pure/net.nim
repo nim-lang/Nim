@@ -431,21 +431,25 @@ proc toSockAddr*(address: IpAddress, port: Port, sa: var Sockaddr_storage, sl: v
     s.sin6_port = port
     copyMem(addr s.sin6_addr, unsafeAddr address.address_v6[0], sizeof(s.sin6_addr))
 
-proc fromSockAddr*(sa: Sockaddr_storage, sl: Socklen, address: var IpAddress, port: var Port) =
-  ## Converts `SockAddr` and `Socklen` to `IpAddress` and `Port`. Raises
-  ## `ObjectConversionError` in case of invalid `sa` and `sl` arguments.
+proc fromSockAddrAux(sa: ptr Sockaddr_storage, sl: Socklen, address: var IpAddress, port: var Port) =
   if sa.ss_family.int == AF_INET.int and sl == sizeof(Sockaddr_in).Socklen:
     address = IpAddress(family: IpAddressFamily.IPv4)
-    let s = cast[ptr Sockaddr_in](unsafeAddr sa)
+    let s = cast[ptr Sockaddr_in](sa)
     copyMem(addr address.address_v4[0], addr s.sin_addr, sizeof(address.address_v4))
     port = ntohs(s.sin_port).Port
   elif sa.ss_family.int == AF_INET6.int and sl == sizeof(Sockaddr_in6).Socklen:
     address = IpAddress(family: IpAddressFamily.IPv6)
-    let s = cast[ptr Sockaddr_in6](unsafeAddr sa)
+    let s = cast[ptr Sockaddr_in6](sa)
     copyMem(addr address.address_v6[0], addr s.sin6_addr, sizeof(address.address_v6))
     port = ntohs(s.sin6_port).Port
   else:
     raise newException(ObjectConversionError, "Unexpected SockAddr/Socklen")
+
+proc fromSockAddr*(sa: Sockaddr_storage | SockAddr | Sockaddr_in | Sockaddr_in6,
+    sl: Socklen, address: var IpAddress, port: var Port) {.inline.} =
+  ## Converts `SockAddr` and `Socklen` to `IpAddress` and `Port`. Raises
+  ## `ObjectConversionError` in case of invalid `sa` and `sl` arguments.
+  fromSockAddrAux(unsafeAddr sa, sl, address, port)
 
 when defineSsl:
   CRYPTO_malloc_init()
