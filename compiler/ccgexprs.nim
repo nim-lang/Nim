@@ -1910,7 +1910,8 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
     if getSize(e.typ) > 8:
       # big set:
       useStringh(p.module)
-      lineF(p, cpsStmts, "memset($1, 0, sizeof($1));$n", [rdLoc(d)])
+      lineF(p, cpsStmts, "memset($1, 0, sizeof($2));$n",
+          [rdLoc(d), getTypeDesc(p.module, e.typ)])
       for i in countup(0, sonsLen(e) - 1):
         if e.sons[i].kind == nkRange:
           getTemp(p, getSysType(tyInt), idx) # our counter
