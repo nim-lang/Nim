@@ -317,13 +317,10 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       genObjectInit(p, cpsStmts, loc.t, loc, true)
     else:
       useStringh(p.module)
-
       # array passed as argument decayed into pointer, bug #7332
-      let locName = if skipTypes(loc.t, abstractInst).kind == tyArray and loc.k == locParam:
-        getTypeDesc(p.module, loc.t) else: rdLoc(loc)
-
+      # so we use getTypeDesc here rather than rdLoc(loc)
       linefmt(p, cpsStmts, "memset((void*)$1, 0, sizeof($2));$n",
-              addrLoc(loc), locName)
+              addrLoc(loc), getTypeDesc(p.module, loc.t))
       # XXX: We can be extra clever here and call memset only
       # on the bytes following the m_type field?
       genObjectInit(p, cpsStmts, loc.t, loc, true)
