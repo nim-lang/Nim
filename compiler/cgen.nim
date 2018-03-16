@@ -337,7 +337,7 @@ proc constructLoc(p: BProc, loc: TLoc, isTemp = false) =
       if not isImportedCppType(typ):
         useStringh(p.module)
         linefmt(p, cpsStmts, "memset((void*)$1, 0, sizeof($2));$n",
-                addrLoc(loc), rdLoc(loc))
+                addrLoc(loc), getTypeDesc(p.module, typ))
     genObjectInit(p, cpsStmts, loc.t, loc, true)
 
 proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
