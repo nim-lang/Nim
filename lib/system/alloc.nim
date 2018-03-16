@@ -520,55 +520,61 @@ proc updatePrevSize(a: var MemRegion, c: PBigChunk,
   if isAccessible(a, ri):
     ri.prevSize = prevSize or (ri.prevSize and 1)
 
+proc splitChunk2(a: var MemRegion, c: PBigChunk, size: int): PBigChunk =
+  result = cast[PBigChunk](cast[ByteAddress](c) +% size)
+  result.size = c.size - size
+  track("result.origSize", addr result.origSize, sizeof(int))
+  # XXX check if these two nil assignments are dead code given
+  # addChunkToMatrix's implementation:
+  result.next = nil
+  result.prev = nil
+  # size and not used:
+  result.prevSize = size
+  sysAssert((size and 1) == 0, "splitChunk 2")
+  sysAssert((size and PageMask) == 0,
+      "splitChunk: size is not a multiple of the PageSize")
+  updatePrevSize(a, c, result.size)
+  c.size = size
+  incl(a, a.chunkStarts, pageIndex(result))
+
+proc splitChunk(a: var MemRegion, c: PBigChunk, size: int) =
+  let rest = splitChunk2(a, c, size)
+  addChunkToMatrix(a, rest)
+
 proc freeBigChunk(a: var MemRegion, c: PBigChunk) =
   var c = c
   sysAssert(c.size >= PageSize, "freeBigChunk")
   inc(a.freeMem, c.size)
-  when coalescRight:
-    var ri = cast[PChunk](cast[ByteAddress](c) +% c.size)
-    sysAssert((cast[ByteAddress](ri) and PageMask) == 0, "freeBigChunk 2")
-    if isAccessible(a, ri) and chunkUnused(ri):
-      sysAssert(not isSmallChunk(ri), "freeBigChunk 3")
-      if not isSmallChunk(ri) and c.size + ri.size <= MaxBigChunkSize:
-        removeChunkFromMatrix(a, cast[PBigChunk](ri))
-        inc(c.size, ri.size)
-        excl(a.chunkStarts, pageIndex(ri))
+  c.prevSize = c.prevSize and not 1  # set 'used' to false
   when coalescLeft:
-    let prevSize = c.prevSize and not 1
+    let prevSize = c.prevSize
     if prevSize != 0:
       var le = cast[PChunk](cast[ByteAddress](c) -% prevSize)
       sysAssert((cast[ByteAddress](le) and PageMask) == 0, "freeBigChunk 4")
       if isAccessible(a, le) and chunkUnused(le):
         sysAssert(not isSmallChunk(le), "freeBigChunk 5")
-        if not isSmallChunk(le) and c.size + le.size <= MaxBigChunkSize:
+        if not isSmallChunk(le) and le.size < MaxBigChunkSize:
           removeChunkFromMatrix(a, cast[PBigChunk](le))
           inc(le.size, c.size)
           excl(a.chunkStarts, pageIndex(c))
           c = cast[PBigChunk](le)
-
-  incl(a, a.chunkStarts, pageIndex(c))
-  updatePrevSize(a, c, c.size)
+          if c.size > MaxBigChunkSize:
+            let rest = splitChunk2(a, c, MaxBigChunkSize)
+            addChunkToMatrix(a, c)
+            c = rest
+  when coalescRight:
+    var ri = cast[PChunk](cast[ByteAddress](c) +% c.size)
+    sysAssert((cast[ByteAddress](ri) and PageMask) == 0, "freeBigChunk 2")
+    if isAccessible(a, ri) and chunkUnused(ri):
+      sysAssert(not isSmallChunk(ri), "freeBigChunk 3")
+      if not isSmallChunk(ri) and c.size < MaxBigChunkSize:
+        removeChunkFromMatrix(a, cast[PBigChunk](ri))
+        inc(c.size, ri.size)
+        excl(a.chunkStarts, pageIndex(ri))
+        if c.size > MaxBigChunkSize:
+          let rest = splitChunk2(a, c, MaxBigChunkSize)
+          addChunkToMatrix(a, rest)
   addChunkToMatrix(a, c)
-  # set 'used' to false:
-  c.prevSize = c.prevSize and not 1
-
-proc splitChunk(a: var MemRegion, c: PBigChunk, size: int) =
-  var rest = cast[PBigChunk](cast[ByteAddress](c) +% size)
-  rest.size = c.size - size
-  track("rest.origSize", addr rest.origSize, sizeof(int))
-  # XXX check if these two nil assignments are dead code given
-  # addChunkToMatrix's implementation:
-  rest.next = nil
-  rest.prev = nil
-  # size and not used:
-  rest.prevSize = size
-  sysAssert((size and 1) == 0, "splitChunk 2")
-  sysAssert((size and PageMask) == 0,
-      "splitChunk: size is not a multiple of the PageSize")
-  updatePrevSize(a, c, rest.size)
-  c.size = size
-  incl(a, a.chunkStarts, pageIndex(rest))
-  addChunkToMatrix(a, rest)
 
 proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
   sysAssert(size > 0, "getBigChunk 2")
