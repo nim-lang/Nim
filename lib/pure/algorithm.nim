@@ -84,7 +84,7 @@ proc smartBinarySearch*[T](a: openArray[T], key: T): int =
 const
   onlySafeCode = true
 
-proc lowerBound*[T](a: openArray[T], key: T, cmp: proc(x,y: T): int {.closure.}): int =
+proc lowerBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.closure.}): int =
   ## same as binarySearch except that if key is not in `a` then this
   ## returns the location where `key` would be if it were. In other
   ## words if you have a sorted sequence and you call
