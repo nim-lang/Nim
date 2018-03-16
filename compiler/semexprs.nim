@@ -1825,8 +1825,7 @@ proc processQuotations(c: PContext; n: var PNode, op: string,
     returnQuote n[0]
   elif n.kind == nkIdent:
     if n.ident.s == "result":
-      # TODO: Create a non-colliding symbol
-      n = newIdentNode(getIdent("res"), n.info)
+      n = ids[0]
 
   for i in 0 ..< n.safeLen:
     processQuotations(c, n.sons[i], op, quotes, ids)
@@ -1848,9 +1847,8 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
   if quotedBlock.kind != nkStmtList:
     localError(c.config, n.info, errXExpected, "block")
 
-  # TODO: Create a non-colliding symbol
   # This adds a default first field to pass the result symbol
-  ids[0] = newIdentNode(getIdent("res"), n.info)
+  ids[0] = newAnonSym(c, skParam, n.info).newSymNode
   processQuotations(c, quotedBlock, op, quotes, ids)
 
   var dummyTemplate = newProcNode(
