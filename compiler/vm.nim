@@ -1490,7 +1490,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           c.debug[pc])
       x.flags.incl nfIsRef
       # prevent crashes in the compiler resulting from wrong macros:
-      if x.kind == nkIdent: x.ident = getIdent""
+      if x.kind == nkIdent: x.ident = c.cache.emptyIdent
       regs[ra].node = x
     of opcNCopyNimNode:
       decodeB(rkNode)
