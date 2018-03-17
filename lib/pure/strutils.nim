@@ -998,7 +998,11 @@ proc parseSaturatedNatural*(s: string, limit = high(int)): int =
   ## .. code-block:: nim
   ##   doAssert parseSaturatedNatural("848") == 848
   ##   doAssert parseSaturatedNatural("848", 255) == 255
-  discard parseSaturatedNatural(s, result, limit, 0)
+  ##
+  ## If `s` is not a valid integer, `ValueError` is raised.
+  let L = parseSaturatedNatural(s, result, limit, 0)
+  if L != s.len or L == 0:
+    raise newException(ValueError, "invalid integer: " & s)
 
 proc parseUInt*(s: string): uint {.noSideEffect, procvar,
   rtl, extern: "nsuParseUInt".} =
