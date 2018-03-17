@@ -269,27 +269,30 @@ proc parseInt*(s: string, number: var int, start = 0): int {.
   elif result != 0:
     number = int(res)
 
-proc parseSaturatedNatural*(s: string, b: var int, start = 0): int =
-  ## parses a natural number into ``b``. This cannot raise an overflow
-  ## error. Instead of an ``Overflow`` exception ``high(int)`` is returned.
+proc parseSaturatedNatural*(s: string, b: var int, limit = high(int), start = 0): int =
+  ## Parses a natural number into ``b``. This cannot raise an overflow
+  ## error. Instead of an ``Overflow`` exception, ``limit`` is returned.
   ## The number of processed character is returned.
   ## This is usually what you really want to use instead of `parseInt`:idx:.
   ## Example:
   ##
   ## .. code-block:: nim
-  ##   var res = 0
-  ##   discard parseSaturatedNatural("848", res)
-  ##   doAssert res == 848
+  ##   var res1 = 0
+  ##   discard parseSaturatedNatural("848", res1)
+  ##   doAssert res1 == 848
+  ##   var res2 = 0
+  ##   discard parseSaturatedNatural("848", res2, 255)
+  ##   doAssert res2 == 255
   var i = start
   if s[i] == '+': inc(i)
   if s[i] in {'0'..'9'}:
     b = 0
     while s[i] in {'0'..'9'}:
       let c = ord(s[i]) - ord('0')
-      if b <= (high(int) - c) div 10:
+      if b <= (limit - c) div 10:
         b = b * 10 + c
       else:
-        b = high(int)
+        b = limit
       inc(i)
       while s[i] == '_': inc(i) # underscores are allowed and ignored
     result = i - start
