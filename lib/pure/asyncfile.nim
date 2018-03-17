@@ -81,6 +81,7 @@ proc getFileSize*(f: AsyncFile): int64 =
     let curPos = lseek(f.fd.cint, 0, SEEK_CUR)
     result = lseek(f.fd.cint, 0, SEEK_END)
     f.offset = lseek(f.fd.cint, curPos, SEEK_SET)
+    assert(f.offset == curPos)
 
 proc newAsyncFile*(fd: AsyncFd): AsyncFile =
   ## Creates `AsyncFile` with a previously opened file descriptor `fd`.
