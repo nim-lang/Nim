@@ -133,6 +133,11 @@ proc effectProblem(f, a: PType; result: var string) =
       result.add "\n  This expression can have side effects. Annotate the " &
           "proc with {.noSideEffect.} to get extended error information."
 
+proc renderNotLValue(n: PNode): string =
+  result = $n
+  if n.kind in {nkHiddenStdConv, nkHiddenSubConv, nkHiddenCallConv} and n.len == 2:
+    result = typeToString(n.typ.skipTypes(abstractVar)) & "(" & result & ")"
+
 proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
                             (TPreferedDesc, string) =
   var prefer = preferName
@@ -164,27 +169,31 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
     else:
       add(candidates, err.sym.getProcHeader(prefer))
     add(candidates, "\n")
-    if err.firstMismatch != 0 and n.len > 2:
-      add(candidates, "  first type mismatch at position: " & $err.firstMismatch &
-        "\n  required type: ")
+    if err.firstMismatch != 0 and n.len > 1:
+      let cond = n.len > 2
+      if cond:
+        candidates.add("  first type mismatch at position: " & $err.firstMismatch &
+          "\n  required type: ")
       var wanted, got: PType = nil
       if err.firstMismatch < err.sym.typ.len:
         wanted = err.sym.typ.sons[err.firstMismatch]
-        candidates.add typeToString(wanted)
+        if cond: candidates.add typeToString(wanted)
       else:
-        candidates.add "none"
+        if cond: candidates.add "none"
       if err.firstMismatch < n.len:
-        candidates.add "\n  but expression '"
-        candidates.add renderTree(n[err.firstMismatch])
-        candidates.add "' is of type: "
+        if cond:
+          candidates.add "\n  but expression '"
+          candidates.add renderTree(n[err.firstMismatch])
+          candidates.add "' is of type: "
         got = n[err.firstMismatch].typ
-        candidates.add typeToString(got)
+        if cond: candidates.add typeToString(got)
       if wanted != nil and got != nil:
         effectProblem(wanted, got, candidates)
-      candidates.add "\n"
+      if cond: candidates.add "\n"
     elif err.unmatchedVarParam != 0 and err.unmatchedVarParam < n.len:
       add(candidates, "for a 'var' type a variable needs to be passed, but '" &
-                      renderTree(n[err.unmatchedVarParam]) & "' is immutable\n")
+                      renderNotLValue(n[err.unmatchedVarParam]) &
+                      "' is immutable\n")
     for diag in err.diagnostics:
       add(candidates, diag & "\n")
 

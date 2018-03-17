@@ -50,22 +50,21 @@ when defined(windows) or defined(nimdoc):
     case mode
     of fmRead, fmReadWriteExisting:
       OPEN_EXISTING
-    of fmAppend, fmReadWrite, fmWrite:
-      if fileExists(filename):
-        OPEN_EXISTING
-      else:
-        CREATE_NEW
+    of fmReadWrite, fmWrite:
+      CREATE_ALWAYS
+    of fmAppend:
+      OPEN_ALWAYS
 else:
   proc getPosixFlags(mode: FileMode): cint =
     case mode
     of fmRead:
       result = O_RDONLY
     of fmWrite:
-      result = O_WRONLY or O_CREAT
+      result = O_WRONLY or O_CREAT or O_TRUNC
     of fmAppend:
       result = O_WRONLY or O_CREAT or O_APPEND
     of fmReadWrite:
-      result = O_RDWR or O_CREAT
+      result = O_RDWR or O_CREAT or O_TRUNC
     of fmReadWriteExisting:
       result = O_RDWR
     result = result or O_NONBLOCK
@@ -79,7 +78,10 @@ proc getFileSize*(f: AsyncFile): int64 =
       raiseOSError(osLastError())
     result = (high shl 32) or low
   else:
+    let curPos = lseek(f.fd.cint, 0, SEEK_CUR)
     result = lseek(f.fd.cint, 0, SEEK_END)
+    f.offset = lseek(f.fd.cint, curPos, SEEK_SET)
+    assert(f.offset == curPos)
 
 proc newAsyncFile*(fd: AsyncFd): AsyncFile =
   ## Creates `AsyncFile` with a previously opened file descriptor `fd`.
@@ -282,6 +284,7 @@ proc read*(f: AsyncFile, size: int): Future[string] =
           result = false # We still want this callback to be called.
       elif res == 0:
         # EOF
+        f.offset = lseek(fd.cint, 0, SEEK_CUR)
         retFuture.complete("")
       else:
         readBuffer.setLen(res)

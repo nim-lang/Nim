@@ -15,6 +15,10 @@ proc main =
       quit "could not serve request!"
     dealloc p
  #   c_fprintf(stdout, "iteration: %ld size: %ld\n", i, size)
+  when defined(cpu64):
+    # bug #7120
+    var x = alloc(((1 shl 29) - 4) * 8)
+    dealloc x
 
 main()
 

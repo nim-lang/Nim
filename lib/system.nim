@@ -1462,9 +1462,9 @@ when defined(nodejs):
   programResult = 0
 else:
   var programResult* {.exportc: "nim_program_result".}: int
-  ## modify this variable to specify the exit code of the program
-  ## under normal circumstances. When the program is terminated
-  ## prematurely using ``quit``, this value is ignored.
+    ## modify this variable to specify the exit code of the program
+    ## under normal circumstances. When the program is terminated
+    ## prematurely using ``quit``, this value is ignored.
 
 when defined(nimdoc):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
@@ -1775,7 +1775,7 @@ when not defined(nimscript):
     proc createU*(T: typedesc, size = 1.Positive): ptr T {.inline, benign.} =
       ## allocates a new memory block with at least ``T.sizeof * size``
       ## bytes. The block has to be freed with ``resize(block, 0)`` or
-      ## ``free(block)``. The block is not initialized, so reading
+      ## ``dealloc(block)``. The block is not initialized, so reading
       ## from it before writing to it is undefined behaviour!
       ## The allocated memory belongs to its allocating thread!
       ## Use `createSharedU` to allocate from a shared heap.
@@ -1790,7 +1790,7 @@ when not defined(nimscript):
     proc create*(T: typedesc, size = 1.Positive): ptr T {.inline, benign.} =
       ## allocates a new memory block with at least ``T.sizeof * size``
       ## bytes. The block has to be freed with ``resize(block, 0)`` or
-      ## ``free(block)``. The block is initialized with all bytes
+      ## ``dealloc(block)``. The block is initialized with all bytes
       ## containing zero, so it is somewhat safer than ``createU``.
       ## The allocated memory belongs to its allocating thread!
       ## Use `createShared` to allocate from a shared heap.
@@ -1808,7 +1808,7 @@ when not defined(nimscript):
       ## grows or shrinks a given memory block. If p is **nil** then a new
       ## memory block is returned. In either way the block has at least
       ## ``T.sizeof * newSize`` bytes. If ``newSize == 0`` and p is not
-      ## **nil** ``resize`` calls ``free(p)``. In other cases the block
+      ## **nil** ``resize`` calls ``dealloc(p)``. In other cases the block
       ## has to be freed with ``free``. The allocated memory belongs to
       ## its allocating thread!
       ## Use `resizeShared` to reallocate from a shared heap.
@@ -1918,7 +1918,7 @@ proc `$` *(x: float): string {.magic: "FloatToStr", noSideEffect.}
 proc `$` *(x: bool): string {.magic: "BoolToStr", noSideEffect.}
   ## The stringify operator for a boolean argument. Returns `x`
   ## converted to the string "false" or "true".
-#
+
 proc `$` *(x: char): string {.magic: "CharToStr", noSideEffect.}
   ## The stringify operator for a character argument. Returns `x`
   ## converted to a string.
@@ -1959,10 +1959,10 @@ const
   NimMajor* {.intdefine.}: int = 0
     ## is the major number of Nim's version.
 
-  NimMinor* {.intdefine.}: int = 17
+  NimMinor* {.intdefine.}: int = 18
     ## is the minor number of Nim's version.
 
-  NimPatch* {.intdefine.}: int = 3
+  NimPatch* {.intdefine.}: int = 1
     ## is the patch number of Nim's version.
 
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
@@ -3429,10 +3429,10 @@ elif defined(JS):
   when defined(nimffi):
     include "system/sysio"
 
-
-proc `$`*[T, IDX](x: array[IDX, T]): string =
-  ## generic ``$`` operator for arrays that is lifted from the components
-  collectionToString(x, "[", ", ", "]")
+when not defined(nimNoArrayToString):
+  proc `$`*[T, IDX](x: array[IDX, T]): string =
+    ## generic ``$`` operator for arrays that is lifted from the components
+    collectionToString(x, "[", ", ", "]")
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noReturn.} =
   ## a shorthand for ``echo(errormsg); quit(errorcode)``.
@@ -4118,3 +4118,17 @@ template doAssertRaises*(exception, code: untyped): typed =
     raiseAssert(astToStr(exception) &
                 " wasn't raised, another error was raised instead by:\n"&
                 astToStr(code))
+
+when defined(cpp) and appType != "lib" and not defined(js) and
+    not defined(nimscript) and hostOS != "standalone":
+  proc setTerminate(handler: proc() {.noconv.})
+    {.importc: "std::set_terminate", header: "<exception>".}
+  setTerminate proc() {.noconv.} =
+    # Remove ourself as a handler, reinstalling the default handler.
+    setTerminate(nil)
+
+    let ex = getCurrentException()
+    let trace = ex.getStackTrace()
+    stderr.write trace & "Error: unhandled exception: " & ex.msg &
+                 " [" & $ex.name & "]\n"
+    quit 1

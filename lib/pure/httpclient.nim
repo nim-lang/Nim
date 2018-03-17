@@ -150,6 +150,31 @@ proc code*(response: Response | AsyncResponse): HttpCode
   ## corresponding ``HttpCode``.
   return response.status[0 .. 2].parseInt.HttpCode
 
+proc contentType*(response: Response | AsyncResponse): string =
+  ## Retrieves the specified response's content type.
+  ##
+  ## This is effectively the value of the "Content-Type" header.
+  response.headers.getOrDefault("content-type")
+
+proc contentLength*(response: Response | AsyncResponse): int =
+  ## Retrieves the specified response's content length.
+  ##
+  ## This is effectively the value of the "Content-Length" header.
+  ##
+  ## A ``ValueError`` exception will be raised if the value is not an integer.
+  var contentLengthHeader = response.headers.getOrDefault("Content-Length")
+  return contentLengthHeader.parseInt()
+
+proc lastModified*(response: Response | AsyncResponse): DateTime =
+  ## Retrieves the specified response's last modified time.
+  ##
+  ## This is effectively the value of the "Last-Modified" header.
+  ##
+  ## Raises a ``ValueError`` if the parsing fails or the value is not a correctly
+  ## formatted time.
+  var lastModifiedHeader = response.headers.getOrDefault("last-modified")
+  result = parse(lastModifiedHeader, "dd, dd MMM yyyy HH:mm:ss Z")
+
 proc body*(response: Response): string =
   ## Retrieves the specified response's body.
   ##
@@ -482,7 +507,7 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
       port = net.Port(443)
     else:
       raise newException(HttpRequestError,
-                "SSL support is not available. Cannot connect over SSL.")
+                "SSL support is not available. Cannot connect over SSL. Compile with -d:ssl to enable.")
   if r.port != "":
     port = net.Port(r.port.parseInt)
 
@@ -515,7 +540,8 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
                            "so a secure connection could not be established.")
       sslContext.wrapConnectedSocket(s, handshakeAsClient, hostUrl.hostname)
     else:
-      raise newException(HttpRequestError, "SSL support not available. Cannot connect via proxy over SSL")
+      raise newException(HttpRequestError, "SSL support not available. Cannot " &
+                         "connect via proxy over SSL. Compile with -d:ssl to enable.")
   else:
     if timeout == -1:
       s.connect(r.hostname, port)
@@ -596,7 +622,7 @@ proc get*(url: string, extraHeaders = "", maxRedirects = 5,
   ## | An optional timeout can be specified in milliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
   ##
-  ## ## **Deprecated since version 0.15.0**: use ``HttpClient.get`` instead.
+  ## **Deprecated since version 0.15.0**: use ``HttpClient.get`` instead.
   result = request(url, httpGET, extraHeaders, "", sslContext, timeout,
                    userAgent, proxy)
   var lastURL = url
@@ -1062,7 +1088,7 @@ proc newConnection(client: HttpClient | AsyncHttpClient,
 
     if isSsl and not defined(ssl):
       raise newException(HttpRequestError,
-        "SSL support is not available. Cannot connect over SSL.")
+        "SSL support is not available. Cannot connect over SSL. Compile with -d:ssl to enable.")
 
     if client.connected:
       client.close()
@@ -1112,7 +1138,7 @@ proc newConnection(client: HttpClient | AsyncHttpClient,
           client.socket, handshakeAsClient, url.hostname)
       else:
         raise newException(HttpRequestError,
-        "SSL support is not available. Cannot connect over SSL.")
+        "SSL support is not available. Cannot connect over SSL. Compile with -d:ssl to enable.")
 
     # May be connected through proxy but remember actual URL being accessed
     client.currentURL = url

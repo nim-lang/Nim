@@ -45,7 +45,6 @@ Bugs
 
 - VM: Pegs do not work at compile-time
 - blocks can "export" an identifier but the CCG generates {} for them ...
-- ConcreteTypes in a 'case' means we don't check for duplicated case branches
 
 
 GC

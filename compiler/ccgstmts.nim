@@ -243,7 +243,10 @@ proc genSingleVar(p: BProc, a: PNode) =
           if params != nil: params.add(~", ")
           assert(sonsLen(typ) == sonsLen(typ.n))
           add(params, genOtherArg(p, value, i, typ))
-        lineF(p, cpsStmts, "$#($#);$n", [decl, params])
+        if params == nil:
+          lineF(p, cpsStmts, "$#;$n", [decl])
+        else:
+          lineF(p, cpsStmts, "$#($#);$n", [decl, params])
       else:
         initLocExprSingleUse(p, value, tmp)
         lineF(p, cpsStmts, "$# = $#;$n", [decl, tmp.rdLoc])
@@ -804,7 +807,6 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
     if optStackTrace in p.options:
       linefmt(p, cpsStmts, "#setFrame((TFrame*)&FR_);$n") 
     expr(p, body, d)
-
     
   if not isEmptyType(t.typ) and d.k == locNone:
     getTemp(p, t.typ, d)

@@ -306,7 +306,7 @@ proc execProcesses*(cmds: openArray[string],
             raiseOSError(err)
 
       if rexit >= 0:
-        result = max(result, q[rexit].peekExitCode())
+        result = max(result, abs(q[rexit].peekExitCode()))
         if afterRunEvent != nil: afterRunEvent(rexit, q[rexit])
         close(q[rexit])
         if i < len(cmds):
@@ -331,7 +331,7 @@ proc execProcesses*(cmds: openArray[string],
       if beforeRunEvent != nil:
         beforeRunEvent(i)
       var p = startProcess(cmds[i], options=options + {poEvalCommand})
-      result = max(waitForExit(p), result)
+      result = max(abs(waitForExit(p)), result)
       if afterRunEvent != nil: afterRunEvent(i, p)
       close(p)
 

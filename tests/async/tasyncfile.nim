@@ -1,4 +1,8 @@
 discard """
+  output: '''13
+hello humans!
+13
+'''
   file: "tasyncfile.nim"
   exitcode: 0
 """
@@ -41,12 +45,19 @@ proc main() {.async.} =
     await file.write("test2")
     file.close()
     file = openAsync(fn, fmWrite)
-    await file.write("test3")
+    await file.write("t3")
     file.close()
     file = openAsync(fn, fmRead)
     let data = await file.readAll()
-    doAssert data == "test3"
+    doAssert data == "t3"
     file.close()
 
+  # Issue #7347
+  block:
+    let appDir = getAppDir()
+    var file = openAsync(appDir & DirSep & "hello.txt")
+    echo file.getFileSize()
+    echo await file.readAll()
+    echo file.getFilePos()
 
 waitFor main()

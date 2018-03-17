@@ -474,7 +474,7 @@ proc newHiddenAddrTaken(c: PContext, n: PNode): PNode =
     result = newNodeIT(nkHiddenAddr, n.info, makeVarType(c, n.typ))
     addSon(result, n)
     if isAssignable(c, n) notin {arLValue, arLocalLValue}:
-      localError(n.info, errVarForOutParamNeededX, $n)
+      localError(n.info, errVarForOutParamNeededX, renderNotLValue(n))
 
 proc analyseIfAddressTaken(c: PContext, n: PNode): PNode =
   result = n
@@ -2376,7 +2376,14 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkMacroDef: result = semMacroDef(c, n)
   of nkTemplateDef: result = semTemplateDef(c, n)
   of nkImportStmt:
-    if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "import")
+    # this particular way allows 'import' in a 'compiles' context so that
+    # template canImport(x): bool =
+    #   compiles:
+    #     import x
+    #
+    # works:
+    if c.currentScope.depthLevel > 2 + c.compilesContextId:
+      localError(n.info, errXOnlyAtModuleScope, "import")
     result = evalImport(c, n)
   of nkImportExceptStmt:
     if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "import")

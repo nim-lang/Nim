@@ -163,8 +163,10 @@ proc newAsyncSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
   ##
   ## This procedure will also create a brand new file descriptor for
   ## this socket.
-  result = newAsyncSocket(newAsyncNativeSocket(domain, sockType, protocol),
-                          domain, sockType, protocol, buffered)
+  let fd = createAsyncNativeSocket(domain, sockType, protocol)
+  if fd.SocketHandle == osInvalidSocket:
+    raiseOSError(osLastError())
+  result = newAsyncSocket(fd, domain, sockType, protocol, buffered)
 
 proc newAsyncSocket*(domain, sockType, protocol: cint,
     buffered = true): AsyncSocket =
@@ -172,8 +174,10 @@ proc newAsyncSocket*(domain, sockType, protocol: cint,
   ##
   ## This procedure will also create a brand new file descriptor for
   ## this socket.
-  result = newAsyncSocket(newAsyncNativeSocket(domain, sockType, protocol),
-                          Domain(domain), SockType(sockType),
+  let fd = createAsyncNativeSocket(domain, sockType, protocol)
+  if fd.SocketHandle == osInvalidSocket:
+    raiseOSError(osLastError())
+  result = newAsyncSocket(fd, Domain(domain), SockType(sockType),
                           Protocol(protocol), buffered)
 
 when defineSsl:

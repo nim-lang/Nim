@@ -71,14 +71,17 @@ type
   PromiseJs* {.importcpp: "Promise".} = ref object
   ## A JavaScript Promise
 
+
 proc replaceReturn(node: var NimNode) =
   var z = 0
   for s in node:
     var son = node[z]
+    let jsResolve = ident("jsResolve")
     if son.kind == nnkReturnStmt:
-      node[z] = nnkReturnStmt.newTree(nnkCall.newTree(ident("jsResolve"), son[0]))
+      let value = if son[0].kind != nnkEmpty: nnkCall.newTree(jsResolve, son[0]) else: jsResolve
+      node[z] = nnkReturnStmt.newTree(value)
     elif son.kind == nnkAsgn and son[0].kind == nnkIdent and $son[0] == "result":
-      node[z] = nnkAsgn.newTree(son[0], nnkCall.newTree(ident("jsResolve"), son[1]))
+      node[z] = nnkAsgn.newTree(son[0], nnkCall.newTree(jsResolve, son[1]))
     else:
       replaceReturn(son)
     inc z
@@ -92,8 +95,7 @@ proc generateJsasync(arg: NimNode): NimNode =
   assert arg.kind == nnkProcDef
   result = arg
   var isVoid = false
-  var jsResolveNode = ident("jsResolve")
-
+  let jsResolve = ident("jsResolve")
   if arg.params[0].kind == nnkEmpty:
     result.params[0] = nnkBracketExpr.newTree(ident("Future"), ident("void"))
     isVoid = true
@@ -112,7 +114,7 @@ proc generateJsasync(arg: NimNode): NimNode =
     var resolve: NimNode
     if isVoid:
       resolve = quote:
-        var `jsResolveNode` {.importcpp: "undefined".}: Future[void]
+        var `jsResolve` {.importcpp: "undefined".}: Future[void]
     else:
       resolve = quote:
         proc jsResolve[T](a: T): Future[T] {.importcpp: "#".}
@@ -124,12 +126,13 @@ proc generateJsasync(arg: NimNode): NimNode =
 
   if len(code) > 0 and isVoid:
     var voidFix = quote:
-      return `jsResolveNode`
+      return `jsResolve`
     result.body.add(voidFix)
 
-  result.pragma = quote:
+  let asyncPragma = quote:
     {.codegenDecl: "async function $2($3)".}
 
+  result.addPragma(asyncPragma[0])
 
 macro async*(arg: untyped): untyped =
   ## Macro which converts normal procedures into

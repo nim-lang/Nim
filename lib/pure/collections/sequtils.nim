@@ -711,7 +711,7 @@ proc mapLitsImpl(constructor: NimNode; op: NimNode; nested: bool;
     result.add op
     result.add constructor
   else:
-    result = newNimNode(constructor.kind, lineInfoFrom=constructor)
+    result = copyNimNode(constructor)
     for v in constructor:
       if nested or v.kind in filter:
         result.add mapLitsImpl(v, op, nested, filter)

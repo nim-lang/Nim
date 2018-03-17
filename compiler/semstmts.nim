@@ -696,6 +696,12 @@ proc implicitIterator(c: PContext, it: string, arg: PNode): PNode =
     result.add arg
   result = semExprNoDeref(c, result, {efWantIterator})
 
+proc isTrivalStmtExpr(n: PNode): bool =
+  for i in 0 .. n.len-2:
+    if n[i].kind notin {nkEmpty, nkCommentStmt}:
+      return false
+  result = true
+
 proc semFor(c: PContext, n: PNode): PNode =
   result = n
   checkMinSonsLen(n, 3)
@@ -703,6 +709,9 @@ proc semFor(c: PContext, n: PNode): PNode =
   openScope(c)
   n.sons[length-2] = semExprNoDeref(c, n.sons[length-2], {efWantIterator})
   var call = n.sons[length-2]
+  if call.kind == nkStmtListExpr and isTrivalStmtExpr(call):
+    call = call.lastSon
+    n.sons[length-2] = call
   let isCallExpr = call.kind in nkCallKinds
   if isCallExpr and call[0].kind == nkSym and
       call[0].sym.magic in {mFields, mFieldPairs, mOmpParFor}:

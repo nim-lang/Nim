@@ -955,6 +955,17 @@ proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
     #t.data[h].key = key
     #t.data[h].val = val
 
+proc inc*[A](t: var CountTable[A], key: A, val = 1) =
+  ## increments `t[key]` by `val`.
+  var index = rawGet(t, key)
+  if index >= 0:
+    inc(t.data[index].val, val)
+    if t.data[index].val == 0: dec(t.counter)
+  else:
+    if mustRehash(len(t.data), t.counter): enlarge(t)
+    rawInsert(t, t.data, key, val)
+    inc(t.counter)
+
 proc initCountTable*[A](initialSize=64): CountTable[A] =
   ## creates a new count table that is empty.
   ##
@@ -969,7 +980,7 @@ proc toCountTable*[A](keys: openArray[A]): CountTable[A] =
   ## creates a new count table with every key in `keys` having a count
   ## of how many times it occurs in `keys`.
   result = initCountTable[A](rightSize(keys.len))
-  for key in items(keys): result.inc key
+  for key in items(keys): result.inc(key)
 
 proc `$`*[A](t: CountTable[A]): string =
   ## The `$` operator for count tables.
@@ -979,17 +990,6 @@ proc `==`*[A](s, t: CountTable[A]): bool =
   ## The `==` operator for count tables. Returns ``true`` iff both tables
   ## contain the same keys with the same count. Insert order does not matter.
   equalsImpl(s, t)
-
-proc inc*[A](t: var CountTable[A], key: A, val = 1) =
-  ## increments `t[key]` by `val`.
-  var index = rawGet(t, key)
-  if index >= 0:
-    inc(t.data[index].val, val)
-    if t.data[index].val == 0: dec(t.counter)
-  else:
-    if mustRehash(len(t.data), t.counter): enlarge(t)
-    rawInsert(t, t.data, key, val)
-    inc(t.counter)
 
 proc smallest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   ## returns the (key,val)-pair with the smallest `val`. Efficiency: O(n)
@@ -1088,6 +1088,10 @@ proc `[]=`*[A](t: CountTableRef[A], key: A, val: int) =
   assert val > 0
   t[][key] = val
 
+proc inc*[A](t: CountTableRef[A], key: A, val = 1) =
+  ## increments `t[key]` by `val`.
+  t[].inc(key, val)
+
 proc newCountTable*[A](initialSize=64): CountTableRef[A] =
   ## creates a new count table that is empty.
   ##
@@ -1098,9 +1102,10 @@ proc newCountTable*[A](initialSize=64): CountTableRef[A] =
   result[] = initCountTable[A](initialSize)
 
 proc newCountTable*[A](keys: openArray[A]): CountTableRef[A] =
-  ## creates a new count table with every key in `keys` having a count of 1.
+  ## creates a new count table with every key in `keys` having a count
+  ## of how many times it occurs in `keys`.
   result = newCountTable[A](rightSize(keys.len))
-  for key in items(keys): result[key] = 1
+  for key in items(keys): result.inc(key)
 
 proc `$`*[A](t: CountTableRef[A]): string =
   ## The `$` operator for count tables.
@@ -1113,10 +1118,6 @@ proc `==`*[A](s, t: CountTableRef[A]): bool =
   if isNil(s): result = isNil(t)
   elif isNil(t): result = false
   else: result = s[] == t[]
-
-proc inc*[A](t: CountTableRef[A], key: A, val = 1) =
-  ## increments `t[key]` by `val`.
-  t[].inc(key, val)
 
 proc smallest*[A](t: CountTableRef[A]): (A, int) =
   ## returns the (key,val)-pair with the smallest `val`. Efficiency: O(n)
@@ -1316,7 +1317,6 @@ when isMainModule:
     assert a == b
     assert a == c
 
-
   block: #6250
     let
       a = {3: 1}.toOrderedTable
@@ -1332,6 +1332,5 @@ when isMainModule:
     assert((b == a) == true)
 
   block: # CountTable.smallest
-    var t = initCountTable[int]()
-    for v in items([0, 0, 5, 5, 5]): t.inc(v)
+    let t = toCountTable([0, 0, 5, 5, 5])
     doAssert t.smallest == (0, 2)

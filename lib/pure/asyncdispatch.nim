@@ -1513,7 +1513,7 @@ proc poll*(timeout = 500) =
 # Common procedures between current and upcoming asyncdispatch
 include includes.asynccommon
 
-proc sleepAsync*(ms: int): Future[void] =
+proc sleepAsync*(ms: int | float): Future[void] =
   ## Suspends the execution of the current async procedure for the next
   ## ``ms`` milliseconds.
   var retFuture = newFuture[void]("sleepAsync")
@@ -1648,4 +1648,8 @@ proc waitFor*[T](fut: Future[T]): T =
 
   fut.read
 
-{.deprecated: [setEvent: trigger].}
+proc setEvent*(ev: AsyncEvent) {.deprecated.} =
+  ## Set event ``ev`` to signaled state.
+  ##
+  ## **Deprecated since v0.18.0:** Use ``trigger`` instead.
+  ev.trigger()

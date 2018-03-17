@@ -257,7 +257,8 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
       if e.sym.ast != nil:
         return semArrayIndex(c, e.sym.ast)
       if not isOrdinalType(e.typ.lastSon):
-        localError(n[1].info, errOrdinalTypeExpected)
+        let info = if n.safeLen > 1: n[1].info else: n.info
+        localError(info, errOrdinalTypeExpected)
       result = makeRangeWithStaticExpr(c, e)
       if c.inGenericContext > 0: result.flags.incl tfUnresolved
     elif e.kind in nkCallKinds and hasGenericArguments(e):
@@ -497,8 +498,8 @@ proc semCaseBranchSetElem(c: PContext, t, b: PNode,
 
 proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
                    covered: var BiggestInt) =
-
-  for i in countup(0, sonsLen(branch) - 2):
+  let lastIndex = sonsLen(branch) - 2
+  for i in 0..lastIndex:
     var b = branch.sons[i]
     if b.kind == nkRange:
       branch.sons[i] = b
@@ -516,14 +517,21 @@ proc semCaseBranch(c: PContext, t, branch: PNode, branchIndex: int,
         branch.sons[i] = skipConv(fitNode(c, t.sons[0].typ, r, r.info))
         inc(covered)
       else:
+        if r.kind == nkCurly:
+          r = r.deduplicate
+
         # first element is special and will overwrite: branch.sons[i]:
         branch.sons[i] = semCaseBranchSetElem(c, t, r[0], covered)
+
         # other elements have to be added to ``branch``
         for j in 1 ..< r.len:
           branch.add(semCaseBranchSetElem(c, t, r[j], covered))
           # caution! last son of branch must be the actions to execute:
-          var L = branch.len
-          swap(branch.sons[L-2], branch.sons[L-1])
+          swap(branch.sons[^2], branch.sons[^1])
+    checkForOverlap(c, t, i, branchIndex)
+
+  # Elements added above needs to be checked for overlaps.
+  for i in lastIndex.succ..(sonsLen(branch) - 2):
     checkForOverlap(c, t, i, branchIndex)
 
 proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
@@ -625,16 +633,18 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
     else:
       typ = semTypeNode(c, n.sons[length-2], nil)
       propagateToOwner(rectype, typ)
-    let rec = rectype.sym
+    var fieldOwner = if c.inGenericContext > 0: c.getCurrOwner
+                     else: rectype.sym
     for i in countup(0, sonsLen(n)-3):
       var f = semIdentWithPragma(c, skField, n.sons[i], {sfExported})
       suggestSym(n.sons[i].info, f, c.graph.usageSym)
       f.typ = typ
       f.position = pos
-      if (rec != nil) and ({sfImportc, sfExportc} * rec.flags != {}) and
-          (f.loc.r == nil):
+      if fieldOwner != nil and
+         {sfImportc, sfExportc} * fieldOwner.flags != {} and
+         f.loc.r == nil:
         f.loc.r = rope(f.name.s)
-        f.flags = f.flags + ({sfImportc, sfExportc} * rec.flags)
+        f.flags = f.flags + ({sfImportc, sfExportc} * fieldOwner.flags)
       inc(pos)
       if containsOrIncl(check, f.name.id):
         localError(n.sons[i].info, errAttemptToRedefine, f.name.s)

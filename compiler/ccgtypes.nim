@@ -368,6 +368,8 @@ proc getTypeForward(m: BModule, typ: PType; sig: SigHash): Rope =
     if not isImportedType(concrete):
       addf(m.s[cfsForwardTypes], getForwardStructFormat(m),
           [structOrUnion(typ), result])
+    else:
+      pushType(m, concrete)
     doAssert m.forwTypeCache[sig] == result
   else: internalError("getTypeForward(" & $typ.kind & ')')
 
@@ -620,8 +622,10 @@ proc scanCppGenericSlot(pat: string, cursor, outIdx, outStars: var int): bool =
     return false
 
 proc resolveStarsInCppType(typ: PType, idx, stars: int): PType =
-  # XXX: we should catch this earlier and report it as a semantic error
-  if idx >= typ.len: internalError "invalid apostrophe type parameter index"
+  # Make sure the index refers to one of the generic params of the type.
+  # XXX: we should catch this earlier and report it as a semantic error.
+  if idx >= typ.len:
+    internalError "invalid apostrophe type parameter index"
 
   result = typ.sons[idx]
   for i in 1..stars:
@@ -666,7 +670,6 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
         let name = getTypeForward(m, et, hashType et)
         result = name & star
         m.typeCache[sig] = result
-        pushType(m, et)
     of tySequence:
       # no restriction! We have a forward declaration for structs
       let name = getTypeForward(m, et, hashType et)
@@ -823,6 +826,9 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
             let typeInSlot = resolveStarsInCppType(origTyp, idx + 1, stars)
             if typeInSlot == nil or typeInSlot.kind == tyVoid:
               result.add(~"void")
+            elif typeInSlot.kind == tyStatic:
+              internalAssert typeInSlot.n != nil
+              result.add typeInSlot.n.renderTree
             else:
               result.add getTypeDescAux(m, typeInSlot, check)
         else:

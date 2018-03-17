@@ -2,14 +2,31 @@ discard """
 msg: '''nnkStmtList.newTree(
   nnkVarSection.newTree(
     nnkIdentDefs.newTree(
-      newIdentNode(!"x"),
+      newIdentNode("x"),
       newEmptyNode(),
       nnkCall.newTree(
         nnkDotExpr.newTree(
-          newIdentNode(!"foo"),
-          newIdentNode(!"create")
+          newIdentNode("baz"),
+          newIdentNode("create")
         ),
         newLit(56)
+      )
+    )
+  ),
+  nnkProcDef.newTree(
+    newIdentNode("foo"),
+    newEmptyNode(),
+    newEmptyNode(),
+    nnkFormalParams.newTree(
+      newEmptyNode()
+    ),
+    newEmptyNode(),
+    newEmptyNode(),
+    nnkStmtList.newTree(
+      newCommentStmtNode("This is a docstring"),
+      nnkCommand.newTree(
+        newIdentNode("echo"),
+        newLit("bar")
       )
     )
   )
@@ -21,5 +38,8 @@ msg: '''nnkStmtList.newTree(
 import macros
 
 dumpAstGen:
-  var x = foo.create(56)
+  var x = baz.create(56)
 
+  proc foo() =
+    ## This is a docstring
+    echo "bar"
