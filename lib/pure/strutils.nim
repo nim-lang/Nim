@@ -1000,7 +1000,7 @@ proc parseSaturatedNatural*(s: string, limit = high(int)): int =
   ##   doAssert parseSaturatedNatural("848", 255) == 255
   ##
   ## If `s` is not a valid integer, `ValueError` is raised.
-  let L = parseSaturatedNatural(s, result, limit, 0)
+  let L = parseSaturatedNatural(s, result, 0, limit)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid integer: " & s)
 
