@@ -21,8 +21,6 @@ proc constructStdString(s: cstring): std_string {.importcpp: "std::string(@)", c
 
 proc constructRuntimeError(s: stdstring): std_runtime_error {.importcpp: "std::runtime_error(@)", constructor.}
 
-proc constructException(): stdexception {.importcpp: "std::exception()", constructor.}
-
 proc what(ex: std_runtime_error): cstring {.importcpp: "((char *)#.what())".}
 
 proc myexception = 
