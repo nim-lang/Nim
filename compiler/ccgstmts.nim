@@ -837,9 +837,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
         if t[i][j].isInfixAs():
           let v = rope($t[i][j][2])
           fillLoc(t[i][j][2].sym.loc, locTemp, t[i][j][2], v, OnUnknown)
-          startBlock(p, "catch ($1 $2) {$n", getTypeDesc(p.module, t[i][j][1].typ), v)
-        elif isImportedException(t[i][j].typ):
-          startBlock(p, "catch ($1) {$n", getTypeDesc(p.module, t[i][j].typ))
+          startBlock(p, "catch ($1& $2) {$n", getTypeDesc(p.module, t[i][j][1].typ), v)
         else:
           startBlock(p, "catch ($1&) {$n", getTypeDesc(p.module, t[i][j].typ))
         genExceptBranchBody(t[i][^1])  # exception handler body will duplicated for every type
