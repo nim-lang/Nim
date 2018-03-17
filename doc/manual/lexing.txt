@@ -344,9 +344,11 @@ prefix), binary (prefix ``0b``), octal (prefix ``0o`` or ``0c``) and hexadecimal
 
 There exists a literal for each numerical type that is
 defined. The suffix starting with an apostrophe ('\'') is called a
-`type suffix`:idx:. Literals without a type suffix are of the type ``int``,
+`type suffix`:idx:. Literals without a type suffix are of an integer type,
 unless the literal contains a dot or ``E|e`` in which case it is of
-type ``float``. For notational convenience the apostrophe of a type suffix
+type ``float``. This integer type is ``int`` if the literal is in the range
+``low(i32)..high(i32)``, otherwise it is ``int64``.
+For notational convenience the apostrophe of a type suffix
 is optional if it is not ambiguous (only hexadecimal floating point literals
 with a type suffix can be ambiguous).
 
