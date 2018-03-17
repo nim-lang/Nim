@@ -50,3 +50,8 @@ assert x != nil
 x = x.resizeShared(1)
 assert x != nil
 x.deallocShared()
+
+x = cast[ptr int](alloc0(125 shl 23))
+dealloc(x)
+x = cast[ptr int](alloc0(126 shl 23))
+dealloc(x)

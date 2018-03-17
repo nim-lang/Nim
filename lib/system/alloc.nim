@@ -29,7 +29,8 @@ const
   FliOffset = 6
   RealFli = MaxFli - FliOffset
 
-  MaxBigChunkSize = 1 shl MaxFli - 1 shl RealFli # avoid Fli overflow
+  # size of chunks in last matrix bin
+  MaxBigChunkSize = 1 shl MaxFli - 1 shl (MaxFli-MaxLog2Sli-1)
   HugeChunkSize = MaxBigChunkSize + 1
 
 type
