@@ -269,7 +269,7 @@ proc parseInt*(s: string, number: var int, start = 0): int {.
   elif result != 0:
     number = int(res)
 
-proc parseSaturatedNatural*(s: string, b: var int, limit = high(int), start = 0): int =
+proc parseSaturatedNatural*(s: string, b: var int, start = 0, limit = high(int)): int =
   ## Parses a natural number into ``b``. This cannot raise an overflow
   ## error. Instead of an ``Overflow`` exception, ``limit`` is returned.
   ## The number of processed character is returned.
