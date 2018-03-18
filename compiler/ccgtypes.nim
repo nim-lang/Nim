@@ -368,6 +368,8 @@ proc getTypeForward(m: BModule, typ: PType; sig: SigHash): Rope =
     if not isImportedType(concrete):
       addf(m.s[cfsForwardTypes], getForwardStructFormat(m),
           [structOrUnion(typ), result])
+    else:
+      pushType(m, concrete)
     doAssert m.forwTypeCache[sig] == result
   else: internalError("getTypeForward(" & $typ.kind & ')')
 
@@ -665,7 +667,6 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
         let name = getTypeForward(m, et, hashType et)
         result = name & star
         m.typeCache[sig] = result
-        pushType(m, et)
     of tySequence:
       # no restriction! We have a forward declaration for structs
       let name = getTypeForward(m, et, hashType et)

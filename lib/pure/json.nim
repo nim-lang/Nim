@@ -734,7 +734,7 @@ proc getFields*(n: JsonNode,
   else: return n.fields
 
 proc getElems*(n: JsonNode, default: seq[JsonNode] = @[]): seq[JsonNode] =
-  ## Retrieves the int value of a `JArray JsonNode`.
+  ## Retrieves the array of a `JArray JsonNode`.
   ##
   ## Returns ``default`` if ``n`` is not a ``JArray``, or if ``n`` is nil.
   if n.isNil or n.kind != JArray: return default

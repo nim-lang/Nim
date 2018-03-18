@@ -1364,6 +1364,7 @@ proc genOf(p: BProc, x: PNode, typ: PType, d: var TLoc) =
     if t.kind notin {tyVar, tyLent} or not p.module.compileToCpp:
       r = rfmt(nil, "(*$1)", r)
     t = skipTypes(t.lastSon, typedescInst)
+  discard getTypeDesc(p.module, t)
   if not p.module.compileToCpp:
     while t.kind == tyObject and t.sons[0] != nil:
       add(r, ~".Sup")
@@ -1910,7 +1911,8 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
     if getSize(e.typ) > 8:
       # big set:
       useStringh(p.module)
-      lineF(p, cpsStmts, "memset($1, 0, sizeof($1));$n", [rdLoc(d)])
+      lineF(p, cpsStmts, "memset($1, 0, sizeof($2));$n",
+          [rdLoc(d), getTypeDesc(p.module, e.typ)])
       for i in countup(0, sonsLen(e) - 1):
         if e.sons[i].kind == nkRange:
           getTemp(p, getSysType(tyInt), idx) # our counter
@@ -2061,6 +2063,7 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
 
 proc downConv(p: BProc, n: PNode, d: var TLoc) =
   if p.module.compileToCpp:
+    discard getTypeDesc(p.module, skipTypes(n[0].typ, abstractPtrs))
     expr(p, n.sons[0], d)     # downcast does C++ for us
   else:
     var dest = skipTypes(n.typ, abstractPtrs)
@@ -2069,6 +2072,7 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
     while arg.kind == nkObjDownConv: arg = arg.sons[0]
 
     var src = skipTypes(arg.typ, abstractPtrs)
+    discard getTypeDesc(p.module, src)
     var a: TLoc
     initLocExpr(p, arg, a)
     var r = rdLoc(a)

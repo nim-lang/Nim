@@ -78,7 +78,10 @@ proc getFileSize*(f: AsyncFile): int64 =
       raiseOSError(osLastError())
     result = (high shl 32) or low
   else:
+    let curPos = lseek(f.fd.cint, 0, SEEK_CUR)
     result = lseek(f.fd.cint, 0, SEEK_END)
+    f.offset = lseek(f.fd.cint, curPos, SEEK_SET)
+    assert(f.offset == curPos)
 
 proc newAsyncFile*(fd: AsyncFd): AsyncFile =
   ## Creates `AsyncFile` with a previously opened file descriptor `fd`.
@@ -281,6 +284,7 @@ proc read*(f: AsyncFile, size: int): Future[string] =
           result = false # We still want this callback to be called.
       elif res == 0:
         # EOF
+        f.offset = lseek(fd.cint, 0, SEEK_CUR)
         retFuture.complete("")
       else:
         readBuffer.setLen(res)

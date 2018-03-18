@@ -820,7 +820,6 @@ proc parseIfExpr(p: var TParser, kind: TNodeKind): PNode =
     if realInd(p):
       p.currInd = p.tok.indent
       wasIndented = true
-      echo result.info, " yes ", p.currInd
     addSon(branch, parseExpr(p))
     result.add branch
     while sameInd(p) or not wasIndented:
@@ -964,6 +963,8 @@ proc parseTuple(p: var TParser, indentAllowed = false): PNode =
             parMessage(p, errIdentifierExpected, p.tok)
             break
           if not sameInd(p): break
+  elif p.tok.tokType == tkParLe:
+    parMessage(p, errGenerated, "the syntax for tuple types is 'tuple[...]', not 'tuple(...)'")
   else:
     result = newNodeP(nkTupleClassTy, p)
 
@@ -984,6 +985,9 @@ proc parseParamList(p: var TParser, retColon = true): PNode =
       of tkSymbol, tkAccent:
         a = parseIdentColonEquals(p, {withBothOptional, withPragma})
       of tkParRi:
+        break
+      of tkVar:
+        parMessage(p, errGenerated, "the syntax is 'parameter: var T', not 'var parameter: T'")
         break
       else:
         parMessage(p, errTokenExpected, ")")
@@ -2132,7 +2136,12 @@ proc parseTopLevelStmt(p: var TParser): PNode =
     if p.tok.indent != 0:
       if p.firstTok and p.tok.indent < 0: discard
       elif p.tok.tokType != tkSemiColon:
-        parMessage(p, errInvalidIndentation)
+        # special casing for better error messages:
+        if p.tok.tokType == tkOpr and p.tok.ident.s == "*":
+          parMessage(p, errGenerated,
+            "invalid indentation; an export marker '*' follows the declared identifier")
+        else:
+          parMessage(p, errInvalidIndentation)
     p.firstTok = false
     case p.tok.tokType
     of tkSemiColon:

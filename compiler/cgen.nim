@@ -317,8 +317,10 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       genObjectInit(p, cpsStmts, loc.t, loc, true)
     else:
       useStringh(p.module)
+      # array passed as argument decayed into pointer, bug #7332
+      # so we use getTypeDesc here rather than rdLoc(loc)
       linefmt(p, cpsStmts, "memset((void*)$1, 0, sizeof($2));$n",
-              addrLoc(loc), rdLoc(loc))
+              addrLoc(loc), getTypeDesc(p.module, loc.t))
       # XXX: We can be extra clever here and call memset only
       # on the bytes following the m_type field?
       genObjectInit(p, cpsStmts, loc.t, loc, true)
@@ -335,7 +337,7 @@ proc constructLoc(p: BProc, loc: TLoc, isTemp = false) =
       if not isImportedCppType(typ):
         useStringh(p.module)
         linefmt(p, cpsStmts, "memset((void*)$1, 0, sizeof($2));$n",
-                addrLoc(loc), rdLoc(loc))
+                addrLoc(loc), getTypeDesc(p.module, typ))
     genObjectInit(p, cpsStmts, loc.t, loc, true)
 
 proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =

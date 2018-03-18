@@ -357,7 +357,9 @@ const
     errXExpectsTwoArguments: "\'$1\' expects two arguments",
     errXExpectsObjectTypes: "\'$1\' expects object types",
     errXcanNeverBeOfThisSubtype: "\'$1\' can never be of this subtype",
-    errTooManyIterations: "interpretation requires too many iterations",
+    errTooManyIterations: "interpretation requires too many iterations; " &
+      "if you are sure this is not a bug in your code edit " &
+      "compiler/vmdef.MaxLoopIterations and rebuild the compiler",
     errCannotInterpretNodeX: "cannot evaluate \'$1\'",
     errFieldXNotFound: "field \'$1\' cannot be found",
     errInvalidConversionFromTypeX: "invalid conversion from type \'$1\'",

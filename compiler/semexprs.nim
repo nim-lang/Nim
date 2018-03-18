@@ -192,6 +192,10 @@ proc semConv(c: PContext, n: PNode): PNode =
 
   result.addSon copyTree(n.sons[0])
 
+  # special case to make MyObject(x = 3) produce a nicer error message:
+  if n[1].kind == nkExprEqExpr and
+      targetType.skipTypes(abstractPtrs).kind == tyObject:
+    localError(n.info, "object contruction uses ':', not '='")
   var op = semExprWithType(c, n.sons[1])
   if targetType.isMetaType:
     let final = inferWithMetatype(c, targetType, op, true)

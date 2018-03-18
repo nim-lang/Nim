@@ -678,7 +678,7 @@ proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
   ## See also `repr`, `treeRepr`, and `lispRepr`.
 
   const
-    NodeKinds = {nnkEmpty, nnkNilLit, nnkIdent, nnkSym, nnkNone}
+    NodeKinds = {nnkEmpty, nnkNilLit, nnkIdent, nnkSym, nnkNone, nnkCommentStmt}
     LitKinds = {nnkCharLit..nnkInt64Lit, nnkFloatLit..nnkFloat64Lit, nnkStrLit..nnkTripleStrLit}
 
   proc escape(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect.} =
@@ -723,7 +723,7 @@ proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
     of nnkCharLit: res.add("'" & $chr(n.intVal) & "'")
     of nnkIntLit..nnkInt64Lit: res.add($n.intVal)
     of nnkFloatLit..nnkFloat64Lit: res.add($n.floatVal)
-    of nnkStrLit..nnkTripleStrLit: res.add($n.strVal.escape())
+    of nnkStrLit..nnkTripleStrLit, nnkCommentStmt: res.add($n.strVal.escape())
     of nnkIdent: res.add(($n.ident).escape())
     of nnkSym: res.add(($n.symbol).escape())
     of nnkNone: assert false
