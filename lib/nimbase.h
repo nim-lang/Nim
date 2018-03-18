@@ -356,7 +356,6 @@ typedef char* NCSTRING;
 #  define NIM_IMAN 0
 #endif
 
-
 static N_INLINE(NI, float64ToInt32)(double x) {
   /* nowadays no hack necessary anymore */
   return x >= 0 ? (NI)(x+0.5) : (NI)(x-0.5);
