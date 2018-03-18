@@ -27,6 +27,10 @@
 
 ### Compiler changes
 
+- The VM's instruction count limit was raised to 1 billion instructions in order
+  to support more complex computations at compile-time.
+
+
 ### Bugfixes
 
 - The `importcpp` pragma now allows importing the listed fields of generic
