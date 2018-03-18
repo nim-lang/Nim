@@ -575,14 +575,14 @@ proc genRaiseStmt(p: BProc, t: PNode) =
   if p.inExceptBlock > 0 and p.inExceptBlock == p.nestedTryStmts.len:
     # if the current try stmt have a finally block,
     # we must execute it before reraising
-    let finallyBlock = p.nestedTryStmts[p.nestedTryStmts.len - 1].lastSon
+    let finallyBlock = p.nestedTryStmts[^1].lastSon
     if finallyBlock.kind == nkFinally:
-      genSimpleBlock(p, finallyBlock.sons[0])
-  if t.sons[0].kind != nkEmpty:
+      genSimpleBlock(p, finallyBlock[0])
+  if t[0].kind != nkEmpty:
     var a: TLoc
-    initLocExprSingleUse(p, t.sons[0], a)
+    initLocExprSingleUse(p, t[0], a)
     var e = rdLoc(a)
-    var typ = skipTypes(t.sons[0].typ, abstractPtrs)
+    var typ = skipTypes(t[0].typ, abstractPtrs)
     genLineDir(p, t)
     if isImportedException(typ):
       lineF(p, cpsStmts, "throw $1;$n", [e])
@@ -812,8 +812,6 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
     getTemp(p, t.typ, d)
   genLineDir(p, t)
 
-  let end_label = getLabel(p)
-  discard cgsym(p.module, "Exception")
   add(p.nestedTryStmts, t)
   startBlock(p, "try {$n")
   expr(p, t[0], d)
