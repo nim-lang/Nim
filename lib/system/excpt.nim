@@ -116,8 +116,8 @@ proc pushCurrentException(e: ref Exception) {.compilerRtl, inl.} =
 proc popCurrentException {.compilerRtl, inl.} =
   currException = currException.up
 
-proc popCurrentExceptionEx(id: uint) {.compilerRtl, inl.} =
-  # in cpp backend exceptions can pop in the different order they were raised, example #5628
+proc popCurrentExceptionEx(id: uint) {.compilerRtl.} =
+  # in cpp backend exceptions can pop-up in the different order they were raised, example #5628
   if currException.raise_id == id:
     currException = currException.up
   else:
@@ -337,6 +337,7 @@ proc raiseExceptionAux(e: ref Exception) =
       quitOrDebug()
     else:
       pushCurrentException(e)
+      let t = popCurrentExceptionEx # small hack to trigger dependency for codegen
       raise_counter.inc
       if raise_counter == 0:
         raise_counter.inc # skip zero at overflow

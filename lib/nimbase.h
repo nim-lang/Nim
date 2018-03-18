@@ -356,11 +356,6 @@ typedef char* NCSTRING;
 #  define NIM_IMAN 0
 #endif
 
-#ifdef __cplusplus
-static void popCurrentExceptionEx(NU id); 
-  /* leaked implementation detail, declared here to avoid use before 
-     declaration in Exception object type */
-#endif
 
 static N_INLINE(NI, float64ToInt32)(double x) {
   /* nowadays no hack necessary anymore */
