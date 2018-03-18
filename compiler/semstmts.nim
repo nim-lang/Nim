@@ -743,11 +743,11 @@ proc semFor(c: PContext, n: PNode): PNode =
 proc semRaise(c: PContext, n: PNode): PNode =
   result = n
   checkSonsLen(n, 1)
-  if n.sons[0].kind == nkEmpty:
+  if n[0].kind == nkEmpty:
     return
 
-  n.sons[0] = semExprWithType(c, n.sons[0])
-  let typ = n.sons[0].typ
+  n[0] = semExprWithType(c, n[0])
+  let typ = n[0].typ
 
   if isImportedException(typ):
     return
