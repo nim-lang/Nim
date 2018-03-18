@@ -720,7 +720,8 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
           addInheritedFields(c, check, pos, concreteBase)
       else:
         if concreteBase.kind != tyError:
-          localError(n.sons[1].info, errInheritanceOnlyWithNonFinalObjects)
+          localError(n.sons[1].info, "inheritance only works with non-final objects; " &
+             "to enable inheritance write '" & typeToString(realBase) & " of RootObj'")
         base = nil
         realBase = nil
   if n.kind != nkObjectTy: internalError(n.info, "semObjectNode")
