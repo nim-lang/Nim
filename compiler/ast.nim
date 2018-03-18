@@ -1690,7 +1690,6 @@ proc findUnresolvedStatic*(n: PNode): PNode =
     if n != nil: return n
 
   return nil
-
     
 when false:
   proc containsNil*(n: PNode): bool =
