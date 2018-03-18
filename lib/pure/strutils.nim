@@ -989,6 +989,21 @@ proc parseBiggestInt*(s: string): BiggestInt {.noSideEffect, procvar,
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid integer: " & s)
 
+proc parseSaturatedNatural*(s: string, limit = high(int)): int =
+  ## Parses a natural number contained in ``s``. This cannot raise an overflow
+  ## error. Instead of an ``Overflow`` exception, ``limit`` is returned.
+  ## This is usually what you really want to use instead of `parseInt`:idx:.
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##   doAssert parseSaturatedNatural("848") == 848
+  ##   doAssert parseSaturatedNatural("848", 255) == 255
+  ##
+  ## If `s` is not a valid integer, `ValueError` is raised.
+  let L = parseSaturatedNatural(s, result, 0, limit)
+  if L != s.len or L == 0:
+    raise newException(ValueError, "invalid integer: " & s)
+
 proc parseUInt*(s: string): uint {.noSideEffect, procvar,
   rtl, extern: "nsuParseUInt".} =
   ## Parses a decimal unsigned integer value contained in `s`.
