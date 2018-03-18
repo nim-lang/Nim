@@ -337,7 +337,7 @@ proc raiseExceptionAux(e: ref Exception) =
       quitOrDebug()
     else:
       pushCurrentException(e)
-      let t = popCurrentExceptionEx # small hack to trigger dependency for codegen
+      discard popCurrentExceptionEx # small hack to trigger dependency for codegen
       raise_counter.inc
       if raise_counter == 0:
         raise_counter.inc # skip zero at overflow
