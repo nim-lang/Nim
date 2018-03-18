@@ -113,7 +113,7 @@ proc pushCurrentException(e: ref Exception) {.compilerRtl, inl.} =
   e.up = currException
   currException = e
 
-proc popCurrentException() {.compilerRtl, inl.} =
+proc popCurrentException {.compilerRtl, inl.} =
   currException = currException.up
 
 proc popCurrentExceptionEx(id: uint) {.compilerRtl, inl.} =
