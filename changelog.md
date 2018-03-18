@@ -39,6 +39,9 @@
   The proc is no longer deprecated.
 - ``posix.Timeval.tv_sec`` has changed type to ``posix.Time``.
 
+- ``math.`mod` `` for floats now behaves the same as ``mod`` for integers
+  (previously it used floor division like Python).
+
 #### Breaking changes in the compiler
 
 - The undocumented ``#? braces`` parsing mode was removed.
