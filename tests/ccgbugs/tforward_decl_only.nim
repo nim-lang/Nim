@@ -21,8 +21,9 @@ type
     a: cint
   Foo2 = object
     b: cint
+
 proc f(foo: ptr Foo, foo2: ptr Foo2): cint =
-  {.emit: "`result` = `foo`->a;".}
-  {.emit: [result, " = ", foo2[], ".b;"].}
+  if foo  != nil:  {.emit: "`result` = `foo`->a;".}
+  if foo2 != nil: {.emit: [result, " = ", foo2[], ".b;"].}
 
 discard f(nil, nil)
