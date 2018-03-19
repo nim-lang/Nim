@@ -643,7 +643,7 @@ type
   ESynch: Exception
 ].}
 
-when defined(JS):
+when defined(js) or defined(nimdoc):
   type
     JsRoot* = ref object of RootObj
       ## Root type of the JavaScript object hierarchy
