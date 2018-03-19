@@ -197,6 +197,8 @@ when defined(windows):
       return c.wAttributes
     return 0x70'i16 # ERROR: return white background, black text
 
+  proc wingetch(): cint {. importc: "_getch", header:"conio.h" .}
+
   var
     oldStdoutAttr = getAttributes(hStdout)
     oldStderrAttr = getAttributes(hStderr)
@@ -718,16 +720,7 @@ proc getch*(): char =
   ## Read a single character from the terminal, blocking until it is entered.
   ## The character is not printed to the terminal.
   when defined(windows):
-    let fd = getStdHandle(STD_INPUT_HANDLE)
-    var keyEvent = KEY_EVENT_RECORD()
-    var numRead: cint
-    while true:
-      # Block until character is entered
-      doAssert(waitForSingleObject(fd, INFINITE) == WAIT_OBJECT_0)
-      doAssert(readConsoleInput(fd, addr(keyEvent), 1, addr(numRead)) != 0)
-      if numRead == 0 or keyEvent.eventType != 1 or keyEvent.bKeyDown == 0:
-        continue
-      return char(keyEvent.uChar)
+    return wingetch().char
   else:
     let fd = getFileHandle(stdin)
     var oldMode: Termios
