@@ -216,12 +216,6 @@ Math libraries
   Floating-point environment. Handling of floating-point rounding and
   exceptions (overflow, zero-devide, etc.).
 
-* `basic2d <basic2d.html>`_
-  Basic 2d support with vectors, points, matrices and some basic utilities.
-
-* `basic3d <basic3d.html>`_
-  Basic 3d support with vectors, points, matrices and some basic utilities.
-
 * `mersenne <mersenne.html>`_
   Mersenne twister random number generator.
 
