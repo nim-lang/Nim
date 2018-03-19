@@ -34,15 +34,3 @@ let y = toCharArray2(10, "abc0123456")
 echo "x = ", $x, " and y = ", $y
 
 
-# bug #7363
-
-type 
-  Foo = object
-    a: cint
-  Foo2 = object
-    b: cint
-proc f(foo: ptr Foo, foo2: ptr Foo2): cint =
-  {.emit: "`result` = `foo`->a;".}
-  {.emit: [result, " = ", foo2[], ".b;"].}
-
-discard f(nil, nil)

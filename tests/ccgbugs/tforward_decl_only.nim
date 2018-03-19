@@ -13,3 +13,16 @@ type AnotherType = object
 let x = AnotherType(f: newMyRefObject("hello"))
 echo $x.f
 
+
+# bug #7363
+
+type 
+  Foo = object
+    a: cint
+  Foo2 = object
+    b: cint
+proc f(foo: ptr Foo, foo2: ptr Foo2): cint =
+  {.emit: "`result` = `foo`->a;".}
+  {.emit: [result, " = ", foo2[], ".b;"].}
+
+discard f(nil, nil)
