@@ -965,7 +965,7 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
       elif sym.kind == skType:
         res.add($getTypeDesc(p.module, sym.typ))
       else:
-        discard getTypeDesc(p.module, skipTypes(t[i].typ, abstractPtrs))
+        discard getTypeDesc(p.module, skipTypes(sym.typ, abstractPtrs))
         var r = sym.loc.r
         if r == nil:
           # if no name has already been given,
