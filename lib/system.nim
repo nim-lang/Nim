@@ -643,6 +643,11 @@ type
   ESynch: Exception
 ].}
 
+when defined(JS):
+  type
+    JsRoot* = ref object of RootObj
+      ## Root type of the JavaScript object hierarchy
+
 proc unsafeNew*[T](a: var ref T, size: Natural) {.magic: "New", noSideEffect.}
   ## creates a new object of type ``T`` and returns a safe (traced)
   ## reference to it in ``a``. This is **unsafe** as it allocates an object

@@ -400,6 +400,17 @@ type
     once*: bool
     passive*: bool
 
+  MathLib* = ref object
+  JsonLib* = ref object
+  DateLib* = ref object
+
+  DateTime* = ref object
+
+var
+  Math* {.importc, nodecl.}: MathLib
+  Date* {.importc, nodecl.}: DateLib
+  JSON* {.importc, nodecl.}: JsonLib
+
 {.push importcpp.}
 
 # EventTarget "methods"
@@ -529,6 +540,60 @@ proc preventDefault*(ev: Event)
 # TouchEvent "methods"
 proc identifiedTouch*(list: TouchList): Touch
 proc item*(list: TouchList, i: int): Touch
+
+# Math library
+proc abs*(m: MathLib, a: SomeNumber): SomeNumber
+proc acos*(m: MathLib, a: SomeNumber): float
+proc acosh*(m: MathLib, a: SomeNumber): float
+proc asin*(m: MathLib, a: SomeNumber): float
+proc asinh*(m: MathLib, a: SomeNumber): float
+proc atan*(m: MathLib, a: SomeNumber): float
+proc atan2*(m: MathLib, a: SomeNumber): float
+proc atanh*(m: MathLib, a: SomeNumber): float
+proc cbrt*(m: MathLib, f: SomeReal): SomeReal
+proc ceil*(m: MathLib, f: SomeReal): SomeReal
+proc clz32*(m: MathLib, f: SomeInteger): int
+proc cos*(m: MathLib, a: SomeNumber): float
+proc cosh*(m: MathLib, a: SomeNumber): float
+proc exp*(m: MathLib, a: SomeNumber): float
+proc expm1*(m: MathLib, a: SomeNumber): float
+proc floor*(m: MathLib, f: SomeReal): int
+proc fround*(m: MathLib, f: SomeReal): float32
+proc hypot*(m: MathLib, args: varargs[distinct SomeNumber]): float
+proc imul*(m: MathLib, a, b: int32): int32
+proc log*(m: MathLib, a: SomeNumber): float
+proc log10*(m: MathLib, a: SomeNumber): float
+proc log1p*(m: MathLib, a: SomeNumber): float
+proc log2*(m: MathLib, a: SomeNumber): float
+proc max*(m: MathLib, a, b: SomeNumber): SomeNumber
+proc min*[T: SomeNumber | JsRoot](m: MathLib, a, b: T): T
+proc pow*(m: MathLib, a, b: distinct SomeNumber): float
+proc random*(m: MathLib): float
+proc round*(m: MathLib, f: SomeReal): int
+proc sign*(m: MathLib, f: SomeNumber): int
+proc sin*(m: MathLib, a: SomeNumber): float
+proc sinh*(m: MathLib, a: SomeNumber): float
+proc sqrt*(m: MathLib, f: SomeReal): SomeReal
+proc tan*(m: MathLib, a: SomeNumber): float
+proc tanh*(m: MathLib, a: SomeNumber): float
+proc trunc*(m: MathLib, f: SomeReal): int
+
+# Date library
+proc now*(d: DateLib): DateTime
+proc UTC*(d: DateLib): DateTime
+proc parse*(d: DateLib, s: cstring): DateTime
+proc getDay*(d: DateTime): int
+proc getFullYear*(d: DateTime): int
+proc getHours*(d: DateTime): int
+proc getMilliseconds*(d: DateTime): int
+proc getMinutes*(d: DateTime): int
+proc getMonth*(d: DateTime): int
+proc getSeconds*(d: DateTime): int
+proc getYear*(d: DateTime): int
+proc toString*(d: DateTime): cstring
+
+#JSON library
+proc stringify*(s: JsRoot): cstring
 
 {.pop.}
 
