@@ -32,5 +32,3 @@ proc toCharArray2(N : static[int], s: string): array[N, char] =
 let x = toCharArray1(10, "abc0123456")
 let y = toCharArray2(10, "abc0123456")
 echo "x = ", $x, " and y = ", $y
-
-
