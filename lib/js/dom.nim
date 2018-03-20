@@ -579,9 +579,20 @@ proc tanh*(m: MathLib, a: SomeNumber): float
 proc trunc*(m: MathLib, f: SomeReal): int
 
 # Date library
-proc now*(d: DateLib): DateTime
-proc UTC*(d: DateLib): DateTime
-proc parse*(d: DateLib, s: cstring): DateTime
+proc now*(d: DateLib): int
+proc UTC*(d: DateLib): int
+proc parse*(d: DateLib, s: cstring): int
+
+proc newDate*(): DateTime {.
+  importcpp: "new Date()".}
+
+proc newDate*(date: int|string): DateTime {.
+  importcpp: "new Date(#)".}
+
+proc newDate*(year, month, day, hours, minutes,
+             seconds, milliseconds: int): DateTime {.
+  importcpp: "new Date(#,#,#,#,#,#,#)".}
+
 proc getDay*(d: DateTime): int
 proc getFullYear*(d: DateTime): int
 proc getHours*(d: DateTime): int
@@ -590,10 +601,12 @@ proc getMinutes*(d: DateTime): int
 proc getMonth*(d: DateTime): int
 proc getSeconds*(d: DateTime): int
 proc getYear*(d: DateTime): int
+proc getTime*(d: DateTime): int
 proc toString*(d: DateTime): cstring
 
 #JSON library
-proc stringify*(s: JsRoot): cstring
+proc stringify*(l: JsonLib, s: JsRoot): cstring
+proc parse*(l: JsonLib, s: cstring): JsRoot
 
 {.pop.}
 
