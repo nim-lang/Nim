@@ -8,7 +8,7 @@ tfailedassert.nim:27 false assertion from foo
 """
 
 type
-  TLineInfo = tuple[filename: string, line: int]
+  TLineInfo = tuple[filename: string, line: int, column: int]
 
   TMyError = object of Exception
     lineinfo: TLineInfo
