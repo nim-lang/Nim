@@ -2200,7 +2200,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     # because of the changed symbol binding, this does not mean that we
     # don't have to check the symbol for semantics here again!
     result = semSym(c, n, n.sym, flags)
-  of nkEmpty, nkNone, nkCommentStmt:
+  of nkEmpty, nkNone, nkCommentStmt, nkType:
     discard
   of nkNilLit:
     if result.typ == nil: result.typ = getSysType(tyNil)

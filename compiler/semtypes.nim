@@ -1396,7 +1396,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         fixupTypeOf(c, prev, typExpr)
         result = typExpr.typ
       else:
-        result = semTypeExpr(c, n, prev)
+        if c.inGenericContext > 0 and n.kind == nkCall:
+          result = makeTypeFromExpr(c, n.copyTree)
+        else:
+          result = semTypeExpr(c, n, prev)
   of nkWhenStmt:
     var whenResult = semWhen(c, n, false)
     if whenResult.kind == nkStmtList: whenResult.kind = nkStmtListType
