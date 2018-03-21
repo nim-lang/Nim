@@ -155,7 +155,7 @@ when defined(nativeStacktrace) and nativeStackTraceSupported:
             add(s, tempDlInfo.dli_sname)
         else:
           add(s, '?')
-        add(s, "\n")
+        add(s, "\p")
       else:
         if dlresult != 0 and tempDlInfo.dli_sname != nil and
             c_strcmp(tempDlInfo.dli_sname, "signalHandler") == 0'i32:
@@ -204,13 +204,13 @@ template addFrameEntry(s, f: untyped) =
     add(s, ')')
   for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
   add(s, f.procname)
-  add(s, "\n")
+  add(s, "\p")
 
 proc `$`(s: seq[StackTraceEntry]): string =
   result = newStringOfCap(2000)
   for i in 0 .. s.len-1:
-    if s[i].line == reraisedFromBegin: result.add "[[reraised from:\n"
-    elif s[i].line == reraisedFromEnd: result.add "]]\n"
+    if s[i].line == reraisedFromBegin: result.add "[[reraised from:\p"
+    elif s[i].line == reraisedFromEnd: result.add "]]\p"
     else: addFrameEntry(result, s[i])
 
 proc auxWriteStackTrace(f: PFrame, s: var string) =
@@ -252,7 +252,7 @@ proc auxWriteStackTrace(f: PFrame, s: var string) =
     if tempFrames[j] == nil:
       add(s, "(")
       add(s, $skipped)
-      add(s, " calls omitted) ...\n")
+      add(s, " calls omitted) ...\p")
     else:
       addFrameEntry(s, tempFrames[j])
 
@@ -262,15 +262,15 @@ when hasSomeStackTrace:
   proc rawWriteStackTrace(s: var string) =
     when NimStackTrace:
       if framePtr == nil:
-        add(s, "No stack traceback available\n")
+        add(s, "No stack traceback available\p")
       else:
-        add(s, "Traceback (most recent call last)\n")
+        add(s, "Traceback (most recent call last)\p")
         auxWriteStackTrace(framePtr, s)
     elif defined(nativeStackTrace) and nativeStackTraceSupported:
-      add(s, "Traceback from system (most recent call last)\n")
+      add(s, "Traceback from system (most recent call last)\p")
       auxWriteStackTraceWithBacktrace(s)
     else:
-      add(s, "No stack traceback available\n")
+      add(s, "No stack traceback available\p")
 
   proc rawWriteStackTrace(s: var seq[StackTraceEntry]) =
     when NimStackTrace:
@@ -338,7 +338,7 @@ proc raiseExceptionAux(e: ref Exception) =
         if not isNil(e.msg): add(buf, e.msg)
         add(buf, " [")
         add(buf, $e.name)
-        add(buf, "]\n")
+        add(buf, "]\p")
         unhandled(buf):
           showErrorMessage(buf)
           quitOrDebug()
@@ -356,7 +356,7 @@ proc raiseExceptionAux(e: ref Exception) =
         if not isNil(e.msg): add(buf, e.msg)
         add(buf, " [")
         xadd(buf, e.name, e.name.len)
-        add(buf, "]\n")
+        add(buf, "]\p")
         when defined(nimNoArrayToCstringConversion):
           template tbuf(): untyped = addr buf
         else:
@@ -388,14 +388,14 @@ proc writeStackTrace() =
     rawWriteStackTrace(s)
     cast[proc (s: cstring) {.noSideEffect, tags: [], nimcall.}](showErrorMessage)(s)
   else:
-    cast[proc (s: cstring) {.noSideEffect, tags: [], nimcall.}](showErrorMessage)("No stack traceback available\n")
+    cast[proc (s: cstring) {.noSideEffect, tags: [], nimcall.}](showErrorMessage)("No stack traceback available\p")
 
 proc getStackTrace(): string =
   when hasSomeStackTrace:
     result = ""
     rawWriteStackTrace(result)
   else:
-    result = "No stack traceback available\n"
+    result = "No stack traceback available\p"
 
 proc getStackTrace(e: ref Exception): string =
   if not isNil(e) and not isNil(e.trace):
@@ -411,7 +411,7 @@ proc getStackTraceEntries*(e: ref Exception): seq[StackTraceEntry] =
 when defined(nimRequiresNimFrame):
   proc stackOverflow() {.noinline.} =
     writeStackTrace()
-    showErrorMessage("Stack overflow\n")
+    showErrorMessage("Stack overflow\p")
     quitOrDebug()
 
   proc nimFrame(s: PFrame) {.compilerRtl, inl, exportc: "nimFrame".} =
@@ -432,24 +432,24 @@ when defined(endb):
 when not defined(noSignalHandler) and not defined(useNimRtl):
   proc signalHandler(sign: cint) {.exportc: "signalHandler", noconv.} =
     template processSignal(s, action: untyped) {.dirty.} =
-      if s == SIGINT: action("SIGINT: Interrupted by Ctrl-C.\n")
+      if s == SIGINT: action("SIGINT: Interrupted by Ctrl-C.\p")
       elif s == SIGSEGV:
-        action("SIGSEGV: Illegal storage access. (Attempt to read from nil?)\n")
+        action("SIGSEGV: Illegal storage access. (Attempt to read from nil?)\p")
       elif s == SIGABRT:
         when defined(endb):
           if dbgAborting: return # the debugger wants to abort
-        action("SIGABRT: Abnormal termination.\n")
-      elif s == SIGFPE: action("SIGFPE: Arithmetic error.\n")
-      elif s == SIGILL: action("SIGILL: Illegal operation.\n")
+        action("SIGABRT: Abnormal termination.\p")
+      elif s == SIGFPE: action("SIGFPE: Arithmetic error.\p")
+      elif s == SIGILL: action("SIGILL: Illegal operation.\p")
       elif s == SIGBUS:
-        action("SIGBUS: Illegal storage access. (Attempt to read from nil?)\n")
+        action("SIGBUS: Illegal storage access. (Attempt to read from nil?)\p")
       else:
         block platformSpecificSignal:
           when declared(SIGPIPE):
             if s == SIGPIPE:
-              action("SIGPIPE: Pipe closed.\n")
+              action("SIGPIPE: Pipe closed.\p")
               break platformSpecificSignal
-          action("unknown signal\n")
+          action("unknown signal\p")
 
     # print stack trace and quit
     when defined(memtracker):
