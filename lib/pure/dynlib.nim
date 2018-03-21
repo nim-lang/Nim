@@ -10,6 +10,49 @@
 ## This module implements the ability to access symbols from shared
 ## libraries. On POSIX this uses the ``dlsym`` mechanism, on
 ## Windows ``LoadLibrary``.
+##
+## Examples
+## --------
+##
+## Loading a simple C function
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## The following example demonstrates loading a function called 'greet' 
+## from a library that is determined at runtime based upon a language choice.
+## If the library fails to load or the function 'greet' is not found, 
+## it quits with a failure error code.
+##
+## .. code-block::nim
+##
+##   import dynlib
+##
+##   type
+##     greetFunction = proc(): cstring {.gcsafe, stdcall.}
+##
+##   let lang = stdin.readLine()
+##
+##   let lib = case lang
+##   of "french":
+##     loadLib("french.dll")
+##   else:
+##     loadLib("english.dll")
+##
+##   if lib == nil:
+##     echo "Error loading library"
+##     quit(QuitFailure)
+##
+##   let greet = cast[greetFunction](lib.symAddr("greet"))
+##
+##   if greet == nil:
+##     echo "Error loading 'greet' function from library"
+##     quit(QuitFailure)
+##
+##   let greeting = greet()
+##
+##   echo greeting
+##
+##   unloadLib(lib)
+##
 
 import strutils
 
