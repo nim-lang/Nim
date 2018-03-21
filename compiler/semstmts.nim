@@ -309,7 +309,7 @@ proc semTry(c: PContext, n: PNode): PNode =
           else: is_native = true
 
         if is_native and is_imported:
-          local_error(a[0].info, "Mix of imported and native exception types is not allowed in one except branch")
+          localError(a[0].info, "Mix of imported and native exception types is not allowed in one except branch")
      
     elif a.kind != nkFinally:
       illFormedAst(n)
