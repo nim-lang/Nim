@@ -9,7 +9,7 @@
 
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
-  wordrecg, strutils, options, guards, writetracking, lookups
+  wordrecg, strutils, options, guards, writetracking
 
 when defined(useDfa):
   import dfa

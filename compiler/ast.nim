@@ -1681,6 +1681,9 @@ proc isImportedException*(t: PType): bool =
   if base.sym != nil and sfCompileToCpp in base.sym.flags:
     result = true
 
+proc isInfixAs*(n: PNode): bool =
+  return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.id == getIdent("as").id
+
 proc findUnresolvedStatic*(n: PNode): PNode =
   if n.kind == nkSym and n.typ.kind == tyStatic and n.typ.n == nil:
     return n
