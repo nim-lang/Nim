@@ -1,3 +1,7 @@
+discard """
+output: "8\n8\n4"
+"""
+
 import
   macros, typetraits
 
@@ -69,4 +73,29 @@ static:
   assert m1.lo.type.name == "uint64"
   assert m2.lo.type.name == "uint32"
   assert m3.type.name == "MpUintBase[system.uint32]"
+
+# https://github.com/nim-lang/Nim/issues/7379
+
+import macros, typetraits
+
+macro works(): untyped =
+  result = getType(int64)
+
+macro fails(bits: static[int]): untyped =
+  if bits > 64:
+    result = getType(int64)
+  else:
+    result = getType(int32)
+
+type
+  Foo*[bits: static[int]] = works()
+  Bar*[bits: static[int]] = fails(bits)
+
+var a: Foo[16]
+var b: Bar[256]
+var c: Bar[32]
+
+echo sizeof(a)
+echo sizeof(b)
+echo sizeof(c)
 
