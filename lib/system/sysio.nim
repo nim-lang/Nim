@@ -267,16 +267,16 @@ proc readAll(file: File): TaintedString =
 proc writeLn[Ty](f: File, x: varargs[Ty, `$`]) =
   for i in items(x):
     write(f, i)
-  write(f, "\n")
+  write(f, "\p")
 
 proc writeLine[Ty](f: File, x: varargs[Ty, `$`]) =
   for i in items(x):
     write(f, i)
-  write(f, "\n")
+  write(f, "\p")
 
 when declared(stdout):
   proc rawEcho(x: string) {.inline, compilerproc.} = write(stdout, x)
-  proc rawEchoNL() {.inline, compilerproc.} = write(stdout, "\n")
+  proc rawEchoNL() {.inline, compilerproc.} = write(stdout, "\p")
 
 # interface to the C procs:
 
@@ -425,7 +425,7 @@ when declared(stdout):
       flockfile(stdout)
     for s in args:
       discard c_fwrite(s.cstring, s.len, 1, stdout)
-    const linefeed = "\n" # can be 1 or more chars
+    const linefeed = "\p" # can be 1 or more chars
     discard c_fwrite(linefeed.cstring, linefeed.len, 1, stdout)
     discard c_fflush(stdout)
     when not defined(windows) and not defined(android):
