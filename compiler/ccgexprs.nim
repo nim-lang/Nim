@@ -2044,6 +2044,7 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
       if t.kind notin {tyVar, tyLent} or not p.module.compileToCpp:
         r = "(*$1)" % [r]
       t = skipTypes(t.lastSon, abstractInst)
+    discard getTypeDesc(p.module, t)
     if not p.module.compileToCpp:
       while t.kind == tyObject and t.sons[0] != nil:
         add(r, ".Sup")
