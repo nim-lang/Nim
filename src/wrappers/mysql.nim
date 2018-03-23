@@ -13,10 +13,10 @@
 when defined(Unix):
   when defined(macosx):
     const
-      lib = "(libmysqlclient|libmariadbclient).(|20|19|18|17|16|15).dylib"
+      lib = "(libmysqlclient|libmariadbclient)(|.20|.19|.18|.17|.16|.15).dylib"
   else:
     const
-      lib = "(libmysqlclient|libmariadbclient).so.(|20|19|18|17|16|15)"
+      lib = "(libmysqlclient|libmariadbclient).so(|.20|.19|.18|.17|.16|.15)"
 when defined(Windows):
   const
     lib = "(libmysql.dll|libmariadb.dll)"
