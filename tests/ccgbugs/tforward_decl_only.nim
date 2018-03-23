@@ -21,12 +21,15 @@ type
     a: cint
   Foo2 = object
     b: cint
+  Foo3 = object
+    c:int
 
-proc f(foo: ptr Foo, foo2: ptr Foo2): cint =
+proc f(foo: ptr Foo, foo2: ptr Foo2, foo3: ptr Foo3): cint =
   if foo  != nil:  {.emit: "`result` = `foo`->a;".}
   if foo2 != nil: {.emit: [result, " = ", foo2[], ".b;"].}
+  if foo3 != nil:  {.emit: "`result` = `foo3[]`.c + `foo3.c`;".}
 
-discard f(nil, nil)
+discard f(nil, nil, nil)
 
 
 # bug #7392
