@@ -1,3 +1,10 @@
+## This module wraps core JavaScript functions.
+##
+## Unless your application has very
+## specific requirements and solely targets JavaScript, you should be using
+## the relevant functions in the ``math``, ``json``, and ``times`` stdlib
+## modules instead.
+
 when not defined(js) and not defined(Nimdoc):
   {.error: "This module only works on the JavaScript platform".}
 
