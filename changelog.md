@@ -35,7 +35,7 @@
 - The VM's instruction count limit was raised to 1 billion instructions in
   order to support more complex computations at compile-time.
 
-- Support for code hot reloading has been implemented for the JavaScript
+- Support for hot code reloading has been implemented for the JavaScript
   target. To use it, compile your code with `--hotReloading:on` and use a
   helper library such as LiveReload or BrowserSync.
 

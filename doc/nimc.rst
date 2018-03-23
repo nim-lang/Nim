@@ -325,9 +325,9 @@ Debugger option
 The ``debugger`` option enables or disables the *Embedded Nim Debugger*.
 See the documentation of endb_ for further information.
 
-Code hot reloading
+Hot code reloading
 ------------------
-**Note:** At the moment code hot reloading is supported only in
+**Note:** At the moment hot code reloading is supported only in
 JavaScript projects.
 
 The `hotReloading` option enables special compilation mode where changes in

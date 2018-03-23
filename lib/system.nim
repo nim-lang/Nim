@@ -4080,7 +4080,7 @@ template closureScope*(body: untyped): untyped =
 
 template once*(body: untyped): untyped =
   ## Executes a block of code only once (the first time the block is reached).
-  ## When code hot reloading is enabled, protects top-level code from being
+  ## When hot code reloading is enabled, protects top-level code from being
   ## re-executed on each module reload.
   ##
   ## .. code-block:: nim

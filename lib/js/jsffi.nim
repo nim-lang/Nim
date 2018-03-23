@@ -79,15 +79,15 @@ type
     c isnot string
 
 var
-  jsarguments* {.importc: "arguments", nodecl}: JsObject
+  jsArguments* {.importc: "arguments", nodecl}: JsObject
     ## JavaScript's arguments pseudo-variable
-  jsnull* {.importc: "null", nodecl.}: JsObject
+  jsNull* {.importc: "null", nodecl.}: JsObject
     ## JavaScript's null literal
-  jsundefined* {.importc: "undefined", nodecl.}: JsObject
+  jsUndefined* {.importc: "undefined", nodecl.}: JsObject
     ## JavaScript's undefined literal
-  jsdirname* {.importc: "__dirname", nodecl.}: cstring
+  jsDirname* {.importc: "__dirname", nodecl.}: cstring
     ## JavaScript's __dirname pseudo-variable
-  jsfilename* {.importc: "__filename", nodecl.}: cstring
+  jsFilename* {.importc: "__filename", nodecl.}: cstring
     ## JavaScript's __filename pseudo-variable
 
 # New
@@ -102,14 +102,14 @@ proc hasOwnProperty*(x: JsObject, prop: cstring): bool
   {. importcpp: "#.hasOwnProperty(#)" .}
   ## Checks, whether `x` has a property of name `prop`.
 
-proc jstypeof*(x: JsObject): cstring {. importcpp: "typeof(#)" .}
+proc jsTypeOf*(x: JsObject): cstring {. importcpp: "typeof(#)" .}
   ## Returns the name of the JsObject's JavaScript type as a cstring.
 
-proc jsnew*(x: auto): JsObject {.importcpp: "(new #)".}
+proc jsNew*(x: auto): JsObject {.importcpp: "(new #)".}
   ## Turns a regular function call into an invocation of the
   ## JavaScript's `new` operator
 
-proc jsdelete*(x: auto): JsObject {.importcpp: "(delete #)".}
+proc jsDelete*(x: auto): JsObject {.importcpp: "(delete #)".}
   ## JavaScript's `delete` operator
 
 proc require*(module: cstring): JsObject {.importc.}
