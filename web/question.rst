@@ -61,7 +61,7 @@ General FAQ
   -------------------------------------------------------------
 
   The language borrows heavily from (in order of impact): Modula 3, Delphi, Ada,
-  C++, Python, Lisp, Oberon.
+  D, C++, Python, Lisp, Oberon.
 
 
 .. container:: standout
