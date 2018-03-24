@@ -1,7 +1,7 @@
 discard """
   file: "tvarres1.nim"
   line: 12
-  errormsg: "address of 'bla' may not escape its stack frame"
+  errormsg: "'bla' escapes its stack frame; context: 'bla'"
 """
 
 var
