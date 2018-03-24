@@ -183,8 +183,15 @@ proc exprRoot*(n: PNode): PSym =
   while true:
     case it.kind
     of nkSym: return it.sym
+    of nkHiddenDeref, nkDerefExpr:
+      if it[0].typ.skipTypes(abstractInst).kind in {tyPtr, tyRef}:
+        # 'ptr' is unsafe anyway and 'ref' is always on the heap,
+        # so allow these derefs:
+        break
+      else:
+        it = it[0]
     of nkDotExpr, nkBracketExpr, nkHiddenAddr,
-       nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr, nkHiddenDeref:
+       nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
       it = it[0]
     of nkHiddenStdConv, nkHiddenSubConv, nkConv:
       it = it[1]
@@ -199,8 +206,6 @@ proc exprRoot*(n: PNode): PSym =
       else:
         break
     else:
-      # nkDerefExpr: assume the 'var T' addresses
-      # the heap and so the location is not on the stack.
       break
 
 proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult =
