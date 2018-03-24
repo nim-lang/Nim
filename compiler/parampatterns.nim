@@ -180,14 +180,11 @@ type
 
 proc exprRoot*(n: PNode): PSym =
   var it = n
-  # the sem'check can generate a spurious 'nkHiddenDeref' for some
-  # cases. we skip it here:
-  if it.kind == nkHiddenDeref: it = it[0]
   while true:
     case it.kind
     of nkSym: return it.sym
     of nkDotExpr, nkBracketExpr, nkHiddenAddr,
-       nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
+       nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr, nkHiddenDeref:
       it = it[0]
     of nkHiddenStdConv, nkHiddenSubConv, nkConv:
       it = it[1]
@@ -202,7 +199,7 @@ proc exprRoot*(n: PNode): PSym =
       else:
         break
     else:
-      # nkHiddenDeref, nkDerefExpr: assume the 'var T' addresses
+      # nkDerefExpr: assume the 'var T' addresses
       # the heap and so the location is not on the stack.
       break
 
