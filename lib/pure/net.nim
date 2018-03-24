@@ -443,7 +443,7 @@ proc fromSockAddrAux(sa: ptr Sockaddr_storage, sl: Socklen, address: var IpAddre
     copyMem(addr address.address_v6[0], addr s.sin6_addr, sizeof(address.address_v6))
     port = ntohs(s.sin6_port).Port
   else:
-    raise newException(ObjectConversionError, "Unexpected SockAddr/Socklen")
+    raise newException(ValueError, "Neither IPv4 nor IPv6")
 
 proc fromSockAddr*(sa: Sockaddr_storage | SockAddr | Sockaddr_in | Sockaddr_in6,
     sl: Socklen, address: var IpAddress, port: var Port) {.inline.} =
