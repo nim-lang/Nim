@@ -27,3 +27,8 @@ proc f(foo: ptr Foo, foo2: ptr Foo2): cint =
   if foo2 != nil: {.emit: [result, " = ", foo2[], ".b;"].}
 
 discard f(nil, nil)
+
+
+# bug #7392
+var x1: BaseObj
+var x2 = ChildObj(x1)

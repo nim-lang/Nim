@@ -1301,13 +1301,23 @@ proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
     #analyseIfAddressTakenInCall(c, result)
 
 proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode =
+  # See RFC #7373, calls returning 'var T' are assumed to
+  # return a view into the first argument (if there is one):
+  let root = exprRoot(n)
+  if root != nil and root.owner == c.p.owner:
+    if root.kind in {skLet, skVar, skTemp} and sfGlobal notin root.flags:
+      localError(n.info, "'$1' escapes its stack frame; context: '$2'" % [
+        root.name.s, renderTree(n, {renderNoComments})])
+    elif root.kind == skParam and root.position != 0:
+      localError(n.info, "'$1' is not the first parameter; context: '$2'" % [
+        root.name.s, renderTree(n, {renderNoComments})])
   case n.kind
   of nkHiddenAddr, nkAddr: return n
   of nkHiddenDeref, nkDerefExpr: return n.sons[0]
   of nkBracketExpr:
     if len(n) == 1: return n.sons[0]
   else: discard
-  var valid = isAssignable(c, n)
+  let valid = isAssignable(c, n)
   if valid != arLValue:
     if valid == arLocalLValue:
       localError(n.info, errXStackEscape, renderTree(n, {renderNoComments}))

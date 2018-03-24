@@ -178,6 +178,36 @@ type
     arDiscriminant,           # is a discriminant
     arStrange                 # it is a strange beast like 'typedesc[var T]'
 
+proc exprRoot*(n: PNode): PSym =
+  var it = n
+  while true:
+    case it.kind
+    of nkSym: return it.sym
+    of nkHiddenDeref, nkDerefExpr:
+      if it[0].typ.skipTypes(abstractInst).kind in {tyPtr, tyRef}:
+        # 'ptr' is unsafe anyway and 'ref' is always on the heap,
+        # so allow these derefs:
+        break
+      else:
+        it = it[0]
+    of nkDotExpr, nkBracketExpr, nkHiddenAddr,
+       nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
+      it = it[0]
+    of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+      it = it[1]
+    of nkStmtList, nkStmtListExpr:
+      if it.len > 0 and it.typ != nil: it = it.lastSon
+      else: break
+    of nkCallKinds:
+      if it.typ != nil and it.typ.kind == tyVar and it.len > 1:
+        # See RFC #7373, calls returning 'var T' are assumed to
+        # return a view into the first argument (if there is one):
+        it = it[1]
+      else:
+        break
+    else:
+      break
+
 proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult =
   ## 'owner' can be nil!
   result = arNone
@@ -189,7 +219,7 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
     let kinds = if isUnsafeAddr: {skVar, skResult, skTemp, skParam, skLet}
                 else: {skVar, skResult, skTemp}
     if n.sym.kind in kinds:
-      if owner != nil and owner.id == n.sym.owner.id and
+      if owner != nil and owner == n.sym.owner and
           sfGlobal notin n.sym.flags:
         result = arLocalLValue
       else:
