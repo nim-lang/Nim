@@ -460,6 +460,10 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
 
   of tyFromExpr:
     if cl.allowMetaTypes: return
+    # This assert is triggered when a tyFromExpr was created in a cyclic
+    # way. You should break the cycle at the point of creation by introducing
+    # a call such as: `n.typ = makeTypeFromExpr(c, n.copyTree)`
+    # Otherwise, the cycle will be fatal for the prepareNode call below
     assert t.n.typ != t
     var n = prepareNode(cl, t.n)
     if n.kind != nkEmpty:

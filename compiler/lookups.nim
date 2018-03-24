@@ -44,6 +44,7 @@ proc considerQuotedIdent*(n: PNode, origin: PNode = nil): PIdent =
         case x.kind
         of nkIdent: id.add(x.ident.s)
         of nkSym: id.add(x.sym.name.s)
+        of nkLiterals - nkFloatLiterals: id.add(x.renderTree)
         else: handleError(n, origin)
       result = getIdent(id)
   of nkOpenSymChoice, nkClosedSymChoice:

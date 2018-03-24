@@ -1,9 +1,9 @@
 discard """
 targets: "cpp"
-output: "[0, 0, 10, 0]\n5\n1.2\n15\ntest"
+output: "[0, 0, 10, 0]\n5\n1.2\n15\ntest\n[0, 0, 20, 0]"
 """
 
-{.emit: """
+{.emit: """/*TYPESECTION*/
 
 template <int N, class T>
 struct GenericIntType {
@@ -50,4 +50,10 @@ echo b.field
 echo c.field
 echo d.field
 echo e.field
+
+proc plus(a, b: GenInt4): GenInt4 =
+  for i in 0 ..< result.data.len:
+    result.data[i] = a.data[i] + b.data[i]
+
+echo plus(a, a).data
 

@@ -981,6 +981,7 @@ const
 
   nkPragmaCallKinds* = {nkExprColonExpr, nkCall, nkCallStrLit}
   nkLiterals* = {nkCharLit..nkTripleStrLit}
+  nkFloatLiterals* = {nkFloatLit..nkFloat128Lit}
   nkLambdaKinds* = {nkLambda, nkDo}
   declarativeDefs* = {nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef}
   procDefs* = nkLambdaKinds + declarativeDefs
@@ -1476,7 +1477,7 @@ proc copyNode*(src: PNode): PNode =
       echo "COMES FROM ", src.id
   case src.kind
   of nkCharLit..nkUInt64Lit: result.intVal = src.intVal
-  of nkFloatLit..nkFloat128Lit: result.floatVal = src.floatVal
+  of nkFloatLiterals: result.floatVal = src.floatVal
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
@@ -1495,7 +1496,7 @@ proc shallowCopy*(src: PNode): PNode =
       echo "COMES FROM ", src.id
   case src.kind
   of nkCharLit..nkUInt64Lit: result.intVal = src.intVal
-  of nkFloatLit..nkFloat128Lit: result.floatVal = src.floatVal
+  of nkFloatLiterals: result.floatVal = src.floatVal
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
@@ -1515,7 +1516,7 @@ proc copyTree*(src: PNode): PNode =
       echo "COMES FROM ", src.id
   case src.kind
   of nkCharLit..nkUInt64Lit: result.intVal = src.intVal
-  of nkFloatLit..nkFloat128Lit: result.floatVal = src.floatVal
+  of nkFloatLiterals: result.floatVal = src.floatVal
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
@@ -1564,7 +1565,7 @@ proc getInt*(a: PNode): BiggestInt =
 
 proc getFloat*(a: PNode): BiggestFloat =
   case a.kind
-  of nkFloatLit..nkFloat128Lit: result = a.floatVal
+  of nkFloatLiterals: result = a.floatVal
   else:
     internalError(a.info, "getFloat")
     result = 0.0
