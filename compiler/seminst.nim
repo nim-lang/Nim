@@ -346,7 +346,9 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     if c.inGenericContext == 0:
       instantiateBody(c, n, fn.typ.n, result, fn)
     sideEffectsCheck(c, result)
-    paramsTypeCheck(c, result.typ)
+    if result.magic != mSlice:
+      # 'toOpenArray' is special and it is allowed to return 'openArray':
+      paramsTypeCheck(c, result.typ)
   else:
     result = oldPrc
   popProcCon(c)

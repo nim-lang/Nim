@@ -83,6 +83,8 @@ proc isInCurrentFrame(p: BProc, n: PNode): bool =
     result = isInCurrentFrame(p, n.sons[0])
   else: discard
 
+proc genIndexCheck(p: BProc; arr, idx: TLoc)
+
 proc openArrayLoc(p: BProc, n: PNode): Rope =
   var a: TLoc
 
@@ -93,18 +95,28 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
     initLocExpr(p, q[1], a)
     initLocExpr(p, q[2], b)
     initLocExpr(p, q[3], c)
-    let fmt =
-      case skipTypes(a.t, abstractVar+{tyPtr}).kind
-      of tyOpenArray, tyVarargs, tyArray:
-        "($1)+($2), ($3)-($2)+1"
-      of tyString, tySequence:
-        if skipTypes(n.typ, abstractInst).kind == tyVar and
-            not compileToCpp(p.module):
-          "(*$1)->data+($2), ($3)-($2)+1"
-        else:
-          "$1->data+($2), ($3)-($2)+1"
-      else: (internalError("openArrayLoc: " & typeToString(a.t)); "")
-    result = fmt % [rdLoc(a), rdLoc(b), rdLoc(c)]
+    # but first produce the required index checks:
+    if optBoundsCheck in p.options:
+      genIndexCheck(p, a, b)
+      genIndexCheck(p, a, c)
+    let ty = skipTypes(a.t, abstractVar+{tyPtr})
+    case ty.kind
+    of tyArray:
+      let first = firstOrd(ty)
+      if first == 0:
+        result = "($1)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c)]
+      else:
+        result = "($1)+(($2)-($4)), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), intLiteral(first)]
+    of tyOpenArray, tyVarargs:
+      result = "($1)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c)]
+    of tyString, tySequence:
+      if skipTypes(n.typ, abstractInst).kind == tyVar and
+          not compileToCpp(p.module):
+        result = "(*$1)->data+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c)]
+      else:
+        result = "$1->data+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c)]
+    else:
+      internalError("openArrayLoc: " & typeToString(a.t))
   else:
     initLocExpr(p, n, a)
     case skipTypes(a.t, abstractVar).kind
