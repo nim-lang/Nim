@@ -174,6 +174,8 @@ proc sideEffectsCheck(c: PContext, s: PSym) =
 
 proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
                           allowMetaTypes = false): PType =
+  internalAssert header.kind == tyGenericInvocation
+
   var
     typeMap: LayeredIdTable
     cl: TReplTypeVars
@@ -185,7 +187,35 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
   cl.info = info
   cl.c = c
   cl.allowMetaTypes = allowMetaTypes
+
+  # We must add all generic params in scope, because the generic body
+  # may include tyFromExpr nodes depending on these generic params.
+  # XXX: This looks quite similar to the code in matchUserTypeClass,
+  # perhaps the code can be extracted in a shared function.
+  openScope(c)
+  let genericTyp = header.base
+  for i in 0 .. (genericTyp.len - 2):
+    let genParam = genericTyp[i]
+    var param: PSym
+
+    template paramSym(kind): untyped =
+        newSym(kind, genParam.sym.name, genericTyp.sym, genParam.sym.info)
+
+    if genParam.kind == tyStatic:
+      param = paramSym skConst
+      param.ast = header[i+1].n
+      param.typ = header[i+1]
+    else:
+      param = paramSym skType
+      param.typ = makeTypeDesc(c, header[i+1])
+
+    # this scope was not created by the user,
+    # unused params shoudn't be reported.
+    param.flags.incl sfUsed
+    addDecl(c, param)
+
   result = replaceTypeVarsT(cl, header)
+  closeScope(c)
 
 proc instantiateProcType(c: PContext, pt: TIdTable,
                          prc: PSym, info: TLineInfo) =
@@ -316,7 +346,9 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     if c.inGenericContext == 0:
       instantiateBody(c, n, fn.typ.n, result, fn)
     sideEffectsCheck(c, result)
-    paramsTypeCheck(c, result.typ)
+    if result.magic != mSlice:
+      # 'toOpenArray' is special and it is allowed to return 'openArray':
+      paramsTypeCheck(c, result.typ)
   else:
     result = oldPrc
   popProcCon(c)

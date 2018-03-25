@@ -1884,7 +1884,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       return arg
     elif f.kind == tyTypeDesc:
       return arg
-    elif f.kind == tyStatic:
+    elif f.kind == tyStatic and arg.typ.n != nil:
       return arg.typ.n
     else:
       return argSemantized # argOrig

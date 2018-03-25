@@ -1,5 +1,17 @@
 discard """
-  output:""
+  output:'''1
+1
+2
+3
+11
+12
+13
+14
+15
+2
+3
+4
+'''
 """
 
 # check high/low implementations
@@ -20,3 +32,18 @@ doAssert high(float64) > low(float64)
 # bug #6710
 var s = @[1]
 s.delete(0)
+
+
+proc foo(a: openArray[int]) =
+  for x in a: echo x
+
+foo(toOpenArray([1, 2, 3], 0, 0))
+
+foo(toOpenArray([1, 2, 3], 0, 2))
+
+var arr: array[8..12, int] = [11, 12, 13, 14, 15]
+
+foo(toOpenArray(arr, 8, 12))
+
+var seqq = @[1, 2, 3, 4, 5]
+foo(toOpenArray(seqq, 1, 3))

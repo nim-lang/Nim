@@ -14,7 +14,6 @@ AST b
 20Test
 20
 '''
-  disabled: true
 """
 
 import macros
@@ -26,7 +25,7 @@ type
 
 const data: Tconfig = (@["aa", "bb"], @[11, 22])
 
-macro mymacro(data: static[TConfig]) =
+macro mymacro(data: static[TConfig]): untyped =
   echo "letters"
   for s in items(data.letters):
     echo s
@@ -44,10 +43,10 @@ const
   a : Ta = @[(11, 22), (33, 44)]
   b : Tb = (@[55,66], @[77, 88])
 
-macro mA(data: static[Ta]) =
+macro mA(data: static[Ta]): untyped =
   echo "AST a \n", repr(data)
 
-macro mB(data: static[Tb]) =
+macro mB(data: static[Tb]): untyped =
   echo "AST b \n", repr(data)
   echo data.e[0]
 
@@ -57,13 +56,15 @@ mB(b)
 type
   Foo[N: static[int], Z: static[string]] = object
 
-macro staticIntMacro(f: static[int]) = echo f
+macro staticIntMacro(f: static[int]): untyped =
+  echo f
+
 staticIntMacro 10
 
 var
   x: Foo[20, "Test"]
 
-macro genericMacro[N; Z: static[string]](f: Foo[N, Z], ll = 3, zz = 12) =
+macro genericMacro[N; Z: static[string]](f: Foo[N, Z], ll = 3, zz = 12): untyped =
   echo N, Z
 
 genericMacro x
