@@ -811,7 +811,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   if not isEmptyType(t.typ) and d.k == locNone:
     getTemp(p, t.typ, d)
   genLineDir(p, t)
-
+  discard cgsym(p.module, "popCurrentExceptionEx")
   add(p.nestedTryStmts, t)
   startBlock(p, "try {$n")
   expr(p, t[0], d)
