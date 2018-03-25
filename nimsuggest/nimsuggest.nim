@@ -608,9 +608,9 @@ proc handleCmdLine(cache: IdentCache; config: ConfigRef) =
     options.command = "nimsuggest"
     let scriptFile = gProjectFull.changeFileExt("nims")
     if fileExists(scriptFile):
-      runNimScript(cache, scriptFile, freshDefines=false, config)
-      # 'nim foo.nims' means to just run the NimScript file and do nothing more:
-      if scriptFile == gProjectFull: return
+      # 'nimsuggest foo.nims' means to just auto-complete the NimScript file:
+      if scriptFile != gProjectFull:
+        runNimScript(cache, scriptFile, freshDefines=false, config)
     elif fileExists(gProjectPath / "config.nims"):
       # directory wide NimScript file
       runNimScript(cache, gProjectPath / "config.nims", freshDefines=false, config)

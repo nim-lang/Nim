@@ -13,12 +13,19 @@
 
 - ``re.split`` now also supports the ``maxsplit`` parameter for consistency
   with ``strutils.split``.
+- Added ``system.toOpenArray`` in order to support zero-copy slicing
+  operations. This is currently not yet available for the JavaScript target.
 
 ### Library changes
 
 ### Language additions
 
 ### Language changes
+
+- The `importcpp` pragma now allows importing the listed fields of generic
+  C++ types. Support for numeric parameters have also been added through
+  the use of `static[T]` types.
+  (#6415)
 
 ### Tool changes
 
@@ -27,9 +34,5 @@
 
 ### Compiler changes
 
-### Bugfixes
-
-- The `importcpp` pragma now allows importing the listed fields of generic
-  C++ types. Support for numeric parameters have also been added through
-  the use of `static[T]` types.
-  (#6415)
+- The VM's instruction count limit was raised to 1 billion instructions in order
+  to support more complex computations at compile-time.

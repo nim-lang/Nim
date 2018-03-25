@@ -1145,7 +1145,8 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
         else:
           fRange = prev
       let ff = f.sons[1].skipTypes({tyTypeDesc})
-      let aa = a.sons[1].skipTypes({tyTypeDesc})
+      # This typeDesc rule is wrong, see bug #7331
+      let aa = a.sons[1] #.skipTypes({tyTypeDesc})
 
       if f.sons[0].kind != tyGenericParam and aa.kind == tyEmpty:
         result = isGeneric
@@ -1883,7 +1884,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       return arg
     elif f.kind == tyTypeDesc:
       return arg
-    elif f.kind == tyStatic:
+    elif f.kind == tyStatic and arg.typ.n != nil:
       return arg.typ.n
     else:
       return argSemantized # argOrig

@@ -4132,3 +4132,13 @@ when defined(cpp) and appType != "lib" and not defined(js) and
     stderr.write trace & "Error: unhandled exception: " & ex.msg &
                  " [" & $ex.name & "]\n"
     quit 1
+
+when not defined(js):
+  proc toOpenArray*[T](x: seq[T]; first, last: int): openarray[T] {.
+    magic: "Slice".}
+  proc toOpenArray*[T](x: openarray[T]; first, last: int): openarray[T] {.
+    magic: "Slice".}
+  proc toOpenArray*[I, T](x: array[I, T]; first, last: I): openarray[T] {.
+    magic: "Slice".}
+  proc toOpenArray*(x: string; first, last: int): openarray[char] {.
+    magic: "Slice".}

@@ -880,6 +880,23 @@ proc genCStringElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   putIntoDest(p, d, n,
               rfmt(nil, "$1[$2]", rdLoc(a), rdCharLoc(b)), a.storage)
 
+proc genIndexCheck(p: BProc; arr, idx: TLoc) =
+  let ty = skipTypes(arr.t, abstractVarRange)
+  case ty.kind
+  of tyOpenArray, tyVarargs:
+    linefmt(p, cpsStmts, "if ((NU)($1) >= (NU)($2Len_0)) #raiseIndexError();$n",
+            rdLoc(idx), rdLoc(arr))
+  of tyArray:
+    let first = intLiteral(firstOrd(ty))
+    if tfUncheckedArray notin ty.flags:
+      linefmt(p, cpsStmts, "if ($1 < $2 || $1 > $3) #raiseIndexError();$n",
+              rdCharLoc(idx), first, intLiteral(lastOrd(ty)))
+  of tySequence, tyString:
+    linefmt(p, cpsStmts,
+          "if ((NU)($1) >= (NU)($2->$3)) #raiseIndexError();$n",
+          rdLoc(idx), rdLoc(arr), lenField(p))
+  else: discard
+
 proc genOpenArrayElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   var a, b: TLoc
   initLocExpr(p, x, a)
@@ -2044,6 +2061,7 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
       if t.kind notin {tyVar, tyLent} or not p.module.compileToCpp:
         r = "(*$1)" % [r]
       t = skipTypes(t.lastSon, abstractInst)
+    discard getTypeDesc(p.module, t)
     if not p.module.compileToCpp:
       while t.kind == tyObject and t.sons[0] != nil:
         add(r, ".Sup")

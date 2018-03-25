@@ -190,12 +190,12 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       if wanted != nil and got != nil:
         effectProblem(wanted, got, candidates)
       if cond: candidates.add "\n"
-    elif err.unmatchedVarParam != 0 and err.unmatchedVarParam < n.len:
-      add(candidates, "for a 'var' type a variable needs to be passed, but '" &
+    if err.unmatchedVarParam != 0 and err.unmatchedVarParam < n.len:
+      candidates.add("  for a 'var' type a variable needs to be passed, but '" &
                       renderNotLValue(n[err.unmatchedVarParam]) &
                       "' is immutable\n")
     for diag in err.diagnostics:
-      add(candidates, diag & "\n")
+      candidates.add(diag & "\n")
 
   result = (prefer, candidates)
 

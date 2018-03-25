@@ -720,7 +720,8 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType): PType =
           addInheritedFields(c, check, pos, concreteBase)
       else:
         if concreteBase.kind != tyError:
-          localError(n.sons[1].info, errInheritanceOnlyWithNonFinalObjects)
+          localError(n.sons[1].info, "inheritance only works with non-final objects; " &
+             "to enable inheritance write '" & typeToString(realBase) & " of RootObj'")
         base = nil
         realBase = nil
   if n.kind != nkObjectTy: internalError(n.info, "semObjectNode")
@@ -1396,7 +1397,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         fixupTypeOf(c, prev, typExpr)
         result = typExpr.typ
       else:
-        result = semTypeExpr(c, n, prev)
+        if c.inGenericContext > 0 and n.kind == nkCall:
+          result = makeTypeFromExpr(c, n.copyTree)
+        else:
+          result = semTypeExpr(c, n, prev)
   of nkWhenStmt:
     var whenResult = semWhen(c, n, false)
     if whenResult.kind == nkStmtList: whenResult.kind = nkStmtListType

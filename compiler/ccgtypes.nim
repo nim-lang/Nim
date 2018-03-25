@@ -852,6 +852,13 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
       # always call for sideeffects:
       assert t.kind != tyTuple
       discard getRecordDesc(m, t, result, check)
+      # The resulting type will include commas and these won't play well
+      # with the C macros for defining procs such as N_NIMCALL. We must
+      # create a typedef for the type and use it in the proc signature:
+      let typedefName = ~"TY" & $sig
+      addf(m.s[cfsTypes], "typedef $1 $2;$n", [result, typedefName])
+      m.typeCache[sig] = typedefName
+      result = typedefName
     else:
       when false:
         if t.sym != nil and t.sym.name.s == "KeyValuePair":

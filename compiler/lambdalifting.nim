@@ -275,8 +275,12 @@ proc freshVarForClosureIter*(s, owner: PSym): PNode =
 
 proc markAsClosure(owner: PSym; n: PNode) =
   let s = n.sym
-  if illegalCapture(s) or owner.typ.callConv notin {ccClosure, ccDefault}:
-    localError(n.info, errIllegalCaptureX, s.name.s)
+  if illegalCapture(s):
+    localError(n.info, "illegal capture '$1' of type <$2> which is declared here: $3" %
+      [s.name.s, typeToString(s.typ), $s.info])
+  elif owner.typ.callConv notin {ccClosure, ccDefault}:
+    localError(n.info, "illegal capture '$1' because '$2' has the calling convention: <$3>" %
+      [s.name.s, owner.name.s, CallingConvToStr[owner.typ.callConv]])
   incl(owner.typ.flags, tfCapturesEnv)
   owner.typ.callConv = ccClosure
 
