@@ -145,7 +145,7 @@ the variable has been initialized and does not rely on syntactic properties:
       x = a()
     else:
       x = a()
-    use x
+    # use x
 
 
 let statement
@@ -296,7 +296,7 @@ empty ``discard`` statement should be used.
 For non ordinal types it is not possible to list every possible value and so
 these always require an ``else`` part.
 
-As case statements perform compile-time exhaustiveness checks, the value in 
+As case statements perform compile-time exhaustiveness checks, the value in
 every ``of`` branch must be known at compile time. This fact is also exploited
 to generate more performant code.
 
