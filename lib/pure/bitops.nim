@@ -274,8 +274,8 @@ proc fastLog2*(x: SomeInteger): int {.inline, nosideeffect.} =
     else:                result = fastlog2_nim(x.uint64)
   else:
     when useGCC_builtins:
-      when sizeof(x) <= 4: result = 31 - builtin_clz(x.uint32).int
-      else:                result = 63 - builtin_clzll(x.uint64).int
+      when sizeof(x) <= 4: result = 31 xor builtin_clz(x.uint32).int
+      else:                result = 63 xor builtin_clzll(x.uint64).int
     elif useVCC_builtins:
       when sizeof(x) <= 4:
         result = vcc_scan_impl(bitScanReverse, x.culong)
