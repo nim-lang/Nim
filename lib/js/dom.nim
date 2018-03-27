@@ -45,6 +45,7 @@ type
     location*: Location
     closed*: bool
     defaultStatus*: cstring
+    devicePixelRatio*: float
     innerHeight*, innerWidth*: int
     locationbar*: ref TLocationBar
     menubar*: ref TMenuBar
@@ -53,11 +54,14 @@ type
     pageXOffset*, pageYOffset*: int
     personalbar*: ref TPersonalBar
     scrollbars*: ref TScrollBars
+    scrollX*: float
+    scrollY*: float
     statusbar*: ref TStatusBar
     status*: cstring
     toolbar*: ref TToolBar
     frames*: seq[TFrame]
     screen*: Screen
+    performance*: Performance
 
   Frame* = ref FrameObj
   FrameObj {.importc.} = object of WindowObj
@@ -253,6 +257,8 @@ type
     minHeight*: cstring
     minWidth*: cstring
     overflow*: cstring
+    overflowX*: cstring
+    overflowY*: cstring
     padding*: cstring
     paddingBottom*: cstring
     paddingLeft*: cstring
@@ -400,6 +406,40 @@ type
     once*: bool
     passive*: bool
 
+  BoundingRect* {.importc.} = object
+    top*, bottom*, left*, right*, x*, y*, width*, height*: float
+
+  PerformanceMemory* {.importc.} = object 
+    jsHeapSizeLimit*: float
+    totalJSHeapSize*: float
+    usedJSHeapSize*: float
+
+  PerformanceTiming* {.importc.} = object 
+    connectStart*: float
+    domComplete*: float
+    domContentLoadedEventEnd*: float
+    domContentLoadedEventStart*: float
+    domInteractive*: float
+    domLoading*: float
+    domainLookupEnd*: float
+    domainLookupStart*: float
+    fetchStart*: float
+    loadEventEnd*: float
+    loadEventStart*: float
+    navigationStart*: float
+    redirectEnd*: float
+    redirectStart*: float
+    requestStart*: float
+    responseEnd*: float
+    responseStart*: float
+    secureConnectionStart*: float
+    unloadEventEnd*: float
+    unloadEventStart*: float
+
+  Performance* {.importc.} = object
+    memory*: PerformanceMemory
+    timing*: PerformanceTiming
+
 {.push importcpp.}
 
 # EventTarget "methods"
@@ -451,6 +491,7 @@ proc cloneNode*(n: Node, copyContent: bool): Node
 proc deleteData*(n: Node, start, len: int)
 proc getAttribute*(n: Node, attr: cstring): cstring
 proc getAttributeNode*(n: Node, attr: cstring): Node
+proc getBoundingClientRect*(e: Node): BoundingRect
 proc hasChildNodes*(n: Node): bool
 proc insertBefore*(n, newNode, before: Node)
 proc insertData*(n: Node, position: int, data: cstring)
@@ -529,6 +570,9 @@ proc preventDefault*(ev: Event)
 # TouchEvent "methods"
 proc identifiedTouch*(list: TouchList): Touch
 proc item*(list: TouchList, i: int): Touch
+
+# Performance "methods"
+proc now*(p: Performance): float
 
 {.pop.}
 
