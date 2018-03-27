@@ -45,14 +45,23 @@ let a = case str1:
     echo "no good"
     quit("quiting")
 
-let b = case str2:
-  of nil, "": raise newException(ValueError, "Invalid boolean")
-  elif str2[0] == 'Y': true
-  elif str2[0] == 'N': false
-  else: "error".quit(2)
+proc toBool(s: string): bool = 
+  case s:
+    of nil, "": raise newException(ValueError, "Invalid boolean")
+    elif s[0] == 'Y': true
+    elif s[0] == 'N': false
+    else: "error".quit(2)
+
+
+let b = "NN".toBool()
 
 doAssert(a == true)
 doAssert(b == false)
+
+static:
+  #bug #7407
+  let bstatic = "N".toBool()
+  doAssert(bstatic == false)
 
 var bb: bool
 doassert(not compiles(
