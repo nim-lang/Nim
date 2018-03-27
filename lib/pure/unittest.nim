@@ -121,9 +121,16 @@ type
   ConsoleOutputFormatter* = ref object of OutputFormatter
     colorOutput: bool
       ## Have test results printed in color.
-      ## Default is true for the non-js target
-      ## unless, the environment variable
-      ## ``NIMTEST_NO_COLOR`` is set.
+      ## Default is true for the non-js target,
+      ## for which ``stdout`` is a tty.
+      ## Setting the environment variable
+      ## ``NIMTEST_COLOR`` to ``always`` or
+      ## ``never`` changes the default for the
+      ## non-js target to true or false respectively.
+      ## The deprecated environment variable
+      ## ``NIMTEST_NO_COLOR``, when set,
+      ## changes the defualt to true, if
+      ## ``NIMTEST_COLOR`` is undefined.
     outputLevel: OutputLevel
       ## Set the verbosity of test results.
       ## Default is ``PRINT_ALL``, unless
@@ -185,7 +192,15 @@ proc defaultConsoleFormatter*(): ConsoleOutputFormatter =
     # Reading settings
     # On a terminal this branch is executed
     var envOutLvl = os.getEnv("NIMTEST_OUTPUT_LVL").string
-    var colorOutput  = not existsEnv("NIMTEST_NO_COLOR")
+    var colorOutput  = isatty(stdout)
+    if existsEnv("NIMTEST_COLOR"):
+      let colorEnv = getenv("NIMTEST_COLOR")
+      if colorEnv == "never":
+        colorOutput = false
+      elif colorEnv == "always":
+        colorOutput = true
+    elif existsEnv("NIMTEST_NO_COLOR"):
+      colorOutput = false
     var outputLevel = PRINT_ALL
     if envOutLvl.len > 0:
       for opt in countup(low(OutputLevel), high(OutputLevel)):
