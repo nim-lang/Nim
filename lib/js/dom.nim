@@ -406,15 +406,15 @@ type
     once*: bool
     passive*: bool
 
-  BoundingRect* {.importc.} = object
+  BoundingRect* {.importc.} = ref object
     top*, bottom*, left*, right*, x*, y*, width*, height*: float
 
-  PerformanceMemory* {.importc.} = object 
+  PerformanceMemory* {.importc.} = ref object 
     jsHeapSizeLimit*: float
     totalJSHeapSize*: float
     usedJSHeapSize*: float
 
-  PerformanceTiming* {.importc.} = object 
+  PerformanceTiming* {.importc.} = ref object 
     connectStart*: float
     domComplete*: float
     domContentLoadedEventEnd*: float
@@ -436,7 +436,7 @@ type
     unloadEventEnd*: float
     unloadEventStart*: float
 
-  Performance* {.importc.} = object
+  Performance* {.importc.} = ref object
     memory*: PerformanceMemory
     timing*: PerformanceTiming
 
