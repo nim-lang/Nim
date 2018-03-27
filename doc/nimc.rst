@@ -115,7 +115,7 @@ The ``nim`` executable processes configuration files in the following
 directories (in this order; later files overwrite previous settings):
 
 1) ``$nim/config/nim.cfg``, ``/etc/nim.cfg`` (UNIX) or ``%NIMROD%/config/nim.cfg`` (Windows). This file can be skipped with the ``--skipCfg`` command line option.
-2) ``/home/$user/.config/nim.cfg`` (UNIX) or  ``%APPDATA%/nim.cfg`` (Windows). This file can be skipped with the ``--skipUserCfg`` command line option.
+2) ``$HOME/.config/nim.cfg`` (POSIX) or  ``%APPDATA%/nim.cfg`` (Windows). This file can be skipped with the ``--skipUserCfg`` command line option.
 3) ``$parentDir/nim.cfg`` where ``$parentDir`` stands for any parent  directory of the project file's path. These files can be skipped with the ``--skipParentCfg`` command line option.
 4) ``$projectDir/nim.cfg`` where ``$projectDir`` stands for the project  file's path. This file can be skipped with the ``--skipProjCfg`` command line option.
 5) A project can also have a project specific configuration file named ``$project.nim.cfg`` that resides in the same directory as ``$project.nim``. This file can be skipped with the ``--skipProjCfg`` command line option.
