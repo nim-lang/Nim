@@ -12,7 +12,7 @@
 import
   os, platform, condsyms, ast, astalgo, idents, semdata, msgs, renderer,
   wordrecg, ropes, options, strutils, extccomp, math, magicsys, trees,
-  rodread, types, lookups
+  rodread, types, lookups, parser
 
 const
   FirstCallConv* = wNimcall
@@ -483,7 +483,8 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
           incl(e.flags, sfUsed)
           addSon(result, newSymNode(e))
         else:
-          addSon(result, newStrNode(nkStrLit, sub))
+          let n2 = parseString(sub, con.cache, con.filename)
+          addSon(result, con.semExpr(con, n2))
       else:
         # an empty '``' produces a single '`'
         addSon(result, newStrNode(nkStrLit, $marker))

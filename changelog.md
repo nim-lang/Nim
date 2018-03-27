@@ -27,6 +27,9 @@
   the use of `static[T]` types.
   (#6415)
 
+- The `emit` pragma now supports backticking of Nim expressions, previously
+  only symbols were supports, example
+  
 ### Tool changes
 
 - ``jsondoc2`` has been renamed ``jsondoc``, similar to how ``doc2`` was renamed
