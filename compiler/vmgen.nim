@@ -251,12 +251,12 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {})
 proc gen(c: PCtx; n: PNode; dest: TRegister; flags: TGenFlags = {}) =
   var d: TDest = dest
   gen(c, n, d, flags)
-  #internalAssert d == dest
+  #internalAssert d == dest # issue #7407
 
 proc gen(c: PCtx; n: PNode; flags: TGenFlags = {}) =
   var tmp: TDest = -1
   gen(c, n, tmp, flags)
-  #if n.typ.isEmptyType: InternalAssert tmp < 0, issue #7407
+  #if n.typ.isEmptyType: InternalAssert tmp < 0
 
 proc genx(c: PCtx; n: PNode; flags: TGenFlags = {}): TRegister =
   var tmp: TDest = -1
