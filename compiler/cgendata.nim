@@ -70,11 +70,10 @@ type
     threadVarAccessed*: bool  # true if the proc already accessed some threadvar
     lastLineInfo*: TLineInfo  # to avoid generating excessive 'nimln' statements
     currLineInfo*: TLineInfo  # AST codegen will make this superfluous
-    nestedTryStmts*: seq[PNode]   # in how many nested try statements we are
-                                  # (the vars must be volatile then)
-    inExceptBlock*: int       # are we currently inside an except block?
-                              # leaving such scopes by raise or by return must
-                              # execute any applicable finally blocks
+    nestedTryStmts*: seq[tuple[n: PNode, inExcept: bool]]  
+                              # in how many nested try statements we are
+                              # (the vars must be volatile then)
+                              # bool is true when are in the except part of a try block
     finallySafePoints*: seq[Rope]  # For correctly cleaning up exceptions when
                                    # using return in finally statements
     labels*: Natural          # for generating unique labels in the C proc
