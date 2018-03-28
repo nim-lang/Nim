@@ -1664,6 +1664,9 @@ proc connect*(socket: Socket, address: string, port = Port(0),
   if selectWrite(s, timeout) != 1:
     raise newException(TimeoutError, "Call to 'connect' timed out.")
   else:
+    let res = getSockOptInt(socket.fd, SOL_SOCKET, SO_ERROR)
+    if res != 0:
+      raiseOSError(OSErrorCode(res))
     when defineSsl and not defined(nimdoc):
       if socket.isSSL:
         socket.fd.setBlocking(true)
