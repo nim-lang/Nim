@@ -315,6 +315,21 @@ when isMainModule:
     doAssert noYearDeser.year.isNone
     doAssert noYearDeser.engine.name == "V8"
 
+    # Issue #7433
+    type
+      Obj2 = object
+        n1: int
+        n2: Option[string]
+        n3: bool
+
+    var j = %*[ { "n1": 4, "n2": "ABC", "n3": true },
+                { "n1": 1, "n3": false },
+                { "n1": 1, "n2": "XYZ", "n3": false } ]
+
+    let jDeser = j.to(seq[Obj2])
+    doAssert jDeser[0].n2.get() == "ABC"
+    doAssert jDeser[1].n2.isNone()
+
   # Table[T, Y] support.
   block:
     type
