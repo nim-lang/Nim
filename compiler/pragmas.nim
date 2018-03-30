@@ -40,7 +40,8 @@ const
     wTags, wLocks, wGcSafe, wExportNims, wUsed}
   exprPragmas* = {wLine, wLocks, wNoRewrite, wGcSafe}
   stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangechecks,
-    wBoundchecks, wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints,
+    wBoundchecks, wOverflowchecks, wNilchecks, wMovechecks, wAssertions,
+    wWarnings, wHints,
     wLinedir, wStacktrace, wLinetrace, wOptimization, wHint, wWarning, wError,
     wFatal, wDefine, wUndef, wCompile, wLink, wLinksys, wPure, wPush, wPop,
     wBreakpoint, wWatchPoint, wPassl, wPassc, wDeadCodeElim, wDeprecated,
@@ -323,6 +324,7 @@ proc processOption(c: PContext, n: PNode): bool =
     of wFloatchecks: onOff(c, n, {optNaNCheck, optInfCheck})
     of wNanChecks: onOff(c, n, {optNaNCheck})
     of wInfChecks: onOff(c, n, {optInfCheck})
+    of wMovechecks: onOff(c, n, {optMoveCheck})
     of wAssertions: onOff(c, n, {optAssert})
     of wWarnings: onOff(c, n, {optWarns})
     of wHints: onOff(c, n, {optHints})
@@ -693,7 +695,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
     inc c.instCounter
     if c.instCounter > 100:
       globalError(it.info, errRecursiveDependencyX, userPragma.name.s)
-    
+
     pragma(c, sym, userPragma.ast, validPragmas)
     n.sons[i..i] = userPragma.ast.sons # expand user pragma with its content
     i.inc(userPragma.ast.len - 1) # inc by -1 is ok, user pragmas was empty
@@ -906,7 +908,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wCodegenDecl: processCodegenDecl(c, it, sym)
       of wChecks, wObjChecks, wFieldChecks, wRangechecks, wBoundchecks,
          wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints,
-         wLinedir, wStacktrace, wLinetrace, wOptimization,
+         wLinedir, wStacktrace, wLinetrace, wOptimization, wMovechecks,
          wCallconv,
          wDebugger, wProfiler, wFloatchecks, wNanChecks, wInfChecks,
          wPatterns:

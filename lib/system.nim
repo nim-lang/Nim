@@ -617,6 +617,11 @@ type
     ##
     ## This is only raised if the ``segfaults.nim`` module was imported!
 
+when defined(nimNewRuntime):
+  type
+    MoveError* = object of SystemError ## \
+      ## Raised on attempts to re-sink an already consumed ``sink`` parameter.
+
 {.deprecated: [TObject: RootObj, PObject: RootRef, TEffect: RootEffect,
   FTime: TimeEffect, FIO: IOEffect, FReadIO: ReadIOEffect,
   FWriteIO: WriteIOEffect, FExecIO: ExecIOEffect,
