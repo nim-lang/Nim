@@ -964,6 +964,16 @@ proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
       return nil
     result = result.fields.getOrDefault(key)
 
+proc `{}`*(node: JsonNode, index: varargs[int]): JsonNode =
+  ## Traverses the node and gets the given value. If any of the
+  ## indexes do not exist, returns ``nil``. Also returns ``nil`` if one of the
+  ## intermediate data structures is not an array.
+  result = node
+  for i in index:
+    if isNil(result) or result.kind != JArray or i >= node.len:
+      return nil
+    result = result.elems[i]
+
 proc getOrDefault*(node: JsonNode, key: string): JsonNode =
   ## Gets a field from a `node`. If `node` is nil or not an object or
   ## value at `key` does not exist, returns nil
