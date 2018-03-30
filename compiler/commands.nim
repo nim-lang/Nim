@@ -692,6 +692,11 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectNoArg(switch, arg, pass, info)
     newDestructors = true
     defineSymbol("nimNewRuntime")
+  of "usenamespace":
+    expectNoArg(switch, arg, pass, info)
+    useNimNamespace = true
+    defineSymbol("nimUseNamespace")
+    
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(switch, arg)
     else: invalidCmdLineOption(pass, switch, info)

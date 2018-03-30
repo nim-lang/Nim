@@ -669,6 +669,9 @@ proc generateHeaders(m: BModule) =
   add(m.s[cfsHeaders], "#undef powerpc" & tnl)
   add(m.s[cfsHeaders], "#undef unix" & tnl)
 
+proc generateNimNamespaceOpen(m: BModule) =
+  add(m.s[cfsHeaders], "namespace Nim {" & tnl)
+  
 proc closureSetup(p: BProc, prc: PSym) =
   if tfCapturesEnv notin prc.typ.flags: return
   # prc.ast[paramsPos].last contains the type we're after:
@@ -914,6 +917,7 @@ proc addIntTypes(result: var Rope) {.inline.} =
   addf(result, "#define NIM_NEW_MANGLING_RULES" & tnl &
                "#define NIM_INTBITS $1" & tnl, [
     platform.CPU[targetCPU].intSize.rope])
+  if useNimNamespace : result.add("#define USE_NIM_NAMESPACE" & tnl)
 
 proc getCopyright(cfile: Cfile): Rope =
   if optCompileOnly in gGlobalOptions:
@@ -1183,11 +1187,13 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
 
   generateThreadLocalStorage(m)
   generateHeaders(m)
+  if useNimNamespace: generateNimNamespaceOpen(m)
   for i in countup(cfsHeaders, cfsProcs):
     add(result, genSectionStart(i))
     add(result, m.s[i])
     add(result, genSectionEnd(i))
   add(result, m.s[cfsInitProc])
+  if useNimNamespace: result.add("}" & tnl)
 
 proc newPreInitProc(m: BModule): BProc =
   result = newProc(nil, m)
@@ -1320,6 +1326,7 @@ proc writeHeader(m: BModule) =
   result.addf("#ifndef $1$n#define $1$n", [guard])
   addIntTypes(result)
   generateHeaders(m)
+  if useNimNamespace: generateNimNamespaceOpen(m)
 
   generateThreadLocalStorage(m)
   for i in countup(cfsHeaders, cfsProcs):
@@ -1331,6 +1338,7 @@ proc writeHeader(m: BModule) =
   if optGenDynLib in gGlobalOptions:
     result.add("N_LIB_IMPORT ")
   result.addf("N_CDECL(void, NimMain)(void);$n", [])
+  if useNimNamespace: result.add("}" & tnl)
   result.addf("#endif /* $1 */$n", [guard])
   writeRope(result, m.filename)
 
