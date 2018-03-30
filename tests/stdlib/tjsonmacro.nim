@@ -330,6 +330,21 @@ when isMainModule:
     doAssert jDeser[0].n2.get() == "ABC"
     doAssert jDeser[1].n2.isNone()
 
+    # Issue #6902
+    type
+      Obj = object
+        n1: int
+        n2: Option[int]
+        n3: Option[string]
+        n4: Option[bool]
+        
+    var j0 = parseJson("""{"n1": 1, "n2": null, "n3": null, "n4": null}""")
+    let j0Deser = j0.to(Obj)
+    doAssert j0Deser.n1 == 1
+    doAssert j0Deser.n2.isNone()
+    doAssert j0Deser.n3.isNone()
+    doAssert j0Deser.n4.isNone()
+
   # Table[T, Y] support.
   block:
     type
