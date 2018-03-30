@@ -52,6 +52,11 @@ proc chckNil(p: pointer) =
   if p == nil:
     sysFatal(NilAccessError, "attempt to write to a nil address")
 
+when defined(nimNewRuntime):
+  proc chckMove(b: bool) {.compilerproc.} =
+    if not b:
+      sysFatal(MoveError, "attempt to access an object that was moved")
+
 proc chckNilDisp(p: pointer) {.compilerproc.} =
   if p == nil:
     sysFatal(NilAccessError, "cannot dispatch; dispatcher is nil")

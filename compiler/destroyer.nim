@@ -89,11 +89,36 @@
 ##       tmp.bar))
 ## destroy(tmp.bar)
 ## destroy(tmp.x); destroy(tmp.y)
+##
 
+##[
+From https://github.com/nim-lang/Nim/wiki/Destructors
+
+Rule      Pattern                 Transformed into
+----      -------                 ----------------
+1.1	      var x: T; stmts	        var x: T; try stmts
+                                  finally: `=destroy`(x)
+1.2       var x: sink T; stmts    var x: sink T; stmts; ensureEmpty(x)
+2         x = f()                 `=sink`(x, f())
+3         x = lastReadOf z        `=sink`(x, z)
+4.1       y = sinkParam           `=sink`(y, sinkParam)
+4.2       x = y                   `=`(x, y) # a copy
+5.1       f_sink(g())             f_sink(g())
+5.2       f_sink(y)               f_sink(copy y); # copy unless we can see it's the last read
+5.3       f_sink(move y)          f_sink(y); reset(y) # explicit moves empties 'y'
+5.4       f_noSink(g())           var tmp = bitwiseCopy(g()); f(tmp); `=destroy`(tmp)
+
+Remarks: Rule 1.2 is not yet implemented because ``sink`` is currently
+  not allowed as a local variable.
+
+``move`` builtin needs to be implemented.
+
+XXX Think about nfPreventDestructor logic.
+]##
 
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
-  strutils, options, dfa, lowerings, rodread
+  strutils, options, dfa, lowerings, rodread, tables
 
 const
   InterestingSyms = {skVar, skResult, skLet}
@@ -106,6 +131,14 @@ type
     tmpObj: PType
     tmp: PSym
     destroys, topLevelVars: PNode
+    toDropBit: Table[int, PSym]
+
+proc getTemp(c: var Con; typ: PType; info: TLineInfo): PNode =
+  # XXX why are temps fields in an object here?
+  let f = newSym(skField, getIdent(":d" & $c.tmpObj.n.len), c.owner, info)
+  f.typ = typ
+  rawAddField c.tmpObj, f
+  result = rawDirectAccess(c.tmp, f)
 
 proc isHarmlessVar*(s: PSym; c: Con): bool =
   # 's' is harmless if it used only once and its
@@ -212,14 +245,44 @@ proc genDestroy(t: PType; dest: PNode): PNode =
 proc addTopVar(c: var Con; v: PNode) =
   c.topLevelVars.add newTree(nkIdentDefs, v, emptyNode, emptyNode)
 
+proc dropBit(c: var Con; s: PSym): PSym =
+  result = c.toDropBit.getOrDefault(s.id)
+  assert result != nil
+
+proc registerDropBit(c: var Con; s: PSym) =
+  let result = newSym(skTemp, getIdent(s.name.s & "_AliveBit"), c.owner, s.info)
+  result.typ = getSysType(tyBool)
+  let trueVal = newIntTypeNode(nkIntLit, 1, result.typ)
+  c.topLevelVars.add newTree(nkIdentDefs, newSymNode result, emptyNode, trueVal)
+  c.toDropBit[s.id] = result
+  # generate:
+  #  if not sinkParam_AliveBit: `=destroy`(sinkParam)
+  c.destroys.add newTree(nkIfStmt,
+    newTree(nkElifBranch, newSymNode result, genDestroy(s.typ, newSymNode s)))
+
 proc p(n: PNode; c: var Con): PNode
 
 template recurse(n, dest) =
   for i in 0..<n.len:
     dest.add p(n[i], c)
 
+proc isSinkParam(s: PSym): bool {.inline.} =
+  result = s.kind == skParam and s.typ.kind == tySink
+
+const constrExprs = nkCallKinds+{nkObjConstr}
+
+proc destructiveMoveSink(n: PNode; c: var Con): PNode =
+  # generate:  (chckMove(sinkParam_AliveBit); sinkParam_AliveBit = false; sinkParam)
+  result = newNodeIT(nkStmtListExpr, n.info, n.typ)
+  let bit = newSymNode dropBit(c, n.sym)
+  if optMoveCheck in c.owner.options:
+    result.add callCodegenProc("chckMove", bit)
+  result.add newTree(nkAsgn, bit,
+    newIntTypeNode(nkIntLit, 0, getSysType(tyBool)))
+  result.add n
+
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
-  if ri.kind in nkCallKinds+{nkObjConstr}:
+  if ri.kind in constrExprs:
     result = genSink(ri.typ, dest)
     # watch out and no not transform 'ri' twice if it's a call:
     let ri2 = copyNode(ri)
@@ -228,9 +291,81 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   elif ri.kind == nkSym and isHarmlessVar(ri.sym, c):
     result = genSink(ri.typ, dest)
     result.add p(ri, c)
+  elif ri.kind == nkSym and isSinkParam(ri.sym):
+    result = genSink(ri.typ, dest)
+    result.add destructiveMoveSink(ri, c)
   else:
     result = genCopy(ri.typ, dest)
     result.add p(ri, c)
+
+proc passCopyToSink(n: PNode; c: var Con): PNode =
+  result = newNodeIT(nkStmtListExpr, n.info, n.typ)
+  let tmp = getTemp(c, n.typ, n.info)
+  var m = genCopy(n.typ, tmp)
+  m.add n
+  result.add m
+  result.add tmp
+  incl result.flags, nfPreventDestructor
+  message(n.info, hintPerformance,
+    "passing '$1' to a sink parameter introduces an implicit copy; " &
+    "use 'move($1)' to prevent it" % $n)
+
+proc genReset(n: PNode; c: var Con): PNode =
+  result = newNodeI(nkCall, n.info)
+  result.add(newSymNode(createMagic("reset", mReset)))
+  # The mReset builtin does not take the address:
+  result.add n
+
+proc destructiveMoveVar(n: PNode; c: var Con): PNode =
+  # generate: (let tmp = v; reset(v); tmp)
+  result = newNodeIT(nkStmtListExpr, n.info, n.typ)
+
+  var temp = newSym(skLet, getIdent("blitTmp"), c.owner, n.info)
+  var v = newNodeI(nkLetSection, n.info)
+  let tempAsNode = newSymNode(temp)
+
+  var vpart = newNodeI(nkIdentDefs, tempAsNode.info, 3)
+  vpart.sons[0] = tempAsNode
+  vpart.sons[1] = ast.emptyNode
+  vpart.sons[2] = n
+  add(v, vpart)
+
+  result.add v
+  result.add genReset(n, c)
+  result.add tempAsNode
+  incl result.flags, nfPreventDestructor
+
+proc handleSinkParams(n: PNode; c: var Con) =
+  # first pass: introduce copies for stuff passed to
+  # 'sink' parameters. Introduce destructor guards for
+  # 'sink' parameters.
+  assert n.kind in nkCallKinds
+  # Rule 5.2: Compensate for 'sink' parameters with copies
+  # at the callsite (unless of course we can prove its the
+  # last read):
+  let parameters = n.typ
+  let L = if parameters != nil: parameters.len else: 0
+  for i in 1 ..< L:
+    let t = parameters[i]
+    if t.kind == tySink:
+      if n[i].kind in constrExprs:
+        incl(n[i].flags, nfPreventDestructor)
+      elif n[i].kind == nkSym and isHarmlessVar(n[i].sym, c):
+        # if x is a variable and it its last read we eliminate its
+        # destructor invokation, but don't. We need to reset its memory
+        # to disable its destructor which we have not elided:
+        n.sons[i] = destructiveMoveVar(n[i], c)
+        when false:
+          # XXX we need to find a way to compute "all paths consume 'x'"
+          c.symsNoDestructors.incl n[i].sym.id
+          # however, not emiting the copy operation is correct here.
+      elif n[i].kind == nkSym and isSinkParam(n[i].sym):
+        # mark the sink parameter as used:
+        n.sons[i] = destructiveMoveSink(n[i], c)
+      else:
+        # an object that is not temporary but passed to a 'sink' parameter
+        # results in a copy.
+        n.sons[i] = passCopyToSink(n[i], c)
 
 proc p(n: PNode; c: var Con): PNode =
   case n.kind
@@ -266,22 +401,21 @@ proc p(n: PNode; c: var Con): PNode =
         varSection.add itCopy
         result.add varSection
   of nkCallKinds:
-    if n.typ != nil and hasDestructor(n.typ):
+    if n.typ != nil and hasDestructor(n.typ) and nfPreventDestructor notin n.flags:
       discard "produce temp creation"
       result = newNodeIT(nkStmtListExpr, n.info, n.typ)
-      let f = newSym(skField, getIdent(":d" & $c.tmpObj.n.len), c.owner, n.info)
-      f.typ = n.typ
-      rawAddField c.tmpObj, f
-      var m = genSink(n.typ, rawDirectAccess(c.tmp, f))
+      let tmp = getTemp(c, n.typ, n.info)
+      var m = genSink(n.typ, tmp)
       var call = copyNode(n)
       recurse(n, call)
       m.add call
       result.add m
-      result.add rawDirectAccess(c.tmp, f)
-      c.destroys.add genDestroy(n.typ, rawDirectAccess(c.tmp, f))
+      result.add tmp
+      c.destroys.add genDestroy(n.typ, tmp)
     else:
       result = copyNode(n)
       recurse(n, result)
+    #handleSinkParams(result, c)
   of nkAsgn, nkFastAsgn:
     if hasDestructor(n[0].typ):
       result = moveOrCopy(n[0], n[1], c)
@@ -311,6 +445,11 @@ proc injectDestructorCalls*(owner: PSym; n: PNode): PNode =
   for i in 0..<c.g.len:
     if c.g[i].kind in {goto, fork}:
       c.jumpTargets.incl(i+c.g[i].dest)
+  if owner.kind in {skProc, skFunc, skMethod, skIterator, skConverter}:
+    let params = owner.typ.n
+    for i in 1 ..< params.len:
+      let param = params[i].sym
+      if param.typ.kind == tySink: registerDropBit(c, param)
   let body = p(n, c)
   if c.tmp.typ.n.len > 0:
     c.addTopVar(newSymNode c.tmp)

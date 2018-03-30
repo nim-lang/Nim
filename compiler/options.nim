@@ -25,7 +25,7 @@ type                          # please make sure we have under 32 options
   TOption* = enum             # **keep binary compatible**
     optNone, optObjCheck, optFieldCheck, optRangeCheck, optBoundsCheck,
     optOverflowCheck, optNilCheck,
-    optNaNCheck, optInfCheck,
+    optNaNCheck, optInfCheck, optMoveCheck,
     optAssert, optLineDir, optWarns, optHints,
     optOptimizeSpeed, optOptimizeSize, optStackTrace, # stack tracing support
     optLineTrace,             # line tracing support (includes stack tracing)
@@ -119,13 +119,14 @@ var
 
 const
   ChecksOptions* = {optObjCheck, optFieldCheck, optRangeCheck, optNilCheck,
-    optOverflowCheck, optBoundsCheck, optAssert, optNaNCheck, optInfCheck}
+    optOverflowCheck, optBoundsCheck, optAssert, optNaNCheck, optInfCheck,
+    optMoveCheck}
 
 var
   gOptions*: TOptions = {optObjCheck, optFieldCheck, optRangeCheck,
                          optBoundsCheck, optOverflowCheck, optAssert, optWarns,
                          optHints, optStackTrace, optLineTrace,
-                         optPatterns, optNilCheck}
+                         optPatterns, optNilCheck, optMoveCheck}
   gGlobalOptions*: TGlobalOptions = {optThreadAnalysis}
   gExitcode*: int8
   gCmd*: TCommands = cmdNone  # the command
