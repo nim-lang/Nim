@@ -562,29 +562,4 @@ Nimble is a package manager for the Nim programming language.
 For instructions on how to install Nimble packages see
 `its README <https://github.com/nim-lang/nimble#readme>`_.
 
-Official packages
------------------
-
-These packages are officially supported and will therefore be continually
-maintained to ensure that they work with the latest versions of the Nim
-compiler.
-
-.. raw:: html
-
-  <div id="officialPkgList"><b>If you are reading this you are missing
-  nimblepkglist.js or have javascript disabled in your browser.</b></div>
-
-Unofficial packages
--------------------
-
-These packages have been developed by independent Nim developers and as
-such may not always be up to date with the latest developments in the
-Nim programming language.
-
-.. raw:: html
-
-  <div id="unofficialPkgList"><b>If you are reading this you are missing
-  nimblepkglist.js or have javascript disabled in your browser.</b></div>
-
-  <script type="text/javascript" src="nimblepkglist.js"></script>
-  <script type="text/javascript" src="https://irclogs.nim-lang.org/packages?callback=gotPackageList" async></script>
+To see a list of Nimble's packages, check out `https://nimble.directory/ <https://nimble.directory/>`_ or the `packages repos <https://github.com/nim-lang/packages>`_ on GitHub.
