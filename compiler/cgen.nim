@@ -669,9 +669,12 @@ proc generateHeaders(m: BModule) =
   add(m.s[cfsHeaders], "#undef powerpc" & tnl)
   add(m.s[cfsHeaders], "#undef unix" & tnl)
 
-proc generateNimNamespaceOpen(m: BModule) =
-  add(m.s[cfsHeaders], "namespace Nim {" & tnl)
+proc openNamespaceNim(): Rope =
+  result.add("namespace Nim {" & tnl)
   
+proc closeNamespaceNim(): Rope =
+  result.add("}" & tnl)
+
 proc closureSetup(p: BProc, prc: PSym) =
   if tfCapturesEnv notin prc.typ.flags: return
   # prc.ast[paramsPos].last contains the type we're after:
@@ -1083,7 +1086,11 @@ proc genMainProc(m: BModule) =
   appcg(m, m.s[cfsProcs], nimMain,
         [m.g.mainModInit, initStackBottomCall, rope(m.labels)])
   if optNoMain notin gGlobalOptions:
+    if useNimNamespace: 
+      m.s[cfsProcs].add closeNamespaceNim() & "using namespace Nim;" & tnl
+
     appcg(m, m.s[cfsProcs], otherMain, [])
+    if useNimNamespace: m.s[cfsProcs].add openNamespaceNim()
 
 proc getSomeInitName(m: PSym, suffix: string): Rope =
   assert m.kind == skModule
@@ -1187,13 +1194,13 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
 
   generateThreadLocalStorage(m)
   generateHeaders(m)
-  if useNimNamespace: generateNimNamespaceOpen(m)
   for i in countup(cfsHeaders, cfsProcs):
     add(result, genSectionStart(i))
     add(result, m.s[i])
     add(result, genSectionEnd(i))
+    if useNimNamespace and i == cfsHeaders: result.add openNamespaceNim()    
   add(result, m.s[cfsInitProc])
-  if useNimNamespace: result.add("}" & tnl)
+  if useNimNamespace: result.add closeNamespaceNim()
 
 proc newPreInitProc(m: BModule): BProc =
   result = newProc(nil, m)
@@ -1326,19 +1333,19 @@ proc writeHeader(m: BModule) =
   result.addf("#ifndef $1$n#define $1$n", [guard])
   addIntTypes(result)
   generateHeaders(m)
-  if useNimNamespace: generateNimNamespaceOpen(m)
 
   generateThreadLocalStorage(m)
   for i in countup(cfsHeaders, cfsProcs):
     add(result, genSectionStart(i))
     add(result, m.s[i])
     add(result, genSectionEnd(i))
+    if useNimNamespace and i == cfsHeaders: result.add openNamespaceNim()
   add(result, m.s[cfsInitProc])
 
   if optGenDynLib in gGlobalOptions:
     result.add("N_LIB_IMPORT ")
   result.addf("N_CDECL(void, NimMain)(void);$n", [])
-  if useNimNamespace: result.add("}" & tnl)
+  if useNimNamespace: result.add closeNamespaceNim()
   result.addf("#endif /* $1 */$n", [guard])
   writeRope(result, m.filename)
 
