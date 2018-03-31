@@ -52,7 +52,7 @@ Nim from source using ``gcc``, ``git`` and the ``koch`` build tool (in the place
 of ``sh build.sh`` you should substitute ``build.bat`` on x86 Windows or
 ``build64.bat`` on x86_64 Windows):
 
-**Note: These instructions apply to the development version of the compiler.**
+**Note: The following commands are for the development version of the compiler.**
 For most users, installing the latest stable version is enough. Check out
 the installation instructions on the website to do so: https://nim-lang.org/install.html.
 
