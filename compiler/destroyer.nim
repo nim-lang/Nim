@@ -299,13 +299,16 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
 proc passCopyToSink(n: PNode; c: var Con): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   let tmp = getTemp(c, n.typ, n.info)
-  var m = genCopy(n.typ, tmp)
-  m.add n
-  result.add m
+  if hasDestructor(n.typ):
+    var m = genCopy(n.typ, tmp)
+    m.add p(n, c)
+    result.add m
+    message(n.info, hintPerformance,
+      "passing '$1' to a sink parameter introduces an implicit copy; " &
+      "use 'move($1)' to prevent it" % $n)
+  else:
+    result.add newTree(nkAsgn, tmp, p(n, c))
   result.add tmp
-  message(n.info, hintPerformance,
-    "passing '$1' to a sink parameter introduces an implicit copy; " &
-    "use 'move($1)' to prevent it" % $n)
 
 proc genReset(n: PNode; c: var Con): PNode =
   result = newNodeI(nkCall, n.info)
@@ -365,7 +368,7 @@ proc p(n: PNode; c: var Con): PNode =
         varSection.add itCopy
         result.add varSection
   of nkCallKinds:
-    let parameters = n.typ
+    let parameters = n[0].typ
     let L = if parameters != nil: parameters.len else: 0
     for i in 1 ..< n.len:
       let arg = n[i]
@@ -376,7 +379,7 @@ proc p(n: PNode; c: var Con): PNode =
           let a = copyNode(arg)
           recurse(arg, a)
           n.sons[i] = a
-        elif arg.kind == nkObjConstr:
+        elif arg.kind in {nkObjConstr, nkCharLit..nkFloat128Lit}:
           discard "object construction to sink parameter: nothing to do"
         elif arg.kind == nkSym and isHarmlessVar(arg.sym, c):
           # if x is a variable and it its last read we eliminate its
