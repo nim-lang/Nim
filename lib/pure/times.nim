@@ -274,6 +274,18 @@ proc toTime*(dt: DateTime): Time {.tags: [], raises: [], benign.} =
   # so we need to compensate for that here.
   result.inc dt.utcOffset
 
+proc `<`*(a, b: DateTime): bool =
+  ## Returns true iff ``a < b``, that is iff a happened before b.
+  return a.toTime < b.toTime
+
+proc `<=` * (a, b: DateTime): bool =
+  ## Returns true iff ``a <= b``.
+  return a.toTime <= b.toTime
+
+proc `==`*(a, b: DateTime): bool =
+  ## Returns true if ``a == b``, that is if both dates represent the same point in datetime.
+  return a.toTime == b.toTime
+
 proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
   let adjTime = zt.adjTime.int64
   let epochday = (if adjTime >= 0: adjTime else: adjTime - (secondsInDay - 1)) div secondsInDay
