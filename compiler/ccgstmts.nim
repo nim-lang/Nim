@@ -37,7 +37,7 @@ proc isAssignedImmediately(n: PNode): bool {.inline.} =
     return false
   result = true
 
-proc inExceptBlockLen(p: BProc): int = 
+proc inExceptBlockLen(p: BProc): int =
   for x in p.nestedTryStmts:
     if x.inExcept: result.inc
 
@@ -797,13 +797,13 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   #     general_handler_body
   #   }
   #   finallyPart();
- 
+
   template genExceptBranchBody(body: PNode) {.dirty.} =
     if optStackTrace in p.options:
-      linefmt(p, cpsStmts, "#setFrame((TFrame*)&FR_);$n") 
+      linefmt(p, cpsStmts, "#setFrame((TFrame*)&FR_);$n")
     expr(p, body, d)
     linefmt(p, cpsStmts, "#popCurrentException();$n")
-    
+
   if not isEmptyType(t.typ) and d.k == locNone:
     getTemp(p, t.typ, d)
   genLineDir(p, t)
