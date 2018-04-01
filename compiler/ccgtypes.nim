@@ -1196,10 +1196,6 @@ proc fakeClosureType(owner: PSym): PType =
   r.rawAddSon(obj)
   result.rawAddSon(r)
 
-type
-  TTypeInfoReason = enum  ## for what do we need the type info?
-    tiNew,                ## for 'new'
-
 include ccgtrav
 
 proc genDeepCopyProc(m: BModule; s: PSym; result: Rope) =
@@ -1260,7 +1256,7 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
   of tySequence, tyRef, tyOptAsRef:
     genTypeInfoAux(m, t, t, result, info)
     if gSelectedGC >= gcMarkAndSweep:
-      let markerProc = genTraverseProc(m, origType, sig, tiNew)
+      let markerProc = genTraverseProc(m, origType, sig)
       addf(m.s[cfsTypeInit3], "$1.marker = $2;$n", [result, markerProc])
   of tyPtr, tyRange: genTypeInfoAux(m, t, t, result, info)
   of tyArray: genArrayInfo(m, t, result, info)
