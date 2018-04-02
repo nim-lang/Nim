@@ -704,6 +704,11 @@ proc duplicateHandle*(hSourceProcessHandle: HANDLE, hSourceHandle: HANDLE,
                       dwDesiredAccess: DWORD, bInheritHandle: WINBOOL,
                       dwOptions: DWORD): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "DuplicateHandle".}
+
+proc setHandleInformation*(hObject: HANDLE, dwMask: DWORD,
+                           dwFlags: DWORD): WINBOOL {.stdcall,
+    dynlib: "kernel32", importc: "SetHandleInformation".}
+
 proc getCurrentProcess*(): HANDLE{.stdcall, dynlib: "kernel32",
                                    importc: "GetCurrentProcess".}
 
