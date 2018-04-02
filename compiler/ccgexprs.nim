@@ -65,19 +65,24 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
     else:
       result = rope("NIM_NIL")
   of nkStrLit..nkTripleStrLit:
-    if n.strVal.isNil:
+    case skipTypes(ty, abstractVarRange).kind
+    of tyNil:
       result = ropecg(p.module, "((#NimStringDesc*) NIM_NIL)", [])
-    elif skipTypes(ty, abstractVarRange).kind == tyString:
-      let id = nodeTableTestOrSet(p.module.dataCache, n, p.module.labels)
-      if id == p.module.labels:
-        # string literal not found in the cache:
-        result = ropecg(p.module, "((#NimStringDesc*) &$1)",
-                        [getStrLit(p.module, n.strVal)])
+    of tyString:
+      if n.strVal.isNil:
+        result = ropecg(p.module, "((#NimStringDesc*) NIM_NIL)", [])
       else:
-        result = ropecg(p.module, "((#NimStringDesc*) &$1$2)",
-                        [p.module.tmpBase, rope(id)])
+        let id = nodeTableTestOrSet(p.module.dataCache, n, p.module.labels)
+        if id == p.module.labels:
+          # string literal not found in the cache:
+          result = ropecg(p.module, "((#NimStringDesc*) &$1)",
+                          [getStrLit(p.module, n.strVal)])
+        else:
+          result = ropecg(p.module, "((#NimStringDesc*) &$1$2)",
+                          [p.module.tmpBase, rope(id)])
     else:
-      result = makeCString(n.strVal)
+      if n.strVal.isNil: result = rope("NIM_NIL")
+      else: result = makeCString(n.strVal)
   of nkFloatLit, nkFloat64Lit:
     result = rope(n.floatVal.toStrMaxPrecision)
   of nkFloat32Lit:
