@@ -48,8 +48,6 @@ when not defined(android):
   proc signalfd(fd: cint, mask: var Sigset, flags: cint): cint
        {.cdecl, importc: "signalfd", header: "<sys/signalfd.h>".}
 
-var RLIMIT_NOFILE {.importc: "RLIMIT_NOFILE",
-                    header: "<sys/resource.h>".}: cint
 type
   RLimit {.importc: "struct rlimit",
            header: "<sys/resource.h>", pure, final.} = object
@@ -82,7 +80,7 @@ type
 proc newSelector*[T](): Selector[T] =
   # Retrieve the maximum fd count (for current OS) via getrlimit()
   var a = RLimit()
-  if getrlimit(RLIMIT_NOFILE, a) != 0:
+  if getrlimit(posix.RLIMIT_NOFILE, a) != 0:
     raiseOsError(osLastError())
   var maxFD = int(a.rlim_max)
   doAssert(maxFD > 0)
