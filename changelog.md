@@ -6,6 +6,8 @@
 
 - ``re.split`` for empty regular expressions now yields every character in
   the string which is what other programming languages chose to do.
+- Reader procs in the ``streams`` module are now deprecated. This is in favour
+  of the new generic ``read(<typedesc>)`` procedures.
 
 #### Breaking changes in the compiler
 
@@ -15,6 +17,7 @@
   with ``strutils.split``.
 - Added ``system.toOpenArray`` in order to support zero-copy slicing
   operations. This is currently not yet available for the JavaScript target.
+- ``streams`` module now contains a ``ByteStream`` that works with ``seq[byte]``
 
 ### Library changes
 
