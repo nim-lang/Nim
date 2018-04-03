@@ -193,9 +193,9 @@ proc addNimChar(dst: var string; c: char): void =
   else:
     dst.add c
 
-proc makeNimString(str: string): string =
+proc makeNimString(s: string): string =
   result = "\""
-  for c in str:
+  for c in s:
     result.addNimChar c
   add(result, '\"')
 
