@@ -1339,6 +1339,8 @@ else:
   proc parseJson*(buffer: string): JsonNode =
     return parseNativeJson(buffer).convertObject()
 
+proc to*(s: string; dest: typedesc[JsonNode]): auto = parseJson(s)
+
 # -- Json deserialiser macro. --
 
 proc createJsonIndexer(jsonNode: NimNode,
@@ -1979,6 +1981,7 @@ when isMainModule:
   let stringified = $testJson
   let parsedAgain = parseJson(stringified)
   doAssert(parsedAgain["b"].str == "asd")
+  doAssert parsedAgain == stringified.to(JsonNode)
 
   parsedAgain["abc"] = %5
   doAssert parsedAgain["abc"].num == 5
