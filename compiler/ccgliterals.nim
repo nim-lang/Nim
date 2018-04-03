@@ -52,10 +52,20 @@ proc genStringLiteralV1(m: BModule; n: PNode): Rope =
 # ------ Version 2: destructor based strings and seqs -----------------------
 
 proc genStringLiteralDataOnlyV2(m: BModule, s: string): Rope =
-  discard "to implement"
+  result = getTempName(m)
+  addf(m.s[cfsData], " static const NIM_CHAR $1[$2] = $3;$n",
+       [result, rope(len(s)+1), makeCString(s)])
 
 proc genStringLiteralV2(m: BModule; n: PNode): Rope =
-  discard "to implement"
+  let id = nodeTableTestOrSet(m.dataCache, n, m.labels)
+  if id == m.labels:
+    # string literal not found in the cache:
+    let pureLit = genStringLiteralDataOnlyV2(m, n.strVal)
+    result = getTempName(m)
+    addf(m.s[cfsData], "static const #NimStringV2 $1 = {$2, $2, $3};$n",
+        [result, rope(len(n.strVal)+1), pureLit])
+  else:
+    result = m.tmpBase & rope(id)
 
 # ------ Version selector ---------------------------------------------------
 
