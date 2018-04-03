@@ -238,7 +238,12 @@ proc genProc(m: BModule, prc: PSym)
 template compileToCpp(m: BModule): untyped =
   gCmd == cmdCompileToCpp or sfCompileToCpp in m.module.flags
 
-include "ccgtypes.nim"
+proc getTempName(m: BModule): Rope =
+  result = m.tmpBase & rope(m.labels)
+  inc m.labels
+
+include ccgliterals
+include ccgtypes
 
 # ------------------------------ Manager of temporaries ------------------
 
@@ -551,11 +556,13 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
       for i in countup(0, high(s)):
         inc(m.labels)
         if i > 0: add(loadlib, "||")
-        appcg(m, loadlib, "($1 = #nimLoadLibrary((#NimStringDesc*) &$2))$n",
-              [tmp, getStrLit(m, s[i])])
+        let n = newStrNode(nkStrLit, s[i])
+        n.info = lib.path.info
+        appcg(m, loadlib, "($1 = #nimLoadLibrary($2))$n",
+              [tmp, genStringLiteral(m, n)])
       appcg(m, m.s[cfsDynLibInit],
-            "if (!($1)) #nimLoadLibraryError((#NimStringDesc*) &$2);$n",
-            [loadlib, getStrLit(m, lib.path.strVal)])
+            "if (!($1)) #nimLoadLibraryError($2);$n",
+            [loadlib, genStringLiteral(m, lib.path)])
     else:
       var p = newProc(nil, m)
       p.options = p.options - {optStackTrace, optEndb}

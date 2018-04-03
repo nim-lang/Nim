@@ -70,7 +70,7 @@ type
     threadVarAccessed*: bool  # true if the proc already accessed some threadvar
     lastLineInfo*: TLineInfo  # to avoid generating excessive 'nimln' statements
     currLineInfo*: TLineInfo  # AST codegen will make this superfluous
-    nestedTryStmts*: seq[tuple[n: PNode, inExcept: bool]]  
+    nestedTryStmts*: seq[tuple[n: PNode, inExcept: bool]]
                               # in how many nested try statements we are
                               # (the vars must be volatile then)
                               # bool is true when are in the except part of a try block
@@ -116,6 +116,7 @@ type
     breakpoints*: Rope # later the breakpoints are inserted into the main proc
     typeInfoMarker*: TypeCache
     config*: ConfigRef
+    strVersion*, seqVersion*: int # version of the string/seq implementation to use
 
   TCGen = object of TPassContext # represents a C source file
     s*: TCFileSections        # sections of the C file

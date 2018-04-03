@@ -15,11 +15,11 @@ type
     len, cap: int
     data: ptr UncheckedArray[T]
 
+const nimSeqVersion {.core.} = 2
+
 template frees(s) = dealloc(s.data, s.cap * sizeof(T))
 
 # XXX make code memory safe for overflows in '*'
-proc nimSeqLiteral[T](x: openArray[T]): seq[T] {.core.} =
-  seq[T](len: x.len, cap: x.len, data: x)
 
 when defined(nimHasTrace):
   proc `=trace`[T](s: seq[T]; a: Allocator) =
@@ -120,7 +120,7 @@ proc `$`*[T](x: seq[T]): string =
   result = "@["
   var firstElement = true
   for i in 0..<x.len:
-    let 
+    let
       value = x.data[i]
     if firstElement:
       firstElement = false

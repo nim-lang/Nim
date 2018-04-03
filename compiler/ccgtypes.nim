@@ -267,10 +267,6 @@ proc addAbiCheck(m: BModule, t: PType, name: Rope) =
   if isDefined("checkabi"):
     addf(m.s[cfsTypeInfo], "NIM_CHECK_SIZE($1, $2);$n", [name, rope(getSize(t))])
 
-proc getTempName(m: BModule): Rope =
-  result = m.tmpBase & rope(m.labels)
-  inc m.labels
-
 proc ccgIntroducedPtr(s: PSym): bool =
   var pt = skipTypes(s.typ, typedescInst)
   assert skResult != s.kind
@@ -316,8 +312,13 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
   of tyPointer:
     result = typeNameOrLiteral(m, typ, "void*")
   of tyString:
-    discard cgsym(m, "NimStringDesc")
-    result = typeNameOrLiteral(m, typ, "NimStringDesc*")
+    case detectStrVersion(m)
+    of 2:
+      discard cgsym(m, "string")
+      result = typeNameOrLiteral(m, typ, "NimStringV2")
+    else:
+      discard cgsym(m, "NimStringDesc")
+      result = typeNameOrLiteral(m, typ, "NimStringDesc*")
   of tyCString: result = typeNameOrLiteral(m, typ, "NCSTRING")
   of tyBool: result = typeNameOrLiteral(m, typ, "NIM_BOOL")
   of tyChar: result = typeNameOrLiteral(m, typ, "NIM_CHAR")
