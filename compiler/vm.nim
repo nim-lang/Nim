@@ -1233,6 +1233,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkInt)
       regs[ra].intVal = ord(regs[rb].node.kind)
       c.comesFromHeuristic = regs[rb].node.info
+    of opcNSymKind:
+      decodeB(rkInt)
+      regs[ra].intVal = ord(regs[rb].node.sym.kind)
+      c.comesFromHeuristic = regs[rb].node.info
     of opcNIntVal:
       decodeB(rkInt)
       let a = regs[rb].node
