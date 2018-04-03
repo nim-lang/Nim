@@ -174,103 +174,175 @@ proc peek[T](s: Stream, result: var T) =
   if peekData(s, addr(result), sizeof(T)) != sizeof(T):
     raise newEIO("cannot read from stream")
 
-proc readChar*(s: Stream): char =
+proc read*(s: Stream, kind: typedesc[char]): char =
   ## reads a char from the stream `s`. Raises `EIO` if an error occurred.
   ## Returns '\0' as an EOF marker.
   if readData(s, addr(result), sizeof(result)) != 1: result = '\0'
 
-proc peekChar*(s: Stream): char =
+proc readChar*(s: Stream): char {.deprecated: "Use the generic `read(<type>)` instead".} =
+  read(s, char)
+
+proc peek*(s: Stream, kind: typedesc[char]): char =
   ## peeks a char from the stream `s`. Raises `EIO` if an error occurred.
   ## Returns '\0' as an EOF marker.
   if peekData(s, addr(result), sizeof(result)) != 1: result = '\0'
 
-proc readBool*(s: Stream): bool =
+proc peekChar*(s: Stream): char {.deprecated: "Use the generic `peek(<type>)` instead".} =
+  peek(s, char)
+
+proc read*(s: Stream, kind: typedesc[bool]): bool =
   ## reads a bool from the stream `s`. Raises `EIO` if an error occurred.
   read(s, result)
 
-proc peekBool*(s: Stream): bool =
+proc readBool*(s: Stream): bool {.deprecated: "Use the generic `read(<type>)` instead".} =
+  read(s, bool)
+
+proc peek*(s: Stream, kind: typedesc[bool]): bool =
   ## peeks a bool from the stream `s`. Raises `EIO` if an error occurred.
   peek(s, result)
 
-proc readInt8*(s: Stream): int8 =
+proc peekBool*(s: Stream): bool {.deprecated: "Use the generic `peek(<type>)` instead".} =
+  peek(s, bool)
+
+proc read*(s: Stream, kind: typedesc[int8]): int8 =
   ## reads an int8 from the stream `s`. Raises `EIO` if an error occurred.
   read(s, result)
 
-proc peekInt8*(s: Stream): int8 =
+proc readInt8*(s: Stream): int8 {.deprecated: "Use the generic `read(<type>)` instead".} =
+  read(s, int8)
+
+proc peek*(s: Stream, kind: typedesc[int8]): int8 =
   ## peeks an int8 from the stream `s`. Raises `EIO` if an error occurred.
   peek(s, result)
 
-proc readInt16*(s: Stream): int16 =
+proc peekInt8*(s: Stream): int8 {.deprecated: "Use the generic `peek(<type>)` instead".} =
+  peek(s, result)
+
+proc read*(s: Stream, kind: typedesc[int16]): int16 =
   ## reads an int16 from the stream `s`. Raises `EIO` if an error occurred.
   read(s, result)
 
-proc peekInt16*(s: Stream): int16 =
+proc readInt16*(s: Stream): int16 {.deprecated: "Use the generic `read(<type>)` instead".} =
+  read(s, int16)
+
+proc peek*(s: Stream, kind: typedesc[int16]): int16 =
   ## peeks an int16 from the stream `s`. Raises `EIO` if an error occurred.
   peek(s, result)
 
-proc readInt32*(s: Stream): int32 =
+proc peekInt16*(s: Stream): int16 {.deprecated: "Use the generic `peek(<type>)` instead".} =
+  peek(s, int16)
+
+proc read*(s: Stream, kind: typedesc[int32]): int32 =
   ## reads an int32 from the stream `s`. Raises `EIO` if an error occurred.
   read(s, result)
 
-proc peekInt32*(s: Stream): int32 =
+proc readInt32*(s: Stream): int32 {.deprecated: "Use the generic `read(<type>)` instead".} =
+  read(s, int32)
+
+proc peek*(s: Stream, kind: typedesc[int32]): int32 =
   ## peeks an int32 from the stream `s`. Raises `EIO` if an error occurred.
   peek(s, result)
 
-proc readInt64*(s: Stream): int64 =
+proc peekInt32*(s: Stream): int32 {.deprecated: "Use the generic `peek(<type>)` instead".} =
+  peek(s, int32)
+
+proc read*(s: Stream, kind: typedesc[int64]): int64 =
   ## reads an int64 from the stream `s`. Raises `EIO` if an error occurred.
   read(s, result)
 
-proc peekInt64*(s: Stream): int64 =
+proc readInt64*(s: Stream): int64 {.deprecated: "Use the generic `read(<type>)` instead".} =
+  read(s, int64)
+
+proc peek*(s: Stream, kind: typedesc[int64]): int64 =
   ## peeks an int64 from the stream `s`. Raises `EIO` if an error occurred.
   peek(s, result)
 
-proc readUint8*(s: Stream): uint8 =
+proc peekInt64*(s: Stream): int64 {.deprecated: "Use the generic `peek(<type>)` instead".} =
+  peek(s, int64)
+
+proc read*(s: Stream, kind: typedesc[uint8]): uint8 =
   ## reads an uint8 from the stream `s`. Raises `EIO` if an error occurred.
   read(s, result)
 
-proc peekUint8*(s: Stream): uint8 =
+proc readUint8*(s: Stream): uint8 {.deprecated: "Use the generic `read(<type>)` instead".} =
+  read(s, uint8)
+
+proc peek*(s: Stream, kind: typedesc[uint8]): uint8 =
   ## peeks an uint8 from the stream `s`. Raises `EIO` if an error occurred.
   peek(s, result)
 
-proc readUint16*(s: Stream): uint16 =
+proc peekUint8*(s: Stream): uint8 {.deprecated: "Use the generic `peek(<type>)` instead".} =
+  peek(s, uint8)
+
+proc read*(s: Stream, kind: typedesc[uint16]): uint16 =
   ## reads an uint16 from the stream `s`. Raises `EIO` if an error occurred.
   read(s, result)
 
-proc peekUint16*(s: Stream): uint16 =
+proc readUint16*(s: Stream): uint16 {.deprecated: "Use the generic `read(<type>)` instead".} =
+  read(s, uint16)
+
+proc peek*(s: Stream, kind: typedesc[uint16]): uint16 =
   ## peeks an uint16 from the stream `s`. Raises `EIO` if an error occurred.
   peek(s, result)
 
-proc readUint32*(s: Stream): uint32 =
+proc peekUint16*(s: Stream): uint16 {.deprecated: "Use the generic `peek(<type>)` instead".} =
+  peek(s, uint16)
+
+proc read*(s: Stream, kind: typedesc[uint32]): uint32 =
   ## reads an uint32 from the stream `s`. Raises `EIO` if an error occurred.
   read(s, result)
 
-proc peekUint32*(s: Stream): uint32 =
+proc readUint32*(s: Stream): uint32 {.deprecated: "Use the generic `read(<type>)` instead".} =
+  read(s, uint32)
+
+proc peek*(s: Stream, kind: typedesc[uint32]): uint32 =
   ## peeks an uint32 from the stream `s`. Raises `EIO` if an error occurred.
   peek(s, result)
 
-proc readUint64*(s: Stream): uint64 =
+proc peekUint32*(s: Stream): uint32 {.deprecated: "Use the generic `peek(<type>)` instead".} =
+  peek(s, uint32)
+
+proc read*(s: Stream, kind: typedesc[uint64]): uint64 =
   ## reads an uint64 from the stream `s`. Raises `EIO` if an error occurred.
   read(s, result)
 
-proc peekUint64*(s: Stream): uint64 =
+proc readUint64*(s: Stream): uint64 {.deprecated: "Use the generic `read(<type>)` instead".} =
+  read(s, uint64)
+
+proc peek*(s: Stream, kind: typedesc[uint64]): uint64 =
   ## peeks an uint64 from the stream `s`. Raises `EIO` if an error occurred.
   peek(s, result)
 
-proc readFloat32*(s: Stream): float32 =
+proc peekUint64*(s: Stream): uint64 {.deprecated: "Use the generic `peek(<type>)` instead".} =
+  read(s, uint64)
+
+proc read*(s: Stream, kind: typedesc[float32]): float32 =
   ## reads a float32 from the stream `s`. Raises `EIO` if an error occurred.
   read(s, result)
 
-proc peekFloat32*(s: Stream): float32 =
+proc readFloat32*(s: Stream): float32 {.deprecated: "Use the generic `read(<type>)` instead".} =
+  read(s, float32)
+
+proc peek*(s: Stream, kind: typedesc[float32]): float32 =
   ## peeks a float32 from the stream `s`. Raises `EIO` if an error occurred.
   peek(s, result)
 
-proc readFloat64*(s: Stream): float64 =
+proc peekFloat32*(s: Stream): float32 {.deprecated: "Use the generic `peek(<type>)` instead".} =
+  peek(s, float32)
+
+proc read*(s: Stream, kind: typedesc[float64]): float64 =
   ## reads a float64 from the stream `s`. Raises `EIO` if an error occurred.
   read(s, result)
 
-proc peekFloat64*(s: Stream): float64 =
+proc readFloat64*(s: Stream): float64 {.deprecated: "Use the generic `read(<type>)` instead".} =
+  read(s, float64)
+
+proc peek*(s: Stream, kind: typedesc[float64]): float64 =
   ## peeks a float64 from the stream `s`. Raises `EIO` if an error occurred.
   peek(s, result)
+
+proc peekFloat64*(s: Stream): float64 {.deprecated: "Use the generic `peek(<type>)` instead".} =
+  peek(s, float64)
 
 proc readStr*(s: Stream, length: int): TaintedString =
   ## reads a string of length `length` from the stream `s`. Raises `EIO` if
@@ -402,6 +474,67 @@ when not defined(js):
     result.readDataImpl = ssReadData
     result.peekDataImpl = ssPeekData
     result.writeDataImpl = ssWriteData
+
+  type
+    ByteStream* = ref ByteStreamObj ## a stream that encapsulates a seq[byte]
+    ByteStreamObj* = object of StreamObj
+      data*: seq[byte]
+      pos: int
+
+  proc bsAtEnd(s: Stream): bool =
+    var s = ByteStream(s)
+    return s.pos >= s.data.len
+
+  proc bsSetPosition(s: Stream, pos: int) =
+    var s = ByteStream(s)
+    s.pos = clamp(pos, 0, s.data.len)
+
+  proc bsGetPosition(s: Stream): int =
+    var s = ByteStream(s)
+    return s.pos
+
+  proc bsReadData(s: Stream, buffer: pointer, bufLen: int): int =
+    var s = ByteStream(s)
+    result = min(bufLen, s.data.len - s.pos)
+    if result > 0:
+      copyMem(buffer, addr(s.data[s.pos]), result)
+      inc(s.pos, result)
+    else:
+      result = 0
+
+  proc bsPeekData(s: Stream, buffer: pointer, bufLen: int): int =
+    var s = ByteStream(s)
+    result = min(bufLen, s.data.len - s.pos)
+    if result > 0:
+      copyMem(buffer, addr(s.data[s.pos]), result)
+    else:
+      result = 0
+
+  proc bsWriteData(s: Stream, buffer: pointer, bufLen: int) =
+    var s = ByteStream(s)
+    if bufLen <= 0:
+      return
+    if s.pos + bufLen > s.data.len:
+      setLen(s.data, s.pos + bufLen)
+    copyMem(addr(s.data[s.pos]), buffer, bufLen)
+    inc(s.pos, bufLen)
+
+  proc bsClose(s: Stream) =
+    var s = ByteStream(s)
+    s.data = nil
+
+  proc newByteStream*(s: seq[byte] = @[]): ByteStream =
+    ## creates a new stream from the byte sequence `s`.
+    new(result)
+    result.data = s
+    result.pos = 0
+    result.closeImpl = bsClose
+    result.atEndImpl = bsAtEnd
+    result.setPositionImpl = bsSetPosition
+    result.getPositionImpl = bsGetPosition
+    result.readDataImpl = bsReadData
+    result.peekDataImpl = bsPeekData
+    result.writeDataImpl = bsWriteData
 
   type
     FileStream* = ref FileStreamObj ## a stream that encapsulates a `File`
