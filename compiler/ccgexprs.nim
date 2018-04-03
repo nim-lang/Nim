@@ -30,12 +30,6 @@ proc intLiteral(i: BiggestInt): Rope =
   else:
     result = ~"(IL64(-9223372036854775807) - IL64(1))"
 
-proc getStrLit(m: BModule, s: string): Rope =
-  discard cgsym(m, "TGenericSeq")
-  result = getTempName(m)
-  addf(m.s[cfsData], "STRING_LITERAL($1, $2, $3);$n",
-       [result, makeCString(s), rope(len(s))])
-
 proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
   if ty == nil: internalError(n.info, "genLiteral: ty is nil")
   case n.kind
@@ -67,19 +61,9 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
   of nkStrLit..nkTripleStrLit:
     case skipTypes(ty, abstractVarRange).kind
     of tyNil:
-      result = ropecg(p.module, "((#NimStringDesc*) NIM_NIL)", [])
+      result = genNilStringLiteral(p.module, n.info)
     of tyString:
-      if n.strVal.isNil:
-        result = ropecg(p.module, "((#NimStringDesc*) NIM_NIL)", [])
-      else:
-        let id = nodeTableTestOrSet(p.module.dataCache, n, p.module.labels)
-        if id == p.module.labels:
-          # string literal not found in the cache:
-          result = ropecg(p.module, "((#NimStringDesc*) &$1)",
-                          [getStrLit(p.module, n.strVal)])
-        else:
-          result = ropecg(p.module, "((#NimStringDesc*) &$1$2)",
-                          [p.module.tmpBase, rope(id)])
+      result = genStringLiteral(p.module, n)
     else:
       if n.strVal.isNil: result = rope("NIM_NIL")
       else: result = makeCString(n.strVal)
@@ -823,16 +807,16 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
     genInExprAux(p, it, u, v, test)
     let id = nodeTableTestOrSet(p.module.dataCache,
                                newStrNode(nkStrLit, field.name.s), p.module.labels)
-    let strLit = if id == p.module.labels: getStrLit(p.module, field.name.s)
+    let strLit = if id == p.module.labels: genStringLiteralDataOnly(p.module, field.name.s, e.info)
                  else: p.module.tmpBase & rope(id)
     if op.magic == mNot:
       linefmt(p, cpsStmts,
-              "if ($1) #raiseFieldError(((#NimStringDesc*) &$2));$n",
-              rdLoc(test), strLit)
+              "if ($1) #raiseFieldError($2);$n",
+              rdLoc(test), genStringLiteralFromData(p.module, strLit, e.info))
     else:
       linefmt(p, cpsStmts,
-              "if (!($1)) #raiseFieldError(((#NimStringDesc*) &$2));$n",
-              rdLoc(test), strLit)
+              "if (!($1)) #raiseFieldError($2);$n",
+              rdLoc(test), genStringLiteralFromData(p.module, strLit, e.info))
 
 proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
   if optFieldCheck in p.options:

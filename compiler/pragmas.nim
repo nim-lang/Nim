@@ -65,7 +65,7 @@ const
     wGensym, wInject, wCodegenDecl, wGuard, wGoto, wExportNims, wUsed}
   constPragmas* = {wImportc, wExportc, wHeader, wDeprecated, wMagic, wNodecl,
     wExtern, wImportCpp, wImportObjC, wError, wGensym, wInject, wExportNims,
-    wIntDefine, wStrDefine, wUsed}
+    wIntDefine, wStrDefine, wUsed, wCompilerProc, wCore}
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideeffect,
                       wThread, wRaises, wLocks, wTags, wGcSafe}
