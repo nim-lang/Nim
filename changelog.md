@@ -18,6 +18,9 @@
 
 ### Library changes
 
+- ``macros.astGenRepr``, ``macros.lispRepr`` and ``macros.treeRepr``
+  now escapes the content of string literals consistently.
+
 ### Language additions
 
 ### Language changes
