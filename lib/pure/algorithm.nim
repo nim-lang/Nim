@@ -494,3 +494,16 @@ when isMainModule:
   doAssert s4 == "xxxefgabcdxxx"
   doAssert s5.rotateLeft(3 ..< 10, 11) == 6
   doAssert s5 == "xxxefgabcdxxx"
+
+  block product:
+    doAssert product(newSeq[seq[int]]()) == newSeq[seq[int]](), "empty input"
+    doAssert product(@[newSeq[int](), @[], @[]]) == newSeq[seq[int]](), "bit more empty input"
+    doAssert product(@[@[1,2]]) == @[@[1,2]], "a simple case of one element"
+    doAssert product(@[@[1,2], @[3,4]]) == @[@[2,4],@[1,4],@[2,3],@[1,3]], "two elements"
+    doAssert product(@[@[1,2], @[3,4], @[5,6]]) == @[@[2,4,6],@[1,4,6],@[2,3,6],@[1,3,6], @[2,4,5],@[1,4,5],@[2,3,5],@[1,3,5]], "three elements"
+    doAssert product(@[@[1,2], @[]]) == newSeq[seq[int]](), "two elements, but one empty"
+
+  block lowerBound:
+    doAssert lowerBound([1,2,4], 3, system.cmp[int]) == 2
+    doAssert lowerBound([1,2,2,3], 4, system.cmp[int]) == 4
+    doAssert lowerBound([1,2,3,10], 11) == 4
