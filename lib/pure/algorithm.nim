@@ -24,16 +24,20 @@ proc `*`*(x: int, order: SortOrder): int {.inline.} =
   var y = order.ord - 1
   result = (x xor y) - y
 
-proc fill*[T](a: var openArray[T], first, last: Natural, value: T) =
-  ## fills the array ``a[first..last]`` with `value`.
+template fillImpl[T](a: var openArray[T], first, last: int, value: T) =
   var x = first
   while x <= last:
     a[x] = value
     inc(x)
 
+proc fill*[T](a: var openArray[T], first, last: Natural, value: T) =
+  ## fills the array ``a[first..last]`` with `value`.
+  fillImpl(a, first, last, value)
+
 proc fill*[T](a: var openArray[T], value: T) =
   ## fills the array `a` with `value`.
-  fill(a, 0, a.high, value)
+  fillImpl(a, 0, a.high, value)
+
 
 proc reverse*[T](a: var openArray[T], first, last: Natural) =
   ## reverses the array ``a[first..last]``.
@@ -507,3 +511,7 @@ when isMainModule:
     doAssert lowerBound([1,2,4], 3, system.cmp[int]) == 2
     doAssert lowerBound([1,2,2,3], 4, system.cmp[int]) == 4
     doAssert lowerBound([1,2,3,10], 11) == 4
+
+  block fillEmptySeq:
+    var s = newSeq[int]()
+    s.fill(0)
