@@ -209,6 +209,8 @@ when defined(nimSymKind):
 else:
   proc symName*(n: NimNode): string =
     $n.symbol
+  proc getImpl*(symbol: NimNode): NimNode =
+    symbol.symbol.getImpl
 
 proc getType*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
   ## with 'getType' you can access the node's `type`:idx:. A Nim type is
