@@ -85,6 +85,10 @@ proc none*(T: typedesc): Option[T] =
   ## Returns a ``Option`` for this type that has no value.
   result.has = false
 
+proc none*[T]: Option[T] =
+  ## Alias for ``none(T)``.
+  none(T)
+
 proc isSome*[T](self: Option[T]): bool =
   self.has
 
