@@ -206,6 +206,9 @@ when defined(nimSymKind):
   proc getImpl*(symbol: NimNode): NimNode {.magic: "GetImpl", noSideEffect.}
     ## retrieve the implementation of `symbol`. `symbol` can be a
     ## routine or a const.
+else:
+  proc symName*(n: NimNode): string =
+    $n.symbol
 
 proc getType*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
   ## with 'getType' you can access the node's `type`:idx:. A Nim type is
