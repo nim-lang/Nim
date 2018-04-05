@@ -1081,6 +1081,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mNAddMultiple: genBinaryABC(c, n, dest, opcNAddMultiple)
   of mNKind: genUnaryABC(c, n, dest, opcNKind)
   of mNSymKind: genUnaryABC(c, n, dest, opcNSymKind)
+  of mNSymName: genUnaryABC(c, n, dest, opcNSymName)
   of mNIntVal: genUnaryABC(c, n, dest, opcNIntVal)
   of mNFloatVal: genUnaryABC(c, n, dest, opcNFloatVal)
   of mNSymbol: genUnaryABC(c, n, dest, opcNSymbol)

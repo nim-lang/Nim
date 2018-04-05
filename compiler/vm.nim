@@ -892,7 +892,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node = if a.sym.ast.isNil: newNode(nkNilLit)
                         else: copyTree(a.sym.ast)
       else:
-        stackTrace(c, tos, pc, errFieldXNotFound, "symbol")
+        stackTrace(c, tos, pc, errGenerated, "node is not a symbol")
     of opcEcho:
       let rb = instr.regB
       if rb == 1:
@@ -1235,7 +1235,19 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       c.comesFromHeuristic = regs[rb].node.info
     of opcNSymKind:
       decodeB(rkInt)
-      regs[ra].intVal = ord(regs[rb].node.sym.kind)
+      let a = regs[rb].node
+      if a.kind == nkSym:
+        regs[ra].intVal = ord(a.sym.kind)
+      else:
+        stackTrace(c, tos, pc, errGenerated, "node is not a symbol")
+      c.comesFromHeuristic = regs[rb].node.info
+    of opcNSymName:
+      decodeB(rkNode)
+      let a = regs[rb].node
+      if a.kind == nkSym:
+        regs[ra].node = newStrNode(nkStrLit, a.sym.name.s)
+      else:
+        stackTrace(c, tos, pc, errGenerated, "node is not a symbol")
       c.comesFromHeuristic = regs[rb].node.info
     of opcNIntVal:
       decodeB(rkInt)

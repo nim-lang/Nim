@@ -118,7 +118,7 @@ type
     ## use ``ident"abc"``.
 
   NimSymObj = object # hidden
-  NimSym* = ref NimSymObj
+  NimSym* {.deprecated.} = ref NimSymObj
     ## represents a Nim *symbol* in the compiler; a *symbol* is a looked-up
     ## *ident*.
 
@@ -142,7 +142,7 @@ proc toNimIdent*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect.}
 proc `$`*(i: NimIdent): string {.magic: "IdentToStr", noSideEffect.}
   ## converts a Nim identifier to a string
 
-proc `$`*(s: NimSym): string {.magic: "IdentToStr", noSideEffect.}
+proc `$`*(s: NimSym): string {.magic: "IdentToStr", noSideEffect, deprecated.}
   ## converts a Nim symbol to a string
 
 proc `==`*(a, b: NimIdent): bool {.magic: "EqIdent", noSideEffect.}
@@ -151,7 +151,7 @@ proc `==`*(a, b: NimIdent): bool {.magic: "EqIdent", noSideEffect.}
 proc `==`*(a, b: NimNode): bool {.magic: "EqNimrodNode", noSideEffect.}
   ## compares two Nim nodes
 
-proc `==`*(a, b: NimSym): bool {.magic: "EqNimrodNode", noSideEffect.}
+proc `==`*(a, b: NimSym): bool {.magic: "EqNimrodNode", noSideEffect, deprecated.}
   ## compares two Nim symbols
 
 proc sameType*(a, b: NimNode): bool {.magic: "SameNodeType", noSideEffect.} =
@@ -195,11 +195,17 @@ proc kind*(n: NimNode): NimNodeKind {.magic: "NKind", noSideEffect.}
 proc intVal*(n: NimNode): BiggestInt {.magic: "NIntVal", noSideEffect.}
 
 proc floatVal*(n: NimNode): BiggestFloat {.magic: "NFloatVal", noSideEffect.}
-proc symbol*(n: NimNode): NimSym {.magic: "NSymbol", noSideEffect.}
 proc ident*(n: NimNode): NimIdent {.magic: "NIdent", noSideEffect.}
 
+proc symbol*(n: NimNode): NimSym {.magic: "NSymbol", noSideEffect, deprecated.}
+
 when defined(nimSymKind):
-  proc kind*(s: NimSym): NimSymKind {.magic: "NSymKind", noSideEffect.}
+  proc symKind*(symbol: NimNode): NimSymKind {.magic: "NSymKind", noSideEffect.}
+  proc symName*(symbol: NimNode): string {.magic: "NSymName", noSideEffect.}
+  #  ## Unlike the result of `repr` the symbol name is not unique.
+  proc getImpl*(symbol: NimNode): NimNode {.magic: "GetImpl", noSideEffect.}
+    ## retrieve the implementation of `symbol`. `symbol` can be a
+    ## routine or a const.
 
 proc getType*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
   ## with 'getType' you can access the node's `type`:idx:. A Nim type is
@@ -235,7 +241,7 @@ proc strVal*(n: NimNode): string  {.magic: "NStrVal", noSideEffect.}
 
 proc `intVal=`*(n: NimNode, val: BiggestInt) {.magic: "NSetIntVal", noSideEffect.}
 proc `floatVal=`*(n: NimNode, val: BiggestFloat) {.magic: "NSetFloatVal", noSideEffect.}
-proc `symbol=`*(n: NimNode, val: NimSym) {.magic: "NSetSymbol", noSideEffect.}
+proc `symbol=`*(n: NimNode, val: NimSym) {.magic: "NSetSymbol", noSideEffect, deprecated.}
 proc `ident=`*(n: NimNode, val: NimIdent) {.magic: "NSetIdent", noSideEffect.}
 #proc `typ=`*(n: NimNode, typ: typedesc) {.magic: "NSetType".}
 # this is not sound! Unfortunately forbidding 'typ=' is not enough, as you
@@ -258,10 +264,7 @@ proc newNimNode*(kind: NimNodeKind,
 proc copyNimNode*(n: NimNode): NimNode {.magic: "NCopyNimNode", noSideEffect.}
 proc copyNimTree*(n: NimNode): NimNode {.magic: "NCopyNimTree", noSideEffect.}
 
-proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect.} =
-  ## retrieve the implementation of a symbol `s`. `s` can be a routine or a
-  ## const.
-  discard
+proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect, deprecated.}
 
 proc error*(msg: string, n: NimNode = nil) {.magic: "NError", benign.}
   ## writes an error message at compile time
@@ -625,7 +628,7 @@ proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
     of nnkFloatLit..nnkFloat64Lit: res.add(" " & $n.floatVal)
     of nnkStrLit..nnkTripleStrLit: res.add(" " & $n.strVal.newLit.repr)
     of nnkIdent: res.add(" ident\"" & $n.ident & '"')
-    of nnkSym: res.add(" \"" & $n.symbol & '"')
+    of nnkSym: res.add(" \"" & n.symName & '"')
     of nnkNone: assert false
     else:
       for j in 0..n.len-1:
@@ -650,7 +653,7 @@ proc lispRepr*(n: NimNode): string {.compileTime, benign.} =
   of nnkFloatLit..nnkFloat64Lit: add(result, $n.floatVal)
   of nnkStrLit..nnkTripleStrLit, nnkCommentStmt: add(result, n.strVal.newLit.repr)
   of nnkIdent: add(result, "ident\"" & $n.ident & '"')
-  of nnkSym: add(result, $n.symbol)
+  of nnkSym: add(result, n.symName)
   of nnkNone: assert false
   else:
     if n.len > 0:
@@ -700,8 +703,8 @@ proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
     of nnkIntLit..nnkInt64Lit: res.add($n.intVal)
     of nnkFloatLit..nnkFloat64Lit: res.add($n.floatVal)
     of nnkStrLit..nnkTripleStrLit, nnkCommentStmt: res.add($n.strVal.newLit.repr)
-    of nnkIdent: res.add(($n.ident).newLit.repr())
-    of nnkSym: res.add(($n.symbol).newLit.repr())
+    of nnkIdent: res.add(($n.ident).newLit.repr)
+    of nnkSym: res.add(n.symName.newLit.repr)
     of nnkNone: assert false
     else:
       res.add(".newTree(")
@@ -1005,7 +1008,7 @@ proc `$`*(node: NimNode): string {.compileTime.} =
   of nnkStrLit..nnkTripleStrLit:
     result = node.strVal
   of nnkSym:
-    result = $node.symbol
+    result = node.symName
   of nnkOpenSymChoice, nnkClosedSymChoice:
     result = $node[0]
   of nnkAccQuoted:
@@ -1135,7 +1138,7 @@ proc eqIdent*(node: NimNode; s: string): bool {.compileTime.} =
   of nnkIdent:
     result = node.ident == toNimIdent s
   of nnkSym:
-    result = eqIdent($node.symbol, s)
+    result = eqIdent(node.symName, s)
   of nnkOpenSymChoice, nnkClosedSymChoice:
     result = eqIdent($node[0], s)
   else:
@@ -1192,11 +1195,11 @@ macro expandMacros*(body: typed): untyped =
 proc customPragmaNode(n: NimNode): NimNode =
   expectKind(n, {nnkSym, nnkDotExpr})
   if n.kind == nnkSym:
-    let sym = n.symbol.getImpl()
+    let sym = n.getImpl()
     sym.expectRoutine()
     result = sym.pragma
   elif n.kind == nnkDotExpr:
-    let typDef = getImpl(getTypeInst(n[0]).symbol)
+    let typDef = getImpl(getTypeInst(n[0]))
     typDef.expectKind(nnkTypeDef)
     typDef[2].expectKind(nnkObjectTy)
     let recList = typDef[2][2]

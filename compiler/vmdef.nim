@@ -80,6 +80,7 @@ type
     opcNAddMultiple,
     opcNKind,
     opcNSymKind,
+    opcNSymName,
     opcNIntVal,
     opcNFloatVal,
     opcNSymbol,
