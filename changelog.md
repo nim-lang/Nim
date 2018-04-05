@@ -7,6 +7,8 @@
 - ``re.split`` for empty regular expressions now yields every character in
   the string which is what other programming languages chose to do.
 
+- ``cookies.setCookie` no longer assumes UTC for the expiration date.
+
 #### Breaking changes in the compiler
 
 ### Library additions
@@ -17,6 +19,9 @@
   operations. This is currently not yet available for the JavaScript target.
 
 ### Library changes
+
+- ``macros.astGenRepr``, ``macros.lispRepr`` and ``macros.treeRepr``
+  now escapes the content of string literals consistently.
 
 ### Language additions
 

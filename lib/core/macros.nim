@@ -620,7 +620,7 @@ proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
     of nnkNilLit: res.add(" nil")
     of nnkCharLit..nnkInt64Lit: res.add(" " & $n.intVal)
     of nnkFloatLit..nnkFloat64Lit: res.add(" " & $n.floatVal)
-    of nnkStrLit..nnkTripleStrLit: res.add(" " & $n.strVal)
+    of nnkStrLit..nnkTripleStrLit: res.add(" " & $n.strVal.newLit.repr)
     of nnkIdent: res.add(" ident\"" & $n.ident & '"')
     of nnkSym: res.add(" \"" & $n.symbol & '"')
     of nnkNone: assert false
@@ -645,7 +645,7 @@ proc lispRepr*(n: NimNode): string {.compileTime, benign.} =
   of nnkNilLit: add(result, "nil")
   of nnkCharLit..nnkInt64Lit: add(result, $n.intVal)
   of nnkFloatLit..nnkFloat64Lit: add(result, $n.floatVal)
-  of nnkStrLit..nnkTripleStrLit: add(result, $n.strVal)
+  of nnkStrLit..nnkTripleStrLit, nnkCommentStmt: add(result, n.strVal.newLit.repr)
   of nnkIdent: add(result, "ident\"" & $n.ident & '"')
   of nnkSym: add(result, $n.symbol)
   of nnkNone: assert false
@@ -681,33 +681,6 @@ proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
     NodeKinds = {nnkEmpty, nnkNilLit, nnkIdent, nnkSym, nnkNone, nnkCommentStmt}
     LitKinds = {nnkCharLit..nnkInt64Lit, nnkFloatLit..nnkFloat64Lit, nnkStrLit..nnkTripleStrLit}
 
-  proc escape(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect.} =
-    ## Functions copied from strutils
-    proc toHex(x: BiggestInt, len: Positive): string {.noSideEffect, rtl.} =
-      const
-        HexChars = "0123456789ABCDEF"
-      var
-        t = x
-      result = newString(len)
-      for j in countdown(len-1, 0):
-        result[j] = HexChars[int(t and 0xF)]
-        t = t shr 4
-        # handle negative overflow
-        if t == 0 and x < 0: t = -1
-
-    result = newStringOfCap(s.len + s.len shr 2)
-    result.add(prefix)
-    for c in items(s):
-      case c
-      of '\0'..'\31', '\128'..'\255':
-        add(result, "\\x")
-        add(result, toHex(ord(c), 2))
-      of '\\': add(result, "\\\\")
-      of '\'': add(result, "\\'")
-      of '\"': add(result, "\\\"")
-      else: add(result, c)
-    add(result, suffix)
-
   proc traverse(res: var string, level: int, n: NimNode) {.benign.} =
     for i in 0..level-1: res.add "  "
     if n.kind in NodeKinds:
@@ -723,9 +696,9 @@ proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
     of nnkCharLit: res.add("'" & $chr(n.intVal) & "'")
     of nnkIntLit..nnkInt64Lit: res.add($n.intVal)
     of nnkFloatLit..nnkFloat64Lit: res.add($n.floatVal)
-    of nnkStrLit..nnkTripleStrLit, nnkCommentStmt: res.add($n.strVal.escape())
-    of nnkIdent: res.add(($n.ident).escape())
-    of nnkSym: res.add(($n.symbol).escape())
+    of nnkStrLit..nnkTripleStrLit, nnkCommentStmt: res.add($n.strVal.newLit.repr)
+    of nnkIdent: res.add(($n.ident).newLit.repr())
+    of nnkSym: res.add(($n.symbol).newLit.repr())
     of nnkNone: assert false
     else:
       res.add(".newTree(")
@@ -773,7 +746,6 @@ macro dumpTreeImm*(s: untyped): untyped {.deprecated.} = echo s.treeRepr
 
 macro dumpLispImm*(s: untyped): untyped {.deprecated.} = echo s.lispRepr
   ## Deprecated.
-
 
 proc newEmptyNode*(): NimNode {.compileTime, noSideEffect.} =
   ## Create a new empty node
@@ -1227,7 +1199,7 @@ proc customPragmaNode(n: NimNode): NimNode =
     let recList = typDef[2][2]
     for identDefs in recList:
       for i in 0 .. identDefs.len - 3:
-        if identDefs[i].kind == nnkPragmaExpr and 
+        if identDefs[i].kind == nnkPragmaExpr and
            identDefs[i][0].kind == nnkIdent and $identDefs[i][0] == $n[1]:
           return identDefs[i][1]
 
@@ -1237,7 +1209,7 @@ macro hasCustomPragma*(n: typed, cp: typed{nkSym}): untyped =
   ##
   ## .. code-block:: nim
   ##   template myAttr() {.pragma.}
-  ##   type 
+  ##   type
   ##     MyObj = object
   ##       myField {.myAttr.}: int
   ##   var o: MyObj
@@ -1255,7 +1227,7 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
   ##
   ## .. code-block:: nim
   ##   template serializationKey(key: string) {.pragma.}
-  ##   type 
+  ##   type
   ##     MyObj = object
   ##       myField {.serializationKey: "mf".}: int
   ##   var o: MyObj
