@@ -1640,6 +1640,8 @@ proc contains*(s: string, chars: set[char]): bool {.noSideEffect.} =
 proc replace*(s, sub: string, by = ""): string {.noSideEffect,
   rtl, extern: "nsuReplaceStr".} =
   ## Replaces `sub` in `s` by the string `by`.
+  if sub == "":
+    return s
   var a {.noinit.}: SkipTable
   result = ""
   initSkipTable(a, sub)
@@ -2542,8 +2544,14 @@ when isMainModule:
   doAssert "$animal eats $food." % ["animal", "The cat", "food", "fish"] ==
            "The cat eats fish."
 
-  doAssert "-ld a-ldz -ld".replaceWord("-ld") == " a-ldz "
-  doAssert "-lda-ldz -ld abc".replaceWord("-ld") == "-lda-ldz  abc"
+  block: # replace tests
+    doAssert "ab-cd ef".replace("ef", "gh") == "ab-cd gh"
+    doAssert "ab-cd ef".replace("cd", "") == "ab- ef"
+    doAssert "ab-cd ef".replace("", "gh") == "ab-cd ef"
+    doAssert "ab-cd ef".replace('c', 'z') == "ab-zd ef"
+    doAssert "-ld a-ldz -ld".replaceWord("-ld") == " a-ldz "
+    doAssert "-lda-ldz -ld abc".replaceWord("-ld") == "-lda-ldz  abc"
+
 
   type MyEnum = enum enA, enB, enC, enuD, enE
   doAssert parseEnum[MyEnum]("enu_D") == enuD
