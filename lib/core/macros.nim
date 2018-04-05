@@ -198,6 +198,7 @@ proc floatVal*(n: NimNode): BiggestFloat {.magic: "NFloatVal", noSideEffect.}
 proc ident*(n: NimNode): NimIdent {.magic: "NIdent", noSideEffect.}
 
 proc symbol*(n: NimNode): NimSym {.magic: "NSymbol", noSideEffect, deprecated.}
+proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect, deprecated.}
 
 when defined(nimSymKind):
   proc symKind*(symbol: NimNode): NimSymKind {.magic: "NSymKind", noSideEffect.}
@@ -268,8 +269,6 @@ proc newNimNode*(kind: NimNodeKind,
 
 proc copyNimNode*(n: NimNode): NimNode {.magic: "NCopyNimNode", noSideEffect.}
 proc copyNimTree*(n: NimNode): NimNode {.magic: "NCopyNimTree", noSideEffect.}
-
-proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect, deprecated.}
 
 proc error*(msg: string, n: NimNode = nil) {.magic: "NError", benign.}
   ## writes an error message at compile time
