@@ -526,7 +526,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
     of cmdEnd: break
     of cmdLongoption, cmdShortOption:
       case p.key.normalize
-      of "help":
+      of "help", "h":
         stdout.writeline(Usage)
         quit()
       of "port":
