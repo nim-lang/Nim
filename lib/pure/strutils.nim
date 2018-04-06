@@ -923,7 +923,10 @@ proc rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string]
     doAssert "a,b,c".rsplit(",") == @["a", "b", "c"]
     doAssert "a man a plan a canal panama".rsplit("a ") == @["", "man ", "plan ", "canal panama"]
     doAssert "".rsplit("Elon Musk") == @[""]
+    doAssert "Elon Musk".rsplit("") == @["Elon Musk"]
     doAssert "a  largely    spaced sentence".rsplit(" ") == @["a", "", "largely", "", "", "", "spaced", "sentence"]
+  if sep.len == 0:
+    return @[s]
   accumulateResult(rsplit(s, sep, maxsplit))
   result.reverse()
 
