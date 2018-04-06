@@ -1,5 +1,5 @@
 discard """
-  output: "(Field0: "string", Field1: "string")"
+  output: '''(Field0: "string", Field1: "string")'''
 """
 
 # 7528
