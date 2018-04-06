@@ -1080,6 +1080,7 @@ proc parseTypeDescKAux(p: var TParser, kind: TNodeKind,
   #| distinct = 'distinct' optInd typeDesc
   result = newNodeP(kind, p)
   getTok(p)
+  if p.tok.indent != -1 and p.tok.indent <= p.currInd: return
   optInd(p, result)
   if not isOperator(p.tok) and isExprStart(p):
     addSon(result, primary(p, mode))
