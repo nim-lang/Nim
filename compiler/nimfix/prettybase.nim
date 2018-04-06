@@ -8,7 +8,7 @@
 #
 
 import strutils, lexbase, streams
-import compiler/ast, compiler/msgs, compiler/idents
+import "../compiler" / [ast, msgs, idents]
 from os import splitFile
 
 type

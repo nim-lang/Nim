@@ -10,4 +10,4 @@
 ## Include file that imports all plugins that are active.
 
 import
-  locals.locals, itersgen
+  locals / locals, itersgen
