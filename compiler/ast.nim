@@ -847,6 +847,8 @@ type
     constraint*: PNode        # additional constraints like 'lit|result'; also
                               # misused for the codegenDecl pragma in the hope
                               # it won't cause problems
+                              # for skModule the string literal to output for
+                              # deprecated modules.
     when defined(nimsuggest):
       allUsages*: seq[TLineInfo]
 
