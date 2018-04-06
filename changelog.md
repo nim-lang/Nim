@@ -2,6 +2,8 @@
 
 ### Changes affecting backwards compatibility
 
+- The stdlib module ``future`` has been renamed to ``sugar``.
+
 #### Breaking changes in the standard library
 
 - ``re.split`` for empty regular expressions now yields every character in
