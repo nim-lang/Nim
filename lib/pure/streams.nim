@@ -321,6 +321,8 @@ proc readLine*(s: Stream): TaintedString =
   ## Reads a line from a stream `s`. Note: This is not very efficient. Raises
   ## `EIO` if an error occurred.
   result = TaintedString""
+  if s.atEnd:
+    raise newEIO("cannot read from stream")
   while true:
     var c = readChar(s)
     if c == '\c':
