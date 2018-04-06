@@ -302,7 +302,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       if nfDotField in n.flags and nfExplicitCall notin n.flags:
         localError(n.info, errUndeclaredField, considerQuotedIdent(f, n).s)
       else:
-        localError(n.info, errUndeclaredRoutine, $n) #considerQuotedIdent(f, n).s)
+        localError(n.info, errUndeclaredRoutine, considerQuotedIdent(f, n).s)
       return
     elif result.state != csMatch:
       if nfExprCall in n.flags:
