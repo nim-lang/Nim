@@ -449,6 +449,19 @@ proc expectLen*(n: NimNode, min, max: int) {.compileTime.} =
   if n.len < min or n.len > max:
     error("macro expects a node with " & $min & ".." & $max " children", n)
 
+proc inheritsFrom*(n:NimNode, base:NimNode) : bool {.compileTime.} =
+  ## Checks whether or not `n` has `base` as an direct or indirect super type.
+  expectKind(n, nnkObjectTy)
+  expectKind(base, nnkObjectTy)
+  var cur = n
+  while cur.kind != nnkEmpty:
+    cur = getType(cur[1])
+    if cur.sameType(base):
+      return true
+
+proc inheritsFrom*(n:NimNode, base:typedesc):bool {.compileTime.} =
+  inheritsFrom(n, base.getType)
+  
 proc newTree*(kind: NimNodeKind,
               children: varargs[NimNode]): NimNode {.compileTime.} =
   ## produces a new node with children.
