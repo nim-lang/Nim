@@ -844,10 +844,12 @@ proc split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.noSideEff
     doAssert "a,b,c".split(",") == @["a", "b", "c"]
     doAssert "a man a plan a canal panama".split("a ") == @["", "man ", "plan ", "canal panama"]
     doAssert "".split("Elon Musk") == @[""]
+    doAssert "Elon Musk".split("") == @["Elon Musk"]
     doAssert "a  largely    spaced sentence".split(" ") == @["a", "", "largely", "", "", "", "spaced", "sentence"]
 
     doAssert "a  largely    spaced sentence".split(" ", maxsplit=1) == @["a", " largely    spaced sentence"]
-  doAssert(sep.len > 0)
+  if sep.len == 0:
+    return @[s]
 
   accumulateResult(split(s, sep, maxsplit))
 
@@ -1640,6 +1642,8 @@ proc contains*(s: string, chars: set[char]): bool {.noSideEffect.} =
 proc replace*(s, sub: string, by = ""): string {.noSideEffect,
   rtl, extern: "nsuReplaceStr".} =
   ## Replaces `sub` in `s` by the string `by`.
+  if sub.len == 0:
+    return s
   var a {.noinit.}: SkipTable
   result = ""
   initSkipTable(a, sub)
@@ -2542,8 +2546,14 @@ when isMainModule:
   doAssert "$animal eats $food." % ["animal", "The cat", "food", "fish"] ==
            "The cat eats fish."
 
-  doAssert "-ld a-ldz -ld".replaceWord("-ld") == " a-ldz "
-  doAssert "-lda-ldz -ld abc".replaceWord("-ld") == "-lda-ldz  abc"
+  block: # replace tests
+    doAssert "ab-cd ef".replace("ef", "gh") == "ab-cd gh"
+    doAssert "ab-cd ef".replace("cd", "") == "ab- ef"
+    doAssert "ab-cd ef".replace('c', 'z') == "ab-zd ef"
+    doAssert "-ld a-ldz -ld".replaceWord("-ld") == " a-ldz "
+    doAssert "-lda-ldz -ld abc".replaceWord("-ld") == "-lda-ldz  abc"
+    doAssert "ab-cd ef".replace("", "gh") == "ab-cd ef"
+    doAssert "ab-cd ef".replace("") == "ab-cd ef"
 
   type MyEnum = enum enA, enB, enC, enuD, enE
   doAssert parseEnum[MyEnum]("enu_D") == enuD
@@ -2689,6 +2699,8 @@ bar
   doAssert s.split(maxsplit=4) == @["", "this", "is", "an", "example  "]
   doAssert s.split(' ', maxsplit=1) == @["", "this is an example  "]
   doAssert s.split(" ", maxsplit=4) == @["", "this", "is", "an", "example  "]
+  doAssert s.split("") == @[" this is an example  "]
+  doAssert s.split("", maxsplit=2) == @[" this is an example  "]
 
   doAssert s.splitWhitespace() == @["this", "is", "an", "example"]
   doAssert s.splitWhitespace(maxsplit=1) == @["this", "is an example  "]
