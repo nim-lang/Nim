@@ -389,20 +389,6 @@ proc exprList(p: var TParser, endTok: TTokType, result: PNode) =
     getTok(p)
     optInd(p, a)
 
-proc dotExpr(p: var TParser, a: PNode): PNode =
-  #| dotExpr = expr '.' optInd symbol
-  var info = p.parLineInfo
-  getTok(p)
-  result = newNodeI(nkDotExpr, info)
-  optInd(p, result)
-  addSon(result, a)
-  addSon(result, parseSymbol(p, smAfterDot))
-
-proc qualifiedIdent(p: var TParser): PNode =
-  #| qualifiedIdent = symbol ('.' optInd symbol)?
-  result = parseSymbol(p)
-  if p.tok.tokType == tkDot: result = dotExpr(p, result)
-
 proc exprColonEqExprListAux(p: var TParser, endTok: TTokType, result: PNode) =
   assert(endTok in {tkCurlyRi, tkCurlyDotRi, tkBracketRi, tkParRi})
   getTok(p)
@@ -422,6 +408,33 @@ proc exprColonEqExprList(p: var TParser, kind: TNodeKind,
   #| exprColonEqExprList = exprColonEqExpr (comma exprColonEqExpr)* (comma)?
   result = newNodeP(kind, p)
   exprColonEqExprListAux(p, endTok, result)
+
+proc dotExpr(p: var TParser, a: PNode): PNode =
+  #| dotExpr = expr '.' optInd (symbol | '[:' exprList ']')
+  #| explicitGenericInstantiation = '[:' exprList ']' ( '(' exprColonEqExpr ')' )?
+  var info = p.parLineInfo
+  getTok(p)
+  result = newNodeI(nkDotExpr, info)
+  optInd(p, result)
+  addSon(result, a)
+  addSon(result, parseSymbol(p, smAfterDot))
+  if p.tok.tokType == tkBracketLeColon and p.tok.strongSpaceA <= 0:
+    var x = newNodeI(nkBracketExpr, p.parLineInfo)
+    # rewrite 'x.y[:z]()' to 'y[z](x)'
+    x.add result[1]
+    exprList(p, tkBracketRi, x)
+    eat(p, tkBracketRi)
+    var y = newNodeI(nkCall, p.parLineInfo)
+    y.add x
+    y.add result[0]
+    if p.tok.tokType == tkParLe and p.tok.strongSpaceA <= 0:
+      exprColonEqExprListAux(p, tkParRi, y)
+    result = y
+
+proc qualifiedIdent(p: var TParser): PNode =
+  #| qualifiedIdent = symbol ('.' optInd symbol)?
+  result = parseSymbol(p)
+  if p.tok.tokType == tkDot: result = dotExpr(p, result)
 
 proc setOrTableConstr(p: var TParser): PNode =
   #| setOrTableConstr = '{' ((exprColonEqExpr comma)* | ':' ) '}'

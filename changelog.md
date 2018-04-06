@@ -27,6 +27,9 @@
 
 ### Language additions
 
+- Dot calls combined with explicit generic instantiations can now be written
+  as ``x.y[:z]``. ``x.y[:z]`` that is transformed into ``y[z](x)`` in the parser.
+
 ### Language changes
 
 - The `importcpp` pragma now allows importing the listed fields of generic
