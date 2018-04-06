@@ -1011,6 +1011,10 @@ proc parseBody(client: HttpClient | AsyncHttpClient,
   if headers.getOrDefault"Connection" == "close":
     client.close()
 
+type
+  ## Exception used to signal that we want requestAux to retry connection.
+  Reconnect = object of HttpRequestError
+
 proc parseResponse(client: HttpClient | AsyncHttpClient,
                    getBody: bool): Future[Response | AsyncResponse]
                    {.multisync.} =
@@ -1026,13 +1030,20 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
       line = await client.socket.recvLine(client.timeout)
     else:
       line = await client.socket.recvLine()
+
     if line == "":
       # We've been disconnected.
       client.close()
-      break
+      client.connected = false
+      if linei == 0:
+        raise newException(Reconnect, "Client closed connection. Attempt reconnect.")
+      else:
+        break
+
     if line == "\c\L":
       fullyRead = true
       break
+
     if not parsedStatus:
       # Parse HTTP version info and status code.
       var le = skipIgnoreCase(line, "HTTP/", linei)
@@ -1180,6 +1191,29 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: string,
                 client.getBody
   result = await parseResponse(client, getBody)
 
+proc requestReconnect(client: HttpClient, url: string,
+                      httpMethod: string, body = "",
+                      headers: HttpHeaders = nil): Response =
+  try:
+    return requestAux(client, url, httpMethod, body, headers)
+  except Reconnect:
+    return requestReconnect(client, url, httpMethod, body, headers)
+  except:
+    raise
+
+proc requestReconnect(client: AsyncHttpClient, url: string,
+                      httpMethod: string, body = "",
+                      headers: HttpHeaders = nil): Future[AsyncResponse] {.async.} =
+  let retFut = requestAux(client, url, httpMethod, body, headers)
+  yield retFut
+  if retFut.failed:
+    if retFut.error of Reconnect:
+      return await requestReconnect(client, url, httpMethod, body, headers)
+    else:
+      raise retFut.error
+  else:
+    return retFut.read()
+
 proc request*(client: HttpClient | AsyncHttpClient, url: string,
               httpMethod: string, body = "",
               headers: HttpHeaders = nil): Future[Response | AsyncResponse]
@@ -1193,7 +1227,7 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
   ##
   ## This procedure will follow redirects up to a maximum number of redirects
   ## specified in ``client.maxRedirects``.
-  result = await client.requestAux(url, httpMethod, body, headers)
+  result = await client.requestReconnect(url, httpMethod, body, headers)
 
   var lastURL = url
   for i in 1..client.maxRedirects:
