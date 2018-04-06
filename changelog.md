@@ -41,3 +41,6 @@
 
 - The VM's instruction count limit was raised to 1 billion instructions in order
   to support more complex computations at compile-time.
+- A new compiler option `--cppCompileToNamespace` puts the generated C++ code
+  into the namespace "Nim" in order to avoid naming conflicts with existing
+  C++ code. This is done for all Nim code - internal and exported.

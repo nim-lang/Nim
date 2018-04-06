@@ -74,6 +74,7 @@ Advanced options:
   --NimblePath:PATH         add a path for Nimble support
   --noNimblePath            deactivate the Nimble path
   --noCppExceptions         use default exception handling with C++ backend
+  --cppCompileToNamespace   use namespace "Nim" for the generated C++ code 
   --excludePath:PATH        exclude a path from the list of search paths
   --dynlibOverride:SYMBOL   marks SYMBOL so that dynlib:SYMBOL
                             has no effect and can be statically linked instead;
