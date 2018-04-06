@@ -1078,7 +1078,7 @@ proc parseHexStr*(s: string): string {.noSideEffect, procvar,
     else:
       result[pos div 2] = chr(val + buf shl 4)
 
-proc parseBool*(s: string): bool =
+proc to*(s: string; dest: typedesc[bool]): bool =
   ## Parses a value into a `bool`.
   ##
   ## If ``s`` is one of the following values: ``y, yes, true, 1, on``, then
@@ -1089,6 +1089,9 @@ proc parseBool*(s: string): bool =
   of "y", "yes", "true", "1", "on": result = true
   of "n", "no", "false", "0", "off": result = false
   else: raise newException(ValueError, "cannot interpret as a bool: " & s)
+
+# TODO: deprecate
+proc parseBool*(s: string): bool = s.to(bool)
 
 proc parseEnum*[T: enum](s: string): T =
   ## Parses an enum ``T``.
@@ -2498,6 +2501,8 @@ proc removePrefix*(s: var string, prefix: string) {.
     s.delete(0, prefix.len - 1)
 
 when isMainModule:
+  doAssert "yes".to(bool) == true
+
   doAssert align("abc", 4) == " abc"
   doAssert align("a", 0) == "a"
   doAssert align("1232", 6) == "  1232"
@@ -2734,3 +2739,4 @@ bar
     doAssert s.endsWith('\0') == false
 
   #echo("strutils tests passed")
+
