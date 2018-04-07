@@ -615,6 +615,7 @@ proc tryMoveFSObject(source, dest: string): bool =
 proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [ReadIOEffect, WriteIOEffect].} =
   ## Moves a file from `source` to `dest`. If this fails, `OSError` is raised.
+  ## Can be used to `rename files`:idx:
   if not tryMoveFSObject(source, dest):
     when not defined(windows):
       # Fallback to copy & del
