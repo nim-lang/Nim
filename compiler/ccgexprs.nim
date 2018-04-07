@@ -2167,6 +2167,9 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       else:
         genComplexConst(p, sym, d)
     of skEnumField:
+      # we never reach this case - as of the time of this comment,
+      # skEnumField is folded to an int in semfold.nim, but this code
+      # remains for robustness
       putIntoDest(p, d, n, rope(sym.position))
     of skVar, skForVar, skResult, skLet:
       if {sfGlobal, sfThread} * sym.flags != {}:
