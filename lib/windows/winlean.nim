@@ -1090,3 +1090,10 @@ proc GetCurrentFiber*(): pointer {.stdcall, importc, header: "Windows.h".}
 proc toFILETIME*(t: int64): FILETIME =
   ## Convert the Windows file time timestamp ``t`` to ``FILETIME``.
   result = FILETIME(dwLowDateTime: cast[DWORD](t), dwHighDateTime: DWORD(t shr 32))
+
+type
+  LPFILETIME* = ptr FILETIME
+
+proc setFileTime*(hFile: HANDLE, lpCreationTime: LPFILETIME,
+                 lpLastAccessTime: LPFILETIME, lpLastWriteTime: LPFILETIME): WINBOOL
+     {.stdcall, dynlib: "kernel32", importc: "SetFileTime".}
