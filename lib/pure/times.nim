@@ -1505,3 +1505,7 @@ proc getDayOfWeekJulian*(day, month, year: int): WeekDay {.deprecated.} =
     m = month + (12*a) - 2
     d = (5 + day + y + (y div 4) + (31*m) div 12) mod 7
   result = d.WeekDay
+
+proc toWinTime*(t: Time): int64 =
+  ## Convert ``t`` to a Windows file time (100-nanosecond intervals since ``1601-01-01T00:00:00Z``).
+  result = int64(t) * rateDiff + epochDiff
