@@ -685,7 +685,7 @@ template applyIt*(varSeq, op: untyped) =
     varSeq[i] = op
 
 
-template newSeqWith*(len: int, init: untyped): untyped =
+template newSeqWith*(len: int, init: typed): seq[type(init)] =
   ## creates a new sequence, calling `init` to initialize each value.
   ##
   ## Example:
