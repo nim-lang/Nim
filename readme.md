@@ -84,6 +84,14 @@ can run a subset of tests by specifying a category (for example
 For more information on the ``koch`` build tool please see the documentation
 within the [doc/koch.rst](doc/koch.rst) file.
 
+## Easily install specific versions
+Install [choosenim](https://github.com/dom96/choosenim), then:
+`choosenim 0.16.0' or `choosenim #head' etc.
+
+## package managers
+* OSX: `brew install nim`
+* linux: (via linuxbrew) `brew install nim`
+
 ## Nimble
 
 ``nimble`` is Nim's package manager. To learn more about it, see the
