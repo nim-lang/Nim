@@ -2166,6 +2166,8 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         putIntoDest(p, d, n, genLiteral(p, sym.ast, sym.typ), OnStatic)
       else:
         genComplexConst(p, sym, d)
+    of skEnumField:
+      putIntoDest(p, d, n, rope(sym.position))
     of skVar, skForVar, skResult, skLet:
       if {sfGlobal, sfThread} * sym.flags != {}:
         genVarPrototype(p.module, n)
