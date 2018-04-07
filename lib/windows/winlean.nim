@@ -1086,3 +1086,7 @@ proc ConvertThreadToFiberEx*(param: pointer, flags: int32): pointer {.stdcall, d
 proc DeleteFiber*(fiber: pointer): void {.stdcall, discardable, dynlib: "kernel32", importc.}
 proc SwitchToFiber*(fiber: pointer): void {.stdcall, discardable, dynlib: "kernel32", importc.}
 proc GetCurrentFiber*(): pointer {.stdcall, importc, header: "Windows.h".}
+
+proc toFILETIME*(t: int64): FILETIME =
+  ## Convert the Windows file time timestamp ``t`` to ``FILETIME``.
+  result = FILETIME(dwLowDateTime: cast[DWORD](t), dwHighDateTime: DWORD(t shr 32))
