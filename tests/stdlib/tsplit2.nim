@@ -9,11 +9,6 @@ for w in split("|abc|xy|z", {'|'}):
   s.add("#")
   s.add(w)
 
-try:
-  discard "hello".split("")
-  echo "false"
-except AssertionError:
-  echo "true"
+echo "hello".split("") == @["hello"]
 
 #OUT true
-
