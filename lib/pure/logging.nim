@@ -49,7 +49,7 @@
 ## **Warning:** When logging on disk or console, only error and fatal messages
 ## are flushed out immediately. Use flushFile() where needed.
 
-import strutils, times
+import strutils, times, sequtils
 when not defined(js):
   import os
 
@@ -104,47 +104,26 @@ var
   level {.threadvar.}: Level   ## global log filter
   handlers {.threadvar.}: seq[Logger] ## handlers with their own log levels
 
+proc defensiveJoin(a: openArray[string]; sep: string = ""): string =
+  ## join that works with nil strings
+  join(filter(a) do (x: string) -> bool : not x.isNil)
+
+proc expandLogVars*(s: string, level: Level = lvlNone): string =
+  ## Logging variables substitutor
+  var app = getAppFilename()
+  s.multiReplace(("$datetime", getDateStr() & "T" & getClockStr()),
+                 ("$date", getDateStr()),
+                 ("$time", getClockStr()),
+                 ("$app", app),
+                 ("$appdir", app.splitFile.dir),
+                 ("$appname", app.splitFile.name),
+                 ("$levelid", LevelNames[level][0..<1]),
+                 ("$levelname", LevelNames[level]))
+
 proc substituteLog*(frmt: string, level: Level, args: varargs[string, `$`]): string =
   ## Format a log message using the ``frmt`` format string, ``level`` and varargs.
   ## See the module documentation for the format string syntax.
-  const nilString = "nil"
-
-  var msgLen = 0
-  for arg in args:
-    if arg.isNil:
-      msgLen += nilString.len
-    else:
-      msgLen += arg.len
-  result = newStringOfCap(frmt.len + msgLen + 20)
-  var i = 0
-  while i < frmt.len:
-    if frmt[i] != '$':
-      result.add(frmt[i])
-      inc(i)
-    else:
-      inc(i)
-      var v = ""
-      let app = when defined(js): "" else: getAppFilename()
-      while frmt[i] in IdentChars:
-        v.add(toLower(frmt[i]))
-        inc(i)
-      case v
-      of "date": result.add(getDateStr())
-      of "time": result.add(getClockStr())
-      of "datetime": result.add(getDateStr() & "T" & getClockStr())
-      of "app":  result.add(app)
-      of "appdir":
-        when not defined(js): result.add(app.splitFile.dir)
-      of "appname":
-        when not defined(js): result.add(app.splitFile.name)
-      of "levelid": result.add(LevelNames[level][0])
-      of "levelname": result.add(LevelNames[level])
-      else: discard
-  for arg in args:
-    if arg.isNil:
-      result.add(nilString)
-    else:
-      result.add(arg)
+  expandLogVars(frmt & defensiveJoin(args), level)
 
 method log*(logger: Logger, level: Level, args: varargs[string, `$`]) {.
             raises: [Exception], gcsafe,
