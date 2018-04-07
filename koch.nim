@@ -261,6 +261,10 @@ proc buildTools(latest: bool) =
 
   let nimgrepExe = "bin/nimgrep".exe
   nimexec "c -d:release -o:" & nimgrepExe & " tools/nimgrep.nim"
+
+  let nimprettyExe = "bin/nimpretty".exe
+  nimexec "c -d:release -d:nimpretty -o:" & nimprettyExe & " tools/nimpretty.nim"
+
   when defined(windows): buildVccTool()
 
   #nimexec "c -o:" & ("bin/nimresolve".exe) & " tools/nimresolve.nim"
