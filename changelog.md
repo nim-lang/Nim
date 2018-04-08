@@ -2,10 +2,14 @@
 
 ### Changes affecting backwards compatibility
 
+- The stdlib module ``future`` has been renamed to ``sugar``.
+
 #### Breaking changes in the standard library
 
 - ``re.split`` for empty regular expressions now yields every character in
   the string which is what other programming languages chose to do.
+
+- ``cookies.setCookie` no longer assumes UTC for the expiration date.
 
 #### Breaking changes in the compiler
 
@@ -18,7 +22,13 @@
 
 ### Library changes
 
+- ``macros.astGenRepr``, ``macros.lispRepr`` and ``macros.treeRepr``
+  now escapes the content of string literals consistently.
+
 ### Language additions
+
+- Dot calls combined with explicit generic instantiations can now be written
+  as ``x.y[:z]``. ``x.y[:z]`` that is transformed into ``y[z](x)`` in the parser.
 
 ### Language changes
 

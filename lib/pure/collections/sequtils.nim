@@ -657,7 +657,7 @@ template mapIt*(s, op: untyped): untyped =
   when compiles(s.len):
     let t = s
     var i = 0
-    result = newSeq[outType](s.len)
+    result = newSeq[outType](t.len)
     for it {.inject.} in t:
       result[i] = op
       i += 1

@@ -7,6 +7,11 @@ msg1
 msg2
 finally2
 finally1
+-----------
+except1
+finally1
+except2
+finally2
 '''
 """
 # Test return in try statement:
@@ -40,3 +45,18 @@ proc nested_finally =
     echo "finally1"
 
 nested_finally()
+
+echo "-----------"
+#bug 7414
+try:
+  try:
+    raise newException(Exception, "Hello")
+  except:
+    echo "except1"
+    raise
+  finally:
+    echo "finally1"
+except:
+  echo "except2"
+finally:
+  echo "finally2"

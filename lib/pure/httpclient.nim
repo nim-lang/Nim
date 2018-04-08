@@ -1199,7 +1199,7 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
   for i in 1..client.maxRedirects:
     if result.status.redirection():
       let redirectTo = getNewLocation(lastURL, result.headers)
-      result = await client.request(redirectTo, httpMethod, body, headers)
+      result = await client.requestAux(redirectTo, httpMethod, body, headers)
       lastURL = redirectTo
 
 

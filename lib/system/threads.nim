@@ -642,7 +642,10 @@ when defined(windows):
 
 elif defined(linux):
   proc syscall(arg: clong): clong {.varargs, importc: "syscall", header: "<unistd.h>".}
-  var NR_gettid {.importc: "__NR_gettid", header: "<sys/syscall.h>".}: int
+  when defined(amd64):
+    const NR_gettid = clong(186)
+  else:
+    var NR_gettid {.importc: "__NR_gettid", header: "<sys/syscall.h>".}: clong
 
   proc getThreadId*(): int =
     ## get the ID of the currently running thread.

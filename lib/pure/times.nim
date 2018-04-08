@@ -53,8 +53,11 @@ when defined(posix):
 elif defined(windows):
   import winlean
 
-  # newest version of Visual C++ defines time_t to be of 64 bits
-  type CTime {.importc: "time_t", header: "<time.h>".} = distinct int64
+  when defined(i386) and defined(gcc):
+    type CTime {.importc: "time_t", header: "<time.h>".} = distinct int32
+  else:
+    # newest version of Visual C++ defines time_t to be of 64 bits
+    type CTime {.importc: "time_t", header: "<time.h>".} = distinct int64
   # visual c's c runtime exposes these under a different name
   var timezone {.importc: "_timezone", header: "<time.h>".}: int
 
@@ -273,6 +276,18 @@ proc toTime*(dt: DateTime): Time {.tags: [], raises: [], benign.} =
   # The code above ignores the UTC offset of `timeInfo`,
   # so we need to compensate for that here.
   result.inc dt.utcOffset
+
+proc `<`*(a, b: DateTime): bool =
+  ## Returns true iff ``a < b``, that is iff a happened before b.
+  return a.toTime < b.toTime
+
+proc `<=` * (a, b: DateTime): bool =
+  ## Returns true iff ``a <= b``.
+  return a.toTime <= b.toTime
+
+proc `==`*(a, b: DateTime): bool =
+  ## Returns true if ``a == b``, that is if both dates represent the same point in datetime.
+  return a.toTime == b.toTime
 
 proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
   let adjTime = zt.adjTime.int64
@@ -1386,7 +1401,7 @@ proc getLocalTime*(time: Time): DateTime {.tags: [], raises: [], benign, depreca
 
 proc getGMTime*(time: Time): DateTime {.tags: [], raises: [], benign, deprecated.} =
   ## Converts the calendar time `time` to broken-down time representation,
-  ## expressed in Coordinated Universal Time (UTC). 
+  ## expressed in Coordinated Universal Time (UTC).
   ##
   ## **Deprecated since v0.18.0:** use ``utc`` instead
   time.utc

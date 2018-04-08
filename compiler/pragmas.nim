@@ -40,7 +40,8 @@ const
     wTags, wLocks, wGcSafe, wExportNims, wUsed}
   exprPragmas* = {wLine, wLocks, wNoRewrite, wGcSafe}
   stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangechecks,
-    wBoundchecks, wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints,
+    wBoundchecks, wOverflowchecks, wNilchecks, wMovechecks, wAssertions,
+    wWarnings, wHints,
     wLinedir, wStacktrace, wLinetrace, wOptimization, wHint, wWarning, wError,
     wFatal, wDefine, wUndef, wCompile, wLink, wLinksys, wPure, wPush, wPop,
     wBreakpoint, wWatchPoint, wPassl, wPassc, wDeadCodeElim, wDeprecated,
@@ -64,7 +65,7 @@ const
     wGensym, wInject, wCodegenDecl, wGuard, wGoto, wExportNims, wUsed}
   constPragmas* = {wImportc, wExportc, wHeader, wDeprecated, wMagic, wNodecl,
     wExtern, wImportCpp, wImportObjC, wError, wGensym, wInject, wExportNims,
-    wIntDefine, wStrDefine, wUsed}
+    wIntDefine, wStrDefine, wUsed, wCompilerProc, wCore}
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNosideeffect,
                       wThread, wRaises, wLocks, wTags, wGcSafe}
@@ -323,6 +324,7 @@ proc processOption(c: PContext, n: PNode): bool =
     of wFloatchecks: onOff(c, n, {optNaNCheck, optInfCheck})
     of wNanChecks: onOff(c, n, {optNaNCheck})
     of wInfChecks: onOff(c, n, {optInfCheck})
+    of wMovechecks: onOff(c, n, {optMoveCheck})
     of wAssertions: onOff(c, n, {optAssert})
     of wWarnings: onOff(c, n, {optWarns})
     of wHints: onOff(c, n, {optHints})
@@ -618,8 +620,12 @@ proc markCompilerProc(s: PSym) =
   incl(s.flags, sfUsed)
   registerCompilerProc(s)
 
-proc deprecatedStmt(c: PContext; pragma: PNode) =
-  let pragma = pragma[1]
+proc deprecatedStmt(c: PContext; outerPragma: PNode) =
+  let pragma = outerPragma[1]
+  if pragma.kind in {nkStrLit..nkTripleStrLit}:
+    incl(c.module.flags, sfDeprecated)
+    c.module.constraint = getStrLitNode(c, outerPragma)
+    return
   if pragma.kind != nkBracket:
     localError(pragma.info, "list of key:value pairs expected"); return
   for n in pragma:
@@ -693,7 +699,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
     inc c.instCounter
     if c.instCounter > 100:
       globalError(it.info, errRecursiveDependencyX, userPragma.name.s)
-    
+
     pragma(c, sym, userPragma.ast, validPragmas)
     n.sons[i..i] = userPragma.ast.sons # expand user pragma with its content
     i.inc(userPragma.ast.len - 1) # inc by -1 is ok, user pragmas was empty
@@ -906,7 +912,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wCodegenDecl: processCodegenDecl(c, it, sym)
       of wChecks, wObjChecks, wFieldChecks, wRangechecks, wBoundchecks,
          wOverflowchecks, wNilchecks, wAssertions, wWarnings, wHints,
-         wLinedir, wStacktrace, wLinetrace, wOptimization,
+         wLinedir, wStacktrace, wLinetrace, wOptimization, wMovechecks,
          wCallconv,
          wDebugger, wProfiler, wFloatchecks, wNanChecks, wInfChecks,
          wPatterns:

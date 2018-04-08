@@ -335,8 +335,8 @@ The concept types can be parametric just like the regular generic types:
     AnyTransform3D* = AnyMatrix[4, 4, float]
 
   proc transposed*(m: AnyMatrix): m.TransposedType =
-    for r in 0 .. <m.R:
-      for c in 0 .. <m.C:
+    for r in 0 ..< m.R:
+      for c in 0 ..< m.C:
         result[r, c] = m[c, r]
 
   proc determinant*(m: AnySquareMatrix): int =
@@ -550,38 +550,38 @@ object inheritance syntax involving the ``of`` keyword:
   proc f(g: BidirectionalGraph) # this one will be preferred if we pass a type
                                 # matching the BidirectionalGraph concept
 
+..
+  Converter type classes
+  ----------------------
 
-Converter type classes
-----------------------
+  Concepts can also be used to convert a whole range of types to a single type or
+  a small set of simpler types. This is achieved with a `return` statement within
+  the concept body:
 
-Concepts can also be used to convert a whole range of types to a single type or
-a small set of simpler types. This is achieved with a `return` statement within
-the concept body:
+  .. code-block:: nim
+    type
+      Stringable = concept x
+        $x is string
+        return $x
 
-.. code-block:: nim
-  type
-    Stringable = concept x
-      $x is string
-      return $x
+      StringRefValue[CharType] = object
+        base: ptr CharType
+        len: int
 
-    StringRefValue[CharType] = object
-      base: ptr CharType
-      len: int
+      StringRef = concept x
+        # the following would be an overloaded proc for cstring, string, seq and
+        # other user-defined types, returning either a StringRefValue[char] or
+        # StringRefValue[wchar]
+        return makeStringRefValue(x)
 
-    StringRef = concept x
-      # the following would be an overloaded proc for cstring, string, seq and
-      # other user-defined types, returning either a StringRefValue[char] or
-      # StringRefValue[wchar]
-      return makeStringRefValue(x)
+    # the varargs param will here be converted to an array of StringRefValues
+    # the proc will have only two instantiations for the two character types
+    proc log(format: static[string], varargs[StringRef])
 
-  # the varargs param will here be converted to an array of StringRefValues
-  # the proc will have only two instantiations for the two character types
-  proc log(format: static[string], varargs[StringRef])
-
-  # this proc will allow char and wchar values to be mixed in
-  # the same call at the cost of additional instantiations
-  # the varargs param will be converted to a tuple
-  proc log(format: static[string], varargs[distinct StringRef])
+    # this proc will allow char and wchar values to be mixed in
+    # the same call at the cost of additional instantiations
+    # the varargs param will be converted to a tuple
+    proc log(format: static[string], varargs[distinct StringRef])
 
 
 ..
