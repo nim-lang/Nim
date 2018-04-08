@@ -38,7 +38,7 @@
   (#6415)
 
 - Native C++ exceptions can now be imported with `importcpp` pragma. 
-  Imported exceptions can be raised and caught just like Nim exceptionы.
+  Imported exceptions can be raised and caught just like Nim exceptions.
   More details in language manual.
 
 ### Tool changes
