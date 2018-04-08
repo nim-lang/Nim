@@ -7,6 +7,8 @@ finally2
 finally2
 2
 expected
+finally 1
+finally 2
 expected
 cpp exception caught
 '''
@@ -108,7 +110,7 @@ try:
     except:
       echo "should not happen"
     finally:
-      echo "finally1"
+      echo "finally 1"
   except:
     doAssert(getCurrentExceptionMsg() == "msg2")
     raise constructStdString("std::string")

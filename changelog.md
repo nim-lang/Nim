@@ -37,6 +37,10 @@
   the use of `static[T]` types.
   (#6415)
 
+- Native C++ exceptions can now be imported with `importcpp` pragma. 
+  Imported exceptions can be raised and caught just like Nim exceptionы.
+  More details in language manual.
+
 ### Tool changes
 
 - ``jsondoc2`` has been renamed ``jsondoc``, similar to how ``doc2`` was renamed

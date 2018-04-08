@@ -835,9 +835,9 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
     else:
       for j in 0..t[i].len-2:
         if t[i][j].isInfixAs():
-          let v = rope($t[i][j][2])
-          fillLoc(t[i][j][2].sym.loc, locTemp, t[i][j][2], v, OnUnknown)
-          startBlock(p, "catch ($1& $2) {$n", getTypeDesc(p.module, t[i][j][1].typ), v)
+          let exvar = t[i][j][2] # ex1 in `exception ExceptType as ex1:` 
+          fillLoc(exvar.sym.loc, locTemp, exvar, mangleLocalName(p, exvar.sym), OnUnknown)
+          startBlock(p, "catch ($1& $2) {$n", getTypeDesc(p.module, t[i][j][1].typ), rdLoc(exvar.sym.loc))
         else:
           startBlock(p, "catch ($1&) {$n", getTypeDesc(p.module, t[i][j].typ))
         genExceptBranchBody(t[i][^1])  # exception handler body will duplicated for every type
