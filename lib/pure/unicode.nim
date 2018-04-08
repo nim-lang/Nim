@@ -322,6 +322,9 @@ proc runeSubStr*(s: string, pos:int, len:int = int.high): string =
       result = s.substr(o, e-1)
 
 const
+  digitRanges = [
+    0x0030,  0x0039]
+
   alphaRanges = [
     0x00d8,  0x00f6,  #  -
     0x00f8,  0x01f5,  #  -
@@ -1357,6 +1360,11 @@ proc isUpper*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
   if p >= 0 and c == tolowerSinglets[p]:
     return true
 
+proc isDigit*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
+  ## Returns true iff ``c`` is a digit character
+  var c = RuneImpl(c)
+  return c in digitRanges
+
 proc isAlpha*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
   ## Returns true iff ``c`` is an *alpha* Unicode character (i.e., a letter)
   if isUpper(c) or isLower(c):
@@ -1412,6 +1420,11 @@ proc isLower*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nuc$1Str".} =
   ## Returns true iff `s` contains all lower case unicode characters.
   runeCheck(s, isLower)
+
+proc isDigit*(s: string): bool {.noSideEffect, procvar,
+  rtl, extern: "nuc$1Str".} =
+  ## Returns true iff `s` contains all digit characters.
+  runeCheck(s, isDigit)
 
 proc isAlpha*(s: string): bool {.noSideEffect, procvar,
   rtl, extern: "nuc$1Str".} =
@@ -1735,6 +1748,11 @@ when isMainModule:
   doAssert swapCase("Αlpha Βeta Γamma") == "αLPHA βETA γAMMA"
   doAssert swapCase("a✓B") == "A✓b"
   doAssert swapCase("") == ""
+
+  doAssert isDigit("0")
+  doAssert isDigit("9")
+  doAssert(not isDigit("a"))
+  doAssert(not isDigit(""))
 
   doAssert isAlpha("r")
   doAssert isAlpha("α")
