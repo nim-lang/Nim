@@ -1654,3 +1654,18 @@ proc isHidden*(path: string): bool =
         result = (fileName[0] == '.') and (fileName[3] != '.')
 
 {.pop.}
+
+proc setLastModificationTime*(file: string, t: times.Time) =
+  ## Sets the `file`'s last modification time. `OSError` is raised in case of
+  ## an error.
+  when defined(posix):
+    let unixt = t.toUnix.int
+    var timevals = [Timeval(tv_sec: unixt), Timeval(tv_sec: unixt)] # [last access, last modification]
+    if utimes(file, timevals.addr) != 0: raiseOSError(osLastError())
+  else:
+    var h = openHandle(path = file, writeAccess = true)
+    if h == INVALID_HANDLE_VALUE: raiseOSError(osLastError())
+    var ft = t.toWinTime.toFILETIME
+    let res = setFileTime(h, nil, nil, ft.addr)
+    discard h.closeHandle
+    if res == 0'i32: raiseOSError(osLastError())
