@@ -1421,7 +1421,9 @@ proc isUpper*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
 proc isDigit*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
   ## Returns true iff ``c`` is a digit character
   var c = RuneImpl(c)
-  return c in digitRanges
+  var p = binarySearch(c, digitRanges, len(digitRanges) div 2, 2)
+  if p >= 0 and c >= digitRanges[p] and c <= digitRanges[p+1]:
+    return true
 
 proc isAlpha*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
   ## Returns true iff ``c`` is an *alpha* Unicode character (i.e., a letter)
@@ -1808,6 +1810,7 @@ when isMainModule:
   doAssert swapCase("") == ""
 
   doAssert isDigit("0")
+  doAssert isDigit("1")
   doAssert isDigit("9")
   doAssert(not isDigit("a"))
   doAssert(not isDigit(""))
