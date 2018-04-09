@@ -79,7 +79,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbos getLastModificationTime:
     # depends on Time's implementation!
     setResult(a, int64(getLastModificationTime(getString(a, 0))))
-  cbos where:
+  cbos findExe:
     setResult(a, os.findExe(getString(a, 0)))
 
   cbos rawExec:

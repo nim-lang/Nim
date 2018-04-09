@@ -31,13 +31,13 @@ doAssert(existsEnv("dummy") == true)
 doAssert(getEnv("dummy") == "myval")
 
 # issue #7393
-let wd = pwd()
+let wd = getCurrentDir()
 cd("..")
-assert wd != pwd()
+assert wd != getCurrentDir()
 cd(wd)
-assert wd == pwd()
+assert wd == getCurrentDir()
 
-assert where("nim") != ""
+assert findExe("nim") != ""
 
 # general tests
 mode = ScriptMode.Verbose

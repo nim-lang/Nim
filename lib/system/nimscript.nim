@@ -48,7 +48,9 @@ proc createDir(dir: string) {.tags: [WriteIOEffect], raises: [OSError].} =
   builtin
 proc getOsError: string = builtin
 proc setCurrentDir(dir: string) = builtin
-proc getCurrentDir(): string = builtin
+proc getCurrentDir*(): string =
+  ## Retrieves the current working directory.
+  builtin
 proc rawExec(cmd: string): int {.tags: [ExecIOEffect], raises: [OSError].} =
   builtin
 
@@ -271,11 +273,6 @@ proc thisDir*(): string =
   ## Retrieves the location of the current ``nims`` script file.
   builtin
 
-proc pwd*(): string =
-  ## Retrieves the current working directory.
-  result = getCurrentDir()
-  checkOsError()
-
 proc cd*(dir: string) {.raises: [OSError].} =
   ## Changes the current directory.
   ##
@@ -286,7 +283,7 @@ proc cd*(dir: string) {.raises: [OSError].} =
   setCurrentDir(dir)
   checkOsError()
 
-proc where*(bin: string): string =
+proc findExe*(bin: string): string =
   ## Searches for bin in the current working directory and then in directories
   ## listed in the PATH environment variable. Returns "" if the exe cannot be
   ## found.
