@@ -54,7 +54,7 @@ of ``sh build.sh`` you should substitute ``build.bat`` on x86 Windows or
 
 **Note: The following commands are for the development version of the compiler.**
 For most users, installing the latest stable version is enough. Check out
-the installation instructions on the website to do so: https://nim-lang.org/install.html.
+the installation instructions using package managers or otherwise on the website to do so: https://nim-lang.org/install.html.
 
 ```
 git clone https://github.com/nim-lang/Nim.git
@@ -87,10 +87,6 @@ within the [doc/koch.rst](doc/koch.rst) file.
 ## Easily install specific versions
 Install [choosenim](https://github.com/dom96/choosenim), then:
 `choosenim 0.16.0' or `choosenim #head' etc.
-
-## package managers
-* OSX: `brew install nim`
-* linux: (via linuxbrew) `brew install nim`
 
 ## Nimble
 
