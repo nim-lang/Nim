@@ -750,6 +750,15 @@ proc addGenericParamListToScope(c: PContext, n: PNode) =
     if a.kind == nkSym: addDecl(c, a.sym)
     else: illFormedAst(a)
 
+proc typeSectionTypeName(n: PNode): PNode =
+  if n.kind == nkPragmaExpr:
+    if n.len == 0: illFormedAst(n)
+    result = n.sons[0]
+  else:
+    result = n
+  if result.kind != nkSym: illFormedAst(n)
+  
+
 proc typeSectionLeftSidePass(c: PContext, n: PNode) =
   # process the symbols on the left side for the whole type section, before
   # we even look at the type definitions on the right
@@ -810,7 +819,10 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
       # add it here, so that recursive types are possible:
       if sfGenSym notin s.flags: addInterfaceDecl(c, s)
 
-    a.sons[0] = newSymNode(s)
+    if name.kind == nkPragmaExpr:
+      a.sons[0].sons[0] = newSymNode(s)
+    else:
+      a.sons[0] = newSymNode(s)
 
 proc checkCovariantParamsUsages(genericType: PType) =
   var body = genericType[^1]
@@ -899,8 +911,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
     if a.kind == nkCommentStmt: continue
     if (a.kind != nkTypeDef): illFormedAst(a)
     checkSonsLen(a, 3)
-    let name = a.sons[0]
-    if (name.kind != nkSym): illFormedAst(a)
+    let name = typeSectionTypeName(a.sons[0])
     var s = name.sym
     if s.magic == mNone and a.sons[2].kind == nkEmpty:
       localError(a.info, errImplOfXexpected, s.name.s)
@@ -1006,8 +1017,8 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
   for i in countup(0, sonsLen(n) - 1):
     var a = n.sons[i]
     if a.kind == nkCommentStmt: continue
-    if a.sons[0].kind != nkSym: illFormedAst(a)
-    var s = a.sons[0].sym
+    let name = typeSectionTypeName(a.sons[0])
+    var s = name.sym
     # compute the type's size and check for illegal recursions:
     if a.sons[1].kind == nkEmpty:
       var x = a[2]
