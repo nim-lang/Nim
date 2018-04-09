@@ -323,7 +323,65 @@ proc runeSubStr*(s: string, pos:int, len:int = int.high): string =
 
 const
   digitRanges = [
-    0x0030,  0x0039]
+    0x0030,  0x0039,  # ascii digits
+    0x0660,  0x0669,  # arabic-indic digits
+    0x06f0,  0x06f9,  # extended arabic-indic digits
+    0x07c0,  0x07c9,  # nko digits
+    0x0966,  0x096f,  # devanagari digits
+    0x09e6,  0x09ef,  # bengali digits
+    0x0a66,  0x0a6f,  # gurmukhi digits
+    0x0ae6,  0x0aef,  # gujarati digits
+    0x0b66,  0x0b6f,  # oriya digits
+    0x0be6,  0x0bef,  # tamil digits
+    0x0c66,  0x0c6f,  # telugu digits
+    0x0ce6,  0x0cef,  # kannada digits
+    0x0d66,  0x0d6f,  # malayalam digits
+    0x0de6,  0x0def,  # sinhala lith digits
+    0x0e50,  0x0e59,  # thai digits
+    0x0ed0,  0x0ed9,  # lao digits
+    0x0f20,  0x0f29,  # tibetan digits
+    0x1040,  0x1049,  # myanmar digits
+    0x1090,  0x1099,  # myanmar shan digits
+    0x17e0,  0x17e9,  # khmer digits
+    0x1810,  0x1819,  # mongolian digits
+    0x1946,  0x194f,  # limbu digits
+    0x19d0,  0x19d9,  # new tai lue digits
+    0x1a80,  0x1a89,  # tai tham hora digits
+    0x1a90,  0x1a99,  # tai tham tham digits
+    0x1b50,  0x1b59,  # balinese digits
+    0x1bb0,  0x1bb9,  # sundanese digits
+    0x1c40,  0x1c49,  # lepcha digits
+    0x1c50,  0x1c59,  # ol chiki digits
+    0xa620,  0xa629,  # vai digits
+    0xa8d0,  0xa8d9,  # saurashtra digits
+    0xa900,  0xa909,  # kayah li digits
+    0xa9d0,  0xa9d9,  # javanese digits
+    0xa9f0,  0xa9f9,  # myanmar tai laing digits
+    0xaa50,  0xaa59,  # cham digits
+    0xabf0,  0xabf9,  # meetei mayek digits
+    0xff10,  0xff19,  # fullwidth digit
+    0x104a0, 0x104a9, # osmanya digits
+    0x11066, 0x1106f, # brahmi digits
+    0x110f0, 0x110f9, # sora sompeng digits
+    0x11136, 0x1113f, # chakma digits
+    0x111d0, 0x111d9, # sharada digits
+    0x112f0, 0x112f9, # khudawadi digits
+    0x11450, 0x11459, # newa digits
+    0x114d0, 0x114d9, # tirhuta digits
+    0x11650, 0x11659, # modi digits
+    0x116c0, 0x116c9, # takri digits
+    0x11730, 0x11739, # ahom digits
+    0x118e0, 0x118e9, # warang citi digits
+    0x11c50, 0x11c59, # bhaiksuki digits
+    0x11d50, 0x11d59, # masaram gondi digits
+    0x16a60, 0x16a69, # mro digits
+    0x16b50, 0x16b59, # pahawh hmong digits
+    0x1d7ce, 0x1d7d7, # mathematical bold digits
+    0x1d7d8, 0x1d7e1, # mathematical double-struck digits
+    0x1d7e2, 0x1d7eb, # mathematical sans-serif digits
+    0x1d7ec, 0x1d7f5, # mathematical sans-serif bold digits
+    0x1d7f6, 0x1d7ff, # mathematical monospace digits
+    0x1e950, 0x1e959] # adlam digits
 
   alphaRanges = [
     0x00d8,  0x00f6,  #  -
