@@ -98,6 +98,10 @@
   explicit overload of `formatValue`.
 
 
+- Using the ``BackwardsIndex`` on arrays that are not accessed by
+  integer types (for example enums or characters) is not supported
+  anymore.
+
 #### Breaking changes in the compiler
 
 - The compiler now implements the "generic symbol prepass" for `when` statements
