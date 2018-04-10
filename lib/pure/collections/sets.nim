@@ -11,7 +11,7 @@
 ## ordered hash set.
 ##
 ## Hash sets are different from the `built in set type
-## <manual.html#set-type>`_. Sets allow you to store any value that can be
+## <manual.html#types-set-type>`_. Sets allow you to store any value that can be
 ## `hashed <hashes.html>`_ and they don't contain duplicate entries.
 ##
 ## **Note**: The data types declared here have *value semantics*: This means
