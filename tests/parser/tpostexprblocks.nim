@@ -22,26 +22,26 @@ StmtList
         Empty
   Call
     Ident ident"foo070"
-    StrLit test
+    StrLit "test"
     StmtList
       DiscardStmt
         Empty
   Call
     Ident ident"foo080"
-    StrLit test
+    StrLit "test"
     StmtList
       DiscardStmt
         Empty
   Command
     Ident ident"foo090"
-    StrLit test
+    StrLit "test"
     StmtList
       DiscardStmt
         Empty
   Command
     Ident ident"foo100"
     Call
-      StrLit test
+      StrLit "test"
       StmtList
         DiscardStmt
           Empty
@@ -540,4 +540,3 @@ dumpTree:
   foo380.add((quote do:
     discard
   )[0])
-

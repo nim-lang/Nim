@@ -714,7 +714,7 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
 
 proc transformExceptBranch(c: PTransf, n: PNode): PTransNode =
   result = transformSons(c, n)
-  if n[0].isInfixAs():
+  if n[0].isInfixAs() and (not isImportedException(n[0][1].typ)):
     let excTypeNode = n[0][1]
     let actions = newTransNode(nkStmtListExpr, n[1], 2)
     # Generating `let exc = (excType)(getCurrentException())`

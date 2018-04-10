@@ -494,7 +494,7 @@ when defined(Windows) and not defined(useNimRtl):
     sa.nLength = sizeof(SECURITY_ATTRIBUTES).cint
     sa.lpSecurityDescriptor = nil
     sa.bInheritHandle = 1
-    if createPipe(rdHandle, wrHandle, sa, 1024) == 0'i32:
+    if createPipe(rdHandle, wrHandle, sa, 0) == 0'i32:
       raiseOSError(osLastError())
 
   proc fileClose(h: Handle) {.inline.} =
@@ -524,6 +524,12 @@ when defined(Windows) and not defined(useNimRtl):
           he = ho
         else:
           createPipeHandles(he, si.hStdError)
+          if setHandleInformation(he, DWORD(1), DWORD(0)) == 0'i32:
+            raiseOsError(osLastError())
+        if setHandleInformation(hi, DWORD(1), DWORD(0)) == 0'i32:
+          raiseOsError(osLastError())  
+        if setHandleInformation(ho, DWORD(1), DWORD(0)) == 0'i32:
+          raiseOsError(osLastError())
       else:
         createAllPipeHandles(si, hi, ho, he, cast[int](result))
       result.inHandle = FileHandle(hi)

@@ -483,6 +483,7 @@ type
       trace: string
     else:
       trace: seq[StackTraceEntry]
+    raise_id: uint # set when exception is raised
     up: ref Exception # used for stacking exceptions. Not exported!
 
   SystemError* = object of Exception ## \
@@ -616,6 +617,11 @@ type
     ## Raised on dereferences of ``nil`` pointers.
     ##
     ## This is only raised if the ``segfaults.nim`` module was imported!
+
+when defined(nimNewRuntime):
+  type
+    MoveError* = object of SystemError ## \
+      ## Raised on attempts to re-sink an already consumed ``sink`` parameter.
 
 {.deprecated: [TObject: RootObj, PObject: RootRef, TEffect: RootEffect,
   FTime: TimeEffect, FIO: IOEffect, FReadIO: ReadIOEffect,
@@ -1372,7 +1378,8 @@ const
   hostCPU* {.magic: "HostCPU".}: string = ""
     ## a string that describes the host CPU. Possible values:
     ## "i386", "alpha", "powerpc", "powerpc64", "powerpc64el", "sparc",
-    ## "amd64", "mips", "mipsel", "arm", "arm64", "mips64", "mips64el".
+    ## "amd64", "mips", "mipsel", "arm", "arm64", "mips64", "mips64el",
+    ## "riscv64".
 
   seqShallowFlag = low(int)
   strlitFlag = 1 shl (sizeof(int)*8 - 2) # later versions of the codegen \

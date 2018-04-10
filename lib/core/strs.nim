@@ -12,12 +12,11 @@
 import allocators
 
 type
-  string {.core.} = object
+  string {.core, exportc: "NimStringV2".} = object
     len, cap: int
     data: ptr UncheckedArray[char]
 
-proc nimStringLiteral(x: cstring; len: int): string {.core.} =
-  string(len: len, cap: len, data: x)
+const nimStrVersion {.core.} = 2
 
 template frees(s) = dealloc(s.data, s.cap + 1)
 
@@ -80,7 +79,7 @@ proc newString*(len: int): string =
   if len > 0:
     result.data = alloc0(len+1)
 
-converter toCString(x: string): cstring {.core.} =
+converter toCString(x: string): cstring {.core, inline.} =
   if x.len == 0: cstring"" else: cast[cstring](x.data)
 
 proc newStringOfCap*(cap: int): string =

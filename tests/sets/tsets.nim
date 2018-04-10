@@ -202,3 +202,7 @@ var
 #import compiler.msgs
 
 echo warnUninit in gNotes
+
+# 7555
+doAssert {-1.int8, -2, -2}.card == 2
+doAssert {1, 2, 2, 3..5, 4..6}.card == 6

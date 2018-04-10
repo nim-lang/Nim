@@ -134,7 +134,7 @@ type
     hintProcessing, hintCodeBegin, hintCodeEnd, hintConf, hintPath,
     hintConditionAlwaysTrue, hintName, hintPattern,
     hintExecuting, hintLinking, hintDependency,
-    hintSource, hintStackTrace, hintGCStats,
+    hintSource, hintPerformance, hintStackTrace, hintGCStats,
     hintUser, hintUserRaw
 
 const
@@ -438,6 +438,7 @@ const
     hintLinking: "",
     hintDependency: "$1",
     hintSource: "$1",
+    hintPerformance: "$1",
     hintStackTrace: "$1",
     hintGCStats: "$1",
     hintUser: "$1",
@@ -460,7 +461,7 @@ const
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
     "Path", "CondTrue", "Name", "Pattern", "Exec", "Link", "Dependency",
-    "Source", "StackTrace", "GCStats",
+    "Source", "Performance", "StackTrace", "GCStats",
     "User", "UserRaw"]
 
 const

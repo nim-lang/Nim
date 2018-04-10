@@ -411,7 +411,7 @@ Other tokens
 
 The following strings denote other tokens::
 
-    `   (     )     {     }     [     ]     ,  ;   [.    .]  {.   .}  (.  .)
+    `   (    )     {    }     [    ]    ,  ;   [.    .]  {.   .}  (.  .)  [:
 
 
 The `slice`:idx: operator `..`:tok: takes precedence over other tokens that
