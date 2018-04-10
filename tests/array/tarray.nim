@@ -262,7 +262,19 @@ block troof:
   var d: array['a'..'c', string] = ["a", "b", "c"]
   doAssert d[^1] == "c"
 
+  # test for default implementation of backwards index
 
+  type
+    MyType = object
+
+  proc len(arg: MyType): int = 100
+  proc `[]`(arg: MyType; idx: int): int = idx
+
+  var mt: MyType
+
+  assert mt[0] == 0
+  assert mt[^0] == 100
+  assert mt[^1] == 99
 
 
 import strutils, sequtils, typetraits, os
