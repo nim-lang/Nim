@@ -1257,3 +1257,7 @@ macro unpackVarargs*(callee: untyped; args: varargs[untyped]): untyped =
   result = newCall(callee)
   for i in 0 ..< args.len:
     result.add args[i]
+
+proc getProjectPath*(): string = discard
+  ## Returns the path to the currently compiling project
+

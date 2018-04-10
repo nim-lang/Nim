@@ -2,6 +2,7 @@
 import macros
 import os
 import ospaths
+import strutils
 
 block:
   proc foo(t: typedesc) {.compileTime.} =
@@ -70,11 +71,7 @@ block:
 # Tests for VM ops
 block:
   static:
-    let a = getCurrentDir()
-    setCurrentDir("..")
-    assert getCurrentDir() != a
-    setCurrentDir(a)
-    assert getCurrentDir() == a
+    assert "vm" in getProjectPath()
 
     let b = getEnv("UNSETENVVAR")
     assert b == ""

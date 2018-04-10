@@ -13,8 +13,9 @@ from math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
   arctan, arctan2, cos, cosh, hypot, sinh, sin, tan, tanh, pow, trunc,
   floor, ceil, fmod
 
-from os import getCurrentDir, getEnv, existsEnv, dirExists, fileExists, putEnv,
-  setCurrentDir, walkDir
+from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir
+
+from options import gProjectPath
 
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
@@ -27,6 +28,9 @@ template ospathsop(op) {.dirty.} =
 
 template systemop(op) {.dirty.} =
   registerCallback(c, "stdlib.system." & astToStr(op), `op Wrapper`)
+
+template macrosop(op) {.dirty.} =
+  registerCallback(c, "stdlib.macros." & astToStr(op), `op Wrapper`)
 
 template wrap1f_math(op) {.dirty.} =
   proc `op Wrapper`(a: VmArgs) {.nimcall.} =
@@ -78,6 +82,9 @@ proc gorgeExWrapper(a: VmArgs) {.nimcall.} =
                        a.currentLineInfo)
   setResult a, newTree(nkPar, newStrNode(nkStrLit, s), newIntNode(nkIntLit, e))
 
+proc getProjectPathWrapper(a: VmArgs) {.nimcall.} =
+  setResult a, gProjectPath
+
 proc registerAdditionalOps*(c: PCtx) =
   wrap1f_math(sqrt)
   wrap1f_math(ln)
@@ -107,11 +114,10 @@ proc registerAdditionalOps*(c: PCtx) =
   wrap2svoid(putEnv, ospathsop)
   wrap1s(dirExists, osop)
   wrap1s(fileExists, osop)
-  wrap0(getCurrentDir, osop)
-  wrap1svoid(setCurrentDir, osop)
   wrap2svoid(writeFile, systemop)
   wrap1s(readFile, systemop)
   systemop getCurrentExceptionMsg
   registerCallback c, "stdlib.*.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
     setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
   systemop gorgeEx
+  macrosop getProjectPath
