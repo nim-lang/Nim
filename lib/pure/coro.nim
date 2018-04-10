@@ -24,7 +24,7 @@ when not nimCoroutines and not defined(nimdoc):
 
 import os
 import lists
-include system/timers
+import timers
 
 const defaultStackSize = 512 * 1024
 

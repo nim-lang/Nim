@@ -20,7 +20,7 @@ when not defined(profiler) and not defined(memProfiler):
 import hashes, algorithm, strutils, tables, sets
 
 when not defined(memProfiler):
-  include "system/timers"
+  import timers
 
 const
   withThreads = compileOption("threads")
