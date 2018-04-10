@@ -260,13 +260,16 @@ proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect.} =
   ## const.
   discard
 
+proc callsite*(): NimNode {.magic: "NCallSite", benign.}
+  ## returns the AST of the invocation expression that invoked this macro.
+
 proc error*(msg: string, n: NimNode = nil) {.magic: "NError", benign.}
   ## writes an error message at compile time
 
-proc warning*(msg: string) {.magic: "NWarning", benign.}
+proc warning*(msg: string, n: NimNode = nil) {.magic: "NWarning", benign.}
   ## writes a warning message at compile time
 
-proc hint*(msg: string) {.magic: "NHint", benign.}
+proc hint*(msg: string, n: NimNode = nil) {.magic: "NHint", benign.}
   ## writes a hint message at compile time
 
 proc newStrLitNode*(s: string): NimNode {.compileTime, noSideEffect.} =
@@ -327,9 +330,6 @@ proc genSym*(kind: NimSymKind = nskLet; ident = ""): NimNode {.
   magic: "NGenSym", noSideEffect.}
   ## generates a fresh symbol that is guaranteed to be unique. The symbol
   ## needs to occur in a declaration context.
-
-proc callsite*(): NimNode {.magic: "NCallSite", benign.}
-  ## returns the AST of the invocation expression that invoked this macro.
 
 proc toStrLit*(n: NimNode): NimNode {.compileTime.} =
   ## converts the AST `n` to the concrete Nim code and wraps that

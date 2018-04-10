@@ -1312,15 +1312,25 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].node.strVal = opGorge(regs[rb].node.strVal,
                                      regs[rc].node.strVal, regs[rd].node.strVal,
                                      c.debug[pc])[0]
-    of opcNError:
-      decodeB(rkNode)
-      let a = regs[ra].node
-      let b = regs[rb].node
-      stackTrace(c, tos, pc, errUser, a.strVal, if b.kind == nkNilLit: nil else: b)
-    of opcNWarning:
-      message(c.debug[pc], warnUser, regs[ra].node.strVal)
-    of opcNHint:
-      message(c.debug[pc], hintUser, regs[ra].node.strVal)
+    of opcNError, opcNWarning, opcNHint:
+      let message: string = regs[instr.regA].node.strVal
+      var nodeForLineInfo: PNode = regs[instr.regB].node
+      if nodeForLineInfo.kind == nkNilLit:
+        nodeForLineInfo = nil
+
+      if instr.opcode == opcNError:
+        stackTrace(c, tos, pc, errUser, message, nodeForLineInfo)
+      else:
+        let lineinfo =
+          if nodeForLineInfo == nil:
+            c.debug[pc]
+          else:
+            nodeForLineInfo.info
+
+        if instr.opcode == opcNWarning:
+          message(lineinfo, warnUser, message)
+        else:
+          message(lineinfo, hintUser, message)
     of opcParseExprToAst:
       decodeB(rkNode)
       # c.debug[pc].line.int - countLines(regs[rb].strVal) ?

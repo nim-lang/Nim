@@ -1141,18 +1141,13 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
       internalAssert false
   of mNHint:
     unused(n, dest)
-    genUnaryStmt(c, n, opcNHint)
+    genBinaryStmt(c, n, opcNHint)
   of mNWarning:
     unused(n, dest)
-    genUnaryStmt(c, n, opcNWarning)
+    genBinaryStmt(c, n, opcNWarning)
   of mNError:
-    if n.len <= 1:
-      # query error condition:
-      c.gABC(n, opcQueryErrorFlag, dest)
-    else:
-      # setter
-      unused(n, dest)
-      genBinaryStmt(c, n, opcNError)
+    unused(n, dest)
+    genBinaryStmt(c, n, opcNError)
   of mNCallSite:
     if dest < 0: dest = c.getTemp(n.typ)
     c.gABC(n, opcCallSite, dest)

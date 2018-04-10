@@ -26,4 +26,15 @@ macro outterMacro*(n, blck: untyped): untyped =
 var str: string
 outterMacro(str):
   "hellow"
+
 echo str
+
+macro mymacro(arg1,arg2,arg3: untyped): untyped =
+  # this needs to compile, but how can I test that it actually does the right thing?
+  hint("somehint")
+  warning("somewarning")
+  hint("myhint", arg1)
+  warning("mywarning", arg2)
+  error("myerror", arg3)
+
+# mymacro(ident1, ident2, ident3)
