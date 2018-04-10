@@ -48,14 +48,6 @@ when not defined(android):
   proc signalfd(fd: cint, mask: var Sigset, flags: cint): cint
        {.cdecl, importc: "signalfd", header: "<sys/signalfd.h>".}
 
-type
-  RLimit {.importc: "struct rlimit",
-           header: "<sys/resource.h>", pure, final.} = object
-    rlim_cur: int
-    rlim_max: int
-proc getrlimit(resource: cint, rlp: var RLimit): cint
-     {.importc: "getrlimit",header: "<sys/resource.h>".}
-
 when hasThreadSupport:
   type
     SelectorImpl[T] = object
