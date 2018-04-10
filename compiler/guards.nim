@@ -768,8 +768,10 @@ macro `=~`(x: PNode, pat: untyped): bool =
 
   var conds = newTree(nnkBracket)
   m(x, pat, conds)
-  when declared(macros.toNimIdent):
-    result = nestList(toNimIdent"and", conds)
+  when compiles(nestList(ident"and", conds)):
+    result = nestList(ident"and", conds)
+  #elif declared(macros.toNimIdent):
+  #  result = nestList(toNimIdent"and", conds)
   else:
     result = nestList(!"and", conds)
 

@@ -134,25 +134,31 @@ const
 
 proc `!`*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated.}
   ## constructs an identifier from the string `s`
-  ## **Deprecated since version 0.18.0**: Use ``toNimIdent`` instead.
+  ## **Deprecated since version 0.18.0**: Use ``ident`` instead.
 
-proc toNimIdent*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect.}
+proc toNimIdent*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated.}
   ## constructs an identifier from the string `s`
+  ## **Deprecated since version 0.18.1**; Use ``ident`` instead.
 
 proc `$`*(i: NimIdent): string {.magic: "IdentToStr", noSideEffect.}
   ## converts a Nim identifier to a string
 
 proc `$`*(s: NimSym): string {.magic: "IdentToStr", noSideEffect, deprecated.}
   ## converts a Nim symbol to a string
+  ## **Deprecated since version 0.18.1**; Use ``symname`` instead.
 
-proc `==`*(a, b: NimIdent): bool {.magic: "EqIdent", noSideEffect.}
+proc `==`*(a, b: NimIdent): bool {.magic: "EqIdent", noSideEffect, deprecated.}
   ## compares two Nim identifiers
+  ## **Deprecated since version 0.18.1**; Use ``==`` on ``NimNode`` instead.
+
 
 proc `==`*(a, b: NimNode): bool {.magic: "EqNimrodNode", noSideEffect.}
   ## compares two Nim nodes
 
 proc `==`*(a, b: NimSym): bool {.magic: "EqNimrodNode", noSideEffect, deprecated.}
   ## compares two Nim symbols
+  ## **Deprecated since version 0.18.1**; Use ```==`(NimNode,NimNode)`` instead.
+
 
 proc sameType*(a, b: NimNode): bool {.magic: "SameNodeType", noSideEffect.} =
   ## compares two Nim nodes' types. Return true if the types are the same,
@@ -195,9 +201,13 @@ proc kind*(n: NimNode): NimNodeKind {.magic: "NKind", noSideEffect.}
 proc intVal*(n: NimNode): BiggestInt {.magic: "NIntVal", noSideEffect.}
 
 proc floatVal*(n: NimNode): BiggestFloat {.magic: "NFloatVal", noSideEffect.}
-proc ident*(n: NimNode): NimIdent {.magic: "NIdent", noSideEffect.}
+
+proc ident*(n: NimNode): NimIdent {.magic: "NIdent", noSideEffect, deprecated.} =
+  ## **Deprecated since version 0.18.1**; All functionality is defined on ``NimNode``.
 
 proc symbol*(n: NimNode): NimSym {.magic: "NSymbol", noSideEffect, deprecated.}
+  ## **Deprecated since version 0.18.1**; All functionality is defined on ``NimNode``.
+
 proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect, deprecated.}
 
 when defined(nimSymKind):
@@ -247,8 +257,13 @@ proc strVal*(n: NimNode): string  {.magic: "NStrVal", noSideEffect.}
 
 proc `intVal=`*(n: NimNode, val: BiggestInt) {.magic: "NSetIntVal", noSideEffect.}
 proc `floatVal=`*(n: NimNode, val: BiggestFloat) {.magic: "NSetFloatVal", noSideEffect.}
+
 proc `symbol=`*(n: NimNode, val: NimSym) {.magic: "NSetSymbol", noSideEffect, deprecated.}
-proc `ident=`*(n: NimNode, val: NimIdent) {.magic: "NSetIdent", noSideEffect.}
+  ## **Deprecated since version 0.18.1**; Generate a new ``NimNode`` with ``genSym`` instead.
+
+proc `ident=`*(n: NimNode, val: NimIdent) {.magic: "NSetIdent", noSideEffect, deprecated.}
+  ## **Deprecated since version 0.18.1**; Generate a new ``NimNode`` with ``ident(string)`` instead.
+
 #proc `typ=`*(n: NimNode, typ: typedesc) {.magic: "NSetType".}
 # this is not sound! Unfortunately forbidding 'typ=' is not enough, as you
 # can easily do:
@@ -299,16 +314,17 @@ proc newFloatLitNode*(f: BiggestFloat): NimNode {.compileTime.} =
   result = newNimNode(nnkFloatLit)
   result.floatVal = f
 
-proc newIdentNode*(i: NimIdent): NimNode {.compileTime.} =
+proc newIdentNode*(i: NimIdent): NimNode {.compileTime, deprecated.} =
   ## creates an identifier node from `i`
+  ## **Deprecated since version 0.18.1**; Use ``ident(string)`` instead.
   result = newNimNode(nnkIdent)
   result.ident = i
 
-proc newIdentNode*(i: string): NimNode {.compileTime.} =
+proc newIdentNode*(i: string): NimNode {.compileTime, deprecated.} =
   ## creates an identifier node from `i`
+  ## **Deprecated since version 0.18.1**; Use ``ident(string)`` instead.
   result = newNimNode(nnkIdent)
   result.ident = toNimIdent i
-
 
 type
   BindSymRule* = enum    ## specifies how ``bindSym`` behaves
@@ -474,9 +490,11 @@ proc newCall*(theProc: NimNode,
   result.add(args)
 
 proc newCall*(theProc: NimIdent,
-              args: varargs[NimNode]): NimNode {.compileTime.} =
+              args: varargs[NimNode]): NimNode {.compileTime, deprecated.} =
   ## produces a new call node. `theProc` is the proc that is called with
   ## the arguments ``args[0..]``.
+  ## **Deprecated since version 0.18.1**; Use ``newCall(string, ...)``,
+  ## or ``newCall(NimNode, ...)`` instead.
   result = newNimNode(nnkCall)
   result.add(newIdentNode(theProc))
   result.add(args)
@@ -604,17 +622,30 @@ proc newLit*(s: string): NimNode {.compileTime.} =
   result = newNimNode(nnkStrLit)
   result.strVal = s
 
-proc nestList*(theProc: NimIdent,
-               x: NimNode): NimNode {.compileTime.} =
-  ## nests the list `x` into a tree of call expressions:
-  ## ``[a, b, c]`` is transformed into ``theProc(a, theProc(c, d))``.
+proc nestList*(op: NimNode; pack: NimNode): NimNode {.compileTime.} =
+  ## nests the list `pack` into a tree of call expressions:
+  ## ``[a, b, c]`` is transformed into ``op(a, op(c, d))``.
+  ## This is also known as fold expression.
+  if pack.len < 1:
+    error("`nestList` expects a node with at least 1 child")
+  result = pack[^1]
+  for i in countdown(pack.len - 2, 0):
+    result = newCall(op, pack[i], result)
+
+proc nestList*(op: NimNode; pack: NimNode; init: NimNode): NimNode {.compileTime.} =
+  ## nests the list `pack` into a tree of call expressions:
+  ## ``[a, b, c]`` is transformed into ``op(a, op(c, d))``.
+  ## This is also known as fold expression.
+  result = init
+  for i in countdown(pack.len - 1, 0):
+    result = newCall(op, pack[i], result)
+
+proc nestList*(theProc: NimIdent, x: NimNode): NimNode {.compileTime, deprecated.} =
+  ## **Deprecated since version 0.18.1**; Use one of ``nestList(NimNode, ...)`` instead.
   var L = x.len
   result = newCall(theProc, x[L-2], x[L-1])
   for i in countdown(L-3, 0):
-    # XXX the 'copyNimTree' here is necessary due to a bug in the evaluation
-    # engine that would otherwise create an endless loop here. :-(
-    # This could easily user code and so should be fixed in evals.nim somehow.
-    result = newCall(theProc, x[i], copyNimTree(result))
+    result = newCall(theProc, x[i], result)
 
 proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
   ## Convert the AST `n` to a human-readable tree-like string.
@@ -752,10 +783,10 @@ macro dumpAstGen*(s: untyped): untyped = echo s.astGenRepr
   ## See `dumpTree`.
 
 macro dumpTreeImm*(s: untyped): untyped {.deprecated.} = echo s.treeRepr
-  ## Deprecated.
+  ## Deprecated. Use `dumpTree` instead.
 
 macro dumpLispImm*(s: untyped): untyped {.deprecated.} = echo s.lispRepr
-  ## Deprecated.
+  ## Deprecated. Use `dumpLisp` instead.
 
 proc newEmptyNode*(): NimNode {.compileTime, noSideEffect.} =
   ## Create a new empty node
