@@ -134,23 +134,15 @@ const
 
 proc `!`*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated.}
   ## constructs an identifier from the string `s`
-  ## **Deprecated since version 0.18.0**: Use ``ident`` instead.
+  ## **Deprecated since version 0.18.0**: Use ``ident`` or ``newIdentNode`` instead.
 
 proc toNimIdent*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated.}
   ## constructs an identifier from the string `s`
-  ## **Deprecated since version 0.18.1**; Use ``ident`` instead.
-
-proc `$`*(i: NimIdent): string {.magic: "IdentToStr", noSideEffect.}
-  ## converts a Nim identifier to a string
-
-proc `$`*(s: NimSym): string {.magic: "IdentToStr", noSideEffect, deprecated.}
-  ## converts a Nim symbol to a string
-  ## **Deprecated since version 0.18.1**; Use ``symname`` instead.
+  ## **Deprecated since version 0.18.1**; Use ``ident`` or ``newIdentNode`` instead.
 
 proc `==`*(a, b: NimIdent): bool {.magic: "EqIdent", noSideEffect, deprecated.}
   ## compares two Nim identifiers
   ## **Deprecated since version 0.18.1**; Use ``==`` on ``NimNode`` instead.
-
 
 proc `==`*(a, b: NimNode): bool {.magic: "EqNimrodNode", noSideEffect.}
   ## compares two Nim nodes
@@ -212,16 +204,36 @@ proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect, deprecated.}
 
 when defined(nimSymKind):
   proc symKind*(symbol: NimNode): NimSymKind {.magic: "NSymKind", noSideEffect.}
-  proc symName*(symbol: NimNode): string {.magic: "NSymName", noSideEffect.}
-  #  ## Unlike the result of `repr` the symbol name is not unique.
   proc getImpl*(symbol: NimNode): NimNode {.magic: "GetImpl", noSideEffect.}
+  proc strVal*(n: NimNode): string  {.magic: "NStrVal", noSideEffect.}
     ## retrieve the implementation of `symbol`. `symbol` can be a
     ## routine or a const.
-else:
-  proc symName*(n: NimNode): string =
-    $n.symbol
+
+  proc `$`*(i: NimIdent): string {.magic: "NStrVal", noSideEffect, deprecated.}
+    ## converts a Nim identifier to a string
+    ## **Deprecated since version 0.18.1**; Use ``strVal`` instead.
+
+  proc `$`*(s: NimSym): string {.magic: "NStrVal", noSideEffect, deprecated.}
+    ## converts a Nim symbol to a string
+    ## **Deprecated since version 0.18.1**; Use ``strVal`` instead.
+
+else: # bootstrapping substitute
   proc getImpl*(symbol: NimNode): NimNode =
     symbol.symbol.getImpl
+
+  proc strValOld(n: NimNode): string  {.magic: "NStrVal", noSideEffect.}
+
+  proc `$`*(s: NimSym): string {.magic: "IdentToStr", noSideEffect.}
+
+  proc `$`*(i: NimIdent): string {.magic: "IdentToStr", noSideEffect.}
+
+  proc strVal*(n: NimNode): string =
+    if n.kind == nnkIdent:
+      $n.ident
+    elif n.kind == nnkSym:
+      $n.symbol
+    else:
+      n.strValOld
 
 proc getType*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
   ## with 'getType' you can access the node's `type`:idx:. A Nim type is
@@ -252,8 +264,6 @@ proc getTypeImpl*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
 
 proc getTypeImpl*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
   ## Like getType except it includes generic parameters for the implementation
-
-proc strVal*(n: NimNode): string  {.magic: "NStrVal", noSideEffect.}
 
 proc `intVal=`*(n: NimNode, val: BiggestInt) {.magic: "NSetIntVal", noSideEffect.}
 proc `floatVal=`*(n: NimNode, val: BiggestFloat) {.magic: "NSetFloatVal", noSideEffect.}
@@ -314,17 +324,14 @@ proc newFloatLitNode*(f: BiggestFloat): NimNode {.compileTime.} =
   result = newNimNode(nnkFloatLit)
   result.floatVal = f
 
-proc newIdentNode*(i: NimIdent): NimNode {.compileTime, deprecated.} =
+proc newIdentNode*(i: NimIdent): NimNode {.compileTime.} =
   ## creates an identifier node from `i`
-  ## **Deprecated since version 0.18.1**; Use ``ident(string)`` instead.
   result = newNimNode(nnkIdent)
   result.ident = i
 
-proc newIdentNode*(i: string): NimNode {.compileTime, deprecated.} =
-  ## creates an identifier node from `i`
-  ## **Deprecated since version 0.18.1**; Use ``ident(string)`` instead.
-  result = newNimNode(nnkIdent)
-  result.ident = toNimIdent i
+proc newIdentNode*(i: string): NimNode {.magic: "StrToIdent", noSideEffect.}
+  ## creates an identifier node from `i`. It is simply an alias for
+  ## ``ident(string)``. Use that, it's shorter.
 
 type
   BindSymRule* = enum    ## specifies how ``bindSym`` behaves
@@ -661,9 +668,8 @@ proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
     of nnkNilLit: res.add(" nil")
     of nnkCharLit..nnkInt64Lit: res.add(" " & $n.intVal)
     of nnkFloatLit..nnkFloat64Lit: res.add(" " & $n.floatVal)
-    of nnkStrLit..nnkTripleStrLit: res.add(" " & $n.strVal.newLit.repr)
-    of nnkIdent: res.add(" ident\"" & $n.ident & '"')
-    of nnkSym: res.add(" \"" & n.symName & '"')
+    of nnkStrLit..nnkTripleStrLit, nnkIdent, nnkSym:
+      res.add(" " & $n.strVal.newLit.repr)
     of nnkNone: assert false
     else:
       for j in 0..n.len-1:
@@ -686,9 +692,8 @@ proc lispRepr*(n: NimNode): string {.compileTime, benign.} =
   of nnkNilLit: add(result, "nil")
   of nnkCharLit..nnkInt64Lit: add(result, $n.intVal)
   of nnkFloatLit..nnkFloat64Lit: add(result, $n.floatVal)
-  of nnkStrLit..nnkTripleStrLit, nnkCommentStmt: add(result, n.strVal.newLit.repr)
-  of nnkIdent: add(result, "ident\"" & $n.ident & '"')
-  of nnkSym: add(result, n.symName)
+  of nnkStrLit..nnkTripleStrLit, nnkCommentStmt, nnkident, nnkSym:
+    add(result, n.strVal.newLit.repr)
   of nnkNone: assert false
   else:
     if n.len > 0:
@@ -737,9 +742,8 @@ proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
     of nnkCharLit: res.add("'" & $chr(n.intVal) & "'")
     of nnkIntLit..nnkInt64Lit: res.add($n.intVal)
     of nnkFloatLit..nnkFloat64Lit: res.add($n.floatVal)
-    of nnkStrLit..nnkTripleStrLit, nnkCommentStmt: res.add($n.strVal.newLit.repr)
-    of nnkIdent: res.add(($n.ident).newLit.repr)
-    of nnkSym: res.add(n.symName.newLit.repr)
+    of nnkStrLit..nnkTripleStrLit, nnkCommentStmt, nnkIdent, nnkSym:
+      res.add(n.strVal.newLit.repr)
     of nnkNone: assert false
     else:
       res.add(".newTree(")
@@ -1032,28 +1036,21 @@ proc `body=`*(someProc: NimNode, val: NimNode) {.compileTime.} =
 
 proc basename*(a: NimNode): NimNode {.compiletime, benign.}
 
-
 proc `$`*(node: NimNode): string {.compileTime.} =
   ## Get the string of an identifier node
   case node.kind
-  of nnkIdent:
-    result = $node.ident
   of nnkPostfix:
-    result = $node.basename.ident & "*"
-  of nnkStrLit..nnkTripleStrLit:
+    result = node.basename.strVal & "*"
+  of nnkStrLit..nnkTripleStrLit, nnkCommentStmt, nnkSym, nnkIdent:
     result = node.strVal
-  of nnkSym:
-    result = node.symName
   of nnkOpenSymChoice, nnkClosedSymChoice:
     result = $node[0]
   of nnkAccQuoted:
     result = $node[0]
-  of nnkCommentStmt:
-    result = node.strVal
   else:
     badNodeKind node.kind, "$"
 
-proc ident*(name: string): NimNode {.compileTime,inline.} = newIdentNode(name)
+proc ident*(name: string): NimNode {.magic: "StrToIdent", noSideEffect.}
   ## Create a new ident node from a string
 
 iterator items*(n: NimNode): NimNode {.inline.} =
@@ -1170,10 +1167,8 @@ proc eqIdent*(node: NimNode; s: string): bool {.compileTime.} =
   ## is the same as ``s``. Note that this is the preferred way to check! Most
   ## other ways like ``node.ident`` are much more error-prone, unfortunately.
   case node.kind
-  of nnkIdent:
-    result = node.ident == toNimIdent s
-  of nnkSym:
-    result = eqIdent(node.symName, s)
+  of nnkSym, nnkIdent:
+    result = eqIdent(node.strVal, s)
   of nnkOpenSymChoice, nnkClosedSymChoice:
     result = eqIdent($node[0], s)
   else:
