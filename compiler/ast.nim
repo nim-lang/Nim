@@ -1674,6 +1674,19 @@ proc isException*(t: PType): bool =
     base = base.lastSon
   return false
 
+proc isImportedException*(t: PType): bool =
+  assert(t != nil)
+  if optNoCppExceptions in gGlobalOptions:
+    return false
+  
+  let base = t.skipTypes({tyAlias, tyPtr, tyDistinct, tyGenericInst})
+    
+  if base.sym != nil and sfCompileToCpp in base.sym.flags:
+    result = true
+
+proc isInfixAs*(n: PNode): bool =
+  return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.id == getIdent("as").id
+
 proc findUnresolvedStatic*(n: PNode): PNode =
   if n.kind == nkSym and n.typ.kind == tyStatic and n.typ.n == nil:
     return n
