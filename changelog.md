@@ -19,6 +19,8 @@
   with ``strutils.split``.
 - Added ``system.toOpenArray`` in order to support zero-copy slicing
   operations. This is currently not yet available for the JavaScript target.
+- Added ``getCurrentDir``, ``findExe``, ``cpDir`` and  ``mvDir`` procs to
+  ``nimscript``.
 
 ### Library changes
 
