@@ -63,6 +63,7 @@ block: # ref types
     Node = object of RootObj
       left {.serializationKey:"l".}, right {.serializationKey:"r".}: NodeRef
     NodeRef = ref Node
+    NodePtr = ptr Node
 
     SpecialNodeRef = ref object of NodeRef
       data {.defaultValue"none".}: string
@@ -84,3 +85,9 @@ block: # ref types
   static:
     assert dataDefVal == true
     assert specLeftSerKey == true
+
+  var ptrS = NodePtr(nil)
+  const
+    ptrRightSerKey = getCustomPragmaVal(s.right, serializationKey)
+  static:
+    assert ptrRightSerKey == "r"

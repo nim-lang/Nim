@@ -1200,8 +1200,8 @@ proc customPragmaNode(n: NimNode): NimNode =
     var typDef = getImpl(getTypeInst((if n[0].kind == nnkHiddenDeref: n[0][0] else: n[0])).symbol)
     while typDef != nil:
       typDef.expectKind(nnkTypeDef)
-      typDef[2].expectKind({nnkRefTy, nnkObjectTy})
-      let isRef = typDef[2].kind == nnkRefTy
+      typDef[2].expectKind({nnkRefTy, nnkPtrTy, nnkObjectTy})
+      let isRef = typDef[2].kind in {nnkRefTy, nnkPtrTy}
       if isRef and typDef[2][0].kind == nnkSym: # defines ref type for another object
         typDef = getImpl(typDef[2][0].symbol)
       else: # object definition, maybe an object directly defined as a ref type
