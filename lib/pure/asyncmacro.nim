@@ -179,7 +179,7 @@ proc processBody(node, retFutureSym: NimNode,
     result.add newNimNode(nnkReturnStmt, node).add(newNilLit())
     return # Don't process the children of this return stmt
   of nnkCommand, nnkCall:
-    if node[0].kind == nnkIdent and node[0].ident == !"await":
+    if node[0].kind == nnkIdent and node[0].eqIdent("await"):
       case node[1].kind
       of nnkIdent, nnkInfix, nnkDotExpr, nnkCall, nnkCommand:
         # await x
@@ -192,7 +192,7 @@ proc processBody(node, retFutureSym: NimNode,
       else:
         error("Invalid node kind in 'await', got: " & $node[1].kind)
     elif node.len > 1 and node[1].kind == nnkCommand and
-         node[1][0].kind == nnkIdent and node[1][0].ident == !"await":
+         node[1][0].kind == nnkIdent and node[1][0].eqIdent("await"):
       # foo await x
       var newCommand = node
       result.createVar("future" & $node[0].toStrLit, node[1][1], newCommand[1],
@@ -201,16 +201,16 @@ proc processBody(node, retFutureSym: NimNode,
   of nnkVarSection, nnkLetSection:
     case node[0][2].kind
     of nnkCommand:
-      if node[0][2][0].kind == nnkIdent and node[0][2][0].ident == !"await":
+      if node[0][2][0].kind == nnkIdent and node[0][2][0].eqIdent("await"):
         # var x = await y
         var newVarSection = node # TODO: Should this use copyNimNode?
-        result.createVar("future" & $node[0][0].ident, node[0][2][1],
+        result.createVar("future" & node[0][0].strVal, node[0][2][1],
           newVarSection[0][2], newVarSection, node)
     else: discard
   of nnkAsgn:
     case node[1].kind
     of nnkCommand:
-      if node[1][0].ident == !"await":
+      if node[1][0].eqIdent("await"):
         # x = await y
         var newAsgn = node
         result.createVar("future" & $node[0].toStrLit, node[1][1], newAsgn[1], newAsgn, node)
@@ -218,7 +218,7 @@ proc processBody(node, retFutureSym: NimNode,
   of nnkDiscardStmt:
     # discard await x
     if node[0].kind == nnkCommand and node[0][0].kind == nnkIdent and
-          node[0][0].ident == !"await":
+          node[0][0].eqIdent("await"):
       var newDiscard = node
       result.createVar("futureDiscard_" & $toStrLit(node[0][1]), node[0][1],
                 newDiscard[0], newDiscard, node)
@@ -283,9 +283,9 @@ proc processBody(node, retFutureSym: NimNode,
 proc getName(node: NimNode): string {.compileTime.} =
   case node.kind
   of nnkPostfix:
-    return $node[1].ident
+    return node[1].strVal
   of nnkIdent:
-    return $node.ident
+    return node.strVal
   of nnkEmpty:
     return "anonymous"
   else:
@@ -296,7 +296,7 @@ proc getFutureVarIdents(params: NimNode): seq[NimNode] {.compileTime.} =
   for i in 1 ..< len(params):
     expectKind(params[i], nnkIdentDefs)
     if params[i][1].kind == nnkBracketExpr and
-       ($params[i][1][0].ident).normalize == "futurevar":
+       params[i][1][0].eqIdent("futurevar"):
       result.add(params[i][0])
 
 proc isInvalidReturnType(typeName: string): bool =
@@ -323,7 +323,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
     let fut = repr(returnType[0])
     verifyReturnType(fut)
     baseType = returnType[1]
-  elif returnType.kind in nnkCallKinds and $returnType[0] == "[]":
+  elif returnType.kind in nnkCallKinds and returnType[0].eqIdent("[]"):
     let fut = repr(returnType[1])
     verifyReturnType(fut)
     baseType = returnType[2]
@@ -333,7 +333,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
     verifyReturnType(repr(returnType))
 
   let subtypeIsVoid = returnType.kind == nnkEmpty or
-        (baseType.kind == nnkIdent and returnType[1].ident == !"void")
+        (baseType.kind == nnkIdent and returnType[1].eqIdent("void"))
 
   let futureVarIdents = getFutureVarIdents(prc.params)
 
@@ -348,7 +348,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
     newVarStmt(retFutureSym,
       newCall(
         newNimNode(nnkBracketExpr, prc.body).add(
-          newIdentNode(!"newFuture"), # TODO: Strange bug here? Remove the `!`.
+          newIdentNode("newFuture"), # TODO: Strange bug here? Remove the `!`.
           subRetType),
       newLit(prcName)))) # Get type from return type of this proc
 
@@ -448,30 +448,30 @@ proc stripAwait(node: NimNode): NimNode =
 
   case node.kind
   of nnkCommand, nnkCall:
-    if node[0].kind == nnkIdent and node[0].ident == !"await":
+    if node[0].kind == nnkIdent and node[0].eqIdent("await"):
       node[0] = emptyNoopSym
     elif node.len > 1 and node[1].kind == nnkCommand and
-         node[1][0].kind == nnkIdent and node[1][0].ident == !"await":
+         node[1][0].kind == nnkIdent and node[1][0].eqIdent("await"):
       # foo await x
       node[1][0] = emptyNoopSym
   of nnkVarSection, nnkLetSection:
     case node[0][2].kind
     of nnkCommand:
-      if node[0][2][0].kind == nnkIdent and node[0][2][0].ident == !"await":
+      if node[0][2][0].kind == nnkIdent and node[0][2][0].eqIdent("await"):
         # var x = await y
         node[0][2][0] = emptyNoopSym
     else: discard
   of nnkAsgn:
     case node[1].kind
     of nnkCommand:
-      if node[1][0].ident == !"await":
+      if node[1][0].eqIdent("await"):
         # x = await y
         node[1][0] = emptyNoopSym
     else: discard
   of nnkDiscardStmt:
     # discard await x
     if node[0].kind == nnkCommand and node[0][0].kind == nnkIdent and
-          node[0][0].ident == !"await":
+          node[0][0].eqIdent("await"):
       node[0][0] = emptyNoopSym
   else: discard
 
@@ -480,9 +480,9 @@ proc stripAwait(node: NimNode): NimNode =
 
 proc splitParamType(paramType: NimNode, async: bool): NimNode =
   result = paramType
-  if paramType.kind == nnkInfix and $paramType[0].ident in ["|", "or"]:
-    let firstAsync = "async" in ($paramType[1].ident).normalize
-    let secondAsync = "async" in ($paramType[2].ident).normalize
+  if paramType.kind == nnkInfix and paramType[0].strVal in ["|", "or"]:
+    let firstAsync = "async" in paramType[1].strVal.normalize
+    let secondAsync = "async" in paramType[2].strVal.normalize
 
     if firstAsync:
       result = paramType[if async: 1 else: 2]
