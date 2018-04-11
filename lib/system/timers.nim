@@ -10,4 +10,4 @@
 ## Timer support for the realtime GC. Based on
 ## `<https://github.com/jckarter/clay/blob/master/compiler/src/hirestimer.cpp>`_
 
-include "lib/pure/timers"
+include "../pure/timers"
