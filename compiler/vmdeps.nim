@@ -159,9 +159,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
       pragmas = t.sym.ast[0][1].copyTree()
     if inst:
       result = newNodeX(nkObjectTy)
-      if pragmas != nil:
-        discard
-      result.add pragmas  # pragmas ~~not~~ reconstructed yet
+      result.add ast.emptyNode  # pragmas not reconstructed yet
       if t.sons[0] == nil: result.add ast.emptyNode  # handle parent object
       else:
         var nn = newNodeX(nkOfInherit)
@@ -174,7 +172,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
     else:
       if allowRecursion or t.sym == nil:
         result = newNodeIT(nkObjectTy, if t.n.isNil: info else: t.n.info, t)
-        result.add pragmas
+        result.add ast.emptyNode
         if t.sons[0] == nil:
           result.add ast.emptyNode
         else:
