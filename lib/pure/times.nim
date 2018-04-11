@@ -150,6 +150,8 @@ const
   secondsInHour = 60*60
   secondsInDay = 60*60*24
   minutesInHour = 60
+  epochDiff = 116444736000000000'i64
+  rateDiff = 10000000'i64 # 100 nsecs
 
 proc fromUnix*(unix: int64): Time {.benign, tags: [], raises: [], noSideEffect.} =
   ## Convert a unix timestamp (seconds since ``1970-01-01T00:00:00Z``) to a ``Time``.
@@ -158,6 +160,10 @@ proc fromUnix*(unix: int64): Time {.benign, tags: [], raises: [], noSideEffect.}
 proc toUnix*(t: Time): int64 {.benign, tags: [], raises: [], noSideEffect.} =
   ## Convert ``t`` to a unix timestamp (seconds since ``1970-01-01T00:00:00Z``).
   t.int64
+
+proc toWinTime*(t: Time): int64 =
+  ## Convert ``t`` to a Windows file time (100-nanosecond intervals since ``1601-01-01T00:00:00Z``).
+  result = t.int64 * rateDiff + epochDiff
 
 proc isLeapYear*(year: int): bool =
   ## Returns true if ``year`` is a leap year.
@@ -1339,10 +1345,6 @@ else:
   proc getTime(): Time =
     timec(nil).Time
 
-  const
-    epochDiff = 116444736000000000'i64
-    rateDiff = 10000000'i64 # 100 nsecs
-
   proc unixTimeToWinTime*(time: CTime): int64 =
     ## converts a UNIX `Time` (``time_t``) to a Windows file time
     result = int64(time) * rateDiff + epochDiff
@@ -1505,7 +1507,3 @@ proc getDayOfWeekJulian*(day, month, year: int): WeekDay {.deprecated.} =
     m = month + (12*a) - 2
     d = (5 + day + y + (y div 4) + (31*m) div 12) mod 7
   result = d.WeekDay
-
-proc toWinTime*(t: Time): int64 =
-  ## Convert ``t`` to a Windows file time (100-nanosecond intervals since ``1601-01-01T00:00:00Z``).
-  result = int64(t) * rateDiff + epochDiff
