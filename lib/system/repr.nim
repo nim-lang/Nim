@@ -77,6 +77,12 @@ proc reprChar(x: char): string {.compilerRtl.} =
   else: add result, x
   add result, "\'"
 
+# 16~24 seems like a sweet spot
+const binarySearchCutoff = 16
+
+proc enumGet(idx: int, sons: ptr array[0x7FFF, ptr TNimNode]): int {.compilerRtl.} =
+  result = sons[idx].offset
+
 proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
   ## Return string representation for enumeration values
   var n = typ.node
@@ -84,12 +90,22 @@ proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
     let o = e - n.sons[0].offset
     if o >= 0 and o <% typ.node.len:
       return $n.sons[o].name
-  else:
-    # ugh we need a slow linear search:
+  elif n.len < binarySearchCutoff:
+    # linear search below cutoff
     var s = n.sons
     for i in 0 .. n.len-1:
       if s[i].offset == e:
         return $s[i].name
+  else: # binary search for all others enums
+    var s = n.sons
+    var a = 0
+    var b = n.len - 1
+    while a <= b:
+      var mid = (a + b) div 2
+      var c = cmp(s[mid].offset, e)
+      if c < 0: a = mid + 1
+      elif c > 0: b = mid - 1
+      else: return $s[mid].name
 
   result = $e & " (invalid data!)"
 

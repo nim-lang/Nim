@@ -1175,6 +1175,28 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
       globalError(n.info, "expandToAst requires a call expression")
   of mRunnableExamples:
     discard "just ignore any call to runnableExamples"
+  of mEnumGet:
+    let tmp = c.genx(n.sons[1])
+    if dest < 0: dest = c.getTemp(n.typ)
+    let t = skipTypes(n.sons[2].typ, abstractRange)
+    c.gABC(n, opcAsgnInt, dest, tmp)
+    c.gABx(n, opcEnumGet, dest, c.genType(t))
+    c.freeTemp(tmp)
+  of mEnumGetString:
+    let tmp = c.genx(n.sons[1])
+    if dest < 0: dest = c.getTemp(n.typ)
+    let t = skipTypes(n.sons[2].typ, abstractRange)
+    c.gABC(n, opcAsgnInt, dest, tmp)
+    c.gABx(n, opcEnumGetString, dest, c.genType(t))
+    c.freeTemp(tmp)
+  of mEnumLen:
+    if dest < 0: dest = c.getTemp(n.typ)
+    let t = skipTypes(n.sons[1].typ, abstractRange)
+    c.gABx(n, opcLdImmInt, dest, t.n.sons.len)
+  of mEnumOrdinal:
+    if dest < 0: dest = c.getTemp(n.typ)
+    let t = skipTypes(n.sons[1].typ, abstractRange)
+    c.gABx(n, opcLdImmInt, dest, ord(tfEnumHasHoles notin t.flags))
   else:
     # mGCref, mGCunref,
     globalError(n.info, "cannot generate code for: " & $m)

@@ -1090,25 +1090,48 @@ proc parseBool*(s: string): bool =
   of "n", "no", "false", "0", "off": result = false
   else: raise newException(ValueError, "cannot interpret as a bool: " & s)
 
-proc parseEnum*[T: enum](s: string): T =
-  ## Parses an enum ``T``.
-  ##
-  ## Raises ``ValueError`` for an invalid value in `s`. The comparison is
-  ## done in a style insensitive way.
-  for e in low(T)..high(T):
-    if cmpIgnoreStyle(s, $e) == 0:
-      return e
-  raise newException(ValueError, "invalid enum value: " & s)
 
-proc parseEnum*[T: enum](s: string, default: T): T =
-  ## Parses an enum ``T``.
-  ##
-  ## Uses `default` for an invalid value in `s`. The comparison is done in a
-  ## style insensitive way.
-  for e in low(T)..high(T):
-    if cmpIgnoreStyle(s, $e) == 0:
-      return e
-  result = default
+when defined(JS):
+  proc parseEnum[T: enum](s: string; default: T): T =
+    for e in T:
+      if cmpIgnoreStyle(s, $e) == 0:
+        return e
+    result = default
+
+  proc parseEnum[T: enum](s: string): T =
+    for e in T:
+      if cmpIgnoreStyle(s, $e) == 0:
+        return e
+    raise newException(ValueError, "invalid enum value: " & s)
+
+else:
+  from cstrutils import cmpIgnoreStyle
+  proc parseEnumImpl*[T: enum](s: string, value: var T): bool =
+    proc enumGet[T: enum](index: int; t: typedesc[T]): T  {.magic: "EnumGet", noSideEffect.}
+    proc enumGetString[T: enum](index: int; t: typedesc[T]): cstring  {.magic: "EnumGetString", noSideEffect.}
+    let last = T.len - 1
+    var i = 0
+    while i <= last:
+      if cmpIgnoreStyle(s, enumGetString(i, T)) == 0:
+        value= enumGet(i, T)
+        return true
+      inc(i)
+
+  proc parseEnum*[T: enum](s: string): T {.inline.}=
+    ## Parses an enum ``T``.
+    ##
+    ## Raises ``ValueError`` for an invalid value in `s`. The comparison is
+    ## done in a style insensitive way.
+    if not parseEnumImpl(s, result):
+      raise newException(ValueError, "invalid enum value: " & s)
+
+  proc parseEnum*[T: enum](s: string, default: T): T =
+    ## Parses an enum ``T``.
+    ##
+    ## Uses `default` for an invalid value in `s`. The comparison is done in a
+    ## style insensitive way.
+    result = default
+    discard parseEnumImpl(s, result)
 
 proc repeat*(c: char, count: Natural): string {.noSideEffect,
   rtl, extern: "nsuRepeatChar".} =

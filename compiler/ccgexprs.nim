@@ -1838,6 +1838,20 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mCStrToStr: genDollar(p, e, d, "#cstrToNimstr($1)")
   of mStrToStr: expr(p, e.sons[1], d)
   of mEnumToStr: genRepr(p, e, d)
+  of mEnumGet:
+    var a: TLoc
+    initLocExpr(p, e.sons[1], a)
+    var t = skipTypes(e.sons[2].typ, abstractRange)
+    putIntoDest(p, d, e,
+                ropecg(p.module, "($2)->node->sons[$1]->offset", [
+                rdLoc(a), genTypeInfo(p.module, t, e.info)]), a.storage)
+  of mEnumGetString:
+    var a: TLoc
+    initLocExpr(p, e.sons[1], a)
+    var t = skipTypes(e.sons[2].typ, abstractRange)
+    putIntoDest(p, d, e,
+                ropecg(p.module, "($2)->node->sons[$1]->name", [
+                rdLoc(a), genTypeInfo(p.module, t, e.info)]), a.storage)
   of mOf: genOf(p, e, d)
   of mNew: genNew(p, e)
   of mNewFinalize: genNewFinalize(p, e)

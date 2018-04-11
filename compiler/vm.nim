@@ -1425,6 +1425,18 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         asgnRef(regs[ra], dest)
       else:
         globalError(c.debug[pc], "cannot evaluate cast")
+    of opcEnumGet:
+      ensureKind(rkInt)
+      let index = regs[ra].intVal.int
+      let enum_type = c.types[instr.regBx - wordExcess]
+      regs[ra].intVal = enum_type.n.sons[index].sym.position
+    of opcEnumGetString:
+      ensureKind(rkInt)
+      let index = regs[ra].intVal.int
+      let enum_type = c.types[instr.regBx - wordExcess]
+      ensureKind(rkNode)
+      createStr regs[ra]
+      regs[ra].node.strVal = $(enum_type.n.sons[index].sym.name.s) # enum value name
     of opcNSetIntVal:
       decodeB(rkNode)
       var dest = regs[ra].node
