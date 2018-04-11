@@ -20,6 +20,7 @@ proc execute*(program: string) =
 
   initDefines()
   defineSymbol("nimrodvm")
+  defineSymbol("nimscript")
   when hasFFI: defineSymbol("nimffi")
   registerPass(verbosePass)
   registerPass(semPass)

@@ -620,8 +620,12 @@ proc markCompilerProc(s: PSym) =
   incl(s.flags, sfUsed)
   registerCompilerProc(s)
 
-proc deprecatedStmt(c: PContext; pragma: PNode) =
-  let pragma = pragma[1]
+proc deprecatedStmt(c: PContext; outerPragma: PNode) =
+  let pragma = outerPragma[1]
+  if pragma.kind in {nkStrLit..nkTripleStrLit}:
+    incl(c.module.flags, sfDeprecated)
+    c.module.constraint = getStrLitNode(c, outerPragma)
+    return
   if pragma.kind != nkBracket:
     localError(pragma.info, "list of key:value pairs expected"); return
   for n in pragma:

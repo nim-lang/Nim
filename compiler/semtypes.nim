@@ -252,6 +252,9 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
     if e.typ.kind == tyFromExpr:
       result = makeRangeWithStaticExpr(c, e.typ.n)
     elif e.kind in {nkIntLit..nkUInt64Lit}:
+      if e.intVal < 0:
+        localError(n[1].info,
+          "Array length can't be negative, but was " & $e.intVal)
       result = makeRangeType(c, 0, e.intVal-1, n.info, e.typ)
     elif e.kind == nkSym and e.typ.kind == tyStatic:
       if e.sym.ast != nil:
@@ -1272,8 +1275,9 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
 
     internalAssert dummyName.kind == nkIdent
     var dummyParam = newSym(if modifier == tyTypeDesc: skType else: skVar,
-                            dummyName.ident, owner, owner.info)
+                            dummyName.ident, owner, param.info)
     dummyParam.typ = dummyType
+    incl dummyParam.flags, sfUsed
     addDecl(c, dummyParam)
 
   result.n.sons[3] = semConceptBody(c, n[3])
