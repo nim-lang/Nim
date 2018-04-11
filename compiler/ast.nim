@@ -632,10 +632,11 @@ type
     mCpuEndian, mHostOS, mHostCPU, mBuildOS, mBuildCPU, mAppType,
     mNaN, mInf, mNegInf,
     mCompileOption, mCompileOptionArg,
-    mNLen, mNChild, mNSetChild, mNAdd, mNAddMultiple, mNDel, mNKind,
+    mNLen, mNChild, mNSetChild, mNAdd, mNAddMultiple, mNDel,
+    mNKind, mNSymKind
     mNIntVal, mNFloatVal, mNSymbol, mNIdent, mNGetType, mNStrVal, mNSetIntVal,
     mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, mNSetStrVal, mNLineInfo,
-    mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent, mIdentToStr,
+    mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent,
     mNBindSym, mLocals, mNCallSite,
     mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl,
     mNHint, mNWarning, mNError,

@@ -26,6 +26,8 @@
 
 - ``macros.astGenRepr``, ``macros.lispRepr`` and ``macros.treeRepr``
   now escapes the content of string literals consistently.
+- ``macros.NimSym`` and ``macros.NimIdent`` is now deprecated in favor
+  of the more general ``NimNode``.
 
 ### Language additions
 

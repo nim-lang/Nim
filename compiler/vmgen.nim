@@ -1080,6 +1080,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mNAdd: genBinaryABC(c, n, dest, opcNAdd)
   of mNAddMultiple: genBinaryABC(c, n, dest, opcNAddMultiple)
   of mNKind: genUnaryABC(c, n, dest, opcNKind)
+  of mNSymKind: genUnaryABC(c, n, dest, opcNSymKind)
   of mNIntVal: genUnaryABC(c, n, dest, opcNIntVal)
   of mNFloatVal: genUnaryABC(c, n, dest, opcNFloatVal)
   of mNSymbol: genUnaryABC(c, n, dest, opcNSymbol)
@@ -1125,7 +1126,6 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     else:
       localError(n.info, "invalid bindSym usage")
   of mStrToIdent: genUnaryABC(c, n, dest, opcStrToIdent)
-  of mIdentToStr: genUnaryABC(c, n, dest, opcIdentToStr)
   of mEqIdent: genBinaryABC(c, n, dest, opcEqIdent)
   of mEqNimrodNode: genBinaryABC(c, n, dest, opcEqNimrodNode)
   of mSameNodeType: genBinaryABC(c, n, dest, opcSameNodeType)
