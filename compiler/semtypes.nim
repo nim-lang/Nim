@@ -1275,8 +1275,9 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
 
     internalAssert dummyName.kind == nkIdent
     var dummyParam = newSym(if modifier == tyTypeDesc: skType else: skVar,
-                            dummyName.ident, owner, owner.info)
+                            dummyName.ident, owner, param.info)
     dummyParam.typ = dummyType
+    incl dummyParam.flags, sfUsed
     addDecl(c, dummyParam)
 
   result.n.sons[3] = semConceptBody(c, n[3])

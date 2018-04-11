@@ -14,6 +14,8 @@
 import sighashes
 from lowerings import createObj
 
+proc genProcHeader(m: BModule, prc: PSym): Rope
+
 proc isKeyword(w: PIdent): bool =
   # Nim and C++ share some keywords
   # it's more efficient to test the whole Nim keywords range
@@ -573,7 +575,15 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
       appcg(m, result, " : public $1 {$n",
                       [getTypeDescAux(m, typ.sons[0].skipTypes(skipPtrs), check)])
       if typ.isException:
-        appcg(m, result, "virtual void raise() {throw this;}$n") # required for polymorphic exceptions
+        appcg(m, result, "virtual void raise() {throw *this;}$n") # required for polymorphic exceptions
+        if typ.sym.magic == mException:
+          # Add cleanup destructor to Exception base class
+          appcg(m, result, "~$1() {if(this->raise_id) popCurrentExceptionEx(this->raise_id);}$n", [name])
+          # hack: forward declare popCurrentExceptionEx() on top of type description,
+          # proper request to generate popCurrentExceptionEx not possible for 2 reasons:
+          # generated function will be below declared Exception type and circular dependency
+          # between Exception and popCurrentExceptionEx function
+          result = genProcHeader(m, magicsys.getCompilerProc("popCurrentExceptionEx")) & ";" & rnl & result
       hasField = true
     else:
       appcg(m, result, " {$n  $1 Sup;$n",

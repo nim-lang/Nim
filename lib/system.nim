@@ -483,6 +483,7 @@ type
       trace: string
     else:
       trace: seq[StackTraceEntry]
+    raise_id: uint # set when exception is raised
     up: ref Exception # used for stacking exceptions. Not exported!
 
   SystemError* = object of Exception ## \
