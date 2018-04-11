@@ -28,12 +28,8 @@ contains:
         intVal: BiggestInt             ## the int literal
       of nnkFloatLit..nnkFloat64Lit:
         floatVal: BiggestFloat         ## the float literal
-      of nnkStrLit..nnkTripleStrLit:
+      of nnkStrLit..nnkTripleStrLit, nnkCommentStmt, nnkIdent, nnkSym:
         strVal: string                 ## the string literal
-      of nnkIdent:
-        ident: NimIdent                ## the identifier
-      of nnkSym:
-        symbol: NimSym                 ## the symbol (after symbol lookup phase)
       else:
         sons: seq[NimNode]             ## the node's sons (or children)
 
@@ -74,8 +70,8 @@ Nim expression                   Corresponding AST
 ``"""abc"""``                    ``nnkTripleStrLit(strVal = "abc")``
 ``' '``                          ``nnkCharLit(intVal = 32)``
 ``nil``                          ``nnkNilLit()``
-``myIdentifier``                 ``nnkIdent(ident = !"myIdentifier")``
-``myIdentifier``                 after lookup pass: ``nnkSym(symbol = ...)``
+``myIdentifier``                 ``nnkIdent(strVal = "myIdentifier")``
+``myIdentifier``                 after lookup pass: ``nnkSym(strVal = "myIdentifier", ...)``
 -----------------                ---------------------------------------------
 
 Identifiers are ``nnkIdent`` nodes. After the name lookup pass these nodes
@@ -97,7 +93,7 @@ AST:
 
 .. code-block:: nim
   nnkCommand(
-    nnkIdent(!"echo"),
+    nnkIdent("echo"),
     nnkStrLit("abc"),
     nnkStrLit("xyz")
   )
@@ -115,7 +111,7 @@ AST:
 
 .. code-block:: nim
   nnkCall(
-    nnkIdent(!"echo"),
+    nnkIdent("echo"),
     nnkStrLit("abc"),
     nnkStrLit("xyz")
   )
@@ -133,7 +129,7 @@ AST:
 
 .. code-block:: nim
   nnkInfix(
-    nnkIdent(!"&"),
+    nnkIdent("&"),
     nnkStrLit("abc"),
     nnkStrLit("xyz")
   )
@@ -150,10 +146,10 @@ AST:
 
 .. code-block:: nim
   nnkInfix(
-    nnkIdent(!"+"),
+    nnkIdent("+"),
     nnkIntLit(5),
     nnkInfix(
-      nnkIdent(!"*"),
+      nnkIdent("*"),
       nnkIntLit(3),
       nnkIntLit(4)
     )
@@ -174,7 +170,7 @@ AST:
 .. code-block:: nim
   nnkCall(
     nnkAccQuoted(
-      nnkIdent(!"+")
+      nnkIdent("+")
     ),
     nnkIntLit(3),
     nnkIntLit(4)
@@ -192,7 +188,7 @@ AST:
 
 .. code-block:: nim
   nnkPrefix(
-    nnkIdent(!"?"),
+    nnkIdent("?"),
     nnkStrLit("abc")
   )
 
@@ -212,8 +208,8 @@ AST:
 
 .. code-block:: nim
   nnkPostfix(
-    nnkIdent(!"*"),
-    nnkIdent(!"identifier")
+    nnkIdent("*"),
+    nnkIdent("identifier")
   )
 
 
@@ -229,10 +225,10 @@ AST:
 
 .. code-block:: nim
   nnkCall(
-    nnkIdent(!"writeLine"),
+    nnkIdent("writeLine"),
     nnkExprEqExpr(
-      nnkIdent(!"file"),
-      nnkIdent(!"stdout")
+      nnkIdent("file"),
+      nnkIdent("stdout")
     ),
     nnkStrLit("hallo")
   )
@@ -253,7 +249,7 @@ AST:
 
 .. code-block:: nim
   nnkCallStrLit(
-    nnkIdent(!"echo"),
+    nnkIdent("echo"),
     nnkRStrLit("hello")
   )
 
@@ -268,7 +264,7 @@ Concrete syntax:
 AST:
 
 .. code-block:: nim
-  nnkDerefExpr(nnkIdent(!"x"))
+  nnkDerefExpr(nnkIdent("x"))
 
 
 Addr operator
@@ -282,7 +278,7 @@ Concrete syntax:
 AST:
 
 .. code-block:: nim
-  nnkAddr(nnkIdent(!"x"))
+  nnkAddr(nnkIdent("x"))
 
 
 Cast operator
@@ -296,7 +292,7 @@ Concrete syntax:
 AST:
 
 .. code-block:: nim
-  nnkCast(nnkIdent(!"T"), nnkIdent(!"x"))
+  nnkCast(nnkIdent("T"), nnkIdent("x"))
 
 
 Object access operator ``.``
@@ -310,7 +306,7 @@ Concrete syntax:
 AST:
 
 .. code-block:: nim
-  nnkDotExpr(nnkIdent(!"x"), nnkIdent(!"y"))
+  nnkDotExpr(nnkIdent("x"), nnkIdent("y"))
 
 If you use Nim's flexible calling syntax (as in ``x.len()``), the result is the
 same as above but wrapped in an ``nnkCall``.
@@ -327,7 +323,7 @@ Concrete syntax:
 AST:
 
 .. code-block:: nim
-  nnkBracketExpr(nnkIdent(!"x"), nnkIdent(!"y"))
+  nnkBracketExpr(nnkIdent("x"), nnkIdent("y"))
 
 
 Parentheses
@@ -373,8 +369,8 @@ AST:
 
 .. code-block:: nim
   nnkTableConstr(
-    nnkExprColonExpr(nnkIdent(!"a"), nnkIntLit(3)),
-    nnkExprColonExpr(nnkIdent(!"b"), nnkIntLit(5))
+    nnkExprColonExpr(nnkIdent("a"), nnkIntLit(3)),
+    nnkExprColonExpr(nnkIdent("b"), nnkIntLit(5))
   )
 
 
@@ -410,7 +406,7 @@ AST:
 
 .. code-block:: nim
   nnkInfix(
-    nnkIdent(!".."),
+    nnkIdent(".."),
     nnkIntLit(1),
     nnkIntLit(3)
   )
@@ -461,7 +457,7 @@ Documentation Comments
 ----------------------
 
 Double-hash (``##``) comments in the code actually have their own format,
-using ``strVal`` to get and set the comment text. Single-hash (``#``) 
+using ``strVal`` to get and set the comment text. Single-hash (``#``)
 comments are ignored.
 
 Concrete syntax:
@@ -497,7 +493,7 @@ AST:
 .. code-block:: nim
   nnkPragma(
     nnkExprColonExpr(
-      nnkIdent(!"emit"),
+      nnkIdent("emit"),
       nnkStrLit("#include <stdio.h>") # the "argument"
     )
   )
@@ -515,10 +511,10 @@ AST:
 .. code-block:: nim
   nnkPragma(
     nnkExprColonExpr(
-      nnkIdent(!"pragma"), # this is always first when declaring a new pragma
-      nnkIdent(!"cdeclRename") # the name of the pragma
+      nnkIdent("pragma"), # this is always first when declaring a new pragma
+      nnkIdent("cdeclRename") # the name of the pragma
     ),
-    nnkIdent(!"cdecl")
+    nnkIdent("cdecl")
   )
 
 Statements
@@ -570,7 +566,7 @@ Concrete syntax:
 AST:
 
 .. code-block:: nim
-  nnkAsgn(nnkIdent(!"x"), nnkIntLit(42))
+  nnkAsgn(nnkIdent("x"), nnkIntLit(42))
 
 This is not the syntax for assignment when combined with ``var``, ``let``,
 or ``const``.
@@ -736,7 +732,7 @@ Concrete syntax:
 AST:
 
 .. code-block:: nim
-  nnkBreakStmt(nnkIdent(!"otherLocation"))
+  nnkBreakStmt(nnkIdent("otherLocation"))
 
 If ``break`` is used without a jump-to location, ``nnkEmpty`` replaces ``nnkIdent``.
 
@@ -751,7 +747,7 @@ Concrete syntax:
 AST:
 
 .. code-block:: nim
-  nnkBlockStmt(nnkIdent(!"name"), nnkStmtList(...))
+  nnkBlockStmt(nnkIdent("name"), nnkStmtList(...))
 
 A ``block`` doesn't need an name, in which case ``nnkEmpty`` is used.
 
@@ -787,7 +783,7 @@ Concrete syntax:
 AST:
 
 .. code-block:: nim
-  nnkImportStmt(nnkIdent(!"math"))
+  nnkImportStmt(nnkIdent("math"))
 
 With ``except``, we get ``nnkImportExceptStmt``.
 
@@ -799,7 +795,7 @@ Concrete syntax:
 AST:
 
 .. code-block:: nim
-  nnkImportExceptStmt(nnkIdent(!"math"),nnkIdent(!"pow"))
+  nnkImportExceptStmt(nnkIdent("math"),nnkIdent("pow"))
 
 Note that ``import math as m`` does not use a different node; rather,
 we use ``nnkImportStmt`` with ``as`` as an infix operator.
@@ -814,9 +810,9 @@ AST:
 .. code-block:: nim
   nnkImportStmt(
     nnkInfix(
-      nnkIdent(!"as"),
-      nnkIdent(!"strutils"),
-      nnkIdent(!"su")
+      nnkIdent("as"),
+      nnkIdent("strutils"),
+      nnkIdent("su")
     )
   )
 
@@ -833,7 +829,7 @@ Concrete syntax:
 AST:
 
 .. code-block:: nim
-  nnkFromStmt(nnkIdent(!"math"), nnkIdent(!"pow"))
+  nnkFromStmt(nnkIdent("math"), nnkIdent("pow"))
 
 Using ``from math as m import pow`` works identically to the ``as`` modifier
 with the ``import`` statement, but wrapped in ``nnkFromStmt``.
@@ -852,7 +848,7 @@ Concrete syntax:
 AST:
 
 .. code-block:: nim
-  nnkExportStmt(nnkIdent(!"unsigned"))
+  nnkExportStmt(nnkIdent("unsigned"))
 
 Similar to the ``import`` statement, the AST is different for
 ``export ... except``.
@@ -865,7 +861,7 @@ Concrete syntax:
 AST:
 
 .. code-block:: nim
-  nnkExportExceptStmt(nnkIdent(!"math"),nnkIdent(!"pow"))
+  nnkExportExceptStmt(nnkIdent("math"),nnkIdent("pow"))
 
 Include statement
 -----------------
@@ -880,7 +876,7 @@ Concrete syntax:
 AST:
 
 .. code-block:: nim
-  nnkIncludeStmt(nnkIdent(!"blocks"))
+  nnkIncludeStmt(nnkIdent("blocks"))
 
 Var section
 -----------
@@ -895,7 +891,7 @@ AST:
 .. code-block:: nim
   nnkVarSection(
     nnkIdentDefs(
-      nnkIdent(!"a"),
+      nnkIdent("a"),
       nnkEmpty(), # or nnkIdent(...) if the variable declares the type
       nnkIntLit(3),
     )
@@ -925,7 +921,7 @@ AST:
 .. code-block:: nim
   nnkLetSection(
     nnkIdentDefs(
-      nnkIdent(!"a"),
+      nnkIdent("a"),
       nnkEmpty(), # or nnkIdent(...) for the type
       nnkIntLit(3),
     )
@@ -944,7 +940,7 @@ AST:
 .. code-block:: nim
   nnkConstSection(
     nnkConstDef( # not nnkConstDefs!
-      nnkIdent(!"a"),
+      nnkIdent("a"),
       nnkEmpty(), # or nnkIdent(...) if the variable declares the type
       nnkIntLit(3), # required in a const declaration!
     )
@@ -966,9 +962,9 @@ AST:
 .. code-block:: nim
   nnkTypeSection(
     nnkTypeDef(
-      nnkIdent(!"A"),
+      nnkIdent("A"),
       nnkEmpty(),
-      nnkIdent(!"int")
+      nnkIdent("int")
     )
   )
 
@@ -985,10 +981,10 @@ AST:
 .. code-block:: nim
   # ...
   nnkTypeDef(
-    nnkIdent(!"MyInt"),
+    nnkIdent("MyInt"),
     nnkEmpty(),
     nnkDistinctTy(
-      nnkIdent(!"int")
+      nnkIdent("int")
     )
   )
 
@@ -1004,10 +1000,10 @@ AST:
 .. code-block:: nim
   nnkTypeSection(
     nnkTypeDef(
-      nnkIdent(!"A"),
+      nnkIdent("A"),
       nnkGenericParams(
         nnkIdentDefs(
-          nnkIdent(!"T"),
+          nnkIdent("T"),
           nnkEmpty(), # if the type is declared with options, like
                       # ``[T: SomeInteger]``, they are given here
           nnkEmpty(),
@@ -1031,12 +1027,12 @@ AST:
 .. code-block:: nim
   # ...
   nnkTypeDef(
-    nnkIdent(!"IO"),
+    nnkIdent("IO"),
     nnkEmpty(),
     nnkObjectTy(
       nnkEmpty(), # no pragmas here
       nnkOfInherit(
-        nnkIdent(!"RootObj") # inherits from RootObj
+        nnkIdent("RootObj") # inherits from RootObj
       )
       nnkEmpty()
     )
@@ -1062,43 +1058,43 @@ AST:
   # ...
   nnkObjectTy(
     nnkPragma(
-      nnkIdent(!"inheritable")
+      nnkIdent("inheritable")
     ),
     nnkEmpty(),
     nnkRecList( # list of object parameters
       nnkIdentDefs(
-        nnkIdent(!"name"),
-        nnkIdent(!"string"),
+        nnkIdent("name"),
+        nnkIdent("string"),
         nnkEmpty()
       ),
       nnkRecCase( # case statement within object (not nnkCaseStmt)
         nnkIdentDefs(
-          nnkIdent(!"isFat"),
-          nnkIdent(!"bool"),
+          nnkIdent("isFat"),
+          nnkIdent("bool"),
           nnkEmpty()
         ),
         nnkOfBranch(
-          nnkIdent(!"true"),
+          nnkIdent("true"),
           nnkRecList( # again, a list of object parameters
             nnkIdentDefs(
-              nnkIdent(!"m"),
+              nnkIdent("m"),
               nnkBracketExpr(
-                nnkIdent(!"array"),
+                nnkIdent("array"),
                 nnkIntLit(100000),
-                nnkIdent(!"T")
+                nnkIdent("T")
               ),
               nnkEmpty()
           )
         ),
         nnkOfBranch(
-          nnkIdent(!"false"),
+          nnkIdent("false"),
           nnkRecList(
             nnkIdentDefs(
-              nnkIdent(!"m"),
+              nnkIdent("m"),
               nnkBracketExpr(
-                nnkIdent(!"array"),
+                nnkIdent("array"),
                 nnkIntLit(10),
-                nnkIdent(!"T")
+                nnkIdent("T")
               ),
               nnkEmpty()
             )
@@ -1123,7 +1119,7 @@ AST:
   # ...
   nnkEnumTy(
     nnkEmpty(),
-    nnkIdent(!"First") # you need at least one nnkIdent or the compiler complains
+    nnkIdent("First") # you need at least one nnkIdent or the compiler complains
   )
 
 The usage of ``concept`` (experimental) is similar to objects.
@@ -1158,9 +1154,9 @@ AST:
 .. code-block:: nim
   # ... within nnkGenericParams
   nnkIdentDefs(
-    nnkIdent(!"T"),
+    nnkIdent("T"),
     nnkStaticTy(
-      nnkIdent(!"int")
+      nnkIdent("int")
     ),
     nnkEmpty()
   )
@@ -1180,7 +1176,7 @@ Nim type                     Corresponding AST
 ``distinct``                 ``nnkDistinctTy``
 ``enum``                     ``nnkEnumTy``
 ``concept``                  ``nnkTypeClassTy``\*
-``array``                    ``nnkBracketExpr(nnkIdent(!"array"),...``\*
+``array``                    ``nnkBracketExpr(nnkIdent("array"),...``\*
 ``proc``                     ``nnkProcTy``
 ``iterator``                 ``nnkIteratorTy``
 ``object``                   ``nnkObjectTy``
@@ -1200,7 +1196,7 @@ AST:
 .. code-block:: nim
   # ...
   nnkTypeDef(
-    nnkIdent(!"MyProc"),
+    nnkIdent("MyProc"),
     nnkGenericParams( # here, not with the proc
       # ...
     )
@@ -1225,7 +1221,7 @@ Concrete syntax:
 AST:
 
 .. code-block:: nim
-  nnkMixinStmt(nnkIdent(!"x"))
+  nnkMixinStmt(nnkIdent("x"))
 
 Bind statement
 --------------
@@ -1238,7 +1234,7 @@ Concrete syntax:
 AST:
 
 .. code-block:: nim
-  nnkBindStmt(nnkIdent(!"x"))
+  nnkBindStmt(nnkIdent("x"))
 
 Procedure declaration
 ---------------------
@@ -1255,26 +1251,26 @@ AST:
 
 .. code-block:: nim
   nnkProcDef(
-    nnkPostfix(nnkIdent(!"*"), nnkIdent(!"hello")), # the exported proc name
+    nnkPostfix(nnkIdent("*"), nnkIdent("hello")), # the exported proc name
     nnkEmpty(), # patterns for term rewriting in templates and macros (not procs)
     nnkGenericParams( # generic type parameters, like with type declaration
       nnkIdentDefs(
-        nnkIdent(!"T"), nnkIdent(!"SomeInteger")
+        nnkIdent("T"), nnkIdent("SomeInteger")
       )
     ),
     nnkFormalParams(
-      nnkIdent(!"int"), # the first FormalParam is the return type. nnkEmpty() if there is none
+      nnkIdent("int"), # the first FormalParam is the return type. nnkEmpty() if there is none
       nnkIdentDefs(
-        nnkIdent(!"x"),
-        nnkIdent(!"int"), # type type (required for procs, not for templates)
+        nnkIdent("x"),
+        nnkIdent("int"), # type type (required for procs, not for templates)
         nnkIntLit(3) # a default value
       ),
       nnkIdentDefs(
-        nnkIdent(!"y"),
-        nnkIdent(!"float32"),
+        nnkIdent("y"),
+        nnkIdent("float32"),
         nnkEmpty()
       )
-      nnkPragma(nnkIdent(!"inline")),
+      nnkPragma(nnkIdent("inline")),
       nnkEmpty(), # reserved slot for future use
       nnkStmtList(nnkDiscardStmt(nnkEmpty())) # the meat of the proc
     )
@@ -1296,9 +1292,9 @@ AST:
   nnkFormalParams(
     nnkEmpty(), # no return here
     nnkIdentDefs(
-      nnkIdent(!"a"), # the first parameter
-      nnkIdent(!"b"), # directly to the second parameter
-      nnkIdent(!"int"), # their shared type identifier
+      nnkIdent("a"), # the first parameter
+      nnkIdent("b"), # directly to the second parameter
+      nnkIdent("int"), # their shared type identifier
       nnkEmpty(), # default value would go here
     )
   ),
@@ -1318,7 +1314,7 @@ AST:
   # ...
   nnkFormalParams(
     nnkVarTy(
-      nnkIdent(!"int")
+      nnkIdent("int")
     )
   )
 
@@ -1337,7 +1333,7 @@ AST:
 
 .. code-block:: nim
   nnkIteratorDef(
-    nnkIdent(!"nonsense"),
+    nnkIdent("nonsense"),
     nnkEmpty(),
     ...
   )
@@ -1356,7 +1352,7 @@ AST:
 
 .. code-block:: nim
   nnkConverterDef(
-    nnkIdent(!"toBool"),
+    nnkIdent("toBool"),
     # ...
   )
 
@@ -1378,7 +1374,7 @@ AST:
 
 .. code-block:: nim
   nnkTemplateDef(
-    nnkIdent(!"optOpt"),
+    nnkIdent("optOpt"),
     nnkStmtList( # instead of nnkEmpty()
       expr1
     ),
