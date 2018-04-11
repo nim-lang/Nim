@@ -298,4 +298,3 @@ when isMainModule:
     test "none[T]":
       check(none[int]().isNone)
       check(none(int) == none[int]())
-      check(some(123).flatMap(none[int]) == none(int))
