@@ -260,3 +260,8 @@ when isMainModule:
 
       check(some(1).flatMap(maybeToString).flatMap(maybeExclaim) == some("1!"))
       check(some(0).flatMap(maybeToString).flatMap(maybeExclaim) == none(string))
+
+    test "none[T]":
+      check(none[int]().isNone)
+      check(none(int) == none[int]())
+      check(some(123).flatMap(none[int]) == none(int))
