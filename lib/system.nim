@@ -1974,6 +1974,12 @@ const
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
     ## is the version of Nim as a string.
 
+  LoopUnrollingStep* {.intdefine.}: int = 4
+    ## is the loop unrolling step for some algorithms
+
+when LoopUnrollingStep < 1 or LoopUnrollingStep > 16:
+  {.error: "LoopUnrollingStep must be in range 1..16".}
+
 # GC interface:
 
 when not defined(nimscript) and hasAlloc:
