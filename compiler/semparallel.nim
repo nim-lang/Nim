@@ -345,7 +345,8 @@ proc analyse(c: var AnalysisCtx; n: PNode) =
     if n[0].kind == nkSym: analyseCall(c, n, n[0].sym)
     else: analyseSons(c, n)
   of nkBracketExpr:
-    c.addSlice(n, n[0], n[1], n[1])
+    if n[0].typ != nil and skipTypes(n[0].typ, abstractVar).kind != tyTuple:
+      c.addSlice(n, n[0], n[1], n[1])
     analyseSons(c, n)
   of nkReturnStmt, nkRaiseStmt, nkTryStmt:
     localError(n.info, "invalid control flow for 'parallel'")
