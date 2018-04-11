@@ -1076,6 +1076,11 @@ else:
       selector: Selector[AsyncData]
   {.deprecated: [TAsyncFD: AsyncFD, TCallback: Callback].}
 
+  proc poll*(timeout = 500) {.gcsafe.}
+
+  when defined(macosx):
+    include includes/async_native_runloop
+
   proc `==`*(x, y: AsyncFD): bool {.borrow.}
   proc `==`*(x, y: AsyncEvent): bool {.borrow.}
 
@@ -1090,6 +1095,8 @@ else:
     result.selector = newSelector[AsyncData]()
     result.timers.newHeapQueue()
     result.callbacks = initDeque[proc ()](InitDelayedCallbackListSize)
+    when defined(macosx) and not defined(nimAsyncDisableNativeRunloop):
+      addKqueueFdToCFRunloop(result.selector.kqFd)
 
   var gDisp{.threadvar.}: PDispatcher ## Global dispatcher
 
@@ -1122,7 +1129,7 @@ else:
 
   proc unregister*(ev: AsyncEvent) =
     getGlobalDispatcher().selector.unregister(SelectEvent(ev))
-  
+
   proc contains*(disp: PDispatcher, fd: AsyncFd): bool =
     return fd.SocketHandle in disp.selector
 
