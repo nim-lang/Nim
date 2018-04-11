@@ -93,7 +93,7 @@ proc getCurrOwner(c: PTransf): PSym =
 
 proc newTemp(c: PTransf, typ: PType, info: TLineInfo): PNode =
   let r = newSym(skTemp, getIdent(genPrefix), getCurrOwner(c), info)
-  r.typ = typ #skipTypes(typ, {tyGenericInst, tyAlias})
+  r.typ = typ #skipTypes(typ, {tyGenericInst, tyAlias, tySink})
   incl(r.flags, sfFromGeneric)
   let owner = getCurrOwner(c)
   if owner.isIterator and not c.tooEarly:
@@ -331,7 +331,7 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
   # c.transCon.forStmt.len == 3 means that there is one for loop variable
   # and thus no tuple unpacking:
   if e.typ.isNil: return result # can happen in nimsuggest for unknown reasons
-  if skipTypes(e.typ, {tyGenericInst, tyAlias}).kind == tyTuple and
+  if skipTypes(e.typ, {tyGenericInst, tyAlias, tySink}).kind == tyTuple and
       c.transCon.forStmt.len != 3:
     e = skipConv(e)
     if e.kind == nkPar:
@@ -506,7 +506,7 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
       if putArgInto(arg.sons[i], formal) != paDirectMapping: return
     result = paDirectMapping
   else:
-    if skipTypes(formal, abstractInst).kind == tyVar: result = paVarAsgn
+    if skipTypes(formal, abstractInst).kind in {tyVar, tyLent}: result = paVarAsgn
     else: result = paFastAsgn
 
 proc findWrongOwners(c: PTransf, n: PNode) =
@@ -714,9 +714,9 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
 
 proc transformExceptBranch(c: PTransf, n: PNode): PTransNode =
   result = transformSons(c, n)
-  if n[0].isInfixAs():
+  if n[0].isInfixAs() and (not isImportedException(n[0][1].typ)):
     let excTypeNode = n[0][1]
-    let actions = newTransNode(nkStmtList, n[1].info, 2)
+    let actions = newTransNode(nkStmtListExpr, n[1], 2)
     # Generating `let exc = (excType)(getCurrentException())`
     # -> getCurrentException()
     let excCall = PTransNode(callCodegenProc("getCurrentException", ast.emptyNode))

@@ -25,8 +25,11 @@ proc cmpStrings(a, b: NimString): int {.inline, compilerProc.} =
   if a == nil: return -1
   if b == nil: return 1
   let minlen = min(a.len, b.len)
-  result = c_memcmp(addr a.data, addr b.data, minlen.csize)
-  if result == 0:
+  if minlen > 0:
+    result = c_memcmp(addr a.data, addr b.data, minlen.csize)
+    if result == 0:
+      result = a.len - b.len
+  else:
     result = a.len - b.len
 
 proc eqStrings(a, b: NimString): bool {.inline, compilerProc.} =
@@ -290,7 +293,7 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
 
     # XXX: zeroing out the memory can still result in crashes if a wiped-out
     # cell is aliased by another pointer (ie proc parameter or a let variable).
-    # This is a tought problem, because even if we don't zeroMem here, in the
+    # This is a tough problem, because even if we don't zeroMem here, in the
     # presence of user defined destructors, the user will expect the cell to be
     # "destroyed" thus creating the same problem. We can destoy the cell in the
     # finalizer of the sequence, but this makes destruction non-deterministic.
@@ -386,8 +389,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
     kdigits, fdigits = 0
     exponent: int
     integer: uint64
-    fraction: uint64
-    frac_exponent= 0
+    frac_exponent = 0
     exp_sign = 1
     first_digit = -1
     has_sign = false
@@ -418,7 +420,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
     return 0
 
   if s[i] in {'0'..'9'}:
-      first_digit = (s[i].ord - '0'.ord)
+    first_digit = (s[i].ord - '0'.ord)
   # Integer part?
   while s[i] in {'0'..'9'}:
     inc(kdigits)
@@ -480,7 +482,8 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
 
   # if integer is representable in 53 bits:  fast path
   # max fast path integer is  1<<53 - 1 or  8999999999999999 (16 digits)
-  if kdigits + fdigits <= 16 and first_digit <= 8:
+  let digits = kdigits + fdigits
+  if digits <= 15 or (digits <= 16 and first_digit <= 8):
     # max float power of ten with set bits above the 53th bit is 10^22
     if abs_exponent <= 22:
       if exp_negative:
@@ -504,6 +507,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   result = i - start
   i = start
   # re-parse without error checking, any error should be handled by the code above.
+  if s[i] == '.': i.inc
   while s[i] in {'0'..'9','+','-'}:
     if ti < maxlen:
       t[ti] = s[i]; inc(ti)

@@ -14,6 +14,8 @@
 import sighashes
 from lowerings import createObj
 
+proc genProcHeader(m: BModule, prc: PSym): Rope
+
 proc isKeyword(w: PIdent): bool =
   # Nim and C++ share some keywords
   # it's more efficient to test the whole Nim keywords range
@@ -119,7 +121,7 @@ proc scopeMangledParam(p: BProc; param: PSym) =
 
 const
   irrelevantForBackend = {tyGenericBody, tyGenericInst, tyGenericInvocation,
-                          tyDistinct, tyRange, tyStatic, tyAlias, tyInferred}
+                          tyDistinct, tyRange, tyStatic, tyAlias, tySink, tyInferred}
 
 proc typeName(typ: PType): Rope =
   let typ = typ.skipTypes(irrelevantForBackend)
@@ -139,7 +141,7 @@ proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
       t = t.lastSon
     else:
       break
-  let typ = if typ.kind == tyAlias: typ.lastSon else: typ
+  let typ = if typ.kind in {tyAlias, tySink}: typ.lastSon else: typ
   if typ.loc.r == nil:
     typ.loc.r = typ.typeName & $sig
   else:
@@ -170,7 +172,7 @@ proc mapType(typ: PType): TCTypeKind =
     internalAssert typ.isResolvedUserTypeClass
     return mapType(typ.lastSon)
   of tyGenericBody, tyGenericInst, tyGenericParam, tyDistinct, tyOrdinal,
-     tyTypeDesc, tyAlias, tyInferred:
+     tyTypeDesc, tyAlias, tySink, tyInferred:
     result = mapType(lastSon(typ))
   of tyEnum:
     if firstOrd(typ) < 0:
@@ -183,7 +185,7 @@ proc mapType(typ: PType): TCTypeKind =
       of 8: result = ctInt64
       else: internalError("mapType")
   of tyRange: result = mapType(typ.sons[0])
-  of tyPtr, tyVar, tyRef, tyOptAsRef:
+  of tyPtr, tyVar, tyLent, tyRef, tyOptAsRef:
     var base = skipTypes(typ.lastSon, typedescInst)
     case base.kind
     of tyOpenArray, tyArray, tyVarargs: result = ctPtrToArray
@@ -242,7 +244,7 @@ proc isInvalidReturnType(rettype: PType): bool =
     case mapType(rettype)
     of ctArray:
       result = not (skipTypes(rettype, typedescInst).kind in
-          {tyVar, tyRef, tyPtr})
+          {tyVar, tyLent, tyRef, tyPtr})
     of ctStruct:
       let t = skipTypes(rettype, typedescInst)
       if rettype.isImportedCppType or t.isImportedCppType: return false
@@ -266,10 +268,6 @@ proc cacheGetType(tab: TypeCache; sig: SigHash): Rope =
 proc addAbiCheck(m: BModule, t: PType, name: Rope) =
   if isDefined("checkabi"):
     addf(m.s[cfsTypeInfo], "NIM_CHECK_SIZE($1, $2);$n", [name, rope(getSize(t))])
-
-proc getTempName(m: BModule): Rope =
-  result = m.tmpBase & rope(m.labels)
-  inc m.labels
 
 proc ccgIntroducedPtr(s: PSym): bool =
   var pt = skipTypes(s.typ, typedescInst)
@@ -316,8 +314,13 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
   of tyPointer:
     result = typeNameOrLiteral(m, typ, "void*")
   of tyString:
-    discard cgsym(m, "NimStringDesc")
-    result = typeNameOrLiteral(m, typ, "NimStringDesc*")
+    case detectStrVersion(m)
+    of 2:
+      discard cgsym(m, "string")
+      result = typeNameOrLiteral(m, typ, "NimStringV2")
+    else:
+      discard cgsym(m, "NimStringDesc")
+      result = typeNameOrLiteral(m, typ, "NimStringDesc*")
   of tyCString: result = typeNameOrLiteral(m, typ, "NCSTRING")
   of tyBool: result = typeNameOrLiteral(m, typ, "NIM_BOOL")
   of tyChar: result = typeNameOrLiteral(m, typ, "NIM_CHAR")
@@ -328,7 +331,7 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
   of tyStatic:
     if typ.n != nil: result = getSimpleTypeDesc(m, lastSon typ)
     else: internalError("tyStatic for getSimpleTypeDesc")
-  of tyGenericInst, tyAlias:
+  of tyGenericInst, tyAlias, tySink:
     result = getSimpleTypeDesc(m, lastSon typ)
   else: result = nil
 
@@ -348,7 +351,7 @@ proc getTypePre(m: BModule, typ: PType; sig: SigHash): Rope =
     if result == nil: result = cacheGetType(m.typeCache, sig)
 
 proc structOrUnion(t: PType): Rope =
-  let t = t.skipTypes({tyAlias})
+  let t = t.skipTypes({tyAlias, tySink})
   (if tfUnion in t.flags: rope("union") else: rope("struct"))
 
 proc getForwardStructFormat(m: BModule): string =
@@ -368,6 +371,8 @@ proc getTypeForward(m: BModule, typ: PType; sig: SigHash): Rope =
     if not isImportedType(concrete):
       addf(m.s[cfsForwardTypes], getForwardStructFormat(m),
           [structOrUnion(typ), result])
+    else:
+      pushType(m, concrete)
     doAssert m.forwTypeCache[sig] == result
   else: internalError("getTypeForward(" & $typ.kind & ')')
 
@@ -396,7 +401,7 @@ proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet): Rope =
     result = getTypeDescAux(m, t, check)
 
 proc paramStorageLoc(param: PSym): TStorageLoc =
-  if param.typ.skipTypes({tyVar, tyTypeDesc}).kind notin {
+  if param.typ.skipTypes({tyVar, tyLent, tyTypeDesc}).kind notin {
           tyArray, tyOpenArray, tyVarargs}:
     result = OnStack
   else:
@@ -430,11 +435,11 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     add(params, param.loc.r)
     # declare the len field for open arrays:
     var arr = param.typ
-    if arr.kind == tyVar: arr = arr.sons[0]
+    if arr.kind in {tyVar, tyLent}: arr = arr.lastSon
     var j = 0
     while arr.kind in {tyOpenArray, tyVarargs}:
       # this fixes the 'sort' bug:
-      if param.typ.kind == tyVar: param.loc.storage = OnUnknown
+      if param.typ.kind in {tyVar, tyLent}: param.loc.storage = OnUnknown
       # need to pass hidden parameter:
       addf(params, ", NI $1Len_$2", [param.loc.r, j.rope])
       inc(j)
@@ -496,7 +501,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
               if hasAttribute in CC[cCompiler].props:
                 add(unionBody, "struct __attribute__((__packed__)){" )
               else:
-                addf(unionBody, "#pragma pack(1)$nstruct{", [])
+                addf(unionBody, "#pragma pack(push, 1)$nstruct{", [])
             add(unionBody, a)
             addf(unionBody, "} $1;$n", [sname])
             if tfPacked in rectype.flags and hasAttribute notin CC[cCompiler].props:
@@ -551,7 +556,7 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
     if hasAttribute in CC[cCompiler].props:
       result = structOrUnion(typ) & " __attribute__((__packed__))"
     else:
-      result = "#pragma pack(1)" & tnl & structOrUnion(typ)
+      result = "#pragma pack(push, 1)" & tnl & structOrUnion(typ)
   else:
     result = structOrUnion(typ)
 
@@ -569,6 +574,16 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
     elif m.compileToCpp:
       appcg(m, result, " : public $1 {$n",
                       [getTypeDescAux(m, typ.sons[0].skipTypes(skipPtrs), check)])
+      if typ.isException:
+        appcg(m, result, "virtual void raise() {throw *this;}$n") # required for polymorphic exceptions
+        if typ.sym.magic == mException:
+          # Add cleanup destructor to Exception base class
+          appcg(m, result, "~$1() {if(this->raise_id) popCurrentExceptionEx(this->raise_id);}$n", [name])
+          # hack: forward declare popCurrentExceptionEx() on top of type description,
+          # proper request to generate popCurrentExceptionEx not possible for 2 reasons:
+          # generated function will be below declared Exception type and circular dependency
+          # between Exception and popCurrentExceptionEx function
+          result = genProcHeader(m, magicsys.getCompilerProc("popCurrentExceptionEx")) & ";" & rnl & result
       hasField = true
     else:
       appcg(m, result, " {$n  $1 Sup;$n",
@@ -615,8 +630,10 @@ proc scanCppGenericSlot(pat: string, cursor, outIdx, outStars: var int): bool =
     return false
 
 proc resolveStarsInCppType(typ: PType, idx, stars: int): PType =
-  # XXX: we should catch this earlier and report it as a semantic error
-  if idx >= typ.len: internalError "invalid apostrophe type parameter index"
+  # Make sure the index refers to one of the generic params of the type.
+  # XXX: we should catch this earlier and report it as a semantic error.
+  if idx >= typ.len:
+    internalError "invalid apostrophe type parameter index"
 
   result = typ.sons[idx]
   for i in 1..stars:
@@ -641,7 +658,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
     excl(check, t.id)
     return
   case t.kind
-  of tyRef, tyOptAsRef, tyPtr, tyVar:
+  of tyRef, tyOptAsRef, tyPtr, tyVar, tyLent:
     var star = if t.kind == tyVar and tfVarIsPtr notin origTyp.flags and
                     compileToCpp(m): "&" else: "*"
     var et = origTyp.skipTypes(abstractInst).lastSon
@@ -661,7 +678,6 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
         let name = getTypeForward(m, et, hashType et)
         result = name & star
         m.typeCache[sig] = result
-        pushType(m, et)
     of tySequence:
       # no restriction! We have a forward declaration for structs
       let name = getTypeForward(m, et, hashType et)
@@ -818,6 +834,9 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
             let typeInSlot = resolveStarsInCppType(origTyp, idx + 1, stars)
             if typeInSlot == nil or typeInSlot.kind == tyVoid:
               result.add(~"void")
+            elif typeInSlot.kind == tyStatic:
+              internalAssert typeInSlot.n != nil
+              result.add typeInSlot.n.renderTree
             else:
               result.add getTypeDescAux(m, typeInSlot, check)
         else:
@@ -834,6 +853,13 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
       # always call for sideeffects:
       assert t.kind != tyTuple
       discard getRecordDesc(m, t, result, check)
+      # The resulting type will include commas and these won't play well
+      # with the C macros for defining procs such as N_NIMCALL. We must
+      # create a typedef for the type and use it in the proc signature:
+      let typedefName = ~"TY" & $sig
+      addf(m.s[cfsTypes], "typedef $1 $2;$n", [result, typedefName])
+      m.typeCache[sig] = typedefName
+      result = typedefName
     else:
       when false:
         if t.sym != nil and t.sym.name.s == "KeyValuePair":
@@ -872,7 +898,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
       of 1, 2, 4, 8: addf(m.s[cfsTypes], "typedef NU$2 $1;$n", [result, rope(s*8)])
       else: addf(m.s[cfsTypes], "typedef NU8 $1[$2];$n",
              [result, rope(getSize(t))])
-  of tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias,
+  of tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias, tySink,
      tyUserTypeClass, tyUserTypeClassInst, tyInferred:
     result = getTypeDescAux(m, lastSon(t), check)
   else:
@@ -970,7 +996,8 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
     addf(m.s[cfsTypeInit3], "$1.flags = $2;$n", [name, rope(flags)])
   discard cgsym(m, "TNimType")
   if isDefined("nimTypeNames"):
-    var typename = typeToString(origType, preferName)
+    var typename = typeToString(if origType.typeInst != nil: origType.typeInst
+                                else: origType, preferName)
     if typename == "ref object" and origType.skipTypes(skipPtrs).sym != nil:
       typename = "anon ref object from " & $origType.skipTypes(skipPtrs).sym.info
     addf(m.s[cfsTypeInit3], "$1.name = $2;$n",
@@ -1227,7 +1254,7 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
   m.g.typeInfoMarker[sig] = result
   case t.kind
   of tyEmpty, tyVoid: result = rope"0"
-  of tyPointer, tyBool, tyChar, tyCString, tyString, tyInt..tyUInt64, tyVar:
+  of tyPointer, tyBool, tyChar, tyCString, tyString, tyInt..tyUInt64, tyVar, tyLent:
     genTypeInfoAuxBase(m, t, t, result, rope"0", info)
   of tyStatic:
     if t.n != nil: result = genTypeInfo(m, lastSon t, info)

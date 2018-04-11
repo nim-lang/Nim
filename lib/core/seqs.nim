@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import allocators
+import allocators, typetraits
 
 ## Default seq implementation used by Nim's core.
 type
@@ -15,11 +15,11 @@ type
     len, cap: int
     data: ptr UncheckedArray[T]
 
+const nimSeqVersion {.core.} = 2
+
 template frees(s) = dealloc(s.data, s.cap * sizeof(T))
 
 # XXX make code memory safe for overflows in '*'
-proc nimSeqLiteral[T](x: openArray[T]): seq[T] {.core.} =
-  seq[T](len: x.len, cap: x.len, data: x)
 
 when defined(nimHasTrace):
   proc `=trace`[T](s: seq[T]; a: Allocator) =
@@ -115,3 +115,25 @@ proc `@`*[T](elems: openArray[T]): seq[T] =
       result.data[i] = elems[i]
 
 proc len*[T](x: seq[T]): int {.inline.} = x.len
+
+proc `$`*[T](x: seq[T]): string =
+  result = "@["
+  var firstElement = true
+  for i in 0..<x.len:
+    let
+      value = x.data[i]
+    if firstElement:
+      firstElement = false
+    else:
+      result.add(", ")
+
+    when compiles(value.isNil):
+      # this branch should not be necessary
+      if value.isNil:
+        result.add "nil"
+      else:
+        result.addQuoted(value)
+    else:
+      result.addQuoted(value)
+
+  result.add("]")

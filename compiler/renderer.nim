@@ -173,25 +173,30 @@ proc put(g: var TSrcGen, kind: TTokType, s: string) =
   else:
     g.pendingWhitespace = s.len
 
-proc toNimChar(c: char): string =
+proc addNimChar(dst: var string; c: char): void =
   case c
-  of '\0': result = "\\x00" # not "\\0" to avoid ambiguous cases like "\\012".
-  of '\a': result = "\\a" # \x07
-  of '\b': result = "\\b" # \x08
-  of '\t': result = "\\t" # \x09
-  of '\L': result = "\\L" # \x0A
-  of '\v': result = "\\v" # \x0B
-  of '\f': result = "\\f" # \x0C
-  of '\c': result = "\\c" # \x0D
-  of '\e': result = "\\e" # \x1B
+  of '\0': dst.add "\\x00" # not "\\0" to avoid ambiguous cases like "\\012".
+  of '\a': dst.add "\\a" # \x07
+  of '\b': dst.add "\\b" # \x08
+  of '\t': dst.add "\\t" # \x09
+  of '\L': dst.add "\\L" # \x0A
+  of '\v': dst.add "\\v" # \x0B
+  of '\f': dst.add "\\f" # \x0C
+  of '\c': dst.add "\\c" # \x0D
+  of '\e': dst.add "\\e" # \x1B
   of '\x01'..'\x06', '\x0E'..'\x1A', '\x1C'..'\x1F', '\x80'..'\xFF':
-    result = "\\x" & strutils.toHex(ord(c), 2)
-  of '\'', '\"', '\\': result = '\\' & c
-  else: result = c & ""
+    dst.add "\\x"
+    dst.add strutils.toHex(ord(c), 2)
+  of '\'', '\"', '\\':
+    dst.add '\\'
+    dst.add c
+  else:
+    dst.add c
 
 proc makeNimString(s: string): string =
   result = "\""
-  for i in countup(0, len(s)-1): add(result, toNimChar(s[i]))
+  for c in s:
+    result.addNimChar c
   add(result, '\"')
 
 proc putComment(g: var TSrcGen, s: string) =
@@ -325,8 +330,8 @@ proc lsub(g: TSrcGen; n: PNode): int
 proc litAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
   proc skip(t: PType): PType =
     result = t
-    while result.kind in {tyGenericInst, tyRange, tyVar, tyDistinct,
-                          tyOrdinal, tyAlias}:
+    while result.kind in {tyGenericInst, tyRange, tyVar, tyLent, tyDistinct,
+                          tyOrdinal, tyAlias, tySink}:
       result = lastSon(result)
   if n.typ != nil and n.typ.skip.kind in {tyBool, tyEnum}:
     let enumfields = n.typ.skip.n
@@ -364,7 +369,7 @@ proc atom(g: TSrcGen; n: PNode): string =
   of nkStrLit: result = makeNimString(n.strVal)
   of nkRStrLit: result = "r\"" & replace(n.strVal, "\"", "\"\"")  & '\"'
   of nkTripleStrLit: result = "\"\"\"" & n.strVal & "\"\"\""
-  of nkCharLit: result = '\'' & toNimChar(chr(int(n.intVal))) & '\''
+  of nkCharLit: result = "\'"; result.addNimChar chr(int(n.intVal)); result.add '\''
   of nkIntLit: result = litAux(g, n, n.intVal, 4)
   of nkInt8Lit: result = litAux(g, n, n.intVal, 1) & "\'i8"
   of nkInt16Lit: result = litAux(g, n, n.intVal, 2) & "\'i16"
@@ -898,6 +903,14 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       put(g, tkBracketLe, "[")
       gcomma(g, n, 2)
       put(g, tkBracketRi, "]")
+    elif n.len > 1 and n.lastSon.kind == nkStmtList:
+      gsub(g, n[0])
+      if n.len > 2:
+        put(g, tkParLe, "(")
+        gcomma(g, n, 1, -2)
+        put(g, tkParRi, ")")
+      put(g, tkColon, ":")
+      gsub(g, n, n.len-1)
     else:
       if sonsLen(n) >= 1: gsub(g, n.sons[0])
       put(g, tkParLe, "(")

@@ -217,7 +217,7 @@ else:
           raiseIOSelectorsError(osLastError())
         s.changes.setLen(0)
 
-proc registerHandle*[T](s: Selector[T], fd: SocketHandle,
+proc registerHandle*[T](s: Selector[T], fd: int | SocketHandle,
                         events: set[Event], data: T) =
   let fdi = int(fd)
   s.checkFd(fdi)
@@ -235,7 +235,7 @@ proc registerHandle*[T](s: Selector[T], fd: SocketHandle,
     when not declared(CACHE_EVENTS):
       flushKQueue(s)
 
-proc updateHandle*[T](s: Selector[T], fd: SocketHandle,
+proc updateHandle*[T](s: Selector[T], fd: int | SocketHandle,
                       events: set[Event]) =
   let maskEvents = {Event.Timer, Event.Signal, Event.Process, Event.Vnode,
                     Event.User, Event.Oneshot, Event.Error}
@@ -503,6 +503,7 @@ proc selectInto*[T](s: Selector[T], timeout: int,
 
       if (kevent.flags and EV_ERROR) != 0:
         rkey.events = {Event.Error}
+        rkey.errorCode = kevent.data.OSErrorCode
 
       case kevent.filter:
       of EVFILT_READ:
@@ -569,6 +570,13 @@ proc selectInto*[T](s: Selector[T], timeout: int,
         doAssert(true, "Unsupported kqueue filter in the queue!")
 
       if (kevent.flags and EV_EOF) != 0:
+        if kevent.fflags != 0:
+          rkey.errorCode = kevent.fflags.OSErrorCode
+        else:
+          # This assumes we are dealing with sockets.
+          # TODO: For future-proofing it might be a good idea to give the
+          #       user access to the raw `kevent`.
+          rkey.errorCode = ECONNRESET.OSErrorCode
         rkey.events.incl(Event.Error)
 
       results[k] = rkey
@@ -585,7 +593,7 @@ template isEmpty*[T](s: Selector[T]): bool =
   (s.count == 0)
 
 proc contains*[T](s: Selector[T], fd: SocketHandle|int): bool {.inline.} =
-  return s.fds[fd].ident != 0
+  return s.fds[fd.int].ident != 0
 
 proc getData*[T](s: Selector[T], fd: SocketHandle|int): var T =
   let fdi = int(fd)
@@ -619,3 +627,7 @@ template withData*[T](s: Selector[T], fd: SocketHandle|int, value, body1,
     body1
   else:
     body2
+
+
+proc getFd*[T](s: Selector[T]): int =
+  return s.kqFD.int

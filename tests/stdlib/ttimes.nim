@@ -133,6 +133,10 @@ template parseTest(s, f, sExpected: string, ydExpected: int) =
     echo parsed.yearday, " exp: ", ydExpected
   check(parsed.yearday == ydExpected)
 
+template parseTestExcp(s, f: string) =
+  expect ValueError:
+    let parsed = s.parse(f)
+
 template parseTestTimeOnly(s, f, sExpected: string) =
   check sExpected in $s.parse(f, utc())
 
@@ -284,6 +288,75 @@ suite "ttimes":
     test "parseTest":
       runTimezoneTests()
 
+  test "incorrect inputs: empty string":
+    parseTestExcp("", "yyyy-MM-dd")
+
+  test "incorrect inputs: year":
+    parseTestExcp("20-02-19", "yyyy-MM-dd")
+
+  test "incorrect inputs: month number":
+    parseTestExcp("2018-2-19", "yyyy-MM-dd")
+
+  test "incorrect inputs: month name":
+    parseTestExcp("2018-Fe", "yyyy-MMM-dd")
+
+  test "incorrect inputs: day":
+    parseTestExcp("2018-02-1", "yyyy-MM-dd")
+
+  test "incorrect inputs: day of week":
+    parseTestExcp("2018-Feb-Mo", "yyyy-MMM-ddd")
+
+  test "incorrect inputs: hour":
+    parseTestExcp("2018-02-19 1:30", "yyyy-MM-dd hh:mm")
+
+  test "incorrect inputs: minute":
+    parseTestExcp("2018-02-19 16:3", "yyyy-MM-dd hh:mm")
+
+  test "incorrect inputs: second":
+    parseTestExcp("2018-02-19 16:30:0", "yyyy-MM-dd hh:mm:ss")
+
+  test "incorrect inputs: timezone (z)":
+    parseTestExcp("2018-02-19 16:30:00 ", "yyyy-MM-dd hh:mm:ss z")
+
+  test "incorrect inputs: timezone (zz) 1":
+    parseTestExcp("2018-02-19 16:30:00 ", "yyyy-MM-dd hh:mm:ss zz")
+
+  test "incorrect inputs: timezone (zz) 2":
+    parseTestExcp("2018-02-19 16:30:00 +1", "yyyy-MM-dd hh:mm:ss zz")
+
+  test "incorrect inputs: timezone (zzz) 1":
+    parseTestExcp("2018-02-19 16:30:00 ", "yyyy-MM-dd hh:mm:ss zzz")
+
+  test "incorrect inputs: timezone (zzz) 2":
+    parseTestExcp("2018-02-19 16:30:00 +01:", "yyyy-MM-dd hh:mm:ss zzz")
+
+  test "incorrect inputs: timezone (zzz) 3":
+    parseTestExcp("2018-02-19 16:30:00 +01:0", "yyyy-MM-dd hh:mm:ss zzz")
+
+  test "dynamic timezone":
+    proc staticOffset(offset: int): Timezone =
+      proc zoneInfoFromTz(adjTime: Time): ZonedTime =
+          result.isDst = false
+          result.utcOffset = offset
+          result.adjTime = adjTime
+
+      proc zoneInfoFromUtc(time: Time): ZonedTime =
+          result.isDst = false
+          result.utcOffset = offset
+          result.adjTime = fromUnix(time.toUnix - offset)
+
+      result.name = ""
+      result.zoneInfoFromTz = zoneInfoFromTz
+      result.zoneInfoFromUtc = zoneInfoFromUtc
+
+    let tz = staticOffset(-9000)
+    let dt = initDateTime(1, mJan, 2000, 12, 00, 00, tz)
+    check dt.utcOffset == -9000
+    check dt.isDst == false
+    check $dt == "2000-01-01T12:00:00+02:30"
+    check $dt.utc == "2000-01-01T09:30:00+00:00"
+    check $dt.utc.inZone(tz) == $dt
+
   test "isLeapYear":
     check isLeapYear(2016)
     check (not isLeapYear(2015))
@@ -326,3 +399,11 @@ suite "ttimes":
     check dt.second == 1
     let dt2 = dt + 35_001.years
     check $dt2 == "0001-01-01T12:00:01+00:00"
+
+  test "compare datetimes":
+    var dt1 = now()
+    var dt2 = dt1
+    check dt1 == dt2
+    check dt1 <= dt2
+    dt2 = dt2 + 1.seconds
+    check dt1 < dt2

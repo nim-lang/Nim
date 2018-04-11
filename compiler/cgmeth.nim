@@ -68,7 +68,7 @@ proc sameMethodBucket(a, b: PSym): MethodResult =
     while true:
       aa = skipTypes(aa, {tyGenericInst, tyAlias})
       bb = skipTypes(bb, {tyGenericInst, tyAlias})
-      if aa.kind == bb.kind and aa.kind in {tyVar, tyPtr, tyRef}:
+      if aa.kind == bb.kind and aa.kind in {tyVar, tyPtr, tyRef, tyLent}:
         aa = aa.lastSon
         bb = bb.lastSon
       else:

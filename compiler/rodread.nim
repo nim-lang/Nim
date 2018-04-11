@@ -90,7 +90,7 @@
 
 import
   os, options, strutils, nversion, ast, astalgo, msgs, platform, condsyms,
-  ropes, idents, securehash, idgen, types, rodutils, memfiles, tables
+  ropes, idents, std / sha1, idgen, types, rodutils, memfiles, tables
 
 type
   TReasonForRecompile* = enum ## all the reasons that can trigger recompilation
@@ -813,6 +813,7 @@ proc rrGetSym(r: PRodReader, id: int, info: TLineInfo): PSym =
         encodeVInt(id, x)
         internalError(info, "missing from both indexes: +" & x)
       var rd = getReader(moduleID)
+      doAssert rd != nil
       d = iiTableGet(rd.index.tab, id)
       if d != InvalidKey:
         result = decodeSymSafePos(rd, d, info)
@@ -911,7 +912,7 @@ proc checkDep(fileIdx: int32; cache: IdentCache): TReasonForRecompile =
 
 proc handleSymbolFile*(module: PSym; cache: IdentCache): PRodReader =
   let fileIdx = module.fileIdx
-  if gSymbolFiles in {disabledSf, writeOnlySf}:
+  if gSymbolFiles in {disabledSf, writeOnlySf, v2Sf}:
     module.id = getID()
     return nil
   idgen.loadMaxIds(options.gProjectPath / options.gProjectName)
@@ -1236,4 +1237,4 @@ proc viewFile(rodfile: string) =
   outf.close
 
 when isMainModule:
-  viewFile(paramStr(1).addFileExt(rodExt))
+  viewFile(paramStr(1).addFileExt(RodExt))

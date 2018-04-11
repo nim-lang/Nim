@@ -24,16 +24,20 @@ proc `*`*(x: int, order: SortOrder): int {.inline.} =
   var y = order.ord - 1
   result = (x xor y) - y
 
-proc fill*[T](a: var openArray[T], first, last: Natural, value: T) =
-  ## fills the array ``a[first..last]`` with `value`.
+template fillImpl[T](a: var openArray[T], first, last: int, value: T) =
   var x = first
   while x <= last:
     a[x] = value
     inc(x)
 
+proc fill*[T](a: var openArray[T], first, last: Natural, value: T) =
+  ## fills the array ``a[first..last]`` with `value`.
+  fillImpl(a, first, last, value)
+
 proc fill*[T](a: var openArray[T], value: T) =
   ## fills the array `a` with `value`.
-  fill(a, 0, a.high, value)
+  fillImpl(a, 0, a.high, value)
+
 
 proc reverse*[T](a: var openArray[T], first, last: Natural) =
   ## reverses the array ``a[first..last]``.
@@ -84,7 +88,7 @@ proc smartBinarySearch*[T](a: openArray[T], key: T): int =
 const
   onlySafeCode = true
 
-proc lowerBound*[T](a: openArray[T], key: T, cmp: proc(x,y: T): int {.closure.}): int =
+proc lowerBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.closure.}): int =
   ## same as binarySearch except that if key is not in `a` then this
   ## returns the location where `key` would be if it were. In other
   ## words if you have a sorted sequence and you call
@@ -443,7 +447,7 @@ proc rotateLeft*[T](arg: var openarray[T]; slice: HSlice[int, int]; dist: int): 
   ##   the distance in amount of elements that the data should be rotated. Can be negative, can be any number.
   ##
   ## .. code-block:: nim
-  ##     var list     = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  ##     var list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
   ##     list.rotateLeft(1 .. 8, 3)
   ##     doAssert list == [0, 4, 5, 6, 7, 8, 1, 2, 3, 9, 10]
   let sliceLen = slice.b + 1 - slice.a
@@ -472,12 +476,12 @@ proc rotatedLeft*[T](arg: openarray[T]; dist: int): seq[T] =
   arg.rotatedInternal(0, distLeft, arg.len)
 
 when isMainModule:
-  var list     = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-  let list2    = list.rotatedLeft(1 ..< 9, 3)
+  var list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  let list2 = list.rotatedLeft(1 ..< 9, 3)
   let expected = [0, 4, 5, 6, 7, 8, 1, 2, 3, 9, 10]
 
   doAssert list.rotateLeft(1 ..< 9, 3) == 6
-  doAssert list  ==  expected
+  doAssert list == expected
   doAssert list2 == @expected
 
   var s0,s1,s2,s3,s4,s5 = "xxxabcdefgxxx"
@@ -494,3 +498,20 @@ when isMainModule:
   doAssert s4 == "xxxefgabcdxxx"
   doAssert s5.rotateLeft(3 ..< 10, 11) == 6
   doAssert s5 == "xxxefgabcdxxx"
+
+  block product:
+    doAssert product(newSeq[seq[int]]()) == newSeq[seq[int]](), "empty input"
+    doAssert product(@[newSeq[int](), @[], @[]]) == newSeq[seq[int]](), "bit more empty input"
+    doAssert product(@[@[1,2]]) == @[@[1,2]], "a simple case of one element"
+    doAssert product(@[@[1,2], @[3,4]]) == @[@[2,4],@[1,4],@[2,3],@[1,3]], "two elements"
+    doAssert product(@[@[1,2], @[3,4], @[5,6]]) == @[@[2,4,6],@[1,4,6],@[2,3,6],@[1,3,6], @[2,4,5],@[1,4,5],@[2,3,5],@[1,3,5]], "three elements"
+    doAssert product(@[@[1,2], @[]]) == newSeq[seq[int]](), "two elements, but one empty"
+
+  block lowerBound:
+    doAssert lowerBound([1,2,4], 3, system.cmp[int]) == 2
+    doAssert lowerBound([1,2,2,3], 4, system.cmp[int]) == 4
+    doAssert lowerBound([1,2,3,10], 11) == 4
+
+  block fillEmptySeq:
+    var s = newSeq[int]()
+    s.fill(0)

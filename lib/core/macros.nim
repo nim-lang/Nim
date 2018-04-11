@@ -130,6 +130,7 @@ const
   nnkLiterals* = {nnkCharLit..nnkNilLit}
   nnkCallKinds* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
                    nnkCallStrLit}
+  nnkPragmaCallKinds = {nnkExprColonExpr, nnkCall, nnkCallStrLit}
 
 proc `!`*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated.}
   ## constructs an identifier from the string `s`
@@ -619,7 +620,7 @@ proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
     of nnkNilLit: res.add(" nil")
     of nnkCharLit..nnkInt64Lit: res.add(" " & $n.intVal)
     of nnkFloatLit..nnkFloat64Lit: res.add(" " & $n.floatVal)
-    of nnkStrLit..nnkTripleStrLit: res.add(" " & $n.strVal)
+    of nnkStrLit..nnkTripleStrLit: res.add(" " & $n.strVal.newLit.repr)
     of nnkIdent: res.add(" ident\"" & $n.ident & '"')
     of nnkSym: res.add(" \"" & $n.symbol & '"')
     of nnkNone: assert false
@@ -644,7 +645,7 @@ proc lispRepr*(n: NimNode): string {.compileTime, benign.} =
   of nnkNilLit: add(result, "nil")
   of nnkCharLit..nnkInt64Lit: add(result, $n.intVal)
   of nnkFloatLit..nnkFloat64Lit: add(result, $n.floatVal)
-  of nnkStrLit..nnkTripleStrLit: add(result, $n.strVal)
+  of nnkStrLit..nnkTripleStrLit, nnkCommentStmt: add(result, n.strVal.newLit.repr)
   of nnkIdent: add(result, "ident\"" & $n.ident & '"')
   of nnkSym: add(result, $n.symbol)
   of nnkNone: assert false
@@ -677,35 +678,8 @@ proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
   ## See also `repr`, `treeRepr`, and `lispRepr`.
 
   const
-    NodeKinds = {nnkEmpty, nnkNilLit, nnkIdent, nnkSym, nnkNone}
+    NodeKinds = {nnkEmpty, nnkNilLit, nnkIdent, nnkSym, nnkNone, nnkCommentStmt}
     LitKinds = {nnkCharLit..nnkInt64Lit, nnkFloatLit..nnkFloat64Lit, nnkStrLit..nnkTripleStrLit}
-
-  proc escape(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect.} =
-    ## Functions copied from strutils
-    proc toHex(x: BiggestInt, len: Positive): string {.noSideEffect, rtl.} =
-      const
-        HexChars = "0123456789ABCDEF"
-      var
-        t = x
-      result = newString(len)
-      for j in countdown(len-1, 0):
-        result[j] = HexChars[int(t and 0xF)]
-        t = t shr 4
-        # handle negative overflow
-        if t == 0 and x < 0: t = -1
-
-    result = newStringOfCap(s.len + s.len shr 2)
-    result.add(prefix)
-    for c in items(s):
-      case c
-      of '\0'..'\31', '\128'..'\255':
-        add(result, "\\x")
-        add(result, toHex(ord(c), 2))
-      of '\\': add(result, "\\\\")
-      of '\'': add(result, "\\'")
-      of '\"': add(result, "\\\"")
-      else: add(result, c)
-    add(result, suffix)
 
   proc traverse(res: var string, level: int, n: NimNode) {.benign.} =
     for i in 0..level-1: res.add "  "
@@ -722,9 +696,9 @@ proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
     of nnkCharLit: res.add("'" & $chr(n.intVal) & "'")
     of nnkIntLit..nnkInt64Lit: res.add($n.intVal)
     of nnkFloatLit..nnkFloat64Lit: res.add($n.floatVal)
-    of nnkStrLit..nnkTripleStrLit: res.add($n.strVal.escape())
-    of nnkIdent: res.add(($n.ident).escape())
-    of nnkSym: res.add(($n.symbol).escape())
+    of nnkStrLit..nnkTripleStrLit, nnkCommentStmt: res.add($n.strVal.newLit.repr)
+    of nnkIdent: res.add(($n.ident).newLit.repr())
+    of nnkSym: res.add(($n.symbol).newLit.repr())
     of nnkNone: assert false
     else:
       res.add(".newTree(")
@@ -772,7 +746,6 @@ macro dumpTreeImm*(s: untyped): untyped {.deprecated.} = echo s.treeRepr
 
 macro dumpLispImm*(s: untyped): untyped {.deprecated.} = echo s.lispRepr
   ## Deprecated.
-
 
 proc newEmptyNode*(): NimNode {.compileTime, noSideEffect.} =
   ## Create a new empty node
@@ -1212,6 +1185,59 @@ macro expandMacros*(body: typed): untyped =
 
   result = getAst(inner(body))
   echo result.toStrLit
+
+proc customPragmaNode(n: NimNode): NimNode =
+  expectKind(n, {nnkSym, nnkDotExpr})
+  if n.kind == nnkSym:
+    let sym = n.symbol.getImpl()
+    sym.expectRoutine()
+    result = sym.pragma
+  elif n.kind == nnkDotExpr:
+    let typDef = getImpl(getTypeInst(n[0]).symbol)
+    typDef.expectKind(nnkTypeDef)
+    typDef[2].expectKind(nnkObjectTy)
+    let recList = typDef[2][2]
+    for identDefs in recList:
+      for i in 0 .. identDefs.len - 3:
+        if identDefs[i].kind == nnkPragmaExpr and
+           identDefs[i][0].kind == nnkIdent and $identDefs[i][0] == $n[1]:
+          return identDefs[i][1]
+
+macro hasCustomPragma*(n: typed, cp: typed{nkSym}): untyped =
+  ## Expands to `true` if expression `n` which is expected to be `nnkDotExpr`
+  ## has custom pragma `cp`.
+  ##
+  ## .. code-block:: nim
+  ##   template myAttr() {.pragma.}
+  ##   type
+  ##     MyObj = object
+  ##       myField {.myAttr.}: int
+  ##   var o: MyObj
+  ##   assert(o.myField.hasCustomPragma(myAttr) == 0)
+  let pragmaNode = customPragmaNode(n)
+  for p in pragmaNode:
+    if (p.kind == nnkSym and p == cp) or
+        (p.kind in nnkPragmaCallKinds and p.len > 0 and p[0].kind == nnkSym and p[0] == cp):
+      return newLit(true)
+  return newLit(false)
+
+macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
+  ## Expands to value of custom pragma `cp` of expression `n` which is expected
+  ## to be `nnkDotExpr`.
+  ##
+  ## .. code-block:: nim
+  ##   template serializationKey(key: string) {.pragma.}
+  ##   type
+  ##     MyObj = object
+  ##       myField {.serializationKey: "mf".}: int
+  ##   var o: MyObj
+  ##   assert(o.myField.getCustomPragmaVal(serializationKey) == "mf")
+  let pragmaNode = customPragmaNode(n)
+  for p in pragmaNode:
+    if p.kind in nnkPragmaCallKinds and p.len > 0 and p[0].kind == nnkSym and p[0] == cp:
+      return p[1]
+  return newEmptyNode()
+
 
 when not defined(booting):
   template emit*(e: static[string]): untyped {.deprecated.} =

@@ -13,7 +13,7 @@
 
 import
   intsets, os, options, strutils, nversion, ast, astalgo, msgs, platform,
-  condsyms, ropes, idents, securehash, rodread, passes, idgen,
+  condsyms, ropes, idents, std / sha1, rodread, passes, idgen,
   rodutils, modulepaths
 
 from modulegraphs import ModuleGraph
@@ -390,9 +390,9 @@ proc symStack(w: PRodWriter): int =
       inc result
     elif iiTableGet(w.index.tab, s.id) == InvalidKey:
       var m = getModule(s)
-      if m == nil and s.kind != skPackage and sfGenSym notin s.flags:
-        internalError("symStack: module nil: " & s.name.s)
-      if s.kind == skPackage or {sfFromGeneric, sfGenSym} * s.flags != {} or m.id == w.module.id:
+      #if m == nil and s.kind != skPackage and sfGenSym notin s.flags:
+      #  internalError("symStack: module nil: " & s.name.s & " " & $s.kind & " ID " & $s.id)
+      if m == nil or s.kind == skPackage or {sfFromGeneric, sfGenSym} * s.flags != {} or m.id == w.module.id:
         # put definition in here
         var L = w.data.len
         addToIndex(w.index, s.id, L)
@@ -411,7 +411,7 @@ proc symStack(w: PRodWriter): int =
           add(w.compilerProcs, ' ')
           encodeVInt(s.id, w.compilerProcs)
           add(w.compilerProcs, rodNL)
-        if s.kind == skConverter or hasPattern(s):
+        if s.kind == skConverter or (s.ast != nil and hasPattern(s)):
           if w.converters.len != 0: add(w.converters, ' ')
           encodeVInt(s.id, w.converters)
         if s.kind == skMethod and sfDispatcher notin s.flags:
@@ -642,7 +642,7 @@ proc process(c: PPassContext, n: PNode): PNode =
 
 proc myOpen(g: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
   if module.id < 0: internalError("rodwrite: module ID not set")
-  var w = newRodWriter(module.fileIdx.getHash, module, cache)
+  var w = newRodWriter(rodread.getHash module.fileIdx, module, cache)
   rawAddInterfaceSym(w, module)
   result = w
 

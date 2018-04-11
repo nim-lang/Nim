@@ -32,7 +32,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         if d.k == locNone: getTemp(p, typ.sons[0], d, needsInit=true)
         elif d.k notin {locTemp} and not hasNoInit(ri):
           # reset before pass as 'result' var:
-          resetLoc(p, d)
+          discard "resetLoc(p, d)"
         add(pl, addrLoc(d))
         add(pl, ~");$n")
         line(p, cpsStmts, pl)
@@ -71,7 +71,7 @@ proc isInCurrentFrame(p: BProc, n: PNode): bool =
     if n.sym.kind in {skVar, skResult, skTemp, skLet} and p.prc != nil:
       result = p.prc.id == n.sym.owner.id
   of nkDotExpr, nkBracketExpr:
-    if skipTypes(n.sons[0].typ, abstractInst).kind notin {tyVar,tyPtr,tyRef}:
+    if skipTypes(n.sons[0].typ, abstractInst).kind notin {tyVar,tyLent,tyPtr,tyRef}:
       result = isInCurrentFrame(p, n.sons[0])
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     result = isInCurrentFrame(p, n.sons[1])
@@ -83,6 +83,8 @@ proc isInCurrentFrame(p: BProc, n: PNode): bool =
     result = isInCurrentFrame(p, n.sons[0])
   else: discard
 
+proc genIndexCheck(p: BProc; arr, idx: TLoc)
+
 proc openArrayLoc(p: BProc, n: PNode): Rope =
   var a: TLoc
 
@@ -93,18 +95,28 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
     initLocExpr(p, q[1], a)
     initLocExpr(p, q[2], b)
     initLocExpr(p, q[3], c)
-    let fmt =
-      case skipTypes(a.t, abstractVar+{tyPtr}).kind
-      of tyOpenArray, tyVarargs, tyArray:
-        "($1)+($2), ($3)-($2)+1"
-      of tyString, tySequence:
-        if skipTypes(n.typ, abstractInst).kind == tyVar and
-            not compileToCpp(p.module):
-          "(*$1)->data+($2), ($3)-($2)+1"
-        else:
-          "$1->data+($2), ($3)-($2)+1"
-      else: (internalError("openArrayLoc: " & typeToString(a.t)); "")
-    result = fmt % [rdLoc(a), rdLoc(b), rdLoc(c)]
+    # but first produce the required index checks:
+    if optBoundsCheck in p.options:
+      genIndexCheck(p, a, b)
+      genIndexCheck(p, a, c)
+    let ty = skipTypes(a.t, abstractVar+{tyPtr})
+    case ty.kind
+    of tyArray:
+      let first = firstOrd(ty)
+      if first == 0:
+        result = "($1)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c)]
+      else:
+        result = "($1)+(($2)-($4)), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), intLiteral(first)]
+    of tyOpenArray, tyVarargs:
+      result = "($1)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c)]
+    of tyString, tySequence:
+      if skipTypes(n.typ, abstractInst).kind == tyVar and
+          not compileToCpp(p.module):
+        result = "(*$1)->data+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c)]
+      else:
+        result = "$1->data+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c)]
+    else:
+      internalError("openArrayLoc: " & typeToString(a.t))
   else:
     initLocExpr(p, n, a)
     case skipTypes(a.t, abstractVar).kind
@@ -228,7 +240,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
           getTemp(p, typ.sons[0], d, needsInit=true)
         elif d.k notin {locTemp} and not hasNoInit(ri):
           # reset before pass as 'result' var:
-          resetLoc(p, d)
+          discard "resetLoc(p, d)"
         add(pl, addrLoc(d))
         genCallPattern()
       else:
@@ -331,7 +343,7 @@ proc genThisArg(p: BProc; ri: PNode; i: int; typ: PType): Rope =
   # skip the deref:
   var ri = ri[i]
   while ri.kind == nkObjDownConv: ri = ri[0]
-  let t = typ.sons[i].skipTypes({tyGenericInst, tyAlias})
+  let t = typ.sons[i].skipTypes({tyGenericInst, tyAlias, tySink})
   if t.kind == tyVar:
     let x = if ri.kind == nkHiddenAddr: ri[0] else: ri
     if x.typ.kind == tyPtr:
@@ -527,7 +539,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
     line(p, cpsStmts, pl)
 
 proc genCall(p: BProc, e: PNode, d: var TLoc) =
-  if e.sons[0].typ.skipTypes({tyGenericInst, tyAlias}).callConv == ccClosure:
+  if e.sons[0].typ.skipTypes({tyGenericInst, tyAlias, tySink}).callConv == ccClosure:
     genClosureCall(p, nil, e, d)
   elif e.sons[0].kind == nkSym and sfInfixCall in e.sons[0].sym.flags:
     genInfixCall(p, nil, e, d)
@@ -538,7 +550,7 @@ proc genCall(p: BProc, e: PNode, d: var TLoc) =
   postStmtActions(p)
 
 proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
-  if ri.sons[0].typ.skipTypes({tyGenericInst, tyAlias}).callConv == ccClosure:
+  if ri.sons[0].typ.skipTypes({tyGenericInst, tyAlias, tySink}).callConv == ccClosure:
     genClosureCall(p, le, ri, d)
   elif ri.sons[0].kind == nkSym and sfInfixCall in ri.sons[0].sym.flags:
     genInfixCall(p, le, ri, d)

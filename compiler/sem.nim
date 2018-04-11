@@ -16,7 +16,7 @@ import
   procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, nimfix.pretty, semmacrosanity,
-  semparallel, lowerings, pluginsupport, plugins.active
+  semparallel, lowerings, pluginsupport, plugins.active, rod
 
 from modulegraphs import ModuleGraph
 
@@ -102,8 +102,8 @@ proc commonType*(x, y: PType): PType =
   # if expressions, etc.:
   if x == nil: return x
   if y == nil: return y
-  var a = skipTypes(x, {tyGenericInst, tyAlias})
-  var b = skipTypes(y, {tyGenericInst, tyAlias})
+  var a = skipTypes(x, {tyGenericInst, tyAlias, tySink})
+  var b = skipTypes(y, {tyGenericInst, tyAlias, tySink})
   result = x
   if a.kind in {tyExpr, tyNil}: result = y
   elif b.kind in {tyExpr, tyNil}: result = x
@@ -215,12 +215,17 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
 proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
                         allowed: TSymFlags): PSym
 
-proc typeAllowedCheck(info: TLineInfo; typ: PType; kind: TSymKind) =
-  let t = typeAllowed(typ, kind)
+proc typeAllowedCheck(info: TLineInfo; typ: PType; kind: TSymKind;
+                      flags: TTypeAllowedFlags = {}) =
+  let t = typeAllowed(typ, kind, flags)
   if t != nil:
-    if t == typ: localError(info, "invalid type: '" & typeToString(typ) & "'")
-    else: localError(info, "invalid type: '" & typeToString(t) &
-                           "' in this context: '" & typeToString(typ) & "'")
+    if t == typ:
+      localError(info, "invalid type: '" & typeToString(typ) &
+        "' for " & substr($kind, 2).toLowerAscii)
+    else:
+      localError(info, "invalid type: '" & typeToString(t) &
+        "' in this context: '" & typeToString(typ) &
+        "' for " & substr($kind, 2).toLowerAscii)
 
 proc paramsTypeCheck(c: PContext, typ: PType) {.inline.} =
   typeAllowedCheck(typ.n.info, typ, skProc)
@@ -584,6 +589,7 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
       else:
         result = ast.emptyNode
       #if gCmd == cmdIdeTools: findSuggest(c, n)
+  rod.storeNode(c.module, result)
 
 proc testExamples(c: PContext) =
   let inp = toFullPath(c.module.info)
@@ -613,6 +619,8 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
     replayMethodDefs(graph, c.rd)
   popOwner(c)
   popProcCon(c)
+  storeRemaining(c.module)
   if c.runnableExamples != nil: testExamples(c)
 
-const semPass* = makePass(myOpen, myOpenCached, myProcess, myClose)
+const semPass* = makePass(myOpen, myOpenCached, myProcess, myClose,
+                          isFrontend = true)

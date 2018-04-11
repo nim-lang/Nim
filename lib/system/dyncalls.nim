@@ -31,6 +31,13 @@ proc nimLoadLibraryError(path: string) =
   stderr.rawWrite("\n")
   when not defined(nimDebugDlOpen) and not defined(windows):
     stderr.rawWrite("compile with -d:nimDebugDlOpen for more information\n")
+  when defined(windows) and defined(guiapp):
+    # Because console output is not shown in GUI apps, display error as message box:
+    const prefix = "could not load: "
+    var msg: array[1000, char]
+    copyMem(msg[0].addr, prefix.cstring, prefix.len)
+    copyMem(msg[prefix.len].addr, path.cstring, min(path.len + 1, 1000 - prefix.len))
+    discard MessageBoxA(0, msg[0].addr, nil, 0)
   quit(1)
 
 proc procAddrError(name: cstring) {.noinline.} =

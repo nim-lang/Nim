@@ -18,13 +18,14 @@ const
   newScopeForIf* = true
   useCaas* = not defined(noCaas)
   noTimeMachine* = defined(avoidTimeMachine) and defined(macosx)
+  copyrightYear* = "2018"
 
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
   TOption* = enum             # **keep binary compatible**
     optNone, optObjCheck, optFieldCheck, optRangeCheck, optBoundsCheck,
     optOverflowCheck, optNilCheck,
-    optNaNCheck, optInfCheck,
+    optNaNCheck, optInfCheck, optMoveCheck,
     optAssert, optLineDir, optWarns, optHints,
     optOptimizeSpeed, optOptimizeSize, optStackTrace, # stack tracing support
     optLineTrace,             # line tracing support (includes stack tracing)
@@ -114,16 +115,18 @@ proc cppDefine*(c: ConfigRef; define: string) =
 
 var
   gIdeCmd*: IdeCmd
+  gOldNewlines*: bool
 
 const
   ChecksOptions* = {optObjCheck, optFieldCheck, optRangeCheck, optNilCheck,
-    optOverflowCheck, optBoundsCheck, optAssert, optNaNCheck, optInfCheck}
+    optOverflowCheck, optBoundsCheck, optAssert, optNaNCheck, optInfCheck,
+    optMoveCheck}
 
 var
   gOptions*: TOptions = {optObjCheck, optFieldCheck, optRangeCheck,
                          optBoundsCheck, optOverflowCheck, optAssert, optWarns,
                          optHints, optStackTrace, optLineTrace,
-                         optPatterns, optNilCheck}
+                         optPatterns, optNilCheck, optMoveCheck}
   gGlobalOptions*: TGlobalOptions = {optThreadAnalysis}
   gExitcode*: int8
   gCmd*: TCommands = cmdNone  # the command
@@ -148,7 +151,7 @@ var
 
 type
   SymbolFilesOption* = enum
-    disabledSf, enabledSf, writeOnlySf, readOnlySf
+    disabledSf, enabledSf, writeOnlySf, readOnlySf, v2Sf
 
 var gSymbolFiles*: SymbolFilesOption
 

@@ -136,11 +136,13 @@ proc withKey*[A, B](t: var SharedTable[A, B], key: A,
   ## procedure.
   ##
   ## The ``mapper`` takes 3 arguments:
-  ##   #. ``key`` - the current key, if it exists, or the key passed to
-  ##      ``withKey`` otherwise;
-  ##   #. ``val`` - the current value, if the key exists, or default value
-  ##      of the type otherwise;
-  ##   #. ``pairExists`` - ``true`` if the key exists, ``false`` otherwise.
+  ##
+  ## 1. ``key`` - the current key, if it exists, or the key passed to
+  ##    ``withKey`` otherwise;
+  ## 2. ``val`` - the current value, if the key exists, or default value
+  ##    of the type otherwise;
+  ## 3. ``pairExists`` - ``true`` if the key exists, ``false`` otherwise.
+  ##
   ## The ``mapper`` can can modify ``val`` and ``pairExists`` values to change
   ## the mapping of the key or delete it from the table.
   ## When adding a value, make sure to set ``pairExists`` to ``true`` along

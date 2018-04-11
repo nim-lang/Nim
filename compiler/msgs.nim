@@ -26,7 +26,7 @@ type
     errAtPopWithoutPush, errEmptyAsm, errInvalidIndentation,
     errExceptionExpected, errExceptionAlreadyHandled,
     errYieldNotAllowedHere, errYieldNotAllowedInTryStmt,
-    errInvalidNumberOfYieldExpr, errCannotReturnExpr, 
+    errInvalidNumberOfYieldExpr, errCannotReturnExpr,
     errNoReturnWithReturnTypeNotAllowed, errAttemptToRedefine,
     errStmtInvalidAfterReturn, errStmtExpected, errInvalidLabel,
     errInvalidCmdLineOption, errCmdLineArgExpected, errCmdLineNoArgExpected,
@@ -134,7 +134,7 @@ type
     hintProcessing, hintCodeBegin, hintCodeEnd, hintConf, hintPath,
     hintConditionAlwaysTrue, hintName, hintPattern,
     hintExecuting, hintLinking, hintDependency,
-    hintSource, hintStackTrace, hintGCStats,
+    hintSource, hintPerformance, hintStackTrace, hintGCStats,
     hintUser, hintUserRaw
 
 const
@@ -272,7 +272,7 @@ const
     errXStackEscape: "address of '$1' may not escape its stack frame",
     errVarForOutParamNeededX: "for a \'var\' type a variable needs to be passed; but '$1' is immutable",
     errPureTypeMismatch: "type mismatch",
-    errTypeMismatch: "type mismatch: got (",
+    errTypeMismatch: "type mismatch: got <",
     errButExpected: "but expected one of: ",
     errButExpectedX: "but expected \'$1\'",
     errAmbiguousCallXYZ: "ambiguous call; both $1 and $2 match for: $3",
@@ -357,7 +357,9 @@ const
     errXExpectsTwoArguments: "\'$1\' expects two arguments",
     errXExpectsObjectTypes: "\'$1\' expects object types",
     errXcanNeverBeOfThisSubtype: "\'$1\' can never be of this subtype",
-    errTooManyIterations: "interpretation requires too many iterations",
+    errTooManyIterations: "interpretation requires too many iterations; " &
+      "if you are sure this is not a bug in your code edit " &
+      "compiler/vmdef.MaxLoopIterations and rebuild the compiler",
     errCannotInterpretNodeX: "cannot evaluate \'$1\'",
     errFieldXNotFound: "field \'$1\' cannot be found",
     errInvalidConversionFromTypeX: "invalid conversion from type \'$1\'",
@@ -370,7 +372,7 @@ const
     errXhasSideEffects: "\'$1\' can have side effects",
     errIteratorExpected: "iterator within for loop context expected",
     errLetNeedsInit: "'let' symbol requires an initialization",
-    errThreadvarCannotInit: "a thread var cannot be initialized explicitly",
+    errThreadvarCannotInit: "a thread var cannot be initialized explicitly; this would only run for the main thread",
     errWrongSymbolX: "usage of \'$1\' is a user-defined error",
     errIllegalCaptureX: "illegal capture '$1'",
     errXCannotBeClosure: "'$1' cannot have 'closure' calling convention",
@@ -436,6 +438,7 @@ const
     hintLinking: "",
     hintDependency: "$1",
     hintSource: "$1",
+    hintPerformance: "$1",
     hintStackTrace: "$1",
     hintGCStats: "$1",
     hintUser: "$1",
@@ -458,7 +461,7 @@ const
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
     "Path", "CondTrue", "Name", "Pattern", "Exec", "Link", "Dependency",
-    "Source", "StackTrace", "GCStats",
+    "Source", "Performance", "StackTrace", "GCStats",
     "User", "UserRaw"]
 
 const
@@ -491,6 +494,7 @@ type
     dirtyfile: string          # the file that is actually read into memory
                                # and parsed; usually 'nil' but is used
                                # for 'nimsuggest'
+    hash*: string              # the checksum of the file
 
   TLineInfo* = object          # This is designed to be as small as possible,
                                # because it is used
@@ -718,6 +722,14 @@ proc toFullPath*(fileIdx: int32): string =
 proc setDirtyFile*(fileIdx: int32; filename: string) =
   assert fileIdx >= 0
   fileInfos[fileIdx].dirtyFile = filename
+
+proc setHash*(fileIdx: int32; hash: string) =
+  assert fileIdx >= 0
+  shallowCopy(fileInfos[fileIdx].hash, hash)
+
+proc getHash*(fileIdx: int32): string =
+  assert fileIdx >= 0
+  shallowCopy(result, fileInfos[fileIdx].hash)
 
 proc toFullPathConsiderDirty*(fileIdx: int32): string =
   if fileIdx < 0:
@@ -1025,6 +1037,9 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
   handleError(msg, eh, s)
 
 proc fatal*(info: TLineInfo, msg: TMsgKind, arg = "") =
+  # this fixes bug #7080 so that it is at least obvious 'fatal'
+  # was executed.
+  errorOutputs = {eStdOut, eStdErr}
   liMessage(info, msg, arg, doAbort)
 
 proc globalError*(info: TLineInfo, msg: TMsgKind, arg = "") =

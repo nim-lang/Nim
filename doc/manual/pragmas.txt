@@ -1087,3 +1087,70 @@ In the above example, providing the -d flag causes the symbol
 ``FooBar`` to be overwritten at compile time, printing out 42. If the
 ``-d:FooBar=42`` were to be omitted, the default value of 5 would be
 used.
+
+
+Custom annotations 
+------------------
+It is possible to define custom typed pragmas. Custom pragmas do not effect 
+code generation directly, but their presence can be detected by macros.
+Custom pragmas are defined using templates annotated with pragma ``pragma``:
+
+.. code-block:: nim
+  template dbTable(name: string, table_space: string = nil) {.pragma.}
+  template dbKey(name: string = nil, primary_key: bool = false) {.pragma.}
+  template dbForeignKey(t: typedesc) {.pragma.}
+  template dbIgnore {.pragma.}
+
+
+Consider stylized example of possible Object Relation Mapping (ORM) implementation:
+
+.. code-block:: nim
+  const tblspace {.strdefine.} = "dev" # switch for dev, test and prod environments 
+
+  type
+    User {.dbTable("users", tblspace).} = object
+      id {.dbKey(primary_key = true).}: int
+      name {.dbKey"full_name".}: string
+      is_cached {.dbIgnore.}: bool
+      age: int
+
+    UserProfile {.dbTable("profiles", tblspace).} = object
+      id {.dbKey(primary_key = true).}: int
+      user_id {.dbForeignKey: User.}: int
+      read_access: bool
+      write_access: bool
+      admin_acess: bool
+
+In this example custom pragmas are used to describe how Nim objects are 
+mapped to the schema of the relational database. Custom pragmas can have 
+zero or more arguments. In order to pass multiple arguments use one of 
+template call syntaxes. All arguments are typed and follow standard 
+overload resolution rules for templates. Therefore, it is possible to have 
+default values for arguments, pass by name, varargs, etc. 
+
+Custom pragmas can be used in all locations where ordinary pragmas can be
+specified. It is possible to annotate procs, templates, type and variable 
+definitions, statements, etc.
+
+Macros module includes helpers which can be used to simplify custom pragma 
+access `hasCustomPragma`, `getCustomPragmaVal`. Please consult macros module 
+documentation for details. These macros are no magic, they don't do anything 
+you cannot do yourself by walking AST object representation.
+
+More examples with custom pragmas:
+  - Better serialization/deserialization control:
+
+  .. code-block:: nim
+    type MyObj = object
+      a {.dontSerialize.}: int
+      b {.defaultDeserialize: 5.}: int
+      c {.serializationKey: "_c".}: string
+
+  - Adopting type for gui inspector in a game engine:
+
+  .. code-block:: nim
+    type MyComponent = object
+      position {.editable, animatable.}: Vector3
+      alpha {.editRange: [0.0..1.0], animatable.}: float32
+
+

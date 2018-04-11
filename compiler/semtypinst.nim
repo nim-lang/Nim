@@ -17,7 +17,7 @@ const
 proc checkPartialConstructedType(info: TLineInfo, t: PType) =
   if tfAcyclic in t.flags and skipTypes(t, abstractInst).kind != tyObject:
     localError(info, errInvalidPragmaX, "acyclic")
-  elif t.kind == tyVar and t.sons[0].kind == tyVar:
+  elif t.kind in {tyVar, tyLent} and t.sons[0].kind in {tyVar, tyLent}:
     localError(info, errVarVarTypeNotAllowed)
 
 proc checkConstructedType*(info: TLineInfo, typ: PType) =
@@ -25,7 +25,7 @@ proc checkConstructedType*(info: TLineInfo, typ: PType) =
   if t.kind in tyTypeClasses: discard
   elif tfAcyclic in t.flags and skipTypes(t, abstractInst).kind != tyObject:
     localError(info, errInvalidPragmaX, "acyclic")
-  elif t.kind == tyVar and t.sons[0].kind == tyVar:
+  elif t.kind in {tyVar, tyLent} and t.sons[0].kind in {tyVar, tyLent}:
     localError(info, errVarVarTypeNotAllowed)
   elif computeSize(t) == szIllegalRecursion:
     localError(info, errIllegalRecursionInTypeX, typeToString(t))
@@ -460,6 +460,10 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
 
   of tyFromExpr:
     if cl.allowMetaTypes: return
+    # This assert is triggered when a tyFromExpr was created in a cyclic
+    # way. You should break the cycle at the point of creation by introducing
+    # a call such as: `n.typ = makeTypeFromExpr(c, n.copyTree)`
+    # Otherwise, the cycle will be fatal for the prepareNode call below
     assert t.n.typ != t
     var n = prepareNode(cl, t.n)
     if n.kind != nkEmpty:
@@ -518,7 +522,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
           var r = replaceTypeVarsT(cl, result.sons[i])
           if result.kind == tyObject:
             # carefully coded to not skip the precious tyGenericInst:
-            let r2 = r.skipTypes({tyAlias})
+            let r2 = r.skipTypes({tyAlias, tySink})
             if r2.kind in {tyPtr, tyRef}:
               r = skipTypes(r2, {tyPtr, tyRef})
           result.sons[i] = r

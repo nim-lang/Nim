@@ -306,7 +306,7 @@ proc execProcesses*(cmds: openArray[string],
             raiseOSError(err)
 
       if rexit >= 0:
-        result = max(result, q[rexit].peekExitCode())
+        result = max(result, abs(q[rexit].peekExitCode()))
         if afterRunEvent != nil: afterRunEvent(rexit, q[rexit])
         close(q[rexit])
         if i < len(cmds):
@@ -331,7 +331,7 @@ proc execProcesses*(cmds: openArray[string],
       if beforeRunEvent != nil:
         beforeRunEvent(i)
       var p = startProcess(cmds[i], options=options + {poEvalCommand})
-      result = max(waitForExit(p), result)
+      result = max(abs(waitForExit(p)), result)
       if afterRunEvent != nil: afterRunEvent(i, p)
       close(p)
 
@@ -494,7 +494,7 @@ when defined(Windows) and not defined(useNimRtl):
     sa.nLength = sizeof(SECURITY_ATTRIBUTES).cint
     sa.lpSecurityDescriptor = nil
     sa.bInheritHandle = 1
-    if createPipe(rdHandle, wrHandle, sa, 1024) == 0'i32:
+    if createPipe(rdHandle, wrHandle, sa, 0) == 0'i32:
       raiseOSError(osLastError())
 
   proc fileClose(h: Handle) {.inline.} =
@@ -524,6 +524,12 @@ when defined(Windows) and not defined(useNimRtl):
           he = ho
         else:
           createPipeHandles(he, si.hStdError)
+          if setHandleInformation(he, DWORD(1), DWORD(0)) == 0'i32:
+            raiseOsError(osLastError())
+        if setHandleInformation(hi, DWORD(1), DWORD(0)) == 0'i32:
+          raiseOsError(osLastError())  
+        if setHandleInformation(ho, DWORD(1), DWORD(0)) == 0'i32:
+          raiseOsError(osLastError())
       else:
         createAllPipeHandles(si, hi, ho, he, cast[int](result))
       result.inHandle = FileHandle(hi)

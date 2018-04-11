@@ -139,10 +139,15 @@ proc findExe*(exe: string, followSymlinks: bool = true;
   ## is added the `ExeExts <#ExeExts>`_ file extensions if it has none.
   ## If the system supports symlinks it also resolves them until it
   ## meets the actual file. This behavior can be disabled if desired.
-  for ext in extensions:
-    result = addFileExt(exe, ext)
-    if existsFile(result): return
-  var path = string(getEnv("PATH"))
+  template checkCurrentDir() =
+    for ext in extensions:
+      result = addFileExt(exe, ext)
+      if existsFile(result): return
+  when defined(posix):
+    if '/' in exe: checkCurrentDir()
+  else:
+    checkCurrentDir()
+  let path = string(getEnv("PATH"))
   for candidate in split(path, PathSep):
     when defined(windows):
       var x = (if candidate[0] == '"' and candidate[^1] == '"':
@@ -610,6 +615,7 @@ proc tryMoveFSObject(source, dest: string): bool =
 proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [ReadIOEffect, WriteIOEffect].} =
   ## Moves a file from `source` to `dest`. If this fails, `OSError` is raised.
+  ## Can be used to `rename files`:idx:
   if not tryMoveFSObject(source, dest):
     when not defined(windows):
       # Fallback to copy & del
@@ -672,7 +678,10 @@ template walkCommon(pattern: string, filter) =
           if dotPos < 0 or idx >= ff.len or ff[idx] == '.' or
               pattern[dotPos+1] == '*':
             yield splitFile(pattern).dir / extractFilename(ff)
-        if findNextFile(res, f) == 0'i32: break
+        if findNextFile(res, f) == 0'i32:
+          let errCode = getLastError()
+          if errCode == ERROR_NO_MORE_FILES: break
+          else: raiseOSError(errCode.OSErrorCode)
   else: # here we use glob
     var
       f: Glob
@@ -782,7 +791,10 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
             let xx = if relative: extractFilename(getFilename(f))
                      else: dir / extractFilename(getFilename(f))
             yield (k, xx)
-          if findNextFile(h, f) == 0'i32: break
+          if findNextFile(h, f) == 0'i32:
+            let errCode = getLastError()
+            if errCode == ERROR_NO_MORE_FILES: break
+            else: raiseOSError(errCode.OSErrorCode)
     else:
       var d = opendir(dir)
       if d != nil:
@@ -818,7 +830,7 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
 
 iterator walkDirRec*(dir: string, yieldFilter = {pcFile},
                      followFilter = {pcDir}): string {.tags: [ReadDirEffect].} =
-  ## Recursively walks over the directory `dir` and yields for each file 
+  ## Recursively walks over the directory `dir` and yields for each file
   ## or directory in `dir`.
   ## The full path for each file or directory is returned.
   ## **Warning**:

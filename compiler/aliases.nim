@@ -49,7 +49,7 @@ proc isPartOfAux(a, b: PType, marker: var IntSet): TAnalysisResult =
     if a.sons[0] != nil:
       result = isPartOfAux(a.sons[0].skipTypes(skipPtrs), b, marker)
     if result == arNo: result = isPartOfAux(a.n, b, marker)
-  of tyGenericInst, tyDistinct, tyAlias:
+  of tyGenericInst, tyDistinct, tyAlias, tySink:
     result = isPartOfAux(lastSon(a), b, marker)
   of tyArray, tySet, tyTuple:
     for i in countup(0, sonsLen(a) - 1):

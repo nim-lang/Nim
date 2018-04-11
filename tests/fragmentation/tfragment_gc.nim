@@ -1,6 +1,7 @@
 discard """
   output: '''occupied ok: true
 total ok: true'''
+  disabled: "windows"
 """
 
 import strutils, data
@@ -20,11 +21,11 @@ let total = getTotalMem()
 
 # Concrete values on Win64: 58.152MiB / 188.285MiB
 
-let occupiedOk = occ < 64 * 1024 * 1024
+let occupiedOk = occ < 82 * 1024 * 1024
 if not occupiedOk:
   echo "occupied ", formatSize(occ)
 echo "occupied ok: ", occupiedOk
-let totalOk = total < 210 * 1024 * 1024
+let totalOk = total < 230 * 1024 * 1024
 if not totalOk:
   echo "total peak memory ", formatSize(total)
 echo "total ok: ", totalOk

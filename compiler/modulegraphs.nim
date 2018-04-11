@@ -25,7 +25,7 @@
 ## - Its dependent module stays the same.
 ##
 
-import ast, intsets, tables, options
+import ast, intsets, tables, options, rod
 
 type
   ModuleGraph* = ref object
@@ -81,6 +81,8 @@ proc getModule*(g: ModuleGraph; fileIdx: int32): PSym =
 proc dependsOn(a, b: int): int {.inline.} = (a shl 15) + b
 
 proc addDep*(g: ModuleGraph; m: PSym, dep: int32) =
+  assert m.position == m.info.fileIndex
+  addModuleDep(m.info.fileIndex, dep, isIncludeFile = false)
   if suggestMode:
     deps.incl m.position.dependsOn(dep)
     # we compute the transitive closure later when quering the graph lazily.
@@ -88,6 +90,7 @@ proc addDep*(g: ModuleGraph; m: PSym, dep: int32) =
     #invalidTransitiveClosure = true
 
 proc addIncludeDep*(g: ModuleGraph; module, includeFile: int32) =
+  addModuleDep(module, includeFile, isIncludeFile = true)
   discard hasKeyOrPut(inclToMod, includeFile, module)
 
 proc parentModule*(g: ModuleGraph; fileIdx: int32): int32 =

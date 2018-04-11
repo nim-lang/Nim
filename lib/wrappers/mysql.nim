@@ -13,13 +13,13 @@
 when defined(Unix):
   when defined(macosx):
     const
-      lib = "libmysqlclient.(15|16|17|18|19|20).dylib"
+      lib = "(libmysqlclient|libmariadbclient)(|.20|.19|.18|.17|.16|.15).dylib"
   else:
     const
-      lib = "libmysqlclient.so.(15|16|17|18|19|20)"
+      lib = "(libmysqlclient|libmariadbclient).so(|.20|.19|.18|.17|.16|.15)"
 when defined(Windows):
   const
-    lib = "libmysql.dll"
+    lib = "(libmysql.dll|libmariadb.dll)"
 type
   my_bool* = bool
   Pmy_bool* = ptr my_bool

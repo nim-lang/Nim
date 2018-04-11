@@ -150,6 +150,7 @@ var
   checkpoints {.threadvar.}: seq[string]
   formatters {.threadvar.}: seq[OutputFormatter]
   testsFilters {.threadvar.}: HashSet[string]
+  disabledParamFiltering {.threadvar.}: bool
 
 when declared(stdout):
   abortOnError = existsEnv("NIMTEST_ABORT_ON_ERROR")
@@ -379,7 +380,7 @@ proc ensureInitialized() =
   if formatters == nil:
     formatters = @[OutputFormatter(defaultConsoleFormatter())]
 
-  if not testsFilters.isValid:
+  if not disabledParamFiltering and not testsFilters.isValid:
     testsFilters.init()
     when declared(paramCount):
       # Read tests to run from the command line.
@@ -701,3 +702,7 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
     errorTypes.add(exp[i])
 
   result = getAst(expectBody(errorTypes, exp.lineinfo, body))
+
+proc disableParamFiltering* =
+  ## disables filtering tests with the command line params
+  disabledParamFiltering = true

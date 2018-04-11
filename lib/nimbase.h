@@ -70,7 +70,7 @@ __clang__
 #if defined(_MSC_VER)
 #  pragma warning(disable: 4005 4100 4101 4189 4191 4200 4244 4293 4296 4309)
 #  pragma warning(disable: 4310 4365 4456 4477 4514 4574 4611 4668 4702 4706)
-#  pragma warning(disable: 4710 4711 4774 4800 4820 4996 4090 4297)
+#  pragma warning(disable: 4710 4711 4774 4800 4809 4820 4996 4090 4297)
 #endif
 /* ------------------------------------------------------------------------- */
 
@@ -274,13 +274,6 @@ __clang__
 #  endif
 #  define NIM_BOOL bool
 #  define NIM_NIL 0
-struct NimException
-{
-  NimException(struct Exception* exp, const char* msg): exp(exp), msg(msg) {}
-
-  struct Exception* exp;
-  const char* msg;
-};
 #else
 #  ifdef bool
 #    define NIM_BOOL bool

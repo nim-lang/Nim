@@ -122,7 +122,7 @@ proc genEnumInfo(p: PProc, typ: PType, name: Rope) =
          [name, genTypeInfo(p, typ.sons[0])])
 
 proc genEnumInfoPHP(p: PProc; t: PType): Rope =
-  let t = t.skipTypes({tyGenericInst, tyDistinct, tyAlias})
+  let t = t.skipTypes({tyGenericInst, tyDistinct, tyAlias, tySink})
   result = "$$NTI$1" % [rope(t.id)]
   p.declareGlobal(t.id, result)
   if containsOrIncl(p.g.typeInfoGenerated, t.id): return
@@ -141,7 +141,7 @@ proc genEnumInfoPHP(p: PProc; t: PType): Rope =
 proc genTypeInfo(p: PProc, typ: PType): Rope =
   if p.target == targetPHP:
     return makeJSString(typeToString(typ, preferModuleInfo))
-  let t = typ.skipTypes({tyGenericInst, tyDistinct, tyAlias})
+  let t = typ.skipTypes({tyGenericInst, tyDistinct, tyAlias, tySink})
   result = "NTI$1" % [rope(t.id)]
   if containsOrIncl(p.g.typeInfoGenerated, t.id): return
   case t.kind
@@ -152,7 +152,7 @@ proc genTypeInfo(p: PProc, typ: PType): Rope =
       "var $1 = {size: 0,kind: $2,base: null,node: null,finalizer: null};$n" %
       [result, rope(ord(t.kind))]
     prepend(p.g.typeInfo, s)
-  of tyVar, tyRef, tyPtr, tySequence, tyRange, tySet:
+  of tyVar, tyLent, tyRef, tyPtr, tySequence, tyRange, tySet:
     var s =
       "var $1 = {size: 0,kind: $2,base: null,node: null,finalizer: null};$n" %
               [result, rope(ord(t.kind))]

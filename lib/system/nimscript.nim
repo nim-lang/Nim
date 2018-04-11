@@ -38,13 +38,19 @@ proc removeFile(dir: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
 proc moveFile(src, dest: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
+proc moveDir(src, dest: string) {.
+  tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
 proc copyFile(src, dest: string) {.
+  tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
+proc copyDir(src, dest: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
 proc createDir(dir: string) {.tags: [WriteIOEffect], raises: [OSError].} =
   builtin
 proc getOsError: string = builtin
 proc setCurrentDir(dir: string) = builtin
-proc getCurrentDir(): string = builtin
+proc getCurrentDir*(): string =
+  ## Retrieves the current working directory.
+  builtin
 proc rawExec(cmd: string): int {.tags: [ExecIOEffect], raises: [OSError].} =
   builtin
 
@@ -112,6 +118,10 @@ proc getEnv*(key: string; default = ""): string {.tags: [ReadIOEffect].} =
 
 proc existsEnv*(key: string): bool {.tags: [ReadIOEffect].} =
   ## Checks for the existence of an environment variable named `key`.
+  builtin
+
+proc putEnv*(key, val: string) {.tags: [WriteIOEffect].} =
+  ## Sets the value of the environment variable named key to val.
   builtin
 
 proc fileExists*(filename: string): bool {.tags: [ReadIOEffect].} =
@@ -202,10 +212,22 @@ proc mvFile*(`from`, to: string) {.raises: [OSError].} =
     moveFile `from`, to
     checkOsError()
 
+proc mvDir*(`from`, to: string) {.raises: [OSError].} =
+  ## Moves the dir `from` to `to`.
+  log "mvDir: " & `from` & ", " & to:
+    moveDir `from`, to
+    checkOsError()
+
 proc cpFile*(`from`, to: string) {.raises: [OSError].} =
   ## Copies the file `from` to `to`.
   log "cpFile: " & `from` & ", " & to:
     copyFile `from`, to
+    checkOsError()
+
+proc cpDir*(`from`, to: string) {.raises: [OSError].} =
+  ## Copies the dir `from` to `to`.
+  log "cpDir: " & `from` & ", " & to:
+    copyDir `from`, to
     checkOsError()
 
 proc exec*(command: string) =
@@ -260,6 +282,12 @@ proc cd*(dir: string) {.raises: [OSError].} =
   ## <#withDir>`_ template if you want to perform a temporary change only.
   setCurrentDir(dir)
   checkOsError()
+
+proc findExe*(bin: string): string =
+  ## Searches for bin in the current working directory and then in directories
+  ## listed in the PATH environment variable. Returns "" if the exe cannot be
+  ## found.
+  builtin
 
 template withDir*(dir: string; body: untyped): untyped =
   ## Changes the current directory temporarily.

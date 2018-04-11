@@ -10,8 +10,8 @@
 ## Implements the module handling, including the caching of modules.
 
 import
-  ast, astalgo, magicsys, securehash, rodread, msgs, cgendata, sigmatch, options,
-  idents, os, lexer, idgen, passes, syntaxes, llstream, modulegraphs
+  ast, astalgo, magicsys, std / sha1, rodread, msgs, cgendata, sigmatch, options,
+  idents, os, lexer, idgen, passes, syntaxes, llstream, modulegraphs, rod
 
 when false:
   type
@@ -125,7 +125,7 @@ proc newModule(graph: ModuleGraph; fileIdx: int32): PSym =
   # We cannot call ``newSym`` here, because we have to circumvent the ID
   # mechanism, which we do in order to assign each module a persistent ID.
   new(result)
-  result.id = - 1             # for better error checking
+  result.id = -1             # for better error checking
   result.kind = skModule
   let filename = fileIdx.toFullPath
   result.name = getIdent(splitFile(filename).name)
@@ -169,13 +169,15 @@ proc compileModule*(graph: ModuleGraph; fileIdx: int32; cache: IdentCache, flags
     if sfMainModule in result.flags:
       gMainPackageId = result.owner.id
 
-    if gCmd in {cmdCompileToC, cmdCompileToCpp, cmdCheck, cmdIdeTools}:
-      rd = handleSymbolFile(result, cache)
-      if result.id < 0:
-        internalError("handleSymbolFile should have set the module's ID")
-        return
-    else:
-      result.id = getID()
+    when false:
+      if gCmd in {cmdCompileToC, cmdCompileToCpp, cmdCheck, cmdIdeTools}:
+        rd = handleSymbolFile(result, cache)
+        if result.id < 0:
+          internalError("handleSymbolFile should have set the module's ID")
+          return
+      else:
+        discard
+    result.id = getModuleId(fileIdx, toFullPath(fileIdx))
     discard processModule(graph, result,
       if sfMainModule in flags and gProjectIsStdin: stdin.llStreamOpen else: nil,
       rd, cache)

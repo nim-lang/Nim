@@ -54,7 +54,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
 
 const
   HelpMessage = "Nim Compiler Version $1 [$2: $3]\n" &
-      "Copyright (c) 2006-2017 by Andreas Rumpf\n"
+      "Copyright (c) 2006-" & copyrightYear & " by Andreas Rumpf\n"
 
 const
   Usage = slurp"../doc/basicopt.txt".replace("//", "")
@@ -257,6 +257,7 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
   of "rangechecks": result = contains(gOptions, optRangeCheck)
   of "boundchecks": result = contains(gOptions, optBoundsCheck)
   of "overflowchecks": result = contains(gOptions, optOverflowCheck)
+  of "movechecks": result = contains(gOptions, optMoveCheck)
   of "linedir": result = contains(gOptions, optLineDir)
   of "assertions", "a": result = contains(gOptions, optAssert)
   of "deadcodeelim": result = contains(gGlobalOptions, optDeadCodeElim)
@@ -274,9 +275,10 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
 
 proc processPath(path: string, info: TLineInfo,
                  notRelativeToProj = false): string =
-  let p = if notRelativeToProj or os.isAbsolute(path) or
-              '$' in path:
+  let p = if os.isAbsolute(path) or '$' in path:
             path
+          elif notRelativeToProj:
+            getCurrentDir() / path
           else:
             options.gProjectPath / path
   try:
@@ -471,6 +473,16 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitch({optMemTracker}, arg, pass, info)
     if optMemTracker in gOptions: defineSymbol("memtracker")
     else: undefSymbol("memtracker")
+  of "oldnewlines":
+    case arg.normalize
+    of "on":
+      options.gOldNewlines = true
+      defineSymbol("nimOldNewlines")
+    of "off":
+      options.gOldNewlines = false
+      undefSymbol("nimOldNewlines")
+    else:
+      localError(info, errOnOrOffExpectedButXFound, arg)
   of "checks", "x": processOnOffSwitch(ChecksOptions, arg, pass, info)
   of "floatchecks":
     processOnOffSwitch({optNaNCheck, optInfCheck}, arg, pass, info)
@@ -482,6 +494,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "rangechecks": processOnOffSwitch({optRangeCheck}, arg, pass, info)
   of "boundchecks": processOnOffSwitch({optBoundsCheck}, arg, pass, info)
   of "overflowchecks": processOnOffSwitch({optOverflowCheck}, arg, pass, info)
+  of "movechecks": processOnOffSwitch({optMoveCheck}, arg, pass, info)
   of "linedir": processOnOffSwitch({optLineDir}, arg, pass, info)
   of "assertions", "a": processOnOffSwitch({optAssert}, arg, pass, info)
   of "deadcodeelim": processOnOffSwitchG({optDeadCodeElim}, arg, pass, info)
@@ -603,6 +616,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     of "off": gSymbolFiles = disabledSf
     of "writeonly": gSymbolFiles = writeOnlySf
     of "readonly": gSymbolFiles = readOnlySf
+    of "v2": gSymbolFiles = v2Sf
     else: localError(info, errOnOrOffExpectedButXFound, arg)
   of "skipcfg":
     expectNoArg(switch, arg, pass, info)

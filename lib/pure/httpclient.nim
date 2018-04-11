@@ -150,6 +150,31 @@ proc code*(response: Response | AsyncResponse): HttpCode
   ## corresponding ``HttpCode``.
   return response.status[0 .. 2].parseInt.HttpCode
 
+proc contentType*(response: Response | AsyncResponse): string =
+  ## Retrieves the specified response's content type.
+  ##
+  ## This is effectively the value of the "Content-Type" header.
+  response.headers.getOrDefault("content-type")
+
+proc contentLength*(response: Response | AsyncResponse): int =
+  ## Retrieves the specified response's content length.
+  ##
+  ## This is effectively the value of the "Content-Length" header.
+  ##
+  ## A ``ValueError`` exception will be raised if the value is not an integer.
+  var contentLengthHeader = response.headers.getOrDefault("Content-Length")
+  return contentLengthHeader.parseInt()
+
+proc lastModified*(response: Response | AsyncResponse): DateTime =
+  ## Retrieves the specified response's last modified time.
+  ##
+  ## This is effectively the value of the "Last-Modified" header.
+  ##
+  ## Raises a ``ValueError`` if the parsing fails or the value is not a correctly
+  ## formatted time.
+  var lastModifiedHeader = response.headers.getOrDefault("last-modified")
+  result = parse(lastModifiedHeader, "dd, dd MMM yyyy HH:mm:ss Z")
+
 proc body*(response: Response): string =
   ## Retrieves the specified response's body.
   ##
@@ -482,7 +507,7 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
       port = net.Port(443)
     else:
       raise newException(HttpRequestError,
-                "SSL support is not available. Cannot connect over SSL.")
+                "SSL support is not available. Cannot connect over SSL. Compile with -d:ssl to enable.")
   if r.port != "":
     port = net.Port(r.port.parseInt)
 
@@ -515,7 +540,8 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
                            "so a secure connection could not be established.")
       sslContext.wrapConnectedSocket(s, handshakeAsClient, hostUrl.hostname)
     else:
-      raise newException(HttpRequestError, "SSL support not available. Cannot connect via proxy over SSL")
+      raise newException(HttpRequestError, "SSL support not available. Cannot " &
+                         "connect via proxy over SSL. Compile with -d:ssl to enable.")
   else:
     if timeout == -1:
       s.connect(r.hostname, port)
@@ -596,7 +622,7 @@ proc get*(url: string, extraHeaders = "", maxRedirects = 5,
   ## | An optional timeout can be specified in milliseconds, if reading from the
   ## server takes longer than specified an ETimeout exception will be raised.
   ##
-  ## ## **Deprecated since version 0.15.0**: use ``HttpClient.get`` instead.
+  ## **Deprecated since version 0.15.0**: use ``HttpClient.get`` instead.
   result = request(url, httpGET, extraHeaders, "", sslContext, timeout,
                    userAgent, proxy)
   var lastURL = url
@@ -923,8 +949,14 @@ proc parseChunks(client: HttpClient | AsyncHttpClient): Future[void]
     if chunkSize <= 0:
       discard await recvFull(client, 2, client.timeout, false) # Skip \c\L
       break
-    discard await recvFull(client, chunkSize, client.timeout, true)
-    discard await recvFull(client, 2, client.timeout, false) # Skip \c\L
+    var bytesRead = await recvFull(client, chunkSize, client.timeout, true)
+    if bytesRead != chunkSize:
+      httpError("Server terminated connection prematurely")
+
+    bytesRead = await recvFull(client, 2, client.timeout, false) # Skip \c\L
+    if bytesRead != 2:
+      httpError("Server terminated connection prematurely")
+
     # Trailer headers will only be sent if the request specifies that we want
     # them: http://tools.ietf.org/html/rfc2616#section-3.6.1
 
@@ -965,7 +997,7 @@ proc parseBody(client: HttpClient | AsyncHttpClient,
       if headers.getOrDefault"Connection" == "close" or httpVersion == "1.0":
         while true:
           let recvLen = await client.recvFull(4000, client.timeout, true)
-          if recvLen == 0:
+          if recvLen != 4000:
             client.close()
             break
 
@@ -1056,7 +1088,7 @@ proc newConnection(client: HttpClient | AsyncHttpClient,
 
     if isSsl and not defined(ssl):
       raise newException(HttpRequestError,
-        "SSL support is not available. Cannot connect over SSL.")
+        "SSL support is not available. Cannot connect over SSL. Compile with -d:ssl to enable.")
 
     if client.connected:
       client.close()
@@ -1106,7 +1138,7 @@ proc newConnection(client: HttpClient | AsyncHttpClient,
           client.socket, handshakeAsClient, url.hostname)
       else:
         raise newException(HttpRequestError,
-        "SSL support is not available. Cannot connect over SSL.")
+        "SSL support is not available. Cannot connect over SSL. Compile with -d:ssl to enable.")
 
     # May be connected through proxy but remember actual URL being accessed
     client.currentURL = url
@@ -1167,7 +1199,7 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
   for i in 1..client.maxRedirects:
     if result.status.redirection():
       let redirectTo = getNewLocation(lastURL, result.headers)
-      result = await client.request(redirectTo, httpMethod, body, headers)
+      result = await client.requestAux(redirectTo, httpMethod, body, headers)
       lastURL = redirectTo
 
 
@@ -1257,21 +1289,30 @@ proc postContent*(client: HttpClient | AsyncHttpClient, url: string,
   else:
     return await resp.bodyStream.readAll()
 
-proc downloadFile*(client: HttpClient | AsyncHttpClient,
-                   url: string, filename: string): Future[void] {.multisync.} =
+proc downloadFile*(client: HttpClient, url: string, filename: string) =
   ## Downloads ``url`` and saves it to ``filename``.
   client.getBody = false
   defer:
     client.getBody = true
-  let resp = await client.get(url)
+  let resp = client.get(url)
 
-  when client is HttpClient:
-    client.bodyStream = newFileStream(filename, fmWrite)
-    if client.bodyStream.isNil:
-      fileError("Unable to open file")
-    parseBody(client, resp.headers, resp.version)
-    client.bodyStream.close()
-  else:
+  client.bodyStream = newFileStream(filename, fmWrite)
+  if client.bodyStream.isNil:
+    fileError("Unable to open file")
+  parseBody(client, resp.headers, resp.version)
+  client.bodyStream.close()
+
+  if resp.code.is4xx or resp.code.is5xx:
+    raise newException(HttpRequestError, resp.status)
+
+proc downloadFile*(client: AsyncHttpClient, url: string,
+                   filename: string): Future[void] =
+  proc downloadFileEx(client: AsyncHttpClient,
+                      url, filename: string): Future[void] {.async.} =
+    ## Downloads ``url`` and saves it to ``filename``.
+    client.getBody = false
+    let resp = await client.get(url)
+
     client.bodyStream = newFutureStream[string]("downloadFile")
     var file = openAsync(filename, fmWrite)
     # Let `parseBody` write response data into client.bodyStream in the
@@ -1282,5 +1323,15 @@ proc downloadFile*(client: HttpClient | AsyncHttpClient,
     await file.writeFromStream(client.bodyStream)
     file.close()
 
-  if resp.code.is4xx or resp.code.is5xx:
-    raise newException(HttpRequestError, resp.status)
+    if resp.code.is4xx or resp.code.is5xx:
+      raise newException(HttpRequestError, resp.status)
+
+  result = newFuture[void]("downloadFile")
+  try:
+    result = downloadFileEx(client, url, filename)
+  except Exception as exc:
+    result.fail(exc)
+  finally:
+    result.addCallback(
+      proc () = client.getBody = true
+    )

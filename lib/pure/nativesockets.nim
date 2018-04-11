@@ -31,7 +31,7 @@ else:
   export Sockaddr_storage, Sockaddr_un, Sockaddr_un_path_length
 
 export SocketHandle, Sockaddr_in, Addrinfo, INADDR_ANY, SockAddr, SockLen,
-  Sockaddr_in6,
+  Sockaddr_in6, Sockaddr_storage,
   inet_ntoa, recv, `==`, connect, send, accept, recvfrom, sendto,
   freeAddrInfo
 
@@ -184,19 +184,39 @@ proc toSockType*(protocol: Protocol): SockType =
   of IPPROTO_IP, IPPROTO_IPV6, IPPROTO_RAW, IPPROTO_ICMP:
     SOCK_RAW
 
-proc newNativeSocket*(domain: Domain = AF_INET,
+proc createNativeSocket*(domain: Domain = AF_INET,
                       sockType: SockType = SOCK_STREAM,
                       protocol: Protocol = IPPROTO_TCP): SocketHandle =
-  ## Creates a new socket; returns `InvalidSocket` if an error occurs.
+  ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
   socket(toInt(domain), toInt(sockType), toInt(protocol))
 
-proc newNativeSocket*(domain: cint, sockType: cint,
+proc createNativeSocket*(domain: cint, sockType: cint,
                       protocol: cint): SocketHandle =
-  ## Creates a new socket; returns `InvalidSocket` if an error occurs.
+  ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
   ##
   ## Use this overload if one of the enums specified above does
   ## not contain what you need.
   socket(domain, sockType, protocol)
+
+proc newNativeSocket*(domain: Domain = AF_INET,
+                      sockType: SockType = SOCK_STREAM,
+                      protocol: Protocol = IPPROTO_TCP): SocketHandle
+                      {.deprecated.} =
+  ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
+  ##
+  ## **Deprecated since v0.18.0:** Use ``createNativeSocket`` instead.
+  createNativeSocket(domain, sockType, protocol)
+
+proc newNativeSocket*(domain: cint, sockType: cint,
+                      protocol: cint): SocketHandle
+                      {.deprecated.} =
+  ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
+  ##
+  ## Use this overload if one of the enums specified above does
+  ## not contain what you need.
+  ##
+  ## **Deprecated since v0.18.0:** Use ``createNativeSocket`` instead.
+  createNativeSocket(domain, sockType, protocol)
 
 proc close*(socket: SocketHandle) =
   ## closes a socket.
@@ -665,6 +685,19 @@ proc selectWrite*(writefds: var seq[SocketHandle],
     result = int(select(cint(m+1), nil, addr(wr), nil, nil))
 
   pruneSocketSet(writefds, (wr))
+
+proc accept*(fd: SocketHandle): (SocketHandle, string) =
+  ## Accepts a new client connection.
+  ##
+  ## Returns (osInvalidSocket, "") if an error occurred.
+  var sockAddress: Sockaddr_in
+  var addrLen = sizeof(sockAddress).SockLen
+  var sock = accept(fd, cast[ptr SockAddr](addr(sockAddress)),
+                    addr(addrLen))
+  if sock == osInvalidSocket:
+    return (osInvalidSocket, "")
+  else:
+    return (sock, $inet_ntoa(sockAddress.sin_addr))
 
 when defined(Windows):
   var wsa: WSAData

@@ -10,7 +10,7 @@
 # abstract syntax tree + symbol table
 
 import
-  msgs, hashes, nversion, options, strutils, securehash, ropes, idents,
+  msgs, hashes, nversion, options, strutils, std / sha1, ropes, idents,
   intsets, idgen
 
 type
@@ -305,6 +305,7 @@ const
   sfEscapes* = sfProcvar              # param escapes
   sfBase* = sfDiscriminant
   sfIsSelf* = sfOverriden             # param is 'self'
+  sfCustomPragma* = sfRegister        # symbol is custom pragma template
 
 const
   # getting ready for the future expr/stmt merge
@@ -354,7 +355,7 @@ type
     tyInt, tyInt8, tyInt16, tyInt32, tyInt64, # signed integers
     tyFloat, tyFloat32, tyFloat64, tyFloat128,
     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64,
-    tyOptAsRef, tyUnused1, tyUnused2,
+    tyOptAsRef, tySink, tyLent,
     tyVarargs,
     tyUnused,
     tyProxy # used as errornous type (for idetools)
@@ -640,7 +641,7 @@ type
     mNHint, mNWarning, mNError,
     mInstantiationInfo, mGetTypeInfo, mNGenSym,
     mNimvm, mIntDefine, mStrDefine, mRunnableExamples,
-    mException
+    mException, mBuiltinType
 
 # things that we can evaluate safely at compile time, even if not asked for it:
 const
@@ -846,6 +847,8 @@ type
     constraint*: PNode        # additional constraints like 'lit|result'; also
                               # misused for the codegenDecl pragma in the hope
                               # it won't cause problems
+                              # for skModule the string literal to output for
+                              # deprecated modules.
     when defined(nimsuggest):
       allUsages*: seq[TLineInfo]
 
@@ -940,13 +943,13 @@ const
     tyGenericParam}
 
   StructuralEquivTypes*: TTypeKinds = {tyNil, tyTuple, tyArray,
-    tySet, tyRange, tyPtr, tyRef, tyVar, tySequence, tyProc, tyOpenArray,
+    tySet, tyRange, tyPtr, tyRef, tyVar, tyLent, tySequence, tyProc, tyOpenArray,
     tyVarargs}
 
   ConcreteTypes*: TTypeKinds = { # types of the expr that may occur in::
                                  # var x = expr
     tyBool, tyChar, tyEnum, tyArray, tyObject,
-    tySet, tyTuple, tyRange, tyPtr, tyRef, tyVar, tySequence, tyProc,
+    tySet, tyTuple, tyRange, tyPtr, tyRef, tyVar, tyLent, tySequence, tyProc,
     tyPointer,
     tyOpenArray, tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128,
     tyUInt..tyUInt64}
@@ -978,7 +981,9 @@ const
   nkIdentKinds* = {nkIdent, nkSym, nkAccQuoted, nkOpenSymChoice,
                    nkClosedSymChoice}
 
+  nkPragmaCallKinds* = {nkExprColonExpr, nkCall, nkCallStrLit}
   nkLiterals* = {nkCharLit..nkTripleStrLit}
+  nkFloatLiterals* = {nkFloatLit..nkFloat128Lit}
   nkLambdaKinds* = {nkLambda, nkDo}
   declarativeDefs* = {nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef}
   procDefs* = nkLambdaKinds + declarativeDefs
@@ -1427,7 +1432,7 @@ proc propagateToOwner*(owner, elem: PType) =
     owner.flags.incl tfHasMeta
 
   if tfHasAsgn in elem.flags:
-    let o2 = owner.skipTypes({tyGenericInst, tyAlias})
+    let o2 = owner.skipTypes({tyGenericInst, tyAlias, tySink})
     if o2.kind in {tyTuple, tyObject, tyArray,
                    tySequence, tyOpt, tySet, tyDistinct}:
       o2.flags.incl tfHasAsgn
@@ -1435,7 +1440,7 @@ proc propagateToOwner*(owner, elem: PType) =
 
   if owner.kind notin {tyProc, tyGenericInst, tyGenericBody,
                        tyGenericInvocation, tyPtr}:
-    let elemB = elem.skipTypes({tyGenericInst, tyAlias})
+    let elemB = elem.skipTypes({tyGenericInst, tyAlias, tySink})
     if elemB.isGCedMem or tfHasGCedMem in elemB.flags:
       # for simplicity, we propagate this flag even to generics. We then
       # ensure this doesn't bite us in sempass2.
@@ -1474,7 +1479,7 @@ proc copyNode*(src: PNode): PNode =
       echo "COMES FROM ", src.id
   case src.kind
   of nkCharLit..nkUInt64Lit: result.intVal = src.intVal
-  of nkFloatLit..nkFloat128Lit: result.floatVal = src.floatVal
+  of nkFloatLiterals: result.floatVal = src.floatVal
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
@@ -1493,7 +1498,7 @@ proc shallowCopy*(src: PNode): PNode =
       echo "COMES FROM ", src.id
   case src.kind
   of nkCharLit..nkUInt64Lit: result.intVal = src.intVal
-  of nkFloatLit..nkFloat128Lit: result.floatVal = src.floatVal
+  of nkFloatLiterals: result.floatVal = src.floatVal
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
@@ -1513,7 +1518,7 @@ proc copyTree*(src: PNode): PNode =
       echo "COMES FROM ", src.id
   case src.kind
   of nkCharLit..nkUInt64Lit: result.intVal = src.intVal
-  of nkFloatLit..nkFloat128Lit: result.floatVal = src.floatVal
+  of nkFloatLiterals: result.floatVal = src.floatVal
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
@@ -1562,7 +1567,7 @@ proc getInt*(a: PNode): BiggestInt =
 
 proc getFloat*(a: PNode): BiggestFloat =
   case a.kind
-  of nkFloatLit..nkFloat128Lit: result = a.floatVal
+  of nkFloatLiterals: result = a.floatVal
   else:
     internalError(a.info, "getFloat")
     result = 0.0
@@ -1654,6 +1659,33 @@ proc toObject*(typ: PType): PType =
   result = typ
   if result.kind == tyRef:
     result = result.lastSon
+
+proc isException*(t: PType): bool =
+  # check if `y` is object type and it inherits from Exception
+  assert(t != nil)
+
+  if t.kind != tyObject:
+    return false
+
+  var base = t
+  while base != nil:
+    if base.sym.magic == mException:
+      return true
+    base = base.lastSon
+  return false
+
+proc isImportedException*(t: PType): bool =
+  assert(t != nil)
+  if optNoCppExceptions in gGlobalOptions:
+    return false
+  
+  let base = t.skipTypes({tyAlias, tyPtr, tyDistinct, tyGenericInst})
+    
+  if base.sym != nil and sfCompileToCpp in base.sym.flags:
+    result = true
+
+proc isInfixAs*(n: PNode): bool =
+  return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.id == getIdent("as").id
 
 proc findUnresolvedStatic*(n: PNode): PNode =
   if n.kind == nkSym and n.typ.kind == tyStatic and n.typ.n == nil:

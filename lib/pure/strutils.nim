@@ -440,10 +440,12 @@ proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
 proc strip*(s: string, leading = true, trailing = true,
             chars: set[char] = Whitespace): string
   {.noSideEffect, rtl, extern: "nsuStrip".} =
-  ## Strips `chars` from `s` and returns the resulting string.
+  ## Strips leading or trailing `chars` from `s` and returns
+  ## the resulting string.
   ##
   ## If `leading` is true, leading `chars` are stripped.
   ## If `trailing` is true, trailing `chars` are stripped.
+  ## If both are false, the string is returned unchanged.
   var
     first = 0
     last = len(s)-1
@@ -944,6 +946,19 @@ proc toHex*[T](x: T): string =
   ## Shortcut for ``toHex(x, T.sizeOf * 2)``
   toHex(BiggestInt(x), T.sizeOf * 2)
 
+proc toHex*(s: string): string {.noSideEffect, rtl.} =
+  ## Converts a bytes string to its hexadecimal representation.
+  ##
+  ## The output is twice the input long. No prefix like
+  ## ``0x`` is generated.
+  const HexChars = "0123456789ABCDEF"
+  result = newString(s.len * 2)
+  for pos, c in s:
+    var n = ord(c)
+    result[pos * 2 + 1] = HexChars[n and 0xF]
+    n = n shr 4
+    result[pos * 2] = HexChars[n]
+
 proc intToStr*(x: int, minchars: Positive = 1): string {.noSideEffect,
   rtl, extern: "nsuIntToStr".} =
   ## Converts `x` to its decimal representation.
@@ -1025,6 +1040,43 @@ proc parseHexInt*(s: string): int {.noSideEffect, procvar,
       inc(i)
     of '\0': break
     else: raise newException(ValueError, "invalid integer: " & s)
+
+proc generateHexCharToValueMap(): string =
+  ## Generate a string to map a hex digit to uint value
+  result = ""
+  for inp in 0..255:
+    let ch = chr(inp)
+    let o =
+      case ch:
+        of '0'..'9': inp - ord('0')
+        of 'a'..'f': inp - ord('a') + 10
+        of 'A'..'F': inp - ord('A') + 10
+        else: 17  # indicates an invalid hex char
+    result.add chr(o)
+
+const hexCharToValueMap = generateHexCharToValueMap()
+
+proc parseHexStr*(s: string): string {.noSideEffect, procvar,
+  rtl, extern: "nsuParseHexStr".} =
+  ## Convert hex-encoded string to byte string, e.g.:
+  ##
+  ## .. code-block:: nim
+  ##    hexToStr("00ff") == "\0\255"
+  ##
+  ## Raises ``ValueError`` for an invalid hex values. The comparison is
+  ## case-insensitive.
+  if s.len mod 2 != 0:
+    raise newException(ValueError, "Incorrect hex string len")
+  result = newString(s.len div 2)
+  var buf = 0
+  for pos, c in s:
+    let val = hexCharToValueMap[ord(c)].ord
+    if val == 17:
+      raise newException(ValueError, "Invalid hex char " & repr(c))
+    if pos mod 2 == 0:
+      buf = val
+    else:
+      result[pos div 2] = chr(val + buf shl 4)
 
 proc parseBool*(s: string): bool =
   ## Parses a value into a `bool`.
@@ -1198,7 +1250,7 @@ proc wordWrap*(s: string, maxLineWidth = 80,
     if len(word) > spaceLeft:
       if splitLongWords and len(word) > maxLineWidth:
         result.add(substr(word, 0, spaceLeft-1))
-        var w = spaceLeft+1
+        var w = spaceLeft
         var wordLeft = len(word) - spaceLeft
         while wordLeft > 0:
           result.add(newLine)
@@ -2245,7 +2297,7 @@ proc addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.
       case formatstr[i+1] # again we use the fact that strings
                           # are zero-terminated here
       of '#':
-        if num >% a.high: invalidFormatString()
+        if num > a.high: invalidFormatString()
         add s, a[num]
         inc i, 2
         inc num
@@ -2261,7 +2313,7 @@ proc addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.
           j = j * 10 + ord(formatstr[i]) - ord('0')
           inc(i)
         let idx = if not negative: j-1 else: a.len-j
-        if idx >% a.high: invalidFormatString()
+        if idx < 0 or idx > a.high: invalidFormatString()
         add s, a[idx]
       of '{':
         var j = i+2
@@ -2278,7 +2330,7 @@ proc addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.
           inc(j)
         if isNumber == 1:
           let idx = if not negative: k-1 else: a.len-k
-          if idx >% a.high: invalidFormatString()
+          if idx < 0 or idx > a.high: invalidFormatString()
           add s, a[idx]
         else:
           var x = findNormalized(substr(formatstr, i+2, j-1), a)
@@ -2461,6 +2513,11 @@ when isMainModule:
                it goes"""
     outp = " this is a\nlong text\n--\nmuchlongerthan10chars\nand here\nit goes"
   doAssert wordWrap(inp, 10, false) == outp
+
+  let
+    longInp = """ThisIsOneVeryLongStringWhichWeWillSplitIntoEightSeparatePartsNow"""
+    longOutp = "ThisIsOn\neVeryLon\ngStringW\nhichWeWi\nllSplitI\nntoEight\nSeparate\nPartsNow"
+  doAssert wordWrap(longInp, 8, true) == longOutp
 
   doAssert formatBiggestFloat(1234.567, ffDecimal, -1) == "1234.567000"
   doAssert formatBiggestFloat(1234.567, ffDecimal, 0) == "1235."

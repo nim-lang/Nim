@@ -7,7 +7,7 @@ apt-get install -y -qq build-essential git libcurl4-openssl-dev libsdl1.2-dev li
 
 gcc -v
 
-export PATH=$(pwd)/bin:$PATH
+export PATH=$(pwd)/bin${PATH:+:$PATH}
 
 # Nimble deps
 nim e install_nimble.nims

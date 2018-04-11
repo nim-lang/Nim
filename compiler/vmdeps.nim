@@ -209,6 +209,8 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
     else:
       result = mapTypeToBracket("ref", mRef, t, info)
   of tyVar: result = mapTypeToBracket("var", mVar, t, info)
+  of tyLent: result = mapTypeToBracket("lent", mBuiltinType, t, info)
+  of tySink: result = mapTypeToBracket("sink", mBuiltinType, t, info)
   of tySequence: result = mapTypeToBracket("seq", mSeq, t, info)
   of tyOpt: result = mapTypeToBracket("opt", mOpt, t, info)
   of tyProc:
@@ -274,7 +276,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
       result.add atomicType("static", mNone)
       if t.n != nil:
         result.add t.n.copyTree
-  of tyUnused, tyOptAsRef, tyUnused1, tyUnused2: internalError("mapTypeToAstX")
+  of tyUnused, tyOptAsRef: internalError("mapTypeToAstX")
 
 proc opMapTypeToAst*(t: PType; info: TLineInfo): PNode =
   result = mapTypeToAstX(t, info, false, true)

@@ -779,9 +779,21 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].intVal = ord(regs[rb].intVal <% regs[rc].intVal)
     of opcEqRef:
       decodeBC(rkInt)
-      regs[ra].intVal = ord((regs[rb].node.kind == nkNilLit and
-                             regs[rc].node.kind == nkNilLit) or
-                             regs[rb].node == regs[rc].node)
+      if regs[rb].kind == rkNodeAddr:
+        if regs[rc].kind == rkNodeAddr:
+          regs[ra].intVal = ord(regs[rb].nodeAddr == regs[rc].nodeAddr)
+        else:
+          assert regs[rc].kind == rkNode
+          # we know these cannot be equal
+          regs[ra].intVal = ord(false)
+      elif regs[rc].kind == rkNodeAddr:
+        assert regs[rb].kind == rkNode
+        # we know these cannot be equal
+        regs[ra].intVal = ord(false)
+      else:
+        regs[ra].intVal = ord((regs[rb].node.kind == nkNilLit and
+                              regs[rc].node.kind == nkNilLit) or
+                              regs[rb].node == regs[rc].node)
     of opcEqNimrodNode:
       decodeBC(rkInt)
       regs[ra].intVal =
@@ -1467,7 +1479,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           "request to create a NimNode of invalid kind")
       let cc = regs[rc].node
 
-      regs[ra].node = newNodeI(TNodeKind(int(k)),
+      let x = newNodeI(TNodeKind(int(k)),
         if cc.kind != nkNilLit:
           cc.info
         elif c.comesFromHeuristic.line > -1:
@@ -1476,7 +1488,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           c.callsite[1].info
         else:
           c.debug[pc])
-      regs[ra].node.flags.incl nfIsRef
+      x.flags.incl nfIsRef
+      # prevent crashes in the compiler resulting from wrong macros:
+      if x.kind == nkIdent: x.ident = c.cache.emptyIdent
+      regs[ra].node = x
     of opcNCopyNimNode:
       decodeB(rkNode)
       regs[ra].node = copyNode(regs[rb].node)

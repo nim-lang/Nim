@@ -141,12 +141,13 @@ The method call syntax conflicts with explicit generic instantiations:
 ``p[T](x)`` cannot be written as ``x.p[T]`` because ``x.p[T]`` is always
 parsed as ``(x.p)[T]``.
 
-**Future directions**: ``p[.T.]`` might be introduced as an alternative syntax
-to pass explicit types to a generic and then ``x.p[.T.]`` can be parsed as
-``x.(p[.T.])``.
-
 See also: `Limitations of the method call syntax
 <#templates-limitations-of-the-method-call-syntax>`_.
+
+The ``[: ]`` notation has been designed to mitigate this issue: ``x.p[:T]``
+is rewritten by the parser to ``p[T](x)``, ``x.p[:T](y)`` is rewritten to
+``p[T](x, y)``. Note that ``[: ]`` has no AST representation, the rewrite
+is performed directly in the parsing step.
 
 
 Properties
@@ -571,6 +572,7 @@ Closure iterators have other restrictions than inline iterators:
 3. ``return`` is allowed in a closure iterator (but rarely useful) and ends
    iteration.
 4. Neither inline nor closure iterators can be recursive.
+5. Closure iterators are not supported by the js backend.
 
 Iterators that are neither marked ``{.closure.}`` nor ``{.inline.}`` explicitly
 default to being inline, but this may change in future versions of the

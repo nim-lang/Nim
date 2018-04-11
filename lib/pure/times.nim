@@ -78,8 +78,11 @@ when defined(posix):
 elif defined(windows):
   import winlean
 
-  # newest version of Visual C++ defines time_t to be of 64 bits
-  type CTime {.importc: "time_t", header: "<time.h>".} = distinct int64
+  when defined(i386) and defined(gcc):
+    type CTime {.importc: "time_t", header: "<time.h>".} = distinct int32
+  else:
+    # newest version of Visual C++ defines time_t to be of 64 bits
+    type CTime {.importc: "time_t", header: "<time.h>".} = distinct int64
   # visual c's c runtime exposes these under a different name
   var timezone {.importc: "_timezone", header: "<time.h>".}: int
 
@@ -168,8 +171,8 @@ type
                      ## The ``times`` module only supplies implementations for the systems local time and UTC.
                      ## The members ``zoneInfoFromUtc`` and ``zoneInfoFromTz`` should not be accessed directly
                      ## and are only exported so that ``Timezone`` can be implemented by other modules.
-    zoneInfoFromUtc*: proc (time: Time): ZonedTime {.nimcall, tags: [], raises: [], benign .}
-    zoneInfoFromTz*:  proc (adjTime: Time): ZonedTime {.nimcall, tags: [], raises: [], benign .}
+    zoneInfoFromUtc*: proc (time: Time): ZonedTime {.tags: [], raises: [], benign.}
+    zoneInfoFromTz*:  proc (adjTime: Time): ZonedTime {.tags: [], raises: [], benign.}
     name*: string ## The name of the timezone, f.ex 'Europe/Stockholm' or 'Etc/UTC'. Used for checking equality.
                   ## Se also: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 
@@ -597,6 +600,18 @@ proc toTime*(dt: DateTime): Time {.tags: [], raises: [], benign.} =
 proc `-`*(dt1, dt2: DateTime): Duration =
   ## Compute the duration between ``dt1`` and ``dt2``.
   dt1.toTime - dt2.toTime
+
+proc `<`*(a, b: DateTime): bool =
+  ## Returns true iff ``a < b``, that is iff a happened before b.
+  return a.toTime < b.toTime
+
+proc `<=` * (a, b: DateTime): bool =
+  ## Returns true iff ``a <= b``.
+  return a.toTime <= b.toTime
+
+proc `==`*(a, b: DateTime): bool =
+  ## Returns true if ``a == b``, that is if both dates represent the same point in datetime.
+  return a.toTime == b.toTime
 
 proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
   let s = zt.adjTime.seconds
@@ -1305,6 +1320,14 @@ proc `$`*(time: Time): string {.tags: [], raises: [], benign.} =
 
 proc parseToken(dt: var DateTime; token, value: string; j: var int) =
   ## Helper of the parse proc to parse individual tokens.
+
+  # Overwrite system.`[]` to raise a ValueError on index out of bounds.
+  proc `[]`[T, U](s: string, x: HSlice[T, U]): string =
+    if x.a >= s.len or x.b >= s.len:
+      raise newException(ValueError, "Value is missing required tokens, got: " &
+                         s)
+    return system.`[]`(s, x)
+
   var sv: int
   case token
   of "d":
@@ -1752,7 +1775,7 @@ proc getLocalTime*(time: Time): DateTime {.tags: [], raises: [], benign, depreca
 
 proc getGMTime*(time: Time): DateTime {.tags: [], raises: [], benign, deprecated.} =
   ## Converts the calendar time `time` to broken-down time representation,
-  ## expressed in Coordinated Universal Time (UTC). 
+  ## expressed in Coordinated Universal Time (UTC).
   ##
   ## **Deprecated since v0.18.0:** use ``utc`` instead
   time.utc

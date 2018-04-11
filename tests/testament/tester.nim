@@ -71,13 +71,14 @@ proc getFileDir(filename: string): string =
   if not result.isAbsolute():
     result = getCurrentDir() / result
 
-proc nimcacheDir(filename, options: string): string =
+proc nimcacheDir(filename, options: string, target: TTarget): string =
   ## Give each test a private nimcache dir so they don't clobber each other's.
-  return "nimcache" / (filename & '_' & options.getMD5)
+  let hashInput = options & $target
+  return "nimcache" / (filename & '_' & hashInput.getMD5)
 
 proc callCompiler(cmdTemplate, filename, options: string,
                   target: TTarget, extraOptions=""): TSpec =
-  let nimcache = nimcacheDir(filename, options)
+  let nimcache = nimcacheDir(filename, options, target)
   let options = options & " --nimCache:" & nimcache.quoteShell & extraOptions
   let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
                        "options", options, "file", filename.quoteShell,
@@ -231,7 +232,7 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, target: TTarg
 proc generatedFile(test: TTest, target: TTarget): string =
   let (_, name, _) = test.name.splitFile
   let ext = targetToExt[target]
-  result = nimcacheDir(test.name, test.options) /
+  result = nimcacheDir(test.name, test.options, target) /
     (if target == targetJS: "" else: "compiler_") &
     name.changeFileExt(ext)
 
@@ -293,7 +294,6 @@ proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
 proc testSpec(r: var TResults, test: TTest, target = targetC) =
   let tname = test.name.addFileExt(".nim")
   #echo "TESTING ", tname
-  inc(r.total)
   var expected: TSpec
   if test.action != actionRunNoSpec:
     expected = parseSpec(tname)
@@ -304,12 +304,14 @@ proc testSpec(r: var TResults, test: TTest, target = targetC) =
   if expected.err == reIgnored:
     r.addResult(test, target, "", "", reIgnored)
     inc(r.skipped)
+    inc(r.total)
     return
 
   if expected.targets == {}:
     expected.targets.incl(target)
 
   for target in expected.targets:
+    inc(r.total)
     if target notin targets:
       r.addResult(test, target, "", "", reIgnored)
       inc(r.skipped)
@@ -334,7 +336,7 @@ proc testSpec(r: var TResults, test: TTest, target = targetC) =
       var exeFile: string
       if isJsTarget:
         let (_, file, _) = splitFile(tname)
-        exeFile = nimcacheDir(test.name, test.options) / file & ".js"
+        exeFile = nimcacheDir(test.name, test.options, target) / file & ".js"
       else:
         exeFile = changeFileExt(tname, ExeExt)
 
@@ -489,7 +491,7 @@ proc main() =
     else: echo r, r.data
   backend.close()
   var failed = r.total - r.passed - r.skipped
-  if failed > 0:
+  if failed != 0:
     echo "FAILURE! total: ", r.total, " passed: ", r.passed, " skipped: ", r.skipped
     quit(QuitFailure)
 

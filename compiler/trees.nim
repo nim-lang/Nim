@@ -102,7 +102,7 @@ proc isDeepConstExpr*(n: PNode): bool =
       if not isDeepConstExpr(n.sons[i]): return false
     if n.typ.isNil: result = true
     else:
-      let t = n.typ.skipTypes({tyGenericInst, tyDistinct, tyAlias})
+      let t = n.typ.skipTypes({tyGenericInst, tyDistinct, tyAlias, tySink})
       if t.kind in {tyRef, tyPtr}: return false
       if t.kind != tyObject or not isCaseObj(t.n):
         result = true
@@ -118,7 +118,7 @@ proc isRange*(n: PNode): bool {.inline.} =
       result = true
 
 proc whichPragma*(n: PNode): TSpecialWord =
-  let key = if n.kind == nkExprColonExpr: n.sons[0] else: n
+  let key = if n.kind in nkPragmaCallKinds and n.len > 0: n.sons[0] else: n
   if key.kind == nkIdent: result = whichKeyword(key.ident)
 
 proc unnestStmts(n, result: PNode) =

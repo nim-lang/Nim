@@ -35,7 +35,7 @@ proc isUndefined[T](x: T): bool {.inline.} = {.emit: "`result` = `x` === undefin
 
 proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
   if not typ.node.sons[e].isUndefined:
-    result = $typ.node.sons[e].name
+    result = makeNimstrLit(typ.node.sons[e].name)
   else:
     result = $e & " (invalid data!)"
 

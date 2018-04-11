@@ -60,7 +60,7 @@ type
     tkCurlyDotLe, tkCurlyDotRi, # {.  and  .}
     tkParDotLe, tkParDotRi,   # (. and .)
     tkComma, tkSemiColon,
-    tkColon, tkColonColon, tkEquals, tkDot, tkDotDot,
+    tkColon, tkColonColon, tkEquals, tkDot, tkDotDot, tkBracketLeColon,
     tkOpr, tkComment, tkAccent,
     tkSpaces, tkInfixOpr, tkPrefixOpr, tkPostfixOpr
 
@@ -98,7 +98,7 @@ const
     "tkTripleStrLit", "tkGStrLit", "tkGTripleStrLit", "tkCharLit", "(",
     ")", "[", "]", "{", "}", "[.", ".]", "{.", ".}", "(.", ".)",
     ",", ";",
-    ":", "::", "=", ".", "..",
+    ":", "::", "=", ".", "..", "[:",
     "tkOpr", "tkComment", "`",
     "tkSpaces", "tkInfixOpr",
     "tkPrefixOpr", "tkPostfixOpr"]
@@ -625,7 +625,15 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
   inc(L.bufpos)               # skip '\'
   case L.buf[L.bufpos]
   of 'n', 'N':
-    if tok.tokType == tkCharLit: lexMessage(L, errNnotAllowedInCharacter)
+    if gOldNewlines:
+      if tok.tokType == tkCharLit: lexMessage(L, errNnotAllowedInCharacter)
+      add(tok.literal, tnl)
+    else:
+      add(tok.literal, '\L')
+    inc(L.bufpos)
+  of 'p', 'P':
+    if tok.tokType == tkCharLit:
+      lexMessage(L, errGenerated, "\\p not allowed in character literal")
     add(tok.literal, tnl)
     inc(L.bufpos)
   of 'r', 'R', 'c', 'C':
@@ -747,7 +755,7 @@ proc getString(L: var TLexer, tok: var TToken, rawMode: bool) =
         tokenEndIgnore(tok, pos)
         pos = handleCRLF(L, pos)
         buf = L.buf
-        add(tok.literal, tnl)
+        add(tok.literal, "\n")
       of nimlexbase.EndOfFile:
         tokenEndIgnore(tok, pos)
         var line2 = L.lineNumber
@@ -1110,6 +1118,9 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
       inc(L.bufpos)
       if L.buf[L.bufpos] == '.' and L.buf[L.bufpos+1] != '.':
         tok.tokType = tkBracketDotLe
+        inc(L.bufpos)
+      elif L.buf[L.bufpos] == ':':
+        tok.tokType = tkBracketLeColon
         inc(L.bufpos)
       else:
         tok.tokType = tkBracketLe
