@@ -572,6 +572,8 @@ proc genBreakStmt(p: BProc, t: PNode) =
   lineF(p, cpsStmts, "goto $1;$n", [label])
 
 proc genRaiseStmt(p: BProc, t: PNode) =
+  if p.module.compileToCpp:
+    discard cgsym(p.module, "popCurrentExceptionEx")
   if p.nestedTryStmts.len > 0 and p.nestedTryStmts[^1].inExcept:
     # if the current try stmt have a finally block,
     # we must execute it before reraising
