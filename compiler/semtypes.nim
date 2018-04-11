@@ -184,6 +184,10 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
   checkSonsLen(n, 3)
   result = newOrPrevType(tyRange, prev, c)
   result.n = newNodeI(nkRange, n.info)
+  # always create a 'valid' range type, but overwrite it later
+  # because 'semExprWithType' can raise an exception. See bug #6895.
+  addSonSkipIntLit(result, errorType(c))
+
   if (n[1].kind == nkEmpty) or (n[2].kind == nkEmpty):
     localError(n.info, errRangeIsEmpty)
 
@@ -216,7 +220,7 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
   if weakLeValue(result.n[0], result.n[1]) == impNo:
     localError(n.info, errRangeIsEmpty)
 
-  addSonSkipIntLit(result, rangeT[0])
+  result[0] = rangeT[0]
 
 proc semRange(c: PContext, n: PNode, prev: PType): PType =
   result = nil
