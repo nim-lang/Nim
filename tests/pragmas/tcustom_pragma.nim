@@ -21,7 +21,7 @@ block:
 import custom_pragma 
 block: # A bit more advanced case
   type 
-    Subfield = object
+    Subfield {.defaultValue: "catman".} = object
       c {.serializationKey: "cc".}: float
 
     MySerializable = object
@@ -31,7 +31,6 @@ block: # A bit more advanced case
       d {.alternativeKey("df", 5).}: float
       e {.alternativeKey(V = 5).}: seq[bool] 
 
-
   proc myproc(x: int, s: string) {.alternativeKey(V = 5), serializationKey"myprocSS".} = 
     echo x, s
 
@@ -39,7 +38,7 @@ block: # A bit more advanced case
   var s: MySerializable
 
   const aDefVal = s.a.getCustomPragmaVal(defaultValue)
-  static: assert(aDefVal == 5)
+  static: assert(aDefVal == 5)  
 
   const aSerKey = s.a.getCustomPragmaVal(serializationKey)
   static: assert(aSerKey == "asdf")
@@ -51,3 +50,37 @@ block: # A bit more advanced case
   static: assert(procSerKey == "myprocSS")
 
   static: assert(hasCustomPragma(myproc, alternativeKey))
+
+  # pragma on an object
+  static: 
+    assert Subfield.hasCustomPragma(defaultValue)
+    assert(Subfield.getCustomPragmaVal(defaultValue) == "catman")
+
+    assert hasCustomPragma(type(s.field), defaultValue)
+
+block: # ref types
+  type 
+    Node = object of RootObj
+      left {.serializationKey:"l".}, right {.serializationKey:"r".}: NodeRef
+    NodeRef = ref Node
+
+    SpecialNodeRef = ref object of NodeRef
+      data {.defaultValue"none".}: string
+
+  var s = NodeRef()
+
+  const 
+    leftSerKey = getCustomPragmaVal(s.left, serializationKey)
+    rightSerKey = getCustomPragmaVal(s.right, serializationKey)
+  static:
+    assert leftSerKey == "l"
+    assert rightSerKey == "r"
+
+  var specS = SpecialNodeRef()
+
+  const
+    dataDefVal = hasCustomPragma(specS.data, defaultValue)
+    specLeftSerKey = hasCustomPragma(specS.left, serializationKey)
+  static:
+    assert dataDefVal == true
+    assert specLeftSerKey == true

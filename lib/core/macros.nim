@@ -1187,21 +1187,37 @@ macro expandMacros*(body: typed): untyped =
   echo result.toStrLit
 
 proc customPragmaNode(n: NimNode): NimNode =
-  expectKind(n, {nnkSym, nnkDotExpr})
+  expectKind(n, {nnkSym, nnkDotExpr, nnkBracketExpr, nnkTypeOfExpr})
+  let typ = n.getType()
+  if typ.typeKind == ntyTypeDesc:
+    return typ[1].symbol.getImpl()[0][1]
+
   if n.kind == nnkSym:
     let sym = n.symbol.getImpl()
     sym.expectRoutine()
     result = sym.pragma
   elif n.kind == nnkDotExpr:
-    let typDef = getImpl(getTypeInst(n[0]).symbol)
-    typDef.expectKind(nnkTypeDef)
-    typDef[2].expectKind(nnkObjectTy)
-    let recList = typDef[2][2]
-    for identDefs in recList:
-      for i in 0 .. identDefs.len - 3:
-        if identDefs[i].kind == nnkPragmaExpr and
-           identDefs[i][0].kind == nnkIdent and $identDefs[i][0] == $n[1]:
-          return identDefs[i][1]
+    var typDef = getImpl(getTypeInst((if n[0].kind == nnkHiddenDeref: n[0][0] else: n[0])).symbol)
+    while typDef != nil:
+      typDef.expectKind(nnkTypeDef)
+      typDef[2].expectKind({nnkRefTy, nnkObjectTy})
+      let isRef = typDef[2].kind == nnkRefTy
+      if isRef and typDef[2][0].kind == nnkSym: # defines ref type for another object
+        typDef = getImpl(typDef[2][0].symbol)
+      else: # object definition, maybe an object directly defined as a ref type
+        let 
+          obj = (if isRef: typDef[2][0] else: typDef[2])
+          recList = obj[2]
+        for identDefs in recList:
+          for i in 0 .. identDefs.len - 3:
+            if identDefs[i].kind == nnkPragmaExpr and
+              identDefs[i][0].kind == nnkIdent and $identDefs[i][0] == $n[1]:
+              return identDefs[i][1]
+
+        if obj[1].kind == nnkOfInherit: # explore the parent object
+          typDef = getImpl(obj[1][0].symbol)
+        else:
+          typDef = nil
 
 macro hasCustomPragma*(n: typed, cp: typed{nkSym}): untyped =
   ## Expands to `true` if expression `n` which is expected to be `nnkDotExpr`
@@ -1236,7 +1252,8 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
   for p in pragmaNode:
     if p.kind in nnkPragmaCallKinds and p.len > 0 and p[0].kind == nnkSym and p[0] == cp:
       return p[1]
-  return newEmptyNode()
+
+  error(n.repr & " doesn't have a pragma named " & cp.repr()) # returning an empty node results in most cases in a cryptic error, 
 
 
 when not defined(booting):
