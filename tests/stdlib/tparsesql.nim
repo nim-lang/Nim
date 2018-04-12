@@ -26,10 +26,9 @@ doAssert $parseSQL("SELECT foo, bar, baz FROM table limit 10") == "select foo, b
 doAssert $parseSQL("SELECT foo AS bar FROM table") == "select foo as bar from table;"
 doAssert $parseSQL("SELECT foo AS foo_prime, bar AS bar_prime, baz AS baz_prime FROM table") == "select foo as foo_prime, bar as bar_prime, baz as baz_prime from table;"
 doAssert $parseSQL("SELECT * FROM table") == "select * from table;"
-
-
-#TODO add count(*)
-#doAssert $parseSQL("SELECT COUNT(*) FROM table"
+doAssert $parseSQL("SELECT count(*) FROM table") == "select count(*) from table;"
+doAssert $parseSQL("SELECT count(*) as 'Total' FROM table") == "select count(*) as 'Total' from table;"
+doAssert $parseSQL("SELECT count(*) as 'Total', sum(a) as 'Aggr' FROM table") == "select count(*) as 'Total', sum(a) as 'Aggr' from table;"
 
 doAssert $parseSQL("""
 SELECT * FROM table
@@ -49,6 +48,23 @@ FROM
 WHERE
   a and not b
 """) == "select * from table where a and not b;"
+
+doAssert $parseSQL("""
+SELECT * FROM table
+ORDER BY 1
+""") == "select * from table order by 1;"
+
+doAssert $parseSQL("""
+SELECT * FROM table
+GROUP BY 1
+ORDER BY 1
+""") == "select * from table group by 1 order by 1;"
+
+doAssert $parseSQL("""
+SELECT * FROM table
+ORDER BY 1
+LIMIT 100
+""") == "select * from table order by 1 limit 100;"
 
 doAssert $parseSQL("""
 SELECT * FROM table
@@ -185,7 +201,10 @@ AND Country='USA'
 ORDER BY CustomerName;
 """) == "select * from Customers where(CustomerName like 'L%' or CustomerName like 'R%' or CustomerName like 'W%') and Country = 'USA' order by CustomerName;"
 
-# parse keywords as identifires
+# parse quoted keywords as identifires
 doAssert $parseSQL("""
 SELECT `SELECT`, `FROM` as `GROUP` FROM `WHERE`;
+""") == """select "SELECT", "FROM" as "GROUP" from "WHERE";"""
+doAssert $parseSQL("""
+SELECT "SELECT", "FROM" as "GROUP" FROM "WHERE";
 """) == """select "SELECT", "FROM" as "GROUP" from "WHERE";"""
