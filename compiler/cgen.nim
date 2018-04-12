@@ -894,7 +894,7 @@ proc genProc(m: BModule, prc: PSym) =
         if not containsOrIncl(m.g.generatedHeader.declaredThings, prc.id):
           genProcAux(m.g.generatedHeader, prc)
 
-proc genVarPrototypeAux(m: BModule, n: PNode) =
+proc genVarPrototype(m: BModule, n: PNode) =
   #assert(sfGlobal in sym.flags)
   let sym = n.sym
   useHeader(m, sym)
@@ -913,9 +913,6 @@ proc genVarPrototypeAux(m: BModule, n: PNode) =
       if sfRegister in sym.flags: add(m.s[cfsVars], " register")
       if sfVolatile in sym.flags: add(m.s[cfsVars], " volatile")
       addf(m.s[cfsVars], " $1;$n", [sym.loc.r])
-
-proc genVarPrototype(m: BModule, n: PNode) =
-  genVarPrototypeAux(m, n)
 
 proc addIntTypes(result: var Rope) {.inline.} =
   addf(result, "#define NIM_NEW_MANGLING_RULES" & tnl &

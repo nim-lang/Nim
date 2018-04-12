@@ -1768,6 +1768,9 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       let constVal = if s.ast != nil: s.ast else: s.typ.n
       gen(c, constVal, dest)
     of skEnumField:
+      # we never reach this case - as of the time of this comment,
+      # skEnumField is folded to an int in semfold.nim, but this code
+      # remains for robustness
       if dest < 0: dest = c.getTemp(n.typ)
       if s.position >= low(int16) and s.position <= high(int16):
         c.gABx(n, opcLdImmInt, dest, s.position)
