@@ -264,7 +264,7 @@ proc semTry(c: PContext, n: PNode): PNode =
     if isImportedException(typ):
       is_imported = true
     elif not isException(typ):
-      localError(typeNode.info, errExprCannotBeRaised)   
+      localError(typeNode.info, errExprCannotBeRaised)
 
     if containsOrIncl(check, typ.id):
       localError(typeNode.info, errExceptionAlreadyHandled)
@@ -289,7 +289,7 @@ proc semTry(c: PContext, n: PNode): PNode =
       if a.len == 2 and a[0].kind == nkBracket:
         # rewrite ``except [a, b, c]: body`` -> ```except a, b, c: body```
         a.sons[0..0] = a[0].sons
-      
+
       if a.len == 2 and a[0].isInfixAs():
         # support ``except Exception as ex: body``
         let is_imported = semExceptBranchType(a[0][1])
@@ -310,7 +310,7 @@ proc semTry(c: PContext, n: PNode): PNode =
 
         if is_native and is_imported:
           localError(a[0].info, "Mix of imported and native exception types is not allowed in one except branch")
-     
+
     elif a.kind != nkFinally:
       illFormedAst(n)
 
@@ -744,12 +744,12 @@ proc semRaise(c: PContext, n: PNode): PNode =
   result = n
   checkSonsLen(n, 1)
   if n[0].kind != nkEmpty:
-   
+
     n[0] = semExprWithType(c, n[0])
     let typ = n[0].typ
 
     if not isImportedException(typ):
-    
+
       if typ.kind != tyRef or typ.lastSon.kind != tyObject:
         localError(n.info, errExprCannotBeRaised)
 
@@ -1513,7 +1513,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     n.sons[patternPos] = semPattern(c, n.sons[patternPos])
   if s.kind == skIterator:
     s.typ.flags.incl(tfIterator)
-
+  elif s.kind == skFunc:
+    incl(s.flags, sfNoSideEffect)
+    incl(s.typ.flags, tfNoSideEffect)
   var proto = searchForProc(c, oldScope, s)
   if proto == nil or isAnon:
     if s.kind == skIterator:
