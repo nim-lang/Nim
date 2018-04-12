@@ -1,11 +1,11 @@
 import macros
- 
+
 block:
   template myAttr() {.pragma.}
 
   proc myProc():int {.myAttr.} = 2
   const hasMyAttr = myProc.hasCustomPragma(myAttr)
-  static: 
+  static:
     assert(hasMyAttr)
 
 block:
@@ -14,13 +14,13 @@ block:
   type MyObj = object
     myField1, myField2 {.myAttr: "hi".}: int
   var o: MyObj
-  static: 
+  static:
     assert o.myField2.hasCustomPragma(myAttr)
     assert(not o.myField1.hasCustomPragma(myAttr))
 
-import custom_pragma 
+import custom_pragma
 block: # A bit more advanced case
-  type 
+  type
     Subfield {.defaultValue: "catman".} = object
       c {.serializationKey: "cc".}: float
 
@@ -29,16 +29,16 @@ block: # A bit more advanced case
       b {.custom_pragma.defaultValue"hello".} : int
       field: Subfield
       d {.alternativeKey("df", 5).}: float
-      e {.alternativeKey(V = 5).}: seq[bool] 
+      e {.alternativeKey(V = 5).}: seq[bool]
 
-  proc myproc(x: int, s: string) {.alternativeKey(V = 5), serializationKey"myprocSS".} = 
+  proc myproc(x: int, s: string) {.alternativeKey(V = 5), serializationKey"myprocSS".} =
     echo x, s
 
 
   var s: MySerializable
 
   const aDefVal = s.a.getCustomPragmaVal(defaultValue)
-  static: assert(aDefVal == 5)  
+  static: assert(aDefVal == 5)
 
   const aSerKey = s.a.getCustomPragmaVal(serializationKey)
   static: assert(aSerKey == "asdf")
@@ -52,14 +52,14 @@ block: # A bit more advanced case
   static: assert(hasCustomPragma(myproc, alternativeKey))
 
   # pragma on an object
-  static: 
+  static:
     assert Subfield.hasCustomPragma(defaultValue)
     assert(Subfield.getCustomPragmaVal(defaultValue) == "catman")
 
     assert hasCustomPragma(type(s.field), defaultValue)
 
 block: # ref types
-  type 
+  type
     Node = object of RootObj
       left {.serializationKey:"l".}, right {.serializationKey:"r".}: NodeRef
     NodeRef = ref Node
@@ -73,7 +73,7 @@ block: # ref types
 
   var s = NodeRef()
 
-  const 
+  const
     leftSerKey = getCustomPragmaVal(s.left, serializationKey)
     rightSerKey = getCustomPragmaVal(s.right, serializationKey)
   static:
