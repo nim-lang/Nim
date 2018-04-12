@@ -54,3 +54,4 @@
 
 - The VM's instruction count limit was raised to 1 billion instructions in order
   to support more complex computations at compile-time.
+- Added ``macros.getProjectPath`` and ``ospaths.putEnv`` procs to VM.
