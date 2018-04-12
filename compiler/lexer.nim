@@ -1003,6 +1003,10 @@ proc skip(L: var TLexer, tok: var TToken) =
   var buf = L.buf
   tokenBegin(tok, pos)
   tok.strongSpaceA = 0
+  when defined(nimpretty):
+    var hasComment = false
+    tok.commentOffsetA = L.offsetBase + pos
+    tok.commentOffsetB = tok.commentOffsetA
   while true:
     case buf[pos]
     of ' ':
@@ -1021,6 +1025,7 @@ proc skip(L: var TLexer, tok: var TToken) =
           inc(pos)
           inc(indent)
         elif buf[pos] == '#' and buf[pos+1] == '[':
+          when defined(nimpretty): hasComment = true
           skipMultiLineComment(L, tok, pos+2, false)
           pos = L.bufpos
           buf = L.buf
@@ -1034,14 +1039,11 @@ proc skip(L: var TLexer, tok: var TToken) =
     of '#':
       # do not skip documentation comment:
       if buf[pos+1] == '#': break
-      when defined(nimpretty):
-        tok.commentOffsetA = L.offsetBase + pos
+      when defined(nimpretty): hasComment = true
       if buf[pos+1] == '[':
         skipMultiLineComment(L, tok, pos+2, false)
         pos = L.bufpos
         buf = L.buf
-        when defined(nimpretty):
-          tok.commentOffsetB = L.offsetBase + pos
       else:
         tokenBegin(tok, pos)
         while buf[pos] notin {CR, LF, nimlexbase.EndOfFile}: inc(pos)
@@ -1053,6 +1055,9 @@ proc skip(L: var TLexer, tok: var TToken) =
   tokenEndPrevious(tok, pos-1)
   L.bufpos = pos
   when defined(nimpretty):
+    if hasComment:
+      tok.commentOffsetB = L.offsetBase + pos
+      tok.tokType = tkComment
     if gIndentationWidth <= 0:
       gIndentationWidth = tok.indent
 
@@ -1074,6 +1079,8 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
   else:
     tok.indent = -1
   skip(L, tok)
+  when defined(nimpretty):
+    if tok.tokType == tkComment: return
   var c = L.buf[L.bufpos]
   tok.line = L.lineNumber
   tok.col = getColNumber(L, L.bufpos)
