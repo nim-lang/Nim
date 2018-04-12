@@ -246,10 +246,11 @@ else:
     var w = terminalWidthIoctl([0, 1, 2])   #Try standard file descriptors
     if w > 0: return w
     var cterm = newString(L_ctermid)        #Try controlling tty
-    var fd = open(ctermid(cstring(cterm)), O_RDONLY)
-    if fd != -1:
-      w = terminalWidthIoctl([ int(fd) ])
-    discard close(fd)
+    when not defined(android):
+      var fd = open(ctermid(cstring(cterm)), O_RDONLY)
+      if fd != -1:
+        w = terminalWidthIoctl([ int(fd) ])
+      discard close(fd)
     if w > 0: return w
     var s = getEnv("COLUMNS")               #Try standard env var
     if len(s) > 0 and parseInt(string(s), w) > 0 and w > 0:
@@ -264,10 +265,11 @@ else:
     var h = terminalHeightIoctl([0, 1, 2])  # Try standard file descriptors
     if h > 0: return h
     var cterm = newString(L_ctermid)        # Try controlling tty
-    var fd = open(ctermid(cstring(cterm)), O_RDONLY)
-    if fd != -1:
-      h = terminalHeightIoctl([ int(fd) ])
-    discard close(fd)
+    when not defined(android):
+      var fd = open(ctermid(cstring(cterm)), O_RDONLY)
+      if fd != -1:
+        h = terminalHeightIoctl([ int(fd) ])
+      discard close(fd)
     if h > 0: return h
     var s = getEnv("LINES")                 # Try standard env var
     if len(s) > 0 and parseInt(string(s), h) > 0 and h > 0:
