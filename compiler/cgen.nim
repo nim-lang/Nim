@@ -655,7 +655,7 @@ proc cgsym(m: BModule, name: string): Rope =
   result = sym.loc.r
 
 proc pushCgsym(m: BModule, name: string) = 
-  # add cgsym to lazy emit at module's finalization step
+  # add cgsym to delayed emit at module's finalization step
   m.cgsymStack.add(name)
 
 proc finishCgsym(m: BModule) =
