@@ -3,6 +3,8 @@
 ### Changes affecting backwards compatibility
 
 - The stdlib module ``future`` has been renamed to ``sugar``.
+- ``macros.callsite`` is now deprecated. Since the introduction of ``varargs``
+  parameters this became unnecessary.
 
 #### Breaking changes in the standard library
 
