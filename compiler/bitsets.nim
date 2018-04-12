@@ -72,24 +72,25 @@ proc bitSetContains(x, y: TBitSet): bool =
   result = true
 
 # Number of set bits for all values of int8
-const populationCount: array[low(int8)..high(int8), int8] = [
-  1.int8, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 
-  2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 
-  2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 
-  3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 
-  2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 
-  3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 
-  3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7, 
-  4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8, 
-  0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, 
-  1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 
-  1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 
-  2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 
-  1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 
-  2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 
-  2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6, 
-  3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7
-]
+const populationCount: array[low(int8)..high(int8), int8] = block:
+    var arr: array[low(int8)..high(int8), int8]
+
+    proc countSetBits(x: int8): int8 =
+      return
+        ( x and 0b00000001'i8) +
+        ((x and 0b00000010'i8) shr 1) +
+        ((x and 0b00000100'i8) shr 2) +
+        ((x and 0b00001000'i8) shr 3) +
+        ((x and 0b00010000'i8) shr 4) +
+        ((x and 0b00100000'i8) shr 5) +
+        ((x and 0b01000000'i8) shr 6) +
+        ((x and 0b10000000'i8) shr 7)
+        
+
+    for it in low(int8)..high(int8):
+      arr[it] = countSetBits(it)
+
+    arr
 
 proc bitSetCard(x: TBitSet): BiggestInt =
   for it in x:
