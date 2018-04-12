@@ -516,15 +516,15 @@ proc `-+-`*[A](s1, s2: HashSet[A]): HashSet[A] {.inline.} =
   ## Alias for `symmetricDifference(s1, s2) <#symmetricDifference>`_.
   result = symmetricDifference(s1, s2)
 
-proc `+=`*[A](s1: var HashSet, s2: HashSet[A]) {.inline.} =
+proc `+=`*[A](s1: var HashSet[A], s2: HashSet[A]) {.inline.} =
   ## Alias for `s1 = union(s1, s2) <#union>`_.
   s1 = union(s1, s2)
 
-proc `*=`*[A](s1: var HashSet, s2: HashSet[A]) {.inline.} =
+proc `*=`*[A](s1: var HashSet[A], s2: HashSet[A]) {.inline.} =
   ## Alias for `s1 = intersection(s1, s2) <#intersection>`_.
   s1 = intersection(s1, s2)
 
-proc `-=`*[A](s1: var HashSet, s2: HashSet[A]) {.inline.} =
+proc `-=`*[A](s1: var HashSet[A], s2: HashSet[A]) {.inline.} =
   ## Alias for `s1 = difference(s1, s2) <#difference>`_.
   s1 = difference(s1, s2)
 
