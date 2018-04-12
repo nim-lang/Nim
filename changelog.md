@@ -8,6 +8,8 @@
 
 - ``re.split`` for empty regular expressions now yields every character in
   the string which is what other programming languages chose to do.
+- The returned tuple of ``system.instantiationInfo`` now has a third field
+  containing the column of the instantiation.
 
 - ``cookies.setCookie` no longer assumes UTC for the expiration date.
 
