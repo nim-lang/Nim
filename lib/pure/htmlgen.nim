@@ -38,7 +38,8 @@ const
 
 proc getIdent(e: NimNode): string {.compileTime.} =
   case e.kind
-  of nnkIdent: result = normalize($e.ident)
+  of nnkIdent:
+    result = e.strVal.normalize
   of nnkAccQuoted:
     result = getIdent(e[0])
     for i in 1 .. e.len-1:
