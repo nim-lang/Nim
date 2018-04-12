@@ -208,6 +208,16 @@ proc asyncTests(r: var TResults, cat: Category, options: string) =
 proc debuggerTests(r: var TResults, cat: Category, options: string) =
   testNoSpec r, makeTest("tools/nimgrep", options & " --debugger:on", cat)
 
+# ------------------------- CPP tests -----------------------------------------
+proc cppTests(r: var TResults, cat: Category, options: string) =
+  template test(filename: untyped) =
+    testSpec r, makeTest(filename, options, cat,
+                         actionRun), targetCPP
+    testSpec r, makeTest(filename, options & " -d:release", cat,
+                         actionRun), targetCPP
+  for t in os.walkFiles("tests/cpp/*.nim"):
+    test(t)
+
 # ------------------------- JS tests ------------------------------------------
 
 proc jsTests(r: var TResults, cat: Category, options: string) =
@@ -458,6 +468,8 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
     testNimblePackages(r, cat, pfAll)
   of "niminaction":
     testNimInAction(r, cat, options)
+  of "cpp":
+    cppTests(r, cat, options)
   of "untestable":
     # We can't test it because it depends on a third party.
     discard # TODO: Move untestable tests to someplace else, i.e. nimble repo.
