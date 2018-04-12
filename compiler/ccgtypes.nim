@@ -580,10 +580,9 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
           # Add cleanup destructor to Exception base class
           appcg(m, result, "~$1() {if(this->raise_id) popCurrentExceptionEx(this->raise_id);}$n", [name])
           # hack: forward declare popCurrentExceptionEx() on top of type description,
-          # proper request to generate popCurrentExceptionEx not possible for 2 reasons:
-          # generated function will be below declared Exception type and circular dependency
-          # between Exception and popCurrentExceptionEx function
+          # otherwise generated proc will be below declared Exception type
           result = genProcHeader(m, magicsys.getCompilerProc("popCurrentExceptionEx")) & ";" & rnl & result
+          pushCgsym(m, "popCurrentExceptionEx")
       hasField = true
     else:
       appcg(m, result, " {$n  $1 Sup;$n",

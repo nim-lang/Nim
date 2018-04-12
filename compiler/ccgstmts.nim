@@ -571,8 +571,6 @@ proc genBreakStmt(p: BProc, t: PNode) =
   lineF(p, cpsStmts, "goto $1;$n", [label])
 
 proc genRaiseStmt(p: BProc, t: PNode) =
-  if p.module.compileToCpp:
-    discard cgsym(p.module, "popCurrentExceptionEx")
   if p.nestedTryStmts.len > 0 and p.nestedTryStmts[^1].inExcept:
     # if the current try stmt have a finally block,
     # we must execute it before reraising
@@ -812,7 +810,6 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   if not isEmptyType(t.typ) and d.k == locNone:
     getTemp(p, t.typ, d)
   genLineDir(p, t)
-  discard cgsym(p.module, "popCurrentExceptionEx")
   add(p.nestedTryStmts, (t, false))
   startBlock(p, "try {$n")
   expr(p, t[0], d)
