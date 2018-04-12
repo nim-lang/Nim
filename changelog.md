@@ -3,6 +3,8 @@
 ### Changes affecting backwards compatibility
 
 - The stdlib module ``future`` has been renamed to ``sugar``.
+- ``macros.callsite`` is now deprecated. Since the introduction of ``varargs``
+  parameters this became unnecessary.
 
 #### Breaking changes in the standard library
 
@@ -35,6 +37,7 @@
 
 - Dot calls combined with explicit generic instantiations can now be written
   as ``x.y[:z]``. ``x.y[:z]`` that is transformed into ``y[z](x)`` in the parser.
+- ``func`` is now an alias for ``proc {.noSideEffect.}``.
 
 ### Language changes
 
@@ -43,7 +46,7 @@
   the use of `static[T]` types.
   (#6415)
 
-- Native C++ exceptions can now be imported with `importcpp` pragma. 
+- Native C++ exceptions can now be imported with `importcpp` pragma.
   Imported exceptions can be raised and caught just like Nim exceptions.
   More details in language manual.
 
