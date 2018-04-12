@@ -4,9 +4,9 @@ block:
   template myAttr() {.pragma.}
 
   proc myProc():int {.myAttr.} = 2
-  const myAttrIdx = myProc.hasCustomPragma(myAttr)
+  const hasMyAttr = myProc.hasCustomPragma(myAttr)
   static: 
-    assert(myAttrIdx)
+    assert(hasMyAttr)
 
 block:
   template myAttr(a: string) {.pragma.}
@@ -68,6 +68,9 @@ block: # ref types
     SpecialNodeRef = ref object of NodeRef
       data {.defaultValue"none".}: string
 
+    MyFile {.defaultValue: "closed".} = ref object
+      path {.defaultValue: "invalid".}: string
+
   var s = NodeRef()
 
   const 
@@ -91,3 +94,11 @@ block: # ref types
     ptrRightSerKey = getCustomPragmaVal(s.right, serializationKey)
   static:
     assert ptrRightSerKey == "r"
+
+  var f = MyFile()
+  const
+    fileDefVal = f.getCustomPragmaVal(defaultValue)
+    filePathDefVal = f.path.getCustomPragmaVal(defaultValue)
+  static:
+    assert fileDefVal == "closed"
+    assert filePathDefVal == "invalid"

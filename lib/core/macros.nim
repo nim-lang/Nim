@@ -1224,22 +1224,25 @@ macro expandMacros*(body: typed): untyped =
 
 proc customPragmaNode(n: NimNode): NimNode =
   expectKind(n, {nnkSym, nnkDotExpr, nnkBracketExpr, nnkTypeOfExpr})
-  let typ = n.getType()
-  if typ.typeKind == ntyTypeDesc:
-    return typ[1].symbol.getImpl()[0][1]
+  let 
+    typ = n.getTypeInst()
 
-  if n.kind == nnkSym:
-    let sym = n.getImpl()
-    sym.expectRoutine()
-    result = sym.pragma
-  elif n.kind == nnkDotExpr:
+  if n.kind == nnkSym: # either an variable or a proc
+    let impl = n.getImpl()
+    if impl.kind in RoutineNodes:
+      return impl.pragma
+
+  if typ.typeKind == ntyTypeDesc or n.kind == nnkSym:
+    let impl = (if typ.typeKind == ntyTypeDesc: typ[1] else: typ).getImpl()
+    return impl[0][1]
+  if n.kind == nnkDotExpr:
     var typDef = getImpl(getTypeInst((if n[0].kind == nnkHiddenDeref: n[0][0] else: n[0])).symbol)
     while typDef != nil:
       typDef.expectKind(nnkTypeDef)
       typDef[2].expectKind({nnkRefTy, nnkPtrTy, nnkObjectTy})
       let isRef = typDef[2].kind in {nnkRefTy, nnkPtrTy}
       if isRef and typDef[2][0].kind == nnkSym: # defines ref type for another object
-        typDef = getImpl(typDef[2][0].symbol)
+        typDef = getImpl(typDef[2][0])
       else: # object definition, maybe an object directly defined as a ref type
         let 
           obj = (if isRef: typDef[2][0] else: typDef[2])
@@ -1251,21 +1254,27 @@ proc customPragmaNode(n: NimNode): NimNode =
               return identDefs[i][1]
 
         if obj[1].kind == nnkOfInherit: # explore the parent object
-          typDef = getImpl(obj[1][0].symbol)
+          typDef = getImpl(obj[1][0])
         else:
           typDef = nil
 
 macro hasCustomPragma*(n: typed, cp: typed{nkSym}): untyped =
   ## Expands to `true` if expression `n` which is expected to be `nnkDotExpr`
-  ## has custom pragma `cp`.
+  ## (if checking a field), a proc or a type has custom pragma `cp`.
+  ##
+  ## See also `getCustomPragmaVal`.
   ##
   ## .. code-block:: nim
   ##   template myAttr() {.pragma.}
   ##   type
   ##     MyObj = object
   ##       myField {.myAttr.}: int
+  ##
+  ##   proc myProc() {.myAttr.} = discard
+  ##
   ##   var o: MyObj
-  ##   assert(o.myField.hasCustomPragma(myAttr) == 0)
+  ##   assert(o.myField.hasCustomPragma(myAttr))
+  ##   assert(myProc.hasCustomPragma(myAttr))
   let pragmaNode = customPragmaNode(n)
   for p in pragmaNode:
     if (p.kind == nnkSym and p == cp) or
@@ -1275,15 +1284,19 @@ macro hasCustomPragma*(n: typed, cp: typed{nkSym}): untyped =
 
 macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
   ## Expands to value of custom pragma `cp` of expression `n` which is expected
-  ## to be `nnkDotExpr`.
+  ## to be `nnkDotExpr`, a proc or a type.
+  ##
+  ## See also `hasCustomPragma`
   ##
   ## .. code-block:: nim
   ##   template serializationKey(key: string) {.pragma.}
   ##   type
-  ##     MyObj = object
+  ##     MyObj {.serializationKey: "mo".} = object
   ##       myField {.serializationKey: "mf".}: int
   ##   var o: MyObj
   ##   assert(o.myField.getCustomPragmaVal(serializationKey) == "mf")
+  ##   assert(o.getCustomPragmaVal(serializationKey) == "mo")
+  ##   assert(MyObj.getCustomPragmaVal(serializationKey) == "mo")
   let pragmaNode = customPragmaNode(n)
   for p in pragmaNode:
     if p.kind in nnkPragmaCallKinds and p.len > 0 and p[0].kind == nnkSym and p[0] == cp:
