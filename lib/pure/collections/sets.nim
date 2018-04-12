@@ -528,10 +528,6 @@ proc `-=`*[A](s1: var HashSet, s2: HashSet[A]) {.inline.} =
   ## Alias for `s1 = difference(s1, s2) <#difference>`_.
   s1 = difference(s1, s2)
 
-proc `-+-=`*[A](s1: var HashSet, s2: HashSet[A]) {.inline.} =
-  ## Alias for `s1 = symmetricDifference(s1, s2) <#symmetricDifference>`_.
-  s1 = symmetricDifference(s1, s2)
-
 proc disjoint*[A](s1, s2: HashSet[A]): bool =
   ## Returns true iff the sets `s1` and `s2` have no items in common.
   ##
@@ -1054,8 +1050,6 @@ when isMainModule and not defined(release):
       d = b
       c -= d
       assert c == toSet([1, 2])
-      d -+-= a
-      assert d == toSet([1, 2, 4, 5])
 
     block mapSet:
       var a = toSet([1, 2, 3])
