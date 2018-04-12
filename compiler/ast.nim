@@ -1679,9 +1679,9 @@ proc isImportedException*(t: PType): bool =
   assert(t != nil)
   if optNoCppExceptions in gGlobalOptions:
     return false
-  
+
   let base = t.skipTypes({tyAlias, tyPtr, tyDistinct, tyGenericInst})
-    
+
   if base.sym != nil and sfCompileToCpp in base.sym.flags:
     result = true
 

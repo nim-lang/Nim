@@ -37,7 +37,7 @@ proc isAssignedImmediately(n: PNode): bool {.inline.} =
     return false
   result = true
 
-proc inExceptBlockLen(p: BProc): int = 
+proc inExceptBlockLen(p: BProc): int =
   for x in p.nestedTryStmts:
     if x.inExcept: result.inc
 
@@ -189,8 +189,6 @@ proc genBreakState(p: BProc, n: PNode) =
     lineF(p, cpsStmts, "if ((((NI*) $1.ClE_0)[1]) < 0) break;$n", [rdLoc(a)])
   #  lineF(p, cpsStmts, "if (($1) < 0) break;$n", [rdLoc(a)])
 
-proc genVarPrototypeAux(m: BModule, n: PNode)
-
 proc genGotoVar(p: BProc; value: PNode) =
   if value.kind notin {nkCharLit..nkUInt64Lit}:
     localError(value.info, "'goto' target must be a literal value")
@@ -225,7 +223,7 @@ proc genSingleVar(p: BProc, a: PNode) =
     # Alternative construction using default constructor (which may zeromem):
     # if sfImportc notin v.flags: constructLoc(p.module.preInitProc, v.loc)
     if sfExportc in v.flags and p.module.g.generatedHeader != nil:
-      genVarPrototypeAux(p.module.g.generatedHeader, vn)
+      genVarPrototype(p.module.g.generatedHeader, vn)
     registerGcRoot(p, v)
   else:
     let value = a.sons[2]
@@ -271,28 +269,30 @@ proc genClosureVar(p: BProc, a: PNode) =
     loadInto(p, a.sons[0], a.sons[2], v)
 
 proc genVarStmt(p: BProc, n: PNode) =
-  for i in countup(0, sonsLen(n) - 1):
-    var a = n.sons[i]
-    if a.kind == nkCommentStmt: continue
-    if a.kind == nkIdentDefs:
-      # can be a lifted var nowadays ...
-      if a.sons[0].kind == nkSym:
-        genSingleVar(p, a)
-      else:
-        genClosureVar(p, a)
-    else:
-      genVarTuple(p, a)
-
-proc genConstStmt(p: BProc, t: PNode) =
-  for i in countup(0, sonsLen(t) - 1):
-    var it = t.sons[i]
+  for it in n.sons:
     if it.kind == nkCommentStmt: continue
-    if it.kind != nkConstDef: internalError(t.info, "genConstStmt")
-    var c = it.sons[0].sym
-    if c.typ.containsCompileTimeOnly: continue
-    elif c.typ.kind in ConstantDataTypes and lfNoDecl notin c.loc.flags and
-        c.ast.len != 0:
-      if not emitLazily(c): requestConstImpl(p, c)
+    if it.kind == nkIdentDefs:
+      # can be a lifted var nowadays ...
+      if it.sons[0].kind == nkSym:
+        genSingleVar(p, it)
+      else:
+        genClosureVar(p, it)
+    else:
+      genVarTuple(p, it)
+
+proc genConstStmt(p: BProc, n: PNode) =
+  for it in n.sons:
+    if it.kind == nkCommentStmt: continue
+    if it.kind != nkConstDef: internalError(n.info, "genConstStmt")
+
+    let sym = it.sons[0].sym
+    if sym.typ.containsCompileTimeOnly or
+        sym.typ.kind notin ConstantDataTypes or
+        sym.ast.len == 0 or
+        emitLazily(sym):
+      continue
+
+    requestConstImpl(p, sym)
 
 proc genIf(p: BProc, n: PNode, d: var TLoc) =
   #
@@ -313,10 +313,9 @@ proc genIf(p: BProc, n: PNode, d: var TLoc) =
     getTemp(p, n.typ, d)
   genLineDir(p, n)
   let lend = getLabel(p)
-  for i in countup(0, sonsLen(n) - 1):
+  for it in n.sons:
     # bug #4230: avoid false sharing between branches:
     if d.k == locTemp and isEmptyType(n.typ): d.k = locNone
-    let it = n.sons[i]
     if it.len == 2:
       when newScopeForIf: startBlock(p)
       initLocExprSingleUse(p, it.sons[0], a)
@@ -572,6 +571,8 @@ proc genBreakStmt(p: BProc, t: PNode) =
   lineF(p, cpsStmts, "goto $1;$n", [label])
 
 proc genRaiseStmt(p: BProc, t: PNode) =
+  if p.module.compileToCpp:
+    discard cgsym(p.module, "popCurrentExceptionEx")
   if p.nestedTryStmts.len > 0 and p.nestedTryStmts[^1].inExcept:
     # if the current try stmt have a finally block,
     # we must execute it before reraising
@@ -802,12 +803,12 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   #     general_handler_body
   #   }
   #   finallyPart();
-  
+
   template genExceptBranchBody(body: PNode) {.dirty.} =
     if optStackTrace in p.options:
-      linefmt(p, cpsStmts, "#setFrame((TFrame*)&FR_);$n") 
+      linefmt(p, cpsStmts, "#setFrame((TFrame*)&FR_);$n")
     expr(p, body, d)
-    
+
   if not isEmptyType(t.typ) and d.k == locNone:
     getTemp(p, t.typ, d)
   genLineDir(p, t)
@@ -954,15 +955,15 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
 
 proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
   var res = ""
-  for i in countup(0, sonsLen(t) - 1):
-    case t.sons[i].kind
+  for it in t.sons:
+    case it.kind
     of nkStrLit..nkTripleStrLit:
-      res.add(t.sons[i].strVal)
+      res.add(it.strVal)
     of nkSym:
-      var sym = t.sons[i].sym
+      var sym = it.sym
       if sym.kind in {skProc, skFunc, skIterator, skMethod}:
         var a: TLoc
-        initLocExpr(p, t.sons[i], a)
+        initLocExpr(p, it, a)
         res.add($rdLoc(a))
       elif sym.kind == skType:
         res.add($getTypeDesc(p.module, sym.typ))
@@ -976,11 +977,11 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
           sym.loc.r = r       # but be consequent!
         res.add($r)
     of nkTypeOfExpr:
-      res.add($getTypeDesc(p.module, t.sons[i].typ))
+      res.add($getTypeDesc(p.module, it.typ))
     else:
-      discard getTypeDesc(p.module, skipTypes(t[i].typ, abstractPtrs))
+      discard getTypeDesc(p.module, skipTypes(it.typ, abstractPtrs))
       var a: TLoc
-      initLocExpr(p, t[i], a)
+      initLocExpr(p, it, a)
       res.add($a.rdLoc)
 
   if isAsmStmt and hasGnuAsm in CC[cCompiler].props:
@@ -1057,8 +1058,7 @@ proc genWatchpoint(p: BProc, n: PNode) =
         genTypeInfo(p.module, typ, n.info)])
 
 proc genPragma(p: BProc, n: PNode) =
-  for i in countup(0, sonsLen(n) - 1):
-    var it = n.sons[i]
+  for it in n.sons:
     case whichPragma(it)
     of wEmit: genEmit(p, it)
     of wBreakpoint: genBreakPoint(p, it)

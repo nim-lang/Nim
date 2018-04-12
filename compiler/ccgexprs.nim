@@ -978,11 +978,11 @@ proc genEcho(p: BProc, n: PNode) =
     # bypass libc and print directly to the Genode LOG session
     var args: Rope = nil
     var a: TLoc
-    for i in countup(0, n.len-1):
-      if n.sons[i].skipConv.kind == nkNilLit:
+    for it in n.sons:
+      if it.skipConv.kind == nkNilLit:
         add(args, ", \"nil\"")
       else:
-        initLocExpr(p, n.sons[i], a)
+        initLocExpr(p, it, a)
         addf(args, ", $1? ($1)->data:\"nil\"", [rdLoc(a)])
     p.module.includeHeader("<base/log.h>")
     linefmt(p, cpsStmts, """Genode::log(""$1);$n""", args)
@@ -1579,13 +1579,14 @@ proc genInOp(p: BProc, e: PNode, d: var TLoc) =
     b.r = rope("(")
     var length = sonsLen(e.sons[1])
     for i in countup(0, length - 1):
-      if e.sons[1].sons[i].kind == nkRange:
-        initLocExpr(p, e.sons[1].sons[i].sons[0], x)
-        initLocExpr(p, e.sons[1].sons[i].sons[1], y)
+      let it = e.sons[1].sons[i]
+      if it.kind == nkRange:
+        initLocExpr(p, it.sons[0], x)
+        initLocExpr(p, it.sons[1], y)
         addf(b.r, "$1 >= $2 && $1 <= $3",
              [rdCharLoc(a), rdCharLoc(x), rdCharLoc(y)])
       else:
-        initLocExpr(p, e.sons[1].sons[i], x)
+        initLocExpr(p, it, x)
         addf(b.r, "$1 == $2", [rdCharLoc(a), rdCharLoc(x)])
       if i < length - 1: add(b.r, " || ")
     add(b.r, ")")
@@ -1919,33 +1920,33 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
       useStringh(p.module)
       lineF(p, cpsStmts, "memset($1, 0, sizeof($2));$n",
           [rdLoc(d), getTypeDesc(p.module, e.typ)])
-      for i in countup(0, sonsLen(e) - 1):
-        if e.sons[i].kind == nkRange:
+      for it in e.sons:
+        if it.kind == nkRange:
           getTemp(p, getSysType(tyInt), idx) # our counter
-          initLocExpr(p, e.sons[i].sons[0], a)
-          initLocExpr(p, e.sons[i].sons[1], b)
+          initLocExpr(p, it.sons[0], a)
+          initLocExpr(p, it.sons[1], b)
           lineF(p, cpsStmts, "for ($1 = $3; $1 <= $4; $1++) $n" &
               "$2[(NU)($1)>>3] |=(1U<<((NU)($1)&7U));$n", [rdLoc(idx), rdLoc(d),
               rdSetElemLoc(a, e.typ), rdSetElemLoc(b, e.typ)])
         else:
-          initLocExpr(p, e.sons[i], a)
+          initLocExpr(p, it, a)
           lineF(p, cpsStmts, "$1[(NU)($2)>>3] |=(1U<<((NU)($2)&7U));$n",
                [rdLoc(d), rdSetElemLoc(a, e.typ)])
     else:
       # small set
       var ts = "NU" & $(getSize(e.typ) * 8)
       lineF(p, cpsStmts, "$1 = 0;$n", [rdLoc(d)])
-      for i in countup(0, sonsLen(e) - 1):
-        if e.sons[i].kind == nkRange:
+      for it in e.sons:
+        if it.kind == nkRange:
           getTemp(p, getSysType(tyInt), idx) # our counter
-          initLocExpr(p, e.sons[i].sons[0], a)
-          initLocExpr(p, e.sons[i].sons[1], b)
+          initLocExpr(p, it.sons[0], a)
+          initLocExpr(p, it.sons[1], b)
           lineF(p, cpsStmts, "for ($1 = $3; $1 <= $4; $1++) $n" &
               "$2 |=((" & ts & ")(1)<<(($1)%(sizeof(" & ts & ")*8)));$n", [
               rdLoc(idx), rdLoc(d), rdSetElemLoc(a, e.typ),
               rdSetElemLoc(b, e.typ)])
         else:
-          initLocExpr(p, e.sons[i], a)
+          initLocExpr(p, it, a)
           lineF(p, cpsStmts,
                "$1 |=((" & ts & ")(1)<<(($2)%(sizeof(" & ts & ")*8)));$n",
                [rdLoc(d), rdSetElemLoc(a, e.typ)])
@@ -2155,6 +2156,9 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       else:
         genComplexConst(p, sym, d)
     of skEnumField:
+      # we never reach this case - as of the time of this comment,
+      # skEnumField is folded to an int in semfold.nim, but this code
+      # remains for robustness
       putIntoDest(p, d, n, rope(sym.position))
     of skVar, skForVar, skResult, skLet:
       if {sfGlobal, sfThread} * sym.flags != {}:
@@ -2363,8 +2367,8 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo): Rope =
 proc getNullValueAux(p: BProc; t: PType; obj, cons: PNode, result: var Rope; count: var int) =
   case obj.kind
   of nkRecList:
-    for i in countup(0, sonsLen(obj) - 1):
-      getNullValueAux(p, t, obj.sons[i], cons, result, count)
+    for it in obj.sons:
+      getNullValueAux(p, t, it, cons, result, count)
   of nkRecCase:
     getNullValueAux(p, t, obj.sons[0], cons, result, count)
     for i in countup(1, sonsLen(obj) - 1):
