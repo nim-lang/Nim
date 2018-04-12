@@ -1223,35 +1223,47 @@ macro expandMacros*(body: typed): untyped =
   echo result.toStrLit
 
 proc customPragmaNode(n: NimNode): NimNode =
-  expectKind(n, {nnkSym, nnkDotExpr, nnkBracketExpr, nnkTypeOfExpr})
+  expectKind(n, {nnkSym, nnkDotExpr, nnkBracketExpr, nnkTypeOfExpr, nnkCheckedFieldExpr})
   let 
     typ = n.getTypeInst()
+
+  if typ.typeKind == ntyTypeDesc:
+    return typ[1].getImpl()[0][1]
 
   if n.kind == nnkSym: # either an variable or a proc
     let impl = n.getImpl()
     if impl.kind in RoutineNodes:
       return impl.pragma
+    else:
+      return typ.getImpl()[0][1]
 
-  if typ.typeKind == ntyTypeDesc or n.kind == nnkSym:
-    let impl = (if typ.typeKind == ntyTypeDesc: typ[1] else: typ).getImpl()
-    return impl[0][1]
-  if n.kind == nnkDotExpr:
-    var typDef = getImpl(getTypeInst((if n[0].kind == nnkHiddenDeref: n[0][0] else: n[0])).symbol)
+  if n.kind in {nnkDotExpr, nnkCheckedFieldExpr}:
+    let name = (if n.kind == nnkCheckedFieldExpr: n[0][1] else: n[1])
+    var typDef = getImpl(getTypeInst(if n.kind == nnkCheckedFieldExpr or n[0].kind == nnkHiddenDeref: n[0][0] else: n[0]))
     while typDef != nil:
+      echo typDef.treeRepr()
       typDef.expectKind(nnkTypeDef)
       typDef[2].expectKind({nnkRefTy, nnkPtrTy, nnkObjectTy})
       let isRef = typDef[2].kind in {nnkRefTy, nnkPtrTy}
-      if isRef and typDef[2][0].kind == nnkSym: # defines ref type for another object
+      if isRef and typDef[2][0].kind in {nnkSym, nnkBracketExpr}: # defines ref type for another object(e.g. X = ref X)
         typDef = getImpl(typDef[2][0])
       else: # object definition, maybe an object directly defined as a ref type
         let 
           obj = (if isRef: typDef[2][0] else: typDef[2])
           recList = obj[2]
         for identDefs in recList:
-          for i in 0 .. identDefs.len - 3:
-            if identDefs[i].kind == nnkPragmaExpr and
-              identDefs[i][0].kind == nnkIdent and $identDefs[i][0] == $n[1]:
-              return identDefs[i][1]
+          if identDefs.kind == nnkRecCase:
+            for branch in identDefs:
+              for identDefs in branch:
+                for i in 0 .. identDefs.len - 3:
+                  if identDefs[i].kind == nnkPragmaExpr and
+                    identDefs[i][0].kind == nnkIdent and $identDefs[i][0] == $name:
+                    return identDefs[i][1]
+          else:
+            for i in 0 .. identDefs.len - 3:
+              if identDefs[i].kind == nnkPragmaExpr and
+                identDefs[i][0].kind == nnkIdent and $identDefs[i][0] == $name:
+                return identDefs[i][1]
 
         if obj[1].kind == nnkOfInherit: # explore the parent object
           typDef = getImpl(obj[1][0])

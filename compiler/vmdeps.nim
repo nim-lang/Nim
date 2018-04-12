@@ -154,9 +154,6 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
   of tyGenericParam, tyForward:
     result = atomicType(t.sym)
   of tyObject:
-    #[var pragmas = ast.emptyNode
-    if not t.sym.isNil and t.sym.ast[0].kind == nkPragmaExpr:
-      pragmas = t.sym.ast[0][1].copyTree()]#
     if inst:
       result = newNodeX(nkObjectTy)
       result.add ast.emptyNode  # pragmas not reconstructed yet

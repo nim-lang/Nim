@@ -102,3 +102,25 @@ block: # ref types
   static:
     assert fileDefVal == "closed"
     assert filePathDefVal == "invalid"
+
+block:
+  type
+    VariantKind = enum
+      variInt,
+      variFloat,
+      variString
+    Variant = object
+      case kind: VariantKind
+      of variInt: integer {.serializationKey: "int".}: BiggestInt
+      of variFloat: floatp: BiggestFloat
+      of variString: str {.serializationKey: "string".}: string
+  
+  let vari = Variant(kind: variInt)
+
+  const
+    hasIntSerKey = vari.integer.hasCustomPragma(serializationKey)
+    strSerKey = vari.str.getCustomPragmaVal(serializationKey)
+
+  static:
+    assert hasIntSerKey
+    assert strSerKey == "string"
