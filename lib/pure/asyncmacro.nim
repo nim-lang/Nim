@@ -348,7 +348,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
     newVarStmt(retFutureSym,
       newCall(
         newNimNode(nnkBracketExpr, prc.body).add(
-          newIdentNode("newFuture"), # TODO: Strange bug here? Remove the `!`.
+          newIdentNode("newFuture"),
           subRetType),
       newLit(prcName)))) # Get type from return type of this proc
 
