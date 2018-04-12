@@ -586,6 +586,9 @@ v("POSIX_TYPED_MEM_ALLOCATE_CONTIG")
 v("POSIX_TYPED_MEM_MAP_ALLOCATABLE")
 v("MAP_POPULATE", no_other = true)
 
+header("<sys/resource.h>")
+v("RLIMIT_NOFILE")
+
 header("<sys/select.h>")
 v("FD_SETSIZE")
 

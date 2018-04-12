@@ -13,8 +13,8 @@
 import
   strutils, os, intsets, strtabs
 
-import compiler/options, compiler/ast, compiler/astalgo, compiler/msgs,
-  compiler/semdata, compiler/nimfix/prettybase, compiler/ropes, compiler/idents
+import "../compiler" / [options, ast, astalgo, msgs, semdata, ropes, idents]
+import prettybase
 
 type
   StyleCheck* {.pure.} = enum None, Warn, Auto

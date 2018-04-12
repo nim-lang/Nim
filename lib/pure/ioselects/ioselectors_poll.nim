@@ -40,8 +40,6 @@ type
     wfd: cint
   SelectEvent* = ptr SelectEventImpl
 
-var RLIMIT_NOFILE {.importc: "RLIMIT_NOFILE",
-                    header: "<sys/resource.h>".}: cint
 type
   rlimit {.importc: "struct rlimit",
            header: "<sys/resource.h>", pure, final.} = object
@@ -64,7 +62,7 @@ else:
 
 proc newSelector*[T](): Selector[T] =
   var a = rlimit()
-  if getrlimit(RLIMIT_NOFILE, a) != 0:
+  if getrlimit(posix.RLIMIT_NOFILE, a) != 0:
     raiseIOSelectorsError(osLastError())
   var maxFD = int(a.rlim_max)
 

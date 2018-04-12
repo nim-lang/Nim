@@ -571,20 +571,25 @@ proc genBreakStmt(p: BProc, t: PNode) =
   lineF(p, cpsStmts, "goto $1;$n", [label])
 
 proc genRaiseStmt(p: BProc, t: PNode) =
+  if p.module.compileToCpp:
+    discard cgsym(p.module, "popCurrentExceptionEx")
   if p.nestedTryStmts.len > 0 and p.nestedTryStmts[^1].inExcept:
     # if the current try stmt have a finally block,
     # we must execute it before reraising
     var finallyBlock = p.nestedTryStmts[^1].n[^1]
     if finallyBlock.kind == nkFinally:
-      genSimpleBlock(p, finallyBlock.sons[0])
-  if t.sons[0].kind != nkEmpty:
+      genSimpleBlock(p, finallyBlock[0])
+  if t[0].kind != nkEmpty:
     var a: TLoc
-    initLocExpr(p, t.sons[0], a)
+    initLocExprSingleUse(p, t[0], a)
     var e = rdLoc(a)
-    var typ = skipTypes(t.sons[0].typ, abstractPtrs)
+    var typ = skipTypes(t[0].typ, abstractPtrs)
     genLineDir(p, t)
-    lineCg(p, cpsStmts, "#raiseException((#Exception*)$1, $2);$n",
-        [e, makeCString(typ.sym.name.s)])
+    if isImportedException(typ):
+      lineF(p, cpsStmts, "throw $1;$n", [e])
+    else:      
+      lineCg(p, cpsStmts, "#raiseException((#Exception*)$1, $2);$n",
+          [e, makeCString(typ.sym.name.s)])
   else:
     genLineDir(p, t)
     # reraise the last exception:
@@ -803,14 +808,11 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
     if optStackTrace in p.options:
       linefmt(p, cpsStmts, "#setFrame((TFrame*)&FR_);$n")
     expr(p, body, d)
-    linefmt(p, cpsStmts, "#popCurrentException();$n")
 
   if not isEmptyType(t.typ) and d.k == locNone:
     getTemp(p, t.typ, d)
   genLineDir(p, t)
-
-  let end_label = getLabel(p)
-  discard cgsym(p.module, "Exception")
+  discard cgsym(p.module, "popCurrentExceptionEx")
   add(p.nestedTryStmts, (t, false))
   startBlock(p, "try {$n")
   expr(p, t[0], d)
@@ -833,8 +835,12 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
       endBlock(p)
     else:
       for j in 0..t[i].len-2:
-        assert(t[i][j].kind == nkType)
-        startBlock(p, "catch ($1*) {$n", getTypeDesc(p.module, t[i][j].typ))
+        if t[i][j].isInfixAs():
+          let exvar = t[i][j][2] # ex1 in `except ExceptType as ex1:` 
+          fillLoc(exvar.sym.loc, locTemp, exvar, mangleLocalName(p, exvar.sym), OnUnknown)
+          startBlock(p, "catch ($1& $2) {$n", getTypeDesc(p.module, t[i][j][1].typ), rdLoc(exvar.sym.loc))
+        else:
+          startBlock(p, "catch ($1&) {$n", getTypeDesc(p.module, t[i][j].typ))
         genExceptBranchBody(t[i][^1])  # exception handler body will duplicated for every type
         endBlock(p)
 

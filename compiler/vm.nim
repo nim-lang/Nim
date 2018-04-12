@@ -892,7 +892,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node = if a.sym.ast.isNil: newNode(nkNilLit)
                         else: copyTree(a.sym.ast)
       else:
-        stackTrace(c, tos, pc, errFieldXNotFound, "symbol")
+        stackTrace(c, tos, pc, errGenerated, "node is not a symbol")
     of opcEcho:
       let rb = instr.regB
       if rb == 1:
@@ -1233,6 +1233,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkInt)
       regs[ra].intVal = ord(regs[rb].node.kind)
       c.comesFromHeuristic = regs[rb].node.info
+    of opcNSymKind:
+      decodeB(rkInt)
+      let a = regs[rb].node
+      if a.kind == nkSym:
+        regs[ra].intVal = ord(a.sym.kind)
+      else:
+        stackTrace(c, tos, pc, errGenerated, "node is not a symbol")
+      c.comesFromHeuristic = regs[rb].node.info
     of opcNIntVal:
       decodeB(rkInt)
       let a = regs[rb].node
@@ -1295,9 +1303,17 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkNode)
       createStr regs[ra]
       let a = regs[rb].node
-      if a.kind in {nkStrLit..nkTripleStrLit}: regs[ra].node.strVal = a.strVal
-      elif a.kind == nkCommentStmt: regs[ra].node.strVal = a.comment
-      else: stackTrace(c, tos, pc, errFieldXNotFound, "strVal")
+      case a.kind
+      of {nkStrLit..nkTripleStrLit}:
+        regs[ra].node.strVal = a.strVal
+      of nkCommentStmt:
+        regs[ra].node.strVal = a.comment
+      of nkIdent:
+        regs[ra].node.strVal = a.ident.s
+      of nkSym:
+        regs[ra].node.strVal = a.sym.name.s
+      else:
+        stackTrace(c, tos, pc, errFieldXNotFound, "strVal")
     of opcSlurp:
       decodeB(rkNode)
       createStr regs[ra]
@@ -1387,17 +1403,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       else:
         regs[ra].node = newNodeI(nkIdent, c.debug[pc])
         regs[ra].node.ident = getIdent(regs[rb].node.strVal)
-    of opcIdentToStr:
-      decodeB(rkNode)
-      let a = regs[rb].node
-      createStr regs[ra]
-      regs[ra].node.info = c.debug[pc]
-      if a.kind == nkSym:
-        regs[ra].node.strVal = a.sym.name.s
-      elif a.kind == nkIdent:
-        regs[ra].node.strVal = a.ident.s
-      else:
-        stackTrace(c, tos, pc, errFieldXNotFound, "ident")
     of opcSetType:
       if regs[ra].kind != rkNode:
         internalError(c.debug[pc], "cannot set type")

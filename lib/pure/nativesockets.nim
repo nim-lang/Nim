@@ -31,7 +31,7 @@ else:
   export Sockaddr_storage, Sockaddr_un, Sockaddr_un_path_length
 
 export SocketHandle, Sockaddr_in, Addrinfo, INADDR_ANY, SockAddr, SockLen,
-  Sockaddr_in6,
+  Sockaddr_in6, Sockaddr_storage,
   inet_ntoa, recv, `==`, connect, send, accept, recvfrom, sendto,
   freeAddrInfo
 

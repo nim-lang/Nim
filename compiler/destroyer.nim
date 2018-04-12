@@ -112,8 +112,6 @@ Remarks: Rule 1.2 is not yet implemented because ``sink`` is currently
   not allowed as a local variable.
 
 ``move`` builtin needs to be implemented.
-
-XXX Think about nfPreventDestructor logic.
 ]##
 
 import
@@ -301,14 +299,16 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
 proc passCopyToSink(n: PNode; c: var Con): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   let tmp = getTemp(c, n.typ, n.info)
-  var m = genCopy(n.typ, tmp)
-  m.add n
-  result.add m
+  if hasDestructor(n.typ):
+    var m = genCopy(n.typ, tmp)
+    m.add p(n, c)
+    result.add m
+    message(n.info, hintPerformance,
+      "passing '$1' to a sink parameter introduces an implicit copy; " &
+      "use 'move($1)' to prevent it" % $n)
+  else:
+    result.add newTree(nkAsgn, tmp, p(n, c))
   result.add tmp
-  incl result.flags, nfPreventDestructor
-  message(n.info, hintPerformance,
-    "passing '$1' to a sink parameter introduces an implicit copy; " &
-    "use 'move($1)' to prevent it" % $n)
 
 proc genReset(n: PNode; c: var Con): PNode =
   result = newNodeI(nkCall, n.info)
@@ -333,39 +333,6 @@ proc destructiveMoveVar(n: PNode; c: var Con): PNode =
   result.add v
   result.add genReset(n, c)
   result.add tempAsNode
-  incl result.flags, nfPreventDestructor
-
-proc handleSinkParams(n: PNode; c: var Con) =
-  # first pass: introduce copies for stuff passed to
-  # 'sink' parameters. Introduce destructor guards for
-  # 'sink' parameters.
-  assert n.kind in nkCallKinds
-  # Rule 5.2: Compensate for 'sink' parameters with copies
-  # at the callsite (unless of course we can prove its the
-  # last read):
-  let parameters = n.typ
-  let L = if parameters != nil: parameters.len else: 0
-  for i in 1 ..< L:
-    let t = parameters[i]
-    if t.kind == tySink:
-      if n[i].kind in constrExprs:
-        incl(n[i].flags, nfPreventDestructor)
-      elif n[i].kind == nkSym and isHarmlessVar(n[i].sym, c):
-        # if x is a variable and it its last read we eliminate its
-        # destructor invokation, but don't. We need to reset its memory
-        # to disable its destructor which we have not elided:
-        n.sons[i] = destructiveMoveVar(n[i], c)
-        when false:
-          # XXX we need to find a way to compute "all paths consume 'x'"
-          c.symsNoDestructors.incl n[i].sym.id
-          # however, not emiting the copy operation is correct here.
-      elif n[i].kind == nkSym and isSinkParam(n[i].sym):
-        # mark the sink parameter as used:
-        n.sons[i] = destructiveMoveSink(n[i], c)
-      else:
-        # an object that is not temporary but passed to a 'sink' parameter
-        # results in a copy.
-        n.sons[i] = passCopyToSink(n[i], c)
 
 proc p(n: PNode; c: var Con): PNode =
   case n.kind
@@ -401,21 +368,45 @@ proc p(n: PNode; c: var Con): PNode =
         varSection.add itCopy
         result.add varSection
   of nkCallKinds:
-    if n.typ != nil and hasDestructor(n.typ) and nfPreventDestructor notin n.flags:
+    let parameters = n[0].typ
+    let L = if parameters != nil: parameters.len else: 0
+    for i in 1 ..< n.len:
+      let arg = n[i]
+      if i < L and parameters[i].kind == tySink:
+        if arg.kind in nkCallKinds:
+          # recurse but skip the call expression in order to prevent
+          # destructor injections: Rule 5.1 is different from rule 5.4!
+          let a = copyNode(arg)
+          recurse(arg, a)
+          n.sons[i] = a
+        elif arg.kind in {nkObjConstr, nkCharLit..nkFloat128Lit}:
+          discard "object construction to sink parameter: nothing to do"
+        elif arg.kind == nkSym and isHarmlessVar(arg.sym, c):
+          # if x is a variable and it its last read we eliminate its
+          # destructor invokation, but don't. We need to reset its memory
+          # to disable its destructor which we have not elided:
+          n.sons[i] = destructiveMoveVar(arg, c)
+        elif arg.kind == nkSym and isSinkParam(arg.sym):
+          # mark the sink parameter as used:
+          n.sons[i] = destructiveMoveSink(arg, c)
+        else:
+          # an object that is not temporary but passed to a 'sink' parameter
+          # results in a copy.
+          n.sons[i] = passCopyToSink(arg, c)
+      else:
+        n.sons[i] = p(arg, c)
+
+    if n.typ != nil and hasDestructor(n.typ):
       discard "produce temp creation"
       result = newNodeIT(nkStmtListExpr, n.info, n.typ)
       let tmp = getTemp(c, n.typ, n.info)
-      var m = genSink(n.typ, tmp)
-      var call = copyNode(n)
-      recurse(n, call)
-      m.add call
-      result.add m
+      var sinkExpr = genSink(n.typ, tmp)
+      sinkExpr.add n
+      result.add sinkExpr
       result.add tmp
       c.destroys.add genDestroy(n.typ, tmp)
     else:
-      result = copyNode(n)
-      recurse(n, result)
-    #handleSinkParams(result, c)
+      result = n
   of nkAsgn, nkFastAsgn:
     if hasDestructor(n[0].typ):
       result = moveOrCopy(n[0], n[1], c)

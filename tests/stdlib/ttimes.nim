@@ -368,3 +368,11 @@ suite "ttimes":
     dt = initDateTime(31, mMar, 2017, 00, 00, 00, utc())
     # This happens due to monthday overflow. It's consistent with Phobos.
     check $(dt - 1.months) == "2017-03-03T00:00:00+00:00"
+
+  test "compare datetimes":
+    var dt1 = now()
+    var dt2 = dt1
+    check dt1 == dt2
+    check dt1 <= dt2
+    dt2 = dt2 + 1.seconds
+    check dt1 < dt2

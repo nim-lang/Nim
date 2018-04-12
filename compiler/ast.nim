@@ -453,8 +453,6 @@ type
     nfPreventCg # this node should be ignored by the codegen
     nfBlockArg  # this a stmtlist appearing in a call (e.g. a do block)
     nfFromTemplate # a top-level node returned from a template
-    nfPreventDestructor # prevent destructor injectsion for the node
-                        # (but not necessarily its children)
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: beyond that)
@@ -634,10 +632,11 @@ type
     mCpuEndian, mHostOS, mHostCPU, mBuildOS, mBuildCPU, mAppType,
     mNaN, mInf, mNegInf,
     mCompileOption, mCompileOptionArg,
-    mNLen, mNChild, mNSetChild, mNAdd, mNAddMultiple, mNDel, mNKind,
+    mNLen, mNChild, mNSetChild, mNAdd, mNAddMultiple, mNDel,
+    mNKind, mNSymKind
     mNIntVal, mNFloatVal, mNSymbol, mNIdent, mNGetType, mNStrVal, mNSetIntVal,
     mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, mNSetStrVal, mNLineInfo,
-    mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent, mIdentToStr,
+    mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent,
     mNBindSym, mLocals, mNCallSite,
     mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl,
     mNHint, mNWarning, mNError,
@@ -849,6 +848,8 @@ type
     constraint*: PNode        # additional constraints like 'lit|result'; also
                               # misused for the codegenDecl pragma in the hope
                               # it won't cause problems
+                              # for skModule the string literal to output for
+                              # deprecated modules.
     when defined(nimsuggest):
       allUsages*: seq[TLineInfo]
 
@@ -1673,6 +1674,19 @@ proc isException*(t: PType): bool =
       return true
     base = base.lastSon
   return false
+
+proc isImportedException*(t: PType): bool =
+  assert(t != nil)
+  if optNoCppExceptions in gGlobalOptions:
+    return false
+
+  let base = t.skipTypes({tyAlias, tyPtr, tyDistinct, tyGenericInst})
+
+  if base.sym != nil and sfCompileToCpp in base.sym.flags:
+    result = true
+
+proc isInfixAs*(n: PNode): bool =
+  return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.id == getIdent("as").id
 
 proc findUnresolvedStatic*(n: PNode): PNode =
   if n.kind == nkSym and n.typ.kind == tyStatic and n.typ.n == nil:

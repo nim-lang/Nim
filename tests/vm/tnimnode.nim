@@ -26,12 +26,12 @@ proc checkNode(arg: NimNode; name: string): void {. compileTime .} =
   seqAppend.add(arg)   # bit this creates a copy
   arg.add newCall(ident"echo", newLit("Hello World"))
 
-  assertEq arg.lispRepr          , """StmtList(DiscardStmt(Empty()), Call(Ident(ident"echo"), StrLit(Hello World)))"""
-  assertEq node.lispRepr         , """StmtList(DiscardStmt(Empty()), Call(Ident(ident"echo"), StrLit(Hello World)))"""
-  assertEq nodeArray[0].lispRepr , """StmtList(DiscardStmt(Empty()), Call(Ident(ident"echo"), StrLit(Hello World)))"""
-  assertEq nodeSeq[0].lispRepr   , """StmtList(DiscardStmt(Empty()), Call(Ident(ident"echo"), StrLit(Hello World)))"""
-  assertEq seqAppend[0].lispRepr , """StmtList(DiscardStmt(Empty()), Call(Ident(ident"echo"), StrLit(Hello World)))"""
-  assertEq seqAppend[1].lispRepr , """StmtList(DiscardStmt(Empty()), Call(Ident(ident"echo"), StrLit(Hello World)))"""
+  assertEq arg.lispRepr          , """StmtList(DiscardStmt(Empty()), Call(Ident("echo"), StrLit("Hello World")))"""
+  assertEq node.lispRepr         , """StmtList(DiscardStmt(Empty()), Call(Ident("echo"), StrLit("Hello World")))"""
+  assertEq nodeArray[0].lispRepr , """StmtList(DiscardStmt(Empty()), Call(Ident("echo"), StrLit("Hello World")))"""
+  assertEq nodeSeq[0].lispRepr   , """StmtList(DiscardStmt(Empty()), Call(Ident("echo"), StrLit("Hello World")))"""
+  assertEq seqAppend[0].lispRepr , """StmtList(DiscardStmt(Empty()), Call(Ident("echo"), StrLit("Hello World")))"""
+  assertEq seqAppend[1].lispRepr , """StmtList(DiscardStmt(Empty()), Call(Ident("echo"), StrLit("Hello World")))"""
 
   echo "OK"
 

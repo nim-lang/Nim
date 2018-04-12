@@ -17,7 +17,7 @@
 ## 2. long option - ``--foo:bar``, ``--foo=bar`` or ``--foo``
 ## 3. argument - everything else
 
-{.deprecated.}
+{.deprecated: "Use the 'parseopt' module instead".}
 {.push debugger: off.}
 
 include "system/inclrtl"

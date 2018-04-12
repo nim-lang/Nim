@@ -1697,7 +1697,7 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
 
       result = quote do:
         (
-          if `lenientJsonNode`.isNil: `workaround`[`optionGeneric`]() else: some[`optionGeneric`](`value`)
+          if `lenientJsonNode`.isNil or `jsonNode`.kind == JNull: `workaround`[`optionGeneric`]() else: some[`optionGeneric`](`value`)
         )
     of "table", "orderedtable":
       let tableKeyType = typeSym[1]
