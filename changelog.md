@@ -38,7 +38,7 @@
   of the more general ``NimNode``.
 - ``macros.getImpl`` now includes the pragmas of types, instead of omitting them.
 - ``macros.hasCustomPragma`` and ``macros.getCustomPragmaVal`` now
-  also support pragmas on types(including variants), ``ref`` and ``ptr`` types.
+  also support pragmas on types, variant fields, ``ref`` and ``ptr`` types.
 
 ### Language additions
 
