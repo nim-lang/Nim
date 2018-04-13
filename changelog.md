@@ -9,6 +9,8 @@
   trailing comma. The underlying AST is ``nnkTupleConst(newLit 1)`` for this
   example. ``nnkTupleConstr`` is a new node kind your macros need to be able
   to deal with!
+- Indexing into a ``cstring`` for the JS target is now mapped
+  to ``charCodeAt``.
 
 #### Breaking changes in the standard library
 
@@ -68,7 +70,7 @@
   target. To use it, compile your code with `--hotReloading:on` and use a
   helper library such as LiveReload or BrowserSync.
 
-- Added ``macros.getProjectPath`` and ``ospaths.putEnv`` procs to Nim's virtual 
+- Added ``macros.getProjectPath`` and ``ospaths.putEnv`` procs to Nim's virtual
   machine.
 
 ### Bugfixes

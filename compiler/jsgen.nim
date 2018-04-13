@@ -1109,6 +1109,8 @@ proc genArrayAccess(p: PProc, n: PNode, r: var TCompRes) =
       r.res = "ord(@$1[$2])" % [r.address, r.res]
     else:
       r.res = "$1[$2]" % [r.address, r.res]
+  elif ty.kind == tyCString:
+    r.res = "$1.charCodeAt($2)" % [r.address, r.res]
   else:
     r.res = "$1[$2]" % [r.address, r.res]
   r.address = nil
