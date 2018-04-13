@@ -473,10 +473,10 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitch({optMemTracker}, arg, pass, info)
     if optMemTracker in gOptions: defineSymbol("memtracker")
     else: undefSymbol("memtracker")
-  of "hotreloading":
-    processOnOffSwitch({optHotReloading}, arg, pass, info)
-    if optHotReloading in gOptions: defineSymbol("hotreloading")
-    else: undefSymbol("hotreloading")
+  of "hotcodereloading":
+    processOnOffSwitch({optHotCodeReloading}, arg, pass, info)
+    if optHotCodeReloading in gOptions: defineSymbol("hotcodereloading")
+    else: undefSymbol("hotcodereloading")
   of "oldnewlines":
     case arg.normalize
     of "on":

@@ -67,7 +67,7 @@
   order to support more complex computations at compile-time.
 
 - Support for hot code reloading has been implemented for the JavaScript
-  target. To use it, compile your code with `--hotReloading:on` and use a
+  target. To use it, compile your code with `--hotCodeReloading:on` and use a
   helper library such as LiveReload or BrowserSync.
 
 - Added ``macros.getProjectPath`` and ``ospaths.putEnv`` procs to Nim's virtual

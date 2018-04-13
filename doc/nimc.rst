@@ -330,13 +330,13 @@ Hot code reloading
 **Note:** At the moment hot code reloading is supported only in
 JavaScript projects.
 
-The `hotReloading` option enables special compilation mode where changes in
+The `hotCodeReloading`:idx: option enables special compilation mode where changes in
 the code can be applied automatically to a running program. The code reloading
 happens at the granularity of an individual module. When a module is reloaded,
 Nim will preserve the state of all global variables which are initialized with
 a standard variable declaration in the code. All other top level code will be
 executed repeatedly on each reload. If you want to prevent this behavior, you
-can guard a block of code with the `once` construct:
+can guard a block of code with the ``once`` construct:
 
 .. code-block:: Nim
   var settings = initTable[string, string]()
@@ -357,7 +357,7 @@ re-assign a value anywhere within the top-level code:
   resetProgramState()
 
 **Known limitations:** In the JavaScript target, global variables using the
-`codegenDecl` pragma will be re-initialized on each reload. Please guard the
+``codegenDecl`` pragma will be re-initialized on each reload. Please guard the
 initialization with a `once` block to work-around this.
 
 **Usage in JavaScript projects:**

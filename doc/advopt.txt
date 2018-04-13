@@ -60,7 +60,8 @@ Advanced options:
   --implicitStatic:on|off   turn implicit compile time evaluation on|off
   --patterns:on|off         turn pattern matching on|off
   --memTracker:on|off       turn memory tracker on|off
-  --hotReloading:on|off     turn support for hot code reloading on|off
+  --hotCodeReloading:on|off
+                            turn support for hot code reloading on|off
   --excessiveStackTrace:on|off
                             stack traces use full file paths
   --oldNewlines:on|off      turn on|off the old behaviour of "\n"
