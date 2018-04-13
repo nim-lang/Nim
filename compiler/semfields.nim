@@ -26,7 +26,6 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
     let ident = considerQuotedIdent(n)
     var L = sonsLen(forLoop)
 
-    #TODO: different order for mFieldsIndexed
     #TODO: allow passing in just type for mFieldsIndexed
     if c.m == mFieldPairs or c.m == mFieldsIndexed:
       let indexField =
