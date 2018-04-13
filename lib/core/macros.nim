@@ -1146,15 +1146,15 @@ when defined(nimVmEqIdent):
     ## Style insensitive comparison.
 
   proc eqIdent*(a: NimNode; b: string): bool {.magic: "EqIdent", noSideEffect.}
-    ## Style insesitive comparison.
+    ## Style insensitive comparison.
     ## ``a`` can be an identifier or a symbol.
 
   proc eqIdent*(a: string; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
-    ## Style insesitive comparison.
+    ## Style insensitive comparison.
     ## ``b`` can be an identifier or a symbol.
 
   proc eqIdent*(a: NimNode; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
-    ## Style insesitive comparison.
+    ## Style insensitive comparison.
     ## ``a`` and ``b`` can be an identifier or a symbol.
 
 else:
