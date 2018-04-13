@@ -14,6 +14,12 @@ include "system/inclrtl"
 
 ## .. include:: ../../doc/astspec.txt
 
+# If you look for the implementation of the magic symbols, copy the
+# magic string and open the file "../../compiler/vm.nim" and search
+# for the magic string with the prefix "opc". For example the
+# implementation of ``{.magic: "FooBar".}`` will be right under
+# ``of opcFooBar:``.
+
 type
   NimNodeKind* = enum
     nnkNone, nnkEmpty, nnkIdent, nnkSym,
@@ -76,7 +82,8 @@ type
     nnkGotoState,
     nnkState,
     nnkBreakState,
-    nnkFuncDef
+    nnkFuncDef,
+    nnkTupleConstr
 
   NimNodeKinds* = set[NimNodeKind]
   NimTypeKind* = enum  # some types are no longer used, see ast.nim

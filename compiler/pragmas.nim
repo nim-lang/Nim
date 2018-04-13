@@ -423,7 +423,7 @@ proc processCompile(c: PContext, n: PNode) =
       result = ""
 
   let it = if n.kind in nkPragmaCallKinds and n.len == 2: n.sons[1] else: n
-  if it.kind == nkPar and it.len == 2:
+  if it.kind in {nkPar, nkTupleConstr} and it.len == 2:
     let s = getStrLit(c, it, 0)
     let dest = getStrLit(c, it, 1)
     var found = parentDir(n.info.toFullPath) / s
@@ -530,7 +530,7 @@ proc pragmaLine(c: PContext, n: PNode) =
   if n.kind in nkPragmaCallKinds and n.len == 2:
     n.sons[1] = c.semConstExpr(c, n.sons[1])
     let a = n.sons[1]
-    if a.kind == nkPar:
+    if a.kind in {nkPar, nkTupleConstr}:
       # unpack the tuple
       var x = a.sons[0]
       var y = a.sons[1]

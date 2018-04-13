@@ -33,6 +33,7 @@ Options:
   --ignoreStyle, -y   be style insensitive
   --ext:EX1|EX2|...   only search the files with the given extension(s)
   --nocolor           output will be given without any colours.
+  --oneline           show file on each matched line
   --verbose           be verbose: list every processed file
   --help, -h          shows this help
   --version, -v       shows the version
@@ -56,6 +57,7 @@ var
   extensions: seq[string] = @[]
   options: TOptions = {optRegex}
   useWriteStyled = true
+  oneline = false
 
 proc ask(msg: string): string =
   stdout.write(msg)
@@ -103,9 +105,12 @@ proc writeColored(s: string) =
     stdout.write(s)
 
 proc highlight(s, match, repl: string, t: tuple[first, last: int],
-               line: int, showRepl: bool) =
+               filename:string, line: int, showRepl: bool) =
   const alignment = 6
-  stdout.write(line.`$`.align(alignment), ": ")
+  if oneline:
+    stdout.write(filename, ":", line, ": ")
+  else:
+    stdout.write(line.`$`.align(alignment), ": ")
   var x = beforePattern(s, t.first)
   var y = afterPattern(s, t.last)
   for i in x .. t.first-1: stdout.write(s[i])
@@ -124,7 +129,7 @@ proc highlight(s, match, repl: string, t: tuple[first, last: int],
 proc processFile(pattern; filename: string) =
   var filenameShown = false
   template beforeHighlight =
-    if not filenameShown and optVerbose notin options:
+    if not filenameShown and optVerbose notin options and not oneline:
       stdout.writeLine(filename)
       stdout.flushFile()
       filenameShown = true
@@ -157,11 +162,11 @@ proc processFile(pattern; filename: string) =
 
     beforeHighlight()
     if optReplace notin options:
-      highlight(buffer, wholeMatch, "", t, line, showRepl=false)
+      highlight(buffer, wholeMatch, "", t, filename, line, showRepl=false)
     else:
       let r = replace(wholeMatch, pattern, replacement % matches)
       if optConfirm in options:
-        highlight(buffer, wholeMatch, r, t, line, showRepl=true)
+        highlight(buffer, wholeMatch, r, t, filename, line, showRepl=true)
         case confirm()
         of ceAbort: quit(0)
         of ceYes: reallyReplace = true
@@ -174,7 +179,7 @@ proc processFile(pattern; filename: string) =
           reallyReplace = false
           options.excl(optConfirm)
       else:
-        highlight(buffer, wholeMatch, r, t, line, showRepl=reallyReplace)
+        highlight(buffer, wholeMatch, r, t, filename, line, showRepl=reallyReplace)
       if reallyReplace:
         result.add(buffer.substr(i, t.first-1))
         result.add(r)
@@ -286,6 +291,7 @@ for kind, key, val in getopt():
     of "ignorestyle", "y": incl(options, optIgnoreStyle)
     of "ext": extensions.add val.split('|')
     of "nocolor": useWriteStyled = false
+    of "oneline": oneline = true
     of "verbose": incl(options, optVerbose)
     of "help", "h": writeHelp()
     of "version", "v": writeVersion()

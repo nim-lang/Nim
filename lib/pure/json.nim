@@ -1779,7 +1779,7 @@ proc createConstructor(typeSym, jsonNode: NimNode): NimNode =
       result = processType(typeSym, obj, jsonNode, false)
   of nnkTupleTy:
     result = processType(typeSym, typeSym, jsonNode, false)
-  of nnkPar:
+  of nnkPar, nnkTupleConstr:
     # TODO: The fact that `jsonNode` here works to give a good line number
     # is weird. Specifying typeSym should work but doesn't.
     error("Use a named tuple instead of: " & $toStrLit(typeSym), jsonNode)

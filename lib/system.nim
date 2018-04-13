@@ -649,6 +649,11 @@ when defined(nimNewRuntime):
   ESynch: Exception
 ].}
 
+when defined(js) or defined(nimdoc):
+  type
+    JsRoot* = ref object of RootObj
+      ## Root type of the JavaScript object hierarchy
+
 proc unsafeNew*[T](a: var ref T, size: Natural) {.magic: "New", noSideEffect.}
   ## creates a new object of type ``T`` and returns a safe (traced)
   ## reference to it in ``a``. This is **unsafe** as it allocates an object
@@ -4079,6 +4084,25 @@ template closureScope*(body: untyped): untyped =
   ##         myClosure = proc() = echo j
   ##   myClosure() # outputs 3
   (proc() = body)()
+
+template once*(body: untyped): untyped =
+  ## Executes a block of code only once (the first time the block is reached).
+  ## When hot code reloading is enabled, protects top-level code from being
+  ## re-executed on each module reload.
+  ##
+  ## .. code-block:: nim
+  ## proc draw(t: Triangle) =
+  ##   once:
+  ##     graphicsInit()
+  ##
+  ##   line(t.p1, t.p2)
+  ##   line(t.p2, t.p3)
+  ##   line(t.p3, t.p1)
+  ##
+  var alreadyExecuted {.global.} = false
+  if not alreadyExecuted:
+    alreadyExecuted = true
+    body
 
 {.pop.} #{.push warning[GcMem]: off, warning[Uninit]: off.}
 

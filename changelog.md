@@ -5,6 +5,10 @@
 - The stdlib module ``future`` has been renamed to ``sugar``.
 - ``macros.callsite`` is now deprecated. Since the introduction of ``varargs``
   parameters this became unnecessary.
+- Anonymous tuples with a single element can now be written as ``(1,)`` with a
+  trailing comma. The underlying AST is ``nnkTupleConst(newLit 1)`` for this
+  example. ``nnkTupleConstr`` is a new node kind your macros need to be able
+  to deal with!
 
 #### Breaking changes in the standard library
 
@@ -60,6 +64,15 @@
 
 ### Compiler changes
 
-- The VM's instruction count limit was raised to 1 billion instructions in order
-  to support more complex computations at compile-time.
-- Added ``macros.getProjectPath`` and ``ospaths.putEnv`` procs to VM.
+- The VM's instruction count limit was raised to 1 billion instructions in
+  order to support more complex computations at compile-time.
+
+- Support for hot code reloading has been implemented for the JavaScript
+  target. To use it, compile your code with `--hotReloading:on` and use a
+  helper library such as LiveReload or BrowserSync.
+
+- Added ``macros.getProjectPath`` and ``ospaths.putEnv`` procs to Nim's virtual 
+  machine.
+
+### Bugfixes
+
