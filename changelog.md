@@ -20,6 +20,9 @@
   containing the column of the instantiation.
 
 - ``cookies.setCookie` no longer assumes UTC for the expiration date.
+- ``strutils.formatEng`` does not distinguish between ``nil`` and ``""``
+  strings anymore for its ``unit`` parameter. Instead the space is controlled
+  by a new parameter ``useUnitSpace``.
 
 #### Breaking changes in the compiler
 
