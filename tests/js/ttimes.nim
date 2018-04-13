@@ -17,14 +17,14 @@ block localTime:
 
 let a = fromUnix(1_000_000_000)
 let b = fromUnix(1_500_000_000)
-doAssert b - a == 500_000_000
+doAssert b - a == initDuration(seconds = 500_000_000)
 
 # Because we can't change the timezone JS uses, we define a simple static timezone for testing.
 
 proc staticZoneInfoFromUtc(time: Time): ZonedTime =
   result.utcOffset = -7200
   result.isDst = false
-  result.adjTime = (time.toUnix + 7200).Time
+  result.adjTime = time + 7200.seconds
 
 proc staticZoneInfoFromTz(adjTime: Time): ZonedTIme =
   result.utcOffset = -7200
@@ -40,5 +40,4 @@ block timezoneTests:
   doAssert $dt.utc.inZone(utcPlus2) == $dt
 
 doAssert $initDateTime(01, mJan, 1911, 12, 00, 00, utc()) == "1911-01-01T12:00:00+00:00"
-# See #6752
-# doAssert $initDateTime(01, mJan, 1900, 12, 00, 00, utc()) == "0023-01-01T12:00:00+00:00"
+doAssert $initDateTime(01, mJan, 0023, 12, 00, 00, utc()) == "0023-01-01T12:00:00+00:00"

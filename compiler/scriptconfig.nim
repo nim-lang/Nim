@@ -77,8 +77,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbos copyDir:
     os.copyDir(getString(a, 0), getString(a, 1))
   cbos getLastModificationTime:
-    # depends on Time's implementation!
-    setResult(a, int64(getLastModificationTime(getString(a, 0))))
+    setResult(a, getLastModificationTime(getString(a, 0)).toUnix)
   cbos findExe:
     setResult(a, os.findExe(getString(a, 0)))
 
