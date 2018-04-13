@@ -77,6 +77,7 @@ type
 
   NotString = concept c
     c isnot string
+  js* = JsObject
 
 var
   jsArguments* {.importc: "arguments", nodecl}: JsObject
