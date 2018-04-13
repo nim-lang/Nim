@@ -11,7 +11,7 @@
 ## *************
 ## `asyncdispatch` module depends on the `asyncmacro` module to work properly.
 
-import macros, strutils
+import macros, strutils, asyncfutures
 
 proc skipUntilStmtList(node: NimNode): NimNode {.compileTime.} =
   # Skips a nest of StmtList's.
@@ -26,6 +26,8 @@ proc skipStmtList(node: NimNode): NimNode {.compileTime.} =
 
 template createCb(retFutureSym, iteratorNameSym,
                   strName, identName, futureVarCompletions: untyped) =
+  bind finished
+
   var nameIterVar = iteratorNameSym
   #{.push stackTrace: off.}
   proc identName {.closure.} =
