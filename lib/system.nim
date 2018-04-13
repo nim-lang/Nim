@@ -2450,6 +2450,9 @@ iterator fields*[S:tuple|object, T:tuple|object](x: S, y: T): tuple[a,b: untyped
   ## Warning: This is really transforms the 'for' and unrolls the loop.
   ## The current implementation also has a bug that affects symbol binding
   ## in the loop body.
+iterator fieldsIndexed*[T: tuple|object](x: T): RootObj {.
+  magic: "FieldsIndexed", noSideEffect.}
+  ## iterates over every field of `x`, returning name, index
 iterator fieldPairs*[T: tuple|object](x: T): RootObj {.
   magic: "FieldPairs", noSideEffect.}
   ## Iterates over every field of `x` returning their name and value.
