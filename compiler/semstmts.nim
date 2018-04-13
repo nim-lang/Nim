@@ -552,7 +552,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         b.sons[length-2] = a.sons[length-2] # keep type desc for doc generator
         b.sons[length-1] = def
         addToVarSection(c, result, n, b)
-    elif tup.kind == tyTuple and def.kind == nkPar and
+    elif tup.kind == tyTuple and def.kind in {nkPar, nkTupleConstr} and
         a.kind == nkIdentDefs and a.len > 3:
       message(a.info, warnEachIdentIsTuple)
 
@@ -592,7 +592,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         addSon(b, copyTree(def))
         addToVarSection(c, result, n, b)
       else:
-        if def.kind == nkPar: v.ast = def[j]
+        if def.kind in {nkPar, nkTupleConstr}: v.ast = def[j]
         setVarType(v, tup.sons[j])
         b.sons[j] = newSymNode(v)
       checkNilable(v)

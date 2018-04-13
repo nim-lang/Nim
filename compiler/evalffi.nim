@@ -151,7 +151,7 @@ proc getField(n: PNode; position: int): PSym =
   else: discard
 
 proc packObject(x: PNode, typ: PType, res: pointer) =
-  internalAssert x.kind in {nkObjConstr, nkPar}
+  internalAssert x.kind in {nkObjConstr, nkPar, nkTupleConstr}
   # compute the field's offsets:
   discard typ.getSize
   for i in countup(ord(x.kind == nkObjConstr), sonsLen(x) - 1):
@@ -260,14 +260,14 @@ proc unpackObject(x: pointer, typ: PType, n: PNode): PNode =
   # iterate over any actual field of 'n' ... if n is nil we need to create
   # the nkPar node:
   if n.isNil:
-    result = newNode(nkPar)
+    result = newNode(nkTupleConstr)
     result.typ = typ
     if typ.n.isNil:
       internalError("cannot unpack unnamed tuple")
     unpackObjectAdd(x, typ.n, result)
   else:
     result = n
-    if result.kind notin {nkObjConstr, nkPar}:
+    if result.kind notin {nkObjConstr, nkPar, nkTupleConstr}:
       globalError(n.info, "cannot map value from FFI")
     if typ.n.isNil:
       globalError(n.info, "cannot unpack unnamed tuple")

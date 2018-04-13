@@ -5,6 +5,10 @@
 - The stdlib module ``future`` has been renamed to ``sugar``.
 - ``macros.callsite`` is now deprecated. Since the introduction of ``varargs``
   parameters this became unnecessary.
+- Anonymous tuples with a single element can now be written as ``(1,)`` with a
+  trailing comma. The underlying AST is ``nnkTupleConst(newLit 1)`` for this
+  example. ``nnkTupleConstr`` is a new node kind your macros need to be able
+  to deal with!
 
 #### Breaking changes in the standard library
 

@@ -427,7 +427,7 @@ proc foldArrayAccess(m: PSym, n: PNode): PNode =
 
   var idx = getOrdValue(y)
   case x.kind
-  of nkPar:
+  of nkPar, nkTupleConstr:
     if idx >= 0 and idx < sonsLen(x):
       result = x.sons[int(idx)]
       if result.kind == nkExprColonExpr: result = result.sons[1]
@@ -450,7 +450,7 @@ proc foldArrayAccess(m: PSym, n: PNode): PNode =
 proc foldFieldAccess(m: PSym, n: PNode): PNode =
   # a real field access; proc calls have already been transformed
   var x = getConstExpr(m, n.sons[0])
-  if x == nil or x.kind notin {nkObjConstr, nkPar}: return
+  if x == nil or x.kind notin {nkObjConstr, nkPar, nkTupleConstr}: return
 
   var field = n.sons[1].sym
   for i in countup(ord(x.kind == nkObjConstr), sonsLen(x) - 1):
@@ -624,7 +624,7 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
   #    if a == nil: return nil
   #    result.sons[i].sons[1] = a
   #  incl(result.flags, nfAllConst)
-  of nkPar:
+  of nkPar, nkTupleConstr:
     # tuple constructor
     result = copyTree(n)
     if (sonsLen(n) > 0) and (n.sons[0].kind == nkExprColonExpr):

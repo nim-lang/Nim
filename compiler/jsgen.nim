@@ -307,7 +307,7 @@ proc useMagic(p: PProc, name: string) =
 
 proc isSimpleExpr(p: PProc; n: PNode): bool =
   # calls all the way down --> can stay expression based
-  if n.kind in nkCallKinds+{nkBracketExpr, nkDotExpr, nkPar} or
+  if n.kind in nkCallKinds+{nkBracketExpr, nkDotExpr, nkPar, nkTupleConstr} or
       (p.target == targetJS and n.kind in {nkObjConstr, nkBracket, nkCurly}):
     for c in n:
       if not p.isSimpleExpr(c): return false
@@ -894,7 +894,7 @@ proc countJsParams(typ: PType): int =
 
 const
   nodeKindsNeedNoCopy = {nkCharLit..nkInt64Lit, nkStrLit..nkTripleStrLit,
-    nkFloatLit..nkFloat64Lit, nkCurly, nkPar, nkObjConstr, nkStringToCString,
+    nkFloatLit..nkFloat64Lit, nkCurly, nkPar, nkTupleConstr, nkObjConstr, nkStringToCString,
     nkCStringToString, nkCall, nkPrefix, nkPostfix, nkInfix,
     nkCommand, nkHiddenCallConv, nkCallStrLit}
 
@@ -1714,7 +1714,7 @@ proc genToArray(p: PProc; n: PNode; r: var TCompRes) =
   if x.kind == nkBracket:
     for i in countup(0, x.len - 1):
       let it = x[i]
-      if it.kind == nkPar and it.len == 2:
+      if it.kind in {nkPar, nkTupleConstr} and it.len == 2:
         if i > 0: r.res.add(", ")
         gen(p, it[0], a)
         gen(p, it[1], b)
@@ -2309,7 +2309,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkClosure: gen(p, n[0], r)
   of nkCurly: genSetConstr(p, n, r)
   of nkBracket: genArrayConstr(p, n, r)
-  of nkPar: genTupleConstr(p, n, r)
+  of nkPar, nkTupleConstr: genTupleConstr(p, n, r)
   of nkObjConstr: genObjConstr(p, n, r)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv: genConv(p, n, r)
   of nkAddr, nkHiddenAddr:

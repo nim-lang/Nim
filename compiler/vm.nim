@@ -418,14 +418,14 @@ proc setLenSeq(c: PCtx; node: PNode; newLen: int; info: TLineInfo) =
   let typ = node.typ.skipTypes(abstractInst+{tyRange}-{tyTypeDesc})
   let typeEntry = typ.sons[0].skipTypes(abstractInst+{tyRange}-{tyTypeDesc})
   let typeKind = case typeEntry.kind
-  of tyUInt..tyUInt64: nkUIntLit
-  of tyRange, tyEnum, tyBool, tyChar, tyInt..tyInt64: nkIntLit
-  of tyFloat..tyFloat128: nkFloatLit
-  of tyString: nkStrLit
-  of tyObject: nkObjConstr
-  of tySequence: nkNilLit
-  of tyProc, tyTuple: nkPar
-  else: nkEmpty
+                 of tyUInt..tyUInt64: nkUIntLit
+                 of tyRange, tyEnum, tyBool, tyChar, tyInt..tyInt64: nkIntLit
+                 of tyFloat..tyFloat128: nkFloatLit
+                 of tyString: nkStrLit
+                 of tyObject: nkObjConstr
+                 of tySequence: nkNilLit
+                 of tyProc, tyTuple: nkTupleConstr
+                 else: nkEmpty
 
   let oldLen = node.len
   setLen(node.sons, newLen)
@@ -939,7 +939,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let rb = instr.regB
       let rc = instr.regC
       let bb = regs[rb].node
-      let isClosure = bb.kind == nkPar
+      let isClosure = bb.kind == nkTupleConstr
       let prc = if not isClosure: bb.sym else: bb.sons[0].sym
       if prc.offset < -1:
         # it's a callback:
