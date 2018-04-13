@@ -125,8 +125,6 @@ proc toJs*[T](val: T): JsObject {. importcpp: "(#)" .}
 
 template toJs*(s: string): JsObject = cstring(s).toJs
 
-template `$`*(o: JsObject): cstring = cast[cstring](o.toString())
-
 macro jsFromAst*(n: untyped): untyped =
   result = n
   if n.kind == nnkStmtList:
