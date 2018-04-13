@@ -42,7 +42,7 @@ include "system/inclrtl"
 # This is really bad, but overflow checks are broken badly for
 # ints on the JS backend. See #6752.
 when defined(JS):
-  {.push overflowChecks: off.}  
+  {.push overflowChecks: off.}
   proc `*`(a, b: int64): int64 =
     system.`* `(a, b)
   proc `*`(a, b: int): int =
@@ -159,8 +159,8 @@ type
                      ## This type should be prefered over ``TimeInterval`` unless
                      ## non-static time units is needed.
     seconds: int64
-    nanoseconds: NanosecondRange                     
-                           
+    nanoseconds: NanosecondRange
+
   TimeUnit* = enum ## Different units of time.
     Nanoseconds, Microseconds, Milliseconds, Seconds, Minutes, Hours, Days, Weeks, Months, Years
 
@@ -261,7 +261,7 @@ proc weeks*(dur: Duration): int64 {.inline.} =
 proc days*(dur: Duration): int64 {.inline.} =
   ## Number of whole days represented by the duration.
   convert(Seconds, Days, dur.seconds)
-  
+
 proc minutes*(dur: Duration): int64 {.inline.} =
   ## Number of whole minutes represented by the duration.
   convert(Seconds, Minutes, dur.seconds)
@@ -308,7 +308,7 @@ proc fractional*(dur: Duration): Duration {.inline.} =
 const DurationZero* = initDuration() ## Zero value for durations. Useful for comparisons.
                                      ##
                                      ## .. code-block:: nim
-                                     ## 
+                                     ##
                                      ##   doAssert initDuration(seconds = 1) > DurationZero
                                      ##   doAssert initDuration(seconds = 0) == DurationZero
 
@@ -484,13 +484,13 @@ proc `-`*(a, b: Duration): Duration {.operator.} =
     doAssert initDuration(seconds = 1, days = 1) - initDuration(seconds = 1) ==
       initDuration(days = 1)
   subImpl[Duration](a, b)
-  
+
 proc `-`*(a: Duration): Duration {.operator.} =
   ## Reverse a duration.
   runnableExamples:
     doAssert -initDuration(seconds = 1) == initDuration(seconds = -1)
   normalize[Duration](-a.seconds, -a.nanoseconds)
-  
+
 proc `<`*(a, b: Duration): bool {.operator.} =
   ## Note that a duration can be negative,
   ## so even if ``a < b`` is true ``a`` might
@@ -571,7 +571,7 @@ proc low*(typ: typedesc[Time]): Time =
   initTime(low(int64), 0)
 
 proc high*(typ: typedesc[Duration]): Duration =
-  ## Get the longest representable duration.  
+  ## Get the longest representable duration.
   initDuration(seconds = high(int64), nanoseconds = high(NanosecondRange))
 
 proc low*(typ: typedesc[Duration]): Duration =
@@ -1577,7 +1577,7 @@ proc parse*(value, layout: string, zone: Timezone = local()): DateTime =
   dt.hour = 0
   dt.minute = 0
   dt.second = 0
-  dt.nanosecond = 0  
+  dt.nanosecond = 0
   dt.isDst = true # using this is flag for checking whether a timezone has \
       # been read (because DST is always false when a tz is parsed)
   while true:
@@ -1676,7 +1676,7 @@ proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
 proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
                    hour: HourRange, minute: MinuteRange, second: SecondRange,
                    zone: Timezone = local()): DateTime =
-  ## Create a new ``DateTime`` in the specified timezone.  
+  ## Create a new ``DateTime`` in the specified timezone.
   initDateTime(monthday, month, year, hour, minute, second, 0, zone)
 
 when not defined(JS):
@@ -1713,7 +1713,7 @@ when not defined(JS):
       ##   doWork()
       ##   echo "CPU time [s] ", cpuTime() - t0
       result = toFloat(int(getClock())) / toFloat(clocksPerSec)
-    
+
     proc epochTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].} =
       ## gets time after the UNIX epoch (1970) in seconds. It is a float
       ## because sub-second resolution is likely to be supported (depending
@@ -1742,7 +1742,7 @@ when defined(JS):
 
 proc initInterval*(seconds, minutes, hours, days, months,
                    years: int = 0): TimeInterval {.deprecated.} =
-  ## **Deprecated since v0.18.0:** use ``initTimeInterval`` instead.                   
+  ## **Deprecated since v0.18.0:** use ``initTimeInterval`` instead.
   initTimeInterval(0, 0, 0, seconds, minutes, hours, days, 0, months, years)
 
 proc fromSeconds*(since1970: float): Time {.tags: [], raises: [], benign, deprecated.} =
@@ -1826,43 +1826,6 @@ proc timeToTimeInterval*(t: Time): TimeInterval {.deprecated.} =
   ## Use ``toTimeInterval`` instead.
   # Milliseconds not available from Time
   t.toTimeInterval()
-
-proc timeToTimeInfo*(t: Time): DateTime {.deprecated.} =
-  ## Converts a Time to DateTime.
-  ##
-  ## **Warning:** This procedure is deprecated since version 0.14.0.
-  ## Use ``inZone`` instead.
-  const epochStartYear = 1970
-
-  let
-    secs = t.toSeconds().int
-    daysSinceEpoch = secs div secondsInDay
-    (yearsSinceEpoch, daysRemaining) = countYearsAndDays(daysSinceEpoch)
-    daySeconds = secs mod secondsInDay
-
-    y = yearsSinceEpoch + epochStartYear
-
-  var
-    mon = mJan
-    days = daysRemaining
-    daysInMonth = getDaysInMonth(mon, y)
-
-  # calculate month and day remainder
-  while days > daysInMonth and mon <= mDec:
-    days -= daysInMonth
-    mon.inc
-    daysInMonth = getDaysInMonth(mon, y)
-
-  let
-    yd = daysRemaining
-    m = mon  # month is zero indexed enum
-    md = days
-    # NB: month is zero indexed but dayOfWeek expects 1 indexed.
-    wd = getDayOfWeek(days, mon, y).Weekday
-    h = daySeconds div secondsInHour + 1
-    mi = (daySeconds mod secondsInHour) div secondsInMin
-    s = daySeconds mod secondsInMin
-  result = DateTime(year: y, yearday: yd, month: m, monthday: md, weekday: wd, hour: h, minute: mi, second: s)
 
 proc getDayOfWeek*(day, month, year: int): WeekDay  {.tags: [], raises: [], benign, deprecated.} =
   ## **Warning:** This procedure is deprecated since version 0.18.0.
