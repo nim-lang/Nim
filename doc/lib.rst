@@ -436,6 +436,10 @@ Modules for JS backend
 * `asyncjs <asyncjs.html>`_
   Types and macros for writing asynchronous procedures in JavaScript.
 
+* `jscore <jscore.html>`_
+  Wrapper of core JavaScript functions. For most purposes you should be using
+  the ``math``, ``json``, and ``times`` stdlib modules instead of this module.
+
 Deprecated modules
 ------------------
 

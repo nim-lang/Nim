@@ -34,7 +34,7 @@ proc genObjectFields(p: PProc, typ: PType, n: PNode): Rope =
     s = genTypeInfo(p, field.typ)
     result = ("{kind: 1, offset: \"$1\", len: 0, " &
         "typ: $2, name: $3, sons: null}") %
-                   [mangleName(field, p.target), s,
+                   [mangleName(p.module, field), s,
                     makeJSString(field.name.s)]
   of nkRecCase:
     length = sonsLen(n)
@@ -63,7 +63,7 @@ proc genObjectFields(p: PProc, typ: PType, n: PNode): Rope =
            [u, genObjectFields(p, typ, lastSon(b))])
     result = ("{kind: 3, offset: \"$1\", len: $3, " &
         "typ: $2, name: $4, sons: [$5]}") % [
-        mangleName(field, p.target), s,
+        mangleName(p.module, field), s,
         rope(lengthOrd(field.typ)), makeJSString(field.name.s), result]
   else: internalError(n.info, "genObjectFields")
 
