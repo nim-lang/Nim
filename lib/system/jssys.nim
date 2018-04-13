@@ -417,11 +417,11 @@ proc cmpStrings(a, b: string): int {.asmNoStackFrame, compilerProc.} =
     if (`a` == `b`) return 0;
     if (!`a`) return -1;
     if (!`b`) return 1;
-    for (var i = 0; i < `a`.length-1; ++i) {
+    for (var i = 0; i < `a`.length - 1 && i < `b`.length - 1; i++) {
       var result = `a`[i] - `b`[i];
       if (result != 0) return result;
     }
-    return 0;
+    return `a`.length - `b`.length;
   """
 
 proc cmp(x, y: string): int =
