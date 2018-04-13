@@ -32,6 +32,9 @@
   now escapes the content of string literals consistently.
 - ``macros.NimSym`` and ``macros.NimIdent`` is now deprecated in favor
   of the more general ``NimNode``.
+- ``macros.getImpl`` now includes the pragmas of types, instead of omitting them.
+- ``macros.hasCustomPragma`` and ``macros.getCustomPragmaVal`` now 
+  also support pragmas on types(including variants), ``ref`` and ``ptr`` types.
 
 ### Language additions
 
