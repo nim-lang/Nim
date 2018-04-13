@@ -115,10 +115,10 @@ block:
       of variInt: integer {.serializationKey: "int".}: BiggestInt
       of variFloat: floatp: BiggestFloat
       of variString: str {.serializationKey: "string".}: string
-      of variNestedCase: 
+      of variNestedCase:
         case nestedKind: VariantKind
         of variInt..variNestedCase: nestedItem {.defaultValue: "Nimmers of the world, unite!".}: int
-  
+
   let vari = Variant(kind: variInt)
 
   const

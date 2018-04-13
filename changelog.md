@@ -37,7 +37,7 @@
 - ``macros.NimSym`` and ``macros.NimIdent`` is now deprecated in favor
   of the more general ``NimNode``.
 - ``macros.getImpl`` now includes the pragmas of types, instead of omitting them.
-- ``macros.hasCustomPragma`` and ``macros.getCustomPragmaVal`` now 
+- ``macros.hasCustomPragma`` and ``macros.getCustomPragmaVal`` now
   also support pragmas on types(including variants), ``ref`` and ``ptr`` types.
 
 ### Language additions
@@ -71,7 +71,7 @@
   target. To use it, compile your code with `--hotReloading:on` and use a
   helper library such as LiveReload or BrowserSync.
 
-- Added ``macros.getProjectPath`` and ``ospaths.putEnv`` procs to Nim's virtual 
+- Added ``macros.getProjectPath`` and ``ospaths.putEnv`` procs to Nim's virtual
   machine.
 
 ### Bugfixes

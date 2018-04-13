@@ -1233,7 +1233,7 @@ macro expandMacros*(body: typed): untyped =
 
 proc customPragmaNode(n: NimNode): NimNode =
   expectKind(n, {nnkSym, nnkDotExpr, nnkBracketExpr, nnkTypeOfExpr, nnkCheckedFieldExpr})
-  let 
+  let
     typ = n.getTypeInst()
 
   if typ.typeKind == ntyTypeDesc:
@@ -1256,10 +1256,10 @@ proc customPragmaNode(n: NimNode): NimNode =
       if isRef and typDef[2][0].kind in {nnkSym, nnkBracketExpr}: # defines ref type for another object(e.g. X = ref X)
         typDef = getImpl(typDef[2][0])
       else: # object definition, maybe an object directly defined as a ref type
-        let 
+        let
           obj = (if isRef: typDef[2][0] else: typDef[2])
         var identDefsStack = newSeq[NimNode](obj[2].len)
-        for i in 0..<identDefsStack.len: identDefsStack[i] = obj[2][i]       
+        for i in 0..<identDefsStack.len: identDefsStack[i] = obj[2][i]
         while identDefsStack.len > 0:
           var identDefs = identDefsStack.pop()
           if identDefs.kind == nnkRecCase:
@@ -1275,8 +1275,8 @@ proc customPragmaNode(n: NimNode): NimNode =
             for i in 0 .. identDefs.len - 3:
               if identDefs[i].kind == nnkPragmaExpr and
                 identDefs[i][0].kind == nnkIdent and $identDefs[i][0] == $name:
-                return identDefs[i][1]          
-            
+                return identDefs[i][1]
+
         if obj[1].kind == nnkOfInherit: # explore the parent object
           typDef = getImpl(obj[1][0])
         else:
@@ -1326,7 +1326,7 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
     if p.kind in nnkPragmaCallKinds and p.len > 0 and p[0].kind == nnkSym and p[0] == cp:
       return p[1]
 
-  error(n.repr & " doesn't have a pragma named " & cp.repr()) # returning an empty node results in most cases in a cryptic error, 
+  error(n.repr & " doesn't have a pragma named " & cp.repr()) # returning an empty node results in most cases in a cryptic error,
 
 
 when not defined(booting):
