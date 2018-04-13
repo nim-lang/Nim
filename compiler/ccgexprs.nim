@@ -30,12 +30,6 @@ proc intLiteral(i: BiggestInt): Rope =
   else:
     result = ~"(IL64(-9223372036854775807) - IL64(1))"
 
-proc getStrLit(m: BModule, s: string): Rope =
-  discard cgsym(m, "TGenericSeq")
-  result = getTempName(m)
-  addf(m.s[cfsData], "STRING_LITERAL($1, $2, $3);$n",
-       [result, makeCString(s), rope(len(s))])
-
 proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
   if ty == nil: internalError(n.info, "genLiteral: ty is nil")
   case n.kind
@@ -65,19 +59,14 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
     else:
       result = rope("NIM_NIL")
   of nkStrLit..nkTripleStrLit:
-    if n.strVal.isNil:
-      result = ropecg(p.module, "((#NimStringDesc*) NIM_NIL)", [])
-    elif skipTypes(ty, abstractVarRange).kind == tyString:
-      let id = nodeTableTestOrSet(p.module.dataCache, n, p.module.labels)
-      if id == p.module.labels:
-        # string literal not found in the cache:
-        result = ropecg(p.module, "((#NimStringDesc*) &$1)",
-                        [getStrLit(p.module, n.strVal)])
-      else:
-        result = ropecg(p.module, "((#NimStringDesc*) &$1$2)",
-                        [p.module.tmpBase, rope(id)])
+    case skipTypes(ty, abstractVarRange).kind
+    of tyNil:
+      result = genNilStringLiteral(p.module, n.info)
+    of tyString:
+      result = genStringLiteral(p.module, n)
     else:
-      result = makeCString(n.strVal)
+      if n.strVal.isNil: result = rope("NIM_NIL")
+      else: result = makeCString(n.strVal)
   of nkFloatLit, nkFloat64Lit:
     result = rope(n.floatVal.toStrMaxPrecision)
   of nkFloat32Lit:
@@ -282,7 +271,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     # little HACK to support the new 'var T' as return type:
     linefmt(p, cpsStmts, "$1 = $2;$n", rdLoc(dest), rdLoc(src))
     return
-  let ty = skipTypes(dest.t, abstractRange + tyUserTypeClasses)
+  let ty = skipTypes(dest.t, abstractRange + tyUserTypeClasses + {tyStatic})
   case ty.kind
   of tyRef:
     genRefAssign(p, dest, src, flags)
@@ -818,16 +807,16 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
     genInExprAux(p, it, u, v, test)
     let id = nodeTableTestOrSet(p.module.dataCache,
                                newStrNode(nkStrLit, field.name.s), p.module.labels)
-    let strLit = if id == p.module.labels: getStrLit(p.module, field.name.s)
+    let strLit = if id == p.module.labels: genStringLiteralDataOnly(p.module, field.name.s, e.info)
                  else: p.module.tmpBase & rope(id)
     if op.magic == mNot:
       linefmt(p, cpsStmts,
-              "if ($1) #raiseFieldError(((#NimStringDesc*) &$2));$n",
-              rdLoc(test), strLit)
+              "if ($1) #raiseFieldError($2);$n",
+              rdLoc(test), genStringLiteralFromData(p.module, strLit, e.info))
     else:
       linefmt(p, cpsStmts,
-              "if (!($1)) #raiseFieldError(((#NimStringDesc*) &$2));$n",
-              rdLoc(test), strLit)
+              "if (!($1)) #raiseFieldError($2);$n",
+              rdLoc(test), genStringLiteralFromData(p.module, strLit, e.info))
 
 proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
   if optFieldCheck in p.options:
@@ -879,6 +868,23 @@ proc genCStringElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   inheritLocation(d, a)
   putIntoDest(p, d, n,
               rfmt(nil, "$1[$2]", rdLoc(a), rdCharLoc(b)), a.storage)
+
+proc genIndexCheck(p: BProc; arr, idx: TLoc) =
+  let ty = skipTypes(arr.t, abstractVarRange)
+  case ty.kind
+  of tyOpenArray, tyVarargs:
+    linefmt(p, cpsStmts, "if ((NU)($1) >= (NU)($2Len_0)) #raiseIndexError();$n",
+            rdLoc(idx), rdLoc(arr))
+  of tyArray:
+    let first = intLiteral(firstOrd(ty))
+    if tfUncheckedArray notin ty.flags:
+      linefmt(p, cpsStmts, "if ($1 < $2 || $1 > $3) #raiseIndexError();$n",
+              rdCharLoc(idx), first, intLiteral(lastOrd(ty)))
+  of tySequence, tyString:
+    linefmt(p, cpsStmts,
+          "if ((NU)($1) >= (NU)($2->$3)) #raiseIndexError();$n",
+          rdLoc(idx), rdLoc(arr), lenField(p))
+  else: discard
 
 proc genOpenArrayElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   var a, b: TLoc
@@ -972,11 +978,11 @@ proc genEcho(p: BProc, n: PNode) =
     # bypass libc and print directly to the Genode LOG session
     var args: Rope = nil
     var a: TLoc
-    for i in countup(0, n.len-1):
-      if n.sons[i].skipConv.kind == nkNilLit:
+    for it in n.sons:
+      if it.skipConv.kind == nkNilLit:
         add(args, ", \"nil\"")
       else:
-        initLocExpr(p, n.sons[i], a)
+        initLocExpr(p, it, a)
         addf(args, ", $1? ($1)->data:\"nil\"", [rdLoc(a)])
     p.module.includeHeader("<base/log.h>")
     linefmt(p, cpsStmts, """Genode::log(""$1);$n""", args)
@@ -1573,13 +1579,14 @@ proc genInOp(p: BProc, e: PNode, d: var TLoc) =
     b.r = rope("(")
     var length = sonsLen(e.sons[1])
     for i in countup(0, length - 1):
-      if e.sons[1].sons[i].kind == nkRange:
-        initLocExpr(p, e.sons[1].sons[i].sons[0], x)
-        initLocExpr(p, e.sons[1].sons[i].sons[1], y)
+      let it = e.sons[1].sons[i]
+      if it.kind == nkRange:
+        initLocExpr(p, it.sons[0], x)
+        initLocExpr(p, it.sons[1], y)
         addf(b.r, "$1 >= $2 && $1 <= $3",
              [rdCharLoc(a), rdCharLoc(x), rdCharLoc(y)])
       else:
-        initLocExpr(p, e.sons[1].sons[i], x)
+        initLocExpr(p, it, x)
         addf(b.r, "$1 == $2", [rdCharLoc(a), rdCharLoc(x)])
       if i < length - 1: add(b.r, " || ")
     add(b.r, ")")
@@ -1913,33 +1920,33 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
       useStringh(p.module)
       lineF(p, cpsStmts, "memset($1, 0, sizeof($2));$n",
           [rdLoc(d), getTypeDesc(p.module, e.typ)])
-      for i in countup(0, sonsLen(e) - 1):
-        if e.sons[i].kind == nkRange:
+      for it in e.sons:
+        if it.kind == nkRange:
           getTemp(p, getSysType(tyInt), idx) # our counter
-          initLocExpr(p, e.sons[i].sons[0], a)
-          initLocExpr(p, e.sons[i].sons[1], b)
+          initLocExpr(p, it.sons[0], a)
+          initLocExpr(p, it.sons[1], b)
           lineF(p, cpsStmts, "for ($1 = $3; $1 <= $4; $1++) $n" &
               "$2[(NU)($1)>>3] |=(1U<<((NU)($1)&7U));$n", [rdLoc(idx), rdLoc(d),
               rdSetElemLoc(a, e.typ), rdSetElemLoc(b, e.typ)])
         else:
-          initLocExpr(p, e.sons[i], a)
+          initLocExpr(p, it, a)
           lineF(p, cpsStmts, "$1[(NU)($2)>>3] |=(1U<<((NU)($2)&7U));$n",
                [rdLoc(d), rdSetElemLoc(a, e.typ)])
     else:
       # small set
       var ts = "NU" & $(getSize(e.typ) * 8)
       lineF(p, cpsStmts, "$1 = 0;$n", [rdLoc(d)])
-      for i in countup(0, sonsLen(e) - 1):
-        if e.sons[i].kind == nkRange:
+      for it in e.sons:
+        if it.kind == nkRange:
           getTemp(p, getSysType(tyInt), idx) # our counter
-          initLocExpr(p, e.sons[i].sons[0], a)
-          initLocExpr(p, e.sons[i].sons[1], b)
+          initLocExpr(p, it.sons[0], a)
+          initLocExpr(p, it.sons[1], b)
           lineF(p, cpsStmts, "for ($1 = $3; $1 <= $4; $1++) $n" &
               "$2 |=((" & ts & ")(1)<<(($1)%(sizeof(" & ts & ")*8)));$n", [
               rdLoc(idx), rdLoc(d), rdSetElemLoc(a, e.typ),
               rdSetElemLoc(b, e.typ)])
         else:
-          initLocExpr(p, e.sons[i], a)
+          initLocExpr(p, it, a)
           lineF(p, cpsStmts,
                "$1 |=((" & ts & ")(1)<<(($2)%(sizeof(" & ts & ")*8)));$n",
                [rdLoc(d), rdSetElemLoc(a, e.typ)])
@@ -2044,6 +2051,7 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
       if t.kind notin {tyVar, tyLent} or not p.module.compileToCpp:
         r = "(*$1)" % [r]
       t = skipTypes(t.lastSon, abstractInst)
+    discard getTypeDesc(p.module, t)
     if not p.module.compileToCpp:
       while t.kind == tyObject and t.sons[0] != nil:
         add(r, ".Sup")
@@ -2148,6 +2156,9 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       else:
         genComplexConst(p, sym, d)
     of skEnumField:
+      # we never reach this case - as of the time of this comment,
+      # skEnumField is folded to an int in semfold.nim, but this code
+      # remains for robustness
       putIntoDest(p, d, n, rope(sym.position))
     of skVar, skForVar, skResult, skLet:
       if {sfGlobal, sfThread} * sym.flags != {}:
@@ -2356,8 +2367,8 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo): Rope =
 proc getNullValueAux(p: BProc; t: PType; obj, cons: PNode, result: var Rope; count: var int) =
   case obj.kind
   of nkRecList:
-    for i in countup(0, sonsLen(obj) - 1):
-      getNullValueAux(p, t, obj.sons[i], cons, result, count)
+    for it in obj.sons:
+      getNullValueAux(p, t, it, cons, result, count)
   of nkRecCase:
     getNullValueAux(p, t, obj.sons[0], cons, result, count)
     for i in countup(1, sonsLen(obj) - 1):

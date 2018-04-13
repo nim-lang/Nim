@@ -31,8 +31,8 @@ Advanced options:
   --nimcache:PATH           set the path used for generated files
   --header:FILE             the compiler should produce a .h file (FILE
                             is optional)
-  -c, --compileOnly         compile only; do not assemble or link
-  --noLinking               compile but do not link
+  -c, --compileOnly         compile Nim files only; do not assemble or link
+  --noLinking               compile Nim and generated files but do not link
   --noMain                  do not generate a main procedure
   --genScript               generate a compile script (in the 'nimcache'
                             subdirectory named 'compile_$project$scriptext')

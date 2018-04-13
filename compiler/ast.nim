@@ -632,10 +632,11 @@ type
     mCpuEndian, mHostOS, mHostCPU, mBuildOS, mBuildCPU, mAppType,
     mNaN, mInf, mNegInf,
     mCompileOption, mCompileOptionArg,
-    mNLen, mNChild, mNSetChild, mNAdd, mNAddMultiple, mNDel, mNKind,
+    mNLen, mNChild, mNSetChild, mNAdd, mNAddMultiple, mNDel,
+    mNKind, mNSymKind
     mNIntVal, mNFloatVal, mNSymbol, mNIdent, mNGetType, mNStrVal, mNSetIntVal,
     mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, mNSetStrVal, mNLineInfo,
-    mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent, mIdentToStr,
+    mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent,
     mNBindSym, mLocals, mNCallSite,
     mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl,
     mNHint, mNWarning, mNError,
@@ -847,6 +848,8 @@ type
     constraint*: PNode        # additional constraints like 'lit|result'; also
                               # misused for the codegenDecl pragma in the hope
                               # it won't cause problems
+                              # for skModule the string literal to output for
+                              # deprecated modules.
     when defined(nimsuggest):
       allUsages*: seq[TLineInfo]
 
@@ -981,6 +984,7 @@ const
 
   nkPragmaCallKinds* = {nkExprColonExpr, nkCall, nkCallStrLit}
   nkLiterals* = {nkCharLit..nkTripleStrLit}
+  nkFloatLiterals* = {nkFloatLit..nkFloat128Lit}
   nkLambdaKinds* = {nkLambda, nkDo}
   declarativeDefs* = {nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef}
   procDefs* = nkLambdaKinds + declarativeDefs
@@ -1476,7 +1480,7 @@ proc copyNode*(src: PNode): PNode =
       echo "COMES FROM ", src.id
   case src.kind
   of nkCharLit..nkUInt64Lit: result.intVal = src.intVal
-  of nkFloatLit..nkFloat128Lit: result.floatVal = src.floatVal
+  of nkFloatLiterals: result.floatVal = src.floatVal
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
@@ -1495,7 +1499,7 @@ proc shallowCopy*(src: PNode): PNode =
       echo "COMES FROM ", src.id
   case src.kind
   of nkCharLit..nkUInt64Lit: result.intVal = src.intVal
-  of nkFloatLit..nkFloat128Lit: result.floatVal = src.floatVal
+  of nkFloatLiterals: result.floatVal = src.floatVal
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
@@ -1515,7 +1519,7 @@ proc copyTree*(src: PNode): PNode =
       echo "COMES FROM ", src.id
   case src.kind
   of nkCharLit..nkUInt64Lit: result.intVal = src.intVal
-  of nkFloatLit..nkFloat128Lit: result.floatVal = src.floatVal
+  of nkFloatLiterals: result.floatVal = src.floatVal
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
@@ -1564,7 +1568,7 @@ proc getInt*(a: PNode): BiggestInt =
 
 proc getFloat*(a: PNode): BiggestFloat =
   case a.kind
-  of nkFloatLit..nkFloat128Lit: result = a.floatVal
+  of nkFloatLiterals: result = a.floatVal
   else:
     internalError(a.info, "getFloat")
     result = 0.0
@@ -1670,6 +1674,19 @@ proc isException*(t: PType): bool =
       return true
     base = base.lastSon
   return false
+
+proc isImportedException*(t: PType): bool =
+  assert(t != nil)
+  if optNoCppExceptions in gGlobalOptions:
+    return false
+
+  let base = t.skipTypes({tyAlias, tyPtr, tyDistinct, tyGenericInst})
+
+  if base.sym != nil and sfCompileToCpp in base.sym.flags:
+    result = true
+
+proc isInfixAs*(n: PNode): bool =
+  return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.id == getIdent("as").id
 
 proc findUnresolvedStatic*(n: PNode): PNode =
   if n.kind == nkSym and n.typ.kind == tyStatic and n.typ.n == nil:

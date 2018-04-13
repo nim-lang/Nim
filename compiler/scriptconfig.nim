@@ -70,11 +70,16 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
     setResult(a, os.getCurrentDir())
   cbos moveFile:
     os.moveFile(getString(a, 0), getString(a, 1))
+  cbos moveDir:
+    os.moveDir(getString(a, 0), getString(a, 1))
   cbos copyFile:
     os.copyFile(getString(a, 0), getString(a, 1))
+  cbos copyDir:
+    os.copyDir(getString(a, 0), getString(a, 1))
   cbos getLastModificationTime:
-    # depends on Time's implementation!
-    setResult(a, int64(getLastModificationTime(getString(a, 0))))
+    setResult(a, getLastModificationTime(getString(a, 0)).toUnix)
+  cbos findExe:
+    setResult(a, os.findExe(getString(a, 0)))
 
   cbos rawExec:
     setResult(a, osproc.execCmd getString(a, 0))

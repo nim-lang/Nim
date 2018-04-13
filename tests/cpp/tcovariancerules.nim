@@ -300,7 +300,7 @@ reject wantsVarPointer2(pcat)
 
 # covariance may be allowed for certain extern types
 
-{.emit: """
+{.emit: """/*TYPESECTION*/
 template <class T> struct FN { typedef void (*type)(T); };
 template <class T> struct ARR { typedef T DataType[2]; DataType data; };
 """.}

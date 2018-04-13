@@ -359,9 +359,12 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
         catchesAll(tracked)
       else:
         for j in countup(0, blen - 2):
-          assert(b.sons[j].kind == nkType)
-          catches(tracked, b.sons[j].typ)
-
+          if b.sons[j].isInfixAs():
+            assert(b.sons[j][1].kind == nkType)
+            catches(tracked, b.sons[j][1].typ)
+          else:
+            assert(b.sons[j].kind == nkType)
+            catches(tracked, b.sons[j].typ)
       setLen(tracked.init, oldState)
       track(tracked, b.sons[blen-1])
       for i in oldState..<tracked.init.len:

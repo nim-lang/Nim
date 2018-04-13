@@ -51,26 +51,26 @@ proc setCookie*(key, value: string, domain = "", path = "",
   if secure: result.add("; Secure")
   if httpOnly: result.add("; HttpOnly")
 
-proc setCookie*(key, value: string, expires: DateTime,
+proc setCookie*(key, value: string, expires: DateTime|Time,
                 domain = "", path = "", noName = false,
                 secure = false, httpOnly = false): string =
   ## Creates a command in the format of
   ## ``Set-Cookie: key=value; Domain=...; ...``
-  ##
-  ## **Note:** UTC is assumed as the timezone for ``expires``.
   return setCookie(key, value, domain, path,
-                   format(expires, "ddd',' dd MMM yyyy HH:mm:ss 'GMT'"),
+                   format(expires.utc, "ddd',' dd MMM yyyy HH:mm:ss 'GMT'"),
                    noname, secure, httpOnly)
 
 when isMainModule:
-  var tim = fromUnix(getTime().toUnix + 76 * (60 * 60 * 24))
+  let expire = fromUnix(0) + 1.seconds
 
-  let cookie = setCookie("test", "value", tim.utc)
-  when not defined(testing):
-    echo cookie
-  let start = "Set-Cookie: test=value; Expires="
-  assert cookie[0..start.high] == start
+  let cookies = [
+    setCookie("test", "value", expire),
+    setCookie("test", "value", expire.local),
+    setCookie("test", "value", expire.utc)
+  ]
+  let expected = "Set-Cookie: test=value; Expires=Thu, 01 Jan 1970 00:00:01 GMT"
+  doAssert cookies == [expected, expected, expected]
 
   let table = parseCookies("uid=1; kp=2")
-  assert table["uid"] == "1"
-  assert table["kp"] == "2"
+  doAssert table["uid"] == "1"
+  doAssert table["kp"] == "2"

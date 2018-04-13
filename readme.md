@@ -52,6 +52,10 @@ Nim from source using ``gcc``, ``git`` and the ``koch`` build tool (in the place
 of ``sh build.sh`` you should substitute ``build.bat`` on x86 Windows or
 ``build64.bat`` on x86_64 Windows):
 
+**Note: The following commands are for the development version of the compiler.**
+For most users, installing the latest stable version is enough. Check out
+the installation instructions on the website to do so: https://nim-lang.org/install.html.
+
 ```
 git clone https://github.com/nim-lang/Nim.git
 cd Nim
@@ -61,6 +65,7 @@ sh build.sh
 cd ../
 bin/nim c koch
 ./koch boot -d:release
+./koch tools # Compile Nimble and other tools.
 ```
 
 Finally, once you have finished the build steps (on Windows, Mac or Linux) you
@@ -80,11 +85,9 @@ For more information on the ``koch`` build tool please see the documentation
 within the [doc/koch.rst](doc/koch.rst) file.
 
 ## Nimble
-``nimble`` is Nim's package manager and it can be acquired from the
-[``nim-lang/nimble``][nimble-repo] repository. Assuming that you added Nim's
-``bin`` directory to your PATH, you may install Nimble from source by running
-``koch nimble`` within the root of the cloned repository.
 
+``nimble`` is Nim's package manager. To learn more about it, see the
+[``nim-lang/nimble``][nimble-repo] repository.
 
 ## Contributors
 

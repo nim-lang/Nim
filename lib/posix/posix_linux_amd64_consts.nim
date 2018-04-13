@@ -433,6 +433,9 @@ const POSIX_MADV_WILLNEED* = cint(3)
 const POSIX_MADV_DONTNEED* = cint(4)
 const MAP_POPULATE* = cint(32768)
 
+# <sys/resource.h>
+const RLIMIT_NOFILE* = cint(7)
+
 # <sys/select.h>
 const FD_SETSIZE* = cint(1024)
 

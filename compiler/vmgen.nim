@@ -251,7 +251,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {})
 proc gen(c: PCtx; n: PNode; dest: TRegister; flags: TGenFlags = {}) =
   var d: TDest = dest
   gen(c, n, d, flags)
-  internalAssert d == dest
+  #internalAssert d == dest # issue #7407
 
 proc gen(c: PCtx; n: PNode; flags: TGenFlags = {}) =
   var tmp: TDest = -1
@@ -1080,6 +1080,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mNAdd: genBinaryABC(c, n, dest, opcNAdd)
   of mNAddMultiple: genBinaryABC(c, n, dest, opcNAddMultiple)
   of mNKind: genUnaryABC(c, n, dest, opcNKind)
+  of mNSymKind: genUnaryABC(c, n, dest, opcNSymKind)
   of mNIntVal: genUnaryABC(c, n, dest, opcNIntVal)
   of mNFloatVal: genUnaryABC(c, n, dest, opcNFloatVal)
   of mNSymbol: genUnaryABC(c, n, dest, opcNSymbol)
@@ -1125,7 +1126,6 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     else:
       localError(n.info, "invalid bindSym usage")
   of mStrToIdent: genUnaryABC(c, n, dest, opcStrToIdent)
-  of mIdentToStr: genUnaryABC(c, n, dest, opcIdentToStr)
   of mEqIdent: genBinaryABC(c, n, dest, opcEqIdent)
   of mEqNimrodNode: genBinaryABC(c, n, dest, opcEqNimrodNode)
   of mSameNodeType: genBinaryABC(c, n, dest, opcSameNodeType)
@@ -1768,6 +1768,9 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       let constVal = if s.ast != nil: s.ast else: s.typ.n
       gen(c, constVal, dest)
     of skEnumField:
+      # we never reach this case - as of the time of this comment,
+      # skEnumField is folded to an int in semfold.nim, but this code
+      # remains for robustness
       if dest < 0: dest = c.getTemp(n.typ)
       if s.position >= low(int16) and s.position <= high(int16):
         c.gABx(n, opcLdImmInt, dest, s.position)
@@ -1829,7 +1832,6 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     unused(n, dest)
     genReturn(c, n)
   of nkRaiseStmt:
-    unused(n, dest)
     genRaise(c, n)
   of nkBreakStmt:
     unused(n, dest)

@@ -483,6 +483,7 @@ type
       trace: string
     else:
       trace: seq[StackTraceEntry]
+    raise_id: uint # set when exception is raised
     up: ref Exception # used for stacking exceptions. Not exported!
 
   SystemError* = object of Exception ## \
@@ -616,6 +617,11 @@ type
     ## Raised on dereferences of ``nil`` pointers.
     ##
     ## This is only raised if the ``segfaults.nim`` module was imported!
+
+when defined(nimNewRuntime):
+  type
+    MoveError* = object of SystemError ## \
+      ## Raised on attempts to re-sink an already consumed ``sink`` parameter.
 
 {.deprecated: [TObject: RootObj, PObject: RootRef, TEffect: RootEffect,
   FTime: TimeEffect, FIO: IOEffect, FReadIO: ReadIOEffect,
@@ -1377,7 +1383,8 @@ const
   hostCPU* {.magic: "HostCPU".}: string = ""
     ## a string that describes the host CPU. Possible values:
     ## "i386", "alpha", "powerpc", "powerpc64", "powerpc64el", "sparc",
-    ## "amd64", "mips", "mipsel", "arm", "arm64", "mips64", "mips64el".
+    ## "amd64", "mips", "mipsel", "arm", "arm64", "mips64", "mips64el",
+    ## "riscv64".
 
   seqShallowFlag = low(int)
   strlitFlag = 1 shl (sizeof(int)*8 - 2) # later versions of the codegen \
@@ -3735,7 +3742,7 @@ proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
   ## for debugging.
 
 proc instantiationInfo*(index = -1, fullPaths = false): tuple[
-  filename: string, line: int] {. magic: "InstantiationInfo", noSideEffect.}
+  filename: string, line: int, column: int] {. magic: "InstantiationInfo", noSideEffect.}
   ## provides access to the compiler's instantiation stack line information
   ## of a template.
   ##
@@ -4155,3 +4162,13 @@ when defined(cpp) and appType != "lib" and not defined(js) and
     stderr.write trace & "Error: unhandled exception: " & ex.msg &
                  " [" & $ex.name & "]\n"
     quit 1
+
+when not defined(js):
+  proc toOpenArray*[T](x: seq[T]; first, last: int): openarray[T] {.
+    magic: "Slice".}
+  proc toOpenArray*[T](x: openarray[T]; first, last: int): openarray[T] {.
+    magic: "Slice".}
+  proc toOpenArray*[I, T](x: array[I, T]; first, last: I): openarray[T] {.
+    magic: "Slice".}
+  proc toOpenArray*(x: string; first, last: int): openarray[char] {.
+    magic: "Slice".}

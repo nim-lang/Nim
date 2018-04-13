@@ -40,16 +40,6 @@ type
     wfd: cint
   SelectEvent* = ptr SelectEventImpl
 
-var RLIMIT_NOFILE {.importc: "RLIMIT_NOFILE",
-                    header: "<sys/resource.h>".}: cint
-type
-  rlimit {.importc: "struct rlimit",
-           header: "<sys/resource.h>", pure, final.} = object
-    rlim_cur: int
-    rlim_max: int
-proc getrlimit(resource: cint, rlp: var rlimit): cint
-     {.importc: "getrlimit",header: "<sys/resource.h>".}
-
 when hasThreadSupport:
   template withPollLock[T](s: Selector[T], body: untyped) =
     acquire(s.lock)
@@ -63,8 +53,8 @@ else:
     body
 
 proc newSelector*[T](): Selector[T] =
-  var a = rlimit()
-  if getrlimit(RLIMIT_NOFILE, a) != 0:
+  var a = RLimit()
+  if getrlimit(posix.RLIMIT_NOFILE, a) != 0:
     raiseIOSelectorsError(osLastError())
   var maxFD = int(a.rlim_max)
 

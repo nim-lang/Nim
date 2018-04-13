@@ -148,7 +148,10 @@ proc myImportModule(c: PContext, n: PNode): PSym =
           result.info.fileIndex == n.info.fileIndex:
         localError(n.info, errGenerated, "A module cannot import itself")
     if sfDeprecated in result.flags:
-      message(n.info, warnDeprecated, result.name.s)
+      if result.constraint != nil:
+        message(n.info, warnDeprecated, result.constraint.strVal & "; " & result.name.s)
+      else:
+        message(n.info, warnDeprecated, result.name.s)
     suggestSym(n.info, result, c.graph.usageSym, false)
 
 proc impMod(c: PContext; it: PNode) =

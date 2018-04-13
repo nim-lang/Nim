@@ -155,7 +155,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     else:
       c.hashSym(t.sym)
     return
-  of tyAlias, tyGenericInst, tyUserTypeClasses:
+  of tyAlias, tySink, tyGenericInst, tyUserTypeClasses:
     c.hashType t.lastSon, flags
     return
   else:

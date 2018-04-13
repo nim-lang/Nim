@@ -884,6 +884,9 @@ const
 
 proc readTypeParameter(c: PContext, typ: PType,
                        paramName: PIdent, info: TLineInfo): PNode =
+  # Note: This function will return emptyNode when attempting to read
+  # a static type parameter that is not yet resolved (e.g. this may
+  # happen in proc signatures such as `proc(x: T): array[T.sizeParam, U]`
   if typ.kind in {tyUserTypeClass, tyUserTypeClassInst}:
     for statement in typ.n:
       case statement.kind
@@ -914,7 +917,10 @@ proc readTypeParameter(c: PContext, typ: PType,
       if tParam.sym.name.id == paramName.id:
         let rawTyp = ty.sons[s + 1]
         if rawTyp.kind == tyStatic:
-          return rawTyp.n
+          if rawTyp.n != nil:
+            return rawTyp.n
+          else:
+            return emptyNode
         else:
           let foundTyp = makeTypeDesc(c, rawTyp)
           return newSymNode(copySym(tParam.sym).linkTo(foundTyp), info)
@@ -1079,21 +1085,43 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   template tryReadingGenericParam(t: PType) =
     case t.kind
     of tyTypeParamsHolders:
-      return readTypeParameter(c, t, i, n.info)
+      result = readTypeParameter(c, t, i, n.info)
+      if result == emptyNode:
+        result = n
+        n.typ = makeTypeFromExpr(c, n.copyTree)
+      return
     of tyUserTypeClasses:
       if t.isResolvedUserTypeClass:
         return readTypeParameter(c, t, i, n.info)
       else:
         n.typ = makeTypeFromExpr(c, copyTree(n))
         return n
-    of tyGenericParam:
+    of tyGenericParam, tyAnything:
       n.typ = makeTypeFromExpr(c, copyTree(n))
       return n
     else:
       discard
 
-  if isTypeExpr(n.sons[0]) or (ty.kind == tyTypeDesc and ty.base.kind != tyNone):
-    if ty.kind == tyTypeDesc: ty = ty.base
+  var argIsType = false
+
+  if ty.kind == tyTypeDesc:
+    if ty.base.kind == tyNone:
+      # This is a still unresolved typedesc parameter.
+      # If this is a regular proc, then all bets are off and we must return
+      # tyFromExpr, but when this happen in a macro this is not a built-in
+      # field access and we leave the compiler to compile a normal call:
+      if getCurrOwner(c).kind != skMacro:
+        n.typ = makeTypeFromExpr(c, n.copyTree)
+        return n
+      else:
+        return nil
+    else:
+      ty = ty.base
+      argIsType = true
+  else:
+    argIsType = isTypeExpr(n.sons[0])
+
+  if argIsType:
     ty = ty.skipTypes(tyDotOpTransparent)
     case ty.kind
     of tyEnum:
@@ -1301,13 +1329,23 @@ proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
     #analyseIfAddressTakenInCall(c, result)
 
 proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode =
+  # See RFC #7373, calls returning 'var T' are assumed to
+  # return a view into the first argument (if there is one):
+  let root = exprRoot(n)
+  if root != nil and root.owner == c.p.owner:
+    if root.kind in {skLet, skVar, skTemp} and sfGlobal notin root.flags:
+      localError(n.info, "'$1' escapes its stack frame; context: '$2'" % [
+        root.name.s, renderTree(n, {renderNoComments})])
+    elif root.kind == skParam and root.position != 0:
+      localError(n.info, "'$1' is not the first parameter; context: '$2'" % [
+        root.name.s, renderTree(n, {renderNoComments})])
   case n.kind
   of nkHiddenAddr, nkAddr: return n
   of nkHiddenDeref, nkDerefExpr: return n.sons[0]
   of nkBracketExpr:
     if len(n) == 1: return n.sons[0]
   else: discard
-  var valid = isAssignable(c, n)
+  let valid = isAssignable(c, n)
   if valid != arLValue:
     if valid == arLocalLValue:
       localError(n.info, errXStackEscape, renderTree(n, {renderNoComments}))
@@ -2176,7 +2214,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     # because of the changed symbol binding, this does not mean that we
     # don't have to check the symbol for semantics here again!
     result = semSym(c, n, n.sym, flags)
-  of nkEmpty, nkNone, nkCommentStmt:
+  of nkEmpty, nkNone, nkCommentStmt, nkType:
     discard
   of nkNilLit:
     if result.typ == nil: result.typ = getSysType(tyNil)

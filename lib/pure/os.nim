@@ -225,10 +225,10 @@ proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1".} =
   ## Returns true if the file `a` is newer than file `b`, i.e. if `a`'s
   ## modification time is later than `b`'s.
   when defined(posix):
-    result = getLastModificationTime(a) - getLastModificationTime(b) >= 0
+    result = getLastModificationTime(a) - getLastModificationTime(b) >= DurationZero
     # Posix's resolution sucks so, we use '>=' for posix.
   else:
-    result = getLastModificationTime(a) - getLastModificationTime(b) > 0
+    result = getLastModificationTime(a) - getLastModificationTime(b) > DurationZero
 
 proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [].} =
   ## Returns the `current working directory`:idx:.
@@ -615,6 +615,7 @@ proc tryMoveFSObject(source, dest: string): bool =
 proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [ReadIOEffect, WriteIOEffect].} =
   ## Moves a file from `source` to `dest`. If this fails, `OSError` is raised.
+  ## Can be used to `rename files`:idx:
   if not tryMoveFSObject(source, dest):
     when not defined(windows):
       # Fallback to copy & del

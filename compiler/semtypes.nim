@@ -184,6 +184,10 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
   checkSonsLen(n, 3)
   result = newOrPrevType(tyRange, prev, c)
   result.n = newNodeI(nkRange, n.info)
+  # always create a 'valid' range type, but overwrite it later
+  # because 'semExprWithType' can raise an exception. See bug #6895.
+  addSonSkipIntLit(result, errorType(c))
+
   if (n[1].kind == nkEmpty) or (n[2].kind == nkEmpty):
     localError(n.info, errRangeIsEmpty)
 
@@ -216,7 +220,7 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
   if weakLeValue(result.n[0], result.n[1]) == impNo:
     localError(n.info, errRangeIsEmpty)
 
-  addSonSkipIntLit(result, rangeT[0])
+  result[0] = rangeT[0]
 
 proc semRange(c: PContext, n: PNode, prev: PType): PType =
   result = nil
@@ -252,6 +256,9 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
     if e.typ.kind == tyFromExpr:
       result = makeRangeWithStaticExpr(c, e.typ.n)
     elif e.kind in {nkIntLit..nkUInt64Lit}:
+      if e.intVal < 0:
+        localError(n[1].info,
+          "Array length can't be negative, but was " & $e.intVal)
       result = makeRangeType(c, 0, e.intVal-1, n.info, e.typ)
     elif e.kind == nkSym and e.typ.kind == tyStatic:
       if e.sym.ast != nil:
@@ -1272,8 +1279,9 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
 
     internalAssert dummyName.kind == nkIdent
     var dummyParam = newSym(if modifier == tyTypeDesc: skType else: skVar,
-                            dummyName.ident, owner, owner.info)
+                            dummyName.ident, owner, param.info)
     dummyParam.typ = dummyType
+    incl dummyParam.flags, sfUsed
     addDecl(c, dummyParam)
 
   result.n.sons[3] = semConceptBody(c, n[3])
@@ -1397,7 +1405,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         fixupTypeOf(c, prev, typExpr)
         result = typExpr.typ
       else:
-        result = semTypeExpr(c, n, prev)
+        if c.inGenericContext > 0 and n.kind == nkCall:
+          result = makeTypeFromExpr(c, n.copyTree)
+        else:
+          result = semTypeExpr(c, n, prev)
   of nkWhenStmt:
     var whenResult = semWhen(c, n, false)
     if whenResult.kind == nkStmtList: whenResult.kind = nkStmtListType
