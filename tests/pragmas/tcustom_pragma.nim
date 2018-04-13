@@ -107,20 +107,26 @@ block:
   type
     VariantKind = enum
       variInt,
-      variFloat,
+      variFloat
       variString
+      variNestedCase
     Variant = object
       case kind: VariantKind
       of variInt: integer {.serializationKey: "int".}: BiggestInt
       of variFloat: floatp: BiggestFloat
       of variString: str {.serializationKey: "string".}: string
+      of variNestedCase: 
+        case nestedKind: VariantKind
+        of variInt..variNestedCase: nestedItem {.defaultValue: "Nimmers of the world, unite!".}: int
   
   let vari = Variant(kind: variInt)
 
   const
     hasIntSerKey = vari.integer.hasCustomPragma(serializationKey)
     strSerKey = vari.str.getCustomPragmaVal(serializationKey)
+    nestedItemDefVal = vari.nestedItem.getCustomPragmaVal(defaultValue)
 
   static:
     assert hasIntSerKey
     assert strSerKey == "string"
+    assert nestedItemDefVal == "Nimmers of the world, unite!"

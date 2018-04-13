@@ -1243,7 +1243,6 @@ proc customPragmaNode(n: NimNode): NimNode =
     let name = (if n.kind == nnkCheckedFieldExpr: n[0][1] else: n[1])
     var typDef = getImpl(getTypeInst(if n.kind == nnkCheckedFieldExpr or n[0].kind == nnkHiddenDeref: n[0][0] else: n[0]))
     while typDef != nil:
-      echo typDef.treeRepr()
       typDef.expectKind(nnkTypeDef)
       typDef[2].expectKind({nnkRefTy, nnkPtrTy, nnkObjectTy})
       let isRef = typDef[2].kind in {nnkRefTy, nnkPtrTy}
@@ -1252,21 +1251,25 @@ proc customPragmaNode(n: NimNode): NimNode =
       else: # object definition, maybe an object directly defined as a ref type
         let 
           obj = (if isRef: typDef[2][0] else: typDef[2])
-          recList = obj[2]
-        for identDefs in recList:
+        var identDefsStack = newSeq[NimNode](obj[2].len)
+        for i in 0..<identDefsStack.len: identDefsStack[i] = obj[2][i]       
+        while identDefsStack.len > 0:
+          var identDefs = identDefsStack.pop()
           if identDefs.kind == nnkRecCase:
-            for branch in identDefs:
-              for identDefs in branch:
-                for i in 0 .. identDefs.len - 3:
-                  if identDefs[i].kind == nnkPragmaExpr and
-                    identDefs[i][0].kind == nnkIdent and $identDefs[i][0] == $name:
-                    return identDefs[i][1]
+            identDefsStack.add(identDefs[0])
+            for i in 1..<identDefs.len:
+              if identDefs[i][1].kind == nnkIdentDefs:
+                identDefsStack.add(identDefs[i][1])
+              else: # nnkRecList
+                for j in 0..<identDefs[i][1].len:
+                  identDefsStack.add(identDefs[i][1][j])
+
           else:
             for i in 0 .. identDefs.len - 3:
               if identDefs[i].kind == nnkPragmaExpr and
                 identDefs[i][0].kind == nnkIdent and $identDefs[i][0] == $name:
-                return identDefs[i][1]
-
+                return identDefs[i][1]          
+            
         if obj[1].kind == nnkOfInherit: # explore the parent object
           typDef = getImpl(obj[1][0])
         else:
