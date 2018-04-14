@@ -684,6 +684,8 @@ proc genCaseJS(p: PProc, n: PNode, r: var TCompRes) =
   if stringSwitch:
     useMagic(p, "toJSStr")
     lineF(p, "switch (toJSStr($1)) {$n", [cond.rdLoc])
+  else:
+    lineF(p, "switch ($1) {$n", [cond.rdLoc])
   if not isEmptyType(n.typ):
     r.kind = resVal
     r.res = getTemp(p)
