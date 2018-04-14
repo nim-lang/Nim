@@ -925,7 +925,8 @@ proc rawCreateDir(dir: string): bool =
     else:
       raiseOSError(osLastError())
 
-proc existsOrCreateDir*(dir: string): bool =
+proc existsOrCreateDir*(dir: string): bool {.rtl, extern: "nos$1",
+  tags: [WriteDirEffect, ReadDirEffect].} =
   ## Check if a `directory`:idx: `dir` exists, and create it otherwise.
   ##
   ## Does not create parent directories (fails if parent does not exist).
