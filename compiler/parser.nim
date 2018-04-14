@@ -400,7 +400,7 @@ proc exprColonEqExprListAux(p: var TParser, endTok: TTokType, result: PNode) =
     if p.tok.tokType != tkComma: break
     getTok(p)
     # (1,) produces a tuple expression
-    if endTok == tkParRi and p.tok.tokType == tkParRi:
+    if endTok == tkParRi and p.tok.tokType == tkParRi and result.kind == nkPar:
       result.kind = nkTupleConstr
     skipComment(p, a)
   optPar(p)
