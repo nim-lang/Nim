@@ -50,6 +50,9 @@
 - Dot calls combined with explicit generic instantiations can now be written
   as ``x.y[:z]``. ``x.y[:z]`` that is transformed into ``y[z](x)`` in the parser.
 - ``func`` is now an alias for ``proc {.noSideEffect.}``.
+- In order to make ``for`` loops and iterators more flexible to use Nim now
+  supports so called "for-loop macros". See
+  the `manual <manual.html#macros-for-loop-macros>`_ for more details.
 
 ### Language changes
 

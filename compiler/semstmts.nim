@@ -702,11 +702,46 @@ proc isTrivalStmtExpr(n: PNode): bool =
       return false
   result = true
 
+proc handleForLoopMacro(c: PContext; n: PNode): PNode =
+  let iterExpr = n[^2]
+  if iterExpr.kind in nkCallKinds:
+    # we transform
+    # n := for a, b, c in m(x, y, z): Y
+    # to
+    # m(n)
+    let forLoopStmt = magicsys.getCompilerProc("ForLoopStmt")
+    if forLoopStmt == nil: return
+
+    let headSymbol = iterExpr[0]
+    var o: TOverloadIter
+    var match: PSym = nil
+    var symx = initOverloadIter(o, c, headSymbol)
+    while symx != nil:
+      if symx.kind in {skTemplate, skMacro}:
+        if symx.typ.len == 2 and symx.typ[1] == forLoopStmt.typ:
+          if match == nil:
+            match = symx
+          else:
+            localError(n.info, errGenerated, msgKindToString(errAmbiguousCallXYZ) % [
+              getProcHeader(match), getProcHeader(symx), $iterExpr])
+      symx = nextOverloadIter(o, c, headSymbol)
+
+    if match == nil: return
+    var callExpr = newNodeI(nkCall, n.info)
+    callExpr.add newSymNode(match)
+    callExpr.add n
+    case match.kind
+    of skMacro: result = semMacroExpr(c, callExpr, callExpr, match, {})
+    of skTemplate: result = semTemplateExpr(c, callExpr, match, {})
+    else: result = nil
+
 proc semFor(c: PContext, n: PNode): PNode =
-  result = n
   checkMinSonsLen(n, 3)
   var length = sonsLen(n)
+  result = handleForLoopMacro(c, n)
+  if result != nil: return result
   openScope(c)
+  result = n
   n.sons[length-2] = semExprNoDeref(c, n.sons[length-2], {efWantIterator})
   var call = n.sons[length-2]
   if call.kind == nkStmtListExpr and isTrivalStmtExpr(call):
@@ -772,7 +807,7 @@ proc typeSectionTypeName(n: PNode): PNode =
   else:
     result = n
   if result.kind != nkSym: illFormedAst(n)
-  
+
 
 proc typeSectionLeftSidePass(c: PContext, n: PNode) =
   # process the symbols on the left side for the whole type section, before

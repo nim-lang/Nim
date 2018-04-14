@@ -4172,3 +4172,8 @@ when not defined(js):
     magic: "Slice".}
   proc toOpenArray*(x: string; first, last: int): openarray[char] {.
     magic: "Slice".}
+
+
+type
+  ForLoopStmt* {.compilerProc.} = object ## special type that marks a macro
+                                         ## as a `for-loop macro`:idx:
