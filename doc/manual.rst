@@ -598,6 +598,16 @@ whitespace (this parsing change was introduced with version 0.13.0):
   echo($foo)
 
 
+Spacing also determines whether ``(a, b)`` is parsed as an the argument list
+of a call or whether it is parsed as a tuple constructor:
+
+.. code-block:: nim
+  echo(1, 2) # pass 1 and 2 to echo
+
+.. code-block:: nim
+  echo (1, 2) # pass the tuple (1, 2) to echo
+
+
 Grammar
 -------
 
@@ -953,8 +963,8 @@ provides for ``string`` representation.
 
   proc `$`(p: Person): string = # `$` always returns a string
     result = p.name & " is " &
-            $p.age & # we *need* the `$` in front of p.age, which
-                     # is natively an integer, to convert it to
+            $p.age & # we *need* the `$` in front of p.age which
+                     # is natively an integer to convert it to
                      # a string
             " years old."
 
@@ -1175,6 +1185,18 @@ of the assignment operator is described in `type-bound-operations-operator`_.
   person = (name: "Peter", age: 30)
   # the same, but less readable:
   person = ("Peter", 30)
+
+A tuple with one unnamed field can be constructed with the parentheses and a
+trailing comma:
+
+.. code-block:: nim
+  proc echoUnaryTuple(a: (int,)) =
+    echo a[0]
+
+  echoUnaryTuple (1,)
+
+
+In fact, a trailing comma is allowed for every tuple construction.
 
 The implementation aligns the fields for best access performance. The alignment
 is compatible with the way the C compiler does it.
@@ -3237,21 +3259,28 @@ with the *method call syntax* achieve the same. But setting a value is
 different; for this a special setter syntax is needed:
 
 .. code-block:: nim
-
+  # Module asocket
   type
     Socket* = ref object of RootObj
-      FHost: int # cannot be accessed from the outside of the module
-                 # the `F` prefix is a convention to avoid clashes since
-                 # the accessors are named `host`
+      host: int # cannot be accessed from the outside of the module
 
   proc `host=`*(s: var Socket, value: int) {.inline.} =
-    ## setter of hostAddr
-    s.FHost = value
+    ## setter of hostAddr.
+    ## This accesses the 'host' field and is not a recursive call to
+    ## ``host=`` because the builtin dot access is preferred if it is
+    ## avaliable:
+    s.host = value
 
   proc host*(s: Socket): int {.inline.} =
     ## getter of hostAddr
-    s.FHost
+    ## This accesses the 'host' field and is not a recursive call to
+    ## ``host`` because the builtin dot access is preferred if it is
+    ## avaliable:
+    s.host
 
+.. code-block:: nim
+  # module B
+  import asocket
   var s: Socket
   new s
   s.host = 34  # same as `host=`(s, 34)
@@ -3298,7 +3327,7 @@ visible in both places). The closure environment may be allocated on the heap
 or on the stack if the compiler determines that this would be safe.
 
 Creating closures in loops
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Since closures capture local variables by reference it is often not wanted
 behavior inside loop bodies. See `closureScope <system.html#closureScope>`_
@@ -3319,6 +3348,20 @@ the proc's name.
 
 Procs as expressions can appear both as nested procs and inside top level
 executable code.
+
+
+Func
+----
+
+The ``func`` keyword introduces a shortcut for a `noSideEffect`:idx: proc.
+
+.. code-block:: nim
+  func binarySearch[T](a: openArray[T]; elem: T): int
+
+Is short for:
+
+.. code-block:: nim
+  proc binarySearch[T](a: openArray[T]; elem: T): int {.noSideEffect.}
 
 
 Do notation
@@ -4132,8 +4175,7 @@ The following example shows a generic binary tree can be modelled:
 
   proc newNode*[T](data: T): BinaryTree[T] =
     # constructor for a node
-    new(result)
-    result.data = data
+    result = BinaryTree(le: nil, ri: nil, data: data)
 
   proc add*[T](root: var BinaryTree[T], n: BinaryTree[T]) =
     # insert a node into the tree
@@ -4179,7 +4221,8 @@ The following example shows a generic binary tree can be modelled:
   for str in preorder(root):
     stdout.writeLine(str)
 
-The ``T`` is called a `generic type parameter`:idx:.
+The ``T`` is called a `generic type parameter`:idx: or
+a `type variable`:idx:.
 
 
 Is operator
@@ -6258,28 +6301,10 @@ As a special semantic rule, the built-in `debugEcho <system.html#debugEcho>`_
 pretends to be free of side effects, so that it can be used for debugging
 routines marked as ``noSideEffect``.
 
-**Future directions**: ``func`` may become a keyword and syntactic sugar for a
-proc with no side effects:
+``func`` is syntactic sugar for a proc with no side effects:
 
 .. code-block:: nim
   func `+` (x, y: int): int
-
-
-destructor pragma
------------------
-
-The ``destructor`` pragma is used to mark a proc to act as a type destructor.
-Its usage is deprecated, see `type bound operations`_ instead.
-
-override pragma
----------------
-
-See `type bound operations`_ instead.
-
-procvar pragma
---------------
-The ``procvar`` pragma is used to mark a proc that it can be passed to a
-procedural variable.
 
 
 compileTime pragma
@@ -6348,7 +6373,9 @@ memory, but nothing worse happens.
 final pragma
 ------------
 The ``final`` pragma can be used for an object type to specify that it
-cannot be inherited from.
+cannot be inherited from. Note that inheritance is only available for
+objects that inherit from an existing object (via the ``object of SuperType``
+syntax) or that have been marked as ``inheritable``.
 
 
 shallow pragma
@@ -6363,7 +6390,7 @@ structure:
 .. code-block:: nim
   type
     NodeKind = enum nkLeaf, nkInner
-    Node {.final, shallow.} = object
+    Node {.shallow.} = object
       case kind: NodeKind
       of nkLeaf:
         strVal: string
@@ -6850,7 +6877,7 @@ underlying C ``struct`` in a ``sizeof`` expression:
 .. code-block:: Nim
   type
     DIR* {.importc: "DIR", header: "<dirent.h>",
-           final, pure, incompleteStruct.} = object
+           pure, incompleteStruct.} = object
 
 
 Compile pragma
@@ -6983,7 +7010,7 @@ pragmas this allows *sloppy* interfacing with libraries written in C++:
     irr = "<irrlicht/irrlicht.h>"
 
   type
-    IrrlichtDeviceObj {.final, header: irr,
+    IrrlichtDeviceObj {.header: irr,
                         importcpp: "IrrlichtDevice".} = object
     IrrlichtDevice = ptr IrrlichtDeviceObj
 
@@ -7006,7 +7033,7 @@ via the ``namespace::identifier`` notation:
 
 .. code-block:: nim
   type
-    IrrlichtDeviceObj {.final, header: irr,
+    IrrlichtDeviceObj {.header: irr,
                         importcpp: "irr::IrrlichtDevice".} = object
 
 
@@ -7129,8 +7156,8 @@ Wrapping destructors
 Since Nim generates C++ directly, any destructor is called implicitly by the
 C++ compiler at the scope exits. This means that often one can get away with
 not wrapping the destructor at all! However when it needs to be invoked
-explicitly, it needs to be wrapped. But the pattern language already provides
-everything that is required for that:
+explicitly, it needs to be wrapped. The pattern language provides
+everything that is required:
 
 .. code-block:: nim
   proc destroyFoo(this: var Foo) {.importcpp: "#.~Foo()".}
@@ -7297,7 +7324,7 @@ pragma             description
    const FooBar {.intdefine.}: int = 5
    echo FooBar
 
-.. code-block:: bash
+::
    nim c -d:FooBar=42 foobar.c
 
 In the above example, providing the -d flag causes the symbol
@@ -7452,7 +7479,7 @@ instructs the compiler to pass the type by value to procs:
 
 .. code-block:: nim
   type
-    Vector {.bycopy, pure.} = object
+    Vector {.bycopy.} = object
       x, y, z: float
 
 
