@@ -330,7 +330,7 @@ proc `$`*(dur: Duration): string =
     remS.inc 1
 
   const unitStrings: array[FixedTimeUnit, string] = [
-    "nanoseconds", "microsecond", "millisecond", "second", "minute", "hour", "day", "week"
+    "nanosecond", "microsecond", "millisecond", "second", "minute", "hour", "day", "week"
   ]
 
   for unit in countdown(Weeks, Seconds):
