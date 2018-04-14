@@ -973,3 +973,19 @@ template onSignal*(signals: varargs[cint], body: untyped) =
       proc (sig: cint) {.noconv.} =
         body
     )
+
+type
+  RLimit* {.importc: "struct rlimit",
+            header: "<sys/resource.h>", pure, final.} = object
+    rlim_cur*: int
+    rlim_max*: int
+  ## The getrlimit() and setrlimit() system calls get and set resource limits respectively.
+  ## Each resource has an associated soft and hard limit, as defined by the RLimit structure
+
+proc setrlimit*(resource: cint, rlp: var RLimit): cint
+      {.importc: "setrlimit",header: "<sys/resource.h>".}
+  ## The setrlimit() system calls sets resource limits.
+
+proc getrlimit*(resource: cint, rlp: var RLimit): cint
+      {.importc: "getrlimit",header: "<sys/resource.h>".}
+  ## The getrlimit() system call gets resource limits.

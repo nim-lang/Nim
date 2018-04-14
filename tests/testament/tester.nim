@@ -427,7 +427,7 @@ include categories
 #                 if status: reSuccess else: reOutputsDiffer)
 
 proc main() =
-  os.putenv "NIMTEST_NO_COLOR", "1"
+  os.putenv "NIMTEST_COLOR", "never"
   os.putenv "NIMTEST_OUTPUT_LVL", "PRINT_FAILURES"
 
   backend.open()

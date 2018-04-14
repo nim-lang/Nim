@@ -483,6 +483,7 @@ type
       trace: string
     else:
       trace: seq[StackTraceEntry]
+    raise_id: uint # set when exception is raised
     up: ref Exception # used for stacking exceptions. Not exported!
 
   SystemError* = object of Exception ## \
@@ -647,6 +648,11 @@ when defined(nimNewRuntime):
   EFloatOverflow: FloatOverflowError,
   ESynch: Exception
 ].}
+
+when defined(js) or defined(nimdoc):
+  type
+    JsRoot* = ref object of RootObj
+      ## Root type of the JavaScript object hierarchy
 
 proc unsafeNew*[T](a: var ref T, size: Natural) {.magic: "New", noSideEffect.}
   ## creates a new object of type ``T`` and returns a safe (traced)
@@ -1377,7 +1383,8 @@ const
   hostCPU* {.magic: "HostCPU".}: string = ""
     ## a string that describes the host CPU. Possible values:
     ## "i386", "alpha", "powerpc", "powerpc64", "powerpc64el", "sparc",
-    ## "amd64", "mips", "mipsel", "arm", "arm64", "mips64", "mips64el".
+    ## "amd64", "mips", "mipsel", "arm", "arm64", "mips64", "mips64el",
+    ## "riscv64".
 
   seqShallowFlag = low(int)
   strlitFlag = 1 shl (sizeof(int)*8 - 2) # later versions of the codegen \
@@ -3735,7 +3742,7 @@ proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
   ## for debugging.
 
 proc instantiationInfo*(index = -1, fullPaths = false): tuple[
-  filename: string, line: int] {. magic: "InstantiationInfo", noSideEffect.}
+  filename: string, line: int, column: int] {. magic: "InstantiationInfo", noSideEffect.}
   ## provides access to the compiler's instantiation stack line information
   ## of a template.
   ##
@@ -4077,6 +4084,25 @@ template closureScope*(body: untyped): untyped =
   ##         myClosure = proc() = echo j
   ##   myClosure() # outputs 3
   (proc() = body)()
+
+template once*(body: untyped): untyped =
+  ## Executes a block of code only once (the first time the block is reached).
+  ## When hot code reloading is enabled, protects top-level code from being
+  ## re-executed on each module reload.
+  ##
+  ## .. code-block:: nim
+  ## proc draw(t: Triangle) =
+  ##   once:
+  ##     graphicsInit()
+  ##
+  ##   line(t.p1, t.p2)
+  ##   line(t.p2, t.p3)
+  ##   line(t.p3, t.p1)
+  ##
+  var alreadyExecuted {.global.} = false
+  if not alreadyExecuted:
+    alreadyExecuted = true
+    body
 
 {.pop.} #{.push warning[GcMem]: off, warning[Uninit]: off.}
 

@@ -334,7 +334,7 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
   if skipTypes(e.typ, {tyGenericInst, tyAlias, tySink}).kind == tyTuple and
       c.transCon.forStmt.len != 3:
     e = skipConv(e)
-    if e.kind == nkPar:
+    if e.kind in {nkPar, nkTupleConstr}:
       for i in countup(0, sonsLen(e) - 1):
         var v = e.sons[i]
         if v.kind == nkExprColonExpr: v = v.sons[1]
@@ -500,7 +500,7 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
   case arg.kind
   of nkEmpty..nkNilLit:
     result = paDirectMapping
-  of nkPar, nkCurly, nkBracket:
+  of nkPar, nkTupleConstr, nkCurly, nkBracket:
     result = paFastAsgn
     for i in countup(0, sonsLen(arg) - 1):
       if putArgInto(arg.sons[i], formal) != paDirectMapping: return
@@ -714,7 +714,7 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
 
 proc transformExceptBranch(c: PTransf, n: PNode): PTransNode =
   result = transformSons(c, n)
-  if n[0].isInfixAs():
+  if n[0].isInfixAs() and (not isImportedException(n[0][1].typ)):
     let excTypeNode = n[0][1]
     let actions = newTransNode(nkStmtListExpr, n[1], 2)
     # Generating `let exc = (excType)(getCurrentException())`
@@ -745,7 +745,7 @@ proc transformExceptBranch(c: PTransf, n: PNode): PTransNode =
 proc dontInlineConstant(orig, cnst: PNode): bool {.inline.} =
   # symbols that expand to a complex constant (array, etc.) should not be
   # inlined, unless it's the empty array:
-  result = orig.kind == nkSym and cnst.kind in {nkCurly, nkPar, nkBracket} and
+  result = orig.kind == nkSym and cnst.kind in {nkCurly, nkPar, nkTupleConstr, nkBracket} and
       cnst.len != 0
 
 proc commonOptimizations*(c: PSym, n: PNode): PNode =

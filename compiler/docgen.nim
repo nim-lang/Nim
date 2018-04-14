@@ -257,7 +257,8 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
        tkBracketDotLe, tkBracketDotRi, tkParDotLe,
        tkParDotRi, tkComma, tkSemiColon, tkColon, tkEquals, tkDot, tkDotDot,
        tkAccent, tkColonColon,
-       tkGStrLit, tkGTripleStrLit, tkInfixOpr, tkPrefixOpr, tkPostfixOpr:
+       tkGStrLit, tkGTripleStrLit, tkInfixOpr, tkPrefixOpr, tkPostfixOpr,
+       tkBracketLeColon:
       dispA(result, "<span class=\"Other\">$1</span>", "\\spanOther{$1}",
             [rope(esc(d.target, literal))])
 

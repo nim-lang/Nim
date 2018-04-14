@@ -38,7 +38,8 @@ const
 
 proc getIdent(e: NimNode): string {.compileTime.} =
   case e.kind
-  of nnkIdent: result = normalize($e.ident)
+  of nnkIdent:
+    result = e.strVal.normalize
   of nnkAccQuoted:
     result = getIdent(e[0])
     for i in 1 .. e.len-1:
@@ -92,8 +93,10 @@ proc xmlCheckedTag*(e: NimNode, tag: string, optAttr = "", reqAttr = "",
     result.add(newStrLitNode("</"))
     result.add(newStrLitNode(tag))
     result.add(newStrLitNode(">"))
-  result = nestList(!"&", result)
-
+  when compiles(nestList(ident"&", result)):
+    result = nestList(ident"&", result)
+  else:
+    result = nestList(!"&", result)
 
 macro a*(e: varargs[untyped]): untyped =
   ## generates the HTML ``a`` element.

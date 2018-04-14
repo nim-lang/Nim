@@ -17,11 +17,11 @@ type
     p: BProc
     visitorFrmt: string
 
-proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, typ: PType)
+proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType)
 proc genCaseRange(p: BProc, branch: PNode)
 proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false)
 
-proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, n: PNode;
+proc genTraverseProc(c: TTraversalClosure, accessor: Rope, n: PNode;
                      typ: PType) =
   if n == nil: return
   case n.kind
@@ -61,7 +61,7 @@ proc parentObj(accessor: Rope; m: BModule): Rope {.inline.} =
   else:
     result = accessor
 
-proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, typ: PType) =
+proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType) =
   if typ == nil: return
 
   var p = c.p
@@ -101,7 +101,7 @@ proc genTraverseProc(c: var TTraversalClosure, accessor: Rope, typ: PType) =
   else:
     discard
 
-proc genTraverseProcSeq(c: var TTraversalClosure, accessor: Rope, typ: PType) =
+proc genTraverseProcSeq(c: TTraversalClosure, accessor: Rope, typ: PType) =
   var p = c.p
   assert typ.kind == tySequence
   var i: TLoc
@@ -117,17 +117,12 @@ proc genTraverseProcSeq(c: var TTraversalClosure, accessor: Rope, typ: PType) =
   else:
     lineF(p, cpsStmts, "}$n", [])
 
-proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash;
-                     reason: TTypeInfoReason): Rope =
+proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash): Rope =
   var c: TTraversalClosure
   var p = newProc(nil, m)
   result = "Marker_" & getTypeName(m, origTyp, sig)
   var typ = origTyp.skipTypes(abstractInst)
   if typ.kind == tyOpt: typ = optLowering(typ)
-
-  case reason
-  of tiNew: c.visitorFrmt = "#nimGCvisit((void*)$1, op);$n"
-  else: assert false
 
   let header = "static N_NIMCALL(void, $1)(void* p, NI op)" % [result]
 
@@ -136,6 +131,8 @@ proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash;
   lineF(p, cpsInit, "a = ($1)p;$n", [t])
 
   c.p = p
+  c.visitorFrmt = "#nimGCvisit((void*)$1, op);$n"
+
   assert typ.kind != tyTypeDesc
   if typ.kind == tySequence:
     genTraverseProcSeq(c, "a".rope, typ)

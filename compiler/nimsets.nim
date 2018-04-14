@@ -27,7 +27,7 @@ proc intersectSets*(a, b: PNode): PNode
 proc symdiffSets*(a, b: PNode): PNode
 proc containsSets*(a, b: PNode): bool
 proc equalSets*(a, b: PNode): bool
-proc cardSet*(s: PNode): BiggestInt
+proc cardSet*(a: PNode): BiggestInt
 # implementation
 
 proc inSet(s: PNode, elem: PNode): bool =
@@ -156,16 +156,10 @@ proc deduplicate*(a: PNode): PNode =
   toBitSet(a, x)
   result = toTreeSet(x, a.typ, a.info)
 
-proc cardSet(s: PNode): BiggestInt =
-  # here we can do better than converting it into a compact set
-  # we just count the elements directly
-  result = 0
-  for i in countup(0, sonsLen(s) - 1):
-    if s.sons[i].kind == nkRange:
-      result = result + getOrdValue(s.sons[i].sons[1]) -
-          getOrdValue(s.sons[i].sons[0]) + 1
-    else:
-      inc(result)
+proc cardSet(a: PNode): BiggestInt =
+  var x: TBitSet
+  toBitSet(a, x)
+  result = bitSetCard(x)
 
 proc setHasRange(s: PNode): bool =
   if s.kind != nkCurly:

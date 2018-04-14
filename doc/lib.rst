@@ -412,9 +412,8 @@ Miscellaneous
 * `options <options.html>`_
   Types which encapsulate an optional value.
 
-* `future <future.html>`_
-  This module implements new experimental features. Currently the syntax
-  sugar for anonymous procedures.
+* `sugar <sugar.html>`_
+  This module implements nice syntactic sugar based on Nim's macro system.
 
 * `coro <coro.html>`_
   This module implements experimental coroutines in Nim.
@@ -436,6 +435,10 @@ Modules for JS backend
 
 * `asyncjs <asyncjs.html>`_
   Types and macros for writing asynchronous procedures in JavaScript.
+
+* `jscore <jscore.html>`_
+  Wrapper of core JavaScript functions. For most purposes you should be using
+  the ``math``, ``json``, and ``times`` stdlib modules instead of this module.
 
 Deprecated modules
 ------------------

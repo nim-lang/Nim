@@ -215,7 +215,7 @@ proc semConv(c: PContext, n: PNode): PNode =
       # handle SomeProcType(SomeGenericProc)
       if op.kind == nkSym and op.sym.isGenericRoutine:
         result.sons[1] = fitNode(c, result.typ, result.sons[1], result.info)
-      elif op.kind == nkPar and targetType.kind == tyTuple:
+      elif op.kind in {nkPar, nkTupleConstr} and targetType.kind == tyTuple:
         op = fitNode(c, targetType, op, result.info)
     of convNotNeedeed:
       message(n.info, hintConvFromXtoItselfNotNeeded, result.typ.typeToString)
@@ -364,7 +364,7 @@ proc changeType(n: PNode, newType: PType, check: bool) =
   of nkCurly, nkBracket:
     for i in countup(0, sonsLen(n) - 1):
       changeType(n.sons[i], elemType(newType), check)
-  of nkPar:
+  of nkPar, nkTupleConstr:
     let tup = newType.skipTypes({tyGenericInst, tyAlias, tySink})
     if tup.kind != tyTuple:
       if tup.kind == tyObject: return
@@ -1402,7 +1402,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
     result = buildOverloadedSubscripts(n.sons[0], getIdent"{}=")
     add(result, n[1])
     return semExprNoType(c, result)
-  of nkPar:
+  of nkPar, nkTupleConstr:
     if a.len >= 2:
       # unfortunately we need to rewrite ``(x, y) = foo()`` already here so
       # that overloading of the assignment operator still works. Usually we
@@ -1521,10 +1521,10 @@ proc semYieldVarResult(c: PContext, n: PNode, restype: PType) =
       var e = skipTypes(t.sons[i], {tyGenericInst, tyAlias, tySink})
       if e.kind in {tyVar, tyLent}:
         if e.kind == tyVar: e.flags.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
-        if n.sons[0].kind == nkPar:
+        if n.sons[0].kind in {nkPar, nkTupleConstr}:
           n.sons[0].sons[i] = takeImplicitAddr(c, n.sons[0].sons[i], e.kind == tyLent)
         elif n.sons[0].kind in {nkHiddenStdConv, nkHiddenSubConv} and
-             n.sons[0].sons[1].kind == nkPar:
+             n.sons[0].sons[1].kind in {nkPar, nkTupleConstr}:
           var a = n.sons[0].sons[1]
           a.sons[i] = takeImplicitAddr(c, a.sons[i], false)
         else:
@@ -2047,12 +2047,12 @@ proc semTableConstr(c: PContext, n: PNode): PNode =
     var x = n.sons[i]
     if x.kind == nkExprColonExpr and sonsLen(x) == 2:
       for j in countup(lastKey, i-1):
-        var pair = newNodeI(nkPar, x.info)
+        var pair = newNodeI(nkTupleConstr, x.info)
         pair.add(n.sons[j])
         pair.add(x[1])
         result.add(pair)
 
-      var pair = newNodeI(nkPar, x.info)
+      var pair = newNodeI(nkTupleConstr, x.info)
       pair.add(x[0])
       pair.add(x[1])
       result.add(pair)
@@ -2072,6 +2072,7 @@ proc checkPar(n: PNode): TParKind =
     result = paTuplePositions # ()
   elif length == 1:
     if n.sons[0].kind == nkExprColonExpr: result = paTupleFields
+    elif n.kind == nkTupleConstr: result = paTuplePositions
     else: result = paSingle         # (expr)
   else:
     if n.sons[0].kind == nkExprColonExpr: result = paTupleFields
@@ -2088,7 +2089,7 @@ proc checkPar(n: PNode): TParKind =
           return paNone
 
 proc semTupleFieldsConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
-  result = newNodeI(nkPar, n.info)
+  result = newNodeI(nkTupleConstr, n.info)
   var typ = newTypeS(tyTuple, c)
   typ.n = newNodeI(nkRecList, n.info) # nkIdentDefs
   var ids = initIntSet()
@@ -2113,6 +2114,7 @@ proc semTupleFieldsConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
 proc semTuplePositionsConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = n                  # we don't modify n, but compute the type:
+  result.kind = nkTupleConstr
   var typ = newTypeS(tyTuple, c)  # leave typ.n nil!
   for i in countup(0, sonsLen(n) - 1):
     n.sons[i] = semExprWithType(c, n.sons[i], flags*{efAllowDestructor})
@@ -2344,7 +2346,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       invalidPragma(n)
 
     result = semExpr(c, n[0], flags)
-  of nkPar:
+  of nkPar, nkTupleConstr:
     case checkPar(n)
     of paNone: result = errorNode(c, n)
     of paTuplePositions:

@@ -2144,12 +2144,13 @@ proc formatEng*(f: BiggestFloat,
                 precision: range[0..32] = 10,
                 trim: bool = true,
                 siPrefix: bool = false,
-                unit: string = nil,
-                decimalSep = '.'): string {.noSideEffect.} =
+                unit: string = "",
+                decimalSep = '.',
+                useUnitSpace = false): string {.noSideEffect.} =
   ## Converts a floating point value `f` to a string using engineering notation.
   ##
   ## Numbers in of the range -1000.0<f<1000.0 will be formatted without an
-  ## exponent.  Numbers outside of this range will be formatted as a
+  ## exponent. Numbers outside of this range will be formatted as a
   ## significand in the range -1000.0<f<1000.0 and an exponent that will always
   ## be an integer multiple of 3, corresponding with the SI prefix scale k, M,
   ## G, T etc for numbers with an absolute value greater than 1 and m, μ, n, p
@@ -2157,7 +2158,7 @@ proc formatEng*(f: BiggestFloat,
   ##
   ## The default configuration (`trim=true` and `precision=10`) shows the
   ## **shortest** form that precisely (up to a maximum of 10 decimal places)
-  ## displays the value.  For example, 4.100000 will be displayed as 4.1 (which
+  ## displays the value. For example, 4.100000 will be displayed as 4.1 (which
   ## is mathematically identical) whereas 4.1000003 will be displayed as
   ## 4.1000003.
   ##
@@ -2177,15 +2178,15 @@ proc formatEng*(f: BiggestFloat,
   ##    formatEng(-52731234, 2) == "-52.73e6"
   ##
   ## If `siPrefix` is set to true, the number will be displayed with the SI
-  ## prefix corresponding to the exponent.  For example 4100 will be displayed
-  ## as "4.1 k" instead of "4.1e3".  Note that `u` is used for micro- in place
-  ## of the greek letter mu (μ) as per ISO 2955.  Numbers with an absolute
+  ## prefix corresponding to the exponent. For example 4100 will be displayed
+  ## as "4.1 k" instead of "4.1e3". Note that `u` is used for micro- in place
+  ## of the greek letter mu (μ) as per ISO 2955. Numbers with an absolute
   ## value outside of the range 1e-18<f<1000e18 (1a<f<1000E) will be displayed
   ## with an exponent rather than an SI prefix, regardless of whether
   ## `siPrefix` is true.
   ##
-  ## If `unit` is not nil, the provided unit will be appended to the string
-  ## (with a space as required by the SI standard).  This behaviour is slightly
+  ## If `useUnitSpace` is true, the provided unit will be appended to the string
+  ## (with a space as required by the SI standard). This behaviour is slightly
   ## different to appending the unit to the result as the location of the space
   ## is altered depending on whether there is an exponent.
   ##
@@ -2199,7 +2200,7 @@ proc formatEng*(f: BiggestFloat,
   ##    formatEng(4100, siPrefix=true, unit="") == "4.1 k"
   ##    formatEng(4100) == "4.1e3"
   ##    formatEng(4100, unit="V") == "4.1e3 V"
-  ##    formatEng(4100, unit="") == "4.1e3 " # Space with unit=""
+  ##    formatEng(4100, unit="", useUnitSpace=true) == "4.1e3 " # Space with useUnitSpace=true
   ##
   ## `decimalSep` is used as the decimal separator.
   var
@@ -2267,10 +2268,9 @@ proc formatEng*(f: BiggestFloat,
     if p != ' ':
       suffix = " " & p
       exponent = 0 # Exponent replaced by SI prefix
-  if suffix == "" and unit != nil:
+  if suffix == "" and useUnitSpace:
     suffix = " "
-  if unit != nil:
-    suffix &= unit
+  suffix &= unit
   if exponent != 0:
     result &= "e" & $exponent
   result &= suffix
@@ -2712,18 +2712,18 @@ bar
     doAssert formatEng(-52731234, 1, decimalSep=',') == "-52,7e6"
 
     doAssert formatEng(4100, siPrefix=true, unit="V") == "4.1 kV"
-    doAssert formatEng(4.1, siPrefix=true, unit="V") == "4.1 V"
+    doAssert formatEng(4.1, siPrefix=true, unit="V", useUnitSpace=true) == "4.1 V"
     doAssert formatEng(4.1, siPrefix=true) == "4.1" # Note lack of space
     doAssert formatEng(4100, siPrefix=true) == "4.1 k"
-    doAssert formatEng(4.1, siPrefix=true, unit="") == "4.1 " # Includes space
+    doAssert formatEng(4.1, siPrefix=true, unit="", useUnitSpace=true) == "4.1 " # Includes space
     doAssert formatEng(4100, siPrefix=true, unit="") == "4.1 k"
     doAssert formatEng(4100) == "4.1e3"
-    doAssert formatEng(4100, unit="V") == "4.1e3 V"
-    doAssert formatEng(4100, unit="") == "4.1e3 " # Space with unit=""
+    doAssert formatEng(4100, unit="V", useUnitSpace=true) == "4.1e3 V"
+    doAssert formatEng(4100, unit="", useUnitSpace=true) == "4.1e3 "
     # Don't use SI prefix as number is too big
-    doAssert formatEng(3.1e22, siPrefix=true, unit="a") == "31e21 a"
+    doAssert formatEng(3.1e22, siPrefix=true, unit="a", useUnitSpace=true) == "31e21 a"
     # Don't use SI prefix as number is too small
-    doAssert formatEng(3.1e-25, siPrefix=true, unit="A") == "310e-27 A"
+    doAssert formatEng(3.1e-25, siPrefix=true, unit="A", useUnitSpace=true) == "310e-27 A"
 
   block: # startsWith / endsWith char tests
     var s = "abcdef"

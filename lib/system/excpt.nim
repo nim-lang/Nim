@@ -33,6 +33,12 @@ proc showErrorMessage(data: cstring) {.gcsafe.} =
   else:
     writeToStdErr(data)
 
+proc quitOrDebug() {.inline.} =
+  when not defined(endb):
+    quit(1)
+  else:
+    endbStep() # call the debugger
+
 proc chckIndx(i, a, b: int): int {.inline, compilerproc, benign.}
 proc chckRange(i, a, b: int): int {.inline, compilerproc, benign.}
 proc chckRangeF(x, a, b: float): float {.inline, compilerproc, benign.}
@@ -50,6 +56,8 @@ var
     # list of exception handlers
     # a global variable for the root of all try blocks
   currException {.threadvar.}: ref Exception
+  raise_counter {.threadvar.}: uint 
+
   gcFramePtr {.threadvar.}: GcFrame
 
 type
@@ -107,6 +115,21 @@ proc pushCurrentException(e: ref Exception) {.compilerRtl, inl.} =
 
 proc popCurrentException {.compilerRtl, inl.} =
   currException = currException.up
+
+proc popCurrentExceptionEx(id: uint) {.compilerRtl.} =
+  # in cpp backend exceptions can pop-up in the different order they were raised, example #5628
+  if currException.raise_id == id:
+    currException = currException.up
+  else:
+    var cur = currException.up
+    var prev = currException
+    while cur != nil and cur.raise_id != id:
+      prev = cur
+      cur = cur.up
+    if cur == nil: 
+      showErrorMessage("popCurrentExceptionEx() exception was not found in the exception stack. Aborting...")
+      quitOrDebug()
+    prev.up = cur.up  
 
 # some platforms have native support for stack traces:
 const
@@ -291,12 +314,6 @@ when hasSomeStackTrace:
 else:
   proc stackTraceAvailable*(): bool = result = false
 
-proc quitOrDebug() {.inline.} =
-  when not defined(endb):
-    quit(1)
-  else:
-    endbStep() # call the debugger
-
 var onUnhandledException*: (proc (errorMsg: string) {.
   nimcall.}) ## set this error \
   ## handler to override the existing behaviour on an unhandled exception.
@@ -320,6 +337,10 @@ proc raiseExceptionAux(e: ref Exception) =
       quitOrDebug()
     else:
       pushCurrentException(e)
+      raise_counter.inc
+      if raise_counter == 0:
+        raise_counter.inc # skip zero at overflow
+      e.raise_id = raise_counter
       {.emit: "`e`->raise();".}
   else:
     if excHandler != nil:

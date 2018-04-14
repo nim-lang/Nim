@@ -1160,9 +1160,13 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   of tySequence, tyOpt:
     if t.sons[0].kind != tyEmpty:
       result = typeAllowedAux(marker, t.sons[0], skVar, flags+{taHeap})
+    elif kind in {skVar, skLet}:
+      result = t.sons[0]
   of tyArray:
     if t.sons[1].kind != tyEmpty:
       result = typeAllowedAux(marker, t.sons[1], skVar, flags)
+    elif kind in {skVar, skLet}:
+      result = t.sons[1]
   of tyRef:
     if kind == skConst: result = t
     else: result = typeAllowedAux(marker, t.lastSon, skVar, flags+{taHeap})
@@ -1181,7 +1185,9 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       if result != nil: break
     if result.isNil and t.n != nil:
       result = typeAllowedNode(marker, t.n, kind, flags)
-  of tyProxy, tyEmpty:
+  of tyEmpty:
+    if kind in {skVar, skLet}: result = t
+  of tyProxy:
     # for now same as error node; we say it's a valid type as it should
     # prevent cascading errors:
     result = nil
@@ -1333,7 +1339,10 @@ proc computeSizeAux(typ: PType, a: var BiggestInt): BiggestInt =
     if typ.callConv == ccClosure: result = 2 * ptrSize
     else: result = ptrSize
     a = ptrSize
-  of tyNil, tyCString, tyString, tySequence, tyPtr, tyRef, tyVar, tyLent, tyOpenArray:
+  of tyString, tyNil:
+    result = ptrSize
+    a = result
+  of tyCString, tySequence, tyPtr, tyRef, tyVar, tyLent, tyOpenArray:
     let base = typ.lastSon
     if base == typ or (base.kind == tyTuple and base.size==szIllegalRecursion):
       result = szIllegalRecursion

@@ -60,7 +60,7 @@ type
     tkCurlyDotLe, tkCurlyDotRi, # {.  and  .}
     tkParDotLe, tkParDotRi,   # (. and .)
     tkComma, tkSemiColon,
-    tkColon, tkColonColon, tkEquals, tkDot, tkDotDot,
+    tkColon, tkColonColon, tkEquals, tkDot, tkDotDot, tkBracketLeColon,
     tkOpr, tkComment, tkAccent,
     tkSpaces, tkInfixOpr, tkPrefixOpr, tkPostfixOpr
 
@@ -98,7 +98,7 @@ const
     "tkTripleStrLit", "tkGStrLit", "tkGTripleStrLit", "tkCharLit", "(",
     ")", "[", "]", "{", "}", "[.", ".]", "{.", ".}", "(.", ".)",
     ",", ";",
-    ":", "::", "=", ".", "..",
+    ":", "::", "=", ".", "..", "[:",
     "tkOpr", "tkComment", "`",
     "tkSpaces", "tkInfixOpr",
     "tkPrefixOpr", "tkPostfixOpr"]
@@ -1118,6 +1118,9 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
       inc(L.bufpos)
       if L.buf[L.bufpos] == '.' and L.buf[L.bufpos+1] != '.':
         tok.tokType = tkBracketDotLe
+        inc(L.bufpos)
+      elif L.buf[L.bufpos] == ':':
+        tok.tokType = tkBracketLeColon
         inc(L.bufpos)
       else:
         tok.tokType = tkBracketLe

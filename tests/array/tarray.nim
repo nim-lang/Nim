@@ -46,3 +46,7 @@ let arr3: array[0, string] = []
 doAssert(arr1.len == 0)
 doAssert(arr2.len == 0)
 doAssert(arr3.len == 0)
+
+# Negative array length is not allowed (#6852)
+doAssert(not compiles(block:
+  var arr: array[-1, int]))

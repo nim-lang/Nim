@@ -156,3 +156,25 @@ Exception hierarchy
 The exception tree is defined in the `system <system.html>`_ module:
 
 .. include:: ../exception_hierarchy_fragment.txt
+
+
+Imported exceptions
+-------------------
+
+It is possible to raise/catch imported C++ exceptions. Types imported using
+`importcpp` can be raised or caught. Exceptions are raised by value and 
+caught by reference. Example:
+
+.. code-block:: nim
+
+  type
+    std_exception {.importcpp: "std::exception", header: "<exception>".} = object
+
+  proc what(s: std_exception): cstring {.importcpp: "((char *)#.what())".}
+
+  try:
+    raise std_exception()
+  except std_exception as ex:
+    echo ex.what()
+
+    

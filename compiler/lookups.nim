@@ -456,5 +456,3 @@ proc pickSym*(c: PContext, n: PNode; kinds: set[TSymKind];
       else: return nil # ambiguous
     a = nextOverloadIter(o, c, n)
 
-proc isInfixAs*(n: PNode): bool =
-  return n.kind == nkInfix and considerQuotedIdent(n[0]).s == "as"
