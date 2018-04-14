@@ -8,7 +8,23 @@
 
 # "Stack GC" for embedded devices or ultra performance requirements.
 
-include osalloc
+when defined(nimphpext):
+  proc roundup(x, v: int): int {.inline.} =
+    result = (x + (v-1)) and not (v-1)
+  proc emalloc(size: int): pointer {.importc: "_emalloc".}
+  proc efree(mem: pointer) {.importc: "_efree".}
+
+  proc osAllocPages(size: int): pointer {.inline.} =
+    emalloc(size)
+
+  proc osTryAllocPages(size: int): pointer {.inline.} =
+    emalloc(size)
+
+  proc osDeallocPages(p: pointer, size: int) {.inline.} =
+    efree(p)
+
+else:
+  include osalloc
 
 # We manage memory as a thread local stack. Since the allocation pointer
 # is detached from the control flow pointer, this model is vastly more
