@@ -37,11 +37,8 @@ import
 from modulegraphs import ModuleGraph
 
 type
-  TTarget = enum
-    targetJS
   TJSGen = object of TPassContext
     module: PSym
-    target: TTarget
     sigConflicts: CountTable[SigHash]
 
   BModule = ref TJSGen
@@ -91,7 +88,6 @@ type
     module: BModule
     g: PGlobals
     beforeRetNeeded: bool
-    target: TTarget # duplicated here for faster dispatching
     unique: int    # for temp identifier generation
     blocks: seq[TBlock]
     extraIndent: int
@@ -153,7 +149,6 @@ proc newProc(globals: PGlobals, module: BModule, procDef: PNode,
     module: module,
     procDef: procDef,
     g: globals,
-    target: module.target,
     extraIndent: int(procDef != nil))
   if procDef != nil: result.prc = procDef.sons[namePos].sym
 
@@ -315,7 +310,7 @@ proc isSimpleExpr(p: PProc; n: PNode): bool =
     result = true
 
 proc getTemp(p: PProc, defineInLocals: bool = true): Rope =
-  inc(p.unique)  
+  inc(p.unique)
   result = "Tmp$1" % [rope(p.unique)]
   if defineInLocals:
     add(p.locals, p.indentLine("var $1;$n" % [result]))
@@ -469,7 +464,7 @@ proc unsignedTrimmerJS(size: BiggestInt): Rope =
 
 
 template unsignedTrimmer(size: BiggestInt): Rope =
-  size.unsignedTrimmerJS 
+  size.unsignedTrimmerJS
 
 proc binaryUintExpr(p: PProc, n: PNode, r: var TCompRes, op: string,
                     reassign = false) =
@@ -655,11 +650,11 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
       line(p, "else {" & tnl)
       line(p, indent & "reraiseException();" & tnl)
       line(p, "}" & tnl)
-    addf(p.body, "$1lastJSError = $1prevJSError;$n", [dollar])  
+    addf(p.body, "$1lastJSError = $1prevJSError;$n", [dollar])
   line(p, "} finally {" & tnl)
   line(p, "framePtr = $1;$n" % [tmpFramePtr])
   if i < length and n.sons[i].kind == nkFinally:
-    genStmt(p, n.sons[i].sons[0])  
+    genStmt(p, n.sons[i].sons[0])
   line(p, "}" & tnl)
 
 proc genRaiseStmt(p: PProc, n: PNode) =
@@ -817,7 +812,7 @@ proc generateHeader(p: PProc, typ: PType): Rope =
       add(result, ", ")
       add(result, name)
       add(result, "_Idx")
-    
+
 proc countJsParams(typ: PType): int =
   for i in countup(1, sonsLen(typ.n) - 1):
     assert(typ.n.sons[i].kind == nkSym)
@@ -836,7 +831,7 @@ const
 
 proc needsNoCopy(p: PProc; y: PNode): bool =
   result = (y.kind in nodeKindsNeedNoCopy) or
-      (skipTypes(y.typ, abstractInst).kind in {tyRef, tyPtr, tyLent, tyVar}) 
+      (skipTypes(y.typ, abstractInst).kind in {tyRef, tyPtr, tyLent, tyVar})
 
 proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
   var a, b: TCompRes
@@ -928,7 +923,7 @@ proc genFieldAddr(p: PProc, n: PNode, r: var TCompRes) =
   let b = if n.kind == nkHiddenAddr: n.sons[0] else: n
   gen(p, b.sons[0], a)
   if skipTypes(b.sons[0].typ, abstractVarRange).kind == tyTuple:
-    r.res = makeJSString("Field" & $getFieldPosition(b.sons[1]))   
+    r.res = makeJSString("Field" & $getFieldPosition(b.sons[1]))
   else:
     if b.sons[1].kind != nkSym: internalError(b.sons[1].info, "genFieldAddr")
     var f = b.sons[1].sym
@@ -948,7 +943,7 @@ proc genFieldAccess(p: PProc, n: PNode, r: var TCompRes) =
   else:
     if n.sons[1].kind != nkSym: internalError(n.sons[1].info, "genFieldAccess")
     var f = n.sons[1].sym
-    if f.loc.r == nil: f.loc.r = mangleName(p.module, f)    
+    if f.loc.r == nil: f.loc.r = mangleName(p.module, f)
     r.res = "$1.$2" % [r.res, f.loc.r]
   r.kind = resExpr
 
@@ -994,7 +989,7 @@ proc genArrayAccess(p: PProc, n: PNode, r: var TCompRes) =
     genFieldAddr(p, n, r)
   else: internalError(n.info, "expr(nkBracketExpr, " & $ty.kind & ')')
   r.typ = etyNone
-  if r.res == nil: internalError(n.info, "genArrayAccess")  
+  if r.res == nil: internalError(n.info, "genArrayAccess")
   if ty.kind == tyCString:
     r.res = "$1.charCodeAt($2)" % [r.address, r.res]
   else:
@@ -1095,7 +1090,7 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
   case s.kind
   of skVar, skLet, skParam, skTemp, skResult, skForVar:
     if s.loc.r == nil:
-      internalError(n.info, "symbol has no generated name: " & s.name.s)  
+      internalError(n.info, "symbol has no generated name: " & s.name.s)
     let k = mapType(p, s.typ)
     if k == etyBaseIndex:
       r.typ = etyBaseIndex
@@ -1112,7 +1107,7 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
   of skConst:
     genConstant(p, s)
     if s.loc.r == nil:
-      internalError(n.info, "symbol has no generated name: " & s.name.s)    
+      internalError(n.info, "symbol has no generated name: " & s.name.s)
     r.res = s.loc.r
   of skProc, skFunc, skConverter, skMethod:
     discard mangleName(p.module, s)
@@ -1300,7 +1295,7 @@ proc genCall(p: PProc, n: PNode, r: var TCompRes) =
 
 proc genEcho(p: PProc, n: PNode, r: var TCompRes) =
   let n = n[1].skipConv
-  internalAssert n.kind == nkBracket  
+  internalAssert n.kind == nkBracket
   useMagic(p, "toJSStr") # Used in rawEcho
   useMagic(p, "rawEcho")
   add(r.res, "rawEcho(")
@@ -1328,7 +1323,7 @@ proc createRecordVarAux(p: PProc, rec: PNode, excludedFieldIDs: IntSet, output: 
       createRecordVarAux(p, lastSon(rec.sons[i]), excludedFieldIDs, output)
   of nkSym:
     if rec.sym.id notin excludedFieldIDs:
-      if output.len > 0: output.add(", ")      
+      if output.len > 0: output.add(", ")
       output.addf("$#: ", [mangleName(p.module, rec.sym)])
       output.add(createVar(p, rec.sym.typ, false))
   else: internalError(rec.info, "createRecordVarAux")
@@ -1390,14 +1385,14 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
         inc(i)
       add(result, "]")
     if indirect: result = "[$1]" % [result]
-  of tyTuple:    
+  of tyTuple:
     result = rope("{")
     for i in 0..<t.sonsLen:
       if i > 0: add(result, ", ")
       addf(result, "Field$1: $2", [i.rope,
             createVar(p, t.sons[i], false)])
     add(result, "}")
-    if indirect: result = "[$1]" % [result]    
+    if indirect: result = "[$1]" % [result]
   of tyObject:
     var initList: Rope
     createObjInitList(p, t, initIntSet(), initList)
@@ -1653,14 +1648,14 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mAppendStrCh:
     binaryExpr(p, n, r, "addChar",
         "if ($1 != null) { addChar($1, $2); } else { $1 = [$2, 0]; }")
-  of mAppendStrStr:    
+  of mAppendStrStr:
     if skipTypes(n.sons[1].typ, abstractVarRange).kind == tyCString:
         binaryExpr(p, n, r, "", "if ($1 != null) { $1 += $2; } else { $1 = $2; }")
     else:
       binaryExpr(p, n, r, "",
         "if ($1 != null) { $1 = ($1.slice(0, -1)).concat($2); } else { $1 = $2;}")
     # XXX: make a copy of $2, because of Javascript's sucking semantics
-  of mAppendSeqElem:    
+  of mAppendSeqElem:
     var x, y: TCompRes
     gen(p, n.sons[1], x)
     gen(p, n.sons[2], y)
@@ -1677,7 +1672,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     genConStrStr(p, n, r)
   of mEqStr:
     binaryExpr(p, n, r, "eqStrings", "eqStrings($1, $2)")
-  of mLeStr:    
+  of mLeStr:
     binaryExpr(p, n, r, "cmpStrings", "(cmpStrings($1, $2) <= 0)")
   of mLtStr:
     binaryExpr(p, n, r, "cmpStrings", "(cmpStrings($1, $2) < 0)")
@@ -1733,8 +1728,8 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mMinusSet: binaryExpr(p, n, r, "SetMinus", "SetMinus($1, $2)")
   of mIncl: binaryExpr(p, n, r, "", "$1[$2] = true")
   of mExcl: binaryExpr(p, n, r, "", "delete $1[$2]")
-  of mInSet:    
-    binaryExpr(p, n, r, "", "($1[$2] != undefined)")    
+  of mInSet:
+    binaryExpr(p, n, r, "", "($1[$2] != undefined)")
   of mNewSeq: genNewSeq(p, n)
   of mNewSeqOfCap: unaryExpr(p, n, r, "", "[]")
   of mOf: genOf(p, n, r)
@@ -1744,7 +1739,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     localError(n.info, errXMustBeCompileTime, n.sons[0].sym.name.s)
   of mCopyStr:
     binaryExpr(p, n, r, "", "($1.slice($2))")
-  of mCopyStrLast:    
+  of mCopyStrLast:
     ternaryExpr(p, n, r, "", "($1.slice($2, ($3)+1).concat(0))")
   of mNewString: unaryExpr(p, n, r, "mnewString", "mnewString($1)")
   of mNewStringOfCap:
@@ -2183,7 +2178,7 @@ proc newModule(module: PSym): BModule =
   if globals == nil:
     globals = newGlobals()
 
-proc genHeader(target: TTarget): Rope =
+proc genHeader(): Rope =
   result = (
     "/* Generated by the Nim Compiler v$1 */$n" &
     "/*   (c) " & copyrightYear & " Andreas Rumpf */$n$n" &
@@ -2265,7 +2260,7 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   result = myProcess(b, n)
   var m = BModule(b)
   if sfMainModule in m.module.flags:
-    let ext = "js" 
+    let ext = "js"
     let f = if globals.classes.len == 0: m.module.filename
             else: "nimsystem"
     let code = wholeCode(graph, m)
@@ -2275,7 +2270,7 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
         else: getCurrentDir() / options.outFile
       else:
         changeFileExt(completeCFilePath(f), ext)
-    discard writeRopeIfNotEqual(genHeader(m.target) & code, outfile)
+    discard writeRopeIfNotEqual(genHeader() & code, outfile)
     for obj, content in items(globals.classes):
       genClass(obj, content, ext)
 
@@ -2285,7 +2280,6 @@ proc myOpenCached(graph: ModuleGraph; s: PSym, rd: PRodReader): PPassContext =
 
 proc myOpen(graph: ModuleGraph; s: PSym; cache: IdentCache): PPassContext =
   var r = newModule(s)
-  r.target = targetJS
   result = r
 
 const JSgenPass* = makePass(myOpen, myOpenCached, myProcess, myClose)
