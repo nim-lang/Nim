@@ -79,6 +79,7 @@ type
     opcNAdd,
     opcNAddMultiple,
     opcNKind,
+    opcNSymKind,
     opcNIntVal,
     opcNFloatVal,
     opcNSymbol,
@@ -101,7 +102,6 @@ type
     opcNGetLine, opcNGetColumn, opcNGetFile,
     opcEqIdent,
     opcStrToIdent,
-    opcIdentToStr,
     opcGetImpl,
 
     opcEcho,

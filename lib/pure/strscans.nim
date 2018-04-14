@@ -532,7 +532,7 @@ macro scanp*(input, idx: typed; pattern: varargs[untyped]): bool =
                   newEmptyNode(), newEmptyNode())
       elif it.kind == nnkPrefix and it[0].eqIdent"+":
         # x+  is the same as  xx*
-        result = atm(newTree(nnkPar, it[1], newTree(nnkPrefix, ident"*", it[1])),
+        result = atm(newTree(nnkTupleConstr, it[1], newTree(nnkPrefix, ident"*", it[1])),
                       input, idx, attached)
       elif it.kind == nnkPrefix and it[0].eqIdent"?":
         # optional.
@@ -583,18 +583,18 @@ macro scanp*(input, idx: typed; pattern: varargs[untyped]): bool =
       result = (newEmptyNode(), newCall(interf"atom", input, idx, it), !!newCall(interf"nxt", input, idx))
     of nnkCurlyExpr:
       if it.len == 3 and it[1].kind == nnkIntLit and it[2].kind == nnkIntLit:
-        var h = newTree(nnkPar, it[0])
+        var h = newTree(nnkTupleConstr, it[0])
         for count in 2i64 .. it[1].intVal: h.add(it[0])
         for count in it[1].intVal .. it[2].intVal-1: h.add(newTree(nnkPrefix, ident"?", it[0]))
         result = atm(h, input, idx, attached)
       elif it.len == 2 and it[1].kind == nnkIntLit:
-        var h = newTree(nnkPar, it[0])
+        var h = newTree(nnkTupleConstr, it[0])
         for count in 2i64 .. it[1].intVal: h.add(it[0])
         result = atm(h, input, idx, attached)
       else:
         error("invalid pattern")
-    of nnkPar:
-      if it.len == 1:
+    of nnkPar, nnkTupleConstr:
+      if it.len == 1 and it.kind == nnkPar:
         result = atm(it[0], input, idx, attached)
       else:
         # concatenation:

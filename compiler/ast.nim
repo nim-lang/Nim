@@ -221,7 +221,8 @@ type
     nkGotoState,          # used for the state machine (for iterators)
     nkState,              # give a label to a code section (for iterators)
     nkBreakState,         # special break statement for easier code generation
-    nkFuncDef             # a func
+    nkFuncDef,            # a func
+    nkTupleConstr         # a tuple constructor
 
   TNodeKinds* = set[TNodeKind]
 
@@ -632,10 +633,11 @@ type
     mCpuEndian, mHostOS, mHostCPU, mBuildOS, mBuildCPU, mAppType,
     mNaN, mInf, mNegInf,
     mCompileOption, mCompileOptionArg,
-    mNLen, mNChild, mNSetChild, mNAdd, mNAddMultiple, mNDel, mNKind,
+    mNLen, mNChild, mNSetChild, mNAdd, mNAddMultiple, mNDel,
+    mNKind, mNSymKind
     mNIntVal, mNFloatVal, mNSymbol, mNIdent, mNGetType, mNStrVal, mNSetIntVal,
     mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, mNSetStrVal, mNLineInfo,
-    mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent, mIdentToStr,
+    mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent,
     mNBindSym, mLocals, mNCallSite,
     mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl,
     mNHint, mNWarning, mNError,
@@ -1673,6 +1675,19 @@ proc isException*(t: PType): bool =
       return true
     base = base.lastSon
   return false
+
+proc isImportedException*(t: PType): bool =
+  assert(t != nil)
+  if optNoCppExceptions in gGlobalOptions:
+    return false
+
+  let base = t.skipTypes({tyAlias, tyPtr, tyDistinct, tyGenericInst})
+
+  if base.sym != nil and sfCompileToCpp in base.sym.flags:
+    result = true
+
+proc isInfixAs*(n: PNode): bool =
+  return n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.id == getIdent("as").id
 
 proc findUnresolvedStatic*(n: PNode): PNode =
   if n.kind == nkSym and n.typ.kind == tyStatic and n.typ.n == nil:

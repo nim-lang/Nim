@@ -21,7 +21,7 @@ proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
   formalParams.add b
 
   case p.kind
-  of nnkPar:
+  of nnkPar, nnkTupleConstr:
     for i in 0 ..< p.len:
       let ident = p[i]
       var identDefs = newNimNode(nnkIdentDefs)
@@ -61,7 +61,7 @@ macro `=>`*(p, b: untyped): untyped =
   var params: seq[NimNode] = @[newIdentNode("auto")]
 
   case p.kind
-  of nnkPar:
+  of nnkPar, nnkTupleConstr:
     for c in children(p):
       var identDefs = newNimNode(nnkIdentDefs)
       case c.kind

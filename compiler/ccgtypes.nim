@@ -14,6 +14,8 @@
 import sighashes
 from lowerings import createObj
 
+proc genProcHeader(m: BModule, prc: PSym): Rope
+
 proc isKeyword(w: PIdent): bool =
   # Nim and C++ share some keywords
   # it's more efficient to test the whole Nim keywords range
@@ -42,38 +44,11 @@ when false:
     assert p.kind == skPackage
     result = gDebugInfo.register(p.name.s, m.name.s)
 
-proc idOrSig(m: BModule; s: PSym): Rope =
-  if s.kind in routineKinds and s.typ != nil:
-    # signatures for exported routines are reliable enough to
-    # produce a unique name and this means produced C++ is more stable wrt
-    # Nim changes:
-    let sig = hashProc(s)
-    result = rope($sig)
-    #let m = if s.typ.callConv != ccInline: findPendingModule(m, s) else: m
-    let counter = m.sigConflicts.getOrDefault(sig)
-    #if sigs == "_jckmNePK3i2MFnWwZlp6Lg" and s.name.s == "contains":
-    #  echo "counter ", counter, " ", s.id
-    if counter != 0:
-      result.add "_" & rope(counter+1)
-    # this minor hack is necessary to make tests/collections/thashes compile.
-    # The inlined hash function's original module is ambiguous so we end up
-    # generating duplicate names otherwise:
-    if s.typ.callConv == ccInline:
-      result.add rope(m.module.name.s)
-    m.sigConflicts.inc(sig)
-  else:
-    let sig = hashNonProc(s)
-    result = rope($sig)
-    let counter = m.sigConflicts.getOrDefault(sig)
-    if counter != 0:
-      result.add "_" & rope(counter+1)
-    m.sigConflicts.inc(sig)
-
 proc mangleName(m: BModule; s: PSym): Rope =
   result = s.loc.r
   if result == nil:
     result = s.name.s.mangle.rope
-    add(result, m.idOrSig(s))
+    add(result, idOrSig(s, m.module.name.s, m.sigConflicts))
     s.loc.r = result
     writeMangledName(m.ndi, s)
 
@@ -573,7 +548,15 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
       appcg(m, result, " : public $1 {$n",
                       [getTypeDescAux(m, typ.sons[0].skipTypes(skipPtrs), check)])
       if typ.isException:
-        appcg(m, result, "virtual void raise() {throw this;}$n") # required for polymorphic exceptions
+        appcg(m, result, "virtual void raise() {throw *this;}$n") # required for polymorphic exceptions
+        if typ.sym.magic == mException:
+          # Add cleanup destructor to Exception base class
+          appcg(m, result, "~$1() {if(this->raise_id) popCurrentExceptionEx(this->raise_id);}$n", [name])
+          # hack: forward declare popCurrentExceptionEx() on top of type description,
+          # proper request to generate popCurrentExceptionEx not possible for 2 reasons:
+          # generated function will be below declared Exception type and circular dependency
+          # between Exception and popCurrentExceptionEx function
+          result = genProcHeader(m, magicsys.getCompilerProc("popCurrentExceptionEx")) & ";" & rnl & result
       hasField = true
     else:
       appcg(m, result, " {$n  $1 Sup;$n",
@@ -1197,10 +1180,6 @@ proc fakeClosureType(owner: PSym): PType =
   r.rawAddSon(obj)
   result.rawAddSon(r)
 
-type
-  TTypeInfoReason = enum  ## for what do we need the type info?
-    tiNew,                ## for 'new'
-
 include ccgtrav
 
 proc genDeepCopyProc(m: BModule; s: PSym; result: Rope) =
@@ -1261,7 +1240,7 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
   of tySequence, tyRef, tyOptAsRef:
     genTypeInfoAux(m, t, t, result, info)
     if gSelectedGC >= gcMarkAndSweep:
-      let markerProc = genTraverseProc(m, origType, sig, tiNew)
+      let markerProc = genTraverseProc(m, origType, sig)
       addf(m.s[cfsTypeInit3], "$1.marker = $2;$n", [result, markerProc])
   of tyPtr, tyRange: genTypeInfoAux(m, t, t, result, info)
   of tyArray: genArrayInfo(m, t, result, info)

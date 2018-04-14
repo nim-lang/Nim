@@ -184,6 +184,10 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
   checkSonsLen(n, 3)
   result = newOrPrevType(tyRange, prev, c)
   result.n = newNodeI(nkRange, n.info)
+  # always create a 'valid' range type, but overwrite it later
+  # because 'semExprWithType' can raise an exception. See bug #6895.
+  addSonSkipIntLit(result, errorType(c))
+
   if (n[1].kind == nkEmpty) or (n[2].kind == nkEmpty):
     localError(n.info, errRangeIsEmpty)
 
@@ -216,7 +220,7 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
   if weakLeValue(result.n[0], result.n[1]) == impNo:
     localError(n.info, errRangeIsEmpty)
 
-  addSonSkipIntLit(result, rangeT[0])
+  result[0] = rangeT[0]
 
 proc semRange(c: PContext, n: PNode, prev: PType): PType =
   result = nil
@@ -388,8 +392,8 @@ proc semAnonTuple(c: PContext, n: PNode, prev: PType): PType =
   if sonsLen(n) == 0:
     localError(n.info, errTypeExpected)
   result = newOrPrevType(tyTuple, prev, c)
-  for i in countup(0, sonsLen(n) - 1):
-    addSonSkipIntLit(result, semTypeNode(c, n.sons[i], nil))
+  for it in n:
+    addSonSkipIntLit(result, semTypeNode(c, it, nil))
 
 proc semTuple(c: PContext, n: PNode, prev: PType): PType =
   var typ: PType
@@ -1275,8 +1279,9 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
 
     internalAssert dummyName.kind == nkIdent
     var dummyParam = newSym(if modifier == tyTypeDesc: skType else: skVar,
-                            dummyName.ident, owner, owner.info)
+                            dummyName.ident, owner, param.info)
     dummyParam.typ = dummyType
+    incl dummyParam.flags, sfUsed
     addDecl(c, dummyParam)
 
   result.n.sons[3] = semConceptBody(c, n[3])
@@ -1336,6 +1341,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     if sonsLen(n) == 1: result = semTypeNode(c, n.sons[0], prev)
     else:
       result = semAnonTuple(c, n, prev)
+  of nkTupleConstr: result = semAnonTuple(c, n, prev)
   of nkCallKinds:
     let x = n[0]
     let ident = case x.kind

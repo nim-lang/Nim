@@ -323,7 +323,7 @@ proc gen(c: var Con; n: PNode) =
   of nkBreakStmt: genBreak(c, n)
   of nkTryStmt: genTry(c, n)
   of nkStmtList, nkStmtListExpr, nkChckRangeF, nkChckRange64, nkChckRange,
-     nkBracket, nkCurly, nkPar, nkClosure, nkObjConstr:
+     nkBracket, nkCurly, nkPar, nkTupleConstr, nkClosure, nkObjConstr:
     for x in n: gen(c, x)
   of nkPragmaBlock: gen(c, n.lastSon)
   of nkDiscardStmt: gen(c, n.sons[0])

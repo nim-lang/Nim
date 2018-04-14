@@ -85,7 +85,7 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
       result.typ = formal
     else:
       let x = result.skipConv
-      if x.kind == nkPar and formal.kind != tyExpr:
+      if x.kind in {nkPar, nkTupleConstr} and formal.kind != tyExpr:
         changeType(x, formal, check=true)
       else:
         result = skipHiddenSubConv(result)

@@ -186,7 +186,8 @@ proc getEnvParam*(routine: PSym): PSym =
 
 proc interestingVar(s: PSym): bool {.inline.} =
   result = s.kind in {skVar, skLet, skTemp, skForVar, skParam, skResult} and
-    sfGlobal notin s.flags
+    sfGlobal notin s.flags and
+    s.typ.kind notin {tyStatic, tyTypeDesc}
 
 proc illegalCapture(s: PSym): bool {.inline.} =
   result = skipTypes(s.typ, abstractInst).kind in
