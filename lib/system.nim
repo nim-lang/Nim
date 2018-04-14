@@ -2402,7 +2402,7 @@ proc `==` *[T](x, y: seq[T]): bool {.noSideEffect.} =
     if x.isNil and y.isNil:
       return true
   else:
-    when not defined(JS) or defined(nimphp):
+    when not defined(JS):
       proc seqToPtr[T](x: seq[T]): pointer {.inline, nosideeffect.} =
         result = cast[pointer](x)
     else:
@@ -2764,17 +2764,14 @@ type
 
 when defined(JS):
   proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
-    when defined(nimphp):
-      asm """`x` .= `y`;"""
-    else:
-      asm """
-        var len = `x`[0].length-1;
-        for (var i = 0; i < `y`.length; ++i) {
-          `x`[0][len] = `y`.charCodeAt(i);
-          ++len;
-        }
-        `x`[0][len] = 0
-      """
+    asm """
+      var len = `x`[0].length-1;
+      for (var i = 0; i < `y`.length; ++i) {
+        `x`[0][len] = `y`.charCodeAt(i);
+        ++len;
+      }
+      `x`[0][len] = 0
+    """
   proc add*(x: var cstring, y: cstring) {.magic: "AppendStrStr".}
 
 elif hasAlloc:
