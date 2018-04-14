@@ -1093,27 +1093,52 @@ proc `+`*(dt: DateTime, dur: Duration): DateTime =
 proc `-`*(dt: DateTime, dur: Duration): DateTime =
   (dt.toTime - dur).inZone(dt.timezone)
 
-proc `+=`*(time: var Time, interval: TimeInterval) =
-  ## Modifies `time` by adding `interval`.
-  time = toTime(time.local + interval)
+proc isStaticInterval(interval: TimeInterval): bool =
+  interval.years == 0 and interval.months == 0 and
+    interval.days == 0 and interval.weeks == 0
+
+proc evaluateStaticInterval(interval: TimeInterval): Duration =
+  assert interval.isStaticInterval
+  initDuration(nanoseconds = interval.nanoseconds,
+    microseconds = interval.microseconds,
+    milliseconds = interval.milliseconds,
+    seconds = interval.seconds,
+    minutes = interval.minutes,
+    hours = interval.hours)
 
 proc `+`*(time: Time, interval: TimeInterval): Time =
-  ## Adds `interval` to `time`
-  ## by converting to a ``DateTime`` in the local timezone,
-  ## adding the interval, and converting back to ``Time``.
+  ## Adds `interval` to `time`.
+  ## If `interval` contains any years, months, weeks or days the operation
+  ## is performed in the local timezone.
   ##
   ## ``echo getTime() + 1.day``
-  result = toTime(time.local + interval)
+  if interval.isStaticInterval:
+    time + evaluateStaticInterval(interval)
+  else:
+    toTime(time.local + interval)
 
-proc `-=`*(time: var Time, interval: TimeInterval) =
-  ## Modifies `time` by subtracting `interval`.
-  time = toTime(time.local - interval)
+proc `+=`*(time: var Time, interval: TimeInterval) =
+  ## Modifies `time` by adding `interval`.
+  ## If `interval` contains any years, months, weeks or days the operation
+  ## is performed in the local timezone.
+  time = time + interval
 
 proc `-`*(time: Time, interval: TimeInterval): Time =
   ## Subtracts `interval` from Time `time`.
+  ## If `interval` contains any years, months, weeks or days the operation
+  ## is performed in the local timezone.
   ##
   ## ``echo getTime() - 1.day``
-  result = toTime(time.local - interval)
+  if interval.isStaticInterval:
+    time - evaluateStaticInterval(interval)
+  else:
+    toTime(time.local - interval)
+
+proc `-=`*(time: var Time, interval: TimeInterval) =
+  ## Modifies `time` by subtracting `interval`.
+  ## If `interval` contains any years, months, weeks or days the operation
+  ## is performed in the local timezone.
+  time = time - interval
 
 proc formatToken(dt: DateTime, token: string, buf: var string) =
   ## Helper of the format proc to parse individual tokens.
