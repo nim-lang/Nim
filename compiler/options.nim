@@ -149,6 +149,7 @@ var
   gExperimentalMode*: bool
   newDestructors*: bool
   gDynlibOverrideAll*: bool
+  useNimNamespace*: bool
 
 type
   SymbolFilesOption* = enum

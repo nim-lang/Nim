@@ -79,6 +79,10 @@
   target. To use it, compile your code with `--hotCodeReloading:on` and use a
   helper library such as LiveReload or BrowserSync.
 
+- A new compiler option `--cppCompileToNamespace` puts the generated C++ code
+  into the namespace "Nim" in order to avoid naming conflicts with existing
+  C++ code. This is done for all Nim code - internal and exported.
+
 - Added ``macros.getProjectPath`` and ``ospaths.putEnv`` procs to Nim's virtual
   machine.
 
