@@ -30,15 +30,15 @@ proc asinh*(m: MathLib, a: SomeNumber): float
 proc atan*(m: MathLib, a: SomeNumber): float
 proc atan2*(m: MathLib, a: SomeNumber): float
 proc atanh*(m: MathLib, a: SomeNumber): float
-proc cbrt*(m: MathLib, f: SomeReal): SomeReal
-proc ceil*(m: MathLib, f: SomeReal): SomeReal
+proc cbrt*(m: MathLib, f: SomeFloat): SomeFloat
+proc ceil*(m: MathLib, f: SomeFloat): SomeFloat
 proc clz32*(m: MathLib, f: SomeInteger): int
 proc cos*(m: MathLib, a: SomeNumber): float
 proc cosh*(m: MathLib, a: SomeNumber): float
 proc exp*(m: MathLib, a: SomeNumber): float
 proc expm1*(m: MathLib, a: SomeNumber): float
-proc floor*(m: MathLib, f: SomeReal): int
-proc fround*(m: MathLib, f: SomeReal): float32
+proc floor*(m: MathLib, f: SomeFloat): int
+proc fround*(m: MathLib, f: SomeFloat): float32
 proc hypot*(m: MathLib, args: varargs[distinct SomeNumber]): float
 proc imul*(m: MathLib, a, b: int32): int32
 proc log*(m: MathLib, a: SomeNumber): float
@@ -49,14 +49,14 @@ proc max*(m: MathLib, a, b: SomeNumber): SomeNumber
 proc min*[T: SomeNumber | JsRoot](m: MathLib, a, b: T): T
 proc pow*(m: MathLib, a, b: distinct SomeNumber): float
 proc random*(m: MathLib): float
-proc round*(m: MathLib, f: SomeReal): int
+proc round*(m: MathLib, f: SomeFloat): int
 proc sign*(m: MathLib, f: SomeNumber): int
 proc sin*(m: MathLib, a: SomeNumber): float
 proc sinh*(m: MathLib, a: SomeNumber): float
-proc sqrt*(m: MathLib, f: SomeReal): SomeReal
+proc sqrt*(m: MathLib, f: SomeFloat): SomeFloat
 proc tan*(m: MathLib, a: SomeNumber): float
 proc tanh*(m: MathLib, a: SomeNumber): float
-proc trunc*(m: MathLib, f: SomeReal): int
+proc trunc*(m: MathLib, f: SomeFloat): int
 
 # Date library
 proc now*(d: DateLib): int

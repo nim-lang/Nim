@@ -105,11 +105,13 @@ type
     ## type class matching all ordinal types; however this includes enums with
     ## holes.
 
-  SomeReal* = float|float32|float64
+  SomeFloat* = float|float32|float64
     ## type class matching all floating point number types
 
-  SomeNumber* = SomeInteger|SomeReal
+  SomeNumber* = SomeInteger|SomeFloat
     ## type class matching all number types
+
+{.deprecated: [SomeReal: SomeFloat].}
 
 proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## Special compile-time procedure that checks whether `x` is
@@ -128,7 +130,7 @@ when defined(nimalias):
     TSignedInt: SomeSignedInt,
     TUnsignedInt: SomeUnsignedInt,
     TInteger: SomeInteger,
-    TReal: SomeReal,
+    TReal: SomeFloat,
     TNumber: SomeNumber,
     TOrdinal: SomeOrdinal].}
 
@@ -2171,8 +2173,8 @@ proc max*[T](x, y: T): T =
   if y <= x: x else: y
 {.pop.}
 
-proc high*(T: typedesc[SomeReal]): T = Inf
-proc low*(T: typedesc[SomeReal]): T = NegInf
+proc high*(T: typedesc[SomeFloat]): T = Inf
+proc low*(T: typedesc[SomeFloat]): T = NegInf
 
 proc clamp*[T](x, a, b: T): T =
   ## limits the value ``x`` within the interval [a, b]
