@@ -65,26 +65,6 @@ a1L = toUnix(toTime(t4L - initTimeInterval(hours = 1))) + t4L.utcOffset
 a1G = toUnix(toTime(t4)) - (60 * 60)
 doAssert a1L == a1G
 
-# add/subtract TimeIntervals and Time/TimeInfo
-let now = getTime().utc
-doAssert now + convert(Seconds, Nanoseconds, 1).nanoseconds == now + 1.seconds
-doAssert now + 1.weeks == now + 7.days
-doAssert now - 1.seconds == now - 3.seconds + 2.seconds
-doAssert now + 65.seconds == now + 1.minutes + 5.seconds
-doAssert now + 60.minutes == now + 1.hours
-doAssert now + 24.hours == now + 1.days
-doAssert now + 13.months == now + 1.years + 1.months
-var ti1 = now + 1.years
-ti1 = ti1 - 1.years
-doAssert ti1 == now
-ti1 = ti1 + 1.days
-doAssert ti1 == now + 1.days
-
-# Bug with adding a day to a Time
-let day = 24.hours
-let tomorrow = now + day
-doAssert tomorrow - now == initDuration(days = 1)
-
 # Comparison between Time objects should be detected by compiler
 # as 'noSideEffect'.
 proc cmpTimeNoSideEffect(t1: Time, t2: Time): bool {.noSideEffect.} =
@@ -284,7 +264,7 @@ suite "ttimes":
     putEnv("TZ", orig_tz)
 
   else:
-    # not on Linux or macosx: run one parseTest only
+    # not on Linux or macosx: run in the local timezone only
     test "parseTest":
       runTimezoneTests()
 
@@ -407,3 +387,26 @@ suite "ttimes":
     check dt1 <= dt2
     dt2 = dt2 + 1.seconds
     check dt1 < dt2
+
+  test "adding/subtracting TimeInterval":
+    # add/subtract TimeIntervals and Time/TimeInfo
+    let now = getTime().utc
+    check now + convert(Seconds, Nanoseconds, 1).nanoseconds == now + 1.seconds
+    check now + 1.weeks == now + 7.days
+    check now - 1.seconds == now - 3.seconds + 2.seconds
+    check now + 65.seconds == now + 1.minutes + 5.seconds
+    check now + 60.minutes == now + 1.hours
+    check now + 24.hours == now + 1.days
+    check now + 13.months == now + 1.years + 1.months
+    check toUnix(fromUnix(0) + 2.seconds) == 2
+    check toUnix(fromUnix(0) - 2.seconds) == -2
+    var ti1 = now + 1.years
+    ti1 = ti1 - 1.years
+    check ti1 == now
+    ti1 = ti1 + 1.days
+    check ti1 == now + 1.days
+
+    # Bug with adding a day to a Time
+    let day = 24.hours
+    let tomorrow = now + day
+    check tomorrow - now == initDuration(days = 1)
