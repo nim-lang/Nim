@@ -15,27 +15,42 @@ type
     tupleType: PType      # if != nil we're traversing a tuple
     tupleIndex: int
     field: PSym
-    replaceByFieldName: bool
+    m: TMagic
 
 proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
+  let replaceByFieldName = c.m == mFieldPairs
   case n.kind
   of nkEmpty..pred(nkIdent), succ(nkSym)..nkNilLit: result = n
   of nkIdent, nkSym:
     result = n
     let ident = considerQuotedIdent(n)
     var L = sonsLen(forLoop)
-    if c.replaceByFieldName:
-      if ident.id == considerQuotedIdent(forLoop[0]).id:
+
+    #TODO: allow passing in just type for mFieldsIndexed
+    if c.m == mFieldPairs or c.m == mFieldsIndexed:
+      let indexField =
+        if c.m == mFieldPairs: 0
+        else: 1
+
+      if ident.id == considerQuotedIdent(forLoop[indexField]).id:
         let fieldName = if c.tupleType.isNil: c.field.name.s
                         elif c.tupleType.n.isNil: "Field" & $c.tupleIndex
                         else: c.tupleType.n.sons[c.tupleIndex].sym.name.s
         result = newStrNode(nkStrLit, fieldName)
         return
-    # other fields:
-    for i in ord(c.replaceByFieldName)..L-3:
+
+    if c.m == mFieldsIndexed:
+      if ident.id == considerQuotedIdent(forLoop[0]).id:
+        var call = forLoop.sons[L-2]
+        var tupl = call.sons[1]
+        result = newIntNode(nkIntLit, c.tupleIndex)
+
+    else:
+     # value fields:
+     for i in ord(replaceByFieldName)..L-3:
       if ident.id == considerQuotedIdent(forLoop[i]).id:
         var call = forLoop.sons[L-2]
-        var tupl = call.sons[i+1-ord(c.replaceByFieldName)]
+        var tupl = call.sons[i+1-ord(replaceByFieldName)]
         if c.field.isNil:
           result = newNodeI(nkBracketExpr, n.info)
           result.add(tupl)
@@ -44,6 +59,7 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
           result = newNodeI(nkDotExpr, n.info)
           result.add(tupl)
           result.add(newSymNode(c.field, n.info))
+        # TODO: does it check for repeated names, eg: for k,v,v in ...
         break
   else:
     if n.kind == nkContinueStmt:
@@ -64,7 +80,7 @@ proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
   of nkSym:
     var fc: TFieldInstCtx  # either 'tup[i]' or 'field' is valid
     fc.field = typ.sym
-    fc.replaceByFieldName = c.m == mFieldPairs
+    fc.m = c.m
     openScope(c.c)
     inc c.c.inUnrolledContext
     let body = instFieldLoopBody(fc, lastSon(forLoop), forLoop)
@@ -117,7 +133,11 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
 
   var length = sonsLen(n)
   var call = n.sons[length-2]
-  if length-2 != sonsLen(call)-1 + ord(m==mFieldPairs):
+  if m==mFieldsIndexed:
+    if length-2 != 2:
+      localError(n.info, errWrongNumberOfVariables)
+      return result
+  elif length-2 != sonsLen(call)-1 + ord(m==mFieldPairs):
     localError(n.info, errWrongNumberOfVariables)
     return result
 
@@ -139,7 +159,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
       var fc: TFieldInstCtx
       fc.tupleType = tupleTypeA
       fc.tupleIndex = i
-      fc.replaceByFieldName = m == mFieldPairs
+      fc.m = m
       var body = instFieldLoopBody(fc, loopBody, n)
       inc c.inUnrolledContext
       stmts.add(semStmt(c, body))
