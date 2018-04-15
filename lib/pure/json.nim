@@ -958,6 +958,11 @@ proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
   ## Traverses the node and gets the given value. If any of the
   ## keys do not exist, returns ``nil``. Also returns ``nil`` if one of the
   ## intermediate data structures is not an object.
+  ## Can be used to create tree structures on the fly (sometimes called `autovivification`:idx:):
+  ##
+  ## .. code-block:: nim
+  ##   myjson{"parent", "child", "grandchild"} = newJInt(1)
+  ##
   result = node
   for key in keys:
     if isNil(result) or result.kind != JObject:
