@@ -37,7 +37,7 @@ proc resetIdentCache*() =
   for i in low(legacy.buckets)..high(legacy.buckets):
     legacy.buckets[i] = nil
 
-proc cmpIgnoreStyle(a, b: cstring, blen: int): int =
+proc cmpIgnoreStyle*(a, b: cstring, blen: int): int =
   if a[0] != b[0]: return 1
   var i = 0
   var j = 0

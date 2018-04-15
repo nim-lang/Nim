@@ -1392,10 +1392,36 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].node.typ = n.typ
     of opcEqIdent:
       decodeBC(rkInt)
-      if regs[rb].node.kind == nkIdent and regs[rc].node.kind == nkIdent:
-        regs[ra].intVal = ord(regs[rb].node.ident.id == regs[rc].node.ident.id)
+      # aliases for shorter and easier to understand code below
+      let aNode = regs[rb].node
+      let bNode = regs[rc].node
+      # these are cstring to prevent string copy, and cmpIgnoreStyle from
+      # takes cstring arguments
+      var aStrVal: cstring
+      var bStrVal: cstring
+      # extract strVal from argument ``a``
+      case aNode.kind
+      of {nkStrLit..nkTripleStrLit}:
+        aStrVal = aNode.strVal.cstring
+      of nkIdent:
+        aStrVal = aNode.ident.s.cstring
+      of nkSym:
+        aStrVal = aNode.sym.name.s.cstring
       else:
-        regs[ra].intVal = 0
+        stackTrace(c, tos, pc, errFieldXNotFound, "strVal")
+      # extract strVal from argument ``b``
+      case bNode.kind
+      of {nkStrLit..nkTripleStrLit}:
+        bStrVal = bNode.strVal.cstring
+      of nkIdent:
+        bStrVal = bNode.ident.s.cstring
+      of nkSym:
+        bStrVal = bNode.sym.name.s.cstring
+      else:
+        stackTrace(c, tos, pc, errFieldXNotFound, "strVal")
+      # set result
+      regs[ra].intVal =
+        ord(idents.cmpIgnoreStyle(aStrVal,bStrVal,high(int)) == 0)
     of opcStrToIdent:
       decodeB(rkNode)
       if regs[rb].node.kind notin {nkStrLit..nkTripleStrLit}:

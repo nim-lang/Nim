@@ -385,8 +385,8 @@ proc normalize*(s: string): string {.noSideEffect, procvar,
   rtl, extern: "nsuNormalize".} =
   ## Normalizes the string `s`.
   ##
-  ## That means to convert it to lower case and remove any '_'. This is needed
-  ## for Nim identifiers for example.
+  ## That means to convert it to lower case and remove any '_'. This
+  ## should NOT be used to normalize Nim identifier names.
   result = newString(s.len)
   var j = 0
   for i in 0..len(s) - 1:
@@ -418,8 +418,10 @@ proc cmpIgnoreCase*(a, b: string): int {.noSideEffect,
 
 proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
   rtl, extern: "nsuCmpIgnoreStyle", procvar.} =
-  ## Compares two strings normalized (i.e. case and
-  ## underscores do not matter). Returns:
+  ## Semantically the same as ``cmp(normalize(a), normalize(b))``. It
+  ## is just optimized to not allocate temporary strings.  This should
+  ## NOT be used to compare Nim identifier names. use `macros.eqIdent`
+  ## for that.  Returns:
   ##
   ## | 0 iff a == b
   ## | < 0 iff a < b
@@ -435,7 +437,6 @@ proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
     if result != 0 or aa == '\0': break
     inc(i)
     inc(j)
-
 
 proc strip*(s: string, leading = true, trailing = true,
             chars: set[char] = Whitespace): string

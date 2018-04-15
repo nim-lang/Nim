@@ -1186,38 +1186,57 @@ proc copy*(node: NimNode): NimNode {.compileTime.} =
   ## An alias for copyNimTree().
   return node.copyNimTree()
 
-proc cmpIgnoreStyle(a, b: cstring): int {.noSideEffect.} =
-  proc toLower(c: char): char {.inline.} =
-    if c in {'A'..'Z'}: result = chr(ord(c) + (ord('a') - ord('A')))
-    else: result = c
-  var i = 0
-  var j = 0
-  # first char is case sensitive
-  if a[0] != b[0]: return 1
-  while true:
-    while a[i] == '_': inc(i)
-    while b[j] == '_': inc(j) # BUGFIX: typo
-    var aa = toLower(a[i])
-    var bb = toLower(b[j])
-    result = ord(aa) - ord(bb)
-    if result != 0 or aa == '\0': break
-    inc(i)
-    inc(j)
+when defined(nimVmEqIdent):
+  proc eqIdent*(a: string; b: string): bool {.magic: "EqIdent", noSideEffect.}
+    ## Style insensitive comparison.
 
-proc eqIdent*(a, b: string): bool = cmpIgnoreStyle(a, b) == 0
-  ## Check if two idents are identical.
+  proc eqIdent*(a: NimNode; b: string): bool {.magic: "EqIdent", noSideEffect.}
+    ## Style insensitive comparison.
+    ## ``a`` can be an identifier or a symbol.
 
-proc eqIdent*(node: NimNode; s: string): bool {.compileTime.} =
-  ## Check if node is some identifier node (``nnkIdent``, ``nnkSym``, etc.)
-  ## is the same as ``s``. Note that this is the preferred way to check! Most
-  ## other ways like ``node.ident`` are much more error-prone, unfortunately.
-  case node.kind
-  of nnkSym, nnkIdent:
-    result = eqIdent(node.strVal, s)
-  of nnkOpenSymChoice, nnkClosedSymChoice:
-    result = eqIdent($node[0], s)
-  else:
-    result = false
+  proc eqIdent*(a: string; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
+    ## Style insensitive comparison.
+    ## ``b`` can be an identifier or a symbol.
+
+  proc eqIdent*(a: NimNode; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
+    ## Style insensitive comparison.
+    ## ``a`` and ``b`` can be an identifier or a symbol.
+
+else:
+  # this procedure is optimized for native code, it should not be compiled to nimVM bytecode.
+  proc cmpIgnoreStyle(a, b: cstring): int {.noSideEffect.} =
+    proc toLower(c: char): char {.inline.} =
+      if c in {'A'..'Z'}: result = chr(ord(c) + (ord('a') - ord('A')))
+      else: result = c
+    var i = 0
+    var j = 0
+    # first char is case sensitive
+    if a[0] != b[0]: return 1
+    while true:
+      while a[i] == '_': inc(i)
+      while b[j] == '_': inc(j) # BUGFIX: typo
+      var aa = toLower(a[i])
+      var bb = toLower(b[j])
+      result = ord(aa) - ord(bb)
+      if result != 0 or aa == '\0': break
+      inc(i)
+      inc(j)
+
+
+  proc eqIdent*(a, b: string): bool = cmpIgnoreStyle(a, b) == 0
+    ## Check if two idents are identical.
+
+  proc eqIdent*(node: NimNode; s: string): bool {.compileTime.} =
+    ## Check if node is some identifier node (``nnkIdent``, ``nnkSym``, etc.)
+    ## is the same as ``s``. Note that this is the preferred way to check! Most
+    ## other ways like ``node.ident`` are much more error-prone, unfortunately.
+    case node.kind
+    of nnkSym, nnkIdent:
+      result = eqIdent(node.strVal, s)
+    of nnkOpenSymChoice, nnkClosedSymChoice:
+      result = eqIdent($node[0], s)
+    else:
+      result = false
 
 proc hasArgOfName*(params: NimNode; name: string): bool {.compiletime.}=
   ## Search nnkFormalParams for an argument.
