@@ -820,7 +820,7 @@ proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
   ##
   ## This supports the special ``default-language`` internal string generated
   ## by the ``rst`` module to communicate a specific default language.
-  case n.getArgument.toLower
+  case n.getArgument.toLowerAscii
   of "number-lines":
     params.numberLines = true
     # See if the field has a parameter specifying a different line than 1.
@@ -836,8 +836,11 @@ proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
     params.filename = n.getFieldValue.strip
   of "test":
     params.testCmd = n.getFieldValue.strip
-    if params.testCmd.len == 0: params.testCmd = "nim c -r $1"
-  of "status":
+    if params.testCmd.len == 0:
+      params.testCmd = "nim c -r $1"
+    else:
+      params.testCmd = unescape(params.testCmd)
+  of "status", "exitcode":
     var status: int
     if parseInt(n.getFieldValue, status) > 0:
       params.status = status

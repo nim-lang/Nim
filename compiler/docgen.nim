@@ -816,7 +816,7 @@ proc commandRstAux(filename, outExt: string) =
       # Nim's convention: every path is relative to the file it was written in:
       outp = splitFile(d.filename).dir / filename
     writeFile(outp, content)
-    let cmd = unescape(cmd) % quoteShell(outp)
+    let cmd = cmd % quoteShell(outp)
     rawMessage(hintExecuting, cmd)
     if execShellCmd(cmd) != status:
       rawMessage(errExecutionOfProgramFailed, cmd)
