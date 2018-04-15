@@ -8,6 +8,7 @@
 #
 
 from bitops import swapEndian
+export swapEndian
 ## This module contains helpers that deal with different byte orders
 ## (`endian`:idx:).
 
@@ -47,17 +48,17 @@ when system.cpuEndian == bigEndian:
   proc littleEndian64*(outp, inp: pointer) {.inline.} = swapEndian64(outp, inp)
   proc littleEndian32*(outp, inp: pointer) {.inline.} = swapEndian32(outp, inp)
   proc littleEndian16*(outp, inp: pointer) {.inline.} = swapEndian16(outp, inp)
-  proc littleEndianInt*[T:SomeInteger](x: T): T {.inline.} = swapEndian(x)
+  proc littleEndian*[T:SomeInteger](x: T): T {.inline.} = swapEndian(x)
   proc bigEndian64*(outp, inp: pointer) {.inline.} = copyMem(outp, inp, 8)
   proc bigEndian32*(outp, inp: pointer) {.inline.} = copyMem(outp, inp, 4)
   proc bigEndian16*(outp, inp: pointer) {.inline.} = copyMem(outp, inp, 2)
-  proc bigEndianInt*[T:SomeInteger](x: T): T {.inline.} = x
+  proc bigEndian*[T:SomeInteger](x: T): T {.inline.} = x
 else:
   proc littleEndian64*(outp, inp: pointer) {.inline.} = copyMem(outp, inp, 8)
   proc littleEndian32*(outp, inp: pointer) {.inline.} = copyMem(outp, inp, 4)
   proc littleEndian16*(outp, inp: pointer){.inline.} = copyMem(outp, inp, 2)
-  proc littleEndianInt*[T:SomeInteger](x: T): T {.inline.} = x
+  proc littleEndian*[T:SomeInteger](x: T): T {.inline.} = x
   proc bigEndian64*(outp, inp: pointer) {.inline.} = swapEndian64(outp, inp)
   proc bigEndian32*(outp, inp: pointer) {.inline.} = swapEndian32(outp, inp)
   proc bigEndian16*(outp, inp: pointer) {.inline.} = swapEndian16(outp, inp)
-  proc bigEndianInt*[T:SomeInteger](x: T): T {.inline.} = swapEndian(x)
+  proc bigEndian*[T:SomeInteger](x: T): T {.inline.} = swapEndian(x)
