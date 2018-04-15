@@ -24,6 +24,10 @@
   strings anymore for its ``unit`` parameter. Instead the space is controlled
   by a new parameter ``useUnitSpace``.
 
+- ``proc `-`*(a, b: Time): int64`` in the ``times`` module has changed return type
+  to ``times.Duration`` in order to support higher time resolutions.
+  The proc is no longer deprecated.
+
 #### Breaking changes in the compiler
 
 ### Library additions
@@ -34,6 +38,10 @@
   operations. This is currently not yet available for the JavaScript target.
 - Added ``getCurrentDir``, ``findExe``, ``cpDir`` and  ``mvDir`` procs to
   ``nimscript``.
+- The ``times`` module now supports up to nanosecond time resolution when available.
+- Added the type ``times.Duration`` for representing fixed durations of time.
+- Added the proc ``times.convert`` for converting between different time units,
+  e.g days to seconds.
 
 ### Library changes
 
