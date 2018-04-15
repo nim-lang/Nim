@@ -3959,20 +3959,26 @@ Any statements following the ``defer`` in the current block will be considered
 to be in an implicit try block:
 
 .. code-block:: nim
-  var f = open("numbers.txt")
-  defer: close(f)
-  f.write "abc"
-  f.write "def"
+    :test: "nim c $1"
+
+  proc main =
+    var f = open("numbers.txt")
+    defer: close(f)
+    f.write "abc"
+    f.write "def"
 
 Is rewritten to:
 
 .. code-block:: nim
-  var f = open("numbers.txt")
-  try:
-    f.write "abc"
-    f.write "def"
-  finally:
-    close(f)
+    :test: "nim c $1"
+
+  proc main =
+    var f = open("numbers.txt")
+    try:
+      f.write "abc"
+      f.write "def"
+    finally:
+      close(f)
 
 Top level ``defer`` statements are not supported
 since it's unclear what such a statement should refer to.
@@ -4037,6 +4043,8 @@ to explicitly define which exceptions a proc/iterator/method/converter is
 allowed to raise. The compiler verifies this:
 
 .. code-block:: nim
+    :test: "nim c $1"
+
   proc p(what: bool) {.raises: [IOError, OSError].} =
     if what: raise newException(IOError, "IO")
     else: raise newException(OSError, "OS")
@@ -4056,6 +4064,9 @@ A ``raises`` list can also be attached to a proc type. This affects type
 compatibility:
 
 .. code-block:: nim
+    :test: "nim c $1"
+    :status: 1
+
   type
     Callback = proc (s: string) {.raises: [IOError].}
   var
@@ -4114,8 +4125,11 @@ exception is an *effect*. Other effects can also be defined. A user defined
 effect is a means to *tag* a routine and to perform checks against this tag:
 
 .. code-block:: nim
+    :test: "nim c $1"
+    :status: 1
+
   type IO = object ## input/output effect
-  proc readLine(): string {.tags: [IO].}
+  proc readLine(): string {.tags: [IO].} = discard
 
   proc no_IO_please() {.tags: [].} =
     # the compiler prevents this:
@@ -4167,6 +4181,8 @@ introduce type parameters or to instantiate a generic proc, iterator or type.
 The following example shows a generic binary tree can be modelled:
 
 .. code-block:: nim
+    :test: "nim c $1"
+
   type
     BinaryTree*[T] = ref object # BinaryTree is a generic type with
                                 # generic param ``T``
@@ -4175,7 +4191,7 @@ The following example shows a generic binary tree can be modelled:
 
   proc newNode*[T](data: T): BinaryTree[T] =
     # constructor for a node
-    result = BinaryTree(le: nil, ri: nil, data: data)
+    result = BinaryTree[T](le: nil, ri: nil, data: data)
 
   proc add*[T](root: var BinaryTree[T], n: BinaryTree[T]) =
     # insert a node into the tree
@@ -4611,6 +4627,8 @@ in any required way. For example, here is how one might define the classic
 type is an instance of it:
 
 .. code-block:: nim
+    :test: "nim c $1"
+
   import future, typetraits
 
   type
@@ -4815,6 +4833,8 @@ Open symbols are looked up in two different contexts: Both the context
 at definition and the context at instantiation are considered:
 
 .. code-block:: nim
+    :test: "nim c $1"
+
   type
     Index = distinct int
 
@@ -4837,6 +4857,8 @@ Mixin statement
 A symbol can be forced to be open by a `mixin`:idx: declaration:
 
 .. code-block:: nim
+    :test: "nim c $1"
+
   proc create*[T](): ref T =
     # there is no overloaded 'init' here, so we need to state that it's an
     # open symbol explicitly:
@@ -4914,6 +4936,7 @@ performed before the expression is passed to the template. This means that for
 example *undeclared* identifiers can be passed to the template:
 
 .. code-block:: nim
+    :test: "nim c $1"
 
   template declareInt(x: untyped) =
     var x: int
@@ -4923,6 +4946,8 @@ example *undeclared* identifiers can be passed to the template:
 
 
 .. code-block:: nim
+    :test: "nim c $1"
+    :status: 1
 
   template declareInt(x: typed) =
     var x: int
@@ -4947,6 +4972,8 @@ You can pass a block of statements as a last parameter to a template via a
 special ``:`` syntax:
 
 .. code-block:: nim
+    :test: "nim c $1"
+
   template withFile(f, fn, mode, actions: untyped): untyped =
     var f: File
     if open(f, fn, mode):
@@ -4970,6 +4997,9 @@ the block needs to be of type ``untyped``. Because symbol lookups are then
 delayed until template instantiation time:
 
 .. code-block:: nim
+    :test: "nim c $1"
+    :status: 1
+
   template t(body: typed) =
     block:
       body
@@ -4992,6 +5022,8 @@ The same code works with ``untyped`` as the passed body is not required to be
 type-checked:
 
 .. code-block:: nim
+    :test: "nim c $1"
+
   template t(body: untyped) =
     block:
       body
@@ -5012,6 +5044,8 @@ In addition to the ``untyped`` meta-type that prevents type checking there is
 also ``varargs[untyped]`` so that not even the number of parameters is fixed:
 
 .. code-block:: nim
+    :test: "nim c $1"
+
   template hideIdentifiers(x: varargs[untyped]) = discard
 
   hideIdentifiers(undeclared1, undeclared2)
@@ -5055,6 +5089,7 @@ Identifier construction
 In templates identifiers can be constructed with the backticks notation:
 
 .. code-block:: nim
+    :test: "nim c $1"
 
   template typedef(name: untyped, typ: typedesc) =
     type
@@ -5116,6 +5151,7 @@ Per default templates are `hygienic`:idx:\: Local identifiers declared in a
 template cannot be accessed in the instantiation context:
 
 .. code-block:: nim
+    :test: "nim c $1"
 
   template newException*(exceptn: typedesc, message: string): untyped =
     var
@@ -5173,6 +5209,9 @@ rewritten to ``f(x)``. Therefore the dot syntax has some limitations when it
 is used to invoke templates/macros:
 
 .. code-block:: nim
+    :test: "nim c $1"
+    :status: 1
+
   template declareVar(name: untyped) =
     const name {.inject.} = 45
 
@@ -5183,13 +5222,16 @@ is used to invoke templates/macros:
 Another common example is this:
 
 .. code-block:: nim
+    :test: "nim c $1"
+    :status: 1
+
   from sequtils import toSeq
 
   iterator something: string =
     yield "Hello"
     yield "World"
 
-  var info = toSeq(something())
+  var info = something().toSeq
 
 The problem here is that the compiler already decided that ``something()`` as
 an iterator is not callable in this context before ``toSeq`` gets its
@@ -5221,6 +5263,8 @@ The following example implements a powerful ``debug`` command that accepts a
 variable number of arguments:
 
 .. code-block:: nim
+    :test: "nim c $1"
+
   # to work with Nim syntax trees, we need an API that is defined in the
   # ``macros`` module:
   import macros
@@ -5240,7 +5284,7 @@ variable number of arguments:
       add(result, newCall("writeLine", newIdentNode("stdout"), n[i]))
 
   var
-    a: array [0..10, int]
+    a: array[0..10, int]
     x = "some string"
   a[0] = 42
   a[1] = 45
@@ -5278,6 +5322,8 @@ instantiating context. There is a way to use bound identifiers
 builtin can be used for that:
 
 .. code-block:: nim
+    :test: "nim c $1"
+
   import macros
 
   macro debug(n: varargs[typed]): untyped =
@@ -5289,7 +5335,7 @@ builtin can be used for that:
       add(result, newCall(bindSym"writeLine", bindSym"stdout", x))
 
   var
-    a: array [0..10, int]
+    a: array[0..10, int]
     x = "some string"
   a[0] = 42
   a[1] = 45
@@ -5373,6 +5419,41 @@ This is a simple syntactic transformation into:
     proc p() = discard
 
 
+For loop macros
+---------------
+
+A macro that takes as its only input parameter an expression of the special
+type ``system.ForLoopStmt`` can rewrite the entirety of a ``for`` loop:
+
+.. code-block:: nim
+    :test: "nim c $1"
+
+  import macros
+
+  macro enumerate(x: ForLoopStmt): untyped =
+    expectKind x, nnkForStmt
+    # we strip off the first for loop variable and use
+    # it as an integer counter:
+    result = newStmtList()
+    result.add newVarStmt(x[0], newLit(0))
+    var body = x[^1]
+    if body.kind != nnkStmtList:
+      body = newTree(nnkStmtList, body)
+    body.add newCall(bindSym"inc", x[0])
+    var newFor = newTree(nnkForStmt)
+    for i in 1..x.len-3:
+      newFor.add x[i]
+    # transform enumerate(X) to 'X'
+    newFor.add x[^2][1]
+    newFor.add body
+    result.add newFor
+
+  for a, b in enumerate(items([1, 2, 3])):
+    echo a, " ", b
+
+  for a2, b2 in enumerate([1, 2, 3, 5]):
+    echo a2, " ", b2
+
 
 Special Types
 =============
@@ -5447,6 +5528,7 @@ one can use a named alias or an explicit `typedesc` generic param:
 Once bound, typedesc params can appear in the rest of the proc signature:
 
 .. code-block:: nim
+    :test: "nim c $1"
 
   template declareVariableWithType(T: typedesc, value: T) =
     var x: T = value
@@ -5458,13 +5540,15 @@ Overload resolution can be further influenced by constraining the set of
 types that will match the typedesc param:
 
 .. code-block:: nim
+    :test: "nim c $1"
 
   template maxval(T: typedesc[int]): int = high(int)
   template maxval(T: typedesc[float]): float = Inf
 
   var i = int.maxval
   var f = float.maxval
-  var s = string.maxval # error, maxval is not implemented for string
+  when false:
+    var s = string.maxval # error, maxval is not implemented for string
 
 The constraint can be a concrete type or a type class.
 
@@ -5494,8 +5578,8 @@ the expression, where the unknown field or proc name is passed to
 an ``untyped`` parameter:
 
 .. code-block:: nim
-  a.b # becomes `.`(a, "b")
-  a.b(c, d) # becomes `.`(a, "b", c, d)
+  a.b # becomes `.`(a, b)
+  a.b(c, d) # becomes `.`(a, b, c, d)
 
 The matched dot operators can be symbols of any callable kind (procs,
 templates and macros), depending on the desired effect:
@@ -5525,7 +5609,7 @@ operator `.=`
 This operator will be matched against assignments to missing fields.
 
 .. code-block:: nim
-  a.b = c # becomes `.=`(a, "b", c)
+  a.b = c # becomes `.=`(a, b, c)
 
 
 
@@ -6086,6 +6170,9 @@ module name followed by an ``except`` list to prevent some symbols to be
 imported:
 
 .. code-block:: nim
+    :test: "nim c $1"
+    :status: 1
+
   import strutils except `%`, toUpper
 
   # doesn't work then:
@@ -6146,6 +6233,8 @@ an ``import`` to list the symbols one likes to use without explicit
 full qualification:
 
 .. code-block:: nim
+    :test: "nim c $1"
+
   from strutils import `%`
 
   echo "$1" % "abc"
@@ -6340,7 +6429,7 @@ collector to not consider objects of this type as part of a cycle:
 .. code-block:: nim
   type
     Node = ref NodeObj
-    NodeObj {.acyclic, final.} = object
+    NodeObj {.acyclic.} = object
       left, right: Node
       data: string
 
@@ -6348,7 +6437,7 @@ Or if we directly use a ref object:
 
 .. code-block:: nim
   type
-    Node = ref object {.acyclic, final.}
+    Node = ref object {.acyclic.}
       left, right: Node
       data: string
 
@@ -6568,7 +6657,7 @@ factor.
 immediate pragma
 ----------------
 
-See `Typed vs untyped parameters`_.
+The immediate pragma is obsolete. See `Typed vs untyped parameters`_.
 
 
 compilation option pragmas
@@ -7814,8 +7903,11 @@ Parallel statement
 Example:
 
 .. code-block:: nim
+    :test: "nim c --threads:on $1"
+
   # Compute PI in an inefficient way
   import strutils, math, threadpool
+  {.experimental.}
 
   proc term(k: float): float = 4 * math.pow(-1, k) / (2*k + 1)
 
