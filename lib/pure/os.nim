@@ -1663,7 +1663,7 @@ proc setLastModificationTime*(file: string, t: times.Time) =
     var timevals = [Timeval(tv_sec: unixt), Timeval(tv_sec: unixt)] # [last access, last modification]
     if utimes(file, timevals.addr) != 0: raiseOSError(osLastError())
   else:
-    var h = openHandle(path = file, writeAccess = true)
+    let h = openHandle(path = file, writeAccess = true)
     if h == INVALID_HANDLE_VALUE: raiseOSError(osLastError())
     var ft = t.toWinTime.toFILETIME
     let res = setFileTime(h, nil, nil, ft.addr)
