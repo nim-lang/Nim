@@ -5518,12 +5518,12 @@ instantiation type using the param name:
   var n = Node.new
   var tree = new(BinaryTree[int])
 
-When multiple typedesc params are present, they act like a distinct type class
-(i.e. they will bind freely to different types). To force a bind-once behavior
-one can use a named alias or an explicit `typedesc` generic param:
+When multiple typedesc params are present, they will bind freely to different
+types. To force a bind-once behavior
+one can use an explicit ``typedesc[T]`` generic param:
 
 .. code-block:: nim
-  proc acceptOnlyTypePairs[T: typedesc, U: typedesc](A, B: T; C, D: U)
+  proc acceptOnlyTypePairs[T, U](A, B: typedesc[T]; C, D: typedesc[U])
 
 Once bound, typedesc params can appear in the rest of the proc signature:
 
