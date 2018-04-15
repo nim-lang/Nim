@@ -8,8 +8,10 @@ import bitops
 proc main() =
   const U8 = 0b0011_0010'u8
   const I8 = 0b0011_0010'i8
+  const I8B = 0b1011_0010'i8 # highest set bit
   const U16 = 0b00100111_00101000'u16
   const I16 = 0b00100111_00101000'i16
+  const I16B = 0b10100111_00101000'i16 # highest set bit
   const U32 = 0b11010101_10011100_11011010_01010000'u32
   const I32 = 0b11010101_10011100_11011010_01010000'i32
   const U64A = 0b01000100_00111111_01111100_10001010_10011001_01001000_01111010_00010001'u64
@@ -49,37 +51,59 @@ proc main() =
     doAssert( U32.countSetBits == 16)
     doAssert( I32.countSetBits == 16)
     doAssert( U32.rotateLeftBits(21) == 0b01001010_00011010_10110011_10011011'u32)
+    doAssert( I32.rotateLeftBits(21) == 0b01001010_00011010_10110011_10011011'i32)
     doAssert( U32.rotateRightBits(21) == 0b11100110_11010010_10000110_10101100'u32)
+    doAssert( I32.rotateRightBits(21) == 0b11100110_11010010_10000110_10101100'i32)
 
     doAssert( U16.fastLog2 == 13)
     doAssert( I16.fastLog2 == 13)
+    doAssert( I16B.fastLog2 == 15)
     doAssert( U16.countLeadingZeroBits == 2)
     doAssert( I16.countLeadingZeroBits == 2)
+    doAssert( I16B.countLeadingZeroBits == 0)
     doAssert( U16.countTrailingZeroBits == 3)
     doAssert( I16.countTrailingZeroBits == 3)
+    doAssert( I16B.countTrailingZeroBits == 3)
     doAssert( U16.firstSetBit == 4)
     doAssert( I16.firstSetBit == 4)
+    doAssert( I16B.firstSetBit == 4)
     doAssert( U16.parityBits == 0)
     doAssert( I16.parityBits == 0)
+    doAssert( I16B.parityBits == 1)
     doAssert( U16.countSetBits == 6)
     doAssert( I16.countSetBits == 6)
+    doAssert( I16B.countSetBits == 7)
     doAssert( U16.rotateLeftBits(12) == 0b10000010_01110010'u16)
+    doAssert( I16.rotateLeftBits(12) == 0b10000010_01110010'i16)
+    doAssert( I16B.rotateLeftBits(12) == 0b10001010_01110010'i16)
     doAssert( U16.rotateRightBits(12) == 0b01110010_10000010'u16)
+    doAssert( I16.rotateRightBits(12) == 0b01110010_10000010'i16)
+    doAssert( I16B.rotateRightBits(12) == 0b01110010_10001010'i16)
 
     doAssert( U8.fastLog2 == 5)
     doAssert( I8.fastLog2 == 5)
+    doAssert( I8B.fastLog2 == 7)
     doAssert( U8.countLeadingZeroBits == 2)
     doAssert( I8.countLeadingZeroBits == 2)
+    doAssert( I8B.countLeadingZeroBits == 0)
     doAssert( U8.countTrailingZeroBits == 1)
     doAssert( I8.countTrailingZeroBits == 1)
+    doAssert( I8B.countTrailingZeroBits == 1)
     doAssert( U8.firstSetBit == 2)
     doAssert( I8.firstSetBit == 2)
+    doAssert( I8B.firstSetBit == 2)
     doAssert( U8.parityBits == 1)
     doAssert( I8.parityBits == 1)
+    doAssert( I8B.parityBits == 0)
     doAssert( U8.countSetBits == 3)
     doAssert( I8.countSetBits == 3)
+    doAssert( I8B.countSetBits == 4)
     doAssert( U8.rotateLeftBits(3) == 0b10010001'u8)
+    doAssert( I8.rotateLeftBits(3) == 0b10010001'i8)
+    doAssert( I8B.rotateLeftBits(3) == 0b10010101'i8)
     doAssert( U8.rotateRightBits(3) == 0b0100_0110'u8)
+    doAssert( I8.rotateRightBits(3) == 0b0100_0110'i8)
+    doAssert( I8B.rotateRightBits(3) == 0b0101_0110'i8)
 
     doAssert( U64A.swapEndian == 0b00010001_01111010_01001000_10011001_10001010_01111100_00111111_01000100'u64)
     doAssert( I64A.swapEndian == 0b00010001_01111010_01001000_10011001_10001010_01111100_00111111_01000100'i64)
