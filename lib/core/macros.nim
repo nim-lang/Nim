@@ -706,8 +706,7 @@ proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
     res.add(($n.kind).substr(3))
 
     case n.kind
-    of nnkEmpty: discard # same as nil node in this representation
-    of nnkNilLit: res.add(" nil")
+    of nnkEmpty, nnkNilLit: discard # same as nil node in this representation
     of nnkCharLit..nnkInt64Lit: res.add(" " & $n.intVal)
     of nnkFloatLit..nnkFloat64Lit: res.add(" " & $n.floatVal)
     of nnkStrLit..nnkTripleStrLit, nnkIdent, nnkSym:
@@ -730,8 +729,7 @@ proc lispRepr*(n: NimNode): string {.compileTime, benign.} =
   add(result, "(")
 
   case n.kind
-  of nnkEmpty: discard # same as nil node in this representation
-  of nnkNilLit: add(result, "nil")
+  of nnkEmpty, nnkNilLit: discard # same as nil node in this representation
   of nnkCharLit..nnkInt64Lit: add(result, $n.intVal)
   of nnkFloatLit..nnkFloat64Lit: add(result, $n.floatVal)
   of nnkStrLit..nnkTripleStrLit, nnkCommentStmt, nnkident, nnkSym:
