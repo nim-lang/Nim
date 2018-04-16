@@ -1421,8 +1421,7 @@ proc sendTo*(socket: Socket, address: string, port: Port, data: pointer,
   ##
   ## **Note:** This proc is not available for SSL sockets.
   assert(not socket.isClosed, "Cannot `sendTo` on a closed socket")
-  var aiList = getAddrInfo(address, port, af)
-
+  var aiList = getAddrInfo(address, port, af, socket.sockType, socket.protocol)
   # try all possibilities:
   var success = false
   var it = aiList
@@ -1443,7 +1442,7 @@ proc sendTo*(socket: Socket, address: string, port: Port,
   ## this function will try each IP of that hostname.
   ##
   ## This is the high-level version of the above ``sendTo`` function.
-  result = socket.sendTo(address, port, cstring(data), data.len)
+  result = socket.sendTo(address, port, cstring(data), data.len, socket.domain )
 
 
 proc isSsl*(socket: Socket): bool =
