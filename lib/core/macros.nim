@@ -776,7 +776,7 @@ proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
     elif n.kind in LitKinds:
       res.add("newLit(")
     elif n.kind == nnkNilLit:
-      res.add("newNilLit")
+      res.add("newNilLit()")
     else:
       res.add($n.kind)
 
