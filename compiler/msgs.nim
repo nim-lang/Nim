@@ -134,7 +134,7 @@ type
     hintProcessing, hintCodeBegin, hintCodeEnd, hintConf, hintPath,
     hintConditionAlwaysTrue, hintName, hintPattern,
     hintExecuting, hintLinking, hintDependency,
-    hintSource, hintPerformance, hintStackTrace, hintGCStats,
+    hintSource, hintSourceError, hintPerformance, hintStackTrace, hintGCStats,
     hintUser, hintUserRaw
 
 const
@@ -387,6 +387,8 @@ const
     errCompilerDoesntSupportTarget: "The current compiler \'$1\' doesn't support the requested compilation target",
     errInOutFlagNotExtern: "The `$1` modifier can be used only with imported types",
     errUser: "$1",
+
+    # sync with `WarningsToStr`
     warnCannotOpenFile: "cannot open \'$1\'",
     warnOctalEscape: "octal escape sequences do not exist; leading zero is ignored",
     warnXIsNeverRead: "\'$1\' is never read",
@@ -418,6 +420,8 @@ const
     warnLockLevel: "$1",
     warnResultShadowed: "Special variable 'result' is shadowed.",
     warnUser: "$1",
+
+    # sync with `HintsToStr`
     hintSuccess: "operation successful",
     hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#; $#)",
     hintLineTooLong: "line too long",
@@ -438,11 +442,13 @@ const
     hintLinking: "",
     hintDependency: "$1",
     hintSource: "$1",
+    hintSourceError: "$1",
     hintPerformance: "$1",
     hintStackTrace: "$1",
     hintGCStats: "$1",
     hintUser: "$1",
-    hintUserRaw: "$1"]
+    hintUserRaw: "$1",
+  ]
 
 const
   WarningsToStr* = ["CannotOpenFile", "OctalEscape",
@@ -457,11 +463,12 @@ const
     "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
     "GcMem", "Destructor", "LockLevel", "ResultShadowed", "User"]
 
+  # TODO: this is brittle; consider using a proc that strips hint, eg: hintStackTrace => StackTrace
   HintsToStr* = ["Success", "SuccessX", "LineTooLong",
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
     "Path", "CondTrue", "Name", "Pattern", "Exec", "Link", "Dependency",
-    "Source", "Performance", "StackTrace", "GCStats",
+    "Source", "SourceError", "Performance", "StackTrace", "GCStats",
     "User", "UserRaw"]
 
 const
@@ -527,7 +534,7 @@ const
                                          hintDependency,
                                          hintExecuting, hintLinking,
                                          hintCodeBegin, hintCodeEnd,
-                                         hintSource, hintStackTrace,
+                                         hintSource, hintSourceError, hintStackTrace,
                                          hintGCStats},
     {low(TNoteKind)..high(TNoteKind)} - {warnShadowIdent, warnUninit,
                                          warnProveField, warnProveIndex,
@@ -535,9 +542,9 @@ const
                                          hintPath,
                                          hintDependency,
                                          hintCodeBegin, hintCodeEnd,
-                                         hintSource, hintStackTrace,
+                                         hintSource, hintSourceError, hintStackTrace,
                                          hintGCStats},
-    {low(TNoteKind)..high(TNoteKind)} - {hintStackTrace, warnUninit},
+    {low(TNoteKind)..high(TNoteKind)} - {hintSource, hintStackTrace, warnUninit},
     {low(TNoteKind)..high(TNoteKind)}]
 
 const
@@ -1032,7 +1039,7 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
                          KindColor, `%`(KindFormat, kind))
       else:
         styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s)
-      if msg in errMin..errMax and hintSource in gNotes:
+      if hintSource in gNotes or (msg in errMin..errMax and hintSourceError in gNotes):
         info.writeSurroundingSrc
   handleError(msg, eh, s)
 
