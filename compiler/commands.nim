@@ -73,7 +73,7 @@ proc writeAdvancedUsage(pass: TCmdLinePass) =
   if pass == passCmd1:
     msgWriteln(`%`(HelpMessage, [VersionAsString,
                                  platform.OS[platform.hostOS].name,
-                                 CPU[platform.hostCPU].name]) & AdvancedUsage,
+                                 CPU[platform.hostCPU].name]) & Usage & AdvancedUsage,
                {msgStdout})
     msgQuit(0)
 
