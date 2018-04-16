@@ -44,7 +44,7 @@ elif defined(netbsd) or defined(openbsd):
 when hasThreadSupport:
   type
     SelectorImpl[T] = object
-      kqFD : cint
+      kqFD* : cint
       maxFD : int
       changes: ptr SharedArray[KEvent]
       fds: ptr SharedArray[SelectorKey[T]]
@@ -57,7 +57,7 @@ when hasThreadSupport:
 else:
   type
     SelectorImpl[T] = object
-      kqFD : cint
+      kqFD* : cint
       maxFD : int
       changes: seq[KEvent]
       fds: seq[SelectorKey[T]]
