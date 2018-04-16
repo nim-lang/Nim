@@ -329,20 +329,21 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
       c_free(cast[pointer](r))
 
 when defined(Windows):
-  proc openHandle(path: string, followSymlink=true): Handle =
+  proc openHandle(path: string, followSymlink=true, writeAccess=false): Handle =
     var flags = FILE_FLAG_BACKUP_SEMANTICS or FILE_ATTRIBUTE_NORMAL
     if not followSymlink:
       flags = flags or FILE_FLAG_OPEN_REPARSE_POINT
+    let access = if writeAccess: GENERIC_WRITE else: 0'i32
 
     when useWinUnicode:
       result = createFileW(
-        newWideCString(path), 0'i32,
+        newWideCString(path), access,
         FILE_SHARE_DELETE or FILE_SHARE_READ or FILE_SHARE_WRITE,
         nil, OPEN_EXISTING, flags, 0
         )
     else:
       result = createFileA(
-        path, 0'i32,
+        path, access,
         FILE_SHARE_DELETE or FILE_SHARE_READ or FILE_SHARE_WRITE,
         nil, OPEN_EXISTING, flags, 0
         )
@@ -1654,3 +1655,18 @@ proc isHidden*(path: string): bool =
         result = (fileName[0] == '.') and (fileName[3] != '.')
 
 {.pop.}
+
+proc setLastModificationTime*(file: string, t: times.Time) =
+  ## Sets the `file`'s last modification time. `OSError` is raised in case of
+  ## an error.
+  when defined(posix):
+    let unixt = t.toUnix.int
+    var timevals = [Timeval(tv_sec: unixt), Timeval(tv_sec: unixt)] # [last access, last modification]
+    if utimes(file, timevals.addr) != 0: raiseOSError(osLastError())
+  else:
+    let h = openHandle(path = file, writeAccess = true)
+    if h == INVALID_HANDLE_VALUE: raiseOSError(osLastError())
+    var ft = t.toWinTime.toFILETIME
+    let res = setFileTime(h, nil, nil, ft.addr)
+    discard h.closeHandle
+    if res == 0'i32: raiseOSError(osLastError())

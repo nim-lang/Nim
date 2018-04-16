@@ -191,6 +191,7 @@ const
   secondsInHour = 60*60
   secondsInDay = 60*60*24
   minutesInHour = 60
+  rateDiff = 10000000'i64 # 100 nsecs
   # The number of hectonanoseconds between 1601/01/01 (windows epoch)
   # and 1970/01/01 (unix epoch).
   epochDiff = 116444736000000000'i64
@@ -370,6 +371,10 @@ proc fromUnix*(unix: int64): Time {.benign, tags: [], raises: [], noSideEffect.}
 proc toUnix*(t: Time): int64 {.benign, tags: [], raises: [], noSideEffect.} =
   ## Convert ``t`` to a unix timestamp (seconds since ``1970-01-01T00:00:00Z``).
   t.seconds
+
+proc toWinTime*(t: Time): int64 =
+  ## Convert ``t`` to a Windows file time (100-nanosecond intervals since ``1601-01-01T00:00:00Z``).
+  result = t.seconds * rateDiff + epochDiff
 
 proc isLeapYear*(year: int): bool =
   ## Returns true if ``year`` is a leap year.
@@ -1712,9 +1717,6 @@ when not defined(JS):
 
   var
     clocksPerSec {.importc: "CLOCKS_PER_SEC", nodecl.}: int
-
-  const
-    rateDiff = 10000000'i64 # 100 nsecs
 
   proc unixTimeToWinTime*(time: CTime): int64 =
     ## converts a UNIX `Time` (``time_t``) to a Windows file time
