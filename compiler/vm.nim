@@ -1397,8 +1397,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let bNode = regs[rc].node
       # these are cstring to prevent string copy, and cmpIgnoreStyle from
       # takes cstring arguments
-      var aStrVal: cstring
-      var bStrVal: cstring
+      var aStrVal: cstring = nil
+      var bStrVal: cstring = nil
       # extract strVal from argument ``a``
       case aNode.kind
       of {nkStrLit..nkTripleStrLit}:
@@ -1407,8 +1407,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         aStrVal = aNode.ident.s.cstring
       of nkSym:
         aStrVal = aNode.sym.name.s.cstring
+      of nkOpenSymChoice, nkClosedSymChoice:
+        aStrVal = aNode[0].sym.name.s.cstring
       else:
-        stackTrace(c, tos, pc, errFieldXNotFound, "strVal")
+        discard
       # extract strVal from argument ``b``
       case bNode.kind
       of {nkStrLit..nkTripleStrLit}:
@@ -1417,11 +1419,17 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         bStrVal = bNode.ident.s.cstring
       of nkSym:
         bStrVal = bNode.sym.name.s.cstring
+      of nkOpenSymChoice, nkClosedSymChoice:
+        bStrVal = bNode[0].sym.name.s.cstring
       else:
-        stackTrace(c, tos, pc, errFieldXNotFound, "strVal")
+        discard
       # set result
       regs[ra].intVal =
-        ord(idents.cmpIgnoreStyle(aStrVal,bStrVal,high(int)) == 0)
+        if aStrVal != nil and bStrVal != nil:
+          ord(idents.cmpIgnoreStyle(aStrVal,bStrVal,high(int)) == 0)
+        else:
+          0
+
     of opcStrToIdent:
       decodeB(rkNode)
       if regs[rb].node.kind notin {nkStrLit..nkTripleStrLit}:

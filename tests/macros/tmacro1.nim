@@ -27,11 +27,19 @@ import strutils
 template assertNot(arg: untyped): untyped =
   assert(not(arg))
 
+
+proc foo(arg: int): void =
+  discard
+
+proc foo(arg: float): void =
+  discard
+
 static:
   ## test eqIdent
   let a = "abc_def"
   let b = "abcDef"
   let c = "AbcDef"
+  let d = nnkBracketExpr.newTree() # not an identifier at all
 
   assert eqIdent(             a ,              b )
   assert eqIdent(newIdentNode(a),              b )
@@ -62,3 +70,12 @@ static:
   assertNot eqIdent(genSym(nskLet, c), newIdentNode(  b))
   assertNot eqIdent(newIdentNode(  c), genSym(nskLet, b))
   assertNot eqIdent(genSym(nskLet, c), genSym(nskLet, b))
+
+  # eqIdent on non identifier at all
+  assertNot eqIdent(a,d)
+
+  # eqIdent on sym choice
+  let fooSym = bindSym"foo"
+  assert fooSym.kind in {nnkOpenSymChoice, nnkClosedSymChoice}
+  assert    fooSym.eqIdent("fOO")
+  assertNot fooSym.eqIdent("bar")
