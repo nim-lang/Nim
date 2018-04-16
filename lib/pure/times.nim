@@ -535,7 +535,7 @@ proc `*`*(a: int64, b: Duration): Duration {.operator} =
 proc `*`*(a: Duration, b: int64): Duration {.operator} =
   ## Multiply a duration by some scalar.
   runnableExamples:
-    doAssert 5 * initDuration(seconds = 1) == initDuration(seconds = 5)
+    doAssert initDuration(seconds = 1) * 5 == initDuration(seconds = 5)
   b * a
 
 proc `div`*(a: Duration, b: int64): Duration {.operator} =
