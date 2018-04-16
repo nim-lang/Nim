@@ -59,6 +59,7 @@ const
 const
   Usage = slurp"../doc/basicopt.txt".replace("//", "")
   AdvancedUsage = slurp"../doc/advopt.txt".replace("//", "")
+  DeprecatedUsage = slurp"../doc/deprecatedopt.txt".replace("//", "")
 
 proc getCommandLineDesc(): string =
   result = (HelpMessage % [VersionAsString, platform.OS[platform.hostOS].name,
@@ -69,12 +70,17 @@ proc helpOnError(pass: TCmdLinePass) =
     msgWriteln(getCommandLineDesc(), {msgStdout})
     msgQuit(0)
 
-proc writeAdvancedUsage(pass: TCmdLinePass) =
+proc writeHelpFull(pass: TCmdLinePass) =
   if pass == passCmd1:
     msgWriteln(`%`(HelpMessage, [VersionAsString,
                                  platform.OS[platform.hostOS].name,
                                  CPU[platform.hostCPU].name]) & Usage & AdvancedUsage,
                {msgStdout})
+    msgQuit(0)
+
+proc writeDeprecatedCommands(pass: TCmdLinePass) =
+  if pass == passCmd1:
+    msgWriteln(DeprecatedUsage, {msgStdout})
     msgQuit(0)
 
 proc writeVersionInfo(pass: TCmdLinePass) =
@@ -608,9 +614,12 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "version", "v":
     expectNoArg(switch, arg, pass, info)
     writeVersionInfo(pass)
-  of "advanced":
+  of "helpfull", "advanced":
     expectNoArg(switch, arg, pass, info)
-    writeAdvancedUsage(pass)
+    writeHelpFull(pass)
+  of "deprecatedcommands":
+    expectNoArg(switch, arg, pass, info)
+    writeDeprecatedCommands(pass)
   of "help", "h":
     expectNoArg(switch, arg, pass, info)
     helpOnError(pass)

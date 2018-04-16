@@ -87,4 +87,5 @@ Advanced options:
                             value = number of processors (0 for auto-detect)
   --verbosity:0|1|2|3       set Nim's verbosity level (1 is default)
   --experimental            enable experimental language features
+  --deprecatedCommands      show deprecated command line switches (incomplete)
   -v, --version             show detailed version information
