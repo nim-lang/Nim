@@ -60,6 +60,8 @@ Advanced options:
   --implicitStatic:on|off   turn implicit compile time evaluation on|off
   --patterns:on|off         turn pattern matching on|off
   --memTracker:on|off       turn memory tracker on|off
+  --hotCodeReloading:on|off
+                            turn support for hot code reloading on|off
   --excessiveStackTrace:on|off
                             stack traces use full file paths
   --oldNewlines:on|off      turn on|off the old behaviour of "\n"
@@ -74,6 +76,7 @@ Advanced options:
   --NimblePath:PATH         add a path for Nimble support
   --noNimblePath            deactivate the Nimble path
   --noCppExceptions         use default exception handling with C++ backend
+  --cppCompileToNamespace   use namespace "Nim" for the generated C++ code 
   --excludePath:PATH        exclude a path from the list of search paths
   --dynlibOverride:SYMBOL   marks SYMBOL so that dynlib:SYMBOL
                             has no effect and can be statically linked instead;

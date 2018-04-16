@@ -190,7 +190,7 @@ proc loadAny(p: var JsonParser, t: PType,
   of tyTuple:
     if p.kind != jsonObjectStart: raiseParseErr(p, "'{' expected for an object")
     next(p)
-    result = newNode(nkPar)
+    result = newNode(nkTupleConstr)
     var i = 0
     while p.kind != jsonObjectEnd and p.kind != jsonEof:
       if p.kind != jsonString:

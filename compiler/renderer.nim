@@ -437,6 +437,9 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkCommand: result = lsub(g, n.sons[0]) + lcomma(g, n, 1) + 1
   of nkExprEqExpr, nkAsgn, nkFastAsgn: result = lsons(g, n) + 3
   of nkPar, nkCurly, nkBracket, nkClosure: result = lcomma(g, n) + 2
+  of nkTupleConstr:
+    # assume the trailing comma:
+    result = lcomma(g, n) + 3
   of nkArgList: result = lcomma(g, n)
   of nkTableConstr:
     result = if n.len > 0: lcomma(g, n) + 2 else: len("{:}")
@@ -1006,6 +1009,11 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkPar, nkClosure:
     put(g, tkParLe, "(")
     gcomma(g, n, c)
+    put(g, tkParRi, ")")
+  of nkTupleConstr:
+    put(g, tkParLe, "(")
+    gcomma(g, n, c)
+    if n.len == 1: put(g, tkComma, ",")
     put(g, tkParRi, ")")
   of nkCurly:
     put(g, tkCurlyLe, "{")

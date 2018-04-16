@@ -105,11 +105,13 @@ type
     ## type class matching all ordinal types; however this includes enums with
     ## holes.
 
-  SomeReal* = float|float32|float64
+  SomeFloat* = float|float32|float64
     ## type class matching all floating point number types
 
-  SomeNumber* = SomeInteger|SomeReal
+  SomeNumber* = SomeInteger|SomeFloat
     ## type class matching all number types
+
+{.deprecated: [SomeReal: SomeFloat].}
 
 proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## Special compile-time procedure that checks whether `x` is
@@ -128,7 +130,7 @@ when defined(nimalias):
     TSignedInt: SomeSignedInt,
     TUnsignedInt: SomeUnsignedInt,
     TInteger: SomeInteger,
-    TReal: SomeReal,
+    TReal: SomeFloat,
     TNumber: SomeNumber,
     TOrdinal: SomeOrdinal].}
 
@@ -648,6 +650,11 @@ when defined(nimNewRuntime):
   EFloatOverflow: FloatOverflowError,
   ESynch: Exception
 ].}
+
+when defined(js) or defined(nimdoc):
+  type
+    JsRoot* = ref object of RootObj
+      ## Root type of the JavaScript object hierarchy
 
 proc unsafeNew*[T](a: var ref T, size: Natural) {.magic: "New", noSideEffect.}
   ## creates a new object of type ``T`` and returns a safe (traced)
@@ -2166,8 +2173,8 @@ proc max*[T](x, y: T): T =
   if y <= x: x else: y
 {.pop.}
 
-proc high*(T: typedesc[SomeReal]): T = Inf
-proc low*(T: typedesc[SomeReal]): T = NegInf
+proc high*(T: typedesc[SomeFloat]): T = Inf
+proc low*(T: typedesc[SomeFloat]): T = NegInf
 
 proc clamp*[T](x, a, b: T): T =
   ## limits the value ``x`` within the interval [a, b]
@@ -4080,6 +4087,25 @@ template closureScope*(body: untyped): untyped =
   ##   myClosure() # outputs 3
   (proc() = body)()
 
+template once*(body: untyped): untyped =
+  ## Executes a block of code only once (the first time the block is reached).
+  ## When hot code reloading is enabled, protects top-level code from being
+  ## re-executed on each module reload.
+  ##
+  ## .. code-block:: nim
+  ## proc draw(t: Triangle) =
+  ##   once:
+  ##     graphicsInit()
+  ##
+  ##   line(t.p1, t.p2)
+  ##   line(t.p2, t.p3)
+  ##   line(t.p3, t.p1)
+  ##
+  var alreadyExecuted {.global.} = false
+  if not alreadyExecuted:
+    alreadyExecuted = true
+    body
+
 {.pop.} #{.push warning[GcMem]: off, warning[Uninit]: off.}
 
 when defined(nimconfig):
@@ -4148,3 +4174,8 @@ when not defined(js):
     magic: "Slice".}
   proc toOpenArray*(x: string; first, last: int): openarray[char] {.
     magic: "Slice".}
+
+
+type
+  ForLoopStmt* {.compilerProc.} = object ## special type that marks a macro
+                                         ## as a `for-loop macro`:idx:

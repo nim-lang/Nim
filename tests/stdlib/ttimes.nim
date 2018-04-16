@@ -37,8 +37,8 @@ var t4 = fromUnix(876124714).utc # Mon  6 Oct 08:58:34 BST 1997
 t4.checkFormat("M MM MMM MMMM", "10 10 Oct October")
 
 # Interval tests
-(t4 - initInterval(years = 2)).checkFormat("yyyy", "1995")
-(t4 - initInterval(years = 7, minutes = 34, seconds = 24)).checkFormat("yyyy mm ss", "1990 24 10")
+(t4 - initTimeInterval(years = 2)).checkFormat("yyyy", "1995")
+(t4 - initTimeInterval(years = 7, minutes = 34, seconds = 24)).checkFormat("yyyy mm ss", "1990 24 10")
 
 # checking dayOfWeek matches known days
 doAssert getDayOfWeek(01, mJan, 0000) == dSat
@@ -56,32 +56,14 @@ doAssert toUnix(toTime(t4L)) + t4L.utcOffset == toUnix(toTime(t4))
 
 # adding intervals
 var
-  a1L = toUnix(toTime(t4L + initInterval(hours = 1))) + t4L.utcOffset
+  a1L = toUnix(toTime(t4L + initTimeInterval(hours = 1))) + t4L.utcOffset
   a1G = toUnix(toTime(t4)) + 60 * 60
 doAssert a1L == a1G
 
 # subtracting intervals
-a1L = toUnix(toTime(t4L - initInterval(hours = 1))) + t4L.utcOffset
+a1L = toUnix(toTime(t4L - initTimeInterval(hours = 1))) + t4L.utcOffset
 a1G = toUnix(toTime(t4)) - (60 * 60)
 doAssert a1L == a1G
-
-# add/subtract TimeIntervals and Time/TimeInfo
-doAssert getTime() - 1.seconds == getTime() - 3.seconds + 2.seconds
-doAssert getTime() + 65.seconds == getTime() + 1.minutes + 5.seconds
-doAssert getTime() + 60.minutes == getTime() + 1.hours
-doAssert getTime() + 24.hours == getTime() + 1.days
-doAssert getTime() + 13.months == getTime() + 1.years + 1.months
-var
-  ti1 = getTime() + 1.years
-ti1 -= 1.years
-doAssert ti1 == getTime()
-ti1 += 1.days
-doAssert ti1 == getTime() + 1.days
-
-# Bug with adding a day to a Time
-let day = 24.hours
-let tomorrow = getTime() + day
-doAssert tomorrow - getTime() == 60*60*24
 
 # Comparison between Time objects should be detected by compiler
 # as 'noSideEffect'.
@@ -207,8 +189,8 @@ template runTimezoneTests() =
     let
       parsedJan = parse("2016-01-05 04:00:00+01:00", "yyyy-MM-dd HH:mm:sszzz")
       parsedJul = parse("2016-07-01 04:00:00+01:00", "yyyy-MM-dd HH:mm:sszzz")
-    doAssert toTime(parsedJan) == fromUnix(1451962800)
-    doAssert toTime(parsedJul) == fromUnix(1467342000)
+    doAssert toTime(parsedJan).toUnix == 1451962800
+    doAssert toTime(parsedJul).toUnix == 1467342000
 
 suite "ttimes":
 
@@ -220,7 +202,7 @@ suite "ttimes":
     
     let orig_tz = getEnv("TZ")
     var tz_cnt = 0
-    for tz_fn in walkFiles(tz_dir & "/*"):
+    for tz_fn in walkFiles(tz_dir & "/**/*"):
       if symlinkExists(tz_fn) or tz_fn.endsWith(".tab") or
           tz_fn.endsWith(".list"):
         continue
@@ -252,19 +234,20 @@ suite "ttimes":
       var local = fromUnix(1469275200).local
       var utc = fromUnix(1469275200).utc
 
-      let claimedOffset = local.utcOffset
+      let claimedOffset = initDuration(seconds = local.utcOffset)
       local.utcOffset = 0
       check claimedOffset == utc.toTime - local.toTime
 
     test "issue #5704":
       putEnv("TZ", "Asia/Seoul")
       let diff = parse("19700101-000000", "yyyyMMdd-hhmmss").toTime - parse("19000101-000000", "yyyyMMdd-hhmmss").toTime
-      check diff == 2208986872
+      check diff == initDuration(seconds = 2208986872)
 
     test "issue #6465":
       putEnv("TZ", "Europe/Stockholm")      
       let dt = parse("2017-03-25 12:00", "yyyy-MM-dd hh:mm")
-      check $(dt + 1.days) == "2017-03-26T12:00:00+02:00"
+      check $(dt + initTimeInterval(days = 1)) == "2017-03-26T12:00:00+02:00"
+      check $(dt + initDuration(days = 1)) == "2017-03-26T13:00:00+02:00"      
 
     test "datetime before epoch":
       check $fromUnix(-2147483648).utc == "1901-12-13T20:45:52+00:00"
@@ -281,7 +264,7 @@ suite "ttimes":
     putEnv("TZ", orig_tz)
 
   else:
-    # not on Linux or macosx: run one parseTest only
+    # not on Linux or macosx: run in the local timezone only
     test "parseTest":
       runTimezoneTests()
 
@@ -362,12 +345,40 @@ suite "ttimes":
 
   test "subtract months":
     var dt = initDateTime(1, mFeb, 2017, 00, 00, 00, utc())
-    check $(dt - 1.months) == "2017-01-01T00:00:00+00:00"
+    check $(dt - initTimeInterval(months = 1)) == "2017-01-01T00:00:00+00:00"
     dt = initDateTime(15, mMar, 2017, 00, 00, 00, utc())
-    check $(dt - 1.months) == "2017-02-15T00:00:00+00:00"
+    check $(dt - initTimeInterval(months = 1)) == "2017-02-15T00:00:00+00:00"
     dt = initDateTime(31, mMar, 2017, 00, 00, 00, utc())
     # This happens due to monthday overflow. It's consistent with Phobos.
-    check $(dt - 1.months) == "2017-03-03T00:00:00+00:00"
+    check $(dt - initTimeInterval(months = 1)) == "2017-03-03T00:00:00+00:00"
+
+  test "duration":
+    let d = initDuration
+    check d(hours = 48) + d(days = 5) == d(weeks = 1)
+    let dt = initDateTime(01, mFeb, 2000, 00, 00, 00, 0, utc()) + d(milliseconds = 1)
+    check dt.nanosecond == convert(Milliseconds, Nanoseconds, 1)
+    check d(seconds = 1, milliseconds = 500) * 2 == d(seconds = 3)
+    check d(seconds = 3) div 2 == d(seconds = 1, milliseconds = 500)
+    check d(milliseconds = 1001).seconds == 1
+    check d(seconds = 1, milliseconds = 500) - d(milliseconds = 1250) ==
+      d(milliseconds = 250)
+    check d(seconds = 1, milliseconds = 1) < d(seconds = 1, milliseconds = 2)
+    check d(seconds = 1) <= d(seconds = 1)
+    check d(seconds = 0) - d(milliseconds = 1500) == d(milliseconds = -1500)
+    check d(milliseconds = -1500) == d(seconds = -1, milliseconds = -500)
+    check d(seconds = -1, milliseconds = 500) == d(milliseconds = -500)
+
+  test "large/small dates":
+    discard initDateTime(1, mJan, -35_000, 12, 00, 00, utc())
+    # with local tz
+    discard initDateTime(1, mJan, -35_000, 12, 00, 00)
+    discard initDateTime(1, mJan,  35_000, 12, 00, 00)
+    # with duration/timeinterval
+    let dt = initDateTime(1, mJan,  35_000, 12, 00, 00, utc()) +
+      initDuration(seconds = 1)
+    check dt.second == 1
+    let dt2 = dt + 35_001.years
+    check $dt2 == "0001-01-01T12:00:01+00:00"
 
   test "compare datetimes":
     var dt1 = now()
@@ -376,3 +387,26 @@ suite "ttimes":
     check dt1 <= dt2
     dt2 = dt2 + 1.seconds
     check dt1 < dt2
+
+  test "adding/subtracting TimeInterval":
+    # add/subtract TimeIntervals and Time/TimeInfo
+    let now = getTime().utc
+    check now + convert(Seconds, Nanoseconds, 1).nanoseconds == now + 1.seconds
+    check now + 1.weeks == now + 7.days
+    check now - 1.seconds == now - 3.seconds + 2.seconds
+    check now + 65.seconds == now + 1.minutes + 5.seconds
+    check now + 60.minutes == now + 1.hours
+    check now + 24.hours == now + 1.days
+    check now + 13.months == now + 1.years + 1.months
+    check toUnix(fromUnix(0) + 2.seconds) == 2
+    check toUnix(fromUnix(0) - 2.seconds) == -2
+    var ti1 = now + 1.years
+    ti1 = ti1 - 1.years
+    check ti1 == now
+    ti1 = ti1 + 1.days
+    check ti1 == now + 1.days
+
+    # Bug with adding a day to a Time
+    let day = 24.hours
+    let tomorrow = now + day
+    check tomorrow - now == initDuration(days = 1)

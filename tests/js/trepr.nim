@@ -103,7 +103,7 @@ block strings:
   when defined js: # C prepends the pointer, JS does not.
     doAssert(repr(a) == "\"12345\"")
     doAssert(repr(b) == "\"hello,repr\"")
-    doAssert(repr(c) == "\"hi\nthere\"")
+    doAssert(repr(c) == "\"hi\\10there\"")
 
 block sets:
   let

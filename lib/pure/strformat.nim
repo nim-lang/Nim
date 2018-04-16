@@ -375,7 +375,7 @@ type
                       ## ``parseStandardFormatSpecifier`` returned.
 
 proc formatInt(n: SomeNumber; radix: int; spec: StandardFormatSpecifier): string =
-  ## Converts ``n`` to string. If ``n`` is `SomeReal`, it casts to `int64`.
+  ## Converts ``n`` to string. If ``n`` is `SomeFloat`, it casts to `int64`.
   ## Conversion is done using ``radix``. If result's length is lesser than
   ## ``minimumWidth``, it aligns result to the right or left (depending on ``a``)
   ## with ``fill`` char.
@@ -503,8 +503,8 @@ proc format*(value: SomeInteger; specifier: string; res: var string) =
       " of 'x', 'X', 'b', 'd', 'o' but got: " & spec.typ)
   res.add formatInt(value, radix, spec)
 
-proc format*(value: SomeReal; specifier: string; res: var string) =
-  ## Standard format implementation for ``SomeReal``. It makes little
+proc format*(value: SomeFloat; specifier: string; res: var string) =
+  ## Standard format implementation for ``SomeFloat``. It makes little
   ## sense to call this directly, but it is required to exist
   ## by the ``&`` macro.
   let spec = parseStandardFormatSpecifier(specifier)

@@ -26,33 +26,33 @@
 
 import typetraits
 
-proc `+`*[I: SomeInteger, F: SomeReal](i: I, f: F): F {.noSideEffect, inline.} =
+proc `+`*[I: SomeInteger, F: SomeFloat](i: I, f: F): F {.noSideEffect, inline.} =
   F(i) + f
-proc `+`*[I: SomeInteger, F: SomeReal](f: F, i: I): F {.noSideEffect, inline.} =
+proc `+`*[I: SomeInteger, F: SomeFloat](f: F, i: I): F {.noSideEffect, inline.} =
   f + F(i)
 
-proc `-`*[I: SomeInteger, F: SomeReal](i: I, f: F): F {.noSideEffect, inline.} =
+proc `-`*[I: SomeInteger, F: SomeFloat](i: I, f: F): F {.noSideEffect, inline.} =
   F(i) - f
-proc `-`*[I: SomeInteger, F: SomeReal](f: F, i: I): F {.noSideEffect, inline.} =
+proc `-`*[I: SomeInteger, F: SomeFloat](f: F, i: I): F {.noSideEffect, inline.} =
   f - F(i)
 
-proc `*`*[I: SomeInteger, F: SomeReal](i: I, f: F): F {.noSideEffect, inline.} =
+proc `*`*[I: SomeInteger, F: SomeFloat](i: I, f: F): F {.noSideEffect, inline.} =
   F(i) * f
-proc `*`*[I: SomeInteger, F: SomeReal](f: F, i: I): F {.noSideEffect, inline.} =
+proc `*`*[I: SomeInteger, F: SomeFloat](f: F, i: I): F {.noSideEffect, inline.} =
   f * F(i)
 
-proc `/`*[I: SomeInteger, F: SomeReal](i: I, f: F): F {.noSideEffect, inline.} =
+proc `/`*[I: SomeInteger, F: SomeFloat](i: I, f: F): F {.noSideEffect, inline.} =
   F(i) / f
-proc `/`*[I: SomeInteger, F: SomeReal](f: F, i: I): F {.noSideEffect, inline.} =
+proc `/`*[I: SomeInteger, F: SomeFloat](f: F, i: I): F {.noSideEffect, inline.} =
   f / F(i)
 
-proc `<`*[I: SomeInteger, F: SomeReal](i: I, f: F): bool {.noSideEffect, inline.} =
+proc `<`*[I: SomeInteger, F: SomeFloat](i: I, f: F): bool {.noSideEffect, inline.} =
   F(i) < f
-proc `<`*[I: SomeInteger, F: SomeReal](f: F, i: I): bool {.noSideEffect, inline.} =
+proc `<`*[I: SomeInteger, F: SomeFloat](f: F, i: I): bool {.noSideEffect, inline.} =
   f < F(i)
-proc `<=`*[I: SomeInteger, F: SomeReal](i: I, f: F): bool {.noSideEffect, inline.} =
+proc `<=`*[I: SomeInteger, F: SomeFloat](i: I, f: F): bool {.noSideEffect, inline.} =
   F(i) <= f
-proc `<=`*[I: SomeInteger, F: SomeReal](f: F, i: I): bool {.noSideEffect, inline.} =
+proc `<=`*[I: SomeInteger, F: SomeFloat](f: F, i: I): bool {.noSideEffect, inline.} =
   f <= F(i)
 
 # Note that we must not defined `>=` and `>`, because system.nim already has a

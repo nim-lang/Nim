@@ -73,7 +73,7 @@ proc expectIntLit(c: PContext, n: PNode): int =
   else: localError(n.info, errIntLiteralExpected)
 
 proc semInstantiationInfo(c: PContext, n: PNode): PNode =
-  result = newNodeIT(nkPar, n.info, n.typ)
+  result = newNodeIT(nkTupleConstr, n.info, n.typ)
   let idx = expectIntLit(c, n.sons[1])
   let useFullPaths = expectIntLit(c, n.sons[2])
   let info = getInfoContext(idx)

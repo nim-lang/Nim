@@ -418,7 +418,7 @@ proc generateRss(outputFilename: string, news: seq[TRssItem]) =
           href = rss.url),
         updatedDate(rss.year, rss.month, rss.day),
         "<author><name>Nim</name></author>",
-        content(xmltree.escape(rss.content), `type` = "text"),
+        content(xmltree.escape(rss.content), `type` = "text")
       ))
 
   output.write("""</feed>""")

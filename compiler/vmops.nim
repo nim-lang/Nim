@@ -74,13 +74,13 @@ proc getCurrentExceptionMsgWrapper(a: VmArgs) {.nimcall.} =
 proc staticWalkDirImpl(path: string, relative: bool): PNode =
   result = newNode(nkBracket)
   for k, f in walkDir(path, relative):
-    result.add newTree(nkPar, newIntNode(nkIntLit, k.ord),
+    result.add newTree(nkTupleConstr, newIntNode(nkIntLit, k.ord),
                               newStrNode(nkStrLit, f))
 
 proc gorgeExWrapper(a: VmArgs) {.nimcall.} =
   let (s, e) = opGorge(getString(a, 0), getString(a, 1), getString(a, 2),
                        a.currentLineInfo)
-  setResult a, newTree(nkPar, newStrNode(nkStrLit, s), newIntNode(nkIntLit, e))
+  setResult a, newTree(nkTupleConstr, newStrNode(nkStrLit, s), newIntNode(nkIntLit, e))
 
 proc getProjectPathWrapper(a: VmArgs) {.nimcall.} =
   setResult a, gProjectPath

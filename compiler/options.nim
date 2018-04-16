@@ -36,7 +36,8 @@ type                          # please make sure we have under 32 options
     optImplicitStatic,        # optimization: implicit at compile time
                               # evaluation
     optPatterns,              # en/disable pattern matching
-    optMemTracker
+    optMemTracker,
+    optHotCodeReloading
 
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
@@ -148,6 +149,7 @@ var
   gExperimentalMode*: bool
   newDestructors*: bool
   gDynlibOverrideAll*: bool
+  useNimNamespace*: bool
 
 type
   SymbolFilesOption* = enum
