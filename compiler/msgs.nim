@@ -970,8 +970,15 @@ proc resetAttributes* =
 
 proc writeSurroundingSrc(info: TLineInfo) =
   const indent = "  "
-  msgWriteln(indent & $info.sourceLine)
-  msgWriteln(indent & spaces(info.col) & '^')
+  let col = info.col
+  let src = $info.sourceLine
+  if optUseColors in gGlobalOptions:
+      styledMsgWriteln(indent, src[0..<col], styleUnderscore, src[col .. col],
+        resetStyle, src[col+1 .. ^1])
+  else:
+      msgWriteln(indent & $src)
+      # BUG: doesn't work if source uses chars of width !=1 (eg UTF8 chars)
+      msgWriteln(indent & spaces(col) & '^')
 
 proc formatMsg*(info: TLineInfo, msg: TMsgKind, arg: string): string =
   let title = case msg
