@@ -372,9 +372,20 @@ proc toUnix*(t: Time): int64 {.benign, tags: [], raises: [], noSideEffect.} =
   ## Convert ``t`` to a unix timestamp (seconds since ``1970-01-01T00:00:00Z``).
   t.seconds
 
+proc fromWinTime*(win: int64): Time =
+  ## Convert a Windows file time (100-nanosecond intervals since ``1601-01-01T00:00:00Z``)
+  ## to a ``Time``.
+  let hnsecsSinceEpoch = (win - epochDiff)
+  var seconds = hnsecsSinceEpoch div rateDiff
+  var nanos = ((hnsecsSinceEpoch mod rateDiff) * 100).int
+  if nanos < 0:
+    nanos += convert(Seconds, Nanoseconds, 1)
+    seconds -= 1
+  result = initTime(seconds, nanos)
+
 proc toWinTime*(t: Time): int64 =
   ## Convert ``t`` to a Windows file time (100-nanosecond intervals since ``1601-01-01T00:00:00Z``).
-  result = t.seconds * rateDiff + epochDiff
+  result = t.seconds * rateDiff + epochDiff + t.nanoseconds div 100
 
 proc isLeapYear*(year: int): bool =
   ## Returns true if ``year`` is a leap year.
@@ -858,10 +869,7 @@ proc getTime*(): Time {.tags: [TimeEffect], benign.} =
   elif defined(windows):
     var f: FILETIME
     getSystemTimeAsFileTime(f)
-    let nanosSinceEpoch = (rdFileTime(f) - epochDiff) * 100
-    let seconds = convert(Nanoseconds, Seconds, nanosSinceEpoch)
-    let nanos = (nanosSinceEpoch mod convert(Seconds, Nanoseconds, 1)).int
-    result = initTime(seconds, nanos)
+    result = fromWinTime(rdFileTime(f))
 
 proc now*(): DateTime {.tags: [TimeEffect], benign.} =
   ## Get the current time as a  ``DateTime`` in the local timezone.
@@ -1718,14 +1726,6 @@ when not defined(JS):
   var
     clocksPerSec {.importc: "CLOCKS_PER_SEC", nodecl.}: int
 
-  proc unixTimeToWinTime*(time: CTime): int64 =
-    ## converts a UNIX `Time` (``time_t``) to a Windows file time
-    result = int64(time) * rateDiff + epochDiff
-
-  proc winTimeToUnixTime*(time: int64): CTime =
-    ## converts a Windows time to a UNIX `Time` (``time_t``)
-    result = CTime((time - epochDiff) div rateDiff)
-
   when not defined(useNimRtl):
     proc cpuTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].} =
       ## gets time spent that the CPU spent to run the current process in
@@ -1766,6 +1766,19 @@ when defined(JS):
     newDate().getTime() / 1000
 
 # Deprecated procs
+
+when not defined(JS):
+  proc unixTimeToWinTime*(time: CTime): int64 {.deprecated: "Use toWinTime instead".} =
+    ## Converts a UNIX `Time` (``time_t``) to a Windows file time
+    ##
+    ## **Deprecated:** use ``toWinTime`` instead.
+    result = int64(time) * rateDiff + epochDiff
+
+  proc winTimeToUnixTime*(time: int64): CTime {.deprecated: "Use fromWinTime instead".} =
+    ## Converts a Windows time to a UNIX `Time` (``time_t``)
+    ##
+    ## **Deprecated:** use ``fromWinTime`` instead.
+    result = CTime((time - epochDiff) div rateDiff)
 
 proc initInterval*(seconds, minutes, hours, days, months,
                    years: int = 0): TimeInterval {.deprecated.} =
