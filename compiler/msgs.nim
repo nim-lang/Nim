@@ -968,17 +968,13 @@ proc resetAttributes* =
   if {optUseColors, optStdout} * gGlobalOptions == {optUseColors}:
     terminal.resetAttributes(stderr)
 
-proc writeSurroundingSrc(info: TLineInfo) =
-  const indent = "  "
+proc getSurroundingSrc(info: TLineInfo): auto =
   let col = info.col
   let src = $info.sourceLine
-  if optUseColors in gGlobalOptions:
-      styledMsgWriteln(indent, src[0..<col], styleUnderscore, src[col .. col],
-        resetStyle, src[col+1 .. ^1])
-  else:
-      msgWriteln(indent & $src)
-      # BUG: doesn't work if source uses chars of width !=1 (eg UTF8 chars)
-      msgWriteln(indent & spaces(col) & '^')
+  let marker = "🛑 "
+  # NOTE: good candidates: "� ","☹ ", "⬤ ", "▓", "🛑 " (some include a space
+  # as they take 2 columns), or ">>>"
+  result = ":" & src[0..<col] & marker & src[col .. ^1]
 
 proc formatMsg*(info: TLineInfo, msg: TMsgKind, arg: string): string =
   let title = case msg
@@ -1034,13 +1030,14 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
     if structuredErrorHook != nil:
       structuredErrorHook(info, s & (if kind != nil: KindFormat % kind else: ""), sev)
     if not ignoreMsgBecauseOfIdeTools(msg):
+      var src = ""
+      if msg in errMin..errMax and hintSource in gNotes:
+        src = info.getSurroundingSrc
       if kind != nil:
         styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s,
-                         KindColor, `%`(KindFormat, kind))
+                         KindColor, `%`(KindFormat, kind), resetStyle, src)
       else:
-        styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s)
-      if msg in errMin..errMax and hintSource in gNotes:
-        info.writeSurroundingSrc
+        styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s, src)
   handleError(msg, eh, s)
 
 proc fatal*(info: TLineInfo, msg: TMsgKind, arg = "") =
