@@ -134,7 +134,7 @@ type
     hintProcessing, hintCodeBegin, hintCodeEnd, hintConf, hintPath,
     hintConditionAlwaysTrue, hintName, hintPattern,
     hintExecuting, hintLinking, hintDependency,
-    hintSource, hintSourceError, hintPerformance, hintStackTrace, hintGCStats,
+    hintSource, hintPerformance, hintStackTrace, hintGCStats,
     hintUser, hintUserRaw
 
 const
@@ -442,7 +442,6 @@ const
     hintLinking: "",
     hintDependency: "$1",
     hintSource: "$1",
-    hintSourceError: "$1",
     hintPerformance: "$1",
     hintStackTrace: "$1",
     hintGCStats: "$1",
@@ -534,7 +533,7 @@ const
                                          hintDependency,
                                          hintExecuting, hintLinking,
                                          hintCodeBegin, hintCodeEnd,
-                                         hintSource, hintSourceError, hintStackTrace,
+                                         hintSource, hintStackTrace,
                                          hintGCStats},
     {low(TNoteKind)..high(TNoteKind)} - {warnShadowIdent, warnUninit,
                                          warnProveField, warnProveIndex,
@@ -542,9 +541,9 @@ const
                                          hintPath,
                                          hintDependency,
                                          hintCodeBegin, hintCodeEnd,
-                                         hintSource, hintSourceError, hintStackTrace,
+                                         hintStackTrace,
                                          hintGCStats},
-    {low(TNoteKind)..high(TNoteKind)} - {hintSource, hintStackTrace, warnUninit},
+    {low(TNoteKind)..high(TNoteKind)} - {hintStackTrace, warnUninit},
     {low(TNoteKind)..high(TNoteKind)}]
 
 const
@@ -1039,7 +1038,7 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
                          KindColor, `%`(KindFormat, kind))
       else:
         styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s)
-      if hintSource in gNotes or (msg in errMin..errMax and hintSourceError in gNotes):
+      if hintSource in gNotes:
         info.writeSurroundingSrc
   handleError(msg, eh, s)
 
