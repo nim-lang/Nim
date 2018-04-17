@@ -101,8 +101,8 @@ when defined(windows):
   from winlean import TimeVal, SocketHandle, FD_SET, FD_ZERO, TFdSet,
     FD_ISSET, select
 else:
-  from posix import TimeVal, SocketHandle, FD_SET, FD_ZERO, TFdSet,
-    FD_ISSET, select
+  from posix import TimeVal, Time, Suseconds, SocketHandle, FD_SET, FD_ZERO,
+    TFdSet, FD_ISSET, select
 
 type
   DelegateObj* = object
@@ -556,8 +556,12 @@ proc send*(sock: AsyncSocket, data: string) =
 proc timeValFromMilliseconds(timeout = 500): Timeval =
   if timeout != -1:
     var seconds = timeout div 1000
-    result.tv_sec = seconds.int32
-    result.tv_usec = ((timeout - seconds * 1000) * 1000).int32
+    when defined(posix):
+      result.tv_sec = seconds.Time
+      result.tv_usec = ((timeout - seconds * 1000) * 1000).Suseconds
+    else:
+      result.tv_sec = seconds.int32
+      result.tv_usec = ((timeout - seconds * 1000) * 1000).int32
 
 proc createFdSet(fd: var TFdSet, s: seq[Delegate], m: var int) =
   FD_ZERO(fd)

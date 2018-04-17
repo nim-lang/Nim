@@ -616,8 +616,12 @@ proc setBlocking*(s: SocketHandle, blocking: bool) =
 proc timeValFromMilliseconds(timeout = 500): Timeval =
   if timeout != -1:
     var seconds = timeout div 1000
-    result.tv_sec = seconds.int32
-    result.tv_usec = ((timeout - seconds * 1000) * 1000).int32
+    when useWinVersion:
+      result.tv_sec = seconds.int32
+      result.tv_usec = ((timeout - seconds * 1000) * 1000).int32
+    else:
+      result.tv_sec = seconds.Time
+      result.tv_usec = ((timeout - seconds * 1000) * 1000).Suseconds
 
 proc createFdSet(fd: var TFdSet, s: seq[SocketHandle], m: var int) =
   FD_ZERO(fd)
