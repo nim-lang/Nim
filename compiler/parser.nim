@@ -125,7 +125,13 @@ proc rawSkipComment(p: var TParser, node: PNode) =
   if p.tok.tokType == tkComment:
     if node != nil:
       if node.comment == nil: node.comment = ""
-      add(node.comment, p.tok.literal)
+      when defined(nimpretty):
+        if p.tok.commentOffsetB > p.tok.commentOffsetA:
+          add node.comment, fileSection(p.lex.fileIdx, p.tok.commentOffsetA, p.tok.commentOffsetB)
+        else:
+          add node.comment, p.tok.literal
+      else:
+        add(node.comment, p.tok.literal)
     else:
       parMessage(p, errInternal, "skipComment")
     getTok(p)

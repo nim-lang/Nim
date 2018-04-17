@@ -495,7 +495,9 @@ type
                                # and parsed; usually 'nil' but is used
                                # for 'nimsuggest'
     hash*: string              # the checksum of the file
-
+    when defined(nimpretty):
+      fullContent*: string
+  FileIndex* = int32           # XXX will make this 'distinct' later
   TLineInfo* = object          # This is designed to be as small as possible,
                                # because it is used
                                # in syntax nodes. We save space here by using
@@ -503,7 +505,7 @@ type
                                # On 64 bit and on 32 bit systems this is
                                # only 8 bytes.
     line*, col*: int16
-    fileIndex*: int32
+    fileIndex*: FileIndex
     when defined(nimpretty):
       offsetA*, offsetB*: int
       commentOffsetA*, commentOffsetB*: int
@@ -583,6 +585,18 @@ proc newFileInfo(fullPath, projPath: string): TFileInfo =
   result.quotedFullName = fullPath.makeCString
   if optEmbedOrigSrc in gGlobalOptions or true:
     result.lines = @[]
+  when defined(nimpretty):
+    if result.fullPath.len > 0:
+      try:
+        result.fullContent = readFile(result.fullPath)
+      except IOError:
+        #rawMessage(errCannotOpenFile, result.fullPath)
+        # XXX fixme
+        result.fullContent = ""
+
+when defined(nimpretty):
+  proc fileSection*(fid: FileIndex; a, b: int): string =
+    substr(fileInfos[fid].fullContent, a, b)
 
 proc fileInfoKnown*(filename: string): bool =
   var

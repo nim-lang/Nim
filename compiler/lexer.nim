@@ -1080,7 +1080,9 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
     tok.indent = -1
   skip(L, tok)
   when defined(nimpretty):
-    if tok.tokType == tkComment: return
+    if tok.tokType == tkComment:
+      L.indentAhead = L.currLineIndent
+      return
   var c = L.buf[L.bufpos]
   tok.line = L.lineNumber
   tok.col = getColNumber(L, L.bufpos)
