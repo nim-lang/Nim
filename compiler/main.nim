@@ -94,7 +94,6 @@ proc commandCompileToJS(graph: ModuleGraph; cache: IdentCache) =
   defineSymbol("nimrod") # 'nimrod' is always defined
   defineSymbol("ecmascript") # For backward compatibility
   defineSymbol("js")
-  if gCmd == cmdCompileToPHP: defineSymbol("nimphp")
   semanticPasses()
   registerPass(JSgenPass)
   compileProject(graph, cache)
@@ -188,9 +187,6 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
       rawMessage(errInvalidCommandX, command)
   of "js", "compiletojs":
     gCmd = cmdCompileToJS
-    commandCompileToJS(graph, cache)
-  of "php":
-    gCmd = cmdCompileToPHP
     commandCompileToJS(graph, cache)
   of "doc0":
     wantMainModule()
