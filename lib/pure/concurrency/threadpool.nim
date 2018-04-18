@@ -245,7 +245,7 @@ proc `^`*[T](fv: FlowVar[T]): T =
 proc awaitAny*(flowVars: openArray[FlowVarBase]): int =
   ## awaits any of the given flowVars. Returns the index of one flowVar for
   ## which a value arrived. A flowVar only supports one call to 'awaitAny' at
-  ## the same time. That means if you await([a,b]) and await([b,c]) the second
+  ## the same time. That means if you awaitAny([a,b]) and awaitAny([b,c]) the second
   ## call will only await 'c'. If there is no flowVar left to be able to wait
   ## on, -1 is returned.
   ## **Note**: This results in non-deterministic behaviour and so should be
