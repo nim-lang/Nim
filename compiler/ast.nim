@@ -1615,6 +1615,19 @@ proc originatingModule*(s: PSym): PSym =
 proc isRoutine*(s: PSym): bool {.inline.} =
   result = s.kind in skProcKinds
 
+proc isCompileTimeProc*(s: PSym): bool {.inline.} =
+  result = s.kind == skMacro or
+           s.kind == skProc and sfCompileTime in s.flags
+
+proc requiredParams*(s: PSym): int =
+  # Returns the number of required params (without default values)
+  # XXX: Perhaps we can store this in the `offset` field of the
+  # symbol instead?
+  for i in 1 ..< s.typ.len:
+    if s.typ.n[i].sym.ast != nil:
+      return i - 1
+  return s.typ.len - 1
+
 proc hasPattern*(s: PSym): bool {.inline.} =
   result = isRoutine(s) and s.ast.sons[patternPos].kind != nkEmpty
 

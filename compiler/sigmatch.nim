@@ -2032,8 +2032,9 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     y.calleeSym = m.calleeSym
     z.calleeSym = m.calleeSym
     var best = -1
-    for i in countup(0, sonsLen(arg) - 1):
-      if arg.sons[i].sym.kind in {skProc, skFunc, skMethod, skConverter, skIterator}:
+    for i in 0 ..< arg.len:
+      if arg.sons[i].sym.kind in {skProc, skFunc, skMethod, skConverter,
+                                  skIterator, skMacro, skTemplate}:
         copyCandidate(z, m)
         z.callee = arg.sons[i].typ
         if tfUnresolved in z.callee.flags: continue
@@ -2062,6 +2063,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
               x = z
             elif cmp == 0:
               y = z           # z is as good as x
+
     if x.state == csEmpty:
       result = nil
     elif y.state == csMatch and cmpCandidates(x, y) == 0:
@@ -2070,7 +2072,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
       # ambiguous: more than one symbol fits!
       # See tsymchoice_for_expr as an example. 'f.kind == tyExpr' should match
       # anyway:
-      if f.kind == tyExpr: result = arg
+      if f.kind in {tyExpr, tyStmt}: result = arg
       else: result = nil
     else:
       # only one valid interpretation found:
