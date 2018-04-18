@@ -1289,7 +1289,7 @@ elif not defined(useNimRtl):
 
   proc select(readfds: var seq[Process], timeout = 500): int =
     var tv: Timeval
-    tv.tv_sec = 0
+    tv.tv_sec = posix.Time(0)
     tv.tv_usec = timeout * 1000
 
     var rd: TFdSet

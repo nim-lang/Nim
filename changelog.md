@@ -27,6 +27,7 @@
 - ``proc `-`*(a, b: Time): int64`` in the ``times`` module has changed return type
   to ``times.Duration`` in order to support higher time resolutions.
   The proc is no longer deprecated.
+- ``posix.Timeval.tv_sec`` has changed type to ``posix.Time``.
 
 #### Breaking changes in the compiler
 

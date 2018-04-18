@@ -351,8 +351,8 @@ type
 
   Timeval* {.importc: "struct timeval", header: "<sys/select.h>",
              final, pure.} = object ## struct timeval
-    tv_sec*: clong       ## Seconds.
-    tv_usec*: clong ## Microseconds.
+    tv_sec*: Time       ## Seconds.
+    tv_usec*: Suseconds ## Microseconds.
   TFdSet* {.importc: "fd_set", header: "<sys/select.h>",
            final, pure.} = object
     abi: array[1024 div (8 * sizeof(clong)), clong]

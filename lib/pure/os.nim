@@ -1660,7 +1660,7 @@ proc setLastModificationTime*(file: string, t: times.Time) =
   ## Sets the `file`'s last modification time. `OSError` is raised in case of
   ## an error.
   when defined(posix):
-    let unixt = t.toUnix.int
+    let unixt = posix.Time(t.toUnix)
     var timevals = [Timeval(tv_sec: unixt), Timeval(tv_sec: unixt)] # [last access, last modification]
     if utimes(file, timevals.addr) != 0: raiseOSError(osLastError())
   else:

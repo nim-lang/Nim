@@ -1752,7 +1752,7 @@ when not defined(JS):
       when defined(posix):
         var a: Timeval
         gettimeofday(a)
-        result = toFloat(a.tv_sec) + toFloat(a.tv_usec)*0.00_0001
+        result = toBiggestFloat(a.tv_sec.int64) + toFloat(a.tv_usec)*0.00_0001
       elif defined(windows):
         var f: winlean.FILETIME
         getSystemTimeAsFileTime(f)
