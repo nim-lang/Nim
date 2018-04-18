@@ -756,6 +756,7 @@ proc genOutFile(d: PDoc): Rope =
 proc generateIndex*(d: PDoc) =
   if optGenIndex in gGlobalOptions:
     writeIndexFile(d[], splitFile(options.outFile).dir /
+                        splitFile(d.filename).dir /
                         splitFile(d.filename).name & IndexExt)
 
 proc getOutFile2(filename, ext, dir: string): string =
