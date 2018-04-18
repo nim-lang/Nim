@@ -43,7 +43,7 @@ install:
   - cd ..
 
 build_script:
-# NOTE: keep in sync with .travis.yml (or use a common base)
+  # NOTE: keep in sync with .travis.yml (or use a common base)
   - bin\nim c koch
   - koch boot -d:release
   - koch nimble
@@ -53,7 +53,7 @@ build_script:
   - nimble install sdl1
   - nimble install jester@#head
   - nimble install niminst
-  - nim c --taintMode:on -d:nimCoroutines --hint[source]:off tests/testament/tester
+  - nim c --taintMode:on -d:nimCoroutines tests/testament/tester
 
 test_script:
   - tests\testament\tester --pedantic all -d:nimCoroutines

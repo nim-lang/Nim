@@ -15,8 +15,10 @@ var compilerPrefix* = "compiler" / "nim "
 let isTravis = existsEnv("TRAVIS")
 let isAppVeyor = existsEnv("APPVEYOR")
 
+const extraArgTesting = " --hint[source]=off "
+
 proc cmdTemplate*(): string =
-  compilerPrefix & "$target --lib:lib --hints:on -d:testing $options $file"
+  compilerPrefix & "$target --lib:lib --hints:on " & extraArgTesting & " -d:testing $options $file"
 
 type
   TTestAction* = enum
@@ -186,8 +188,10 @@ proc parseSpec*(filename: string): TSpec =
         raise newException(ValueError, "cannot interpret as a bool: " & e.value)
     of "cmd":
       if e.value.startsWith("nim "):
-        result.cmd = compilerPrefix & e.value[4..^1]
+        # TODO: could we have something cleaner, based on a nim.cfg for tests only?
+        result.cmd = compilerPrefix & extraArgTesting & e.value[4..^1]
       else:
+        # TODO: can we remove this branch? seems like doesn't happen (search for '^cmd:')
         result.cmd = e.value
     of "ccodecheck": result.ccodeCheck = e.value
     of "maxcodesize": discard parseInt(e.value, result.maxCodeSize)

@@ -42,7 +42,7 @@ script:
   - nimble install sdl1
   - nimble install jester@#head
   - nimble install niminst
-  - nim c --taintMode:on -d:nimCoroutines --hint[source]:off tests/testament/tester
+  - nim c --taintMode:on -d:nimCoroutines tests/testament/tester
   - tests/testament/tester --pedantic all -d:nimCoroutines
   - ./koch web
   - ./koch csource

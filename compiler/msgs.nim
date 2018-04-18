@@ -467,7 +467,7 @@ const
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
     "Path", "CondTrue", "Name", "Pattern", "Exec", "Link", "Dependency",
-    "Source", "SourceError", "Performance", "StackTrace", "GCStats",
+    "Source", "Performance", "StackTrace", "GCStats",
     "User", "UserRaw"]
 
 const
