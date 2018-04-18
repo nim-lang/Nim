@@ -1647,11 +1647,15 @@ proc replace*(s, sub: string, by = ""): string {.noSideEffect,
   let last = s.high
   var i = 0
   while true:
-    var j = find(a, s, sub, i, last)
+    let j = find(a, s, sub, i, last)
     if j < 0: break
     add result, substr(s, i, j - 1)
     add result, by
-    i = j + len(sub)
+    if sub.len == 0:
+      if i < s.len: add result, s[i]
+      i = j + 1
+    else:
+      i = j + sub.len
   # copy the rest:
   add result, substr(s, i)
 
@@ -1680,6 +1684,7 @@ proc replaceWord*(s, sub: string, by = ""): string {.noSideEffect,
   initSkipTable(a, sub)
   var i = 0
   let last = s.high
+  let sublen = max(sub.len, 1)
   while true:
     var j = find(a, s, sub, i, last)
     if j < 0: break
@@ -1688,7 +1693,7 @@ proc replaceWord*(s, sub: string, by = ""): string {.noSideEffect,
         (j+sub.len >= s.len or s[j+sub.len] notin wordChars):
       add result, substr(s, i, j - 1)
       add result, by
-      i = j + len(sub)
+      i = j + sublen
     else:
       add result, substr(s, i, j)
       i = j + 1
@@ -2545,6 +2550,9 @@ when isMainModule:
 
   doAssert "-ld a-ldz -ld".replaceWord("-ld") == " a-ldz "
   doAssert "-lda-ldz -ld abc".replaceWord("-ld") == "-lda-ldz  abc"
+
+  doAssert "-lda-ldz -ld abc".replaceWord("") == "lda-ldz ld abc"
+  doAssert "oo".replace("", "abc") == "abcoabcoabc"
 
   type MyEnum = enum enA, enB, enC, enuD, enE
   doAssert parseEnum[MyEnum]("enu_D") == enuD
