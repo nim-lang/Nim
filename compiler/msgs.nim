@@ -535,13 +535,14 @@ const
                                          hintCodeBegin, hintCodeEnd,
                                          hintSource, hintStackTrace,
                                          hintGCStats},
+    # TODO: cleaner to reuse exclustion set from a higher verbosity level
     {low(TNoteKind)..high(TNoteKind)} - {warnShadowIdent, warnUninit,
                                          warnProveField, warnProveIndex,
                                          warnGcUnsafe,
                                          hintPath,
                                          hintDependency,
                                          hintCodeBegin, hintCodeEnd,
-                                         hintStackTrace,
+                                         hintSource, hintStackTrace,
                                          hintGCStats},
     {low(TNoteKind)..high(TNoteKind)} - {hintStackTrace, warnUninit},
     {low(TNoteKind)..high(TNoteKind)}]
