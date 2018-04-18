@@ -107,7 +107,7 @@ block: # ref types
   static:
     assert fileDefVal == "closed"
     assert filePathDefVal == "invalid"
-  
+
   static:
     assert TypeWithoutPragma.hasCustomPragma(defaultValue) == false
 
