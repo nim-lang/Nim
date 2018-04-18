@@ -353,7 +353,9 @@ proc `$`*(dur: Duration): string =
       parts.add $quantity & " " & unitStrings[unit] & "s"
 
   result = ""
-  if parts.len == 1:
+  if parts.len == 0:
+    result.add "0 nanoseconds"
+  elif parts.len == 1:
     result = parts[0]
   elif parts.len == 2:
     result = parts[0] & " and " & parts[1]
