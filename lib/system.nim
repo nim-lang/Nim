@@ -4136,17 +4136,18 @@ template doAssertRaises*(exception, code: untyped): typed =
   runnableExamples:
     doAssertRaises(ValueError):
       raise newException(ValueError, "Hello World")
-
+  var wrong = false
   try:
-    block:
-      code
-    raiseAssert(astToStr(exception) & " wasn't raised by:\n" & astToStr(code))
+    code
+    wrong = true
   except exception:
     discard
   except Exception as exc:
     raiseAssert(astToStr(exception) &
                 " wasn't raised, another error was raised instead by:\n"&
                 astToStr(code))
+  if wrong:
+    raiseAssert(astToStr(exception) & " wasn't raised by:\n" & astToStr(code))
 
 when defined(cpp) and appType != "lib" and not defined(js) and
     not defined(nimscript) and hostOS != "standalone":
