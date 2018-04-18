@@ -96,7 +96,7 @@ block: # ref types
 
   var ptrS = NodePtr(nil)
   const
-    ptrRightSerKey = getCustomPragmaVal(s.right, serializationKey)
+    ptrRightSerKey = getCustomPragmaVal(ptrS.right, serializationKey)
   static:
     assert ptrRightSerKey == "r"
 
