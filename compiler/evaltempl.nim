@@ -63,7 +63,7 @@ proc evalTemplateArgs(n: PNode, s: PSym; fromHlo: bool): PNode =
   # if the template has zero arguments, it can be called without ``()``
   # `n` is then a nkSym or something similar
   var totalParams = case n.kind
-    of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit: n.len-1
+    of nkCallKinds: n.len-1
     else: 0
 
   var

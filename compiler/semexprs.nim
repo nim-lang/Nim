@@ -960,18 +960,20 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     else:
       result = newSymNode(s, n.info)
   of skMacro:
-    if efNoEvaluateGeneric in flags and s.ast[genericParamsPos].len > 0:
+    if efNoEvaluateGeneric in flags and s.ast[genericParamsPos].len > 0 or
+       (n.kind notin nkCallKinds and s.requiredParams > 0):
       markUsed(n.info, s, c.graph.usageSym)
       styleCheckUse(n.info, s)
-      result = newSymNode(s, n.info)
+      result = symChoice(c, n, s, scClosed)
     else:
       result = semMacroExpr(c, n, n, s, flags)
   of skTemplate:
     if efNoEvaluateGeneric in flags and s.ast[genericParamsPos].len > 0 or
+       (n.kind notin nkCallKinds and s.requiredParams > 0) or
        sfCustomPragma in sym.flags:
       markUsed(n.info, s, c.graph.usageSym)
       styleCheckUse(n.info, s)
-      result = newSymNode(s, n.info)
+      result = symChoice(c, n, s, scClosed)
     else:
       result = semTemplateExpr(c, n, s, flags)
   of skParam:
