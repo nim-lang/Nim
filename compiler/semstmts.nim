@@ -779,19 +779,14 @@ proc semRaise(c: PContext, n: PNode): PNode =
   result = n
   checkSonsLen(n, 1)
   if n[0].kind != nkEmpty:
-
     n[0] = semExprWithType(c, n[0])
     let typ = n[0].typ
-
     if not isImportedException(typ):
-
       if typ.kind != tyRef or typ.lastSon.kind != tyObject:
         localError(n.info, errExprCannotBeRaised)
-
       if not isException(typ.lastSon):
         localError(n.info, "raised object of type $1 does not inherit from Exception",
                           [typeToString(typ)])
-
 
 proc addGenericParamListToScope(c: PContext, n: PNode) =
   if n.kind != nkGenericParams: illFormedAst(n)
