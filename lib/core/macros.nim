@@ -1288,7 +1288,11 @@ proc customPragmaNode(n: NimNode): NimNode =
     typ = n.getTypeInst()
 
   if typ.typeKind == ntyTypeDesc:
-    return typ[1].getImpl()[0][1]
+    let impl = typ[1].getImpl()
+    if impl[0].kind == nnkPragmaExpr:
+      return impl[0][1]
+    else:
+      return impl[0] # handle types which don't have macro at all
 
   if n.kind == nnkSym: # either an variable or a proc
     let impl = n.getImpl()
