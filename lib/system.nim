@@ -1750,19 +1750,21 @@ proc substr*(s: string, first, last: int): string {.
   ## or `limit`:idx: a string's length.
 
 when not defined(nimscript) and not defined(JS):
+  type const_pointer {.importc: "const void *"} = pointer
+
   proc zeroMem*(p: pointer, size: Natural) {.inline, benign.}
     ## overwrites the contents of the memory at ``p`` with the value 0.
     ## Exactly ``size`` bytes will be overwritten. Like any procedure
     ## dealing with raw memory this is *unsafe*.
 
-  proc copyMem*(dest, source: pointer, size: Natural) {.inline, benign,
+  proc copyMem*(dest: pointer, source: const_pointer, size: Natural) {.inline, benign,
     tags: [], locks: 0.}
     ## copies the contents from the memory at ``source`` to the memory
     ## at ``dest``. Exactly ``size`` bytes will be copied. The memory
     ## regions may not overlap. Like any procedure dealing with raw
     ## memory this is *unsafe*.
 
-  proc moveMem*(dest, source: pointer, size: Natural) {.inline, benign,
+  proc moveMem*(dest: pointer, source: const_pointer, size: Natural) {.inline, benign,
     tags: [], locks: 0.}
     ## copies the contents from the memory at ``source`` to the memory
     ## at ``dest``. Exactly ``size`` bytes will be copied. The memory
@@ -1770,7 +1772,7 @@ when not defined(nimscript) and not defined(JS):
     ## and is thus somewhat more safe than ``copyMem``. Like any procedure
     ## dealing with raw memory this is still *unsafe*, though.
 
-  proc equalMem*(a, b: pointer, size: Natural): bool {.inline, noSideEffect, tags: [], locks: 0.}
+  proc equalMem*(a, b: const_pointer, size: Natural): bool {.inline, noSideEffect, tags: [], locks: 0.}
     ## compares the memory blocks ``a`` and ``b``. ``size`` bytes will
     ## be compared. If the blocks are equal, true is returned, false
     ## otherwise. Like any procedure dealing with raw memory this is
