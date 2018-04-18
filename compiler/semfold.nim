@@ -483,6 +483,13 @@ proc newSymNodeTypeDesc*(s: PSym; info: TLineInfo): PNode =
 
 proc getConstExpr(m: PSym, n: PNode): PNode =
   result = nil
+
+  proc getSrcTimestamp(): DateTime =
+    result = utc(if existsEnv("SOURCE_DATE_EPOCH"):
+                   fromUnix(parseInt(getEnv("SOURCE_DATE_EPOCH")))
+                 else:
+                   getTime())
+
   case n.kind
   of nkSym:
     var s = n.sym
@@ -492,8 +499,16 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
     of skConst:
       case s.magic
       of mIsMainModule: result = newIntNodeT(ord(sfMainModule in m.flags), n)
-      of mCompileDate: result = newStrNodeT(times.getDateStr(), n)
-      of mCompileTime: result = newStrNodeT(times.getClockStr(), n)
+      of mCompileDate: result = newStrNodeT(if optTimestamps in gGlobalOptions:
+                                              times.getDateStr()
+                                            else:
+                                              format(getSrcTimestamp(),
+                                                     "yyyy-MM-dd"), n)
+      of mCompileTime: result = newStrNodeT(if optTimestamps in gGlobalOptions:
+                                              times.getClockStr()
+                                            else:
+                                              format(getSrcTimestamp(),
+                                                     "HH:mm:ss"), n)
       of mCpuEndian: result = newIntNodeT(ord(CPU[targetCPU].endian), n)
       of mHostOS: result = newStrNodeT(toLowerAscii(platform.OS[targetOS].name), n)
       of mHostCPU: result = newStrNodeT(platform.CPU[targetCPU].name.toLowerAscii, n)

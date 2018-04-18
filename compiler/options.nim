@@ -69,6 +69,7 @@ type                          # please make sure we have under 32 options
     optIdeTerse               # idetools: use terse descriptions
     optNoCppExceptions        # use C exception handling even with CPP
     optExcessiveStackTrace    # fully qualified module filenames
+    optTimestamps             # embed build timestamp for Compile{Date,Time}
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -128,7 +129,7 @@ var
                          optBoundsCheck, optOverflowCheck, optAssert, optWarns,
                          optHints, optStackTrace, optLineTrace,
                          optPatterns, optNilCheck, optMoveCheck}
-  gGlobalOptions*: TGlobalOptions = {optThreadAnalysis}
+  gGlobalOptions*: TGlobalOptions = {optThreadAnalysis, optTimestamps}
   gExitcode*: int8
   gCmd*: TCommands = cmdNone  # the command
   gSelectedGC* = gcRefc       # the selected GC
