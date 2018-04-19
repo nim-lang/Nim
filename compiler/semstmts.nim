@@ -1753,7 +1753,9 @@ proc semPragmaBlock(c: PContext, n: PNode): PNode =
 proc semStaticStmt(c: PContext, n: PNode): PNode =
   #echo "semStaticStmt"
   #writeStackTrace()
+  inc c.inStaticContext
   let a = semStmt(c, n.sons[0])
+  dec c.inStaticContext
   n.sons[0] = a
   evalStaticStmt(c.module, c.cache, a, c.p.owner)
   result = newNodeI(nkDiscardStmt, n.info, 1)
