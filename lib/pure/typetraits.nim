@@ -36,8 +36,18 @@ proc `$`*(t: typedesc): string =
   name(t)
 
 proc arity*(t: typedesc): int {.magic: "TypeTrait".}
-  ## Returns the arity of the given type, how many arguments does something take
-  ## arity(Obj[X, Y, Z]) == 3
+  ## Returns the arity of the given type, i.e. how many arguments a generic type takes.
+  ##
+  ## .. code-block::
+  ##
+  ##    import typetraits
+  ##
+  ##    type
+  ##      Foo[T, Y] = object
+  ##        x: T
+  ##        y: Y
+  ##
+  ##    doAssert arity(Foo[string, int]) == 4
 
 proc genericHead*(t: typedesc): typedesc {.magic: "TypeTrait".}
   ## Accepts an instantiated generic type and returns its
