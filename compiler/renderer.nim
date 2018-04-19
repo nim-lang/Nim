@@ -173,32 +173,6 @@ proc put(g: var TSrcGen, kind: TTokType, s: string) =
   else:
     g.pendingWhitespace = s.len
 
-proc addNimChar(dst: var string; c: char): void =
-  case c
-  of '\0': dst.add "\\x00" # not "\\0" to avoid ambiguous cases like "\\012".
-  of '\a': dst.add "\\a" # \x07
-  of '\b': dst.add "\\b" # \x08
-  of '\t': dst.add "\\t" # \x09
-  of '\L': dst.add "\\L" # \x0A
-  of '\v': dst.add "\\v" # \x0B
-  of '\f': dst.add "\\f" # \x0C
-  of '\c': dst.add "\\c" # \x0D
-  of '\e': dst.add "\\e" # \x1B
-  of '\x01'..'\x06', '\x0E'..'\x1A', '\x1C'..'\x1F', '\x80'..'\xFF':
-    dst.add "\\x"
-    dst.add strutils.toHex(ord(c), 2)
-  of '\'', '\"', '\\':
-    dst.add '\\'
-    dst.add c
-  else:
-    dst.add c
-
-proc makeNimString(s: string): string =
-  result = "\""
-  for c in s:
-    result.addNimChar c
-  add(result, '\"')
-
 proc putComment(g: var TSrcGen, s: string) =
   if s.isNil: return
   var i = 0
@@ -366,10 +340,13 @@ proc atom(g: TSrcGen; n: PNode): string =
   of nkEmpty: result = ""
   of nkIdent: result = n.ident.s
   of nkSym: result = n.sym.name.s
-  of nkStrLit: result = makeNimString(n.strVal)
+  of nkStrLit: result = ""; result.addQuoted(n.strVal)
   of nkRStrLit: result = "r\"" & replace(n.strVal, "\"", "\"\"")  & '\"'
   of nkTripleStrLit: result = "\"\"\"" & n.strVal & "\"\"\""
-  of nkCharLit: result = "\'"; result.addNimChar chr(int(n.intVal)); result.add '\''
+  of nkCharLit:
+    result = "\'"
+    result.addEscapedChar(chr(int(n.intVal)));
+    result.add '\''
   of nkIntLit: result = litAux(g, n, n.intVal, 4)
   of nkInt8Lit: result = litAux(g, n, n.intVal, 1) & "\'i8"
   of nkInt16Lit: result = litAux(g, n, n.intVal, 2) & "\'i16"

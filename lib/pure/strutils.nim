@@ -1813,20 +1813,29 @@ proc insertSep*(s: string, sep = '_', digits = 3): string {.noSideEffect,
     dec(L)
 
 proc escape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
-  rtl, extern: "nsuEscape".} =
+  rtl, extern: "nsuEscape", deprecated.} =
   ## Escapes a string `s`. See `system.addEscapedChar <system.html#addEscapedChar>`_
   ## for the escaping scheme.
   ##
   ## The resulting string is prefixed with `prefix` and suffixed with `suffix`.
   ## Both may be empty strings.
+  ##
+  ## **Warning:** This procedure is deprecated because it's to easy to missuse.
   result = newStringOfCap(s.len + s.len shr 2)
   result.add(prefix)
   for c in items(s):
-    result.addEscapedChar(c)
+    case c
+    of '\0'..'\31', '\127'..'\255':
+      add(result, "\\x")
+      add(result, toHex(ord(c), 2))
+    of '\\': add(result, "\\\\")
+    of '\'': add(result, "\\'")
+    of '\"': add(result, "\\\"")
+    else: add(result, c)
   add(result, suffix)
 
 proc unescape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
-  rtl, extern: "nsuUnescape".} =
+  rtl, extern: "nsuUnescape", deprecated.} =
   ## Unescapes a string `s`.
   ##
   ## This complements `escape <#escape>`_ as it performs the opposite
@@ -1834,6 +1843,8 @@ proc unescape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
   ##
   ## If `s` does not begin with ``prefix`` and end with ``suffix`` a
   ## ValueError exception will be raised.
+  ##
+  ## **Warning:** This procedure is deprecated because it's to easy to missuse.  
   result = newStringOfCap(s.len)
   var i = prefix.len
   if not s.startsWith(prefix):
