@@ -377,7 +377,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
   ## reassigned, and binding the unbound identifiers that the macro output
   ## contains.
   inc(evalTemplateCounter)
-  if evalTemplateCounter > 100:
+  if evalTemplateCounter > evalTemplateLimit:
     globalError(s.info, errTemplateInstantiationTooNested)
   c.friendModules.add(s.owner.getModule)
 

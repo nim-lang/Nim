@@ -702,7 +702,6 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectNoArg(switch, arg, pass, info)
     useNimNamespace = true
     defineSymbol("cppCompileToNamespace")
-    
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(switch, arg)
     else: invalidCmdLineOption(pass, switch, info)

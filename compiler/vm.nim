@@ -1729,14 +1729,16 @@ iterator genericParamsInMacroCall*(macroSym: PSym, call: PNode): (PSym, PNode) =
     let posInCall = macroSym.typ.len + i
     yield (genericParam, call[posInCall])
 
+# to prevent endless recursion in macro instantiation
+const evalMacroLimit = 1000
 var evalMacroCounter: int
 
 proc evalMacroCall*(module: PSym; cache: IdentCache, n, nOrig: PNode,
                     sym: PSym): PNode =
   # XXX globalError() is ugly here, but I don't know a better solution for now
   inc(evalMacroCounter)
-  if evalMacroCounter > 100:
-    globalError(n.info, errTemplateInstantiationTooNested)
+  if evalMacroCounter > evalMacroLimit:
+    globalError(n.info, errMacroInstantiationTooNested)
 
   # immediate macros can bypass any type and arity checking so we check the
   # arity here too:
