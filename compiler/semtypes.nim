@@ -392,8 +392,8 @@ proc semAnonTuple(c: PContext, n: PNode, prev: PType): PType =
   if sonsLen(n) == 0:
     localError(n.info, errTypeExpected)
   result = newOrPrevType(tyTuple, prev, c)
-  for i in countup(0, sonsLen(n) - 1):
-    addSonSkipIntLit(result, semTypeNode(c, n.sons[i], nil))
+  for it in n:
+    addSonSkipIntLit(result, semTypeNode(c, it, nil))
 
 proc semTuple(c: PContext, n: PNode, prev: PType): PType =
   var typ: PType
@@ -1341,6 +1341,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     if sonsLen(n) == 1: result = semTypeNode(c, n.sons[0], prev)
     else:
       result = semAnonTuple(c, n, prev)
+  of nkTupleConstr: result = semAnonTuple(c, n, prev)
   of nkCallKinds:
     let x = n[0]
     let ident = case x.kind

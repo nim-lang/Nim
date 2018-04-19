@@ -1560,7 +1560,7 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
     if t.callConv != ccClosure:
       result = newNodeIT(nkNilLit, info, t)
     else:
-      result = newNodeIT(nkPar, info, t)
+      result = newNodeIT(nkTupleConstr, info, t)
       result.add(newNodeIT(nkNilLit, info, t))
       result.add(newNodeIT(nkNilLit, info, t))
   of tyObject:
@@ -1577,7 +1577,7 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
     for i in countup(0, int(lengthOrd(t)) - 1):
       addSon(result, getNullValue(elemType(t), info))
   of tyTuple:
-    result = newNodeIT(nkPar, info, t)
+    result = newNodeIT(nkTupleConstr, info, t)
     for i in countup(0, sonsLen(t) - 1):
       addSon(result, getNullValue(t.sons[i], info))
   of tySet:
@@ -1884,7 +1884,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
   of nkBracket: genArrayConstr(c, n, dest)
   of nkCurly: genSetConstr(c, n, dest)
   of nkObjConstr: genObjConstr(c, n, dest)
-  of nkPar, nkClosure: genTupleConstr(c, n, dest)
+  of nkPar, nkClosure, nkTupleConstr: genTupleConstr(c, n, dest)
   of nkCast:
     if allowCast in c.features:
       genConv(c, n, n.sons[1], dest, opcCast)

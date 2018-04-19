@@ -125,7 +125,13 @@ proc rawSkipComment(p: var TParser, node: PNode) =
   if p.tok.tokType == tkComment:
     if node != nil:
       if node.comment == nil: node.comment = ""
-      add(node.comment, p.tok.literal)
+      when defined(nimpretty):
+        if p.tok.commentOffsetB > p.tok.commentOffsetA:
+          add node.comment, fileSection(p.lex.fileIdx, p.tok.commentOffsetA, p.tok.commentOffsetB)
+        else:
+          add node.comment, p.tok.literal
+      else:
+        add(node.comment, p.tok.literal)
     else:
       parMessage(p, errInternal, "skipComment")
     getTok(p)
@@ -399,6 +405,9 @@ proc exprColonEqExprListAux(p: var TParser, endTok: TTokType, result: PNode) =
     addSon(result, a)
     if p.tok.tokType != tkComma: break
     getTok(p)
+    # (1,) produces a tuple expression
+    if endTok == tkParRi and p.tok.tokType == tkParRi and result.kind == nkPar:
+      result.kind = nkTupleConstr
     skipComment(p, a)
   optPar(p)
   eat(p, endTok)
@@ -566,6 +575,9 @@ proc parsePar(p: var TParser): PNode =
       if p.tok.tokType == tkComma:
         getTok(p)
         skipComment(p, a)
+        # (1,) produces a tuple expression:
+        if p.tok.tokType == tkParRi:
+          result.kind = nkTupleConstr
         # progress guaranteed
         while p.tok.tokType != tkParRi and p.tok.tokType != tkEof:
           var a = exprColonEqExpr(p)

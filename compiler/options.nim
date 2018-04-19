@@ -36,7 +36,8 @@ type                          # please make sure we have under 32 options
     optImplicitStatic,        # optimization: implicit at compile time
                               # evaluation
     optPatterns,              # en/disable pattern matching
-    optMemTracker
+    optMemTracker,
+    optHotCodeReloading
 
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
@@ -80,7 +81,6 @@ type
                               # **keep binary compatible**
     cmdNone, cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,
     cmdCompileToJS,
-    cmdCompileToPHP,
     cmdCompileToLLVM, cmdInterpret, cmdPretty, cmdDoc,
     cmdGenDepend, cmdDump,
     cmdCheck,                 # semantic checking for whole project
@@ -148,6 +148,7 @@ var
   gExperimentalMode*: bool
   newDestructors*: bool
   gDynlibOverrideAll*: bool
+  useNimNamespace*: bool
 
 type
   SymbolFilesOption* = enum

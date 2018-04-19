@@ -1001,13 +1001,21 @@ elif not defined(useNimRtl):
   {.pop}
 
   proc close(p: Process) =
-    if p.inStream != nil: close(p.inStream)
-    if p.outStream != nil: close(p.outStream)
-    if p.errStream != nil: close(p.errStream)
     if poParentStreams notin p.options:
-      discard close(p.inHandle)
-      discard close(p.outHandle)
-      discard close(p.errHandle)
+      if p.inStream != nil:
+        close(p.inStream)
+      else:
+        discard close(p.inHandle)
+
+      if p.outStream != nil:
+        close(p.outStream)
+      else:
+        discard close(p.outHandle)
+
+      if p.errStream != nil:
+        close(p.errStream)
+      else:
+        discard close(p.errHandle)
 
   proc suspend(p: Process) =
     if kill(p.id, SIGSTOP) != 0'i32: raiseOsError(osLastError())
@@ -1281,7 +1289,7 @@ elif not defined(useNimRtl):
 
   proc select(readfds: var seq[Process], timeout = 500): int =
     var tv: Timeval
-    tv.tv_sec = 0
+    tv.tv_sec = posix.Time(0)
     tv.tv_usec = timeout * 1000
 
     var rd: TFdSet

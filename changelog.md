@@ -5,6 +5,12 @@
 - The stdlib module ``future`` has been renamed to ``sugar``.
 - ``macros.callsite`` is now deprecated. Since the introduction of ``varargs``
   parameters this became unnecessary.
+- Anonymous tuples with a single element can now be written as ``(1,)`` with a
+  trailing comma. The underlying AST is ``nnkTupleConst(newLit 1)`` for this
+  example. ``nnkTupleConstr`` is a new node kind your macros need to be able
+  to deal with!
+- Indexing into a ``cstring`` for the JS target is now mapped
+  to ``charCodeAt``.
 
 #### Breaking changes in the standard library
 
@@ -14,6 +20,14 @@
   containing the column of the instantiation.
 
 - ``cookies.setCookie` no longer assumes UTC for the expiration date.
+- ``strutils.formatEng`` does not distinguish between ``nil`` and ``""``
+  strings anymore for its ``unit`` parameter. Instead the space is controlled
+  by a new parameter ``useUnitSpace``.
+
+- ``proc `-`*(a, b: Time): int64`` in the ``times`` module has changed return type
+  to ``times.Duration`` in order to support higher time resolutions.
+  The proc is no longer deprecated.
+- ``posix.Timeval.tv_sec`` has changed type to ``posix.Time``.
 
 #### Breaking changes in the compiler
 
@@ -25,6 +39,10 @@
   operations. This is currently not yet available for the JavaScript target.
 - Added ``getCurrentDir``, ``findExe``, ``cpDir`` and  ``mvDir`` procs to
   ``nimscript``.
+- The ``times`` module now supports up to nanosecond time resolution when available.
+- Added the type ``times.Duration`` for representing fixed durations of time.
+- Added the proc ``times.convert`` for converting between different time units,
+  e.g days to seconds.
 
 ### Library changes
 
@@ -32,12 +50,21 @@
   now escapes the content of string literals consistently.
 - ``macros.NimSym`` and ``macros.NimIdent`` is now deprecated in favor
   of the more general ``NimNode``.
+- ``macros.getImpl`` now includes the pragmas of types, instead of omitting them.
+- ``macros.hasCustomPragma`` and ``macros.getCustomPragmaVal`` now
+  also support ``ref`` and ``ptr`` types, pragmas on types and variant
+  fields.
+- ``system.SomeReal`` is now called ``SomeFloat`` for consistency and
+  correctness.
 
 ### Language additions
 
 - Dot calls combined with explicit generic instantiations can now be written
   as ``x.y[:z]``. ``x.y[:z]`` that is transformed into ``y[z](x)`` in the parser.
 - ``func`` is now an alias for ``proc {.noSideEffect.}``.
+- In order to make ``for`` loops and iterators more flexible to use Nim now
+  supports so called "for-loop macros". See
+  the `manual <manual.html#macros-for-loop-macros>`_ for more details.
 
 ### Language changes
 
@@ -57,6 +84,18 @@
 
 ### Compiler changes
 
-- The VM's instruction count limit was raised to 1 billion instructions in order
-  to support more complex computations at compile-time.
-- Added ``macros.getProjectPath`` and ``ospaths.putEnv`` procs to VM.
+- The VM's instruction count limit was raised to 1 billion instructions in
+  order to support more complex computations at compile-time.
+
+- Support for hot code reloading has been implemented for the JavaScript
+  target. To use it, compile your code with `--hotCodeReloading:on` and use a
+  helper library such as LiveReload or BrowserSync.
+
+- A new compiler option `--cppCompileToNamespace` puts the generated C++ code
+  into the namespace "Nim" in order to avoid naming conflicts with existing
+  C++ code. This is done for all Nim code - internal and exported.
+
+- Added ``macros.getProjectPath`` and ``ospaths.putEnv`` procs to Nim's virtual
+  machine.
+
+### Bugfixes

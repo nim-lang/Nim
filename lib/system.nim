@@ -105,11 +105,13 @@ type
     ## type class matching all ordinal types; however this includes enums with
     ## holes.
 
-  SomeReal* = float|float32|float64
+  SomeFloat* = float|float32|float64
     ## type class matching all floating point number types
 
-  SomeNumber* = SomeInteger|SomeReal
+  SomeNumber* = SomeInteger|SomeFloat
     ## type class matching all number types
+
+{.deprecated: [SomeReal: SomeFloat].}
 
 proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## Special compile-time procedure that checks whether `x` is
@@ -128,7 +130,7 @@ when defined(nimalias):
     TSignedInt: SomeSignedInt,
     TUnsignedInt: SomeUnsignedInt,
     TInteger: SomeInteger,
-    TReal: SomeReal,
+    TReal: SomeFloat,
     TNumber: SomeNumber,
     TOrdinal: SomeOrdinal].}
 
@@ -648,6 +650,11 @@ when defined(nimNewRuntime):
   EFloatOverflow: FloatOverflowError,
   ESynch: Exception
 ].}
+
+when defined(js) or defined(nimdoc):
+  type
+    JsRoot* = ref object of RootObj
+      ## Root type of the JavaScript object hierarchy
 
 proc unsafeNew*[T](a: var ref T, size: Natural) {.magic: "New", noSideEffect.}
   ## creates a new object of type ``T`` and returns a safe (traced)
@@ -2166,8 +2173,8 @@ proc max*[T](x, y: T): T =
   if y <= x: x else: y
 {.pop.}
 
-proc high*(T: typedesc[SomeReal]): T = Inf
-proc low*(T: typedesc[SomeReal]): T = NegInf
+proc high*(T: typedesc[SomeFloat]): T = Inf
+proc low*(T: typedesc[SomeFloat]): T = NegInf
 
 proc clamp*[T](x, a, b: T): T =
   ## limits the value ``x`` within the interval [a, b]
@@ -2397,7 +2404,7 @@ proc `==` *[T](x, y: seq[T]): bool {.noSideEffect.} =
     if x.isNil and y.isNil:
       return true
   else:
-    when not defined(JS) or defined(nimphp):
+    when not defined(JS):
       proc seqToPtr[T](x: seq[T]): pointer {.inline, nosideeffect.} =
         result = cast[pointer](x)
     else:
@@ -2759,17 +2766,14 @@ type
 
 when defined(JS):
   proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
-    when defined(nimphp):
-      asm """`x` .= `y`;"""
-    else:
-      asm """
-        var len = `x`[0].length-1;
-        for (var i = 0; i < `y`.length; ++i) {
-          `x`[0][len] = `y`.charCodeAt(i);
-          ++len;
-        }
-        `x`[0][len] = 0
-      """
+    asm """
+      var len = `x`[0].length-1;
+      for (var i = 0; i < `y`.length; ++i) {
+        `x`[0][len] = `y`.charCodeAt(i);
+        ++len;
+      }
+      `x`[0][len] = 0
+    """
   proc add*(x: var cstring, y: cstring) {.magic: "AppendStrStr".}
 
 elif hasAlloc:
@@ -4080,6 +4084,25 @@ template closureScope*(body: untyped): untyped =
   ##   myClosure() # outputs 3
   (proc() = body)()
 
+template once*(body: untyped): untyped =
+  ## Executes a block of code only once (the first time the block is reached).
+  ## When hot code reloading is enabled, protects top-level code from being
+  ## re-executed on each module reload.
+  ##
+  ## .. code-block:: nim
+  ## proc draw(t: Triangle) =
+  ##   once:
+  ##     graphicsInit()
+  ##
+  ##   line(t.p1, t.p2)
+  ##   line(t.p2, t.p3)
+  ##   line(t.p3, t.p1)
+  ##
+  var alreadyExecuted {.global.} = false
+  if not alreadyExecuted:
+    alreadyExecuted = true
+    body
+
 {.pop.} #{.push warning[GcMem]: off, warning[Uninit]: off.}
 
 when defined(nimconfig):
@@ -4113,17 +4136,18 @@ template doAssertRaises*(exception, code: untyped): typed =
   runnableExamples:
     doAssertRaises(ValueError):
       raise newException(ValueError, "Hello World")
-
+  var wrong = false
   try:
-    block:
-      code
-    raiseAssert(astToStr(exception) & " wasn't raised by:\n" & astToStr(code))
+    code
+    wrong = true
   except exception:
     discard
   except Exception as exc:
     raiseAssert(astToStr(exception) &
                 " wasn't raised, another error was raised instead by:\n"&
                 astToStr(code))
+  if wrong:
+    raiseAssert(astToStr(exception) & " wasn't raised by:\n" & astToStr(code))
 
 when defined(cpp) and appType != "lib" and not defined(js) and
     not defined(nimscript) and hostOS != "standalone":
@@ -4148,3 +4172,8 @@ when not defined(js):
     magic: "Slice".}
   proc toOpenArray*(x: string; first, last: int): openarray[char] {.
     magic: "Slice".}
+
+
+type
+  ForLoopStmt* {.compilerProc.} = object ## special type that marks a macro
+                                         ## as a `for-loop macro`:idx:

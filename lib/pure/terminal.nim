@@ -557,8 +557,8 @@ proc setForegroundColor*(f: File, fg: ForegroundColor, bright=false) =
   when defined(windows):
     let h = conHandle(f)
     var old = getAttributes(h) and not FOREGROUND_RGB
-    if bright:
-      old = old or FOREGROUND_INTENSITY
+    old = if bright: old or FOREGROUND_INTENSITY
+          else:      old and not(FOREGROUND_INTENSITY)
     const lookup: array[ForegroundColor, int] = [
       0,
       (FOREGROUND_RED),
@@ -579,8 +579,8 @@ proc setBackgroundColor*(f: File, bg: BackgroundColor, bright=false) =
   when defined(windows):
     let h = conHandle(f)
     var old = getAttributes(h) and not BACKGROUND_RGB
-    if bright:
-      old = old or BACKGROUND_INTENSITY
+    old = if bright: old or BACKGROUND_INTENSITY
+          else:      old and not(BACKGROUND_INTENSITY)
     const lookup: array[BackgroundColor, int] = [
       0,
       (BACKGROUND_RED),

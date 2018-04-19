@@ -34,7 +34,7 @@ proc genObjectFields(p: PProc, typ: PType, n: PNode): Rope =
     s = genTypeInfo(p, field.typ)
     result = ("{kind: 1, offset: \"$1\", len: 0, " &
         "typ: $2, name: $3, sons: null}") %
-                   [mangleName(field, p.target), s,
+                   [mangleName(p.module, field), s,
                     makeJSString(field.name.s)]
   of nkRecCase:
     length = sonsLen(n)
@@ -63,7 +63,7 @@ proc genObjectFields(p: PProc, typ: PType, n: PNode): Rope =
            [u, genObjectFields(p, typ, lastSon(b))])
     result = ("{kind: 3, offset: \"$1\", len: $3, " &
         "typ: $2, name: $4, sons: [$5]}") % [
-        mangleName(field, p.target), s,
+        mangleName(p.module, field), s,
         rope(lengthOrd(field.typ)), makeJSString(field.name.s), result]
   else: internalError(n.info, "genObjectFields")
 
@@ -121,26 +121,7 @@ proc genEnumInfo(p: PProc, typ: PType, name: Rope) =
     addf(p.g.typeInfo, "$1.base = $2;$n",
          [name, genTypeInfo(p, typ.sons[0])])
 
-proc genEnumInfoPHP(p: PProc; t: PType): Rope =
-  let t = t.skipTypes({tyGenericInst, tyDistinct, tyAlias, tySink})
-  result = "$$NTI$1" % [rope(t.id)]
-  p.declareGlobal(t.id, result)
-  if containsOrIncl(p.g.typeInfoGenerated, t.id): return
-
-  let length = sonsLen(t.n)
-  var s: Rope = nil
-  for i in countup(0, length - 1):
-    if (t.n.sons[i].kind != nkSym): internalError(t.n.info, "genEnumInfo")
-    let field = t.n.sons[i].sym
-    if i > 0: add(s, ", " & tnl)
-    let extName = if field.ast == nil: field.name.s else: field.ast.strVal
-    addf(s, "$# => $#$n",
-         [rope(field.position), makeJSString(extName)])
-  prepend(p.g.typeInfo, "$$$# = $#;$n" % [result, s])
-
 proc genTypeInfo(p: PProc, typ: PType): Rope =
-  if p.target == targetPHP:
-    return makeJSString(typeToString(typ, preferModuleInfo))
   let t = typ.skipTypes({tyGenericInst, tyDistinct, tyAlias, tySink})
   result = "NTI$1" % [rope(t.id)]
   if containsOrIncl(p.g.typeInfoGenerated, t.id): return

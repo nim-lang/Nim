@@ -85,7 +85,7 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
       result.typ = formal
     else:
       let x = result.skipConv
-      if x.kind == nkPar and formal.kind != tyExpr:
+      if x.kind in {nkPar, nkTupleConstr} and formal.kind != tyExpr:
         changeType(x, formal, check=true)
       else:
         result = skipHiddenSubConv(result)
@@ -377,7 +377,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
   ## reassigned, and binding the unbound identifiers that the macro output
   ## contains.
   inc(evalTemplateCounter)
-  if evalTemplateCounter > 100:
+  if evalTemplateCounter > evalTemplateLimit:
     globalError(s.info, errTemplateInstantiationTooNested)
   c.friendModules.add(s.owner.getModule)
 

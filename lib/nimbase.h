@@ -264,6 +264,11 @@ __clang__
 #  define HAVE_STDINT_H
 #endif
 
+/* wrap all Nim typedefs into namespace Nim */
+#ifdef USE_NIM_NAMESPACE
+namespace Nim {
+#endif
+
 /* bool types (C++ has it): */
 #ifdef __cplusplus
 #  ifndef NIM_TRUE
@@ -413,8 +418,8 @@ typedef struct TStringDesc* string;
 #  endif
 #endif
 
-typedef struct TFrame TFrame;
-struct TFrame {
+typedef struct TFrame_ TFrame;
+struct TFrame_ {
   TFrame* prev;
   NCSTRING procname;
   NI line;
@@ -475,6 +480,10 @@ static inline void GCGuard (void *ptr) { asm volatile ("" :: "X" (ptr)); }
    On disagreement, your C compiler will say something like:
    "error: 'Nim_and_C_compiler_disagree_on_target_architecture' declared as an array with a negative size" */
 typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8 ? 1 : -1];
+
+#ifdef USE_NIM_NAMESPACE
+}
+#endif
 
 #ifdef  __cplusplus
 #  define NIM_EXTERNC extern "C"

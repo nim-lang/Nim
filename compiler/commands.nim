@@ -473,6 +473,10 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitch({optMemTracker}, arg, pass, info)
     if optMemTracker in gOptions: defineSymbol("memtracker")
     else: undefSymbol("memtracker")
+  of "hotcodereloading":
+    processOnOffSwitch({optHotCodeReloading}, arg, pass, info)
+    if optHotCodeReloading in gOptions: defineSymbol("hotcodereloading")
+    else: undefSymbol("hotcodereloading")
   of "oldnewlines":
     case arg.normalize
     of "on":
@@ -694,6 +698,10 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectNoArg(switch, arg, pass, info)
     newDestructors = true
     defineSymbol("nimNewRuntime")
+  of "cppcompiletonamespace":
+    expectNoArg(switch, arg, pass, info)
+    useNimNamespace = true
+    defineSymbol("cppCompileToNamespace")
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(switch, arg)
     else: invalidCmdLineOption(pass, switch, info)

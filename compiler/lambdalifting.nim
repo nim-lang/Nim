@@ -186,7 +186,8 @@ proc getEnvParam*(routine: PSym): PSym =
 
 proc interestingVar(s: PSym): bool {.inline.} =
   result = s.kind in {skVar, skLet, skTemp, skForVar, skParam, skResult} and
-    sfGlobal notin s.flags
+    sfGlobal notin s.flags and
+    s.typ.kind notin {tyStatic, tyTypeDesc}
 
 proc illegalCapture(s: PSym): bool {.inline.} =
   result = skipTypes(s.typ, abstractInst).kind in
@@ -229,7 +230,7 @@ template isIterator*(owner: PSym): bool =
 proc liftingHarmful(owner: PSym): bool {.inline.} =
   ## lambda lifting can be harmful for JS-like code generators.
   let isCompileTime = sfCompileTime in owner.flags or owner.kind == skMacro
-  result = gCmd in {cmdCompileToPHP, cmdCompileToJS} and not isCompileTime
+  result = gCmd == cmdCompileToJS and not isCompileTime
 
 proc liftIterSym*(n: PNode; owner: PSym): PNode =
   # transforms  (iter)  to  (let env = newClosure[iter](); (iter, env))
@@ -812,7 +813,7 @@ proc liftLambdas*(fn: PSym, body: PNode; tooEarly: var bool): PNode =
   let isCompileTime = sfCompileTime in fn.flags or fn.kind == skMacro
 
   if body.kind == nkEmpty or (
-      gCmd in {cmdCompileToPHP, cmdCompileToJS} and not isCompileTime) or
+      gCmd == cmdCompileToJS and not isCompileTime) or
       fn.skipGenericOwner.kind != skModule:
     # ignore forward declaration:
     result = body

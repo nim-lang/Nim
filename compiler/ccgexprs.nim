@@ -2226,7 +2226,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       genSeqConstr(p, n, d)
     else:
       genArrayConstr(p, n, d)
-  of nkPar:
+  of nkPar, nkTupleConstr:
     if isDeepConstExpr(n) and n.len != 0:
       exprComplexConst(p, n, d)
     else:
@@ -2458,7 +2458,7 @@ proc genConstExpr(p: BProc, n: PNode): Rope =
     var cs: TBitSet
     toBitSet(n, cs)
     result = genRawSetData(cs, int(getSize(n.typ)))
-  of nkBracket, nkPar, nkClosure:
+  of nkBracket, nkPar, nkTupleConstr, nkClosure:
     var t = skipTypes(n.typ, abstractInst)
     if t.kind == tySequence:
       result = genConstSeq(p, n, n.typ)

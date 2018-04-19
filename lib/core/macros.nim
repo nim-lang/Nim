@@ -14,6 +14,9 @@ include "system/inclrtl"
 
 ## .. include:: ../../doc/astspec.txt
 
+# If you look for the implementation of the magic symbol
+# ``{.magic: "Foo".}``, search for `mFoo` and `opcFoo`.
+
 type
   NimNodeKind* = enum
     nnkNone, nnkEmpty, nnkIdent, nnkSym,
@@ -76,7 +79,8 @@ type
     nnkGotoState,
     nnkState,
     nnkBreakState,
-    nnkFuncDef
+    nnkFuncDef,
+    nnkTupleConstr
 
   NimNodeKinds* = set[NimNodeKind]
   NimTypeKind* = enum  # some types are no longer used, see ast.nim
@@ -251,19 +255,55 @@ proc getType*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
 
 proc typeKind*(n: NimNode): NimTypeKind {.magic: "NGetType", noSideEffect.}
   ## Returns the type kind of the node 'n' that should represent a type, that
-  ## means the node should have been obtained via `getType`.
+  ## means the node should have been obtained via ``getType``.
 
-proc getTypeInst*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
-  ## Like getType except it includes generic parameters for a specific instance
+proc getTypeInst*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.} =
+  ## Returns the `type`:idx: of a node in a form matching the way the
+  ## type instance was declared in the code.
+  runnableExamples:
+    type
+      Vec[N: static[int], T] = object
+        arr: array[N, T]
+      Vec4[T] = Vec[4, T]
+      Vec4f = Vec4[float32]
+    var a: Vec4f
+    var b: Vec4[float32]
+    var c: Vec[4, float32]
+    macro dumpTypeInst(x: typed): untyped =
+      newLit(x.getTypeInst.repr)
+    doAssert(dumpTypeInst(a) == "Vec4f")
+    doAssert(dumpTypeInst(b) == "Vec4[float32]")
+    doAssert(dumpTypeInst(c) == "Vec[4, float32]")
 
 proc getTypeInst*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
-  ## Like getType except it includes generic parameters for a specific instance
+  ## Version of ``getTypeInst`` which takes a ``typedesc``.
 
-proc getTypeImpl*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
-  ## Like getType except it includes generic parameters for the implementation
+proc getTypeImpl*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.} =
+  ## Returns the `type`:idx: of a node in a form matching the implementation
+  ## of the type.  Any intermediate aliases are expanded to arrive at the final
+  ## type implementation.  You can instead use ``getImpl`` on a symbol if you
+  ## want to find the intermediate aliases.
+  runnableExamples:
+    type
+      Vec[N: static[int], T] = object
+        arr: array[N, T]
+      Vec4[T] = Vec[4, T]
+      Vec4f = Vec4[float32]
+    var a: Vec4f
+    var b: Vec4[float32]
+    var c: Vec[4, float32]
+    macro dumpTypeImpl(x: typed): untyped =
+      newLit(x.getTypeImpl.repr)
+    let t = """
+object
+  arr: array[0 .. 3, float32]
+"""
+    doAssert(dumpTypeImpl(a) == t)
+    doAssert(dumpTypeImpl(b) == t)
+    doAssert(dumpTypeImpl(c) == t)
 
 proc getTypeImpl*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
-  ## Like getType except it includes generic parameters for the implementation
+  ## Version of ``getTypeImpl`` which takes a ``typedesc``.
 
 proc `intVal=`*(n: NimNode, val: BiggestInt) {.magic: "NSetIntVal", noSideEffect.}
 proc `floatVal=`*(n: NimNode, val: BiggestFloat) {.magic: "NSetFloatVal", noSideEffect.}
@@ -666,8 +706,7 @@ proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
     res.add(($n.kind).substr(3))
 
     case n.kind
-    of nnkEmpty: discard # same as nil node in this representation
-    of nnkNilLit: res.add(" nil")
+    of nnkEmpty, nnkNilLit: discard # same as nil node in this representation
     of nnkCharLit..nnkInt64Lit: res.add(" " & $n.intVal)
     of nnkFloatLit..nnkFloat64Lit: res.add(" " & $n.floatVal)
     of nnkStrLit..nnkTripleStrLit, nnkIdent, nnkSym:
@@ -690,8 +729,7 @@ proc lispRepr*(n: NimNode): string {.compileTime, benign.} =
   add(result, "(")
 
   case n.kind
-  of nnkEmpty: discard # same as nil node in this representation
-  of nnkNilLit: add(result, "nil")
+  of nnkEmpty, nnkNilLit: discard # same as nil node in this representation
   of nnkCharLit..nnkInt64Lit: add(result, $n.intVal)
   of nnkFloatLit..nnkFloat64Lit: add(result, $n.floatVal)
   of nnkStrLit..nnkTripleStrLit, nnkCommentStmt, nnkident, nnkSym:
@@ -726,7 +764,7 @@ proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
   ## See also `repr`, `treeRepr`, and `lispRepr`.
 
   const
-    NodeKinds = {nnkEmpty, nnkNilLit, nnkIdent, nnkSym, nnkNone, nnkCommentStmt}
+    NodeKinds = {nnkEmpty, nnkIdent, nnkSym, nnkNone, nnkCommentStmt}
     LitKinds = {nnkCharLit..nnkInt64Lit, nnkFloatLit..nnkFloat64Lit, nnkStrLit..nnkTripleStrLit}
 
   proc traverse(res: var string, level: int, n: NimNode) {.benign.} =
@@ -735,12 +773,13 @@ proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
       res.add("new" & ($n.kind).substr(3) & "Node(")
     elif n.kind in LitKinds:
       res.add("newLit(")
+    elif n.kind == nnkNilLit:
+      res.add("newNilLit()")
     else:
       res.add($n.kind)
 
     case n.kind
-    of nnkEmpty: discard
-    of nnkNilLit: res.add("nil")
+    of nnkEmpty, nnkNilLit: discard
     of nnkCharLit: res.add("'" & $chr(n.intVal) & "'")
     of nnkIntLit..nnkInt64Lit: res.add($n.intVal)
     of nnkFloatLit..nnkFloat64Lit: res.add($n.floatVal)
@@ -1143,38 +1182,57 @@ proc copy*(node: NimNode): NimNode {.compileTime.} =
   ## An alias for copyNimTree().
   return node.copyNimTree()
 
-proc cmpIgnoreStyle(a, b: cstring): int {.noSideEffect.} =
-  proc toLower(c: char): char {.inline.} =
-    if c in {'A'..'Z'}: result = chr(ord(c) + (ord('a') - ord('A')))
-    else: result = c
-  var i = 0
-  var j = 0
-  # first char is case sensitive
-  if a[0] != b[0]: return 1
-  while true:
-    while a[i] == '_': inc(i)
-    while b[j] == '_': inc(j) # BUGFIX: typo
-    var aa = toLower(a[i])
-    var bb = toLower(b[j])
-    result = ord(aa) - ord(bb)
-    if result != 0 or aa == '\0': break
-    inc(i)
-    inc(j)
+when defined(nimVmEqIdent):
+  proc eqIdent*(a: string; b: string): bool {.magic: "EqIdent", noSideEffect.}
+    ## Style insensitive comparison.
 
-proc eqIdent*(a, b: string): bool = cmpIgnoreStyle(a, b) == 0
-  ## Check if two idents are identical.
+  proc eqIdent*(a: NimNode; b: string): bool {.magic: "EqIdent", noSideEffect.}
+    ## Style insensitive comparison.
+    ## ``a`` can be an identifier or a symbol.
 
-proc eqIdent*(node: NimNode; s: string): bool {.compileTime.} =
-  ## Check if node is some identifier node (``nnkIdent``, ``nnkSym``, etc.)
-  ## is the same as ``s``. Note that this is the preferred way to check! Most
-  ## other ways like ``node.ident`` are much more error-prone, unfortunately.
-  case node.kind
-  of nnkSym, nnkIdent:
-    result = eqIdent(node.strVal, s)
-  of nnkOpenSymChoice, nnkClosedSymChoice:
-    result = eqIdent($node[0], s)
-  else:
-    result = false
+  proc eqIdent*(a: string; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
+    ## Style insensitive comparison.
+    ## ``b`` can be an identifier or a symbol.
+
+  proc eqIdent*(a: NimNode; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
+    ## Style insensitive comparison.
+    ## ``a`` and ``b`` can be an identifier or a symbol.
+
+else:
+  # this procedure is optimized for native code, it should not be compiled to nimVM bytecode.
+  proc cmpIgnoreStyle(a, b: cstring): int {.noSideEffect.} =
+    proc toLower(c: char): char {.inline.} =
+      if c in {'A'..'Z'}: result = chr(ord(c) + (ord('a') - ord('A')))
+      else: result = c
+    var i = 0
+    var j = 0
+    # first char is case sensitive
+    if a[0] != b[0]: return 1
+    while true:
+      while a[i] == '_': inc(i)
+      while b[j] == '_': inc(j) # BUGFIX: typo
+      var aa = toLower(a[i])
+      var bb = toLower(b[j])
+      result = ord(aa) - ord(bb)
+      if result != 0 or aa == '\0': break
+      inc(i)
+      inc(j)
+
+
+  proc eqIdent*(a, b: string): bool = cmpIgnoreStyle(a, b) == 0
+    ## Check if two idents are identical.
+
+  proc eqIdent*(node: NimNode; s: string): bool {.compileTime.} =
+    ## Check if node is some identifier node (``nnkIdent``, ``nnkSym``, etc.)
+    ## is the same as ``s``. Note that this is the preferred way to check! Most
+    ## other ways like ``node.ident`` are much more error-prone, unfortunately.
+    case node.kind
+    of nnkSym, nnkIdent:
+      result = eqIdent(node.strVal, s)
+    of nnkOpenSymChoice, nnkClosedSymChoice:
+      result = eqIdent($node[0], s)
+    else:
+      result = false
 
 proc hasArgOfName*(params: NimNode; name: string): bool {.compiletime.}=
   ## Search nnkFormalParams for an argument.
@@ -1225,33 +1283,77 @@ macro expandMacros*(body: typed): untyped =
   echo result.toStrLit
 
 proc customPragmaNode(n: NimNode): NimNode =
-  expectKind(n, {nnkSym, nnkDotExpr})
-  if n.kind == nnkSym:
-    let sym = n.getImpl()
-    sym.expectRoutine()
-    result = sym.pragma
-  elif n.kind == nnkDotExpr:
-    let typDef = getImpl(getTypeInst(n[0]))
-    typDef.expectKind(nnkTypeDef)
-    typDef[2].expectKind(nnkObjectTy)
-    let recList = typDef[2][2]
-    for identDefs in recList:
-      for i in 0 .. identDefs.len - 3:
-        if identDefs[i].kind == nnkPragmaExpr and
-           identDefs[i][0].kind == nnkIdent and $identDefs[i][0] == $n[1]:
-          return identDefs[i][1]
+  expectKind(n, {nnkSym, nnkDotExpr, nnkBracketExpr, nnkTypeOfExpr, nnkCheckedFieldExpr})
+  let
+    typ = n.getTypeInst()
+
+  if typ.typeKind == ntyTypeDesc:
+    let impl = typ[1].getImpl()
+    if impl[0].kind == nnkPragmaExpr:
+      return impl[0][1]
+    else:
+      return impl[0] # handle types which don't have macro at all
+
+  if n.kind == nnkSym: # either an variable or a proc
+    let impl = n.getImpl()
+    if impl.kind in RoutineNodes:
+      return impl.pragma
+    else:
+      return typ.getImpl()[0][1]
+
+  if n.kind in {nnkDotExpr, nnkCheckedFieldExpr}:
+    let name = (if n.kind == nnkCheckedFieldExpr: n[0][1] else: n[1])
+    var typDef = getImpl(getTypeInst(if n.kind == nnkCheckedFieldExpr or n[0].kind == nnkHiddenDeref: n[0][0] else: n[0]))
+    while typDef != nil:
+      typDef.expectKind(nnkTypeDef)
+      typDef[2].expectKind({nnkRefTy, nnkPtrTy, nnkObjectTy})
+      let isRef = typDef[2].kind in {nnkRefTy, nnkPtrTy}
+      if isRef and typDef[2][0].kind in {nnkSym, nnkBracketExpr}: # defines ref type for another object(e.g. X = ref X)
+        typDef = getImpl(typDef[2][0])
+      else: # object definition, maybe an object directly defined as a ref type
+        let
+          obj = (if isRef: typDef[2][0] else: typDef[2])
+        var identDefsStack = newSeq[NimNode](obj[2].len)
+        for i in 0..<identDefsStack.len: identDefsStack[i] = obj[2][i]
+        while identDefsStack.len > 0:
+          var identDefs = identDefsStack.pop()
+          if identDefs.kind == nnkRecCase:
+            identDefsStack.add(identDefs[0])
+            for i in 1..<identDefs.len:
+              if identDefs[i][1].kind == nnkIdentDefs:
+                identDefsStack.add(identDefs[i][1])
+              else: # nnkRecList
+                for j in 0..<identDefs[i][1].len:
+                  identDefsStack.add(identDefs[i][1][j])
+
+          else:
+            for i in 0 .. identDefs.len - 3:
+              if identDefs[i].kind == nnkPragmaExpr and
+                identDefs[i][0].kind == nnkIdent and $identDefs[i][0] == $name:
+                return identDefs[i][1]
+
+        if obj[1].kind == nnkOfInherit: # explore the parent object
+          typDef = getImpl(obj[1][0])
+        else:
+          typDef = nil
 
 macro hasCustomPragma*(n: typed, cp: typed{nkSym}): untyped =
   ## Expands to `true` if expression `n` which is expected to be `nnkDotExpr`
-  ## has custom pragma `cp`.
+  ## (if checking a field), a proc or a type has custom pragma `cp`.
+  ##
+  ## See also `getCustomPragmaVal`.
   ##
   ## .. code-block:: nim
   ##   template myAttr() {.pragma.}
   ##   type
   ##     MyObj = object
   ##       myField {.myAttr.}: int
+  ##
+  ##   proc myProc() {.myAttr.} = discard
+  ##
   ##   var o: MyObj
-  ##   assert(o.myField.hasCustomPragma(myAttr) == 0)
+  ##   assert(o.myField.hasCustomPragma(myAttr))
+  ##   assert(myProc.hasCustomPragma(myAttr))
   let pragmaNode = customPragmaNode(n)
   for p in pragmaNode:
     if (p.kind == nnkSym and p == cp) or
@@ -1261,20 +1363,25 @@ macro hasCustomPragma*(n: typed, cp: typed{nkSym}): untyped =
 
 macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
   ## Expands to value of custom pragma `cp` of expression `n` which is expected
-  ## to be `nnkDotExpr`.
+  ## to be `nnkDotExpr`, a proc or a type.
+  ##
+  ## See also `hasCustomPragma`
   ##
   ## .. code-block:: nim
   ##   template serializationKey(key: string) {.pragma.}
   ##   type
-  ##     MyObj = object
+  ##     MyObj {.serializationKey: "mo".} = object
   ##       myField {.serializationKey: "mf".}: int
   ##   var o: MyObj
   ##   assert(o.myField.getCustomPragmaVal(serializationKey) == "mf")
+  ##   assert(o.getCustomPragmaVal(serializationKey) == "mo")
+  ##   assert(MyObj.getCustomPragmaVal(serializationKey) == "mo")
   let pragmaNode = customPragmaNode(n)
   for p in pragmaNode:
     if p.kind in nnkPragmaCallKinds and p.len > 0 and p[0].kind == nnkSym and p[0] == cp:
       return p[1]
-  return newEmptyNode()
+
+  error(n.repr & " doesn't have a pragma named " & cp.repr()) # returning an empty node results in most cases in a cryptic error,
 
 
 when not defined(booting):

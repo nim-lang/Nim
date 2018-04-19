@@ -395,7 +395,15 @@ proc getHostByAddr*(ip: string): Hostent {.tags: [ReadIOEffect].} =
       result.addrtype = AF_INET6
     else:
       raiseOSError(osLastError(), "unknown h_addrtype")
-  result.addrList = cstringArrayToSeq(s.h_addr_list)
+  if result.addrtype == AF_INET:
+    result.addrlist = @[]
+    var i = 0
+    while not isNil(s.h_addrlist[i]):
+      var inaddr_ptr = cast[ptr InAddr](s.h_addr_list[i])
+      result.addrlist.add($inet_ntoa(inaddr_ptr[]))
+      inc(i)
+  else:
+    result.addrList = cstringArrayToSeq(s.h_addr_list)
   result.length = int(s.h_length)
 
 proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} =
@@ -416,7 +424,15 @@ proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} =
       result.addrtype = AF_INET6
     else:
       raiseOSError(osLastError(), "unknown h_addrtype")
-  result.addrList = cstringArrayToSeq(s.h_addr_list)
+  if result.addrtype == AF_INET:
+    result.addrlist = @[]
+    var i = 0
+    while not isNil(s.h_addrlist[i]):
+      var inaddr_ptr = cast[ptr InAddr](s.h_addr_list[i])
+      result.addrlist.add($inet_ntoa(inaddr_ptr[]))
+      inc(i)
+  else:
+    result.addrList = cstringArrayToSeq(s.h_addr_list)
   result.length = int(s.h_length)
 
 proc getHostname*(): string {.tags: [ReadIOEffect].} =
@@ -600,8 +616,12 @@ proc setBlocking*(s: SocketHandle, blocking: bool) =
 proc timeValFromMilliseconds(timeout = 500): Timeval =
   if timeout != -1:
     var seconds = timeout div 1000
-    result.tv_sec = seconds.int32
-    result.tv_usec = ((timeout - seconds * 1000) * 1000).int32
+    when useWinVersion:
+      result.tv_sec = seconds.int32
+      result.tv_usec = ((timeout - seconds * 1000) * 1000).int32
+    else:
+      result.tv_sec = seconds.Time
+      result.tv_usec = ((timeout - seconds * 1000) * 1000).Suseconds
 
 proc createFdSet(fd: var TFdSet, s: seq[SocketHandle], m: var int) =
   FD_ZERO(fd)

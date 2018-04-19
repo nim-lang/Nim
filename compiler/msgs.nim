@@ -87,7 +87,8 @@ type
     errNoReturnTypeDeclared,
     errNoCommand, errInvalidCommandX, errXOnlyAtModuleScope,
     errXNeedsParamObjectType,
-    errTemplateInstantiationTooNested, errInstantiationFrom,
+    errTemplateInstantiationTooNested, errMacroInstantiationTooNested,
+    errInstantiationFrom,
     errInvalidIndexValueForTuple, errCommandExpectsFilename,
     errMainModuleMustBeSpecified,
     errXExpected,
@@ -329,7 +330,8 @@ const
     errInvalidCommandX: "invalid command: \'$1\'",
     errXOnlyAtModuleScope: "\'$1\' is only allowed at top level",
     errXNeedsParamObjectType: "'$1' needs a parameter that has an object type",
-    errTemplateInstantiationTooNested: "template/macro instantiation too nested",
+    errTemplateInstantiationTooNested: "template instantiation too nested, try --evalTemplateLimit:N",
+    errMacroInstantiationTooNested: "macro instantiation too nested, try --evalMacroLimit:N",
     errInstantiationFrom: "template/generic instantiation from here",
     errInvalidIndexValueForTuple: "invalid index value for tuple subscript",
     errCommandExpectsFilename: "command expects a filename argument",
@@ -495,7 +497,9 @@ type
                                # and parsed; usually 'nil' but is used
                                # for 'nimsuggest'
     hash*: string              # the checksum of the file
-
+    when defined(nimpretty):
+      fullContent*: string
+  FileIndex* = int32           # XXX will make this 'distinct' later
   TLineInfo* = object          # This is designed to be as small as possible,
                                # because it is used
                                # in syntax nodes. We save space here by using
@@ -503,7 +507,7 @@ type
                                # On 64 bit and on 32 bit systems this is
                                # only 8 bytes.
     line*, col*: int16
-    fileIndex*: int32
+    fileIndex*: FileIndex
     when defined(nimpretty):
       offsetA*, offsetB*: int
       commentOffsetA*, commentOffsetB*: int
@@ -583,6 +587,18 @@ proc newFileInfo(fullPath, projPath: string): TFileInfo =
   result.quotedFullName = fullPath.makeCString
   if optEmbedOrigSrc in gGlobalOptions or true:
     result.lines = @[]
+  when defined(nimpretty):
+    if result.fullPath.len > 0:
+      try:
+        result.fullContent = readFile(result.fullPath)
+      except IOError:
+        #rawMessage(errCannotOpenFile, result.fullPath)
+        # XXX fixme
+        result.fullContent = ""
+
+when defined(nimpretty):
+  proc fileSection*(fid: FileIndex; a, b: int): string =
+    substr(fileInfos[fid].fullContent, a, b)
 
 proc fileInfoKnown*(filename: string): bool =
   var

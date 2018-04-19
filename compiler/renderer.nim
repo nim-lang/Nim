@@ -39,8 +39,7 @@ type
     inPragma: int
     when defined(nimpretty):
       pendingNewlineCount: int
-      origContent: string
-
+    fid*: FileIndex
 
 # We render the source code in a two phases: The first
 # determines how long the subtree will likely be, the second
@@ -354,13 +353,13 @@ proc ulitAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
 proc atom(g: TSrcGen; n: PNode): string =
   when defined(nimpretty):
     let comment = if n.info.commentOffsetA < n.info.commentOffsetB:
-                    " " & substr(g.origContent, n.info.commentOffsetA, n.info.commentOffsetB)
+                    " " & fileSection(g.fid, n.info.commentOffsetA, n.info.commentOffsetB)
                   else:
                     ""
     if n.info.offsetA <= n.info.offsetB:
       # for some constructed tokens this can not be the case and we're better
       # off to not mess with the offset then.
-      return substr(g.origContent, n.info.offsetA, n.info.offsetB) & comment
+      return fileSection(g.fid, n.info.offsetA, n.info.offsetB) & comment
   var f: float32
   case n.kind
   of nkEmpty: result = ""
@@ -437,6 +436,9 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkCommand: result = lsub(g, n.sons[0]) + lcomma(g, n, 1) + 1
   of nkExprEqExpr, nkAsgn, nkFastAsgn: result = lsons(g, n) + 3
   of nkPar, nkCurly, nkBracket, nkClosure: result = lcomma(g, n) + 2
+  of nkTupleConstr:
+    # assume the trailing comma:
+    result = lcomma(g, n) + 3
   of nkArgList: result = lcomma(g, n)
   of nkTableConstr:
     result = if n.len > 0: lcomma(g, n) + 2 else: len("{:}")
@@ -1007,6 +1009,11 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkParLe, "(")
     gcomma(g, n, c)
     put(g, tkParRi, ")")
+  of nkTupleConstr:
+    put(g, tkParLe, "(")
+    gcomma(g, n, c)
+    if n.len == 1: put(g, tkComma, ",")
+    put(g, tkParRi, ")")
   of nkCurly:
     put(g, tkCurlyLe, "{")
     gcomma(g, n, c)
@@ -1452,17 +1459,13 @@ proc renderTree*(n: PNode, renderFlags: TRenderFlags = {}): string =
 proc `$`*(n: PNode): string = n.renderTree
 
 proc renderModule*(n: PNode, infile, outfile: string,
-                   renderFlags: TRenderFlags = {}) =
+                   renderFlags: TRenderFlags = {};
+                   fid = FileIndex(-1)) =
   var
     f: File
     g: TSrcGen
   initSrcGen(g, renderFlags)
-  when defined(nimpretty):
-    try:
-      g.origContent = readFile(infile)
-    except IOError:
-      rawMessage(errCannotOpenFile, infile)
-
+  g.fid = fid
   for i in countup(0, sonsLen(n) - 1):
     gsub(g, n.sons[i])
     optNL(g)
