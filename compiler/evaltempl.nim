@@ -133,7 +133,7 @@ proc wrapInComesFrom*(info: TLineInfo; sym: PSym; res: PNode): PNode =
 
 proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym; fromHlo=false): PNode =
   inc(evalTemplateCounter)
-  if evalTemplateCounter > 100:
+  if evalTemplateCounter > evalTemplateLimit:
     globalError(n.info, errTemplateInstantiationTooNested)
     result = n
 

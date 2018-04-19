@@ -98,4 +98,7 @@
 - Added ``macros.getProjectPath`` and ``ospaths.putEnv`` procs to Nim's virtual
   machine.
 
+- New compiler options `--evalTemplateLimit` and `--evalMacroLimit` allow
+  setting recursive evaluation limits.
+
 ### Bugfixes
