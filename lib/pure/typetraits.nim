@@ -36,7 +36,8 @@ proc `$`*(t: typedesc): string =
   name(t)
 
 proc arity*(t: typedesc): int {.magic: "TypeTrait".}
-  ## Returns the arity of the given type
+  ## Returns the arity of the given type, how many arguments does something take
+  ## arity(Obj[X, Y, Z]) == 3
 
 proc genericHead*(t: typedesc): typedesc {.magic: "TypeTrait".}
   ## Accepts an instantiated generic type and returns its
