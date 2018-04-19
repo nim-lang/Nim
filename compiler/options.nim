@@ -149,8 +149,6 @@ var
   newDestructors*: bool
   gDynlibOverrideAll*: bool
   useNimNamespace*: bool
-  evalTemplateLimit* = 100
-  evalMacroLimit* = 100
 
 type
   SymbolFilesOption* = enum

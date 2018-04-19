@@ -65,8 +65,6 @@ Advanced options:
   --excessiveStackTrace:on|off
                             stack traces use full file paths
   --oldNewlines:on|off      turn on|off the old behaviour of "\n"
-  --evalTemplateLimit:N     recursion limit for template evaluation
-  --evalMacroLimit:N        recursion limit for macro evaluation
   --skipCfg                 do not read the general configuration file
   --skipUserCfg             do not read the user's configuration file
   --skipParentCfg           do not read the parent dirs' configuration files

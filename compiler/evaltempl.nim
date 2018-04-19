@@ -106,8 +106,9 @@ proc evalTemplateArgs(n: PNode, s: PSym; fromHlo: bool): PNode =
   for i in 1 .. genericParams:
     result.addSon n.sons[givenRegularParams + i]
 
+# to prevent endless recursion in template instantiation
+const evalTemplateLimit* = 1000
 var evalTemplateCounter* = 0
-  # to prevent endless recursion in templates instantiation
 
 proc wrapInComesFrom*(info: TLineInfo; sym: PSym; res: PNode): PNode =
   when true:

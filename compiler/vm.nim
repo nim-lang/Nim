@@ -1729,6 +1729,8 @@ iterator genericParamsInMacroCall*(macroSym: PSym, call: PNode): (PSym, PNode) =
     let posInCall = macroSym.typ.len + i
     yield (genericParam, call[posInCall])
 
+# to prevent endless recursion in macro instantiation
+const evalMacroLimit = 1000
 var evalMacroCounter: int
 
 proc evalMacroCall*(module: PSym; cache: IdentCache, n, nOrig: PNode,
