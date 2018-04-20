@@ -1957,15 +1957,14 @@ proc getTimezone*(): int {.tags: [TimeEffect], raises: [], benign, deprecated.} 
 proc timeInfoToTime*(dt: DateTime): Time {.tags: [], benign, deprecated.} =
   ## Converts a broken-down time structure to calendar time representation.
   ##
-  ## **Warning:** This procedure is deprecated since version 0.14.0.
-  ## Use ``toTime`` instead.
+  ## **Deprecated since v0.14.0:** use ``toTime`` instead.
   dt.toTime
 
 when defined(JS):
   var start = getTime()
   proc getStartMilsecs*(): int {.deprecated, tags: [TimeEffect], benign.} =
-    ## get the milliseconds from the start of the program. **Deprecated since
-    ## version 0.8.10.** Use ``epochTime`` or ``cpuTime`` instead.
+    ## get the milliseconds from the start of the program.
+    ## **Deprecated since v0.8.10:** use ``epochTime`` or ``cpuTime`` instead.
     let dur = getTime() - start
     result = (convert(Seconds, Milliseconds, dur.seconds) +
       convert(Nanoseconds, Milliseconds, dur.nanosecond)).int
@@ -1979,19 +1978,19 @@ else:
 proc timeToTimeInterval*(t: Time): TimeInterval {.deprecated.} =
   ## Converts a Time to a TimeInterval.
   ##
-  ## **Warning:** This procedure is deprecated since version 0.14.0.
-  ## Use ``toTimeInterval`` instead.
+  ## **Deprecated since v0.14.0:** use ``toTimeInterval`` instead.
   # Milliseconds not available from Time
   t.toTimeInterval()
 
 proc getDayOfWeek*(day, month, year: int): WeekDay  {.tags: [], raises: [], benign, deprecated.} =
-  ## **Warning:** This procedure is deprecated since version 0.18.0.
+  ## **Deprecated since v0.18.0:** use 
+  ## ``getDayOfWeek(monthday: MonthdayRange; month: Month; year: int)`` instead.
   getDayOfWeek(day, month.Month, year)
 
 proc getDayOfWeekJulian*(day, month, year: int): WeekDay {.deprecated.} =
   ## Returns the day of the week enum from day, month and year,
   ## according to the Julian calendar.
-  ## **Warning:** This procedure is deprecated since version 0.18.0.
+  ## **Deprecated since v0.18.0:**
   # Day & month start from one.
   let
     a = (14 - month) div 12
