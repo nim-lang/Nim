@@ -1048,7 +1048,7 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
                          KindColor, `%`(KindFormat, kind))
       else:
         styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s)
-      if msg in errMin..errMax and hintSource in gNotes:
+      if hintSource in gNotes:
         info.writeSurroundingSrc
   handleError(msg, eh, s)
 
