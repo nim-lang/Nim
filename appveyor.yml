@@ -43,6 +43,7 @@ install:
   - cd ..
 
 build_script:
+  # NOTE: keep in sync with .travis.yml (or use a common base)
   - bin\nim c koch
   - koch boot -d:release
   - koch nimble

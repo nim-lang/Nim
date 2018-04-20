@@ -389,6 +389,8 @@ const
     errCompilerDoesntSupportTarget: "The current compiler \'$1\' doesn't support the requested compilation target",
     errInOutFlagNotExtern: "The `$1` modifier can be used only with imported types",
     errUser: "$1",
+
+    # sync with `WarningsToStr`
     warnCannotOpenFile: "cannot open \'$1\'",
     warnOctalEscape: "octal escape sequences do not exist; leading zero is ignored",
     warnXIsNeverRead: "\'$1\' is never read",
@@ -420,6 +422,8 @@ const
     warnLockLevel: "$1",
     warnResultShadowed: "Special variable 'result' is shadowed.",
     warnUser: "$1",
+
+    # sync with `HintsToStr`
     hintSuccess: "operation successful",
     hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#; $#)",
     hintLineTooLong: "line too long",
@@ -444,7 +448,8 @@ const
     hintStackTrace: "$1",
     hintGCStats: "$1",
     hintUser: "$1",
-    hintUserRaw: "$1"]
+    hintUserRaw: "$1",
+  ]
 
 const
   WarningsToStr* = ["CannotOpenFile", "OctalEscape",
@@ -459,6 +464,7 @@ const
     "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
     "GcMem", "Destructor", "LockLevel", "ResultShadowed", "User"]
 
+  # TODO: this is brittle; consider using a proc that strips hint, eg: hintStackTrace => StackTrace
   HintsToStr* = ["Success", "SuccessX", "LineTooLong",
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
@@ -533,6 +539,7 @@ const
                                          hintCodeBegin, hintCodeEnd,
                                          hintSource, hintStackTrace,
                                          hintGCStats},
+    # TODO: cleaner to reuse exclustion set from a higher verbosity level
     {low(TNoteKind)..high(TNoteKind)} - {warnShadowIdent, warnUninit,
                                          warnProveField, warnProveIndex,
                                          warnGcUnsafe,
@@ -1048,7 +1055,7 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
                          KindColor, `%`(KindFormat, kind))
       else:
         styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s)
-      if msg in errMin..errMax and hintSource in gNotes:
+      if hintSource in gNotes:
         info.writeSurroundingSrc
   handleError(msg, eh, s)
 
