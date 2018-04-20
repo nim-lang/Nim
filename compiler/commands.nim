@@ -595,6 +595,8 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "run", "r":
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optRun)
+  of "timestamps":
+    processOnOffSwitchG({optTimestamps}, arg, pass, info)
   of "verbosity":
     expectArg(switch, arg, pass, info)
     gVerbosity = parseInt(arg)
