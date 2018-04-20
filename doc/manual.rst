@@ -5246,7 +5246,7 @@ of the Compiler. Normally the input for a macro is an abstract syntax
 tree (AST) of the code that is passed to it. The macro can then do
 transformations on it and returned the now transformed AST. The
 transformed AST is then passed to the compiler as if the macro
-invocation would have been replaced by it's result in the source
+invocation would have been replaced by its result in the source
 code. This can be used for example to implement `domain specific
 languages`:idx:.
 
