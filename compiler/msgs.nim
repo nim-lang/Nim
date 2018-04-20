@@ -892,7 +892,7 @@ proc quit(msg: TMsgKind) =
       writeStackTrace()
     else:
       styledMsgWriteln(fgRed, "No stack traceback available\n" &
-          "To create a stacktrace, rerun compilation with ./koch temp " &
+          "To create a stacktrace, rerun compilation without `-d:release`, eg: ./koch temp " &
           options.command & " <file>")
   quit 1
 

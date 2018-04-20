@@ -1,0 +1,4 @@
+    deprecated command line switches
+
+advanced => helpFull
+babelpath => nimblePath
