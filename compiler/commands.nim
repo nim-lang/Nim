@@ -77,6 +77,14 @@ proc writeAdvancedUsage(pass: TCmdLinePass) =
                {msgStdout})
     msgQuit(0)
 
+proc writeFullhelp(pass: TCmdLinePass) =
+  if pass == passCmd1:
+    msgWriteln(`%`(HelpMessage, [VersionAsString,
+                                 platform.OS[platform.hostOS].name,
+                                 CPU[platform.hostCPU].name]) & Usage & AdvancedUsage,
+               {msgStdout})
+    msgQuit(0)
+
 proc writeVersionInfo(pass: TCmdLinePass) =
   if pass == passCmd1:
     msgWriteln(`%`(HelpMessage, [VersionAsString,
@@ -611,6 +619,9 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "advanced":
     expectNoArg(switch, arg, pass, info)
     writeAdvancedUsage(pass)
+  of "fullhelp":
+    expectNoArg(switch, arg, pass, info)
+    writeFullhelp(pass)
   of "help", "h":
     expectNoArg(switch, arg, pass, info)
     helpOnError(pass)
