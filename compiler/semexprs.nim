@@ -191,7 +191,25 @@ proc semConv(c: PContext, n: PNode): PNode =
     return n
 
   result = newNodeI(nkConv, n.info)
-  var targetType = semTypeNode(c, n.sons[0], nil).skipTypes({tyTypeDesc})
+
+  var targetType = semTypeNode(c, n.sons[0], nil)
+  if targetType.kind == tyTypeDesc:
+    internalAssert targetType.len > 0
+    if targetType.base.kind == tyNone:
+      return semTypeOf(c, n[1])
+    else:
+      targetType = targetType.base
+  elif targetType.kind == tyStatic:
+    var evaluated = semStaticExpr(c, n[1])
+    if evaluated.kind == nkType or evaluated.typ.kind == tyTypeDesc:
+      result = n
+      result.typ = c.makeTypeDesc semStaticType(c, evaluated, nil)
+      return
+    elif targetType.base.kind == tyNone:
+      return evaluated
+    else:
+      targetType = targetType.base
+
   maybeLiftType(targetType, c, n[0].info)
 
   if targetType.kind in {tySink, tyLent}:
@@ -632,7 +650,7 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
     #  echo "SUCCESS evaluated at compile time: ", call.renderTree
 
 proc semStaticExpr(c: PContext, n: PNode): PNode =
-  let a = semExpr(c, n.sons[0])
+  let a = semExpr(c, n)
   if a.findUnresolvedStatic != nil: return a
   result = evalStaticExpr(c.module, c.graph, a, c.p.owner)
   if result.isNil:
@@ -1034,7 +1052,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
   of skType:
     markUsed(c.config, n.info, s, c.graph.usageSym)
     styleCheckUse(n.info, s)
-    if s.typ.kind == tyStatic and s.typ.n != nil:
+    if s.typ.kind == tyStatic and s.typ.base.kind != tyNone and s.typ.n != nil:
       return s.typ.n
     result = newSymNode(s, n.info)
     result.typ = makeTypeDesc(c, s.typ)
@@ -1261,8 +1279,18 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # make sure we don't evaluate generic macros/templates
   n.sons[0] = semExprWithType(c, n.sons[0],
                               {efNoEvaluateGeneric})
-  let arr = skipTypes(n.sons[0].typ, {tyGenericInst,
+  var arr = skipTypes(n.sons[0].typ, {tyGenericInst,
                                       tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink})
+  if arr.kind == tyStatic:
+    if arr.base.kind == tyNone:
+      result = n
+      result.typ = semStaticType(c, n[1], nil)
+      return
+    elif arr.n != nil:
+      return semSubscript(c, arr.n, flags)
+    else:
+      arr = arr.base
+
   case arr.kind
   of tyArray, tyOpenArray, tyVarargs, tySequence, tyString,
      tyCString:
@@ -2426,8 +2454,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     # handling of sym choices is context dependent
     # the node is left intact for now
     discard
-  of nkStaticExpr:
-    result = semStaticExpr(c, n)
+  of nkStaticExpr: result = semStaticExpr(c, n[0])
   of nkAsgn: result = semAsgn(c, n)
   of nkBlockStmt, nkBlockExpr: result = semBlock(c, n)
   of nkStmtList, nkStmtListExpr: result = semStmtList(c, n, flags)

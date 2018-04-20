@@ -48,6 +48,9 @@ proc semQuoteAst(c: PContext, n: PNode): PNode
 proc finishMethod(c: PContext, s: PSym)
 proc evalAtCompileTime(c: PContext, n: PNode): PNode
 proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode
+proc semStaticExpr(c: PContext, n: PNode): PNode
+proc semStaticType(c: PContext, childNode: PNode, prev: PType): PType
+proc semTypeOf(c: PContext; n: PNode): PNode
 
 proc isArrayConstr(n: PNode): bool {.inline.} =
   result = n.kind == nkBracket and

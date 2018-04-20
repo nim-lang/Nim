@@ -1666,13 +1666,17 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
     let prev = PType(idTableGet(c.bindings, f))
     if prev == nil:
       if aOrig.kind == tyStatic:
-        result = typeRel(c, f.lastSon, a)
-        if result != isNone and f.n != nil:
-          if not exprStructuralEquivalent(f.n, aOrig.n):
-            result = isNone
+        if f.base.kind != tyNone:
+          result = typeRel(c, f.base, a)
+          if result != isNone and f.n != nil:
+            if not exprStructuralEquivalent(f.n, aOrig.n):
+              result = isNone
+        else:
+          result = isGeneric
         if result != isNone: put(c, f, aOrig)
       elif aOrig.n != nil and aOrig.n.typ != nil:
-        result = typeRel(c, f.lastSon, aOrig.n.typ)
+        result = if f.base.kind != tyNone: typeRel(c, f.lastSon, aOrig.n.typ)
+                 else: isGeneric
         if result != isNone:
           var boundType = newTypeWithSons(c.c, tyStatic, @[aOrig.n.typ])
           boundType.n = aOrig.n

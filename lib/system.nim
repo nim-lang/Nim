@@ -179,10 +179,24 @@ proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Cannot be overloaded.
   discard
 
-proc `type`*(x: untyped): typeDesc {.magic: "TypeOf", noSideEffect, compileTime.} =
-  ## Builtin 'type' operator for accessing the type of an expression.
-  ## Cannot be overloaded.
-  discard
+when defined(nimNewTypedesc):
+  type
+    `static`* {.magic: "Static".}[T]
+      ## meta type representing all values that can be evaluated at compile-time.
+      ##
+      ## The type coercion ``static(x)`` can be used to force the compile-time
+      ## evaluation of the given expression ``x``.
+
+    `type`* {.magic: "Type".}[T]
+      ## meta type representing the type of all type values.
+      ##
+      ## The coercion ``type(x)`` can be used to obtain the type of the given
+      ## expression ``x``.
+else:
+  proc `type`*(x: untyped): typeDesc {.magic: "TypeOf", noSideEffect, compileTime.} =
+    ## Builtin 'type' operator for accessing the type of an expression.
+    ## Cannot be overloaded.
+    discard
 
 proc `not` *(x: bool): bool {.magic: "Not", noSideEffect.}
   ## Boolean not; returns true iff ``x == false``.

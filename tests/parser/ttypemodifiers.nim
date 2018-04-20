@@ -54,24 +54,32 @@ StmtList
           Ident "a"
           Ident "b"
     TypeDef
+      Ident "BareStatic"
+      Empty
+      Ident "static"
+    TypeDef
       Ident "GenericStatic"
       Empty
-      StaticTy
+      BracketExpr
+        Ident "static"
         Ident "int"
     TypeDef
       Ident "PrefixStatic"
       Empty
-      StaticExpr
+      Command
+        Ident "static"
         Ident "int"
     TypeDef
       Ident "StaticTupleCl"
       Empty
-      StaticExpr
+      Command
+        Ident "static"
         TupleClassTy
     TypeDef
       Ident "StaticTuple"
       Empty
-      StaticExpr
+      Command
+        Ident "static"
         Par
           Ident "int"
           Ident "string"
@@ -89,6 +97,12 @@ StmtList
       Ident "TypeTupleGen"
       Empty
       BracketExpr
+        Ident "type"
+        TupleClassTy
+    TypeDef
+      Ident "TypeTupleCl"
+      Empty
+      Command
         Ident "type"
         TupleClassTy
     TypeDef
@@ -110,6 +124,13 @@ StmtList
         Ident "type"
         Ident "a"
     TypeDef
+      Ident "TypeOfVarAlt"
+      Empty
+      Command
+        Ident "type"
+        Par
+          Ident "a"
+    TypeDef
       Ident "TypeOfTuple1"
       Empty
       Call
@@ -122,6 +143,29 @@ StmtList
         Ident "type"
         Ident "a"
         Ident "b"
+    TypeDef
+      Ident "TypeOfTuple1A"
+      Empty
+      Command
+        Ident "type"
+        TupleConstr
+          Ident "a"
+    TypeDef
+      Ident "TypeOfTuple2A"
+      Empty
+      Command
+        Ident "type"
+        Par
+          Ident "a"
+          Ident "b"
+    TypeDef
+      Ident "TypeTuple"
+      Empty
+      Command
+        Ident "type"
+        Par
+          Ident "int"
+          Ident "string"
     TypeDef
       Ident "GenericTypedesc"
       Empty
@@ -173,30 +217,50 @@ StmtList
           Ident "type"
         Empty
       IdentDefs
+        Ident "typeTupleCl"
+        Command
+          Ident "type"
+          TupleClassTy
+        Empty
+      IdentDefs
+        Ident "bareStatic"
+        Ident "static"
+        Empty
+      IdentDefs
         Ident "genStatic"
-        StaticTy
+        BracketExpr
+          Ident "static"
           Ident "int"
         Empty
       IdentDefs
         Ident "staticInt"
-        StaticExpr
+        Command
+          Ident "static"
           Ident "int"
         Empty
       IdentDefs
         Ident "staticVal1"
-        StaticExpr
+        Command
+          Ident "static"
           IntLit 10
         Empty
       IdentDefs
         Ident "staticVal2"
-        StaticExpr
-          Par
-            StrLit "str"
+        Call
+          Ident "static"
+          StrLit "str"
         Empty
       IdentDefs
         Ident "staticVal3"
-        StaticExpr
+        Command
+          Ident "static"
           StrLit "str"
+        Empty
+      IdentDefs
+        Ident "staticVal4"
+        CallStrLit
+          Ident "static"
+          RStrLit "str"
         Empty
       IdentDefs
         Ident "staticDotVal"
@@ -285,50 +349,32 @@ StmtList
     StmtList
       Asgn
         Ident "staticTen"
-        StaticExpr
+        Command
+          Ident "static"
           IntLit 10
       Asgn
         Ident "staticA"
-        StaticExpr
-          Par
-            Ident "a"
-      Asgn
-        Ident "staticAspace"
-        StaticExpr
-          Par
-            Ident "a"
-      Asgn
-        Ident "staticAtuple"
-        StaticExpr
-          TupleConstr
-            Ident "a"
-      Asgn
-        Ident "staticTuple"
-        StaticExpr
-          Par
-            Ident "a"
-            Ident "b"
-      Asgn
-        Ident "staticTypeTuple"
-        StaticExpr
-          Par
-            Ident "int"
-            Ident "string"
+        Call
+          Ident "static"
+          Ident "a"
       Asgn
         Ident "staticCall"
-        StaticExpr
+        Command
+          Ident "static"
           Call
             Ident "foo"
             IntLit 1
       Asgn
         Ident "staticStrCall"
-        StaticExpr
+        Command
+          Ident "static"
           CallStrLit
             Ident "foo"
             RStrLit "x"
       Asgn
         Ident "staticChainCall"
-        StaticExpr
+        Command
+          Ident "static"
           Command
             Ident "foo"
             Ident "bar"
@@ -399,7 +445,7 @@ dumpTree:
     RefTupleCl    = ref tuple
     RefTupleType  = ref (int, string)
     RefTupleVars  = ref (a, b)
-    # BareStatic  = static                # Error: invalid indentation
+    BareStatic    = static                # Used to be Error: invalid indentation
     GenericStatic = static[int]
     PrefixStatic  = static int
     StaticTupleCl = static tuple
@@ -407,16 +453,16 @@ dumpTree:
     BareType      = type
     GenericType   = type[float]
     TypeTupleGen  = type[tuple]
-    # TypeTupleCl = type tuple            # Error: invalid indentation
+    TypeTupleCl   = type tuple            # Used to be Error: invalid indentation
     TypeInstance  = type Foo[ref]
     bareTypeDesc  = typedesc
     TypeOfVar     = type(a)
-    # TypeOfVarAlt= type (a)              # Error: invalid indentation
+    TypeOfVarAlt  = type (a)              # Used to be Error: invalid indentation
     TypeOfTuple1  = type(a,)
     TypeOfTuple2  = type(a,b)
-    # TypeOfTuple1A = type (a,)           # Error: invalid indentation
-    # TypeOfTuple2A = type (a,b)          # Error: invalid indentation
-    # TypeTuple     = type (int, string)  # Error: invalid indentation
+    TypeOfTuple1A = type (a,)             # Used to be Error: invalid indentation
+    TypeOfTuple2A = type (a,b)            # Used to be Error: invalid indentation
+    TypeTuple     = type (int, string)    # Used to be Error: invalid indentation
     GenericTypedesc = typedesc[int]
     T = type
 
@@ -427,14 +473,14 @@ dumpTree:
     typeIntAlt      : type(int),
     typeOfVar       : type(a),
     typeDotType     : foo.type,
-    # typeTupleCl   : type tuple,         # Error: ')' expected
-    # bareStatic    : static,             # Error: expression expected, but found ','
+    typeTupleCl     : type tuple,         # Used to be Error: ')' expected
+    bareStatic      : static,             # Used to be Error: expression expected, but found ','
     genStatic       : static[int],
     staticInt       : static int,
     staticVal1      : static 10,
     staticVal2      : static("str"),
     staticVal3      : static "str",
-    # staticVal4    : static"str",        # Error: expression expected, but found 'str'
+    staticVal4      : static"str",        # Used to be Error: expression expected, but found 'str'
     staticDotVal    : 10.static,
     bareRef         : ref,
     refTuple1       : ref (int),
@@ -451,10 +497,10 @@ dumpTree:
   ): type =
     staticTen       = static 10
     staticA         = static(a)
-    staticAspace    = static (a)
-    staticAtuple    = static (a,)
-    staticTuple     = static (a,b)
-    staticTypeTuple = static (int,string)
+    # staticAspace    = static (a)          # With newTypedesc: Error: invalid indentation
+    # staticAtuple    = static (a,)         # With newTypedesc: Error: invalid indentation
+    # staticTuple     = static (a,b)        # With newTypedesc: Error: invalid indentation
+    # staticTypeTuple = static (int,string) # With newTypedesc: Error: invalid indentation
     staticCall      = static foo(1)
     staticStrCall   = static foo"x"
     staticChainCall = static foo bar
