@@ -5241,13 +5241,13 @@ chance to convert it into a sequence.
 Macros
 ======
 
-A macro is a special function that is executed on the virtual machine
-of the Compiler. Normally the input for a macro is an abstract syntax
+A macro is a special function that is executed at compile-time.
+Normally the input for a macro is an abstract syntax
 tree (AST) of the code that is passed to it. The macro can then do
-transformations on it and returned the now transformed AST. The
+transformations on it and return the transformed AST. The
 transformed AST is then passed to the compiler as if the macro
 invocation would have been replaced by its result in the source
-code. This can be used for example to implement `domain specific
+code. This can be used to implement `domain specific
 languages`:idx:.
 
 While macros enable advanced compile-time code transformations, they
@@ -5276,8 +5276,8 @@ variable number of arguments:
   import macros
 
   macro debug(args: varargs[untyped]): untyped =
-    # `args` is a collection of `NimNode` values that contain each the
-    # AST for an argument of the macro. A macro also always has to
+    # `args` is a collection of `NimNode` values that each contain the
+    # AST for an argument of the macro. A macro always has to
     # return a `NimNode`. A node of kind `nnkStmtList` is suitable for
     # this use case.
     result = nnkStmtList.newTree()
