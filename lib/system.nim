@@ -2014,7 +2014,7 @@ when sizeof(int) <= 2:
 else:
   type IntLikeForCount = int|int8|int16|int32|char|bool|uint8|uint16|enum
 
-iterator countdown*[T](a, b: T, step = 1): T {.inline.} =
+iterator countdown*[T](a, b: T, step: T = 1): T {.inline.} =
   ## Counts from ordinal value `a` down to `b` (inclusive) with the given
   ## step count. `T` may be any ordinal type, `step` may only
   ## be positive. **Note**: This fails to count to ``low(int)`` if T = int for
@@ -2034,7 +2034,7 @@ iterator countdown*[T](a, b: T, step = 1): T {.inline.} =
     var res = a
     while res >= b:
       yield res
-      dec(res, step)
+      res -= step
 
 when defined(nimNewRoof):
   iterator countup*[T](a, b: T, step = 1): T {.inline.} =
@@ -2051,7 +2051,7 @@ when defined(nimNewRoof):
       var res: T = T(a)
       while res <= b:
         yield res
-        inc(res, step)
+        res += step
 
   iterator `..`*[T](a, b: T): T {.inline.} =
     ## An alias for `countup`.
@@ -2095,7 +2095,7 @@ else:
       var res: T = T(a)
       while res <= b:
         yield res
-        inc(res, step)
+        res += step
 
   iterator `..`*[S, T](a: S, b: T): T {.inline.} =
     ## An alias for `countup`.
@@ -2109,6 +2109,7 @@ else:
       while res <= b:
         yield res
         inc(res)
+
 
 
 iterator `||`*[S, T](a: S, b: T, annotation=""): T {.

@@ -1,0 +1,126 @@
+diff --git a/compiler/semstmts.nim b/compiler/semstmts.nim
+index bbc83ec..9ea641e 100644
+--- a/compiler/semstmts.nim
++++ b/compiler/semstmts.nim
+@@ -263,36 +263,66 @@ proc semTry(c: PContext, n: PNode): PNode =
+   result = n
+   inc c.p.inTryStmt
+   checkMinSonsLen(n, 2)
++
+   var typ = commonTypeBegin
+   n.sons[0] = semExprBranchScope(c, n.sons[0])
+   typ = commonType(typ, n.sons[0].typ)
++
+   var check = initIntSet()
+   var last = sonsLen(n) - 1
+   for i in countup(1, last):
+     var a = n.sons[i]
+     checkMinSonsLen(a, 1)
+     var length = sonsLen(a)
++
+     if a.kind == nkExceptBranch:
+       # so that ``except [a, b, c]`` is supported:
+       if length == 2 and a.sons[0].kind == nkBracket:
+         a.sons[0..0] = a.sons[0].sons
+         length = a.sonsLen
+ 
++      # Iterate through each exception type in the except branch.
+       for j in countup(0, length-2):
+-        var typ = semTypeNode(c, a.sons[j], nil)
++        var typeNode = a.sons[j] # e.g. `Exception`
++        var symbolNode: PNode = nil # e.g. `foobar`
++        # Handle the case where the `Exception as foobar` syntax is used.
++        if typeNode.kind == nkInfix:
++          typeNode = a.sons[j].sons[1]
++          symbolNode = a.sons[j].sons[2]
++
++        # Resolve the type ident into a PType.
++        var typ = semTypeNode(c, typeNode, nil)
++        # Add the exception ident to the symbol table.
++        if not symbolNode.isNil:
++          let symbol = newSymG(skLet, symbolNode, c)
++          symbol.typ = typ
++          addDecl(c, symbol)
++          let symNode = newNodeI(nkSym, typeNode.info)
++          symNode.sym = symbol
++          a.sons[j].sons[2] = symNode
++
+         if typ.kind == tyRef: typ = typ.sons[0]
+         if typ.kind != tyObject:
+           localError(a.sons[j].info, errExprCannotBeRaised)
+-        a.sons[j] = newNodeI(nkType, a.sons[j].info)
+-        a.sons[j].typ = typ
++
++        let newTypeNode = newNodeI(nkType, typeNode.info)
++        if symbolNode.isNil:
++          a.sons[j] = newTypeNode
++          a.sons[j].typ = typ
++        else:
++          a.sons[j].sons[1] = newTypeNode
++          a.sons[j].sons[1].typ = typ
++
+         if containsOrIncl(check, typ.id):
+           localError(a.sons[j].info, errExceptionAlreadyHandled)
+     elif a.kind != nkFinally:
+       illFormedAst(n)
++
+     # last child of an nkExcept/nkFinally branch is a statement:
+     a.sons[length-1] = semExprBranchScope(c, a.sons[length-1])
+     if a.kind != nkFinally: typ = commonType(typ, a.sons[length-1].typ)
+     else: dec last
++
+   dec c.p.inTryStmt
+   if isEmptyType(typ) or typ.kind == tyNil:
+     discardCheck(c, n.sons[0])
+diff --git a/compiler/transf.nim b/compiler/transf.nim
+index 6eed17b..b082d82 100644
+--- a/compiler/transf.nim
++++ b/compiler/transf.nim
+@@ -701,6 +701,38 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
+     else:
+       result = s.PTransNode
+ 
++proc transformExceptBranch(c: PTransf, n: PNode): PTransNode =
++  result = transformSons(c, n)
++  if n[0].kind == nkInfix:
++    let actions = newTransNode(nkStmtList, n[1].info, 2)
++    # Generating `let exc = (excType)(getCurrentException())`
++    let excCall = PTransNode(callCodegenProc("getCurrentException", ast.emptyNode))
++    let convNode = newTransNode(nkHiddenSubConv, n[1].info, 2)
++    convNode[0] = PTransNode(ast.emptyNode)
++    convNode[1] = excCall
++    var excType = n[0][1].typ
++    if excType.kind == tyObject:
++      excType = newType(tyRef, excType.owner)
++      rawAddSon(excType, excType)
++    PNode(convNode).typ = excType
++
++    let identDefs = newTransNode(nkIdentDefs, n[1].info, 3)
++    identDefs[0] = PTransNode(n[0][2])
++    identDefs[1] = PTransNode(ast.emptyNode)
++    identDefs[2] = convNode
++
++    let letSection = newTransNode(nkLetSection, n[1].info, 1)
++    letSection[0] = identDefs
++
++    actions[0] = letSection
++    actions[1] = transformSons(c, n[1])
++    result[1] = actions
++
++    # Replace the `Exception as foobar` with just `Exception`.
++    result[0] = result[0][1]
++  debug(PNode(result))
++  echo(PNode(result))
++
+ proc dontInlineConstant(orig, cnst: PNode): bool {.inline.} =
+   # symbols that expand to a complex constant (array, etc.) should not be
+   # inlined, unless it's the empty array:
+@@ -851,6 +883,8 @@ proc transform(c: PTransf, n: PNode): PTransNode =
+     if a.kind == nkSym:
+       n.sons[1] = transformSymAux(c, a)
+     return PTransNode(n)
++  of nkExceptBranch:
++    result = transformExceptBranch(c, n)
+   else:
+     result = transformSons(c, n)
+   when false:
