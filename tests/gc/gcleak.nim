@@ -13,11 +13,10 @@ proc MakeObj(): TTestObj =
   result.x = "Hello"
 
 for i in 1 .. 1_000_000:
-  when defined(gcMarkAndSweep):
+  when defined(gcMarkAndSweep) or defined(boehmgc):
     GC_fullcollect()
   var obj = MakeObj()
   if getOccupiedMem() > 300_000: quit("still a leak!")
 #  echo GC_getstatistics()
 
 echo "no leak: ", getOccupiedMem()
-

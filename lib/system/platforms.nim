@@ -29,8 +29,9 @@ type
     arm,                       ## ARM based processor
     arm64,                     ## ARM64 based processor
     vm,                        ## Some Virtual machine: Nim's VM or JavaScript
-    avr                        ## AVR based processor
-    msp430                     ## TI MSP430 microcontroller
+    avr,                       ## AVR based processor
+    msp430,                    ## TI MSP430 microcontroller
+    riscv64                    ## RISC-V 64-bit processor
 
   OsPlatform* {.pure.} = enum ## the OS this program will run on.
     none, dos, windows, os2, linux, morphos, skyos, solaris,
@@ -84,5 +85,6 @@ const
                elif defined(vm): CpuPlatform.vm
                elif defined(avr): CpuPlatform.avr
                elif defined(msp430): CpuPlatform.msp430
+               elif defined(riscv64): CpuPlatform.riscv64
                else: CpuPlatform.none
     ## the CPU this program will run on.

@@ -418,14 +418,14 @@ proc setLenSeq(c: PCtx; node: PNode; newLen: int; info: TLineInfo) =
   let typ = node.typ.skipTypes(abstractInst+{tyRange}-{tyTypeDesc})
   let typeEntry = typ.sons[0].skipTypes(abstractInst+{tyRange}-{tyTypeDesc})
   let typeKind = case typeEntry.kind
-  of tyUInt..tyUInt64: nkUIntLit
-  of tyRange, tyEnum, tyBool, tyChar, tyInt..tyInt64: nkIntLit
-  of tyFloat..tyFloat128: nkFloatLit
-  of tyString: nkStrLit
-  of tyObject: nkObjConstr
-  of tySequence: nkNilLit
-  of tyProc, tyTuple: nkPar
-  else: nkEmpty
+                 of tyUInt..tyUInt64: nkUIntLit
+                 of tyRange, tyEnum, tyBool, tyChar, tyInt..tyInt64: nkIntLit
+                 of tyFloat..tyFloat128: nkFloatLit
+                 of tyString: nkStrLit
+                 of tyObject: nkObjConstr
+                 of tySequence: nkNilLit
+                 of tyProc, tyTuple: nkTupleConstr
+                 else: nkEmpty
 
   let oldLen = node.len
   setLen(node.sons, newLen)
@@ -779,9 +779,21 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].intVal = ord(regs[rb].intVal <% regs[rc].intVal)
     of opcEqRef:
       decodeBC(rkInt)
-      regs[ra].intVal = ord((regs[rb].node.kind == nkNilLit and
-                             regs[rc].node.kind == nkNilLit) or
-                             regs[rb].node == regs[rc].node)
+      if regs[rb].kind == rkNodeAddr:
+        if regs[rc].kind == rkNodeAddr:
+          regs[ra].intVal = ord(regs[rb].nodeAddr == regs[rc].nodeAddr)
+        else:
+          assert regs[rc].kind == rkNode
+          # we know these cannot be equal
+          regs[ra].intVal = ord(false)
+      elif regs[rc].kind == rkNodeAddr:
+        assert regs[rb].kind == rkNode
+        # we know these cannot be equal
+        regs[ra].intVal = ord(false)
+      else:
+        regs[ra].intVal = ord((regs[rb].node.kind == nkNilLit and
+                              regs[rc].node.kind == nkNilLit) or
+                              regs[rb].node == regs[rc].node)
     of opcEqNimrodNode:
       decodeBC(rkInt)
       regs[ra].intVal =
@@ -880,7 +892,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node = if a.sym.ast.isNil: newNode(nkNilLit)
                         else: copyTree(a.sym.ast)
       else:
-        stackTrace(c, tos, pc, errFieldXNotFound, "symbol")
+        stackTrace(c, tos, pc, errGenerated, "node is not a symbol")
     of opcEcho:
       let rb = instr.regB
       if rb == 1:
@@ -927,7 +939,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let rb = instr.regB
       let rc = instr.regC
       let bb = regs[rb].node
-      let isClosure = bb.kind == nkPar
+      let isClosure = bb.kind == nkTupleConstr
       let prc = if not isClosure: bb.sym else: bb.sons[0].sym
       if prc.offset < -1:
         # it's a callback:
@@ -1221,6 +1233,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkInt)
       regs[ra].intVal = ord(regs[rb].node.kind)
       c.comesFromHeuristic = regs[rb].node.info
+    of opcNSymKind:
+      decodeB(rkInt)
+      let a = regs[rb].node
+      if a.kind == nkSym:
+        regs[ra].intVal = ord(a.sym.kind)
+      else:
+        stackTrace(c, tos, pc, errGenerated, "node is not a symbol")
+      c.comesFromHeuristic = regs[rb].node.info
     of opcNIntVal:
       decodeB(rkInt)
       let a = regs[rb].node
@@ -1283,9 +1303,17 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkNode)
       createStr regs[ra]
       let a = regs[rb].node
-      if a.kind in {nkStrLit..nkTripleStrLit}: regs[ra].node.strVal = a.strVal
-      elif a.kind == nkCommentStmt: regs[ra].node.strVal = a.comment
-      else: stackTrace(c, tos, pc, errFieldXNotFound, "strVal")
+      case a.kind
+      of {nkStrLit..nkTripleStrLit}:
+        regs[ra].node.strVal = a.strVal
+      of nkCommentStmt:
+        regs[ra].node.strVal = a.comment
+      of nkIdent:
+        regs[ra].node.strVal = a.ident.s
+      of nkSym:
+        regs[ra].node.strVal = a.sym.name.s
+      else:
+        stackTrace(c, tos, pc, errFieldXNotFound, "strVal")
     of opcSlurp:
       decodeB(rkNode)
       createStr regs[ra]
@@ -1353,7 +1381,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNGetLine:
       decodeB(rkNode)
       let n = regs[rb].node
-      regs[ra].node = newIntNode(nkIntLit, n.info.line)
+      regs[ra].node = newIntNode(nkIntLit, n.info.line.int)
       regs[ra].node.info = n.info
       regs[ra].node.typ = n.typ
     of opcNGetColumn:
@@ -1364,10 +1392,44 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].node.typ = n.typ
     of opcEqIdent:
       decodeBC(rkInt)
-      if regs[rb].node.kind == nkIdent and regs[rc].node.kind == nkIdent:
-        regs[ra].intVal = ord(regs[rb].node.ident.id == regs[rc].node.ident.id)
+      # aliases for shorter and easier to understand code below
+      let aNode = regs[rb].node
+      let bNode = regs[rc].node
+      # these are cstring to prevent string copy, and cmpIgnoreStyle from
+      # takes cstring arguments
+      var aStrVal: cstring = nil
+      var bStrVal: cstring = nil
+      # extract strVal from argument ``a``
+      case aNode.kind
+      of {nkStrLit..nkTripleStrLit}:
+        aStrVal = aNode.strVal.cstring
+      of nkIdent:
+        aStrVal = aNode.ident.s.cstring
+      of nkSym:
+        aStrVal = aNode.sym.name.s.cstring
+      of nkOpenSymChoice, nkClosedSymChoice:
+        aStrVal = aNode[0].sym.name.s.cstring
       else:
-        regs[ra].intVal = 0
+        discard
+      # extract strVal from argument ``b``
+      case bNode.kind
+      of {nkStrLit..nkTripleStrLit}:
+        bStrVal = bNode.strVal.cstring
+      of nkIdent:
+        bStrVal = bNode.ident.s.cstring
+      of nkSym:
+        bStrVal = bNode.sym.name.s.cstring
+      of nkOpenSymChoice, nkClosedSymChoice:
+        bStrVal = bNode[0].sym.name.s.cstring
+      else:
+        discard
+      # set result
+      regs[ra].intVal =
+        if aStrVal != nil and bStrVal != nil:
+          ord(idents.cmpIgnoreStyle(aStrVal,bStrVal,high(int)) == 0)
+        else:
+          0
+
     of opcStrToIdent:
       decodeB(rkNode)
       if regs[rb].node.kind notin {nkStrLit..nkTripleStrLit}:
@@ -1375,17 +1437,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       else:
         regs[ra].node = newNodeI(nkIdent, c.debug[pc])
         regs[ra].node.ident = getIdent(regs[rb].node.strVal)
-    of opcIdentToStr:
-      decodeB(rkNode)
-      let a = regs[rb].node
-      createStr regs[ra]
-      regs[ra].node.info = c.debug[pc]
-      if a.kind == nkSym:
-        regs[ra].node.strVal = a.sym.name.s
-      elif a.kind == nkIdent:
-        regs[ra].node.strVal = a.ident.s
-      else:
-        stackTrace(c, tos, pc, errFieldXNotFound, "ident")
     of opcSetType:
       if regs[ra].kind != rkNode:
         internalError(c.debug[pc], "cannot set type")
@@ -1467,16 +1518,19 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           "request to create a NimNode of invalid kind")
       let cc = regs[rc].node
 
-      regs[ra].node = newNodeI(TNodeKind(int(k)),
+      let x = newNodeI(TNodeKind(int(k)),
         if cc.kind != nkNilLit:
           cc.info
-        elif c.comesFromHeuristic.line > -1:
+        elif c.comesFromHeuristic.line != 0'u16:
           c.comesFromHeuristic
         elif c.callsite != nil and c.callsite.safeLen > 1:
           c.callsite[1].info
         else:
           c.debug[pc])
-      regs[ra].node.flags.incl nfIsRef
+      x.flags.incl nfIsRef
+      # prevent crashes in the compiler resulting from wrong macros:
+      if x.kind == nkIdent: x.ident = c.cache.emptyIdent
+      regs[ra].node = x
     of opcNCopyNimNode:
       decodeB(rkNode)
       regs[ra].node = copyNode(regs[rb].node)
@@ -1675,14 +1729,16 @@ iterator genericParamsInMacroCall*(macroSym: PSym, call: PNode): (PSym, PNode) =
     let posInCall = macroSym.typ.len + i
     yield (genericParam, call[posInCall])
 
+# to prevent endless recursion in macro instantiation
+const evalMacroLimit = 1000
 var evalMacroCounter: int
 
 proc evalMacroCall*(module: PSym; cache: IdentCache, n, nOrig: PNode,
                     sym: PSym): PNode =
   # XXX globalError() is ugly here, but I don't know a better solution for now
   inc(evalMacroCounter)
-  if evalMacroCounter > 100:
-    globalError(n.info, errTemplateInstantiationTooNested)
+  if evalMacroCounter > evalMacroLimit:
+    globalError(n.info, errMacroInstantiationTooNested)
 
   # immediate macros can bypass any type and arity checking so we check the
   # arity here too:
@@ -1692,7 +1748,7 @@ proc evalMacroCall*(module: PSym; cache: IdentCache, n, nOrig: PNode,
 
   setupGlobalCtx(module, cache)
   var c = globalCtx
-  c.comesFromHeuristic.line = -1
+  c.comesFromHeuristic.line = 0'u16
 
   c.callsite = nOrig
   let start = genProc(c, sym)

@@ -11,7 +11,7 @@
 
 import
   intsets, strutils, os, ast, astalgo, msgs, options, idents, rodread, lookups,
-  semdata, passes, renderer, modulepaths
+  semdata, passes, renderer, modulepaths, sigmatch
 
 proc evalImport*(c: PContext, n: PNode): PNode
 proc evalFrom*(c: PContext, n: PNode): PNode
@@ -148,8 +148,11 @@ proc myImportModule(c: PContext, n: PNode): PSym =
           result.info.fileIndex == n.info.fileIndex:
         localError(n.info, errGenerated, "A module cannot import itself")
     if sfDeprecated in result.flags:
-      message(n.info, warnDeprecated, result.name.s)
-    #suggestSym(n.info, result, false)
+      if result.constraint != nil:
+        message(n.info, warnDeprecated, result.constraint.strVal & "; " & result.name.s)
+      else:
+        message(n.info, warnDeprecated, result.name.s)
+    suggestSym(n.info, result, c.graph.usageSym, false)
 
 proc impMod(c: PContext; it: PNode) =
   let m = myImportModule(c, it)

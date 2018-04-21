@@ -105,11 +105,13 @@ type
     ## type class matching all ordinal types; however this includes enums with
     ## holes.
 
-  SomeReal* = float|float32|float64
+  SomeFloat* = float|float32|float64
     ## type class matching all floating point number types
 
-  SomeNumber* = SomeInteger|SomeReal
+  SomeNumber* = SomeInteger|SomeFloat
     ## type class matching all number types
+
+{.deprecated: [SomeReal: SomeFloat].}
 
 proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## Special compile-time procedure that checks whether `x` is
@@ -128,7 +130,7 @@ when defined(nimalias):
     TSignedInt: SomeSignedInt,
     TUnsignedInt: SomeUnsignedInt,
     TInteger: SomeInteger,
-    TReal: SomeReal,
+    TReal: SomeFloat,
     TNumber: SomeNumber,
     TOrdinal: SomeOrdinal].}
 
@@ -318,7 +320,7 @@ type
   Slice*[T] = HSlice[T, T] ## an alias for ``HSlice[T, T]``
 
 proc `..`*[T, U](a: T, b: U): HSlice[T, U] {.noSideEffect, inline, magic: "DotDot".} =
-  ## `slice`:idx: operator that constructs an interval ``[a, b]``, both `a`
+  ## binary `slice`:idx: operator that constructs an interval ``[a, b]``, both `a`
   ## and `b` are inclusive. Slices can also be used in the set constructor
   ## and in ordinal case statements, but then they are special-cased by the
   ## compiler.
@@ -326,7 +328,7 @@ proc `..`*[T, U](a: T, b: U): HSlice[T, U] {.noSideEffect, inline, magic: "DotDo
   result.b = b
 
 proc `..`*[T](b: T): HSlice[int, T] {.noSideEffect, inline, magic: "DotDot".} =
-  ## `slice`:idx: operator that constructs an interval ``[default(int), b]``
+  ## unary `slice`:idx: operator that constructs an interval ``[default(int), b]``
   result.b = b
 
 when not defined(niminheritable):
@@ -483,6 +485,7 @@ type
       trace: string
     else:
       trace: seq[StackTraceEntry]
+    raise_id: uint # set when exception is raised
     up: ref Exception # used for stacking exceptions. Not exported!
 
   SystemError* = object of Exception ## \
@@ -617,6 +620,11 @@ type
     ##
     ## This is only raised if the ``segfaults.nim`` module was imported!
 
+when defined(nimNewRuntime):
+  type
+    MoveError* = object of SystemError ## \
+      ## Raised on attempts to re-sink an already consumed ``sink`` parameter.
+
 {.deprecated: [TObject: RootObj, PObject: RootRef, TEffect: RootEffect,
   FTime: TimeEffect, FIO: IOEffect, FReadIO: ReadIOEffect,
   FWriteIO: WriteIOEffect, FExecIO: ExecIOEffect,
@@ -642,6 +650,11 @@ type
   EFloatOverflow: FloatOverflowError,
   ESynch: Exception
 ].}
+
+when defined(js) or defined(nimdoc):
+  type
+    JsRoot* = ref object of RootObj
+      ## Root type of the JavaScript object hierarchy
 
 proc unsafeNew*[T](a: var ref T, size: Natural) {.magic: "New", noSideEffect.}
   ## creates a new object of type ``T`` and returns a safe (traced)
@@ -677,12 +690,12 @@ proc `<`*[T](x: Ordinal[T]): T {.magic: "UnaryLt", noSideEffect, deprecated.}
   ## write ``0 ..< 10`` instead of ``0 .. < 10`` (look at the spacing).
   ## For ``<x`` write ``pred(x)``.
 
-proc succ*[T](x: Ordinal[T], y = 1): T {.magic: "Succ", noSideEffect.}
+proc succ*[T: Ordinal](x: T, y = 1): T {.magic: "Succ", noSideEffect.}
   ## returns the ``y``-th successor of the value ``x``. ``T`` has to be
   ## an ordinal type. If such a value does not exist, ``EOutOfRange`` is raised
   ## or a compile time error occurs.
 
-proc pred*[T](x: Ordinal[T], y = 1): T {.magic: "Pred", noSideEffect.}
+proc pred*[T: Ordinal](x: T, y = 1): T {.magic: "Pred", noSideEffect.}
   ## returns the ``y``-th predecessor of the value ``x``. ``T`` has to be
   ## an ordinal type. If such a value does not exist, ``EOutOfRange`` is raised
   ## or a compile time error occurs.
@@ -1372,7 +1385,8 @@ const
   hostCPU* {.magic: "HostCPU".}: string = ""
     ## a string that describes the host CPU. Possible values:
     ## "i386", "alpha", "powerpc", "powerpc64", "powerpc64el", "sparc",
-    ## "amd64", "mips", "mipsel", "arm", "arm64", "mips64", "mips64el".
+    ## "amd64", "mips", "mipsel", "arm", "arm64", "mips64", "mips64el",
+    ## "riscv64".
 
   seqShallowFlag = low(int)
   strlitFlag = 1 shl (sizeof(int)*8 - 2) # later versions of the codegen \
@@ -1461,9 +1475,9 @@ when defined(nodejs):
   programResult = 0
 else:
   var programResult* {.exportc: "nim_program_result".}: int
-  ## modify this variable to specify the exit code of the program
-  ## under normal circumstances. When the program is terminated
-  ## prematurely using ``quit``, this value is ignored.
+    ## modify this variable to specify the exit code of the program
+    ## under normal circumstances. When the program is terminated
+    ## prematurely using ``quit``, this value is ignored.
 
 when defined(nimdoc):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
@@ -1774,7 +1788,7 @@ when not defined(nimscript):
     proc createU*(T: typedesc, size = 1.Positive): ptr T {.inline, benign.} =
       ## allocates a new memory block with at least ``T.sizeof * size``
       ## bytes. The block has to be freed with ``resize(block, 0)`` or
-      ## ``free(block)``. The block is not initialized, so reading
+      ## ``dealloc(block)``. The block is not initialized, so reading
       ## from it before writing to it is undefined behaviour!
       ## The allocated memory belongs to its allocating thread!
       ## Use `createSharedU` to allocate from a shared heap.
@@ -1789,7 +1803,7 @@ when not defined(nimscript):
     proc create*(T: typedesc, size = 1.Positive): ptr T {.inline, benign.} =
       ## allocates a new memory block with at least ``T.sizeof * size``
       ## bytes. The block has to be freed with ``resize(block, 0)`` or
-      ## ``free(block)``. The block is initialized with all bytes
+      ## ``dealloc(block)``. The block is initialized with all bytes
       ## containing zero, so it is somewhat safer than ``createU``.
       ## The allocated memory belongs to its allocating thread!
       ## Use `createShared` to allocate from a shared heap.
@@ -1807,7 +1821,7 @@ when not defined(nimscript):
       ## grows or shrinks a given memory block. If p is **nil** then a new
       ## memory block is returned. In either way the block has at least
       ## ``T.sizeof * newSize`` bytes. If ``newSize == 0`` and p is not
-      ## **nil** ``resize`` calls ``free(p)``. In other cases the block
+      ## **nil** ``resize`` calls ``dealloc(p)``. In other cases the block
       ## has to be freed with ``free``. The allocated memory belongs to
       ## its allocating thread!
       ## Use `resizeShared` to reallocate from a shared heap.
@@ -1917,7 +1931,7 @@ proc `$` *(x: float): string {.magic: "FloatToStr", noSideEffect.}
 proc `$` *(x: bool): string {.magic: "BoolToStr", noSideEffect.}
   ## The stringify operator for a boolean argument. Returns `x`
   ## converted to the string "false" or "true".
-#
+
 proc `$` *(x: char): string {.magic: "CharToStr", noSideEffect.}
   ## The stringify operator for a character argument. Returns `x`
   ## converted to a string.
@@ -1955,13 +1969,13 @@ const
     ## that you cannot compare a floating point value to this value
     ## and expect a reasonable result - use the `classify` procedure
     ## in the module ``math`` for checking for NaN.
-  NimMajor*: int = 0
+  NimMajor* {.intdefine.}: int = 0
     ## is the major number of Nim's version.
 
-  NimMinor*: int = 17
+  NimMinor* {.intdefine.}: int = 18
     ## is the minor number of Nim's version.
 
-  NimPatch*: int = 3
+  NimPatch* {.intdefine.}: int = 1
     ## is the patch number of Nim's version.
 
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
@@ -2005,7 +2019,13 @@ iterator countdown*[T](a, b: T, step: T = 1): T {.inline.} =
   ## step count. `T` may be any ordinal type, `step` may only
   ## be positive. **Note**: This fails to count to ``low(int)`` if T = int for
   ## efficiency reasons.
-  when T is IntLikeForCount:
+  when T is (uint|uint64):
+    var res = a
+    while res >= b:
+      yield res
+      if res == b: break
+      dec(res, step)
+  elif T is IntLikeForCount:
     var res = int(a)
     while res >= int(b):
       yield T(res)
@@ -2154,8 +2174,8 @@ proc max*[T](x, y: T): T =
   if y <= x: x else: y
 {.pop.}
 
-proc high*(T: typedesc[SomeReal]): T = Inf
-proc low*(T: typedesc[SomeReal]): T = NegInf
+proc high*(T: typedesc[SomeFloat]): T = Inf
+proc low*(T: typedesc[SomeFloat]): T = NegInf
 
 proc clamp*[T](x, a, b: T): T =
   ## limits the value ``x`` within the interval [a, b]
@@ -2385,7 +2405,7 @@ proc `==` *[T](x, y: seq[T]): bool {.noSideEffect.} =
     if x.isNil and y.isNil:
       return true
   else:
-    when not defined(JS) or defined(nimphp):
+    when not defined(JS):
       proc seqToPtr[T](x: seq[T]): pointer {.inline, nosideeffect.} =
         result = cast[pointer](x)
     else:
@@ -2747,17 +2767,14 @@ type
 
 when defined(JS):
   proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
-    when defined(nimphp):
-      asm """`x` .= `y`;"""
-    else:
-      asm """
-        var len = `x`[0].length-1;
-        for (var i = 0; i < `y`.length; ++i) {
-          `x`[0][len] = `y`.charCodeAt(i);
-          ++len;
-        }
-        `x`[0][len] = 0
-      """
+    asm """
+      var len = `x`[0].length-1;
+      for (var i = 0; i < `y`.length; ++i) {
+        `x`[0][len] = `y`.charCodeAt(i);
+        ++len;
+      }
+      `x`[0][len] = 0
+    """
   proc add*(x: var cstring, y: cstring) {.magic: "AppendStrStr".}
 
 elif hasAlloc:
@@ -3026,9 +3043,9 @@ when not defined(JS): #and not defined(nimscript):
     proc endOfFile*(f: File): bool {.tags: [], benign.}
       ## Returns true iff `f` is at the end.
 
-    proc readChar*(f: File): char {.tags: [ReadIOEffect], deprecated.}
-      ## Reads a single character from the stream `f`. **Deprecated** since
-      ## version 0.16.2. Use some variant of ``readBuffer`` instead.
+    proc readChar*(f: File): char {.tags: [ReadIOEffect].}
+      ## Reads a single character from the stream `f`. Should not be used in
+      ## performance sensitive code.
 
     proc flushFile*(f: File) {.tags: [WriteIOEffect].}
       ## Flushes `f`'s buffer.
@@ -3212,9 +3229,10 @@ when not defined(JS): #and not defined(nimscript):
       ## allows you to override the behaviour of your application when CTRL+C
       ## is pressed. Only one such hook is supported.
 
-    proc writeStackTrace*() {.tags: [WriteIOEffect], gcsafe.}
+    proc writeStackTrace*() {.tags: [], gcsafe.}
       ## writes the current stack trace to ``stderr``. This is only works
-      ## for debug builds.
+      ## for debug builds. Since it's usually used for debugging, this
+      ## is proclaimed to have no IO effect!
     when hostOS != "standalone":
       proc getStackTrace*(): string {.gcsafe.}
         ## gets the current stack trace. This only works for debug builds.
@@ -3422,10 +3440,10 @@ elif defined(JS):
   when defined(nimffi):
     include "system/sysio"
 
-
-proc `$`*[T, IDX](x: array[IDX, T]): string =
-  ## generic ``$`` operator for arrays that is lifted from the components
-  collectionToString(x, "[", ", ", "]")
+when not defined(nimNoArrayToString):
+  proc `$`*[T, IDX](x: array[IDX, T]): string =
+    ## generic ``$`` operator for arrays that is lifted from the components
+    collectionToString(x, "[", ", ", "]")
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noReturn.} =
   ## a shorthand for ``echo(errormsg); quit(errorcode)``.
@@ -3505,8 +3523,8 @@ template `..^`*(a, b: untyped): untyped =
   a .. ^b
 
 template `..<`*(a, b: untyped): untyped =
-  ## a shortcut for 'a..pred(b)'.
-  a .. pred(b)
+  ## a shortcut for 'a .. (when b is BackwardsIndex: succ(b) else: pred(b))'.
+  a .. (when b is BackwardsIndex: succ(b) else: pred(b))
 
 when defined(nimNewRoof):
   iterator `..<`*[T](a, b: T): T =
@@ -3724,7 +3742,7 @@ proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
   ## for debugging.
 
 proc instantiationInfo*(index = -1, fullPaths = false): tuple[
-  filename: string, line: int] {. magic: "InstantiationInfo", noSideEffect.}
+  filename: string, line: int, column: int] {. magic: "InstantiationInfo", noSideEffect.}
   ## provides access to the compiler's instantiation stack line information
   ## of a template.
   ##
@@ -3769,7 +3787,6 @@ proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
   # by ``assert``.
   type Hide = proc (msg: string) {.noinline, raises: [], noSideEffect,
                                     tags: [].}
-  {.deprecated: [THide: Hide].}
   Hide(raiseAssert)(msg)
 
 template assert*(cond: bool, msg = "") =
@@ -4068,6 +4085,25 @@ template closureScope*(body: untyped): untyped =
   ##   myClosure() # outputs 3
   (proc() = body)()
 
+template once*(body: untyped): untyped =
+  ## Executes a block of code only once (the first time the block is reached).
+  ## When hot code reloading is enabled, protects top-level code from being
+  ## re-executed on each module reload.
+  ##
+  ## .. code-block:: nim
+  ## proc draw(t: Triangle) =
+  ##   once:
+  ##     graphicsInit()
+  ##
+  ##   line(t.p1, t.p2)
+  ##   line(t.p2, t.p3)
+  ##   line(t.p3, t.p1)
+  ##
+  var alreadyExecuted {.global.} = false
+  if not alreadyExecuted:
+    alreadyExecuted = true
+    body
+
 {.pop.} #{.push warning[GcMem]: off, warning[Uninit]: off.}
 
 when defined(nimconfig):
@@ -4101,14 +4137,44 @@ template doAssertRaises*(exception, code: untyped): typed =
   runnableExamples:
     doAssertRaises(ValueError):
       raise newException(ValueError, "Hello World")
-
+  var wrong = false
   try:
-    block:
-      code
-    raiseAssert(astToStr(exception) & " wasn't raised by:\n" & astToStr(code))
+    code
+    wrong = true
   except exception:
     discard
   except Exception as exc:
     raiseAssert(astToStr(exception) &
                 " wasn't raised, another error was raised instead by:\n"&
                 astToStr(code))
+  if wrong:
+    raiseAssert(astToStr(exception) & " wasn't raised by:\n" & astToStr(code))
+
+when defined(cpp) and appType != "lib" and not defined(js) and
+    not defined(nimscript) and hostOS != "standalone":
+  proc setTerminate(handler: proc() {.noconv.})
+    {.importc: "std::set_terminate", header: "<exception>".}
+  setTerminate proc() {.noconv.} =
+    # Remove ourself as a handler, reinstalling the default handler.
+    setTerminate(nil)
+
+    let ex = getCurrentException()
+    let trace = ex.getStackTrace()
+    stderr.write trace & "Error: unhandled exception: " & ex.msg &
+                 " [" & $ex.name & "]\n"
+    quit 1
+
+when not defined(js):
+  proc toOpenArray*[T](x: seq[T]; first, last: int): openarray[T] {.
+    magic: "Slice".}
+  proc toOpenArray*[T](x: openarray[T]; first, last: int): openarray[T] {.
+    magic: "Slice".}
+  proc toOpenArray*[I, T](x: array[I, T]; first, last: I): openarray[T] {.
+    magic: "Slice".}
+  proc toOpenArray*(x: string; first, last: int): openarray[char] {.
+    magic: "Slice".}
+
+
+type
+  ForLoopStmt* {.compilerProc.} = object ## special type that marks a macro
+                                         ## as a `for-loop macro`:idx:

@@ -50,7 +50,7 @@ proc annotateType*(n: PNode, t: PType) =
       else:
         internalAssert(n.sons[i].kind == nkExprColonExpr)
         annotateType(n.sons[i].sons[1], field.typ)
-  of nkPar:
+  of nkPar, nkTupleConstr:
     if x.kind == tyTuple:
       n.typ = t
       for i in 0 ..< n.len:

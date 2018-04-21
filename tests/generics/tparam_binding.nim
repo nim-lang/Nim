@@ -1,5 +1,5 @@
 discard """
-  errormsg: "got (ref Matrix[2, 2, system.float], ref Matrix[2, 1, system.float])"
+  errormsg: "got <ref Matrix[2, 2, system.float], ref Matrix[2, 1, system.float]>"
   line: 27
 """
 

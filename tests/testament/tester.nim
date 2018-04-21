@@ -294,7 +294,6 @@ proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
 proc testSpec(r: var TResults, test: TTest, target = targetC) =
   let tname = test.name.addFileExt(".nim")
   #echo "TESTING ", tname
-  inc(r.total)
   var expected: TSpec
   if test.action != actionRunNoSpec:
     expected = parseSpec(tname)
@@ -305,12 +304,14 @@ proc testSpec(r: var TResults, test: TTest, target = targetC) =
   if expected.err == reIgnored:
     r.addResult(test, target, "", "", reIgnored)
     inc(r.skipped)
+    inc(r.total)
     return
 
   if expected.targets == {}:
     expected.targets.incl(target)
 
   for target in expected.targets:
+    inc(r.total)
     if target notin targets:
       r.addResult(test, target, "", "", reIgnored)
       inc(r.skipped)
@@ -426,7 +427,7 @@ include categories
 #                 if status: reSuccess else: reOutputsDiffer)
 
 proc main() =
-  os.putenv "NIMTEST_NO_COLOR", "1"
+  os.putenv "NIMTEST_COLOR", "never"
   os.putenv "NIMTEST_OUTPUT_LVL", "PRINT_FAILURES"
 
   backend.open()
@@ -490,7 +491,7 @@ proc main() =
     else: echo r, r.data
   backend.close()
   var failed = r.total - r.passed - r.skipped
-  if failed > 0:
+  if failed != 0:
     echo "FAILURE! total: ", r.total, " passed: ", r.passed, " skipped: ", r.skipped
     quit(QuitFailure)
 

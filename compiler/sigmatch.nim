@@ -24,7 +24,7 @@ type
 
   CandidateError* = object
     sym*: PSym
-    unmatchedVarParam*: int
+    unmatchedVarParam*, firstMismatch*: int
     diagnostics*: seq[string]
 
   CandidateErrors* = seq[CandidateError]
@@ -67,7 +67,9 @@ type
                               # or when the explain pragma is used. may be
                               # triggered with an idetools command in the
                               # future.
-    inheritancePenalty: int  # to prefer closest father object type
+    inheritancePenalty: int   # to prefer closest father object type
+    firstMismatch*: int       # position of the first type mismatch for
+                              # better error messages
 
   TTypeRelFlag* = enum
     trDontBind
@@ -913,6 +915,26 @@ proc isCovariantPtr(c: var TCandidate, f, a: PType): bool =
   else:
     return false
 
+when false:
+  proc maxNumericType(prev, candidate: PType): PType =
+    let c = candidate.skipTypes({tyRange})
+    template greater(s) =
+      if c.kind in s: result = c
+    case prev.kind
+    of tyInt: greater({tyInt64})
+    of tyInt8: greater({tyInt, tyInt16, tyInt32, tyInt64})
+    of tyInt16: greater({tyInt, tyInt32, tyInt64})
+    of tyInt32: greater({tyInt64})
+
+    of tyUInt: greater({tyUInt64})
+    of tyUInt8: greater({tyUInt, tyUInt16, tyUInt32, tyUInt64})
+    of tyUInt16: greater({tyUInt, tyUInt32, tyUInt64})
+    of tyUInt32: greater({tyUInt64})
+
+    of tyFloat32: greater({tyFloat64, tyFloat128})
+    of tyFloat64: greater({tyFloat128})
+    else: discard
+
 proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
                  flags: TTypeRelFlags = {}): TTypeRelation =
   # typeRel can be used to establish various relationships between types:
@@ -1123,8 +1145,14 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
         else:
           fRange = prev
       let ff = f.sons[1].skipTypes({tyTypeDesc})
-      let aa = a.sons[1].skipTypes({tyTypeDesc})
-      result = typeRel(c, ff, aa)
+      # This typeDesc rule is wrong, see bug #7331
+      let aa = a.sons[1] #.skipTypes({tyTypeDesc})
+
+      if f.sons[0].kind != tyGenericParam and aa.kind == tyEmpty:
+        result = isGeneric
+      else:
+        result = typeRel(c, ff, aa)
+
       if result < isGeneric:
         if nimEnableCovariance and
            trNoCovariance notin flags and
@@ -1215,7 +1243,9 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
         if result < isGeneric: result = isNone
     elif a.kind == tyGenericParam:
       result = isGeneric
-  of tyForward: internalError("forward type in typeRel()")
+  of tyForward:
+    #internalError("forward type in typeRel()")
+    result = isNone
   of tyNil:
     if a.kind == f.kind: result = isEqual
   of tyTuple:
@@ -1602,9 +1632,18 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
     elif x.kind == tyGenericParam:
       result = isGeneric
     else:
+      # Special type binding rule for numeric types.
+      # See section "Generic type inference for numeric types" of the
+      # manual for further details:
+      when false:
+        let rebinding = maxNumericType(x.skipTypes({tyRange}), a)
+        if rebinding != nil:
+          put(c, f, rebinding)
+          result = isGeneric
+        else:
+          discard
       result = typeRel(c, x, a) # check if it fits
       if result > isGeneric: result = isGeneric
-
   of tyStatic:
     let prev = PType(idTableGet(c.bindings, f))
     if prev == nil:
@@ -1833,8 +1872,11 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
 
   var r = typeRel(m, f, a)
 
+  # This special typing rule for macros and templates is not documented
+  # anywhere and breaks symmetry. It's hard to get rid of though, my
+  # custom seqs example fails to compile without this:
   if r != isNone and m.calleeSym != nil and
-     m.calleeSym.kind in {skMacro, skTemplate}:
+    m.calleeSym.kind in {skMacro, skTemplate}:
     # XXX: duplicating this is ugly, but we cannot (!) move this
     # directly into typeRel using return-like templates
     incMatches(m, r)
@@ -1842,7 +1884,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       return arg
     elif f.kind == tyTypeDesc:
       return arg
-    elif f.kind == tyStatic:
+    elif f.kind == tyStatic and arg.typ.n != nil:
       return arg.typ.n
     else:
       return argSemantized # argOrig
@@ -2220,6 +2262,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
                                     n.sons[a], nOrig.sons[a])
           if arg == nil:
             m.state = csNoMatch
+            m.firstMismatch = f
             return
           if m.baseTypeMatch:
             #assert(container == nil)
@@ -2274,6 +2317,7 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
         else:
           # no default value
           m.state = csNoMatch
+          m.firstMismatch = f
           break
       else:
         # use default value:

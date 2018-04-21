@@ -54,7 +54,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
 
 const
   HelpMessage = "Nim Compiler Version $1 [$2: $3]\n" &
-      "Copyright (c) 2006-2017 by Andreas Rumpf\n"
+      "Copyright (c) 2006-" & copyrightYear & " by Andreas Rumpf\n"
 
 const
   Usage = slurp"../doc/basicopt.txt".replace("//", "")
@@ -74,6 +74,14 @@ proc writeAdvancedUsage(pass: TCmdLinePass) =
     msgWriteln(`%`(HelpMessage, [VersionAsString,
                                  platform.OS[platform.hostOS].name,
                                  CPU[platform.hostCPU].name]) & AdvancedUsage,
+               {msgStdout})
+    msgQuit(0)
+
+proc writeFullhelp(pass: TCmdLinePass) =
+  if pass == passCmd1:
+    msgWriteln(`%`(HelpMessage, [VersionAsString,
+                                 platform.OS[platform.hostOS].name,
+                                 CPU[platform.hostCPU].name]) & Usage & AdvancedUsage,
                {msgStdout})
     msgQuit(0)
 
@@ -257,6 +265,7 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
   of "rangechecks": result = contains(gOptions, optRangeCheck)
   of "boundchecks": result = contains(gOptions, optBoundsCheck)
   of "overflowchecks": result = contains(gOptions, optOverflowCheck)
+  of "movechecks": result = contains(gOptions, optMoveCheck)
   of "linedir": result = contains(gOptions, optLineDir)
   of "assertions", "a": result = contains(gOptions, optAssert)
   of "deadcodeelim": result = contains(gGlobalOptions, optDeadCodeElim)
@@ -274,9 +283,10 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
 
 proc processPath(path: string, info: TLineInfo,
                  notRelativeToProj = false): string =
-  let p = if notRelativeToProj or os.isAbsolute(path) or
-              '$' in path:
+  let p = if os.isAbsolute(path) or '$' in path:
             path
+          elif notRelativeToProj:
+            getCurrentDir() / path
           else:
             options.gProjectPath / path
   try:
@@ -309,7 +319,7 @@ proc trackDirty(arg: string, info: TLineInfo) =
     localError(info, errInvalidNumber, a[2])
 
   let dirtyOriginalIdx = a[1].fileInfoIdx
-  if dirtyOriginalIdx >= 0:
+  if dirtyOriginalIdx.int32 >= 0:
     msgs.setDirtyFile(dirtyOriginalIdx, a[0])
 
   gTrackPos = newLineInfo(dirtyOriginalIdx, line, column)
@@ -471,6 +481,20 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitch({optMemTracker}, arg, pass, info)
     if optMemTracker in gOptions: defineSymbol("memtracker")
     else: undefSymbol("memtracker")
+  of "hotcodereloading":
+    processOnOffSwitch({optHotCodeReloading}, arg, pass, info)
+    if optHotCodeReloading in gOptions: defineSymbol("hotcodereloading")
+    else: undefSymbol("hotcodereloading")
+  of "oldnewlines":
+    case arg.normalize
+    of "on":
+      options.gOldNewlines = true
+      defineSymbol("nimOldNewlines")
+    of "off":
+      options.gOldNewlines = false
+      undefSymbol("nimOldNewlines")
+    else:
+      localError(info, errOnOrOffExpectedButXFound, arg)
   of "checks", "x": processOnOffSwitch(ChecksOptions, arg, pass, info)
   of "floatchecks":
     processOnOffSwitch({optNaNCheck, optInfCheck}, arg, pass, info)
@@ -482,6 +506,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "rangechecks": processOnOffSwitch({optRangeCheck}, arg, pass, info)
   of "boundchecks": processOnOffSwitch({optBoundsCheck}, arg, pass, info)
   of "overflowchecks": processOnOffSwitch({optOverflowCheck}, arg, pass, info)
+  of "movechecks": processOnOffSwitch({optMoveCheck}, arg, pass, info)
   of "linedir": processOnOffSwitch({optLineDir}, arg, pass, info)
   of "assertions", "a": processOnOffSwitch({optAssert}, arg, pass, info)
   of "deadcodeelim": processOnOffSwitchG({optDeadCodeElim}, arg, pass, info)
@@ -594,6 +619,9 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "advanced":
     expectNoArg(switch, arg, pass, info)
     writeAdvancedUsage(pass)
+  of "fullhelp":
+    expectNoArg(switch, arg, pass, info)
+    writeFullhelp(pass)
   of "help", "h":
     expectNoArg(switch, arg, pass, info)
     helpOnError(pass)
@@ -681,6 +709,10 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectNoArg(switch, arg, pass, info)
     newDestructors = true
     defineSymbol("nimNewRuntime")
+  of "cppcompiletonamespace":
+    expectNoArg(switch, arg, pass, info)
+    useNimNamespace = true
+    defineSymbol("cppCompileToNamespace")
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(switch, arg)
     else: invalidCmdLineOption(pass, switch, info)

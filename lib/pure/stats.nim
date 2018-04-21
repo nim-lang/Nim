@@ -1,11 +1,12 @@
 #
 #
 #            Nim's Runtime Library
-#        (c) Copyright 2015 Andreas Rumpf
+#        (c) Copyright 2015 Nim contributors
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
+
 ## Statistical analysis framework for performing
 ## basic statistical analysis of data.
 ## The data is analysed in a single pass, when a data value
@@ -181,6 +182,24 @@ proc `+`*(a, b: RunningStat): RunningStat =
 proc `+=`*(a: var RunningStat, b: RunningStat) {.inline.} =
   ## add a second RunningStats `b` to `a`
   a = a + b
+
+proc `$`*(a: RunningStat): string =
+  ## produces a string representation of the ``RunningStat``. The exact
+  ## format is currently unspecified and subject to change. Currently
+  ## it contains:
+  ##
+  ## - the number of probes
+  ## - min, max values
+  ## - sum, mean and standard deviation.
+  result = "RunningStat(\n"
+  result.add "  number of probes: " & $a.n & "\n"
+  result.add "  max: " & $a.max & "\n"
+  result.add "  min: " & $a.min & "\n"
+  result.add "  sum: " & $a.sum & "\n"
+  result.add "  mean: " & $a.mean & "\n"
+  result.add "  std deviation: " & $a.standardDeviation & "\n"
+  result.add ")"
+
 # ---------------------- standalone array/seq stats ---------------------
 proc mean*[T](x: openArray[T]): float =
   ## computes the mean of `x`
@@ -281,7 +300,7 @@ proc correlation*(r: RunningRegress): float =
   let t = r.x_stats.standardDeviation() * r.y_stats.standardDeviation()
   result = r.s_xy / ( toFloat(r.n) * t )
 
-proc `+`*(a, b: RunningRegress):  RunningRegress =
+proc `+`*(a, b: RunningRegress): RunningRegress =
   ## combine two `RunningRegress` objects.
   ##
   ## Useful if performing parallel analysis of data series

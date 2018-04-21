@@ -174,7 +174,7 @@ template new_parsed_parameter*(tkind: Tparam_kind, expr): Tparsed_parameter =
   ##     parsed_param1 = new_parsed_parameter(PK_FLOAT, 3.41)
   ##     parsed_param2 = new_parsed_parameter(PK_BIGGEST_INT, 2358123 * 23123)
   ##     # The following line doesn't compile due to
-  ##     # type mismatch: got (string) but expected 'int'
+  ##     # type mismatch: got <string> but expected 'int'
   ##     #parsed_param3 = new_parsed_parameter(PK_INT, "231")
   var result {.gensym.}: Tparsed_parameter
   result.kind = tkind

@@ -216,12 +216,6 @@ Math libraries
   Floating-point environment. Handling of floating-point rounding and
   exceptions (overflow, zero-devide, etc.).
 
-* `basic2d <basic2d.html>`_
-  Basic 2d support with vectors, points, matrices and some basic utilities.
-
-* `basic3d <basic3d.html>`_
-  Basic 3d support with vectors, points, matrices and some basic utilities.
-
 * `mersenne <mersenne.html>`_
   Mersenne twister random number generator.
 
@@ -384,7 +378,7 @@ Cryptography and Hashing
 * `base64 <base64.html>`_
   This module implements a base64 encoder and decoder.
 
-* `securehash <securehash.html>`_
+* `sha1 <sha1.html>`_
   This module implements a sha1 encoder and decoder.
 
 
@@ -418,9 +412,8 @@ Miscellaneous
 * `options <options.html>`_
   Types which encapsulate an optional value.
 
-* `future <future.html>`_
-  This module implements new experimental features. Currently the syntax
-  sugar for anonymous procedures.
+* `sugar <sugar.html>`_
+  This module implements nice syntactic sugar based on Nim's macro system.
 
 * `coro <coro.html>`_
   This module implements experimental coroutines in Nim.
@@ -442,6 +435,10 @@ Modules for JS backend
 
 * `asyncjs <asyncjs.html>`_
   Types and macros for writing asynchronous procedures in JavaScript.
+
+* `jscore <jscore.html>`_
+  Wrapper of core JavaScript functions. For most purposes you should be using
+  the ``math``, ``json``, and ``times`` stdlib modules instead of this module.
 
 Deprecated modules
 ------------------
@@ -557,19 +554,8 @@ Database support
 Network Programming and Internet Protocols
 ------------------------------------------
 
-* `joyent_http_parser <joyent_http_parser.html>`_
-  Wrapper for the joyent's high-performance HTTP parser.
-
 * `openssl <openssl.html>`_
   Wrapper for OpenSSL.
-
-
-
-Scientific computing
---------------------
-
-* `libsvm <libsvm.html>`_
-  Low level wrapper for `lib svm <http://www.csie.ntu.edu.tw/~cjlin/libsvm/>`_.
 
 
 Nimble
@@ -579,29 +565,4 @@ Nimble is a package manager for the Nim programming language.
 For instructions on how to install Nimble packages see
 `its README <https://github.com/nim-lang/nimble#readme>`_.
 
-Official packages
------------------
-
-These packages are officially supported and will therefore be continually
-maintained to ensure that they work with the latest versions of the Nim
-compiler.
-
-.. raw:: html
-
-  <div id="officialPkgList"><b>If you are reading this you are missing
-  nimblepkglist.js or have javascript disabled in your browser.</b></div>
-
-Unofficial packages
--------------------
-
-These packages have been developed by independent Nim developers and as
-such may not always be up to date with the latest developments in the
-Nim programming language.
-
-.. raw:: html
-
-  <div id="unofficialPkgList"><b>If you are reading this you are missing
-  nimblepkglist.js or have javascript disabled in your browser.</b></div>
-
-  <script type="text/javascript" src="nimblepkglist.js"></script>
-  <script type="text/javascript" src="https://irclogs.nim-lang.org/packages?callback=gotPackageList" async></script>
+To see a list of Nimble's packages, check out `https://nimble.directory/ <https://nimble.directory/>`_ or the `packages repos <https://github.com/nim-lang/packages>`_ on GitHub.

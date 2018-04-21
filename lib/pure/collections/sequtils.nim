@@ -657,7 +657,7 @@ template mapIt*(s, op: untyped): untyped =
   when compiles(s.len):
     let t = s
     var i = 0
-    result = newSeq[outType](s.len)
+    result = newSeq[outType](t.len)
     for it {.inject.} in t:
       result[i] = op
       i += 1
@@ -711,7 +711,7 @@ proc mapLitsImpl(constructor: NimNode; op: NimNode; nested: bool;
     result.add op
     result.add constructor
   else:
-    result = newNimNode(constructor.kind, lineInfoFrom=constructor)
+    result = copyNimNode(constructor)
     for v in constructor:
       if nested or v.kind in filter:
         result.add mapLitsImpl(v, op, nested, filter)

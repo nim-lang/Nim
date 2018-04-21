@@ -385,8 +385,8 @@ proc normalize*(s: string): string {.noSideEffect, procvar,
   rtl, extern: "nsuNormalize".} =
   ## Normalizes the string `s`.
   ##
-  ## That means to convert it to lower case and remove any '_'. This is needed
-  ## for Nim identifiers for example.
+  ## That means to convert it to lower case and remove any '_'. This
+  ## should NOT be used to normalize Nim identifier names.
   result = newString(s.len)
   var j = 0
   for i in 0..len(s) - 1:
@@ -418,8 +418,10 @@ proc cmpIgnoreCase*(a, b: string): int {.noSideEffect,
 
 proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
   rtl, extern: "nsuCmpIgnoreStyle", procvar.} =
-  ## Compares two strings normalized (i.e. case and
-  ## underscores do not matter). Returns:
+  ## Semantically the same as ``cmp(normalize(a), normalize(b))``. It
+  ## is just optimized to not allocate temporary strings.  This should
+  ## NOT be used to compare Nim identifier names. use `macros.eqIdent`
+  ## for that.  Returns:
   ##
   ## | 0 iff a == b
   ## | < 0 iff a < b
@@ -436,14 +438,15 @@ proc cmpIgnoreStyle*(a, b: string): int {.noSideEffect,
     inc(i)
     inc(j)
 
-
 proc strip*(s: string, leading = true, trailing = true,
             chars: set[char] = Whitespace): string
   {.noSideEffect, rtl, extern: "nsuStrip".} =
-  ## Strips `chars` from `s` and returns the resulting string.
+  ## Strips leading or trailing `chars` from `s` and returns
+  ## the resulting string.
   ##
   ## If `leading` is true, leading `chars` are stripped.
   ## If `trailing` is true, trailing `chars` are stripped.
+  ## If both are false, the string is returned unchanged.
   var
     first = 0
     last = len(s)-1
@@ -944,6 +947,19 @@ proc toHex*[T](x: T): string =
   ## Shortcut for ``toHex(x, T.sizeOf * 2)``
   toHex(BiggestInt(x), T.sizeOf * 2)
 
+proc toHex*(s: string): string {.noSideEffect, rtl.} =
+  ## Converts a bytes string to its hexadecimal representation.
+  ##
+  ## The output is twice the input long. No prefix like
+  ## ``0x`` is generated.
+  const HexChars = "0123456789ABCDEF"
+  result = newString(s.len * 2)
+  for pos, c in s:
+    var n = ord(c)
+    result[pos * 2 + 1] = HexChars[n and 0xF]
+    n = n shr 4
+    result[pos * 2] = HexChars[n]
+
 proc intToStr*(x: int, minchars: Positive = 1): string {.noSideEffect,
   rtl, extern: "nsuIntToStr".} =
   ## Converts `x` to its decimal representation.
@@ -1025,6 +1041,43 @@ proc parseHexInt*(s: string): int {.noSideEffect, procvar,
       inc(i)
     of '\0': break
     else: raise newException(ValueError, "invalid integer: " & s)
+
+proc generateHexCharToValueMap(): string =
+  ## Generate a string to map a hex digit to uint value
+  result = ""
+  for inp in 0..255:
+    let ch = chr(inp)
+    let o =
+      case ch:
+        of '0'..'9': inp - ord('0')
+        of 'a'..'f': inp - ord('a') + 10
+        of 'A'..'F': inp - ord('A') + 10
+        else: 17  # indicates an invalid hex char
+    result.add chr(o)
+
+const hexCharToValueMap = generateHexCharToValueMap()
+
+proc parseHexStr*(s: string): string {.noSideEffect, procvar,
+  rtl, extern: "nsuParseHexStr".} =
+  ## Convert hex-encoded string to byte string, e.g.:
+  ##
+  ## .. code-block:: nim
+  ##    hexToStr("00ff") == "\0\255"
+  ##
+  ## Raises ``ValueError`` for an invalid hex values. The comparison is
+  ## case-insensitive.
+  if s.len mod 2 != 0:
+    raise newException(ValueError, "Incorrect hex string len")
+  result = newString(s.len div 2)
+  var buf = 0
+  for pos, c in s:
+    let val = hexCharToValueMap[ord(c)].ord
+    if val == 17:
+      raise newException(ValueError, "Invalid hex char " & repr(c))
+    if pos mod 2 == 0:
+      buf = val
+    else:
+      result[pos div 2] = chr(val + buf shl 4)
 
 proc parseBool*(s: string): bool =
   ## Parses a value into a `bool`.
@@ -1198,7 +1251,7 @@ proc wordWrap*(s: string, maxLineWidth = 80,
     if len(word) > spaceLeft:
       if splitLongWords and len(word) > maxLineWidth:
         result.add(substr(word, 0, spaceLeft-1))
-        var w = spaceLeft+1
+        var w = spaceLeft
         var wordLeft = len(word) - spaceLeft
         while wordLeft > 0:
           result.add(newLine)
@@ -1594,11 +1647,15 @@ proc replace*(s, sub: string, by = ""): string {.noSideEffect,
   let last = s.high
   var i = 0
   while true:
-    var j = find(a, s, sub, i, last)
+    let j = find(a, s, sub, i, last)
     if j < 0: break
     add result, substr(s, i, j - 1)
     add result, by
-    i = j + len(sub)
+    if sub.len == 0:
+      if i < s.len: add result, s[i]
+      i = j + 1
+    else:
+      i = j + sub.len
   # copy the rest:
   add result, substr(s, i)
 
@@ -1627,6 +1684,7 @@ proc replaceWord*(s, sub: string, by = ""): string {.noSideEffect,
   initSkipTable(a, sub)
   var i = 0
   let last = s.high
+  let sublen = max(sub.len, 1)
   while true:
     var j = find(a, s, sub, i, last)
     if j < 0: break
@@ -1635,7 +1693,7 @@ proc replaceWord*(s, sub: string, by = ""): string {.noSideEffect,
         (j+sub.len >= s.len or s[j+sub.len] notin wordChars):
       add result, substr(s, i, j - 1)
       add result, by
-      i = j + len(sub)
+      i = j + sublen
     else:
       add result, substr(s, i, j)
       i = j + 1
@@ -2092,12 +2150,13 @@ proc formatEng*(f: BiggestFloat,
                 precision: range[0..32] = 10,
                 trim: bool = true,
                 siPrefix: bool = false,
-                unit: string = nil,
-                decimalSep = '.'): string {.noSideEffect.} =
+                unit: string = "",
+                decimalSep = '.',
+                useUnitSpace = false): string {.noSideEffect.} =
   ## Converts a floating point value `f` to a string using engineering notation.
   ##
   ## Numbers in of the range -1000.0<f<1000.0 will be formatted without an
-  ## exponent.  Numbers outside of this range will be formatted as a
+  ## exponent. Numbers outside of this range will be formatted as a
   ## significand in the range -1000.0<f<1000.0 and an exponent that will always
   ## be an integer multiple of 3, corresponding with the SI prefix scale k, M,
   ## G, T etc for numbers with an absolute value greater than 1 and m, μ, n, p
@@ -2105,7 +2164,7 @@ proc formatEng*(f: BiggestFloat,
   ##
   ## The default configuration (`trim=true` and `precision=10`) shows the
   ## **shortest** form that precisely (up to a maximum of 10 decimal places)
-  ## displays the value.  For example, 4.100000 will be displayed as 4.1 (which
+  ## displays the value. For example, 4.100000 will be displayed as 4.1 (which
   ## is mathematically identical) whereas 4.1000003 will be displayed as
   ## 4.1000003.
   ##
@@ -2125,15 +2184,15 @@ proc formatEng*(f: BiggestFloat,
   ##    formatEng(-52731234, 2) == "-52.73e6"
   ##
   ## If `siPrefix` is set to true, the number will be displayed with the SI
-  ## prefix corresponding to the exponent.  For example 4100 will be displayed
-  ## as "4.1 k" instead of "4.1e3".  Note that `u` is used for micro- in place
-  ## of the greek letter mu (μ) as per ISO 2955.  Numbers with an absolute
+  ## prefix corresponding to the exponent. For example 4100 will be displayed
+  ## as "4.1 k" instead of "4.1e3". Note that `u` is used for micro- in place
+  ## of the greek letter mu (μ) as per ISO 2955. Numbers with an absolute
   ## value outside of the range 1e-18<f<1000e18 (1a<f<1000E) will be displayed
   ## with an exponent rather than an SI prefix, regardless of whether
   ## `siPrefix` is true.
   ##
-  ## If `unit` is not nil, the provided unit will be appended to the string
-  ## (with a space as required by the SI standard).  This behaviour is slightly
+  ## If `useUnitSpace` is true, the provided unit will be appended to the string
+  ## (with a space as required by the SI standard). This behaviour is slightly
   ## different to appending the unit to the result as the location of the space
   ## is altered depending on whether there is an exponent.
   ##
@@ -2147,7 +2206,7 @@ proc formatEng*(f: BiggestFloat,
   ##    formatEng(4100, siPrefix=true, unit="") == "4.1 k"
   ##    formatEng(4100) == "4.1e3"
   ##    formatEng(4100, unit="V") == "4.1e3 V"
-  ##    formatEng(4100, unit="") == "4.1e3 " # Space with unit=""
+  ##    formatEng(4100, unit="", useUnitSpace=true) == "4.1e3 " # Space with useUnitSpace=true
   ##
   ## `decimalSep` is used as the decimal separator.
   var
@@ -2215,10 +2274,9 @@ proc formatEng*(f: BiggestFloat,
     if p != ' ':
       suffix = " " & p
       exponent = 0 # Exponent replaced by SI prefix
-  if suffix == "" and unit != nil:
+  if suffix == "" and useUnitSpace:
     suffix = " "
-  if unit != nil:
-    suffix &= unit
+  suffix &= unit
   if exponent != 0:
     result &= "e" & $exponent
   result &= suffix
@@ -2245,7 +2303,7 @@ proc addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.
       case formatstr[i+1] # again we use the fact that strings
                           # are zero-terminated here
       of '#':
-        if num >% a.high: invalidFormatString()
+        if num > a.high: invalidFormatString()
         add s, a[num]
         inc i, 2
         inc num
@@ -2261,7 +2319,7 @@ proc addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.
           j = j * 10 + ord(formatstr[i]) - ord('0')
           inc(i)
         let idx = if not negative: j-1 else: a.len-j
-        if idx >% a.high: invalidFormatString()
+        if idx < 0 or idx > a.high: invalidFormatString()
         add s, a[idx]
       of '{':
         var j = i+2
@@ -2278,7 +2336,7 @@ proc addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.
           inc(j)
         if isNumber == 1:
           let idx = if not negative: k-1 else: a.len-k
-          if idx >% a.high: invalidFormatString()
+          if idx < 0 or idx > a.high: invalidFormatString()
           add s, a[idx]
         else:
           var x = findNormalized(substr(formatstr, i+2, j-1), a)
@@ -2462,6 +2520,11 @@ when isMainModule:
     outp = " this is a\nlong text\n--\nmuchlongerthan10chars\nand here\nit goes"
   doAssert wordWrap(inp, 10, false) == outp
 
+  let
+    longInp = """ThisIsOneVeryLongStringWhichWeWillSplitIntoEightSeparatePartsNow"""
+    longOutp = "ThisIsOn\neVeryLon\ngStringW\nhichWeWi\nllSplitI\nntoEight\nSeparate\nPartsNow"
+  doAssert wordWrap(longInp, 8, true) == longOutp
+
   doAssert formatBiggestFloat(1234.567, ffDecimal, -1) == "1234.567000"
   doAssert formatBiggestFloat(1234.567, ffDecimal, 0) == "1235."
   doAssert formatBiggestFloat(1234.567, ffDecimal, 1) == "1234.6"
@@ -2487,6 +2550,9 @@ when isMainModule:
 
   doAssert "-ld a-ldz -ld".replaceWord("-ld") == " a-ldz "
   doAssert "-lda-ldz -ld abc".replaceWord("-ld") == "-lda-ldz  abc"
+
+  doAssert "-lda-ldz -ld abc".replaceWord("") == "lda-ldz ld abc"
+  doAssert "oo".replace("", "abc") == "abcoabcoabc"
 
   type MyEnum = enum enA, enB, enC, enuD, enE
   doAssert parseEnum[MyEnum]("enu_D") == enuD
@@ -2655,18 +2721,18 @@ bar
     doAssert formatEng(-52731234, 1, decimalSep=',') == "-52,7e6"
 
     doAssert formatEng(4100, siPrefix=true, unit="V") == "4.1 kV"
-    doAssert formatEng(4.1, siPrefix=true, unit="V") == "4.1 V"
+    doAssert formatEng(4.1, siPrefix=true, unit="V", useUnitSpace=true) == "4.1 V"
     doAssert formatEng(4.1, siPrefix=true) == "4.1" # Note lack of space
     doAssert formatEng(4100, siPrefix=true) == "4.1 k"
-    doAssert formatEng(4.1, siPrefix=true, unit="") == "4.1 " # Includes space
+    doAssert formatEng(4.1, siPrefix=true, unit="", useUnitSpace=true) == "4.1 " # Includes space
     doAssert formatEng(4100, siPrefix=true, unit="") == "4.1 k"
     doAssert formatEng(4100) == "4.1e3"
-    doAssert formatEng(4100, unit="V") == "4.1e3 V"
-    doAssert formatEng(4100, unit="") == "4.1e3 " # Space with unit=""
+    doAssert formatEng(4100, unit="V", useUnitSpace=true) == "4.1e3 V"
+    doAssert formatEng(4100, unit="", useUnitSpace=true) == "4.1e3 "
     # Don't use SI prefix as number is too big
-    doAssert formatEng(3.1e22, siPrefix=true, unit="a") == "31e21 a"
+    doAssert formatEng(3.1e22, siPrefix=true, unit="a", useUnitSpace=true) == "31e21 a"
     # Don't use SI prefix as number is too small
-    doAssert formatEng(3.1e-25, siPrefix=true, unit="A") == "310e-27 A"
+    doAssert formatEng(3.1e-25, siPrefix=true, unit="A", useUnitSpace=true) == "310e-27 A"
 
   block: # startsWith / endsWith char tests
     var s = "abcdef"

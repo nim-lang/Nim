@@ -44,7 +44,7 @@ proc applyPatterns(c: PContext, n: PNode): PNode =
         assert x.kind in {nkStmtList, nkCall}
         # better be safe than sorry, so check evalTemplateCounter too:
         inc(evalTemplateCounter)
-        if evalTemplateCounter > 100:
+        if evalTemplateCounter > evalTemplateLimit:
           globalError(n.info, errTemplateInstantiationTooNested)
         # deactivate this pattern:
         c.patterns[i] = nil

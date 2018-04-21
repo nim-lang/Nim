@@ -30,7 +30,12 @@ proc newIntNodeT(intVal: BiggestInt, n: PNode): PNode =
   case skipTypes(n.typ, abstractVarRange).kind
   of tyInt:
     result = newIntNode(nkIntLit, intVal)
-    result.typ = getIntLitType(result)
+    # See bug #6989. 'pred' et al only produce an int literal type if the
+    # original type was 'int', not a distinct int etc.
+    if n.typ.kind == tyInt:
+      result.typ = getIntLitType(result)
+    else:
+      result.typ = n.typ
     # hrm, this is not correct: 1 + high(int) shouldn't produce tyInt64 ...
     #setIntLitType(result)
   of tyChar:
@@ -220,6 +225,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode): PNode =
   of mDivF64:
     if getFloat(b) == 0.0:
       if getFloat(a) == 0.0: result = newFloatNodeT(NaN, n)
+      elif getFloat(b).classify == fcNegZero: result = newFloatNodeT(-Inf, n)
       else: result = newFloatNodeT(Inf, n)
     else:
       result = newFloatNodeT(getFloat(a) / getFloat(b), n)
@@ -369,7 +375,12 @@ proc getAppType(n: PNode): PNode =
     result = newStrNodeT("console", n)
 
 proc rangeCheck(n: PNode, value: BiggestInt) =
-  if value < firstOrd(n.typ) or value > lastOrd(n.typ):
+  var err = false
+  if n.typ.skipTypes({tyRange}).kind in {tyUInt..tyUInt64}:
+    err = value <% firstOrd(n.typ) or value >% lastOrd(n.typ, fixedUnsigned=true)
+  else:
+    err = value < firstOrd(n.typ) or value > lastOrd(n.typ)
+  if err:
     localError(n.info, errGenerated, "cannot convert " & $value &
                                      " to " & typeToString(n.typ))
 
@@ -416,7 +427,7 @@ proc foldArrayAccess(m: PSym, n: PNode): PNode =
 
   var idx = getOrdValue(y)
   case x.kind
-  of nkPar:
+  of nkPar, nkTupleConstr:
     if idx >= 0 and idx < sonsLen(x):
       result = x.sons[int(idx)]
       if result.kind == nkExprColonExpr: result = result.sons[1]
@@ -439,7 +450,7 @@ proc foldArrayAccess(m: PSym, n: PNode): PNode =
 proc foldFieldAccess(m: PSym, n: PNode): PNode =
   # a real field access; proc calls have already been transformed
   var x = getConstExpr(m, n.sons[0])
-  if x == nil or x.kind notin {nkObjConstr, nkPar}: return
+  if x == nil or x.kind notin {nkObjConstr, nkPar, nkTupleConstr}: return
 
   var field = n.sons[1].sym
   for i in countup(ord(x.kind == nkObjConstr), sonsLen(x) - 1):
@@ -472,6 +483,19 @@ proc newSymNodeTypeDesc*(s: PSym; info: TLineInfo): PNode =
 
 proc getConstExpr(m: PSym, n: PNode): PNode =
   result = nil
+
+  proc getSrcTimestamp(): DateTime =
+    try:
+      result = utc(fromUnix(parseInt(getEnv("SOURCE_DATE_EPOCH",
+                                            "not a number"))))
+    except ValueError:
+      # Environment variable malformed.
+      # https://reproducible-builds.org/specs/source-date-epoch/: "If the
+      # value is malformed, the build process SHOULD exit with a non-zero
+      # error code", which this doesn't do. This uses local time, because
+      # that maintains compatibility with existing usage.
+      result = local(getTime())
+
   case n.kind
   of nkSym:
     var s = n.sym
@@ -481,8 +505,10 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
     of skConst:
       case s.magic
       of mIsMainModule: result = newIntNodeT(ord(sfMainModule in m.flags), n)
-      of mCompileDate: result = newStrNodeT(times.getDateStr(), n)
-      of mCompileTime: result = newStrNodeT(times.getClockStr(), n)
+      of mCompileDate: result = newStrNodeT(format(getSrcTimestamp(),
+                                                   "yyyy-MM-dd"), n)
+      of mCompileTime: result = newStrNodeT(format(getSrcTimestamp(),
+                                                   "HH:mm:ss"), n)
       of mCpuEndian: result = newIntNodeT(ord(CPU[targetCPU].endian), n)
       of mHostOS: result = newStrNodeT(toLowerAscii(platform.OS[targetOS].name), n)
       of mHostCPU: result = newStrNodeT(platform.CPU[targetCPU].name.toLowerAscii, n)
@@ -613,7 +639,7 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
   #    if a == nil: return nil
   #    result.sons[i].sons[1] = a
   #  incl(result.flags, nfAllConst)
-  of nkPar:
+  of nkPar, nkTupleConstr:
     # tuple constructor
     result = copyTree(n)
     if (sonsLen(n) > 0) and (n.sons[0].kind == nkExprColonExpr):

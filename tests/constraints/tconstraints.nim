@@ -1,6 +1,6 @@
 discard """
   line: 16
-  errormsg: "type mismatch: got (int literal(232))"
+  errormsg: "type mismatch: got <int literal(232)>"
 """
 
 proc myGenericProc[T: object|tuple|ptr|ref|distinct](x: T): string =

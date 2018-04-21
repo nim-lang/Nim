@@ -48,16 +48,6 @@ when not defined(android):
   proc signalfd(fd: cint, mask: var Sigset, flags: cint): cint
        {.cdecl, importc: "signalfd", header: "<sys/signalfd.h>".}
 
-var RLIMIT_NOFILE {.importc: "RLIMIT_NOFILE",
-                    header: "<sys/resource.h>".}: cint
-type
-  RLimit {.importc: "struct rlimit",
-           header: "<sys/resource.h>", pure, final.} = object
-    rlim_cur: int
-    rlim_max: int
-proc getrlimit(resource: cint, rlp: var RLimit): cint
-     {.importc: "getrlimit",header: "<sys/resource.h>".}
-
 when hasThreadSupport:
   type
     SelectorImpl[T] = object
@@ -82,7 +72,7 @@ type
 proc newSelector*[T](): Selector[T] =
   # Retrieve the maximum fd count (for current OS) via getrlimit()
   var a = RLimit()
-  if getrlimit(RLIMIT_NOFILE, a) != 0:
+  if getrlimit(posix.RLIMIT_NOFILE, a) != 0:
     raiseOsError(osLastError())
   var maxFD = int(a.rlim_max)
   doAssert(maxFD > 0)
@@ -141,7 +131,7 @@ template checkFd(s, f) =
   if f >= s.maxFD:
     raiseIOSelectorsError("Maximum number of descriptors is exhausted!")
 
-proc registerHandle*[T](s: Selector[T], fd: SocketHandle,
+proc registerHandle*[T](s: Selector[T], fd: int | SocketHandle,
                         events: set[Event], data: T) =
   let fdi = int(fd)
   s.checkFd(fdi)
@@ -156,7 +146,7 @@ proc registerHandle*[T](s: Selector[T], fd: SocketHandle,
       raiseIOSelectorsError(osLastError())
     inc(s.count)
 
-proc updateHandle*[T](s: Selector[T], fd: SocketHandle, events: set[Event]) =
+proc updateHandle*[T](s: Selector[T], fd: int | SocketHandle, events: set[Event]) =
   let maskEvents = {Event.Timer, Event.Signal, Event.Process, Event.Vnode,
                     Event.User, Event.Oneshot, Event.Error}
   let fdi = int(fd)
@@ -392,9 +382,19 @@ proc selectInto*[T](s: Selector[T], timeout: int,
       let pevents = resTable[i].events
       var pkey = addr(s.fds[fdi])
       doAssert(pkey.ident != 0)
-      var rkey = ReadyKey(fd: int(fdi), events: {})
+      var rkey = ReadyKey(fd: fdi, events: {})
 
       if (pevents and EPOLLERR) != 0 or (pevents and EPOLLHUP) != 0:
+        if (pevents and EPOLLHUP) != 0:
+          rkey.errorCode = ECONNRESET.OSErrorCode
+        else:
+          # Try reading SO_ERROR from fd.
+          var error: cint
+          var size = sizeof(error).SockLen
+          if getsockopt(fdi.SocketHandle, SOL_SOCKET, SO_ERROR, addr(error),
+                        addr(size)) == 0'i32:
+            rkey.errorCode = error.OSErrorCode
+
         rkey.events.incl(Event.Error)
       if (pevents and EPOLLOUT) != 0:
         rkey.events.incl(Event.Write)
@@ -482,7 +482,7 @@ template isEmpty*[T](s: Selector[T]): bool =
   (s.count == 0)
 
 proc contains*[T](s: Selector[T], fd: SocketHandle|int): bool {.inline.} =
-  return s.fds[fd].ident != 0
+  return s.fds[fd.int].ident != 0
 
 proc getData*[T](s: Selector[T], fd: SocketHandle|int): var T =
   let fdi = int(fd)
@@ -516,3 +516,6 @@ template withData*[T](s: Selector[T], fd: SocketHandle|int, value, body1,
     body1
   else:
     body2
+
+proc getFd*[T](s: Selector[T]): int =
+  return s.epollFd.int

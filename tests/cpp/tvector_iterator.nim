@@ -2,7 +2,7 @@ discard """
   targets: "cpp"
 """
 
-{.emit: """
+{.emit: """/*TYPESECTION*/
 
 template <class T>
 struct Vector {

@@ -26,14 +26,14 @@ texplain.nim(70, 6) ExplainedConcept: undeclared field: '.'
 texplain.nim(70, 6) ExplainedConcept: expression '.' cannot be called
 texplain.nim(69, 5) ExplainedConcept: concept predicate failed
 
-texplain.nim(113, 20) Error: type mismatch: got (NonMatchingType)
+texplain.nim(113, 20) Error: type mismatch: got <NonMatchingType>
 but expected one of:
 proc e(o: ExplainedConcept): int
 texplain.nim(69, 5) ExplainedConcept: concept predicate failed
 proc e(i: int): int
 
 expression: e(n)
-texplain.nim(114, 20) Error: type mismatch: got (NonMatchingType)
+texplain.nim(114, 20) Error: type mismatch: got <NonMatchingType>
 but expected one of:
 proc r(o: RegularConcept): int
 texplain.nim(73, 5) RegularConcept: concept predicate failed
@@ -45,7 +45,7 @@ texplain.nim(115, 20) Hint: Non-matching candidates for r(y)
 proc r[T](a: SomeNumber; b: T; c: auto)
 proc r(i: string): int
 
-texplain.nim(123, 2) Error: type mismatch: got (MatchingType)
+texplain.nim(123, 2) Error: type mismatch: got <MatchingType>
 but expected one of:
 proc f(o: NestedConcept)
 texplain.nim(73, 6) RegularConcept: undeclared field: 'foo'
@@ -61,7 +61,7 @@ texplain.nim(77, 5) NestedConcept: concept predicate failed
 expression: f(y)
 '''
   line: 123
-  errormsg: "type mismatch: got (MatchingType)"
+  errormsg: "type mismatch: got <MatchingType>"
 """
 
 type

@@ -186,7 +186,8 @@ proc getEnvParam*(routine: PSym): PSym =
 
 proc interestingVar(s: PSym): bool {.inline.} =
   result = s.kind in {skVar, skLet, skTemp, skForVar, skParam, skResult} and
-    sfGlobal notin s.flags
+    sfGlobal notin s.flags and
+    s.typ.kind notin {tyStatic, tyTypeDesc}
 
 proc illegalCapture(s: PSym): bool {.inline.} =
   result = skipTypes(s.typ, abstractInst).kind in
@@ -229,7 +230,7 @@ template isIterator*(owner: PSym): bool =
 proc liftingHarmful(owner: PSym): bool {.inline.} =
   ## lambda lifting can be harmful for JS-like code generators.
   let isCompileTime = sfCompileTime in owner.flags or owner.kind == skMacro
-  result = gCmd in {cmdCompileToPHP, cmdCompileToJS} and not isCompileTime
+  result = gCmd == cmdCompileToJS and not isCompileTime
 
 proc liftIterSym*(n: PNode; owner: PSym): PNode =
   # transforms  (iter)  to  (let env = newClosure[iter](); (iter, env))
@@ -275,8 +276,12 @@ proc freshVarForClosureIter*(s, owner: PSym): PNode =
 
 proc markAsClosure(owner: PSym; n: PNode) =
   let s = n.sym
-  if illegalCapture(s) or owner.typ.callConv notin {ccClosure, ccDefault}:
-    localError(n.info, errIllegalCaptureX, s.name.s)
+  if illegalCapture(s):
+    localError(n.info, "illegal capture '$1' of type <$2> which is declared here: $3" %
+      [s.name.s, typeToString(s.typ), $s.info])
+  elif owner.typ.callConv notin {ccClosure, ccDefault}:
+    localError(n.info, "illegal capture '$1' because '$2' has the calling convention: <$3>" %
+      [s.name.s, owner.name.s, CallingConvToStr[owner.typ.callConv]])
   incl(owner.typ.flags, tfCapturesEnv)
   owner.typ.callConv = ccClosure
 
@@ -808,7 +813,7 @@ proc liftLambdas*(fn: PSym, body: PNode; tooEarly: var bool): PNode =
   let isCompileTime = sfCompileTime in fn.flags or fn.kind == skMacro
 
   if body.kind == nkEmpty or (
-      gCmd in {cmdCompileToPHP, cmdCompileToJS} and not isCompileTime) or
+      gCmd == cmdCompileToJS and not isCompileTime) or
       fn.skipGenericOwner.kind != skModule:
     # ignore forward declaration:
     result = body

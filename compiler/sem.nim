@@ -16,7 +16,7 @@ import
   procfind, lookups, rodread, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, nimfix.pretty, semmacrosanity,
-  semparallel, lowerings, pluginsupport, plugins.active
+  semparallel, lowerings, pluginsupport, plugins.active, rod
 
 from modulegraphs import ModuleGraph
 
@@ -85,7 +85,7 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
       result.typ = formal
     else:
       let x = result.skipConv
-      if x.kind == nkPar and formal.kind != tyExpr:
+      if x.kind in {nkPar, nkTupleConstr} and formal.kind != tyExpr:
         changeType(x, formal, check=true)
       else:
         result = skipHiddenSubConv(result)
@@ -215,12 +215,17 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
 proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
                         allowed: TSymFlags): PSym
 
-proc typeAllowedCheck(info: TLineInfo; typ: PType; kind: TSymKind) =
-  let t = typeAllowed(typ, kind)
+proc typeAllowedCheck(info: TLineInfo; typ: PType; kind: TSymKind;
+                      flags: TTypeAllowedFlags = {}) =
+  let t = typeAllowed(typ, kind, flags)
   if t != nil:
-    if t == typ: localError(info, "invalid type: '" & typeToString(typ) & "'")
-    else: localError(info, "invalid type: '" & typeToString(t) &
-                           "' in this context: '" & typeToString(typ) & "'")
+    if t == typ:
+      localError(info, "invalid type: '" & typeToString(typ) &
+        "' for " & substr($kind, 2).toLowerAscii)
+    else:
+      localError(info, "invalid type: '" & typeToString(t) &
+        "' in this context: '" & typeToString(typ) &
+        "' for " & substr($kind, 2).toLowerAscii)
 
 proc paramsTypeCheck(c: PContext, typ: PType) {.inline.} =
   typeAllowedCheck(typ.n.info, typ, skProc)
@@ -372,7 +377,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
   ## reassigned, and binding the unbound identifiers that the macro output
   ## contains.
   inc(evalTemplateCounter)
-  if evalTemplateCounter > 100:
+  if evalTemplateCounter > evalTemplateLimit:
     globalError(s.info, errTemplateInstantiationTooNested)
   c.friendModules.add(s.owner.getModule)
 
@@ -584,6 +589,7 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
       else:
         result = ast.emptyNode
       #if gCmd == cmdIdeTools: findSuggest(c, n)
+  rod.storeNode(c.module, result)
 
 proc testExamples(c: PContext) =
   let inp = toFullPath(c.module.info)
@@ -613,6 +619,8 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
     replayMethodDefs(graph, c.rd)
   popOwner(c)
   popProcCon(c)
+  storeRemaining(c.module)
   if c.runnableExamples != nil: testExamples(c)
 
-const semPass* = makePass(myOpen, myOpenCached, myProcess, myClose)
+const semPass* = makePass(myOpen, myOpenCached, myProcess, myClose,
+                          isFrontend = true)

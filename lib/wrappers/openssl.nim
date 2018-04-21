@@ -12,7 +12,9 @@
 ## When OpenSSL is dynamically linked, the wrapper provides partial forward and backward
 ## compatibility for OpenSSL versions above and below 1.1.0
 ##
-## OpenSSL can be also statically linked using dynlibOverride:ssl for OpenSSL >= 1.1.0
+## OpenSSL can also be statically linked using ``--dynlibOverride:ssl`` for OpenSSL >= 1.1.0.
+## If you want to statically link against OpenSSL 1.0.x, you now have to
+## define the ``openssl10`` symbol via ``-d:openssl10``.
 ##
 ## Build and test examples:
 ##
@@ -27,25 +29,25 @@ const useWinVersion = defined(Windows) or defined(nimdoc)
 when useWinVersion:
   when not defined(nimOldDlls) and defined(cpu64):
     const
-      DLLSSLName = "(ssleay64|libssl64).dll"
-      DLLUtilName = "libeay64.dll"
+      DLLSSLName* = "(libssl-1_1-x64|ssleay64|libssl64).dll"
+      DLLUtilName* = "(libcrypto-1_1-x64|libeay64).dll"
   else:
     const
-      DLLSSLName = "(ssleay32|libssl32).dll"
-      DLLUtilName = "libeay32.dll"
+      DLLSSLName* = "(libssl-1_1|ssleay32|libssl32).dll"
+      DLLUtilName* =  "(libcrypto-1_1|libeay32).dll"
 
   from winlean import SocketHandle
 else:
-  const versions = "(.1.1|.38|.39|.41|.43|.10|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8|)"
+  const versions = "(.1.1|.38|.39|.41|.43|.44|.10|.1.0.2|.1.0.1|.1.0.0|.0.9.9|.0.9.8|)"
 
   when defined(macosx):
     const
-      DLLSSLName = "libssl" & versions & ".dylib"
-      DLLUtilName = "libcrypto" & versions & ".dylib"
+      DLLSSLName* = "libssl" & versions & ".dylib"
+      DLLUtilName* = "libcrypto" & versions & ".dylib"
   else:
     const
-      DLLSSLName = "libssl.so" & versions
-      DLLUtilName = "libcrypto.so" & versions
+      DLLSSLName* = "libssl.so" & versions
+      DLLUtilName* = "libcrypto.so" & versions
   from posix import SocketHandle
 
 import dynlib
@@ -209,32 +211,38 @@ proc TLSv1_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
 
 when compileOption("dynlibOverride", "ssl"):
   # Static linking
-  proc OPENSSL_init_ssl*(opts: uint64, settings: uint8): cint {.cdecl, dynlib: DLLSSLName, importc, discardable.}
-  proc SSL_library_init*(): cint {.discardable.} =
-    ## Initialize SSL using OPENSSL_init_ssl for OpenSSL >= 1.1.0
-    return OPENSSL_init_ssl(0.uint64, 0.uint8)
 
-  proc TLS_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
-  proc SSLv23_method*(): PSSL_METHOD =
-    TLS_method()
+  when defined(openssl10):
+    proc SSL_library_init*(): cint {.cdecl, dynlib: DLLSSLName, importc, discardable.}
+    proc SSL_load_error_strings*() {.cdecl, dynlib: DLLSSLName, importc.}
+    proc SSLv23_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
+  else:
+    proc OPENSSL_init_ssl*(opts: uint64, settings: uint8): cint {.cdecl, dynlib: DLLSSLName, importc, discardable.}
+    proc SSL_library_init*(): cint {.discardable.} =
+      ## Initialize SSL using OPENSSL_init_ssl for OpenSSL >= 1.1.0
+      return OPENSSL_init_ssl(0.uint64, 0.uint8)
+
+    proc TLS_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
+    proc SSLv23_method*(): PSSL_METHOD =
+      TLS_method()
+
+    proc OpenSSL_version_num(): culong {.cdecl, dynlib: DLLSSLName, importc.}
+
+    proc getOpenSSLVersion*(): culong =
+      ## Return OpenSSL version as unsigned long
+      OpenSSL_version_num()
+
+    proc SSL_load_error_strings*() =
+      ## Removed from OpenSSL 1.1.0
+      # This proc prevents breaking existing code calling SslLoadErrorStrings
+      # Static linking against OpenSSL < 1.1.0 is not supported
+      discard
+
+  template OpenSSL_add_all_algorithms*() = discard
 
   proc SSLv23_client_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
   proc SSLv2_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
   proc SSLv3_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
-
-  template OpenSSL_add_all_algorithms*() = discard
-
-  proc OpenSSL_version_num(): culong {.cdecl, dynlib: DLLSSLName, importc.}
-
-  proc getOpenSSLVersion*(): culong =
-    ## Return OpenSSL version as unsigned long
-    OpenSSL_version_num()
-
-  proc SSL_load_error_strings*() =
-    ## Removed from OpenSSL 1.1.0
-    # This proc prevents breaking existing code calling SslLoadErrorStrings
-    # Static linking against OpenSSL < 1.1.0 is not supported
-    discard
 
 else:
   # Here we're trying to stay compatible with openssl 1.0.* and 1.1.*. Some

@@ -76,8 +76,10 @@ proc semConstrField(c: PContext, flags: TExprFlags,
     return initValue
 
 proc caseBranchMatchesExpr(branch, matched: PNode): bool =
-  for i in 0 .. (branch.len - 2):
-    if exprStructuralEquivalent(branch[i], matched):
+  for i in 0 .. branch.len-2:
+    if branch[i].kind == nkRange:
+      if overlap(branch[i], matched): return true
+    elif exprStructuralEquivalent(branch[i], matched):
       return true
 
   return false
@@ -259,6 +261,10 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var t = semTypeNode(c, n.sons[0], nil)
   result = newNodeIT(nkObjConstr, n.info, t)
   for child in n: result.add child
+
+  if t == nil:
+    localError(n.info, errGenerated, "object constructor needs an object type")
+    return
 
   t = skipTypes(t, {tyGenericInst, tyAlias, tySink})
   if t.kind == tyRef: t = skipTypes(t.sons[0], {tyGenericInst, tyAlias, tySink})

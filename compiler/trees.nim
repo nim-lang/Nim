@@ -97,7 +97,7 @@ proc isDeepConstExpr*(n: PNode): bool =
     result = true
   of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv:
     result = isDeepConstExpr(n.sons[1])
-  of nkCurly, nkBracket, nkPar, nkObjConstr, nkClosure, nkRange:
+  of nkCurly, nkBracket, nkPar, nkTupleConstr, nkObjConstr, nkClosure, nkRange:
     for i in ord(n.kind == nkObjConstr) ..< n.len:
       if not isDeepConstExpr(n.sons[i]): return false
     if n.typ.isNil: result = true
@@ -118,7 +118,7 @@ proc isRange*(n: PNode): bool {.inline.} =
       result = true
 
 proc whichPragma*(n: PNode): TSpecialWord =
-  let key = if n.kind == nkExprColonExpr: n.sons[0] else: n
+  let key = if n.kind in nkPragmaCallKinds and n.len > 0: n.sons[0] else: n
   if key.kind == nkIdent: result = whichKeyword(key.ident)
 
 proc unnestStmts(n, result: PNode) =

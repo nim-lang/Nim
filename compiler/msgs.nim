@@ -26,7 +26,7 @@ type
     errAtPopWithoutPush, errEmptyAsm, errInvalidIndentation,
     errExceptionExpected, errExceptionAlreadyHandled,
     errYieldNotAllowedHere, errYieldNotAllowedInTryStmt,
-    errInvalidNumberOfYieldExpr, errCannotReturnExpr, 
+    errInvalidNumberOfYieldExpr, errCannotReturnExpr,
     errNoReturnWithReturnTypeNotAllowed, errAttemptToRedefine,
     errStmtInvalidAfterReturn, errStmtExpected, errInvalidLabel,
     errInvalidCmdLineOption, errCmdLineArgExpected, errCmdLineNoArgExpected,
@@ -87,7 +87,8 @@ type
     errNoReturnTypeDeclared,
     errNoCommand, errInvalidCommandX, errXOnlyAtModuleScope,
     errXNeedsParamObjectType,
-    errTemplateInstantiationTooNested, errInstantiationFrom,
+    errTemplateInstantiationTooNested, errMacroInstantiationTooNested,
+    errInstantiationFrom,
     errInvalidIndexValueForTuple, errCommandExpectsFilename,
     errMainModuleMustBeSpecified,
     errXExpected,
@@ -134,7 +135,7 @@ type
     hintProcessing, hintCodeBegin, hintCodeEnd, hintConf, hintPath,
     hintConditionAlwaysTrue, hintName, hintPattern,
     hintExecuting, hintLinking, hintDependency,
-    hintSource, hintStackTrace, hintGCStats,
+    hintSource, hintPerformance, hintStackTrace, hintGCStats,
     hintUser, hintUserRaw
 
 const
@@ -272,7 +273,7 @@ const
     errXStackEscape: "address of '$1' may not escape its stack frame",
     errVarForOutParamNeededX: "for a \'var\' type a variable needs to be passed; but '$1' is immutable",
     errPureTypeMismatch: "type mismatch",
-    errTypeMismatch: "type mismatch: got (",
+    errTypeMismatch: "type mismatch: got <",
     errButExpected: "but expected one of: ",
     errButExpectedX: "but expected \'$1\'",
     errAmbiguousCallXYZ: "ambiguous call; both $1 and $2 match for: $3",
@@ -329,7 +330,8 @@ const
     errInvalidCommandX: "invalid command: \'$1\'",
     errXOnlyAtModuleScope: "\'$1\' is only allowed at top level",
     errXNeedsParamObjectType: "'$1' needs a parameter that has an object type",
-    errTemplateInstantiationTooNested: "template/macro instantiation too nested",
+    errTemplateInstantiationTooNested: "template instantiation too nested, try --evalTemplateLimit:N",
+    errMacroInstantiationTooNested: "macro instantiation too nested, try --evalMacroLimit:N",
     errInstantiationFrom: "template/generic instantiation from here",
     errInvalidIndexValueForTuple: "invalid index value for tuple subscript",
     errCommandExpectsFilename: "command expects a filename argument",
@@ -357,7 +359,9 @@ const
     errXExpectsTwoArguments: "\'$1\' expects two arguments",
     errXExpectsObjectTypes: "\'$1\' expects object types",
     errXcanNeverBeOfThisSubtype: "\'$1\' can never be of this subtype",
-    errTooManyIterations: "interpretation requires too many iterations",
+    errTooManyIterations: "interpretation requires too many iterations; " &
+      "if you are sure this is not a bug in your code edit " &
+      "compiler/vmdef.MaxLoopIterations and rebuild the compiler",
     errCannotInterpretNodeX: "cannot evaluate \'$1\'",
     errFieldXNotFound: "field \'$1\' cannot be found",
     errInvalidConversionFromTypeX: "invalid conversion from type \'$1\'",
@@ -370,7 +374,7 @@ const
     errXhasSideEffects: "\'$1\' can have side effects",
     errIteratorExpected: "iterator within for loop context expected",
     errLetNeedsInit: "'let' symbol requires an initialization",
-    errThreadvarCannotInit: "a thread var cannot be initialized explicitly",
+    errThreadvarCannotInit: "a thread var cannot be initialized explicitly; this would only run for the main thread",
     errWrongSymbolX: "usage of \'$1\' is a user-defined error",
     errIllegalCaptureX: "illegal capture '$1'",
     errXCannotBeClosure: "'$1' cannot have 'closure' calling convention",
@@ -436,6 +440,7 @@ const
     hintLinking: "",
     hintDependency: "$1",
     hintSource: "$1",
+    hintPerformance: "$1",
     hintStackTrace: "$1",
     hintGCStats: "$1",
     hintUser: "$1",
@@ -458,7 +463,7 @@ const
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
     "Path", "CondTrue", "Name", "Pattern", "Exec", "Link", "Dependency",
-    "Source", "StackTrace", "GCStats",
+    "Source", "Performance", "StackTrace", "GCStats",
     "User", "UserRaw"]
 
 const
@@ -491,15 +496,19 @@ type
     dirtyfile: string          # the file that is actually read into memory
                                # and parsed; usually 'nil' but is used
                                # for 'nimsuggest'
-
+    hash*: string              # the checksum of the file
+    when defined(nimpretty):
+      fullContent*: string
+  FileIndex* = distinct int32
   TLineInfo* = object          # This is designed to be as small as possible,
                                # because it is used
                                # in syntax nodes. We save space here by using
                                # two int16 and an int32.
                                # On 64 bit and on 32 bit systems this is
                                # only 8 bytes.
-    line*, col*: int16
-    fileIndex*: int32
+    line*: uint16
+    col*: int16
+    fileIndex*: FileIndex
     when defined(nimpretty):
       offsetA*, offsetB*: int
       commentOffsetA*, commentOffsetB*: int
@@ -512,6 +521,8 @@ type
 
   ERecoverableError* = object of ValueError
   ESuggestDone* = object of Exception
+
+proc `==`*(a, b: FileIndex): bool {.borrow.}
 
 const
   NotesVerbosity*: array[0..3, TNoteKinds] = [
@@ -537,14 +548,14 @@ const
     {low(TNoteKind)..high(TNoteKind)}]
 
 const
-  InvalidFileIDX* = int32(-1)
+  InvalidFileIDX* = FileIndex(-1)
 
 var
   ForeignPackageNotes*: TNoteKinds = {hintProcessing, warnUnknownMagic,
     hintQuitCalled, hintExecuting}
-  filenameToIndexTbl = initTable[string, int32]()
+  filenameToIndexTbl = initTable[string, FileIndex]()
   fileInfos*: seq[TFileInfo] = @[]
-  systemFileIdx*: int32
+  systemFileIdx*: FileIndex
 
 proc toCChar*(c: char): string =
   case c
@@ -579,6 +590,18 @@ proc newFileInfo(fullPath, projPath: string): TFileInfo =
   result.quotedFullName = fullPath.makeCString
   if optEmbedOrigSrc in gGlobalOptions or true:
     result.lines = @[]
+  when defined(nimpretty):
+    if result.fullPath.len > 0:
+      try:
+        result.fullContent = readFile(result.fullPath)
+      except IOError:
+        #rawMessage(errCannotOpenFile, result.fullPath)
+        # XXX fixme
+        result.fullContent = ""
+
+when defined(nimpretty):
+  proc fileSection*(fid: FileIndex; a, b: int): string =
+    substr(fileInfos[fid.int].fullContent, a, b)
 
 proc fileInfoKnown*(filename: string): bool =
   var
@@ -589,7 +612,7 @@ proc fileInfoKnown*(filename: string): bool =
     canon = filename
   result = filenameToIndexTbl.hasKey(canon)
 
-proc fileInfoIdx*(filename: string; isKnownFile: var bool): int32 =
+proc fileInfoIdx*(filename: string; isKnownFile: var bool): FileIndex =
   var
     canon: string
     pseudoPath = false
@@ -607,28 +630,28 @@ proc fileInfoIdx*(filename: string; isKnownFile: var bool): int32 =
     result = filenameToIndexTbl[canon]
   else:
     isKnownFile = false
-    result = fileInfos.len.int32
+    result = fileInfos.len.FileIndex
     fileInfos.add(newFileInfo(canon, if pseudoPath: filename
                                      else: canon.shortenDir))
     filenameToIndexTbl[canon] = result
 
-proc fileInfoIdx*(filename: string): int32 =
+proc fileInfoIdx*(filename: string): FileIndex =
   var dummy: bool
   result = fileInfoIdx(filename, dummy)
 
-proc newLineInfo*(fileInfoIdx: int32, line, col: int): TLineInfo =
+proc newLineInfo*(fileInfoIdx: FileIndex, line, col: int): TLineInfo =
   result.fileIndex = fileInfoIdx
-  result.line = int16(line)
+  result.line = uint16(line)
   result.col = int16(col)
 
 proc newLineInfo*(filename: string, line, col: int): TLineInfo {.inline.} =
   result = newLineInfo(filename.fileInfoIdx, line, col)
 
 fileInfos.add(newFileInfo("", "command line"))
-var gCmdLineInfo* = newLineInfo(int32(0), 1, 1)
+var gCmdLineInfo* = newLineInfo(FileIndex(0), 1, 1)
 
 fileInfos.add(newFileInfo("", "compilation artifact"))
-var gCodegenLineInfo* = newLineInfo(int32(1), 1, 1)
+var gCodegenLineInfo* = newLineInfo(FileIndex(1), 1, 1)
 
 proc raiseRecoverableError*(msg: string) {.noinline, noreturn.} =
   raise newException(ERecoverableError, msg)
@@ -644,9 +667,9 @@ var
   gMainPackageNotes*: TNoteKinds = NotesVerbosity[1]
 
 proc unknownLineInfo*(): TLineInfo =
-  result.line = int16(-1)
+  result.line = uint16(0)
   result.col = int16(-1)
-  result.fileIndex = -1
+  result.fileIndex = InvalidFileIDX
 
 type
   Severity* {.pure.} = enum ## VS Code only supports these three
@@ -708,24 +731,32 @@ proc getInfoContext*(index: int): TLineInfo =
   if i >=% L: result = unknownLineInfo()
   else: result = msgContext[i]
 
-template toFilename*(fileIdx: int32): string =
-  (if fileIdx < 0: "???" else: fileInfos[fileIdx].projPath)
+template toFilename*(fileIdx: FileIndex): string =
+  (if fileIdx.int32 < 0: "???" else: fileInfos[fileIdx.int32].projPath)
 
-proc toFullPath*(fileIdx: int32): string =
-  if fileIdx < 0: result = "???"
-  else: result = fileInfos[fileIdx].fullPath
+proc toFullPath*(fileIdx: FileIndex): string =
+  if fileIdx.int32 < 0: result = "???"
+  else: result = fileInfos[fileIdx.int32].fullPath
 
-proc setDirtyFile*(fileIdx: int32; filename: string) =
-  assert fileIdx >= 0
-  fileInfos[fileIdx].dirtyFile = filename
+proc setDirtyFile*(fileIdx: FileIndex; filename: string) =
+  assert fileIdx.int32 >= 0
+  fileInfos[fileIdx.int32].dirtyFile = filename
 
-proc toFullPathConsiderDirty*(fileIdx: int32): string =
-  if fileIdx < 0:
+proc setHash*(fileIdx: FileIndex; hash: string) =
+  assert fileIdx.int32 >= 0
+  shallowCopy(fileInfos[fileIdx.int32].hash, hash)
+
+proc getHash*(fileIdx: FileIndex): string =
+  assert fileIdx.int32 >= 0
+  shallowCopy(result, fileInfos[fileIdx.int32].hash)
+
+proc toFullPathConsiderDirty*(fileIdx: FileIndex): string =
+  if fileIdx.int32 < 0:
     result = "???"
-  elif not fileInfos[fileIdx].dirtyFile.isNil:
-    result = fileInfos[fileIdx].dirtyFile
+  elif not fileInfos[fileIdx.int32].dirtyFile.isNil:
+    result = fileInfos[fileIdx.int32].dirtyFile
   else:
-    result = fileInfos[fileIdx].fullPath
+    result = fileInfos[fileIdx.int32].fullPath
 
 template toFilename*(info: TLineInfo): string =
   info.fileIndex.toFilename
@@ -734,15 +765,15 @@ template toFullPath*(info: TLineInfo): string =
   info.fileIndex.toFullPath
 
 proc toMsgFilename*(info: TLineInfo): string =
-  if info.fileIndex < 0:
+  if info.fileIndex.int32 < 0:
     result = "???"
   elif gListFullPaths:
-    result = fileInfos[info.fileIndex].fullPath
+    result = fileInfos[info.fileIndex.int32].fullPath
   else:
-    result = fileInfos[info.fileIndex].projPath
+    result = fileInfos[info.fileIndex.int32].projPath
 
 proc toLinenumber*(info: TLineInfo): int {.inline.} =
-  result = info.line
+  result = int info.line
 
 proc toColumn*(info: TLineInfo): int {.inline.} =
   result = info.col
@@ -759,7 +790,7 @@ proc `??`* (info: TLineInfo, filename: string): bool =
   # only for debugging purposes
   result = filename in info.toFilename
 
-const trackPosInvalidFileIdx* = -2 # special marker so that no suggestions
+const trackPosInvalidFileIdx* = FileIndex(-2) # special marker so that no suggestions
                                    # are produced within comments and string literals
 var gTrackPos*: TLineInfo
 var gTrackPosAttached*: bool ## whether the tracking position was attached to some
@@ -898,7 +929,7 @@ proc writeContext(lastinfo: TLineInfo) =
       else:
         styledMsgWriteln(styleBright,
                          PosFormat % [toMsgFilename(msgContext[i]),
-                                      coordToStr(msgContext[i].line),
+                                      coordToStr(msgContext[i].line.int),
                                       coordToStr(msgContext[i].col+1)],
                          resetStyle,
                          getMessageStr(errInstantiationFrom, ""))
@@ -966,7 +997,7 @@ proc formatMsg*(info: TLineInfo, msg: TMsgKind, arg: string): string =
               of warnMin..warnMax: WarningTitle
               of hintMin..hintMax: HintTitle
               else: ErrorTitle
-  result = PosFormat % [toMsgFilename(info), coordToStr(info.line),
+  result = PosFormat % [toMsgFilename(info), coordToStr(info.line.int),
                         coordToStr(info.col+1)] &
            title &
            getMessageStr(msg, arg)
@@ -1007,7 +1038,7 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
   # NOTE: currently line info line numbers start with 1,
   # but column numbers start with 0, however most editors expect
   # first column to be 1, so we need to +1 here
-  let x = PosFormat % [toMsgFilename(info), coordToStr(info.line),
+  let x = PosFormat % [toMsgFilename(info), coordToStr(info.line.int),
                        coordToStr(info.col+1)]
   let s = getMessageStr(msg, arg)
 
@@ -1020,11 +1051,14 @@ proc liMessage(info: TLineInfo, msg: TMsgKind, arg: string,
                          KindColor, `%`(KindFormat, kind))
       else:
         styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s)
-      if msg in errMin..errMax and hintSource in gNotes:
+      if hintSource in gNotes:
         info.writeSurroundingSrc
   handleError(msg, eh, s)
 
 proc fatal*(info: TLineInfo, msg: TMsgKind, arg = "") =
+  # this fixes bug #7080 so that it is at least obvious 'fatal'
+  # was executed.
+  errorOutputs = {eStdOut, eStdErr}
   liMessage(info, msg, arg, doAbort)
 
 proc globalError*(info: TLineInfo, msg: TMsgKind, arg = "") =
@@ -1062,30 +1096,30 @@ template assertNotNil*(e): untyped =
 template internalAssert*(e: bool) =
   if not e: internalError($instantiationInfo())
 
-proc addSourceLine*(fileIdx: int32, line: string) =
-  fileInfos[fileIdx].lines.add line.rope
+proc addSourceLine*(fileIdx: FileIndex, line: string) =
+  fileInfos[fileIdx.int32].lines.add line.rope
 
 proc sourceLine*(i: TLineInfo): Rope =
-  if i.fileIndex < 0: return nil
+  if i.fileIndex.int32 < 0: return nil
 
-  if not optPreserveOrigSource and fileInfos[i.fileIndex].lines.len == 0:
+  if not optPreserveOrigSource and fileInfos[i.fileIndex.int32].lines.len == 0:
     try:
       for line in lines(i.toFullPath):
         addSourceLine i.fileIndex, line.string
     except IOError:
       discard
-  internalAssert i.fileIndex < fileInfos.len
+  internalAssert i.fileIndex.int32 < fileInfos.len
   # can happen if the error points to EOF:
-  if i.line > fileInfos[i.fileIndex].lines.len: return nil
+  if i.line.int > fileInfos[i.fileIndex.int32].lines.len: return nil
 
-  result = fileInfos[i.fileIndex].lines[i.line-1]
+  result = fileInfos[i.fileIndex.int32].lines[i.line.int-1]
 
 proc quotedFilename*(i: TLineInfo): Rope =
-  internalAssert i.fileIndex >= 0
+  internalAssert i.fileIndex.int32 >= 0
   if optExcessiveStackTrace in gGlobalOptions:
-    result = fileInfos[i.fileIndex].quotedFullName
+    result = fileInfos[i.fileIndex.int32].quotedFullName
   else:
-    result = fileInfos[i.fileIndex].quotedName
+    result = fileInfos[i.fileIndex.int32].quotedName
 
 ropes.errorHandler = proc (err: RopesError, msg: string, useWarning: bool) =
   case err

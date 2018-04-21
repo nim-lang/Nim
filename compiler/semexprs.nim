@@ -192,6 +192,10 @@ proc semConv(c: PContext, n: PNode): PNode =
 
   result.addSon copyTree(n.sons[0])
 
+  # special case to make MyObject(x = 3) produce a nicer error message:
+  if n[1].kind == nkExprEqExpr and
+      targetType.skipTypes(abstractPtrs).kind == tyObject:
+    localError(n.info, "object contruction uses ':', not '='")
   var op = semExprWithType(c, n.sons[1])
   if targetType.isMetaType:
     let final = inferWithMetatype(c, targetType, op, true)
@@ -211,7 +215,7 @@ proc semConv(c: PContext, n: PNode): PNode =
       # handle SomeProcType(SomeGenericProc)
       if op.kind == nkSym and op.sym.isGenericRoutine:
         result.sons[1] = fitNode(c, result.typ, result.sons[1], result.info)
-      elif op.kind == nkPar and targetType.kind == tyTuple:
+      elif op.kind in {nkPar, nkTupleConstr} and targetType.kind == tyTuple:
         op = fitNode(c, targetType, op, result.info)
     of convNotNeedeed:
       message(n.info, hintConvFromXtoItselfNotNeeded, result.typ.typeToString)
@@ -360,7 +364,7 @@ proc changeType(n: PNode, newType: PType, check: bool) =
   of nkCurly, nkBracket:
     for i in countup(0, sonsLen(n) - 1):
       changeType(n.sons[i], elemType(newType), check)
-  of nkPar:
+  of nkPar, nkTupleConstr:
     let tup = newType.skipTypes({tyGenericInst, tyAlias, tySink})
     if tup.kind != tyTuple:
       if tup.kind == tyObject: return
@@ -474,7 +478,7 @@ proc newHiddenAddrTaken(c: PContext, n: PNode): PNode =
     result = newNodeIT(nkHiddenAddr, n.info, makeVarType(c, n.typ))
     addSon(result, n)
     if isAssignable(c, n) notin {arLValue, arLocalLValue}:
-      localError(n.info, errVarForOutParamNeededX, $n)
+      localError(n.info, errVarForOutParamNeededX, renderNotLValue(n))
 
 proc analyseIfAddressTaken(c: PContext, n: PNode): PNode =
   result = n
@@ -735,7 +739,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
             hasErrorType = true
             break
         if not hasErrorType:
-          add(msg, ")\n" & msgKindToString(errButExpected) & "\n" &
+          add(msg, ">\n" & msgKindToString(errButExpected) & "\n" &
               typeToString(n.sons[0].typ))
           localError(n.info, errGenerated, msg)
         return errorNode(c, n)
@@ -880,6 +884,9 @@ const
 
 proc readTypeParameter(c: PContext, typ: PType,
                        paramName: PIdent, info: TLineInfo): PNode =
+  # Note: This function will return emptyNode when attempting to read
+  # a static type parameter that is not yet resolved (e.g. this may
+  # happen in proc signatures such as `proc(x: T): array[T.sizeParam, U]`
   if typ.kind in {tyUserTypeClass, tyUserTypeClassInst}:
     for statement in typ.n:
       case statement.kind
@@ -910,7 +917,10 @@ proc readTypeParameter(c: PContext, typ: PType,
       if tParam.sym.name.id == paramName.id:
         let rawTyp = ty.sons[s + 1]
         if rawTyp.kind == tyStatic:
-          return rawTyp.n
+          if rawTyp.n != nil:
+            return rawTyp.n
+          else:
+            return emptyNode
         else:
           let foundTyp = makeTypeDesc(c, rawTyp)
           return newSymNode(copySym(tParam.sym).linkTo(foundTyp), info)
@@ -951,7 +961,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     else:
       result = semMacroExpr(c, n, n, s, flags)
   of skTemplate:
-    if efNoEvaluateGeneric in flags and s.ast[genericParamsPos].len > 0 or 
+    if efNoEvaluateGeneric in flags and s.ast[genericParamsPos].len > 0 or
        sfCustomPragma in sym.flags:
       markUsed(n.info, s, c.graph.usageSym)
       styleCheckUse(n.info, s)
@@ -1075,21 +1085,43 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   template tryReadingGenericParam(t: PType) =
     case t.kind
     of tyTypeParamsHolders:
-      return readTypeParameter(c, t, i, n.info)
+      result = readTypeParameter(c, t, i, n.info)
+      if result == emptyNode:
+        result = n
+        n.typ = makeTypeFromExpr(c, n.copyTree)
+      return
     of tyUserTypeClasses:
       if t.isResolvedUserTypeClass:
         return readTypeParameter(c, t, i, n.info)
       else:
         n.typ = makeTypeFromExpr(c, copyTree(n))
         return n
-    of tyGenericParam:
+    of tyGenericParam, tyAnything:
       n.typ = makeTypeFromExpr(c, copyTree(n))
       return n
     else:
       discard
 
-  if isTypeExpr(n.sons[0]) or (ty.kind == tyTypeDesc and ty.base.kind != tyNone):
-    if ty.kind == tyTypeDesc: ty = ty.base
+  var argIsType = false
+
+  if ty.kind == tyTypeDesc:
+    if ty.base.kind == tyNone:
+      # This is a still unresolved typedesc parameter.
+      # If this is a regular proc, then all bets are off and we must return
+      # tyFromExpr, but when this happen in a macro this is not a built-in
+      # field access and we leave the compiler to compile a normal call:
+      if getCurrOwner(c).kind != skMacro:
+        n.typ = makeTypeFromExpr(c, n.copyTree)
+        return n
+      else:
+        return nil
+    else:
+      ty = ty.base
+      argIsType = true
+  else:
+    argIsType = isTypeExpr(n.sons[0])
+
+  if argIsType:
     ty = ty.skipTypes(tyDotOpTransparent)
     case ty.kind
     of tyEnum:
@@ -1296,18 +1328,28 @@ proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
     #fixAbstractType(c, result)
     #analyseIfAddressTakenInCall(c, result)
 
-proc takeImplicitAddr(c: PContext, n: PNode): PNode =
+proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode =
+  # See RFC #7373, calls returning 'var T' are assumed to
+  # return a view into the first argument (if there is one):
+  let root = exprRoot(n)
+  if root != nil and root.owner == c.p.owner:
+    if root.kind in {skLet, skVar, skTemp} and sfGlobal notin root.flags:
+      localError(n.info, "'$1' escapes its stack frame; context: '$2'" % [
+        root.name.s, renderTree(n, {renderNoComments})])
+    elif root.kind == skParam and root.position != 0:
+      localError(n.info, "'$1' is not the first parameter; context: '$2'" % [
+        root.name.s, renderTree(n, {renderNoComments})])
   case n.kind
   of nkHiddenAddr, nkAddr: return n
   of nkHiddenDeref, nkDerefExpr: return n.sons[0]
   of nkBracketExpr:
     if len(n) == 1: return n.sons[0]
   else: discard
-  var valid = isAssignable(c, n)
+  let valid = isAssignable(c, n)
   if valid != arLValue:
     if valid == arLocalLValue:
       localError(n.info, errXStackEscape, renderTree(n, {renderNoComments}))
-    else:
+    elif not isLent:
       localError(n.info, errExprHasNoAddress)
   result = newNodeIT(nkHiddenAddr, n.info, makePtrType(c, n.typ))
   result.add(n)
@@ -1315,9 +1357,9 @@ proc takeImplicitAddr(c: PContext, n: PNode): PNode =
 proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
   if le.kind == nkHiddenDeref:
     var x = le.sons[0]
-    if x.typ.kind == tyVar and x.kind == nkSym and x.sym.kind == skResult:
+    if x.typ.kind in {tyVar, tyLent} and x.kind == nkSym and x.sym.kind == skResult:
       n.sons[0] = x # 'result[]' --> 'result'
-      n.sons[1] = takeImplicitAddr(c, ri)
+      n.sons[1] = takeImplicitAddr(c, ri, x.typ.kind == tyLent)
       x.typ.flags.incl tfVarIsPtr
       #echo x.info, " setting it for this type ", typeToString(x.typ), " ", n.info
 
@@ -1360,7 +1402,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
     result = buildOverloadedSubscripts(n.sons[0], getIdent"{}=")
     add(result, n[1])
     return semExprNoType(c, result)
-  of nkPar:
+  of nkPar, nkTupleConstr:
     if a.len >= 2:
       # unfortunately we need to rewrite ``(x, y) = foo()`` already here so
       # that overloading of the assignment operator still works. Usually we
@@ -1473,18 +1515,18 @@ proc semYieldVarResult(c: PContext, n: PNode, restype: PType) =
     if t.kind == tyVar: t.flags.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
     if n.sons[0].kind in {nkHiddenStdConv, nkHiddenSubConv}:
       n.sons[0] = n.sons[0].sons[1]
-    n.sons[0] = takeImplicitAddr(c, n.sons[0])
+    n.sons[0] = takeImplicitAddr(c, n.sons[0], t.kind == tyLent)
   of tyTuple:
     for i in 0..<t.sonsLen:
       var e = skipTypes(t.sons[i], {tyGenericInst, tyAlias, tySink})
       if e.kind in {tyVar, tyLent}:
         if e.kind == tyVar: e.flags.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
-        if n.sons[0].kind == nkPar:
-          n.sons[0].sons[i] = takeImplicitAddr(c, n.sons[0].sons[i])
+        if n.sons[0].kind in {nkPar, nkTupleConstr}:
+          n.sons[0].sons[i] = takeImplicitAddr(c, n.sons[0].sons[i], e.kind == tyLent)
         elif n.sons[0].kind in {nkHiddenStdConv, nkHiddenSubConv} and
-             n.sons[0].sons[1].kind == nkPar:
+             n.sons[0].sons[1].kind in {nkPar, nkTupleConstr}:
           var a = n.sons[0].sons[1]
-          a.sons[i] = takeImplicitAddr(c, a.sons[i])
+          a.sons[i] = takeImplicitAddr(c, a.sons[i], false)
         else:
           localError(n.sons[0].info, errXExpected, "tuple constructor")
   else: discard
@@ -2005,12 +2047,12 @@ proc semTableConstr(c: PContext, n: PNode): PNode =
     var x = n.sons[i]
     if x.kind == nkExprColonExpr and sonsLen(x) == 2:
       for j in countup(lastKey, i-1):
-        var pair = newNodeI(nkPar, x.info)
+        var pair = newNodeI(nkTupleConstr, x.info)
         pair.add(n.sons[j])
         pair.add(x[1])
         result.add(pair)
 
-      var pair = newNodeI(nkPar, x.info)
+      var pair = newNodeI(nkTupleConstr, x.info)
       pair.add(x[0])
       pair.add(x[1])
       result.add(pair)
@@ -2030,6 +2072,7 @@ proc checkPar(n: PNode): TParKind =
     result = paTuplePositions # ()
   elif length == 1:
     if n.sons[0].kind == nkExprColonExpr: result = paTupleFields
+    elif n.kind == nkTupleConstr: result = paTuplePositions
     else: result = paSingle         # (expr)
   else:
     if n.sons[0].kind == nkExprColonExpr: result = paTupleFields
@@ -2046,7 +2089,7 @@ proc checkPar(n: PNode): TParKind =
           return paNone
 
 proc semTupleFieldsConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
-  result = newNodeI(nkPar, n.info)
+  result = newNodeI(nkTupleConstr, n.info)
   var typ = newTypeS(tyTuple, c)
   typ.n = newNodeI(nkRecList, n.info) # nkIdentDefs
   var ids = initIntSet()
@@ -2071,6 +2114,7 @@ proc semTupleFieldsConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
 proc semTuplePositionsConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = n                  # we don't modify n, but compute the type:
+  result.kind = nkTupleConstr
   var typ = newTypeS(tyTuple, c)  # leave typ.n nil!
   for i in countup(0, sonsLen(n) - 1):
     n.sons[i] = semExprWithType(c, n.sons[i], flags*{efAllowDestructor})
@@ -2172,7 +2216,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     # because of the changed symbol binding, this does not mean that we
     # don't have to check the symbol for semantics here again!
     result = semSym(c, n, n.sym, flags)
-  of nkEmpty, nkNone, nkCommentStmt:
+  of nkEmpty, nkNone, nkCommentStmt, nkType:
     discard
   of nkNilLit:
     if result.typ == nil: result.typ = getSysType(tyNil)
@@ -2302,7 +2346,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       invalidPragma(n)
 
     result = semExpr(c, n[0], flags)
-  of nkPar:
+  of nkPar, nkTupleConstr:
     case checkPar(n)
     of paNone: result = errorNode(c, n)
     of paTuplePositions:
@@ -2376,7 +2420,14 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkMacroDef: result = semMacroDef(c, n)
   of nkTemplateDef: result = semTemplateDef(c, n)
   of nkImportStmt:
-    if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "import")
+    # this particular way allows 'import' in a 'compiles' context so that
+    # template canImport(x): bool =
+    #   compiles:
+    #     import x
+    #
+    # works:
+    if c.currentScope.depthLevel > 2 + c.compilesContextId:
+      localError(n.info, errXOnlyAtModuleScope, "import")
     result = evalImport(c, n)
   of nkImportExceptStmt:
     if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "import")

@@ -14,7 +14,7 @@
 
 import
   ropes, os, strutils, osproc, platform, condsyms, options, msgs,
-  securehash, streams
+  std / sha1, streams
 
 #from debuginfo import writeDebugInfo
 
@@ -176,10 +176,10 @@ compiler bcc:
   result = (
     name: "bcc",
     objExt: "obj",
-    optSpeed: " -O2 -6 ",
+    optSpeed: " -O3 -6 ",
     optSize: " -O1 -6 ",
-    compilerExe: "bcc32",
-    cppCompiler: "",
+    compilerExe: "bcc32c",
+    cppCompiler: "cpp32c",
     compileTmpl: "-c $options $include -o$objfile $file",
     buildGui: " -tW",
     buildDll: " -tWD",
@@ -193,7 +193,9 @@ compiler bcc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
-    props: {hasCpp})
+    props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, 
+            hasAttribute})
+    
 
 # Digital Mars C Compiler
 compiler dmc:

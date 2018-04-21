@@ -120,7 +120,7 @@ proc returnsNewExpr*(n: PNode): NewLocation =
       nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkOfBranch,
       nkElifBranch, nkElse, nkExceptBranch, nkFinally, nkCast:
     result = returnsNewExpr(n.lastSon)
-  of nkCurly, nkBracket, nkPar, nkObjConstr, nkClosure,
+  of nkCurly, nkBracket, nkPar, nkTupleConstr, nkObjConstr, nkClosure,
       nkIfExpr, nkIfStmt, nkWhenStmt, nkCaseStmt, nkTryStmt:
     result = newLit
     for i in ord(n.kind == nkObjConstr) ..< n.len:
@@ -179,7 +179,7 @@ proc deps(w: var W; n: PNode) =
     for child in n:
       let last = lastSon(child)
       if last.kind == nkEmpty: continue
-      if child.kind == nkVarTuple and last.kind == nkPar:
+      if child.kind == nkVarTuple and last.kind in {nkPar, nkTupleConstr}:
         internalAssert child.len-2 == last.len
         for i in 0 .. child.len-3:
           deps(w, child.sons[i], last.sons[i], {})

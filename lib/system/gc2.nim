@@ -178,7 +178,10 @@ proc writeCell(file: File; msg: cstring, c: PCell) =
     let id = c.id
   else:
     let id = c
-  when leakDetector:
+  when defined(nimTypeNames):
+    c_fprintf(file, "%s %p %d escaped=%ld color=%c of type %s\n",
+              msg, id, kind, didEscape(c), col, c.typ.name)
+  elif leakDetector:
     c_fprintf(file, "%s %p %d escaped=%ld color=%c from %s(%ld)\n",
               msg, id, kind, didEscape(c), col, c.filename, c.line)
   else:

@@ -1032,7 +1032,7 @@ procs for these conversions.
 
 Type Conversion
 ---------------
-Conversion between basic types is performed by using the
+Conversion between numerical types is performed by using the
 type as a function:
 
 .. code-block:: nim

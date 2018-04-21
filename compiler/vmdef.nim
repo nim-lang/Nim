@@ -16,7 +16,7 @@ const
   byteExcess* = 128 # we use excess-K for immediates
   wordExcess* = 32768
 
-  MaxLoopIterations* = 1500_000 # max iterations of all loops
+  MaxLoopIterations* = 1_000_000_000 # max iterations of all loops
 
 
 type
@@ -79,6 +79,7 @@ type
     opcNAdd,
     opcNAddMultiple,
     opcNKind,
+    opcNSymKind,
     opcNIntVal,
     opcNFloatVal,
     opcNSymbol,
@@ -101,7 +102,6 @@ type
     opcNGetLine, opcNGetColumn, opcNGetFile,
     opcEqIdent,
     opcStrToIdent,
-    opcIdentToStr,
     opcGetImpl,
 
     opcEcho,

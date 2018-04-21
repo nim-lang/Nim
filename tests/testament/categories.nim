@@ -167,9 +167,9 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
 
 proc longGCTests(r: var TResults, cat: Category, options: string) =
   when defined(windows):
-    let cOptions = "gcc -ldl -DWIN"
+    let cOptions = "-ldl -DWIN"
   else:
-    let cOptions = "gcc -ldl"
+    let cOptions = "-ldl"
 
   var c = initResults()
   # According to ioTests, this should compile the file
@@ -226,7 +226,8 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
                    "actiontable/tactiontable", "method/tmultim1",
                    "method/tmultim3", "method/tmultim4",
                    "varres/tvarres0", "varres/tvarres3", "varres/tvarres4",
-                   "varres/tvartup", "misc/tints", "misc/tunsignedinc"]:
+                   "varres/tvartup", "misc/tints", "misc/tunsignedinc",
+                   "async/tjsandnativeasync"]:
     test "tests/" & testfile & ".nim"
 
   for testfile in ["strutils", "json", "random", "times", "logging"]:
@@ -420,8 +421,9 @@ proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
 proc processCategory(r: var TResults, cat: Category, options: string) =
   case cat.string.normalize
   of "rodfiles":
-    when false: compileRodFiles(r, cat, options)
-    runRodFiles(r, cat, options)
+    when false:
+      compileRodFiles(r, cat, options)
+      runRodFiles(r, cat, options)
   of "js":
     # XXX JS doesn't need to be special anymore
     jsTests(r, cat, options)

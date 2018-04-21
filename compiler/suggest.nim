@@ -33,6 +33,7 @@
 # included from sigmatch.nim
 
 import algorithm, prefixmatches
+from wordrecg import wDeprecated
 
 when defined(nimsuggest):
   import passes, tables # importer
@@ -414,7 +415,7 @@ when defined(nimsuggest):
   # Since TLineInfo defined a == operator that doesn't include the column,
   # we map TLineInfo to a unique int here for this lookup table:
   proc infoToInt(info: TLineInfo): int64 =
-    info.fileIndex + info.line.int64 shl 32 + info.col.int64 shl 48
+    info.fileIndex.int64 + info.line.int64 shl 32 + info.col.int64 shl 48
 
   proc addNoDup(s: PSym; info: TLineInfo) =
     # ensure nothing gets too slow:
@@ -479,12 +480,23 @@ proc suggestSym*(info: TLineInfo; s: PSym; usageSym: var PSym; isDecl=true) {.in
         isDecl:
       suggestResult(symToSuggest(s, isLocal=false, ideOutline, info, 100, PrefixMatch.None, false, 0))
 
+proc warnAboutDeprecated(info: TLineInfo; s: PSym) =
+  if s.kind in routineKinds:
+    let n = s.ast[pragmasPos]
+    if n.kind != nkEmpty:
+      for it in n:
+        if whichPragma(it) == wDeprecated and it.safeLen == 2 and
+            it[1].kind in {nkStrLit..nkTripleStrLit}:
+          message(info, warnDeprecated, it[1].strVal & "; " & s.name.s)
+          return
+  message(info, warnDeprecated, s.name.s)
+
 proc markUsed(info: TLineInfo; s: PSym; usageSym: var PSym) =
   incl(s.flags, sfUsed)
   if s.kind == skEnumField and s.owner != nil:
     incl(s.owner.flags, sfUsed)
   if {sfDeprecated, sfError} * s.flags != {}:
-    if sfDeprecated in s.flags: message(info, warnDeprecated, s.name.s)
+    if sfDeprecated in s.flags: warnAboutDeprecated(info, s)
     if sfError in s.flags: localError(info, errWrongSymbolX, s.name.s)
   when defined(nimsuggest):
     suggestSym(info, s, usageSym, false)
@@ -562,7 +574,7 @@ proc suggestEnum*(c: PContext; n: PNode; t: PType) =
   if outputs.len > 0: suggestQuit()
 
 proc suggestSentinel*(c: PContext) =
-  if gIdeCmd != ideSug or c.module.position != gTrackPos.fileIndex: return
+  if gIdeCmd != ideSug or c.module.position != gTrackPos.fileIndex.int32: return
   if c.compilesContextId > 0: return
   inc(c.compilesContextId)
   var outputs: Suggestions = @[]

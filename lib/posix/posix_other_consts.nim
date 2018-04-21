@@ -451,6 +451,9 @@ var POSIX_TYPED_MEM_ALLOCATE* {.importc: "POSIX_TYPED_MEM_ALLOCATE", header: "<s
 var POSIX_TYPED_MEM_ALLOCATE_CONTIG* {.importc: "POSIX_TYPED_MEM_ALLOCATE_CONTIG", header: "<sys/mman.h>".}: cint
 var POSIX_TYPED_MEM_MAP_ALLOCATABLE* {.importc: "POSIX_TYPED_MEM_MAP_ALLOCATABLE", header: "<sys/mman.h>".}: cint
 
+# <sys/resource.h>
+var RLIMIT_NOFILE* {.importc: "RLIMIT_NOFILE", header: "<sys/resource.h>".}: cint
+
 # <sys/select.h>
 var FD_SETSIZE* {.importc: "FD_SETSIZE", header: "<sys/select.h>".}: cint
 

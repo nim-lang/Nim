@@ -11,7 +11,7 @@
 
 import
   ast, astalgo, hashes, trees, platform, magicsys, extccomp, options, intsets,
-  nversion, nimsets, msgs, securehash, bitsets, idents, types,
+  nversion, nimsets, msgs, std / sha1, bitsets, idents, types,
   ccgutils, os, ropes, math, passes, rodread, wordrecg, treetab, cgmeth,
   condsyms, rodutils, renderer, idgen, cgendata, ccgmerge, semfold, aliases,
   lowerings, semparallel, tables, sets, ndi
@@ -223,7 +223,7 @@ proc genLineDir(p: BProc, t: PNode) =
               line.rope, makeCString(toFilename(tt.info)))
   elif ({optLineTrace, optStackTrace} * p.options ==
       {optLineTrace, optStackTrace}) and
-      (p.prc == nil or sfPure notin p.prc.flags) and tt.info.fileIndex >= 0:
+      (p.prc == nil or sfPure notin p.prc.flags) and tt.info.fileIndex != InvalidFileIDX:
     if freshLineInfo(p, tt.info):
       linefmt(p, cpsStmts, "nimln_($1, $2);$n",
               line.rope, tt.info.quotedFilename)
@@ -238,7 +238,12 @@ proc genProc(m: BModule, prc: PSym)
 template compileToCpp(m: BModule): untyped =
   gCmd == cmdCompileToCpp or sfCompileToCpp in m.module.flags
 
-include "ccgtypes.nim"
+proc getTempName(m: BModule): Rope =
+  result = m.tmpBase & rope(m.labels)
+  inc m.labels
+
+include ccgliterals
+include ccgtypes
 
 # ------------------------------ Manager of temporaries ------------------
 
@@ -260,6 +265,11 @@ proc rdCharLoc(a: TLoc): Rope =
 
 proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
                    takeAddr: bool) =
+  if p.module.compileToCpp and t.isException:
+    # init vtable in Exception object for polymorphic exceptions
+    includeHeader(p.module, "<new>")
+    linefmt(p, section, "new ($1) $2;$n", rdLoc(a), getTypeDesc(p.module, t))
+
   case analyseObjectWithTypeField(t)
   of frNone:
     discard
@@ -312,8 +322,10 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       genObjectInit(p, cpsStmts, loc.t, loc, true)
     else:
       useStringh(p.module)
+      # array passed as argument decayed into pointer, bug #7332
+      # so we use getTypeDesc here rather than rdLoc(loc)
       linefmt(p, cpsStmts, "memset((void*)$1, 0, sizeof($2));$n",
-              addrLoc(loc), rdLoc(loc))
+              addrLoc(loc), getTypeDesc(p.module, loc.t))
       # XXX: We can be extra clever here and call memset only
       # on the bytes following the m_type field?
       genObjectInit(p, cpsStmts, loc.t, loc, true)
@@ -330,7 +342,7 @@ proc constructLoc(p: BProc, loc: TLoc, isTemp = false) =
       if not isImportedCppType(typ):
         useStringh(p.module)
         linefmt(p, cpsStmts, "memset((void*)$1, 0, sizeof($2));$n",
-                addrLoc(loc), rdLoc(loc))
+                addrLoc(loc), getTypeDesc(p.module, typ))
     genObjectInit(p, cpsStmts, loc.t, loc, true)
 
 proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
@@ -544,11 +556,13 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
       for i in countup(0, high(s)):
         inc(m.labels)
         if i > 0: add(loadlib, "||")
-        appcg(m, loadlib, "($1 = #nimLoadLibrary((#NimStringDesc*) &$2))$n",
-              [tmp, getStrLit(m, s[i])])
+        let n = newStrNode(nkStrLit, s[i])
+        n.info = lib.path.info
+        appcg(m, loadlib, "($1 = #nimLoadLibrary($2))$n",
+              [tmp, genStringLiteral(m, n)])
       appcg(m, m.s[cfsDynLibInit],
-            "if (!($1)) #nimLoadLibraryError((#NimStringDesc*) &$2);$n",
-            [loadlib, getStrLit(m, lib.path.strVal)])
+            "if (!($1)) #nimLoadLibraryError($2);$n",
+            [loadlib, genStringLiteral(m, lib.path)])
     else:
       var p = newProc(nil, m)
       p.options = p.options - {optStackTrace, optEndb}
@@ -662,6 +676,12 @@ proc generateHeaders(m: BModule) =
   add(m.s[cfsHeaders], "#undef powerpc" & tnl)
   add(m.s[cfsHeaders], "#undef unix" & tnl)
 
+proc openNamespaceNim(): Rope =
+  result.add("namespace Nim {" & tnl)
+
+proc closeNamespaceNim(): Rope =
+  result.add("}" & tnl)
+
 proc closureSetup(p: BProc, prc: PSym) =
   if tfCapturesEnv notin prc.typ.flags: return
   # prc.ast[paramsPos].last contains the type we're after:
@@ -726,6 +746,7 @@ proc genProcAux(m: BModule, prc: PSym) =
     else:
       fillResult(resNode)
       assignParam(p, res)
+      resetLoc(p, res.loc)
       if skipTypes(res.typ, abstractInst).kind == tyArray:
         #incl(res.loc.flags, lfIndirect)
         res.loc.storage = OnUnknown
@@ -879,7 +900,7 @@ proc genProc(m: BModule, prc: PSym) =
         if not containsOrIncl(m.g.generatedHeader.declaredThings, prc.id):
           genProcAux(m.g.generatedHeader, prc)
 
-proc genVarPrototypeAux(m: BModule, n: PNode) =
+proc genVarPrototype(m: BModule, n: PNode) =
   #assert(sfGlobal in sym.flags)
   let sym = n.sym
   useHeader(m, sym)
@@ -899,16 +920,13 @@ proc genVarPrototypeAux(m: BModule, n: PNode) =
       if sfVolatile in sym.flags: add(m.s[cfsVars], " volatile")
       addf(m.s[cfsVars], " $1;$n", [sym.loc.r])
 
-proc genVarPrototype(m: BModule, n: PNode) =
-  genVarPrototypeAux(m, n)
-
 proc addIntTypes(result: var Rope) {.inline.} =
   addf(result, "#define NIM_NEW_MANGLING_RULES" & tnl &
                "#define NIM_INTBITS $1" & tnl, [
     platform.CPU[targetCPU].intSize.rope])
+  if useNimNamespace : result.add("#define USE_NIM_NAMESPACE" & tnl)
 
 proc getCopyright(cfile: Cfile): Rope =
-  const copyrightYear = "2017"
   if optCompileOnly in gGlobalOptions:
     result = ("/* Generated by Nim Compiler v$1 */$N" &
         "/*   (c) " & copyrightYear & " Andreas Rumpf */$N" &
@@ -1072,7 +1090,11 @@ proc genMainProc(m: BModule) =
   appcg(m, m.s[cfsProcs], nimMain,
         [m.g.mainModInit, initStackBottomCall, rope(m.labels)])
   if optNoMain notin gGlobalOptions:
+    if useNimNamespace:
+      m.s[cfsProcs].add closeNamespaceNim() & "using namespace Nim;" & tnl
+
     appcg(m, m.s[cfsProcs], otherMain, [])
+    if useNimNamespace: m.s[cfsProcs].add openNamespaceNim()
 
 proc getSomeInitName(m: PSym, suffix: string): Rope =
   assert m.kind == skModule
@@ -1180,7 +1202,9 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
     add(result, genSectionStart(i))
     add(result, m.s[i])
     add(result, genSectionEnd(i))
+    if useNimNamespace and i == cfsHeaders: result.add openNamespaceNim()
   add(result, m.s[cfsInitProc])
+  if useNimNamespace: result.add closeNamespaceNim()
 
 proc newPreInitProc(m: BModule): BProc =
   result = newProc(nil, m)
@@ -1277,7 +1301,7 @@ proc resetCgenModules*(g: BModuleList) =
   for m in cgenModules(g): resetModule(m)
 
 proc rawNewModule(g: BModuleList; module: PSym): BModule =
-  result = rawNewModule(g, module, module.position.int32.toFullPath)
+  result = rawNewModule(g, module, module.position.FileIndex.toFullPath)
 
 proc newModule(g: BModuleList; module: PSym): BModule =
   # we should create only one cgen module for each module sym
@@ -1287,7 +1311,7 @@ proc newModule(g: BModuleList; module: PSym): BModule =
 
   if (optDeadCodeElim in gGlobalOptions):
     if (sfDeadCodeElim in module.flags):
-      internalError("added pending module twice: " & module.filename)
+      internalError("added pending module twice: " & toFilename(FileIndex module.position))
 
 template injectG(config) {.dirty.} =
   if graph.backend == nil:
@@ -1319,11 +1343,13 @@ proc writeHeader(m: BModule) =
     add(result, genSectionStart(i))
     add(result, m.s[i])
     add(result, genSectionEnd(i))
+    if useNimNamespace and i == cfsHeaders: result.add openNamespaceNim()
   add(result, m.s[cfsInitProc])
 
   if optGenDynLib in gGlobalOptions:
     result.add("N_LIB_IMPORT ")
   result.addf("N_CDECL(void, NimMain)(void);$n", [])
+  if useNimNamespace: result.add closeNamespaceNim()
   result.addf("#endif /* $1 */$n", [guard])
   writeRope(result, m.filename)
 

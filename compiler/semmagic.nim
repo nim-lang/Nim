@@ -73,7 +73,7 @@ proc expectIntLit(c: PContext, n: PNode): int =
   else: localError(n.info, errIntLiteralExpected)
 
 proc semInstantiationInfo(c: PContext, n: PNode): PNode =
-  result = newNodeIT(nkPar, n.info, n.typ)
+  result = newNodeIT(nkTupleConstr, n.info, n.typ)
   let idx = expectIntLit(c, n.sons[1])
   let useFullPaths = expectIntLit(c, n.sons[2])
   let info = getInfoContext(idx)
@@ -81,8 +81,11 @@ proc semInstantiationInfo(c: PContext, n: PNode): PNode =
   filename.strVal = if useFullPaths != 0: info.toFullPath else: info.toFilename
   var line = newNodeIT(nkIntLit, n.info, getSysType(tyInt))
   line.intVal = toLinenumber(info)
+  var column = newNodeIT(nkIntLit, n.info, getSysType(tyInt))
+  column.intVal = toColumn(info)
   result.add(filename)
   result.add(line)
+  result.add(column)
 
 proc toNode(t: PType, i: TLineInfo): PNode =
   result = newNodeIT(nkType, i, t)

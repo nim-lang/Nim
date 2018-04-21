@@ -25,8 +25,11 @@ proc cmpStrings(a, b: NimString): int {.inline, compilerProc.} =
   if a == nil: return -1
   if b == nil: return 1
   let minlen = min(a.len, b.len)
-  result = c_memcmp(addr a.data, addr b.data, minlen.csize)
-  if result == 0:
+  if minlen > 0:
+    result = c_memcmp(addr a.data, addr b.data, minlen.csize)
+    if result == 0:
+      result = a.len - b.len
+  else:
     result = a.len - b.len
 
 proc eqStrings(a, b: NimString): bool {.inline, compilerProc.} =
@@ -290,7 +293,7 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
 
     # XXX: zeroing out the memory can still result in crashes if a wiped-out
     # cell is aliased by another pointer (ie proc parameter or a let variable).
-    # This is a tought problem, because even if we don't zeroMem here, in the
+    # This is a tough problem, because even if we don't zeroMem here, in the
     # presence of user defined destructors, the user will expect the cell to be
     # "destroyed" thus creating the same problem. We can destoy the cell in the
     # finalizer of the sequence, but this makes destruction non-deterministic.
@@ -417,7 +420,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
     return 0
 
   if s[i] in {'0'..'9'}:
-      first_digit = (s[i].ord - '0'.ord)
+    first_digit = (s[i].ord - '0'.ord)
   # Integer part?
   while s[i] in {'0'..'9'}:
     inc(kdigits)
