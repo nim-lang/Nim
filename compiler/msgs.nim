@@ -10,6 +10,9 @@
 import
   options, strutils, os, tables, ropes, platform, terminal, macros
 
+const
+  explanationsBaseUrl* = "https://nim-lang.org/docs/manual"
+
 type
   TMsgKind* = enum
     errUnknown, errInternal, errIllFormedAstX, errCannotOpenFile, errGenerated,
