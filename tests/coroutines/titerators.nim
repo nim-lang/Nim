@@ -1,5 +1,5 @@
 import coro
-include system/timers
+import timers
 
 var
   stackCheckValue = 1100220033
