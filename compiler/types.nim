@@ -777,8 +777,8 @@ proc equalParams(a, b: PNode): TParamsEquality =
         return paramsNotEqual # paramsIncompatible;
       # continue traversal! If not equal, we can return immediately; else
       # it stays incompatible
-    if not sameTypeOrNil(a.sons[0].typ, b.sons[0].typ, {ExactTypeDescValues}):
-      if (a.sons[0].typ == nil) or (b.sons[0].typ == nil):
+    if not sameTypeOrNil(a.typ, b.typ, {ExactTypeDescValues}):
+      if (a.typ == nil) or (b.typ == nil):
         result = paramsNotEqual # one proc has a result, the other not is OK
       else:
         result = paramsIncompatible # overloading by different
