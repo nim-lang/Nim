@@ -3487,17 +3487,17 @@ returned value is an l-value and can be modified by the caller:
 .. code-block:: nim
   var g = 0
 
-  proc WriteAccessToG(): var int =
+  proc writeAccessToG(): var int =
     result = g
 
-  WriteAccessToG() = 6
+  writeAccessToG() = 6
   assert g == 6
 
 It is a compile time error if the implicitly introduced pointer could be
 used to access a location beyond its lifetime:
 
 .. code-block:: nim
-  proc WriteAccessToG(): var int =
+  proc writeAccessToG(): var int =
     var g = 0
     result = g # Error!
 
@@ -3510,6 +3510,24 @@ For iterators, a component of a tuple return type can have a ``var`` type too:
 
 In the standard library every name of a routine that returns a ``var`` type
 starts with the prefix ``m`` per convention.
+
+
+.. include:: manual/var_t_return.rst
+
+Future directions
+~~~~~~~~~~~~~~~~~
+
+Later versions of Nim can be more precise about the borrowing rule with
+a syntax like:
+
+.. code-block:: nim
+  proc foo(other: Y; container: var X): var T from container
+
+Here ``var T from container`` explicitly exposes that the
+location is deviated from the second parameter (called
+'container' in this case). The syntax ``var T from p`` specifies a type
+``varTy[T, 2]`` which is incompatible with ``varTy[T, 1]``.
+
 
 
 Overloading of the subscript operator
