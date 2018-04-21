@@ -1,6 +1,6 @@
 
-import 
-  intsets, ast, idents, algorithm, renderer, parser, ospaths, strutils, 
+import
+  intsets, ast, idents, algorithm, renderer, parser, ospaths, strutils,
   sequtils, msgs, modulegraphs, syntaxes, options, modulepaths, tables
 
 type
@@ -135,13 +135,13 @@ proc hasIncludes(n:PNode): bool =
     if a.kind == nkIncludeStmt:
       return true
 
-proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: int32;
+proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex;
                     cache: IdentCache): PNode {.procvar.} =
   result = syntaxes.parseFile(fileIdx, cache)
   graph.addDep(s, fileIdx)
-  graph.addIncludeDep(s.position.int32, fileIdx)
+  graph.addIncludeDep(FileIndex s.position, fileIdx)
 
-proc expandIncludes(graph: ModuleGraph, module: PSym, n: PNode, 
+proc expandIncludes(graph: ModuleGraph, module: PSym, n: PNode,
                     modulePath: string, includedFiles: var IntSet,
                     cache: IdentCache): PNode =
   # Parses includes and injects them in the current tree
@@ -153,13 +153,13 @@ proc expandIncludes(graph: ModuleGraph, module: PSym, n: PNode,
       for i in 0..<a.len:
         var f = checkModuleName(a.sons[i])
         if f != InvalidFileIDX:
-          if containsOrIncl(includedFiles, f):
+          if containsOrIncl(includedFiles, f.int):
             localError(a.info, errRecursiveDependencyX, f.toFilename)
           else:
             let nn = includeModule(graph, module, f, cache)
-            let nnn = expandIncludes(graph, module, nn, modulePath, 
+            let nnn = expandIncludes(graph, module, nn, modulePath,
                                       includedFiles, cache)
-            excl(includedFiles, f)
+            excl(includedFiles, f.int)
             for b in nnn:
               result.add b
     else:
@@ -429,8 +429,8 @@ proc reorder*(graph: ModuleGraph, n: PNode, module: PSym, cache: IdentCache): PN
   if n.hasForbiddenPragma:
     return n
   var includedFiles = initIntSet()
-  let mpath = module.fileIdx.toFullPath
-  let n = expandIncludes(graph, module, n, mpath, 
+  let mpath = module.fileIdx.FileIndex.toFullPath
+  let n = expandIncludes(graph, module, n, mpath,
                           includedFiles, cache).splitSections
   result = newNodeI(nkStmtList, n.info)
   var deps = newSeq[(IntSet, IntSet)](n.len)

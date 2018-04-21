@@ -543,7 +543,7 @@ proc pragmaLine(c: PContext, n: PNode) =
       else:
         # XXX this produces weird paths which are not properly resolved:
         n.info.fileIndex = msgs.fileInfoIdx(x.strVal)
-        n.info.line = int16(y.intVal)
+        n.info.line = uint16(y.intVal)
     else:
       localError(n.info, errXExpected, "tuple")
   else:

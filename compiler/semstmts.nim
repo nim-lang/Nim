@@ -1095,12 +1095,12 @@ proc semAllTypeSections(c: PContext; n: PNode): PNode =
       for i in 0..<n.len:
         var f = checkModuleName(n.sons[i])
         if f != InvalidFileIDX:
-          if containsOrIncl(c.includedFiles, f):
+          if containsOrIncl(c.includedFiles, f.int):
             localError(n.info, errRecursiveDependencyX, f.toFilename)
           else:
             let code = gIncludeFile(c.graph, c.module, f, c.cache)
             gatherStmts c, code, result
-            excl(c.includedFiles, f)
+            excl(c.includedFiles, f.int)
     of nkStmtList:
       for i in 0 ..< n.len:
         gatherStmts(c, n.sons[i], result)
@@ -1784,11 +1784,11 @@ proc evalInclude(c: PContext, n: PNode): PNode =
   for i in countup(0, sonsLen(n) - 1):
     var f = checkModuleName(n.sons[i])
     if f != InvalidFileIDX:
-      if containsOrIncl(c.includedFiles, f):
+      if containsOrIncl(c.includedFiles, f.int):
         localError(n.info, errRecursiveDependencyX, f.toFilename)
       else:
         addSon(result, semStmt(c, gIncludeFile(c.graph, c.module, f, c.cache)))
-        excl(c.includedFiles, f)
+        excl(c.includedFiles, f.int)
 
 proc setLine(n: PNode, info: TLineInfo) =
   for i in 0 ..< safeLen(n): setLine(n.sons[i], info)

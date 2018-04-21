@@ -19,7 +19,7 @@ proc getTok(p: var TParser) =
   ## `tok` member.
   rawGetTok(p.lex, p.tok)
 
-proc openParser*(p: var TParser, fileIdx: int32, inputStream: PLLStream;
+proc openParser*(p: var TParser, fileIdx: FileIndex, inputStream: PLLStream;
                  cache: IdentCache) =
   ## Open a parser, using the given arguments to set up its internal state.
   ##

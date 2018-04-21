@@ -126,8 +126,8 @@ type
     s: cstring               # mmap'ed file contents
     options: TOptions
     reason: TReasonForRecompile
-    modDeps: seq[int32]
-    files: seq[int32]
+    modDeps: seq[FileIndex]
+    files: seq[FileIndex]
     dataIdx: int             # offset of start of data section
     convertersIdx: int       # offset of start of converters section
     initIdx, interfIdx, compilerProcsIdx, methodsIdx: int
@@ -163,11 +163,11 @@ proc decodeLineInfo(r: PRodReader, info: var TLineInfo) =
     else: info.col = int16(decodeVInt(r.s, r.pos))
     if r.s[r.pos] == ',':
       inc(r.pos)
-      if r.s[r.pos] == ',': info.line = -1'i16
-      else: info.line = int16(decodeVInt(r.s, r.pos))
+      if r.s[r.pos] == ',': info.line = 0'u16
+      else: info.line = uint16(decodeVInt(r.s, r.pos))
       if r.s[r.pos] == ',':
         inc(r.pos)
-        info = newLineInfo(r.files[decodeVInt(r.s, r.pos)], info.line, info.col)
+        info = newLineInfo(r.files[decodeVInt(r.s, r.pos)], int info.line, info.col)
 
 proc skipNode(r: PRodReader) =
   assert r.s[r.pos] == '('
@@ -861,29 +861,29 @@ proc loadMethods(r: PRodReader) =
     r.methods.add(rrGetSym(r, d, unknownLineInfo()))
     if r.s[r.pos] == ' ': inc(r.pos)
 
-proc getHash*(fileIdx: int32): SecureHash =
-  if fileIdx <% gMods.len and gMods[fileIdx].hashDone:
-    return gMods[fileIdx].hash
+proc getHash*(fileIdx: FileIndex): SecureHash =
+  if fileIdx.int32 <% gMods.len and gMods[fileIdx.int32].hashDone:
+    return gMods[fileIdx.int32].hash
 
   result = secureHashFile(fileIdx.toFullPath)
-  if fileIdx >= gMods.len: setLen(gMods, fileIdx+1)
-  gMods[fileIdx].hash = result
+  if fileIdx.int32 >= gMods.len: setLen(gMods, fileIdx.int32+1)
+  gMods[fileIdx.int32].hash = result
 
 template growCache*(cache, pos) =
   if cache.len <= pos: cache.setLen(pos+1)
 
-proc checkDep(fileIdx: int32; cache: IdentCache): TReasonForRecompile =
+proc checkDep(fileIdx: FileIndex; cache: IdentCache): TReasonForRecompile =
   assert fileIdx != InvalidFileIDX
-  growCache gMods, fileIdx
-  if gMods[fileIdx].reason != rrEmpty:
+  growCache gMods, fileIdx.int32
+  if gMods[fileIdx.int32].reason != rrEmpty:
     # reason has already been computed for this module:
-    return gMods[fileIdx].reason
+    return gMods[fileIdx.int32].reason
   let filename = fileIdx.toFilename
   var hash = getHash(fileIdx)
-  gMods[fileIdx].reason = rrNone  # we need to set it here to avoid cycles
+  gMods[fileIdx.int32].reason = rrNone  # we need to set it here to avoid cycles
   result = rrNone
   var rodfile = toGeneratedFile(filename.withPackageName, RodExt)
-  var r = newRodReader(rodfile, hash, fileIdx, cache)
+  var r = newRodReader(rodfile, hash, fileIdx.int32, cache)
   if r == nil:
     result = (if existsFile(rodfile): rrRodInvalid else: rrRodDoesNotExist)
   else:
@@ -907,19 +907,18 @@ proc checkDep(fileIdx: int32; cache: IdentCache): TReasonForRecompile =
     # recompilation is necessary:
     if r != nil: memfiles.close(r.memfile)
     r = nil
-  gMods[fileIdx].rd = r
-  gMods[fileIdx].reason = result  # now we know better
+  gMods[fileIdx.int32].rd = r
+  gMods[fileIdx.int32].reason = result  # now we know better
 
 proc handleSymbolFile*(module: PSym; cache: IdentCache): PRodReader =
-  let fileIdx = module.fileIdx
   if gSymbolFiles in {disabledSf, writeOnlySf, v2Sf}:
     module.id = getID()
     return nil
   idgen.loadMaxIds(options.gProjectPath / options.gProjectName)
-
+  let fileIdx = FileIndex module.fileIdx
   discard checkDep(fileIdx, cache)
-  if gMods[fileIdx].reason == rrEmpty: internalError("handleSymbolFile")
-  result = gMods[fileIdx].rd
+  if gMods[fileIdx.int32].reason == rrEmpty: internalError("handleSymbolFile")
+  result = gMods[fileIdx.int32].rd
   if result != nil:
     module.id = result.moduleID
     result.syms[module.id] = module
@@ -1153,7 +1152,7 @@ proc viewFile(rodfile: string) =
         if r.s[r.pos] == '\x0A':
           inc(r.pos)
           inc(r.line)
-        outf.write(w, " ", inclHash, "\n")
+        outf.write(w.int32, " ", inclHash, "\n")
       if r.s[r.pos] == ')': inc(r.pos)
       outf.write(")\n")
     of "DEPS":
@@ -1163,7 +1162,7 @@ proc viewFile(rodfile: string) =
         let v = int32(decodeVInt(r.s, r.pos))
         r.modDeps.add(r.files[v])
         if r.s[r.pos] == ' ': inc(r.pos)
-        outf.write(" ", r.files[v])
+        outf.write(" ", r.files[v].int32)
       outf.write("\n")
     of "INTERF",  "COMPILERPROCS":
       inc r.pos, 2

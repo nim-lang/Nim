@@ -319,7 +319,7 @@ proc trackDirty(arg: string, info: TLineInfo) =
     localError(info, errInvalidNumber, a[2])
 
   let dirtyOriginalIdx = a[1].fileInfoIdx
-  if dirtyOriginalIdx >= 0:
+  if dirtyOriginalIdx.int32 >= 0:
     msgs.setDirtyFile(dirtyOriginalIdx, a[0])
 
   gTrackPos = newLineInfo(dirtyOriginalIdx, line, column)

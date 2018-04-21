@@ -121,7 +121,7 @@ when false:
 proc resetSystemArtifacts*() =
   magicsys.resetSysTypes()
 
-proc newModule(graph: ModuleGraph; fileIdx: int32): PSym =
+proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   # We cannot call ``newSym`` here, because we have to circumvent the ID
   # mechanism, which we do in order to assign each module a persistent ID.
   new(result)
@@ -144,9 +144,9 @@ proc newModule(graph: ModuleGraph; fileIdx: int32): PSym =
     graph.packageSyms.strTableAdd(packSym)
 
   result.owner = packSym
-  result.position = fileIdx
+  result.position = int fileIdx
 
-  growCache graph.modules, fileIdx
+  growCache graph.modules, int fileIdx
   graph.modules[result.position] = result
 
   incl(result.flags, sfUsed)
@@ -158,7 +158,7 @@ proc newModule(graph: ModuleGraph; fileIdx: int32): PSym =
   # strTableIncl() for error corrections:
   discard strTableIncl(packSym.tab, result)
 
-proc compileModule*(graph: ModuleGraph; fileIdx: int32; cache: IdentCache, flags: TSymFlags): PSym =
+proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; cache: IdentCache, flags: TSymFlags): PSym =
   result = graph.getModule(fileIdx)
   if result == nil:
     #growCache gMemCacheData, fileIdx
@@ -199,7 +199,7 @@ proc compileModule*(graph: ModuleGraph; fileIdx: int32; cache: IdentCache, flags
       else:
         result = gCompiledModules[fileIdx]
 
-proc importModule*(graph: ModuleGraph; s: PSym, fileIdx: int32;
+proc importModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex;
                    cache: IdentCache): PSym {.procvar.} =
   # this is called by the semantic checking phase
   result = compileModule(graph, fileIdx, cache, {})
@@ -210,11 +210,11 @@ proc importModule*(graph: ModuleGraph; s: PSym, fileIdx: int32;
   gNotes = if s.owner.id == gMainPackageId: gMainPackageNotes
            else: ForeignPackageNotes
 
-proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: int32;
+proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex;
                     cache: IdentCache): PNode {.procvar.} =
   result = syntaxes.parseFile(fileIdx, cache)
   graph.addDep(s, fileIdx)
-  graph.addIncludeDep(s.position.int32, fileIdx)
+  graph.addIncludeDep(s.position.FileIndex, fileIdx)
 
 proc compileSystemModule*(graph: ModuleGraph; cache: IdentCache) =
   if magicsys.systemModule == nil:
@@ -224,16 +224,16 @@ proc compileSystemModule*(graph: ModuleGraph; cache: IdentCache) =
 proc wantMainModule* =
   if gProjectFull.len == 0:
     fatal(gCmdLineInfo, errCommandExpectsFilename)
-  gProjectMainIdx = addFileExt(gProjectFull, NimExt).fileInfoIdx
+  gProjectMainIdx = int32 addFileExt(gProjectFull, NimExt).fileInfoIdx
 
 passes.gIncludeFile = includeModule
 passes.gImportModule = importModule
 
 proc compileProject*(graph: ModuleGraph; cache: IdentCache;
-                     projectFileIdx = -1'i32) =
+                     projectFileIdx = InvalidFileIDX) =
   wantMainModule()
   let systemFileIdx = fileInfoIdx(options.libpath / "system.nim")
-  let projectFile = if projectFileIdx < 0: gProjectMainIdx else: projectFileIdx
+  let projectFile = if projectFileIdx == InvalidFileIDX: FileIndex(gProjectMainIdx) else: projectFileIdx
   graph.importStack.add projectFile
   if projectFile == systemFileIdx:
     discard graph.compileModule(projectFile, cache, {sfMainModule, sfSystemModule})

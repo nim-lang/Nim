@@ -83,7 +83,7 @@ proc getTok(p: var TParser) =
   rawGetTok(p.lex, p.tok)
   p.hasProgress = true
 
-proc openParser*(p: var TParser, fileIdx: int32, inputStream: PLLStream,
+proc openParser*(p: var TParser, fileIdx: FileIndex, inputStream: PLLStream,
                  cache: IdentCache;
                  strongSpaces=false) =
   ## Open a parser, using the given arguments to set up its internal state.

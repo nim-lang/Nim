@@ -2261,7 +2261,7 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   var m = BModule(b)
   if sfMainModule in m.module.flags:
     let ext = "js"
-    let f = if globals.classes.len == 0: m.module.filename
+    let f = if globals.classes.len == 0: toFilename(FileIndex m.module.position)
             else: "nimsystem"
     let code = wholeCode(graph, m)
     let outfile =

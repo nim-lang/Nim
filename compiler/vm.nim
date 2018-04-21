@@ -1381,7 +1381,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNGetLine:
       decodeB(rkNode)
       let n = regs[rb].node
-      regs[ra].node = newIntNode(nkIntLit, n.info.line)
+      regs[ra].node = newIntNode(nkIntLit, n.info.line.int)
       regs[ra].node.info = n.info
       regs[ra].node.typ = n.typ
     of opcNGetColumn:
@@ -1521,7 +1521,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let x = newNodeI(TNodeKind(int(k)),
         if cc.kind != nkNilLit:
           cc.info
-        elif c.comesFromHeuristic.line > -1:
+        elif c.comesFromHeuristic.line != 0'u16:
           c.comesFromHeuristic
         elif c.callsite != nil and c.callsite.safeLen > 1:
           c.callsite[1].info
@@ -1748,7 +1748,7 @@ proc evalMacroCall*(module: PSym; cache: IdentCache, n, nOrig: PNode,
 
   setupGlobalCtx(module, cache)
   var c = globalCtx
-  c.comesFromHeuristic.line = -1
+  c.comesFromHeuristic.line = 0'u16
 
   c.callsite = nOrig
   let start = genProc(c, sym)

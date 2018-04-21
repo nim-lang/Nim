@@ -223,7 +223,7 @@ proc genLineDir(p: BProc, t: PNode) =
               line.rope, makeCString(toFilename(tt.info)))
   elif ({optLineTrace, optStackTrace} * p.options ==
       {optLineTrace, optStackTrace}) and
-      (p.prc == nil or sfPure notin p.prc.flags) and tt.info.fileIndex >= 0:
+      (p.prc == nil or sfPure notin p.prc.flags) and tt.info.fileIndex != InvalidFileIDX:
     if freshLineInfo(p, tt.info):
       linefmt(p, cpsStmts, "nimln_($1, $2);$n",
               line.rope, tt.info.quotedFilename)
@@ -678,7 +678,7 @@ proc generateHeaders(m: BModule) =
 
 proc openNamespaceNim(): Rope =
   result.add("namespace Nim {" & tnl)
-  
+
 proc closeNamespaceNim(): Rope =
   result.add("}" & tnl)
 
@@ -1090,7 +1090,7 @@ proc genMainProc(m: BModule) =
   appcg(m, m.s[cfsProcs], nimMain,
         [m.g.mainModInit, initStackBottomCall, rope(m.labels)])
   if optNoMain notin gGlobalOptions:
-    if useNimNamespace: 
+    if useNimNamespace:
       m.s[cfsProcs].add closeNamespaceNim() & "using namespace Nim;" & tnl
 
     appcg(m, m.s[cfsProcs], otherMain, [])
@@ -1202,7 +1202,7 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
     add(result, genSectionStart(i))
     add(result, m.s[i])
     add(result, genSectionEnd(i))
-    if useNimNamespace and i == cfsHeaders: result.add openNamespaceNim()    
+    if useNimNamespace and i == cfsHeaders: result.add openNamespaceNim()
   add(result, m.s[cfsInitProc])
   if useNimNamespace: result.add closeNamespaceNim()
 
@@ -1301,7 +1301,7 @@ proc resetCgenModules*(g: BModuleList) =
   for m in cgenModules(g): resetModule(m)
 
 proc rawNewModule(g: BModuleList; module: PSym): BModule =
-  result = rawNewModule(g, module, module.position.int32.toFullPath)
+  result = rawNewModule(g, module, module.position.FileIndex.toFullPath)
 
 proc newModule(g: BModuleList; module: PSym): BModule =
   # we should create only one cgen module for each module sym
@@ -1311,7 +1311,7 @@ proc newModule(g: BModuleList; module: PSym): BModule =
 
   if (optDeadCodeElim in gGlobalOptions):
     if (sfDeadCodeElim in module.flags):
-      internalError("added pending module twice: " & module.filename)
+      internalError("added pending module twice: " & toFilename(FileIndex module.position))
 
 template injectG(config) {.dirty.} =
   if graph.backend == nil:

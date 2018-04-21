@@ -35,7 +35,7 @@ proc writeDepsFile(g: ModuleGraph; project: string) =
   let f = open(changeFileExt(project, "deps"), fmWrite)
   for m in g.modules:
     if m != nil:
-      f.writeLine(toFullPath(m.position.int32))
+      f.writeLine(toFullPath(m.position.FileIndex))
   for k in g.inclToMod.keys:
     if g.getModule(k).isNil:  # don't repeat includes which are also modules
       f.writeLine(k.toFullPath)
@@ -265,7 +265,7 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
   of "parse":
     gCmd = cmdParse
     wantMainModule()
-    discard parseFile(gProjectMainIdx, cache)
+    discard parseFile(FileIndex gProjectMainIdx, cache)
   of "scan":
     gCmd = cmdScan
     wantMainModule()

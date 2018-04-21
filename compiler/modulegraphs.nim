@@ -25,7 +25,7 @@
 ## - Its dependent module stays the same.
 ##
 
-import ast, intsets, tables, options, rod
+import ast, intsets, tables, options, rod, msgs, hashes
 
 type
   ModuleGraph* = ref object
@@ -34,16 +34,18 @@ type
     deps*: IntSet # the dependency graph or potentially its transitive closure.
     suggestMode*: bool # whether we are in nimsuggest mode or not.
     invalidTransitiveClosure: bool
-    inclToMod*: Table[int32, int32] # mapping of include file to the
-                                    # first module that included it
-    importStack*: seq[int32]  # The current import stack. Used for detecting recursive
-                              # module dependencies.
+    inclToMod*: Table[FileIndex, FileIndex] # mapping of include file to the
+                                            # first module that included it
+    importStack*: seq[FileIndex]  # The current import stack. Used for detecting recursive
+                                  # module dependencies.
     backend*: RootRef # minor hack so that a backend can extend this easily
     config*: ConfigRef
     doStopCompile*: proc(): bool {.closure.}
     usageSym*: PSym # for nimsuggest
     owners*: seq[PSym]
     methods*: seq[tuple[methods: TSymSeq, dispatcher: PSym]]
+
+proc hash*(x: FileIndex): Hash {.borrow.}
 
 {.this: g.}
 
@@ -56,7 +58,7 @@ proc newModuleGraph*(config: ConfigRef = nil): ModuleGraph =
   result.deps = initIntSet()
   result.modules = @[]
   result.importStack = @[]
-  result.inclToMod = initTable[int32, int32]()
+  result.inclToMod = initTable[FileIndex, FileIndex]()
   if config.isNil:
     result.config = newConfigRef()
   else:
@@ -69,35 +71,35 @@ proc resetAllModules*(g: ModuleGraph) =
   deps = initIntSet()
   modules = @[]
   importStack = @[]
-  inclToMod = initTable[int32, int32]()
+  inclToMod = initTable[FileIndex, FileIndex]()
   usageSym = nil
   owners = @[]
   methods = @[]
 
-proc getModule*(g: ModuleGraph; fileIdx: int32): PSym =
-  if fileIdx >= 0 and fileIdx < modules.len:
-    result = modules[fileIdx]
+proc getModule*(g: ModuleGraph; fileIdx: FileIndex): PSym =
+  if fileIdx.int32 >= 0 and fileIdx.int32 < modules.len:
+    result = modules[fileIdx.int32]
 
 proc dependsOn(a, b: int): int {.inline.} = (a shl 15) + b
 
-proc addDep*(g: ModuleGraph; m: PSym, dep: int32) =
-  assert m.position == m.info.fileIndex
+proc addDep*(g: ModuleGraph; m: PSym, dep: FileIndex) =
+  assert m.position == m.info.fileIndex.int32
   addModuleDep(m.info.fileIndex, dep, isIncludeFile = false)
   if suggestMode:
-    deps.incl m.position.dependsOn(dep)
+    deps.incl m.position.dependsOn(dep.int)
     # we compute the transitive closure later when quering the graph lazily.
     # this improve efficiency quite a lot:
     #invalidTransitiveClosure = true
 
-proc addIncludeDep*(g: ModuleGraph; module, includeFile: int32) =
+proc addIncludeDep*(g: ModuleGraph; module, includeFile: FileIndex) =
   addModuleDep(module, includeFile, isIncludeFile = true)
   discard hasKeyOrPut(inclToMod, includeFile, module)
 
-proc parentModule*(g: ModuleGraph; fileIdx: int32): int32 =
+proc parentModule*(g: ModuleGraph; fileIdx: FileIndex): FileIndex =
   ## returns 'fileIdx' if the file belonging to this index is
   ## directly used as a module or else the module that first
   ## references this include file.
-  if fileIdx >= 0 and fileIdx < modules.len and modules[fileIdx] != nil:
+  if fileIdx.int32 >= 0 and fileIdx.int32 < modules.len and modules[fileIdx.int32] != nil:
     result = fileIdx
   else:
     result = inclToMod.getOrDefault(fileIdx)
@@ -111,11 +113,11 @@ proc transitiveClosure(g: var IntSet; n: int) =
           if g.contains(i.dependsOn(k)) and g.contains(k.dependsOn(j)):
             g.incl i.dependsOn(j)
 
-proc markDirty*(g: ModuleGraph; fileIdx: int32) =
+proc markDirty*(g: ModuleGraph; fileIdx: FileIndex) =
   let m = getModule fileIdx
   if m != nil: incl m.flags, sfDirty
 
-proc markClientsDirty*(g: ModuleGraph; fileIdx: int32) =
+proc markClientsDirty*(g: ModuleGraph; fileIdx: FileIndex) =
   # we need to mark its dependent modules D as dirty right away because after
   # nimsuggest is done with this module, the module's dirty flag will be
   # cleared but D still needs to be remembered as 'dirty'.
@@ -126,7 +128,7 @@ proc markClientsDirty*(g: ModuleGraph; fileIdx: int32) =
   # every module that *depends* on this file is also dirty:
   for i in 0i32..<modules.len.int32:
     let m = modules[i]
-    if m != nil and deps.contains(i.dependsOn(fileIdx)):
+    if m != nil and deps.contains(i.dependsOn(fileIdx.int)):
       incl m.flags, sfDirty
 
 proc isDirty*(g: ModuleGraph; m: PSym): bool =
