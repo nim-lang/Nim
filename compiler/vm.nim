@@ -1693,7 +1693,7 @@ proc evalConstExprAux(module: PSym; cache: IdentCache; prc: PSym, n: PNode,
   newSeq(tos.slots, c.prc.maxSlots)
   #for i in 0 ..< c.prc.maxSlots: tos.slots[i] = newNode(nkEmpty)
   result = rawExecute(c, start, tos).regToNode
-  if result.info.line < 0: result.info = n.info
+  if result.info.col < 0: result.info = n.info
 
 proc evalConstExpr*(module: PSym; cache: IdentCache, e: PNode): PNode =
   result = evalConstExprAux(module, cache, nil, e, emConst)
