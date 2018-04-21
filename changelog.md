@@ -11,6 +11,10 @@
   to deal with!
 - Indexing into a ``cstring`` for the JS target is now mapped
   to ``charCodeAt``.
+- Assignments that would "slice" an object into its supertype are not prevented
+  at runtime. Use ``ref object`` with inheritance rather than ``object`` with
+  inheritance to prevent this issue.
+
 
 #### Breaking changes in the standard library
 
