@@ -526,6 +526,14 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
         if isAssignable(c, it) notin {arLValue, arLocalLValue}:
           if it.kind != nkHiddenAddr:
             localError(it.info, errVarForOutParamNeededX, $it)
+    # bug #5113: disallow newSeq(result) where result is a 'var T':
+    if n[0].sym.magic in {mNew, mNewFinalize, mNewSeq}:
+      var arg = n[1] #.skipAddr
+      if arg.kind == nkHiddenDeref: arg = arg[0]
+      if arg.kind == nkSym and arg.sym.kind == skResult and
+          arg.typ.skipTypes(abstractInst).kind in {tyVar, tyLent}:
+        localError(n.info, errXStackEscape, renderTree(n[1], {renderNoComments}))
+
     return
   for i in countup(1, sonsLen(n) - 1):
     if n.sons[i].kind == nkHiddenCallConv:
