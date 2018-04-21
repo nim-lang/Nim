@@ -5241,15 +5241,21 @@ chance to convert it into a sequence.
 Macros
 ======
 
-A macro is a special kind of low level template. Macros can be used
-to implement `domain specific languages`:idx:.
+A macro is a special function that is executed at compile-time.
+Normally the input for a macro is an abstract syntax
+tree (AST) of the code that is passed to it. The macro can then do
+transformations on it and return the transformed AST. The
+transformed AST is then passed to the compiler as if the macro
+invocation would have been replaced by its result in the source
+code. This can be used to implement `domain specific
+languages`:idx:.
 
 While macros enable advanced compile-time code transformations, they
 cannot change Nim's syntax. However, this is no real restriction because
 Nim's syntax is flexible enough anyway.
 
 To write macros, one needs to know how the Nim concrete syntax is converted
-to an abstract syntax tree.
+to an AST.
 
 There are two ways to invoke a macro:
 (1) invoking a macro like a procedure call (`expression macros`)
@@ -5269,19 +5275,21 @@ variable number of arguments:
   # ``macros`` module:
   import macros
 
-  macro debug(n: varargs[untyped]): untyped =
-    # `n` is a Nim AST that contains the whole macro invocation
-    # this macro returns a list of statements:
-    result = newNimNode(nnkStmtList, n)
+  macro debug(args: varargs[untyped]): untyped =
+    # `args` is a collection of `NimNode` values that each contain the
+    # AST for an argument of the macro. A macro always has to
+    # return a `NimNode`. A node of kind `nnkStmtList` is suitable for
+    # this use case.
+    result = nnkStmtList.newTree()
     # iterate over any argument that is passed to this macro:
-    for i in 0..n.len-1:
+    for n in args:
       # add a call to the statement list that writes the expression;
       # `toStrLit` converts an AST to its string representation:
-      add(result, newCall("write", newIdentNode("stdout"), toStrLit(n[i])))
+      result.add newCall("write", newIdentNode("stdout"), newLit(n.repr))
       # add a call to the statement list that writes ": "
-      add(result, newCall("write", newIdentNode("stdout"), newStrLitNode(": ")))
+      result.add newCall("write", newIdentNode("stdout"), newLit(": "))
       # add a call to the statement list that writes the expressions value:
-      add(result, newCall("writeLine", newIdentNode("stdout"), n[i]))
+      result.add newCall("writeLine", newIdentNode("stdout"), n)
 
   var
     a: array[0..10, int]
@@ -8187,5 +8195,3 @@ validation errors:
 
 If the taint mode is turned off, ``TaintedString`` is simply an alias for
 ``string``.
-
-
