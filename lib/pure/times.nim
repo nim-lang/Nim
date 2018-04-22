@@ -103,7 +103,7 @@ type
 
   Time* = object ## Represents a point in time.
     seconds: int64
-    nanoseconds: NanosecondRange
+    nanosecond: NanosecondRange
 
   DateTime* = object of RootObj ## Represents a time in different parts.
                                 ## Although this type can represent leap
@@ -159,7 +159,7 @@ type
                      ## This type should be prefered over ``TimeInterval`` unless
                      ## non-static time units is needed.
     seconds: int64
-    nanoseconds: NanosecondRange
+    nanosecond: NanosecondRange
 
   TimeUnit* = enum ## Different units of time.
     Nanoseconds, Microseconds, Milliseconds, Seconds, Minutes, Hours, Days, Weeks, Months, Years
@@ -223,21 +223,21 @@ proc normalize[T: Duration|Time](seconds, nanoseconds: int64): T =
   ## a ``Duration`` or ``Time``. A normalized ``Duration|Time`` has a
   ## positive nanosecond part in the range ``NanosecondRange``.
   result.seconds = seconds + convert(Nanoseconds, Seconds, nanoseconds)
-  var nanoseconds = nanoseconds mod convert(Seconds, Nanoseconds, 1)
-  if nanoseconds < 0:
-    nanoseconds += convert(Seconds, Nanoseconds, 1)
+  var nanosecond = nanoseconds mod convert(Seconds, Nanoseconds, 1)
+  if nanosecond < 0:
+    nanosecond += convert(Seconds, Nanoseconds, 1)
     result.seconds -= 1
-  result.nanoseconds = nanoseconds.int
+  result.nanosecond = nanosecond.int
 
-proc initTime*(unix: int64, nanoseconds: NanosecondRange): Time =
+proc initTime*(unix: int64, nanosecond: NanosecondRange): Time =
   ## Create a ``Time`` from a unix timestamp and a nanosecond part.
   result.seconds = unix
-  result.nanoseconds = nanoseconds
+  result.nanosecond = nanosecond
 
-proc nanoseconds*(time: Time): NanosecondRange =
+proc nanosecond*(time: Time): NanosecondRange =
   ## Get the fractional part of a ``Time`` as the number
   ## of nanoseconds of the second.
-  time.nanoseconds
+  time.nanosecond
 
 proc initDuration*(nanoseconds, microseconds, milliseconds,
                    seconds, minutes, hours, days, weeks: int64 = 0): Duration =
@@ -281,7 +281,7 @@ proc milliseconds*(dur: Duration): int {.inline.} =
   runnableExamples:
     let dur = initDuration(seconds = 1, milliseconds = 1)
     doAssert dur.milliseconds == 1
-  convert(Nanoseconds, Milliseconds, dur.nanoseconds)
+  convert(Nanoseconds, Milliseconds, dur.nanosecond)
 
 proc microseconds*(dur: Duration): int {.inline.} =
   ## Number of whole microseconds represented by the **fractional**
@@ -289,7 +289,7 @@ proc microseconds*(dur: Duration): int {.inline.} =
   runnableExamples:
     let dur = initDuration(seconds = 1, microseconds = 1)
     doAssert dur.microseconds == 1
-  convert(Nanoseconds, Microseconds, dur.nanoseconds)
+  convert(Nanoseconds, Microseconds, dur.nanosecond)
 
 proc nanoseconds*(dur: Duration): int {.inline.} =
   ## Number of whole nanoseconds represented by the **fractional**
@@ -297,14 +297,14 @@ proc nanoseconds*(dur: Duration): int {.inline.} =
   runnableExamples:
     let dur = initDuration(seconds = 1, nanoseconds = 1)
     doAssert dur.nanoseconds == 1
-  dur.nanoseconds
+  dur.nanosecond
 
 proc fractional*(dur: Duration): Duration {.inline.} =
   ## The fractional part of duration, as a duration.
   runnableExamples:
     let dur = initDuration(seconds = 1, nanoseconds = 5)
     doAssert dur.fractional == initDuration(nanoseconds = 5)
-  initDuration(nanoseconds = dur.nanoseconds)
+  initDuration(nanoseconds = dur.nanosecond)
 
 const DurationZero* = initDuration() ## Zero value for durations. Useful for comparisons.
                                      ##
@@ -322,7 +322,7 @@ proc `$`*(dur: Duration): string =
     doAssert $initDuration(milliseconds = -1500) == "-1 second and -500 milliseconds"
   var parts = newSeq[string]()
   var remS = dur.seconds
-  var remNs = dur.nanoseconds.int
+  var remNs = dur.nanosecond.int
 
   # Normally ``nanoseconds`` should always be positive, but
   # that makes no sense when printing.
@@ -387,7 +387,7 @@ proc fromWinTime*(win: int64): Time =
 
 proc toWinTime*(t: Time): int64 =
   ## Convert ``t`` to a Windows file time (100-nanosecond intervals since ``1601-01-01T00:00:00Z``).
-  result = t.seconds * rateDiff + epochDiff + t.nanoseconds div 100
+  result = t.seconds * rateDiff + epochDiff + t.nanosecond div 100
 
 proc isLeapYear*(year: int): bool =
   ## Returns true if ``year`` is a leap year.
@@ -473,21 +473,21 @@ proc localZoneInfoFromTz(adjTime: Time): ZonedTime {.tags: [], raises: [], benig
 {. pragma: operator, rtl, noSideEffect, benign .}
 
 template subImpl[T: Duration|Time](a: Duration|Time, b: Duration|Time): T =
-  normalize[T](a.seconds - b.seconds, a.nanoseconds - b.nanoseconds)
+  normalize[T](a.seconds - b.seconds, a.nanosecond - b.nanosecond)
 
 template addImpl[T: Duration|Time](a: Duration|Time, b: Duration|Time): T =
-  normalize[T](a.seconds + b.seconds, a.nanoseconds + b.nanoseconds)
+  normalize[T](a.seconds + b.seconds, a.nanosecond + b.nanosecond)
 
 template ltImpl(a: Duration|Time, b: Duration|Time): bool =
   a.seconds < b.seconds or (
-    a.seconds == b.seconds and a.nanoseconds < b.nanoseconds)
+    a.seconds == b.seconds and a.nanosecond < b.nanosecond)
 
 template lqImpl(a: Duration|Time, b: Duration|Time): bool =
   a.seconds <= b.seconds or (
-    a.seconds == b.seconds and a.nanoseconds <= b.seconds)
+    a.seconds == b.seconds and a.nanosecond <= b.seconds)
 
 template eqImpl(a: Duration|Time, b: Duration|Time): bool =
-  a.seconds == b.seconds and a.nanoseconds == b.nanoseconds
+  a.seconds == b.seconds and a.nanosecond == b.nanosecond
 
 proc `+`*(a, b: Duration): Duration {.operator.} =
   ## Add two durations together.
@@ -507,7 +507,7 @@ proc `-`*(a: Duration): Duration {.operator.} =
   ## Reverse a duration.
   runnableExamples:
     doAssert -initDuration(seconds = 1) == initDuration(seconds = -1)
-  normalize[Duration](-a.seconds, -a.nanoseconds)
+  normalize[Duration](-a.seconds, -a.nanosecond)
 
 proc `<`*(a, b: Duration): bool {.operator.} =
   ## Note that a duration can be negative,
@@ -530,7 +530,7 @@ proc `*`*(a: int64, b: Duration): Duration {.operator} =
   ## Multiply a duration by some scalar.
   runnableExamples:
     doAssert 5 * initDuration(seconds = 1) == initDuration(seconds = 5)
-  normalize[Duration](a * b.seconds, a * b.nanoseconds)
+  normalize[Duration](a * b.seconds, a * b.nanosecond)
 
 proc `*`*(a: Duration, b: int64): Duration {.operator} =
   ## Multiply a duration by some scalar.
@@ -544,7 +544,7 @@ proc `div`*(a: Duration, b: int64): Duration {.operator} =
     doAssert initDuration(seconds = 3) div 2 == initDuration(milliseconds = 1500)
     doAssert initDuration(nanoseconds = 3) div 2 == initDuration(nanoseconds = 1)
   let carryOver = convert(Seconds, Nanoseconds, a.seconds mod b)
-  normalize[Duration](a.seconds div b, (a.nanoseconds + carryOver) div b)
+  normalize[Duration](a.seconds div b, (a.nanosecond + carryOver) div b)
 
 proc `-`*(a, b: Time): Duration {.operator, extern: "ntDiffTime".} =
   ## Computes the duration between two points in time.
@@ -600,7 +600,7 @@ proc abs*(a: Duration): Duration =
   runnableExamples:
     doAssert initDuration(milliseconds = -1500).abs ==
       initDuration(milliseconds = 1500)
-  initDuration(seconds = abs(a.seconds), nanoseconds = -a.nanoseconds)
+  initDuration(seconds = abs(a.seconds), nanoseconds = -a.nanosecond)
 
 proc toTime*(dt: DateTime): Time {.tags: [], raises: [], benign.} =
   ## Converts a broken-down time structure to
@@ -650,7 +650,7 @@ proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
     hour: hour,
     minute: minute,
     second: second,
-    nanosecond: zt.adjTime.nanoseconds,
+    nanosecond: zt.adjTime.nanosecond,
     weekday: getDayOfWeek(d, m, y),
     yearday: getDayOfYear(d, m, y),
     isDst: zt.isDst,
@@ -809,7 +809,7 @@ else:
     # as a result of offset changes (normally due to dst)
     let utcUnix = adjTime.seconds + utcOffset
     let (finalOffset, dst) = getLocalOffsetAndDst(utcUnix)
-    result.adjTime = initTime(utcUnix - finalOffset, adjTime.nanoseconds)
+    result.adjTime = initTime(utcUnix - finalOffset, adjTime.nanosecond)
     result.utcOffset = finalOffset
     result.isDst = dst
 
@@ -1806,7 +1806,7 @@ proc toSeconds*(time: Time): float {.tags: [], raises: [], benign, deprecated.} 
   ## Returns the time in seconds since the unix epoch.
   ##
   ## **Deprecated since v0.18.0:** use ``fromUnix`` instead
-  time.seconds.float + time.nanoseconds / convert(Seconds, Nanoseconds, 1)
+  time.seconds.float + time.nanosecond / convert(Seconds, Nanoseconds, 1)
 
 proc getLocalTime*(time: Time): DateTime {.tags: [], raises: [], benign, deprecated.} =
   ## Converts the calendar time `time` to broken-time representation,
@@ -1853,7 +1853,7 @@ when defined(JS):
     ## version 0.8.10.** Use ``epochTime`` or ``cpuTime`` instead.
     let dur = getTime() - start
     result = (convert(Seconds, Milliseconds, dur.seconds) +
-      convert(Nanoseconds, Milliseconds, dur.nanoseconds)).int
+      convert(Nanoseconds, Milliseconds, dur.nanosecond)).int
 else:
   proc getStartMilsecs*(): int {.deprecated, tags: [TimeEffect], benign.} =
     when defined(macosx):
