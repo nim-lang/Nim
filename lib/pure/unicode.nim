@@ -9,6 +9,10 @@
 
 ## This module provides support to handle the Unicode UTF-8 encoding.
 
+from algorithm import reverse
+
+import sequtils
+
 {.deadCodeElim: on.}
 
 include "system/inclrtl"
@@ -20,11 +24,28 @@ type
 
 {.deprecated: [TRune: Rune, TRune16: Rune16].}
 
+proc `<=`(a, b: Rune): bool = return a.int32 <= b.int32
+proc `<=`(a: RuneImpl, b: Rune): bool = return a.int32 <= b.int32
+proc `<=`(a: Rune, b: RuneImpl): bool = return a.int32 <= b.int32
+proc `==`(a: RuneImpl, b: Rune): bool = return a.int32 == b.int32
+proc `==`(a: Rune, b: RuneImpl): bool = return a.int32 == b.int32
+
 proc `<=%`*(a, b: Rune): bool = return int(a) <=% int(b)
 proc `<%`*(a, b: Rune): bool = return int(a) <% int(b)
 proc `==`*(a, b: Rune): bool = return int(a) == int(b)
 
 template ones(n: untyped): untyped = ((1 shl n)-1)
+
+proc len*(r: Rune): int {.noSideEffect.} =
+  ## Returns the number of bytes the rune ``r`` takes
+  let v = r.uint32
+  if v <= 0x007F: result = 1
+  elif v <= 0x07FF: result = 2
+  elif v <= 0xFFFF: result = 3
+  elif v <= 0x1FFFFF: result = 4
+  elif v <= 0x3FFFFFF: result = 5
+  elif v <= 0x7FFFFFFF: result = 6
+  else: result = 1
 
 proc runeLen*(s: string): int {.rtl, extern: "nuc$1".} =
   ## Returns the number of Unicode characters of the string ``s``
@@ -38,16 +59,6 @@ proc runeLen*(s: string): int {.rtl, extern: "nuc$1".} =
     elif ord(s[i]) shr 1 == 0b1111110: inc(i, 6)
     else: inc i
     inc(result)
-
-proc runeLenAt*(s: string, i: Natural): int =
-  ## Returns the number of bytes the rune starting at ``s[i]`` takes
-  if ord(s[i]) <=% 127: result = 1
-  elif ord(s[i]) shr 5 == 0b110: result = 2
-  elif ord(s[i]) shr 4 == 0b1110: result = 3
-  elif ord(s[i]) shr 3 == 0b11110: result = 4
-  elif ord(s[i]) shr 2 == 0b111110: result = 5
-  elif ord(s[i]) shr 1 == 0b1111110: result = 6
-  else: result = 1
 
 const replRune = Rune(0xFFFD)
 
@@ -127,6 +138,17 @@ template fastRuneAt*(s: string, i: int, result: untyped, doInc = true) =
     result = Rune(ord(s[i]))
     when doInc: inc(i)
 
+proc runeLenAt*(s: string, i: Natural): int =
+  ## Returns the number of bytes the rune starting at ``s[i]`` takes
+  let b = ord(s[i])
+  if b <=% 127: result = 1
+  elif b shr 5 == 0b110: result = 2
+  elif b shr 4 == 0b1110: result = 3
+  elif b shr 3 == 0b11110: result = 4
+  elif b shr 2 == 0b111110: result = 5
+  elif b shr 1 == 0b1111110: result = 6
+  else: result = 1
+
 proc validateUtf8*(s: string): int =
   ## Returns the position of the invalid byte in ``s`` if the string ``s`` does
   ## not hold valid UTF-8 data. Otherwise ``-1`` is returned.
@@ -156,6 +178,15 @@ proc validateUtf8*(s: string): int =
 proc runeAt*(s: string, i: Natural): Rune =
   ## Returns the unicode character in ``s`` at byte index ``i``
   fastRuneAt(s, i, result, false)
+
+proc asRune*(s: static[string]): Rune =
+  ## Compile-time conversion proc for converting string literals to a Rune
+  ## value. Returns the first Rune of the specified string.
+  ##
+  ## Shortcuts code like ``"å".runeAt(0)`` to ``"å".asRune`` and returns a
+  ## compile-time constant.
+  if len(s) == 0: '\0'.Rune
+  else: s.runeAt(0)
 
 template fastToUTF8Copy*(c: Rune, s: var string, pos: int, doInc = true) =
   ## Copies UTF-8 representation of `c` into the preallocated string `s`
@@ -280,8 +311,8 @@ proc runeReverseOffset*(s: string, rev:Positive): (int, int) =
     dec a
 
   if a > 0:
-    return (-a, rev.int-a)
-  return (x, -a+rev.int)
+    return (-a, rev.int - a)
+  return (x, -a + rev.int)
 
 proc runeSubStr*(s: string, pos:int, len:int = int.high): string =
   ## Returns the UTF-8 substring starting at codepoint pos
@@ -322,7 +353,7 @@ proc runeSubStr*(s: string, pos:int, len:int = int.high): string =
       result = s.substr(o, e-1)
 
 const
-  alphaRanges = [
+  alphaRanges = mapLiterals([
     0x00d8,  0x00f6,  #  -
     0x00f8,  0x01f5,  #  -
     0x0250,  0x02a8,  #  -
@@ -474,9 +505,9 @@ const
     0xffc2,  0xffc7,  #  -
     0xffca,  0xffcf,  #  -
     0xffd2,  0xffd7,  #  -
-    0xffda,  0xffdc]  #  -
+    0xffda,  0xffdc], Rune)  #  -
 
-  alphaSinglets = [
+  alphaSinglets = mapLiterals([
     0x00aa,  #
     0x00b5,  #
     0x00ba,  #
@@ -508,9 +539,9 @@ const
     0x2126,  #
     0x2128,  #
     0xfb3e,  #
-    0xfe74]  #
+    0xfe74], Rune)  #
 
-  spaceRanges = [
+  spaceRanges = mapLiterals([
     0x0009,  0x000d,  # tab and newline
     0x0020,  0x0020,  # space
     0x0085,  0x0085,  # next line
@@ -522,9 +553,9 @@ const
     0x202f,  0x202f,  # narrow no-break space
     0x205f,  0x205f,  # medium mathematical space
     0x3000,  0x3000,  # ideographic space
-    0xfeff,  0xfeff]  #
+    0xfeff,  0xfeff], Rune)  #
 
-  toupperRanges = [
+  toupperRanges = mapLiterals([
     0x0061,  0x007a, 468,  # a-z A-Z
     0x00e0,  0x00f6, 468,  # - -
     0x00f8,  0x00fe, 468,  # - -
@@ -559,9 +590,9 @@ const
     0x1fe0,  0x1fe1, 508,  # - -
     0x2170,  0x217f, 484,  # - -
     0x24d0,  0x24e9, 474,  # - -
-    0xff41,  0xff5a, 468]  # - -
+    0xff41,  0xff5a, 468], Rune)  # - -
 
-  toupperSinglets = [
+  toupperSinglets = mapLiterals([
     0x00ff, 621,  #
     0x0101, 499,  #
     0x0103, 499,  #
@@ -901,9 +932,9 @@ const
     0x1fb3, 509,  #
     0x1fc3, 509,  #
     0x1fe5, 507,  #
-    0x1ff3, 509]  #
+    0x1ff3, 509], Rune)  #
 
-  tolowerRanges = [
+  tolowerRanges = mapLiterals([
     0x0041,  0x005a, 532,  # A-Z a-z
     0x00c0,  0x00d6, 532,  # - -
     0x00d8,  0x00de, 532,  # - -
@@ -939,9 +970,9 @@ const
     0x1ffa,  0x1ffb, 374,  # - -
     0x2160,  0x216f, 516,  # - -
     0x24b6,  0x24cf, 526,  # - -
-    0xff21,  0xff3a, 532]  # - -
+    0xff21,  0xff3a, 532], Rune)  # - -
 
-  tolowerSinglets = [
+  tolowerSinglets = mapLiterals([
     0x0100, 501,  #
     0x0102, 501,  #
     0x0104, 501,  #
@@ -1274,9 +1305,9 @@ const
     0x1fbc, 491,  #
     0x1fcc, 491,  #
     0x1fec, 493,  #
-    0x1ffc, 491]  #
+    0x1ffc, 491], Rune)  #
 
-  toTitleSinglets = [
+  toTitleSinglets = mapLiterals([
     0x01c4, 501,  #
     0x01c6, 499,  #
     0x01c7, 501,  #
@@ -1284,9 +1315,9 @@ const
     0x01ca, 501,  #
     0x01cc, 499,  #
     0x01f1, 501,  #
-    0x01f3, 499]  #
+    0x01f3, 499], Rune)  #
 
-proc binarySearch(c: RuneImpl, tab: openArray[int], len, stride: int): int =
+proc binarySearch(c: RuneImpl, tab: openArray[Rune], len, stride: int): int =
   var n = len
   var t = 0
   while n > 1:
@@ -1306,11 +1337,11 @@ proc toLower*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
   ## If possible, prefer ``toLower`` over ``toUpper``.
   var c = RuneImpl(c)
   var p = binarySearch(c, tolowerRanges, len(tolowerRanges) div 3, 3)
-  if p >= 0 and c >= tolowerRanges[p] and c <= tolowerRanges[p+1]:
-    return Rune(c + tolowerRanges[p+2] - 500)
+  if p >= 0 and c >= tolowerRanges[p] and c <= tolowerRanges[p + 1]:
+    return Rune(c.int32 + tolowerRanges[p + 2].int32 - 500)
   p = binarySearch(c, tolowerSinglets, len(tolowerSinglets) div 2, 2)
   if p >= 0 and c == tolowerSinglets[p]:
-    return Rune(c + tolowerSinglets[p+1] - 500)
+    return Rune(c.int32 + tolowerSinglets[p + 1].int32 - 500)
   return Rune(c)
 
 proc toUpper*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
@@ -1318,19 +1349,19 @@ proc toUpper*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
   ## If possible, prefer ``toLower`` over ``toUpper``.
   var c = RuneImpl(c)
   var p = binarySearch(c, toupperRanges, len(toupperRanges) div 3, 3)
-  if p >= 0 and c >= toupperRanges[p] and c <= toupperRanges[p+1]:
-    return Rune(c + toupperRanges[p+2] - 500)
+  if p >= 0 and c >= toupperRanges[p] and c <= toupperRanges[p + 1]:
+    return Rune(c.int32 + toupperRanges[p + 2].int32 - 500)
   p = binarySearch(c, toupperSinglets, len(toupperSinglets) div 2, 2)
   if p >= 0 and c == toupperSinglets[p]:
-    return Rune(c + toupperSinglets[p+1] - 500)
+    return Rune(c.int32 + toupperSinglets[p + 1].int32 - 500)
   return Rune(c)
 
 proc toTitle*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
   ## Converts ``c`` to title case
   var c = RuneImpl(c)
   var p = binarySearch(c, toTitleSinglets, len(toTitleSinglets) div 2, 2)
-  if p >= 0 and c == toTitleSinglets[p]:
-    return Rune(c + toTitleSinglets[p+1] - 500)
+  if p >= 0 and c.int32 == toTitleSinglets[p].int32:
+    return Rune(c.int32 + toTitleSinglets[p + 1].int32 - 500)
   return Rune(c)
 
 proc isLower*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
@@ -1488,6 +1519,136 @@ proc capitalize*(s: string): string {.noSideEffect, procvar,
   fastRuneAt(s, i, rune, doInc=true)
 
   result = $toUpper(rune) & substr(s, i)
+
+proc normalizeUnicode*(s: string): string {.noSideEffect,
+  rtl, extern: "nucNormalize".} =
+  ## Normalizes the string ``s``.
+  ##
+  ## That means to convert it to lower case and remove any ``'_'``.
+  const
+    underscore = '_'.Rune
+  var
+    i = 0
+    written = 0
+    rune: Rune
+  result = newString(len(s))
+  while i < len(s):
+    fastRuneAt(s, i, rune)
+    if rune.isUpper():
+      rune = rune.toLower()
+    if rune != underscore:
+      rune.fastToUTF8Copy(result, written)
+
+proc strip*(s: string, leading = true, trailing = true,
+  runes: openarray[Rune] = spaceRanges): string {.noSideEffect,
+  rtl, extern: "nucStrip".} =
+  var
+    s_i = 0 ## starting index into string ``s``
+    e_i = len(s) - 1 ## ending index into ``s``, where the last ``Rune`` starts
+  if leading:
+    var
+      i = 0
+      l_i: int ## value of ``s_i`` at the beginning of the iteration
+      rune: Rune
+    while i < len(s):
+      l_i = i
+      fastRuneAt(s, i, rune)
+      s_i = i # Assume to start from next rune
+      if not runes.contains(rune):
+        s_i = l_i # Go back to where the current rune starts
+        break
+  if trailing:
+    var
+      i = e_i
+      l_i: int
+      rune: Rune
+    while i >= 0:
+      l_i = i
+      fastRuneAt(s, l_i, rune)
+      var p_i = i - 1
+      while p_i >= 0:
+        var
+          p_i_end = p_i
+          p_rune: Rune
+        fastRuneAt(s, p_i_end, p_rune)
+        if p_i_end < l_i: break
+        i = p_i
+        rune = p_rune
+        dec(p_i)
+      if not runes.contains(rune):
+        e_i = l_i - 1
+        break
+      dec(i)
+  let newLen = e_i - s_i
+  result = newStringOfCap(newLen)
+  if e_i > s_i:
+    result.add s[s_i .. e_i]
+
+proc repeat*(c: Rune, count: Natural): string {.noSideEffect,
+  rtl, extern: "nucRepeatRune".} =
+  ## Returns a string of `count` Runes `c`.
+  ##
+  ## The returned string will have a rune-length of `count`.
+  let s = $c
+  result = newStringOfCap(count * s.len)
+  for i in 0 ..< count:
+    result.add s
+
+proc align*(s: string, count: Natural, padding: Rune = ' '.Rune): string {.
+  noSideEffect, rtl, extern: "nucAlignString".} =
+  ## Aligns a unicode string `s` with `padding`, so that it has a rune-length
+  ## of `count`.
+  ##
+  ## `padding` characters (by default spaces) are added before `s` resulting in
+  ## right alignment. If ``s.runelen >= count``, no spaces are added and `s` is
+  ## returned unchanged. If you need to left align a string use the `alignLeft
+  ## proc <#alignLeft>`_. Example:
+  ##
+  ## .. code-block:: nim
+  ##   assert align("abc", 4) == " abc"
+  ##   assert align("a", 0) == "a"
+  ##   assert align("1232", 6) == "  1232"
+  ##   assert align("1232", 6, '#') == "##1232"
+  ##   assert align("Åge", 5) == "  Åge"
+  ##   assert align("×", 4, '_'.Rune) == "___×"
+  ##   assert align(" Hello", 9, "×".asRune) == "××× Hello"
+  let sLen = s.runeLen
+  if sLen < count:
+    let padStr = $padding
+    result = newStringOfCap(padStr.len * count)
+    let spaces = count - sLen
+    for i in 0 ..< spaces: result.add padStr
+    result.add s
+  else:
+    result = s
+
+proc alignLeft*(s: string, count: Natural, padding = ' '.Rune): string {.
+  noSideEffect.} =
+  ## Left-Aligns a unicode string `s` with `padding`, so that it has a
+  ## rune-length of `count`.
+  ##
+  ## `padding` characters (by default spaces) are added after `s` resulting in
+  ## left alignment. If ``s.runelen >= count``, no spaces are added and `s` is
+  ## returned unchanged. If you need to right align a string use the `align
+  ## proc <#align>`_. Example:
+  ##
+  ## .. code-block:: nim
+  ##   assert alignLeft("abc", 4) == "abc "
+  ##   assert alignLeft("a", 0) == "a"
+  ##   assert alignLeft("1232", 6) == "1232  "
+  ##   assert alignLeft("1232", 6, '#'.Rune) == "1232##"
+  ##   assert alignLeft("Åge", 5) == "Åge  "
+  ##   assert alignLeft("×", 4, '_'.Rune) == "×___"
+  ##   assert alignLeft("Hello ", 9, "×".asRune) == "Hello ×××"
+  let sLen = s.runeLen
+  if sLen < count:
+    let padStr = $padding
+    result = newStringOfCap(s.len + (count - sLen) * padStr.len)
+    result.add s
+    for i in sLen ..< count:
+      result.add padStr
+  else:
+    result = s
 
 proc translate*(s: string, replacements: proc(key: string): string): string {.
   rtl, extern: "nuc$1".} =
@@ -1693,7 +1854,144 @@ proc lastRune*(s: string; last: int): (Rune, int) =
     fastRuneAt(s, last-L, r, false)
     result = (r, L+1)
 
+# --------- Private templates for different split separators -----------
+proc stringHasSep(s: string, index: int, seps: openarray[Rune]): bool =
+  var rune: Rune
+  fastRuneAt(s, index, rune, false)
+  return seps.contains(rune)
+
+proc stringHasSep(s: string, index: int, sep: Rune): bool =
+  var rune: Rune
+  fastRuneAt(s, index, rune, false)
+  return sep == rune
+
+template splitCommon(s, sep, maxsplit: auto, sepLen: int = -1) =
+  ## Common code for split procedures
+  var
+    last = 0
+    splits = maxsplit
+  if len(s) > 0:
+    while last <= len(s):
+      var first = last
+      while last < len(s) and not stringHasSep(s, last, sep):
+        when sep is Rune:
+          inc(last, sepLen)
+        else:
+          inc(last, runeLenAt(s, last))
+      if splits == 0: last = len(s)
+      yield s[first .. (last - 1)]
+      if splits == 0: break
+      dec(splits)
+      when sep is Rune:
+        inc(last, sepLen)
+      else:
+        inc(last, if last < len(s): runeLenAt(s, last) else: 1)
+
+iterator split*(s: string, seps: openarray[Rune] = spaceRanges,
+  maxsplit: int = -1): string =
+  ## Splits the unicode string `s` into substrings using a group of separators.
+  ##
+  ## Substrings are separated by a substring containing only `seps`.
+  ##
+  ## .. code-block:: nim
+  ##   for word in split("this\lis an\texample"):
+  ##     writeLine(stdout, word)
+  ##
+  ## ...generates this output:
+  ##
+  ## .. code-block::
+  ##   "this"
+  ##   "is"
+  ##   "an"
+  ##   "example"
+  ##
+  ## And the following code:
+  ##
+  ## .. code-block:: nim
+  ##   for word in split("this:is;an$example", {';', ':', '$'}):
+  ##     writeLine(stdout, word)
+  ##
+  ## ...produces the same output as the first example. The code:
+  ##
+  ## .. code-block:: nim
+  ##   let date = "2012-11-20T22:08:08.398990"
+  ##   let separators = {' ', '-', ':', 'T'}
+  ##   for number in split(date, separators):
+  ##     writeLine(stdout, number)
+  ##
+  ## ...results in:
+  ##
+  ## .. code-block::
+  ##   "2012"
+  ##   "11"
+  ##   "20"
+  ##   "22"
+  ##   "08"
+  ##   "08.398990"
+  ##
+  splitCommon(s, seps, maxsplit)
+
+iterator splitWhitespace*(s: string): string =
+  ## Splits a unicode string at whitespace runes
+  splitCommon(s, spaceRanges, -1)
+
+proc splitWhitespace*(s: string): seq[string] {.noSideEffect,
+  rtl, extern: "ncuSplitWhitespace".} =
+  ## The same as the `splitWhitespace <#splitWhitespace.i,string>`_
+  ## iterator, but is a proc that returns a sequence of substrings.
+  accumulateResult(splitWhitespace(s))
+
+iterator split*(s: string, sep: Rune, maxsplit: int = -1): string =
+  ## Splits the unicode string `s` into substrings using a single separator.
+  ##
+  ## Substrings are separated by the rune `sep`.
+  ## The code:
+  ##
+  ## .. code-block:: nim
+  ##   for word in split(";;this;is;an;;example;;;", ';'):
+  ##     writeLine(stdout, word)
+  ##
+  ## Results in:
+  ##
+  ## .. code-block::
+  ##   ""
+  ##   ""
+  ##   "this"
+  ##   "is"
+  ##   "an"
+  ##   ""
+  ##   "example"
+  ##   ""
+  ##   ""
+  ##   ""
+  ##
+  splitCommon(s, sep, maxsplit, sep.len)
+
+proc split*(s: string, seps: openarray[Rune] = spaceRanges, maxsplit: int = -1): seq[string] {.
+  noSideEffect, rtl, extern: "nucSplitRunes".} =
+  ## The same as the `split iterator <#split.i,string,openarray[Rune]>`_, but is a
+  ## proc that returns a sequence of substrings.
+  accumulateResult(split(s, seps, maxsplit))
+
+proc split*(s: string, sep: Rune, maxsplit: int = -1): seq[string] {.noSideEffect,
+  rtl, extern: "nucSplitRune".} =
+  ## The same as the `split iterator <#split.i,string,Rune>`_, but is a proc
+  ## that returns a sequence of substrings.
+  accumulateResult(split(s, sep, maxsplit))
+
 when isMainModule:
+  block runeLenTests:
+    doAssert(len('a'.Rune) == 1, "Actual: " & $ len('a'.Rune))
+
+    doAssert("å".runeLenAt(0) == 2, "Actual: " & $ "å".runeLenAt(0))
+    doAssert("×".runeLenAt(0) == 2, "Actual: " & $ "×".runeLenAt(0))
+
+    # From https://stackoverflow.com/a/6066442
+    doAssert len(0x0021.Rune) == 1 # ! EXCLAMATION MARK (U+0021)
+    doAssert len(0x00B6.Rune) == 2 # ¶ PILCROW SIGN (U+00B6)
+    doAssert len(0x2031.Rune) == 3 # ‱ PER TEN THOUSAND SIGN (U+2031)
+    doAssert len(0x1D161.Rune) == 4 # 𝅘𝅥𝅯 MUSICAL SYMBOL SIXTEENTH NOTE (U+1D161)
+
   let
     someString = "öÑ"
     someRunes = @[runeAt(someString, 0), runeAt(someString, 2)]
@@ -1723,6 +2021,21 @@ when isMainModule:
   doAssert capitalize("βeta") == "Βeta"
   doAssert capitalize("foo") == "Foo"
   doAssert capitalize("") == ""
+
+  block: ## tests for normalizeUnicode
+    var expect: string
+    expect = "nimprogramminglanguage"
+    doAssert(normalizeUnicode("NimProgrammingLanguage") == expect,
+      "Actual: " & normalizeUnicode("NimProgrammingLanguage"))
+    expect = "nimprogramminglanguage"
+    doAssert(normalizeUnicode("Nim_Programming_Language") == expect,
+      "Actual: " & normalizeUnicode("Nim_Programming_Language"))
+    expect = "nimprogramminglanguage"
+    doAssert(normalizeUnicode("Nim_Programming_Language") == expect,
+      "Actual: " & normalizeUnicode("Nim_Programming_Language"))
+    expect = "nimprogramminglanguageα"
+    doAssert(normalizeUnicode("Nim_Programming_Language_Α") == expect,
+      "Actual: " & normalizeUnicode("Nim_Programming_Language_Α"))
 
   doAssert isTitle("Foo")
   doAssert(not isTitle("Foo bar"))
@@ -1844,3 +2157,50 @@ when isMainModule:
   doAssert(runeSubStr(s, -100, 100) ==  "Hänsel  ««: 10,00€")
   doAssert(runeSubStr(s, 0, -100) == "")
   doAssert(runeSubStr(s, 100, -100) == "")
+
+  block stripTests:
+    doAssert(strip("  foofoofoo  ") == "foofoofoo")
+    doAssert(strip("sfoofoofoos", runes = ['s'.Rune]) == "foofoofoo")
+    block:
+      let stripTestRunes = ['b'.Rune, 'a'.Rune, 'r'.Rune]
+      doAssert(strip("barfoofoofoobar", runes = stripTestRunes) == "foofoofoo")
+    doAssert(strip("sfoofoofoos", leading = false, runes = ['s'.Rune]) == "sfoofoofoo")
+    doAssert(strip("sfoofoofoos", trailing = false, runes = ['s'.Rune]) == "foofoofoos")
+
+    block:
+      let stripTestRunes = ["«".asRune, "»".asRune]
+      doAssert(strip("«TEXT»", runes = stripTestRunes) == "TEXT")
+    doAssert(strip("copyright©", leading = false, runes = ["©".asRune]) == "copyright")
+    doAssert(strip("¿Question?", trailing = false, runes = ["¿".asRune]) == "Question?")
+
+    doAssert(strip("×text×", leading = false, runes = ["×".asRune]) == "×text")
+    doAssert(strip("×text×", trailing = false, runes = ["×".asRune]) == "text×")
+
+  block splitTests:
+    let s = " this is an example  "
+    let s2 = ":this;is;an:example;;"
+    let s3 = ":this×is×an:example××"
+
+    doAssert s.split() == @["", "this", "is", "an", "example", "", ""]
+    doAssert s2.split(seps = [':'.Rune, ';'.Rune]) == @["", "this", "is", "an", "example", "", ""]
+    doAssert s3.split(seps = [':'.Rune, "×".asRune]) == @["", "this", "is", "an", "example", "", ""]
+    doAssert s.split(maxsplit = 4) == @["", "this", "is", "an", "example  "]
+    doAssert s.split(' '.Rune, maxsplit = 1) == @["", "this is an example  "]
+
+  block repeatTests:
+    doAssert repeat('c'.Rune, 5) == "ccccc"
+    doAssert repeat("×".asRune, 5) == "×××××"
+
+  block alignTests:
+    doAssert align("abc", 4) == " abc"
+    doAssert align("a", 0) == "a"
+    doAssert align("1232", 6) == "  1232"
+    doAssert align("1232", 6, '#'.Rune) == "##1232"
+    doAssert align("1232", 6, "×".asRune) == "××1232"
+
+    doAssert alignLeft("abc", 4) == "abc "
+    doAssert alignLeft("a", 0) == "a"
+    doAssert alignLeft("1232", 6) == "1232  "
+    doAssert alignLeft("1232", 6, '#'.Rune) == "1232##"
+    doAssert alignLeft("1232", 6, "×".asRune) == "1232××"
+

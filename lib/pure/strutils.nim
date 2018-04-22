@@ -1162,8 +1162,8 @@ proc align*(s: string, count: Natural, padding = ' '): string {.
   ##
   ## `padding` characters (by default spaces) are added before `s` resulting in
   ## right alignment. If ``s.len >= count``, no spaces are added and `s` is
-  ## returned unchanged. If you need to left align a string use the `alignLeft
-  ## proc <#alignLeft>`_. Example:
+  ## returned unchanged. If you need to left align a string use the `repeatChar
+  ## proc <#repeatChar>`_. Example:
   ##
   ## .. code-block:: nim
   ##   assert align("abc", 4) == " abc"
@@ -1178,7 +1178,8 @@ proc align*(s: string, count: Natural, padding = ' '): string {.
   else:
     result = s
 
-proc alignLeft*(s: string, count: Natural, padding = ' '): string {.noSideEffect.} =
+proc alignLeft*(s: string, count: Natural, padding = ' '): string {.
+  noSideEffect, deprecated.} =
   ## Left-Aligns a string `s` with `padding`, so that it is of length `count`.
   ##
   ## `padding` characters (by default spaces) are added after `s` resulting in
@@ -1186,11 +1187,11 @@ proc alignLeft*(s: string, count: Natural, padding = ' '): string {.noSideEffect
   ## returned unchanged. If you need to right align a string use the `align
   ## proc <#align>`_. Example:
   ##
-  ## .. code-block:: nim
-  ##   assert alignLeft("abc", 4) == "abc "
-  ##   assert alignLeft("a", 0) == "a"
-  ##   assert alignLeft("1232", 6) == "1232  "
-  ##   assert alignLeft("1232", 6, '#') == "1232##"
+  runnableExamples:
+    assert alignLeft("abc", 4) == "abc "
+    assert alignLeft("a", 0) == "a"
+    assert alignLeft("1232", 6) == "1232  "
+    assert alignLeft("1232", 6, '#') == "1232##"
   if s.len < count:
     result = newString(count)
     if s.len > 0:
@@ -2508,11 +2509,6 @@ when isMainModule:
   doAssert align("a", 0) == "a"
   doAssert align("1232", 6) == "  1232"
   doAssert align("1232", 6, '#') == "##1232"
-
-  doAssert alignLeft("abc", 4) == "abc "
-  doAssert alignLeft("a", 0) == "a"
-  doAssert alignLeft("1232", 6) == "1232  "
-  doAssert alignLeft("1232", 6, '#') == "1232##"
 
   let
     inp = """ this is a long text --  muchlongerthan10chars and here
