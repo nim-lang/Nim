@@ -970,7 +970,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
       result = sameFlags(a, b)
   of tyGenericParam:
     result = sameChildrenAux(a, b, c) and sameFlags(a, b)
-    if result and ExactGenericParams in c.flags:
+    if result and {ExactGenericParams, ExactTypeDescValues} * c.flags != {}:
       result = a.sym.position == b.sym.position
   of tyGenericInvocation, tyGenericBody, tySequence,
      tyOpenArray, tySet, tyRef, tyPtr, tyVar, tyLent, tySink,
