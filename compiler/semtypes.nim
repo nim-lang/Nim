@@ -887,6 +887,9 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       # disable the bindOnce behavior for the type class
       result = liftingWalk(paramType.base, true)
 
+  of tyAlias:
+    result = liftingWalk(paramType.base)
+
   of tySequence, tySet, tyArray, tyOpenArray,
      tyVar, tyLent, tyPtr, tyRef, tyProc:
     # XXX: this is a bit strange, but proc(s: seq)
