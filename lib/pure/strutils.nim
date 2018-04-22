@@ -17,8 +17,6 @@ import parseutils
 from math import pow, round, floor, log10
 from algorithm import reverse
 
-{.deadCodeElim: on.}
-
 {.push debugger:off .} # the user does not want to trace a part
                        # of the standard library!
 

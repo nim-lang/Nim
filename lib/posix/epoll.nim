@@ -7,8 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-{.deadCodeElim:on.}
-
 from posix import SocketHandle
 
 const

@@ -9,8 +9,6 @@
 
 ## This module provides support to handle the Unicode UTF-8 encoding.
 
-{.deadCodeElim: on.}
-
 include "system/inclrtl"
 
 type

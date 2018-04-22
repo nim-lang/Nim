@@ -145,9 +145,6 @@ proc declared*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ##     # provide our own toUpper proc here, because strutils is
   ##     # missing it.
 
-when defined(useNimRtl):
-  {.deadCodeElim: on.}
-
 proc definedInScope*(x: untyped): bool {.
   magic: "DefinedInScope", noSideEffect, deprecated, compileTime.}
   ## **Deprecated since version 0.9.6**: Use ``declaredInScope`` instead.

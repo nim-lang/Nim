@@ -13,8 +13,6 @@
 ## is used. This suffices because Windows' console already provides the
 ## wanted functionality.
 
-{.deadCodeElim: on.}
-
 when defined(Windows):
   proc readLineFromStdin*(prompt: string): TaintedString {.
                           tags: [ReadIOEffect, WriteIOEffect].} =

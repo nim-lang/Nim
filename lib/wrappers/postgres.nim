@@ -15,8 +15,6 @@
 # connection-protocol.
 #
 
-{.deadCodeElim: on.}
-
 when defined(windows):
   const
     dllName = "libpq.dll"

@@ -1,5 +1,3 @@
-{.deadCodeElim:on.}
-
 import posix
 
 const

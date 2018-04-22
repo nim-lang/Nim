@@ -7,8 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-{.deadCodeElim: on.}
-
 # The current PCRE version information.
 
 const

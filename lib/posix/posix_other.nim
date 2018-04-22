@@ -7,8 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-{.deadCodeElim:on.}
-
 const
   hasSpawnH = not defined(haiku) # should exist for every Posix system nowadays
   hasAioH = defined(linux)

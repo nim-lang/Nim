@@ -5,7 +5,7 @@ import
   sg_gui, sg_assets, sound_buffer, enet_client
 when defined(profiler):
   import nimprof
-{.deadCodeElim: on.}
+
 type
   PPlayer* = ref TPlayer
   TPlayer* = object

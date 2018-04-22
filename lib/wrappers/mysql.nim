@@ -7,7 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-{.deadCodeElim: on.}
 {.push, callconv: cdecl.}
 
 when defined(Unix):

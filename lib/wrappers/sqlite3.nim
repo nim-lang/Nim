@@ -7,7 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-{.deadCodeElim: on.}
 when defined(windows):
   when defined(nimOldDlls):
     const Lib = "sqlite3.dll"

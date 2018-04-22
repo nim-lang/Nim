@@ -268,7 +268,6 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
   of "movechecks": result = contains(gOptions, optMoveCheck)
   of "linedir": result = contains(gOptions, optLineDir)
   of "assertions", "a": result = contains(gOptions, optAssert)
-  of "deadcodeelim": result = contains(gGlobalOptions, optDeadCodeElim)
   of "run", "r": result = contains(gGlobalOptions, optRun)
   of "symbolfiles": result = gSymbolFiles != disabledSf
   of "genscript": result = contains(gGlobalOptions, optGenScript)
@@ -509,7 +508,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "movechecks": processOnOffSwitch({optMoveCheck}, arg, pass, info)
   of "linedir": processOnOffSwitch({optLineDir}, arg, pass, info)
   of "assertions", "a": processOnOffSwitch({optAssert}, arg, pass, info)
-  of "deadcodeelim": processOnOffSwitchG({optDeadCodeElim}, arg, pass, info)
+  of "deadcodeelim": discard # deprecated, dead code elim always on
   of "threads":
     processOnOffSwitchG({optThreads}, arg, pass, info)
     #if optThreads in gGlobalOptions: incl(gNotes, warnGcUnsafe)

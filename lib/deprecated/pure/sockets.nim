@@ -32,8 +32,6 @@
 
 include "system/inclrtl"
 
-{.deadCodeElim: on.}
-
 when hostOS == "solaris":
   {.passl: "-lsocket -lnsl".}
 
