@@ -1898,12 +1898,12 @@ proc editDistance*(a, b: string): int {.noSideEffect,
 
   # strip common prefix:
   var s = 0
-  while a[s] == b[s] and a[s] != '\0':
+  while s < len1 and a[s] == b[s]:
     inc(s)
     dec(len1)
     dec(len2)
   # strip common suffix:
-  while len1 > 0 and len2 > 0 and a[s+len1-1] == b[s+len2-1]:
+  while len1 > 0 and a[s+len1-1] == b[s+len2-1]:
     dec(len1)
     dec(len2)
   # trivial cases:
