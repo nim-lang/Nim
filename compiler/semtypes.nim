@@ -301,7 +301,8 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
         localError(c.config, info, errOrdinalTypeExpected)
       result = makeRangeWithStaticExpr(c, e)
       if c.inGenericContext > 0: result.flags.incl tfUnresolved
-    elif e.kind in nkCallKinds and hasGenericArguments(e):
+    elif e.kind in (nkCallKinds + {nkBracketExpr}) and
+         hasGenericArguments(e):
       if not isOrdinalType(e.typ):
         localError(c.config, n[1].info, errOrdinalTypeExpected)
       # This is an int returning call, depending on an
