@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+{.deadCodeElim: on.}  # dce option deprecated
+
 from posix import SocketHandle
 
 const

@@ -68,6 +68,7 @@
 ## ``newSocket()``. The difference is that the latter creates a new file
 ## descriptor.
 
+{.deadCodeElim: on.}  # dce option deprecated
 import nativesockets, os, strutils, parseutils, times, sets, options
 export Port, `$`, `==`
 export Domain, SockType, Protocol

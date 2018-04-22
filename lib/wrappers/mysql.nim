@@ -7,6 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
+{.deadCodeElim: on.}  # dce option deprecated
 {.push, callconv: cdecl.}
 
 when defined(Unix):

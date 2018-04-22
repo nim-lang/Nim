@@ -81,6 +81,8 @@
 ##
 ##  theDb.close()
 
+{.deadCodeElim: on.}  # dce option deprecated
+
 import strutils, sqlite3
 
 import db_common

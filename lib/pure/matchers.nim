@@ -12,6 +12,8 @@
 ## **Warning:** This module is deprecated since version 0.14.0.
 {.deprecated.}
 
+{.deadCodeElim: on.}  # dce option deprecated
+
 {.push debugger:off .} # the user does not want to trace a part
                        # of the standard library!
 

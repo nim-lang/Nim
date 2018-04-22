@@ -10,6 +10,8 @@
 ## This module implements a small wrapper for some needed Win API procedures,
 ## so that the Nim compiler does not depend on the huge Windows module.
 
+{.deadCodeElim: on.}  # dce option deprecated
+
 import dynlib
 
 

@@ -15,6 +15,8 @@
 # connection-protocol.
 #
 
+{.deadCodeElim: on.}  # dce option deprecated
+
 when defined(windows):
   const
     dllName = "libpq.dll"

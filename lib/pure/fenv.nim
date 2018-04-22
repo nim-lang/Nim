@@ -10,6 +10,8 @@
 ## Floating-point environment. Handling of floating-point rounding and
 ## exceptions (overflow, division by zero, etc.).
 
+{.deadCodeElim: on.}  # dce option deprecated
+
 when defined(Posix) and not defined(haiku):
   {.passl: "-lm".}
 

@@ -30,6 +30,7 @@
 # Dead code elimination ensures that we don't accidentally generate #includes
 # for files that might not exist on a specific platform! The user will get an
 # error only if they actualy try to use the missing declaration
+{.deadCodeElim: on.}  # dce option deprecated
 
 # TODO these constants don't seem to be fetched from a header file for unknown
 #      platforms - where do they come from and why are they here?

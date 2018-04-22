@@ -12,6 +12,8 @@
 
 import strutils
 
+{.deadCodeElim: on.}  # dce option deprecated
+
 proc expandTabs*(s: string, tabSize: int = 8): string {.noSideEffect,
   procvar.} =
   ## Expand tab characters in `s` by `tabSize` spaces

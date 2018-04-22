@@ -19,6 +19,8 @@
 include "system/inclrtl"
 import streams
 
+{.deadCodeElim: on.}  # dce option deprecated
+
 {.push debugger:off .} # the user does not want to trace a part
                        # of the standard library!
 
