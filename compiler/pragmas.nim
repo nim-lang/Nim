@@ -762,6 +762,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wThreadVar:
         noVal(it)
         incl(sym.flags, sfThread)
+      of wDeadCodeElimUnused: discard  # deprecated, dead code elim always on
       of wNoForward: pragmaNoForward(c, it)
       of wReorder: pragmaNoForward(c, it, sfReorder)
       of wMagic: processMagic(c, it, sym)
