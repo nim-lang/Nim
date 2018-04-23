@@ -1391,7 +1391,9 @@ proc typeRelImpl(c: var TCandidate, f, aOrig: PType,
         if fKind in {tyRef, tyPtr} and aAsObject.kind == fKind:
           aAsObject = aAsObject.base
 
-        if aAsObject.kind == tyObject:
+        # bug #7600, need to check an ordinary object with ref/ptr parent
+        # cannot be passed as parameter to proc with ref/ptr parent
+        if aAsObject.kind == tyObject and roota.lastSon.kind in {tyRef, tyPtr}:
           let baseType = aAsObject.base
           if baseType != nil:
             c.inheritancePenalty += 1
