@@ -5,10 +5,11 @@ Fruit
 2
 4
 3
+none
+skin
+paper
 '''
 """
-
-#bug #7601
 type
   Fruit = object of RootObj
     name: string
@@ -35,3 +36,16 @@ var b = Bike[int](tire: 2)
 
 let y = [b.addr, c.addr, v.addr]
 for c in y: echo c.tire
+
+type
+  Book[T] = ref object of RootObj
+    cover: T
+  Hard[T] = ref object of Book[T]
+  Soft[T] = ref object of Book[T]
+
+var bn = Book[string](cover: "none")
+var hs = Hard[string](cover: "skin")
+var bp = Soft[string](cover: "paper")
+
+let z = [bn, hs, bp]
+for c in z: echo c.cover
