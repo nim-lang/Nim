@@ -15,7 +15,7 @@
 # connection-protocol.
 #
 
-{.deadCodeElim: on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 when defined(windows):
   const
