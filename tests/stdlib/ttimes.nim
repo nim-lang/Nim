@@ -367,6 +367,10 @@ suite "ttimes":
     check d(seconds = 0) - d(milliseconds = 1500) == d(milliseconds = -1500)
     check d(milliseconds = -1500) == d(seconds = -1, milliseconds = -500)
     check d(seconds = -1, milliseconds = 500) == d(milliseconds = -500)
+    check initDuration(seconds = 1, nanoseconds = 2) <=
+      initDuration(seconds = 1, nanoseconds = 3)
+    check (initDuration(seconds = 1, nanoseconds = 3) <=
+      initDuration(seconds = 1, nanoseconds = 1)).not
 
   test "large/small dates":
     discard initDateTime(1, mJan, -35_000, 12, 00, 00, utc())

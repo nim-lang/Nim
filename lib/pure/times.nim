@@ -483,8 +483,8 @@ template ltImpl(a: Duration|Time, b: Duration|Time): bool =
     a.seconds == b.seconds and a.nanosecond < b.nanosecond)
 
 template lqImpl(a: Duration|Time, b: Duration|Time): bool =
-  a.seconds <= b.seconds or (
-    a.seconds == b.seconds and a.nanosecond <= b.seconds)
+  a.seconds < b.seconds or (
+    a.seconds == b.seconds and a.nanosecond <= b.nanosecond)
 
 template eqImpl(a: Duration|Time, b: Duration|Time): bool =
   a.seconds == b.seconds and a.nanosecond == b.nanosecond
