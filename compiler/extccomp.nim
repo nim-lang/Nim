@@ -470,8 +470,9 @@ proc execExternalProgram*(cmd: string, msg = hintExecuting) =
 
 proc generateScript(projectFile: string, script: Rope) =
   let (dir, name, ext) = splitFile(projectFile)
-  writeRope(script, dir / addFileExt("compile_" & name,
+  writeRope(script, dir / "nimcache" / addFileExt("compile_" & name,
                                      platform.OS[targetOS].scriptExt))
+  copyFile(libpath / "nimbase.h", dir / "nimcache" / "nimbase.h")
 
 proc getOptSpeed(c: TSystemCC): string =
   result = getConfigVar(c, ".options.speed")
