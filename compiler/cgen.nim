@@ -1309,10 +1309,6 @@ proc newModule(g: BModuleList; module: PSym): BModule =
   growCache g.modules, module.position
   g.modules[module.position] = result
 
-  if (optDeadCodeElim in gGlobalOptions):
-    if (sfDeadCodeElim in module.flags):
-      internalError("added pending module twice: " & toFilename(FileIndex module.position))
-
 template injectG(config) {.dirty.} =
   if graph.backend == nil:
     graph.backend = newModuleList(config)

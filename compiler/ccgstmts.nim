@@ -280,20 +280,6 @@ proc genVarStmt(p: BProc, n: PNode) =
     else:
       genVarTuple(p, it)
 
-proc genConstStmt(p: BProc, n: PNode) =
-  for it in n.sons:
-    if it.kind == nkCommentStmt: continue
-    if it.kind != nkConstDef: internalError(n.info, "genConstStmt")
-
-    let sym = it.sons[0].sym
-    if sym.typ.containsCompileTimeOnly or
-        sym.typ.kind notin ConstantDataTypes or
-        sym.ast.len == 0 or
-        emitLazily(sym):
-      continue
-
-    requestConstImpl(p, sym)
-
 proc genIf(p: BProc, n: PNode, d: var TLoc) =
   #
   #  { if (!expr1) goto L1;
@@ -587,7 +573,7 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     genLineDir(p, t)
     if isImportedException(typ):
       lineF(p, cpsStmts, "throw $1;$n", [e])
-    else:      
+    else:
       lineCg(p, cpsStmts, "#raiseException((#Exception*)$1, $2);$n",
           [e, makeCString(typ.sym.name.s)])
   else:
@@ -836,7 +822,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
     else:
       for j in 0..t[i].len-2:
         if t[i][j].isInfixAs():
-          let exvar = t[i][j][2] # ex1 in `except ExceptType as ex1:` 
+          let exvar = t[i][j][2] # ex1 in `except ExceptType as ex1:`
           fillLoc(exvar.sym.loc, locTemp, exvar, mangleLocalName(p, exvar.sym), OnUnknown)
           startBlock(p, "catch ($1& $2) {$n", getTypeDesc(p.module, t[i][j][1].typ), rdLoc(exvar.sym.loc))
         else:

@@ -9,7 +9,7 @@
 
 ## This module provides support to handle the Unicode UTF-8 encoding.
 
-{.deadCodeElim: on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 include "system/inclrtl"
 

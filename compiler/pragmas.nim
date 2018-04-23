@@ -44,7 +44,9 @@ const
     wWarnings, wHints,
     wLinedir, wStacktrace, wLinetrace, wOptimization, wHint, wWarning, wError,
     wFatal, wDefine, wUndef, wCompile, wLink, wLinksys, wPure, wPush, wPop,
-    wBreakpoint, wWatchPoint, wPassl, wPassc, wDeadCodeElim, wDeprecated,
+    wBreakpoint, wWatchPoint, wPassl, wPassc,
+    wDeadCodeElimUnused,  # deprecated, always on
+    wDeprecated,
     wFloatchecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
     wLinearScanEnd, wPatterns, wEffects, wNoForward, wReorder, wComputedGoto,
     wInjectStmt, wDeprecated, wExperimental, wThis}
@@ -214,10 +216,6 @@ proc isTurnedOn(c: PContext, n: PNode): bool =
 proc onOff(c: PContext, n: PNode, op: TOptions) =
   if isTurnedOn(c, n): gOptions = gOptions + op
   else: gOptions = gOptions - op
-
-proc pragmaDeadCodeElim(c: PContext, n: PNode) =
-  if isTurnedOn(c, n): incl(c.module.flags, sfDeadCodeElim)
-  else: excl(c.module.flags, sfDeadCodeElim)
 
 proc pragmaNoForward(c: PContext, n: PNode; flag=sfNoForward) =
   if isTurnedOn(c, n): incl(c.module.flags, flag)
@@ -764,7 +762,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wThreadVar:
         noVal(it)
         incl(sym.flags, sfThread)
-      of wDeadCodeElim: pragmaDeadCodeElim(c, it)
+      of wDeadCodeElimUnused: discard  # deprecated, dead code elim always on
       of wNoForward: pragmaNoForward(c, it)
       of wReorder: pragmaNoForward(c, it, sfReorder)
       of wMagic: processMagic(c, it, sym)
@@ -960,10 +958,6 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         if sym.kind != skType or sym.typ == nil: invalidPragma(it)
         else:
           incl(sym.typ.flags, tfPartial)
-          # .partial types can only work with dead code elimination
-          # to prevent the codegen from doing anything before we compiled
-          # the whole program:
-          incl gGlobalOptions, optDeadCodeElim
       of wInject, wGensym:
         # We check for errors, but do nothing with these pragmas otherwise
         # as they are handled directly in 'evalTemplate'.

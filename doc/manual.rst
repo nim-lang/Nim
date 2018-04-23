@@ -6768,22 +6768,6 @@ the created global variables within a module is not defined, but all of them
 will be initialized after any top-level variables in their originating module
 and before any variable in a module that imports it.
 
-deadCodeElim pragma
--------------------
-The ``deadCodeElim`` pragma only applies to whole modules: It tells the
-compiler to activate (or deactivate) dead code elimination for the module the
-pragma appears in.
-
-The ``--deadCodeElim:on`` command line switch has the same effect as marking
-every module with ``{.deadCodeElim:on}``. However, for some modules such as
-the GTK wrapper it makes sense to *always* turn on dead code elimination -
-no matter if it is globally active or not.
-
-Example:
-
-.. code-block:: nim
-  {.deadCodeElim: on.}
-
 
 ..
   NoForward pragma

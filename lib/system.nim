@@ -146,7 +146,7 @@ proc declared*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ##     # missing it.
 
 when defined(useNimRtl):
-  {.deadCodeElim: on.}
+  {.deadCodeElim: on.}  # dce option deprecated
 
 proc definedInScope*(x: untyped): bool {.
   magic: "DefinedInScope", noSideEffect, deprecated, compileTime.}
