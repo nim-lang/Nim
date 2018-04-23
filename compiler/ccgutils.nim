@@ -211,8 +211,4 @@ proc mangle*(name: string): string =
   if requiresUnderscore:
     result.add "_"
 
-proc emitLazily*(s: PSym): bool {.inline.} =
-  result = optDeadCodeElim in gGlobalOptions or
-           sfDeadCodeElim in getModule(s).flags
-
 initTypeTables()

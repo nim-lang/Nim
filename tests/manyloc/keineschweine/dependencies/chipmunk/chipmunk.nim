@@ -23,7 +23,6 @@ const Lib = "libchipmunk.so.6.1.1"
 
 when defined(MoreNim):
   {.hint: "MoreNim defined; some Chipmunk functions replaced in Nim".}
-{.deadCodeElim: on.}
 from math import sqrt, sin, cos, arctan2
 when defined(CpUseFloat):
   {.hint: "CpUseFloat defined; using float32 as float".}

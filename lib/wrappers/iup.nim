@@ -34,7 +34,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # ****************************************************************************
 
-{.deadCodeElim: on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 when defined(windows):
   const dllname = "iup(|30|27|26|25|24).dll"

@@ -10,7 +10,7 @@
 ## This module contains basic operating system facilities like
 ## retrieving environment variables, reading command line arguments,
 ## working with directories, running shell commands, etc.
-{.deadCodeElim: on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 {.push debugger: off.}
 

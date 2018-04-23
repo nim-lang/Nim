@@ -10,7 +10,7 @@ const
   ExeName = "keineschweine"
   ServerDefines = "-d:NoSFML -d:NoChipmunk"
   TestBuildDefines = "-d:escapeMenuTest -d:debugWeps -d:showFPS -d:moreNim -d:debugKeys -d:foo -d:recordMode --forceBuild"
-  ReleaseDefines = "-d:release --deadCodeElim:on"
+  ReleaseDefines = "-d:release"
   ReleaseTestDefines = "-d:debugWeps -d:debugKeys --forceBuild"
 
 task "testprofile", "..":
