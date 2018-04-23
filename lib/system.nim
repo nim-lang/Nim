@@ -3933,29 +3933,48 @@ proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   ## * replaces any ``\`` by ``\\``
   ## * replaces any ``'`` by ``\'``
   ## * replaces any ``"`` by ``\"``
-  ## * replaces any other character in the set ``{'\0'..'\31', '\127'..'\255'}``
+  ## * replaces any ``\a`` by ``\\a``
+  ## * replaces any ``\b`` by ``\\b``
+  ## * replaces any ``\t`` by ``\\t``
+  ## * replaces any ``\n`` by ``\\n``
+  ## * replaces any ``\v`` by ``\\v``
+  ## * replaces any ``\f`` by ``\\f``
+  ## * replaces any ``\c`` by ``\\c``
+  ## * replaces any ``\e`` by ``\\e``
+  ## * replaces any other character not in the set ``{'\21..'\126'}
   ##   by ``\xHH`` where ``HH`` is its hexadecimal value.
   ##
   ## The procedure has been designed so that its output is usable for many
   ## different common syntaxes.
   ## **Note**: This is not correct for producing Ansi C code!
   case c
-  of '\0'..'\31', '\127'..'\255':
-    add(s, "\\x")
+  of '\a': s.add "\\a" # \x07
+  of '\b': s.add "\\b" # \x08
+  of '\t': s.add "\\t" # \x09
+  of '\n': s.add "\\n" # \x0A
+  of '\v': s.add "\\v" # \x0B
+  of '\f': s.add "\\f" # \x0C
+  of '\c': s.add "\\c" # \x0D
+  of '\e': s.add "\\e" # \x1B
+  of '\\': s.add("\\\\")
+  of '\'': s.add("\\'")
+  of '\"': s.add("\\\"")
+  of {'\32'..'\126'} - {'\\', '\'', '\"'}: s.add(c)
+  else:
+    s.add("\\x")
     const HexChars = "0123456789ABCDEF"
     let n = ord(c)
     s.add(HexChars[int((n and 0xF0) shr 4)])
     s.add(HexChars[int(n and 0xF)])
-  of '\\': add(s, "\\\\")
-  of '\'': add(s, "\\'")
-  of '\"': add(s, "\\\"")
-  else: add(s, c)
 
 proc addQuoted*[T](s: var string, x: T) =
   ## Appends `x` to string `s` in place, applying quoting and escaping
   ## if `x` is a string or char. See
   ## `addEscapedChar <system.html#addEscapedChar>`_
-  ## for the escaping scheme.
+  ## for the escaping scheme. When `x` is a string, characters in the
+  ## range ``{\128..\255}`` are never escaped so that multibyte UTF-8
+  ## characters are untouched (note that this behavior is different from
+  ## ``addEscapedChar``).
   ##
   ## The Nim standard library uses this function on the elements of
   ## collections when producing a string representation of a collection.
@@ -3974,7 +3993,12 @@ proc addQuoted*[T](s: var string, x: T) =
   when T is string:
     s.add("\"")
     for c in x:
-      s.addEscapedChar(c)
+      # Only ASCII chars are escaped to avoid butchering
+      # multibyte UTF-8 characters.
+      if c <= 127.char:
+        s.addEscapedChar(c)
+      else:
+        s.add c
     s.add("\"")
   elif T is char:
     s.add("'")
