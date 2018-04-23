@@ -132,6 +132,48 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
 
+proc parseUppercaseMethod(name: string): HttpMethod =
+  template invalid: untyped = raise newException(ValueError, "Invalid HTTP method " & name)
+  
+  let len = name.len
+  if len < 3: invalid
+  
+  let thirdLetter = name[2]
+  if thirdLetter == 'T':
+    if len == 3:
+      let firstLetter = name[0]
+      if firstLetter == 'P' and name[1] == 'U':
+        return HttpPut
+      elif firstLetter == 'G' and name[1] == 'E':
+        return HttpGet
+      else: invalid
+    elif len == 5 and name[0] == 'P' and name[1] == 'A' and name[3] == 'C' and name[4] == 'H':
+      return HttpPatch
+    elif len == 7 and name[0] == 'O' and name[1] == 'P' and name[3] == 'I' and
+         name[4] == 'O' and name[5] == 'N' and name[6] == 'S':
+      return HttpOptions
+    else: invalid
+  
+  let secondLetter = name[1]
+  if secondLetter == 'O':
+    if len == 4 and name[0] == 'P' and thirdLetter == 'S' and name[3] == 'T':
+      return HttpPost
+    elif len == 7 and name[0] == 'C' and thirdLetter == 'N' and name[3] == 'N' and
+         name[4] == 'E' and name[5] == 'C' and name[6] == 'T':
+      return HttpConnect
+    else: invalid
+  elif secondLetter == 'E':
+    if len == 6 and name[0] == 'D' and thirdLetter == 'L' and name[3] == 'E' and
+       name[4] == 'T' and name[5] == 'E':
+      return HttpDelete
+    elif len == 4 and name[0] == 'H' and thirdLetter == 'A' and name[3] == 'D':
+      return HttpHead
+    else: invalid
+  elif len == 5 and name[0] == 'T' and secondLetter == 'R' and thirdLetter == 'A' and
+       name[3] == 'C' and name[4] == 'E':
+    return HttpTrace
+  else: invalid
+
 proc processRequest(server: AsyncHttpServer, req: FutureVar[Request],
                     client: AsyncSocket,
                     address: string, lineFut: FutureVar[string],
@@ -175,8 +217,7 @@ proc processRequest(server: AsyncHttpServer, req: FutureVar[Request],
     case i
     of 0:
       try:
-        # TODO: this is likely slow.
-        request.reqMethod = parseEnum[HttpMethod]("http" & linePart)
+        request.reqMethod = parseUppercaseMethod(linePart)
       except ValueError:
         asyncCheck request.respondError(Http400)
         return
