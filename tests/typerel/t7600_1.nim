@@ -1,6 +1,6 @@
 discard """
 errormsg: "type mismatch: got <Thin[system.int]>"
-nimout: '''t7600_1.nim(19, 6) Error: type mismatch: got <Thin[system.int]>
+nimout: '''t7600_1.nim(18, 6) Error: type mismatch: got <Thin[system.int]>
 but expected one of:
 proc test[T](x: Paper[T])
 
