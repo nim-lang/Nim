@@ -1472,8 +1472,11 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     of mSeq: result = semContainer(c, n, tySequence, "seq", prev)
     of mOpt: result = semContainer(c, n, tyOpt, "opt", prev)
     of mVarargs: result = semVarargs(c, n, prev)
-    of mTypeDesc, mTypeTy: result = makeTypeDesc(c, semTypeNode(c, n[1], nil))
-    of mStaticTy: result = semStaticType(c, n[1], prev)
+    of mTypeDesc, mTypeTy:
+      result = makeTypeDesc(c, semTypeNode(c, n[1], nil))
+      result.flags.incl tfExplicit
+    of mStaticTy:
+      result = semStaticType(c, n[1], prev)
     of mExpr:
       result = semTypeNode(c, n.sons[0], nil)
       if result != nil:

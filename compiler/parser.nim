@@ -798,8 +798,7 @@ proc primarySuffix(p: var TParser, r: PNode,
         # `foo ref` or `foo ptr`. Unfortunately, these two are also
         # used as infix operators for the memory regions feature and
         # the current parsing rules don't play well here.
-      if mode == pmTypeDef or
-        (p.inPragma == 0 and (isUnary(p) or p.tok.tokType notin {tkOpr, tkDotDot})):
+      if p.inPragma == 0 and (isUnary(p) or p.tok.tokType notin {tkOpr, tkDotDot}):
         # actually parsing {.push hints:off.} as {.push(hints:off).} is a sweet
         # solution, but pragmas.nim can't handle that
         let a = result
