@@ -116,6 +116,13 @@
 - In order to make ``for`` loops and iterators more flexible to use Nim now
   supports so called "for-loop macros". See
   the `manual <manual.html#macros-for-loop-macros>`_ for more details.
+- the `typedesc` special type has been renamed to just `type`.
+- `static` and `type` are now also modifiers similar to `ref` and `ptr`.
+  They denote the special types `static[T]` and `type[T]`.
+- Forcing compile-time evaluation with `static` now supports specifying
+  the desired target type (as a concrete type or as a type class)
+- The `type` operator now supports checking that the supplied expression
+  matches an expected type constraint.
 
 ### Language changes
 
