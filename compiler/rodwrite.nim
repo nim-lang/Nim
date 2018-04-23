@@ -55,7 +55,7 @@ proc fileIdx(w: PRodWriter, filename: string): int =
   w.files[result] = filename
 
 template filename*(w: PRodWriter): string =
-  w.module.filename
+  toFilename(FileIndex w.module.position)
 
 proc newRodWriter(hash: SecureHash, module: PSym; cache: IdentCache): PRodWriter =
   new(result)
@@ -125,14 +125,14 @@ proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode,
     result.add('?')
     encodeVInt(n.info.col, result)
     result.add(',')
-    encodeVInt(n.info.line, result)
+    encodeVInt(int n.info.line, result)
     result.add(',')
     encodeVInt(fileIdx(w, toFullPath(n.info)), result)
   elif fInfo.line != n.info.line:
     result.add('?')
     encodeVInt(n.info.col, result)
     result.add(',')
-    encodeVInt(n.info.line, result)
+    encodeVInt(int n.info.line, result)
   elif fInfo.col != n.info.col:
     result.add('?')
     encodeVInt(n.info.col, result)
@@ -303,7 +303,7 @@ proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
   result.add('?')
   if s.info.col != -1'i16: encodeVInt(s.info.col, result)
   result.add(',')
-  if s.info.line != -1'i16: encodeVInt(s.info.line, result)
+  if s.info.line != 0'u16: encodeVInt(int s.info.line, result)
   result.add(',')
   encodeVInt(fileIdx(w, toFullPath(s.info)), result)
   if s.owner != nil:
@@ -642,7 +642,7 @@ proc process(c: PPassContext, n: PNode): PNode =
 
 proc myOpen(g: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
   if module.id < 0: internalError("rodwrite: module ID not set")
-  var w = newRodWriter(rodread.getHash module.fileIdx, module, cache)
+  var w = newRodWriter(rodread.getHash FileIndex module.position, module, cache)
   rawAddInterfaceSym(w, module)
   result = w
 

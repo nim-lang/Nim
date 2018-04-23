@@ -483,6 +483,19 @@ proc newSymNodeTypeDesc*(s: PSym; info: TLineInfo): PNode =
 
 proc getConstExpr(m: PSym, n: PNode): PNode =
   result = nil
+
+  proc getSrcTimestamp(): DateTime =
+    try:
+      result = utc(fromUnix(parseInt(getEnv("SOURCE_DATE_EPOCH",
+                                            "not a number"))))
+    except ValueError:
+      # Environment variable malformed.
+      # https://reproducible-builds.org/specs/source-date-epoch/: "If the
+      # value is malformed, the build process SHOULD exit with a non-zero
+      # error code", which this doesn't do. This uses local time, because
+      # that maintains compatibility with existing usage.
+      result = local(getTime())
+
   case n.kind
   of nkSym:
     var s = n.sym
@@ -492,8 +505,10 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
     of skConst:
       case s.magic
       of mIsMainModule: result = newIntNodeT(ord(sfMainModule in m.flags), n)
-      of mCompileDate: result = newStrNodeT(times.getDateStr(), n)
-      of mCompileTime: result = newStrNodeT(times.getClockStr(), n)
+      of mCompileDate: result = newStrNodeT(format(getSrcTimestamp(),
+                                                   "yyyy-MM-dd"), n)
+      of mCompileTime: result = newStrNodeT(format(getSrcTimestamp(),
+                                                   "HH:mm:ss"), n)
       of mCpuEndian: result = newIntNodeT(ord(CPU[targetCPU].endian), n)
       of mHostOS: result = newStrNodeT(toLowerAscii(platform.OS[targetOS].name), n)
       of mHostCPU: result = newStrNodeT(platform.CPU[targetCPU].name.toLowerAscii, n)

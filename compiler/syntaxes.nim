@@ -138,7 +138,7 @@ proc evalPipe(p: var TParsers, n: PNode, filename: string,
   else:
     result = applyFilter(p, n, filename, result)
 
-proc openParsers*(p: var TParsers, fileIdx: int32, inputstream: PLLStream;
+proc openParsers*(p: var TParsers, fileIdx: FileIndex, inputstream: PLLStream;
                   cache: IdentCache) =
   var s: PLLStream
   p.skin = skinStandard
@@ -155,7 +155,7 @@ proc openParsers*(p: var TParsers, fileIdx: int32, inputstream: PLLStream;
 proc closeParsers*(p: var TParsers) =
   parser.closeParser(p.parser)
 
-proc parseFile*(fileIdx: int32; cache: IdentCache): PNode {.procvar.} =
+proc parseFile*(fileIdx: FileIndex; cache: IdentCache): PNode {.procvar.} =
   var
     p: TParsers
     f: File

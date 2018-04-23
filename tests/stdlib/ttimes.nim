@@ -410,3 +410,10 @@ suite "ttimes":
     let day = 24.hours
     let tomorrow = now + day
     check tomorrow - now == initDuration(days = 1)
+  
+  test "fromWinTime/toWinTime":
+    check 0.fromUnix.toWinTime.fromWinTime.toUnix == 0
+    check (-1).fromWinTime.nanoseconds == convert(Seconds, Nanoseconds, 1) - 100
+    check -1.fromWinTime.toWinTime == -1
+    # One nanosecond is discarded due to differences in time resolution
+    check initTime(0, 101).toWinTime.fromWinTime.nanoseconds == 100 

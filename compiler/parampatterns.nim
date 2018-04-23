@@ -235,7 +235,8 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
       result = arLValue
     else:
       result = isAssignable(owner, n.sons[0], isUnsafeAddr)
-    if result != arNone and sfDiscriminant in n.sons[1].sym.flags:
+    if result != arNone and n[1].kind == nkSym and
+        sfDiscriminant in n[1].sym.flags:
       result = arDiscriminant
   of nkBracketExpr:
     if skipTypes(n.sons[0].typ, abstractInst-{tyTypeDesc}).kind in

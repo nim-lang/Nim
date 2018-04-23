@@ -104,6 +104,10 @@ proc none*(T: typedesc): Option[T] =
   # the default is the none type
   discard
 
+proc none*[T]: Option[T] =
+  ## Alias for ``none(T)``.
+  none(T)
+
 proc isSome*[T](self: Option[T]): bool {.inline.} =
   when T is SomePointer:
     self.val != nil
@@ -290,3 +294,7 @@ when isMainModule:
 
       let tmp = option(intref)
       check(sizeof(tmp) == sizeof(ptr int))
+
+    test "none[T]":
+      check(none[int]().isNone)
+      check(none(int) == none[int]())

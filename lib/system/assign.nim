@@ -79,8 +79,12 @@ proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) =
                       GenericSeqSize),
           mt.base, shallow)
   of tyObject:
-    if mt.base != nil:
-      genericAssignAux(dest, src, mt.base, shallow)
+    var it = mt.base
+    # don't use recursion here on the PNimType because the subtype
+    # check should only be done at the very end:
+    while it != nil:
+      genericAssignAux(dest, src, it.node, shallow)
+      it = it.base
     genericAssignAux(dest, src, mt.node, shallow)
     # we need to copy m_type field for tyObject, as it could be empty for
     # sequence reallocations:
@@ -89,6 +93,8 @@ proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) =
     #   if p of TB:
     #     var tbObj = TB(p)
     #     tbObj of TC # needs to be false!
+    #c_fprintf(stdout, "%s %s\n", pint[].name, mt.name)
+    chckObjAsgn(cast[ptr PNimType](src)[], mt)
     pint[] = mt # cast[ptr PNimType](src)[]
   of tyTuple:
     genericAssignAux(dest, src, mt.node, shallow)

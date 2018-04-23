@@ -526,6 +526,14 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
         if isAssignable(c, it) notin {arLValue, arLocalLValue}:
           if it.kind != nkHiddenAddr:
             localError(it.info, errVarForOutParamNeededX, $it)
+    # bug #5113: disallow newSeq(result) where result is a 'var T':
+    if n[0].sym.magic in {mNew, mNewFinalize, mNewSeq}:
+      var arg = n[1] #.skipAddr
+      if arg.kind == nkHiddenDeref: arg = arg[0]
+      if arg.kind == nkSym and arg.sym.kind == skResult and
+          arg.typ.skipTypes(abstractInst).kind in {tyVar, tyLent}:
+        localError(n.info, errXStackEscape, renderTree(n[1], {renderNoComments}))
+
     return
   for i in countup(1, sonsLen(n) - 1):
     if n.sons[i].kind == nkHiddenCallConv:
@@ -1334,11 +1342,11 @@ proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode =
   let root = exprRoot(n)
   if root != nil and root.owner == c.p.owner:
     if root.kind in {skLet, skVar, skTemp} and sfGlobal notin root.flags:
-      localError(n.info, "'$1' escapes its stack frame; context: '$2'" % [
-        root.name.s, renderTree(n, {renderNoComments})])
+      localError(n.info, "'$1' escapes its stack frame; context: '$2'; see $3/var_t_return.html" % [
+        root.name.s, renderTree(n, {renderNoComments}), explanationsBaseUrl])
     elif root.kind == skParam and root.position != 0:
-      localError(n.info, "'$1' is not the first parameter; context: '$2'" % [
-        root.name.s, renderTree(n, {renderNoComments})])
+      localError(n.info, "'$1' is not the first parameter; context: '$2'; see $3/var_t_return.html" % [
+        root.name.s, renderTree(n, {renderNoComments}), explanationsBaseUrl])
   case n.kind
   of nkHiddenAddr, nkAddr: return n
   of nkHiddenDeref, nkDerefExpr: return n.sons[0]

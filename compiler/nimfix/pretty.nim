@@ -28,7 +28,7 @@ proc overwriteFiles*() =
   let doStrip = options.getConfigVar("pretty.strip").normalize == "on"
   for i in 0 .. high(gSourceFiles):
     if gSourceFiles[i].dirty and not gSourceFiles[i].isNimfixFile and
-        (not gOnlyMainfile or gSourceFiles[i].fileIdx == gProjectMainIdx):
+        (not gOnlyMainfile or gSourceFiles[i].fileIdx == gProjectMainIdx.FileIndex):
       let newFile = if gOverWrite: gSourceFiles[i].fullpath
                     else: gSourceFiles[i].fullpath.changeFileExt(".pretty.nim")
       try:
@@ -95,7 +95,7 @@ proc beautifyName(s: string, k: TSymKind): string =
 proc replaceInFile(info: TLineInfo; newName: string) =
   loadFile(info)
 
-  let line = gSourceFiles[info.fileIndex].lines[info.line-1]
+  let line = gSourceFiles[info.fileIndex.int].lines[info.line.int-1]
   var first = min(info.col.int, line.len)
   if first < 0: return
   #inc first, skipIgnoreCase(line, "proc ", first)
@@ -107,8 +107,8 @@ proc replaceInFile(info: TLineInfo; newName: string) =
   if differ(line, first, last, newName):
     # last-first+1 != newName.len or
     var x = line.substr(0, first-1) & newName & line.substr(last+1)
-    system.shallowCopy(gSourceFiles[info.fileIndex].lines[info.line-1], x)
-    gSourceFiles[info.fileIndex].dirty = true
+    system.shallowCopy(gSourceFiles[info.fileIndex.int].lines[info.line.int-1], x)
+    gSourceFiles[info.fileIndex.int].dirty = true
 
 proc checkStyle(info: TLineInfo, s: string, k: TSymKind; sym: PSym) =
   let beau = beautifyName(s, k)
@@ -136,7 +136,7 @@ template styleCheckDef*(s: PSym) =
   styleCheckDef(s.info, s, s.kind)
 
 proc styleCheckUseImpl(info: TLineInfo; s: PSym) =
-  if info.fileIndex < 0: return
+  if info.fileIndex.int < 0: return
   # we simply convert it to what it looks like in the definition
   # for consistency
 

@@ -35,7 +35,7 @@ proc writeDepsFile(g: ModuleGraph; project: string) =
   let f = open(changeFileExt(project, "deps"), fmWrite)
   for m in g.modules:
     if m != nil:
-      f.writeLine(toFullPath(m.position.int32))
+      f.writeLine(toFullPath(m.position.FileIndex))
   for k in g.inclToMod.keys:
     if g.getModule(k).isNil:  # don't repeat includes which are also modules
       f.writeLine(k.toFullPath)
@@ -94,7 +94,6 @@ proc commandCompileToJS(graph: ModuleGraph; cache: IdentCache) =
   defineSymbol("nimrod") # 'nimrod' is always defined
   defineSymbol("ecmascript") # For backward compatibility
   defineSymbol("js")
-  if gCmd == cmdCompileToPHP: defineSymbol("nimphp")
   semanticPasses()
   registerPass(JSgenPass)
   compileProject(graph, cache)
@@ -189,9 +188,6 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
   of "js", "compiletojs":
     gCmd = cmdCompileToJS
     commandCompileToJS(graph, cache)
-  of "php":
-    gCmd = cmdCompileToPHP
-    commandCompileToJS(graph, cache)
   of "doc0":
     wantMainModule()
     gCmd = cmdDoc
@@ -269,7 +265,7 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
   of "parse":
     gCmd = cmdParse
     wantMainModule()
-    discard parseFile(gProjectMainIdx, cache)
+    discard parseFile(FileIndex gProjectMainIdx, cache)
   of "scan":
     gCmd = cmdScan
     wantMainModule()

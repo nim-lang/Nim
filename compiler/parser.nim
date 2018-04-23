@@ -83,7 +83,7 @@ proc getTok(p: var TParser) =
   rawGetTok(p.lex, p.tok)
   p.hasProgress = true
 
-proc openParser*(p: var TParser, fileIdx: int32, inputStream: PLLStream,
+proc openParser*(p: var TParser, fileIdx: FileIndex, inputStream: PLLStream,
                  cache: IdentCache;
                  strongSpaces=false) =
   ## Open a parser, using the given arguments to set up its internal state.
@@ -125,7 +125,13 @@ proc rawSkipComment(p: var TParser, node: PNode) =
   if p.tok.tokType == tkComment:
     if node != nil:
       if node.comment == nil: node.comment = ""
-      add(node.comment, p.tok.literal)
+      when defined(nimpretty):
+        if p.tok.commentOffsetB > p.tok.commentOffsetA:
+          add node.comment, fileSection(p.lex.fileIdx, p.tok.commentOffsetA, p.tok.commentOffsetB)
+        else:
+          add node.comment, p.tok.literal
+      else:
+        add(node.comment, p.tok.literal)
     else:
       parMessage(p, errInternal, "skipComment")
     getTok(p)

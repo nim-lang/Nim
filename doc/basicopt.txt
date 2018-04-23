@@ -36,7 +36,7 @@ Options:
   --app:console|gui|lib|staticlib
                             generate a console app|GUI app|DLL|static library
   -r, --run                 run the compiled program with given arguments
-  --advanced                show advanced command line switches
+  --fullhelp                show all command line switches
   -h, --help                show this help
 
 Note, single letter options that take an argument require a colon. E.g. -p:PATH.

@@ -1381,7 +1381,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNGetLine:
       decodeB(rkNode)
       let n = regs[rb].node
-      regs[ra].node = newIntNode(nkIntLit, n.info.line)
+      regs[ra].node = newIntNode(nkIntLit, n.info.line.int)
       regs[ra].node.info = n.info
       regs[ra].node.typ = n.typ
     of opcNGetColumn:
@@ -1397,8 +1397,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let bNode = regs[rc].node
       # these are cstring to prevent string copy, and cmpIgnoreStyle from
       # takes cstring arguments
-      var aStrVal: cstring
-      var bStrVal: cstring
+      var aStrVal: cstring = nil
+      var bStrVal: cstring = nil
       # extract strVal from argument ``a``
       case aNode.kind
       of {nkStrLit..nkTripleStrLit}:
@@ -1407,8 +1407,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         aStrVal = aNode.ident.s.cstring
       of nkSym:
         aStrVal = aNode.sym.name.s.cstring
+      of nkOpenSymChoice, nkClosedSymChoice:
+        aStrVal = aNode[0].sym.name.s.cstring
       else:
-        stackTrace(c, tos, pc, errFieldXNotFound, "strVal")
+        discard
       # extract strVal from argument ``b``
       case bNode.kind
       of {nkStrLit..nkTripleStrLit}:
@@ -1417,11 +1419,17 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         bStrVal = bNode.ident.s.cstring
       of nkSym:
         bStrVal = bNode.sym.name.s.cstring
+      of nkOpenSymChoice, nkClosedSymChoice:
+        bStrVal = bNode[0].sym.name.s.cstring
       else:
-        stackTrace(c, tos, pc, errFieldXNotFound, "strVal")
+        discard
       # set result
       regs[ra].intVal =
-        ord(idents.cmpIgnoreStyle(aStrVal,bStrVal,high(int)) == 0)
+        if aStrVal != nil and bStrVal != nil:
+          ord(idents.cmpIgnoreStyle(aStrVal,bStrVal,high(int)) == 0)
+        else:
+          0
+
     of opcStrToIdent:
       decodeB(rkNode)
       if regs[rb].node.kind notin {nkStrLit..nkTripleStrLit}:
@@ -1513,7 +1521,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let x = newNodeI(TNodeKind(int(k)),
         if cc.kind != nkNilLit:
           cc.info
-        elif c.comesFromHeuristic.line > -1:
+        elif c.comesFromHeuristic.line != 0'u16:
           c.comesFromHeuristic
         elif c.callsite != nil and c.callsite.safeLen > 1:
           c.callsite[1].info
@@ -1685,7 +1693,7 @@ proc evalConstExprAux(module: PSym; cache: IdentCache; prc: PSym, n: PNode,
   newSeq(tos.slots, c.prc.maxSlots)
   #for i in 0 ..< c.prc.maxSlots: tos.slots[i] = newNode(nkEmpty)
   result = rawExecute(c, start, tos).regToNode
-  if result.info.line < 0: result.info = n.info
+  if result.info.col < 0: result.info = n.info
 
 proc evalConstExpr*(module: PSym; cache: IdentCache, e: PNode): PNode =
   result = evalConstExprAux(module, cache, nil, e, emConst)
@@ -1721,14 +1729,16 @@ iterator genericParamsInMacroCall*(macroSym: PSym, call: PNode): (PSym, PNode) =
     let posInCall = macroSym.typ.len + i
     yield (genericParam, call[posInCall])
 
+# to prevent endless recursion in macro instantiation
+const evalMacroLimit = 1000
 var evalMacroCounter: int
 
 proc evalMacroCall*(module: PSym; cache: IdentCache, n, nOrig: PNode,
                     sym: PSym): PNode =
   # XXX globalError() is ugly here, but I don't know a better solution for now
   inc(evalMacroCounter)
-  if evalMacroCounter > 100:
-    globalError(n.info, errTemplateInstantiationTooNested)
+  if evalMacroCounter > evalMacroLimit:
+    globalError(n.info, errMacroInstantiationTooNested)
 
   # immediate macros can bypass any type and arity checking so we check the
   # arity here too:
@@ -1738,7 +1748,7 @@ proc evalMacroCall*(module: PSym; cache: IdentCache, n, nOrig: PNode,
 
   setupGlobalCtx(module, cache)
   var c = globalCtx
-  c.comesFromHeuristic.line = -1
+  c.comesFromHeuristic.line = 0'u16
 
   c.callsite = nOrig
   let start = genProc(c, sym)

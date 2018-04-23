@@ -11,6 +11,10 @@
   to deal with!
 - Indexing into a ``cstring`` for the JS target is now mapped
   to ``charCodeAt``.
+- Assignments that would "slice" an object into its supertype are not prevented
+  at runtime. Use ``ref object`` with inheritance rather than ``object`` with
+  inheritance to prevent this issue.
+
 
 #### Breaking changes in the standard library
 
@@ -27,6 +31,7 @@
 - ``proc `-`*(a, b: Time): int64`` in the ``times`` module has changed return type
   to ``times.Duration`` in order to support higher time resolutions.
   The proc is no longer deprecated.
+- ``posix.Timeval.tv_sec`` has changed type to ``posix.Time``.
 
 #### Breaking changes in the compiler
 

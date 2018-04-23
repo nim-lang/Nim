@@ -415,7 +415,7 @@ when defined(nimsuggest):
   # Since TLineInfo defined a == operator that doesn't include the column,
   # we map TLineInfo to a unique int here for this lookup table:
   proc infoToInt(info: TLineInfo): int64 =
-    info.fileIndex + info.line.int64 shl 32 + info.col.int64 shl 48
+    info.fileIndex.int64 + info.line.int64 shl 32 + info.col.int64 shl 48
 
   proc addNoDup(s: PSym; info: TLineInfo) =
     # ensure nothing gets too slow:
@@ -574,7 +574,7 @@ proc suggestEnum*(c: PContext; n: PNode; t: PType) =
   if outputs.len > 0: suggestQuit()
 
 proc suggestSentinel*(c: PContext) =
-  if gIdeCmd != ideSug or c.module.position != gTrackPos.fileIndex: return
+  if gIdeCmd != ideSug or c.module.position != gTrackPos.fileIndex.int32: return
   if c.compilesContextId > 0: return
   inc(c.compilesContextId)
   var outputs: Suggestions = @[]

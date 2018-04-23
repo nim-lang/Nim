@@ -66,12 +66,10 @@ proc searchForProcOld*(c: PContext, scope: PScope, fn: PSym): PSym =
 proc searchForProcNew(c: PContext, scope: PScope, fn: PSym): PSym =
   const flags = {ExactGenericParams, ExactTypeDescValues,
                  ExactConstraints, IgnoreCC}
-
   var it: TIdentIter
-
   result = initIdentIter(it, scope.symbols, fn.name)
   while result != nil:
-    if result.kind == fn.kind and sameType(result.typ, fn.typ, flags):
+    if result.kind == fn.kind: #and sameType(result.typ, fn.typ, flags):
       case equalParams(result.typ.n, fn.typ.n)
       of paramsEqual:
         if (sfExported notin result.flags) and (sfExported in fn.flags):
@@ -85,10 +83,7 @@ proc searchForProcNew(c: PContext, scope: PScope, fn: PSym): PSym =
         return
       of paramsNotEqual:
         discard
-
     result = nextIdentIter(it, scope.symbols)
-
-  return nil
 
 proc searchForProc*(c: PContext, scope: PScope, fn: PSym): PSym =
   result = searchForProcNew(c, scope, fn)

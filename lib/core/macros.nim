@@ -706,8 +706,7 @@ proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
     res.add(($n.kind).substr(3))
 
     case n.kind
-    of nnkEmpty: discard # same as nil node in this representation
-    of nnkNilLit: res.add(" nil")
+    of nnkEmpty, nnkNilLit: discard # same as nil node in this representation
     of nnkCharLit..nnkInt64Lit: res.add(" " & $n.intVal)
     of nnkFloatLit..nnkFloat64Lit: res.add(" " & $n.floatVal)
     of nnkStrLit..nnkTripleStrLit, nnkIdent, nnkSym:
@@ -730,8 +729,7 @@ proc lispRepr*(n: NimNode): string {.compileTime, benign.} =
   add(result, "(")
 
   case n.kind
-  of nnkEmpty: discard # same as nil node in this representation
-  of nnkNilLit: add(result, "nil")
+  of nnkEmpty, nnkNilLit: discard # same as nil node in this representation
   of nnkCharLit..nnkInt64Lit: add(result, $n.intVal)
   of nnkFloatLit..nnkFloat64Lit: add(result, $n.floatVal)
   of nnkStrLit..nnkTripleStrLit, nnkCommentStmt, nnkident, nnkSym:
@@ -766,7 +764,7 @@ proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
   ## See also `repr`, `treeRepr`, and `lispRepr`.
 
   const
-    NodeKinds = {nnkEmpty, nnkNilLit, nnkIdent, nnkSym, nnkNone, nnkCommentStmt}
+    NodeKinds = {nnkEmpty, nnkIdent, nnkSym, nnkNone, nnkCommentStmt}
     LitKinds = {nnkCharLit..nnkInt64Lit, nnkFloatLit..nnkFloat64Lit, nnkStrLit..nnkTripleStrLit}
 
   proc traverse(res: var string, level: int, n: NimNode) {.benign.} =
@@ -775,12 +773,13 @@ proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
       res.add("new" & ($n.kind).substr(3) & "Node(")
     elif n.kind in LitKinds:
       res.add("newLit(")
+    elif n.kind == nnkNilLit:
+      res.add("newNilLit()")
     else:
       res.add($n.kind)
 
     case n.kind
-    of nnkEmpty: discard
-    of nnkNilLit: res.add("nil")
+    of nnkEmpty, nnkNilLit: discard
     of nnkCharLit: res.add("'" & $chr(n.intVal) & "'")
     of nnkIntLit..nnkInt64Lit: res.add($n.intVal)
     of nnkFloatLit..nnkFloat64Lit: res.add($n.floatVal)
@@ -1289,7 +1288,11 @@ proc customPragmaNode(n: NimNode): NimNode =
     typ = n.getTypeInst()
 
   if typ.typeKind == ntyTypeDesc:
-    return typ[1].getImpl()[0][1]
+    let impl = typ[1].getImpl()
+    if impl[0].kind == nnkPragmaExpr:
+      return impl[0][1]
+    else:
+      return impl[0] # handle types which don't have macro at all
 
   if n.kind == nnkSym: # either an variable or a proc
     let impl = n.getImpl()

@@ -544,7 +544,7 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonNode =
 
   initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments})
 
-  result = %{ "name": %name, "type": %($k), "line": %n.info.line,
+  result = %{ "name": %name, "type": %($k), "line": %n.info.line.int,
                  "col": %n.info.col}
   if comm != nil and comm != "":
     result["description"] = %comm
@@ -618,7 +618,7 @@ proc generateJson*(d: PDoc, n: PNode) =
   of nkCommentStmt:
     if n.comment != nil and startsWith(n.comment, "##"):
       let stripped = n.comment.substr(2).strip
-      d.add %{ "comment": %stripped, "line": %n.info.line,
+      d.add %{ "comment": %stripped, "line": %n.info.line.int,
                "col": %n.info.col }
   of nkProcDef:
     when useEffectSystem: documentRaises(n)
@@ -790,7 +790,7 @@ proc writeOutputJson*(d: PDoc, filename, outExt: string,
       discard "fixme: error report"
 
 proc commandDoc*() =
-  var ast = parseFile(gProjectMainIdx, newIdentCache())
+  var ast = parseFile(gProjectMainIdx.FileIndex, newIdentCache())
   if ast == nil: return
   var d = newDocumentor(gProjectFull, options.gConfigVars)
   d.hasToc = true
@@ -840,7 +840,7 @@ proc commandRst2TeX*() =
   commandRstAux(gProjectFull, TexExt)
 
 proc commandJson*() =
-  var ast = parseFile(gProjectMainIdx, newIdentCache())
+  var ast = parseFile(gProjectMainIdx.FileIndex, newIdentCache())
   if ast == nil: return
   var d = newDocumentor(gProjectFull, options.gConfigVars)
   d.hasToc = true
@@ -855,7 +855,7 @@ proc commandJson*() =
     writeRope(content, getOutFile(gProjectFull, JsonExt), useWarning = false)
 
 proc commandTags*() =
-  var ast = parseFile(gProjectMainIdx, newIdentCache())
+  var ast = parseFile(gProjectMainIdx.FileIndex, newIdentCache())
   if ast == nil: return
   var d = newDocumentor(gProjectFull, options.gConfigVars)
   d.hasToc = true

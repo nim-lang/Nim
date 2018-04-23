@@ -1042,9 +1042,9 @@ proc newNode*(kind: TNodeKind): PNode =
   new(result)
   result.kind = kind
   #result.info = UnknownLineInfo() inlined:
-  result.info.fileIndex = int32(-1)
+  result.info.fileIndex = InvalidFileIdx
   result.info.col = int16(-1)
-  result.info.line = int16(-1)
+  result.info.line = uint16(0)
   when defined(useNodeIds):
     result.id = gNodeId
     if result.id == nodeIdToDebug:
@@ -1116,13 +1116,13 @@ proc linkTo*(s: PSym, t: PType): PSym {.discardable.} =
   s.typ = t
   result = s
 
-template fileIdx*(c: PSym): int32 =
+template fileIdx*(c: PSym): FileIndex =
   # XXX: this should be used only on module symbols
-  c.position.int32
+  c.position.FileIndex
 
 template filename*(c: PSym): string =
   # XXX: this should be used only on module symbols
-  c.position.int32.toFilename
+  c.position.FileIndex.toFilename
 
 proc appendToModule*(m: PSym, n: PNode) =
   ## The compiler will use this internally to add nodes that will be

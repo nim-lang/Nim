@@ -35,7 +35,7 @@ const
 proc newLine(p: var TTmplParser) =
   llStreamWrite(p.outp, repeat(')', p.emitPar))
   p.emitPar = 0
-  if p.info.line > int16(1): llStreamWrite(p.outp, "\n")
+  if p.info.line > uint16(1): llStreamWrite(p.outp, "\n")
   if p.pendingExprLine:
     llStreamWrite(p.outp, spaces(2))
     p.pendingExprLine = false
@@ -212,9 +212,9 @@ proc filterTmpl*(stdin: PLLStream, filename: string, call: PNode): PLLStream =
   p.x = newStringOfCap(120)
   # do not process the first line which contains the directive:
   if llStreamReadLine(p.inp, p.x):
-    p.info.line = p.info.line + int16(1)
+    p.info.line = p.info.line + 1'u16
   while llStreamReadLine(p.inp, p.x):
-    p.info.line = p.info.line + int16(1)
+    p.info.line = p.info.line + 1'u16
     parseLine(p)
   newLine(p)
   result = p.outp

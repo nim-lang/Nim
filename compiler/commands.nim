@@ -77,6 +77,14 @@ proc writeAdvancedUsage(pass: TCmdLinePass) =
                {msgStdout})
     msgQuit(0)
 
+proc writeFullhelp(pass: TCmdLinePass) =
+  if pass == passCmd1:
+    msgWriteln(`%`(HelpMessage, [VersionAsString,
+                                 platform.OS[platform.hostOS].name,
+                                 CPU[platform.hostCPU].name]) & Usage & AdvancedUsage,
+               {msgStdout})
+    msgQuit(0)
+
 proc writeVersionInfo(pass: TCmdLinePass) =
   if pass == passCmd1:
     msgWriteln(`%`(HelpMessage, [VersionAsString,
@@ -311,7 +319,7 @@ proc trackDirty(arg: string, info: TLineInfo) =
     localError(info, errInvalidNumber, a[2])
 
   let dirtyOriginalIdx = a[1].fileInfoIdx
-  if dirtyOriginalIdx >= 0:
+  if dirtyOriginalIdx.int32 >= 0:
     msgs.setDirtyFile(dirtyOriginalIdx, a[0])
 
   gTrackPos = newLineInfo(dirtyOriginalIdx, line, column)
@@ -611,6 +619,9 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "advanced":
     expectNoArg(switch, arg, pass, info)
     writeAdvancedUsage(pass)
+  of "fullhelp":
+    expectNoArg(switch, arg, pass, info)
+    writeFullhelp(pass)
   of "help", "h":
     expectNoArg(switch, arg, pass, info)
     helpOnError(pass)
@@ -702,7 +713,6 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectNoArg(switch, arg, pass, info)
     useNimNamespace = true
     defineSymbol("cppCompileToNamespace")
-    
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(switch, arg)
     else: invalidCmdLineOption(pass, switch, info)

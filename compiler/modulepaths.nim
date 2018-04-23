@@ -174,7 +174,7 @@ proc getModuleName*(n: PNode): string =
     localError(n.info, errGenerated, "invalid module name: '$1'" % n.renderTree)
     result = ""
 
-proc checkModuleName*(n: PNode; doLocalError=true): int32 =
+proc checkModuleName*(n: PNode; doLocalError=true): FileIndex =
   # This returns the full canonical path for a given module import
   let modulename = n.getModuleName
   let fullPath = findModule(modulename, n.info.toFullPath)

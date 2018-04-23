@@ -52,8 +52,8 @@ proc makePass*(open: TPassOpen = nil,
 
 # the semantic checker needs these:
 var
-  gImportModule*: proc (graph: ModuleGraph; m: PSym, fileIdx: int32; cache: IdentCache): PSym {.nimcall.}
-  gIncludeFile*: proc (graph: ModuleGraph; m: PSym, fileIdx: int32; cache: IdentCache): PNode {.nimcall.}
+  gImportModule*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex; cache: IdentCache): PSym {.nimcall.}
+  gIncludeFile*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex; cache: IdentCache): PNode {.nimcall.}
 
 # implementation
 
@@ -62,20 +62,6 @@ proc skipCodegen*(n: PNode): bool {.inline.} =
   # something with `n`. Currently, this ignores `n` and uses the global
   # error count instead.
   result = msgs.gErrorCounter > 0
-
-proc astNeeded*(s: PSym): bool =
-  # The ``rodwrite`` module uses this to determine if the body of a proc
-  # needs to be stored. The passes manager frees s.sons[codePos] when
-  # appropriate to free the procedure body's memory. This is important
-  # to keep memory usage down.
-  if (s.kind in {skMethod, skProc, skFunc}) and
-      ({sfCompilerProc, sfCompileTime} * s.flags == {}) and
-      (s.typ.callConv != ccInline) and
-      (s.ast.sons[genericParamsPos].kind == nkEmpty):
-    result = false
-    # XXX this doesn't really make sense with excessive CTFE
-  else:
-    result = true
 
 const
   maxPasses = 10
@@ -153,7 +139,7 @@ proc closePassesCached(graph: ModuleGraph; a: var TPassContextArray) =
       m = gPasses[i].close(graph, a[i], m)
     a[i] = nil                # free the memory here
 
-proc resolveMod(module, relativeTo: string): int32 =
+proc resolveMod(module, relativeTo: string): FileIndex =
   let fullPath = findModule(module, relativeTo)
   if fullPath.len == 0:
     result = InvalidFileIDX
@@ -166,7 +152,7 @@ proc processImplicits(implicits: seq[string], nodeKind: TNodeKind,
   let relativeTo = m.info.toFullPath
   for module in items(implicits):
     # implicit imports should not lead to a module importing itself
-    if m.position != resolveMod(module, relativeTo):
+    if m.position != resolveMod(module, relativeTo).int32:
       var importStmt = newNodeI(nodeKind, gCmdLineInfo)
       var str = newStrNode(nkStrLit, module)
       str.info = gCmdLineInfo
@@ -180,7 +166,7 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream,
     p: TParsers
     a: TPassContextArray
     s: PLLStream
-    fileIdx = module.fileIdx
+    fileIdx = FileIndex module.fileIdx
   if module.id < 0:
     # new module caching mechanism:
     for i in 0..<gPassesLen:
