@@ -78,15 +78,20 @@ proc flagTests(r: var TResults, cat: Category, options: string) =
   var build = ""
   var run = ""
   var cmd = "cd " & flagsDir / "nimcache" & " && "
+  var script = "compile_tgenscript"
   when defined(windows):
     cmd = "cmd /c " & cmd & "$#"
-    build = ".bat"
+    script &= ".bat"
 
   when defined(linux):
     cmd = "bash -c \"" & cmd & "./$#\""
-    build = ".sh"
+    script &= ".sh"
 
-  build = cmd % "compile_tgenscript" & build
+    setFilePermissions(flagsDir / "nimcache" / script,
+      {fpUserExec, fpUserWrite, fpUserRead, fpGroupExec, fpGroupRead,
+       fpOthersExec, fpOthersRead})
+
+  build = cmd % script
   run = cmd % "tgenscript"
 
   # Build
