@@ -114,6 +114,8 @@ type
     cppDefines*: HashSet[string]
     headerFile*: string
     features*: set[Feature]
+    arguments*: string ## the arguments to be passed to the program that
+                       ## should be run
 
 const oldExperimentalFeatures* = {implicitDeref, dotOperators, callOperator, parallel}
 

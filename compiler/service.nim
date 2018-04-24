@@ -42,7 +42,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
     of cmdArgument:
       if processArgument(pass, p, argsCount, config): break
   if pass == passCmd2:
-    if optRun notin gGlobalOptions and arguments != "" and options.command.normalize != "run":
+    if optRun notin gGlobalOptions and config.arguments.len > 0 and options.command.normalize != "run":
       rawMessage(errArgsNeedRunOption, [])
 
 proc serve*(cache: IdentCache; action: proc (cache: IdentCache){.nimcall.}; config: ConfigRef) =

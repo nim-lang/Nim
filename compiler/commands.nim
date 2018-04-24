@@ -733,11 +733,6 @@ proc processCommand(switch: string, pass: TCmdLinePass; config: ConfigRef) =
   processSwitch(cmd, arg, pass, gCmdLineInfo, config)
 
 
-var
-  arguments* = ""
-    # the arguments to be passed to the program that
-    # should be run
-
 proc processSwitch*(pass: TCmdLinePass; p: OptParser; config: ConfigRef) =
   # hint[X]:off is parsed as (p.key = "hint[X]", p.val = "off")
   # we fix this here
@@ -756,7 +751,7 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
     if p.key.endswith(".nims"):
       options.command = "e"
       options.gProjectName = unixToNativePath(p.key)
-      arguments = cmdLineRest(p)
+      config.arguments = cmdLineRest(p)
       result = true
     elif pass != passCmd2:
       options.command = p.key
@@ -765,6 +760,6 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
     if argsCount == 1:
       # support UNIX style filenames everywhere for portable build scripts:
       options.gProjectName = unixToNativePath(p.key)
-      arguments = cmdLineRest(p)
+      config.arguments = cmdLineRest(p)
       result = true
   inc argsCount
