@@ -739,8 +739,8 @@ proc downloadFile*(url: string, outputFilename: string,
 proc generateHeaders(requestUrl: Uri, httpMethod: string,
                      headers: HttpHeaders, body: string, proxy: Proxy): string =
   # GET
-  let method = httpMethod.toUpperAscii()
-  result = method
+  let upperMethod = httpMethod.toUpperAscii()
+  result = upperMethod
   result.add ' '
 
   if proxy.isNil or requestUrl.scheme == "https":
@@ -769,7 +769,7 @@ proc generateHeaders(requestUrl: Uri, httpMethod: string,
     add(result, "Connection: Keep-Alive\c\L")
 
   # Content length header.
-  if (body.len > 0 or method in ["POST", "PUT", "PATCH"]) and not headers.hasKey("Content-Length"):
+  if (body.len > 0 or upperMethod in ["POST", "PUT", "PATCH"]) and not headers.hasKey("Content-Length"):
     add(result, "Content-Length: " & $body.len & "\c\L")
 
   # Proxy auth header.
