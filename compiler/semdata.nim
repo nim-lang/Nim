@@ -130,6 +130,7 @@ type
     signatures*: TStrTable
     recursiveDep*: string
     suggestionsMade*: bool
+    features*: set[Feature]
     inTypeContext*: int
     typesWithOps*: seq[(PType, PType)] #\
       # We need to instantiate the type bound ops lazily after
@@ -225,7 +226,7 @@ proc newContext*(graph: ModuleGraph; module: PSym; cache: IdentCache): PContext 
   result.graph = graph
   initStrTable(result.signatures)
   result.typesWithOps = @[]
-
+  result.features = graph.config.features
 
 proc inclSym(sq: var TSymSeq, s: PSym) =
   var L = len(sq)
@@ -398,6 +399,3 @@ proc checkMinSonsLen*(n: PNode, length: int) =
 
 proc isTopLevel*(c: PContext): bool {.inline.} =
   result = c.currentScope.depthLevel <= 2
-
-proc experimentalMode*(c: PContext): bool {.inline.} =
-  result = gExperimentalMode or sfExperimental in c.module.flags

@@ -680,6 +680,22 @@ proc semCustomPragma(c: PContext, n: PNode): PNode =
     elif n.kind == nkExprColonExpr:
       result.kind = n.kind # pragma(arg) -> pragma: arg
 
+proc processExperimental(c: PContext; n: PNode; s: PSym) =
+  if not isTopLevel(c):
+    localError(n.info, "'experimental' pragma only valid as toplevel statement")
+  if n.kind notin nkPragmaCallKinds or n.len != 2:
+    c.features.incl oldExperimentalFeatures
+  else:
+    n[1] = c.semConstExpr(c, n[1])
+    case n[1].kind
+    of nkStrLit, nkRStrLit, nkTripleStrLit:
+      try:
+        c.features.incl parseEnum[Feature](n[1].strVal)
+      except ValueError:
+        localError(n[1].info, "unknown experimental feature")
+    else:
+      localError(n.info, errStringLiteralExpected)
+
 proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
                   validPragmas: TSpecialWords): bool =
   var it = n.sons[i]
@@ -993,11 +1009,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else:
           it.sons[1] = c.semExpr(c, it.sons[1])
       of wExperimental:
-        noVal(it)
-        if isTopLevel(c):
-          c.module.flags.incl sfExperimental
-        else:
-          localError(it.info, "'experimental' pragma only valid as toplevel statement")
+        processExperimental(c, it, sym)
       of wThis:
         if it.kind in nkPragmaCallKinds and it.len == 2:
           c.selfName = considerQuotedIdent(it[1])

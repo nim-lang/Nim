@@ -46,9 +46,9 @@ type
     passCmd2,                 # second pass over the command line
     passPP                    # preprocessor called processCommand()
 
-proc processCommand*(switch: string, pass: TCmdLinePass)
+proc processCommand*(switch: string, pass: TCmdLinePass; config: ConfigRef)
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
-                    config: ConfigRef = nil)
+                    config: ConfigRef)
 
 # implementation
 
@@ -58,7 +58,13 @@ const
 
 const
   Usage = slurp"../doc/basicopt.txt".replace("//", "")
-  AdvancedUsage = slurp"../doc/advopt.txt".replace("//", "")
+  FeatureDesc = block:
+    var x = ""
+    for f in low(Feature)..high(Feature):
+      if x.len > 0: x.add "|"
+      x.add $f
+    x
+  AdvancedUsage = slurp"../doc/advopt.txt".replace("//", "") % FeatureDesc
 
 proc getCommandLineDesc(): string =
   result = (HelpMessage % [VersionAsString, platform.OS[platform.hostOS].name,
@@ -276,7 +282,6 @@ proc testCompileOption*(switch: string, info: TLineInfo): bool =
   of "tlsemulation": result = contains(gGlobalOptions, optTlsEmulation)
   of "implicitstatic": result = contains(gOptions, optImplicitStatic)
   of "patterns": result = contains(gOptions, optPatterns)
-  of "experimental": result = gExperimentalMode
   of "excessivestacktrace": result = contains(gGlobalOptions, optExcessiveStackTrace)
   else: invalidCmdLineOption(passCmd1, switch, info)
 
@@ -339,7 +344,7 @@ proc dynlibOverride(switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
     options.inclDynlibOverride(arg)
 
 proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
-                   config: ConfigRef = nil) =
+                   config: ConfigRef) =
   var
     theOS: TSystemOS
     cpu: TSystemCPU
@@ -694,8 +699,13 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     # only supported for compatibility. Does nothing.
     expectArg(switch, arg, pass, info)
   of "experimental":
-    expectNoArg(switch, arg, pass, info)
-    gExperimentalMode = true
+    if arg.len == 0:
+      config.features.incl oldExperimentalFeatures
+    else:
+      try:
+        config.features.incl parseEnum[Feature](arg)
+      except ValueError:
+        localError(info, "unknown experimental feature")
   of "nocppexceptions":
     expectNoArg(switch, arg, pass, info)
     incl(gGlobalOptions, optNoCppExceptions)
@@ -706,7 +716,8 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       config.cppDefine(arg)
   of "newruntime":
     expectNoArg(switch, arg, pass, info)
-    newDestructors = true
+    doAssert(config != nil)
+    incl(config.features, destructor)
     defineSymbol("nimNewRuntime")
   of "cppcompiletonamespace":
     expectNoArg(switch, arg, pass, info)
@@ -716,10 +727,10 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if strutils.find(switch, '.') >= 0: options.setConfigVar(switch, arg)
     else: invalidCmdLineOption(pass, switch, info)
 
-proc processCommand(switch: string, pass: TCmdLinePass) =
+proc processCommand(switch: string, pass: TCmdLinePass; config: ConfigRef) =
   var cmd, arg: string
   splitSwitch(switch, cmd, arg, pass, gCmdLineInfo)
-  processSwitch(cmd, arg, pass, gCmdLineInfo)
+  processSwitch(cmd, arg, pass, gCmdLineInfo, config)
 
 
 var
@@ -727,19 +738,19 @@ var
     # the arguments to be passed to the program that
     # should be run
 
-proc processSwitch*(pass: TCmdLinePass; p: OptParser) =
+proc processSwitch*(pass: TCmdLinePass; p: OptParser; config: ConfigRef) =
   # hint[X]:off is parsed as (p.key = "hint[X]", p.val = "off")
   # we fix this here
   var bracketLe = strutils.find(p.key, '[')
   if bracketLe >= 0:
     var key = substr(p.key, 0, bracketLe - 1)
     var val = substr(p.key, bracketLe + 1) & ':' & p.val
-    processSwitch(key, val, pass, gCmdLineInfo)
+    processSwitch(key, val, pass, gCmdLineInfo, config)
   else:
-    processSwitch(p.key, p.val, pass, gCmdLineInfo)
+    processSwitch(p.key, p.val, pass, gCmdLineInfo, config)
 
 proc processArgument*(pass: TCmdLinePass; p: OptParser;
-                      argsCount: var int): bool =
+                      argsCount: var int; config: ConfigRef): bool =
   if argsCount == 0:
     # nim filename.nims  is the same as "nim e filename.nims":
     if p.key.endswith(".nims"):

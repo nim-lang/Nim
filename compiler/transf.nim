@@ -979,7 +979,7 @@ proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
     #result = liftLambdas(prc, result)
     when useEffectSystem: trackProc(prc, result)
     result = liftLocalsIfRequested(prc, result)
-    if c.needsDestroyPass and newDestructors:
+    if c.needsDestroyPass: #and newDestructors:
       result = injectDestructorCalls(prc, result)
     incl(result.flags, nfTransf)
       #if prc.name.s == "testbody":
@@ -996,7 +996,7 @@ proc transformStmt*(module: PSym, n: PNode): PNode =
     when useEffectSystem: trackTopLevelStmt(module, result)
     #if n.info ?? "temp.nim":
     #  echo renderTree(result, {renderIds})
-    if c.needsDestroyPass and newDestructors:
+    if c.needsDestroyPass:
       result = injectDestructorCalls(module, result)
     incl(result.flags, nfTransf)
 
@@ -1007,6 +1007,6 @@ proc transformExpr*(module: PSym, n: PNode): PNode =
     var c = openTransf(module, "")
     result = processTransf(c, n, module)
     liftDefer(c, result)
-    if c.needsDestroyPass and newDestructors:
+    if c.needsDestroyPass:
       result = injectDestructorCalls(module, result)
     incl(result.flags, nfTransf)

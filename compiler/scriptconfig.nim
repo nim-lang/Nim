@@ -26,7 +26,7 @@ proc listDirs(a: VmArgs, filter: set[PathComponent]) =
   setResult(a, result)
 
 proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
-              config: ConfigRef = nil): PEvalContext =
+              config: ConfigRef): PEvalContext =
   # For Nimble we need to export 'setupVM'.
   result = newCtx(module, cache)
   result.mode = emRepl
@@ -128,7 +128,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbconf getCommand:
     setResult(a, options.command)
   cbconf switch:
-    processSwitch(a.getString 0, a.getString 1, passPP, module.info)
+    processSwitch(a.getString 0, a.getString 1, passPP, module.info, config)
   cbconf hintImpl:
     processSpecificNote(a.getString 0, wHint, passPP, module.info,
       a.getString 1)
@@ -150,7 +150,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
       options.cppDefine(config, a.getString(0))
 
 proc runNimScript*(cache: IdentCache; scriptName: string;
-                   freshDefines=true; config: ConfigRef=nil) =
+                   freshDefines=true; config: ConfigRef) =
   rawMessage(hintConf, scriptName)
   passes.gIncludeFile = includeModule
   passes.gImportModule = importModule

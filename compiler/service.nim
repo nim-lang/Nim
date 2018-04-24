@@ -26,7 +26,7 @@ var
     # in caas mode, the list of defines and options will be given at start-up?
     # it's enough to check that the previous compilation command is the same?
 
-proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
+proc processCmdLine*(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
   var p = parseopt.initOptParser(cmd)
   var argsCount = 0
   while true:
@@ -36,19 +36,19 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
     of cmdLongoption, cmdShortOption:
       if p.key == " ":
         p.key = "-"
-        if processArgument(pass, p, argsCount): break
+        if processArgument(pass, p, argsCount, config): break
       else:
-        processSwitch(pass, p)
+        processSwitch(pass, p, config)
     of cmdArgument:
-      if processArgument(pass, p, argsCount): break
+      if processArgument(pass, p, argsCount, config): break
   if pass == passCmd2:
     if optRun notin gGlobalOptions and arguments != "" and options.command.normalize != "run":
       rawMessage(errArgsNeedRunOption, [])
 
-proc serve*(cache: IdentCache; action: proc (cache: IdentCache){.nimcall.}) =
+proc serve*(cache: IdentCache; action: proc (cache: IdentCache){.nimcall.}; config: ConfigRef) =
   template execute(cmd) =
     curCaasCmd = cmd
-    processCmdLine(passCmd2, cmd)
+    processCmdLine(passCmd2, cmd, config)
     action(cache)
     gErrorCounter = 0
 

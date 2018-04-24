@@ -42,7 +42,7 @@ proc handleCmdLine(cache: IdentCache; config: ConfigRef) =
     writeCommandLineUsage()
   else:
     # Process command line arguments:
-    processCmdLine(passCmd1, "")
+    processCmdLine(passCmd1, "", config)
     if gProjectName == "-":
       gProjectName = "stdinfile"
       gProjectFull = "stdinfile"
@@ -71,7 +71,7 @@ proc handleCmdLine(cache: IdentCache; config: ConfigRef) =
     # now process command line arguments again, because some options in the
     # command line can overwite the config file's settings
     extccomp.initVars()
-    processCmdLine(passCmd2, "")
+    processCmdLine(passCmd2, "", config)
     if options.command == "":
       rawMessage(errNoCommand, command)
     mainCommand(newModuleGraph(config), cache)
