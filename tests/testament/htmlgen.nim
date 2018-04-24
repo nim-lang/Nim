@@ -121,7 +121,7 @@ proc generateAllTestsContent(outfile: File, allResults: AllTests,
 
 proc generateHtml*(filename: string, onlyFailing: bool) =
   let
-    currentTime = getTime().getLocalTime()
+    currentTime = getTime().local()
     timestring = htmlQuote format(currentTime, "yyyy-MM-dd HH:mm:ss 'UTC'zzz")
   var outfile = open(filename, fmWrite)
 

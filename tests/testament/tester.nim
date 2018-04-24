@@ -16,7 +16,7 @@ import
 
 const
   resultsFile = "testresults.html"
-  jsonFile = "testresults.json"
+  #jsonFile = "testresults.json" # not used
   Usage = """Usage:
   tester [options] command [arguments]
 
@@ -150,11 +150,11 @@ proc initResults: TResults =
   result.skipped = 0
   result.data = ""
 
-proc readResults(filename: string): TResults =
-  result = marshal.to[TResults](readFile(filename).string)
+#proc readResults(filename: string): TResults = # not used
+#  result = marshal.to[TResults](readFile(filename).string)
 
-proc writeResults(filename: string, r: TResults) =
-  writeFile(filename, $$r)
+#proc writeResults(filename: string, r: TResults) = # not used
+#  writeFile(filename, $$r)
 
 proc `$`(x: TResults): string =
   result = ("Tests passed: $1 / $3 <br />\n" &

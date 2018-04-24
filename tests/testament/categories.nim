@@ -15,6 +15,7 @@
 
 const
   rodfilesDir = "tests/rodfiles"
+  flagsDir = "tests/flags"
 
 proc delNimCache(filename, options: string) =
   for target in low(TTarget)..high(TTarget):
@@ -62,6 +63,47 @@ proc compileRodFiles(r: var TResults, cat: Category, options: string) =
   # test DLL interfacing:
   test "gtkex1", true
   test "gtkex2"
+
+# --------------------- flags tests -------------------------------------------
+
+proc flagTests(r: var TResults, cat: Category, options: string) =
+  template test(filename: untyped, clearCacheFirst=false) =
+    if clearCacheFirst: delNimCache(filename, options)
+    testSpec r, makeTest(flagsDir / filename, options, cat)
+
+  # --genscript
+  test "tgenscript", true
+  test "tgenscript"
+
+  var build = ""
+  var run = ""
+  var cmd = "cd " & flagsDir / "nimcache" & " && "
+  when defined(windows):
+    cmd = "cmd /c " & cmd & "$#"
+    build = ".bat"
+
+  when defined(linux):
+    cmd = "bash -c \"" & cmd & "./$#\""
+    build = ".sh"
+
+  build = cmd % "compile_tgenscript" & build
+  run = cmd % "tgenscript"
+
+  # Build
+  var (outp, errC) = execCmdEx(build)
+  r.total += 1
+  if errC == 0:
+    r.passed += 1
+  else:
+    echo outp.string
+
+  # Run
+  (outp, errC) = execCmdEx(run)
+  r.total += 1
+  if errC == 0:
+    r.passed += 1
+  else:
+    echo outp.string
 
 # --------------------- DLL generation tests ----------------------------------
 
@@ -323,7 +365,7 @@ var nimbleDir = getEnv("NIMBLE_DIR").string
 if nimbleDir.len == 0: nimbleDir = getHomeDir() / ".nimble"
 let
   nimbleExe = findExe("nimble")
-  packageDir = nimbleDir / "pkgs"
+  #packageDir = nimbleDir / "pkgs" # not used
   packageIndex = nimbleDir / "packages.json"
 
 proc waitForExitEx(p: Process): int =
@@ -407,9 +449,9 @@ proc `&.?`(a, b: string): string =
   # candidate for the stdlib?
   result = if b.startswith(a): b else: a & b
 
-proc `&?.`(a, b: string): string =
+#proc `&?.`(a, b: string): string = # not used
   # candidate for the stdlib?
-  result = if a.endswith(b): a else: a & b
+  #result = if a.endswith(b): a else: a & b
 
 proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
   let test = "tests" & DirSep &.? cat.string / test
@@ -429,6 +471,8 @@ proc processCategory(r: var TResults, cat: Category, options: string) =
     jsTests(r, cat, options)
   of "dll":
     dllTests(r, cat, options)
+  of "flags":
+    flagTests(r, cat, options)
   of "gc":
     gcTests(r, cat, options)
   of "longgc":
