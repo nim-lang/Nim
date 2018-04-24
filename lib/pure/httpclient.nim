@@ -768,7 +768,7 @@ proc generateHeaders(requestUrl: Uri, httpMethod: string,
     add(result, "Connection: Keep-Alive\c\L")
 
   # Content length header.
-  if body.len > 0 and not headers.hasKey("Content-Length"):
+  if not headers.hasKey("Content-Length"):
     add(result, "Content-Length: " & $body.len & "\c\L")
 
   # Proxy auth header.
