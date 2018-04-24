@@ -14,6 +14,7 @@ GenericT[T] '=' bool
 GenericT[T] '=' bool
 GenericT[T] '=' bool
 GenericT[T] '=' bool'''
+  disabled: "true"
 """
 
 import typetraits
