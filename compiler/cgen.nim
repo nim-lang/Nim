@@ -90,7 +90,6 @@ proc useHeader(m: BModule, sym: PSym) =
     m.includeHeader(str)
 
 proc cgsym(m: BModule, name: string): Rope
-proc pushCgsym(m: BModule, name: string)
 
 proc ropecg(m: BModule, frmt: FormatStr, args: varargs[Rope]): Rope =
   var i = 0
@@ -653,16 +652,6 @@ proc cgsym(m: BModule, name: string): Rope =
     # we're picky here for the system module too:
     rawMessage(errSystemNeeds, name)
   result = sym.loc.r
-
-proc pushCgsym(m: BModule, name: string) = 
-  # add cgsym to delayed emit at module's finalization step
-  m.cgsymStack.add(name)
-
-proc finishCgsym(m: BModule) =
-  var i = 0
-  while i < len(m.cgsymStack):
-    discard cgsym(m, m.cgsymStack[i])
-    inc(i)
 
 proc generateHeaders(m: BModule) =
   add(m.s[cfsHeaders], tnl & "#include \"nimbase.h\"" & tnl)
@@ -1249,7 +1238,6 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: string): BModule =
   result.postInitProc = newPostInitProc(result)
   initNodeTable(result.dataCache)
   result.typeStack = @[]
-  result.cgsymStack = @[]
   result.forwardedProcs = @[]
   result.typeNodesName = getTempName(result)
   result.nimTypesName = getTempName(result)
@@ -1280,7 +1268,6 @@ proc resetModule*(m: BModule) =
   m.postInitProc = newPostInitProc(m)
   initNodeTable(m.dataCache)
   m.typeStack = @[]
-  m.cgsymStack = @[]
   m.forwardedProcs = @[]
   m.typeNodesName = getTempName(m)
   m.nimTypesName = getTempName(m)
@@ -1430,7 +1417,6 @@ proc writeModule(m: BModule, pending: bool) =
 
   if m.rd == nil or optForceFullMake in gGlobalOptions:
     genInitCode(m)
-    finishCgsym(m)
     finishTypeDescriptions(m)
     if sfMainModule in m.module.flags:
       # generate main file:
@@ -1450,7 +1436,6 @@ proc writeModule(m: BModule, pending: bool) =
     let cf = Cfile(cname: cfile, obj: completeCFilePath(toObjFile(cfile)), flags: {})
     mergeFiles(cfile, m)
     genInitCode(m)
-    finishCgsym(m)
     finishTypeDescriptions(m)
     var code = genModule(m, cf)
     writeRope(code, cfile)
@@ -1471,8 +1456,8 @@ proc updateCachedModule(m: BModule) =
   if mergeRequired(m) and sfMainModule notin m.module.flags:
     mergeFiles(cfile, m)
     genInitCode(m)
-    finishCgsym(m)
     finishTypeDescriptions(m)
+
     var code = genModule(m, cf)
     writeRope(code, cfile)
   else:

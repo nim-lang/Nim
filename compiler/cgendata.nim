@@ -136,7 +136,6 @@ type
     postInitProc*: BProc      # code to be executed after the init proc
     preInitProc*: BProc       # code executed before the init proc
     typeStack*: TTypeSeq      # used for type generation
-    cgsymStack*: seq[string]    # used to generate extra compilerproc symbols at finalization
     dataCache*: TNodeTable
     forwardedProcs*: TSymSeq  # keep forwarded procs here
     typeNodes*, nimTypes*: int # used for type info generation
