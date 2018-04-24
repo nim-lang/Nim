@@ -84,7 +84,7 @@ proc flagTests(r: var TResults, cat: Category, options: string) =
     script &= ".bat"
 
   when defined(linux):
-    cmd = "bash -c \"" & cmd & "./$#\""
+    cmd = "sh -c \"" & cmd & "./$#\""
     script &= ".sh"
 
     setFilePermissions(flagsDir / "nimcache" / script,
