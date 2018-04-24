@@ -915,7 +915,7 @@ proc handleSymbolFile*(module: PSym; cache: IdentCache): PRodReader =
     module.id = getID()
     return nil
   idgen.loadMaxIds(options.gProjectPath / options.gProjectName)
-  let fileIdx = FileIndex module.fileIdx
+  let fileIdx = module.fileIdx
   discard checkDep(fileIdx, cache)
   if gMods[fileIdx.int32].reason == rrEmpty: internalError("handleSymbolFile")
   result = gMods[fileIdx.int32].rd

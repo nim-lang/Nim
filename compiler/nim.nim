@@ -42,7 +42,7 @@ proc handleCmdLine(cache: IdentCache; config: ConfigRef) =
     writeCommandLineUsage()
   else:
     # Process command line arguments:
-    processCmdLine(passCmd1, "")
+    processCmdLine(passCmd1, "", config)
     if gProjectName == "-":
       gProjectName = "stdinfile"
       gProjectFull = "stdinfile"
@@ -71,7 +71,7 @@ proc handleCmdLine(cache: IdentCache; config: ConfigRef) =
     # now process command line arguments again, because some options in the
     # command line can overwite the config file's settings
     extccomp.initVars()
-    processCmdLine(passCmd2, "")
+    processCmdLine(passCmd2, "", config)
     if options.command == "":
       rawMessage(errNoCommand, command)
     mainCommand(newModuleGraph(config), cache)
@@ -80,7 +80,7 @@ proc handleCmdLine(cache: IdentCache; config: ConfigRef) =
     if msgs.gErrorCounter == 0:
       when hasTinyCBackend:
         if gCmd == cmdRun:
-          tccgen.run(commands.arguments)
+          tccgen.run(config.arguments)
       if optRun in gGlobalOptions:
         if gCmd == cmdCompileToJS:
           var ex: string
@@ -89,7 +89,7 @@ proc handleCmdLine(cache: IdentCache; config: ConfigRef) =
           else:
             ex = quoteShell(
               completeCFilePath(changeFileExt(gProjectFull, "js").prependCurDir))
-          execExternalProgram(findNodeJs() & " " & ex & ' ' & commands.arguments)
+          execExternalProgram(findNodeJs() & " " & ex & ' ' & config.arguments)
         else:
           var binPath: string
           if options.outFile.len > 0:
@@ -99,7 +99,7 @@ proc handleCmdLine(cache: IdentCache; config: ConfigRef) =
             # Figure out ourselves a valid binary name.
             binPath = changeFileExt(gProjectFull, ExeExt).prependCurDir
           var ex = quoteShell(binPath)
-          execExternalProgram(ex & ' ' & commands.arguments)
+          execExternalProgram(ex & ' ' & config.arguments)
 
 when declared(GC_setMaxPause):
   GC_setMaxPause 2_000

@@ -429,7 +429,7 @@ proc reorder*(graph: ModuleGraph, n: PNode, module: PSym, cache: IdentCache): PN
   if n.hasForbiddenPragma:
     return n
   var includedFiles = initIntSet()
-  let mpath = module.fileIdx.FileIndex.toFullPath
+  let mpath = module.fileIdx.toFullPath
   let n = expandIncludes(graph, module, n, mpath,
                           includedFiles, cache).splitSections
   result = newNodeI(nkStmtList, n.info)

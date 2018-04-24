@@ -11,7 +11,7 @@ import
   os, strutils, parseopt, pegs, re, terminal
 
 const
-  Version = "1.1"
+  Version = "1.2"
   Usage = "nimgrep - Nim Grep Utility Version " & Version & """
 
   (c) 2012 Andreas Rumpf
@@ -35,6 +35,8 @@ Options:
   --nocolor           output will be given without any colours.
   --oneline           show file on each matched line
   --verbose           be verbose: list every processed file
+  --filenames         find the pattern in the filenames, not in the contents
+                      of the file
   --help, -h          shows this help
   --version, -v       shows the version
 """
@@ -42,7 +44,7 @@ Options:
 type
   TOption = enum
     optFind, optReplace, optPeg, optRegex, optRecursive, optConfirm, optStdin,
-    optWord, optIgnoreCase, optIgnoreStyle, optVerbose
+    optWord, optIgnoreCase, optIgnoreStyle, optVerbose, optFilenames
   TOptions = set[TOption]
   TConfirmEnum = enum
     ceAbort, ceYes, ceAll, ceNo, ceNone
@@ -135,11 +137,14 @@ proc processFile(pattern; filename: string) =
       filenameShown = true
 
   var buffer: string
-  try:
-    buffer = system.readFile(filename)
-  except IOError:
-    echo "cannot open file: ", filename
-    return
+  if optFilenames in options:
+    buffer = filename
+  else:
+    try:
+      buffer = system.readFile(filename)
+    except IOError:
+      echo "cannot open file: ", filename
+      return
   if optVerbose in options:
     stdout.writeLine(filename)
     stdout.flushFile()
@@ -293,6 +298,7 @@ for kind, key, val in getopt():
     of "nocolor": useWriteStyled = false
     of "oneline": oneline = true
     of "verbose": incl(options, optVerbose)
+    of "filenames": incl(options, optFilenames)
     of "help", "h": writeHelp()
     of "version", "v": writeVersion()
     else: writeHelp()
@@ -304,6 +310,7 @@ when defined(posix):
 checkOptions({optFind, optReplace}, "find", "replace")
 checkOptions({optPeg, optRegex}, "peg", "re")
 checkOptions({optIgnoreCase, optIgnoreStyle}, "ignore_case", "ignore_style")
+checkOptions({optFilenames, optReplace}, "filenames", "replace")
 
 if optStdin in options:
   pattern = ask("pattern [ENTER to exit]: ")

@@ -663,7 +663,7 @@ proc resolveIndirectCall(c: PContext; n, nOrig: PNode;
   matches(c, n, nOrig, result)
   if result.state != csMatch:
     # try to deref the first argument:
-    if experimentalMode(c) and canDeref(n):
+    if implicitDeref in c.features and canDeref(n):
       n.sons[1] = n.sons[1].tryDeref
       initCandidate(c, result, t)
       matches(c, n, nOrig, result)
@@ -1452,7 +1452,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
           typeMismatch(n.info, lhs.typ, rhsTyp)
 
     n.sons[1] = fitNode(c, le, rhs, n.info)
-    if not newDestructors:
+    if destructor notin c.features:
       if tfHasAsgn in lhs.typ.flags and not lhsIsResult and
           mode != noOverloadedAsgn:
         return overloadedAsgn(c, lhs, n.sons[1])
@@ -1884,7 +1884,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     result = newStrNodeT(renderTree(n[1], {renderNoComments}), n)
     result.typ = getSysType(tyString)
   of mParallel:
-    if not experimentalMode(c):
+    if parallel notin c.features:
       localError(n.info, "use the {.experimental.} pragma to enable 'parallel'")
     result = setMs(n, s)
     var x = n.lastSon

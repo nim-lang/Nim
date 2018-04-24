@@ -434,7 +434,7 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
               "Non-matching candidates for " & renderTree(n) & "\n" &
               candidates)
     result = semResolvedCall(c, n, r)
-  elif experimentalMode(c) and canDeref(n):
+  elif implicitDeref in c.features and canDeref(n):
     # try to deref the first argument and then try overloading resolution again:
     #
     # XXX: why is this here?

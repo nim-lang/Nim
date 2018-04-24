@@ -103,13 +103,25 @@ type
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideMod,
     ideHighlight, ideOutline, ideKnown, ideMsg
 
+  Feature* = enum  ## experimental features
+    implicitDeref,
+    dotOperators,
+    callOperator,
+    parallel,
+    destructor
+
   ConfigRef* = ref object ## eventually all global configuration should be moved here
     cppDefines*: HashSet[string]
     headerFile*: string
+    features*: set[Feature]
+    arguments*: string ## the arguments to be passed to the program that
+                       ## should be run
+
+const oldExperimentalFeatures* = {implicitDeref, dotOperators, callOperator, parallel}
 
 proc newConfigRef*(): ConfigRef =
   result = ConfigRef(cppDefines: initSet[string](),
-    headerFile: "")
+    headerFile: "", features: {})
 
 proc cppDefine*(c: ConfigRef; define: string) =
   c.cppDefines.incl define
@@ -146,8 +158,6 @@ var
   gListFullPaths*: bool
   gPreciseStack*: bool = false
   gNoNimblePath* = false
-  gExperimentalMode*: bool
-  newDestructors*: bool
   gDynlibOverrideAll*: bool
   useNimNamespace*: bool
 

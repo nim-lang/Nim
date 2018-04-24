@@ -102,4 +102,10 @@
 - Added ``macros.getProjectPath`` and ``ospaths.putEnv`` procs to Nim's virtual
   machine.
 
+- The ``deadCodeElim`` option is now always turned on and the switch has no
+  effect anymore, but is recognized for backwards compatibility.
+
+- ``experimental`` is now a pragma / command line switch that can enable specific
+  language extensions, it is not an all-or-nothing switch anymore.
+
 ### Bugfixes
