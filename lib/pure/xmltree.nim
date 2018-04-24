@@ -12,9 +12,9 @@
 import macros, strtabs
 
 type
-  XmlNode* = ref XmlNodeObj ## an XML tree consists of ``PXmlNode``'s.
+  XmlNode* = ref XmlNodeObj ## an XML tree consists of ``XmlNode``'s.
 
-  XmlNodeKind* = enum  ## different kinds of ``PXmlNode``'s
+  XmlNodeKind* = enum  ## different kinds of ``XmlNode``'s
     xnText,             ## a text element
     xnElement,          ## an element with 0 or more children
     xnCData,            ## a CDATA node
@@ -315,9 +315,7 @@ proc newXmlTree*(tag: string, children: openArray[XmlNode],
   for i in 0..children.len-1: result.s[i] = children[i]
   result.fAttr = attributes
 
-proc xmlConstructor(e: NimNode): NimNode {.compileTime.} =
-  expectLen(e, 2)
-  var a = e[1]
+proc xmlConstructor(a: NimNode): NimNode {.compileTime.} =
   if a.kind == nnkCall:
     result = newCall("newXmlTree", toStrLit(a[0]))
     var attrs = newNimNode(nnkBracket, a)
@@ -348,7 +346,6 @@ macro `<>`*(x: untyped): untyped =
   ##
   ##  <a href="http://nim-lang.org">Nim rules.</a>
   ##
-  let x = callsite()
   result = xmlConstructor(x)
 
 proc child*(n: XmlNode, name: string): XmlNode =
