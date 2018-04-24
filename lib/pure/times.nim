@@ -1248,6 +1248,7 @@ proc `==`*(a, b: DateTime): bool =
   ## Returns true if ``a == b``, that is if both dates represent the same point in datetime.
   return a.toTime == b.toTime
 
+
 proc isStaticInterval(interval: TimeInterval): bool =
   interval.years == 0 and interval.months == 0 and
     interval.days == 0 and interval.weeks == 0
@@ -1260,6 +1261,108 @@ proc evaluateStaticInterval(interval: TimeInterval): Duration =
     seconds = interval.seconds,
     minutes = interval.minutes,
     hours = interval.hours)
+
+proc between*(startDt, endDt:DateTime): TimeInterval =
+  ## Evaluate difference between two dates in ``TimeInterval`` format, so, it
+  ## will be relative.
+  ##
+  ## **Warning:** It's not recommended to use ``between`` for ``DateTime's`` in 
+  ## different ``TimeZone's``.  
+  ## ``a + between(a, b) == b`` is only guaranteed when ``a`` and ``b`` are in UTC.
+  runnableExamples:
+    var a = initDateTime(year = 2018, month = Month(3), monthday = 25, 
+                     hour = 0, minute = 59, second = 59, nanosecond = 1,
+                     zone = utc()).local
+    var b = initDateTime(year = 2018, month = Month(3), monthday = 25, 
+                     hour = 1, minute =  1, second =  1, nanosecond = 0,
+                     zone = utc()).local
+    doAssert between(a, b) == initTimeInterval(
+      nanoseconds=999, milliseconds=999, microseconds=999, seconds=1, minutes=1)
+    
+    a = parse("2018-01-09T00:00:00+00:00", "yyyy-MM-dd'T'HH:mm:sszzz", utc())
+    b = parse("2018-01-10T23:00:00-02:00", "yyyy-MM-dd'T'HH:mm:sszzz")
+    doAssert between(a, b) == initTimeInterval(hours=1, days=2)
+    ## Though, here correct answer should be 1 day 25 hours (cause this day in
+    ## this tz is actually 26 hours). That's why operating different TZ is
+    ## discouraged
+
+  var startDt = startDt.utc()
+  var endDt = endDt.utc()
+
+  if endDt == startDt:
+    return initTimeInterval()
+  elif endDt < startDt:
+    return -between(endDt, startDt)
+
+  var coeffs: array[FixedTimeUnit, int64] = unitWeights
+  var timeParts: array[FixedTimeUnit, int]
+  for unit in Nanoseconds..Weeks:
+    timeParts[unit] = 0
+
+  for unit in Seconds..Days:
+    coeffs[unit] = coeffs[unit] div unitWeights[Seconds]
+
+  var startTimepart = initTime(
+    nanosecond = startDt.nanosecond,
+    unix = startDt.hour * coeffs[Hours] + startDt.minute * coeffs[Minutes] +
+    startDt.second
+  )
+  var endTimepart = initTime(
+    nanosecond = endDt.nanosecond,
+    unix = endDt.hour * coeffs[Hours] + endDt.minute * coeffs[Minutes] +
+    endDt.second
+  )
+  # We wand timeParts for Seconds..Hours be positive, so we'll borrow one day
+  if endTimepart < startTimepart:
+    timeParts[Days] = -1
+
+  let diffTime = endTimepart - startTimepart
+  timeParts[Seconds] = diffTime.seconds.int()
+  #Nanoseconds - preliminary count
+  timeParts[Nanoseconds] = diffTime.nanoseconds
+  for unit in countdown(Milliseconds, Microseconds):
+    timeParts[unit] += timeParts[Nanoseconds] div coeffs[unit].int()
+    timeParts[Nanoseconds] -= timeParts[unit] * coeffs[unit].int()
+
+  #Counting Seconds .. Hours - final, Days - preliminary
+  for unit in countdown(Days, Minutes):
+    timeParts[unit] += timeParts[Seconds] div coeffs[unit].int()
+    # Here is accounted the borrowed day
+    timeParts[Seconds] -= timeParts[unit] * coeffs[unit].int()
+
+  # Set Nanoseconds .. Hours in result
+  result.nanoseconds = timeParts[Nanoseconds]
+  result.microseconds = timeParts[Microseconds]
+  result.milliseconds = timeParts[Milliseconds]
+  result.seconds = timeParts[Seconds]
+  result.minutes = timeParts[Minutes]
+  result.hours = timeParts[Hours]
+
+  #Days
+  if endDt.monthday.int + timeParts[Days] < startDt.monthday.int():
+    if endDt.month > 1.Month:
+      endDt.month -= 1.Month
+    else:
+      endDt.month = 12.Month
+      endDt.year -= 1
+    timeParts[Days] += endDt.monthday.int() + getDaysInMonth(
+      endDt.month, endDt.year) - startDt.monthday.int()
+  else:
+    timeParts[Days] += endDt.monthday.int() -
+      startDt.monthday.int()
+
+  result.days = timeParts[Days]
+
+  #Months
+  if endDt.month < startDt.month:
+      result.months = endDt.month.int() + 12 - startDt.month.int()
+      endDt.year -= 1
+  else:
+    result.months = endDt.month.int() -
+      startDt.month.int()
+
+  # Years
+  result.years = endDt.year - startDt.year
 
 proc `+`*(time: Time, interval: TimeInterval): Time =
   ## Adds `interval` to `time`.
