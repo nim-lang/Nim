@@ -153,11 +153,6 @@ proc write*(s: Stream, x: string) =
   else:
     if x.len > 0: writeData(s, unsafeAddr x[0], x.len)
 
-proc writeLn*(s: Stream, args: varargs[string, `$`]) {.deprecated.} =
-  ## **Deprecated since version 0.11.4:** Use **writeLine** instead.
-  for str in args: write(s, str)
-  write(s, "\n")
-
 proc writeLine*(s: Stream, args: varargs[string, `$`]) =
   ## writes one or more strings to the the stream `s` followed
   ## by a new line. No length field or terminating zero is written.
