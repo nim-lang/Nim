@@ -73,12 +73,13 @@
 ## progress of the HTTP request.
 ##
 ## .. code-block:: Nim
+##    import asyncdispatch, httpclient
 ##    var client = newAsyncHttpClient()
 ##    proc onProgressChanged(total, progress, speed: BiggestInt) {.async.} =
 ##      echo("Downloaded ", progress, " of ", total)
 ##      echo("Current rate: ", speed div 1000, "kb/s")
 ##    client.onProgressChanged = onProgressChanged
-##    discard await client.getContent("http://speedtest-ams2.digitalocean.com/100mb.test")
+##    discard waitFor client.getContent("http://speedtest-ams2.digitalocean.com/100mb.test")
 ##
 ## If you would like to remove the callback simply set it to ``nil``.
 ##
