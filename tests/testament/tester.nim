@@ -404,6 +404,21 @@ proc testC(r: var TResults, test: TTest) =
     if exitCode != 0: given.err = reExitCodesDiffer
   if given.err == reSuccess: inc(r.passed)
 
+proc testExec(r: var TResults, test: TTest) =
+  # runs executable or script, just goes by exit code
+  inc(r.total)
+  let (outp, errC) = execCmdEx(test.options)
+  var given: TSpec
+  specDefaults(given)
+  if errC == 0:
+    given.err = reSuccess
+  else:
+    given.err = reExitCodesDiffer
+    given.msg = outp.string
+
+  if given.err == reSuccess: inc(r.passed)
+  r.addResult(test, targetC, "", given.msg, given.err)
+
 proc makeTest(test, options: string, cat: Category, action = actionCompile,
               env: string = ""): TTest =
   # start with 'actionCompile', will be overwritten in the spec:

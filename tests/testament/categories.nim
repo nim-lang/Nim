@@ -15,7 +15,6 @@
 
 const
   rodfilesDir = "tests/rodfiles"
-  flagsDir = "tests/flags"
 
 proc delNimCache(filename, options: string) =
   for target in low(TTarget)..high(TTarget):
@@ -67,48 +66,22 @@ proc compileRodFiles(r: var TResults, cat: Category, options: string) =
 # --------------------- flags tests -------------------------------------------
 
 proc flagTests(r: var TResults, cat: Category, options: string) =
-  template test(filename: untyped, clearCacheFirst=false) =
-    if clearCacheFirst: delNimCache(filename, options)
-    testSpec r, makeTest(flagsDir / filename, options, cat)
-
   # --genscript
-  test "tgenscript", true
-  test "tgenscript"
+  const filename = "tests"/"flags"/"tgenscript"
+  const genopts = " --genscript"
+  let nimcache = nimcacheDir(filename, genopts, targetC)
+  testSpec r, makeTest(filename, genopts, cat)
 
-  var build = ""
-  var run = ""
-  var cmd = "cd " & flagsDir / "nimcache" & " && "
-  var script = "compile_tgenscript"
   when defined(windows):
-    cmd = "cmd /c " & cmd & "$#"
-    script &= ".bat"
+    testExec r, makeTest(filename, " cmd /c cd " & nimcache &
+                         " && compile_tgenscript.bat", cat)
 
   when defined(linux):
-    cmd = "sh -c \"" & cmd & "./$#\""
-    script &= ".sh"
-
-    setFilePermissions(flagsDir / "nimcache" / script,
-      {fpUserExec, fpUserWrite, fpUserRead, fpGroupExec, fpGroupRead,
-       fpOthersExec, fpOthersRead})
-
-  build = cmd % script
-  run = cmd % "tgenscript"
-
-  # Build
-  var (outp, errC) = execCmdEx(build)
-  r.total += 1
-  if errC == 0:
-    r.passed += 1
-  else:
-    echo outp.string
+    testExec r, makeTest(filename, " sh -c \"cd " & nimcache &
+                         " && sh compile_tgenscript.sh\"", cat)
 
   # Run
-  (outp, errC) = execCmdEx(run)
-  r.total += 1
-  if errC == 0:
-    r.passed += 1
-  else:
-    echo outp.string
+  testExec r, makeTest(filename, " " & nimcache / "tgenscript", cat)
 
 # --------------------- DLL generation tests ----------------------------------
 

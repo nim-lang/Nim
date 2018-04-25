@@ -1,5 +1,5 @@
 discard """
-    cmd: "nim c --genscript $file"
+  file: "tgenscript.nim"
 """
 
 echo "--genscript"
