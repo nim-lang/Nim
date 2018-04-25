@@ -367,6 +367,10 @@ suite "ttimes":
     check d(seconds = 0) - d(milliseconds = 1500) == d(milliseconds = -1500)
     check d(milliseconds = -1500) == d(seconds = -1, milliseconds = -500)
     check d(seconds = -1, milliseconds = 500) == d(milliseconds = -500)
+    check initDuration(seconds = 1, nanoseconds = 2) <=
+      initDuration(seconds = 1, nanoseconds = 3)
+    check (initDuration(seconds = 1, nanoseconds = 3) <=
+      initDuration(seconds = 1, nanoseconds = 1)).not
 
   test "large/small dates":
     discard initDateTime(1, mJan, -35_000, 12, 00, 00, utc())
@@ -413,7 +417,7 @@ suite "ttimes":
   
   test "fromWinTime/toWinTime":
     check 0.fromUnix.toWinTime.fromWinTime.toUnix == 0
-    check (-1).fromWinTime.nanoseconds == convert(Seconds, Nanoseconds, 1) - 100
+    check (-1).fromWinTime.nanosecond == convert(Seconds, Nanoseconds, 1) - 100
     check -1.fromWinTime.toWinTime == -1
     # One nanosecond is discarded due to differences in time resolution
-    check initTime(0, 101).toWinTime.fromWinTime.nanoseconds == 100 
+    check initTime(0, 101).toWinTime.fromWinTime.nanosecond == 100 
