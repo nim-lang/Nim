@@ -368,7 +368,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
         assert newbody.kind in {tyRef, tyPtr}
         assert newbody.lastSon.typeInst == nil
         newbody.lastSon.typeInst = result
-    if newDestructors:
+    if destructor in cl.c.features:
       cl.c.typesWithOps.add((newbody, result))
     else:
       typeBound(cl.c, newbody, result, assignment, cl.info)
@@ -545,7 +545,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       else: discard
 
 proc instAllTypeBoundOp*(c: PContext, info: TLineInfo) =
-  if not newDestructors: return
+  if destructor notin c.features: return
   var i = 0
   while i < c.typesWithOps.len:
     let (newty, oldty) = c.typesWithOps[i]

@@ -166,7 +166,7 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream,
     p: TParsers
     a: TPassContextArray
     s: PLLStream
-    fileIdx = FileIndex module.fileIdx
+    fileIdx = module.fileIdx
   if module.id < 0:
     # new module caching mechanism:
     for i in 0..<gPassesLen:

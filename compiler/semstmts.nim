@@ -385,30 +385,9 @@ proc checkNilable(v: PSym) =
 include semasgn
 
 proc addToVarSection(c: PContext; result: var PNode; orig, identDefs: PNode) =
-  # consider this:
-  #   var
-  #     x = 0
-  #     withOverloadedAssignment = foo()
-  #     y = use(withOverloadedAssignment)
-  # We need to split this into a statement list with multiple 'var' sections
-  # in order for this transformation to be correct.
   let L = identDefs.len
   let value = identDefs[L-1]
-  if value.typ != nil and tfHasAsgn in value.typ.flags and not newDestructors:
-    # the spec says we need to rewrite 'var x = T()' to 'var x: T; x = T()':
-    identDefs.sons[L-1] = emptyNode
-    if result.kind != nkStmtList:
-      let oldResult = result
-      oldResult.add identDefs
-      result = newNodeI(nkStmtList, result.info)
-      result.add oldResult
-    else:
-      let o = copyNode(orig)
-      o.add identDefs
-      result.add o
-    for i in 0 .. L-3:
-      result.add overloadedAsgn(c, identDefs[i], value)
-  elif result.kind == nkStmtList:
+  if result.kind == nkStmtList:
     let o = copyNode(orig)
     o.add identDefs
     result.add o
@@ -1267,9 +1246,6 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
     gp = newNodeI(nkGenericParams, n.info)
 
   if n.sons[paramsPos].kind != nkEmpty:
-    #if n.kind == nkDo and not experimentalMode(c):
-    #  localError(n.sons[paramsPos].info,
-    #      "use the {.experimental.} pragma to enable 'do' with parameters")
     semParamList(c, n.sons[paramsPos], gp, s)
     # paramsTypeCheck(c, s.typ)
     if sonsLen(gp) > 0 and n.sons[genericParamsPos].kind == nkEmpty:
@@ -1363,27 +1339,26 @@ proc maybeAddResult(c: PContext, s: PSym, n: PNode) =
 
 proc semOverride(c: PContext, s: PSym, n: PNode) =
   case s.name.s.normalize
-  of "destroy", "=destroy":
-    if newDestructors:
-      let t = s.typ
-      var noError = false
-      if t.len == 2 and t.sons[0] == nil and t.sons[1].kind == tyVar:
-        var obj = t.sons[1].sons[0]
-        while true:
-          incl(obj.flags, tfHasAsgn)
-          if obj.kind in {tyGenericBody, tyGenericInst}: obj = obj.lastSon
-          elif obj.kind == tyGenericInvocation: obj = obj.sons[0]
-          else: break
-        if obj.kind in {tyObject, tyDistinct}:
-          if obj.destructor.isNil:
-            obj.destructor = s
-          else:
-            localError(n.info, errGenerated,
-              "cannot bind another '" & s.name.s & "' to: " & typeToString(obj))
-          noError = true
-      if not noError and sfSystemModule notin s.owner.flags:
-        localError(n.info, errGenerated,
-          "signature for '" & s.name.s & "' must be proc[T: object](x: var T)")
+  of "=destroy":
+    let t = s.typ
+    var noError = false
+    if t.len == 2 and t.sons[0] == nil and t.sons[1].kind == tyVar:
+      var obj = t.sons[1].sons[0]
+      while true:
+        incl(obj.flags, tfHasAsgn)
+        if obj.kind in {tyGenericBody, tyGenericInst}: obj = obj.lastSon
+        elif obj.kind == tyGenericInvocation: obj = obj.sons[0]
+        else: break
+      if obj.kind in {tyObject, tyDistinct}:
+        if obj.destructor.isNil:
+          obj.destructor = s
+        else:
+          localError(n.info, errGenerated,
+            "cannot bind another '" & s.name.s & "' to: " & typeToString(obj))
+        noError = true
+    if not noError and sfSystemModule notin s.owner.flags:
+      localError(n.info, errGenerated,
+        "signature for '" & s.name.s & "' must be proc[T: object](x: var T)")
     incl(s.flags, sfUsed)
   of "deepcopy", "=deepcopy":
     if s.typ.len == 2 and
@@ -1612,9 +1587,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   s.options = gOptions
   if sfOverriden in s.flags or s.name.s[0] == '=': semOverride(c, s, n)
   if s.name.s[0] in {'.', '('}:
-    if s.name.s in [".", ".()", ".="] and not experimentalMode(c) and not newDestructors:
+    if s.name.s in [".", ".()", ".="] and {destructor, dotOperators} * c.features == {}:
       message(n.info, warnDeprecated, "overloaded '.' and '()' operators are now .experimental; " & s.name.s)
-    elif s.name.s == "()" and not experimentalMode(c):
+    elif s.name.s == "()" and callOperator notin c.features:
       message(n.info, warnDeprecated, "overloaded '()' operators are now .experimental; " & s.name.s)
 
   if n.sons[bodyPos].kind != nkEmpty:

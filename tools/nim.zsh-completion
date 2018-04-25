@@ -60,8 +60,6 @@ _nim() {
     '*--infChecks=off[turn Inf checks off]' \
     '*--nilChecks=on[turn nil checks on]' \
     '*--nilChecks=off[turn nil checks off]' \
-    '*--deadCodeElim=on[whole program dead code elimination on]' \
-    '*--deadCodeElim=off[whole program dead code elimination off]' \
     '*--opt=none[do not optimize]' \
     '*--opt=speed[optimize for speed|size - use -d:release for a release build]' \
     '*--opt=size[optimize for size]' \

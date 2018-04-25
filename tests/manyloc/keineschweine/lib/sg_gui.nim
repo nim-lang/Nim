@@ -2,7 +2,7 @@ import
   sfml, sfml_colors,
   input_helpers, sg_packets
 from strutils import countlines
-{.deadCodeElim: on.}
+
 type
   PGuiContainer* = ref TGuiContainer
   TGuiContainer* = object of TObject

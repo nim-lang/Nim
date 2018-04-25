@@ -518,7 +518,7 @@ proc mainCommand(graph: ModuleGraph; cache: IdentCache) =
   close(requests)
   close(results)
 
-proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
+proc processCmdLine*(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
   var p = parseopt.initOptParser(cmd)
   while true:
     parseopt.next(p)
@@ -562,7 +562,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string) =
           gRefresh = true
       of "maxresults":
         suggestMaxResults = parseInt(p.val)
-      else: processSwitch(pass, p)
+      else: processSwitch(pass, p, config)
     of cmdArgument:
       let a = unixToNativePath(p.key)
       if dirExists(a) and not fileExists(a.addFileExt("nim")):
@@ -577,7 +577,7 @@ proc handleCmdLine(cache: IdentCache; config: ConfigRef) =
   if paramCount() == 0:
     stdout.writeline(Usage)
   else:
-    processCmdLine(passCmd1, "")
+    processCmdLine(passCmd1, "", config)
     if gMode != mstdin:
       msgs.writelnHook = proc (msg: string) = discard
     if gProjectName != "":
@@ -616,7 +616,7 @@ proc handleCmdLine(cache: IdentCache; config: ConfigRef) =
       runNimScript(cache, gProjectPath / "config.nims", freshDefines=false, config)
 
     extccomp.initVars()
-    processCmdLine(passCmd2, "")
+    processCmdLine(passCmd2, "", config)
 
     let graph = newModuleGraph(config)
     graph.suggestMode = true

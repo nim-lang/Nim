@@ -1397,10 +1397,10 @@ dereferencing operations for reference types:
 
 Automatic dereferencing is also performed for the first argument of a routine
 call. But currently this feature has to be only enabled
-via ``{.experimental.}``:
+via ``{.experimental: "implicitDeref".}``:
 
 .. code-block:: nim
-  {.experimental.}
+  {.experimental: "implicitDeref".}
 
   proc depth(x: NodeObj): int = ...
 
@@ -5588,7 +5588,7 @@ dot operators
 -------------
 
 **Note**: Dot operators are still experimental and so need to be enabled
-via ``{.experimental.}``.
+via ``{.experimental: "dotOperators".}``.
 
 Nim offers a special family of dot operators that can be used to
 intercept and rewrite proc call and field access attempts, referring
@@ -6768,22 +6768,6 @@ the created global variables within a module is not defined, but all of them
 will be initialized after any top-level variables in their originating module
 and before any variable in a module that imports it.
 
-deadCodeElim pragma
--------------------
-The ``deadCodeElim`` pragma only applies to whole modules: It tells the
-compiler to activate (or deactivate) dead code elimination for the module the
-pragma appears in.
-
-The ``--deadCodeElim:on`` command line switch has the same effect as marking
-every module with ``{.deadCodeElim:on}``. However, for some modules such as
-the GTK wrapper it makes sense to *always* turn on dead code elimination -
-no matter if it is globally active or not.
-
-Example:
-
-.. code-block:: nim
-  {.deadCodeElim: on.}
-
 
 ..
   NoForward pragma
@@ -6901,17 +6885,12 @@ is uncertain (it may be removed any time).
 Example:
 
 .. code-block:: nim
-  {.experimental.}
-  type
-    FooId = distinct int
-    BarId = distinct int
-  using
-    foo: FooId
-    bar: BarId
+  {.experimental: "parallel".}
 
   proc useUsing(bar, foo) =
-    echo "bar is of type BarId"
-    echo "foo is of type FooId"
+    parallel:
+      for i in 0..4:
+        echo "echo in parallel"
 
 
 Implementation Specific Pragmas
@@ -7933,7 +7912,7 @@ Example:
 
   # Compute PI in an inefficient way
   import strutils, math, threadpool
-  {.experimental.}
+  {.experimental: "parallel".}
 
   proc term(k: float): float = 4 * math.pow(-1, k) / (2*k + 1)
 

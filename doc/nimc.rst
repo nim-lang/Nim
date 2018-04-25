@@ -181,7 +181,7 @@ generated; use the ``--symbolFiles:on`` command line switch to activate them.
 
 Unfortunately due to technical reasons the ``--symbolFiles:on`` needs
 to *aggregate* some generated C code. This means that the resulting executable
-might contain some cruft even when dead code elimination is turned on. So
+might contain some cruft even with dead code elimination. So
 the final release build should be done with ``--symbolFiles:off``.
 
 Due to the aggregation of C code it is also recommended that each project
@@ -439,7 +439,7 @@ target.
 
 For example, to generate code for an `AVR`:idx: processor use this command::
 
-  nim c --cpu:avr --os:standalone --deadCodeElim:on --genScript x.nim
+  nim c --cpu:avr --os:standalone --genScript x.nim
 
 For the ``standalone`` target one needs to provide
 a file ``panicoverride.nim``.

@@ -262,7 +262,8 @@ type
                       # variable is a thread variable
     sfCompileTime,    # proc can be evaluated at compile time
     sfConstructor,    # proc is a C++ constructor
-    sfDeadCodeElim,   # dead code elimination for the module is turned on
+    sfDispatcher,     # copied method symbol is the dispatcher
+                      # deprecated and unused, except for the con
     sfBorrow,         # proc is borrowed
     sfInfixCall,      # symbol needs infix call syntax in target language;
                       # for interfacing with C++, JS
@@ -275,10 +276,9 @@ type
   TSymFlags* = set[TSymFlag]
 
 const
-  sfDispatcher* = sfDeadCodeElim # copied method symbol is the dispatcher
   sfNoInit* = sfMainModule       # don't generate code to init the variable
 
-  sfImmediate* = sfDeadCodeElim
+  sfImmediate* = sfDispatcher
     # macro or template is immediately expanded
     # without considering any possible overloads
   sfAllUntyped* = sfVolatile # macro or template is immediately expanded \
@@ -1622,7 +1622,7 @@ iterator items*(n: PNode): PNode =
   for i in 0..<n.safeLen: yield n.sons[i]
 
 iterator pairs*(n: PNode): tuple[i: int, n: PNode] =
-  for i in 0..<n.len: yield (i, n.sons[i])
+  for i in 0..<n.safeLen: yield (i, n.sons[i])
 
 proc isAtom*(n: PNode): bool {.inline.} =
   result = n.kind >= nkNone and n.kind <= nkNilLit

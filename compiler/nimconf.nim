@@ -247,10 +247,6 @@ proc loadConfigs*(cfg: string; cache: IdentCache; config: ConfigRef = nil) =
       var projectConfig = changeFileExt(gProjectFull, "nimcfg")
       if not fileExists(projectConfig):
         projectConfig = changeFileExt(gProjectFull, "nim.cfg")
-      if not fileExists(projectConfig):
-        projectConfig = changeFileExt(gProjectFull, "nimrod.cfg")
-        if fileExists(projectConfig):
-          rawMessage(warnDeprecated, projectConfig)
       readConfigFile(projectConfig, cache, config)
 
 proc loadConfigs*(cfg: string; config: ConfigRef = nil) =

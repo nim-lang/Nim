@@ -85,14 +85,20 @@ block:
   s.addQuoted('\0')
   s.addQuoted('\31')
   s.addQuoted('\127')
-  s.addQuoted('\255')
-  doAssert s == "'\\x00''\\x1F''\\x7F''\\xFF'"
+  doAssert s == "'\\x00''\\x1F''\\x7F'"
 block:
   var s = ""
   s.addQuoted('\\')
   s.addQuoted('\'')
   s.addQuoted('\"')
   doAssert s == """'\\''\'''\"'"""
+block:
+  var s = ""
+  s.addQuoted("å")
+  s.addQuoted("ä")
+  s.addQuoted("ö")
+  s.addEscapedChar('\xFF')
+  doAssert s == """"å""ä""ö"\xFF"""
 
 # Test customized element representation
 type CustomString = object

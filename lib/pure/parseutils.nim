@@ -11,7 +11,7 @@
 ##
 ## To unpack raw bytes look at the `streams <streams.html>`_ module.
 
-{.deadCodeElim: on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 {.push debugger:off .} # the user does not want to trace a part
                        # of the standard library!
