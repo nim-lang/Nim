@@ -1,6 +1,5 @@
 discard """
-  errormsg: "invalid control flow: 'yield' within a constructor"
-  line: 16
+  output: "@[1, 2, 3, 4]"
 """
 
 # bug #5314, bug #6626

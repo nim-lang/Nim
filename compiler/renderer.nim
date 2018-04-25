@@ -1411,11 +1411,21 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkParLe, "(ComesFrom|")
     gsub(g, n, 0)
     put(g, tkParRi, ")")
-  of nkGotoState, nkState:
+  of nkGotoState:
     var c: TContext
     initContext c
-    putWithSpace g, tkSymbol, if n.kind == nkState: "state" else: "goto"
+    putWithSpace g, tkSymbol, "goto"
     gsons(g, n, c)
+  of nkState:
+    var c: TContext
+    initContext c
+    putWithSpace g, tkSymbol, "state"
+    gsub(g, n[0], c)
+    putWithSpace(g, tkColon, ":")
+    indentNL(g)
+    gsons(g, n, c, 1)
+    dedent(g)
+
   of nkBreakState:
     put(g, tkTuple, "breakstate")
   of nkTypeClassTy:

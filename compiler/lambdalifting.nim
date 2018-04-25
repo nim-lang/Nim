@@ -7,11 +7,11 @@
 #    distribution, for details about the copyright.
 #
 
-# This include file implements lambda lifting for the transformator.
+# This file implements lambda lifting for the transformator.
 
 import
-  intsets, strutils, options, ast, astalgo, trees, treetab, msgs, os,
-  idents, renderer, types, magicsys, rodread, lowerings, tables
+  intsets, strutils, options, ast, astalgo, trees, treetab, msgs, os, options,
+  idents, renderer, types, magicsys, rodread, lowerings, tables, sequtils
 
 discard """
   The basic approach is that captured vars need to be put on the heap and
@@ -125,7 +125,7 @@ proc newCall(a: PSym, b: PNode): PNode =
   result.add newSymNode(a)
   result.add b
 
-proc createStateType(iter: PSym): PType =
+proc createClosureIterStateType*(iter: PSym): PType =
   var n = newNodeI(nkRange, iter.info)
   addSon(n, newIntNode(nkIntLit, -1))
   addSon(n, newIntNode(nkIntLit, 0))
@@ -137,7 +137,7 @@ proc createStateType(iter: PSym): PType =
 
 proc createStateField(iter: PSym): PSym =
   result = newSym(skField, getIdent(":state"), iter, iter.info)
-  result.typ = createStateType(iter)
+  result.typ = createClosureIterStateType(iter)
 
 proc createEnvObj(owner: PSym; info: TLineInfo): PType =
   # YYY meh, just add the state field for every closure for now, it's too
@@ -145,7 +145,7 @@ proc createEnvObj(owner: PSym; info: TLineInfo): PType =
   result = createObj(owner, info, final=false)
   rawAddField(result, createStateField(owner))
 
-proc getIterResult(iter: PSym): PSym =
+proc getClosureIterResult*(iter: PSym): PSym =
   if resultPos < iter.ast.len:
     result = iter.ast.sons[resultPos].sym
   else:
@@ -397,7 +397,11 @@ proc detectCapturedVars(n: PNode; owner: PSym; c: var DetectionPass) =
           if not c.capturedVars.containsOrIncl(s.id):
             let obj = getHiddenParam(owner).typ.lastSon
             #let obj = c.getEnvTypeForOwner(s.owner).lastSon
-            addField(obj, s)
+
+            if s.name == getIdent(":state"):
+              obj.n[0].sym.id = -s.id
+            else:
+              addField(obj, s)
       # but always return because the rest of the proc is only relevant when
       # ow != owner:
       return
@@ -461,6 +465,7 @@ type
     processed: IntSet
     envVars: Table[int, PNode]
     inContainer: int
+    features: set[Feature]
 
 proc initLiftingPass(fn: PSym): LiftingPass =
   result.processed = initIntSet()
@@ -595,7 +600,7 @@ proc accessViaEnvVar(n: PNode; owner: PSym; d: DetectionPass;
     localError(n.info, "internal error: not part of closure object type")
     result = n
 
-proc getStateField(owner: PSym): PSym =
+proc getStateField*(owner: PSym): PSym =
   getHiddenParam(owner).typ.sons[0].n.sons[0].sym
 
 proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
@@ -621,7 +626,7 @@ proc transformYield(n: PNode; owner: PSym; d: DetectionPass;
   if n.sons[0].kind != nkEmpty:
     var a = newNodeI(nkAsgn, n.sons[0].info)
     var retVal = liftCapturedVars(n.sons[0], owner, d, c)
-    addSon(a, newSymNode(getIterResult(owner)))
+    addSon(a, newSymNode(getClosureIterResult(owner)))
     addSon(a, retVal)
     retStmt.add(a)
   else:
@@ -713,7 +718,9 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
         #  echo renderTree(s.getBody, {renderIds})
         let oldInContainer = c.inContainer
         c.inContainer = 0
-        let body = wrapIterBody(liftCapturedVars(s.getBody, s, d, c), s)
+        var body = liftCapturedVars(s.getBody, s, d, c)
+        if oldIterTransf in c.features:
+          body = wrapIterBody(body, s)
         if c.envvars.getOrDefault(s.id).isNil:
           s.ast.sons[bodyPos] = body
         else:
@@ -756,9 +763,9 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: DetectionPass;
       if n[1].kind == nkClosure: result = n[1]
   else:
     if owner.isIterator:
-      if n.kind == nkYieldStmt:
+      if oldIterTransf in c.features and n.kind == nkYieldStmt:
         return transformYield(n, owner, d, c)
-      elif n.kind == nkReturnStmt:
+      elif oldIterTransf in c.features and n.kind == nkReturnStmt:
         return transformReturn(n, owner, d, c)
       elif nfLL in n.flags:
         # special case 'when nimVm' due to bug #3636:
@@ -805,7 +812,7 @@ proc liftIterToProc*(fn: PSym; body: PNode; ptrType: PType): PNode =
   fn.kind = oldKind
   fn.typ.callConv = oldCC
 
-proc liftLambdas*(fn: PSym, body: PNode; tooEarly: var bool): PNode =
+proc liftLambdas*(features: set[Feature], fn: PSym, body: PNode; tooEarly: var bool): PNode =
   # XXX gCmd == cmdCompileToJS does not suffice! The compiletime stuff needs
   # the transformation even when compiling to JS ...
 
@@ -815,6 +822,7 @@ proc liftLambdas*(fn: PSym, body: PNode; tooEarly: var bool): PNode =
   if body.kind == nkEmpty or (
       gCmd == cmdCompileToJS and not isCompileTime) or
       fn.skipGenericOwner.kind != skModule:
+
     # ignore forward declaration:
     result = body
     tooEarly = true
@@ -826,10 +834,13 @@ proc liftLambdas*(fn: PSym, body: PNode; tooEarly: var bool): PNode =
       d.somethingToDo = true
     if d.somethingToDo:
       var c = initLiftingPass(fn)
-      var newBody = liftCapturedVars(body, fn, d, c)
+      c.features = features
+      result = liftCapturedVars(body, fn, d, c)
       if c.envvars.getOrDefault(fn.id) != nil:
-        newBody = newTree(nkStmtList, rawClosureCreation(fn, d, c), newBody)
-      result = wrapIterBody(newBody, fn)
+        result = newTree(nkStmtList, rawClosureCreation(fn, d, c), result)
+
+      if oldIterTransf in features:
+        result = wrapIterBody(result, fn)
     else:
       result = body
     #if fn.name.s == "get2":
@@ -870,7 +881,9 @@ proc liftForLoop*(body: PNode; owner: PSym): PNode =
       cl = createClosure()
       while true:
         let i = foo(cl)
-        nkBreakState(cl.state)
+        if cl.state < 0:
+          break
+        # nkBreakState(cl.state)
         ...
     """
   if liftingHarmful(owner): return body
@@ -930,5 +943,16 @@ proc liftForLoop*(body: PNode; owner: PSym): PNode =
   loopBody.sons[0] = v2
   var bs = newNodeI(nkBreakState, body.info)
   bs.addSon(call.sons[0])
-  loopBody.sons[1] = bs
+
+  let ibs = newNode(nkIfStmt)
+  let elifBranch = newNode(nkElifBranch)
+  elifBranch.add(bs)
+
+  let br = newNode(nkBreakStmt)
+  br.add(emptyNode)
+
+  elifBranch.add(br)
+  ibs.add(elifBranch)
+
+  loopBody.sons[1] = ibs
   loopBody.sons[2] = body[L-1]

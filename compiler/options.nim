@@ -110,7 +110,8 @@ type
     callOperator,
     parallel,
     destructor,
-    notnil
+    notnil,
+    oldIterTransf
 
   ConfigRef* = ref object ## eventually all global configuration should be moved here
     linesCompiled*: int  # all lines that have been compiled
