@@ -13,7 +13,7 @@ type
   CommitId = distinct string
 
 proc `$`*(id: MachineId): string {.borrow.}
-proc `$`(id: CommitId): string {.borrow.}
+#proc `$`(id: CommitId): string {.borrow.} # not used
 
 var
   thisMachine: MachineId

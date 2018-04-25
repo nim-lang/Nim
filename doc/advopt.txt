@@ -35,7 +35,8 @@ Advanced options:
   --noLinking               compile Nim and generated files but do not link
   --noMain                  do not generate a main procedure
   --genScript               generate a compile script (in the 'nimcache'
-                            subdirectory named 'compile_$$project$$scriptext')
+                            subdirectory named 'compile_$$project$$scriptext'),
+                            implies --compileOnly
   --genDeps                 generate a '.deps' file containing the dependencies
   --os:SYMBOL               set the target operating system (cross-compilation)
   --cpu:SYMBOL              set the target processor (cross-compilation)
