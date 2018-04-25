@@ -407,7 +407,7 @@ proc testC(r: var TResults, test: TTest) =
 proc testExec(r: var TResults, test: TTest) =
   # runs executable or script, just goes by exit code
   inc(r.total)
-  let (outp, errC) = execCmdEx(test.options)
+  let (outp, errC) = execCmdEx(test.options.strip())
   var given: TSpec
   specDefaults(given)
   if errC == 0:
