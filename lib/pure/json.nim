@@ -721,7 +721,7 @@ proc getBool*(n: JsonNode, default: bool = false): bool =
   else: return n.bval
 
 proc getBVal*(n: JsonNode, default: bool = false): bool {.deprecated.} =
-  ## Deprecated - use getBVal instead
+  ## Deprecated - use getBool instead
   getBool(n, default)
 
 proc getFields*(n: JsonNode,
