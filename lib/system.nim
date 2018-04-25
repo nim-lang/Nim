@@ -148,10 +148,6 @@ proc declared*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
 when defined(useNimRtl):
   {.deadCodeElim: on.}  # dce option deprecated
 
-proc definedInScope*(x: untyped): bool {.
-  magic: "DefinedInScope", noSideEffect, deprecated, compileTime.}
-  ## **Deprecated since version 0.9.6**: Use ``declaredInScope`` instead.
-
 proc declaredInScope*(x: untyped): bool {.
   magic: "DefinedInScope", noSideEffect, compileTime.}
   ## Special compile-time procedure that checks whether `x` is
@@ -1727,17 +1723,6 @@ proc addQuitProc*(QuitProc: proc() {.noconv.}) {.
 # In case of an unhandled exeption the exit handlers should
 # not be called explicitly! The user may decide to do this manually though.
 
-proc copy*(s: string, first = 0): string {.
-  magic: "CopyStr", importc: "copyStr", noSideEffect, deprecated.}
-proc copy*(s: string, first, last: int): string {.
-  magic: "CopyStrLast", importc: "copyStrLast", noSideEffect,
-  deprecated.}
-  ## copies a slice of `s` into a new string and returns this new
-  ## string. The bounds `first` and `last` denote the indices of
-  ## the first and last characters that shall be copied. If ``last``
-  ## is omitted, it is treated as ``high(s)``.
-  ## **Deprecated since version 0.8.12**: Use ``substr`` instead.
-
 proc substr*(s: string, first = 0): string {.
   magic: "CopyStr", importc: "copyStr", noSideEffect.}
 proc substr*(s: string, first, last: int): string {.
@@ -2612,10 +2597,6 @@ when not defined(nimscript) and hasAlloc:
       ## forces a full garbage collection pass.
       ## Ordinary code does not need to call this (and should not).
 
-    proc GC_setStrategy*(strategy: GC_Strategy) {.rtl, deprecated, benign.}
-      ## tells the GC the desired strategy for the application.
-      ## **Deprecated** since version 0.8.14. This has always been a nop.
-
     proc GC_enableMarkAndSweep*() {.rtl, benign.}
     proc GC_disableMarkAndSweep*() {.rtl, benign.}
       ## the current implementation uses a reference counting garbage collector
@@ -3092,10 +3073,6 @@ when not defined(JS): #and not defined(nimscript):
       ## character(s) are not part of the returned string. Returns ``false``
       ## if the end of the file has been reached, ``true`` otherwise. If
       ## ``false`` is returned `line` contains no new data.
-
-    proc writeLn*[Ty](f: File, x: varargs[Ty, `$`]) {.inline,
-                             tags: [WriteIOEffect], benign, deprecated.}
-      ## **Deprecated since version 0.11.4:** Use **writeLine** instead.
 
     proc writeLine*[Ty](f: File, x: varargs[Ty, `$`]) {.inline,
                              tags: [WriteIOEffect], benign.}

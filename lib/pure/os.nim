@@ -1443,18 +1443,6 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
     if result.len == 0:
       result = getApplHeuristic()
 
-proc getApplicationFilename*(): string {.rtl, extern: "nos$1", deprecated.} =
-  ## Returns the filename of the application's executable.
-  ## **Deprecated since version 0.8.12**: use ``getAppFilename``
-  ## instead.
-  result = getAppFilename()
-
-proc getApplicationDir*(): string {.rtl, extern: "nos$1", deprecated.} =
-  ## Returns the directory of the application's executable.
-  ## **Deprecated since version 0.8.12**: use ``getAppDir``
-  ## instead.
-  result = splitFile(getAppFilename()).dir
-
 proc getAppDir*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
   ## Returns the directory of the application's executable.
   result = splitFile(getAppFilename()).dir
