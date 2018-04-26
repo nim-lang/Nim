@@ -73,12 +73,18 @@
 ## progress of the HTTP request.
 ##
 ## .. code-block:: Nim
-##    var client = newAsyncHttpClient()
+##    import asyncdispatch, httpclient
+##    
 ##    proc onProgressChanged(total, progress, speed: BiggestInt) {.async.} =
 ##      echo("Downloaded ", progress, " of ", total)
 ##      echo("Current rate: ", speed div 1000, "kb/s")
-##    client.onProgressChanged = onProgressChanged
-##    discard await client.getContent("http://speedtest-ams2.digitalocean.com/100mb.test")
+##
+##    proc asyncProc() {.async.} =
+##      var client = newAsyncHttpClient()
+##      client.onProgressChanged = onProgressChanged
+##      discard await client.getContent("http://speedtest-ams2.digitalocean.com/100mb.test")
+##
+##    waitFor asyncProc()
 ##
 ## If you would like to remove the callback simply set it to ``nil``.
 ##
@@ -739,10 +745,11 @@ proc downloadFile*(url: string, outputFilename: string,
 proc generateHeaders(requestUrl: Uri, httpMethod: string,
                      headers: HttpHeaders, body: string, proxy: Proxy): string =
   # GET
-  result = httpMethod.toUpperAscii()
+  let upperMethod = httpMethod.toUpperAscii()
+  result = upperMethod
   result.add ' '
 
-  if proxy.isNil or (not proxy.isNil and requestUrl.scheme == "https"):
+  if proxy.isNil or requestUrl.scheme == "https":
     # /path?query
     if requestUrl.path[0] != '/': result.add '/'
     result.add(requestUrl.path)
@@ -768,7 +775,9 @@ proc generateHeaders(requestUrl: Uri, httpMethod: string,
     add(result, "Connection: Keep-Alive\c\L")
 
   # Content length header.
-  if body.len > 0 and not headers.hasKey("Content-Length"):
+  const requiresBody = ["POST", "PUT", "PATCH"]
+  let needsContentLength = body.len > 0 or upperMethod in requiresBody
+  if needsContentLength and not headers.hasKey("Content-Length"):
     add(result, "Content-Length: " & $body.len & "\c\L")
 
   # Proxy auth header.
