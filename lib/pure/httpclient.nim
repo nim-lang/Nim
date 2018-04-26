@@ -769,7 +769,9 @@ proc generateHeaders(requestUrl: Uri, httpMethod: string,
     add(result, "Connection: Keep-Alive\c\L")
 
   # Content length header.
-  if (body.len > 0 or upperMethod in ["POST", "PUT", "PATCH"]) and not headers.hasKey("Content-Length"):
+  const requiresBody = ["POST", "PUT", "PATCH"]
+  let needsContentLength = body.len > 0 or upperMethod in requiresBody
+  if needsContentLength and not headers.hasKey("Content-Length"):
     add(result, "Content-Length: " & $body.len & "\c\L")
 
   # Proxy auth header.
