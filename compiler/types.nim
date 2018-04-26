@@ -86,14 +86,33 @@ proc isPureObject*(typ: PType): bool =
     t = t.sons[0].skipTypes(skipPtrs)
   result = t.sym != nil and sfPure in t.sym.flags
 
-proc getOrdValue*(n: PNode): BiggestInt =
+proc getValue*[T:BiggestInt|BiggestFloat|string](n: PNode): T =
+  ## get value of liternal node
   case n.kind
-  of nkCharLit..nkUInt64Lit: result = n.intVal
-  of nkNilLit: result = 0
-  of nkHiddenStdConv: result = getOrdValue(n.sons[1])
+  of nkNilLit: reset(result)
+  of nkHiddenStdConv: result = getValue[T](n.sons[1])
   else:
-    localError(n.info, errOrdinalTypeExpected)
-    result = 0
+    when T is BiggestInt:
+      case n.kind
+      of nkCharLit..nkUInt64Lit: result = n.intVal
+      else:
+        localError(n.info, errOrdinalTypeExpected)
+        result = 0
+    elif T is BiggestFloat:
+      case n.kind
+      of nkFloatLiterals: result = n.floatVal
+      else:
+        localError(n.info, errFloatTypeExpected)
+        result = NaN
+    else:
+      case n.kind:
+      of nkStrLit..nkTripleStrLit: result = n.strVal
+      else:
+        localError(n.info, errStringTypeExpected)
+        result = nil
+
+proc getOrdValue*(n: PNode): BiggestInt {.inline.} =
+  getValue[BiggestInt](n)
 
 proc isIntLit*(t: PType): bool {.inline.} =
   result = t.kind == tyInt and t.n != nil and t.n.kind == nkIntLit
@@ -587,79 +606,106 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     result = typeToStr[t.kind]
   result.addTypeFlags(t)
 
-proc firstOrd*(t: PType): BiggestInt =
-  case t.kind
-  of tyBool, tyChar, tySequence, tyOpenArray, tyString, tyVarargs, tyProxy:
-    result = 0
-  of tySet, tyVar: result = firstOrd(t.sons[0])
-  of tyArray: result = firstOrd(t.sons[0])
-  of tyRange:
-    assert(t.n != nil)        # range directly given:
-    assert(t.n.kind == nkRange)
-    result = getOrdValue(t.n.sons[0])
-  of tyInt:
-    if platform.intSize == 4: result = - (2147483646) - 2
-    else: result = 0x8000000000000000'i64
-  of tyInt8: result = - 128
-  of tyInt16: result = - 32768
-  of tyInt32: result = - 2147483646 - 2
-  of tyInt64: result = 0x8000000000000000'i64
-  of tyUInt..tyUInt64: result = 0
-  of tyEnum:
-    # if basetype <> nil then return firstOrd of basetype
-    if sonsLen(t) > 0 and t.sons[0] != nil:
-      result = firstOrd(t.sons[0])
+proc firstValue*[T:BiggestInt|BiggestFloat](t: PType): T =
+  case t.kind:
+    of tyVar: result = firstValue[T](t.sons[0])
+    of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias:
+      result = firstValue[T](lastSon(t))
+    of tyRange:
+      assert(t.n != nil)        # range directly given:
+      assert(t.n.kind == nkRange)
+      result = getValue[T](t.n.sons[0])
     else:
-      assert(t.n.sons[0].kind == nkSym)
-      result = t.n.sons[0].sym.position
-  of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias:
-    result = firstOrd(lastSon(t))
-  of tyOrdinal:
-    if t.len > 0: result = firstOrd(lastSon(t))
-    else: internalError("invalid kind for first(" & $t.kind & ')')
-  else:
-    internalError("invalid kind for first(" & $t.kind & ')')
-    result = 0
+      when T is BiggestInt:
+        case t.kind:
+        of tyBool, tyChar, tySequence, tyOpenArray, tyString, tyVarargs, tyProxy:
+          result = 0
+        of tySet, tyVar: result = firstValue[T](t.sons[0])
+        of tyArray: result = firstValue[T](t.sons[0])
+        of tyInt:
+          if platform.intSize == 4: result = - (2147483646) - 2
+          else: result = 0x8000000000000000'i64
+        of tyInt8: result = - 128
+        of tyInt16: result = - 32768
+        of tyInt32: result = - 2147483646 - 2
+        of tyInt64: result = 0x8000000000000000'i64
+        of tyUInt..tyUInt64: result = 0
+        of tyEnum:
+          # if basetype <> nil then return firstOrd of basetype
+          if sonsLen(t) > 0 and t.sons[0] != nil:
+            result = firstValue[T](t.sons[0])
+          else:
+            assert(t.n.sons[0].kind == nkSym)
+            result = t.n.sons[0].sym.position
+        of tyOrdinal:
+          if t.len > 0: result = firstValue[T](lastSon(t))
+          else: internalError("invalid kind for first(" & $t.kind & ')')
+        else:
+          internalError("invalid kind for first(" & $t.kind & ')')
+          result = 0
 
-proc lastOrd*(t: PType; fixedUnsigned = false): BiggestInt =
+      elif T is BiggestFloat:
+        case t.kind:
+          of tyFloat..tyFloat128: result = -Inf
+          else:
+            internalError("invalid kind for first(" & $t.kind & ')')
+            result = NaN
+
+proc firstOrd*(t: PType): BiggestInt {.inline.} =
+  firstValue[BiggestInt](t)
+
+proc lastValue*[T:BiggestInt|BiggestFloat](t: PType; fixedUnsigned = false): T =
   case t.kind
-  of tyBool: result = 1
-  of tyChar: result = 255
-  of tySet, tyVar: result = lastOrd(t.sons[0])
-  of tyArray: result = lastOrd(t.sons[0])
+  of tyVar: result = lastValue[T](t.sons[0])
+  of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias:
+    result = lastValue[T](lastSon(t))
   of tyRange:
     assert(t.n != nil)        # range directly given:
     assert(t.n.kind == nkRange)
-    result = getOrdValue(t.n.sons[1])
-  of tyInt:
-    if platform.intSize == 4: result = 0x7FFFFFFF
-    else: result = 0x7FFFFFFFFFFFFFFF'i64
-  of tyInt8: result = 0x0000007F
-  of tyInt16: result = 0x00007FFF
-  of tyInt32: result = 0x7FFFFFFF
-  of tyInt64: result = 0x7FFFFFFFFFFFFFFF'i64
-  of tyUInt:
-    if platform.intSize == 4: result = 0xFFFFFFFF
-    elif fixedUnsigned: result = 0xFFFFFFFFFFFFFFFF'i64
-    else: result = 0x7FFFFFFFFFFFFFFF'i64
-  of tyUInt8: result = 0xFF
-  of tyUInt16: result = 0xFFFF
-  of tyUInt32: result = 0xFFFFFFFF
-  of tyUInt64:
-    if fixedUnsigned: result = 0xFFFFFFFFFFFFFFFF'i64
-    else: result = 0x7FFFFFFFFFFFFFFF'i64
-  of tyEnum:
-    assert(t.n.sons[sonsLen(t.n) - 1].kind == nkSym)
-    result = t.n.sons[sonsLen(t.n) - 1].sym.position
-  of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias:
-    result = lastOrd(lastSon(t))
-  of tyProxy: result = 0
-  of tyOrdinal:
-    if t.len > 0: result = lastOrd(lastSon(t))
-    else: internalError("invalid kind for last(" & $t.kind & ')')
+    result = getValue[T](t.n.sons[1])
   else:
-    internalError("invalid kind for last(" & $t.kind & ')')
-    result = 0
+    when T is BiggestInt:
+      case t.kind
+      of tyBool: result = 1
+      of tyChar: result = 255
+      of tySet, tyArray: result = lastValue[T](t.sons[0])
+      of tyInt:
+        if platform.intSize == 4: result = 0x7FFFFFFF
+        else: result = 0x7FFFFFFFFFFFFFFF'i64
+      of tyInt8: result = 0x0000007F
+      of tyInt16: result = 0x00007FFF
+      of tyInt32: result = 0x7FFFFFFF
+      of tyInt64: result = 0x7FFFFFFFFFFFFFFF'i64
+      of tyUInt:
+        if platform.intSize == 4: result = 0xFFFFFFFF
+        elif fixedUnsigned: result = 0xFFFFFFFFFFFFFFFF'i64
+        else: result = 0x7FFFFFFFFFFFFFFF'i64
+      of tyUInt8: result = 0xFF
+      of tyUInt16: result = 0xFFFF
+      of tyUInt32: result = 0xFFFFFFFF
+      of tyUInt64:
+        if fixedUnsigned: result = 0xFFFFFFFFFFFFFFFF'i64
+        else: result = 0x7FFFFFFFFFFFFFFF'i64
+      of tyEnum:
+        assert(t.n.sons[sonsLen(t.n) - 1].kind == nkSym)
+        result = t.n.sons[sonsLen(t.n) - 1].sym.position
+
+      of tyProxy: result = 0
+      of tyOrdinal:
+        if t.len > 0: result = lastValue[T](lastSon(t))
+        else: internalError("invalid kind for last(" & $t.kind & ')')
+      else:
+        internalError("invalid kind for last(" & $t.kind & ')')
+        result = 0
+    elif T is BiggestFloat:
+      case t.kind:
+        of tyFloat..tyFloat128: result = Inf
+        else:
+          internalError("invalid kind for first(" & $t.kind & ')')
+          result = NaN
+
+proc lastOrd*(t: PType; fixedUnsigned = false): BiggestInt {.inline.}= 
+  lastValue[BiggestInt](t, fixedUnsigned)
 
 proc lengthOrd*(t: PType): BiggestInt =
   case t.kind

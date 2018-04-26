@@ -628,20 +628,27 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   else: discard
 
 proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
-  let
-    a0 = firstOrd(a)
-    a1 = lastOrd(a)
-    f0 = firstOrd(f)
-    f1 = lastOrd(f)
-  if a0 == f0 and a1 == f1:
-    result = isEqual
-  elif a0 >= f0 and a1 <= f1:
-    result = isConvertible
-  elif a0 <= f1 and f0 <= a1:
-    # X..Y and C..D overlap iff (X <= D and C <= Y)
-    result = isConvertible
+  template check_range_in(t: typedesc): untyped = 
+    let
+      a0 = firstValue[t](a)
+      a1 = lastValue[t](a)
+      f0 = firstValue[t](f)
+      f1 = lastValue[t](f)
+    if a0 == f0 and a1 == f1:
+      result = isEqual
+    elif a0 >= f0 and a1 <= f1:
+      result = isConvertible
+    elif a0 <= f1 and f0 <= a1:
+      # X..Y and C..D overlap iff (X <= D and C <= Y)
+      result = isConvertible
+    else:
+      result = isNone
+  
+  if f.isOrdinalType: 
+    check_range_in(BiggestInt)
   else:
-    result = isNone
+    check_range_in(BiggestFloat)
+    
 
 proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
   var

@@ -205,8 +205,8 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
   if not hasUnknownTypes:
     if not sameType(rangeT[0].skipTypes({tyRange}), rangeT[1].skipTypes({tyRange})):
       localError(n.info, errPureTypeMismatch)
-    elif not rangeT[0].isOrdinalType:
-      localError(n.info, errOrdinalTypeExpected)
+    elif not rangeT[0].isOrdinalType and rangeT[0].kind notin tyFloat..tyFloat128:
+      localError(n.info, errOrdinalOrFloatTypeExpected)
     elif enumHasHoles(rangeT[0]):
       localError(n.info, errEnumXHasHoles, rangeT[0].sym.name.s)
 
