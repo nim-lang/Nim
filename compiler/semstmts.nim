@@ -1588,9 +1588,11 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if sfOverriden in s.flags or s.name.s[0] == '=': semOverride(c, s, n)
   if s.name.s[0] in {'.', '('}:
     if s.name.s in [".", ".()", ".="] and {destructor, dotOperators} * c.features == {}:
-      message(n.info, warnDeprecated, "overloaded '.' and '()' operators are now .experimental; " & s.name.s)
+      localError(n.info, "the overloaded " & s.name.s &
+        " operator has to be enabled with {.experimental: \"dotOperators\".}")
     elif s.name.s == "()" and callOperator notin c.features:
-      message(n.info, warnDeprecated, "overloaded '()' operators are now .experimental; " & s.name.s)
+      localError(n.info, "the overloaded " & s.name.s &
+        " operator has to be enabled with {.experimental: \"callOperator\".}")
 
   if n.sons[bodyPos].kind != nkEmpty:
     # for DLL generation it is annoying to check for sfImportc!
