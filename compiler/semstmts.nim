@@ -1843,80 +1843,46 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
   #                                         nkNilLit, nkEmpty}:
   #  dec last
   for i in countup(0, length - 1):
-    let k = n.sons[i].kind
-    case k
-    of nkFinally, nkExceptBranch:
-      # stand-alone finally and except blocks are
-      # transformed into regular try blocks:
-      #
-      # var f = fopen("somefile") | var f = fopen("somefile")
-      # finally: fclose(f)        | try:
-      # ...                       |   ...
-      #                           | finally:
-      #                           |   fclose(f)
-      var deferPart: PNode
-      if k == nkDefer:
-        deferPart = newNodeI(nkFinally, n.sons[i].info)
-        deferPart.add n.sons[i].sons[0]
-      elif k == nkFinally:
-        message(n.info, warnDeprecated,
-                "use 'defer'; standalone 'finally'")
-        deferPart = n.sons[i]
-      else:
-        message(n.info, warnDeprecated,
-                "use an explicit 'try'; standalone 'except'")
-        deferPart = n.sons[i]
-      var tryStmt = newNodeI(nkTryStmt, n.sons[i].info)
-      var body = newNodeI(nkStmtList, n.sons[i].info)
-      if i < n.sonsLen - 1:
-        body.sons = n.sons[(i+1)..n.len-1]
-      tryStmt.addSon(body)
-      tryStmt.addSon(deferPart)
-      n.sons[i] = semTry(c, tryStmt)
-      n.sons.setLen(i+1)
-      n.typ = n.sons[i].typ
-      return
-    else:
-      var expr = semExpr(c, n.sons[i], flags)
-      n.sons[i] = expr
-      if c.matchedConcept != nil and expr.typ != nil and
-         (nfFromTemplate notin n.flags or i != last):
-        case expr.typ.kind
-        of tyBool:
-          if expr.kind == nkInfix and
-             expr[0].kind == nkSym and
-             expr[0].sym.name.s == "==":
-            if expr[1].typ.isUnresolvedStatic:
-              inferConceptStaticParam(c, expr[1], expr[2])
-              continue
-            elif expr[2].typ.isUnresolvedStatic:
-              inferConceptStaticParam(c, expr[2], expr[1])
-              continue
+    var expr = semExpr(c, n.sons[i], flags)
+    n.sons[i] = expr
+    if c.matchedConcept != nil and expr.typ != nil and
+        (nfFromTemplate notin n.flags or i != last):
+      case expr.typ.kind
+      of tyBool:
+        if expr.kind == nkInfix and
+            expr[0].kind == nkSym and
+            expr[0].sym.name.s == "==":
+          if expr[1].typ.isUnresolvedStatic:
+            inferConceptStaticParam(c, expr[1], expr[2])
+            continue
+          elif expr[2].typ.isUnresolvedStatic:
+            inferConceptStaticParam(c, expr[2], expr[1])
+            continue
 
-          let verdict = semConstExpr(c, n[i])
-          if verdict.intVal == 0:
-            localError(result.info, "concept predicate failed")
-        of tyUnknown: continue
-        else: discard
-      if n.sons[i].typ == enforceVoidContext: #or usesResult(n.sons[i]):
-        voidContext = true
-        n.typ = enforceVoidContext
-      if i == last and (length == 1 or efWantValue in flags):
-        n.typ = n.sons[i].typ
-        if not isEmptyType(n.typ): n.kind = nkStmtListExpr
-      elif i != last or voidContext:
-        discardCheck(c, n.sons[i])
-      else:
-        n.typ = n.sons[i].typ
-        if not isEmptyType(n.typ): n.kind = nkStmtListExpr
-      if n.sons[i].kind in LastBlockStmts or
-         n.sons[i].kind in nkCallKinds and n.sons[i][0].kind == nkSym and sfNoReturn in n.sons[i][0].sym.flags:
-        for j in countup(i + 1, length - 1):
-          case n.sons[j].kind
-          of nkPragma, nkCommentStmt, nkNilLit, nkEmpty, nkBlockExpr,
-             nkBlockStmt, nkState: discard
-          else: localError(n.sons[j].info, errStmtInvalidAfterReturn)
+        let verdict = semConstExpr(c, n[i])
+        if verdict.intVal == 0:
+          localError(result.info, "concept predicate failed")
+      of tyUnknown: continue
       else: discard
+    if n.sons[i].typ == enforceVoidContext: #or usesResult(n.sons[i]):
+      voidContext = true
+      n.typ = enforceVoidContext
+    if i == last and (length == 1 or efWantValue in flags):
+      n.typ = n.sons[i].typ
+      if not isEmptyType(n.typ): n.kind = nkStmtListExpr
+    elif i != last or voidContext:
+      discardCheck(c, n.sons[i])
+    else:
+      n.typ = n.sons[i].typ
+      if not isEmptyType(n.typ): n.kind = nkStmtListExpr
+    if n.sons[i].kind in LastBlockStmts or
+        n.sons[i].kind in nkCallKinds and n.sons[i][0].kind == nkSym and sfNoReturn in n.sons[i][0].sym.flags:
+      for j in countup(i + 1, length - 1):
+        case n.sons[j].kind
+        of nkPragma, nkCommentStmt, nkNilLit, nkEmpty, nkBlockExpr,
+            nkBlockStmt, nkState: discard
+        else: localError(n.sons[j].info, errStmtInvalidAfterReturn)
+    else: discard
 
   if result.len == 1 and
      # concept bodies should be preserved as a stmt list:
