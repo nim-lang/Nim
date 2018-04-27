@@ -50,17 +50,17 @@ proc add*(url: var Url, a: Url) {.deprecated.} =
 proc encodeUrl*(s: string): string =
   ## Encodes a value to be HTTP safe: This means that characters in the set
   ## ``{'A'..'Z', 'a'..'z', '0'..'9', '_'}`` are carried over to the result,
-  ## a space is converted to ``'+'`` and every other character is encoded as
+  ## a space is converted to ``'%20'`` and every other character is encoded as
   ## ``'%xx'`` where ``xx`` denotes its hexadecimal value.
   result = newStringOfCap(s.len + s.len shr 2) # assume 12% non-alnum-chars
   for i in 0..s.len-1:
     case s[i]
     of 'a'..'z', 'A'..'Z', '0'..'9', '_': add(result, s[i])
-    of ' ': add(result, '+')
+    of ' ': add(result, "%20")
     else:
       add(result, '%')
       add(result, toHex(ord(s[i]), 2))
-      
+
 proc decodeUrl*(s: string): string =
   ## Decodes a value from its HTTP representation: This means that a ``'+'``
   ## is converted to a space, ``'%xx'`` (where ``xx`` denotes a hexadecimal
@@ -72,7 +72,7 @@ proc decodeUrl*(s: string): string =
     of 'a'..'f': x = (x shl 4) or (ord(c) - ord('a') + 10)
     of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
     else: assert(false)
-    
+
   result = newString(s.len)
   var i = 0
   var j = 0
@@ -371,9 +371,9 @@ proc `$`*(u: Uri): string =
 when isMainModule:
   block:
     const test1 = "abc\L+def xyz"
-    doAssert encodeUrl(test1) == "abc%0A%2Bdef+xyz"
+    doAssert encodeUrl(test1) == "abc%0A%2Bdef%20xyz"
     doAssert decodeUrl(encodeUrl(test1)) == test1
-    
+
   block:
     let str = "http://localhost"
     let test = parseUri(str)
@@ -464,7 +464,7 @@ when isMainModule:
     doAssert test.hostname == "github.com"
     doAssert test.port == "dom96"
     doAssert test.path == "/packages"
-    
+
   block:
     let str = "file:///foo/bar/baz.txt"
     let test = parseUri(str)
