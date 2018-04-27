@@ -226,8 +226,8 @@ proc appendChar(dest: NimString, c: char) {.compilerproc, inline.} =
 
 proc setLengthStr(s: NimString, newLen: int): NimString {.compilerRtl.} =
   var n = max(newLen, 0)
-  if wasMoved(s):
-    result = newOwnedString(s, n)
+  if s == nil:
+    result = mnewString(newLen)
   elif n <= s.space:
     result = s
   else:
@@ -312,6 +312,13 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
     zeroMem(cast[pointer](cast[ByteAddress](result) +% GenericSeqSize +%
            (newLen*%elemSize)), (result.len-%newLen) *% elemSize)
   result.len = newLen
+
+proc setLengthSeqV2(s: PGenericSeq, typ: PNimType, newLen: int): PGenericSeq {.
+    compilerRtl.} =
+  if s == nil:
+    result = cast[PGenericSeq](newSeq(typ, newLen))
+  else:
+    result = setLengthSeq(s, typ.base.size, newLen)
 
 # --------------- other string routines ----------------------------------
 proc add*(result: var string; x: int64) =

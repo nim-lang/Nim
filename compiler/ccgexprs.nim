@@ -1500,13 +1500,13 @@ proc genSetLengthSeq(p: BProc, e: PNode, d: var TLoc) =
   initLocExpr(p, e.sons[2], b)
   let t = skipTypes(e.sons[1].typ, {tyVar})
   let setLenPattern = if not p.module.compileToCpp:
-      "$1 = ($3) #setLengthSeq(&($1)->Sup, sizeof($4), $2);$n"
+      "$1 = ($3) #setLengthSeqV2(&($1)->Sup, $4, $2);$n"
     else:
-      "$1 = ($3) #setLengthSeq($1, sizeof($4), $2);$n"
+      "$1 = ($3) #setLengthSeqV2($1, $4, $2);$n"
 
   lineCg(p, cpsStmts, setLenPattern, [
       rdLoc(a), rdLoc(b), getTypeDesc(p.module, t),
-      getTypeDesc(p.module, t.skipTypes(abstractInst).sons[0])])
+      genTypeInfo(p.module, t.skipTypes(abstractInst), e.info)])
   gcUsage(e)
 
 proc genSetLengthStr(p: BProc, e: PNode, d: var TLoc) =
