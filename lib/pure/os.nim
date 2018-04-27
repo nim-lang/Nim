@@ -23,6 +23,10 @@ when defined(windows):
   import winlean
 elif defined(posix):
   import posix
+
+  proc toTime(ts: Timespec): times.Time {.inline.} =
+    result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
+
 else:
   {.error: "OS module not ported to your operating system!".}
 
@@ -183,7 +187,7 @@ proc getLastModificationTime*(file: string): times.Time {.rtl, extern: "nos$1".}
   when defined(posix):
     var res: Stat
     if stat(file, res) < 0'i32: raiseOSError(osLastError())
-    return fromUnix(res.st_mtime.int64)
+    result = res.st_mtim.toTime
   else:
     var f: WIN32_FIND_DATA
     var h = findFirstFile(file, f)
@@ -196,7 +200,7 @@ proc getLastAccessTime*(file: string): times.Time {.rtl, extern: "nos$1".} =
   when defined(posix):
     var res: Stat
     if stat(file, res) < 0'i32: raiseOSError(osLastError())
-    return fromUnix(res.st_atime.int64)
+    result = res.st_atim.toTime
   else:
     var f: WIN32_FIND_DATA
     var h = findFirstFile(file, f)
@@ -213,7 +217,7 @@ proc getCreationTime*(file: string): times.Time {.rtl, extern: "nos$1".} =
   when defined(posix):
     var res: Stat
     if stat(file, res) < 0'i32: raiseOSError(osLastError())
-    return fromUnix(res.st_ctime.int64)
+    result = res.st_ctim.toTime
   else:
     var f: WIN32_FIND_DATA
     var h = findFirstFile(file, f)
@@ -225,10 +229,13 @@ proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1".} =
   ## Returns true if the file `a` is newer than file `b`, i.e. if `a`'s
   ## modification time is later than `b`'s.
   when defined(posix):
-    result = getLastModificationTime(a) - getLastModificationTime(b) >= DurationZero
-    # Posix's resolution sucks so, we use '>=' for posix.
+    # If we don't have access to nanosecond resolution, use '>='
+    when not StatHasNanoseconds:  
+      result = getLastModificationTime(a) >= getLastModificationTime(b)
+    else:
+      result = getLastModificationTime(a) > getLastModificationTime(b)
   else:
-    result = getLastModificationTime(a) - getLastModificationTime(b) > DurationZero
+    result = getLastModificationTime(a) > getLastModificationTime(b)
 
 proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [].} =
   ## Returns the `current working directory`:idx:.
@@ -1507,7 +1514,7 @@ type
 
 template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
   ## Transforms the native file info structure into the one nim uses.
-  ## 'rawInfo' is either a 'TBY_HANDLE_FILE_INFORMATION' structure on Windows,
+  ## 'rawInfo' is either a 'BY_HANDLE_FILE_INFORMATION' structure on Windows,
   ## or a 'Stat' structure on posix
   when defined(Windows):
     template merge(a, b): untyped = a or (b shl 32)
@@ -1533,7 +1540,6 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
     if (rawInfo.dwFileAttributes and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32:
       formalInfo.kind = succ(result.kind)
 
-
   else:
     template checkAndIncludeMode(rawMode, formalMode: untyped) =
       if (rawInfo.st_mode and rawMode) != 0'i32:
@@ -1541,9 +1547,9 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
     formalInfo.id = (rawInfo.st_dev, rawInfo.st_ino)
     formalInfo.size = rawInfo.st_size
     formalInfo.linkCount = rawInfo.st_Nlink.BiggestInt
-    formalInfo.lastAccessTime = fromUnix(rawInfo.st_atime.int64)
-    formalInfo.lastWriteTime = fromUnix(rawInfo.st_mtime.int64)
-    formalInfo.creationTime = fromUnix(rawInfo.st_ctime.int64)
+    formalInfo.lastAccessTime = rawInfo.st_atim.toTime
+    formalInfo.lastWriteTime = rawInfo.st_mtim.toTime
+    formalInfo.creationTime = rawInfo.st_ctim.toTime
 
     result.permissions = {}
     checkAndIncludeMode(S_IRUSR, fpUserRead)
@@ -1657,7 +1663,9 @@ proc setLastModificationTime*(file: string, t: times.Time) =
   ## an error.
   when defined(posix):
     let unixt = posix.Time(t.toUnix)
-    var timevals = [Timeval(tv_sec: unixt), Timeval(tv_sec: unixt)] # [last access, last modification]
+    let micro = convert(Nanoseconds, Microseconds, t.nanosecond)
+    var timevals = [Timeval(tv_sec: unixt, tv_usec: micro),
+      Timeval(tv_sec: unixt, tv_usec: micro)] # [last access, last modification]
     if utimes(file, timevals.addr) != 0: raiseOSError(osLastError())
   else:
     let h = openHandle(path = file, writeAccess = true)
