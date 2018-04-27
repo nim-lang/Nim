@@ -161,14 +161,16 @@ proc hashString(s: string): int {.compilerproc.} =
 
 proc addChar(s: NimString, c: char): NimString =
   # is compilerproc!
-  result = s
-  if result.len >= result.space:
-    let r = resize(result.space)
-    result = cast[NimString](growObj(result,
-      sizeof(TGenericSeq) + r + 1))
-    result.reserved = r
-  elif wasMoved(s):
-    result = newOwnedString(s, s.len)
+  if s == nil:
+    result = rawNewStringNoInit(1)
+    result.len = 0
+  else:
+    result = s
+    if result.len >= result.space:
+      let r = resize(result.space)
+      result = cast[NimString](growObj(result,
+        sizeof(TGenericSeq) + r + 1))
+      result.reserved = r
   result.data[result.len] = c
   result.data[result.len+1] = '\0'
   inc(result.len)
@@ -205,7 +207,9 @@ proc addChar(s: NimString, c: char): NimString =
 #   s = rawNewString(0);
 
 proc resizeString(dest: NimString, addlen: int): NimString {.compilerRtl.} =
-  if dest.len + addlen <= dest.space and not wasMoved(dest):
+  if dest == nil:
+    result = rawNewStringNoInit(addlen)
+  elif dest.len + addlen <= dest.space and not wasMoved(dest):
     result = dest
   else: # slow path:
     var sp = max(resize(dest.space), dest.len + addlen)
@@ -216,8 +220,9 @@ proc resizeString(dest: NimString, addlen: int): NimString {.compilerRtl.} =
     # DO NOT UPDATE LEN YET: dest.len = newLen
 
 proc appendString(dest, src: NimString) {.compilerproc, inline.} =
-  copyMem(addr(dest.data[dest.len]), addr(src.data), src.len + 1)
-  inc(dest.len, src.len)
+  if src != nil:
+    copyMem(addr(dest.data[dest.len]), addr(src.data), src.len + 1)
+    inc(dest.len, src.len)
 
 proc appendChar(dest: NimString, c: char) {.compilerproc, inline.} =
   dest.data[dest.len] = c
