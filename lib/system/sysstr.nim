@@ -261,6 +261,18 @@ proc incrSeqV2(seq: PGenericSeq, elemSize: int): PGenericSeq {.compilerProc.} =
                                GenericSeqSize))
     result.reserved = r
 
+proc incrSeqV3(s: PGenericSeq, typ: PNimType): PGenericSeq {.compilerProc.} =
+  if s == nil:
+    result = cast[PGenericSeq](newSeq(typ, 1))
+    result.len = 0
+  else:
+    result = s
+    if result.len >= result.space:
+      let r = resize(result.space)
+      result = cast[PGenericSeq](growObj(result, typ.base.size * r +
+                                GenericSeqSize))
+      result.reserved = r
+
 proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
     compilerRtl, inl.} =
   result = seq
