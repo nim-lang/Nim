@@ -165,13 +165,12 @@ proc isKeyword*(kind: TTokType): bool =
 template ones(n): untyped = ((1 shl n)-1) # for utf-8 conversion
 
 proc isNimIdentifier*(s: string): bool =
-  if s[0] in SymStartChars:
+  let sLen = s.len
+  if sLen > 0 and s[0] in SymStartChars:
     var i = 1
-    var sLen = s.len
     while i < sLen:
-      if s[i] == '_':
-        inc(i)
-      if s[i] notin SymChars: return
+      if s[i] == '_': inc(i)
+      if i < sLen and s[i] notin SymChars: return
       inc(i)
     result = true
 
@@ -311,12 +310,12 @@ template tokenEndPrevious(tok, pos) =
 # We need to parse the largest uint literal without overflow checks
 proc unsafeParseUInt(s: string, b: var BiggestInt, start = 0): int =
   var i = start
-  if s[i] in {'0'..'9'}:
+  if i < s.len and s[i] in {'0'..'9'}:
     b = 0
-    while s[i] in {'0'..'9'}:
+    while i < s.len and s[i] in {'0'..'9'}:
       b = b * 10 + (ord(s[i]) - ord('0'))
       inc(i)
-      while s[i] == '_': inc(i) # underscores are allowed and ignored
+      while i < s.len and s[i] == '_': inc(i) # underscores are allowed and ignored
     result = i - start
 {.pop.} # overflowChecks
 

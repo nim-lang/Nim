@@ -251,7 +251,7 @@ proc `%`*(frmt: FormatStr, args: openArray[Rope]): Rope =
         while true:
           j = j * 10 + ord(frmt[i]) - ord('0')
           inc(i)
-          if frmt[i] notin {'0'..'9'}: break
+          if i >= frmt.len or frmt[i] notin {'0'..'9'}: break
         num = j
         if j > high(args) + 1:
           errorHandler(rInvalidFormatStr, $(j))
