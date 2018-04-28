@@ -101,9 +101,6 @@ proc cstrToNimstr(str: cstring): NimString {.compilerRtl.} =
   if str == nil: NimString(nil)
   else: toNimStr(str, str.len)
 
-template wasMoved(x: NimString): bool = false
-# (x.reserved and seqShallowFlag) != 0
-
 proc copyString(src: NimString): NimString {.compilerRtl.} =
   if src != nil:
     if (src.reserved and seqShallowFlag) != 0:
@@ -209,7 +206,7 @@ proc addChar(s: NimString, c: char): NimString =
 proc resizeString(dest: NimString, addlen: int): NimString {.compilerRtl.} =
   if dest == nil:
     result = rawNewStringNoInit(addlen)
-  elif dest.len + addlen <= dest.space and not wasMoved(dest):
+  elif dest.len + addlen <= dest.space:
     result = dest
   else: # slow path:
     var sp = max(resize(dest.space), dest.len + addlen)
