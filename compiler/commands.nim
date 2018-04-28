@@ -54,6 +54,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
 
 const
   HelpMessage = "Nim Compiler Version $1 [$2: $3]\n" &
+      "Compiled at $4 $5\n" &
       "Copyright (c) 2006-" & copyrightYear & " by Andreas Rumpf\n"
 
 const
@@ -68,7 +69,8 @@ const
 
 proc getCommandLineDesc(): string =
   result = (HelpMessage % [VersionAsString, platform.OS[platform.hostOS].name,
-                           CPU[platform.hostCPU].name]) & Usage
+                           CPU[platform.hostCPU].name, CompileDate, CompileTime]) &
+                           Usage
 
 proc helpOnError(pass: TCmdLinePass) =
   if pass == passCmd1:
@@ -79,7 +81,8 @@ proc writeAdvancedUsage(pass: TCmdLinePass) =
   if pass == passCmd1:
     msgWriteln(`%`(HelpMessage, [VersionAsString,
                                  platform.OS[platform.hostOS].name,
-                                 CPU[platform.hostCPU].name]) & AdvancedUsage,
+                                 CPU[platform.hostCPU].name, CompileDate, CompileTime]) &
+                                 AdvancedUsage,
                {msgStdout})
     msgQuit(0)
 
@@ -87,7 +90,8 @@ proc writeFullhelp(pass: TCmdLinePass) =
   if pass == passCmd1:
     msgWriteln(`%`(HelpMessage, [VersionAsString,
                                  platform.OS[platform.hostOS].name,
-                                 CPU[platform.hostCPU].name]) & Usage & AdvancedUsage,
+                                 CPU[platform.hostCPU].name, CompileDate, CompileTime]) &
+                                 Usage & AdvancedUsage,
                {msgStdout})
     msgQuit(0)
 
@@ -95,7 +99,7 @@ proc writeVersionInfo(pass: TCmdLinePass) =
   if pass == passCmd1:
     msgWriteln(`%`(HelpMessage, [VersionAsString,
                                  platform.OS[platform.hostOS].name,
-                                 CPU[platform.hostCPU].name]),
+                                 CPU[platform.hostCPU].name, CompileDate, CompileTime]),
                {msgStdout})
 
     const gitHash = gorge("git log -n 1 --format=%H").strip
