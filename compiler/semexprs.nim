@@ -51,7 +51,6 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
                 renderTree(result, {renderNoComments}))
     result.typ = errorType(c)
   else:
-    if efNoProcvarCheck notin flags: semProcvarCheck(c, result)
     if result.typ.kind in {tyVar, tyLent}: result = newDeref(result)
 
 proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
@@ -63,8 +62,6 @@ proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     localError(n.info, errExprXHasNoType,
                renderTree(result, {renderNoComments}))
     result.typ = errorType(c)
-  else:
-    semProcvarCheck(c, result)
 
 proc semSymGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
   result = symChoice(c, n, s, scClosed)
@@ -540,7 +537,6 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
       # we need to recurse explicitly here as converters can create nested
       # calls and then they wouldn't be analysed otherwise
       analyseIfAddressTakenInCall(c, n.sons[i])
-    semProcvarCheck(c, n.sons[i])
     if i < sonsLen(t) and
         skipTypes(t.sons[i], abstractInst-{tyTypeDesc}).kind == tyVar:
       if n.sons[i].kind != nkHiddenAddr:
@@ -1245,7 +1241,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
   checkMinSonsLen(n, 2)
   # make sure we don't evaluate generic macros/templates
   n.sons[0] = semExprWithType(c, n.sons[0],
-                              {efNoProcvarCheck, efNoEvaluateGeneric})
+                              {efNoEvaluateGeneric})
   let arr = skipTypes(n.sons[0].typ, {tyGenericInst,
                                       tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink})
   case arr.kind

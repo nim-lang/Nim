@@ -71,37 +71,12 @@ proc toCover(t: PType): BiggestInt =
   else:
     result = lengthOrd(skipTypes(t, abstractVar-{tyTypeDesc}))
 
-when false:
-  proc performProcvarCheck(c: PContext, info: TLineInfo, s: PSym) =
-    ## Checks that the given symbol is a proper procedure variable, meaning
-    ## that it
-    var smoduleId = getModule(s).id
-    if sfProcvar notin s.flags and s.typ.callConv == ccDefault and
-        smoduleId != c.module.id:
-      block outer:
-        for module in c.friendModules:
-          if smoduleId == module.id:
-            break outer
-        localError(info, errXCannotBePassedToProcVar, s.name.s)
-
-template semProcvarCheck(c: PContext, n: PNode) =
-  when false:
-    var n = n.skipConv
-    if n.kind in nkSymChoices:
-      for x in n:
-        if x.sym.kind in {skProc, skMethod, skConverter, skIterator}:
-          performProcvarCheck(c, n.info, x.sym)
-    elif n.kind == nkSym and n.sym.kind in {skProc, skMethod, skConverter,
-                                          skIterator}:
-      performProcvarCheck(c, n.info, n.sym)
-
 proc semProc(c: PContext, n: PNode): PNode
 
 proc semExprBranch(c: PContext, n: PNode): PNode =
   result = semExpr(c, n)
   if result.typ != nil:
     # XXX tyGenericInst here?
-    semProcvarCheck(c, result)
     if result.typ.kind in {tyVar, tyLent}: result = newDeref(result)
 
 proc semExprBranchScope(c: PContext, n: PNode): PNode =
@@ -384,7 +359,7 @@ proc checkNilable(v: PSym) =
 
 include semasgn
 
-proc addToVarSection(c: PContext; result: var PNode; orig, identDefs: PNode) =
+proc addToVarSection(c: PContext; result: PNode; orig, identDefs: PNode) =
   let L = identDefs.len
   let value = identDefs[L-1]
   if result.kind == nkStmtList:
@@ -1684,11 +1659,6 @@ proc semIterator(c: PContext, n: PNode): PNode =
     incl(s.typ.flags, tfCapturesEnv)
   else:
     s.typ.callConv = ccInline
-  when false:
-    if s.typ.callConv != ccInline:
-      s.typ.callConv = ccClosure
-      # and they always at least use the 'env' for the state field:
-      incl(s.typ.flags, tfCapturesEnv)
   if n.sons[bodyPos].kind == nkEmpty and s.magic == mNone:
     localError(n.info, errImplOfXexpected, s.name.s)
 
@@ -1794,14 +1764,6 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
   evalStaticStmt(c.module, c.cache, a, c.p.owner)
   result = newNodeI(nkDiscardStmt, n.info, 1)
   result.sons[0] = emptyNode
-  when false:
-    result = evalStaticStmt(c.module, a, c.p.owner)
-    if result.isNil:
-      LocalError(n.info, errCannotInterpretNodeX, renderTree(n))
-      result = emptyNode
-    elif result.kind == nkEmpty:
-      result = newNodeI(nkDiscardStmt, n.info, 1)
-      result.sons[0] = emptyNode
 
 proc usesResult(n: PNode): bool =
   # nkStmtList(expr) properly propagates the void context,
@@ -1876,7 +1838,8 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
       n.typ = n.sons[i].typ
       if not isEmptyType(n.typ): n.kind = nkStmtListExpr
     if n.sons[i].kind in LastBlockStmts or
-        n.sons[i].kind in nkCallKinds and n.sons[i][0].kind == nkSym and sfNoReturn in n.sons[i][0].sym.flags:
+        n.sons[i].kind in nkCallKinds and n.sons[i][0].kind == nkSym and
+        sfNoReturn in n.sons[i][0].sym.flags:
       for j in countup(i + 1, length - 1):
         case n.sons[j].kind
         of nkPragma, nkCommentStmt, nkNilLit, nkEmpty, nkBlockExpr,
@@ -1898,15 +1861,6 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
         not (result.comment[0] == '#' and result.comment[1] == '#'):
       # it is an old-style comment statement: we replace it with 'discard ""':
       prettybase.replaceComment(result.info)
-  when false:
-    # a statement list (s; e) has the type 'e':
-    if result.kind == nkStmtList and result.len > 0:
-      var lastStmt = lastSon(result)
-      if lastStmt.kind != nkNilLit and not implicitlyDiscardable(lastStmt):
-        result.typ = lastStmt.typ
-        #localError(lastStmt.info, errGenerated,
-        #  "Last expression must be explicitly returned if it " &
-        #  "is discardable or discarded")
 
 proc semStmt(c: PContext, n: PNode): PNode =
   # now: simply an alias:
