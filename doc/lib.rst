@@ -449,11 +449,6 @@ Deprecated modules
   Use the `asyncnet <asyncnet.html>`_ together with the
   `asyncdispatch <asyncdispatch.html>`_ module instead.
 
-* `ftpclient <ftpclient.html>`_
-  This module implements an FTP client.
-  **Deprecated since version 0.11.3:**
-  Use the `asyncftpclient <asyncftpclient.html>`_ module instead.
-
 * `sockets <sockets.html>`_
   This module implements a simple portable type-safe sockets layer.
   **Deprecated since version 0.11.2:**
