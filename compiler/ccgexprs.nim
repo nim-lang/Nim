@@ -1740,7 +1740,7 @@ proc genConv(p: BProc, e: PNode, d: var TLoc) =
 proc convStrToCStr(p: BProc, n: PNode, d: var TLoc) =
   var a: TLoc
   initLocExpr(p, n.sons[0], a)
-  putIntoDest(p, d, n, "($1 ? $1->data : \"\")" % [rdLoc(a)],
+  putIntoDest(p, d, n, "($1 ? $1->data : (NCSTRING)\"\")" % [rdLoc(a)],
               a.storage)
 
 proc convCStrToStr(p: BProc, n: PNode, d: var TLoc) =
