@@ -1280,15 +1280,13 @@ proc setLen*[T](s: var seq[T], newlen: Natural) {.
   ## sets the length of `s` to `newlen`.
   ## ``T`` may be any sequence type.
   ## If the current length is greater than the new length,
-  ## ``s`` will be truncated. `s` cannot be nil! To initialize a sequence with
-  ## a size, use ``newSeq`` instead.
+  ## ``s`` will be truncated.
 
 proc setLen*(s: var string, newlen: Natural) {.
   magic: "SetLengthStr", noSideEffect.}
   ## sets the length of `s` to `newlen`.
   ## If the current length is greater than the new length,
-  ## ``s`` will be truncated. `s` cannot be nil! To initialize a string with
-  ## a size, use ``newString`` instead.
+  ## ``s`` will be truncated.
   ##
   ## .. code-block:: Nim
   ##  var myS = "Nim is great!!"
