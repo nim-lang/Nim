@@ -74,11 +74,11 @@ proc rawInsert[T](c: var CritBitTree[T], key: string): Node[T] =
     var newByte = 0
     block blockX:
       while newbyte < key.len:
-        if it.key[newbyte] != key[newbyte]:
+        if newbyte >= it.key.len or it.key[newbyte] != key[newbyte]:
           newotherbits = it.key[newbyte].ord xor key[newbyte].ord
           break blockX
         inc newbyte
-      if it.key[newbyte] != '\0':
+      if newbyte < it.key.len:
         newotherbits = it.key[newbyte].ord
       else:
         return it
