@@ -103,7 +103,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
           var cmp = cmpCandidates(best, z)
           if cmp < 0: best = z   # x is better than the best so far
           elif cmp == 0: alt = z # x is as good as the best so far
-      elif errors.enabled or z.diagnostics.enabled:
+      elif errors.enabled or z.diagnosticsEnabled:
         errors.s.safeAdd(CandidateError(
           sym: sym,
           unmatchedVarParam: int z.mutabilityProblem,
@@ -197,7 +197,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       candidates.add("  for a 'var' type a variable needs to be passed, but '" &
                       renderNotLValue(n[err.unmatchedVarParam]) &
                       "' is immutable\n")
-    for diag in err.diagnostics.s:
+    for diag in err.diagnostics:
       candidates.add(diag & "\n")
 
   result = (prefer, candidates)
@@ -230,7 +230,8 @@ proc bracketNotFoundError(c: PContext; n: PNode) =
     if symx.kind in routineKinds:
       errors.s.add(CandidateError(sym: symx,
                                 unmatchedVarParam: 0, firstMismatch: 0,
-                                diagnostics: OptionalStringSeq(enabled: false, s: @[])))
+                                diagnostics: nil,
+                                enabled: false))
       errors.enabled = true
     symx = nextOverloadIter(o, c, headSymbol)
   if errors.s.len == 0:

@@ -22,14 +22,11 @@ type
   TCandidateState* = enum
     csEmpty, csMatch, csNoMatch
 
-  OptionalStringSeq* = object
-    enabled*: bool
-    s*: seq[string]
-
   CandidateError* = object
     sym*: PSym
     unmatchedVarParam*, firstMismatch*: int
-    diagnostics*: OptionalStringSeq # seq[string]
+    diagnostics*: seq[string]
+    enabled*: bool
 
   CandidateErrors* = object
     enabled*: bool
@@ -66,7 +63,7 @@ type
                               # matching. they will be reset if the matching
                               # is not successful. may replace the bindings
                               # table in the future.
-    diagnostics*: OptionalStringSeq # \
+    diagnostics*: seq[string] # \
                               # when diagnosticsEnabled, the matching process
                               # will collect extra diagnostics that will be
                               # displayed to the user.
@@ -77,6 +74,7 @@ type
     inheritancePenalty: int   # to prefer closest father object type
     firstMismatch*: int       # position of the first type mismatch for
                               # better error messages
+    diagnosticsEnabled*: bool
 
   TTypeRelFlag* = enum
     trDontBind
@@ -147,7 +145,8 @@ proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
       c.calleeScope = 1
   else:
     c.calleeScope = calleeScope
-  c.diagnostics = OptionalStringSeq(enabled: diagnosticsEnabled, s: @[])
+  c.diagnostics = if diagnosticsEnabled: @[] else: nil
+  c.diagnosticsEnabled = diagnosticsEnabled
   c.magic = c.calleeSym.magic
   initIdTable(c.bindings)
   if binding != nil and callee.kind in routineKinds:
@@ -725,7 +724,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
     diagnostics: seq[string]
     errorPrefix: string
     flags: TExprFlags = {}
-    collectDiagnostics = m.diagnostics.enabled or
+    collectDiagnostics = m.diagnosticsEnabled or
                          sfExplain in typeClass.sym.flags
 
   if collectDiagnostics:
@@ -745,8 +744,8 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
   if collectDiagnostics:
     writelnHook = oldWriteHook
     for msg in diagnostics:
-      m.diagnostics.s.safeAdd msg
-      m.diagnostics.enabled = true
+      m.diagnostics.safeAdd msg
+      m.diagnosticsEnabled = true
 
   if checkedBody == nil: return nil
 
