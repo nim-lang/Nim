@@ -59,7 +59,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
                        filter: TSymKinds,
                        best, alt: var TCandidate,
                        errors: var CandidateErrors,
-                       diagnosticsFlag = false) =
+                       diagnosticsFlag: bool) =
   var o: TOverloadIter
   var sym = initOverloadIter(o, c, headSymbol)
   var scope = o.lastOverloadScope
@@ -68,6 +68,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
   # This can occur in cases like 'init(a, 1, (var b = new(Type2); b))'
   let counterInitial = c.currentScope.symbols.counter
   var syms: seq[tuple[s: PSym, scope: int]]
+  var noSyms = true
   var nextSymIndex = 0
   while sym != nil:
     if sym.kind in filter:
@@ -102,18 +103,20 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
           var cmp = cmpCandidates(best, z)
           if cmp < 0: best = z   # x is better than the best so far
           elif cmp == 0: alt = z # x is as good as the best so far
-      elif errors != nil or z.diagnostics != nil:
-        errors.safeAdd(CandidateError(
+      elif errors.enabled or z.diagnostics.enabled:
+        errors.s.safeAdd(CandidateError(
           sym: sym,
           unmatchedVarParam: int z.mutabilityProblem,
           firstMismatch: z.firstMismatch,
           diagnostics: z.diagnostics))
+        errors.enabled = true
     else:
       # Symbol table has been modified. Restart and pre-calculate all syms
       # before any further candidate init and compare. SLOW, but rare case.
       syms = initCandidateSymbols(c, headSymbol, initialBinding, filter,
                                   best, alt, o, diagnosticsFlag)
-    if syms == nil:
+      noSyms = false
+    if noSyms:
       sym = nextOverloadIter(o, c, headSymbol)
       scope = o.lastOverloadScope
     elif nextSymIndex < syms.len:
@@ -148,7 +151,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
   # we do a pre-analysis. If all types produce the same string, we will add
   # module information.
   let proto = describeArgs(c, n, 1, preferName)
-  for err in errors:
+  for err in errors.s:
     var errProto = ""
     let n = err.sym.typ.n
     for i in countup(1, n.len - 1):
@@ -162,7 +165,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       break
 
   var candidates = ""
-  for err in errors:
+  for err in errors.s:
     if err.sym.kind in routineKinds and err.sym.ast != nil:
       add(candidates, renderTree(err.sym.ast,
             {renderNoBody, renderNoComments, renderNoPragmas}))
@@ -194,7 +197,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       candidates.add("  for a 'var' type a variable needs to be passed, but '" &
                       renderNotLValue(n[err.unmatchedVarParam]) &
                       "' is immutable\n")
-    for diag in err.diagnostics:
+    for diag in err.diagnostics.s:
       candidates.add(diag & "\n")
 
   result = (prefer, candidates)
@@ -206,7 +209,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   if errorOutputs == {}:
     # fail fast:
     globalError(n.info, errTypeMismatch, "")
-  if errors.isNil or errors.len == 0:
+  if errors.s.len == 0:
     localError(n.info, errExprXCannotBeCalled, n[0].renderTree)
     return
 
@@ -219,17 +222,18 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   localError(n.info, errGenerated, result & "\nexpression: " & $n)
 
 proc bracketNotFoundError(c: PContext; n: PNode) =
-  var errors: CandidateErrors = @[]
+  var errors = CandidateErrors(enabled: true, s: @[])
   var o: TOverloadIter
   let headSymbol = n[0]
   var symx = initOverloadIter(o, c, headSymbol)
   while symx != nil:
     if symx.kind in routineKinds:
-      errors.add(CandidateError(sym: symx,
+      errors.s.add(CandidateError(sym: symx,
                                 unmatchedVarParam: 0, firstMismatch: 0,
-                                diagnostics: nil))
+                                diagnostics: OptionalStringSeq(enabled: false, s: @[])))
+      errors.enabled = true
     symx = nextOverloadIter(o, c, headSymbol)
-  if errors.len == 0:
+  if errors.s.len == 0:
     localError(n.info, "could not resolve: " & $n)
   else:
     notFoundError(c, n, errors)
@@ -423,12 +427,11 @@ proc tryDeref(n: PNode): PNode =
 
 proc semOverloadedCall(c: PContext, n, nOrig: PNode,
                        filter: TSymKinds, flags: TExprFlags): PNode =
-  var errors: CandidateErrors = if efExplain in flags: @[]
-                                else: nil
+  var errors = CandidateErrors(enabled: efExplain in flags, s: nil)
   var r = resolveOverloads(c, n, nOrig, filter, flags, errors)
   if r.state == csMatch:
     # this may be triggered, when the explain pragma is used
-    if errors.len > 0:
+    if errors.s.len > 0:
       let (_, candidates) = presentFailedCandidates(c, n, errors)
       message(n.info, hintUserRaw,
               "Non-matching candidates for " & renderTree(n) & "\n" &

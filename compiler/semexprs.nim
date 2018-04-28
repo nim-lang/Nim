@@ -305,7 +305,8 @@ proc isOpImpl(c: PContext, n: PNode, flags: TExprFlags): PNode =
     maybeLiftType(t2, c, n.info)
     var m: TCandidate
     initCandidate(c, m, t2)
-    if efExplain in flags: m.diagnostics = @[]
+    if efExplain in flags:
+      m.diagnostics = OptionalStringSeq(enabled: true, s: @[])
     let match = typeRel(m, t2, t1) >= isSubtype # isNone
     result = newIntNode(nkIntLit, ord(match))
 

@@ -22,12 +22,18 @@ type
   TCandidateState* = enum
     csEmpty, csMatch, csNoMatch
 
+  OptionalStringSeq* = object
+    enabled*: bool
+    s*: seq[string]
+
   CandidateError* = object
     sym*: PSym
     unmatchedVarParam*, firstMismatch*: int
-    diagnostics*: seq[string]
+    diagnostics*: OptionalStringSeq # seq[string]
 
-  CandidateErrors* = seq[CandidateError]
+  CandidateErrors* = object
+    enabled*: bool
+    s*: seq[CandidateError]
 
   TCandidate* = object
     c*: PContext
@@ -60,7 +66,8 @@ type
                               # matching. they will be reset if the matching
                               # is not successful. may replace the bindings
                               # table in the future.
-    diagnostics*: seq[string] # when this is not nil, the matching process
+    diagnostics*: OptionalStringSeq # \
+                              # when diagnosticsEnabled, the matching process
                               # will collect extra diagnostics that will be
                               # displayed to the user.
                               # triggered when overload resolution fails
@@ -124,7 +131,8 @@ proc put(c: var TCandidate, key, val: PType) {.inline.} =
   idTablePut(c.bindings, key, val.skipIntLit)
 
 proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
-                    binding: PNode, calleeScope = -1, diagnostics = false) =
+                    binding: PNode, calleeScope = -1,
+                    diagnosticsEnabled = false) =
   initCandidateAux(ctx, c, callee.typ)
   c.calleeSym = callee
   if callee.kind in skProcKinds and calleeScope == -1:
@@ -139,7 +147,7 @@ proc initCandidate*(ctx: PContext, c: var TCandidate, callee: PSym,
       c.calleeScope = 1
   else:
     c.calleeScope = calleeScope
-  c.diagnostics = if diagnostics: @[] else: nil
+  c.diagnostics = OptionalStringSeq(enabled: diagnosticsEnabled, s: @[])
   c.magic = c.calleeSym.magic
   initIdTable(c.bindings)
   if binding != nil and callee.kind in routineKinds:
@@ -717,7 +725,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
     diagnostics: seq[string]
     errorPrefix: string
     flags: TExprFlags = {}
-    collectDiagnostics = m.diagnostics != nil or
+    collectDiagnostics = m.diagnostics.enabled or
                          sfExplain in typeClass.sym.flags
 
   if collectDiagnostics:
@@ -736,7 +744,9 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
 
   if collectDiagnostics:
     writelnHook = oldWriteHook
-    for msg in diagnostics: m.diagnostics.safeAdd msg
+    for msg in diagnostics:
+      m.diagnostics.s.safeAdd msg
+      m.diagnostics.enabled = true
 
   if checkedBody == nil: return nil
 
