@@ -2412,8 +2412,9 @@ proc `==` *[T](x, y: seq[T]): bool {.noSideEffect.} =
     if seqToPtr(x) == seqToPtr(y):
       return true
 
-  if x.isNil or y.isNil:
-    return false
+  when not defined(nimNoNil):
+    if x.isNil or y.isNil:
+      return false
 
   if x.len != y.len:
     return false
@@ -4010,18 +4011,18 @@ proc addQuoted*[T](s: var string, x: T) =
 
 when hasAlloc:
   # XXX: make these the default (or implement the NilObject optimization)
-  proc safeAdd*[T](x: var seq[T], y: T) {.noSideEffect.} =
+  proc safeAdd*[T](x: var seq[T], y: T) {.noSideEffect, deprecated.} =
     ## Adds ``y`` to ``x`` unless ``x`` is not yet initialized; in that case,
     ## ``x`` becomes ``@[y]``
     if x == nil: x = @[y]
     else: x.add(y)
 
-  proc safeAdd*(x: var string, y: char) =
+  proc safeAdd*(x: var string, y: char) {.noSideEffect, deprecated.} =
     ## Adds ``y`` to ``x``. If ``x`` is ``nil`` it is initialized to ``""``
     if x == nil: x = ""
     x.add(y)
 
-  proc safeAdd*(x: var string, y: string) =
+  proc safeAdd*(x: var string, y: string) {.noSideEffect, deprecated.} =
     ## Adds ``y`` to ``x`` unless ``x`` is not yet initalized; in that
     ## case, ``x`` becomes ``y``
     if x == nil: x = y
