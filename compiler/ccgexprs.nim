@@ -882,7 +882,7 @@ proc genIndexCheck(p: BProc; arr, idx: TLoc) =
               rdCharLoc(idx), first, intLiteral(lastOrd(ty)))
   of tySequence, tyString:
     linefmt(p, cpsStmts,
-          "if ((NU)($1) >= (NU)($2->$3)) #raiseIndexError();$n",
+          "if (!$2 || (NU)($1) >= (NU)($2->$3)) #raiseIndexError();$n",
           rdLoc(idx), rdLoc(arr), lenField(p))
   else: discard
 
@@ -907,11 +907,11 @@ proc genSeqElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   if optBoundsCheck in p.options:
     if ty.kind == tyString:
       linefmt(p, cpsStmts,
-           "if ((NU)($1) > (NU)($2->$3)) #raiseIndexError();$n",
+           "if (!$2 || (NU)($1) > (NU)($2->$3)) #raiseIndexError();$n",
            rdLoc(b), rdLoc(a), lenField(p))
     else:
       linefmt(p, cpsStmts,
-           "if ((NU)($1) >= (NU)($2->$3)) #raiseIndexError();$n",
+           "if (!$2 || (NU)($1) >= (NU)($2->$3)) #raiseIndexError();$n",
            rdLoc(b), rdLoc(a), lenField(p))
   if d.k == locNone: d.storage = OnHeap
   if skipTypes(a.t, abstractVar).kind in {tyRef, tyPtr}:
@@ -1073,7 +1073,7 @@ proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
       if e.sons[i + 2].kind in {nkStrLit..nkTripleStrLit}:
         inc(L, len(e.sons[i + 2].strVal))
       else:
-        addf(lens, "$1->$2 + ", [rdLoc(a), lenField(p)])
+        addf(lens, "($1 ? $1->$2 : 0) + ", [rdLoc(a), lenField(p)])
       add(appends, rfmt(p.module, "#appendString($1, $2);$n",
                         rdLoc(dest), rdLoc(a)))
   linefmt(p, cpsStmts, "$1 = #resizeString($1, $2$3);$n",
@@ -1417,7 +1417,7 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
       putIntoDest(p, b, e, "$1, $1Len_0" % [rdLoc(a)], a.storage)
     of tyString, tySequence:
       putIntoDest(p, b, e,
-                  "$1->data, $1->$2" % [rdLoc(a), lenField(p)], a.storage)
+                  "$1->data, ($1 ? $1->$2 : 0)" % [rdLoc(a), lenField(p)], a.storage)
     of tyArray:
       putIntoDest(p, b, e,
                   "$1, $2" % [rdLoc(a), rope(lengthOrd(a.t))], a.storage)
