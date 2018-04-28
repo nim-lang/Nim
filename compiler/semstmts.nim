@@ -500,12 +500,11 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         localError(a.info, errXExpected, "tuple")
       elif length-2 != sonsLen(tup):
         localError(a.info, errWrongNumberOfVariables)
-      else:
-        b = newNodeI(nkVarTuple, a.info)
-        newSons(b, length)
-        b.sons[length-2] = a.sons[length-2] # keep type desc for doc generator
-        b.sons[length-1] = def
-        addToVarSection(c, result, n, b)
+      b = newNodeI(nkVarTuple, a.info)
+      newSons(b, length)
+      b.sons[length-2] = a.sons[length-2] # keep type desc for doc generator
+      b.sons[length-1] = def
+      addToVarSection(c, result, n, b)
     elif tup.kind == tyTuple and def.kind in {nkPar, nkTupleConstr} and
         a.kind == nkIdentDefs and a.len > 3:
       message(a.info, warnEachIdentIsTuple)
@@ -547,7 +546,9 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         addToVarSection(c, result, n, b)
       else:
         if def.kind in {nkPar, nkTupleConstr}: v.ast = def[j]
-        setVarType(v, tup.sons[j])
+        # bug #7663, for 'nim check' this can be a non-tuple:
+        if tup.kind == tyTuple: setVarType(v, tup.sons[j])
+        else: v.typ = tup
         b.sons[j] = newSymNode(v)
       checkNilable(v)
       if sfCompileTime in v.flags: hasCompileTime = true
