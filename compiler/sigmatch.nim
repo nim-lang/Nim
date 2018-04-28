@@ -28,9 +28,7 @@ type
     diagnostics*: seq[string]
     enabled*: bool
 
-  CandidateErrors* = object
-    enabled*: bool
-    s*: seq[CandidateError]
+  CandidateErrors* = seq[CandidateError]
 
   TCandidate* = object
     c*: PContext

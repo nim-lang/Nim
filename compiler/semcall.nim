@@ -59,7 +59,8 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
                        filter: TSymKinds,
                        best, alt: var TCandidate,
                        errors: var CandidateErrors,
-                       diagnosticsFlag: bool) =
+                       diagnosticsFlag: bool,
+                       errorsEnabled: bool) =
   var o: TOverloadIter
   var sym = initOverloadIter(o, c, headSymbol)
   var scope = o.lastOverloadScope
@@ -103,13 +104,12 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
           var cmp = cmpCandidates(best, z)
           if cmp < 0: best = z   # x is better than the best so far
           elif cmp == 0: alt = z # x is as good as the best so far
-      elif errors.enabled or z.diagnosticsEnabled:
-        errors.s.safeAdd(CandidateError(
+      elif errorsEnabled or z.diagnosticsEnabled:
+        errors.safeAdd(CandidateError(
           sym: sym,
           unmatchedVarParam: int z.mutabilityProblem,
           firstMismatch: z.firstMismatch,
           diagnostics: z.diagnostics))
-        errors.enabled = true
     else:
       # Symbol table has been modified. Restart and pre-calculate all syms
       # before any further candidate init and compare. SLOW, but rare case.
@@ -151,7 +151,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
   # we do a pre-analysis. If all types produce the same string, we will add
   # module information.
   let proto = describeArgs(c, n, 1, preferName)
-  for err in errors.s:
+  for err in errors:
     var errProto = ""
     let n = err.sym.typ.n
     for i in countup(1, n.len - 1):
@@ -165,7 +165,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       break
 
   var candidates = ""
-  for err in errors.s:
+  for err in errors:
     if err.sym.kind in routineKinds and err.sym.ast != nil:
       add(candidates, renderTree(err.sym.ast,
             {renderNoBody, renderNoComments, renderNoPragmas}))
@@ -209,7 +209,7 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   if errorOutputs == {}:
     # fail fast:
     globalError(n.info, errTypeMismatch, "")
-  if errors.s.len == 0:
+  if errors.len == 0:
     localError(n.info, errExprXCannotBeCalled, n[0].renderTree)
     return
 
@@ -222,26 +222,26 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
   localError(n.info, errGenerated, result & "\nexpression: " & $n)
 
 proc bracketNotFoundError(c: PContext; n: PNode) =
-  var errors = CandidateErrors(enabled: true, s: @[])
+  var errors: CandidateErrors = @[]
   var o: TOverloadIter
   let headSymbol = n[0]
   var symx = initOverloadIter(o, c, headSymbol)
   while symx != nil:
     if symx.kind in routineKinds:
-      errors.s.add(CandidateError(sym: symx,
+      errors.add(CandidateError(sym: symx,
                                 unmatchedVarParam: 0, firstMismatch: 0,
                                 diagnostics: nil,
                                 enabled: false))
-      errors.enabled = true
     symx = nextOverloadIter(o, c, headSymbol)
-  if errors.s.len == 0:
+  if errors.len == 0:
     localError(n.info, "could not resolve: " & $n)
   else:
     notFoundError(c, n, errors)
 
 proc resolveOverloads(c: PContext, n, orig: PNode,
                       filter: TSymKinds, flags: TExprFlags,
-                      errors: var CandidateErrors): TCandidate =
+                      errors: var CandidateErrors,
+                      errorsEnabled: bool): TCandidate =
   var initialBinding: PNode
   var alt: TCandidate
   var f = n.sons[0]
@@ -254,7 +254,8 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
   template pickBest(headSymbol) =
     pickBestCandidate(c, headSymbol, n, orig, initialBinding,
-                      filter, result, alt, errors, efExplain in flags)
+                      filter, result, alt, errors, efExplain in flags,
+                      errorsEnabled)
   pickBest(f)
 
   let overloadsState = result.state
@@ -428,11 +429,11 @@ proc tryDeref(n: PNode): PNode =
 
 proc semOverloadedCall(c: PContext, n, nOrig: PNode,
                        filter: TSymKinds, flags: TExprFlags): PNode =
-  var errors = CandidateErrors(enabled: efExplain in flags, s: nil)
-  var r = resolveOverloads(c, n, nOrig, filter, flags, errors)
+  var errors: CandidateErrors = if efExplain in flags: @[] else: nil
+  var r = resolveOverloads(c, n, nOrig, filter, flags, errors, efExplain in flags)
   if r.state == csMatch:
     # this may be triggered, when the explain pragma is used
-    if errors.s.len > 0:
+    if errors.len > 0:
       let (_, candidates) = presentFailedCandidates(c, n, errors)
       message(n.info, hintUserRaw,
               "Non-matching candidates for " & renderTree(n) & "\n" &
@@ -447,7 +448,7 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
     # into sigmatch with hidden conversion produced there
     #
     n.sons[1] = n.sons[1].tryDeref
-    var r = resolveOverloads(c, n, nOrig, filter, flags, errors)
+    var r = resolveOverloads(c, n, nOrig, filter, flags, errors, efExplain in flags)
     if r.state == csMatch: result = semResolvedCall(c, n, r)
     else:
       # get rid of the deref again for a better error message:
