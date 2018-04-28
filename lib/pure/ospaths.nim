@@ -162,7 +162,7 @@ const
     ## The character which separates the base filename from the extension;
     ## for example, the '.' in ``os.nim``.
 
-when not defined(windows):
+when not defined(windows) and not defined(nimscript):
   import posix
 
 proc joinPath*(head, tail: string): string {.
