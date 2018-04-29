@@ -47,27 +47,19 @@ proc add*(url: var Url, a: Url) {.deprecated.} =
   url = url / a
 {.pop.}
 
-proc encodeUrl*(s: string, asRaw = false): string =
+proc encodeUrl*(s: string, usePlus = false): string =
   ## Encodes a value to be HTTP safe: This means that characters in the set
   ## ``{'A'..'Z', 'a'..'z', '0'..'9', '_'}`` are carried over to the result,
-  ## a space is converted to ``'%20'`` and every other character is encoded as
+  ## a space is converted to ``'+'`` and every other character is encoded as
   ## ``'%xx'`` where ``xx`` denotes its hexadecimal value.
   result = newStringOfCap(s.len + s.len shr 2) # assume 12% non-alnum-chars
-  if asRaw:
-    for c in s:
-      case c
-      of 'a'..'z', 'A'..'Z', '0'..'9', '_', '-', '.', '~': add(result, c)
-      else:
-        add(result, '%')
-        add(result, toHex(ord(c), 2))
-  else:
-    for c in s:
-      case c
-      of 'a'..'z', 'A'..'Z', '0'..'9', '_': add(result, c)
-      of ' ': add(result, '+')
-      else:
-        add(result, '%')
-        add(result, toHex(ord(c), 2))
+  for i in 0..s.len-1:
+    case s[i]
+    of 'a'..'z', 'A'..'Z', '0'..'9', '_': add(result, s[i])
+    of ' ': add(result, if usePlus: "%20" else: "+")
+    else:
+      add(result, '%')
+      add(result, toHex(ord(s[i]), 2))
 
 proc decodeUrl*(s: string): string =
   ## Decodes a value from its HTTP representation: This means that a ``'+'``
@@ -378,11 +370,10 @@ proc `$`*(u: Uri): string =
 
 when isMainModule:
   block:
-    const test1 = "abc\L+def xyz@+%/"
-    doAssert encodeUrl(test1) == "abc%0A%2Bdef+xyz%40%2B%25%2F"
+    const test1 = "abc\L+def xyz"
+    doAssert encodeUrl(test1) == "abc%0A%2Bdef+xyz"
     doAssert decodeUrl(encodeUrl(test1)) == test1
-
-    doAssert encodeUrl(test1, true) == "abc%0A%2Bdef%20xyz%40%2B%25%2F"
+    doAssert encodeUrl(test1, true) == "abc%0A%2Bdef%20xyz"
     doAssert decodeUrl(encodeUrl(test1, true)) == test1
 
   block:
