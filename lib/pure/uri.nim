@@ -53,17 +53,21 @@ proc encodeUrl*(s: string, rawOn = false): string =
   ## a space is converted to ``'%20'`` and every other character is encoded as
   ## ``'%xx'`` where ``xx`` denotes its hexadecimal value.
   result = newStringOfCap(s.len + s.len shr 2) # assume 12% non-alnum-chars
-  for i in 0..s.len-1:
-    let c = s[i]
-    if ('a'..'z').contains(c) or ('A'..'Z').contains(c) or ('0'..'9').contains(c) or '_' == c:
-      add(result, s[i])
-    elif rawOn and ('-' == c or '.' == c or '~' == c):
-      add(result, s[i])
-    elif not rawOn and (' ' == c):
-      add(result, '+')
-    else:
-      add(result, '%')
-      add(result, toHex(ord(s[i]), 2))
+  if rawOn:
+    for c in s:
+      case c
+      of 'a'..'z', 'A'..'Z', '0'..'9', '_', '-', '.', '~': add(result, c)
+      else:
+        add(result, '%')
+        add(result, toHex(ord(c), 2))
+  else:
+    for c in s:
+      case c
+      of 'a'..'z', 'A'..'Z', '0'..'9', '_': add(result, c)
+      of ' ': add(result, '+')
+      else:
+        add(result, '%')
+        add(result, toHex(ord(c), 2))
 
 proc decodeUrl*(s: string): string =
   ## Decodes a value from its HTTP representation: This means that a ``'+'``
