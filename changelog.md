@@ -81,6 +81,8 @@
   Imported exceptions can be raised and caught just like Nim exceptions.
   More details in language manual.
 
+- Range float typed, example `range[0.0 .. Inf]`. More details in language manual.
+
 ### Tool changes
 
 - ``jsondoc2`` has been renamed ``jsondoc``, similar to how ``doc2`` was renamed

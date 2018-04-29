@@ -704,7 +704,7 @@ proc lastValue*[T:BiggestInt|BiggestFloat](t: PType; fixedUnsigned = false): T =
           internalError("invalid kind for first(" & $t.kind & ')')
           result = NaN
 
-proc lastOrd*(t: PType; fixedUnsigned = false): BiggestInt {.inline.}= 
+proc lastOrd*(t: PType; fixedUnsigned = false): BiggestInt {.inline.} = 
   lastValue[BiggestInt](t, fixedUnsigned)
 
 proc lengthOrd*(t: PType): BiggestInt =
