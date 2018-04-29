@@ -63,7 +63,7 @@ type
       # to the user.
     efWantStmt, efAllowStmt, efDetermineType, efExplain,
     efAllowDestructor, efWantValue, efOperand, efNoSemCheck,
-    efNoProcvarCheck, efNoEvaluateGeneric, efInCall, efFromHlo,
+    efNoEvaluateGeneric, efInCall, efFromHlo
 
   TExprFlags* = set[TExprFlag]
 

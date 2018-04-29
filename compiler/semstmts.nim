@@ -71,37 +71,12 @@ proc toCover(t: PType): BiggestInt =
   else:
     result = lengthOrd(skipTypes(t, abstractVar-{tyTypeDesc}))
 
-when false:
-  proc performProcvarCheck(c: PContext, info: TLineInfo, s: PSym) =
-    ## Checks that the given symbol is a proper procedure variable, meaning
-    ## that it
-    var smoduleId = getModule(s).id
-    if sfProcvar notin s.flags and s.typ.callConv == ccDefault and
-        smoduleId != c.module.id:
-      block outer:
-        for module in c.friendModules:
-          if smoduleId == module.id:
-            break outer
-        localError(info, errXCannotBePassedToProcVar, s.name.s)
-
-template semProcvarCheck(c: PContext, n: PNode) =
-  when false:
-    var n = n.skipConv
-    if n.kind in nkSymChoices:
-      for x in n:
-        if x.sym.kind in {skProc, skMethod, skConverter, skIterator}:
-          performProcvarCheck(c, n.info, x.sym)
-    elif n.kind == nkSym and n.sym.kind in {skProc, skMethod, skConverter,
-                                          skIterator}:
-      performProcvarCheck(c, n.info, n.sym)
-
 proc semProc(c: PContext, n: PNode): PNode
 
 proc semExprBranch(c: PContext, n: PNode): PNode =
   result = semExpr(c, n)
   if result.typ != nil:
     # XXX tyGenericInst here?
-    semProcvarCheck(c, result)
     if result.typ.kind in {tyVar, tyLent}: result = newDeref(result)
 
 proc semExprBranchScope(c: PContext, n: PNode): PNode =
@@ -384,7 +359,7 @@ proc checkNilable(v: PSym) =
 
 include semasgn
 
-proc addToVarSection(c: PContext; result: var PNode; orig, identDefs: PNode) =
+proc addToVarSection(c: PContext; result: PNode; orig, identDefs: PNode) =
   let L = identDefs.len
   let value = identDefs[L-1]
   if result.kind == nkStmtList:
@@ -525,12 +500,11 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         localError(a.info, errXExpected, "tuple")
       elif length-2 != sonsLen(tup):
         localError(a.info, errWrongNumberOfVariables)
-      else:
-        b = newNodeI(nkVarTuple, a.info)
-        newSons(b, length)
-        b.sons[length-2] = a.sons[length-2] # keep type desc for doc generator
-        b.sons[length-1] = def
-        addToVarSection(c, result, n, b)
+      b = newNodeI(nkVarTuple, a.info)
+      newSons(b, length)
+      b.sons[length-2] = a.sons[length-2] # keep type desc for doc generator
+      b.sons[length-1] = def
+      addToVarSection(c, result, n, b)
     elif tup.kind == tyTuple and def.kind in {nkPar, nkTupleConstr} and
         a.kind == nkIdentDefs and a.len > 3:
       message(a.info, warnEachIdentIsTuple)
@@ -572,7 +546,9 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         addToVarSection(c, result, n, b)
       else:
         if def.kind in {nkPar, nkTupleConstr}: v.ast = def[j]
-        setVarType(v, tup.sons[j])
+        # bug #7663, for 'nim check' this can be a non-tuple:
+        if tup.kind == tyTuple: setVarType(v, tup.sons[j])
+        else: v.typ = tup
         b.sons[j] = newSymNode(v)
       checkNilable(v)
       if sfCompileTime in v.flags: hasCompileTime = true
@@ -1588,9 +1564,11 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if sfOverriden in s.flags or s.name.s[0] == '=': semOverride(c, s, n)
   if s.name.s[0] in {'.', '('}:
     if s.name.s in [".", ".()", ".="] and {destructor, dotOperators} * c.features == {}:
-      message(n.info, warnDeprecated, "overloaded '.' and '()' operators are now .experimental; " & s.name.s)
+      localError(n.info, "the overloaded " & s.name.s &
+        " operator has to be enabled with {.experimental: \"dotOperators\".}")
     elif s.name.s == "()" and callOperator notin c.features:
-      message(n.info, warnDeprecated, "overloaded '()' operators are now .experimental; " & s.name.s)
+      localError(n.info, "the overloaded " & s.name.s &
+        " operator has to be enabled with {.experimental: \"callOperator\".}")
 
   if n.sons[bodyPos].kind != nkEmpty:
     # for DLL generation it is annoying to check for sfImportc!
@@ -1682,11 +1660,6 @@ proc semIterator(c: PContext, n: PNode): PNode =
     incl(s.typ.flags, tfCapturesEnv)
   else:
     s.typ.callConv = ccInline
-  when false:
-    if s.typ.callConv != ccInline:
-      s.typ.callConv = ccClosure
-      # and they always at least use the 'env' for the state field:
-      incl(s.typ.flags, tfCapturesEnv)
   if n.sons[bodyPos].kind == nkEmpty and s.magic == mNone:
     localError(n.info, errImplOfXexpected, s.name.s)
 
@@ -1792,14 +1765,6 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
   evalStaticStmt(c.module, c.cache, a, c.p.owner)
   result = newNodeI(nkDiscardStmt, n.info, 1)
   result.sons[0] = emptyNode
-  when false:
-    result = evalStaticStmt(c.module, a, c.p.owner)
-    if result.isNil:
-      LocalError(n.info, errCannotInterpretNodeX, renderTree(n))
-      result = emptyNode
-    elif result.kind == nkEmpty:
-      result = newNodeI(nkDiscardStmt, n.info, 1)
-      result.sons[0] = emptyNode
 
 proc usesResult(n: PNode): bool =
   # nkStmtList(expr) properly propagates the void context,
@@ -1841,80 +1806,47 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
   #                                         nkNilLit, nkEmpty}:
   #  dec last
   for i in countup(0, length - 1):
-    let k = n.sons[i].kind
-    case k
-    of nkFinally, nkExceptBranch:
-      # stand-alone finally and except blocks are
-      # transformed into regular try blocks:
-      #
-      # var f = fopen("somefile") | var f = fopen("somefile")
-      # finally: fclose(f)        | try:
-      # ...                       |   ...
-      #                           | finally:
-      #                           |   fclose(f)
-      var deferPart: PNode
-      if k == nkDefer:
-        deferPart = newNodeI(nkFinally, n.sons[i].info)
-        deferPart.add n.sons[i].sons[0]
-      elif k == nkFinally:
-        message(n.info, warnDeprecated,
-                "use 'defer'; standalone 'finally'")
-        deferPart = n.sons[i]
-      else:
-        message(n.info, warnDeprecated,
-                "use an explicit 'try'; standalone 'except'")
-        deferPart = n.sons[i]
-      var tryStmt = newNodeI(nkTryStmt, n.sons[i].info)
-      var body = newNodeI(nkStmtList, n.sons[i].info)
-      if i < n.sonsLen - 1:
-        body.sons = n.sons[(i+1)..n.len-1]
-      tryStmt.addSon(body)
-      tryStmt.addSon(deferPart)
-      n.sons[i] = semTry(c, tryStmt)
-      n.sons.setLen(i+1)
-      n.typ = n.sons[i].typ
-      return
-    else:
-      var expr = semExpr(c, n.sons[i], flags)
-      n.sons[i] = expr
-      if c.matchedConcept != nil and expr.typ != nil and
-         (nfFromTemplate notin n.flags or i != last):
-        case expr.typ.kind
-        of tyBool:
-          if expr.kind == nkInfix and
-             expr[0].kind == nkSym and
-             expr[0].sym.name.s == "==":
-            if expr[1].typ.isUnresolvedStatic:
-              inferConceptStaticParam(c, expr[1], expr[2])
-              continue
-            elif expr[2].typ.isUnresolvedStatic:
-              inferConceptStaticParam(c, expr[2], expr[1])
-              continue
+    var expr = semExpr(c, n.sons[i], flags)
+    n.sons[i] = expr
+    if c.matchedConcept != nil and expr.typ != nil and
+        (nfFromTemplate notin n.flags or i != last):
+      case expr.typ.kind
+      of tyBool:
+        if expr.kind == nkInfix and
+            expr[0].kind == nkSym and
+            expr[0].sym.name.s == "==":
+          if expr[1].typ.isUnresolvedStatic:
+            inferConceptStaticParam(c, expr[1], expr[2])
+            continue
+          elif expr[2].typ.isUnresolvedStatic:
+            inferConceptStaticParam(c, expr[2], expr[1])
+            continue
 
-          let verdict = semConstExpr(c, n[i])
-          if verdict.intVal == 0:
-            localError(result.info, "concept predicate failed")
-        of tyUnknown: continue
-        else: discard
-      if n.sons[i].typ == enforceVoidContext: #or usesResult(n.sons[i]):
-        voidContext = true
-        n.typ = enforceVoidContext
-      if i == last and (length == 1 or efWantValue in flags):
-        n.typ = n.sons[i].typ
-        if not isEmptyType(n.typ): n.kind = nkStmtListExpr
-      elif i != last or voidContext:
-        discardCheck(c, n.sons[i])
-      else:
-        n.typ = n.sons[i].typ
-        if not isEmptyType(n.typ): n.kind = nkStmtListExpr
-      if n.sons[i].kind in LastBlockStmts or
-         n.sons[i].kind in nkCallKinds and n.sons[i][0].kind == nkSym and sfNoReturn in n.sons[i][0].sym.flags:
-        for j in countup(i + 1, length - 1):
-          case n.sons[j].kind
-          of nkPragma, nkCommentStmt, nkNilLit, nkEmpty, nkBlockExpr,
-             nkBlockStmt, nkState: discard
-          else: localError(n.sons[j].info, errStmtInvalidAfterReturn)
+        let verdict = semConstExpr(c, n[i])
+        if verdict.intVal == 0:
+          localError(result.info, "concept predicate failed")
+      of tyUnknown: continue
       else: discard
+    if n.sons[i].typ == enforceVoidContext: #or usesResult(n.sons[i]):
+      voidContext = true
+      n.typ = enforceVoidContext
+    if i == last and (length == 1 or efWantValue in flags):
+      n.typ = n.sons[i].typ
+      if not isEmptyType(n.typ): n.kind = nkStmtListExpr
+    elif i != last or voidContext:
+      discardCheck(c, n.sons[i])
+    else:
+      n.typ = n.sons[i].typ
+      if not isEmptyType(n.typ): n.kind = nkStmtListExpr
+    if n.sons[i].kind in LastBlockStmts or
+        n.sons[i].kind in nkCallKinds and n.sons[i][0].kind == nkSym and
+        sfNoReturn in n.sons[i][0].sym.flags:
+      for j in countup(i + 1, length - 1):
+        case n.sons[j].kind
+        of nkPragma, nkCommentStmt, nkNilLit, nkEmpty, nkBlockExpr,
+            nkBlockStmt, nkState: discard
+        else: localError(n.sons[j].info, errStmtInvalidAfterReturn)
+    else: discard
 
   if result.len == 1 and
      # concept bodies should be preserved as a stmt list:
@@ -1930,15 +1862,6 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
         not (result.comment[0] == '#' and result.comment[1] == '#'):
       # it is an old-style comment statement: we replace it with 'discard ""':
       prettybase.replaceComment(result.info)
-  when false:
-    # a statement list (s; e) has the type 'e':
-    if result.kind == nkStmtList and result.len > 0:
-      var lastStmt = lastSon(result)
-      if lastStmt.kind != nkNilLit and not implicitlyDiscardable(lastStmt):
-        result.typ = lastStmt.typ
-        #localError(lastStmt.info, errGenerated,
-        #  "Last expression must be explicitly returned if it " &
-        #  "is discardable or discarded")
 
 proc semStmt(c: PContext, n: PNode): PNode =
   # now: simply an alias:
