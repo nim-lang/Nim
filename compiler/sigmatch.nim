@@ -2173,7 +2173,8 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
   var formal: PSym = if formalLen > 1: m.callee.n.sons[1].sym else: nil
 
   while a < n.len:
-    if a >= formalLen-1 and formal != nil and formal.typ.isVarargsUntyped:
+    if a >= formalLen-1 and f < formalLen and m.callee.n[f].typ.isVarargsUntyped:
+      formal = m.callee.n.sons[f].sym
       incl(marker, formal.position)
       if container.isNil:
         container = newNodeIT(nkArgList, n.sons[a].info, arrayConstr(c, n.info))
