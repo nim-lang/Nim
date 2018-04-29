@@ -4,6 +4,7 @@ discard """
 4:2
 Got Hi
 Got Hey'''
+  disabled: "true"
 """
 
 # bug #404
