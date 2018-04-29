@@ -47,16 +47,20 @@ proc add*(url: var Url, a: Url) {.deprecated.} =
   url = url / a
 {.pop.}
 
-proc encodeUrl*(s: string): string =
+proc encodeUrl*(s: string, rawOn = false): string =
   ## Encodes a value to be HTTP safe: This means that characters in the set
   ## ``{'A'..'Z', 'a'..'z', '0'..'9', '_'}`` are carried over to the result,
   ## a space is converted to ``'%20'`` and every other character is encoded as
   ## ``'%xx'`` where ``xx`` denotes its hexadecimal value.
   result = newStringOfCap(s.len + s.len shr 2) # assume 12% non-alnum-chars
   for i in 0..s.len-1:
-    case s[i]
-    of 'a'..'z', 'A'..'Z', '0'..'9', '_': add(result, s[i])
-    of ' ': add(result, "%20")
+    let c = s[i]
+    if ('a'..'z').contains(c) or ('A'..'Z').contains(c) or ('0'..'9').contains(c) or '_' == c:
+      add(result, s[i])
+    elif rawOn and ('-' == c or '.' == c or '~' == c):
+      add(result, s[i])
+    elif not rawOn and (' ' == c):
+      add(result, '+')
     else:
       add(result, '%')
       add(result, toHex(ord(s[i]), 2))
@@ -370,9 +374,12 @@ proc `$`*(u: Uri): string =
 
 when isMainModule:
   block:
-    const test1 = "abc\L+def xyz"
-    doAssert encodeUrl(test1) == "abc%0A%2Bdef%20xyz"
+    const test1 = "abc\L+def xyz@+%/"
+    doAssert encodeUrl(test1) == "abc%0A%2Bdef+xyz%40%2B%25%2F"
     doAssert decodeUrl(encodeUrl(test1)) == test1
+
+    doAssert encodeUrl(test1, true) == "abc%0A%2Bdef%20xyz%40%2B%25%2F"
+    doAssert decodeUrl(encodeUrl(test1, true)) == test1
 
   block:
     let str = "http://localhost"
