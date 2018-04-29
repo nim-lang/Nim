@@ -74,7 +74,7 @@
 ##
 ## .. code-block:: Nim
 ##    import asyncdispatch, httpclient
-##    
+##
 ##    proc onProgressChanged(total, progress, speed: BiggestInt) {.async.} =
 ##      echo("Downloaded ", progress, " of ", total)
 ##      echo("Current rate: ", speed div 1000, "kb/s")
@@ -247,7 +247,7 @@ proc parseChunks(s: Socket, timeout: int): string =
     var i = 0
     if chunkSizeStr == "":
       httpError("Server terminated connection prematurely")
-    while true:
+    while i < chunkSizeStr.len:
       case chunkSizeStr[i]
       of '0'..'9':
         chunkSize = chunkSize shl 4 or (ord(chunkSizeStr[i]) - ord('0'))
@@ -255,8 +255,6 @@ proc parseChunks(s: Socket, timeout: int): string =
         chunkSize = chunkSize shl 4 or (ord(chunkSizeStr[i]) - ord('a') + 10)
       of 'A'..'F':
         chunkSize = chunkSize shl 4 or (ord(chunkSizeStr[i]) - ord('A') + 10)
-      of '\0':
-        break
       of ';':
         # http://tools.ietf.org/html/rfc2616#section-3.6.1
         # We don't care about chunk-extensions.
@@ -938,7 +936,7 @@ proc parseChunks(client: HttpClient | AsyncHttpClient): Future[void]
     var i = 0
     if chunkSizeStr == "":
       httpError("Server terminated connection prematurely")
-    while true:
+    while i < chunkSizeStr.len:
       case chunkSizeStr[i]
       of '0'..'9':
         chunkSize = chunkSize shl 4 or (ord(chunkSizeStr[i]) - ord('0'))
@@ -946,8 +944,6 @@ proc parseChunks(client: HttpClient | AsyncHttpClient): Future[void]
         chunkSize = chunkSize shl 4 or (ord(chunkSizeStr[i]) - ord('a') + 10)
       of 'A'..'F':
         chunkSize = chunkSize shl 4 or (ord(chunkSizeStr[i]) - ord('A') + 10)
-      of '\0':
-        break
       of ';':
         # http://tools.ietf.org/html/rfc2616#section-3.6.1
         # We don't care about chunk-extensions.
