@@ -97,6 +97,9 @@
 
 - The command syntax now supports keyword arguments after the first comma.
 
+- Thread-local variables can now be declared inside procs. This implies all
+  the effects of the `global` pragma.
+
 ### Tool changes
 
 - ``jsondoc2`` has been renamed ``jsondoc``, similar to how ``doc2`` was renamed

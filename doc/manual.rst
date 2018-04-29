@@ -7798,8 +7798,9 @@ Future directions:
 Threadvar pragma
 ----------------
 
-A global variable can be marked with the ``threadvar`` pragma; it is
-a `thread-local`:idx: variable then:
+A variable can be marked with the ``threadvar`` pragma, which makes it a
+`thread-local`:idx: variable; Additionally, this implies all the effects
+of the ``global`` pragma.
 
 .. code-block:: nim
   var checkpoints* {.threadvar.}: seq[string]
