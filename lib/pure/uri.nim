@@ -53,13 +53,13 @@ proc encodeUrl*(s: string, usePlus = false): string =
   ## a space is converted to ``'+'`` and every other character is encoded as
   ## ``'%xx'`` where ``xx`` denotes its hexadecimal value.
   result = newStringOfCap(s.len + s.len shr 2) # assume 12% non-alnum-chars
-  for i in 0..s.len-1:
-    case s[i]
-    of 'a'..'z', 'A'..'Z', '0'..'9', '_': add(result, s[i])
+  for c in s:
+    case c
+    of 'a'..'z', 'A'..'Z', '0'..'9', '_': add(result, c)
     of ' ': add(result, if usePlus: "%20" else: "+")
     else:
       add(result, '%')
-      add(result, toHex(ord(s[i]), 2))
+      add(result, toHex(ord(c), 2))
 
 proc decodeUrl*(s: string): string =
   ## Decodes a value from its HTTP representation: This means that a ``'+'``
