@@ -230,6 +230,7 @@ proc chmod*(ftp: AsyncFtpClient, path: string,
     of fpOthersExec: otherOctal.inc(1)
     of fpOthersWrite: otherOctal.inc(2)
     of fpOthersRead: otherOctal.inc(4)
+    else: continue
 
   var perm = $userOctal & $groupOctal & $otherOctal
   assertReply(await(ftp.send("SITE CHMOD " & perm &

@@ -429,7 +429,9 @@ type
     fpGroupRead,           ## read access for the group
     fpOthersExec,          ## execute access for others
     fpOthersWrite,         ## write access for others
-    fpOthersRead           ## read access for others
+    fpOthersRead,          ## read access for others
+    fpSuid,                ## execute in context of owner
+    fpSgid                 ## execute in context of group
 
 {.deprecated: [TFilePermission: FilePermission].}
 
@@ -453,6 +455,9 @@ proc getFilePermissions*(filename: string): set[FilePermission] {.
     if (a.st_mode and S_IROTH) != 0'i32: result.incl(fpOthersRead)
     if (a.st_mode and S_IWOTH) != 0'i32: result.incl(fpOthersWrite)
     if (a.st_mode and S_IXOTH) != 0'i32: result.incl(fpOthersExec)
+
+    if (a.st_mode and S_ISUID) != 0'i32: result.incl(fpSuid)
+    if (a.st_mode and S_ISGID) != 0'i32: result.incl(fpSgid)    
   else:
     when useWinUnicode:
       wrapUnary(res, getFileAttributesW, filename)
@@ -483,6 +488,9 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
     if fpOthersRead in permissions: p = p or S_IROTH
     if fpOthersWrite in permissions: p = p or S_IWOTH
     if fpOthersExec in permissions: p = p or S_IXOTH
+
+    if fpSuid in permissions: p = p or S_ISUID
+    if fpSgid in permissions: p = p or S_ISGID
 
     if chmod(filename, p) != 0: raiseOSError(osLastError())
   else:
