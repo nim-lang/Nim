@@ -95,11 +95,13 @@
 
 - ``nil`` for strings/seqs is finally gone. Instead the default value for
   these is ``"" / @[]``.
+
 - Accessing the binary zero terminator in Nim's native strings
   is now invalid. Internally a Nim string still has the trailing zero for
   zero-copy interoperability with ``cstring``. Compile your code with the
   new switch ``--laxStrings:on`` if you need a transition period.
 
+- The command syntax now supports keyword arguments after the first comma.
 
 ### Tool changes
 
