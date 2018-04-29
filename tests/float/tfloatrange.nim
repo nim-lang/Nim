@@ -3,6 +3,7 @@ discard """
   output: '''StrictPositiveRange
 float
 range fail expected
+range fail expected
 '''
 """
 import math, fenv
@@ -21,7 +22,6 @@ proc myoverload(x: Positive) =
 proc myoverload(x: StrictPositive) =
   echo "StrictPositiveRange"
 
-
 let x = 9.0.StrictPositive
 myoverload(x)
 myoverload(9.0)
@@ -34,4 +34,16 @@ try:
 except:
   echo "range fail expected"
   
+  
+proc strictOnlyProc(x: StrictPositive): bool =
+  if x > 1.0: true else: false
+  
+let x2 = 5.0.Positive
+doAssert(strictOnlyProc(x2))
+
+try:
+  let x4 = 0.0.Positive
+  discard strictOnlyProc(x4)
+except:
+  echo "range fail expected"
   
