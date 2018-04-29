@@ -47,13 +47,13 @@ proc add*(url: var Url, a: Url) {.deprecated.} =
   url = url / a
 {.pop.}
 
-proc encodeUrl*(s: string, rawOn = false): string =
+proc encodeUrl*(s: string, asRaw = false): string =
   ## Encodes a value to be HTTP safe: This means that characters in the set
   ## ``{'A'..'Z', 'a'..'z', '0'..'9', '_'}`` are carried over to the result,
   ## a space is converted to ``'%20'`` and every other character is encoded as
   ## ``'%xx'`` where ``xx`` denotes its hexadecimal value.
   result = newStringOfCap(s.len + s.len shr 2) # assume 12% non-alnum-chars
-  if rawOn:
+  if asRaw:
     for c in s:
       case c
       of 'a'..'z', 'A'..'Z', '0'..'9', '_', '-', '.', '~': add(result, c)
