@@ -706,10 +706,17 @@ proc namedParams(p: var TParser, callee: PNode,
   # progress guaranteed
   exprColonEqExprListAux(p, endTok, result)
 
-proc commandParam(p: var TParser): PNode =
+proc commandParam(p: var TParser, isFirstParam: var bool): PNode =
   result = parseExpr(p)
   if p.tok.tokType == tkDo:
     result = postExprBlocks(p, result)
+  elif p.tok.tokType == tkEquals and not isFirstParam:
+    let lhs = result
+    result = newNodeP(nkExprEqExpr, p)
+    getTok(p)
+    addSon(result, lhs)
+    addSon(result, parseExpr(p))
+  isFirstParam = false
 
 proc primarySuffix(p: var TParser, r: PNode, baseIndent: int): PNode =
   #| primarySuffix = '(' (exprColonEqExpr comma?)* ')' doBlocks?
@@ -751,10 +758,11 @@ proc primarySuffix(p: var TParser, r: PNode, baseIndent: int): PNode =
         let a = result
         result = newNodeP(nkCommand, p)
         addSon(result, a)
+        var isFirstParam = true
         when true:
           # progress NOT guaranteed
           p.hasProgress = false
-          addSon result, commandParam(p)
+          addSon result, commandParam(p, isFirstParam)
           if not p.hasProgress: break
         else:
           while p.tok.tokType != tkEof:
@@ -1306,17 +1314,18 @@ proc parseExprStmt(p: var TParser): PNode =
     addSon(result, b)
   else:
     # simpleExpr parsed 'p a' from 'p a, b'?
+    var isFirstParam = false
     if p.tok.indent < 0 and p.tok.tokType == tkComma and a.kind == nkCommand:
       result = a
       while true:
         getTok(p)
         optInd(p, result)
-        addSon(result, commandParam(p))
+        addSon(result, commandParam(p, isFirstParam))
         if p.tok.tokType != tkComma: break
     elif p.tok.indent < 0 and isExprStart(p):
       result = newNode(nkCommand, a.info, @[a])
       while true:
-        addSon(result, commandParam(p))
+        addSon(result, commandParam(p, isFirstParam))
         if p.tok.tokType != tkComma: break
         getTok(p)
         optInd(p, result)

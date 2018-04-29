@@ -46,7 +46,8 @@ proc hasRegularArgs(x: int, y: string) =
   echo "x: ", x, ", y: ", y
 
 templateForwarding(hasRegularArgs, true, 1, "test 1")
-templateForwarding(hasKeywordArgs, true, 2, "test 2")
+templateForwarding hasKeywordArgs, true, 2, "test 2"
+
 templateForwarding(hasKeywordArgs, true, y = "test 3")
-templateForwarding(hasKeywordArgs, true, y = "test 4", x = 4)
+templateForwarding hasKeywordArgs, true, y = "test 4", x = 4
 
