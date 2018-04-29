@@ -66,6 +66,8 @@
 - ``algorithm.smartBinarySearch`` and ``algorithm.binarySearch`` is
   now joined in ``binarySearch``. ``smartbinarySearch`` is now
   deprecated.
+- The `terminal` module now exports additional procs for generating ANSI color
+  codes as strings.
 
 ### Language additions
 
