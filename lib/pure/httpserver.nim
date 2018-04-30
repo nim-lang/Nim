@@ -27,6 +27,7 @@
 ##
 
 import parseutils, strutils, os, osproc, strtabs, streams, sockets, asyncio
+export strtabs
 
 const
   wwwNL* = "\r\L"

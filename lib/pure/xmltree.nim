@@ -10,6 +10,7 @@
 ## A simple XML tree. More efficient and simpler than the DOM.
 
 import macros, strtabs
+export strtabs
 
 type
   XmlNode* = ref XmlNodeObj ## an XML tree consists of ``XmlNode``'s.

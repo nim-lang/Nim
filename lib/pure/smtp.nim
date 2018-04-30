@@ -33,6 +33,7 @@ import net, strutils, strtabs, base64, os
 import asyncnet, asyncdispatch
 
 export Port
+export strtabs
 
 type
   Message* = object

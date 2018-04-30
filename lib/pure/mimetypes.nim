@@ -9,6 +9,8 @@
 
 ## This module implements a mimetypes database
 import strtabs
+export strtabs
+
 type
   MimeDB* = object
     mimes: StringTableRef
