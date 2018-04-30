@@ -29,7 +29,7 @@ type
     modeCaseSensitive,        ## the table is case sensitive
     modeCaseInsensitive,      ## the table is case insensitive
     modeStyleInsensitive      ## the table is style insensitive
-  KeyValuePair = tuple[key, val: string]
+  KeyValuePair = tuple[key, val: string, hasValue: bool]
   KeyValuePairSeq = seq[KeyValuePair]
   StringTableObj* = object of RootObj
     counter: int
@@ -48,19 +48,19 @@ proc len*(t: StringTableRef): int {.rtlFunc, extern: "nst$1".} =
 iterator pairs*(t: StringTableRef): tuple[key, value: string] =
   ## iterates over every (key, value) pair in the table `t`.
   for h in 0..high(t.data):
-    if not isNil(t.data[h].key):
+    if not t.data[h].hasValue:
       yield (t.data[h].key, t.data[h].val)
 
 iterator keys*(t: StringTableRef): string =
   ## iterates over every key in the table `t`.
   for h in 0..high(t.data):
-    if not isNil(t.data[h].key):
+    if t.data[h].hasValue:
       yield t.data[h].key
 
 iterator values*(t: StringTableRef): string =
   ## iterates over every value in the table `t`.
   for h in 0..high(t.data):
-    if not isNil(t.data[h].key):
+    if t.data[h].hasValue:
       yield t.data[h].val
 
 type
@@ -102,7 +102,7 @@ proc nextTry(h, maxHash: Hash): Hash {.inline.} =
 
 proc rawGet(t: StringTableRef, key: string): int =
   var h: Hash = myhash(t, key) and high(t.data) # start with real hash value
-  while not isNil(t.data[h].key):
+  while t.data[h].hasValue:
     if myCmp(t, t.data[h].key, key):
       return h
     h = nextTry(h, high(t.data))
@@ -144,16 +144,17 @@ proc contains*(t: StringTableRef, key: string): bool =
 
 proc rawInsert(t: StringTableRef, data: var KeyValuePairSeq, key, val: string) =
   var h: Hash = myhash(t, key) and high(data)
-  while not isNil(data[h].key):
+  while data[h].hasValue:
     h = nextTry(h, high(data))
   data[h].key = key
   data[h].val = val
+  data[h].hasValue = true
 
 proc enlarge(t: StringTableRef) =
   var n: KeyValuePairSeq
   newSeq(n, len(t.data) * growthFactor)
   for i in countup(0, high(t.data)):
-    if not isNil(t.data[i].key): rawInsert(t, n, t.data[i].key, t.data[i].val)
+    if t.data[i].hasValue: rawInsert(t, n, t.data[i].key, t.data[i].val)
   swap(t.data, n)
 
 proc `[]=`*(t: StringTableRef, key, val: string) {.rtlFunc, extern: "nstPut".} =
@@ -198,8 +199,7 @@ proc clear*(s: StringTableRef, mode: StringTableMode) =
   s.counter = 0
   s.data.setLen(startSize)
   for i in 0..<s.data.len:
-    if not isNil(s.data[i].key):
-      s.data[i].key = nil
+    s.data[i].hasValue = false
 
 proc newStringTable*(keyValuePairs: varargs[string],
                      mode: StringTableMode): StringTableRef {.
