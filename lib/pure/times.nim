@@ -1318,24 +1318,23 @@ proc format*(dt: DateTime, f: string): string {.tags: [].}=
   result = ""
   var i = 0
   var currentF = ""
-  while true:
+  while i < f.len:
     case f[i]
-    of ' ', '-', '/', ':', '\'', '\0', '(', ')', '[', ']', ',':
+    of ' ', '-', '/', ':', '\'', '(', ')', '[', ']', ',':
       formatToken(dt, currentF, result)
 
       currentF = ""
-      if f[i] == '\0': break
 
       if f[i] == '\'':
         inc(i) # Skip '
-        while f[i] != '\'' and f.len-1 > i:
+        while i < f.len-1 and f[i] != '\'':
           result.add(f[i])
           inc(i)
       else: result.add(f[i])
 
     else:
       # Check if the letter being added matches previous accumulated buffer.
-      if currentF.len < 1 or currentF[high(currentF)] == f[i]:
+      if currentF.len == 0 or currentF[high(currentF)] == f[i]:
         currentF.add(f[i])
       else:
         formatToken(dt, currentF, result)
@@ -1343,6 +1342,7 @@ proc format*(dt: DateTime, f: string): string {.tags: [].}=
         currentF = ""
 
     inc(i)
+  formatToken(dt, currentF, result)
 
 proc `$`*(dt: DateTime): string {.tags: [], raises: [], benign.} =
   ## Converts a `DateTime` object to a string representation.
@@ -1439,58 +1439,58 @@ proc parseToken(dt: var DateTime; token, value: string; j: var int) =
     dt.month = month.Month
   of "MMM":
     case value[j..j+2].toLowerAscii():
-    of "jan": dt.month =  mJan
-    of "feb": dt.month =  mFeb
-    of "mar": dt.month =  mMar
-    of "apr": dt.month =  mApr
-    of "may": dt.month =  mMay
-    of "jun": dt.month =  mJun
-    of "jul": dt.month =  mJul
-    of "aug": dt.month =  mAug
-    of "sep": dt.month =  mSep
-    of "oct": dt.month =  mOct
-    of "nov": dt.month =  mNov
-    of "dec": dt.month =  mDec
+    of "jan": dt.month = mJan
+    of "feb": dt.month = mFeb
+    of "mar": dt.month = mMar
+    of "apr": dt.month = mApr
+    of "may": dt.month = mMay
+    of "jun": dt.month = mJun
+    of "jul": dt.month = mJul
+    of "aug": dt.month = mAug
+    of "sep": dt.month = mSep
+    of "oct": dt.month = mOct
+    of "nov": dt.month = mNov
+    of "dec": dt.month = mDec
     else:
       raise newException(ValueError,
         "Couldn't parse month (MMM), got: " & value)
     j += 3
   of "MMMM":
     if value.len >= j+7 and value[j..j+6].cmpIgnoreCase("january") == 0:
-      dt.month =  mJan
+      dt.month = mJan
       j += 7
     elif value.len >= j+8 and value[j..j+7].cmpIgnoreCase("february") == 0:
-      dt.month =  mFeb
+      dt.month = mFeb
       j += 8
     elif value.len >= j+5 and value[j..j+4].cmpIgnoreCase("march") == 0:
-      dt.month =  mMar
+      dt.month = mMar
       j += 5
     elif value.len >= j+5 and value[j..j+4].cmpIgnoreCase("april") == 0:
-      dt.month =  mApr
+      dt.month = mApr
       j += 5
     elif value.len >= j+3 and value[j..j+2].cmpIgnoreCase("may") == 0:
-      dt.month =  mMay
+      dt.month = mMay
       j += 3
     elif value.len >= j+4 and value[j..j+3].cmpIgnoreCase("june") == 0:
-      dt.month =  mJun
+      dt.month = mJun
       j += 4
     elif value.len >= j+4 and value[j..j+3].cmpIgnoreCase("july") == 0:
-      dt.month =  mJul
+      dt.month = mJul
       j += 4
     elif value.len >= j+6 and value[j..j+5].cmpIgnoreCase("august") == 0:
-      dt.month =  mAug
+      dt.month = mAug
       j += 6
     elif value.len >= j+9 and value[j..j+8].cmpIgnoreCase("september") == 0:
-      dt.month =  mSep
+      dt.month = mSep
       j += 9
     elif value.len >= j+7 and value[j..j+6].cmpIgnoreCase("october") == 0:
-      dt.month =  mOct
+      dt.month = mOct
       j += 7
     elif value.len >= j+8 and value[j..j+7].cmpIgnoreCase("november") == 0:
-      dt.month =  mNov
+      dt.month = mNov
       j += 8
     elif value.len >= j+8 and value[j..j+7].cmpIgnoreCase("december") == 0:
-      dt.month =  mDec
+      dt.month = mDec
       j += 8
     else:
       raise newException(ValueError,
@@ -1521,44 +1521,47 @@ proc parseToken(dt: var DateTime; token, value: string; j: var int) =
     j += 4
   of "z":
     dt.isDst = false
-    if value[j] == '+':
+    let ch = if j < value.len: value[j] else: '\0'
+    if ch == '+':
       dt.utcOffset = 0 - parseInt($value[j+1]) * secondsInHour
-    elif value[j] == '-':
+    elif ch == '-':
       dt.utcOffset = parseInt($value[j+1]) * secondsInHour
-    elif value[j] == 'Z':
+    elif ch == 'Z':
       dt.utcOffset = 0
       j += 1
       return
     else:
       raise newException(ValueError,
-        "Couldn't parse timezone offset (z), got: " & value[j])
+        "Couldn't parse timezone offset (z), got: " & ch)
     j += 2
   of "zz":
     dt.isDst = false
-    if value[j] == '+':
+    let ch = if j < value.len: value[j] else: '\0'
+    if ch == '+':
       dt.utcOffset = 0 - value[j+1..j+2].parseInt() * secondsInHour
-    elif value[j] == '-':
+    elif ch == '-':
       dt.utcOffset = value[j+1..j+2].parseInt() * secondsInHour
-    elif value[j] == 'Z':
+    elif ch == 'Z':
       dt.utcOffset = 0
       j += 1
       return
     else:
       raise newException(ValueError,
-        "Couldn't parse timezone offset (zz), got: " & value[j])
+        "Couldn't parse timezone offset (zz), got: " & ch)
     j += 3
   of "zzz":
     dt.isDst = false
     var factor = 0
-    if value[j] == '+': factor = -1
-    elif value[j] == '-': factor = 1
-    elif value[j] == 'Z':
+    let ch = if j < value.len: value[j] else: '\0'
+    if ch == '+': factor = -1
+    elif ch == '-': factor = 1
+    elif ch == 'Z':
       dt.utcOffset = 0
       j += 1
       return
     else:
       raise newException(ValueError,
-        "Couldn't parse timezone offset (zzz), got: " & value[j])
+        "Couldn't parse timezone offset (zzz), got: " & ch)
     dt.utcOffset = factor * value[j+1..j+2].parseInt() * secondsInHour
     j += 4
     dt.utcOffset += factor * value[j..j+1].parseInt() * 60
@@ -1620,20 +1623,18 @@ proc parse*(value, layout: string, zone: Timezone = local()): DateTime =
   dt.nanosecond = 0
   dt.isDst = true # using this is flag for checking whether a timezone has \
       # been read (because DST is always false when a tz is parsed)
-  while true:
+  while i < layout.len:
     case layout[i]
-    of ' ', '-', '/', ':', '\'', '\0', '(', ')', '[', ']', ',':
+    of ' ', '-', '/', ':', '\'', '(', ')', '[', ']', ',':
       if token.len > 0:
         parseToken(dt, token, value, j)
       # Reset token
       token = ""
-      # Break if at end of line
-      if layout[i] == '\0': break
       # Skip separator and everything between single quotes
       # These are literals in both the layout and the value string
       if layout[i] == '\'':
         inc(i)
-        while layout[i] != '\'' and layout.len-1 > i:
+        while i < layout.len-1 and layout[i] != '\'':
           inc(i)
           inc(j)
         inc(i)
@@ -1642,13 +1643,15 @@ proc parse*(value, layout: string, zone: Timezone = local()): DateTime =
         inc(j)
     else:
       # Check if the letter being added matches previous accumulated buffer.
-      if token.len < 1 or token[high(token)] == layout[i]:
+      if token.len == 0 or token[high(token)] == layout[i]:
         token.add(layout[i])
         inc(i)
       else:
         parseToken(dt, token, value, j)
         token = ""
 
+  if i >= layout.len and token.len > 0:
+    parseToken(dt, token, value, j)
   if dt.isDst:
     # No timezone parsed - assume timezone is `zone`
     result = initDateTime(zone.zoneInfoFromTz(dt.toAdjTime), zone)

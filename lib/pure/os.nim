@@ -1060,18 +1060,17 @@ proc parseCmdLine*(c: string): seq[string] {.
   while true:
     setLen(a, 0)
     # eat all delimiting whitespace
-    while c[i] == ' ' or c[i] == '\t' or c[i] == '\l' or c[i] == '\r' : inc(i)
+    while i < c.len and c[i] in {' ', '\t', '\l', '\r'}: inc(i)
+    if i >= c.len: break
     when defined(windows):
       # parse a single argument according to the above rules:
-      if c[i] == '\0': break
       var inQuote = false
-      while true:
+      while i < c.len:
         case c[i]
-        of '\0': break
         of '\\':
           var j = i
-          while c[j] == '\\': inc(j)
-          if c[j] == '"':
+          while j < c.len and c[j] == '\\': inc(j)
+          if j < c.len and c[j] == '"':
             for k in 1..(j-i) div 2: a.add('\\')
             if (j-i) mod 2 == 0:
               i = j
@@ -1084,7 +1083,7 @@ proc parseCmdLine*(c: string): seq[string] {.
         of '"':
           inc(i)
           if not inQuote: inQuote = true
-          elif c[i] == '"':
+          elif i < c.len and c[i] == '"':
             a.add(c[i])
             inc(i)
           else:
@@ -1102,13 +1101,12 @@ proc parseCmdLine*(c: string): seq[string] {.
       of '\'', '\"':
         var delim = c[i]
         inc(i) # skip ' or "
-        while c[i] != '\0' and c[i] != delim:
+        while i < c.len and c[i] != delim:
           add a, c[i]
           inc(i)
-        if c[i] != '\0': inc(i)
-      of '\0': break
+        if i < c.len: inc(i)
       else:
-        while c[i] > ' ':
+        while i < c.len and c[i] > ' ':
           add(a, c[i])
           inc(i)
     add(result, a)

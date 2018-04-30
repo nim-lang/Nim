@@ -562,7 +562,7 @@ proc importItem(data: PJsonNode; errors: var seq[string]): PItemRecord =
 
   result.useSound = importSound(data[2], errors, "useSound")
 
-  case data[1].str.toLower
+  case data[1].str.toLowerAscii
   of "projectile":
     result.kind = Projectile
     if data[2]["bullet"].kind == JString:

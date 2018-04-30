@@ -534,15 +534,15 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int {.
   case p.kind
   of pkEmpty: result = 0 # match of length 0
   of pkAny:
-    if s[start] != '\0': result = 1
+    if start < s.len: result = 1
     else: result = -1
   of pkAnyRune:
-    if s[start] != '\0':
+    if start < s.len:
       result = runeLenAt(s, start)
     else:
       result = -1
   of pkLetter:
-    if s[start] != '\0':
+    if start < s.len:
       var a: Rune
       result = start
       fastRuneAt(s, result, a)
@@ -551,7 +551,7 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int {.
     else:
       result = -1
   of pkLower:
-    if s[start] != '\0':
+    if start < s.len:
       var a: Rune
       result = start
       fastRuneAt(s, result, a)
@@ -560,7 +560,7 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int {.
     else:
       result = -1
   of pkUpper:
-    if s[start] != '\0':
+    if start < s.len:
       var a: Rune
       result = start
       fastRuneAt(s, result, a)
@@ -569,7 +569,7 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int {.
     else:
       result = -1
   of pkTitle:
-    if s[start] != '\0':
+    if start < s.len:
       var a: Rune
       result = start
       fastRuneAt(s, result, a)
@@ -578,7 +578,7 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int {.
     else:
       result = -1
   of pkWhitespace:
-    if s[start] != '\0':
+    if start < s.len:
       var a: Rune
       result = start
       fastRuneAt(s, result, a)
@@ -589,15 +589,15 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int {.
   of pkGreedyAny:
     result = len(s) - start
   of pkNewLine:
-    if s[start] == '\L': result = 1
-    elif s[start] == '\C':
-      if s[start+1] == '\L': result = 2
+    if start < s.len and s[start] == '\L': result = 1
+    elif start < s.len and s[start] == '\C':
+      if start+1 < s.len and s[start+1] == '\L': result = 2
       else: result = 1
     else: result = -1
   of pkTerminal:
     result = len(p.term)
     for i in 0..result-1:
-      if p.term[i] != s[start+i]:
+      if start+i >= s.len or p.term[i] != s[start+i]:
         result = -1
         break
   of pkTerminalIgnoreCase:
@@ -606,6 +606,9 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int {.
       a, b: Rune
     result = start
     while i < len(p.term):
+      if result >= s.len:
+        result = -1
+        break
       fastRuneAt(p.term, i, a)
       fastRuneAt(s, result, b)
       if toLower(a) != toLower(b):
@@ -621,18 +624,23 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int {.
       while true:
         fastRuneAt(p.term, i, a)
         if a != Rune('_'): break
-      while true:
+      while result < s.len:
         fastRuneAt(s, result, b)
         if b != Rune('_'): break
-      if toLower(a) != toLower(b):
+      if result >= s.len:
+        if i >= p.term.len: break
+        else:
+          result = -1
+          break
+      elif toLower(a) != toLower(b):
         result = -1
         break
     dec(result, start)
   of pkChar:
-    if p.ch == s[start]: result = 1
+    if start < s.len and p.ch == s[start]: result = 1
     else: result = -1
   of pkCharChoice:
-    if contains(p.charChoice[], s[start]): result = 1
+    if start < s.len and contains(p.charChoice[], s[start]): result = 1
     else: result = -1
   of pkNonTerminal:
     var oldMl = c.ml
@@ -695,10 +703,10 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int {.
   of pkGreedyRepChar:
     result = 0
     var ch = p.ch
-    while ch == s[start+result]: inc(result)
+    while start+result < s.len and ch == s[start+result]: inc(result)
   of pkGreedyRepSet:
     result = 0
-    while contains(p.charChoice[], s[start+result]): inc(result)
+    while start+result < s.len and contains(p.charChoice[], s[start+result]): inc(result)
   of pkOption:
     result = max(0, rawMatch(s, p.sons[0], start, c))
   of pkAndPredicate:
