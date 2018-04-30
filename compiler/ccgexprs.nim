@@ -63,6 +63,10 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
     of tyNil:
       result = genNilStringLiteral(p.module, n.info)
     of tyString:
+      # with the new semantics for 'nil' strings, we can map "" to nil and
+      # save tons of allocations:
+      #if n.strVal.len == 0: result = genNilStringLiteral(p.module, n.info)
+      #else:
       result = genStringLiteral(p.module, n)
     else:
       if n.strVal.isNil: result = rope("NIM_NIL")
@@ -905,14 +909,14 @@ proc genSeqElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   if ty.kind in {tyRef, tyPtr}:
     ty = skipTypes(ty.lastSon, abstractVarRange) # emit range check:
   if optBoundsCheck in p.options:
-    if ty.kind == tyString:
+    if ty.kind == tyString and (not defined(nimNoZeroTerminator) or optLaxStrings in p.options):
       linefmt(p, cpsStmts,
-           "if (!$2 || (NU)($1) > (NU)($2->$3)) #raiseIndexError();$n",
-           rdLoc(b), rdLoc(a), lenField(p))
+              "if (!$2 || (NU)($1) > (NU)($2->$3)) #raiseIndexError();$n",
+              rdLoc(b), rdLoc(a), lenField(p))
     else:
       linefmt(p, cpsStmts,
-           "if (!$2 || (NU)($1) >= (NU)($2->$3)) #raiseIndexError();$n",
-           rdLoc(b), rdLoc(a), lenField(p))
+              "if (!$2 || (NU)($1) >= (NU)($2->$3)) #raiseIndexError();$n",
+              rdLoc(b), rdLoc(a), lenField(p))
   if d.k == locNone: d.storage = OnHeap
   if skipTypes(a.t, abstractVar).kind in {tyRef, tyPtr}:
     a.r = rfmt(nil, "(*$1)", a.r)

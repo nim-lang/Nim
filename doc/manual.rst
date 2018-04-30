@@ -1475,7 +1475,7 @@ mysterious crashes.
 
 **Note**: The example only works because the memory is initialized to zero
 (``alloc0`` instead of ``alloc`` does this): ``d.s`` is thus initialized to
-``nil`` which the string assignment can handle. One needs to know low level
+binary zero which the string assignment can handle. One needs to know low level
 details like this when mixing garbage collected data with unmanaged memory.
 
 .. XXX finalizers for traced objects
@@ -2516,8 +2516,8 @@ char                            '\\0'
 bool                            false
 ref or pointer type             nil
 procedural type                 nil
-sequence                        nil (*not* ``@[]``)
-string                          nil (*not* "")
+sequence                        ``@[]``
+string                          ``""``
 tuple[x: A, y: B, ...]          (default(A), default(B), ...)
                                 (analogous for objects)
 array[0..., T]                  [default(T), ...]
@@ -4274,7 +4274,7 @@ therefore very useful for type specialization within generic code:
     Table[Key, Value] = object
       keys: seq[Key]
       values: seq[Value]
-      when not (Key is string): # nil value for strings used for optimization
+      when not (Key is string): # empty value for strings used for optimization
         deletedKeys: seq[bool]
 
 
@@ -7438,8 +7438,8 @@ code generation directly, but their presence can be detected by macros.
 Custom pragmas are defined using templates annotated with pragma ``pragma``:
 
 .. code-block:: nim
-  template dbTable(name: string, table_space: string = nil) {.pragma.}
-  template dbKey(name: string = nil, primary_key: bool = false) {.pragma.}
+  template dbTable(name: string, table_space: string = "") {.pragma.}
+  template dbKey(name: string = "", primary_key: bool = false) {.pragma.}
   template dbForeignKey(t: typedesc) {.pragma.}
   template dbIgnore {.pragma.}
 

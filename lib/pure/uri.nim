@@ -60,7 +60,7 @@ proc encodeUrl*(s: string): string =
     else:
       add(result, '%')
       add(result, toHex(ord(s[i]), 2))
-      
+
 proc decodeUrl*(s: string): string =
   ## Decodes a value from its HTTP representation: This means that a ``'+'``
   ## is converted to a space, ``'%xx'`` (where ``xx`` denotes a hexadecimal
@@ -72,7 +72,7 @@ proc decodeUrl*(s: string): string =
     of 'a'..'f': x = (x shl 4) or (ord(c) - ord('a') + 10)
     of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
     else: assert(false)
-    
+
   result = newString(s.len)
   var i = 0
   var j = 0
@@ -94,7 +94,7 @@ proc parseAuthority(authority: string, result: var Uri) =
   var i = 0
   var inPort = false
   var inIPv6 = false
-  while true:
+  while i < authority.len:
     case authority[i]
     of '@':
       swap result.password, result.port
@@ -111,7 +111,6 @@ proc parseAuthority(authority: string, result: var Uri) =
       inIPv6 = true
     of ']':
       inIPv6 = false
-    of '\0': break
     else:
       if inPort:
         result.port.add(authority[i])
@@ -128,11 +127,11 @@ proc parsePath(uri: string, i: var int, result: var Uri) =
     parseAuthority(result.path, result)
     result.path.setLen(0)
 
-  if uri[i] == '?':
+  if i < uri.len and uri[i] == '?':
     i.inc # Skip '?'
     i.inc parseUntil(uri, result.query, {'#'}, i)
 
-  if uri[i] == '#':
+  if i < uri.len and uri[i] == '#':
     i.inc # Skip '#'
     i.inc parseUntil(uri, result.anchor, {}, i)
 
@@ -156,7 +155,7 @@ proc parseUri*(uri: string, result: var Uri) =
 
   # Check if this is a reference URI (relative URI)
   let doubleSlash = uri.len > 1 and uri[1] == '/'
-  if uri[i] == '/':
+  if i < uri.len and uri[i] == '/':
     # Make sure ``uri`` doesn't begin with '//'.
     if not doubleSlash:
       parsePath(uri, i, result)
@@ -164,7 +163,7 @@ proc parseUri*(uri: string, result: var Uri) =
 
   # Scheme
   i.inc parseWhile(uri, result.scheme, Letters + Digits + {'+', '-', '.'}, i)
-  if uri[i] != ':' and not doubleSlash:
+  if (i >= uri.len or uri[i] != ':') and not doubleSlash:
     # Assume this is a reference URI (relative URI)
     i = 0
     result.scheme.setLen(0)
@@ -174,7 +173,7 @@ proc parseUri*(uri: string, result: var Uri) =
     i.inc # Skip ':'
 
   # Authority
-  if uri[i] == '/' and uri[i+1] == '/':
+  if i+1 < uri.len and uri[i] == '/' and uri[i+1] == '/':
     i.inc(2) # Skip //
     var authority = ""
     i.inc parseUntil(uri, authority, {'/', '?', '#'}, i)
@@ -197,13 +196,13 @@ proc removeDotSegments(path: string): string =
   let endsWithSlash = path[path.len-1] == '/'
   var i = 0
   var currentSegment = ""
-  while true:
+  while i < path.len:
     case path[i]
     of '/':
       collection.add(currentSegment)
       currentSegment = ""
     of '.':
-      if path[i+1] == '.' and path[i+2] == '/':
+      if i+2 < path.len and path[i+1] == '.' and path[i+2] == '/':
         if collection.len > 0:
           discard collection.pop()
           i.inc 3
@@ -212,13 +211,11 @@ proc removeDotSegments(path: string): string =
         i.inc 2
         continue
       currentSegment.add path[i]
-    of '\0':
-      if currentSegment != "":
-        collection.add currentSegment
-      break
     else:
       currentSegment.add path[i]
     i.inc
+  if currentSegment != "":
+    collection.add currentSegment
 
   result = collection.join("/")
   if endsWithSlash: result.add '/'
@@ -320,18 +317,18 @@ proc `/`*(x: Uri, path: string): Uri =
   result = x
 
   if result.path.len == 0:
-    if path[0] != '/':
+    if path.len == 0 or path[0] != '/':
       result.path = "/"
     result.path.add(path)
     return
 
-  if result.path[result.path.len-1] == '/':
-    if path[0] == '/':
+  if result.path.len > 0 and result.path[result.path.len-1] == '/':
+    if path.len > 0 and path[0] == '/':
       result.path.add(path[1 .. path.len-1])
     else:
       result.path.add(path)
   else:
-    if path[0] != '/':
+    if path.len == 0 or path[0] != '/':
       result.path.add '/'
     result.path.add(path)
 
@@ -373,7 +370,7 @@ when isMainModule:
     const test1 = "abc\L+def xyz"
     doAssert encodeUrl(test1) == "abc%0A%2Bdef+xyz"
     doAssert decodeUrl(encodeUrl(test1)) == test1
-    
+
   block:
     let str = "http://localhost"
     let test = parseUri(str)
@@ -464,7 +461,7 @@ when isMainModule:
     doAssert test.hostname == "github.com"
     doAssert test.port == "dom96"
     doAssert test.path == "/packages"
-    
+
   block:
     let str = "file:///foo/bar/baz.txt"
     let test = parseUri(str)

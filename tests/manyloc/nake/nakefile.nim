@@ -88,7 +88,7 @@ task "download", "download game assets":
   if existsFile(path):
     echo "The file already exists\n",
       "[R]emove  [M]ove  [Q]uit  [S]kip    Source: ", GameAssets
-    case stdin.readLine.toLower
+    case stdin.readLine.toLowerAscii
     of "r":
       removeFile path
     of "m":
@@ -120,7 +120,7 @@ task "download", "download game assets":
 
   echo "Download binary libs? Only libs for linux are available currently, enjoy the irony.\n",
     "[Y]es [N]o   Source: ", BinLibs
-  case stdin.readline.toLower
+  case stdin.readline.toLowerAscii
   of "y", "yes":
     discard ## o_O
   else:

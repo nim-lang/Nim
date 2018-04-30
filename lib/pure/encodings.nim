@@ -36,7 +36,7 @@ when defined(windows):
     while i < a.len and j < b.len:
       if a[i] in {'-', '_'}: inc i
       if b[j] in {'-', '_'}: inc j
-      if a[i].toLower != b[j].toLower: return false
+      if i < a.len and j < b.len and a[i].toLowerAscii != b[j].toLowerAscii: return false
       inc i
       inc j
     result = i == a.len and j == b.len

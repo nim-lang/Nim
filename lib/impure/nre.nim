@@ -10,7 +10,7 @@
 from pcre import nil
 import nre.private.util
 import tables
-from strutils import toLower, `%`
+from strutils import `%`
 from math import ceil
 import options
 from unicode import runeLenAt
@@ -326,15 +326,15 @@ proc `$`*(pattern: RegexMatch): string =
 
 proc `==`*(a, b: Regex): bool =
   if not a.isNil and not b.isNil:
-    return a.pattern   == b.pattern and
-           a.pcreObj   == b.pcreObj and
+    return a.pattern == b.pattern and
+           a.pcreObj == b.pcreObj and
            a.pcreExtra == b.pcreExtra
   else:
     return system.`==`(a, b)
 
 proc `==`*(a, b: RegexMatch): bool =
   return a.pattern == b.pattern and
-         a.str     == b.str
+         a.str == b.str
 # }}}
 
 # Creation & Destruction {{{
