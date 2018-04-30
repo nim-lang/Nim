@@ -606,7 +606,7 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int {.
       a, b: Rune
     result = start
     while i < len(p.term):
-      if i >= s.len:
+      if result >= s.len:
         result = -1
         break
       fastRuneAt(p.term, i, a)
