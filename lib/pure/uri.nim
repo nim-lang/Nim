@@ -53,10 +53,11 @@ proc encodeUrl*(s: string, usePlus = false): string =
   ## a space is converted to ``'+'`` and every other character is encoded as
   ## ``'%xx'`` where ``xx`` denotes its hexadecimal value.
   result = newStringOfCap(s.len + s.len shr 2) # assume 12% non-alnum-chars
+  let fromSpace = if usePlus: "%20" else: "+"
   for c in s:
     case c
     of 'a'..'z', 'A'..'Z', '0'..'9', '_': add(result, c)
-    of ' ': add(result, if usePlus: "%20" else: "+")
+    of ' ': add(result, fromSpace)
     else:
       add(result, '%')
       add(result, toHex(ord(c), 2))
