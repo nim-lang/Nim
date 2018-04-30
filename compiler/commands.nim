@@ -499,6 +499,7 @@ proc processSwitch(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       undefSymbol("nimOldNewlines")
     else:
       localError(info, errOnOrOffExpectedButXFound, arg)
+  of "laxstrings": processOnOffSwitch({optLaxStrings}, arg, pass, info)
   of "checks", "x": processOnOffSwitch(ChecksOptions, arg, pass, info)
   of "floatchecks":
     processOnOffSwitch({optNaNCheck, optInfCheck}, arg, pass, info)
