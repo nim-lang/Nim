@@ -48,7 +48,7 @@ proc len*(t: StringTableRef): int {.rtlFunc, extern: "nst$1".} =
 iterator pairs*(t: StringTableRef): tuple[key, value: string] =
   ## iterates over every (key, value) pair in the table `t`.
   for h in 0..high(t.data):
-    if not t.data[h].hasValue:
+    if t.data[h].hasValue:
       yield (t.data[h].key, t.data[h].val)
 
 iterator keys*(t: StringTableRef): string =
