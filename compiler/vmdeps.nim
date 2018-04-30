@@ -208,7 +208,12 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
       result.add mapTypeToAst(t.sons[0], info)
     else:
       result = mapTypeToBracket("ref", mRef, t, info)
-  of tyVar: result = mapTypeToBracket("var", mVar, t, info)
+  of tyVar:
+    if inst:
+      result = newNodeX(nkVarTy)
+      result.add mapTypeToAst(t.sons[0], info)
+    else:
+      result = mapTypeToBracket("var", mVar, t, info)
   of tyLent: result = mapTypeToBracket("lent", mBuiltinType, t, info)
   of tySink: result = mapTypeToBracket("sink", mBuiltinType, t, info)
   of tySequence: result = mapTypeToBracket("seq", mSeq, t, info)

@@ -22,21 +22,34 @@ proc resize(old: int): int {.inline.} =
 
 proc cmpStrings(a, b: NimString): int {.inline, compilerProc.} =
   if a == b: return 0
-  if a == nil: return -1
-  if b == nil: return 1
-  let minlen = min(a.len, b.len)
+  when defined(nimNoNil):
+    let alen = if a == nil: 0 else: a.len
+    let blen = if b == nil: 0 else: b.len
+  else:
+    if a == nil: return -1
+    if b == nil: return 1
+    let alen = a.len
+    let blen = b.len
+  let minlen = min(alen, blen)
   if minlen > 0:
     result = c_memcmp(addr a.data, addr b.data, minlen.csize)
     if result == 0:
-      result = a.len - b.len
+      result = alen - blen
   else:
-    result = a.len - b.len
+    result = alen - blen
 
 proc eqStrings(a, b: NimString): bool {.inline, compilerProc.} =
   if a == b: return true
-  if a == nil or b == nil: return false
-  return a.len == b.len and
-    equalMem(addr(a.data), addr(b.data), a.len)
+  when defined(nimNoNil):
+    let alen = if a == nil: 0 else: a.len
+    let blen = if b == nil: 0 else: b.len
+  else:
+    if a == nil or b == nil: return false
+    let alen = a.len
+    let blen = b.len
+  if alen == blen:
+    if alen == 0: return true
+    return equalMem(addr(a.data), addr(b.data), alen)
 
 when declared(allocAtomic):
   template allocStr(size: untyped): untyped =
@@ -101,9 +114,6 @@ proc cstrToNimstr(str: cstring): NimString {.compilerRtl.} =
   if str == nil: NimString(nil)
   else: toNimStr(str, str.len)
 
-template wasMoved(x: NimString): bool = false
-# (x.reserved and seqShallowFlag) != 0
-
 proc copyString(src: NimString): NimString {.compilerRtl.} =
   if src != nil:
     if (src.reserved and seqShallowFlag) != 0:
@@ -161,14 +171,16 @@ proc hashString(s: string): int {.compilerproc.} =
 
 proc addChar(s: NimString, c: char): NimString =
   # is compilerproc!
-  result = s
-  if result.len >= result.space:
-    let r = resize(result.space)
-    result = cast[NimString](growObj(result,
-      sizeof(TGenericSeq) + r + 1))
-    result.reserved = r
-  elif wasMoved(s):
-    result = newOwnedString(s, s.len)
+  if s == nil:
+    result = rawNewStringNoInit(1)
+    result.len = 0
+  else:
+    result = s
+    if result.len >= result.space:
+      let r = resize(result.space)
+      result = cast[NimString](growObj(result,
+        sizeof(TGenericSeq) + r + 1))
+      result.reserved = r
   result.data[result.len] = c
   result.data[result.len+1] = '\0'
   inc(result.len)
@@ -205,7 +217,9 @@ proc addChar(s: NimString, c: char): NimString =
 #   s = rawNewString(0);
 
 proc resizeString(dest: NimString, addlen: int): NimString {.compilerRtl.} =
-  if dest.len + addlen <= dest.space and not wasMoved(dest):
+  if dest == nil:
+    result = rawNewStringNoInit(addlen)
+  elif dest.len + addlen <= dest.space:
     result = dest
   else: # slow path:
     var sp = max(resize(dest.space), dest.len + addlen)
@@ -216,8 +230,9 @@ proc resizeString(dest: NimString, addlen: int): NimString {.compilerRtl.} =
     # DO NOT UPDATE LEN YET: dest.len = newLen
 
 proc appendString(dest, src: NimString) {.compilerproc, inline.} =
-  copyMem(addr(dest.data[dest.len]), addr(src.data), src.len + 1)
-  inc(dest.len, src.len)
+  if src != nil:
+    copyMem(addr(dest.data[dest.len]), addr(src.data), src.len + 1)
+    inc(dest.len, src.len)
 
 proc appendChar(dest: NimString, c: char) {.compilerproc, inline.} =
   dest.data[dest.len] = c

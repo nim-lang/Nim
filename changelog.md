@@ -11,7 +11,7 @@
   to deal with!
 - Indexing into a ``cstring`` for the JS target is now mapped
   to ``charCodeAt``.
-- Assignments that would "slice" an object into its supertype are not prevented
+- Assignments that would "slice" an object into its supertype are now prevented
   at runtime. Use ``ref object`` with inheritance rather than ``object`` with
   inheritance to prevent this issue.
 
@@ -80,6 +80,9 @@
 - Native C++ exceptions can now be imported with `importcpp` pragma.
   Imported exceptions can be raised and caught just like Nim exceptions.
   More details in language manual.
+
+- ``nil`` for strings/seqs is finally gone. Instead the default value for
+  these is ``"" / @[]``.
 
 ### Tool changes
 
