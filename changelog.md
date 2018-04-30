@@ -87,8 +87,7 @@
   is now invalid. Internally a Nim string still has the trailing zero for
   zero-copy interoperability with ``cstring``. Compile your code with the
   next switch ``--laxStrings:on`` if you need a transition period.
-
-
+  
 - Range float types, example `range[0.0 .. Inf]`. More details in language manual.
 
 ### Tool changes
