@@ -201,7 +201,7 @@ when defineSsl:
       flags: set[SocketFlag]) {.async.} =
     let len = bioCtrlPending(socket.bioOut)
     if len > 0:
-      var data = newStringOfCap(len)
+      var data = newString(len)
       let read = bioRead(socket.bioOut, addr data[0], len)
       assert read != 0
       if read < 0:
