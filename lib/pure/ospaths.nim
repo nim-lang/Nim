@@ -477,7 +477,7 @@ proc unixToNativePath*(path: string, drive=""): string {.
 
     var i = start
     while i < len(path): # ../../../ --> ::::
-      if path[i] == '.' and path[i+1] == '.' and path[i+2] == '/':
+      if i+2 < path.len and path[i] == '.' and path[i+1] == '.' and path[i+2] == '/':
         # parent directory
         when defined(macos):
           if result[high(result)] == ':':
