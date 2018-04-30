@@ -909,7 +909,7 @@ proc genSeqElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   if ty.kind in {tyRef, tyPtr}:
     ty = skipTypes(ty.lastSon, abstractVarRange) # emit range check:
   if optBoundsCheck in p.options:
-    if ty.kind == tyString and not defined(nimNoZeroTerminator):
+    if ty.kind == tyString and (not defined(nimNoZeroTerminator) or optLaxStrings in p.options):
       linefmt(p, cpsStmts,
               "if (!$2 || (NU)($1) > (NU)($2->$3)) #raiseIndexError();$n",
               rdLoc(b), rdLoc(a), lenField(p))
