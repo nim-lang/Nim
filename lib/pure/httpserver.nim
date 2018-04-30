@@ -126,7 +126,7 @@ when false:
       var dataAvail = false
       while dataAvail:
         dataAvail = recvLine(client, buf) # TODO: This is incorrect.
-        var L = toLower(buf.string)
+        var L = toLowerAscii(buf.string)
         if L.startsWith("content-length:"):
           var i = len("content-length:")
           while L[i] in Whitespace: inc(i)
@@ -199,7 +199,7 @@ when false:
       notFound(client)
     else:
       when defined(Windows):
-        var ext = splitFile(path).ext.toLower
+        var ext = splitFile(path).ext.toLowerAscii
         if ext == ".exe" or ext == ".cgi":
           # XXX: extract interpreter information here?
           cgi = true
@@ -303,7 +303,7 @@ proc next*(s: var Server) =
   if s.reqMethod == "POST":
     # Check for Expect header
     if s.headers.hasKey("Expect"):
-      if s.headers["Expect"].toLower == "100-continue":
+      if s.headers["Expect"].toLowerAscii == "100-continue":
         s.client.sendStatus("100 Continue")
       else:
         s.client.sendStatus("417 Expectation Failed")
@@ -427,7 +427,7 @@ proc nextAsync(s: PAsyncHTTPServer) =
   if s.reqMethod == "POST":
     # Check for Expect header
     if s.headers.hasKey("Expect"):
-      if s.headers["Expect"].toLower == "100-continue":
+      if s.headers["Expect"].toLowerAscii == "100-continue":
         s.client.sendStatus("100 Continue")
       else:
         s.client.sendStatus("417 Expectation Failed")

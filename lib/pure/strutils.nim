@@ -1126,7 +1126,7 @@ proc unindent*(s: string, count: Natural, padding: string = " "): string
     var indentCount = 0
     for j in 0..<count.int:
       indentCount.inc
-      if line[j .. j + padding.len-1] != padding:
+      if j + padding.len-1 >= line.len or line[j .. j + padding.len-1] != padding:
         indentCount = j
         break
     result.add(line[indentCount*padding.len .. ^1])

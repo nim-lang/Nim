@@ -190,11 +190,11 @@ proc len*(headers: HttpHeaders): int = return headers.table.len
 proc parseList(line: string, list: var seq[string], start: int): int =
   var i = 0
   var current = ""
-  while line[start + i] notin {'\c', '\l', '\0'}:
+  while start+i < line.len and line[start + i] notin {'\c', '\l'}:
     i += line.skipWhitespace(start + i)
     i += line.parseUntil(current, {'\c', '\l', ','}, start + i)
     list.add(current)
-    if line[start + i] == ',':
+    if start+i < line.len and line[start + i] == ',':
       i.inc # Skip ,
     current.setLen(0)
 

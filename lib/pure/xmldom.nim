@@ -232,10 +232,10 @@ proc createAttributeNS*(doc: PDocument, namespaceURI: string, qualifiedName: str
     raise newException(EInvalidCharacterErr, "Invalid character")
   # Exceptions
   if qualifiedName.contains(':'):
-    let qfnamespaces = qualifiedName.toLower().split(':')
+    let qfnamespaces = qualifiedName.toLowerAscii().split(':')
     if isNil(namespaceURI):
       raise newException(ENamespaceErr, "When qualifiedName contains a prefix namespaceURI cannot be nil")
-    elif qfnamespaces[0] == "xml" and 
+    elif qfnamespaces[0] == "xml" and
         namespaceURI != "http://www.w3.org/XML/1998/namespace" and
         qfnamespaces[1] notin stdattrnames:
       raise newException(ENamespaceErr,
@@ -311,10 +311,10 @@ proc createElement*(doc: PDocument, tagName: string): PElement =
 proc createElementNS*(doc: PDocument, namespaceURI: string, qualifiedName: string): PElement =
   ## Creates an element of the given qualified name and namespace URI.
   if qualifiedName.contains(':'):
-    let qfnamespaces = qualifiedName.toLower().split(':')
+    let qfnamespaces = qualifiedName.toLowerAscii().split(':')
     if isNil(namespaceURI):
       raise newException(ENamespaceErr, "When qualifiedName contains a prefix namespaceURI cannot be nil")
-    elif qfnamespaces[0] == "xml" and 
+    elif qfnamespaces[0] == "xml" and
         namespaceURI != "http://www.w3.org/XML/1998/namespace" and
         qfnamespaces[1] notin stdattrnames:
       raise newException(ENamespaceErr,
@@ -533,13 +533,13 @@ proc `prefix=`*(n: PNode, value: string) =
 
   if isNil(n.fNamespaceURI):
     raise newException(ENamespaceErr, "namespaceURI cannot be nil")
-  elif value.toLower() == "xml" and n.fNamespaceURI != "http://www.w3.org/XML/1998/namespace":
+  elif value.toLowerAscii() == "xml" and n.fNamespaceURI != "http://www.w3.org/XML/1998/namespace":
     raise newException(ENamespaceErr,
       "When the namespace prefix is \"xml\" namespaceURI has to be \"http://www.w3.org/XML/1998/namespace\"")
-  elif value.toLower() == "xmlns" and n.fNamespaceURI != "http://www.w3.org/2000/xmlns/":
+  elif value.toLowerAscii() == "xmlns" and n.fNamespaceURI != "http://www.w3.org/2000/xmlns/":
     raise newException(ENamespaceErr,
       "When the namespace prefix is \"xmlns\" namespaceURI has to be \"http://www.w3.org/2000/xmlns/\"")
-  elif value.toLower() == "xmlns" and n.fNodeType == AttributeNode:
+  elif value.toLowerAscii() == "xmlns" and n.fNodeType == AttributeNode:
     raise newException(ENamespaceErr, "An AttributeNode cannot have a prefix of \"xmlns\"")
 
   n.fNodeName = value & ":" & n.fLocalName
