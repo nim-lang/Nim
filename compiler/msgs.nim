@@ -474,6 +474,10 @@ const
   hintMin* = hintSuccess
   hintMax* = high(TMsgKind)
 
+static:
+  doAssert HintsToStr.len == ord(hintMax) - ord(hintMin) + 1
+  doAssert WarningsToStr.len == ord(warnMax) - ord(warnMin) + 1
+
 type
   TNoteKind* = range[warnMin..hintMax] # "notes" are warnings or hints
   TNoteKinds* = set[TNoteKind]
