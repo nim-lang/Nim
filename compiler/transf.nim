@@ -20,9 +20,8 @@
 
 import
   intsets, strutils, options, ast, astalgo, trees, treetab, msgs, os, lookups,
-  idents, renderer, types, passes, semfold, magicsys, cgmeth, rodread, semdata,
+  idents, renderer, types, passes, semfold, magicsys, cgmeth, rodread,
   lambdalifting, sempass2, lowerings, destroyer, liftlocals, closureiters
-
 
 type
   PTransNode* = distinct PNode
@@ -968,11 +967,11 @@ template liftDefer(c, root) =
   if c.deferDetected:
     liftDeferAux(root)
 
-proc transformBody*(ctx: PContext, n: PNode, prc: PSym): PNode =
+proc transformBody*(module: PSym, features: set[Feature], n: PNode, prc: PSym): PNode =
   result = n
   if nfTransf notin n.flags and prc.kind notin {skTemplate}:
-    var c = openTransf(ctx.module, "")
-    result = liftLambdas(ctx.features, prc, result, c.tooEarly)
+    var c = openTransf(module, "")
+    result = liftLambdas(features, prc, result, c.tooEarly)
     result = processTransf(c, result, prc)
     liftDefer(c, result)
 
@@ -981,7 +980,7 @@ proc transformBody*(ctx: PContext, n: PNode, prc: PSym): PNode =
     if c.needsDestroyPass: #and newDestructors:
       result = injectDestructorCalls(prc, result)
 
-    if prc.isIterator and oldIterTransf notin ctx.features:
+    if prc.isIterator and oldIterTransf notin features:
       result = transformClosureIterator(prc, result)
 
     incl(result.flags, nfTransf)
