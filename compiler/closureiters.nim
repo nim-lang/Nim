@@ -125,12 +125,12 @@ proc addGotoOut(n: PNode, gotoOut: PNode): PNode =
     result.add(gotoOut)
 
 proc newTempVarAccess(ctx: var Ctx, typ: PType, i: TLineInfo): PNode =
+  let s = newSym(skVar, getIdent(":tmpSlLower" & $ctx.tempVarId), ctx.fn, i)
+  s.typ = typ
+
   if not ctx.stateVarSym.isNil:
     # We haven't gone through labmda lifting yet, so just create a local var,
     # it will be lifted later
-    let s = newSym(skVar, getIdent(":tmpSlLower" & $ctx.tempVarId), ctx.fn, i)
-    s.typ = typ
-
     if ctx.tempVars.isNil:
       ctx.tempVars = newNode(nkVarSection)
       addVar(ctx.tempVars, newSymNode(s))
@@ -138,8 +138,6 @@ proc newTempVarAccess(ctx: var Ctx, typ: PType, i: TLineInfo): PNode =
     result = newSymNode(s)
   else:
     # Lambda lifting is done, insert temp var to env.
-    let s = newSym(skVar, getIdent(":tmpSlLower" & $ctx.tempVarId), ctx.fn, i)
-    s.typ = typ
     result = freshVarForClosureIter(s, ctx.fn)
 
   inc ctx.tempVarId
