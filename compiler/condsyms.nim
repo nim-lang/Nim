@@ -116,3 +116,4 @@ proc initDefines*() =
   defineSymbol("nimVmEqIdent")
   defineSymbol("nimNoNil")
   defineSymbol("nimNoZeroTerminator")
+  defineSymbol("nimNotNil")

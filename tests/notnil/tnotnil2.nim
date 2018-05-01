@@ -4,7 +4,7 @@ discard """
 """
 
 import strutils
-
+{.experimental: "notnil".}
 
 type
   TObj = object

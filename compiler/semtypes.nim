@@ -1389,6 +1389,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
               n.sons[2].kind == nkNilLit:
             result = freshType(result, prev)
             result.flags.incl(tfNotNil)
+            if notnil notin c.features:
+              localError(n.info, "enable the 'not nil' annotation with {.experimental: \"notnil\".}")
           else:
             localError(n.info, errGenerated, "invalid type")
         of 2:
