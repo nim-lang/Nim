@@ -175,7 +175,7 @@ proc put(g: var TSrcGen, kind: TTokType, s: string) =
 proc putComment(g: var TSrcGen, s: string) =
   if s.isNil: return
   var i = 0
-  var hi = len(s) - 1
+  let hi = len(s) - 1
   var isCode = (len(s) >= 2) and (s[1] != ' ')
   var ind = g.lineLen
   var com = "## "
@@ -216,7 +216,7 @@ proc putComment(g: var TSrcGen, s: string) =
 proc maxLineLength(s: string): int =
   if s.isNil: return 0
   var i = 0
-  var hi = len(s) - 1
+  let hi = len(s) - 1
   var lineLen = 0
   while i <= hi:
     case s[i]
@@ -237,7 +237,7 @@ proc maxLineLength(s: string): int =
 
 proc putRawStr(g: var TSrcGen, kind: TTokType, s: string) =
   var i = 0
-  var hi = len(s) - 1
+  let hi = len(s) - 1
   var str = ""
   while i <= hi:
     case s[i]
