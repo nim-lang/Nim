@@ -5,7 +5,7 @@ discard """
 
 # bug #584
 # Testprogram for 'not nil' check
-
+{.experimental: "notnil".}
 const testWithResult = true
 
 type

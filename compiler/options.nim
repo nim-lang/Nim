@@ -109,7 +109,8 @@ type
     dotOperators,
     callOperator,
     parallel,
-    destructor
+    destructor,
+    notnil
 
   ConfigRef* = ref object ## eventually all global configuration should be moved here
     cppDefines*: HashSet[string]

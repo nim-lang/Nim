@@ -56,7 +56,7 @@ var
     # list of exception handlers
     # a global variable for the root of all try blocks
   currException {.threadvar.}: ref Exception
-  raise_counter {.threadvar.}: uint 
+  raise_counter {.threadvar.}: uint
 
   gcFramePtr {.threadvar.}: GcFrame
 
@@ -126,10 +126,10 @@ proc popCurrentExceptionEx(id: uint) {.compilerRtl.} =
     while cur != nil and cur.raise_id != id:
       prev = cur
       cur = cur.up
-    if cur == nil: 
+    if cur == nil:
       showErrorMessage("popCurrentExceptionEx() exception was not found in the exception stack. Aborting...")
       quitOrDebug()
-    prev.up = cur.up  
+    prev.up = cur.up
 
 # some platforms have native support for stack traces:
 const
@@ -503,7 +503,7 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
 
   registerSignalHandler() # call it in initialization section
 
-proc setControlCHook(hook: proc () {.noconv.} not nil) =
+proc setControlCHook(hook: proc () {.noconv.}) =
   # ugly cast, but should work on all architectures:
   type SignalHandler = proc (sign: cint) {.noconv, benign.}
   c_signal(SIGINT, cast[SignalHandler](hook))

@@ -1,4 +1,4 @@
-## v0.X.X - XX/XX/2018
+## v0.19.X - XX/XX/2018
 
 ### Changes affecting backwards compatibility
 
@@ -14,6 +14,9 @@
 - Assignments that would "slice" an object into its supertype are now prevented
   at runtime. Use ``ref object`` with inheritance rather than ``object`` with
   inheritance to prevent this issue.
+- The ``not nil`` type annotation now has to be enabled explicitly
+  via ``{.experimental: "notnil"}`` as we are still not pleased with how this
+  feature works with Nim's containers.
 
 
 #### Breaking changes in the standard library
