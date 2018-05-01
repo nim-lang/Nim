@@ -712,10 +712,22 @@ template tryExceptOSErrorMessage(errorPrefix: string = "", body: untyped): typed
       rawMessage(errExecutionOfProgramFailed, ose.msg & " " & $ose.errorCode)
     raise
 
-proc execLinkCmd(linkCmd: string) =
+proc execLinkCmd(projectfile, linkCmd: string) =
   tryExceptOSErrorMessage("invocation of external linker program failed."):
-    execExternalProgram(linkCmd,
-      if optListCmd in gGlobalOptions or gVerbosity > 1: hintExecuting else: hintLinking)
+    when defined(windows):
+      # workaround for windows command line arguments limit (32_767)
+      let cmdFile = projectfile & "_cc_linker_cmd"
+      let ccExeIdx = linkCmd.find(" ")
+      let ccExe = linkCmd[0 ..< ccExeIdx]
+      let cmdFileData = escape(linkCmd[ccExeIdx .. ^1], "", "")
+      writeFile(cmdFile, cmdFileData)
+      var linkCmd = ccExe & " @" & cmdFile
+      execExternalProgram(linkCmd,
+        if optListCmd in gGlobalOptions or gVerbosity > 1: hintExecuting else: hintLinking)
+      discard tryRemoveFile(cmdFile)
+    else:
+      execExternalProgram(linkCmd,
+        if optListCmd in gGlobalOptions or gVerbosity > 1: hintExecuting else: hintLinking)
 
 proc execCmdsInParallel(cmds: seq[string]; prettyCb: proc (idx: int)) =
   let runCb = proc (idx: int, p: Process) =
@@ -776,7 +788,7 @@ proc callCCompiler*(projectfile: string) =
 
     linkCmd = getLinkCmd(projectfile, objfiles)
     if optCompileOnly notin gGlobalOptions:
-      execLinkCmd(linkCmd)
+      execLinkCmd(projectfile, linkCmd)
   else:
     linkCmd = ""
   if optGenScript in gGlobalOptions:
@@ -874,7 +886,7 @@ proc runJsonBuildInstructions*(projectfile: string) =
 
     let linkCmd = data["linkcmd"]
     doAssert linkCmd.kind == JString
-    execLinkCmd(linkCmd.getStr)
+    execLinkCmd(projectfile, linkCmd.getStr)
   except:
     echo getCurrentException().getStackTrace()
     quit "error evaluating JSON file: " & jsonFile
