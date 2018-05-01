@@ -65,18 +65,19 @@ import
   idents, renderer, types, magicsys, rodread, lowerings, tables, sequtils,
   lambdalifting
 
-type ClosureIteratorTransformationContext = object
-  fn: PSym
-  stateVarSym: PSym # :state variable. nil if env already introduced by lambdalifting
-  states: seq[PNode] # The resulting states. Every state is an nkState node.
-  blockLevel: int # Temp used to transform break and continue stmts
-  stateLoopLabel: PSym # Label to break on, when jumping between states.
-  exitStateIdx: int # index of the last state
-  tempVarId: int # unique name counter
-  tempVars: PNode # Temp var decls, nkVarSection
-  loweredStmtListExpr: PNode # Temporary used for nkStmtListExpr lowering
+type
+  Ctx = object
+    fn: PSym
+    stateVarSym: PSym # :state variable. nil if env already introduced by lambdalifting
+    states: seq[PNode] # The resulting states. Every state is an nkState node.
+    blockLevel: int # Temp used to transform break and continue stmts
+    stateLoopLabel: PSym # Label to break on, when jumping between states.
+    exitStateIdx: int # index of the last state
+    tempVarId: int # unique name counter
+    tempVars: PNode # Temp var decls, nkVarSection
+    loweredStmtListExpr: PNode # Temporary used for nkStmtListExpr lowering
 
-proc newStateAssgn(ctx: var ClosureIteratorTransformationContext, stateNo: int = -2): PNode =
+proc newStateAssgn(ctx: var Ctx, stateNo: int = -2): PNode =
   # Creates state assignmen:
   #   :state = stateNo
 
@@ -95,7 +96,7 @@ proc setStateInAssgn(stateAssgn: PNode, stateNo: int) =
   assert stateAssgn[1].kind == nkIntLit
   stateAssgn[1].intVal = stateNo
 
-proc newState(ctx: var ClosureIteratorTransformationContext, n, gotoOut: PNode): int =
+proc newState(ctx: var Ctx, n, gotoOut: PNode): int =
   # Creates a new state, adds it to the context fills out `gotoOut` so that it
   # will goto this state.
   # Returns index of the newly created state
@@ -123,7 +124,7 @@ proc addGotoOut(n: PNode, gotoOut: PNode): PNode =
   if result.len != 0 and result.sons[^1].kind != nkGotoState:
     result.add(gotoOut)
 
-proc newTempVarAccess(ctx: var ClosureIteratorTransformationContext, typ: PType, i: TLineInfo): PNode =
+proc newTempVarAccess(ctx: var Ctx, typ: PType, i: TLineInfo): PNode =
   if not ctx.stateVarSym.isNil:
     # We haven't gone through labmda lifting yet, so just create a local var,
     # it will be lifted later
@@ -157,7 +158,7 @@ proc hasYields(n: PNode): bool =
         result = true
         break
 
-proc transformBreaksAndContinuesInWhile(ctx: var ClosureIteratorTransformationContext, n: PNode, before, after: PNode): PNode =
+proc transformBreaksAndContinuesInWhile(ctx: var Ctx, n: PNode, before, after: PNode): PNode =
   result = n
   case n.kind
   of nkCharLit..nkUInt64Lit, nkFloatLit..nkFloat128Lit, nkStrLit..nkTripleStrLit,
@@ -177,7 +178,7 @@ proc transformBreaksAndContinuesInWhile(ctx: var ClosureIteratorTransformationCo
     for i in 0 ..< n.len:
       n[i] = ctx.transformBreaksAndContinuesInWhile(n[i], before, after)
 
-proc transformBreaksInBlock(ctx: var ClosureIteratorTransformationContext, n: PNode, label, after: PNode): PNode =
+proc transformBreaksInBlock(ctx: var Ctx, n: PNode, label, after: PNode): PNode =
   result = n
   case n.kind
   of nkCharLit..nkUInt64Lit, nkFloatLit..nkFloat128Lit, nkStrLit..nkTripleStrLit,
@@ -252,7 +253,7 @@ proc hasYieldsInExpressions(n: PNode): bool =
       if c.hasYieldsInExpressions:
         return true
 
-proc lowerStmtListExpr(ctx: var ClosureIteratorTransformationContext, n: PNode): PNode =
+proc lowerStmtListExpr(ctx: var Ctx, n: PNode): PNode =
   result = n
   case n.kind
   of nkCharLit..nkUInt64Lit, nkFloatLit..nkFloat128Lit, nkStrLit..nkTripleStrLit,
@@ -274,7 +275,7 @@ proc lowerStmtListExpr(ctx: var ClosureIteratorTransformationContext, n: PNode):
     for i in 0 ..< n.len:
       n[i] = ctx.lowerStmtListExpr(n[i])
 
-proc transformClosureIteratorBody(ctx: var ClosureIteratorTransformationContext, n: PNode, gotoOut: PNode): PNode =
+proc transformClosureIteratorBody(ctx: var Ctx, n: PNode, gotoOut: PNode): PNode =
   result = n
   case n.kind:
     of nkCharLit..nkUInt64Lit, nkFloatLit..nkFloat128Lit, nkStrLit..nkTripleStrLit,
@@ -412,7 +413,7 @@ proc stateFromGotoState(n: PNode): int =
   assert(n.kind == nkGotoState)
   result = n[0].intVal.int
 
-proc tranformStateAssignments(ctx: var ClosureIteratorTransformationContext, n: PNode): PNode =
+proc tranformStateAssignments(ctx: var Ctx, n: PNode): PNode =
   # This transforms 3 patterns:
   ########################## 1
   # yield e
@@ -484,7 +485,7 @@ proc skipStmtList(n: PNode): PNode =
     if result.len == 0: return emptyNode
     result = result[0]
 
-proc skipThroughEmptyStates(ctx: var ClosureIteratorTransformationContext, n: PNode): PNode =
+proc skipThroughEmptyStates(ctx: var Ctx, n: PNode): PNode =
   result = n
   case n.kind
   of nkCharLit..nkUInt64Lit, nkFloatLit..nkFloat128Lit, nkStrLit..nkTripleStrLit,
@@ -515,7 +516,7 @@ proc skipThroughEmptyStates(ctx: var ClosureIteratorTransformationContext, n: PN
     for i in 0 ..< n.len:
       n[i] = ctx.skipThroughEmptyStates(n[i])
 
-proc wrapIntoStateLoop(ctx: var ClosureIteratorTransformationContext, n: PNode): PNode =
+proc wrapIntoStateLoop(ctx: var Ctx, n: PNode): PNode =
   result = newNode(nkWhileStmt)
   result.add(newSymNode(getSysSym("true")))
 
@@ -549,7 +550,7 @@ proc wrapIntoStateLoop(ctx: var ClosureIteratorTransformationContext, n: PNode):
 
   loopBody.add(blockStmt)
 
-proc deleteEmptyStates(ctx: var ClosureIteratorTransformationContext) =
+proc deleteEmptyStates(ctx: var Ctx) =
   let goOut = newNode(nkGotoState)
   goOut.add(newIntLit(-1))
 
@@ -580,7 +581,7 @@ proc deleteEmptyStates(ctx: var ClosureIteratorTransformationContext) =
       inc i
 
 proc transformClosureIterator*(fn: PSym, n: PNode): PNode =
-  var ctx: ClosureIteratorTransformationContext
+  var ctx: Ctx
   ctx.fn = fn
 
   if getEnvParam(fn).isNil:
