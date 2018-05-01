@@ -11,7 +11,7 @@ type
     x, y: int
 
 proc q(x: pointer not nil) =
-  nil
+  discard
 
 proc p() =
   var x: pointer
