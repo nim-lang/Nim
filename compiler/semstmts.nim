@@ -107,30 +107,23 @@ proc fixNilType(n: PNode) =
 proc discardCheck(c: PContext, result: PNode) =
   if c.matchedConcept != nil: return
   if result.typ != nil and result.typ.kind notin {tyStmt, tyVoid}:
-    if result.kind == nkNilLit:
-      result.typ = nil
-      message(result.info, warnNilStatement)
-    elif implicitlyDiscardable(result):
+    if implicitlyDiscardable(result):
       var n = result
       result.typ = nil
       while n.kind in skipForDiscardable:
         n = n.lastSon
         n.typ = nil
     elif result.typ.kind != tyError and gCmd != cmdInteractive:
-      if result.typ.kind == tyNil:
-        fixNilType(result)
-        message(result.info, warnNilStatement)
-      else:
-        var n = result
-        while n.kind in skipForDiscardable: n = n.lastSon
-        var s = "expression '" & $n & "' is of type '" &
-            result.typ.typeToString & "' and has to be discarded"
-        if result.info.line != n.info.line or
-           result.info.fileIndex != n.info.fileIndex:
-          s.add "; start of expression here: " & $result.info
-        if result.typ.kind == tyProc:
-          s.add "; for a function call use ()"
-        localError(n.info, s)
+      var n = result
+      while n.kind in skipForDiscardable: n = n.lastSon
+      var s = "expression '" & $n & "' is of type '" &
+          result.typ.typeToString & "' and has to be discarded"
+      if result.info.line != n.info.line or
+          result.info.fileIndex != n.info.fileIndex:
+        s.add "; start of expression here: " & $result.info
+      if result.typ.kind == tyProc:
+        s.add "; for a function call use ()"
+      localError(n.info, s)
 
 proc semIf(c: PContext, n: PNode): PNode =
   result = n
