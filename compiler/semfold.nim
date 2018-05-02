@@ -721,8 +721,10 @@ proc getConstExpr(m: PSym, n: PNode): PNode =
     if a == nil: return
     if n.typ != nil and n.typ.kind in NilableTypes:
       # we allow compile-time 'cast' for pointer types:
-      result = a
-      result.typ = n.typ
+      # but not for procs. bug #5901
+      if n.typ.kind != tyProc:
+        result = a
+        result.typ = n.typ
   of nkBracketExpr: result = foldArrayAccess(m, n)
   of nkDotExpr: result = foldFieldAccess(m, n)
   of nkStmtListExpr:

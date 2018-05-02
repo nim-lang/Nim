@@ -7,7 +7,7 @@ type MyProc = proc() {.cdecl.}
 type MyProc2 = proc() {.nimcall.}
 type MyProc3 = proc() #{.closure.} is implicit
 
-proc testProc()  = echo "Hello World"
+proc testProc() {.exportc:"foo".} = echo "Hello World"
 
 proc callPointer(p: pointer) =
   # can cast to proc(){.cdecl.}
@@ -19,5 +19,9 @@ proc callPointer(p: pointer) =
 
   ffunc0()
   ffunc1()
+
+  # test bug 5901
+  proc foo() {.importc.}
+  (cast[proc(a: int) {.cdecl.}](foo))(5)
 
 callPointer(cast[pointer](testProc))
