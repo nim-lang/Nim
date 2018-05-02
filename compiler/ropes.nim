@@ -188,11 +188,11 @@ iterator leaves*(r: Rope): string =
     var stack = @[r]
     while stack.len > 0:
       var it = stack.pop
-      while isNil(it.data):
+      while it.left != nil:
+        assert it.right != nil
         stack.add(it.right)
         it = it.left
         assert(it != nil)
-      assert(it.data != nil)
       yield it.data
 
 iterator items*(r: Rope): char =
