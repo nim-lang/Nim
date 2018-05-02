@@ -42,7 +42,8 @@ proc newLine(p: var TTmplParser) =
 
 proc scanPar(p: var TTmplParser, d: int) =
   var i = d
-  while true:
+  let hi = p.x.len - 1
+  while i <= hi:
     case p.x[i]
     of '\0': break
     of '(': inc(p.par)
