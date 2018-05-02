@@ -177,7 +177,7 @@ proc fail*[T](future: Future[T], error: ref Exception) =
     if getStackTrace(error) == "": getStackTrace() else: getStackTrace(error)
   future.callbacks.call()
 
-proc clearCallbacks(future: FutureBase) =
+proc clearCallbacks*(future: FutureBase) =
   future.callbacks.function = nil
   future.callbacks.next = nil
 
