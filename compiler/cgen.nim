@@ -265,7 +265,7 @@ proc rdCharLoc(a: TLoc): Rope =
 
 proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
                    takeAddr: bool) =
-  if p.module.compileToCpp and t.isException:
+  if p.module.compileToCpp and t.isException and not isDefined("noCppExceptions"):
     # init vtable in Exception object for polymorphic exceptions
     includeHeader(p.module, "<new>")
     linefmt(p, section, "new ($1) $2;$n", rdLoc(a), getTypeDesc(p.module, t))
