@@ -278,7 +278,7 @@ template callFormatOption(res, arg, option) {.dirty.} =
 macro `&`*(pattern: string): untyped =
   ## For a specification of the ``&`` macro, see the module level documentation.
   if pattern.kind notin {nnkStrLit..nnkTripleStrLit}:
-    error "& only works with string literals", pattern
+    error "string formatting (fmt(), &) only works with string literals", pattern
   let f = pattern.strVal
   var i = 0
   let res = genSym(nskVar, "fmtRes")
