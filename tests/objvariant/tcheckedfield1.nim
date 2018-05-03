@@ -6,7 +6,7 @@ discard """
 import strutils
 
 {.warning[ProveField]: on.}
-
+{.experimental: "notnil".}
 type
   TNodeKind = enum
     nkBinary, nkTernary, nkStr

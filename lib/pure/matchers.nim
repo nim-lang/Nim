@@ -29,21 +29,21 @@ proc validEmailAddress*(s: string): bool {.noSideEffect,
     chars = Letters + Digits + {'!','#','$','%','&',
       '\'','*','+','/','=','?','^','_','`','{','}','|','~','-','.'}
   var i = 0
-  if s[i] notin chars or s[i] == '.': return false
-  while s[i] in chars:
-    if s[i] == '.' and s[i+1] == '.': return false
+  if i >= s.len or s[i] notin chars or s[i] == '.': return false
+  while i < s.len and s[i] in chars:
+    if i+1 < s.len and s[i] == '.' and s[i+1] == '.': return false
     inc(i)
-  if s[i] != '@': return false
+  if i >= s.len or s[i] != '@': return false
   var j = len(s)-1
-  if s[j] notin Letters: return false
+  if j >= 0 and s[j] notin Letters: return false
   while j >= i and s[j] in Letters: dec(j)
   inc(i) # skip '@'
-  while s[i] in {'0'..'9', 'a'..'z', '-', '.'}: inc(i)
-  if s[i] != '\0': return false
+  while i < s.len and s[i] in {'0'..'9', 'a'..'z', '-', '.'}: inc(i)
+  if i != s.len: return false
 
   var x = substr(s, j+1)
   if len(x) == 2 and x[0] in Letters and x[1] in Letters: return true
-  case toLower(x)
+  case toLowerAscii(x)
   of "com", "org", "net", "gov", "mil", "biz", "info", "mobi", "name",
      "aero", "jobs", "museum": return true
   else: return false

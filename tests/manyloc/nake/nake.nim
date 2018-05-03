@@ -67,7 +67,7 @@ else:
     for kind, key, val in getOpt():
       case kind
       of cmdLongOption, cmdShortOption:
-        case key.tolower
+        case key.tolowerAscii
         of "tasks", "t":
           printTaskList = true
         else:

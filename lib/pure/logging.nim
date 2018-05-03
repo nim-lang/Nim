@@ -126,7 +126,7 @@ proc substituteLog*(frmt: string, level: Level, args: varargs[string, `$`]): str
       var v = ""
       let app = when defined(js): "" else: getAppFilename()
       while frmt[i] in IdentChars:
-        v.add(toLower(frmt[i]))
+        v.add(toLowerAscii(frmt[i]))
         inc(i)
       case v
       of "date": result.add(getDateStr())

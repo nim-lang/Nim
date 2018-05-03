@@ -25,16 +25,16 @@ proc parseCookies*(s: string): StringTableRef =
   result = newStringTable(modeCaseInsensitive)
   var i = 0
   while true:
-    while s[i] == ' ' or s[i] == '\t': inc(i)
+    while i < s.len and (s[i] == ' ' or s[i] == '\t'): inc(i)
     var keystart = i
-    while s[i] != '=' and s[i] != '\0': inc(i)
+    while i < s.len and s[i] != '=': inc(i)
     var keyend = i-1
-    if s[i] == '\0': break
+    if i >= s.len: break
     inc(i) # skip '='
     var valstart = i
-    while s[i] != ';' and s[i] != '\0': inc(i)
+    while i < s.len and s[i] != ';': inc(i)
     result[substr(s, keystart, keyend)] = substr(s, valstart, i-1)
-    if s[i] == '\0': break
+    if i >= s.len: break
     inc(i) # skip ';'
 
 proc setCookie*(key, value: string, domain = "", path = "",

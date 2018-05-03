@@ -612,13 +612,13 @@ proc firstOrd*(t: PType): BiggestInt =
     else:
       assert(t.n.sons[0].kind == nkSym)
       result = t.n.sons[0].sym.position
-  of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias:
+  of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tyStatic:
     result = firstOrd(lastSon(t))
   of tyOrdinal:
     if t.len > 0: result = firstOrd(lastSon(t))
-    else: internalError("invalid kind for first(" & $t.kind & ')')
+    else: internalError("invalid kind for firstOrd(" & $t.kind & ')')
   else:
-    internalError("invalid kind for first(" & $t.kind & ')')
+    internalError("invalid kind for firstOrd(" & $t.kind & ')')
     result = 0
 
 proc lastOrd*(t: PType; fixedUnsigned = false): BiggestInt =
@@ -651,14 +651,14 @@ proc lastOrd*(t: PType; fixedUnsigned = false): BiggestInt =
   of tyEnum:
     assert(t.n.sons[sonsLen(t.n) - 1].kind == nkSym)
     result = t.n.sons[sonsLen(t.n) - 1].sym.position
-  of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias:
+  of tyGenericInst, tyDistinct, tyTypeDesc, tyAlias, tyStatic:
     result = lastOrd(lastSon(t))
   of tyProxy: result = 0
   of tyOrdinal:
     if t.len > 0: result = lastOrd(lastSon(t))
-    else: internalError("invalid kind for last(" & $t.kind & ')')
+    else: internalError("invalid kind for lastOrd(" & $t.kind & ')')
   else:
-    internalError("invalid kind for last(" & $t.kind & ')')
+    internalError("invalid kind for lastOrd(" & $t.kind & ')')
     result = 0
 
 proc lengthOrd*(t: PType): BiggestInt =

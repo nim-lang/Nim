@@ -128,7 +128,7 @@ proc highlight(s, match, repl: string, t: tuple[first, last: int],
     stdout.write("\n")
     stdout.flushFile()
 
-proc processFile(pattern; filename: string) =
+proc processFile(pattern; filename: string; counter: var int) =
   var filenameShown = false
   template beforeHighlight =
     if not filenameShown and optVerbose notin options and not oneline:
@@ -166,6 +166,7 @@ proc processFile(pattern; filename: string) =
     var wholeMatch = buffer.substr(t.first, t.last)
 
     beforeHighlight()
+    inc counter
     if optReplace notin options:
       highlight(buffer, wholeMatch, "", t, filename, line, showRepl=false)
     else:
@@ -241,17 +242,17 @@ proc styleInsensitive(s: string): string =
         addx()
     else: addx()
 
-proc walker(pattern; dir: string) =
+proc walker(pattern; dir: string; counter: var int) =
   for kind, path in walkDir(dir):
     case kind
     of pcFile:
       if extensions.len == 0 or path.hasRightExt(extensions):
-        processFile(pattern, path)
+        processFile(pattern, path, counter)
     of pcDir:
       if optRecursive in options:
-        walker(pattern, path)
+        walker(pattern, path, counter)
     else: discard
-  if existsFile(dir): processFile(pattern, dir)
+  if existsFile(dir): processFile(pattern, dir, counter)
 
 proc writeHelp() =
   stdout.write(Usage)
@@ -321,6 +322,7 @@ if optStdin in options:
 if pattern.len == 0:
   writeHelp()
 else:
+  var counter = 0
   if filenames.len == 0:
     filenames.add(os.getCurrentDir())
   if optRegex notin options:
@@ -332,7 +334,7 @@ else:
       pattern = "\\i " & pattern
     let pegp = peg(pattern)
     for f in items(filenames):
-      walker(pegp, f)
+      walker(pegp, f, counter)
   else:
     var reflags = {reStudy, reExtended}
     if optIgnoreStyle in options:
@@ -343,5 +345,6 @@ else:
       reflags.incl reIgnoreCase
     let rep = re(pattern, reflags)
     for f in items(filenames):
-      walker(rep, f)
-
+      walker(rep, f, counter)
+  if not oneline:
+    stdout.write($counter & " matches\n")

@@ -82,7 +82,6 @@ proc countDefinedSymbols*(): int =
 
 proc initDefines*() =
   gSymbols = newStringTable(modeStyleInsensitive)
-  defineSymbol("nimrod") # 'nimrod' is always defined
   # for bootstrapping purposes and old code:
   defineSymbol("nimhygiene")
   defineSymbol("niminheritable")
@@ -115,3 +114,6 @@ proc initDefines*() =
   defineSymbol("nimHasNilChecks")
   defineSymbol("nimSymKind")
   defineSymbol("nimVmEqIdent")
+  defineSymbol("nimNoNil")
+  defineSymbol("nimNoZeroTerminator")
+  defineSymbol("nimNotNil")

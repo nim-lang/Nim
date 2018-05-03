@@ -125,15 +125,15 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
     of tyString, tySequence:
       if skipTypes(n.typ, abstractInst).kind == tyVar and
             not compileToCpp(p.module):
-        result = "(*$1)->data, (*$1)->$2" % [a.rdLoc, lenField(p)]
+        result = "(*$1)->data, (*$1 ? (*$1)->$2 : 0)" % [a.rdLoc, lenField(p)]
       else:
-        result = "$1->data, $1->$2" % [a.rdLoc, lenField(p)]
+        result = "$1->data, ($1 ? $1->$2 : 0)" % [a.rdLoc, lenField(p)]
     of tyArray:
       result = "$1, $2" % [rdLoc(a), rope(lengthOrd(a.t))]
     of tyPtr, tyRef:
       case lastSon(a.t).kind
       of tyString, tySequence:
-        result = "(*$1)->data, (*$1)->$2" % [a.rdLoc, lenField(p)]
+        result = "(*$1)->data, (*$1 ? (*$1)->$2 : 0)" % [a.rdLoc, lenField(p)]
       of tyArray:
         result = "$1, $2" % [rdLoc(a), rope(lengthOrd(lastSon(a.t)))]
       else:
@@ -143,7 +143,7 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
 proc genArgStringToCString(p: BProc, n: PNode): Rope {.inline.} =
   var a: TLoc
   initLocExpr(p, n.sons[0], a)
-  result = "$1->data" % [a.rdLoc]
+  result = "($1 ? $1->data : (NCSTRING)\"\")" % [a.rdLoc]
 
 proc genArg(p: BProc, n: PNode, param: PSym; call: PNode): Rope =
   var a: TLoc

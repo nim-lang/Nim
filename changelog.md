@@ -1,4 +1,4 @@
-## v0.X.X - XX/XX/2018
+## v0.19.X - XX/XX/2018
 
 ### Changes affecting backwards compatibility
 
@@ -11,9 +11,12 @@
   to deal with!
 - Indexing into a ``cstring`` for the JS target is now mapped
   to ``charCodeAt``.
-- Assignments that would "slice" an object into its supertype are not prevented
+- Assignments that would "slice" an object into its supertype are now prevented
   at runtime. Use ``ref object`` with inheritance rather than ``object`` with
   inheritance to prevent this issue.
+- The ``not nil`` type annotation now has to be enabled explicitly
+  via ``{.experimental: "notnil"}`` as we are still not pleased with how this
+  feature works with Nim's containers.
 
 
 #### Breaking changes in the standard library
@@ -80,6 +83,14 @@
 - Native C++ exceptions can now be imported with `importcpp` pragma.
   Imported exceptions can be raised and caught just like Nim exceptions.
   More details in language manual.
+
+- ``nil`` for strings/seqs is finally gone. Instead the default value for
+  these is ``"" / @[]``.
+- Accessing the binary zero terminator in Nim's native strings
+  is now invalid. Internally a Nim string still has the trailing zero for
+  zero-copy interoperability with ``cstring``. Compile your code with the
+  next switch ``--laxStrings:on`` if you need a transition period.
+
 
 ### Tool changes
 

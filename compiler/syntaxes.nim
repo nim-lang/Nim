@@ -51,15 +51,15 @@ proc parseTopLevelStmt*(p: var TParsers): PNode =
     result = ast.emptyNode
 
 proc utf8Bom(s: string): int =
-  if s[0] == '\xEF' and s[1] == '\xBB' and s[2] == '\xBF':
+  if s.len >= 3 and s[0] == '\xEF' and s[1] == '\xBB' and s[2] == '\xBF':
     result = 3
   else:
     result = 0
 
 proc containsShebang(s: string, i: int): bool =
-  if s[i] == '#' and s[i+1] == '!':
+  if i+1 < s.len and s[i] == '#' and s[i+1] == '!':
     var j = i + 2
-    while s[j] in Whitespace: inc(j)
+    while j < s.len and s[j] in Whitespace: inc(j)
     result = s[j] == '/'
 
 proc parsePipe(filename: string, inputStream: PLLStream; cache: IdentCache): PNode =
@@ -74,9 +74,9 @@ proc parsePipe(filename: string, inputStream: PLLStream; cache: IdentCache): PNo
       discard llStreamReadLine(s, line)
       i = 0
       inc linenumber
-    if line[i] == '#' and line[i+1] == '?':
+    if i+1 < line.len and line[i] == '#' and line[i+1] == '?':
       inc(i, 2)
-      while line[i] in Whitespace: inc(i)
+      while i < line.len and line[i] in Whitespace: inc(i)
       var q: TParser
       parser.openParser(q, filename, llStreamOpen(substr(line, i)), cache)
       result = parser.parseAll(q)

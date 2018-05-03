@@ -126,7 +126,7 @@ type
     warnSmallLshouldNotBeUsed, warnUnknownMagic, warnRedefinitionOfLabel,
     warnUnknownSubstitutionX, warnLanguageXNotSupported,
     warnFieldXNotSupported, warnCommentXIgnored,
-    warnNilStatement, warnTypelessParam,
+    warnTypelessParam,
     warnUseBase, warnWriteToForeignHeap, warnUnsafeCode,
     warnEachIdentIsTuple, warnShadowIdent,
     warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe, warnGcUnsafe2,
@@ -400,7 +400,6 @@ const
     warnLanguageXNotSupported: "language \'$1\' not supported",
     warnFieldXNotSupported: "field \'$1\' not supported",
     warnCommentXIgnored: "comment \'$1\' ignored",
-    warnNilStatement: "'nil' statement is deprecated; use an empty 'discard' statement instead",
     warnTypelessParam: "'$1' has no type. Typeless parameters are deprecated; only allowed for 'template'",
     warnUseBase: "use {.base.} for base methods; baseless methods are deprecated",
     warnWriteToForeignHeap: "write to foreign heap",
@@ -451,7 +450,7 @@ const
     "SmallLshouldNotBeUsed", "UnknownMagic",
     "RedefinitionOfLabel", "UnknownSubstitutionX",
     "LanguageXNotSupported", "FieldXNotSupported",
-    "CommentXIgnored", "NilStmt",
+    "CommentXIgnored",
     "TypelessParam", "UseBase", "WriteToForeignHeap",
     "UnsafeCode", "EachIdentIsTuple", "ShadowIdent",
     "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
@@ -473,6 +472,10 @@ const
   warnMax* = pred(hintSuccess)
   hintMin* = hintSuccess
   hintMax* = high(TMsgKind)
+
+static:
+  doAssert HintsToStr.len == ord(hintMax) - ord(hintMin) + 1
+  doAssert WarningsToStr.len == ord(warnMax) - ord(warnMin) + 1
 
 type
   TNoteKind* = range[warnMin..hintMax] # "notes" are warnings or hints

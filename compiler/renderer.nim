@@ -175,10 +175,11 @@ proc put(g: var TSrcGen, kind: TTokType, s: string) =
 proc putComment(g: var TSrcGen, s: string) =
   if s.isNil: return
   var i = 0
+  let hi = len(s) - 1
   var isCode = (len(s) >= 2) and (s[1] != ' ')
   var ind = g.lineLen
   var com = "## "
-  while true:
+  while i <= hi:
     case s[i]
     of '\0':
       break
@@ -201,12 +202,12 @@ proc putComment(g: var TSrcGen, s: string) =
       # gets too long:
       # compute length of the following word:
       var j = i
-      while s[j] > ' ': inc(j)
+      while j <= hi and s[j] > ' ': inc(j)
       if not isCode and (g.lineLen + (j - i) > MaxLineLen):
         put(g, tkComment, com)
         optNL(g, ind)
         com = "## "
-      while s[i] > ' ':
+      while i <= hi and s[i] > ' ':
         add(com, s[i])
         inc(i)
   put(g, tkComment, com)
@@ -215,8 +216,9 @@ proc putComment(g: var TSrcGen, s: string) =
 proc maxLineLength(s: string): int =
   if s.isNil: return 0
   var i = 0
+  let hi = len(s) - 1
   var lineLen = 0
-  while true:
+  while i <= hi:
     case s[i]
     of '\0':
       break
@@ -235,7 +237,7 @@ proc maxLineLength(s: string): int =
 
 proc putRawStr(g: var TSrcGen, kind: TTokType, s: string) =
   var i = 0
-  var hi = len(s) - 1
+  let hi = len(s) - 1
   var str = ""
   while i <= hi:
     case s[i]
@@ -1064,6 +1066,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     if n.len > 1:
       let opr = if n[0].kind == nkIdent: n[0].ident
                 elif n[0].kind == nkSym: n[0].sym.name
+                elif n[0].kind in {nkOpenSymChoice, nkClosedSymChoice}: n[0][0].sym.name
                 else: nil
       if n[1].kind == nkPrefix or (opr != nil and renderer.isKeyword(opr)):
         put(g, tkSpaces, Space)
