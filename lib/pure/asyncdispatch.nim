@@ -343,6 +343,8 @@ when defined(windows) or defined(nimdoc):
             # Timed out
             result = false
           else: raiseOSError(errCode)
+    else:
+      sleep(p.adjustedTimeout(timeout))
 
     # Timer processing.
     processTimers(p, result)
