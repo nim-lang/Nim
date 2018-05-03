@@ -1962,7 +1962,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     inc(m.genericMatches)
     if arg.typ == nil:
       result = arg
-    elif skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple:
+    elif skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple or
+         m.inheritancePenalty > 0:
       result = implicitConv(nkHiddenSubConv, f, arg, m, c)
     elif arg.typ.isEmptyContainer:
       result = arg.copyTree
