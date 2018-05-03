@@ -229,31 +229,23 @@ proc normalize[T: Duration|Time](seconds, nanoseconds: int64): T =
     result.seconds -= 1
   result.nanosecond = nanosecond.int
 
-proc initTime*(unix: int64, nanosecond: NanosecondRange): Time =
-  ## Create a ``Time`` from a unix timestamp and a nanosecond part.
-  result.seconds = unix
-  result.nanosecond = nanosecond
+# Forward declarations
+proc utcZoneInfoFromUtc(time: Time): ZonedTime {.tags: [], raises: [], benign .}
+proc utcZoneInfoFromTz(adjTime: Time): ZonedTime {.tags: [], raises: [], benign .}
+proc localZoneInfoFromUtc(time: Time): ZonedTime {.tags: [], raises: [], benign .}
+proc localZoneInfoFromTz(adjTime: Time): ZonedTime {.tags: [], raises: [], benign .}
+proc initTime*(unix: int64, nanosecond: NanosecondRange): Time 
+  {.tags: [], raises: [], benign noSideEffect.}
+
+proc initDuration*(nanoseconds, microseconds, milliseconds,
+                   seconds, minutes, hours, days, weeks: int64 = 0): Duration 
+  {.tags: [], raises: [], benign noSideEffect.}
 
 proc nanosecond*(time: Time): NanosecondRange =
   ## Get the fractional part of a ``Time`` as the number
   ## of nanoseconds of the second.
   time.nanosecond
 
-proc initDuration*(nanoseconds, microseconds, milliseconds,
-                   seconds, minutes, hours, days, weeks: int64 = 0): Duration =
-  let seconds = convert(Weeks, Seconds, weeks) +
-    convert(Days, Seconds, days) +
-    convert(Minutes, Seconds, minutes) +
-    convert(Hours, Seconds, hours) +
-    convert(Seconds, Seconds, seconds) +
-    convert(Milliseconds, Seconds, milliseconds) +
-    convert(Microseconds, Seconds, microseconds) +
-    convert(Nanoseconds, Seconds, nanoseconds)
-  let nanoseconds = (convert(Milliseconds, Nanoseconds, milliseconds mod 1000) +
-    convert(Microseconds, Nanoseconds, microseconds mod 1_000_000) +
-    nanoseconds mod 1_000_000_000).int
-  # Nanoseconds might be negative so we must normalize.
-  result = normalize[Duration](seconds, nanoseconds)
 
 proc weeks*(dur: Duration): int64 {.inline.} =
   ## Number of whole weeks represented by the duration.
@@ -306,64 +298,6 @@ proc fractional*(dur: Duration): Duration {.inline.} =
     doAssert dur.fractional == initDuration(nanoseconds = 5)
   initDuration(nanoseconds = dur.nanosecond)
 
-const DurationZero* = initDuration() ## \
-  ## Zero value for durations. Useful for comparisons.
-  ##
-  ## .. code-block:: nim
-  ##
-  ##   doAssert initDuration(seconds = 1) > DurationZero
-  ##   doAssert initDuration(seconds = 0) == DurationZero
-
-proc `$`*(dur: Duration): string =
-  ## Human friendly string representation of ``dur``.
-  runnableExamples:
-    doAssert $initDuration(seconds = 2) == "2 seconds"
-    doAssert $initDuration(weeks = 1, days = 2) == "1 week and 2 days"
-    doAssert $initDuration(hours = 1, minutes = 2, seconds = 3) == "1 hour, 2 minutes, and 3 seconds"
-    doAssert $initDuration(milliseconds = -1500) == "-1 second and -500 milliseconds"
-  var parts = newSeq[string]()
-  var remS = dur.seconds
-  var remNs = dur.nanosecond.int
-
-  # Normally ``nanoseconds`` should always be positive, but
-  # that makes no sense when printing.
-  if remS < 0:
-    remNs -= convert(Seconds, Nanoseconds, 1)
-    remS.inc 1
-
-  const unitStrings: array[FixedTimeUnit, string] = [
-    "nanosecond", "microsecond", "millisecond", "second", "minute", "hour", "day", "week"
-  ]
-
-  for unit in countdown(Weeks, Seconds):
-    let quantity = convert(Seconds, unit, remS)
-    remS = remS mod convert(unit, Seconds, 1)
-
-    if quantity.abs == 1:
-      parts.add $quantity & " " & unitStrings[unit]
-    elif quantity != 0:
-      parts.add $quantity & " " & unitStrings[unit] & "s"
-
-  for unit in countdown(Milliseconds, Nanoseconds):
-    let quantity = convert(Nanoseconds, unit, remNs)
-    remNs = remNs mod convert(unit, Nanoseconds, 1)
-
-    if quantity.abs == 1:
-      parts.add $quantity & " " & unitStrings[unit]
-    elif quantity != 0:
-      parts.add $quantity & " " & unitStrings[unit] & "s"
-
-  result = ""
-  if parts.len == 0:
-    result.add "0 nanoseconds"
-  elif parts.len == 1:
-    result = parts[0]
-  elif parts.len == 2:
-    result = parts[0] & " and " & parts[1]
-  else:
-    for part in parts[0..high(parts)-1]:
-      result.add part & ", "
-    result.add "and " & parts[high(parts)]
 
 proc fromUnix*(unix: int64): Time {.benign, tags: [], raises: [], noSideEffect.} =
   ## Convert a unix timestamp (seconds since ``1970-01-01T00:00:00Z``) to a ``Time``.
@@ -468,11 +402,6 @@ proc getDayOfWeek*(monthday: MonthdayRange, month: Month, year: int): WeekDay {.
   # so we must correct for the WeekDay type.
   result = if wd == 0: dSun else: WeekDay(wd - 1)
 
-# Forward declarations
-proc utcZoneInfoFromUtc(time: Time): ZonedTime {.tags: [], raises: [], benign .}
-proc utcZoneInfoFromTz(adjTime: Time): ZonedTime {.tags: [], raises: [], benign .}
-proc localZoneInfoFromUtc(time: Time): ZonedTime {.tags: [], raises: [], benign .}
-proc localZoneInfoFromTz(adjTime: Time): ZonedTime {.tags: [], raises: [], benign .}
 
 {. pragma: operator, rtl, noSideEffect, benign .}
 
@@ -492,6 +421,86 @@ template lqImpl(a: Duration|Time, b: Duration|Time): bool =
 
 template eqImpl(a: Duration|Time, b: Duration|Time): bool =
   a.seconds == b.seconds and a.nanosecond == b.nanosecond
+
+proc initDuration*(nanoseconds, microseconds, milliseconds,
+                   seconds, minutes, hours, days, weeks: int64 = 0): Duration =
+  runnableExamples:
+    let dur = initDuration(seconds = 1, milliseconds = 1)
+    doAssert dur.milliseconds == 1
+    doAssert dur.seconds == 1
+
+  let seconds = convert(Weeks, Seconds, weeks) +
+    convert(Days, Seconds, days) +
+    convert(Minutes, Seconds, minutes) +
+    convert(Hours, Seconds, hours) +
+    convert(Seconds, Seconds, seconds) +
+    convert(Milliseconds, Seconds, milliseconds) +
+    convert(Microseconds, Seconds, microseconds) +
+    convert(Nanoseconds, Seconds, nanoseconds)
+  let nanoseconds = (convert(Milliseconds, Nanoseconds, milliseconds mod 1000) +
+    convert(Microseconds, Nanoseconds, microseconds mod 1_000_000) +
+    nanoseconds mod 1_000_000_000).int
+  # Nanoseconds might be negative so we must normalize.
+  result = normalize[Duration](seconds, nanoseconds)
+
+const DurationZero* = initDuration() ## \
+  ## Zero value for durations. Useful for comparisons.
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   doAssert initDuration(seconds = 1) > DurationZero
+  ##   doAssert initDuration(seconds = 0) == DurationZero
+
+proc `$`*(dur: Duration): string =
+  ## Human friendly string representation of ``dur``.
+  runnableExamples:
+    doAssert $initDuration(seconds = 2) == "2 seconds"
+    doAssert $initDuration(weeks = 1, days = 2) == "1 week and 2 days"
+    doAssert $initDuration(hours = 1, minutes = 2, seconds = 3) == "1 hour, 2 minutes, and 3 seconds"
+    doAssert $initDuration(milliseconds = -1500) == "-1 second and -500 milliseconds"
+  var parts = newSeq[string]()
+  var remS = dur.seconds
+  var remNs = dur.nanosecond.int
+
+  # Normally ``nanoseconds`` should always be positive, but
+  # that makes no sense when printing.
+  if remS < 0:
+    remNs -= convert(Seconds, Nanoseconds, 1)
+    remS.inc 1
+
+  const unitStrings: array[FixedTimeUnit, string] = [
+    "nanosecond", "microsecond", "millisecond", "second", "minute", "hour", "day", "week"
+  ]
+
+  for unit in countdown(Weeks, Seconds):
+    let quantity = convert(Seconds, unit, remS)
+    remS = remS mod convert(unit, Seconds, 1)
+
+    if quantity.abs == 1:
+      parts.add $quantity & " " & unitStrings[unit]
+    elif quantity != 0:
+      parts.add $quantity & " " & unitStrings[unit] & "s"
+
+  for unit in countdown(Milliseconds, Nanoseconds):
+    let quantity = convert(Nanoseconds, unit, remNs)
+    remNs = remNs mod convert(unit, Nanoseconds, 1)
+
+    if quantity.abs == 1:
+      parts.add $quantity & " " & unitStrings[unit]
+    elif quantity != 0:
+      parts.add $quantity & " " & unitStrings[unit] & "s"
+
+  result = ""
+  if parts.len == 0:
+    result.add "0 nanoseconds"
+  elif parts.len == 1:
+    result = parts[0]
+  elif parts.len == 2:
+    result = parts[0] & " and " & parts[1]
+  else:
+    for part in parts[0..high(parts)-1]:
+      result.add part & ", "
+    result.add "and " & parts[high(parts)]
 
 proc `+`*(a, b: Duration): Duration {.operator.} =
   ## Add two durations together.
@@ -550,6 +559,11 @@ proc `div`*(a: Duration, b: int64): Duration {.operator} =
   let carryOver = convert(Seconds, Nanoseconds, a.seconds mod b)
   normalize[Duration](a.seconds div b, (a.nanosecond + carryOver) div b)
 
+proc initTime*(unix: int64, nanosecond: NanosecondRange): Time =
+  ## Create a ``Time`` from a unix timestamp and a nanosecond part.
+  result.seconds = unix
+  result.nanosecond = nanosecond
+
 proc `-`*(a, b: Time): Duration {.operator, extern: "ntDiffTime".} =
   ## Computes the duration between two points in time.
   subImpl[Duration](a, b)
@@ -560,12 +574,6 @@ proc `+`*(a: Time, b: Duration): Time {.operator, extern: "ntAddTime".} =
     doAssert (fromUnix(0) + initDuration(seconds = 1)) == fromUnix(1)
   addImpl[Time](a, b)
 
-proc `-`*(a: Time, b: Duration): Time {.operator, extern: "ntSubTime".} =
-  ## Subtracts a duration of time from a ``Time``.
-  runnableExamples:
-    doAssert (fromUnix(0) - initDuration(seconds = 1)) == fromUnix(-1)
-  subImpl[Time](a, b)
-
 proc `+=`*(a: var Time, b: Duration) {.operator.} =
   ## Modify ``a`` in place by subtracting ``b``.
   runnableExamples:
@@ -574,6 +582,12 @@ proc `+=`*(a: var Time, b: Duration) {.operator.} =
     doAssert tm == fromUnix(1)
 
   a = addImpl[Time](a, b)
+
+proc `-`*(a: Time, b: Duration): Time {.operator, extern: "ntSubTime".} =
+  ## Subtracts a duration of time from a ``Time``.
+  runnableExamples:
+    doAssert (fromUnix(0) - initDuration(seconds = 1)) == fromUnix(-1)
+  subImpl[Time](a, b)
 
 proc `-=`*(a: var Time, b: Duration) {.operator.} =
   ## Modify ``a`` in place by adding ``b``.
@@ -628,28 +642,6 @@ proc toTime*(dt: DateTime): Time {.tags: [], raises: [], benign.} =
   # so we need to compensate for that here.
   seconds.inc dt.utcOffset
   result = initTime(seconds, dt.nanosecond)
-
-proc `-`*(dt1, dt2: DateTime): Duration =
-  ## Compute the duration between ``dt1`` and ``dt2``.
-  runnableExamples:
-    let dt1 = initDateTime(30, mMar, 2017, 00, 00, 00, utc())
-    let dt2 = initDateTime(25, mMar, 2017, 00, 00, 00, utc())
-
-    doAssert dt1 - dt2 == initDuration(days = 5)
-
-  dt1.toTime - dt2.toTime
-
-proc `<`*(a, b: DateTime): bool =
-  ## Returns true iff ``a < b``, that is iff a happened before b.
-  return a.toTime < b.toTime
-
-proc `<=` * (a, b: DateTime): bool =
-  ## Returns true iff ``a <= b``.
-  return a.toTime <= b.toTime
-
-proc `==`*(a, b: DateTime): bool =
-  ## Returns true if ``a == b``, that is if both dates represent the same point in datetime.
-  return a.toTime == b.toTime
 
 proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
   ## Create a new ``DateTime`` using ``ZonedTime`` in the specified timezone.
@@ -1084,6 +1076,37 @@ proc evaluateInterval(dt: DateTime, interval: TimeInterval): tuple[adjDur, absDu
     minutes = interval.minutes,
     hours = interval.hours)
 
+
+proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
+                   hour: HourRange, minute: MinuteRange, second: SecondRange,
+                   nanosecond: NanosecondRange, zone: Timezone = local()): DateTime =
+  ## Create a new ``DateTime`` in the specified timezone.
+  runnableExamples:
+    let dt1 = initDateTime(30, mMar, 2017, 00, 00, 00, 00, utc())
+    doAssert $dt1 == "2017-03-30T00:00:00+00:00"
+
+  assertValidDate monthday, month, year
+  let dt = DateTime(
+    monthday:  monthday,
+    year:  year,
+    month:  month,
+    hour:  hour,
+    minute:  minute,
+    second:  second,
+    nanosecond: nanosecond
+  )
+  result = initDateTime(zone.zoneInfoFromTz(dt.toAdjTime), zone)
+
+proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
+                   hour: HourRange, minute: MinuteRange, second: SecondRange,
+                   zone: Timezone = local()): DateTime =
+  ## Create a new ``DateTime`` in the specified timezone.
+  runnableExamples:
+    let dt1 = initDateTime(30, mMar, 2017, 00, 00, 00, utc())
+    doAssert $dt1 == "2017-03-30T00:00:00+00:00"
+  initDateTime(monthday, month, year, hour, minute, second, 0, zone)
+
+
 proc `+`*(dt: DateTime, interval: TimeInterval): DateTime =
   ## Adds ``interval`` to ``dt``. Components from ``interval`` are added
   ## in the order of their size, i.e first the ``years`` component, then the ``months``
@@ -1138,6 +1161,28 @@ proc `-`*(dt: DateTime, dur: Duration): DateTime =
     doAssert $(dt - dur) == "2017-03-25T00:00:00+00:00"
 
   (dt.toTime - dur).inZone(dt.timezone)
+
+proc `-`*(dt1, dt2: DateTime): Duration =
+  ## Compute the duration between ``dt1`` and ``dt2``.
+  runnableExamples:
+    let dt1 = initDateTime(30, mMar, 2017, 00, 00, 00, utc())
+    let dt2 = initDateTime(25, mMar, 2017, 00, 00, 00, utc())
+
+    doAssert dt1 - dt2 == initDuration(days = 5)
+
+  dt1.toTime - dt2.toTime
+
+proc `<`*(a, b: DateTime): bool =
+  ## Returns true iff ``a < b``, that is iff a happened before b.
+  return a.toTime < b.toTime
+
+proc `<=` * (a, b: DateTime): bool =
+  ## Returns true iff ``a <= b``.
+  return a.toTime <= b.toTime
+
+proc `==`*(a, b: DateTime): bool =
+  ## Returns true if ``a == b``, that is if both dates represent the same point in datetime.
+  return a.toTime == b.toTime
 
 proc isStaticInterval(interval: TimeInterval): bool =
   interval.years == 0 and interval.months == 0 and
@@ -1765,35 +1810,6 @@ proc toTimeInterval*(time: Time): TimeInterval =
   var dt = time.local
   initTimeInterval(dt.nanosecond, 0, 0, dt.second, dt.minute, dt.hour,
     dt.monthday, 0, dt.month.ord - 1, dt.year)
-
-proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
-                   hour: HourRange, minute: MinuteRange, second: SecondRange,
-                   nanosecond: NanosecondRange, zone: Timezone = local()): DateTime =
-  ## Create a new ``DateTime`` in the specified timezone.
-  runnableExamples:
-    let dt1 = initDateTime(30, mMar, 2017, 00, 00, 00, 00, utc())
-    doAssert $dt1 == "2017-03-30T00:00:00+00:00"
-
-  assertValidDate monthday, month, year
-  let dt = DateTime(
-    monthday:  monthday,
-    year:  year,
-    month:  month,
-    hour:  hour,
-    minute:  minute,
-    second:  second,
-    nanosecond: nanosecond
-  )
-  result = initDateTime(zone.zoneInfoFromTz(dt.toAdjTime), zone)
-
-proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
-                   hour: HourRange, minute: MinuteRange, second: SecondRange,
-                   zone: Timezone = local()): DateTime =
-  ## Create a new ``DateTime`` in the specified timezone.
-  runnableExamples:
-    let dt1 = initDateTime(30, mMar, 2017, 00, 00, 00, utc())
-    doAssert $dt1 == "2017-03-30T00:00:00+00:00"
-  initDateTime(monthday, month, year, hour, minute, second, 0, zone)
 
 when not defined(JS):
   type
