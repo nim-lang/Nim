@@ -1173,12 +1173,16 @@ proc formatToken(dt: DateTime, token: string, buf: var string) =
   of "dddd":
     buf.add($dt.weekday)
   of "h":
-    buf.add($(if dt.hour > 12: dt.hour - 12 else: dt.hour))
+    if dt.hour == 0: buf.add("12")
+    else: buf.add($(if dt.hour > 12: dt.hour - 12 else: dt.hour))
   of "hh":
-    let amerHour = if dt.hour > 12: dt.hour - 12 else: dt.hour
-    if amerHour < 10:
-      buf.add('0')
-    buf.add($amerHour)
+    if dt.hour == 0:
+      buf.add("12")
+    else:
+      let amerHour = if dt.hour > 12: dt.hour - 12 else: dt.hour
+      if amerHour < 10:
+        buf.add('0')
+      buf.add($amerHour)
   of "H":
     buf.add($dt.hour)
   of "HH":
@@ -1503,11 +1507,15 @@ proc parseToken(dt: var DateTime; token, value: string; j: var int) =
     dt.second = value[j..j+1].parseInt()
     j += 2
   of "t":
-    if value[j] == 'P' and dt.hour > 0 and dt.hour < 12:
+    if value[j] == 'A' and dt.hour == 12:
+      dt.hour = 0
+    elif value[j] == 'P' and dt.hour > 0 and dt.hour < 12:
       dt.hour += 12
     j += 1
   of "tt":
-    if value[j..j+1] == "PM" and dt.hour > 0 and dt.hour < 12:
+    if value[j..j+1] == "AM" and dt.hour == 12:
+      dt.hour = 0
+    elif value[j..j+1] == "PM" and dt.hour > 0 and dt.hour < 12:
       dt.hour += 12
     j += 2
   of "yy":
