@@ -306,12 +306,13 @@ proc fractional*(dur: Duration): Duration {.inline.} =
     doAssert dur.fractional == initDuration(nanoseconds = 5)
   initDuration(nanoseconds = dur.nanosecond)
 
-const DurationZero* = initDuration() ## Zero value for durations. Useful for comparisons.
-                                     ##
-                                     ## .. code-block:: nim
-                                     ##
-                                     ##   doAssert initDuration(seconds = 1) > DurationZero
-                                     ##   doAssert initDuration(seconds = 0) == DurationZero
+const DurationZero* = initDuration() ## \
+  ## Zero value for durations. Useful for comparisons.
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   doAssert initDuration(seconds = 1) > DurationZero
+  ##   doAssert initDuration(seconds = 0) == DurationZero
 
 proc `$`*(dur: Duration): string =
   ## Human friendly string representation of ``dur``.
@@ -372,6 +373,9 @@ proc fromUnix*(unix: int64): Time {.benign, tags: [], raises: [], noSideEffect.}
 
 proc toUnix*(t: Time): int64 {.benign, tags: [], raises: [], noSideEffect.} =
   ## Convert ``t`` to a unix timestamp (seconds since ``1970-01-01T00:00:00Z``).
+  runnableExamples:
+    doAssert fromUnix(0).toUnix() == 0
+
   t.seconds
 
 proc fromWinTime*(win: int64): Time =
@@ -564,10 +568,20 @@ proc `-`*(a: Time, b: Duration): Time {.operator, extern: "ntSubTime".} =
 
 proc `+=`*(a: var Time, b: Duration) {.operator.} =
   ## Modify ``a`` in place by subtracting ``b``.
+  runnableExamples:
+    var tm = fromUnix(0)
+    tm += initDuration(seconds = 1)
+    doAssert tm == fromUnix(1)
+
   a = addImpl[Time](a, b)
 
 proc `-=`*(a: var Time, b: Duration) {.operator.} =
   ## Modify ``a`` in place by adding ``b``.
+  runnableExamples:
+    var tm = fromUnix(0)
+    tm -= initDuration(seconds = 1)
+    doAssert tm == fromUnix(-1)
+
   a = subImpl[Time](a, b)
 
 proc `<`*(a, b: Time): bool {.operator, extern: "ntLtTime".} =
@@ -617,6 +631,12 @@ proc toTime*(dt: DateTime): Time {.tags: [], raises: [], benign.} =
 
 proc `-`*(dt1, dt2: DateTime): Duration =
   ## Compute the duration between ``dt1`` and ``dt2``.
+  runnableExamples:
+    let dt1 = initDateTime(30, mMar, 2017, 00, 00, 00, utc())
+    let dt2 = initDateTime(25, mMar, 2017, 00, 00, 00, utc())
+
+    doAssert dt1 - dt2 == initDuration(days = 5)
+
   dt1.toTime - dt2.toTime
 
 proc `<`*(a, b: DateTime): bool =
@@ -632,6 +652,7 @@ proc `==`*(a, b: DateTime): bool =
   return a.toTime == b.toTime
 
 proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
+  ## Create a new ``DateTime`` using ``ZonedTime`` in the specified timezone.
   let s = zt.adjTime.seconds
   let epochday = (if s >= 0: s else: s - (secondsInDay - 1)) div secondsInDay
   var rem = s - epochday * secondsInDay
@@ -917,11 +938,10 @@ proc `+`*(ti1, ti2: TimeInterval): TimeInterval =
 
 proc `-`*(ti: TimeInterval): TimeInterval =
   ## Reverses a time interval
-  ##
-  ## .. code-block:: nim
-  ##
-  ##     let day = -initInterval(hours=24)
-  ##     echo day  # -> (milliseconds: 0, seconds: 0, minutes: 0, hours: -24, days: 0, months: 0, years: 0)
+  runnableExamples:
+    let day = -initTimeInterval(hours=24)
+    doAssert day.hours == -24
+
   result = TimeInterval(
     nanoseconds: -ti.nanoseconds,
     microseconds: -ti.microseconds,
@@ -939,13 +959,10 @@ proc `-`*(ti1, ti2: TimeInterval): TimeInterval =
   ## Subtracts TimeInterval ``ti1`` from ``ti2``.
   ##
   ## Time components are subtracted one-by-one, see output:
-  ##
-  ## .. code-block:: nim
-  ##     let a = fromUnix(1_000_000_000)
-  ##     let b = fromUnix(1_500_000_000)
-  ##     echo b.toTimeInterval - a.toTimeInterval
-  ##     # (nanoseconds: 0, microseconds: 0, milliseconds: 0, seconds: -40,
-  ##        minutes: -6, hours: 1, days: 5, weeks: 0, months: -2, years: 16)
+  runnableExamples:
+    let ti1 = initTimeInterval(hours=24)
+    let ti2 = initTimeInterval(hours=4)
+    doAssert (ti1 - ti2) == initTimeInterval(hours=20)
 
   result = ti1 + (-ti2)
 
@@ -1100,12 +1117,26 @@ proc `-`*(dt: DateTime, interval: TimeInterval): DateTime =
   ## Subtract ``interval`` from ``dt``. Components from ``interval`` are subtracted
   ## in the order of their size, i.e first the ``years`` component, then the ``months``
   ## component and so on. The returned ``DateTime`` will have the same timezone as the input.
+  runnableExamples:
+    let dt = initDateTime(30, mMar, 2017, 00, 00, 00, utc())
+    doAssert $(dt - 5.days) == "2017-03-25T00:00:00+00:00"
+
   dt + (-interval)
 
 proc `+`*(dt: DateTime, dur: Duration): DateTime =
+  runnableExamples:
+    let dt = initDateTime(30, mMar, 2017, 00, 00, 00, utc())
+    let dur = initDuration(hours = 5)
+    doAssert $(dt + dur) == "2017-03-30T05:00:00+00:00"
+
   (dt.toTime + dur).inZone(dt.timezone)
 
 proc `-`*(dt: DateTime, dur: Duration): DateTime =
+  runnableExamples:
+    let dt = initDateTime(30, mMar, 2017, 00, 00, 00, utc())
+    let dur = initDuration(days = 5)
+    doAssert $(dt - dur) == "2017-03-25T00:00:00+00:00"
+
   (dt.toTime - dur).inZone(dt.timezone)
 
 proc isStaticInterval(interval: TimeInterval): bool =
@@ -1125,8 +1156,10 @@ proc `+`*(time: Time, interval: TimeInterval): Time =
   ## Adds `interval` to `time`.
   ## If `interval` contains any years, months, weeks or days the operation
   ## is performed in the local timezone.
-  ##
-  ## ``echo getTime() + 1.day``
+  runnableExamples:
+    let tm = fromUnix(0)
+    doAssert tm + 5.seconds == fromUnix(5)
+
   if interval.isStaticInterval:
     time + evaluateStaticInterval(interval)
   else:
@@ -1136,14 +1169,21 @@ proc `+=`*(time: var Time, interval: TimeInterval) =
   ## Modifies `time` by adding `interval`.
   ## If `interval` contains any years, months, weeks or days the operation
   ## is performed in the local timezone.
+  runnableExamples:
+    var tm = fromUnix(0)
+    tm += 5.seconds
+    doAssert tm == fromUnix(5)
+
   time = time + interval
 
 proc `-`*(time: Time, interval: TimeInterval): Time =
   ## Subtracts `interval` from Time `time`.
   ## If `interval` contains any years, months, weeks or days the operation
   ## is performed in the local timezone.
-  ##
-  ## ``echo getTime() - 1.day``
+  runnableExamples:
+    let tm = fromUnix(5)
+    doAssert tm - 5.seconds == fromUnix(0)
+
   if interval.isStaticInterval:
     time - evaluateStaticInterval(interval)
   else:
@@ -1153,6 +1193,10 @@ proc `-=`*(time: var Time, interval: TimeInterval) =
   ## Modifies `time` by subtracting `interval`.
   ## If `interval` contains any years, months, weeks or days the operation
   ## is performed in the local timezone.
+  runnableExamples:
+    var tm = fromUnix(5)
+    tm -= 5.seconds
+    doAssert tm == fromUnix(0)
   time = time - interval
 
 proc formatToken(dt: DateTime, token: string, buf: var string) =
@@ -1318,6 +1362,9 @@ proc format*(dt: DateTime, f: string): string {.tags: [].}=
   ## inserted without quoting them: ``:`` ``-`` ``(`` ``)`` ``/`` ``[`` ``]``
   ## ``,``. However you don't need to necessarily separate format specifiers, a
   ## unambiguous format string like ``yyyyMMddhhmmss`` is valid too.
+  runnableExamples:
+    let dt = initDateTime(01, mJan, 2000, 12, 00, 00, utc())
+    doAssert format(dt, "yyyy-MM-dd'T'HH:mm:sszzz") == "2000-01-01T12:00:00+00:00"
 
   result = ""
   var i = 0
@@ -1351,6 +1398,9 @@ proc format*(dt: DateTime, f: string): string {.tags: [].}=
 proc `$`*(dt: DateTime): string {.tags: [], raises: [], benign.} =
   ## Converts a `DateTime` object to a string representation.
   ## It uses the format ``yyyy-MM-dd'T'HH-mm-sszzz``.
+  runnableExamples:
+    let dt = initDateTime(01, mJan, 2000, 12, 00, 00, utc())
+    doAssert $dt == "2000-01-01T12:00:00+00:00"
   try:
     result = format(dt, "yyyy-MM-dd'T'HH:mm:sszzz") # todo: optimize this
   except ValueError: assert false # cannot happen because format string is valid
@@ -1358,6 +1408,10 @@ proc `$`*(dt: DateTime): string {.tags: [], raises: [], benign.} =
 proc `$`*(time: Time): string {.tags: [], raises: [], benign.} =
   ## converts a `Time` value to a string representation. It will use the local
   ## time zone and use the format ``yyyy-MM-dd'T'HH-mm-sszzz``.
+  runnableExamples:
+    let dt = initDateTime(01, mJan, 1970, 00, 00, 00, local())
+    let tm = dt.toTime()
+    doAssert $tm == "1970-01-01T00:00:00" & format(dt, "zzz")
   $time.local
 
 {.pop.}
@@ -1620,6 +1674,10 @@ proc parse*(value, layout: string, zone: Timezone = local()): DateTime =
   ## inserted without quoting them: ``:`` ``-`` ``(`` ``)`` ``/`` ``[`` ``]``
   ## ``,``. However you don't need to necessarily separate format specifiers, a
   ## unambiguous format string like ``yyyyMMddhhmmss`` is valid too.
+  runnableExamples:
+    let tStr = "1970-01-01T00:00:00+00:00"
+    doAssert parse(tStr, "yyyy-MM-dd'T'HH:mm:sszzz") == fromUnix(0).utc
+
   var i = 0 # pointer for format string
   var j = 0 # pointer for value string
   var token = ""
@@ -1695,15 +1753,15 @@ proc toTimeInterval*(time: Time): TimeInterval =
   ## Converts a Time to a TimeInterval.
   ##
   ## To be used when diffing times.
-  ##
-  ## .. code-block:: nim
-  ##     let a = fromSeconds(1_000_000_000)
-  ##     let b = fromSeconds(1_500_000_000)
-  ##     echo a, " ", b  # real dates
-  ##     echo a.toTimeInterval  # meaningless value, don't use it by itself
-  ##     echo b.toTimeInterval - a.toTimeInterval
-  ##     # (nanoseconds: 0, microseconds: 0, milliseconds: 0, seconds: -40,
-  ##        minutes: -6, hours: 1, days: 5, weeks: 0, months: -2, years: 16)
+  runnableExamples:
+    let a = fromUnix(10)
+    let dt = initDateTime(01, mJan, 1970, 00, 00, 00, local())
+    doAssert a.toTimeInterval() == initTimeInterval(
+      years=1970, days=1, seconds=10, hours=convert(
+        Seconds, Hours, -dt.utcOffset
+      )
+    )
+
   var dt = time.local
   initTimeInterval(dt.nanosecond, 0, 0, dt.second, dt.minute, dt.hour,
     dt.monthday, 0, dt.month.ord - 1, dt.year)
@@ -1712,6 +1770,10 @@ proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
                    hour: HourRange, minute: MinuteRange, second: SecondRange,
                    nanosecond: NanosecondRange, zone: Timezone = local()): DateTime =
   ## Create a new ``DateTime`` in the specified timezone.
+  runnableExamples:
+    let dt1 = initDateTime(30, mMar, 2017, 00, 00, 00, 00, utc())
+    doAssert $dt1 == "2017-03-30T00:00:00+00:00"
+
   assertValidDate monthday, month, year
   let dt = DateTime(
     monthday:  monthday,
@@ -1728,6 +1790,9 @@ proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
                    hour: HourRange, minute: MinuteRange, second: SecondRange,
                    zone: Timezone = local()): DateTime =
   ## Create a new ``DateTime`` in the specified timezone.
+  runnableExamples:
+    let dt1 = initDateTime(30, mMar, 2017, 00, 00, 00, utc())
+    doAssert $dt1 == "2017-03-30T00:00:00+00:00"
   initDateTime(monthday, month, year, hour, minute, second, 0, zone)
 
 when not defined(JS):
@@ -1747,11 +1812,14 @@ when not defined(JS):
       ## The value of the result has no meaning.
       ## To generate useful timing values, take the difference between
       ## the results of two ``cpuTime`` calls:
-      ##
-      ## .. code-block:: nim
-      ##   var t0 = cpuTime()
-      ##   doWork()
-      ##   echo "CPU time [s] ", cpuTime() - t0
+      runnableExamples:
+        var t0 = cpuTime()
+        # some useless work here (calculate fibonacci)
+        var fib = @[0, 1, 1]
+        for i in 1..10:
+          fib.add(fib[^1] + fib[^2])
+        echo "CPU time [s] ", cpuTime() - t0
+        echo "Fib is [s] ", fib
       result = toFloat(int(getClock())) / toFloat(clocksPerSec)
 
     proc epochTime*(): float {.rtl, extern: "nt$1", tags: [TimeEffect].} =
