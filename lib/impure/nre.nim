@@ -645,7 +645,6 @@ template replaceImpl(str: string, pattern: Regex,
     let bounds = match.matchBounds
     result.add(str.substr(lastIdx, bounds.a - 1))
     let nextVal = replacement
-    assert(nextVal != nil)
     result.add(nextVal)
 
     lastIdx = bounds.b + 1

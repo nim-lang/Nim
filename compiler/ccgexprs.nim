@@ -63,6 +63,10 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
     of tyNil:
       result = genNilStringLiteral(p.module, n.info)
     of tyString:
+      # with the new semantics for 'nil' strings, we can map "" to nil and
+      # save tons of allocations:
+      #if n.strVal.len == 0: result = genNilStringLiteral(p.module, n.info)
+      #else:
       result = genStringLiteral(p.module, n)
     else:
       if n.strVal.isNil: result = rope("NIM_NIL")
@@ -882,7 +886,7 @@ proc genIndexCheck(p: BProc; arr, idx: TLoc) =
               rdCharLoc(idx), first, intLiteral(lastOrd(ty)))
   of tySequence, tyString:
     linefmt(p, cpsStmts,
-          "if ((NU)($1) >= (NU)($2->$3)) #raiseIndexError();$n",
+          "if (!$2 || (NU)($1) >= (NU)($2->$3)) #raiseIndexError();$n",
           rdLoc(idx), rdLoc(arr), lenField(p))
   else: discard
 
@@ -905,14 +909,9 @@ proc genSeqElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   if ty.kind in {tyRef, tyPtr}:
     ty = skipTypes(ty.lastSon, abstractVarRange) # emit range check:
   if optBoundsCheck in p.options:
-    if ty.kind == tyString:
-      linefmt(p, cpsStmts,
-           "if ((NU)($1) > (NU)($2->$3)) #raiseIndexError();$n",
-           rdLoc(b), rdLoc(a), lenField(p))
-    else:
-      linefmt(p, cpsStmts,
-           "if ((NU)($1) >= (NU)($2->$3)) #raiseIndexError();$n",
-           rdLoc(b), rdLoc(a), lenField(p))
+    linefmt(p, cpsStmts,
+          "if (!$2 || (NU)($1) >= (NU)($2->$3)) #raiseIndexError();$n",
+          rdLoc(b), rdLoc(a), lenField(p))
   if d.k == locNone: d.storage = OnHeap
   if skipTypes(a.t, abstractVar).kind in {tyRef, tyPtr}:
     a.r = rfmt(nil, "(*$1)", a.r)
@@ -980,10 +979,10 @@ proc genEcho(p: BProc, n: PNode) =
     var a: TLoc
     for it in n.sons:
       if it.skipConv.kind == nkNilLit:
-        add(args, ", \"nil\"")
+        add(args, ", \"\"")
       else:
         initLocExpr(p, it, a)
-        addf(args, ", $1? ($1)->data:\"nil\"", [rdLoc(a)])
+        addf(args, ", $1? ($1)->data:\"\"", [rdLoc(a)])
     p.module.includeHeader("<base/log.h>")
     linefmt(p, cpsStmts, """Genode::log(""$1);$n""", args)
   else:
@@ -1034,7 +1033,7 @@ proc genStrConcat(p: BProc, e: PNode, d: var TLoc) =
       if e.sons[i + 1].kind in {nkStrLit..nkTripleStrLit}:
         inc(L, len(e.sons[i + 1].strVal))
       else:
-        addf(lens, "$1->$2 + ", [rdLoc(a), lenField(p)])
+        addf(lens, "($1 ? $1->$2 : 0) + ", [rdLoc(a), lenField(p)])
       add(appends, rfmt(p.module, "#appendString($1, $2);$n", tmp.r, rdLoc(a)))
   linefmt(p, cpsStmts, "$1 = #rawNewString($2$3);$n", tmp.r, lens, rope(L))
   add(p.s(cpsStmts), appends)
@@ -1073,7 +1072,7 @@ proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
       if e.sons[i + 2].kind in {nkStrLit..nkTripleStrLit}:
         inc(L, len(e.sons[i + 2].strVal))
       else:
-        addf(lens, "$1->$2 + ", [rdLoc(a), lenField(p)])
+        addf(lens, "($1 ? $1->$2 : 0) + ", [rdLoc(a), lenField(p)])
       add(appends, rfmt(p.module, "#appendString($1, $2);$n",
                         rdLoc(dest), rdLoc(a)))
   linefmt(p, cpsStmts, "$1 = #resizeString($1, $2$3);$n",
@@ -1417,7 +1416,7 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
       putIntoDest(p, b, e, "$1, $1Len_0" % [rdLoc(a)], a.storage)
     of tyString, tySequence:
       putIntoDest(p, b, e,
-                  "$1->data, $1->$2" % [rdLoc(a), lenField(p)], a.storage)
+                  "$1->data, ($1 ? $1->$2 : 0)" % [rdLoc(a), lenField(p)], a.storage)
     of tyArray:
       putIntoDest(p, b, e,
                   "$1, $2" % [rdLoc(a), rope(lengthOrd(a.t))], a.storage)
@@ -1740,7 +1739,7 @@ proc genConv(p: BProc, e: PNode, d: var TLoc) =
 proc convStrToCStr(p: BProc, n: PNode, d: var TLoc) =
   var a: TLoc
   initLocExpr(p, n.sons[0], a)
-  putIntoDest(p, d, n, "$1->data" % [rdLoc(a)],
+  putIntoDest(p, d, n, "($1 ? $1->data : (NCSTRING)\"\")" % [rdLoc(a)],
               a.storage)
 
 proc convCStrToStr(p: BProc, n: PNode, d: var TLoc) =
@@ -1755,16 +1754,14 @@ proc genStrEquals(p: BProc, e: PNode, d: var TLoc) =
   var x: TLoc
   var a = e.sons[1]
   var b = e.sons[2]
-  if (a.kind == nkNilLit) or (b.kind == nkNilLit):
-    binaryExpr(p, e, d, "($1 == $2)")
-  elif (a.kind in {nkStrLit..nkTripleStrLit}) and (a.strVal == ""):
+  if a.kind in {nkStrLit..nkTripleStrLit} and a.strVal == "":
     initLocExpr(p, e.sons[2], x)
     putIntoDest(p, d, e,
-      rfmt(nil, "(($1) && ($1)->$2 == 0)", rdLoc(x), lenField(p)))
-  elif (b.kind in {nkStrLit..nkTripleStrLit}) and (b.strVal == ""):
+      rfmt(nil, "(!($1) || ($1)->$2 == 0)", rdLoc(x), lenField(p)))
+  elif b.kind in {nkStrLit..nkTripleStrLit} and b.strVal == "":
     initLocExpr(p, e.sons[1], x)
     putIntoDest(p, d, e,
-      rfmt(nil, "(($1) && ($1)->$2 == 0)", rdLoc(x), lenField(p)))
+      rfmt(nil, "(!($1) || ($1)->$2 == 0)", rdLoc(x), lenField(p)))
   else:
     binaryExpr(p, e, d, "#eqStrings($1, $2)")
 

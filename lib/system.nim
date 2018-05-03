@@ -1280,15 +1280,13 @@ proc setLen*[T](s: var seq[T], newlen: Natural) {.
   ## sets the length of `s` to `newlen`.
   ## ``T`` may be any sequence type.
   ## If the current length is greater than the new length,
-  ## ``s`` will be truncated. `s` cannot be nil! To initialize a sequence with
-  ## a size, use ``newSeq`` instead.
+  ## ``s`` will be truncated.
 
 proc setLen*(s: var string, newlen: Natural) {.
   magic: "SetLengthStr", noSideEffect.}
   ## sets the length of `s` to `newlen`.
   ## If the current length is greater than the new length,
-  ## ``s`` will be truncated. `s` cannot be nil! To initialize a string with
-  ## a size, use ``newString`` instead.
+  ## ``s`` will be truncated.
   ##
   ## .. code-block:: Nim
   ##  var myS = "Nim is great!!"
@@ -2414,8 +2412,9 @@ proc `==` *[T](x, y: seq[T]): bool {.noSideEffect.} =
     if seqToPtr(x) == seqToPtr(y):
       return true
 
-  if x.isNil or y.isNil:
-    return false
+  when not defined(nimNoNil):
+    if x.isNil or y.isNil:
+      return false
 
   if x.len != y.len:
     return false
@@ -4012,18 +4011,18 @@ proc addQuoted*[T](s: var string, x: T) =
 
 when hasAlloc:
   # XXX: make these the default (or implement the NilObject optimization)
-  proc safeAdd*[T](x: var seq[T], y: T) {.noSideEffect.} =
+  proc safeAdd*[T](x: var seq[T], y: T) {.noSideEffect, deprecated.} =
     ## Adds ``y`` to ``x`` unless ``x`` is not yet initialized; in that case,
     ## ``x`` becomes ``@[y]``
     if x == nil: x = @[y]
     else: x.add(y)
 
-  proc safeAdd*(x: var string, y: char) =
+  proc safeAdd*(x: var string, y: char) {.noSideEffect, deprecated.} =
     ## Adds ``y`` to ``x``. If ``x`` is ``nil`` it is initialized to ``""``
     if x == nil: x = ""
     x.add(y)
 
-  proc safeAdd*(x: var string, y: string) =
+  proc safeAdd*(x: var string, y: string) {.noSideEffect, deprecated.} =
     ## Adds ``y`` to ``x`` unless ``x`` is not yet initalized; in that
     ## case, ``x`` becomes ``y``
     if x == nil: x = y

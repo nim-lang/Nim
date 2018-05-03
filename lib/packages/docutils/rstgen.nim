@@ -774,7 +774,7 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
                                    Digits + Letters + WhiteSpace)
   let
     arg = getArgument(n)
-    isObject = arg.toLower().endsWith(".svg")
+    isObject = arg.toLowerAscii().endsWith(".svg")
   var
     options = ""
     content = ""
