@@ -1122,7 +1122,7 @@ else:
 
   proc unregister*(ev: AsyncEvent) =
     getGlobalDispatcher().selector.unregister(SelectEvent(ev))
-  
+
   proc contains*(disp: PDispatcher, fd: AsyncFd): bool =
     return fd.SocketHandle in disp.selector
 
@@ -1270,6 +1270,8 @@ else:
             if rLength > 0: incl(newEvents, Event.Read)
             if wLength > 0: incl(newEvents, Event.Write)
             p.selector.updateHandle(SocketHandle(fd), newEvents)
+    else:
+      sleep(p.adjustedTimeout(timeout))
 
     # Timer processing.
     processTimers(p, result)
