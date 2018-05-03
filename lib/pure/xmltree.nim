@@ -319,8 +319,8 @@ proc xmlConstructor(a: NimNode): NimNode {.compileTime.} =
   if a.kind == nnkCall:
     result = newCall("newXmlTree", toStrLit(a[0]))
     var attrs = newNimNode(nnkBracket, a)
-    var newStringTabCall = newCall("newStringTable", attrs,
-                                   newIdentNode("modeCaseSensitive"))
+    var newStringTabCall = newCall(bindSym"newStringTable", attrs,
+                                    bindSym"modeCaseSensitive")
     var elements = newNimNode(nnkBracket, a)
     for i in 1..a.len-1:
       if a[i].kind == nnkExprEqExpr:
