@@ -9,7 +9,7 @@
 
 ## This module implements URI parsing as specified by RFC 3986.
 
-import strutils, parseutils
+import strutils, parseutils, tables
 type
   Url* = distinct string
 
@@ -380,6 +380,57 @@ proc `$`*(u: Uri): string =
     result.add("#")
     result.add(u.anchor)
 
+type
+  Query* = distinct Table[string, seq[string]]
+  QueryValues* = distinct seq[string]
+
+proc `[]`*(query: Query, key: string): QueryValues =
+  return Table[string, seq[string]](query)[key].QueryValues
+
+proc `[]`*(query: Query, key: string, i: int): string =
+  return Table[string, seq[string]](query)[key][i]
+
+proc `[]`*(values: QueryValues, i: int): string = seq[string](values)[i]
+
+converter toString*(value: QueryValues): string =
+  ## Implicit converter which retrieves the first value in a list
+  ## of query values.
+  return seq[string](value)[0]
+
+proc parseQuery*(query: string): Query =
+  ## Parses a URL query containing key-value pairs delimited by
+  ## ampersands.
+  ##
+  ## The exact structure of the query string is not standardised. This
+  ## function is able to parse query strings with duplicated keys.
+  ## All URI encodings are preserved.
+  runnableExamples:
+    doAssert parseQuery("q=Nim+programming+language&lang=en")["q"] ==
+                        "Nim+programming+language"
+
+    let u = parseUri("http://google.com/?q=hello+world")
+    doAssert parseQuery(u.query)["q"].decodeUrl == "hello world"
+
+  var res = initTable[string, seq[string]]()
+
+  var i = 0
+  while i < query.len:
+    var key = ""
+    var value = ""
+    i += query.parseUntil(key, {'=', '&'}, i)
+    if query[i] == '=':
+      i.inc() # Skip =
+
+    i += query.parseUntil(value, {'&'}, i)
+    if i < query.len and query[i] == '&': i.inc()
+
+    if key in res:
+      res[key].add(value)
+    else:
+      res[key] = @[value]
+
+  return res.Query
+
 when isMainModule:
   block:
     const test1 = "abc\L+def xyz"
@@ -627,5 +678,14 @@ when isMainModule:
     doAssert "https://example.com/about/staff.html".parseUri().isAbsolute == true
     doAssert "https://example.com/about/staff.html?".parseUri().isAbsolute == true
     doAssert "https://example.com/about/staff.html?parameters".parseUri().isAbsolute == true
+
+  block: # parseQuery
+    doAssert "foo=bar".parseQuery()["foo"] == "bar"
+    doAssert "foo=bar&alpha=beta".parseQuery()["foo"] == "bar"
+    doAssert "foo=bar&alpha=beta".parseQuery()["alpha"] == "beta"
+    doAssert "foo=&alpha=beta".parseQuery()["foo"] == ""
+    doAssert "foo=1&foo=alpha".parseQuery()["foo", 0] == "1"
+    doAssert "foo=1&foo=alpha".parseQuery()["foo", 1] == "alpha"
+    doAssert "foo=1&qwert=123&foo=alpha&foo=qwe".parseQuery()["foo"][1] == "alpha"
 
   echo("All good!")
