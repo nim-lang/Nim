@@ -99,7 +99,8 @@ type
   TConvStatus = enum
     convOK,
     convNotNeedeed,
-    convNotLegal
+    convNotLegal,
+    convNotInRange
 
 proc checkConversionBetweenObjects(castDest, src: PType; pointers: int): TConvStatus =
   let diff = inheritanceDiff(castDest, src)
@@ -111,18 +112,16 @@ proc checkConversionBetweenObjects(castDest, src: PType; pointers: int): TConvSt
 const
   IntegralTypes = {tyBool, tyEnum, tyChar, tyInt..tyUInt64}
 
-proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
+proc checkConvertible(c: PContext, targetTyp: PType, src: PNode): TConvStatus =
+  let srcTyp = src.typ
   result = convOK
-  # We're interested in the inner type and not in the static tag
-  var src = src.skipTypes({tyStatic})
-  if sameType(castDest, src) and castDest.sym == src.sym:
+  if sameType(targetTyp, srcTyp) and targetTyp.sym == srcTyp.sym:
     # don't annoy conversions that may be needed on another processor:
-    if castDest.kind notin IntegralTypes+{tyRange}:
+    if targetTyp.kind notin IntegralTypes+{tyRange}:
       result = convNotNeedeed
     return
-  # Save for later
-  var d = skipTypes(castDest, abstractVar)
-  var s = src
+  var d = skipTypes(targetTyp, abstractVar)
+  var s = srcTyp
   if s.kind in tyUserTypeClasses and s.isResolvedUserTypeClass:
     s = s.lastSon
   s = skipTypes(s, abstractVar-{tyTypeDesc, tyOwned})
@@ -142,10 +141,18 @@ proc checkConvertible(c: PContext, castDest, src: PType): TConvStatus =
     result = convNotLegal
   elif d.kind == tyObject and s.kind == tyObject:
     result = checkConversionBetweenObjects(d, s, pointers)
-  elif (skipTypes(castDest, abstractVarRange).kind in IntegralTypes) and
-      (skipTypes(src, abstractVarRange-{tyTypeDesc}).kind in IntegralTypes):
-    # accept conversion between integral types
-    discard
+  elif (skipTypes(targetTyp, abstractVarRange).kind in IntegralTypes) and
+      (skipTypes(srcTyp, abstractVarRange-{tyTypeDesc}).kind in
+        IntegralTypes + {tyFloat..tyFloat64}):
+    # accept conversion to integral types, unless outside of range
+    if targetTyp.isOrdinalType:
+      if src.kind in nkCharLit..nkUInt64Lit and
+          src.intVal notin firstOrd(targetTyp)..lastOrd(targetTyp):
+        result = convNotInRange
+      elif src.kind in nkFloatLit..nkFloat64Lit and
+          src.floatVal notin
+            (firstOrd(targetTyp)..lastOrd(targetTyp)).toBiggestFloatSlice:
+        result = convNotInRange
   else:
     # we use d, s here to speed up that operation a bit:
     case cmpTypes(c, d, s)
@@ -260,7 +267,7 @@ proc semConv(c: PContext, n: PNode): PNode =
   addSon(result, op)
 
   if not isSymChoice(op):
-    let status = checkConvertible(c, result.typ, op.typ)
+    let status = checkConvertible(c, result.typ, op)
     case status
     of convOK:
       # handle SomeProcType(SomeGenericProc)
@@ -275,10 +282,15 @@ proc semConv(c: PContext, n: PNode): PNode =
       if result == nil:
         localError(c.config, n.info, "illegal conversion from '$1' to '$2'" %
           [op.typ.typeToString, result.typ.typeToString])
+    of convNotInRange:
+      let value =
+        if op.kind in {nkCharLit..nkUInt64Lit}: $op.getInt else: $op.getFloat
+      localError(n.info, errGenerated, value & " can't be converted to " &
+        result.typ.typeToString)
   else:
     for i in countup(0, sonsLen(op) - 1):
       let it = op.sons[i]
-      let status = checkConvertible(c, result.typ, it.typ)
+      let status = checkConvertible(c, result.typ, it)
       if status in {convOK, convNotNeedeed}:
         markUsed(c.config, n.info, it.sym, c.graph.usageSym)
         onUse(n.info, it.sym)
@@ -2578,6 +2590,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       result = semDirectOp(c, n, flags)
     else:
       result = semIndirectOp(c, n, flags)
+    # echo "SEM ", result
   of nkWhen:
     if efWantStmt in flags:
       result = semWhen(c, n, true)
