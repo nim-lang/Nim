@@ -31,6 +31,7 @@
 
 import strutils, os, strtabs, cookies, uri
 export uri.encodeUrl, uri.decodeUrl
+export strtabs
 
 proc handleHexChar(c: char, x: var int) {.inline.} =
   case c

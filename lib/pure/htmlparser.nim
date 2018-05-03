@@ -50,6 +50,7 @@
 ##     writeFile("output.html", $html)
 
 import strutils, streams, parsexml, xmltree, unicode, strtabs
+export strtabs
 
 type
   HtmlTag* = enum ## list of all supported HTML tags; order will always be

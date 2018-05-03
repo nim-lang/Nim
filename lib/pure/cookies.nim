@@ -10,6 +10,7 @@
 ## This module implements helper procs for parsing Cookies.
 
 import strtabs, times
+export strtabs
 
 proc parseCookies*(s: string): StringTableRef =
   ## parses cookies into a string table.

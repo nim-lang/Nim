@@ -33,6 +33,7 @@
 include "system/inclrtl"
 
 import sockets, strutils, os, strtabs, asyncio
+export strtabs
 
 type
   ScgiError* = object of IOError ## the exception that is raised, if a SCGI error occurs

@@ -10,6 +10,7 @@
 ## This module parses an XML document and creates its XML tree representation.
 
 import streams, parsexml, strtabs, xmltree
+export strtabs
 
 type
   XmlError* = object of ValueError ## Exception that is raised
