@@ -70,18 +70,32 @@ proc reversed*[T](a: openArray[T]): seq[T] =
 proc binarySearch*[T](a: openArray[T], key: T): int =
   ## binary search for `key` in `a`. Returns -1 if not found.
   var b = len(a)
-  while result < b:
-    var mid = (result + b) div 2
-    if a[mid] < key: result = mid + 1
-    else: b = mid
-  if result >= len(a) or a[result] != key: result = -1
+  if b == 0: return -1
+  if unlikely((b and (b - 1)) == 0):
+    var step = b shr 1
+    while step > 0:
+      let i = result or step
+      if likely(a[i] <= key):
+        result = i
+      step = step shr 1
+    if a[result] != key: result = -1
+  else:
+    while result < b:
+      var mid = (result + b) shr 1
+      if likely(a[mid] < key):
+        result = mid + 1
+      else:
+        b = mid
+    if result >= len(a) or a[result] != key: result = -1
 
-proc smartBinarySearch*[T](a: openArray[T], key: T): int =
+proc smartBinarySearch*[T](a: openArray[T], key: T): int
+  {.deprecated.} =
   ## ``a.len`` must be a power of 2 for this to work.
-  var step = a.len div 2
+  var step = a.len shr 1
   while step > 0:
-    if a[result or step] <= key:
-      result = result or step
+    let i = result or step
+    if likely(a[i] <= key):
+      result = i
     step = step shr 1
   if a[result] != key: result = -1
 
