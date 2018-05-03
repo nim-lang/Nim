@@ -63,6 +63,9 @@
   fields.
 - ``system.SomeReal`` is now called ``SomeFloat`` for consistency and
   correctness.
+- ``algorithm.smartBinarySearch`` and ``algorithm.binarySearch`` is
+  now joined in ``binarySearch``. ``smartbinarySearch`` is now
+  deprecated.
 
 ### Language additions
 

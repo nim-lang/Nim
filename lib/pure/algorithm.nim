@@ -69,21 +69,25 @@ proc reversed*[T](a: openArray[T]): seq[T] =
 
 proc binarySearch*[T](a: openArray[T], key: T): int =
   ## binary search for `key` in `a`. Returns -1 if not found.
-  var b = len(a)
-  while result < b:
-    var mid = (result + b) div 2
-    if a[mid] < key: result = mid + 1
-    else: b = mid
-  if result >= len(a) or a[result] != key: result = -1
+  if ((a.len - 1) and a.len) == 0:
+    # when `a.len` is a power of 2, a faster div can be used.
+    var step = a.len div 2
+    while step > 0:
+      if a[result or step] <= key:
+        result = result or step
+      step = step shr 1
+    if a[result] != key: result = -1
+  else:
+    var b = len(a)
+    while result < b:
+      var mid = (result + b) div 2
+      if a[mid] < key: result = mid + 1
+      else: b = mid
+    if result >= len(a) or a[result] != key: result = -1
 
-proc smartBinarySearch*[T](a: openArray[T], key: T): int =
-  ## ``a.len`` must be a power of 2 for this to work.
-  var step = a.len div 2
-  while step > 0:
-    if a[result or step] <= key:
-      result = result or step
-    step = step shr 1
-  if a[result] != key: result = -1
+proc smartBinarySearch*[T](a: openArray[T], key: T): int {.deprecated.} =
+  ## **Deprecated since version 0.18.1**; Use ``binarySearch`` instead.
+  binarySearch(a,key)
 
 const
   onlySafeCode = true
