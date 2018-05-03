@@ -1684,7 +1684,7 @@ proc isException*(t: PType): bool =
 
   var base = t
   while base != nil:
-    if base.sym.magic == mException:
+    if base.sym != nil and base.sym.magic == mException:
       return true
     base = base.lastSon
   return false
