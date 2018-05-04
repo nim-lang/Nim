@@ -266,8 +266,17 @@ proc testNimInAction(r: var TResults, cat: Category, options: string) =
     testSpec r, makeTest(filename, options, cat, actionCompile), targetCPP
 
   let tests = [
+    "niminaction/Chapter1/various1",
+    "niminaction/Chapter2/various2",
+    "niminaction/Chapter2/resultaccept",
+    "niminaction/Chapter2/resultreject",
+    "niminaction/Chapter2/explicit_discard",
+    "niminaction/Chapter2/no_def_eq",
+    "niminaction/Chapter2/no_iterator",
+    "niminaction/Chapter2/no_seq_type",
     "niminaction/Chapter3/ChatApp/src/server",
     "niminaction/Chapter3/ChatApp/src/client",
+    "niminaction/Chapter3/various3",
     "niminaction/Chapter6/WikipediaStats/concurrency_regex",
     "niminaction/Chapter6/WikipediaStats/concurrency",
     "niminaction/Chapter6/WikipediaStats/naive",
@@ -278,8 +287,34 @@ proc testNimInAction(r: var TResults, cat: Category, options: string) =
     "niminaction/Chapter7/Tweeter/src/tweeter",
     "niminaction/Chapter7/Tweeter/src/createDatabase",
     "niminaction/Chapter7/Tweeter/tests/database_test",
-    "niminaction/Chapter8/sdl/sdl_test",
+    "niminaction/Chapter8/sdl/sdl_test"
     ]
+
+  # Verify that the files have not been modified. Death shall fall upon
+  # whoever edits these hashes without dom96's permission, j/k. But please only
+  # edit when making a conscious breaking change, also please try to make your
+  # commit message clear so I can easily compile an errata later.
+  var testHashes: seq[string] = @[]
+
+  for test in tests:
+    testHashes.add(getMD5(readFile("tests" / test.addFileExt("nim")).string))
+
+  let refHashes = @[
+    "51afdfa84b3ca3d810809d6c4e5037ba", "30f07e4cd5eaec981f67868d4e91cfcf",
+    "d14e7c032de36d219c9548066a97e846", "2e40bfd5daadb268268727da91bb4e81",
+    "c5d3853ed0aba04bf6d35ba28a98dca0", "058603145ff92d46c009006b06e5b228",
+    "7b94a029b94ddb7efafddd546c965ff6", "586d74514394e49f2370dfc01dd9e830",
+    "e1901837b757c9357dc8d259fd0ef0f6", "097670c7ae12e825debaf8ec3995227b",
+    "a8cb7b78cc78d28535ab467361db5d6e", "bfaec2816a1848991b530c1ad17a0184",
+    "47cb71bb4c1198d6d29cdbee05aa10b9", "87e4436809f9d73324cfc4f57f116770",
+    "7b7db5cddc8cf8fa9b6776eef1d0a31d", "e6e40219f0f2b877869b738737b7685e",
+    "6532ee87d819f2605a443d5e94f9422a", "9a8fe78c588d08018843b64b57409a02",
+    "03a801275b8b76b4170c870cd0da079d", "20bb7d3e2d38d43b0cb5fcff4909a4a8",
+    "af6844598f534fab6942abfa4dfe9ab2", "2a7a17f84f6503d9bc89a5ab8feea127"
+  ]
+  doAssert testHashes == refHashes, "Nim in Action tests were changed."
+
+  # Run the tests.
   for testfile in tests:
     test "tests/" & testfile & ".nim", actionCompile
 
@@ -288,6 +323,7 @@ proc testNimInAction(r: var TResults, cat: Category, options: string) =
 
   let cppFile = "tests/niminaction/Chapter8/sfml/sfml_test.nim"
   testCPP cppFile
+
 
 
 
