@@ -19,9 +19,9 @@
 # * transforms 'defer' into a 'try finally' statement
 
 import
-  intsets, strutils, options, ast, astalgo, trees, treetab, msgs, os,
+  intsets, strutils, options, ast, astalgo, trees, treetab, msgs, os, lookups,
   idents, renderer, types, passes, semfold, magicsys, cgmeth, rodread,
-  lambdalifting, sempass2, lowerings, lookups, destroyer, liftlocals
+  lambdalifting, sempass2, lowerings, destroyer, liftlocals, closureiters
 
 type
   PTransNode* = distinct PNode
@@ -967,20 +967,22 @@ template liftDefer(c, root) =
   if c.deferDetected:
     liftDeferAux(root)
 
-proc transformBody*(module: PSym, n: PNode, prc: PSym): PNode =
-  if nfTransf in n.flags or prc.kind in {skTemplate}:
-    result = n
-  else:
+proc transformBody*(module: PSym, features: set[Feature], n: PNode, prc: PSym): PNode =
+  result = n
+  if nfTransf notin n.flags and prc.kind notin {skTemplate}:
     var c = openTransf(module, "")
-    result = liftLambdas(prc, n, c.tooEarly)
-    #result = n
+    result = liftLambdas(features, prc, result, c.tooEarly)
     result = processTransf(c, result, prc)
     liftDefer(c, result)
-    #result = liftLambdas(prc, result)
+
     when useEffectSystem: trackProc(prc, result)
     result = liftLocalsIfRequested(prc, result)
     if c.needsDestroyPass: #and newDestructors:
       result = injectDestructorCalls(prc, result)
+
+    if prc.isIterator and oldIterTransf notin features:
+      result = transformClosureIterator(prc, result)
+
     incl(result.flags, nfTransf)
       #if prc.name.s == "testbody":
     #  echo renderTree(result)

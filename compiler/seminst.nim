@@ -145,7 +145,7 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
     freshGenSyms(b, result, orig, symMap)
     b = semProcBody(c, b)
     b = hloBody(c, b)
-    n.sons[bodyPos] = transformBody(c.module, b, result)
+    n.sons[bodyPos] = transformBody(c.module, c.features, b, result)
     #echo "code instantiated ", result.name.s
     excl(result.flags, sfForward)
     dec c.inGenericInst

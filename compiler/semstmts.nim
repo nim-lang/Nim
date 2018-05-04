@@ -1235,7 +1235,7 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
       addResult(c, s.typ.sons[0], n.info, skProc)
       addResultNode(c, n)
       let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
-      n.sons[bodyPos] = transformBody(c.module, semBody, s)
+      n.sons[bodyPos] = transformBody(c.module, c.features, semBody, s)
       popProcCon(c)
     elif efOperand notin flags:
       localError(n.info, errGenericLambdaNotAllowed)
@@ -1276,7 +1276,7 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   addResult(c, n.typ.sons[0], n.info, skProc)
   addResultNode(c, n)
   let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
-  n.sons[bodyPos] = transformBody(c.module, semBody, s)
+  n.sons[bodyPos] = transformBody(c.module, c.features, semBody, s)
   popProcCon(c)
   popOwner(c)
   closeScope(c)
@@ -1589,7 +1589,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
           let semBody = hloBody(c, semProcBody(c, n.sons[bodyPos]))
           # unfortunately we cannot skip this step when in 'system.compiles'
           # context as it may even be evaluated in 'system.compiles':
-          n.sons[bodyPos] = transformBody(c.module, semBody, s)
+          n.sons[bodyPos] = transformBody(c.module, c.features, semBody, s)
       else:
         if s.typ.sons[0] != nil and kind != skIterator:
           addDecl(c, newSym(skUnknown, getIdent"result", nil, n.info))

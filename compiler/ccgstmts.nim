@@ -177,17 +177,17 @@ proc genGotoState(p: BProc, n: PNode) =
     lineF(p, cpsStmts, "case $2: goto $1$2;$n", [prefix, rope(i)])
   lineF(p, cpsStmts, "}$n", [])
 
-proc genBreakState(p: BProc, n: PNode) =
+proc genBreakState(p: BProc, n: PNode, d: var TLoc) =
   var a: TLoc
+  initLoc(d, locExpr, n, OnUnknown)
+
   if n.sons[0].kind == nkClosure:
-    # XXX this produces quite inefficient code!
     initLocExpr(p, n.sons[0].sons[1], a)
-    lineF(p, cpsStmts, "if (((NI*) $1)[1] < 0) break;$n", [rdLoc(a)])
+    d.r = "(((NI*) $1)[1] < 0)" % [rdLoc(a)]
   else:
     initLocExpr(p, n.sons[0], a)
     # the environment is guaranteed to contain the 'state' field at offset 1:
-    lineF(p, cpsStmts, "if ((((NI*) $1.ClE_0)[1]) < 0) break;$n", [rdLoc(a)])
-  #  lineF(p, cpsStmts, "if (($1) < 0) break;$n", [rdLoc(a)])
+    d.r = "((((NI*) $1.ClE_0)[1]) < 0)" % [rdLoc(a)]
 
 proc genGotoVar(p: BProc; value: PNode) =
   if value.kind notin {nkCharLit..nkUInt64Lit}:
