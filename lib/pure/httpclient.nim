@@ -219,10 +219,6 @@ type
                                         ## and ``postContent`` proc,
                                         ## when the server returns an error
 
-{.deprecated: [TResponse: Response, PProxy: Proxy,
-  EInvalidProtocol: ProtocolError, EHttpRequestErr: HttpRequestError
-].}
-
 const defUserAgent* = "Nim httpclient/" & NimVersion
 
 proc httpError(msg: string) =
@@ -361,8 +357,6 @@ proc parseResponse(s: Socket, getBody: bool, timeout: int): Response =
     result.body = parseBody(s, result.headers, result.version, timeout)
   else:
     result.body = ""
-
-{.deprecated: [THttpMethod: HttpMethod].}
 
 when not defined(ssl):
   type SSLContext = ref object
@@ -585,7 +579,7 @@ proc request*(url: string, httpMethod: string, extraHeaders = "",
 
   result = parseResponse(s, httpMethod != "HEAD", timeout)
 
-proc request*(url: string, httpMethod = httpGET, extraHeaders = "",
+proc request*(url: string, httpMethod = HttpGET, extraHeaders = "",
               body = "", sslContext = defaultSSLContext, timeout = -1,
               userAgent = defUserAgent, proxy: Proxy = nil): Response
               {.deprecated.} =
@@ -627,13 +621,13 @@ proc get*(url: string, extraHeaders = "", maxRedirects = 5,
   ## server takes longer than specified an ETimeout exception will be raised.
   ##
   ## **Deprecated since version 0.15.0**: use ``HttpClient.get`` instead.
-  result = request(url, httpGET, extraHeaders, "", sslContext, timeout,
+  result = request(url, HttpGET, extraHeaders, "", sslContext, timeout,
                    userAgent, proxy)
   var lastURL = url
   for i in 1..maxRedirects:
     if result.status.redirection():
       let redirectTo = getNewLocation(lastURL, result.headers)
-      result = request(redirectTo, httpGET, extraHeaders, "", sslContext,
+      result = request(redirectTo, HttpGET, extraHeaders, "", sslContext,
                        timeout, userAgent, proxy)
       lastURL = redirectTo
 
@@ -687,13 +681,13 @@ proc post*(url: string, extraHeaders = "", body = "",
   if not multipart.isNil:
     xh.add(withNewLine("Content-Type: " & mpContentType))
 
-  result = request(url, httpPOST, xh, xb, sslContext, timeout, userAgent,
+  result = request(url, HttpPOST, xh, xb, sslContext, timeout, userAgent,
                    proxy)
   var lastURL = url
   for i in 1..maxRedirects:
     if result.status.redirection():
       let redirectTo = getNewLocation(lastURL, result.headers)
-      var meth = if result.status != "307": httpGet else: httpPost
+      var meth = if result.status != "307": HttpGet else: HttpPost
       result = request(redirectTo, meth, xh, xb, sslContext, timeout,
                        userAgent, proxy)
       lastURL = redirectTo

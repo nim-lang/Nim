@@ -85,9 +85,6 @@ type
     length*: int
     addrList*: seq[string]
 
-{.deprecated: [TPort: Port, TDomain: Domain, TType: SockType,
-    TProtocol: Protocol, TServent: Servent, THostent: Hostent].}
-
 when useWinVersion:
   let
     osInvalidSocket* = winlean.INVALID_SOCKET
@@ -640,7 +637,7 @@ proc pruneSocketSet(s: var seq[SocketHandle], fd: var TFdSet) =
       inc(i)
   setLen(s, L)
 
-proc select*(readfds: var seq[SocketHandle], timeout = 500): int {.deprecated.} =
+proc select*(readfds: var seq[SocketHandle], timeout = 500): int {.deprecated: "use selectRead instead".} =
   ## When a socket in ``readfds`` is ready to be read from then a non-zero
   ## value will be returned specifying the count of the sockets which can be
   ## read from. The sockets which can be read from will also be removed

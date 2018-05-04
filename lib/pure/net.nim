@@ -110,9 +110,6 @@ when defineSsl:
       serverGetPskFunc: SslServerGetPskFunc
       clientGetPskFunc: SslClientGetPskFunc
 
-  {.deprecated: [ESSL: SSLError, TSSLCVerifyMode: SSLCVerifyMode,
-    TSSLProtVersion: SSLProtVersion, PSSLContext: SSLContext,
-    TSSLAcceptResult: SSLAcceptResult].}
 else:
   type
     SslContext* = void # TODO: Workaround #4797.
@@ -159,10 +156,6 @@ type
     Peek,
     SafeDisconn ## Ensures disconnection exceptions (ECONNRESET, EPIPE etc) are not thrown.
 
-{.deprecated: [TSocketFlags: SocketFlag, ETimeout: TimeoutError,
-    TReadLineResult: ReadLineResult, TSOBool: SOBool, PSocket: Socket,
-    TSocketImpl: SocketImpl].}
-
 type
   IpAddressFamily* {.pure.} = enum ## Describes the type of an IP address
     IPv6, ## IPv6 address
@@ -176,8 +169,6 @@ type
     of IpAddressFamily.IPv4:
       address_v4*: array[0..3, uint8] ## Contains the IP address in bytes in
                                       ## case of IPv4
-{.deprecated: [TIpAddress: IpAddress].}
-
 
 proc socketError*(socket: Socket, err: int = -1, async = false,
                   lastError = (-1).OSErrorCode): void {.gcsafe.}

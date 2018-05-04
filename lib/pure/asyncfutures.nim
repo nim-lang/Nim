@@ -27,8 +27,6 @@ type
   FutureError* = object of Exception
     cause*: FutureBase
 
-{.deprecated: [PFutureBase: FutureBase, PFuture: Future].}
-
 when not defined(release):
   var currentID = 0
 

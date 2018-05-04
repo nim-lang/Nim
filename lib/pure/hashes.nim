@@ -45,7 +45,6 @@ type
   Hash* = int ## a hash value; hash tables using these values should
                ## always have a size of a power of two and can use the ``and``
                ## operator instead of ``mod`` for truncation of the hash value.
-{.deprecated: [THash: Hash].}
 
 proc `!&`*(h: Hash, val: int): Hash {.inline.} =
   ## mixes a hash value `h` with `val` to produce a new hash value. This is

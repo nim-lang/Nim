@@ -18,14 +18,12 @@ type
     hostname*, port*, path*, query*, anchor*: string
     opaque*: bool
 
-{.deprecated: [TUrl: Url, TUri: Uri].}
-
 {.push warning[deprecated]: off.}
-proc `$`*(url: Url): string {.deprecated.} =
+proc `$`*(url: Url): string {.deprecated: "use Uri instead".} =
   ## **Deprecated since 0.9.6**: Use ``Uri`` instead.
   return string(url)
 
-proc `/`*(a, b: Url): Url {.deprecated.} =
+proc `/`*(a, b: Url): Url {.deprecated: "use Uri instead".} =
   ## Joins two URLs together, separating them with / if needed.
   ##
   ## **Deprecated since 0.9.6**: Use ``Uri`` instead.
@@ -40,7 +38,7 @@ proc `/`*(a, b: Url): Url {.deprecated.} =
     urlS.add(bs)
   result = Url(urlS)
 
-proc add*(url: var Url, a: Url) {.deprecated.} =
+proc add*(url: var Url, a: Url) {.deprecated: "use Uri instead".} =
   ## Appends url to url.
   ##
   ## **Deprecated since 0.9.6**: Use ``Uri`` instead.

@@ -13,9 +13,6 @@ type
   SortOrder* = enum   ## sort order
     Descending, Ascending
 
-{.deprecated: [TSortOrder: SortOrder].}
-
-
 proc `*`*(x: int, order: SortOrder): int {.inline.} =
   ## flips `x` if ``order == Descending``;
   ## if ``order == Ascending`` then `x` is returned.

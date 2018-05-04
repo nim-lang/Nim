@@ -64,8 +64,6 @@ type
     methodPost,          ## query uses the POST method
     methodGet            ## query uses the GET method
 
-{.deprecated: [TRequestMethod: RequestMethod, ECgi: CgiError].}
-
 proc cgiError*(msg: string) {.noreturn.} =
   ## raises an ECgi exception with message `msg`.
   var e: ref CgiError

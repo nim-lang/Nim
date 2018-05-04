@@ -431,8 +431,6 @@ type
     fpOthersWrite,         ## write access for others
     fpOthersRead           ## read access for others
 
-{.deprecated: [TFilePermission: FilePermission].}
-
 proc getFilePermissions*(filename: string): set[FilePermission] {.
   rtl, extern: "nos$1", tags: [ReadDirEffect].} =
   ## retrieves file permissions for `filename`. `OSError` is raised in case of
@@ -729,8 +727,6 @@ type
     pcLinkToFile,         ## path refers to a symbolic link to a file
     pcDir,                ## path refers to a directory
     pcLinkToDir           ## path refers to a symbolic link to a directory
-
-{.deprecated: [TPathComponent: PathComponent].}
 
 
 when defined(posix):
@@ -1440,18 +1436,6 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
     # little heuristic that may work on other POSIX-like systems:
     if result.len == 0:
       result = getApplHeuristic()
-
-proc getApplicationFilename*(): string {.rtl, extern: "nos$1", deprecated.} =
-  ## Returns the filename of the application's executable.
-  ## **Deprecated since version 0.8.12**: use ``getAppFilename``
-  ## instead.
-  result = getAppFilename()
-
-proc getApplicationDir*(): string {.rtl, extern: "nos$1", deprecated.} =
-  ## Returns the directory of the application's executable.
-  ## **Deprecated since version 0.8.12**: use ``getAppDir``
-  ## instead.
-  result = splitFile(getAppFilename()).dir
 
 proc getAppDir*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
   ## Returns the directory of the application's executable.

@@ -33,9 +33,6 @@ type
       fAttr: XmlAttributes
     fClientData: int              ## for other clients
 
-{.deprecated: [PXmlNode: XmlNode, TXmlNodeKind: XmlNodeKind, PXmlAttributes:
-    XmlAttributes, TXmlNode: XmlNodeObj].}
-
 proc newXmlNode(kind: XmlNodeKind): XmlNode =
   ## creates a new ``XmlNode``.
   new(result)
@@ -154,11 +151,6 @@ proc `[]`* (n: var XmlNode, i: int): var XmlNode {.inline.} =
   ## returns the `i`'th child of `n` so that it can be modified
   assert n.k == xnElement
   result = n.s[i]
-
-proc mget*(n: var XmlNode, i: int): var XmlNode {.inline, deprecated.} =
-  ## returns the `i`'th child of `n` so that it can be modified. Use ```[]```
-  ## instead.
-  n[i]
 
 iterator items*(n: XmlNode): XmlNode {.inline.} =
   ## iterates over any child of `n`.

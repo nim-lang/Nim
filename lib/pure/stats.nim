@@ -65,8 +65,6 @@ type
     y_stats*: RunningStat   ## stats for second set of data
     s_xy: float             ## accumulated data for combined xy
 
-{.deprecated: [TFloatClass: FloatClass, TRunningStat: RunningStat].}
-
 # ----------- RunningStat --------------------------
 proc clear*(s: var RunningStat) =
   ## reset `s`
