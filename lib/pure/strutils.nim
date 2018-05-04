@@ -17,6 +17,9 @@ import parseutils
 from math import pow, round, floor, log10
 from algorithm import reverse
 
+from unicode import toLower, toUpper
+export toLower, toUpper
+
 {.deadCodeElim: on.}  # dce option deprecated
 
 {.push debugger:off .} # the user does not want to trace a part
