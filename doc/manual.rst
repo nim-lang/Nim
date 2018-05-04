@@ -6298,6 +6298,9 @@ modules don't need to import a module's dependencies:
   var x: MyObject
   echo $x
 
+When the exported symbol is another module, all of its definitions will
+be forwarded. You can use an ``except`` list to exclude some of the symbols.
+
 Note on paths
 -----------
 In module related statements, if any part of the module name /

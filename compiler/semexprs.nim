@@ -2160,9 +2160,25 @@ proc semBlock(c: PContext, n: PNode): PNode =
   closeScope(c)
   dec(c.p.nestedBlockCounter)
 
+proc semExportExcept(c: PContext, n: PNode): PNode =
+  let moduleName = semExpr(c, n[0])
+  if moduleName.kind != nkSym or moduleName.sym.kind != skModule:
+    localError(n.info, "The export/except syntax expects a module name")
+    return
+  let exceptSet = readExceptSet(n)
+  let exported = moduleName.sym
+  strTableAdd(c.module.tab, exported)
+  var i: TTabIter
+  var s = initTabIter(i, exported.tab)
+  while s != nil:
+    if s.kind in ExportableSymKinds+{skModule} and
+       s.name.id notin exceptSet:
+      strTableAdd(c.module.tab, s)
+    s = nextIter(i, exported.tab)
+  result = n
+
 proc semExport(c: PContext, n: PNode): PNode =
   var x = newNodeI(n.kind, n.info)
-  #let L = if n.kind == nkExportExceptStmt: L = 1 else: n.len
   for i in 0..<n.len:
     let a = n.sons[i]
     var o: TOverloadIter
@@ -2448,9 +2464,12 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkIncludeStmt:
     #if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "include")
     result = evalInclude(c, n)
-  of nkExportStmt, nkExportExceptStmt:
+  of nkExportStmt:
     if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "export")
     result = semExport(c, n)
+  of nkExportExceptStmt:
+    if not isTopLevel(c): localError(n.info, errXOnlyAtModuleScope, "export")
+    result = semExportExcept(c, n)
   of nkPragmaBlock:
     result = semPragmaBlock(c, n)
   of nkStaticStmt:
