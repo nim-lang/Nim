@@ -120,9 +120,11 @@ iterator items*[A](s: HashSet[A]): A =
   for h in 0..high(s.data):
     if isFilled(s.data[h].hcode): yield s.data[h].key
 
-proc hash*[A](x: HashSet[A]): Hash =
+proc hash*[A](s: HashSet[A]): Hash =
   ## hashing of HashSet
-  for item in x: result = result !& hash(item)
+  assert s.isValid, "The set needs to be initialized."
+  for h in 0..high(s.data):
+    result = result !& s.data[h].hcode
   result = !$result
 
 const
@@ -695,9 +697,11 @@ iterator items*[A](s: OrderedSet[A]): A =
   forAllOrderedPairs:
     yield s.data[h].key
 
-proc hash*[A](x: OrderedSet[A]): Hash =
+proc hash*[A](s: OrderedSet[A]): Hash =
   ## hashing of OrderedSet
-  for item in x: result = result !& hash(item)
+  assert s.isValid, "The set needs to be initialized."
+  forAllOrderedPairs:
+    result = result !& s.data[h].hcode
   result = !$result
 
 iterator pairs*[A](s: OrderedSet[A]): tuple[a: int, b: A] =
