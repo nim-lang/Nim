@@ -123,14 +123,10 @@
 # STATE2: # Finally
 #   yield 2
 #   if :unrollFinally: # This node is created by `newEndFinallyNode`
-#     when nearestFinally == 0: # Pseudocode. The `when` is not emitted in reality
-#       if :curExc.isNil:
-#         return :tmpResult
-#       else:
-#         raise
+#     if :curExc.isNil:
+#       return :tmpResult
 #     else:
-#       :state = nearestFinally
-#       break :stateLoop
+#       raise
 #   state = -1 # Goto next state. In this case we just exit
 #   break :stateLoop
 
@@ -427,15 +423,10 @@ proc lowerStmtListExpr(ctx: var Ctx, n: PNode): PNode =
 proc newEndFinallyNode(ctx: var Ctx): PNode =
   # Generate the following code:
   #   if :unrollFinally:
-  #     when nearestFinally == 0: # Pseudocode. The `when` is not emitted in reality
   #       if :curExc.isNil:
   #         return :tmpResult
   #       else:
   #         raise
-  #     else:
-  #       goto nearestFinally
-  #       :state = nearestFinally
-  #       break :stateLoop
 
   result = newNode(nkIfStmt)
 
@@ -443,44 +434,35 @@ proc newEndFinallyNode(ctx: var Ctx): PNode =
   elifBranch.add(ctx.newUnrollFinallyAccess())
   result.add(elifBranch)
 
-  var ifBody: PNode
+  let ifBody = newNode(nkIfStmt)
+  let branch = newNode(nkElifBranch)
 
-  if ctx.nearestFinally == 0 or true:
-    ifBody = newNode(nkIfStmt)
-    let branch = newNode(nkElifBranch)
+  let cmp = newNode(nkCall)
+  cmp.add(getSysMagic("==", mEqRef).newSymNode)
+  let curExc = ctx.newCurExcAccess()
+  let nilnode = newNode(nkNilLit)
+  nilnode.typ = curExc.typ
+  cmp.add(curExc)
+  cmp.add(nilnode)
+  cmp.typ = getSysType(tyBool)
+  branch.add(cmp)
 
-    let cmp = newNode(nkCall)
-    cmp.add(getSysMagic("==", mEqRef).newSymNode)
-    let curExc = ctx.newCurExcAccess()
-    let nilnode = newNode(nkNilLit)
-    nilnode.typ = curExc.typ
-    cmp.add(curExc)
-    cmp.add(nilnode)
-    cmp.typ = getSysType(tyBool)
-    branch.add(cmp)
+  let retStmt = newNode(nkReturnStmt)
+  let asgn = newNode(nkAsgn)
+  addSon(asgn, newSymNode(getClosureIterResult(ctx.fn)))
+  addSon(asgn, ctx.newTmpResultAccess())
+  retStmt.add(asgn)
+  branch.add(retStmt)
 
-    var retStmt = newNode(nkReturnStmt)
-    if true:
-      var a = newNode(nkAsgn)
-      addSon(a, newSymNode(getClosureIterResult(ctx.fn)))
-      addSon(a, ctx.newTmpResultAccess())
-      retStmt.add(a)
-    else:
-      retStmt.add(emptyNode)
-    branch.add(retStmt)
+  let elseBranch = newNode(nkElse)
+  let raiseStmt = newNode(nkRaiseStmt)
 
-    let elseBranch = newNode(nkElse)
-    let raiseStmt = newNode(nkRaiseStmt)
+  # The C++ backend requires `getCurrentException` here.
+  raiseStmt.add(callCodegenProc("getCurrentException", emptyNode))
+  elseBranch.add(raiseStmt)
 
-    # The C++ backend requires `getCurrentException` here.
-    raiseStmt.add(callCodegenProc("getCurrentException", emptyNode))
-    elseBranch.add(raiseStmt)
-
-    ifBody.add(branch)
-    ifBody.add(elseBranch)
-  else:
-    ifBody = newNode(nkGotoState)
-    ifBody.add(newIntLit(ctx.nearestFinally))
+  ifBody.add(branch)
+  ifBody.add(elseBranch)
 
   elifBranch.add(ifBody)
 
