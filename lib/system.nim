@@ -4172,8 +4172,9 @@ template doAssertRaises*(exception, code: untyped): typed =
   if wrong:
     raiseAssert(astToStr(exception) & " wasn't raised by:\n" & astToStr(code))
 
-when defined(cpp) and appType != "lib" and not defined(js) and
-    not defined(nimscript) and hostOS != "standalone":
+when defined(cpp) and appType != "lib" and
+    not defined(js) and not defined(nimscript) and
+    hostOS != "standalone" and not defined(noCppExceptions):
   proc setTerminate(handler: proc() {.noconv.})
     {.importc: "std::set_terminate", header: "<exception>".}
   setTerminate proc() {.noconv.} =
