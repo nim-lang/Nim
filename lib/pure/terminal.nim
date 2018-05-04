@@ -40,10 +40,7 @@ const
   fgPrefix = "\x1b[38;2;"
   bgPrefix = "\x1b[48;2;"
   ansiResetCode* = "\e[0m"
-
-when not defined(windows):
-  const
-    stylePrefix = "\e["
+  stylePrefix = "\e["
 
 when defined(windows):
   import winlean, os
