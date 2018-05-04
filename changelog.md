@@ -102,6 +102,8 @@
 - Thread-local variables can now be declared inside procs. This implies all
   the effects of the `global` pragma.
 
+- Nim now supports `except` clause in the export statement.
+
 ### Tool changes
 
 - ``jsondoc2`` has been renamed ``jsondoc``, similar to how ``doc2`` was renamed
