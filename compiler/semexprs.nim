@@ -1544,7 +1544,7 @@ proc semYield(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 1)
   if c.p.owner == nil or c.p.owner.kind != skIterator:
     localError(n.info, errYieldNotAllowedHere)
-  elif c.p.inTryStmt > 0 and c.p.owner.typ.callConv != ccInline:
+  elif oldIterTransf in c.features and c.p.inTryStmt > 0 and c.p.owner.typ.callConv != ccInline:
     localError(n.info, errYieldNotAllowedInTryStmt)
   elif n.sons[0].kind != nkEmpty:
     n.sons[0] = semExprWithType(c, n.sons[0]) # check for type compatibility:
