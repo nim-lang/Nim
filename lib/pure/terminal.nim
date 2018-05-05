@@ -727,8 +727,7 @@ proc getch*(): char =
       doAssert(readConsoleInput(fd, addr(keyEvent), 1, addr(numRead)) != 0)
       if numRead == 0 or keyEvent.eventType != 1 or keyEvent.bKeyDown == 0:
         continue
-      case keyEvent.uChar
-      of 0, 0x0E:
+      if keyEvent.uChar == 0:
         # ignore the first SHIFT_PRESSED event - the subsequent read
         # has the result. Details:
         # https://github.com/nim-lang/Nim/issues/7764
