@@ -268,13 +268,9 @@ proc isUnary(p: TParser): bool =
 proc checkBinary(p: TParser) {.inline.} =
   ## Check if the current parser token is a binary operator.
   # we don't check '..' here as that's too annoying
-  if p.strongSpaces and p.tok.tokType == tkOpr:
+  if p.tok.tokType == tkOpr:
     if p.tok.strongSpaceB > 0 and p.tok.strongSpaceA != p.tok.strongSpaceB:
-      parMessage(p, errGenerated,
-                 "Number of spaces around '$#' not consistent" %
-                 prettyTok(p.tok))
-    elif p.tok.strongSpaceA notin {0,1,2,4,8}:
-      parMessage(p, errGenerated, "Number of spaces must be 0,1,2,4 or 8")
+      parMessage(p, warnInconsistentSpacing, prettyTok(p.tok))
 
 #| module = stmt ^* (';' / IND{=})
 #|

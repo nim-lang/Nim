@@ -790,7 +790,7 @@ proc genIntCast(c: PCtx; n: PNode; dest: var TDest) =
     elif src.kind in signedIntegers and dst.kind in unsignedIntegers:
       # cast signed to unsigned integer of same size
       # unsignedVal = (offset +% signedVal +% 1) and offset
-      let offset = (1 shl (src_size * 8))  - 1
+      let offset = (1 shl (src_size * 8)) - 1
       c.gABx(n, opcLdConst, tmp2, mkIntLit(offset))
       c.gABx(n, opcLdConst, dest, mkIntLit(offset+1))
       c.gABC(n, opcAddu, tmp3, tmp, dest)

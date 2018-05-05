@@ -17,6 +17,9 @@
 - The ``not nil`` type annotation now has to be enabled explicitly
   via ``{.experimental: "notnil"}`` as we are still not pleased with how this
   feature works with Nim's containers.
+- The parser now warns about inconsistent spacing around binary operators as
+  these can easily be confused with unary operators. This warning will likely
+  become an error in the future.
 
 
 #### Breaking changes in the standard library
@@ -89,7 +92,7 @@
 - Accessing the binary zero terminator in Nim's native strings
   is now invalid. Internally a Nim string still has the trailing zero for
   zero-copy interoperability with ``cstring``. Compile your code with the
-  next switch ``--laxStrings:on`` if you need a transition period.
+  new switch ``--laxStrings:on`` if you need a transition period.
 
 
 ### Tool changes

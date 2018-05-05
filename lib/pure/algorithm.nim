@@ -395,7 +395,7 @@ proc rotateInternal[T](arg: var openarray[T]; first, middle, last: int): int =
 
   swap(arg[mFirst], arg[next])
   mFirst += 1
-  next  += 1
+  next += 1
   if mFirst == mMiddle:
     mMiddle = next
 

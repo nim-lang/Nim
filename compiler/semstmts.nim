@@ -846,7 +846,7 @@ proc checkCovariantParamsUsages(genericType: PType) =
         if subType != nil:
           subresult traverseSubTypes(subType)
       if result:
-        error("non-invariant type param used in a proc type: " &  $t)
+        error("non-invariant type param used in a proc type: " & $t)
 
     of tySequence:
       return traverseSubTypes(t[0])

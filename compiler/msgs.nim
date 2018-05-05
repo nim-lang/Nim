@@ -131,7 +131,7 @@ type
     warnEachIdentIsTuple, warnShadowIdent,
     warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe, warnGcUnsafe2,
     warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
-    warnUser,
+    warnInconsistentSpacing, warnUser,
     hintSuccess, hintSuccessX,
     hintLineTooLong, hintXDeclaredButNotUsed, hintConvToBaseNotNeeded,
     hintConvFromXtoItselfNotNeeded, hintExprAlwaysX, hintQuitCalled,
@@ -416,6 +416,7 @@ const
     warnDestructor: "usage of a type with a destructor in a non destructible context. This will become a compile time error in the future.",
     warnLockLevel: "$1",
     warnResultShadowed: "Special variable 'result' is shadowed.",
+    warnInconsistentSpacing: "Number of spaces around '$#' is not consistent",
     warnUser: "$1",
     hintSuccess: "operation successful",
     hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#; $#)",
@@ -454,7 +455,8 @@ const
     "TypelessParam", "UseBase", "WriteToForeignHeap",
     "UnsafeCode", "EachIdentIsTuple", "ShadowIdent",
     "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
-    "GcMem", "Destructor", "LockLevel", "ResultShadowed", "User"]
+    "GcMem", "Destructor", "LockLevel", "ResultShadowed",
+    "Spacing", "User"]
 
   HintsToStr* = ["Success", "SuccessX", "LineTooLong",
     "XDeclaredButNotUsed", "ConvToBaseNotNeeded", "ConvFromXtoItselfNotNeeded",

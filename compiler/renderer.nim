@@ -342,7 +342,7 @@ proc atom(g: TSrcGen; n: PNode): string =
   of nkIdent: result = n.ident.s
   of nkSym: result = n.sym.name.s
   of nkStrLit: result = ""; result.addQuoted(n.strVal)
-  of nkRStrLit: result = "r\"" & replace(n.strVal, "\"", "\"\"")  & '\"'
+  of nkRStrLit: result = "r\"" & replace(n.strVal, "\"", "\"\"") & '\"'
   of nkTripleStrLit: result = "\"\"\"" & n.strVal & "\"\"\""
   of nkCharLit:
     result = "\'"
