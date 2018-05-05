@@ -205,7 +205,7 @@ proc readConfigFile(filename: string; cache: IdentCache; config: ConfigRef) =
   stream = llStreamOpen(filename, fmRead)
   if stream != nil:
     initToken(tok)
-    openLexer(L, filename, stream, cache)
+    openLexer(L, filename, stream, cache, config)
     tok.tokType = tkEof       # to avoid a pointless warning
     confTok(L, tok, config)           # read in the first token
     while tok.tokType != tkEof: parseAssignment(L, tok, config)

@@ -605,12 +605,12 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
       call.add(a)
     #echo "NOW evaluating at compile time: ", call.renderTree
     if sfCompileTime in callee.flags:
-      result = evalStaticExpr(c.module, c.cache, call, c.p.owner)
+      result = evalStaticExpr(c.module, c.cache, c.graph.config, call, c.p.owner)
       if result.isNil:
         localError(n.info, errCannotInterpretNodeX, renderTree(call))
       else: result = fixupTypeAfterEval(c, result, n)
     else:
-      result = evalConstExpr(c.module, c.cache, call)
+      result = evalConstExpr(c.module, c.cache, c.graph.config, call)
       if result.isNil: result = n
       else: result = fixupTypeAfterEval(c, result, n)
     #if result != n:
@@ -619,7 +619,7 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
 proc semStaticExpr(c: PContext, n: PNode): PNode =
   let a = semExpr(c, n.sons[0])
   if a.findUnresolvedStatic != nil: return a
-  result = evalStaticExpr(c.module, c.cache, a, c.p.owner)
+  result = evalStaticExpr(c.module, c.cache, c.graph.config, a, c.p.owner)
   if result.isNil:
     localError(n.info, errCannotInterpretNodeX, renderTree(n))
     result = emptyNode

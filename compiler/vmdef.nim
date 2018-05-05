@@ -10,7 +10,7 @@
 ## This module contains the type definitions for the new evaluation engine.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
-import ast, passes, msgs, idents, intsets
+import ast, passes, msgs, idents, intsets, options
 
 const
   byteExcess* = 128 # we use excess-K for immediates
@@ -206,17 +206,19 @@ type
     callbacks*: seq[tuple[key: string, value: VmCallback]]
     errorFlag*: string
     cache*: IdentCache
+    config*: ConfigRef
 
   TPosition* = distinct int
 
   PEvalContext* = PCtx
 
-proc newCtx*(module: PSym; cache: IdentCache): PCtx =
+proc newCtx*(module: PSym; cache: IdentCache; config: ConfigRef = nil): PCtx =
+  let conf = if config != nil: config else: newConfigRef()
   PCtx(code: @[], debug: @[],
     globals: newNode(nkStmtListExpr), constants: newNode(nkStmtList), types: @[],
     prc: PProc(blocks: @[]), module: module, loopIterations: MaxLoopIterations,
     comesFromHeuristic: unknownLineInfo(), callbacks: @[], errorFlag: "",
-    cache: cache)
+    cache: cache, config: conf)
 
 proc refresh*(c: PCtx, module: PSym) =
   c.module = module

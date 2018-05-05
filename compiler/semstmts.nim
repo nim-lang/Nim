@@ -545,7 +545,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         b.sons[j] = newSymNode(v)
       checkNilable(v)
       if sfCompileTime in v.flags: hasCompileTime = true
-  if hasCompileTime: vm.setupCompileTimeVar(c.module, c.cache, result)
+  if hasCompileTime:
+    vm.setupCompileTimeVar(c.module, c.cache, c.graph.config, result)
 
 proc semConst(c: PContext, n: PNode): PNode =
   result = copyNode(n)
@@ -1755,7 +1756,7 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
   #writeStackTrace()
   let a = semStmt(c, n.sons[0])
   n.sons[0] = a
-  evalStaticStmt(c.module, c.cache, a, c.p.owner)
+  evalStaticStmt(c.module, c.cache, c.graph.config, a, c.p.owner)
   result = newNodeI(nkDiscardStmt, n.info, 1)
   result.sons[0] = emptyNode
 

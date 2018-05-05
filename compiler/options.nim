@@ -113,6 +113,7 @@ type
     notnil
 
   ConfigRef* = ref object ## eventually all global configuration should be moved here
+    linesCompiled*: int  # all lines that have been compiled
     cppDefines*: HashSet[string]
     headerFile*: string
     features*: set[Feature]

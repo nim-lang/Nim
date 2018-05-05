@@ -144,12 +144,11 @@ type
     cache*: IdentCache
     when defined(nimsuggest):
       previousToken: TLineInfo
+    config*: ConfigRef
 
 when defined(nimpretty):
   var
     gIndentationWidth*: int
-
-var gLinesCompiled*: int  # all lines that have been compiled
 
 proc getLineInfo*(L: TLexer, tok: TToken): TLineInfo {.inline.} =
   result = newLineInfo(L.fileIdx, tok.line, tok.col)
@@ -222,7 +221,7 @@ proc fillToken(L: var TToken) =
     L.commentOffsetB = 0
 
 proc openLexer*(lex: var TLexer, fileIdx: FileIndex, inputstream: PLLStream;
-                 cache: IdentCache) =
+                 cache: IdentCache; config: ConfigRef) =
   openBaseLexer(lex, inputstream)
   lex.fileIdx = fileidx
   lex.indentAhead = - 1
@@ -231,13 +230,14 @@ proc openLexer*(lex: var TLexer, fileIdx: FileIndex, inputstream: PLLStream;
   lex.cache = cache
   when defined(nimsuggest):
     lex.previousToken.fileIndex = fileIdx
+  lex.config = config
 
 proc openLexer*(lex: var TLexer, filename: string, inputstream: PLLStream;
-                cache: IdentCache) =
-  openLexer(lex, filename.fileInfoIdx, inputstream, cache)
+                cache: IdentCache; config: ConfigRef) =
+  openLexer(lex, filename.fileInfoIdx, inputstream, cache, config)
 
 proc closeLexer*(lex: var TLexer) =
-  inc(gLinesCompiled, lex.lineNumber)
+  inc(lex.config.linesCompiled, lex.lineNumber)
   closeBaseLexer(lex)
 
 proc getLineInfo(L: TLexer): TLineInfo =
@@ -576,17 +576,18 @@ proc getNumber(L: var TLexer, result: var TToken) =
         result.iNumber = parseBiggestInt(result.literal)
 
       # Explicit bounds checks
-      let outOfRange = case result.tokType:
-      of tkInt8Lit: (result.iNumber < int8.low or result.iNumber > int8.high)
-      of tkUInt8Lit: (result.iNumber < BiggestInt(uint8.low) or
-                      result.iNumber > BiggestInt(uint8.high))
-      of tkInt16Lit: (result.iNumber < int16.low or result.iNumber > int16.high)
-      of tkUInt16Lit: (result.iNumber < BiggestInt(uint16.low) or
-                      result.iNumber > BiggestInt(uint16.high))
-      of tkInt32Lit: (result.iNumber < int32.low or result.iNumber > int32.high)
-      of tkUInt32Lit: (result.iNumber < BiggestInt(uint32.low) or
-                      result.iNumber > BiggestInt(uint32.high))
-      else: false
+      let outOfRange =
+        case result.tokType
+        of tkInt8Lit: (result.iNumber < int8.low or result.iNumber > int8.high)
+        of tkUInt8Lit: (result.iNumber < BiggestInt(uint8.low) or
+                        result.iNumber > BiggestInt(uint8.high))
+        of tkInt16Lit: (result.iNumber < int16.low or result.iNumber > int16.high)
+        of tkUInt16Lit: (result.iNumber < BiggestInt(uint16.low) or
+                        result.iNumber > BiggestInt(uint16.high))
+        of tkInt32Lit: (result.iNumber < int32.low or result.iNumber > int32.high)
+        of tkUInt32Lit: (result.iNumber < BiggestInt(uint32.low) or
+                        result.iNumber > BiggestInt(uint32.high))
+        else: false
 
       if outOfRange: lexMessageLitNum(L, errNumberOutOfRange, startpos)
 
