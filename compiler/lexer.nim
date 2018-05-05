@@ -237,7 +237,8 @@ proc openLexer*(lex: var TLexer, filename: string, inputstream: PLLStream;
   openLexer(lex, filename.fileInfoIdx, inputstream, cache, config)
 
 proc closeLexer*(lex: var TLexer) =
-  inc(lex.config.linesCompiled, lex.lineNumber)
+  if lex.config != nil:
+    inc(lex.config.linesCompiled, lex.lineNumber)
   closeBaseLexer(lex)
 
 proc getLineInfo(L: TLexer): TLineInfo =
