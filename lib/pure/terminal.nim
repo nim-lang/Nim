@@ -732,8 +732,7 @@ proc getch*(): char =
         # has the result. Details:
         # https://github.com/nim-lang/Nim/issues/7764
         if (keyEvent.dwControlKeyState and SHIFT_PRESSED) == SHIFT_PRESSED:
-          continue
-      else: discard        
+          continue     
       return char(keyEvent.uChar)
   else:
     let fd = getFileHandle(stdin)
