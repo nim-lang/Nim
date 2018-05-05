@@ -293,13 +293,13 @@ proc testNimInAction(r: var TResults, cat: Category, options: string) =
   # Verify that the files have not been modified. Death shall fall upon
   # whoever edits these hashes without dom96's permission, j/k. But please only
   # edit when making a conscious breaking change, also please try to make your
-  # commit message clear so I can easily compile an errata later.
+  # commit message clear and notify me so I can easily compile an errata later.
   var testHashes: seq[string] = @[]
 
   for test in tests:
     testHashes.add(getMD5(readFile("tests" / test.addFileExt("nim")).string))
 
-  let refHashes = @[
+  const refHashes = @[
     "51afdfa84b3ca3d810809d6c4e5037ba", "30f07e4cd5eaec981f67868d4e91cfcf",
     "d14e7c032de36d219c9548066a97e846", "2e40bfd5daadb268268727da91bb4e81",
     "c5d3853ed0aba04bf6d35ba28a98dca0", "058603145ff92d46c009006b06e5b228",
