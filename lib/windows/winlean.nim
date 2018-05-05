@@ -1064,17 +1064,6 @@ type
     uChar*: int16
     dwControlKeyState*: DWORD
 
-const 
-  CAPS_LOCK_ON* = 0x0080'i32
-  ENHANCED_KEY* = 0x0100'i32
-  LEFT_ALT_PRESSED* = 0x0002'i32
-  LEFT_CTRL_PRESSED* = 0x0008'i32
-  NUMLOCK_ON* = 0x0020'i32
-  RIGHT_ALT_PRESSED* = 0x0001'i32
-  RIGHT_CTRL_PRESSED* = 0x0004'i32
-  SCROLLLOCK_ON* = 0x0040'i32
-  SHIFT_PRESSED* = 0x0010'i32
-
 when defined(useWinAnsi):
   proc readConsoleInput*(hConsoleInput: Handle, lpBuffer: pointer, nLength: cint,
                         lpNumberOfEventsRead: ptr cint): cint

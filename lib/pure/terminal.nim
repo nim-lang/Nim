@@ -727,12 +727,6 @@ proc getch*(): char =
       doAssert(readConsoleInput(fd, addr(keyEvent), 1, addr(numRead)) != 0)
       if numRead == 0 or keyEvent.eventType != 1 or keyEvent.bKeyDown == 0:
         continue
-      if keyEvent.uChar == 0:
-        # ignore the first SHIFT_PRESSED event - the subsequent read
-        # has the result. Details:
-        # https://github.com/nim-lang/Nim/issues/7764
-        if (keyEvent.dwControlKeyState and SHIFT_PRESSED) == SHIFT_PRESSED:
-          continue     
       return char(keyEvent.uChar)
   else:
     let fd = getFileHandle(stdin)
@@ -765,6 +759,10 @@ when defined(windows):
           x = runeLenAt(password.string, i)
           inc i, x
         password.string.setLen(max(password.len - x, 0))
+      of chr(0x0):
+        # modifier key - ignore - for details see 
+        # https://github.com/nim-lang/Nim/issues/7764
+        continue
       else:
         password.string.add(toUTF8(c.Rune))
     stdout.write "\n"
