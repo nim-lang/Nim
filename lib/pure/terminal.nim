@@ -621,7 +621,7 @@ proc ansiForegroundColorCode*(color: Color): string =
       colorsFGCache[color] = result
 
 template ansiForegroundColorCode*(color: static[Color]): string =
-  let rgb = extractRGB(color)
+  const rgb = extractRGB(color)
   (static(fmt"{fgPrefix}{rgb.r};{rgb.g};{rgb.b}m"))
 
 proc ansiBackgroundColorCode*(color: Color): string =
