@@ -749,7 +749,7 @@ proc generateHeaders(requestUrl: Uri, httpMethod: string,
 
   if proxy.isNil or requestUrl.scheme == "https":
     # /path?query
-    if requestUrl.path[0] != '/': result.add '/'
+    if not requestUrl.path.startsWith("/"): result.add '/'
     result.add(requestUrl.path)
     if requestUrl.query.len > 0:
       result.add("?" & requestUrl.query)
