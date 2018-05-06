@@ -41,6 +41,9 @@
 
 #### Breaking changes in the compiler
 
+- The undocumented ``#? braces`` parsing mode was removed.
+- The undocumented PHP backend was removed.
+
 ### Library additions
 
 - ``re.split`` now also supports the ``maxsplit`` parameter for consistency
