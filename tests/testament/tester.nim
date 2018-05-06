@@ -212,18 +212,18 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, target: TTarg
   elif expected.tfile == "" and extractFilename(expected.file) != extractFilename(given.file) and
       "internal error:" notin expected.msg:
     r.addResult(test, target, expected.file, given.file, reFilesDiffer)
-  elif expected.line   != given.line   and expected.line   != 0 or
+  elif expected.line != given.line and expected.line != 0 or
        expected.column != given.column and expected.column != 0:
     r.addResult(test, target, $expected.line & ':' & $expected.column,
-                      $given.line    & ':' & $given.column,
+                      $given.line & ':' & $given.column,
                       reLinesDiffer)
   elif expected.tfile != "" and extractFilename(expected.tfile) != extractFilename(given.tfile) and
       "internal error:" notin expected.msg:
     r.addResult(test, target, expected.tfile, given.tfile, reFilesDiffer)
-  elif expected.tline   != given.tline   and expected.tline   != 0 or
+  elif expected.tline != given.tline and expected.tline != 0 or
        expected.tcolumn != given.tcolumn and expected.tcolumn != 0:
     r.addResult(test, target, $expected.tline & ':' & $expected.tcolumn,
-                      $given.tline    & ':' & $given.tcolumn,
+                      $given.tline & ':' & $given.tcolumn,
                       reLinesDiffer)
   else:
     r.addResult(test, target, expected.msg, given.msg, reSuccess)
