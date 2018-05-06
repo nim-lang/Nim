@@ -1554,7 +1554,7 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
   of tyCString, tyString:
     result = newNodeIT(nkStrLit, info, t)
     result.strVal = ""
-  of tyVar, tyLent, tyPointer, tyPtr, tySequence, tyExpr,
+  of tyVar, tyLent, tyPointer, tyPtr, tyExpr,
      tyStmt, tyTypeDesc, tyStatic, tyRef, tyNil:
     result = newNodeIT(nkNilLit, info, t)
   of tyProc:
@@ -1585,6 +1585,8 @@ proc getNullValue(typ: PType, info: TLineInfo): PNode =
     result = newNodeIT(nkCurly, info, t)
   of tyOpt:
     result = newNodeIT(nkNilLit, info, t)
+  of tySequence:
+    result = newNodeIT(nkBracket, info, t)
   else:
     globalError(info, "cannot create null element for: " & $t.kind)
 
