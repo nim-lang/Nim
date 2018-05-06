@@ -37,8 +37,6 @@ type
     length: int
     data: string # != nil if a leaf
 
-{.deprecated: [PRope: Rope].}
-
 proc isConc(r: Rope): bool {.inline.} = return isNil(r.data)
 
 # Note that the left and right pointers are not needed for leafs.

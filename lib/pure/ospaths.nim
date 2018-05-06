@@ -29,11 +29,6 @@ type
 
   OSErrorCode* = distinct int32 ## Specifies an OS Error Code.
 
-{.deprecated: [FReadEnv: ReadEnvEffect, FWriteEnv: WriteEnvEffect,
-    FReadDir: ReadDirEffect,
-    FWriteDir: WriteDirEffect,
-    TOSErrorCode: OSErrorCode
-].}
 const
   doslikeFileSystem* = defined(windows) or defined(OS2) or defined(DOS)
 

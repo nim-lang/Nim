@@ -45,10 +45,6 @@ type
                       ## TCP/IP tunnel, usually used for proxies.
     HttpPatch         ## Applies partial modifications to a resource.
 
-{.deprecated: [httpGet: HttpGet, httpHead: HttpHead, httpPost: HttpPost,
-               httpPut: HttpPut, httpDelete: HttpDelete, httpTrace: HttpTrace,
-               httpOptions: HttpOptions, httpConnect: HttpConnect].}
-
 
 const
   Http100* = HttpCode(100)

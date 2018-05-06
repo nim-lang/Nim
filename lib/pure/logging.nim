@@ -96,10 +96,6 @@ when not defined(js):
       logFiles: int # how many log files already created, e.g. basename.1, basename.2...
       bufSize: int # size of output buffer (-1: use system defaults, 0: unbuffered, >0: fixed buffer size)
 
-  {.deprecated: [PFileLogger: FileLogger, PRollingFileLogger: RollingFileLogger].}
-
-{.deprecated: [TLevel: Level, PLogger: Logger, PConsoleLogger: ConsoleLogger].}
-
 var
   level {.threadvar.}: Level   ## global log filter
   handlers {.threadvar.}: seq[Logger] ## handlers with their own log levels

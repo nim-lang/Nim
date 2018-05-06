@@ -41,8 +41,6 @@ type
                               ## or the argument, ``value`` is not "" if
                               ## the option was given a value
 
-{.deprecated: [TCmdLineKind: CmdLineKind, TOptParser: OptParser].}
-
 proc initOptParser*(cmdline: seq[string]): OptParser {.rtl.} =
   ## Initalizes option parses with cmdline. cmdline should not contain
   ## argument 0 - program name.
@@ -121,8 +119,6 @@ proc cmdLineRest*(p: OptParser): TaintedString {.rtl, extern: "npo2$1", deprecat
 
 type
   GetoptResult* = tuple[kind: CmdLineKind, key, val: TaintedString]
-
-{.deprecated: [TGetoptResult: GetoptResult].}
 
 iterator getopt*(p: var OptParser): GetoptResult =
   ## This is an convenience iterator for iterating over the given OptParser object.

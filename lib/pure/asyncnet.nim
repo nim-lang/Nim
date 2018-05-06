@@ -134,8 +134,6 @@ type
     protocol: Protocol
   AsyncSocket* = ref AsyncSocketDesc
 
-{.deprecated: [PAsyncSocket: AsyncSocket].}
-
 proc newAsyncSocket*(fd: AsyncFD, domain: Domain = AF_INET,
     sockType: SockType = SOCK_STREAM,
     protocol: Protocol = IPPROTO_TCP, buffered = true): AsyncSocket =

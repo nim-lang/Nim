@@ -76,6 +76,7 @@ proc rawNewStringNoInit(space: int): NimString {.compilerProc.} =
   if s < 7: s = 7
   result = allocStrNoInit(sizeof(TGenericSeq) + s + 1)
   result.reserved = s
+  result.len = 0
   when defined(gogc):
     result.elemSize = 1
 
@@ -84,6 +85,7 @@ proc rawNewString(space: int): NimString {.compilerProc.} =
   if s < 7: s = 7
   result = allocStr(sizeof(TGenericSeq) + s + 1)
   result.reserved = s
+  result.len = 0
   when defined(gogc):
     result.elemSize = 1
 

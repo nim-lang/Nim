@@ -18,14 +18,12 @@ type
     hostname*, port*, path*, query*, anchor*: string
     opaque*: bool
 
-{.deprecated: [TUrl: Url, TUri: Uri].}
-
 {.push warning[deprecated]: off.}
-proc `$`*(url: Url): string {.deprecated.} =
+proc `$`*(url: Url): string {.deprecated: "use Uri instead".} =
   ## **Deprecated since 0.9.6**: Use ``Uri`` instead.
   return string(url)
 
-proc `/`*(a, b: Url): Url {.deprecated.} =
+proc `/`*(a, b: Url): Url {.deprecated: "use Uri instead".} =
   ## Joins two URLs together, separating them with / if needed.
   ##
   ## **Deprecated since 0.9.6**: Use ``Uri`` instead.
@@ -40,32 +38,43 @@ proc `/`*(a, b: Url): Url {.deprecated.} =
     urlS.add(bs)
   result = Url(urlS)
 
-proc add*(url: var Url, a: Url) {.deprecated.} =
+proc add*(url: var Url, a: Url) {.deprecated: "use Uri instead".} =
   ## Appends url to url.
   ##
   ## **Deprecated since 0.9.6**: Use ``Uri`` instead.
   url = url / a
 {.pop.}
 
-proc encodeUrl*(s: string): string =
-  ## Encodes a value to be HTTP safe: This means that characters in the set
-  ## ``{'A'..'Z', 'a'..'z', '0'..'9', '_'}`` are carried over to the result,
-  ## a space is converted to ``'+'`` and every other character is encoded as
-  ## ``'%xx'`` where ``xx`` denotes its hexadecimal value.
+proc encodeUrl*(s: string, usePlus=true): string =
+  ## Encodes a URL according to RFC3986.
+  ##
+  ## This means that characters in the set
+  ## ``{'a'..'z', 'A'..'Z', '0'..'9', '-', '.', '_', '~'}`` are
+  ## carried over to the result.
+  ## All other characters are encoded as ``''%xx'`` where ``xx``
+  ## denotes its hexadecimal value.
+  ##
+  ## As a special rule, when the value of ``usePlus`` is true,
+  ## spaces are encoded as ``'+'`` instead of ``'%20'``.
   result = newStringOfCap(s.len + s.len shr 2) # assume 12% non-alnum-chars
-  for i in 0..s.len-1:
-    case s[i]
-    of 'a'..'z', 'A'..'Z', '0'..'9', '_': add(result, s[i])
-    of ' ': add(result, '+')
+  let fromSpace = if usePlus: "+" else: "%20"
+  for c in s:
+    case c
+    of 'a'..'z', 'A'..'Z', '0'..'9', '-', '.', '_', '~': add(result, c)
+    of ' ': add(result, fromSpace)
     else:
       add(result, '%')
-      add(result, toHex(ord(s[i]), 2))
+      add(result, toHex(ord(c), 2))
 
-proc decodeUrl*(s: string): string =
-  ## Decodes a value from its HTTP representation: This means that a ``'+'``
-  ## is converted to a space, ``'%xx'`` (where ``xx`` denotes a hexadecimal
-  ## value) is converted to the character with ordinal number ``xx``, and
+proc decodeUrl*(s: string, decodePlus=true): string =
+  ## Decodes a URL according to RFC3986.
+  ##
+  ## This means that any ``'%xx'`` (where ``xx`` denotes a hexadecimal
+  ## value) are converted to the character with ordinal number ``xx``,
   ## and every other character is carried over.
+  ##
+  ## As a special rule, when the value of ``decodePlus`` is true, ``'+'``
+  ## characters are converted to a space.
   proc handleHexChar(c: char, x: var int) {.inline.} =
     case c
     of '0'..'9': x = (x shl 4) or (ord(c) - ord('0'))
@@ -84,7 +93,11 @@ proc decodeUrl*(s: string): string =
       handleHexChar(s[i+2], x)
       inc(i, 2)
       result[j] = chr(x)
-    of '+': result[j] = ' '
+    of '+':
+      if decodePlus:
+        result[j] = ' '
+      else:
+        result[j] = s[i]
     else: result[j] = s[i]
     inc(i)
     inc(j)
@@ -369,6 +382,9 @@ when isMainModule:
   block:
     const test1 = "abc\L+def xyz"
     doAssert encodeUrl(test1) == "abc%0A%2Bdef+xyz"
+    doAssert decodeUrl(encodeUrl(test1)) == test1
+    doAssert encodeUrl(test1, false) == "abc%0A%2Bdef%20xyz"
+    doAssert decodeUrl(encodeUrl(test1, false), false) == test1
     doAssert decodeUrl(encodeUrl(test1)) == test1
 
   block:

@@ -365,8 +365,6 @@ type
     ikVar,                   ## ``var`` part of the interpolated string
     ikExpr                   ## ``expr`` part of the interpolated string
 
-{.deprecated: [TInterpolatedKind: InterpolatedKind].}
-
 iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
   value: string] =
   ## Tokenizes the string `s` into substrings for interpolation purposes.
