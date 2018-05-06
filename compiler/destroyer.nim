@@ -430,6 +430,7 @@ proc injectDestructorCalls*(owner: PSym; n: PNode): PNode =
   c.tmp.typ = c.tmpObj
   c.destroys = newNodeI(nkStmtList, n.info)
   c.topLevelVars = newNodeI(nkVarSection, n.info)
+  c.toDropBit = initTable[int, PSym]()
   let cfg = constructCfg(owner, n)
   shallowCopy(c.g, cfg)
   c.jumpTargets = initIntSet()
