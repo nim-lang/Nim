@@ -31,7 +31,6 @@ import
 
 # but some have deps to imported modules. Yay.
 bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
-bootSwitch(usedAvoidTimeMachine, noTimeMachine, "-d:avoidTimeMachine")
 bootSwitch(usedNativeStacktrace,
   defined(nativeStackTrace) and nativeStackTraceSupported,
   "-d:nativeStackTrace")
@@ -106,7 +105,7 @@ proc writeVersionInfo(pass: TCmdLinePass) =
     when gitHash.len == 40:
       msgWriteln("git hash: " & gitHash, {msgStdout})
 
-    msgWriteln("active boot switches:" & usedRelease & usedAvoidTimeMachine &
+    msgWriteln("active boot switches:" & usedRelease &
       usedTinyC & usedGnuReadline & usedNativeStacktrace & usedNoCaas &
       usedFFI & usedBoehm & usedMarkAndSweep & usedGenerational & usedGoGC & usedNoGC,
                {msgStdout})
