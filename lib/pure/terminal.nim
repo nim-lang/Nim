@@ -759,6 +759,10 @@ when defined(windows):
           x = runeLenAt(password.string, i)
           inc i, x
         password.string.setLen(max(password.len - x, 0))
+      of chr(0x0):
+        # modifier key - ignore - for details see 
+        # https://github.com/nim-lang/Nim/issues/7764
+        continue
       else:
         password.string.add(toUTF8(c.Rune))
     stdout.write "\n"
