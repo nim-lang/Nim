@@ -313,33 +313,44 @@ proc newNullifyCurExc(ctx: var Ctx): PNode =
   nilnode.typ = curExc.typ
   result.add(nilnode)
 
+proc newOr(a, b: PNode): PNode =
+  result = newNode(nkCall)
+  result.add(newSymNode(getSysMagic("or", mOr)))
+  result.add(a)
+  result.add(b)
+  result.typ = getSysType(tyBool)
+
 proc collectExceptState(ctx: var Ctx, n: PNode): PNode =
   var ifStmt = newNode(nkIfStmt)
   for c in n:
     if c.kind == nkExceptBranch:
       var ifBranch: PNode
-      var branchBody: PNode
 
-      if c[0].kind == nkType:
-        assert(c.len == 2)
+      if c.len > 1:
+        var cond: PNode
+        for i in 0 .. c.len - 2:
+          assert(c[i].kind == nkType)
+          let nextCond = newNodeI(nkCall, n.info)
+          nextCond.add(newSymNode(getSysMagic("of", mOf)))
+          nextCond.add(callCodegenProc("getCurrentException", emptyNode))
+          nextCond.add(c[i])
+          nextCond.typ = getSysType(tyBool)
+
+          if cond.isNil:
+            cond = nextCond
+          else:
+            cond = newOr(cond, nextCond)
+
         ifBranch = newNode(nkElifBranch)
-        let expression = newNodeI(nkCall, n.info)
-        expression.add(newSymNode(getSysMagic("of", mOf)))
-        expression.add(callCodegenProc("getCurrentException", emptyNode))
-        expression.add(c[0])
-        expression.typ = getSysType(tyBool)
-        ifBranch.add(expression)
-        branchBody = c[1]
+        ifBranch.add(cond)
       else:
-        assert(c.len == 1)
         if ifStmt.len == 0:
           ifStmt = newNode(nkStmtList)
           ifBranch = newNode(nkStmtList)
         else:
           ifBranch = newNode(nkElse)
-        branchBody = c[0]
 
-      ifBranch.add(branchBody)
+      ifBranch.add(c[^1])
       ifStmt.add(ifBranch)
 
   if ifStmt.len != 0:
