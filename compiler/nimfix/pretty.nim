@@ -13,7 +13,7 @@
 import
   strutils, os, intsets, strtabs
 
-import "../compiler" / [options, ast, astalgo, msgs, semdata, ropes, idents]
+import ".." / [options, ast, astalgo, msgs, semdata, ropes, idents]
 import prettybase
 
 type
