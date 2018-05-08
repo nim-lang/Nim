@@ -85,10 +85,6 @@ block hashForHashedSet:
   var hashSeq: seq[Hash] = @[]
   doAssert s1 == s2
   doAssert hash(s1) == hash(s2)
-  for c in seq1:
-    if (not (hash(c) in hashSeq)):
-      hashSeq.add(hash(c))
-  doAssert hash(s1) == hash(sorted(hashSeq, cmp[Hash]))
 
 block hashForOrderdSet:
   let
