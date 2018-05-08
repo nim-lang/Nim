@@ -210,8 +210,14 @@ proc putIntoNode(n: var PNode; x: TFullReg) =
   of rkInt: n.intVal = x.intVal
   of rkFloat: n.floatVal = x.floatVal
   of rkNode:
-    if nfIsRef in x.node.flags: n = x.node
-    else: n[] = x.node[]
+    if nfIsRef in x.node.flags:
+      n = x.node
+    else:
+      let destIsRef = nfIsRef in n.flags    
+      n[] = x.node[]
+      # Ref-ness must be kept for the destination
+      if destIsRef:
+        n.flags.incl nfIsRef
   of rkRegisterAddr: putIntoNode(n, x.regAddr[])
   of rkNodeAddr: n[] = x.nodeAddr[][]
 
