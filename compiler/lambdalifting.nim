@@ -881,9 +881,8 @@ proc liftForLoop*(body: PNode; owner: PSym): PNode =
       cl = createClosure()
       while true:
         let i = foo(cl)
-        if cl.state < 0:
+        if (nkBreakState(cl.state)):
           break
-        # nkBreakState(cl.state)
         ...
     """
   if liftingHarmful(owner): return body

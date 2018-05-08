@@ -210,11 +210,6 @@ proc newCurExcAccess(ctx: var Ctx): PNode =
     ctx.curExcSym = ctx.newEnvVar(":curExc", callCodegenProc("getCurrentException", emptyNode).typ)
   ctx.newEnvVarAccess(ctx.curExcSym)
 
-proc setStateInAssgn(stateAssgn: PNode, stateNo: int) =
-  assert stateAssgn.kind == nkAsgn
-  assert stateAssgn[1].kind == nkIntLit
-  stateAssgn[1].intVal = stateNo
-
 proc newState(ctx: var Ctx, n, gotoOut: PNode): int =
   # Creates a new state, adds it to the context fills out `gotoOut` so that it
   # will goto this state.
@@ -710,7 +705,7 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
       n[0] = ex
       result.add(n)
 
-  of nkCast:
+  of nkCast, nkHiddenStdConv, nkHiddenSubConv, nkConv:
     var ns = false
     for i in 0 ..< n.len:
       n[i] = ctx.lowerStmtListExprs(n[i], ns)
