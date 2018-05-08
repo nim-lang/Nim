@@ -1181,6 +1181,7 @@ proc wrapIntoStateLoop(ctx: var Ctx, n: PNode): PNode =
   #     body # Might get wrapped in try-except
   let loopBody = newNodeI(nkStmtList, n.info)
   result = newTree(nkWhileStmt, newSymNode(getSysSym("true")), loopBody)
+  result.info = n.info
 
   if not ctx.stateVarSym.isNil:
     let varSect = newNodeI(nkVarSection, n.info)
