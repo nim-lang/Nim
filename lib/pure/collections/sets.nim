@@ -18,7 +18,7 @@
 ## that ``=`` performs a copy of the set.
 
 import
-  hashes, math, algorithm
+  hashes, math
 
 {.pragma: myShallow.}
 when not defined(nimhygiene):
@@ -123,11 +123,8 @@ iterator items*[A](s: HashSet[A]): A =
 proc hash*[A](s: HashSet[A]): Hash =
   ## hashing of HashSet
   assert s.isValid, "The set needs to be initialized."
-  var hcs: seq[Hash]
   for h in 0..high(s.data):
-    hcs.add(s.data[h].hcode)
-  for hc in sorted(hcs, cmp[int]):
-    result = result !& hc
+    result = result xor s.data[h].hcode
   result = !$result
 
 const
