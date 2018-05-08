@@ -338,17 +338,9 @@ proc boot(args: string) =
                       hostOs & "_" & hostCpu
 
   copyExe(findStartNim(), 0.thVersion)
-  for i in 0..2:
-    echo "iteration: ", i+1
-    exec i.thVersion & " $# $# --nimcache:$# compiler" / "nim.nim" % [bootOptions, args,
-        smartNimcache]
-    if sameFileContent(output, i.thVersion):
-      copyExe(output, finalDest)
-      echo "executables are equal: SUCCESS!"
-      return
-    copyExe(output, (i+1).thVersion)
+  exec 0.thVersion & " $# $# --nimcache:$# compiler" / "nim.nim" % [bootOptions, args,
+    smartNimcache]
   copyExe(output, finalDest)
-  when not defined(windows): echo "[Warning] executables are still not equal"
 
 # -------------- clean --------------------------------------------------------
 
