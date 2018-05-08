@@ -10,8 +10,8 @@
 # This file implements lambda lifting for the transformator.
 
 import
-  intsets, strutils, options, ast, astalgo, trees, treetab, msgs, os, options,
-  idents, renderer, types, magicsys, rodread, lowerings, tables, sequtils
+  intsets, strutils, options, ast, astalgo, trees, treetab, msgs,
+  idents, renderer, types, magicsys, rodread, lowerings, tables
 
 discard """
   The basic approach is that captured vars need to be put on the heap and
