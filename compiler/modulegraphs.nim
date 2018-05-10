@@ -44,6 +44,11 @@ type
     usageSym*: PSym # for nimsuggest
     owners*: seq[PSym]
     methods*: seq[tuple[methods: TSymSeq, dispatcher: PSym]]
+    systemModule*: PSym
+    sysTypes*: array[TTypeKind, PType]
+    compilerprocs*: TStrTable
+    exposed*: TStrTable
+    intTypeCache*: array[-5..64, PType]
 
 proc hash*(x: FileIndex): Hash {.borrow.}
 
@@ -65,6 +70,8 @@ proc newModuleGraph*(config: ConfigRef = nil): ModuleGraph =
     result.config = config
   result.owners = @[]
   result.methods = @[]
+  initStrTable(result.compilerprocs)
+  initStrTable(result.exposed)
 
 proc resetAllModules*(g: ModuleGraph) =
   initStrTable(packageSyms)
@@ -75,6 +82,8 @@ proc resetAllModules*(g: ModuleGraph) =
   usageSym = nil
   owners = @[]
   methods = @[]
+  initStrTable(compilerprocs)
+  initStrTable(exposed)
 
 proc getModule*(g: ModuleGraph; fileIdx: FileIndex): PSym =
   if fileIdx.int32 >= 0 and fileIdx.int32 < modules.len:

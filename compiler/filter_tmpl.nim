@@ -27,7 +27,7 @@ type
     emit, conc, toStr: string
     curly, bracket, par: int
     pendingExprLine: bool
-
+    config: ConfigRef
 
 const
   PatternChars = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF', '.', '_'}
@@ -90,7 +90,7 @@ proc parseLine(p: var TTmplParser) =
         dec(p.indent, 2)
       else:
         p.info.col = int16(j)
-        localError(p.info, errXNotAllowedHere, "end")
+        localError(p.config, p.info, "'end' does not close a control flow construct")
       llStreamWrite(p.outp, spaces(p.indent))
       llStreamWrite(p.outp, "#end")
     of "if", "when", "try", "while", "for", "block", "case", "proc", "iterator",
@@ -175,7 +175,7 @@ proc parseLine(p: var TTmplParser) =
                 llStreamWrite(p.outp, p.x[j])
                 inc(j)
             if curly > 0:
-              localError(p.info, errXExpected, "}")
+              localError(p.config, p.info, "expected closing '}'")
               break
             llStreamWrite(p.outp, ')')
             llStreamWrite(p.outp, p.conc)
@@ -197,22 +197,23 @@ proc parseLine(p: var TTmplParser) =
               inc(j)
             else:
               p.info.col = int16(j)
-              localError(p.info, errInvalidExpression, "$")
+              localError(p.config, p.info, "invalid expression")
         else:
           llStreamWrite(p.outp, p.x[j])
           inc(j)
     llStreamWrite(p.outp, "\\n\"")
 
-proc filterTmpl*(stdin: PLLStream, filename: string, call: PNode): PLLStream =
+proc filterTmpl*(stdin: PLLStream, filename: string, call: PNode; conf: ConfigRef): PLLStream =
   var p: TTmplParser
-  p.info = newLineInfo(filename, 0, 0)
+  p.config = conf
+  p.info = newLineInfo(conf, filename, 0, 0)
   p.outp = llStreamOpen("")
   p.inp = stdin
-  p.subsChar = charArg(call, "subschar", 1, '$')
-  p.nimDirective = charArg(call, "metachar", 2, '#')
-  p.emit = strArg(call, "emit", 3, "result.add")
-  p.conc = strArg(call, "conc", 4, " & ")
-  p.toStr = strArg(call, "tostring", 5, "$")
+  p.subsChar = charArg(conf, call, "subschar", 1, '$')
+  p.nimDirective = charArg(conf, call, "metachar", 2, '#')
+  p.emit = strArg(conf, call, "emit", 3, "result.add")
+  p.conc = strArg(conf, call, "conc", 4, " & ")
+  p.toStr = strArg(conf, call, "tostring", 5, "$")
   p.x = newStringOfCap(120)
   # do not process the first line which contains the directive:
   if llStreamReadLine(p.inp, p.x):

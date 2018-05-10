@@ -141,6 +141,12 @@ proc newConfigRef*(): ConfigRef =
     notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1],
     symbols: newStringTable(modeStyleInsensitive))
 
+proc newPartialConfigRef*(): ConfigRef =
+  ## create a new ConfigRef that is only good enough for error reporting.
+  result = ConfigRef(foreignPackageNotes: {hintProcessing, warnUnknownMagic,
+    hintQuitCalled, hintExecuting},
+    notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1])
+
 proc cppDefine*(c: ConfigRef; define: string) =
   c.cppDefines.incl define
 
