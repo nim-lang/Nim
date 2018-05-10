@@ -13,16 +13,12 @@
 import
   strutils, options, ast, astalgo, trees, treetab, nimsets, times,
   nversion, platform, math, msgs, os, condsyms, idents, renderer, types,
-  commands, magicsys
+  commands, magicsys, modulegraphs
 
 proc getConstExpr*(m: PSym, n: PNode): PNode
   # evaluates the constant expression or returns nil if it is no constant
   # expression
 proc evalOp*(m: TMagic, n, a, b, c: PNode): PNode
-proc leValueConv*(a, b: PNode): bool
-proc newIntNodeT*(intVal: BiggestInt, n: PNode): PNode
-proc newFloatNodeT(floatVal: BiggestFloat, n: PNode): PNode
-proc newStrNodeT*(strVal: string, n: PNode): PNode
 
 proc checkInRange(n: PNode, res: BiggestInt): bool =
   if res in firstOrd(n.typ)..lastOrd(n.typ):
@@ -32,7 +28,7 @@ proc foldAdd(a, b: BiggestInt, n: PNode): PNode =
   let res = a +% b
   if ((res xor a) >= 0'i64 or (res xor b) >= 0'i64) and
       checkInRange(n, res):
-    result = newIntNodeT(res, n)     
+    result = newIntNodeT(res, n)
 
 proc foldSub*(a, b: BiggestInt, n: PNode): PNode =
   let res = a -% b
@@ -43,7 +39,7 @@ proc foldSub*(a, b: BiggestInt, n: PNode): PNode =
 proc foldAbs*(a: BiggestInt, n: PNode): PNode =
   if a != firstOrd(n.typ):
     result = newIntNodeT(a, n)
-  
+
 proc foldMod*(a, b: BiggestInt, n: PNode): PNode =
   if b != 0'i64:
     result = newIntNodeT(a mod b, n)
@@ -81,9 +77,7 @@ proc foldMul*(a, b: BiggestInt, n: PNode): PNode =
       checkInRange(n, res):
     return newIntNodeT(res, n)
 
-# implementation
-
-proc newIntNodeT(intVal: BiggestInt, n: PNode): PNode =
+proc newIntNodeT*(intVal: BiggestInt, n: PNode): PNode =
   case skipTypes(n.typ, abstractVarRange).kind
   of tyInt:
     result = newIntNode(nkIntLit, intVal)
@@ -103,7 +97,7 @@ proc newIntNodeT(intVal: BiggestInt, n: PNode): PNode =
     result.typ = n.typ
   result.info = n.info
 
-proc newFloatNodeT(floatVal: BiggestFloat, n: PNode): PNode =
+proc newFloatNodeT*(floatVal: BiggestFloat, n: PNode): PNode =
   result = newFloatNode(nkFloatLit, floatVal)
   if skipTypes(n.typ, abstractVarRange).kind == tyFloat:
     result.typ = getFloatLitType(result)
@@ -111,7 +105,7 @@ proc newFloatNodeT(floatVal: BiggestFloat, n: PNode): PNode =
     result.typ = n.typ
   result.info = n.info
 
-proc newStrNodeT(strVal: string, n: PNode): PNode =
+proc newStrNodeT*(strVal: string, n: PNode): PNode =
   result = newStrNode(nkStrLit, strVal)
   result.typ = n.typ
   result.info = n.info
@@ -378,7 +372,7 @@ proc getConstIfExpr(c: PSym, n: PNode): PNode =
       if result == nil: result = getConstExpr(c, it.sons[0])
     else: internalError(it.info, "getConstIfExpr()")
 
-proc leValueConv(a, b: PNode): bool =
+proc leValueConv*(a, b: PNode): bool =
   result = false
   case a.kind
   of nkCharLit..nkUInt64Lit:
