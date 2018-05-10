@@ -62,6 +62,7 @@ type
     frames*: seq[TFrame]
     screen*: Screen
     performance*: Performance
+    onpopstate*: proc (event: Event)
 
   Frame* = ref FrameObj
   FrameObj {.importc.} = object of WindowObj
@@ -446,6 +447,7 @@ type
 proc addEventListener*(et: EventTarget, ev: cstring, cb: proc(ev: Event), useCapture: bool = false)
 proc addEventListener*(et: EventTarget, ev: cstring, cb: proc(ev: Event), options: AddEventListenerOptions)
 proc removeEventListener*(et: EventTarget, ev: cstring, cb: proc(ev: Event), useCapture: bool = false)
+proc dispatchEvent*(et: EventTarget, ev: Event)
 
 # Window "methods"
 proc alert*(w: Window, msg: cstring)
@@ -596,6 +598,7 @@ proc parseFloat*(s: cstring): BiggestFloat {.importc, nodecl.}
 proc parseInt*(s: cstring): int {.importc, nodecl.}
 proc parseInt*(s: cstring, radix: int):int {.importc, nodecl.}
 
+proc newEvent*(name: cstring): Event {.importcpp: "new Event(@)", constructor.}
 
 type
   TEventHandlers* {.deprecated.} = EventTargetObj
