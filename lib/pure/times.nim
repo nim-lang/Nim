@@ -1440,6 +1440,19 @@ proc format*(dt: DateTime, f: string): string {.tags: [].}=
     inc(i)
   formatToken(dt, currentF, result)
 
+proc format*(time: Time, f: string, zone_info: proc(t: Time): DateTime): string {.tags: [].} =
+  ## converts a `Time` value to a string representation. It will use format from
+  ## ``format(dt: DateTime, f: string)``.
+  runnableExamples:
+    var dt = initDateTime(01, mJan, 1970, 00, 00, 00, local())
+    var tm = dt.toTime()
+    doAssert format(tm, "yyyy-MM-dd'T'HH:mm:ss", local) == "1970-01-01T00:00:00"
+    dt = initDateTime(01, mJan, 1970, 00, 00, 00, utc())
+    tm = dt.toTime()
+    doAssert format(tm, "yyyy-MM-dd'T'HH:mm:ss", utc) == "1970-01-01T00:00:00"
+
+  zone_info(time).format(f)
+
 proc `$`*(dt: DateTime): string {.tags: [], raises: [], benign.} =
   ## Converts a `DateTime` object to a string representation.
   ## It uses the format ``yyyy-MM-dd'T'HH-mm-sszzz``.
@@ -1769,6 +1782,13 @@ proc parse*(value, layout: string, zone: Timezone = local()): DateTime =
   else:
     # Otherwise convert to `zone`
     result = dt.toTime.inZone(zone)
+
+proc parseTime*(value, layout: string, zone: Timezone): Time =
+  ## Simple wrapper for parsing string to time
+  runnableExamples:
+    let tStr = "1970-01-01T00:00:00+00:00"
+    doAssert parseTime(tStr, "yyyy-MM-dd'T'HH:mm:sszzz", local()) == fromUnix(0)
+  parse(value, layout, zone).toTime()
 
 proc countLeapYears*(yearSpan: int): int =
   ## Returns the number of leap years spanned by a given number of years.
