@@ -39,7 +39,7 @@ proc prependCurDir(f: string): string =
 
 proc handleCmdLine(cache: IdentCache; config: ConfigRef) =
   if paramCount() == 0:
-    writeCommandLineUsage()
+    writeCommandLineUsage(config.helpWritten)
   else:
     # Process command line arguments:
     processCmdLine(passCmd1, "", config)

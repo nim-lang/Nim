@@ -131,10 +131,10 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
     processSwitch(a.getString 0, a.getString 1, passPP, module.info, config)
   cbconf hintImpl:
     processSpecificNote(a.getString 0, wHint, passPP, module.info,
-      a.getString 1)
+      a.getString 1, config)
   cbconf warningImpl:
     processSpecificNote(a.getString 0, wWarning, passPP, module.info,
-      a.getString 1)
+      a.getString 1, config)
   cbconf patchFile:
     let key = a.getString(0) & "_" & a.getString(1)
     var val = a.getString(2).addFileExt(NimExt)

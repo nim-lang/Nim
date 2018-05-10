@@ -1564,15 +1564,17 @@ proc getInt*(a: PNode): BiggestInt =
   case a.kind
   of nkCharLit..nkUInt64Lit: result = a.intVal
   else:
-    internalError(a.info, "getInt")
-    result = 0
+    #internalError(a.info, "getInt")
+    doAssert false, "getInt"
+    #result = 0
 
 proc getFloat*(a: PNode): BiggestFloat =
   case a.kind
   of nkFloatLiterals: result = a.floatVal
   else:
-    internalError(a.info, "getFloat")
-    result = 0.0
+    doAssert false, "getFloat"
+    #internalError(a.info, "getFloat")
+    #result = 0.0
 
 proc getStr*(a: PNode): string =
   case a.kind
@@ -1581,16 +1583,18 @@ proc getStr*(a: PNode): string =
     # let's hope this fixes more problems than it creates:
     result = nil
   else:
-    internalError(a.info, "getStr")
-    result = ""
+    doAssert false, "getStr"
+    #internalError(a.info, "getStr")
+    #result = ""
 
 proc getStrOrChar*(a: PNode): string =
   case a.kind
   of nkStrLit..nkTripleStrLit: result = a.strVal
   of nkCharLit..nkUInt64Lit: result = $chr(int(a.intVal))
   else:
-    internalError(a.info, "getStrOrChar")
-    result = ""
+    doAssert false, "getStrOrChar"
+    #internalError(a.info, "getStrOrChar")
+    #result = ""
 
 proc isGenericRoutine*(s: PSym): bool =
   case s.kind

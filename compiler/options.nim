@@ -8,7 +8,7 @@
 #
 
 import
-  os, strutils, strtabs, osproc, sets
+  os, strutils, strtabs, osproc, sets, configuration, platform
 
 const
   hasTinyCBackend* = defined(tinyc)
@@ -118,15 +118,70 @@ type
     features*: set[Feature]
     arguments*: string ## the arguments to be passed to the program that
                        ## should be run
+    helpWritten*: bool
+    enableNotes*: TNoteKinds
+    disableNotes*: TNoteKinds
+    foreignPackageNotes*: TNoteKinds
+    notes*: TNoteKinds
+    mainPackageNotes*: TNoteKinds
+    errorCounter*: int
+    hintCounter*: int
+    warnCounter*: int
+    errorMax*: int
+    symbols*: StringTableRef ## We need to use a StringTableRef here as defined
+                             ## symbols are always guaranteed to be style
+                             ## insensitive. Otherwise hell would break lose.
 
 const oldExperimentalFeatures* = {implicitDeref, dotOperators, callOperator, parallel}
 
 proc newConfigRef*(): ConfigRef =
   result = ConfigRef(cppDefines: initSet[string](),
-    headerFile: "", features: {})
+    headerFile: "", features: {}, foreignPackageNotes: {hintProcessing, warnUnknownMagic,
+    hintQuitCalled, hintExecuting},
+    notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1],
+    symbols: newStringTable(modeStyleInsensitive))
 
 proc cppDefine*(c: ConfigRef; define: string) =
   c.cppDefines.incl define
+
+proc isDefined*(conf: ConfigRef; symbol: string): bool =
+  if conf.symbols.hasKey(symbol):
+    result = conf.symbols[symbol] != "false"
+  elif cmpIgnoreStyle(symbol, CPU[targetCPU].name) == 0:
+    result = true
+  elif cmpIgnoreStyle(symbol, platform.OS[targetOS].name) == 0:
+    result = true
+  else:
+    case symbol.normalize
+    of "x86": result = targetCPU == cpuI386
+    of "itanium": result = targetCPU == cpuIa64
+    of "x8664": result = targetCPU == cpuAmd64
+    of "posix", "unix":
+      result = targetOS in {osLinux, osMorphos, osSkyos, osIrix, osPalmos,
+                            osQnx, osAtari, osAix,
+                            osHaiku, osVxWorks, osSolaris, osNetbsd,
+                            osFreebsd, osOpenbsd, osDragonfly, osMacosx,
+                            osAndroid}
+    of "linux":
+      result = targetOS in {osLinux, osAndroid}
+    of "bsd":
+      result = targetOS in {osNetbsd, osFreebsd, osOpenbsd, osDragonfly}
+    of "emulatedthreadvars":
+      result = platform.OS[targetOS].props.contains(ospLacksThreadVars)
+    of "msdos": result = targetOS == osDos
+    of "mswindows", "win32": result = targetOS == osWindows
+    of "macintosh": result = targetOS in {osMacos, osMacosx}
+    of "sunos": result = targetOS == osSolaris
+    of "littleendian": result = CPU[targetCPU].endian == platform.littleEndian
+    of "bigendian": result = CPU[targetCPU].endian == platform.bigEndian
+    of "cpu8": result = CPU[targetCPU].bit == 8
+    of "cpu16": result = CPU[targetCPU].bit == 16
+    of "cpu32": result = CPU[targetCPU].bit == 32
+    of "cpu64": result = CPU[targetCPU].bit == 64
+    of "nimrawsetjmp":
+      result = targetOS in {osSolaris, osNetbsd, osFreebsd, osOpenbsd,
+                            osDragonfly, osMacosx}
+    else: discard
 
 var
   gIdeCmd*: IdeCmd
@@ -226,20 +281,20 @@ proc mainCommandArg*: string =
   else:
     result = gProjectName
 
-proc existsConfigVar*(key: string): bool =
+proc existsConfigVar*(conf: ConfigRef; key: string): bool =
   result = hasKey(gConfigVars, key)
 
-proc getConfigVar*(key: string): string =
+proc getConfigVar*(conf: ConfigRef; key: string): string =
   result = gConfigVars.getOrDefault key
 
-proc setConfigVar*(key, val: string) =
+proc setConfigVar*(conf: ConfigRef; key, val: string) =
   gConfigVars[key] = val
 
-proc getOutFile*(filename, ext: string): string =
+proc getOutFile*(conf: ConfigRef; filename, ext: string): string =
   if options.outFile != "": result = options.outFile
   else: result = changeFileExt(filename, ext)
 
-proc getPrefixDir*(): string =
+proc getPrefixDir*(conf: ConfigRef): string =
   ## Gets the prefix dir, usually the parent directory where the binary resides.
   ##
   ## This is overridden by some tools (namely nimsuggest) via the ``gPrefixDir``
@@ -248,11 +303,11 @@ proc getPrefixDir*(): string =
   else:
     result = splitPath(getAppDir()).head
 
-proc setDefaultLibpath*() =
+proc setDefaultLibpath*(conf: ConfigRef) =
   # set default value (can be overwritten):
   if libpath == "":
     # choose default libpath:
-    var prefix = getPrefixDir()
+    var prefix = getPrefixDir(conf)
     when defined(posix):
       if prefix == "/usr": libpath = "/usr/lib/nim"
       elif prefix == "/usr/local": libpath = "/usr/local/lib/nim"
@@ -263,12 +318,12 @@ proc setDefaultLibpath*() =
     # modules and make use of them.
     let realNimPath = findExe("nim")
     # Find out if $nim/../../lib/system.nim exists.
-    let parentNimLibPath = realNimPath.parentDir().parentDir() / "lib"
+    let parentNimLibPath = realNimPath.parentDir.parentDir / "lib"
     if not fileExists(libpath / "system.nim") and
         fileExists(parentNimlibPath / "system.nim"):
       libpath = parentNimLibPath
 
-proc canonicalizePath*(path: string): string =
+proc canonicalizePath*(conf: ConfigRef; path: string): string =
   # on Windows, 'expandFilename' calls getFullPathName which doesn't do
   # case corrections, so we have to use this convoluted way of retrieving
   # the true filename (see tests/modules and Nimble uses 'import Uri' instead
@@ -280,12 +335,12 @@ proc canonicalizePath*(path: string): string =
   else:
     result = path.expandFilename
 
-proc shortenDir*(dir: string): string =
+proc shortenDir*(conf: ConfigRef; dir: string): string =
   ## returns the interesting part of a dir
   var prefix = gProjectPath & DirSep
   if startsWith(dir, prefix):
     return substr(dir, len(prefix))
-  prefix = getPrefixDir() & DirSep
+  prefix = getPrefixDir(conf) & DirSep
   if startsWith(dir, prefix):
     return substr(dir, len(prefix))
   result = dir
@@ -296,42 +351,42 @@ proc removeTrailingDirSep*(path: string): string =
   else:
     result = path
 
-proc disableNimblePath*() =
+proc disableNimblePath*(conf: ConfigRef) =
   gNoNimblePath = true
   lazyPaths.setLen(0)
 
 include packagehandling
 
-proc getNimcacheDir*: string =
-  result = if nimcacheDir.len > 0: nimcacheDir else: gProjectPath.shortenDir /
+proc getNimcacheDir*(conf: ConfigRef): string =
+  result = if nimcacheDir.len > 0: nimcacheDir else: shortenDir(conf, gProjectPath) /
                                                          genSubDir
 
 
-proc pathSubs*(p, config: string): string =
+proc pathSubs*(conf: ConfigRef; p, config: string): string =
   let home = removeTrailingDirSep(os.getHomeDir())
   result = unixToNativePath(p % [
-    "nim", getPrefixDir(),
+    "nim", getPrefixDir(conf),
     "lib", libpath,
     "home", home,
     "config", config,
     "projectname", options.gProjectName,
     "projectpath", options.gProjectPath,
     "projectdir", options.gProjectPath,
-    "nimcache", getNimcacheDir()])
+    "nimcache", getNimcacheDir(conf)])
   if "~/" in result:
     result = result.replace("~/", home & '/')
 
-proc toGeneratedFile*(path, ext: string): string =
+proc toGeneratedFile*(conf: ConfigRef; path, ext: string): string =
   ## converts "/home/a/mymodule.nim", "rod" to "/home/a/nimcache/mymodule.rod"
   var (head, tail) = splitPath(path)
   #if len(head) > 0: head = shortenDir(head & dirSep)
-  result = joinPath([getNimcacheDir(), changeFileExt(tail, ext)])
+  result = joinPath([getNimcacheDir(conf), changeFileExt(tail, ext)])
   #echo "toGeneratedFile(", path, ", ", ext, ") = ", result
 
-proc completeGeneratedFilePath*(f: string, createSubDir: bool = true): string =
+proc completeGeneratedFilePath*(conf: ConfigRef; f: string, createSubDir: bool = true): string =
   var (head, tail) = splitPath(f)
   #if len(head) > 0: head = removeTrailingDirSep(shortenDir(head & dirSep))
-  var subdir = getNimcacheDir() # / head
+  var subdir = getNimcacheDir(conf) # / head
   if createSubDir:
     try:
       createDir(subdir)
@@ -341,14 +396,14 @@ proc completeGeneratedFilePath*(f: string, createSubDir: bool = true): string =
   result = joinPath(subdir, tail)
   #echo "completeGeneratedFilePath(", f, ") = ", result
 
-proc rawFindFile(f: string): string =
+proc rawFindFile(conf: ConfigRef; f: string): string =
   for it in searchPaths:
     result = joinPath(it, f)
     if existsFile(result):
-      return result.canonicalizePath
+      return canonicalizePath(conf, result)
   result = ""
 
-proc rawFindFile2(f: string): string =
+proc rawFindFile2(conf: ConfigRef; f: string): string =
   for i, it in lazyPaths:
     result = joinPath(it, f)
     if existsFile(result):
@@ -356,30 +411,30 @@ proc rawFindFile2(f: string): string =
       for j in countDown(i,1):
         swap(lazyPaths[j], lazyPaths[j-1])
 
-      return result.canonicalizePath
+      return canonicalizePath(conf, result)
   result = ""
 
-template patchModule() {.dirty.} =
+template patchModule(conf: ConfigRef) {.dirty.} =
   if result.len > 0 and gModuleOverrides.len > 0:
     let key = getPackageName(result) & "_" & splitFile(result).name
     if gModuleOverrides.hasKey(key):
       let ov = gModuleOverrides[key]
       if ov.len > 0: result = ov
 
-proc findFile*(f: string): string {.procvar.} =
+proc findFile*(conf: ConfigRef; f: string): string {.procvar.} =
   if f.isAbsolute:
     result = if f.existsFile: f else: ""
   else:
-    result = f.rawFindFile
+    result = rawFindFile(conf, f)
     if result.len == 0:
-      result = f.toLowerAscii.rawFindFile
+      result = rawFindFile(conf, f.toLowerAscii)
       if result.len == 0:
-        result = f.rawFindFile2
+        result = rawFindFile2(conf, f)
         if result.len == 0:
-          result = f.toLowerAscii.rawFindFile2
-  patchModule()
+          result = rawFindFile2(conf, f.toLowerAscii)
+  patchModule(conf)
 
-proc findModule*(modulename, currentModule: string): string =
+proc findModule*(conf: ConfigRef; modulename, currentModule: string): string =
   # returns path to module
   when defined(nimfix):
     # '.nimfix' modules are preferred over '.nim' modules so that specialized
@@ -389,16 +444,16 @@ proc findModule*(modulename, currentModule: string): string =
       let currentPath = currentModule.splitFile.dir
       result = currentPath / m
       if not existsFile(result):
-        result = findFile(m)
+        result = findFile(conf, m)
         if existsFile(result): return result
   let m = addFileExt(modulename, NimExt)
   let currentPath = currentModule.splitFile.dir
   result = currentPath / m
   if not existsFile(result):
-    result = findFile(m)
-  patchModule()
+    result = findFile(conf, m)
+  patchModule(conf)
 
-proc findProjectNimFile*(pkg: string): string =
+proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =
   const extensions = [".nims", ".cfg", ".nimcfg", ".nimble"]
   var candidates: seq[string] = @[]
   for k, f in os.walkDir(pkg, relative=true):
@@ -423,10 +478,10 @@ proc canonDynlibName(s: string): string =
   else:
     result = s.substr(start)
 
-proc inclDynlibOverride*(lib: string) =
+proc inclDynlibOverride*(conf: ConfigRef; lib: string) =
   gDllOverrides[lib.canonDynlibName] = "true"
 
-proc isDynlibOverride*(lib: string): bool =
+proc isDynlibOverride*(conf: ConfigRef; lib: string): bool =
   result = gDynlibOverrideAll or gDllOverrides.hasKey(lib.canonDynlibName)
 
 proc binaryStrSearch*(x: openArray[string], y: string): int =

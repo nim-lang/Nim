@@ -36,20 +36,20 @@ proc setId*(id: int) {.inline.} =
 proc idSynchronizationPoint*(idRange: int) =
   gFrontEndId = (gFrontEndId div idRange + 1) * idRange + 1
 
-proc toGid(f: string): string =
+proc toGid(conf: ConfigRef; f: string): string =
   # we used to use ``f.addFileExt("gid")`` (aka ``$project.gid``), but this
   # will cause strange bugs if multiple projects are in the same folder, so
   # we simply use a project independent name:
-  result = options.completeGeneratedFilePath("nim.gid")
+  result = options.completeGeneratedFilePath(conf, "nim.gid")
 
-proc saveMaxIds*(project: string) =
-  var f = open(project.toGid, fmWrite)
+proc saveMaxIds*(conf: ConfigRef; project: string) =
+  var f = open(toGid(conf, project), fmWrite)
   f.writeLine($gFrontEndId)
   f.close()
 
-proc loadMaxIds*(project: string) =
+proc loadMaxIds*(conf: ConfigRef; project: string) =
   var f: File
-  if open(f, project.toGid, fmRead):
+  if open(f, toGid(conf, project), fmRead):
     var line = newStringOfCap(20)
     if f.readLine(line):
       var frontEndId = parseInt(line)
