@@ -70,8 +70,6 @@ type
                               ## the document or the section
     level*: int               ## valid for some node kinds
     sons*: RstNodeSeq        ## the node's sons
-{.deprecated: [TRstNodeKind: RstNodeKind, TRstNodeSeq: RstNodeSeq,
-              TRstNode: RstNode].}
 
 proc len*(n: PRstNode): int =
   result = len(n.sons)
@@ -99,7 +97,6 @@ type
   RenderContext {.pure.} = object
     indent: int
     verbatim: int
-{.deprecated: [TRenderContext: RenderContext].}
 
 proc renderRstToRst(d: var RenderContext, n: PRstNode,
                     result: var string) {.gcsafe.}

@@ -178,7 +178,6 @@ type
     tagVar,        ## the HTML ``var`` element
     tagVideo,      ## the HTML ``video`` element
     tagWbr         ## the HTML ``wbr`` element
-{.deprecated: [THtmlTag: HtmlTag].}
 
 const
   tagToStr* = [

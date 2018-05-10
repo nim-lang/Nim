@@ -313,7 +313,7 @@ proc tryConstExpr(c: PContext, n: PNode): PNode =
   msgs.gErrorMax = high(int)
 
   try:
-    result = evalConstExpr(c.module, c.cache, e)
+    result = evalConstExpr(c.module, c.cache, c.graph.config, e)
     if result == nil or result.kind == nkEmpty:
       result = nil
     else:
@@ -334,7 +334,7 @@ proc semConstExpr(c: PContext, n: PNode): PNode =
   result = getConstExpr(c.module, e)
   if result == nil:
     #if e.kind == nkEmpty: globalError(n.info, errConstExprExpected)
-    result = evalConstExpr(c.module, c.cache, e)
+    result = evalConstExpr(c.module, c.cache, c.graph.config, e)
     if result == nil or result.kind == nkEmpty:
       if e.info != n.info:
         pushInfoContext(n.info)
@@ -439,7 +439,7 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
 
   #if c.evalContext == nil:
   #  c.evalContext = c.createEvalContext(emStatic)
-  result = evalMacroCall(c.module, c.cache, n, nOrig, sym)
+  result = evalMacroCall(c.module, c.cache, c.graph.config, n, nOrig, sym)
   if efNoSemCheck notin flags:
     result = semAfterMacroCall(c, n, result, sym, flags)
   result = wrapInComesFrom(nOrig.info, sym, result)

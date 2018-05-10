@@ -28,7 +28,7 @@ proc listDirs(a: VmArgs, filter: set[PathComponent]) =
 proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
               config: ConfigRef): PEvalContext =
   # For Nimble we need to export 'setupVM'.
-  result = newCtx(module, cache)
+  result = newCtx(module, cache, config)
   result.mode = emRepl
   registerAdditionalOps(result)
 

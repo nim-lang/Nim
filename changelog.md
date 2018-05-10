@@ -17,6 +17,9 @@
 - The ``not nil`` type annotation now has to be enabled explicitly
   via ``{.experimental: "notnil"}`` as we are still not pleased with how this
   feature works with Nim's containers.
+- The parser now warns about inconsistent spacing around binary operators as
+  these can easily be confused with unary operators. This warning will likely
+  become an error in the future.
 
 
 #### Breaking changes in the standard library
@@ -37,6 +40,9 @@
 - ``posix.Timeval.tv_sec`` has changed type to ``posix.Time``.
 
 #### Breaking changes in the compiler
+
+- The undocumented ``#? braces`` parsing mode was removed.
+- The undocumented PHP backend was removed.
 
 ### Library additions
 
@@ -63,6 +69,11 @@
   fields.
 - ``system.SomeReal`` is now called ``SomeFloat`` for consistency and
   correctness.
+- ``algorithm.smartBinarySearch`` and ``algorithm.binarySearch`` is
+  now joined in ``binarySearch``. ``smartbinarySearch`` is now
+  deprecated.
+- The `terminal` module now exports additional procs for generating ANSI color
+  codes as strings.
 
 ### Language additions
 
@@ -86,11 +97,18 @@
 
 - ``nil`` for strings/seqs is finally gone. Instead the default value for
   these is ``"" / @[]``.
+
 - Accessing the binary zero terminator in Nim's native strings
   is now invalid. Internally a Nim string still has the trailing zero for
   zero-copy interoperability with ``cstring``. Compile your code with the
-  next switch ``--laxStrings:on`` if you need a transition period.
+  new switch ``--laxStrings:on`` if you need a transition period.
 
+- The command syntax now supports keyword arguments after the first comma.
+
+- Thread-local variables can now be declared inside procs. This implies all
+  the effects of the `global` pragma.
+
+- Nim now supports `except` clause in the export statement.
 
 ### Tool changes
 

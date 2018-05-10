@@ -129,9 +129,10 @@ proc commandEval(graph: ModuleGraph; cache: IdentCache; exp: string) =
     interactivePasses(graph, cache)
     compileSystemModule(graph, cache)
   let echoExp = "echo \"eval\\t\", " & "repr(" & exp & ")"
-  evalNim(graph, echoExp.parseString(cache), makeStdinModule(graph), cache)
+  evalNim(graph, echoExp.parseString(cache, graph.config),
+    makeStdinModule(graph), cache)
 
-proc commandScan(cache: IdentCache) =
+proc commandScan(cache: IdentCache, config: ConfigRef) =
   var f = addFileExt(mainCommandArg(), NimExt)
   var stream = llStreamOpen(f, fmRead)
   if stream != nil:
@@ -139,7 +140,7 @@ proc commandScan(cache: IdentCache) =
       L: TLexer
       tok: TToken
     initToken(tok)
-    openLexer(L, f, stream, cache)
+    openLexer(L, f, stream, cache, config)
     while true:
       rawGetTok(L, tok)
       printTok(tok)
@@ -265,11 +266,11 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
   of "parse":
     gCmd = cmdParse
     wantMainModule()
-    discard parseFile(FileIndex gProjectMainIdx, cache)
+    discard parseFile(FileIndex gProjectMainIdx, cache, graph.config)
   of "scan":
     gCmd = cmdScan
     wantMainModule()
-    commandScan(cache)
+    commandScan(cache, graph.config)
     msgWriteln("Beware: Indentation tokens depend on the parser's state!")
   of "secret":
     gCmd = cmdInteractive
@@ -291,7 +292,7 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
       let usedMem = formatSize(getMaxMem()) & " peakmem"
     else:
       let usedMem = formatSize(getTotalMem())
-    rawMessage(hintSuccessX, [$gLinesCompiled,
+    rawMessage(hintSuccessX, [$graph.config.linesCompiled,
                formatFloat(epochTime() - gLastCmdTime, ffDecimal, 3),
                usedMem,
                if condSyms.isDefined("release"): "Release Build"

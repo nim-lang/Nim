@@ -74,8 +74,8 @@ type
     line: int                     ## line the symbol has been declared/used in
     col: int                      ## column the symbol has been declared/used in
     flags: set[NonTerminalFlag]   ## the nonterminal's flags
-    rule: Node                   ## the rule that the symbol refers to
-  Node {.shallow.} = object
+    rule: Peg                   ## the rule that the symbol refers to
+  Peg* {.shallow.} = object ## type that represents a PEG
     case kind: PegKind
     of pkEmpty..pkWhitespace: nil
     of pkTerminal, pkTerminalIgnoreCase, pkTerminalIgnoreStyle: term: string
@@ -83,12 +83,8 @@ type
     of pkCharChoice, pkGreedyRepSet: charChoice: ref set[char]
     of pkNonTerminal: nt: NonTerminal
     of pkBackRef..pkBackRefIgnoreStyle: index: range[0..MaxSubpatterns]
-    else: sons: seq[Node]
+    else: sons: seq[Peg]
   NonTerminal* = ref NonTerminalObj
-
-  Peg* = Node ## type that represents a PEG
-
-{.deprecated: [TPeg: Peg, TNode: Node].}
 
 proc term*(t: string): Peg {.nosideEffect, rtl, extern: "npegs$1Str".} =
   ## constructs a PEG from a terminal string
@@ -621,7 +617,7 @@ proc rawMatch*(s: string, p: Peg, start: int, c: var Captures): int {.
       a, b: Rune
     result = start
     while i < len(p.term):
-      while true:
+      while i < len(p.term):
         fastRuneAt(p.term, i, a)
         if a != Rune('_'): break
       while result < s.len:

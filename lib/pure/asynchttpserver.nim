@@ -60,9 +60,6 @@ type
     reusePort: bool
     maxBody: int ## The maximum content-length that will be read for the body.
 
-{.deprecated: [TRequest: Request, PAsyncHttpServer: AsyncHttpServer,
-  THttpCode: HttpCode, THttpVersion: HttpVersion].}
-
 proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
                          maxBody = 8388608): AsyncHttpServer =
   ## Creates a new ``AsyncHttpServer`` instance.

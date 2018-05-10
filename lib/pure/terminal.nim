@@ -29,9 +29,7 @@ when not hasThreadSupport:
   var
     colorsFGCache = initTable[Color, string]()
     colorsBGCache = initTable[Color, string]()
-  when not defined(windows):
-    var
-      styleCache = initTable[int, string]()
+    styleCache = initTable[int, string]()
 
 var
   trueColorIsSupported: bool
@@ -41,10 +39,8 @@ var
 const
   fgPrefix = "\x1b[38;2;"
   bgPrefix = "\x1b[48;2;"
-
-when not defined(windows):
-  const
-    stylePrefix = "\e["
+  ansiResetCode* = "\e[0m"
+  stylePrefix = "\e["
 
 when defined(windows):
   import winlean, os
@@ -468,7 +464,7 @@ proc resetAttributes*(f: File) =
     else:
       discard setConsoleTextAttribute(hStdout, oldStdoutAttr)
   else:
-    f.write("\e[0m")
+    f.write(ansiResetCode)
 
 type
   Style* = enum         ## different styles for text output
@@ -487,15 +483,22 @@ when not defined(windows):
     gFG {.threadvar.}: int
     gBG {.threadvar.}: int
 
-  proc getStyleStr(style: int): string =
-    when hasThreadSupport:
-      result = fmt"{stylePrefix}{style}m"
+proc ansiStyleCode*(style: int): string =
+  when hasThreadSupport:
+    result = fmt"{stylePrefix}{style}m"
+  else:
+    if styleCache.hasKey(style):
+      result = styleCache[style]
     else:
-      if styleCache.hasKey(style):
-        result = styleCache[style]
-      else:
-        result = fmt"{stylePrefix}{style}m"
-        styleCache[style] = result
+      result = fmt"{stylePrefix}{style}m"
+      styleCache[style] = result
+
+template ansiStyleCode*(style: Style): string =
+  ansiStyleCode(style.int)
+
+# The styleCache can be skipped when `style` is known at compile-time
+template ansiStyleCode*(style: static[Style]): string =
+  (static(stylePrefix & $style.int & "m"))
 
 proc setStyle*(f: File, style: set[Style]) =
   ## Sets the terminal style.
@@ -510,7 +513,7 @@ proc setStyle*(f: File, style: set[Style]) =
     discard setConsoleTextAttribute(h, old or a)
   else:
     for s in items(style):
-      f.write(getStyleStr(ord(s)))
+      f.write(ansiStyleCode(s))
 
 proc writeStyled*(txt: string, style: set[Style] = {styleBright}) =
   ## Writes the text `txt` in a given `style` to stdout.
@@ -524,9 +527,9 @@ proc writeStyled*(txt: string, style: set[Style] = {styleBright}) =
     stdout.write(txt)
     stdout.resetAttributes()
     if gFG != 0:
-      stdout.write(getStyleStr(gFG))
+      stdout.write(ansiStyleCode(gFG))
     if gBG != 0:
-      stdout.write(getStyleStr(gBG))
+      stdout.write(ansiStyleCode(gBG))
 
 type
   ForegroundColor* = enum  ## terminal's foreground colors
@@ -572,7 +575,7 @@ proc setForegroundColor*(f: File, fg: ForegroundColor, bright=false) =
   else:
     gFG = ord(fg)
     if bright: inc(gFG, 60)
-    f.write(getStyleStr(gFG))
+    f.write(ansiStyleCode(gFG))
 
 proc setBackgroundColor*(f: File, bg: BackgroundColor, bright=false) =
   ## Sets the terminal's background color.
@@ -594,10 +597,18 @@ proc setBackgroundColor*(f: File, bg: BackgroundColor, bright=false) =
   else:
     gBG = ord(bg)
     if bright: inc(gBG, 60)
-    f.write(getStyleStr(gBG))
+    f.write(ansiStyleCode(gBG))
 
+proc ansiForegroundColorCode*(fg: ForegroundColor, bright=false): string =
+  var style = ord(fg)
+  if bright: inc(style, 60)
+  return ansiStyleCode(style)
 
-proc getFGColorStr(color: Color): string =
+template ansiForegroundColorCode*(fg: static[ForegroundColor],
+                                  bright: static[bool] = false): string =
+  ansiStyleCode(fg.int + bright.int * 60)
+
+proc ansiForegroundColorCode*(color: Color): string =
   when hasThreadSupport:
     let rgb = extractRGB(color)
     result = fmt"{fgPrefix}{rgb.r};{rgb.g};{rgb.b}m"
@@ -609,7 +620,11 @@ proc getFGColorStr(color: Color): string =
       result = fmt"{fgPrefix}{rgb.r};{rgb.g};{rgb.b}m"
       colorsFGCache[color] = result
 
-proc getBGColorStr(color: Color): string =
+template ansiForegroundColorCode*(color: static[Color]): string =
+  const rgb = extractRGB(color)
+  (static(fmt"{fgPrefix}{rgb.r};{rgb.g};{rgb.b}m"))
+
+proc ansiBackgroundColorCode*(color: Color): string =
   when hasThreadSupport:
     let rgb = extractRGB(color)
     result = fmt"{bgPrefix}{rgb.r};{rgb.g};{rgb.b}m"
@@ -621,15 +636,19 @@ proc getBGColorStr(color: Color): string =
       result = fmt"{bgPrefix}{rgb.r};{rgb.g};{rgb.b}m"
       colorsFGCache[color] = result
 
+template ansiBackgroundColorCode*(color: static[Color]): string =
+  const rgb = extractRGB(color)
+  (static(fmt"{bgPrefix}{rgb.r};{rgb.g};{rgb.b}m"))
+
 proc setForegroundColor*(f: File, color: Color) =
   ## Sets the terminal's foreground true color.
   if trueColorIsEnabled:
-    f.write(getFGColorStr(color))
+    f.write(ansiForegroundColorCode(color))
 
 proc setBackgroundColor*(f: File, color: Color) =
   ## Sets the terminal's background true color.
   if trueColorIsEnabled:
-    f.write(getBGColorStr(color))
+    f.write(ansiBackgroundColorCode(color))
 
 proc setTrueColor(f: File, color: Color) =
   if fgSetColor:
@@ -759,6 +778,10 @@ when defined(windows):
           x = runeLenAt(password.string, i)
           inc i, x
         password.string.setLen(max(password.len - x, 0))
+      of chr(0x0):
+        # modifier key - ignore - for details see 
+        # https://github.com/nim-lang/Nim/issues/7764
+        continue
       else:
         password.string.add(toUTF8(c.Rune))
     stdout.write "\n"

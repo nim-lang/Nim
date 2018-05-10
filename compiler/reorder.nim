@@ -137,7 +137,7 @@ proc hasIncludes(n:PNode): bool =
 
 proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex;
                     cache: IdentCache): PNode {.procvar.} =
-  result = syntaxes.parseFile(fileIdx, cache)
+  result = syntaxes.parseFile(fileIdx, cache, graph.config)
   graph.addDep(s, fileIdx)
   graph.addIncludeDep(FileIndex s.position, fileIdx)
 
@@ -273,9 +273,9 @@ proc hasCommand(n: PNode): bool =
   of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse,
       nkStaticStmt, nkLetSection, nkConstSection, nkVarSection,
       nkIdentDefs:
-        for a in n:
-          if a.hasCommand:
-            return true
+    for a in n:
+      if a.hasCommand:
+        return true
   else:
     return false
 

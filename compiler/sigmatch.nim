@@ -1962,7 +1962,8 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     inc(m.genericMatches)
     if arg.typ == nil:
       result = arg
-    elif skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple:
+    elif skipTypes(arg.typ, abstractVar-{tyTypeDesc}).kind == tyTuple or
+         m.inheritancePenalty > 0:
       result = implicitConv(nkHiddenSubConv, f, arg, m, c)
     elif arg.typ.isEmptyContainer:
       result = arg.copyTree
@@ -2032,8 +2033,9 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     y.calleeSym = m.calleeSym
     z.calleeSym = m.calleeSym
     var best = -1
-    for i in countup(0, sonsLen(arg) - 1):
-      if arg.sons[i].sym.kind in {skProc, skFunc, skMethod, skConverter, skIterator}:
+    for i in 0 ..< arg.len:
+      if arg.sons[i].sym.kind in {skProc, skFunc, skMethod, skConverter,
+                                  skIterator, skMacro, skTemplate}:
         copyCandidate(z, m)
         z.callee = arg.sons[i].typ
         if tfUnresolved in z.callee.flags: continue
@@ -2062,6 +2064,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
               x = z
             elif cmp == 0:
               y = z           # z is as good as x
+
     if x.state == csEmpty:
       result = nil
     elif y.state == csMatch and cmpCandidates(x, y) == 0:
@@ -2070,7 +2073,7 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
       # ambiguous: more than one symbol fits!
       # See tsymchoice_for_expr as an example. 'f.kind == tyExpr' should match
       # anyway:
-      if f.kind == tyExpr: result = arg
+      if f.kind in {tyExpr, tyStmt}: result = arg
       else: result = nil
     else:
       # only one valid interpretation found:
@@ -2171,7 +2174,8 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
   var formal: PSym = if formalLen > 1: m.callee.n.sons[1].sym else: nil
 
   while a < n.len:
-    if a >= formalLen-1 and formal != nil and formal.typ.isVarargsUntyped:
+    if a >= formalLen-1 and f < formalLen and m.callee.n[f].typ.isVarargsUntyped:
+      formal = m.callee.n.sons[f].sym
       incl(marker, formal.position)
       if container.isNil:
         container = newNodeIT(nkArgList, n.sons[a].info, arrayConstr(c, n.info))

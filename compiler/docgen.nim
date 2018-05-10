@@ -790,7 +790,7 @@ proc writeOutputJson*(d: PDoc, filename, outExt: string,
       discard "fixme: error report"
 
 proc commandDoc*() =
-  var ast = parseFile(gProjectMainIdx.FileIndex, newIdentCache())
+  var ast = parseFile(gProjectMainIdx.FileIndex, newIdentCache(), newConfigRef())
   if ast == nil: return
   var d = newDocumentor(gProjectFull, options.gConfigVars)
   d.hasToc = true
@@ -840,7 +840,7 @@ proc commandRst2TeX*() =
   commandRstAux(gProjectFull, TexExt)
 
 proc commandJson*() =
-  var ast = parseFile(gProjectMainIdx.FileIndex, newIdentCache())
+  var ast = parseFile(gProjectMainIdx.FileIndex, newIdentCache(), newConfigRef())
   if ast == nil: return
   var d = newDocumentor(gProjectFull, options.gConfigVars)
   d.hasToc = true
@@ -855,7 +855,7 @@ proc commandJson*() =
     writeRope(content, getOutFile(gProjectFull, JsonExt), useWarning = false)
 
 proc commandTags*() =
-  var ast = parseFile(gProjectMainIdx.FileIndex, newIdentCache())
+  var ast = parseFile(gProjectMainIdx.FileIndex, newIdentCache(), newConfigRef())
   if ast == nil: return
   var d = newDocumentor(gProjectFull, options.gConfigVars)
   d.hasToc = true

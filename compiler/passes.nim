@@ -207,7 +207,7 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream,
     else:
       s = stream
     while true:
-      openParsers(p, fileIdx, s, cache)
+      openParsers(p, fileIdx, s, cache, graph.config)
 
       if sfSystemModule notin module.flags:
         # XXX what about caching? no processing then? what if I change the

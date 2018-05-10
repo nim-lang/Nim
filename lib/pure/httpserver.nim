@@ -110,7 +110,6 @@ when false:
   # TODO: Fix this, or get rid of it.
   type
     RequestMethod = enum reqGet, reqPost
-  {.deprecated: [TRequestMethod: RequestMethod].}
 
   proc executeCgi(client: Socket, path, query: string, meth: RequestMethod) =
     var env = newStringTable(modeCaseInsensitive)
@@ -225,7 +224,6 @@ type
   PAsyncHTTPServer* = ref AsyncHTTPServer
   AsyncHTTPServer = object of Server
     asyncSocket: AsyncSocket
-{.deprecated: [TAsyncHTTPServer: AsyncHTTPServer, TServer: Server].}
 
 proc open*(s: var Server, port = Port(80), reuseAddr = false) =
   ## creates a new server at port `port`. If ``port == 0`` a free port is

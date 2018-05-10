@@ -17,9 +17,9 @@
 ## Loading a simple C function
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ##
-## The following example demonstrates loading a function called 'greet' 
+## The following example demonstrates loading a function called 'greet'
 ## from a library that is determined at runtime based upon a language choice.
-## If the library fails to load or the function 'greet' is not found, 
+## If the library fails to load or the function 'greet' is not found,
 ## it quits with a failure error code.
 ##
 ## .. code-block::nim
@@ -58,8 +58,6 @@ import strutils
 
 type
   LibHandle* = pointer ## a handle to a dynamically loaded library
-
-{.deprecated: [TLibHandle: LibHandle].}
 
 proc loadLib*(path: string, global_symbols=false): LibHandle {.gcsafe.}
   ## loads a library from `path`. Returns nil if the library could not

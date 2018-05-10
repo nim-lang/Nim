@@ -545,7 +545,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         b.sons[j] = newSymNode(v)
       checkNilable(v)
       if sfCompileTime in v.flags: hasCompileTime = true
-  if hasCompileTime: vm.setupCompileTimeVar(c.module, c.cache, result)
+  if hasCompileTime:
+    vm.setupCompileTimeVar(c.module, c.cache, c.graph.config, result)
 
 proc semConst(c: PContext, n: PNode): PNode =
   result = copyNode(n)
@@ -846,7 +847,7 @@ proc checkCovariantParamsUsages(genericType: PType) =
         if subType != nil:
           subresult traverseSubTypes(subType)
       if result:
-        error("non-invariant type param used in a proc type: " &  $t)
+        error("non-invariant type param used in a proc type: " & $t)
 
     of tySequence:
       return traverseSubTypes(t[0])
@@ -1753,9 +1754,11 @@ proc semPragmaBlock(c: PContext, n: PNode): PNode =
 proc semStaticStmt(c: PContext, n: PNode): PNode =
   #echo "semStaticStmt"
   #writeStackTrace()
+  inc c.inStaticContext
   let a = semStmt(c, n.sons[0])
+  dec c.inStaticContext
   n.sons[0] = a
-  evalStaticStmt(c.module, c.cache, a, c.p.owner)
+  evalStaticStmt(c.module, c.cache, c.graph.config, a, c.p.owner)
   result = newNodeI(nkDiscardStmt, n.info, 1)
   result.sons[0] = emptyNode
 

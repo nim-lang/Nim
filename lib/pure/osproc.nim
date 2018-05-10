@@ -61,9 +61,6 @@ type
   Process* = ref ProcessObj ## represents an operating system process
 
 
-{.deprecated: [TProcess: ProcessObj, PProcess: Process,
-  TProcessOption: ProcessOption].}
-
 const poUseShell* {.deprecated.} = poUsePath
   ## Deprecated alias for poUsePath.
 
@@ -373,17 +370,15 @@ template streamAccess(p) =
 when defined(Windows) and not defined(useNimRtl):
   # We need to implement a handle stream for Windows:
   type
-    PFileHandleStream = ref FileHandleStream
-    FileHandleStream = object of StreamObj
+    FileHandleStream = ref object of StreamObj
       handle: Handle
       atTheEnd: bool
-  {.deprecated: [TFileHandleStream: FileHandleStream].}
 
   proc hsClose(s: Stream) = discard # nothing to do here
-  proc hsAtEnd(s: Stream): bool = return PFileHandleStream(s).atTheEnd
+  proc hsAtEnd(s: Stream): bool = return FileHandleStream(s).atTheEnd
 
   proc hsReadData(s: Stream, buffer: pointer, bufLen: int): int =
-    var s = PFileHandleStream(s)
+    var s = FileHandleStream(s)
     if s.atTheEnd: return 0
     var br: int32
     var a = winlean.readFile(s.handle, buffer, bufLen.cint, addr br, nil)
@@ -395,13 +390,13 @@ when defined(Windows) and not defined(useNimRtl):
     result = br
 
   proc hsWriteData(s: Stream, buffer: pointer, bufLen: int) =
-    var s = PFileHandleStream(s)
+    var s = FileHandleStream(s)
     var bytesWritten: int32
     var a = winlean.writeFile(s.handle, buffer, bufLen.cint,
                               addr bytesWritten, nil)
     if a == 0: raiseOSError(osLastError())
 
-  proc newFileHandleStream(handle: Handle): PFileHandleStream =
+  proc newFileHandleStream(handle: Handle): FileHandleStream =
     new(result)
     result.handle = handle
     result.closeImpl = hsClose
@@ -527,7 +522,7 @@ when defined(Windows) and not defined(useNimRtl):
           if setHandleInformation(he, DWORD(1), DWORD(0)) == 0'i32:
             raiseOsError(osLastError())
         if setHandleInformation(hi, DWORD(1), DWORD(0)) == 0'i32:
-          raiseOsError(osLastError())  
+          raiseOsError(osLastError())
         if setHandleInformation(ho, DWORD(1), DWORD(0)) == 0'i32:
           raiseOsError(osLastError())
       else:
@@ -752,14 +747,14 @@ elif not defined(useNimRtl):
       copyMem(result[i], addr(x[0]), x.len+1)
       inc(i)
 
-  type StartProcessData = object
-    sysCommand: string
-    sysArgs: cstringArray
-    sysEnv: cstringArray
-    workingDir: cstring
-    pStdin, pStdout, pStderr, pErrorPipe: array[0..1, cint]
-    options: set[ProcessOption]
-  {.deprecated: [TStartProcessData: StartProcessData].}
+  type
+    StartProcessData = object
+      sysCommand: string
+      sysArgs: cstringArray
+      sysEnv: cstringArray
+      workingDir: cstring
+      pStdin, pStdout, pStderr, pErrorPipe: array[0..1, cint]
+      options: set[ProcessOption]
 
   const useProcessAuxSpawn = declared(posix_spawn) and not defined(useFork) and
                              not defined(useClone) and not defined(linux)

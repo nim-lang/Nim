@@ -1069,17 +1069,15 @@ proc splitData*(textNode: PText, offset: int): PText =
     var newNode: PText = textNode.fOwnerDocument.createTextNode(right)
     return newNode
 
-
 # ProcessingInstruction
 proc target*(pi: PProcessingInstruction): string =
   ## Returns the Processing Instructions target
 
   return pi.fTarget
 
-
-# --Other stuff--
-# Writer
-proc addEscaped(s: string): string =
+proc escapeXml*(s: string; result: var string) =
+  ## Prepares a string for insertion into a XML document
+  ## by escaping the XML special characters.
   result = ""
   for c in items(s):
     case c
@@ -1089,11 +1087,20 @@ proc addEscaped(s: string): string =
     of '"': result.add("&quot;")
     else: result.add(c)
 
+proc escapeXml*(s: string): string =
+  ## Prepares a string for insertion into a XML document
+  ## by escaping the XML special characters.
+  result = newStringOfCap(s.len + s.len shr 4)
+  escapeXml(s, result)
+
+# --Other stuff--
+# Writer
+
 proc nodeToXml(n: PNode, indent: int = 0): string =
   result = spaces(indent) & "<" & n.nodeName
   if not isNil(n.attributes):
     for i in items(n.attributes):
-      result.add(" " & i.name & "=\"" & addEscaped(i.value) & "\"")
+      result.add(" " & i.name & "=\"" & escapeXml(i.value) & "\"")
 
   if isNil(n.childNodes) or n.childNodes.len() == 0:
     result.add("/>") # No idea why this doesn't need a \n :O
@@ -1106,7 +1113,7 @@ proc nodeToXml(n: PNode, indent: int = 0): string =
         result.add(nodeToXml(i, indent + 2))
       of TextNode:
         result.add(spaces(indent * 2))
-        result.add(addEscaped(i.nodeValue))
+        result.add(escapeXml(i.nodeValue))
       of CDataSectionNode:
         result.add(spaces(indent * 2))
         result.add("<![CDATA[" & i.nodeValue & "]]>")

@@ -17,9 +17,7 @@ import
 
 when defined(js):
   {.pragma: rtlFunc.}
-  {.pragma: deprecatedGetFunc.}
 else:
-  {.pragma: deprecatedGetFunc, deprecatedGet.}
   {.pragma: rtlFunc, rtl.}
   import os
   include "system/inclrtl"
@@ -37,9 +35,6 @@ type
     mode: StringTableMode
 
   StringTableRef* = ref StringTableObj ## use this type to declare string tables
-
-{.deprecated: [TStringTableMode: StringTableMode,
-  TStringTable: StringTableObj, PStringTable: StringTableRef].}
 
 proc len*(t: StringTableRef): int {.rtlFunc, extern: "nst$1".} =
   ## returns the number of keys in `t`.
@@ -72,10 +67,6 @@ type
                               ## in the table
     useKey                    ## do not replace ``$key`` if it is not found
                               ## in the table (or in the environment)
-
-{.deprecated: [TFormatFlag: FormatFlag].}
-
-# implementation
 
 const
   growthFactor = 2
@@ -118,15 +109,10 @@ template get(t: StringTableRef, key: string) =
       raise newException(KeyError, "key not found")
 
 proc `[]`*(t: StringTableRef, key: string): var string {.
-           rtlFunc, extern: "nstTake", deprecatedGetFunc.} =
+           rtlFunc, extern: "nstTake".} =
   ## retrieves the location at ``t[key]``. If `key` is not in `t`, the
   ## ``KeyError`` exception is raised. One can check with ``hasKey`` whether
   ## the key exists.
-  get(t, key)
-
-proc mget*(t: StringTableRef, key: string): var string {.deprecated.} =
-  ## retrieves the location at ``t[key]``. If `key` is not in `t`, the
-  ## ``KeyError`` exception is raised. Use ```[]``` instead.
   get(t, key)
 
 proc getOrDefault*(t: StringTableRef; key: string, default: string = ""): string =
@@ -193,7 +179,8 @@ proc newStringTable*(mode: StringTableMode): StringTableRef {.
   result.counter = 0
   newSeq(result.data, startSize)
 
-proc clear*(s: StringTableRef, mode: StringTableMode) =
+proc clear*(s: StringTableRef, mode: StringTableMode) {.
+  rtlFunc, extern: "nst$1".} =
   ## resets a string table to be empty again.
   s.mode = mode
   s.counter = 0

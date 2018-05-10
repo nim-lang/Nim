@@ -6298,6 +6298,9 @@ modules don't need to import a module's dependencies:
   var x: MyObject
   echo $x
 
+When the exported symbol is another module, all of its definitions will
+be forwarded. You can use an ``except`` list to exclude some of the symbols.
+
 Note on paths
 -----------
 In module related statements, if any part of the module name /
@@ -7798,8 +7801,9 @@ Future directions:
 Threadvar pragma
 ----------------
 
-A global variable can be marked with the ``threadvar`` pragma; it is
-a `thread-local`:idx: variable then:
+A variable can be marked with the ``threadvar`` pragma, which makes it a
+`thread-local`:idx: variable; Additionally, this implies all the effects
+of the ``global`` pragma.
 
 .. code-block:: nim
   var checkpoints* {.threadvar.}: seq[string]

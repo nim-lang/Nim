@@ -252,7 +252,7 @@ proc xz(args: string) =
 
 proc buildTool(toolname, args: string) =
   nimexec("cc $# $#" % [args, toolname])
-  copyFile(dest="bin"/ splitFile(toolname).name.exe, source=toolname.exe)
+  copyFile(dest="bin" / splitFile(toolname).name.exe, source=toolname.exe)
 
 proc buildTools(latest: bool) =
   let nimsugExe = "bin/nimsuggest".exe

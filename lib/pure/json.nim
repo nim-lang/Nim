@@ -158,9 +158,6 @@ type
   JsonKindError* = object of ValueError ## raised by the ``to`` macro if the
                                         ## JSON kind is incorrect.
 
-{.deprecated: [TJsonEventKind: JsonEventKind, TJsonError: JsonError,
-  TJsonParser: JsonParser, TTokKind: TokKind].}
-
 const
   errorMessages: array[JsonError, string] = [
     "no error",
@@ -622,9 +619,6 @@ type
 
   JsonParsingError* = object of ValueError ## is raised for a JSON error
 
-{.deprecated: [EJsonParsingError: JsonParsingError, TJsonNode: JsonNodeObj,
-    PJsonNode: JsonNode, TJsonNodeKind: JsonNodeKind].}
-
 proc raiseParseErr*(p: JsonParser, msg: string) {.noinline, noreturn.} =
   ## raises an `EJsonParsingError` exception.
   raise newException(JsonParsingError, errorMsgExpected(p, msg))
@@ -695,7 +689,7 @@ proc getBiggestInt*(n: JsonNode, default: BiggestInt = 0): BiggestInt =
   if n.isNil or n.kind != JInt: return default
   else: return n.num
 
-proc getNum*(n: JsonNode, default: BiggestInt = 0): BiggestInt {.deprecated.} =
+proc getNum*(n: JsonNode, default: BiggestInt = 0): BiggestInt {.deprecated: "use getInt or getBiggestInt instead".} =
   ## **Deprecated since v0.18.2:** use ``getInt`` or ``getBiggestInt`` instead.
   getBiggestInt(n, default)
 
@@ -709,7 +703,7 @@ proc getFloat*(n: JsonNode, default: float = 0.0): float =
   of JInt: return float(n.num)
   else: return default
 
-proc getFNum*(n: JsonNode, default: float = 0.0): float {.deprecated.} =
+proc getFNum*(n: JsonNode, default: float = 0.0): float {.deprecated: "use getFloat instead".} =
   ## **Deprecated since v0.18.2:** use ``getFloat`` instead.
   getFloat(n, default)
 
@@ -720,7 +714,7 @@ proc getBool*(n: JsonNode, default: bool = false): bool =
   if n.isNil or n.kind != JBool: return default
   else: return n.bval
 
-proc getBVal*(n: JsonNode, default: bool = false): bool {.deprecated.} =
+proc getBVal*(n: JsonNode, default: bool = false): bool {.deprecated: "use getBool instead".} =
   ## **Deprecated since v0.18.2:** use ``getBool`` instead.
   getBool(n, default)
 
@@ -946,7 +940,7 @@ proc contains*(node: JsonNode, val: JsonNode): bool =
   assert(node.kind == JArray)
   find(node.elems, val) >= 0
 
-proc existsKey*(node: JsonNode, key: string): bool {.deprecated.} = node.hasKey(key)
+proc existsKey*(node: JsonNode, key: string): bool {.deprecated: "use hasKey instead".} = node.hasKey(key)
   ## **Deprecated:** use `hasKey` instead.
 
 proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
@@ -1277,7 +1271,6 @@ else:
   from math import `mod`
   type
     JSObject = object
-  {.deprecated: [TJSObject: JSObject].}
 
   proc parseNativeJson(x: cstring): JSObject {.importc: "JSON.parse".}
 

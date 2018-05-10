@@ -210,8 +210,14 @@ proc putIntoNode(n: var PNode; x: TFullReg) =
   of rkInt: n.intVal = x.intVal
   of rkFloat: n.floatVal = x.floatVal
   of rkNode:
-    if nfIsRef in x.node.flags: n = x.node
-    else: n[] = x.node[]
+    if nfIsRef in x.node.flags:
+      n = x.node
+    else:
+      let destIsRef = nfIsRef in n.flags    
+      n[] = x.node[]
+      # Ref-ness must be kept for the destination
+      if destIsRef:
+        n.flags.incl nfIsRef
   of rkRegisterAddr: putIntoNode(n, x.regAddr[])
   of rkNodeAddr: n[] = x.nodeAddr[][]
 
@@ -1341,8 +1347,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkNode)
       # c.debug[pc].line.int - countLines(regs[rb].strVal) ?
       var error: string
-      let ast = parseString(regs[rb].node.strVal, c.cache, c.debug[pc].toFullPath,
-                            c.debug[pc].line.int,
+      let ast = parseString(regs[rb].node.strVal, c.cache, c.config,
+                            c.debug[pc].toFullPath, c.debug[pc].line.int,
                             proc (info: TLineInfo; msg: TMsgKind; arg: string) =
                               if error.isNil and msg <= msgs.errMax:
                                 error = formatMsg(info, msg, arg))
@@ -1355,8 +1361,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcParseStmtToAst:
       decodeB(rkNode)
       var error: string
-      let ast = parseString(regs[rb].node.strVal, c.cache, c.debug[pc].toFullPath,
-                            c.debug[pc].line.int,
+      let ast = parseString(regs[rb].node.strVal, c.cache, c.config,
+                            c.debug[pc].toFullPath, c.debug[pc].line.int,
                             proc (info: TLineInfo; msg: TMsgKind; arg: string) =
                               if error.isNil and msg <= msgs.errMax:
                                 error = formatMsg(info, msg, arg))
@@ -1643,9 +1649,9 @@ include vmops
 var
   globalCtx*: PCtx
 
-proc setupGlobalCtx(module: PSym; cache: IdentCache) =
+proc setupGlobalCtx(module: PSym; cache: IdentCache; config: ConfigRef) =
   if globalCtx.isNil:
-    globalCtx = newCtx(module, cache)
+    globalCtx = newCtx(module, cache, config)
     registerAdditionalOps(globalCtx)
   else:
     refresh(globalCtx, module)
@@ -1656,7 +1662,7 @@ proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
   #pushStackFrame(c, newStackFrame())
 
   # XXX produce a new 'globals' environment here:
-  setupGlobalCtx(module, cache)
+  setupGlobalCtx(module, cache, graph.config)
   result = globalCtx
   when hasFFI:
     globalCtx.features = {allowFFI, allowCast}
@@ -1677,10 +1683,11 @@ proc myClose(graph: ModuleGraph; c: PPassContext, n: PNode): PNode =
 
 const evalPass* = makePass(myOpen, nil, myProcess, myClose)
 
-proc evalConstExprAux(module: PSym; cache: IdentCache; prc: PSym, n: PNode,
+proc evalConstExprAux(module: PSym; cache: IdentCache;
+                      config: ConfigRef; prc: PSym, n: PNode,
                       mode: TEvalMode): PNode =
   let n = transformExpr(module, n)
-  setupGlobalCtx(module, cache)
+  setupGlobalCtx(module, cache, config)
   var c = globalCtx
   let oldMode = c.mode
   defer: c.mode = oldMode
@@ -1695,17 +1702,17 @@ proc evalConstExprAux(module: PSym; cache: IdentCache; prc: PSym, n: PNode,
   result = rawExecute(c, start, tos).regToNode
   if result.info.col < 0: result.info = n.info
 
-proc evalConstExpr*(module: PSym; cache: IdentCache, e: PNode): PNode =
-  result = evalConstExprAux(module, cache, nil, e, emConst)
+proc evalConstExpr*(module: PSym; cache: IdentCache, config: ConfigRef; e: PNode): PNode =
+  result = evalConstExprAux(module, cache, config, nil, e, emConst)
 
-proc evalStaticExpr*(module: PSym; cache: IdentCache, e: PNode, prc: PSym): PNode =
-  result = evalConstExprAux(module, cache, prc, e, emStaticExpr)
+proc evalStaticExpr*(module: PSym; cache: IdentCache, config: ConfigRef; e: PNode, prc: PSym): PNode =
+  result = evalConstExprAux(module, cache, config, prc, e, emStaticExpr)
 
-proc evalStaticStmt*(module: PSym; cache: IdentCache, e: PNode, prc: PSym) =
-  discard evalConstExprAux(module, cache, prc, e, emStaticStmt)
+proc evalStaticStmt*(module: PSym; cache: IdentCache, config: ConfigRef; e: PNode, prc: PSym) =
+  discard evalConstExprAux(module, cache, config, prc, e, emStaticStmt)
 
-proc setupCompileTimeVar*(module: PSym; cache: IdentCache, n: PNode) =
-  discard evalConstExprAux(module, cache, nil, n, emStaticStmt)
+proc setupCompileTimeVar*(module: PSym; cache: IdentCache, config: ConfigRef; n: PNode) =
+  discard evalConstExprAux(module, cache, config, nil, n, emStaticStmt)
 
 proc setupMacroParam(x: PNode, typ: PType): TFullReg =
   case typ.kind
@@ -1733,8 +1740,8 @@ iterator genericParamsInMacroCall*(macroSym: PSym, call: PNode): (PSym, PNode) =
 const evalMacroLimit = 1000
 var evalMacroCounter: int
 
-proc evalMacroCall*(module: PSym; cache: IdentCache, n, nOrig: PNode,
-                    sym: PSym): PNode =
+proc evalMacroCall*(module: PSym; cache: IdentCache; config: ConfigRef;
+                    n, nOrig: PNode, sym: PSym): PNode =
   # XXX globalError() is ugly here, but I don't know a better solution for now
   inc(evalMacroCounter)
   if evalMacroCounter > evalMacroLimit:
@@ -1746,7 +1753,7 @@ proc evalMacroCall*(module: PSym; cache: IdentCache, n, nOrig: PNode,
     globalError(n.info, "in call '$#' got $#, but expected $# argument(s)" % [
         n.renderTree, $(n.safeLen-1), $(sym.typ.len-1)])
 
-  setupGlobalCtx(module, cache)
+  setupGlobalCtx(module, cache, config)
   var c = globalCtx
   c.comesFromHeuristic.line = 0'u16
 
