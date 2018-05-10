@@ -35,7 +35,7 @@
                       # of the standard library!
 
 import
-  strutils, parseutils, algorithm
+  strutils, parseutils, algorithm, math
 
 include "system/inclrtl"
 
@@ -1530,6 +1530,12 @@ proc formatToken(dt: DateTime, token: string, buf: var string) =
     buf.add(':')
     if minutes < 10: buf.add('0')
     buf.add($minutes)
+  of "fff":
+    buf.add(intToStr(convert(Nanoseconds, Milliseconds, dt.nanosecond), 3))
+  of "ffffff":
+    buf.add(intToStr(convert(Nanoseconds, Microseconds, dt.nanosecond), 6))
+  of "fffffffff":
+    buf.add(intToStr(dt.nanosecond, 9))
   of "":
     discard
   else:
@@ -1540,34 +1546,37 @@ proc format*(dt: DateTime, f: string): string {.tags: [].}=
   ## This procedure formats `dt` as specified by `f`. The following format
   ## specifiers are available:
   ##
-  ## ==========  =================================================================================  ================================================
-  ## Specifier   Description                                                                        Example
-  ## ==========  =================================================================================  ================================================
-  ##    d        Numeric value of the day of the month, it will be one or two digits long.          ``1/04/2012 -> 1``, ``21/04/2012 -> 21``
-  ##    dd       Same as above, but always two digits.                                              ``1/04/2012 -> 01``, ``21/04/2012 -> 21``
-  ##    ddd      Three letter string which indicates the day of the week.                           ``Saturday -> Sat``, ``Monday -> Mon``
-  ##    dddd     Full string for the day of the week.                                               ``Saturday -> Saturday``, ``Monday -> Monday``
-  ##    h        The hours in one digit if possible. Ranging from 0-12.                             ``5pm -> 5``, ``2am -> 2``
-  ##    hh       The hours in two digits always. If the hour is one digit 0 is prepended.           ``5pm -> 05``, ``11am -> 11``
-  ##    H        The hours in one digit if possible, randing from 0-24.                             ``5pm -> 17``, ``2am -> 2``
-  ##    HH       The hours in two digits always. 0 is prepended if the hour is one digit.           ``5pm -> 17``, ``2am -> 02``
-  ##    m        The minutes in 1 digit if possible.                                                ``5:30 -> 30``, ``2:01 -> 1``
-  ##    mm       Same as above but always 2 digits, 0 is prepended if the minute is one digit.      ``5:30 -> 30``, ``2:01 -> 01``
-  ##    M        The month in one digit if possible.                                                ``September -> 9``, ``December -> 12``
-  ##    MM       The month in two digits always. 0 is prepended.                                    ``September -> 09``, ``December -> 12``
-  ##    MMM      Abbreviated three-letter form of the month.                                        ``September -> Sep``, ``December -> Dec``
-  ##    MMMM     Full month string, properly capitalized.                                           ``September -> September``
-  ##    s        Seconds as one digit if possible.                                                  ``00:00:06 -> 6``
-  ##    ss       Same as above but always two digits. 0 is prepended.                               ``00:00:06 -> 06``
-  ##    t        ``A`` when time is in the AM. ``P`` when time is in the PM.
-  ##    tt       Same as above, but ``AM`` and ``PM`` instead of ``A`` and ``P`` respectively.
-  ##    y(yyyy)  This displays the year to different digits. You most likely only want 2 or 4 'y's
-  ##    yy       Displays the year to two digits.                                                   ``2012 -> 12``
-  ##    yyyy     Displays the year to four digits.                                                  ``2012 -> 2012``
-  ##    z        Displays the timezone offset from UTC.                                             ``GMT+7 -> +7``, ``GMT-5 -> -5``
-  ##    zz       Same as above but with leading 0.                                                  ``GMT+7 -> +07``, ``GMT-5 -> -05``
-  ##    zzz      Same as above but with ``:mm`` where *mm* represents minutes.                      ``GMT+7 -> +07:00``, ``GMT-5 -> -05:00``
-  ## ==========  =================================================================================  ================================================
+  ## ============  =================================================================================  ================================================
+  ## Specifier     Description                                                                        Example
+  ## ============  =================================================================================  ================================================
+  ##    d          Numeric value of the day of the month, it will be one or two digits long.          ``1/04/2012 -> 1``, ``21/04/2012 -> 21``
+  ##    dd         Same as above, but always two digits.                                              ``1/04/2012 -> 01``, ``21/04/2012 -> 21``
+  ##    ddd        Three letter string which indicates the day of the week.                           ``Saturday -> Sat``, ``Monday -> Mon``
+  ##    dddd       Full string for the day of the week.                                               ``Saturday -> Saturday``, ``Monday -> Monday``
+  ##    h          The hours in one digit if possible. Ranging from 0-12.                             ``5pm -> 5``, ``2am -> 2``
+  ##    hh         The hours in two digits always. If the hour is one digit 0 is prepended.           ``5pm -> 05``, ``11am -> 11``
+  ##    H          The hours in one digit if possible, randing from 0-24.                             ``5pm -> 17``, ``2am -> 2``
+  ##    HH         The hours in two digits always. 0 is prepended if the hour is one digit.           ``5pm -> 17``, ``2am -> 02``
+  ##    m          The minutes in 1 digit if possible.                                                ``5:30 -> 30``, ``2:01 -> 1``
+  ##    mm         Same as above but always 2 digits, 0 is prepended if the minute is one digit.      ``5:30 -> 30``, ``2:01 -> 01``
+  ##    M          The month in one digit if possible.                                                ``September -> 9``, ``December -> 12``
+  ##    MM         The month in two digits always. 0 is prepended.                                    ``September -> 09``, ``December -> 12``
+  ##    MMM        Abbreviated three-letter form of the month.                                        ``September -> Sep``, ``December -> Dec``
+  ##    MMMM       Full month string, properly capitalized.                                           ``September -> September``
+  ##    s          Seconds as one digit if possible.                                                  ``00:00:06 -> 6``
+  ##    ss         Same as above but always two digits. 0 is prepended.                               ``00:00:06 -> 06``
+  ##    t          ``A`` when time is in the AM. ``P`` when time is in the PM.
+  ##    tt         Same as above, but ``AM`` and ``PM`` instead of ``A`` and ``P`` respectively.
+  ##    y(yyyy)    This displays the year to different digits. You most likely only want 2 or 4 'y's
+  ##    yy         Displays the year to two digits.                                                   ``2012 -> 12``
+  ##    yyyy       Displays the year to four digits.                                                  ``2012 -> 2012``
+  ##    z          Displays the timezone offset from UTC.                                             ``GMT+7 -> +7``, ``GMT-5 -> -5``
+  ##    zz         Same as above but with leading 0.                                                  ``GMT+7 -> +07``, ``GMT-5 -> -05``
+  ##    zzz        Same as above but with ``:mm`` where *mm* represents minutes.                      ``GMT+7 -> +07:00``, ``GMT-5 -> -05:00``
+  ##    fff        Milliseconds display                                                               ``1000000 nanoseconds -> 1``
+  ##    ffffff     Microseconds display                                                               ``1000000 nanoseconds -> 1000``
+  ##    fffffffff  Nanoseconds display                                                                ``1000000 nanoseconds -> 1000000``
+  ## ============  =================================================================================  ================================================
   ##
   ## Other strings can be inserted by putting them in ``''``. For example
   ## ``hh'->'mm`` will give ``01->56``.  The following characters can be
@@ -1575,8 +1584,8 @@ proc format*(dt: DateTime, f: string): string {.tags: [].}=
   ## ``,``. However you don't need to necessarily separate format specifiers, a
   ## unambiguous format string like ``yyyyMMddhhmmss`` is valid too.
   runnableExamples:
-    let dt = initDateTime(01, mJan, 2000, 12, 00, 00, utc())
-    doAssert format(dt, "yyyy-MM-dd'T'HH:mm:sszzz") == "2000-01-01T12:00:00+00:00"
+    let dt = initDateTime(01, mJan, 2000, 12, 00, 00, 01, utc())
+    doAssert format(dt, "yyyy-MM-dd'T'HH:mm:ss'.'fffffffffzzz") == "2000-01-01T12:00:00.000000001+00:00"
 
   result = ""
   var i = 0
@@ -1853,6 +1862,11 @@ proc parseToken(dt: var DateTime; token, value: string; j: var int) =
     j += 4
     dt.utcOffset += factor * value[j..j+1].parseInt() * 60
     j += 2
+  of "fff", "ffffff", "fffffffff":
+    var numStr = ""
+    let n = parseWhile(value[j..len(value) - 1], numStr, {'0'..'9'})
+    dt.nanosecond = parseInt(numStr) * (10 ^ (9 - n))
+    j += n
   else:
     # Ignore the token and move forward in the value string by the same length
     j += token.len
@@ -1866,33 +1880,34 @@ proc parse*(value, layout: string, zone: Timezone = local()): DateTime =
   ## parsed, then the input will be assumed to be specified in the `zone` timezone
   ## already, so no timezone conversion will be done in that case.
   ##
-  ## ==========  =================================================================================  ================================================
-  ## Specifier   Description                                                                        Example
-  ## ==========  =================================================================================  ================================================
-  ##    d        Numeric value of the day of the month, it will be one or two digits long.          ``1/04/2012 -> 1``, ``21/04/2012 -> 21``
-  ##    dd       Same as above, but always two digits.                                              ``1/04/2012 -> 01``, ``21/04/2012 -> 21``
-  ##    ddd      Three letter string which indicates the day of the week.                           ``Saturday -> Sat``, ``Monday -> Mon``
-  ##    dddd     Full string for the day of the week.                                               ``Saturday -> Saturday``, ``Monday -> Monday``
-  ##    h        The hours in one digit if possible. Ranging from 0-12.                             ``5pm -> 5``, ``2am -> 2``
-  ##    hh       The hours in two digits always. If the hour is one digit 0 is prepended.           ``5pm -> 05``, ``11am -> 11``
-  ##    H        The hours in one digit if possible, randing from 0-24.                             ``5pm -> 17``, ``2am -> 2``
-  ##    HH       The hours in two digits always. 0 is prepended if the hour is one digit.           ``5pm -> 17``, ``2am -> 02``
-  ##    m        The minutes in 1 digit if possible.                                                ``5:30 -> 30``, ``2:01 -> 1``
-  ##    mm       Same as above but always 2 digits, 0 is prepended if the minute is one digit.      ``5:30 -> 30``, ``2:01 -> 01``
-  ##    M        The month in one digit if possible.                                                ``September -> 9``, ``December -> 12``
-  ##    MM       The month in two digits always. 0 is prepended.                                    ``September -> 09``, ``December -> 12``
-  ##    MMM      Abbreviated three-letter form of the month.                                        ``September -> Sep``, ``December -> Dec``
-  ##    MMMM     Full month string, properly capitalized.                                           ``September -> September``
-  ##    s        Seconds as one digit if possible.                                                  ``00:00:06 -> 6``
-  ##    ss       Same as above but always two digits. 0 is prepended.                               ``00:00:06 -> 06``
-  ##    t        ``A`` when time is in the AM. ``P`` when time is in the PM.
-  ##    tt       Same as above, but ``AM`` and ``PM`` instead of ``A`` and ``P`` respectively.
-  ##    yy       Displays the year to two digits.                                                   ``2012 -> 12``
-  ##    yyyy     Displays the year to four digits.                                                  ``2012 -> 2012``
-  ##    z        Displays the timezone offset from UTC. ``Z`` is parsed as ``+0``                   ``GMT+7 -> +7``, ``GMT-5 -> -5``
-  ##    zz       Same as above but with leading 0.                                                  ``GMT+7 -> +07``, ``GMT-5 -> -05``
-  ##    zzz      Same as above but with ``:mm`` where *mm* represents minutes.                      ``GMT+7 -> +07:00``, ``GMT-5 -> -05:00``
-  ## ==========  =================================================================================  ================================================
+  ## =======================  =================================================================================  ================================================
+  ## Specifier                Description                                                                        Example
+  ## =======================  =================================================================================  ================================================
+  ##    d                     Numeric value of the day of the month, it will be one or two digits long.          ``1/04/2012 -> 1``, ``21/04/2012 -> 21``
+  ##    dd                    Same as above, but always two digits.                                              ``1/04/2012 -> 01``, ``21/04/2012 -> 21``
+  ##    ddd                   Three letter string which indicates the day of the week.                           ``Saturday -> Sat``, ``Monday -> Mon``
+  ##    dddd                  Full string for the day of the week.                                               ``Saturday -> Saturday``, ``Monday -> Monday``
+  ##    h                     The hours in one digit if possible. Ranging from 0-12.                             ``5pm -> 5``, ``2am -> 2``
+  ##    hh                    The hours in two digits always. If the hour is one digit 0 is prepended.           ``5pm -> 05``, ``11am -> 11``
+  ##    H                     The hours in one digit if possible, randing from 0-24.                             ``5pm -> 17``, ``2am -> 2``
+  ##    HH                    The hours in two digits always. 0 is prepended if the hour is one digit.           ``5pm -> 17``, ``2am -> 02``
+  ##    m                     The minutes in 1 digit if possible.                                                ``5:30 -> 30``, ``2:01 -> 1``
+  ##    mm                    Same as above but always 2 digits, 0 is prepended if the minute is one digit.      ``5:30 -> 30``, ``2:01 -> 01``
+  ##    M                     The month in one digit if possible.                                                ``September -> 9``, ``December -> 12``
+  ##    MM                    The month in two digits always. 0 is prepended.                                    ``September -> 09``, ``December -> 12``
+  ##    MMM                   Abbreviated three-letter form of the month.                                        ``September -> Sep``, ``December -> Dec``
+  ##    MMMM                  Full month string, properly capitalized.                                           ``September -> September``
+  ##    s                     Seconds as one digit if possible.                                                  ``00:00:06 -> 6``
+  ##    ss                    Same as above but always two digits. 0 is prepended.                               ``00:00:06 -> 06``
+  ##    t                     ``A`` when time is in the AM. ``P`` when time is in the PM.
+  ##    tt                    Same as above, but ``AM`` and ``PM`` instead of ``A`` and ``P`` respectively.
+  ##    yy                    Displays the year to two digits.                                                   ``2012 -> 12``
+  ##    yyyy                  Displays the year to four digits.                                                  ``2012 -> 2012``
+  ##    z                     Displays the timezone offset from UTC. ``Z`` is parsed as ``+0``                   ``GMT+7 -> +7``, ``GMT-5 -> -5``
+  ##    zz                    Same as above but with leading 0.                                                  ``GMT+7 -> +07``, ``GMT-5 -> -05``
+  ##    zzz                   Same as above but with ``:mm`` where *mm* represents minutes.                      ``GMT+7 -> +07:00``, ``GMT-5 -> -05:00``
+  ##    fff/ffffff/fffffffff  for consistency with format - nanoseconds                                          ``1 -> 1 nanosecond``
+  ## =======================  =================================================================================  ================================================
   ##
   ## Other strings can be inserted by putting them in ``''``. For example
   ## ``hh'->'mm`` will give ``01->56``.  The following characters can be
@@ -1900,8 +1915,8 @@ proc parse*(value, layout: string, zone: Timezone = local()): DateTime =
   ## ``,``. However you don't need to necessarily separate format specifiers, a
   ## unambiguous format string like ``yyyyMMddhhmmss`` is valid too.
   runnableExamples:
-    let tStr = "1970-01-01T00:00:00+00:00"
-    doAssert parse(tStr, "yyyy-MM-dd'T'HH:mm:sszzz") == fromUnix(0).utc
+    let tStr = "1970-01-01T00:00:00.0+00:00"
+    doAssert parse(tStr, "yyyy-MM-dd'T'HH:mm:ss.fffzzz") == fromUnix(0).utc
 
   var i = 0 # pointer for format string
   var j = 0 # pointer for value string
