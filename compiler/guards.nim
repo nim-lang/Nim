@@ -402,8 +402,8 @@ proc usefulFact(n: PNode; o: Operators): PNode =
 
 type
   TModel* = object
-    s: seq[PNode] # the "knowledge base"
-    o: Operators
+    s*: seq[PNode] # the "knowledge base"
+    o*: Operators
 
 proc addFact*(m: var TModel, nn: PNode) =
   let n = usefulFact(nn, m.o)
