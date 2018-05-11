@@ -918,7 +918,7 @@ proc handleSymbolFile*(module: PSym; cache: IdentCache; conf: ConfigRef): PRodRe
   if gSymbolFiles in {disabledSf, writeOnlySf, v2Sf}:
     module.id = getID()
     return nil
-  idgen.loadMaxIds(conf, options.gProjectPath / options.gProjectName)
+  idgen.loadMaxIds(conf, conf.projectPath / conf.projectName)
   let fileIdx = module.fileIdx
   discard checkDep(fileIdx, cache, conf)
   #if gMods[fileIdx.int32].reason == rrEmpty: internalError("handleSymbolFile")

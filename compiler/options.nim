@@ -135,6 +135,22 @@ type
                              ## symbols are always guaranteed to be style
                              ## insensitive. Otherwise hell would break lose.
     packageCache*: StringTableRef
+    searchPaths*: seq[string]
+    lazyPaths*: seq[string]
+    outFile*, prefixDir*, libpath*, nimcacheDir*: string
+    dllOverrides, moduleOverrides*: StringTableRef
+    projectName*: string # holds a name like 'nim'
+    projectPath*: string # holds a path like /home/alice/projects/nim/compiler/
+    projectFull*: string # projectPath/projectName
+    projectIsStdin*: bool # whether we're compiling from stdin
+    projectMainIdx*: int32 # the canonical path id of the main module
+    command*: string # the main command (e.g. cc, check, scan, etc)
+    commandArgs*: seq[string] # any arguments after the main command
+    keepComments*: bool # whether the parser needs to keep comments
+    implicitImports*: seq[string] # modules that are to be implicitly imported
+    implicitIncludes*: seq[string] # modules that are to be implicitly included
+    docSeeSrcUrl*: string # if empty, no seeSrc will be generated. \
+    # The string uses the formatting variables `path` and `line`.
 
 const oldExperimentalFeatures* = {implicitDeref, dotOperators, callOperator, parallel}
 
@@ -151,7 +167,24 @@ proc newConfigRef*(): ConfigRef =
     notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1],
     configVars: newStringTable(modeStyleInsensitive),
     symbols: newStringTable(modeStyleInsensitive),
-    packageCache: newPackageCache())
+    packageCache: newPackageCache(),
+    searchPaths: @[],
+    lazyPaths: @[],
+    outFile: "", prefixDir: "", libpath: "", nimcacheDir: "",
+    dllOverrides: newStringTable(modeCaseInsensitive),
+    moduleOverrides: newStringTable(modeStyleInsensitive),
+    projectName: "", # holds a name like 'nim'
+    projectPath: "", # holds a path like /home/alice/projects/nim/compiler/
+    projectFull: "", # projectPath/projectName
+    projectIsStdin: false, # whether we're compiling from stdin
+    projectMainIdx: 0'i32, # the canonical path id of the main module
+    command: "", # the main command (e.g. cc, check, scan, etc)
+    commandArgs: @[], # any arguments after the main command
+    keepComments: true, # whether the parser needs to keep comments
+    implicitImports: @[], # modules that are to be implicitly imported
+    implicitIncludes: @[], # modules that are to be implicitly included
+    docSeeSrcUrl: ""
+  )
 
 proc newPartialConfigRef*(): ConfigRef =
   ## create a new ConfigRef that is only good enough for error reporting.
@@ -215,11 +248,6 @@ var
   gExitcode*: int8
   gCmd*: TCommands = cmdNone  # the command
   gSelectedGC* = gcRefc       # the selected GC
-  searchPaths*: seq[string] = @[]
-  lazyPaths*: seq[string]   = @[]
-  outFile*: string = ""
-  docSeeSrcUrl*: string = ""  # if empty, no seeSrc will be generated. \
-  # The string uses the formatting variables `path` and `line`.
   #headerFile*: string = ""
   gVerbosity* = 1             # how verbose the compiler is
   gNumberOfProcessors*: int   # number of processors
@@ -262,24 +290,6 @@ const
   DocConfig* = "nimdoc.cfg"
   DocTexConfig* = "nimdoc.tex.cfg"
 
-# additional configuration variables:
-var
-  gDllOverrides = newStringTable(modeCaseInsensitive)
-  gModuleOverrides* = newStringTable(modeStyleInsensitive)
-  gPrefixDir* = "" # Overrides the default prefix dir in getPrefixDir proc.
-  libpath* = ""
-  gProjectName* = "" # holds a name like 'nim'
-  gProjectPath* = "" # holds a path like /home/alice/projects/nim/compiler/
-  gProjectFull* = "" # projectPath/projectName
-  gProjectIsStdin* = false # whether we're compiling from stdin
-  gProjectMainIdx*: int32 # the canonical path id of the main module
-  nimcacheDir* = ""
-  command* = "" # the main command (e.g. cc, check, scan, etc)
-  commandArgs*: seq[string] = @[] # any arguments after the main command
-  gKeepComments*: bool = true # whether the parser needs to keep comments
-  implicitImports*: seq[string] = @[] # modules that are to be implicitly imported
-  implicitIncludes*: seq[string] = @[] # modules that are to be implicitly included
-
 const oKeepVariableNames* = true
 
 template compilingLib*(conf: ConfigRef): bool =
@@ -289,10 +299,10 @@ proc mainCommandArg*(conf: ConfigRef): string =
   ## This is intended for commands like check or parse
   ## which will work on the main project file unless
   ## explicitly given a specific file argument
-  if commandArgs.len > 0:
-    result = commandArgs[0]
+  if conf.commandArgs.len > 0:
+    result = conf.commandArgs[0]
   else:
-    result = gProjectName
+    result = conf.projectName
 
 proc existsConfigVar*(conf: ConfigRef; key: string): bool =
   result = hasKey(conf.configVars, key)
@@ -304,37 +314,36 @@ proc setConfigVar*(conf: ConfigRef; key, val: string) =
   conf.configVars[key] = val
 
 proc getOutFile*(conf: ConfigRef; filename, ext: string): string =
-  if options.outFile != "": result = options.outFile
+  if conf.outFile != "": result = conf.outFile
   else: result = changeFileExt(filename, ext)
 
 proc getPrefixDir*(conf: ConfigRef): string =
   ## Gets the prefix dir, usually the parent directory where the binary resides.
   ##
-  ## This is overridden by some tools (namely nimsuggest) via the ``gPrefixDir``
+  ## This is overridden by some tools (namely nimsuggest) via the ``conf.prefixDir``
   ## global.
-  if gPrefixDir != "": result = gPrefixDir
-  else:
-    result = splitPath(getAppDir()).head
+  if conf.prefixDir != "": result = conf.prefixDir
+  else: result = splitPath(getAppDir()).head
 
 proc setDefaultLibpath*(conf: ConfigRef) =
   # set default value (can be overwritten):
-  if libpath == "":
+  if conf.libpath == "":
     # choose default libpath:
     var prefix = getPrefixDir(conf)
     when defined(posix):
-      if prefix == "/usr": libpath = "/usr/lib/nim"
-      elif prefix == "/usr/local": libpath = "/usr/local/lib/nim"
-      else: libpath = joinPath(prefix, "lib")
-    else: libpath = joinPath(prefix, "lib")
+      if prefix == "/usr": conf.libpath = "/usr/lib/nim"
+      elif prefix == "/usr/local": conf.libpath = "/usr/local/lib/nim"
+      else: conf.libpath = joinPath(prefix, "lib")
+    else: conf.libpath = joinPath(prefix, "lib")
 
     # Special rule to support other tools (nimble) which import the compiler
     # modules and make use of them.
     let realNimPath = findExe("nim")
     # Find out if $nim/../../lib/system.nim exists.
     let parentNimLibPath = realNimPath.parentDir.parentDir / "lib"
-    if not fileExists(libpath / "system.nim") and
+    if not fileExists(conf.libpath / "system.nim") and
         fileExists(parentNimlibPath / "system.nim"):
-      libpath = parentNimLibPath
+      conf.libpath = parentNimLibPath
 
 proc canonicalizePath*(conf: ConfigRef; path: string): string =
   # on Windows, 'expandFilename' calls getFullPathName which doesn't do
@@ -350,7 +359,7 @@ proc canonicalizePath*(conf: ConfigRef; path: string): string =
 
 proc shortenDir*(conf: ConfigRef; dir: string): string =
   ## returns the interesting part of a dir
-  var prefix = gProjectPath & DirSep
+  var prefix = conf.projectPath & DirSep
   if startsWith(dir, prefix):
     return substr(dir, len(prefix))
   prefix = getPrefixDir(conf) & DirSep
@@ -366,25 +375,24 @@ proc removeTrailingDirSep*(path: string): string =
 
 proc disableNimblePath*(conf: ConfigRef) =
   gNoNimblePath = true
-  lazyPaths.setLen(0)
+  conf.lazyPaths.setLen(0)
 
 include packagehandling
 
 proc getNimcacheDir*(conf: ConfigRef): string =
-  result = if nimcacheDir.len > 0: nimcacheDir else: shortenDir(conf, gProjectPath) /
-                                                         genSubDir
-
+  result = if conf.nimcacheDir.len > 0: conf.nimcacheDir
+           else: shortenDir(conf, conf.projectPath) / genSubDir
 
 proc pathSubs*(conf: ConfigRef; p, config: string): string =
   let home = removeTrailingDirSep(os.getHomeDir())
   result = unixToNativePath(p % [
     "nim", getPrefixDir(conf),
-    "lib", libpath,
+    "lib", conf.libpath,
     "home", home,
     "config", config,
-    "projectname", options.gProjectName,
-    "projectpath", options.gProjectPath,
-    "projectdir", options.gProjectPath,
+    "projectname", conf.projectName,
+    "projectpath", conf.projectPath,
+    "projectdir", conf.projectPath,
     "nimcache", getNimcacheDir(conf)])
   if "~/" in result:
     result = result.replace("~/", home & '/')
@@ -410,28 +418,28 @@ proc completeGeneratedFilePath*(conf: ConfigRef; f: string, createSubDir: bool =
   #echo "completeGeneratedFilePath(", f, ") = ", result
 
 proc rawFindFile(conf: ConfigRef; f: string): string =
-  for it in searchPaths:
+  for it in conf.searchPaths:
     result = joinPath(it, f)
     if existsFile(result):
       return canonicalizePath(conf, result)
   result = ""
 
 proc rawFindFile2(conf: ConfigRef; f: string): string =
-  for i, it in lazyPaths:
+  for i, it in conf.lazyPaths:
     result = joinPath(it, f)
     if existsFile(result):
       # bring to front
       for j in countDown(i,1):
-        swap(lazyPaths[j], lazyPaths[j-1])
+        swap(conf.lazyPaths[j], conf.lazyPaths[j-1])
 
       return canonicalizePath(conf, result)
   result = ""
 
 template patchModule(conf: ConfigRef) {.dirty.} =
-  if result.len > 0 and gModuleOverrides.len > 0:
+  if result.len > 0 and conf.moduleOverrides.len > 0:
     let key = getPackageName(conf, result) & "_" & splitFile(result).name
-    if gModuleOverrides.hasKey(key):
-      let ov = gModuleOverrides[key]
+    if conf.moduleOverrides.hasKey(key):
+      let ov = conf.moduleOverrides[key]
       if ov.len > 0: result = ov
 
 proc findFile*(conf: ConfigRef; f: string): string {.procvar.} =
@@ -492,10 +500,10 @@ proc canonDynlibName(s: string): string =
     result = s.substr(start)
 
 proc inclDynlibOverride*(conf: ConfigRef; lib: string) =
-  gDllOverrides[lib.canonDynlibName] = "true"
+  conf.dllOverrides[lib.canonDynlibName] = "true"
 
 proc isDynlibOverride*(conf: ConfigRef; lib: string): bool =
-  result = gDynlibOverrideAll or gDllOverrides.hasKey(lib.canonDynlibName)
+  result = gDynlibOverrideAll or conf.dllOverrides.hasKey(lib.canonDynlibName)
 
 proc binaryStrSearch*(x: openArray[string], y: string): int =
   var a = 0

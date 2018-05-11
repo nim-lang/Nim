@@ -474,7 +474,7 @@ proc generateScript(conf: ConfigRef; projectFile: string, script: Rope) =
   let (dir, name, ext) = splitFile(projectFile)
   writeRope(script, getNimcacheDir(conf) / addFileExt("compile_" & name,
                                      platform.OS[targetOS].scriptExt))
-  copyFile(libpath / "nimbase.h", getNimcacheDir(conf) / "nimbase.h")
+  copyFile(conf.libpath / "nimbase.h", getNimcacheDir(conf) / "nimbase.h")
 
 proc getOptSpeed(conf: ConfigRef; c: TSystemCC): string =
   result = getConfigVar(conf, c, ".options.speed")
@@ -563,7 +563,7 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile): string =
   var includeCmd, compilePattern: string
   if not noAbsolutePaths(conf):
     # compute include paths:
-    includeCmd = CC[c].includeCmd & quoteShell(libpath)
+    includeCmd = CC[c].includeCmd & quoteShell(conf.libpath)
 
     for includeDir in items(cIncludes):
       includeCmd.add(join([CC[c].includeCmd, includeDir.quoteShell]))
@@ -592,14 +592,14 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile): string =
   result = quoteShell(compilePattern % [
     "file", cf, "objfile", objfile, "options", options,
     "include", includeCmd, "nim", getPrefixDir(conf),
-    "nim", getPrefixDir(conf), "lib", libpath])
+    "nim", getPrefixDir(conf), "lib", conf.libpath])
   add(result, ' ')
   addf(result, CC[c].compileTmpl, [
     "file", cf, "objfile", objfile,
     "options", options, "include", includeCmd,
     "nim", quoteShell(getPrefixDir(conf)),
     "nim", quoteShell(getPrefixDir(conf)),
-    "lib", quoteShell(libpath)])
+    "lib", quoteShell(conf.libpath)])
 
 proc footprint(conf: ConfigRef; cfile: Cfile): SecureHash =
   result = secureHash(
@@ -655,12 +655,12 @@ proc compileCFile(conf: ConfigRef; list: CFileList, script: var Rope, cmds: var 
 proc getLinkCmd(conf: ConfigRef; projectfile, objfiles: string): string =
   if optGenStaticLib in gGlobalOptions:
     var libname: string
-    if options.outFile.len > 0:
-      libname = options.outFile.expandTilde
+    if conf.outFile.len > 0:
+      libname = conf.outFile.expandTilde
       if not libname.isAbsolute():
         libname = getCurrentDir() / libname
     else:
-      libname = (libNameTmpl() % splitFile(gProjectName).name)
+      libname = (libNameTmpl() % splitFile(conf.projectName).name)
     result = CC[cCompiler].buildLib % ["libfile", libname,
                                        "objfiles", objfiles]
   else:
@@ -679,8 +679,8 @@ proc getLinkCmd(conf: ConfigRef; projectfile, objfiles: string): string =
     else:
       exefile = splitFile(projectfile).name & platform.OS[targetOS].exeExt
       builddll = ""
-    if options.outFile.len > 0:
-      exefile = options.outFile.expandTilde
+    if conf.outFile.len > 0:
+      exefile = conf.outFile.expandTilde
       if not exefile.isAbsolute():
         exefile = getCurrentDir() / exefile
     if not noAbsolutePaths(conf):
@@ -697,13 +697,13 @@ proc getLinkCmd(conf: ConfigRef; projectfile, objfiles: string): string =
       linkTmpl = CC[cCompiler].linkTmpl
     result = quoteShell(result % ["builddll", builddll,
         "buildgui", buildgui, "options", linkOptions, "objfiles", objfiles,
-        "exefile", exefile, "nim", getPrefixDir(conf), "lib", libpath])
+        "exefile", exefile, "nim", getPrefixDir(conf), "lib", conf.libpath])
     result.add ' '
     addf(result, linkTmpl, ["builddll", builddll,
         "buildgui", buildgui, "options", linkOptions,
         "objfiles", objfiles, "exefile", exefile,
         "nim", quoteShell(getPrefixDir(conf)),
-        "lib", quoteShell(libpath)])
+        "lib", quoteShell(conf.libpath)])
 
 template tryExceptOSErrorMessage(conf: ConfigRef; errorPrefix: string = "", body: untyped): typed =
   try:
@@ -903,7 +903,7 @@ proc writeMapping*(conf: ConfigRef; symbolMapping: Rope) =
                             getConfigVar(conf, cCompiler, ".options.linker")))
 
   add(code, "\n[Environment]\nlibpath=")
-  add(code, strutils.escape(libpath))
+  add(code, strutils.escape(conf.libpath))
 
   addf(code, "\n[Symbols]$n$1", [symbolMapping])
-  writeRope(code, joinPath(gProjectPath, "mapping.txt"))
+  writeRope(code, joinPath(conf.projectPath, "mapping.txt"))

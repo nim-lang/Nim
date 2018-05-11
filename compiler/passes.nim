@@ -216,8 +216,8 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream,
         # modules to include between compilation runs? we'd need to track that
         # in ROD files. I think we should enable this feature only
         # for the interactive mode.
-        processImplicits graph.config, implicitImports, nkImportStmt, a, module
-        processImplicits graph.config, implicitIncludes, nkIncludeStmt, a, module
+        processImplicits graph.config, graph.config.implicitImports, nkImportStmt, a, module
+        processImplicits graph.config, graph.config.implicitIncludes, nkIncludeStmt, a, module
 
       while true:
         if graph.stopCompile(): break

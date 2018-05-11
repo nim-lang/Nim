@@ -653,7 +653,7 @@ proc myClose(graph: ModuleGraph; c: PPassContext, n: PNode): PNode =
   result = process(c, n)
   var w = PRodWriter(c)
   writeRod(w)
-  idgen.saveMaxIds(graph.config, options.gProjectPath / options.gProjectName)
+  idgen.saveMaxIds(graph.config, graph.config.projectPath / graph.config.projectName)
 
 const rodwritePass* = makePass(open = myOpen, close = myClose, process = process)
 

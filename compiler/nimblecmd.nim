@@ -13,8 +13,8 @@ import parseutils, strutils, strtabs, os, options, msgs, sequtils,
   configuration
 
 proc addPath*(conf: ConfigRef; path: string, info: TLineInfo) =
-  if not options.searchPaths.contains(path):
-    options.searchPaths.insert(path, 0)
+  if not conf.searchPaths.contains(path):
+    conf.searchPaths.insert(path, 0)
 
 type
   Version* = distinct string
@@ -112,9 +112,9 @@ proc addNimblePath(conf: ConfigRef; p: string, info: TLineInfo) =
     if not path.isAbsolute():
       path = p / path
 
-  if not contains(options.searchPaths, path):
+  if not contains(conf.searchPaths, path):
     message(conf, info, hintPath, path)
-    options.lazyPaths.insert(path, 0)
+    conf.lazyPaths.insert(path, 0)
 
 proc addPathRec(conf: ConfigRef; dir: string, info: TLineInfo) =
   var packages = newStringTable(modeStyleInsensitive)

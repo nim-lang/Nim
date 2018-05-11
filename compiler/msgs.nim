@@ -400,7 +400,7 @@ proc quit(conf: ConfigRef; msg: TMsgKind) =
     else:
       styledMsgWriteln(fgRed, "No stack traceback available\n" &
           "To create a stacktrace, rerun compilation with ./koch temp " &
-          options.command & " <file>")
+          conf.command & " <file>")
   quit 1
 
 proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string) =

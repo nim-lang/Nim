@@ -287,7 +287,7 @@ proc processPath(conf: ConfigRef; path: string, info: TLineInfo,
           elif notRelativeToProj:
             getCurrentDir() / path
           else:
-            options.gProjectPath / path
+            conf.projectPath / path
   try:
     result = pathSubs(conf, p, info.toFullPath().splitFile().dir)
   except ValueError:
@@ -366,22 +366,22 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     let path = processPath(conf, arg, info)
 
-    options.searchPaths.keepItIf(cmpPaths(it, path) != 0)
-    options.lazyPaths.keepItIf(cmpPaths(it, path) != 0)
+    conf.searchPaths.keepItIf(cmpPaths(it, path) != 0)
+    conf.lazyPaths.keepItIf(cmpPaths(it, path) != 0)
 
     if (len(path) > 0) and (path[len(path) - 1] == DirSep):
       let strippedPath = path[0 .. (len(path) - 2)]
-      options.searchPaths.keepItIf(cmpPaths(it, strippedPath) != 0)
-      options.lazyPaths.keepItIf(cmpPaths(it, strippedPath) != 0)
+      conf.searchPaths.keepItIf(cmpPaths(it, strippedPath) != 0)
+      conf.lazyPaths.keepItIf(cmpPaths(it, strippedPath) != 0)
   of "nimcache":
     expectArg(conf, switch, arg, pass, info)
-    options.nimcacheDir = processPath(conf, arg, info, true)
+    conf.nimcacheDir = processPath(conf, arg, info, true)
   of "out", "o":
     expectArg(conf, switch, arg, pass, info)
-    options.outFile = arg
+    conf.outFile = arg
   of "docseesrcurl":
     expectArg(conf, switch, arg, pass, info)
-    options.docSeeSrcUrl = arg
+    conf.docSeeSrcUrl = arg
   of "mainmodule", "m":
     discard "allow for backwards compatibility, but don't do anything"
   of "define", "d":
@@ -579,10 +579,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optGenIndex}, arg, pass, info)
   of "import":
     expectArg(conf, switch, arg, pass, info)
-    if pass in {passCmd2, passPP}: implicitImports.add arg
+    if pass in {passCmd2, passPP}: conf.implicitImports.add arg
   of "include":
     expectArg(conf, switch, arg, pass, info)
-    if pass in {passCmd2, passPP}: implicitIncludes.add arg
+    if pass in {passCmd2, passPP}: conf.implicitIncludes.add arg
   of "listcmd":
     expectNoArg(conf, switch, arg, pass, info)
     incl(gGlobalOptions, optListCmd)
@@ -655,7 +655,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "colors": processOnOffSwitchG(conf, {optUseColors}, arg, pass, info)
   of "lib":
     expectArg(conf, switch, arg, pass, info)
-    libpath = processPath(conf, arg, info, notRelativeToProj=true)
+    conf.libpath = processPath(conf, arg, info, notRelativeToProj=true)
   of "putenv":
     expectArg(conf, switch, arg, pass, info)
     splitSwitch(conf, arg, key, val, pass, info)
@@ -751,17 +751,17 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
   if argsCount == 0:
     # nim filename.nims  is the same as "nim e filename.nims":
     if p.key.endswith(".nims"):
-      options.command = "e"
-      options.gProjectName = unixToNativePath(p.key)
+      config.command = "e"
+      config.projectName = unixToNativePath(p.key)
       config.arguments = cmdLineRest(p)
       result = true
     elif pass != passCmd2:
-      options.command = p.key
+      config.command = p.key
   else:
-    if pass == passCmd1: options.commandArgs.add p.key
+    if pass == passCmd1: config.commandArgs.add p.key
     if argsCount == 1:
       # support UNIX style filenames everywhere for portable build scripts:
-      options.gProjectName = unixToNativePath(p.key)
+      config.projectName = unixToNativePath(p.key)
       config.arguments = cmdLineRest(p)
       result = true
   inc argsCount

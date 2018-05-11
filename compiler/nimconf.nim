@@ -239,7 +239,7 @@ proc loadConfigs*(cfg: string; cache: IdentCache; config: ConfigRef = nil) =
   if optSkipUserConfigFile notin gGlobalOptions:
     readConfigFile(getUserConfigPath(cfg), cache, config)
 
-  let pd = if gProjectPath.len > 0: gProjectPath else: getCurrentDir()
+  let pd = if config.projectPath.len > 0: config.projectPath else: getCurrentDir()
   if optSkipParentConfigFiles notin gGlobalOptions:
     for dir in parentDirs(pd, fromRoot=true, inclusive=false):
       readConfigFile(dir / cfg, cache, config)
@@ -247,13 +247,13 @@ proc loadConfigs*(cfg: string; cache: IdentCache; config: ConfigRef = nil) =
   if optSkipProjConfigFile notin gGlobalOptions:
     readConfigFile(pd / cfg, cache, config)
 
-    if gProjectName.len != 0:
+    if config.projectName.len != 0:
       # new project wide config file:
-      var projectConfig = changeFileExt(gProjectFull, "nimcfg")
+      var projectConfig = changeFileExt(config.projectFull, "nimcfg")
       if not fileExists(projectConfig):
-        projectConfig = changeFileExt(gProjectFull, "nim.cfg")
+        projectConfig = changeFileExt(config.projectFull, "nim.cfg")
       readConfigFile(projectConfig, cache, config)
 
-proc loadConfigs*(cfg: string; config: ConfigRef = nil) =
+proc loadConfigs*(cfg: string; config: ConfigRef) =
   # for backwards compatibility only.
   loadConfigs(cfg, newIdentCache(), config)

@@ -29,7 +29,7 @@ proc overwriteFiles*(conf: ConfigRef) =
   let doStrip = options.getConfigVar(conf, "pretty.strip").normalize == "on"
   for i in 0 .. high(gSourceFiles):
     if gSourceFiles[i].dirty and not gSourceFiles[i].isNimfixFile and
-        (not gOnlyMainfile or gSourceFiles[i].fileIdx == gProjectMainIdx.FileIndex):
+        (not gOnlyMainfile or gSourceFiles[i].fileIdx == conf.projectMainIdx.FileIndex):
       let newFile = if gOverWrite: gSourceFiles[i].fullpath
                     else: gSourceFiles[i].fullpath.changeFileExt(".pretty.nim")
       try:

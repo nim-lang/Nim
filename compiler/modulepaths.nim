@@ -152,7 +152,7 @@ proc getModuleName*(conf: ConfigRef; n: PNode): string =
           let x = addFileExt(a, "nim")
           if fileExists(x): return x
         for candidate in stdlibDirs:
-          attempt(options.libpath / candidate / modname)
+          attempt(conf.libpath / candidate / modname)
 
       # hacky way to implement 'x / y /../ z':
       result = getModuleName(conf, n1)
