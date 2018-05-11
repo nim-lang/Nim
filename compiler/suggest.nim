@@ -32,7 +32,7 @@
 
 # included from sigmatch.nim
 
-import algorithm, prefixmatches
+import algorithm, prefixmatches, configuration
 from wordrecg import wDeprecated
 
 when defined(nimsuggest):
@@ -192,8 +192,8 @@ proc suggestResult(s: Suggest) =
   else:
     suggestWriteln($s)
 
-proc produceOutput(a: var Suggestions) =
-  if gIdeCmd in {ideSug, ideCon}:
+proc produceOutput(a: var Suggestions; conf: ConfigRef) =
+  if conf.ideCmd in {ideSug, ideCon}:
     a.sort cmpSuggestions
   when defined(debug):
     # debug code
@@ -480,30 +480,30 @@ proc suggestSym*(info: TLineInfo; s: PSym; usageSym: var PSym; isDecl=true) {.in
         isDecl:
       suggestResult(symToSuggest(s, isLocal=false, ideOutline, info, 100, PrefixMatch.None, false, 0))
 
-proc warnAboutDeprecated(info: TLineInfo; s: PSym) =
+proc warnAboutDeprecated(conf: ConfigRef; info: TLineInfo; s: PSym) =
   if s.kind in routineKinds:
     let n = s.ast[pragmasPos]
     if n.kind != nkEmpty:
       for it in n:
         if whichPragma(it) == wDeprecated and it.safeLen == 2 and
             it[1].kind in {nkStrLit..nkTripleStrLit}:
-          message(info, warnDeprecated, it[1].strVal & "; " & s.name.s)
+          message(conf, info, warnDeprecated, it[1].strVal & "; " & s.name.s)
           return
-  message(info, warnDeprecated, s.name.s)
+  message(conf, info, warnDeprecated, s.name.s)
 
-proc markUsed(info: TLineInfo; s: PSym; usageSym: var PSym) =
+proc markUsed(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym) =
   incl(s.flags, sfUsed)
   if s.kind == skEnumField and s.owner != nil:
     incl(s.owner.flags, sfUsed)
   if {sfDeprecated, sfError} * s.flags != {}:
-    if sfDeprecated in s.flags: warnAboutDeprecated(info, s)
-    if sfError in s.flags: localError(info, errWrongSymbolX, s.name.s)
+    if sfDeprecated in s.flags: warnAboutDeprecated(conf, info, s)
+    if sfError in s.flags: localError(conf, info,  "usage of '$1' is a user-defined error" % s.name.s)
   when defined(nimsuggest):
     suggestSym(info, s, usageSym, false)
 
-proc useSym*(sym: PSym; usageSym: var PSym): PNode =
+proc useSym*(conf: ConfigRef; sym: PSym; usageSym: var PSym): PNode =
   result = newSymNode(sym)
-  markUsed(result.info, sym, usageSym)
+  markUsed(conf, result.info, sym, usageSym)
 
 proc safeSemExpr*(c: PContext, n: PNode): PNode =
   # use only for idetools support!
@@ -534,9 +534,9 @@ proc suggestExprNoCheck*(c: PContext, n: PNode) =
   if c.compilesContextId > 0: return
   inc(c.compilesContextId)
   var outputs: Suggestions = @[]
-  if gIdeCmd == ideSug:
+  if c.config.ideCmd == ideSug:
     sugExpr(c, n, outputs)
-  elif gIdeCmd == ideCon:
+  elif c.config.ideCmd == ideCon:
     if n.kind in nkCallKinds:
       var a = copyNode(n)
       var x = safeSemExpr(c, n.sons[0])
@@ -550,8 +550,8 @@ proc suggestExprNoCheck*(c: PContext, n: PNode) =
       suggestCall(c, a, n, outputs)
 
   dec(c.compilesContextId)
-  if outputs.len > 0 and gIdeCmd in {ideSug, ideCon, ideDef}:
-    produceOutput(outputs)
+  if outputs.len > 0 and c.config.ideCmd in {ideSug, ideCon, ideDef}:
+    produceOutput(outputs, c.config)
     suggestQuit()
 
 proc suggestExpr*(c: PContext, n: PNode) =
@@ -570,11 +570,11 @@ proc suggestStmt*(c: PContext, n: PNode) =
 proc suggestEnum*(c: PContext; n: PNode; t: PType) =
   var outputs: Suggestions = @[]
   suggestSymList(c, t.n, nil, n.info, outputs)
-  produceOutput(outputs)
+  produceOutput(outputs, c.config)
   if outputs.len > 0: suggestQuit()
 
 proc suggestSentinel*(c: PContext) =
-  if gIdeCmd != ideSug or c.module.position != gTrackPos.fileIndex.int32: return
+  if c.config.ideCmd != ideSug or c.module.position != gTrackPos.fileIndex.int32: return
   if c.compilesContextId > 0: return
   inc(c.compilesContextId)
   var outputs: Suggestions = @[]
@@ -590,4 +590,4 @@ proc suggestSentinel*(c: PContext) =
         outputs.add(symToSuggest(it, isLocal = isLocal, ideSug, newLineInfo(gTrackPos.fileIndex, -1, -1), 0, PrefixMatch.None, false, scopeN))
 
   dec(c.compilesContextId)
-  produceOutput(outputs)
+  produceOutput(outputs, c.config)
