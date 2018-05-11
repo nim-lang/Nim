@@ -131,15 +131,23 @@ type
     symbols*: StringTableRef ## We need to use a StringTableRef here as defined
                              ## symbols are always guaranteed to be style
                              ## insensitive. Otherwise hell would break lose.
+    packageCache*: StringTableRef
 
 const oldExperimentalFeatures* = {implicitDeref, dotOperators, callOperator, parallel}
+
+template newPackageCache*(): untyped =
+  newStringTable(when FileSystemCaseSensitive:
+                   modeCaseInsensitive
+                 else:
+                   modeCaseSensitive)
 
 proc newConfigRef*(): ConfigRef =
   result = ConfigRef(cppDefines: initSet[string](),
     headerFile: "", features: {}, foreignPackageNotes: {hintProcessing, warnUnknownMagic,
     hintQuitCalled, hintExecuting},
     notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1],
-    symbols: newStringTable(modeStyleInsensitive))
+    symbols: newStringTable(modeStyleInsensitive),
+    packageCache: newPackageCache())
 
 proc newPartialConfigRef*(): ConfigRef =
   ## create a new ConfigRef that is only good enough for error reporting.
@@ -422,7 +430,7 @@ proc rawFindFile2(conf: ConfigRef; f: string): string =
 
 template patchModule(conf: ConfigRef) {.dirty.} =
   if result.len > 0 and gModuleOverrides.len > 0:
-    let key = getPackageName(result) & "_" & splitFile(result).name
+    let key = getPackageName(conf, result) & "_" & splitFile(result).name
     if gModuleOverrides.hasKey(key):
       let ov = gModuleOverrides[key]
       if ov.len > 0: result = ov

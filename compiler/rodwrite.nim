@@ -480,7 +480,7 @@ proc writeRod(w: PRodWriter) =
   processStacks(w, true)
   var f: File
   if not open(f, completeGeneratedFilePath(w.config, changeFileExt(
-                      w.filename.withPackageName, RodExt)),
+                      withPackageName(w.config, w.filename), RodExt)),
               fmWrite):
     #echo "couldn't write rod file for: ", w.filename
     return

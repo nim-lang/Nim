@@ -9,7 +9,7 @@
 
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
-  wordrecg, strutils, options, guards, writetracking
+  wordrecg, strutils, options, guards, writetracking, configuration
 
 when defined(useDfa):
   import dfa
@@ -52,6 +52,7 @@ type
     locked: seq[PNode] # locked locations
     gcUnsafe, isRecursive, isToplevel, hasSideEffect, inEnforcedGcSafe: bool
     maxLockLevel, currLockLevel: TLockLevel
+    config: ConfigRef
   PEffects = var TEffects
 
 proc `<`(a, b: TLockLevel): bool {.borrow.}
@@ -72,24 +73,23 @@ proc getLockLevel(t: PType): TLockLevel =
 
 proc lockLocations(a: PEffects; pragma: PNode) =
   if pragma.kind != nkExprColonExpr:
-    localError(pragma.info, errGenerated, "locks pragma without argument")
+    localError(a.config, pragma.info, "locks pragma without argument")
     return
   var firstLL = TLockLevel(-1'i16)
   for x in pragma[1]:
     let thisLL = getLockLevel(x.typ)
     if thisLL != 0.TLockLevel:
       if thisLL < 0.TLockLevel or thisLL > MaxLockLevel.TLockLevel:
-        localError(x.info, "invalid lock level: " & $thisLL)
+        localError(a.config, x.info, "invalid lock level: " & $thisLL)
       elif firstLL < 0.TLockLevel: firstLL = thisLL
       elif firstLL != thisLL:
-        localError(x.info, errGenerated,
+        localError(a.config, x.info,
           "multi-lock requires the same static lock level for every operand")
       a.maxLockLevel = max(a.maxLockLevel, firstLL)
     a.locked.add x
   if firstLL >= 0.TLockLevel and firstLL != a.currLockLevel:
     if a.currLockLevel > 0.TLockLevel and a.currLockLevel <= firstLL:
-      localError(pragma.info, errGenerated,
-        "invalid nested locking")
+      localError(a.config, pragma.info, "invalid nested locking")
     a.currLockLevel = firstLL
 
 proc guardGlobal(a: PEffects; n: PNode; guard: PSym) =
@@ -102,7 +102,7 @@ proc guardGlobal(a: PEffects; n: PNode; guard: PSym) =
   #  message(n.info, warnUnguardedAccess, renderTree(n))
   #else:
   if not a.isTopLevel:
-    localError(n.info, errGenerated, "unguarded access: " & renderTree(n))
+    localError(a.config, n.info, "unguarded access: " & renderTree(n))
 
 # 'guard*' are checks which are concerned with 'guard' annotations
 # (var x{.guard: y.}: int)
@@ -125,7 +125,7 @@ proc guardDotAccess(a: PEffects; n: PNode) =
         if ty == nil: break
         ty = ty.skipTypes(skipPtrs)
     if field == nil:
-      localError(n.info, errGenerated, "invalid guard field: " & g.name.s)
+      localError(a.config, n.info, "invalid guard field: " & g.name.s)
       return
     g = field
     #ri.sym.guard = field
@@ -138,7 +138,7 @@ proc guardDotAccess(a: PEffects; n: PNode) =
     for L in a.locked:
       #if a.guards.sameSubexprs(dot, L): return
       if guards.sameTree(dot, L): return
-    localError(n.info, errGenerated, "unguarded access: " & renderTree(n))
+    localError(a.config, n.info, "unguarded access: " & renderTree(n))
   else:
     guardGlobal(a, n, g)
 
@@ -167,9 +167,9 @@ proc initVarViaNew(a: PEffects, n: PNode) =
   elif isLocalVar(a, s):
     makeVolatile(a, s)
 
-proc warnAboutGcUnsafe(n: PNode) =
+proc warnAboutGcUnsafe(n: PNode; conf: ConfigRef) =
   #assert false
-  message(n.info, warnGcUnsafe, renderTree(n))
+  message(conf, n.info, warnGcUnsafe, renderTree(n))
 
 proc markGcUnsafe(a: PEffects; reason: PSym) =
   if not a.inEnforcedGcSafe:
@@ -194,42 +194,42 @@ else:
     a.hasSideEffect = true
     markGcUnsafe(a, reason)
 
-proc listGcUnsafety(s: PSym; onlyWarning: bool; cycleCheck: var IntSet) =
+proc listGcUnsafety(s: PSym; onlyWarning: bool; cycleCheck: var IntSet; conf: ConfigRef) =
   let u = s.gcUnsafetyReason
   if u != nil and not cycleCheck.containsOrIncl(u.id):
     let msgKind = if onlyWarning: warnGcUnsafe2 else: errGenerated
     case u.kind
     of skLet, skVar:
-      message(s.info, msgKind,
+      message(conf, s.info, msgKind,
         ("'$#' is not GC-safe as it accesses '$#'" &
         " which is a global using GC'ed memory") % [s.name.s, u.name.s])
     of routineKinds:
       # recursive call *always* produces only a warning so the full error
       # message is printed:
-      listGcUnsafety(u, true, cycleCheck)
-      message(s.info, msgKind,
+      listGcUnsafety(u, true, cycleCheck, conf)
+      message(conf, s.info, msgKind,
         "'$#' is not GC-safe as it calls '$#'" %
         [s.name.s, u.name.s])
     of skParam, skForVar:
-      message(s.info, msgKind,
+      message(conf, s.info, msgKind,
         "'$#' is not GC-safe as it performs an indirect call via '$#'" %
         [s.name.s, u.name.s])
     else:
-      message(u.info, msgKind,
+      message(conf, u.info, msgKind,
         "'$#' is not GC-safe as it performs an indirect call here" % s.name.s)
 
-proc listGcUnsafety(s: PSym; onlyWarning: bool) =
+proc listGcUnsafety(s: PSym; onlyWarning: bool; conf: ConfigRef) =
   var cycleCheck = initIntSet()
-  listGcUnsafety(s, onlyWarning, cycleCheck)
+  listGcUnsafety(s, onlyWarning, cycleCheck, conf)
 
 proc useVar(a: PEffects, n: PNode) =
   let s = n.sym
   if isLocalVar(a, s):
     if s.id notin a.init:
       if {tfNeedsInit, tfNotNil} * s.typ.flags != {}:
-        message(n.info, warnProveInit, s.name.s)
+        message(a.config, n.info, warnProveInit, s.name.s)
       else:
-        message(n.info, warnUninit, s.name.s)
+        message(a.config, n.info, warnUninit, s.name.s)
       # prevent superfluous warnings about the same variable:
       a.init.add s.id
   if {sfGlobal, sfThread} * s.flags != {} and s.kind in {skVar, skLet} and
@@ -257,9 +257,8 @@ proc addToIntersection(inter: var TIntersection, s: int) =
 proc throws(tracked, n: PNode) =
   if n.typ == nil or n.typ.kind != tyError: tracked.add n
 
-proc getEbase(): PType =
-  result = if getCompilerProc("Exception") != nil: sysTypeFromName"Exception"
-           else: sysTypeFromName"E_Base"
+proc getEbase(g: ModuleGraph): PType =
+  result = g.sysTypeFromName"Exception"
 
 proc excType(n: PNode): PType =
   # reraise is like raising E_Base:

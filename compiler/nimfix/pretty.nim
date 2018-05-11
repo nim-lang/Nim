@@ -13,7 +13,8 @@
 import
   strutils, os, intsets, strtabs
 
-import "../compiler" / [options, ast, astalgo, msgs, semdata, ropes, idents]
+import ".." / [options, ast, astalgo, msgs, semdata, ropes, idents,
+  configuration]
 import prettybase
 
 type
@@ -24,8 +25,8 @@ var
   gStyleCheck*: StyleCheck
   gCheckExtern*, gOnlyMainfile*: bool
 
-proc overwriteFiles*() =
-  let doStrip = options.getConfigVar("pretty.strip").normalize == "on"
+proc overwriteFiles*(conf: ConfigRef) =
+  let doStrip = options.getConfigVar(conf, "pretty.strip").normalize == "on"
   for i in 0 .. high(gSourceFiles):
     if gSourceFiles[i].dirty and not gSourceFiles[i].isNimfixFile and
         (not gOnlyMainfile or gSourceFiles[i].fileIdx == gProjectMainIdx.FileIndex):
@@ -41,7 +42,7 @@ proc overwriteFiles*() =
           f.write(gSourceFiles[i].newline)
         f.close
       except IOError:
-        rawMessage(errCannotOpenFile, newFile)
+        rawMessage(conf, errGenerated, "cannot open file: " & newFile)
 
 proc `=~`(s: string, a: openArray[string]): bool =
   for x in a:
@@ -110,30 +111,30 @@ proc replaceInFile(info: TLineInfo; newName: string) =
     system.shallowCopy(gSourceFiles[info.fileIndex.int].lines[info.line.int-1], x)
     gSourceFiles[info.fileIndex.int].dirty = true
 
-proc checkStyle(info: TLineInfo, s: string, k: TSymKind; sym: PSym) =
+proc checkStyle(conf: ConfigRef; info: TLineInfo, s: string, k: TSymKind; sym: PSym) =
   let beau = beautifyName(s, k)
   if s != beau:
     if gStyleCheck == StyleCheck.Auto:
       sym.name = getIdent(beau)
       replaceInFile(info, beau)
     else:
-      message(info, hintName, beau)
+      message(conf, info, hintName, beau)
 
-proc styleCheckDefImpl(info: TLineInfo; s: PSym; k: TSymKind) =
+proc styleCheckDefImpl(conf: ConfigRef; info: TLineInfo; s: PSym; k: TSymKind) =
   # operators stay as they are:
   if k in {skResult, skTemp} or s.name.s[0] notin prettybase.Letters: return
   if k in {skType, skGenericParam} and sfAnon in s.flags: return
   if {sfImportc, sfExportc} * s.flags == {} or gCheckExtern:
-    checkStyle(info, s.name.s, k, s)
+    checkStyle(conf, info, s.name.s, k, s)
 
 template styleCheckDef*(info: TLineInfo; s: PSym; k: TSymKind) =
   when defined(nimfix):
-    if gStyleCheck != StyleCheck.None: styleCheckDefImpl(info, s, k)
+    if gStyleCheck != StyleCheck.None: styleCheckDefImpl(conf, info, s, k)
 
 template styleCheckDef*(info: TLineInfo; s: PSym) =
-  styleCheckDef(info, s, s.kind)
+  styleCheckDef(conf, info, s, s.kind)
 template styleCheckDef*(s: PSym) =
-  styleCheckDef(s.info, s, s.kind)
+  styleCheckDef(conf, s.info, s, s.kind)
 
 proc styleCheckUseImpl(info: TLineInfo; s: PSym) =
   if info.fileIndex.int < 0: return
@@ -151,4 +152,4 @@ proc styleCheckUseImpl(info: TLineInfo; s: PSym) =
 
 template styleCheckUse*(info: TLineInfo; s: PSym) =
   when defined(nimfix):
-    if gStyleCheck != StyleCheck.None: styleCheckUseImpl(info, s)
+    if gStyleCheck != StyleCheck.None: styleCheckUseImpl(conf, info, s)

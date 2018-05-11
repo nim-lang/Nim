@@ -613,7 +613,7 @@ proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
   if gCmd notin {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToLLVM}:
     return false
 
-  var hashFile = toGeneratedFile(conf, cfile.cname.withPackageName, "sha1")
+  var hashFile = toGeneratedFile(conf, conf.withPackageName(cfile.cname), "sha1")
   var currentHash = footprint(conf, cfile)
   var f: File
   if open(f, hashFile, fmRead):

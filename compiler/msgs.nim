@@ -594,11 +594,11 @@ proc internalError*(conf: ConfigRef; errMsg: string) =
   writeContext(conf, unknownLineInfo())
   rawMessage(conf, errInternal, errMsg)
 
-template assertNotNil*(conf, e): untyped =
+template assertNotNil*(conf: ConfigRef; e): untyped =
   if e == nil: internalError(conf, $instantiationInfo())
   e
 
-template internalAssert*(conf, e: bool) =
+template internalAssert*(conf: ConfigRef, e: bool) =
   if not e: internalError(conf, $instantiationInfo())
 
 proc addSourceLine*(fileIdx: FileIndex, line: string) =

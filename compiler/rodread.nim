@@ -886,7 +886,7 @@ proc checkDep(fileIdx: FileIndex; cache: IdentCache; conf: ConfigRef): TReasonFo
   var hash = getHash(fileIdx)
   gMods[fileIdx.int32].reason = rrNone  # we need to set it here to avoid cycles
   result = rrNone
-  var rodfile = toGeneratedFile(conf, filename.withPackageName, RodExt)
+  var rodfile = toGeneratedFile(conf, conf.withPackageName(filename), RodExt)
   var r = newRodReader(rodfile, hash, fileIdx.int32, cache, conf)
   if r == nil:
     result = (if existsFile(rodfile): rrRodInvalid else: rrRodDoesNotExist)
