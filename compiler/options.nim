@@ -119,6 +119,8 @@ type
     arguments*: string ## the arguments to be passed to the program that
                        ## should be run
     helpWritten*: bool
+    ideCmd*: IdeCmd
+    oldNewlines*: bool
     enableNotes*: TNoteKinds
     disableNotes*: TNoteKinds
     foreignPackageNotes*: TNoteKinds
@@ -128,6 +130,7 @@ type
     hintCounter*: int
     warnCounter*: int
     errorMax*: int
+    configVars*: StringTableRef
     symbols*: StringTableRef ## We need to use a StringTableRef here as defined
                              ## symbols are always guaranteed to be style
                              ## insensitive. Otherwise hell would break lose.
@@ -146,6 +149,7 @@ proc newConfigRef*(): ConfigRef =
     headerFile: "", features: {}, foreignPackageNotes: {hintProcessing, warnUnknownMagic,
     hintQuitCalled, hintExecuting},
     notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1],
+    configVars: newStringTable(modeStyleInsensitive),
     symbols: newStringTable(modeStyleInsensitive),
     packageCache: newPackageCache())
 
@@ -197,10 +201,6 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
                             osDragonfly, osMacosx}
     else: discard
 
-var
-  gIdeCmd*: IdeCmd
-  gOldNewlines*: bool
-
 const
   ChecksOptions* = {optObjCheck, optFieldCheck, optRangeCheck, optNilCheck,
     optOverflowCheck, optBoundsCheck, optAssert, optNaNCheck, optInfCheck,
@@ -227,8 +227,8 @@ var
   gEvalExpr* = ""             # expression for idetools --eval
   gLastCmdTime*: float        # when caas is enabled, we measure each command
   gListFullPaths*: bool
-  gPreciseStack*: bool = false
-  gNoNimblePath* = false
+  gPreciseStack*: bool
+  gNoNimblePath*: bool
   gDynlibOverrideAll*: bool
   useNimNamespace*: bool
 
@@ -238,15 +238,15 @@ type
 
 var gSymbolFiles*: SymbolFilesOption
 
-proc importantComments*(): bool {.inline.} = gCmd in {cmdDoc, cmdIdeTools}
-proc usesNativeGC*(): bool {.inline.} = gSelectedGC >= gcRefc
-template preciseStack*(): bool = gPreciseStack
+proc importantComments*(conf: ConfigRef): bool {.inline.} = gCmd in {cmdDoc, cmdIdeTools}
+proc usesNativeGC*(conf: ConfigRef): bool {.inline.} = gSelectedGC >= gcRefc
+template preciseStack*(conf: ConfigRef): bool = gPreciseStack
 
-template compilationCachePresent*: untyped =
+template compilationCachePresent*(conf: ConfigRef): untyped =
   gSymbolFiles in {enabledSf, writeOnlySf}
 #  {optCaasEnabled, optSymbolFiles} * gGlobalOptions != {}
 
-template optPreserveOrigSource*: untyped =
+template optPreserveOrigSource*(conf: ConfigRef): untyped =
   optEmbedOrigSrc in gGlobalOptions
 
 const
@@ -264,7 +264,6 @@ const
 
 # additional configuration variables:
 var
-  gConfigVars* = newStringTable(modeStyleInsensitive)
   gDllOverrides = newStringTable(modeCaseInsensitive)
   gModuleOverrides* = newStringTable(modeStyleInsensitive)
   gPrefixDir* = "" # Overrides the default prefix dir in getPrefixDir proc.
@@ -283,10 +282,10 @@ var
 
 const oKeepVariableNames* = true
 
-template compilingLib*: bool =
+template compilingLib*(conf: ConfigRef): bool =
   gGlobalOptions * {optGenGuiApp, optGenDynLib} != {}
 
-proc mainCommandArg*: string =
+proc mainCommandArg*(conf: ConfigRef): string =
   ## This is intended for commands like check or parse
   ## which will work on the main project file unless
   ## explicitly given a specific file argument
@@ -296,13 +295,13 @@ proc mainCommandArg*: string =
     result = gProjectName
 
 proc existsConfigVar*(conf: ConfigRef; key: string): bool =
-  result = hasKey(gConfigVars, key)
+  result = hasKey(conf.configVars, key)
 
 proc getConfigVar*(conf: ConfigRef; key: string): string =
-  result = gConfigVars.getOrDefault key
+  result = conf.configVars.getOrDefault key
 
 proc setConfigVar*(conf: ConfigRef; key, val: string) =
-  gConfigVars[key] = val
+  conf.configVars[key] = val
 
 proc getOutFile*(conf: ConfigRef; filename, ext: string): string =
   if options.outFile != "": result = options.outFile

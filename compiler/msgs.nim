@@ -168,7 +168,7 @@ when false:
 proc raiseRecoverableError*(msg: string) {.noinline, noreturn.} =
   raise newException(ERecoverableError, msg)
 
-proc sourceLine*(i: TLineInfo): Rope
+proc sourceLine*(conf: ConfigRef; i: TLineInfo): Rope
 
 proc unknownLineInfo*(): TLineInfo =
   result.line = uint16(0)
@@ -492,9 +492,9 @@ proc resetAttributes*(conf: ConfigRef) =
   if {optUseColors, optStdout} * gGlobalOptions == {optUseColors}:
     terminal.resetAttributes(stderr)
 
-proc writeSurroundingSrc(info: TLineInfo) =
+proc writeSurroundingSrc(conf: ConfigRef; info: TLineInfo) =
   const indent = "  "
-  msgWriteln(indent & $info.sourceLine)
+  msgWriteln(indent & $sourceLine(conf, info))
   msgWriteln(indent & spaces(info.col) & '^')
 
 proc formatMsg*(info: TLineInfo, msg: TMsgKind, arg: string): string =
@@ -557,7 +557,7 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
       else:
         styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s)
       if hintSource in conf.notes:
-        info.writeSurroundingSrc()
+        conf.writeSurroundingSrc(info)
   handleError(conf, msg, eh, s)
 
 proc fatal*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
@@ -604,10 +604,10 @@ template internalAssert*(conf: ConfigRef, e: bool) =
 proc addSourceLine*(fileIdx: FileIndex, line: string) =
   fileInfos[fileIdx.int32].lines.add line.rope
 
-proc sourceLine*(i: TLineInfo): Rope =
+proc sourceLine*(conf: ConfigRef; i: TLineInfo): Rope =
   if i.fileIndex.int32 < 0: return nil
 
-  if not optPreserveOrigSource and fileInfos[i.fileIndex.int32].lines.len == 0:
+  if not optPreserveOrigSource(conf) and fileInfos[i.fileIndex.int32].lines.len == 0:
     try:
       for line in lines(i.toFullPath):
         addSourceLine i.fileIndex, line.string

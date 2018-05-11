@@ -18,7 +18,13 @@ const
 
 type
   TMsgKind* = enum
-    errUnknown, errInternal, errIllFormedAstX, errCannotOpenFile, errGenerated,
+    errUnknown, errInternal, errIllFormedAstX, errCannotOpenFile,
+    errXExpected,
+    errGridTableNotImplemented,
+    errGeneralParseError,
+    errNewSectionExpected,
+    errInvalidDirectiveX,
+    errGenerated,
     errUser,
     warnCannotOpenFile,
     warnOctalEscape, warnXIsNeverRead, warnXmightNotBeenInit,
@@ -47,6 +53,11 @@ const
     errInternal: "internal error: $1",
     errIllFormedAstX: "illformed AST: $1",
     errCannotOpenFile: "cannot open '$1'",
+    errXExpected: "'$1' expected",
+    errGridTableNotImplemented: "grid table is not implemented",
+    errGeneralParseError: "general parse error",
+    errNewSectionExpected: "new section expected",
+    errInvalidDirectiveX: "invalid directive: '$1'",
     errGenerated: "$1",
     errUser: "$1",
     warnCannotOpenFile: "cannot open '$1'",

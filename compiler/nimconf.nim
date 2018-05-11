@@ -123,7 +123,7 @@ proc parseDirective(L: var TLexer, tok: var TToken; config: ConfigRef; condStack
   of wEnd: doEnd(L, tok, condStack)
   of wWrite:
     ppGetTok(L, tok)
-    msgs.msgWriteln(strtabs.`%`(tokToStr(tok), options.gConfigVars,
+    msgs.msgWriteln(strtabs.`%`(tokToStr(tok), config.configVars,
                                 {useEnvironment, useKey}))
     ppGetTok(L, tok)
   else:
@@ -196,7 +196,7 @@ proc parseAssignment(L: var TLexer, tok: var TToken;
       add(val, tokToStr(tok))
       confTok(L, tok, config, condStack)
   if percent:
-    processSwitch(s, strtabs.`%`(val, options.gConfigVars,
+    processSwitch(s, strtabs.`%`(val, config.configVars,
                                 {useEnvironment, useEmpty}), passPP, info, config)
   else:
     processSwitch(s, val, passPP, info, config)

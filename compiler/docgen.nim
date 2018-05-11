@@ -16,7 +16,7 @@ import
   wordrecg, syntaxes, renderer, lexer, packages/docutils/rstast,
   packages/docutils/rst, packages/docutils/rstgen, times,
   packages/docutils/highlite, sempass2, json, xmltree, cgi,
-  typesrenderer, astalgo, modulepaths
+  typesrenderer, astalgo, modulepaths, configuration
 
 type
   TSections = array[TSymKind, Rope]
@@ -53,36 +53,40 @@ proc attachToType(d: PDoc; p: PSym): PSym =
   if params.len > 0: check(0)
   for i in 2..<params.len: check(i)
 
-proc compilerMsgHandler(filename: string, line, col: int,
-                        msgKind: rst.MsgKind, arg: string) {.procvar.} =
-  # translate msg kind:
-  var k: msgs.TMsgKind
-  case msgKind
-  of meCannotOpenFile: k = errCannotOpenFile
-  of meExpected: k = errXExpected
-  of meGridTableNotImplemented: k = errGridTableNotImplemented
-  of meNewSectionExpected: k = errNewSectionExpected
-  of meGeneralParseError: k = errGeneralParseError
-  of meInvalidDirective: k = errInvalidDirectiveX
-  of mwRedefinitionOfLabel: k = warnRedefinitionOfLabel
-  of mwUnknownSubstitution: k = warnUnknownSubstitutionX
-  of mwUnsupportedLanguage: k = warnLanguageXNotSupported
-  of mwUnsupportedField: k = warnFieldXNotSupported
-  globalError(newLineInfo(filename, line, col), k, arg)
+template declareClosures =
+  proc compilerMsgHandler(filename: string, line, col: int,
+                          msgKind: rst.MsgKind, arg: string) {.procvar.} =
+    # translate msg kind:
+    var k: TMsgKind
+    case msgKind
+    of meCannotOpenFile: k = errCannotOpenFile
+    of meExpected: k = errXExpected
+    of meGridTableNotImplemented: k = errGridTableNotImplemented
+    of meNewSectionExpected: k = errNewSectionExpected
+    of meGeneralParseError: k = errGeneralParseError
+    of meInvalidDirective: k = errInvalidDirectiveX
+    of mwRedefinitionOfLabel: k = warnRedefinitionOfLabel
+    of mwUnknownSubstitution: k = warnUnknownSubstitutionX
+    of mwUnsupportedLanguage: k = warnLanguageXNotSupported
+    of mwUnsupportedField: k = warnFieldXNotSupported
+    globalError(conf, newLineInfo(conf, filename, line, col), k, arg)
 
-proc docgenFindFile(s: string): string {.procvar.} =
-  result = options.findFile(s)
-  if result.len == 0:
-    result = getCurrentDir() / s
-    if not existsFile(result): result = ""
+  proc docgenFindFile(s: string): string {.procvar.} =
+    result = options.findFile(conf, s)
+    if result.len == 0:
+      result = getCurrentDir() / s
+      if not existsFile(result): result = ""
 
 proc parseRst(text, filename: string,
               line, column: int, hasToc: var bool,
-              rstOptions: RstParseOptions): PRstNode =
+              rstOptions: RstParseOptions;
+              conf: ConfigRef): PRstNode =
+  declareClosures()
   result = rstParse(text, filename, line, column, hasToc, rstOptions,
                     docgenFindFile, compilerMsgHandler)
 
-proc newDocumentor*(filename: string, config: StringTableRef): PDoc =
+proc newDocumentor*(filename: string, conf: ConfigRef): PDoc =
+  declareClosures()
   new(result)
   initRstGenerator(result[], (if gCmd != cmdRst2tex: outHtml else: outLatex),
                    options.gConfigVars, filename, {roSupportRawDirective},
@@ -109,7 +113,7 @@ proc newDocumentor*(filename: string, config: StringTableRef): PDoc =
   result.jArray = newJArray()
   initStrTable result.types
   result.onTestSnippet = proc (d: var RstGenerator; filename, cmd: string; status: int; content: string) =
-    localError(newLineInfo(d.filename, -1, -1), warnUser, "only 'rst2html' supports the ':test:' attribute")
+    localError(conf, newLineInfo(conf, d.filename, -1, -1), warnUser, "only 'rst2html' supports the ':test:' attribute")
 
 proc dispA(dest: var Rope, xml, tex: string, args: openArray[Rope]) =
   if gCmd != cmdRst2tex: addf(dest, xml, args)

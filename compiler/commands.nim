@@ -490,10 +490,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "oldnewlines":
     case arg.normalize
     of "on":
-      options.gOldNewlines = true
+      conf.oldNewlines = true
       defineSymbol(conf.symbols, "nimOldNewlines")
     of "off":
-      options.gOldNewlines = false
+      conf.oldNewlines = false
       undefSymbol(conf.symbols, "nimOldNewlines")
     else:
       localError(conf, info, errOnOrOffExpectedButXFound % arg)
@@ -671,19 +671,19 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     trackDirty(conf, arg, info)
   of "suggest":
     expectNoArg(conf, switch, arg, pass, info)
-    gIdeCmd = ideSug
+    conf.ideCmd = ideSug
   of "def":
     expectNoArg(conf, switch, arg, pass, info)
-    gIdeCmd = ideDef
+    conf.ideCmd = ideDef
   of "eval":
     expectArg(conf, switch, arg, pass, info)
     gEvalExpr = arg
   of "context":
     expectNoArg(conf, switch, arg, pass, info)
-    gIdeCmd = ideCon
+    conf.ideCmd = ideCon
   of "usages":
     expectNoArg(conf, switch, arg, pass, info)
-    gIdeCmd = ideUse
+    conf.ideCmd = ideUse
   of "stdout":
     expectNoArg(conf, switch, arg, pass, info)
     incl(gGlobalOptions, optStdout)
