@@ -176,6 +176,12 @@ type
     text*: cstring
     value*: cstring
 
+  TextAreaElement* = ref object of ElementObj
+    value*: cstring
+    selectionStart*, selectionEnd*: int
+    selectionDirection*: cstring
+    rows*, cols*: int
+
   FormElement* = ref FormObj
   FormObj {.importc.} = object of ElementObj
     action*: cstring
@@ -502,7 +508,7 @@ proc removeAttributeNode*(n, attr: Node)
 proc removeChild*(n, child: Node)
 proc replaceChild*(n, newNode, oldNode: Node)
 proc replaceData*(n: Node, start, len: int, text: cstring)
-proc scrollIntoView*(n: Node)
+proc scrollIntoView*(n: Node, alignToTop: bool=true)
 proc setAttribute*(n: Node, name, value: cstring)
 proc setAttributeNode*(n: Node, attr: Node)
 
