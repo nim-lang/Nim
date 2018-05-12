@@ -818,6 +818,25 @@ proc `%`*(o: enum): JsonNode =
   ## string. Creates a new ``JString JsonNode``.
   result = %($o)
 
+proc `%`*[T](t :TableRef[string,T]) : JsonNode =
+  result = newJObject()
+  for k , s in t:
+    result[k] = %s
+
+proc `%`*[T](t :OrderedTableRef[string,T]) : JsonNode =
+  result = newJObject()
+  for k , s in t:
+    result[k] = %s
+
+proc `%`*(t :DateTime) : JsonNode =
+  result = newJString(t.format(dateISO8601))
+
+proc `%`*[T](o :Option[T]) : JsonNode =
+  if o.isSome():
+    result = %o.some()
+  else:
+    result = newJNull()
+
 proc toJson(x: NimNode): NimNode {.compiletime.} =
   case x.kind
   of nnkBracket: # array
