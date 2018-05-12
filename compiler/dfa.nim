@@ -23,7 +23,7 @@
 ## "A Graph–Free Approach to Data–Flow Analysis" by Markus Mohnen.
 ## https://link.springer.com/content/pdf/10.1007/3-540-45937-5_6.pdf
 
-import ast, astalgo, types, intsets, tables, msgs
+import ast, astalgo, types, intsets, tables, msgs, options
 
 type
   InstrKind* = enum
@@ -160,7 +160,7 @@ proc genBreak(c: var Con; n: PNode) =
       if c.blocks[i].label == n.sons[0].sym:
         c.blocks[i].fixups.add L1
         return
-    globalError(n.info, errGenerated, "VM problem: cannot find 'break' target")
+    #globalError(n.info, "VM problem: cannot find 'break' target")
   else:
     c.blocks[c.blocks.high].fixups.add L1
 
@@ -334,7 +334,7 @@ proc gen(c: var Con; n: PNode) =
   of nkVarSection, nkLetSection: genVarSection(c, n)
   else: discard
 
-proc dfa(code: seq[Instr]) =
+proc dfa(code: seq[Instr]; conf: ConfigRef) =
   var u = newSeq[IntSet](code.len) # usages
   var d = newSeq[IntSet](code.len) # defs
   var c = newSeq[IntSet](code.len) # consumed
@@ -426,17 +426,17 @@ proc dfa(code: seq[Instr]) =
     of use, useWithinCall:
       let s = code[i].sym
       if s.id notin d[i]:
-        localError(code[i].n.info, "usage of uninitialized variable: " & s.name.s)
+        localError(conf, code[i].n.info, "usage of uninitialized variable: " & s.name.s)
       if s.id in c[i]:
-        localError(code[i].n.info, "usage of an already consumed variable: " & s.name.s)
+        localError(conf, code[i].n.info, "usage of an already consumed variable: " & s.name.s)
 
     else: discard
 
-proc dataflowAnalysis*(s: PSym; body: PNode) =
+proc dataflowAnalysis*(s: PSym; body: PNode; conf: ConfigRef) =
   var c = Con(code: @[], blocks: @[])
   gen(c, body)
   when defined(useDfa) and defined(debugDfa): echoCfg(c.code)
-  dfa(c.code)
+  dfa(c.code, conf)
 
 proc constructCfg*(s: PSym; body: PNode): ControlFlowGraph =
   ## constructs a control flow graph for ``body``.
