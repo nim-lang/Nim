@@ -1676,7 +1676,7 @@ proc myProcess(c: PPassContext, n: PNode): PNode =
   let c = PCtx(c)
   # don't eval errornous code:
   if c.oldErrorCount == c.config.errorCounter:
-    evalStmt(PCtx(c), n)
+    evalStmt(c, n)
     result = emptyNode
   else:
     result = n

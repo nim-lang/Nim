@@ -132,9 +132,9 @@ template styleCheckDef*(info: TLineInfo; s: PSym; k: TSymKind) =
     if gStyleCheck != StyleCheck.None: styleCheckDefImpl(conf, info, s, k)
 
 template styleCheckDef*(info: TLineInfo; s: PSym) =
-  styleCheckDef(conf, info, s, s.kind)
+  styleCheckDef(info, s, s.kind)
 template styleCheckDef*(s: PSym) =
-  styleCheckDef(conf, s.info, s, s.kind)
+  styleCheckDef(s.info, s, s.kind)
 
 proc styleCheckUseImpl(info: TLineInfo; s: PSym) =
   if info.fileIndex.int < 0: return

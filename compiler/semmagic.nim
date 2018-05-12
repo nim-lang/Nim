@@ -16,7 +16,7 @@ proc semAddr(c: PContext; n: PNode; isUnsafeAddr=false): PNode =
   if x.kind == nkSym:
     x.sym.flags.incl(sfAddrTaken)
   if isAssignable(c, x, isUnsafeAddr) notin {arLValue, arLocalLValue}:
-    localError(n.info, errExprHasNoAddress)
+    localError(c.config, n.info, errExprHasNoAddress)
   result.add x
   result.typ = makePtrType(c, x.typ)
 
@@ -43,7 +43,7 @@ proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
     let x = copyTree(n)
     x.sons[0] = newIdentNode(getIdent"[]", n.info)
     bracketNotFoundError(c, x)
-    #localError(n.info, "could not resolve: " & $n)
+    #localError(c.config, n.info, "could not resolve: " & $n)
     result = n
 
 proc semArrPut(c: PContext; n: PNode; flags: TExprFlags): PNode =
@@ -70,7 +70,7 @@ proc expectIntLit(c: PContext, n: PNode): int =
   let x = c.semConstExpr(c, n)
   case x.kind
   of nkIntLit..nkInt64Lit: result = int(x.intVal)
-  else: localError(n.info, errIntLiteralExpected)
+  else: localError(c.config, n.info, errIntLiteralExpected)
 
 proc semInstantiationInfo(c: PContext, n: PNode): PNode =
   result = newNodeIT(nkTupleConstr, n.info, n.typ)
@@ -140,7 +140,7 @@ proc evalTypeTrait(traitCall: PNode, operand: PType, context: PSym): PNode =
   of "genericHead":
     var res = uninstantiate(operand)
     if res == operand and res.kind notin tyMagicGenerics:
-      localError(traitCall.info,
+      localError(c.config, traitCall.info,
         "genericHead expects a generic type. The given type was " &
         typeToString(operand))
       return newType(tyError, context).toNode(traitCall.info)
@@ -153,7 +153,7 @@ proc evalTypeTrait(traitCall: PNode, operand: PType, context: PSym): PNode =
                      hasDestructor(t)
     result = newIntNodeT(ord(not complexObj), traitCall)
   else:
-    localError(traitCall.info, "unknown trait")
+    localError(c.config, traitCall.info, "unknown trait")
     result = emptyNode
 
 proc semTypeTraits(c: PContext, n: PNode): PNode =
@@ -176,7 +176,7 @@ proc semOrd(c: PContext, n: PNode): PNode =
   elif parType.kind == tySet:
     result.typ = makeRangeType(c, firstOrd(parType), lastOrd(parType), n.info)
   else:
-    localError(n.info, errOrdinalTypeExpected)
+    localError(c.config, n.info, errOrdinalTypeExpected)
     result.typ = errorType(c)
 
 proc semBindSym(c: PContext, n: PNode): PNode =
@@ -185,13 +185,13 @@ proc semBindSym(c: PContext, n: PNode): PNode =
 
   let sl = semConstExpr(c, n.sons[1])
   if sl.kind notin {nkStrLit, nkRStrLit, nkTripleStrLit}:
-    localError(n.sons[1].info, errStringLiteralExpected)
+    localError(c.config, n.sons[1].info, errStringLiteralExpected)
     return errorNode(c, n)
 
   let isMixin = semConstExpr(c, n.sons[2])
   if isMixin.kind != nkIntLit or isMixin.intVal < 0 or
       isMixin.intVal > high(TSymChoiceRule).int:
-    localError(n.sons[2].info, errConstExprExpected)
+    localError(c.config, n.sons[2].info, errConstExprExpected)
     return errorNode(c, n)
 
   let id = newIdentNode(getIdent(sl.strVal), n.info)
@@ -221,9 +221,9 @@ proc semOf(c: PContext, n: PNode): PNode =
     let y = skipTypes(n.sons[2].typ, abstractPtrs-{tyTypeDesc})
 
     if x.kind == tyTypeDesc or y.kind != tyTypeDesc:
-      localError(n.info, errXExpectsObjectTypes, "of")
+      localError(c.config, n.info, errXExpectsObjectTypes, "of")
     elif b.kind != tyObject or a.kind != tyObject:
-      localError(n.info, errXExpectsObjectTypes, "of")
+      localError(c.config, n.info, errXExpectsObjectTypes, "of")
     else:
       let diff = inheritanceDiff(a, b)
       # | returns: 0 iff `a` == `b`
@@ -238,9 +238,9 @@ proc semOf(c: PContext, n: PNode): PNode =
         result.typ = getSysType(tyBool)
         return result
       elif diff == high(int):
-        localError(n.info, errXcanNeverBeOfThisSubtype, typeToString(a))
+        localError(c.config, n.info, errXcanNeverBeOfThisSubtype, typeToString(a))
   else:
-    localError(n.info, errXExpectsTwoArguments, "of")
+    localError(c.config, n.info, errXExpectsTwoArguments, "of")
   n.typ = getSysType(tyBool)
   result = n
 
@@ -277,11 +277,11 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mDotDot:
     result = n
   of mRoof:
-    localError(n.info, "builtin roof operator is not supported anymore")
+    localError(c.config, n.info, "builtin roof operator is not supported anymore")
   of mPlugin:
     let plugin = getPlugin(n[0].sym)
     if plugin.isNil:
-      localError(n.info, "cannot find plugin " & n[0].sym.name.s)
+      localError(c.config, n.info, "cannot find plugin " & n[0].sym.name.s)
       result = n
     else:
       result = plugin(c, n)

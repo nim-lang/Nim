@@ -41,9 +41,9 @@ proc mergeInitStatus(existing: var InitStatus, newStatus: InitStatus) =
 
 proc invalidObjConstr(n: PNode) =
   if n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.s[0] == ':':
-    localError(n.info, "incorrect object construction syntax; use a space after the colon")
+    localError(c.config, n.info, "incorrect object construction syntax; use a space after the colon")
   else:
-    localError(n.info, "incorrect object construction syntax")
+    localError(c.config, n.info, "incorrect object construction syntax")
 
 proc locateFieldInInitExpr(field: PSym, initExpr: PNode): PNode =
   # Returns the assignment nkExprColonExpr node or nil
@@ -63,7 +63,7 @@ proc semConstrField(c: PContext, flags: TExprFlags,
   if assignment != nil:
     if nfSem in assignment.flags: return assignment[1]
     if not fieldVisible(c, field):
-      localError(initExpr.info,
+      localError(c.config, initExpr.info,
         "the field '$1' is not accessible.", [field.name.s])
       return
 
@@ -130,7 +130,7 @@ proc missingMandatoryFields(fieldsRecList, initExpr: PNode): string =
 proc checkForMissingFields(recList, initExpr: PNode) =
   let missing = missingMandatoryFields(recList, initExpr)
   if missing != nil:
-    localError(initExpr.info, "fields not initialized: $1.", [missing])
+    localError(c.config, initExpr.info, "fields not initialized: $1.", [missing])
 
 proc semConstructFields(c: PContext, recNode: PNode,
                         initExpr: PNode, flags: TExprFlags): InitStatus =
@@ -164,7 +164,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
         if selectedBranch != -1:
           let prevFields = fieldsPresentInBranch(selectedBranch)
           let currentFields = fieldsPresentInBranch(i)
-          localError(initExpr.info,
+          localError(c.config, initExpr.info,
             "The fields ($1) and ($2) cannot be initialized together, " &
             "because they are from conflicting branches in the case object.",
             [prevFields, currentFields])
@@ -179,7 +179,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
                                             discriminator.sym, initExpr)
       if discriminatorVal == nil:
         let fields = fieldsPresentInBranch(selectedBranch)
-        localError(initExpr.info,
+        localError(c.config, initExpr.info,
           "you must provide a compile-time value for the discriminator '$1' " &
           "in order to prove that it's safe to initialize $2.",
           [discriminator.sym.name.s, fields])
@@ -189,7 +189,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
 
         template wrongBranchError(i) =
           let fields = fieldsPresentInBranch(i)
-          localError(initExpr.info,
+          localError(c.config, initExpr.info,
             "a case selecting discriminator '$1' with value '$2' " &
             "appears in the object construction, but the field(s) $3 " &
             "are in conflict with this value.",
@@ -263,13 +263,13 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   for child in n: result.add child
 
   if t == nil:
-    localError(n.info, errGenerated, "object constructor needs an object type")
+    localError(c.config, n.info, errGenerated, "object constructor needs an object type")
     return
 
   t = skipTypes(t, {tyGenericInst, tyAlias, tySink})
   if t.kind == tyRef: t = skipTypes(t.sons[0], {tyGenericInst, tyAlias, tySink})
   if t.kind != tyObject:
-    localError(n.info, errGenerated, "object constructor needs an object type")
+    localError(c.config, n.info, errGenerated, "object constructor needs an object type")
     return
 
   # Check if the object is fully initialized by recursively testing each
@@ -304,9 +304,9 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       for j in 1 ..< i:
         let prevId = considerQuotedIdent(result[j][0])
         if prevId.id == id.id:
-          localError(field.info, errFieldInitTwice, id.s)
+          localError(c.config, field.info, errFieldInitTwice, id.s)
           return
       # 2) No such field exists in the constructed type
-      localError(field.info, errUndeclaredFieldX, id.s)
+      localError(c.config, field.info, errUndeclaredFieldX, id.s)
       return
 

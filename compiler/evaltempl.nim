@@ -114,7 +114,7 @@ proc evalTemplateArgs(n: PNode, s: PSym; conf: ConfigRef; fromHlo: bool): PNode 
 
 # to prevent endless recursion in template instantiation
 const evalTemplateLimit* = 1000
-var evalTemplateCounter* = 0
+var evalTemplateCounter* = 0 # XXX remove this global
 
 proc wrapInComesFrom*(info: TLineInfo; sym: PSym; res: PNode): PNode =
   when true:

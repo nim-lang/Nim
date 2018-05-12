@@ -47,7 +47,7 @@ proc instFieldLoopBody(c: TFieldInstCtx, n: PNode, forLoop: PNode): PNode =
         break
   else:
     if n.kind == nkContinueStmt:
-      localError(n.info, errGenerated,
+      localError(c.config, n.info, errGenerated,
                  "'continue' not supported in a 'fields' loop")
     result = copyNode(n)
     newSons(result, sonsLen(n))
@@ -76,7 +76,7 @@ proc semForObjectFields(c: TFieldsCtx, typ, forLoop, father: PNode) =
     let L = forLoop.len
     let call = forLoop.sons[L-2]
     if call.len > 2:
-      localError(forLoop.info, errGenerated,
+      localError(c.config, forLoop.info, errGenerated,
                  "parallel 'fields' iterator does not work for 'case' objects")
       return
     # iterate over the selector:
@@ -107,7 +107,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   result = newNodeI(nkWhileStmt, n.info, 2)
   var trueSymbol = strTableGet(magicsys.systemModule.tab, getIdent"true")
   if trueSymbol == nil:
-    localError(n.info, errSystemNeeds, "true")
+    localError(c.config, n.info, errSystemNeeds, "true")
     trueSymbol = newSym(skUnknown, getIdent"true", getCurrOwner(c), n.info)
     trueSymbol.typ = getSysType(tyBool)
 
@@ -118,13 +118,13 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   var length = sonsLen(n)
   var call = n.sons[length-2]
   if length-2 != sonsLen(call)-1 + ord(m==mFieldPairs):
-    localError(n.info, errWrongNumberOfVariables)
+    localError(c.config, n.info, errWrongNumberOfVariables)
     return result
 
   const skippedTypesForFields = abstractVar - {tyTypeDesc} + tyUserTypeClasses
   var tupleTypeA = skipTypes(call.sons[1].typ, skippedTypesForFields)
   if tupleTypeA.kind notin {tyTuple, tyObject}:
-    localError(n.info, errGenerated, "no object or tuple type")
+    localError(c.config, n.info, errGenerated, "no object or tuple type")
     return result
   for i in 1..call.len-1:
     var tupleTypeB = skipTypes(call.sons[i].typ, skippedTypesForFields)
