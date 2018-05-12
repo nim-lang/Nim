@@ -818,14 +818,14 @@ proc `%`*(o: enum): JsonNode =
   ## string. Creates a new ``JString JsonNode``.
   result = %($o)
 
-proc `%`*[T](t :TableRef[string,T]) : JsonNode =
+proc `%`*[T](t :TableRef[string, T]) : JsonNode =
   result = newJObject()
-  for k , s in t:
+  for k, s in t:
     result[k] = %s
 
-proc `%`*[T](t :OrderedTableRef[string,T]) : JsonNode =
+proc `%`*[T](t :OrderedTableRef[string, T]) : JsonNode =
   result = newJObject()
-  for k , s in t:
+  for k, s in t:
     result[k] = %s
 
 proc `%`*(t :DateTime) : JsonNode =
