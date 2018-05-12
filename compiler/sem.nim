@@ -71,7 +71,7 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
 
 proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
   if arg.typ.isNil:
-    localError(arg.info, errExprXHasNoType,
+    localError(c.config, arg.info, "expression has no type: " &
                renderTree(arg, {renderNoComments}))
     # error correction:
     result = copyTree(arg)
@@ -79,7 +79,7 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
   else:
     result = indexTypesMatch(c, formal, arg.typ, arg)
     if result == nil:
-      typeMismatch(info, formal, arg.typ)
+      typeMismatch(c.config, info, formal, arg.typ)
       # error correction:
       result = copyTree(arg)
       result.typ = formal
@@ -180,7 +180,7 @@ proc commonType*(x: PType, y: PNode): PType =
   commonType(x, y.typ)
 
 proc newSymS(kind: TSymKind, n: PNode, c: PContext): PSym =
-  result = newSym(kind, considerQuotedIdent(n), getCurrOwner(c), n.info)
+  result = newSym(kind, considerQuotedIdent(c.config, n), getCurrOwner(c), n.info)
   when defined(nimsuggest):
     suggestDecl(c, n, result)
 
@@ -192,7 +192,7 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     # and sfGenSym in n.sym.flags:
     result = n.sym
     if result.kind != kind:
-      localError(n.info, "cannot use symbol of kind '" &
+      localError(c.config, n.info, "cannot use symbol of kind '" &
                  $result.kind & "' as a '" & $kind & "'")
     if sfGenSym in result.flags and result.kind notin {skTemplate, skMacro, skParam}:
       # declarative context, so produce a fresh gensym:
@@ -204,7 +204,7 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
     # template; we must fix it here: see #909
     result.owner = getCurrOwner(c)
   else:
-    result = newSym(kind, considerQuotedIdent(n), getCurrOwner(c), n.info)
+    result = newSym(kind, considerQuotedIdent(c.config, n), getCurrOwner(c), n.info)
   #if kind in {skForVar, skLet, skVar} and result.owner.kind == skModule:
   #  incl(result.flags, sfGlobal)
   when defined(nimsuggest):
@@ -216,20 +216,20 @@ proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
 proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
                         allowed: TSymFlags): PSym
 
-proc typeAllowedCheck(info: TLineInfo; typ: PType; kind: TSymKind;
+proc typeAllowedCheck(conf: ConfigRef; info: TLineInfo; typ: PType; kind: TSymKind;
                       flags: TTypeAllowedFlags = {}) =
   let t = typeAllowed(typ, kind, flags)
   if t != nil:
     if t == typ:
-      localError(info, "invalid type: '" & typeToString(typ) &
+      localError(conf, info, "invalid type: '" & typeToString(typ) &
         "' for " & substr($kind, 2).toLowerAscii)
     else:
-      localError(info, "invalid type: '" & typeToString(t) &
+      localError(conf, info, "invalid type: '" & typeToString(t) &
         "' in this context: '" & typeToString(typ) &
         "' for " & substr($kind, 2).toLowerAscii)
 
 proc paramsTypeCheck(c: PContext, typ: PType) {.inline.} =
-  typeAllowedCheck(typ.n.info, typ, skProc)
+  typeAllowedCheck(c.config, typ.n.info, typ, skProc)
 
 proc expectMacroOrTemplateCall(c: PContext, n: PNode): PSym
 proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode
@@ -282,10 +282,10 @@ proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
       result = evaluated
       let expectedType = eOrig.typ.skipTypes({tyStatic})
       if hasCycle(result):
-        globalError(eOrig.info, "the resulting AST is cyclic and cannot be processed further")
+        globalError(c.config, eOrig.info, "the resulting AST is cyclic and cannot be processed further")
         result = errorNode(c, eOrig)
       else:
-        semmacrosanity.annotateType(result, expectedType)
+        semmacrosanity.annotateType(result, expectedType, c.config)
   else:
     result = semExprWithType(c, evaluated)
     #result = fitNode(c, e.typ, result) inlined with special case:
@@ -302,18 +302,18 @@ proc tryConstExpr(c: PContext, n: PNode): PNode =
   var e = semExprWithType(c, n)
   if e == nil: return
 
-  result = getConstExpr(c.module, e)
+  result = getConstExpr(c.module, e, c.graph)
   if result != nil: return
 
-  let oldErrorCount = msgs.gErrorCounter
-  let oldErrorMax = msgs.gErrorMax
+  let oldErrorCount = c.config.errorCounter
+  let oldErrorMax = c.config.errorMax
   let oldErrorOutputs = errorOutputs
 
   errorOutputs = {}
-  msgs.gErrorMax = high(int)
+  c.config.errorMax = high(int)
 
   try:
-    result = evalConstExpr(c.module, c.cache, c.graph.config, e)
+    result = evalConstExpr(c.module, c.cache, c.graph, e)
     if result == nil or result.kind == nkEmpty:
       result = nil
     else:
@@ -322,26 +322,29 @@ proc tryConstExpr(c: PContext, n: PNode): PNode =
   except ERecoverableError:
     result = nil
 
-  msgs.gErrorCounter = oldErrorCount
-  msgs.gErrorMax = oldErrorMax
+  c.config.errorCounter = oldErrorCount
+  c.config.errorMax = oldErrorMax
   errorOutputs = oldErrorOutputs
+
+const
+  errConstExprExpected = "constant expression expected"
 
 proc semConstExpr(c: PContext, n: PNode): PNode =
   var e = semExprWithType(c, n)
   if e == nil:
-    localError(n.info, errConstExprExpected)
+    localError(c.config, n.info, errConstExprExpected)
     return n
-  result = getConstExpr(c.module, e)
+  result = getConstExpr(c.module, e, c.graph)
   if result == nil:
     #if e.kind == nkEmpty: globalError(n.info, errConstExprExpected)
-    result = evalConstExpr(c.module, c.cache, c.graph.config, e)
+    result = evalConstExpr(c.module, c.cache, c.graph, e)
     if result == nil or result.kind == nkEmpty:
       if e.info != n.info:
         pushInfoContext(n.info)
-        localError(e.info, errConstExprExpected)
+        localError(c.config, e.info, errConstExprExpected)
         popInfoContext()
       else:
-        localError(e.info, errConstExprExpected)
+        localError(c.config, e.info, errConstExprExpected)
       # error correction:
       result = e
     else:
@@ -356,7 +359,7 @@ proc semExprFlagDispatched(c: PContext, n: PNode, flags: TExprFlags): PNode =
   else:
     result = semExprWithType(c, n, flags)
     if efPreferStatic in flags:
-      var evaluated = getConstExpr(c.module, result)
+      var evaluated = getConstExpr(c.module, result, c.graph)
       if evaluated != nil: return evaluated
       evaluated = evalAtCompileTime(c, result)
       if evaluated != nil: return evaluated

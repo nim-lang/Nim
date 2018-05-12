@@ -330,8 +330,8 @@ proc canon*(n: PNode; o: Operators): PNode =
       result.sons[2] = y[1]
   else: discard
 
-#proc `+@`*(a: PNode; b: BiggestInt): PNode =
-#  canon(if b != 0: opAdd.buildCall(a, nkIntLit.newIntNode(b)) else: a)
+proc buildAdd*(a: PNode; b: BiggestInt; o: Operators): PNode =
+  canon(if b != 0: o.opAdd.buildCall(a, nkIntLit.newIntNode(b)) else: a, o)
 
 proc usefulFact(n: PNode; o: Operators): PNode =
   case n.getMagic

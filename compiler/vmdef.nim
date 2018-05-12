@@ -208,6 +208,7 @@ type
     cache*: IdentCache
     config*: ConfigRef
     graph*: ModuleGraph
+    oldErrorCount*: int
 
   TPosition* = distinct int
 
