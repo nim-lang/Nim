@@ -89,7 +89,7 @@
 ##    echo j2
 
 import
-  hashes, tables, strutils, lexbase, streams, unicode, macros
+  hashes, tables, strutils, lexbase, streams, unicode, macros, times
 
 export
   tables.`$`
@@ -183,6 +183,8 @@ const
     "null",
     "{", "}", "[", "]", ":", ","
   ]
+
+  dateISO8601 = "yyyy-MM-dd'T'HH:mm:sszzz"
 
 proc open*(my: var JsonParser, input: Stream, filename: string) =
   ## initializes the parser with an input stream. `Filename` is only used
@@ -811,6 +813,25 @@ proc `%`*(o: enum): JsonNode =
   ## Construct a JsonNode that represents the specified enum value as a
   ## string. Creates a new ``JString JsonNode``.
   result = %($o)
+
+proc `%`*[T](t :TableRef[string, T]) : JsonNode =
+  result = newJObject()
+  for k, s in t:
+    result[k] = %s
+
+proc `%`*[T](t :OrderedTableRef[string, T]) : JsonNode =
+  result = newJObject()
+  for k, s in t:
+    result[k] = %s
+
+proc `%`*(t :DateTime) : JsonNode =
+  result = newJString(t.format(dateISO8601))
+
+proc `%`*[T](o :Option[T]) : JsonNode =
+  if o.isSome():
+    result = %o.some()
+  else:
+    result = newJNull()
 
 proc toJson(x: NimNode): NimNode {.compiletime.} =
   case x.kind
