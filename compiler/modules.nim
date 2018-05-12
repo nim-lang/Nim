@@ -11,10 +11,11 @@
 
 import
   ast, astalgo, magicsys, std / sha1, rodread, msgs, cgendata, sigmatch, options,
-  idents, os, lexer, idgen, passes, syntaxes, llstream, modulegraphs, rod
+  idents, os, lexer, idgen, passes, syntaxes, llstream, modulegraphs, rod,
+  configuration
 
-proc resetSystemArtifacts*() =
-  magicsys.resetSysTypes()
+proc resetSystemArtifacts*(g: ModuleGraph) =
+  magicsys.resetSysTypes(g)
 
 proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   # We cannot call ``newSym`` here, because we have to circumvent the ID
@@ -25,11 +26,11 @@ proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   let filename = fileIdx.toFullPath
   result.name = getIdent(splitFile(filename).name)
   if not isNimIdentifier(result.name.s):
-    rawMessage(errInvalidModuleName, result.name.s)
+    rawMessage(graph.config, errGenerated, "invalid module name: " & result.name.s)
 
   result.info = newLineInfo(fileIdx, 1, 1)
   let
-    pck = getPackageName(filename)
+    pck = getPackageName(graph.config, filename)
     pck2 = if pck.len > 0: pck else: "unknown"
     pack = getIdent(pck2)
   var packSym = graph.packageSyms.strTableGet(pack)
@@ -49,7 +50,7 @@ proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   strTableAdd(result.tab, result) # a module knows itself
   let existing = strTableGet(packSym.tab, result.name)
   if existing != nil and existing.info.fileIndex != result.info.fileIndex:
-    localError(result.info, "module names need to be unique per Nimble package; module clashes with " & existing.info.fileIndex.toFullPath)
+    localError(graph.config, result.info, "module names need to be unique per Nimble package; module clashes with " & existing.info.fileIndex.toFullPath)
   # strTableIncl() for error corrections:
   discard strTableIncl(packSym.tab, result)
 
@@ -74,7 +75,7 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; cache: IdentCache, f
         discard
     result.id = getModuleId(fileIdx, toFullPath(fileIdx))
     discard processModule(graph, result,
-      if sfMainModule in flags and gProjectIsStdin: stdin.llStreamOpen else: nil,
+      if sfMainModule in flags and graph.config.projectIsStdin: stdin.llStreamOpen else: nil,
       rd, cache)
     #if optCaasEnabled in gGlobalOptions:
     #  gMemCacheData[fileIdx].needsRecompile = Recompiled
@@ -85,7 +86,7 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; cache: IdentCache, f
     initStrTable(result.tab)
     result.ast = nil
     discard processModule(graph, result,
-      if sfMainModule in flags and gProjectIsStdin: stdin.llStreamOpen else: nil,
+      if sfMainModule in flags and graph.config.projectIsStdin: stdin.llStreamOpen else: nil,
       nil, cache)
     graph.markClientsDirty(fileIdx)
     when false:
@@ -102,8 +103,9 @@ proc importModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex;
   #if sfSystemModule in result.flags:
   #  localError(result.info, errAttemptToRedefine, result.name.s)
   # restore the notes for outer module:
-  gNotes = if s.owner.id == gMainPackageId: gMainPackageNotes
-           else: ForeignPackageNotes
+  graph.config.notes =
+      if s.owner.id == gMainPackageId: graph.config.mainPackageNotes
+      else: graph.config.foreignPackageNotes
 
 proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex;
                     cache: IdentCache): PNode {.procvar.} =
@@ -112,22 +114,22 @@ proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex;
   graph.addIncludeDep(s.position.FileIndex, fileIdx)
 
 proc compileSystemModule*(graph: ModuleGraph; cache: IdentCache) =
-  if magicsys.systemModule == nil:
-    systemFileIdx = fileInfoIdx(options.libpath/"system.nim")
+  if graph.systemModule == nil:
+    systemFileIdx = fileInfoIdx(graph.config.libpath / "system.nim")
     discard graph.compileModule(systemFileIdx, cache, {sfSystemModule})
 
-proc wantMainModule* =
-  if gProjectFull.len == 0:
+proc wantMainModule*(conf: ConfigRef) =
+  if conf.projectFull.len == 0:
     fatal(gCmdLineInfo, errCommandExpectsFilename)
-  gProjectMainIdx = int32 addFileExt(gProjectFull, NimExt).fileInfoIdx
+  conf.projectMainIdx = int32 addFileExt(conf.projectFull, NimExt).fileInfoIdx
 
 passes.gIncludeFile = includeModule
 passes.gImportModule = importModule
 
 proc compileProject*(graph: ModuleGraph; cache: IdentCache;
                      projectFileIdx = InvalidFileIDX) =
-  wantMainModule()
-  let systemFileIdx = fileInfoIdx(options.libpath / "system.nim")
+  wantMainModule(graph.config)
+  let systemFileIdx = fileInfoIdx(graph.config.libpath / "system.nim")
   let projectFile = if projectFileIdx == InvalidFileIDX: FileIndex(gProjectMainIdx) else: projectFileIdx
   graph.importStack.add projectFile
   if projectFile == systemFileIdx:

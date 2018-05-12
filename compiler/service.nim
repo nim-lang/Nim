@@ -11,7 +11,7 @@
 
 import
   times, commands, options, msgs, nimconf,
-  extccomp, strutils, os, platform, parseopt, idents
+  extccomp, strutils, os, platform, parseopt, idents, configuration
 
 when useCaas:
   import net
@@ -42,17 +42,17 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
     of cmdArgument:
       if processArgument(pass, p, argsCount, config): break
   if pass == passCmd2:
-    if optRun notin gGlobalOptions and config.arguments.len > 0 and options.command.normalize != "run":
-      rawMessage(errArgsNeedRunOption, [])
+    if optRun notin gGlobalOptions and config.arguments.len > 0 and config.command.normalize != "run":
+      rawMessage(config, errGenerated, errArgsNeedRunOption)
 
 proc serve*(cache: IdentCache; action: proc (cache: IdentCache){.nimcall.}; config: ConfigRef) =
   template execute(cmd) =
     curCaasCmd = cmd
     processCmdLine(passCmd2, cmd, config)
     action(cache)
-    gErrorCounter = 0
+    config.errorCounter = 0
 
-  let typ = getConfigVar("server.type")
+  let typ = getConfigVar(config, "server.type")
   case typ
   of "stdin":
     while true:
@@ -65,9 +65,9 @@ proc serve*(cache: IdentCache; action: proc (cache: IdentCache){.nimcall.}; conf
   of "tcp", "":
     when useCaas:
       var server = newSocket()
-      let p = getConfigVar("server.port")
+      let p = getConfigVar(config, "server.port")
       let port = if p.len > 0: parseInt(p).Port else: 6000.Port
-      server.bindAddr(port, getConfigVar("server.address"))
+      server.bindAddr(port, getConfigVar(config, "server.address"))
       var inp = "".TaintedString
       server.listen()
       var stdoutSocket = newSocket()

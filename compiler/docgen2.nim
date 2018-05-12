@@ -55,7 +55,7 @@ proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
   var g: PGen
   new(g)
   g.module = module
-  var d = newDocumentor(module.filename, options.gConfigVars)
+  var d = newDocumentor(module.filename, graph.config)
   d.hasToc = true
   g.doc = d
   result = g

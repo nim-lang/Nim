@@ -181,6 +181,7 @@ const
 
 const
   errXMustBeCompileTime* = "'$1' can only be used in compile-time context"
+  errArgsNeedRunOption* = "arguments can only be given if the '--run' option is selected"
 
 #[
 errStringLiteralExpected: "string literal expected",
@@ -210,7 +211,7 @@ errUnknownCcompiler: "unknown C compiler: '$1'",
 errOnOrOffExpectedButXFound: "'on' or 'off' expected, but '$1' found",
 errOnOffOrListExpectedButXFound: "'on', 'off' or 'list' expected, but '$1' found",
 errGenOutExpectedButXFound: "'c', 'c++' or 'yaml' expected, but '$1' found",
-errArgsNeedRunOption: "arguments can only be given if the '--run' option is selected",
+,
 errInvalidMultipleAsgn: "multiple assignment is not allowed",
 errColonOrEqualsExpected: "':' or '=' expected, but found '$1'",
 errUndeclaredField: "undeclared field: '$1'",
