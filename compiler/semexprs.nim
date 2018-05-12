@@ -215,7 +215,7 @@ proc semConv(c: PContext, n: PNode): PNode =
       elif op.kind in {nkPar, nkTupleConstr} and targetType.kind == tyTuple:
         op = fitNode(c, targetType, op, result.info)
     of convNotNeedeed:
-      message(n.info, hintConvFromXtoItselfNotNeeded, result.typ.typeToString)
+      message(c.config, n.info, hintConvFromXtoItselfNotNeeded, result.typ.typeToString)
     of convNotLegal:
       result = fitNode(c, result.typ, result.sons[1], result.info)
       if result == nil:
@@ -1494,7 +1494,7 @@ proc semProcBody(c: PContext, n: PNode): PNode =
       #   nil
       #   # comment
       # are not expressions:
-      fixNilType(result)
+      fixNilType(c, result)
     else:
       var a = newNodeI(nkAsgn, n.info, 2)
       a.sons[0] = newSymNode(c.p.resultSym)
@@ -2264,7 +2264,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       result.kind = nkCall
       result = semExpr(c, result, flags)
   of nkBind:
-    message(n.info, warnDeprecated, "bind")
+    message(c.config, n.info, warnDeprecated, "bind")
     result = semExpr(c, n.sons[0], flags)
   of nkTypeOfExpr, nkTupleTy, nkTupleClassTy, nkRefTy..nkEnumTy, nkStaticTy:
     if c.matchedConcept != nil and n.len == 1:
