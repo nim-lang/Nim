@@ -89,7 +89,7 @@
 ##    echo j2
 
 import
-  hashes, tables, strutils, lexbase, streams, unicode, macros
+  hashes, tables, strutils, lexbase, streams, unicode, macros, dates
 
 export
   tables.`$`
