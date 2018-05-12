@@ -15,7 +15,7 @@
 
 template detectVersion(field, corename) =
   if m.g.field == 0:
-    let core = getCompilerProc(m.g. corename)
+    let core = getCompilerProc(m.g.graph, corename)
     if core == nil or core.kind != skConst:
       m.g.field = 1
     else:
@@ -74,7 +74,7 @@ proc genStringLiteralDataOnly(m: BModule; s: string; info: TLineInfo): Rope =
   of 0, 1: result = genStringLiteralDataOnlyV1(m, s)
   of 2: result = genStringLiteralDataOnlyV2(m, s)
   else:
-    localError(info, "cannot determine how to produce code for string literal")
+    localError(m.config, info, "cannot determine how to produce code for string literal")
 
 proc genStringLiteralFromData(m: BModule; data: Rope; info: TLineInfo): Rope =
   result = ropecg(m, "((#NimStringDesc*) &$1)",
@@ -88,4 +88,4 @@ proc genStringLiteral(m: BModule; n: PNode): Rope =
   of 0, 1: result = genStringLiteralV1(m, n)
   of 2: result = genStringLiteralV2(m, n)
   else:
-    localError(n.info, "cannot determine how to produce code for string literal")
+    localError(m.config, n.info, "cannot determine how to produce code for string literal")

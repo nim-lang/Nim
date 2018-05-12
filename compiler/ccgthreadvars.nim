@@ -12,11 +12,11 @@
 
 # included from cgen.nim
 
-proc emulatedThreadVars(): bool =
+proc emulatedThreadVars(conf: ConfigRef): bool =
   result = {optThreads, optTlsEmulation} <= gGlobalOptions
 
 proc accessThreadLocalVar(p: BProc, s: PSym) =
-  if emulatedThreadVars() and not p.threadVarAccessed:
+  if emulatedThreadVars(p.config) and not p.threadVarAccessed:
     p.threadVarAccessed = true
     incl p.module.flags, usesThreadVars
     addf(p.procSec(cpsLocals), "\tNimThreadVars* NimTV_;$n", [])
@@ -37,7 +37,7 @@ var
 # made to be one.
 
 proc declareThreadVar(m: BModule, s: PSym, isExtern: bool) =
-  if emulatedThreadVars():
+  if emulatedThreadVars(m.config):
     # we gather all thread locals var into a struct; we need to allocate
     # storage for that somehow, can't use the thread local storage
     # allocator for it :-(

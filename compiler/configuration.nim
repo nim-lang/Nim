@@ -179,6 +179,9 @@ const
     {low(TNoteKind)..high(TNoteKind)} - {hintStackTrace, warnUninit},
     {low(TNoteKind)..high(TNoteKind)}]
 
+const
+  errXMustBeCompileTime* = "'$1' can only be used in compile-time context"
+
 #[
 errStringLiteralExpected: "string literal expected",
 errIntLiteralExpected: "integer literal expected",
@@ -352,6 +355,5 @@ errXhasSideEffects: "'$1' can have side effects",
 errWrongSymbolX:,
 errIllegalCaptureX: "illegal capture '$1'",
 errXCannotBeClosure: "'$1' cannot have 'closure' calling convention",
-errXMustBeCompileTime: "'$1' can only be used in compile-time context",
 ,
 ]#

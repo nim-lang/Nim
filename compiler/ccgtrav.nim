@@ -29,12 +29,12 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, n: PNode;
     for i in countup(0, sonsLen(n) - 1):
       genTraverseProc(c, accessor, n.sons[i], typ)
   of nkRecCase:
-    if (n.sons[0].kind != nkSym): internalError(n.info, "genTraverseProc")
+    if (n.sons[0].kind != nkSym): internalError(c.p.config, n.info, "genTraverseProc")
     var p = c.p
     let disc = n.sons[0].sym
     if disc.loc.r == nil: fillObjectFields(c.p.module, typ)
     if disc.loc.t == nil:
-      internalError(n.info, "genTraverseProc()")
+      internalError(c.p.config, n.info, "genTraverseProc()")
     lineF(p, cpsStmts, "switch ($1.$2) {$n", [accessor, disc.loc.r])
     for i in countup(1, sonsLen(n) - 1):
       let branch = n.sons[i]
@@ -51,9 +51,9 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, n: PNode;
     if field.typ.kind == tyVoid: return
     if field.loc.r == nil: fillObjectFields(c.p.module, typ)
     if field.loc.t == nil:
-      internalError(n.info, "genTraverseProc()")
+      internalError(c.p.config, n.info, "genTraverseProc()")
     genTraverseProc(c, "$1.$2" % [accessor, field.loc.r], field.loc.t)
-  else: internalError(n.info, "genTraverseProc()")
+  else: internalError(c.p.config, n.info, "genTraverseProc()")
 
 proc parentObj(accessor: Rope; m: BModule): Rope {.inline.} =
   if not m.compileToCpp:
@@ -72,7 +72,7 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType) =
   of tyArray:
     let arraySize = lengthOrd(typ.sons[0])
     var i: TLoc
-    getTemp(p, getSysType(tyInt), i)
+    getTemp(p, getSysType(c.p.module.g.graph, unknownLineInfo(), tyInt), i)
     let oldCode = p.s(cpsStmts)
     linefmt(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
             i.r, arraySize.rope)
@@ -105,7 +105,7 @@ proc genTraverseProcSeq(c: TTraversalClosure, accessor: Rope, typ: PType) =
   var p = c.p
   assert typ.kind == tySequence
   var i: TLoc
-  getTemp(p, getSysType(tyInt), i)
+  getTemp(p, getSysType(c.p.module.g.graph, unknownLineInfo(), tyInt), i)
   let oldCode = p.s(cpsStmts)
   lineF(p, cpsStmts, "for ($1 = 0; $1 < $2->$3; $1++) {$n",
       [i.r, accessor, rope(if c.p.module.compileToCpp: "len" else: "Sup.len")])
@@ -157,7 +157,7 @@ proc genTraverseProcForGlobal(m: BModule, s: PSym; info: TLineInfo): Rope =
   var sLoc = s.loc.r
   result = getTempName(m)
 
-  if sfThread in s.flags and emulatedThreadVars():
+  if sfThread in s.flags and emulatedThreadVars(m.config):
     accessThreadLocalVar(p, s)
     sLoc = "NimTV_->" & sLoc
 

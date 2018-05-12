@@ -53,7 +53,7 @@ proc hashString*(s: string): BiggestInt =
     result = a
 
 var
-  gTypeTable: array[TTypeKind, TIdTable]
+  gTypeTable: array[TTypeKind, TIdTable]  # XXX globals here
   gCanonicalTypes: array[TTypeKind, PType]
 
 proc initTypeTables() =
