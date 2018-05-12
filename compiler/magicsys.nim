@@ -13,6 +13,8 @@ import
   ast, astalgo, hashes, msgs, platform, nversion, times, idents, rodread,
   modulegraphs
 
+export createMagic
+
 proc nilOrSysInt*(g: ModuleGraph): PType = g.sysTypes[tyInt]
 
 proc registerSysType*(g: ModuleGraph; t: PType) =
@@ -32,9 +34,10 @@ proc getSysSym*(g: ModuleGraph; info: TLineInfo; name: string): PSym =
   if result.kind == skStub: loadStub(result)
   if result.kind == skAlias: result = result.owner
 
-proc createMagic*(g: ModuleGraph; name: string, m: TMagic): PSym =
-  result = newSym(skProc, getIdent(name), nil, unknownLineInfo())
-  result.magic = m
+when false:
+  proc createMagic*(g: ModuleGraph; name: string, m: TMagic): PSym =
+    result = newSym(skProc, getIdent(name), nil, unknownLineInfo())
+    result.magic = m
 
 when false:
   let

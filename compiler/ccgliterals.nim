@@ -15,7 +15,7 @@
 
 template detectVersion(field, corename) =
   if m.g.field == 0:
-    let core = getCompilerProc(corename)
+    let core = getCompilerProc(m.g. corename)
     if core == nil or core.kind != skConst:
       m.g.field = 1
     else:

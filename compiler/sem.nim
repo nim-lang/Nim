@@ -33,7 +33,7 @@ proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc semProcBody(c: PContext, n: PNode): PNode
 
 proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode
-proc changeType(n: PNode, newType: PType, check: bool)
+proc changeType(c: PContext; n: PNode, newType: PType, check: bool)
 
 proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode
 proc semTypeNode(c: PContext, n: PNode, prev: PType): PType
@@ -86,7 +86,7 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
     else:
       let x = result.skipConv
       if x.kind in {nkPar, nkTupleConstr} and formal.kind != tyExpr:
-        changeType(x, formal, check=true)
+        changeType(c, x, formal, check=true)
       else:
         result = skipHiddenSubConv(result)
         #result.typ = takeType(formal, arg.typ)
@@ -476,7 +476,7 @@ proc addCodeForGenerics(c: PContext, n: PNode) =
     var prc = c.generics[i].inst.sym
     if prc.kind in {skProc, skFunc, skMethod, skConverter} and prc.magic == mNone:
       if prc.ast == nil or prc.ast.sons[bodyPos] == nil:
-        internalError(prc.info, "no code for " & prc.name.s)
+        internalError(c.config, prc.info, "no code for " & prc.name.s)
       else:
         addSon(n, prc.ast)
   c.lastGenericIdx = c.generics.len
@@ -501,14 +501,14 @@ proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
   c.importTable = openScope(c)
   c.importTable.addSym(module) # a module knows itself
   if sfSystemModule in module.flags:
-    magicsys.systemModule = module # set global variable!
+    graph.systemModule = module
   c.topLevelScope = openScope(c)
   # don't be verbose unless the module belongs to the main package:
   if module.owner.id == gMainPackageId:
-    gNotes = gMainPackageNotes
+    graph.config.notes = graph.config.mainPackageNotes
   else:
-    if gMainPackageNotes == {}: gMainPackageNotes = gNotes
-    gNotes = ForeignPackageNotes
+    if graph.config.mainPackageNotes == {}: graph.config.mainPackageNotes = graph.config.notes
+    graph.config.notes = graph.config.foreignPackageNotes
   result = c
 
 proc myOpenCached(graph: ModuleGraph; module: PSym; rd: PRodReader): PPassContext =
@@ -517,30 +517,30 @@ proc myOpenCached(graph: ModuleGraph; module: PSym; rd: PRodReader): PPassContex
 proc replayMethodDefs(graph: ModuleGraph; rd: PRodReader) =
   for m in items(rd.methods): methodDef(graph, m, true)
 
-proc isImportSystemStmt(n: PNode): bool =
-  if magicsys.systemModule == nil: return false
+proc isImportSystemStmt(g: ModuleGraph; n: PNode): bool =
+  if g.systemModule == nil: return false
   case n.kind
   of nkImportStmt:
     for x in n:
       if x.kind == nkIdent:
-        let f = checkModuleName(x, false)
-        if f == magicsys.systemModule.info.fileIndex:
+        let f = checkModuleName(g.config, x, false)
+        if f == g.systemModule.info.fileIndex:
           return true
   of nkImportExceptStmt, nkFromStmt:
     if n[0].kind == nkIdent:
-      let f = checkModuleName(n[0], false)
-      if f == magicsys.systemModule.info.fileIndex:
+      let f = checkModuleName(g.config, n[0], false)
+      if f == g.systemModule.info.fileIndex:
         return true
   else: discard
 
 proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   if n.kind == nkDefer:
     localError(c.config, n.info, "defer statement not supported at top level")
-  if c.topStmts == 0 and not isImportSystemStmt(n):
+  if c.topStmts == 0 and not isImportSystemStmt(c.graph, n):
     if sfSystemModule notin c.module.flags and
         n.kind notin {nkEmpty, nkCommentStmt}:
-      c.importTable.addSym magicsys.systemModule # import the "System" identifier
-      importAllSymbols(c, magicsys.systemModule)
+      c.importTable.addSym c.graph.systemModule # import the "System" identifier
+      importAllSymbols(c, c.graph.systemModule)
       inc c.topStmts
   else:
     inc c.topStmts
@@ -566,7 +566,7 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
     result = buildEchoStmt(c, result)
   if gCmd == cmdIdeTools:
     appendToModule(c.module, result)
-  result = transformStmt(c.module, result)
+  result = transformStmt(c.graph, c.module, result)
 
 proc recoverContext(c: PContext) =
   # clean up in case of a semantic error: We clean up the stacks, etc. This is
@@ -579,7 +579,7 @@ proc recoverContext(c: PContext) =
 proc myProcess(context: PPassContext, n: PNode): PNode =
   var c = PContext(context)
   # no need for an expensive 'try' if we stop after the first error anyway:
-  if msgs.gErrorMax <= 1:
+  if c.config.errorMax <= 1:
     result = semStmtAndGenerateGenerics(c, n)
   else:
     let oldContextLen = msgs.getInfoContextLen()
@@ -602,9 +602,9 @@ proc testExamples(c: PContext) =
   let inp = toFullPath(c.module.info)
   let outp = inp.changeFileExt"" & "_examples.nim"
   renderModule(c.runnableExamples, inp, outp)
-  let backend = if isDefined("js"): "js"
-                elif isDefined("cpp"): "cpp"
-                elif isDefined("objc"): "objc"
+  let backend = if isDefined(c.config, "js"): "js"
+                elif isDefined(c.config, "cpp"): "cpp"
+                elif isDefined(c.config, "objc"): "objc"
                 else: "c"
   if os.execShellCmd("nim " & backend & " -r " & outp) != 0:
     quit "[Examples] failed"
@@ -618,7 +618,7 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   rawCloseScope(c)      # imported symbols; don't check for unused ones!
   result = newNode(nkStmtList)
   if n != nil:
-    internalError(n.info, "n is not nil") #result := n;
+    internalError(c.config, n.info, "n is not nil") #result := n;
   addCodeForGenerics(c, result)
   if c.module.ast != nil:
     result.add(c.module.ast)

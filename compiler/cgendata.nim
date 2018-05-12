@@ -148,6 +148,9 @@ type
     g*: BModuleList
     ndi*: NdiFile
 
+template config*(m: BModule): ConfigRef = m.g.config
+template config*(p: BProc): ConfigRef = p.module.g.config
+
 proc includeHeader*(this: BModule; header: string) =
   if not this.headerFiles.contains header:
     this.headerFiles.add header

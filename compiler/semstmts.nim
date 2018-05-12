@@ -338,10 +338,10 @@ proc fitRemoveHiddenConv(c: PContext, typ: PType, n: PNode): PNode =
       result.info = n.info
       result.typ = typ
     else:
-      changeType(r1, typ, check=true)
+      changeType(c, r1, typ, check=true)
       result = r1
   elif not sameType(result.typ, typ):
-    changeType(result, typ, check=false)
+    changeType(c, result, typ, check=false)
 
 proc findShadowedVar(c: PContext, v: PSym): PSym =
   for scope in walkScopes(c.currentScope.parent):

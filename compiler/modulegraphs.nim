@@ -25,7 +25,7 @@
 ## - Its dependent module stays the same.
 ##
 
-import ast, intsets, tables, options, rod, msgs, hashes
+import ast, intsets, tables, options, rod, msgs, hashes, idents
 
 type
   ModuleGraph* = ref object
@@ -49,6 +49,7 @@ type
     compilerprocs*: TStrTable
     exposed*: TStrTable
     intTypeCache*: array[-5..64, PType]
+    opContains*, opNot*: PSym
 
 proc hash*(x: FileIndex): Hash {.borrow.}
 
@@ -56,6 +57,10 @@ proc hash*(x: FileIndex): Hash {.borrow.}
 
 proc stopCompile*(g: ModuleGraph): bool {.inline.} =
   result = doStopCompile != nil and doStopCompile()
+
+proc createMagic*(g: ModuleGraph; name: string, m: TMagic): PSym =
+  result = newSym(skProc, getIdent(name), nil, unknownLineInfo())
+  result.magic = m
 
 proc newModuleGraph*(config: ConfigRef = nil): ModuleGraph =
   result = ModuleGraph()
@@ -72,6 +77,8 @@ proc newModuleGraph*(config: ConfigRef = nil): ModuleGraph =
   result.methods = @[]
   initStrTable(result.compilerprocs)
   initStrTable(result.exposed)
+  result.opNot = createMagic(result, "not", mNot)
+  result.opContains = createMagic(result, "contains", mInSet)
 
 proc resetAllModules*(g: ModuleGraph) =
   initStrTable(packageSyms)

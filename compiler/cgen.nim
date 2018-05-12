@@ -115,7 +115,7 @@ proc ropecg(m: BModule, frmt: FormatStr, args: varargs[Rope]): Rope =
           if i >= length or not (frmt[i] in {'0'..'9'}): break
         num = j
         if j > high(args) + 1:
-          internalError("ropes: invalid format string $" & $j)
+          internalError(m.config, "ropes: invalid format string $" & $j)
         add(result, args[j-1])
       of 'n':
         if optLineDir notin gOptions: add(result, rnl)
@@ -123,7 +123,7 @@ proc ropecg(m: BModule, frmt: FormatStr, args: varargs[Rope]): Rope =
       of 'N':
         add(result, rnl)
         inc(i)
-      else: internalError("ropes: invalid format string $" & frmt[i])
+      else: internalError(m.config, "ropes: invalid format string $" & frmt[i])
     elif frmt[i] == '#' and frmt[i+1] in IdentStartChars:
       inc(i)
       var j = i
@@ -148,12 +148,10 @@ proc ropecg(m: BModule, frmt: FormatStr, args: varargs[Rope]): Rope =
 template rfmt(m: BModule, fmt: string, args: varargs[Rope]): untyped =
   ropecg(m, fmt, args)
 
-var indent = "\t".rope
-
 proc indentLine(p: BProc, r: Rope): Rope =
   result = r
   for i in countup(0, p.blocks.len-1):
-    prepend(result, indent)
+    prepend(result, "\t".rope)
 
 proc appcg(m: BModule, c: var Rope, frmt: FormatStr,
            args: varargs[Rope]) =
@@ -214,7 +212,7 @@ proc genLineDir(p: BProc, t: PNode) =
   let line = tt.info.safeLineNm
 
   if optEmbedOrigSrc in gGlobalOptions:
-    add(p.s(cpsStmts), ~"//" & tt.info.sourceLine & rnl)
+    add(p.s(cpsStmts), ~"//" & sourceLine(p.config, tt.info) & rnl)
   genCLineDir(p.s(cpsStmts), tt.info.toFullPath, line)
   if ({optStackTrace, optEndb} * p.options == {optStackTrace, optEndb}) and
       (p.prc == nil or sfPure notin p.prc.flags):
