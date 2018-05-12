@@ -187,6 +187,8 @@ const
     "{", "}", "[", "]", ":", ","
   ]
 
+  dateISO8601 = "yyyy-MM-dd'T'HH:mm:sszzz"
+
 proc open*(my: var JsonParser, input: Stream, filename: string) =
   ## initializes the parser with an input stream. `Filename` is only used
   ## for nice error messages.
