@@ -61,7 +61,7 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
       while x != nil:
         inc calls
         x = x.next
-      msgWriteln($calls & " calls omitted\n")
+      msgWriteln(c.config, $calls & " calls omitted\n")
       return
     stackTraceAux(c, x.next, x.comesFrom, recursionLimit-1)
     var info = c.debug[pc]
@@ -78,11 +78,11 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
     if x.prc != nil:
       for k in 1..max(1, 25-s.len): add(s, ' ')
       add(s, x.prc.name.s)
-    msgWriteln(s)
+    msgWriteln(c.config, s)
 
 proc stackTrace(c: PCtx, tos: PStackFrame, pc: int,
                 msg: string, n: PNode = nil) =
-  msgWriteln("stack trace: (most recent call last)")
+  msgWriteln(c.config, "stack trace: (most recent call last)")
   stackTraceAux(c, tos, pc)
   # XXX test if we want 'globalError' for every mode
   let lineInfo = if n == nil: c.debug[pc] else: n.info
@@ -402,7 +402,7 @@ template handleJmpBack() {.dirty.} =
     if allowInfiniteLoops in c.features:
       c.loopIterations = MaxLoopIterations
     else:
-      msgWriteln("stack trace: (most recent call last)")
+      msgWriteln(c.config, "stack trace: (most recent call last)")
       stackTraceAux(c, tos, pc)
       globalError(c.config, c.debug[pc], errTooManyIterations)
   dec(c.loopIterations)
@@ -907,13 +907,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcEcho:
       let rb = instr.regB
       if rb == 1:
-        msgWriteln(regs[ra].node.strVal, {msgStdout})
+        msgWriteln(c.config, regs[ra].node.strVal, {msgStdout})
       else:
         var outp = ""
         for i in ra..ra+rb-1:
           #if regs[i].kind != rkNode: debug regs[i]
           outp.add(regs[i].node.strVal)
-        msgWriteln(outp, {msgStdout})
+        msgWriteln(c.config, outp, {msgStdout})
     of opcContainsSet:
       decodeBC(rkInt)
       regs[ra].intVal = ord(inSet(regs[rb].node, regs[rc].regToNode))
@@ -1355,11 +1355,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                             c.debug[pc].toFullPath, c.debug[pc].line.int,
                             proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
                               if error.isNil and msg <= errMax:
-                                error = formatMsg(info, msg, arg))
+                                error = formatMsg(conf, info, msg, arg))
       if not error.isNil:
         c.errorFlag = error
       elif sonsLen(ast) != 1:
-        c.errorFlag = formatMsg(c.debug[pc], errGenerated,
+        c.errorFlag = formatMsg(c.config, c.debug[pc], errGenerated,
           "expected expression, but got multiple statements")
       else:
         regs[ra].node = ast.sons[0]
@@ -1370,7 +1370,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                             c.debug[pc].toFullPath, c.debug[pc].line.int,
                             proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
                               if error.isNil and msg <= errMax:
-                                error = formatMsg(info, msg, arg))
+                                error = formatMsg(conf, info, msg, arg))
       if not error.isNil:
         c.errorFlag = error
       else:

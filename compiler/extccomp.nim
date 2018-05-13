@@ -380,11 +380,11 @@ proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
   # use ``cpu.os.cc`` for cross compilation, unless ``--compileOnly`` is given
   # for niminst support
   let fullSuffix =
-    if gCmd == cmdCompileToCpp:
+    if conf.cmd == cmdCompileToCpp:
       ".cpp" & suffix
-    elif gCmd == cmdCompileToOC:
+    elif conf.cmd == cmdCompileToOC:
       ".objc" & suffix
-    elif gCmd == cmdCompileToJS:
+    elif conf.cmd == cmdCompileToJS:
       ".js" & suffix
     else:
       suffix
@@ -535,7 +535,7 @@ proc needsExeExt(conf: ConfigRef): bool {.inline.} =
            (platform.hostOS == osWindows)
 
 proc getCompilerExe(conf: ConfigRef; compiler: TSystemCC; cfile: string): string =
-  result = if gCmd == cmdCompileToCpp and not cfile.endsWith(".c"):
+  result = if conf.cmd == cmdCompileToCpp and not cfile.endsWith(".c"):
              CC[compiler].cppCompiler
            else:
              CC[compiler].compilerExe
@@ -546,7 +546,7 @@ proc getCompilerExe(conf: ConfigRef; compiler: TSystemCC; cfile: string): string
 
 proc getLinkerExe(conf: ConfigRef; compiler: TSystemCC): string =
   result = if CC[compiler].linkerExe.len > 0: CC[compiler].linkerExe
-           elif gMixedMode and gCmd != cmdCompileToCpp: CC[compiler].cppCompiler
+           elif gMixedMode and conf.cmd != cmdCompileToCpp: CC[compiler].cppCompiler
            else: getCompilerExe(conf, compiler, "")
 
 proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile): string =
@@ -610,7 +610,7 @@ proc footprint(conf: ConfigRef; cfile: Cfile): SecureHash =
     getCompileCFileCmd(conf, cfile))
 
 proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
-  if gCmd notin {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToLLVM}:
+  if conf.cmd notin {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToLLVM}:
     return false
 
   var hashFile = toGeneratedFile(conf, conf.withPackageName(cfile.cname), "sha1")

@@ -225,7 +225,7 @@ proc genLineDir(p: BProc, t: PNode) =
       (p.prc == nil or sfPure notin p.prc.flags) and tt.info.fileIndex != InvalidFileIDX:
     if freshLineInfo(p, tt.info):
       linefmt(p, cpsStmts, "nimln_($1, $2);$n",
-              line.rope, tt.info.quotedFilename)
+              line.rope, quotedFilename(p.config, tt.info))
 
 proc postStmtActions(p: BProc) {.inline.} =
   add(p.s(cpsStmts), p.module.injectStmt)
@@ -771,7 +771,7 @@ proc genProcAux(m: BModule, prc: PSym) =
     if optStackTrace in prc.options:
       add(generatedProc, p.s(cpsLocals))
       var procname = makeCString(prc.name.s)
-      add(generatedProc, initFrame(p, procname, prc.info.quotedFilename))
+      add(generatedProc, initFrame(p, procname, quotedFilename(p.config, prc.info)))
     else:
       add(generatedProc, p.s(cpsLocals))
     if optProfiler in prc.options:
@@ -1151,7 +1151,7 @@ proc genInitCode(m: BModule) =
     incl m.flags, frameDeclared
     if preventStackTrace notin m.flags:
       var procname = makeCString(m.module.name.s)
-      add(prc, initFrame(m.initProc, procname, m.module.info.quotedFilename))
+      add(prc, initFrame(m.initProc, procname, quotedFilename(m.config, m.module.info)))
     else:
       add(prc, ~"\tTFrame FR_; FR_.len = 0;$N")
 

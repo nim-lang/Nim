@@ -70,6 +70,11 @@ type                          # please make sure we have under 32 options
     optIdeTerse               # idetools: use terse descriptions
     optNoCppExceptions        # use C exception handling even with CPP
     optExcessiveStackTrace    # fully qualified module filenames
+    opWholeProject            # for 'doc2': output any dependency
+    optListFullPaths
+    optNoNimblePath
+    optDynlibOverrideAll
+    optUseNimNamespace
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -111,8 +116,22 @@ type
     destructor,
     notnil
 
+  SymbolFilesOption* = enum
+    disabledSf, enabledSf, writeOnlySf, readOnlySf, v2Sf
+
   ConfigRef* = ref object ## eventually all global configuration should be moved here
     linesCompiled*: int  # all lines that have been compiled
+    options*: TOptions
+    globalOptions*: TGlobalOptions
+    exitcode*: int8
+    cmd*: TCommands  # the command
+    selectedGC*: TGCMode       # the selected GC
+    verbosity*: int            # how verbose the compiler is
+    numberOfProcessors*: int   # number of processors
+    evalExpr*: string          # expression for idetools --eval
+    lastCmdTime*: float        # when caas is enabled, we measure each command
+    symbolFiles*: SymbolFilesOption
+
     cppDefines*: HashSet[string]
     headerFile*: string
     features*: set[Feature]
@@ -154,6 +173,17 @@ type
 
 const oldExperimentalFeatures* = {implicitDeref, dotOperators, callOperator, parallel}
 
+const
+  ChecksOptions* = {optObjCheck, optFieldCheck, optRangeCheck, optNilCheck,
+    optOverflowCheck, optBoundsCheck, optAssert, optNaNCheck, optInfCheck,
+    optMoveCheck}
+
+  DefaultOptions* = {optObjCheck, optFieldCheck, optRangeCheck,
+    optBoundsCheck, optOverflowCheck, optAssert, optWarns,
+    optHints, optStackTrace, optLineTrace,
+    optPatterns, optNilCheck, optMoveCheck}
+  DefaultGlobalOptions* = {optThreadAnalysis, optUseColors}
+
 template newPackageCache*(): untyped =
   newStringTable(when FileSystemCaseSensitive:
                    modeCaseInsensitive
@@ -161,7 +191,13 @@ template newPackageCache*(): untyped =
                    modeCaseSensitive)
 
 proc newConfigRef*(): ConfigRef =
-  result = ConfigRef(cppDefines: initSet[string](),
+  result = ConfigRef(
+    selectedGC: gcRefc,
+    verbosity: 1,
+    options: DefaultOptions,
+    globalOptions: DefaultGlobalOptions,
+    evalExpr: "",
+    cppDefines: initSet[string](),
     headerFile: "", features: {}, foreignPackageNotes: {hintProcessing, warnUnknownMagic,
     hintQuitCalled, hintExecuting},
     notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1],
@@ -188,7 +224,12 @@ proc newConfigRef*(): ConfigRef =
 
 proc newPartialConfigRef*(): ConfigRef =
   ## create a new ConfigRef that is only good enough for error reporting.
-  result = ConfigRef(foreignPackageNotes: {hintProcessing, warnUnknownMagic,
+  result = ConfigRef(
+    selectedGC: gcRefc,
+    verbosity: 1,
+    options: DefaultOptions,
+    globalOptions: DefaultGlobalOptions,
+    foreignPackageNotes: {hintProcessing, warnUnknownMagic,
     hintQuitCalled, hintExecuting},
     notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1])
 
@@ -234,48 +275,15 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
                             osDragonfly, osMacosx}
     else: discard
 
-const
-  ChecksOptions* = {optObjCheck, optFieldCheck, optRangeCheck, optNilCheck,
-    optOverflowCheck, optBoundsCheck, optAssert, optNaNCheck, optInfCheck,
-    optMoveCheck}
-
-var
-  gOptions*: TOptions = {optObjCheck, optFieldCheck, optRangeCheck,
-                         optBoundsCheck, optOverflowCheck, optAssert, optWarns,
-                         optHints, optStackTrace, optLineTrace,
-                         optPatterns, optNilCheck, optMoveCheck}
-  gGlobalOptions*: TGlobalOptions = {optThreadAnalysis}
-  gExitcode*: int8
-  gCmd*: TCommands = cmdNone  # the command
-  gSelectedGC* = gcRefc       # the selected GC
-  #headerFile*: string = ""
-  gVerbosity* = 1             # how verbose the compiler is
-  gNumberOfProcessors*: int   # number of processors
-  gWholeProject*: bool        # for 'doc2': output any dependency
-  gEvalExpr* = ""             # expression for idetools --eval
-  gLastCmdTime*: float        # when caas is enabled, we measure each command
-  gListFullPaths*: bool
-  gPreciseStack*: bool
-  gNoNimblePath*: bool
-  gDynlibOverrideAll*: bool
-  useNimNamespace*: bool
-
-type
-  SymbolFilesOption* = enum
-    disabledSf, enabledSf, writeOnlySf, readOnlySf, v2Sf
-
-var gSymbolFiles*: SymbolFilesOption
-
-proc importantComments*(conf: ConfigRef): bool {.inline.} = gCmd in {cmdDoc, cmdIdeTools}
-proc usesNativeGC*(conf: ConfigRef): bool {.inline.} = gSelectedGC >= gcRefc
-template preciseStack*(conf: ConfigRef): bool = gPreciseStack
+proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmd in {cmdDoc, cmdIdeTools}
+proc usesNativeGC*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc
 
 template compilationCachePresent*(conf: ConfigRef): untyped =
-  gSymbolFiles in {enabledSf, writeOnlySf}
+  conf.symbolFiles in {enabledSf, writeOnlySf}
 #  {optCaasEnabled, optSymbolFiles} * gGlobalOptions != {}
 
 template optPreserveOrigSource*(conf: ConfigRef): untyped =
-  optEmbedOrigSrc in gGlobalOptions
+  optEmbedOrigSrc in conf.globalOptions
 
 const
   genSubDir* = "nimcache"
@@ -374,7 +382,7 @@ proc removeTrailingDirSep*(path: string): string =
     result = path
 
 proc disableNimblePath*(conf: ConfigRef) =
-  gNoNimblePath = true
+  incl conf.globalOptions, optNoNimblePath
   conf.lazyPaths.setLen(0)
 
 include packagehandling
@@ -503,7 +511,8 @@ proc inclDynlibOverride*(conf: ConfigRef; lib: string) =
   conf.dllOverrides[lib.canonDynlibName] = "true"
 
 proc isDynlibOverride*(conf: ConfigRef; lib: string): bool =
-  result = gDynlibOverrideAll or conf.dllOverrides.hasKey(lib.canonDynlibName)
+  result = optDynlibOverrideAll in conf.globalOptions or
+     conf.dllOverrides.hasKey(lib.canonDynlibName)
 
 proc binaryStrSearch*(x: openArray[string], y: string): int =
   var a = 0
