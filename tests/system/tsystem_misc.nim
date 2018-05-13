@@ -11,6 +11,16 @@ discard """
 2
 3
 4
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
 '''
 """
 
@@ -47,3 +57,9 @@ foo(toOpenArray(arr, 8, 12))
 
 var seqq = @[1, 2, 3, 4, 5]
 foo(toOpenArray(seqq, 1, 3))
+
+proc foo(a: openArray[byte]) =
+  for x in a: echo x
+
+let str = "0123456789"
+foo(toOpenArray(str, 0'u, str.high))
