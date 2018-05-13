@@ -390,7 +390,7 @@ proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
       suffix
 
   if (platform.hostOS != targetOS or platform.hostCPU != targetCPU) and
-      optCompileOnly notin gGlobalOptions:
+      optCompileOnly notin conf.globalOptions:
     let fullCCname = platform.CPU[targetCPU].name & '.' &
                      platform.OS[targetOS].name & '.' &
                      CC[c].name & fullSuffix
@@ -496,7 +496,7 @@ proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
   # really: Cross compilation from Linux to Linux for example is entirely
   # reasonable.
   # `optGenMapping` is included here for niminst.
-  result = gGlobalOptions * {optGenScript, optGenMapping} != {}
+  result = conf.globalOptions * {optGenScript, optGenMapping} != {}
 
 proc cFileSpecificOptions(conf: ConfigRef; cfilename: string): string =
   result = compileOptions
@@ -505,15 +505,15 @@ proc cFileSpecificOptions(conf: ConfigRef; cfilename: string): string =
       addOpt(result, option)
 
   let trunk = splitFile(cfilename).name
-  if optCDebug in gGlobalOptions:
+  if optCDebug in conf.globalOptions:
     let key = trunk & ".debug"
     if existsConfigVar(conf, key): addOpt(result, getConfigVar(conf, key))
     else: addOpt(result, getDebug(conf, cCompiler))
-  if optOptimizeSpeed in gOptions:
+  if optOptimizeSpeed in conf.options:
     let key = trunk & ".speed"
     if existsConfigVar(conf, key): addOpt(result, getConfigVar(conf, key))
     else: addOpt(result, getOptSpeed(conf, cCompiler))
-  elif optOptimizeSize in gOptions:
+  elif optOptimizeSize in conf.options:
     let key = trunk & ".size"
     if existsConfigVar(conf, key): addOpt(result, getConfigVar(conf, key))
     else: addOpt(result, getOptSize(conf, cCompiler))
@@ -531,7 +531,7 @@ proc getLinkOptions(conf: ConfigRef): string =
     result.add(join([CC[cCompiler].linkDirCmd, libDir.quoteShell]))
 
 proc needsExeExt(conf: ConfigRef): bool {.inline.} =
-  result = (optGenScript in gGlobalOptions and targetOS == osWindows) or
+  result = (optGenScript in conf.globalOptions and targetOS == osWindows) or
            (platform.hostOS == osWindows)
 
 proc getCompilerExe(conf: ConfigRef; compiler: TSystemCC; cfile: string): string =
@@ -556,7 +556,7 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile): string =
   if exe.len == 0: exe = getCompilerExe(conf, c, cfile.cname)
 
   if needsExeExt(conf): exe = addFileExt(exe, "exe")
-  if optGenDynLib in gGlobalOptions and
+  if optGenDynLib in conf.globalOptions and
       ospNeedsPIC in platform.OS[targetOS].props:
     add(options, ' ' & CC[c].pic)
 
@@ -628,7 +628,7 @@ proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
       close(f)
 
 proc addExternalFileToCompile*(conf: ConfigRef; c: var Cfile) =
-  if optForceFullMake notin gGlobalOptions and not externalFileChanged(conf, c):
+  if optForceFullMake notin conf.globalOptions and not externalFileChanged(conf, c):
     c.flags.incl CfileFlag.Cached
   toCompile.add(c)
 
@@ -644,16 +644,16 @@ proc compileCFile(conf: ConfigRef; list: CFileList, script: var Rope, cmds: var 
     # call the C compiler for the .c file:
     if it.flags.contains(CfileFlag.Cached): continue
     var compileCmd = getCompileCFileCmd(conf, it)
-    if optCompileOnly notin gGlobalOptions:
+    if optCompileOnly notin conf.globalOptions:
       add(cmds, compileCmd)
       let (_, name, _) = splitFile(it.cname)
       add(prettyCmds, "CC: " & name)
-    if optGenScript in gGlobalOptions:
+    if optGenScript in conf.globalOptions:
       add(script, compileCmd)
       add(script, tnl)
 
 proc getLinkCmd(conf: ConfigRef; projectfile, objfiles: string): string =
-  if optGenStaticLib in gGlobalOptions:
+  if optGenStaticLib in conf.globalOptions:
     var libname: string
     if conf.outFile.len > 0:
       libname = conf.outFile.expandTilde
@@ -670,10 +670,10 @@ proc getLinkCmd(conf: ConfigRef; projectfile, objfiles: string): string =
     if needsExeExt(conf): linkerExe = addFileExt(linkerExe, "exe")
     if noAbsolutePaths(conf): result = linkerExe
     else: result = joinPath(ccompilerpath, linkerExe)
-    let buildgui = if optGenGuiApp in gGlobalOptions: CC[cCompiler].buildGui
+    let buildgui = if optGenGuiApp in conf.globalOptions: CC[cCompiler].buildGui
                    else: ""
     var exefile, builddll: string
-    if optGenDynLib in gGlobalOptions:
+    if optGenDynLib in conf.globalOptions:
       exefile = platform.OS[targetOS].dllFrmt % splitFile(projectfile).name
       builddll = CC[cCompiler].buildDll
     else:
@@ -687,7 +687,7 @@ proc getLinkCmd(conf: ConfigRef; projectfile, objfiles: string): string =
       if not exefile.isAbsolute():
         exefile = joinPath(splitFile(projectfile).dir, exefile)
     when false:
-      if optCDebug in gGlobalOptions:
+      if optCDebug in conf.globalOptions:
         writeDebugInfo(exefile.changeFileExt("ndb"))
     exefile = quoteShell(exefile)
     let linkOptions = getLinkOptions(conf) & " " &
@@ -720,7 +720,7 @@ template tryExceptOSErrorMessage(conf: ConfigRef; errorPrefix: string = "", body
 proc execLinkCmd(conf: ConfigRef; linkCmd: string) =
   tryExceptOSErrorMessage(conf, "invocation of external linker program failed."):
     execExternalProgram(conf, linkCmd,
-      if optListCmd in gGlobalOptions or gVerbosity > 1: hintExecuting else: hintLinking)
+      if optListCmd in conf.globalOptions or conf.verbosity > 1: hintExecuting else: hintLinking)
 
 proc execCmdsInParallel(conf: ConfigRef; cmds: seq[string]; prettyCb: proc (idx: int)) =
   let runCb = proc (idx: int, p: Process) =
@@ -729,9 +729,9 @@ proc execCmdsInParallel(conf: ConfigRef; cmds: seq[string]; prettyCb: proc (idx:
       rawMessage(conf, errGenerated, "execution of an external compiler program '" &
         cmds[idx] & "' failed with exit code: " & $exitCode & "\n\n" &
         p.outputStream.readAll.strip)
-  if gNumberOfProcessors == 0: gNumberOfProcessors = countProcessors()
+  if conf.numberOfProcessors == 0: conf.numberOfProcessors = countProcessors()
   var res = 0
-  if gNumberOfProcessors <= 1:
+  if conf.numberOfProcessors <= 1:
     for i in countup(0, high(cmds)):
       tryExceptOSErrorMessage(conf, "invocation of external compiler program failed."):
         res = execWithEcho(conf, cmds[i])
@@ -740,24 +740,24 @@ proc execCmdsInParallel(conf: ConfigRef; cmds: seq[string]; prettyCb: proc (idx:
           cmds[i])
   else:
     tryExceptOSErrorMessage(conf, "invocation of external compiler program failed."):
-      if optListCmd in gGlobalOptions or gVerbosity > 1:
+      if optListCmd in conf.globalOptions or conf.verbosity > 1:
         res = execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath},
-                            gNumberOfProcessors, afterRunEvent=runCb)
-      elif gVerbosity == 1:
+                            conf.numberOfProcessors, afterRunEvent=runCb)
+      elif conf.verbosity == 1:
         res = execProcesses(cmds, {poStdErrToStdOut, poUsePath},
-                            gNumberOfProcessors, prettyCb, afterRunEvent=runCb)
+                            conf.numberOfProcessors, prettyCb, afterRunEvent=runCb)
       else:
         res = execProcesses(cmds, {poStdErrToStdOut, poUsePath},
-                            gNumberOfProcessors, afterRunEvent=runCb)
+                            conf.numberOfProcessors, afterRunEvent=runCb)
   if res != 0:
-    if gNumberOfProcessors <= 1:
+    if conf.numberOfProcessors <= 1:
       rawMessage(conf, errGenerated, "execution of an external program failed: '$1'" %
         cmds.join())
 
 proc callCCompiler*(conf: ConfigRef; projectfile: string) =
   var
     linkCmd: string
-  if gGlobalOptions * {optCompileOnly, optGenScript} == {optCompileOnly}:
+  if conf.globalOptions * {optCompileOnly, optGenScript} == {optCompileOnly}:
     return # speed up that call if only compiling and no script shall be
            # generated
   #var c = cCompiler
@@ -767,9 +767,9 @@ proc callCCompiler*(conf: ConfigRef; projectfile: string) =
   let prettyCb = proc (idx: int) =
     echo prettyCmds[idx]
   compileCFile(conf, toCompile, script, cmds, prettyCmds)
-  if optCompileOnly notin gGlobalOptions:
+  if optCompileOnly notin conf.globalOptions:
     execCmdsInParallel(conf, cmds, prettyCb)
-  if optNoLinking notin gGlobalOptions:
+  if optNoLinking notin conf.globalOptions:
     # call the linker:
     var objfiles = ""
     for it in externalToLink:
@@ -783,11 +783,11 @@ proc callCCompiler*(conf: ConfigRef; projectfile: string) =
       add(objfiles, quoteShell(objFile))
 
     linkCmd = getLinkCmd(conf, projectfile, objfiles)
-    if optCompileOnly notin gGlobalOptions:
+    if optCompileOnly notin conf.globalOptions:
       execLinkCmd(conf, linkCmd)
   else:
     linkCmd = ""
-  if optGenScript in gGlobalOptions:
+  if optGenScript in conf.globalOptions:
     add(script, linkCmd)
     add(script, tnl)
     generateScript(conf, projectfile, script)
@@ -892,7 +892,7 @@ proc genMappingFiles(conf: ConfigRef; list: CFileList): Rope =
     addf(result, "--file:r\"$1\"$N", [rope(it.cname)])
 
 proc writeMapping*(conf: ConfigRef; symbolMapping: Rope) =
-  if optGenMapping notin gGlobalOptions: return
+  if optGenMapping notin conf.globalOptions: return
   var code = rope("[C_Files]\n")
   add(code, genMappingFiles(conf, toCompile))
   add(code, "\n[C_Compiler]\nFlags=")

@@ -29,7 +29,7 @@ proc getSysSym*(g: ModuleGraph; info: TLineInfo; name: string): PSym =
   result = strTableGet(g.systemModule.tab, getIdent(name))
   if result == nil:
     localError(g.config, info, "system module needs: " & name)
-    result = newSym(skError, getIdent(name), g.systemModule, g.systemModule.info)
+    result = newSym(skError, getIdent(name), g.systemModule, g.systemModule.info, {})
     result.typ = newType(tyError, g.systemModule)
   if result.kind == skStub: loadStub(result)
   if result.kind == skAlias: result = result.owner
@@ -57,7 +57,7 @@ proc getSysMagic*(g: ModuleGraph; info: TLineInfo; name: string, m: TMagic): PSy
     r = nextIdentIter(ti, g.systemModule.tab)
   if result != nil: return result
   localError(g.config, info, "system module needs: " & name)
-  result = newSym(skError, id, g.systemModule, g.systemModule.info)
+  result = newSym(skError, id, g.systemModule, g.systemModule.info, {})
   result.typ = newType(tyError, g.systemModule)
 
 proc sysTypeFromName*(g: ModuleGraph; info: TLineInfo; name: string): PType =

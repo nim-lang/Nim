@@ -481,7 +481,7 @@ proc isAssignable(c: PContext, n: PNode; isUnsafeAddr=false): TAssignableResult 
   result = parampatterns.isAssignable(c.p.owner, n, isUnsafeAddr)
 
 proc newHiddenAddrTaken(c: PContext, n: PNode): PNode =
-  if n.kind == nkHiddenDeref and not (gCmd == cmdCompileToCpp or
+  if n.kind == nkHiddenDeref and not (c.config.cmd == cmdCompileToCpp or
                                       sfCompileToCpp in c.module.flags):
     checkSonsLen(n, 1, c.config)
     result = n.sons[0]
@@ -601,7 +601,7 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
   if {sfNoSideEffect, sfCompileTime} * callee.flags != {} and
      {sfForward, sfImportc} * callee.flags == {} and n.typ != nil:
     if sfCompileTime notin callee.flags and
-        optImplicitStatic notin gOptions: return
+        optImplicitStatic notin c.config.options: return
 
     if callee.magic notin ctfeWhitelist: return
     if callee.kind notin {skProc, skFunc, skConverter} or callee.isGenericRoutine:
@@ -1078,7 +1078,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # here at all!
   #if isSymChoice(n.sons[1]): return
   when defined(nimsuggest):
-    if gCmd == cmdIdeTools:
+    if c.config.cmd == cmdIdeTools:
       suggestExpr(c, n)
       if exactEquals(gTrackPos, n[1].info): suggestExprNoCheck(c, n)
 
@@ -1931,7 +1931,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
       if callee.magic != mNone:
         result = magicsAfterOverloadResolution(c, result, flags)
   of mRunnableExamples:
-    if gCmd == cmdDoc and n.len >= 2 and n.lastSon.kind == nkStmtList:
+    if c.config.cmd == cmdDoc and n.len >= 2 and n.lastSon.kind == nkStmtList:
       if sfMainModule in c.module.flags:
         let inp = toFullPath(c.module.info)
         if c.runnableExamples == nil:
@@ -2205,7 +2205,7 @@ proc shouldBeBracketExpr(n: PNode): bool =
 
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = n
-  if gCmd == cmdIdeTools: suggestExpr(c, n)
+  if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
   if nfSem in n.flags: return
   case n.kind
   of nkIdent, nkAccQuoted:
@@ -2290,7 +2290,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     let mode = if nfDotField in n.flags: {} else: {checkUndeclared}
     var s = qualifiedLookUp(c, n.sons[0], mode)
     if s != nil:
-      #if gCmd == cmdPretty and n.sons[0].kind == nkDotExpr:
+      #if c.config.cmd == cmdPretty and n.sons[0].kind == nkDotExpr:
       #  pretty.checkUse(n.sons[0].sons[1].info, s)
       case s.kind
       of skMacro:

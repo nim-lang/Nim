@@ -204,7 +204,7 @@ proc considerGenSyms*(c: PContext; n: PNode) =
 
 proc newOptionEntry*(conf: ConfigRef): POptionEntry =
   new(result)
-  result.options = gOptions
+  result.options = conf.options
   result.defaultCC = ccDefault
   result.dynlib = nil
   result.notes = conf.notes
@@ -286,7 +286,8 @@ proc makeTypeDesc*(c: PContext, typ: PType): PType =
 
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let typedesc = makeTypeDesc(c, typ)
-  let sym = newSym(skType, c.cache.idAnon, getCurrOwner(c), info).linkTo(typedesc)
+  let sym = newSym(skType, c.cache.idAnon, getCurrOwner(c), info,
+                   c.config.options).linkTo(typedesc)
   return newSymNode(sym, info)
 
 proc makeTypeFromExpr*(c: PContext, n: PNode): PType =

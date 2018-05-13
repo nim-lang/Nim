@@ -20,8 +20,8 @@ import
 
 from magicsys import resetSysTypes
 
-proc rodPass =
-  if gSymbolFiles in {enabledSf, writeOnlySf}:
+proc rodPass(g: ModuleGraph) =
+  if g.config.symbolFiles in {enabledSf, writeOnlySf}:
     registerPass(rodwritePass)
 
 proc codegenPass =
@@ -56,7 +56,7 @@ proc commandCheck(graph: ModuleGraph; cache: IdentCache) =
   graph.config.errorMax = high(int)  # do not stop after first error
   defineSymbol(graph.config.symbols, "nimcheck")
   semanticPasses()            # use an empty backend for semantic checking only
-  rodPass()
+  rodPass(graph)
   compileProject(graph, cache)
 
 proc commandDoc2(graph: ModuleGraph; cache: IdentCache; json: bool) =
@@ -73,16 +73,16 @@ proc commandCompileToC(graph: ModuleGraph; cache: IdentCache) =
   extccomp.initVars(conf)
   semanticPasses()
   registerPass(cgenPass)
-  rodPass()
+  rodPass(graph)
   #registerPass(cleanupPass())
 
   compileProject(graph, cache)
   cgenWriteModules(graph.backend, conf)
-  if gCmd != cmdRun:
+  if conf.cmd != cmdRun:
     let proj = changeFileExt(conf.projectFull, "")
     extccomp.callCCompiler(conf, proj)
     extccomp.writeJsonBuildInstructions(conf, proj)
-    if optGenScript in gGlobalOptions:
+    if optGenScript in graph.config.globalOptions:
       writeDepsFile(graph, toGeneratedFile(conf, proj, ""))
 
 proc commandJsonScript(graph: ModuleGraph; cache: IdentCache) =
@@ -144,7 +144,7 @@ proc commandScan(cache: IdentCache, config: ConfigRef) =
     openLexer(L, f, stream, cache, config)
     while true:
       rawGetTok(L, tok)
-      printTok(tok)
+      printTok(config, tok)
       if tok.tokType == tkEof: break
     closeLexer(L)
   else:
@@ -159,78 +159,78 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
   setupModuleCache()
   # In "nim serve" scenario, each command must reset the registered passes
   clearPasses()
-  gLastCmdTime = epochTime()
+  conf.lastCmdTime = epochTime()
   conf.searchPaths.add(conf.libpath)
   setId(100)
   case conf.command.normalize
   of "c", "cc", "compile", "compiletoc":
     # compile means compileToC currently
-    gCmd = cmdCompileToC
+    conf.cmd = cmdCompileToC
     commandCompileToC(graph, cache)
   of "cpp", "compiletocpp":
-    gCmd = cmdCompileToCpp
+    conf.cmd = cmdCompileToCpp
     defineSymbol(graph.config.symbols, "cpp")
     commandCompileToC(graph, cache)
   of "objc", "compiletooc":
-    gCmd = cmdCompileToOC
+    conf.cmd = cmdCompileToOC
     defineSymbol(graph.config.symbols, "objc")
     commandCompileToC(graph, cache)
   of "run":
-    gCmd = cmdRun
+    conf.cmd = cmdRun
     when hasTinyCBackend:
       extccomp.setCC("tcc")
       commandCompileToC(graph, cache)
     else:
       rawMessage(conf, errGenerated, "'run' command not available; rebuild with -d:tinyc")
   of "js", "compiletojs":
-    gCmd = cmdCompileToJS
+    conf.cmd = cmdCompileToJS
     commandCompileToJS(graph, cache)
   of "doc0":
     wantMainModule(conf)
-    gCmd = cmdDoc
+    conf.cmd = cmdDoc
     loadConfigs(DocConfig, cache)
     commandDoc(conf)
   of "doc2", "doc":
-    gCmd = cmdDoc
+    conf.cmd = cmdDoc
     loadConfigs(DocConfig, cache)
     defineSymbol(conf.symbols, "nimdoc")
     commandDoc2(graph, cache, false)
   of "rst2html":
-    gCmd = cmdRst2html
+    conf.cmd = cmdRst2html
     loadConfigs(DocConfig, cache)
     commandRst2Html(conf)
   of "rst2tex":
-    gCmd = cmdRst2tex
+    conf.cmd = cmdRst2tex
     loadConfigs(DocTexConfig, cache)
     commandRst2TeX(conf)
   of "jsondoc0":
     wantMainModule(conf)
-    gCmd = cmdDoc
+    conf.cmd = cmdDoc
     loadConfigs(DocConfig, cache)
     wantMainModule(conf)
     defineSymbol(conf.symbols, "nimdoc")
     commandJson(conf)
   of "jsondoc2", "jsondoc":
-    gCmd = cmdDoc
+    conf.cmd = cmdDoc
     loadConfigs(DocConfig, cache)
     wantMainModule(conf)
     defineSymbol(conf.symbols, "nimdoc")
     commandDoc2(graph, cache, true)
   of "ctags":
     wantMainModule(conf)
-    gCmd = cmdDoc
+    conf.cmd = cmdDoc
     loadConfigs(DocConfig, cache)
     defineSymbol(conf.symbols, "nimdoc")
     commandTags(conf)
   of "buildindex":
-    gCmd = cmdDoc
+    conf.cmd = cmdDoc
     loadConfigs(DocConfig, cache)
     commandBuildIndex(conf)
   of "gendepend":
-    gCmd = cmdGenDepend
+    conf.cmd = cmdGenDepend
     commandGenDepend(graph, cache)
   of "dump":
-    gCmd = cmdDump
+    conf.cmd = cmdDump
     if getConfigVar(conf, "dump.format") == "json":
       wantMainModule(conf)
 
@@ -247,48 +247,48 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
         (key: "lib_paths", val: libpaths)
       ]
 
-      msgWriteln($dumpdata, {msgStdout, msgSkipHook})
+      msgWriteln(conf, $dumpdata, {msgStdout, msgSkipHook})
     else:
-      msgWriteln("-- list of currently defined symbols --",
+      msgWriteln(conf, "-- list of currently defined symbols --",
                  {msgStdout, msgSkipHook})
-      for s in definedSymbolNames(conf.symbols): msgWriteln(s, {msgStdout, msgSkipHook})
-      msgWriteln("-- end of list --", {msgStdout, msgSkipHook})
+      for s in definedSymbolNames(conf.symbols): msgWriteln(conf, s, {msgStdout, msgSkipHook})
+      msgWriteln(conf, "-- end of list --", {msgStdout, msgSkipHook})
 
-      for it in conf.searchPaths: msgWriteln(it)
+      for it in conf.searchPaths: msgWriteln(conf, it)
   of "check":
-    gCmd = cmdCheck
+    conf.cmd = cmdCheck
     commandCheck(graph, cache)
   of "parse":
-    gCmd = cmdParse
+    conf.cmd = cmdParse
     wantMainModule(conf)
     discard parseFile(FileIndex conf.projectMainIdx, cache, conf)
   of "scan":
-    gCmd = cmdScan
+    conf.cmd = cmdScan
     wantMainModule(conf)
     commandScan(cache, conf)
-    msgWriteln("Beware: Indentation tokens depend on the parser's state!")
+    msgWriteln(conf, "Beware: Indentation tokens depend on the parser's state!")
   of "secret":
-    gCmd = cmdInteractive
+    conf.cmd = cmdInteractive
     commandInteractive(graph, cache)
   of "e":
     commandEval(graph, cache, mainCommandArg(conf))
   of "nop", "help":
     # prevent the "success" message:
-    gCmd = cmdDump
+    conf.cmd = cmdDump
   of "jsonscript":
-    gCmd = cmdJsonScript
+    conf.cmd = cmdJsonScript
     commandJsonScript(graph, cache)
   else:
     rawMessage(conf, errGenerated, "invalid command: " & conf.command)
 
   if conf.errorCounter == 0 and
-     gCmd notin {cmdInterpret, cmdRun, cmdDump}:
+     conf.cmd notin {cmdInterpret, cmdRun, cmdDump}:
     when declared(system.getMaxMem):
       let usedMem = formatSize(getMaxMem()) & " peakmem"
     else:
       let usedMem = formatSize(getTotalMem())
     rawMessage(conf, hintSuccessX, [$conf.linesCompiled,
-               formatFloat(epochTime() - gLastCmdTime, ffDecimal, 3),
+               formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3),
                usedMem,
                if isDefined(conf, "release"): "Release Build"
                else: "Debug Build"])

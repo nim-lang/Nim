@@ -13,7 +13,7 @@
 # included from cgen.nim
 
 proc emulatedThreadVars(conf: ConfigRef): bool =
-  result = {optThreads, optTlsEmulation} <= gGlobalOptions
+  result = {optThreads, optTlsEmulation} <= conf.globalOptions
 
 proc accessThreadLocalVar(p: BProc, s: PSym) =
   if emulatedThreadVars(p.config) and not p.threadVarAccessed:
@@ -46,7 +46,7 @@ proc declareThreadVar(m: BModule, s: PSym, isExtern: bool) =
       addf(nimtv, "$1 $2;$n", [getTypeDesc(m, s.loc.t), s.loc.r])
   else:
     if isExtern: add(m.s[cfsVars], "extern ")
-    if optThreads in gGlobalOptions: add(m.s[cfsVars], "NIM_THREADVAR ")
+    if optThreads in m.config.globalOptions: add(m.s[cfsVars], "NIM_THREADVAR ")
     add(m.s[cfsVars], getTypeDesc(m, s.loc.t))
     addf(m.s[cfsVars], " $1;$n", [s.loc.r])
 
@@ -57,7 +57,7 @@ proc generateThreadLocalStorage(m: BModule) =
 
 proc generateThreadVarsSize(m: BModule) =
   if nimtv != nil:
-    let externc = if gCmd == cmdCompileToCpp or
+    let externc = if m.config.cmd == cmdCompileToCpp or
                        sfCompileToCpp in m.module.flags: "extern \"C\" "
                   else: ""
     addf(m.s[cfsProcs],

@@ -190,8 +190,8 @@ proc prettyTok*(tok: TToken): string =
   if isKeyword(tok.tokType): result = "keyword " & tok.ident.s
   else: result = tokToStr(tok)
 
-proc printTok*(tok: TToken) =
-  msgWriteln($tok.line & ":" & $tok.col & "\t" &
+proc printTok*(conf: ConfigRef; tok: TToken) =
+  msgWriteln(conf, $tok.line & ":" & $tok.col & "\t" &
       TokTypeToStr[tok.tokType] & " " & tokToStr(tok))
 
 proc initToken*(L: var TToken) =
@@ -714,7 +714,7 @@ proc handleCRLF(L: var TLexer, pos: int): int =
     if col > MaxLineLength:
       lexMessagePos(L, hintLineTooLong, pos)
 
-    if optEmbedOrigSrc in gGlobalOptions:
+    if optEmbedOrigSrc in L.config.globalOptions:
       let lineStart = cast[ByteAddress](L.buf) + L.lineStart
       let line = newString(cast[cstring](lineStart), col)
       addSourceLine(L.fileIdx, line)

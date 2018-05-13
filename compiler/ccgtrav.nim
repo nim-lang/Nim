@@ -77,7 +77,7 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType) =
     linefmt(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
             i.r, arraySize.rope)
     let oldLen = p.s(cpsStmts).len
-    genTraverseProc(c, rfmt(nil, "$1[$2]", accessor, i.r), typ.sons[1])
+    genTraverseProc(c, ropecg(c.p.module, "$1[$2]", accessor, i.r), typ.sons[1])
     if p.s(cpsStmts).len == oldLen:
       # do not emit dummy long loops for faster debug builds:
       p.s(cpsStmts) = oldCode
@@ -92,12 +92,12 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType) =
   of tyTuple:
     let typ = getUniqueType(typ)
     for i in countup(0, sonsLen(typ) - 1):
-      genTraverseProc(c, rfmt(nil, "$1.Field$2", accessor, i.rope), typ.sons[i])
+      genTraverseProc(c, ropecg(c.p.module, "$1.Field$2", accessor, i.rope), typ.sons[i])
   of tyRef, tyString, tySequence:
     lineCg(p, cpsStmts, c.visitorFrmt, accessor)
   of tyProc:
     if typ.callConv == ccClosure:
-      lineCg(p, cpsStmts, c.visitorFrmt, rfmt(nil, "$1.ClE_0", accessor))
+      lineCg(p, cpsStmts, c.visitorFrmt, ropecg(c.p.module, "$1.ClE_0", accessor))
   else:
     discard
 

@@ -70,7 +70,7 @@ type                          # please make sure we have under 32 options
     optIdeTerse               # idetools: use terse descriptions
     optNoCppExceptions        # use C exception handling even with CPP
     optExcessiveStackTrace    # fully qualified module filenames
-    opWholeProject            # for 'doc2': output any dependency
+    optWholeProject           # for 'doc2': output any dependency
     optListFullPaths
     optNoNimblePath
     optDynlibOverrideAll

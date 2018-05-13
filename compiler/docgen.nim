@@ -29,7 +29,7 @@ type
     jArray: JsonNode
     types: TStrTable
     isPureRst: bool
-    conf: ConfigRef
+    conf*: ConfigRef
 
   PDoc* = ref TDocumentor ## Alias to type less.
 
@@ -90,7 +90,7 @@ proc newDocumentor*(filename: string, conf: ConfigRef): PDoc =
   declareClosures()
   new(result)
   result.conf = conf
-  initRstGenerator(result[], (if gCmd != cmdRst2tex: outHtml else: outLatex),
+  initRstGenerator(result[], (if conf.cmd != cmdRst2tex: outHtml else: outLatex),
                    conf.configVars, filename, {roSupportRawDirective},
                    docgenFindFile, compilerMsgHandler)
 
@@ -117,8 +117,8 @@ proc newDocumentor*(filename: string, conf: ConfigRef): PDoc =
   result.onTestSnippet = proc (d: var RstGenerator; filename, cmd: string; status: int; content: string) =
     localError(conf, newLineInfo(conf, d.filename, -1, -1), warnUser, "only 'rst2html' supports the ':test:' attribute")
 
-proc dispA(dest: var Rope, xml, tex: string, args: openArray[Rope]) =
-  if gCmd != cmdRst2tex: addf(dest, xml, args)
+proc dispA(conf: ConfigRef; dest: var Rope, xml, tex: string, args: openArray[Rope]) =
+  if conf.cmd != cmdRst2tex: addf(dest, xml, args)
   else: addf(dest, tex, args)
 
 proc getVarIdx(varnames: openArray[string], id: string): int =
@@ -231,37 +231,37 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
     of tkEof:
       break
     of tkComment:
-      dispA(result, "<span class=\"Comment\">$1</span>", "\\spanComment{$1}",
+      dispA(d.conf, result, "<span class=\"Comment\">$1</span>", "\\spanComment{$1}",
             [rope(esc(d.target, literal))])
     of tokKeywordLow..tokKeywordHigh:
-      dispA(result, "<span class=\"Keyword\">$1</span>", "\\spanKeyword{$1}",
+      dispA(d.conf, result, "<span class=\"Keyword\">$1</span>", "\\spanKeyword{$1}",
             [rope(literal)])
     of tkOpr:
-      dispA(result, "<span class=\"Operator\">$1</span>", "\\spanOperator{$1}",
+      dispA(d.conf, result, "<span class=\"Operator\">$1</span>", "\\spanOperator{$1}",
             [rope(esc(d.target, literal))])
     of tkStrLit..tkTripleStrLit:
-      dispA(result, "<span class=\"StringLit\">$1</span>",
+      dispA(d.conf, result, "<span class=\"StringLit\">$1</span>",
             "\\spanStringLit{$1}", [rope(esc(d.target, literal))])
     of tkCharLit:
-      dispA(result, "<span class=\"CharLit\">$1</span>", "\\spanCharLit{$1}",
+      dispA(d.conf, result, "<span class=\"CharLit\">$1</span>", "\\spanCharLit{$1}",
             [rope(esc(d.target, literal))])
     of tkIntLit..tkUInt64Lit:
-      dispA(result, "<span class=\"DecNumber\">$1</span>",
+      dispA(d.conf, result, "<span class=\"DecNumber\">$1</span>",
             "\\spanDecNumber{$1}", [rope(esc(d.target, literal))])
     of tkFloatLit..tkFloat128Lit:
-      dispA(result, "<span class=\"FloatNumber\">$1</span>",
+      dispA(d.conf, result, "<span class=\"FloatNumber\">$1</span>",
             "\\spanFloatNumber{$1}", [rope(esc(d.target, literal))])
     of tkSymbol:
-      dispA(result, "<span class=\"Identifier\">$1</span>",
+      dispA(d.conf, result, "<span class=\"Identifier\">$1</span>",
             "\\spanIdentifier{$1}", [rope(esc(d.target, literal))])
     of tkSpaces, tkInvalid:
       add(result, literal)
     of tkCurlyDotLe:
-      dispA(result, """<span class="Other pragmabegin">$1</span><div class="pragma">""",
+      dispA(d.conf, result, """<span class="Other pragmabegin">$1</span><div class="pragma">""",
                     "\\spanOther{$1}",
                   [rope(esc(d.target, literal))])
     of tkCurlyDotRi:
-      dispA(result, "</div><span class=\"Other pragmaend\">$1</span>",
+      dispA(d.conf, result, "</div><span class=\"Other pragmaend\">$1</span>",
                     "\\spanOther{$1}",
                   [rope(esc(d.target, literal))])
     of tkParLe, tkParRi, tkBracketLe, tkBracketRi, tkCurlyLe, tkCurlyRi,
@@ -270,7 +270,7 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
        tkAccent, tkColonColon,
        tkGStrLit, tkGTripleStrLit, tkInfixOpr, tkPrefixOpr, tkPostfixOpr,
        tkBracketLeColon:
-      dispA(result, "<span class=\"Other\">$1</span>", "\\spanOther{$1}",
+      dispA(d.conf, result, "<span class=\"Other\">$1</span>", "\\spanOther{$1}",
             [rope(esc(d.target, literal))])
 
 proc getAllRunnableExamples(d: PDoc; n: PNode; dest: var Rope) =
@@ -278,7 +278,7 @@ proc getAllRunnableExamples(d: PDoc; n: PNode; dest: var Rope) =
   of nkCallKinds:
     if n[0].kind == nkSym and n[0].sym.magic == mRunnableExamples and
         n.len >= 2 and n.lastSon.kind == nkStmtList:
-      dispA(dest, "\n<strong class=\"examples_text\">$1</strong>\n",
+      dispA(d.conf, dest, "\n<strong class=\"examples_text\">$1</strong>\n",
           "\n\\textbf{$1}\n", [rope"Examples:"])
       inc d.listingCounter
       let id = $d.listingCounter
@@ -509,7 +509,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
     if gitUrl.len > 0:
       var commit = getConfigVar(d.conf, "git.commit")
       if commit.len == 0: commit = "master"
-      dispA(seeSrcRope, "$1", "", [ropeFormatNamedVars(d.conf, docItemSeeSrc,
+      dispA(d.conf, seeSrcRope, "$1", "", [ropeFormatNamedVars(d.conf, docItemSeeSrc,
           ["path", "line", "url", "commit"], [rope path,
           rope($n.info.line), rope gitUrl,
           rope commit])])
@@ -578,7 +578,7 @@ proc traceDeps(d: PDoc, it: PNode) =
       traceDeps(d, a)
   else:
     if d.section[k] != nil: add(d.section[k], ", ")
-    dispA(d.section[k],
+    dispA(d.conf, d.section[k],
           "<a class=\"reference external\" href=\"$1.html\">$1</a>",
           "$1", [rope(getModuleName(d.conf, it))])
 
@@ -750,7 +750,7 @@ proc genOutFile(d: PDoc): Rope =
       "tableofcontents", "moduledesc", "date", "time", "content"],
       [title.rope, toc, d.modDesc, rope(getDateStr()),
       rope(getClockStr()), code])
-  if optCompileOnly notin gGlobalOptions:
+  if optCompileOnly notin d.conf.globalOptions:
     # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
     code = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.file"), ["title",
         "tableofcontents", "moduledesc", "date", "time",
@@ -763,12 +763,12 @@ proc genOutFile(d: PDoc): Rope =
   result = code
 
 proc generateIndex*(d: PDoc) =
-  if optGenIndex in gGlobalOptions:
+  if optGenIndex in d.conf.globalOptions:
     writeIndexFile(d[], splitFile(d.conf.outFile).dir /
                         splitFile(d.filename).name & IndexExt)
 
 proc getOutFile2(conf: ConfigRef; filename, ext, dir: string): string =
-  if gWholeProject:
+  if optWholeProject in conf.globalOptions:
     let d = if conf.outFile != "": conf.outFile else: dir
     createDir(d)
     result = d / changeFileExt(filename, ext)
@@ -777,7 +777,7 @@ proc getOutFile2(conf: ConfigRef; filename, ext, dir: string): string =
 
 proc writeOutput*(d: PDoc, filename, outExt: string, useWarning = false) =
   var content = genOutFile(d)
-  if optStdout in gGlobalOptions:
+  if optStdout in d.conf.globalOptions:
     writeRope(stdout, content)
   else:
     writeRope(content, getOutFile2(d.conf, filename, outExt, "htmldocs"), useWarning)
@@ -787,7 +787,7 @@ proc writeOutputJson*(d: PDoc, filename, outExt: string,
   let content = %*{"orig": d.filename,
     "nimble": getPackageName(d.conf, d.filename),
     "entries": d.jArray}
-  if optStdout in gGlobalOptions:
+  if optStdout in d.conf.globalOptions:
     write(stdout, $content)
   else:
     var f: File
@@ -857,7 +857,7 @@ proc commandJson*(conf: ConfigRef) =
   let json = d.jArray
   let content = rope(pretty(json))
 
-  if optStdout in gGlobalOptions:
+  if optStdout in d.conf.globalOptions:
     writeRope(stdout, content)
   else:
     #echo getOutFile(gProjectFull, JsonExt)
@@ -872,7 +872,7 @@ proc commandTags*(conf: ConfigRef) =
     content: Rope
   generateTags(d, ast, content)
 
-  if optStdout in gGlobalOptions:
+  if optStdout in d.conf.globalOptions:
     writeRope(stdout, content)
   else:
     #echo getOutFile(gProjectFull, TagsExt)

@@ -116,7 +116,7 @@ proc setExternName(c: PContext; s: PSym, extname: string, info: TLineInfo) =
       s.loc.r = rope(extname % s.name.s)
     except ValueError:
       localError(c.config, info, "invalid extern name: '" & extname & "'. (Forgot to escape '$'?)")
-  if gCmd == cmdPretty and '$' notin extname:
+  if c.config.cmd == cmdPretty and '$' notin extname:
     # note that '{.importc.}' is transformed into '{.importc: "$1".}'
     s.loc.flags.incl(lfFullExternalName)
 
@@ -140,7 +140,7 @@ proc processImportCpp(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   incl(s.flags, sfImportc)
   incl(s.flags, sfInfixCall)
   excl(s.flags, sfForward)
-  if gCmd == cmdCompileToC:
+  if c.config.cmd == cmdCompileToC:
     let m = s.getModule()
     incl(m.flags, sfCompileToCpp)
   extccomp.gMixedMode = true
@@ -218,8 +218,8 @@ proc isTurnedOn(c: PContext, n: PNode): bool =
   localError(c.config, n.info, "'on' or 'off' expected")
 
 proc onOff(c: PContext, n: PNode, op: TOptions) =
-  if isTurnedOn(c, n): gOptions = gOptions + op
-  else: gOptions = gOptions - op
+  if isTurnedOn(c, n): c.config.options = c.config.options + op
+  else: c.config.options = c.config.options - op
 
 proc pragmaNoForward(c: PContext, n: PNode; flag=sfNoForward) =
   if isTurnedOn(c, n): incl(c.module.flags, flag)
@@ -343,14 +343,14 @@ proc processOption(c: PContext, n: PNode): bool =
       else:
         case n.sons[1].ident.s.normalize
         of "speed":
-          incl(gOptions, optOptimizeSpeed)
-          excl(gOptions, optOptimizeSize)
+          incl(c.config.options, optOptimizeSpeed)
+          excl(c.config.options, optOptimizeSize)
         of "size":
-          excl(gOptions, optOptimizeSpeed)
-          incl(gOptions, optOptimizeSize)
+          excl(c.config.options, optOptimizeSpeed)
+          incl(c.config.options, optOptimizeSize)
         of "none":
-          excl(gOptions, optOptimizeSpeed)
-          excl(gOptions, optOptimizeSize)
+          excl(c.config.options, optOptimizeSpeed)
+          excl(c.config.options, optOptimizeSize)
         else: localError(c.config, n.info, "'none', 'speed' or 'size' expected")
     of wImplicitStatic: onOff(c, n, {optImplicitStatic})
     of wPatterns: onOff(c, n, {optPatterns})
@@ -361,7 +361,7 @@ proc processPush(c: PContext, n: PNode, start: int) =
     localError(c.config, n.info, "'push' cannot have arguments")
   var x = newOptionEntry(c.config)
   var y = c.optionStack[^1]
-  x.options = gOptions
+  x.options = c.config.options
   x.defaultCC = y.defaultCC
   x.dynlib = y.dynlib
   x.notes = c.config.notes
@@ -378,7 +378,7 @@ proc processPop(c: PContext, n: PNode) =
   if c.optionStack.len <= 1:
     localError(c.config, n.info, "{.pop.} without a corresponding {.push.}")
   else:
-    gOptions = c.optionStack[^1].options
+    c.config.options = c.optionStack[^1].options
     c.config.notes = c.optionStack[^1].notes
     c.optionStack.setLen(c.optionStack.len - 1)
 
@@ -557,7 +557,7 @@ proc processPragma(c: PContext, n: PNode, i: int) =
   elif it[0].kind != nkIdent: invalidPragma(c, n)
   elif it[1].kind != nkIdent: invalidPragma(c, n)
 
-  var userPragma = newSym(skTemplate, it[1].ident, nil, it.info)
+  var userPragma = newSym(skTemplate, it[1].ident, nil, it.info, c.config.options)
   userPragma.ast = newNode(nkPragma, n.info, n.sons[i+1..^1])
   strTableAdd(c.userPragmas, userPragma)
 
@@ -635,7 +635,7 @@ proc deprecatedStmt(c: PContext; outerPragma: PNode) =
       if dest == nil or dest.kind in routineKinds:
         localError(c.config, n.info, warnUser, "the .deprecated pragma is unreliable for routines")
       let src = considerQuotedIdent(c.config, n[0])
-      let alias = newSym(skAlias, src, dest, n[0].info)
+      let alias = newSym(skAlias, src, dest, n[0].info, c.config.options)
       incl(alias.flags, sfExported)
       if sfCompilerProc in dest.flags: markCompilerProc(c, alias)
       addInterfaceDecl(c, alias)
@@ -657,7 +657,8 @@ proc pragmaGuard(c: PContext; it: PNode; kind: TSymKind): PSym =
       # We return a dummy symbol; later passes over the type will repair it.
       # Generic instantiation needs to know about this too. But we're lazy
       # and perform the lookup on demand instead.
-      result = newSym(skUnknown, considerQuotedIdent(c.config, n), nil, n.info)
+      result = newSym(skUnknown, considerQuotedIdent(c.config, n), nil, n.info,
+        c.config.options)
   else:
     result = qualifiedLookUp(c, n, {checkUndeclared})
 

@@ -146,7 +146,7 @@ proc guardDotAccess(a: PEffects; n: PNode) =
 
 proc makeVolatile(a: PEffects; s: PSym) {.inline.} =
   template compileToCpp(a): untyped =
-    gCmd == cmdCompileToCpp or sfCompileToCpp in getModule(a.owner).flags
+    a.config.cmd == cmdCompileToCpp or sfCompileToCpp in getModule(a.owner).flags
   if a.inTryStmt > 0 and not compileToCpp(a):
     incl(s.flags, sfVolatile)
 
@@ -186,7 +186,7 @@ proc markGcUnsafe(a: PEffects; reason: PNode) =
         a.owner.gcUnsafetyReason = reason.sym
       else:
         a.owner.gcUnsafetyReason = newSym(skUnknown, getIdent("<unknown>"),
-                                          a.owner, reason.info)
+                                          a.owner, reason.info, {})
 
 when true:
   template markSideEffect(a: PEffects; reason: typed) =
@@ -282,7 +282,7 @@ proc addEffect(a: PEffects, e: PNode, useLineInfo=true) =
   var aa = a.exc
   for i in a.bottom ..< aa.len:
     if sameType(a.graph.excType(aa[i]), a.graph.excType(e)):
-      if not useLineInfo or gCmd == cmdDoc: return
+      if not useLineInfo or a.config.cmd == cmdDoc: return
       elif aa[i].info == e.info: return
   throws(a.exc, e)
 
@@ -290,7 +290,7 @@ proc addTag(a: PEffects, e: PNode, useLineInfo=true) =
   var aa = a.tags
   for i in 0 ..< aa.len:
     if sameType(aa[i].typ.skipTypes(skipPtrs), e.typ.skipTypes(skipPtrs)):
-      if not useLineInfo or gCmd == cmdDoc: return
+      if not useLineInfo or a.config.cmd == cmdDoc: return
       elif aa[i].info == e.info: return
   throws(a.tags, e)
 
@@ -960,7 +960,7 @@ proc trackProc*(g: ModuleGraph; s: PSym, body: PNode) =
     effects.sons[tagEffects] = tagsSpec
 
   if sfThread in s.flags and t.gcUnsafe:
-    if optThreads in gGlobalOptions and optThreadAnalysis in gGlobalOptions:
+    if optThreads in g.config.globalOptions and optThreadAnalysis in g.config.globalOptions:
       #localError(s.info, "'$1' is not GC-safe" % s.name.s)
       listGcUnsafety(s, onlyWarning=false, g.config)
     else:

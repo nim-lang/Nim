@@ -119,7 +119,7 @@ proc applyFilter(p: var TParsers, n: PNode, filename: string,
   if f != filtNone:
     if hintCodeBegin in p.config.notes:
       rawMessage(p.config, hintCodeBegin, [])
-      msgWriteln(result.s)
+      msgWriteln(p.config, result.s)
       rawMessage(p.config, hintCodeEnd, [])
 
 proc evalPipe(p: var TParsers, n: PNode, filename: string,

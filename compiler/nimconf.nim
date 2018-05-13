@@ -123,7 +123,7 @@ proc parseDirective(L: var TLexer, tok: var TToken; config: ConfigRef; condStack
   of wEnd: doEnd(L, tok, condStack)
   of wWrite:
     ppGetTok(L, tok)
-    msgs.msgWriteln(strtabs.`%`(tokToStr(tok), config.configVars,
+    msgs.msgWriteln(config, strtabs.`%`(tokToStr(tok), config.configVars,
                                 {useEnvironment, useKey}))
     ppGetTok(L, tok)
   else:
@@ -230,30 +230,30 @@ proc getSystemConfigPath(conf: ConfigRef; filename: string): string =
     if not existsFile(result): result = joinPath([p, "etc", filename])
     if not existsFile(result): result = "/etc/" & filename
 
-proc loadConfigs*(cfg: string; cache: IdentCache; config: ConfigRef = nil) =
-  setDefaultLibpath(config)
+proc loadConfigs*(cfg: string; cache: IdentCache; conf: ConfigRef = nil) =
+  setDefaultLibpath(conf)
 
-  if optSkipConfigFile notin gGlobalOptions:
-    readConfigFile(getSystemConfigPath(config, cfg), cache, config)
+  if optSkipConfigFile notin conf.globalOptions:
+    readConfigFile(getSystemConfigPath(conf, cfg), cache, conf)
 
-  if optSkipUserConfigFile notin gGlobalOptions:
-    readConfigFile(getUserConfigPath(cfg), cache, config)
+  if optSkipUserConfigFile notin conf.globalOptions:
+    readConfigFile(getUserConfigPath(cfg), cache, conf)
 
-  let pd = if config.projectPath.len > 0: config.projectPath else: getCurrentDir()
-  if optSkipParentConfigFiles notin gGlobalOptions:
+  let pd = if conf.projectPath.len > 0: conf.projectPath else: getCurrentDir()
+  if optSkipParentConfigFiles notin conf.globalOptions:
     for dir in parentDirs(pd, fromRoot=true, inclusive=false):
-      readConfigFile(dir / cfg, cache, config)
+      readConfigFile(dir / cfg, cache, conf)
 
-  if optSkipProjConfigFile notin gGlobalOptions:
-    readConfigFile(pd / cfg, cache, config)
+  if optSkipProjConfigFile notin conf.globalOptions:
+    readConfigFile(pd / cfg, cache, conf)
 
-    if config.projectName.len != 0:
+    if conf.projectName.len != 0:
       # new project wide config file:
-      var projectConfig = changeFileExt(config.projectFull, "nimcfg")
+      var projectConfig = changeFileExt(conf.projectFull, "nimcfg")
       if not fileExists(projectConfig):
-        projectConfig = changeFileExt(config.projectFull, "nim.cfg")
-      readConfigFile(projectConfig, cache, config)
+        projectConfig = changeFileExt(conf.projectFull, "nim.cfg")
+      readConfigFile(projectConfig, cache, conf)
 
-proc loadConfigs*(cfg: string; config: ConfigRef) =
+proc loadConfigs*(cfg: string; conf: ConfigRef) =
   # for backwards compatibility only.
-  loadConfigs(cfg, newIdentCache(), config)
+  loadConfigs(cfg, newIdentCache(), conf)

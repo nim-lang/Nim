@@ -17,7 +17,7 @@ proc evalPattern(c: PContext, n, orig: PNode): PNode =
   # aweful to semcheck before macro invocation, so we don't and treat
   # templates and macros as immediate in this context.
   var rule: string
-  if optHints in gOptions and hintPattern in c.config.notes:
+  if optHints in c.config.options and hintPattern in c.config.notes:
     rule = renderTree(n, {renderNoComments})
   let s = n.sons[0].sym
   case s.kind
@@ -27,7 +27,7 @@ proc evalPattern(c: PContext, n, orig: PNode): PNode =
     result = semTemplateExpr(c, n, s, {efFromHlo})
   else:
     result = semDirectOp(c, n, {})
-  if optHints in gOptions and hintPattern in c.config.notes:
+  if optHints in c.config.options and hintPattern in c.config.notes:
     message(c.config, orig.info, hintPattern, rule & " --> '" &
       renderTree(result, {renderNoComments}) & "'")
 
@@ -92,12 +92,12 @@ proc hlo(c: PContext, n: PNode): PNode =
 
 proc hloBody(c: PContext, n: PNode): PNode =
   # fast exit:
-  if c.patterns.len == 0 or optPatterns notin gOptions: return n
+  if c.patterns.len == 0 or optPatterns notin c.config.options: return n
   c.hloLoopDetector = 0
   result = hlo(c, n)
 
 proc hloStmt(c: PContext, n: PNode): PNode =
   # fast exit:
-  if c.patterns.len == 0 or optPatterns notin gOptions: return n
+  if c.patterns.len == 0 or optPatterns notin c.config.options: return n
   c.hloLoopDetector = 0
   result = hlo(c, n)

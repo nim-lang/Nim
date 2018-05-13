@@ -59,7 +59,7 @@ proc stopCompile*(g: ModuleGraph): bool {.inline.} =
   result = doStopCompile != nil and doStopCompile()
 
 proc createMagic*(g: ModuleGraph; name: string, m: TMagic): PSym =
-  result = newSym(skProc, getIdent(name), nil, unknownLineInfo())
+  result = newSym(skProc, getIdent(name), nil, unknownLineInfo(), {})
   result.magic = m
 
 proc newModuleGraph*(config: ConfigRef = nil): ModuleGraph =

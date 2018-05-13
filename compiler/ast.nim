@@ -734,7 +734,7 @@ type
     locOther                  # location is something other
   TLocFlag* = enum
     lfIndirect,               # backend introduced a pointer
-    lfFullExternalName, # only used when 'gCmd == cmdPretty': Indicates
+    lfFullExternalName, # only used when 'conf.cmd == cmdPretty': Indicates
       # that the symbol has been imported via 'importc: "fullname"' and
       # no format string.
     lfNoDeepCopy,             # no need for a deep copy
@@ -1078,14 +1078,14 @@ template previouslyInferred*(t: PType): PType =
   if t.sons.len > 1: t.lastSon else: nil
 
 proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
-             info: TLineInfo): PSym =
+             info: TLineInfo; options: TOptions = {}): PSym =
   # generates a symbol and initializes the hash field too
   new(result)
   result.name = name
   result.kind = symKind
   result.flags = {}
   result.info = info
-  result.options = gOptions
+  result.options = options
   result.owner = owner
   result.offset = -1
   result.id = getID()
@@ -1095,7 +1095,7 @@ proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
   #  writeStacktrace()
   #  MessageOut(name.s & " has id: " & toString(result.id))
 
-var emptyNode* = newNode(nkEmpty)
+var emptyNode* = newNode(nkEmpty) # XXX global variable here!
 # There is a single empty node that is shared! Do not overwrite it!
 
 proc isMetaType*(t: PType): bool =
@@ -1325,7 +1325,7 @@ proc copyType*(t: PType, owner: PSym, keepId: bool): PType =
 proc exactReplica*(t: PType): PType = copyType(t, t.owner, true)
 
 proc copySym*(s: PSym, keepId: bool = false): PSym =
-  result = newSym(s.kind, s.name, s.owner, s.info)
+  result = newSym(s.kind, s.name, s.owner, s.info, s.options)
   #result.ast = nil            # BUGFIX; was: s.ast which made problems
   result.typ = s.typ
   if keepId:
@@ -1344,8 +1344,9 @@ proc copySym*(s: PSym, keepId: bool = false): PSym =
   if result.kind in {skVar, skLet, skField}:
     result.guard = s.guard
 
-proc createModuleAlias*(s: PSym, newIdent: PIdent, info: TLineInfo): PSym =
-  result = newSym(s.kind, newIdent, s.owner, info)
+proc createModuleAlias*(s: PSym, newIdent: PIdent, info: TLineInfo;
+                        options: TOptions): PSym =
+  result = newSym(s.kind, newIdent, s.owner, info, options)
   # keep ID!
   result.ast = s.ast
   result.id = s.id
@@ -1680,9 +1681,9 @@ proc isException*(t: PType): bool =
     base = base.lastSon
   return false
 
-proc isImportedException*(t: PType): bool =
+proc isImportedException*(t: PType; conf: ConfigRef): bool =
   assert(t != nil)
-  if optNoCppExceptions in gGlobalOptions:
+  if optNoCppExceptions in conf.globalOptions:
     return false
 
   let base = t.skipTypes({tyAlias, tyPtr, tyDistinct, tyGenericInst})

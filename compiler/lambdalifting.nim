@@ -137,7 +137,7 @@ proc createStateType(g: ModuleGraph; iter: PSym): PType =
   rawAddSon(result, intType)
 
 proc createStateField(g: ModuleGraph; iter: PSym): PSym =
-  result = newSym(skField, getIdent(":state"), iter, iter.info)
+  result = newSym(skField, getIdent(":state"), iter, iter.info, {})
   result.typ = createStateType(g, iter)
 
 proc createEnvObj(g: ModuleGraph; owner: PSym; info: TLineInfo): PType =
@@ -151,7 +151,7 @@ proc getIterResult(iter: PSym): PSym =
     result = iter.ast.sons[resultPos].sym
   else:
     # XXX a bit hacky:
-    result = newSym(skResult, getIdent":result", iter, iter.info)
+    result = newSym(skResult, getIdent":result", iter, iter.info, {})
     result.typ = iter.typ.sons[0]
     incl(result.flags, sfUsed)
     iter.ast.add newSymNode(result)
@@ -228,14 +228,14 @@ proc interestingIterVar(s: PSym): bool {.inline.} =
 template isIterator*(owner: PSym): bool =
   owner.kind == skIterator and owner.typ.callConv == ccClosure
 
-proc liftingHarmful(owner: PSym): bool {.inline.} =
+proc liftingHarmful(conf: ConfigRef; owner: PSym): bool {.inline.} =
   ## lambda lifting can be harmful for JS-like code generators.
   let isCompileTime = sfCompileTime in owner.flags or owner.kind == skMacro
-  result = gCmd == cmdCompileToJS and not isCompileTime
+  result = conf.cmd == cmdCompileToJS and not isCompileTime
 
 proc liftIterSym*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   # transforms  (iter)  to  (let env = newClosure[iter](); (iter, env))
-  if liftingHarmful(owner): return n
+  if liftingHarmful(g.config, owner): return n
   let iter = n.sym
   assert iter.isIterator
 
@@ -811,14 +811,14 @@ proc liftIterToProc*(g: ModuleGraph; fn: PSym; body: PNode; ptrType: PType): PNo
   fn.typ.callConv = oldCC
 
 proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool): PNode =
-  # XXX gCmd == cmdCompileToJS does not suffice! The compiletime stuff needs
+  # XXX conf.cmd == cmdCompileToJS does not suffice! The compiletime stuff needs
   # the transformation even when compiling to JS ...
 
   # However we can do lifting for the stuff which is *only* compiletime.
   let isCompileTime = sfCompileTime in fn.flags or fn.kind == skMacro
 
   if body.kind == nkEmpty or (
-      gCmd == cmdCompileToJS and not isCompileTime) or
+      g.config.cmd == cmdCompileToJS and not isCompileTime) or
       fn.skipGenericOwner.kind != skModule:
     # ignore forward declaration:
     result = body
@@ -842,11 +842,8 @@ proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool): PN
     #  echo renderTree(result, {renderIds})
 
 proc liftLambdasForTopLevel*(module: PSym, body: PNode): PNode =
-  if body.kind == nkEmpty or gCmd == cmdCompileToJS:
-    result = body
-  else:
-    # XXX implement it properly
-    result = body
+  # XXX implement it properly
+  result = body
 
 # ------------------- iterator transformation --------------------------------
 
@@ -878,7 +875,7 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; owner: PSym): PNode =
         nkBreakState(cl.state)
         ...
     """
-  if liftingHarmful(owner): return body
+  if liftingHarmful(g.config, owner): return body
   var L = body.len
   if not (body.kind == nkForStmt and body[L-2].kind in nkCallKinds):
     localError(g.config, body.info, "ignored invalid for loop")

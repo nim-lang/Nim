@@ -451,7 +451,7 @@ proc semTuple(c: PContext, n: PNode, prev: PType): PType =
       else:
         addSon(result.n, newSymNode(field))
         addSonSkipIntLit(result, typ)
-      if gCmd == cmdPretty: styleCheckDef(a.sons[j].info, field)
+      if c.config.cmd == cmdPretty: styleCheckDef(a.sons[j].info, field)
   if result.n.len == 0: result.n = nil
 
 proc semIdentVis(c: PContext, kind: TSymKind, n: PNode,
@@ -491,7 +491,7 @@ proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
     else: discard
   else:
     result = semIdentVis(c, kind, n, allowed)
-  if gCmd == cmdPretty: styleCheckDef(n.info, result)
+  if c.config.cmd == cmdPretty: styleCheckDef(n.info, result)
 
 proc checkForOverlap(c: PContext, t: PNode, currentEx, branchIndex: int) =
   let ex = t[branchIndex][currentEx].skipConv
@@ -1062,7 +1062,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       addSon(result.n, newSymNode(arg))
       rawAddSon(result, finalType)
       addParamOrResult(c, arg, kind)
-      if gCmd == cmdPretty: styleCheckDef(a.sons[j].info, arg)
+      if c.config.cmd == cmdPretty: styleCheckDef(a.sons[j].info, arg)
 
   var r: PType
   if n.sons[0].kind != nkEmpty:
@@ -1354,7 +1354,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   result = nil
   inc c.inTypeContext
 
-  if gCmd == cmdIdeTools: suggestExpr(c, n)
+  if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
   case n.kind
   of nkEmpty: discard
   of nkTypeOfExpr:

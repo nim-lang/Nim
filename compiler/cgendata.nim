@@ -170,7 +170,7 @@ proc newProc*(prc: PSym, module: BModule): BProc =
   result.prc = prc
   result.module = module
   if prc != nil: result.options = prc.options
-  else: result.options = gOptions
+  else: result.options = module.config.options
   newSeq(result.blocks, 1)
   result.nestedTryStmts = @[]
   result.finallySafePoints = @[]

@@ -623,16 +623,16 @@ proc processRodFile(r: PRodReader, hash: SecureHash) =
     of "OPTIONS":
       inc(r.pos)              # skip ':'
       r.options = cast[TOptions](int32(decodeVInt(r.s, r.pos)))
-      if options.gOptions != r.options: r.reason = rrOptions
+      if r.config.options != r.options: r.reason = rrOptions
     of "GOPTIONS":
       inc(r.pos)              # skip ':'
       var dep = cast[TGlobalOptions](int32(decodeVInt(r.s, r.pos)))
-      if gGlobalOptions-harmlessOptions != dep-harmlessOptions:
+      if r.config.globalOptions-harmlessOptions != dep-harmlessOptions:
         r.reason = rrOptions
     of "CMD":
       inc(r.pos)              # skip ':'
       var dep = cast[TCommands](int32(decodeVInt(r.s, r.pos)))
-      if cmdChangeTriggersRecompilation(dep, gCmd): r.reason = rrOptions
+      if cmdChangeTriggersRecompilation(dep, r.config.cmd): r.reason = rrOptions
     of "DEFINES":
       inc(r.pos)              # skip ':'
       d = 0
@@ -907,7 +907,7 @@ proc checkDep(fileIdx: FileIndex; cache: IdentCache; conf: ConfigRef): TReasonFo
           # we cannot break here, because of side-effects of `checkDep`
   if result != rrNone:
     rawMessage(conf, hintProcessing, reasonToFrmt[result] % filename)
-  if result != rrNone or optForceFullMake in gGlobalOptions:
+  if result != rrNone or optForceFullMake in conf.globalOptions:
     # recompilation is necessary:
     if r != nil: memfiles.close(r.memfile)
     r = nil
@@ -915,7 +915,7 @@ proc checkDep(fileIdx: FileIndex; cache: IdentCache; conf: ConfigRef): TReasonFo
   gMods[fileIdx.int32].reason = result  # now we know better
 
 proc handleSymbolFile*(module: PSym; cache: IdentCache; conf: ConfigRef): PRodReader =
-  if gSymbolFiles in {disabledSf, writeOnlySf, v2Sf}:
+  if conf.symbolFiles in {disabledSf, writeOnlySf, v2Sf}:
     module.id = getID()
     return nil
   idgen.loadMaxIds(conf, conf.projectPath / conf.projectName)
@@ -1035,9 +1035,8 @@ proc writeSym(f: File; s: PSym) =
   if s.magic != mNone:
     f.write('@')
     f.write($s.magic)
-  if s.options != gOptions:
-    f.write('!')
-    f.write($s.options)
+  f.write('!')
+  f.write($s.options)
   if s.position != 0:
     f.write('%')
     f.write($s.position)

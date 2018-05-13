@@ -85,7 +85,7 @@ proc skipAlias*(s: PSym; n: PNode; conf: ConfigRef): PSym =
     result = s
   else:
     result = s.owner
-    if gCmd == cmdPretty:
+    if conf.cmd == cmdPretty:
       prettybase.replaceDeprecated(n.info, s, result)
     else:
       message(conf, n.info, warnDeprecated, "use " & result.name.s & " instead; " &
@@ -128,11 +128,11 @@ proc errorSym*(c: PContext, n: PNode): PSym =
       considerQuotedIdent(c.config, m)
     else:
       getIdent("err:" & renderTree(m))
-  result = newSym(skError, ident, getCurrOwner(c), n.info)
+  result = newSym(skError, ident, getCurrOwner(c), n.info, {})
   result.typ = errorType(c)
   incl(result.flags, sfDiscardable)
   # pretend it's imported from some unknown module to prevent cascading errors:
-  if gCmd != cmdInteractive and c.compilesContextId == 0:
+  if c.config.cmd != cmdInteractive and c.compilesContextId == 0:
     c.importTable.addSym(result)
 
 type
@@ -176,7 +176,7 @@ proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
     s = nextIter(it, scope.symbols)
 
 proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string) =
-  if gCmd != cmdInteractive:
+  if c.config.cmd != cmdInteractive:
     localError(c.config, info, "redefinition of '$1'" % s)
 
 proc addDecl*(c: PContext, sym: PSym, info: TLineInfo) =

@@ -64,7 +64,7 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
   # templates perform some quick check whether the cursor is actually in
   # the generic or template.
   when defined(nimsuggest):
-    if gCmd == cmdIdeTools and requiresCheck:
+    if c.config.cmd == cmdIdeTools and requiresCheck:
       #if optIdeDebug in gGlobalOptions:
       #  echo "passing to safeSemExpr: ", renderTree(n)
       discard safeSemExpr(c, n)
@@ -562,9 +562,9 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
         if result.kind != nkEmpty: addSon(a, result)
         result = a
   result = hloStmt(c, result)
-  if gCmd == cmdInteractive and not isEmptyType(result.typ):
+  if c.config.cmd == cmdInteractive and not isEmptyType(result.typ):
     result = buildEchoStmt(c, result)
-  if gCmd == cmdIdeTools:
+  if c.config.cmd == cmdIdeTools:
     appendToModule(c.module, result)
   result = transformStmt(c.graph, c.module, result)
 
@@ -595,7 +595,7 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
         result = nil
       else:
         result = ast.emptyNode
-      #if gCmd == cmdIdeTools: findSuggest(c, n)
+      #if c.config.cmd == cmdIdeTools: findSuggest(c, n)
   rod.storeNode(c.module, result)
 
 proc testExamples(c: PContext) =
@@ -612,7 +612,7 @@ proc testExamples(c: PContext) =
 
 proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   var c = PContext(context)
-  if gCmd == cmdIdeTools and not c.suggestionsMade:
+  if c.config.cmd == cmdIdeTools and not c.suggestionsMade:
     suggestSentinel(c)
   closeScope(c)         # close module's scope
   rawCloseScope(c)      # imported symbols; don't check for unused ones!

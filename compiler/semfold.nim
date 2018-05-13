@@ -403,11 +403,11 @@ proc magicCall(m: PSym, n: PNode; g: ModuleGraph): PNode =
   result = evalOp(s.magic, n, a, b, c, g)
 
 proc getAppType(n: PNode; g: ModuleGraph): PNode =
-  if gGlobalOptions.contains(optGenDynLib):
+  if g.config.globalOptions.contains(optGenDynLib):
     result = newStrNodeT("lib", n, g)
-  elif gGlobalOptions.contains(optGenStaticLib):
+  elif g.config.globalOptions.contains(optGenStaticLib):
     result = newStrNodeT("staticlib", n, g)
-  elif gGlobalOptions.contains(optGenGuiApp):
+  elif g.config.globalOptions.contains(optGenGuiApp):
     result = newStrNodeT("gui", n, g)
   else:
     result = newStrNodeT("console", n, g)
@@ -479,7 +479,7 @@ proc foldArrayAccess(m: PSym, n: PNode; g: ModuleGraph): PNode =
     result = newNodeIT(nkCharLit, x.info, n.typ)
     if idx >= 0 and idx < len(x.strVal):
       result.intVal = ord(x.strVal[int(idx)])
-    elif idx == len(x.strVal) and optLaxStrings in gOptions:
+    elif idx == len(x.strVal) and optLaxStrings in g.config.options:
       discard
     else:
       localError(g.config, n.info, "index out of bounds: " & $n)

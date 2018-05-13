@@ -1456,9 +1456,7 @@ proc renderModule*(n: PNode, infile, outfile: string,
        nkCommentStmt: putNL(g)
     else: discard
   gcoms(g)
-  if optStdout in gGlobalOptions:
-    write(stdout, g.buf)
-  elif open(f, outfile, fmWrite):
+  if open(f, outfile, fmWrite):
     write(f, g.buf)
     close(f)
   else:

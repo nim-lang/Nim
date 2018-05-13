@@ -66,7 +66,7 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; cache: IdentCache, f
       gMainPackageId = result.owner.id
 
     when false:
-      if gCmd in {cmdCompileToC, cmdCompileToCpp, cmdCheck, cmdIdeTools}:
+      if conf.cmd in {cmdCompileToC, cmdCompileToCpp, cmdCheck, cmdIdeTools}:
         rd = handleSymbolFile(result, cache)
         if result.id < 0:
           internalError("handleSymbolFile should have set the module's ID")

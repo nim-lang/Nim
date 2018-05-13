@@ -71,7 +71,7 @@ proc newRodWriter(hash: SecureHash, module: PSym; cache: IdentCache;
   result.hash = hash
   result.module = module
   result.defines = getDefines(config)
-  result.options = options.gOptions
+  result.options = config.options
   result.files = @[]
   result.inclDeps = ""
   result.modDeps = ""
@@ -509,12 +509,12 @@ proc writeRod(w: PRodWriter) =
   f.write(rodNL)
 
   var goptions = "GOPTIONS:"
-  encodeVInt(cast[int32](gGlobalOptions), goptions)
+  encodeVInt(cast[int32](w.config.globalOptions), goptions)
   f.write(goptions)
   f.write(rodNL)
 
   var cmd = "CMD:"
-  encodeVInt(cast[int32](gCmd), cmd)
+  encodeVInt(cast[int32](w.config.cmd), cmd)
   f.write(cmd)
   f.write(rodNL)
 

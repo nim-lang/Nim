@@ -915,7 +915,7 @@ template cgDeclFrmt*(s: PSym): string = s.constraint.strVal
 proc genProcHeader(m: BModule, prc: PSym): Rope =
   var
     rettype, params: Rope
-  genCLineDir(result, prc.info)
+  genCLineDir(result, prc.info, m.config)
   # using static is needed for inline procs
   if lfExportLib in prc.loc.flags:
     if isHeaderFile in m.flags:
@@ -1239,7 +1239,7 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
       genTupleInfo(m, x, x, result, info)
   of tySequence, tyRef, tyOptAsRef:
     genTypeInfoAux(m, t, t, result, info)
-    if gSelectedGC >= gcMarkAndSweep:
+    if m.config.selectedGC >= gcMarkAndSweep:
       let markerProc = genTraverseProc(m, origType, sig)
       addf(m.s[cfsTypeInit3], "$1.marker = $2;$n", [result, markerProc])
   of tyPtr, tyRange: genTypeInfoAux(m, t, t, result, info)

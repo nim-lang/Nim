@@ -26,7 +26,7 @@ proc verboseOpen(graph: ModuleGraph; s: PSym; cache: IdentCache): PPassContext =
 proc verboseProcess(context: PPassContext, n: PNode): PNode =
   result = n
   let v = VerboseRef(context)
-  if gVerbosity == 3:
+  if v.config.verbosity == 3:
     # system.nim deactivates all hints, for verbosity:3 we want the processing
     # messages nonetheless, so we activate them again unconditionally:
     incl(v.config.notes, hintProcessing)

@@ -169,7 +169,7 @@ proc semGenericStmt(c: PContext, n: PNode,
   when defined(nimsuggest):
     if withinTypeDesc in flags: inc c.inTypeContext
 
-  #if gCmd == cmdIdeTools: suggestStmt(c, n)
+  #if conf.cmd == cmdIdeTools: suggestStmt(c, n)
   semIdeForTemplateOrGenericCheck(n, ctx.cursorInBody)
 
   case n.kind

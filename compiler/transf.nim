@@ -358,7 +358,7 @@ proc transformYield(c: PTransf, n: PNode): PTransNode =
 
 proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PTransNode =
   result = transformSons(c, n)
-  if gCmd == cmdCompileToCpp or sfCompileToCpp in c.module.flags: return
+  if c.graph.config.cmd == cmdCompileToCpp or sfCompileToCpp in c.module.flags: return
   var n = result.PNode
   case n.sons[0].kind
   of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
@@ -390,7 +390,7 @@ proc generateThunk(c: PTransf; prc: PNode, dest: PType): PNode =
 
   # we cannot generate a proper thunk here for GC-safety reasons
   # (see internal documentation):
-  if gCmd == cmdCompileToJS: return prc
+  if c.graph.config.cmd == cmdCompileToJS: return prc
   result = newNodeIT(nkClosure, prc.info, dest)
   var conv = newNodeIT(nkHiddenSubConv, prc.info, dest)
   conv.add(emptyNode)
@@ -716,7 +716,7 @@ proc transformCall(c: PTransf, n: PNode): PTransNode =
 
 proc transformExceptBranch(c: PTransf, n: PNode): PTransNode =
   result = transformSons(c, n)
-  if n[0].isInfixAs() and (not isImportedException(n[0][1].typ)):
+  if n[0].isInfixAs() and not isImportedException(n[0][1].typ, c.graph.config):
     let excTypeNode = n[0][1]
     let actions = newTransNode(nkStmtListExpr, n[1], 2)
     # Generating `let exc = (excType)(getCurrentException())`

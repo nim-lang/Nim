@@ -25,8 +25,8 @@ template closeImpl(body: untyped) {.dirty.} =
   var g = PGen(p)
   let useWarning = sfMainModule notin g.module.flags
   #echo g.module.name.s, " ", g.module.owner.id, " ", gMainPackageId
-  if (g.module.owner.id == gMainPackageId and gWholeProject) or
-    sfMainModule in g.module.flags:
+  if (g.module.owner.id == gMainPackageId and optWholeProject in g.doc.conf.globalOptions) or
+      sfMainModule in g.module.flags:
     body
     try:
       generateIndex(g.doc)

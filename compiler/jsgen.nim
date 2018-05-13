@@ -245,7 +245,7 @@ proc mangleName(m: BModule, s: PSym): Rope =
         inc i
       result = rope(x)
     if s.name.s != "this" and s.kind != skField:
-      if optHotCodeReloading in gOptions:
+      if optHotCodeReloading in m.config.options:
         # When hot reloading is enabled, we must ensure that the names
         # of functions and types will be preserved across rebuilds:
         add(result, idOrSig(s, m.module.name.s, m.sigConflicts))
@@ -1425,7 +1425,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     s: Rope
     varCode: string
     varName = mangleName(p.module, v)
-    useReloadingGuard = sfGlobal in v.flags and optHotCodeReloading in gOptions
+    useReloadingGuard = sfGlobal in v.flags and optHotCodeReloading in p.config.options
 
   if v.constraint.isNil:
     if useReloadingGuard:
@@ -1970,7 +1970,7 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
   else:
     result = ~tnl
 
-    if optHotCodeReloading in gOptions:
+    if optHotCodeReloading in p.config.options:
       # Here, we introduce thunks that create the equivalent of a jump table
       # for all global functions, because references to them may be stored
       # in JavaScript variables. The added indirection ensures that such

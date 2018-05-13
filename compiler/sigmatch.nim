@@ -612,7 +612,7 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     if tfNoSideEffect in f.flags and tfNoSideEffect notin a.flags:
       return isNone
     elif tfThread in f.flags and a.flags * {tfThread, tfNoSideEffect} == {} and
-        optThreadAnalysis in gGlobalOptions:
+        optThreadAnalysis in c.c.config.globalOptions:
       # noSideEffect implies ``tfThread``!
       return isNone
     elif f.flags * {tfIterator} != a.flags * {tfIterator}:
@@ -686,7 +686,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
       if alreadyBound != nil: typ = alreadyBound
 
       template paramSym(kind): untyped =
-        newSym(kind, typeParamName, typeClass.sym, typeClass.sym.info)
+        newSym(kind, typeParamName, typeClass.sym, typeClass.sym.info, {})
 
       block addTypeParam:
         for prev in typeParams:

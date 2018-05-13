@@ -139,7 +139,7 @@ proc discardCheck(c: PContext, result: PNode) =
       while n.kind in skipForDiscardable:
         n = n.lastSon
         n.typ = nil
-    elif result.typ.kind != tyError and gCmd != cmdInteractive:
+    elif result.typ.kind != tyError and c.config.cmd != cmdInteractive:
       var n = result
       while n.kind in skipForDiscardable: n = n.lastSon
       var s = "expression '" & $n & "' is of type '" &
@@ -255,7 +255,7 @@ proc semTry(c: PContext, n: PNode): PNode =
     # returns true if exception type is imported type
     let typ = semTypeNode(c, typeNode, nil).toObject()
     var is_imported = false
-    if isImportedException(typ):
+    if isImportedException(typ, c.config):
       is_imported = true
     elif not isException(typ):
       localError(c.config, typeNode.info, errExprCannotBeRaised)
@@ -398,7 +398,7 @@ proc semUsing(c: PContext; n: PNode): PNode =
   if not isTopLevel(c): localError(c.config, n.info, errXOnlyAtModuleScope % "using")
   for i in countup(0, sonsLen(n)-1):
     var a = n.sons[i]
-    if gCmd == cmdIdeTools: suggestStmt(c, a)
+    if c.config.cmd == cmdIdeTools: suggestStmt(c, a)
     if a.kind == nkCommentStmt: continue
     if a.kind notin {nkIdentDefs, nkVarTuple, nkConstDef}: illFormedAst(a, c.config)
     checkMinSonsLen(a, 3, c.config)
@@ -471,7 +471,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   var hasCompileTime = false
   for i in countup(0, sonsLen(n)-1):
     var a = n.sons[i]
-    if gCmd == cmdIdeTools: suggestStmt(c, a)
+    if c.config.cmd == cmdIdeTools: suggestStmt(c, a)
     if a.kind == nkCommentStmt: continue
     if a.kind notin {nkIdentDefs, nkVarTuple, nkConstDef}: illFormedAst(a, c.config)
     checkMinSonsLen(a, 3, c.config)
@@ -578,7 +578,7 @@ proc semConst(c: PContext, n: PNode): PNode =
   result = copyNode(n)
   for i in countup(0, sonsLen(n) - 1):
     var a = n.sons[i]
-    if gCmd == cmdIdeTools: suggestStmt(c, a)
+    if c.config.cmd == cmdIdeTools: suggestStmt(c, a)
     if a.kind == nkCommentStmt: continue
     if a.kind != nkConstDef: illFormedAst(a, c.config)
     checkSonsLen(a, 3, c.config)
@@ -756,7 +756,7 @@ proc semRaise(c: PContext, n: PNode): PNode =
   if n[0].kind != nkEmpty:
     n[0] = semExprWithType(c, n[0])
     let typ = n[0].typ
-    if not isImportedException(typ):
+    if not isImportedException(typ, c.config):
       if typ.kind != tyRef or typ.lastSon.kind != tyObject:
         localError(c.config, n.info, errExprCannotBeRaised)
       if not isException(typ.lastSon):
@@ -785,7 +785,7 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
   for i in countup(0, sonsLen(n) - 1):
     var a = n.sons[i]
     when defined(nimsuggest):
-      if gCmd == cmdIdeTools:
+      if c.config.cmd == cmdIdeTools:
         inc c.inTypeContext
         suggestStmt(c, a)
         dec c.inTypeContext
@@ -1236,7 +1236,7 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
     s.typ = newProcType(c, n.info)
   if n.sons[pragmasPos].kind != nkEmpty:
     pragma(c, s, n.sons[pragmasPos], lambdaPragmas)
-  s.options = gOptions
+  s.options = c.config.options
   if n.sons[bodyPos].kind != nkEmpty:
     if sfImportc in s.flags:
       localError(c.config, n.sons[bodyPos].info, errImplOfXNotAllowed % s.name.s)
@@ -1565,7 +1565,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     proto.ast = n             # needed for code generation
     popOwner(c)
     pushOwner(c, s)
-  s.options = gOptions
+  s.options = c.config.options
   if sfOverriden in s.flags or s.name.s[0] == '=': semOverride(c, s, n)
   if s.name.s[0] in {'.', '('}:
     if s.name.s in [".", ".()", ".="] and {destructor, dotOperators} * c.features == {}:

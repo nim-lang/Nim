@@ -40,7 +40,7 @@ proc prependCurDir(f: string): string =
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   condsyms.initDefines(conf.symbols)
   if paramCount() == 0:
-    writeCommandLineUsage(conf.helpWritten)
+    writeCommandLineUsage(conf, conf.helpWritten)
   else:
     # Process command line arguments:
     processCmdLine(passCmd1, "", conf)
@@ -76,14 +76,14 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     if conf.command == "":
       rawMessage(conf, errGenerated, "command missing")
     mainCommand(newModuleGraph(conf), cache)
-    if optHints in gOptions and hintGCStats in conf.notes: echo(GC_getStatistics())
+    if optHints in conf.options and hintGCStats in conf.notes: echo(GC_getStatistics())
     #echo(GC_getStatistics())
     if conf.errorCounter == 0:
       when hasTinyCBackend:
-        if gCmd == cmdRun:
+        if conf.cmd == cmdRun:
           tccgen.run(conf.arguments)
-      if optRun in gGlobalOptions:
-        if gCmd == cmdCompileToJS:
+      if optRun in conf.globalOptions:
+        if conf.cmd == cmdCompileToJS:
           var ex: string
           if conf.outFile.len > 0:
             ex = conf.outFile.prependCurDir.quoteShell

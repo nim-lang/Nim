@@ -313,7 +313,7 @@ proc msgWriteln*(conf: ConfigRef; s: string, flags: MsgFlags = {}) =
 
   ## This is used for 'nim dump' etc. where we don't have nimsuggest
   ## support.
-  #if gCmd == cmdIdeTools and optCDebug notin gGlobalOptions: return
+  #if conf.cmd == cmdIdeTools and optCDebug notin gGlobalOptions: return
 
   if not isNil(writelnHook) and msgSkipHook notin flags:
     writelnHook(s)
