@@ -62,7 +62,7 @@ proc semBreakOrContinue(c: PContext, n: PNode): PNode =
         x.info = n.info
         incl(s.flags, sfUsed)
         n.sons[0] = x
-        suggestSym(x.info, s, c.graph.usageSym)
+        suggestSym(c.config, x.info, s, c.graph.usageSym)
         styleCheckUse(x.info, s)
       else:
         localError(c.config, n.info, errInvalidControlFlowX % s.name.s)
@@ -203,7 +203,7 @@ proc semCase(c: PContext, n: PNode): PNode =
   for i in countup(1, sonsLen(n) - 1):
     var x = n.sons[i]
     when defined(nimsuggest):
-      if gIdeCmd == ideSug and exactEquals(gTrackPos, x.info) and caseTyp.kind == tyEnum:
+      if c.config.ideCmd == ideSug and exactEquals(gTrackPos, x.info) and caseTyp.kind == tyEnum:
         suggestEnum(c, x, caseTyp)
     case x.kind
     of nkOfBranch:
@@ -365,7 +365,7 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
     result = semIdentWithPragma(c, kind, n, {})
     if result.owner.kind == skModule:
       incl(result.flags, sfGlobal)
-  suggestSym(n.info, result, c.graph.usageSym)
+  suggestSym(c.config, n.info, result, c.graph.usageSym)
   styleCheckDef(result)
 
 proc checkNilable(c: PContext; v: PSym) =

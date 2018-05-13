@@ -342,12 +342,12 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
   when defined(nimsuggest):
     if n.kind == nkSym and n.sym.kind == skError and suggestVersion == 0:
       # consider 'foo.|' where 'foo' is some not imported module.
-      let fullPath = findModule(n.sym.name.s, n.info.toFullPath)
+      let fullPath = findModule(c.config, n.sym.name.s, n.info.toFullPath)
       if fullPath.len == 0:
         # error: no known module name:
         typ = nil
       else:
-        let m = gImportModule(c.graph, c.module, fullpath.fileInfoIdx, c.cache)
+        let m = gImportModule(c.graph, c.module, fileInfoIdx(c.config, fullpath), c.cache)
         if m == nil: typ = nil
         else:
           for it in items(n.sym.tab):
@@ -457,7 +457,7 @@ proc ensureIdx[T](x: var T, y: int) =
 proc ensureSeq[T](x: var seq[T]) =
   if x == nil: newSeq(x, 0)
 
-proc suggestSym*(info: TLineInfo; s: PSym; usageSym: var PSym; isDecl=true) {.inline.} =
+proc suggestSym*(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym; isDecl=true) {.inline.} =
   ## misnamed: should be 'symDeclared'
   when defined(nimsuggest):
     if suggestVersion == 0:
@@ -466,17 +466,17 @@ proc suggestSym*(info: TLineInfo; s: PSym; usageSym: var PSym; isDecl=true) {.in
       else:
         s.addNoDup(info)
 
-    if gIdeCmd == ideUse:
+    if conf.ideCmd == ideUse:
       findUsages(info, s, usageSym)
-    elif gIdeCmd == ideDef:
+    elif conf.ideCmd == ideDef:
       findDefinition(info, s)
-    elif gIdeCmd == ideDus and s != nil:
+    elif conf.ideCmd == ideDus and s != nil:
       if isTracked(info, s.name.s.len):
         suggestResult(symToSuggest(s, isLocal=false, ideDef, info, 100, PrefixMatch.None, false, 0))
       findUsages(info, s, usageSym)
-    elif gIdeCmd == ideHighlight and info.fileIndex == gTrackPos.fileIndex:
+    elif conf.ideCmd == ideHighlight and info.fileIndex == gTrackPos.fileIndex:
       suggestResult(symToSuggest(s, isLocal=false, ideHighlight, info, 100, PrefixMatch.None, false, 0))
-    elif gIdeCmd == ideOutline and info.fileIndex == gTrackPos.fileIndex and
+    elif conf.ideCmd == ideOutline and info.fileIndex == gTrackPos.fileIndex and
         isDecl:
       suggestResult(symToSuggest(s, isLocal=false, ideOutline, info, 100, PrefixMatch.None, false, 0))
 
@@ -499,7 +499,7 @@ proc markUsed(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym) =
     if sfDeprecated in s.flags: warnAboutDeprecated(conf, info, s)
     if sfError in s.flags: localError(conf, info,  "usage of '$1' is a user-defined error" % s.name.s)
   when defined(nimsuggest):
-    suggestSym(info, s, usageSym, false)
+    suggestSym(conf, info, s, usageSym, false)
 
 proc useSym*(conf: ConfigRef; sym: PSym; usageSym: var PSym): PNode =
   result = newSymNode(sym)

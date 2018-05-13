@@ -274,7 +274,7 @@ template tokenEnd(tok, pos) {.dirty.} =
   when defined(nimsuggest):
     let colB = getColNumber(L, pos)+1
     if L.fileIdx == gTrackPos.fileIndex and gTrackPos.col in colA..colB and
-        L.lineNumber == gTrackPos.line.int and gIdeCmd in {ideSug, ideCon}:
+        L.lineNumber == gTrackPos.line.int and L.config.ideCmd in {ideSug, ideCon}:
       L.cursor = CursorPosition.InToken
       gTrackPos.col = colA.int16
     colA = 0
@@ -285,7 +285,7 @@ template tokenEndIgnore(tok, pos) =
   when defined(nimsuggest):
     let colB = getColNumber(L, pos)
     if L.fileIdx == gTrackPos.fileIndex and gTrackPos.col in colA..colB and
-        L.lineNumber == gTrackPos.line.int and gIdeCmd in {ideSug, ideCon}:
+        L.lineNumber == gTrackPos.line.int and L.config.ideCmd in {ideSug, ideCon}:
       gTrackPos.fileIndex = trackPosInvalidFileIdx
       gTrackPos.line = 0'u16
     colA = 0
@@ -299,7 +299,7 @@ template tokenEndPrevious(tok, pos) =
     # the cursor in a string literal or comment:
     let colB = getColNumber(L, pos)
     if L.fileIdx == gTrackPos.fileIndex and gTrackPos.col in colA..colB and
-        L.lineNumber == gTrackPos.line.int and gIdeCmd in {ideSug, ideCon}:
+        L.lineNumber == gTrackPos.line.int and L.config.ideCmd in {ideSug, ideCon}:
       L.cursor = CursorPosition.BeforeToken
       gTrackPos = L.previousToken
       gTrackPosAttached = true
@@ -1122,7 +1122,7 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
         tok.tokType = tkParLe
         when defined(nimsuggest):
           if L.fileIdx == gTrackPos.fileIndex and tok.col < gTrackPos.col and
-                    tok.line == gTrackPos.line.int and gIdeCmd == ideCon:
+                    tok.line == gTrackPos.line.int and L.config.ideCmd == ideCon:
             gTrackPos.col = tok.col.int16
     of ')':
       tok.tokType = tkParRi
@@ -1143,7 +1143,7 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
     of '.':
       when defined(nimsuggest):
         if L.fileIdx == gTrackPos.fileIndex and tok.col+1 == gTrackPos.col and
-            tok.line == gTrackPos.line.int and gIdeCmd == ideSug:
+            tok.line == gTrackPos.line.int and L.config.ideCmd == ideSug:
           tok.tokType = tkDot
           L.cursor = CursorPosition.InToken
           gTrackPos.col = tok.col.int16

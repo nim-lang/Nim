@@ -672,7 +672,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
                      else: rectype.sym
     for i in countup(0, sonsLen(n)-3):
       var f = semIdentWithPragma(c, skField, n.sons[i], {sfExported})
-      suggestSym(n.sons[i].info, f, c.graph.usageSym)
+      suggestSym(c.config, n.sons[i].info, f, c.graph.usageSym)
       f.typ = typ
       f.position = pos
       if fieldOwner != nil and

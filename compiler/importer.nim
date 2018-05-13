@@ -152,7 +152,7 @@ proc myImportModule(c: PContext, n: PNode): PSym =
         message(c.config, n.info, warnDeprecated, result.constraint.strVal & "; " & result.name.s)
       else:
         message(c.config, n.info, warnDeprecated, result.name.s)
-    suggestSym(n.info, result, c.graph.usageSym, false)
+    suggestSym(c.config, n.info, result, c.graph.usageSym, false)
 
 proc impMod(c: PContext; it: PNode) =
   let m = myImportModule(c, it)

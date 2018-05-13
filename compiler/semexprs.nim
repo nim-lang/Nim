@@ -2154,7 +2154,7 @@ proc semBlock(c: PContext, n: PNode): PNode =
     if sfGenSym notin labl.flags:
       addDecl(c, labl)
     n.sons[0] = newSymNode(labl, n.sons[0].info)
-    suggestSym(n.sons[0].info, labl, c.graph.usageSym)
+    suggestSym(c.config, n.sons[0].info, labl, c.graph.usageSym)
     styleCheckDef(labl)
   n.sons[1] = semExpr(c, n.sons[1])
   n.typ = n.sons[1].typ
