@@ -13,7 +13,7 @@
 import
   ast, modules, idents, passes, passaux, condsyms,
   options, nimconf, sem, semdata, llstream, vm, vmdef, commands, msgs,
-  os, times, osproc, wordrecg, strtabs, modulegraphs
+  os, times, osproc, wordrecg, strtabs, modulegraphs, configuration
 
 # we support 'cmpIgnoreStyle' natively for efficiency:
 from strutils import cmpIgnoreStyle, contains
@@ -26,11 +26,12 @@ proc listDirs(a: VmArgs, filter: set[PathComponent]) =
   setResult(a, result)
 
 proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
-              config: ConfigRef): PEvalContext =
+              graph: ModuleGraph): PEvalContext =
   # For Nimble we need to export 'setupVM'.
-  result = newCtx(module, cache, config)
+  result = newCtx(module, cache, graph)
   result.mode = emRepl
   registerAdditionalOps(result)
+  let conf = graph.config
 
   # captured vars:
   var errorMsg: string
@@ -98,13 +99,13 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbconf thisDir:
     setResult(a, vthisDir)
   cbconf put:
-    options.setConfigVar(getString(a, 0), getString(a, 1))
+    options.setConfigVar(conf, getString(a, 0), getString(a, 1))
   cbconf get:
-    setResult(a, options.getConfigVar(a.getString 0))
+    setResult(a, options.getConfigVar(conf, a.getString 0))
   cbconf exists:
-    setResult(a, options.existsConfigVar(a.getString 0))
+    setResult(a, options.existsConfigVar(conf, a.getString 0))
   cbconf nimcacheDir:
-    setResult(a, options.getNimcacheDir())
+    setResult(a, options.getNimcacheDir(conf))
   cbconf paramStr:
     setResult(a, os.paramStr(int a.getInt 0))
   cbconf paramCount:
@@ -114,67 +115,66 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbconf cmpIgnoreCase:
     setResult(a, strutils.cmpIgnoreCase(a.getString 0, a.getString 1))
   cbconf setCommand:
-    options.command = a.getString 0
+    conf.command = a.getString 0
     let arg = a.getString 1
     if arg.len > 0:
-      gProjectName = arg
+      conf.projectName = arg
       let path =
-        if gProjectName.isAbsolute: gProjectName
-        else: gProjectPath / gProjectName
+        if conf.projectName.isAbsolute: conf.projectName
+        else: conf.projectPath / conf.projectName
       try:
-        gProjectFull = canonicalizePath(path)
+        conf.projectFull = canonicalizePath(conf, path)
       except OSError:
-        gProjectFull = path
+        conf.projectFull = path
   cbconf getCommand:
-    setResult(a, options.command)
+    setResult(a, conf.command)
   cbconf switch:
-    processSwitch(a.getString 0, a.getString 1, passPP, module.info, config)
+    processSwitch(a.getString 0, a.getString 1, passPP, module.info, conf)
   cbconf hintImpl:
     processSpecificNote(a.getString 0, wHint, passPP, module.info,
-      a.getString 1, config)
+      a.getString 1, conf)
   cbconf warningImpl:
     processSpecificNote(a.getString 0, wWarning, passPP, module.info,
-      a.getString 1, config)
+      a.getString 1, conf)
   cbconf patchFile:
     let key = a.getString(0) & "_" & a.getString(1)
     var val = a.getString(2).addFileExt(NimExt)
     if {'$', '~'} in val:
-      val = pathSubs(val, vthisDir)
+      val = pathSubs(conf, val, vthisDir)
     elif not isAbsolute(val):
       val = vthisDir / val
-    gModuleOverrides[key] = val
+    conf.moduleOverrides[key] = val
   cbconf selfExe:
     setResult(a, os.getAppFilename())
   cbconf cppDefine:
-    if config != nil:
-      options.cppDefine(config, a.getString(0))
+    options.cppDefine(conf, a.getString(0))
 
 proc runNimScript*(cache: IdentCache; scriptName: string;
-                   freshDefines=true; config: ConfigRef) =
-  rawMessage(hintConf, scriptName)
+                   freshDefines=true; conf: ConfigRef) =
+  rawMessage(conf, hintConf, scriptName)
   passes.gIncludeFile = includeModule
   passes.gImportModule = importModule
-  let graph = newModuleGraph(config)
-  if freshDefines: initDefines()
+  let graph = newModuleGraph(conf)
+  if freshDefines: initDefines(conf.symbols)
 
-  defineSymbol("nimscript")
-  defineSymbol("nimconfig")
+  defineSymbol(conf.symbols, "nimscript")
+  defineSymbol(conf.symbols, "nimconfig")
   registerPass(semPass)
   registerPass(evalPass)
 
-  searchPaths.add(options.libpath)
+  conf.searchPaths.add(conf.libpath)
 
   var m = graph.makeModule(scriptName)
   incl(m.flags, sfMainModule)
-  vm.globalCtx = setupVM(m, cache, scriptName, config)
+  vm.globalCtx = setupVM(m, cache, scriptName, graph)
 
   graph.compileSystemModule(cache)
   discard graph.processModule(m, llStreamOpen(scriptName, fmRead), nil, cache)
 
   # ensure we load 'system.nim' again for the real non-config stuff!
-  resetSystemArtifacts()
+  resetSystemArtifacts(graph)
   vm.globalCtx = nil
   # do not remove the defined symbols
   #initDefines()
-  undefSymbol("nimscript")
-  undefSymbol("nimconfig")
+  undefSymbol(conf.symbols, "nimscript")
+  undefSymbol(conf.symbols, "nimconfig")
