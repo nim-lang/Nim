@@ -195,7 +195,7 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
   if conf.ideCmd in {ideUse, ideDus}:
     let u = if suggestVersion != 1: graph.symFromInfo(gTrackPos) else: graph.usageSym
     if u != nil:
-      listUsages(u)
+      listUsages(conf, u)
     else:
       localError(conf, gTrackPos, "found no symbol at this position " & $gTrackPos)
 
@@ -385,10 +385,10 @@ proc execCmd(cmd: string; graph: ModuleGraph; cache: IdentCache; cachedMsgs: Cac
     results.send(Suggest(section: ideNone))
 
   template toggle(sw) =
-    if sw in gGlobalOptions:
-      excl(gGlobalOptions, sw)
+    if sw in conf.globalOptions:
+      excl(conf.globalOptions, sw)
     else:
-      incl(gGlobalOptions, sw)
+      incl(conf.globalOptions, sw)
     sentinel()
     return
 
@@ -490,8 +490,8 @@ proc mainCommand(graph: ModuleGraph; cache: IdentCache) =
   clearPasses()
   registerPass verbosePass
   registerPass semPass
-  gCmd = cmdIdeTools
-  incl gGlobalOptions, optCaasEnabled
+  conf.cmd = cmdIdeTools
+  incl conf.globalOptions, optCaasEnabled
   wantMainModule(conf)
 
   if not fileExists(conf.projectFull):
@@ -546,15 +546,15 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
       of "cmdsug":
         gMode = mcmdsug
         gAddress = p.val
-        incl(gGlobalOptions, optIdeDebug)
+        incl(conf.globalOptions, optIdeDebug)
       of "cmdcon":
         gMode = mcmdcon
         gAddress = p.val
-        incl(gGlobalOptions, optIdeDebug)
+        incl(conf.globalOptions, optIdeDebug)
       of "epc":
         gMode = mepc
-        gVerbosity = 0          # Port number gotta be first.
-      of "debug": incl(gGlobalOptions, optIdeDebug)
+        conf.verbosity = 0          # Port number gotta be first.
+      of "debug": incl(conf.globalOptions, optIdeDebug)
       of "v2": suggestVersion = 0
       of "v1": suggestVersion = 1
       of "tester":
