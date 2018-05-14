@@ -1640,7 +1640,7 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType) =
     let x = if named == desc: named else: named & " = " & desc
     var msg = "type mismatch: got <" &
               typeToString(actual) & "> " &
-              "but expected " & x & "'"
+              "but expected '" & x & "'"
 
     if formal.kind == tyProc and actual.kind == tyProc:
       case compatibleEffects(formal, actual)

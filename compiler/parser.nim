@@ -183,7 +183,7 @@ proc eat(p: var TParser, tokType: TTokType) =
     getTok(p)
   else:
     lexMessage(p.lex, errGenerated,
-      "expected " & TokTypeToStr[tokType] & ", but got: " & prettyTok(p.tok))
+      "expected: '" & TokTypeToStr[tokType] & "', but got: '" & prettyTok(p.tok) & "'")
 
 proc parLineInfo(p: TParser): TLineInfo =
   ## Retrieve the line information associated with the parser's current state.

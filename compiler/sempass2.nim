@@ -970,7 +970,7 @@ proc trackProc*(g: ModuleGraph; s: PSym, body: PNode) =
     when false:
       listGcUnsafety(s, onlyWarning=false, g.config)
     else:
-      localError(g.config, s.info, "'$1' has side effects" % s.name.s)
+      localError(g.config, s.info, "'$1' can have side effects" % s.name.s)
   if not t.gcUnsafe:
     s.typ.flags.incl tfGcSafe
   if not t.hasSideEffect and sfSideEffect notin s.flags:

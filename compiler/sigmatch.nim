@@ -2365,7 +2365,7 @@ proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
   var m: TCandidate
   initCandidate(c, m, dc.typ)
   if col >= dc.typ.len:
-    localError(c.config, info, "cannot instantiate '" & dc.name.s & "'")
+    localError(c.config, info, "cannot instantiate: '" & dc.name.s & "'")
     return nil
   var f = dc.typ.sons[col]
 
@@ -2374,7 +2374,7 @@ proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
   else:
     if f.kind == tyVar: f = f.lastSon
   if typeRel(m, f, t) == isNone:
-    localError(c.config, info, "cannot instantiate '" & dc.name.s & "'")
+    localError(c.config, info, "cannot instantiate: '" & dc.name.s & "'")
   else:
     result = c.semGenerateInstance(c, dc, m.bindings, info)
     if op == attachedDeepCopy:

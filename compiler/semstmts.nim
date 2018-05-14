@@ -233,7 +233,7 @@ proc semCase(c: PContext, n: PNode): PNode =
     if covered == toCover(n.sons[0].typ):
       hasElse = true
     else:
-      localError(c.config, n.info, "not all cases covered")
+      localError(c.config, n.info, "not all cases are covered")
   closeScope(c)
   if isEmptyType(typ) or typ.kind in {tyNil, tyExpr} or not hasElse:
     for i in 1..n.len-1: discardCheck(c, n.sons[i].lastSon)

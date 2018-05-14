@@ -507,8 +507,8 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
     # number of generic type parameters:
     if safeLen(s.ast.sons[genericParamsPos]) != n.len-1:
       let expected = safeLen(s.ast.sons[genericParamsPos])
-      localError(c.config, n.info, errGenerated, "cannot instantiate: " & renderTree(n) &
-         "; got " & $(n.len-1) & " type(s) but expected " & $expected)
+      localError(c.config, n.info, errGenerated, "cannot instantiate: '" & renderTree(n) &
+         "'; got " & $(n.len-1) & " type(s) but expected " & $expected)
       return n
     result = explicitGenericSym(c, n, s)
     if result == nil: result = explicitGenericInstError(c, n)

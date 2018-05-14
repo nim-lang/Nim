@@ -243,7 +243,7 @@ proc lookupTypeVar(cl: var TReplTypeVars, t: PType): PType =
   result = cl.typeMap.lookup(t)
   if result == nil:
     if cl.allowMetaTypes or tfRetType in t.flags: return
-    localError(cl.c.config, t.sym.info, "cannot instantiate: " & typeToString(t))
+    localError(cl.c.config, t.sym.info, "cannot instantiate: '" & typeToString(t) & "'")
     result = errorType(cl.c)
     # In order to prevent endless recursions, we must remember
     # this bad lookup and replace it with errorType everywhere.
@@ -453,7 +453,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
       result.kind = tyUserTypeClassInst
 
   of tyGenericBody:
-    localError(cl.c.config, cl.info, "cannot instantiate: " & typeToString(t))
+    localError(cl.c.config, cl.info, "cannot instantiate: '" & typeToString(t) & "'")
     result = errorType(cl.c)
     #result = replaceTypeVarsT(cl, lastSon(t))
 
