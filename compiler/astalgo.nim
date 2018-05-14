@@ -69,22 +69,22 @@ proc debug*(n: PNode) {.deprecated.}
 
 template mdbg*: bool {.dirty.} =
   when compiles(c.module):
-    c.module.fileIdx == gProjectMainIdx
+    c.module.fileIdx.int32 == gProjectMainIdx
   elif compiles(c.c.module):
-    c.c.module.fileIdx == gProjectMainIdx
+    c.c.module.fileIdx.int32 == gProjectMainIdx
   elif compiles(m.c.module):
-    m.c.module.fileIdx == gProjectMainIdx
+    m.c.module.fileIdx.int32 == gProjectMainIdx
   elif compiles(cl.c.module):
-    cl.c.module.fileIdx == gProjectMainIdx
+    cl.c.module.fileIdx.int32 == gProjectMainIdx
   elif compiles(p):
     when compiles(p.lex):
-      p.lex.fileIdx == gProjectMainIdx
+      p.lex.fileIdx.int32 == gProjectMainIdx
     else:
-      p.module.module.fileIdx == gProjectMainIdx
+      p.module.module.fileIdx.int32 == gProjectMainIdx
   elif compiles(m.module.fileIdx):
-    m.module.fileIdx == gProjectMainIdx
+    m.module.fileIdx.int32 == gProjectMainIdx
   elif compiles(L.fileIdx):
-    L.fileIdx == gProjectMainIdx
+    L.fileIdx.int32 == gProjectMainIdx
   else:
     error()
 

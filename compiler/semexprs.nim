@@ -972,18 +972,20 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     else:
       result = newSymNode(s, n.info)
   of skMacro:
-    if efNoEvaluateGeneric in flags and s.ast[genericParamsPos].len > 0:
+    if efNoEvaluateGeneric in flags and s.ast[genericParamsPos].len > 0 or
+       (n.kind notin nkCallKinds and s.requiredParams > 0):
       markUsed(c.config, n.info, s, c.graph.usageSym)
       styleCheckUse(n.info, s)
-      result = newSymNode(s, n.info)
+      result = symChoice(c, n, s, scClosed)
     else:
       result = semMacroExpr(c, n, n, s, flags)
   of skTemplate:
     if efNoEvaluateGeneric in flags and s.ast[genericParamsPos].len > 0 or
+       (n.kind notin nkCallKinds and s.requiredParams > 0) or
        sfCustomPragma in sym.flags:
       markUsed(c.config, n.info, s, c.graph.usageSym)
       styleCheckUse(n.info, s)
-      result = newSymNode(s, n.info)
+      result = symChoice(c, n, s, scClosed)
     else:
       result = semTemplateExpr(c, n, s, flags)
   of skParam:
@@ -1785,6 +1787,7 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   let oldInGenericContext = c.inGenericContext
   let oldInUnrolledContext = c.inUnrolledContext
   let oldInGenericInst = c.inGenericInst
+  let oldInStaticContext = c.inStaticContext
   let oldProcCon = c.p
   c.generics = @[]
   var err: string
@@ -1799,6 +1802,7 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   c.inGenericContext = oldInGenericContext
   c.inUnrolledContext = oldInUnrolledContext
   c.inGenericInst = oldInGenericInst
+  c.inStaticContext = oldInStaticContext
   c.p = oldProcCon
   msgs.setInfoContextLen(oldContextLen)
   setLen(c.graph.owners, oldOwnerLen)
@@ -2163,9 +2167,25 @@ proc semBlock(c: PContext, n: PNode): PNode =
   closeScope(c)
   dec(c.p.nestedBlockCounter)
 
+proc semExportExcept(c: PContext, n: PNode): PNode =
+  let moduleName = semExpr(c, n[0])
+  if moduleName.kind != nkSym or moduleName.sym.kind != skModule:
+    localError(c.config, n.info, "The export/except syntax expects a module name")
+    return n
+  let exceptSet = readExceptSet(c, n)
+  let exported = moduleName.sym
+  strTableAdd(c.module.tab, exported)
+  var i: TTabIter
+  var s = initTabIter(i, exported.tab)
+  while s != nil:
+    if s.kind in ExportableSymKinds+{skModule} and
+       s.name.id notin exceptSet:
+      strTableAdd(c.module.tab, s)
+    s = nextIter(i, exported.tab)
+  result = n
+
 proc semExport(c: PContext, n: PNode): PNode =
   var x = newNodeI(n.kind, n.info)
-  #let L = if n.kind == nkExportExceptStmt: L = 1 else: n.len
   for i in 0..<n.len:
     let a = n.sons[i]
     var o: TOverloadIter
@@ -2451,9 +2471,12 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkIncludeStmt:
     #if not isTopLevel(c): localError(c.config, n.info, errXOnlyAtModuleScope % "include")
     result = evalInclude(c, n)
-  of nkExportStmt, nkExportExceptStmt:
+  of nkExportStmt:
     if not isTopLevel(c): localError(c.config, n.info, errXOnlyAtModuleScope % "export")
     result = semExport(c, n)
+  of nkExportExceptStmt:
+    if not isTopLevel(c): localError(c.config, n.info, errXOnlyAtModuleScope % "export")
+    result = semExportExcept(c, n)
   of nkPragmaBlock:
     result = semPragmaBlock(c, n)
   of nkStaticStmt:

@@ -960,7 +960,7 @@ when defined(posix) and not defined(nimdoc):
       raise newException(ValueError, "socket path too long")
     copyMem(addr result.sun_path, path.cstring, path.len + 1)
 
-when defined(posix):
+when defined(posix) or defined(nimdoc):
   proc connectUnix*(socket: Socket, path: string) =
     ## Connects to Unix socket on `path`.
     ## This only works on Unix-style systems: Mac OS X, BSD and Linux

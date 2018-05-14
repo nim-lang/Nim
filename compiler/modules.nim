@@ -98,6 +98,7 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; cache: IdentCache, f
 proc importModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex;
                    cache: IdentCache): PSym {.procvar.} =
   # this is called by the semantic checking phase
+  assert graph.config != nil
   result = compileModule(graph, fileIdx, cache, {})
   graph.addDep(s, fileIdx)
   #if sfSystemModule in result.flags:

@@ -187,12 +187,14 @@ when defined(windows):
 
 proc main() =
   when defined(windows):
-    let desiredPath = expandFilename(getCurrentDir() / "bin")
+    let nimDesiredPath = expandFilename(getCurrentDir() / "bin")
+    let nimbleDesiredPath = expandFilename(getEnv("USERPROFILE") / ".nimble" / "bin")
     let p = tryGetUnicodeValue(r"Environment", "Path",
       HKEY_CURRENT_USER) & ";" & tryGetUnicodeValue(
         r"System\CurrentControlSet\Control\Session Manager\Environment", "Path",
         HKEY_LOCAL_MACHINE)
-    var alreadyInPath = false
+    var nimAlreadyInPath = false
+    var nimbleAlreadyInPath = false
     var mingWchoices: seq[string] = @[]
     var incompat: seq[string] = @[]
     for x in p.split(';'):
@@ -200,18 +202,29 @@ proc main() =
       let y = try: expandFilename(if x[0] == '"' and x[^1] == '"':
                                     substr(x, 1, x.len-2) else: x)
               except: ""
-      if y.cmpIgnoreCase(desiredPath) == 0: alreadyInPath = true
-      if y.toLowerAscii.contains("mingw"):
+      if y.cmpIgnoreCase(nimDesiredPath) == 0:
+        nimAlreadyInPath = true
+      elif y.cmpIgnoreCase(nimbleDesiredPath) == 0:
+        nimbleAlreadyInPath = true
+      elif y.toLowerAscii.contains("mingw"):
         if dirExists(y):
           if checkGccArch(y): mingWchoices.add y
           else: incompat.add y
 
-    if alreadyInPath:
-      echo "bin/nim.exe is already in your PATH [Skipping]"
+    if nimAlreadyInPath:
+      echo "bin\\nim.exe is already in your PATH [Skipping]"
     else:
       if askBool("nim.exe is not in your PATH environment variable.\n" &
           "Should it be added permanently? (y/n) "):
-        addToPathEnv(desiredPath)
+        addToPathEnv(nimDesiredPath)
+
+    if nimbleAlreadyInPath:
+      echo nimbleDesiredPath & " is already in your PATH [Skipping]"
+    else:
+      if askBool(nimbleDesiredPath & " is not in your PATH environment variable.\n" &
+          "Should it be added permanently? (y/n) "):
+        addToPathEnv(nimbleDesiredPath)
+
     if mingWchoices.len == 0:
       # No mingw in path, so try a few locations:
       let alternative = tryDirs(incompat, defaultMingwLocations())

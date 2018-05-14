@@ -16,6 +16,13 @@ import
 proc evalImport*(c: PContext, n: PNode): PNode
 proc evalFrom*(c: PContext, n: PNode): PNode
 
+proc readExceptSet*(c: PContext, n: PNode): IntSet =
+  assert n.kind in {nkImportExceptStmt, nkExportExceptStmt}
+  result = initIntSet()
+  for i in 1 ..< n.len:
+    let ident = lookups.considerQuotedIdent(c.config, n[i])
+    result.incl(ident.id)
+
 proc importPureEnumField*(c: PContext; s: PSym) =
   var check = strTableGet(c.importTable.symbols, s.name)
   if check == nil:
@@ -199,9 +206,5 @@ proc evalImportExcept*(c: PContext, n: PNode): PNode =
   if m != nil:
     n.sons[0] = newSymNode(m)
     addDecl(c, m, n.info)               # add symbol to symbol table of module
-    var exceptSet = initIntSet()
-    for i in countup(1, sonsLen(n) - 1):
-      let ident = lookups.considerQuotedIdent(c.config, n.sons[i])
-      exceptSet.incl(ident.id)
-    importAllSymbolsExcept(c, m, exceptSet)
+    importAllSymbolsExcept(c, m, readExceptSet(c, n))
     #importForwarded(c, m.ast, exceptSet)

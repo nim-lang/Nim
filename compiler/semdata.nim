@@ -89,6 +89,7 @@ type
     ambiguousSymbols*: IntSet  # ids of all ambiguous symbols (cannot
                                # store this info in the syms themselves!)
     inGenericContext*: int     # > 0 if we are in a generic type
+    inStaticContext*: int      # > 0 if we are inside a static: block
     inUnrolledContext*: int    # > 0 if we are unrolling a loop
     compilesContextId*: int    # > 0 if we are in a ``compiles`` magic
     compilesContextIdGenerator*: int

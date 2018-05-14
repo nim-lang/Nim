@@ -70,9 +70,9 @@ proc parseLine(p: var TTmplParser) =
 
   while j <= hi and p.x[j] == ' ': inc(j)
 
-  if p.x[0] == p.nimDirective and p.x[1] == '?':
+  if p.x.len >= 2 and p.x[0] == p.nimDirective and p.x[1] == '?':
     newLine(p)
-  elif p.x[j] == p.nimDirective:
+  elif j < p.x.len and p.x[j] == p.nimDirective:
     newLine(p)
     inc(j)
     while j <= hi and p.x[j] == ' ': inc(j)

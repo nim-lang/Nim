@@ -117,6 +117,7 @@ proc applyFilter(p: var TParsers, n: PNode, filename: string,
   of filtReplace:
     result = filterReplace(p.config, stdin, filename, n)
   if f != filtNone:
+    assert p.config != nil
     if hintCodeBegin in p.config.notes:
       rawMessage(p.config, hintCodeBegin, [])
       msgWriteln(p.config, result.s)
@@ -124,6 +125,7 @@ proc applyFilter(p: var TParsers, n: PNode, filename: string,
 
 proc evalPipe(p: var TParsers, n: PNode, filename: string,
               start: PLLStream): PLLStream =
+  assert p.config != nil
   result = start
   if n.kind == nkEmpty: return
   if n.kind == nkInfix and n[0].kind == nkIdent and n[0].ident.s == "|":
@@ -139,10 +141,12 @@ proc evalPipe(p: var TParsers, n: PNode, filename: string,
 
 proc openParsers*(p: var TParsers, fileIdx: FileIndex, inputstream: PLLStream;
                   cache: IdentCache; config: ConfigRef) =
+  assert config != nil
   var s: PLLStream
   p.skin = skinStandard
   let filename = fileIdx.toFullPathConsiderDirty
   var pipe = parsePipe(filename, inputstream, cache, config)
+  p.config() = config
   if pipe != nil: s = evalPipe(p, pipe, filename, inputstream)
   else: s = inputstream
   case p.skin

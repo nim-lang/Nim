@@ -199,6 +199,10 @@ proc semBindSym(c: PContext, n: PNode): PNode =
   if s != nil:
     # we need to mark all symbols:
     var sc = symChoice(c, id, s, TSymChoiceRule(isMixin.intVal))
+    if not (c.inStaticContext > 0 or getCurrOwner(c).isCompileTimeProc):
+      # inside regular code, bindSym resolves to the sym-choice
+      # nodes (see tinspectsymbol)
+      return sc
     result.add(sc)
   else:
     errorUndeclaredIdentifier(c, n.sons[1].info, sl.strVal)
