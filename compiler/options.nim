@@ -10,6 +10,8 @@
 import
   os, strutils, strtabs, osproc, sets, configuration, platform
 
+from terminal import isatty
+
 const
   hasTinyCBackend* = defined(tinyc)
   useEffectSystem* = true
@@ -182,7 +184,7 @@ const
     optBoundsCheck, optOverflowCheck, optAssert, optWarns,
     optHints, optStackTrace, optLineTrace,
     optPatterns, optNilCheck, optMoveCheck}
-  DefaultGlobalOptions* = {optThreadAnalysis, optUseColors}
+  DefaultGlobalOptions* = {optThreadAnalysis}
 
 template newPackageCache*(): untyped =
   newStringTable(when FileSystemCaseSensitive:
@@ -221,6 +223,9 @@ proc newConfigRef*(): ConfigRef =
     implicitIncludes: @[], # modules that are to be implicitly included
     docSeeSrcUrl: ""
   )
+  # enable colors by default on terminals
+  if terminal.isatty(stderr):
+    incl(result.globalOptions, optUseColors)
 
 proc newPartialConfigRef*(): ConfigRef =
   ## create a new ConfigRef that is only good enough for error reporting.

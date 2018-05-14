@@ -647,7 +647,3 @@ proc listHints*(conf: ConfigRef) =
       if hint in conf.notes: "x" else: " ",
       configuration.HintsToStr[ord(hint) - ord(hintMin)]
     ])
-
-# enable colors by default on terminals
-#if terminal.isatty(stderr):
-#  incl(gGlobalOptions, optUseColors)
