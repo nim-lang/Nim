@@ -1148,7 +1148,7 @@ proc waitFor(socket: Socket, waited: var float, timeout, size: int,
           return 1
         let sslPending = SSLPending(socket.sslHandle)
         if sslPending != 0:
-          return sslPending
+          return min(sslPending, size)
 
     var startTime = epochTime()
     let selRet = select(socket, timeout - int(waited * 1000.0))
