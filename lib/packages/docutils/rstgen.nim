@@ -881,7 +881,8 @@ proc buildLinesHTMLTable(d: PDoc; params: CodeBlockParams, code: string):
   inc d.listingCounter
   let id = $d.listingCounter
   if not params.numberLines:
-    result = (d.config.getOrDefault"doc.listing_start" % [id, $params.lang],
+    result = (d.config.getOrDefault"doc.listing_start" %
+                [id, sourceLanguageToStr[params.lang]],
               d.config.getOrDefault"doc.listing_end" % id)
     return
 
