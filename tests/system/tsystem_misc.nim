@@ -62,4 +62,4 @@ proc foo(a: openArray[byte]) =
   for x in a: echo x
 
 let str = "0123456789"
-foo(toOpenArray(str, 0'u, str.high))
+foo(toOpenArrayByte(str, 0, str.high))
