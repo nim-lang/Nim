@@ -188,43 +188,43 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
   of "doc0":
     wantMainModule(conf)
     conf.cmd = cmdDoc
-    loadConfigs(DocConfig, cache)
+    loadConfigs(DocConfig, cache, conf)
     commandDoc(conf)
   of "doc2", "doc":
     conf.cmd = cmdDoc
-    loadConfigs(DocConfig, cache)
+    loadConfigs(DocConfig, cache, conf)
     defineSymbol(conf.symbols, "nimdoc")
     commandDoc2(graph, cache, false)
   of "rst2html":
     conf.cmd = cmdRst2html
-    loadConfigs(DocConfig, cache)
+    loadConfigs(DocConfig, cache, conf)
     commandRst2Html(conf)
   of "rst2tex":
     conf.cmd = cmdRst2tex
-    loadConfigs(DocTexConfig, cache)
+    loadConfigs(DocTexConfig, cache, conf)
     commandRst2TeX(conf)
   of "jsondoc0":
     wantMainModule(conf)
     conf.cmd = cmdDoc
-    loadConfigs(DocConfig, cache)
+    loadConfigs(DocConfig, cache, conf)
     wantMainModule(conf)
     defineSymbol(conf.symbols, "nimdoc")
     commandJson(conf)
   of "jsondoc2", "jsondoc":
     conf.cmd = cmdDoc
-    loadConfigs(DocConfig, cache)
+    loadConfigs(DocConfig, cache, conf)
     wantMainModule(conf)
     defineSymbol(conf.symbols, "nimdoc")
     commandDoc2(graph, cache, true)
   of "ctags":
     wantMainModule(conf)
     conf.cmd = cmdDoc
-    loadConfigs(DocConfig, cache)
+    loadConfigs(DocConfig, cache, conf)
     defineSymbol(conf.symbols, "nimdoc")
     commandTags(conf)
   of "buildindex":
     conf.cmd = cmdDoc
-    loadConfigs(DocConfig, cache)
+    loadConfigs(DocConfig, cache, conf)
     commandBuildIndex(conf)
   of "gendepend":
     conf.cmd = cmdGenDepend

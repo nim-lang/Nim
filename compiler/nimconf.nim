@@ -230,7 +230,7 @@ proc getSystemConfigPath(conf: ConfigRef; filename: string): string =
     if not existsFile(result): result = joinPath([p, "etc", filename])
     if not existsFile(result): result = "/etc/" & filename
 
-proc loadConfigs*(cfg: string; cache: IdentCache; conf: ConfigRef = nil) =
+proc loadConfigs*(cfg: string; cache: IdentCache; conf: ConfigRef) =
   setDefaultLibpath(conf)
 
   if optSkipConfigFile notin conf.globalOptions:
