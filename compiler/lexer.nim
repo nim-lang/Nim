@@ -17,7 +17,7 @@
 
 import
   hashes, options, msgs, strutils, platform, idents, nimlexbase, llstream,
-  wordrecg
+  wordrecg, configuration
 
 const
   MaxLineLength* = 80         # lines longer than this lead to a warning
@@ -131,7 +131,7 @@ type
                                 # like 0b01 or  r"\L" are unaffected
       commentOffsetA*, commentOffsetB*: int
 
-  TErrorHandler* = proc (info: TLineInfo; msg: TMsgKind; arg: string)
+  TErrorHandler* = proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string)
   TLexer* = object of TBaseLexer
     fileIdx*: FileIndex
     indentAhead*: int         # if > 0 an indendation has already been read
@@ -190,8 +190,8 @@ proc prettyTok*(tok: TToken): string =
   if isKeyword(tok.tokType): result = "keyword " & tok.ident.s
   else: result = tokToStr(tok)
 
-proc printTok*(tok: TToken) =
-  msgWriteln($tok.line & ":" & $tok.col & "\t" &
+proc printTok*(conf: ConfigRef; tok: TToken) =
+  msgWriteln(conf, $tok.line & ":" & $tok.col & "\t" &
       TokTypeToStr[tok.tokType] & " " & tokToStr(tok))
 
 proc initToken*(L: var TToken) =
@@ -234,7 +234,7 @@ proc openLexer*(lex: var TLexer, fileIdx: FileIndex, inputstream: PLLStream;
 
 proc openLexer*(lex: var TLexer, filename: string, inputstream: PLLStream;
                 cache: IdentCache; config: ConfigRef) =
-  openLexer(lex, filename.fileInfoIdx, inputstream, cache, config)
+  openLexer(lex, fileInfoIdx(config, filename), inputstream, cache, config)
 
 proc closeLexer*(lex: var TLexer) =
   if lex.config != nil:
@@ -246,9 +246,9 @@ proc getLineInfo(L: TLexer): TLineInfo =
 
 proc dispMessage(L: TLexer; info: TLineInfo; msg: TMsgKind; arg: string) =
   if L.errorHandler.isNil:
-    msgs.message(info, msg, arg)
+    msgs.message(L.config, info, msg, arg)
   else:
-    L.errorHandler(info, msg, arg)
+    L.errorHandler(L.config, info, msg, arg)
 
 proc lexMessage*(L: TLexer, msg: TMsgKind, arg = "") =
   L.dispMessage(getLineInfo(L), msg, arg)
@@ -274,7 +274,7 @@ template tokenEnd(tok, pos) {.dirty.} =
   when defined(nimsuggest):
     let colB = getColNumber(L, pos)+1
     if L.fileIdx == gTrackPos.fileIndex and gTrackPos.col in colA..colB and
-        L.lineNumber == gTrackPos.line.int and gIdeCmd in {ideSug, ideCon}:
+        L.lineNumber == gTrackPos.line.int and L.config.ideCmd in {ideSug, ideCon}:
       L.cursor = CursorPosition.InToken
       gTrackPos.col = colA.int16
     colA = 0
@@ -285,7 +285,7 @@ template tokenEndIgnore(tok, pos) =
   when defined(nimsuggest):
     let colB = getColNumber(L, pos)
     if L.fileIdx == gTrackPos.fileIndex and gTrackPos.col in colA..colB and
-        L.lineNumber == gTrackPos.line.int and gIdeCmd in {ideSug, ideCon}:
+        L.lineNumber == gTrackPos.line.int and L.config.ideCmd in {ideSug, ideCon}:
       gTrackPos.fileIndex = trackPosInvalidFileIdx
       gTrackPos.line = 0'u16
     colA = 0
@@ -299,7 +299,7 @@ template tokenEndPrevious(tok, pos) =
     # the cursor in a string literal or comment:
     let colB = getColNumber(L, pos)
     if L.fileIdx == gTrackPos.fileIndex and gTrackPos.col in colA..colB and
-        L.lineNumber == gTrackPos.line.int and gIdeCmd in {ideSug, ideCon}:
+        L.lineNumber == gTrackPos.line.int and L.config.ideCmd in {ideSug, ideCon}:
       L.cursor = CursorPosition.BeforeToken
       gTrackPos = L.previousToken
       gTrackPosAttached = true
@@ -341,7 +341,8 @@ proc getNumber(L: var TLexer, result: var TToken) =
         break
       if buf[pos] == '_':
         if buf[pos+1] notin chars:
-          lexMessage(L, errInvalidToken, "_")
+          lexMessage(L, errGenerated,
+            "only single underscores may occur in a token: '__' is invalid")
           break
         add(tok.literal, '_')
         inc(pos)
@@ -355,7 +356,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
       inc(pos)
     L.bufpos = pos
 
-  proc lexMessageLitNum(L: var TLexer, msg: TMsgKind, startpos: int) =
+  proc lexMessageLitNum(L: var TLexer, msg: string, startpos: int) =
     # Used to get slightly human friendlier err messages.
     # Note: the erroneous 'O' char in the character set is intentional
     const literalishChars = {'A'..'F', 'a'..'f', '0'..'9', 'X', 'x', 'o', 'O',
@@ -376,7 +377,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
       add(t.literal, L.buf[L.bufpos])
       matchChars(L, t, {'0'..'9'})
     L.bufpos = msgPos
-    lexMessage(L, msg, t.literal)
+    lexMessage(L, errGenerated, msg % t.literal)
 
   var
     startpos, endpos: int
@@ -398,7 +399,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
     eatChar(L, result, '0')
     case L.buf[L.bufpos]
     of 'O':
-      lexMessageLitNum(L, errInvalidNumberOctalCode, startpos)
+      lexMessageLitNum(L, "$1 is not a valid number; did you mean octal? Then use one of '0o', '0c' or '0C'.", startpos)
     of 'x', 'X':
       eatChar(L, result, 'x')
       matchUnderscoreChars(L, result, {'0'..'9', 'a'..'f', 'A'..'F'})
@@ -409,7 +410,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
       eatChar(L, result, 'b')
       matchUnderscoreChars(L, result, {'0'..'1'})
     else:
-      internalError(getLineInfo(L), "getNumber")
+      internalError(L.config, getLineInfo(L), "getNumber")
   else:
     matchUnderscoreChars(L, result, {'0'..'9'})
     if (L.buf[L.bufpos] == '.') and (L.buf[L.bufpos + 1] in {'0'..'9'}):
@@ -464,7 +465,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
         result.tokType = tkInt8Lit
         inc(postPos)
       else:
-        lexMessageLitNum(L, errInvalidNumber, startpos)
+        lexMessageLitNum(L, "invalid number: '$1'", startpos)
     of 'u', 'U':
       inc(postPos)
       if (L.buf[postPos] == '6') and (L.buf[postPos + 1] == '4'):
@@ -482,12 +483,12 @@ proc getNumber(L: var TLexer, result: var TToken) =
       else:
         result.tokType = tkUIntLit
     else:
-      lexMessageLitNum(L, errInvalidNumber, startpos)
+      lexMessageLitNum(L, "invalid number: '$1'", startpos)
 
   # Is there still a literalish char awaiting? Then it's an error!
   if  L.buf[postPos] in literalishChars or
      (L.buf[postPos] == '.' and L.buf[postPos + 1] in {'0'..'9'}):
-    lexMessageLitNum(L, errInvalidNumber, startpos)
+    lexMessageLitNum(L, "invalid number: '$1'", startpos)
 
   # Third stage, extract actual number
   L.bufpos = startpos            # restore position
@@ -528,7 +529,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
           else:
             break
       else:
-        internalError(getLineInfo(L), "getNumber")
+        internalError(L.config, getLineInfo(L), "getNumber")
 
       case result.tokType
       of tkIntLit, tkInt64Lit: result.iNumber = xi
@@ -545,7 +546,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
         # XXX: Test this on big endian machine!
       of tkFloat64Lit, tkFloatLit:
         result.fNumber = (cast[PFloat64](addr(xi)))[]
-      else: internalError(getLineInfo(L), "getNumber")
+      else: internalError(L.config, getLineInfo(L), "getNumber")
 
       # Bounds checks. Non decimal literals are allowed to overflow the range of
       # the datatype as long as their pattern don't overflow _bitwise_, hence
@@ -561,7 +562,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
 
         if outOfRange:
           #echo "out of range num: ", result.iNumber, " vs ", xi
-          lexMessageLitNum(L, errNumberOutOfRange, startpos)
+          lexMessageLitNum(L, "number out of range: '$1'", startpos)
 
     else:
       case result.tokType
@@ -590,7 +591,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
                         result.iNumber > BiggestInt(uint32.high))
         else: false
 
-      if outOfRange: lexMessageLitNum(L, errNumberOutOfRange, startpos)
+      if outOfRange: lexMessageLitNum(L, "number out of range: '$1'", startpos)
 
     # Promote int literal to int64? Not always necessary, but more consistent
     if result.tokType == tkIntLit:
@@ -598,9 +599,9 @@ proc getNumber(L: var TLexer, result: var TToken) =
         result.tokType = tkInt64Lit
 
   except ValueError:
-    lexMessageLitNum(L, errInvalidNumber, startpos)
+    lexMessageLitNum(L, "invalid number: '$1'", startpos)
   except OverflowError, RangeError:
-    lexMessageLitNum(L, errNumberOutOfRange, startpos)
+    lexMessageLitNum(L, "number out of range: '$1'", startpos)
   tokenEnd(result, postPos-1)
   L.bufpos = postPos
 
@@ -626,8 +627,9 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
   inc(L.bufpos)               # skip '\'
   case L.buf[L.bufpos]
   of 'n', 'N':
-    if gOldNewlines:
-      if tok.tokType == tkCharLit: lexMessage(L, errNnotAllowedInCharacter)
+    if L.config.oldNewlines:
+      if tok.tokType == tkCharLit:
+        lexMessage(L, errGenerated, "\\n not allowed in character literal")
       add(tok.literal, tnl)
     else:
       add(tok.literal, '\L')
@@ -696,8 +698,8 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
     var xi = 0
     handleDecChars(L, xi)
     if (xi <= 255): add(tok.literal, chr(xi))
-    else: lexMessage(L, errInvalidCharacterConstant)
-  else: lexMessage(L, errInvalidCharacterConstant)
+    else: lexMessage(L, errGenerated, "invalid character constant")
+  else: lexMessage(L, errGenerated, "invalid character constant")
 
 proc newString(s: cstring, len: int): string =
   ## XXX, how come there is no support for this?
@@ -712,7 +714,7 @@ proc handleCRLF(L: var TLexer, pos: int): int =
     if col > MaxLineLength:
       lexMessagePos(L, hintLineTooLong, pos)
 
-    if optEmbedOrigSrc in gGlobalOptions:
+    if optEmbedOrigSrc in L.config.globalOptions:
       let lineStart = cast[ByteAddress](L.buf) + L.lineStart
       let line = newString(cast[cstring](lineStart), col)
       addSourceLine(L.fileIdx, line)
@@ -761,7 +763,7 @@ proc getString(L: var TLexer, tok: var TToken, rawMode: bool) =
         tokenEndIgnore(tok, pos)
         var line2 = L.lineNumber
         L.lineNumber = line
-        lexMessagePos(L, errClosingTripleQuoteExpected, L.lineStart)
+        lexMessagePos(L, errGenerated, L.lineStart, "closing \"\"\" expected, but end of file reached")
         L.lineNumber = line2
         L.bufpos = pos
         break
@@ -784,7 +786,7 @@ proc getString(L: var TLexer, tok: var TToken, rawMode: bool) =
           break
       elif c in {CR, LF, nimlexbase.EndOfFile}:
         tokenEndIgnore(tok, pos)
-        lexMessage(L, errClosingQuoteExpected)
+        lexMessage(L, errGenerated, "closing \" expected")
         break
       elif (c == '\\') and not rawMode:
         L.bufpos = pos
@@ -800,12 +802,13 @@ proc getCharacter(L: var TLexer, tok: var TToken) =
   inc(L.bufpos)               # skip '
   var c = L.buf[L.bufpos]
   case c
-  of '\0'..pred(' '), '\'': lexMessage(L, errInvalidCharacterConstant)
+  of '\0'..pred(' '), '\'': lexMessage(L, errGenerated, "invalid character literal")
   of '\\': getEscapedChar(L, tok)
   else:
     tok.literal = $c
     inc(L.bufpos)
-  if L.buf[L.bufpos] != '\'': lexMessage(L, errMissingFinalQuote)
+  if L.buf[L.bufpos] != '\'':
+    lexMessage(L, errGenerated, "missing closing ' for character literal")
   tokenEndIgnore(tok, L.bufpos)
   inc(L.bufpos)               # skip '
 
@@ -826,7 +829,7 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
       inc(pos)
     of '_':
       if buf[pos+1] notin SymChars:
-        lexMessage(L, errInvalidToken, "_")
+        lexMessage(L, errGenerated, "invalid token: trailing underscore")
         break
       inc(pos)
     else: break
@@ -1014,7 +1017,7 @@ proc skip(L: var TLexer, tok: var TToken) =
       inc(pos)
       inc(tok.strongSpaceA)
     of '\t':
-      if not L.allowTabs: lexMessagePos(L, errTabulatorsAreNotAllowed, pos)
+      if not L.allowTabs: lexMessagePos(L, errGenerated, pos, "tabulators are not allowed")
       inc(pos)
     of CR, LF:
       tokenEndPrevious(tok, pos)
@@ -1119,7 +1122,7 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
         tok.tokType = tkParLe
         when defined(nimsuggest):
           if L.fileIdx == gTrackPos.fileIndex and tok.col < gTrackPos.col and
-                    tok.line == gTrackPos.line.int and gIdeCmd == ideCon:
+                    tok.line == gTrackPos.line.int and L.config.ideCmd == ideCon:
             gTrackPos.col = tok.col.int16
     of ')':
       tok.tokType = tkParRi
@@ -1140,7 +1143,7 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
     of '.':
       when defined(nimsuggest):
         if L.fileIdx == gTrackPos.fileIndex and tok.col+1 == gTrackPos.col and
-            tok.line == gTrackPos.line.int and gIdeCmd == ideSug:
+            tok.line == gTrackPos.line.int and L.config.ideCmd == ideSug:
           tok.tokType = tkDot
           L.cursor = CursorPosition.InToken
           gTrackPos.col = tok.col.int16
@@ -1182,7 +1185,7 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
       else:
         tok.literal = $c
         tok.tokType = tkInvalid
-        lexMessage(L, errInvalidToken, c & " (\\" & $(ord(c)) & ')')
+        lexMessage(L, errGenerated, "invalid token: " & c & " (\\" & $(ord(c)) & ')')
     of '\"':
       # check for extended raw string literal:
       var rawMode = L.bufpos > 0 and L.buf[L.bufpos-1] in SymChars
@@ -1199,7 +1202,7 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
       getNumber(L, tok)
       let c = L.buf[L.bufpos]
       if c in SymChars+{'_'}:
-        lexMessage(L, errInvalidToken, c & " (\\" & $(ord(c)) & ')')
+        lexMessage(L, errGenerated, "invalid token: no whitespace between number and identifier")
     else:
       if c in OpChars:
         getOperator(L, tok)
@@ -1209,6 +1212,6 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
       else:
         tok.literal = $c
         tok.tokType = tkInvalid
-        lexMessage(L, errInvalidToken, c & " (\\" & $(ord(c)) & ')')
+        lexMessage(L, errGenerated, "invalid token: " & c & " (\\" & $(ord(c)) & ')')
         inc(L.bufpos)
   atTokenEnd()

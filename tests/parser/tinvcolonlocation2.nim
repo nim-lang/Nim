@@ -1,8 +1,8 @@
 discard """
   file: "tinvcolonlocation2.nim"
   line: 11
-  column: 1
-  errormsg: "':' expected"
+  column: 8
+  errormsg: "expected: ':', but got: 'keyword finally'"
 """
 try:
   echo "try"

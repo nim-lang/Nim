@@ -34,10 +34,10 @@ proc isPartOfAux(n: PNode, b: PType, marker: var IntSet): TAnalysisResult =
       of nkOfBranch, nkElse:
         result = isPartOfAux(lastSon(n.sons[i]), b, marker)
         if result == arYes: return
-      else: internalError("isPartOfAux(record case branch)")
+      else: discard "isPartOfAux(record case branch)"
   of nkSym:
     result = isPartOfAux(n.sym.typ, b, marker)
-  else: internalError(n.info, "isPartOfAux()")
+  else: discard
 
 proc isPartOfAux(a, b: PType, marker: var IntSet): TAnalysisResult =
   result = arNo

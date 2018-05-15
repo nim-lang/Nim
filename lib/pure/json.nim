@@ -832,6 +832,9 @@ proc toJson(x: NimNode): NimNode {.compiletime.} =
     result = newCall(bindSym"newJObject")
   of nnkNilLit:
     result = newCall(bindSym"newJNull")
+  of nnkPar:
+    if x.len == 1: result = toJson(x[0])
+    else: result = newCall(bindSym"%", x)
   else:
     result = newCall(bindSym"%", x)
 

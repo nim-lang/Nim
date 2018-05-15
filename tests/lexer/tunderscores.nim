@@ -1,7 +1,7 @@
 discard """
   file: "tunderscores.nim"
   line: 8
-  errormsg: "invalid token: _"
+  errormsg: "invalid token: trailing underscore"
 """
 # Bug #502670
 
