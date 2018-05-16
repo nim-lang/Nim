@@ -471,13 +471,13 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
             if tfPacked notin rectype.flags:
               add(unionBody, "struct {")
             else:
-              if hasAttribute in CC[cCompiler].props:
+              if hasAttribute in CC[m.config.cCompiler].props:
                 add(unionBody, "struct __attribute__((__packed__)){" )
               else:
                 addf(unionBody, "#pragma pack(push, 1)$nstruct{", [])
             add(unionBody, a)
             addf(unionBody, "} $1;$n", [sname])
-            if tfPacked in rectype.flags and hasAttribute notin CC[cCompiler].props:
+            if tfPacked in rectype.flags and hasAttribute notin CC[m.config.cCompiler].props:
               addf(unionBody, "#pragma pack(pop)$n", [])
         else:
           add(unionBody, genRecordFieldsAux(m, k, ae, rectype, check))
@@ -526,7 +526,7 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
   var hasField = false
 
   if tfPacked in typ.flags:
-    if hasAttribute in CC[cCompiler].props:
+    if hasAttribute in CC[m.config.cCompiler].props:
       result = structOrUnion(typ) & " __attribute__((__packed__))"
     else:
       result = "#pragma pack(push, 1)" & tnl & structOrUnion(typ)
@@ -571,7 +571,7 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
   else:
     add(result, desc)
   add(result, "};" & tnl)
-  if tfPacked in typ.flags and hasAttribute notin CC[cCompiler].props:
+  if tfPacked in typ.flags and hasAttribute notin CC[m.config.cCompiler].props:
     result.add "#pragma pack(pop)" & tnl
 
 proc getTupleDesc(m: BModule, typ: PType, name: Rope,

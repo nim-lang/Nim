@@ -477,7 +477,7 @@ proc genWhileStmt(p: BProc, t: PNode) =
       lineF(p, cpsStmts, "if (!$1) goto $2;$n", [rdLoc(a), label])
     var loopBody = t.sons[1]
     if loopBody.stmtsContainPragma(wComputedGoto) and
-        hasComputedGoto in CC[cCompiler].props:
+        hasComputedGoto in CC[p.config.cCompiler].props:
       # for closure support weird loop bodies are generated:
       if loopBody.len == 2 and loopBody.sons[0].kind == nkEmpty:
         loopBody = loopBody.sons[1]
@@ -703,7 +703,7 @@ proc ifSwitchSplitPoint(p: BProc, n: PNode): int =
     var stmtBlock = lastSon(branch)
     if stmtBlock.stmtsContainPragma(wLinearScanEnd):
       result = i
-    elif hasSwitchRange notin CC[cCompiler].props:
+    elif hasSwitchRange notin CC[p.config.cCompiler].props:
       if branch.kind == nkOfBranch and branchHasTooBigRange(branch):
         result = i
 
@@ -711,7 +711,7 @@ proc genCaseRange(p: BProc, branch: PNode) =
   var length = branch.len
   for j in 0 .. length-2:
     if branch[j].kind == nkRange:
-      if hasSwitchRange in CC[cCompiler].props:
+      if hasSwitchRange in CC[p.config.cCompiler].props:
         lineF(p, cpsStmts, "case $1 ... $2:$n", [
             genLiteral(p, branch[j][0]),
             genLiteral(p, branch[j][1])])
@@ -751,7 +751,7 @@ proc genOrdinalCase(p: BProc, n: PNode, d: var TLoc) =
         hasDefault = true
       exprBlock(p, branch.lastSon, d)
       lineF(p, cpsStmts, "break;$n", [])
-    if (hasAssume in CC[cCompiler].props) and not hasDefault:
+    if (hasAssume in CC[p.config.cCompiler].props) and not hasDefault:
       lineF(p, cpsStmts, "default: __assume(0);$n", [])
     lineF(p, cpsStmts, "}$n", [])
   if lend != nil: fixLabel(p, lend)
@@ -967,7 +967,7 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
       initLocExpr(p, it, a)
       res.add($a.rdLoc)
 
-  if isAsmStmt and hasGnuAsm in CC[cCompiler].props:
+  if isAsmStmt and hasGnuAsm in CC[p.config.cCompiler].props:
     for x in splitLines(res):
       var j = 0
       while x[j] in {' ', '\t'}: inc(j)
@@ -993,9 +993,9 @@ proc genAsmStmt(p: BProc, t: PNode) =
   # work:
   if p.prc == nil:
     # top level asm statement?
-    addf(p.module.s[cfsProcHeaders], CC[cCompiler].asmStmtFrmt, [s])
+    addf(p.module.s[cfsProcHeaders], CC[p.config.cCompiler].asmStmtFrmt, [s])
   else:
-    lineF(p, cpsStmts, CC[cCompiler].asmStmtFrmt, [s])
+    lineF(p, cpsStmts, CC[p.config.cCompiler].asmStmtFrmt, [s])
 
 proc determineSection(n: PNode): TCFileSection =
   result = cfsProcHeaders

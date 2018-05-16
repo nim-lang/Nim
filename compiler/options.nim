@@ -73,6 +73,7 @@ type                          # please make sure we have under 32 options
     optNoCppExceptions        # use C exception handling even with CPP
     optExcessiveStackTrace    # fully qualified module filenames
     optWholeProject           # for 'doc2': output any dependency
+    optMixedMode              # true if some module triggered C++ codegen
     optListFullPaths
     optNoNimblePath
     optDynlibOverrideAll
@@ -121,6 +122,19 @@ type
   SymbolFilesOption* = enum
     disabledSf, enabledSf, writeOnlySf, readOnlySf, v2Sf
 
+  TSystemCC* = enum
+    ccNone, ccGcc, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc,
+    ccTcc, ccPcc, ccUcc, ccIcl, ccIcc
+
+  CfileFlag* {.pure.} = enum
+    Cached,    ## no need to recompile this time
+    External   ## file was introduced via .compile pragma
+
+  Cfile* = object
+    cname*, obj*: string
+    flags*: set[CFileFlag]
+  CfileList* = seq[Cfile]
+
   ConfigRef* = ref object ## eventually all global configuration should be moved here
     linesCompiled*: int  # all lines that have been compiled
     options*: TOptions
@@ -142,6 +156,7 @@ type
     helpWritten*: bool
     ideCmd*: IdeCmd
     oldNewlines*: bool
+    cCompiler*: TSystemCC
     enableNotes*: TNoteKinds
     disableNotes*: TNoteKinds
     foreignPackageNotes*: TNoteKinds
@@ -173,6 +188,20 @@ type
     docSeeSrcUrl*: string # if empty, no seeSrc will be generated. \
     # The string uses the formatting variables `path` and `line`.
 
+     # the used compiler
+    cIncludes*: seq[string]  # directories to search for included files
+    cLibs*: seq[string]      # directories to search for lib files
+    cLinkedLibs*: seq[string]  # libraries to link
+
+    externalToLink*: seq[string]  # files to link in addition to the file
+                                  # we compiled
+    linkOptionsCmd*: string
+    compileOptionsCmd*: seq[string]
+    linkOptions*: string
+    compileOptions*: string
+    ccompilerpath*: string
+    toCompile*: CfileList
+
 const oldExperimentalFeatures* = {implicitDeref, dotOperators, callOperator, parallel}
 
 const
@@ -195,6 +224,7 @@ template newPackageCache*(): untyped =
 proc newConfigRef*(): ConfigRef =
   result = ConfigRef(
     selectedGC: gcRefc,
+    cCompiler: ccGcc,
     verbosity: 1,
     options: DefaultOptions,
     globalOptions: DefaultGlobalOptions,
@@ -221,7 +251,18 @@ proc newConfigRef*(): ConfigRef =
     keepComments: true, # whether the parser needs to keep comments
     implicitImports: @[], # modules that are to be implicitly imported
     implicitIncludes: @[], # modules that are to be implicitly included
-    docSeeSrcUrl: ""
+    docSeeSrcUrl: "",
+    cIncludes: @[],   # directories to search for included files
+    cLibs: @[],       # directories to search for lib files
+    cLinkedLibs: @[],  # libraries to link
+
+    externalToLink: @[],
+    linkOptionsCmd: "",
+    compileOptionsCmd: @[],
+    linkOptions: "",
+    compileOptions: "",
+    ccompilerpath: "",
+    toCompile: @[]
   )
   # enable colors by default on terminals
   if terminal.isatty(stderr):

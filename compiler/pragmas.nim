@@ -143,7 +143,7 @@ proc processImportCpp(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   if c.config.cmd == cmdCompileToC:
     let m = s.getModule()
     incl(m.flags, sfCompileToCpp)
-  extccomp.gMixedMode = true
+  incl c.config.globalOptions, optMixedMode
 
 proc processImportObjC(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   setExternName(c, s, extname, info)
@@ -444,7 +444,7 @@ proc processCompile(c: PContext, n: PNode) =
     extccomp.addExternalFileToCompile(c.config, found)
 
 proc processCommonLink(c: PContext, n: PNode, feature: TLinkFeature) =
-  let found = relativeFile(c, n, CC[cCompiler].objExt)
+  let found = relativeFile(c, n, CC[c.config.cCompiler].objExt)
   case feature
   of linkNormal: extccomp.addExternalFileToLink(c.config, found)
   of linkSys:

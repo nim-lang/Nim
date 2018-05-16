@@ -756,10 +756,10 @@ proc genProcAux(m: BModule, prc: PSym) =
   genStmts(p, prc.getBody) # modifies p.locals, p.init, etc.
   var generatedProc: Rope
   if sfNoReturn in prc.flags:
-    if hasDeclspec in extccomp.CC[extccomp.cCompiler].props:
+    if hasDeclspec in extccomp.CC[p.config.cCompiler].props:
       header = "__declspec(noreturn) " & header
   if sfPure in prc.flags:
-    if hasDeclspec in extccomp.CC[extccomp.cCompiler].props:
+    if hasDeclspec in extccomp.CC[p.config.cCompiler].props:
       header = "__declspec(naked) " & header
     generatedProc = ropecg(p.module, "$N$1 {$n$2$3$4}$N$N",
                          header, p.s(cpsLocals), p.s(cpsInit), p.s(cpsStmts))
@@ -803,13 +803,13 @@ proc genProcPrototype(m: BModule, sym: PSym) =
                         getTypeDesc(m, sym.loc.t), mangleDynLibProc(sym)))
   elif not containsOrIncl(m.declaredProtos, sym.id):
     var header = genProcHeader(m, sym)
-    if sfNoReturn in sym.flags and hasDeclspec in extccomp.CC[cCompiler].props:
+    if sfNoReturn in sym.flags and hasDeclspec in extccomp.CC[m.config.cCompiler].props:
       header = "__declspec(noreturn) " & header
     if sym.typ.callConv != ccInline and requiresExternC(m, sym):
       header = "extern \"C\" " & header
-    if sfPure in sym.flags and hasAttribute in CC[cCompiler].props:
+    if sfPure in sym.flags and hasAttribute in CC[m.config.cCompiler].props:
       header.add(" __attribute__((naked))")
-    if sfNoReturn in sym.flags and hasAttribute in CC[cCompiler].props:
+    if sfNoReturn in sym.flags and hasAttribute in CC[m.config.cCompiler].props:
       header.add(" __attribute__((noreturn))")
     add(m.s[cfsProcHeaders], ropecg(m, "$1;$n", header))
 
@@ -938,7 +938,7 @@ proc getCopyright(conf: ConfigRef; cfile: Cfile): Rope =
         [rope(VersionAsString),
         rope(platform.OS[targetOS].name),
         rope(platform.CPU[targetCPU].name),
-        rope(extccomp.CC[extccomp.cCompiler].name),
+        rope(extccomp.CC[conf.cCompiler].name),
         rope(getCompileCFileCmd(conf, cfile))]
 
 proc getFileHeader(conf: ConfigRef; cfile: Cfile): Rope =
