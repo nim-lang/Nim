@@ -54,7 +54,7 @@ proc objectNode(n: PNode): PNode =
     result = newNodeI(nkIdentDefs, n.info)
     result.add n  # name
     result.add mapTypeToAstX(n.sym.typ, n.info, true, false)  # type
-    result.add ast.emptyNode  # no assigned value
+    result.add newNodeI(nkEmpty, n.info)  # no assigned value
   else:
     result = copyNode(n)
     for i in 0 ..< n.safeLen:
@@ -69,7 +69,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
   template mapTypeToAstR(t,info): untyped = mapTypeToAstX(t, info, inst, true)
   template mapTypeToAst(t,i,info): untyped =
     if i<t.len and t.sons[i]!=nil: mapTypeToAstX(t.sons[i], info, inst)
-    else: ast.emptyNode
+    else: newNodeI(nkEmpty, info)
   template mapTypeToBracket(name, m, t, info): untyped =
     mapTypeToBracketX(name, m, t, info, inst)
   template newNodeX(kind): untyped =
@@ -78,7 +78,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
     var id = newNodeX(nkIdentDefs)
     id.add n  # name
     id.add mapTypeToAst(t, info)  # type
-    id.add ast.emptyNode  # no assigned value
+    id.add newNodeI(nkEmpty, info)  # no assigned value
     id
   template newIdentDefs(s): untyped = newIdentDefs(s, s.typ)
 
@@ -156,8 +156,8 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
   of tyObject:
     if inst:
       result = newNodeX(nkObjectTy)
-      result.add ast.emptyNode  # pragmas not reconstructed yet
-      if t.sons[0] == nil: result.add ast.emptyNode  # handle parent object
+      result.add newNodeI(nkEmpty, info)  # pragmas not reconstructed yet
+      if t.sons[0] == nil: result.add newNodeI(nkEmpty, info)  # handle parent object
       else:
         var nn = newNodeX(nkOfInherit)
         nn.add mapTypeToAst(t.sons[0], info)
@@ -165,13 +165,13 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
       if t.n.len > 0:
         result.add objectNode(t.n)
       else:
-        result.add ast.emptyNode
+        result.add newNodeI(nkEmpty, info)
     else:
       if allowRecursion or t.sym == nil:
         result = newNodeIT(nkObjectTy, if t.n.isNil: info else: t.n.info, t)
-        result.add ast.emptyNode
+        result.add newNodeI(nkEmpty, info)
         if t.sons[0] == nil:
-          result.add ast.emptyNode
+          result.add newNodeI(nkEmpty, info)
         else:
           result.add mapTypeToAst(t.sons[0], info)
         result.add copyTree(t.n)
@@ -179,7 +179,7 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
         result = atomicType(t.sym)
   of tyEnum:
     result = newNodeIT(nkEnumTy, if t.n.isNil: info else: t.n.info, t)
-    result.add ast.emptyNode  # pragma node, currently always empty for enum
+    result.add newNodeI(nkEmpty, info)  # pragma node, currently always empty for enum
     for c in t.n.sons:
       result.add copyTree(c)
   of tyTuple:
@@ -223,13 +223,13 @@ proc mapTypeToAstX(t: PType; info: TLineInfo;
       result = newNodeX(nkProcTy)
       var fp = newNodeX(nkFormalParams)
       if t.sons[0] == nil:
-        fp.add ast.emptyNode
+        fp.add newNodeI(nkEmpty, info)
       else:
         fp.add mapTypeToAst(t.sons[0], t.n[0].info)
       for i in 1..<t.sons.len:
         fp.add newIdentDefs(t.n[i], t.sons[i])
       result.add fp
-      result.add ast.emptyNode  # pragmas aren't reconstructed yet
+      result.add newNodeI(nkEmpty, info)  # pragmas aren't reconstructed yet
     else:
       result = mapTypeToBracket("proc", mNone, t, info)
   of tyOpenArray: result = mapTypeToBracket("openArray", mOpenArray, t, info)

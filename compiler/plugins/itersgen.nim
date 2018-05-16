@@ -40,10 +40,10 @@ proc iterToProcImpl(c: PContext, n: PNode): PNode =
   prc.typ.rawAddSon t
   let orig = iter.sym.ast
   prc.ast = newProcNode(nkProcDef, n.info,
-                        name = newSymNode(prc),
-                        params = orig[paramsPos],
-                        pragmas = orig[pragmasPos],
-                        body = body)
+              body = body, params = orig[paramsPos], name = newSymNode(prc),
+              pattern = c.graph.emptyNode, genericParams = c.graph.emptyNode,
+              pragmas = orig[pragmasPos], exceptions = c.graph.emptyNode)
+
   prc.ast.add iter.sym.ast.sons[resultPos]
   addInterfaceDecl(c, prc)
 

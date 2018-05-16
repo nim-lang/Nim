@@ -30,8 +30,8 @@ proc newTupleAccess*(g: ModuleGraph; tup: PNode, i: int): PNode =
 proc addVar*(father, v: PNode) =
   var vpart = newNodeI(nkIdentDefs, v.info, 3)
   vpart.sons[0] = v
-  vpart.sons[1] = ast.emptyNode
-  vpart.sons[2] = ast.emptyNode
+  vpart.sons[1] = newNodeI(nkEmpty, v.info)
+  vpart.sons[2] = vpart[1]
   addSon(father, vpart)
 
 proc newAsgnStmt(le, ri: PNode): PNode =
@@ -83,7 +83,7 @@ proc lowerTupleUnpackingForAsgn*(n: PNode; owner: PSym): PNode =
 
   var vpart = newNodeI(nkIdentDefs, tempAsNode.info, 3)
   vpart.sons[0] = tempAsNode
-  vpart.sons[1] = ast.emptyNode
+  vpart.sons[1] = newNodeI(nkEmpty, value.info)
   vpart.sons[2] = value
   addSon(v, vpart)
   result.add(v)
@@ -104,7 +104,7 @@ proc lowerSwap*(n: PNode; owner: PSym): PNode =
 
   var vpart = newNodeI(nkIdentDefs, v.info, 3)
   vpart.sons[0] = tempAsNode
-  vpart.sons[1] = ast.emptyNode
+  vpart.sons[1] = newNodeI(nkEmpty, v.info)
   vpart.sons[2] = n[1]
   addSon(v, vpart)
 
@@ -344,8 +344,8 @@ proc addLocalVar(g: ModuleGraph; varSection, varInit: PNode; owner: PSym; typ: P
 
   var vpart = newNodeI(nkIdentDefs, varSection.info, 3)
   vpart.sons[0] = newSymNode(result)
-  vpart.sons[1] = ast.emptyNode
-  vpart.sons[2] = if varInit.isNil: v else: ast.emptyNode
+  vpart.sons[1] = newNodeI(nkEmpty, varSection.info)
+  vpart.sons[2] = if varInit.isNil: v else: vpart[1]
   varSection.add vpart
   if varInit != nil:
     if useShallowCopy and typeNeedsNoDeepCopy(typ):
@@ -438,7 +438,7 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
     body.add callCodegenProc(g, "barrierLeave", threadLocalBarrier.newSymNode)
 
   var params = newNodeI(nkFormalParams, f.info)
-  params.add emptyNode
+  params.add newNodeI(nkEmpty, f.info)
   params.add threadParam.newSymNode
   params.add argsParam.newSymNode
 
@@ -454,12 +454,16 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
   let name = (if f.kind == nkSym: f.sym.name.s else: genPrefix) & "Wrapper"
   result = newSym(skProc, getIdent(name), argsParam.owner, f.info,
                   argsParam.options)
-  result.ast = newProcNode(nkProcDef, f.info, body, params, newSymNode(result))
+  let emptyNode = newNodeI(nkEmpty, f.info)
+  result.ast = newProcNode(nkProcDef, f.info, body = body,
+      params = params, name = newSymNode(result), pattern = emptyNode,
+      genericParams = emptyNode, pragmas = emptyNode,
+      exceptions = emptyNode)
   result.typ = t
 
 proc createCastExpr(argsParam: PSym; objType: PType): PNode =
   result = newNodeI(nkCast, argsParam.info)
-  result.add emptyNode
+  result.add newNodeI(nkEmpty, argsParam.info)
   result.add newSymNode(argsParam)
   result.typ = newType(tyPtr, objType.owner)
   result.typ.rawAddSon(objType)

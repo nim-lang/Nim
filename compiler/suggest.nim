@@ -510,7 +510,7 @@ proc safeSemExpr*(c: PContext, n: PNode): PNode =
   try:
     result = c.semExpr(c, n)
   except ERecoverableError:
-    result = ast.emptyNode
+    result = c.graph.emptyNode
 
 proc sugExpr(c: PContext, n: PNode, outputs: var Suggestions) =
   if n.kind == nkDotExpr:

@@ -1774,7 +1774,7 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
   else:
     result.typ = f
   if result.typ == nil: internalError(c.graph.config, arg.info, "implicitConv")
-  addSon(result, ast.emptyNode)
+  addSon(result, c.graph.emptyNode)
   addSon(result, arg)
 
 proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
@@ -1993,7 +1993,10 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       return arg
     elif a.kind == tyVoid and f.matchesVoidProc and argOrig.kind == nkStmtList:
       # lift do blocks without params to lambdas
-      let lifted = c.semExpr(c, newProcNode(nkDo, argOrig.info, argOrig), {})
+      let p = c.graph
+      let lifted = c.semExpr(c, newProcNode(nkDo, argOrig.info, body = argOrig,
+          params = p.emptyNode, name = p.emptyNode, pattern = p.emptyNode,
+          genericParams = p.emptyNode, pragmas = p.emptyNode, exceptions = p.emptyNode), {})
       if f.kind == tyBuiltInTypeClass:
         inc m.genericMatches
         put(m, f, lifted.typ)
@@ -2354,7 +2357,7 @@ proc matches*(c: PContext, n, nOrig: PNode, m: var TCandidate) =
 proc argtypeMatches*(c: PContext, f, a: PType): bool =
   var m: TCandidate
   initCandidate(c, m, f)
-  let res = paramTypesMatch(m, f, a, ast.emptyNode, nil)
+  let res = paramTypesMatch(m, f, a, c.graph.emptyNode, nil)
   #instantiateGenericConverters(c, res, m)
   # XXX this is used by patterns.nim too; I think it's better to not
   # instantiate generic converters for that

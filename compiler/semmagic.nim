@@ -154,7 +154,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     result = newIntNodeT(ord(not complexObj), traitCall, c.graph)
   else:
     localError(c.config, traitCall.info, "unknown trait")
-    result = emptyNode
+    result = newNodeI(nkEmpty, traitCall.info)
 
 proc semTypeTraits(c: PContext, n: PNode): PNode =
   checkMinSonsLen(n, 2, c.config)

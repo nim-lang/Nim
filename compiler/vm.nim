@@ -213,7 +213,7 @@ proc putIntoNode(n: var PNode; x: TFullReg) =
     if nfIsRef in x.node.flags:
       n = x.node
     else:
-      let destIsRef = nfIsRef in n.flags    
+      let destIsRef = nfIsRef in n.flags
       n[] = x.node[]
       # Ref-ness must be kept for the destination
       if destIsRef:
@@ -1683,7 +1683,7 @@ proc myProcess(c: PPassContext, n: PNode): PNode =
   # don't eval errornous code:
   if c.oldErrorCount == c.config.errorCounter:
     evalStmt(c, n)
-    result = emptyNode
+    result = newNodeI(nkEmpty, n.info)
   else:
     result = n
   c.oldErrorCount = c.config.errorCounter
@@ -1703,7 +1703,7 @@ proc evalConstExprAux(module: PSym; cache: IdentCache;
   defer: c.mode = oldMode
   c.mode = mode
   let start = genExpr(c, n, requiresValue = mode!=emStaticStmt)
-  if c.code[start].opcode == opcEof: return emptyNode
+  if c.code[start].opcode == opcEof: return newNodeI(nkEmpty, n.info)
   assert c.code[start].opcode != opcEof
   when debugEchoCode: c.echoCode start
   var tos = PStackFrame(prc: prc, comesFrom: 0, next: nil)

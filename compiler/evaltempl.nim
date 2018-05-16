@@ -104,7 +104,7 @@ proc evalTemplateArgs(n: PNode, s: PSym; conf: ConfigRef; fromHlo: bool): PNode 
     let default = s.typ.n.sons[i].sym.ast
     if default.isNil or default.kind == nkEmpty:
       localError(conf, n.info, errWrongNumberOfArguments)
-      addSon(result, ast.emptyNode)
+      addSon(result, newNodeI(nkEmpty, n.info))
     else:
       addSon(result, default.copyTree)
 

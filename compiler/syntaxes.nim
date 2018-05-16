@@ -38,7 +38,6 @@ proc parseAll*(p: var TParsers): PNode =
     result = parser.parseAll(p.parser)
   of skinEndX:
     internalError(p.config, "parser to implement")
-    result = ast.emptyNode
 
 proc parseTopLevelStmt*(p: var TParsers): PNode =
   case p.skin
@@ -46,7 +45,6 @@ proc parseTopLevelStmt*(p: var TParsers): PNode =
     result = parser.parseTopLevelStmt(p.parser)
   of skinEndX:
     internalError(p.config, "parser to implement")
-    result = ast.emptyNode
 
 proc utf8Bom(s: string): int =
   if s.len >= 3 and s[0] == '\xEF' and s[1] == '\xBB' and s[2] == '\xBF':
@@ -62,7 +60,7 @@ proc containsShebang(s: string, i: int): bool =
 
 proc parsePipe(filename: string, inputStream: PLLStream; cache: IdentCache;
                config: ConfigRef): PNode =
-  result = ast.emptyNode
+  result = newNode(nkEmpty)
   var s = llStreamOpen(filename, fmRead)
   if s != nil:
     var line = newStringOfCap(80)

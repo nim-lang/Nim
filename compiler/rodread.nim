@@ -966,7 +966,7 @@ proc getBody*(s: PSym): PNode =
   ## accessor.
   assert s.kind in routineKinds
   # prevent crashes due to incorrect macro transformations (bug #2377)
-  if s.ast.isNil or bodyPos >= s.ast.len: return ast.emptyNode
+  if s.ast.isNil or bodyPos >= s.ast.len: return newNodeI(nkEmpty, s.info)
   result = s.ast.sons[bodyPos]
   if result == nil:
     assert s.offset != 0

@@ -1543,7 +1543,6 @@ proc getNullValueAux(obj: PNode, result: PNode; conf: ConfigRef) =
 
 proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
   var t = skipTypes(typ, abstractRange-{tyTypeDesc})
-  result = emptyNode
   case t.kind
   of tyBool, tyEnum, tyChar, tyInt..tyInt64:
     result = newNodeIT(nkIntLit, info, t)
@@ -1589,6 +1588,7 @@ proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
     result = newNodeIT(nkBracket, info, t)
   else:
     globalError(conf, info, "cannot create null element for: " & $t.kind)
+    result = newNodeI(nkEmpty, info)
 
 proc ldNullOpcode(t: PType): TOpcode =
   assert t != nil
@@ -2008,7 +2008,7 @@ proc genProc(c: PCtx; s: PSym): int =
     #c.removeLastEof
     result = c.code.len+1 # skip the jump instruction
     if x.kind == nkEmpty:
-      x = newTree(nkBracket, newIntNode(nkIntLit, result), ast.emptyNode)
+      x = newTree(nkBracket, newIntNode(nkIntLit, result), x)
     else:
       x.sons[0] = newIntNode(nkIntLit, result)
     s.ast.sons[miscPos] = x

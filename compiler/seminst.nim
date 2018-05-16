@@ -328,7 +328,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     inc i
   if tfTriggersCompileTime in result.typ.flags:
     incl(result.flags, sfCompileTime)
-  n.sons[genericParamsPos] = ast.emptyNode
+  n.sons[genericParamsPos] = c.graph.emptyNode
   var oldPrc = genericCacheGet(fn, entry[], c.compilesContextId)
   if oldPrc == nil:
     # we MUST not add potentially wrong instantiations to the caching mechanism.

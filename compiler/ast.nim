@@ -1095,9 +1095,6 @@ proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
   #  writeStacktrace()
   #  MessageOut(name.s & " has id: " & toString(result.id))
 
-var emptyNode* = newNode(nkEmpty) # XXX global variable here!
-# There is a single empty node that is shared! Do not overwrite it!
-
 proc isMetaType*(t: PType): bool =
   return t.kind in tyMetaTypes or
          (t.kind == tyStatic and t.n == nil) or
@@ -1229,13 +1226,10 @@ proc addSon*(father, son: PNode) =
   if isNil(father.sons): father.sons = @[]
   add(father.sons, son)
 
-var emptyParams = newNode(nkFormalParams)
-emptyParams.addSon(emptyNode)
-
 proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
-                 params = emptyParams,
+                 params,
                  name, pattern, genericParams,
-                 pragmas, exceptions = ast.emptyNode): PNode =
+                 pragmas, exceptions: PNode): PNode =
   result = newNodeI(kind, info)
   result.sons = @[name, pattern, genericParams, params,
                   pragmas, exceptions, body]

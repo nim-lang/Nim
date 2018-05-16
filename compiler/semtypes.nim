@@ -658,7 +658,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
     var length = sonsLen(n)
     var a: PNode
     if father.kind != nkRecList and length>=4: a = newNodeI(nkRecList, n.info)
-    else: a = ast.emptyNode
+    else: a = newNodeI(nkEmpty, n.info)
     if n.sons[length-1].kind != nkEmpty:
       localError(c.config, n.sons[length-1].info, errInitHereNotAllowed)
     var typ: PType

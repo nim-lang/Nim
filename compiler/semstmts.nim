@@ -394,7 +394,7 @@ proc isDiscardUnderscore(v: PSym): bool =
     result = true
 
 proc semUsing(c: PContext; n: PNode): PNode =
-  result = ast.emptyNode
+  result = c.graph.emptyNode
   if not isTopLevel(c): localError(c.config, n.info, errXOnlyAtModuleScope % "using")
   for i in countup(0, sonsLen(n)-1):
     var a = n.sons[i]
@@ -481,7 +481,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       typ = semTypeNode(c, a.sons[length-2], nil)
     else:
       typ = nil
-    var def: PNode = ast.emptyNode
+    var def: PNode = c.graph.emptyNode
     if a.sons[length-1].kind != nkEmpty:
       def = semExprWithType(c, a.sons[length-1], {efAllowDestructor})
       if def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
@@ -1176,7 +1176,7 @@ proc semProcAnnotation(c: PContext, prc: PNode;
     x.add(newSymNode(m))
     prc.sons[pragmasPos] = copyExcept(n, i)
     if prc[pragmasPos].kind != nkEmpty and prc[pragmasPos].len == 0:
-      prc.sons[pragmasPos] = emptyNode
+      prc.sons[pragmasPos] = c.graph.emptyNode
 
     if it.kind in nkPragmaCallKinds and it.len > 1:
       # pass pragma arguments to the macro too:
@@ -1199,7 +1199,7 @@ proc setGenericParamsMisc(c: PContext; n: PNode): PNode =
   # issue https://github.com/nim-lang/Nim/issues/1713
   result = semGenericParamList(c, orig)
   if n.sons[miscPos].kind == nkEmpty:
-    n.sons[miscPos] = newTree(nkBracket, ast.emptyNode, orig)
+    n.sons[miscPos] = newTree(nkBracket, c.graph.emptyNode, orig)
   else:
     n.sons[miscPos].sons[1] = orig
   n.sons[genericParamsPos] = result
@@ -1270,7 +1270,7 @@ proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
   result = n
   s.ast = result
   n.sons[namePos].sym = s
-  n.sons[genericParamsPos] = emptyNode
+  n.sons[genericParamsPos] = c.graph.emptyNode
   # for LL we need to avoid wrong aliasing
   let params = copyTree n.typ.n
   n.sons[paramsPos] = params
@@ -1613,7 +1613,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         if s.kind == skMethod: semMethodPrototype(c, s, n)
       if sfImportc in s.flags:
         # so we just ignore the body after semantic checking for importc:
-        n.sons[bodyPos] = ast.emptyNode
+        n.sons[bodyPos] = c.graph.emptyNode
       popProcCon(c)
   else:
     if s.kind == skMethod: semMethodPrototype(c, s, n)
@@ -1692,7 +1692,7 @@ proc semMethod(c: PContext, n: PNode): PNode =
     let ret = s.typ.sons[0]
     disp.typ.sons[0] = ret
     if disp.ast[resultPos].kind == nkSym:
-      if isEmptyType(ret): disp.ast.sons[resultPos] = emptyNode
+      if isEmptyType(ret): disp.ast.sons[resultPos] = c.graph.emptyNode
       else: disp.ast[resultPos].sym.typ = ret
 
 proc semConverterDef(c: PContext, n: PNode): PNode =
@@ -1771,7 +1771,7 @@ proc semStaticStmt(c: PContext, n: PNode): PNode =
   n.sons[0] = a
   evalStaticStmt(c.module, c.cache, c.graph, a, c.p.owner)
   result = newNodeI(nkDiscardStmt, n.info, 1)
-  result.sons[0] = emptyNode
+  result.sons[0] = c.graph.emptyNode
 
 proc usesResult(n: PNode): bool =
   # nkStmtList(expr) properly propagates the void context,

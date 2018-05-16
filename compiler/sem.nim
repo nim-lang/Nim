@@ -594,7 +594,7 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
         c.suggestionsMade = true
         result = nil
       else:
-        result = ast.emptyNode
+        result = newNodeI(nkEmpty, n.info)
       #if c.config.cmd == cmdIdeTools: findSuggest(c, n)
   rod.storeNode(c.module, result)
 

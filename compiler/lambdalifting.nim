@@ -629,7 +629,7 @@ proc transformYield(n: PNode; owner: PSym; d: DetectionPass;
     addSon(a, retVal)
     retStmt.add(a)
   else:
-    retStmt.add(emptyNode)
+    retStmt.add(newNodeI(nkEmpty, n.info))
 
   var stateLabelStmt = newNodeI(nkState, n.info)
   stateLabelStmt.add(newIntTypeNode(nkIntLit, stateNo,
@@ -923,7 +923,7 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; owner: PSym): PNode =
       body[i].sym.kind = skLet
     addSon(vpart, body[i])
 
-  addSon(vpart, ast.emptyNode) # no explicit type
+  addSon(vpart, newNodeI(nkEmpty, body.info)) # no explicit type
   if not env.isNil:
     call.sons[0] = makeClosure(g, call.sons[0].sym, env.newSymNode, body.info)
   addSon(vpart, call)

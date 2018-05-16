@@ -132,6 +132,7 @@ type
     destroys, topLevelVars: PNode
     toDropBit: Table[int, PSym]
     graph: ModuleGraph
+    emptyNode: PNode
 
 proc getTemp(c: var Con; typ: PType; info: TLineInfo): PNode =
   # XXX why are temps fields in an object here?
@@ -243,7 +244,7 @@ proc genDestroy(c: Con; t: PType; dest: PNode): PNode =
   genOp(t.destructor, "=destroy")
 
 proc addTopVar(c: var Con; v: PNode) =
-  c.topLevelVars.add newTree(nkIdentDefs, v, emptyNode, emptyNode)
+  c.topLevelVars.add newTree(nkIdentDefs, v, c.emptyNode, c.emptyNode)
 
 proc dropBit(c: var Con; s: PSym): PSym =
   result = c.toDropBit.getOrDefault(s.id)
@@ -253,7 +254,7 @@ proc registerDropBit(c: var Con; s: PSym) =
   let result = newSym(skTemp, getIdent(s.name.s & "_AliveBit"), c.owner, s.info)
   result.typ = getSysType(c.graph, s.info, tyBool)
   let trueVal = newIntTypeNode(nkIntLit, 1, result.typ)
-  c.topLevelVars.add newTree(nkIdentDefs, newSymNode result, emptyNode, trueVal)
+  c.topLevelVars.add newTree(nkIdentDefs, newSymNode result, c.emptyNode, trueVal)
   c.toDropBit[s.id] = result
   # generate:
   #  if not sinkParam_AliveBit: `=destroy`(sinkParam)
@@ -328,7 +329,7 @@ proc destructiveMoveVar(n: PNode; c: var Con): PNode =
 
   var vpart = newNodeI(nkIdentDefs, tempAsNode.info, 3)
   vpart.sons[0] = tempAsNode
-  vpart.sons[1] = ast.emptyNode
+  vpart.sons[1] = c.emptyNode
   vpart.sons[2] = n
   add(v, vpart)
 
@@ -434,6 +435,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   c.topLevelVars = newNodeI(nkVarSection, n.info)
   c.toDropBit = initTable[int, PSym]()
   c.graph = g
+  c.emptyNode = newNodeI(nkEmpty, n.info)
   let cfg = constructCfg(owner, n)
   shallowCopy(c.g, cfg)
   c.jumpTargets = initIntSet()

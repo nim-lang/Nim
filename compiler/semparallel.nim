@@ -438,7 +438,7 @@ proc transformSpawn(g: ModuleGraph; owner: PSym; n, barrier: PNode): PNode =
         let t = b[1][0].typ.sons[0]
         if spawnResult(t, true) == srByVar:
           result.add wrapProcForSpawn(g, owner, m, b.typ, barrier, it[0])
-          it.sons[it.len-1] = emptyNode
+          it.sons[it.len-1] = newNodeI(nkEmpty, it.info)
         else:
           it.sons[it.len-1] = wrapProcForSpawn(g, owner, m, b.typ, barrier, nil)
     if result.isNil: result = n

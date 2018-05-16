@@ -194,7 +194,7 @@ proc transformVarSection(c: PTransf, v: PNode): PTransNode =
         idNodeTablePut(c.transCon.mapping, it.sons[j].sym, x)
         defs[j] = x.PTransNode
       assert(it.sons[L-2].kind == nkEmpty)
-      defs[L-2] = ast.emptyNode.PTransNode
+      defs[L-2] = newNodeI(nkEmpty, it.info).PTransNode
       defs[L-1] = transform(c, it.sons[L-1])
       result[i] = defs
 
@@ -393,7 +393,7 @@ proc generateThunk(c: PTransf; prc: PNode, dest: PType): PNode =
   if c.graph.config.cmd == cmdCompileToJS: return prc
   result = newNodeIT(nkClosure, prc.info, dest)
   var conv = newNodeIT(nkHiddenSubConv, prc.info, dest)
-  conv.add(emptyNode)
+  conv.add(newNodeI(nkEmpty, prc.info))
   conv.add(prc)
   if prc.kind == nkClosure:
     internalError(c.graph.config, prc.info, "closure to closure created")
@@ -721,16 +721,16 @@ proc transformExceptBranch(c: PTransf, n: PNode): PTransNode =
     let actions = newTransNode(nkStmtListExpr, n[1], 2)
     # Generating `let exc = (excType)(getCurrentException())`
     # -> getCurrentException()
-    let excCall = PTransNode(callCodegenProc(c.graph, "getCurrentException", ast.emptyNode))
+    let excCall = PTransNode(callCodegenProc(c.graph, "getCurrentException", newNodeI(nkEmpty, n.info)))
     # -> (excType)
     let convNode = newTransNode(nkHiddenSubConv, n[1].info, 2)
-    convNode[0] = PTransNode(ast.emptyNode)
+    convNode[0] = PTransNode(newNodeI(nkEmpty, n.info))
     convNode[1] = excCall
     PNode(convNode).typ = excTypeNode.typ.toRef()
     # -> let exc = ...
     let identDefs = newTransNode(nkIdentDefs, n[1].info, 3)
     identDefs[0] = PTransNode(n[0][2])
-    identDefs[1] = PTransNode(ast.emptyNode)
+    identDefs[1] = PTransNode(newNodeI(nkEmpty, n.info))
     identDefs[2] = convNode
 
     let letSection = newTransNode(nkLetSection, n[1].info, 1)

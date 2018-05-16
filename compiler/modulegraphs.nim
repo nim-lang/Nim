@@ -50,6 +50,7 @@ type
     exposed*: TStrTable
     intTypeCache*: array[-5..64, PType]
     opContains*, opNot*: PSym
+    emptyNode*: PNode
 
 proc hash*(x: FileIndex): Hash {.borrow.}
 
@@ -79,6 +80,7 @@ proc newModuleGraph*(config: ConfigRef = nil): ModuleGraph =
   initStrTable(result.exposed)
   result.opNot = createMagic(result, "not", mNot)
   result.opContains = createMagic(result, "contains", mInSet)
+  result.emptyNode = newNode(nkEmpty)
 
 proc resetAllModules*(g: ModuleGraph) =
   initStrTable(packageSyms)

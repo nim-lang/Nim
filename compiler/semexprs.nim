@@ -634,7 +634,7 @@ proc semStaticExpr(c: PContext, n: PNode): PNode =
   result = evalStaticExpr(c.module, c.cache, c.graph, a, c.p.owner)
   if result.isNil:
     localError(c.config, n.info, errCannotInterpretNodeX % renderTree(n))
-    result = emptyNode
+    result = c.graph.emptyNode
   else:
     result = fixupTypeAfterEval(c, result, a)
 
@@ -745,7 +745,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
       if errorOutputs == {}:
         # speed up error generation:
         globalError(c.config, n.info, "type mismatch")
-        return emptyNode
+        return c.graph.emptyNode
       else:
         var hasErrorType = false
         var msg = "type mismatch: got <"
@@ -866,7 +866,7 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
         else:
           if check == nil:
             check = newNodeI(nkCheckedFieldExpr, n.info)
-            addSon(check, ast.emptyNode) # make space for access node
+            addSon(check, c.graph.emptyNode) # make space for access node
           s = newNodeIT(nkCurly, n.info, setType)
           for j in countup(0, sonsLen(it) - 2): addSon(s, copyTree(it.sons[j]))
           var inExpr = newNodeIT(nkCall, n.info, getSysType(c.graph, n.info, tyBool))
@@ -881,7 +881,7 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
         if result != nil:
           if check == nil:
             check = newNodeI(nkCheckedFieldExpr, n.info)
-            addSon(check, ast.emptyNode) # make space for access node
+            addSon(check, c.graph.emptyNode) # make space for access node
           var inExpr = newNodeIT(nkCall, n.info, getSysType(c.graph, n.info, tyBool))
           addSon(inExpr, newSymNode(c.graph.opContains, n.info))
           addSon(inExpr, s)
@@ -938,7 +938,7 @@ proc readTypeParameter(c: PContext, typ: PType,
           if rawTyp.n != nil:
             return rawTyp.n
           else:
-            return emptyNode
+            return c.graph.emptyNode
         else:
           let foundTyp = makeTypeDesc(c, rawTyp)
           return newSymNode(copySym(tParam.sym).linkTo(foundTyp), info)
@@ -1106,7 +1106,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     case t.kind
     of tyTypeParamsHolders:
       result = readTypeParameter(c, t, i, n.info)
-      if result == emptyNode:
+      if result == c.graph.emptyNode:
         result = n
         n.typ = makeTypeFromExpr(c, n.copyTree)
       return
@@ -1489,7 +1489,7 @@ proc semReturn(c: PContext, n: PNode): PNode =
         n.sons[0] = semAsgn(c, a)
         # optimize away ``result = result``:
         if n[0][1].kind == nkSym and n[0][1].sym == c.p.resultSym:
-          n.sons[0] = ast.emptyNode
+          n.sons[0] = c.graph.emptyNode
       else:
         localError(c.config, n.info, errNoReturnTypeDeclared)
   else:
@@ -1748,14 +1748,17 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
   processQuotations(c, quotedBlock, op, quotes, ids)
 
   var dummyTemplate = newProcNode(
-    nkTemplateDef, quotedBlock.info, quotedBlock,
-    name = newAnonSym(c, skTemplate, n.info).newSymNode)
+    nkTemplateDef, quotedBlock.info, body = quotedBlock,
+    params = c.graph.emptyNode,
+    name = newAnonSym(c, skTemplate, n.info).newSymNode,
+              pattern = c.graph.emptyNode, genericParams = c.graph.emptyNode,
+              pragmas = c.graph.emptyNode, exceptions = c.graph.emptyNode)
 
   if ids.len > 0:
     dummyTemplate.sons[paramsPos] = newNodeI(nkFormalParams, n.info)
     dummyTemplate[paramsPos].add getSysSym(c.graph, n.info, "typed").newSymNode # return type
     ids.add getSysSym(c.graph, n.info, "untyped").newSymNode # params type
-    ids.add emptyNode # no default value
+    ids.add c.graph.emptyNode # no default value
     dummyTemplate[paramsPos].add newNode(nkIdentDefs, n.info, ids)
 
   var tmpl = semTemplateDef(c, dummyTemplate)
@@ -1913,7 +1916,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
         result.typ = typ
       result.add instantiateCreateFlowVarCall(c, typ, n.info).newSymNode
     else:
-      result.add emptyNode
+      result.add c.graph.emptyNode
   of mProcCall:
     result = setMs(n, s)
     result.sons[1] = semExpr(c, n.sons[1])
@@ -1944,10 +1947,10 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
         let imports = newTree(nkStmtList)
         extractImports(n.lastSon, imports)
         for imp in imports: c.runnableExamples.add imp
-        c.runnableExamples.add newTree(nkBlockStmt, emptyNode, copyTree n.lastSon)
+        c.runnableExamples.add newTree(nkBlockStmt, c.graph.emptyNode, copyTree n.lastSon)
       result = setMs(n, s)
     else:
-      result = emptyNode
+      result = c.graph.emptyNode
   else:
     result = semDirectOp(c, n, flags)
 

@@ -162,7 +162,7 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   # we avoid it now if we can:
   if containsNode(stmts, {nkBreakStmt}):
     var b = newNodeI(nkBreakStmt, n.info)
-    b.add(ast.emptyNode)
+    b.add(newNodeI(nkEmpty, n.info))
     stmts.add(b)
   else:
     result = stmts

@@ -157,7 +157,7 @@ proc defaultOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 proc addVar(father, v, value: PNode) =
   var vpart = newNodeI(nkIdentDefs, v.info, 3)
   vpart.sons[0] = v
-  vpart.sons[1] = ast.emptyNode
+  vpart.sons[1] = newNodeI(nkEmpty, v.info)
   vpart.sons[2] = value
   addSon(father, vpart)
 
@@ -297,7 +297,7 @@ proc liftBody(c: PContext; typ: PType; kind: TTypeAttachedOp;
   of attachedDestructor: typ.destructor = result
 
   var n = newNodeI(nkProcDef, info, bodyPos+1)
-  for i in 0 ..< n.len: n.sons[i] = emptyNode
+  for i in 0 ..< n.len: n.sons[i] = newNodeI(nkEmpty, info)
   n.sons[namePos] = newSymNode(result)
   n.sons[paramsPos] = result.typ.n
   n.sons[bodyPos] = body

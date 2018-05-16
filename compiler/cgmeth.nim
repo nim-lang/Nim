@@ -115,7 +115,7 @@ proc createDispatcher(s: PSym): PSym =
   # we can't inline the dispatcher itself (for now):
   if disp.typ.callConv == ccInline: disp.typ.callConv = ccDefault
   disp.ast = copyTree(s.ast)
-  disp.ast.sons[bodyPos] = ast.emptyNode
+  disp.ast.sons[bodyPos] = newNodeI(nkEmpty, s.info)
   disp.loc.r = nil
   if s.typ.sons[0] != nil:
     if disp.ast.sonsLen > resultPos:
@@ -124,7 +124,7 @@ proc createDispatcher(s: PSym): PSym =
       # We've encountered a method prototype without a filled-in
       # resultPos slot. We put a placeholder in there that will
       # be updated in fixupDispatcher().
-      disp.ast.addSon(ast.emptyNode)
+      disp.ast.addSon(newNodeI(nkEmpty, s.info))
   attachDispatcher(s, newSymNode(disp))
   # attach to itself to prevent bugs:
   attachDispatcher(disp, newSymNode(disp))
@@ -137,7 +137,7 @@ proc fixupDispatcher(meth, disp: PSym; conf: ConfigRef) =
   # the lock level of the dispatcher needs to be updated/checked
   # against that of the method.
   if disp.ast.sonsLen > resultPos and meth.ast.sonsLen > resultPos and
-     disp.ast.sons[resultPos] == ast.emptyNode:
+     disp.ast.sons[resultPos].kind == nkEmpty:
     disp.ast.sons[resultPos] = copyTree(meth.ast.sons[resultPos])
 
   # The following code works only with lock levels, so we disable
