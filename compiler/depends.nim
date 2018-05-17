@@ -14,8 +14,6 @@ import
 
 from modulegraphs import ModuleGraph
 
-proc generateDot*(project: string)
-
 type
   TGen = object of TPassContext
     module*: PSym
@@ -44,8 +42,8 @@ proc addDotDependency(c: PPassContext, n: PNode): PNode =
   else:
     discard
 
-proc generateDot(project: string) =
-  writeRope("digraph $1 {$n$2}$n" % [
+proc generateDot*(project: string) =
+  discard writeRope("digraph $1 {$n$2}$n" % [
       rope(changeFileExt(extractFilename(project), "")), gDotGraph],
             changeFileExt(project, "dot"))
 

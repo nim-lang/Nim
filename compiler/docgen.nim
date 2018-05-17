@@ -777,10 +777,16 @@ proc getOutFile2(conf: ConfigRef; filename, ext, dir: string): string =
 
 proc writeOutput*(d: PDoc, filename, outExt: string, useWarning = false) =
   var content = genOutFile(d)
+  var success = true
+  var filename: string
   if optStdout in d.conf.globalOptions:
     writeRope(stdout, content)
+    filename = "<stdout>"
   else:
-    writeRope(content, getOutFile2(d.conf, filename, outExt, "htmldocs"), useWarning)
+    filename = getOutFile2(d.conf, filename, outExt, "htmldocs")
+    success = writeRope(content, filename)
+  if not success:
+    rawMessage(d.conf, if useWarning: warnCannotOpenFile else: errCannotOpenFile, filename)
 
 proc writeOutputJson*(d: PDoc, filename, outExt: string,
                       useWarning = false) =
@@ -861,7 +867,9 @@ proc commandJson*(conf: ConfigRef) =
     writeRope(stdout, content)
   else:
     #echo getOutFile(gProjectFull, JsonExt)
-    writeRope(content, getOutFile(conf, conf.projectFull, JsonExt), useWarning = false)
+    let filename = getOutFile(conf, conf.projectFull, JsonExt)
+    if not writeRope(content, filename):
+      rawMessage(conf, errCannotOpenFile, filename)
 
 proc commandTags*(conf: ConfigRef) =
   var ast = parseFile(conf.projectMainIdx.FileIndex, newIdentCache(), conf)
@@ -876,7 +884,9 @@ proc commandTags*(conf: ConfigRef) =
     writeRope(stdout, content)
   else:
     #echo getOutFile(gProjectFull, TagsExt)
-    writeRope(content, getOutFile(conf, conf.projectFull, TagsExt), useWarning = false)
+    let filename = getOutFile(conf, conf.projectFull, TagsExt)
+    if not writeRope(content, filename):
+      rawMessage(conf, errCannotOpenFile, filename)
 
 proc commandBuildIndex*(conf: ConfigRef) =
   var content = mergeIndexes(conf.projectFull).rope
@@ -887,4 +897,6 @@ proc commandBuildIndex*(conf: ConfigRef) =
       ["Index".rope, nil, nil, rope(getDateStr()),
                    rope(getClockStr()), content, nil, nil, nil])
   # no analytics because context is not available
-  writeRope(code, getOutFile(conf, "theindex", HtmlExt))
+  let filename = getOutFile(conf, "theindex", HtmlExt)
+  if not writeRope(code, filename):
+    rawMessage(conf, errCannotOpenFile, filename)

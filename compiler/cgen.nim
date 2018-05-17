@@ -19,7 +19,8 @@ import
 import strutils except `%` # collides with ropes.`%`
 
 from modulegraphs import ModuleGraph
-from configuration import warnGcMem, errXMustBeCompileTime, hintDependency, errGenerated
+from configuration import
+  warnGcMem, errXMustBeCompileTime, hintDependency, errGenerated, errCannotOpenFile
 import dynlib
 
 when not declared(dynlib.libCandidates):
@@ -1347,7 +1348,8 @@ proc writeHeader(m: BModule) =
   result.addf("N_CDECL(void, NimMain)(void);$n", [])
   if optUseNimNamespace in m.config.globalOptions: result.add closeNamespaceNim()
   result.addf("#endif /* $1 */$n", [guard])
-  writeRope(result, m.filename)
+  if not writeRope(result, m.filename):
+    rawMessage(m.config, errCannotOpenFile, m.filename)
 
 proc getCFile(m: BModule): string =
   let ext =
@@ -1395,12 +1397,14 @@ proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
           echo "diff ", cfile.cname, ".backup ", cfile.cname
         else:
           echo "new file ", cfile.cname
-      writeRope(code, cfile.cname)
+      if not writeRope(code, cfile.cname):
+        rawMessage(m.config, errCannotOpenFile, cfile.cname)
       return
     if existsFile(cfile.obj) and os.fileNewer(cfile.obj, cfile.cname):
       result = false
   else:
-    writeRope(code, cfile.cname)
+    if not writeRope(code, cfile.cname):
+      rawMessage(m.config, errCannotOpenFile, cfile.cname)
 
 # We need 2 different logics here: pending modules (including
 # 'nim__dat') may require file merging for the combination of dead code
@@ -1435,7 +1439,8 @@ proc writeModule(m: BModule, pending: bool) =
     genInitCode(m)
     finishTypeDescriptions(m)
     var code = genModule(m, cf)
-    writeRope(code, cfile)
+    if not writeRope(code, cfile):
+      rawMessage(m.config, errCannotOpenFile, cfile)
     addFileToCompile(m.config, cf)
   else:
     # Consider: first compilation compiles ``system.nim`` and produces
@@ -1456,7 +1461,8 @@ proc updateCachedModule(m: BModule) =
     finishTypeDescriptions(m)
 
     var code = genModule(m, cf)
-    writeRope(code, cfile)
+    if not writeRope(code, cfile):
+      rawMessage(m.config, errCannotOpenFile, cfile)
   else:
     cf.flags = {CfileFlag.Cached}
   addFileToCompile(m.config, cf)

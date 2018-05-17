@@ -72,15 +72,6 @@ type
 
   RopeSeq* = seq[Rope]
 
-  RopesError* = enum
-    rCannotOpenFile
-    rInvalidFormatStr
-
-# implementation
-
-var errorHandler*: proc(err: RopesError, msg: string, useWarning = false)
-  # avoid dependency on msgs.nim
-
 proc len*(a: Rope): int =
   ## the rope's length
   if a == nil: result = 0
@@ -204,13 +195,14 @@ proc writeRope*(f: File, r: Rope) =
   ## writes a rope to a file.
   for s in leaves(r): write(f, s)
 
-proc writeRope*(head: Rope, filename: string, useWarning = false) =
+proc writeRope*(head: Rope, filename: string): bool =
   var f: File
   if open(f, filename, fmWrite):
     if head != nil: writeRope(f, head)
     close(f)
+    result = true
   else:
-    errorHandler(rCannotOpenFile, filename, useWarning)
+    result = false
 
 proc `$`*(r: Rope): string =
   ## converts a rope back to a string.
@@ -254,7 +246,7 @@ proc `%`*(frmt: FormatStr, args: openArray[Rope]): Rope =
           if i >= frmt.len or frmt[i] notin {'0'..'9'}: break
         num = j
         if j > high(args) + 1:
-          errorHandler(rInvalidFormatStr, $(j))
+          doAssert false, "invalid format string: " & frmt
         else:
           add(result, args[j-1])
       of '{':
@@ -265,10 +257,11 @@ proc `%`*(frmt: FormatStr, args: openArray[Rope]): Rope =
           inc(i)
         num = j
         if frmt[i] == '}': inc(i)
-        else: errorHandler(rInvalidFormatStr, $(frmt[i]))
+        else:
+          doAssert false, "invalid format string: " & frmt
 
         if j > high(args) + 1:
-          errorHandler(rInvalidFormatStr, $(j))
+          doAssert false, "invalid format string: " & frmt
         else:
           add(result, args[j-1])
       of 'n':
@@ -278,7 +271,7 @@ proc `%`*(frmt: FormatStr, args: openArray[Rope]): Rope =
         add(result, rnl)
         inc(i)
       else:
-        errorHandler(rInvalidFormatStr, $(frmt[i]))
+        doAssert false, "invalid format string: " & frmt
     var start = i
     while i < length:
       if frmt[i] != '$': inc(i)
@@ -350,7 +343,6 @@ proc equalsFile*(r: Rope, filename: string): bool =
 proc writeRopeIfNotEqual*(r: Rope, filename: string): bool =
   # returns true if overwritten
   if not equalsFile(r, filename):
-    writeRope(r, filename)
-    result = true
+    result = writeRope(r, filename)
   else:
     result = false

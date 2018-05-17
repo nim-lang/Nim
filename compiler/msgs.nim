@@ -618,13 +618,6 @@ proc quotedFilename*(conf: ConfigRef; i: TLineInfo): Rope =
   else:
     result = fileInfos[i.fileIndex.int32].quotedName
 
-ropes.errorHandler = proc (err: RopesError, msg: string, useWarning: bool) =
-  case err
-  of rInvalidFormatStr:
-    internalError(newPartialConfigRef(), "ropes: invalid format string: " & msg)
-  of rCannotOpenFile:
-    rawMessage(newPartialConfigRef(), if useWarning: warnCannotOpenFile else: errCannotOpenFile, msg)
-
 proc listWarnings*(conf: ConfigRef) =
   msgWriteln(conf, "Warnings:")
   for warn in warnMin..warnMax:

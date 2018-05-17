@@ -438,9 +438,12 @@ proc execExternalProgram*(conf: ConfigRef; cmd: string, msg = hintExecuting) =
 
 proc generateScript(conf: ConfigRef; projectFile: string, script: Rope) =
   let (dir, name, ext) = splitFile(projectFile)
-  writeRope(script, getNimcacheDir(conf) / addFileExt("compile_" & name,
-                                     platform.OS[targetOS].scriptExt))
-  copyFile(conf.libpath / "nimbase.h", getNimcacheDir(conf) / "nimbase.h")
+  let filename = getNimcacheDir(conf) / addFileExt("compile_" & name,
+                                     platform.OS[targetOS].scriptExt)
+  if writeRope(script, filename):
+    copyFile(conf.libpath / "nimbase.h", getNimcacheDir(conf) / "nimbase.h")
+  else:
+    rawMessage(conf, errGenerated, "could not write to file: " & filename)
 
 proc getOptSpeed(conf: ConfigRef; c: TSystemCC): string =
   result = getConfigVar(conf, c, ".options.speed")
@@ -872,4 +875,6 @@ proc writeMapping*(conf: ConfigRef; symbolMapping: Rope) =
   add(code, strutils.escape(conf.libpath))
 
   addf(code, "\n[Symbols]$n$1", [symbolMapping])
-  writeRope(code, joinPath(conf.projectPath, "mapping.txt"))
+  let filename = joinPath(conf.projectPath, "mapping.txt")
+  if not writeRope(code, filename):
+    rawMessage(conf, errGenerated, "could not write to file: " & filename)
