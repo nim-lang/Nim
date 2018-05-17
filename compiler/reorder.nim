@@ -155,7 +155,8 @@ proc expandIncludes(graph: ModuleGraph, module: PSym, n: PNode,
         var f = checkModuleName(graph.config, a.sons[i])
         if f != InvalidFileIDX:
           if containsOrIncl(includedFiles, f.int):
-            localError(graph.config, a.info, "recursive dependency: '$1'" % f.toFilename)
+            localError(graph.config, a.info, "recursive dependency: '$1'" %
+              toFilename(graph.config, f))
           else:
             let nn = includeModule(graph, module, f, cache)
             let nnn = expandIncludes(graph, module, nn, modulePath,
@@ -430,7 +431,7 @@ proc reorder*(graph: ModuleGraph, n: PNode, module: PSym, cache: IdentCache): PN
   if n.hasForbiddenPragma:
     return n
   var includedFiles = initIntSet()
-  let mpath = module.fileIdx.toFullPath
+  let mpath = toFullPath(graph.config, module.fileIdx)
   let n = expandIncludes(graph, module, n, mpath,
                           includedFiles, cache).splitSections
   result = newNodeI(nkStmtList, n.info)

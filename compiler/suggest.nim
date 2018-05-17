@@ -143,7 +143,7 @@ proc symToSuggest(conf: ConfigRef; s: PSym, isLocal: bool, section: IdeCmd, info
     when not defined(noDocgen):
       result.doc = s.extractDocComment
   let infox = if section in {ideUse, ideHighlight, ideOutline}: info else: s.info
-  result.filePath = toFullPath(infox)
+  result.filePath = toFullPath(conf, infox)
   result.line = toLinenumber(infox)
   result.column = toColumn(infox)
 
@@ -342,7 +342,7 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
   when defined(nimsuggest):
     if n.kind == nkSym and n.sym.kind == skError and suggestVersion == 0:
       # consider 'foo.|' where 'foo' is some not imported module.
-      let fullPath = findModule(c.config, n.sym.name.s, n.info.toFullPath)
+      let fullPath = findModule(c.config, n.sym.name.s, toFullPath(c.config, n.info))
       if fullPath.len == 0:
         # error: no known module name:
         typ = nil

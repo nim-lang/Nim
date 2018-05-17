@@ -15,13 +15,13 @@ import
   ast, hashes, intsets, strutils, options, msgs, ropes, idents, rodutils
 
 proc hashNode*(p: RootRef): Hash
-proc treeToYaml*(n: PNode, indent: int = 0, maxRecDepth: int = - 1): Rope
+proc treeToYaml*(conf: ConfigRef; n: PNode, indent: int = 0, maxRecDepth: int = - 1): Rope
   # Convert a tree into its YAML representation; this is used by the
   # YAML code generator and it is invaluable for debugging purposes.
   # If maxRecDepht <> -1 then it won't print the whole graph.
-proc typeToYaml*(n: PType, indent: int = 0, maxRecDepth: int = - 1): Rope
-proc symToYaml*(n: PSym, indent: int = 0, maxRecDepth: int = - 1): Rope
-proc lineInfoToStr*(info: TLineInfo): Rope
+proc typeToYaml*(conf: ConfigRef; n: PType, indent: int = 0, maxRecDepth: int = - 1): Rope
+proc symToYaml*(conf: ConfigRef; n: PSym, indent: int = 0, maxRecDepth: int = - 1): Rope
+proc lineInfoToStr*(conf: ConfigRef; info: TLineInfo): Rope
 
 # ----------------------- node sets: ---------------------------------------
 proc objectSetContains*(t: TObjectSet, obj: RootRef): bool
@@ -63,9 +63,9 @@ proc nextIdentIter*(ti: var TIdentIter, tab: TStrTable): PSym
 
 # these are for debugging only: They are not really deprecated, but I want
 # the warning so that release versions do not contain debugging statements:
-proc debug*(n: PSym) {.deprecated.}
-proc debug*(n: PType) {.deprecated.}
-proc debug*(n: PNode) {.deprecated.}
+proc debug*(conf: ConfigRef; n: PSym) {.deprecated.}
+proc debug*(conf: ConfigRef; n: PType) {.deprecated.}
+proc debug*(conf: ConfigRef; n: PNode) {.deprecated.}
 
 template mdbg*: bool {.dirty.} =
   when compiles(c.module):
@@ -250,16 +250,16 @@ proc flagsToStr[T](flags: set[T]): Rope =
       add(result, makeYamlString($x))
     result = "[" & result & "]"
 
-proc lineInfoToStr(info: TLineInfo): Rope =
-  result = "[$1, $2, $3]" % [makeYamlString(toFilename(info)),
+proc lineInfoToStr(conf: ConfigRef; info: TLineInfo): Rope =
+  result = "[$1, $2, $3]" % [makeYamlString(toFilename(conf, info)),
                              rope(toLinenumber(info)),
                              rope(toColumn(info))]
 
-proc treeToYamlAux(n: PNode, marker: var IntSet,
+proc treeToYamlAux(conf: ConfigRef; n: PNode, marker: var IntSet,
                    indent, maxRecDepth: int): Rope
-proc symToYamlAux(n: PSym, marker: var IntSet,
+proc symToYamlAux(conf: ConfigRef; n: PSym, marker: var IntSet,
                   indent, maxRecDepth: int): Rope
-proc typeToYamlAux(n: PType, marker: var IntSet,
+proc typeToYamlAux(conf: ConfigRef; n: PType, marker: var IntSet,
                    indent, maxRecDepth: int): Rope
 
 proc ropeConstr(indent: int, c: openArray[Rope]): Rope =
@@ -273,7 +273,7 @@ proc ropeConstr(indent: int, c: openArray[Rope]): Rope =
     inc(i, 2)
   addf(result, "$N$1}", [rspaces(indent)])
 
-proc symToYamlAux(n: PSym, marker: var IntSet, indent: int,
+proc symToYamlAux(conf: ConfigRef; n: PSym, marker: var IntSet, indent: int,
                   maxRecDepth: int): Rope =
   if n == nil:
     result = rope("null")
@@ -281,20 +281,20 @@ proc symToYamlAux(n: PSym, marker: var IntSet, indent: int,
     result = "\"$1 @$2\"" % [rope(n.name.s), rope(
         strutils.toHex(cast[ByteAddress](n), sizeof(n) * 2))]
   else:
-    var ast = treeToYamlAux(n.ast, marker, indent + 2, maxRecDepth - 1)
+    var ast = treeToYamlAux(conf, n.ast, marker, indent + 2, maxRecDepth - 1)
     result = ropeConstr(indent, [rope("kind"),
                                  makeYamlString($n.kind),
                                  rope("name"), makeYamlString(n.name.s),
-                                 rope("typ"), typeToYamlAux(n.typ, marker,
+                                 rope("typ"), typeToYamlAux(conf, n.typ, marker,
                                    indent + 2, maxRecDepth - 1),
-                                 rope("info"), lineInfoToStr(n.info),
+                                 rope("info"), lineInfoToStr(conf, n.info),
                                  rope("flags"), flagsToStr(n.flags),
                                  rope("magic"), makeYamlString($n.magic),
                                  rope("ast"), ast, rope("options"),
                                  flagsToStr(n.options), rope("position"),
                                  rope(n.position)])
 
-proc typeToYamlAux(n: PType, marker: var IntSet, indent: int,
+proc typeToYamlAux(conf: ConfigRef; n: PType, marker: var IntSet, indent: int,
                    maxRecDepth: int): Rope =
   if n == nil:
     result = rope("null")
@@ -306,15 +306,15 @@ proc typeToYamlAux(n: PType, marker: var IntSet, indent: int,
       result = rope("[")
       for i in countup(0, sonsLen(n) - 1):
         if i > 0: add(result, ",")
-        addf(result, "$N$1$2", [rspaces(indent + 4), typeToYamlAux(n.sons[i],
+        addf(result, "$N$1$2", [rspaces(indent + 4), typeToYamlAux(conf, n.sons[i],
             marker, indent + 4, maxRecDepth - 1)])
       addf(result, "$N$1]", [rspaces(indent + 2)])
     else:
       result = rope("null")
     result = ropeConstr(indent, [rope("kind"),
                                  makeYamlString($n.kind),
-                                 rope("sym"), symToYamlAux(n.sym, marker,
-        indent + 2, maxRecDepth - 1), rope("n"), treeToYamlAux(n.n, marker,
+                                 rope("sym"), symToYamlAux(conf, n.sym, marker,
+        indent + 2, maxRecDepth - 1), rope("n"), treeToYamlAux(conf, n.n, marker,
         indent + 2, maxRecDepth - 1), rope("flags"), flagsToStr(n.flags),
                                  rope("callconv"),
                                  makeYamlString(CallingConvToStr[n.callConv]),
@@ -322,7 +322,7 @@ proc typeToYamlAux(n: PType, marker: var IntSet, indent: int,
                                  rope("align"), rope(n.align),
                                  rope("sons"), result])
 
-proc treeToYamlAux(n: PNode, marker: var IntSet, indent: int,
+proc treeToYamlAux(conf: ConfigRef; n: PNode, marker: var IntSet, indent: int,
                    maxRecDepth: int): Rope =
   if n == nil:
     result = rope("null")
@@ -330,7 +330,7 @@ proc treeToYamlAux(n: PNode, marker: var IntSet, indent: int,
     var istr = rspaces(indent + 2)
     result = "{$N$1\"kind\": $2" % [istr, makeYamlString($n.kind)]
     if maxRecDepth != 0:
-      addf(result, ",$N$1\"info\": $2", [istr, lineInfoToStr(n.info)])
+      addf(result, ",$N$1\"info\": $2", [istr, lineInfoToStr(conf, n.info)])
       case n.kind
       of nkCharLit..nkInt64Lit:
         addf(result, ",$N$1\"intVal\": $2", [istr, rope(n.intVal)])
@@ -344,7 +344,7 @@ proc treeToYamlAux(n: PNode, marker: var IntSet, indent: int,
           addf(result, ",$N$1\"strVal\": $2", [istr, makeYamlString(n.strVal)])
       of nkSym:
         addf(result, ",$N$1\"sym\": $2",
-             [istr, symToYamlAux(n.sym, marker, indent + 2, maxRecDepth)])
+             [istr, symToYamlAux(conf, n.sym, marker, indent + 2, maxRecDepth)])
       of nkIdent:
         if n.ident != nil:
           addf(result, ",$N$1\"ident\": $2", [istr, makeYamlString(n.ident.s)])
@@ -355,27 +355,27 @@ proc treeToYamlAux(n: PNode, marker: var IntSet, indent: int,
           addf(result, ",$N$1\"sons\": [", [istr])
           for i in countup(0, sonsLen(n) - 1):
             if i > 0: add(result, ",")
-            addf(result, "$N$1$2", [rspaces(indent + 4), treeToYamlAux(n.sons[i],
+            addf(result, "$N$1$2", [rspaces(indent + 4), treeToYamlAux(conf, n.sons[i],
                 marker, indent + 4, maxRecDepth - 1)])
           addf(result, "$N$1]", [istr])
       addf(result, ",$N$1\"typ\": $2",
-           [istr, typeToYamlAux(n.typ, marker, indent + 2, maxRecDepth)])
+           [istr, typeToYamlAux(conf, n.typ, marker, indent + 2, maxRecDepth)])
     addf(result, "$N$1}", [rspaces(indent)])
 
-proc treeToYaml(n: PNode, indent: int = 0, maxRecDepth: int = - 1): Rope =
+proc treeToYaml(conf: ConfigRef; n: PNode, indent: int = 0, maxRecDepth: int = - 1): Rope =
   var marker = initIntSet()
-  result = treeToYamlAux(n, marker, indent, maxRecDepth)
+  result = treeToYamlAux(conf, n, marker, indent, maxRecDepth)
 
-proc typeToYaml(n: PType, indent: int = 0, maxRecDepth: int = - 1): Rope =
+proc typeToYaml(conf: ConfigRef; n: PType, indent: int = 0, maxRecDepth: int = - 1): Rope =
   var marker = initIntSet()
-  result = typeToYamlAux(n, marker, indent, maxRecDepth)
+  result = typeToYamlAux(conf, n, marker, indent, maxRecDepth)
 
-proc symToYaml(n: PSym, indent: int = 0, maxRecDepth: int = - 1): Rope =
+proc symToYaml(conf: ConfigRef; n: PSym, indent: int = 0, maxRecDepth: int = - 1): Rope =
   var marker = initIntSet()
-  result = symToYamlAux(n, marker, indent, maxRecDepth)
+  result = symToYamlAux(conf, n, marker, indent, maxRecDepth)
 
-proc debugTree*(n: PNode, indent: int, maxRecDepth: int; renderType=false): Rope
-proc debugType(n: PType, maxRecDepth=100): Rope =
+proc debugTree*(conf: ConfigRef; n: PNode, indent: int, maxRecDepth: int; renderType=false): Rope
+proc debugType(conf: ConfigRef; n: PType, maxRecDepth=100): Rope =
   if n == nil:
     result = rope("null")
   else:
@@ -385,7 +385,7 @@ proc debugType(n: PType, maxRecDepth=100): Rope =
       add(result, n.sym.name.s)
     if n.kind in IntegralTypes and n.n != nil:
       add(result, ", node: ")
-      add(result, debugTree(n.n, 2, maxRecDepth-1, renderType=true))
+      add(result, debugTree(conf, n.n, 2, maxRecDepth-1, renderType=true))
     if (n.kind != tyString) and (sonsLen(n) > 0) and maxRecDepth != 0:
       add(result, "(")
       for i in countup(0, sonsLen(n) - 1):
@@ -393,13 +393,13 @@ proc debugType(n: PType, maxRecDepth=100): Rope =
         if n.sons[i] == nil:
           add(result, "null")
         else:
-          add(result, debugType(n.sons[i], maxRecDepth-1))
+          add(result, debugType(conf, n.sons[i], maxRecDepth-1))
       if n.kind == tyObject and n.n != nil:
         add(result, ", node: ")
-        add(result, debugTree(n.n, 2, maxRecDepth-1, renderType=true))
+        add(result, debugTree(conf, n.n, 2, maxRecDepth-1, renderType=true))
       add(result, ")")
 
-proc debugTree(n: PNode, indent: int, maxRecDepth: int;
+proc debugTree(conf: ConfigRef; n: PNode, indent: int, maxRecDepth: int;
                renderType=false): Rope =
   if n == nil:
     result = rope("null")
@@ -409,7 +409,7 @@ proc debugTree(n: PNode, indent: int, maxRecDepth: int;
              [istr, makeYamlString($n.kind)]
     when defined(useNodeIds):
       addf(result, ",$N$1\"id\": $2", [istr, rope(n.id)])
-    addf(result, ",$N$1\"info\": $2", [istr, lineInfoToStr(n.info)])
+    addf(result, ",$N$1\"info\": $2", [istr, lineInfoToStr(conf, n.info)])
     if maxRecDepth != 0:
       addf(result, ",$N$1\"flags\": $2", [istr, rope($n.flags)])
       case n.kind
@@ -429,7 +429,7 @@ proc debugTree(n: PNode, indent: int, maxRecDepth: int;
         #     [istr, symToYaml(n.sym, indent, maxRecDepth),
         #     rope(n.sym.id)])
         if renderType and n.sym.typ != nil:
-          addf(result, ",$N$1\"typ\": $2", [istr, debugType(n.sym.typ, 2)])
+          addf(result, ",$N$1\"typ\": $2", [istr, debugType(conf, n.sym.typ, 2)])
       of nkIdent:
         if n.ident != nil:
           addf(result, ",$N$1\"ident\": $2", [istr, makeYamlString(n.ident.s)])
@@ -440,12 +440,12 @@ proc debugTree(n: PNode, indent: int, maxRecDepth: int;
           addf(result, ",$N$1\"sons\": [", [istr])
           for i in countup(0, sonsLen(n) - 1):
             if i > 0: add(result, ",")
-            addf(result, "$N$1$2", [rspaces(indent + 4), debugTree(n.sons[i],
+            addf(result, "$N$1$2", [rspaces(indent + 4), debugTree(conf, n.sons[i],
                 indent + 4, maxRecDepth - 1, renderType)])
           addf(result, "$N$1]", [istr])
     addf(result, "$N$1}", [rspaces(indent)])
 
-proc debug(n: PSym) =
+proc debug(conf: ConfigRef; n: PSym) =
   if n == nil:
     echo("null")
   elif n.kind == skUnknown:
@@ -454,13 +454,13 @@ proc debug(n: PSym) =
     #writeLine(stdout, $symToYaml(n, 0, 1))
     echo("$1_$2: $3, $4, $5, $6" % [
       n.name.s, $n.id, $flagsToStr(n.flags), $flagsToStr(n.loc.flags),
-      $lineInfoToStr(n.info), $n.kind])
+      $lineInfoToStr(conf, n.info), $n.kind])
 
-proc debug(n: PType) =
-  echo($debugType(n))
+proc debug(conf: ConfigRef; n: PType) =
+  echo($debugType(conf, n))
 
-proc debug(n: PNode) =
-  echo($debugTree(n, 0, 100))
+proc debug(conf: ConfigRef; n: PNode) =
+  echo($debugTree(conf, n, 0, 100))
 
 proc nextTry(h, maxHash: Hash): Hash =
   result = ((5 * h) + 1) and maxHash

@@ -54,7 +54,7 @@ type
     blocks: seq[TBlock]
 
 proc debugInfo(info: TLineInfo): string =
-  result = info.toFilename & ":" & $info.line
+  result = $info.line #info.toFilename & ":" & $info.line
 
 proc codeListing(c: ControlFlowGraph, result: var string, start=0; last = -1) =
   # for debugging purposes

@@ -717,7 +717,7 @@ proc handleCRLF(L: var TLexer, pos: int): int =
     if optEmbedOrigSrc in L.config.globalOptions:
       let lineStart = cast[ByteAddress](L.buf) + L.lineStart
       let line = newString(cast[cstring](lineStart), col)
-      addSourceLine(L.fileIdx, line)
+      addSourceLine(L.config, L.fileIdx, line)
 
   case L.buf[pos]
   of CR:

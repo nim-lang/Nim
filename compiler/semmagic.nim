@@ -78,7 +78,7 @@ proc semInstantiationInfo(c: PContext, n: PNode): PNode =
   let useFullPaths = expectIntLit(c, n.sons[2])
   let info = getInfoContext(idx)
   var filename = newNodeIT(nkStrLit, n.info, getSysType(c.graph, n.info, tyString))
-  filename.strVal = if useFullPaths != 0: info.toFullPath else: info.toFilename
+  filename.strVal = if useFullPaths != 0: toFullPath(c.config, info) else: toFilename(c.config, info)
   var line = newNodeIT(nkIntLit, n.info, getSysType(c.graph, n.info, tyInt))
   line.intVal = toLinenumber(info)
   var column = newNodeIT(nkIntLit, n.info, getSysType(c.graph, n.info, tyInt))

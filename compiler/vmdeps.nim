@@ -11,7 +11,7 @@ import ast, types, msgs, os, streams, options, idents
 
 proc opSlurp*(file: string, info: TLineInfo, module: PSym; conf: ConfigRef): string =
   try:
-    var filename = parentDir(info.toFullPath) / file
+    var filename = parentDir(toFullPath(conf, info)) / file
     if not fileExists(filename):
       filename = findFile(conf, file)
     result = readFile(filename)

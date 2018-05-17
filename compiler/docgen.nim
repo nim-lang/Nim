@@ -190,7 +190,7 @@ proc genComment(d: PDoc, n: PNode): string =
   result = ""
   var dummyHasToc: bool
   if n.comment != nil:
-    renderRstToOut(d[], parseRst(n.comment, toFilename(n.info),
+    renderRstToOut(d[], parseRst(n.comment, toFilename(d.conf, n.info),
                                toLinenumber(n.info), toColumn(n.info),
                                dummyHasToc, d.options, d.conf), result)
 
@@ -307,13 +307,13 @@ when false:
       result = findDocComment(n.sons[i])
       if result != nil: return
 
-  proc extractDocComment*(s: PSym, d: PDoc = nil): string =
+  proc extractDocComment*(s: PSym, d: PDoc): string =
     let n = findDocComment(s.ast)
     result = ""
     if not n.isNil:
       if not d.isNil:
         var dummyHasToc: bool
-        renderRstToOut(d[], parseRst(n.comment, toFilename(n.info),
+        renderRstToOut(d[], parseRst(n.comment, toFilename(d.conf, n.info),
                                      toLinenumber(n.info), toColumn(n.info),
                                      dummyHasToc, d.options + {roSkipPounds}),
                        result)
@@ -502,7 +502,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
   let docItemSeeSrc = getConfigVar(d.conf, "doc.item.seesrc")
   if docItemSeeSrc.len > 0:
     let cwd = canonicalizePath(d.conf, getCurrentDir())
-    var path = n.info.toFullPath
+    var path = toFullPath(d.conf, n.info)
     if path.startsWith(cwd):
       path = path[cwd.len+1 .. ^1].replace('\\', '/')
     let gitUrl = getConfigVar(d.conf, "git.url")

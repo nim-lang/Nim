@@ -35,11 +35,11 @@ template closeImpl(body: untyped) {.dirty.} =
 
 proc close(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
   closeImpl:
-    writeOutput(g.doc, g.module.filename, HtmlExt, useWarning)
+    writeOutput(g.doc, toFilename(graph.config, FileIndex g.module.position), HtmlExt, useWarning)
 
 proc closeJson(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
   closeImpl:
-    writeOutputJson(g.doc, g.module.filename, ".json", useWarning)
+    writeOutputJson(g.doc, toFilename(graph.config, FileIndex g.module.position), ".json", useWarning)
 
 proc processNode(c: PPassContext, n: PNode): PNode =
   result = n
@@ -55,7 +55,7 @@ proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
   var g: PGen
   new(g)
   g.module = module
-  var d = newDocumentor(module.filename, graph.config)
+  var d = newDocumentor(toFilename(graph.config, FileIndex module.position), graph.config)
   d.hasToc = true
   g.doc = d
   result = g

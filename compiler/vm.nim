@@ -66,7 +66,7 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
     stackTraceAux(c, x.next, x.comesFrom, recursionLimit-1)
     var info = c.debug[pc]
     # we now use the same format as in system/except.nim
-    var s = substr(toFilename(info), 0)
+    var s = substr(toFilename(c.config, info), 0)
     # this 'substr' prevents a strange corruption. XXX This needs to be
     # investigated eventually but first attempts to fix it broke everything
     # see the araq-wip-fixed-writebarrier branch.
@@ -1358,7 +1358,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       # c.debug[pc].line.int - countLines(regs[rb].strVal) ?
       var error: string
       let ast = parseString(regs[rb].node.strVal, c.cache, c.config,
-                            c.debug[pc].toFullPath, c.debug[pc].line.int,
+                            toFullPath(c.config, c.debug[pc]), c.debug[pc].line.int,
                             proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
                               if error.isNil and msg <= errMax:
                                 error = formatMsg(conf, info, msg, arg))
@@ -1373,7 +1373,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkNode)
       var error: string
       let ast = parseString(regs[rb].node.strVal, c.cache, c.config,
-                            c.debug[pc].toFullPath, c.debug[pc].line.int,
+                            toFullPath(c.config, c.debug[pc]), c.debug[pc].line.int,
                             proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
                               if error.isNil and msg <= errMax:
                                 error = formatMsg(conf, info, msg, arg))
@@ -1392,7 +1392,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNGetFile:
       decodeB(rkNode)
       let n = regs[rb].node
-      regs[ra].node = newStrNode(nkStrLit, n.info.toFilename)
+      regs[ra].node = newStrNode(nkStrLit, toFilename(c.config, n.info))
       regs[ra].node.info = n.info
       regs[ra].node.typ = n.typ
     of opcNGetLine:

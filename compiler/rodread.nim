@@ -658,7 +658,7 @@ proc processRodFile(r: PRodReader, hash: SecureHash) =
       inc(r.pos, 2)           # skip "(\10"
       inc(r.line)
       while r.s[r.pos] != ')':
-        w = r.files[decodeVInt(r.s, r.pos)].toFullPath
+        w = toFullPath(r.config, r.files[decodeVInt(r.s, r.pos)])
         inc(r.pos)            # skip ' '
         inclHash = parseSecureHash(decodeStr(r.s, r.pos))
         if r.reason == rrNone:
@@ -865,11 +865,11 @@ proc loadMethods(r: PRodReader) =
     r.methods.add(rrGetSym(r, d, unknownLineInfo()))
     if r.s[r.pos] == ' ': inc(r.pos)
 
-proc getHash*(fileIdx: FileIndex): SecureHash =
+proc getHash*(conf: ConfigRef; fileIdx: FileIndex): SecureHash =
   if fileIdx.int32 <% gMods.len and gMods[fileIdx.int32].hashDone:
     return gMods[fileIdx.int32].hash
 
-  result = secureHashFile(fileIdx.toFullPath)
+  result = secureHashFile(toFullPath(conf, fileIdx))
   if fileIdx.int32 >= gMods.len: setLen(gMods, fileIdx.int32+1)
   gMods[fileIdx.int32].hash = result
 
@@ -882,8 +882,8 @@ proc checkDep(fileIdx: FileIndex; cache: IdentCache; conf: ConfigRef): TReasonFo
   if gMods[fileIdx.int32].reason != rrEmpty:
     # reason has already been computed for this module:
     return gMods[fileIdx.int32].reason
-  let filename = fileIdx.toFilename
-  var hash = getHash(fileIdx)
+  let filename = toFilename(conf, fileIdx)
+  var hash = getHash(conf, fileIdx)
   gMods[fileIdx.int32].reason = rrNone  # we need to set it here to avoid cycles
   result = rrNone
   var rodfile = toGeneratedFile(conf, conf.withPackageName(filename), RodExt)

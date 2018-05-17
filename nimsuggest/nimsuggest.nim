@@ -74,8 +74,8 @@ proc writelnToChannel(line: string) =
 proc sugResultHook(s: Suggest) =
   results.send(s)
 
-proc errorHook(info: TLineInfo; msg: string; sev: Severity) =
-  results.send(Suggest(section: ideChk, filePath: toFullPath(info),
+proc errorHook(conf: ConfigRef; info: TLineInfo; msg: string; sev: Severity) =
+  results.send(Suggest(section: ideChk, filePath: toFullPath(conf, info),
     line: toLinenumber(info), column: toColumn(info), doc: msg,
     forth: $sev))
 
@@ -173,8 +173,8 @@ proc execute(cmd: IdeCmd, file, dirtyfile: string, line, col: int;
   var isKnownFile = true
   let dirtyIdx = fileInfoIdx(conf, file, isKnownFile)
 
-  if dirtyfile.len != 0: msgs.setDirtyFile(dirtyIdx, dirtyfile)
-  else: msgs.setDirtyFile(dirtyIdx, nil)
+  if dirtyfile.len != 0: msgs.setDirtyFile(conf, dirtyIdx, dirtyfile)
+  else: msgs.setDirtyFile(conf, dirtyIdx, nil)
 
   gTrackPos = newLineInfo(dirtyIdx, line, col)
   gTrackPosAttached = false
@@ -432,7 +432,7 @@ proc execCmd(cmd: string; graph: ModuleGraph; cache: IdentCache; cachedMsgs: Cac
     results.send(Suggest(section: ideKnown, quality: ord(fileInfoKnown(conf, orig))))
   else:
     if conf.ideCmd == ideChk:
-      for cm in cachedMsgs: errorHook(cm.info, cm.msg, cm.sev)
+      for cm in cachedMsgs: errorHook(conf, cm.info, cm.msg, cm.sev)
     execute(conf.ideCmd, orig, dirtyfile, line, col, graph, cache)
   sentinel()
 
@@ -477,7 +477,7 @@ proc mainThread(graph: ModuleGraph; cache: IdentCache) =
       conf.ideCmd = ideChk
       msgs.writelnHook = proc (s: string) = discard
       cachedMsgs.setLen 0
-      msgs.structuredErrorHook = proc (info: TLineInfo; msg: string; sev: Severity) =
+      msgs.structuredErrorHook = proc (conf: ConfigRef; info: TLineInfo; msg: string; sev: Severity) =
         cachedMsgs.add(CachedMsg(info: info, msg: msg, sev: sev))
       suggestionResultHook = proc (s: Suggest) = discard
       recompileFullProject(graph, cache)

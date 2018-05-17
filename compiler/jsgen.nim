@@ -537,7 +537,7 @@ proc genLineDir(p: PProc, n: PNode) =
   let line = toLinenumber(n.info)
   if optLineDir in p.options:
     lineF(p, "// line $2 \"$1\"$n",
-         [rope(toFilename(n.info)), rope(line)])
+         [rope(toFilename(p.config, n.info)), rope(line)])
   if {optStackTrace, optEndb} * p.options == {optStackTrace, optEndb} and
       ((p.prc == nil) or sfPure notin p.prc.flags):
     useMagic(p, "endb")
@@ -1907,7 +1907,7 @@ proc genProcBody(p: PProc, prc: PSym): Rope =
   if hasFrameInfo(p):
     result = frameCreate(p,
               makeJSString(prc.owner.name.s & '.' & prc.name.s),
-              makeJSString(toFilename(prc.info)))
+              makeJSString(toFilename(p.config, prc.info)))
   else:
     result = nil
   if p.beforeRetNeeded:
@@ -2200,7 +2200,7 @@ proc genModule(p: PProc, n: PNode) =
   if optStackTrace in p.options:
     add(p.body, frameCreate(p,
         makeJSString("module " & p.module.module.name.s),
-        makeJSString(toFilename(p.module.module.info))))
+        makeJSString(toFilename(p.config, p.module.module.info))))
   genStmt(p, n)
   if optStackTrace in p.options:
     add(p.body, frameDestroy(p))
@@ -2262,7 +2262,7 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   if passes.skipCodegen(m.config, n): return n
   if sfMainModule in m.module.flags:
     let ext = "js"
-    let f = if globals.classes.len == 0: toFilename(FileIndex m.module.position)
+    let f = if globals.classes.len == 0: toFilename(m.config, FileIndex m.module.position)
             else: "nimsystem"
     let code = wholeCode(graph, m)
     let outfile =

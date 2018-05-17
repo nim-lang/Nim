@@ -1028,7 +1028,7 @@ proc genBreakPoint(p: BProc, t: PNode) =
     genLineDir(p, t)          # BUGFIX
     appcg(p.module, p.module.g.breakpoints,
          "#dbgRegisterBreakpoint($1, (NCSTRING)$2, (NCSTRING)$3);$n", [
-        rope(toLinenumber(t.info)), makeCString(toFilename(t.info)),
+        rope(toLinenumber(t.info)), makeCString(toFilename(p.config, t.info)),
         makeCString(name)])
 
 proc genWatchpoint(p: BProc, n: PNode) =

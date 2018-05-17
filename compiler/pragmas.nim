@@ -404,7 +404,7 @@ proc relativeFile(c: PContext; n: PNode; ext=""): string =
   var s = expectStrLit(c, n)
   if ext.len > 0 and splitFile(s).ext == "":
     s = addFileExt(s, ext)
-  result = parentDir(n.info.toFullPath) / s
+  result = parentDir(toFullPath(c.config, n.info)) / s
   if not fileExists(result):
     if isAbsolute(s): result = s
     else:
@@ -426,7 +426,7 @@ proc processCompile(c: PContext, n: PNode) =
   if it.kind in {nkPar, nkTupleConstr} and it.len == 2:
     let s = getStrLit(c, it, 0)
     let dest = getStrLit(c, it, 1)
-    var found = parentDir(n.info.toFullPath) / s
+    var found = parentDir(toFullPath(c.config, n.info)) / s
     for f in os.walkFiles(found):
       let nameOnly = extractFilename(f)
       var cf = Cfile(cname: f,
@@ -435,7 +435,7 @@ proc processCompile(c: PContext, n: PNode) =
       extccomp.addExternalFileToCompile(c.config, cf)
   else:
     let s = expectStrLit(c, n)
-    var found = parentDir(n.info.toFullPath) / s
+    var found = parentDir(toFullPath(c.config, n.info)) / s
     if not fileExists(found):
       if isAbsolute(s): found = s
       else:

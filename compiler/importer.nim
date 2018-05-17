@@ -143,8 +143,8 @@ proc myImportModule(c: PContext, n: PNode): PSym =
       var err = ""
       for i in countup(recursion, L-1):
         if i > recursion: err.add "\n"
-        err.add toFullPath(c.graph.importStack[i]) & " imports " &
-                toFullPath(c.graph.importStack[i+1])
+        err.add toFullPath(c.config, c.graph.importStack[i]) & " imports " &
+                toFullPath(c.config, c.graph.importStack[i+1])
       c.recursiveDep = err
     result = importModuleAs(c, n, gImportModule(c.graph, c.module, f, c.cache))
     #echo "set back to ", L

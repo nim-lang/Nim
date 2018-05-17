@@ -1056,7 +1056,7 @@ proc semAllTypeSections(c: PContext; n: PNode): PNode =
         var f = checkModuleName(c.config, n.sons[i])
         if f != InvalidFileIDX:
           if containsOrIncl(c.includedFiles, f.int):
-            localError(c.config, n.info, errRecursiveDependencyX % f.toFilename)
+            localError(c.config, n.info, errRecursiveDependencyX % toFilename(c.config, f))
           else:
             let code = gIncludeFile(c.graph, c.module, f, c.cache)
             gatherStmts c, code, result
@@ -1738,7 +1738,7 @@ proc evalInclude(c: PContext, n: PNode): PNode =
     var f = checkModuleName(c.config, n.sons[i])
     if f != InvalidFileIDX:
       if containsOrIncl(c.includedFiles, f.int):
-        localError(c.config, n.info, errRecursiveDependencyX % f.toFilename)
+        localError(c.config, n.info, errRecursiveDependencyX % toFilename(c.config, f))
       else:
         addSon(result, semStmt(c, gIncludeFile(c.graph, c.module, f, c.cache)))
         excl(c.includedFiles, f.int)

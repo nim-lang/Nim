@@ -370,7 +370,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     #echo p.currLineInfo, " requesting"
     linefmt(p, cpsStmts, "#memTrackerWrite((void*)$1, $2, $3, $4);$n",
             addrLoc(dest), rope getSize(dest.t),
-            makeCString(p.currLineInfo.toFullPath),
+            makeCString(toFullPath(p.config, p.currLineInfo)),
             rope p.currLineInfo.safeLineNm)
 
 proc genDeepCopy(p: BProc; dest, src: TLoc) =

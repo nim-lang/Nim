@@ -148,7 +148,7 @@ proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
 
 proc filename*(c: PContext): string =
   # the module's filename
-  return toFilename(FileIndex c.module.position)
+  return toFilename(c.config, FileIndex c.module.position)
 
 proc scopeDepth*(c: PContext): int {.inline.} =
   result = if c.currentScope != nil: c.currentScope.depthLevel

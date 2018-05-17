@@ -142,7 +142,7 @@ proc openParsers*(p: var TParsers, fileIdx: FileIndex, inputstream: PLLStream;
   assert config != nil
   var s: PLLStream
   p.skin = skinStandard
-  let filename = fileIdx.toFullPathConsiderDirty
+  let filename = toFullPathConsiderDirty(config, fileIdx)
   var pipe = parsePipe(filename, inputstream, cache, config)
   p.config() = config
   if pipe != nil: s = evalPipe(p, pipe, filename, inputstream)
@@ -160,7 +160,7 @@ proc parseFile*(fileIdx: FileIndex; cache: IdentCache; config: ConfigRef): PNode
   var
     p: TParsers
     f: File
-  let filename = fileIdx.toFullPathConsiderDirty
+  let filename = toFullPathConsiderDirty(config, fileIdx)
   if not open(f, filename):
     rawMessage(config, errGenerated, "cannot open file: " & filename)
     return

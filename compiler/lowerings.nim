@@ -120,7 +120,7 @@ proc createObj*(g: ModuleGraph; owner: PSym, info: TLineInfo; final=true): PType
   else:
     rawAddSon(result, getCompilerProc(g, "RootObj").typ)
   result.n = newNodeI(nkRecList, info)
-  let s = newSym(skType, getIdent("Env_" & info.toFilename),
+  let s = newSym(skType, getIdent("Env_" & toFilename(g.config, info)),
                   owner, info, owner.options)
   incl s.flags, sfAnon
   s.typ = result

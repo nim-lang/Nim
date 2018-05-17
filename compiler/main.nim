@@ -35,10 +35,10 @@ proc writeDepsFile(g: ModuleGraph; project: string) =
   let f = open(changeFileExt(project, "deps"), fmWrite)
   for m in g.modules:
     if m != nil:
-      f.writeLine(toFullPath(m.position.FileIndex))
+      f.writeLine(toFullPath(g.config, m.position.FileIndex))
   for k in g.inclToMod.keys:
     if g.getModule(k).isNil:  # don't repeat includes which are also modules
-      f.writeLine(k.toFullPath)
+      f.writeLine(toFullPath(g.config, k))
   f.close()
 
 proc commandGenDepend(graph: ModuleGraph; cache: IdentCache) =

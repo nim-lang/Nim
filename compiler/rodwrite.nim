@@ -56,7 +56,7 @@ proc fileIdx(w: PRodWriter, filename: string): int =
   w.files[result] = filename
 
 template filename*(w: PRodWriter): string =
-  toFilename(FileIndex w.module.position)
+  toFilename(w.config, FileIndex w.module.position)
 
 proc newRodWriter(hash: SecureHash, module: PSym; cache: IdentCache;
                   config: ConfigRef): PRodWriter =
@@ -80,20 +80,20 @@ proc newRodWriter(hash: SecureHash, module: PSym; cache: IdentCache;
   result.converters = ""
   result.methods = ""
   result.init = ""
-  result.origFile = module.info.toFullPath
+  result.origFile = toFullPath(config, module.info)
   result.data = newStringOfCap(12_000)
   result.cache = cache
 
 proc addModDep(w: PRodWriter, dep: string; info: TLineInfo) =
   if w.modDeps.len != 0: add(w.modDeps, ' ')
-  let resolved = findModule(w.config, dep, info.toFullPath)
+  let resolved = findModule(w.config, dep, toFullPath(w.config, info))
   encodeVInt(fileIdx(w, resolved), w.modDeps)
 
 const
   rodNL = "\x0A"
 
 proc addInclDep(w: PRodWriter, dep: string; info: TLineInfo) =
-  let resolved = findModule(w.config, dep, info.toFullPath)
+  let resolved = findModule(w.config, dep, toFullPath(w.config, info))
   encodeVInt(fileIdx(w, resolved), w.inclDeps)
   add(w.inclDeps, " ")
   encodeStr($secureHashFile(resolved), w.inclDeps)
@@ -130,7 +130,7 @@ proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode,
     result.add(',')
     encodeVInt(int n.info.line, result)
     result.add(',')
-    encodeVInt(fileIdx(w, toFullPath(n.info)), result)
+    encodeVInt(fileIdx(w, toFullPath(w.config, n.info)), result)
   elif fInfo.line != n.info.line:
     result.add('?')
     encodeVInt(n.info.col, result)
@@ -308,7 +308,7 @@ proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
   result.add(',')
   if s.info.line != 0'u16: encodeVInt(int s.info.line, result)
   result.add(',')
-  encodeVInt(fileIdx(w, toFullPath(s.info)), result)
+  encodeVInt(fileIdx(w, toFullPath(w.config, s.info)), result)
   if s.owner != nil:
     result.add('*')
     encodeVInt(s.owner.id, result)
@@ -645,7 +645,7 @@ proc process(c: PPassContext, n: PNode): PNode =
 
 proc myOpen(g: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
   if module.id < 0: internalError(g.config, "rodwrite: module ID not set")
-  var w = newRodWriter(rodread.getHash FileIndex module.position, module, cache, g.config)
+  var w = newRodWriter(rodread.getHash(g.config, FileIndex module.position), module, cache, g.config)
   rawAddInterfaceSym(w, module)
   result = w
 

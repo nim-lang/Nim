@@ -289,14 +289,14 @@ proc processPath(conf: ConfigRef; path: string, info: TLineInfo,
           else:
             conf.projectPath / path
   try:
-    result = pathSubs(conf, p, info.toFullPath().splitFile().dir)
+    result = pathSubs(conf, p, toFullPath(conf, info).splitFile().dir)
   except ValueError:
     localError(conf, info, "invalid path: " & p)
     result = p
 
 proc processCfgPath(conf: ConfigRef; path: string, info: TLineInfo): string =
   let path = if path[0] == '"': strutils.unescape(path) else: path
-  let basedir = info.toFullPath().splitFile().dir
+  let basedir = toFullPath(conf, info).splitFile().dir
   let p = if os.isAbsolute(path) or '$' in path:
             path
           else:
@@ -322,7 +322,7 @@ proc trackDirty(conf: ConfigRef; arg: string, info: TLineInfo) =
 
   let dirtyOriginalIdx = fileInfoIdx(conf, a[1])
   if dirtyOriginalIdx.int32 >= 0:
-    msgs.setDirtyFile(dirtyOriginalIdx, a[0])
+    msgs.setDirtyFile(conf, dirtyOriginalIdx, a[0])
 
   gTrackPos = newLineInfo(dirtyOriginalIdx, line, column)
 

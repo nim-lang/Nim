@@ -599,7 +599,7 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
   rod.storeNode(c.module, result)
 
 proc testExamples(c: PContext) =
-  let inp = toFullPath(c.module.info)
+  let inp = toFullPath(c.config, c.module.info)
   let outp = inp.changeFileExt"" & "_examples.nim"
   renderModule(c.runnableExamples, inp, outp)
   let backend = if isDefined(c.config, "js"): "js"

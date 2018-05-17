@@ -151,7 +151,7 @@ proc processImplicits(conf: ConfigRef; implicits: seq[string], nodeKind: TNodeKi
                       a: var TPassContextArray; m: PSym) =
   # XXX fixme this should actually be relative to the config file!
   let gCmdLineInfo = newLineInfo(FileIndex(0), 1, 1)
-  let relativeTo = m.info.toFullPath
+  let relativeTo = toFullPath(conf, m.info)
   for module in items(implicits):
     # implicit imports should not lead to a module importing itself
     if m.position != resolveMod(conf, module, relativeTo).int32:
@@ -201,7 +201,7 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream,
   elif rd == nil:
     openPasses(graph, a, module, cache)
     if stream == nil:
-      let filename = fileIdx.toFullPathConsiderDirty
+      let filename = toFullPathConsiderDirty(graph.config, fileIdx)
       s = llStreamOpen(filename, fmRead)
       if s == nil:
         rawMessage(graph.config, errCannotOpenFile, filename)

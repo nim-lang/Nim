@@ -93,8 +93,8 @@ proc beautifyName(s: string, k: TSymKind): string =
       result.add s[i]
     inc i
 
-proc replaceInFile(info: TLineInfo; newName: string) =
-  loadFile(info)
+proc replaceInFile(conf: ConfigRef; info: TLineInfo; newName: string) =
+  loadFile(conf, info)
 
   let line = gSourceFiles[info.fileIndex.int].lines[info.line.int-1]
   var first = min(info.col.int, line.len)
@@ -116,7 +116,7 @@ proc checkStyle(conf: ConfigRef; info: TLineInfo, s: string, k: TSymKind; sym: P
   if s != beau:
     if gStyleCheck == StyleCheck.Auto:
       sym.name = getIdent(beau)
-      replaceInFile(info, beau)
+      replaceInFile(conf, info, beau)
     else:
       message(conf, info, hintName, beau)
 
@@ -136,7 +136,7 @@ template styleCheckDef*(info: TLineInfo; s: PSym) =
 template styleCheckDef*(s: PSym) =
   styleCheckDef(s.info, s, s.kind)
 
-proc styleCheckUseImpl(info: TLineInfo; s: PSym) =
+proc styleCheckUseImpl(conf: ConfigRef; info: TLineInfo; s: PSym) =
   if info.fileIndex.int < 0: return
   # we simply convert it to what it looks like in the definition
   # for consistency
@@ -147,7 +147,7 @@ proc styleCheckUseImpl(info: TLineInfo; s: PSym) =
   if s.kind in {skType, skGenericParam} and sfAnon in s.flags: return
   let newName = s.name.s
 
-  replaceInFile(info, newName)
+  replaceInFile(conf, info, newName)
   #if newName == "File": writeStackTrace()
 
 template styleCheckUse*(info: TLineInfo; s: PSym) =

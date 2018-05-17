@@ -157,13 +157,6 @@ proc newLineInfo*(fileInfoIdx: FileIndex, line, col: int): TLineInfo =
 proc newLineInfo*(conf: ConfigRef; filename: string, line, col: int): TLineInfo {.inline.} =
   result = newLineInfo(fileInfoIdx(conf, filename), line, col)
 
-when false:
-  fileInfos.add(newFileInfo("", "command line"))
-  var gCmdLineInfo* = newLineInfo(FileIndex(0), 1, 1)
-
-  fileInfos.add(newFileInfo("", "compilation artifact"))
-  var gCodegenLineInfo* = newLineInfo(FileIndex(1), 1, 1)
-
 proc raiseRecoverableError*(msg: string) {.noinline, noreturn.} =
   raise newException(ERecoverableError, msg)
 
@@ -184,7 +177,7 @@ var
 
   errorOutputs* = {eStdOut, eStdErr}
   writelnHook*: proc (output: string) {.closure.}
-  structuredErrorHook*: proc (info: TLineInfo; msg: string; severity: Severity) {.closure.}
+  structuredErrorHook*: proc (config: ConfigRef; info: TLineInfo; msg: string; severity: Severity) {.closure.}
 
 proc concat(strings: openarray[string]): string =
   var totalLen = 0
@@ -234,26 +227,26 @@ proc getInfoContext*(index: int): TLineInfo =
   if i >=% L: result = unknownLineInfo()
   else: result = msgContext[i]
 
-template toFilename*(fileIdx: FileIndex): string =
+template toFilename*(conf: ConfigRef; fileIdx: FileIndex): string =
   (if fileIdx.int32 < 0: "???" else: fileInfos[fileIdx.int32].projPath)
 
-proc toFullPath*(fileIdx: FileIndex): string =
+proc toFullPath*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0: result = "???"
   else: result = fileInfos[fileIdx.int32].fullPath
 
-proc setDirtyFile*(fileIdx: FileIndex; filename: string) =
+proc setDirtyFile*(conf: ConfigRef; fileIdx: FileIndex; filename: string) =
   assert fileIdx.int32 >= 0
   fileInfos[fileIdx.int32].dirtyFile = filename
 
-proc setHash*(fileIdx: FileIndex; hash: string) =
+proc setHash*(conf: ConfigRef; fileIdx: FileIndex; hash: string) =
   assert fileIdx.int32 >= 0
   shallowCopy(fileInfos[fileIdx.int32].hash, hash)
 
-proc getHash*(fileIdx: FileIndex): string =
+proc getHash*(conf: ConfigRef; fileIdx: FileIndex): string =
   assert fileIdx.int32 >= 0
   shallowCopy(result, fileInfos[fileIdx.int32].hash)
 
-proc toFullPathConsiderDirty*(fileIdx: FileIndex): string =
+proc toFullPathConsiderDirty*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0:
     result = "???"
   elif not fileInfos[fileIdx.int32].dirtyFile.isNil:
@@ -261,11 +254,11 @@ proc toFullPathConsiderDirty*(fileIdx: FileIndex): string =
   else:
     result = fileInfos[fileIdx.int32].fullPath
 
-template toFilename*(info: TLineInfo): string =
-  info.fileIndex.toFilename
+template toFilename*(conf: ConfigRef; info: TLineInfo): string =
+  toFilename(conf, info.fileIndex)
 
-template toFullPath*(info: TLineInfo): string =
-  info.fileIndex.toFullPath
+template toFullPath*(conf: ConfigRef; info: TLineInfo): string =
+  toFullPath(conf, info.fileIndex)
 
 proc toMsgFilename*(conf: ConfigRef; info: TLineInfo): string =
   if info.fileIndex.int32 < 0:
@@ -281,17 +274,17 @@ proc toLinenumber*(info: TLineInfo): int {.inline.} =
 proc toColumn*(info: TLineInfo): int {.inline.} =
   result = info.col
 
-proc toFileLine*(info: TLineInfo): string {.inline.} =
-  result = info.toFilename & ":" & $info.line
+proc toFileLine*(conf: ConfigRef; info: TLineInfo): string {.inline.} =
+  result = toFilename(conf, info) & ":" & $info.line
 
-proc toFileLineCol*(info: TLineInfo): string {.inline.} =
-  result = info.toFilename & "(" & $info.line & ", " & $info.col & ")"
+proc toFileLineCol*(conf: ConfigRef; info: TLineInfo): string {.inline.} =
+  result = toFilename(conf, info) & "(" & $info.line & ", " & $info.col & ")"
 
-proc `$`*(info: TLineInfo): string = toFileLineCol(info)
+proc `$`*(conf: ConfigRef; info: TLineInfo): string = toFileLineCol(conf, info)
 
-proc `??`* (info: TLineInfo, filename: string): bool =
+proc `??`* (conf: ConfigRef; info: TLineInfo, filename: string): bool =
   # only for debugging purposes
-  result = filename in info.toFilename
+  result = filename in toFilename(conf, info)
 
 const trackPosInvalidFileIdx* = FileIndex(-2) # special marker so that no suggestions
                                    # are produced within comments and string literals
@@ -428,7 +421,7 @@ proc writeContext(conf: ConfigRef; lastinfo: TLineInfo) =
   for i in countup(0, len(msgContext) - 1):
     if msgContext[i] != lastinfo and msgContext[i] != info:
       if structuredErrorHook != nil:
-        structuredErrorHook(msgContext[i], instantiationFrom,
+        structuredErrorHook(conf, msgContext[i], instantiationFrom,
                             Severity.Error)
       else:
         styledMsgWriteln(styleBright,
@@ -474,7 +467,7 @@ proc rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
   let s = msgKindToString(msg) % args
 
   if structuredErrorHook != nil:
-    structuredErrorHook(unknownLineInfo(), s & (if kind != nil: KindFormat % kind else: ""), sev)
+    structuredErrorHook(conf, unknownLineInfo(), s & (if kind != nil: KindFormat % kind else: ""), sev)
 
   if not ignoreMsgBecauseOfIdeTools(conf, msg):
     if kind != nil:
@@ -548,7 +541,7 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
 
   if not ignoreMsg:
     if structuredErrorHook != nil:
-      structuredErrorHook(info, s & (if kind != nil: KindFormat % kind else: ""), sev)
+      structuredErrorHook(conf, info, s & (if kind != nil: KindFormat % kind else: ""), sev)
     if not ignoreMsgBecauseOfIdeTools(conf, msg):
       if kind != nil:
         styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s,
@@ -600,7 +593,7 @@ template assertNotNil*(conf: ConfigRef; e): untyped =
 template internalAssert*(conf: ConfigRef, e: bool) =
   if not e: internalError(conf, $instantiationInfo())
 
-proc addSourceLine*(fileIdx: FileIndex, line: string) =
+proc addSourceLine*(conf: ConfigRef; fileIdx: FileIndex, line: string) =
   fileInfos[fileIdx.int32].lines.add line.rope
 
 proc sourceLine*(conf: ConfigRef; i: TLineInfo): Rope =
@@ -608,8 +601,8 @@ proc sourceLine*(conf: ConfigRef; i: TLineInfo): Rope =
 
   if not optPreserveOrigSource(conf) and fileInfos[i.fileIndex.int32].lines.len == 0:
     try:
-      for line in lines(i.toFullPath):
-        addSourceLine i.fileIndex, line.string
+      for line in lines(toFullPath(conf, i)):
+        addSourceLine conf, i.fileIndex, line.string
     except IOError:
       discard
   assert i.fileIndex.int32 < fileInfos.len

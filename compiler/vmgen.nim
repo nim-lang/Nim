@@ -40,8 +40,8 @@ type
   TGenFlag = enum gfAddrOf, gfFieldAccess
   TGenFlags = set[TGenFlag]
 
-proc debugInfo(info: TLineInfo): string =
-  result = info.toFilename.splitFile.name & ":" & $info.line
+proc debugInfo(c: PCtx; info: TLineInfo): string =
+  result = toFilename(c.config, info).splitFile.name & ":" & $info.line
 
 proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
   # first iteration: compute all necessary labels:
@@ -85,7 +85,7 @@ proc codeListing(c: PCtx, result: var string, start=0; last = -1) =
     else:
       result.addf("\t$#\tr$#, $#", ($opc).substr(3), x.regA, x.regBx-wordExcess)
     result.add("\t#")
-    result.add(debugInfo(c.debug[i]))
+    result.add(debugInfo(c, c.debug[i]))
     result.add("\n")
     inc i
 

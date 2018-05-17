@@ -8,7 +8,7 @@
 #
 
 import strutils, lexbase, streams
-import ".." / [ast, msgs, idents]
+import ".." / [ast, msgs, idents, options]
 from os import splitFile
 
 type
@@ -21,14 +21,14 @@ type
 var
   gSourceFiles*: seq[TSourceFile] = @[]
 
-proc loadFile*(info: TLineInfo) =
+proc loadFile*(conf: ConfigRef; info: TLineInfo) =
   let i = info.fileIndex.int
   if i >= gSourceFiles.len:
     gSourceFiles.setLen(i+1)
   if gSourceFiles[i].lines.isNil:
     gSourceFiles[i].fileIdx = info.fileIndex
     gSourceFiles[i].lines = @[]
-    let path = info.toFullPath
+    let path = toFullPath(conf, info)
     gSourceFiles[i].fullpath = path
     gSourceFiles[i].isNimfixFile = path.splitFile.ext == ".nimfix"
     # we want to die here for IOError:
@@ -61,8 +61,8 @@ proc differ*(line: string, a, b: int, x: string): bool =
   let y = line[a..b]
   result = cmpIgnoreStyle(y, x) == 0 and y != x
 
-proc replaceDeprecated*(info: TLineInfo; oldSym, newSym: PIdent) =
-  loadFile(info)
+proc replaceDeprecated*(conf: ConfigRef; info: TLineInfo; oldSym, newSym: PIdent) =
+  loadFile(conf, info)
 
   let line = gSourceFiles[info.fileIndex.int32].lines[info.line.int-1]
   var first = min(info.col.int, line.len)
@@ -79,11 +79,11 @@ proc replaceDeprecated*(info: TLineInfo; oldSym, newSym: PIdent) =
     gSourceFiles[info.fileIndex.int32].dirty = true
     #if newSym.s == "File": writeStackTrace()
 
-proc replaceDeprecated*(info: TLineInfo; oldSym, newSym: PSym) =
-  replaceDeprecated(info, oldSym.name, newSym.name)
+proc replaceDeprecated*(conf: ConfigRef; info: TLineInfo; oldSym, newSym: PSym) =
+  replaceDeprecated(conf, info, oldSym.name, newSym.name)
 
-proc replaceComment*(info: TLineInfo) =
-  loadFile(info)
+proc replaceComment*(conf: ConfigRef; info: TLineInfo) =
+  loadFile(conf, info)
 
   let line = gSourceFiles[info.fileIndex.int32].lines[info.line.int-1]
   var first = info.col.int

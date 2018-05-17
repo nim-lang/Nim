@@ -120,7 +120,7 @@ proc getModuleName*(conf: ConfigRef; n: PNode): string =
   case n.kind
   of nkStrLit, nkRStrLit, nkTripleStrLit:
     try:
-      result = pathSubs(conf, n.strVal, n.info.toFullPath().splitFile().dir)
+      result = pathSubs(conf, n.strVal, toFullPath(conf, n.info).splitFile().dir)
     except ValueError:
       localError(conf, n.info, "invalid path: " & n.strVal)
       result = n.strVal
@@ -177,7 +177,7 @@ proc getModuleName*(conf: ConfigRef; n: PNode): string =
 proc checkModuleName*(conf: ConfigRef; n: PNode; doLocalError=true): FileIndex =
   # This returns the full canonical path for a given module import
   let modulename = getModuleName(conf, n)
-  let fullPath = findModule(conf, modulename, n.info.toFullPath)
+  let fullPath = findModule(conf, modulename, toFullPath(conf, n.info))
   if fullPath.len == 0:
     if doLocalError:
       let m = if modulename.len > 0: modulename else: $n

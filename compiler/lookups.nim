@@ -86,7 +86,7 @@ proc skipAlias*(s: PSym; n: PNode; conf: ConfigRef): PSym =
   else:
     result = s.owner
     if conf.cmd == cmdPretty:
-      prettybase.replaceDeprecated(n.info, s, result)
+      prettybase.replaceDeprecated(conf, n.info, s, result)
     else:
       message(conf, n.info, warnDeprecated, "use " & result.name.s & " instead; " &
               s.name.s)

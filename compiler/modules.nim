@@ -23,7 +23,7 @@ proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   new(result)
   result.id = -1             # for better error checking
   result.kind = skModule
-  let filename = fileIdx.toFullPath
+  let filename = toFullPath(graph.config, fileIdx)
   result.name = getIdent(splitFile(filename).name)
   if not isNimIdentifier(result.name.s):
     rawMessage(graph.config, errGenerated, "invalid module name: " & result.name.s)
@@ -50,7 +50,9 @@ proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   strTableAdd(result.tab, result) # a module knows itself
   let existing = strTableGet(packSym.tab, result.name)
   if existing != nil and existing.info.fileIndex != result.info.fileIndex:
-    localError(graph.config, result.info, "module names need to be unique per Nimble package; module clashes with " & existing.info.fileIndex.toFullPath)
+    localError(graph.config, result.info,
+      "module names need to be unique per Nimble package; module clashes with " &
+        toFullPath(graph.config, existing.info.fileIndex))
   # strTableIncl() for error corrections:
   discard strTableIncl(packSym.tab, result)
 
@@ -73,7 +75,7 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; cache: IdentCache, f
           return
       else:
         discard
-    result.id = getModuleId(fileIdx, toFullPath(fileIdx))
+    result.id = getModuleId(fileIdx, toFullPath(graph.config, fileIdx))
     discard processModule(graph, result,
       if sfMainModule in flags and graph.config.projectIsStdin: stdin.llStreamOpen else: nil,
       rd, cache)

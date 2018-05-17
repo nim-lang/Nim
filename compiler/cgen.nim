@@ -193,7 +193,7 @@ proc genCLineDir(r: var Rope, filename: string, line: int; conf: ConfigRef) =
         [rope(makeSingleLineCString(filename)), rope(line)])
 
 proc genCLineDir(r: var Rope, info: TLineInfo; conf: ConfigRef) =
-  genCLineDir(r, info.toFullPath, info.safeLineNm, conf)
+  genCLineDir(r, toFullPath(conf, info), info.safeLineNm, conf)
 
 proc freshLineInfo(p: BProc; info: TLineInfo): bool =
   if p.lastLineInfo.line != info.line or
@@ -212,12 +212,12 @@ proc genLineDir(p: BProc, t: PNode) =
 
   if optEmbedOrigSrc in p.config.globalOptions:
     add(p.s(cpsStmts), ~"//" & sourceLine(p.config, tt.info) & rnl)
-  genCLineDir(p.s(cpsStmts), tt.info.toFullPath, line, p.config)
+  genCLineDir(p.s(cpsStmts), toFullPath(p.config, tt.info), line, p.config)
   if ({optStackTrace, optEndb} * p.options == {optStackTrace, optEndb}) and
       (p.prc == nil or sfPure notin p.prc.flags):
     if freshLineInfo(p, tt.info):
       linefmt(p, cpsStmts, "#endb($1, $2);$N",
-              line.rope, makeCString(toFilename(tt.info)))
+              line.rope, makeCString(toFilename(p.config, tt.info)))
   elif ({optLineTrace, optStackTrace} * p.options ==
       {optLineTrace, optStackTrace}) and
       (p.prc == nil or sfPure notin p.prc.flags) and tt.info.fileIndex != InvalidFileIDX:
@@ -1249,7 +1249,7 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: string): BModule =
     excl(result.postInitProc.options, optStackTrace)
   let ndiName = if optCDebug in g.config.globalOptions: changeFileExt(completeCFilePath(g.config, filename), "ndi")
                 else: ""
-  open(result.ndi, ndiName)
+  open(result.ndi, ndiName, g.config)
 
 proc nullify[T](arr: var T) =
   for i in low(arr)..high(arr):
@@ -1299,12 +1299,12 @@ proc resetModule*(m: BModule) =
 proc resetCgenModules*(g: BModuleList) =
   for m in cgenModules(g): resetModule(m)
 
-proc rawNewModule(g: BModuleList; module: PSym): BModule =
-  result = rawNewModule(g, module, module.position.FileIndex.toFullPath)
+proc rawNewModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
+  result = rawNewModule(g, module, toFullPath(conf, module.position.FileIndex))
 
-proc newModule(g: BModuleList; module: PSym): BModule =
+proc newModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
   # we should create only one cgen module for each module sym
-  result = rawNewModule(g, module)
+  result = rawNewModule(g, module, conf)
   growCache g.modules, module.position
   g.modules[module.position] = result
 
@@ -1315,7 +1315,7 @@ template injectG() {.dirty.} =
 
 proc myOpen(graph: ModuleGraph; module: PSym; cache: IdentCache): PPassContext =
   injectG()
-  result = newModule(g, module)
+  result = newModule(g, module, graph.config)
   if optGenIndex in graph.config.globalOptions and g.generatedHeader == nil:
     let f = if graph.config.headerFile.len > 0: graph.config.headerFile
             else: graph.config.projectFull
@@ -1358,7 +1358,7 @@ proc getCFile(m: BModule): string =
 
 proc myOpenCached(graph: ModuleGraph; module: PSym, rd: PRodReader): PPassContext =
   injectG()
-  var m = newModule(g, module)
+  var m = newModule(g, module, graph.config)
   readMergeInfo(getCFile(m), m)
   result = m
 

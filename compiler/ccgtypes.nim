@@ -50,7 +50,7 @@ proc mangleName(m: BModule; s: PSym): Rope =
     result = s.name.s.mangle.rope
     add(result, idOrSig(s, m.module.name.s, m.sigConflicts))
     s.loc.r = result
-    writeMangledName(m.ndi, s)
+    writeMangledName(m.ndi, s, m.config)
 
 proc mangleParamName(m: BModule; s: PSym): Rope =
   ## we cannot use 'sigConflicts' here since we have a BModule, not a BProc.
@@ -63,7 +63,7 @@ proc mangleParamName(m: BModule; s: PSym): Rope =
       res.add "_0"
     result = res.rope
     s.loc.r = result
-    writeMangledName(m.ndi, s)
+    writeMangledName(m.ndi, s, m.config)
 
 proc mangleLocalName(p: BProc; s: PSym): Rope =
   assert s.kind in skLocalVars+{skTemp}
@@ -81,7 +81,7 @@ proc mangleLocalName(p: BProc; s: PSym): Rope =
       result.add "_" & rope(counter+1)
     p.sigConflicts.inc(key)
     s.loc.r = result
-    if s.kind != skTemp: writeMangledName(p.module.ndi, s)
+    if s.kind != skTemp: writeMangledName(p.module.ndi, s, p.config)
 
 proc scopeMangledParam(p: BProc; param: PSym) =
   ## parameter generation only takes BModule, not a BProc, so we have to
