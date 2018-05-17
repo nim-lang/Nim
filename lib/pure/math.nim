@@ -41,7 +41,7 @@ proc fac*(n: int): int =
       createFactTable[13]()
     else:
       createFactTable[21]()
-  assert(n > 0, $n & " must not be negative.")
+  assert(n >= 0, $n & " must not be negative.")
   assert(n < factTable.len, $n & " is too large to look up in the table")
   factTable[n]
 
@@ -560,3 +560,14 @@ when isMainModule:
     assert sgn(Inf) == 1
     assert sgn(NaN) == 0
 
+  block: # fac() tests
+    try:
+      discard fac(-1)
+    except AssertionError:
+      discard
+
+    doAssert fac(0) == 1
+    doAssert fac(1) == 1
+    doAssert fac(2) == 2
+    doAssert fac(3) == 6
+    doAssert fac(4) == 24
