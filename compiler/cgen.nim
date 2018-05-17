@@ -1035,14 +1035,19 @@ proc genMainProc(m: BModule) =
       "}$N$N"
 
     GenodeNimMain =
-      "Libc::Env *genodeEnv;$N" &
+      "extern Genode::Env *nim_runtime_env;$N" &
+      "extern void nim_component_construct(Genode::Env*);$N$N" &
       NimMainBody
 
     ComponentConstruct =
       "void Libc::Component::construct(Libc::Env &env) {$N" &
-      "\tgenodeEnv = &env;$N" &
+      "\t// Set Env used during runtime initialization$N" &
+      "\tnim_runtime_env = &env;$N" &
       "\tLibc::with_libc([&] () {$N\t" &
+      "\t// Initialize runtime and globals$N" &
       MainProcs &
+      "\t// Call application construct$N" &
+      "\t\tnim_component_construct(&env);$N" &
       "\t});$N" &
       "}$N$N"
 
@@ -1059,6 +1064,7 @@ proc genMainProc(m: BModule) =
   elif platform.targetOS == osGenode:
     nimMain = GenodeNimMain
     otherMain = ComponentConstruct
+    m.includeHeader("<libc/component.h>")
   elif optGenDynLib in m.config.globalOptions:
     nimMain = PosixNimDllMain
     otherMain = PosixCDllMain
