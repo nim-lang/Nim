@@ -75,6 +75,7 @@
   deprecated.
 - The `terminal` module now exports additional procs for generating ANSI color
   codes as strings.
+- Added the parameter ``val`` for the ``CritBitTree[int].inc`` proc.
 
 ### Language additions
 
