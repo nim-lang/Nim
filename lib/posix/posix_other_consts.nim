@@ -167,11 +167,15 @@ var MM_NOMSG* {.importc: "MM_NOMSG", header: "<fmtmsg.h>".}: cint
 var MM_NOCON* {.importc: "MM_NOCON", header: "<fmtmsg.h>".}: cint
 
 # <fnmatch.h>
-var FNM_NOMATCH* {.importc: "FNM_NOMATCH", header: "<fnmatch.h>".}: cint
+var FNM_NOESCAPE* {.importc: "FNM_NOESCAPE", header: "<fnmatch.h>".}: cint
 var FNM_PATHNAME* {.importc: "FNM_PATHNAME", header: "<fnmatch.h>".}: cint
 var FNM_PERIOD* {.importc: "FNM_PERIOD", header: "<fnmatch.h>".}: cint
-var FNM_NOESCAPE* {.importc: "FNM_NOESCAPE", header: "<fnmatch.h>".}: cint
+var FNM_FILE_NAME* {.importc: "FNM_FILE_NAME", header: "<fnmatch.h>".}: cint
+var FNM_LEADING_DIR* {.importc: "FNM_LEADING_DIR", header: "<fnmatch.h>".}: cint
+var FNM_CASEFOLD* {.importc: "FNM_CASEFOLD", header: "<fnmatch.h>".}: cint
+var FNM_EXTMATCH* {.importc: "FNM_EXTMATCH", header: "<fnmatch.h>".}: cint
 var FNM_NOSYS* {.importc: "FNM_NOSYS", header: "<fnmatch.h>".}: cint
+var FNM_NOMATCH* {.importc: "FNM_NOMATCH", header: "<fnmatch.h>".}: cint
 
 # <ftw.h>
 var FTW_F* {.importc: "FTW_F", header: "<ftw.h>".}: cint

@@ -168,10 +168,15 @@ const MM_NOMSG* = cint(1)
 const MM_NOCON* = cint(4)
 
 # <fnmatch.h>
-const FNM_NOMATCH* = cint(1)
 const FNM_PATHNAME* = cint(1)
-const FNM_PERIOD* = cint(4)
+const FNM_NOMATCH* = cint(1)
+const FNM_FILE_NAME* = cint(1)
 const FNM_NOESCAPE* = cint(2)
+const FNM_PERIOD* = cint(4)
+const FNM_LEADING_DIR* = cint(8)
+const FNM_CASEFOLD* = cint(16)
+const FNM_EXTMATCH* = cint(32)
+const FNM_NOSYS* = cint(-1)
 
 # <ftw.h>
 const FTW_F* = cint(0)

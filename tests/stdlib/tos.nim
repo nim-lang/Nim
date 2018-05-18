@@ -42,6 +42,8 @@ Raises
 true
 true
 true
+true
+false
 '''
 """
 # test os path creation, iteration, and deletion
@@ -129,3 +131,7 @@ echo fileExists("../dest/a/b/file.txt")
 
 echo fileExists("../dest/a/b/c/fileC.txt")
 removeDir("../dest")
+
+# test pathMatches:
+echo pathMatches("./a/b/c/file.txt", "*.txt")
+echo pathMatches("./a/b/c/file.txt", "*.doc")

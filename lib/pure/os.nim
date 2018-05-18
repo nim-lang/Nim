@@ -640,6 +640,22 @@ proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   else:
     result = c_system(command)
 
+proc pathMatches*(path, pattern: string): bool {.rtl, extern: "nos$1"} =
+  ## Returns true if the path matches with the
+  ## specified `pattern`, false otherwise.
+  ##
+  ## **Warning**:
+  ## The matching is case-insensitive.
+  when defined(windows):
+    when useWinUnicode:
+      wrapBinary(res, PathMatchSpecW, path, pattern)
+      return res == 1
+    else:
+      var res = PathMatchSpecA(path, pattern)
+      return res == 1
+  else:
+    return fnmatch(pattern, path, FNM_CASEFOLD) == 0
+
 # Templates for filtering directories and files
 when defined(windows):
   template isDir(f: WIN32_FIND_DATA): bool =
