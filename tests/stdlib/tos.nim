@@ -44,6 +44,7 @@ true
 true
 true
 false
+true
 '''
 """
 # test os path creation, iteration, and deletion
@@ -135,3 +136,4 @@ removeDir("../dest")
 # test pathMatches:
 echo pathMatches("./a/b/c/file.txt", "*.txt")
 echo pathMatches("./a/b/c/file.txt", "*.doc")
+echo pathMatches("./a/b/c/file.tXt", "*.TXT")
